@@ -3746,12 +3746,16 @@
     return children && typeof children === 'object' ? children : null;
   }
 
-  function collectInlineChildMapIndex(visibleNodes = {}, visibleDynamics = {}) {
-    const next = {};
+  function 收集内联子图载荷索引(visibleNodes = {}, visibleDynamics = {}) {
+    const availableChildMaps = {};
+    const previewChildMaps = {};
     [...Object.entries(visibleNodes || {}), ...Object.entries(visibleDynamics || {})].forEach(([name, rawNode]) => {
-      if (buildPreviewPayloadFromRawLocation(name, rawNode)) next[name] = `preview_${name}`;
+      const 子图载荷 = buildPreviewPayloadFromRawLocation(name, rawNode);
+      if (!子图载荷) return;
+      availableChildMaps[name] = 子图载荷.current_map_id || `preview_${name}`;
+      previewChildMaps[name] = 子图载荷;
     });
-    return next;
+    return { availableChildMaps, previewChildMaps };
   }
 
   function getMapNodeTextField(rawNode, keys = [], fallback = '') {
@@ -4994,6 +4998,13 @@
       ? currentFocusCoord
       : { x: NaN, y: NaN };
 
+    const 内联子图索引 = isPreview
+      ? {
+        availableChildMaps: payload.available_child_maps && typeof payload.available_child_maps === 'object' ? payload.available_child_maps : {},
+        previewChildMaps: payload.preview_child_maps && typeof payload.preview_child_maps === 'object' ? payload.preview_child_maps : {},
+      }
+      : 收集内联子图载荷索引(visibleNodes, visibleDynamics);
+
     const snapshot = {
       rootData,
       activeName,
@@ -5007,10 +5018,8 @@
       coordSystem: resolveSnapshotCoordSystem(currentMapId, 'world'),
       currentMapId,
       currentZoomHint: 0,
-      availableChildMaps: isPreview && payload.available_child_maps && typeof payload.available_child_maps === 'object'
-        ? payload.available_child_maps
-        : collectInlineChildMapIndex(visibleNodes, visibleDynamics),
-      previewChildMaps: isPreview && payload.preview_child_maps && typeof payload.preview_child_maps === 'object' ? payload.preview_child_maps : {},
+      availableChildMaps: 内联子图索引.availableChildMaps,
+      previewChildMaps: 内联子图索引.previewChildMaps,
       travelCandidates: Array.from(new Set([...Object.keys(visibleNodes), ...Object.keys(visibleDynamics)])),
       visibleNodes: safeEntries(visibleNodes),
       visibleDynamics: safeEntries(visibleDynamics),
