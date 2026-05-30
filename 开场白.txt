@@ -1,0 +1,3724 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+#character-creation-root { font-family: "Microsoft YaHei", sans-serif; color: #e0f8f5; }
+#character-creation-root .archive-panel { max-width: 680px; margin: 0 auto; background: rgba(8, 18, 24, 0.85); border: 1px solid #00ffcc; border-radius: 4px; padding: 30px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 30px rgba(0, 255, 204, 0.1); position: relative; overflow: hidden; }
+#character-creation-root .archive-panel::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 204, 0.05) 2px, rgba(0, 255, 204, 0.05) 4px); pointer-events: none; z-index: 0; }
+#character-creation-root .corner { position: absolute; width: 20px; height: 20px; border: 2px solid #00ffcc; z-index: 1; }
+#character-creation-root .corner-tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+#character-creation-root .corner-tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+#character-creation-root .corner-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+#character-creation-root .corner-br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+#character-creation-root .panel-content { position: relative; z-index: 2; }
+#character-creation-root .panel-title { text-align: center; font-size: 24px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; margin-bottom: 25px; border-bottom: 1px dashed rgba(0, 255, 204, 0.5); padding-bottom: 15px; letter-spacing: 3px; }
+#character-creation-root .form-group { margin-bottom: 20px; }
+#character-creation-root .form-group label { display: block; font-size: 13px; margin-bottom: 8px; color: #88d8d0; font-weight: bold; letter-spacing: 1px; }
+#character-creation-root .form-control { width: 100%; padding: 10px 12px; background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.4); border-radius: 2px; color: #fff; font-size: 14px; outline: none; transition: all 0.3s; box-sizing: border-box; }
+#character-creation-root .form-control:focus { border-color: #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.4); background: rgba(0, 255, 204, 0.1); }
+#character-creation-root .form-control option { background: #081218; color: #00ffcc; }
+#character-creation-root .row { display: flex; gap: 20px; }
+#character-creation-root .col { flex: 1; }
+#character-creation-root .spirit-type-container { display: flex; gap: 15px; flex-wrap: wrap; }
+#character-creation-root .spirit-type-item { flex: 1; min-width: 200px; background: rgba(0, 255, 204, 0.05); padding: 12px; border-radius: 2px; border: 1px solid rgba(0, 255, 204, 0.2); }
+#character-creation-root .radio-group { display: flex; flex-direction: column; gap: 12px; }
+#character-creation-root .radio-card { background: rgba(0, 0, 0, 0.5); border: 1px solid #333; border-radius: 4px; padding: 15px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+#character-creation-root .radio-card input { position: absolute; opacity: 0; }
+#character-creation-root .radio-title { font-weight: bold; margin-bottom: 6px; font-size: 15px; transition: color 0.3s; }
+#character-creation-root .radio-desc { font-size: 12px; color: #aaa; line-height: 1.5; }
+#character-creation-root .card-a:hover { border-color: #ffff00; background: rgba(255, 255, 0, 0.05); }
+#character-creation-root .card-a.selected { border-color: #ffff00; box-shadow: 0 0 15px rgba(255, 255, 0, 0.3); background: rgba(255, 255, 0, 0.1); }
+#character-creation-root .card-a.selected .radio-title { color: #ffff00; text-shadow: 0 0 8px #ffff00; }
+#character-creation-root .card-b:hover { border-color: #aa00ff; background: rgba(170, 0, 255, 0.05); }
+#character-creation-root .card-b.selected { border-color: #aa00ff; box-shadow: 0 0 15px rgba(170, 0, 255, 0.4); background: rgba(170, 0, 255, 0.15); }
+#character-creation-root .card-b.selected .radio-title { color: #e088ff; text-shadow: 0 0 8px #aa00ff; }
+#character-creation-root .card-c:hover { border-color: #ff0000; background: rgba(255, 0, 0, 0.05); }
+#character-creation-root .card-c.selected { border-color: #ff0000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); background: rgba(255, 0, 0, 0.15); }
+#character-creation-root .card-c.selected .radio-title { color: #ff3333; text-shadow: 0 0 10px #ff0000; }
+#character-creation-root .submit-btn { width: 100%; padding: 15px; background: rgba(0, 255, 204, 0.1); border: 1px solid #00ffcc; color: #00ffcc; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; transition: all 0.3s; letter-spacing: 2px; text-shadow: 0 0 5px #00ffcc; }
+#character-creation-root .submit-btn:hover { background: rgba(0, 255, 204, 0.3); box-shadow: 0 0 15px #00ffcc; }
+#character-creation-root .template-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+#character-creation-root .template-btn { flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(0, 255, 204, 0.08); border: 1px solid rgba(0, 255, 204, 0.45); color: #c7fff6; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+#character-creation-root .template-btn:hover { background: rgba(0, 255, 204, 0.2); border-color: #00ffcc; }
+#character-creation-root .template-hint { min-height: 18px; margin-top: 8px; font-size: 12px; color: #8fffe6; }
+</style>
+</head>
+<body>
+<div id="character-creation-root">
+<div class="archive-panel" id="panel-container">
+<div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div><div class="corner corner-br"></div>
+<div class="panel-content">
+<div class="panel-title">传灵塔·新晋魂师档案录入终端</div>
+
+<div class="form-group">
+<label>▶ 时间线节点选择</label>
+<select id="timeline-select" class="form-control" onchange="updateLocByTimeline()">
+<option value="6岁">6岁·红山学院开局</option>
+<option value="9岁">9岁·东海学院开局</option>
+<option value="13岁" selected>13岁·史莱克学院开局</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>▶ 开场白模板记忆（本地）</label>
+<div class="row">
+<div class="col">
+<input type="text" id="template-name" class="form-control" placeholder="输入模板名后点保存，如：主线开局A">
+</div>
+<div class="col">
+<select id="template-select" class="form-control">
+<option value="">选择已保存模板</option>
+</select>
+</div>
+</div>
+<div class="template-actions">
+<button type="button" class="template-btn" onclick="saveCurrentTemplate()">保存模板</button>
+<button type="button" class="template-btn" onclick="loadSelectedTemplate()">加载模板</button>
+<button type="button" class="template-btn" onclick="deleteSelectedTemplate()">删除模板</button>
+<button type="button" class="template-btn" onclick="clearCreationForm()">清空表单</button>
+</div>
+<div id="template-hint" class="template-hint"></div>
+</div>
+
+<div class="row">
+<div class="col form-group">
+<label>▶ 姓名</label>
+<input type="text" id="char-name" class="form-control" placeholder="请输入姓名">
+</div>
+<div class="col form-group">
+<label>▶ 性别</label>
+<select id="char-gender" class="form-control">
+<option value="男">男</option>
+<option value="女">女</option>
+<option value="其他">其他</option>
+</select>
+</div>
+<div class="col form-group">
+<label>▶ 年龄</label>
+<input type="number" id="char-age" class="form-control" placeholder="如: 13" value="13" min="0">
+</div>
+<div class="col form-group">
+<label>▶ 生日</label>
+<div class="row">
+<div class="col">
+<select id="char-birthday-month" class="form-control"></select>
+</div>
+<div class="col">
+<select id="char-birthday-day" class="form-control"></select>
+</div>
+</div>
+</div>
+</div>
+<div class="form-group">
+<label>▶ 初始所在地点 (可自由填写或下拉选择)</label>
+<input type="text" id="char-loc" class="form-control" list="loc-options" value="斗罗大陆-史莱克城-史莱克学院-外院" placeholder="如: 斗罗大陆-东海城-傲来城-红山学院 / 斗罗大陆-史莱克城">
+<datalist id="loc-options">
+<option value="斗罗大陆-东海城-傲来城-红山学院"></option>
+<option value="斗罗大陆-东海城-东海学院"></option>
+<option value="斗罗大陆-史莱克城-史莱克学院-外院"></option>
+<option value="斗罗大陆-明都-日月皇家魂师学院"></option>
+<option value="斗罗大陆-天斗城"></option>
+<option value="星罗大陆-星罗帝国-星罗城-怪物学院"></option>
+</datalist>
+</div>
+<div class="form-group">
+<label>▶ 武魂 (双生武魂可用空格、顿号或逗号分隔)</label>
+<input type="text" id="char-spirit" class="form-control" placeholder="如: 蓝银草 昊天锤" oninput="updateSpiritTypes()">
+</div>
+<div class="form-group">
+<label>▶ 武魂详细设定 (系统已根据武魂数量自动生成矩阵，留空则交由AI补完)</label>
+<div class="spirit-type-container" id="spirit-types-container"></div>
+</div>
+<div class="row">
+<div class="col form-group">
+<label>▶ 性格特征 (可自由填写或下拉选择)</label>
+<input type="text" id="char-personality" class="form-control" list="personality-options" placeholder="留空则AI自动生成：待生成（结合年龄、武魂与处境补完性格）">
+<datalist id="personality-options">
+<option value="冷静沉着，谋定而后动"></option>
+<option value="腹黑狡黠，极其护短"></option>
+<option value="热血冲动，重情重义"></option>
+<option value="孤僻冷傲，杀伐果断"></option>
+<option value="温和善良，平易近人"></option>
+<option value="表面慵懒，实则极度危险"></option>
+<option value="天真烂漫，活泼可爱，像个小太阳"></option>
+<option value="软萌乖巧，爱撒娇，但关键时刻很坚强"></option>
+<option value="傲娇嘴硬，明明很关心却总爱说反话"></option>
+</datalist>
+</div>
+<div class="col form-group">
+<label>▶ 外貌特征 (可自由填写或下拉选择)</label>
+<input type="text" id="char-appearance" class="form-control" list="appearance-options" placeholder="留空则AI自动生成：待生成（结合年龄、气质与武魂补完外貌）">
+<datalist id="appearance-options">
+<option value="蓝发蓝眸，面容俊秀，气质温和中带着坚韧"></option>
+<option value="冰蓝色长发，气质冷傲，宛如一柄出鞘的利剑"></option>
+<option value="黑发黑瞳，长相清秀，眼神坚毅"></option>
+<option value="银发紫眸，容颜绝世，气质清冷"></option>
+<option value="金发蓝眼，身材高大，阳光帅气"></option>
+<option value="红发红瞳，体格魁梧，充满野性"></option>
+<option value="白发红眸，肤色苍白，带着病态美"></option>
+<option value="相貌平平，属于丢在人堆里找不到的类型"></option>
+<option value="粉发双马尾，娇小玲珑，像个精致的瓷娃娃"></option>
+<option value="娃娃脸，大眼睛，带着一点可爱的婴儿肥"></option>
+<option value="头顶有一撮呆毛，笑起来有小酒窝，十分讨喜"></option>
+</datalist>
+</div>
+</div>
+<div class="row">
+<div class="col form-group">
+<label>▶ 天赋资质评估</label>
+<select id="char-talent" class="form-control">
+<option value="EX">绝世妖孽 (怪物中的怪物)</option>
+<option value="S">顶级天才 (史莱克门槛)</option>
+<option value="A">天才 (一流学院门槛)</option>
+<option value="B">优秀 (小城天才)</option>
+<option value="C">正常 (普通人水平)</option>
+<option value="D">劣等 (先天不足)</option>
+</select>
+</div>
+<div class="col form-group">
+<label>▶ 身份背景 (可自由填写或下拉选择)</label>
+<input type="text" id="char-bg" class="form-control" list="bg-options" placeholder="留空则AI自动生成：待生成（结合时间线、地点、天赋与武魂补完身份背景）">
+<datalist id="bg-options">
+<option value="平民"></option>
+<option value="普通势力"></option>
+<option value="一流势力"></option>
+<option value="顶级势力"></option>
+</datalist>
+</div>
+</div>
+
+<div class="row">
+<div class="col form-group">
+<label>▶ 副职业选择</label>
+<select id="char-job-type" class="form-control">
+<option value="无">无</option>
+<option value="锻造师" selected>锻造师</option>
+<option value="机甲设计师">机甲设计师</option>
+<option value="机甲制造师">机甲制造师</option>
+<option value="机甲修理师">机甲修理师</option>
+</select>
+</div>
+<div class="col form-group">
+<label>▶ 副职业等级</label>
+<select id="char-job-lv" class="form-control">
+<option value="1">1级</option>
+<option value="2">2级</option>
+<option value="3" selected>3级</option>
+<option value="4">4级</option>
+<option value="5">5级</option>
+<option value="6">6级</option>
+<option value="7">7级</option>
+<option value="8">8级</option>
+<option value="9">9级</option>
+</select>
+</div>
+</div>
+
+<div class="form-group">
+<label>▶ 【核心协议：命运干涉级别】</label>
+<div class="radio-group">
+<label class="radio-card card-a selected" onclick="selectRadio(this)">
+<input type="radio" name="destiny" value="A" checked>
+<div class="radio-title">[百年级] 命运观测者 (低干涉)</div>
+<div class="radio-desc">倾向于顺应原著发展，蝴蝶效应累计速度极慢。(偏差值倍率: 0.1)</div>
+</label>
+<label class="radio-card card-b" onclick="selectRadio(this)">
+<input type="radio" name="destiny" value="B">
+<div class="radio-title">[万年级] 时代参与者 (正常干涉)</div>
+<div class="radio-desc">将与主角团产生正常交集，行为会正常影响世界走向。(偏差值倍率: 0.5)</div>
+</label>
+<label class="radio-card card-c" onclick="selectRadio(this)">
+<input type="radio" name="destiny" value="C">
+<div class="radio-title">[十万年级] 混沌搅局者 (高危干涉)</div>
+<div class="radio-desc">你就是来搞事的！微小的改变都会引发剧烈蝴蝶效应！(偏差值倍率: 1.0)</div>
+</label>
+</div>
+</div>
+<button class="submit-btn" onclick="submitForm()">[ 确认同步至世界线 ]</button>
+</div>
+</div>
+</div>
+<script>
+
+var FORM_TEMPLATE_STORAGE_KEY = 'CHAR_FORM_TEMPLATES_V1';
+var FORM_LAST_SNAPSHOT_KEY = 'CHAR_FORM_LAST_SNAPSHOT_V1';
+
+var timelineData = {
+  "6岁": {
+    "world": {
+      "时间": {
+        "tick": 72
+      }
+    },
+    "char": {
+      "唐舞麟": {
+        "属性": {
+          "年龄": 6,
+          "等级": 3,
+          "天赋梯队": "绝世妖孽",
+          "先天魂力": 3,
+          "系别": "强攻系"
+        },
+        "血脉之力": {
+          "血脉": "金龙王",
+          "解封层数": 0,
+          "核心": "未凝聚",
+          "生命之火": false
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-傲来城-红山学院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 1000
+        },
+        "社交": {
+          "声望": 0,
+          "主身份": "红山学院学生",
+          "势力": {
+            "红山学院": {
+              "身份": "学生",
+              "权限级": 1
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "蓝银草",
+          "系别": "控制系",
+          "描述": "表面带有金色纹路的变异蓝银草。特性：极为坚韧沉重，附带金龙王气血的粉碎与霸体特性，兼具强控与强攻能力"
+        }
+      },
+      "娜儿": {
+        "属性": {
+          "年龄": 5.5,
+          "等级": 0,
+          "天赋梯队": "绝世妖孽",
+          "系别": "强攻系"
+        },
+        "血脉之力": {
+          "血脉": "银龙王",
+          "解封层数": 0,
+          "核心": "未凝聚"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-傲来城",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 0
+        },
+        "社交": {
+          "声望": 0,
+          "主身份": "唐舞麟的妹妹",
+          "关系": {
+            "唐舞麟": {
+              "关系": "亲密",
+              "好感度": 80,
+              "关系路线": "恋人线"
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "未展露",
+          "系别": "强攻系"
+        }
+      }
+    }
+  },
+  "9岁": {
+    "world": {
+      "时间": {
+        "tick": 160080
+      }
+    },
+    "char": {
+      "唐舞麟": {
+        "属性": {
+          "年龄": 9,
+          "等级": 11,
+          "天赋梯队": "绝世妖孽",
+          "先天魂力": 3,
+          "系别": "强攻系"
+        },
+        "血脉之力": {
+          "血脉": "金龙王",
+          "解封层数": 0,
+          "核心": "未凝聚",
+          "生命之火": false
+        },
+        "职业": {
+          "锻造师": {
+            "等级": 2,
+            "经验": 1500,
+            "称号": "千锻大师"
+          }
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "千锻沉银锤",
+            "品阶": "魂导器"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-东海学院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 50000
+        },
+        "社交": {
+          "声望": 10,
+          "主身份": "东海学院新学生/千锻大师",
+          "势力": {
+            "东海学院": {
+              "身份": "新学生",
+              "权限级": 2
+            },
+            "锻造师协会": {
+              "身份": "注册锻造师",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "蓝银草",
+          "系别": "控制系",
+          "描述": "表面带有金色纹路的变异蓝银草。特性：极为坚韧沉重，附带金龙王气血的粉碎与霸体特性，兼具强控与强攻能力",
+          "第1魂灵": {
+            "表象名称": "金光",
+            "年限": 10,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 10,
+              "颜色": "白",
+              "第1魂技": {
+                "魂技名": "蓝银缠绕",
+                "画面描述": "蓝银草缠绕目标并限制行动",
+                "效果描述": "限制单体移动并压低反应。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "位移限制",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-12%",
+                    "副数值": "-8%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "单体",
+                    "判定": "反应",
+                    "数值": "-12%",
+                    "持续回合": 2,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 270
+                },
+                "前摇": 19
+              }
+            }
+          }
+        }
+      },
+      "古月": {
+        "属性": {
+          "年龄": 9,
+          "等级": 15,
+          "天赋梯队": "绝世妖孽",
+          "系别": "元素系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-传灵塔总部",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 10000
+        },
+        "社交": {
+          "声望": 300,
+          "主身份": "东海学院新学生",
+          "势力": {
+            "东海学院": {
+              "身份": "新学生",
+              "权限级": 2
+            },
+            "传灵塔": {
+              "身份": "核心培养对象",
+              "权限级": 3
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "元素使",
+          "系别": "元素系",
+          "描述": "能够随心所欲掌控六大元素的顶尖武魂。特性：元素亲和度极高，可进行多元素融合爆发出恐怖的毁灭伤害与复合控制",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "元素潮汐",
+                "画面描述": "掌控基础元素发动潮汐般的攻击",
+                "效果描述": "对群体造成能量伤害并压低反应。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 75,
+                    "伤害类型": "能量伤害"
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "群体",
+                    "判定": "反应",
+                    "数值": "-8%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 320
+                },
+                "前摇": 23
+              }
+            }
+          }
+        }
+      },
+      "谢邂": {
+        "属性": {
+          "年龄": 9,
+          "等级": 18,
+          "天赋梯队": "顶级天才",
+          "系别": "敏攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-东海学院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 200000
+        },
+        "社交": {
+          "声望": 400,
+          "主身份": "东海学院新学生/谢家少爷",
+          "势力": {
+            "东海学院": {
+              "身份": "新学生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "光龙匕",
+          "系别": "敏攻系",
+          "描述": "散发着耀眼光芒的龙形匕首。特性：极致的锋锐与光速斩击，附带光龙风暴绞杀能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "光龙刃",
+                "画面描述": "匕首斩出耀眼的光刃",
+                "效果描述": "对单体造成带防御穿透的物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 85,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 8
+                  }
+                ],
+                "消耗": {
+                  "魂力": 220
+                },
+                "前摇": 12
+              }
+            }
+          }
+        },
+        "第二武魂": {
+          "表象名称": "影龙匕",
+          "系别": "敏攻系",
+          "描述": "潜伏于暗影中的龙形匕首。特性：诡异莫测，无声无息，附带暗影分身与空间跳跃的刺杀能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "影龙刃",
+                "画面描述": "挥出无声无息的暗影之刃",
+                "效果描述": "对单体造成带防御穿透的物理伤害并压低闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 85,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 6
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "单体",
+                    "判定": "闪避",
+                    "数值": "-8%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 240
+                },
+                "前摇": 11
+              }
+            }
+          }
+        }
+      },
+      "许小言": {
+        "属性": {
+          "年龄": 9,
+          "等级": 13,
+          "天赋梯队": "顶级天才",
+          "系别": "控制系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-许家",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 50000
+        },
+        "社交": {
+          "声望": 200,
+          "主身份": "东海学院新学生",
+          "势力": {
+            "东海学院": {
+              "身份": "新学生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "星轮冰杖",
+          "系别": "控制系",
+          "描述": "顶端带有星轮的冰蓝色法杖。特性：夜晚星光下魂技会发生变异，具备无视等级差距的绝对强控能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "冰轮 / 星轮冰链",
+                "画面描述": "白天：释放冰轮切割并减速敌人；黑夜：星光凝成冰链束缚目标",
+                "效果描述": "白天造成冰属性伤害并迟缓；黑夜改为星轮冰链强控。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 70,
+                    "伤害类型": "能量伤害",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "白天"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "迟缓",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-10%",
+                    "副数值": "-6%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "白天"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "位移限制",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-15%",
+                    "副数值": "-10%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "僵直",
+                    "触发方式": "立即触发",
+                    "持续回合": 1,
+                    "驱动属性": "精神力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  }
+                ],
+                "消耗": {
+                  "魂力": 340
+                },
+                "前摇": 26
+              }
+            }
+          }
+        }
+      },
+      "叶星澜": {
+        "属性": {
+          "年龄": 9,
+          "等级": 31,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-内院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 10000,
+          "学院积分": 500
+        },
+        "社交": {
+          "声望": 1500,
+          "主身份": "史莱克内院学生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "内院学生",
+              "权限级": 3
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "星神剑",
+          "系别": "强攻系",
+          "描述": "璀璨如星光的顶级剑武魂。特性：剑意凌厉，星力凝聚，拥有极强的单体穿透与剑阵爆发力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 500,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "剑神星",
+                "画面描述": "剑尖亮起刺目星光，爆发极强穿透力",
+                "效果描述": "对单体造成高穿透物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 95,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 15
+                  }
+                ],
+                "消耗": {
+                  "魂力": 280
+                },
+                "前摇": 14
+              }
+            },
+            "第2魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "星神剑阵",
+                "画面描述": "幻化出多柄星力长剑形成剑阵",
+                "效果描述": "对群体造成物理伤害并压低闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 110,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 8
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "群体",
+                    "判定": "闪避",
+                    "数值": "-10%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 680
+                },
+                "前摇": 24
+              }
+            }
+          },
+          "第2魂灵": {
+            "表象名称": "第二魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "剑星落",
+                "画面描述": "如流星坠落般发动致命一击",
+                "效果描述": "对单体造成高威力高穿透物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 150,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 20
+                  }
+                ],
+                "消耗": {
+                  "魂力": 980
+                },
+                "前摇": 22
+              }
+            }
+          }
+        }
+      },
+      "徐笠智": {
+        "属性": {
+          "年龄": 9,
+          "等级": 21,
+          "天赋梯队": "顶级天才",
+          "系别": "食物系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-内院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 5000,
+          "学院积分": 300
+        },
+        "社交": {
+          "声望": 1000,
+          "主身份": "史莱克内院学生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "内院学生",
+              "权限级": 3
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "包子",
+          "系别": "食物系",
+          "描述": "热气腾腾的食物系武魂。特性：能制造快速恢复体力、提升防御甚至让人狂化的特殊包子，战地续航与辅助能力极强",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "恢复大肉包",
+                "画面描述": "制造能快速恢复体力与伤势的肉包",
+                "效果描述": "生成食物，使用后恢复生命与体力。",
+                "承载方式": "造物承载",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "物品类型": "食物",
+                    "数量": 1,
+                    "有效期tick": 168,
+                    "使用效果": [
+                      {
+                        "原型": "资源变化",
+                        "目标": "自身",
+                        "资源": "生命",
+                        "数值": "+18%"
+                      },
+                      {
+                        "原型": "资源变化",
+                        "目标": "自身",
+                        "资源": "体力",
+                        "数值": "+18%"
+                      }
+                    ]
+                  }
+                ],
+                "产物描述": "制造能快速恢复体力与伤势的肉包",
+                "消耗": {
+                  "魂力": 260
+                },
+                "前摇": 18
+              }
+            },
+            "第2魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "坚固大肉包",
+                "画面描述": "制造能短时间提升防御力的肉包",
+                "效果描述": "生成食物，使用后提升防御并获得护盾。",
+                "承载方式": "造物承载",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "物品类型": "食物",
+                    "数量": 1,
+                    "有效期tick": 168,
+                    "使用效果": [
+                      {
+                        "原型": "属性修正",
+                        "目标": "自身",
+                        "属性": "防御",
+                        "数值": "+20%",
+                        "持续回合": 3
+                      },
+                      {
+                        "原型": "护盾变化",
+                        "目标": "自身",
+                        "护盾模式": "正向护盾",
+                        "数值": "+15%",
+                        "持续回合": 3
+                      }
+                    ]
+                  }
+                ],
+                "产物描述": "制造能短时间提升防御力的肉包",
+                "消耗": {
+                  "魂力": 610
+                },
+                "前摇": 24
+              }
+            }
+          }
+        }
+      },
+      "舞长空": {
+        "属性": {
+          "年龄": 28,
+          "等级": 69,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系",
+          "精神境界": "灵海境"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 2,
+            "名称": "天冰",
+            "装备状态": "已装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-东海学院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 500000,
+          "唐门积分": 10000
+        },
+        "社交": {
+          "声望": 5000,
+          "主身份": "东海学院高级教师/冷傲男神",
+          "势力": {
+            "东海学院": {
+              "身份": "高级教师",
+              "权限级": 5
+            },
+            "唐门": {
+              "身份": "执事",
+              "权限级": 4
+            },
+            "史莱克学院": {
+              "身份": "前内院学生",
+              "权限级": 3
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "天霜剑",
+          "系别": "强攻系"
+        }
+      },
+      "慕辰": {
+        "属性": {
+          "年龄": 45,
+          "等级": 89,
+          "天赋梯队": "天才",
+          "系别": "辅助系",
+          "精神境界": "灵渊境"
+        },
+        "职业": {
+          "锻造师": {
+            "等级": 8,
+            "经验": 1000000,
+            "称号": "圣匠"
+          }
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 3,
+            "名称": "圣之护",
+            "装备状态": "已装备"
+          },
+          "武器": {
+            "名称": "圣匠之锤",
+            "品阶": "魂导器"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 1
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-东海城-锻造师协会",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 50000000
+        },
+        "社交": {
+          "声望": 50000,
+          "主身份": "东海城锻造师协会会长/圣匠",
+          "势力": {
+            "锻造师协会": {
+              "身份": "分会长",
+              "权限级": 7
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "太阳",
+          "系别": "辅助系"
+        }
+      }
+    }
+  },
+  "13岁": {
+    "world": {
+      "时间": {
+        "tick": 349284
+      }
+    },
+    "char": {
+      "唐舞麟": {
+        "属性": {
+          "年龄": 13,
+          "等级": 28,
+          "天赋梯队": "绝世妖孽",
+          "先天魂力": 3,
+          "系别": "强攻系"
+        },
+        "血脉之力": {
+          "血脉": "金龙王",
+          "解封层数": 3,
+          "核心": "未凝聚",
+          "生命之火": false
+        },
+        "职业": {
+          "锻造师": {
+            "等级": 4,
+            "经验": 65000,
+            "称号": "宗匠"
+          }
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "灵锻沉银锤",
+            "品阶": "魂导器"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 500000,
+          "学院积分": 0
+        },
+        "社交": {
+          "声望": 200,
+          "主身份": "史莱克外院工读生/四级锻造师",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院工读生",
+              "权限级": 2
+            },
+            "锻造师协会": {
+              "身份": "宗匠",
+              "权限级": 4
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "蓝银草",
+          "系别": "控制系",
+          "描述": "表面带有金色纹路的变异蓝银草。特性：极为坚韧沉重，附带金龙王气血的粉碎与霸体特性，兼具强控与强攻能力",
+          "第1魂灵": {
+            "表象名称": "金语",
+            "年限": 1000,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第1魂技": {
+                "魂技名": "蓝银缠绕",
+                "画面描述": "蓝银草缠绕目标并限制行动",
+                "效果描述": "限制单体移动并压低反应。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "位移限制",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-12%",
+                    "副数值": "-8%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "单体",
+                    "判定": "反应",
+                    "数值": "-12%",
+                    "持续回合": 2,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 285
+                },
+                "前摇": 17
+              }
+            },
+            "第2魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第2魂技": {
+                "魂技名": "蓝银突刺阵",
+                "画面描述": "蓝银草自地面突刺成阵，扫开周围目标",
+                "效果描述": "对群体造成物理伤害并附带迟缓。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 90,
+                    "伤害类型": "物理伤害"
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "群体",
+                    "状态": "迟缓",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-8%",
+                    "副数值": "-5%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 640
+                },
+                "前摇": 23
+              }
+            }
+          }
+        }
+      },
+      "古月": {
+        "属性": {
+          "年龄": 13,
+          "等级": 29,
+          "天赋梯队": "绝世妖孽",
+          "系别": "元素系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 50000,
+          "学院积分": 0
+        },
+        "社交": {
+          "声望": 1500,
+          "主身份": "史莱克外院工读生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院工读生",
+              "权限级": 2
+            },
+            "传灵塔": {
+              "身份": "核心培养对象",
+              "权限级": 4
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "元素使",
+          "系别": "元素系",
+          "描述": "能够随心所欲掌控六大元素的顶尖武魂。特性：元素亲和度极高，可进行多元素融合爆发出恐怖的毁灭伤害与复合控制",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "元素潮汐",
+                "画面描述": "掌控基础元素发动潮汐般的攻击",
+                "效果描述": "对群体造成能量伤害并压低反应。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 75,
+                    "伤害类型": "能量伤害"
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "群体",
+                    "判定": "反应",
+                    "数值": "-8%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 325
+                },
+                "前摇": 22
+              }
+            },
+            "第2魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "元素掌控",
+                "画面描述": "大幅提升对所有元素的亲和力与操控精度",
+                "效果描述": "短时间提升自身魂力上限、精神力上限与命中。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "属性修正",
+                    "目标": "自身",
+                    "属性": [
+                      "魂力上限",
+                      "精神力上限"
+                    ],
+                    "数值": "+18%",
+                    "持续回合": 3
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "自身",
+                    "判定": "命中",
+                    "数值": "+10%",
+                    "持续回合": 3
+                  }
+                ],
+                "消耗": {
+                  "魂力": 520
+                },
+                "前摇": 16
+              }
+            }
+          }
+        }
+      },
+      "谢邂": {
+        "属性": {
+          "年龄": 13,
+          "等级": 32,
+          "天赋梯队": "顶级天才",
+          "系别": "敏攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 500000,
+          "学院积分": 0
+        },
+        "社交": {
+          "声望": 1200,
+          "主身份": "史莱克外院工读生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院工读生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "光龙匕",
+          "系别": "敏攻系",
+          "描述": "散发着耀眼光芒的龙形匕首。特性：极致的锋锐与光速斩击，附带光龙风暴绞杀能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 500,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "光龙刃",
+                "画面描述": "匕首斩出耀眼的光刃",
+                "效果描述": "对单体造成带防御穿透的物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 85,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 8
+                  }
+                ],
+                "消耗": {
+                  "魂力": 230
+                },
+                "前摇": 11
+              }
+            },
+            "第2魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "光龙风暴",
+                "画面描述": "化身光之风暴绞杀敌人",
+                "效果描述": "对群体造成多段物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 110,
+                    "伤害类型": "物理伤害",
+                    "攻击段数": 2,
+                    "防御穿透": 8
+                  }
+                ],
+                "消耗": {
+                  "魂力": 630
+                },
+                "前摇": 18
+              }
+            }
+          },
+          "第2魂灵": {
+            "表象名称": "第二魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "光龙分身",
+                "画面描述": "凝聚出具有攻击力的光之分身",
+                "效果描述": "生成光龙分身协同攻击并提升自身闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "召唤生成",
+                    "目标": "自身",
+                    "召唤单位类型": "分身",
+                    "召唤物名称": "光龙分身",
+                    "数量": 1,
+                    "行动模式": "协同攻击",
+                    "持续回合": 2
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "自身",
+                    "判定": "闪避",
+                    "数值": "+12%",
+                    "持续回合": 2
+                  }
+                ],
+                "消耗": {
+                  "魂力": 1020
+                },
+                "前摇": 24
+              }
+            }
+          }
+        },
+        "第二武魂": {
+          "表象名称": "影龙匕",
+          "系别": "敏攻系",
+          "描述": "潜伏于暗影中的龙形匕首。特性：诡异莫测，无声无息，附带暗影分身与空间跳跃的刺杀能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 500,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "影龙刃",
+                "画面描述": "挥出无声无息的暗影之刃",
+                "效果描述": "对单体造成带防御穿透的物理伤害并压低闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 85,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 6
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "单体",
+                    "判定": "闪避",
+                    "数值": "-8%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 245
+                },
+                "前摇": 10
+              }
+            },
+            "第2魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "影龙风暴",
+                "画面描述": "化作暗影风暴吞噬目标",
+                "效果描述": "对群体造成多段物理伤害并附带迟缓。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 110,
+                    "伤害类型": "物理伤害",
+                    "攻击段数": 2
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "群体",
+                    "状态": "迟缓",
+                    "触发方式": "立即触发",
+                    "持续回合": 1,
+                    "数值": "-10%",
+                    "副数值": "-6%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 650
+                },
+                "前摇": 19
+              }
+            }
+          },
+          "第2魂灵": {
+            "表象名称": "第二魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "影龙分身",
+                "画面描述": "在暗影中分裂出诡异的幻影",
+                "效果描述": "生成影龙分身协同攻击并进入短暂隐匿。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "召唤生成",
+                    "目标": "自身",
+                    "召唤单位类型": "分身",
+                    "召唤物名称": "影龙分身",
+                    "数量": 1,
+                    "行动模式": "协同攻击",
+                    "持续回合": 2
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "自身",
+                    "判定": "闪避",
+                    "数值": "+14%",
+                    "持续回合": 2
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "自身",
+                    "状态": "隐匿",
+                    "触发方式": "立即触发",
+                    "持续回合": 1
+                  }
+                ],
+                "消耗": {
+                  "魂力": 1060
+                },
+                "前摇": 22
+              }
+            }
+          }
+        }
+      },
+      "许小言": {
+        "属性": {
+          "年龄": 13,
+          "等级": 28,
+          "天赋梯队": "顶级天才",
+          "系别": "控制系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 100000,
+          "学院积分": 0
+        },
+        "社交": {
+          "声望": 1000,
+          "主身份": "史莱克外院工读生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院工读生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "星轮冰杖",
+          "系别": "控制系",
+          "描述": "顶端带有星轮的冰蓝色法杖。特性：夜晚星光下魂技会发生变异，具备无视等级差距的绝对强控能力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 300,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "冰轮 / 星轮冰链",
+                "画面描述": "白天：释放冰轮切割并减速敌人；黑夜：星光凝成冰链束缚目标",
+                "效果描述": "白天造成冰属性伤害并迟缓；黑夜改为星轮冰链强控。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 70,
+                    "伤害类型": "能量伤害",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "白天"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "迟缓",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-10%",
+                    "副数值": "-6%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "白天"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "位移限制",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-15%",
+                    "副数值": "-10%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "僵直",
+                    "触发方式": "立即触发",
+                    "持续回合": 1,
+                    "驱动属性": "精神力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  }
+                ],
+                "消耗": {
+                  "魂力": 350
+                },
+                "前摇": 25
+              }
+            },
+            "第2魂环": {
+              "年限": 300,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "冰矛 / 星轮冰矛",
+                "画面描述": "白天：凝聚尖锐冰矛投掷；黑夜：冰矛缠绕星光命中后强制僵直",
+                "效果描述": "白天造成冰属性伤害；黑夜造成伤害并附带僵直。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 95,
+                    "伤害类型": "能量伤害",
+                    "防御穿透": 6,
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "白天"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 80,
+                    "伤害类型": "能量伤害",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "僵直",
+                    "触发方式": "立即触发",
+                    "持续回合": 1,
+                    "驱动属性": "精神力上限",
+                    "影响方向": "效果强度",
+                    "条件分支": [
+                      {
+                        "条件": [
+                          {
+                            "类型": "时间",
+                            "对象": "自身",
+                            "比较": "==",
+                            "值": "黑夜"
+                          }
+                        ],
+                        "处理": "生效"
+                      }
+                    ]
+                  }
+                ],
+                "消耗": {
+                  "魂力": 660
+                },
+                "前摇": 22
+              }
+            }
+          }
+        }
+      },
+      "叶星澜": {
+        "属性": {
+          "年龄": 13,
+          "等级": 35,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 50000,
+          "学院积分": 500
+        },
+        "社交": {
+          "声望": 2500,
+          "主身份": "史莱克外院学生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院学生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "星神剑",
+          "系别": "强攻系",
+          "描述": "璀璨如星光的顶级剑武魂。特性：剑意凌厉，星力凝聚，拥有极强的单体穿透与剑阵爆发力",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 500,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "剑神星",
+                "画面描述": "剑尖亮起刺目星光，爆发极强穿透力",
+                "效果描述": "对单体造成高穿透物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 95,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 15
+                  }
+                ],
+                "消耗": {
+                  "魂力": 290
+                },
+                "前摇": 13
+              }
+            },
+            "第2魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "星神剑阵",
+                "画面描述": "幻化出多柄星力长剑形成剑阵",
+                "效果描述": "对群体造成物理伤害并压低闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 110,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 8
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "群体",
+                    "判定": "闪避",
+                    "数值": "-10%",
+                    "持续回合": 1,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "成功率"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 700
+                },
+                "前摇": 23
+              }
+            }
+          },
+          "第2魂灵": {
+            "表象名称": "第二魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "剑星落",
+                "画面描述": "如流星坠落般发动致命一击",
+                "效果描述": "对单体造成高威力高穿透物理伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 150,
+                    "伤害类型": "物理伤害",
+                    "防御穿透": 20
+                  }
+                ],
+                "消耗": {
+                  "魂力": 1000
+                },
+                "前摇": 21
+              }
+            }
+          }
+        }
+      },
+      "徐笠智": {
+        "属性": {
+          "年龄": 13,
+          "等级": 34,
+          "天赋梯队": "顶级天才",
+          "系别": "食物系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 20000,
+          "学院积分": 300
+        },
+        "社交": {
+          "声望": 2000,
+          "主身份": "史莱克外院学生",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院学生",
+              "权限级": 2
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "包子",
+          "系别": "食物系",
+          "描述": "热气腾腾的食物系武魂。特性：能制造快速恢复体力、提升防御甚至让人狂化的特殊包子，战地续航与辅助能力极强",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 800,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 500,
+              "颜色": "黄",
+              "第1魂技": {
+                "魂技名": "恢复大肉包",
+                "画面描述": "制造能快速恢复体力与伤势的肉包",
+                "效果描述": "生成食物，使用后恢复生命与体力。",
+                "承载方式": "造物承载",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "物品类型": "食物",
+                    "数量": 1,
+                    "有效期tick": 168,
+                    "使用效果": [
+                      {
+                        "原型": "资源变化",
+                        "目标": "自身",
+                        "资源": "生命",
+                        "数值": "+18%"
+                      },
+                      {
+                        "原型": "资源变化",
+                        "目标": "自身",
+                        "资源": "体力",
+                        "数值": "+18%"
+                      }
+                    ]
+                  }
+                ],
+                "产物描述": "制造能快速恢复体力与伤势的肉包",
+                "消耗": {
+                  "魂力": 270
+                },
+                "前摇": 17
+              }
+            },
+            "第2魂环": {
+              "年限": 800,
+              "颜色": "黄",
+              "第2魂技": {
+                "魂技名": "轻灵小笼包",
+                "画面描述": "制造能短时间提升敏捷的肉包",
+                "效果描述": "生成食物，使用后提升敏捷与闪避。",
+                "承载方式": "造物承载",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "物品类型": "食物",
+                    "数量": 1,
+                    "有效期tick": 168,
+                    "使用效果": [
+                      {
+                        "原型": "属性修正",
+                        "目标": "自身",
+                        "属性": "敏捷",
+                        "数值": "+20%",
+                        "持续回合": 3
+                      },
+                      {
+                        "原型": "判定修正",
+                        "目标": "自身",
+                        "判定": "闪避",
+                        "数值": "+10%",
+                        "持续回合": 3
+                      }
+                    ]
+                  }
+                ],
+                "产物描述": "制造能短时间提升敏捷的肉包",
+                "消耗": {
+                  "魂力": 560
+                },
+                "前摇": 16
+              }
+            }
+          },
+          "第2魂灵": {
+            "表象名称": "第二魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "嗜血大肉包",
+                "画面描述": "制造能让人陷入狂化状态的肉包",
+                "效果描述": "生成食物，使用后提升力量、敏捷并获得霸体。",
+                "承载方式": "造物承载",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "物品类型": "食物",
+                    "数量": 1,
+                    "有效期tick": 168,
+                    "使用效果": [
+                      {
+                        "原型": "属性修正",
+                        "目标": "自身",
+                        "属性": [
+                          "力量",
+                          "敏捷"
+                        ],
+                        "数值": "+25%",
+                        "持续回合": 2
+                      },
+                      {
+                        "原型": "状态施加",
+                        "目标": "自身",
+                        "状态": "霸体",
+                        "触发方式": "立即触发",
+                        "持续回合": 2
+                      }
+                    ]
+                  }
+                ],
+                "产物描述": "制造能让人陷入狂化状态的肉包",
+                "消耗": {
+                  "魂力": 980
+                },
+                "前摇": 20
+              }
+            }
+          }
+        }
+      },
+      "原恩夜辉": {
+        "属性": {
+          "年龄": 15,
+          "等级": 39,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 100000,
+          "学院积分": 1500
+        },
+        "社交": {
+          "声望": 3500,
+          "主身份": "史莱克外院二年级班长",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院工读生",
+              "权限级": 2
+            },
+            "泰坦巨猿家族": {
+              "身份": "直系血脉",
+              "权限级": 5
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "泰坦巨猿",
+          "系别": "强攻系",
+          "描述": "拥有极致力量与恐怖防御的顶级力量型武魂。特性：力大无穷，能施展重力控制与泰坦金刚障绝对防御",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第1魂技": {
+                "魂技名": "泰坦之握",
+                "画面描述": "凝聚巨大的暗金光影手掌擒拿目标",
+                "效果描述": "对单体造成物理伤害并限制位移。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 95,
+                    "伤害类型": "物理伤害"
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "位移限制",
+                    "触发方式": "立即触发",
+                    "持续回合": 1,
+                    "数值": "-15%",
+                    "副数值": "-10%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 310
+                },
+                "前摇": 22
+              }
+            },
+            "第2魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第2魂技": {
+                "魂技名": "泰坦巨力",
+                "画面描述": "浑身肌肉膨胀，力量与防御大幅提升",
+                "效果描述": "短时间提升自身力量、防御并获得霸体。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "属性修正",
+                    "目标": "自身",
+                    "属性": [
+                      "力量",
+                      "防御"
+                    ],
+                    "数值": "+30%",
+                    "持续回合": 3
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "自身",
+                    "状态": "霸体",
+                    "触发方式": "立即触发",
+                    "持续回合": 2
+                  }
+                ],
+                "消耗": {
+                  "魂力": 620
+                },
+                "前摇": 20
+              }
+            },
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "泰坦金刚障",
+                "画面描述": "释放暗金色的半球形护罩抵御攻击",
+                "效果描述": "获得护盾并提升自身防御。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "护盾变化",
+                    "目标": "自身",
+                    "护盾模式": "正向护盾",
+                    "数值": "+35%",
+                    "持续回合": 3
+                  },
+                  {
+                    "原型": "属性修正",
+                    "目标": "自身",
+                    "属性": "防御",
+                    "数值": "+20%",
+                    "持续回合": 3
+                  }
+                ],
+                "消耗": {
+                  "魂力": 1040
+                },
+                "前摇": 27
+              }
+            }
+          }
+        },
+        "第二武魂": {
+          "表象名称": "堕落天使",
+          "系别": "敏攻系",
+          "描述": "掌控黑暗与邪恶之力的罕见武魂。特性：附带黑暗腐蚀与空间穿梭能力，可召唤地狱之门压制敌人",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第1魂技": {
+                "魂技名": "暗黑之门",
+                "画面描述": "开启黑暗之门进行短距离空间穿梭",
+                "效果描述": "瞬移脱离并提升自身闪避。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "位移执行",
+                    "目标": "自身",
+                    "位移类型": "瞬移",
+                    "位移对象": "自身",
+                    "距离": 12,
+                    "持续回合": 1
+                  },
+                  {
+                    "原型": "判定修正",
+                    "目标": "自身",
+                    "判定": "闪避",
+                    "数值": "+18%",
+                    "持续回合": 1
+                  }
+                ],
+                "消耗": {
+                  "魂力": 290
+                },
+                "前摇": 12
+              }
+            },
+            "第2魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第2魂技": {
+                "魂技名": "堕落降临",
+                "画面描述": "黑暗气息笼罩全身，全属性提升",
+                "效果描述": "短时间提升自身力量、防御与敏捷。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "属性修正",
+                    "目标": "自身",
+                    "属性": [
+                      "力量",
+                      "防御",
+                      "敏捷"
+                    ],
+                    "数值": "+25%",
+                    "持续回合": 3
+                  }
+                ],
+                "消耗": {
+                  "魂力": 600
+                },
+                "前摇": 18
+              }
+            },
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "暗黑魔剑",
+                "画面描述": "凝聚黑暗之力化为魔剑斩击",
+                "效果描述": "对单体造成能量伤害并施加虚弱。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 125,
+                    "伤害类型": "能量伤害",
+                    "防御穿透": 12
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "单体",
+                    "状态": "虚弱",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-12%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 980
+                },
+                "前摇": 21
+              }
+            }
+          }
+        }
+      },
+      "乐正宇": {
+        "属性": {
+          "年龄": 15,
+          "等级": 38,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 0,
+            "名称": "无",
+            "装备状态": "未装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 0
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 5000000,
+          "学院积分": 1000
+        },
+        "社交": {
+          "声望": 4000,
+          "主身份": "神圣天使家族少主",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院学生",
+              "权限级": 2
+            },
+            "南方军团": {
+              "身份": "军团长之孙",
+              "权限级": 6
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "神圣天使",
+          "系别": "强攻系",
+          "描述": "拥有神圣与光明属性的顶级武魂。特性：一切邪恶与黑暗的绝对克星，附带神圣审判与净化光环",
+          "第1魂灵": {
+            "表象名称": "第一魂灵",
+            "年限": 1000,
+            "状态": "活跃",
+            "第1魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第1魂技": {
+                "魂技名": "圣光普照",
+                "画面描述": "释放强烈的神圣光芒灼烧敌人",
+                "效果描述": "对群体造成能量伤害并附加灼烧。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "群体",
+                    "威力倍率": 95,
+                    "伤害类型": "能量伤害"
+                  },
+                  {
+                    "原型": "状态施加",
+                    "目标": "群体",
+                    "状态": "灼烧",
+                    "触发方式": "立即触发",
+                    "持续回合": 2,
+                    "数值": "-4%",
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 330
+                },
+                "前摇": 24
+              }
+            },
+            "第2魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第2魂技": {
+                "魂技名": "神圣之剑",
+                "画面描述": "凝聚神圣之力化为光剑进行斩击",
+                "效果描述": "对单体造成高穿透能量伤害。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "伤害结算",
+                    "目标": "单体",
+                    "威力倍率": 125,
+                    "伤害类型": "能量伤害",
+                    "防御穿透": 15
+                  }
+                ],
+                "消耗": {
+                  "魂力": 620
+                },
+                "前摇": 16
+              }
+            },
+            "第3魂环": {
+              "年限": 1000,
+              "颜色": "紫",
+              "第3魂技": {
+                "魂技名": "神圣光环",
+                "画面描述": "脚下荡漾出金色光环，提升友军光明属性并压制邪恶",
+                "效果描述": "提升群体力量与防御。",
+                "承载方式": "直接生效",
+                "附带属性": [],
+                "_效果数组": [
+                  {
+                    "原型": "属性修正",
+                    "目标": "群体",
+                    "属性": [
+                      "力量",
+                      "防御"
+                    ],
+                    "数值": "+15%",
+                    "持续回合": 3,
+                    "驱动属性": "魂力上限",
+                    "影响方向": "效果强度"
+                  }
+                ],
+                "消耗": {
+                  "魂力": 960
+                },
+                "前摇": 22
+              }
+            }
+          }
+        }
+      },
+      "舞长空": {
+        "属性": {
+          "年龄": 31,
+          "等级": 74,
+          "天赋梯队": "顶级天才",
+          "系别": "强攻系",
+          "精神境界": "灵海境"
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 2,
+            "名称": "天冰",
+            "装备状态": "已装备"
+          },
+          "武器": {
+            "名称": "无",
+            "品阶": "无"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 1
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-史莱克学院-外院",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 800000,
+          "唐门积分": 15000,
+          "学院积分": 5000
+        },
+        "社交": {
+          "声望": 8000,
+          "主身份": "史莱克外院教师",
+          "势力": {
+            "史莱克学院": {
+              "身份": "外院教师",
+              "权限级": 5
+            },
+            "唐门": {
+              "身份": "执事",
+              "权限级": 4
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "天霜剑",
+          "系别": "强攻系"
+        }
+      },
+      "慕辰": {
+        "属性": {
+          "年龄": 58,
+          "等级": 89,
+          "天赋梯队": "天才",
+          "系别": "辅助系",
+          "精神境界": "灵渊境"
+        },
+        "职业": {
+          "锻造师": {
+            "等级": 8,
+            "经验": 1000000,
+            "称号": "圣匠"
+          }
+        },
+        "装备": {
+          "斗铠": {
+            "等级": 3,
+            "名称": "圣之护",
+            "装备状态": "已装备"
+          },
+          "武器": {
+            "名称": "圣匠之锤",
+            "品阶": "魂导器"
+          },
+          "机甲": {
+            "等级": "无",
+            "状态": "无"
+          }
+        },
+        "魂核": {
+          "核心": {
+            "数量": 1
+          }
+        },
+        "状态": {
+          "位置": "斗罗大陆-史莱克城-锻造师协会",
+          "行动": "日常",
+          "存活": true
+        },
+        "财富": {
+          "联邦币": 80000000
+        },
+        "社交": {
+          "声望": 60000,
+          "主身份": "史莱克城锻造师协会会长/圣匠",
+          "势力": {
+            "锻造师协会": {
+              "身份": "分会长",
+              "权限级": 7
+            }
+          }
+        },
+        "第一武魂": {
+          "表象名称": "太阳",
+          "系别": "辅助系"
+        }
+      }
+    }
+  }
+};
+
+function splitSpirits(text) {
+    var value = (text || '').trim();
+    var list = value ? value.split(/[、,，;；\s]+/) : [];
+    list = list.map(function(item) { return item.trim(); }).filter(function(item) { return item !== ''; });
+    return list.length ? list.slice(0, 2) : ['未觉醒'];
+}
+
+function getTalentConfig(talent) {
+    var configMap = {
+        EX: { label: '绝世妖孽' },
+        S:  { label: '顶级天才' },
+        A:  { label: '天才' },
+        B:  { label: '优秀' },
+        C:  { label: '正常' },
+        D:  { label: '劣等' }
+    };
+    return configMap[talent] || configMap.C;
+}
+
+function 获取开场有效天赋(天赋标签, 年龄值) {
+    if (年龄值 < 15 && ['天才', '顶级天才', '绝世妖孽'].indexOf(天赋标签) >= 0) return '天才';
+    if (年龄值 < 18 && ['顶级天才', '绝世妖孽'].indexOf(天赋标签) >= 0) return '顶级天才';
+    return 天赋标签 || '正常';
+}
+
+function 插值开场等级(描点列表, 年龄值) {
+    var 等级值 = 描点列表[0][1];
+    for (var 序号 = 0; 序号 < 描点列表.length - 1; 序号++) {
+        var 当前描点 = 描点列表[序号];
+        var 下个描点 = 描点列表[序号 + 1];
+        if (年龄值 < 当前描点[0]) break;
+        if (年龄值 <= 下个描点[0]) {
+            var 比例 = Math.max(0, Math.min(1, (年龄值 - 当前描点[0]) / Math.max(1, 下个描点[0] - 当前描点[0])));
+            return 当前描点[1] + (下个描点[1] - 当前描点[1]) * 比例;
+        }
+        等级值 = 下个描点[1];
+    }
+    return 等级值;
+}
+
+function 解析开场生日年内日序(生日) {
+    var 文本 = String(生日 || '').trim();
+    if (!文本 || 文本 === '待生成') return null;
+    var 匹配 = 文本.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/) || 文本.match(/^(\d{1,2})\s*[-/.]\s*(\d{1,2})$/);
+    if (!匹配) return null;
+    var 月 = Math.max(1, Math.min(12, Math.floor(Number(匹配[1]) || 1)));
+    var 日 = Math.max(1, Math.min(30, Math.floor(Number(匹配[2]) || 1)));
+    return (月 - 1) * 30 + (日 - 1);
+}
+
+function 格式化开场生日(月, 日) {
+    var 月值 = Math.max(1, Math.min(12, Math.floor(Number(月) || 1)));
+    var 日值 = Math.max(1, Math.min(30, Math.floor(Number(日) || 1)));
+    return 月值 + '月' + 日值 + '日';
+}
+
+function 读取开场生日() {
+    var monthEl = document.getElementById('char-birthday-month');
+    var dayEl = document.getElementById('char-birthday-day');
+    return 格式化开场生日(monthEl && monthEl.value, dayEl && dayEl.value);
+}
+
+function 写入开场生日(生日) {
+    var monthEl = document.getElementById('char-birthday-month');
+    var dayEl = document.getElementById('char-birthday-day');
+    if (!monthEl || !dayEl) return;
+    var 匹配 = String(生日 || '').trim().match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/) || String(生日 || '').trim().match(/^(\d{1,2})\s*[-/.]\s*(\d{1,2})$/);
+    monthEl.value = String(Math.max(1, Math.min(12, Math.floor(Number(匹配 && 匹配[1]) || 1))));
+    dayEl.value = String(Math.max(1, Math.min(30, Math.floor(Number(匹配 && 匹配[2]) || 1))));
+}
+
+function 初始化开场生日选项() {
+    var monthEl = document.getElementById('char-birthday-month');
+    var dayEl = document.getElementById('char-birthday-day');
+    if (!monthEl || !dayEl) return;
+    if (!monthEl.options.length) {
+        for (var 月 = 1; 月 <= 12; 月++) {
+            monthEl.appendChild(new Option(月 + '月', String(月)));
+        }
+    }
+    if (!dayEl.options.length) {
+        for (var 日 = 1; 日 <= 30; 日++) {
+            dayEl.appendChild(new Option(日 + '日', String(日)));
+        }
+    }
+    写入开场生日(读取开场生日());
+}
+
+function 计算开场tick年内日序(tick) {
+    var 总天数 = Math.floor(Math.max(0, Number(tick || 0)) / 144);
+    return ((总天数 % 360) + 360) % 360;
+}
+
+function 计算开场生日有效年龄(年龄值, 生日, 当前tick) {
+    var 基础年龄 = Math.max(0, Number(年龄值) || 0);
+    var 生日序 = 解析开场生日年内日序(生日);
+    if (生日序 === null) return 基础年龄;
+    var 当前序 = 计算开场tick年内日序(当前tick);
+    var 距上次生日天数 = (当前序 - 生日序 + 360) % 360;
+    return 基础年龄 + 距上次生日天数 / 360;
+}
+
+function 获取开场系别修炼难度系数(系别) {
+    if (typeof 系别 === 'number') return Math.max(0.1, Number(系别) || 1);
+    var 系别修炼难度表 = {
+        '强攻系': 1,
+        '防御系': 1,
+        '敏攻系': 1,
+        '控制系': 1,
+        '辅助系': 1.2,
+        '治疗系': 1.2,
+        '食物系': 1.2,
+        '精神系': 1,
+        '元素系': 1
+    };
+    return Math.max(0.1, Number(系别修炼难度表[String(系别 || '强攻系').trim()] || 1));
+}
+
+function 获取开场双生修炼难度系数(系别列表) {
+    var 有效列表 = Array.isArray(系别列表) && 系别列表.length ? 系别列表 : ['强攻系'];
+    var 最低倍率 = Infinity;
+    有效列表.forEach(function(系别) {
+        最低倍率 = Math.min(最低倍率, 获取开场系别修炼难度系数(系别));
+    });
+    return Math.max(0.1, Number.isFinite(最低倍率) ? 最低倍率 : 1);
+}
+
+function 规避开场魂环门槛等级(等级值) {
+    if (等级值 >= 99.5) return 99.5;
+    if (等级值 >= 10 && 等级值 <= 90 && 等级值 % 10 === 0) return 等级值 + 1;
+    return 等级值;
+}
+
+function 计算开场基础魂力上限(等级值) {
+    var 等级 = Math.max(1, Math.min(99.5, Number(等级值) || 1));
+    if (等级 <= 29) return 100 + ((2200 - 100) / 28) * (等级 - 1);
+    if (等级 === 30) return 3000;
+    if (等级 <= 69) return 3200 + ((9000 - 3200) / 38) * (等级 - 31);
+    if (等级 === 70) return 14000;
+    if (等级 <= 89) return 14500 + ((17000 - 14500) / 18) * (等级 - 71);
+    if (等级 === 90) return 18500;
+    if (等级 <= 94) return 18875 + ((20000 - 18875) / 3) * (等级 - 91);
+    if (等级 <= 99) return 20000 * Math.pow(2, 等级 - 94);
+    return 20000 * Math.pow(2, 99 - 94) * 2;
+}
+
+function 按开场系别折算等级(等级值, 系别) {
+    var 系别倍率 = 获取开场系别修炼难度系数(系别);
+    if (系别倍率 <= 1) return 等级值;
+    var 同等修炼魂力 = 计算开场基础魂力上限(等级值);
+    var 折算等级 = 1;
+    for (var 候选等级 = 1; 候选等级 <= 99.5; 候选等级 += 0.5) {
+        if (计算开场基础魂力上限(候选等级) * 系别倍率 <= 同等修炼魂力) {
+            折算等级 = 候选等级;
+        } else {
+            break;
+        }
+    }
+    return Math.min(等级值, 折算等级);
+}
+
+function 计算开场等级(天赋配置, 年龄值, 系别, 生日, 当前tick) {
+    var 有效年龄 = 计算开场生日有效年龄(年龄值, 生日, 当前tick);
+    var 有效天赋 = 获取开场有效天赋(天赋配置.label, 有效年龄);
+    var 等级描点表 = {
+        '劣等': [[6, 1], [10, 1], [20, 6], [30, 14], [40, 21], [150, 21]],
+        '正常': [[6, 3], [10, 6], [20, 21], [30, 32], [50, 41], [150, 41]],
+        '优秀': [[6, 6], [10, 14], [20, 40], [30, 69], [60, 70], [150, 70]],
+        '天才': [[6, 8], [9, 20], [10, 21], [20, 48], [30, 69], [40, 80], [50, 85], [100, 90], [150, 90]],
+        '顶级天才': [[6, 8], [10, 21], [20, 53], [30, 74], [40, 89], [50, 94], [100, 96], [150, 96]],
+        '绝世妖孽': [[6, 8], [10, 21], [20, 54], [30, 98], [40, 99.5], [150, 99.5]]
+    };
+    var 等级值 = 插值开场等级(等级描点表[有效天赋] || 等级描点表['正常'], Math.max(0, Number(有效年龄) || 6));
+    var 折算等级 = 按开场系别折算等级(等级值, 系别);
+    var 整理等级 = 折算等级 >= 99.5 ? 99.5 : Math.floor(折算等级);
+    return Math.max(1, Math.min(99.5, 规避开场魂环门槛等级(整理等级)));
+}
+
+function buildGuidedField(value, promptText) {
+    var text = (value || '').trim().replace(/[\r\n]+/g, " ");
+    return {
+        value: text || '待生成',
+        prompt: text || ('待生成（' + promptText + '）'),
+        auto: !text
+    };
+}
+
+function showTemplateMessage(message, isError) {
+    var hint = document.getElementById('template-hint');
+    if (!hint) return;
+    hint.textContent = message || '';
+    hint.style.color = isError ? '#ff7d7d' : '#8fffe6';
+}
+
+function readStorageJSON(key) {
+    try {
+        var raw = localStorage.getItem(key);
+        if (!raw) return {};
+        var parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (err) {
+        return {};
+    }
+}
+
+function writeStorageJSON(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value || {}));
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+function loadTemplateStore() {
+    return readStorageJSON(FORM_TEMPLATE_STORAGE_KEY);
+}
+
+function saveTemplateStore(store) {
+    return writeStorageJSON(FORM_TEMPLATE_STORAGE_KEY, store || {});
+}
+
+function saveLastSnapshot(snapshot) {
+    return writeStorageJSON(FORM_LAST_SNAPSHOT_KEY, snapshot || {});
+}
+
+function loadLastSnapshot() {
+    return readStorageJSON(FORM_LAST_SNAPSHOT_KEY);
+}
+
+function collectFormSnapshot() {
+    var destiny = 'A';
+    document.querySelectorAll('input[name="destiny"]').forEach(function(radio) {
+        if (radio.checked) destiny = radio.value;
+    });
+
+    var spiritTypes = [];
+    var spiritDescs = [];
+    document.querySelectorAll('.spirit-type-select').forEach(function(select) {
+        spiritTypes.push(select.value || '');
+    });
+    document.querySelectorAll('.spirit-desc-input').forEach(function(input) {
+        spiritDescs.push(input.value || '');
+    });
+
+    return {
+        timeline: (document.getElementById('timeline-select') || {}).value || '13岁',
+        name: (document.getElementById('char-name') || {}).value || '',
+        gender: (document.getElementById('char-gender') || {}).value || '男',
+        age: (document.getElementById('char-age') || {}).value || '13',
+        生日: 读取开场生日(),
+        loc: (document.getElementById('char-loc') || {}).value || '',
+        spirit: (document.getElementById('char-spirit') || {}).value || '',
+        personality: (document.getElementById('char-personality') || {}).value || '',
+        appearance: (document.getElementById('char-appearance') || {}).value || '',
+        talent: (document.getElementById('char-talent') || {}).value || 'EX',
+        bg: (document.getElementById('char-bg') || {}).value || '',
+        jobType: (document.getElementById('char-job-type') || {}).value || '无',
+        jobLv: (document.getElementById('char-job-lv') || {}).value || '1',
+        destiny: destiny,
+        spiritTypes: spiritTypes,
+        spiritDescs: spiritDescs
+    };
+}
+
+function applyFormSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return;
+
+    function setValue(id, value) {
+        var el = document.getElementById(id);
+        if (!el || value === undefined || value === null) return;
+        el.value = value;
+    }
+
+    setValue('timeline-select', snapshot.timeline);
+    setValue('char-name', snapshot.name);
+    setValue('char-gender', snapshot.gender);
+    setValue('char-age', snapshot.age);
+    写入开场生日(snapshot.生日);
+    setValue('char-loc', snapshot.loc);
+    setValue('char-spirit', snapshot.spirit);
+    setValue('char-personality', snapshot.personality);
+    setValue('char-appearance', snapshot.appearance);
+    setValue('char-talent', snapshot.talent);
+    setValue('char-bg', snapshot.bg);
+    setValue('char-job-type', snapshot.jobType);
+    setValue('char-job-lv', snapshot.jobLv);
+
+    if (typeof window.updateSpiritTypes === 'function') {
+        window.updateSpiritTypes();
+    }
+
+    var spiritTypes = Array.isArray(snapshot.spiritTypes) ? snapshot.spiritTypes : [];
+    var spiritDescs = Array.isArray(snapshot.spiritDescs) ? snapshot.spiritDescs : [];
+
+    document.querySelectorAll('.spirit-type-select').forEach(function(select, index) {
+        if (spiritTypes[index] !== undefined) {
+            select.value = spiritTypes[index];
+        }
+    });
+    document.querySelectorAll('.spirit-desc-input').forEach(function(input, index) {
+        if (spiritDescs[index] !== undefined) {
+            input.value = spiritDescs[index];
+        }
+    });
+
+    var destiny = snapshot.destiny || 'A';
+    var selected = document.querySelector('input[name="destiny"][value="' + destiny + '"]');
+    if (selected) {
+        var card = selected.closest ? selected.closest('.radio-card') : null;
+        if (card && typeof window.selectRadio === 'function') {
+            window.selectRadio(card);
+        } else {
+            selected.checked = true;
+        }
+    }
+}
+
+function refreshTemplateSelect(selectedName) {
+    var select = document.getElementById('template-select');
+    if (!select) return;
+
+    var store = loadTemplateStore();
+    var names = Object.keys(store).sort(function(a, b) {
+        var at = (store[a] && store[a].updatedAt) || 0;
+        var bt = (store[b] && store[b].updatedAt) || 0;
+        if (bt !== at) return bt - at;
+        return a > b ? 1 : (a < b ? -1 : 0);
+    });
+
+    select.innerHTML = '';
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '选择已保存模板';
+    select.appendChild(placeholder);
+
+    names.forEach(function(name) {
+        var option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+    });
+
+    if (selectedName && store[selectedName]) {
+        select.value = selectedName;
+    }
+}
+
+function bindTemplateMemoryEvents() {
+    var select = document.getElementById('template-select');
+    if (select) {
+        select.addEventListener('change', function() {
+            var nameInput = document.getElementById('template-name');
+            if (nameInput && select.value) {
+                nameInput.value = select.value;
+            }
+        });
+    }
+
+    var root = document.getElementById('character-creation-root');
+    if (root) {
+        var persistLast = function() {
+            saveLastSnapshot(collectFormSnapshot());
+        };
+        root.addEventListener('input', persistLast);
+        root.addEventListener('change', persistLast);
+    }
+}
+
+window.saveCurrentTemplate = function() {
+    var nameInput = document.getElementById('template-name');
+    var name = (nameInput && nameInput.value ? nameInput.value : '').trim();
+    if (!name) {
+        showTemplateMessage('请先输入模板名，再点击保存。', true);
+        return;
+    }
+
+    var store = loadTemplateStore();
+    store[name] = {
+        updatedAt: Date.now(),
+        snapshot: collectFormSnapshot()
+    };
+
+    if (!saveTemplateStore(store)) {
+        showTemplateMessage('保存失败：本地存储不可用。', true);
+        return;
+    }
+
+    refreshTemplateSelect(name);
+    showTemplateMessage('已保存模板：' + name);
+};
+
+window.loadSelectedTemplate = function() {
+    var select = document.getElementById('template-select');
+    var name = (select && select.value) ? select.value : '';
+    if (!name) {
+        showTemplateMessage('请先从列表选择模板。', true);
+        return;
+    }
+
+    var store = loadTemplateStore();
+    var entry = store[name];
+    if (!entry || !entry.snapshot) {
+        showTemplateMessage('模板不存在，列表已刷新。', true);
+        refreshTemplateSelect();
+        return;
+    }
+
+    applyFormSnapshot(entry.snapshot);
+    saveLastSnapshot(entry.snapshot);
+
+    var nameInput = document.getElementById('template-name');
+    if (nameInput) nameInput.value = name;
+
+    showTemplateMessage('已加载模板：' + name);
+};
+
+window.deleteSelectedTemplate = function() {
+    var select = document.getElementById('template-select');
+    var name = (select && select.value) ? select.value : '';
+    if (!name) {
+        showTemplateMessage('请先选择要删除的模板。', true);
+        return;
+    }
+
+    var store = loadTemplateStore();
+    if (!store[name]) {
+        showTemplateMessage('模板不存在，列表已刷新。', true);
+        refreshTemplateSelect();
+        return;
+    }
+
+    delete store[name];
+    if (!saveTemplateStore(store)) {
+        showTemplateMessage('删除失败：本地存储不可用。', true);
+        return;
+    }
+
+    refreshTemplateSelect();
+    showTemplateMessage('已删除模板：' + name);
+};
+
+window.clearCreationForm = function() {
+    applyFormSnapshot({
+        timeline: '13岁',
+        name: '',
+        gender: '男',
+        age: '13',
+        生日: '',
+        loc: '斗罗大陆-史莱克城-史莱克学院-外院',
+        spirit: '',
+        personality: '',
+        appearance: '',
+        talent: 'EX',
+        bg: '',
+        jobType: '锻造师',
+        jobLv: '3',
+        destiny: 'A',
+        spiritTypes: [],
+        spiritDescs: []
+    });
+    saveLastSnapshot(collectFormSnapshot());
+    showTemplateMessage('已清空当前表单（不会删除模板）。');
+};
+
+window.updateLocByTimeline = function() {
+    var tl = document.getElementById('timeline-select').value;
+    var locInput = document.getElementById('char-loc');
+    var ageInput = document.getElementById('char-age');
+    var jobTypeInput = document.getElementById('char-job-type');
+    var jobLvInput = document.getElementById('char-job-lv');
+
+    if (tl === '6岁') {
+        locInput.value = '斗罗大陆-东海城-傲来城-红山学院';
+        ageInput.value = 6;
+        jobTypeInput.value = '无';
+    }
+    else if (tl === '9岁') {
+        locInput.value = '斗罗大陆-东海城-东海学院';
+        ageInput.value = 9;
+        if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
+        jobLvInput.value = '2';
+    }
+    else if (tl === '13岁') {
+        locInput.value = '斗罗大陆-史莱克城-史莱克学院-外院';
+        ageInput.value = 13;
+        if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
+        jobLvInput.value = '3';
+    }
+};
+
+window.updateSpiritTypes = function() {
+    var container = document.getElementById('spirit-types-container');
+    if (!container) return;
+
+    var oldTypes = [];
+    var oldDescs = [];
+    document.querySelectorAll('.spirit-type-select').forEach(function(s) { oldTypes.push(s.value); });
+    document.querySelectorAll('.spirit-desc-input').forEach(function(i) { oldDescs.push(i.value); });
+
+    var spiritInput = document.getElementById('char-spirit');
+    var spirits = splitSpirits(spiritInput ? spiritInput.value : '');
+    var options = ['强攻系', '敏攻系', '控制系', '防御系', '辅助系', '治疗系', '食物系', '精神系', '元素系'];
+    var html = '';
+
+    spirits.forEach(function(spiritName, index) {
+        var oldType = oldTypes[index] || '强攻系';
+        var oldDesc = oldDescs[index] || '';
+
+        html += '<div class="spirit-type-item">';
+        html += '<div style="font-size:13px; color:#00ffcc; margin-bottom:10px; font-weight:bold; border-bottom:1px solid rgba(0,255,204,0.2); padding-bottom:5px;">【' + spiritName + '】</div>';
+        html += '<label style="font-size:11px; color:#88d8d0; margin-bottom:4px; display:block;">系别</label>';
+        html += '<select class="form-control spirit-type-select" style="margin-bottom:10px;">';
+        options.forEach(function(opt) {
+            var selected = (opt === oldType) ? ' selected' : '';
+            html += '<option value="' + opt + '"' + selected + '>' + opt + '</option>';
+        });
+        html += '</select>';
+        html += '<label style="font-size:11px; color:#88d8d0; margin-bottom:4px; display:block;">武魂形态/描述</label>';
+        html += '<input type="text" class="form-control spirit-desc-input" placeholder="留空则AI自动生成：待生成（结合武魂名与系别补完形态和核心能力）" value="' + oldDesc + '">';
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+};
+
+window.selectRadio = function(element) {
+    document.querySelectorAll('#character-creation-root .radio-card').forEach(function(card) {
+        card.classList.remove('selected');
+    });
+    element.classList.add('selected');
+    var input = element.querySelector('input');
+    if (input) input.checked = true;
+};
+
+window.submitForm = function() {
+    var name = document.getElementById('char-name').value.trim().replace(/[\r\n]+/g, " ") || '无名氏';
+    var age = parseInt(document.getElementById('char-age').value) || 6;
+    var 生日 = 读取开场生日();
+    var loc = document.getElementById('char-loc').value.trim().replace(/[\r\n]+/g, " ") || '去向不明';
+    var spirit = document.getElementById('char-spirit').value.trim().replace(/[\r\n]+/g, " ") || '未觉醒';
+    var talent = document.getElementById('char-talent').value;
+    var bgField = buildGuidedField(document.getElementById('char-bg').value, '请结合时间线、地点、天赋与武魂补完身份背景');
+    var gender = document.getElementById('char-gender').value;
+    var personalityField = buildGuidedField(document.getElementById('char-personality').value, '请结合年龄、武魂、成长环境与剧情气质补完性格特征');
+    var appearanceField = buildGuidedField(document.getElementById('char-appearance').value, '请结合性别、年龄、武魂气质与世界观风格补完外貌特征');
+    var selectedTimeline = document.getElementById('timeline-select').value;
+    saveLastSnapshot(collectFormSnapshot());
+
+    var jobType = document.getElementById('char-job-type').value;
+    var jobLv = parseInt(document.getElementById('char-job-lv').value) || 1;
+    var spiritDescGuide = '请结合武魂名称、系别与潜在能力补完形态与核心能力描述';
+
+    var types = [];
+    var descFields = [];
+    document.querySelectorAll('.spirit-type-select').forEach(function(select) { types.push(select.value); });
+    document.querySelectorAll('.spirit-desc-input').forEach(function(input) {
+        descFields.push(buildGuidedField(input.value, spiritDescGuide));
+    });
+
+    var spiritsArray = splitSpirits(spirit);
+    var spiritInfoList = [];
+    for(var i=0; i<spiritsArray.length; i++) {
+        var t = types[i] || '强攻系';
+        var descField = descFields[i] || buildGuidedField('', spiritDescGuide);
+        spiritInfoList.push("【" + spiritsArray[i] + "】(系别: " + t + ", 形态描述: " + descField.prompt + ")");
+    }
+
+    var talentConfig = getTalentConfig(talent);
+    var 当前tick = (timelineData[selectedTimeline] && timelineData[selectedTimeline].world && timelineData[selectedTimeline].world.时间)
+        ? timelineData[selectedTimeline].world.时间.tick
+        : 0;
+    var calculatedLv = 计算开场等级(talentConfig, age, 获取开场双生修炼难度系数(types), 生日, 当前tick);
+
+    var multiplier = 0.1;
+    document.querySelectorAll('input[name="destiny"]').forEach(function(radio) {
+        if (radio.checked) {
+            if (radio.value === 'B') multiplier = 0.5;
+            if (radio.value === 'C') multiplier = 1.0;
+        }
+    });
+
+    var spiritObj = {};
+    var slotNames = ["第一武魂", "第二武魂"];
+    for(var i=0; i<spiritsArray.length; i++) {
+        var t = types[i] || '强攻系';
+        var d = (descFields[i] ? descFields[i].value : '待生成');
+        var slot = slotNames[i] || ("第" + (i+1) + "武魂");
+
+        spiritObj[slot] = {
+            "表象名称": spiritsArray[i],
+            "描述": d,
+            "系别": t,
+            "属性体系": "无"
+        };
+    }
+
+    var initialCharacterValue = {
+        "属性": {
+            "性别": gender,
+            "年龄": age,
+            "生日": 生日,
+            "等级": calculatedLv,
+            "天赋梯队": talentConfig.label,
+            "背景": "已推演",
+            "系别": types[0] || "强攻系"
+        },
+        "社交": {
+            "主身份": bgField.value
+        },
+        "状态": {
+            "位置": loc
+        },
+        "外貌": {
+            "长相描述": appearanceField.value
+        },
+        "性格": personalityField.value
+    };
+    Object.assign(initialCharacterValue, spiritObj);
+
+    if (jobType !== '无') {
+        var JobExpThresholds = [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
+        var exp = JobExpThresholds[Math.max(0, jobLv - 1)] || 0;
+        var titleMap = {
+            "锻造师": ["无", "一级锻造师", "二级锻造师", "三级锻造师", "四级宗匠", "五级灵锻大师", "六级魂锻大师", "七级圣匠", "八级神匠", "九级神匠"],
+            "机甲设计师": ["无", "一级设计师", "二级设计师", "三级设计师", "四级设计师", "五级设计师", "六级设计师", "七级设计师", "八级设计师", "九级设计师"],
+            "机甲制造师": ["无", "一级制造师", "二级制造师", "三级制造师", "四级制造师", "五级制造师", "六级制造师", "七级制造师", "八级制造师", "九级制造师"],
+            "机甲修理师": ["无", "一级修理师", "二级修理师", "三级修理师", "四级修理师", "五级修理师", "六级修理师", "七级修理师", "八级修理师", "九级修理师"],
+            "机甲师": ["无", "一级机甲师", "二级机甲师", "三级机甲师", "四级机甲师", "五级机甲师", "六级机甲师", "七级机甲师", "八级机甲师", "九级机甲师"]
+        };
+        var title = (titleMap[jobType] && titleMap[jobType][jobLv]) ? titleMap[jobType][jobLv] : (jobLv + "级" + jobType);
+        initialCharacterValue["职业"] = {};
+        initialCharacterValue["职业"][jobType] = {
+            "等级": jobLv,
+            "经验": exp,
+            "称号": title
+        };
+    }
+
+    var initPatch = [
+        {
+            "op": "insert",
+            "path": "/char/" + name,
+            "value": initialCharacterValue
+        },
+        {
+            "op": "replace",
+            "path": "/world/偏差倍率",
+            "value": multiplier
+        },
+        {
+            "op": "replace",
+            "path": "/sys/玩家名",
+            "value": name
+        },
+        {
+            "op": "replace",
+            "path": "/sys/系统播报",
+            "value": "初始化"
+        }
+    ];
+
+    var tlData = timelineData[selectedTimeline];
+    if (tlData) {
+        if (tlData.char) {
+            for (var npcName in tlData.char) {
+                initPatch.push({
+                    "op": "insert",
+                    "path": "/char/" + npcName,
+                    "value": tlData.char[npcName]
+                });
+            }
+        }
+        if (tlData.world && tlData.world.时间) {
+            initPatch.push({
+                "op": "replace",
+                "path": "/world/时间/tick",
+                "value": tlData.world.时间.tick
+            });
+            initPatch.push({
+                "op": "replace",
+                "path": "/world/时间/_上次结算tick",
+                "value": 0
+            });
+        }
+    }
+
+    var summary = "【后台设定数据载入完成】\n";
+    summary += "时间线节点：" + selectedTimeline + "\n";
+    summary += "角色：" + name + "（" + gender + "，" + age + "岁）\n";
+    summary += "当前位置：" + loc + "\n";
+    summary += "性格：" + personalityField.prompt + "\n";
+    summary += "外貌：" + appearanceField.prompt + "\n";
+    summary += "武魂：" + spiritInfoList.join(" ｜ ") + "\n";
+    summary += "身份背景：" + bgField.prompt + "\n";
+    summary += "当前等级：" + calculatedLv + "级\n";
+    if (jobType !== '无') {
+        summary += "副职业：" + jobLv + "级" + jobType + "\n";
+    }
+    summary += "\n";
+    summary += "*[系统指令：以上为该角色的底层设定数据，仅供你作为创作背景参考。\n";
+    summary += "【绝对红线】：禁止在正文中像念说明书一样列举上述设定（如“我叫xx，武魂是xx，性格xx”）！禁止出现“标签”、“设定”等元词汇！\n";
+    summary += "【创作要求】：请直接从主角（" + name + "）的第一视角切入具体的环境与事件，通过角色的行为、对话和周围人的反应，自然地展现出其性格与武魂特点。请立刻开始第一幕的剧情描写！]*";
+
+    var displayMessage = "开始剧情：" + name;
+
+    function getStartupRuntimeWindow() {
+        return window.parent || window.top || window;
+    }
+
+    function buildInitUpdateVariableText(patchList) {
+        var tagStart = '<' + 'UpdateVariable' + '>';
+        var tagEnd = '<' + '/UpdateVariable' + '>';
+        var analysisStart = '<' + 'Analysis' + '>';
+        var analysisEnd = '<' + '/Analysis' + '>';
+        var patchStart = '<' + 'JSONPatch' + '>';
+        var patchEnd = '<' + '/JSONPatch' + '>';
+        return [
+            tagStart,
+            analysisStart + '[Startup] Apply internal character initialization patch.' + analysisEnd,
+            patchStart,
+            JSON.stringify(patchList),
+            patchEnd,
+            tagEnd
+        ].join('\n');
+    }
+
+    async function applyInitPatchByMvuParser(patchList) {
+        var runtimeWindow = getStartupRuntimeWindow();
+        var mvu = (runtimeWindow && runtimeWindow.Mvu) || window.Mvu;
+        if (!mvu || typeof mvu.getMvuData !== "function" || typeof mvu.replaceMvuData !== "function" || typeof mvu.parseMessage !== "function") {
+            throw new Error("MVU更新解析接口未就绪");
+        }
+        var currentData = await mvu.getMvuData({ type: "message", message_id: "latest" });
+        var parsedData = await Promise.resolve(mvu.parseMessage(buildInitUpdateVariableText(patchList), currentData));
+        var nextData = parsedData && parsedData.stat_data ? parsedData : currentData;
+        if (!nextData || !nextData.stat_data) throw new Error("MVU初始化解析失败");
+        var normalizeStatData = runtimeWindow.__LWCS_NORMALIZE_MVU_STAT_DATA__ || window.__LWCS_NORMALIZE_MVU_STAT_DATA__;
+        if (typeof normalizeStatData !== "function") throw new Error("MVU结构规范化接口未就绪");
+        nextData.stat_data = normalizeStatData(nextData.stat_data);
+        delete nextData.stat_data.display_all;
+        delete nextData.stat_data.display_chars;
+        await mvu.replaceMvuData(nextData, { type: "message", message_id: "latest" });
+        await verifyInitPatchLatest();
+    }
+
+    async function verifyInitPatchLatest() {
+        var runtimeWindow = getStartupRuntimeWindow();
+        var mvu = (runtimeWindow && runtimeWindow.Mvu) || window.Mvu;
+        if (!mvu || typeof mvu.getMvuData !== "function") throw new Error("MVU接口未就绪");
+        var verifyData = await mvu.getMvuData({ type: "message", message_id: "latest" });
+        var verifyRoot = verifyData && verifyData.stat_data ? verifyData.stat_data : {};
+        if (verifyRoot.sys && verifyRoot.sys.玩家名 !== name) {
+            throw new Error("MVU初始化校验失败：玩家名未写入最新楼层");
+        }
+        if (!verifyRoot.char || !verifyRoot.char[name]) {
+            throw new Error("MVU初始化校验失败：角色未写入最新楼层");
+        }
+        if (verifyRoot.char[name].状态 && verifyRoot.char[name].状态.位置 !== loc) {
+            throw new Error("MVU初始化校验失败：角色位置未写入最新楼层");
+        }
+    }
+
+    try {
+        if (typeof window.registerPendingInternalStartupPrompt_ACU === 'function') {
+            window.registerPendingInternalStartupPrompt_ACU(summary, displayMessage);
+        } else {
+            window.__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__ = {
+                text: summary,
+                displayText: displayMessage,
+                at: Date.now()
+            };
+        }
+    } catch (e) {
+        window.__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__ = {
+            text: summary,
+            displayText: displayMessage,
+            at: Date.now()
+        };
+    }
+
+    document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 80px 20px; color: #00ffcc; font-size: 18px; font-weight:bold; text-shadow: 0 0 10px #00ffcc; letter-spacing: 2px;">[ 档案及时间线底包已提交，正在同步世界线... ]</div>';
+
+    function 通过输入框发送开场白(文本) {
+        var 宿主窗口 = getStartupRuntimeWindow();
+        var 输入框 = 宿主窗口.document.querySelector('#send_textarea');
+        var 发送按钮 = 宿主窗口.document.querySelector('#send_but');
+        if (!输入框 || !发送按钮) throw new Error("酒馆发送控件未就绪");
+        输入框.value = 文本;
+        输入框.dispatchEvent(new Event('input', { bubbles: true }));
+        输入框.dispatchEvent(new Event('change', { bubbles: true }));
+        发送按钮.click();
+    }
+
+    Promise.resolve().then(async function() {
+        var safeDisplayMessage = displayMessage.replace(/\r/g, "").replace(/\n/g, " ");
+        await applyInitPatchByMvuParser(initPatch);
+        await verifyInitPatchLatest();
+        通过输入框发送开场白(safeDisplayMessage);
+    }).catch(function(error) {
+        console.error('[开场白] MVU初始化写入失败:', error);
+        document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 80px 20px; color: #ff7777; font-size: 18px; font-weight:bold; letter-spacing: 2px;">[ MVU 初始化写入失败，请刷新后重试 ]</div>';
+    });
+};
+$(function() {
+    初始化开场生日选项();
+    window.updateSpiritTypes();
+    refreshTemplateSelect();
+    bindTemplateMemoryEvents();
+
+    var lastSnapshot = loadLastSnapshot();
+    if (lastSnapshot && Object.keys(lastSnapshot).length > 0) {
+        applyFormSnapshot(lastSnapshot);
+        showTemplateMessage('已自动恢复上次填写内容。');
+    }
+});
+</script>
+</body>
+</html>
+```
