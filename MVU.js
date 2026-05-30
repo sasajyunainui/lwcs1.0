@@ -4080,7 +4080,7 @@ const SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1 = Object.freeze([
   '动作迟缓',
   '目标错乱',
   '施法僵直',
-  '状态溢出',
+  '持续流血',
 ]);
 const SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   全属性降低: Object.freeze({ 状态: '虚弱', 数值: '+10%', 副数值: '', 持续回合: 2 }),
@@ -4093,7 +4093,7 @@ const SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   动作迟缓: Object.freeze({ 状态: '僵直', 数值: '+15%', 副数值: '', 持续回合: 1 }),
   目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1 }),
   施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1 }),
-  状态溢出: Object.freeze({ 状态: '溢出', 数值: '+10%', 副数值: '', 持续回合: 1 }),
+  持续流血: Object.freeze({ 状态: '流血', 数值: '+10%', 副数值: '', 持续回合: 1 }),
 });
 
 function normalizeSkillSideEffectEntry(value = {}) {
@@ -5814,7 +5814,7 @@ function 获取基础预算_V1(魂技位 = 1) {
 
 // 11 种预定义副作用 → 强度档默认映射（来源于 lwcs/MVU.js:3639-3664 副作用列表注册）
 const SKILL_SIDE_EFFECT_TIER_V1 = Object.freeze({
-  致死献祭: '重', 状态溢出: '重', 增幅失控: '重',
+  致死献祭: '重', 持续流血: '重', 增幅失控: '重',
   自损反噬: '中', 魂力反噬: '中', 精神紊乱: '中', 目标错乱: '中',
   全属性降低: '轻', 命中下降: '轻', 动作迟缓: '轻', 施法僵直: '轻',
 });
@@ -11735,7 +11735,7 @@ const 直接结算收益预算系数_V1 = Object.freeze({
     动作迟缓: 0.35,
     目标错乱: 0.6,
     施法僵直: 0.35,
-    状态溢出: 0.25,
+    持续流血: 0.25,
   }),
   副作用触发时机系数: Object.freeze({
     施放后: 0.75,
@@ -11964,7 +11964,7 @@ function 计算单项副作用COST_V1(副作用 = {}) {
   const 概率 = Math.max(0, Math.min(1, Number(条目.触发概率 ?? 1)));
   if (类型 === '致死献祭') {
     return {
-      COST: Number((10 * 概率).toFixed(2)),
+      COST: Number((100 * 概率).toFixed(2)),
       副作用类型: 类型,
       触发时机: 条目.触发时机 || '施放后',
       生效对象: 条目.生效对象 || '施术者',
@@ -11986,7 +11986,7 @@ function 计算单项副作用COST_V1(副作用 = {}) {
     动作迟缓: 数值 / 5,
     目标错乱: 数值 / 5,
     施法僵直: 数值 / 5,
-    状态溢出: 数值 / 5,
+    持续流血: 数值 / 5,
   })[类型] || 0;
   return {
     COST: Number(Math.max(0, 基准 * 持续修正 * 概率).toFixed(2)),
@@ -12557,12 +12557,18 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
   const 前COST = 评估.实际COST;
   const 前快照 = 抓取效果字段快照_V1(技能._效果数组);
   const 处理记录 = [];
+  const 限制改动数 = 收紧高价值布尔效果限制_V1(技能._效果数组);
+  if (限制改动数 > 0) {
+    处理记录.push({ 类型: '限制收紧', 字段: '触发限制', 后值: '每日1次', 数量: 限制改动数 });
+    评估 = 评估技能预算_V1(技能, 评估上下文);
+  }
   const 当前副作用列表 = normalizeSkillSideEffectList(技能.副作用列表 || []);
-  const 已有自动候选副作用 = 当前副作用列表.some(项 =>
+  const 允许自动副作用 = 技能效果仅作用自身_V1(技能._效果数组);
+  const 已有自动候选副作用 = 允许自动副作用 && 当前副作用列表.some(项 =>
     String(项?.副作用类型 || '').trim() === '全属性降低' &&
     ['施术者', '状态持有者'].includes(String(项?.生效对象 || '').trim()),
   );
-  if (!已有自动候选副作用) {
+  if (允许自动副作用 && !已有自动候选副作用) {
     const 缺口 = Math.max(0, 评估.实际COST - 目标上限);
     const 需要补偿 = Math.min(10, 缺口);
     if (需要补偿 > 0) {
@@ -12591,6 +12597,12 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
     if (!改动数) break;
     评估 = 评估技能预算_V1(技能, 评估上下文);
   }
+  while (评估.实际COST > 目标上限 && 目标上限 > 0) {
+    const 裁剪记录 = 裁剪最低COST附加效果_V1(技能._效果数组);
+    if (!裁剪记录) break;
+    处理记录.push({ 类型: '移除附加效果', ...裁剪记录 });
+    评估 = 评估技能预算_V1(技能, 评估上下文);
+  }
   const 后快照 = 抓取效果字段快照_V1(技能._效果数组);
   const 字段变化 = 对比效果字段快照_V1(前快照, 后快照);
   字段变化.forEach(项 => 处理记录.push({ 类型: '字段降级', ...项 }));
@@ -12607,9 +12619,123 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
       处理记录,
       新增副作用: 处理记录.filter(项 => 项.类型 === '新增副作用'),
       阻止保存,
-      原因: 阻止保存 ? '自动副作用与降级后仍超预算' : '',
+      原因: 阻止保存 ? (允许自动副作用 ? '自动副作用与降级后仍超预算' : '降级后仍超预算') : '',
     },
   };
+}
+
+function 技能效果仅作用自身_V1(效果数组 = []) {
+  let 有效果 = false;
+  let 仅自身 = true;
+  遍历直接结算预算效果_V1(效果数组, 效果 => {
+    if (!效果 || typeof 效果 !== 'object') return;
+    const 原型 = String(效果?.原型 || '').trim();
+    if (!原型) return;
+    有效果 = true;
+    const 目标 = String(效果?.目标 || '单体').trim() || '单体';
+    if (目标 !== '自身') 仅自身 = false;
+  });
+  return 有效果 && 仅自身;
+}
+
+function 裁剪最低COST附加效果_V1(效果数组 = []) {
+  const 候选列表 = [];
+  const 收集 = (列表, 路径) => {
+    if (!Array.isArray(列表)) return;
+    const 有效索引 = 列表
+      .map((效果, 序号) => ({ 效果, 序号 }))
+      .filter(项 => 项.效果 && typeof 项.效果 === 'object' && String(项.效果.原型 || '').trim());
+    if (有效索引.length > 1) {
+      有效索引.forEach(项 => {
+        const COST = Number(计算技能效果累计COST_V1([项.效果]).总COST || 0);
+        候选列表.push({
+          列表,
+          序号: 项.序号,
+          路径: `${路径}[${项.序号}]`,
+          原型: String(项.效果.原型 || '').trim(),
+          COST,
+        });
+      });
+    }
+    列表.forEach((效果, 序号) => {
+      if (!效果 || typeof 效果 !== 'object') return;
+      技能执行嵌套效果数组字段表_V1.forEach(字段 => {
+        if (Array.isArray(效果?.[字段])) 收集(效果[字段], `${路径}[${序号}].${字段}`);
+      });
+      (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach((分支, 分支序号) => {
+        技能条件分支效果数组字段表_V1.forEach(字段 => {
+          if (Array.isArray(分支?.[字段])) 收集(分支[字段], `${路径}[${序号}].条件分支[${分支序号}].${字段}`);
+        });
+      });
+    });
+  };
+  收集(效果数组, '_效果数组');
+  const 候选 = 候选列表
+    .filter(项 => Number.isFinite(项.COST) && 项.COST > 0)
+    .sort((左, 右) => Number(左.COST || 0) - Number(右.COST || 0))[0];
+  if (!候选) return null;
+  候选.列表.splice(候选.序号, 1);
+  return {
+    路径: 候选.路径,
+    原型: 候选.原型,
+    COST: Number(候选.COST.toFixed(2)),
+  };
+}
+
+function 校验技能预算并自动收口_V1(技能 = {}, 上下文 = {}, path = '技能') {
+  if (!技能 || typeof 技能 !== 'object' || !Array.isArray(技能._效果数组)) return { skill: 技能, 降级记录: null, 成功: true };
+  const 魂技位 = Math.max(1, Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 1) || 1);
+  const 预算上下文 = {
+    ...(上下文 || {}),
+    魂环位: 魂技位,
+    启用位级硬上限: 上下文?.启用位级硬上限 ?? true,
+  };
+  let 评估 = 评估技能预算_V1(技能, 预算上下文);
+  if (!评估.是否超预算) return { skill: 技能, 降级记录: null, 成功: true, 评估 };
+  const 修正结果 = 让技能符合预算_V1(技能, 魂技位, {
+    ...预算上下文,
+    强制上限: 评估.实际门禁,
+  });
+  评估 = 评估技能预算_V1(技能, 预算上下文);
+  if (修正结果?.降级记录?.阻止保存 || 评估.是否超预算) {
+    const 记录 = 修正结果?.降级记录 || {};
+    const 后COST = Number(记录.后COST ?? 评估.实际COST ?? 0);
+    const 目标上限 = Number(记录.目标上限 ?? 评估.实际门禁 ?? 0);
+    throw new Error(`${path}COST仍超预算 ${后COST.toFixed(1)}/${目标上限.toFixed(1)}`);
+  }
+  return { ...修正结果, 评估 };
+}
+
+function 收紧高价值布尔效果限制_V1(效果数组 = []) {
+  let 改动数 = 0;
+  遍历直接结算预算效果_V1(效果数组, 效果 => {
+    if (!效果 || typeof 效果 !== 'object') return;
+    const 原型 = String(效果?.原型 || '').trim();
+    const 状态 = String(效果?.状态 || '').trim();
+    const 规则 = String(效果?.规则 || '').trim();
+    const 是高价值布尔 =
+      (原型 === '状态施加' && ['无视异常', '霸体'].includes(状态)) ||
+      (原型 === '规则防御' && ['免伤', '免死'].includes(规则));
+    if (!是高价值布尔) return;
+    if (Number.isFinite(Number(效果.持续回合)) && Number(效果.持续回合) > 1) {
+      效果.持续回合 = 1;
+      改动数 += 1;
+    }
+    if (Number.isFinite(Number(效果.次数)) && Number(效果.次数) > 1) {
+      效果.次数 = 1;
+      改动数 += 1;
+    }
+    if (Number.isFinite(Number(效果.可用次数)) && Number(效果.可用次数) > 1) {
+      效果.可用次数 = 1;
+      改动数 += 1;
+    }
+    const 当前限制 = 解析次数限制抵扣率_V1(效果.触发限制);
+    if (当前限制 < 0.70) {
+      效果.触发限制 = { 周期: '每日', 次数: 1 };
+      改动数 += 1;
+    }
+  });
+  return 改动数;
 }
 
 function 查找技能首个持续状态_V1(效果数组 = []) {
@@ -13991,7 +14117,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
         动作迟缓: `僵直：行动速度降低${formatSkillNumber(数值)}%`,
         目标错乱: `混乱：${formatSkillNumber(数值)}%概率错乱目标`,
         施法僵直: `僵直：施法僵直强度${formatSkillNumber(数值)}%`,
-        状态溢出: `溢出：状态负荷提高${formatSkillNumber(数值)}%`,
+        持续流血: `流血：每回合受到上限${formatSkillNumber(数值)}%的持续伤害`,
       })[类型] || `${类型}${数值 ? `：强度${formatSkillNumber(数值)}%` : ''}`;
       return `${触发时机}，${概率文本}${效果文本}${持续}${关联}。`;
     })
@@ -16142,19 +16268,13 @@ function autoGenerateSkill(
   条件分支约束_V1(收口结果);
   // v7.1：在预算评估前先按 ringIndex 钳制持续回合/属性数值/DOT 数值上限（防止低位魂技生成 5 回合 30% DOT）
   按位级钳制效果字段_V1(收口结果._效果数组, Math.max(1, Number(ringIndex || 1)));
-  // v4 阶段：生成器同时启用"对等基线"+"位级硬上限"两道门禁，超模时按 实际门禁 缩减效果
-  const 评估_v4 = 评估技能预算_V1(收口结果, {
+  校验技能预算并自动收口_V1(收口结果, {
     path: ['char', '魂技'],
     角色: 预算上下文.角色,
     魂环位: Math.max(1, Number(ringIndex || 1)),
     启用位级硬上限: true,
-  });
-  if (评估_v4.是否超预算) {
-    让技能符合预算_V1(收口结果, Math.max(1, Number(ringIndex || 1)), {
-      角色: 预算上下文.角色,
-      强制上限: 评估_v4.实际门禁,
-    });
-  }
+  }, `技能生成错误:${archetype || '未命名机制'}`);
+  断言直接结算收益预算_V1(收口结果, '生成技能', 预算上下文);
   return 收口结果;
 }
 
@@ -18476,13 +18596,17 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   if (!skill || typeof skill !== 'object') return false;
   const 临时决策 = skill?.[技能机制决策临时字段_V1];
   if (临时决策 && typeof 临时决策 === 'object' && getMeaningfulSkillEffects(skill._效果数组 || []).length > 0) {
-    delete skill[技能机制决策临时字段_V1];
-    收口技能执行结构_V1(skill, {
-      目标: String(skill.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
-      技能: skill,
+    const 临时技能 = cloneJsonValue(skill, {});
+    delete 临时技能[技能机制决策临时字段_V1];
+    收口技能执行结构_V1(临时技能, {
+      目标: String(临时技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
+      技能: 临时技能,
     });
-    断言直接结算收益预算_V1(skill, '技能', context || {});
-    syncConstructSkillMetadata(skill);
+    校验技能预算并自动收口_V1(临时技能, context || {}, '技能');
+    断言直接结算收益预算_V1(临时技能, '技能', context || {});
+    syncConstructSkillMetadata(临时技能);
+    Object.keys(skill).forEach(键 => delete skill[键]);
+    Object.assign(skill, 临时技能);
     return skill;
   }
   const 临时蓝图 = 临时决策 && typeof 临时决策 === 'object' ? 构建机制决策蓝图覆盖_V1(临时决策, context) : null;
@@ -18526,26 +18650,30 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     throw new Error(`技能生成错误:${临时蓝图?.主机制原型 || context?.blueprintOverride?.主机制原型 || '随机机制'}未生成可执行原型`);
   }
 
-  skill.承载方式 = 使用基础生成效果
+  const 临时技能 = cloneJsonValue(skill, {});
+  临时技能.承载方式 = 使用基础生成效果
     ? '直接生效'
-    : String(生成结果.承载方式 || skill.承载方式 || (是造物承载效果数组_V1(效果数组) ? '造物承载' : '直接生效')).trim() || '直接生效';
-  skill.消耗 = cloneJsonValue(生成结果.消耗 ?? skill.消耗 ?? '无');
-  skill.前摇 = Math.max(0, Number(生成结果.前摇 ?? skill.前摇 ?? 0) || 0);
-  skill._效果数组 = clonePackedSkillEffects(效果数组);
-  const 副作用列表 = normalizeSkillSideEffectList(生成结果.副作用列表 || skill.副作用列表 || []);
-  if (副作用列表.length) skill.副作用列表 = 副作用列表;
-  else delete skill.副作用列表;
-  清理技能效果数组AI文本字段_V1(skill._效果数组);
-  if (!Array.isArray(skill.附带属性)) skill.附带属性 = [];
-  delete skill[技能机制决策临时字段_V1];
-  applySkillElementInheritance(skill, context);
-  收口技能执行结构_V1(skill, {
-    目标: String(skill.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
-    技能: skill,
+    : String(生成结果.承载方式 || 临时技能.承载方式 || (是造物承载效果数组_V1(效果数组) ? '造物承载' : '直接生效')).trim() || '直接生效';
+  临时技能.消耗 = cloneJsonValue(生成结果.消耗 ?? 临时技能.消耗 ?? '无');
+  临时技能.前摇 = Math.max(0, Number(生成结果.前摇 ?? 临时技能.前摇 ?? 0) || 0);
+  临时技能._效果数组 = clonePackedSkillEffects(效果数组);
+  const 副作用列表 = normalizeSkillSideEffectList(生成结果.副作用列表 || 临时技能.副作用列表 || []);
+  if (副作用列表.length) 临时技能.副作用列表 = 副作用列表;
+  else delete 临时技能.副作用列表;
+  清理技能效果数组AI文本字段_V1(临时技能._效果数组);
+  if (!Array.isArray(临时技能.附带属性)) 临时技能.附带属性 = [];
+  delete 临时技能[技能机制决策临时字段_V1];
+  applySkillElementInheritance(临时技能, context);
+  收口技能执行结构_V1(临时技能, {
+    目标: String(临时技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
+    技能: 临时技能,
     passiveMode: context?.passiveMode === true,
   });
-  断言直接结算收益预算_V1(skill, '生成技能', context || {});
-  syncConstructSkillMetadata(skill);
+  校验技能预算并自动收口_V1(临时技能, context || {}, '生成技能');
+  断言直接结算收益预算_V1(临时技能, '生成技能', context || {});
+  syncConstructSkillMetadata(临时技能);
+  Object.keys(skill).forEach(键 => delete skill[键]);
+  Object.assign(skill, 临时技能);
   return skill;
 }
 
@@ -18582,13 +18710,17 @@ function ensureSkillStructGenerated(skill, context = {}) {
   delete skill[技能机制决策临时字段_V1];
   if (skill.画面描述 === SKILL_TEXT_UNKNOWN) skill.画面描述 = AI_TODO_SKILL_VISUAL;
   if (skill.效果描述 === SKILL_TEXT_UNKNOWN) skill.效果描述 = AI_TODO_SKILL_EFFECT;
-  收口技能执行结构_V1(skill, {
-    目标: String(skill.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
-    技能: skill,
+  const 临时技能 = cloneJsonValue(skill, {});
+  收口技能执行结构_V1(临时技能, {
+    目标: String(临时技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
+    技能: 临时技能,
     passiveMode: context?.passiveMode === true,
   });
-  断言直接结算收益预算_V1(skill, '技能', context || {});
-  syncConstructSkillMetadata(skill);
+  校验技能预算并自动收口_V1(临时技能, context || {}, '技能');
+  断言直接结算收益预算_V1(临时技能, '技能', context || {});
+  syncConstructSkillMetadata(临时技能);
+  Object.keys(skill).forEach(键 => delete skill[键]);
+  Object.assign(skill, 临时技能);
   return hydrateSkillTextByPackedEffects(skill, context.textContext || {});
 }
 

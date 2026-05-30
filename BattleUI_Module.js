@@ -6427,7 +6427,7 @@ class BattleUIComponent {
       动作迟缓: '僵直',
       目标错乱: '混乱',
       施法僵直: '僵直',
-      状态溢出: '溢出',
+      持续流血: '流血',
     });
     const BATTLE_SKILL_SIDE_EFFECT_TYPE_SET = new Set([
       '全属性降低',
@@ -6440,7 +6440,7 @@ class BattleUIComponent {
       '动作迟缓',
       '目标错乱',
       '施法僵直',
-      '状态溢出',
+      '持续流血',
     ]);
 
     function normalizeBattleSkillSideEffectEntry(value = {}) {
@@ -6508,7 +6508,7 @@ class BattleUIComponent {
       }
       if (类型 === '动作迟缓' || 类型 === '施法僵直') 战斗效果.cast_speed_penalty = 强度 || (类型 === '施法僵直' ? 0.2 : 0.15);
       if (类型 === '目标错乱') 战斗效果.random_target_rate = 强度 || 0.3;
-      if (类型 === '状态溢出') 战斗效果.dot_damage_ratio = 强度 || 0.1;
+      if (类型 === '持续流血') 战斗效果.dot_damage_ratio = 强度 || 0.1;
       return { 面板修改比例, 战斗效果 };
     }
 
