@@ -761,6 +761,18 @@ class BattleUIComponent {
       防守优先_对方下回合威胁: 0.60,  // Phase 4
     });
 
+    // Phase C: 战术修正层级量级表 — 5 层显式 cap, 防止跨层量级失衡
+    const 战术修正层级量级_V1 = Object.freeze({
+      基础层:     { 最小: 0,    最大: 100 },  // 12 项 加意图() + 目标优先级,允许累加
+      情境修正层: { 最小: -80,  最大: 80  },  // 节奏 / 切换 / 收割 / 救急 / 多样性 / 重启
+      机制专属层: { 最小: -90,  最大: 90  },  // 融合 / 大招 / 召唤 / 稀缺 / 装备
+      资源约束层: { 最小: -100, 最大: 30  },  // 不允许加分(终局放行 +28 给 30 缓冲)
+      一票否决层: { 最小: -150, 最大: 150 },  // 留给可斩杀类强信号
+    });
+    function 应用层级clamp_V1(delta, 范围) {
+      return Math.max(范围.最小, Math.min(范围.最大, delta));
+    }
+
     // 应用 态势战略意图加权表 — Phase 1 用,封装比较 + 加权
     function 应用态势战略意图加权_V1(ctx, 加权) {
       态势战略意图加权表_V1.forEach(项 => {
@@ -11294,6 +11306,7 @@ class BattleUIComponent {
       加意图('资源消耗', /资源转移|资源锁定|消耗/.test(技能文本), 0.32);
       加意图('拖回合', 是防护 || 是治疗, 0.28);
       加意图('终局爆发', 是输出 && 可斩杀, 0.46);
+      delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.基础层);
       return { delta, 轨迹 };
     }
 
@@ -11382,6 +11395,7 @@ class BattleUIComponent {
         delta += 38;
         轨迹.push('破盾破防 +38');
       }
+      delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.情境修正层);
       return { delta, 轨迹 };
     }
 
@@ -11464,6 +11478,7 @@ class BattleUIComponent {
           轨迹.push('装备-标准穿戴时机 +20');
         }
       }
+      delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.机制专属层);
       return { delta, 轨迹 };
     }
 
@@ -11483,7 +11498,7 @@ class BattleUIComponent {
         Number(技能消耗压力.当前压力 || 0),
       );
       if (技能消耗压力.可释放 === false && !可斩杀) {
-        const 扣减 = Math.round(Math.min(140, 90 + 断档压力 * 50));
+        const 扣减 = Math.round(Math.min(100, 90 + 断档压力 * 50));
         delta -= 扣减;
         轨迹.push(`资源不可释放 -${扣减}`);
       } else if (是高耗 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
@@ -11499,6 +11514,7 @@ class BattleUIComponent {
         delta -= 32;
         轨迹.push('高耗低收益 -32');
       }
+      delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.资源约束层);
       return { delta, 轨迹 };
     }
 
@@ -11509,9 +11525,11 @@ class BattleUIComponent {
         delta -= 26;
         轨迹.push('无实际收益 -26');
       }
+      delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.一票否决层);
       return { delta, 轨迹 };
     }
 
+    // ===== 主调度器 =====
     function 计算技能战术修正(skill = {}, actor = {}, target = null, 规划上下文 = {}, 基础收益 = {}) {
       if (!skill || !规划上下文?.战局画像) return { 修正值: 0, 轨迹: [] };
       const 指标 = 计算战场指标_V1(skill, actor, target, 规划上下文, 基础收益);
@@ -11520,12 +11538,12 @@ class BattleUIComponent {
       const r3 = 计算机制时机修正_V1(指标);
       const r4 = 计算资源约束修正_V1(指标);
       const r5 = 计算否决修正_V1(指标);
-      // 轨迹顺序: 基础 → 情境 → 机制 → 资源 → 否决 (与原顺序略有不同, 但行为等价 — 数值是加法可交换)
       return {
         修正值: Math.round(r1.delta + r2.delta + r3.delta + r4.delta + r5.delta),
         轨迹: [...r1.轨迹, ...r2.轨迹, ...r3.轨迹, ...r4.轨迹, ...r5.轨迹],
       };
     }
+
 
     function 读取行为规划资源键(effect = {}) {
       const 文本 = String(effect?.资源 || effect?.属性 || '').trim();

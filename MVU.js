@@ -6381,6 +6381,7 @@ function 构建魂技消耗结构_V1(燃料模型 = '纯耗魂力', 消耗基准
     附加常规体力: { 魂力: 0.85, 体力: 0.15 },
     附加大量体力: { 魂力: 0.75, 体力: 0.25 },
     魂神平摊: { 魂力: 0.5, 精神力: 0.5 },
+    体神平摊: { 体力: 0.5, 精神力: 0.5 },
     纯耗魂力: { 魂力: 1 },
   };
   const 分摊 = 分摊表[模型] || 分摊表.纯耗魂力;
@@ -6657,7 +6658,12 @@ function pickUniqueRandom(list = [], count = 1) {
   return result;
 }
 
-function buildFuelModelByType(type, main) {
+function buildFuelModelByType(type, main, archetype = '') {
+  const 机制 = String(archetype || '').trim();
+  if (main === '回复类') {
+    if (机制 === '魂力恢复') return '体神平摊';
+    if (机制 === '精神恢复' || 机制 === '体力恢复') return '纯耗魂力';
+  }
   if (type === '精神系') return '精神主导';
   if (type === '食物系') return '纯耗魂力';
   if (type === '控制系') return main === '控制类' || main === '削弱类' ? '附加微量精神力' : '纯耗魂力';
@@ -12563,7 +12569,7 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
     评估 = 评估技能预算_V1(技能, 评估上下文);
   }
   const 当前副作用列表 = normalizeSkillSideEffectList(技能.副作用列表 || []);
-  const 允许自动副作用 = 技能效果仅作用自身_V1(技能._效果数组);
+  const 允许自动副作用 = 技能结算效果仅作用自身_V1(技能);
   const 已有自动候选副作用 = 允许自动副作用 && 当前副作用列表.some(项 =>
     String(项?.副作用类型 || '').trim() === '全属性降低' &&
     ['施术者', '状态持有者'].includes(String(项?.生效对象 || '').trim()),
@@ -12624,7 +12630,15 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
   };
 }
 
-function 技能效果仅作用自身_V1(效果数组 = []) {
+function 技能结算效果仅作用自身_V1(技能 = {}) {
+  const 效果数组 = (() => {
+    if (Array.isArray(技能)) return 技能;
+    if (String(技能?.承载方式 || '').trim() === '造物承载') {
+      return (Array.isArray(技能?._效果数组) ? 技能._效果数组 : [])
+        .flatMap(模板 => Array.isArray(模板?.使用效果) ? 模板.使用效果 : []);
+    }
+    return Array.isArray(技能?._效果数组) ? 技能._效果数组 : [];
+  })();
   let 有效果 = false;
   let 仅自身 = true;
   遍历直接结算预算效果_V1(效果数组, 效果 => {
@@ -12636,6 +12650,41 @@ function 技能效果仅作用自身_V1(效果数组 = []) {
     if (目标 !== '自身') 仅自身 = false;
   });
   return 有效果 && 仅自身;
+}
+
+function 读取技能消耗资源集合_V1(消耗 = '无') {
+  const 资源集合 = new Set();
+  if (消耗 && typeof 消耗 === 'object' && !Array.isArray(消耗)) {
+    Object.entries(消耗).forEach(([资源名, 原始值]) => {
+      if (Number(原始值) > 0) 资源集合.add(String(资源名 || '').trim());
+    });
+    return 资源集合;
+  }
+  String(消耗 || '')
+    .split(/[|｜]/)
+    .flatMap(片段 => String(片段 || '').split(/\s+/))
+    .map(片段 => 片段.trim())
+    .filter(Boolean)
+    .forEach(片段 => {
+      if (/^维持[:：]/.test(片段)) return;
+      const 匹配 = 片段.replace(/^启动[:：]/, '').match(/^(生命|HP|体力|魂力|精神力)[:：]([+-]?\d+(?:\.\d+)?%?)$/i);
+      if (匹配 && Number(String(匹配[2]).replace('%', '')) > 0) 资源集合.add(匹配[1] === 'HP' ? '生命' : 匹配[1]);
+    });
+  return 资源集合;
+}
+
+function 断言非造物自身恢复不抵消自身消耗_V1(effect = {}, path = '_效果数组', index = 0, 上下文 = {}) {
+  if (!effect || typeof effect !== 'object') return;
+  if (String(effect.原型 || '').trim() !== '资源变化') return;
+  if (String(effect.目标 || '').trim() !== '自身') return;
+  const 根技能 = 上下文?.技能 && typeof 上下文.技能 === 'object' ? 上下文.技能 : null;
+  if (!根技能 || String(根技能.承载方式 || '').trim() === '造物承载') return;
+  const 资源 = String(effect.资源 || '').trim() === 'HP' ? '生命' : String(effect.资源 || '').trim();
+  if (!读取技能消耗资源集合_V1(根技能.消耗).has(资源)) return;
+  const 数值 = parseSkillSignedChangeNumber(effect.数值);
+  if (Number.isFinite(数值) && 数值 > 0 && !/^-/.test(String(effect.数值 || '').trim())) {
+    throw new Error(`技能执行结构错误:${path}[${index}]非造物自身技能不能消耗${资源}后再恢复自身${资源}`);
+  }
 }
 
 function 裁剪最低COST附加效果_V1(效果数组 = []) {
