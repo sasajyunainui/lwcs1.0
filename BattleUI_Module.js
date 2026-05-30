@@ -11204,8 +11204,17 @@ class BattleUIComponent {
       };
     }
 
-    function 计算技能战术修正(skill = {}, actor = {}, target = null, 规划上下文 = {}, 基础收益 = {}) {
-      if (!skill || !规划上下文?.战局画像) return { 修正值: 0, 轨迹: [] };
+// === Phase A 重构: 计算技能战术修正 → 5 层架构 ===
+// 6 个新函数:
+//   计算战场指标_V1     共享指标计算(orchestrator 用一次, 各层复用)
+//   计算基础意图修正_V1 基础层 (目标优先级 + 12 项 加意图)
+//   计算情境修正_V1     情境修正层 (节奏/切换/收割/救急/破盾/打断/多样性/重启)
+//   计算机制时机修正_V1 机制专属层 (融合/大招/召唤/稀缺/装备)
+//   计算资源约束修正_V1 资源约束层 (保留/不可释放/两回合预判/终局放行/高耗低收益)
+//   计算否决修正_V1     一票否决层 (无实际收益)
+// 主函数 计算技能战术修正 改成调度器, 行为零变化 (加权数值 / 触发条件 / 顺序全部一致)
+
+    function 计算战场指标_V1(skill = {}, actor = {}, target = null, 规划上下文 = {}, 基础收益 = {}) {
       const 效果列表 = getSkillEffects(skill, { 行为规划: true, actor, caster: actor, target, defender: target, skill });
       const 规划技能 = { ...skill, __规划水合效果数组: 效果列表 };
       const summary = deriveBattleSummaryFromEffects(规划技能);
@@ -11214,30 +11223,6 @@ class BattleUIComponent {
       const 目标立场 = ['自身', '友方单体', '友方群体'].includes(战斗目标类型) ? '友方' : '敌方';
       const 目标项 = 读取规划目标优先项(规划上下文, target || (目标立场 === '友方' ? 规划上下文.目标优先表?.保护目标 : 规划上下文.目标优先表?.集火目标), 目标立场);
       const 意图 = 规划上下文.战略意图?.权重表 || {};
-      const 轨迹 = [];
-      let 修正 = 0;
-      if (目标项?.优先级 > 0) {
-        const 增量 = Math.round(Number(目标项.优先级 || 0) * (目标立场 === '友方' ? 0.16 : 0.14));
-        修正 += 增量;
-        轨迹.push(`目标:${目标项.名称 || '未知'}(${(目标项.理由 || []).join('/')}) +${增量}`);
-      }
-      // Phase 3.G: 目标切换惩罚 — 上回合打 X 这回合切到 Y, 输出类技能扣减 -15
-      // 例外: 治疗 / 友方目标 / 击杀窗口(可斩杀) / 上次目标已死亡 不惩罚
-      const 上次行动目标_phase3g = String(actor?.决策记忆?.last_action_target || '').trim();
-      const 当前目标名_phase3g = String(目标项?.名称 || target?.name || target?.名称 || '').trim();
-      if (上次行动目标_phase3g && 当前目标名_phase3g
-          && 上次行动目标_phase3g !== 当前目标名_phase3g
-          && 目标立场 === '敌方') {
-        // 检查上次目标是否仍存活
-        const 上次目标存活 = (规划上下文.战局画像?.敌方列表 || []).some(单位 => {
-          const 名 = String(单位?.name || 单位?.名称 || '').trim();
-          return 名 === 上次行动目标_phase3g && (单位?.状态?.存活 !== false) && getCombatHpRatio(单位) > 0;
-        });
-        if (上次目标存活) {
-          修正 -= 15;
-          轨迹.push(`目标切换 ${上次行动目标_phase3g}→${当前目标名_phase3g} -15`);
-        }
-      }
       const 技能文本 = JSON.stringify(效果列表 || []) + String(skill?.name || skill?.魂技名 || '');
       const 是输出 = mainType === '伤害类' || getSkillType(skill) === '输出' || 效果列表.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
       const 是控制 = mainType === '控制类' || isBattleSkillControlProfile(规划技能, { summary });
@@ -11250,12 +11235,53 @@ class BattleUIComponent {
       const 技能消耗压力 = 计算技能消耗压力(skill, actor);
       const 是高耗 = 技能消耗压力.综合压力 >= 0.34 || 技能消耗压力.可释放 === false;
       const 可斩杀 = getCombatHpRatio(target || {}) < 0.36 || Number(基础收益?.净收益 || 0) >= 120;
+      const 技能名 = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '').trim();
+      const 重复次数 = Number(规划上下文.行为历史摘要?.近期行动?.[技能名] || 0);
+      const 来源类别 = 读取战斗来源类别上下文(skill, '魂技').来源类别;
+      const 是融合技 = 来源类别 === '武魂融合技';
+      const 是大招 = summary.风险等级 === '高' && !是融合技;
+      const 是稀缺技能 = ['血脉技能', '气血魂技', '魂骨技能'].includes(来源类别);
+      const 是装备技能 = 来源类别 === '装备技能';
+      const 敌方最低血 = Math.min(1, ...(规划上下文.战局画像?.敌方列表 || []).map(getCombatHpRatio));
+      const 我方最低血 = Math.min(1, ...(规划上下文.战局画像?.己方列表 || []).map(getCombatHpRatio));
+      const 当前回合 = Number(规划上下文.combatData?.回合 || 0);
+      const 终局压力 = Number(规划上下文.战局画像?.终局压力 || 0);
+      const 目标快照 = buildConditionTacticalSnapshot(target || {});
+      const 目标血量比例 = target ? getCombatHpRatio(target) : 1;
+      const 保护目标血量比例 = getCombatHpRatio(规划上下文.战局画像?.治疗目标 || 规划上下文.战局画像?.保护目标 || actor);
+      const 预估伤害 = 是输出 && target
+        ? estimateIncomingActionThreat(actor, target, {
+            action_type: '技能', type: '技能',
+            cast_time: getSkillCastTime(skill),
+            skill: 规划技能,
+          }, 规划上下文.combatData || {}).projectedDamageRatio
+        : 0;
+      return {
+        skill, actor, target, 规划上下文, 基础收益,
+        效果列表, 规划技能, summary, mainType, 战斗目标类型, 目标立场, 目标项, 意图, 技能文本,
+        是输出, 是控制, 是治疗, 是防护, 是驱散, 是破防, 是召唤, 是维持,
+        技能消耗压力, 是高耗, 可斩杀, 技能名, 重复次数,
+        来源类别, 是融合技, 是大招, 是稀缺技能, 是装备技能,
+        敌方最低血, 我方最低血, 当前回合, 终局压力,
+        目标快照, 目标血量比例, 保护目标血量比例, 预估伤害,
+      };
+    }
+
+    function 计算基础意图修正_V1(指标) {
+      const { 目标项, 目标立场, 意图, 是输出, 是控制, 是治疗, 是防护, 是驱散, 是破防, 是维持, 可斩杀, 规划上下文 } = 指标;
+      const 轨迹 = []; let delta = 0;
+      if (目标项?.优先级 > 0) {
+        const 增量 = Math.round(Number(目标项.优先级 || 0) * (目标立场 === '友方' ? 0.16 : 0.14));
+        delta += 增量;
+        轨迹.push(`目标:${目标项.名称 || '未知'}(${(目标项.理由 || []).join('/')}) +${增量}`);
+      }
       const 加意图 = (名称, 条件, 系数 = 0.36) => {
         if (!条件 || !意图[名称]) return;
         const 增量 = Math.round(Number(意图[名称] || 0) * 系数);
-        修正 += 增量;
+        delta += 增量;
         轨迹.push(`意图:${名称} +${增量}`);
       };
+      const 技能文本 = 指标.技能文本;
       加意图('击杀', 是输出 && 可斩杀, 0.5);
       加意图('集火', 是输出 && 目标立场 === '敌方', 0.34);
       加意图('控制', 是控制, 0.42);
@@ -11268,108 +11294,29 @@ class BattleUIComponent {
       加意图('资源消耗', /资源转移|资源锁定|消耗/.test(技能文本), 0.32);
       加意图('拖回合', 是防护 || 是治疗, 0.28);
       加意图('终局爆发', 是输出 && 可斩杀, 0.46);
-      if (意图.保留资源 && 是高耗 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
-        const 扣减 = Math.round(Math.min(60, 意图.保留资源 * 0.62));
-        修正 -= 扣减;
-        轨迹.push(`保留资源 -${扣减}`);
-      }
-      // Phase 3.A: 融合技时机检测 — 残血决战或队友蓄力中才释放,平时压制
-      const 来源类别_phase3 = 读取战斗来源类别上下文(skill, '魂技').来源类别;
-      const 是融合技 = 来源类别_phase3 === '武魂融合技';
-      if (是融合技) {
-        const 敌方最低血_phase3 = Math.min(1, ...(规划上下文.战局画像?.敌方列表 || []).map(getCombatHpRatio));
-        if (敌方最低血_phase3 < 时机决策阈值_V1.融合技释放_敌方残血阈值) {
-          修正 += 80;
-          轨迹.push('融合技-斩杀窗口 +80');
-        } else if (规划上下文.战局画像?.终局压力 > 0.55 || 可斩杀) {
-          修正 += 60;
-          轨迹.push('融合技-终局窗口 +60');
-        } else {
-          修正 -= 30;
-          轨迹.push('融合技-时机未到 -30');
+      return { delta, 轨迹 };
+    }
+
+    function 计算情境修正_V1(指标) {
+      const { actor, target, 目标项, 目标立场, 是输出, 是控制, 是治疗, 是防护, 是破防, 可斩杀, 规划上下文,
+        技能名, 重复次数, 当前回合, 目标快照, 目标血量比例, 保护目标血量比例, 预估伤害 } = 指标;
+      const 轨迹 = []; let delta = 0;
+      // Phase 3.G: 目标切换惩罚
+      const 上次行动目标 = String(actor?.决策记忆?.last_action_target || '').trim();
+      const 当前目标名 = String(目标项?.名称 || target?.name || target?.名称 || '').trim();
+      if (上次行动目标 && 当前目标名 && 上次行动目标 !== 当前目标名 && 目标立场 === '敌方') {
+        const 上次目标存活 = (规划上下文.战局画像?.敌方列表 || []).some(单位 => {
+          const 名 = String(单位?.name || 单位?.名称 || '').trim();
+          return 名 === 上次行动目标 && (单位?.状态?.存活 !== false) && getCombatHpRatio(单位) > 0;
+        });
+        if (上次目标存活) {
+          delta -= 15;
+          轨迹.push(`目标切换 ${上次行动目标}→${当前目标名} -15`);
         }
       }
-      // Phase 3.B: 大招节奏感 — 风险等级=高的技能只在残血/晚期回合释放
-      const 是大招 = summary.风险等级 === '高' && !是融合技;  // 融合技单独走 3.A
-      if (是大招) {
-        const 敌方最低血_phase3b = Math.min(1, ...(规划上下文.战局画像?.敌方列表 || []).map(getCombatHpRatio));
-        const 我方最低血_phase3b = Math.min(1, ...(规划上下文.战局画像?.己方列表 || []).map(getCombatHpRatio));
-        const 当前回合_phase3b = Number(规划上下文.combatData?.回合 || 0);
-        const 大招可释放 = 敌方最低血_phase3b < 时机决策阈值_V1.大招释放_敌方残血阈值
-          || 我方最低血_phase3b < 时机决策阈值_V1.大招释放_我方残血阈值
-          || 当前回合_phase3b >= 时机决策阈值_V1.大招释放_最早回合;
-        if (!大招可释放) {
-          修正 -= 50;
-          轨迹.push('大招-早期克制 -50');
-        }
-      }
-      // Phase 3.C: 召唤时机决策 — 数量劣势 / 残血需保护时增益, 召唤过载时压制
-      if (是召唤) {
-        const 我方人数 = (规划上下文.战局画像?.己方列表 || []).length;
-        const 敌方人数 = (规划上下文.战局画像?.敌方列表 || []).length;
-        const 我方最低血_phase3c = Math.min(1, ...(规划上下文.战局画像?.己方列表 || []).map(getCombatHpRatio));
-        const 我方召唤数 = (规划上下文.战局画像?.我方召唤数 || 0);
-        if (敌方人数 - 我方人数 >= 时机决策阈值_V1.召唤_数量劣势触发) {
-          修正 += 40;
-          轨迹.push('召唤-数量劣势 +40');
-        }
-        if (我方最低血_phase3c < 时机决策阈值_V1.召唤_我方残血触发) {
-          修正 += 30;
-          轨迹.push('召唤-保护需求 +30');
-        }
-        if (我方召唤数 >= 时机决策阈值_V1.召唤_过载阈值) {
-          修正 -= 60;
-          轨迹.push('召唤-已过载 -60');
-        }
-      }
-      // Phase 3.E: 稀缺技能时机感 — 血脉/气血/魂骨 三类(已被 3.A 融合技 / 3.B 大招 兜走的不再叠加)
-      const 稀缺技能来源集合_phase3 = ['血脉技能', '气血魂技', '魂骨技能'];
-      const 是稀缺技能 = 稀缺技能来源集合_phase3.includes(来源类别_phase3);
-      if (是稀缺技能 && !是融合技 && !是大招) {
-        const 敌方最低血_phase3e = Math.min(1, ...(规划上下文.战局画像?.敌方列表 || []).map(getCombatHpRatio));
-        if (敌方最低血_phase3e < 时机决策阈值_V1.稀缺技能_敌方残血阈值) {
-          修正 += 60;
-          轨迹.push(`稀缺技能[${来源类别_phase3}]-斩杀窗口 +60`);
-        } else if ((规划上下文.战局画像?.终局压力 || 0) > 时机决策阈值_V1.稀缺技能_终局压力阈值 || 可斩杀) {
-          修正 += 40;
-          轨迹.push(`稀缺技能[${来源类别_phase3}]-终局窗口 +40`);
-        } else {
-          修正 -= 20;
-          轨迹.push(`稀缺技能[${来源类别_phase3}]-时机未到 -20`);
-        }
-      }
-      // Phase 3.F: 装备技能释放时机 — 紧急情况穿戴/激活,平时不浪费,已穿戴避免重复
-      const 是装备技能 = 来源类别_phase3 === '装备技能';
-      if (是装备技能) {
-        const 当前回合_phase3f = Number(规划上下文.combatData?.回合 || 0);
-        const 我方最低血_phase3f = Math.min(1, ...(规划上下文.战局画像?.己方列表 || []).map(getCombatHpRatio));
-        const 终局压力_phase3f = Number(规划上下文.战局画像?.终局压力 || 0);
-        // 检查 actor 是否已装备(任一槽位状态='已装备')
-        const 装备 = actor?.装备 || {};
-        const 已装备数 = ['斗铠', '机甲', '武器'].filter(部位 =>
-          String(装备?.[部位]?.装备状态 || '').trim() === '已装备').length;
-        if (已装备数 >= 1 && /(穿戴|装备|展开|附体|召唤机甲)/.test(String(skill?.name || skill?.魂技名 || skill?.技能名称 || ''))) {
-          // 已经穿戴/展开过,重复释放强烈压制
-          修正 -= 80;
-          轨迹.push('装备-已激活避免重复 -80');
-        } else if (我方最低血_phase3f < 时机决策阈值_V1.装备_紧急释放_我方残血阈值
-          || 终局压力_phase3f > 时机决策阈值_V1.装备_紧急释放_终局压力阈值) {
-          修正 += 50;
-          轨迹.push('装备-紧急释放窗口 +50');
-        } else if (当前回合_phase3f < 时机决策阈值_V1.装备_早期克制回合) {
-          修正 -= 20;
-          轨迹.push('装备-早期克制 -20');
-        } else {
-          修正 += 20;
-          轨迹.push('装备-标准穿戴时机 +20');
-        }
-      }
-      const 技能名 = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '').trim();
-      const 重复次数 = Number(规划上下文.行为历史摘要?.近期行动?.[技能名] || 0);
+      // Phase 2.C: 行为多样性扣减(含动态阶段缩放)
       if (重复次数 > 0 && !(可斩杀 || 是治疗 && getCombatHpRatio(规划上下文.战局画像?.治疗目标 || actor) < 0.45 || 规划上下文.来袭窗口摘要?.lethalRisk)) {
         const 上次同技 = String(规划上下文.行为历史摘要?.上次行动 || '').trim() === 技能名;
-        // Phase 2.C: 动态阶段缩放 — 早期(回合<3) 50%, 中期(<6) 85%, 晚期 100%
-        const 当前回合 = Number(规划上下文.combatData?.回合 || 0);
         const 阶段缩放 = 当前回合 < 时机决策阈值_V1.多样性早期回合 ? 时机决策阈值_V1.多样性早期缩放
                       : 当前回合 < 时机决策阈值_V1.多样性中期回合 ? 时机决策阈值_V1.多样性中期缩放
                       : 1.0;
@@ -11377,18 +11324,159 @@ class BattleUIComponent {
           + 规划上下文.战局画像.行为多样性压力 * 技能战术修正阈值_V1.行为多样性压力倍增
           + (上次同技 ? 技能战术修正阈值_V1.行为多样性同技额外 : 0);
         const 扣减 = Math.round(Math.min(技能战术修正阈值_V1.行为多样性惩罚峰值 * 阶段缩放, 扣减原始 * 阶段缩放));
-        修正 -= 扣减;
+        delta -= 扣减;
         轨迹.push(`行为多样性 -${扣减}`);
       }
-      // Phase 3.I: 遗忘机制重启加成 — 距上次使用 ≥ 5 回合的"沉默技能"给小幅鼓励, 让 AI 试旧招
+      // Phase 3.I: 遗忘机制重启加成
       if (重复次数 === 0) {
-        const 当前回合_phase3i = Number(规划上下文.combatData?.回合 || 0);
         const 上次使用回合 = Number(actor?.决策记忆?.action_last_used_round?.[技能名] || 0);
-        if (上次使用回合 > 0 && 当前回合_phase3i - 上次使用回合 >= 时机决策阈值_V1.遗忘机制_重启回合阈值) {
-          修正 += 时机决策阈值_V1.遗忘机制_重启加成;
+        if (上次使用回合 > 0 && 当前回合 - 上次使用回合 >= 时机决策阈值_V1.遗忘机制_重启回合阈值) {
+          delta += 时机决策阈值_V1.遗忘机制_重启加成;
           轨迹.push(`遗忘重启 +${时机决策阈值_V1.遗忘机制_重启加成}`);
         }
       }
+      // 输出类: 低伤刮痧 / 有效伤害 / 收割窗口
+      if (是输出) {
+        if (预估伤害 >= 0 && 预估伤害 < 0.015 && !是控制 && !是破防) {
+          const 扣减 = 预估伤害 < 0.006 ? 78 : 58;
+          delta -= 扣减;
+          轨迹.push(`低伤刮痧 -${扣减}`);
+        } else if (预估伤害 >= 0.04) {
+          const 增量 = Math.min(42, Math.round(预估伤害 * 180));
+          delta += 增量;
+          轨迹.push(`有效伤害 +${增量}`);
+        }
+        if (目标血量比例 < 0.28 && 预估伤害 >= 0.015) {
+          delta += 34;
+          轨迹.push('收割窗口 +34');
+        }
+      }
+      // 治疗类: 过疗风险 / 救急治疗
+      if (是治疗) {
+        if (目标血量比例 > 0.88 && !目标快照.hasBadCondition && !规划上下文.来袭窗口摘要?.lethalRisk) {
+          delta -= 42;
+          轨迹.push('过疗风险 -42');
+        } else if (目标血量比例 < 0.58 || 保护目标血量比例 < 0.58 || 规划上下文.来袭窗口摘要?.lethalRisk) {
+          delta += 46;
+          轨迹.push('救急治疗 +46');
+        }
+      }
+      // 防护类: 保核承压 / 重复防护
+      if (是防护) {
+        if (目标血量比例 < 0.7 || 保护目标血量比例 < 0.7 || 规划上下文.来袭窗口摘要?.severeDamage) {
+          delta += 34;
+          轨迹.push('保核承压 +34');
+        } else if (目标快照.hasShielded || 目标快照.hasReactiveDefense) {
+          delta -= 24;
+          轨迹.push('重复防护 -24');
+        }
+      }
+      // 控制 + 蓄力/维持: 打断/破维持
+      if (是控制 && (target?.蓄力技能 || 读取规划维持压力(target || {}) > 0)) {
+        const 增量 = target?.蓄力技能 ? 42 : 30;
+        delta += 增量;
+        轨迹.push(`打断/破维持 +${增量}`);
+      }
+      // 破防 + 已护盾/防御buff/反应防御: 破盾破防
+      if (是破防 && (目标快照.hasShielded || 目标快照.hasDefenseBuffed || 目标快照.hasReactiveDefense)) {
+        delta += 38;
+        轨迹.push('破盾破防 +38');
+      }
+      return { delta, 轨迹 };
+    }
+
+    function 计算机制时机修正_V1(指标) {
+      const { actor, skill, 是融合技, 是大招, 是稀缺技能, 是装备技能, 是召唤, 来源类别,
+        敌方最低血, 我方最低血, 当前回合, 终局压力, 可斩杀, 规划上下文 } = 指标;
+      const 轨迹 = []; let delta = 0;
+      // Phase 3.A: 融合技时机
+      if (是融合技) {
+        if (敌方最低血 < 时机决策阈值_V1.融合技释放_敌方残血阈值) {
+          delta += 80;
+          轨迹.push('融合技-斩杀窗口 +80');
+        } else if (终局压力 > 0.55 || 可斩杀) {
+          delta += 60;
+          轨迹.push('融合技-终局窗口 +60');
+        } else {
+          delta -= 30;
+          轨迹.push('融合技-时机未到 -30');
+        }
+      }
+      // Phase 3.B: 大招节奏感
+      if (是大招) {
+        const 大招可释放 = 敌方最低血 < 时机决策阈值_V1.大招释放_敌方残血阈值
+          || 我方最低血 < 时机决策阈值_V1.大招释放_我方残血阈值
+          || 当前回合 >= 时机决策阈值_V1.大招释放_最早回合;
+        if (!大招可释放) {
+          delta -= 50;
+          轨迹.push('大招-早期克制 -50');
+        }
+      }
+      // Phase 3.C: 召唤时机
+      if (是召唤) {
+        const 我方人数 = (规划上下文.战局画像?.己方列表 || []).length;
+        const 敌方人数 = (规划上下文.战局画像?.敌方列表 || []).length;
+        const 我方召唤数 = (规划上下文.战局画像?.我方召唤数 || 0);
+        if (敌方人数 - 我方人数 >= 时机决策阈值_V1.召唤_数量劣势触发) {
+          delta += 40;
+          轨迹.push('召唤-数量劣势 +40');
+        }
+        if (我方最低血 < 时机决策阈值_V1.召唤_我方残血触发) {
+          delta += 30;
+          轨迹.push('召唤-保护需求 +30');
+        }
+        if (我方召唤数 >= 时机决策阈值_V1.召唤_过载阈值) {
+          delta -= 60;
+          轨迹.push('召唤-已过载 -60');
+        }
+      }
+      // Phase 3.E: 稀缺技能时机 (与 3.A 融合 / 3.B 大招 互斥)
+      if (是稀缺技能 && !是融合技 && !是大招) {
+        if (敌方最低血 < 时机决策阈值_V1.稀缺技能_敌方残血阈值) {
+          delta += 60;
+          轨迹.push(`稀缺技能[${来源类别}]-斩杀窗口 +60`);
+        } else if (终局压力 > 时机决策阈值_V1.稀缺技能_终局压力阈值 || 可斩杀) {
+          delta += 40;
+          轨迹.push(`稀缺技能[${来源类别}]-终局窗口 +40`);
+        } else {
+          delta -= 20;
+          轨迹.push(`稀缺技能[${来源类别}]-时机未到 -20`);
+        }
+      }
+      // Phase 3.F: 装备技能释放时机
+      if (是装备技能) {
+        const 装备 = actor?.装备 || {};
+        const 已装备数 = ['斗铠', '机甲', '武器'].filter(部位 =>
+          String(装备?.[部位]?.装备状态 || '').trim() === '已装备').length;
+        const 技能名_ = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '');
+        if (已装备数 >= 1 && /(穿戴|装备|展开|附体|召唤机甲)/.test(技能名_)) {
+          delta -= 80;
+          轨迹.push('装备-已激活避免重复 -80');
+        } else if (我方最低血 < 时机决策阈值_V1.装备_紧急释放_我方残血阈值
+          || 终局压力 > 时机决策阈值_V1.装备_紧急释放_终局压力阈值) {
+          delta += 50;
+          轨迹.push('装备-紧急释放窗口 +50');
+        } else if (当前回合 < 时机决策阈值_V1.装备_早期克制回合) {
+          delta -= 20;
+          轨迹.push('装备-早期克制 -20');
+        } else {
+          delta += 20;
+          轨迹.push('装备-标准穿戴时机 +20');
+        }
+      }
+      return { delta, 轨迹 };
+    }
+
+    function 计算资源约束修正_V1(指标) {
+      const { 意图, 是高耗, 可斩杀, 规划上下文, 技能消耗压力, 基础收益 } = 指标;
+      const 轨迹 = []; let delta = 0;
+      // 保留资源(意图驱动)
+      if (意图.保留资源 && 是高耗 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
+        const 扣减 = Math.round(Math.min(60, 意图.保留资源 * 0.62));
+        delta -= 扣减;
+        轨迹.push(`保留资源 -${扣减}`);
+      }
+      // 资源不可释放 / 两回合预判 / 终局放行
       const 断档压力 = Math.max(
         Number(规划上下文.资源压力 || 0),
         Number(技能消耗压力.综合压力 || 0),
@@ -11396,82 +11484,47 @@ class BattleUIComponent {
       );
       if (技能消耗压力.可释放 === false && !可斩杀) {
         const 扣减 = Math.round(Math.min(140, 90 + 断档压力 * 50));
-        修正 -= 扣减;
+        delta -= 扣减;
         轨迹.push(`资源不可释放 -${扣减}`);
       } else if (是高耗 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
         const 扣减 = Math.round(Math.min(86, 18 + 断档压力 * 90));
-        修正 -= 扣减;
+        delta -= 扣减;
         轨迹.push(`两回合资源预判 -${扣减}`);
       } else if (是高耗 && 可斩杀) {
-        修正 += 28;
+        delta += 28;
         轨迹.push('终局资源放行 +28');
       }
-      const 目标快照 = buildConditionTacticalSnapshot(target || {});
-      const 目标血量比例 = target ? getCombatHpRatio(target) : 1;
-      const 保护目标血量比例 = getCombatHpRatio(规划上下文.战局画像?.治疗目标 || 规划上下文.战局画像?.保护目标 || actor);
-      const 预估伤害 = 是输出 && target
-        ? estimateIncomingActionThreat(actor, target, {
-            action_type: '技能',
-            type: '技能',
-            cast_time: getSkillCastTime(skill),
-            skill: 规划技能,
-          }, 规划上下文.combatData || {}).projectedDamageRatio
-        : 0;
-      if (是输出) {
-        if (预估伤害 >= 0 && 预估伤害 < 0.015 && !是控制 && !是破防) {
-          const 扣减 = 预估伤害 < 0.006 ? 78 : 58;
-          修正 -= 扣减;
-          轨迹.push(`低伤刮痧 -${扣减}`);
-        } else if (预估伤害 >= 0.04) {
-          const 增量 = Math.min(42, Math.round(预估伤害 * 180));
-          修正 += 增量;
-          轨迹.push(`有效伤害 +${增量}`);
-        }
-        if (目标血量比例 < 0.28 && 预估伤害 >= 0.015) {
-          修正 += 34;
-          轨迹.push('收割窗口 +34');
-        }
-      }
-      if (是治疗) {
-        if (目标血量比例 > 0.88 && !目标快照.hasBadCondition && !规划上下文.来袭窗口摘要?.lethalRisk) {
-          const 扣减 = 42;
-          修正 -= 扣减;
-          轨迹.push(`过疗风险 -${扣减}`);
-        } else if (目标血量比例 < 0.58 || 保护目标血量比例 < 0.58 || 规划上下文.来袭窗口摘要?.lethalRisk) {
-          修正 += 46;
-          轨迹.push('救急治疗 +46');
-        }
-      }
-      if (是防护) {
-        if (目标血量比例 < 0.7 || 保护目标血量比例 < 0.7 || 规划上下文.来袭窗口摘要?.severeDamage) {
-          修正 += 34;
-          轨迹.push('保核承压 +34');
-        } else if (目标快照.hasShielded || 目标快照.hasReactiveDefense) {
-          const 扣减 = 24;
-          修正 -= 扣减;
-          轨迹.push(`重复防护 -${扣减}`);
-        }
-      }
-      if (是控制 && (target?.蓄力技能 || 读取规划维持压力(target || {}) > 0)) {
-        const 增量 = target?.蓄力技能 ? 42 : 30;
-        修正 += 增量;
-        轨迹.push(`打断/破维持 +${增量}`);
-      }
-      if (是破防 && (目标快照.hasShielded || 目标快照.hasDefenseBuffed || 目标快照.hasReactiveDefense)) {
-        修正 += 38;
-        轨迹.push('破盾破防 +38');
-      }
-      if (!是输出 && !是治疗 && !是防护 && !是控制 && !是召唤 && Number(基础收益?.净收益 || 0) <= 8) {
-        const 扣减 = 26;
-        修正 -= 扣减;
-        轨迹.push(`无实际收益 -${扣减}`);
-      }
+      // 高耗低收益
       if (是高耗 && Number(基础收益?.净收益 || 0) < 45 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
-        const 扣减 = 32;
-        修正 -= 扣减;
-        轨迹.push(`高耗低收益 -${扣减}`);
+        delta -= 32;
+        轨迹.push('高耗低收益 -32');
       }
-      return { 修正值: Math.round(修正), 轨迹 };
+      return { delta, 轨迹 };
+    }
+
+    function 计算否决修正_V1(指标) {
+      const { 是输出, 是控制, 是治疗, 是防护, 是召唤, 基础收益 } = 指标;
+      const 轨迹 = []; let delta = 0;
+      if (!是输出 && !是治疗 && !是防护 && !是控制 && !是召唤 && Number(基础收益?.净收益 || 0) <= 8) {
+        delta -= 26;
+        轨迹.push('无实际收益 -26');
+      }
+      return { delta, 轨迹 };
+    }
+
+    function 计算技能战术修正(skill = {}, actor = {}, target = null, 规划上下文 = {}, 基础收益 = {}) {
+      if (!skill || !规划上下文?.战局画像) return { 修正值: 0, 轨迹: [] };
+      const 指标 = 计算战场指标_V1(skill, actor, target, 规划上下文, 基础收益);
+      const r1 = 计算基础意图修正_V1(指标);
+      const r2 = 计算情境修正_V1(指标);
+      const r3 = 计算机制时机修正_V1(指标);
+      const r4 = 计算资源约束修正_V1(指标);
+      const r5 = 计算否决修正_V1(指标);
+      // 轨迹顺序: 基础 → 情境 → 机制 → 资源 → 否决 (与原顺序略有不同, 但行为等价 — 数值是加法可交换)
+      return {
+        修正值: Math.round(r1.delta + r2.delta + r3.delta + r4.delta + r5.delta),
+        轨迹: [...r1.轨迹, ...r2.轨迹, ...r3.轨迹, ...r4.轨迹, ...r5.轨迹],
+      };
     }
 
     function 读取行为规划资源键(effect = {}) {

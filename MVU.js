@@ -15979,7 +15979,7 @@ function autoGenerateSkill(
       if (是生命恢复) appendPackedEffectConditionBranches(effect, 神圣逆邪分支);
     });
   }
-  packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, '单体'));
+  packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, blueprint.释放形态 === '造物承载' ? '自身' : '单体'));
 
   if (是否食物系) {
     const 自用恢复上限表 = 读取食物自用恢复上限表_V1(战斗.消耗 || '无');
@@ -16076,8 +16076,8 @@ function autoGenerateSkill(
     throw new Error(`技能生成错误:${archetype || '未命名机制'}未生成可执行原型`);
   }
 
-  wrapGrantableRuntimeEffectsForSupport(packedEffects, type, AI_TODO_SKILL_NAME);
-  packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, '单体'));
+  if (blueprint.释放形态 !== '造物承载') wrapGrantableRuntimeEffectsForSupport(packedEffects, type, AI_TODO_SKILL_NAME);
+  packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, blueprint.释放形态 === '造物承载' ? '自身' : '单体'));
 
   if (blueprint.释放形态 === '造物承载') {
     let usageEffects = 收口生成正式效果终态_V1(buildCreationUsageEffects(packedEffects, type), {
