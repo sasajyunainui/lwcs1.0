@@ -25263,6 +25263,20 @@
       node.removeAttribute('data-preview');
       node.classList.remove('clickable');
       setLiveNodeHtml(node, 构建统一顶部状态条(snapshot));
+      // 把角色名(identity)节点搬到 overview-bar 最左,与 tab/status 三列并排显示
+      const overviewBar = node.closest('.mvu-unified-overview-bar');
+      const identity = node.querySelector('.mvu-unified-top-identity');
+      if (overviewBar && identity) {
+        // 移除 overview-bar 上已存在的孤儿 identity(避免重复搬入)
+        Array.from(overviewBar.children).forEach(child => {
+          if (child !== identity && child.classList.contains('mvu-unified-top-identity')) {
+            child.remove();
+          }
+        });
+        if (identity.parentElement !== overviewBar) {
+          overviewBar.insertBefore(identity, overviewBar.firstChild);
+        }
+      }
     });
   }
 

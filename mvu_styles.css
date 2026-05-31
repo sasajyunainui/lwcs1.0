@@ -9767,17 +9767,47 @@ body.mvu-layout-unified #mvu-unified-mount {
   text-rendering: optimizeLegibility;
 }
 
-body.mvu-layout-unified #mvu-unified-mount b,
-body.mvu-layout-unified #mvu-unified-mount strong {
-  font-weight: 600;
+/* === 全局字体收敛:统一中文字体 + 字重梯度 + 字距透气 === */
+body.mvu-layout-unified #mvu-unified-mount {
+  font-feature-settings: "palt", "tnum";
+  letter-spacing: 0.01em;
 }
 
+/* b/strong 默认重 700-800 在中文上极笨重,统一压到 600 */
+body.mvu-layout-unified #mvu-unified-mount b,
+body.mvu-layout-unified #mvu-unified-mount strong {
+  font-weight: 600 !important;
+}
+
+/* 卡片正文里的"标签 + 值"片段默认更轻一档 */
 body.mvu-layout-unified #mvu-unified-mount .archive-core-tile b,
 body.mvu-layout-unified #mvu-unified-mount .archive-core-tile strong,
 body.mvu-layout-unified #mvu-unified-mount .world-core-tile b,
-body.mvu-layout-unified #mvu-unified-mount .world-core-tile strong {
-  font-weight: 500;
+body.mvu-layout-unified #mvu-unified-mount .world-core-tile strong,
+body.mvu-layout-unified #mvu-unified-mount .info-row b,
+body.mvu-layout-unified #mvu-unified-mount .info-row strong,
+body.mvu-layout-unified #mvu-unified-mount .meta-row b,
+body.mvu-layout-unified #mvu-unified-mount .meta-row strong {
+  font-weight: 500 !important;
   letter-spacing: 0.02em;
+}
+
+/* 区块标题统一 — section/strip/card 标题从 700-800 降到 600 */
+body.mvu-layout-unified #mvu-unified-mount .strip-title,
+body.mvu-layout-unified #mvu-unified-mount .panel-title,
+body.mvu-layout-unified #mvu-unified-mount .archive-card-title,
+body.mvu-layout-unified #mvu-unified-mount .mvu-shell-title,
+body.mvu-layout-unified #mvu-unified-mount .section-title,
+body.mvu-layout-unified #mvu-unified-mount .map-side-title {
+  font-weight: 600 !important;
+  letter-spacing: 0.04em;
+}
+
+/* 大标题(角色名 / 第一武魂名 / 当前位置名)— 用 700 但加大字距 */
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-card .strip-name,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .strip-name {
+  font-weight: 600 !important;
+  letter-spacing: 0.03em;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame {
@@ -9845,11 +9875,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
   display: grid;
-  grid-template-columns: minmax(330px, 0.78fr) minmax(220px, 1fr);
-  grid-template-areas: 'tabs status';
+  grid-template-columns: minmax(64px, max-content) minmax(330px, 0.78fr) minmax(220px, 1fr);
+  grid-template-areas: 'identity tabs status';
   align-items: center;
   gap: 8px;
   min-height: 30px;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar > .mvu-unified-top-identity {
+  grid-area: identity;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
@@ -9931,10 +9965,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-u
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
   display: grid;
   grid-area: status;
-  grid-template-columns: minmax(64px, max-content) minmax(0, 1fr);
-  grid-template-areas: 'identity chips';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'chips';
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   min-height: 28px;
@@ -9982,8 +10016,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-name {
   overflow: hidden;
   color: rgba(238, 251, 253, 0.98);
   font-size: var(--mvu-font-sm, 12px);
-  line-height: 1.18;
-  font-weight: 800;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -10568,8 +10603,9 @@ body.mvu-layout-unified #mvu-unified-mount .terminal-home-line b {
   min-width: 0 !important;
   color: var(--mvu-hud-muted) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
-  line-height: 1.22 !important;
-  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
   white-space: nowrap !important;
 }
 
@@ -11890,8 +11926,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-head strong {
   display: block !important;
   min-width: 0 !important;
   color: #dff6ff !important;
-  font-size: var(--mvu-font-base, 13px) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.3 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.03em !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -11899,13 +11937,14 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-head strong {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-head b {
   flex: 0 0 auto !important;
-  min-width: 44px !important;
-  padding: 4px 8px !important;
+  min-width: 40px !important;
+  padding: 2px 8px !important;
   border-radius: var(--mvu-radius-pill, 999px) !important;
   border: 1px solid rgba(77, 240, 255, 0.26) !important;
   background: rgba(77, 240, 255, 0.13) !important;
   color: #c9f8ff !important;
-  font-size: var(--mvu-font-sm, 12px) !important;
+  font-size: var(--mvu-font-xs, 11px) !important;
+  font-weight: 500 !important;
   text-align: center !important;
 }
 
@@ -11937,6 +11976,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-empty {
   border-radius: var(--mvu-radius-sm, 8px) !important;
   border: 1px solid rgba(77, 240, 255, 0.13) !important;
   background: linear-gradient(180deg, rgba(28, 60, 78, 0.42), rgba(11, 24, 36, 0.48)) !important;
+  font-size: var(--mvu-font-xs, 11px) !important;
+  font-weight: 400 !important;
+  line-height: 1.3 !important;
+  letter-spacing: 0.02em !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-name {
@@ -11947,9 +11990,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-name {
   background: transparent !important;
   color: #eaf9ff !important;
   font: inherit !important;
-  font-size: var(--mvu-font-sm, 12px) !important;
+  font-size: var(--mvu-font-xs, 11px) !important;
   line-height: 1.3 !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   text-align: left !important;
   cursor: pointer !important;
   overflow: hidden !important;
@@ -11972,12 +12015,13 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-name:focus-visible 
 body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-meta,
 body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-state {
   min-width: 0 !important;
-  color: rgba(226, 244, 250, 0.92) !important;
+  color: rgba(226, 244, 250, 0.78) !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  font-size: var(--mvu-font-sm, 12px) !important;
-  line-height: 1.25 !important;
+  font-size: var(--mvu-font-xs, 11px) !important;
+  font-weight: 400 !important;
+  line-height: 1.3 !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-actions {
