@@ -2583,7 +2583,7 @@ function 读取槽位序号_V1(槽位名 = '', 默认值 = 1) {
 }
 
 function 是武魂槽位键_V1(键 = '') {
-  return /^(第1武魂|第2武魂|第\d+武魂)$/.test(String(键 || '').trim());
+  return /^第\d+武魂$/.test(String(键 || '').trim());
 }
 
 function 是魂灵槽位键_V1(键 = '') {
@@ -8425,9 +8425,8 @@ function 格式化状态施加比例字段_V1(value, fallback = '+0%') {
   if (!text) return fallback;
   const parsed = parseSkillSignedChangeNumber(text);
   if (!Number.isFinite(parsed)) return fallback;
-  if (/%$/.test(text)) return formatSkillSignedChangeValue(parsed, true);
-  if (Math.abs(parsed) <= 1) return formatSkillSignedChangeValue(parsed, true);
-  return formatSkillSignedChangeValue(parsed / 100, true);
+  const 比例 = Math.abs(parsed) <= 1 || /%$/.test(text) ? parsed : parsed / 100;
+  return (比例 >= 0 ? '+' : '') + formatSkillPercent(比例);
 }
 
 function 限制状态施加比例字段_V1(状态 = '', 字段名 = '', value = '') {
@@ -8436,7 +8435,7 @@ function 限制状态施加比例字段_V1(状态 = '', 字段名 = '', value = 
   const parsed = parseSkillSignedChangeNumber(value);
   if (!Number.isFinite(parsed)) return value;
   if (字段 === '数值' && 持续伤害状态集合_V1.has(状态名))
-    return formatSkillSignedChangeValue(-Math.min(0.03, Math.abs(parsed)), true);
+    return '-' + formatSkillPercent(Math.abs(parsed));
   if (字段 === '数值' && 状态名 === '持续恢复')
     return formatSkillSignedChangeValue(Math.min(0.05, Math.max(0.01, Math.abs(parsed))), true);
   if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
@@ -11943,7 +11942,8 @@ function 收口正式百分比最低值_V1(value, 最低百分点 = 5) {
 function 收口正式百分比字段最低值_V1(effect = {}) {
   if (!effect || typeof effect !== 'object') return effect;
   const 原型 = String(effect?.原型 || '').trim();
-  const 需要收口 = ['属性修正', '资源变化', '资源转移', '护盾变化', '判定修正', '结算修正', '状态施加', '决策干扰', '资源锁定'].includes(原型);
+  if (原型 === '状态施加') return effect;
+  const 需要收口 = ['属性修正', '资源变化', '资源转移', '护盾变化', '判定修正', '结算修正', '决策干扰', '资源锁定'].includes(原型);
   if (!需要收口) return effect;
   ['数值', '副数值'].forEach(字段名 => {
     if (effect[字段名] !== undefined) effect[字段名] = 收口正式百分比最低值_V1(effect[字段名], 5);

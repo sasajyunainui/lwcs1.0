@@ -5656,7 +5656,7 @@ class BattleUIComponent {
     }
 
     function 是武魂槽位键_战斗(键 = '') {
-      return /^(第1武魂|第2武魂|第\d+武魂)$/.test(String(键 || '').trim());
+      return /^第\d+武魂$/.test(String(键 || '').trim());
     }
 
     function 是魂灵槽位键_战斗(键 = '') {
