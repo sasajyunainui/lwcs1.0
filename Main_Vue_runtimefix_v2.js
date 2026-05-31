@@ -1706,40 +1706,75 @@ const DesktopUnifiedLayout = {
           <div class="mvu-unified-toolbar-main">
             <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
               <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
-              <strong class="mvu-unified-detail-title">{{ detailTitle }}</strong>
-              <button type="button" class="mvu-unified-title-action clickable" data-preview="角色切换器" data-unified-role-switch="panel">角色</button>
+              <strong class="mvu-unified-detail-title">{{ detailPathTitle }}</strong>
+              <div class="mvu-toolbar-overflow" :class="{ active: 工具栏菜单展开 }">
+                <button
+                  type="button"
+                  class="mvu-toolbar-overflow-trigger"
+                  aria-label="更多操作"
+                  :aria-expanded="工具栏菜单展开 ? 'true' : 'false'"
+                  @click.stop="切换工具栏菜单"
+                >⋯</button>
+                <div class="mvu-toolbar-overflow-menu" @click.stop>
+                  <div class="mvu-toolbar-overflow-section" data-ai-maintenance-title-target="panel"></div>
+                  <div class="mvu-unified-layout-toggle mvu-unified-layout-toggle--overflow">
+                    <button
+                      type="button"
+                      class="mvu-unified-layout-btn"
+                      :class="{ active: layoutState.surfaceMode !== 'shell' }"
+                      @click="切换桌面形态('unified')"
+                    >一体</button>
+                    <button
+                      type="button"
+                      class="mvu-unified-layout-btn"
+                      :class="{ active: layoutState.surfaceMode === 'shell' }"
+                      @click="切换桌面形态('shell')"
+                    >手机</button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
               <div class="mvu-unified-top-status" data-unified-top-status="panel"></div>
-              <div class="mvu-unified-toolbar-side">
-                <span class="mvu-unified-mode-badge">{{ modeBadge }}</span>
-                <div class="mvu-unified-layout-toggle">
+              <div class="mvu-unified-tab-row">
+                <button
+                  v-for="tab in tabs"
+                  :key="'unified-tab-' + tab.id"
+                  type="button"
+                  class="mvu-tab-btn mvu-unified-tab-btn"
+                  :class="{ active: tabState.current === tab.id }"
+                  :data-target="tab.id"
+                  :aria-pressed="tabState.current === tab.id ? 'true' : 'false'"
+                  @click="setTab(tab.id)"
+                >{{ tab.label }}</button>
+              </div>
+              <div class="mvu-toolbar-overflow" :class="{ active: 工具栏菜单展开 }">
+                <button
+                  type="button"
+                  class="mvu-toolbar-overflow-trigger"
+                  aria-label="更多操作"
+                  :aria-expanded="工具栏菜单展开 ? 'true' : 'false'"
+                  @click.stop="切换工具栏菜单"
+                >⋯</button>
+                <div class="mvu-toolbar-overflow-menu" @click.stop>
+                  <div class="mvu-ai-maintenance-home-api mvu-ai-maintenance-home-api--top" data-ai-maintenance-home-api></div>
+                  <div class="mvu-unified-layout-toggle mvu-unified-layout-toggle--overflow">
                   <button
                     type="button"
                     class="mvu-unified-layout-btn"
                     :class="{ active: layoutState.surfaceMode !== 'shell' }"
-                    @click="setDesktopMode('unified')"
+                    @click="切换桌面形态('unified')"
                   >一体</button>
                   <button
                     type="button"
                     class="mvu-unified-layout-btn"
                     :class="{ active: layoutState.surfaceMode === 'shell' }"
-                    @click="setDesktopMode('shell')"
+                    @click="切换桌面形态('shell')"
                   >手机</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div v-if="!detailState.isOpen" class="mvu-unified-tab-row">
-            <button
-              v-for="tab in tabs"
-              :key="'unified-tab-' + tab.id"
-              class="mvu-tab-btn mvu-unified-tab-btn"
-              :class="{ active: tabState.current === tab.id }"
-              :data-target="tab.id"
-              @click="setTab(tab.id)"
-            >{{ tab.label }}</button>
           </div>
         </div>
 
@@ -1747,11 +1782,11 @@ const DesktopUnifiedLayout = {
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
-                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-unified-card="archive-core" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-unified-card="primary-spirit" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-unified-card="secondary-spirit" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-unified-card="armory" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="储物仓库详细页" data-unified-card="vault" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card" data-unified-card="social" data-unified-surface="panel"></div>
               </div>
             </section>
@@ -1761,7 +1796,7 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--map">
                 <div class="mvu-unified-map-stage" data-mvu-map-stage="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="当前节点详情" data-unified-card="map-current" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-unified-card="map-current" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card" data-unified-card="map-locals" data-unified-surface="panel"></div>
               </div>
             </section>
@@ -1771,7 +1806,7 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--world">
                 <div class="mvu-unified-card mvu-unified-card--featured clickable" data-unified-card="world-hero" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="全息编年史" data-unified-card="world-timeline" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-unified-card="world-timeline" data-unified-surface="panel"></div>
               </div>
             </section>
           </section>
@@ -1779,9 +1814,9 @@ const DesktopUnifiedLayout = {
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-org' }" data-target="page-org">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--org">
-                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="势力矩阵总览" data-unified-card="org-hero" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="我的阵营详情" data-unified-card="org-faction" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="本地据点详情" data-unified-card="org-node" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-unified-card="org-hero" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-unified-card="org-faction" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-unified-card="org-node" data-unified-surface="panel"></div>
               </div>
             </section>
           </section>
@@ -1789,10 +1824,10 @@ const DesktopUnifiedLayout = {
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--terminal">
-                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="系统播报与日志" data-unified-card="terminal-hero" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="试炼与情报" data-unified-card="terminal-intel" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-unified-card="terminal-bestiary" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="任务界面" data-unified-card="terminal-quest" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-unified-card="terminal-hero" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="terminal-bestiary" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="panel"></div>
               </div>
             </section>
           </section>
@@ -1825,6 +1860,30 @@ const DesktopUnifiedLayout = {
       { immediate: true }
     );
     const detailTitle = computed(() => 读取当前详情标题());
+    const detailPathTitle = computed(() => {
+      const 页面标题 = String(activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '详情').trim();
+      const 标题 = String(detailTitle.value || '').trim();
+      if (页面标题 && 标题 && 页面标题 !== 标题) return `${页面标题} · ${标题}`;
+      return 标题 || 页面标题 || '详情';
+    });
+    const 工具栏菜单展开 = ref(false);
+    const 关闭工具栏菜单 = () => {
+      工具栏菜单展开.value = false;
+    };
+    const 切换工具栏菜单 = () => {
+      工具栏菜单展开.value = !工具栏菜单展开.value;
+    };
+    const 处理工具栏外部点击 = event => {
+      if (!工具栏菜单展开.value) return;
+      const 目标 = event && event.target instanceof Element ? event.target : null;
+      if (目标 && 目标.closest('#mvu-unified-mount .mvu-toolbar-overflow')) return;
+      关闭工具栏菜单();
+    };
+    const 切换桌面形态 = mode => {
+      关闭工具栏菜单();
+      setDesktopMode(mode);
+      scheduleUnifiedFrameViewportSync();
+    };
     let removeDetailWheelBridge = null;
     const 清理顶层浮窗 = () => {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
@@ -2012,6 +2071,7 @@ const DesktopUnifiedLayout = {
       }
       detailState.previewKey = nextPreviewKey;
       detailState.isOpen = true;
+      关闭工具栏菜单();
       requestUnifiedDetailRender(options);
       scheduleUnifiedFrameViewportSync();
       return true;
@@ -2048,6 +2108,7 @@ const DesktopUnifiedLayout = {
     };
     const setUnifiedTab = tabId => {
       清理顶层浮窗();
+      关闭工具栏菜单();
       requestTabChange(tabId);
       scheduleUnifiedFrameViewportSync();
     };
@@ -2063,6 +2124,7 @@ const DesktopUnifiedLayout = {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
       window.addEventListener('resize', handleDesktopUnifiedResize);
+      document.addEventListener('click', 处理工具栏外部点击, true);
       bindDetailWheelBridge();
       scheduleUnifiedFrameViewportSync();
       forceUnifiedCardSync();
@@ -2075,6 +2137,7 @@ const DesktopUnifiedLayout = {
     });
     onUnmounted(() => {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
+      document.removeEventListener('click', 处理工具栏外部点击, true);
       if (typeof removeDetailWheelBridge === 'function') {
         removeDetailWheelBridge();
         removeDetailWheelBridge = null;
@@ -2096,6 +2159,7 @@ const DesktopUnifiedLayout = {
       }
     });
     watch(() => mvuTabState.current, () => {
+      关闭工具栏菜单();
       scheduleUnifiedFrameViewportSync();
     });
     watch(() => mvuLayoutState.isMobileViewport, nextValue => {
@@ -2111,6 +2175,10 @@ const DesktopUnifiedLayout = {
       detailHostRef,
       detailState,
       detailTitle,
+      detailPathTitle,
+      工具栏菜单展开,
+      切换工具栏菜单,
+      切换桌面形态,
       modeBadge,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,

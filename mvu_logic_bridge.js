@@ -12530,14 +12530,35 @@
           })
         : null;
       const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 12);
+      const 副作用明细 = (Array.isArray(评估.副作用明细) ? 评估.副作用明细 : []).slice(0, 6);
+      const 条件来源标签 = 项 => {
+        const 路径 = String(项 && 项.路径 || '');
+        const 匹配 = 路径.match(/条件分支\[(\d+)\]\.(替换效果|追加效果)/);
+        if (!匹配) return String(项 && 项.分支角色 || '').trim();
+        const 序号 = Number(匹配[1]) + 1;
+        return `条件${序号}${匹配[2] === '替换效果' ? '替换' : '追加'}`;
+      };
       const 明细标签 = 项 => {
-        const 角色 = String(项.分支角色 || '').trim();
+        const 角色 = 条件来源标签(项);
         const 名称 = String(项.关键值 || 项.原型 || '效果').trim();
-        return [角色 || '基础', 名称].filter(Boolean).join(' / ') || '效果';
+        const 字段 = String(项.关键字段 || '').trim();
+        const 目标 = String(项.目标 || '').trim();
+        const 数值 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
+        const 限定 = String(项.限定元素 || '').trim();
+        return [
+          角色 || '基础',
+          项.原型 || '',
+          字段 && 名称 ? `${字段}:${名称}` : 名称,
+          数值,
+          目标,
+          项.持续回合 ? `持续${项.持续回合}回合` : '',
+          限定 ? `限定${限定}` : '',
+        ].filter(Boolean).join(' / ') || '效果';
       };
       const 明细字段 = 项 => {
         const 字段列表 = [
           项.路径 ? `路径 ${项.路径}` : '',
+          条件来源标签(项) ? `来源 ${条件来源标签(项)}` : '',
           项.原型 ? `原型 ${项.原型}` : '',
           项.关键字段 ? `${项.关键字段} ${项.关键值 || '-'}` : '',
           项.目标 ? `目标 ${项.目标}` : '',
@@ -12552,6 +12573,9 @@
           项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
           项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
           项.持续系数 !== null && 项.持续系数 !== undefined ? `持续系数 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
+          项.限定元素 ? `限定元素 ${项.限定元素}` : '',
+          项.限制来源 ? `限制来源 ${项.限制来源}` : '',
+          项.限制抵扣率 ? `限制抵扣率 ${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
           Number(项.限制抵扣 || 0) > 0 ? `限制 -${Number(项.限制抵扣 || 0).toFixed(1)}` : '',
         ].filter(Boolean);
         return 字段列表.join(' · ');
@@ -12560,8 +12584,36 @@
         项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(1)}` : '',
         项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算 ${Number(项.绝对值折算百分点 || 0).toFixed(1)}%` : '',
         项.单位COST !== null && 项.单位COST !== undefined ? `单位 ${Number(项.单位COST || 0).toFixed(2)}` : '',
+        项.目标系数 !== null && 项.目标系数 !== undefined ? `目标 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
+        项.持续系数 !== null && 项.持续系数 !== undefined ? `持续 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
+        项.限制抵扣率 ? `${项.限制来源 || '限制'} -${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
       ].filter(Boolean).join(' ｜ ');
-      const 明细Html = 明细.length ? `
+      const 副作用标签 = 项 => [
+        '副作用',
+        项.副作用类型 || '',
+        项.触发时机 || '',
+        项.生效对象 || '',
+        项.触发概率 !== undefined ? `${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续${项.持续回合}回合` : '',
+      ].filter(Boolean).join(' / ');
+      const 副作用字段 = 项 => [
+        项.路径 ? `路径 ${项.路径}` : '',
+        项.副作用类型 ? `副作用 ${项.副作用类型}` : '',
+        项.副作用状态 ? `状态 ${项.副作用状态}` : '',
+        项.触发时机 ? `触发 ${项.触发时机}` : '',
+        项.生效对象 ? `对象 ${项.生效对象}` : '',
+        项.触发概率 !== undefined ? `概率 ${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续 ${项.持续回合}` : '',
+        项.数值 ? `数值 ${项.数值}` : '',
+        项.副数值 ? `副数值 ${项.副数值}` : '',
+      ].filter(Boolean).join(' · ');
+      const 副作用辅助文本 = 项 => [
+        项.数值 ? `数值 ${项.数值}` : '',
+        项.副数值 ? `副值 ${项.副数值}` : '',
+        项.触发概率 !== undefined ? `概率 ${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续 ${项.持续回合}` : '',
+      ].filter(Boolean).join(' ｜ ');
+      const 明细Html = 明细.length || 副作用明细.length ? `
             <div class="skill-designer-cost-detail">
               ${明细.map(项 => `
                 <div class="skill-designer-cost-detail-row${项.计入COST === false ? ' muted' : ''}">
@@ -12569,24 +12621,17 @@
                   <span>${项.计入COST === false ? '候选 ' : ''}${htmlEscape(`${Number(项.原始COST || 0).toFixed(1)} / ${Number(项.净COST || 项.原始COST || 0).toFixed(1)}`)}</span>
                 </div>
               `).join('')}
+              ${副作用明细.map(项 => `
+                <div class="skill-designer-cost-detail-row muted">
+                  <em title="${escapeHtmlAttr(副作用字段(项))}">${htmlEscape(副作用标签(项))}${副作用辅助文本(项) ? `<small>${htmlEscape(副作用辅助文本(项))}</small>` : ''}</em>
+                  <span>${htmlEscape(`-${Number(项.COST || 0).toFixed(1)}`)}</span>
+                </div>
+              `).join('')}
             </div>
           ` : '';
       const 公式Html = `
             <div class="skill-designer-cost-detail">
               ${[
-                (() => {
-                  const 目标摘要 = COST助手 && typeof COST助手.计算生成目标COST_V1 === 'function'
-                    ? COST助手.计算生成目标COST_V1(评估, { ...预算上下文, 随机种子: `${临时技能?.魂技名 || ''}:预览` })
-                    : null;
-                  return ['生成目标COST', 目标摘要 ? Number(目标摘要.生成目标COST || 0).toFixed(1) : '--'];
-                })(),
-                (() => {
-                  const 利用率 = COST助手 && typeof COST助手.计算天赋预算利用率_V1 === 'function'
-                    ? COST助手.计算天赋预算利用率_V1(预算上下文.角色, { ...预算上下文, 随机种子: `${临时技能?.魂技名 || ''}:预览` })
-                    : 0;
-                  return ['天赋利用率要求', 利用率 ? `${(Number(利用率 || 0) * 100).toFixed(1)}%` : '--'];
-                })(),
-                ['实际利用率', `${(Number(评估.实际COST || 0) / Math.max(0.1, Number(评估.运转基准 || 0)) * 100).toFixed(1)}%`],
                 ['魂技位', 评估.魂技位],
                 ['基础 COST', Number(评估.基础参考 || 0).toFixed(1)],
                 ['来源承载', `${Number(评估.来源承载 || 0).toFixed(2)}x`],
@@ -12620,7 +12665,6 @@
             ${明细Html}
           </details>
           <div class="skill-designer-trial-row"><em>限制抵扣</em><span>-${htmlEscape(Number(评估.限制COST || 0).toFixed(1))}</span></div>
-          <div class="skill-designer-trial-row"><em>副作用抵扣</em><span>-${htmlEscape(Number(评估.副作用COST || 0).toFixed(1))}</span></div>
           <div class="skill-designer-trial-row"><em>实际 COST</em><span>${htmlEscape(Number(评估.实际COST || 0).toFixed(1))}</span></div>
           <details class="skill-designer-cost-block" open>
             <summary class="skill-designer-trial-row skill-designer-cost-head">
@@ -12849,6 +12893,18 @@
     const 角色属性 = 角色数据 && Object.keys(角色数据).length
       ? 构建技能设计台角色战斗属性(角色键, 角色数据, normalizeSkillUiText(草稿 && 草稿.type, '强攻系'))
       : 构建技能设计台标准战斗属性(草稿?.level || 草稿?.lv || 50, 草稿?.type || '强攻系');
+    const 路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 武魂索引 = 路径.findIndex(片段 => ['第一武魂', '第二武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂数据 = 武魂索引 >= 0 ? deepGet(根数据, 路径.slice(0, 武魂索引 + 1), {}) : {};
+    const 预算系别 = normalizeSkillUiText(
+      武魂数据?.系别 ||
+        武魂数据?.type ||
+        草稿?.type ||
+        角色属性?.属性?.系别 ||
+        角色数据?.属性?.系别 ||
+        '强攻系',
+      '强攻系',
+    );
     let 来源类别 = '魂技';
     let 预算角色 = 角色属性;
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
@@ -12877,6 +12933,8 @@
       角色: 预算角色,
       施术者: 预算角色,
       来源类别,
+      系别: 预算系别,
+      武魂系别: 预算系别,
       魂环位,
       魂环数据,
       ringAge: 魂环数据?.年限,
@@ -15535,6 +15593,21 @@
     return 当前目标 === '分身' && !技能设计台原型允许分身目标(原型) ? '单体' : 当前目标;
   }
 
+  function 技能设计台效果是正向辅助(原型 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 数值 = 解析技能设计台正负数值(effect && effect['数值']);
+    if (['属性修正', '资源变化', '资源转移', '判定修正', '资源锁定', '决策干扰'].includes(原型名)) return 数值 > 0;
+    if (原型名 === '护盾变化') return normalizeSkillUiText(effect && effect['护盾模式'], '') === '正向护盾' || 数值 > 0;
+    if (原型名 === '结算修正') {
+      const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+      if (['治疗', '技能效果', '伤害转治疗'].includes(结算)) return 数值 > 0;
+      if (结算 === '受到伤害') return 数值 < 0;
+      return ['伤害分摊', '消耗分摊', '伤害吸收'].includes(结算);
+    }
+    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
+    return false;
+  }
+
   function 约束技能设计台原型正式目标(原型 = '', 目标 = '', fallbackTarget = '单体', 效果 = null) {
     const 原型名 = normalizeSkillUiText(原型, '');
     const 默认目标 = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
@@ -15549,6 +15622,7 @@
     if (['召唤生成', '炸环'].includes(原型名)) return '自身';
     if (['伤害结算', '资源转移'].includes(原型名) && !['单体', '群体', '全场'].includes(当前目标)) return '单体';
     if (原型名 === '修炼增益' && 当前目标 === '召唤物') return 默认目标 === '自身' ? '自身' : '单体';
+    if (当前目标 === '全场' && 技能设计台效果是正向辅助(原型名, 效果 || {})) return '群体';
     return 当前目标;
   }
 
@@ -15568,6 +15642,7 @@
     if (原型名 === '战斗外复活') return ['单体', '群体', '全场'];
     if (原型名 === '状态转移' || 原型名 === '状态交换') return ['单体'];
     if (原型名 === '状态移除' || 原型名 === '规则防御') return ['自身', '单体', '群体'];
+    if (技能设计台效果是正向辅助(原型名, context?.当前效果 || {})) return ['自身', '单体', '群体'];
     return ['自身', '单体', '群体', '全场'];
   }
 
@@ -26285,13 +26360,11 @@
 
           const refreshPreview = (draftOverride = null) => {
             const formState = draftOverride || syncDraftCache();
-            const sideEffectSummary = buildSkillDesignerSideEffectSummary(formState);
             const previewMap = {
               fusion: buildSkillDesignerFusionSummary(formState) || '未设置',
               mechanic: 构建技能设计台原型摘要(formState) || '未设置',
               mechanicParams: '',
               execution: buildSkillDesignerExecutionSummary(formState) || '未设置',
-              sideEffects: sideEffectSummary,
               progress: buildSkillDesignerArtProgressSummary(formState) || '未设置',
               attribute: buildSkillDesignerAttributeSummary(formState) || '未设置',
               summary: 构建技能设计台当前翻译摘要(formState, previewMeta, snapshot.rootData) || '未设置',
@@ -26300,11 +26373,6 @@
               const key = node.getAttribute('data-skill-designer-preview') || '';
               node.textContent = previewMap[key] || '未设置';
             });
-            const sideEffectRow = mountEl.querySelector('[data-skill-designer-side-effect-summary-row]');
-            if (sideEffectRow) {
-              sideEffectRow.hidden = !sideEffectSummary;
-              sideEffectRow.style.display = sideEffectSummary ? '' : 'none';
-            }
             const simulationNode = mountEl.querySelector('[data-skill-designer-simulation]');
             if (simulationNode) {
               const simulationHtml = buildSkillDesignerSimulationHtml(formState, snapshot);
@@ -27735,10 +27803,7 @@
                       ? `<div class=\"skill-designer-summary-row\"><em>融合对象</em><span data-skill-designer-preview=\"fusion\">${htmlEscape(buildSkillDesignerFusionSummary(designerDraft) || '未设置')}</span></div>`
                       : ''
                   }
-                  <div class=\"skill-designer-summary-row\"><em>原型列表</em><span data-skill-designer-preview=\"mechanic\">${htmlEscape(构建技能设计台原型摘要(designerDraft) || '未设置')}</span></div>
-                  <div class=\"skill-designer-summary-row\"><em>执行摘要</em><span data-skill-designer-preview=\"execution\">${htmlEscape(buildSkillDesignerExecutionSummary(designerDraft) || '未设置')}</span></div>
                   <div class=\"skill-designer-summary-row\"><em>当前属性</em>${buildSkillDesignerCurrentAttributeSummaryHtml(snapshot)}</div>
-                  <div class=\"skill-designer-summary-row\" data-skill-designer-side-effect-summary-row ${buildSkillDesignerSideEffectSummary(designerDraft) ? '' : 'hidden style=\"display:none\"'}><em>副作用</em><span data-skill-designer-preview=\"sideEffects\">${htmlEscape(buildSkillDesignerSideEffectSummary(designerDraft))}</span></div>
                   <div class=\"skill-designer-summary-row skill-designer-trial-card\" data-skill-designer-cost-row ${技能COST试算内容 ? '' : 'hidden'}><em>COST</em><div data-skill-designer-cost>${技能COST试算内容}</div></div>
                   <div class=\"skill-designer-summary-row skill-designer-trial-card\" data-skill-designer-trial-row ${技能试算内容 ? '' : 'hidden'}><em>试算</em><div data-skill-designer-simulation>${技能试算内容}</div></div>
                   ${
@@ -27790,14 +27855,11 @@
                 .join(' ')
                 .toLowerCase();
               return `
-                <div class="role-switch-tile${isCurrent ? ' active' : ''}" data-switch-search="${escapeHtmlAttr(searchText)}">
+                <div class="role-switch-tile${isCurrent ? ' active' : ''}" data-switch-search="${escapeHtmlAttr(searchText)}" data-mvu-switch-char="${escapeHtmlAttr(name)}" role="button" tabindex="0" title="${escapeHtmlAttr(`查看${displayName}`)}">
                   <div class="role-switch-head"><b>${htmlEscape(name)}</b><span class="state-tag ${isCurrent ? 'live' : isPlayer ? 'warn' : ''}">${isCurrent ? '当前查看' : isPlayer ? '玩家' : '角色'}</span></div>
                   <div class="role-switch-meta">${htmlEscape(`${lvText} ｜ ${identityText}`)}</div>
                   <div class="role-switch-meta">${htmlEscape(`${locText} ｜ ${actionText}`)}</div>
-                  <div class="role-switch-actions">
-                    <button type="button" class="tag-chip role-switch-action-btn" data-mvu-switch-char="${escapeHtmlAttr(name)}">切换</button>
-                    ${允许删除 ? `<button type="button" class="tag-chip role-switch-action-btn danger" data-role-delete-char="${escapeHtmlAttr(name)}">删除</button>` : ''}
-                  </div>
+                  ${允许删除 ? `<div class="role-switch-actions"><button type="button" class="tag-chip role-switch-action-btn danger" data-role-delete-char="${escapeHtmlAttr(name)}">删除</button></div>` : ''}
                 </div>
               `;
             })
@@ -27863,10 +27925,19 @@
               currentPage += 1;
               applyFilter();
             });
+          const 处理角色卡键盘切换 = event => {
+            if (!event || (event.key !== 'Enter' && event.key !== ' ')) return;
+            const tile = event.currentTarget;
+            if (!tile || !tile.getAttribute('data-mvu-switch-char')) return;
+            event.preventDefault();
+            tile.click();
+          };
+          tileEls.forEach(tile => tile.addEventListener('keydown', 处理角色卡键盘切换));
           applyFilter();
           return {
             destroy() {
               if (inputEl) inputEl.removeEventListener('input', 处理角色搜索输入);
+              tileEls.forEach(tile => tile.removeEventListener('keydown', 处理角色卡键盘切换));
             },
           };
         },
