@@ -5093,14 +5093,30 @@ class BattleUIComponent {
       return String(rawCost || '无').split(/\s+维持[:：]/)[0].trim() || '无';
     }
 
-    function 计算伤害消耗加成系数(skill = {}, 攻击方 = {}, 防御方 = {}, 防御方最终 = {}) {
+    function 读取技能魂环位_战斗(skill = {}, 攻击方 = {}) {
+      const 路径 = Array.isArray(skill?.__魂环路径) ? skill.__魂环路径 : [];
+      const 命中 = 路径.map(项 => String(项 || '').match(/第(\d+)魂环/)).find(Boolean);
+      if (命中) return Math.max(1, Math.floor(Number(命中[1] || 1)));
+      const 名称 = String(skill?.魂技名 || skill?.name || '').trim();
+      const 名称命中 = 名称.match(/第(\d+)魂技/);
+      if (名称命中) return Math.max(1, Math.floor(Number(名称命中[1] || 1)));
+      return Math.max(1, Math.min(9, Math.ceil(Math.max(1, Number(攻击方?.等级 || 攻击方?.level || 1)) / 10)));
+    }
+
+    function 读取战斗伤害固定百分比消耗(skill = {}, 攻击方 = {}) {
+      const effects = getSkillEffects(skill, { actor: 攻击方, caster: 攻击方, attacker: 攻击方, 主原型成立: true, hit: true, 命中: true });
+      if (!effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) return 0;
+      const 魂环位 = 读取技能魂环位_战斗(skill, 攻击方);
+      if (魂环位 === 7) return 0;
+      return Math.max(0, Math.min(0.27, 魂环位 * 0.03));
+    }
+
+    function 计算伤害消耗加成系数(skill = {}, 攻击方 = {}) {
       const 承载消耗文本 = String(skill?.__维持释放伤害承载消耗 || '').trim();
       const 消耗 = parseSkillCostForChar({ ...skill, 消耗: 读取技能启动消耗(skill) }, 攻击方, {
         actor: 攻击方,
         caster: 攻击方,
         attacker: 攻击方,
-        target: 防御方,
-        defender: 防御方,
         skill,
         当前行动: String(skill?.name || skill?.魂技名 || '释放魂技').trim(),
       });
@@ -5109,8 +5125,6 @@ class BattleUIComponent {
           actor: 攻击方,
           caster: 攻击方,
           attacker: 攻击方,
-          target: 防御方,
-          defender: 防御方,
           skill,
           当前行动: String(skill?.name || skill?.魂技名 || '维持释放').trim(),
         });
@@ -5118,13 +5132,13 @@ class BattleUIComponent {
         消耗.reqVit = 维持消耗.reqVit;
         消耗.reqMen = 维持消耗.reqMen;
       }
-      const 对方魂力上限 = Math.max(1, 读取战斗资源上限值(防御方, 防御方最终, 'sp'));
-      const 对方精神上限 = Math.max(1, 读取战斗资源上限值(防御方, 防御方最终, 'men'));
-      const 加成 =
-        Math.max(0, Number(消耗.reqSp || 0)) / 对方魂力上限 +
-        Math.max(0, Number(消耗.reqVit || 0)) / 对方魂力上限 +
-        Math.max(0, Number(消耗.reqMen || 0)) / 对方精神上限;
-      return Math.max(0, 1 + 加成);
+      const 魂力比例 = Math.max(0, Number(消耗.reqSp || 0)) / Math.max(1, 读取战斗资源上限值(攻击方, 攻击方.final || {}, 'sp'));
+      const 体力比例 = Math.max(0, Number(消耗.reqVit || 0)) / Math.max(1, 读取战斗资源上限值(攻击方, 攻击方.final || {}, 'vit'));
+      const 精神比例 = Math.max(0, Number(消耗.reqMen || 0)) / Math.max(1, 读取战斗资源上限值(攻击方, 攻击方.final || {}, 'men'));
+      const 承载比例 = 魂力比例 + 体力比例 + 精神比例;
+      if (!(承载比例 > 0)) return 1;
+      const 固定比例 = 读取战斗伤害固定百分比消耗(skill, 攻击方);
+      return Math.max(0, (承载比例 + 固定比例) / 承载比例);
     }
 
     const BATTLE_MECHANISM_CONSUMERS = Object.freeze({
@@ -21282,7 +21296,7 @@ class BattleUIComponent {
         const soulDriveScale = getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
         const spiritDriveScale = getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
         const 定位伤害倍率 = 计算定位伤害倍率(attacker, defender, dmgType);
-        const 消耗加成系数 = 计算伤害消耗加成系数(skill, attacker, defender, defenderFinalStat);
+        const 消耗加成系数 = 计算伤害消耗加成系数(skill, attacker);
         if (/真实/.test(dmgType)) {
           const 真实驱动 = Math.max(1, 计算精神伤害攻势值(attacker, attackerFinalStat));
           projectedDamage = skillPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
@@ -22662,7 +22676,7 @@ class BattleUIComponent {
           const spiritDriveScale = getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
           const 定位伤害倍率 = 计算定位伤害倍率(attacker, targetObj, dmgType);
           let projectedDamage = 0;
-          const 消耗加成系数 = 计算伤害消耗加成系数(playerAction.skill, attacker, targetObj, targetFinalStat);
+          const 消耗加成系数 = 计算伤害消耗加成系数(playerAction.skill, attacker);
           if (/真实/.test(dmgType)) {
             const 真实驱动 = Math.max(1, 计算精神伤害攻势值(attacker, attackerFinalStat));
             projectedDamage = remainPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;

@@ -638,13 +638,15 @@ const DesktopUnifiedLayout = {
       const 视口高度 = Number(window.innerHeight) || Number(document.documentElement.clientHeight) || 720;
       const 发送栏 = document.getElementById('send_form');
       const 发送栏矩形 = 发送栏 ? 发送栏.getBoundingClientRect() : null;
+      const 发送栏高度 = 发送栏矩形 ? Math.max(60, 发送栏矩形.height) : 90;
       const 底部边界 = 发送栏矩形 && 发送栏矩形.top > 80 && 发送栏矩形.top < 视口高度
-        ? 发送栏矩形.top - 10
-        : 视口高度 - 10;
+        ? 发送栏矩形.top - 24
+        : 视口高度 - 发送栏高度 - 24;
       const 顶部边界 = 42;
-      const 状态栏目标高度 = 视口高度 * 0.86;
-      const 状态栏高度上限 = 940;
-      const 状态栏高度下限 = Math.min(760, Math.max(620, 视口高度 - 72));
+      const 可用高度 = Math.max(420, 底部边界 - 顶部边界);
+      const 状态栏目标高度 = Math.min(可用高度, 视口高度 * 0.70);
+      const 状态栏高度上限 = 760;
+      const 状态栏高度下限 = Math.min(620, Math.max(520, 视口高度 - 发送栏高度 - 120));
       const 状态栏最大高度 = Math.max(状态栏高度下限, Math.min(状态栏高度上限, 状态栏目标高度));
       const 统一挂载 = frame.closest('#mvu-unified-mount') || frame.parentElement || frame;
       统一挂载.style.setProperty('--mvu-unified-frame-max-height', `${Math.floor(状态栏最大高度)}px`);

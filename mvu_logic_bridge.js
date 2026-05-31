@@ -12468,13 +12468,6 @@
       if (!评估) return '';
       const 差额 = Number((Number(评估.实际门禁 || 0) - Number(评估.实际COST || 0)).toFixed(2));
       const 状态 = 差额 >= 0 ? `剩余 ${差额.toFixed(1)}` : `超出 ${Math.abs(差额).toFixed(1)}`;
-      const 伤害参考 = 技能设计台是普通魂环伤害魂技(预览元数据, 临时技能._效果数组, 临时技能) && typeof COST助手.计算伤害结算参考消耗_V1 === 'function'
-        ? COST助手.计算伤害结算参考消耗_V1({
-            ...预算上下文,
-            魂环位: 评估.魂技位 || 预算上下文.魂环位,
-            品质: 规范化草稿?.品质 || 规范化草稿?.grade || 'B',
-          })
-        : null;
       const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 12);
       const 副作用明细 = (Array.isArray(评估.副作用明细) ? 评估.副作用明细 : []).slice(0, 6);
       const 条件来源标签 = 项 => {
@@ -12578,6 +12571,7 @@
               `).join('')}
             </div>
           ` : '';
+      const 当前魂力上限 = Math.max(0, Number(预算上下文?.角色?.属性?.魂力上限 || 预算上下文?.角色?.sp_max || 0));
       const 公式Html = `
             <div class="skill-designer-cost-detail">
               ${[
@@ -12587,8 +12581,11 @@
                 ['魂环加值', `${Number(评估.魂环年限COST修正 || 0) >= 0 ? '+' : ''}${Number(评估.魂环年限COST修正 || 0).toFixed(1)}`],
                 ['天赋加值', `${Number(评估.天赋修正 || 0) >= 0 ? '+' : ''}${Number(评估.天赋修正 || 0).toFixed(1)}`],
                 ['运转基准', Number(评估.运转基准 || 0).toFixed(1)],
-                ['标准消耗', Number(评估.标准消耗 || 0).toFixed(0)],
+                ['运转标准消耗', 评估.运转标准消耗 === null || 评估.标准消耗 === null ? '百分比' : Number(评估.标准消耗 || 0).toFixed(0)],
+                ['当前魂力上限', 当前魂力上限 > 0 ? 当前魂力上限.toFixed(0) : '-'],
+                ['标准消耗占比', 评估.标准消耗 === null || !(当前魂力上限 > 0) ? '百分比' : `${((Number(评估.标准消耗 || 0) / Math.max(1, 当前魂力上限)) * 100).toFixed(1)}%`],
                 ['实际消耗', Number(评估.实际消耗 || 0).toFixed(0)],
+                ['实际消耗占比', `${(Number(评估.承载消耗比例 || 0) * 100).toFixed(1)}%`],
                 ['消耗倍数', `${Number(评估.消耗倍数 || 0).toFixed(2)}x`],
                 ['前摇倍数', `${Number(评估.前摇倍数 || 0).toFixed(2)}x`],
                 ['代价能量', `${Number(评估.代价能量 || 0).toFixed(3)}x`],
@@ -12601,12 +12598,6 @@
               `).join('')}
             </div>
           `;
-      const 伤害参考Html = 伤害参考 ? `
-          <div class="skill-designer-trial-row muted">
-            <em>伤害参考 <button type="button" class="skill-designer-cost-help" data-cost-tip="按魂技位和品质折算的威力参考，不写入真实消耗，不参与 COST。" aria-label="伤害参考说明">i</button></em>
-            <span>${htmlEscape(`${伤害参考.资源}${伤害参考.消耗基准}%≈${伤害参考.绝对值}`)}</span>
-          </div>
-        ` : '';
       return `
         <div class="skill-designer-cost-panel">
           <details class="skill-designer-cost-block" open>
@@ -12622,7 +12613,6 @@
             </summary>
             ${公式Html}
           </details>
-          ${伤害参考Html}
           <div class="skill-designer-trial-row${差额 < 0 ? ' muted' : ''}"><em>状态</em><span>${htmlEscape(状态)}</span></div>
         </div>
       `;
@@ -13059,29 +13049,28 @@
     return Math.max(0.35, Math.min(1.85, pressure * (0.45 + 0.55 * remainRatio)));
   }
 
-  function 计算技能设计台消耗加成系数(draft = {}, attacker = {}, defender = {}) {
+  function 计算技能设计台固定结算消耗比例(draft = {}) {
+    const effects = buildSkillDesignerRuntimeEffects(buildSkillDesignerFormStateFromDraft(draft, {}), {}, {});
+    if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
+    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    if (ringIndex === 7) return 0;
+    return Math.max(0, Math.min(0.27, ringIndex * 0.03));
+  }
+
+  function 计算技能设计台消耗加成系数(draft = {}, attacker = {}) {
     const cost =
       draft && draft.cost && typeof draft.cost === 'object' && !Array.isArray(draft.cost)
         ? draft.cost
         : buildSkillDesignerCostObject(draft.costType || draft.resourceType, draft.costValues || draft.resourceValues);
-    const maxByResource = {
-      魂力: Math.max(1, Number(defender.sp_max || 1)),
-      精神力: Math.max(1, Number(defender.men_max || 1)),
-      体力: Math.max(1, Number(defender.sp_max || 1)),
-    };
-    const bonus = safeEntries(cost).reduce((sum, [resource, raw]) => {
+    const 承载比例 = safeEntries(cost).reduce((sum, [resource, raw]) => {
       const text = normalizeSkillUiText(raw, '');
-      const costValue = /%$/.test(text)
-        ? (Math.max(
-            0,
-            Number(attacker[resource === '精神力' ? 'men_max' : resource === '体力' ? 'vit_max' : 'sp_max'] || 0),
-          ) *
-            Math.max(0, parseSkillDesignerNumericInputValue(text, 0))) /
-          100
-        : Math.max(0, Number(raw || 0));
-      return sum + costValue / (maxByResource[resource] || 1);
+      const 上限 = Math.max(1, Number(attacker[resource === '精神力' ? 'men_max' : resource === '体力' ? 'vit_max' : 'sp_max'] || 1));
+      const 比例 = /%$/.test(text) ? Math.max(0, parseSkillDesignerNumericInputValue(text, 0)) / 100 : Math.max(0, Number(raw || 0)) / 上限;
+      return sum + 比例;
     }, 0);
-    return Math.max(0, 1 + bonus);
+    if (!(承载比例 > 0)) return 1;
+    const 固定比例 = 计算技能设计台固定结算消耗比例(draft);
+    return Math.max(0, (承载比例 + 固定比例) / 承载比例);
   }
 
   function 计算技能设计台单段伤害(
@@ -13096,7 +13085,7 @@
       0,
       Number(effect['威力倍率'] || 0) || parseSkillDesignerFactorInputValue(effect['数值'], 0),
     );
-    const power = rawPower > 0 && rawPower <= 20 ? rawPower * 100 : rawPower;
+    const power = rawPower;
     const penetration = Math.max(0, Number(effect['防御穿透'] || 0));
     const effectivePenetration = penetration >= 100 ? 100 : Math.min(92, penetration);
     const defense = Math.max(1, Number(defender.def || 1) * (1 - effectivePenetration / 100));
@@ -13108,8 +13097,14 @@
     const attackValue = mentalDamage
       ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1) * 0.7)
       : Number(attacker.str || 1);
-    const costScale = 计算技能设计台消耗加成系数(draft, attacker, defender);
+    const costScale = 计算技能设计台消耗加成系数(draft, attacker);
     return Math.max(0, power * (attackValue / defense) * driveScale * costScale * finalDamageMult + finalDamageBonus);
+  }
+
+  function 获取技能设计台标准攻击威力倍率(等级 = 1) {
+    const ringIndex = Math.max(1, Math.min(9, Math.ceil(Math.max(1, Number(等级 || 1)) / 10)));
+    if (ringIndex === 7) return 770;
+    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || 70;
   }
 
   function 计算技能设计台伤害次数系数(effect = {}) {
@@ -13130,7 +13125,7 @@
     const defender = 防御者属性 || 构建技能设计台标准战斗属性(施术等级, normalizeSkillUiText(draft.type, '防御系'));
     const attacker = 构建技能设计台标准战斗属性(攻击等级, '强攻系');
     let incoming = 计算技能设计台单段伤害(
-      { 原型: '伤害结算', 威力倍率: 125, 伤害类型: '物理伤害' },
+      { 原型: '伤害结算', 威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 伤害类型: '物理伤害' },
       attacker,
       defender,
       1,
@@ -14235,7 +14230,7 @@
     switch (label) {
       case '伤害类':
         return [
-          createSkillDesignerNumberParam('powerRatio', '强度倍率', '125'),
+          createSkillDesignerNumberParam('powerRatio', '强度倍率', '100'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
           createSkillDesignerTextParam('range', '作用范围', '单体 / 半径3米'),
         ];
@@ -17782,7 +17777,7 @@
         const damageEffect = buildSkillDesignerRuntimeObject({
           原型: '伤害结算',
           目标: target,
-          威力倍率: 规范化技能设计台伤害威力倍率(parseSkillDesignerFactorInputValue(params[powerKey], 125), 125),
+          威力倍率: 规范化技能设计台伤害威力倍率(parseSkillDesignerFactorInputValue(params[powerKey], 100), 100),
           伤害类型: inferSkillDesignerDamageType(draft),
           攻击段数: parseSkillDesignerIntegerInputValue(params['hitCount'], 1, 1),
           段数:
@@ -22640,31 +22635,16 @@
     return `<div class="mvu-unified-spirit-card">${content}</div>`;
   }
 
-  function 构建统一武魂双轨卡(snapshot) {
-    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
+  function 构建统一副轨摘要卡(snapshot) {
     const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
+    if (第二轨) return buildUnifiedSpiritCard(第二轨, { primary: false });
     const 融合资料 = getFusionArchiveMeta(snapshot || {});
     const 魂骨数量 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
-    const 第二轨预览键 = 第二轨 ? toText(第二轨.preview, '血脉封印详细页') : '血脉封印详细页';
-    const 第二轨内容 = 第二轨
-      ? 第二轨.kind === 'bloodline'
-        ? renderArchiveBloodlineEntry(第二轨)
-        : renderArchiveSpiritEntry(第二轨, false)
-      : `
-          <div class="mvu-spirit-empty-compact">
-            <b>第2武魂 / 血脉</b>
-            <span>未启用第2武魂，血脉/封印仍可查看。</span>
-            <em>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))} 项 · 魂骨 ${htmlEscape(String(魂骨数量 || 0))} 块</em>
-          </div>
-        `;
     return `
-        <div class="mvu-spirit-pair-grid">
-          <div class="mvu-spirit-pair-side mvu-spirit-pair-side--primary ${主轨 ? 'clickable' : 'is-empty'}"${主轨 ? ` data-preview="${escapeHtmlAttr(toText(主轨.preview, '第1武魂详细页'))}"` : ''}>
-            ${主轨 ? renderArchiveSpiritEntry(主轨, true) : '<div class="mvu-unified-empty-note">当前未加载第1武魂。</div>'}
-          </div>
-          <div class="mvu-spirit-pair-side mvu-spirit-pair-side--secondary clickable ${第二轨 ? '' : 'is-empty'}" data-preview="${escapeHtmlAttr(第二轨预览键)}">
-            ${第二轨内容}
-          </div>
+        <div class="mvu-spirit-empty-compact">
+          <b>第2武魂 / 血脉</b>
+          <span>未启用第2武魂。</span>
+          <em>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))} 项 · 魂骨 ${htmlEscape(String(魂骨数量 || 0))} 块</em>
         </div>
       `;
   }
@@ -25023,15 +25003,27 @@
 
   function renderUnifiedSpiritCardsBySurface(snapshot, surface) {
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
-    setUnifiedCardMarkup('primary-spirit', 构建统一武魂双轨卡(snapshot), {
+    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
+    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
+    setUnifiedCardMarkup('primary-spirit', buildUnifiedSpiritCard(主轨, { primary: true }), {
       enabled: true,
+      preview: 主轨 ? toText(主轨.preview, '第1武魂详细页') : '',
       surface: normalizedSurface,
     });
-    setUnifiedCardMarkup('secondary-spirit', '', {
-      enabled: false,
-      empty: true,
-      surface: normalizedSurface,
-    });
+    if (第二轨) {
+      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
+        enabled: true,
+        preview: toText(第二轨.preview, '血脉封印详细页'),
+        surface: normalizedSurface,
+      });
+    } else {
+      setUnifiedCardMarkup('secondary-spirit', '', {
+        enabled: false,
+        empty: true,
+        空态标签: '未启用',
+        surface: normalizedSurface,
+      });
+    }
   }
 
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
@@ -25240,6 +25232,7 @@
     const hasMarkup = !!toText(html, '').trim();
     const enabled = options.enabled !== false && hasMarkup;
     const 显式空卡 = !!options.empty;
+    const 空态标签 = toText(options.空态标签, '').trim();
     getLiveUiElements(selector).forEach(node => {
       setLiveNodeHtml(node, html);
       if (preview && enabled) node.setAttribute('data-preview', preview);
@@ -25251,6 +25244,8 @@
       }
       node.classList.toggle('clickable', !!(preview && enabled));
       node.classList.toggle('is-empty', 显式空卡 || !enabled);
+      if ((显式空卡 || !enabled) && 空态标签) node.setAttribute('data-empty-label', 空态标签);
+      else node.removeAttribute('data-empty-label');
       node.hidden = !enabled && !显式空卡;
     });
     if (!enabled && !显式空卡) liveUiRefCache.delete(selector);
@@ -25644,7 +25639,7 @@
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
     });
-    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false });
+    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false, empty: true, 空态标签: '未启用' });
     setUnifiedMapStageMarkup('panel', '');
   }
 
@@ -26012,11 +26007,14 @@
       const 消耗值 =
         designerDraft.costValues && typeof designerDraft.costValues === 'object' ? designerDraft.costValues : {};
       const 维持消耗值 = 解析技能设计台消耗文本配置(designerDraft.sustainCostText || '').resourceValues || {};
+      const 固定百分比消耗比例 = 技能设计台是普通魂环伤害魂技(previewMeta, 构建技能设计台临时技能(designerDraft, previewMeta).临时技能?._效果数组 || [], designerDraft)
+        ? 计算技能设计台固定结算消耗比例(designerDraft)
+        : 0;
       const 标题提示表 = {
         基础框架载体: '填写名称与承载方式。造物承载用于先生成造物、再使用触发效果的技能。',
         核心术式阵列: '填写技能真正执行的原型效果；先放主效果，再补条件、状态或修正。',
         使用效果阵列: '填写造物被使用后触发的效果。',
-        运转能量配置: '启动填保存绝对消耗；伤害参考只用于试算提示，不参与实际扣费。维持每回合扣费。',
+        运转能量配置: '启动填保存真实消耗。维持每回合扣费。',
         技能掌控度: '只在技能随等级逐步发挥时启用；普通魂技不需要填写。',
         元属性特征: '只勾选技能实际携带的元素或概念属性。',
         终端解析图谱: '填写给玩家看的画面与效果摘要，不参与战斗结算。',
@@ -26026,7 +26024,7 @@
         const 显示 = designerDraft.costType === 资源 || designerDraft.costType === '混合';
         return `
                       <label class=\"mvu-editor-field\" data-skill-designer-cost-value-field=\"${escapeHtmlAttr(资源)}\"${显示 ? '' : ' hidden style=\"display:none\"'}>
-                        <span class=\"mvu-editor-label\">${htmlEscape(资源)}消耗</span>
+                        <span class=\"mvu-editor-label\">${htmlEscape(资源)}消耗${资源 === '魂力' && 固定百分比消耗比例 > 0 ? `<small class=\"skill-designer-fixed-cost-chip\">结算${htmlEscape((固定百分比消耗比例 * 100).toFixed(0))}%</small>` : ''}</span>
                       <input class=\"mvu-editor-input\" type=\"text\" pattern=\"[0-9]+(\\.[0-9]+)?%?\" value=\"${escapeHtmlAttr(消耗值[资源] ?? '')}\" placeholder=\"无\" data-skill-designer-cost-value=\"${escapeHtmlAttr(资源)}\" data-skill-designer-disableable />
                       </label>
           `;
@@ -29708,12 +29706,12 @@
 
       const getBoneBonus = (age, part) => {
         let rb = {
-          力量: Math.floor(age * 0.05),
-          防御: Math.floor(age * 0.05),
-          敏捷: Math.floor(age * 0.05),
-          体力上限: Math.floor(age * 0.05),
-          精神力上限: Math.floor(age * 0.01),
-          魂力上限: Math.floor(age * 0.1),
+          力量: Math.floor(age * 0.005),
+          防御: Math.floor(age * 0.005),
+          敏捷: Math.floor(age * 0.005),
+          体力上限: Math.floor(age * 0.005),
+          精神力上限: Math.floor(age * 0.001),
+          魂力上限: Math.floor(age * 0.01),
         };
         let bonus = { ...rb };
         if (part === '躯干魂骨') {
