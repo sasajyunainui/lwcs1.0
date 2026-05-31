@@ -28,33 +28,6 @@ const TAB_ITEMS = [
   }
 ];
 
-const SHELL_TAB_ITEMS = TAB_ITEMS;
-
-const UNIFIED_ACTION_ITEMS = {
-  'page-archive': [
-    { label: '角色', preview: '角色切换器' },
-    { label: '武装', preview: '武装工坊详细页' },
-    { label: '仓库', preview: '储物仓库详细页' }
-  ],
-  'page-map': [
-    { label: '节点', preview: '当前节点详情' },
-    { label: '跑图', preview: '图层控制与跑图' },
-    { label: '星图', preview: '全息星图主画布' }
-  ],
-  'page-world': [
-    { label: '编年史', preview: '全息编年史' }
-  ],
-  'page-org': [
-    { label: '阵营', preview: '我的阵营详情' },
-    { label: '据点', preview: '本地据点详情' }
-  ],
-  'page-terminal': [
-    { label: '情报', preview: '试炼与情报' },
-    { label: '任务', preview: '任务界面' },
-    { label: '图鉴', preview: '怪物图鉴' }
-  ]
-};
-
 const UNIFIED_TAB_META = {
   'page-archive': {
     eyebrow: '',
@@ -83,204 +56,30 @@ const UNIFIED_TAB_META = {
   }
 };
 
-const SHELL_APP_ITEMS = [
-  {
-    id: 'page-archive',
-    title: '档案',
-    hint: '',
-    homeSlot: 'home-archive'
-  },
-  {
-    id: 'page-map',
-    title: '星图',
-    hint: '',
-    homeSlot: 'home-map'
-  },
-  {
-    id: 'page-world',
-    title: '世界',
-    hint: '',
-    homeSlot: 'home-world'
-  },
-  {
-    id: 'page-org',
-    title: '势力',
-    hint: '',
-    homeSlot: 'home-org'
-  },
-  {
-    id: 'page-terminal',
-    title: '终端',
-    hint: '',
-    homeSlot: 'home-terminal'
-  }
-];
-
-const LAYOUT_STORAGE_KEY = 'mvu_layout_mode';
-const SURFACE_MODE_STORAGE_KEY = 'mvu_surface_mode_v1';
-const SURFACE_LAUNCHER_STORAGE_KEY = 'mvu_surface_launcher_pos_v2';
-const MOBILE_LAST_TAB_STORAGE_KEY = 'mvu_mobile_shell_last_tab_v1';
-const MOBILE_VIEWPORT_MEDIA = '(max-width: 860px)';
-const VALID_LAYOUT_MODES = new Set(['unified']);
-const VALID_SURFACE_MODES = new Set(['panel', 'shell']);
-const SURFACE_LAUNCHER_GAP = 12;
-const SURFACE_LAUNCHER_DRAG_THRESHOLD = 8;
-const SURFACE_LAUNCHER_LONG_PRESS_MS = 360;
-const SURFACE_LAUNCHER_MOBILE_SIZE = { width: 56, height: 56 };
-const SURFACE_LAUNCHER_DESKTOP_SIZE = { width: 56, height: 56 };
-
-function detectMobileViewport() {
-  try {
-    if (typeof window.matchMedia === 'function') {
-      return window.matchMedia(MOBILE_VIEWPORT_MEDIA).matches;
-    }
-  } catch (err) {}
-  return window.innerWidth <= 860;
-}
-
-function normalizeLayoutMode(mode) {
-  const value = String(mode || '').trim();
-  return VALID_LAYOUT_MODES.has(value) ? value : '';
-}
-
-function normalizeSurfaceMode(mode) {
-  const value = String(mode || '').trim();
-  return VALID_SURFACE_MODES.has(value) ? value : '';
-}
+const 统一标签存储键 = 'mvu_unified_current_tab_v1';
 
 function normalizeTabId(tabId) {
   const value = String(tabId || '').trim();
   return TAB_ITEMS.some(tab => tab.id === value) ? value : 'page-archive';
 }
 
-function normalizeShellTabId(tabId) {
-  const value = String(tabId || '').trim();
-  return SHELL_TAB_ITEMS.some(tab => tab.id === value) ? value : 'page-archive';
-}
-
-function readJsonStorage(key) {
+function 读取统一标签存储() {
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-function writeJsonStorage(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch (err) {}
-}
-
-function readLayoutModeStorage() {
-  try {
-    return normalizeLayoutMode(window.localStorage.getItem(LAYOUT_STORAGE_KEY));
-  } catch (err) {
-    return '';
-  }
-}
-
-function writeLayoutModeStorage(mode) {
-  const normalized = normalizeLayoutMode(mode);
-  if (!normalized) return;
-  try {
-    window.localStorage.setItem(LAYOUT_STORAGE_KEY, normalized);
-  } catch (err) {}
-}
-
-function readSurfaceModeStorage() {
-  try {
-    return normalizeSurfaceMode(window.localStorage.getItem(SURFACE_MODE_STORAGE_KEY));
-  } catch (err) {
-    return '';
-  }
-}
-
-function writeSurfaceModeStorage(mode) {
-  const normalized = normalizeSurfaceMode(mode);
-  if (!normalized) return;
-  try {
-    window.localStorage.setItem(SURFACE_MODE_STORAGE_KEY, normalized);
-  } catch (err) {}
-}
-
-function readMobileLastTabStorage() {
-  try {
-    return normalizeShellTabId(window.localStorage.getItem(MOBILE_LAST_TAB_STORAGE_KEY));
+    return normalizeTabId(window.localStorage.getItem(统一标签存储键));
   } catch (err) {
     return 'page-archive';
   }
 }
 
-function writeMobileLastTabStorage(tabId) {
-  const normalized = normalizeShellTabId(tabId);
+function 写入统一标签存储(tabId) {
+  const normalized = normalizeTabId(tabId);
   try {
-    window.localStorage.setItem(MOBILE_LAST_TAB_STORAGE_KEY, normalized);
+    window.localStorage.setItem(统一标签存储键, normalized);
   } catch (err) {}
-}
-
-function normalizeSurfaceLauncherPosition(rawPosition) {
-  if (!rawPosition || typeof rawPosition !== 'object') return null;
-  const x = Number(rawPosition.x);
-  const y = Number(rawPosition.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return { x, y };
-}
-
-function normalizeSurfaceLauncherStorage(rawStorage) {
-  if (!rawStorage || typeof rawStorage !== 'object') {
-    return { desktop: null, mobile: null };
-  }
-  return {
-    desktop: normalizeSurfaceLauncherPosition(rawStorage.desktop),
-    mobile: normalizeSurfaceLauncherPosition(rawStorage.mobile)
-  };
-}
-
-function getSurfaceLauncherViewportKey(viewportType = null) {
-  const value = String(viewportType || '').trim();
-  if (value === 'desktop' || value === 'mobile') return value;
-  return mvuLayoutState && mvuLayoutState.isMobileViewport ? 'mobile' : 'desktop';
-}
-
-function readSurfaceLauncherStorage() {
-  return normalizeSurfaceLauncherStorage(readJsonStorage(SURFACE_LAUNCHER_STORAGE_KEY));
-}
-
-function readSurfaceLauncherPosition(viewportType = null) {
-  const key = getSurfaceLauncherViewportKey(viewportType);
-  return readSurfaceLauncherStorage()[key];
-}
-
-function writeSurfaceLauncherPosition(position, viewportType = null) {
-  const normalized = normalizeSurfaceLauncherPosition(position);
-  if (!normalized) return;
-  const key = getSurfaceLauncherViewportKey(viewportType);
-  const current = readSurfaceLauncherStorage();
-  current[key] = {
-    x: Math.round(normalized.x),
-    y: Math.round(normalized.y)
-  };
-  writeJsonStorage(SURFACE_LAUNCHER_STORAGE_KEY, current);
-}
-
-function resolveUnifiedActions(tabId) {
-  return UNIFIED_ACTION_ITEMS[tabId] || UNIFIED_ACTION_ITEMS['page-archive'] || [];
 }
 
 function resolveUnifiedTabMeta(tabId) {
   return UNIFIED_TAB_META[tabId] || UNIFIED_TAB_META['page-archive'];
-}
-
-function resolveShellAppMeta(tabId) {
-  const normalized = normalizeShellTabId(tabId);
-  const activeTab = SHELL_TAB_ITEMS.find(tab => tab.id === normalized) || SHELL_TAB_ITEMS[0];
-  return {
-    id: activeTab.id,
-    title: activeTab.label,
-    icon: activeTab.icon
-  };
 }
 
 function resolveShellPreviewTitle(previewKey, fallback = '') {
@@ -353,56 +152,17 @@ function resolveShellPreviewTitle(previewKey, fallback = '') {
   return previewTitleMap[key] || key || fallback || '详情';
 }
 
-const persistedLayoutMode = readLayoutModeStorage();
-const persistedSurfaceMode = readSurfaceModeStorage();
-const initialIsMobileViewport = detectMobileViewport();
 const mvuLayoutState = window.__MVU_LAYOUT_STATE__ || (window.__MVU_LAYOUT_STATE__ = reactive({
-  preferredMode: persistedLayoutMode || 'unified',
   effectiveMode: 'unified',
-  unifiedAnchorReady: false,
-  isMobileViewport: initialIsMobileViewport,
-  hasManualOverride: !!persistedLayoutMode,
-  surfaceMode: 'panel',
-  mobileShellOpen: false,
-  surfaceLauncherMenuOpen: false,
-  surfaceLauncherPosition: readSurfaceLauncherPosition(initialIsMobileViewport ? 'mobile' : 'desktop'),
-  surfaceLauncherDragging: false
+  unifiedAnchorReady: false
 }));
 
-if (!('hasManualOverride' in mvuLayoutState)) {
-  mvuLayoutState.hasManualOverride = !!persistedLayoutMode;
-}
 if (!('unifiedAnchorReady' in mvuLayoutState)) {
   mvuLayoutState.unifiedAnchorReady = false;
 }
-if (!('mobileShellOpen' in mvuLayoutState)) {
-  mvuLayoutState.mobileShellOpen = false;
-}
-if (!('surfaceMode' in mvuLayoutState)) {
-  mvuLayoutState.surfaceMode = 'panel';
-}
-if (!('surfaceLauncherMenuOpen' in mvuLayoutState)) {
-  mvuLayoutState.surfaceLauncherMenuOpen = false;
-}
-if (!('surfaceLauncherPosition' in mvuLayoutState)) {
-  mvuLayoutState.surfaceLauncherPosition = readSurfaceLauncherPosition(initialIsMobileViewport ? 'mobile' : 'desktop');
-}
-if (!('surfaceLauncherDragging' in mvuLayoutState)) {
-  mvuLayoutState.surfaceLauncherDragging = false;
-}
-if (!normalizeLayoutMode(mvuLayoutState.preferredMode)) {
-  mvuLayoutState.preferredMode = persistedLayoutMode || 'unified';
-}
-if (!mvuLayoutState.hasManualOverride) {
-  mvuLayoutState.preferredMode = 'unified';
-}
-if (!normalizeSurfaceMode(mvuLayoutState.surfaceMode)) {
-  mvuLayoutState.surfaceMode = 'panel';
-}
-mvuLayoutState.surfaceMode = 'panel';
-mvuLayoutState.mobileShellOpen = false;
+mvuLayoutState.effectiveMode = 'unified';
 
-const mvuTabState = window.__MVU_TAB_STATE__ || (window.__MVU_TAB_STATE__ = reactive({ current: readMobileLastTabStorage() }));
+const mvuTabState = window.__MVU_TAB_STATE__ || (window.__MVU_TAB_STATE__ = reactive({ current: 读取统一标签存储() }));
 const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__MVU_UNIFIED_DETAIL_STATE__ = reactive({
   isOpen: false,
   previewKey: '',
@@ -410,158 +170,9 @@ const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__M
   stack: [],
   returnScrollTop: 0
 }));
-if (!mvuLayoutState.surfaceLauncherPosition || !Number.isFinite(Number(mvuLayoutState.surfaceLauncherPosition.x)) || !Number.isFinite(Number(mvuLayoutState.surfaceLauncherPosition.y))) {
-  mvuLayoutState.surfaceLauncherPosition = readSurfaceLauncherPosition(initialIsMobileViewport ? 'mobile' : 'desktop');
-}
 mvuTabState.current = normalizeTabId(mvuTabState.current);
 if (!Array.isArray(mvuUnifiedDetailState.stack)) mvuUnifiedDetailState.stack = [];
 mvuUnifiedDetailState.returnTab = normalizeTabId(mvuUnifiedDetailState.returnTab || mvuTabState.current);
-
-function getViewportSize() {
-  const width = Math.max(0, Number(window.innerWidth) || Number(document.documentElement?.clientWidth) || 0);
-  const height = Math.max(0, Number(window.innerHeight) || Number(document.documentElement?.clientHeight) || 0);
-  return { width, height };
-}
-
-function getSurfaceLauncherSize(viewportType = null) {
-  return getSurfaceLauncherViewportKey(viewportType) === 'mobile'
-    ? { ...SURFACE_LAUNCHER_MOBILE_SIZE }
-    : { ...SURFACE_LAUNCHER_DESKTOP_SIZE };
-}
-
-function getSurfaceLauncherBounds(options = {}) {
-  const viewportType = getSurfaceLauncherViewportKey(options.viewportType);
-  const size = options.size || getSurfaceLauncherSize(viewportType);
-  const viewport = getViewportSize();
-  const safeGap = SURFACE_LAUNCHER_GAP;
-  let minY = safeGap;
-  let maxY = Math.max(minY, viewport.height - size.height - safeGap);
-  let minX = safeGap;
-  let maxX = Math.max(minX, viewport.width - size.width - safeGap);
-
-  const topToolbar = Array.from(document.querySelectorAll('body > *')).find(node => {
-    if (!(node instanceof Element) || node.id === 'mvu-unified-mount' || node.id === 'detailModal') return false;
-    const style = window.getComputedStyle(node);
-    if (!style || style.display === 'none' || style.visibility === 'hidden') return false;
-    if (style.position !== 'fixed' && style.position !== 'sticky') return false;
-    const rect = node.getBoundingClientRect();
-    return rect.top <= 4 && rect.height >= 36 && rect.width >= viewport.width * 0.5;
-  });
-  if (topToolbar) {
-    minY = Math.max(minY, topToolbar.getBoundingClientRect().bottom + safeGap);
-  }
-
-  const sendForm = document.getElementById('send_form');
-  if (sendForm) {
-    const rect = sendForm.getBoundingClientRect();
-    if (rect.height > 0) {
-      maxY = Math.min(maxY, rect.top - size.height - safeGap);
-    }
-  }
-
-  return {
-    minX,
-    maxX: Math.max(minX, maxX),
-    minY,
-    maxY: Math.max(minY, maxY)
-  };
-}
-
-function clampSurfaceLauncherPosition(position, options = {}) {
-  const bounds = getSurfaceLauncherBounds(options);
-  const nextX = Number(position && position.x);
-  const nextY = Number(position && position.y);
-  const fallbackX = bounds.minX;
-  const fallbackY = bounds.maxY;
-  return {
-    x: _.clamp(Number.isFinite(nextX) ? nextX : fallbackX, bounds.minX, bounds.maxX),
-    y: _.clamp(Number.isFinite(nextY) ? nextY : fallbackY, bounds.minY, bounds.maxY)
-  };
-}
-
-function getDefaultSurfaceLauncherPosition(viewportType = null) {
-  const resolvedViewportType = getSurfaceLauncherViewportKey(viewportType);
-  const bounds = getSurfaceLauncherBounds({ viewportType: resolvedViewportType });
-  if (resolvedViewportType === 'mobile') {
-    const optionsButton = document.getElementById('options_button');
-    const preferredX = optionsButton ? optionsButton.getBoundingClientRect().left : bounds.minX;
-    return clampSurfaceLauncherPosition({
-      x: preferredX,
-      y: bounds.maxY
-    }, { viewportType: resolvedViewportType });
-  }
-  return clampSurfaceLauncherPosition({
-    x: bounds.maxX,
-    y: bounds.maxY
-  }, { viewportType: resolvedViewportType });
-}
-
-function syncSurfaceLauncherPosition(options = {}) {
-  const forceDefault = !!options.forceDefault;
-  const viewportType = getSurfaceLauncherViewportKey(options.viewportType);
-  const current = !forceDefault && mvuLayoutState.surfaceLauncherPosition
-    ? mvuLayoutState.surfaceLauncherPosition
-    : null;
-  const stored = !forceDefault && readSurfaceLauncherPosition(viewportType);
-  const nextPosition = clampSurfaceLauncherPosition(current || stored || getDefaultSurfaceLauncherPosition(viewportType), { viewportType });
-  mvuLayoutState.surfaceLauncherPosition = nextPosition;
-  if (options.persist !== false) {
-    writeSurfaceLauncherPosition(nextPosition, viewportType);
-  }
-  return nextPosition;
-}
-
-function resolveSurfaceLauncherDisplayPosition(position = null) {
-  const viewportType = getSurfaceLauncherViewportKey();
-  const basePosition = clampSurfaceLauncherPosition(
-    position || mvuLayoutState.surfaceLauncherPosition || getDefaultSurfaceLauncherPosition(viewportType),
-    { viewportType }
-  );
-  if (viewportType === 'mobile' || mvuLayoutState.surfaceMode !== 'shell' || !mvuLayoutState.mobileShellOpen) {
-    return basePosition;
-  }
-  const bounds = getSurfaceLauncherBounds({ viewportType });
-  const midpointX = (bounds.minX + bounds.maxX) / 2;
-  return {
-    x: basePosition.x >= midpointX ? bounds.maxX : bounds.minX,
-    y: _.clamp(basePosition.y, bounds.minY, bounds.maxY)
-  };
-}
-
-function closeDetailModalIfPossible() {
-  if (typeof window.__MVU_CLOSE_UNIFIED_PREVIEW__ === 'function') {
-    try { window.__MVU_CLOSE_UNIFIED_PREVIEW__({ force: true }); } catch (err) {}
-  }
-  if (typeof window.__MVU_CLOSE_DETAIL_MODAL__ === 'function') {
-    try { window.__MVU_CLOSE_DETAIL_MODAL__(); } catch (err) {}
-  }
-}
-
-function isShellSurfaceMode() {
-  return false;
-}
-
-function isDesktopShellMode() {
-  return false;
-}
-
-function getDesktopModeSelection() {
-  return 'unified';
-}
-
-function setMobileShellOpen() {
-  mvuLayoutState.mobileShellOpen = false;
-  mvuLayoutState.surfaceLauncherDragging = false;
-  mvuLayoutState.surfaceLauncherMenuOpen = false;
-  mvuLayoutState.surfaceMode = 'panel';
-  applyLayoutBodyClasses();
-  if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
-    try { window.__MVU_SYNC_DETAIL_MODAL_HOST__(); } catch (err) {}
-  }
-  return false;
-}
-
-window.__MVU_SET_MOBILE_SHELL_OPEN__ = value => setMobileShellOpen(value);
 
 function syncUnifiedMountPlacement() {
   if (window.__MVU_UNIFIED_ANCHOR_MANAGER__ && typeof window.__MVU_UNIFIED_ANCHOR_MANAGER__.scheduleRelocate === 'function') {
@@ -595,53 +206,6 @@ function requestUnifiedShellCardRefresh(options = {}) {
   }
 }
 
-function setSurfaceMode(mode, options = {}) {
-  mvuLayoutState.surfaceMode = 'panel';
-  mvuLayoutState.mobileShellOpen = false;
-  mvuLayoutState.surfaceLauncherDragging = false;
-  mvuLayoutState.surfaceLauncherMenuOpen = false;
-
-  if (options.manual !== false) {
-    writeSurfaceModeStorage('panel');
-  }
-
-  syncUnifiedMountPlacement();
-  applyLayoutBodyClasses();
-  if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
-    try { window.__MVU_SYNC_DETAIL_MODAL_HOST__(); } catch (err) {}
-  }
-  return 'panel';
-}
-
-function openShellSurface() {
-  setSurfaceMode('panel');
-  return false;
-}
-
-function closeShellSurface() {
-  return setMobileShellOpen();
-}
-
-function exitShellSurface() {
-  if (mvuLayoutState.mobileShellOpen) {
-    closeDetailModalIfPossible();
-  }
-  return setSurfaceMode('panel');
-}
-
-function toggleShellSurface() {
-  return false;
-}
-
-function setDesktopMode(mode, options = {}) {
-  setSurfaceMode('panel', options);
-  return setLayoutMode('unified', options);
-}
-
-function applyDesktopLayoutSelection(mode, options = {}) {
-  return setDesktopMode('unified', options);
-}
-
 function applyLayoutBodyClasses() {
   const body = document.body;
   if (!body) return;
@@ -656,67 +220,20 @@ function applyLayoutBodyClasses() {
   body.classList.toggle('mvu-unified-mount-ready', !!mvuLayoutState.unifiedAnchorReady);
   body.classList.remove('mvu-layout-split');
   body.classList.toggle('mvu-layout-unified', true);
-  body.classList.toggle('mvu-mobile-viewport', !!mvuLayoutState.isMobileViewport);
-  body.classList.toggle('mvu-shell-overlay-enabled', false);
-  body.classList.toggle('mvu-surface-panel', true);
-  body.classList.toggle('mvu-surface-shell', false);
-  body.classList.toggle('mvu-desktop-shell-surface', false);
-  body.classList.toggle('mvu-layout-unified-locked', false);
-  body.classList.toggle('mvu-mobile-shell-open', false);
-  body.classList.toggle('mvu-surface-launcher-menu-open', false);
-  body.classList.toggle('mvu-mobile-shell-dragging', false);
-}
-
-function isSplitLayoutAllowed() {
-  return false;
-}
-
-function resolveEffectiveLayoutMode() {
-  return 'unified';
+  body.classList.add('mvu-surface-panel');
+  body.classList.remove(
+    'mvu-layout-split',
+    'mvu-layout-unified-locked'
+  );
 }
 
 function syncLayoutMode() {
-  mvuLayoutState.effectiveMode = resolveEffectiveLayoutMode();
+  mvuLayoutState.effectiveMode = 'unified';
   applyLayoutBodyClasses();
   return mvuLayoutState.effectiveMode;
 }
 
-function setLayoutMode(mode, options = {}) {
-  const normalized = normalizeLayoutMode(mode);
-  if (!normalized) return mvuLayoutState.effectiveMode;
-  const nextPreferred = normalized || 'unified';
-
-  mvuLayoutState.preferredMode = nextPreferred;
-  mvuLayoutState.surfaceMode = 'panel';
-  mvuLayoutState.mobileShellOpen = false;
-  mvuLayoutState.surfaceLauncherMenuOpen = false;
-  mvuLayoutState.surfaceLauncherDragging = false;
-  if (options.manual !== false) {
-    mvuLayoutState.hasManualOverride = true;
-    writeLayoutModeStorage(nextPreferred);
-  }
-  if (nextPreferred === 'unified' && window.__MVU_UNIFIED_ANCHOR_MANAGER__ && typeof window.__MVU_UNIFIED_ANCHOR_MANAGER__.scheduleRelocate === 'function') {
-    window.__MVU_UNIFIED_ANCHOR_MANAGER__.scheduleRelocate();
-  }
-  return syncLayoutMode();
-}
-
-function getLayoutMode() {
-  return mvuLayoutState.effectiveMode;
-}
-
 function refreshViewportState() {
-  const nextMobileState = detectMobileViewport();
-  if (mvuLayoutState.isMobileViewport !== nextMobileState) {
-    mvuLayoutState.isMobileViewport = nextMobileState;
-  }
-  if (!mvuLayoutState.hasManualOverride) {
-    mvuLayoutState.preferredMode = 'unified';
-  }
-  mvuLayoutState.surfaceMode = 'panel';
-  mvuLayoutState.mobileShellOpen = false;
-  mvuLayoutState.surfaceLauncherMenuOpen = false;
-  mvuLayoutState.surfaceLauncherDragging = false;
   syncUnifiedMountPlacement();
   syncLayoutMode();
   if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
@@ -729,18 +246,6 @@ if (typeof window.__MVU_LAYOUT_VIEWPORT_CLEANUP__ === 'function') {
 }
 
 const viewportDisposers = [];
-if (typeof window.matchMedia === 'function') {
-  const mediaQuery = window.matchMedia(MOBILE_VIEWPORT_MEDIA);
-  const onMediaChange = () => refreshViewportState();
-  if (typeof mediaQuery.addEventListener === 'function') {
-    mediaQuery.addEventListener('change', onMediaChange);
-    viewportDisposers.push(() => mediaQuery.removeEventListener('change', onMediaChange));
-  } else if (typeof mediaQuery.addListener === 'function') {
-    mediaQuery.addListener(onMediaChange);
-    viewportDisposers.push(() => mediaQuery.removeListener(onMediaChange));
-  }
-}
-
 const onResize = () => refreshViewportState();
 window.addEventListener('resize', onResize);
 viewportDisposers.push(() => window.removeEventListener('resize', onResize));
@@ -749,12 +254,6 @@ window.__MVU_LAYOUT_VIEWPORT_CLEANUP__ = () => {
     try { disposer(); } catch (err) {}
   }
 };
-
-window.mvuSetLayoutMode = mode => setLayoutMode(mode, { manual: true });
-window.mvuGetLayoutMode = () => getLayoutMode();
-window.mvuSetSurfaceMode = () => setSurfaceMode('panel', { manual: true });
-window.mvuGetDesktopMode = () => getDesktopModeSelection();
-window.mvuSetDesktopMode = () => setDesktopMode('unified', { manual: true });
 
 function setSharedTab(target) {
   mvuTabState.current = normalizeTabId(target);
@@ -765,7 +264,7 @@ window.__MVU_SET_TAB_STATE__ = setSharedTab;
 function requestTabChange(target) {
   const next = normalizeTabId(target);
   setSharedTab(next);
-  writeMobileLastTabStorage(next);
+  写入统一标签存储(next);
   if (typeof window.mvuSetMainTabExternal === 'function') {
     window.mvuSetMainTabExternal(next);
   } else if (typeof window.mvuSetMainTab === 'function') {
@@ -783,22 +282,12 @@ function requestTabChange(target) {
 
 function applyUnifiedMountHostStyle(mountEl) {
   if (!mountEl) return;
-  const shouldUseOverlayHost = isShellSurfaceMode();
-  if (shouldUseOverlayHost) {
-    mountEl.style.position = 'fixed';
-    mountEl.style.inset = '0';
-    mountEl.style.width = '100vw';
-    mountEl.style.height = '100dvh';
-    mountEl.style.pointerEvents = 'none';
-    mountEl.style.zIndex = '10040';
-  } else {
-    mountEl.style.position = 'relative';
-    mountEl.style.inset = '';
-    mountEl.style.width = '100%';
-    mountEl.style.height = '';
-    mountEl.style.pointerEvents = 'auto';
-    mountEl.style.zIndex = '1000';
-  }
+  mountEl.style.position = 'relative';
+  mountEl.style.inset = '';
+  mountEl.style.width = '100%';
+  mountEl.style.height = '';
+  mountEl.style.pointerEvents = 'auto';
+  mountEl.style.zIndex = '1000';
 }
 
 function createUnifiedAnchorManager(options = {}) {
@@ -855,14 +344,6 @@ function createUnifiedAnchorManager(options = {}) {
       return;
     }
     applyUnifiedMountHostStyle(mountEl);
-    const shouldUseOverlayHost = isShellSurfaceMode();
-    if (shouldUseOverlayHost) {
-      if (document.body && mountEl.parentElement !== document.body) {
-        document.body.appendChild(mountEl);
-      }
-      setReadyState(!!mountEl.isConnected);
-      return;
-    }
     if (!chatEl || !chatEl.isConnected) {
       if (document.body && mountEl.parentElement !== document.body) {
         document.body.appendChild(mountEl);
@@ -949,692 +430,6 @@ function createUnifiedAnchorManager(options = {}) {
     scheduleRelocate
   };
 }
-
-const UnifiedDock = {
-  template: `
-    <div class="mvu-unified-wrapper mvu-root">
-      <div class="mvu-unified-dock">
-        <div class="mvu-unified-hero">
-          <div class="mvu-unified-hero-top">
-            <div class="mvu-unified-status">
-              <span class="mvu-unified-eyebrow">{{ activeMeta.eyebrow }}</span>
-              <span class="mvu-unified-mode-badge">{{ modeBadge }}</span>
-            </div>
-            <div class="mvu-unified-layout-toggle">
-              <button
-                type="button"
-                class="mvu-unified-layout-btn active"
-                disabled
-              >一体</button>
-            </div>
-          </div>
-          <div class="mvu-unified-headline">
-            <strong>{{ activeMeta.title }}</strong>
-            <span>{{ activeMeta.desc }}</span>
-          </div>
-        </div>
-
-        <div class="mvu-unified-section-head">
-          <b>主导航</b>
-          <span>先切页，再下钻详细视图</span>
-        </div>
-
-        <div class="mvu-unified-tab-grid">
-          <button
-            v-for="tab in tabs"
-            :key="'unified-tab-' + tab.id"
-            class="mvu-tab-btn mvu-unified-tab-btn mvu-unified-grid-btn"
-            :class="{ active: tabState.current === tab.id }"
-            :data-target="tab.id"
-            @click="setTab(tab.id)"
-          >{{ tab.label }}</button>
-        </div>
-
-        <div class="mvu-unified-section-head">
-          <b>当前页快捷入口</b>
-          <span>{{ quickActionHint }}</span>
-        </div>
-
-        <div class="mvu-unified-action-grid">
-          <button
-            v-for="item in quickActions"
-            :key="'unified-action-' + item.preview"
-            type="button"
-            class="mvu-unified-action-btn mvu-unified-grid-btn clickable"
-            :data-preview="item.preview"
-          >{{ item.label }}</button>
-        </div>
-      </div>
-    </div>
-  `,
-  setup() {
-    const quickActions = computed(() => resolveUnifiedActions(mvuTabState.current));
-    const activeMeta = computed(() => resolveUnifiedTabMeta(mvuTabState.current));
-    const modeBadge = computed(() => (mvuLayoutState.isMobileViewport ? '移动端一体栏' : '桌面一体栏'));
-    const quickActionHint = computed(() => `${quickActions.value.length || 0} 个入口`);
-    return {
-      tabs: TAB_ITEMS,
-      quickActions,
-      activeMeta,
-      modeBadge,
-      quickActionHint,
-      tabState: mvuTabState,
-      layoutState: mvuLayoutState,
-      setTab: requestTabChange
-    };
-  }
-};
-
-const SurfaceLauncherShellLayout = {
-  template: `
-    <div class="mvu-mobile-shell-host mvu-root" :class="{ 'is-open': layoutState.mobileShellOpen, 'is-dragging': layoutState.surfaceLauncherDragging }">
-      <div
-        v-if="showLauncher"
-        ref="launcherRef"
-        class="mvu-surface-launcher"
-        :class="{
-          'is-mobile': layoutState.isMobileViewport,
-          'is-open': shellVisible,
-          'menu-open': layoutState.surfaceLauncherMenuOpen
-        }"
-        :data-mode="launcherMode"
-        :style="launcherStyle"
-        role="group"
-        aria-label="LWCS 鎸備欢"
-      >
-        <button
-          type="button"
-          class="mvu-surface-launcher-main"
-          :aria-label="launcherMainAriaLabel"
-          @pointerdown="onLauncherPointerDown"
-          @contextmenu.prevent="onLauncherContextMenu"
-          @keydown.enter.prevent="onLauncherKeyboardAction"
-          @keydown.space.prevent="onLauncherKeyboardAction"
-        >
-          <span class="mvu-surface-launcher-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <rect x="4.5" y="4.5" width="6.25" height="6.25" rx="1.8" fill="currentColor"></rect>
-              <rect x="13.25" y="4.5" width="6.25" height="6.25" rx="1.8" fill="currentColor"></rect>
-              <rect x="4.5" y="13.25" width="6.25" height="6.25" rx="1.8" fill="currentColor"></rect>
-              <rect x="13.25" y="13.25" width="6.25" height="6.25" rx="1.8" fill="currentColor"></rect>
-            </svg>
-          </span>
-          <span class="mvu-surface-launcher-dot" aria-hidden="true"></span>
-        </button>
-
-        <div
-          v-if="showLauncherMenu"
-          class="mvu-surface-launcher-menu"
-          :class="{
-            active: layoutState.surfaceLauncherMenuOpen,
-            'align-end': launcherMenuAlign === 'end',
-            'open-up': launcherMenuVertical === 'up'
-          }"
-          role="menu"
-          aria-label="界面模式"
-        >
-          <button
-            v-for="item in launcherModeItems"
-            :key="'launcher-mode-' + item.id"
-            type="button"
-            class="mvu-surface-launcher-menu-item"
-            :class="{ active: launcherMode === item.id }"
-            role="menuitemradio"
-            :aria-checked="launcherMode === item.id ? 'true' : 'false'"
-            @click="selectLauncherMode(item.id)"
-          >{{ item.label }}</button>
-        </div>
-      </div>
-
-      <div class="mvu-mobile-shell-backdrop" :class="{ active: shellVisible }"></div>
-
-      <section class="mvu-mobile-shell" :class="{ active: shellVisible }" aria-label="酒馆助手小手机框架">
-        <div ref="shellFrameRef" class="mvu-mobile-shell-frame" :style="shellFrameStyle" :data-screen="shellScreen">
-          <header class="mvu-mobile-shell-head" @pointerdown="onShellHeaderPointerDown">
-            <div class="mvu-mobile-shell-head-main">
-              <button
-                v-if="showHomeBack"
-                type="button"
-                class="mvu-mobile-shell-back"
-                aria-label="返回首页"
-                @click="handleBack"
-              >
-                <span aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M15 18 9 12l6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-                  </svg>
-                </span>
-              </button>
-              <div class="mvu-mobile-shell-head-copy">
-                <strong class="mvu-mobile-shell-title">{{ resolvedActiveTitle }}</strong>
-              </div>
-            </div>
-            <div class="mvu-mobile-shell-head-actions">
-              <button type="button" class="mvu-mobile-shell-close" aria-label="关闭" @click="closeShell">&times;</button>
-            </div>
-          </header>
-
-          <div class="mvu-mobile-shell-body">
-            <div class="mvu-mobile-shell-scroll" :class="{ 'is-detail': shellScreen === 'detail' }">
-              <section v-if="shellScreen === 'detail'" class="mvu-mobile-library mvu-mobile-library--detail" :data-target="shellDetailPreviewKey || tabState.current">
-                <div ref="modalHostRef" class="mvu-mobile-shell-modal-host"></div>
-              </section>
-
-              <section v-else class="mvu-mobile-library" :data-target="tabState.current">
-                <section v-if="tabState.current === 'page-archive'" class="mvu-mobile-library-page" data-target="page-archive">
-                  <div class="mvu-mobile-card mvu-mobile-card--hero clickable" data-preview="生命图谱详细页" data-unified-card="archive-core" data-unified-surface="shell"></div>
-                  <div class="mvu-mobile-card-grid mvu-mobile-card-grid--two">
-                    <div class="mvu-mobile-card clickable" data-unified-card="primary-spirit" data-unified-surface="shell"></div>
-                    <div class="mvu-mobile-card clickable" data-unified-card="secondary-spirit" data-unified-surface="shell"></div>
-                  </div>
-                  <div class="mvu-mobile-card-grid mvu-mobile-card-grid--two">
-                    <div class="mvu-mobile-card clickable" data-preview="武装工坊详细页" data-unified-card="armory" data-unified-surface="shell"></div>
-                    <div class="mvu-mobile-card clickable" data-preview="储物仓库详细页" data-unified-card="vault" data-unified-surface="shell"></div>
-                  </div>
-                  <div class="mvu-mobile-card" data-unified-card="social" data-unified-surface="shell"></div>
-                </section>
-                <section v-if="tabState.current === 'page-map'" class="mvu-mobile-library-page" data-target="page-map">
-                  <div class="mvu-mobile-card mvu-mobile-card--hero" data-unified-card="map-locals" data-unified-surface="shell"></div>
-                  <div class="mvu-mobile-card clickable" data-preview="当前节点详情" data-unified-card="map-current" data-unified-surface="shell"></div>
-                </section>
-
-                <section v-if="tabState.current === 'page-world'" class="mvu-mobile-library-page" data-target="page-world">
-                  <div class="mvu-mobile-card mvu-mobile-card--hero clickable" data-preview="世界状态总览" data-unified-card="world-hero" data-unified-surface="shell"></div>
-                  <div class="mvu-mobile-card clickable" data-preview="全息编年史" data-unified-card="world-timeline" data-unified-surface="shell"></div>
-                </section>
-                <section v-if="tabState.current === 'page-org'" class="mvu-mobile-library-page" data-target="page-org">
-                  <div class="mvu-mobile-card mvu-mobile-card--hero clickable" data-preview="势力矩阵总览" data-unified-card="org-hero" data-unified-surface="shell"></div>
-                  <div class="mvu-mobile-card-grid mvu-mobile-card-grid--two">
-                    <div class="mvu-mobile-card clickable" data-preview="我的阵营详情" data-unified-card="org-faction" data-unified-surface="shell"></div>
-                    <div class="mvu-mobile-card clickable" data-preview="本地据点详情" data-unified-card="org-node" data-unified-surface="shell"></div>
-                  </div>
-                </section>
-                <section v-if="tabState.current === 'page-terminal'" class="mvu-mobile-library-page" data-target="page-terminal">
-                  <div class="mvu-mobile-card mvu-mobile-card--hero clickable" data-preview="系统播报与日志" data-unified-card="terminal-hero" data-unified-surface="shell"></div>
-                  <div class="mvu-mobile-card-grid mvu-mobile-card-grid--two">
-                    <div class="mvu-mobile-card clickable" data-preview="试炼与情报" data-unified-card="terminal-intel" data-unified-surface="shell"></div>
-                    <div class="mvu-mobile-card clickable" data-preview="怪物图鉴" data-unified-card="terminal-bestiary" data-unified-surface="shell"></div>
-                    <div class="mvu-mobile-card clickable" data-preview="任务界面" data-unified-card="terminal-quest" data-unified-surface="shell"></div>
-                  </div>
-                </section>
-              </section>
-            </div>
-          </div>
-
-          <nav class="mvu-mobile-shell-nav" aria-label="页面切换">
-            <button
-              v-for="tab in tabs"
-              :key="'mobile-tab-' + tab.id"
-              type="button"
-              class="mvu-mobile-shell-tab"
-              :class="{ active: tabState.current === tab.id }"
-              :data-target="tab.id"
-              @click="enterSection(tab.id)"
-            >
-              <span class="mvu-mobile-shell-tab-icon" aria-hidden="true" v-html="tab.icon"></span>
-              <span class="mvu-mobile-shell-tab-label">{{ tab.label }}</span>
-            </button>
-          </nav>
-        </div>
-      </section>
-    </div>
-  `,
-  setup() {
-    const launcherRef = ref(null);
-    const shellFrameRef = ref(null);
-    const modalHostRef = ref(null);
-    const shellScreen = ref('section');
-    const shellDetailPreviewKey = ref('');
-    const shellDetailReturnScreen = ref('section');
-    const launcherModeItems = [
-      { id: 'unified', label: '一体' },
-      { id: 'shell', label: '手机' }
-    ];
-    const dragState = {
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      originX: 0,
-      originY: 0,
-      moved: false,
-      longPressTriggered: false,
-      longPressTimer: null
-    };
-
-    const launcherPosition = computed(() => resolveSurfaceLauncherDisplayPosition());
-    const launcherStyle = computed(() => {
-      const position = launcherPosition.value;
-      return {
-        transform: `translate3d(${Math.round(position.x)}px, ${Math.round(position.y)}px, 0)`
-      };
-    });
-    const shellOffset = reactive({ x: 0, y: 0 });
-    const shellDragState = {
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      originX: 0,
-      originY: 0,
-      dragging: false
-    };
-    const clampShellOffset = nextValue => {
-      const shellLayer = shellFrameRef.value && typeof shellFrameRef.value.closest === 'function'
-        ? shellFrameRef.value.closest('.mvu-mobile-shell')
-        : null;
-      const shellRect = shellLayer && typeof shellLayer.getBoundingClientRect === 'function'
-        ? shellLayer.getBoundingClientRect()
-        : { width: window.innerWidth || 0, height: window.innerHeight || 0 };
-      const frameRect = shellFrameRef.value && typeof shellFrameRef.value.getBoundingClientRect === 'function'
-        ? shellFrameRef.value.getBoundingClientRect()
-        : { width: 0, height: 0 };
-      const margin = 10;
-      const limitX = Math.max(0, ((shellRect.width || 0) - (frameRect.width || 0)) / 2 - margin);
-      const limitY = Math.max(0, ((shellRect.height || 0) - (frameRect.height || 0)) / 2 - margin);
-      return {
-        x: _.clamp(Number(nextValue && nextValue.x) || 0, -limitX, limitX),
-        y: _.clamp(Number(nextValue && nextValue.y) || 0, -limitY, limitY)
-      };
-    };
-    const syncShellOffset = nextValue => {
-      const nextOffset = clampShellOffset(nextValue || shellOffset);
-      shellOffset.x = nextOffset.x;
-      shellOffset.y = nextOffset.y;
-      return nextOffset;
-    };
-    const shellFrameStyle = computed(() => ({
-      '--mvu-shell-offset-x': `${Math.round(shellOffset.x)}px`,
-      '--mvu-shell-offset-y': `${Math.round(shellOffset.y)}px`
-    }));
-    const shellVisible = computed(() => !!mvuLayoutState.mobileShellOpen);
-    const showLauncher = computed(() => !(mvuLayoutState.isMobileViewport && shellVisible.value));
-    const showLauncherMenu = computed(() => true);
-    const launcherMode = computed(() => getDesktopModeSelection());
-    const activeApp = computed(() => resolveShellAppMeta(mvuTabState.current));
-    const showHomeBack = computed(() => shellScreen.value === 'detail');
-    const resolvedActiveTitle = computed(() => {
-      if (shellScreen.value === 'detail') return resolveShellPreviewTitle(shellDetailPreviewKey.value, activeApp.value.title);
-      return activeApp.value.title;
-    });
-    const launcherMainAriaLabel = computed(() => {
-      if (mvuLayoutState.surfaceMode === 'shell' && shellVisible.value) return '收起小手机';
-      return '打开小手机';
-    });
-    const launcherMenuAlign = computed(() => {
-      const viewport = getViewportSize();
-      return launcherPosition.value.x > viewport.width * 0.52 ? 'end' : 'start';
-    });
-    const launcherMenuVertical = computed(() => {
-      const viewport = getViewportSize();
-      return launcherPosition.value.y > viewport.height * 0.58 ? 'up' : 'down';
-    });
-
-    const setLauncherMenuOpen = nextOpen => {
-      const nextValue = !!nextOpen;
-      if (mvuLayoutState.surfaceLauncherMenuOpen === nextValue) return nextValue;
-      mvuLayoutState.surfaceLauncherMenuOpen = nextValue;
-      applyLayoutBodyClasses();
-      return nextValue;
-    };
-
-    const closeLauncherMenu = () => setLauncherMenuOpen(false);
-    const ensureShellTab = () => {
-      const normalized = normalizeShellTabId(mvuTabState.current);
-      if (mvuTabState.current !== normalized) {
-        setSharedTab(normalized);
-        writeMobileLastTabStorage(normalized);
-      }
-      return normalized;
-    };
-    const clearLongPressTimer = () => {
-      if (dragState.longPressTimer) {
-        window.clearTimeout(dragState.longPressTimer);
-        dragState.longPressTimer = null;
-      }
-    };
-
-    const detachPointerListeners = () => {
-      clearLongPressTimer();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerEnd);
-      window.removeEventListener('pointercancel', handlePointerEnd);
-    };
-    const detachShellPointerListeners = () => {
-      window.removeEventListener('pointermove', handleShellPointerMove);
-      window.removeEventListener('pointerup', handleShellPointerEnd);
-      window.removeEventListener('pointercancel', handleShellPointerEnd);
-    };
-
-    function handleShellPointerMove(event) {
-      if (event.pointerId !== shellDragState.pointerId) return;
-      const deltaX = event.clientX - shellDragState.startX;
-      const deltaY = event.clientY - shellDragState.startY;
-      if (!shellDragState.dragging && Math.hypot(deltaX, deltaY) < 6) return;
-      shellDragState.dragging = true;
-      syncShellOffset({
-        x: shellDragState.originX + deltaX,
-        y: shellDragState.originY + deltaY
-      });
-    }
-
-    function handleShellPointerEnd(event) {
-      if (event.pointerId !== shellDragState.pointerId) return;
-      detachShellPointerListeners();
-      shellDragState.pointerId = null;
-      shellDragState.dragging = false;
-      syncShellOffset();
-    }
-
-    const onShellHeaderPointerDown = event => {
-      if (!shellVisible.value) return;
-      if (typeof event.button === 'number' && event.button !== 0) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (target && target.closest('button, a, input, textarea, select, label')) return;
-      event.preventDefault();
-      shellDragState.pointerId = event.pointerId;
-      shellDragState.startX = event.clientX;
-      shellDragState.startY = event.clientY;
-      shellDragState.originX = shellOffset.x;
-      shellDragState.originY = shellOffset.y;
-      shellDragState.dragging = false;
-      if (event.currentTarget && typeof event.currentTarget.setPointerCapture === 'function') {
-        try { event.currentTarget.setPointerCapture(event.pointerId); } catch (err) {}
-      }
-      window.addEventListener('pointermove', handleShellPointerMove);
-      window.addEventListener('pointerup', handleShellPointerEnd);
-      window.addEventListener('pointercancel', handleShellPointerEnd);
-    };
-
-    const runLauncherAction = () => {
-      closeLauncherMenu();
-      toggleShellSurface();
-    };
-
-    const finishDrag = () => {
-      detachPointerListeners();
-      dragState.pointerId = null;
-      const moved = dragState.moved;
-      const longPressTriggered = dragState.longPressTriggered;
-      dragState.moved = false;
-      dragState.longPressTriggered = false;
-      mvuLayoutState.surfaceLauncherDragging = false;
-      if (moved) {
-        syncSurfaceLauncherPosition({ persist: true });
-        return;
-      }
-      if (longPressTriggered) return;
-      runLauncherAction();
-    };
-
-    function handlePointerMove(event) {
-      if (event.pointerId !== dragState.pointerId) return;
-      const deltaX = event.clientX - dragState.startX;
-      const deltaY = event.clientY - dragState.startY;
-      if (dragState.longPressTriggered) return;
-      if (!dragState.moved && Math.hypot(deltaX, deltaY) >= SURFACE_LAUNCHER_DRAG_THRESHOLD) {
-        dragState.moved = true;
-        mvuLayoutState.surfaceLauncherDragging = true;
-        clearLongPressTimer();
-        closeLauncherMenu();
-      }
-      if (!dragState.moved) return;
-      mvuLayoutState.surfaceLauncherPosition = clampSurfaceLauncherPosition({
-        x: dragState.originX + deltaX,
-        y: dragState.originY + deltaY
-      });
-    }
-
-    function handlePointerEnd(event) {
-      if (event.pointerId !== dragState.pointerId) return;
-      finishDrag();
-    }
-
-    const beginLauncherPointer = (event) => {
-      if (typeof event.button === 'number' && event.button !== 0) return;
-      event.preventDefault();
-      const position = resolveSurfaceLauncherDisplayPosition();
-      dragState.pointerId = event.pointerId;
-      dragState.startX = event.clientX;
-      dragState.startY = event.clientY;
-      dragState.originX = position.x;
-      dragState.originY = position.y;
-      dragState.moved = false;
-      dragState.longPressTriggered = false;
-      mvuLayoutState.surfaceLauncherDragging = false;
-      if (event.currentTarget && typeof event.currentTarget.setPointerCapture === 'function') {
-        try { event.currentTarget.setPointerCapture(event.pointerId); } catch (err) {}
-      }
-      clearLongPressTimer();
-      dragState.longPressTimer = window.setTimeout(() => {
-        if (dragState.pointerId !== event.pointerId || dragState.moved) return;
-        dragState.longPressTriggered = true;
-        setLauncherMenuOpen(true);
-      }, SURFACE_LAUNCHER_LONG_PRESS_MS);
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerEnd);
-      window.addEventListener('pointercancel', handlePointerEnd);
-    };
-
-    const onLauncherPointerDown = event => beginLauncherPointer(event);
-    const onLauncherKeyboardAction = () => runLauncherAction();
-    const onLauncherContextMenu = () => {
-      setLauncherMenuOpen(true);
-    };
-
-    const resetShellDetailState = nextScreen => {
-      shellDetailPreviewKey.value = '';
-      shellDetailReturnScreen.value = 'section';
-      shellScreen.value = nextScreen === 'detail' ? 'detail' : 'section';
-    };
-    const openShellPreview = previewKey => {
-      const nextPreviewKey = String(previewKey || '').trim();
-      if (!nextPreviewKey) return;
-      shellDetailReturnScreen.value = 'section';
-      shellDetailPreviewKey.value = nextPreviewKey;
-      shellScreen.value = 'detail';
-      const run = () => {
-        if (typeof window.__MVU_OPEN_SHELL_PREVIEW__ === 'function') {
-          try { window.__MVU_OPEN_SHELL_PREVIEW__(nextPreviewKey, { preserveMapDispatchContext: true }); } catch (err) {}
-        }
-      };
-      if (typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => window.requestAnimationFrame(run));
-      } else {
-        window.setTimeout(run, 0);
-      }
-    };
-    const closeShellDetail = nextScreen => {
-      if (typeof window.__MVU_CLOSE_DETAIL_MODAL__ === 'function') {
-        try { window.__MVU_CLOSE_DETAIL_MODAL__(); } catch (err) {}
-      }
-      resetShellDetailState(nextScreen || shellDetailReturnScreen.value || 'section');
-    };
-    const closeShell = () => closeShellSurface();
-    const handleBackdropClick = event => {
-      if (!event) return;
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    const handleShellPreviewClick = event => {
-      if (shellScreen.value === 'detail') return;
-      const 目标节点 = event.target instanceof Element ? event.target : null;
-      if (!目标节点) return;
-      if (typeof window.__MVU_CONSUME_LONG_PRESS_CLICK__ === 'function' && window.__MVU_CONSUME_LONG_PRESS_CLICK__(目标节点)) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      const 预览入口 = 目标节点.closest('.clickable[data-preview]');
-      if (!预览入口) return;
-      const 统一挂载 = document.getElementById('mvu-unified-mount');
-      const 来自桌面统一面板 = !!(统一挂载 && 统一挂载.contains(预览入口) && !预览入口.closest('.mvu-mobile-shell'));
-      const 预览键 = String(预览入口.getAttribute('data-preview') || '').trim();
-      if (!预览键) return;
-      if (来自桌面统一面板) {
-        if (typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ !== 'function') return;
-        event.preventDefault();
-        event.stopPropagation();
-        window.__MVU_OPEN_UNIFIED_PREVIEW__(预览键, {
-          triggerEl: 预览入口,
-          preserveMapDispatchContext: true,
-          replace: true
-        });
-        return;
-      }
-      if (!shellFrameRef.value || !shellFrameRef.value.contains(预览入口)) return;
-      if (预览入口.closest('.mvu-mobile-shell-nav')) return;
-      event.preventDefault();
-      event.stopPropagation();
-      openShellPreview(预览键);
-    };
-    const enterSection = tabId => {
-      if (shellScreen.value === 'detail') {
-        closeShellDetail('section');
-      }
-      requestTabChange(normalizeShellTabId(tabId));
-      shellScreen.value = 'section';
-    };
-    const handleBack = () => {
-      if (shellScreen.value !== 'detail') return;
-      closeShellDetail(shellDetailReturnScreen.value || 'section');
-    };
-    const selectLauncherMode = mode => {
-      closeLauncherMenu();
-      applyDesktopLayoutSelection(mode);
-    };
-
-    const handleWindowPointerDown = event => {
-      if (!mvuLayoutState.surfaceLauncherMenuOpen) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (target && launcherRef.value && launcherRef.value.contains(target)) return;
-      closeLauncherMenu();
-    };
-
-    const handleWindowKeydown = event => {
-      if (event.key === 'Escape' && mvuLayoutState.surfaceLauncherMenuOpen) {
-        closeLauncherMenu();
-      }
-    };
-
-    watch(() => mvuLayoutState.mobileShellOpen, nextOpen => {
-      if (nextOpen) {
-        ensureShellTab();
-        resetShellDetailState('section');
-        closeLauncherMenu();
-        if (typeof window.requestAnimationFrame === 'function') {
-          window.requestAnimationFrame(() => syncShellOffset());
-        } else {
-          window.setTimeout(() => syncShellOffset(), 0);
-        }
-      } else {
-        detachShellPointerListeners();
-        shellDragState.pointerId = null;
-        shellDragState.dragging = false;
-        shellDetailPreviewKey.value = '';
-      }
-      requestUnifiedShellCardRefresh({ force: true });
-    });
-
-    watch(() => mvuTabState.current, nextTab => {
-      if (shellVisible.value && normalizeShellTabId(nextTab) !== nextTab) {
-        ensureShellTab();
-        return;
-      }
-      requestUnifiedShellCardRefresh({ force: true });
-    });
-
-    watch(shellScreen, nextScreen => {
-      if (nextScreen === 'section') {
-        ensureShellTab();
-      }
-      requestUnifiedShellCardRefresh({ force: true });
-    });
-
-    const bridge = {
-      isAvailable: () => true,
-      isOpen: () => !!mvuLayoutState.mobileShellOpen,
-      isDetailActive: () => shellScreen.value === 'detail',
-      getModalHost: () => modalHostRef.value,
-      getShellFrame: () => shellFrameRef.value,
-      open: () => openShellSurface(),
-      close: () => closeShellSurface(),
-      toggle: () => toggleShellSurface(),
-      openPreview: previewKey => openShellPreview(previewKey),
-      onPreviewChange: payload => {
-        const previewKey = typeof payload === 'string'
-          ? payload
-          : String(payload && payload.previewKey || '').trim();
-        if (!previewKey) return;
-        if (shellScreen.value !== 'detail') shellDetailReturnScreen.value = 'section';
-        shellDetailPreviewKey.value = previewKey;
-        shellScreen.value = 'detail';
-      },
-      onPreviewClosed: () => {
-        if (shellScreen.value !== 'detail') return;
-        resetShellDetailState(shellDetailReturnScreen.value || 'section');
-      },
-      syncLauncherPosition: options => syncSurfaceLauncherPosition(options)
-    };
-
-    onMounted(() => {
-      window.__MVU_MOBILE_SHELL__ = bridge;
-      syncSurfaceLauncherPosition({ persist: true });
-      syncShellOffset();
-      window.addEventListener('click', handleShellPreviewClick, true);
-      window.addEventListener('pointerdown', handleWindowPointerDown, true);
-      window.addEventListener('keydown', handleWindowKeydown);
-      window.addEventListener('resize', syncShellOffset);
-      if (mvuLayoutState.mobileShellOpen) ensureShellTab();
-      requestUnifiedShellCardRefresh({ force: true });
-      if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
-        try { window.__MVU_SYNC_DETAIL_MODAL_HOST__(); } catch (err) {}
-      }
-    });
-
-    onUnmounted(() => {
-      detachPointerListeners();
-      detachShellPointerListeners();
-      window.removeEventListener('click', handleShellPreviewClick, true);
-      window.removeEventListener('pointerdown', handleWindowPointerDown, true);
-      window.removeEventListener('keydown', handleWindowKeydown);
-      window.removeEventListener('resize', syncShellOffset);
-      if (window.__MVU_MOBILE_SHELL__ === bridge) {
-        delete window.__MVU_MOBILE_SHELL__;
-      }
-    });
-
-    return {
-      tabs: SHELL_TAB_ITEMS,
-      resolvedActiveTitle,
-      enterSection,
-      handleBack,
-      launcherMainAriaLabel,
-      launcherMenuAlign,
-      launcherModeItems,
-      launcherMenuVertical,
-      launcherMode,
-      launcherStyle,
-      launcherRef,
-      onLauncherContextMenu,
-      onLauncherKeyboardAction,
-      onLauncherPointerDown,
-      selectLauncherMode,
-      shellVisible,
-      shellDetailPreviewKey,
-      shellScreen,
-      showHomeBack,
-      showLauncher,
-      showLauncherMenu,
-      tabState: mvuTabState,
-      layoutState: mvuLayoutState,
-      shellFrameRef,
-      shellFrameStyle,
-      modalHostRef,
-      closeShell,
-      handleBackdropClick,
-      onShellHeaderPointerDown
-    };
-  }
-};
 
 const DesktopUnifiedLayout = {
   template: `
@@ -1727,7 +522,6 @@ const DesktopUnifiedLayout = {
   `,
   setup() {
     const activeMeta = computed(() => resolveUnifiedTabMeta(mvuTabState.current));
-    const modeBadge = computed(() => (mvuLayoutState.isMobileViewport ? '移动端一体栏' : '桌面一体栏'));
     const detailHostRef = ref(null);
     const detailState = mvuUnifiedDetailState;
     const 上次详情标题 = ref('详情');
@@ -1910,10 +704,16 @@ const DesktopUnifiedLayout = {
     };
     const requestUnifiedDetailRender = (options = {}) => {
       const nextPreviewKey = String(detailState.previewKey || '').trim();
+      const 重试次数 = Number(options.重试次数 || 0);
       scheduleFrameTask(() => {
         const host = detailHostRef.value;
         if (!host || !host.isConnected || !nextPreviewKey || !detailState.isOpen) return;
-        if (typeof window.__MVU_RENDER_UNIFIED_PREVIEW__ !== 'function') return;
+        if (typeof window.__MVU_RENDER_UNIFIED_PREVIEW__ !== 'function') {
+          if (重试次数 < 8) {
+            window.setTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
+          }
+          return;
+        }
         try {
           const rendered = window.__MVU_RENDER_UNIFIED_PREVIEW__(nextPreviewKey, { ...options, host });
           if (rendered === false && detailState.previewKey === nextPreviewKey) {
@@ -1921,7 +721,11 @@ const DesktopUnifiedLayout = {
             return;
           }
           syncUnifiedFrameViewport();
-        } catch (err) {}
+        } catch (err) {
+          if (重试次数 < 8) {
+            window.setTimeout(() => requestUnifiedDetailRender({ ...options, force: true, 重试次数: 重试次数 + 1 }), 80);
+          }
+        }
       });
     };
     const openUnifiedPreview = (previewKey, options = {}) => {
@@ -2012,17 +816,8 @@ const DesktopUnifiedLayout = {
         delete window.__MVU_GET_UNIFIED_DETAIL_HOST__;
       }
     });
-    watch(() => mvuLayoutState.effectiveMode, nextMode => {
-      if (nextMode !== 'unified' && detailState.isOpen) {
-        closeUnifiedDetail({ force: true });
-      }
-    });
     watch(() => mvuTabState.current, () => {
       scheduleUnifiedFrameViewportSync();
-    });
-    watch(() => mvuLayoutState.isMobileViewport, () => {
-      scheduleUnifiedFrameViewportSync();
-      forceUnifiedCardSync();
     });
     return {
       tabs: TAB_ITEMS,
@@ -2031,7 +826,6 @@ const DesktopUnifiedLayout = {
       detailHostRef,
       detailState,
       详情路径标题,
-      modeBadge,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
       setTab: setUnifiedTab,
@@ -2055,25 +849,6 @@ const UnifiedLayoutRoot = {
   }
 };
 
-const LayoutRescueDock = {
-  template: `
-    <div class="mvu-layout-rescue" :class="{ active: shouldShow }">
-      <button type="button" class="mvu-layout-rescue-btn" @click="rescue">
-        <span class="mvu-layout-rescue-title">切回一体栏</span>
-        <span class="mvu-layout-rescue-desc">移动端仅保留一体栏，点这里直接恢复。</span>
-      </button>
-    </div>
-  `,
-  setup() {
-    const shouldShow = computed(() => mvuLayoutState.isMobileViewport && mvuLayoutState.effectiveMode !== 'unified');
-    const rescue = () => setLayoutMode('unified');
-    return {
-      shouldShow,
-      rescue
-    };
-  }
-};
-
 function ensureUnifiedMountNode() {
   let unifiedMount = document.getElementById('mvu-unified-mount');
   if (!unifiedMount && document.body) {
@@ -2093,16 +868,6 @@ function ensureUnifiedMountNode() {
   return unifiedMount;
 }
 
-function ensureLayoutRescueMountNode() {
-  let rescueMount = document.getElementById('mvu-layout-rescue-mount');
-  if (!rescueMount && document.body) {
-    rescueMount = document.createElement('div');
-    rescueMount.id = 'mvu-layout-rescue-mount';
-    document.body.appendChild(rescueMount);
-  }
-  return rescueMount;
-}
-
 function ensureUnifiedDockMounted() {
   const unifiedMount = ensureUnifiedMountNode();
   if (!unifiedMount) return null;
@@ -2113,26 +878,8 @@ function ensureUnifiedDockMounted() {
   return unifiedMount;
 }
 
-function ensureLayoutRescueMounted() {
-  const rescueMount = ensureLayoutRescueMountNode();
-  if (!rescueMount) return null;
-  if (!rescueMount.__mvuVueMounted) {
-    createApp(LayoutRescueDock).mount(rescueMount);
-    rescueMount.__mvuVueMounted = true;
-  }
-  return rescueMount;
-}
-
-function removeLayoutRescueMountNode() {
-  const rescueMount = document.getElementById('mvu-layout-rescue-mount');
-  if (rescueMount && rescueMount.parentElement) {
-    rescueMount.parentElement.removeChild(rescueMount);
-  }
-}
-
 function mountMvuVue() {
   const unifiedMount = ensureUnifiedDockMounted();
-  removeLayoutRescueMountNode();
 
   if (window.__MVU_UNIFIED_ANCHOR_MANAGER__ && typeof window.__MVU_UNIFIED_ANCHOR_MANAGER__.stop === 'function') {
     try { window.__MVU_UNIFIED_ANCHOR_MANAGER__.stop(); } catch (err) {}
@@ -2147,7 +894,6 @@ function mountMvuVue() {
   window.__MVU_UNIFIED_ANCHOR_MANAGER__ = anchorManager;
   anchorManager.start();
 
-  syncSurfaceLauncherPosition({ persist: true });
   refreshViewportState();
   syncLayoutMode();
   const finishUnifiedBootstrap = () => {

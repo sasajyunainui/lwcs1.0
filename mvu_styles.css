@@ -6543,7 +6543,7 @@ button.tag-chip:active,
   animation: skill-designer-fade-in 0.3s ease-out forwards;
 }
 
-$1760px) {
+@media (max-width: 760px) {
   .skill-designer-shell .mvu-editor-input,
   .skill-designer-shell .mvu-editor-select,
   .skill-designer-shell .mvu-editor-static {
@@ -6660,7 +6660,7 @@ $1760px) {
   cursor: not-allowed;
 }
 
-$1760px) {
+@media (max-width: 760px) {
   .mvu-editor-field-grid,
   .mvu-editor-custom-grid,
   .skill-designer-fusion-participant-row {
@@ -8960,7 +8960,7 @@ $11180px) {
   }
 }
 
-$1760px) {
+@media (max-width: 760px) {
   .relation-directory-head,
   .relation-action-head {
     flex-direction: column;
@@ -9594,23 +9594,16 @@ $1760px) {
   --mvu-unified-pill: rgba(110, 220, 238, 0.12);
   --mvu-unified-pill-border: rgba(110, 220, 238, 0.24);
 }
-
 body.mvu-surface-panel.mvu-layout-unified #mvu-left-mount,
-body.mvu-surface-panel.mvu-layout-unified #mvu-right-mount,
-body.mvu-surface-shell #mvu-left-mount,
-body.mvu-surface-shell #mvu-right-mount {
+body.mvu-surface-panel.mvu-layout-unified #mvu-right-mount {
   display: none !important;
   pointer-events: none !important;
 }
-
 body.mvu-surface-panel.mvu-layout-split #mvu-unified-mount,
-body.mvu-surface-panel.mvu-layout-unified #mvu-unified-mount,
-body.mvu-surface-shell #mvu-unified-mount {
+body.mvu-surface-panel.mvu-layout-unified #mvu-unified-mount {
   display: block !important;
 }
-
-body.mvu-surface-panel.mvu-layout-unified #chat,
-body.mvu-surface-shell #chat {
+body.mvu-surface-panel.mvu-layout-unified #chat {
   overflow-x: hidden;
 }
 
@@ -9647,27 +9640,6 @@ body.mvu-surface-panel.mvu-layout-unified #mvu-unified-mount {
   width: min(1120px, 100%);
   margin: 8px 0 12px;
   z-index: 32;
-}
-
-body.mvu-surface-shell #mvu-unified-mount {
-  width: 100vw !important;
-  max-width: none !important;
-  margin: 0 !important;
-  z-index: var(--mvu-z-launcher, 10040) !important;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100svh !important;
-  margin: 0 !important;
-  display: block !important;
-  background: transparent !important;
-}
-
-body.mvu-surface-shell #mvu-unified-mount .mvu-unified-panel-host {
-  display: none !important;
 }
 
 body.mvu-layout-split #mvu-unified-mount .mvu-unified-panel-host {
@@ -9801,8 +9773,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
   display: grid;
-  grid-template-columns: minmax(190px, 0.82fr) minmax(360px, 1.42fr) auto;
-  grid-template-areas: 'status tabs more';
+  grid-template-columns: minmax(190px, 0.82fr) minmax(360px, 1.42fr);
+  grid-template-areas: 'status tabs';
   align-items: center;
   gap: 8px;
   min-height: 36px;
@@ -9810,8 +9782,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: 'back title more';
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'back title';
   align-items: center;
   min-height: 36px;
   gap: 8px;
@@ -9874,106 +9846,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-u
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow {
-  position: relative;
-  z-index: 10;
-  grid-area: more;
-  display: grid;
-  place-items: center;
-  min-width: 34px;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger {
-  appearance: none;
-  -webkit-appearance: none;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  margin: 0;
-  border: 1px solid rgba(77, 240, 255, 0.18);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(238, 251, 253, 0.96);
-  font-size: 19px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger:hover,
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger:focus-visible,
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow.active .mvu-toolbar-overflow-trigger {
-  border-color: rgba(77, 240, 255, 0.34);
-  background: rgba(77, 240, 255, 0.1);
-  outline: none;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 20;
-  display: grid;
-  gap: 8px;
-  min-width: 188px;
-  padding: 8px;
-  border: 1px solid rgba(77, 240, 255, 0.2);
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at top, rgba(77, 240, 255, 0.16), transparent 58%),
-    linear-gradient(180deg, rgba(12, 28, 38, 0.98), rgba(5, 15, 23, 0.98));
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.32);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(5px) scale(0.98);
-  transform-origin: top right;
-  transition:
-    opacity var(--mvu-motion-state) ease,
-    transform var(--mvu-motion-state) ease;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow.active .mvu-toolbar-overflow-menu {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section:empty {
-  display: none;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section .mvu-ai-maintenance-title-slot {
-  display: grid;
-  min-width: 0;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section .mvu-ai-maintenance-title-button {
-  width: 100%;
-  justify-content: center;
-  min-height: 30px;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-layout-toggle--overflow {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  width: 100%;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-layout-toggle--overflow .mvu-unified-layout-btn {
-  min-width: 0;
-  min-height: 30px;
-  padding: 0 9px;
-  border-radius: 9px;
-  font-size: 11px;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
@@ -10498,9 +10370,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-card .clickable:hover {
   border-color: var(--mvu-hud-line-strong) !important;
   background-color: rgba(77, 240, 255, 0.035) !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount [data-unified-card='social'],
-body.mvu-shell-overlay-enabled #mvu-unified-mount [data-unified-card='social'],
 body.mvu-layout-unified #mvu-unified-mount [data-unified-card='map-locals'] {
   cursor: default !important;
 }
@@ -10856,17 +10726,13 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource.is-red i
 body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource.is-white i {
   color: rgba(248, 252, 253, 0.94) !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry-grid {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
   height: 100% !important;
   align-content: stretch !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry {
   appearance: none !important;
   -webkit-appearance: none !important;
   display: grid !important;
@@ -10888,9 +10754,7 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry {
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='primary-spirit'] {
   grid-template-rows: minmax(0, 1fr) !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry b {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry b {
   grid-column: 1 !important;
   grid-row: 1 !important;
   align-self: center !important;
@@ -10904,9 +10768,7 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry b {
   line-height: 1.2 !important;
   white-space: nowrap !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry strong {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry strong {
   grid-column: 1 / -1 !important;
   grid-row: 2 !important;
   min-width: 0 !important;
@@ -10922,9 +10784,7 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry strong {
   white-space: normal !important;
   overflow-wrap: anywhere !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry span {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry span {
   grid-column: 1 !important;
   grid-row: 3 !important;
   min-width: 0 !important;
@@ -10940,9 +10800,7 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry span {
   overflow-wrap: anywhere !important;
   word-break: keep-all !important;
 }
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry-count,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry-count {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry-count {
   grid-column: 2 !important;
   grid-row: 1 !important;
   align-self: center !important;
@@ -10957,11 +10815,8 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry-count {
   font-style: normal !important;
   white-space: nowrap !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry:hover,
-body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry:focus-visible,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-social-entry:focus-visible {
+body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry:focus-visible {
   border-color: rgba(118, 226, 255, 0.44) !important;
   background: linear-gradient(180deg, rgba(28, 70, 88, 0.64), rgba(7, 25, 37, 0.76)) !important;
   outline: none !important;
@@ -14107,7 +13962,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .skill-desig
   overflow-wrap: anywhere;
 }
 
-$1760px) {
+@media (max-width: 760px) {
   .mvu-quest-workbench {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
@@ -14239,32 +14094,20 @@ $1760px) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-card:not(.mvu-quest-list-card),
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed-card,
 #detailModal.mvu-modal-display-unified .mvu-detail-scroll-card:not(.mvu-quest-list-card),
-#detailModal.mvu-modal-display-unified .mvu-detail-embed-card,
-#detailModal.mvu-modal-display-shell .mvu-detail-scroll-card:not(.mvu-quest-list-card),
-#detailModal.mvu-modal-display-shell .mvu-detail-embed-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-scroll-card:not(.mvu-quest-list-card),
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-embed-card {
+#detailModal.mvu-modal-display-unified .mvu-detail-embed-card {
   display: grid !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
 #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list,
 #detailModal.mvu-modal-display-unified .mvu-detail-embed,
-#detailModal.mvu-modal-display-unified .mvu-detail-form-grid,
-#detailModal.mvu-modal-display-shell .mvu-detail-scroll-list,
-#detailModal.mvu-modal-display-shell .mvu-detail-embed,
-#detailModal.mvu-modal-display-shell .mvu-detail-form-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-scroll-list,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-embed,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-form-grid {
+#detailModal.mvu-modal-display-unified .mvu-detail-form-grid {
   min-width: 0 !important;
   min-height: 0 !important;
   max-height: min(360px, calc(var(--mvu-hud-frame-height, 760px) - 292px)) !important;
@@ -14273,71 +14116,40 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   padding-right: 0 !important;
   scrollbar-width: none !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list::-webkit-scrollbar,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed::-webkit-scrollbar,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid::-webkit-scrollbar,
 #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list::-webkit-scrollbar,
 #detailModal.mvu-modal-display-unified .mvu-detail-embed::-webkit-scrollbar,
-#detailModal.mvu-modal-display-unified .mvu-detail-form-grid::-webkit-scrollbar,
-#detailModal.mvu-modal-display-shell .mvu-detail-scroll-list::-webkit-scrollbar,
-#detailModal.mvu-modal-display-shell .mvu-detail-embed::-webkit-scrollbar,
-#detailModal.mvu-modal-display-shell .mvu-detail-form-grid::-webkit-scrollbar,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-detail-scroll-list::-webkit-scrollbar,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-embed::-webkit-scrollbar,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-detail-form-grid::-webkit-scrollbar {
+#detailModal.mvu-modal-display-unified .mvu-detail-form-grid::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
-#detailModal.mvu-modal-display-unified .mvu-detail-embed,
-#detailModal.mvu-modal-display-shell .mvu-detail-embed,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-embed {
+#detailModal.mvu-modal-display-unified .mvu-detail-embed {
   max-height: min(440px, calc(var(--mvu-hud-frame-height, 760px) - 232px)) !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed *,
-#detailModal.mvu-modal-display-unified .mvu-detail-embed *,
-#detailModal.mvu-modal-display-shell .mvu-detail-embed *,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-embed * {
+#detailModal.mvu-modal-display-unified .mvu-detail-embed * {
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list .timeline-stack,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list .timeline-card,
 #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list .timeline-stack,
-#detailModal.mvu-modal-display-unified .mvu-detail-scroll-list .timeline-card,
-#detailModal.mvu-modal-display-shell .mvu-detail-scroll-list .timeline-stack,
-#detailModal.mvu-modal-display-shell .mvu-detail-scroll-list .timeline-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-scroll-list .timeline-stack,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-scroll-list .timeline-card {
+#detailModal.mvu-modal-display-unified .mvu-detail-scroll-list .timeline-card {
   min-width: 0 !important;
   max-width: 100% !important;
   overflow-x: hidden !important;
   overflow-wrap: anywhere !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-toolbar,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-action-row,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-search-row,
 #detailModal.mvu-modal-display-unified .mvu-detail-toolbar,
 #detailModal.mvu-modal-display-unified .mvu-detail-action-row,
-#detailModal.mvu-modal-display-unified .mvu-detail-search-row,
-#detailModal.mvu-modal-display-shell .mvu-detail-toolbar,
-#detailModal.mvu-modal-display-shell .mvu-detail-action-row,
-#detailModal.mvu-modal-display-shell .mvu-detail-search-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-toolbar,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-action-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-search-row {
+#detailModal.mvu-modal-display-unified .mvu-detail-search-row {
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: center !important;
@@ -14349,18 +14161,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
   margin-top: 12px !important;
   justify-content: flex-end !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-toolbar--tight,
-#detailModal.mvu-modal-display-unified .mvu-detail-toolbar--tight,
-#detailModal.mvu-modal-display-shell .mvu-detail-toolbar--tight,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-toolbar--tight {
+#detailModal.mvu-modal-display-unified .mvu-detail-toolbar--tight {
   margin-top: 8px !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-action-row--start,
-#detailModal.mvu-modal-display-unified .mvu-detail-action-row--start,
-#detailModal.mvu-modal-display-shell .mvu-detail-action-row--start,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-action-row--start {
+#detailModal.mvu-modal-display-unified .mvu-detail-action-row--start {
   justify-content: flex-start !important;
 }
 
@@ -14379,30 +14185,20 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
   color: rgba(220, 245, 255, 0.72) !important;
   font-size: 12px !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-text,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-note,
 #detailModal.mvu-modal-display-unified .mvu-detail-text,
-#detailModal.mvu-modal-display-unified .mvu-detail-note,
-#detailModal.mvu-modal-display-shell .mvu-detail-text,
-#detailModal.mvu-modal-display-shell .mvu-detail-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-text,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-note {
+#detailModal.mvu-modal-display-unified .mvu-detail-note {
   min-width: 0 !important;
   color: rgba(190, 215, 224, 0.86) !important;
   font-size: 12px !important;
   line-height: 1.55 !important;
   overflow-wrap: anywhere !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-text--framed,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-meta,
 #detailModal.mvu-modal-display-unified .mvu-detail-text--framed,
-#detailModal.mvu-modal-display-unified .mvu-detail-meta,
-#detailModal.mvu-modal-display-shell .mvu-detail-text--framed,
-#detailModal.mvu-modal-display-shell .mvu-detail-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-text--framed,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-meta {
+#detailModal.mvu-modal-display-unified .mvu-detail-meta {
   margin-top: 10px !important;
 }
 
@@ -14435,52 +14231,37 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
   padding-top: 12px !important;
   border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
 }
-
-#detailModal.mvu-modal-display-unified .mvu-detail-progress,
-#detailModal.mvu-modal-display-shell .mvu-detail-progress,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-progress {
+#detailModal.mvu-modal-display-unified .mvu-detail-progress {
   display: grid !important;
   gap: 6px !important;
   margin-top: 12px !important;
   padding-top: 12px !important;
   border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress--inline,
-#detailModal.mvu-modal-display-unified .mvu-detail-progress--inline,
-#detailModal.mvu-modal-display-shell .mvu-detail-progress--inline,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-progress--inline {
+#detailModal.mvu-modal-display-unified .mvu-detail-progress--inline {
   margin: 2px 0 0 !important;
   padding: 0 !important;
   border-top: 0 !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-head,
-#detailModal.mvu-modal-display-unified .mvu-detail-progress-head,
-#detailModal.mvu-modal-display-shell .mvu-detail-progress-head,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-progress-head {
+#detailModal.mvu-modal-display-unified .mvu-detail-progress-head {
   display: flex !important;
   justify-content: space-between !important;
   gap: 8px !important;
   color: rgba(190, 215, 224, 0.82) !important;
   font-size: 11px !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-track,
-#detailModal.mvu-modal-display-unified .mvu-detail-progress-track,
-#detailModal.mvu-modal-display-shell .mvu-detail-progress-track,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-progress-track {
+#detailModal.mvu-modal-display-unified .mvu-detail-progress-track {
   height: 7px !important;
   border-radius: 999px !important;
   overflow: hidden !important;
   border: 1px solid rgba(118, 226, 255, 0.13) !important;
   background: rgba(255, 255, 255, 0.06) !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-fill,
-#detailModal.mvu-modal-display-unified .mvu-detail-progress-fill,
-#detailModal.mvu-modal-display-shell .mvu-detail-progress-fill,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-progress-fill {
+#detailModal.mvu-modal-display-unified .mvu-detail-progress-fill {
   display: block !important;
   height: 100% !important;
   border-radius: inherit !important;
@@ -14601,12 +14382,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-car
   height: 0 !important;
   display: none !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount [data-unified-card] *::-webkit-scrollbar,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host *::-webkit-scrollbar,
-#detailModal.mvu-modal-display-unified *::-webkit-scrollbar,
-#detailModal.mvu-modal-display-shell *::-webkit-scrollbar,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host *::-webkit-scrollbar {
+#detailModal.mvu-modal-display-unified *::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
@@ -14707,19 +14485,15 @@ body.mvu-layout-unified
   .dossier-columns--life-record {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-npc-list,
-#detailModal.archive-redesign-mode .archive-redesign-root .location-npc-list,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-npc-list {
+#detailModal.archive-redesign-mode .archive-redesign-root .location-npc-list {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)) !important;
   gap: 10px !important;
   align-items: stretch !important;
 }
-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-npc-actions,
-#detailModal.archive-redesign-mode .archive-redesign-root .location-npc-actions,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-npc-actions {
+#detailModal.archive-redesign-mode .archive-redesign-root .location-npc-actions {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 6px !important;
@@ -14997,10 +14771,10 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
-    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
-      'status more'
-      'tabs tabs' !important;
+      'status'
+      'tabs' !important;
     gap: 6px !important;
   }
 
@@ -15136,11 +14910,9 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     margin: 6px 0 !important;
   }
-
-  body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-actions,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-npc-actions,
-  #detailModal.archive-redesign-mode .archive-redesign-root .location-npc-actions,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-npc-actions {
+body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-actions,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-npc-actions,
+#detailModal.archive-redesign-mode .archive-redesign-root .location-npc-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
@@ -15906,48 +15678,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   box-shadow: var(--mvu-unified-shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-}
-
-.mvu-layout-mode-btn {
-  min-width: 52px;
-  flex: 0 0 auto;
-}
-
-.mvu-unified-layout-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mvu-unified-layout-btn {
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid var(--mvu-unified-pill-border);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8fcff;
-  cursor: pointer;
-  font-family: var(--font-title);
-  font-size: 12px;
-  letter-spacing: 0.4px;
-  transition:
-    background var(--mvu-motion-state) ease,
-    border-color var(--mvu-motion-state) ease,
-    transform var(--mvu-motion-hover) ease,
-    box-shadow var(--mvu-motion-state) ease;
-}
-
-.mvu-unified-layout-btn:hover {
-  background: var(--mvu-unified-pill);
-  border-color: rgba(117, 235, 255, 0.35);
-}
-
-.mvu-unified-layout-btn.active {
-  background: linear-gradient(135deg, rgba(84, 240, 255, 0.28), rgba(84, 240, 255, 0.12));
-  border-color: rgba(117, 235, 255, 0.6);
-  box-shadow: 0 0 14px rgba(84, 240, 255, 0.18);
 }
 
 .mvu-unified-hero {
@@ -16889,58 +16619,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   }
 }
 
-#mvu-layout-rescue-mount {
-  position: fixed;
-  right: 12px;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: var(--mvu-z-popover, 10060);
-  pointer-events: none;
-}
-
-.mvu-layout-rescue {
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-  pointer-events: none;
-}
-
-.mvu-layout-rescue.active {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.mvu-layout-rescue-btn {
-  display: grid;
-  gap: 4px;
-  min-width: min(280px, calc(100vw - 24px));
-  min-height: 52px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(223, 197, 123, 0.38);
-  background: linear-gradient(180deg, rgba(35, 17, 6, 0.94), rgba(18, 8, 3, 0.96));
-  color: #fff5d0;
-  text-align: left;
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.34),
-    inset 0 0 0 1px rgba(255, 226, 154, 0.08);
-  cursor: pointer;
-}
-
-.mvu-layout-rescue-title {
-  font-family: var(--font-title);
-  font-size: 13px;
-  letter-spacing: 0.05em;
-}
-
-.mvu-layout-rescue-desc {
-  color: rgba(255, 239, 196, 0.78);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
 .mvu-window-settings-note {
   padding: 10px 12px;
   border-radius: 12px;
@@ -16979,21 +16657,8 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   .mvu-unified-headline span {
     font-size: 12px;
   }
-
-  .mvu-unified-layout-toggle {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .mvu-unified-layout-toggle.locked .mvu-unified-lock-note {
-    width: 100%;
-    justify-content: center;
-    min-height: 40px;
-  }
-
-  .mvu-unified-layout-btn,
-  .mvu-unified-tab-btn,
-  .mvu-unified-action-btn {
+.mvu-unified-tab-btn,
+.mvu-unified-action-btn {
     min-height: 44px;
   }
 
@@ -17007,23 +16672,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
 
   .mvu-unified-action-btn {
     font-size: 12px;
-  }
-
-  .mvu-layout-mode-btn {
-    min-height: 44px;
-    min-width: 54px;
-  }
-}
-
-@media (max-width: 640px) {
-  #mvu-layout-rescue-mount {
-    right: 10px;
-    left: 10px;
-  }
-
-  .mvu-layout-rescue-btn {
-    width: 100%;
-    min-width: 0;
   }
 }
 
@@ -17294,19 +16942,10 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   color: rgba(225, 243, 248, 0.74);
   overflow-wrap: anywhere;
 }
-
 #detailModal .timeline-card.timeline-card--single span,
 #detailModal .intel-card.intel-card--single span,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .timeline-card.timeline-card--single span,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .intel-card.intel-card--single span,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .timeline-card.timeline-card--single
-  span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-card.intel-card--single span,
-#detailModal.mvu-modal-display-shell .timeline-card.timeline-card--single span,
-#detailModal.mvu-modal-display-shell .intel-card.intel-card--single span {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .intel-card.intel-card--single span {
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -17509,18 +17148,14 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   line-height: 1.45;
   color: #effbff;
 }
-
 #detailModal .map-action-grid,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-action-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-action-grid {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 12px;
 }
-
 #detailModal .map-dispatch-action-btn,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn {
   width: 100%;
   min-width: 0;
   min-height: 46px;
@@ -17543,36 +17178,28 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
     color 0.16s ease;
   overflow-wrap: anywhere;
 }
-
 #detailModal .map-dispatch-action-btn:hover,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn:hover {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:hover {
   transform: translateY(-1px);
   border-color: rgba(143, 233, 255, 0.28);
   box-shadow:
     0 10px 22px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(0, 229, 255, 0.08);
 }
-
 #detailModal .map-dispatch-action-btn.live,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.live,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn.live {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.live {
   border-color: rgba(0, 229, 255, 0.26);
   color: #dcffff;
   box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.05);
 }
-
 #detailModal .map-dispatch-action-btn.warn,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.warn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn.warn {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.warn {
   border-color: rgba(255, 215, 0, 0.24);
   color: #fff0b8;
   box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.04);
 }
-
 #detailModal .map-dispatch-action-btn:disabled,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:disabled,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn:disabled {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:disabled {
   opacity: 0.52;
   cursor: not-allowed;
   transform: none;
@@ -18571,7 +18198,7 @@ $11180px) {
   }
 }
 
-$1760px) {
+@media (max-width: 760px) {
   #detailModal .mvu-detail-grid--two,
   #detailModal .mvu-detail-grid--trial,
   #detailModal .mvu-detail-grid--quest,
@@ -19091,7 +18718,6 @@ $1760px) {
   overflow-y: auto;
   scrollbar-width: none;
 }
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .mvu-armory-detail-grid
@@ -19111,12 +18737,7 @@ $1760px) {
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .mvu-detail-grid--quest
-  > .archive-card::-webkit-scrollbar,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-card--relation-focus::-webkit-scrollbar,
-#detailModal.mvu-modal-display-shell .dossier-card--relation-focus::-webkit-scrollbar {
+  > .archive-card::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
@@ -19511,33 +19132,25 @@ body.mvu-shell-overlay-enabled
   line-height: 1.55;
   color: var(--dossier-text);
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-crud-panel,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-crud-panel,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-crud-panel {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-crud-panel {
   display: grid;
   gap: 8px;
   width: 100%;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-create-row,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-create-row {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(68px, 0.62fr) minmax(0, 1.3fr) minmax(42px, auto);
   gap: 8px;
   align-items: stretch;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-create-row > *,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row > *,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-create-row > * {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row > * {
   min-width: 0;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
@@ -19545,37 +19158,28 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.035);
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-head,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-head,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-head {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-head {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-name,
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-degree,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-name,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-degree,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-name,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-degree {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-degree {
   display: inline-flex;
   align-items: center;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-name,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-name,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-name {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-name {
   font-size: 12px;
   font-weight: 700;
   color: var(--dossier-text-strong);
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-degree,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-degree,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-degree {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-degree {
   min-height: 22px;
   padding: 0 8px;
   border-radius: 999px;
@@ -19586,35 +19190,28 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   font-weight: 700;
   line-height: 1;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-desc,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-desc,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-entry-desc {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-entry-desc {
   min-width: 0;
   font-size: 12px;
   line-height: 1.6;
   color: var(--dossier-text);
   overflow-wrap: anywhere;
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-empty,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-empty,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-empty {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-empty {
   font-size: 12px;
   line-height: 1.55;
   color: var(--dossier-text-soft);
 }
-
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-action-btn,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-action-btn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-action-btn {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-action-btn {
   align-self: center;
 }
 
-$1760px) {
+@media (max-width: 760px) {
   #detailModal.archive-redesign-mode .archive-redesign-root .injury-create-row,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .injury-create-row {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-create-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -20338,3315 +19935,7 @@ $11180px) {
   }
 }
 
-/* =========================================================================
-   MVU Mobile Shell: floating launcher + mini phone frame
-   ========================================================================= */
-:root {
-  --mvu-mobile-shell-width: clamp(300px, 90%, 380px);
-  --mvu-mobile-shell-height: min(640px, calc(100svh - 80px));
-  --mvu-mobile-shell-radius: 24px;
-  --mvu-mobile-shell-border: rgba(21, 35, 48, 0.84);
-  --mvu-mobile-shell-line: rgba(46, 72, 96, 0.12);
-  --mvu-mobile-shell-surface:
-    radial-gradient(circle at top, rgba(43, 184, 208, 0.14), transparent 40%),
-    linear-gradient(180deg, rgba(242, 247, 251, 0.99), rgba(228, 236, 242, 0.99));
-  --mvu-mobile-shell-panel:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 250, 0.94)), rgba(247, 250, 252, 0.94);
-  --mvu-mobile-shell-card:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(243, 247, 250, 0.96)), rgba(247, 250, 252, 0.96);
-  --mvu-mobile-shell-accent: #0b7892;
-  --mvu-mobile-shell-accent-strong: #071827;
-  --mvu-mobile-shell-muted: rgba(46, 66, 82, 0.84);
-  --mvu-mobile-shell-font:
-    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC',
-    'Noto Sans CJK SC', sans-serif;
-  --mvu-mobile-shell-shadow:
-    0 34px 84px rgba(3, 13, 22, 0.42), 0 0 0 8px rgba(10, 18, 28, 0.84), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-}
-
-body.mvu-mobile-viewport #mvu-unified-mount {
-  margin: 0 !important;
-  width: 100vw !important;
-  max-width: none !important;
-}
-
-body.mvu-mobile-viewport #mvu-unified-mount .mvu-unified-layout-host,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host {
-  color: var(--mvu-mobile-shell-accent-strong);
-  font-family: var(--mvu-mobile-shell-font);
-  font-size: 12px;
-  line-height: 1.42;
-  font-weight: 400;
-  letter-spacing: 0;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: auto;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host * {
-  box-sizing: border-box;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host :where(button) {
-  appearance: none;
-  -webkit-appearance: none;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  outline: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: none;
-  box-shadow: none;
-  cursor: pointer;
-}
-
-body #mvu-right-mount .mvu-window-settings-btn,
-body #mvu-right-mount .mvu-window-settings-panel {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host .mvu-unified-eyebrow,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host .mvu-unified-subline,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host .mvu-unified-section-note {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: calc(var(--mvu-z-launcher, 10040) + 5);
-  display: flex;
-  align-items: center;
-  gap: 0;
-  pointer-events: auto;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: opacity 150ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-main,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-item {
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 18px;
-  border: 1px solid rgba(118, 152, 175, 0.22);
-  background:
-    radial-gradient(circle at 28% 20%, rgba(255, 255, 255, 0.88), transparent 58%),
-    linear-gradient(180deg, rgba(245, 251, 255, 0.98), rgba(219, 236, 244, 0.96));
-  color: #123349;
-  box-shadow:
-    0 12px 28px rgba(3, 16, 28, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  transition:
-    background 150ms ease,
-    border-color 150ms ease,
-    transform 150ms ease,
-    box-shadow 150ms ease,
-    opacity 150ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-main,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger {
-  padding: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host button.mvu-surface-launcher-main {
-  position: relative;
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
-  min-height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  overflow: visible;
-  border: 2px solid rgba(255, 255, 255, 0.96);
-  background:
-    radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.42), transparent 46%),
-    linear-gradient(180deg, #0f8aa5, #071827);
-  color: #ffffff;
-  box-shadow:
-    0 14px 30px rgba(3, 16, 28, 0.44),
-    0 0 0 4px rgba(7, 24, 39, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher.has-menu .mvu-surface-launcher-main {
-  width: 48px;
-  min-width: 48px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-mark {
-  width: 26px;
-  min-width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.34), transparent 62%),
-    linear-gradient(180deg, rgba(18, 140, 167, 0.95), rgba(10, 108, 133, 0.95));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  color: #fff;
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.08em;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-copy {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-icon {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-icon svg {
-  width: 23px;
-  height: 23px;
-  display: block;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.26));
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-glyph {
-  display: inline-block;
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  color: rgba(252, 254, 255, 1);
-  text-shadow:
-    0 0 12px rgba(102, 231, 255, 0.3),
-    0 1px 1px rgba(0, 0, 0, 0.18);
-  transform: translateX(0.5px);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-dot {
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.98);
-  background: rgba(72, 215, 236, 0.96);
-  box-shadow: 0 2px 6px rgba(3, 16, 28, 0.28);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher[data-mode='split'] .mvu-surface-launcher-dot {
-  background: rgba(15, 138, 165, 0.92);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher[data-mode='unified'] .mvu-surface-launcher-dot {
-  background: rgba(241, 198, 103, 0.96);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher[data-mode='shell'] .mvu-surface-launcher-dot {
-  background: rgba(255, 168, 130, 0.96);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 1;
-  min-width: 104px;
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 18px;
-  border: 1px solid rgba(66, 110, 139, 0.36);
-  background:
-    radial-gradient(circle at top, rgba(102, 225, 252, 0.18), transparent 60%),
-    linear-gradient(180deg, rgba(16, 29, 41, 0.98), rgba(8, 17, 27, 0.98));
-  box-shadow: 0 18px 40px rgba(3, 16, 28, 0.36);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(6px) scale(0.98);
-  transform-origin: top left;
-  transition:
-    opacity 140ms ease,
-    transform 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu.align-end {
-  left: auto;
-  right: 0;
-  transform-origin: top right;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu.open-up {
-  top: auto;
-  bottom: calc(100% + 10px);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu.active {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-item {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: 'Microsoft YaHei', sans-serif;
-  color: rgba(242, 249, 252, 0.96);
-  border-color: rgba(58, 95, 120, 0.36);
-  background: rgba(20, 35, 48, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger.active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-item.active {
-  border-color: rgba(96, 230, 249, 0.36);
-  background: linear-gradient(180deg, rgba(18, 111, 134, 0.42), rgba(13, 71, 89, 0.42)), rgba(22, 41, 56, 0.96);
-  box-shadow:
-    0 10px 20px rgba(3, 16, 28, 0.22),
-    0 0 0 1px rgba(20, 136, 163, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host button.mvu-surface-launcher-main:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host button.mvu-surface-launcher-main:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-item:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-item:active {
-  border-color: rgba(96, 230, 249, 0.28);
-  background:
-    radial-gradient(circle at 30% 22%, rgba(112, 232, 255, 0.16), transparent 58%),
-    linear-gradient(180deg, rgba(24, 41, 57, 0.98), rgba(13, 25, 37, 0.98));
-  transform: translateY(1px);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host button.mvu-surface-launcher-main:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host button.mvu-surface-launcher-main:active {
-  border-color: rgba(255, 255, 255, 1);
-  background:
-    radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.46), transparent 50%),
-    linear-gradient(180deg, #11a1bd, #071827);
-  box-shadow:
-    0 14px 30px rgba(3, 16, 28, 0.44),
-    0 0 0 4px rgba(7, 24, 39, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
-}
-
-body.mvu-mobile-shell-dragging #mvu-unified-mount .mvu-surface-launcher-main,
-body.mvu-mobile-shell-dragging #mvu-unified-mount .mvu-surface-launcher-menu-trigger {
-  transition: none;
-}
-
-body.mvu-mobile-shell-open.mvu-mobile-viewport #mvu-unified-mount .mvu-surface-launcher {
-  opacity: 0;
-  pointer-events: none;
-}
-
-body.mvu-desktop-shell-surface.mvu-mobile-shell-open #mvu-unified-mount .mvu-surface-launcher {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-body.mvu-desktop-shell-surface.mvu-mobile-shell-open #mvu-unified-mount .mvu-surface-launcher-main {
-  width: 52px;
-  min-width: 52px;
-  height: 52px;
-  min-height: 52px;
-}
-
-body.mvu-desktop-shell-surface.mvu-mobile-shell-open #mvu-unified-mount .mvu-surface-launcher-copy span {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-backdrop,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell {
-  position: fixed;
-  inset: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-backdrop {
-  z-index: calc(var(--mvu-z-launcher, 10040) + 1);
-  opacity: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at center, rgba(15, 138, 165, 0.04), transparent 58%), rgba(8, 16, 24, 0.06);
-  backdrop-filter: blur(1px) saturate(1.01);
-  -webkit-backdrop-filter: blur(1px) saturate(1.01);
-  transition: opacity 160ms ease;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell-backdrop {
-  background: radial-gradient(circle at center, rgba(15, 138, 165, 0.03), transparent 56%), rgba(8, 16, 24, 0.03);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-backdrop.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell {
-  z-index: calc(var(--mvu-z-launcher, 10040) + 2);
-  display: grid;
-  place-items: center;
-  padding: 8px 2px calc(8px + env(safe-area-inset-bottom, 0px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 160ms ease;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 140ms ease;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell-host {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell-frame,
-body.mvu-desktop-shell-surface #mvu-unified-mount .mvu-mobile-shell.active .mvu-mobile-shell-frame {
-  transform: translate3d(var(--mvu-shell-offset-x, 0px), var(--mvu-shell-offset-y, 0px), 0);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-frame {
-  position: relative;
-  z-index: 1;
-  --mvu-shell-offset-x: 0px;
-  --mvu-shell-offset-y: 0px;
-  container-type: size;
-  container-name: mvu-shell;
-  width: var(--mvu-mobile-shell-width);
-  height: var(--mvu-mobile-shell-height);
-  max-height: var(--mvu-mobile-shell-height);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  border-radius: var(--mvu-mobile-shell-radius);
-  border: 1px solid var(--mvu-mobile-shell-border);
-  background: var(--mvu-mobile-shell-surface);
-  box-shadow: var(--mvu-mobile-shell-shadow);
-  overflow: hidden;
-  pointer-events: none;
-  transform: translate3d(var(--mvu-shell-offset-x, 0px), calc(var(--mvu-shell-offset-y, 0px) + 10px), 0);
-  transform-origin: center bottom;
-  transition:
-    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 160ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-frame::after {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border-radius: calc(var(--mvu-mobile-shell-radius) - 7px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-  opacity: 0.58;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell.active .mvu-mobile-shell-frame {
-  pointer-events: auto;
-  transform: translate3d(var(--mvu-shell-offset-x, 0px), var(--mvu-shell-offset-y, 0px), 0) scale(1);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-frame::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  width: 88px;
-  height: 4px;
-  margin-left: -44px;
-  border-radius: 999px;
-  background: rgba(17, 24, 35, 0.34);
-  box-shadow: none;
-  pointer-events: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 64px;
-  padding: 18px 16px 12px;
-  border-bottom: 1px solid var(--mvu-mobile-shell-line);
-  background: linear-gradient(180deg, rgba(252, 254, 255, 0.96), rgba(242, 247, 250, 0.9)), rgba(246, 249, 252, 0.94);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  touch-action: none;
-  cursor: grab;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head:active {
-  cursor: grabbing;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head button {
-  touch-action: manipulation;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head-copy {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-title {
-  min-width: 0;
-  font-size: 16px;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-  color: var(--mvu-mobile-shell-accent-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-back,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-mode-exit,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-close {
-  flex: 0 0 auto;
-  width: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border-radius: 14px;
-  border: 1px solid rgba(125, 150, 168, 0.18);
-  background: rgba(240, 245, 248, 0.96);
-  color: var(--mvu-mobile-shell-accent-strong);
-  font-size: 18px;
-  line-height: 1;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-back {
-  color: var(--mvu-mobile-shell-accent-strong);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-back svg,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-mode-exit svg {
-  display: block;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-back:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-back:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-mode-exit:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-mode-exit:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-close:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-close:active {
-  border-color: rgba(15, 138, 165, 0.22);
-  background: rgba(15, 138, 165, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-mode-exit span {
-  display: grid;
-  place-items: center;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-body {
-  position: relative;
-  min-height: 0;
-  background:
-    radial-gradient(circle at top, rgba(20, 136, 163, 0.06), transparent 38%),
-    linear-gradient(180deg, rgba(252, 254, 255, 0.8), rgba(238, 244, 248, 0.98));
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-scroll {
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  padding: 12px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  display: grid;
-  align-content: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-home,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-library,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-library-page {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  align-content: start;
-  animation: mvuMobilePageIn 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-scroll.is-home {
-  align-content: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card-grid {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card-grid--three {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card-grid--three > :last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card-grid > *,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-grid > *,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-nav > * {
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab {
-  min-height: 44px;
-  border: 1px solid rgba(32, 66, 94, 0.08);
-  background: var(--mvu-mobile-shell-panel);
-  color: var(--mvu-mobile-shell-accent-strong);
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card {
-  min-width: 0;
-  min-height: 0;
-  padding: 10px;
-  border-radius: 14px;
-  border-color: rgba(24, 61, 84, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 251, 0.98)), var(--mvu-mobile-shell-card);
-  box-shadow:
-    0 8px 16px rgba(10, 27, 41, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  overflow: hidden;
-  display: grid;
-  align-content: start;
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card:empty,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card.is-empty,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-live:empty {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card--hero {
-  min-height: 0;
-  overflow: visible;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card--spotlight {
-  min-height: 132px;
-  padding: 16px;
-  background:
-    radial-gradient(circle at top left, rgba(72, 215, 236, 0.18), transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(241, 246, 249, 0.97)), rgba(247, 250, 252, 0.96);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage {
-  min-width: 0;
-  overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid rgba(32, 66, 94, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 246, 250, 0.94)), rgba(245, 249, 252, 0.96);
-  box-shadow:
-    0 12px 28px rgba(12, 34, 51, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage {
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 20px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage:empty {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage > .map-layout {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage > .map-layout {
-  grid-template-columns: 1fr !important;
-  padding: 0;
-  gap: 10px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-hero-card {
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-hero-card {
-  padding: 12px;
-  border-radius: 20px;
-  border: 1px solid rgba(24, 61, 84, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 251, 0.98)), rgba(247, 250, 252, 0.98);
-  box-shadow:
-    0 10px 20px rgba(10, 27, 41, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-stage-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-stage-head {
-  margin: 0 0 6px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-control-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-control-strip {
-  width: 100%;
-  justify-content: space-between;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-tool-btn {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  border: 1px solid rgba(16, 132, 158, 0.18) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 245, 249, 0.92)) !important;
-  color: rgba(17, 41, 61, 0.92) !important;
-  box-shadow:
-    0 8px 18px rgba(12, 34, 51, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-canvas.map-canvas-large {
-  margin: 0 0 10px !important;
-  min-height: 220px !important;
-  border-radius: 20px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-canvas.map-canvas-large {
-  min-height: 238px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-mini-panel {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-canvas-hud {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-hero-card .map-left-route-card {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-status-strip {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 2px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-status-chip {
-  min-height: 56px;
-  padding: 10px;
-  border-radius: 16px;
-  border: 1px solid rgba(24, 61, 84, 0.12);
-  background: rgba(242, 247, 250, 0.98);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-status-chip b {
-  font-size: 11px;
-  color: rgba(57, 82, 101, 0.82);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-status-chip span {
-  font-size: 13px;
-  line-height: 1.3;
-  color: rgba(17, 41, 61, 0.96);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-stack {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px !important;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-stack {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-stack > :last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-map-stage
-  .map-side-stack
-  > .map-side-card:has(.map-npc-empty) {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card {
-  min-width: 0;
-  margin: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card {
-  padding: 12px 13px !important;
-  border-radius: 18px;
-  border: 1px solid rgba(24, 61, 84, 0.12);
-  background: rgba(247, 250, 252, 0.98);
-  box-shadow:
-    0 8px 18px rgba(10, 27, 41, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.84);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-head {
-  align-items: flex-start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-title {
-  font-size: 16px !important;
-  line-height: 1.35 !important;
-  font-weight: 700 !important;
-  color: #071827 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-row b {
-  font-size: 12px !important;
-  line-height: 1.32 !important;
-  color: rgba(57, 82, 101, 0.86) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-row span {
-  font-size: 15px !important;
-  line-height: 1.48 !important;
-  color: #0b1f31 !important;
-  word-break: break-word;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card--map-stage {
-  min-height: 230px;
-  padding: 12px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage.is-empty {
-  min-height: 220px;
-  place-items: center;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-empty {
-  font-size: 14px;
-  color: rgba(73, 97, 116, 0.74);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage .map-canvas.map-canvas-large {
-  margin: 0 !important;
-  min-height: 222px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage > .module-name {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage > .map-canvas.map-canvas-large {
-  margin: 0 !important;
-  min-height: 222px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage > .module-foot {
-  margin-top: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(32, 66, 94, 0.08);
-  background: rgba(243, 248, 251, 0.96);
-  color: rgba(27, 51, 71, 0.86);
-  font-size: 11px;
-  line-height: 1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-chip.is-live {
-  border-color: rgba(15, 138, 165, 0.16);
-  background: rgba(15, 138, 165, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-chip.is-gold {
-  border-color: rgba(241, 198, 103, 0.24);
-  background: rgba(241, 198, 103, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card {
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-main,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-item {
-  min-width: 0;
-  min-height: 44px;
-  padding: 13px 14px;
-  background: rgba(255, 255, 255, 0.64);
-  transition:
-    background 140ms ease,
-    transform 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-main {
-  border-bottom: 1px solid rgba(32, 66, 94, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-item + .mvu-mobile-map-linked-item {
-  border-top: 1px solid rgba(32, 66, 94, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-main:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-main:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-item:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-item:active {
-  background: rgba(235, 247, 251, 0.92);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-summary {
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-card-top {
-  gap: 6px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-title {
-  font-size: 15px;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-meta {
-  font-size: 12px;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-value {
-  font-size: 13px;
-  padding: 5px 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-line-list {
-  gap: 4px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-line {
-  grid-template-columns: 52px minmax(0, 1fr);
-  padding-top: 5px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-linked-card .mvu-shell-line-value {
-  font-size: 14px;
-  line-height: 1.42;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  min-width: 0;
-  align-items: stretch;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  min-height: 136px;
-  padding: 15px;
-  border-radius: 22px;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 12px;
-  align-content: start;
-  text-align: left;
-  overflow: hidden;
-  box-shadow:
-    0 12px 26px rgba(10, 27, 41, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 17px;
-  border: 1px solid rgba(19, 52, 72, 0.08);
-  background:
-    radial-gradient(circle at top, rgba(72, 215, 236, 0.22), transparent 60%),
-    linear-gradient(180deg, rgba(18, 31, 44, 0.96), rgba(10, 18, 28, 0.98));
-  color: rgba(223, 247, 255, 0.96);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-icon svg {
-  width: 22px;
-  height: 22px;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.85;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy {
-  display: grid;
-  gap: 4px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy strong {
-  font-size: 15px;
-  line-height: 1.15;
-  font-weight: 700;
-  color: var(--mvu-mobile-shell-accent-strong);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  overflow: hidden;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy span {
-  font-size: 11px;
-  line-height: 1.25;
-  color: var(--mvu-mobile-shell-muted);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-live {
-  min-width: 0;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid rgba(32, 66, 94, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card.clickable:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card.clickable:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab:active {
-  border-color: rgba(15, 138, 165, 0.2);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(242, 247, 250, 0.95)), rgba(245, 249, 252, 0.96);
-  box-shadow: 0 12px 26px rgba(10, 34, 52, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-tile:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card.clickable:active,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab:active {
-  box-shadow: inset 0 0 0 1px rgba(15, 138, 165, 0.12);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-nav {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-  padding: 10px 10px calc(12px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--mvu-mobile-shell-line);
-  background: linear-gradient(180deg, rgba(250, 252, 254, 0.96), rgba(241, 246, 249, 0.99)), rgba(244, 248, 251, 0.98);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 4px;
-  padding: 8px 4px;
-  border-radius: 16px;
-  font-size: 11px;
-  line-height: 1.15;
-  letter-spacing: 0.02em;
-  text-align: center;
-  overflow: hidden;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab.active {
-  border-color: rgba(15, 138, 165, 0.24);
-  background: linear-gradient(180deg, rgba(15, 138, 165, 0.12), rgba(15, 138, 165, 0.04)), rgba(241, 248, 251, 0.98);
-  box-shadow: inset 0 0 0 1px rgba(15, 138, 165, 0.08);
-  color: var(--mvu-mobile-shell-accent);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab-icon {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab-icon svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.85;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab-label {
-  font-size: 11px;
-  line-height: 1.1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-rail {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 2px 1px 2px 0;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-rail::-webkit-scrollbar {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid rgba(32, 66, 94, 0.08);
-  background: rgba(246, 249, 252, 0.96);
-  color: var(--mvu-mobile-shell-accent-strong);
-  font-size: 13px;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill:hover,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill:active {
-  border-color: rgba(15, 138, 165, 0.2);
-  background: rgba(15, 138, 165, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill:active {
-  transform: translateY(1px);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary {
-  display: grid;
-  gap: 6px;
-  min-height: 100%;
-  align-content: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero {
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-card--hero
-  .mvu-shell-summary.has-value
-  .mvu-shell-card-top {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card--hero .mvu-shell-value {
-  justify-self: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--compact {
-  gap: 6px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary.has-value .mvu-shell-card-top {
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 10px;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-card:not(.mvu-mobile-card--hero)
-  .mvu-shell-summary.has-value
-  .mvu-shell-card-top {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-copy {
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-kicker {
-  display: none;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-title {
-  min-width: 0;
-  font-size: 14px;
-  line-height: 1.36;
-  font-weight: 700;
-  color: var(--mvu-mobile-shell-accent-strong);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-value {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: fit-content;
-  max-width: 100%;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(20, 136, 163, 0.22);
-  background: rgba(234, 246, 250, 0.98);
-  font-size: 12px;
-  line-height: 1.28;
-  font-weight: 700;
-  color: var(--mvu-mobile-shell-accent-strong);
-  letter-spacing: -0.01em;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary.has-value .mvu-shell-value {
-  justify-self: end;
-  align-self: start;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-card:not(.mvu-mobile-card--hero)
-  .mvu-shell-summary.has-value
-  .mvu-shell-value {
-  justify-self: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-value {
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-meta {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  font-size: 11px;
-  line-height: 1.38;
-  color: rgba(18, 42, 60, 0.92);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--compact .mvu-shell-meta {
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip {
-  min-height: 22px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: rgba(243, 248, 251, 0.96);
-  border: 1px solid rgba(32, 66, 94, 0.08);
-  color: rgba(22, 45, 63, 0.94);
-  font-size: 11px;
-  line-height: 1.25;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip.is-live,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric.is-live {
-  border-color: rgba(15, 138, 165, 0.16);
-  background: rgba(15, 138, 165, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip.is-gold,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric.is-gold {
-  border-color: rgba(241, 198, 103, 0.24);
-  background: rgba(241, 198, 103, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip.is-warn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric.is-warn {
-  border-color: rgba(255, 138, 126, 0.24);
-  background: rgba(255, 138, 126, 0.09);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero .mvu-shell-metric-grid {
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric {
-  min-height: 38px;
-  min-width: 0;
-  padding: 6px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(32, 66, 94, 0.12);
-  background: rgba(242, 247, 250, 0.98);
-  display: grid;
-  align-content: space-between;
-  gap: 5px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-label {
-  font-size: 11px;
-  line-height: 1.25;
-  color: rgba(48, 72, 92, 0.88);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-value {
-  min-width: 0;
-  font-size: 14px;
-  line-height: 1.25;
-  color: var(--mvu-mobile-shell-accent-strong);
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-list {
-  display: grid;
-  gap: 4px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  align-items: start;
-  column-gap: 8px;
-  row-gap: 2px;
-  padding-top: 5px;
-  border-top: 1px solid rgba(32, 66, 94, 0.08);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-label {
-  font-size: 11px;
-  line-height: 1.35;
-  color: rgba(56, 79, 96, 0.88);
-  white-space: nowrap;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-value {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  font-size: 12px;
-  line-height: 1.42;
-  color: rgba(15, 36, 54, 1);
-  justify-self: stretch;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-note {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  font-size: 12px;
-  line-height: 1.5;
-  color: rgba(31, 55, 72, 0.86);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero .mvu-shell-value {
-  color: #0f8aa5;
-  font-size: 12px;
-  padding: 4px 8px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero .mvu-shell-title {
-  font-size: 15px;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-value,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-note {
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-value {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  font-size: 16px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: var(--mvu-mobile-shell-accent-strong);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-note {
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-meta {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  color: rgba(46, 76, 99, 0.76);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-note {
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  color: var(--mvu-mobile-shell-muted);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek.is-live .mvu-shell-app-peek-value {
-  color: #0b7892;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek.is-gold .mvu-shell-app-peek-value {
-  color: #7a4e05;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek.is-warn .mvu-shell-app-peek-value {
-  color: #9a3412;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 12px;
-  align-content: start;
-  min-height: 0;
-  border-radius: inherit;
-  overflow: visible;
-  pointer-events: auto;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-redesign-root,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-detail-root,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-detail-scroll {
-  display: grid;
-  gap: 12px;
-  min-height: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-modal-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-grid--single,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-grid--terminal,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-grid--trial,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-grid--quest,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-intel-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-detail-card-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-shell,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-layout,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .equipment-layout,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .vault-layout,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .profile-snapshot,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .nsfw-modal-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .skill-designer-layout,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-entry-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-columns,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-columns--life-core,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-columns--life-record,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-columns--relation-overview,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-section-stack,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-contrib-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-action-toolbar,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-form-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-form-row--donate,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-gift-row.dossier-form-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-gift-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .identity-growth-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .wallet-strip,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-status-layout,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .faction-layout-shell,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-layout-dashboard,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-pending-editor,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-action-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .request-console-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 10px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .request-console-row > * {
-  width: 100% !important;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .request-console-row
-  .request-console-primary-action {
-  order: -1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--three,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .stats-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .module-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-metrics,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-tile-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .inventory-hover-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .nsfw-bodypart-grid {
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 8px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .timeline-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-summary-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .nsfw-theme-card {
-  min-height: 0 !important;
-  padding: 14px !important;
-  border-radius: 18px !important;
-  border: 1px solid rgba(37, 94, 128, 0.12) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 248, 252, 0.98)) !important;
-  box-shadow: 0 12px 24px rgba(18, 54, 78, 0.08) !important;
-  color: #163247 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-card--life-profile,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-card--life-core,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-card--life-record {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  max-height: none !important;
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-card--relation-focus {
-  max-height: min(460px, calc(100svh - 260px)) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  scrollbar-width: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-head,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-head {
-  margin-bottom: 8px !important;
-  gap: 8px !important;
-  align-items: flex-start !important;
-  flex-wrap: wrap !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-title {
-  color: #163247 !important;
-  font-size: 16px !important;
-  line-height: 1.35 !important;
-  font-weight: 700 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .modal-subtitle,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-unified-section-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-unified-eyebrow,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-unified-subline {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-head::after,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-redesign-decor {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-note {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-card b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-card b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .timeline-card b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-summary-card b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .legend-chip b {
-  color: #163247 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-card span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-card span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .timeline-card span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-summary-card span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-empty-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .legend-chip span {
-  color: #4d6578 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .request-console-input,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .request-console-textarea,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-gift-select,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-action-btn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-add-row .intel-add-btn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .map-dispatch-action-btn {
-  min-height: 44px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-topology-board {
-  min-height: 180px !important;
-}
-
-/* Mobile shell detail pages keep their own compact reading rhythm. */
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host {
-  --mvu-shell-detail-text: #10263a;
-  --mvu-shell-detail-muted: #607586;
-  --mvu-shell-detail-soft: #7a8b98;
-  --mvu-shell-detail-line: rgba(34, 78, 106, 0.11);
-  --mvu-shell-detail-tile: rgba(248, 252, 255, 0.84);
-  font-size: 13px !important;
-  line-height: 1.45 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-root {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  color: #162a3a;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-card {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(36, 78, 104, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 253, 0.96));
-  box-shadow: 0 10px 20px rgba(18, 44, 64, 0.06);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-card--hero {
-  border-color: rgba(176, 68, 89, 0.16);
-  background: linear-gradient(135deg, rgba(255, 245, 247, 0.98), rgba(238, 251, 250, 0.96)), #fbfdff;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-section-title {
-  color: #697d8d;
-  font-size: 10px;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero strong {
-  min-width: 0;
-  color: #162a3a;
-  font-size: 15px;
-  line-height: 1.35;
-  font-weight: 750;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meters,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meters {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  min-height: 54px;
-  padding: 8px 9px;
-  border-radius: 12px;
-  border: 1px solid rgba(36, 78, 104, 0.1);
-  background: rgba(249, 252, 255, 0.86);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head span {
-  min-width: 0;
-  color: #667b8c;
-  font-size: 10px;
-  line-height: 1.25;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head b {
-  min-width: 0;
-  margin: 0;
-  color: #152b3a;
-  font-size: 13px;
-  line-height: 1.35;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-track {
-  height: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(30, 74, 100, 0.1);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #287c95, #42b7a6);
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-shell-private-meter.is-live
-  .mvu-shell-private-track
-  i {
-  background: linear-gradient(90deg, #b04459, #e4868f);
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-shell-private-meter.is-warm
-  .mvu-shell-private-track
-  i {
-  background: linear-gradient(90deg, #8c6a1f, #d4a93f);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-text {
-  min-width: 0;
-  color: #375066;
-  font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-tag,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-empty {
-  max-width: 100%;
-  padding: 4px 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(36, 78, 104, 0.12);
-  background: rgba(235, 247, 250, 0.9);
-  color: #2b6474;
-  font-size: 10px;
-  line-height: 1.25;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-empty {
-  color: #7a8b98;
-  background: rgba(244, 248, 251, 0.86);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-root {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  color: #162a3a;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-card {
-  display: grid;
-  gap: 9px;
-  min-width: 0;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(36, 78, 104, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 253, 0.96));
-  box-shadow: 0 8px 16px rgba(18, 44, 64, 0.06);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-card--hero {
-  background: linear-gradient(135deg, rgba(235, 249, 251, 0.98), rgba(249, 252, 255, 0.98)), #fbfdff;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-section-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item em {
-  min-width: 0;
-  color: #667b8c;
-  font-size: 10px;
-  line-height: 1.3;
-  font-style: normal;
-  font-weight: 650;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head strong {
-  min-width: 0;
-  color: #162a3a;
-  font-size: 15px;
-  line-height: 1.35;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-shell-lite-grid.mvu-shell-lite-grid--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-empty {
-  min-width: 0;
-  padding: 8px 9px;
-  border-radius: 12px;
-  border: 1px solid rgba(36, 78, 104, 0.1);
-  background: rgba(249, 252, 255, 0.86);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat {
-  display: grid;
-  gap: 4px;
-  align-content: start;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item b {
-  min-width: 0;
-  margin: 0;
-  color: #152b3a;
-  font-size: 13px;
-  line-height: 1.35;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-list {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-track {
-  height: 6px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(30, 74, 100, 0.1);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #287c95, #42b7a6);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-empty {
-  color: #7a8b98;
-  font-size: 11px;
-  line-height: 1.35;
-  font-weight: 650;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-card {
-  display: grid;
-  gap: 9px;
-  min-width: 0;
-  color: #10263a;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-foot,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-lite-tags span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-lite-copy {
-  color: #5f7283;
-  font-size: 11px;
-  line-height: 1.35;
-  font-weight: 650;
-  letter-spacing: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head strong {
-  min-width: 0;
-  color: #071827;
-  font-size: 16px;
-  line-height: 1.28;
-  font-weight: 760;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head b {
-  flex: 0 0 auto;
-  min-width: 48px;
-  padding: 6px 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(16, 132, 158, 0.18);
-  background: rgba(226, 248, 252, 0.92);
-  color: #0b6c80;
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 760;
-  text-align: center;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-list {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-empty {
-  display: grid;
-  grid-template-columns: minmax(72px, 0.82fr) minmax(0, 1.1fr);
-  gap: 3px 8px;
-  min-width: 0;
-  padding: 8px 9px;
-  border-radius: 12px;
-  border: 1px solid rgba(33, 79, 108, 0.1);
-  background: rgba(249, 252, 255, 0.88);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-empty {
-  grid-template-columns: minmax(0, 1fr);
-  color: #788b99;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-name,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-state {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-name {
-  color: #10263a;
-  font-size: 13px;
-  line-height: 1.28;
-  font-weight: 760;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-meta {
-  color: #29475d;
-  font-size: 12px;
-  line-height: 1.32;
-  font-weight: 650;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-state {
-  grid-column: 1 / -1;
-  color: #647789;
-  font-size: 11px;
-  line-height: 1.3;
-  font-weight: 600;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-foot {
-  display: inline-flex;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-tags span {
-  max-width: 100%;
-  padding: 4px 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 110, 134, 0.13);
-  background: rgba(232, 247, 250, 0.9);
-  color: #23596b;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-copy {
-  color: #34566c;
-  font-size: 12px;
-  line-height: 1.48;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-shell-lite-card--wallet
-  .mvu-shell-lite-head
-  strong {
-  font-size: 22px;
-  line-height: 1.1;
-  color: #0b2538;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-redesign-root,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-detail-root,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-detail-scroll,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-modal-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-shell {
-  gap: 10px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .timeline-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .relation-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .intel-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .location-summary-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .nsfw-theme-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-main-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-card {
-  display: grid !important;
-  gap: 10px !important;
-  min-height: 0 !important;
-  padding: 12px !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(32, 78, 108, 0.12) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 253, 0.96)), #f8fbfd !important;
-  box-shadow: 0 10px 20px rgba(16, 50, 72, 0.06) !important;
-  color: var(--mvu-shell-detail-text) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-head,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-head {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-head--profile,
-#detailModal.mvu-modal-display-shell .archive-card-head--profile {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 7px !important;
-  align-items: start !important;
-  justify-content: stretch !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-profile-strip,
-#detailModal.mvu-modal-display-shell .dossier-profile-strip {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(min(122px, 100%), 1fr)) !important;
-  gap: 6px !important;
-  min-width: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-profile-chip,
-#detailModal.mvu-modal-display-shell .dossier-profile-chip {
-  display: grid !important;
-  gap: 3px !important;
-  min-width: 0 !important;
-  min-height: 40px !important;
-  padding: 7px 8px !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(32, 78, 108, 0.1) !important;
-  background: rgba(248, 252, 255, 0.82) !important;
-  overflow: hidden !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-profile-chip b,
-#detailModal.mvu-modal-display-shell .dossier-profile-chip b {
-  color: var(--mvu-shell-detail-muted, #607586) !important;
-  font-size: 10px !important;
-  line-height: 1.18 !important;
-  font-weight: 650 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-profile-chip em,
-#detailModal.mvu-modal-display-shell .dossier-profile-chip em {
-  min-width: 0 !important;
-  color: var(--mvu-shell-detail-text, #10263a) !important;
-  font-size: 12px !important;
-  line-height: 1.35 !important;
-  font-style: normal !important;
-  font-weight: 650 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-main-card h4,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-title {
-  margin: 0 !important;
-  min-width: 0 !important;
-  color: var(--mvu-shell-detail-text) !important;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif !important;
-  font-size: 15px !important;
-  line-height: 1.3 !important;
-  font-weight: 700 !important;
-  letter-spacing: 0 !important;
-  text-shadow: none !important;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-head-name {
-  margin: 0 !important;
-  color: var(--mvu-shell-detail-text) !important;
-  font-size: 16px !important;
-  line-height: 1.28 !important;
-  font-weight: 700 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-section {
-  display: grid !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  min-height: max-content !important;
-  padding: 10px !important;
-  border: 1px solid var(--mvu-shell-detail-line) !important;
-  border-radius: 13px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(243, 249, 252, 0.86)), rgba(248, 252, 255, 0.82) !important;
-  overflow: visible !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-section-title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin: 0 !important;
-  color: var(--mvu-shell-detail-soft) !important;
-  font-size: 11px !important;
-  line-height: 1.25 !important;
-  font-weight: 650 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-section-title::before {
-  content: '' !important;
-  flex: 0 0 auto !important;
-  width: 5px !important;
-  height: 5px !important;
-  border-radius: 999px !important;
-  background: rgba(28, 126, 154, 0.55) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--three,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .identity-growth-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .stats-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .module-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-metrics,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .inventory-hover-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .nsfw-bodypart-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 7px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--three,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list {
-  gap: 0 !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(32, 78, 108, 0.08) !important;
-  background: rgba(248, 252, 255, 0.72) !important;
-  overflow: hidden !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--two,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--three {
-  gap: 0 8px !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list {
-  gap: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row-grid--single {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .status-row,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item {
-  position: relative !important;
-  display: grid !important;
-  grid-template-columns: minmax(58px, 0.34fr) minmax(0, 1fr) !important;
-  align-content: start !important;
-  align-items: start !important;
-  gap: 4px 9px !important;
-  min-width: 0 !important;
-  min-height: 34px !important;
-  padding: 8px 9px !important;
-  border: 0 !important;
-  border-top: 1px solid rgba(32, 78, 108, 0.08) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-row-grid--single
-  .dossier-row:first-child,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-row-grid--two
-  .dossier-row:nth-child(-n + 2),
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-row-grid--three
-  .dossier-row:nth-child(-n + 3),
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list-row:first-child {
-  border-top: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row--wide,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item-wide {
-  grid-column: 1 / -1 !important;
-  min-height: 0 !important;
-}
-
-body.mvu-layout-unified #mvu-unified-mount [data-unified-card][hidden] {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row--ghost {
-  display: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row > b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list-row > b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .status-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item b {
-  margin: 0 !important;
-  color: var(--mvu-shell-detail-muted) !important;
-  font-size: 10px !important;
-  line-height: 1.35 !important;
-  font-weight: 600 !important;
-  letter-spacing: 0 !important;
-  white-space: normal !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row > span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-list-row > span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .status-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item span {
-  margin: 0 !important;
-  min-width: 0 !important;
-  color: var(--mvu-shell-detail-text) !important;
-  font-size: 12px !important;
-  line-height: 1.42 !important;
-  font-weight: 600 !important;
-  overflow-wrap: anywhere !important;
-  word-break: normal !important;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-row:not(.dossier-row--wide)
-  > span {
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-row--wide > span,
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .dossier-row
-  > span[data-inline-multiline='1'],
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item-wide span {
-  max-height: min(140px, 32svh) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  padding-right: 3px !important;
-  font-size: 13px !important;
-  line-height: 1.52 !important;
-  font-weight: 400 !important;
-  color: #274258 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-inline-editable {
-  color: inherit !important;
-  font: inherit !important;
-  letter-spacing: inherit !important;
-  text-shadow: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-head-tags,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .blood-head-tags,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-cloud,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .inventory-hover-tags,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-tag-row {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 6px !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-chip,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-pill {
-  min-height: 0 !important;
-  max-width: 100% !important;
-  padding: 4px 7px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(32, 108, 136, 0.15) !important;
-  background: rgba(232, 246, 250, 0.88) !important;
-  color: #24566b !important;
-  font-size: 10px !important;
-  line-height: 1.25 !important;
-  font-weight: 650 !important;
-  letter-spacing: 0 !important;
-  text-shadow: none !important;
-  box-shadow: none !important;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-chip.live {
-  border-color: rgba(22, 135, 98, 0.18) !important;
-  background: rgba(226, 248, 238, 0.92) !important;
-  color: #0e6f53 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-chip.warn,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-chip.alert {
-  border-color: rgba(183, 122, 34, 0.2) !important;
-  background: rgba(255, 247, 226, 0.92) !important;
-  color: #8a5a11 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-chain,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-stack,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-ring-section {
-  display: grid !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-head {
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-desc,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-ring-section-title {
-  color: var(--mvu-shell-detail-muted) !important;
-  font-size: 11px !important;
-  line-height: 1.4 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .rings,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .rings.soul-ring-lane {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  justify-content: flex-start !important;
-  gap: 8px !important;
-  margin: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card .spirit-main-card,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card .blood-card {
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card .soul-expand-card {
-  padding: 10px 0 0 !important;
-  border: 0 !important;
-  border-top: 1px solid var(--mvu-shell-detail-line) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-#detailModal.mvu-modal-display-shell {
-  position: relative !important;
-  inset: auto !important;
-  z-index: 1;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  align-items: stretch !important;
-  justify-content: stretch !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-#detailModal.mvu-modal-display-shell.show {
-  display: block !important;
-  pointer-events: auto;
-}
-
-#detailModal.mvu-modal-display-shell .mvu-modal-panel,
-#detailModal.mvu-modal-display-shell .mvu-modal-panel.archive-mode,
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .mvu-modal-panel.archive-redesign-panel {
-  width: 100% !important;
-  max-width: none !important;
-  height: auto !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-#detailModal.mvu-modal-display-shell.show .mvu-modal-panel {
-  animation: none !important;
-}
-
-#detailModal.mvu-modal-display-shell .modal-head {
-  display: none !important;
-}
-
-#detailModal.mvu-modal-display-shell .modal-title {
-  font-size: 14px !important;
-  line-height: 1.3 !important;
-}
-
-#detailModal.mvu-modal-display-shell .modal-close {
-  width: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 14px;
-}
-
-#detailModal.mvu-modal-display-shell .modal-body,
-#detailModal.mvu-modal-display-shell .modal-body.archive-body,
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .modal-body.archive-redesign-body {
-  min-height: 0;
-  padding: 0 0 calc(14px + env(safe-area-inset-bottom, 0px)) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-  background: transparent !important;
-}
-
-#detailModal.mvu-modal-display-shell .mvu-unified-modal-root,
-#detailModal.mvu-modal-display-shell .mvu-unified-sheet,
-#detailModal.mvu-modal-display-shell .mvu-unified-sheet-scroll,
-#detailModal.mvu-modal-display-shell .mvu-shell-detail-root,
-#detailModal.mvu-modal-display-shell .mvu-shell-detail-scroll,
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root {
-  display: grid;
-  gap: 12px;
-  min-height: 0;
-}
-
-#detailModal.mvu-modal-display-shell .archive-modal-grid,
-#detailModal.mvu-modal-display-shell .mvu-detail-grid--single,
-#detailModal.mvu-modal-display-shell .mvu-detail-grid--two,
-#detailModal.mvu-modal-display-shell .mvu-detail-grid--terminal,
-#detailModal.mvu-modal-display-shell .mvu-detail-grid--trial,
-#detailModal.mvu-modal-display-shell .mvu-detail-grid--quest,
-#detailModal.mvu-modal-display-shell .mvu-detail-intel-grid,
-#detailModal.mvu-modal-display-shell .mvu-detail-card-grid,
-#detailModal.mvu-modal-display-shell .dossier-shell,
-#detailModal.mvu-modal-display-shell .relation-layout,
-#detailModal.mvu-modal-display-shell .equipment-layout,
-#detailModal.mvu-modal-display-shell .vault-layout,
-#detailModal.mvu-modal-display-shell .profile-snapshot,
-#detailModal.mvu-modal-display-shell .nsfw-modal-grid,
-#detailModal.mvu-modal-display-shell .skill-designer-layout,
-#detailModal.mvu-modal-display-shell .spirit-entry-grid,
-#detailModal.mvu-modal-display-shell .dossier-columns,
-#detailModal.mvu-modal-display-shell .dossier-columns--life-core,
-#detailModal.mvu-modal-display-shell .dossier-columns--life-record,
-#detailModal.mvu-modal-display-shell .dossier-columns--relation-overview,
-#detailModal.mvu-modal-display-shell .dossier-section-stack,
-#detailModal.mvu-modal-display-shell .dossier-contrib-grid,
-#detailModal.mvu-modal-display-shell .dossier-action-toolbar,
-#detailModal.mvu-modal-display-shell .dossier-form-row,
-#detailModal.mvu-modal-display-shell .dossier-form-row--donate,
-#detailModal.mvu-modal-display-shell .relation-gift-row.dossier-form-row,
-#detailModal.mvu-modal-display-shell .relation-gift-row,
-#detailModal.mvu-modal-display-shell .identity-growth-grid,
-#detailModal.mvu-modal-display-shell .wallet-strip,
-#detailModal.mvu-modal-display-shell .location-status-layout,
-#detailModal.mvu-modal-display-shell .faction-layout-shell,
-#detailModal.mvu-modal-display-shell .intel-layout-dashboard,
-#detailModal.mvu-modal-display-shell .intel-pending-editor,
-#detailModal.mvu-modal-display-shell .map-action-grid,
-#detailModal.mvu-modal-display-shell .request-console-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 10px !important;
-}
-
-#detailModal.mvu-modal-display-shell .request-console-row > * {
-  width: 100% !important;
-}
-
-#detailModal.mvu-modal-display-shell .request-console-row .request-console-primary-action {
-  order: -1;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row-grid--two,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--three,
-#detailModal.mvu-modal-display-shell .stats-grid,
-#detailModal.mvu-modal-display-shell .module-grid,
-#detailModal.mvu-modal-display-shell .hero-metrics,
-#detailModal.mvu-modal-display-shell .archive-tile-grid,
-#detailModal.mvu-modal-display-shell .inventory-hover-grid,
-#detailModal.mvu-modal-display-shell .nsfw-bodypart-grid {
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 8px !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row-grid,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--two,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--three,
-#detailModal.mvu-modal-display-shell .dossier-list {
-  gap: 0 !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(32, 78, 108, 0.08) !important;
-  background: rgba(248, 252, 255, 0.72) !important;
-  overflow: hidden !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row-grid,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--two,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--three {
-  gap: 0 8px !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-list {
-  gap: 0 !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card,
-#detailModal.mvu-modal-display-shell .timeline-card,
-#detailModal.mvu-modal-display-shell .relation-card,
-#detailModal.mvu-modal-display-shell .intel-card,
-#detailModal.mvu-modal-display-shell .location-summary-card,
-#detailModal.mvu-modal-display-shell .nsfw-theme-card {
-  min-height: 0 !important;
-  padding: 14px !important;
-  border-radius: 18px !important;
-  border: 1px solid rgba(37, 94, 128, 0.12) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 248, 252, 0.98)) !important;
-  box-shadow: 0 12px 24px rgba(18, 54, 78, 0.08) !important;
-  color: #163247 !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-card--life-profile,
-#detailModal.mvu-modal-display-shell .dossier-card--life-core,
-#detailModal.mvu-modal-display-shell .dossier-card--life-record {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  max-height: none !important;
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-card--relation-focus {
-  max-height: min(460px, calc(100svh - 260px)) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  scrollbar-width: none !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card-head,
-#detailModal.mvu-modal-display-shell .simple-head {
-  margin-bottom: 8px !important;
-  gap: 8px !important;
-  align-items: flex-start !important;
-  flex-wrap: wrap !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card-title,
-#detailModal.mvu-modal-display-shell .simple-title {
-  color: #163247 !important;
-  font-size: 16px !important;
-  line-height: 1.35 !important;
-  font-weight: 700 !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card-head::after {
-  display: none !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-note {
-  display: none !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row,
-#detailModal.mvu-modal-display-shell .dossier-list-row,
-#detailModal.mvu-modal-display-shell .simple-row,
-#detailModal.mvu-modal-display-shell .hero-row,
-#detailModal.mvu-modal-display-shell .status-row {
-  position: relative !important;
-  display: grid !important;
-  grid-template-columns: minmax(58px, 0.34fr) minmax(0, 1fr) !important;
-  align-items: start !important;
-  align-content: start !important;
-  gap: 4px 9px !important;
-  min-width: 0 !important;
-  min-height: 34px !important;
-  padding: 8px 9px !important;
-  border: 0 !important;
-  border-top: 1px solid rgba(32, 66, 94, 0.08) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  overflow: hidden !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row-grid--single .dossier-row:first-child,
-#detailModal.mvu-modal-display-shell .dossier-row-grid--two .dossier-row:nth-child(-n + 2),
-#detailModal.mvu-modal-display-shell .dossier-row-grid--three .dossier-row:nth-child(-n + 3),
-#detailModal.mvu-modal-display-shell .dossier-list-row:first-child {
-  border-top: 0 !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card .dossier-row > b,
-#detailModal.mvu-modal-display-shell .archive-card .dossier-list-row > b,
-#detailModal.mvu-modal-display-shell .dossier-row > b,
-#detailModal.mvu-modal-display-shell .dossier-list-row > b,
-#detailModal.mvu-modal-display-shell .simple-row b,
-#detailModal.mvu-modal-display-shell .hero-row b,
-#detailModal.mvu-modal-display-shell .status-row b {
-  color: #5e7486 !important;
-  font-size: 10px !important;
-  line-height: 1.35 !important;
-  font-weight: 600 !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card .dossier-row > span,
-#detailModal.mvu-modal-display-shell .archive-card .dossier-list-row > span,
-#detailModal.mvu-modal-display-shell .dossier-row > span,
-#detailModal.mvu-modal-display-shell .dossier-list-row > span,
-#detailModal.mvu-modal-display-shell .simple-row span,
-#detailModal.mvu-modal-display-shell .hero-row span,
-#detailModal.mvu-modal-display-shell .status-row span {
-  color: #0b1f31 !important;
-  min-width: 0;
-  font-size: 12px !important;
-  line-height: 1.42 !important;
-  font-weight: 600 !important;
-  word-break: break-word;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row:not(.dossier-row--wide) > span {
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-row--wide > span,
-#detailModal.mvu-modal-display-shell .dossier-row > span[data-inline-multiline='1'] {
-  max-height: min(140px, 32svh) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  padding-right: 3px !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card b,
-#detailModal.mvu-modal-display-shell .relation-card b,
-#detailModal.mvu-modal-display-shell .intel-card b,
-#detailModal.mvu-modal-display-shell .timeline-card b,
-#detailModal.mvu-modal-display-shell .location-summary-card b,
-#detailModal.mvu-modal-display-shell .legend-chip b {
-  color: #163247 !important;
-}
-
-#detailModal.mvu-modal-display-shell .archive-card span,
-#detailModal.mvu-modal-display-shell .relation-card span,
-#detailModal.mvu-modal-display-shell .intel-card span,
-#detailModal.mvu-modal-display-shell .timeline-card span,
-#detailModal.mvu-modal-display-shell .location-summary-card span,
-#detailModal.mvu-modal-display-shell .archive-note,
-#detailModal.mvu-modal-display-shell .location-empty-note,
-#detailModal.mvu-modal-display-shell .legend-chip span {
-  color: #5e7486 !important;
-}
-
-#detailModal.mvu-modal-display-shell .request-console-input,
-#detailModal.mvu-modal-display-shell .request-console-textarea,
-#detailModal.mvu-modal-display-shell .relation-gift-select,
-#detailModal.mvu-modal-display-shell .relation-action-btn,
-#detailModal.mvu-modal-display-shell .intel-add-row .intel-add-btn,
-#detailModal.mvu-modal-display-shell .map-dispatch-action-btn {
-  min-height: 44px !important;
-}
-
-#detailModal.mvu-modal-display-shell .dossier-topology-board {
-  min-height: 180px !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root .dossier-head-name {
-  font-size: 18px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root .dossier-section {
-  display: grid !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  min-height: max-content !important;
-  padding: 10px !important;
-  border: 1px solid rgba(32, 66, 94, 0.08) !important;
-  border-radius: 13px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(243, 249, 252, 0.86)), rgba(248, 252, 255, 0.82) !important;
-  overflow: visible !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root .dossier-section-title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin: 0 !important;
-  color: #6a7f90 !important;
-  font-size: 11px !important;
-  line-height: 1.25 !important;
-  font-weight: 650 !important;
-  letter-spacing: 0 !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root .dossier-section-title::before {
-  content: '' !important;
-  flex: 0 0 auto !important;
-  width: 5px !important;
-  height: 5px !important;
-  border-radius: 999px !important;
-  background: rgba(28, 126, 154, 0.55) !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-decor {
-  display: none !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell
-  .mvu-modal-panel.archive-redesign-panel
-  > .archive-redesign-decor
-  .top-left-rings {
-  top: -28px;
-  left: 2px;
-  width: 108px;
-  height: 108px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-shell
-  .mvu-modal-panel.archive-redesign-panel
-  > .archive-redesign-decor
-  .bottom-right-rings {
-  right: 2px;
-  bottom: -28px;
-  width: 118px;
-  height: 118px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-value,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-value,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-value,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-name,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-main-card h4,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-head-name,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head b,
-#detailModal.mvu-modal-display-shell .archive-card-title,
-#detailModal.mvu-modal-display-shell .simple-title,
-#detailModal.mvu-modal-display-shell .dossier-head-name {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-weight: 600 !important;
-  letter-spacing: 0 !important;
-  text-shadow: none !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-title {
-  font-size: 15px;
-  line-height: 1.22;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-title {
-  font-size: 13px;
-  line-height: 1.32;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero .mvu-shell-title {
-  font-size: 14px;
-  line-height: 1.3;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-value,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-summary--hero .mvu-shell-value {
-  font-size: 11px;
-  line-height: 1.24;
-  font-weight: 600;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-meta,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-note,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-foot,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-lite-tags span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-lite-copy {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 11px;
-  line-height: 1.38;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-card-note {
-  line-height: 1.42;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-chip,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-map-stage-chip,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab-label,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-weight: 500 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab-label {
-  font-size: 10px;
-  line-height: 1.1;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill {
-  font-size: 12px;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-label,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-label,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-section-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-section-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item em,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-section-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head span {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 10px !important;
-  line-height: 1.28 !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-metric-value {
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-line-value {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 12px;
-  line-height: 1.4;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-app-peek-value {
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-app-copy strong {
-  font-size: 14px;
-  line-height: 1.16;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head strong {
-  font-size: 14px;
-  line-height: 1.3;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-head b {
-  min-width: 42px;
-  padding: 5px 8px;
-  font-size: 12px;
-  line-height: 1.18;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-name {
-  font-size: 12px;
-  line-height: 1.28;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-meta {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  color: rgba(216, 238, 247, 0.9) !important;
-  font-size: 11px;
-  line-height: 1.3;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-shell-roster-state {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  color: rgba(191, 219, 232, 0.84) !important;
-  font-size: 10px;
-  line-height: 1.28;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-title {
-  font-size: 14px !important;
-  line-height: 1.3 !important;
-  font-weight: 600 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-row b {
-  font-size: 10px !important;
-  line-height: 1.28 !important;
-  font-weight: 400 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-map-stage .map-side-card .simple-row span {
-  font-size: 12px !important;
-  line-height: 1.42 !important;
-  font-weight: 400 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host {
-  font-family: var(--mvu-mobile-shell-font);
-  font-size: 12px !important;
-  line-height: 1.42 !important;
-  font-weight: 400;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-root,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-root {
-  font-family: var(--mvu-mobile-shell-font);
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .archive-card-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-title,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .spirit-main-card h4,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .soul-expand-title,
-#detailModal.mvu-modal-display-shell .archive-card-title,
-#detailModal.mvu-modal-display-shell .simple-title {
-  font-size: 14px !important;
-  line-height: 1.28 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-head-name,
-#detailModal.mvu-modal-display-shell .dossier-head-name,
-#detailModal.archive-redesign-mode.mvu-modal-display-shell .archive-redesign-root .dossier-head-name {
-  font-size: 15px !important;
-  line-height: 1.28 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .status-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item b,
-#detailModal.mvu-modal-display-shell .simple-row b,
-#detailModal.mvu-modal-display-shell .hero-row b,
-#detailModal.mvu-modal-display-shell .status-row b {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 10px !important;
-  line-height: 1.25 !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .simple-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .hero-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .status-row span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item span,
-#detailModal.mvu-modal-display-shell .simple-row span,
-#detailModal.mvu-modal-display-shell .hero-row span,
-#detailModal.mvu-modal-display-shell .status-row span {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 12px !important;
-  line-height: 1.4 !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .meta-item-wide span {
-  font-size: 12px !important;
-  line-height: 1.5 !important;
-  font-weight: 400 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-head strong,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-hero strong {
-  font-size: 14px;
-  line-height: 1.3;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-stat b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-item b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-meter-top b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-row b,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-head b {
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-copy,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-part-text {
-  font-size: 11px !important;
-  line-height: 1.45 !important;
-  font-weight: 400 !important;
-}
-
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-tag,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-lite-tags span,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-tag,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .mvu-shell-private-empty,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .tag-chip,
-body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .dossier-pill {
-  font-family: var(--mvu-mobile-shell-font) !important;
-  font-size: 10px !important;
-  line-height: 1.22 !important;
-  font-weight: 500 !important;
-  letter-spacing: 0 !important;
-}
-
-body.mvu-shell-overlay-enabled
-  #mvu-unified-mount
-  .mvu-mobile-shell-modal-host
-  .mvu-shell-lite-card--wallet
-  .mvu-shell-lite-head
-  strong {
-  font-size: 19px;
-  line-height: 1.08;
-  font-weight: 600;
-}
-
-@keyframes mvuMobilePageIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes mvuMobileSheetIn {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-main,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu-trigger,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-surface-launcher-menu,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-frame,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-action-pill,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shortcut,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-card,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-tab,
-  #detailModal.mvu-modal-display-shell .mvu-modal-panel {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
 body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .battle-header,
-body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .battle-header,
 #detailModal #mvu-battle-inline-host .battle-header {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -23654,7 +19943,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .battl
 }
 
 body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .bar-stack,
-body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .bar-stack,
 #detailModal #mvu-battle-inline-host .bar-stack {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -23662,7 +19950,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .bar-s
 }
 
 body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .stats-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .stats-grid,
 #detailModal #mvu-battle-inline-host .stats-grid {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
@@ -23670,7 +19957,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .stats
 }
 
 body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .battle-main,
-body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .battle-main,
 #detailModal #mvu-battle-inline-host .battle-main {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
@@ -23678,7 +19964,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .battl
 }
 
 body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .action-grid,
-body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .action-grid,
 #detailModal #mvu-battle-inline-host .action-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)) !important;
@@ -23687,14 +19972,12 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .actio
 
 @media (max-width: 760px) {
   body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .battle-header,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .battle-header,
-  #detailModal #mvu-battle-inline-host .battle-header {
+    #detailModal #mvu-battle-inline-host .battle-header {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount #mvu-battle-inline-host .stats-grid,
-  body.mvu-shell-overlay-enabled #mvu-unified-mount #mvu-battle-inline-host .stats-grid,
-  #detailModal #mvu-battle-inline-host .stats-grid {
+    #detailModal #mvu-battle-inline-host .stats-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
