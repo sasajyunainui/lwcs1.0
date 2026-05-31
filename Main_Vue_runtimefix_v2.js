@@ -702,6 +702,15 @@ const DesktopUnifiedLayout = {
         target.scrollTop = nextTop;
       }
     };
+    const 标记待渲染详情 = 预览键 => {
+      const 详情宿主 = detailHostRef.value;
+      if (!(详情宿主 instanceof HTMLElement) || !详情宿主.isConnected) return;
+      const 当前预览键 = String(详情宿主.dataset.unifiedPreview || '').trim();
+      const 目标预览键 = String(预览键 || '').trim();
+      if (!目标预览键 || 当前预览键 === 目标预览键) return;
+      详情宿主.innerHTML = '';
+      delete 详情宿主.dataset.unifiedPreview;
+    };
     const requestUnifiedDetailRender = (options = {}) => {
       const nextPreviewKey = String(detailState.previewKey || '').trim();
       const 重试次数 = Number(options.重试次数 || 0);
@@ -718,6 +727,16 @@ const DesktopUnifiedLayout = {
           const rendered = window.__MVU_RENDER_UNIFIED_PREVIEW__(nextPreviewKey, { ...options, host });
           if (rendered === false && detailState.previewKey === nextPreviewKey) {
             closeUnifiedDetail({ force: true });
+            return;
+          }
+          const 已渲染预览键 = String(host.dataset.unifiedPreview || '').trim();
+          if (detailState.previewKey === nextPreviewKey && 已渲染预览键 !== nextPreviewKey) {
+            if (重试次数 < 8) {
+              window.setTimeout(
+                () => requestUnifiedDetailRender({ ...options, force: true, 重试次数: 重试次数 + 1 }),
+                80,
+              );
+            }
             return;
           }
           syncUnifiedFrameViewport();
@@ -743,6 +762,7 @@ const DesktopUnifiedLayout = {
       }
       detailState.previewKey = nextPreviewKey;
       detailState.isOpen = true;
+      标记待渲染详情(nextPreviewKey);
       requestUnifiedDetailRender(options);
       scheduleUnifiedFrameViewportSync();
       return true;

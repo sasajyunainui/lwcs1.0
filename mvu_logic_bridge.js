@@ -12486,16 +12486,19 @@
       };
       const 明细标签 = 项 => {
         const 角色 = 条件来源标签(项);
-        const 名称 = String(项.关键值 || 项.原型 || '效果').trim();
+        const 原型 = String(项.原型 || '').trim();
+        const 名称 = String(项.关键值 || '').trim();
         const 字段 = String(项.关键字段 || '').trim();
         const 目标 = String(项.目标 || '').trim();
         const 数值 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
+        const 伤害类型 = 原型 === '伤害结算' && 项.伤害类型 ? String(项.伤害类型).trim() : '';
         const 限定 = String(项.限定元素 || '').trim();
         return [
           角色 || '基础',
-          项.原型 || '',
+          原型,
           字段 && 名称 ? `${字段}:${名称}` : 名称,
           数值,
+          伤害类型,
           目标,
           项.持续回合 ? `持续${项.持续回合}回合` : '',
           限定 ? `限定${限定}` : '',
@@ -39840,11 +39843,7 @@ ${播报文本}
       event.stopPropagation();
       const previewKey = previewClickable.dataset.preview;
       if (previewKey) {
-        打开预览入口(previewClickable, previewKey, {
-          displayMode: 'floating',
-          preserveMapDispatchContext: true,
-          切换弹窗: false,
-        });
+        打开预览入口(previewClickable, previewKey, { preserveMapDispatchContext: true });
       }
       return;
     }
