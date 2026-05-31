@@ -9781,17 +9781,15 @@ body.mvu-layout-unified
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar {
   display: grid !important;
   min-height: 0 !important;
-  padding: 6px 10px !important;
-  gap: 6px !important;
+  padding: 4px 8px !important;
+  gap: 0 !important;
+  position: relative !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar-main {
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: space-between !important;
+  display: block !important;
   min-width: 0 !important;
-  min-height: 34px !important;
-  gap: 14px !important;
+  min-height: 36px !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar,
@@ -9802,15 +9800,20 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(190px, 0.82fr) minmax(360px, 1.42fr) auto;
+  grid-template-areas: 'status tabs more';
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'back title more';
   align-items: center;
+  min-height: 36px;
   gap: 8px;
 }
 
@@ -9819,7 +9822,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail {
   top: 0;
   z-index: 5;
   margin: 0;
-  padding: 4px !important;
+  padding: 4px 8px !important;
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 16px;
   background: rgba(8, 15, 21, 0.96);
@@ -9829,23 +9832,22 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-unified-toolbar-main {
-  display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, auto) !important;
-  align-items: center !important;
-  gap: 8px !important;
+  display: block !important;
+  min-height: 36px !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-back {
+  grid-area: back;
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.045);
   color: rgba(238, 248, 250, 0.94);
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
 }
@@ -9858,10 +9860,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-back:focus-visibl
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-title {
+  grid-area: title;
   min-width: 0;
   color: var(--mvu-hud-text);
   font-family: var(--font-title);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.25;
   letter-spacing: 0.02em;
 }
@@ -9873,35 +9876,117 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-u
   white-space: nowrap !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-title-action {
-  flex: 0 0 auto !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 28px !important;
-  max-width: 150px !important;
-  padding: 0 11px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(77, 240, 255, 0.22) !important;
-  background: linear-gradient(180deg, rgba(77, 240, 255, 0.11), rgba(77, 240, 255, 0.035)) !important;
-  color: rgba(225, 248, 252, 0.95) !important;
-  font-size: 11px !important;
-  line-height: 1 !important;
-  letter-spacing: 0.02em !important;
-  cursor: pointer !important;
-  white-space: nowrap !important;
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow {
+  position: relative;
+  z-index: 10;
+  grid-area: more;
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  border: 1px solid rgba(77, 240, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(238, 251, 253, 0.96);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger:hover,
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-trigger:focus-visible,
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow.active .mvu-toolbar-overflow-trigger {
+  border-color: rgba(77, 240, 255, 0.34);
+  background: rgba(77, 240, 255, 0.1);
+  outline: none;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  min-width: 188px;
+  padding: 8px;
+  border: 1px solid rgba(77, 240, 255, 0.2);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top, rgba(77, 240, 255, 0.16), transparent 58%),
+    linear-gradient(180deg, rgba(12, 28, 38, 0.98), rgba(5, 15, 23, 0.98));
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(5px) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity var(--mvu-motion-state) ease,
+    transform var(--mvu-motion-state) ease;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow.active .mvu-toolbar-overflow-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section:empty {
+  display: none;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section .mvu-ai-maintenance-title-slot {
+  display: grid;
+  min-width: 0;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-toolbar-overflow-section .mvu-ai-maintenance-title-button {
+  width: 100%;
+  justify-content: center;
+  min-height: 30px;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-layout-toggle--overflow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-layout-toggle--overflow .mvu-unified-layout-btn {
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: 9px;
+  font-size: 11px;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
   display: grid;
-  grid-template-columns: minmax(92px, max-content) minmax(132px, 0.22fr) minmax(0, 1fr);
-  grid-template-areas: 'identity api chips';
+  grid-area: status;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  grid-template-areas: 'identity chips';
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 4px 8px;
   border: 1px solid rgba(77, 240, 255, 0.14);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.048), rgba(255, 255, 255, 0.014)), rgba(5, 15, 23, 0.58);
@@ -9916,8 +10001,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status:hover {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-identity,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row,
-body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row {
   min-width: 0;
 }
 
@@ -9925,7 +10009,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-identity {
   display: grid;
   align-items: center;
   grid-area: identity;
-  min-width: 92px;
+  min-width: 84px;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-name-button {
@@ -9945,7 +10029,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-name {
   min-width: 0;
   overflow: hidden;
   color: rgba(238, 251, 253, 0.98);
-  font-size: 13.5px;
+  font-size: 12.5px;
   line-height: 1.24;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -9972,15 +10056,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row > .is-conte
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 30px;
-  padding: 3px 6px;
+  min-height: 26px;
+  padding: 2px 6px;
   border-radius: 9px;
   border: 1px solid rgba(77, 240, 255, 0.2);
   background:
     radial-gradient(circle at 13px 50%, rgba(77, 240, 255, 0.24), transparent 43%),
     linear-gradient(180deg, rgba(77, 240, 255, 0.12), rgba(255, 255, 255, 0.025));
   color: rgba(222, 242, 247, 0.9);
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.25;
   overflow: hidden;
 }
@@ -9992,8 +10076,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row > .is-conte
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 22px;
-  padding: 0 6px;
+  min-height: 20px;
+  padding: 0 5px;
   border-radius: 7px;
   overflow: hidden;
   color: rgba(222, 242, 247, 0.9);
@@ -10053,22 +10137,21 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row .is-place {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top .mvu-ai-maintenance-api {
-  width: auto;
+  width: 100%;
   display: grid;
-  grid-template-columns: auto minmax(68px, max-content);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   min-height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 6px;
+  border: 1px solid rgba(77, 240, 255, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top {
-  grid-area: api;
-  align-self: center;
+  min-width: 0;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top .mvu-ai-maintenance-api > b {
@@ -10257,8 +10340,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top sel
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-row {
   display: grid !important;
+  grid-area: tabs !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   gap: 7px !important;
+  min-width: 0 !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn {
@@ -10266,6 +10351,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn {
   min-height: 34px !important;
   padding: 0 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom-width: 2px !important;
   border-radius: 12px !important;
   background: rgba(255, 255, 255, 0.04) !important;
   color: var(--mvu-hud-text) !important;
@@ -10282,11 +10368,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn:focus-visible {
   outline: none !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn.active {
-  border-color: rgba(77, 240, 255, 0.32) !important;
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn.active,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn[aria-pressed='true'] {
+  border-color: rgba(77, 240, 255, 0.36) !important;
+  border-bottom: 3px solid var(--cyan) !important;
   background: rgba(77, 240, 255, 0.12) !important;
-  color: #ecfdff !important;
-  box-shadow: inset 0 0 0 1px rgba(77, 240, 255, 0.08) !important;
+  color: var(--cyan) !important;
+  box-shadow:
+    0 -1px 0 var(--cyan-soft) inset,
+    inset 0 0 0 1px rgba(77, 240, 255, 0.08) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-page-stack,
@@ -14684,9 +14774,9 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
 }
 @media (max-width: 1180px) {
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
-    grid-template-columns: minmax(82px, max-content) minmax(118px, 0.24fr) minmax(0, 1fr) !important;
-    grid-template-areas: 'identity api chips' !important;
-    min-height: 42px !important;
+    grid-template-columns: minmax(82px, max-content) minmax(0, 1fr) !important;
+    grid-template-areas: 'identity chips' !important;
+    min-height: 34px !important;
     align-items: center !important;
   }
 
@@ -14906,9 +14996,26 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
     max-height: 92svh !important;
   }
 
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      'status more'
+      'tabs tabs' !important;
+    gap: 6px !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-row {
+    gap: 5px !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-tab-btn {
+    min-height: 32px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-ai-maintenance-home-api--top .mvu-ai-maintenance-api {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-chip-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -14925,7 +15032,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-modal-host .
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
     grid-template-areas:
       'identity'
-      'api'
       'chips' !important;
     min-height: 0 !important;
   }
@@ -20303,7 +20409,6 @@ body.mvu-shell-overlay-enabled #mvu-unified-mount .mvu-mobile-shell-host :where(
   cursor: pointer;
 }
 
-body #mvu-unified-mount .mvu-unified-toolbar-side,
 body #mvu-right-mount .mvu-window-settings-btn,
 body #mvu-right-mount .mvu-window-settings-panel {
   display: none !important;

@@ -248,7 +248,7 @@
 
   const previewMap = {
     角色切换器: {
-      title: '角色浏览 / 切换弹窗',
+      title: '角色浏览 / 切换',
       summary: '查看全部角色摘要，并默认聚焦当前玩家角色。',
       fields: ['sd.char', 'char[*].is_player', 'char[*].属性.等级', 'char[*].状态.位置', 'char[*].社交.主身份'],
       duties: ['浏览所有角色', '切换当前查看角色', '高亮玩家角色与关键 NPC'],
@@ -275,7 +275,7 @@
       actions: ['分区显示基础属性', '异常状态列表', '恢复与判定说明'],
     },
     社会档案详细页: {
-      title: '社会档案弹窗',
+      title: '社会档案',
       summary: '由“名望等级”芯片进入，聚焦声望、身份与称号。',
       fields: ['activeChar.社交.声望', 'activeChar.社交.名望等级', 'activeChar.社交.主身份', 'activeChar.社交.称号'],
       duties: ['展示公开身份', '显示称号来源', '整理名望等级与可见度状态'],
@@ -289,21 +289,21 @@
       actions: ['跳转势力矩阵', '查看晋升入口'],
     },
     人物关系详细页: {
-      title: '人物关系弹窗',
+      title: '人物关系',
       summary: '由“关系摘要”芯片进入，承接重型 社交.关系 结构。',
       fields: ['activeChar.社交.关系'],
       duties: ['显示好感度与阶段', '显示关系路线与推进提示', '展示对方身份、好感加成 与分析结果'],
       actions: ['查看关系路线', '查看关系推进重点', '闲聊 / 送礼 / 请教 / 切磋 / 表白'],
     },
     情报库详细页: {
-      title: '情报库弹窗',
+      title: '情报库',
       summary: '由“已解锁情报”芯片进入，统一展开已知信息、我的任务与战斗记录。',
       fields: ['activeChar.已掌握情报', 'activeChar.我的任务', 'activeChar.战斗历史'],
       duties: ['展示已解锁情报', '聚合我的任务', '聚合近期记录与战斗摘要'],
       actions: ['按情报筛选', '跳转关联节点'],
     },
     武装工坊详细页: {
-      title: '武装工坊弹窗',
+      title: '武装工坊',
       summary: '查看当前武装、斗铠部件与副职业工坊。',
       fields: ['activeChar.装备.武器', 'activeChar.装备.斗铠', 'activeChar.装备.机甲', 'activeChar.职业'],
       duties: ['展示武器/斗铠/机甲', '展示装备槽位状态', '显示副职业等级与融合信息'],
@@ -780,6 +780,9 @@
   const WUXING_ATTRIBUTE_TOKEN_OPTIONS = Object.freeze(['金', '木', '水', '火', '土']);
   const ELEMENT_ATTRIBUTE_TOKEN_OPTIONS = Object.freeze(['水', '火', '风', '土', '光', '暗']);
   const SKILL_LIMITED_ELEMENT_OPTIONS = Object.freeze(['五行类', '元素类', ...SPIRIT_ATTRIBUTE_TOKEN_OPTIONS]);
+  function 规范化技能元素列表_桥接(value = []) {
+    return Array.from(new Set(normalizeSkillDesignerArray(value).filter(token => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(token))));
+  }
   const STATUS_ACTION_RUNTIME_OPTIONS = Object.freeze(['日常', '冥想', '睡眠', '战斗', '肉体训练', '精神训练']);
   const RING_COLOR_META = Object.freeze({
     white: Object.freeze({ label: '白', glyph: '白', aliases: ['白色'] }),
@@ -828,16 +831,13 @@
   function resolveSpiritAttributeUiState(spiritData = {}) {
     const rawSystem = normalizeSkillUiText(spiritData && spiritData['属性体系'], '无');
     const attributeSystem = SPIRIT_ATTRIBUTE_SYSTEM_OPTIONS.includes(rawSystem) ? rawSystem : '无';
-    const unlockedAttrs = normalizeSpiritAttributeTokenList(spiritData && spiritData['已解锁属性']);
-    let capacityAttrs = normalizeSpiritAttributeTokenList(spiritData && spiritData['可容纳属性']);
-    if (!capacityAttrs.length) {
-      if (attributeSystem === '五行') capacityAttrs = [...WUXING_ATTRIBUTE_TOKEN_OPTIONS];
-      else if (attributeSystem === '元素' && unlockedAttrs.length) capacityAttrs = [...unlockedAttrs];
+    let callableElements = normalizeSpiritAttributeTokenList(spiritData && spiritData['可调用元素']);
+    if (!callableElements.length) {
+      if (attributeSystem === '五行') callableElements = [...WUXING_ATTRIBUTE_TOKEN_OPTIONS];
     }
     return {
       attributeSystem,
-      unlockedAttrs,
-      capacityAttrs,
+      callableElements,
     };
   }
 
@@ -1271,7 +1271,7 @@
 
     if (key === '社会档案详细页') {
       return {
-        title: '社会档案弹窗',
+        title: '社会档案',
         body: `
             <div class="archive-modal-grid mvu-spirit-detail-grid">
               <div class="archive-card">
@@ -1339,7 +1339,7 @@
 
     if (key === '人物关系详细页') {
       return {
-        title: '人物关系弹窗',
+        title: '人物关系',
         body: `
             <div class="archive-modal-grid mvu-detail-grid--single">
               <div class="archive-card full">
@@ -1371,7 +1371,7 @@
 
     if (key === '情报库详细页') {
       return {
-        title: '情报库弹窗',
+        title: '情报库',
         body: `
             <div class="archive-modal-grid mvu-detail-grid--single">
               <div class="archive-card full">
@@ -1393,7 +1393,7 @@
 
     if (key === '武装工坊详细页') {
       return {
-        title: '武装工坊弹窗',
+        title: '武装工坊',
         body: `
             <div class="equipment-layout">
               <div class="archive-card full">
@@ -5019,6 +5019,29 @@
     return `/${path.map(token => escapeJsonPointerValue(token)).join('/')}`;
   }
 
+  function 规范化AI维护边界路径(pathValue = []) {
+    const 路径 = normalizeEditorPath(pathValue).map(token => (typeof token === 'number' ? token : String(token)));
+    const 结果 = [];
+    路径.forEach(片段 => {
+      if (是魂技槽位键_桥接(片段)) {
+        const 父级 = String(结果[结果.length - 1] || '');
+        if (是武魂槽位键_桥接(父级) || 是魂灵槽位键_桥接(父级)) {
+          结果.push(`第${读取槽位序号_桥接(片段, 1)}魂环`);
+        }
+      } else if (是血脉魂技槽位键_桥接(片段) && String(结果[结果.length - 1] || '') === '血脉之力') {
+        结果.push(`第${读取槽位序号_桥接(片段, 1)}气血魂环`);
+      }
+      结果.push(片段);
+    });
+    return 结果;
+  }
+
+  function 格式化AI维护边界路径(pathValue = []) {
+    const 路径 = 规范化AI维护边界路径(pathValue);
+    if (!路径.length) return '';
+    return `/${路径.map(片段 => escapeJsonPointerValue(片段)).join('/')}`;
+  }
+
   function 解析AI维护路径键(pathKey = '') {
     return String(pathKey || '')
       .split('\u0001')
@@ -5173,18 +5196,6 @@
       });
       return;
     }
-    unifiedMount.querySelectorAll('.mvu-unified-toolbar').forEach(toolbar => {
-      if (!(toolbar instanceof Element)) return;
-      const 目标容器 =
-        toolbar.querySelector('.mvu-unified-toolbar-side') ||
-        (toolbar.classList.contains('is-detail') ? toolbar.querySelector('.mvu-unified-toolbar-main') : null);
-      if (!(目标容器 instanceof Element)) return;
-      const 插入位置 = 目标容器.classList.contains('mvu-unified-toolbar-main') ? 'beforeend' : 'afterbegin';
-      目标容器.insertAdjacentHTML(
-        插入位置,
-        `<div class="mvu-ai-maintenance-home-api" data-ai-maintenance-home-api>${homeMarkup}</div>`,
-      );
-    });
     unifiedMount
       .querySelectorAll(
         '.mvu-mobile-shell-frame[data-screen="home"] .mvu-mobile-shell-head-actions, .mvu-mobile-shell-frame[data-screen="detail"] .mvu-mobile-shell-head-actions',
@@ -5212,12 +5223,12 @@
       同步AI维护标题按钮状态();
       return;
     }
-    const unifiedMain = document.querySelector(
-      '#mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-unified-toolbar-main',
+    const 统一标题目标 = document.querySelector(
+      '#mvu-unified-mount .mvu-unified-toolbar.is-detail [data-ai-maintenance-title-target="panel"]',
     );
-    if (unifiedMain) {
-      unifiedMain.insertAdjacentHTML(
-        'beforeend',
+    if (统一标题目标) {
+      统一标题目标.insertAdjacentHTML(
+        'afterbegin',
         `<div class="mvu-ai-maintenance-title-slot" data-ai-maintenance-title-slot>${buttonHtml}</div>`,
       );
     }
@@ -5644,8 +5655,8 @@
   }
 
   function 路径是否在AI维护边界内(changedPath = [], allowedPath = []) {
-    const changed = normalizeEditorPath(changedPath);
-    const allowed = normalizeEditorPath(allowedPath);
+    const changed = 规范化AI维护边界路径(changedPath);
+    const allowed = 规范化AI维护边界路径(allowedPath);
     if (!changed.length || !allowed.length) return false;
     if (changed.length < allowed.length) return false;
     return allowed.every((token, index) => String(changed[index]) === String(token));
@@ -5829,7 +5840,7 @@
   }
 
   function 校验AI维护写回边界(oldMvuData, nextMvuData, selectionItems = []) {
-    const allowedPaths = selectionItems.map(item => normalizeEditorPath(item.path)).filter(path => path.length);
+    const allowedPaths = selectionItems.map(item => 规范化AI维护边界路径(item.path)).filter(path => path.length);
     const oldStat = cloneJsonValue(oldMvuData && oldMvuData.stat_data, {});
     const nextStat = cloneJsonValue(nextMvuData && nextMvuData.stat_data, {});
     delete oldStat.display_all;
@@ -5844,7 +5855,7 @@
     if (outOfRange.length) {
       return {
         ok: false,
-        reason: `AI 试图修改未选中的变量：${outOfRange.slice(0, 4).map(格式化AI维护路径).join('、')}`,
+        reason: `AI 试图修改未选中的变量：${outOfRange.slice(0, 4).map(格式化AI维护边界路径).join('、')}`,
         changedPaths,
         outOfRange,
       };
@@ -9792,7 +9803,7 @@
         else delete 字段['持续回合'];
       }
       const 资源转移方式 = normalizeSkillUiText(字段['资源转移方式'], '');
-      if (!['吞噬', '共享', '均分'].includes(资源转移方式)) {
+      if (!['吞噬', '共享', '均分', '转移'].includes(资源转移方式)) {
         throw new Error(`技能执行结构错误:${上下文?.path || '_效果数组'}[${上下文?.index || 0}]资源转移方式无效`);
       }
       if (字段['资源转移方式'] === '均分') {
@@ -10617,7 +10628,7 @@
         if (effect['资源转移角色'] !== undefined)
           throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
         const 转移方式 = normalizeSkillUiText(effect['资源转移方式'], '');
-        if (!['吞噬', '共享', '均分'].includes(转移方式))
+        if (!['吞噬', '共享', '均分', '转移'].includes(转移方式))
           throw new Error(`技能执行结构错误:${path}[${index}]资源转移方式无效`);
         const 目标 = normalizeSkillUiText(effect['目标'], '');
         const 合法目标 = 转移方式 === '均分' ? ['单体', '群体', '全场'] : ['单体', '群体'];
@@ -10625,7 +10636,7 @@
           throw new Error(`技能执行结构错误:${path}[${index}]${转移方式}不允许目标${目标 || '空'}`);
         if (转移方式 === '均分' && effect['转化比例'] !== undefined)
           throw new Error(`技能执行结构错误:${path}[${index}]${转移方式}不允许转化比例`);
-        if (['吞噬', '共享'].includes(转移方式)) {
+        if (['吞噬', '共享', '转移'].includes(转移方式)) {
           const 转化比例 = Number(effect['转化比例'] ?? 1);
           if (!Number.isFinite(转化比例) || 转化比例 < 0 || 转化比例 > 2)
             throw new Error(`技能执行结构错误:${path}[${index}]转化比例必须在0到2之间`);
@@ -12896,6 +12907,7 @@
     const 路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
     const 武魂索引 = 路径.findIndex(片段 => ['第一武魂', '第二武魂'].includes(normalizeSkillUiText(片段, '')));
     const 武魂数据 = 武魂索引 >= 0 ? deepGet(根数据, 路径.slice(0, 武魂索引 + 1), {}) : {};
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(根数据, previewMeta);
     const 预算系别 = normalizeSkillUiText(
       武魂数据?.系别 ||
         武魂数据?.type ||
@@ -12935,6 +12947,8 @@
       来源类别,
       系别: 预算系别,
       武魂系别: 预算系别,
+      可调用元素: 武魂元素上下文.可调用元素,
+      callableElements: 武魂元素上下文.可调用元素,
       魂环位,
       魂环数据,
       ringAge: 魂环数据?.年限,
@@ -13577,6 +13591,60 @@
       charKey,
       charData: charKey ? deepGet(rootData, ['char', charKey], {}) : {},
     };
+  }
+
+  function 读取技能设计台武魂上下文(rootData = {}, previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 武魂索引 = path.findIndex(片段 => ['第一武魂', '第二武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂数据 = 武魂索引 >= 0 ? deepGet(rootData, path.slice(0, 武魂索引 + 1), {}) : {};
+    const 属性体系 = normalizeSkillUiText(武魂数据 && 武魂数据['属性体系'], '无');
+    const 可调用元素 = 规范化技能元素列表_桥接(武魂数据 && 武魂数据['可调用元素']);
+    return {
+      武魂数据,
+      系别: normalizeSkillUiText(武魂数据 && 武魂数据['系别'], ''),
+      属性体系,
+      可调用元素: 属性体系 === '五行' && !可调用元素.length ? [...WUXING_ATTRIBUTE_TOKEN_OPTIONS] : 可调用元素,
+    };
+  }
+
+  function 技能设计台是元素系上下文(rootData = {}, previewMeta = {}, 草稿 = {}) {
+    const 武魂上下文 = 读取技能设计台武魂上下文(rootData, previewMeta);
+    const 系别文本 = [武魂上下文.系别, 草稿 && 草稿.type, 武魂上下文.属性体系].map(item => normalizeSkillUiText(item, '')).join('/');
+    return /元素系|元素|五行/.test(系别文本);
+  }
+
+  function 收口技能设计台元素字段(效果数组 = [], 可调用元素 = []) {
+    const 默认元素 = 规范化技能元素列表_桥接(可调用元素);
+    const 访问 = 效果 => {
+      if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+      if (效果['限定元素'] !== undefined) {
+        const 限定元素列表 = 读取技能设计台限定元素列表(效果['限定元素']).filter(元素 => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素));
+        const 限定交集 = 默认元素.length ? 限定元素列表.filter(元素 => 默认元素.includes(元素)) : 限定元素列表;
+        const 生效元素 = 限定交集.length ? 限定交集 : 默认元素;
+        if (生效元素.length) 效果['限定元素'] = 生效元素.length > 1 ? 生效元素 : 生效元素[0];
+        if (!技能设计台条件分支包含当前技能元素(效果) && 生效元素.length) {
+          效果['条件分支'] = [
+            ...(Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []),
+            { 条件: [{ 类型: '当前技能元素', 对象: '自身', 比较: '包含', 值: 效果['限定元素'] }], 处理: '生效' },
+          ];
+        }
+        同步技能设计台当前元素条件(效果);
+      } else if (Array.isArray(效果['条件分支']) && 默认元素.length) {
+        效果['条件分支'].forEach(分支 => {
+          (Array.isArray(分支 && 分支['条件']) ? 分支['条件'] : []).forEach(条件 => {
+            if (normalizeSkillUiText(条件 && 条件['类型'], '') === '当前技能元素' && !normalizeSkillUiText(条件 && 条件['值'], '')) {
+              条件['值'] = 默认元素.length > 1 ? 默认元素 : 默认元素[0];
+            }
+          });
+        });
+      }
+      技能设计台嵌套效果数组字段表.forEach(字段名 => (Array.isArray(效果[字段名]) ? 效果[字段名] : []).forEach(访问));
+      (Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []).forEach(分支 =>
+        技能设计台条件分支效果数组字段表.forEach(字段名 => (Array.isArray(分支 && 分支[字段名]) ? 分支[字段名] : []).forEach(访问)),
+      );
+    };
+    (Array.isArray(效果数组) ? 效果数组 : []).forEach(访问);
+    return 效果数组;
   }
 
   function 技能设计台效果列表包含本命召唤(效果数组 = []) {
@@ -15007,7 +15075,7 @@
     if (prototype === '伤害结算' && ['装备条件', '姿态条件', '连招条件', '动作时窗', '中断条件', '主驱动资源', '每段倍率', '段间隔', '范围半径', '目标数量上限', '触发限制', '结算标签', '抗性类型'].includes(key)) return false;
     if (prototype === '资源变化' && ['持续tick', '主驱动资源', '结算标签', '资源转移角色', '资源转移方式', '转化比例'].includes(key)) return false;
     if (prototype === '资源转移' && ['持续tick', '主驱动资源', '结算标签', '资源转移角色'].includes(key)) return false;
-    if (prototype === '资源转移' && key === '转化比例') return ['吞噬', '共享'].includes(valueOf('资源转移方式'));
+    if (prototype === '资源转移' && key === '转化比例') return ['吞噬', '共享', '转移'].includes(valueOf('资源转移方式'));
     if (prototype === '修炼增益' && key === '修炼属性') return valueOf('收益类型') === '属性修炼速度';
     if (prototype === '修炼增益' && key === '训练方式') return valueOf('收益类型') !== '属性修炼速度';
     if (prototype === '护盾变化' && key === '持续回合') return valueOf('护盾模式') === '正向护盾';
@@ -15362,8 +15430,8 @@
       },
       资源转移: {
         资源: '选择要回收、共享或重分配的资源。',
-        资源转移方式: '吞噬扣目标并回补自身，共享由自身转给目标，均分按目标集合重分配。',
-        转化比例: '吞噬或共享时的换算比例；均分不要填。',
+        资源转移方式: '吞噬扣目标并回补自身，共享或转移由自身给目标，均分按目标集合重分配。',
+        转化比例: '吞噬、共享或转移时的换算比例；均分不要填。',
       },
       属性修正: {
         属性: '选择要改变的面板属性；多属性增减应明确每个属性。',
@@ -16945,6 +17013,12 @@
     const 启用被动 = 技能设计台启用被动(previewMeta, baseDraft);
     const 被动触发 = 读取技能设计台被动触发默认值({ ...baseDraft, prototypeEffects: 显式原型效果 });
     const 被动触发限制 = 读取技能设计台被动触发限制(baseDraft);
+    const 预览根数据 = (liveSnapshot && liveSnapshot.rootData) || (lastRenderableSnapshot && lastRenderableSnapshot.rootData) || {};
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(预览根数据, previewMeta);
+    let 初始附带属性 = 规范化技能元素列表_桥接(baseDraft.attachedAttributes);
+    if (!初始附带属性.length && 技能设计台是元素系上下文(预览根数据, previewMeta, { type: typeMeta.value })) {
+      初始附带属性 = [...武魂元素上下文.可调用元素];
+    }
     const coreState = {
       name: 规范第七魂环真身名称_桥接(
         normalizeSkillUiText(baseDraft.name, getSkillDesignerNameFallback(previewMeta)),
@@ -16992,7 +17066,7 @@
             resolvedPrimarySub,
           )
         : [],
-      attachedAttributes: normalizeSkillDesignerArray(baseDraft.attachedAttributes),
+      attachedAttributes: 初始附带属性,
       attributeSource: '无',
       attributeRole: '无',
       coeff: normalizeSkillDesignerCoeffMap({}),
@@ -19675,7 +19749,13 @@
         configurable: true,
       });
     }
-    safeSkill['附带属性'] = [...normalized.attachedAttributes];
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(根数据, previewMeta);
+    let 正式附带属性 = 规范化技能元素列表_桥接(normalized.attachedAttributes);
+    if (!正式附带属性.length && 技能设计台是元素系上下文(根数据, previewMeta, normalized)) {
+      if (!武魂元素上下文.可调用元素.length) throw new Error('元素系技能需要先补全武魂可调用元素。');
+      正式附带属性 = [...武魂元素上下文.可调用元素];
+    }
+    safeSkill['附带属性'] = 正式附带属性;
     const 副作用违规列表 = [];
     const 副作用列表 = 规范化技能设计台副作用列表(normalized['副作用列表'], path => {
       if (path) 副作用违规列表.push(path);
@@ -19716,6 +19796,7 @@
             effect => Array.isArray(effect['使用效果']) && effect['使用效果'].length,
           )
         : normalizedRuntimeEffects;
+    收口技能设计台元素字段(safeSkill['_效果数组'], safeSkill['附带属性']);
     if (!safeSkill['_效果数组'].length && !技能设计台允许纯描述技能(normalized))
       throw new Error('至少需要一个可执行原型。');
     if (normalized.deliveryForm === '造物承载') {
@@ -20108,7 +20189,7 @@
     const skills = (ring && Array.isArray(ring.skills) ? ring.skills : [])
       .map(
         skill => `
-        <div class=\"ring-hover-skill ${skill && skill.preview ? 'clickable' : ''}\"${skill && skill.preview ? ` data-preview=\"${escapeHtmlAttr(skill.preview)}\"` : ''}>
+        <div class=\"ring-hover-skill ${skill && skill.preview ? 'clickable' : ''}\"${skill && skill.preview ? ` data-preview=\"${escapeHtmlAttr(skill.preview)}\" data-detail-mode=\"embed\"` : ''}>
           <b>${htmlEscape(skill && skill.name ? skill.name : '未命名技能')}</b>
           <div class=\"ring-hover-copy\"><em>画面描述</em><span>${htmlEscape(skill && skill.visualDesc ? skill.visualDesc : '未知')}</span></div>
           <div class=\"ring-hover-copy\"><em>效果描述</em><span>${htmlEscape(skill && skill.effectDesc ? skill.effectDesc : '未知')}</span></div>
@@ -20229,8 +20310,7 @@
       spiritDesc,
       spiritType,
       spiritElement: attributeState.attributeSystem,
-      spiritUnlockedAttrs: attributeState.unlockedAttrs,
-      spiritCapacityAttrs: attributeState.capacityAttrs,
+      spiritCallableElements: attributeState.callableElements,
     };
   }
 
@@ -22935,7 +23015,7 @@
 
     const renderableSouls = Array.isArray(config.souls) ? config.souls.filter(isRenderableShellSoul) : [];
     const primarySoul = renderableSouls[0] || null;
-    const unlockedAttrs = Array.isArray(config.spiritUnlockedAttrs) ? config.spiritUnlockedAttrs : [];
+    const callableElements = Array.isArray(config.spiritCallableElements) ? config.spiritCallableElements : [];
     const soulCount = renderableSouls.length || Math.max(0, toNumber(config.soulCount, 0));
     const ringCount = Array.isArray(config.魂环) ? config.魂环.filter(isRenderableShellRing).length : 0;
     const hasSpiritProgress = !!primarySoul || soulCount > 0 || ringCount > 0;
@@ -22964,15 +23044,15 @@
       badges: [
         primarySoul ? shortenText(toText(primarySoul.spiritName || primarySoul.desc, ''), 16) : '',
         ...renderableRings.slice(0, 2).map(item => shortenText(toText(item && item.title, ''), 16)),
-        ...unlockedAttrs.slice(0, 1).map(item => shortenText(toText(item, ''), 14)),
+        ...callableElements.slice(0, 1).map(item => shortenText(toText(item, ''), 14)),
       ],
       metrics: [
         { label: '契合', value: primarySoul ? toText(primarySoul.comp, '--') : '--', tone: 'live' },
         { label: '年限', value: primarySoul ? shortenText(toText(primarySoul.age, '--'), 12) : '--' },
         { label: '魂环', value: String(ringCount || 0) },
         {
-          label: '上限',
-          value: String((Array.isArray(config.spiritCapacityAttrs) ? config.spiritCapacityAttrs.length : 0) || 0),
+          label: '元素',
+          value: String(callableElements.length || 0),
         },
       ],
       rows: [
@@ -23368,12 +23448,12 @@
     const 数量显示 = toText(数量文本, '').trim();
     const 标题属性 = [标题文本, 主值文本, 副值文本, 数量显示].filter(Boolean).join(' / ');
     return `
-        <button type="button" class="mvu-social-entry clickable ${色调 ? `is-${色调}` : ''}" data-preview="${escapeHtmlAttr(预览键)}" title="${escapeHtmlAttr(标题属性)}">
+        <div class="mvu-social-entry clickable ${色调 ? `is-${色调}` : ''}" role="button" tabindex="0" data-preview="${escapeHtmlAttr(预览键)}" data-detail-mode="embed" title="${escapeHtmlAttr(标题属性)}">
           <b class="mvu-social-entry-label">${htmlEscape(标题文本)}</b>
           <strong class="mvu-social-entry-main">${htmlEscape(主值文本)}</strong>
           <span class="mvu-social-entry-sub">${htmlEscape(副值文本)}</span>
           ${数量显示 ? `<em class="mvu-social-entry-count">${htmlEscape(数量显示)}</em>` : ''}
-        </button>
+        </div>
       `;
   }
 
@@ -25336,6 +25416,11 @@
       setLiveNodeHtml(node, html);
       if (preview && enabled) node.setAttribute('data-preview', preview);
       else node.removeAttribute('data-preview');
+      if (preview && enabled && surface === 'panel' && node.classList.contains('mvu-unified-card')) {
+        node.setAttribute('data-detail-mode', 'embed');
+      } else {
+        node.removeAttribute('data-detail-mode');
+      }
       node.classList.toggle('clickable', !!(preview && enabled));
       node.classList.toggle('is-empty', 显式空卡 || !enabled);
       node.hidden = !enabled && !显式空卡;
@@ -25358,25 +25443,11 @@
     });
   }
 
-  function 设置统一角色切换入口(snapshot) {
-    const 角色名 = snapshot
-      ? toText(
-          deepGet(snapshot, 'activeChar.name', deepGet(snapshot, 'activeChar.base.name', snapshot.activeName)),
-          snapshot.activeName || '角色',
-        )
-      : '角色';
-    getLiveUiElements('#mvu-unified-mount [data-unified-role-switch="panel"]').forEach(node => {
-      setLiveNodeHtml(node, `角色｜${htmlEscape(shortenText(角色名, 10))}`);
-      node.setAttribute('title', '切换当前查看角色');
-    });
-  }
-
   function renderUnifiedCards(snapshot, precomputedSectionSignatures = null, previousSectionSignaturesOverride = null) {
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures =
       previousSectionSignaturesOverride || lastDashboardSectionRenderSignatures || Object.create(null);
     设置统一顶部状态条(snapshot);
-    设置统一角色切换入口(snapshot);
     renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'panel');
     renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'shell');
   }
@@ -25695,7 +25766,6 @@
               <i class="is-place">地点未同步</i>
             </span>
           </div>
-          <div class="mvu-ai-maintenance-home-api mvu-ai-maintenance-home-api--top" data-ai-maintenance-home-api>${构建AI维护API选择器()}</div>
         `;
     }
     const 角色名 = toText(
@@ -25711,7 +25781,7 @@
       .replace(/^斗灵大陆-/, '');
     return `
         <div class="mvu-unified-top-identity">
-          <button type="button" class="mvu-unified-top-name mvu-unified-top-name-button clickable" data-preview="角色切换器" title="${escapeHtmlAttr(`切换当前查看角色：${角色名}`)}">${htmlEscape(角色名)}</button>
+          <button type="button" class="mvu-unified-top-name mvu-unified-top-name-button clickable" data-preview="角色切换器" data-detail-mode="embed" title="${escapeHtmlAttr(`切换当前查看角色：${角色名}`)}">${htmlEscape(角色名)}</button>
         </div>
         <div class="mvu-unified-top-chip-row">
           <span class="is-context" title="${escapeHtmlAttr(`${世界时间}｜${当前位置}`)}">
@@ -25719,13 +25789,11 @@
             <i class="is-place">${htmlEscape(当前位置)}</i>
           </span>
         </div>
-        <div class="mvu-ai-maintenance-home-api mvu-ai-maintenance-home-api--top" data-ai-maintenance-home-api>${构建AI维护API选择器()}</div>
       `;
   }
 
   function renderEmptyUnifiedShellCards() {
     设置统一顶部状态条(null);
-    设置统一角色切换入口(null);
     const emptyShellCards = {
       'archive-core': ['角色', '无数据'],
       'primary-spirit': ['主武魂', '无数据'],
@@ -27866,7 +27934,7 @@
             .join('')
         : '<div class="role-switch-empty">暂无可切换角色。</div>';
       return {
-        title: '角色浏览 / 切换弹窗',
+        title: '角色浏览 / 切换',
         summary: '查看全部角色摘要，并切换当前查看角色。',
         onMount: mountEl => {
           const inputEl = mountEl.querySelector('.role-switch-search-input');
@@ -28641,7 +28709,7 @@
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
       return {
-        title: '社会档案弹窗',
+        title: '社会档案',
         summary: '当前角色的公开身份、名望、头衔与社会可见度摘要。',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--social">
@@ -29157,7 +29225,7 @@
         : '<div class="dossier-empty-note">当前没有可操作的关系目标。</div>';
 
       return {
-        title: '人物关系弹窗',
+        title: '人物关系',
         summary: '全局社会链路扫描、当前重点对象监控与智能关系行动推荐。',
         onMount: () => {
           const 当前快照 = liveSnapshot || lastRenderableSnapshot;
@@ -29302,7 +29370,7 @@
             .join('')
         : '<div class="intel-card mvu-intel-record-card"><b>暂无情报</b></div>';
       return {
-        title: '情报库弹窗',
+        title: '情报库',
         summary: '当前已解锁情报、我的任务与交战档案概览。',
         body: `
             <div class="intel-layout-dashboard is-empty">
@@ -29909,7 +29977,7 @@
       });
 
       return {
-        title: '武装工坊弹窗',
+        title: '武装工坊',
         summary: '',
         body: `
             <div class="equipment-layout armory-layout-single mvu-armory-detail-grid">
@@ -30374,12 +30442,12 @@
                     }
                   </div>
                   <div class="soul-meta mvu-detail-meta">
-                    <div class="meta-item"><b>已解锁属性</b><span>${
+                    <div class="meta-item"><b>可调用元素</b><span>${
                       config.spiritPath && config.spiritPath.length
-                        ? makeInlineEditableValue(config.spiritUnlockedAttrs.join('、') || '未设置', {
-                            path: [...config.spiritPath, '已解锁属性'],
+                        ? makeInlineEditableValue(config.spiritCallableElements.join('、') || '未设置', {
+                            path: [...config.spiritPath, '可调用元素'],
                             kind: 'token_multi',
-                            rawValue: config.spiritUnlockedAttrs,
+                            rawValue: config.spiritCallableElements,
                             editorMeta: {
                               options:
                                 config.spiritElement === '五行'
@@ -30387,22 +30455,7 @@
                                   : SPIRIT_ATTRIBUTE_TOKEN_OPTIONS,
                             },
                           })
-                        : htmlEscape(config.spiritUnlockedAttrs.join('、') || '未设置')
-                    }</span></div>
-                    <div class="meta-item"><b>可容纳属性</b><span>${
-                      config.spiritPath && config.spiritPath.length
-                        ? makeInlineEditableValue(config.spiritCapacityAttrs.join('、') || '未设置', {
-                            path: [...config.spiritPath, '可容纳属性'],
-                            kind: 'token_multi',
-                            rawValue: config.spiritCapacityAttrs,
-                            editorMeta: {
-                              options:
-                                config.spiritElement === '五行'
-                                  ? WUXING_ATTRIBUTE_TOKEN_OPTIONS
-                                  : SPIRIT_ATTRIBUTE_TOKEN_OPTIONS,
-                            },
-                          })
-                        : htmlEscape(config.spiritCapacityAttrs.join('、') || '未设置')
+                        : htmlEscape(config.spiritCallableElements.join('、') || '未设置')
                     }</span></div>
                   </div>
                 </div>
@@ -33212,12 +33265,12 @@
       const 表象名称 = toText(武魂.表象名称, 槽位名);
       const 系别 = toText(武魂.系别, '未知系');
       const 属性体系 = toText(武魂.属性体系, '无');
-      const 已解锁属性 = Array.isArray(武魂.已解锁属性)
-        ? 武魂.已解锁属性.map(item => toText(item, '')).filter(Boolean)
+      const 可调用元素 = Array.isArray(武魂.可调用元素)
+        ? 武魂.可调用元素.map(item => toText(item, '')).filter(Boolean)
         : [];
       const 描述 = toText(武魂.描述, '');
       词条.push(
-        `${槽位名}:${表象名称}/${系别}/${属性体系}${已解锁属性.length ? `/${已解锁属性.join('|')}` : ''}${描述 ? `/${描述}` : ''}`,
+        `${槽位名}:${表象名称}/${系别}/${属性体系}${可调用元素.length ? `/${可调用元素.join('|')}` : ''}${描述 ? `/${描述}` : ''}`,
       );
     });
     return 词条.join('；') || '无武魂信息';
@@ -33231,7 +33284,7 @@
     const 主角属性词 = new Set();
     取角色武魂条目_桥接(主角数据).forEach(([, 武魂]) => {
       if (!武魂 || typeof 武魂 !== 'object') return;
-      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.已解锁属性) ? 武魂.已解锁属性 : [])]
+      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.可调用元素) ? 武魂.可调用元素 : [])]
         .map(item => toText(item, ''))
         .filter(Boolean)
         .forEach(item => 主角属性词.add(item));
@@ -33239,7 +33292,7 @@
     const 对象属性词 = new Set();
     取角色武魂条目_桥接(对象数据).forEach(([, 武魂]) => {
       if (!武魂 || typeof 武魂 !== 'object') return;
-      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.已解锁属性) ? 武魂.已解锁属性 : [])]
+      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.可调用元素) ? 武魂.可调用元素 : [])]
         .map(item => toText(item, ''))
         .filter(Boolean)
         .forEach(item => 对象属性词.add(item));
@@ -38278,14 +38331,32 @@ ${播报文本}
       pendingLiveRefresh = true;
       return;
     }
+    const targetKey = previewKey || '';
+    const 统一挂载 = document.getElementById('mvu-unified-mount');
+    const 触发源 = options && options.triggerEl instanceof Element ? options.triggerEl : null;
+    const 来自统一状态栏 = !!(
+      targetKey &&
+      统一挂载 &&
+      触发源 &&
+      统一挂载.contains(触发源) &&
+      !触发源.closest('.mvu-mobile-shell')
+    );
+    if (
+      来自统一状态栏 &&
+      tryOpenUnifiedInlineDetail(targetKey, {
+        ...options,
+        triggerEl: 触发源,
+        preserveMapDispatchContext: true,
+        replace: true,
+      })
+    ) {
+      return;
+    }
     const refs = getModalRefs();
     if (!options.preserveMapDispatchContext) {
       mapDispatchContext = null;
     }
 
-    const targetKey = previewKey || '';
-    if (targetKey && tryOpenUnifiedInlineDetail(targetKey, options)) return;
-    if (targetKey && isUnifiedInlineDetailMode()) return;
     if (targetKey === PRIVATE_ARCHIVE_PREVIEW_KEY && !canOpenPrivateArchive(liveSnapshot)) return;
     if (targetKey) void 请求预热预览依赖(targetKey, 'modal_open');
     if (targetKey) {
@@ -39267,6 +39338,32 @@ ${播报文本}
     return !!(外层状态卡 && 外层状态卡 !== 控件节点);
   }
 
+  function 打开预览入口(预览入口, 预览键输入, 选项 = {}) {
+    const 预览键 = toText(预览键输入, '').trim();
+    if (!预览入口 || !预览键) return false;
+    const 统一挂载 = document.getElementById('mvu-unified-mount');
+    if (
+      统一挂载 &&
+      统一挂载.contains(预览入口) &&
+      !预览入口.closest('.mvu-mobile-shell')
+    ) {
+      return tryOpenUnifiedInlineDetail(预览键, {
+        triggerEl: 预览入口,
+        preserveMapDispatchContext: true,
+        replace: true,
+      });
+    }
+    const 弹窗参数 = {
+      triggerEl: 预览入口,
+      displayMode: 选项.displayMode || (统一挂载 && 统一挂载.contains(预览入口) ? 'floating' : 'auto'),
+      强制弹窗: true,
+    };
+    if (选项.preserveMapDispatchContext) 弹窗参数.preserveMapDispatchContext = true;
+    if (选项.切换弹窗 === false) openModal(预览键, 弹窗参数);
+    else toggleModal(预览键, 弹窗参数);
+    return true;
+  }
+
   function bindVueModalDelegation(mountEl) {
     if (!mountEl || mountEl.__mvuModalDelegationBound) return;
     mountEl.addEventListener('click', event => {
@@ -39277,7 +39374,6 @@ ${播报文本}
             ? event.target.parentElement
             : null;
       if (isInlineEditInteractionTarget(eventTarget)) return;
-      const isUnifiedMount = mountEl.id === 'mvu-unified-mount';
       const mapFocusBtn = eventTarget ? eventTarget.closest('[data-map-focus-action]') : null;
       if (mapFocusBtn && mountEl.contains(mapFocusBtn)) {
         const action = mapFocusBtn.getAttribute('data-map-focus-action') || '';
@@ -39310,16 +39406,8 @@ ${播报文本}
       if (!previewKey) return;
       event.preventDefault();
       event.stopPropagation();
-      if (
-        isUnifiedMount &&
-        !clickable.closest('.mvu-mobile-shell') &&
-        typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function'
-      ) {
-        window.__MVU_OPEN_UNIFIED_PREVIEW__(previewKey, { triggerEl: clickable, preserveMapDispatchContext: true });
-        return;
-      }
       const displayMode = mountEl.id === 'mvu-unified-mount' ? 'floating' : 'auto';
-      toggleModal(previewKey, { triggerEl: clickable, displayMode });
+      打开预览入口(clickable, previewKey, { displayMode });
     });
     mountEl.__mvuModalDelegationBound = true;
   }
@@ -39386,19 +39474,9 @@ ${播报文本}
     if (是否保留卡片内部控件点击(eventTarget, unifiedMount || document.body)) return;
     const previewKey = clickable.dataset.preview;
     if (!previewKey) return;
-    if (
-      unifiedMount &&
-      unifiedMount.contains(clickable) &&
-      !clickable.closest('.mvu-mobile-shell') &&
-      typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function'
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      window.__MVU_OPEN_UNIFIED_PREVIEW__(previewKey, { triggerEl: clickable, preserveMapDispatchContext: true });
-      return;
-    }
-    const displayMode = 'floating';
-    toggleModal(previewKey, { triggerEl: clickable, displayMode });
+    event.preventDefault();
+    event.stopPropagation();
+    打开预览入口(clickable, previewKey, { displayMode: 'floating' });
   });
 
   function getDetailSurfacePreviewKey(options = {}) {
@@ -39417,16 +39495,6 @@ ${播报文本}
       return;
     }
     renderModalContent(targetKey, getModalRefs(), { force: !!options.force });
-  }
-
-  function openNestedDetailPreview(previewKey, options = {}) {
-    const targetKey = toText(previewKey, '').trim();
-    if (!targetKey) return;
-    if (options.surface === 'unified' && typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function') {
-      window.__MVU_OPEN_UNIFIED_PREVIEW__(targetKey, { preserveMapDispatchContext: true });
-      return;
-    }
-    openModal(targetKey, { preserveMapDispatchContext: true });
   }
 
   function closeDetailSurface(options = {}) {
@@ -40395,7 +40463,13 @@ ${播报文本}
       event.preventDefault();
       event.stopPropagation();
       const previewKey = previewClickable.dataset.preview;
-      if (previewKey) openNestedDetailPreview(previewKey, options);
+      if (previewKey) {
+        打开预览入口(previewClickable, previewKey, {
+          displayMode: 'floating',
+          preserveMapDispatchContext: true,
+          切换弹窗: false,
+        });
+      }
       return;
     }
 
@@ -40638,11 +40712,20 @@ ${播报文本}
       event.preventDefault();
       event.stopPropagation();
       clearFloatingHoverCard(trigger);
-      if (typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function') {
-        window.__MVU_OPEN_UNIFIED_PREVIEW__(预览键, { preserveMapDispatchContext: true });
-      } else {
-        openModal(预览键);
+      if (trigger.closest('#mvu-unified-mount')) {
+        tryOpenUnifiedInlineDetail(预览键, {
+          triggerEl: trigger,
+          preserveMapDispatchContext: true,
+          replace: true,
+        });
+        return;
       }
+      openModal(预览键, {
+        triggerEl: 预览入口,
+        preserveMapDispatchContext: true,
+        displayMode: 'floating',
+        强制弹窗: true,
+      });
     });
     document.body.appendChild(顶层卡片);
     顶层浮窗卡片 = 顶层卡片;

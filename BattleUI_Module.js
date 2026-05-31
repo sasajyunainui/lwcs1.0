@@ -851,7 +851,7 @@ class BattleUIComponent {
       普通重复惩罚: 16,
       控制后输出加成: 22,
       破防后爆发加成: 26,
-      治疗后拖回合加成: 16,
+      治疗后拖回合加成: 26,
       召唤后护宿主加成: 18,
       资源断档惩罚: 34,
     });
@@ -881,6 +881,7 @@ class BattleUIComponent {
 
     const 危机恢复权重表_V1 = Object.freeze({
       输出恢复: 22,
+      控制压制: 16,
       资源恢复: 18,
       召唤恢复: 14,
       防御惯性: -24,
@@ -904,7 +905,7 @@ class BattleUIComponent {
       控制后输出: 18,
       破防后爆发: 22,
       未击杀收割: 24,
-      治疗后防护: 12,
+      治疗后防护: 20,
       无效同类: -18,
       无理由连续切换: -14,
     });
@@ -1778,8 +1779,9 @@ class BattleUIComponent {
       let 修正 = 0;
       const 理由 = [];
       if (恢复标记) {
-        if (['输出', '终局爆发'].includes(行动类别)) { 修正 += 危机恢复权重表_V1.输出恢复; 理由.push(`危机后恢复输出 +${危机恢复权重表_V1.输出恢复}`); }
-        if (['资源', '召唤'].includes(技能类别.主类别)) { 修正 += 危机恢复权重表_V1.资源恢复; 理由.push(`危机后恢复节奏 +${危机恢复权重表_V1.资源恢复}`); }
+        if (['输出', '终局爆发'].includes(行动类别)) { 修正 += 危机恢复权重表_V1.输出恢复; 理由.push(`危机下降后输出恢复 +${危机恢复权重表_V1.输出恢复}`); }
+        if (行动类别 === '控制') { 修正 += 危机恢复权重表_V1.控制压制; 理由.push(`危机下降后控制压制 +${危机恢复权重表_V1.控制压制}`); }
+        if (['资源', '召唤'].includes(技能类别.主类别)) { 修正 += 危机恢复权重表_V1.资源恢复; 理由.push(`危机下降后资源重整 +${危机恢复权重表_V1.资源恢复}`); }
         if (行动类别 === '防护') { 修正 += 危机恢复权重表_V1.防御惯性; 理由.push(`危机后防御惯性 ${危机恢复权重表_V1.防御惯性}`); }
       }
       if (低压恢复 && 行动类别 === '防护') { 修正 += 危机恢复权重表_V1.低压纯防御; 理由.push(`低压纯防御 ${危机恢复权重表_V1.低压纯防御}`); }
@@ -1832,13 +1834,14 @@ class BattleUIComponent {
       const 上次行动 = String(behaviorState?.规划上下文?.行为历史摘要?.上次行动 || 记忆.last_action || '');
       const 上次目标 = String(behaviorState?.规划上下文?.行为历史摘要?.上次目标 || 记忆.last_action_target || '');
       const 目标名 = String(target?.name || target?.名称 || '');
+      const 目标快照 = buildConditionTacticalSnapshot(target || {});
       const 标签 = [];
       let 修正 = 0;
-      if (/控制|打断|封技|眩晕|定身|沉默/.test(上次行动) && ['输出', '终局爆发'].includes(行动类别) && (!上次目标 || !目标名 || 上次目标 === 目标名)) {
+      if ((/控制|打断|封技|眩晕|定身|沉默/.test(上次行动) || 目标快照.isLockedOrControlled) && ['输出', '终局爆发'].includes(行动类别) && (!上次目标 || !目标名 || 上次目标 === 目标名 || 目标快照.isLockedOrControlled)) {
         修正 += 短期战术记忆权重表_V1.控制后输出;
         标签.push('控制后输出');
       }
-      if (/破防|破盾|穿透|防御剥夺/.test(上次行动) && ['输出', '终局爆发'].includes(行动类别) && (!上次目标 || !目标名 || 上次目标 === 目标名)) {
+      if ((/破防|破盾|穿透|防御剥夺/.test(上次行动) || 目标快照.hasDefenseBreak || target?.破防 === true || target?.保护链断裂 === true) && ['输出', '终局爆发'].includes(行动类别) && (!上次目标 || !目标名 || 上次目标 === 目标名 || 目标快照.hasDefenseBreak || target?.破防 === true || target?.保护链断裂 === true)) {
         修正 += 短期战术记忆权重表_V1.破防后爆发;
         标签.push('破防后爆发');
       }
@@ -9909,6 +9912,9 @@ class BattleUIComponent {
       normalized.消耗 =
         typeof normalized.消耗 === 'object' ? formatCostObjectToString(normalized.消耗) : normalized.消耗 || '无';
       normalized.附带属性 = normalizeBattleSkillAttributeTokens(normalized.附带属性);
+      normalized.使用条件 = normalized.使用条件 && typeof normalized.使用条件 === 'object' && !Array.isArray(normalized.使用条件)
+        ? deepClonePlain(normalized.使用条件)
+        : {};
       const 清理技能正式效果 = value => {
         if (Array.isArray(value)) return value.map(清理技能正式效果).filter(Boolean);
         if (!value || typeof value !== 'object') return value;
@@ -10239,6 +10245,35 @@ class BattleUIComponent {
 
     function parseSkillCostForChar(skill, char, context = {}) {
       const stats = char?.属性 || char || {};
+      const 使用条件 = skill?.使用条件 && typeof skill.使用条件 === 'object' && !Array.isArray(skill.使用条件) ? skill.使用条件 : {};
+      const 角色等级 = Number(stats.等级 ?? char?.等级 ?? 0) || 0;
+      const 最低等级 = Math.max(0, Number(使用条件.最低等级 || 0) || 0);
+      if (最低等级 > 0 && 角色等级 < 最低等级) {
+        return {
+          reqSp: 0,
+          reqVit: 0,
+          reqMen: 0,
+          costScale: 1,
+          canCast: false,
+          failureReason: `等级不足(${Math.floor(角色等级)}/${最低等级})`,
+          partnerCosts: [],
+        };
+      }
+      const 当前魂力 = Number(stats.sp ?? stats.魂力 ?? 0) || 0;
+      const 当前精神力 = Number(stats.men ?? stats.精神力 ?? 0) || 0;
+      const 最低魂力 = Math.max(0, Number(使用条件.最低魂力 || 0) || 0);
+      const 最低精神力 = Math.max(0, Number(使用条件.最低精神力 || 0) || 0);
+      if ((最低魂力 > 0 && 当前魂力 < 最低魂力) || (最低精神力 > 0 && 当前精神力 < 最低精神力)) {
+        return {
+          reqSp: 0,
+          reqVit: 0,
+          reqMen: 0,
+          costScale: 1,
+          canCast: false,
+          failureReason: '使用条件不足',
+          partnerCosts: [],
+        };
+      }
       const 炸环恢复信息 = 读取技能魂环恢复标记_V1(skill, char);
       if (炸环恢复信息.恢复中) {
         return {
@@ -14417,7 +14452,7 @@ class BattleUIComponent {
 
     function 执行持续资源转移回合尾(char, cond = {}, effect = {}, label = '', combatData = null) {
       const 转移方式 = String(effect?.资源转移方式 || '').trim();
-      if (!['吞噬', '共享', '均分'].includes(转移方式)) return '';
+          if (!['吞噬', '共享', '均分', '转移'].includes(转移方式)) return '';
       const caster = 查找持续原型战斗单位(combatData, cond.来源角色) || char;
       const resourceKeys = 读取持续原型资源键列表(effect?.资源 || '');
       const convertRatio = Math.max(0, Math.min(2, Number(effect?.转化比例 ?? 1) || 1));
@@ -18784,28 +18819,6 @@ class BattleUIComponent {
           stats.sp = Math.min(stats.sp_max, stats.sp + spGain);
           stats.sta = Math.min(stats.sta_max || stats.vit_max || 1, (stats.sta || 0) + vitGain);
           log = `[机制反哺] 触发吸血/减耗机制，强制恢复状态！`;
-        } else if (playerAction.action_type === '元素剥离') {
-          if (!hasBattleUnlockedAttributeSet(attackerChar, ['水', '火', '风', '土'])) {
-            playerAction.action_type = '法则失败';
-            log = `[权限不足] 尚未集齐水火风土四基础调用权，无法发动元素剥离！`;
-          } else if (!defenderChar) {
-            playerAction.action_type = '法则失败';
-            log = `[目标丢失] 当前没有可被元素剥离锁定的目标！`;
-          } else {
-            applyStateToCharacter(
-              defenderChar,
-              {
-                状态名称: '元素剥离',
-                特殊机制标识: '削弱/高阶衍生',
-                持续回合: 2,
-                面板修改比例: { str: 1.0, def: 0.82, agi: 0.96, sp_max: 1.0, vit_max: 1.0, men_max: 0.97 },
-                计算层效果: { ...createEmptyCombatEffectMap(), reaction_penalty: 0.08 },
-              },
-              '元素剥离',
-              false,
-            );
-            log = `[元素剥离] 凑齐水火风土后的另类调用发动，直接剥离目标外层元素结构与属性护持！`;
-          }
         } else if (playerAction.action_type === '五行剥离') {
           if (!hasBattleUnlockedAttributeSet(attackerChar, ['金', '木', '水', '火', '土'])) {
             playerAction.action_type = '法则失败';
@@ -23868,7 +23881,7 @@ class BattleUIComponent {
         const applyResourceTransferEffect = effect => {
           if (!effect) return 0;
           const 转移方式 = String(effect?.资源转移方式 || '').trim();
-          if (!['吞噬', '共享', '均分'].includes(转移方式)) return 0;
+          if (!['吞噬', '共享', '均分', '转移'].includes(转移方式)) return 0;
           const targetUnits = resolveDirectMechanismTargetList(effect);
           const resourceKeys = resolveTransferResourceKeys(effect?.资源 || '');
           const convertRatio = Math.max(0, Math.min(2, Number(effect?.转化比例 ?? 1) || 1));
@@ -23903,7 +23916,7 @@ class BattleUIComponent {
               const targetMax = 读取转移资源上限值(targetObj, resourceKey);
               const rawAmount = 计算资源变化量(effect?.数值, targetMax);
               if (!(rawAmount > 0)) return;
-              if (转移方式 === '共享') {
+              if (转移方式 === '共享' || 转移方式 === '转移') {
                 if (targetObj === attacker) return;
                 const 自身当前值 = 读取转移资源当前值(attacker, resourceKey);
                 const 自身支付量 = Math.min(自身当前值, rawAmount);
@@ -23916,17 +23929,17 @@ class BattleUIComponent {
                 const 自身抹消规则 = 读取资源变化抹消规则(attacker, getTransferResourceLabel(resourceKey), { 消费: false });
                 if (目标抹消规则 || 自身抹消规则) {
                   if (目标抹消规则) {
-                    result.desc += ` [机制抹消] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}对【${读取战斗机制抹消对象摘要(目标抹消规则.抹消对象)}】存在封锁，资源共享获得未能生效。`;
+                    result.desc += ` [机制抹消] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}对【${读取战斗机制抹消对象摘要(目标抹消规则.抹消对象)}】存在封锁，资源${转移方式}获得未能生效。`;
                   }
                   if (自身抹消规则) {
-                    result.desc += ` [机制抹消] 自身对【${读取战斗机制抹消对象摘要(自身抹消规则.抹消对象)}】存在封锁，资源共享消耗未能生效。`;
+                    result.desc += ` [机制抹消] 自身对【${读取战斗机制抹消对象摘要(自身抹消规则.抹消对象)}】存在封锁，资源${转移方式}消耗未能生效。`;
                   }
                   return;
                 }
                 设置转移资源当前值(attacker, resourceKey, 自身当前值 - 自身支付量);
                 设置转移资源当前值(targetObj, resourceKey, 目标新值);
                 totalChanged += 实际获得量 + 自身支付量;
-                result.desc += ` [共享] 自身消耗 ${自身支付量} 点${getTransferResourceLabel(resourceKey)}，${targetObj === attacker ? '自身' : targetObj.name}获得 ${实际获得量} 点。`;
+                result.desc += ` [${转移方式}] 自身消耗 ${自身支付量} 点${getTransferResourceLabel(resourceKey)}，${targetObj === attacker ? '自身' : targetObj.name}获得 ${实际获得量} 点。`;
                 return;
               }
               const drainAmount = Math.min(targetCurrent, rawAmount);
@@ -27649,16 +27662,10 @@ class BattleUIComponent {
             );
             const fusionLabel = fusionElements.length ? fusionPattern : `${fusionElements.length || 2}种元素`;
             let elementCount = fusionElements.length || 2;
-            let isSilverDragon =
-              attackerChar.血脉之力?.血脉?.includes('银龙王') ||
-              取角色武魂条目_战斗(attackerChar).some(([, sp]) => sp.表象名称?.includes('元素使'));
-
             let failRate = 0;
-            if (!isSilverDragon) {
-              let baseFailRate = (elementCount - 1) * 35 + Number(gatedFusionSemantics.failAdjust || 0);
-              let menAdvantage = (attackerStats.men / defenderStats.men_max) * 15;
-              failRate = Math.max(5, baseFailRate - menAdvantage);
-            }
+            let baseFailRate = (elementCount - 1) * 35 + Number(gatedFusionSemantics.failAdjust || 0);
+            let menAdvantage = (attackerStats.men / defenderStats.men_max) * 15;
+            failRate = Math.max(5, baseFailRate - menAdvantage);
 
             let roll = Math.floor(Math.random() * 100) + 1;
             if (fusionElements.length) {
@@ -27674,7 +27681,6 @@ class BattleUIComponent {
               result.desc += ` [元素炸膛] 精神力失控！${fusionLabel}在手中轰然引爆，遭到极致反噬！(Roll: ${roll} <= 炸膛率: ${Math.floor(failRate)}%)`;
             } else {
               let multiplier = Math.pow(1.5, elementCount - 1) * Number(gatedFusionSemantics.multiplier || 1);
-              if (isSilverDragon) result.desc += ` [血脉特权] 银龙王血脉无视元素排斥，炸膛率强制归零！`;
               if (playerAction.is_charged) {
                 multiplier *= 1.5;
                 result.desc += ` [极致蓄力] 元素被压缩到极致！`;
@@ -28036,24 +28042,11 @@ class BattleUIComponent {
               action.fusionElements = extractBattleFusionElementsFromText(playerInput);
               action.fusionPattern = buildBattleFusionPattern(action.fusionElements);
               if (playerInput.includes('蓄力')) action.is_charged = true;
-              let isSilverDragon =
-                charData.血脉之力?.血脉?.includes('银龙王') ||
-                取角色武魂条目_战斗(charData).some(([, sp]) => sp.表象名称?.includes('元素使'));
-              if (isSilverDragon) action.cast_time = 5;
               action.skill = normalizeSkillData({
                 name: '多元素融合',
                 技能分类: '输出',
                 消耗: '无',
                 附带属性: action.fusionElements || [],
-              });
-            } else if (playerInput.includes('元素剥离')) {
-              action.action_type = '元素剥离';
-              action.cast_time = 15;
-              action.skill = normalizeSkillData({
-                name: '元素剥离',
-                技能分类: '控制',
-                消耗: '魂力:15% 精神力:20%',
-                cast_time: 15,
               });
             } else if (playerInput.includes('五行剥离')) {
               action.action_type = '五行剥离';
@@ -29979,29 +29972,6 @@ class BattleUIComponent {
             };
             套用动作实际前摇(charData, 生命之火动作);
             actions.push(生命之火动作);
-          }
-
-          if (hasBattleUnlockedAttributeSet(charData, ['水', '火', '风', '土'])) {
-            const pureControlSkill = normalizeSkillData({
-              name: '元素剥离',
-              技能分类: '控制',
-              消耗: '魂力:15% 精神力:20%',
-              cast_time: 15,
-            });
-            const costParsed = parseSkillCostForChar(pureControlSkill, charData);
-            actions.push({
-              id: 'special_element_strip',
-              type: 'special',
-              action_type: '元素剥离',
-              name: '元素剥离',
-              category: '纯操控',
-              semantic_role: '控制',
-              cast_time: getSkillCastTime(pureControlSkill),
-              cost_text: getSkillCostText(pureControlSkill),
-              enabled: costParsed.canCast,
-              reason: costParsed.canCast ? '' : '状态不足',
-              raw_skill: pureControlSkill,
-            });
           }
 
           if (hasBattleUnlockedAttributeSet(charData, ['金', '木', '水', '火', '土'])) {

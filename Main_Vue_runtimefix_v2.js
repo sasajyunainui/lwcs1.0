@@ -362,7 +362,7 @@ const mvuLayoutState = window.__MVU_LAYOUT_STATE__ || (window.__MVU_LAYOUT_STATE
   unifiedAnchorReady: false,
   isMobileViewport: initialIsMobileViewport,
   hasManualOverride: !!persistedLayoutMode,
-  surfaceMode: initialIsMobileViewport ? 'shell' : (persistedSurfaceMode || 'panel'),
+  surfaceMode: 'panel',
   mobileShellOpen: false,
   surfaceLauncherMenuOpen: false,
   surfaceLauncherPosition: readSurfaceLauncherPosition(initialIsMobileViewport ? 'mobile' : 'desktop'),
@@ -379,7 +379,7 @@ if (!('mobileShellOpen' in mvuLayoutState)) {
   mvuLayoutState.mobileShellOpen = false;
 }
 if (!('surfaceMode' in mvuLayoutState)) {
-  mvuLayoutState.surfaceMode = initialIsMobileViewport ? 'shell' : (persistedSurfaceMode || 'panel');
+  mvuLayoutState.surfaceMode = 'panel';
 }
 if (!('surfaceLauncherMenuOpen' in mvuLayoutState)) {
   mvuLayoutState.surfaceLauncherMenuOpen = false;
@@ -397,14 +397,10 @@ if (!mvuLayoutState.hasManualOverride) {
   mvuLayoutState.preferredMode = 'unified';
 }
 if (!normalizeSurfaceMode(mvuLayoutState.surfaceMode)) {
-  mvuLayoutState.surfaceMode = mvuLayoutState.isMobileViewport ? 'shell' : (persistedSurfaceMode || 'panel');
+  mvuLayoutState.surfaceMode = 'panel';
 }
-if (mvuLayoutState.isMobileViewport) {
-  mvuLayoutState.surfaceMode = 'shell';
-}
-if (!mvuLayoutState.isMobileViewport) {
-  mvuLayoutState.mobileShellOpen = false;
-}
+mvuLayoutState.surfaceMode = 'panel';
+mvuLayoutState.mobileShellOpen = false;
 
 const mvuTabState = window.__MVU_TAB_STATE__ || (window.__MVU_TAB_STATE__ = reactive({ current: readMobileLastTabStorage() }));
 const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__MVU_UNIFIED_DETAIL_STATE__ = reactive({
@@ -542,31 +538,27 @@ function closeDetailModalIfPossible() {
 }
 
 function isShellSurfaceMode() {
-  return !!mvuLayoutState.isMobileViewport || mvuLayoutState.surfaceMode === 'shell';
+  return false;
 }
 
 function isDesktopShellMode() {
-  return !mvuLayoutState.isMobileViewport && mvuLayoutState.surfaceMode === 'shell';
+  return false;
 }
 
 function getDesktopModeSelection() {
-  if (mvuLayoutState.isMobileViewport) return 'shell';
-  return mvuLayoutState.surfaceMode === 'shell' ? 'shell' : 'unified';
+  return 'unified';
 }
 
-function setMobileShellOpen(nextOpen) {
-  const nextValue = !!nextOpen;
-  if (!nextValue && mvuLayoutState.mobileShellOpen) {
-    closeDetailModalIfPossible();
-  }
-  mvuLayoutState.mobileShellOpen = nextValue;
+function setMobileShellOpen() {
+  mvuLayoutState.mobileShellOpen = false;
   mvuLayoutState.surfaceLauncherDragging = false;
   mvuLayoutState.surfaceLauncherMenuOpen = false;
+  mvuLayoutState.surfaceMode = 'panel';
   applyLayoutBodyClasses();
   if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
     try { window.__MVU_SYNC_DETAIL_MODAL_HOST__(); } catch (err) {}
   }
-  return mvuLayoutState.mobileShellOpen;
+  return false;
 }
 
 window.__MVU_SET_MOBILE_SHELL_OPEN__ = value => setMobileShellOpen(value);
@@ -604,41 +596,13 @@ function requestUnifiedShellCardRefresh(options = {}) {
 }
 
 function setSurfaceMode(mode, options = {}) {
-  const normalized = normalizeSurfaceMode(mode);
-  const nextValue = mvuLayoutState.isMobileViewport ? 'shell' : (normalized || 'panel');
-  const previousValue = normalizeSurfaceMode(mvuLayoutState.surfaceMode) || (mvuLayoutState.isMobileViewport ? 'shell' : 'panel');
-  const hasOpenOption = Object.prototype.hasOwnProperty.call(options, 'open');
-  if (previousValue === nextValue) {
-    if (nextValue === 'panel') {
-      if (mvuLayoutState.mobileShellOpen) {
-        closeDetailModalIfPossible();
-      }
-      mvuLayoutState.mobileShellOpen = false;
-    } else if (hasOpenOption) {
-      setMobileShellOpen(!!options.open);
-      return nextValue;
-    }
-    applyLayoutBodyClasses();
-    return nextValue;
-  }
-
-  if ((nextValue === 'panel' || (nextValue === 'shell' && hasOpenOption && !options.open)) && mvuLayoutState.mobileShellOpen) {
-    closeDetailModalIfPossible();
-  }
-
-  mvuLayoutState.surfaceMode = nextValue;
+  mvuLayoutState.surfaceMode = 'panel';
+  mvuLayoutState.mobileShellOpen = false;
   mvuLayoutState.surfaceLauncherDragging = false;
   mvuLayoutState.surfaceLauncherMenuOpen = false;
-  if (nextValue === 'panel') {
-    mvuLayoutState.mobileShellOpen = false;
-  } else if (hasOpenOption) {
-    mvuLayoutState.mobileShellOpen = !!options.open;
-  } else if (!mvuLayoutState.isMobileViewport) {
-    mvuLayoutState.mobileShellOpen = false;
-  }
 
-  if (!mvuLayoutState.isMobileViewport && options.manual !== false) {
-    writeSurfaceModeStorage(nextValue);
+  if (options.manual !== false) {
+    writeSurfaceModeStorage('panel');
   }
 
   syncUnifiedMountPlacement();
@@ -646,21 +610,16 @@ function setSurfaceMode(mode, options = {}) {
   if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
     try { window.__MVU_SYNC_DETAIL_MODAL_HOST__(); } catch (err) {}
   }
-  return nextValue;
+  return 'panel';
 }
 
 function openShellSurface() {
-  if (!mvuLayoutState.isMobileViewport) {
-    if (mvuLayoutState.surfaceMode !== 'shell') {
-      setSurfaceMode('shell', { open: false });
-    }
-    return setMobileShellOpen(true);
-  }
-  return setMobileShellOpen(true);
+  setSurfaceMode('panel');
+  return false;
 }
 
 function closeShellSurface() {
-  return setMobileShellOpen(false);
+  return setMobileShellOpen();
 }
 
 function exitShellSurface() {
@@ -671,28 +630,16 @@ function exitShellSurface() {
 }
 
 function toggleShellSurface() {
-  return mvuLayoutState.mobileShellOpen ? closeShellSurface() : openShellSurface();
+  return false;
 }
 
 function setDesktopMode(mode, options = {}) {
-  const value = String(mode || '').trim();
-  if (value === 'shell') {
-    return setSurfaceMode('shell', { ...options, open: false });
-  }
   setSurfaceMode('panel', options);
   return setLayoutMode('unified', options);
 }
 
 function applyDesktopLayoutSelection(mode, options = {}) {
-  const nextMode = String(mode || '').trim() === 'shell' ? 'shell' : 'unified';
-  const result = setDesktopMode(nextMode, options);
-  if (!mvuLayoutState.isMobileViewport && nextMode === 'unified') {
-    mvuLayoutState.surfaceMode = 'panel';
-    mvuLayoutState.mobileShellOpen = false;
-    syncLayoutMode();
-    closeShellSurface();
-  }
-  return result;
+  return setDesktopMode('unified', options);
 }
 
 function applyLayoutBodyClasses() {
@@ -706,19 +653,18 @@ function applyLayoutBodyClasses() {
   ) {
     unifiedMount.removeAttribute('data-mvu-booting');
   }
-  const shellSurfaceMode = isShellSurfaceMode();
   body.classList.toggle('mvu-unified-mount-ready', !!mvuLayoutState.unifiedAnchorReady);
   body.classList.remove('mvu-layout-split');
   body.classList.toggle('mvu-layout-unified', true);
   body.classList.toggle('mvu-mobile-viewport', !!mvuLayoutState.isMobileViewport);
-  body.classList.toggle('mvu-shell-overlay-enabled', true);
-  body.classList.toggle('mvu-surface-panel', !shellSurfaceMode);
-  body.classList.toggle('mvu-surface-shell', shellSurfaceMode);
-  body.classList.toggle('mvu-desktop-shell-surface', !mvuLayoutState.isMobileViewport && mvuLayoutState.surfaceMode === 'shell');
-  body.classList.toggle('mvu-layout-unified-locked', !!mvuLayoutState.isMobileViewport);
-  body.classList.toggle('mvu-mobile-shell-open', !!mvuLayoutState.mobileShellOpen);
-  body.classList.toggle('mvu-surface-launcher-menu-open', !!mvuLayoutState.surfaceLauncherMenuOpen);
-  body.classList.toggle('mvu-mobile-shell-dragging', !!mvuLayoutState.surfaceLauncherDragging);
+  body.classList.toggle('mvu-shell-overlay-enabled', false);
+  body.classList.toggle('mvu-surface-panel', true);
+  body.classList.toggle('mvu-surface-shell', false);
+  body.classList.toggle('mvu-desktop-shell-surface', false);
+  body.classList.toggle('mvu-layout-unified-locked', false);
+  body.classList.toggle('mvu-mobile-shell-open', false);
+  body.classList.toggle('mvu-surface-launcher-menu-open', false);
+  body.classList.toggle('mvu-mobile-shell-dragging', false);
 }
 
 function isSplitLayoutAllowed() {
@@ -740,18 +686,9 @@ function setLayoutMode(mode, options = {}) {
   if (!normalized) return mvuLayoutState.effectiveMode;
   const nextPreferred = normalized || 'unified';
 
-  if (!mvuLayoutState.isMobileViewport && mvuLayoutState.surfaceMode === 'shell') {
-    if (mvuLayoutState.mobileShellOpen) {
-      closeDetailModalIfPossible();
-    }
-    mvuLayoutState.surfaceMode = 'panel';
-    mvuLayoutState.mobileShellOpen = false;
-    if (options.manual !== false) {
-      writeSurfaceModeStorage('panel');
-    }
-  }
-
   mvuLayoutState.preferredMode = nextPreferred;
+  mvuLayoutState.surfaceMode = 'panel';
+  mvuLayoutState.mobileShellOpen = false;
   mvuLayoutState.surfaceLauncherMenuOpen = false;
   mvuLayoutState.surfaceLauncherDragging = false;
   if (options.manual !== false) {
@@ -770,29 +707,16 @@ function getLayoutMode() {
 
 function refreshViewportState() {
   const nextMobileState = detectMobileViewport();
-  const previousMobileState = !!mvuLayoutState.isMobileViewport;
   if (mvuLayoutState.isMobileViewport !== nextMobileState) {
     mvuLayoutState.isMobileViewport = nextMobileState;
   }
   if (!mvuLayoutState.hasManualOverride) {
     mvuLayoutState.preferredMode = 'unified';
   }
-  if (nextMobileState) {
-    mvuLayoutState.surfaceMode = 'shell';
-    mvuLayoutState.surfaceLauncherMenuOpen = false;
-    mvuLayoutState.surfaceLauncherPosition = readSurfaceLauncherPosition('mobile');
-    syncSurfaceLauncherPosition({ persist: true, viewportType: 'mobile' });
-  } else if (previousMobileState) {
-    const nextDesktopSurface = readSurfaceModeStorage() || 'panel';
-    mvuLayoutState.surfaceMode = nextDesktopSurface;
-    mvuLayoutState.surfaceLauncherMenuOpen = false;
-    if (mvuLayoutState.mobileShellOpen) {
-      closeDetailModalIfPossible();
-    }
-    mvuLayoutState.mobileShellOpen = false;
-    mvuLayoutState.surfaceLauncherPosition = readSurfaceLauncherPosition('desktop');
-    syncSurfaceLauncherPosition({ persist: true, viewportType: 'desktop' });
-  }
+  mvuLayoutState.surfaceMode = 'panel';
+  mvuLayoutState.mobileShellOpen = false;
+  mvuLayoutState.surfaceLauncherMenuOpen = false;
+  mvuLayoutState.surfaceLauncherDragging = false;
   syncUnifiedMountPlacement();
   syncLayoutMode();
   if (typeof window.__MVU_SYNC_DETAIL_MODAL_HOST__ === 'function') {
@@ -828,9 +752,9 @@ window.__MVU_LAYOUT_VIEWPORT_CLEANUP__ = () => {
 
 window.mvuSetLayoutMode = mode => setLayoutMode(mode, { manual: true });
 window.mvuGetLayoutMode = () => getLayoutMode();
-window.mvuSetSurfaceMode = mode => setSurfaceMode(mode, { manual: true });
+window.mvuSetSurfaceMode = () => setSurfaceMode('panel', { manual: true });
 window.mvuGetDesktopMode = () => getDesktopModeSelection();
-window.mvuSetDesktopMode = mode => setDesktopMode(mode, { manual: true });
+window.mvuSetDesktopMode = () => setDesktopMode('unified', { manual: true });
 
 function setSharedTab(target) {
   mvuTabState.current = normalizeTabId(target);
@@ -1532,21 +1456,35 @@ const SurfaceLauncherShellLayout = {
     };
     const handleShellPreviewClick = event => {
       if (shellScreen.value === 'detail') return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target || !shellFrameRef.value || !shellFrameRef.value.contains(target)) return;
-      if (typeof window.__MVU_CONSUME_LONG_PRESS_CLICK__ === 'function' && window.__MVU_CONSUME_LONG_PRESS_CLICK__(target)) {
+      const 目标节点 = event.target instanceof Element ? event.target : null;
+      if (!目标节点) return;
+      if (typeof window.__MVU_CONSUME_LONG_PRESS_CLICK__ === 'function' && window.__MVU_CONSUME_LONG_PRESS_CLICK__(目标节点)) {
         event.preventDefault();
         event.stopPropagation();
         return;
       }
-      const previewClickable = target.closest('.clickable[data-preview]');
-      if (!previewClickable || !shellFrameRef.value.contains(previewClickable)) return;
-      if (previewClickable.closest('.mvu-mobile-shell-nav')) return;
-      const previewKey = String(previewClickable.getAttribute('data-preview') || '').trim();
-      if (!previewKey) return;
+      const 预览入口 = 目标节点.closest('.clickable[data-preview]');
+      if (!预览入口) return;
+      const 统一挂载 = document.getElementById('mvu-unified-mount');
+      const 来自桌面统一面板 = !!(统一挂载 && 统一挂载.contains(预览入口) && !预览入口.closest('.mvu-mobile-shell'));
+      const 预览键 = String(预览入口.getAttribute('data-preview') || '').trim();
+      if (!预览键) return;
+      if (来自桌面统一面板) {
+        if (typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ !== 'function') return;
+        event.preventDefault();
+        event.stopPropagation();
+        window.__MVU_OPEN_UNIFIED_PREVIEW__(预览键, {
+          triggerEl: 预览入口,
+          preserveMapDispatchContext: true,
+          replace: true
+        });
+        return;
+      }
+      if (!shellFrameRef.value || !shellFrameRef.value.contains(预览入口)) return;
+      if (预览入口.closest('.mvu-mobile-shell-nav')) return;
       event.preventDefault();
       event.stopPropagation();
-      openShellPreview(previewKey);
+      openShellPreview(预览键);
     };
     const enterSection = tabId => {
       if (shellScreen.value === 'detail') {
@@ -1706,33 +1644,7 @@ const DesktopUnifiedLayout = {
           <div class="mvu-unified-toolbar-main">
             <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
               <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
-              <strong class="mvu-unified-detail-title">{{ detailPathTitle }}</strong>
-              <div class="mvu-toolbar-overflow" :class="{ active: 工具栏菜单展开 }">
-                <button
-                  type="button"
-                  class="mvu-toolbar-overflow-trigger"
-                  aria-label="更多操作"
-                  :aria-expanded="工具栏菜单展开 ? 'true' : 'false'"
-                  @click.stop="切换工具栏菜单"
-                >⋯</button>
-                <div class="mvu-toolbar-overflow-menu" @click.stop>
-                  <div class="mvu-toolbar-overflow-section" data-ai-maintenance-title-target="panel"></div>
-                  <div class="mvu-unified-layout-toggle mvu-unified-layout-toggle--overflow">
-                    <button
-                      type="button"
-                      class="mvu-unified-layout-btn"
-                      :class="{ active: layoutState.surfaceMode !== 'shell' }"
-                      @click="切换桌面形态('unified')"
-                    >一体</button>
-                    <button
-                      type="button"
-                      class="mvu-unified-layout-btn"
-                      :class="{ active: layoutState.surfaceMode === 'shell' }"
-                      @click="切换桌面形态('shell')"
-                    >手机</button>
-                  </div>
-                </div>
-              </div>
+              <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
             </div>
             <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
               <div class="mvu-unified-top-status" data-unified-top-status="panel"></div>
@@ -1747,32 +1659,6 @@ const DesktopUnifiedLayout = {
                   :aria-pressed="tabState.current === tab.id ? 'true' : 'false'"
                   @click="setTab(tab.id)"
                 >{{ tab.label }}</button>
-              </div>
-              <div class="mvu-toolbar-overflow" :class="{ active: 工具栏菜单展开 }">
-                <button
-                  type="button"
-                  class="mvu-toolbar-overflow-trigger"
-                  aria-label="更多操作"
-                  :aria-expanded="工具栏菜单展开 ? 'true' : 'false'"
-                  @click.stop="切换工具栏菜单"
-                >⋯</button>
-                <div class="mvu-toolbar-overflow-menu" @click.stop>
-                  <div class="mvu-ai-maintenance-home-api mvu-ai-maintenance-home-api--top" data-ai-maintenance-home-api></div>
-                  <div class="mvu-unified-layout-toggle mvu-unified-layout-toggle--overflow">
-                  <button
-                    type="button"
-                    class="mvu-unified-layout-btn"
-                    :class="{ active: layoutState.surfaceMode !== 'shell' }"
-                    @click="切换桌面形态('unified')"
-                  >一体</button>
-                  <button
-                    type="button"
-                    class="mvu-unified-layout-btn"
-                    :class="{ active: layoutState.surfaceMode === 'shell' }"
-                    @click="切换桌面形态('shell')"
-                  >手机</button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -1859,31 +1745,13 @@ const DesktopUnifiedLayout = {
       },
       { immediate: true }
     );
-    const detailTitle = computed(() => 读取当前详情标题());
-    const detailPathTitle = computed(() => {
+    const 详情标题 = computed(() => 读取当前详情标题());
+    const 详情路径标题 = computed(() => {
       const 页面标题 = String(activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '详情').trim();
-      const 标题 = String(detailTitle.value || '').trim();
+      const 标题 = String(详情标题.value || '').trim();
       if (页面标题 && 标题 && 页面标题 !== 标题) return `${页面标题} · ${标题}`;
       return 标题 || 页面标题 || '详情';
     });
-    const 工具栏菜单展开 = ref(false);
-    const 关闭工具栏菜单 = () => {
-      工具栏菜单展开.value = false;
-    };
-    const 切换工具栏菜单 = () => {
-      工具栏菜单展开.value = !工具栏菜单展开.value;
-    };
-    const 处理工具栏外部点击 = event => {
-      if (!工具栏菜单展开.value) return;
-      const 目标 = event && event.target instanceof Element ? event.target : null;
-      if (目标 && 目标.closest('#mvu-unified-mount .mvu-toolbar-overflow')) return;
-      关闭工具栏菜单();
-    };
-    const 切换桌面形态 = mode => {
-      关闭工具栏菜单();
-      setDesktopMode(mode);
-      scheduleUnifiedFrameViewportSync();
-    };
     let removeDetailWheelBridge = null;
     const 清理顶层浮窗 = () => {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
@@ -2071,7 +1939,6 @@ const DesktopUnifiedLayout = {
       }
       detailState.previewKey = nextPreviewKey;
       detailState.isOpen = true;
-      关闭工具栏菜单();
       requestUnifiedDetailRender(options);
       scheduleUnifiedFrameViewportSync();
       return true;
@@ -2108,7 +1975,6 @@ const DesktopUnifiedLayout = {
     };
     const setUnifiedTab = tabId => {
       清理顶层浮窗();
-      关闭工具栏菜单();
       requestTabChange(tabId);
       scheduleUnifiedFrameViewportSync();
     };
@@ -2124,7 +1990,6 @@ const DesktopUnifiedLayout = {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
       window.addEventListener('resize', handleDesktopUnifiedResize);
-      document.addEventListener('click', 处理工具栏外部点击, true);
       bindDetailWheelBridge();
       scheduleUnifiedFrameViewportSync();
       forceUnifiedCardSync();
@@ -2137,7 +2002,6 @@ const DesktopUnifiedLayout = {
     });
     onUnmounted(() => {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
-      document.removeEventListener('click', 处理工具栏外部点击, true);
       if (typeof removeDetailWheelBridge === 'function') {
         removeDetailWheelBridge();
         removeDetailWheelBridge = null;
@@ -2153,20 +2017,12 @@ const DesktopUnifiedLayout = {
         closeUnifiedDetail({ force: true });
       }
     });
-    watch(() => mvuLayoutState.surfaceMode, nextMode => {
-      if (nextMode === 'shell' && detailState.isOpen) {
-        closeUnifiedDetail({ force: true });
-      }
-    });
     watch(() => mvuTabState.current, () => {
-      关闭工具栏菜单();
       scheduleUnifiedFrameViewportSync();
     });
-    watch(() => mvuLayoutState.isMobileViewport, nextValue => {
-      if (!nextValue) {
-        scheduleUnifiedFrameViewportSync();
-        forceUnifiedCardSync();
-      }
+    watch(() => mvuLayoutState.isMobileViewport, () => {
+      scheduleUnifiedFrameViewportSync();
+      forceUnifiedCardSync();
     });
     return {
       tabs: TAB_ITEMS,
@@ -2174,29 +2030,22 @@ const DesktopUnifiedLayout = {
       closeUnifiedDetail,
       detailHostRef,
       detailState,
-      detailTitle,
-      detailPathTitle,
-      工具栏菜单展开,
-      切换工具栏菜单,
-      切换桌面形态,
+      详情路径标题,
       modeBadge,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
       setTab: setUnifiedTab,
-      setDesktopMode
     };
   }
 };
 
 const UnifiedLayoutRoot = {
   components: {
-    SurfaceLauncherShellLayout,
     DesktopUnifiedLayout
   },
   template: `
     <div class="mvu-unified-layout-host">
-      <surface-launcher-shell-layout></surface-launcher-shell-layout>
-      <desktop-unified-layout v-if="!layoutState.isMobileViewport"></desktop-unified-layout>
+      <desktop-unified-layout></desktop-unified-layout>
     </div>
   `,
   setup() {
