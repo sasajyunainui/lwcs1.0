@@ -251,6 +251,15 @@ const ProfessionStyles = `
     cursor: not-allowed;
     box-shadow: none;
   }
+
+  @media (max-width: 480px) {
+    .prof-module-scope .tabs { flex-wrap: wrap; }
+    .prof-module-scope .tab-btn { flex: 1 0 50%; padding: 8px 0; font-size: 11px; }
+    .prof-module-scope .top-status { flex-wrap: wrap; gap: 6px; }
+    .prof-module-scope .status-chip { flex: 1 0 calc(50% - 6px); }
+    .prof-module-scope .section-card { padding: 10px; }
+    .prof-module-scope .section-title { font-size: 12px; }
+  }
 `;
 
 const ProfessionTemplate = `

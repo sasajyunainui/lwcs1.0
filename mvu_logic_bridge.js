@@ -9457,6 +9457,52 @@
     return /^[-+]?\d+(?:\.\d+)?%?$/.test(normalizeSkillUiText(数值, ''));
   }
 
+  function 读取技能设计台数值字段口径(原型 = '', 字段 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (!['数值', '副数值', '强化倍率', '结算倍率'].includes(字段名)) return '';
+    if (字段名 === '强化倍率' || 字段名 === '结算倍率') return '百分比';
+    if (原型名 === '状态施加') return '百分比';
+    if (['属性修正', '判定修正', '护盾变化', '资源锁定', '决策干扰'].includes(原型名)) return '百分比';
+    if (原型名 === '资源变化' || 原型名 === '资源转移') return '混合';
+    if (原型名 === '结算修正') {
+      const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+      return ['消耗', '前摇'].includes(结算) ? '混合' : '百分比';
+    }
+    if (原型名 === '规则改写' && normalizeSkillUiText(effect && effect['规则'], '') === '死亡转存活') return '百分比';
+    return '';
+  }
+
+  function 格式化技能设计台百分比字段值(value, fallback = '+5%') {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) return fallback;
+      return formatSkillDesignerSignedValue(Math.abs(value) <= 1 ? value : value / 100, true);
+    }
+    const 文本 = normalizeSkillUiText(value, '');
+    if (!文本) return fallback;
+    if (/%$/.test(文本)) return formatSkillDesignerSignedValue(parseSkillDesignerSignedValue(文本), true);
+    const 百分点 = 解析技能设计台正负数值(文本);
+    return Number.isFinite(百分点) ? formatSkillDesignerSignedValue(百分点 / 100, true) : fallback;
+  }
+
+  function 格式化技能设计台混合数值字段值(value) {
+    const 文本 = normalizeSkillUiText(value, '');
+    if (!文本) return '';
+    if (/%$/.test(文本)) return formatSkillDesignerSignedValue(parseSkillDesignerSignedValue(文本), true);
+    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)$/);
+    if (!匹配) return 文本;
+    const 数值 = Number(匹配[2]);
+    if (!Number.isFinite(数值)) return 文本;
+    return `${匹配[1] || ''}${String(Number(数值.toFixed(Math.abs(数值 % 1) < 0.0001 ? 0 : 2)))}`;
+  }
+
+  function 规范化技能设计台数值字段值(原型 = '', 字段 = '', value = '', effect = {}) {
+    const 口径 = 读取技能设计台数值字段口径(原型, 字段, effect);
+    if (口径 === '百分比') return 格式化技能设计台百分比字段值(value);
+    if (口径 === '混合') return 格式化技能设计台混合数值字段值(value);
+    return normalizeSkillDesignerEffectValue(value);
+  }
+
   const 技能设计台结算修正支持字段矩阵 = Object.freeze({
     造成伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
     受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
@@ -10053,12 +10099,8 @@
     if (字段['属性'] !== undefined) 字段['属性'] = getSkillDesignerPackedPropertyLabel(字段['属性']);
     if (字段['驱动属性'] !== undefined) 字段['驱动属性'] = getSkillDesignerPackedPropertyLabel(字段['驱动属性']);
     if (字段['数值'] !== undefined) {
-      const 结算 = normalizeSkillUiText(字段['结算'], '');
-      字段['数值'] = 原型 === '资源转移'
-        ? normalizeSkillUiText(value && value['数值'] !== undefined ? value['数值'] : 字段['数值'], '')
-        : 原型 === '结算修正' && ['消耗', '前摇'].includes(结算)
-        ? formatSkillDesignerSignedValue(parseSkillDesignerSignedValue(字段['数值']), 技能设计台字段值是百分比修正(字段['数值']))
-        : normalizeSkillDesignerEffectValue(字段['数值']);
+      const 原始数值 = 原型 === '资源转移' && value && value['数值'] !== undefined ? value['数值'] : 字段['数值'];
+      字段['数值'] = 规范化技能设计台数值字段值(原型, '数值', 原始数值, 字段);
     }
     if (
       context &&
@@ -10070,7 +10112,7 @@
       recordViolation('结算修正.释放前结算');
       return null;
     }
-    if (字段['结算倍率'] !== undefined) 字段['结算倍率'] = normalizeSkillDesignerEffectValue(字段['结算倍率']);
+    if (字段['结算倍率'] !== undefined) 字段['结算倍率'] = 规范化技能设计台数值字段值(原型, '结算倍率', 字段['结算倍率'], 字段);
     if (原型 === '护盾变化') 限制技能设计台护盾变化数值(字段);
     if (!['独立生效', '跟随主原型'].includes(normalizeSkillUiText(字段['生效方式'], ''))) 字段['生效方式'] = '独立生效';
     if (context && (context.强制独立 || context.条件分支 || 嵌套字段)) 字段['生效方式'] = '独立生效';
@@ -12480,35 +12522,114 @@
       if (!评估) return '';
       const 差额 = Number((Number(评估.实际门禁 || 0) - Number(评估.实际COST || 0)).toFixed(2));
       const 状态 = 差额 >= 0 ? `剩余 ${差额.toFixed(1)}` : `超出 ${Math.abs(差额).toFixed(1)}`;
-      const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 5);
+      const 伤害参考 = 技能设计台是普通魂环伤害魂技(预览元数据, 临时技能._效果数组, 临时技能) && typeof COST助手.计算伤害结算参考消耗_V1 === 'function'
+        ? COST助手.计算伤害结算参考消耗_V1({
+            ...预算上下文,
+            魂环位: 评估.魂技位 || 预算上下文.魂环位,
+            品质: 规范化草稿?.品质 || 规范化草稿?.grade || 'B',
+          })
+        : null;
+      const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 12);
       const 明细标签 = 项 => {
         const 角色 = String(项.分支角色 || '').trim();
         const 名称 = String(项.关键值 || 项.原型 || '效果').trim();
         return [角色 || '基础', 名称].filter(Boolean).join(' / ') || '效果';
       };
+      const 明细字段 = 项 => {
+        const 字段列表 = [
+          项.路径 ? `路径 ${项.路径}` : '',
+          项.原型 ? `原型 ${项.原型}` : '',
+          项.关键字段 ? `${项.关键字段} ${项.关键值 || '-'}` : '',
+          项.目标 ? `目标 ${项.目标}` : '',
+          项.持续回合 ? `持续 ${项.持续回合}` : '',
+          项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力 ${项.威力倍率}` : '',
+          项.数值 !== undefined && 项.数值 !== '' ? `数值 ${项.数值}` : '',
+          项.数值类型 ? `类型 ${项.数值类型}` : '',
+          项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(2)}` : '',
+          项.绝对值 !== null && 项.绝对值 !== undefined ? `绝对值 ${Number(项.绝对值 || 0).toFixed(2)}` : '',
+          项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算百分点 ${Number(项.绝对值折算百分点 || 0).toFixed(2)}` : '',
+          项.单位COST !== null && 项.单位COST !== undefined ? `单位COST ${Number(项.单位COST || 0).toFixed(2)}` : '',
+          项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
+          项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
+          项.持续系数 !== null && 项.持续系数 !== undefined ? `持续系数 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
+          Number(项.限制抵扣 || 0) > 0 ? `限制 -${Number(项.限制抵扣 || 0).toFixed(1)}` : '',
+        ].filter(Boolean);
+        return 字段列表.join(' · ');
+      };
+      const 明细辅助文本 = 项 => [
+        项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(1)}` : '',
+        项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算 ${Number(项.绝对值折算百分点 || 0).toFixed(1)}%` : '',
+        项.单位COST !== null && 项.单位COST !== undefined ? `单位 ${Number(项.单位COST || 0).toFixed(2)}` : '',
+      ].filter(Boolean).join(' ｜ ');
       const 明细Html = 明细.length ? `
             <div class="skill-designer-cost-detail">
               ${明细.map(项 => `
                 <div class="skill-designer-cost-detail-row${项.计入COST === false ? ' muted' : ''}">
-                  <em>${htmlEscape(明细标签(项))}</em>
-                  <span>${项.计入COST === false ? '候选 ' : ''}${htmlEscape(Number(项.净COST || 项.原始COST || 0).toFixed(1))}</span>
+                  <em title="${escapeHtmlAttr(明细字段(项))}">${htmlEscape(明细标签(项))}${明细辅助文本(项) ? `<small>${htmlEscape(明细辅助文本(项))}</small>` : ''}</em>
+                  <span>${项.计入COST === false ? '候选 ' : ''}${htmlEscape(`${Number(项.原始COST || 0).toFixed(1)} / ${Number(项.净COST || 项.原始COST || 0).toFixed(1)}`)}</span>
                 </div>
               `).join('')}
             </div>
           ` : '';
+      const 公式Html = `
+            <div class="skill-designer-cost-detail">
+              ${[
+                (() => {
+                  const 目标摘要 = COST助手 && typeof COST助手.计算生成目标COST_V1 === 'function'
+                    ? COST助手.计算生成目标COST_V1(评估, { ...预算上下文, 随机种子: `${临时技能?.魂技名 || ''}:预览` })
+                    : null;
+                  return ['生成目标COST', 目标摘要 ? Number(目标摘要.生成目标COST || 0).toFixed(1) : '--'];
+                })(),
+                (() => {
+                  const 利用率 = COST助手 && typeof COST助手.计算天赋预算利用率_V1 === 'function'
+                    ? COST助手.计算天赋预算利用率_V1(预算上下文.角色, { ...预算上下文, 随机种子: `${临时技能?.魂技名 || ''}:预览` })
+                    : 0;
+                  return ['天赋利用率要求', 利用率 ? `${(Number(利用率 || 0) * 100).toFixed(1)}%` : '--'];
+                })(),
+                ['实际利用率', `${(Number(评估.实际COST || 0) / Math.max(0.1, Number(评估.运转基准 || 0)) * 100).toFixed(1)}%`],
+                ['魂技位', 评估.魂技位],
+                ['基础 COST', Number(评估.基础参考 || 0).toFixed(1)],
+                ['来源承载', `${Number(评估.来源承载 || 0).toFixed(2)}x`],
+                ['魂环加值', `${Number(评估.魂环年限COST修正 || 0) >= 0 ? '+' : ''}${Number(评估.魂环年限COST修正 || 0).toFixed(1)}`],
+                ['天赋加值', `${Number(评估.天赋修正 || 0) >= 0 ? '+' : ''}${Number(评估.天赋修正 || 0).toFixed(1)}`],
+                ['运转基准', Number(评估.运转基准 || 0).toFixed(1)],
+                ['标准消耗', Number(评估.标准消耗 || 0).toFixed(0)],
+                ['实际消耗', Number(评估.实际消耗 || 0).toFixed(0)],
+                ['消耗倍数', `${Number(评估.消耗倍数 || 0).toFixed(2)}x`],
+                ['前摇倍数', `${Number(评估.前摇倍数 || 0).toFixed(2)}x`],
+                ['代价能量', `${Number(评估.代价能量 || 0).toFixed(3)}x`],
+                ['当前对等上限', Number(评估.对等基线 || 0).toFixed(1)],
+              ].map(([标签, 数值]) => `
+                <div class="skill-designer-cost-detail-row">
+                  <em>${htmlEscape(标签)}</em>
+                  <span>${htmlEscape(String(数值))}</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+      const 伤害参考Html = 伤害参考 ? `
+          <div class="skill-designer-trial-row muted">
+            <em>伤害参考 <button type="button" class="skill-designer-cost-help" data-cost-tip="按魂技位和品质折算的威力参考，不写入真实消耗，不参与 COST。" aria-label="伤害参考说明">i</button></em>
+            <span>${htmlEscape(`${伤害参考.资源}${伤害参考.消耗基准}%≈${伤害参考.绝对值}`)}</span>
+          </div>
+        ` : '';
       return `
         <div class="skill-designer-cost-panel">
-          <div class="skill-designer-cost-block">
-            <div class="skill-designer-trial-row skill-designer-cost-head"><em>效果 COST</em><span>${htmlEscape(Number(评估.效果原始COST || 0).toFixed(1))}</span></div>
+          <details class="skill-designer-cost-block" open>
+            <summary class="skill-designer-trial-row skill-designer-cost-head"><em>效果 COST</em><span>${htmlEscape(Number(评估.效果原始COST || 0).toFixed(1))}</span></summary>
             ${明细Html}
-          </div>
+          </details>
           <div class="skill-designer-trial-row"><em>限制抵扣</em><span>-${htmlEscape(Number(评估.限制COST || 0).toFixed(1))}</span></div>
           <div class="skill-designer-trial-row"><em>副作用抵扣</em><span>-${htmlEscape(Number(评估.副作用COST || 0).toFixed(1))}</span></div>
           <div class="skill-designer-trial-row"><em>实际 COST</em><span>${htmlEscape(Number(评估.实际COST || 0).toFixed(1))}</span></div>
-          <div class="skill-designer-trial-row">
-            <em>运转可承载上限 <button type="button" class="skill-designer-cost-help" data-cost-tip="当前消耗、前摇、魂环、来源与天赋可承载的净 COST 上限。" aria-label="运转可承载上限说明">i</button></em>
-            <span>${htmlEscape(Number(评估.实际门禁 || 0).toFixed(1))}</span>
-          </div>
+          <details class="skill-designer-cost-block" open>
+            <summary class="skill-designer-trial-row skill-designer-cost-head">
+              <em>运转可承载上限 <button type="button" class="skill-designer-cost-help" data-cost-tip="当前消耗、前摇、魂环、来源与天赋可承载的净 COST 上限。" aria-label="运转可承载上限说明">i</button></em>
+              <span>${htmlEscape(Number(评估.实际门禁 || 0).toFixed(1))}</span>
+            </summary>
+            ${公式Html}
+          </details>
+          ${伤害参考Html}
           <div class="skill-designer-trial-row${差额 < 0 ? ' muted' : ''}"><em>状态</em><span>${htmlEscape(状态)}</span></div>
         </div>
       `;
@@ -12635,6 +12756,7 @@
       men_max: Math.max(1, Math.round(Number(基础.men_max || 1) * 系数.men_max * 精神训练倍率)),
       sp_max: Math.max(1, Math.round(Number(基础.sp_max || 1) * 系数.sp_max)),
       vit_max: Math.max(1, Math.round(Number(基础.vit_max || 1) * 系数.vit_max * 常规训练倍率)),
+      属性: { 天赋梯队: String(选项?.天赋梯队 || '正常').trim() || '正常' },
     };
     属性.sp = 属性.sp_max;
     属性.men = 属性.men_max;
@@ -12693,6 +12815,7 @@
       vit_max: Math.max(1, Number(来源.体力上限 || 来源.HP上限 || 来源.hp_max || 来源.vit_max || 1)),
       sp_max: Math.max(1, Number(来源.魂力上限 || 来源.sp_max || 1)),
       men_max: Math.max(1, Number(来源.精神力上限 || 来源.men_max || 1)),
+      属性: { 天赋梯队: String(来源.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常').trim() || '正常' },
     };
     属性.sp = Math.max(0, Math.min(属性.sp_max, Number(来源.魂力 ?? 来源.sp ?? 属性.sp_max)));
     属性.men = Math.max(0, Math.min(属性.men_max, Number(来源.精神力 ?? 来源.men ?? 属性.men_max)));
@@ -12730,7 +12853,9 @@
     let 预算角色 = 角色属性;
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
       来源类别 = '魂技';
-      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系');
+      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+        天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
+      });
     } else if (范围 === 'blood_ring_skill') {
       来源类别 = '气血魂技';
     } else if (范围 === 'blood_skill' || 范围 === 'blood_passive') {
@@ -12785,9 +12910,11 @@
   }
 
   function 构建技能设计台运行态消耗展示(基础消耗 = '', effectArray = [], previewMeta = {}, skill = {}) {
+    void effectArray;
+    void previewMeta;
+    void skill;
     const 消耗文本 = normalizeSkillUiText(基础消耗, '无');
-    if (!技能设计台是普通魂环伤害魂技(previewMeta, effectArray, skill)) return 消耗文本;
-    return `${消耗文本} + ${推断技能设计台魂环位(previewMeta) * 3}%魂力上限`;
+    return 消耗文本;
   }
 
   function 读取技能设计台防御效果列表(effectArray = []) {
@@ -15141,12 +15268,20 @@
     const 原型名 = normalizeSkillUiText(原型, '');
     const 字段名 = normalizeSkillUiText(字段, '');
     const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+    const 数值口径 = 读取技能设计台数值字段口径(原型名, 字段名, effect);
     const 通用提示表 = {
       原型: '选择技能效果的结构类型；切换后表单字段会按该原型重建。',
       目标: '选择该原型实际作用对象。',
       生效方式: '主效果用独立生效；副效果只有必须跟主效果命中、结算或存在同一前置时才用跟随主原型。',
       条件分支: '只有效果需要满足条件才触发、替换或禁用时开启；普通直达效果不要开。',
-      数值: '填写实际强度；百分比用于倍率或概率修正，正负号必须表达方向。',
+      数值: 数值口径 === '百分比'
+        ? '按百分点填写；输入5会保存为+5%。'
+        : 数值口径 === '混合'
+          ? '可填点数或百分比；100保存为100，5%保存为+5%。'
+          : '填写实际强度，正负号表达方向。',
+      副数值: 数值口径 === '百分比'
+        ? '按百分点填写；输入5会保存为+5%。'
+        : '填写附加强度，正负号表达方向。',
       持续回合: '命中后保留几回合；不影响后来入场目标。',
       延迟回合: '只用于需要延迟落地的战斗效果；无延迟时不要落盘。',
       触发限制: '限制触发周期和次数；只在规则壳或限定触发次数的效果上填写。',
@@ -15300,11 +15435,17 @@
     const 提示 = 获取技能设计台原型字段提示(原型, 字段, effect);
     const 原型名 = normalizeSkillUiText(原型, '');
     const 字段名 = normalizeSkillUiText(字段, '');
-    const 标签 = 原型名 === '炸环' && 字段名 === '强化倍率'
+    const 基础标签 = 原型名 === '炸环' && 字段名 === '强化倍率'
       ? '强化倍率 × 年限'
       : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
         ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
         : 显示名 || 字段;
+    const 数值口径 = 读取技能设计台数值字段口径(原型名, 字段名, effect);
+    const 标签 = 数值口径 === '百分比' && !/%/.test(基础标签)
+      ? `${基础标签}(%)`
+      : 数值口径 === '混合'
+        ? `${基础标签}(点数/%)`
+        : 基础标签;
     return `<span class=\"mvu-editor-label\"${提示 ? ` title=\"${escapeHtmlAttr(提示)}\"` : ''}>${htmlEscape(标签)}</span>`;
   }
 
@@ -25906,7 +26047,7 @@
         基础框架载体: '填写名称与承载方式。造物承载用于先生成造物、再使用触发效果的技能。',
         核心术式阵列: '填写技能真正执行的原型效果；先放主效果，再补条件、状态或修正。',
         使用效果阵列: '填写造物被使用后触发的效果。',
-        运转能量配置: '启动填保存绝对消耗；普通魂环伤害魂技战斗内会追加魂环位×3%魂力上限。维持每回合扣费。',
+        运转能量配置: '启动填保存绝对消耗；伤害参考只用于试算提示，不参与实际扣费。维持每回合扣费。',
         技能掌控度: '只在技能随等级逐步发挥时启用；普通魂技不需要填写。',
         元属性特征: '只勾选技能实际携带的元素或概念属性。',
         终端解析图谱: '填写给玩家看的画面与效果摘要，不参与战斗结算。',

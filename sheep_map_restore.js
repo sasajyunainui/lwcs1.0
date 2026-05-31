@@ -2318,7 +2318,7 @@
 
     .map-maintenance-menu {
       position: fixed;
-      z-index: 99980;
+      z-index: var(--mvu-z-popover, 10060);
       display: grid;
       gap: 4px;
       width: 126px;
@@ -2353,7 +2353,7 @@
     .map-maintenance-modal {
       position: fixed;
       inset: 0;
-      z-index: 99990;
+      z-index: var(--mvu-z-modal, 10050);
       display: grid;
       place-items: center;
       padding: 18px;

@@ -181,6 +181,14 @@ const TradeStyles = `
     border: 1px solid var(--line-soft);
   }
   .trade-module-scope .wealth-amt { color: var(--gold); font-family: var(--font-tech); }
+
+  @media (max-width: 480px) {
+    .trade-module-scope .trade-tabs { flex-wrap: wrap; }
+    .trade-module-scope .trade-tab { flex: 1 0 50%; padding: 8px 0; font-size: 11px; }
+    .trade-module-scope .form-group label { font-size: 10px; }
+    .trade-module-scope .info-row { font-size: 11px; }
+    .trade-module-scope .action-btn { font-size: 11px; padding: 8px; }
+  }
 `;
 
 const TradeTemplate = `
