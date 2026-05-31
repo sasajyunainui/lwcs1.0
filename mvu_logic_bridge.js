@@ -8632,10 +8632,7 @@
         ]);
         const powerNumber = Number(rawPower);
         if (Number.isFinite(powerNumber))
-          字段['威力倍率'] = Math.max(
-            1,
-            Math.round(powerNumber > 0 && powerNumber <= 10 ? powerNumber * 100 : powerNumber),
-          );
+          字段['威力倍率'] = Math.max(1, Math.round(powerNumber));
       }
       if (字段['伤害类型'] === undefined)
         字段['伤害类型'] = normalizeSkillUiText(source['伤害类型'] || source.damageType, '物理伤害');
@@ -9679,7 +9676,7 @@
       delete 字段['驱动属性'];
       delete 字段['影响方向'];
       字段['攻击段数'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['攻击段数'], 1, 1));
-      字段['威力倍率'] = Math.max(1, toNumber(字段['威力倍率'], 100));
+      字段['威力倍率'] = 规范化技能设计台伤害威力倍率(字段['威力倍率'], 100);
       if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(字段['目标'], ''))) delete 字段['目标'];
       const 伤害类型 = normalizeSkillUiText(字段['伤害类型'], '物理伤害');
       字段['伤害类型'] = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(伤害类型) ? 伤害类型 : '物理伤害';
@@ -12475,9 +12472,8 @@
       const { 临时技能, 规范化草稿 } = 构建技能设计台临时技能(草稿, 预览元数据);
       const 预算上下文 = 构建技能设计台预算上下文(预览元数据, 根数据, 规范化草稿);
       const 评估 = COST助手.评估技能预算_V1(临时技能, {
+        ...预算上下文,
         path: 预览元数据 && 预览元数据.path,
-        角色: 预算上下文.角色,
-        魂环位: 预算上下文.魂环位,
         来源: 预算上下文.来源类别,
         启用位级硬上限: true,
       });
@@ -12485,17 +12481,35 @@
       const 差额 = Number((Number(评估.实际门禁 || 0) - Number(评估.实际COST || 0)).toFixed(2));
       const 状态 = 差额 >= 0 ? `剩余 ${差额.toFixed(1)}` : `超出 ${Math.abs(差额).toFixed(1)}`;
       const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 5);
+      const 明细标签 = 项 => {
+        const 角色 = String(项.分支角色 || '').trim();
+        const 名称 = String(项.关键值 || 项.原型 || '效果').trim();
+        return [角色 || '基础', 名称].filter(Boolean).join(' / ') || '效果';
+      };
+      const 明细Html = 明细.length ? `
+            <div class="skill-designer-cost-detail">
+              ${明细.map(项 => `
+                <div class="skill-designer-cost-detail-row${项.计入COST === false ? ' muted' : ''}">
+                  <em>${htmlEscape(明细标签(项))}</em>
+                  <span>${项.计入COST === false ? '候选 ' : ''}${htmlEscape(Number(项.净COST || 项.原始COST || 0).toFixed(1))}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : '';
       return `
         <div class="skill-designer-cost-panel">
-          <div class="skill-designer-trial-row"><em>效果 COST</em><span>${htmlEscape(Number(评估.效果原始COST || 0).toFixed(1))}</span></div>
+          <div class="skill-designer-cost-block">
+            <div class="skill-designer-trial-row skill-designer-cost-head"><em>效果 COST</em><span>${htmlEscape(Number(评估.效果原始COST || 0).toFixed(1))}</span></div>
+            ${明细Html}
+          </div>
           <div class="skill-designer-trial-row"><em>限制抵扣</em><span>-${htmlEscape(Number(评估.限制COST || 0).toFixed(1))}</span></div>
           <div class="skill-designer-trial-row"><em>副作用抵扣</em><span>-${htmlEscape(Number(评估.副作用COST || 0).toFixed(1))}</span></div>
           <div class="skill-designer-trial-row"><em>实际 COST</em><span>${htmlEscape(Number(评估.实际COST || 0).toFixed(1))}</span></div>
-          <div class="skill-designer-trial-row"><em>当前门禁</em><span>${htmlEscape(Number(评估.实际门禁 || 0).toFixed(1))}</span></div>
+          <div class="skill-designer-trial-row">
+            <em>运转可承载上限 <button type="button" class="skill-designer-cost-help" data-cost-tip="当前消耗、前摇、魂环、来源与天赋可承载的净 COST 上限。" aria-label="运转可承载上限说明">i</button></em>
+            <span>${htmlEscape(Number(评估.实际门禁 || 0).toFixed(1))}</span>
+          </div>
           <div class="skill-designer-trial-row${差额 < 0 ? ' muted' : ''}"><em>状态</em><span>${htmlEscape(状态)}</span></div>
-          ${明细.length ? `<div class="skill-designer-cost-detail">${明细.map(项 => `
-            <div class="skill-designer-trial-row"><em>${htmlEscape(项.关键值 || 项.原型 || '效果')}</em><span>${htmlEscape(Number(项.净COST || 项.原始COST || 0).toFixed(1))}</span></div>
-          `).join('')}</div>` : ''}
         </div>
       `;
     } catch (error) {
@@ -12695,19 +12709,28 @@
     return Math.max(1, 读取槽位序号_桥接(槽位, 1));
   }
 
+  function 读取技能设计台魂环数据(previewMeta = {}, 根数据 = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 环位索引 = path.findIndex(片段 => 是魂环槽位键_桥接(片段) || 是气血魂环槽位键_桥接(片段));
+    if (环位索引 < 0) return null;
+    const 魂环数据 = deepGet(根数据, path.slice(0, 环位索引 + 1), null);
+    return 魂环数据 && typeof 魂环数据 === 'object' && !Array.isArray(魂环数据) ? 魂环数据 : null;
+  }
+
   function 构建技能设计台预算上下文(previewMeta = {}, 根数据 = {}, 草稿 = {}) {
     const 范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
     const 分类 = normalizeSkillUiText(previewMeta && previewMeta.category, '');
     const { charKey: 角色键, charData: 角色数据 } = getSkillDesignerCharByPreviewPath(根数据, previewMeta);
+    const 魂环位 = 推断技能设计台魂环位(previewMeta);
+    const 魂环数据 = 读取技能设计台魂环数据(previewMeta, 根数据);
     const 角色属性 = 角色数据 && Object.keys(角色数据).length
       ? 构建技能设计台角色战斗属性(角色键, 角色数据, normalizeSkillUiText(草稿 && 草稿.type, '强攻系'))
       : 构建技能设计台标准战斗属性(草稿?.level || 草稿?.lv || 50, 草稿?.type || '强攻系');
     let 来源类别 = '魂技';
     let 预算角色 = 角色属性;
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
-      const 环位 = 推断技能设计台魂环位(previewMeta);
       来源类别 = '魂技';
-      预算角色 = 构建技能设计台标准战斗属性(10 * 环位 + 1, 角色属性.type || 草稿?.type || '强攻系');
+      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系');
     } else if (范围 === 'blood_ring_skill') {
       来源类别 = '气血魂技';
     } else if (范围 === 'blood_skill' || 范围 === 'blood_passive') {
@@ -12729,7 +12752,10 @@
       角色: 预算角色,
       施术者: 预算角色,
       来源类别,
-      魂环位: 推断技能设计台魂环位(previewMeta),
+      魂环位,
+      魂环数据,
+      ringAge: 魂环数据?.年限,
+      ringColor: 魂环数据?.颜色,
       融合记录: 范围 === '武魂融合技' ? getSkillDesignerFusionRecord(根数据, previewMeta) : undefined,
     };
   }
@@ -14018,7 +14044,7 @@
     switch (label) {
       case '伤害类':
         return [
-          createSkillDesignerNumberParam('powerRatio', '强度倍率', '1.25'),
+          createSkillDesignerNumberParam('powerRatio', '强度倍率', '125'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
           createSkillDesignerTextParam('range', '作用范围', '单体 / 半径3米'),
         ];
@@ -14071,25 +14097,25 @@
         ];
       case '单体伤害':
         return [
-          createSkillDesignerNumberParam('powerRatio', '威力倍率', '1.4'),
+          createSkillDesignerNumberParam('powerRatio', '威力倍率', '140'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
           createSkillDesignerTextParam('range', '作用范围', '单体 / 直线 / 点杀'),
         ];
       case '群体伤害':
         return [
-          createSkillDesignerNumberParam('powerRatio', '威力倍率', '1.1'),
+          createSkillDesignerNumberParam('powerRatio', '威力倍率', '110'),
           createSkillDesignerTextParam('range', '作用半径', '半径5米'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
         ];
       case '多段伤害':
         return [
           createSkillDesignerNumberParam('segmentCount', '段数', '3', '1'),
-          createSkillDesignerNumberParam('segmentRatio', '单段倍率', '0.45'),
+          createSkillDesignerNumberParam('segmentRatio', '单段倍率', '45'),
           createSkillDesignerTextParam('segmentInterval', '段间间隔', '0.2秒'),
         ];
       case '持续伤害':
         return [
-          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '0.35'),
+          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '35'),
           createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
           createSkillDesignerNumberParam('stackLimit', '叠层上限', '3', '1'),
         ];
@@ -14459,7 +14485,7 @@
         ];
       case '流血DOT':
         return [
-          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '0.2'),
+          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '20'),
           createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
         ];
       case '打断':
@@ -16511,7 +16537,7 @@
         const hits = Math.max(1, parseSkillDesignerIntegerInputValue(effect['攻击段数'], 1, 1));
         const penetration = 简写(effect['防御穿透']);
         return (
-          [`伤害 ${power}%`, type, hits > 1 ? `${hits}段` : '', penetration ? `穿透${penetration}%` : '']
+          [`伤害，威力倍率${power}`, type, hits > 1 ? `${hits}段` : '', penetration ? `穿透${penetration}%` : '']
             .filter(Boolean)
             .join('，') +
           目标文本(effect) +
@@ -17064,6 +17090,12 @@
     return Number(parsed.toFixed(4));
   }
 
+  function 规范化技能设计台伤害威力倍率(value, fallback = 100) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(1, Number(fallback || 100));
+    return Math.max(1, Math.round(parsed));
+  }
+
   function parseSkillDesignerReductionFactor(value, fallback = 0.8) {
     const rawText = toText(value, '').trim();
     if (!rawText) return Number(Number(fallback || 0).toFixed(4));
@@ -17522,10 +17554,7 @@
         const damageEffect = buildSkillDesignerRuntimeObject({
           原型: '伤害结算',
           目标: target,
-          威力倍率: parseSkillDesignerFactorInputValue(
-            params[powerKey],
-            primaryLabel === '持续伤害' ? 0.35 : 1.25,
-          ),
+          威力倍率: 规范化技能设计台伤害威力倍率(parseSkillDesignerFactorInputValue(params[powerKey], 125), 125),
           伤害类型: inferSkillDesignerDamageType(draft),
           攻击段数: parseSkillDesignerIntegerInputValue(params['hitCount'], 1, 1),
           段数:
@@ -19702,13 +19731,12 @@
           || (typeof window !== 'undefined' && window.__LWCS_SKILL_COST_HELPERS_V1__)
           || null;
         if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
-          const 魂技位 = Math.max(1, Math.min(9, Number(技能预览元数据?.__魂环位 || 1)));
-          const 角色 = (snapshot?.rootData?.char?.attrs && typeof snapshot.rootData.char.attrs === 'object') ? snapshot.rootData.char.attrs : {};
+          const 预算上下文 = 构建技能设计台预算上下文(技能预览元数据, snapshot.rootData || {}, draft || {});
           // v4：用 path 推断来源，作者手填技能不卡位级硬上限（仅对等性）
           const 评估 = COST助手.评估技能预算_V1(skill || {}, {
+            ...预算上下文,
             path: skillPath,
-            角色,
-            魂环位: 魂技位,
+            来源: 预算上下文.来源类别,
             启用位级硬上限: false, // 设计台展示对等基线即可，不强制位级
           });
           if (评估 && Number.isFinite(评估.允许上限)) {
@@ -26823,8 +26851,8 @@
                   || (typeof window !== 'undefined' && window.__LWCS_SKILL_COST_HELPERS_V1__)
                   || null;
                 if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
-                  const 角色 = (snapshot?.rootData?.char?.attrs && typeof snapshot.rootData.char.attrs === 'object') ? snapshot.rootData.char.attrs : {};
-                  const 魂技位 = Math.max(1, Math.min(9, Number(previewMeta?.__魂环位 || 推断技能设计台魂环位(previewMeta) || 1)));
+                  const 预算上下文 = 构建技能设计台预算上下文(previewMeta, snapshot.rootData || {}, formState || {});
+                  const 魂技位 = Math.max(1, Number(previewMeta?.__魂环位 || 预算上下文.魂环位 || 1) || 1);
                   const 来源标识 = (() => {
                     const 路径 = Array.isArray(previewMeta.path) ? previewMeta.path : [];
                     if (路径.includes('武魂融合技')) return '武魂融合技';
@@ -26854,15 +26882,18 @@
                     }
                   }
                   const 评估 = COST助手.评估技能预算_V1(nextSkill, {
+                    ...预算上下文,
                     path: previewMeta.path,
-                    角色,
                     魂环位: 魂技位,
+                    来源: 预算上下文.来源类别,
                     启用位级硬上限: true,
                   });
                   if (评估 && 评估.是否超预算 && typeof COST助手.让技能符合预算_V1 === 'function') {
                     const 降级结果 = COST助手.让技能符合预算_V1(nextSkill, 评估.魂技位, {
+                      ...预算上下文,
                       path: previewMeta.path,
-                      角色,
+                      魂环位: 魂技位,
+                      来源: 预算上下文.来源类别,
                       强制上限: 评估.实际门禁,
                       启用位级硬上限: true,
                     });

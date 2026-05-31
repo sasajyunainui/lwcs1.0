@@ -6282,9 +6282,15 @@ button.tag-chip:active,
   min-width: 0;
 }
 
+.skill-designer-cost-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .skill-designer-trial-row {
   display: grid;
-  grid-template-columns: minmax(96px, 0.58fr) minmax(0, 1fr);
+  grid-template-columns: minmax(112px, 1fr) minmax(64px, auto);
   gap: 8px;
   align-items: center;
   min-height: 32px;
@@ -6295,18 +6301,115 @@ button.tag-chip:active,
 }
 
 .skill-designer-trial-row em {
+  position: relative;
   min-width: 0;
-  overflow: hidden;
   color: rgba(0, 243, 255, 0.8);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .skill-designer-trial-row span {
+  min-width: 64px;
   color: #00f3ff;
   font-weight: bold;
   text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
   text-align: right;
+  white-space: nowrap;
+}
+
+.skill-designer-cost-help {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid rgba(0, 243, 255, 0.38);
+  border-radius: 50%;
+  background: rgba(0, 243, 255, 0.08);
+  color: rgba(0, 243, 255, 0.86);
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  vertical-align: 1px;
+  cursor: help;
+}
+
+.skill-designer-cost-help::after {
+  content: attr(data-cost-tip);
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: min(220px, 62vw);
+  padding: 7px 9px;
+  border: 1px solid rgba(0, 243, 255, 0.24);
+  background: rgba(8, 18, 20, 0.96);
+  color: rgba(226, 252, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+  font: 500 11px/1.45 "Microsoft YaHei", sans-serif;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  transform: translate(-50%, 4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.skill-designer-cost-help:hover::after,
+.skill-designer-cost-help:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.skill-designer-cost-block {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 0 6px;
+  border-bottom: 1px dashed rgba(0, 243, 255, 0.2);
+}
+
+.skill-designer-cost-block > .skill-designer-trial-row {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.skill-designer-cost-detail {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(0, 243, 255, 0.18);
+}
+
+.skill-designer-cost-detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(56px, auto);
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+}
+
+.skill-designer-cost-detail-row em {
+  min-width: 0;
+  color: rgba(160, 248, 255, 0.66);
+  font-size: 11px;
+  font-style: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.skill-designer-cost-detail-row span {
+  min-width: 56px;
+  color: rgba(0, 243, 255, 0.92);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  text-shadow: 0 0 5px rgba(0, 243, 255, 0.38);
+  white-space: nowrap;
 }
 
 @keyframes skill-designer-fade-in {
@@ -6345,6 +6448,12 @@ button.tag-chip:active,
 .skill-designer-trial-row.muted span {
   color: rgba(190, 214, 222, 0.78);
   font-weight: 560;
+}
+
+.skill-designer-cost-detail-row.muted em,
+.skill-designer-cost-detail-row.muted span {
+  color: rgba(190, 214, 222, 0.66);
+  text-shadow: none;
 }
 
 /* 空状态引导 HUD 样式 */

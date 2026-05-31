@@ -768,10 +768,66 @@ class BattleUIComponent {
       机制专属层: { 最小: -90,  最大: 90  },  // 融合 / 大招 / 召唤 / 稀缺 / 装备
       资源约束层: { 最小: -100, 最大: 30  },  // 不允许加分(终局放行 +28 给 30 缓冲)
       一票否决层: { 最小: -150, 最大: 150 },  // 留给可斩杀类强信号
+      总修正层:   { 最小: -170, 最大: 180 },  // 跨层总 cap,避免五层危机信号暴叠
     });
     function 应用层级clamp_V1(delta, 范围) {
       return Math.max(范围.最小, Math.min(范围.最大, delta));
     }
+
+    const 对手威胁权重表_V1 = Object.freeze({
+      基线: 0.18,
+      蓄力即将完成: 0.42,
+      蓄力中长期: 0.26,
+      高血量: 0.14,
+      中血量: 0.08,
+      危险系别: 0.16,
+      续航系别: 0.10,
+      目标锁定: 0.08,
+      反应防御: 0.05,
+      维持压力: 0.10,
+      召唤宿主: 0.08,
+      全局蓄力: 0.10,
+    });
+
+    const 对手意图预测权重表_V1 = Object.freeze({
+      默认: Object.freeze({ 输出: 16, 控制: 8, 治疗: 0, 保核: 4, 召唤: 0, 爆发: 8, 资源保留: 4 }),
+      强攻系: Object.freeze({ 输出: 38, 控制: 4, 治疗: 0, 保核: 2, 召唤: 0, 爆发: 28, 资源保留: 4 }),
+      敏攻系: Object.freeze({ 输出: 32, 控制: 10, 治疗: 0, 保核: 2, 召唤: 0, 爆发: 24, 资源保留: 4 }),
+      控制系: Object.freeze({ 输出: 14, 控制: 40, 治疗: 0, 保核: 8, 召唤: 0, 爆发: 12, 资源保留: 6 }),
+      防御系: Object.freeze({ 输出: 10, 控制: 12, 治疗: 0, 保核: 34, 召唤: 4, 爆发: 8, 资源保留: 10 }),
+      治疗系: Object.freeze({ 输出: 4, 控制: 8, 治疗: 42, 保核: 28, 召唤: 0, 爆发: 4, 资源保留: 8 }),
+      辅助系: Object.freeze({ 输出: 6, 控制: 16, 治疗: 18, 保核: 34, 召唤: 6, 爆发: 6, 资源保留: 8 }),
+      食物系: Object.freeze({ 输出: 4, 控制: 6, 治疗: 28, 保核: 24, 召唤: 0, 爆发: 4, 资源保留: 24 }),
+    });
+
+    const 危机层级阈值_V1 = Object.freeze({
+      轻度我方血量: 0.62,
+      轻度威胁: 0.42,
+      重度我方血量: 0.42,
+      重度威胁: 0.62,
+      致命我方血量: 0.28,
+      致命威胁: 0.82,
+      多人残血血量: 0.50,
+    });
+
+    const 反击窗口阈值_V1 = Object.freeze({
+      我方血量下限: 0.30,
+      我方血量上限: 0.60,
+      敌方血量下限: 0.30,
+      敌方血量上限: 0.50,
+      可斩杀血量: 0.30,
+      致命威胁: 0.82,
+    });
+
+    const 一阶前瞻权重表_V1 = Object.freeze({
+      控制打断风险下降: -0.46,
+      斩杀高威胁风险下降: -0.52,
+      治疗致命风险下降: -0.48,
+      防护致命风险下降: -0.36,
+      防护错失反击: 0.24,
+      高耗无斩杀风险上升: 0.28,
+      召唤缓压: -0.16,
+    });
 
     // 应用 态势战略意图加权表 — Phase 1 用,封装比较 + 加权
     function 应用态势战略意图加权_V1(ctx, 加权) {
@@ -786,25 +842,319 @@ class BattleUIComponent {
       });
     }
 
-    // Phase 4: 预估对方下回合最大威胁 — 不递归、不枚举技能列表,
-    // 用"蓄力标记 + 资源充足 + 危险系别"的轻量启发式
+    function 读取规划距离衰减_V1(单位 = {}) {
+      const 距离 = String(单位?.距离 || 单位?.站位距离 || 单位?.属性?.距离 || '').trim();
+      if (/远|远距|后排/.test(距离)) return 0.6;
+      if (/中|中距/.test(距离)) return 0.8;
+      if (/近|近距|贴身|前排/.test(距离)) return 1;
+      const 数值距离 = Number(单位?.distance ?? 单位?.range_distance);
+      if (Number.isFinite(数值距离)) {
+        if (数值距离 >= 8) return 0.6;
+        if (数值距离 >= 4) return 0.8;
+      }
+      return 1;
+    }
+
+    function 读取规划综合资源比例_V1(单位 = {}) {
+      const 魂力 = 读取规划资源比例(单位, '魂力');
+      const 精神力 = 读取规划资源比例(单位, '精神力');
+      const 体力 = 读取规划资源比例(单位, '体力');
+      return 限制行为概率(魂力 * 0.42 + 精神力 * 0.30 + 体力 * 0.28, 0, 1);
+    }
+
+    function 读取对手状态衰减_V1(单位 = {}) {
+      const 快照 = buildConditionTacticalSnapshot(单位);
+      if (快照.isLockedOrControlled) return 0.25;
+      const 状态效果 = Object.values(单位?.状态效果 || 单位?.属性?.状态效果 || {});
+      if (状态效果.some(项 => 项?.战斗效果?.skill_seal === true || 项?.战斗效果?.silence === true)) return 0.55;
+      if (状态效果.some(项 => 项?.战斗效果?.disarm === true || 项?.战斗效果?.blind === true)) return 0.70;
+      return 1;
+    }
+
+    function 预测对手下回合意图_V1(单位 = {}, 战局画像 = {}, behaviorState = {}) {
+      const 系别 = 读取规划单位系别(单位);
+      const 预测 = { ...(对手意图预测权重表_V1[系别] || 对手意图预测权重表_V1.默认) };
+      const hpRatio = getCombatHpRatio(单位);
+      const 蓄力剩余 = Number(单位?.蓄力剩余 ?? 单位?.cast_time_left ?? 0);
+      const 资源比例 = 读取规划综合资源比例_V1(单位);
+      const 我方最低血 = Math.min(1, ...(战局画像.己方列表 || []).map(getCombatHpRatio));
+      const 敌方最低血 = Math.min(1, ...(战局画像.敌方列表 || []).map(getCombatHpRatio));
+      if (单位?.蓄力技能 || 蓄力剩余 > 0) {
+        预测.爆发 += 蓄力剩余 <= 1 ? 34 : 20;
+        预测.控制 += 8;
+      }
+      if (我方最低血 < 0.42) {
+        预测.输出 += 10;
+        预测.爆发 += 12;
+      }
+      if (敌方最低血 < 0.48) {
+        预测.治疗 += ['治疗系', '辅助系', '食物系'].includes(系别) ? 22 : 6;
+        预测.保核 += 16;
+      }
+      if (hpRatio < 0.35) {
+        预测.保核 += 12;
+        预测.资源保留 += 8;
+        预测.爆发 -= 8;
+      }
+      if (资源比例 < 0.35) {
+        预测.资源保留 += 28;
+        预测.输出 -= 14;
+        预测.爆发 -= 18;
+      } else if (资源比例 > 0.72) {
+        预测.输出 += 8;
+        预测.爆发 += 8;
+      }
+      const 最近行动 = 单位?.决策记忆?.recent_actions || {};
+      const 最高重复 = Math.max(0, ...Object.values(最近行动).map(v => Number(v || 0)));
+      if (最高重复 >= 2) {
+        预测.输出 -= 6;
+        预测.爆发 -= 6;
+        预测.控制 -= 4;
+        预测.资源保留 += 6;
+      }
+      if (behaviorState?.isChargingHighThreat) 预测.爆发 += 10;
+      Object.keys(预测).forEach(key => { 预测[key] = Math.max(0, Math.round(预测[key])); });
+      return 预测;
+    }
+
+    function 计算对手单体威胁_V1(单位 = {}, 战局画像 = {}, behaviorState = {}) {
+      if (!单位 || typeof 单位 !== 'object' || 单位?.状态?.存活 === false || getCombatHpRatio(单位) <= 0) return 0;
+      const 权重 = 对手威胁权重表_V1;
+      const 快照 = buildConditionTacticalSnapshot(单位);
+      const 系别 = 读取规划单位系别(单位);
+      const hpRatio = getCombatHpRatio(单位);
+      const 蓄力剩余 = Number(单位?.蓄力剩余 ?? 单位?.cast_time_left ?? 0);
+      const 意图 = 预测对手下回合意图_V1(单位, 战局画像, behaviorState);
+      let 基础威胁 = 权重.基线;
+      if (单位?.蓄力技能 || 蓄力剩余 > 0) 基础威胁 += 蓄力剩余 <= 1 ? 权重.蓄力即将完成 : 权重.蓄力中长期;
+      if (hpRatio > 0.70) 基础威胁 += 权重.高血量;
+      else if (hpRatio >= 0.30) 基础威胁 += 权重.中血量;
+      if (['强攻系', '控制系', '敏攻系'].includes(系别)) 基础威胁 += 权重.危险系别;
+      if (['治疗系', '辅助系', '食物系'].includes(系别)) 基础威胁 += 权重.续航系别;
+      if (快照.hasTargetLock) 基础威胁 += 权重.目标锁定;
+      if (快照.hasReactiveDefense) 基础威胁 += 权重.反应防御;
+      if (读取规划维持压力(单位) > 0) 基础威胁 += 权重.维持压力;
+      if (读取召唤单位列表(behaviorState?.combatData || {}, { 宿主: 单位 }).length > 0) 基础威胁 += 权重.召唤宿主;
+      if (behaviorState?.isChargingHighThreat) 基础威胁 += 权重.全局蓄力;
+      const 意图压力 = (意图.输出 * 0.004 + 意图.控制 * 0.004 + 意图.爆发 * 0.005 + Math.max(意图.治疗, 意图.保核) * 0.002);
+      const 资源系数 = Math.max(0.45, Math.min(1, 0.45 + 读取规划综合资源比例_V1(单位) * 0.55));
+      return Math.max(0, 基础威胁 + 意图压力) * 资源系数 * 读取对手状态衰减_V1(单位) * 读取规划距离衰减_V1(单位);
+    }
+
+    // Phase 4: 预估对方下回合累计威胁 — 不递归、不枚举技能列表,
+    // 用"多敌累计 + 对手意图 + 资源/状态/距离衰减"替代单体 max。
     function 预估对方下回合最大威胁_V1(战局画像 = {}, behaviorState = {}) {
       const 敌方 = Array.isArray(战局画像.敌方列表) ? 战局画像.敌方列表 : [];
       if (!敌方.length) return 0;
-      const 全局蓄力 = !!behaviorState?.isChargingHighThreat;
-      let 最大威胁 = 0;
-      敌方.forEach(单位 => {
-        if (!单位 || typeof 单位 !== 'object') return;
-        let 威胁 = 0.2; // 基线
-        if (单位.蓄力技能 || Number(单位.蓄力剩余 || 单位.cast_time_left || 0) > 0) 威胁 += 0.40;
-        const hpRatio = getCombatHpRatio(单位);
-        if (hpRatio > 0.70) 威胁 += 0.20;  // 资源充足 → 可能爆发
-        const 系别 = 读取规划单位系别(单位);
-        if (['强攻系', '控制系', '敏攻系'].includes(系别)) 威胁 += 0.20;
-        if (全局蓄力) 威胁 += 0.15;
-        最大威胁 = Math.max(最大威胁, Math.min(1, 威胁));
+      const 总威胁 = 敌方.reduce((总和, 单位) => 总和 + 计算对手单体威胁_V1(单位, 战局画像, behaviorState), 0);
+      return 限制行为概率(总威胁, 0, 1);
+    }
+
+    function 汇总对手意图预测_V1(战局画像 = {}, behaviorState = {}) {
+      const 汇总 = { 输出: 0, 控制: 0, 治疗: 0, 保核: 0, 召唤: 0, 爆发: 0, 资源保留: 0 };
+      (战局画像.敌方列表 || []).forEach(单位 => {
+        if (!单位 || 单位?.状态?.存活 === false || getCombatHpRatio(单位) <= 0) return;
+        const 单体威胁 = Math.max(0.15, 计算对手单体威胁_V1(单位, 战局画像, behaviorState));
+        const 预测 = 预测对手下回合意图_V1(单位, 战局画像, behaviorState);
+        Object.keys(汇总).forEach(key => { 汇总[key] += 预测[key] * 单体威胁; });
       });
-      return 最大威胁;
+      Object.keys(汇总).forEach(key => { 汇总[key] = Math.round(汇总[key]); });
+      return 汇总;
+    }
+
+    function 判定危机层级_V1(战局画像 = {}, behaviorState = {}, actor = {}) {
+      const 下回合威胁 = 预估对方下回合最大威胁_V1(战局画像, behaviorState);
+      const 我方最低血 = Math.min(1, ...(战局画像.己方列表 || [actor]).filter(Boolean).map(getCombatHpRatio));
+      const 多人残血 = (战局画像.己方列表 || []).filter(单位 => getCombatHpRatio(单位) < 危机层级阈值_V1.多人残血血量 && 单位?.状态?.存活 !== false).length >= 2;
+      const 对方蓄力即将爆发 = (战局画像.敌方列表 || []).some(单位 => 单位?.状态?.存活 !== false && 单位?.蓄力技能 && Number(单位?.蓄力剩余 ?? 99) <= 1);
+      const 来袭 = behaviorState?.threatProfile || {};
+      if (来袭.lethalRisk === true || 下回合威胁 >= 危机层级阈值_V1.致命威胁 || (对方蓄力即将爆发 && 我方最低血 < 危机层级阈值_V1.致命我方血量)) {
+        return { 层级: '致命危机', 威胁: 下回合威胁, 加权: { 保核: 46, 治疗: 38, 控制: 34 } };
+      }
+      if (下回合威胁 >= 危机层级阈值_V1.重度威胁 || 多人残血 || 我方最低血 < 危机层级阈值_V1.重度我方血量) {
+        return { 层级: '重度危机', 威胁: 下回合威胁, 加权: { 控制: 30, 治疗: 26, 保核: 24 } };
+      }
+      if (下回合威胁 >= 危机层级阈值_V1.轻度威胁 || 我方最低血 < 危机层级阈值_V1.轻度我方血量 || Number(战局画像.资源压力 || 0) > 0.55) {
+        return { 层级: '轻度危机', 威胁: 下回合威胁, 加权: { 控制: 14, 保核: 12, 治疗: 10 } };
+      }
+      return { 层级: '无危机', 威胁: 下回合威胁, 加权: {} };
+    }
+
+    function 判定反击窗口_V1(actor = {}, 战局画像 = {}, behaviorState = {}) {
+      const 我方血量 = getCombatHpRatio(actor || 战局画像.我方核心 || {});
+      const 敌方列表 = 战局画像.敌方列表 || [];
+      const 下回合威胁 = 预估对方下回合最大威胁_V1(战局画像, behaviorState);
+      const 有敌方反击血量 = 敌方列表.some(单位 => {
+        const 血量 = getCombatHpRatio(单位);
+        return 单位?.状态?.存活 !== false && 血量 >= 反击窗口阈值_V1.敌方血量下限 && 血量 <= 反击窗口阈值_V1.敌方血量上限;
+      });
+      const 有可斩杀目标 = 敌方列表.some(单位 => 单位?.状态?.存活 !== false && getCombatHpRatio(单位) > 0 && getCombatHpRatio(单位) <= 反击窗口阈值_V1.可斩杀血量);
+      return 我方血量 >= 反击窗口阈值_V1.我方血量下限
+        && 我方血量 <= 反击窗口阈值_V1.我方血量上限
+        && (有敌方反击血量 || 有可斩杀目标)
+        &&下回合威胁 < 反击窗口阈值_V1.致命威胁
+        && behaviorState?.threatProfile?.lethalRisk !== true;
+    }
+
+    function 推断行动类别_V1(指标 = {}) {
+      if (指标.是治疗) return '治疗';
+      if (指标.是防护) return '防护';
+      if (指标.是控制) return '控制';
+      if (指标.是召唤) return '召唤';
+      if (指标.可斩杀 || 指标.是融合技 || 指标.是大招 || 指标.是稀缺技能) return '终局爆发';
+      if (指标.是输出 || 指标.是破防) return '输出';
+      return '资源保留';
+    }
+
+    function 评估我方行动后一阶风险_V1(行动类别, actor = {}, target = {}, 战局画像 = {}, behaviorState = {}) {
+      const 当前威胁 = 预估对方下回合最大威胁_V1(战局画像, behaviorState);
+      const 目标威胁 = target ? 计算对手单体威胁_V1(target, 战局画像, behaviorState) : 0;
+      const 目标血量 = getCombatHpRatio(target || {});
+      const 来袭 = behaviorState?.threatProfile || {};
+      let 风险变化 = 0;
+      let 推荐意图 = '集火';
+      let 理由 = '常规';
+      if (行动类别 === '控制' && (target?.蓄力技能 || 目标威胁 > 0.45)) {
+        风险变化 += 一阶前瞻权重表_V1.控制打断风险下降;
+        推荐意图 = '控制';
+        理由 = '控制高威胁';
+      }
+      if (['输出', '终局爆发'].includes(行动类别) && target && 目标血量 > 0 && (目标血量 <= 0.32 || 目标威胁 > 0.48)) {
+        风险变化 += 一阶前瞻权重表_V1.斩杀高威胁风险下降 * Math.max(0.45, Math.min(1, 目标威胁 + (1 - 目标血量)));
+        推荐意图 = '击杀';
+        理由 = '斩杀高威胁';
+      }
+      if (行动类别 === '治疗' && 来袭.lethalRisk === true) {
+        风险变化 += 一阶前瞻权重表_V1.治疗致命风险下降;
+        推荐意图 = '治疗';
+        理由 = '致命治疗';
+      }
+      if (行动类别 === '防护') {
+        if (来袭.lethalRisk === true || 当前威胁 > 0.75) {
+          风险变化 += 一阶前瞻权重表_V1.防护致命风险下降;
+          推荐意图 = '保核';
+          理由 = '致命防护';
+        } else if (判定反击窗口_V1(actor, 战局画像, behaviorState)) {
+          风险变化 += 一阶前瞻权重表_V1.防护错失反击;
+          推荐意图 = '反击';
+          理由 = '错失反击';
+        }
+      }
+      if (行动类别 === '召唤' && 当前威胁 > 0.45) {
+        风险变化 += 一阶前瞻权重表_V1.召唤缓压;
+        推荐意图 = '保核';
+        理由 = '召唤缓压';
+      }
+      return { 风险变化: 限制行为概率(风险变化, -1, 1), 推荐意图, 理由 };
+    }
+
+    // ===== Phase D: 战场情境表 — 10 个独立情境,数据驱动加权 =====
+    // 不再依赖"残血/压力"两条触发线,显式枚举常见战场情境。每条情境独立检查 + 加权。
+    // 数据信号都来自现有 战局画像 / behaviorState / actor.属性.状态效果, 无需新加 schema。
+    const 战场情境表_V1 = Object.freeze([
+      {
+        名称: '对方蓄力即将爆发(剩 ≤ 1)',
+        检查: (战局画像) => (战局画像.敌方列表 || []).some(u =>
+          (u?.状态?.存活 !== false) && u?.蓄力技能 && Number(u?.蓄力剩余 || 99) <= 1),
+        加权: { 控制: 28, 保核: 22, 击杀: 16 },
+      },
+      {
+        名称: '对方蓄力 ≥ 2 回合 (中长期布局)',
+        检查: (战局画像) => (战局画像.敌方列表 || []).some(u =>
+          (u?.状态?.存活 !== false) && u?.蓄力技能 && Number(u?.蓄力剩余 || 0) >= 2),
+        加权: { 控制: 18, 资源消耗: 14 },
+      },
+      {
+        名称: '我方人数劣势 ≥ 2',
+        检查: (战局画像) => {
+          const 我方 = (战局画像.己方列表 || []).filter(u => u?.状态?.存活 !== false).length;
+          const 敌方 = (战局画像.敌方列表 || []).filter(u => u?.状态?.存活 !== false).length;
+          return 敌方 - 我方 >= 2;
+        },
+        加权: { 拖回合: 22, 控制: 18, 保留资源: 12 },
+      },
+      {
+        名称: '我方多人残血(≥ 2 人 < 50%)',
+        检查: (战局画像) => (战局画像.己方列表 || []).filter(u =>
+          getCombatHpRatio(u) < 0.5 && u?.状态?.存活 !== false).length >= 2,
+        加权: { 治疗: 30, 保核: 24 },
+      },
+      {
+        名称: '距集火完成 1 击 (敌方残血 < 15%)',
+        检查: (战局画像) => (战局画像.敌方列表 || []).some(u => {
+          const r = getCombatHpRatio(u);
+          return r > 0 && r < 0.15 && (u?.状态?.存活 !== false);
+        }),
+        加权: { 击杀: 32, 终局爆发: 28, 集火: 24 },
+      },
+      {
+        名称: '我方核心增益即将解除(剩 1 回合)',
+        检查: (战局画像, behaviorState, actor) => {
+          const 核心 = 战局画像.我方核心 || actor;
+          const 状态效果 = 核心?.属性?.状态效果 || {};
+          return Object.values(状态效果).some(s =>
+            Number(s?.持续回合 || 0) === 1 &&
+            (s?.类型 === '增益' || s?.类型 === 'buff'));
+        },
+        加权: { 维持压制: 16, 保核: 12 },
+      },
+      {
+        名称: '敌方控制/减益即将解除',
+        检查: (战局画像) => {
+          const 状态效果 = 战局画像.敌方核心?.属性?.状态效果 || {};
+          return Object.values(状态效果).some(s =>
+            Number(s?.持续回合 || 0) === 1 &&
+            (s?.类型 === '减益' || s?.类型 === 'debuff' || s?.类型 === '控制'));
+        },
+        加权: { 控制: 22, 击杀: 16 },
+      },
+      {
+        名称: '撤退窗口成熟(允许撤离 + 我方明显劣势)',
+        检查: (战局画像) => {
+          if (!战局画像.允许撤离) return false;
+          const 己方 = 战局画像.己方列表 || [];
+          const 敌方 = 战局画像.敌方列表 || [];
+          if (!己方.length || !敌方.length) return false;
+          const 我方平均 = 己方.reduce((s, u) => s + getCombatHpRatio(u), 0) / 己方.length;
+          const 敌方平均 = 敌方.reduce((s, u) => s + getCombatHpRatio(u), 0) / 敌方.length;
+          return 我方平均 < 0.30 && 敌方平均 > 0.70;
+        },
+        加权: { 拖回合: 28, 保核: 18 },
+      },
+      {
+        名称: '我方体力濒崩(actor 体力 < 30%)',
+        检查: (战局画像, behaviorState, actor) => {
+          const 体力上限 = Math.max(1, Number(actor?.属性?.体力上限 ?? actor?.vit_max ?? 1));
+          const 当前体力 = Math.max(0, Number(actor?.属性?.体力 ?? actor?.vit ?? 0));
+          return (当前体力 / 体力上限) < 0.30;
+        },
+        加权: { 保留资源: 24, 拖回合: 18 },  // 体力濒崩时减少高耗动作 + 拖时间回体力
+      },
+      {
+        名称: '敌方体力濒崩(任一敌方 体力 < 25%)',
+        检查: (战局画像) => (战局画像.敌方列表 || []).some(u => {
+          if (u?.状态?.存活 === false) return false;
+          const 体力上限 = Math.max(1, Number(u?.属性?.体力上限 ?? u?.vit_max ?? 1));
+          const 当前体力 = Math.max(0, Number(u?.属性?.体力 ?? u?.vit ?? 0));
+          return (当前体力 / 体力上限) < 0.25;
+        }),
+        加权: { 击杀: 22, 集火: 16 },  // 敌方力竭即收割窗口
+      },
+    ]);
+
+    function 应用战场情境加权_V1(战局画像, behaviorState, actor, 加权) {
+      const 命中情境 = [];
+      for (const 项 of 战场情境表_V1) {
+        try {
+          if (项.检查(战局画像, behaviorState, actor)) {
+            Object.entries(项.加权).forEach(([意图, 分值]) => 加权(意图, 分值));
+            命中情境.push(项.名称);
+          }
+        } catch (error) {
+          console.warn('[Phase D] 情境检查异常:', 项.名称, error?.message);
+        }
+      }
+      return 命中情境;
     }
 
     function normalizeCombatStageValue(value, fallback = 战斗阶段枚举_V1.宣告) {
@@ -3016,6 +3366,8 @@ class BattleUIComponent {
           if (结算 === '伤害吸收') {
             计算层效果.吸收来源 = ['造成伤害', '受到伤害'].includes(String(effect?.吸收来源 || '').trim()) ? String(effect?.吸收来源 || '').trim() : '造成伤害';
             计算层效果.吸收资源 = ['生命', '体力', '魂力', '精神力'].includes(String(effect?.吸收资源 || '').trim()) ? String(effect?.吸收资源 || '').trim() : '生命';
+            计算层效果.吸收转化效果 = ['恢复资源', '下次造成伤害'].includes(String(effect?.转化效果 || '').trim()) ? String(effect?.转化效果 || '').trim() : '恢复资源';
+            计算层效果.伤害吸收增幅上限 = Math.max(0, Math.min(1, Math.abs(读取战斗数值正负(effect?.增幅上限 || '+50%'))));
           }
           if (结算 === '伤害分摊') {
             计算层效果.damage_share_count = String(effect?.目标 || '').trim() === '群体' ? Math.max(1, Math.round(Number(effect?.数量 || 1))) : 1;
@@ -3607,6 +3959,11 @@ class BattleUIComponent {
         'damage_reflect_ratio',
         'damage_transfer_ratio',
         'damage_transfer_target',
+        'damage_absorb_ratio',
+        '吸收来源',
+        '吸收资源',
+        '吸收转化效果',
+        '伤害吸收增幅上限',
         'damage_share_ratio',
         'cost_share_ratio',
         'damage_reduction',
@@ -4747,6 +5104,10 @@ class BattleUIComponent {
         damage_reflect_ratio: 0,
         damage_transfer_ratio: 0,
         damage_transfer_target: '',
+        吸收来源: '',
+        吸收资源: '',
+        吸收转化效果: '',
+        伤害吸收增幅上限: 0,
         damage_share_ratio: 0,
         damage_share_count: 0,
         cost_share_ratio: 0,
@@ -4805,7 +5166,7 @@ class BattleUIComponent {
         result[key] = Math.max(Number(result[key] ?? 0), Number(value ?? 0));
         return;
       }
-      if (key === 'damage_transfer_target') {
+      if (['damage_transfer_target', '吸收来源', '吸收资源', '吸收转化效果'].includes(key)) {
         result[key] = String(value || result[key] || '').trim();
         return;
       }
@@ -4986,6 +5347,50 @@ class BattleUIComponent {
       const direct = unit?.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : null;
       const stats = unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : {};
       return direct || (stats?.状态效果 && typeof stats.状态效果 === 'object' ? stats.状态效果 : {});
+    }
+
+    function 读取条件分支单位文本(unit = {}) {
+      if (!unit || typeof unit !== 'object') return '';
+      const 文本列表 = [];
+      const 追加 = value => {
+        const 文本 = String(value || '').trim();
+        if (文本) 文本列表.push(文本);
+      };
+      [
+        unit.name,
+        unit.名称,
+        unit.id,
+        unit.单位性质,
+        unit.类型,
+        unit.身份,
+        unit.来源,
+        unit.标准物种,
+        unit.具体物种,
+        unit.种族,
+        unit.称号,
+        unit.境界,
+        unit?.属性?.系别,
+        unit?.属性?.标准物种,
+        unit?.属性?.具体物种,
+        unit?.属性?.种族,
+      ].forEach(追加);
+      ['第一武魂', '第二武魂'].forEach(槽位 => {
+        const 武魂 = unit?.[槽位];
+        if (!武魂 || typeof 武魂 !== 'object') return;
+        [武魂.名称, 武魂.武魂, 武魂.表象名称, 武魂.描述, 武魂.系别, 武魂.属性体系].forEach(追加);
+      });
+      Object.keys(unit?.社交?.势力 || {}).forEach(追加);
+      return 文本列表.join(' ');
+    }
+
+    function 判断条件分支单位文本(unit = {}, value = '', op = '包含') {
+      const 条件值 = String(value || '').trim();
+      if (!条件值) return false;
+      const 单位文本 = 读取条件分支单位文本(unit);
+      const 命中 = 单位文本.includes(条件值);
+      if (op === '无' || op === '!=') return !命中;
+      if (op === '有' || op === '包含') return 命中;
+      return 单位文本 === 条件值;
     }
 
     function 条件分支状态存在命中(stateMap = {}, 状态名 = '', 比较 = '包含') {
@@ -5247,6 +5652,7 @@ class BattleUIComponent {
       if (type === '装备状态') return 判断条件分支装备状态(unit, value, op);
       if (type === '自身状态') return 判断条件分支自身状态(unit, value, op);
       if (type === '连携前提') return 判断条件分支连携前提(unit, value, op, context);
+      if (type === '单位文本') return 判断条件分支单位文本(unit, value, op);
       if (type === '状态存在') {
         const stateMap = 读取条件分支状态表(unit);
         return 条件分支状态存在命中(stateMap, condition.状态 || value, op);
@@ -9057,6 +9463,24 @@ class BattleUIComponent {
         result.canCast = false;
         result.failureReason = `${failedPartner.name}状态不足`;
       }
+      // Phase E: 摘出行动类型标注 + 技能谓词, 供 deductParsedCostFromUnit 推断疲劳率
+      try {
+        result.__action_type = String(skill?.action_type || skill?.类别 || skill?.category || '').trim();
+        result.__风险等级 = String(skill?.风险等级 || skill?.summary?.风险等级 || '').trim();
+        result.__来源类别 = (typeof 读取战斗来源类别上下文 === 'function')
+          ? String(读取战斗来源类别上下文(skill, '魂技')?.来源类别 || '').trim()
+          : '';
+        // 技能谓词推断 (轻量, 不调 deriveBattleSummaryFromEffects)
+        const _效果数组 = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
+        const _原型集合 = _效果数组.map(e => String(e?.原型 || '').trim());
+        result.__是输出 = _原型集合.some(p => /伤害结算|伤害|破甲|护盾.*斩除|护盾.*窃取/.test(p))
+          || /^(伤害|输出|攻击)/.test(result.__action_type);
+        result.__是治疗 = _原型集合.some(p => /生命恢复|资源变化.*生命|HP恢复/.test(p));
+        result.__是控制 = _原型集合.some(p => /控制|眩晕|沉默|束缚|定身|混乱/.test(p));
+        result.__是防护 = _原型集合.some(p => /护盾|防御|减伤|保护|减害/.test(p));
+        result.__是召唤 = _原型集合.some(p => /^召唤生成$|召唤/.test(p));
+        result.__是维持 = !!(getSkillCostText && /维持/.test(getSkillCostText(skill) || ''));
+      } catch (e) { /* 缺依赖时静默 */ }
       return result;
     }
 
@@ -9665,6 +10089,91 @@ class BattleUIComponent {
       });
     }
 
+    // ===== Phase E: 体力疲劳 + 全属性衰减 =====
+    // 设计:
+    //   1. 任何主动行动消耗基础行动疲劳, 按行动类型分级 (见 行动疲劳率表_V1)
+    //   2. 体力比例越低, 全属性 (str/def/agi 6 维) 衰减越严重
+    //   3. 体力 = 0 → 已有"昏迷 KO"判定接管
+    const 体力衰减分段表_V1 = Object.freeze([
+      { 比例下界: 0.50, 系数: 1.00 },  // ≥ 50% 充沛
+      { 比例下界: 0.30, 系数: 0.90 },  // 30-50% 疲劳
+      { 比例下界: 0.15, 系数: 0.75 },  // 15-30% 力竭
+      { 比例下界: 0.00, 系数: 0.50 },  // 0-15% 濒崩
+    ]);
+
+    // 行动疲劳率表 — 体力 = 肉体动作能量, 物理动作扣得多, 纯施法扣得少
+    // 优先级: action_type 命中纯操作型 > 装备激活 > 召唤/维持极低 > 控制/治疗/辅助低 > 输出按品质
+    const 行动疲劳率表_V1 = Object.freeze({
+      // 纯操作型动作 (无 skill 对应, action_type 直接命中)
+      '待机':         0.003,
+      '调息':         0.003,
+      '稳态调整':     0.005,
+      '防御':         0.012,  // 格挡仍消耗
+      '移动':         0.015,
+      '位移':         0.015,
+      '普通攻击':     0.030,
+      '攻击':         0.030,
+      '闪避':         0.040,  // 高敏捷动作
+    });
+    // 按 skill 谓词分级 (体力消耗 = 物理动作强度, 不是技能强度)
+    const 行动疲劳率_装备激活_V1 = 0.025;
+    const 行动疲劳率_召唤_V1 = 0.003;        // 站着施法, 几乎不耗
+    const 行动疲劳率_维持_V1 = 0.003;        // 只消耗魂力
+    const 行动疲劳率_控制治疗辅助_V1 = 0.005;  // 精神力/魂力主导
+    const 行动疲劳率_输出基础_V1 = 0.040;     // 普通攻击型魂技
+    const 行动疲劳率_输出高品质_V1 = 0.070;   // 风险等级=高 大招
+    const 行动疲劳率_输出融合技_V1 = 0.120;   // 武魂融合技, 物理+魂力双重
+    const 行动疲劳率默认_V1 = 0.020;
+
+    function 计算体力衰减系数_V1(单位 = {}) {
+      const stats = 单位?.属性 || 单位 || {};
+      const 体力上限 = Math.max(1, Number(stats.体力上限 ?? stats.vit_max ?? 1));
+      const 当前体力 = Math.max(0, Number(stats.体力 ?? stats.vit ?? 0));
+      const 比例 = 当前体力 / 体力上限;
+      for (const 段 of 体力衰减分段表_V1) {
+        if (比例 >= 段.比例下界) return 段.系数;
+      }
+      return 体力衰减分段表_V1[体力衰减分段表_V1.length - 1].系数;
+    }
+
+    // 解析 parsed 的行动类型, 返回疲劳率 (% 体力上限)
+    function 推断行动疲劳率_V1(parsed = {}) {
+      const 来源类别 = String(parsed?.__来源类别 || '').trim();
+      const 风险等级 = String(parsed?.__风险等级 || '').trim();
+      const action_type = String(parsed?.__action_type || '').trim();
+      const 是输出 = !!parsed?.__是输出;
+      const 是控制 = !!parsed?.__是控制;
+      const 是治疗 = !!parsed?.__是治疗;
+      const 是防护 = !!parsed?.__是防护;
+      const 是召唤 = !!parsed?.__是召唤;
+      const 是维持 = !!parsed?.__是维持;
+      // 1. 纯操作型动作 (无 skill, action_type 命中) — 闪避 / 移动 / 待机 / 普通攻击 / 防御
+      if (行动疲劳率表_V1[action_type] !== undefined) return 行动疲劳率表_V1[action_type];
+      // 2. 装备激活 — 穿戴动作, 中等物理消耗
+      if (来源类别 === '装备技能') return 行动疲劳率_装备激活_V1;
+      // 3. 召唤 — 站着施法, 几乎不耗体力
+      if (是召唤) return 行动疲劳率_召唤_V1;
+      // 4. 维持类 — 持续状态, 只消耗魂力
+      if (是维持 && !是输出) return 行动疲劳率_维持_V1;
+      // 5. 控制 / 治疗 / 防护 — 精神力/魂力主导, 体力极低耗
+      if ((是控制 || 是治疗 || 是防护) && !是输出) return 行动疲劳率_控制治疗辅助_V1;
+      // 6. 输出类 — 物理动作强度, 按品质细分
+      if (是输出) {
+        if (来源类别 === '武魂融合技') return 行动疲劳率_输出融合技_V1;
+        if (风险等级 === '高') return 行动疲劳率_输出高品质_V1;
+        return 行动疲劳率_输出基础_V1;
+      }
+      // 7. 默认 (混合 / 不明类型)
+      return 行动疲劳率默认_V1;
+    }
+
+    function 计算行动疲劳体力_V1(单位 = {}, parsed = {}) {
+      const stats = 单位?.属性 || 单位 || {};
+      const 体力上限 = Math.max(1, Number(stats.体力上限 ?? stats.vit_max ?? 1));
+      const 疲劳率 = 推断行动疲劳率_V1(parsed);
+      return Math.max(1, Math.round(体力上限 * 疲劳率));
+    }
+
     function buildCombatFinalStats(char) {
       const final = deepClone(char || {});
       final.状态效果 = deepClone(char?.状态效果 || {});
@@ -9713,6 +10222,17 @@ class BattleUIComponent {
       if (final.sp_max !== undefined && final.sp !== undefined) final.sp = Math.min(final.sp, final.sp_max);
       if (final.vit_max !== undefined && final.vit !== undefined) final.vit = Math.min(final.vit, final.vit_max);
       if (final.men_max !== undefined && final.men !== undefined) final.men = Math.min(final.men, final.men_max);
+      // Phase E: 体力衰减 — 体力低于阈值时,全 6 维属性按分段系数下调
+      const 体力衰减系数 = 计算体力衰减系数_V1(char);
+      if (体力衰减系数 < 1.0) {
+        final.str = Number(final.str || 0) * 体力衰减系数;
+        final.def = Number(final.def || 0) * 体力衰减系数;
+        final.agi = Number(final.agi || 0) * 体力衰减系数;
+        if (final.sp_max !== undefined) final.sp_max = Number(final.sp_max || 0) * 体力衰减系数;
+        if (final.vit_max !== undefined) final.vit_max = Number(final.vit_max || 0) * 体力衰减系数;
+        if (final.men_max !== undefined) final.men_max = Number(final.men_max || 0) * 体力衰减系数;
+        final.__体力衰减系数 = 体力衰减系数;
+      }
       final.str = Math.round(Number(final.str || 0));
       final.def = Math.round(Number(final.def || 0));
       final.agi = Math.round(Number(final.agi || 0));
@@ -9826,6 +10346,8 @@ class BattleUIComponent {
           heal_to_damage_ratio: stateModule.计算层效果?.heal_to_damage_ratio ?? 0,
           吸收来源: stateModule.计算层效果?.吸收来源 ?? '',
           吸收资源: stateModule.计算层效果?.吸收资源 ?? '',
+          吸收转化效果: stateModule.计算层效果?.吸收转化效果 ?? '',
+          伤害吸收增幅上限: stateModule.计算层效果?.伤害吸收增幅上限 ?? 0,
         },
       };
       if (stateModule.原型) 状态条目.来源原型 = stateModule.原型;
@@ -11062,9 +11584,12 @@ class BattleUIComponent {
         const 系别 = 读取规划单位系别(unit);
         const 名称 = 读取规划单位名称(unit);
         const 宿主召唤数 = 读取召唤单位列表(combatData, { 宿主: unit }).length;
+        const 单体威胁 = 计算对手单体威胁_V1(unit, 画像, { combatData });
+        const 血量比例 = getCombatHpRatio(unit);
         const 理由 = [];
         let 分数 = 24 + Math.min(70, 计算目标威胁分(unit) / 55);
-        if (getCombatHpRatio(unit) < 0.35) { 分数 += 42; 理由.push('残血可收割'); }
+        if (血量比例 < 0.35) { 分数 += 42; 理由.push('残血可收割'); }
+        if (单体威胁 > 0.45 && 血量比例 > 0 && 血量比例 < 0.42) { 分数 += 34; 理由.push('高威胁可斩杀'); }
         if (['治疗系', '辅助系', '食物系'].includes(系别)) { 分数 += 38; 理由.push('后排/续航核心'); }
         if (系别 === '控制系') { 分数 += 32; 理由.push('控制核心'); }
         if (读取规划维持压力(unit) > 0) { 分数 += 44; 理由.push('维持释放者'); }
@@ -11072,7 +11597,11 @@ class BattleUIComponent {
         if (unit?.蓄力技能) { 分数 += 46; 理由.push('蓄力高威胁'); }
         if (快照.hasShielded || 快照.hasReactiveDefense) { 分数 += 18; 理由.push('护盾/防御核心'); }
         if (快照.hasTargetLock) { 分数 += 42; 理由.push('被标记'); }
-        if (团队意图.集火目标 && isCombatUnitIdentityMatch(unit, 团队意图.集火目标)) { 分数 += 52; 理由.push('团队集火'); }
+        if (团队意图.集火目标 && isCombatUnitIdentityMatch(unit, 团队意图.集火目标)) {
+          const 集火加成 = unit?.蓄力技能 && 单体威胁 > 0.48 ? 34 : 52;
+          分数 += 集火加成;
+          理由.push('团队集火');
+        }
         if (画像.控制目标 && isCombatUnitIdentityMatch(unit, 画像.控制目标?.name || 画像.控制目标)) { 分数 += 18; 理由.push('控制优先'); }
         return { 单位: unit, 名称, 优先级: Math.max(1, Math.round(分数)), 理由: 理由.length ? 理由 : ['常规威胁'] };
       };
@@ -11169,15 +11698,39 @@ class BattleUIComponent {
       } catch (error) {
         console.warn('[Phase 3.D] 反击意图判定异常,降级跳过', error?.message);
       }
-      // Phase 4: 单步前瞻 — 对方下回合最大威胁达阈值时,主动转防守
+      // Phase D: 战场情境表 — 8 个独立情境数据驱动加权(取代过去对"残血/压力"两线的单点依赖)
       try {
-        const 下回合预估威胁 = 预估对方下回合最大威胁_V1(战局画像, behaviorState);
-        if (下回合预估威胁 > 时机决策阈值_V1.防守优先_对方下回合威胁) {
-          加权('保核', 40);
-          加权('控制', 30);
+        应用战场情境加权_V1(战局画像, behaviorState, actor, 加权);
+      } catch (error) {
+        console.warn('[Phase D] 战场情境加权异常,降级跳过', error?.message);
+      }
+      // Phase 4: 对手认知 + 危机互斥层级 — 用累计威胁和意图预测替代单体 max
+      try {
+        const 危机 = 判定危机层级_V1(战局画像, behaviorState, actor);
+        Object.entries(危机.加权 || {}).forEach(([意图, 分值]) => 加权(意图, 分值));
+        const 对手意图 = 汇总对手意图预测_V1(战局画像, behaviorState);
+        if (对手意图.爆发 >= 28 || 对手意图.输出 >= 32) {
+          加权('控制', 22);
+          加权('保核', 危机.层级 === '致命危机' ? 18 : 8);
+        }
+        if (对手意图.治疗 >= 24 || 对手意图.保核 >= 28) {
+          加权('击杀', 18);
+          加权('资源消耗', 14);
+        }
+        if (对手意图.控制 >= 28) {
+          加权('驱散', 12);
+          加权('控制', 10);
+        }
+        if (判定反击窗口_V1(actor, 战局画像, behaviorState)) {
+          加权('击杀', 30);
+          加权('反击', 28);
+          加权('控制', 16);
+          加权('破防', 12);
+          加权('保核', -22);
+          加权('拖回合', -20);
         }
       } catch (error) {
-        console.warn('[Phase 4] 单步前瞻异常,降级跳过', error?.message);
+        console.warn('[Phase 4] 对手认知判定异常,降级跳过', error?.message);
       }
       const 意图列表 = [...候选.entries()]
         .map(([名称, 权重]) => ({ 名称, 权重: Math.round(权重) }))
@@ -11268,6 +11821,10 @@ class BattleUIComponent {
             skill: 规划技能,
           }, 规划上下文.combatData || {}).projectedDamageRatio
         : 0;
+      const 行动类别 = 推断行动类别_V1({
+        是输出, 是控制, 是治疗, 是防护, 是破防, 是召唤, 可斩杀, 是融合技, 是大招, 是稀缺技能,
+      });
+      const 一阶风险 = 评估我方行动后一阶风险_V1(行动类别, actor, target, 规划上下文.战局画像 || {}, 规划上下文);
       return {
         skill, actor, target, 规划上下文, 基础收益,
         效果列表, 规划技能, summary, mainType, 战斗目标类型, 目标立场, 目标项, 意图, 技能文本,
@@ -11275,7 +11832,7 @@ class BattleUIComponent {
         技能消耗压力, 是高耗, 可斩杀, 技能名, 重复次数,
         来源类别, 是融合技, 是大招, 是稀缺技能, 是装备技能,
         敌方最低血, 我方最低血, 当前回合, 终局压力,
-        目标快照, 目标血量比例, 保护目标血量比例, 预估伤害,
+        目标快照, 目标血量比例, 保护目标血量比例, 预估伤害, 行动类别, 一阶风险,
       };
     }
 
@@ -11312,7 +11869,7 @@ class BattleUIComponent {
 
     function 计算情境修正_V1(指标) {
       const { actor, target, 目标项, 目标立场, 是输出, 是控制, 是治疗, 是防护, 是破防, 可斩杀, 规划上下文,
-        技能名, 重复次数, 当前回合, 目标快照, 目标血量比例, 保护目标血量比例, 预估伤害 } = 指标;
+        技能名, 重复次数, 当前回合, 目标快照, 目标血量比例, 保护目标血量比例, 预估伤害, 一阶风险 } = 指标;
       const 轨迹 = []; let delta = 0;
       // Phase 3.G: 目标切换惩罚
       const 上次行动目标 = String(actor?.决策记忆?.last_action_target || '').trim();
@@ -11322,9 +11879,13 @@ class BattleUIComponent {
           const 名 = String(单位?.name || 单位?.名称 || '').trim();
           return 名 === 上次行动目标 && (单位?.状态?.存活 !== false) && getCombatHpRatio(单位) > 0;
         });
-        if (上次目标存活) {
+        const 切换收益显著 = target && 计算对手单体威胁_V1(target, 规划上下文.战局画像, 规划上下文) > 0.48 && (target?.蓄力技能 || 一阶风险?.风险变化 < -0.28);
+        if (上次目标存活 && !切换收益显著) {
           delta -= 15;
           轨迹.push(`目标切换 ${上次行动目标}→${当前目标名} -15`);
+        } else if (上次目标存活 && 切换收益显著) {
+          delta += 10;
+          轨迹.push(`目标切换豁免 ${当前目标名} +10`);
         }
       }
       // Phase 2.C: 行为多样性扣减(含动态阶段缩放)
@@ -11394,6 +11955,15 @@ class BattleUIComponent {
       if (是破防 && (目标快照.hasShielded || 目标快照.hasDefenseBuffed || 目标快照.hasReactiveDefense)) {
         delta += 38;
         轨迹.push('破盾破防 +38');
+      }
+      if (一阶风险?.风险变化 < -0.25) {
+        const 增量 = Math.min(34, Math.round(Math.abs(一阶风险.风险变化) * 72));
+        delta += 增量;
+        轨迹.push(`一阶前瞻:${一阶风险.理由} +${增量}`);
+      } else if (一阶风险?.风险变化 > 0.18) {
+        const 扣减 = Math.min(28, Math.round(一阶风险.风险变化 * 70));
+        delta -= 扣减;
+        轨迹.push(`一阶前瞻:${一阶风险.理由} -${扣减}`);
       }
       delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.情境修正层);
       return { delta, 轨迹 };
@@ -11483,7 +12053,7 @@ class BattleUIComponent {
     }
 
     function 计算资源约束修正_V1(指标) {
-      const { 意图, 是高耗, 可斩杀, 规划上下文, 技能消耗压力, 基础收益 } = 指标;
+      const { 意图, 是高耗, 可斩杀, 规划上下文, 技能消耗压力, 基础收益, 一阶风险 } = 指标;
       const 轨迹 = []; let delta = 0;
       // 保留资源(意图驱动)
       if (意图.保留资源 && 是高耗 && !可斩杀 && !规划上下文.来袭窗口摘要?.lethalRisk) {
@@ -11514,6 +12084,11 @@ class BattleUIComponent {
         delta -= 32;
         轨迹.push('高耗低收益 -32');
       }
+      if (是高耗 && !可斩杀 && 一阶风险?.风险变化 > 0.18 && !规划上下文.来袭窗口摘要?.lethalRisk) {
+        const 扣减 = Math.min(34, Math.round(18 + 一阶风险.风险变化 * 40));
+        delta -= 扣减;
+        轨迹.push(`高耗前瞻风险 -${扣减}`);
+      }
       delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.资源约束层);
       return { delta, 轨迹 };
     }
@@ -11538,8 +12113,9 @@ class BattleUIComponent {
       const r3 = 计算机制时机修正_V1(指标);
       const r4 = 计算资源约束修正_V1(指标);
       const r5 = 计算否决修正_V1(指标);
+      const 总修正 = 应用层级clamp_V1(r1.delta + r2.delta + r3.delta + r4.delta + r5.delta, 战术修正层级量级_V1.总修正层);
       return {
-        修正值: Math.round(r1.delta + r2.delta + r3.delta + r4.delta + r5.delta),
+        修正值: Math.round(总修正),
         轨迹: [...r1.轨迹, ...r2.轨迹, ...r3.轨迹, ...r4.轨迹, ...r5.轨迹],
       };
     }
@@ -16303,7 +16879,7 @@ class BattleUIComponent {
             } else {
             let saveLog = triggerDeathSave(defender);
             if (saveLog) {
-              设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
+              if (!/金龙不灭真身/.test(saveLog)) 设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
               roundLog += ` ${saveLog}`;
             }
           }
@@ -16593,6 +17169,15 @@ class BattleUIComponent {
       function deductParsedCostFromUnit(targetUnit, parsed = {}) {
         if (!targetUnit || !parsed) return;
         const stats = targetUnit.属性 || targetUnit;
+        // Phase E: 任何主动行动叠加分级行动疲劳 (按 action_type / 风险等级 / 来源类别 推断)
+        // 跳过条件: parsed.skipFatigue === true (内部分摊 / 反伤 / 被动结算等非主动行动)
+        if (!parsed.__已注入行动疲劳 && parsed.skipFatigue !== true) {
+          const 行动疲劳 = 计算行动疲劳体力_V1(targetUnit, parsed);
+          parsed.reqVit = Math.max(0, Number(parsed.reqVit || 0)) + 行动疲劳;
+          parsed.__已注入行动疲劳 = true;
+          parsed.__行动疲劳数值 = 行动疲劳;
+          parsed.__行动疲劳率 = 推断行动疲劳率_V1(parsed);
+        }
         const 下一魂力 = Math.max(0, Number(stats.sp ?? stats.魂力 ?? 0) - Number(parsed.reqSp || 0));
         const 下一体力 = Math.max(0, Number(stats.sta ?? stats.体力 ?? stats.vit ?? 0) - Number(parsed.reqVit || 0));
         const 下一精神力 = Math.max(0, Number(stats.men ?? stats.精神力 ?? 0) - Number(parsed.reqMen || 0));
@@ -17796,6 +18381,52 @@ class BattleUIComponent {
         return log;
       }
 
+      function 扣除黄金瀑布触发体力(单位 = {}, 状态文本 = '') {
+        if (!/黄金瀑布/.test(String(状态文本 || ''))) return { 可触发: true, 消耗量: 0 };
+        const 消耗量 = Math.max(1, Math.floor(getCombatStaminaMaxValue(单位) * 0.1));
+        if (getCombatStaminaValue(单位) < 消耗量) return { 可触发: false, 消耗量 };
+        设置战斗体力值(单位, getCombatStaminaValue(单位) - 消耗量);
+        return { 可触发: true, 消耗量 };
+      }
+
+      function 写入下次伤害增幅状态(单位 = {}, 增幅比例 = 0, 来源名 = '伤害吸收', 上限比例 = 0.5) {
+        if (!单位 || typeof 单位 !== 'object') return 0;
+        const 上限 = Math.max(0, Math.min(1, Number(上限比例 || 0.5)));
+        const 增幅 = Math.max(0, Math.min(上限, Number(增幅比例 || 0)));
+        if (!(增幅 > 0)) return 0;
+        if (!单位.状态效果) 单位.状态效果 = {};
+        const 状态名 = `${来源名 || '伤害吸收'}·下次伤害增幅`;
+        const 旧状态 = 单位.状态效果[状态名];
+        const 旧增幅 = Math.max(0, Number(旧状态?.战斗效果?.final_damage_mult || 1) - 1);
+        const 新增幅 = Math.min(上限, 旧增幅 + 增幅);
+        if (!(新增幅 > 旧增幅)) return 0;
+        单位.状态效果[状态名] = {
+          类型: 'buff',
+          层数: 1,
+          来源技能: 来源名 || '伤害吸收',
+          描述: `由[${来源名 || '伤害吸收'}]蓄积，下次造成伤害时生效`,
+          duration: 1,
+          __一次性伤害增幅: true,
+          面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
+          战斗效果: { ...createEmptyCombatEffectMap(), final_damage_mult: 1 + 新增幅 },
+        };
+        if (单位.召唤键) 同步召唤单位镜像(单位);
+        return 新增幅 - 旧增幅;
+      }
+
+      function 消耗一次性伤害增幅状态(单位 = {}) {
+        if (!单位?.状态效果) return [];
+        const 消耗列表 = [];
+        Object.entries(单位.状态效果).forEach(([状态名, 状态]) => {
+          if (状态?.__一次性伤害增幅 !== true) return;
+          const 增幅 = Math.max(0, Number(状态?.战斗效果?.final_damage_mult || 1) - 1);
+          delete 单位.状态效果[状态名];
+          消耗列表.push({ 状态名, 增幅 });
+        });
+        if (消耗列表.length && 单位.召唤键) 同步召唤单位镜像(单位);
+        return 消耗列表;
+      }
+
       function triggerDeathSave(defender) {
         if (!defender?.状态效果) return null;
         if (defender.__本阶段已触发免死) return null;
@@ -17804,10 +18435,20 @@ class BattleUIComponent {
           .filter(entry => Number(entry.ce.death_save_count || 0) > 0)
           .sort((a, b) => Number(b.ce.death_save_count || 0) - Number(a.ce.death_save_count || 0))[0];
         if (!candidate) return null;
+        const 候选状态文本 = `${candidate.key} ${candidate.cond?.状态 || ''} ${candidate.cond?.状态名称 || ''} ${candidate.cond?.来源技能 || ''} ${candidate.cond?.描述 || ''}`;
+        const 黄金瀑布扣费 = 扣除黄金瀑布触发体力(defender, 候选状态文本);
+        if (!黄金瀑布扣费.可触发) return null;
         if (!candidate.cond.战斗效果) candidate.cond.战斗效果 = {};
         const nextCount = Math.max(0, Number(candidate.cond.战斗效果.death_save_count || 0) - 1);
         candidate.cond.战斗效果.death_save_count = nextCount;
         defender.__本阶段已触发免死 = true;
+        const 状态文本 = 候选状态文本;
+        if (/金龙不灭真身/.test(状态文本)) {
+          设置战斗延迟效果资源值(defender, 'sp', 0);
+          设置战斗体力值(defender, getCombatStaminaMaxValue(defender));
+          设置战斗血量值(defender, getCombatHpMaxValue(defender));
+          return `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，抽尽魂力并以金龙不灭真身补满体力！剩余保护次数:${nextCount}`;
+        }
         return `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，强行保住最后一口气！剩余保护次数:${nextCount}`;
       }
 
@@ -18091,9 +18732,12 @@ class BattleUIComponent {
         for (const [key, cond] of Object.entries(defender.状态效果)) {
           const ce = cond?.战斗效果 || {};
           if (Number(ce.block_count || 0) > 0) {
+            const 状态文本 = `${key} ${cond?.状态 || ''} ${cond?.状态名称 || ''} ${cond?.来源技能 || ''} ${cond?.描述 || ''}`;
+            const 黄金瀑布扣费 = 扣除黄金瀑布触发体力(defender, 状态文本);
+            if (!黄金瀑布扣费.可触发) continue;
             if (cond.战斗效果) cond.战斗效果.block_count = Math.max(0, Number(ce.block_count || 0) - 1);
             damage = 0;
-            parts.push(`[免伤触发] ${defender.name || '目标'}以[${key}]抵消了本次攻击！`);
+            parts.push(`[免伤触发] ${defender.name || '目标'}以[${key}]抵消了本次攻击！${黄金瀑布扣费.消耗量 > 0 ? `消耗${黄金瀑布扣费.消耗量}点体力。` : ''}`);
             return { damage, counterDamage, log: parts.join(' '), sharedDamageEntries, 事件链 };
           }
         }
@@ -18442,7 +19086,7 @@ class BattleUIComponent {
                 }
               }
             }
-            const 受到伤害吸收汇总 = { 生命: 0, 体力: 0, 魂力: 0, 精神力: 0 };
+            const 受到伤害吸收条目 = [];
             当前结算效果列表.forEach(effect => {
               if (String(effect?.原型 || '').trim() !== '结算修正') return;
               if (String(effect?.结算 || '').trim() !== '伤害吸收') return;
@@ -18452,16 +19096,34 @@ class BattleUIComponent {
               const 比例 = Math.max(0, 读取战斗数值正负(effect?.数值));
               if (比例 <= 0) return;
               const 资源 = ['生命', '体力', '魂力', '精神力'].includes(String(effect?.吸收资源 || '').trim()) ? String(effect?.吸收资源 || '').trim() : '生命';
-              受到伤害吸收汇总[资源] += 比例;
+              受到伤害吸收条目.push({
+                资源,
+                比例,
+                转化效果: ['恢复资源', '下次造成伤害'].includes(String(effect?.转化效果 || '').trim()) ? String(effect?.转化效果 || '').trim() : '恢复资源',
+                增幅上限: Math.max(0, Math.min(1, Math.abs(读取战斗数值正负(effect?.增幅上限 || '+50%')))),
+                来源名: String(当前结算技能?.name || 当前结算技能?.魂技名 || '伤害吸收').trim() || '伤害吸收',
+              });
             });
             targetConditionEffects.forEach(ce => {
               const 比例 = Math.max(0, Number(ce.damage_absorb_ratio || 0));
               if (比例 <= 0 || String(ce.吸收来源 || '造成伤害').trim() !== '受到伤害') return;
               const 资源 = ['生命', '体力', '魂力', '精神力'].includes(String(ce.吸收资源 || '').trim()) ? String(ce.吸收资源 || '').trim() : '生命';
-              受到伤害吸收汇总[资源] += 比例;
+              受到伤害吸收条目.push({
+                资源,
+                比例,
+                转化效果: ['恢复资源', '下次造成伤害'].includes(String(ce.吸收转化效果 || '').trim()) ? String(ce.吸收转化效果 || '').trim() : '恢复资源',
+                增幅上限: Math.max(0, Math.min(1, Number(ce.伤害吸收增幅上限 || 0.5))),
+                来源名: String(ce.来源技能 || '伤害吸收').trim() || '伤害吸收',
+              });
             });
-            Object.entries(受到伤害吸收汇总).forEach(([资源, 比例]) => {
-              const 恢复量 = 恢复伤害吸收资源(targetChar, 资源, 本段实际伤害 * Math.max(0, Number(比例 || 0)));
+            受到伤害吸收条目.forEach(({ 资源, 比例, 转化效果, 增幅上限, 来源名 }) => {
+              const 吸收量 = 本段实际伤害 * Math.max(0, Number(比例 || 0));
+              if (转化效果 === '下次造成伤害') {
+                const 增幅增加 = 写入下次伤害增幅状态(targetChar, 吸收量 / Math.max(1, getCombatStaminaMaxValue(targetChar)), 来源名, 增幅上限);
+                if (增幅增加 > 0) logParts.push(`[伤害吸收] ${targetChar.name || '目标'}将承受伤害蓄为下次伤害增幅+${Math.round(增幅增加 * 100)}%。`);
+                return;
+              }
+              const 恢复量 = 恢复伤害吸收资源(targetChar, 资源, 吸收量);
               if (恢复量 > 0) logParts.push(`[伤害吸收] ${targetChar.name || '目标'}受到伤害时恢复了 ${恢复量} 点${资源}。`);
             });
             if (Array.isArray(reactiveDefense.sharedDamageEntries) && reactiveDefense.sharedDamageEntries.length) {
@@ -21174,6 +21836,12 @@ class BattleUIComponent {
           result.desc += isAOE
             ? ` 本次共投射 ${Number(result.totalProjectedDamage || 0)} 点伤害。`
             : ` 造成了 ${Number(result.dmg || 0)} 点最终伤害。`;
+          const 一次性增幅消耗 = 消耗一次性伤害增幅状态(attacker);
+          if (一次性增幅消耗.length) {
+            result.desc += ` [蓄力释放] ${attacker.name || '施术者'}释放了${一次性增幅消耗
+              .map(条目 => `[${条目.状态名}]+${Math.round(Number(条目.增幅 || 0) * 100)}%`)
+              .join('、')}。`;
+          }
           if (selfMirrorEffect && primaryResolvedTarget !== attacker) {
             const selfEchoDamage = Math.max(1, Math.floor(Number(result.dmg || 0)));
             设置战斗血量值(attacker, getCombatHpValue(attacker) - selfEchoDamage);
@@ -23479,6 +24147,11 @@ class BattleUIComponent {
                   damage_reflect_ratio: scaledCalc?.damage_reflect_ratio ?? 0,
                   damage_transfer_ratio: scaledCalc?.damage_transfer_ratio ?? 0,
                   damage_transfer_target: scaledCalc?.damage_transfer_target ?? '',
+                  damage_absorb_ratio: scaledCalc?.damage_absorb_ratio ?? 0,
+                  吸收来源: scaledCalc?.吸收来源 ?? '',
+                  吸收资源: scaledCalc?.吸收资源 ?? '',
+                  吸收转化效果: scaledCalc?.吸收转化效果 ?? '',
+                  伤害吸收增幅上限: scaledCalc?.伤害吸收增幅上限 ?? 0,
                   damage_share_ratio: scaledCalc?.damage_share_ratio ?? 0,
                   cost_share_ratio: scaledCalc?.cost_share_ratio ?? 0,
                   damage_reduction: scaledCalc?.damage_reduction ?? 0,
