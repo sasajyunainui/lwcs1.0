@@ -289,7 +289,7 @@
       title: '血脉封印弹窗',
       summary: '承接血脉体系的状态模块，在 1 个页面内汇总封印层级与当前能力。',
       fields: [
-        'activeChar.第一武魂 / activeChar.第二武魂',
+        'activeChar.第1武魂 / activeChar.第2武魂',
         'activeChar.魂骨',
         'activeChar.血脉之力.技能',
         'activeChar.血脉之力.第N气血魂环',
@@ -1407,20 +1407,20 @@
       };
     }
 
-    if (key === '第一武魂详细页' || key === '第二武魂详细页') {
-      const badge = key === '第一武魂详细页' ? '第一武魂' : '第二武魂';
-      const badgeClass = key === '第一武魂详细页' ? 'live' : 'warn';
+    if (key === '第1武魂详细页' || key === '第2武魂详细页') {
+      const badge = key === '第1武魂详细页' ? '第1武魂' : '第2武魂';
+      const badgeClass = key === '第1武魂详细页' ? 'live' : 'warn';
       return {
         title: '武魂',
         body: `
             <div class="archive-modal-grid mvu-spirit-detail-grid">
               <div class="archive-card full">
                 <div class="archive-card-head"><div class="archive-card-title">武魂</div></div>
-                <div class="spirit-main-card"><h4></h4><div class="spirit-head-tags"><span class="tag-chip ${key === '第一武魂详细页' ? 'live' : 'warn'}">${badge}</span></div></div>
+                <div class="spirit-main-card"><h4></h4><div class="spirit-head-tags"><span class="tag-chip ${key === '第1武魂详细页' ? 'live' : 'warn'}">${badge}</span></div></div>
               </div>
               <div class="archive-card full spirit-flow-card">
                 <div class="archive-card-head"><div class="archive-card-title">魂灵</div></div>
-                <div class="rings soul-ring-lane">${buildEmptyRingLane(key === '第一武魂详细页' ? 'ring-white' : 'ring-gold')}</div>
+                <div class="rings soul-ring-lane">${buildEmptyRingLane(key === '第1武魂详细页' ? 'ring-white' : 'ring-gold')}</div>
               </div>
             </div>
           `,
@@ -2194,7 +2194,7 @@
   }
 
   function 是武魂槽位键_桥接(键 = '') {
-    return /^(第一武魂|第二武魂|第\d+武魂)$/.test(String(键 || '').trim());
+    return /^(第1武魂|第2武魂|第\d+武魂)$/.test(String(键 || '').trim());
   }
 
   function 是魂灵槽位键_桥接(键 = '') {
@@ -5242,8 +5242,8 @@
         add('外貌', ['char', activeCharKey, '外貌'], ['外貌', '外观']);
       }
       if (key === '社会档案详细页') add('社会档案', ['char', activeCharKey, '社交'], ['社会', '名望', '称号']);
-      if (key === '第一武魂详细页' || key === '第二武魂详细页' || key === '武魂融合技详细页') {
-        add('武魂', ['char', activeCharKey], ['第一武魂', '第二武魂', '第1魂灵', '第1魂环', '第1魂技']);
+      if (key === '第1武魂详细页' || key === '第2武魂详细页' || key === '武魂融合技详细页') {
+        add('武魂', ['char', activeCharKey], ['第1武魂', '第2武魂', '第1魂灵', '第1魂环', '第1魂技']);
         add('融合技', ['char', activeCharKey, '武魂融合技'], ['融合']);
       }
       if (key === '血脉封印详细页') add('血脉', ['char', activeCharKey, '血脉之力'], ['血脉', '封印']);
@@ -12843,7 +12843,7 @@
       ? 构建技能设计台角色战斗属性(角色键, 角色数据, normalizeSkillUiText(草稿 && 草稿.type, '强攻系'))
       : 构建技能设计台标准战斗属性(草稿?.level || 草稿?.lv || 50, 草稿?.type || '强攻系');
     const 路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
-    const 武魂索引 = 路径.findIndex(片段 => ['第一武魂', '第二武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂索引 = 路径.findIndex(片段 => ['第1武魂', '第2武魂'].includes(normalizeSkillUiText(片段, '')));
     const 武魂数据 = 武魂索引 >= 0 ? deepGet(根数据, 路径.slice(0, 武魂索引 + 1), {}) : {};
     const 武魂元素上下文 = 读取技能设计台武魂上下文(根数据, previewMeta);
     const 预算系别 = normalizeSkillUiText(
@@ -13533,7 +13533,7 @@
 
   function 读取技能设计台武魂上下文(rootData = {}, previewMeta = {}) {
     const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
-    const 武魂索引 = path.findIndex(片段 => ['第一武魂', '第二武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂索引 = path.findIndex(片段 => ['第1武魂', '第2武魂'].includes(normalizeSkillUiText(片段, '')));
     const 武魂数据 = 武魂索引 >= 0 ? deepGet(rootData, path.slice(0, 武魂索引 + 1), {}) : {};
     const 属性体系 = normalizeSkillUiText(武魂数据 && 武魂数据['属性体系'], '无');
     const 可调用元素 = 规范化技能元素列表_桥接(武魂数据 && 武魂数据['可调用元素']);
@@ -20312,7 +20312,7 @@
     if (!charKey) return null;
     const spiritData = deepGet(safeSnapshot, ['rootData', 'char', charKey, spiritSlot], {});
     const spiritPreviewKey =
-      spiritSlot === '第一武魂' ? '第一武魂详细页' : spiritSlot === '第二武魂' ? '第二武魂详细页' : '第一武魂详细页';
+      spiritSlot === '第1武魂' ? '第1武魂详细页' : spiritSlot === '第2武魂' ? '第2武魂详细页' : '第1武魂详细页';
     const candidateNames = Array.isArray(pending.候选魂灵)
       ? pending.候选魂灵.map(name => toText(name, '').trim()).filter(Boolean)
       : [];
@@ -21144,14 +21144,14 @@
 
     const spiritEntries = 取角色武魂条目_桥接(activeChar);
     const primarySpirit = spiritEntries[0]
-      ? buildSpiritConfig(spiritEntries[0][0], spiritEntries[0][1], '第一武魂详细页', '第一武魂', 'cyan', [
+      ? buildSpiritConfig(spiritEntries[0][0], spiritEntries[0][1], '第1武魂详细页', '第1武魂', 'cyan', [
           'char',
           activeName,
           spiritEntries[0][0],
         ])
-      : buildSpiritConfig('第一武魂', {}, '第一武魂详细页', '第一武魂', 'cyan');
+      : buildSpiritConfig('第1武魂', {}, '第1武魂详细页', '第1武魂', 'cyan');
     const secondarySpirit = spiritEntries[1]
-      ? buildSpiritConfig(spiritEntries[1][0], spiritEntries[1][1], '第二武魂详细页', '第二武魂', 'gold', [
+      ? buildSpiritConfig(spiritEntries[1][0], spiritEntries[1][1], '第2武魂详细页', '第2武魂', 'gold', [
           'char',
           activeName,
           spiritEntries[1][0],
@@ -22630,9 +22630,9 @@
     if (!config) {
       return `
           <div class="mvu-unified-card-head">
-            <div class="mvu-unified-card-title">${primary ? '主武魂' : '第二武魂'}</div>
+            <div class="mvu-unified-card-title">${primary ? '主武魂' : '第2武魂'}</div>
           </div>
-          <div class="mvu-unified-empty-note mvu-unified-empty-note--compact">${primary ? '当前未加载武魂信息。' : '未启用第二武魂或血脉'}</div>
+          <div class="mvu-unified-empty-note mvu-unified-empty-note--compact">${primary ? '当前未加载武魂信息。' : '未启用第2武魂或血脉'}</div>
         `;
     }
     const content =
@@ -22652,15 +22652,15 @@
         : renderArchiveSpiritEntry(第二轨, false)
       : `
           <div class="mvu-spirit-empty-compact">
-            <b>第二武魂 / 血脉</b>
-            <span>未启用第二武魂，血脉/封印仍可查看。</span>
+            <b>第2武魂 / 血脉</b>
+            <span>未启用第2武魂，血脉/封印仍可查看。</span>
             <em>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))} 项 · 魂骨 ${htmlEscape(String(魂骨数量 || 0))} 块</em>
           </div>
         `;
     return `
         <div class="mvu-spirit-pair-grid">
-          <div class="mvu-spirit-pair-side mvu-spirit-pair-side--primary ${主轨 ? 'clickable' : 'is-empty'}"${主轨 ? ` data-preview="${escapeHtmlAttr(toText(主轨.preview, '第一武魂详细页'))}"` : ''}>
-            ${主轨 ? renderArchiveSpiritEntry(主轨, true) : '<div class="mvu-unified-empty-note">当前未加载第一武魂。</div>'}
+          <div class="mvu-spirit-pair-side mvu-spirit-pair-side--primary ${主轨 ? 'clickable' : 'is-empty'}"${主轨 ? ` data-preview="${escapeHtmlAttr(toText(主轨.preview, '第1武魂详细页'))}"` : ''}>
+            ${主轨 ? renderArchiveSpiritEntry(主轨, true) : '<div class="mvu-unified-empty-note">当前未加载第1武魂。</div>'}
           </div>
           <div class="mvu-spirit-pair-side mvu-spirit-pair-side--secondary clickable ${第二轨 ? '' : 'is-empty'}" data-preview="${escapeHtmlAttr(第二轨预览键)}">
             ${第二轨内容}
@@ -22864,8 +22864,8 @@
     if (!text) return '';
     return text
       .replace(/血脉副轨/g, '血脉')
-      .replace(/武魂副轨/g, '第二武魂')
-      .replace(/副轨/g, '第二武魂');
+      .replace(/武魂副轨/g, '第2武魂')
+      .replace(/副轨/g, '第2武魂');
   }
 
   function summarizeShellIdentityText(value, options = {}) {
@@ -22914,7 +22914,7 @@
     const primary = !!(options && options.primary);
     if (!config) {
       return buildShellEmptyCard(
-        primary ? '主武魂' : normalizeUserFacingTrackLabel('', '第二武魂'),
+        primary ? '主武魂' : normalizeUserFacingTrackLabel('', '第2武魂'),
         primary ? '未接入' : '未启用',
       );
     }
@@ -22950,8 +22950,8 @@
     const hasSpiritProgress = !!primarySoul || soulCount > 0 || ringCount > 0;
     if (!hasSpiritProgress) {
       return buildShellSummaryCard({
-        kicker: primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第二武魂'),
-        title: shortenText(toText(config.spiritName || config.name, primary ? '主武魂' : '第二武魂'), 20),
+        kicker: primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第2武魂'),
+        title: shortenText(toText(config.spiritName || config.name, primary ? '主武魂' : '第2武魂'), 20),
         value: '待接魂环',
         meta: shortenText(toText(config.spiritType, '未定'), 18),
         rows: [{ label: '状态', value: '未接魂环' }],
@@ -22960,11 +22960,11 @@
     }
     const renderableRings = (config.魂环 || []).filter(isRenderableShellRing);
     return buildShellSummaryCard({
-      kicker: primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第二武魂'),
+      kicker: primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第2武魂'),
       title: shortenText(
         toText(
           config.spiritName || config.name,
-          primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第二武魂'),
+          primary ? '主武魂' : normalizeUserFacingTrackLabel(config.badge, '第2武魂'),
         ),
         20,
       ),
@@ -24522,7 +24522,7 @@
 
   function buildShellSpiritView(snapshot, previewKey) {
     const config =
-      previewKey === '第二武魂详细页' ? snapshot && snapshot.secondaryTrack : snapshot && snapshot.primarySpirit;
+      previewKey === '第2武魂详细页' ? snapshot && snapshot.secondaryTrack : snapshot && snapshot.primarySpirit;
     if (!config) {
       return {
         title: '武魂',
@@ -30200,10 +30200,10 @@
       };
     }
 
-    if (previewKey === '第一武魂详细页' || previewKey === '第二武魂详细页') {
+    if (previewKey === '第1武魂详细页' || previewKey === '第2武魂详细页') {
       const secondaryTrack = snapshot.secondaryTrack || null;
       const config =
-        previewKey === '第一武魂详细页'
+        previewKey === '第1武魂详细页'
           ? snapshot.primarySpirit
           : secondaryTrack && secondaryTrack.kind === 'bloodline'
             ? null
@@ -38388,8 +38388,8 @@ ${播报文本}
       '武装工坊详细页',
       '武魂融合技详细页',
       '储物仓库详细页',
-      '第一武魂详细页',
-      '第二武魂详细页',
+      '第1武魂详细页',
+      '第2武魂详细页',
       '血脉封印详细页',
       '近期安排',
       '本地据点详情',
@@ -38552,8 +38552,8 @@ ${播报文本}
       '武装工坊详细页',
       '武魂融合技详细页',
       '储物仓库详细页',
-      '第一武魂详细页',
-      '第二武魂详细页',
+      '第1武魂详细页',
+      '第2武魂详细页',
       '血脉封印详细页',
       '近期安排',
       '本地据点详情',

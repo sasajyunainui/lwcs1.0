@@ -5656,7 +5656,7 @@ class BattleUIComponent {
     }
 
     function 是武魂槽位键_战斗(键 = '') {
-      return /^(第一武魂|第二武魂|第\d+武魂)$/.test(String(键 || '').trim());
+      return /^(第1武魂|第2武魂|第\d+武魂)$/.test(String(键 || '').trim());
     }
 
     function 是魂灵槽位键_战斗(键 = '') {
@@ -6271,7 +6271,7 @@ class BattleUIComponent {
         unit?.属性?.具体物种,
         unit?.属性?.种族,
       ].forEach(追加);
-      ['第一武魂', '第二武魂'].forEach(槽位 => {
+      ['第1武魂', '第2武魂'].forEach(槽位 => {
         const 武魂 = unit?.[槽位];
         if (!武魂 || typeof 武魂 !== 'object') return;
         [武魂.名称, 武魂.武魂, 武魂.表象名称, 武魂.描述, 武魂.系别, 武魂.属性体系].forEach(追加);
@@ -9960,7 +9960,7 @@ class BattleUIComponent {
       return normalized;
     }
 
-    const FUSION_SELF_SPIRIT_SLOTS = ['第一武魂', '第二武魂'];
+    const FUSION_SELF_SPIRIT_SLOTS = ['第1武魂', '第2武魂'];
 
     function getFusionSkillMode(fusionSkill = {}) {
       return fusionSkill?.融合模式 === 'self' ? 'self' : 'partner';
@@ -10167,7 +10167,7 @@ class BattleUIComponent {
         .map(slot => String(slot || '').trim())
         .filter(slot => FUSION_SELF_SPIRIT_SLOTS.includes(slot));
       if (slots.length) return Array.from(new Set(slots));
-      return getFusionSkillMode(fusionSkill) === 'self' ? [...FUSION_SELF_SPIRIT_SLOTS] : ['第一武魂'];
+      return getFusionSkillMode(fusionSkill) === 'self' ? [...FUSION_SELF_SPIRIT_SLOTS] : ['第1武魂'];
     }
 
     function hasUsableSpiritSlot(charData, slot) {
