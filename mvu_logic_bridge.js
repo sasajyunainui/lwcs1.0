@@ -1623,8 +1623,6 @@
   let lastRenderedUnifiedPreviewKey = '';
   let mapDispatchContext = null;
   let activeSubUI = null;
-  let lastAutoTradeRequestSignature = '';
-  let hasHydratedAutoTradeRequestSignature = false;
   let lastAutoOpenedPendingSoulRingSignature = '';
   let 待处理技能设计确认 = null;
   let activeInlineEditState = null;
@@ -3160,6 +3158,7 @@
 
   function 登记本轮模块结算路径(路径列表 = [], options = {}) {
     if (options && options.registerReadOnlyProjection === false) return;
+    if (!(options && (options.记录本轮模块结算路径 === true || toText(options.结算类型, '') === 'travel'))) return;
     const 运行时根列表 = 获取本轮模块结算运行时根列表();
     if (!运行时根列表.length) return;
     const 当前时间 = Date.now();
@@ -3198,6 +3197,39 @@
         root[本轮模块结算路径全局键] = 记录;
       } catch (error) {}
     });
+  }
+
+  function 登记本轮移动结算路径(路径列表 = []) {
+    const 扩展路径列表 = [];
+    (Array.isArray(路径列表) ? 路径列表 : []).forEach(原始路径 => {
+      const 路径 = normalizeEditorPath(原始路径);
+      if (!路径.length) return;
+      扩展路径列表.push(路径);
+      if (路径[0] === 'world' && 路径[1] === '时间' && (路径[2] === 'tick' || 路径[2] === '_calendar')) {
+        扩展路径列表.push(['world', '时间', '当前']);
+      }
+    });
+    登记本轮模块结算路径(扩展路径列表, { 结算类型: 'travel' });
+  }
+
+  function 获取本轮模块结算路径键集合() {
+    const 当前时间 = Date.now();
+    const 记录 = 获取本轮模块结算运行时根列表()
+      .map(root => {
+        try {
+          return root[本轮模块结算路径全局键];
+        } catch (error) {
+          return null;
+        }
+      })
+      .find(item => item && typeof item === 'object' && Number(item.过期时间 || 0) > 当前时间);
+    return new Set(Array.isArray(记录 && 记录.去重键列表) ? 记录.去重键列表 : []);
+  }
+
+  function 路径命中本轮模块结算(path = []) {
+    const 路径 = normalizeEditorPath(path);
+    if (!路径.length) return false;
+    return 获取本轮模块结算路径键集合().has(构建模块结算路径去重键(路径));
   }
 
   function deepSetMutable(target, pathValue, nextValue) {
@@ -5279,6 +5311,7 @@
   function AI维护路径是否只读(path = []) {
     const safePath = normalizeEditorPath(path);
     if (!safePath.length) return true;
+    if (路径命中本轮模块结算(safePath)) return true;
     if (['display_all', 'display_chars'].includes(toText(safePath[0], ''))) return true;
     return safePath.some(token => {
       const text = toText(token, '').trim();
@@ -5663,12 +5696,29 @@
     }
   }
 
+  function 剔除本轮模块结算路径值(value, basePath = []) {
+    const 路径 = normalizeEditorPath(basePath);
+    if (路径命中本轮模块结算(路径)) return undefined;
+    if (!value || typeof value !== 'object') return value;
+    if (Array.isArray(value)) {
+      return value
+        .map((item, index) => 剔除本轮模块结算路径值(item, [...路径, index]))
+        .filter(item => item !== undefined);
+    }
+    const result = {};
+    safeEntries(value).forEach(([key, item]) => {
+      const nextValue = 剔除本轮模块结算路径值(item, [...路径, key]);
+      if (nextValue !== undefined) result[key] = nextValue;
+    });
+    return result;
+  }
+
   function 构建AI维护字段结构摘要(selectionItems = [], statData = {}) {
     const 已输出父级 = new Set();
     return (Array.isArray(selectionItems) ? selectionItems : [])
       .map((item, index) => {
         const path = normalizeEditorPath(item && item.path);
-        const value = deepGet(statData, path, undefined);
+        const value = 剔除本轮模块结算路径值(deepGet(statData, path, undefined), path);
         const label = item && item.label ? item.label : 格式化AI维护路径(path);
         const lines = [
           `${index + 1}. ${item && item.kind === '变量组' ? '变量组' : '字段'} ${label}`,
@@ -5681,7 +5731,7 @@
         }
         const parentPath = path.slice(0, -1);
         const parentKey = 构建AI维护路径键(parentPath);
-        const parentValue = parentPath.length ? deepGet(statData, parentPath, undefined) : statData;
+        const parentValue = 剔除本轮模块结算路径值(parentPath.length ? deepGet(statData, parentPath, undefined) : statData, parentPath);
         lines.push(`父级：${格式化AI维护路径(parentPath) || '/'}`);
         if (已输出父级.has(parentKey)) {
           lines.push(`父级结构：同上（${格式化AI维护路径(parentPath) || '/'}）`);
@@ -5700,7 +5750,8 @@
     const structureText = 构建AI维护字段结构摘要(selectionItems, statData);
     const selectionText = selectionItems
       .map((item, index) => {
-        const value = deepGet(statData, item.path, undefined);
+        const path = normalizeEditorPath(item.path);
+        const value = 剔除本轮模块结算路径值(deepGet(statData, path, undefined), path);
         const valueLimit = item.kind === '变量组' ? 5200 : 1600;
         return [
           `${index + 1}. ${item.kind} ${item.label || 格式化AI维护路径(item.path)}`,
@@ -5784,6 +5835,15 @@
     delete nextStat.display_chars;
     const changedPaths = 收集AI维护差异路径(oldStat, nextStat, []);
     if (!changedPaths.length) return { ok: false, reason: 'AI 未生成有效变量改动。', changedPaths };
+    const settlementTouched = changedPaths.filter(path => 路径命中本轮模块结算(path));
+    if (settlementTouched.length) {
+      return {
+        ok: false,
+        reason: `AI 试图修改本轮已由模块结算的变量：${settlementTouched.slice(0, 4).map(格式化AI维护边界路径).join('、')}`,
+        changedPaths,
+        settlementTouched,
+      };
+    }
     const outOfRange = changedPaths.filter(
       path => !allowedPaths.some(allowed => 路径是否在AI维护边界内(path, allowed)),
     );
@@ -7611,7 +7671,6 @@
   }
   const 技能设计台副作用类型候选_V1 = Object.freeze([
     '全属性降低',
-    '增幅失控',
     '自损反噬',
     '致死献祭',
     '精神紊乱',
@@ -7620,22 +7679,19 @@
     '动作迟缓',
     '目标错乱',
     '施法僵直',
-    '持续流血',
   ]);
   const 技能设计台副作用触发时机选项_V1 = Object.freeze(['施放后', '命中后', '回合结束时', '状态结束后']);
   const 技能设计台副作用生效对象选项_V1 = Object.freeze(['施术者', '受术目标', '双方', '状态持有者']);
   const 技能设计台副作用配置表_V1 = Object.freeze({
     全属性降低: Object.freeze({ 状态: '虚弱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '虚弱强度' }),
-    增幅失控: Object.freeze({ 状态: '失控', 数值: '+30%', 副数值: '+10%', 持续回合: 1, 数值标签: '失控概率', 副数值标签: '命中惩罚' }),
     自损反噬: Object.freeze({ 状态: '反噬', 数值: '+3%', 副数值: '', 持续回合: 1, 数值标签: '反噬伤害' }),
     致死献祭: Object.freeze({ 致死: true }),
-    精神紊乱: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '紊乱强度' }),
+    精神紊乱: Object.freeze({ 状态: '精神紊乱', 数值: '+25%', 副数值: '+8%', 持续回合: 2, 数值标签: '错乱概率', 副数值标签: '反应惩罚' }),
     魂力反噬: Object.freeze({ 状态: '魂力枯竭', 数值: '+5%', 副数值: '', 持续回合: 1, 数值标签: '魂力流失' }),
     命中下降: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '命中惩罚' }),
-    动作迟缓: Object.freeze({ 状态: '僵直', 数值: '+15%', 副数值: '', 持续回合: 1, 数值标签: '僵直强度' }),
-    目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '混乱概率' }),
+    动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1, 数值标签: '反应惩罚', 副数值标签: '闪避惩罚' }),
+    目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '敌我错乱' }),
     施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1, 数值标签: '施法僵直' }),
-    持续流血: Object.freeze({ 状态: '流血', 数值: '+10%', 副数值: '', 持续回合: 1, 数值标签: '流血强度' }),
   });
   const 技能执行旧数组键表_V1 = Object.freeze([
     '授予效果数组',
@@ -7725,7 +7781,9 @@
     const 生效对象 = normalizeSkillUiText(value['生效对象'], '施术者');
     if (!技能设计台副作用触发时机选项_V1.includes(触发时机)) recordViolation('副作用列表.触发时机');
     if (!技能设计台副作用生效对象选项_V1.includes(生效对象)) recordViolation('副作用列表.生效对象');
-    const 概率 = Number(value['触发概率'] ?? 1);
+    const 概率文本 = normalizeSkillUiText(value['触发概率'], '1');
+    const 概率原值 = Number(String(概率文本).replace('%', ''));
+    const 概率 = /%$/.test(概率文本) ? 概率原值 / 100 : 概率原值;
     if (!Number.isFinite(概率) || 概率 < 0 || 概率 > 1) recordViolation('副作用列表.触发概率');
     const 条目 = {
       副作用类型,
@@ -7758,16 +7816,29 @@
       .filter(Boolean);
   }
 
-  function 创建技能设计台默认副作用条目(副作用类型 = '自损反噬') {
-    return 规范化技能设计台副作用条目({ 副作用类型 }, () => {}) || {
+  function 创建技能设计台默认副作用条目(副作用类型 = '自损反噬', 选项 = {}) {
+    const 默认对象 = normalizeSkillUiText(选项?.生效对象, '施术者');
+    return 规范化技能设计台副作用条目({ 副作用类型, 生效对象: 默认对象 }, () => {}) || {
       副作用类型: '自损反噬',
       触发时机: '施放后',
-      生效对象: '施术者',
+      生效对象: 默认对象,
       触发概率: 1,
       持续回合: 1,
       副作用状态: '反噬',
       数值: '+3%',
     };
+  }
+
+  function 读取技能设计台默认副作用对象(draft = {}) {
+    return normalizeSkillUiText(draft?.type, '') === '食物系' || normalizeSkillUiText(draft?.deliveryForm, '') === '造物承载'
+      ? '受术目标'
+      : '施术者';
+  }
+
+  function 格式化技能设计台概率百分比(value = 1) {
+    const 数值 = Math.max(0, Math.min(1, Number(value ?? 1)));
+    const 百分比 = 数值 * 100;
+    return `${Math.abs(百分比 % 1) < 0.0001 ? 百分比.toFixed(0) : 百分比.toFixed(1)}%`;
   }
 
   function 格式化技能设计台副作用摘要(条目 = {}) {
@@ -7786,16 +7857,14 @@
     const 对象 = normalizeSkillUiText(条目 && 条目['生效对象'], '施术者');
     const 效果 = ({
       全属性降低: `力量、防御、敏捷降低${数值 || 10}%`,
-      增幅失控: `${数值 || 30}%概率偏转目标${副数值 ? `，命中率降低${副数值}%` : ''}`,
-      自损反噬: `承受上限${数值 || 3}%反噬伤害`,
+      自损反噬: `立即承受上限${数值 || 3}%反噬伤害`,
       致死献祭: '施术者进入致死代价',
       精神紊乱: `精神判定降低${数值 || 10}%`,
       魂力反噬: `魂力流失${数值 || 5}%`,
       命中下降: `命中率降低${数值 || 10}%`,
-      动作迟缓: `行动速度降低${数值 || 15}%`,
+      动作迟缓: `反应降低${数值 || 15}%${副数值 ? `，闪避降低${副数值}%` : ''}`,
       目标错乱: `${数值 || 30}%概率错乱目标`,
       施法僵直: `施法僵直${数值 || 20}%`,
-      持续流血: `每回合受到上限${数值 || 10}%的持续伤害`,
     })[类型] || `${类型}${数值 ? ` ${数值}%` : ''}`;
     return `${触发}，${Math.round(概率 * 100)}%使${对象}${效果}${持续 > 0 ? `，持续${持续}回合` : ''}`;
   }
@@ -7807,6 +7876,7 @@
       const 类型 = normalizeSkillUiText(条目['副作用类型'], '自损反噬');
       const 是致死献祭 = 类型 === '致死献祭';
       const 配置 = 技能设计台副作用配置表_V1[类型] || {};
+      const 效果说明 = 格式化技能设计台副作用摘要(条目);
       return `
         <div class="skill-designer-side-effect-row" data-skill-designer-side-effect-row>
           <button type="button" class="skill-designer-remove-btn" data-skill-designer-remove-side-effect data-skill-designer-disableable aria-label="删除副作用" title="删除副作用">×</button>
@@ -7830,16 +7900,12 @@
           </label>
           <label class="mvu-editor-field">
             <span class="mvu-editor-label">概率</span>
-            <input class="mvu-editor-input" type="number" min="0" max="1" step="0.05" value="${escapeHtmlAttr(String(条目['触发概率'] ?? 1))}" data-skill-designer-side-effect-field="触发概率" data-skill-designer-disableable />
+            <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(格式化技能设计台概率百分比(条目['触发概率'] ?? 1))}" data-skill-designer-side-effect-field="触发概率" data-skill-designer-disableable />
           </label>
           ${是致死献祭 ? '' : `
             <label class="mvu-editor-field">
               <span class="mvu-editor-label">持续</span>
               <input class="mvu-editor-input" type="number" min="0" step="1" value="${escapeHtmlAttr(String(条目['持续回合'] ?? 1))}" data-skill-designer-side-effect-field="持续回合" data-skill-designer-disableable />
-            </label>
-            <label class="mvu-editor-field">
-              <span class="mvu-editor-label">状态</span>
-              <span class="mvu-editor-static">${htmlEscape(配置.状态 || 类型)}</span>
             </label>
             <label class="mvu-editor-field">
               <span class="mvu-editor-label">${htmlEscape(配置.数值标签 || '强度')}</span>
@@ -7851,6 +7917,7 @@
                 <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['副数值'] || '')}" placeholder="${escapeHtmlAttr(配置.副数值)}" data-skill-designer-side-effect-field="副数值" data-skill-designer-disableable />
               </label>
             ` : ''}
+            ${效果说明 ? `<div class="mvu-editor-field skill-designer-side-effect-summary"><span>${htmlEscape(效果说明)}</span></div>` : ''}
             <label class="mvu-editor-field" data-skill-designer-side-effect-link-field${条目['触发时机'] === '状态结束后' ? '' : ' hidden style="display:none"'}>
               <span class="mvu-editor-label">关联状态</span>
               <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['关联状态'] || '')}" placeholder="灼烧" data-skill-designer-side-effect-field="关联状态" data-skill-designer-disableable />
@@ -9404,8 +9471,8 @@
     return /^[-+]?\d+(?:\.\d+)?%?$/.test(normalizeSkillUiText(数值, ''));
   }
 
-  function 技能设计台数值字段使用单位下拉(原型 = '', 字段 = '') {
-    return 字段 === '数值' && ['资源变化', '资源转移', '护盾变化'].includes(normalizeSkillUiText(原型, ''));
+  function 技能设计台数值字段使用单位下拉(原型 = '', 字段 = '', effect = {}) {
+    return ['混合', '百分比', '点数'].includes(读取技能设计台数值字段口径(原型, 字段, effect));
   }
 
   function 读取技能设计台数值单位(value = '') {
@@ -9430,6 +9497,15 @@
     const 输入 = 容器 ? 容器.querySelector('[data-skill-designer-prototype-field="数值"]') : null;
     if (!(输入 instanceof HTMLInputElement)) return;
     输入.value = 格式化技能设计台单位数值(输入.value, normalizeSkillUiText(select.value, '点数'));
+  }
+
+  function 构建技能设计台数值单位下拉(当前单位 = '点数', 禁用 = false) {
+    const disabledAttr = 禁用 ? ' disabled aria-disabled="true"' : '';
+    return `
+              <select class=\"mvu-editor-select\" data-skill-designer-value-unit data-skill-designer-disableable${disabledAttr}>
+                <option value=\"点数\"${当前单位 === '点数' ? ' selected' : ''}>点数</option>
+                <option value=\"百分比\"${当前单位 === '百分比' ? ' selected' : ''}>百分比</option>
+              </select>`;
   }
 
   function 读取技能设计台数值字段口径(原型 = '', 字段 = '', effect = {}) {
@@ -9460,22 +9536,11 @@
     return Number.isFinite(百分点) ? formatSkillDesignerSignedValue(百分点 / 100, true) : fallback;
   }
 
-  function 格式化技能设计台混合数值字段值(value) {
-    const 文本 = normalizeSkillUiText(value, '');
-    if (!文本) return '';
-    if (/%$/.test(文本)) return formatSkillDesignerSignedValue(parseSkillDesignerSignedValue(文本), true);
-    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)$/);
-    if (!匹配) return 文本;
-    const 数值 = Number(匹配[2]);
-    if (!Number.isFinite(数值)) return 文本;
-    return `${匹配[1] || ''}${String(Number(数值.toFixed(Math.abs(数值 % 1) < 0.0001 ? 0 : 2)))}`;
-  }
-
   function 规范化技能设计台数值字段值(原型 = '', 字段 = '', value = '', effect = {}) {
-    if (技能设计台数值字段使用单位下拉(原型, 字段)) return 格式化技能设计台单位数值(value, 读取技能设计台数值单位(value));
     const 口径 = 读取技能设计台数值字段口径(原型, 字段, effect);
+    if (口径 === '混合') return 格式化技能设计台单位数值(value, 读取技能设计台数值单位(value));
+    if (口径 === '点数') return 格式化技能设计台单位数值(value, '点数');
     if (口径 === '百分比') return 格式化技能设计台百分比字段值(value);
-    if (口径 === '混合') return 格式化技能设计台混合数值字段值(value);
     return normalizeSkillDesignerEffectValue(value);
   }
 
@@ -12515,7 +12580,7 @@
         const 目标 = String(项.目标 || '').trim();
         const 原始数值文本 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : '';
         const 数值 = 原始数值文本
-          ? `${原始数值文本}${项.固定值系数 ? '点' : ''}`
+          ? `${原始数值文本}${项.绝对值每COST点数 ? '点' : ''}`
           : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
         const 伤害类型 = 原型 === '伤害结算' && 项.伤害类型 ? String(项.伤害类型).trim() : '';
         const 限定 = String(项.限定元素 || '').trim();
@@ -12543,8 +12608,7 @@
           项.数值类型 ? `类型 ${项.数值类型}` : '',
           项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(2)}` : '',
           项.绝对值 !== null && 项.绝对值 !== undefined ? `绝对值 ${Number(项.绝对值 || 0).toFixed(2)}` : '',
-          项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算百分点 ${Number(项.绝对值折算百分点 || 0).toFixed(2)}` : '',
-          项.固定值系数 !== null && 项.固定值系数 !== undefined ? `固定值系数 ${Number(项.固定值系数 || 0).toFixed(2)}` : '',
+          项.绝对值每COST点数 !== null && 项.绝对值每COST点数 !== undefined ? `${Number(项.绝对值每COST点数 || 0).toFixed(0)}点/COST` : '',
           项.单位COST !== null && 项.单位COST !== undefined ? `单位COST ${Number(项.单位COST || 0).toFixed(2)}` : '',
           项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
           项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
@@ -12558,8 +12622,7 @@
       };
       const 明细辅助文本 = 项 => [
         项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(1)}` : '',
-        项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算 ${Number(项.绝对值折算百分点 || 0).toFixed(1)}%` : '',
-        项.固定值系数 !== null && 项.固定值系数 !== undefined ? `固定值系数 ${Number(项.固定值系数 || 0).toFixed(2)}` : '',
+        项.绝对值每COST点数 !== null && 项.绝对值每COST点数 !== undefined ? `${Number(项.绝对值每COST点数 || 0).toFixed(0)}点/COST` : '',
         项.单位COST !== null && 项.单位COST !== undefined ? `单位 ${Number(项.单位COST || 0).toFixed(2)}` : '',
         项.目标系数 !== null && 项.目标系数 !== undefined ? `目标 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
         项.持续系数 !== null && 项.持续系数 !== undefined ? `持续 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
@@ -12606,7 +12669,6 @@
               `).join('')}
             </div>
           ` : '';
-      const 当前魂力上限 = Math.max(0, Number(预算上下文?.角色?.属性?.魂力上限 || 预算上下文?.角色?.sp_max || 0));
       const 公式Html = `
             <div class="skill-designer-cost-detail">
               ${[
@@ -12616,11 +12678,10 @@
                 ['魂环加值', `${Number(评估.魂环年限COST修正 || 0) >= 0 ? '+' : ''}${Number(评估.魂环年限COST修正 || 0).toFixed(1)}`],
                 ['天赋加值', `${Number(评估.天赋修正 || 0) >= 0 ? '+' : ''}${Number(评估.天赋修正 || 0).toFixed(1)}`],
                 ['运转基准', Number(评估.运转基准 || 0).toFixed(1)],
-                ['运转标准消耗', 评估.运转标准消耗 === null || 评估.标准消耗 === null ? '百分比' : Number(评估.标准消耗 || 0).toFixed(0)],
-                ['当前魂力上限', 当前魂力上限 > 0 ? 当前魂力上限.toFixed(0) : '-'],
-                ['标准消耗占比', 评估.标准消耗 === null || !(当前魂力上限 > 0) ? '百分比' : `${((Number(评估.标准消耗 || 0) / Math.max(1, 当前魂力上限)) * 100).toFixed(1)}%`],
+                ['标准消耗', 评估.运转标准消耗 === null || 评估.标准消耗 === null ? '百分比' : Number(评估.标准消耗 || 0).toFixed(0)],
                 ['实际消耗', Number(评估.实际消耗 || 0).toFixed(0)],
-                ['实际消耗占比', `${(Number(评估.承载消耗比例 || 0) * 100).toFixed(1)}%`],
+                ['标准前摇', Number(评估.标准前摇 || 0).toFixed(0)],
+                ['实际前摇', Number(评估.实际前摇 || 0).toFixed(0)],
                 ['消耗倍数', `${Number(评估.消耗倍数 || 0).toFixed(2)}x`],
                 ['前摇倍数', `${Number(评估.前摇倍数 || 0).toFixed(2)}x`],
                 ['代价能量', `${Number(评估.代价能量 || 0).toFixed(3)}x`],
@@ -12648,6 +12709,7 @@
             </summary>
             ${公式Html}
           </details>
+          <div class="skill-designer-trial-row"><em>预算利用率</em><span>${htmlEscape(`${Number(评估.实际门禁 || 0) > 0 ? Math.min(999, Math.max(0, Number(评估.实际COST || 0) / Math.max(0.01, Number(评估.实际门禁 || 0))) * 100).toFixed(0) : '0'}%`)}</span></div>
           <div class="skill-designer-trial-row${差额 < 0 ? ' muted' : ''}"><em>状态</em><span>${htmlEscape(状态)}</span></div>
         </div>
       `;
@@ -12781,6 +12843,23 @@
     属性.hp_max = 属性.vit_max;
     属性.HP上限 = 属性.vit_max;
     属性.HP = 属性.vit_max;
+    属性.属性 = {
+      ...属性.属性,
+      等级: 属性.等级,
+      系别: 属性.type,
+      力量: 属性.str,
+      防御: 属性.def,
+      敏捷: 属性.agi,
+      HP上限: 属性.HP上限,
+      生命上限: 属性.HP上限,
+      体力上限: 属性.vit_max,
+      魂力上限: 属性.sp_max,
+      精神力上限: 属性.men_max,
+      hp_max: 属性.hp_max,
+      vit_max: 属性.vit_max,
+      sp_max: 属性.sp_max,
+      men_max: 属性.men_max,
+    };
     属性.final = { ...属性 };
     return 属性;
   }
@@ -13159,13 +13238,14 @@
     if (!defenseEffects.length) return { ok: false, reason: '非防御技能', damage: 0 };
     const defender = 防御者属性 || 构建技能设计台标准战斗属性(施术等级, normalizeSkillUiText(draft.type, '防御系'));
     const attacker = 构建技能设计台标准战斗属性(攻击等级, '强攻系');
-    let incoming = 计算技能设计台单段伤害(
+    const 无防御伤害 = 计算技能设计台单段伤害(
       { 原型: '伤害结算', 威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 伤害类型: '物理伤害' },
       attacker,
       defender,
       1,
       0,
     );
+    let incoming = 无防御伤害;
     let shield = 0;
     let reduction = 0;
     let blockCount = 0;
@@ -13186,7 +13266,9 @@
     if (blockCount > 0) incoming = 0;
     incoming = Math.max(0, incoming * (1 - Math.min(0.95, reduction)) - shield);
     const hp = Math.max(1, Number(defender.hp_max || defender.vit_max || 1));
-    return { ok: true, damage: incoming, survivable: incoming < hp || deathSave > 0 };
+    const 防御收益 = Math.max(0, 无防御伤害 - incoming);
+    const 有有效防御 = deathSave > 0 || blockCount > 0 || 防御收益 >= Math.max(1, hp * 0.1);
+    return { ok: true, damage: incoming, survivable: 有有效防御 && (incoming < hp || deathSave > 0) };
   }
 
   function 计算技能设计台可承受最高等级(draft = {}, 施术等级 = 1, 防御者属性 = null) {
@@ -15369,12 +15451,12 @@
       生效方式: '主效果用独立生效；副效果只有必须跟主效果命中、结算或存在同一前置时才用跟随主原型。',
       条件分支: '只有效果需要满足条件才触发、替换或禁用时开启；普通直达效果不要开。',
       数值: 数值口径 === '百分比'
-        ? '按百分点填写；输入5会保存为+5%。'
+        ? '按百分点填写；右侧单位固定为百分比。'
         : 数值口径 === '混合'
-          ? '可填点数或百分比；100保存为100，5%保存为+5%。'
+          ? '右侧选择点数或百分比；切换单位不换算数字。'
           : '填写实际强度，正负号表达方向。',
       副数值: 数值口径 === '百分比'
-        ? '按百分点填写；输入5会保存为+5%。'
+        ? '按百分点填写；右侧单位固定为百分比。'
         : '填写附加强度，正负号表达方向。',
       持续回合: '命中后保留几回合；不影响后来入场目标。',
       延迟回合: '只用于需要延迟落地的战斗效果；无延迟时不要落盘。',
@@ -15534,13 +15616,7 @@
       : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
         ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
         : 显示名 || 字段;
-    const 数值口径 = 读取技能设计台数值字段口径(原型名, 字段名, effect);
-    const 标签 = 数值口径 === '百分比' && !/%/.test(基础标签)
-      ? `${基础标签}(%)`
-      : 数值口径 === '混合'
-        ? `${基础标签}(点数/%)`
-        : 基础标签;
-    return `<span class=\"mvu-editor-label\"${提示 ? ` title=\"${escapeHtmlAttr(提示)}\"` : ''}>${htmlEscape(标签)}</span>`;
+    return `<span class=\"mvu-editor-label\"${提示 ? ` title=\"${escapeHtmlAttr(提示)}\"` : ''}>${htmlEscape(基础标签)}</span>`;
   }
 
   function 技能设计台原型字段是否必填(原型 = '', 字段 = '') {
@@ -16361,18 +16437,19 @@
         : 只允许正向强度 ? '例如 10%'
         : normalizeSkillUiText(原型, '') === '决策干扰' && key === '数值' ? '例如 20%，越高干扰越强'
           : 必须百分比修正 ? '例如 +12%' : '默认无';
-      if (技能设计台数值字段使用单位下拉(原型, key)) {
-        const 当前单位 = 读取技能设计台数值单位(value);
-        const 当前值 = 格式化技能设计台单位数值(value, 当前单位);
+      const 数值单位口径 = 读取技能设计台数值字段口径(原型, key, effect);
+      if (技能设计台数值字段使用单位下拉(原型, key, effect)) {
+        const 当前单位 = 数值单位口径 === '混合' ? 读取技能设计台数值单位(value) : 数值单位口径;
+        const 当前值 = 数值单位口径 === '百分比'
+          ? 格式化技能设计台百分比字段值(value, '')
+          : 格式化技能设计台单位数值(value, 当前单位);
+        const 单位禁用 = 数值单位口径 !== '混合';
         return `
           <label class=\"mvu-editor-field\">
             ${标签}
             <div class=\"skill-designer-value-unit-control\" data-skill-designer-value-unit-control>
-              <input class=\"mvu-editor-input\" type=\"text\" pattern=\"${escapeHtmlAttr(pattern)}\" value=\"${escapeHtmlAttr(当前值)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
-              <select class=\"mvu-editor-select\" data-skill-designer-value-unit data-skill-designer-disableable>
-                <option value=\"点数\"${当前单位 === '点数' ? ' selected' : ''}>点数</option>
-                <option value=\"百分比\"${当前单位 === '百分比' ? ' selected' : ''}>百分比</option>
-              </select>
+              <input class=\"mvu-editor-input\" type=\"text\" pattern=\"${escapeHtmlAttr(pattern)}\" value=\"${escapeHtmlAttr(当前值)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\"${只允许正向强度 ? ' data-skill-designer-positive-value=\"true\"' : ''} data-skill-designer-disableable />
+              ${构建技能设计台数值单位下拉(当前单位, 单位禁用)}
             </div>
           </label>
         `;
@@ -27175,7 +27252,7 @@
               const key = normalizeSkillUiText(target.getAttribute('data-skill-designer-prototype-field'), '');
               const row = target.closest('[data-skill-designer-prototype-row]');
               const prototype = normalizeSkillUiText(row?.querySelector('[data-skill-designer-prototype-select]')?.value, '');
-              if (['结算', '调整字段', '调整方式', '复制类型'].includes(key) || (key === '数值' && prototype !== '状态施加')) {
+              if (['结算', '调整字段', '调整方式', '复制类型'].includes(key)) {
                 rebuildPrototypeRowFields(row);
               }
               if (['状态', '数值', '副数值', '触发方式', '延迟回合'].includes(key)) 刷新状态行摘要(row);
@@ -27369,7 +27446,7 @@
                 ...currentDraft,
                 副作用列表: [
                   ...规范化技能设计台副作用列表(currentDraft.副作用列表),
-                  创建技能设计台默认副作用条目(),
+                  创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(currentDraft) }),
                 ],
               };
               writeCachedSkillDesignerDraft(previewKey, nextDraft);
@@ -32604,7 +32681,6 @@
         已写回真实卡片 = true;
       }
       syncPrivateArchiveLongPressTargets(liveSnapshot);
-      maybeOpenTradeRequestFromAI(liveSnapshot);
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 
       syncBattleUiForSnapshot(liveSnapshot, options);
@@ -32985,6 +33061,13 @@
     if (!current.raw || !target.raw) return current.raw === target.raw;
     if (current.raw === target.raw || current.leaf === target.leaf) return true;
     return current.segments.some(seg => target.segments.includes(seg));
+  }
+
+  function 移动目标是否已到达(currentLoc, targetLoc) {
+    const current = normalizeLocForMatch(currentLoc);
+    const target = normalizeLocForMatch(targetLoc);
+    if (!current.raw || !target.raw) return false;
+    return current.raw === target.raw || current.leaf === target.leaf;
   }
 
   function buildRelationInteractRequest(snapshot, actionType, rawTargetName, options = {}) {
@@ -35972,40 +36055,6 @@ ${播报文本}
     };
   }
 
-  function maybeOpenTradeRequestFromAI(snapshot) {
-    const tradeRequest = deepGet(snapshot, 'rootData.world.交易请求', {});
-    const action = toText(tradeRequest && tradeRequest.动作, '');
-    const status = toText(tradeRequest && tradeRequest.状态, 'pending');
-    if (
-      !tradeRequest ||
-      typeof tradeRequest !== 'object' ||
-      !action ||
-      action === '无' ||
-      /handled|done|完成|已处理|取消|cancel/i.test(status)
-    ) {
-      lastAutoTradeRequestSignature = '';
-      hasHydratedAutoTradeRequestSignature = true;
-      return;
-    }
-    if (!isSnapshotPlayerControlled(snapshot)) return;
-    const signature = (() => {
-      try {
-        return JSON.stringify(tradeRequest);
-      } catch (error) {
-        return `${action}:${Date.now()}`;
-      }
-    })();
-    if (!hasHydratedAutoTradeRequestSignature) {
-      lastAutoTradeRequestSignature = signature;
-      hasHydratedAutoTradeRequestSignature = true;
-      return;
-    }
-    if (signature === lastAutoTradeRequestSignature) return;
-    lastAutoTradeRequestSignature = signature;
-    mapDispatchContext = buildTradeDispatchFromRequest(snapshot, tradeRequest);
-    openModal('交易网络', { preserveMapDispatchContext: true });
-  }
-
   function buildMapBattleInitRequest(snapshot, dispatchDetail) {
     const detail = dispatchDetail || {};
     let npcTarget = toText(detail.npcTarget, '');
@@ -36905,6 +36954,7 @@ ${播报文本}
     const targetPath = escapeJsonPointerValue(request.目标地点);
     const finalLocName = 构建移动绝对位置(snapshot, request.目标地点, 父级.name);
     const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
+    const 下一tick = Number((当前tick + request.耗时tick).toFixed(2));
     const patchOps = [
       {
         op: 'insert',
@@ -36920,9 +36970,10 @@ ${播报文本}
         },
       },
       { op: 'replace', path: `/char/${activePath}/状态/位置`, value: finalLocName },
-      { op: 'add', path: `/char/${activePath}/状态/横坐标`, value: 坐标.x },
-      { op: 'add', path: `/char/${activePath}/状态/纵坐标`, value: 坐标.y },
-      { op: 'replace', path: '/world/时间/tick', value: Number((当前tick + request.耗时tick).toFixed(2)) },
+      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: 坐标.x },
+      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: 坐标.y },
+      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
+      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
@@ -36972,13 +37023,15 @@ ${播报文本}
       : -1;
     const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
     const 耗时tick = Math.max(0, toNumber(mapRequest.est_ticks, 0));
+    const 下一tick = Number((当前tick + 耗时tick).toFixed(2));
     const 出行方式 = toText(mapRequest.method, '步行');
     const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
     const patchOps = [
       { op: 'replace', path: `/char/${activePath}/状态/位置`, value: finalLocName },
-      { op: 'add', path: `/char/${activePath}/状态/横坐标`, value: targetX },
-      { op: 'add', path: `/char/${activePath}/状态/纵坐标`, value: targetY },
-      { op: 'replace', path: '/world/时间/tick', value: Number((当前tick + 耗时tick).toFixed(2)) },
+      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: targetX },
+      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: targetY },
+      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
+      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
@@ -37007,11 +37060,104 @@ ${播报文本}
     return { ok: true, patchOps, finalLocName, mapRequest };
   }
 
+  function 构建地图移动请求结算补丁(snapshot, request = {}, options = {}) {
+    const 角色名 = toText(options.角色, toText(snapshot && snapshot.activeName, ''));
+    const 角色 = resolveSnapshotCharacter(snapshot, 角色名);
+    if (!角色.key || !角色.char) return { ok: false, reason: 'travel_character_unresolved', patchOps: [] };
+    const mapRequest = request && typeof request === 'object' ? request : {};
+    if (!Object.keys(mapRequest).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    if (mapRequest.costs && mapRequest.costs.canAfford === false) {
+      return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
+    }
+    const activePath = escapeJsonPointerValue(角色.key);
+    const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
+    const 耗时tick = Math.max(0, toNumber(mapRequest.est_ticks, 0));
+    const 下一tick = Number((当前tick + 耗时tick).toFixed(2));
+    const 出行方式 = toText(mapRequest.method, '步行');
+    const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
+    const 最终位置 = toText(options.finalLocName, toText(mapRequest.target_loc, '未知地点'));
+    const 目标显示名 = toText(options.移动显示目标, 最终位置);
+    const targetX = Number.isFinite(toNumber(mapRequest.target_x, NaN))
+      ? Math.round(toNumber(mapRequest.target_x, -1))
+      : -1;
+    const targetY = Number.isFinite(toNumber(mapRequest.target_y, NaN))
+      ? Math.round(toNumber(mapRequest.target_y, -1))
+      : -1;
+    const 地形名 = toText(options.terrainName, '');
+    const patchOps = [
+      { op: 'replace', path: `/char/${activePath}/状态/位置`, value: 最终位置 },
+      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: targetX },
+      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: targetY },
+      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
+      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
+      {
+        op: 'replace',
+        path: '/sys/系统播报',
+        value: `[地图移动完成] ${角色.displayName || 角色.key} 经${出行方式}抵达 ${目标显示名}${地形名 ? `（${地形名}）` : ''}，历时 ${耗时文本}。`,
+      },
+    ];
+    const costs = mapRequest.costs && typeof mapRequest.costs === 'object' ? mapRequest.costs : {};
+    if (toNumber(costs.fedCoin, 0) > 0)
+      patchOps.push({
+        op: 'replace',
+        path: `/char/${activePath}/财富/联邦币`,
+        value: Math.max(0, toNumber(deepGet(角色.char, '财富.联邦币', 0), 0) - toNumber(costs.fedCoin, 0)),
+      });
+    if (toNumber(costs.sp, 0) > 0)
+      patchOps.push({
+        op: 'replace',
+        path: `/char/${activePath}/属性/魂力`,
+        value: Math.max(0, toNumber(deepGet(角色.char, '属性.魂力', 0), 0) - toNumber(costs.sp, 0)),
+      });
+    if (toNumber(costs.vit, 0) > 0) {
+      const 下一体力 = Math.max(0, toNumber(deepGet(角色.char, '属性.体力', 0), 0) - toNumber(costs.vit, 0));
+      patchOps.push({ op: 'replace', path: `/char/${activePath}/属性/体力`, value: 下一体力 });
+      if (下一体力 <= 1) {
+        patchOps.push({
+          op: 'replace',
+          path: `/char/${activePath}/属性/状态效果/疲劳`,
+          value: { 类型: 'debuff', 层数: 1, 描述: '长途跋涉导致极度疲劳' },
+        });
+      }
+    }
+    return { ok: true, patchOps, finalLocName: 最终位置, mapRequest, cost: costs };
+  }
+
+  async function 结算地图移动请求(detail = {}) {
+    const snapshot = liveSnapshot && liveSnapshot.rootData ? liveSnapshot : await refreshLiveSnapshot({ force: true });
+    if (!snapshot || !snapshot.rootData) return { ok: false, reason: 'snapshot_unavailable' };
+    const request = detail && detail.request && typeof detail.request === 'object' ? detail.request : {};
+    const 补丁结果 = 构建地图移动请求结算补丁(snapshot, request, detail);
+    if (!补丁结果.ok || !补丁结果.patchOps.length) return 补丁结果;
+    const 当前位置 = 读取快照当前位置(snapshot);
+    if (
+      toText(request.target_loc, '') !== '无' &&
+      补丁结果.finalLocName &&
+      当前位置 &&
+      移动目标是否已到达(当前位置, 补丁结果.finalLocName)
+    ) {
+      return { ok: true, alreadyThere: true, patchOps: [], finalLocName: 补丁结果.finalLocName, request };
+    }
+    await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+    登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
+    await refreshLiveSnapshot({ force: true });
+    return { ok: true, settled: true, ...补丁结果 };
+  }
+
   async function 执行移动模块意图路由(snapshot, request = {}) {
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const mapBridge = window.__sheepMapBridge;
     const 已有目标 = 查找世界地点数据(snapshot, request.原始目标地点 || request.目标地点);
+    const 当前所在 = 读取快照当前位置(snapshot);
+    if (已有目标.data && 当前所在 && 移动目标是否已到达(当前所在, 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, deepGet(已有目标.data, '归属父节点', '')))) {
+      return 构建模块路由成功结果('travel', request, {
+        dispatchMode: 'settled_summary',
+        alreadyThere: true,
+        patchOps: [],
+        finalLocName: 当前所在,
+      });
+    }
     if (已有目标.data) {
       if (!mapBridge || typeof mapBridge.describeTravelToNode !== 'function') {
         return 构建模块路由失败结果('travel', request, 'map_bridge_unavailable');
@@ -37024,7 +37170,8 @@ ${播报文本}
         return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable', { result });
       }
       try {
-        await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
+        await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+        登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
         await refreshLiveSnapshot({ force: true });
       } catch (error) {
         return 构建模块路由失败结果('travel', request, error && error.message ? error.message : 'travel_patch_failed', {
@@ -37044,7 +37191,8 @@ ${播报文本}
       return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable');
     }
     try {
-      await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
+      await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+      登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
       await refreshLiveSnapshot({ force: true });
     } catch (error) {
       return 构建模块路由失败结果('travel', request, error && error.message ? error.message : 'travel_patch_failed');
@@ -37859,6 +38007,7 @@ ${播报文本}
     const meta = detail.meta && typeof detail.meta === 'object' ? detail.meta : {};
     if (!playerInput) return;
     detail.handled = true;
+    if (toText(meta.requestKind, '') === 'map_travel_settled') await refreshLiveSnapshot({ force: true });
     detail.result = await dispatchUiAiRequest(playerInput, systemPrompt, {
       requestKind: toText(meta.requestKind, 'map_ai_request'),
     });
@@ -37883,6 +38032,28 @@ ${播报文本}
   }
 
   window.addEventListener('map-maintenance-request', handleMapMaintenanceRequest);
+
+  async function handleMapTravelSettleRequest(event) {
+    const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
+    detail.handled = true;
+    try {
+      detail.result = await 结算地图移动请求(detail);
+      if (!detail.result || detail.result.ok === false) {
+        showUiToast(toText(detail.result && detail.result.reason, '地图移动结算失败。'), 'error', 4200);
+      } else if (detail.result.alreadyThere) {
+        showUiToast('已位于目标地点。', 'info', 1800);
+      } else {
+        showUiToast('移动已结算。', 'info', 1800);
+      }
+    } catch (error) {
+      detail.result = { ok: false, reason: error && error.message ? error.message : 'map_travel_settle_failed' };
+      showUiToast(detail.result.reason, 'error', 4200);
+      console.warn('[DragonUI] 地图移动结算失败', error);
+    }
+  }
+
+  window.addEventListener('map-travel-settle-request', handleMapTravelSettleRequest);
+  window.__LWCS_SETTLE_MAP_TRAVEL__ = detail => 结算地图移动请求(detail);
 
   async function handleBattleMvuUpdateRequest(event) {
     const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
@@ -38980,7 +39151,7 @@ ${播报文本}
         showUiToast('地图移动桥未就绪，暂时无法直接前往该节点。', 'error', 4200);
         return;
       }
-      const travelResult = sheepMapBridge.travelToNode(nodeName);
+      const travelResult = await sheepMapBridge.travelToNode(nodeName);
       if (!travelResult || travelResult.ok === false) {
         showUiToast(toText(travelResult && travelResult.reason, `当前无法前往【${nodeName}】。`), 'error', 4200);
         return;
