@@ -23555,7 +23555,7 @@ const SchemaRootObject = z
         时间: z
           .object({
             tick: z.coerce.number().prefault(0),
-            _上次结算tick: z.coerce.number().prefault(0),
+            _上次结算tick: z.coerce.number().optional(),
             _calendar: z.string().prefault('斗罗历X年X月X日 HH:MM'),
           })
           .prefault({}),
@@ -23906,7 +23906,6 @@ export const Schema = z
 
     if (typeof data.sys.玩家名 !== 'string' || !data.sys.玩家名.trim()) data.sys.玩家名 = '无名氏';
     if (typeof data.sys.系统播报 !== 'string' || !data.sys.系统播报.trim()) data.sys.系统播报 = '初始化';
-    const 是否初始化入口 = data.sys.系统播报 === '初始化';
 
     const appendSystemReasonText = text => {
       const safeText = String(text || '').trim();
@@ -25056,7 +25055,7 @@ export const Schema = z
     const 原始上次结算tick = data.world.时间._上次结算tick ?? data.world.时间.上次结算tick;
     const 原始上次结算数值 = Number(原始上次结算tick);
     const 是否新档初始化 =
-      是否初始化入口 &&
+      currentTick > 0 &&
       (!Number.isFinite(原始上次结算数值) || 原始上次结算数值 <= 0);
     let lastTick = Number.isFinite(原始上次结算数值) ? 原始上次结算数值 : currentTick;
     if (是否新档初始化 && currentTick > 0) {
@@ -26382,7 +26381,7 @@ export const Schema = z
               c.私密档案._已来初潮 = true;
               c.私密档案.生理期偏移 = 4032 - (currentTick % 4032);
 
-              if (currentTick > 0 && !是否初始化入口) {
+              if (currentTick > 0 && !是否新档初始化) {
                 if (!data.sys.系统播报) data.sys.系统播报 = '';
                 data.sys.系统播报 += ` [生理变化] ${charName} 迎来了初潮，正式进入青春期！`;
               }

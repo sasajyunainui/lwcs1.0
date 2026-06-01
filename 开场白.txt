@@ -3754,7 +3754,7 @@ window.submitForm = function() {
             initPatch.push({
                 "op": "replace",
                 "path": "/world/时间/_上次结算tick",
-                "value": 0
+                "value": tlData.world.时间.tick
             });
         }
     }

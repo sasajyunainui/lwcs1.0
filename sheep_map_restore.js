@@ -2682,11 +2682,11 @@
     .map-npc-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 8px;
+      margin-top: 6px;
       max-height: min(360px, 42vh);
       overflow-y: auto;
-      padding-right: 3px;
+      padding-right: 4px;
       scrollbar-width: thin;
       scrollbar-color: rgba(118,226,255,0.34) rgba(255,255,255,0.04);
     }
@@ -2698,12 +2698,52 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 4px 2px 5px;
-      background: linear-gradient(180deg, rgba(8,16,24,0.96), rgba(8,16,24,0.78));
-      color: rgba(216, 243, 255, 0.88);
+      gap: 12px;
+      padding: 2px 2px 8px;
+      margin-bottom: 2px;
+      border-bottom: 1px solid rgba(118,226,255,0.15);
+      background: linear-gradient(180deg, rgba(8,16,24,0.98), rgba(8,16,24,0.74));
+      color: rgba(216, 243, 255, 0.78);
       font-size: 10px;
       line-height: 1.2;
+    }
+
+    .map-npc-roster-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #76e2ff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-shadow: 0 0 8px rgba(118,226,255,0.4);
+      white-space: nowrap;
+    }
+
+    .map-npc-roster-title::before {
+      content: '';
+      flex: 0 0 auto;
+      width: 3px;
+      height: 1em;
+      border-radius: 999px;
+      background: #76e2ff;
+      box-shadow: 0 0 8px rgba(118,226,255,0.55), 0 0 14px rgba(118,226,255,0.22);
+    }
+
+    .map-npc-roster-badge {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(118,226,255,0.16);
+      background: rgba(118,226,255,0.1);
+      color: #dff5ff;
+      font-size: 9px;
+      line-height: 1;
+      white-space: nowrap;
     }
 
     .map-npc-empty {
@@ -2719,19 +2759,24 @@
     .map-npc-card {
       border-radius: 12px;
       border: 1px solid rgba(168, 192, 214, 0.14);
-      background: rgba(10, 22, 32, 0.42);
-      padding: 5px 7px;
+      border-left: 2px solid rgba(118,226,255,0.2);
+      background: linear-gradient(90deg, rgba(16,32,46,0.7), rgba(16,32,46,0.2));
+      padding: 8px 10px;
       transition: .18s ease;
       display: grid;
-      grid-template-columns: minmax(44px, 0.58fr) minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 6px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto auto;
+      align-items: start;
+      column-gap: 8px;
+      row-gap: 4px;
+      overflow: hidden;
     }
 
     .map-npc-card.current {
-      border-color: rgba(101, 170, 214, 0.34);
-      background: rgba(19, 40, 58, 0.62);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+      border-color: rgba(118,226,255,0.34);
+      border-left-color: rgba(118,226,255,0.88);
+      background: linear-gradient(90deg, rgba(16,32,46,0.92), rgba(16,32,46,0.34));
+      box-shadow: 0 0 0 1px rgba(118,226,255,0.08), 0 10px 24px rgba(0,0,0,0.18), 0 0 18px rgba(118,226,255,0.12);
     }
 
     .map-npc-card-head {
@@ -2745,13 +2790,15 @@
       padding: 0;
       margin: 0;
       font: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 1.25;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
       color: #eef7fd;
+      text-shadow: 0 0 8px rgba(118,226,255,0.16);
       text-align: left;
       cursor: pointer;
       grid-column: 1;
+      grid-row: 1;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -2759,30 +2806,48 @@
     }
 
     .map-npc-card-head .map-event-chip {
-      grid-column: 3;
-      padding: 3px 6px;
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+      align-self: start;
+      padding: 4px 7px;
       font-size: 9px;
+      border-radius: 4px;
+      background: rgba(118,226,255,0.1);
+      border-color: rgba(118,226,255,0.16);
+      color: #dff5ff;
+      box-shadow: none;
+    }
+
+    .map-npc-card-head .map-event-chip.live {
+      background: rgba(118,226,255,0.16);
+      border-color: rgba(118,226,255,0.24);
+      color: #f3fbff;
     }
 
     .map-npc-name:hover,
     .map-npc-name.current {
       color: #76e2ff;
+      text-shadow: 0 0 10px rgba(118,226,255,0.28);
     }
 
     .map-npc-meta {
       margin-top: 0;
+      padding-top: 2px;
+      border-top: 1px solid rgba(118,226,255,0.08);
       font-size: 10px;
-      line-height: 1.35;
-      color: #b8d4e3;
-      grid-column: 2;
+      line-height: 1.4;
+      color: #8aabc2;
+      grid-column: 1 / -1;
+      grid-row: 2;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .map-npc-meta.is-location {
-      color: #d9eef8;
-      font-weight: 600;
+      color: #8aabc2;
+      font-weight: 500;
     }
 
     .map-npc-actions {
@@ -2790,6 +2855,7 @@
       grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
       gap: 4px;
       grid-column: 1 / -1;
+      grid-row: 3;
       margin-top: 2px;
     }
 
@@ -8990,14 +9056,14 @@ ${buildMapUpdateVariableBlock('Map node routine action completed.', patchOps, '�
     const currentSelectedAction = toText(mapState.selectedAction, '');
     const 在场人物节点文本 = panelMode === 'selection' ? (isFreeSelection ? '自由坐标' : focusName) : (currentName || '未知地点');
     const npcListHtml = isFreeSelection
-      ? `<div class="map-npc-empty">自由坐标没有固定在场人物，选择节点后可浏览 NPC 与互动。</div>`
+      ? `<div class="map-npc-empty">自由坐标 · 无固定人物</div>`
       : (panelMode === 'follow' && inPreview && !previewCurrentBranch)
-        ? `<div class="map-npc-empty">当前处于远端子图预览，以下人物来自你的真实所在位置【${escapeMapHtml(currentName || '未知地点')}】。</div>`
+        ? `<div class="map-npc-empty">远端子图预览 · 人物来自【${escapeMapHtml(currentName || '未知地点')}】</div>`
       : (inPreview && !previewCurrentBranch)
-        ? `<div class="map-npc-empty">当前为远端区域预览，需先移动到 ${escapeMapHtml(previewTrailNames[0] || previewAnchorName)} 后才能与此处人物互动。</div>`
+        ? `<div class="map-npc-empty">远端预览 · 先回到 ${escapeMapHtml(previewTrailNames[0] || previewAnchorName)}</div>`
         : (!focusItem || !characterEntries.length)
-          ? `<div class="map-npc-empty">${escapeMapHtml(focusName)} 暂未发现人物。</div>`
-          : `<div class="map-npc-roster-head"><span>${escapeMapHtml(在场人物节点文本)}</span><span>${escapeMapHtml(selectedNpc ? `已选 ${selectedNpc}` : `全部 ${characterEntries.length} 人`)}</span></div>${characterEntries.map(entry => {
+          ? `<div class="map-npc-empty">${escapeMapHtml(focusName)} · 0 人</div>`
+          : `<div class="map-npc-roster-head"><span class="map-npc-roster-title">在场人物 · ${escapeMapHtml(在场人物节点文本)}</span><span class="map-npc-roster-badge">${escapeMapHtml(selectedNpc ? `已选 ${selectedNpc}` : `${characterEntries.length} 人`)}</span></div>${characterEntries.map(entry => {
             const selectedClass = entry.name === selectedNpc ? ' current' : '';
             const 人物信息 = 格式化人物卡信息(entry);
             const metaHtml = 人物信息 ? `<div class="map-npc-meta${entry && entry.可交互 === true ? '' : ' is-location'}">${escapeMapHtml(人物信息)}</div>` : '';
@@ -9419,7 +9485,7 @@ ${buildMapUpdateVariableBlock('Map node routine action completed.', patchOps, '�
     setMapText('[data-map-request-cost]', selectedActionDetail.values[2]);
 
     setMapText('[data-map-primary-panel-title]', '详细信息');
-    setMapText('[data-map-secondary-panel-title]', '在场人物');
+    setMapText('[data-map-secondary-panel-title]', '人物');
     getMapUiElements('[data-map-secondary-panel-badge]').forEach(徽章 => {
       徽章.innerHTML = `<span data-map-npc-count>${characterEntries.length}</span> 人`;
     });
