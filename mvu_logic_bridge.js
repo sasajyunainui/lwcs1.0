@@ -9353,11 +9353,12 @@
     if (!字段 || typeof 字段 !== 'object' || 字段['数值'] === undefined) return;
     const 模式 = normalizeSkillUiText(字段['护盾模式'], '正向护盾');
     const 文本 = normalizeSkillUiText(字段['数值'], '');
-    const 匹配 = 文本.match(/^(-?)(\d+(?:\.\d+)?)%$/);
+    const 匹配 = 文本.match(/^[+-]?(\d+(?:\.\d+)?)(%)?$/);
     if (匹配) {
       const 符号 = 模式 === '正向护盾' ? '+' : '-';
-      const 数值 = Math.max(0, Math.min(100, Number(匹配[2]) || 0));
-      字段['数值'] = `${符号}${Math.round(数值)}%`;
+      const 数值 = Math.abs(Number(匹配[1]) || 0);
+      const 精度 = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+      字段['数值'] = `${符号}${Number(数值.toFixed(精度))}${匹配[2] ? '%' : ''}`;
       return;
     }
     const 数值 = Math.abs(解析技能设计台正负数值(字段['数值']));
@@ -9403,14 +9404,42 @@
     return /^[-+]?\d+(?:\.\d+)?%?$/.test(normalizeSkillUiText(数值, ''));
   }
 
+  function 技能设计台数值字段使用单位下拉(原型 = '', 字段 = '') {
+    return 字段 === '数值' && ['资源变化', '资源转移', '护盾变化'].includes(normalizeSkillUiText(原型, ''));
+  }
+
+  function 读取技能设计台数值单位(value = '') {
+    return /%$/.test(normalizeSkillUiText(value, '')) ? '百分比' : '点数';
+  }
+
+  function 格式化技能设计台单位数值(value = '', 单位 = '点数') {
+    const 文本 = normalizeSkillUiText(value, '');
+    if (!文本) return '';
+    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)(%)?$/);
+    if (!匹配) return 文本;
+    const 数值 = Number(匹配[2]);
+    if (!Number.isFinite(数值)) return 文本;
+    const 精度 = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+    const 符号 = 匹配[1] === '-' ? '-' : '+';
+    return `${符号}${Number(数值.toFixed(精度))}${单位 === '百分比' ? '%' : ''}`;
+  }
+
+  function 同步技能设计台数值单位选择(select) {
+    if (!(select instanceof HTMLSelectElement)) return;
+    const 容器 = select.closest('[data-skill-designer-value-unit-control]');
+    const 输入 = 容器 ? 容器.querySelector('[data-skill-designer-prototype-field="数值"]') : null;
+    if (!(输入 instanceof HTMLInputElement)) return;
+    输入.value = 格式化技能设计台单位数值(输入.value, normalizeSkillUiText(select.value, '点数'));
+  }
+
   function 读取技能设计台数值字段口径(原型 = '', 字段 = '', effect = {}) {
     const 原型名 = normalizeSkillUiText(原型, '');
     const 字段名 = normalizeSkillUiText(字段, '');
     if (!['数值', '副数值', '强化倍率', '结算倍率'].includes(字段名)) return '';
     if (字段名 === '强化倍率' || 字段名 === '结算倍率') return '百分比';
     if (原型名 === '状态施加') return '百分比';
-    if (['属性修正', '判定修正', '护盾变化', '资源锁定', '决策干扰'].includes(原型名)) return '百分比';
-    if (原型名 === '资源变化' || 原型名 === '资源转移') return '混合';
+    if (['属性修正', '判定修正', '资源锁定', '决策干扰'].includes(原型名)) return '百分比';
+    if (['资源变化', '资源转移', '护盾变化'].includes(原型名)) return '混合';
     if (原型名 === '结算修正') {
       const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
       return ['消耗', '前摇'].includes(结算) ? '混合' : '百分比';
@@ -9443,6 +9472,7 @@
   }
 
   function 规范化技能设计台数值字段值(原型 = '', 字段 = '', value = '', effect = {}) {
+    if (技能设计台数值字段使用单位下拉(原型, 字段)) return 格式化技能设计台单位数值(value, 读取技能设计台数值单位(value));
     const 口径 = 读取技能设计台数值字段口径(原型, 字段, effect);
     if (口径 === '百分比') return 格式化技能设计台百分比字段值(value);
     if (口径 === '混合') return 格式化技能设计台混合数值字段值(value);
@@ -12483,7 +12513,10 @@
         const 名称 = String(项.关键值 || '').trim();
         const 字段 = String(项.关键字段 || '').trim();
         const 目标 = String(项.目标 || '').trim();
-        const 数值 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
+        const 原始数值文本 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : '';
+        const 数值 = 原始数值文本
+          ? `${原始数值文本}${项.固定值系数 ? '点' : ''}`
+          : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
         const 伤害类型 = 原型 === '伤害结算' && 项.伤害类型 ? String(项.伤害类型).trim() : '';
         const 限定 = String(项.限定元素 || '').trim();
         return [
@@ -12511,6 +12544,7 @@
           项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(2)}` : '',
           项.绝对值 !== null && 项.绝对值 !== undefined ? `绝对值 ${Number(项.绝对值 || 0).toFixed(2)}` : '',
           项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算百分点 ${Number(项.绝对值折算百分点 || 0).toFixed(2)}` : '',
+          项.固定值系数 !== null && 项.固定值系数 !== undefined ? `固定值系数 ${Number(项.固定值系数 || 0).toFixed(2)}` : '',
           项.单位COST !== null && 项.单位COST !== undefined ? `单位COST ${Number(项.单位COST || 0).toFixed(2)}` : '',
           项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
           项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
@@ -12525,6 +12559,7 @@
       const 明细辅助文本 = 项 => [
         项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(1)}` : '',
         项.绝对值折算百分点 !== null && 项.绝对值折算百分点 !== undefined ? `折算 ${Number(项.绝对值折算百分点 || 0).toFixed(1)}%` : '',
+        项.固定值系数 !== null && 项.固定值系数 !== undefined ? `固定值系数 ${Number(项.固定值系数 || 0).toFixed(2)}` : '',
         项.单位COST !== null && 项.单位COST !== undefined ? `单位 ${Number(项.单位COST || 0).toFixed(2)}` : '',
         项.目标系数 !== null && 项.目标系数 !== undefined ? `目标 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
         项.持续系数 !== null && 项.持续系数 !== undefined ? `持续 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
@@ -16326,6 +16361,22 @@
         : 只允许正向强度 ? '例如 10%'
         : normalizeSkillUiText(原型, '') === '决策干扰' && key === '数值' ? '例如 20%，越高干扰越强'
           : 必须百分比修正 ? '例如 +12%' : '默认无';
+      if (技能设计台数值字段使用单位下拉(原型, key)) {
+        const 当前单位 = 读取技能设计台数值单位(value);
+        const 当前值 = 格式化技能设计台单位数值(value, 当前单位);
+        return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <div class=\"skill-designer-value-unit-control\" data-skill-designer-value-unit-control>
+              <input class=\"mvu-editor-input\" type=\"text\" pattern=\"${escapeHtmlAttr(pattern)}\" value=\"${escapeHtmlAttr(当前值)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
+              <select class=\"mvu-editor-select\" data-skill-designer-value-unit data-skill-designer-disableable>
+                <option value=\"点数\"${当前单位 === '点数' ? ' selected' : ''}>点数</option>
+                <option value=\"百分比\"${当前单位 === '百分比' ? ' selected' : ''}>百分比</option>
+              </select>
+            </div>
+          </label>
+        `;
+      }
       return `
           <label class=\"mvu-editor-field\">
             ${标签}
@@ -23456,115 +23507,6 @@
 
   let 星图焦点态 = null;
 
-  function 读取星图焦点定位(snapshot, 焦点态 = null) {
-    const 当前地点 = toText(
-      deepGet(snapshot, 'activeChar.状态.位置', snapshot && snapshot.currentLoc),
-      snapshot && snapshot.currentLoc ? snapshot.currentLoc : '未知地点',
-    );
-    const 标准地点 = toText(snapshot && snapshot.normalizedLoc, 当前地点);
-    const 事件焦点 = 焦点态 && typeof 焦点态 === 'object' ? 焦点态 : null;
-    const 焦点名称 = toText(事件焦点 && 事件焦点.焦点名称, 标准地点 || 当前地点);
-    const 自由坐标 = !!(事件焦点 && 事件焦点.自由坐标);
-    const 事件当前位置 = 事件焦点 && typeof 事件焦点.是否当前位置 === 'boolean' ? 事件焦点.是否当前位置 : null;
-    const 是否当前位置 = 自由坐标
-      ? false
-      : 事件当前位置 !== null
-        ? 事件当前位置
-        : isLocationCompatible(当前地点, 焦点名称) || isLocationCompatible(标准地点, 焦点名称);
-    return {
-      焦点名称: 焦点名称 || 标准地点 || 当前地点 || '未知地点',
-      当前地点,
-      标准地点,
-      地图名称: toText(事件焦点 && 事件焦点.地图名称, getMapDisplayName(snapshot)),
-      类型: toText(事件焦点 && 事件焦点.类型, ''),
-      功能: toText(事件焦点 && 事件焦点.功能, ''),
-      可用: toText(事件焦点 && 事件焦点.可用, ''),
-      状态: toText(事件焦点 && 事件焦点.状态, ''),
-      地形: toText(事件焦点 && 事件焦点.地形, ''),
-      说明: toText(事件焦点 && 事件焦点.说明, ''),
-      自由坐标,
-      是否当前位置,
-    };
-  }
-
-  function 读取星图焦点地点数据(snapshot, 定位) {
-    if (!snapshot || !定位 || 定位.自由坐标) return { name: 定位 ? 定位.焦点名称 : '', data: null };
-    const 解析结果 = resolveLocationData(snapshot.rootData || {}, 定位.焦点名称);
-    if (解析结果 && 解析结果.data) return 解析结果;
-    if (定位.是否当前位置 && snapshot.locationData) {
-      return { name: 定位.标准地点 || 定位.当前地点, data: snapshot.locationData };
-    }
-    return 解析结果 || { name: 定位.焦点名称, data: null };
-  }
-
-  function 判断星图焦点为当前位置(snapshot, 焦点态 = null) {
-    return !!读取星图焦点定位(snapshot, 焦点态).是否当前位置;
-  }
-
-  function 构建星图焦点元信息(标签, 值, 限制 = 34) {
-    const 原文 = toText(值, '无');
-    const 文本 = shortenText(原文, 限制);
-    return `<span class="mvu-map-focus-meta-item"><b>${htmlEscape(标签)}</b><em title="${escapeHtmlAttr(原文)}">${htmlEscape(文本 || '无')}</em></span>`;
-  }
-
-  function 构建星图焦点位置卡(snapshot, 焦点态 = null) {
-    const 定位 = 读取星图焦点定位(snapshot, 焦点态);
-    const 地点信息 = 读取星图焦点地点数据(snapshot, 定位);
-    const 地点数据 = 地点信息 && 地点信息.data && typeof 地点信息.data === 'object' ? 地点信息.data : {};
-    const 商店数量 = safeEntries(deepGet(地点数据, '商店', {})).length;
-    const 动态数量 = safeEntries(deepGet(snapshot, 'rootData.world.动态地点', {})).filter(([, item]) => {
-      const 动态地点 = toText(deepGet(item, 'location', deepGet(item, '地点', '')), '');
-      return 动态地点 && isLocationCompatible(定位.焦点名称, 动态地点);
-    }).length;
-    const 本地人物数量 = 定位.自由坐标
-      ? 0
-      : getShellLocalCharacterEntries(snapshot, 99, {
-          目标地点: 定位.焦点名称,
-          标准地点: 地点信息 && 地点信息.name ? 地点信息.name : 定位.标准地点,
-        }).length;
-    const 市场派生 = 构建市场派生模型(地点数据, snapshot && snapshot.rootData ? snapshot.rootData : {});
-    const 掌控势力 = toText(
-      deepGet(地点数据, '掌控势力', 定位.是否当前位置 ? deepGet(snapshot, 'locationData.掌控势力', '未知') : '未知'),
-      '未知',
-    );
-    const 经济状况 = toText(
-      deepGet(地点数据, '经济状况', 定位.是否当前位置 ? deepGet(snapshot, 'locationData.经济状况', '未知') : '未知'),
-      '未知',
-    );
-    const 守护军团 = toText(
-      deepGet(地点数据, '守护军团', 定位.是否当前位置 ? deepGet(snapshot, 'locationData.守护军团', '未知') : '未知'),
-      '未知',
-    );
-    const 类型文本 = 定位.类型 || toText(deepGet(地点数据, '类型', deepGet(地点数据, 'type', '节点')), '节点');
-    const 地貌摘要 = [类型文本, 定位.地形 || 市场派生.最近成交影响].filter(Boolean).join(' · ') || '节点';
-    const 元信息列表 = [
-      构建星图焦点元信息('掌控', 掌控势力, 28),
-      构建星图焦点元信息('防务', 守护军团, 28),
-      构建星图焦点元信息('经济', 经济状况, 24),
-      构建星图焦点元信息('供给', 市场派生.本地供给, 24),
-      构建星图焦点元信息('价格', 市场派生.价格带, 24),
-      构建星图焦点元信息('成交', 市场派生.最近成交影响, 24),
-    ];
-    return `
-        <div class="mvu-map-focus-card">
-          <div class="mvu-map-focus-head">
-            <div>
-              <span>${htmlEscape(定位.是否当前位置 ? '当前位置' : '地图焦点')}</span>
-              <strong title="${escapeHtmlAttr(定位.焦点名称)}">${htmlEscape(shortenText(定位.焦点名称, 28))}</strong>
-            </div>
-            <b class="${定位.是否当前位置 ? 'is-live' : 'is-gold'}">${htmlEscape(定位.是否当前位置 ? '当前' : 定位.自由坐标 ? '坐标' : '选中')}</b>
-          </div>
-          <div class="mvu-map-focus-summary">
-            <div class="mvu-map-focus-line is-primary">
-              <b title="${escapeHtmlAttr(定位.地图名称)}">${htmlEscape(shortenText(定位.地图名称, 32))}</b>
-              <span title="${escapeHtmlAttr(地貌摘要)}">${htmlEscape(shortenText(地貌摘要, 36))}</span>
-            </div>
-          </div>
-          <div class="mvu-map-focus-meta">${元信息列表.join('')}</div>
-        </div>
-      `;
-  }
-
   function buildShellMapCurrentCard(snapshot) {
     const currentMapDisplayName = getMapDisplayName(snapshot);
     const localFaction = toText(deepGet(snapshot, 'locationData.掌控势力', '未知'), '未知');
@@ -23706,17 +23648,13 @@
     const 地图节点面板 = 读取地图模块星图节点面板(星图焦点态);
     setUnifiedCardMarkup(
       'map-current',
-      地图节点面板 ? 地图节点面板.primaryHtml : 构建星图焦点位置卡(快照, 星图焦点态),
+      地图节点面板 ? 地图节点面板.primaryHtml : '',
       {
-        preview: 地图节点面板
-          ? toText(地图节点面板.primaryPreview, '')
-          : 判断星图焦点为当前位置(快照, 星图焦点态)
-            ? '当前节点详情'
-            : '',
+        preview: 地图节点面板 ? toText(地图节点面板.primaryPreview, '') : '',
         surface: 'panel',
       },
     );
-    setUnifiedCardMarkup('map-locals', 构建星图在场人物卡(快照, 星图焦点态), {
+    setUnifiedCardMarkup('map-locals', 地图节点面板 ? 地图节点面板.secondaryHtml : '', {
       preview: 地图节点面板 ? toText(地图节点面板.secondaryPreview, '') : '',
       surface: 'panel',
     });
@@ -25054,17 +24992,13 @@
       const 地图节点面板 = 读取地图模块星图节点面板(星图焦点态);
       setUnifiedCardMarkup(
         'map-current',
-        地图节点面板 ? 地图节点面板.primaryHtml : 构建星图焦点位置卡(snapshot, 星图焦点态),
+        地图节点面板 ? 地图节点面板.primaryHtml : '',
         {
-          preview: 地图节点面板
-            ? toText(地图节点面板.primaryPreview, '')
-            : 判断星图焦点为当前位置(snapshot, 星图焦点态)
-              ? '当前节点详情'
-              : '',
+          preview: 地图节点面板 ? toText(地图节点面板.primaryPreview, '') : '',
           surface: normalizedSurface,
         },
       );
-      setUnifiedCardMarkup('map-locals', 构建星图在场人物卡(snapshot, 星图焦点态), {
+      setUnifiedCardMarkup('map-locals', 地图节点面板 ? 地图节点面板.secondaryHtml : '', {
         preview: 地图节点面板 ? toText(地图节点面板.secondaryPreview, '') : '',
         surface: normalizedSurface,
       });
@@ -25213,6 +25147,15 @@
         焦点态 && typeof 焦点态 === 'object'
           ? {
               焦点名称: toText(焦点态.焦点名称, ''),
+              地图名称: toText(焦点态.地图名称, ''),
+              类型: toText(焦点态.类型, ''),
+              功能: toText(焦点态.功能, ''),
+              可用: toText(焦点态.可用, ''),
+              状态: toText(焦点态.状态, ''),
+              地形: toText(焦点态.地形, ''),
+              说明: toText(焦点态.说明, ''),
+              自由坐标: !!焦点态.自由坐标,
+              是否当前位置: !!焦点态.是否当前位置,
             }
           : {},
       );
@@ -25521,31 +25464,6 @@
             <b>森林仇恨值</b>
             <strong>${htmlEscape(`${forestStage} / ${formatNumber(snapshot.forestKilledAge)} / 1000000`)}</strong>
             <i><span style="width:${forestRatio}%;"></span></i>
-          </div>
-        </div>
-      `;
-  }
-
-  function 构建星图在场人物卡(snapshot, 焦点态 = null) {
-    const 定位 = 读取星图焦点定位(snapshot, 焦点态);
-    const 地点信息 = 读取星图焦点地点数据(snapshot, 定位);
-    const 本地条目 = 定位.自由坐标
-      ? []
-      : getShellLocalCharacterEntries(snapshot, 99, {
-          目标地点: 定位.焦点名称,
-          标准地点: 地点信息 && 地点信息.name ? 地点信息.name : 定位.标准地点,
-        });
-    return `
-        <div class="mvu-shell-roster-card mvu-map-roster-card">
-          <div class="mvu-shell-roster-head">
-            <div>
-              <span>在场人物</span>
-              <strong title="${escapeHtmlAttr(定位.焦点名称)}">${htmlEscape(shortenText(定位.焦点名称, 24))}</strong>
-            </div>
-            <b>${htmlEscape(`${本地条目.length} 名`)}</b>
-          </div>
-          <div class="mvu-shell-roster-list">
-            ${buildShellLocalRosterRows(本地条目, 99, { 启用操作: true, 当前地点: 定位.焦点名称 })}
           </div>
         </div>
       `;
@@ -27115,6 +27033,9 @@
             if (target && target.matches('[data-skill-designer-prototype-select]')) {
               rebuildPrototypeRowFields(target.closest('[data-skill-designer-prototype-row]'));
               同步原型行默认驱动判定(target.closest('[data-skill-designer-prototype-row]'));
+            }
+            if (target && target.matches('[data-skill-designer-value-unit]')) {
+              同步技能设计台数值单位选择(target);
             }
             if (target && target.matches('[data-skill-designer-prototype-field]')) {
               if (target instanceof HTMLInputElement && target.matches('[data-skill-designer-positive-value]')) {

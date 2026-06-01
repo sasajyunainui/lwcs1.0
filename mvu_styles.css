@@ -5468,6 +5468,13 @@
   white-space: nowrap;
 }
 
+.skill-designer-value-unit-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
+  gap: 8px;
+  align-items: center;
+}
+
 .mvu-editor-input,
 .mvu-editor-select,
 .mvu-editor-textarea {
