@@ -5995,54 +5995,52 @@
     const sd = snapshot.rootData || {};
     const charStatus = deepGet(snapshot, 'activeChar.状态') || {};
     const actualLocName = getActualCurrentLoc();
+    const 角色横坐标 = Number.isFinite(toNumber(charStatus.current_x, NaN)) ? toNumber(charStatus.current_x, NaN) : toNumber(charStatus.横坐标, NaN);
+    const 角色纵坐标 = Number.isFinite(toNumber(charStatus.current_y, NaN)) ? toNumber(charStatus.current_y, NaN) : toNumber(charStatus.纵坐标, NaN);
+    const 角色坐标有效 = Number.isFinite(角色横坐标) && 角色横坐标 >= 0 && Number.isFinite(角色纵坐标) && 角色纵坐标 >= 0;
 
-    // 1. 如果你在大地图野外，优先采用身上的绝对坐标作为唯一真理（防止在野外地图消失）
-    if (mapState.currentMapId === 'map_douluo_world' || (hasActivePreview() && isPreviewCurrentBranch())) {
-       const 角色横坐标 = Number.isFinite(toNumber(charStatus.current_x, NaN)) ? toNumber(charStatus.current_x, NaN) : toNumber(charStatus.横坐标, NaN);
-       const 角色纵坐标 = Number.isFinite(toNumber(charStatus.current_y, NaN)) ? toNumber(charStatus.current_y, NaN) : toNumber(charStatus.纵坐标, NaN);
-       if (Number.isFinite(角色横坐标) && 角色横坐标 >= 0 &&
-           Number.isFinite(角色纵坐标) && 角色纵坐标 >= 0) {
-           return { x: 角色横坐标, y: 角色纵坐标 };
-       }
-    }
-
-    // 2. 降维解析绝对路径 (如："斗罗大陆-东海城-东海学院-外院")
+    // 1. 优先按位置解析承载节点；只有位置不是节点时，才用角色自由坐标兜底。
     const pathSegments = actualLocName.split('-').filter(Boolean);
-    // 如果路径极短且没坐标，说明是未知的系统级节点
-    if (!pathSegments.length) return null;
+    if (!pathSegments.length) return 角色坐标有效 ? { x: 角色横坐标, y: 角色纵坐标 } : null;
+
+    const 查找地图节点坐标 = targetName => {
+      if (!targetName) return null;
+      if (Array.isArray(snapshot.items)) {
+        const found = snapshot.items.find(item => item.name === targetName || item.name.includes(targetName));
+        if (found && Number.isFinite(found.x) && Number.isFinite(found.y)) return { x: found.x, y: found.y };
+      }
+      const staticLocs = deepGet(sd, 'world.地点', {});
+      for (const locKey in staticLocs) {
+        const locData = staticLocs[locKey];
+        if (!locData) continue;
+        if (locKey === targetName || locData.name === targetName) {
+          if (Number.isFinite(locData.x) && Number.isFinite(locData.y)) return { x: locData.x, y: locData.y };
+        }
+        if (locData.children) {
+          for (const childKey in locData.children) {
+            const child = locData.children[childKey];
+            if (childKey === targetName || (child && child.name === targetName)) {
+              if (Number.isFinite(child.x) && Number.isFinite(child.y)) return { x: child.x, y: child.y };
+            }
+          }
+        }
+      }
+      const dynLoc = deepGet(sd, ['world', '动态地点', targetName]);
+      if (dynLoc && Number.isFinite(dynLoc.x) && Number.isFinite(dynLoc.y) && dynLoc.x >= 0 && dynLoc.y >= 0) {
+        return { x: dynLoc.x, y: dynLoc.y };
+      }
+      return null;
+    };
+
+    const 叶子坐标 = 查找地图节点坐标(pathSegments[pathSegments.length - 1]);
+    if (叶子坐标) return 叶子坐标;
+    if (角色坐标有效) return { x: 角色横坐标, y: 角色纵坐标 };
 
     // 从最小的地点（数组最后一位）开始往上冒泡找坐标
     for (let i = pathSegments.length - 1; i >= 0; i--) {
        const targetName = pathSegments[i];
-       // 先尝试在当前正在渲染的同层节点(可见列表)里找
-       if (Array.isArray(snapshot.items)) {
-         const found = snapshot.items.find(item => item.name === targetName || item.name.includes(targetName));
-         if (found && Number.isFinite(found.x) && Number.isFinite(found.y)) return { x: found.x, y: found.y };
-       }
-       
-       // 如果没画出来，直接去全量静态底层字典里查老底
-       const staticLocs = deepGet(sd, 'world.地点', {});
-       for (const locKey in staticLocs) {
-          const locData = staticLocs[locKey];
-          if (!locData) continue;
-          if (locKey === targetName || locData.name === targetName) {
-             if (Number.isFinite(locData.x) && Number.isFinite(locData.y)) return { x: locData.x, y: locData.y };
-          }
-          if (locData.children) {
-             for (const childKey in locData.children) {
-                const child = locData.children[childKey];
-                if (childKey === targetName || (child && child.name === targetName)) {
-                   if (Number.isFinite(child.x) && Number.isFinite(child.y)) return { x: child.x, y: child.y };
-                }
-             }
-          }
-       }
-       
-       // 最后如果是在动态地点字典里
-       const dynLoc = deepGet(sd, ['world', '动态地点', targetName]);
-       if (dynLoc && Number.isFinite(dynLoc.x) && Number.isFinite(dynLoc.y) && dynLoc.x >= 0 && dynLoc.y >= 0) {
-          return { x: dynLoc.x, y: dynLoc.y };
-       }
+       const 节点坐标 = 查找地图节点坐标(targetName);
+       if (节点坐标) return 节点坐标;
     }
 
     return null;
@@ -8759,6 +8757,16 @@
       y: Number.isFinite(Number(request.target_y)) && Number(request.target_y) >= 0 ? Number(request.target_y) : (resolvedNamedCoord ? roundCoord(resolvedNamedCoord.y) : -1)
     };
     const 移动显示目标 = isFreeTravel ? 构建自由坐标地点名(targetCoord, mapState.layer) : finalLocName;
+    const 自由坐标父级路径 = (() => {
+      if (!isFreeTravel) return finalLocName;
+      const segments = finalLocName.split('-').map(seg => toText(seg, '').trim()).filter(Boolean);
+      if (!segments.length) return '斗罗大陆';
+      if (segments[segments.length - 1] === '未知荒野') segments.pop();
+      const leaf = segments[segments.length - 1];
+      if (leaf && !getItemByName(leaf) && segments.length > 1) segments.pop();
+      return segments.join('-') || '斗罗大陆';
+    })();
+    const 结算最终位置 = isFreeTravel ? `${自由坐标父级路径}-${移动显示目标}` : finalLocName;
 
     if (request.costs && request.costs.canAfford === false) {
       mapState.lastTravelNote = `[地图移动失败] ${request.method} → ${移动显示目标} · ${toText(request.costs.reason, '资源不足')}`;
@@ -8787,14 +8795,14 @@
     }
 
     if (mapState.baseSnapshot && mapState.baseSnapshot.activeChar && mapState.baseSnapshot.activeChar.状态) {
-      mapState.baseSnapshot.activeChar.状态.位置 = finalLocName;
+      mapState.baseSnapshot.activeChar.状态.位置 = 结算最终位置;
       const isWorldMove = !hasActivePreview() || mapState.coordSystem === MAP_COORD_SYSTEM_IMAGE;
       if (isWorldMove) {
         mapState.baseSnapshot.activeChar.状态.坐标系 = MAP_COORD_SYSTEM_IMAGE;
         mapState.baseSnapshot.currentFocusCoord = { x: targetCoord.x, y: targetCoord.y };
-        const currentAnchorMeta = resolveVisibleLocationAnchor(mapState.baseSnapshot, finalLocName);
+        const currentAnchorMeta = resolveVisibleLocationAnchor(mapState.baseSnapshot, 结算最终位置);
         mapState.baseSnapshot.currentLoc = currentAnchorMeta.leafName;
-        mapState.baseSnapshot.currentLocFull = finalLocName;
+        mapState.baseSnapshot.currentLocFull = 结算最终位置;
         mapState.baseSnapshot.currentFocus = {
           loc: currentAnchorMeta.anchorName || currentAnchorMeta.leafName,
           x: targetCoord.x,
@@ -8814,7 +8822,7 @@
         const 移动动作 = 出行方式 === '步行' ? '步行' : `乘坐${出行方式}`;
         const settleResult = await 提交地图移动结算(request, {
           角色: activeName,
-          finalLocName,
+          finalLocName: 结算最终位置,
           移动显示目标,
           terrainName: targetTerrainInfo ? toText(targetTerrainInfo.name, '') : '',
           targetTerrainBrief

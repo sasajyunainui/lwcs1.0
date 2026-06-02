@@ -3128,7 +3128,6 @@
   }
 
   const 本轮模块结算路径全局键 = '__LWCS_本轮模块结算路径__';
-  const 本轮模块结算路径有效毫秒 = 10 * 60 * 1000;
 
   function 获取本轮模块结算运行时根列表() {
     const 运行时根列表 = [];
@@ -3157,11 +3156,9 @@
   }
 
   function 登记本轮模块结算路径(路径列表 = [], options = {}) {
-    if (options && options.registerReadOnlyProjection === false) return;
     if (!(options && (options.记录本轮模块结算路径 === true || toText(options.结算类型, '') === 'travel'))) return;
     const 运行时根列表 = 获取本轮模块结算运行时根列表();
     if (!运行时根列表.length) return;
-    const 当前时间 = Date.now();
     let 记录 = 运行时根列表
       .map(root => {
         try {
@@ -3170,14 +3167,11 @@
           return null;
         }
       })
-      .find(item => item && typeof item === 'object' && Number(item.过期时间 || 0) > 当前时间);
-    if (!记录 || typeof 记录 !== 'object' || Number(记录.过期时间 || 0) <= 当前时间) {
+      .find(item => item && typeof item === 'object');
+    if (!记录 || typeof 记录 !== 'object') {
       记录 = {
         路径列表: [],
         去重键列表: [],
-        创建时间: 当前时间,
-        更新时间: 当前时间,
-        过期时间: 当前时间 + 本轮模块结算路径有效毫秒,
       };
     }
     const 已有键 = new Set(Array.isArray(记录.去重键列表) ? 记录.去重键列表 : []);
@@ -3190,8 +3184,6 @@
       记录.路径列表.push(路径);
     });
     记录.去重键列表 = Array.from(已有键);
-    记录.更新时间 = 当前时间;
-    记录.过期时间 = 当前时间 + 本轮模块结算路径有效毫秒;
     运行时根列表.forEach(root => {
       try {
         root[本轮模块结算路径全局键] = 记录;
@@ -3212,8 +3204,15 @@
     登记本轮模块结算路径(扩展路径列表, { 结算类型: 'travel' });
   }
 
+  function 清除本轮模块结算路径() {
+    获取本轮模块结算运行时根列表().forEach(root => {
+      try {
+        delete root[本轮模块结算路径全局键];
+      } catch (error) {}
+    });
+  }
+
   function 获取本轮模块结算路径键集合() {
-    const 当前时间 = Date.now();
     const 记录 = 获取本轮模块结算运行时根列表()
       .map(root => {
         try {
@@ -3222,14 +3221,26 @@
           return null;
         }
       })
-      .find(item => item && typeof item === 'object' && Number(item.过期时间 || 0) > 当前时间);
+      .find(item => item && typeof item === 'object');
     return new Set(Array.isArray(记录 && 记录.去重键列表) ? 记录.去重键列表 : []);
   }
 
   function 路径命中本轮模块结算(path = []) {
     const 路径 = normalizeEditorPath(path);
     if (!路径.length) return false;
-    return 获取本轮模块结算路径键集合().has(构建模块结算路径去重键(路径));
+    const 路径键集合 = 获取本轮模块结算路径键集合();
+    for (let index = 路径.length; index >= 1; index -= 1) {
+      if (路径键集合.has(构建模块结算路径去重键(路径.slice(0, index)))) return true;
+    }
+    return false;
+  }
+
+  function 校验本轮模块结算补丁边界(patches = []) {
+    const 命中列表 = (Array.isArray(patches) ? patches : [])
+      .map(patch => ({ patch, path: decodeJsonPointerPath(patch && (patch.path || patch.to || '')) }))
+      .filter(item => item.path.length && 路径命中本轮模块结算(item.path));
+    if (!命中列表.length) return;
+    throw new Error(`AI 试图修改本轮已由脚本结算的变量：${命中列表.slice(0, 4).map(item => `/${item.path.map(String).join('/')}`).join('、')}`);
   }
 
   function deepSetMutable(target, pathValue, nextValue) {
@@ -3306,7 +3317,10 @@
       (globalThis?.window && typeof globalThis.window.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function'
         ? globalThis.window.__LWCS_NORMALIZE_JSON_PATCH_OPS__
         : null);
-    if (!预处理器) return patches;
+    if (!预处理器) {
+      if (options && options.必须启用兜底 === true) throw new Error('AI JSONPatch路径兜底未加载，已拒绝写回。');
+      return patches;
+    }
     return 预处理器(patches, statData, { 宽松新增: options && options.force === true });
   }
 
@@ -3318,72 +3332,82 @@
       (globalThis?.window && typeof globalThis.window.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ === 'function'
         ? globalThis.window.__LWCS_PREPROCESS_JSON_PATCH_TEXT__
         : null);
-    return 预处理器 ? 预处理器(text, mvuData, options) : text;
+    if (!预处理器) {
+      if (options && options.必须启用兜底 === true) throw new Error('AI JSONPatch路径兜底未加载，已拒绝写回。');
+      return text;
+    }
+    return 预处理器(text, mvuData, options);
   }
 
   async function applyJsonPatchOpsByEditor(patches, options = {}) {
     const safePatches = Array.isArray(patches) ? patches.filter(item => item && item.op && item.path) : [];
     if (!safePatches.length) throw new Error('没有可应用的变量改动。');
-    return mutateStatDataByEditor(statData => {
-      const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, options);
-      登记本轮模块结算路径(
-        normalizedPatches.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length),
-        options,
-      );
-      const readMutableValue = pathValue => {
-        const path = normalizeEditorPath(pathValue);
-        if (!path.length) return statData;
-        let current = statData;
-        for (let index = 0; index < path.length; index += 1) {
-          const token = path[index];
-          if (current == null || typeof current !== 'object' || !(token in current)) return undefined;
-          current = current[token];
-        }
-        return current;
-      };
-      const getDeviationDeltaMultiplier = () => {
-        const raw = Number(readMutableValue(['world', '偏差倍率']) ?? 1);
-        return Number.isFinite(raw) && raw >= 0 ? raw : 1;
-      };
-      const isDeviationValuePath = path =>
-        Array.isArray(path) &&
-        path.length === 2 &&
-        String(path[0] || '') === 'world' &&
-        String(path[1] || '') === '偏差值';
-      normalizedPatches.forEach(patch => {
-        const path = decodeJsonPointerPath(patch.path);
-        if (!path.length) return;
-        if (patch.op === 'remove') {
-          deepDeleteMutable(statData, path);
-          return;
-        }
-        if (patch.op === 'replace' || patch.op === 'add' || patch.op === 'insert') {
-          if (isDeviationValuePath(path)) {
-            const 上一回合值原始 = Number(readMutableValue(path) ?? 0);
-            const 这回合值原始 = Number(patch.value ?? 上一回合值原始);
-            const 上一回合值 = Number.isFinite(上一回合值原始) ? 上一回合值原始 : 0;
-            const 这回合值 = Number.isFinite(这回合值原始) ? 这回合值原始 : 上一回合值;
-            const 原始增量 = 这回合值 - 上一回合值;
-            const 倍率修正增量 = Number((原始增量 * getDeviationDeltaMultiplier()).toFixed(4));
-            const 修正续值 = Math.max(0, Number((上一回合值 + 倍率修正增量).toFixed(4)));
-            deepSetMutable(statData, path, 修正续值);
+    const 需要在AI写回后清理结算锁 = 获取本轮模块结算路径键集合().size > 0 && !(options && options.force === true);
+    try {
+      return await mutateStatDataByEditor(statData => {
+        const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, options);
+        if (!(options && options.force === true)) 校验本轮模块结算补丁边界(normalizedPatches);
+        登记本轮模块结算路径(
+          normalizedPatches.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length),
+          options,
+        );
+        const readMutableValue = pathValue => {
+          const path = normalizeEditorPath(pathValue);
+          if (!path.length) return statData;
+          let current = statData;
+          for (let index = 0; index < path.length; index += 1) {
+            const token = path[index];
+            if (current == null || typeof current !== 'object' || !(token in current)) return undefined;
+            current = current[token];
+          }
+          return current;
+        };
+        const getDeviationDeltaMultiplier = () => {
+          const raw = Number(readMutableValue(['world', '偏差倍率']) ?? 1);
+          return Number.isFinite(raw) && raw >= 0 ? raw : 1;
+        };
+        const isDeviationValuePath = path =>
+          Array.isArray(path) &&
+          path.length === 2 &&
+          String(path[0] || '') === 'world' &&
+          String(path[1] || '') === '偏差值';
+        normalizedPatches.forEach(patch => {
+          const path = decodeJsonPointerPath(patch.path);
+          if (!path.length) return;
+          if (patch.op === 'remove') {
+            deepDeleteMutable(statData, path);
             return;
           }
-          deepSetMutable(statData, path, cloneJsonValue(patch.value, patch.value));
-          return;
-        }
-        if (patch.op === 'delta') {
-          const previousValue = Number(readMutableValue(path) ?? 0);
-          const rawDeltaValue = Number(patch.value ?? 0);
-          const deltaValue = isDeviationValuePath(path)
-            ? Number((rawDeltaValue * getDeviationDeltaMultiplier()).toFixed(4))
-            : rawDeltaValue;
-          const nextValue =
-            (Number.isFinite(previousValue) ? previousValue : 0) + (Number.isFinite(deltaValue) ? deltaValue : 0);
-          deepSetMutable(statData, path, nextValue);
-        }
-      });
-    }, options);
+          if (patch.op === 'replace' || patch.op === 'add' || patch.op === 'insert') {
+            if (isDeviationValuePath(path)) {
+              const 上一回合值原始 = Number(readMutableValue(path) ?? 0);
+              const 这回合值原始 = Number(patch.value ?? 上一回合值原始);
+              const 上一回合值 = Number.isFinite(上一回合值原始) ? 上一回合值原始 : 0;
+              const 这回合值 = Number.isFinite(这回合值原始) ? 这回合值原始 : 上一回合值;
+              const 原始增量 = 这回合值 - 上一回合值;
+              const 倍率修正增量 = Number((原始增量 * getDeviationDeltaMultiplier()).toFixed(4));
+              const 修正续值 = Math.max(0, Number((上一回合值 + 倍率修正增量).toFixed(4)));
+              deepSetMutable(statData, path, 修正续值);
+              return;
+            }
+            deepSetMutable(statData, path, cloneJsonValue(patch.value, patch.value));
+            return;
+          }
+          if (patch.op === 'delta') {
+            const previousValue = Number(readMutableValue(path) ?? 0);
+            const rawDeltaValue = Number(patch.value ?? 0);
+            const deltaValue = isDeviationValuePath(path)
+              ? Number((rawDeltaValue * getDeviationDeltaMultiplier()).toFixed(4))
+              : rawDeltaValue;
+            const nextValue =
+              (Number.isFinite(previousValue) ? previousValue : 0) + (Number.isFinite(deltaValue) ? deltaValue : 0);
+            deepSetMutable(statData, path, nextValue);
+          }
+        });
+      }, options);
+    } finally {
+      if (需要在AI写回后清理结算锁) 清除本轮模块结算路径();
+    }
   }
 
   function normalizeEditorStringList(rawValue) {
@@ -5888,7 +5912,7 @@
       const presetName = 读取AI维护有效API预设();
       const aiText = await api.callAI(messages, { presetName, max_tokens: 2200 });
       if (!aiText || typeof aiText !== 'string') throw new Error('AI 没有返回可解析内容。');
-      const 修正文本 = 预处理桥接AIJsonPatch文本(aiText, mvuData);
+      const 修正文本 = 预处理桥接AIJsonPatch文本(aiText, mvuData, { 必须启用兜底: true });
       const parsed = await Promise.resolve(parseHost.parseMessage(修正文本, mvuData));
       const nextMvuData = 准备AI维护写回数据(mvuData, parsed);
       const check = 校验AI维护写回边界(mvuData, nextMvuData, selectionItems);
@@ -12151,6 +12175,7 @@
 
   const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
   const 技能设计台被动触发周期选项 = Object.freeze(['每战', '每回合', '每次满足']);
+  const 技能设计台使用限制周期选项 = Object.freeze(['无限制', '每战', '每日']);
 
   function 技能设计台效果是自身死亡转存活(effect = {}) {
     return (
@@ -12213,6 +12238,21 @@
     return {
       周期,
       次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.被动触发次数 || 限制['次数']), 1, 1)),
+    };
+  }
+
+  function 读取技能设计台使用限制(草稿 = {}) {
+    const 限制 = 草稿 && 草稿['触发限制'] && typeof 草稿['触发限制'] === 'object' && !Array.isArray(草稿['触发限制'])
+      ? 草稿['触发限制']
+      : {};
+    const 周期 = normalizeSkillDesignerSelectValue(
+      草稿 && (草稿.使用限制周期 || 限制['周期']),
+      技能设计台使用限制周期选项,
+      '无限制',
+    );
+    return {
+      周期,
+      次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.使用限制次数 || 限制['次数']), 1, 1)),
     };
   }
 
@@ -12292,6 +12332,7 @@
       prototypeEffects: resolvedPrototypeEffects,
       触发限制: designDraft['触发限制'],
     });
+    const 使用限制 = 读取技能设计台使用限制(safeSkill);
     return {
       name: cleanSkillDisplayName(safeSkill, rawName),
       type: 启用被动 ? '被动' : resolvedType,
@@ -12350,6 +12391,8 @@
       被动触发,
       被动触发周期: 被动触发限制.周期,
       被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
       阵营判定: '自动',
     };
   }
@@ -17074,6 +17117,7 @@
     const 启用被动 = 技能设计台启用被动(previewMeta, baseDraft);
     const 被动触发 = 读取技能设计台被动触发默认值({ ...baseDraft, prototypeEffects: 显式原型效果 });
     const 被动触发限制 = 读取技能设计台被动触发限制(baseDraft);
+    const 使用限制 = 读取技能设计台使用限制(baseDraft);
     const 预览根数据 = (liveSnapshot && liveSnapshot.rootData) || (lastRenderableSnapshot && lastRenderableSnapshot.rootData) || {};
     const 武魂元素上下文 = 读取技能设计台武魂上下文(预览根数据, previewMeta);
     let 初始附带属性 = 规范化技能元素列表_桥接(baseDraft.attachedAttributes);
@@ -17104,6 +17148,8 @@
       被动触发,
       被动触发周期: 被动触发限制.周期,
       被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
       bonus: '无',
       mainRole: normalizeSkillUiText(derivedMainRole, '未知'),
       primaryMain: resolvedPrimaryMain,
@@ -17287,6 +17333,10 @@
       被动触发周期: readField('被动触发周期'),
       被动触发次数: readField('被动触发次数'),
     });
+    const 使用限制 = 读取技能设计台使用限制({
+      使用限制周期: readField('使用限制周期'),
+      使用限制次数: readField('使用限制次数'),
+    });
     const baseState = {
       name: readField('name') || toText(previewMeta && previewMeta.label, '未命名技能'),
       type: typeMeta.value,
@@ -17303,6 +17353,8 @@
         : '',
       被动触发周期: 被动触发限制.周期,
       被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
       bonus: '无',
       mainRole: normalizeSkillUiText(derivedMainRole, '未知'),
       primaryMain: resolvedPrimaryMain,
@@ -19778,11 +19830,13 @@
     const 启用被动 = 技能设计台启用被动(previewMeta, normalized);
     const 被动触发 = 读取技能设计台被动触发默认值(normalized);
     const 被动触发限制 = 读取技能设计台被动触发限制(normalized);
+    const 使用限制 = 读取技能设计台使用限制(normalized);
     safeSkill['魂技名'] = 规范第七魂环真身名称_桥接(normalized.name, previewMeta);
     safeSkill['承载方式'] = 启用被动 ? '直接生效' : normalized.deliveryForm || '直接生效';
     safeSkill['消耗'] = 启用被动 ? '无' : formatSkillDesignerFullCostText(normalized.costType, normalized.costValues, normalized.sustainCostText);
     safeSkill['前摇'] = 启用被动 ? 0 : Math.max(0, toNumber(normalized['前摇'], 0));
-    if (启用被动 && 被动触发 && !['常驻', '每次满足'].includes(被动触发)) safeSkill['触发限制'] = cloneJsonValue(被动触发限制);
+    if (使用限制.周期 !== '无限制') safeSkill['触发限制'] = cloneJsonValue(使用限制);
+    else if (启用被动 && 被动触发 && !['常驻', '每次满足'].includes(被动触发)) safeSkill['触发限制'] = cloneJsonValue(被动触发限制);
     else delete safeSkill['触发限制'];
     if (normalized['技能掌控度']) safeSkill['技能掌控度'] = cloneJsonValue(normalized['技能掌控度']);
     else delete safeSkill['技能掌控度'];
@@ -27552,6 +27606,16 @@
                           ${buildSkillDesignerSelectOptions(getSkillDesignerDeliveryOptions(designerDraft.type), designerDraft.deliveryForm || '直接生效')}
                         </select>
                         <input type=\"hidden\" value=\"${escapeHtmlAttr(designerDraft.type || '输出')}\" data-skill-designer-field=\"type\" />
+                      </label>
+                      <label class=\"mvu-editor-field\">
+                        <span class=\"mvu-editor-label\">使用限制</span>
+                        <select class=\"mvu-editor-select\" data-skill-designer-field=\"使用限制周期\" data-skill-designer-disableable>
+                          ${buildSkillDesignerSelectOptions(技能设计台使用限制周期选项, designerDraft.使用限制周期 || '无限制')}
+                        </select>
+                      </label>
+                      <label class=\"mvu-editor-field\">
+                        <span class=\"mvu-editor-label\">限制次数</span>
+                        <input class=\"mvu-editor-input\" type=\"number\" min=\"1\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(1, toNumber(designerDraft.使用限制次数, 1))))}\" data-skill-designer-field=\"使用限制次数\" data-skill-designer-disableable />
                       </label>
                     </div>
                     <div class=\"skill-designer-inline-toggle\">
@@ -37138,7 +37202,7 @@ ${播报文本}
     ) {
       return { ok: true, alreadyThere: true, patchOps: [], finalLocName: 补丁结果.finalLocName, request };
     }
-    await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+    await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
     登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
     await refreshLiveSnapshot({ force: true });
     return { ok: true, settled: true, ...补丁结果 };
@@ -37170,7 +37234,7 @@ ${播报文本}
         return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable', { result });
       }
       try {
-        await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+        await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
         登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
         await refreshLiveSnapshot({ force: true });
       } catch (error) {
@@ -37191,7 +37255,7 @@ ${播报文本}
       return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable');
     }
     try {
-      await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true, registerReadOnlyProjection: false });
+      await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
       登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
       await refreshLiveSnapshot({ force: true });
     } catch (error) {
@@ -38008,8 +38072,12 @@ ${播报文本}
     if (!playerInput) return;
     detail.handled = true;
     if (toText(meta.requestKind, '') === 'map_travel_settled') await refreshLiveSnapshot({ force: true });
+    const requestKind = toText(meta.requestKind, 'map_ai_request');
+    if (requestKind === 'map_travel_settled') {
+      登记本轮模块结算路径([['world', '动态地点']], { 记录本轮模块结算路径: true });
+    }
     detail.result = await dispatchUiAiRequest(playerInput, systemPrompt, {
-      requestKind: toText(meta.requestKind, 'map_ai_request'),
+      requestKind,
     });
   }
 
