@@ -5999,7 +5999,6 @@
     const 角色纵坐标 = Number.isFinite(toNumber(charStatus.current_y, NaN)) ? toNumber(charStatus.current_y, NaN) : toNumber(charStatus.纵坐标, NaN);
     const 角色坐标有效 = Number.isFinite(角色横坐标) && 角色横坐标 >= 0 && Number.isFinite(角色纵坐标) && 角色纵坐标 >= 0;
 
-    // 1. 优先按位置解析承载节点；只有位置不是节点时，才用角色自由坐标兜底。
     const pathSegments = actualLocName.split('-').filter(Boolean);
     if (!pathSegments.length) return 角色坐标有效 ? { x: 角色横坐标, y: 角色纵坐标 } : null;
 
@@ -6016,9 +6015,12 @@
         if (locKey === targetName || locData.name === targetName) {
           if (Number.isFinite(locData.x) && Number.isFinite(locData.y)) return { x: locData.x, y: locData.y };
         }
-        if (locData.children) {
-          for (const childKey in locData.children) {
-            const child = locData.children[childKey];
+        const 子节点 = (locData && locData['子节点'] && typeof locData['子节点'] === 'object')
+          ? locData['子节点']
+          : (locData && locData.children && typeof locData.children === 'object' ? locData.children : null);
+        if (子节点) {
+          for (const childKey in 子节点) {
+            const child = 子节点[childKey];
             if (childKey === targetName || (child && child.name === targetName)) {
               if (Number.isFinite(child.x) && Number.isFinite(child.y)) return { x: child.x, y: child.y };
             }
@@ -6034,16 +6036,14 @@
 
     const 叶子坐标 = 查找地图节点坐标(pathSegments[pathSegments.length - 1]);
     if (叶子坐标) return 叶子坐标;
-    if (角色坐标有效) return { x: 角色横坐标, y: 角色纵坐标 };
 
-    // 从最小的地点（数组最后一位）开始往上冒泡找坐标
     for (let i = pathSegments.length - 1; i >= 0; i--) {
-       const targetName = pathSegments[i];
-       const 节点坐标 = 查找地图节点坐标(targetName);
-       if (节点坐标) return 节点坐标;
+      const targetName = pathSegments[i];
+      const 节点坐标 = 查找地图节点坐标(targetName);
+      if (节点坐标) return 节点坐标;
     }
 
-    return null;
+    return 角色坐标有效 ? { x: 角色横坐标, y: 角色纵坐标 } : null;
   }
 
   function isPreviewCurrentBranch() {

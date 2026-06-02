@@ -3688,6 +3688,12 @@ window.submitForm = function() {
         "外貌": {
             "长相描述": appearanceField.value
         },
+        "穿搭": {
+            "上装": "待补全(根据当前场景补完上装)",
+            "下装": "待补全(根据当前场景补完下装)",
+            "鞋子": "待补全(根据当前场景补完鞋子)",
+            "描述": "待补全(根据当前地点、身份、年龄、行动与场景补完整体穿着)"
+        },
         "性格": personalityField.value
     };
     Object.assign(initialCharacterValue, spiritObj);

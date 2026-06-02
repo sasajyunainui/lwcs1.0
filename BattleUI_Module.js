@@ -10405,7 +10405,7 @@ class BattleUIComponent {
 
     function normalizeSkillData(skill, fallbackName = '未知技能') {
       const normalized = deepClone(skill || {});
-      const 正式技能旧字段 = ['cast_time', '对象', '结算策略', '运行机制', '状态名称', '机制标签', '技能来源', 'source_tag', '触发限制'];
+      const 正式技能旧字段 = ['cast_time', '对象', '结算策略', '运行机制', '状态名称', '机制标签', '技能来源', 'source_tag'];
       const 命中旧字段 = skill && typeof skill === 'object'
         ? 正式技能旧字段.find(字段 => 字段 !== 'cast_time' || skill.__战斗标准技能 !== true
           ? Object.prototype.hasOwnProperty.call(normalized, 字段)
@@ -19225,6 +19225,7 @@ class BattleUIComponent {
 
       function 读取技能释放限制(skill = {}, context = {}) {
         const 限制列表 = [];
+        if (skill?.触发限制 && typeof skill.触发限制 === 'object' && !Array.isArray(skill.触发限制)) 限制列表.push(skill.触发限制);
         getSkillEffects(skill, context).forEach(effect => {
           if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
           if (effect.触发限制 && typeof effect.触发限制 === 'object' && !Array.isArray(effect.触发限制)) 限制列表.push(effect.触发限制);

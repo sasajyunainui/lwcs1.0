@@ -532,13 +532,13 @@
     const 紧凑情报格类 = compactIntelGrid ? ' archive-tile--compact-intel' : '';
     const 紧凑情报值类 = compactIntelGrid ? ' class="archive-tile-value--compact-intel"' : '';
     return `
-        <div class="archive-tile-grid ${className}${紧凑情报网格类}">
+      <div class="archive-tile-grid ${className}${紧凑情报网格类}">
           ${tileItems
             .map(
               item => `
-            <div class="archive-tile${紧凑情报格类}">
+            <div class="archive-tile${紧凑情报格类}"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>
               <b>${item.label}</b>
-              <span${紧凑情报值类}>${item.value}</span>
+              <span${紧凑情报值类}>${item && item.值Html ? item.值Html : item.value}</span>
             </div>
           `,
             )
@@ -561,9 +561,9 @@
           ${(items || [])
             .map(
               item => `
-            <div class="archive-tile ${item.className || ''} ${item.preview ? 'clickable' : ''}"${item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}>
+            <div class="archive-tile ${item.className || ''} ${item.preview ? 'clickable' : ''}"${item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>
               <b>${item.label}</b>
-              <span>${item.value}</span>
+              <span>${item && item.值Html ? item.值Html : item.value}</span>
             </div>
           `,
             )
@@ -669,20 +669,25 @@
       if (numeric < 0) return Math.ceil(numeric);
       return 0;
     };
-    const 格式化加成值 = value => {
-      const 规范值 = normalizeBonusValue(value);
-      return typeof 规范值 === 'string' ? 规范值 : formatNumber(规范值);
+    const 格式化加成值 = (原始加成值, 标签) => {
+      const 规范值 = normalizeBonusValue(原始加成值);
+      if (typeof 规范值 === 'string') return { value: 规范值 };
+      return {
+        value: 格式化属性短数字(规范值),
+        值Html: 构建属性数值Html(标签, 规范值),
+        提示文本: `${标签}：${格式化属性完整数字(规范值)}`,
+      };
     };
     const items = [];
     if (options.includeLvEquiv && toNumber(bonus.等效等级, 0) > 0)
       items.push({ label: '等效等级', value: String(toNumber(bonus.等效等级, 0)) });
     items.push(
-      { label: '体力加成', value: 格式化加成值(bonus.体力上限) },
-      { label: '魂力加成', value: 格式化加成值(bonus.魂力上限) },
-      { label: '精神加成', value: 格式化加成值(bonus.精神力上限) },
-      { label: '力量加成', value: 格式化加成值(bonus.力量) },
-      { label: '防御加成', value: 格式化加成值(bonus.防御) },
-      { label: '敏捷加成', value: 格式化加成值(bonus.敏捷) },
+      { label: '体力加成', ...格式化加成值(bonus.体力上限, '体力加成') },
+      { label: '魂力加成', ...格式化加成值(bonus.魂力上限, '魂力加成') },
+      { label: '精神加成', ...格式化加成值(bonus.精神力上限, '精神加成') },
+      { label: '力量加成', ...格式化加成值(bonus.力量, '力量加成') },
+      { label: '防御加成', ...格式化加成值(bonus.防御, '防御加成') },
+      { label: '敏捷加成', ...格式化加成值(bonus.敏捷, '敏捷加成') },
     );
     return items;
   }
@@ -696,14 +701,18 @@
       const 百分比文本 = /^[+-]?\d+(?:\.\d+)?%$/.test(String(原始值 ?? '').trim()) ? String(原始值 ?? '').trim() : '';
       const 数值 = toNumber(原始值, 0);
       const 写入值 = 百分比文本 || (数值 > 0 ? Math.floor(数值) : 数值 < 0 ? Math.ceil(数值) : 0);
+      const 显示文本 = 百分比文本 || 格式化属性短数字(写入值);
       return path.length
-        ? makeInlineEditableValue(百分比文本 || formatNumber(写入值), {
+        ? makeInlineEditableValue(显示文本, {
             path: [...path, field],
             kind: 百分比文本 ? 'string' : 'number',
             rawValue: 写入值,
+            提示文本: 百分比文本 || `${field}：${格式化属性完整数字(写入值)}`,
             editorMeta: 百分比文本 ? undefined : { min: 0, integer: true, hint: '最小 0 · 整数' },
           })
-        : htmlEscape(百分比文本 || formatNumber(写入值));
+        : 百分比文本
+          ? htmlEscape(百分比文本)
+          : 构建属性数值Html(field, 写入值);
     };
     return [
       { label: '体力加成', value: makeBonusValue('体力上限') },
@@ -1081,7 +1090,7 @@
               item => `
             <div class="dossier-row ${item && item.className ? item.className : ''}">
               <b class="dossier-field-label">${htmlEscape(toText(item && item.label, ''))}</b>
-              <span class="dossier-field-value">${item && item.value !== undefined && item.value !== null ? item.value : ''}</span>
+              <span class="dossier-field-value"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${item && item.值Html ? item.值Html : item && item.value !== undefined && item.value !== null ? item.value : ''}</span>
             </div>
           `,
             )
@@ -1907,6 +1916,38 @@
 
   function formatNumber(value) {
     return new Intl.NumberFormat('zh-CN').format(toNumber(value, 0));
+  }
+
+  function 格式化属性完整数字(数值源) {
+    return formatNumber(Math.round(toNumber(数值源, 0)));
+  }
+
+  function 格式化属性短数字(数值源) {
+    const 数值 = Math.round(toNumber(数值源, 0));
+    const 绝对值 = Math.abs(数值);
+    const 符号 = 数值 < 0 ? '-' : '';
+    const 格式化短单位 = (除数, 单位) => {
+      const 短值 = Math.round((绝对值 / 除数) * 10) / 10;
+      return `${符号}${Number.isInteger(短值) ? String(短值) : 短值.toFixed(1)}${单位}`;
+    };
+    if (绝对值 >= 100000000) return 格式化短单位(100000000, '亿');
+    if (绝对值 >= 10000) return 格式化短单位(10000, '万');
+    return formatNumber(数值);
+  }
+
+  function 构建属性数值Html(标签源, 数值源) {
+    const 标签 = toText(标签源, '').trim();
+    const 完整数值 = 格式化属性完整数字(数值源);
+    const 提示文本 = 标签 ? `${标签}：${完整数值}` : 完整数值;
+    return `<span title="${escapeHtmlAttr(提示文本)}">${htmlEscape(格式化属性短数字(数值源))}</span>`;
+  }
+
+  function 构建属性数值对Html(标签源, 当前源, 上限源) {
+    const 标签 = toText(标签源, '').trim();
+    const 当前值 = 格式化属性完整数字(当前源);
+    const 上限值 = 格式化属性完整数字(上限源);
+    const 提示文本 = 标签 ? `${标签}：${当前值} / ${上限值}` : `${当前值} / ${上限值}`;
+    return `<span title="${escapeHtmlAttr(提示文本)}">${htmlEscape(`${格式化属性短数字(当前源)} / ${格式化属性短数字(上限源)}`)}</span>`;
   }
 
   function getBaseSpMaxForLevel(lv) {
@@ -3508,11 +3549,12 @@
     const className = toText(options.className, '').trim();
     const classAttr = className ? ` ${className}` : '';
     const multiline = options.multiline ? '1' : '0';
+    const titleAttr = options.提示文本 ? ` title="${escapeHtmlAttr(options.提示文本)}"` : '';
     const editorMeta =
       options.editorMeta && typeof options.editorMeta === 'object'
         ? ` data-inline-editor-meta="${escapeHtmlAttr(JSON.stringify(options.editorMeta))}"`
         : '';
-    return `<span class="mvu-inline-editable${classAttr}" tabindex="0" data-inline-editable="1" data-inline-multiline="${multiline}" data-value-kind="${escapeHtmlAttr(kind)}" data-mvu-path="${escapeHtmlAttr(JSON.stringify(path))}" data-mvu-raw-value="${escapeHtmlAttr(formatEditorValue(rawValue, kind))}"${editorMeta}>${htmlEscape(displayText)}</span>`;
+    return `<span class="mvu-inline-editable${classAttr}" tabindex="0"${titleAttr} data-inline-editable="1" data-inline-multiline="${multiline}" data-value-kind="${escapeHtmlAttr(kind)}" data-mvu-path="${escapeHtmlAttr(JSON.stringify(path))}" data-mvu-raw-value="${escapeHtmlAttr(formatEditorValue(rawValue, kind))}"${editorMeta}>${htmlEscape(displayText)}</span>`;
   }
 
   function readInlineEditorMeta(target) {
@@ -7618,7 +7660,11 @@
   const 技能设计器参数复制模式选项 = Object.freeze(['即时镜像', '复刻友方']);
   const SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS = Object.freeze(['远程', '控制', '召唤', '近战']);
   const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
-  const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze(['缴械', '死亡转存活']);
+  const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
+    '缴械',
+    { value: '死亡转存活', label: '复活' },
+  ]);
+  const 技能设计台规则改写选项值 = Object.freeze(normalizeSkillDesignerOptionList(SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS).map(item => item.value));
   const 技能设计台战斗外可继承状态选项 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.战斗外可继承技能状态选项 || ['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
   const 技能设计台日常系统状态选项 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.日常系统状态选项 || ['饥饿']);
   const 技能设计台战斗外复活代价类型选项 = Object.freeze(['状态代价', '封印能力', '永久代价', '消耗实体物品']);
@@ -8862,7 +8908,7 @@
       if (raw !== undefined) 字段['次数'] = Math.max(1, parseSkillDesignerIntegerInputValue(raw, 1, 1));
       return;
     } else if (原型 === '规则改写') {
-      字段['规则'] = SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
         ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
         : '缴械';
       if (字段['规则'] === '死亡转存活') {
@@ -8877,7 +8923,7 @@
         delete 字段['复活后状态'];
         delete 字段['复活后状态时限tick'];
       } else {
-        if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 1, 1, true);
+        delete 字段['数值'];
         if (字段['持续回合'] === undefined) 字段['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['持续回合'] || source.duration, 1, 1));
         delete 字段['死亡时限tick'];
         delete 字段['复活代价类型'];
@@ -9921,7 +9967,7 @@
       }
     }
     if (原型 === '规则改写') {
-      字段['规则'] = SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
@@ -9935,6 +9981,7 @@
         delete 字段['复活后状态时限tick'];
       } else {
         字段['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['持续回合'], 1, 1));
+        delete 字段['数值'];
         delete 字段['死亡时限tick'];
         delete 字段['复活代价类型'];
         delete 字段['复活代价对象'];
@@ -10550,7 +10597,7 @@
           throw new Error(`技能执行结构错误:${path}[${index}]规则防御持续回合必须为1到10的整数`);
       }
       if (原型 === '规则改写') {
-        if (!SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS.includes(normalizeSkillUiText(effect['规则'], '')))
+        if (!技能设计台规则改写选项值.includes(normalizeSkillUiText(effect['规则'], '')))
           throw new Error(`技能执行结构错误:${path}[${index}]规则改写规则无效`);
         if (normalizeSkillUiText(effect['规则'], '') === '死亡转存活') {
           if (当前目标 === '自身') {
@@ -12174,7 +12221,7 @@
   }
 
   const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
-  const 技能设计台被动触发周期选项 = Object.freeze(['每战', '每回合', '每次满足']);
+  const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
   const 技能设计台使用限制周期选项 = Object.freeze(['无限制', '每战', '每日']);
 
   function 技能设计台效果是自身死亡转存活(effect = {}) {
@@ -12230,10 +12277,11 @@
       : 效果限制
         ? 效果限制
       : {};
+    const 默认周期 = 技能设计台包含自身死亡转存活(草稿) ? '每战' : '无限制';
     const 周期 = normalizeSkillDesignerSelectValue(
-      草稿 && (草稿.被动触发周期 || 限制['周期']),
+      (草稿 && (草稿.被动触发周期 || 限制['周期'])) || 默认周期,
       技能设计台被动触发周期选项,
-      '每战',
+      '无限制',
     );
     return {
       周期,
@@ -12618,8 +12666,10 @@
       const 明细标签 = 项 => {
         const 角色 = 条件来源标签(项);
         const 原型 = String(项.原型 || '').trim();
-        const 名称 = String(项.关键值 || '').trim();
         const 字段 = String(项.关键字段 || '').trim();
+        const 名称 = 原型 === '规则改写' && 字段 === '规则' && String(项.关键值 || '').trim() === '死亡转存活'
+          ? '复活'
+          : String(项.关键值 || '').trim();
         const 目标 = String(项.目标 || '').trim();
         const 原始数值文本 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : '';
         const 数值 = 原始数值文本
@@ -12643,7 +12693,7 @@
           项.路径 ? `路径 ${项.路径}` : '',
           条件来源标签(项) ? `来源 ${条件来源标签(项)}` : '',
           项.原型 ? `原型 ${项.原型}` : '',
-          项.关键字段 ? `${项.关键字段} ${项.关键值 || '-'}` : '',
+          项.关键字段 ? `${项.关键字段} ${项.原型 === '规则改写' && 项.关键字段 === '规则' && 项.关键值 === '死亡转存活' ? '复活' : 项.关键值 || '-'}` : '',
           项.目标 ? `目标 ${项.目标}` : '',
           项.持续回合 ? `持续 ${项.持续回合}` : '',
           项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力 ${项.威力倍率}` : '',
@@ -12777,7 +12827,7 @@
     return `<div class="skill-designer-attribute-grid">${items
       .map(
         ([label, value]) => `
-                      <span class="skill-designer-attribute-cell"><b>${htmlEscape(label)}</b><strong>${htmlEscape(formatNumber(value))}</strong></span>`,
+                      <span class="skill-designer-attribute-cell"><b>${htmlEscape(label)}</b><strong>${构建属性数值Html(label, value)}</strong></span>`,
       )
       .join('')}
                     </div>`;
@@ -13398,14 +13448,14 @@
       return `
           <div class=\"skill-designer-trial-row\">
             <em>公式</em>
-            <span>${htmlEscape(`强化倍率${formatSkillDesignerSignedValue(强化倍率, true)} × 炸环年限/40万`)}</span>
+            <span>${htmlEscape(`倍率${formatSkillDesignerSignedValue(强化倍率, true)} × 年限/40万`)}</span>
           </div>
           ${属性行
             .map(
               item => `
           <div class=\"skill-designer-trial-row\">
             <em>${htmlEscape(item.标签)}</em>
-            <span>${htmlEscape(`10万年 x${item.倍率.toFixed(2)}，${formatNumber(Math.round(item.数值))}${item.等效等级 ? ` ≈ Lv.${item.等效等级}` : ''}`)}</span>
+            <span>${htmlEscape(`10万年倍率 x${item.倍率.toFixed(2)} ｜ ${formatNumber(Math.round(item.数值))}${item.等效等级 ? ` ｜ 约Lv.${item.等效等级}` : ''}`)}</span>
           </div>
         `,
             )
@@ -14767,7 +14817,7 @@
       case '规则改写':
         return [
           createSkillDesignerSelectParam('rewriteRule', '规则', SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS),
-          createSkillDesignerNumberParam('rewriteValue', '数值', '100%'),
+          createSkillDesignerNumberParam('rewriteValue', '复活恢复比例', '25%'),
           createSkillDesignerNumberParam('duration', '规则持续回合', '1', '1'),
         ];
       case '引爆持续伤害':
@@ -14986,6 +15036,7 @@
             : label === '规则改写'
               ? defs.filter(def => {
                   const 规则 = normalizeSkillUiText(paramState['rewriteRule'], '缴械');
+                  if (def.key === 'rewriteValue') return 规则 === '死亡转存活';
                   if (def.key === 'duration') return 规则 !== '死亡转存活';
                   return true;
                 })
@@ -15032,6 +15083,7 @@
             : label === '规则改写'
               ? defs.filter(def => {
                   const 规则 = normalizeSkillUiText(paramState['rewriteRule'], '缴械');
+                  if (def.key === 'rewriteValue') return 规则 === '死亡转存活';
                   if (def.key === 'duration') return 规则 !== '死亡转存活';
                   return true;
                 })
@@ -15175,7 +15227,8 @@
     if (prototype === '时光回溯') return ['目标', '原型', '生效方式', '条件分支', '发动方式', '驱动属性', '影响方向'].includes(key);
     if (prototype === '规则改写') {
       if (key === '目标') return valueOf('规则') !== '死亡转存活';
-      if (['数值', '持续回合'].includes(key)) return true;
+      if (key === '数值') return valueOf('规则') === '死亡转存活';
+      if (key === '持续回合') return valueOf('规则') !== '死亡转存活';
       return !['死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'].includes(key);
     }
     if (prototype === '战斗外复活') return ['目标', '数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'].includes(key);
@@ -15240,6 +15293,17 @@
     const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
     const 字段 = Array.isArray(定义 && 定义['允许字段']) ? [...定义['允许字段']] : [];
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
+    if (原型名 === '规则改写') {
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 固定顺序 = 规则 === '死亡转存活'
+        ? ['规则', '数值', '生效方式', '条件分支']
+        : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
+      return 固定顺序.filter(key =>
+        字段.includes(key) &&
+        !技能设计台原型字段隐藏集合.has(key) &&
+        技能设计台原型字段是否显示(原型名, key, effect),
+      );
+    }
     return Array.from(new Set(字段))
       .map(key => normalizeSkillUiText(key, ''))
       .filter(key => key && !技能设计台原型字段隐藏集合.has(key))
@@ -15459,6 +15523,9 @@
       },
       调整字段: {
         有效期tick: '造物有效期',
+      },
+      规则: {
+        死亡转存活: '复活',
       },
     };
     const 原始选项 = Array.isArray(选项) ? 选项 : [];
@@ -15818,7 +15885,7 @@
       next[key] = cloneJsonValue(raw);
     });
     if (prototype === '规则改写') {
-      const 规则 = SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS.includes(normalizeSkillUiText(source['规则'], ''))
+      const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
         ? normalizeSkillUiText(source['规则'], '')
         : normalizeSkillUiText(next['规则'], '缴械');
       next['规则'] = 规则;
@@ -15834,6 +15901,7 @@
         delete next['复活后状态'];
         delete next['复活后状态时限tick'];
       } else {
+        delete next['数值'];
         delete next['死亡时限tick'];
         delete next['复活代价类型'];
         delete next['复活代价对象'];
@@ -18696,7 +18764,6 @@
             ...(规则 === '死亡转存活' ? {
               数值: normalizeSkillUiText(params['rewriteValue'], '+25%'),
             } : {
-              数值: normalizeSkillUiText(params['rewriteValue'], '100%'),
               持续回合: parseSkillDesignerIntegerInputValue(params['duration'], 1, 1),
             }),
           }),
@@ -19737,7 +19804,7 @@
       delete cloned['对象'];
       if (原型 !== '伤害结算' && Number(cloned['持续回合'] || 0) > 10) delete cloned['持续回合'];
       if (技能设计台效果是自身死亡转存活(cloned)) delete cloned['触发限制'];
-      else if (被动触发 && !['常驻', '每次满足'].includes(被动触发) && 字段列表.includes('触发限制')) {
+      else if (被动触发 && 被动触发 !== '常驻' && 触发限制.周期 !== '无限制' && 字段列表.includes('触发限制')) {
         cloned['触发限制'] = cloneJsonValue(触发限制);
       }
       else delete cloned['触发限制'];
@@ -19836,7 +19903,7 @@
     safeSkill['消耗'] = 启用被动 ? '无' : formatSkillDesignerFullCostText(normalized.costType, normalized.costValues, normalized.sustainCostText);
     safeSkill['前摇'] = 启用被动 ? 0 : Math.max(0, toNumber(normalized['前摇'], 0));
     if (使用限制.周期 !== '无限制') safeSkill['触发限制'] = cloneJsonValue(使用限制);
-    else if (启用被动 && 被动触发 && !['常驻', '每次满足'].includes(被动触发)) safeSkill['触发限制'] = cloneJsonValue(被动触发限制);
+    else if (启用被动 && 被动触发 && 被动触发 !== '常驻' && 被动触发限制.周期 !== '无限制') safeSkill['触发限制'] = cloneJsonValue(被动触发限制);
     else delete safeSkill['触发限制'];
     if (normalized['技能掌控度']) safeSkill['技能掌控度'] = cloneJsonValue(normalized['技能掌控度']);
     else delete safeSkill['技能掌控度'];
@@ -22653,25 +22720,33 @@
     const 资源指标列表 = [
       {
         名称: '魂力',
-        数值: `${formatNumber(stat.魂力)}/${formatNumber(stat.魂力上限)}`,
+        数值: `${格式化属性短数字(stat.魂力)}/${格式化属性短数字(stat.魂力上限)}`,
+        值Html: 构建属性数值对Html('魂力', stat.魂力, stat.魂力上限),
+        提示文本: `魂力：${格式化属性完整数字(stat.魂力)} / ${格式化属性完整数字(stat.魂力上限)}`,
         比例: ratioPercent(stat.魂力, stat.魂力上限),
         样式: 'cyan',
       },
       {
         名称: `精神力 · ${mentalRealmText}`,
-        数值: `${formatNumber(stat.精神力)}/${formatNumber(stat.精神力上限)}`,
+        数值: `${格式化属性短数字(stat.精神力)}/${格式化属性短数字(stat.精神力上限)}`,
+        值Html: 构建属性数值对Html('精神力', stat.精神力, stat.精神力上限),
+        提示文本: `精神力：${格式化属性完整数字(stat.精神力)} / ${格式化属性完整数字(stat.精神力上限)}`,
         比例: ratioPercent(stat.精神力, stat.精神力上限),
         样式: 'white',
       },
       {
         名称: '生命',
-        数值: `${formatNumber(hpPair.hp)}/${formatNumber(hpPair.hpMax)}`,
+        数值: `${格式化属性短数字(hpPair.hp)}/${格式化属性短数字(hpPair.hpMax)}`,
+        值Html: 构建属性数值对Html('生命', hpPair.hp, hpPair.hpMax),
+        提示文本: `生命：${格式化属性完整数字(hpPair.hp)} / ${格式化属性完整数字(hpPair.hpMax)}`,
         比例: ratioPercent(hpPair.hp, hpPair.hpMax),
         样式: 'red',
       },
       {
         名称: '体力',
-        数值: `${formatNumber(stat.体力)}/${formatNumber(stat.体力上限)}`,
+        数值: `${格式化属性短数字(stat.体力)}/${格式化属性短数字(stat.体力上限)}`,
+        值Html: 构建属性数值对Html('体力', stat.体力, stat.体力上限),
+        提示文本: `体力：${格式化属性完整数字(stat.体力)} / ${格式化属性完整数字(stat.体力上限)}`,
         比例: ratioPercent(stat.体力, stat.体力上限),
         样式: 'red',
       },
@@ -22704,7 +22779,7 @@
               指标 => `
             <div class="archive-core-tile archive-core-tile--resource is-${htmlEscape(指标.样式)}">
               <b>${htmlEscape(指标.名称)}</b>
-              <strong>${htmlEscape(指标.数值)}</strong>
+              <strong${指标.提示文本 ? ` title="${escapeHtmlAttr(指标.提示文本)}"` : ''}>${指标.值Html || htmlEscape(指标.数值)}</strong>
               <i><span style="width:${指标.比例}%;"></span></i>
             </div>
           `,
@@ -22726,12 +22801,21 @@
     return 最大融合数 < 2 ? `单工序成功率 ${成功率}%` : `复合上限 ${最大融合数}项 / 成功率 ${成功率}%`;
   }
 
+  function 读取职业显示等级(职业数据 = {}) {
+    if (!职业数据 || typeof 职业数据 !== 'object') return 0;
+    return Math.max(0, Math.floor(toNumber(职业数据.等级 ?? 职业数据.lv ?? 职业数据.level, 0)));
+  }
+
+  function 读取属性天赋梯队(属性 = {}) {
+    return toText(属性?.天赋梯队 ?? 属性?.talent_tier, '未定');
+  }
+
   function buildArmoryCard(snapshot) {
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
-    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${toText(deepGet(jobs[0][1], 'lv', 0), '0')}` : '未展开';
+    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
       ? Object.keys(deepGet(jobs[0][1], '核心技艺', {}))
           .slice(0, 2)
@@ -22857,9 +22941,11 @@
       .map(item => ({
         label: toText(item && item.label, '').trim(),
         value: toText(item && item.value, '').trim(),
+        值Html: item && item.值Html ? String(item.值Html) : '',
+        提示文本: toText(item && item.提示文本, '').trim(),
         tone: toText(item && item.tone, '').trim(),
       }))
-      .filter(item => item.label && item.value)
+      .filter(item => item.label && (item.value || item.值Html))
       .slice(0, max);
   }
 
@@ -22873,8 +22959,18 @@
       .slice(0, max);
   }
 
-  function formatShellPair(current, max) {
-    return `${formatNumber(current)} / ${formatNumber(max)}`;
+  function formatShellPair(当前源, 上限源) {
+    return `${格式化属性短数字(当前源)} / ${格式化属性短数字(上限源)}`;
+  }
+
+  function 构建属性指标项(标签, 当前值, 上限值, 样式 = '') {
+    return {
+      label: 标签,
+      value: formatShellPair(当前值, 上限值),
+      值Html: 构建属性数值对Html(标签, 当前值, 上限值),
+      提示文本: `${标签}：${格式化属性完整数字(当前值)} / ${格式化属性完整数字(上限值)}`,
+      tone: 样式,
+    };
   }
 
   function buildShellSummaryCard(options = {}) {
@@ -22948,9 +23044,9 @@
               ${metrics
                 .map(
                   item => `
-                <div class="mvu-shell-metric${item.tone ? ` is-${htmlEscape(item.tone)}` : ''}">
+                <div class="mvu-shell-metric${item.tone ? ` is-${htmlEscape(item.tone)}` : ''}"${item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>
                   <span class="mvu-shell-metric-label">${htmlEscape(item.label)}</span>
-                  <strong class="mvu-shell-metric-value">${htmlEscape(item.value)}</strong>
+                  <strong class="mvu-shell-metric-value">${item.值Html || htmlEscape(item.value)}</strong>
                 </div>
               `,
                 )
@@ -23379,7 +23475,7 @@
     const hasMentalMeter = toNumber(stat.精神力上限, 0) > 0;
     const ageMetric = toNumber(stat.年龄, 0);
     const 性别文本 = toText(stat.性别, '未知');
-    const talentMetric = shortenText(toText(stat.talent_tier, '未定'), 8);
+    const talentMetric = shortenText(读取属性天赋梯队(stat), 8);
     const typeMetric = shortenText(toText(stat.系别, '未定'), 8);
     const factionJoined = primaryFactionName !== '未加入';
     const nextLevelNeeded = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.needed, 0));
@@ -23407,16 +23503,16 @@
       ],
       metrics: [
         hpPair.hpMax > 0
-          ? { label: 'HP', value: formatShellPair(hpPair.hp, hpPair.hpMax), tone: 'warn' }
+          ? 构建属性指标项('HP', hpPair.hp, hpPair.hpMax, 'warn')
           : { label: '年龄', value: ageMetric > 0 ? String(ageMetric) : '--' },
         hasVitalityMeter
-          ? { label: '体力', value: formatShellPair(stat.体力, stat.体力上限), tone: 'gold' }
+          ? 构建属性指标项('体力', stat.体力, stat.体力上限, 'gold')
           : { label: '天赋', value: talentMetric || '--', tone: 'gold' },
         hasSoulPowerMeter
-          ? { label: '魂力', value: formatShellPair(stat.魂力, stat.魂力上限), tone: 'live' }
+          ? 构建属性指标项('魂力', stat.魂力, stat.魂力上限, 'live')
           : { label: '系别', value: typeMetric || '--', tone: 'live' },
         hasMentalMeter
-          ? { label: '精神', value: formatShellPair(stat.精神力, stat.精神力上限) }
+          ? 构建属性指标项('精神', stat.精神力, stat.精神力上限)
           : { label: '年龄', value: ageMetric > 0 ? String(ageMetric) : '--' },
       ],
       rows: [
@@ -23452,7 +23548,7 @@
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
-    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${toText(deepGet(jobs[0][1], 'lv', 0), '0')}` : '未开启';
+    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${读取职业显示等级(jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
     const hasWeapon = !!weaponName && !/^(无|未记录)$/.test(weaponName);
@@ -24416,8 +24512,10 @@
       .map(item => ({
         label: toText(item && item.label, '').trim(),
         value: toText(item && item.value, '').trim(),
+        值Html: item && item.值Html ? String(item.值Html) : '',
+        提示文本: toText(item && item.提示文本, '').trim(),
       }))
-      .filter(item => item.label || item.value);
+      .filter(item => item.label || item.value || item.值Html);
     if (!list.length) return '';
     return `
         <div class="mvu-shell-lite-grid ${htmlEscape(className)}">
@@ -24426,7 +24524,7 @@
               item => `
             <div class="mvu-shell-lite-stat">
               <span>${htmlEscape(item.label)}</span>
-              <b>${htmlEscape(item.value)}</b>
+              <b${item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${item.值Html || htmlEscape(item.value)}</b>
             </div>
           `,
             )
@@ -24480,10 +24578,10 @@
                 [
                   { label: '年龄 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.性别, '未知')}` },
                   { label: '修为等级', value: formatCultivationLevelBadge(stat.等级, '0') },
-                  { label: 'HP', value: formatShellPair(hpPair.hp, hpPair.hpMax) },
-                  { label: '体力', value: formatShellPair(stat.体力, stat.体力上限) },
-                  { label: '魂力', value: formatShellPair(stat.魂力, stat.魂力上限) },
-                  { label: '精神', value: formatShellPair(stat.精神力, stat.精神力上限) },
+                  构建属性指标项('HP', hpPair.hp, hpPair.hpMax),
+                  构建属性指标项('体力', stat.体力, stat.体力上限),
+                  构建属性指标项('魂力', stat.魂力, stat.魂力上限),
+                  构建属性指标项('精神', stat.精神力, stat.精神力上限),
                   { label: '状态', value: shortenText(toText(status.行动, '日常'), 16) },
                   { label: '伤势', value: woundLabel },
                 ],
@@ -24494,9 +24592,24 @@
               <div class="mvu-shell-lite-section-title">属性</div>
               ${buildShellLiteStats(
                 [
-                  { label: '力量', value: formatNumber(stat.力量) },
-                  { label: '防御', value: formatNumber(stat.防御) },
-                  { label: '敏捷', value: formatNumber(stat.敏捷) },
+                  {
+                    label: '力量',
+                    value: 格式化属性短数字(stat.力量),
+                    值Html: 构建属性数值Html('力量', stat.力量),
+                    提示文本: `力量：${格式化属性完整数字(stat.力量)}`,
+                  },
+                  {
+                    label: '防御',
+                    value: 格式化属性短数字(stat.防御),
+                    值Html: 构建属性数值Html('防御', stat.防御),
+                    提示文本: `防御：${格式化属性完整数字(stat.防御)}`,
+                  },
+                  {
+                    label: '敏捷',
+                    value: 格式化属性短数字(stat.敏捷),
+                    值Html: 构建属性数值Html('敏捷', stat.敏捷),
+                    提示文本: `敏捷：${格式化属性完整数字(stat.敏捷)}`,
+                  },
                   { label: '精神境界', value: 读取显示精神境界(stat) },
                 ],
                 { className: 'mvu-shell-lite-grid--two' },
@@ -25973,7 +26086,6 @@
     const status = deepGet(snapshot, 'activeChar.状态', {});
     const wealth = deepGet(snapshot, 'activeChar.财富', {});
     const 穿搭数据 = deepGet(snapshot, 'activeChar.穿搭', {});
-    const wardrobeEntries = safeEntries(deepGet(snapshot, 'activeChar.穿搭.衣柜', {}));
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
@@ -26351,6 +26463,13 @@
               const passiveVisible = 技能设计台启用被动(previewMeta, formState);
               passiveSection.hidden = !passiveVisible;
               passiveSection.style.display = passiveVisible ? '' : 'none';
+              const 周期输入 = passiveSection.querySelector('[data-skill-designer-field="被动触发周期"]');
+              const 次数字段 = passiveSection.querySelector('[data-skill-designer-passive-count-field]');
+              const 显示次数 = passiveVisible && normalizeSkillUiText(周期输入 && 周期输入.value, '无限制') !== '无限制';
+              if (次数字段) {
+                次数字段.hidden = !显示次数;
+                次数字段.style.display = 显示次数 ? '' : 'none';
+              }
             });
             const typeDisplayNode = mountEl.querySelector('[data-skill-designer-type-display]');
             if (typeDisplayNode) typeDisplayNode.textContent = formState.typeDisplay || formState.type || '输出';
@@ -26789,6 +26908,13 @@
             passiveSections().forEach(passiveSection => {
               passiveSection.hidden = !visible;
               passiveSection.style.display = visible ? '' : 'none';
+              const 周期输入 = passiveSection.querySelector('[data-skill-designer-field="被动触发周期"]');
+              const 次数字段 = passiveSection.querySelector('[data-skill-designer-passive-count-field]');
+              const 显示次数 = visible && normalizeSkillUiText(周期输入 && 周期输入.value, '无限制') !== '无限制';
+              if (次数字段) {
+                次数字段.hidden = !显示次数;
+                次数字段.style.display = 显示次数 ? '' : 'none';
+              }
             });
           };
 
@@ -27209,6 +27335,9 @@
               syncPassiveSection();
               syncCostFields();
             }
+            if (target && target.matches('[data-skill-designer-field="被动触发周期"]')) {
+              syncPassiveSection();
+            }
             if (target && target.matches('[data-skill-designer-switch]')) {
               切换技能设计目标(target.value);
               return;
@@ -27627,18 +27756,18 @@
                     </div>
                     <div class=\"mvu-editor-field-grid\" data-skill-designer-passive-section${启用被动 ? '' : ' hidden style=\"display:none\"'}>
                       <label class=\"mvu-editor-field\">
-                        <span class=\"mvu-editor-label\">触发方式</span>
+                        <span class=\"mvu-editor-label\">触发时机</span>
                         <select class=\"mvu-editor-select\" data-skill-designer-field=\"被动触发\" data-skill-designer-disableable>
                           ${buildSkillDesignerSelectOptions(技能设计台被动触发选项, designerDraft.被动触发 || '常驻')}
                         </select>
                       </label>
                       <label class=\"mvu-editor-field\">
-                        <span class=\"mvu-editor-label\">触发周期</span>
+                        <span class=\"mvu-editor-label\">次数周期</span>
                         <select class=\"mvu-editor-select\" data-skill-designer-field=\"被动触发周期\" data-skill-designer-disableable>
                           ${buildSkillDesignerSelectOptions(技能设计台被动触发周期选项, 被动触发限制.周期)}
                         </select>
                       </label>
-                      <label class=\"mvu-editor-field\">
+                      <label class=\"mvu-editor-field\" data-skill-designer-passive-count-field${被动触发限制.周期 === '无限制' ? ' hidden style=\"display:none\"' : ''}>
                         <span class=\"mvu-editor-label\">触发次数</span>
                         <input class=\"mvu-editor-input\" type=\"number\" min=\"1\" step=\"1\" value=\"${escapeHtmlAttr(String(被动触发限制.次数))}\" data-skill-designer-field=\"被动触发次数\" data-skill-designer-disableable />
                       </label>
@@ -28202,11 +28331,6 @@
       );
       const worldTimeText = getSnapshotWorldTimeText(snapshot);
       const actionText = toText(status.行动, '日常');
-      const activeWardrobeKey = toText(穿搭数据.着装, '').trim();
-      const activeWardrobePath =
-        activeWardrobeKey && activeWardrobeKey !== '无'
-          ? ['char', activeCharKey, '穿搭', '衣柜', activeWardrobeKey]
-          : null;
       const createAbilityPreview = activeCharKey
         ? buildSkillDesignerPreviewKey({
             path: [
@@ -28263,7 +28387,7 @@
                       [
                         { label: '等级', value: htmlEscape(formatCultivationLevelBadge(stat.等级, '0')) },
                         { label: '精神境界', value: htmlEscape(读取显示精神境界(stat)) },
-                        { label: '天赋梯队', value: htmlEscape(toText(stat.talent_tier, '未定')) },
+                        { label: '天赋梯队', value: htmlEscape(读取属性天赋梯队(stat)) },
                         {
                           label: '系别',
                           value: activeCharKey
@@ -28304,11 +28428,11 @@
                             Math.max(12, Math.min(100, Math.round((fVit / maxAxis) * 100))),
                           ],
                           [
-                            formatNumber(fStr),
-                            formatNumber(fDef),
-                            formatNumber(fAgi),
-                            formatNumber(fMen),
-                            formatNumber(fVit),
+                            构建属性数值Html('力量', fStr),
+                            构建属性数值Html('防御', fDef),
+                            构建属性数值Html('敏捷', fAgi),
+                            构建属性数值Html('精神', fMen),
+                            构建属性数值Html('体力', fVit),
                           ],
                         );
                       })()}
@@ -28330,17 +28454,6 @@
                             })
                           : htmlEscape(actionText),
                       },
-                      {
-                        label: '当前地点',
-                        value: activeCharKey
-                          ? makeInlineEditableValue(currentLocText, {
-                              path: ['char', activeCharKey, '状态', '位置'],
-                              kind: 'string',
-                              rawValue: currentLocText,
-                            })
-                          : htmlEscape(currentLocText),
-                      },
-                      { label: '当前时间', value: htmlEscape(worldTimeText) },
                       { label: '伤势', value: htmlEscape(getDisplayWoundLabel(stat)) },
                       {
                         label: '魂核状态',
@@ -28402,10 +28515,8 @@
               <div class="archive-card dossier-card dossier-card--life-profile">
                 <div class="archive-card-head archive-card-head--profile">
                   <div class="archive-card-title">角色档案</div>
-                  <div class="dossier-profile-strip" aria-label="角色当前状态摘要">
+                  <div class="dossier-profile-strip" aria-label="角色当前状态摘要" title="${escapeHtmlAttr(`位置：${currentLocText} / 时间：${worldTimeText}`)}">
                     <span class="dossier-profile-chip"><b>行动</b><em>${htmlEscape(actionText)}</em></span>
-                    <span class="dossier-profile-chip dossier-profile-chip--wide"><b>地点</b><em>${htmlEscape(currentLocText)}</em></span>
-                    <span class="dossier-profile-chip"><b>时间</b><em>${htmlEscape(worldTimeText)}</em></span>
                     <span class="dossier-profile-chip"><b>伤势</b><em>${htmlEscape(getDisplayWoundLabel(stat))}</em></span>
                   </div>
                 </div>
@@ -28492,85 +28603,41 @@
                         className: 'dossier-row--wide',
                       },
                       {
-                        label: '当前套装',
-                        value: makeInlineEditableValue(toText(穿搭数据.着装, '无'), {
-                          path: ['char', activeCharKey, '穿搭', '着装'],
-                          kind: 'string',
-                          rawValue: 穿搭数据.着装,
-                        }),
-                        className: 'dossier-row--wide',
-                      },
-                      { label: '衣柜套数', value: String(wardrobeEntries.length) },
-                      {
                         label: '上装',
-                        value: activeWardrobePath
-                          ? makeInlineEditableValue(
-                              toText(deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '上装'], '无'), '无'),
-                              {
-                                path: [...activeWardrobePath, '上装'],
-                                kind: 'string',
-                                rawValue: deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '上装'], ''),
-                              },
-                            )
-                          : '无',
+                        value: makeInlineEditableValue(toText(穿搭数据.上装, '无'), {
+                          path: ['char', activeCharKey, '穿搭', '上装'],
+                          kind: 'string',
+                          rawValue: 穿搭数据.上装,
+                        }),
                       },
                       {
                         label: '下装',
-                        value: activeWardrobePath
-                          ? makeInlineEditableValue(
-                              toText(deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '下装'], '无'), '无'),
-                              {
-                                path: [...activeWardrobePath, '下装'],
-                                kind: 'string',
-                                rawValue: deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '下装'], ''),
-                              },
-                            )
-                          : '无',
+                        value: makeInlineEditableValue(toText(穿搭数据.下装, '无'), {
+                          path: ['char', activeCharKey, '穿搭', '下装'],
+                          kind: 'string',
+                          rawValue: 穿搭数据.下装,
+                        }),
                       },
                       {
                         label: '鞋子',
-                        value: activeWardrobePath
-                          ? makeInlineEditableValue(
-                              toText(deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '鞋子'], '无'), '无'),
-                              {
-                                path: [...activeWardrobePath, '鞋子'],
-                                kind: 'string',
-                                rawValue: deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '鞋子'], ''),
-                              },
-                            )
-                          : '无',
+                        value: makeInlineEditableValue(toText(穿搭数据.鞋子, '无'), {
+                          path: ['char', activeCharKey, '穿搭', '鞋子'],
+                          kind: 'string',
+                          rawValue: 穿搭数据.鞋子,
+                        }),
                       },
                       {
-                        label: '套装描述',
-                        value: activeWardrobePath
-                          ? makeInlineEditableValue(
-                              toText(deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '描述'], '暂无描述'), '暂无描述'),
-                              {
-                                path: [...activeWardrobePath, '描述'],
-                                kind: 'string',
-                                rawValue: deepGet(穿搭数据, ['衣柜', activeWardrobeKey, '描述'], ''),
-                              },
-                            )
-                          : '暂无描述',
+                        label: '整体描述',
+                        value: makeInlineEditableValue(toText(穿搭数据.描述, '暂无描述'), {
+                          path: ['char', activeCharKey, '穿搭', '描述'],
+                          kind: 'string',
+                          rawValue: 穿搭数据.描述,
+                        }),
                         className: 'dossier-row--wide',
                       },
                     ],
                     'dossier-row-grid--two',
                   )}
-                </section>
-                <section class="dossier-section">
-                  <div class="dossier-section-title">衣柜记录</div>
-                  ${
-                    wardrobeEntries.length
-                      ? makeDossierList(
-                          wardrobeEntries.map(([name, item]) => ({
-                            title: name,
-                            desc: `${toText(item && item['上装'], '无')} / ${toText(item && item['下装'], '无')} / ${toText(item && item['鞋子'], '无')} ｜ ${toText(item && item['描述'], '暂无描述')}`,
-                          })),
-                          'dossier-list--compact',
-                        )
-                      : '<div class="dossier-empty-note">当前角色尚未记录可切换套装。</div>'
-                  }
                 </section>
               </div>
               <div class="archive-card dossier-card dossier-card--life-record full">
@@ -33751,7 +33818,7 @@
     )
       .replace(/^斗罗大陆-/, '')
       .replace(/^斗灵大陆-/, '');
-    const talentTier = toText(deepGet(activeChar, '属性.talent_tier', '正常'), '正常');
+    const talentTier = 读取属性天赋梯队(deepGet(activeChar, '属性', {}));
     const basePrice = getDonateBasePrice(itemName);
     const talentMultiplier = getDonateTalentMultiplier(talentTier);
     const totalValue = basePrice * quantity;
