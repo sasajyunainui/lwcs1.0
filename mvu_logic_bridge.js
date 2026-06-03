@@ -1968,7 +1968,7 @@
     if (currentLv >= 100) {
       return { needed: 0, nextLevel: currentLv, isMax: true };
     }
-    const currentSpMax = toNumber(stat && (stat.突破魂力上限 ?? stat.基础魂力上限 ?? stat.魂力上限), 0);
+    const currentSpMax = toNumber(stat && stat.魂力上限, 0);
     const safeCharData = charData && typeof charData === 'object' ? charData : {};
     const nextLevel = currentLv + 1;
     const hiddenVar = Math.max(0.1, toNumber(deepGet(safeCharData, '属性.底子波动', 1), 1));
@@ -8043,6 +8043,16 @@
     if (/群体|全员|范围/.test(text)) return '群体';
     if (/单体|目标/.test(text)) return '单体';
     return SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(fallback) ? fallback : '单体';
+  }
+
+  function 机制授予目标允许下次行动触发(目标 = '') {
+    return normalizeSkillDesignerEffectTargetValue(目标, '单体') === '自身';
+  }
+
+  function 读取技能设计台机制授予触发条件选项(目标 = '') {
+    return 机制授予目标允许下次行动触发(目标)
+      ? 技能设计台机制授予触发条件选项
+      : ['主动触发'];
   }
 
   function formatSkillDesignerSignedValue(value, asPercent = true) {
@@ -15013,9 +15023,14 @@
         const currentValue = normalizeSkillUiText(source[def.key], '');
         if (currentValue) nextEntry[def.key] = currentValue;
       });
-      if (label === '机制授予' && normalizeSkillUiText(nextEntry['grantTrigger'], '主动触发') === '随下次行动触发') {
-        delete nextEntry['useCount'];
-        delete nextEntry['duration'];
+      if (label === '机制授予') {
+        const 授予目标 = resolveSkillDesignerGrantableMechanismTargetForRuntime(draft && draft.target, label);
+        const 触发条件 = normalizeSkillUiText(nextEntry['grantTrigger'], '主动触发');
+        nextEntry['grantTrigger'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
+        if (nextEntry['grantTrigger'] === '随下次行动触发') {
+          delete nextEntry['useCount'];
+          delete nextEntry['duration'];
+        }
       }
       if (safeEntries(nextEntry).length) normalized[label] = nextEntry;
     });
@@ -15032,7 +15047,10 @@
         const 可见参数定义 =
           label === '机制授予'
             ? defs.filter(def => {
-                const 触发条件 = normalizeSkillUiText(paramState['grantTrigger'], '主动触发');
+                const 授予目标 = resolveSkillDesignerGrantableMechanismTargetForRuntime(draft && draft.target, label);
+                const 触发条件 = 读取技能设计台机制授予触发条件选项(授予目标).includes(normalizeSkillUiText(paramState['grantTrigger'], '主动触发'))
+                  ? normalizeSkillUiText(paramState['grantTrigger'], '主动触发')
+                  : '主动触发';
                 if (def.key === 'useCount' || def.key === 'duration') return 触发条件 === '主动触发';
                 return true;
               })
@@ -15099,7 +15117,10 @@
                 })
             : label === '机制授予'
               ? defs.filter(def => {
-                  const 触发条件 = normalizeSkillUiText(paramState['grantTrigger'], '主动触发');
+                  const 授予目标 = resolveSkillDesignerGrantableMechanismTargetForRuntime(draft && draft.target, label);
+                  const 触发条件 = 读取技能设计台机制授予触发条件选项(授予目标).includes(normalizeSkillUiText(paramState['grantTrigger'], '主动触发'))
+                    ? normalizeSkillUiText(paramState['grantTrigger'], '主动触发')
+                    : '主动触发';
                   if (def.key === 'useCount' || def.key === 'duration') return 触发条件 === '主动触发';
                   return true;
                 })
@@ -15152,11 +15173,15 @@
                   `;
                   }
                   if (def.type === 'select') {
+                    const selectOptions =
+                      label === '机制授予' && def.key === 'grantTrigger'
+                        ? 读取技能设计台机制授予触发条件选项(resolveSkillDesignerGrantableMechanismTargetForRuntime(draft && draft.target, label))
+                        : def.options || [];
                     return `
                     <label class=\"mvu-editor-field\">
                       ${labelHtml}
                       <select class=\"mvu-editor-select\" data-skill-designer-mechanic=\"${escapeHtmlAttr(label)}\" data-skill-designer-param-key=\"${escapeHtmlAttr(def.key)}\" data-skill-designer-disableable>
-                        ${buildSkillDesignerSelectOptions(def.options || [], currentValue, def.placeholder || '')}
+                        ${buildSkillDesignerSelectOptions(selectOptions, selectOptions.includes(currentValue) ? currentValue : '', def.placeholder || '')}
                       </select>
                     </label>
                   `;
@@ -15294,6 +15319,9 @@
         valueOf('调整字段') === '持续回合' &&
         valueOf('调整方式') === '压缩'
       );
+    }
+    if (prototype === '机制授予' && ['可用次数', '持续回合'].includes(key)) {
+      return !机制授予目标允许下次行动触发(target) || valueOf('触发条件') !== '随下次行动触发';
     }
     return true;
   }
@@ -15459,7 +15487,9 @@
     }
     if (原型名 === '状态移除' && 字段名 === '匹配原型') return ['无', '资源变化', '护盾变化'];
     if (原型名 === '状态移除' && 字段名 === '资源') return ['生命'];
-    if (原型名 === '机制授予' && 字段名 === '触发条件') return 技能设计台机制授予触发条件选项;
+    if (原型名 === '机制授予' && 字段名 === '触发条件') {
+      return 读取技能设计台机制授予触发条件选项(options?.当前效果?.['目标'] || options?.目标 || '单体');
+    }
     if (原型名 === '战斗外复活' && 字段名 === '复活代价类型') return 技能设计台战斗外复活代价类型选项;
     if (原型名 === '战斗外复活' && 字段名 === '复活代价对象') {
       const 代价类型 = normalizeSkillUiText(options?.当前效果?.['复活代价类型'] || options?.复活代价类型, '状态代价');
@@ -16427,6 +16457,9 @@
             <input type=\"hidden\" value=\"自身\" data-skill-designer-prototype-field=\"目标\" />
           </label>
         `;
+    }
+    if (key === '生效方式' && options && options.强制独立) {
+      return `<input type=\"hidden\" value=\"独立生效\" data-skill-designer-prototype-field=\"生效方式\" />`;
     }
     if (key === '生效方式' && options && options.固定生效方式) {
       const 固定值 = normalizeSkillUiText(options.固定生效方式, '独立生效');
@@ -29958,7 +29991,7 @@
         let descText = `${toText(bone && bone['状态'], '已装载')}`;
         if (age || quality) descText += ` ｜ ${[age ? `${age}年` : '', quality].filter(Boolean).join(' ')}`;
 
-        const isExternalBone = 是外附魂骨槽位_桥接(slot) || toText(bone && bone['类型'], '') === '外附魂骨';
+        const isExternalBone = 是外附魂骨槽位_桥接(slot);
         const ratioParts = isExternalBone ? formatBoneRatioParts(bone && bone['属性倍率']) : [];
         if (ratioParts.length) {
           descText += ` ｜ 属性倍率: ${ratioParts.join(' ')}`;
@@ -40962,7 +40995,6 @@ ${播报文本}
           const isExternalBone = slotInfo.external || 是外附魂骨槽位_桥接(slotInfo.subSlot);
           const newBoneData = {
             名称: itemName,
-            类型: isExternalBone ? '外附魂骨' : '常规魂骨',
             年限: itemData['年限'] || (itemData['品质'] && itemData['品质'].includes('万') ? 10000 : 1000),
             品质: itemData['品质'] || '常规',
             状态: '已装载',
