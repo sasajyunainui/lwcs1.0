@@ -24806,7 +24806,7 @@
     const config =
       snapshot && snapshot.bloodline
         ? snapshot.bloodline
-        : buildBloodlineConfig(deepGet(snapshot, 'activeChar', {}), toText(snapshot && snapshot.activeName, ''));
+        : buildBloodlineConfig(deepGet(snapshot, 'activeChar', {}), toText(snapshot && snapshot.activeName, ''), [], snapshot);
     const rings = Array.isArray(config.魂环) ? config.魂环 : [];
     const skills = [
       ...(Array.isArray(config.bloodSkills) ? config.bloodSkills : []),
@@ -29982,6 +29982,7 @@
             basePath: ['char', snapshot.activeName, '魂骨', slot, '附带技能'],
             category: '魂骨附带技能',
             scope: 'soul_bone_skill',
+            渲染快照: snapshot,
           });
           const skillsHtml = parsedSkills
             .map(

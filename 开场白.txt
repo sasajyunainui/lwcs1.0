@@ -250,7 +250,7 @@ var timelineData = {
   "6岁": {
     "world": {
       "时间": {
-        "tick": 72
+        "tick": 0
       }
     },
     "char": {
@@ -373,7 +373,7 @@ var timelineData = {
   "9岁": {
     "world": {
       "时间": {
-        "tick": 160080
+        "tick": 160000
       }
     },
     "char": {
@@ -1336,7 +1336,7 @@ var timelineData = {
   "13岁": {
     "world": {
       "时间": {
-        "tick": 349180
+        "tick": 349230
       }
     },
     "char": {
