@@ -5955,16 +5955,18 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .skill
 }
 
 .skill-designer-basic-grid > .skill-designer-delivery-field {
-  grid-template-rows: auto auto 44px;
+  position: relative;
+  grid-template-rows: auto 44px;
 }
 
 .skill-designer-type-pill {
-  justify-self: start;
-  max-width: 100%;
+  position: absolute;
+  top: -2px;
+  right: 0;
+  max-width: 48%;
   min-height: 20px;
   box-sizing: border-box;
-  margin-top: -7px;
-  margin-bottom: 1px;
+  margin: 0;
   border: 1px solid rgba(0, 229, 255, 0.24);
   border-radius: var(--mvu-radius-pill, 999px);
   background: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
@@ -5976,6 +5978,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-toolbar.is-detail .skill
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.skill-designer-delivery-field > .mvu-editor-label {
+  padding-right: min(112px, 50%);
 }
 
 .skill-designer-section-title-row,

@@ -1,5 +1,5 @@
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
-import { TimelineEvents } from 'https://cdn.jsdelivr.net/gh/sasajyunainui/lwcs@main/timeline.js';
+import { TimelineEvents } from 'http://localhost:5502/lwcs/timeline.js';
 import { IntelEvents } from 'https://cdn.jsdelivr.net/gh/sasajyunainui/lwcs@main/IntelEvents.js';
 
 function getAbyssStats(tier, species) {
@@ -625,6 +625,7 @@ const AIJsonPatch技能字段集合_V1 = Object.freeze(new Set([
   '附带属性',
   '使用条件',
   '触发限制',
+  '场外冷却至tick',
   '机制原型',
   '技能掌控度',
   '_效果数组',
@@ -1604,16 +1605,24 @@ function 运行时对象有内容_V1(值 = null) {
   return Object.keys(值).length > 0;
 }
 
-function 删除正文视图机制字段_V1(节点 = null) {
+function 写入运行时场外冷却文本_V1(节点 = null, 当前tick = 0) {
+  if (!节点 || typeof 节点 !== 'object' || !Object.prototype.hasOwnProperty.call(节点, '场外冷却至tick')) return;
+  const 冷却至tick = Math.max(0, Number(节点.场外冷却至tick || 0));
+  if (冷却至tick > Math.max(0, Number(当前tick || 0))) 节点.场外冷却 = `冷却中至${formatTickToCalendarDateText(冷却至tick)}`;
+  delete 节点.场外冷却至tick;
+}
+
+function 删除正文视图机制字段_V1(节点 = null, 当前tick = 0) {
   if (!节点 || typeof 节点 !== 'object') return;
   if (Array.isArray(节点)) {
-    节点.forEach(项 => 删除正文视图机制字段_V1(项));
+    节点.forEach(项 => 删除正文视图机制字段_V1(项, 当前tick));
     return;
   }
+  写入运行时场外冷却文本_V1(节点, 当前tick);
   ['_效果数组', '使用效果', '属性加成', '属性倍率', '装备技能', '副职业参数'].forEach(键 => {
     if (Object.prototype.hasOwnProperty.call(节点, 键)) delete 节点[键];
   });
-  Object.values(节点).forEach(子节点 => 删除正文视图机制字段_V1(子节点));
+  Object.values(节点).forEach(子节点 => 删除正文视图机制字段_V1(子节点, 当前tick));
 }
 
 function 清理运行时已补全技能效果数组_V1(节点 = null) {
@@ -1634,10 +1643,10 @@ function 清理运行时已补全技能效果数组_V1(节点 = null) {
   Object.values(节点).forEach(子节点 => 清理运行时已补全技能效果数组_V1(子节点));
 }
 
-function 注入运行时简易效果描述_V1(节点 = null) {
+function 注入运行时简易效果描述_V1(节点 = null, 选项 = {}) {
   if (!节点 || typeof 节点 !== 'object') return;
   if (Array.isArray(节点)) {
-    节点.forEach(项 => 注入运行时简易效果描述_V1(项));
+    节点.forEach(项 => 注入运行时简易效果描述_V1(项, 选项));
     return;
   }
   const 添加简易描述 = 文本 => {
@@ -1645,7 +1654,7 @@ function 注入运行时简易效果描述_V1(节点 = null) {
     if (描述 && 描述 !== '无') 节点._简易效果描述 = 描述;
   };
   if (Array.isArray(节点._效果数组)) {
-    添加简易描述(编译技能结构为人类语言_V1(节点));
+    添加简易描述(编译技能结构为人类语言_V1(节点, { 当前tick: 选项.当前tick }));
     delete 节点._效果数组;
   }
   技能执行嵌套效果数组字段表_V1.forEach(字段 => {
@@ -1656,7 +1665,8 @@ function 注入运行时简易效果描述_V1(节点 = null) {
     }
     delete 节点[字段];
   });
-  Object.values(节点).forEach(子节点 => 注入运行时简易效果描述_V1(子节点));
+  写入运行时场外冷却文本_V1(节点, 选项.当前tick);
+  Object.values(节点).forEach(子节点 => 注入运行时简易效果描述_V1(子节点, 选项));
 }
 
 function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText = '') {
@@ -1706,7 +1716,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
   角色名集合.forEach(角色名 => {
     const 清理后 = 过滤MVU正文视图值_V1(cloneJsonValue(数据根?.char?.[角色名], null), ['char', '示例角色']);
     if (清理后) {
-      删除正文视图机制字段_V1(清理后);
+      删除正文视图机制字段_V1(清理后, 当前tick);
       if (Object.keys(清理后).length) 视图.char[角色名] = 清理后;
     }
   });
@@ -1721,6 +1731,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
 function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一条角色消息 = '', plotText = '') {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 文本 = `${userInput || ''}\n${最后一条角色消息 || ''}\n${plotText || ''}`;
+  const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 运行时提示限流 = 创建运行时提示限流器_V1();
   const 注入数据根 = { ...数据根, __运行时提示限流__: 运行时提示限流 };
   const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 文本);
@@ -1770,7 +1781,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     const 角色 = cloneJsonValue(数据根?.char?.[角色名], null);
     if (!角色 || typeof 角色 !== 'object') return;
     injectRuntimeCharacterTodoDefaults_V1(角色, 角色名, 数据根?.char?.[角色名], 注入数据根);
-    注入运行时简易效果描述_V1(角色);
+    注入运行时简易效果描述_V1(角色, { 当前tick });
     清理运行时已补全技能效果数组_V1(角色);
     const 过滤后角色 = 过滤MVU更新视图值_V1(角色, ['char', '示例角色']);
     if (过滤后角色) {
@@ -1792,7 +1803,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   物品名集合.forEach(物品名 => {
     const 定义 = cloneJsonValue(数据根?.物品?.[物品名], null);
     if (定义 && typeof 定义 === 'object') {
-      注入运行时简易效果描述_V1(定义);
+      注入运行时简易效果描述_V1(定义, { 当前tick });
       const 过滤后物品 = 为运行时物品定义注入提示_V1(定义);
       if (过滤后物品) 视图.物品[物品名] = 过滤后物品;
     }
@@ -5936,17 +5947,17 @@ const SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   判定修正: Object.freeze({ 命中: 0.6, 闪避: 0.7, 反应: 0.95, 打断效果: 18 }),
   结算修正: Object.freeze({
     造成伤害: 1.0, 受到伤害: 1.1, 治疗: 0.95, 消耗: 0.85, 前摇: 0.9,
-    反伤: 1.15, 伤害转移: 1.3, 伤害吸收: 1.45, 伤害转治疗: 1.45, 治疗转伤害: 1.35,
-    伤害分摊: 1.1, 消耗分摊: 0.9, 防御穿透: 0.45, 防御剥夺: 1.15, 精神抗性剥夺: 1.15,
+    反伤: 1.15, 伤害转移: 2.5, 伤害吸收: 2, 伤害转治疗: 1.8, 治疗转伤害: 1.8,
+    伤害分摊: 1.1, 消耗分摊: 0.9, 防御穿透: 1.3, 防御剥夺: 1.8, 精神抗性剥夺: 2.3,
     技能效果: 1.0, 反击: 18, 持续伤害引爆: 20,
   }),
   状态施加: Object.freeze({
     中毒: 1.05, 流血: 1.05, 灼烧: 0.9, 冻伤: 0.95, 持续创伤: 1.25, 持续恢复: 0.95,
     迟缓: 0.75, 资源燃烧: 0.95,
     眩晕: 25, 致盲: 11, 禁疗: 12, 治疗反转: 16,
-    隐匿: 12, 探查屏蔽: 8, 共享视野: 5, 护盾: 0.9,
-    无视异常: 35, 霸体: 18, 标记: 4, 封技: 50,
-    位移限制: 10, 护卫: 8, 嘲讽: 10, 防御剥夺: 12, 精神抗性剥夺: 12,
+    隐匿: 18, 探查屏蔽: 8, 共享视野: 5, 护盾: 0.9,
+    无视异常: 60, 霸体: 18, 标记: 30, 封技: 100,
+    位移限制: 20, 护卫: 8, 嘲讽: 10, 防御剥夺: 12, 精神抗性剥夺: 12,
     虚弱: 8, 失控: 18, 反噬: 14, 精神紊乱: 14, 魂力枯竭: 14,
     僵直: 12, 麻痹: 14, 混乱: 18,
     触发方式: Object.freeze({ 立即触发: 0, 延迟触发: 3, 遥控触发: 8 }),
@@ -5959,11 +5970,11 @@ const SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   资源锁定: Object.freeze({ 回复锁定: 1.2, 转化锁定: 1.0, 资源池锁定: 1.0 }),
   规则改写: Object.freeze({ 缴械: 18, 死亡转存活: 50 }),
   修炼增益: Object.freeze({ 属性修炼速度: 0.8, 训练方式收益: 0.7 }),
-  战斗外复活: 50,
-  机制抹消: 20,
-  机制授予: 15,
-  复制执行: Object.freeze({ 复制属性: 25, 复制技能: 35, 复制全部: 60 }),
-  时光回溯: 90,
+  战斗外复活: 250,
+  机制抹消: 25,
+  机制授予: 25,
+  复制执行: Object.freeze({ 复制属性: 70, 复制技能: 90, 复制全部: 130 }),
+  时光回溯: 200,
   位移执行: Object.freeze({ 换位: 14, 脱离: 10, 拉近: 8, 击退: 8, 瞬移: 50 }),
   决策干扰: Object.freeze({ 判断干扰: 0.6, 索敌干扰: 0.75 }),
   召唤生成: Object.freeze({
@@ -8144,6 +8155,7 @@ const 技能正式根字段集合_V1 = new Set([
   '附带属性',
   '使用条件',
   '触发限制',
+  '场外冷却至tick',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -12535,6 +12547,7 @@ function 解析次数限制抵扣率_V1(输入值 = null) {
   if (!Number.isFinite(次数) || 次数 <= 0) return 0;
   if (周期 === '每日') return 次数 <= 1 ? 0.70 : 次数 <= 3 ? 0.50 : 0.30;
   if (周期 === '每战') return 次数 <= 1 ? 0.40 : 次数 <= 3 ? 0.25 : 0.12;
+  if (周期 === '每回合') return 次数 <= 1 ? 0.10 : 次数 <= 3 ? 0.06 : 0.03;
   return 0;
 }
 
@@ -13513,6 +13526,7 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
   if (!技能 || typeof 技能 !== 'object' || !Array.isArray(技能._效果数组)) return { skill: 技能, 降级记录: null, 成功: true };
   const 评估上下文 = { ...(上下文 || {}), 魂环位: 魂技位, 启用位级硬上限: 上下文?.启用位级硬上限 ?? true };
   const 已有生成触发限制降压 = () => {
+    if (解析次数限制抵扣率_V1(技能.触发限制) >= 0.40) return true;
     let 命中 = false;
     遍历直接结算预算效果_V1(技能._效果数组, 效果 => {
       if (命中 || !效果 || typeof 效果 !== 'object') return;
@@ -13900,6 +13914,7 @@ function 执行生成收口情况_V1(技能 = {}, 上下文 = {}) {
   if (!技能 || typeof 技能 !== 'object') return { 改动: false, 情况: null, 动作: [] };
   const 动作 = [];
   const 已有生成触发限制降压 = () => {
+    if (解析次数限制抵扣率_V1(技能.触发限制) >= 0.40) return true;
     let 命中 = false;
     遍历直接结算预算效果_V1(技能._效果数组, 效果 => {
       if (命中 || !效果 || typeof 效果 !== 'object') return;
@@ -13909,12 +13924,6 @@ function 执行生成收口情况_V1(技能 = {}, 上下文 = {}) {
   };
   let 评估 = 评估技能预算_V1(技能, 上下文);
   let 情况 = 判定生成收口情况_V1(评估, 上下文);
-  const 触发限制数 = 尝试生成阶段触发限制降压_V1(技能);
-  if (触发限制数 > 0) {
-    动作.push(`触发限制×${触发限制数}`);
-    评估 = 评估技能预算_V1(技能, 上下文);
-    情况 = 判定生成收口情况_V1(评估, 上下文);
-  }
   if (情况.编号 === 1) {
     const 结果 = 生成阶段按目标COST填充效果强度_V1(技能, {
       ...上下文,
@@ -13928,6 +13937,14 @@ function 执行生成收口情况_V1(技能 = {}, 上下文 = {}) {
     if (结果?.改动) 动作.push('增强效果到生成目标');
     评估 = 评估技能预算_V1(技能, 上下文);
     情况 = 判定生成收口情况_V1(评估, 上下文);
+  }
+  if (情况.编号 === 8) {
+    const 触发限制数 = 尝试生成阶段触发限制降压_V1(技能);
+    if (触发限制数 > 0) {
+      动作.push(`触发限制×${触发限制数}`);
+      评估 = 评估技能预算_V1(技能, 上下文);
+      情况 = 判定生成收口情况_V1(评估, 上下文);
+    }
   }
   if ([5, 6, 8].includes(情况.编号)) {
     const 目标 = 情况.编号 === 8 ? Math.min(情况.生成范围上沿, 情况.最大承载上限) : 情况.生成范围上沿;
@@ -14090,6 +14107,7 @@ function 应用生成阶段目标COST收口_V1(技能 = {}, 上下文 = {}) {
   });
   评估 = 收口情况结果?.评估 || 评估技能预算_V1(技能, 预算上下文);
   const 已有触发限制降压 = (() => {
+    if (解析次数限制抵扣率_V1(技能.触发限制) >= 0.40) return true;
     let 命中 = false;
     遍历直接结算预算效果_V1(技能._效果数组, 效果 => {
       if (命中 || !效果 || typeof 效果 !== 'object') return;
@@ -15714,6 +15732,29 @@ function 格式化技能结构运行态消耗_V1(技能 = {}, 基础消耗 = '')
   return 格式化技能结构转译字段_V1(基础消耗, '');
 }
 
+function 读取技能场外冷却档_V1(技能 = {}) {
+  const 前摇 = Math.max(0, Number(技能?.前摇 || 0));
+  if (!(前摇 >= 30)) return { 标签: '随时', 冷却tick: 0 };
+  if (前摇 < 60) return { 标签: '每小时', 冷却tick: 6 };
+  if (前摇 < 90) return { 标签: '每日', 冷却tick: 144 };
+  return { 标签: '每周', 冷却tick: 1008 };
+}
+
+function 技能结构可场外使用_V1(技能 = {}) {
+  const 效果数组 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : [];
+  if (String(技能?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(效果数组)) return true;
+  const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '护盾变化', '机制授予', '复制执行']);
+  return 技能执行效果数组存在匹配_V1(效果数组, 效果 => 可写回原型.has(String(效果?.原型 || '').trim()));
+}
+
+function 转译技能场外冷却_V1(技能 = {}, 选项 = {}) {
+  if (!技能结构可场外使用_V1(技能)) return '';
+  const 当前tick = Number(选项.当前tick ?? 选项.currentTick);
+  const 冷却至tick = Math.max(0, Number(技能?.场外冷却至tick || 0));
+  if (Number.isFinite(当前tick) && 冷却至tick > 当前tick) return '冷却中';
+  return 读取技能场外冷却档_V1(技能).标签;
+}
+
 function 推断技能结构分类_V1(技能 = {}) {
   const 效果数组 = Array.isArray(技能._效果数组) ? 技能._效果数组 : [];
   const has = predicate => 技能执行效果数组存在匹配_V1(效果数组, predicate);
@@ -15755,6 +15796,7 @@ function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项
   const 类型 = 格式化技能结构转译字段_V1(推断技能结构分类_V1(技能), '');
   const 消耗 = 格式化技能结构运行态消耗_V1(技能, 技能.消耗);
   const 前摇 = 技能.前摇 !== undefined ? Math.max(0, Number(技能.前摇 || 0)) : null;
+  const 场外 = 转译技能场外冷却_V1(技能, 选项);
   const 掌控度 = 技能.技能掌控度 && typeof 技能.技能掌控度 === 'object' ? 转译技能掌控度_V1(技能.技能掌控度) : '';
   const 附带属性 = Array.isArray(技能.附带属性) && 技能.附带属性.length ? 技能.附带属性.join('/') : '';
   const 融合参与者 = Array.isArray(技能.融合参与者) && 技能.融合参与者.length ? 技能.融合参与者.join('/') : '';
@@ -15762,6 +15804,7 @@ function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项
   const 副作用文本 = 转译技能副作用列表_V1(技能.副作用列表 || []);
   if (消耗) 片段.push(`消耗:${消耗}`);
   if (前摇 !== null && Number.isFinite(前摇) && 前摇 > 0) 片段.push(`前摇:${formatSkillNumber(前摇)}`);
+  if (场外) 片段.push(`场外:${场外}`);
   if (掌控度) 片段.push(`掌控度:${掌控度}`);
   if (附带属性) 片段.push(`附带属性:${附带属性}`);
   if (融合参与者) 片段.push(`融合参与者:${融合参与者}${技能.失败回滚 ? '；失败不扣资源' : ''}`);
@@ -15781,6 +15824,7 @@ function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项
     类型,
     消耗,
     前摇: 前摇 || 0,
+    场外,
     掌控度,
     附带属性,
     效果: 效果文本,
@@ -19960,6 +20004,8 @@ function cloneSkillStructData(skill = {}) {
     使用条件: skill?.使用条件 && typeof skill.使用条件 === 'object' && !Array.isArray(skill.使用条件) ? cloneJsonValue(skill.使用条件, {}) : undefined,
     _效果数组: packedEffects,
   };
+  const 场外冷却至tick = Math.max(0, Number(skill?.场外冷却至tick || 0));
+  if (场外冷却至tick > 0) working.场外冷却至tick = 场外冷却至tick;
   if (副作用列表.length) working.副作用列表 = 副作用列表;
   if (是造物承载技能) working.产物描述 = String(skill?.产物描述 || '无');
   applySkillElementInheritance(working, {});
@@ -19975,6 +20021,7 @@ function cloneSkillStructData(skill = {}) {
     附带属性: normalizeSkillAttachedAttributeArray(working.附带属性 || []),
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
+  if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
   const 收口副作用列表 = normalizeSkillSideEffectList(working.副作用列表 || []);
   if (收口副作用列表.length) result.副作用列表 = 收口副作用列表;
@@ -21223,6 +21270,7 @@ const SkillStructSchema = z
     承载方式: z.string().prefault('直接生效'),
     消耗: z.any().prefault('无'),
     前摇: z.coerce.number().prefault(0),
+    场外冷却至tick: z.coerce.number().optional(),
     附带属性: z.array(z.string()).prefault([]),
     使用条件: z
       .object({
@@ -21239,7 +21287,7 @@ const SkillStructSchema = z
       .optional(),
     触发限制: z
       .object({
-        周期: z.enum(['每战', '每日']),
+        周期: z.enum(['每战', '每日', '每回合']),
         次数: z.coerce.number().int().min(1).prefault(1),
       })
       .optional(),
@@ -26690,24 +26738,23 @@ export const Schema = z
       });
     });
 
-    const buildUpcomingTimelinePreview = (timelineEvents, currentTick, limit = 10) => {
+    const buildUpcomingTimelinePreview = (timelineEvents, currentTick, limit = 20) => {
       const allEvents = Array.isArray(timelineEvents) ? timelineEvents : Object.values(timelineEvents || {}).flat();
 
       return allEvents
-        .map(lowerCaseKeys)
-        .map(event => {
-          const flag = event.事件名 || event.event_name || event.flag || 'unknown_event';
-          const tick = Number(event.tick || 0);
-          const desc = event.description || event.trigger_background || event['描述'] || '无';
+        .map(事件 => {
+          const 标识 = String(事件?.标识 || '').trim();
+          const 触发tick = Number(事件?.触发tick || 0);
+          const 描述 = String(事件?.描述 || '').trim() || '无';
           return {
-            flag,
-            tick,
-            eta: tick - currentTick,
-            desc,
+            标识,
+            触发tick,
+            剩余tick: 触发tick - currentTick,
+            描述,
           };
         })
-        .filter(event => event.flag && Number.isFinite(event.tick) && event.tick > currentTick)
-        .sort((a, b) => a.tick - b.tick)
+        .filter(事件 => 事件.标识 && Number.isFinite(事件.触发tick) && 事件.触发tick > currentTick)
+        .sort((左事件, 右事件) => 左事件.触发tick - 右事件.触发tick)
         .slice(0, limit);
     };
 
@@ -26720,12 +26767,12 @@ export const Schema = z
       return ['原著时间线参考节点（仅供控速、铺垫、触发、推进判断；必须服从当前MVU事实与已发生事件，不可因tick临近强行落地）：']
         .concat(
           previewList.map((item, index) => {
-            const tick = Number(item.tick || 0);
-            const eta = Number(item.eta || 0);
-            const desc = item.desc || '无';
-            const calendarText = formatTickToCalendar(tick);
-            const etaText = formatTickDeltaText(eta);
-            return `${index + 1}. ${calendarText}（约 ${etaText}后）: ${desc}`;
+            const 触发tick = Number(item.触发tick || 0);
+            const 剩余tick = Number(item.剩余tick || 0);
+            const 描述 = item.描述 || '无';
+            const calendarText = formatTickToCalendar(触发tick);
+            const etaText = formatTickDeltaText(剩余tick);
+            return `${index + 1}. ${calendarText}（约${etaText}后）｜${描述}`;
           }),
         )
         .join('\n');
@@ -26733,7 +26780,7 @@ export const Schema = z
 
     const upcomingTimelinePreview =
       typeof TimelineEvents !== 'undefined'
-        ? buildUpcomingTimelinePreview(TimelineEvents, currentTick, 10)
+        ? buildUpcomingTimelinePreview(TimelineEvents, currentTick, 20)
         : [];
     if (!data.world._引导 || typeof data.world._引导 !== 'object' || Array.isArray(data.world._引导)) data.world._引导 = {};
     data.world._引导.时间线预览 = buildUpcomingTimelinePreviewText(upcomingTimelinePreview);

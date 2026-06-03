@@ -12268,24 +12268,23 @@
   }
 
   function 读取技能设计台被动触发限制(草稿 = {}) {
-    const effects = Array.isArray(草稿 && 草稿.prototypeEffects) ? 草稿.prototypeEffects : [];
-    const 效果限制 = effects
-      .map(effect => (effect && effect['触发限制'] && typeof effect['触发限制'] === 'object' && !Array.isArray(effect['触发限制']) ? effect['触发限制'] : null))
-      .find(Boolean);
-    const 限制 = 草稿 && 草稿['触发限制'] && typeof 草稿['触发限制'] === 'object' && !Array.isArray(草稿['触发限制'])
+    const 技能级限制 = 草稿 && 草稿['触发限制'] && typeof 草稿['触发限制'] === 'object' && !Array.isArray(草稿['触发限制'])
       ? 草稿['触发限制']
-      : 效果限制
-        ? 效果限制
       : {};
+    const 技能级被动周期 = normalizeSkillDesignerSelectValue(
+      技能级限制['周期'],
+      技能设计台被动触发周期选项,
+      '',
+    );
     const 默认周期 = 技能设计台包含自身死亡转存活(草稿) ? '每战' : '无限制';
     const 周期 = normalizeSkillDesignerSelectValue(
-      (草稿 && (草稿.被动触发周期 || 限制['周期'])) || 默认周期,
+      (草稿 && 草稿.被动触发周期) || (技能级被动周期 === '每回合' ? 技能级被动周期 : '') || 默认周期,
       技能设计台被动触发周期选项,
       '无限制',
     );
     return {
       周期,
-      次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.被动触发次数 || 限制['次数']), 1, 1)),
+      次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.被动触发次数 || (技能级被动周期 === '每回合' ? 技能级限制['次数'] : '')), 1, 1)),
     };
   }
 
@@ -12302,6 +12301,15 @@
       周期,
       次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.使用限制次数 || 限制['次数']), 1, 1)),
     };
+  }
+
+  function 读取技能设计台有效触发限制(草稿 = {}, 预览元数据 = {}) {
+    const 使用限制 = 读取技能设计台使用限制(草稿);
+    if (使用限制.周期 !== '无限制') return cloneJsonValue(使用限制);
+    if (!技能设计台启用被动(预览元数据, 草稿)) return null;
+    const 被动触发限制 = 读取技能设计台被动触发限制(草稿);
+    if (被动触发限制.周期 !== '无限制') return cloneJsonValue(被动触发限制);
+    return null;
   }
 
   function readSkillDesignerDraft(skill = {}, rawName = '', previewMeta = {}) {
@@ -12378,7 +12386,7 @@
     const 被动触发限制 = 读取技能设计台被动触发限制({
       ...designDraft,
       prototypeEffects: resolvedPrototypeEffects,
-      触发限制: designDraft['触发限制'],
+      触发限制: safeSkill['触发限制'],
     });
     const 使用限制 = 读取技能设计台使用限制(safeSkill);
     return {
@@ -12602,14 +12610,16 @@
   function 构建技能设计台临时技能(草稿 = {}, 预览元数据 = {}) {
     const 规范化草稿 = buildSkillDesignerFormStateFromDraft(草稿, 预览元数据);
     const 启用被动 = 技能设计台启用被动(预览元数据, 规范化草稿);
+    const 有效触发限制 = 读取技能设计台有效触发限制(规范化草稿, 预览元数据);
     const 临时技能 = {
       魂技名: normalizeSkillUiText(规范化草稿.name, ''),
       承载方式: 启用被动 ? '直接生效' : normalizeSkillUiText(规范化草稿.deliveryForm, '直接生效'),
-      消耗: 启用被动 ? '无' : formatSkillDesignerFullCostText(规范化草稿.costType, 规范化草稿.costValues, 规范化草稿.sustainCostText),
-      前摇: 启用被动 ? 0 : Math.max(0, toNumber(规范化草稿['前摇'], 0)),
+      消耗: formatSkillDesignerFullCostText(规范化草稿.costType, 规范化草稿.costValues, 规范化草稿.sustainCostText),
+      前摇: Math.max(0, toNumber(规范化草稿['前摇'], 0)),
       附带属性: normalizeSkillDesignerArray(规范化草稿.attachedAttributes),
       _效果数组: buildSkillDesignerRuntimeEffects(规范化草稿, {}, 预览元数据),
     };
+    if (有效触发限制) 临时技能['触发限制'] = 有效触发限制;
     临时技能.__魂环位 = 推断技能设计台魂环位(预览元数据);
     临时技能.__战斗来源类别 = ['魂技', 'independent_ring_skill'].includes(normalizeSkillUiText(预览元数据 && 预览元数据.scope, ''))
       ? '魂技'
@@ -17130,8 +17140,8 @@
     const 原始类型 = normalizeSkillUiText(baseDraft.type, '');
     const typeMeta = resolveSkillDesignerTypeMeta(previewMeta, /无|禁用|关闭|false|no|0/.test(显式被动值) ? '' : baseDraft.type);
     const costConfig = parseSkillDesignerCostConfig(
-      baseDraft.cost,
-      baseDraft.resourceType,
+      baseDraft.cost || baseDraft['消耗'],
+      baseDraft.resourceType || baseDraft.costType,
       baseDraft.resourceValues || baseDraft.costValues,
     );
     const 原始主机制 = normalizeSkillUiText(baseDraft.primaryMain || baseDraft['主机制'], '');
@@ -17200,17 +17210,15 @@
       type: typeMeta.value,
       typeDisplay: typeMeta.display,
       target: 启用被动 ? '自身' : resolvedTarget,
-      cost: 启用被动 ? {} : buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues),
-      costType: 启用被动 ? '无' : normalizeSkillDesignerSelectValue(costConfig.resourceType, SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS, '无'),
-      costValues: 启用被动 ? {} : cloneJsonValue(costConfig.resourceValues || {}),
-      costValue: 启用被动 ? '' : costConfig.resourceValue,
-      sustainCostText: 启用被动 ? '' : costConfig.sustainText || '',
-      前摇: 启用被动
-        ? 0
-        : Math.max(
-            0,
-            toNumber(baseDraft['前摇'], SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY[resolvedDeliveryForm] || 10),
-          ),
+      cost: buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues),
+      costType: normalizeSkillDesignerSelectValue(costConfig.resourceType, SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS, '无'),
+      costValues: cloneJsonValue(costConfig.resourceValues || {}),
+      costValue: costConfig.resourceValue,
+      sustainCostText: costConfig.sustainText || '',
+      前摇: Math.max(
+        0,
+        toNumber(baseDraft['前摇'], SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY[resolvedDeliveryForm] || 10),
+      ),
       启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
       启用被动: 启用被动 ? '启用' : '无',
       被动触发,
@@ -17410,10 +17418,10 @@
       type: typeMeta.value,
       typeDisplay: typeMeta.display,
       target: 启用被动 ? '自身' : resolvedTarget,
-      costType: 启用被动 ? '无' : readField('costType') || '无',
-      costValues: 启用被动 ? {} : readCostValues(),
-      sustainCostText: 启用被动 ? '' : readSustainCostText(),
-      前摇: 启用被动 ? 0 : Math.max(0, toNumber(readField('前摇'), 0)),
+      costType: readField('costType') || '无',
+      costValues: readCostValues(),
+      sustainCostText: readSustainCostText(),
+      前摇: Math.max(0, toNumber(readField('前摇'), 0)),
       启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
       启用被动: 启用被动 ? '启用' : '无',
       被动触发: 启用被动
@@ -19793,21 +19801,14 @@
 
   function 套用技能设计台被动触发(effectArray = [], draft = {}) {
     if (!技能设计台启用被动({}, draft)) return Array.isArray(effectArray) ? effectArray : [];
-    const 被动触发 = 读取技能设计台被动触发默认值(draft);
-    const 触发限制 = 读取技能设计台被动触发限制(draft);
     return (Array.isArray(effectArray) ? effectArray : []).map(effect => {
       if (!effect || typeof effect !== 'object') return effect;
       const cloned = cloneJsonValue(effect);
       const 原型 = normalizeSkillUiText(cloned['原型'], '');
-      const 字段列表 = 读取技能设计台原型字段列表(原型, cloned);
       cloned['目标'] = '自身';
       delete cloned['对象'];
       if (原型 !== '伤害结算' && Number(cloned['持续回合'] || 0) > 10) delete cloned['持续回合'];
-      if (技能设计台效果是自身死亡转存活(cloned)) delete cloned['触发限制'];
-      else if (被动触发 && 被动触发 !== '常驻' && 触发限制.周期 !== '无限制' && 字段列表.includes('触发限制')) {
-        cloned['触发限制'] = cloneJsonValue(触发限制);
-      }
-      else delete cloned['触发限制'];
+      delete cloned['触发限制'];
       return cloned;
     });
   }
@@ -19895,20 +19896,15 @@
       throw new Error(`请填写${getSkillDesignerScopeLabels(previewMeta).nameFieldLabel || '技能名'}。`);
     const designSummary = buildSkillDesignerCompactSummary(normalized);
     const 启用被动 = 技能设计台启用被动(previewMeta, normalized);
-    const 被动触发 = 读取技能设计台被动触发默认值(normalized);
-    const 被动触发限制 = 读取技能设计台被动触发限制(normalized);
-    const 使用限制 = 读取技能设计台使用限制(normalized);
+    const 有效触发限制 = 读取技能设计台有效触发限制(normalized, previewMeta);
     safeSkill['魂技名'] = 规范第七魂环真身名称_桥接(normalized.name, previewMeta);
     safeSkill['承载方式'] = 启用被动 ? '直接生效' : normalized.deliveryForm || '直接生效';
-    safeSkill['消耗'] = 启用被动 ? '无' : formatSkillDesignerFullCostText(normalized.costType, normalized.costValues, normalized.sustainCostText);
-    safeSkill['前摇'] = 启用被动 ? 0 : Math.max(0, toNumber(normalized['前摇'], 0));
-    if (使用限制.周期 !== '无限制') safeSkill['触发限制'] = cloneJsonValue(使用限制);
-    else if (启用被动 && 被动触发 && 被动触发 !== '常驻' && 被动触发限制.周期 !== '无限制') safeSkill['触发限制'] = cloneJsonValue(被动触发限制);
+    safeSkill['消耗'] = formatSkillDesignerFullCostText(normalized.costType, normalized.costValues, normalized.sustainCostText);
+    safeSkill['前摇'] = Math.max(0, toNumber(normalized['前摇'], 0));
+    if (有效触发限制) safeSkill['触发限制'] = cloneJsonValue(有效触发限制);
     else delete safeSkill['触发限制'];
     if (normalized['技能掌控度']) safeSkill['技能掌控度'] = cloneJsonValue(normalized['技能掌控度']);
     else delete safeSkill['技能掌控度'];
-    void 被动触发;
-    void 被动触发限制;
     safeSkill['画面描述'] = normalized.visualDesc;
     safeSkill['效果描述'] = normalized.effectDesc;
     const 技能设计台写回元数据 = {};
@@ -20101,6 +20097,41 @@
     return fallback;
   }
 
+  function 读取场外魂技冷却档(skill = {}) {
+    const 前摇 = Math.max(0, toNumber(skill && skill['前摇'], 0));
+    if (前摇 < 30) return { 标签: '随时', 冷却tick: 0 };
+    if (前摇 < 60) return { 标签: '每小时', 冷却tick: 6 };
+    if (前摇 < 90) return { 标签: '每日', 冷却tick: 144 };
+    return { 标签: '每周', 冷却tick: 1008 };
+  }
+
+  function 读取场外魂技冷却状态(skill = {}, 当前tick = 0) {
+    const 冷却档 = 读取场外魂技冷却档(skill);
+    const 当前 = Math.max(0, toNumber(当前tick, 0));
+    const 冷却至tick = Math.max(0, toNumber(skill && skill['场外冷却至tick'], 0));
+    const 冷却中 = 冷却至tick > 当前;
+    return {
+      ...冷却档,
+      冷却至tick,
+      冷却中,
+      冷却文本: 冷却中 ? `冷却至${formatTickToCalendarDateText(冷却至tick)}` : '',
+    };
+  }
+
+  function 校验场外魂技冷却(skill = {}, 当前tick = 0, 技能名 = '技能') {
+    const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
+    if (冷却状态.冷却中) throw new Error(`【${技能名}】场外冷却中，${冷却状态.冷却文本}。`);
+    return 冷却状态;
+  }
+
+  function 写入场外魂技冷却(skill = {}, 当前tick = 0) {
+    if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
+    const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
+    if (冷却状态.冷却tick > 0) skill['场外冷却至tick'] = Math.max(0, toNumber(当前tick, 0)) + 冷却状态.冷却tick;
+    else delete skill['场外冷却至tick'];
+    return 读取场外魂技冷却状态(skill, 当前tick);
+  }
+
   function extractConstructCreateEffects(effectArray = []) {
     return (Array.isArray(effectArray) ? effectArray : []).filter(
       effect =>
@@ -20111,11 +20142,14 @@
     );
   }
 
-  function buildConstructSkillActionHtml(skillPath = []) {
+  function buildConstructSkillActionHtml(skillPath = [], skill = {}, 当前tick = 0) {
     if (!Array.isArray(skillPath) || !skillPath.length) return '';
+    const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
+    const 禁用 = 冷却状态.冷却中;
+    const 提示 = 禁用 ? ` title="${escapeHtmlAttr(冷却状态.冷却文本)}"` : '';
     return `
         <div class="tag-cloud armory-quick-actions mvu-detail-toolbar mvu-detail-toolbar--tight">
-          <button type="button" class="tag-chip live skill-inline-action-btn" data-skill-action="cast-construct" data-skill-path="${escapeHtmlAttr(JSON.stringify(skillPath))}">日常施展</button>
+          <button type="button" class="tag-chip live skill-inline-action-btn" data-skill-action="cast-construct" data-skill-path="${escapeHtmlAttr(JSON.stringify(skillPath))}"${禁用 ? ' disabled aria-disabled="true"' : ''}${提示}>${禁用 ? '冷却中' : '日常施展'}</button>
         </div>
       `;
   }
@@ -20136,11 +20170,14 @@
     return visit(skill && skill['_效果数组']);
   }
 
-  function buildDailyWritebackSkillActionHtml(skillPath = []) {
+  function buildDailyWritebackSkillActionHtml(skillPath = [], skill = {}, 当前tick = 0) {
     if (!Array.isArray(skillPath) || !skillPath.length) return '';
+    const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
+    const 禁用 = 冷却状态.冷却中;
+    const 提示 = 禁用 ? ` title="${escapeHtmlAttr(冷却状态.冷却文本)}"` : '';
     return `
         <div class="tag-cloud armory-quick-actions mvu-detail-toolbar mvu-detail-toolbar--tight">
-          <button type="button" class="tag-chip live skill-inline-action-btn" data-skill-action="daily-writeback" data-skill-path="${escapeHtmlAttr(JSON.stringify(skillPath))}">使用</button>
+          <button type="button" class="tag-chip live skill-inline-action-btn" data-skill-action="daily-writeback" data-skill-path="${escapeHtmlAttr(JSON.stringify(skillPath))}"${禁用 ? ' disabled aria-disabled="true"' : ''}${提示}>${禁用 ? '冷却中' : '使用'}</button>
         </div>
       `;
   }
@@ -20149,6 +20186,7 @@
     const basePath = Array.isArray(options && options.basePath) ? options.basePath : [];
     const category = normalizeSkillUiText(options && options.category, '技能');
     const scope = normalizeSkillUiText(options && options.scope, 'skill');
+    const 当前tick = Math.max(0, toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0));
     const skills = safeEntries(skillObj).map(([rawName, skill]) => {
       const effectArray = Array.isArray(skill && skill['_效果数组']) ? skill['_效果数组'] : [];
       const draft = readSkillDesignerDraft(skill, rawName);
@@ -20174,7 +20212,7 @@
       const 正式翻译器 = 读取正式技能结构翻译器();
       const effectSummaryCore =
         typeof 正式翻译器 === 'function'
-          ? normalizeSkillUiText(正式翻译器(技能翻译输入), '') || summarizeSkillEffectArray(effectArray, skill, draft)
+          ? normalizeSkillUiText(正式翻译器(技能翻译输入, { 当前tick }), '') || summarizeSkillEffectArray(effectArray, skill, draft)
           : summarizeSkillEffectArray(effectArray, skill, draft);
       const constructMeta = extractConstructEffectMeta(effectArray);
       const attributeSummary = buildSkillDesignerAttributeSummary(draft);
@@ -20259,9 +20297,9 @@
         constructCreateEffects.length <= 0 &&
         skillHasDailyMvuWritebackEffect(skill);
       const constructActionHtml = canDailyCastConstruct
-        ? buildConstructSkillActionHtml(skillPath)
+        ? buildConstructSkillActionHtml(skillPath, skill, 当前tick)
         : canDailyUseWriteback
-          ? buildDailyWritebackSkillActionHtml(skillPath)
+          ? buildDailyWritebackSkillActionHtml(skillPath, skill, 当前tick)
         : '';
       if (constructActionHtml) desc += constructActionHtml;
 
@@ -26459,6 +26497,7 @@
               masterySection.hidden = !masteryVisible;
               masterySection.style.display = masteryVisible ? '' : 'none';
             }
+            syncUseLimitSection();
             passiveSections().forEach(passiveSection => {
               const passiveVisible = 技能设计台启用被动(previewMeta, formState);
               passiveSection.hidden = !passiveVisible;
@@ -26877,13 +26916,6 @@
           };
 
           const syncCostFields = () => {
-            if (技能设计台启用被动(previewMeta, readSkillDesignerFormState(mountEl, previewMeta))) {
-              mountEl?.querySelectorAll('[data-skill-designer-cost-value-field], [data-skill-designer-sustain-cost-value-field]').forEach(field => {
-                field.hidden = true;
-                field.style.display = 'none';
-              });
-              return;
-            }
             const costType = normalizeSkillUiText(
               mountEl?.querySelector('[data-skill-designer-field="costType"]')?.value,
               '无',
@@ -26900,6 +26932,22 @@
               field.hidden = !visible;
               field.style.display = visible ? '' : 'none';
             });
+          };
+
+          const syncUseLimitSection = () => {
+            const 周期输入 = mountEl.querySelector('[data-skill-designer-field="使用限制周期"]');
+            const 次数字段 = mountEl.querySelector('[data-skill-designer-use-count-field]');
+            const 次数输入 = mountEl.querySelector('[data-skill-designer-field="使用限制次数"]');
+            const 显示次数 = normalizeSkillUiText(周期输入 && 周期输入.value, '无限制') !== '无限制';
+            if (次数字段) {
+              次数字段.hidden = !显示次数;
+              次数字段.style.display = 显示次数 ? '' : 'none';
+            }
+            if (次数输入) {
+              次数输入.disabled = !显示次数 || busy;
+              if (显示次数) 次数输入.setAttribute('data-skill-designer-disableable', '');
+              else 次数输入.removeAttribute('data-skill-designer-disableable');
+            }
           };
 
           const syncPassiveSection = () => {
@@ -27331,6 +27379,9 @@
             if (target && target.matches('[data-skill-designer-field="costType"]')) {
               syncCostFields();
             }
+            if (target && target.matches('[data-skill-designer-field="使用限制周期"]')) {
+              syncUseLimitSection();
+            }
             if (target && target.matches('[data-skill-designer-field="启用被动"]')) {
               syncPassiveSection();
               syncCostFields();
@@ -27688,6 +27739,7 @@
 
           handleInteractiveRefresh();
           syncCostFields();
+          syncUseLimitSection();
           syncPassiveSection();
           syncDeliverySections();
           mountEl.querySelectorAll('[data-skill-designer-prototype-row]').forEach(同步原型行默认驱动判定);
@@ -27742,9 +27794,9 @@
                           ${buildSkillDesignerSelectOptions(技能设计台使用限制周期选项, designerDraft.使用限制周期 || '无限制')}
                         </select>
                       </label>
-                      <label class=\"mvu-editor-field\">
+                      <label class=\"mvu-editor-field\" data-skill-designer-use-count-field${(designerDraft.使用限制周期 || '无限制') === '无限制' ? ' hidden style=\"display:none\"' : ''}>
                         <span class=\"mvu-editor-label\">限制次数</span>
-                        <input class=\"mvu-editor-input\" type=\"number\" min=\"1\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(1, toNumber(designerDraft.使用限制次数, 1))))}\" data-skill-designer-field=\"使用限制次数\" data-skill-designer-disableable />
+                        <input class=\"mvu-editor-input\" type=\"number\" min=\"1\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(1, toNumber(designerDraft.使用限制次数, 1))))}\" data-skill-designer-field=\"使用限制次数\" data-skill-designer-disableable${(designerDraft.使用限制周期 || '无限制') === '无限制' ? ' disabled' : ''} />
                       </label>
                     </div>
                     <div class=\"skill-designer-inline-toggle\">
@@ -42069,6 +42121,8 @@ ${播报文本}
             const scaledSkill = this.isEquipmentSkillPath(safePath) ? skill : this.applyDailySkillMastery(skill, charData);
             const itemTemplates = this.getConstructItemTemplates(scaledSkill);
             if (!itemTemplates.length) throw new Error('当前技能不是可日常施展的造物类技能。');
+            const currentTick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+            校验场外魂技冷却(skill, currentTick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = {};
             const systemBase = this.getSkillSystemBase(skill);
@@ -42083,7 +42137,6 @@ ${播报文本}
             charData.属性.体力 = Math.max(0, toNumber(charData.属性.体力, 0) - parsedCost.reqVit);
             charData.属性.精神力 = Math.max(0, toNumber(charData.属性.精神力, 0) - parsedCost.reqMen);
 
-            const currentTick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             producedItems = [];
             itemTemplates.forEach(effect => {
               const { itemName, itemDefinition, itemState } = this.buildConstructInventoryValue(
@@ -42133,6 +42186,7 @@ ${播报文本}
               }
               producedItems.push(`${背包键}×${toNumber(itemState.数量, 1)}`);
             });
+            写入场外魂技冷却(skill, currentTick);
 
             if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
             const costParts = [
@@ -42169,6 +42223,9 @@ ${播报文本}
         const 当前技能 = deepGet(当前数据, safePath, null);
         if (!当前角色 || typeof 当前角色 !== 'object') throw new Error('未找到施法角色。');
         if (!当前技能 || typeof 当前技能 !== 'object') throw new Error('未找到技能。');
+        const 当前技能名 = toText(当前技能['魂技名'] || 当前技能.name || safePath[safePath.length - 1], '魂技');
+        const 当前tick = Math.max(0, toNumber(deepGet(当前数据, 'world.时间.tick', 0), 0));
+        校验场外魂技冷却(当前技能, 当前tick, 当前技能名);
         const 当前缩放技能 = this.isEquipmentSkillPath(safePath) ? 当前技能 : this.applyDailySkillMastery(当前技能, 当前角色);
         const 当前效果列表 = (Array.isArray(当前缩放技能?._效果数组) ? 当前缩放技能._效果数组 : []).flatMap(effect =>
           this.expandInventoryEffectBranches(当前角色, effect),
@@ -42178,8 +42235,11 @@ ${播报文本}
           normalizeSkillUiText(effect && effect['复制模式'], '即时镜像') === '复刻友方',
         );
         if (复刻友方效果) {
-          const 当前tick = Math.max(0, toNumber(deepGet(当前数据, 'world.时间.tick', 0), 0));
-          await this.处理复刻友方效果(当前数据, charKey, 复刻友方效果, toText(当前技能['魂技名'] || 当前技能.name, '魂技'), 当前tick);
+          await this.处理复刻友方效果(当前数据, charKey, 复刻友方效果, 当前技能名, 当前tick);
+          await mutateStatDataByEditor(statData => {
+            const 技能 = deepGet(statData, safePath, null);
+            if (技能 && typeof 技能 === 'object') 写入场外魂技冷却(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+          }, { force: true });
           return;
         }
         let skillName = '魂技';
@@ -42199,6 +42259,8 @@ ${播报文本}
               this.expandInventoryEffectBranches(charData, effect),
             );
             if (!effectList.length) throw new Error('当前技能没有可日常结算的效果。');
+            const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+            校验场外魂技冷却(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             const systemBase = this.getSkillSystemBase(skill);
             costText = toText(systemBase['消耗'], '无');
@@ -42208,13 +42270,13 @@ ${播报文本}
                 `资源不足，使用【${skillName}】需要 ${parsedCost.reqSp ? `魂力:${parsedCost.reqSp} ` : ''}${parsedCost.reqVit ? `体力:${parsedCost.reqVit} ` : ''}${parsedCost.reqMen ? `精神力:${parsedCost.reqMen}` : ''}`.trim(),
               );
             }
-            const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             const logs = [];
             const appliedCount = await this.结算战斗外使用效果列表(statData, charKey, effectList, skillName, logs, 当前tick);
             if (appliedCount <= 0) throw new Error('当前技能没有明确的战斗外 MVU 写回路径。');
             charData.属性.魂力 = Math.max(0, toNumber(charData.属性.魂力, 0) - parsedCost.reqSp);
             charData.属性.体力 = Math.max(0, toNumber(charData.属性.体力, 0) - parsedCost.reqVit);
             charData.属性.精神力 = Math.max(0, toNumber(charData.属性.精神力, 0) - parsedCost.reqMen);
+            写入场外魂技冷却(skill, 当前tick);
             if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
             const costParts = [
               parsedCost.reqSp ? `魂力:${parsedCost.reqSp}` : '',
