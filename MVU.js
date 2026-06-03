@@ -15312,7 +15312,7 @@ function 转译机制授予描述_V1(效果 = {}, 选项 = {}) {
   if (触发条件 === '随下次行动触发') return `下次行动时触发：${授予效果文本}`;
   const 回合 = Math.max(1, Number(效果?.持续回合 || 1));
   const 次数 = Math.max(1, Number(效果?.可用次数 || 1));
-  return `获得${formatSkillNumber(次数)}次主动触发机会，${formatSkillNumber(回合)}回合内有效；触发时：${授予效果文本}`;
+  return `使用时：${授予效果文本}；可在${formatSkillNumber(回合)}回合内使用${formatSkillNumber(次数)}次；`;
 }
 
 function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
@@ -15466,7 +15466,7 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
     case '时光回溯':
       return String(效果.发动方式 || '被动').trim() === '主动'
         ? `主动抢占时序，压低${目标}反应${附加}`
-        : `为${目标}登记结算前时光回溯；触发时回到本回合开始战斗态并阻断落地${附加}`;
+        : `可短暂回溯时间`;
     case '位移执行': {
       const 位移类型 = 格式化技能结构转译字段_V1(效果.位移类型, '位移');
       const 距离 = Math.max(1, Number(效果.距离 || 1));

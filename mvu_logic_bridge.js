@@ -20186,7 +20186,9 @@
     const basePath = Array.isArray(options && options.basePath) ? options.basePath : [];
     const category = normalizeSkillUiText(options && options.category, '技能');
     const scope = normalizeSkillUiText(options && options.scope, 'skill');
-    const 当前tick = Math.max(0, toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0));
+    const 渲染快照 = options && options.渲染快照 && typeof options.渲染快照 === 'object' ? options.渲染快照 : { rootData: {} };
+    const 渲染根数据 = 渲染快照.rootData && typeof 渲染快照.rootData === 'object' ? 渲染快照.rootData : {};
+    const 当前tick = Math.max(0, toNumber(deepGet(渲染根数据, 'world.时间.tick', 0), 0));
     const skills = safeEntries(skillObj).map(([rawName, skill]) => {
       const effectArray = Array.isArray(skill && skill['_效果数组']) ? skill['_效果数组'] : [];
       const draft = readSkillDesignerDraft(skill, rawName);
@@ -20248,7 +20250,7 @@
           || (typeof window !== 'undefined' && window.__LWCS_SKILL_COST_HELPERS_V1__)
           || null;
         if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
-          const 预算上下文 = 构建技能设计台预算上下文(技能预览元数据, snapshot.rootData || {}, draft || {});
+          const 预算上下文 = 构建技能设计台预算上下文(技能预览元数据, 渲染根数据, draft || {});
           // v4：用 path 推断来源，作者手填技能不卡位级硬上限（仅对等性）
           const 评估 = COST助手.评估技能预算_V1(skill || {}, {
             ...预算上下文,
@@ -20421,7 +20423,7 @@
     return `<div class=\"ring-hover-card\"><div class=\"ring-hover-title\">${htmlEscape(toText(ring && ring.title, '魂环技能'))}</div><div class=\"ring-hover-desc\">${htmlEscape(toText(ring && ring.desc, ''))}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
   }
 
-  function buildSpiritConfig(slotName, spiritData, previewKey, badgeText, badgeClass, spiritBasePath = []) {
+  function buildSpiritConfig(slotName, spiritData, previewKey, badgeText, badgeClass, spiritBasePath = [], 渲染快照 = null) {
     const spiritPath = Array.isArray(spiritBasePath) ? spiritBasePath : [];
     const soulEntries = 取武魂魂灵条目_桥接(spiritData);
     const summaryRings = [];
@@ -20435,6 +20437,7 @@
             basePath: [...soulPath, ringIndex],
             category: '魂环魂技',
             scope: '魂技',
+            渲染快照,
           });
           const ringInfo = buildSpiritRingInfo(ringIndex, ring, skills, {
             path: [...soulPath, ringIndex],
@@ -20476,6 +20479,7 @@
           basePath: ringPath,
           category: '独立魂环魂技',
           scope: 'independent_ring_skill',
+          渲染快照,
         });
         const ringInfo = buildSpiritRingInfo(ringIndex, ring, skills, {
           path: ringPath,
@@ -20645,7 +20649,7 @@
     return displayName === '唐舞麟';
   }
 
-  function buildBloodlineConfig(activeChar, activeName = '', bloodlineBasePath = []) {
+  function buildBloodlineConfig(activeChar, activeName = '', bloodlineBasePath = [], 渲染快照 = null) {
     if (!shouldRenderBloodline(activeChar, activeName)) {
       return {
         kind: 'bloodline',
@@ -20687,6 +20691,7 @@
             basePath: [...bloodlineBasePath, index],
             category: '血脉魂环',
             scope: 'blood_ring_skill',
+            渲染快照,
           }),
           {
             path: [...bloodlineBasePath, index],
@@ -20711,11 +20716,13 @@
         basePath: [...bloodlineBasePath, 'skills'],
         category: '血脉散技',
         scope: 'blood_skill',
+        渲染快照,
       }),
       bloodPassives: buildSkillList(rawPassives, {
         basePath: [...bloodlineBasePath, '被动'],
         category: '血脉特性',
         scope: 'blood_passive',
+        渲染快照,
       }),
       sealLv,
       core,
@@ -21425,21 +21432,22 @@
     });
 
     const spiritEntries = 取角色武魂条目_桥接(activeChar);
+    const 渲染快照 = { rootData: sd, activeName, activeChar };
     const primarySpirit = spiritEntries[0]
       ? buildSpiritConfig(spiritEntries[0][0], spiritEntries[0][1], '第1武魂详细页', '第1武魂', 'cyan', [
           'char',
           activeName,
           spiritEntries[0][0],
-        ])
-      : buildSpiritConfig('第1武魂', {}, '第1武魂详细页', '第1武魂', 'cyan');
+        ], 渲染快照)
+      : buildSpiritConfig('第1武魂', {}, '第1武魂详细页', '第1武魂', 'cyan', [], 渲染快照);
     const secondarySpirit = spiritEntries[1]
       ? buildSpiritConfig(spiritEntries[1][0], spiritEntries[1][1], '第2武魂详细页', '第2武魂', 'gold', [
           'char',
           activeName,
           spiritEntries[1][0],
-        ])
+        ], 渲染快照)
       : null;
-    const bloodline = buildBloodlineConfig(activeChar || {}, activeName, ['char', activeName, '血脉之力']);
+    const bloodline = buildBloodlineConfig(activeChar || {}, activeName, ['char', activeName, '血脉之力'], 渲染快照);
 
     // --- 收集额外能力与功法，放到外层给生命图谱使用 ---
     const safeRecords = obj => {
