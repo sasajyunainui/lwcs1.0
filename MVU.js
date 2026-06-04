@@ -12730,6 +12730,17 @@ function 解析次数限制抵扣率_V1(输入值 = null) {
   return 0;
 }
 
+function 读取技能限制抵扣上限_V1(技能 = {}) {
+  return String(技能?.承载方式 || '').trim() === '造物承载' ? 0.10 : 0.80;
+}
+
+function 读取魂技位COST倍率上限_V1(魂技位 = 1) {
+  const 位 = Math.max(1, Math.min(9, Math.floor(Number(魂技位 || 1)) || 1));
+  if (位 <= 7) return 1.5;
+  if (位 === 8) return 2;
+  return Infinity;
+}
+
 function 读取限定元素限制信息_V1(效果 = {}) {
   const 候选 = [];
   const 收集 = value => {
@@ -12755,7 +12766,7 @@ function 读取限定元素限制信息_V1(效果 = {}) {
   return { 抵扣率: 0, 来源: '' };
 }
 
-function 读取效果限制抵扣信息_V1(效果 = {}, 继承抵扣率 = 0) {
+function 读取效果限制抵扣信息_V1(效果 = {}, 继承抵扣率 = 0, 上下文 = {}) {
   let 抵扣率 = Math.max(0, Number(继承抵扣率 || 0));
   let 限制来源 = 抵扣率 > 0 ? '技能限制' : '';
   const 应用 = (值, 来源) => {
@@ -12769,15 +12780,16 @@ function 读取效果限制抵扣信息_V1(效果 = {}, 继承抵扣率 = 0) {
   应用(解析次数限制抵扣率_V1(效果?.次数限制), '次数限制');
   const 限定信息 = 读取限定元素限制信息_V1(效果);
   应用(限定信息.抵扣率, 限定信息.来源);
+  const 抵扣上限 = Math.max(0, Math.min(0.80, Number(上下文?.限制抵扣上限 ?? 0.80)));
   return {
-    抵扣率: Math.min(0.80, 抵扣率),
+    抵扣率: Math.min(抵扣上限, 抵扣率),
     限制来源,
     限定元素: String(效果?.限定元素 ?? '').trim() || 限定信息.来源.replace(/^限定/, ''),
   };
 }
 
-function 读取效果限制抵扣率_V1(效果 = {}, 继承抵扣率 = 0) {
-  return 读取效果限制抵扣信息_V1(效果, 继承抵扣率).抵扣率;
+function 读取效果限制抵扣率_V1(效果 = {}, 继承抵扣率 = 0, 上下文 = {}) {
+  return 读取效果限制抵扣信息_V1(效果, 继承抵扣率, 上下文).抵扣率;
 }
 
 function 读取技能效果关键字段_V1(效果 = {}) {
@@ -13113,6 +13125,7 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
 
 function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
   const 效果数组 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : (Array.isArray(技能) ? 技能 : []);
+  const 限制抵扣上限 = 读取技能限制抵扣上限_V1(技能);
   const 新建统计 = () => ({ 百分比累计: 0, 绝对值累计: 0, 限制累计: 0, 明细: [] });
   const 合并统计 = (目标, 来源) => {
     目标.百分比累计 += 来源.百分比累计 || 0;
@@ -13145,7 +13158,7 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     const 基础统计 = 新建统计();
     const 单项 = 计算单项效果COST_V1(效果, 上下文);
     const 原始COST = Number(单项.COST || 0);
-    const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率);
+    const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率, { 限制抵扣上限 });
     const 抵扣率 = 限制信息.抵扣率;
     const 限制抵扣 = Number(Math.min(原始COST * 0.8, 原始COST * 抵扣率).toFixed(2));
     const 净COST = Number(Math.max(0, 原始COST - 限制抵扣).toFixed(2));
@@ -13224,7 +13237,7 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     });
     return 返回统计;
   };
-  const 总统计 = 访问列表(效果数组, Array.isArray(技能) ? '' : '_效果数组', 解析次数限制抵扣率_V1(技能?.触发限制), '基础');
+  const 总统计 = 访问列表(效果数组, Array.isArray(技能) ? '' : '_效果数组', Math.min(限制抵扣上限, 解析次数限制抵扣率_V1(技能?.触发限制)), '基础');
   const 百分比累计 = 总统计.百分比累计;
   const 绝对值累计 = 总统计.绝对值累计;
   const 限制累计 = 总统计.限制累计;
@@ -16239,7 +16252,7 @@ function buildSingleSkillEffectSummary(effect) {
       const label = buildSkillEffectPropertyLabel(property);
       const durationText = duration > 0 ? `，持续${formatSkillNumber(duration)}回合` : '';
       if (action === '加值') {
-        if (['vit', 'sp', 'men'].includes(property)) return '为' + target + '恢复' + formatSkillPercent(value) + label;
+        if (['vit', 'sp', 'men'].includes(property)) return '为' + target + '每回合恢复' + formatSkillPercent(value) + label;
         return '使' + target + '的' + label + '提高' + formatSkillPercent(value) + durationText;
       }
       if (action === '减值') return '使' + target + '的' + label + '降低' + formatSkillPercent(value) + durationText;
@@ -26783,11 +26796,49 @@ export const Schema = z
       });
     }
 
-    function 读取角色初始化魂灵可分配年限_V1(char = {}, 待补武魂数 = 1) {
-      const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(char) ?? 1));
-      const 总预算 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(char)) * 魂灵预算倍率);
-      const 剩余预算 = Math.max(0, 总预算 - 读取角色魂灵年限总和_V1(char));
+    function 读取角色初始化魂灵可分配年限_V1(角色数据 = {}, 待补武魂数 = 1) {
+      const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(角色数据) ?? 1));
+      const 总预算 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(角色数据)) * 魂灵预算倍率);
+      const 剩余预算 = Math.max(0, 总预算 - 读取角色魂灵年限总和_V1(角色数据));
       return Math.floor(剩余预算 / Math.max(1, Math.floor(Number(待补武魂数 || 1))));
+    }
+
+    function 提升已有初始化魂灵年限预算_V1(角色数据 = {}) {
+      if (!是否新档初始化 || !角色数据 || typeof 角色数据 !== 'object') return false;
+      const 魂灵条目 = [];
+      取角色武魂条目_V1(角色数据).forEach(([, 武魂]) => {
+        取武魂魂灵条目_V1(武魂).forEach(([, 魂灵]) => {
+          if (魂灵 && typeof 魂灵 === 'object') 魂灵条目.push(魂灵);
+        });
+      });
+      if (!魂灵条目.length) return false;
+      const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(角色数据) ?? 1));
+      const 目标总年限 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(角色数据)) * 魂灵预算倍率);
+      let 当前总年限 = 魂灵条目.reduce((总和, 魂灵) => 总和 + Math.max(50, Math.floor(Number(魂灵.年限 || 50))), 0);
+      let 剩余可增年限 = Math.max(0, 目标总年限 - 当前总年限);
+      let 已更新 = false;
+      魂灵条目.forEach((魂灵, 魂灵索引) => {
+        if (剩余可增年限 <= 0) return;
+        const 当前年限 = Math.max(50, Math.floor(Number(魂灵.年限 || 50)));
+        const 最低年限 = 读取初始化魂灵最低年限_V1(魂灵索引, 当前年限 + 剩余可增年限);
+        const 增量 = Math.min(剩余可增年限, Math.max(0, 最低年限 - 当前年限));
+        if (增量 <= 0) return;
+        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量);
+        剩余可增年限 -= 增量;
+        当前总年限 += 增量;
+        已更新 = true;
+      });
+      魂灵条目.forEach((魂灵, 魂灵索引) => {
+        if (剩余可增年限 <= 0) return;
+        const 当前年限 = Math.max(50, Math.floor(Number(魂灵.年限 || 50)));
+        const 剩余条目数 = Math.max(1, 魂灵条目.length - 魂灵索引);
+        const 增量 = Math.floor(剩余可增年限 / 剩余条目数);
+        if (增量 <= 0) return;
+        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量);
+        剩余可增年限 -= 增量;
+        已更新 = true;
+      });
+      return 已更新;
     }
 
     function 补齐武魂缺失魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
@@ -26804,9 +26855,9 @@ export const Schema = z
       let 已补齐 = false;
       if (!String(武魂数据.表象名称 || '').trim()) 武魂数据.表象名称 = '未展露';
       const 已有魂灵条目 = 取武魂魂灵条目_V1(武魂数据);
-      const 已有魂灵增长预算 = Math.floor(
-        读取角色初始化魂灵可分配年限_V1(char, 待补武魂数) / Math.max(1, 已有魂灵条目.length),
-      );
+      const 已有魂灵增长预算 = 是否新档初始化
+        ? Math.floor(读取角色初始化魂灵可分配年限_V1(char, 待补武魂数) / Math.max(1, 已有魂灵条目.length))
+        : 0;
 
       已有魂灵条目.forEach(([, 魂灵数据], 魂灵索引) => {
         if (!缺失魂环位列表.length || !魂灵数据 || typeof 魂灵数据 !== 'object') return;
@@ -26883,7 +26934,22 @@ export const Schema = z
       const 魂灵年限预算 = 读取角色初始化魂灵可分配年限_V1(char, 待补武魂数);
       if (魂灵计划.length > 0 && 魂灵年限预算 <= 0) 魂灵计划 = [];
       if (魂灵计划.length > 0) {
-        分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算);
+        if (是否新档初始化) {
+          分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算);
+        } else {
+          let 剩余魂灵年限预算 = 魂灵年限预算;
+          魂灵计划.forEach(规划项 => {
+            if (剩余魂灵年限预算 < 50) {
+              规划项.spData.age = 0;
+              规划项.spData.color = getRingColorByAge(0);
+              return;
+            }
+            const 目标年限 = Math.max(50, Math.floor(Number(规划项.spData?.age || 50)));
+            规划项.spData.age = Math.max(50, Math.min(目标年限, 剩余魂灵年限预算));
+            规划项.spData.color = getRingColorByAge(规划项.spData.age);
+            剩余魂灵年限预算 -= 规划项.spData.age;
+          });
+        }
         魂灵计划 = 魂灵计划.filter(规划项 => Math.max(0, Number(规划项.spData?.age || 0)) >= 50);
         const 待重新分配魂环位 = 魂灵计划
           .flatMap(规划项 => (Array.isArray(规划项.魂环位列表) ? 规划项.魂环位列表 : []))
@@ -26985,6 +27051,7 @@ export const Schema = z
         );
         if (已补齐) 本轮补齐魂环角色.add(charName);
       });
+      if (提升已有初始化魂灵年限预算_V1(char)) 本轮补齐魂环角色.add(charName);
     });
 
     const buildUpcomingTimelinePreview = (timelineEvents, currentTick, limit = 20) => {
