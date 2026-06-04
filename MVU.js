@@ -4211,7 +4211,7 @@ const SKILL_DELIVERY_FORM_BY_TYPE_V1 = {
 const SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1 = {
   强攻系: ['力量', '魂力', '防御'],
   控制系: ['魂力', '精神力', '敏捷'],
-  食物系: ['魂力', '精神力'],
+  食物系: ['力量', '防御', '敏捷', '魂力', '精神力'],
   精神系: ['精神力', '魂力'],
   防御系: ['防御', '魂力'],
   敏攻系: ['敏捷', '力量', '魂力'],
@@ -6446,6 +6446,9 @@ if (typeof globalThis !== 'undefined') {
     计算天赋梯队COST修正_V1,
     计算天赋预算利用率_V1,
     计算生成目标COST_V1,
+    rollSubModelByGrade,
+    rollAttributeDirectionByType,
+    SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1,
     评估技能预算_V1,
     让技能符合预算_V1,
     应用生成阶段目标COST收口_V1,
@@ -7346,6 +7349,10 @@ function 过滤合法生成主机制权重表_V1(table = [], context = {}) {
   return (Array.isArray(table) ? table : []).filter(item => 机制是合法生成主机制_V1(item?.value, context));
 }
 
+function 读取普通回复随机原型池_V1() {
+  return ['魂力恢复', '体力恢复', '精神恢复'];
+}
+
 function 查找合法生成主机制原型_V1(主机制大类 = '', context = {}) {
   const 大类列表 = [];
   const 指定大类 = String(主机制大类 || '').trim();
@@ -7358,7 +7365,8 @@ function 查找合法生成主机制原型_V1(主机制大类 = '', context = {}
   }
   for (const 大类 of 大类列表) {
     if (!机制大类适配自动生成系别_V1(大类, context)) continue;
-    const 合法列表 = (SKILL_ARCHETYPE_POOL_V1[大类] || []).filter(机制 =>
+    const 原型池 = 大类 === '回复类' ? 读取普通回复随机原型池_V1() : (SKILL_ARCHETYPE_POOL_V1[大类] || []);
+    const 合法列表 = 原型池.filter(机制 =>
       !排除原型.has(String(机制 || '').trim()) &&
       机制是合法生成主机制_V1(机制, context) &&
       自动生成机制满足预算范围_V1(机制, context)
@@ -7537,8 +7545,10 @@ function 估算自动生成机制预算范围_V1(机制名 = '', context = {}) {
       ? [{ 数量: 1, 使用效果: buildCreationUsageEffects(效果列表, 系别), 有效期tick: 1 }]
       : 效果列表;
     const 技能 = { 承载方式: 释放形态, _效果数组: 估算效果列表 };
-    const 明细 = 计算技能效果累计COST_V1(技能, { ...(context || {}), 系别, type: 系别, 魂环位, ringIndex: 魂环位 }).明细 || [];
-    const 默认COST = Number(计算技能效果累计COST_V1(技能, { ...(context || {}), 系别, type: 系别, 魂环位, ringIndex: 魂环位 }).净COST || 0);
+    const 估算上下文 = { ...(context || {}), 系别, type: 系别, 魂环位, ringIndex: 魂环位, 启用位级硬上限: true };
+    const 默认累计 = 计算技能效果累计COST_V1(技能, 估算上下文);
+    const 明细 = 默认累计.明细 || [];
+    const 默认COST = Number(默认累计.净COST || 0);
     const 可变COST = 明细.reduce((总和, 项) => {
       if (项?.计入COST !== true) return 总和;
       const 原型 = String(项?.原型 || '').trim();
@@ -7551,11 +7561,23 @@ function 估算自动生成机制预算范围_V1(机制名 = '', context = {}) {
       const 固定规则 = Math.max(0, Number(项?.固定规则COST || 0) + Number(项?.附加规则COST || 0) + Number(项?.触发方式COST || 0) + Number(项?.延迟回合COST || 0));
       return 总和 + Math.max(0, Number(项?.净COST || 0) - 固定规则);
     }, 0);
+    let 最大可达COST = 默认COST;
+    if (可变COST > 0.05 && 低COST线 > 0 && 默认COST < 低COST线 - 0.5) {
+      const 补强技能 = cloneJsonValue(技能, {});
+      生成阶段按目标COST填充效果强度_V1(补强技能, {
+        ...估算上下文,
+        目标COST: 低COST线,
+        最低目标COST: 低COST线,
+      });
+      收口技能执行结构_V1(补强技能, { ...估算上下文, 目标, 技能: 补强技能 });
+      最大可达COST = Number(计算技能效果累计COST_V1(补强技能, 估算上下文).净COST || 默认COST);
+    }
     return {
       可用: true,
       默认COST: Number(默认COST.toFixed(2)),
       固定COST: Number(Math.max(0, 默认COST - 可变COST).toFixed(2)),
-      可补强: 可变COST > 0.05,
+      最大可达COST: Number(Math.max(默认COST, 最大可达COST).toFixed(2)),
+      可补强: 可变COST > 0.05 && 最大可达COST > 默认COST + 0.05,
       门禁: Number(门禁.toFixed(2)),
       低COST线: Number(低COST线.toFixed(2)),
     };
@@ -7569,7 +7591,7 @@ function 自动生成机制满足预算范围_V1(机制名 = '', context = {}) {
   if (!范围.可用) return false;
   if (范围.门禁 > 0 && 范围.固定COST > 范围.门禁 + 0.5) return false;
   if (范围.门禁 > 0 && 范围.默认COST > 范围.门禁 + 0.5 && !范围.可补强) return false;
-  if (范围.低COST线 > 0 && 范围.默认COST < 范围.低COST线 - 0.5 && !范围.可补强) return false;
+  if (范围.低COST线 > 0 && Number(范围.最大可达COST ?? 范围.默认COST) < 范围.低COST线 - 0.5) return false;
   return true;
 }
 
@@ -7797,33 +7819,40 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
       S: buildDefenseArchetypeWeightedTableByContext('S', context?.type || '强攻系', context?.sourceName || ''),
     },
     回复类: {
+      F: [
+        { value: '魂力恢复', weight: 50 },
+        { value: '体力恢复', weight: 35 },
+        { value: '精神恢复', weight: 15 },
+      ],
+      D: [
+        { value: '魂力恢复', weight: 50 },
+        { value: '体力恢复', weight: 35 },
+        { value: '精神恢复', weight: 15 },
+      ],
       C: [
-        { value: '体力恢复', weight: 65 },
-        { value: '魂力恢复', weight: 15 },
-        { value: '精神恢复', weight: 10 },
-        { value: '持续恢复', weight: 5 },
-        { value: '净化/解控', weight: 5 },
+        { value: '魂力恢复', weight: 50 },
+        { value: '体力恢复', weight: 35 },
+        { value: '精神恢复', weight: 15 },
       ],
       B: [
+        { value: '魂力恢复', weight: 45 },
         { value: '体力恢复', weight: 35 },
-        { value: '魂力恢复', weight: 20 },
         { value: '精神恢复', weight: 20 },
-        { value: '持续恢复', weight: 15 },
-        { value: '净化/解控', weight: 10 },
       ],
       A: [
-        { value: '体力恢复', weight: 25 },
-        { value: '魂力恢复', weight: 20 },
-        { value: '精神恢复', weight: 20 },
-        { value: '持续恢复', weight: 20 },
-        { value: '净化/解控', weight: 15 },
+        { value: '魂力恢复', weight: 1 },
+        { value: '体力恢复', weight: 1 },
+        { value: '精神恢复', weight: 1 },
       ],
       S: [
-        { value: '体力恢复', weight: 18 },
-        { value: '魂力恢复', weight: 20 },
-        { value: '精神恢复', weight: 20 },
-        { value: '持续恢复', weight: 22 },
-        { value: '净化/解控', weight: 20 },
+        { value: '魂力恢复', weight: 1 },
+        { value: '体力恢复', weight: 1 },
+        { value: '精神恢复', weight: 1 },
+      ],
+      'S+': [
+        { value: '魂力恢复', weight: 1 },
+        { value: '体力恢复', weight: 1 },
+        { value: '精神恢复', weight: 1 },
       ],
     },
     '感知/认知类': {
@@ -8094,10 +8123,7 @@ function rollAttributeDirectionByType(type, subModel, roll) {
   }
   if (['魂力恢复'].includes(subModel)) return ['魂力'];
   if (['精神恢复'].includes(subModel)) return ['精神力'];
-  if (['体力恢复', '持续恢复', '净化/解控'].includes(subModel)) {
-    const resourceHints = hints.filter(v => ['魂力', '精神力'].includes(v));
-    return resourceHints.length > 0 ? pickUniqueRandom(resourceHints, 1) : ['气血'];
-  }
+  if (['体力恢复', '持续恢复', '净化/解控'].includes(subModel)) return ['体力'];
   if (['多属性增益', '多属性削弱'].includes(subModel)) return pickUniqueRandom(hints, 2);
   return pickUniqueRandom(hints, 1);
 }
@@ -8286,8 +8312,8 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
   if (!预算范围.可用 || (预算范围.门禁 > 0 && 预算范围.固定COST > 预算范围.门禁 + 0.5) || (预算范围.门禁 > 0 && 预算范围.默认COST > 预算范围.门禁 + 0.5 && !预算范围.可补强)) {
     throw new Error(`技能生成错误:${archetype || '未命名机制'}COST仍超预算 ${Number(预算范围.默认COST || 0).toFixed(1)}/${Number(预算范围.门禁 || 0).toFixed(1)}`);
   }
-  if (预算范围.低COST线 > 0 && 预算范围.默认COST < 预算范围.低COST线 - 0.5 && !预算范围.可补强) {
-    throw new Error(`技能生成错误:${archetype || '未命名机制'}兜底失败 ${Number(预算范围.默认COST || 0).toFixed(1)}/${Number(预算范围.低COST线 || 0).toFixed(1)}`);
+  if (预算范围.低COST线 > 0 && Number(预算范围.最大可达COST ?? 预算范围.默认COST) < 预算范围.低COST线 - 0.5) {
+    throw new Error(`技能生成错误:${archetype || '未命名机制'}兜底失败 ${Number((预算范围.最大可达COST ?? 预算范围.默认COST) || 0).toFixed(1)}/${Number(预算范围.低COST线 || 0).toFixed(1)}`);
   }
   const attrHints =
     Array.isArray(blueprintOverride?.加成属性候选) && blueprintOverride.加成属性候选.length
@@ -13782,6 +13808,25 @@ function 按位级钳制效果字段_V1(效果数组 = [], ringIndex = 1) {
   });
 }
 
+function 读取生成数值补强百分点上限_V1(效果 = {}, ringIndex = 1) {
+  const 位序 = Math.max(1, Math.min(9, Math.floor(Number(ringIndex || 1)))) - 1;
+  const 原型 = String(效果?.原型 || '').trim();
+  if (原型 === '属性修正') return v7_位级字段上限_V1.属性修正[位序] || 1000;
+  if (原型 === '状态施加') {
+    const 状态名 = String(效果?.状态 || '').trim();
+    if (['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '资源燃烧'].includes(状态名)) {
+      return v7_位级字段上限_V1.DOT百分比[位序] || 40;
+    }
+  }
+  if (原型 === '资源变化') return 100;
+  if (原型 === '护盾变化') return 1000;
+  if (原型 === '结算修正') {
+    const 结算 = String(效果?.结算 || '').trim();
+    if (['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '反击'].includes(结算)) return 100;
+  }
+  return Infinity;
+}
+
 
 // v8.1：原型数上限——按魂技位 + 来源容差（造物承载 +1、武魂融合技 +2）
 function 获取原型数上限_V1(魂技位 = 1, 来源 = '魂技', 是否造物承载 = false) {
@@ -14461,10 +14506,7 @@ function 生成阶段按目标COST填充效果强度_V1(技能 = {}, 上下文 =
     const 符号 = 文本.startsWith('-') ? '-' : (文本.startsWith('+') ? '+' : '');
     const 原值 = Number(文本.replace(/[+%-]/g, ''));
     if (!Number.isFinite(原值)) return;
-    const 百分比上限 = String(项.效果?.原型 || '').trim() === '结算修正' &&
-      ['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '反击'].includes(String(项.效果?.结算 || '').trim())
-        ? 100
-        : Infinity;
+    const 百分比上限 = 读取生成数值补强百分点上限_V1(项.效果, 预算上下文.魂环位);
     const 新值 = Number(Math.min(百分比上限, Math.max(5, Math.abs(原值) * 倍率)).toFixed(2));
     项.效果.数值 = 是百分比 ? `${符号 || '+'}${新值}%` : (符号 === '-' ? -新值 : 新值);
   });
@@ -15790,6 +15832,7 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
     case '资源变化': {
       const 资源 = 格式化技能结构转译字段_V1(效果.资源, '资源');
       if (/^-/.test(String(效果.数值 || ''))) return `${资源 === '生命' ? `生命负数需改用伤害结算` : `泯灭${目标}${数值.replace(/^-/, '')}${资源}`}${预算附加}${附加}`;
+      if (资源 === '体力') return `为${目标}恢复体力/气血${数值 ? `${String(数值).replace(/^\+/, '')}` : ''}，溢出转为体力增幅${预算附加}${附加}`;
       return `为${目标}恢复${资源}${数值 ? `${String(数值).replace(/^\+/, '')}` : ''}${预算附加}${附加}`;
     }
     case '资源转移': {
@@ -16304,6 +16347,7 @@ function buildSingleSkillEffectSummary(effect) {
     case '资源变化': {
       const resource = String(effect.资源 || '资源');
       if (/^-/.test(String(effect.数值 || ''))) return (resource === '生命' ? '生命负数需改用伤害结算' : '泯灭' + target + String(effect.数值 || '0').replace(/^-/, '') + resource) + 持续文本;
+      if (resource === '体力') return '恢复' + target + '体力/气血' + String(effect.数值 || '0').replace(/^\+/, '') + '，溢出转为体力增幅' + 持续文本;
       return '恢复' + target + resource + String(effect.数值 || '0').replace(/^\+/, '') + 持续文本;
     }
     case '资源转移': {
@@ -16502,7 +16546,7 @@ function buildSingleSkillEffectSummary(effect) {
       );
     }
     case '体力恢复':
-      return '为' + target + '恢复体力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
+      return '为' + target + '恢复体力/气血，溢出转为体力增幅，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '魂力恢复':
       return '为' + target + '恢复魂力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '精神恢复':
@@ -27742,19 +27786,27 @@ export const Schema = z
       if (menMult > 1.0)
         c.属性.精神力上限 = Math.max(c.属性.精神力上限, Math.floor((c.属性.精神力上限 - eb.men) * menMult) + eb.men);
 
-      let buffMods = { str: 0, def: 0, agi: 0, sp_max: 0 };
+      let buffMods = { str: 0, def: 0, agi: 0, vit_max: 0, sp_max: 0, men_max: 0 };
       _(c.属性.状态效果).forEach(cond => {
         if (cond.面板倍率) {
-          if (cond.面板倍率.力量 !== 1.0) buffMods.str += cond.面板倍率.力量 - 1.0;
-          if (cond.面板倍率.防御 !== 1.0) buffMods.def += cond.面板倍率.防御 - 1.0;
-          if (cond.面板倍率.敏捷 !== 1.0) buffMods.agi += cond.面板倍率.敏捷 - 1.0;
-          if (cond.面板倍率.魂力上限 !== 1.0) buffMods.sp_max += cond.面板倍率.魂力上限 - 1.0;
+          const 累加面板倍率 = (字段名, 修正键) => {
+            const 倍率 = Number(cond.面板倍率[字段名]);
+            if (Number.isFinite(倍率) && Math.abs(倍率 - 1.0) > 0.0001) buffMods[修正键] += 倍率 - 1.0;
+          };
+          累加面板倍率('力量', 'str');
+          累加面板倍率('防御', 'def');
+          累加面板倍率('敏捷', 'agi');
+          累加面板倍率('体力上限', 'vit_max');
+          累加面板倍率('魂力上限', 'sp_max');
+          累加面板倍率('精神力上限', 'men_max');
         }
       });
       if (buffMods.str !== 0) c.属性.力量 = Math.floor(c.属性.力量 * Math.max(0.1, 1.0 + buffMods.str));
       if (buffMods.def !== 0) c.属性.防御 = Math.floor(c.属性.防御 * Math.max(0.1, 1.0 + buffMods.def));
       if (buffMods.agi !== 0) c.属性.敏捷 = Math.floor(c.属性.敏捷 * Math.max(0.1, 1.0 + buffMods.agi));
+      if (buffMods.vit_max !== 0) c.属性.体力上限 = Math.floor(c.属性.体力上限 * Math.max(0.1, 1.0 + buffMods.vit_max));
       if (buffMods.sp_max !== 0) c.属性.魂力上限 = Math.floor(c.属性.魂力上限 * Math.max(0.1, 1.0 + buffMods.sp_max));
+      if (buffMods.men_max !== 0) c.属性.精神力上限 = Math.floor(c.属性.精神力上限 * Math.max(0.1, 1.0 + buffMods.men_max));
 
       let finalMen =
         c.属性.精神力上限 -

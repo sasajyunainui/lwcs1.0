@@ -1684,6 +1684,16 @@
     return toNumber(value, fallback);
   }
 
+  function 解析带符号比例数值(value, fallback = 0) {
+    const 文本 = String(value ?? '').trim();
+    if (!文本) return fallback;
+    if (/%$/.test(文本)) {
+      const 数值 = Number(文本.replace('%', ''));
+      return Number.isFinite(数值) ? 数值 / 100 : fallback;
+    }
+    return toNumber(value, fallback);
+  }
+
   const 常规魂骨槽位列表_桥接 = Object.freeze(['头部魂骨', '躯干魂骨', '右臂魂骨', '左臂魂骨', '右腿魂骨', '左腿魂骨']);
   const 外附魂骨槽位列表_桥接 = Object.freeze(['外附魂骨1', '外附魂骨2']);
   const 魂骨倍率属性列表_桥接 = Object.freeze(['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限']);
@@ -41304,6 +41314,8 @@ ${播报文本}
         def: { current: '防御', max: '', statMod: 'def', label: '防御' },
         agi: { current: '敏捷', max: '', statMod: 'agi', label: '敏捷' },
         体力: { current: '体力', max: '体力上限', statMod: 'vit_max', label: '体力' },
+        生命: { current: 'HP', max: 'HP上限', statMod: 'vit_max', label: '生命' },
+        HP: { current: 'HP', max: 'HP上限', statMod: 'vit_max', label: '生命' },
         魂力: { current: '魂力', max: '魂力上限', statMod: 'sp_max', label: '魂力' },
         精神力: { current: '精神力', max: '精神力上限', statMod: 'men_max', label: '精神力' },
         力量: { current: '力量', max: '', statMod: 'str', label: '力量' },
@@ -41345,6 +41357,27 @@ ${播报文本}
       if (!(rawValue > 0)) return false;
       const delta = rawValue <= 1 ? Math.max(1, Math.round(maxValue * rawValue)) : Math.round(rawValue);
       const currentValue = Math.max(0, toNumber(stat[currentKey], 0));
+      if (currentKey === '体力') {
+        const 可恢复量 = Math.max(0, maxValue - currentValue);
+        const 实际恢复量 = Math.min(delta, 可恢复量);
+        const 溢出量 = Math.max(0, delta - 实际恢复量);
+        stat[currentKey] = Math.min(maxValue, currentValue + 实际恢复量);
+        if (溢出量 > 0) {
+          if (!stat.状态效果 || typeof stat.状态效果 !== 'object' || Array.isArray(stat.状态效果)) stat.状态效果 = {};
+          const 增幅比例 = Math.max(0.01, Number((溢出量 / maxValue).toFixed(4)));
+          stat.状态效果.体力恢复溢出增幅 = {
+            类型: 'buff',
+            层数: 1,
+            描述: '体力恢复溢出转为临时体力上限增幅',
+            持续回合: Math.max(1, toNumber(value.持续, 1)),
+            面板倍率: { 体力上限: Number((1 + 增幅比例).toFixed(4)) },
+          };
+          logs.push(`体力/气血+${formatNumber(实际恢复量)}，溢出转体力增幅${Math.round(增幅比例 * 100)}%`);
+        } else {
+          logs.push(`体力/气血+${formatNumber(实际恢复量)}`);
+        }
+        return true;
+      }
       stat[currentKey] = Math.min(maxValue, currentValue + delta);
       logs.push(`${propertyMeta.label}+${formatNumber(delta)}`);
       return true;
@@ -41559,7 +41592,7 @@ ${播报文本}
         prototype === '修炼增益'
       ) {
         const 属性 = toText(effect['资源'] || effect['属性'], '');
-        const 数值 = toNumber(effect['数值'], 0);
+        const 数值 = 解析带符号比例数值(effect['数值'], 0);
         const 持续 = toNumber(effect['持续回合'], 0);
         if (prototype === '修炼增益') {
           const 收益类型 = ['属性修炼速度', '训练方式收益'].includes(toText(effect['收益类型'], ''))
