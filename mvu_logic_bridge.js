@@ -10281,7 +10281,8 @@
     }
     if (原型 === '机制授予') {
       const 触发条件 = normalizeSkillUiText(字段['触发条件'] || value['触发条件'], '主动触发');
-      字段['触发条件'] = 技能设计台机制授予触发条件选项.includes(触发条件) ? 触发条件 : '主动触发';
+      const 授予目标 = 约束技能设计台原型正式目标(原型, 目标, 目标默认值, 字段);
+      字段['触发条件'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
       if (字段['触发条件'] === '随下次行动触发') {
         delete 字段['可用次数'];
         delete 字段['持续回合'];
@@ -10898,6 +10899,8 @@
         throw new Error(`技能执行结构错误:${path}[${index}]机制授予缺少授予效果`);
       if (原型 === '机制授予' && !技能设计台机制授予触发条件选项.includes(normalizeSkillUiText(effect['触发条件'], '主动触发')))
         throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
+      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && !机制授予目标允许下次行动触发(effect['目标']))
+        throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许随下次行动触发`);
       if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && (effect['可用次数'] !== undefined || effect['持续回合'] !== undefined))
         throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发不支持可用次数或持续回合`);
       if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '主动触发' && !(toNumber(effect['可用次数'], 0) > 0 && toNumber(effect['持续回合'], 0) > 0))
@@ -12441,6 +12444,7 @@
       fusionSourceSpirits: normalizeSkillDesignerArray(designDraft['来源武魂'] || 外层记录['来源武魂']),
       fusionParticipants: getSkillDesignerRawFusionParticipants(designDraft, 外层记录),
       mechanicParams: normalizeSkillDesignerMechanicParamMap(mergedMechanicParams, {
+        target: resolvedTarget,
         primaryMain: resolvedPrimaryMain,
         primarySub: resolvedPrimarySub,
         secondaryMechanics: resolvedSecondaryMechanics,
@@ -15981,6 +15985,17 @@
     if (prototype === '伤害结算') {
       delete next['持续回合'];
     }
+    if (prototype === '机制授予') {
+      const 触发条件 = normalizeSkillUiText(next['触发条件'], '主动触发');
+      next['触发条件'] = 读取技能设计台机制授予触发条件选项(next['目标']).includes(触发条件) ? 触发条件 : '主动触发';
+      if (next['触发条件'] === '随下次行动触发') {
+        delete next['可用次数'];
+        delete next['持续回合'];
+      } else {
+        next['可用次数'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['可用次数'], 1, 1));
+        next['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['持续回合'], 1, 1));
+      }
+    }
     if (prototype === '资源变化' && next['持续回合'] !== undefined) {
       const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0)));
       if (持续回合 > 0) next['持续回合'] = 持续回合;
@@ -19016,7 +19031,7 @@
         const 主授予效果 = {
           原型: '机制授予',
           目标: grantableTarget,
-          触发条件: 技能设计台机制授予触发条件选项.includes(主授予触发条件) ? 主授予触发条件 : '主动触发',
+          触发条件: 读取技能设计台机制授予触发条件选项(grantableTarget).includes(主授予触发条件) ? 主授予触发条件 : '主动触发',
           授予效果: [{
             原型: '状态施加',
             目标: '单体',
@@ -19722,7 +19737,7 @@
         const 副授予效果 = {
           原型: '机制授予',
           目标: grantableTarget,
-          触发条件: 技能设计台机制授予触发条件选项.includes(副授予触发条件) ? 副授予触发条件 : '主动触发',
+          触发条件: 读取技能设计台机制授予触发条件选项(grantableTarget).includes(副授予触发条件) ? 副授予触发条件 : '主动触发',
           授予效果: [{
             原型: '状态施加',
             目标: '单体',
@@ -27390,7 +27405,7 @@
               }
               const key = normalizeSkillUiText(target.getAttribute('data-skill-designer-prototype-field'), '');
               const row = target.closest('[data-skill-designer-prototype-row]');
-              if (['目标', '状态', '来源', '去向', '匹配原型', '选择', '触发方式', '延迟回合', '规则', '判断', '生效方式', '发动方式', '攻击段数', '结算', '数值', '调整字段', '调整方式', '位移类型', '复制类型'].includes(key)) {
+              if (['目标', '状态', '来源', '去向', '匹配原型', '选择', '触发条件', '触发方式', '延迟回合', '规则', '判断', '生效方式', '发动方式', '攻击段数', '结算', '数值', '调整字段', '调整方式', '位移类型', '复制类型'].includes(key)) {
                 rebuildPrototypeRowFields(row);
               }
               if (key === '持续回合') syncScalingField(row?.querySelector('[data-skill-designer-scaling-field]'));
@@ -27527,7 +27542,7 @@
               const key = normalizeSkillUiText(target.getAttribute('data-skill-designer-prototype-field'), '');
               const row = target.closest('[data-skill-designer-prototype-row]');
               const prototype = normalizeSkillUiText(row?.querySelector('[data-skill-designer-prototype-select]')?.value, '');
-              if (['结算', '调整字段', '调整方式', '复制类型'].includes(key)) {
+              if (['触发条件', '结算', '调整字段', '调整方式', '复制类型'].includes(key)) {
                 rebuildPrototypeRowFields(row);
               }
               if (['状态', '数值', '副数值', '触发方式', '延迟回合'].includes(key)) 刷新状态行摘要(row);
@@ -41347,7 +41362,7 @@ ${播报文本}
       const record = this.createInventoryStatusRecord(itemName, effect, key, 当前tick);
       if (effect?.type === 'mechanism_grant') {
         record.效果授予状态 = true;
-        record.触发条件 = 技能设计台机制授予触发条件选项.includes(toText(value.触发条件, '')) ? toText(value.触发条件, '') : '主动触发';
+        record.触发条件 = 读取技能设计台机制授予触发条件选项(value.目标 || effect.target || '自身').includes(toText(value.触发条件, '')) ? toText(value.触发条件, '') : '主动触发';
         record.duration = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.持续回合, toNumber(value.持续, record.持续回合 || 1)));
         delete record.持续回合;
         record.可用次数 = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.可用次数, 1));
@@ -41474,8 +41489,9 @@ ${播报文本}
       const target = toText(effect['目标'], '自身');
       const description = toText(effect['描述'], prototype);
     if (prototype === '机制授予') {
-      const 触发条件 = 技能设计台机制授予触发条件选项.includes(toText(effect['触发条件'], '')) ? toText(effect['触发条件'], '') : '主动触发';
+      const 触发条件 = 读取技能设计台机制授予触发条件选项(target).includes(toText(effect['触发条件'], '')) ? toText(effect['触发条件'], '') : '主动触发';
       const value = {
+        目标: target,
         触发条件,
         授予效果: cloneJsonValue(Array.isArray(effect['授予效果']) ? effect['授予效果'] : [], []),
       };
