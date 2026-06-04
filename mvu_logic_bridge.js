@@ -12783,7 +12783,7 @@
         项.限制抵扣率 ? `${项.限制来源 || '限制'} -${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
       ].filter(Boolean).join(' ｜ ');
       const 副作用标签 = 项 => [
-        '副作用',
+        项.来源 || '副作用',
         项.副作用类型 || '',
         项.触发时机 || '',
         项.生效对象 || '',
@@ -12792,6 +12792,7 @@
       ].filter(Boolean).join(' / ');
       const 副作用字段 = 项 => [
         项.路径 ? `路径 ${项.路径}` : '',
+        项.来源 ? `来源 ${项.来源}` : '',
         项.副作用类型 ? `副作用 ${项.副作用类型}` : '',
         项.副作用状态 ? `状态 ${项.副作用状态}` : '',
         项.触发时机 ? `触发 ${项.触发时机}` : '',
@@ -34705,6 +34706,7 @@ ${播报文本}
                     </div>
                     <div class="action-filters" id="ui-action-filters"></div>
                     <div class="action-grid" id="ui-action-grid"></div>
+                    <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                     <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
                     <textarea id="ui-intent-output" hidden></textarea>
                   </div>
@@ -35529,7 +35531,9 @@ ${播报文本}
     };
   }
 
-  function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random) {
+  function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random, explicitType = '') {
+    const requestedType = String(explicitType || '').trim();
+    if (requestedType && BATTLE_TEMPORARY_TYPE_MULTIPLIERS[requestedType]) return requestedType;
     if (identity === '军人') {
       return pickTemporaryBattleItem(['强攻系', '强攻系', '防御系', '敏攻系', '控制系'], rng) || '强攻系';
     }
@@ -35580,46 +35584,34 @@ ${播报文本}
     return 计算临时装备等效属性包(锚点.起始等级, 锚点.目标等级);
   }
 
-  function applyTemporaryHumanEquipment(stats, equipment, identity = '魂师', level = 1, rng = Math.random) {
-    if (identity === '普通人') return stats;
-    const safeStats = stats;
-    const allowMech =
-      identity === '军人'
-        ? level >= 20 && rng() < (level >= 70 ? 0.85 : level >= 50 ? 0.75 : 0.65)
-        : level >= 30 && rng() < (level >= 70 ? 0.65 : level >= 50 ? 0.45 : 0.25);
-    if (allowMech) {
-      const mechGrade = resolveTemporaryHumanMechGrade(level);
+  function 填充临时斗铠部件(斗铠) {
+    if (!斗铠 || typeof 斗铠 !== 'object') return;
+    const 部件名列表 = ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴'];
+    if (!斗铠.部件 || typeof 斗铠.部件 !== 'object') 斗铠.部件 = {};
+    部件名列表.forEach(部件名 => {
+      if (!斗铠.部件[部件名]) 斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
+    });
+  }
+
+  function applyTemporaryHumanEquipment(stats, equipment, identity = '魂师', level = 1, rng = Math.random, seed = {}) {
+    if (identity === '普通人' || !equipment || typeof equipment !== 'object') return stats;
+    const request = seed && typeof seed === 'object' ? seed.装备 || {} : {};
+    const mechGrade = String(request?.机甲 || request?.mech || '').trim();
+    if (['黄级', '紫级', '黑级', '红级'].includes(mechGrade)) {
       equipment.机甲.等级 = mechGrade;
       equipment.机甲.名称 = `${mechGrade}制式机甲`;
       equipment.机甲.型号 = level >= 70 ? '远程' : '近战';
-      equipment.机甲.装备状态 = '已装备';
-      const 机甲加成 = 获取临时机甲等效属性包(mechGrade);
-      safeStats.sp_max = Math.max(1, Math.floor((safeStats.sp_max || 0) + 机甲加成.sp_max));
-      safeStats.men_max = Math.max(1, Math.floor((safeStats.men_max || 0) + 机甲加成.men_max));
-      safeStats.str = Math.max(1, Math.floor((safeStats.str || 0) + 机甲加成.str));
-      safeStats.def = Math.max(1, Math.floor((safeStats.def || 0) + 机甲加成.def));
-      safeStats.agi = Math.max(1, Math.floor((safeStats.agi || 0) + 机甲加成.agi));
-      safeStats.vit_max = Math.max(1, Math.floor((safeStats.vit_max || 0) + 机甲加成.vit_max));
+      equipment.机甲.状态 = '完好';
+      equipment.机甲.装备状态 = '未装备';
     }
-
-    const allowArmor =
-      identity === '军人'
-        ? level >= 60 && rng() < (level >= 90 ? 0.4 : level >= 80 ? 0.28 : 0.15)
-        : level >= 50 && rng() < (level >= 80 ? 0.5 : level >= 70 ? 0.35 : 0.18);
-    if (allowArmor) {
-      const armorLevel = resolveTemporaryHumanArmorLevel(level);
+    const armorLevel = Math.max(0, Math.min(4, Math.floor(Number(request?.斗铠 ?? request?.armor ?? 0))));
+    if (armorLevel > 0) {
       equipment.斗铠.等级 = armorLevel;
       equipment.斗铠.名称 = `${armorLevel}字斗铠`;
-      equipment.斗铠.装备状态 = '已装备';
-      const 斗铠加成 = 获取临时斗铠等效属性包(armorLevel);
-      safeStats.sp_max = Math.max(1, Math.floor((safeStats.sp_max || 0) + 斗铠加成.sp_max));
-      safeStats.men_max = Math.max(1, Math.floor((safeStats.men_max || 0) + 斗铠加成.men_max));
-      safeStats.str = Math.max(1, Math.floor((safeStats.str || 0) + 斗铠加成.str));
-      safeStats.def = Math.max(1, Math.floor((safeStats.def || 0) + 斗铠加成.def));
-      safeStats.agi = Math.max(1, Math.floor((safeStats.agi || 0) + 斗铠加成.agi));
-      safeStats.vit_max = Math.max(1, Math.floor((safeStats.vit_max || 0) + 斗铠加成.vit_max));
+      equipment.斗铠.装备状态 = '未装备';
+      填充临时斗铠部件(equipment.斗铠);
     }
-    return safeStats;
+    return stats;
   }
 
   function getTemporarySoulBeastStats(age = 1, species = '', quality = '', speciesQualityTier = '普通') {
@@ -35749,7 +35741,7 @@ ${播报文本}
         return next;
       }
 
-      const combatType = resolveTemporaryHumanCombatType(identity, rng);
+      const combatType = resolveTemporaryHumanCombatType(identity, rng, seed?.系别 || seed?.type);
       const base = getTemporaryBattleBaseStats(level);
       const typeMult = BATTLE_TEMPORARY_TYPE_MULTIPLIERS[combatType] || BATTLE_TEMPORARY_TYPE_MULTIPLIERS['强攻系'];
       const variance = 0.92 + rng() * 0.16;
@@ -35761,7 +35753,7 @@ ${播报文本}
         men_max: Math.floor(base.men_max * typeMult.men_max * variance),
         sp_max: Math.floor(base.sp_max * typeMult.sp_max * variance),
       };
-      applyTemporaryHumanEquipment(derived, next.装备, identity, level, rng);
+      applyTemporaryHumanEquipment(derived, next.装备, identity, level, rng, seed);
       next.属性.等级 = level;
       next.属性.系别 = combatType;
       next.属性.HP上限 = Math.max(1, derived.vit_max);

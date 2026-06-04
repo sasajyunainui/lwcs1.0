@@ -3940,6 +3940,7 @@ class BattleUIComponent {
       const safeAction = action || {};
       const skill = safeAction.raw_skill || safeAction.skill || {};
       if (safeAction.target_name) return String(safeAction.target_name || '').trim() || null;
+      if (String(skill?.承载方式 || '').trim() === '造物承载') return null;
       const playerName = String(combatData?.参战者?.team_player?.[0]?.name || '').trim() || null;
       const enemyName = String(combatData?.参战者?.team_enemy?.[0]?.name || '').trim() || null;
       const targetKind = inferSkillPrimaryTargetKind(skill);
@@ -18066,6 +18067,15 @@ class BattleUIComponent {
 
       function buildVisibleBattlePlayerInput(rawInput, action, combatData) {
         const name = getBattleActionDisplayName(action);
+        const skill = action?.skill && typeof action.skill === 'object' ? action.skill : {};
+        if (String(skill?.承载方式 || '').trim() === '造物承载') {
+          const mode = String(action?.造物处理 || '生成到自己背包').trim() || '生成到自己背包';
+          const target = String(action?.食用目标 || action?.物品接收者 || action?.target_name || '').trim();
+          if (mode === '生成给友方' && target) return `凝成【${name}】，交给【${target}】。`;
+          if (mode === '立即自用') return `凝成并立即使用【${name}】。`;
+          if (mode === '立即给目标使用' && target) return `凝成【${name}】，并立即让【${target}】使用。`;
+          return `凝成【${name}】。`;
+        }
         const fallbackTarget =
           action?.target_name ||
           combatData?.参战者?.team_enemy?.[0]?.name ||
@@ -18306,6 +18316,14 @@ class BattleUIComponent {
           } else {
             playerAction = parsePlayerIntent(playerInput);
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
+            const 指定敌方目标 = findCombatUnitByName(combatData, playerAction.target_name || '');
+            if (
+              指定敌方目标 &&
+              (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 指定敌方目标.name || 指定敌方目标))
+            ) {
+              defender = 指定敌方目标;
+              syncCombatActionState(defender);
+            }
             套用动作队列实际前摇(attacker, playerAction, defender, combatData);
             if (!visiblePlayerInput) visiblePlayerInput = buildVisibleBattlePlayerInput(playerInput, playerAction, combatData);
 
@@ -22033,7 +22051,7 @@ class BattleUIComponent {
         return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
       }
 
-      function buildSkillCreationPatchBundle(skill, inventory = {}, ownerName = '') {
+      function buildSkillCreationPatchBundle(skill, inventory = {}, ownerName = '', options = {}) {
         const 原始效果列表 = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
         const effects = String(skill?.承载方式 || '').trim() === '造物承载'
           ? 原始效果列表
@@ -22082,11 +22100,15 @@ class BattleUIComponent {
           ? deepClonePlain(原始产出者属性.final)
           : buildCombatFinalStats(原始产出者属性);
 
+        let remainingImmediateConsume = Math.max(0, Math.floor(Number(options.即时消耗数量 || 0)));
         itemTemplates.forEach((templateEffect, index) => {
           const baseItemName = String(skill?.魂技名 || skill?.name || '临时造物').trim() || '临时造物';
           const itemName = itemTemplates.length > 1 ? `${baseItemName}·${index + 1}` : baseItemName;
           const escapedItemName = escapeJsonPointerSegment(itemName);
-          const addCount = Math.max(1, Number(templateEffect?.数量 || 1));
+          const rawCount = Math.max(1, Math.floor(Number(templateEffect?.数量 || 1)));
+          const consumeNow = Math.min(rawCount, remainingImmediateConsume);
+          remainingImmediateConsume -= consumeNow;
+          const addCount = Math.max(0, rawCount - consumeNow);
           const relativeExpiryTick = 调制造物有效期(templateEffect?.有效期tick || 0);
           const itemDefinition = {
             类型: '魂技造物',
@@ -22103,6 +22125,8 @@ class BattleUIComponent {
             属性加成: templateEffect?.属性加成 && typeof templateEffect.属性加成 === 'object' && !Array.isArray(templateEffect.属性加成) ? deepClone(templateEffect.属性加成) : {},
             副职业参数: templateEffect?.副职业参数 && typeof templateEffect.副职业参数 === 'object' && !Array.isArray(templateEffect.副职业参数) ? deepClone(templateEffect.副职业参数) : {},
           };
+          const 使用副作用列表 = deepClone(Array.isArray(templateEffect?.副作用列表) ? templateEffect.副作用列表 : []);
+          if (使用副作用列表.length) itemDefinition.副作用列表 = 使用副作用列表;
           const nextItem = {
             数量: addCount,
             来源: String(skill?.魂技名 || skill?.name || itemName),
@@ -22123,14 +22147,14 @@ class BattleUIComponent {
                   ...deepClonePlain(currentItem),
                   数量: Number(currentItem.数量 || 0) + addCount,
                   造物产出者属性: deepClonePlain(产出者属性快照),
-                }
-              : nextItem;
-          if (!rootItems[itemName]) {
-            patchOps.push({ op: 'replace', path: `/物品/${escapedItemName}`, value: itemDefinition });
-          }
-          appendJsonPatchDiff(patchOps, itemPath, currentItem, nextItemValue);
+              }
+            : nextItem;
+          const nextRootItem = { ...deepClonePlain(rootItems[itemName] || {}), ...itemDefinition };
+          if (!使用副作用列表.length) delete nextRootItem.副作用列表;
+          appendJsonPatchDiff(patchOps, `/物品/${escapedItemName}`, rootItems[itemName], nextRootItem);
+          if (addCount > 0) appendJsonPatchDiff(patchOps, itemPath, currentItem, nextItemValue);
 
-          logs.push(`生成了造物【${itemName}】×${addCount}`);
+          logs.push(`生成了造物【${itemName}】×${rawCount}${consumeNow > 0 ? `，即时使用${consumeNow}件` : ''}${addCount > 0 ? `，入包${addCount}件` : ''}`);
         });
 
         return {
@@ -22155,6 +22179,7 @@ class BattleUIComponent {
           ...deepClonePlain(安全根物品),
           ...deepClonePlain(安全背包状态),
           使用效果: 取数组字段('使用效果'),
+          副作用列表: 取数组字段('副作用列表'),
           造物产出者属性: deepClonePlain(
             安全背包状态?.造物产出者属性 && typeof 安全背包状态.造物产出者属性 === 'object' && !Array.isArray(安全背包状态.造物产出者属性)
               ? 安全背包状态.造物产出者属性
@@ -22197,6 +22222,7 @@ class BattleUIComponent {
             消耗: '无',
             前摇: 8,
             _效果数组: deepClone(Array.isArray(物品数据?.使用效果) ? 物品数据.使用效果 : []),
+            副作用列表: deepClone(Array.isArray(物品数据?.副作用列表) ? 物品数据.副作用列表 : []),
           },
           动作名,
         );
@@ -22244,18 +22270,21 @@ class BattleUIComponent {
           if (!String(next.目标 || '').trim()) next.目标 = targetName ? '单体' : '自身';
           return next;
         });
-        return {
+        const immediateSkill = {
           ...deepClone(skill || {}),
           name: `${skill?.name || skill?.魂技名 || '造物承载魂技'}·即时使用`,
           魂技名: `${skill?.魂技名 || skill?.name || '造物承载魂技'}·即时使用`,
+          承载方式: '物品使用',
           _效果数组: usageEffects,
         };
+        const 使用副作用列表 = deepClone(Array.isArray(constructEffect?.副作用列表) ? constructEffect.副作用列表 : []);
+        if (使用副作用列表.length) immediateSkill.副作用列表 = 使用副作用列表;
+        else delete immediateSkill.副作用列表;
+        return immediateSkill;
       }
 
       function 是否战斗即时使用造物(action = {}, skill = {}) {
-        const text = `${String(action?.action_type || '')} ${String(action?.玩家输入 || '')} ${String(action?.描述 || '')}`;
-        if (action?.立即食用 === true || action?.即食 === true || action?.食用目标) return true;
-        if (!/使用|食用|即食|吃下|喂给|直接吃|激活|触发/.test(text)) return false;
+        if (action?.立即使用 !== true && action?.立即食用 !== true && action?.即食 !== true) return false;
         return !!构建造物即时使用技能(skill, action);
       }
 
@@ -22473,7 +22502,11 @@ class BattleUIComponent {
         hydrateCombatData(combatData);
         let attacker = combatData.参战者.team_player?.[0];
         let attackerFinalStat = attacker.final || attacker;
-        let defender = combatData.参战者.team_enemy?.[0];
+        const 指定目标单位 = findCombatUnitByName(combatData, playerAction?.target_name || '');
+        let defender =
+          指定目标单位 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 指定目标单位.name || 指定目标单位))
+            ? 指定目标单位
+            : combatData.参战者.team_enemy?.[0];
         let defenderFinalStat = defender.final || defender;
         const 本次使用物品名 = String(playerAction?.物品名 || playerAction?.skill?.__物品名 || '').trim();
         const 本次为物品动作 = !!本次使用物品名;
@@ -22592,7 +22625,9 @@ class BattleUIComponent {
         let 玩家临时技能已生效 = false;
         let NPC临时技能已生效 = false;
         let 本次为即时使用造物 = false;
+        let 本次原始造物技能 = null;
         if (是否战斗即时使用造物(playerAction, playerAction.skill)) {
+          本次原始造物技能 = deepClonePlain(playerAction.skill);
           const 即时使用技能 = 构建造物即时使用技能(playerAction.skill, playerAction);
           if (即时使用技能) {
             本次为即时使用造物 = true;
@@ -22800,11 +22835,14 @@ class BattleUIComponent {
         const actorCharData = attacker?.name ? window.BattleUIBridge?.getMVU(`char.${attacker.name}`) : null;
         const preferredPlayerName = String(window.BattleUIBridge?.getMVU('sys.玩家名') || '').trim();
         const attackerName = String(attacker?.name || preferredPlayerName || '').trim();
-        const canPersistCreation = !!attackerName;
+        const creationOwnerName = String(playerAction?.物品接收者 || playerAction?.食用目标 || attackerName).trim() || attackerName;
+        const creationOwnerCharData = creationOwnerName ? window.BattleUIBridge?.getMVU(`char.${creationOwnerName}`) : null;
+        const canPersistCreation = !!creationOwnerName;
         const creationPatchBundle = buildSkillCreationPatchBundle(
-          { ...playerAction.skill, __造物产出者: { ...attacker, final: attackerFinalStat } },
-          actorCharData?.背包 || attacker?.背包 || {},
-          attackerName,
+          { ...(本次原始造物技能 || playerAction.skill), __造物产出者: { ...attacker, final: attackerFinalStat } },
+          creationOwnerCharData?.背包 || (creationOwnerName === attackerName ? actorCharData?.背包 || attacker?.背包 : {}) || {},
+          creationOwnerName,
+          { 即时消耗数量: 本次为即时使用造物 ? 1 : 0 },
         );
         if (!本次为维持释放 && canPersistCreation && creationPatchBundle.patchOps.length > 0) {
           result.extraPatchOps = creationPatchBundle.patchOps;
@@ -28381,6 +28419,9 @@ class BattleUIComponent {
           if (entry.equip_target) nextAction.equip_target = String(entry.equip_target || '').trim();
           if (entry.target_name) nextAction.target_name = String(entry.target_name || '').trim();
           if (entry.食用目标) nextAction.食用目标 = String(entry.食用目标 || '').trim();
+          if (entry.造物处理) nextAction.造物处理 = String(entry.造物处理 || '').trim();
+          if (entry.物品接收者) nextAction.物品接收者 = String(entry.物品接收者 || '').trim();
+          if (entry.立即使用 === true) nextAction.立即使用 = true;
           if (entry.立即食用 === true || entry.即食 === true) nextAction.立即食用 = true;
           if (entry.heal_ratio !== undefined) nextAction.heal_ratio = Number(entry.heal_ratio || 0) || 0;
           const 批量目标 = 读取序列化批量目标(entry);
@@ -30772,6 +30813,20 @@ class BattleUIComponent {
           return merged;
         }
 
+        function 获取可见装备标签(unit = {}) {
+          const 装备 = unit?.装备 && typeof unit.装备 === 'object' ? unit.装备 : {};
+          const 标签 = [];
+          const 机甲 = 装备.机甲 && typeof 装备.机甲 === 'object' ? 装备.机甲 : null;
+          const 斗铠 = 装备.斗铠 && typeof 装备.斗铠 === 'object' ? 装备.斗铠 : null;
+          if (机甲 && String(机甲.装备状态 || '').trim() === '已装备' && String(机甲.等级 || '无').trim() !== '无' && String(机甲.状态 || '') !== '重创') {
+            标签.push(`${String(机甲.等级 || '').trim()}机甲`);
+          }
+          if (斗铠 && String(斗铠.装备状态 || '').trim() === '已装备' && Number(斗铠.等级 || 0) > 0) {
+            标签.push(`${Number(斗铠.等级 || 0)}字斗铠`);
+          }
+          return 标签;
+        }
+
         function setUiText(id, value) {
           const node = byId(id);
           if (node) node.textContent = String(value ?? '');
@@ -30784,7 +30839,7 @@ class BattleUIComponent {
           node.style.width = `${ratio}%`;
         }
 
-        function renderUiStats(containerId, unit) {
+        function renderUiStats(containerId, unit, options = {}) {
           const node = byId(containerId);
           if (!node) return;
           const 等级类比 = (属性, 数值) => {
@@ -30792,7 +30847,7 @@ class BattleUIComponent {
             return 等级 ? `${Math.round(Number(数值 || 0))}≈${等级}级` : Math.round(Number(数值 || 0));
           };
           const stats = [
-            ['系别', unit.type || '未知'],
+            ...(options.showType === false ? [] : [['系别', unit.type || '未知']]),
             ['力', 等级类比('str', unit.str || 0)],
             ['防', 等级类比('def', unit.def || 0)],
             ['速', 等级类比('agi', unit.agi || 0)],
@@ -30807,7 +30862,9 @@ class BattleUIComponent {
           if (!node) return;
           const 状态效果 = Object.entries(unit.状态效果 || {}).slice(0, 8);
           const sustains = Object.keys(unit.持续效果 || {}).slice(0, 4);
+          const 装备标签 = 获取可见装备标签(unit);
           const chips = [
+            ...装备标签.map(name => `<span class="tag-chip equip">${htmlEscapeText(name)}</span>`),
             ...状态效果.map(([name, condition]) => {
               const typeText = String(condition?.类型 || condition?.type || '').toLowerCase();
               const kind = /debuff|负面|伤|弱/.test(typeText) ? 'debuff' : 'buff';
@@ -30830,7 +30887,7 @@ class BattleUIComponent {
           setUiBar(`ui-${prefix}-sta-bar`, safeUnit.sta, safeUnit.sta_max);
           setUiBar(`ui-${prefix}-sp-bar`, safeUnit.sp, safeUnit.sp_max);
           setUiBar(`ui-${prefix}-men-bar`, safeUnit.men, safeUnit.men_max);
-          renderUiStats(`ui-${prefix}-stats`, safeUnit);
+          renderUiStats(`ui-${prefix}-stats`, safeUnit, { showType: prefix !== 'enemy' });
           renderUiBuffs(`ui-${prefix}-buffs`, safeUnit);
           return safeUnit;
         }
@@ -30844,7 +30901,11 @@ class BattleUIComponent {
               const active = unit.name === activeName ? ' active' : '';
               const summon = unit.isSummon ? ' summon' : '';
               const hpRatio = Math.max(0, Math.min(100, (unit.hp / Math.max(1, unit.hp_max)) * 100));
-              const meta = unit.isSummon ? `<div class="side-meta">${htmlEscapeText(unit.行动模式 || '召唤')} · ${htmlEscapeText(unit.稳定状态 || '稳定')}</div>` : '';
+              const 装备标签 = 获取可见装备标签(unit).join(' · ');
+              const metaParts = unit.isSummon
+                ? [unit.行动模式 || '召唤', unit.稳定状态 || '稳定']
+                : [装备标签];
+              const meta = metaParts.filter(Boolean).length ? `<div class="side-meta">${htmlEscapeText(metaParts.filter(Boolean).join(' · '))}</div>` : '';
               return `<button class="side-card${active}${summon}" type="button"><div class="side-name">${htmlEscapeText(unit.name)}</div>${meta}<div class="side-mini-bar"><div class="side-mini-fill" style="width:${hpRatio}%"></div></div></button>`;
             })
             .join('');
@@ -30904,8 +30965,7 @@ class BattleUIComponent {
               };
               state.selectedAction = action;
               state.selectedSkillActions = [action];
-              const output = byId('ui-intent-output');
-              if (output) output.value = buildIntentText([action]);
+              刷新战斗意图输出(action);
               renderUiActionGrid(state.availableActions || [], state.activeCategory || '全部');
             });
           });
@@ -31191,6 +31251,159 @@ class BattleUIComponent {
           `;
         }
 
+        function 读取战斗单位名(unit = {}) {
+          return String(unit?.name || unit?.名称 || unit?.charKey || unit?.char_key || unit?.key || '').trim();
+        }
+
+        function 读取目标控制节点() {
+          let node = byId('ui-target-controls');
+          if (node) return node;
+          const grid = byId('ui-action-grid');
+          if (!grid || !grid.parentElement) return null;
+          node = document.createElement('div');
+          node.id = 'ui-target-controls';
+          node.className = 'battle-target-controls';
+          node.hidden = true;
+          grid.insertAdjacentElement('afterend', node);
+          return node;
+        }
+
+        function 动作是造物承载(action = {}) {
+          const skill = action?.raw_skill || action?.skill || {};
+          return String(skill?.承载方式 || '').trim() === '造物承载';
+        }
+
+        function 读取动作目标候选(action = {}, state = {}) {
+          const combatData = state.combatData || {};
+          const playerTeam = (combatData?.参战者?.team_player || []).filter(unit => unit && isCombatUnitAlive(unit));
+          const enemyTeam = (combatData?.参战者?.team_enemy || []).filter(unit => unit && isCombatUnitAlive(unit));
+          const skill = action?.raw_skill || action?.skill || {};
+          if (['防御', '闪避', '撤离', '穿戴装备', '收回召唤'].includes(String(action?.action_type || ''))) return [];
+          if (动作是造物承载(action)) {
+            const mode = String(action.造物处理 || '生成到自己背包');
+            if (mode === '生成给友方') return playerTeam;
+            if (mode === '立即给目标使用') return [...playerTeam, ...enemyTeam];
+            return [];
+          }
+          const targetKind = inferSkillPrimaryTargetKind(skill);
+          if (targetKind === '自身') return playerTeam.slice(0, 1);
+          if (targetKind === '友方单体') return playerTeam;
+          if (targetKind === '敌方单体') return enemyTeam;
+          return [];
+        }
+
+        function 写入普通动作目标(action = {}, state = {}) {
+          if (!action || typeof action !== 'object') return;
+          if (动作是造物承载(action)) return;
+          const candidates = 读取动作目标候选(action, state);
+          if (!candidates.length) {
+            delete action.target_name;
+            return;
+          }
+          const current = String(action.target_name || '').trim();
+          const matched = candidates.find(unit => 读取战斗单位名(unit) === current);
+          action.target_name = 读取战斗单位名(matched || candidates[0]);
+        }
+
+        function 写入造物动作选择(action = {}, state = {}) {
+          if (!action || typeof action !== 'object' || !动作是造物承载(action)) return;
+          const combatData = state.combatData || {};
+          const player = combatData?.参战者?.team_player?.[0] || state.player || {};
+          const playerName = 读取战斗单位名(player);
+          const mode = String(action.造物处理 || '生成到自己背包').trim() || '生成到自己背包';
+          action.造物处理 = mode;
+          action.立即使用 = mode === '立即自用' || mode === '立即给目标使用';
+          if (action.立即使用) action.即食 = true;
+          else {
+            delete action.即食;
+            delete action.立即食用;
+          }
+          if (mode === '生成到自己背包' || mode === '立即自用') {
+            action.物品接收者 = playerName;
+            action.target_name = mode === '立即自用' ? playerName : '';
+            if (mode === '立即自用') action.食用目标 = playerName;
+            else delete action.食用目标;
+            return;
+          }
+          const candidates = 读取动作目标候选(action, state);
+          const current = String(action.target_name || action.物品接收者 || '').trim();
+          const matched = candidates.find(unit => 读取战斗单位名(unit) === current);
+          const targetName = 读取战斗单位名(matched || candidates[0] || player);
+          action.target_name = targetName;
+          action.物品接收者 = targetName;
+          if (mode === '立即给目标使用') action.食用目标 = targetName;
+          else delete action.食用目标;
+        }
+
+        function 刷新战斗意图输出(action = null) {
+          const state = window.BattleUI?.state || {};
+          const output = byId('ui-intent-output');
+          if (output) output.value = buildIntentText(action ? [action] : undefined);
+          renderUiTargetControls(action || state.selectedAction || null);
+        }
+
+        function renderUiTargetControls(action = null) {
+          const node = 读取目标控制节点();
+          if (!node) return;
+          const state = window.BattleUI?.state || {};
+          if (!action) {
+            node.hidden = true;
+            node.innerHTML = '';
+            return;
+          }
+          if (动作是造物承载(action)) {
+            写入造物动作选择(action, state);
+            const mode = String(action.造物处理 || '生成到自己背包');
+            const modes = ['生成到自己背包', '生成给友方', '立即自用', '立即给目标使用'];
+            const candidates = 读取动作目标候选(action, state);
+            const modeHtml = modes
+              .map(item => `<button class="target-chip${item === mode ? ' active' : ''}" type="button" data-construct-mode="${htmlEscapeText(item)}">${htmlEscapeText(item)}</button>`)
+              .join('');
+            const targetHtml = candidates.length
+              ? `<div class="target-chip-row">${candidates.map(unit => {
+                  const name = 读取战斗单位名(unit);
+                  return `<button class="target-chip${name === String(action.target_name || action.物品接收者 || '') ? ' active' : ''}" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`;
+                }).join('')}</div>`
+              : '';
+            node.hidden = false;
+            node.innerHTML = `<div class="target-chip-row">${modeHtml}</div>${targetHtml}`;
+            node.querySelectorAll('[data-construct-mode]').forEach(button => {
+              button.addEventListener('click', () => {
+                action.造物处理 = button.getAttribute('data-construct-mode') || '生成到自己背包';
+                写入造物动作选择(action, state);
+                刷新战斗意图输出(action);
+              });
+            });
+            node.querySelectorAll('[data-target-name]').forEach(button => {
+              button.addEventListener('click', () => {
+                action.target_name = button.getAttribute('data-target-name') || '';
+                action.物品接收者 = action.target_name;
+                写入造物动作选择(action, state);
+                刷新战斗意图输出(action);
+              });
+            });
+            return;
+          }
+          写入普通动作目标(action, state);
+          const candidates = 读取动作目标候选(action, state);
+          if (!candidates.length) {
+            node.hidden = true;
+            node.innerHTML = '';
+            return;
+          }
+          node.hidden = false;
+          node.innerHTML = `<div class="target-chip-row">${candidates.map(unit => {
+            const name = 读取战斗单位名(unit);
+            return `<button class="target-chip${name === String(action.target_name || '') ? ' active' : ''}" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`;
+          }).join('')}</div>`;
+          node.querySelectorAll('[data-target-name]').forEach(button => {
+            button.addEventListener('click', () => {
+              action.target_name = button.getAttribute('data-target-name') || '';
+              刷新战斗意图输出(action);
+            });
+          });
+        }
+
         function renderUiActionGrid(actions, activeCategory = '全部') {
           const node = byId('ui-action-grid');
           if (!node) return;
@@ -31222,11 +31435,13 @@ class BattleUIComponent {
               if (!打开炸环选择对话_V1(action, state)) return;
               state.selectedAction = action;
               state.selectedSkillActions = [action];
-              const output = byId('ui-intent-output');
-              if (output) output.value = buildIntentText([action]);
+              if (动作是造物承载(action)) 写入造物动作选择(action, state);
+              else 写入普通动作目标(action, state);
+              刷新战斗意图输出(action);
               renderUiActionGrid(state.availableActions || [], state.activeCategory || '全部');
             });
           });
+          renderUiTargetControls(state.selectedAction || null);
         }
 
         function setUiBattleMode(mode) {
@@ -31306,7 +31521,12 @@ class BattleUIComponent {
           renderUiActionGrid(availableActions, activeCategory);
           renderUiSummonQueue(combatData);
           const output = byId('ui-intent-output');
-          if (output && selectedAction) output.value = buildIntentText([selectedAction]);
+          if (selectedAction) {
+            if (动作是造物承载(selectedAction)) 写入造物动作选择(selectedAction, window.BattleUI.state);
+            else 写入普通动作目标(selectedAction, window.BattleUI.state);
+            if (output) output.value = buildIntentText([selectedAction]);
+            renderUiTargetControls(selectedAction);
+          }
           renderSoulTowerSettlementPanel(pendingTowerSettlement);
         }
 
@@ -31350,6 +31570,11 @@ class BattleUIComponent {
           };
           if (type === '穿戴装备') actionObj.equip_target = /机甲/.test(name) ? 'mech' : 'armor';
           if (type === '吸血反哺') actionObj.heal_ratio = action.heal_ratio || 0.3;
+          if (action.造物处理) actionObj.造物处理 = String(action.造物处理 || '').trim();
+          if (action.物品接收者) actionObj.物品接收者 = String(action.物品接收者 || '').trim();
+          if (action.立即使用 === true) actionObj.立即使用 = true;
+          if (action.即食 === true) actionObj.即食 = true;
+          if (action.食用目标) actionObj.食用目标 = String(action.食用目标 || '').trim();
           if (type === '多元素融合') {
             actionObj.fusionElements = normalizeBattleSkillAttributeTokens(action.fusionElements || []);
             actionObj.fusionPattern = String(

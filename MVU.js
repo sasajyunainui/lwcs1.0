@@ -3647,7 +3647,9 @@ function buildTemporaryCombatEquipmentShell() {
   };
 }
 
-function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random) {
+function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random, explicitType = '') {
+  const requestedType = String(explicitType || '').trim();
+  if (requestedType && TypeMultipliers[requestedType]) return requestedType;
   if (identity === '军人') {
     return pickBattleSeedItem(['强攻系', '强攻系', '防御系', '敏攻系', '控制系'], rng) || '强攻系';
   }
@@ -3668,47 +3670,34 @@ function resolveTemporaryHumanArmorLevel(level = 1) {
   return 1;
 }
 
-function applyTemporaryHumanEquipment(stats, equipment, identity = '魂师', level = 1, rng = Math.random) {
-  const safeStats = stats;
-  if (identity === '普通人') return safeStats;
+function 填充临时斗铠部件(斗铠) {
+  if (!斗铠 || typeof 斗铠 !== 'object') return;
+  const 部件名列表 = ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴'];
+  if (!斗铠.部件 || typeof 斗铠.部件 !== 'object') 斗铠.部件 = {};
+  部件名列表.forEach(部件名 => {
+    if (!斗铠.部件[部件名]) 斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
+  });
+}
 
-  const allowMech =
-    identity === '军人'
-      ? level >= 20 && rng() < (level >= 70 ? 0.85 : level >= 50 ? 0.75 : 0.65)
-      : level >= 30 && rng() < (level >= 70 ? 0.65 : level >= 50 ? 0.45 : 0.25);
-  if (allowMech) {
-    const mechGrade = resolveTemporaryHumanMechGrade(level);
+function applyTemporaryHumanEquipment(stats, equipment, identity = '魂师', level = 1, rng = Math.random, seed = {}) {
+  if (identity === '普通人' || !equipment || typeof equipment !== 'object') return stats;
+  const request = seed && typeof seed === 'object' ? seed.装备 || {} : {};
+  const mechGrade = String(request?.机甲 || request?.mech || '').trim();
+  if (['黄级', '紫级', '黑级', '红级'].includes(mechGrade)) {
     equipment.机甲.等级 = mechGrade;
     equipment.机甲.名称 = `${mechGrade}制式机甲`;
     equipment.机甲.型号 = level >= 70 ? '远程' : '近战';
-    equipment.机甲.装备状态 = '已装备';
-    const 机甲加成 = 获取机甲等效属性包(mechGrade);
-    safeStats.sp_max = Math.max(1, Math.floor((safeStats.sp_max || 0) + 机甲加成.sp_max));
-    safeStats.men_max = Math.max(1, Math.floor((safeStats.men_max || 0) + 机甲加成.men_max));
-    safeStats.str = Math.max(1, Math.floor((safeStats.str || 0) + 机甲加成.str));
-    safeStats.def = Math.max(1, Math.floor((safeStats.def || 0) + 机甲加成.str));
-    safeStats.agi = Math.max(1, Math.floor((safeStats.agi || 0) + 机甲加成.agi));
-    safeStats.vit_max = Math.max(1, Math.floor((safeStats.vit_max || 0) + 机甲加成.vit_max));
+    equipment.机甲.状态 = '完好';
+    equipment.机甲.装备状态 = '未装备';
   }
-
-  const allowArmor =
-    identity === '军人'
-      ? level >= 60 && rng() < (level >= 90 ? 0.4 : level >= 80 ? 0.28 : 0.15)
-      : level >= 50 && rng() < (level >= 80 ? 0.5 : level >= 70 ? 0.35 : 0.18);
-  if (allowArmor) {
-    const armorLevel = resolveTemporaryHumanArmorLevel(level);
+  const armorLevel = Math.max(0, Math.min(4, Math.floor(Number(request?.斗铠 ?? request?.armor ?? 0))));
+  if (armorLevel > 0) {
     equipment.斗铠.等级 = armorLevel;
     equipment.斗铠.名称 = `${armorLevel}字斗铠`;
-    equipment.斗铠.装备状态 = '已装备';
-    const 斗铠加成 = 获取斗铠等效属性包(armorLevel);
-    safeStats.sp_max = Math.max(1, Math.floor((safeStats.sp_max || 0) + 斗铠加成.sp_max));
-    safeStats.men_max = Math.max(1, Math.floor((safeStats.men_max || 0) + 斗铠加成.men_max));
-    safeStats.str = Math.max(1, Math.floor((safeStats.str || 0) + 斗铠加成.str));
-    safeStats.def = Math.max(1, Math.floor((safeStats.def || 0) + 斗铠加成.str));
-    safeStats.agi = Math.max(1, Math.floor((safeStats.agi || 0) + 斗铠加成.agi));
-    safeStats.vit_max = Math.max(1, Math.floor((safeStats.vit_max || 0) + 斗铠加成.vit_max));
+    equipment.斗铠.装备状态 = '未装备';
+    填充临时斗铠部件(equipment.斗铠);
   }
-  return safeStats;
+  return stats;
 }
 
 function inferTemporarySoulBeastCombatType(species = '', stats = {}) {
@@ -3796,7 +3785,7 @@ function buildTemporaryHumanCombatant(seed = {}, slotName = 'enemy') {
       return next;
     }
 
-    const combatType = resolveTemporaryHumanCombatType(identity, rng);
+    const combatType = resolveTemporaryHumanCombatType(identity, rng, seed?.系别 || seed?.type);
     const base = getBaseStats(level);
     const typeMult = TypeMultipliers[combatType] || TypeMultipliers['强攻系'];
     const variance = 0.92 + rng() * 0.16;
@@ -3808,7 +3797,7 @@ function buildTemporaryHumanCombatant(seed = {}, slotName = 'enemy') {
       men_max: Math.floor(base.men_max * typeMult.men_max * variance),
       sp_max: Math.floor(base.sp_max * typeMult.sp_max * variance),
     };
-    applyTemporaryHumanEquipment(derived, next.装备, identity, level, rng);
+    applyTemporaryHumanEquipment(derived, next.装备, identity, level, rng, seed);
     next.属性.等级 = level;
     next.属性.系别 = combatType;
     next.属性.HP上限 = Math.max(1, derived.vit_max);
@@ -11480,11 +11469,16 @@ function 收口生成正式效果终态_V1(效果列表 = [], options = {}) {
 
 function 收口造物承载物品模板数组_V1(effectArray = [], skill = {}) {
   const source = Array.isArray(effectArray) ? effectArray : [];
-  const templates = source.map(raw => {
+  const templates = source.map((raw, index) => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
     if (String(raw.原型 || '').trim()) return null;
     const 数量 = Math.max(1, Math.round(Number(raw.数量 || 1)));
     const 有效期tick = Math.max(0, Math.round(Number(raw.有效期tick || 0)));
+    const 副作用违规列表 = [];
+    const 副作用列表 = 收口执行副作用列表_V1(raw.副作用列表 || [], path => {
+      if (path) 副作用违规列表.push(path.replace(/^副作用列表/, `_效果数组[${index}].副作用列表`));
+    });
+    if (副作用违规列表.length) throw new Error(`技能执行结构错误:造物使用副作用包含非法字段:${Array.from(new Set(副作用违规列表)).join('、')}`);
     const 使用效果 = 收口生成正式效果终态_V1(raw.使用效果 || [], {
       目标: '单体',
       path: '_效果数组.使用效果',
@@ -11492,6 +11486,7 @@ function 收口造物承载物品模板数组_V1(effectArray = [], skill = {}) {
     });
     if (!使用效果.length) return null;
     const template = { 数量, 使用效果 };
+    if (副作用列表.length) template.副作用列表 = 副作用列表;
     if (有效期tick > 0) template.有效期tick = 有效期tick;
     return template;
   }).filter(Boolean);
@@ -13005,9 +13000,29 @@ function 倍数到比例_V1(倍数 = 1, 上限比例 = 0.6, 下限比例 = -0.45
   return Math.max(下限比例, (值 - 1) * Math.abs(下限比例) / 0.75);
 }
 
+function 读取技能分阶段副作用列表_V1(skill = {}) {
+  const 结果 = normalizeSkillSideEffectList(skill?.副作用列表 || []).map((条目, 序号) => ({
+    条目,
+    路径: `副作用列表[${序号}]`,
+    来源: '施展副作用',
+  }));
+  if (String(skill?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill?._效果数组)) {
+    (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((效果, 效果序号) => {
+      normalizeSkillSideEffectList(效果?.副作用列表 || []).forEach((条目, 副作用序号) => {
+        结果.push({
+          条目,
+          路径: `_效果数组[${效果序号}].副作用列表[${副作用序号}]`,
+          来源: '使用副作用',
+        });
+      });
+    });
+  }
+  return 结果;
+}
+
 // 评估副作用预算档：只从正式副作用列表反推，不落盘手填档位。
 function 评估副作用预算档_V1(skill = {}) {
-  const 列表 = normalizeSkillSideEffectList(skill?.副作用列表 || []);
+  const 列表 = 读取技能分阶段副作用列表_V1(skill).map(项 => 项.条目);
   const 档级序 = ['无', '轻', '中', '重'];
   let 最高 = '无';
   列表.forEach(项 => {
@@ -13091,8 +13106,8 @@ function 计算单项副作用COST_V1(副作用 = {}) {
 }
 
 function 计算技能副作用COST_V1(技能 = {}) {
-  const 明细 = normalizeSkillSideEffectList(技能?.副作用列表 || [])
-    .map((条目, 序号) => ({ 路径: `副作用列表[${序号}]`, ...计算单项副作用COST_V1(条目) }))
+  const 明细 = 读取技能分阶段副作用列表_V1(技能)
+    .map(项 => ({ 路径: 项.路径, 来源: 项.来源, ...计算单项副作用COST_V1(项.条目) }))
     .filter(项 => Number(项.COST || 0) > 0);
   const 总COST = 明细.reduce((总和, 项) => 总和 + Number(项.COST || 0), 0);
   return { 总COST: Number(总COST.toFixed(2)), 明细 };
@@ -16066,7 +16081,8 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
     const 有效期文本 = 转译技能tick时长_V1(效果.有效期tick);
     const 有效期 = 有效期文本 ? `，有效期${有效期文本}` : '';
     const 使用效果 = 编译效果数组为人类语言_V1(效果.使用效果 || [], { depth: 深度 + 1, maxDepth: 最大深度 });
-    return `生成物品×${formatSkillNumber(数量)}${有效期}${使用效果 ? `；使用后：${使用效果}` : ''}`;
+    const 使用副作用 = 转译技能副作用列表_V1(效果.副作用列表 || []);
+    return `生成物品×${formatSkillNumber(数量)}${有效期}${使用效果 ? `；使用后：${使用效果}` : ''}${使用副作用 ? `；使用副作用：${使用副作用}` : ''}`;
   }
   const 原型 = String(效果?.原型 || '').trim();
   const 目标 = 转译技能结构目标_V1(效果?.目标 || '目标');
@@ -16543,6 +16559,7 @@ function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项
   const 融合参与者 = Array.isArray(技能.融合参与者) && 技能.融合参与者.length ? 技能.融合参与者.join('/') : '';
   const 效果文本 = 编译效果数组为人类语言_V1(技能._效果数组 || [], { maxDepth: Math.max(1, Number(选项.maxDepth || 5)), 预算 });
   const 副作用文本 = 转译技能副作用列表_V1(技能.副作用列表 || []);
+  const 是造物承载技能 = String(技能.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(技能._效果数组);
   if (消耗) 片段.push(`消耗:${消耗}`);
   if (前摇 !== null && Number.isFinite(前摇) && 前摇 > 0) 片段.push(`前摇:${formatSkillNumber(前摇)}`);
   if (场外) 片段.push(`场外:${场外}`);
@@ -16558,7 +16575,7 @@ function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项
     Number(预算.允许压力 || 0) > 0 &&
     Number(预算.总效果压力 || 0) / Math.max(1, Number(预算.允许压力 || 0)) >= 直接结算收益预算系数_V1.预警阈值
   ) 片段.push('收益承载接近上限');
-  if (副作用文本) 片段.push(`副作用:${副作用文本}`);
+  if (副作用文本) 片段.push(`${是造物承载技能 ? '施展副作用' : '副作用'}:${副作用文本}`);
   const 文本 = 片段.join('；');
   return 选项.asObject ? {
     技能: 名称,
@@ -16586,6 +16603,8 @@ function buildSingleSkillEffectSummary(effect) {
     if (itemCount > 1) text += '×' + itemCount;
     if (expiryText) text += '，' + expiryText;
     if (usageSegments.length > 0) text += `，使用后${usageSegments.join('；')}`;
+    const 使用副作用 = 转译技能副作用列表_V1(effect.副作用列表 || []);
+    if (使用副作用) text += `，使用副作用:${使用副作用}`;
     return text;
   }
   const 原型 = String(effect?.原型 || '').trim();
@@ -27626,23 +27645,20 @@ export const Schema = z
       if (!Array.isArray(previewList) || previewList.length === 0) {
         return '当前暂无后续原著时间线参考节点。';
       }
-      return ['原著时间线参考节点（仅供控速、铺垫、触发、推进判断；必须服从当前MVU事实与已发生事件，不可因tick临近强行落地）：']
-        .concat(
-          previewList.map((item, index) => {
-            const 触发tick = Number(item.触发tick || 0);
-            const 剩余tick = Number(item.剩余tick || 0);
-            const 描述 = item.描述 || '无';
-            const calendarText = formatTickToCalendar(触发tick);
-            const etaText = formatTickDeltaText(剩余tick);
-            return `${index + 1}. ${calendarText}（约${etaText}后）｜${描述}`;
-          }),
-        )
+      return previewList
+        .map(item => {
+          const 触发tick = Number(item.触发tick || 0);
+          const 剩余tick = Number(item.剩余tick || 0);
+          const 描述 = item.描述 || '无';
+          const 时间 = `${formatTickToCalendar(触发tick)}（约${formatTickDeltaText(剩余tick)}后）`;
+          return `${时间}｜${描述}`;
+        })
         .join('\n');
     };
 
     const upcomingTimelinePreview =
       typeof TimelineEvents !== 'undefined'
-        ? buildUpcomingTimelinePreview(TimelineEvents, currentTick, 5)
+        ? buildUpcomingTimelinePreview(TimelineEvents, currentTick, 20)
         : [];
     if (!data.world._引导 || typeof data.world._引导 !== 'object' || Array.isArray(data.world._引导)) data.world._引导 = {};
     data.world._引导.时间线预览 = buildUpcomingTimelinePreviewText(upcomingTimelinePreview);
