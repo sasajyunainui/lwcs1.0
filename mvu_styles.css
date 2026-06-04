@@ -1546,6 +1546,41 @@
   transform: translate(-50%, 0);
 }
 
+.archive-tile--has-hover,
+.mvu-shell-lite-item--has-hover {
+  position: relative;
+  overflow: visible;
+}
+
+.archive-tile--has-hover:hover,
+.archive-tile--has-hover:focus-within,
+.mvu-shell-lite-item--has-hover:hover,
+.mvu-shell-lite-item--has-hover:focus-within {
+  z-index: var(--mvu-z-popover, 10060);
+}
+
+.archive-tile--has-hover > .ring-hover-card,
+.mvu-shell-lite-item--has-hover > .ring-hover-card {
+  top: calc(100% - 4px);
+}
+
+.archive-tile--has-hover:hover > .ring-hover-card,
+.archive-tile--has-hover:focus-within > .ring-hover-card,
+.mvu-shell-lite-item--has-hover:hover > .ring-hover-card,
+.mvu-shell-lite-item--has-hover:focus-within > .ring-hover-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+  transition-duration: 0.18s, 0.18s, 0s;
+  transform: translate(-50%, 0);
+}
+
+.skill-hover-card {
+  width: 258px;
+  max-width: min(280px, calc(100vw - 48px));
+}
+
 .secondary-side .interactive-ring .ring-hover-card {
   left: auto;
   right: 0;
@@ -16665,6 +16700,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   display: block;
 }
 
+#mvu-battle-inline-host .action-btn:hover .skill-tooltip,
+#mvu-battle-inline-host .action-btn:focus-visible .skill-tooltip {
+  display: block;
+}
+
 #mvu-battle-inline-host #ui-intent-output {
   display: none !important;
 }
@@ -16714,9 +16754,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 #mvu-battle-inline-host .tt-effects {
+  display: grid;
+  gap: 4px;
   color: rgba(234, 248, 251, 0.86);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.5;
+}
+
+#mvu-battle-inline-host .tt-effect-row {
+  display: block;
 }
 
 #mvu-battle-inline-host .tt-effect-type {

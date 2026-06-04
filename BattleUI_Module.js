@@ -8147,8 +8147,8 @@ class BattleUIComponent {
       };
     }
 
-    const BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET = new Set(['施放后', '命中后', '回合结束时', '状态结束后']);
-    const BATTLE_SKILL_SIDE_EFFECT_TARGET_SET = new Set(['施术者', '状态持有者', '受术目标', '双方']);
+    const BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET = new Set(['效果生效后', '命中后', '回合结束时', '效果结束后']);
+    const BATTLE_SKILL_SIDE_EFFECT_TARGET_SET = new Set(['技能释放者', '效果承受者', '双方']);
     const BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP = Object.freeze({
       全属性降低: '虚弱',
       自损反噬: '反噬',
@@ -8175,10 +8175,10 @@ class BattleUIComponent {
       if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
       const 副作用类型 = String(value.副作用类型 || '').trim();
       if (!BATTLE_SKILL_SIDE_EFFECT_TYPE_SET.has(副作用类型)) return null;
-      const rawTrigger = String(value.触发时机 || '施放后').trim();
-      const 触发时机 = BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET.has(rawTrigger) ? rawTrigger : '施放后';
-      const rawTarget = String(value.生效对象 || '施术者').trim();
-      const 生效对象 = BATTLE_SKILL_SIDE_EFFECT_TARGET_SET.has(rawTarget) ? rawTarget : '施术者';
+      const rawTrigger = String(value.触发时机 || '效果生效后').trim();
+      const 触发时机 = BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET.has(rawTrigger) ? rawTrigger : '效果生效后';
+      const rawTarget = String(value.生效对象 || '技能释放者').trim();
+      const 生效对象 = BATTLE_SKILL_SIDE_EFFECT_TARGET_SET.has(rawTarget) ? rawTarget : '技能释放者';
       const 持续回合 = Math.max(0, Math.round(Number(value.持续回合 || 0)));
       const rawChance = Number(value.触发概率 ?? 1);
       const 触发概率 = Number.isFinite(rawChance) ? Math.max(0, Math.min(1, Number(rawChance.toFixed(4)))) : 1;
@@ -8189,7 +8189,7 @@ class BattleUIComponent {
         if (String(value.数值 ?? '').trim()) normalized.数值 = String(value.数值 ?? '').trim();
         if (String(value.副数值 ?? '').trim()) normalized.副数值 = String(value.副数值 ?? '').trim();
       }
-      if (触发时机 === '状态结束后') {
+      if (触发时机 === '效果结束后') {
         const 关联状态 = String(value.关联状态 || '').trim();
         if (关联状态) normalized.关联状态 = 关联状态;
       }
@@ -8243,8 +8243,8 @@ class BattleUIComponent {
     }
 
     function estimateBattleSideEffectRisk(effect = {}, owner = null) {
-      const 生效对象 = String(effect?.生效对象 || '施术者').trim();
-      if (!['施术者', '双方'].includes(生效对象)) return 0;
+      const 生效对象 = String(effect?.生效对象 || '技能释放者').trim();
+      if (!['技能释放者', '双方'].includes(生效对象)) return 0;
       const 类型 = String(effect?.副作用类型 || '').trim();
       const 概率 = Math.max(0, Math.min(1, Number(effect?.触发概率 ?? 1) || 0));
       if (类型 === '致死献祭') return 3;
@@ -8273,8 +8273,8 @@ class BattleUIComponent {
 
     function resolveBattleSideEffectTargets(effect = {}, caster = null, targetSet = []) {
       const targets = Array.isArray(targetSet) ? targetSet.filter(Boolean) : [];
-      const targetMode = String(effect?.生效对象 || '施术者').trim();
-      if (targetMode === '受术目标' || targetMode === '状态持有者') return targets;
+      const targetMode = String(effect?.生效对象 || '技能释放者').trim();
+      if (targetMode === '效果承受者') return targets;
       if (targetMode === '双方') return Array.from(new Set([caster, ...targets].filter(Boolean)));
       return caster ? [caster] : targets;
     }
@@ -8386,7 +8386,7 @@ class BattleUIComponent {
           复活结果日志 = triggerReviveEffect(targetChar, targetChar?.name || '目标') || '';
         }
         if (Array.isArray(logs)) {
-          logs.push(`[副作用] ${targetChar.name || '目标'}触发[${effect?.副作用类型 || '未知副作用'}](${effect?.触发时机 || '施放后'})`);
+          logs.push(`[副作用] ${targetChar.name || '目标'}触发[${effect?.副作用类型 || '未知副作用'}](${effect?.触发时机 || '效果生效后'})`);
           if (复活结果日志) logs.push(复活结果日志);
           else logs.push(`[副作用致死] ${targetChar.name || '目标'}受到致死反噬，生命归零。`);
         }
@@ -8420,7 +8420,7 @@ class BattleUIComponent {
       if (options?.允许食物增幅副作用叠加 === true && 叠加食物增幅副作用状态(targetChar, stateName, 副作用状态条目, sourceName, logs)) return;
       targetChar.状态效果[stateName] = 副作用状态条目;
       if (Array.isArray(logs)) {
-        logs.push(`[副作用] ${targetChar.name || '目标'}触发[${effect?.副作用类型 || '未知副作用'}](${effect?.触发时机 || '施放后'})`);
+        logs.push(`[副作用] ${targetChar.name || '目标'}触发[${effect?.副作用类型 || '未知副作用'}](${effect?.触发时机 || '效果生效后'})`);
       }
     }
 
@@ -15472,7 +15472,7 @@ class BattleUIComponent {
           }
           const endSideEffects = normalizeBattleSkillSideEffectList(expiredCond?.副作用列表 || []);
           endSideEffects
-            .filter(item => String(item?.触发时机 || '').trim() === '状态结束后')
+            .filter(item => String(item?.触发时机 || '').trim() === '效果结束后')
             .forEach(item => {
               const boundState = String(item?.关联状态 || '').trim();
               if (boundState && boundState !== key) return;
@@ -21845,8 +21845,8 @@ class BattleUIComponent {
         const pStateEffect = 预结算效果列表.find(effect => String(effect?.原型 || '').trim() === '状态施加') || {};
         const pStateCalc = pStateEffect?.计算层效果 || createEmptyCombatEffectMap();
         const 副作用风险 = getBattleSkillSideEffectList(skill).reduce((风险, 条目) => {
-          const 生效对象 = String(条目?.生效对象 || '施术者').trim();
-          if (!['施术者', '双方'].includes(生效对象)) return 风险;
+          const 生效对象 = String(条目?.生效对象 || '技能释放者').trim();
+          if (!['技能释放者', '双方'].includes(生效对象)) return 风险;
           const 类型 = String(条目?.副作用类型 || '').trim();
           const 状态 = String(条目?.副作用状态 || BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP[类型] || '').trim();
           风险.致死 = 风险.致死 || 类型 === '致死献祭';
@@ -25643,7 +25643,7 @@ class BattleUIComponent {
             (Number(result.totalProjectedDamage || result.dmg || 0) > 0 || hostileTargetRedirectedToSelf || !hasDirectDamageEffect)
           ) {
             const skillSideEffects = getBattleSkillSideEffectList(playerAction.skill).filter(item =>
-              ['回合结束时', '状态结束后'].includes(String(item?.触发时机 || '').trim()),
+              ['回合结束时', '效果结束后'].includes(String(item?.触发时机 || '').trim()),
             );
             const stateTargetContext = getEffectTargetContext(pState);
             const stateTargets = stateTargetContext.targetSet;
@@ -26031,7 +26031,7 @@ class BattleUIComponent {
             (pState.状态名称 && pState.状态名称 !== '无' && String(result.desc || '').includes(`施加了[${pState.状态名称}]`));
           const immediateSideEffects = getBattleSkillSideEffectList(playerAction.skill).filter(item => {
             const 触发时机 = String(item?.触发时机 || '').trim();
-            if (触发时机 === '施放后') return true;
+            if (触发时机 === '效果生效后') return true;
             if (触发时机 === '命中后') return 本次命中成立;
             return false;
           });
@@ -31124,6 +31124,73 @@ class BattleUIComponent {
           return true;
         }
 
+        function 读取动作技能描述文本(动作 = {}) {
+          const 技能 = 动作?.raw_skill || 动作?.skill || {};
+          const 读取文本 = (...候选列表) => 候选列表.map(值 => String(值 ?? '').trim()).find(Boolean) || '';
+          const 描述行 = [];
+          const 添加描述 = (标签, 文本) => {
+            const 内容 = String(文本 || '').trim();
+            if (!内容 || 描述行.some(行 => 行.内容 === 内容)) return;
+            描述行.push({ 标签, 内容 });
+          };
+          添加描述('画面', 读取文本(技能.画面描述, 技能.visualDesc));
+          添加描述('效果', 读取文本(技能.效果描述, 技能.effectDesc, 技能.描述, 技能.效果));
+          const 效果列表 = Array.isArray(技能._效果数组)
+            ? 技能._效果数组
+            : Array.isArray(技能['使用效果'])
+              ? 技能['使用效果']
+              : [];
+          if (!描述行.length && 效果列表.length) {
+            const 效果摘要 = 效果列表
+              .map(效果 => {
+                if (!效果 || typeof 效果 !== 'object') return '';
+                const 原型 = 读取文本(效果.原型, 效果.type);
+                const 目标 = 读取文本(效果.目标, 效果.target);
+                const 数值 = 读取文本(效果.数值, 效果.威力倍率, 效果.状态, 效果.结算);
+                if (!原型 && Array.isArray(效果.使用效果)) {
+                  return 效果.使用效果.map(子效果 => 读取文本(子效果 && 子效果.原型)).filter(Boolean).join(' / ');
+                }
+                return [原型, 目标, 数值].filter(Boolean).join(' · ');
+              })
+              .filter(Boolean)
+              .slice(0, 4)
+              .join('；');
+            添加描述('效果', 效果摘要);
+          }
+          if (!描述行.length) 添加描述('动作', 动作.reason || 动作.action_type || 动作.category || '无额外效果说明');
+          return 描述行;
+        }
+
+        function 构建动作悬浮效果Html(动作 = {}) {
+          const 技能 = 动作?.raw_skill || 动作?.skill || {};
+          const 名称 = String(动作.name || 技能.name || 技能.魂技名 || 动作.action_type || '行动').trim();
+          const 前摇 = Number(动作.cast_time ?? 技能.前摇 ?? 0) || 0;
+          const 标签列表 = [
+            动作.category,
+            动作.source_detail && 动作.source_detail !== 动作.category ? 动作.source_detail : '',
+            ...(Array.isArray(动作.tags) ? 动作.tags : []),
+          ]
+            .map(值 => String(值 || '').trim())
+            .filter(Boolean)
+            .slice(0, 5);
+          const 标签Html = 标签列表.length
+            ? `<div class="tt-tags">${标签列表.map(标签 => `<span class="tt-tag">${htmlEscapeText(标签)}</span>`).join('')}</div>`
+            : '';
+          const 描述Html = 读取动作技能描述文本(动作)
+            .map(行 => `<span class="tt-effect-row"><span class="tt-effect-type">${htmlEscapeText(行.标签)}</span>${htmlEscapeText(行.内容)}</span>`)
+            .join('');
+          return `
+            <span class="skill-tooltip" role="tooltip">
+              <span class="tt-header">
+                <span class="tt-name">${htmlEscapeText(名称)}</span>
+                <span class="tt-cast">${htmlEscapeText(动作.cost_text || '无')} / ${htmlEscapeText(String(前摇 || '-'))}</span>
+              </span>
+              ${标签Html}
+              <span class="tt-effects">${描述Html}</span>
+            </span>
+          `;
+        }
+
         function renderUiActionGrid(actions, activeCategory = '全部') {
           const node = byId('ui-action-grid');
           if (!node) return;
@@ -31143,7 +31210,8 @@ class BattleUIComponent {
                 sourceDetail && sourceDetail !== categoryText
                   ? `${htmlEscapeText(categoryText)} · ${htmlEscapeText(sourceDetail)}`
                   : htmlEscapeText(categoryText);
-              return `<button class="action-btn${selected}" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}><span class="action-name">${htmlEscapeText(action.name)}</span><span class="action-meta"><span>${categoryHtml}</span><span class="action-cost">${htmlEscapeText(meta)}</span></span></button>`;
+              const 悬浮效果Html = 构建动作悬浮效果Html(action);
+              return `<button class="action-btn${selected}" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}><span class="action-name">${htmlEscapeText(action.name)}</span><span class="action-meta"><span>${categoryHtml}</span><span class="action-cost">${htmlEscapeText(meta)}</span></span>${悬浮效果Html}</button>`;
             })
             .join('');
           node.querySelectorAll('[data-action-id]').forEach(button => {

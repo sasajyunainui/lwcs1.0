@@ -535,12 +535,19 @@
       <div class="archive-tile-grid ${className}${紧凑情报网格类}">
           ${tileItems
             .map(
-              item => `
-            <div class="archive-tile${紧凑情报格类}"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>
+              item => {
+                const 悬浮Html = item && item.悬浮Html ? toText(item.悬浮Html, '') : '';
+                const 悬浮类 = 悬浮Html ? ' archive-tile--has-hover' : '';
+                const 标题属性 = !悬浮Html && item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : '';
+                const 聚焦属性 = 悬浮Html ? ' tabindex="0"' : '';
+                return `
+            <div class="archive-tile${紧凑情报格类}${悬浮类}"${标题属性}${聚焦属性}>
               <b>${item.label}</b>
               <span${紧凑情报值类}>${item && item.值Html ? item.值Html : item.value}</span>
+              ${悬浮Html}
             </div>
-          `,
+          `;
+              },
             )
             .join('')}
         </div>
@@ -560,12 +567,19 @@
         <div class="archive-tile-grid ${className}">
           ${(items || [])
             .map(
-              item => `
-            <div class="archive-tile ${item.className || ''} ${item.preview ? 'clickable' : ''}"${item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>
+              item => {
+                const 悬浮Html = item && item.悬浮Html ? toText(item.悬浮Html, '') : '';
+                const 悬浮类 = 悬浮Html ? ' archive-tile--has-hover' : '';
+                const 标题属性 = !悬浮Html && item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : '';
+                const 聚焦属性 = 悬浮Html ? ' tabindex="0"' : '';
+                return `
+            <div class="archive-tile ${item.className || ''}${悬浮类} ${item.preview ? 'clickable' : ''}"${item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}${标题属性}${聚焦属性}>
               <b>${item.label}</b>
               <span>${item && item.值Html ? item.值Html : item.value}</span>
+              ${悬浮Html}
             </div>
-          `,
+          `;
+              },
             )
             .join('')}
         </div>
@@ -2311,7 +2325,7 @@
 
   function 构建物品定义记录_桥接(物品名 = '', 数据 = {}) {
     const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
-    return {
+    const 记录 = {
       类型: toText(来源.类型, '药剂'),
       阶位: Math.max(0, Math.floor(toNumber(来源.阶位, 0))),
       品质: toText(来源.品质, '普通'),
@@ -2325,6 +2339,7 @@
           ? cloneJsonValue(来源.使用条件, {})
           : {},
       使用效果: Array.isArray(来源.使用效果) ? cloneJsonValue(来源.使用效果, []) : [],
+      副作用列表: Array.isArray(来源.副作用列表) ? cloneJsonValue(来源.副作用列表, []) : [],
       属性加成:
         来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)
           ? cloneJsonValue(来源.属性加成, {})
@@ -2342,6 +2357,8 @@
           ? cloneJsonValue(来源.副职业参数, {})
           : {},
     };
+    if (!记录.副作用列表.length) delete 记录.副作用列表;
+    return 记录;
   }
 
   function 构建背包状态记录_桥接(数据 = {}, 数量 = 1) {
@@ -2821,7 +2838,8 @@
         ${构建物品解析键值组('装备技能', 装备技能)}
         ${构建物品解析键值组('附带魂技', 附带魂技)}
         ${构建物品解析键值组('使用条件', 定义.使用条件)}
-        ${构建物品解析数组组('使用效果', 定义.使用效果)}
+        ${构建物品解析数组组('使用效果', 合并物品.使用效果)}
+        ${构建物品解析数组组('使用副作用', 合并物品.副作用列表)}
         ${构建物品解析键值组('锻造参数', 副职业参数)}
       </div>
     </div>`;
@@ -7760,8 +7778,8 @@
     '目标错乱',
     '施法僵直',
   ]);
-  const 技能设计台副作用触发时机选项_V1 = Object.freeze(['施放后', '命中后', '回合结束时', '状态结束后']);
-  const 技能设计台副作用生效对象选项_V1 = Object.freeze(['施术者', '受术目标', '双方', '状态持有者']);
+  const 技能设计台副作用触发时机选项_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
+  const 技能设计台副作用生效对象选项_V1 = Object.freeze(['技能释放者', '效果承受者', '双方']);
   const 技能设计台副作用配置表_V1 = Object.freeze({
     全属性降低: Object.freeze({ 状态: '虚弱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '虚弱强度' }),
     自损反噬: Object.freeze({ 状态: '反噬', 数值: '+3%', 副数值: '', 持续回合: 1, 数值标签: '反噬伤害' }),
@@ -7833,12 +7851,18 @@
   }
 
   function buildSkillDesignerSideEffectSummary(draft = {}) {
-    const list = 规范化技能设计台副作用列表(draft && draft.副作用列表);
-    if (!list.length) return '';
-    return list
+    const 施展列表 = 规范化技能设计台副作用列表(draft && draft.副作用列表);
+    const 使用列表 = normalizeSkillUiText(draft && draft.deliveryForm, '') === '造物承载'
+      ? 规范化技能设计台副作用列表(draft && draft.使用副作用列表)
+      : [];
+    const 格式化 = list => list
       .map(格式化技能设计台副作用摘要)
       .filter(Boolean)
       .join('；');
+    const 片段 = [];
+    if (施展列表.length) 片段.push(`施展副作用：${格式化(施展列表)}`);
+    if (使用列表.length) 片段.push(`使用副作用：${格式化(使用列表)}`);
+    return 片段.join('；');
   }
 
   function 规范化技能设计台副作用条目(value = {}, recordViolation = () => {}) {
@@ -7857,8 +7881,8 @@
       if (!允许字段.includes(key)) recordViolation(`副作用列表.${key}`);
     });
     const 配置 = 技能设计台副作用配置表_V1[副作用类型] || {};
-    const 触发时机 = normalizeSkillUiText(value['触发时机'], '施放后');
-    const 生效对象 = normalizeSkillUiText(value['生效对象'], '施术者');
+    const 触发时机 = normalizeSkillUiText(value['触发时机'], '效果生效后');
+    const 生效对象 = normalizeSkillUiText(value['生效对象'], '技能释放者');
     if (!技能设计台副作用触发时机选项_V1.includes(触发时机)) recordViolation('副作用列表.触发时机');
     if (!技能设计台副作用生效对象选项_V1.includes(生效对象)) recordViolation('副作用列表.生效对象');
     const 概率文本 = normalizeSkillUiText(value['触发概率'], '1');
@@ -7867,8 +7891,8 @@
     if (!Number.isFinite(概率) || 概率 < 0 || 概率 > 1) recordViolation('副作用列表.触发概率');
     const 条目 = {
       副作用类型,
-      触发时机: 技能设计台副作用触发时机选项_V1.includes(触发时机) ? 触发时机 : '施放后',
-      生效对象: 技能设计台副作用生效对象选项_V1.includes(生效对象) ? 生效对象 : '施术者',
+      触发时机: 技能设计台副作用触发时机选项_V1.includes(触发时机) ? 触发时机 : '效果生效后',
+      生效对象: 技能设计台副作用生效对象选项_V1.includes(生效对象) ? 生效对象 : '技能释放者',
       触发概率: Number.isFinite(概率) ? Math.max(0, Math.min(1, Number(概率.toFixed(4)))) : 1,
     };
     if (副作用类型 === '致死献祭') return 条目;
@@ -7882,7 +7906,7 @@
     const 副数值 = normalizeSkillUiText(value['副数值'], 配置.副数值 || '');
     if (数值) 条目['数值'] = 数值;
     if (副数值) 条目['副数值'] = 副数值;
-    if (条目['触发时机'] === '状态结束后') {
+    if (条目['触发时机'] === '效果结束后') {
       const 关联状态 = normalizeSkillUiText(value['关联状态'], '');
       if (!关联状态) recordViolation('副作用列表.关联状态');
       else 条目['关联状态'] = 关联状态;
@@ -7897,10 +7921,10 @@
   }
 
   function 创建技能设计台默认副作用条目(副作用类型 = '自损反噬', 选项 = {}) {
-    const 默认对象 = normalizeSkillUiText(选项?.生效对象, '施术者');
+    const 默认对象 = normalizeSkillUiText(选项?.生效对象, '技能释放者');
     return 规范化技能设计台副作用条目({ 副作用类型, 生效对象: 默认对象 }, () => {}) || {
       副作用类型: '自损反噬',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认对象,
       触发概率: 1,
       持续回合: 1,
@@ -7909,10 +7933,11 @@
     };
   }
 
-  function 读取技能设计台默认副作用对象(draft = {}) {
-    return normalizeSkillUiText(draft?.type, '') === '食物系' || normalizeSkillUiText(draft?.deliveryForm, '') === '造物承载'
-      ? '受术目标'
-      : '施术者';
+  function 读取技能设计台默认副作用对象(draft = {}, 阶段 = '施展') {
+    if (normalizeSkillUiText(阶段, '施展') === '使用') return '效果承受者';
+    return normalizeSkillUiText(draft?.type, '') === '食物系' && normalizeSkillUiText(draft?.deliveryForm, '') !== '造物承载'
+      ? '效果承受者'
+      : '技能释放者';
   }
 
   function 格式化技能设计台概率百分比(value = 1) {
@@ -7933,12 +7958,12 @@
     };
     const 数值 = 百分值(条目 && 条目['数值']);
     const 副数值 = 百分值(条目 && 条目['副数值']);
-    const 触发 = normalizeSkillUiText(条目 && 条目['触发时机'], '施放后');
-    const 对象 = normalizeSkillUiText(条目 && 条目['生效对象'], '施术者');
+    const 触发 = normalizeSkillUiText(条目 && 条目['触发时机'], '效果生效后');
+    const 对象 = normalizeSkillUiText(条目 && 条目['生效对象'], '技能释放者');
     const 效果 = ({
       全属性降低: `力量、防御、敏捷降低${数值 || 10}%`,
       自损反噬: `立即承受上限${数值 || 3}%反噬伤害`,
-      致死献祭: '施术者进入致死代价',
+      致死献祭: '技能释放者进入致死代价',
       精神紊乱: `精神判定降低${数值 || 10}%`,
       魂力反噬: `魂力流失${数值 || 5}%`,
       命中下降: `命中率降低${数值 || 10}%`,
@@ -7949,16 +7974,17 @@
     return `${触发}，${Math.round(概率 * 100)}%使${对象}${效果}${持续 > 0 ? `，持续${持续}回合` : ''}`;
   }
 
-  function 构建技能设计台副作用行列表(副作用列表 = []) {
+  function 构建技能设计台副作用行列表(副作用列表 = [], 选项 = {}) {
     const 列表 = 规范化技能设计台副作用列表(副作用列表);
     if (!列表.length) return '';
+    const 字段名 = normalizeSkillUiText(选项 && 选项.字段名, '副作用列表');
     return 列表.map(条目 => {
       const 类型 = normalizeSkillUiText(条目['副作用类型'], '自损反噬');
       const 是致死献祭 = 类型 === '致死献祭';
       const 配置 = 技能设计台副作用配置表_V1[类型] || {};
       const 效果说明 = 格式化技能设计台副作用摘要(条目);
       return `
-        <div class="skill-designer-side-effect-row" data-skill-designer-side-effect-row>
+        <div class="skill-designer-side-effect-row" data-skill-designer-side-effect-row data-skill-designer-side-effect-scope="${escapeHtmlAttr(字段名)}">
           <button type="button" class="skill-designer-remove-btn" data-skill-designer-remove-side-effect data-skill-designer-disableable aria-label="删除副作用" title="删除副作用">×</button>
           <label class="mvu-editor-field">
             <span class="mvu-editor-label">类型</span>
@@ -7969,13 +7995,13 @@
           <label class="mvu-editor-field">
             <span class="mvu-editor-label">时机</span>
             <select class="mvu-editor-select" data-skill-designer-side-effect-field="触发时机" data-skill-designer-disableable>
-              ${buildSkillDesignerSelectOptions(技能设计台副作用触发时机选项_V1, 条目['触发时机'] || '施放后')}
+              ${buildSkillDesignerSelectOptions(技能设计台副作用触发时机选项_V1, 条目['触发时机'] || '效果生效后')}
             </select>
           </label>
           <label class="mvu-editor-field">
             <span class="mvu-editor-label">对象</span>
             <select class="mvu-editor-select" data-skill-designer-side-effect-field="生效对象" data-skill-designer-disableable>
-              ${buildSkillDesignerSelectOptions(技能设计台副作用生效对象选项_V1, 条目['生效对象'] || '施术者')}
+              ${buildSkillDesignerSelectOptions(技能设计台副作用生效对象选项_V1, 条目['生效对象'] || '技能释放者')}
             </select>
           </label>
           <label class="mvu-editor-field">
@@ -7998,9 +8024,9 @@
               </label>
             ` : ''}
             ${效果说明 ? `<div class="mvu-editor-field skill-designer-side-effect-summary"><span>${htmlEscape(效果说明)}</span></div>` : ''}
-            <label class="mvu-editor-field" data-skill-designer-side-effect-link-field${条目['触发时机'] === '状态结束后' ? '' : ' hidden style="display:none"'}>
-              <span class="mvu-editor-label">关联状态</span>
-              <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['关联状态'] || '')}" placeholder="灼烧" data-skill-designer-side-effect-field="关联状态" data-skill-designer-disableable />
+            <label class="mvu-editor-field" data-skill-designer-side-effect-link-field${条目['触发时机'] === '效果结束后' ? '' : ' hidden style="display:none"'}>
+              <span class="mvu-editor-label">关联效果</span>
+              <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['关联状态'] || '')}" placeholder="食物增幅" data-skill-designer-side-effect-field="关联状态" data-skill-designer-disableable />
             </label>
           `}
         </div>
@@ -12463,6 +12489,7 @@
       effectDesc: normalizeSkillUiText(safeSkill['效果描述'], '未知'),
       summaryText: normalizeSkillUiText(designDraft['设计摘要'], ''),
       副作用列表: Array.isArray(safeSkill['副作用列表']) ? cloneJsonValue(safeSkill['副作用列表']) : [],
+      使用副作用列表: Array.isArray(constructTemplate?.['副作用列表']) ? cloneJsonValue(constructTemplate['副作用列表']) : [],
       启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
       技能掌控度: 启用技能掌控度 ? levelControl : null,
       技能掌控度中心等级: 启用技能掌控度 && levelControl ? String(levelControl.中心等级) : '',
@@ -17330,6 +17357,7 @@
           : [],
       fusionParticipants: derivedFusionFields.fusionParticipants,
       副作用列表: 规范化技能设计台副作用列表(baseDraft.副作用列表),
+      使用副作用列表: 规范化技能设计台副作用列表(baseDraft.使用副作用列表),
       技能掌控度: levelControl,
       技能掌控度中心等级: levelControl ? String(levelControl.中心等级) : '',
       技能掌控度圆满等级: levelControl ? String(levelControl.圆满等级) : '',
@@ -17419,8 +17447,12 @@
           return createSkillDesignerFusionParticipant(role, charKey, charName, spirit);
         })
         .filter(participant => participant.charKey || participant.charName || participant.spirit);
-    const readSideEffects = () => 规范化技能设计台副作用列表(
-      Array.from(mountEl ? mountEl.querySelectorAll('[data-skill-designer-side-effect-row]') : [])
+    const readSideEffects = (字段名 = '副作用列表') => {
+      const 容器 = mountEl
+        ? mountEl.querySelector(`[data-skill-designer-side-effect-list="${字段名}"]`)
+        : null;
+      return 规范化技能设计台副作用列表(
+        Array.from(容器 ? 容器.querySelectorAll('[data-skill-designer-side-effect-row]') : [])
         .map(row => {
           const 条目 = {};
           row.querySelectorAll('[data-skill-designer-side-effect-field]').forEach(input => {
@@ -17433,7 +17465,8 @@
           });
           return 条目;
         }),
-    );
+      );
+    };
     const 被动开关值 = readToggleField('启用被动');
     const 类型字段值 = readField('type');
     const typeMeta = resolveSkillDesignerTypeMeta(previewMeta, 被动开关值 === '无' ? '' : 类型字段值);
@@ -17517,7 +17550,8 @@
       fusionPartner: derivedFusionFields.fusionPartner,
       fusionSourceSpirits: derivedFusionFields.fusionSourceSpirits,
       fusionParticipants: derivedFusionFields.fusionParticipants,
-      副作用列表: readSideEffects(),
+      副作用列表: readSideEffects('副作用列表'),
+      使用副作用列表: readSideEffects('使用副作用列表'),
       技能掌控度: levelControl,
       技能掌控度中心等级: 启用技能掌控度 ? readField('技能掌控度中心等级') : '',
       技能掌控度圆满等级: 启用技能掌控度 ? readField('技能掌控度圆满等级') : '',
@@ -19919,6 +19953,8 @@
       ),
       使用效果: usageEffects,
     });
+    const 使用副作用列表 = 规范化技能设计台副作用列表(draft && draft.使用副作用列表);
+    if (使用副作用列表.length) result['副作用列表'] = 使用副作用列表;
     const durationTick = Math.max(0, parseSkillDesignerIntegerInputValue(draft && draft.constructDurationTick, 0, 0));
     if (durationTick > 0) result['有效期tick'] = durationTick;
     return result;
@@ -19937,11 +19973,14 @@
   function buildSkillDesignerUpdatedSkill(skillSource = {}, formState = {}, previewMeta = {}, 根数据 = {}) {
     const safeSkill = {};
     const 原始副作用违规列表 = [];
-    if (Array.isArray(formState && formState['副作用列表'])) {
-      规范化技能设计台副作用列表(formState['副作用列表'], path => {
-        if (path) 原始副作用违规列表.push(path);
+    const 记录原始副作用违规 = (列表, 前缀) => {
+      if (!Array.isArray(列表)) return;
+      规范化技能设计台副作用列表(列表, path => {
+        if (path) 原始副作用违规列表.push(path.replace(/^副作用列表/, 前缀));
       });
-    }
+    };
+    记录原始副作用违规(formState && formState['副作用列表'], '副作用列表');
+    记录原始副作用违规(formState && formState['使用副作用列表'], '使用副作用列表');
     if (原始副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(原始副作用违规列表)).join('、')}`);
     const 原始范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
     if (原始范围 !== 'art') {
@@ -20007,6 +20046,9 @@
     const 副作用违规列表 = [];
     const 副作用列表 = 规范化技能设计台副作用列表(normalized['副作用列表'], path => {
       if (path) 副作用违规列表.push(path);
+    });
+    规范化技能设计台副作用列表(normalized['使用副作用列表'], path => {
+      if (path) 副作用违规列表.push(path.replace(/^副作用列表/, '使用副作用列表'));
     });
     if (副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(副作用违规列表)).join('、')}`);
     if (副作用列表.length) safeSkill['副作用列表'] = 副作用列表;
@@ -20297,6 +20339,7 @@
       const type = normalizeSkillUiText(draft && draft.type, 推断技能设计台技能分类(effectArray, '输出'));
       const target = normalizeSkillUiText(draft && draft.target, '未知');
       const cost = 构建技能设计台运行态消耗展示(skill && skill['消耗'], effectArray, 技能预览元数据, skill);
+      const 前摇 = Math.max(0, toNumber(skill && skill['前摇'], 0));
       const 机制推断 = inferSkillDesignerMechanicsFromEffectArray(effectArray, type, target);
       const mainRole = normalizeSkillUiText(
         (draft && draft.mainRole) ||
@@ -20378,6 +20421,7 @@
         type,
         target,
         cost,
+        前摇,
         desc: desc || '未知',
         visualDesc,
         effectDesc,
@@ -20475,18 +20519,67 @@
     return rows.length ? `<div class="ring-hover-meta">${rows.join('')}</div>` : '';
   }
 
+  function 构建技能悬浮详情内容(技能, 选项 = {}) {
+    const 安全技能 = 技能 && typeof 技能 === 'object' ? 技能 : {};
+    const 显示标题 = 选项 && 选项.显示标题 !== false;
+    const 元信息行 = [];
+    const 添加元信息 = (label, value) => {
+      const 文本 = toText(value, '').trim();
+      if (!文本 || 文本 === '未知') return;
+      元信息行.push(
+        `<div class="ring-hover-meta-row"><em>${htmlEscape(label)}</em><strong>${htmlEscape(文本)}</strong></div>`,
+      );
+    };
+    添加元信息('类别', [安全技能.category || 安全技能.type, 安全技能.mainRole].map(item => toText(item, '').trim()).filter(Boolean).join(' · '));
+    添加元信息('目标', 安全技能.target);
+    添加元信息('消耗', 安全技能.cost);
+    const 前摇 = Math.max(0, toNumber(安全技能.前摇, 0));
+    if (前摇 > 0) 添加元信息('前摇', `${formatNumber(前摇)} tick`);
+    const 元信息Html = 元信息行.length ? `<div class="ring-hover-meta">${元信息行.join('')}</div>` : '';
+    const 文案行Html = [
+      ['简易效果', 安全技能.effectSummary],
+      ['画面描述', 安全技能.visualDesc],
+      ['效果描述', 安全技能.effectDesc],
+    ]
+      .map(([label, value]) => {
+        const 文本 = toText(value, '').trim();
+        if (!文本 || 文本 === '未知') return '';
+        return `<div class="ring-hover-copy"><em>${htmlEscape(label)}</em><span>${htmlEscape(文本)}</span></div>`;
+      })
+      .filter(Boolean)
+      .join('');
+    const 标签列表 = Array.isArray(安全技能.tags)
+      ? 安全技能.tags
+          .map(item => toText(item, '').trim())
+          .filter(Boolean)
+          .slice(0, 6)
+      : [];
+    const 标签Html = 标签列表.length
+      ? `<div class="ring-hover-tags">${标签列表.map(item => `<span class="ring-hover-chip">${htmlEscape(item)}</span>`).join('')}</div>`
+      : '';
+    const 预览属性 = 安全技能.preview
+      ? ` data-preview="${escapeHtmlAttr(安全技能.preview)}" data-detail-mode="embed"`
+      : '';
+    return `
+        <div class="ring-hover-skill skill-hover-detail${安全技能.preview ? ' clickable' : ''}"${预览属性}>
+          ${显示标题 ? `<b>${htmlEscape(安全技能.name || '未命名技能')}</b>` : ''}
+          ${元信息Html}
+          ${文案行Html || '<div class="ring-hover-copy"><em>效果描述</em><span>未知</span></div>'}
+          ${标签Html}
+          ${安全技能.constructActionHtml || ''}
+        </div>
+      `;
+  }
+
+  function 构建技能悬浮卡片(技能, 副标题输入 = '') {
+    const 标题 = toText(技能 && 技能.name, '未命名技能');
+    const 副标题 = toText(副标题输入, '').trim();
+    return `<div class="ring-hover-card skill-hover-card"><div class="ring-hover-title">${htmlEscape(标题)}</div>${副标题 ? `<div class="ring-hover-desc">${htmlEscape(副标题)}</div>` : ''}${构建技能悬浮详情内容(技能, { 显示标题: false })}</div>`;
+  }
+
   function buildRingHoverCardMarkup(ring) {
     const skills = (ring && Array.isArray(ring.skills) ? ring.skills : [])
-      .map(
-        skill => `
-        <div class=\"ring-hover-skill ${skill && skill.preview ? 'clickable' : ''}\"${skill && skill.preview ? ` data-preview=\"${escapeHtmlAttr(skill.preview)}\" data-detail-mode=\"embed\"` : ''}>
-          <b>${htmlEscape(skill && skill.name ? skill.name : '未命名技能')}</b>
-          <div class=\"ring-hover-copy\"><em>画面描述</em><span>${htmlEscape(skill && skill.visualDesc ? skill.visualDesc : '未知')}</span></div>
-          <div class=\"ring-hover-copy\"><em>效果描述</em><span>${htmlEscape(skill && skill.effectDesc ? skill.effectDesc : '未知')}</span></div>
-          ${skill && skill.constructActionHtml ? skill.constructActionHtml : ''}
-        </div>
-      `,
-      )
+      .map(技能 => 构建技能悬浮详情内容(技能, { 显示标题: true }))
       .join('');
     return `<div class=\"ring-hover-card\"><div class=\"ring-hover-title\">${htmlEscape(toText(ring && ring.title, '魂环技能'))}</div><div class=\"ring-hover-desc\">${htmlEscape(toText(ring && ring.desc, ''))}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
   }
@@ -24661,13 +24754,17 @@
     if (!list.length) return `<div class="mvu-shell-lite-empty">${htmlEscape(fallback)}</div>`;
     return list
       .map(
-        item => `
-        <div class="mvu-shell-lite-item">
+        item => {
+          const 悬浮Html = item && item.悬浮Html ? toText(item.悬浮Html, '') : '';
+          return `
+        <div class="mvu-shell-lite-item${悬浮Html ? ' mvu-shell-lite-item--has-hover' : ''}"${悬浮Html ? ' tabindex="0"' : ''}>
           <b>${htmlEscape(shortenText(item.title || '未命名', 22))}</b>
           ${item.meta ? `<span>${htmlEscape(shortenText(item.meta, 30))}</span>` : ''}
           ${item.note ? `<em>${htmlEscape(shortenText(item.note, 34))}</em>` : ''}
+          ${悬浮Html}
         </div>
-      `,
+      `;
+        },
       )
       .join('');
   }
@@ -24813,6 +24910,7 @@
           title: toText(skill && skill.name, '魂技'),
           meta: shortenText(toText(ring && ring.title, '魂环'), 24),
           note: shortenText(toText(skill && skill.effectSummary, toText(skill && skill.effectDesc, '')), 30),
+          悬浮Html: 构建技能悬浮卡片(skill, toText(ring && ring.title, '魂环')),
         })),
       )
       .slice(0, 5);
@@ -24885,6 +24983,7 @@
         title: toText(skill && skill.name, '血脉能力'),
         meta: toText(skill && skill.category, '能力'),
         note: toText(skill && skill.effectSummary, toText(skill && skill.effectDesc, '')),
+        悬浮Html: 构建技能悬浮卡片(skill, toText(skill && skill.category, '能力')),
       }));
     return {
       title: '血脉',
@@ -26394,7 +26493,7 @@
           const attributeGrid = mountEl.querySelector('[data-skill-designer-attribute-grid]');
           const mechanicParamGrid = mountEl.querySelector('[data-skill-designer-mechanic-param-grid]');
           const prototypeGrid = mountEl.querySelector('[data-skill-designer-prototype-grid="main"]');
-          const sideEffectList = mountEl.querySelector('[data-skill-designer-side-effect-list]');
+          const sideEffectLists = () => Array.from(mountEl.querySelectorAll('[data-skill-designer-side-effect-list]'));
           const masterySection = mountEl.querySelector('[data-skill-designer-mastery-section]');
           const passiveSections = () => Array.from(mountEl.querySelectorAll('[data-skill-designer-passive-section]'));
           const constructSection = mountEl.querySelector('[data-skill-designer-construct-section]');
@@ -26612,12 +26711,14 @@
           };
 
           const rebuildSideEffectList = (draftOverride = null) => {
-            if (!sideEffectList) return;
             const currentDraft = draftOverride || syncDraftCache();
-            sideEffectList.innerHTML = 构建技能设计台副作用行列表(currentDraft.副作用列表);
-            const section = sideEffectList.closest('[data-skill-designer-side-effect-section]');
-            const hasRows = !!sideEffectList.querySelector('[data-skill-designer-side-effect-row]');
-            if (section) section.classList.toggle('skill-designer-section-compact', !hasRows);
+            sideEffectLists().forEach(sideEffectList => {
+              const 字段名 = normalizeSkillUiText(sideEffectList.getAttribute('data-skill-designer-side-effect-list'), '副作用列表');
+              sideEffectList.innerHTML = 构建技能设计台副作用行列表(currentDraft[字段名], { 字段名 });
+              const section = sideEffectList.closest('[data-skill-designer-side-effect-section]');
+              const hasRows = !!sideEffectList.querySelector('[data-skill-designer-side-effect-row]');
+              if (section) section.classList.toggle('skill-designer-section-compact', !hasRows);
+            });
           };
 
           const syncSideEffectRow = row => {
@@ -26631,7 +26732,8 @@
                 : '';
             });
             const next = 规范化技能设计台副作用条目(current, () => {}) || 创建技能设计台默认副作用条目();
-            row.outerHTML = 构建技能设计台副作用行列表([next]);
+            const 字段名 = normalizeSkillUiText(row.getAttribute('data-skill-designer-side-effect-scope'), '副作用列表');
+            row.outerHTML = 构建技能设计台副作用行列表([next], { 字段名 });
           };
           const syncParamSuppressObject = target => {
             const block = target ? target.closest('[data-skill-designer-param-suppress-object-editor]') : null;
@@ -27053,6 +27155,13 @@
               prototypeTitle.textContent = isConstruct ? '使用效果' : '原型设计';
               prototypeTitle.title = 标题提示表[标题] || '';
             }
+            const 施展副作用标题 = mountEl.querySelector('[data-skill-designer-side-effect-title]');
+            if (施展副作用标题) 施展副作用标题.textContent = isConstruct ? '施展副作用' : '副作用';
+            const 使用副作用区 = mountEl.querySelector('[data-skill-designer-side-effect-section="使用副作用列表"]');
+            if (使用副作用区) {
+              使用副作用区.hidden = !isConstruct;
+              使用副作用区.style.display = isConstruct ? '' : 'none';
+            }
           };
 
           const syncScalingField = block => {
@@ -27444,11 +27553,11 @@
                 syncSideEffectRow(target.closest('[data-skill-designer-side-effect-row]'));
               } else {
                 const row = target.closest('[data-skill-designer-side-effect-row]');
-                const trigger = normalizeSkillUiText(row?.querySelector('[data-skill-designer-side-effect-field="触发时机"]')?.value, '施放后');
+                const trigger = normalizeSkillUiText(row?.querySelector('[data-skill-designer-side-effect-field="触发时机"]')?.value, '效果生效后');
                 const linkField = row?.querySelector('[data-skill-designer-side-effect-link-field]');
                 if (linkField) {
-                  linkField.hidden = trigger !== '状态结束后';
-                  linkField.style.display = trigger === '状态结束后' ? '' : 'none';
+                  linkField.hidden = trigger !== '效果结束后';
+                  linkField.style.display = trigger === '效果结束后' ? '' : 'none';
                 }
               }
             }
@@ -27752,11 +27861,13 @@
             if (addSideEffect) {
               event.preventDefault();
               const currentDraft = syncDraftCache();
+              const 字段名 = normalizeSkillUiText(addSideEffect.getAttribute('data-skill-designer-add-side-effect'), '副作用列表');
+              const 阶段 = 字段名 === '使用副作用列表' ? '使用' : '施展';
               const nextDraft = {
                 ...currentDraft,
-                副作用列表: [
-                  ...规范化技能设计台副作用列表(currentDraft.副作用列表),
-                  创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(currentDraft) }),
+                [字段名]: [
+                  ...规范化技能设计台副作用列表(currentDraft[字段名]),
+                  创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(currentDraft, 阶段) }),
                 ],
               };
               writeCachedSkillDesignerDraft(previewKey, nextDraft);
@@ -27963,13 +28074,22 @@
                     </div>
                   </section>
 
-                  <section class=\"mvu-editor-section${规范化技能设计台副作用列表(designerDraft['副作用列表']).length ? '' : ' skill-designer-section-compact'}\" data-skill-designer-side-effect-section>
-                    <div class=\"mvu-editor-section-title\"${标题提示('副作用')}>副作用</div>
-                    <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-side-effect-list\" data-skill-designer-side-effect-list>
-                      ${构建技能设计台副作用行列表(designerDraft['副作用列表'])}
+                  <section class=\"mvu-editor-section${规范化技能设计台副作用列表(designerDraft['副作用列表']).length ? '' : ' skill-designer-section-compact'}\" data-skill-designer-side-effect-section=\"副作用列表\">
+                    <div class=\"mvu-editor-section-title\" data-skill-designer-side-effect-title>${是造物承载 ? '施展副作用' : '副作用'}</div>
+                    <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-side-effect-list\" data-skill-designer-side-effect-list=\"副作用列表\">
+                      ${构建技能设计台副作用行列表(designerDraft['副作用列表'], { 字段名: '副作用列表' })}
                     </div>
                     <div class=\"mvu-editor-actions\">
-                      <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-side-effect data-skill-designer-disableable>+ 副作用</button>
+                      <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-side-effect=\"副作用列表\" data-skill-designer-disableable>+ 副作用</button>
+                    </div>
+                  </section>
+                  <section class=\"mvu-editor-section${规范化技能设计台副作用列表(designerDraft['使用副作用列表']).length ? '' : ' skill-designer-section-compact'}\" data-skill-designer-side-effect-section=\"使用副作用列表\"${是造物承载 ? '' : ' hidden style=\"display:none\"'}>
+                    <div class=\"mvu-editor-section-title\">使用副作用</div>
+                    <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-side-effect-list\" data-skill-designer-side-effect-list=\"使用副作用列表\">
+                      ${构建技能设计台副作用行列表(designerDraft['使用副作用列表'], { 字段名: '使用副作用列表' })}
+                    </div>
+                    <div class=\"mvu-editor-actions\">
+                      <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-side-effect=\"使用副作用列表\" data-skill-designer-disableable>+ 副作用</button>
                     </div>
                   </section>
 
@@ -33016,6 +33136,24 @@
     }
     battleInlineDismissed = false;
     removeBattleReturnEntries();
+    const 当前宿主 = getBattleInlineHost();
+    if (
+      activeBattleUI &&
+      当前宿主 &&
+      activeBattleUI.container === 当前宿主 &&
+      typeof activeBattleUI.updateData === 'function'
+    ) {
+      const 当前快照 = liveSnapshot || lastRenderableSnapshot;
+      const 当前战斗 = normalizeCombatForBattleUI(当前快照);
+      if (当前战斗 && 当前战斗.进行中 && isSnapshotPlayerControlled(当前快照)) {
+        activeBattleUI.updateData(buildBattleUiSnapshot(当前快照, 当前战斗));
+      }
+      return true;
+    }
+    if (pendingBattleInlineMount) {
+      await pendingBattleInlineMount;
+      return !!activeBattleUI;
+    }
     await openBattleInlineSurface();
     await refreshLiveSnapshot({ force: true, reopenBattle: true });
     return !!activeBattleUI;
@@ -34855,6 +34993,15 @@ ${播报文本}
   }
 
   function openBattleInlineSurface() {
+    const 当前宿主 = getBattleInlineHost();
+    const 统一宿主 = getUnifiedInlineHost();
+    if (
+      当前宿主 &&
+      统一宿主 &&
+      toText(统一宿主.dataset.unifiedPreview, '').trim() === BATTLE_INLINE_PREVIEW_KEY
+    ) {
+      return Promise.resolve(当前宿主);
+    }
     if (typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ !== 'function') {
       return Promise.resolve(null);
     }
@@ -36280,13 +36427,6 @@ ${播报文本}
       },
     ]);
     await refreshLiveSnapshot({ force: true, reopenBattle: true });
-    try {
-      if (typeof window.__MVU_OPEN_BATTLE_UI__ === 'function') {
-        await window.__MVU_OPEN_BATTLE_UI__();
-      }
-    } catch (error) {
-      console.warn('[DragonUI] 自动打开战斗终端失败。', error);
-    }
     showUiToast('战斗模块已开启。', 'info', 2400);
     return { ok: true, combatData };
   }
@@ -37862,7 +38002,6 @@ ${播报文本}
       if (!result?.ok) {
         return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_open_failed', { result });
       }
-      await refreshLiveSnapshot({ force: true });
       return 构建模块路由成功结果(moduleKind, request, { result });
     }
 
@@ -39079,13 +39218,13 @@ ${播报文本}
   function 是否保留卡片内部控件点击(eventTarget, mountEl) {
     if (!eventTarget || typeof eventTarget.closest !== 'function') return false;
     const 控件节点 = eventTarget.closest(
-      'button, a, input, select, textarea, label, summary, [role="button"], [role="menuitem"], [contenteditable="true"]',
+      'button, a, input, select, textarea, label, summary, [role="button"], [role="menuitem"], [contenteditable="true"], .skill-inline-action-btn[data-skill-action]',
     );
     if (!控件节点 || (mountEl && !mountEl.contains(控件节点))) return false;
     const 自带预览入口 = 控件节点.closest('.clickable[data-preview]');
     if (自带预览入口 === 控件节点) return false;
-    const 外层状态卡 = 控件节点.closest('.mvu-unified-card.clickable[data-preview]');
-    return !!(外层状态卡 && 外层状态卡 !== 控件节点);
+    const 外层预览卡 = 控件节点.closest('.clickable[data-preview]');
+    return !!(外层预览卡 && 外层预览卡 !== 控件节点);
   }
 
   function 打开预览入口(预览入口, 预览键输入, 选项 = {}) {
@@ -41473,6 +41612,73 @@ ${播报文本}
       return true;
     },
 
+    结算战斗外副作用列表(charData = {}, 副作用列表 = [], 来源名 = '技能', logs = []) {
+      const 列表 = 规范化技能设计台副作用列表(副作用列表);
+      if (!列表.length) return 0;
+      if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
+      if (!charData.属性.状态效果 || typeof charData.属性.状态效果 !== 'object' || Array.isArray(charData.属性.状态效果))
+        charData.属性.状态效果 = {};
+      const 取百分 = (值, 回退 = 0) => {
+        const 数值 = Number(String(值 ?? '').replace(/[+%-]/g, ''));
+        return Number.isFinite(数值) ? Math.abs(数值) / 100 : 回退;
+      };
+      const 限定倍率 = 值 => Math.max(0.01, Number((1 - Math.max(0, 值)).toFixed(4)));
+      let 已结算 = 0;
+      列表.forEach(条目 => {
+        const 概率 = Math.max(0, Math.min(1, Number(条目.触发概率 ?? 1)));
+        if (概率 < 1 && Math.random() > 概率) return;
+        const 类型 = toText(条目.副作用类型, '').trim();
+        if (!类型) return;
+        if (类型 === '致死献祭') {
+          if (!charData.状态 || typeof charData.状态 !== 'object') charData.状态 = {};
+          charData.属性.HP = 0;
+          charData.状态.存活 = false;
+          charData.存活 = false;
+          charData.状态.死亡类型 = '副作用';
+          logs.push(`${来源名}:致死献祭`);
+          已结算 += 1;
+          return;
+        }
+        const 配置 = 技能设计台副作用配置表_V1[类型] || {};
+        const 状态名 = toText(条目.副作用状态 || 配置.状态 || 类型, 类型);
+        const 数值 = 取百分(条目.数值, 取百分(配置.数值, 0));
+        const 副数值 = 取百分(条目.副数值, 取百分(配置.副数值, 0));
+        const 记录 = {
+          类型: 'debuff',
+          层数: 1,
+          描述: `${来源名}触发${类型}`,
+          持续回合: Math.max(1, Math.round(toNumber(条目.持续回合, 配置.持续回合 || 1))),
+          副作用来源: 来源名,
+        };
+        if (类型 === '全属性降低') {
+          const 倍率 = 限定倍率(数值);
+          记录.面板倍率 = { 力量: 倍率, 防御: 倍率, 敏捷: 倍率, 体力上限: 倍率, 魂力上限: 倍率, 精神力上限: 倍率 };
+        }
+        const 战斗效果 = {};
+        if (类型 === '自损反噬') 战斗效果.misfortune_backlash_ratio = 数值 || 0.03;
+        if (类型 === '精神紊乱') {
+          战斗效果.random_target_rate = 数值 || 0.25;
+          战斗效果.reaction_penalty = 副数值 || 0.08;
+        }
+        if (类型 === '魂力反噬') {
+          战斗效果.sp_gain_ratio = -(数值 || 0.05);
+          战斗效果.cost_delta_ratio = 副数值 || Math.max(0.05, 数值 || 0.05);
+        }
+        if (类型 === '命中下降') 战斗效果.hit_penalty = 数值 || 0.1;
+        if (类型 === '动作迟缓') {
+          战斗效果.reaction_penalty = 数值 || 0.15;
+          战斗效果.dodge_penalty = 副数值 || 0.1;
+        }
+        if (类型 === '目标错乱') 战斗效果.random_target_rate = 数值 || 0.3;
+        if (类型 === '施法僵直') 战斗效果.cast_speed_penalty = 数值 || 0.2;
+        if (Object.keys(战斗效果).length) 记录.战斗效果 = 战斗效果;
+        charData.属性.状态效果[状态名] = 记录;
+        logs.push(`${来源名}:${状态名}`);
+        已结算 += 1;
+      });
+      return 已结算;
+    },
+
     结算复活写回代价(charData = {}, value = {}, logs = [], 当前tick = 0) {
       const 代价类型 = toText(value.复活代价类型, '状态代价');
       const 代价对象 = toText(value.复活代价对象, '虚弱');
@@ -42118,6 +42324,8 @@ ${播报文本}
             ? cloneJsonValue(effect.副职业参数, {})
             : {},
       };
+      const 使用副作用列表 = cloneJsonValue(Array.isArray(effect?.副作用列表) ? effect.副作用列表 : [], []);
+      if (使用副作用列表.length) itemDefinition.副作用列表 = 使用副作用列表;
       const itemState = {
         数量: Math.max(1, toNumber(effect?.数量, 1)),
         来源: itemName,
@@ -42178,6 +42386,7 @@ ${播报文本}
             if (appliedCount <= 0) {
               throw new Error('当前物品的使用效果无法在背包场景中结算。');
             }
+            this.结算战斗外副作用列表(charData, itemData.副作用列表, `${itemName}使用副作用`, logs);
 
             const currentQty = Math.max(1, toNumber(inventory[itemName].数量, 1));
             if (currentQty <= 1) delete inventory[itemName];
@@ -42273,10 +42482,12 @@ ${播报文本}
                   序号 += 1;
                 }
               }
-              statData.物品[物品定义键] = {
+              const 下一物品定义 = {
                 ...构建物品定义记录_桥接(itemName, statData.物品[物品定义键]),
                 ...itemDefinition,
               };
+              if (!Array.isArray(itemDefinition.副作用列表) || !itemDefinition.副作用列表.length) delete 下一物品定义.副作用列表;
+              statData.物品[物品定义键] = 下一物品定义;
               const existing =
                 charData.背包[背包键] && typeof charData.背包[背包键] === 'object' ? charData.背包[背包键] : null;
               if (existing) {
@@ -42287,6 +42498,8 @@ ${播报文本}
               producedItems.push(`${背包键}×${toNumber(itemState.数量, 1)}`);
             });
             写入场外魂技冷却(skill, currentTick);
+            const 副作用日志 = [];
+            this.结算战斗外副作用列表(charData, scaledSkill.副作用列表, `${skillName}施展副作用`, 副作用日志);
 
             if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
             const costParts = [
@@ -42296,7 +42509,7 @@ ${播报文本}
             ]
               .filter(Boolean)
               .join(' ');
-            statData.sys.系统播报 = `[日常施展] ${charKey}施展【${skillName}】并生成 ${producedItems.join('，')}。${costParts ? ` 扣除 ${costParts}。` : ''}`;
+            statData.sys.系统播报 = `[日常施展] ${charKey}施展【${skillName}】并生成 ${producedItems.join('，')}。${costParts ? ` 扣除 ${costParts}。` : ''}${副作用日志.length ? ` 副作用:${副作用日志.join('、')}。` : ''}`;
           },
           { force: true },
         );

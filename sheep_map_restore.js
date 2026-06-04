@@ -2714,6 +2714,7 @@
     }
 
     .map-npc-roster-head {
+      flex: 0 0 auto;
       position: sticky;
       top: 0;
       z-index: 1;
@@ -2776,6 +2777,7 @@
     }
 
     .map-npc-empty {
+      flex: 0 0 auto;
       padding: 10px 12px;
       border-radius: 8px;
       border: 1px dashed rgba(146,187,221,0.22);
@@ -2786,11 +2788,13 @@
     }
 
     .map-npc-card {
+      flex: 0 0 auto;
       border-radius: 8px;
       border: 1px solid rgba(168, 192, 214, 0.14);
       border-left: 2px solid rgba(118,226,255,0.2);
       background: linear-gradient(90deg, rgba(16,32,46,0.7), rgba(16,32,46,0.2));
       padding: 8px 10px;
+      min-height: 42px;
       transition: .18s ease;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -8928,7 +8932,7 @@
         } else if (action === 'meditate') {
           baseTicks = 日常动作tick;
           logMsg += ` ${actionPreview.logText}`;
-          playerInput = `[节点交互] 我想在【${item.name}】冥想 ${日常时长文本}。若此处与我的武魂或修炼状态形成拟态契合，请由剧情规划输出固定模块路由判定，脚本统一结算倍率。`;
+          playerInput = `[节点交互] 我想在【${item.name}】冥想 ${日常时长文本}`;
         } else if (action === 'train_body' || action === 'train' || action === '训练') {
           baseTicks = 日常动作tick;
           logMsg += ` ${actionPreview.logText}`;

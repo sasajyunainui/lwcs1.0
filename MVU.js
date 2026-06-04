@@ -2114,15 +2114,24 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     }));
   });
   if (charData.血脉之力 && typeof charData.血脉之力 === 'object') {
+    清理银龙王血脉字段_V1(charData.血脉之力);
     const bloodlineType = 取角色主武魂系别_V1(charData);
     注入运行时技能图默认提示_V1(charData.血脉之力.被动, skillName => ({
       type: bloodlineType,
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       允许机制决策临时,
       取运行时提示: 取提示,
       textContext: { spiritName: charData.血脉之力?.血脉 || skillName, type: bloodlineType },
     }));
     注入运行时技能图默认提示_V1(charData.血脉之力.技能, skillName => ({
       type: bloodlineType,
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       允许机制决策临时,
       取运行时提示: 取提示,
       textContext: { spiritName: charData.血脉之力?.血脉 || skillName, type: bloodlineType },
@@ -2131,6 +2140,10 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
       注入运行时文本默认值_V1(ringData, '颜色', '金');
       注入运行时技能图默认提示_V1(Object.fromEntries(取气血魂环魂技条目_V1(ringData)), skillName => ({
         type: bloodlineType,
+        sourceCategory: '气血魂技',
+        来源: '气血魂技',
+        跳过预算门禁: true,
+        血脉技能: true,
         允许机制决策临时,
         取运行时提示: 取提示,
         textContext: { spiritName: charData.血脉之力?.血脉 || skillName, type: bloodlineType },
@@ -4293,8 +4306,8 @@ function createSkillMechanismMetaV1(meta = {}) {
   });
 }
 
-const SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1 = Object.freeze(['施放后', '命中后', '回合结束时', '状态结束后']);
-const SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1 = Object.freeze(['施术者', '状态持有者', '受术目标', '双方']);
+const SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
+const SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1 = Object.freeze(['技能释放者', '效果承受者', '双方']);
 const SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1 = Object.freeze([
   '全属性降低',
   '自损反噬',
@@ -4322,10 +4335,10 @@ function normalizeSkillSideEffectEntry(value = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const 副作用类型 = String(value.副作用类型 || '').trim();
   if (!SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1.includes(副作用类型)) return null;
-  const rawTrigger = String(value.触发时机 || '施放后').trim();
-  const 触发时机 = SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1.includes(rawTrigger) ? rawTrigger : '施放后';
-  const rawTarget = String(value.生效对象 || '施术者').trim();
-  const 生效对象 = SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1.includes(rawTarget) ? rawTarget : '施术者';
+  const rawTrigger = String(value.触发时机 || '效果生效后').trim();
+  const 触发时机 = SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1.includes(rawTrigger) ? rawTrigger : '效果生效后';
+  const rawTarget = String(value.生效对象 || '技能释放者').trim();
+  const 生效对象 = SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1.includes(rawTarget) ? rawTarget : '技能释放者';
   const 类型配置 = SKILL_SIDE_EFFECT_TYPE_META_V1[副作用类型] || {};
   const rawDuration = Number(value.持续回合 ?? 类型配置.持续回合 ?? 0);
   const 持续回合 = Number.isFinite(rawDuration) ? Math.max(0, Math.round(rawDuration)) : 0;
@@ -4346,7 +4359,7 @@ function normalizeSkillSideEffectEntry(value = {}) {
     if (数值) normalized.数值 = 数值;
     if (副数值) normalized.副数值 = 副数值;
   }
-  if (触发时机 === '状态结束后') {
+  if (触发时机 === '效果结束后') {
     const 关联状态 = String(value.关联状态 || '').trim();
     if (关联状态) normalized.关联状态 = 关联状态;
   }
@@ -9355,8 +9368,8 @@ function 收口执行副作用条目_V1(value = {}, recordViolation = () => {}) 
   const 副作用类型 = String(value.副作用类型 || '').trim();
   if (!副作用类型) return null;
   if (!SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1.includes(副作用类型)) recordViolation('副作用列表.副作用类型');
-  if (!SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1.includes(String(value.触发时机 || '施放后').trim())) recordViolation('副作用列表.触发时机');
-  if (!SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1.includes(String(value.生效对象 || '施术者').trim())) recordViolation('副作用列表.生效对象');
+  if (!SKILL_SIDE_EFFECT_TRIGGER_OPTIONS_V1.includes(String(value.触发时机 || '效果生效后').trim())) recordViolation('副作用列表.触发时机');
+  if (!SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1.includes(String(value.生效对象 || '技能释放者').trim())) recordViolation('副作用列表.生效对象');
   if (value.参数 !== undefined || value.战斗效果 !== undefined || value.面板修改比例 !== undefined || value.面板固定修正 !== undefined)
     recordViolation('副作用列表.旧自由效果字段');
   Object.keys(value).forEach(key => {
@@ -9377,7 +9390,7 @@ function 收口执行副作用条目_V1(value = {}, recordViolation = () => {}) 
   }
   const 概率源 = Number(value.触发概率 ?? 1);
   if (!Number.isFinite(概率源) || 概率源 < 0 || 概率源 > 1) recordViolation('副作用列表.触发概率');
-  if (String(value.触发时机 || '施放后').trim() === '状态结束后' && !String(value.关联状态 || '').trim())
+  if (String(value.触发时机 || '效果生效后').trim() === '效果结束后' && !String(value.关联状态 || '').trim())
     recordViolation('副作用列表.关联状态');
   const normalized = normalizeSkillSideEffectEntry(value);
   if (!normalized) return null;
@@ -13044,8 +13057,8 @@ function 计算单项副作用COST_V1(副作用 = {}) {
     return {
       COST: Number((100 * 概率).toFixed(2)),
       副作用类型: 类型,
-      触发时机: 条目.触发时机 || '施放后',
-      生效对象: 条目.生效对象 || '施术者',
+      触发时机: 条目.触发时机 || '效果生效后',
+      生效对象: 条目.生效对象 || '技能释放者',
       触发概率: 概率,
     };
   }
@@ -13067,8 +13080,8 @@ function 计算单项副作用COST_V1(副作用 = {}) {
   return {
     COST: Number(Math.max(0, 基准 * 持续修正 * 概率).toFixed(2)),
     副作用类型: 类型,
-    触发时机: 条目.触发时机 || '施放后',
-    生效对象: 条目.生效对象 || '施术者',
+    触发时机: 条目.触发时机 || '效果生效后',
+    生效对象: 条目.生效对象 || '技能释放者',
     触发概率: 概率,
     持续回合: 持续,
     数值: 条目.数值 || '',
@@ -13723,6 +13736,10 @@ function 推断技能来源_V1(path = []) {
   if (数组.includes('武魂融合技')) return '武魂融合技';
   if (数组.includes('魂骨')) return '魂骨技能';
   if (数组.includes('自创魂技')) return '自创魂技';
+  if (数组.includes('血脉之力')) {
+    if (数组.some(段 => 是气血魂环槽位键_V1(段) || 是血脉魂技槽位键_V1(段))) return '气血魂技';
+    if (数组.includes('技能') || 数组.includes('被动')) return '血脉技能';
+  }
   if (数组.includes('血脉技能')) return '血脉技能';
   if (数组.includes('气血魂技')) return '气血魂技';
   if (数组.includes('精神领域')) return '精神领域';
@@ -13756,6 +13773,20 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
   // 血脉/气血/精神领域/装备/物品 等：用角色等级映射，否则中位
   if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
   return 5;
+}
+
+function 是血脉技能预算豁免上下文_V1(上下文 = {}, path = '') {
+  const 来源文本 = String(上下文?.sourceCategory || 上下文?.来源 || 上下文?.来源类别 || '').trim();
+  if (['血脉技能', '气血魂技'].includes(来源文本)) return true;
+  if (上下文?.跳过预算门禁 === true && 上下文?.血脉技能 === true) return true;
+  const 路径源 = Array.isArray(path) ? path : `${String(path ?? '')}.${String(上下文?.path ?? '')}`;
+  const 路径数组 = Array.isArray(路径源)
+    ? 路径源.map(段 => String(段 ?? ''))
+    : String(路径源).split(/[./[\]]/).filter(Boolean);
+  if (!路径数组.includes('血脉之力')) return false;
+  return 路径数组.includes('技能') ||
+    路径数组.includes('被动') ||
+    路径数组.some(段 => 是气血魂环槽位键_V1(段) || 是血脉魂技槽位键_V1(段));
 }
 
 // v4：来源承载系数——复用项目已有 直接结算收益预算系数_V1.来源承载
@@ -14207,7 +14238,7 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
   const 允许自动副作用 = 允许生成阶段自动副作用_V1(技能, 上下文) && 技能结算效果仅作用自身_V1(技能) && !已有生成触发限制降压();
   const 已有自动候选副作用 = 允许自动副作用 && 当前副作用列表.some(项 =>
     String(项?.副作用类型 || '').trim() === '全属性降低' &&
-    ['施术者', '状态持有者'].includes(String(项?.生效对象 || '').trim()),
+    ['技能释放者', '效果承受者'].includes(String(项?.生效对象 || '').trim()),
   );
   if (允许自动副作用 && !已有自动候选副作用) {
     const 缺口 = Math.max(0, 评估.实际COST - 目标上限);
@@ -14217,8 +14248,8 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
       const 虚弱强度 = Math.max(5, Math.min(50, Math.floor(需要补偿 * 5)));
       const 自动副作用 = normalizeSkillSideEffectEntry({
         副作用类型: '全属性降低',
-        触发时机: 关联状态 ? '状态结束后' : '施放后',
-        生效对象: 关联状态 ? '状态持有者' : '施术者',
+        触发时机: 关联状态 ? '效果结束后' : '效果生效后',
+        生效对象: 关联状态 ? '效果承受者' : '技能释放者',
         触发概率: 1,
         持续回合: 2,
         数值: `+${虚弱强度}%`,
@@ -14362,6 +14393,7 @@ function 裁剪最低COST附加效果_V1(效果数组 = []) {
 
 function 校验技能预算并自动收口_V1(技能 = {}, 上下文 = {}, path = '技能') {
   if (!技能 || typeof 技能 !== 'object' || !Array.isArray(技能._效果数组)) return { skill: 技能, 降级记录: null, 成功: true };
+  if (是血脉技能预算豁免上下文_V1(上下文, path)) return { skill: 技能, 降级记录: null, 成功: true, 跳过预算门禁: true };
   const 魂技位 = Math.max(1, Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 1) || 1);
   const 预算上下文 = {
     ...(上下文 || {}),
@@ -14484,8 +14516,8 @@ function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}) {
   if (已有) return 0;
   const 副作用 = normalizeSkillSideEffectEntry({
     副作用类型: '施法僵直',
-    触发时机: '施放后',
-    生效对象: '施术者',
+    触发时机: '效果生效后',
+    生效对象: '技能释放者',
     触发概率: 1,
     持续回合: 1,
     数值: '+20%',
@@ -15271,6 +15303,9 @@ function 计算直接结算收益预算_V1(技能 = {}, 上下文 = {}) {
 }
 
 function 断言直接结算收益预算_V1(技能 = {}, path = '技能', 上下文 = {}) {
+  if (是血脉技能预算豁免上下文_V1(上下文, path)) {
+    return { 通过: true, 跳过预算门禁: true, 预算系数: 1, 提示: '' };
+  }
   const 预算 = 计算直接结算收益预算_V1(技能, 上下文);
   void path;
   return 预算;
@@ -16392,8 +16427,8 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
       if (!条目 || typeof 条目 !== 'object') return '';
       const 类型 = 格式化技能结构转译字段_V1(条目.副作用类型, '');
       if (!类型) return '';
-      const 触发时机 = 格式化技能结构转译字段_V1(条目.触发时机 || '施放后', '施放后');
-      const 生效对象 = 格式化技能结构转译字段_V1(条目.生效对象 || '施术者', '施术者');
+      const 触发时机 = 格式化技能结构转译字段_V1(条目.触发时机 || '效果生效后', '效果生效后');
+      const 生效对象 = 格式化技能结构转译字段_V1(条目.生效对象 || '技能释放者', '技能释放者');
       const 概率 = Math.max(0, Math.min(1, Number(条目.触发概率 ?? 1)));
       const 概率文本 = `${formatSkillPercent(概率)}使${生效对象}`;
       const 持续 = Number(条目.持续回合 || 0) > 0 ? `，持续${formatSkillNumber(条目.持续回合)}回合` : '';
@@ -16403,7 +16438,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
       const 效果文本 = ({
         全属性降低: `虚弱：力量、防御、敏捷降低${formatSkillNumber(数值)}%`,
         自损反噬: `反噬：承受相当于自身上限${formatSkillNumber(数值)}%的反噬伤害`,
-        致死献祭: '献祭：施术者进入致死代价',
+        致死献祭: '献祭：技能释放者进入致死代价',
         精神紊乱: `精神紊乱：${formatSkillNumber(数值)}%概率偏转目标${副数值 ? `，反应降低${formatSkillNumber(副数值)}%` : ''}`,
         魂力反噬: `魂力枯竭：魂力流失${formatSkillNumber(数值)}%`,
         命中下降: `精神紊乱：命中率降低${formatSkillNumber(数值)}%`,
@@ -19564,6 +19599,22 @@ function shouldKeepExtendedBloodlineData(charName = '', charData = null) {
   return ['金龙王', '银龙王', '龙神'].some(关键词 => 血脉名.includes(关键词));
 }
 
+function 清理银龙王血脉字段_V1(血脉 = null) {
+  if (!血脉 || typeof 血脉 !== 'object' || Array.isArray(血脉)) return;
+  const 血脉名 = String(血脉.血脉 || '').trim();
+  if (!血脉名.includes('银龙王') || 血脉名.includes('金龙王') || 血脉名.includes('龙神')) return;
+  delete 血脉.解封层数;
+  delete 血脉.核心;
+  delete 血脉.生命之火;
+  delete 血脉.永久加成;
+  delete 血脉.气血魂环;
+  Object.keys(血脉).forEach(键 => {
+    if (是气血魂环槽位键_V1(键)) delete 血脉[键];
+  });
+  if (!血脉.技能 || typeof 血脉.技能 !== 'object' || Array.isArray(血脉.技能)) 血脉.技能 = {};
+  if (!血脉.被动 || typeof 血脉.被动 !== 'object' || Array.isArray(血脉.被动)) 血脉.被动 = {};
+}
+
 function pruneExtendedBloodlineData(charData = null, charName = '') {
   if (!charData || typeof charData !== 'object') return;
   if (shouldKeepExtendedBloodlineData(charName, charData)) return;
@@ -21156,12 +21207,12 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
   const 类型文本 = String(副作用类型 || '').trim();
   if (!类型文本) return null;
   const 状态名 = String(context?.状态 || context?.主机制原型 || '技能副作用').trim() || '技能副作用';
-  const 默认生效对象 = String(context?.type || context?.系别 || '').trim() === '食物系' ? '受术目标' : '施术者';
+  const 默认生效对象 = String(context?.type || context?.系别 || '').trim() === '食物系' ? '效果承受者' : '技能释放者';
   const 副作用映射 = {
     全属性降低: {
       副作用类型: '全属性降低',
-      触发时机: '状态结束后',
-      生效对象: '状态持有者',
+      触发时机: '效果结束后',
+      生效对象: '效果承受者',
       持续回合: 2,
       触发概率: 1,
       关联状态: 状态名,
@@ -21170,7 +21221,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     自损反噬: {
       副作用类型: '自损反噬',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 1,
       触发概率: 1,
@@ -21179,13 +21230,13 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     致死献祭: {
       副作用类型: '致死献祭',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       触发概率: 1,
     },
     精神紊乱: {
       副作用类型: '精神紊乱',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 2,
       触发概率: 0.5,
@@ -21194,7 +21245,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     命中下降: {
       副作用类型: '命中下降',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 2,
       触发概率: 1,
@@ -21203,7 +21254,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     动作迟缓: {
       副作用类型: '动作迟缓',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 1,
       触发概率: 1,
@@ -21213,7 +21264,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     目标错乱: {
       副作用类型: '目标错乱',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 1,
       触发概率: 1,
@@ -21222,7 +21273,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
     },
     施法僵直: {
       副作用类型: '施法僵直',
-      触发时机: '施放后',
+      触发时机: '效果生效后',
       生效对象: 默认生效对象,
       持续回合: 1,
       触发概率: 1,
@@ -21444,17 +21495,9 @@ function ensureSkillStructGenerated(skill, context = {}) {
     技能: 临时技能,
     passiveMode: context?.passiveMode === true,
   });
-  if (context?.跳过预算门禁 === true) {
+  const 跳过预算门禁 = context?.跳过预算门禁 === true || 是血脉技能预算豁免上下文_V1(context, context?.path || '');
+  if (跳过预算门禁) {
     syncConstructSkillMetadata(临时技能);
-    if (context?.允许自动生成技能结构 === true) {
-      断言并同步自动生成最终预算_V1(临时技能, {
-        ...(context || {}),
-        目标: String(临时技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
-        passiveMode: context?.passiveMode === true,
-        系别: context?.type || context?.系别 || '强攻系',
-        启用位级硬上限: true,
-      }, String(context?.技能键 || context?.archetype || '自动生成').trim() || '自动生成');
-    }
     Object.keys(skill).forEach(键 => delete skill[键]);
     Object.assign(skill, 临时技能);
     return hydrateSkillTextByPackedEffects(skill, context.textContext || {});
@@ -21729,7 +21772,10 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       talentTier: 天赋梯队,
       age: Math.max(10000, 通用技能年限),
       ringAge: Math.max(10000, 通用技能年限),
-      ringIndex: Math.max(1, Number(char.血脉之力?.解封层数 || 1)),
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       compatibility: 100,
       passiveMode: true,
       passiveName: skillName,
@@ -21748,7 +21794,10 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       talentTier: 天赋梯队,
       age: Math.max(10000, 通用技能年限),
       ringAge: Math.max(10000, 通用技能年限),
-      ringIndex: Math.max(1, Number(char.血脉之力?.解封层数 || 1)),
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       compatibility: 100,
       preferredSecondary: [],
       elementTrigger: '继承血脉',
@@ -21769,6 +21818,10 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
         age: Math.max(1000, 魂环位 * 5000),
         ringAge: Math.max(1000, 魂环位 * 5000),
         ringIndex: 魂环位,
+        sourceCategory: '气血魂技',
+        来源: '气血魂技',
+        跳过预算门禁: true,
+        血脉技能: true,
         compatibility: 100,
         preferredSecondary: [],
         elementTrigger: '继承血脉',
@@ -22194,6 +22247,7 @@ const BloodlinePowerSchema = z
       if (是气血魂环槽位键_V1(键)) 血脉[键] = BloodlineRingSchema.parse(血脉[键]);
     });
     delete 血脉.气血魂环;
+    清理银龙王血脉字段_V1(血脉);
     return 血脉;
   })
   .prefault({});
@@ -23089,13 +23143,14 @@ const CharacterSchema = z
       }
     }
 
-    if (String(char.血脉之力?.血脉 || '').includes('银龙王') && shouldKeepExtendedBloodlineData('', char)) {
+    if (String(char.血脉之力?.血脉 || '').includes('银龙王')) {
       if (!char.血脉之力.技能) char.血脉之力.技能 = {};
       Object.entries(银龙王血脉技能_V1).forEach(([技能名, skillData]) => {
         if (!char.血脉之力.技能[技能名]) {
           char.血脉之力.技能[技能名] = cloneSkillStructData(skillData);
         }
       });
+      清理银龙王血脉字段_V1(char.血脉之力);
     }
 
     if (String(char.血脉之力?.血脉 || '').includes('金龙王') && shouldKeepExtendedBloodlineData('', char)) {
@@ -23668,7 +23723,10 @@ const CharacterSchema = z
       talentTier: char.属性.天赋梯队,
       age: Math.max(10000, genericSkillAge),
       ringAge: Math.max(10000, genericSkillAge),
-      ringIndex: Math.max(1, Number(char.血脉之力?.解封层数 || 1)),
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       compatibility: 100,
       passiveMode: true,
       passiveName: skillName,
@@ -23687,7 +23745,10 @@ const CharacterSchema = z
       talentTier: char.属性.天赋梯队,
       age: Math.max(10000, genericSkillAge),
       ringAge: Math.max(10000, genericSkillAge),
-      ringIndex: Math.max(1, Number(char.血脉之力?.解封层数 || 1)),
+      sourceCategory: '血脉技能',
+      来源: '血脉技能',
+      跳过预算门禁: true,
+      血脉技能: true,
       compatibility: 100,
       preferredSecondary: [],
       elementTrigger: '继承血脉',
@@ -23709,6 +23770,10 @@ const CharacterSchema = z
         age: Math.max(1000, ringIndex * 5000),
         ringAge: Math.max(1000, ringIndex * 5000),
         ringIndex,
+        sourceCategory: '气血魂技',
+        来源: '气血魂技',
+        跳过预算门禁: true,
+        血脉技能: true,
         compatibility: 100,
         preferredSecondary: [],
         elementTrigger: '继承血脉',
@@ -28906,10 +28971,15 @@ export const Schema = z
           if (!keepExtendedBloodline) {
             pruneExtendedBloodlineData(charData, charName);
           }
+          清理银龙王血脉字段_V1(charData.血脉之力);
           const bloodlineType = charData?.属性?.系别 || '强攻系';
           if (keepExtendedBloodline) {
             injectDisplaySkillMapDefaults(charData.血脉之力?.被动, skillName => ({
               type: bloodlineType,
+              sourceCategory: '血脉技能',
+              来源: '血脉技能',
+              跳过预算门禁: true,
+              血脉技能: true,
               允许机制决策临时,
               textContext: {
                 spiritName: charData.血脉之力?.血脉 || skillName,
@@ -28918,6 +28988,10 @@ export const Schema = z
             }));
             injectDisplaySkillMapDefaults(charData.血脉之力?.技能, skillName => ({
               type: bloodlineType,
+              sourceCategory: '血脉技能',
+              来源: '血脉技能',
+              跳过预算门禁: true,
+              血脉技能: true,
               允许机制决策临时,
               textContext: {
                 spiritName: charData.血脉之力?.血脉 || skillName,
@@ -28929,6 +29003,10 @@ export const Schema = z
               ensureDisplayText(ringData, '颜色', '金');
               injectDisplaySkillMapDefaults(Object.fromEntries(取气血魂环魂技条目_V1(ringData)), skillName => ({
                 type: bloodlineType,
+                sourceCategory: '气血魂技',
+                来源: '气血魂技',
+                跳过预算门禁: true,
+                血脉技能: true,
                 允许机制决策临时,
                 textContext: {
                   spiritName: charData.血脉之力?.血脉 || skillName,
