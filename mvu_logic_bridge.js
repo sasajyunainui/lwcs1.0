@@ -12786,6 +12786,9 @@
               `).join('')}
             </div>
           ` : '';
+      const 位级上限行 = Number(评估.位级硬上限 || 0) > 0 && Number(评估.位级硬上限 || 0) < Number(评估.对等基线 || 0) - 0.05
+        ? [['位级上限', Number(评估.位级硬上限 || 0).toFixed(1)]]
+        : [];
       const 公式Html = `
             <div class="skill-designer-cost-detail">
               ${[
@@ -12803,6 +12806,7 @@
                 ['前摇倍数', `${Number(评估.前摇倍数 || 0).toFixed(2)}x`],
                 ['代价能量', `${Number(评估.代价能量 || 0).toFixed(3)}x`],
                 ['当前对等上限', Number(评估.对等基线 || 0).toFixed(1)],
+                ...位级上限行,
               ].map(([标签, 数值]) => `
                 <div class="skill-designer-cost-detail-row">
                   <em>${htmlEscape(标签)}</em>
@@ -20307,22 +20311,20 @@
           || null;
         if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
           const 预算上下文 = 构建技能设计台预算上下文(技能预览元数据, 渲染根数据, draft || {});
-          // v4：用 path 推断来源，作者手填技能不卡位级硬上限（仅对等性）
           const 评估 = COST助手.评估技能预算_V1(skill || {}, {
             ...预算上下文,
             path: skillPath,
             来源: 预算上下文.来源类别,
-            启用位级硬上限: false, // 设计台展示对等基线即可，不强制位级
           });
           if (评估 && Number.isFinite(评估.允许上限)) {
             const 消耗倍数 = 评估.消耗倍数;
             const 前摇倍数 = 评估.前摇倍数;
-            const 状态标签 = 评估.是否超预算 ? '⚠超对等基线' : '对等';
+            const 状态标签 = 评估.是否超预算 ? '⚠超预算' : '达标';
             const 倍数提示 = (消耗倍数 !== 1 || 前摇倍数 !== 1)
               ? ` (消耗 ${消耗倍数.toFixed(2)}× × 前摇 ${前摇倍数.toFixed(2)}×)`
               : '';
             const 来源标签 = 评估.来源 && 评估.来源 !== '魂技' ? `[${评估.来源}]` : '';
-            pushDesc(`COST预算${来源标签}: 实际${评估.实际COST.toFixed(1)} / 对等基线${评估.对等基线.toFixed(1)} / 允许上限${评估.允许上限.toFixed(1)} [${状态标签}]${倍数提示}`);
+            pushDesc(`COST预算${来源标签}: 实际${评估.实际COST.toFixed(1)} / 上限${评估.实际门禁.toFixed(1)} [${状态标签}]${倍数提示}`);
           }
         }
       } catch (e) { /* 评估失败不影响渲染 */ }
@@ -22873,7 +22875,7 @@
             <strong>${htmlEscape(`${伤势显示} / ${领域显示}`)}</strong>
           </div>
           <div class="archive-core-tile">
-            <b>下级魂力</b>
+            <b>下级所需魂力</b>
             <strong class="cyan">${htmlEscape(nextSoulValueText)}</strong>
           </div>
           ${资源指标列表
