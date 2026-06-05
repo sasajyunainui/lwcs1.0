@@ -1729,6 +1729,89 @@ function 注入运行时简易效果描述_V1(节点 = null, 选项 = {}) {
   Object.values(节点).forEach(子节点 => 注入运行时简易效果描述_V1(子节点, 选项));
 }
 
+function 读取MVU战斗资源比例文本_V1(单位 = {}, 当前字段 = '', 上限字段 = '') {
+  const 属性 = 单位?.属性 && typeof 单位.属性 === 'object' ? 单位.属性 : {};
+  const 当前值 = Number(单位?.[当前字段] ?? 属性?.[当前字段]);
+  const 上限值 = Number(单位?.[上限字段] ?? 属性?.[上限字段]);
+  if (!Number.isFinite(当前值) || !Number.isFinite(上限值) || 上限值 <= 0) return undefined;
+  const 比例 = Math.max(0, Math.min(999, Math.round((当前值 / 上限值) * 100)));
+  return `${比例}%`;
+}
+
+function 读取MVU战斗关键状态_V1(单位 = {}) {
+  const 状态集合 = new Set();
+  const 收集状态键 = 值 => {
+    if (!值 || typeof 值 !== 'object' || Array.isArray(值)) return;
+    Object.entries(值).forEach(([键, 状态值]) => {
+      if (状态值 === undefined || 状态值 === null || 状态值 === false) return;
+      if (typeof 状态值 === 'number' && 状态值 <= 0) return;
+      const 名称 = String(键 || '').trim();
+      if (名称 && 名称 !== '存活') 状态集合.add(名称);
+    });
+  };
+  收集状态键(单位?.状态效果);
+  收集状态键(单位?.状态?.状态效果);
+  收集状态键(单位?.属性?.状态效果);
+  ['眩晕', '混乱', '封技', '中毒', '灼烧', '冻伤', '虚弱', '护盾', '领域', '蓄力', '隐身', '禁锢'].forEach(键 => {
+    const 值 = 单位?.[键] ?? 单位?.状态?.[键];
+    if (值 !== undefined && 值 !== null && 值 !== false && !(typeof 值 === 'number' && 值 <= 0)) 状态集合.add(键);
+  });
+  return Array.from(状态集合).slice(0, 8);
+}
+
+function 构建MVU战斗参战者摘要_V1(单位 = {}) {
+  if (!单位 || typeof 单位 !== 'object' || Array.isArray(单位)) return null;
+  const 属性 = 单位.属性 && typeof 单位.属性 === 'object' ? 单位.属性 : {};
+  const 摘要 = {};
+  const 名称 = String(单位.名称 || 单位.name || '').trim();
+  if (名称) 摘要.名称 = 名称;
+  ['势力', '阵营', '单位性质', '身份', '系别'].forEach(字段 => {
+    const 值 = String(单位?.[字段] ?? 属性?.[字段] ?? '').trim();
+    if (值) 摘要[字段] = 值;
+  });
+  const 等级 = Number(单位.等级 ?? 属性.等级);
+  if (Number.isFinite(等级) && 等级 > 0) 摘要.等级 = Math.round(等级);
+  const 存活候选 = 单位.存活 !== undefined ? 单位.存活 : 单位?.状态?.存活;
+  if (存活候选 !== undefined) 摘要.存活 = 存活候选 !== false;
+  [
+    ['HP比例', 'HP', 'HP上限'],
+    ['魂力比例', '魂力', '魂力上限'],
+    ['精神力比例', '精神力', '精神力上限'],
+    ['体力比例', '体力', '体力上限'],
+  ].forEach(([输出字段, 当前字段, 上限字段]) => {
+    const 比例 = 读取MVU战斗资源比例文本_V1(单位, 当前字段, 上限字段);
+    if (比例) 摘要[输出字段] = 比例;
+  });
+  const 关键状态 = 读取MVU战斗关键状态_V1(单位);
+  if (关键状态.length) 摘要.关键状态 = 关键状态;
+  const 压制 = 单位.实力压制 && typeof 单位.实力压制 === 'object' ? 单位.实力压制 : null;
+  if (压制) {
+    const 等级文本 = 压制.原始等级 !== undefined && 压制.压制等级 !== undefined
+      ? `Lv.${压制.原始等级}->Lv.${压制.压制等级}`
+      : '';
+    const 说明 = String(压制.说明 || '').trim();
+    摘要.实力压制摘要 = [等级文本, 说明].filter(Boolean).join('；');
+  }
+  return Object.keys(摘要).length ? 摘要 : null;
+}
+
+function 构建MVU战斗摘要_V1(战斗数据 = null) {
+  if (!战斗数据 || typeof 战斗数据 !== 'object' || 战斗数据.进行中 !== true) return {};
+  const 摘要 = { 进行中: true };
+  ['战斗类型', '回合', '战斗意图', '环境', '先攻', '允许撤离'].forEach(字段 => {
+    if (战斗数据[字段] !== undefined && 战斗数据[字段] !== null && String(战斗数据[字段]).trim() !== '') 摘要[字段] = 战斗数据[字段];
+  });
+  if (String(战斗数据.裁断结果 || '').trim()) 摘要.裁断结果 = String(战斗数据.裁断结果).trim();
+  const 参战者 = 战斗数据.参战者 && typeof 战斗数据.参战者 === 'object' ? 战斗数据.参战者 : {};
+  const 参战者摘要 = {};
+  ['team_player', 'team_enemy'].forEach(队伍字段 => {
+    const 队伍 = Array.isArray(参战者[队伍字段]) ? 参战者[队伍字段].map(构建MVU战斗参战者摘要_V1).filter(Boolean) : [];
+    if (队伍.length) 参战者摘要[队伍字段] = 队伍;
+  });
+  if (Object.keys(参战者摘要).length) 摘要.参战者 = 参战者摘要;
+  return 摘要;
+}
+
 function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText = '') {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 文本 = `${userInput || ''}\n${plotText || ''}`;
@@ -1739,6 +1822,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
   const 动态地点名集合 = 取运行时动态地点名集合_V1(数据根, 文本);
   const 物品名集合 = 收集运行时相关物品名_V1(数据根, 文本, 角色名集合);
   const 情报可见度 = 构建运行时情报可见度索引_V1(数据根, 角色名集合);
+  const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
   const 视图 = {
     sys: 过滤MVU正文视图值_V1({ 系统播报: 数据根?.sys?.系统播报 }, ['sys']) || {},
     world: 过滤MVU正文视图值_V1({
@@ -1746,13 +1830,14 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
         当前: 数据根?.world?.时间?._calendar || 数据根?.world?.时间?.当前 || '',
       },
       时间线: 运行时对象有内容_V1(时间线视图) ? 时间线视图 : undefined,
-      战斗: 数据根?.world?.战斗?.进行中 ? 数据根.world.战斗 : undefined,
+      战斗: 运行时对象有内容_V1(战斗摘要) ? 战斗摘要 : undefined,
       地点: {},
       动态地点: {},
     }, ['world']) || {},
     char: {},
     物品: {},
   };
+  if (运行时对象有内容_V1(战斗摘要)) 视图.world.战斗 = 战斗摘要;
   地点名集合.forEach(地点名 => {
     const 地点 = 数据根?.world?.地点?.[地点名];
     const 地点基础 = cloneJsonValue(地点, {});
@@ -1811,6 +1896,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 委托板视图 = 复制运行时命中记录表片段_V1(数据根?.world?.委托板 || {}, 文本, 8, 构建运行时委托草案条目_V1);
   const 图鉴视图 = 复制运行时命中记录表片段_V1(数据根?.world?.图鉴 || {}, 文本, 8, 构建运行时图鉴摘要条目_V1);
   const 时间线视图 = 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8);
+  const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
   const 视图 = {
     sys: cloneJsonValue({ 系统播报: 数据根?.sys?.系统播报 }, {}),
     world: {
@@ -1823,7 +1909,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
       拍卖: 拍卖视图,
       委托板: 委托板视图,
       图鉴: 图鉴视图,
-      战斗: 数据根?.world?.战斗?.进行中 ? cloneJsonValue(数据根.world.战斗, {}) : {},
+      战斗: 战斗摘要,
       地点: {},
       动态地点: {},
     },
@@ -1869,13 +1955,14 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     }
   });
   视图.world = 过滤MVU更新视图值_V1(视图.world, ['world']) || {};
+  if (运行时对象有内容_V1(战斗摘要)) 视图.world.战斗 = 战斗摘要;
   [
     ['时间线', 时间线视图],
     ['机密情报', 机密情报视图],
     ['拍卖', 拍卖视图],
     ['委托板', 委托板视图],
     ['图鉴', 图鉴视图],
-    ['战斗', 数据根?.world?.战斗?.进行中 ? cloneJsonValue(数据根.world.战斗, {}) : {}],
+    ['战斗', 战斗摘要],
     ['地点', 视图.world.地点 || {}],
     ['动态地点', 视图.world.动态地点 || {}],
   ].forEach(([字段, 值]) => {
@@ -1897,6 +1984,7 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '') {
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 命中 = 收集运行时命中名称_V1(数据根, 文本);
   const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 文本);
+  const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
   const 机密摘要 = {};
   Object.entries(数据根?.world?.机密情报 || {}).forEach(([键, 值]) => {
     if (运行时文本命中名称_V1(文本, 键) || 运行时文本命中名称_V1(文本, 值?.名称 || 值?.事件 || '')) {
@@ -1920,7 +2008,7 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '') {
       机密情报: 机密摘要,
       委托板: 委托摘要,
       拍卖: 构建运行时拍卖薄片_V1(数据根?.world?.拍卖 || {}, 文本, 4),
-      战斗: 数据根?.world?.战斗?.进行中 ? cloneJsonValue(数据根?.world?.战斗 || {}, {}) : {},
+      战斗: 战斗摘要,
     },
     相关实体索引: {
       角色: Array.from(角色名集合),
@@ -1930,6 +2018,130 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '') {
       命物品: Array.from(命中.物品),
     },
   };
+}
+
+const 角色基础六维对标字段_V1 = Object.freeze([
+  Object.freeze({ 标签: '力量', 字段: '力量' }),
+  Object.freeze({ 标签: '防御', 字段: '防御' }),
+  Object.freeze({ 标签: '敏捷', 字段: '敏捷' }),
+  Object.freeze({ 标签: '体力/气血', 字段: '体力上限' }),
+  Object.freeze({ 标签: '魂力', 字段: '魂力上限' }),
+  Object.freeze({ 标签: '精神力', 字段: '精神力上限' }),
+]);
+
+function 读取六维对标天赋档位_V1(等级 = 1) {
+  const 数值 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
+  if (数值 <= 20) return '正常';
+  if (数值 <= 60) return '优秀';
+  if (数值 <= 90) return '天才';
+  return '顶级天才';
+}
+
+function 读取六维对标训练系数_V1(天赋档位 = '正常') {
+  return { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1.0, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[
+    String(天赋档位 || '').trim()
+  ] ?? 0.5;
+}
+
+function 读取角色六维对标系别倍率_V1(角色 = {}) {
+  let 系别倍率 = { sp_max: 0, men_max: 0, str: 0, def: 0, agi: 0, vit_max: 0 };
+  const 武魂条目 = 取角色武魂条目_V1(角色);
+  if (武魂条目.length > 0) {
+    武魂条目.forEach(([, 武魂]) => {
+      const 倍率 = TypeMultipliers[String(武魂?.系别 || '').trim()] || TypeMultipliers['强攻系'];
+      Object.keys(系别倍率).forEach(键 => {
+        系别倍率[键] = Math.max(系别倍率[键], Number(倍率?.[键] || 0));
+      });
+    });
+    return 系别倍率;
+  }
+  return { ...(TypeMultipliers[取角色主武魂系别_V1(角色)] || TypeMultipliers['强攻系']) };
+}
+
+function 构建角色六维对标参照值_V1(角色 = {}, 等级 = 1) {
+  const 安全等级 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
+  const 基准 = getBaseStats(安全等级);
+  const 系别倍率 = 读取角色六维对标系别倍率_V1(角色);
+  const 天赋档位 = 读取六维对标天赋档位_V1(安全等级);
+  const 训练系数 = 读取六维对标训练系数_V1(天赋档位);
+  const 训练倍率 = 安全等级 > 10 ? 0.005 * (安全等级 - 10) * 训练系数 : 0;
+  const 双生魂力系数 = getDualSpiritSoulPowerCoeff(角色);
+  return {
+    力量: Math.floor(Number(基准.str || 0) * Number(系别倍率.str || 1)) + Math.floor(Number(基准.str || 0) * 训练倍率),
+    防御: Math.floor(Number(基准.def || 0) * Number(系别倍率.def || 1)) + Math.floor(Number(基准.def || 0) * 训练倍率),
+    敏捷: Math.floor(Number(基准.agi || 0) * Number(系别倍率.agi || 1)) + Math.floor(Number(基准.agi || 0) * 训练倍率),
+    体力上限: Math.floor(Number(基准.vit_max || 0) * Number(系别倍率.vit_max || 1)) + Math.floor(Number(基准.vit_max || 0) * 训练倍率),
+    魂力上限: Math.floor(Number(基准.sp_max || 0) * Number(系别倍率.sp_max || 1) * 双生魂力系数),
+    精神力上限: Math.floor(Number(基准.men_max || 0) * Number(系别倍率.men_max || 1)) + Math.floor(Number(基准.men_max || 0) * 训练倍率),
+  };
+}
+
+function 读取角色装备六维加成_V1(角色 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' ? 角色.装备 : {};
+  const 武器加成 = 计算装备属性加成_V1(装备.武器, { ...角色, 属性基准模式: '已含本武器加成' });
+  const 斗铠加成 = 装备.斗铠?.装备状态 === '已装备'
+    ? (装备.斗铠?._属性加成 || 计算斗铠属性加成_V1(装备.斗铠).属性加成 || {})
+    : {};
+  const 机甲加成 = 装备.机甲?.装备状态 === '已装备'
+    ? (装备.机甲?._属性加成 || 计算机甲属性加成_V1(装备.机甲) || {})
+    : {};
+  const 求和 = 字段 => Number(武器加成?.[字段] || 0) + Number(斗铠加成?.[字段] || 0) + Number(机甲加成?.[字段] || 0);
+  return {
+    力量: 求和('力量'),
+    防御: 求和('防御'),
+    敏捷: 求和('敏捷'),
+    体力上限: 求和('体力上限'),
+    魂力上限: 0,
+    精神力上限: 求和('精神力上限'),
+  };
+}
+
+function 读取角色非装备六维_V1(角色 = {}) {
+  const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
+  const 装备加成 = 读取角色装备六维加成_V1(角色);
+  return Object.fromEntries(角色基础六维对标字段_V1.map(({ 字段 }) => {
+    const 原值 = Number(属性?.[字段] ?? (字段 === '体力上限' ? 属性?.HP上限 : 0));
+    return [字段, Math.max(1, Math.floor((Number.isFinite(原值) ? 原值 : 0) - Number(装备加成?.[字段] || 0)))];
+  }));
+}
+
+function 计算角色属性对标等级文本_V1(角色 = {}, 字段 = '', 数值 = 0) {
+  const 安全数值 = Math.max(0, Number(数值) || 0);
+  const 一级参照 = Math.max(1, Number(构建角色六维对标参照值_V1(角色, 1)?.[字段] || 1));
+  const 九十九级参照 = Math.max(一级参照, Number(构建角色六维对标参照值_V1(角色, 99)?.[字段] || 一级参照));
+  if (安全数值 < 一级参照) return '1级以下';
+  if (安全数值 > 九十九级参照) return '99+级';
+  let 最佳等级 = 1;
+  let 最小差值 = Infinity;
+  for (let 等级 = 1; 等级 <= 99; 等级 += 1) {
+    const 参照 = Number(构建角色六维对标参照值_V1(角色, 等级)?.[字段] || 0);
+    const 差值 = Math.abs(参照 - 安全数值);
+    if (差值 < 最小差值) {
+      最小差值 = 差值;
+      最佳等级 = 等级;
+    }
+  }
+  return `${最佳等级}级`;
+}
+
+function 生成角色基础六维对标摘要_V1(数据输入 = null, userInput = '') {
+  const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, String(userInput || ''));
+  const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
+  const 行列表 = [];
+  角色名列表.forEach(角色名 => {
+    const 角色 = 数据根?.char?.[角色名];
+    if (!角色 || typeof 角色 !== 'object' || !角色.属性 || typeof 角色.属性 !== 'object') return;
+    const 六维 = 读取角色非装备六维_V1(角色);
+    const 等级文本 = Number.isFinite(Number(角色.属性.等级)) ? `Lv${Number(角色.属性.等级)}` : 'Lv?';
+    const 字段文本 = 角色基础六维对标字段_V1.map(({ 标签, 字段 }) => {
+      const 数值 = Math.max(1, Math.floor(Number(六维?.[字段] || 1)));
+      const 对标 = 计算角色属性对标等级文本_V1(角色, 字段, 数值);
+      return `${标签}${数值}≈${对标}`;
+    }).join('，');
+    行列表.push(`${角色名} ${等级文本}：${字段文本}`);
+  });
+  return 行列表.length ? 行列表.join('\n') : '无';
 }
 
 function 序列化MVU运行时视图_V1(视图 = {}) {
@@ -2176,6 +2388,7 @@ try {
     生成MVU正文视图: 生成MVU正文视图_V1,
     生成MVU更新视图: 生成MVU更新视图_V1,
     生成MVU剧情视图: 生成MVU剧情视图_V1,
+    生成角色基础六维对标摘要: 生成角色基础六维对标摘要_V1,
     生成MVU更新结构提示: 生成MVU更新结构提示_V1,
     替换MVU运行时视图占位符: 替换MVU运行时视图占位符_V1,
   });
@@ -3654,20 +3867,6 @@ function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random,
     return pickBattleSeedItem(['强攻系', '强攻系', '防御系', '敏攻系', '控制系'], rng) || '强攻系';
   }
   return pickBattleSeedItem(['强攻系', '敏攻系', '防御系', '控制系', '辅助系', '治疗系', '食物系', '召唤系'], rng) || '强攻系';
-}
-
-function resolveTemporaryHumanMechGrade(level = 1) {
-  if (level >= 90) return '红级';
-  if (level >= 70) return '黑级';
-  if (level >= 50) return '紫级';
-  return '黄级';
-}
-
-function resolveTemporaryHumanArmorLevel(level = 1) {
-  if (level >= 90) return 4;
-  if (level >= 80) return 3;
-  if (level >= 70) return 2;
-  return 1;
 }
 
 function 填充临时斗铠部件(斗铠) {
@@ -6451,6 +6650,8 @@ if (typeof globalThis !== 'undefined') {
     读取普通回复随机权重表_V1,
     rollSubModelByGrade,
     rollAttributeDirectionByType,
+    自动生成机制满足五环恢复增益约束_V1,
+    断言技能五环恢复增益不重复_V1,
     SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1,
     评估技能预算_V1,
     让技能符合预算_V1,
@@ -7405,6 +7606,9 @@ const 普通恢复原型资源映射_V1 = Object.freeze({
   精神恢复: '精神力',
 });
 const 自动生成增益属性集合_V1 = new Set(['力量', '防御', '敏捷', '魂力', '精神力']);
+const 自动生成恢复资源集合_V1 = new Set(['魂力', '体力', '精神力']);
+const 自动生成全属性增益列表_V1 = Object.freeze(['力量', '防御', '敏捷', '魂力', '精神力']);
+const 自动生成全恢复资源列表_V1 = Object.freeze(['魂力', '体力', '精神力']);
 
 function 读取自动生成同武魂数据_V1(context = {}) {
   if (context?.武魂数据 && typeof context.武魂数据 === 'object' && !Array.isArray(context.武魂数据)) return context.武魂数据;
@@ -7425,45 +7629,42 @@ function 读取自动生成同武魂数据_V1(context = {}) {
   return null;
 }
 
-function 收集五环内恢复增益占用_V1(context = {}, ringIndex = 1) {
-  const 结果 = { 恢复资源: new Set(), 增益属性: new Set() };
-  const 武魂数据 = 读取自动生成同武魂数据_V1(context);
-  if (!武魂数据) return 结果;
-  const 当前魂环位 = Math.max(1, Math.floor(Number(ringIndex || context?.ringIndex || context?.魂环位 || 1)) || 1);
-  const 当前魂环数据 = context?.魂环数据 || context?.ringData || null;
-  const 读取列表 = 值 => (Array.isArray(值) ? 值 : [值]).map(项 => String(项 || '').trim()).filter(Boolean);
-  const 访问效果 = 效果 => {
-    if (!效果 || typeof 效果 !== 'object') return;
-    if (Array.isArray(效果)) {
-      效果.forEach(访问效果);
-      return;
-    }
-    const 原型 = String(效果.原型 || '').trim();
-    const 数值 = parseSkillSignedChangeNumber(效果.数值);
-    const 正向 = Number.isFinite(数值) && 数值 > 0 && !/^-/.test(String(效果.数值 || ''));
-    if (原型 === '资源变化' && 正向) {
-      读取列表(效果.资源).forEach(资源 => {
-        if (['魂力', '体力', '精神力'].includes(资源)) 结果.恢复资源.add(资源);
-      });
-    }
-    if (原型 === '属性修正' && 正向) {
-      读取列表(效果.属性).forEach(属性 => {
-        if (自动生成增益属性集合_V1.has(属性)) 结果.增益属性.add(属性);
-      });
-    }
-    Object.values(效果).forEach(访问效果);
+function 创建恢复增益重复条目_V1() {
+  return {
+    属性单项: new Set(),
+    属性多项: new Set(),
+    属性全项: false,
+    恢复单项: new Set(),
+    恢复多项: new Set(),
+    恢复全项: false,
   };
-  取武魂全部魂环条目_V1(武魂数据).forEach(({ 魂环键, 魂环数据 }) => {
-    if (!魂环数据 || 魂环数据 === 当前魂环数据) return;
-    const 魂环位 = 读取槽位序号_V1(魂环键, 0);
-    if (!魂环位 || Math.abs(魂环位 - 当前魂环位) >= 5) return;
-    取魂环魂技条目_V1(魂环数据).forEach(([, 技能]) => 访问效果(技能?._效果数组 || []));
-  });
-  return 结果;
+}
+
+function 创建恢复增益重复账本_V1() {
+  return {
+    属性单项五环: new Set(),
+    属性多项三环: new Set(),
+    属性全项三环: false,
+    恢复单项五环: new Set(),
+    恢复多项三环: new Set(),
+    恢复全项三环: false,
+  };
+}
+
+function 归一化自动生成增益属性名_V1(属性 = '') {
+  const 文本 = String(属性 || '').trim();
+  if (文本 === '魂力上限') return '魂力';
+  if (文本 === '精神力上限') return '精神力';
+  return 自动生成增益属性集合_V1.has(文本) ? 文本 : '';
+}
+
+function 归一化自动生成恢复资源名_V1(资源 = '') {
+  const 文本 = String(资源 || '').trim();
+  return 自动生成恢复资源集合_V1.has(文本) ? 文本 : '';
 }
 
 function 读取技能恢复增益占用_V1(技能 = {}) {
-  const 结果 = { 恢复资源: new Set(), 增益属性: new Set() };
+  const 结果 = 创建恢复增益重复条目_V1();
   const 读取列表 = 值 => (Array.isArray(值) ? 值 : [值]).map(项 => String(项 || '').trim()).filter(Boolean);
   const 访问效果 = 效果 => {
     if (!效果 || typeof 效果 !== 'object') return;
@@ -7475,14 +7676,20 @@ function 读取技能恢复增益占用_V1(技能 = {}) {
     const 数值 = parseSkillSignedChangeNumber(效果.数值);
     const 正向 = Number.isFinite(数值) && 数值 > 0 && !/^-/.test(String(效果.数值 || ''));
     if (原型 === '资源变化' && 正向) {
-      读取列表(效果.资源).forEach(资源 => {
-        if (['魂力', '体力', '精神力'].includes(资源)) 结果.恢复资源.add(资源);
-      });
+      const 资源列表 = Array.from(new Set(读取列表(效果.资源).map(归一化自动生成恢复资源名_V1).filter(Boolean)));
+      if (资源列表.length === 1) 结果.恢复单项.add(资源列表[0]);
+      else if (资源列表.length > 1) {
+        if (自动生成全恢复资源列表_V1.every(资源 => 资源列表.includes(资源))) 结果.恢复全项 = true;
+        else 资源列表.forEach(资源 => 结果.恢复多项.add(资源));
+      }
     }
     if (原型 === '属性修正' && 正向) {
-      读取列表(效果.属性).forEach(属性 => {
-        if (自动生成增益属性集合_V1.has(属性)) 结果.增益属性.add(属性);
-      });
+      const 属性列表 = Array.from(new Set(读取列表(效果.属性).map(归一化自动生成增益属性名_V1).filter(Boolean)));
+      if (属性列表.length === 1) 结果.属性单项.add(属性列表[0]);
+      else if (属性列表.length > 1) {
+        if (自动生成全属性增益列表_V1.every(属性 => 属性列表.includes(属性))) 结果.属性全项 = true;
+        else 属性列表.forEach(属性 => 结果.属性多项.add(属性));
+      }
     }
     Object.values(效果).forEach(访问效果);
   };
@@ -7490,31 +7697,90 @@ function 读取技能恢复增益占用_V1(技能 = {}) {
   return 结果;
 }
 
+function 收集五环内恢复增益占用_V1(context = {}, ringIndex = 1) {
+  const 结果 = 创建恢复增益重复账本_V1();
+  const 武魂数据 = 读取自动生成同武魂数据_V1(context);
+  if (!武魂数据) return 结果;
+  const 当前魂环位 = Math.max(1, Math.floor(Number(ringIndex || context?.ringIndex || context?.魂环位 || 1)) || 1);
+  const 当前魂环数据 = context?.魂环数据 || context?.ringData || null;
+  取武魂全部魂环条目_V1(武魂数据).forEach(({ 魂环键, 魂环数据 }) => {
+    if (!魂环数据 || 魂环数据 === 当前魂环数据) return;
+    const 魂环位 = 读取槽位序号_V1(魂环键, 0);
+    const 间隔 = 当前魂环位 - 魂环位;
+    if (!魂环位 || 间隔 <= 0 || 间隔 > 4) return;
+    取魂环魂技条目_V1(魂环数据).forEach(([, 技能]) => {
+      const 占用 = 读取技能恢复增益占用_V1(技能);
+      占用.属性单项.forEach(属性 => 结果.属性单项五环.add(属性));
+      占用.恢复单项.forEach(资源 => 结果.恢复单项五环.add(资源));
+      if (间隔 <= 3) {
+        占用.属性多项.forEach(属性 => 结果.属性多项三环.add(属性));
+        占用.恢复多项.forEach(资源 => 结果.恢复多项三环.add(资源));
+        if (占用.属性全项) 结果.属性全项三环 = true;
+        if (占用.恢复全项) 结果.恢复全项三环 = true;
+      }
+    });
+  });
+  return 结果;
+}
+
 function 断言技能五环恢复增益不重复_V1(技能 = {}, context = {}, 失败标签 = '自动生成') {
   const 已占用 = 收集五环内恢复增益占用_V1(context, context?.ringIndex || context?.魂环位 || 1);
   const 当前占用 = 读取技能恢复增益占用_V1(技能);
-  for (const 资源 of 当前占用.恢复资源) {
-    if (已占用.恢复资源.has(资源)) throw new Error(`技能生成错误:${失败标签}五环重复恢复${资源}`);
+  if ((当前占用.属性全项 || 当前占用.属性多项.size || 当前占用.属性单项.size) && 已占用.属性全项三环) {
+    throw new Error(`技能生成错误:${失败标签}三环全属性后重复增益`);
   }
-  for (const 属性 of 当前占用.增益属性) {
-    if (已占用.增益属性.has(属性)) throw new Error(`技能生成错误:${失败标签}五环重复增益${属性}`);
+  for (const 属性 of 当前占用.属性单项) {
+    if (已占用.属性单项五环.has(属性)) throw new Error(`技能生成错误:${失败标签}五环重复增益${属性}`);
+    if (已占用.属性多项三环.has(属性)) throw new Error(`技能生成错误:${失败标签}三环重复增益${属性}`);
+  }
+  if ((当前占用.恢复全项 || 当前占用.恢复多项.size || 当前占用.恢复单项.size) && 已占用.恢复全项三环) {
+    throw new Error(`技能生成错误:${失败标签}三环全恢复后重复恢复`);
+  }
+  for (const 资源 of 当前占用.恢复单项) {
+    if (已占用.恢复单项五环.has(资源)) throw new Error(`技能生成错误:${失败标签}五环重复恢复${资源}`);
+    if (已占用.恢复多项三环.has(资源)) throw new Error(`技能生成错误:${失败标签}三环重复恢复${资源}`);
   }
 }
 
-function 读取自动生成可用增益属性列表_V1(type = '强攻系', context = {}) {
+function 读取自动生成可用增益属性列表_V1(type = '强攻系', context = {}, 机制 = '单属性增益') {
   const 占用 = 收集五环内恢复增益占用_V1(context, context?.ringIndex || context?.魂环位 || 1);
-  const 候选 = SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1[type] || ['魂力'];
-  return 候选.filter(属性 => !占用.增益属性.has(String(属性 || '').trim()));
+  const 原型 = String(机制 || '').trim();
+  if (占用.属性全项三环) return [];
+  if (原型 === '全属性增益') return [...自动生成全属性增益列表_V1];
+  let 候选 = SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1[type] || ['魂力'];
+  if (type === '强攻系' && ['单属性增益', '多属性增益'].includes(原型)) {
+    候选 = ['力量', '魂力'].filter(属性 => 候选.includes(属性));
+  }
+  if (原型 === '多属性增益') return [...候选];
+  return 候选.filter(属性 => {
+    const 标准属性 = 归一化自动生成增益属性名_V1(属性);
+    return 标准属性 && !占用.属性单项五环.has(标准属性) && !占用.属性多项三环.has(标准属性);
+  });
+}
+
+function 自动生成单项增益属性可用_V1(属性 = '', context = {}) {
+  const 标准属性 = 归一化自动生成增益属性名_V1(属性);
+  if (!标准属性) return false;
+  const 占用 = 收集五环内恢复增益占用_V1(context, context?.ringIndex || context?.魂环位 || 1);
+  return !占用.属性全项三环 && !占用.属性单项五环.has(标准属性) && !占用.属性多项三环.has(标准属性);
+}
+
+function 自动生成单项恢复资源可用_V1(资源 = '', context = {}) {
+  const 标准资源 = 归一化自动生成恢复资源名_V1(资源);
+  if (!标准资源) return false;
+  const 占用 = 收集五环内恢复增益占用_V1(context, context?.ringIndex || context?.魂环位 || 1);
+  return !占用.恢复全项三环 && !占用.恢复单项五环.has(标准资源) && !占用.恢复多项三环.has(标准资源);
 }
 
 function 自动生成机制满足五环恢复增益约束_V1(机制 = '', context = {}) {
   const 原型 = String(机制 || '').trim();
   const 占用 = 收集五环内恢复增益占用_V1(context, context?.ringIndex || context?.魂环位 || 1);
   const 恢复资源 = 普通恢复原型资源映射_V1[原型];
-  if (恢复资源 && 占用.恢复资源.has(恢复资源)) return false;
-  if (原型 === '单属性增益') return 读取自动生成可用增益属性列表_V1(context?.type || context?.系别 || '强攻系', context).length >= 1;
-  if (原型 === '多属性增益') return 读取自动生成可用增益属性列表_V1(context?.type || context?.系别 || '强攻系', context).length >= 2;
-  if (原型 === '全属性增益') return 占用.增益属性.size === 0;
+  if (恢复资源) return 自动生成单项恢复资源可用_V1(恢复资源, context);
+  if (原型 === '单属性增益') return 读取自动生成可用增益属性列表_V1(context?.type || context?.系别 || '强攻系', context, 原型).length >= 1;
+  if (原型 === '速度提升') return 自动生成单项增益属性可用_V1('敏捷', context);
+  if (原型 === '多属性增益') return 读取自动生成可用增益属性列表_V1(context?.type || context?.系别 || '强攻系', context, 原型).length >= 2;
+  if (原型 === '全属性增益') return !占用.属性全项三环;
   return true;
 }
 
@@ -8282,18 +8548,19 @@ function rollTargetScaleByGrade(mainMechanic, grade, roll, subModel = '', type =
 
 function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
   void roll;
-  const hints = ['单属性增益', '多属性增益'].includes(String(subModel || '').trim())
-    ? 读取自动生成可用增益属性列表_V1(type, { ...(context || {}), type, 系别: type })
+  const 机制 = String(subModel || '').trim();
+  const hints = ['单属性增益', '多属性增益'].includes(机制)
+    ? 读取自动生成可用增益属性列表_V1(type, { ...(context || {}), type, 系别: type }, 机制)
     : (SKILL_ATTRIBUTE_HINTS_BY_TYPE_V1[type] || ['魂力']);
-  if (['全属性增益'].includes(subModel)) return ['力量', '防御', '敏捷', '精神力', '魂力'];
-  if (type === '强攻系' && ['单属性增益', '多属性增益'].includes(subModel)) {
+  if (机制 === '全属性增益') return [...自动生成全属性增益列表_V1];
+  if (type === '强攻系' && ['单属性增益', '多属性增益'].includes(机制)) {
     const 强攻候选 = ['力量', '魂力'].filter(属性 => hints.includes(属性));
-    return subModel === '多属性增益' ? 强攻候选.slice(0, 2) : 强攻候选.slice(0, 1);
+    return 机制 === '多属性增益' ? 强攻候选.slice(0, 2) : 强攻候选.slice(0, 1);
   }
-  if (['魂力恢复'].includes(subModel)) return ['魂力'];
-  if (['精神恢复'].includes(subModel)) return ['精神力'];
-  if (['体力恢复', '持续恢复', '净化/解控'].includes(subModel)) return ['体力'];
-  if (['多属性增益', '多属性削弱'].includes(subModel)) return pickUniqueRandom(hints, 2);
+  if (机制 === '魂力恢复') return ['魂力'];
+  if (机制 === '精神恢复') return ['精神力'];
+  if (['体力恢复', '持续恢复', '净化/解控'].includes(机制)) return ['体力'];
+  if (['多属性增益', '多属性削弱'].includes(机制)) return pickUniqueRandom(hints, 2);
   return pickUniqueRandom(hints, 1);
 }
 
@@ -8511,6 +8778,10 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
   if (!技能机制满足品质门槛_V1(archetype, { ...options, type, grade, ringIndex })) {
     throw new Error(`技能生成错误:${archetype}不满足当前品质门槛`);
   }
+  const 重复门禁上下文 = { ...options, type, 系别: type, grade, ringIndex, 魂环位: ringIndex, sourceName, 预算门禁 };
+  if (!自动生成机制满足五环恢复增益约束_V1(archetype, 重复门禁上下文)) {
+    throw new Error(`技能生成错误:${archetype || '未命名机制'}五环重复门禁不满足`);
+  }
   const deliveryPool = SKILL_DELIVERY_FORM_BY_TYPE_V1[type] || ['直接生效'];
   const delivery =
     String(blueprintOverride?.释放形态 || '').trim() ||
@@ -8557,6 +8828,7 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
     副机制: 规范化机制枚举数组_V1(输入副机制).filter(机制 =>
       机制具备共享原型编译_V1(机制) &&
       技能机制满足品质门槛_V1(机制, { ...options, type, grade }) &&
+      自动生成机制满足五环恢复增益约束_V1(机制, 重复门禁上下文) &&
       自动生成机制满足预算范围_V1(机制, { ...options, type, grade, ringIndex, sourceName, 预算门禁 }),
     ),
     释放形态: delivery,
@@ -21447,7 +21719,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       const 错误文本 = String(错误?.message || 错误 || '未知错误');
       const 大类匹配 = 错误文本.match(/技能生成错误:([^:：]+?)没有合法子原型/);
       if (大类匹配?.[1]) 失败主机制大类.add(String(大类匹配[1]).trim());
-      const 超预算匹配 = 错误文本.match(/技能生成错误:([^:：]+?)(?:COST仍超预算|兜底失败|利用率不达标|五环重复)/);
+      const 超预算匹配 = 错误文本.match(/技能生成错误:([^:：]+?)(?:COST仍超预算|兜底失败|利用率不达标|五环重复|三环)/);
       if (超预算匹配?.[1]) 失败子原型.add(String(超预算匹配[1]).trim());
       const 原型匹配 = 错误文本.match(/技能生成错误:([^:：]+?)不满足当前品质门槛|技能生成错误:([^:：]+?)没有共享原型编译定义|技能生成错误:[^:：]+不允许主机制原型([^:：]+)/);
       const 原型 = String(原型匹配?.[1] || 原型匹配?.[2] || 原型匹配?.[3] || '').trim();
@@ -21547,7 +21819,7 @@ function ensureSkillStructGenerated(skill, context = {}) {
   } catch (错误) {
     if (context?.允许自动生成技能结构 !== true) throw 错误;
     const 错误文本 = String(错误?.message || 错误 || '');
-    if (!/技能生成错误:[^:：]+(?:COST仍超预算|兜底失败|利用率不达标|五环重复)/.test(错误文本)) throw 错误;
+    if (!/技能生成错误:[^:：]+(?:COST仍超预算|兜底失败|利用率不达标|五环重复|三环)/.test(错误文本)) throw 错误;
     Object.keys(skill).forEach(键 => delete skill[键]);
     skill.魂技名 = String(临时技能?.魂技名 || context?.技能键 || AI_TODO_SKILL_NAME).trim() || AI_TODO_SKILL_NAME;
     skill._效果数组 = [];
@@ -27627,11 +27899,13 @@ export const Schema = z
           const 标识 = String(事件?.标识 || '').trim();
           const 触发tick = Number(事件?.触发tick || 0);
           const 描述 = String(事件?.描述 || '').trim() || '无';
+          const 简述 = String(事件?.简述 || '').trim() || '无';
           return {
             标识,
             触发tick,
             剩余tick: 触发tick - currentTick,
             描述,
+            简述,
           };
         })
         .filter(事件 => 事件.标识 && Number.isFinite(事件.触发tick) && 事件.触发tick > currentTick)
@@ -27646,12 +27920,12 @@ export const Schema = z
         return '当前暂无后续原著时间线参考节点。';
       }
       return previewList
-        .map(item => {
+        .map((item, index) => {
           const 触发tick = Number(item.触发tick || 0);
           const 剩余tick = Number(item.剩余tick || 0);
-          const 描述 = item.描述 || '无';
+          const 文本 = index < 3 ? item.描述 : item.简述;
           const 时间 = `${formatTickToCalendar(触发tick)}（约${formatTickDeltaText(剩余tick)}后）`;
-          return `${时间}｜${描述}`;
+          return `${时间}｜${文本}`;
         })
         .join('\n');
     };

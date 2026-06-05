@@ -3960,6 +3960,11 @@ class BattleUIComponent {
         target_name: resolvedTargetName,
         前摇已结算: safeAction.前摇已结算 === true,
       }];
+      if (safeAction.造物处理) queue[0].造物处理 = String(safeAction.造物处理 || '').trim();
+      if (safeAction.物品接收者) queue[0].物品接收者 = String(safeAction.物品接收者 || '').trim();
+      if (safeAction.立即使用 === true) queue[0].立即使用 = true;
+      if (safeAction.即食 === true) queue[0].即食 = true;
+      if (safeAction.食用目标) queue[0].食用目标 = String(safeAction.食用目标 || '').trim();
       return `${safeAction.name || '普通攻击'}\n[动作队列]${JSON.stringify(queue)}[/动作队列]\n[目标]${resolvedTargetName || '对手'}[/目标]`;
     }
 
@@ -4359,6 +4364,8 @@ class BattleUIComponent {
     }
 
     function inferSkillPrimaryTargetKind(skill = {}) {
+      const explicitTarget = String(skill?.目标 || skill?.target || '').trim();
+      if (explicitTarget) return normalizeBattleExecutionEffectTargetKind(explicitTarget, '敌方单体');
       const effects = getSkillEffects(skill);
       const primaryEffect =
         effects.find(effect => effect && typeof effect === 'object' && String(effect.原型 || '').trim() === '伤害结算') ||
@@ -18738,7 +18745,6 @@ class BattleUIComponent {
           console.warn('[battle] 缓存战斗快照失败', error);
         }
 
-        let systemPrompt = `<moduleSettlement>\n[battle_arbitration] 前端战斗模块已经完成本轮暗箱演算。正文只承接本次战报与结算结果，不要重新开启战斗模块，不要输出 <moduleIntent>、<UpdateVariable>、最小战斗种子或任何模块接管说明。\n</moduleSettlement>\n\n[前端暗箱演算完毕][${modeLabel}] 共进行 ${roundCount} 回合。\n战报：\n${battleLog.join('\n')}\n请严格根据战报描写画面！`;
         const 压制战规则文本 = 压制战裁断
           ? 压制战裁断.必须结束
             ? `\n[压制等级裁断]\n本场存在刻意压制等级：${压制战裁断.压制摘要.join('；')}。${压制战裁断.败方} 已损失 ${压制战裁断.HP损失比例}% HP，超过 10% 截断线；必须判定战斗结束，胜方=${压制战裁断.胜方}，败方=${压制战裁断.败方}，败方剩余HP比例=${压制战裁断.败方剩余HP比例}。`
@@ -18747,7 +18753,8 @@ class BattleUIComponent {
         const 虚拟战规则文本 = 判断虚拟战斗类型(combatData.战斗类型)
           ? `\n[虚拟战规则]\n本场为虚拟战斗，永远允许被击杀，败方剩余HP比例可以为0。若现实建档角色在虚拟战中死亡，模块会让其退出虚拟世界并恢复全部HP，同时按最后一击伤害占总生命比例削减精神力；最后一击比例=${Math.round(本次最大单击HP比例 * 100)}%，精神力消耗最低40%、被秒杀或超过100%时消耗90%。`
           : '';
-        systemPrompt += `\n\n[前端战果类型]\n${battleOutcome.type}\n[前端战果说明]\n${battleOutcome.label}\n[战斗意图]\n${combatData.战斗意图}\n[前端建议结果]\n${combatData.前端建议结果}\n[建议终点HP区间]\n${combatData.建议终点HP区间}\n[前端推荐终点HP]\n${combatData.前端推荐终点HP}\n[预计HP伤害]\n${combatData.预计HP伤害}\n[裁断约束]\n可致死：${combatData.裁断约束?.可致死 ? '是' : '否'}；可外界介入：${combatData.裁断约束?.可外界介入 ? '是' : '否'}；关系收手系数：${combatData.裁断约束?.关系收手系数}；场地安全系数：${combatData.裁断约束?.场地安全系数}；实力差距系数：${combatData.裁断约束?.实力差距系数}；绝境失手系数：${combatData.裁断约束?.绝境失手系数}；失手等级：${combatData.裁断约束?.失手等级}${压制战规则文本}${虚拟战规则文本}\n你只判断剧情裁断，不直接输出 MVU 更新。若战斗未结束，模块会维持战斗；若战斗结束，战斗模块会读取你的 <战斗裁断> 并按胜败方与败方剩余HP比例完成最终数值写回。`;
+        const 裁断约束文本 = `可致死：${combatData.裁断约束?.可致死 ? '是' : '否'}；可外界介入：${combatData.裁断约束?.可外界介入 ? '是' : '否'}；关系收手系数：${combatData.裁断约束?.关系收手系数}；场地安全系数：${combatData.裁断约束?.场地安全系数}；实力差距系数：${combatData.裁断约束?.实力差距系数}；绝境失手系数：${combatData.裁断约束?.绝境失手系数}；失手等级：${combatData.裁断约束?.失手等级}`;
+        let systemPrompt = `<moduleSettlement>\n[battle_arbitration] 前端战斗模块已经完成本轮暗箱演算。剧情推进和正文只承接本次战报与结算结果，不要重新开启战斗模块，不要输出 <moduleIntent>、<UpdateVariable>、最小战斗种子或任何模块接管说明。\n[前端暗箱演算完毕]\n${modeLabel}，共进行 ${roundCount} 回合。\n[前端战报]\n${battleLog.join('\n') || '无'}\n[前端战果类型]\n${battleOutcome.type}\n[前端战果说明]\n${battleOutcome.label}\n[战斗意图]\n${combatData.战斗意图}\n[前端建议结果]\n${combatData.前端建议结果}\n[建议终点HP区间]\n${combatData.建议终点HP区间}\n[前端推荐终点HP]\n${combatData.前端推荐终点HP}\n[预计HP伤害]\n${combatData.预计HP伤害}\n[裁断约束]\n${裁断约束文本}${压制战规则文本}${虚拟战规则文本}\n</moduleSettlement>\n\n请严格根据[前端战报]描写画面。你只判断剧情裁断，不直接输出 MVU 更新。若战斗未结束，模块会维持战斗；若战斗结束，战斗模块会读取你的 <战斗裁断> 并按胜败方与败方剩余HP比例完成最终数值写回。`;
         systemPrompt += `\n\n【战斗裁断固定输出】\n最终回复末尾必须额外追加一个 <战斗裁断>{...}</战斗裁断>。模块只强解析“模块结算”，“正文承接”只用于后续正文衔接。\n未结束时必须严格输出：\n<战斗裁断>\n{\n  "模块结算": {\n    "是否结束": false\n  },\n  "正文承接": "自然语言承接说明"\n}\n</战斗裁断>\n结束时必须严格输出：\n<战斗裁断>\n{\n  "模块结算": {\n    "是否结束": true,\n    "胜方": "参战者名称",\n    "败方": "参战者名称",\n    "败方剩余HP比例": 5\n  },\n  "正文承接": "自然语言承接说明"\n}\n</战斗裁断>\n模块结算规则：是否结束必须是 true 或 false；false 时模块结算只能包含 是否结束；true 时必须包含 是否结束、胜方、败方、败方剩余HP比例；胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。`;
         sendToAI(visiblePlayerInput || String(playerInput || '战斗行动').split('\n')[0] || '战斗行动', systemPrompt, {
           mvuUpdate,
@@ -22217,6 +22224,7 @@ class BattleUIComponent {
             魂技名: 动作名,
             技能分类: '辅助',
             承载方式: '物品使用',
+            目标: '自身',
             __物品名: 物品名,
             __造物产出者属性: deepClonePlain(物品数据?.造物产出者属性 || {}),
             消耗: '无',
@@ -22275,6 +22283,7 @@ class BattleUIComponent {
           name: `${skill?.name || skill?.魂技名 || '造物承载魂技'}·即时使用`,
           魂技名: `${skill?.魂技名 || skill?.name || '造物承载魂技'}·即时使用`,
           承载方式: '物品使用',
+          目标: '自身',
           _效果数组: usageEffects,
         };
         const 使用副作用列表 = deepClone(Array.isArray(constructEffect?.副作用列表) ? constructEffect.副作用列表 : []);
@@ -22849,7 +22858,7 @@ class BattleUIComponent {
           result.desc += creationPatchBundle.log;
           const hasDirectClash = Number(pClash.威力倍率 || 0) > 0;
           const hasStateApply = String(pState?.状态名称 || '无') !== '无';
-          if (!hasDirectClash && !hasStateApply) return result;
+          if (!本次为即时使用造物 && !hasDirectClash && !hasStateApply) return result;
         }
 
         const skillRuntimeMeta = getSkillRuntimeMeta(playerAction.skill);

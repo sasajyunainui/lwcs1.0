@@ -16310,6 +16310,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   color: #d7c070;
 }
 
+#mvu-battle-inline-host .tag-chip.equip {
+  border-color: rgba(232, 207, 119, 0.22);
+  background: rgba(232, 207, 119, 0.08);
+  color: #f2d98b;
+}
+
 #mvu-battle-inline-host .battle-main {
   min-height: 0;
   display: grid !important;
@@ -16679,6 +16685,49 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 #mvu-battle-inline-host .action-cost {
   color: #d7c070;
+}
+
+#mvu-battle-inline-host .battle-target-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 2px 2px;
+}
+
+#mvu-battle-inline-host .battle-target-controls[hidden] {
+  display: none;
+}
+
+#mvu-battle-inline-host .target-chip-row {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+#mvu-battle-inline-host .target-chip {
+  flex: 0 0 auto;
+  max-width: 136px;
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 1px solid rgba(118, 239, 255, 0.14);
+  border-radius: var(--mvu-radius-sm, 8px);
+  background: rgba(118, 239, 255, 0.055);
+  color: rgba(234, 248, 251, 0.78);
+  font: inherit;
+  font-size: var(--mvu-font-xs, 10px);
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#mvu-battle-inline-host .target-chip:hover,
+#mvu-battle-inline-host .target-chip.active {
+  border-color: rgba(118, 239, 255, 0.32);
+  background: rgba(118, 239, 255, 0.13);
+  color: #ffffff;
 }
 
 #mvu-battle-inline-host .skill-tooltip {

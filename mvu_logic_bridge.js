@@ -35543,20 +35543,6 @@ ${播报文本}
     );
   }
 
-  function resolveTemporaryHumanMechGrade(level = 1) {
-    if (level >= 90) return '红级';
-    if (level >= 70) return '黑级';
-    if (level >= 50) return '紫级';
-    return '黄级';
-  }
-
-  function resolveTemporaryHumanArmorLevel(level = 1) {
-    if (level >= 90) return 4;
-    if (level >= 80) return 3;
-    if (level >= 70) return 2;
-    return 1;
-  }
-
   function 计算临时装备等效属性包(起始等级 = 1, 目标等级 = 1) {
     const 起始等级值 = Math.max(1, Number(起始等级) || 1);
     const 目标等级值 = Math.max(起始等级值, Number(目标等级) || 起始等级值);
