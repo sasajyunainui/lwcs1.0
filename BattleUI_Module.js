@@ -570,7 +570,6 @@ class BattleUIComponent {
     const COMBAT_STAT_KEYS = [
       '年龄',
       '等级',
-      '系别',
       '天赋梯队',
       '邪魂师',
       'HP',
@@ -3592,7 +3591,7 @@ class BattleUIComponent {
       });
       merged.name = safeUnit.name || stat.name || safeUnit.base?.name || '未知';
       merged.等级 = fallbackNumber(merged.等级, 0);
-      merged.系别 = merged.系别 || stat.系别 || '未知系';
+      merged.系别 = safeUnit.系别 || safeUnit.type || merged.系别 || '未知系';
       merged.HP上限 = Math.max(
         1,
         fallbackNumber(merged.HP上限, fallbackNumber(stat.HP上限, fallbackNumber(merged.体力上限, fallbackNumber(stat.体力上限, 1)))),
@@ -6155,7 +6154,7 @@ class BattleUIComponent {
 
     function 读取角色系别列表(char) {
       const 系别集合 = new Set();
-      const 属性系别 = String(char?.属性?.系别 || char?.type || char?.系别 || '').trim();
+      const 属性系别 = String(char?.type || char?.系别 || '').trim();
       if (属性系别) 系别集合.add(属性系别);
       取角色武魂条目_战斗(char).forEach(([, 武魂数据]) => {
         const 武魂系别 = String(武魂数据?.type || 武魂数据?.系别 || '').trim();
@@ -6691,7 +6690,8 @@ class BattleUIComponent {
         unit.种族,
         unit.称号,
         unit.境界,
-        unit?.属性?.系别,
+        unit.type,
+        unit.系别,
         unit?.属性?.标准物种,
         unit?.属性?.具体物种,
         unit?.属性?.种族,
@@ -10368,7 +10368,6 @@ class BattleUIComponent {
       }
       char.状态效果 = normalizeCombatConditionMapForRuntime(char.状态效果);
 
-      if (!char.系别 && char.属性?.系别) char.系别 = char.属性.系别;
       if (char.存活 === undefined && char.状态?.存活 !== undefined) char.存活 = char.状态.存活;
 
       char.__combatMirrorBound = true;
@@ -12892,7 +12891,7 @@ class BattleUIComponent {
     }
 
     function 读取规划单位系别(unit = {}) {
-      return String(unit?.type || unit?.系别 || unit?.属性?.系别 || unit?.单位性质 || '').trim();
+      return String(unit?.type || unit?.系别 || unit?.单位性质 || '').trim();
     }
 
     function 读取规划单位阵营(unit = {}, combatData = {}) {
@@ -16381,7 +16380,7 @@ class BattleUIComponent {
               年限下限: 年限档.下限,
               年限上限: 年限档.上限,
               对标等级: Number(目标?.属性?.等级 || 0),
-              常见系别: String(目标?.属性?.系别 || '').trim(),
+              常见系别: String(目标?.系别 || 目标?.type || '').trim(),
               标准技能: clonePersistedCombatValue(目标?.自创魂技 || {}),
             },
           };
@@ -16397,7 +16396,7 @@ class BattleUIComponent {
               标准种族,
               常见级别: String(目标?.级别 || '').trim(),
               对标等级: Number(目标?.属性?.等级 || 0),
-              常见系别: String(目标?.属性?.系别 || '').trim(),
+              常见系别: String(目标?.系别 || 目标?.type || '').trim(),
               标准技能: clonePersistedCombatValue(目标?.自创魂技 || {}),
             },
           };
@@ -30788,7 +30787,7 @@ class BattleUIComponent {
           });
           merged.name = safeUnit.name || stat.name || safeUnit.base?.name || '未知';
           merged.lv = toUiNumber(merged.lv ?? merged.等级, toUiNumber(stat.等级, 0));
-          merged.type = merged.type || merged.系别 || stat.系别 || '未知系';
+          merged.type = safeUnit.type || safeUnit.系别 || merged.type || merged.系别 || '未知系';
           merged.hp_max = Math.max(
             1,
             toUiNumber(merged.hp_max ?? merged.HP上限, toUiNumber(stat.HP上限, 1)),

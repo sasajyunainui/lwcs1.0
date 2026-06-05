@@ -2288,6 +2288,13 @@
     return 取槽位条目_桥接(角色, 是武魂槽位键_桥接);
   }
 
+  function 取角色主武魂系别_桥接(角色 = {}, fallback = '强攻系') {
+    const 条目 = 取角色武魂条目_桥接(角色);
+    const 第1武魂 = 条目.find(([键]) => 键 === '第1武魂')?.[1] || 条目[0]?.[1] || {};
+    const 系别 = normalizeSkillUiText(第1武魂?.系别 || 第1武魂?.type, '');
+    return 系别 && 系别 !== '未知系' ? 系别 : fallback;
+  }
+
   function 取武魂魂灵条目_桥接(武魂 = {}) {
     return 取槽位条目_桥接(武魂, 是魂灵槽位键_桥接);
   }
@@ -13113,8 +13120,9 @@
       武魂数据?.系别 ||
         武魂数据?.type ||
         草稿?.type ||
-        角色属性?.属性?.系别 ||
-        角色数据?.属性?.系别 ||
+        角色属性?.系别 ||
+        角色属性?.type ||
+        取角色主武魂系别_桥接(角色数据) ||
         '强攻系',
       '强攻系',
     );
@@ -20538,7 +20546,6 @@
     if (前摇 > 0) 添加元信息('前摇', `${formatNumber(前摇)} tick`);
     const 元信息Html = 元信息行.length ? `<div class="ring-hover-meta">${元信息行.join('')}</div>` : '';
     const 文案行Html = [
-      ['简易效果', 安全技能.effectSummary],
       ['画面描述', 安全技能.visualDesc],
       ['效果描述', 安全技能.effectDesc],
     ]
@@ -23684,7 +23691,6 @@
     const ageMetric = toNumber(stat.年龄, 0);
     const 性别文本 = toText(stat.性别, '未知');
     const talentMetric = shortenText(读取属性天赋梯队(stat), 8);
-    const typeMetric = shortenText(toText(stat.系别, '未定'), 8);
     const factionJoined = primaryFactionName !== '未加入';
     const nextLevelNeeded = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.needed, 0));
     const hpPair = getDisplayHpPair(stat);
@@ -23718,7 +23724,7 @@
           : { label: '天赋', value: talentMetric || '--', tone: 'gold' },
         hasSoulPowerMeter
           ? 构建属性指标项('魂力', stat.魂力, stat.魂力上限, 'live')
-          : { label: '系别', value: typeMetric || '--', tone: 'live' },
+          : { label: '天赋', value: talentMetric || '--', tone: 'gold' },
         hasMentalMeter
           ? 构建属性指标项('精神', stat.精神力, stat.精神力上限)
           : { label: '年龄', value: ageMetric > 0 ? String(ageMetric) : '--' },
@@ -28638,16 +28644,6 @@
                         { label: '精神境界', value: htmlEscape(读取显示精神境界(stat)) },
                         { label: '天赋梯队', value: htmlEscape(读取属性天赋梯队(stat)) },
                         {
-                          label: '系别',
-                          value: activeCharKey
-                            ? makeInlineEditableValue(toText(stat.系别, '未知'), {
-                                path: ['char', activeCharKey, '属性', '系别'],
-                                kind: 'string',
-                                rawValue: toText(stat.系别, '未知'),
-                              })
-                            : htmlEscape(toText(stat.系别, '未知')),
-                        },
-                        {
                           label: '名望',
                           value: htmlEscape(
                             `${toText(social.名望等级, toText(social.名望等级, '籍籍无名'))} / ${formatNumber(social.声望)}`,
@@ -31175,18 +31171,6 @@
                   [
                     { label: '角色名', value: targetName || '未知' },
                     { label: '等级', value: targetChar ? formatCultivationLevelBadge(targetStat.等级, '0') : '未收录' },
-                    {
-                      label: '系别',
-                      value: targetCharPath.length
-                        ? makeInlineEditableValue(toText(targetStat.系别, '未知'), {
-                            path: [...targetCharPath, '属性', '系别'],
-                            kind: 'string',
-                            rawValue: toText(targetStat.系别, '未知'),
-                          })
-                        : targetChar
-                          ? toText(targetStat.系别, '未知')
-                          : '未收录',
-                    },
                     {
                       label: '公开身份',
                       value: targetCharPath.length
@@ -35017,7 +35001,6 @@ ${播报文本}
   const COMBAT_PARTICIPANT_STAT_KEYS = [
     '年龄',
     '等级',
-    '系别',
     '天赋梯队',
     '邪魂师',
     'HP',
@@ -35047,7 +35030,7 @@ ${播报文本}
       if (stat[key] !== undefined) participant[key] = stat[key];
     });
     participant.等级 = toNumber(participant.等级, toNumber(stat.等级, 1));
-    participant.系别 = toText(participant.系别, toText(stat.系别, '未知系'));
+    participant.系别 = toText(participant.系别, 取角色主武魂系别_桥接(participant, '未知系'));
     participant.HP上限 = Math.max(1, toNumber(participant.HP上限, toNumber(stat.HP上限, toNumber(stat.体力上限, 1))));
     participant.HP = Math.max(0, toNumber(participant.HP, toNumber(stat.HP, toNumber(stat.体力, participant.HP上限))));
     participant.体力上限 = Math.max(1, toNumber(participant.体力上限, toNumber(stat.体力上限, 1)));
@@ -35506,9 +35489,9 @@ ${播报文本}
       name,
       来源: '临时单位',
       单位性质: unitNature,
+      系别: '未知系',
       属性: {
         等级: 0,
-        系别: '未知系',
         HP: 1,
         HP上限: 1,
         体力: 1,
@@ -35712,7 +35695,7 @@ ${播报文本}
         const hpMax = pickTemporaryBattleInt(48, 82, rng);
         const menMax = pickTemporaryBattleInt(8, 16, rng);
         next.属性.等级 = 0;
-        next.属性.系别 = '普通人';
+        next.系别 = '普通人';
         next.属性.HP上限 = hpMax;
         next.属性.HP = hpMax;
         next.属性.体力上限 = hpMax;
@@ -35741,7 +35724,7 @@ ${播报文本}
       };
       applyTemporaryHumanEquipment(derived, next.装备, identity, level, rng, seed);
       next.属性.等级 = level;
-      next.属性.系别 = combatType;
+      next.系别 = combatType;
       next.属性.HP上限 = Math.max(1, derived.vit_max);
       next.属性.HP = next.属性.HP上限;
       next.属性.体力上限 = next.属性.HP上限;
@@ -35792,9 +35775,9 @@ ${播报文本}
     next.具体物种 = specificSpecies;
     next.物种品质 = speciesQualityTier;
     if (quality) next.品质 = quality;
+    next.系别 = combatType;
     next.属性.年龄 = age;
     next.属性.等级 = Number(stats.对标等级 || 1);
-    next.属性.系别 = combatType;
     next.属性.HP上限 = Math.max(1, Number(stats.vit_max || 1));
     next.属性.HP = next.属性.HP上限;
     next.属性.体力上限 = next.属性.HP上限;
@@ -35828,8 +35811,8 @@ ${播报文本}
     next.数量 = quantity;
     next.级别 = tier;
     next.标准种族 = race;
+    next.系别 = combatType;
     next.属性.等级 = Number(stats.对标等级 || 1);
-    next.属性.系别 = combatType;
     next.属性.HP上限 = Math.max(1, Number(stats.vit_max || 1));
     next.属性.HP = next.属性.HP上限;
     next.属性.体力上限 = next.属性.HP上限;
