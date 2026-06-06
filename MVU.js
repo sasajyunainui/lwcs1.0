@@ -2449,11 +2449,15 @@ function 构建MVU正文关系分析摘要_V1(角色 = {}) {
   return 角色?.社交?.关系分析 && typeof 角色.社交.关系分析 === 'object' ? 角色.社交.关系分析 : {};
 }
 
+function 读取副职业显示名_V1(职业名 = '') {
+  return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[String(职业名 || '').trim()] || String(职业名 || '').trim();
+}
+
 function 构建MVU正文副职业摘要_V1(角色 = {}) {
   const 输出 = {};
   Object.entries(角色?.职业 || {}).forEach(([职业名, 职业数据]) => {
     const 派生 = 派生副职业运行时_V1(职业名, 职业数据);
-    输出[职业名] = {
+    输出[读取副职业显示名_V1(职业名)] = {
       等级: 派生.等级,
       经验: 派生.经验,
       称号: 派生.称号,
@@ -3890,6 +3894,8 @@ function 是否同地图节点组(数据, 左角色, 右角色) {
   return !!(左父节点 && 右父节点 && 左父节点 === 右父节点);
 }
 
+const 本轮等级上升角色记录_V1 = new WeakSet();
+
 function autoBreakthrough(data) {
   _(data.char).forEach((c, charName) => {
     if (!c.状态?.存活) return;
@@ -3917,6 +3923,7 @@ function autoBreakthrough(data) {
       if (currentLv >= maxLv) return;
 
       c.属性.等级 = nextLevelStep;
+      本轮等级上升角色记录_V1.add(c);
       const newLv = Number(c.属性.等级 || nextLevelStep);
       const newLvText = formatBreakthroughLevelText(newLv);
       let shouldStopAfterThisBreak = false;
