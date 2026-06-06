@@ -1657,8 +1657,6 @@
   let lastDashboardRenderSignature = '';
   let lastDashboardSectionRenderSignatures = null;
   let liveUiRefCache = new Map();
-  let 可玩选项短锁截止时间 = 0;
-  let 可玩选项短锁键 = '';
   let 慢刷新骨架已启用 = false;
   const 慢刷新骨架预览键列表 = Object.freeze(['系统播报与日志', '试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
@@ -4619,6 +4617,50 @@
       mvuData: safeMvuData,
       messageId: scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest',
     };
+  }
+
+  function 获取内置角色实例化接口_桥接() {
+    const 候选窗口 = [window];
+    try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
+    for (const 候选 of 候选窗口) {
+      const 接口 = 候选?.__LWCS_MVU_RUNTIME_VIEW__;
+      if (接口 && typeof 接口.应用内置角色实例化 === 'function') return 接口;
+    }
+    return null;
+  }
+
+  function 规范化内置角色实例化结果_桥接(statData = {}) {
+    const 候选窗口 = [window];
+    try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
+    for (const 候选 of 候选窗口) {
+      const 规范化 = 候选?.__LWCS_NORMALIZE_MVU_STAT_DATA__;
+      if (typeof 规范化 === 'function') return 规范化(statData);
+    }
+    return statData;
+  }
+
+  async function 按文本实例化内置角色_桥接(文本 = '', 附加选项 = {}) {
+    const 接口 = 获取内置角色实例化接口_桥接();
+    if (!接口) return { changed: false, names: [], reason: 'runtime_api_missing' };
+    const 合并文本 = [文本, 附加选项.剧情文本, 附加选项.最后剧情文本].join('\n');
+    if (!String(合并文本 || '').trim()) return { changed: false, names: [] };
+    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
+    const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
+    const 待写回变量数据 = cloneJsonValue(待写回MVU数据.stat_data, {});
+    const 结果 = 接口.应用内置角色实例化(待写回变量数据, {
+      用户输入: 文本,
+      剧情文本: 附加选项.剧情文本 || '',
+      最后剧情文本: 附加选项.最后剧情文本 || '',
+      时间线事件命中: true,
+    });
+    if (!结果 || !结果.changed) return { changed: false, names: [] };
+    待写回MVU数据.stat_data = 规范化内置角色实例化结果_桥接(待写回变量数据);
+    await Promise.resolve(主机.replaceMvuData(待写回MVU数据, { type: 'message', message_id: 消息编号 }));
+    writeMvuEditorStoreSnapshot(待写回MVU数据.stat_data, { messageId: 消息编号 });
+    await refreshLiveSnapshot({ force: true });
+    return { changed: true, names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []) };
   }
 
   async function ensureMvuEditorStoreReady(options = {}) {
@@ -21103,143 +21145,6 @@
     return result;
   }
 
-  function 获取数据库选项表快照() {
-    const 已访问窗口 = new Set();
-    for (const 目标窗口 of 获取载入器候选窗口()) {
-      if (!目标窗口 || 已访问窗口.has(目标窗口)) continue;
-      已访问窗口.add(目标窗口);
-      try {
-        const 数据库接口 = 目标窗口.AutoCardUpdaterAPI;
-        if (!数据库接口 || typeof 数据库接口.exportTableAsJson !== 'function') continue;
-        const 导出结果 = 数据库接口.exportTableAsJson();
-        if (导出结果 && typeof 导出结果 === 'object') return 导出结果;
-      } catch (错误) {}
-    }
-    return null;
-  }
-
-  function 从数据库快照定位选项表(数据库快照) {
-    if (!数据库快照 || typeof 数据库快照 !== 'object') return null;
-    const 表条目列表 = safeEntries(数据库快照).filter(
-      ([键名, 表对象]) => /^sheet_/i.test(toText(键名, '')) && 表对象 && typeof 表对象 === 'object',
-    );
-    for (const [, 表对象] of 表条目列表) {
-      const 表名 = toText(表对象 && 表对象.name, '').trim();
-      if (表名 === '选项表') return 表对象;
-    }
-    for (const [, 表对象] of 表条目列表) {
-      const 表名 = toText(表对象 && 表对象.name, '').trim();
-      if (表名.includes('选项')) return 表对象;
-    }
-    return null;
-  }
-
-  function 读取选项表首行候选文本(选项表对象) {
-    const 列名列表 = ['选项一', '选项二', '选项三', '选项四'];
-    const 结果列表 = [];
-    if (!选项表对象 || typeof 选项表对象 !== 'object') return 结果列表;
-
-    const 内容行列表 = Array.isArray(选项表对象.content) ? 选项表对象.content : [];
-    if (内容行列表.length) {
-      const 标题行 = Array.isArray(内容行列表[0]) ? 内容行列表[0].map(值 => toText(值, '').trim()) : [];
-      const 数组数据行 = 内容行列表.find((行, 序号) => 序号 > 0 && Array.isArray(行) && 行.length);
-      if (标题行.length && 数组数据行) {
-        列名列表.forEach(列名 => {
-          const 列索引 = 标题行.indexOf(列名);
-          if (列索引 >= 0) 结果列表.push(toText(数组数据行[列索引], '').trim());
-        });
-      }
-      if (!结果列表.some(Boolean)) {
-        const 对象数据行 = 内容行列表.find(
-          (行, 序号) => 序号 > 0 && 行 && typeof 行 === 'object' && !Array.isArray(行),
-        );
-        if (对象数据行) {
-          列名列表.forEach(列名 => {
-            结果列表.push(toText(对象数据行[列名], '').trim());
-          });
-        }
-      }
-    }
-
-    if (!结果列表.some(Boolean)) {
-      const 行对象 = Array.isArray(选项表对象.rows) ? 选项表对象.rows[0] || null : null;
-      if (行对象 && typeof 行对象 === 'object' && !Array.isArray(行对象)) {
-        列名列表.forEach(列名 => {
-          结果列表.push(toText(行对象[列名], '').trim());
-        });
-      }
-    }
-    return 结果列表.filter(Boolean);
-  }
-
-  function 读取选项表候选文本列表() {
-    const 数据库快照 = 获取数据库选项表快照();
-    if (!数据库快照) return [];
-    const 选项表对象 = 从数据库快照定位选项表(数据库快照);
-    if (!选项表对象) return [];
-    return 读取选项表首行候选文本(选项表对象);
-  }
-
-  function 归一化候选选项原文(原始值 = '') {
-    const 原始文本 = toText(原始值, '').trim();
-    if (!原始文本) return '';
-    const 去前缀文本 = 原始文本
-      .replace(/^\s*(?:选项)?[一二三四1234①②③④]\s*[：:、.)）]\s*/i, '')
-      .replace(/^\s*[-•·]\s*/, '')
-      .trim();
-    if (!去前缀文本) return '';
-    if (hasUiPlaceholderToken(去前缀文本)) return '';
-    if (isShellPlaceholderText(去前缀文本)) return '';
-    return 去前缀文本;
-  }
-
-  function 归一化候选选项键(原始值 = '') {
-    let 规范文本 = toText(原始值, '').toLowerCase();
-    if (!规范文本) return '';
-    const 同义词规则 = [
-      { 根词: '前往', 匹配: /(前往|去往|动身|启程|出发|前去|赶赴|赶往|奔赴)/g },
-      { 根词: '探索', 匹配: /(探索|探查|侦查|巡查|搜寻|查探)/g },
-      { 根词: '整理', 匹配: /(整理|整备|筹备|准备|盘点|归整)/g },
-      { 根词: '休整', 匹配: /(休整|休息|调息|恢复|疗伤|修养)/g },
-      { 根词: '交易', 匹配: /(交易|买卖|采购|出售|兑换)/g },
-      { 根词: '战斗', 匹配: /(战斗|交战|迎战|出手|攻击|对决)/g },
-    ];
-    同义词规则.forEach(规则 => {
-      规范文本 = 规范文本.replace(规则.匹配, 规则.根词);
-    });
-    规范文本 = 规范文本
-      .replace(/[\s\u3000]+/g, '')
-      .replace(/[`~!@#$%^&*()_\-+=|\\[\]{};:'",.<>/?，。！？、；：“”‘’（）【】《》·…]/g, '');
-    return 规范文本.trim();
-  }
-
-  function 构建候选选项条目(原文 = '', 序号 = 0) {
-    const 清洗后文本 = 归一化候选选项原文(原文);
-    if (!清洗后文本) return null;
-    const 规范键 = 归一化候选选项键(清洗后文本) || `选项_${序号}_${清洗后文本}`;
-    return {
-      序号: Math.max(1, toNumber(序号, 1)),
-      原文: 清洗后文本,
-      规范键,
-      展示文案: shortenText(清洗后文本, 26),
-    };
-  }
-
-  function 构建可玩选项展示列表(快照) {
-    const 选项原文列表 = 读取选项表候选文本列表();
-    const 已录入键集合 = new Set();
-    const 展示条目列表 = [];
-    (Array.isArray(选项原文列表) ? 选项原文列表 : []).forEach((原文, 索引) => {
-      const 条目 = 构建候选选项条目(原文, 索引 + 1);
-      if (!条目) return;
-      const 规范键 = toText(条目.规范键, '').trim();
-      if (!规范键 || 已录入键集合.has(规范键)) return;
-      已录入键集合.add(规范键);
-      展示条目列表.push(条目);
-    });
-    return 展示条目列表.slice(0, 4);
-  }
-
   function 提取叙事句段(source = '') {
     const 原文 = String(source || '')
       .replace(/\s+/g, ' ')
@@ -21483,31 +21388,13 @@
     return '超高价';
   }
 
-  function 提取最近成交影响指标(系统播报 = '', rootData = null) {
+  function 提取最近成交影响指标(系统播报 = '') {
     const 播报文本 = toText(系统播报, '');
     const 标签匹配 = Array.from(播报文本.matchAll(/\[(买入热|卖出热|竞拍热|兑换热|市场波动)\]/g))
       .map(match => toText(match && match[1], '').trim())
       .filter(Boolean);
     if (标签匹配.length) return 标签匹配[标签匹配.length - 1];
-    const 情报条目 = safeEntries(deepGet(rootData, 'world.机密情报', {}))
-      .filter(([, item]) => item && typeof item === 'object')
-      .map(([, item]) => ({
-        来源: toText(item && item['触发来源'], ''),
-        证据来源列表: Array.isArray(item && item['证据来源列表']) ? item['证据来源列表'] : [],
-        最近证据tick: toNumber(item && item['最近证据tick'], 0),
-        最近核实tick: toNumber(item && item['最近核实tick'], 0),
-        标题: toText(item && item['标题'], ''),
-        内容: toText(item && item['内容'], ''),
-      }))
-      .filter(item => item.来源 === '交易' || item.证据来源列表.some(来源 => toText(来源, '') === '交易'))
-      .sort((a, b) => Math.max(b.最近证据tick, b.最近核实tick) - Math.max(a.最近证据tick, a.最近核实tick));
-    if (!情报条目.length) return '平稳';
-    const 文本 = `${情报条目[0].标题} ${情报条目[0].内容}`;
-    if (/竞拍|拍卖/.test(文本)) return '竞拍热';
-    if (/兑换|魂灵塔/.test(文本)) return '兑换热';
-    if (/卖出|出售|抛售|回收/.test(文本)) return '卖出热';
-    if (/买入|购买|采购|抢购|求购/.test(文本)) return '买入热';
-    return '市场波动';
+    return '平稳';
   }
 
   function clampMarketMultiplier(value) {
@@ -21560,7 +21447,7 @@
   function 构建市场派生模型(locationData = {}, rootData = null) {
     const 本地供给 = 计算本地供给指标(locationData);
     const 价格带 = 计算本地价格带指标(locationData);
-    const 最近成交影响 = 提取最近成交影响指标(deepGet(rootData, 'sys.系统播报', ''), rootData);
+    const 最近成交影响 = 提取最近成交影响指标(deepGet(rootData, 'sys.系统播报', ''));
     const 经济状况 = toText(locationData && locationData['经济状况'], '未知');
     const 供给倍率 = 获取市场供给倍率(本地供给);
     const 经济倍率 = 获取市场经济倍率(经济状况);
@@ -21809,27 +21696,6 @@
     const 当前任务进度 = 当前任务聚焦条目
       ? `${Math.max(0, Math.min(100, toNumber(当前任务数据 && 当前任务数据['当前进度'], 0)))}%`
       : '--';
-    const 机密情报条目 = safeEntries(deepGet(sd, 'world.机密情报', {})).filter(
-      ([, item]) => item && typeof item === 'object',
-    );
-    const 待核实情报列表 = 机密情报条目.filter(([, item]) => toText(item && item['核实状态'], '可疑') === '待核实');
-    const 最近核实情报 =
-      机密情报条目
-        .map(([name, item]) => ({ 名称: name, 数据: item }))
-        .sort(
-          (a, b) => toNumber(deepGet(b, '数据.最近核实tick', 0), 0) - toNumber(deepGet(a, '数据.最近核实tick', 0), 0),
-        )[0] || null;
-    const 情报最近核实结果 = 最近核实情报
-      ? `${toText(deepGet(最近核实情报, '数据.标题', 最近核实情报.名称), 最近核实情报.名称)}:${toText(deepGet(最近核实情报, '数据.最近核实结果', '无'), '无')}`
-      : '暂无核实记录';
-    const 情报证据净值 = 最近核实情报
-      ? Number(
-          (
-            Math.max(0, toNumber(deepGet(最近核实情报, '数据.证据权重', 0), 0)) -
-            Math.max(0, toNumber(deepGet(最近核实情报, '数据.反证权重', 0), 0))
-          ).toFixed(2),
-        )
-      : 0;
     const 图鉴聚焦条目 =
       (bestiaryEntries || [])
         .filter(([, item]) => item && typeof item === 'object')
@@ -22002,9 +21868,6 @@
       questRecordCount,
       当前任务名称,
       当前任务进度,
-      情报待核实数量: 待核实情报列表.length,
-      情报最近核实结果,
-      情报证据净值,
       图鉴聚焦名称,
       图鉴聚焦类型,
       图鉴聚焦规格,
@@ -22030,7 +21893,6 @@
       publicIntel: 判断角色情报可见({ rootData: sd, activeName, activeChar }, activeChar),
       extraSkills,
     };
-    快照数据.可玩选项 = 构建可玩选项展示列表(快照数据);
     return 快照数据;
   }
 
@@ -26342,33 +26204,6 @@
       );
     }
     lastDashboardSectionRenderSignatures = sectionSignatures;
-  }
-
-  function 构建可玩选项卡区(快照, 来源标记 = '') {
-    const 选项列表 = Array.isArray(快照 && 快照.可玩选项) ? 快照.可玩选项.slice(0, 4) : [];
-    if (!选项列表.length) return '';
-    const 按钮Html = 选项列表.length
-      ? 选项列表
-          .map(
-            条目 => `
-            <button
-              type="button"
-              class="tag-chip live"
-              data-lwcs-option-fill="${escapeHtmlAttr(toText(条目 && 条目.原文, ''))}"
-              data-lwcs-option-key="${escapeHtmlAttr(toText(条目 && 条目.规范键, ''))}"
-            >${htmlEscape(toText(条目 && 条目.展示文案, toText(条目 && 条目.原文, '可选行动')))}</button>
-          `,
-          )
-          .join('')
-      : '';
-    return `
-        <div class="archive-card full" data-lwcs-option-panel="${escapeHtmlAttr(toText(来源标记, ''))}">
-          <div class="archive-card-head"><div class="archive-card-title">可选行动</div></div>
-          <div class="request-console-row mvu-detail-action-row">
-            ${按钮Html}
-          </div>
-        </div>
-      `;
   }
 
   function buildLiveArchiveModal(previewKey) {
@@ -32429,8 +32264,6 @@
                     : ''
                 }
               </div>
-              ${构建可玩选项卡区(snapshot, '试炼与情报')}
-
               <div class="archive-card full mvu-detail-scroll-card">
                 <div class="archive-card-head"><div class="archive-card-title">近期情报</div></div>
                 <div class="intel-layout mvu-detail-intel-grid mvu-detail-scroll-list">
@@ -33221,6 +33054,7 @@
 
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
   window.__MVU_GET_LIVE_SNAPSHOT__ = () => liveSnapshot || lastRenderableSnapshot || null;
+  window.__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置角色_桥接(文本, 选项);
   window.__MVU_OPEN_BATTLE_UI__ = async () => {
     const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'open_battle_ui');
     if (!模块加载结果 || 模块加载结果.ok === false) {
@@ -36678,25 +36512,6 @@ ${播报文本}
     };
   }
 
-  function getChatSendTextarea() {
-    return document.getElementById('send_textarea') || document.querySelector('#send_form textarea');
-  }
-
-  function 写入选项到输入框(选项文本 = '') {
-    const 输入框 = getChatSendTextarea();
-    if (!输入框 || !('value' in 输入框)) return false;
-    const 规范文本 = toText(选项文本, '').trim();
-    if (!规范文本) return false;
-    const 写入文本 = `我选择：${规范文本}`;
-    输入框.value = 写入文本;
-    输入框.dispatchEvent(new Event('input', { bubbles: true }));
-    if (typeof 输入框.focus === 'function') 输入框.focus();
-    if (typeof 输入框.setSelectionRange === 'function') {
-      输入框.setSelectionRange(写入文本.length, 写入文本.length);
-    }
-    return true;
-  }
-
   function extractBracketTokens(text) {
     const tokens = [];
     String(text || '').replace(/【([^】]{1,80})】/g, (_, token) => {
@@ -39513,37 +39328,6 @@ ${播报文本}
         event.stopPropagation();
         return;
       }
-    }
-    const 可玩选项按钮 = eventTarget ? eventTarget.closest('[data-lwcs-option-fill]') : null;
-    if (可玩选项按钮 && detailSurfaceHost.contains(可玩选项按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const 选项文本 = toText(可玩选项按钮.getAttribute('data-lwcs-option-fill'), '').trim();
-      const 短锁键 = toText(可玩选项按钮.getAttribute('data-lwcs-option-key'), '').trim() || 选项文本;
-      const 当前毫秒 = Date.now();
-      if (当前毫秒 < 可玩选项短锁截止时间 && 短锁键 === 可玩选项短锁键) {
-        showUiToast('操作过快，请稍候再点。', 'info', 1600);
-        return;
-      }
-      if (!选项文本) {
-        showUiToast('当前选项为空，无法写入输入框。', 'error', 2400);
-        return;
-      }
-      const 写入成功 = 写入选项到输入框(选项文本);
-      if (!写入成功) {
-        showUiToast('未找到输入框，无法写入选项。', 'error', 2800);
-        return;
-      }
-      可玩选项短锁键 = 短锁键;
-      可玩选项短锁截止时间 = 当前毫秒 + 420;
-      可玩选项按钮.classList.add('is-short-lock');
-      window.setTimeout(() => {
-        if (可玩选项按钮 && typeof 可玩选项按钮.classList?.remove === 'function') {
-          可玩选项按钮.classList.remove('is-short-lock');
-        }
-      }, 420);
-      showUiToast('已写入输入框。', 'info', 1800);
-      return;
     }
     const actionBtn = eventTarget ? eventTarget.closest('.armory-action-btn') : null;
     if (actionBtn && detailSurfaceHost.contains(actionBtn)) {
