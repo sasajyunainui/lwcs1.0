@@ -1630,6 +1630,8 @@
   }
 
   let activeBattleUI = null;
+  let 自动战斗运行宿主 = null;
+  let 自动战斗运行组件 = null;
   const BATTLE_INLINE_PREVIEW_KEY = '战斗终端';
   const 战斗提交模式存储键 = 'lwcs_battle_submit_mode';
   const 战斗提交模式列表 = ['auto', 'manual', 'free_narrative'];
@@ -1640,6 +1642,7 @@
   let battleReturnEntrySyncToken = 0;
   let pendingBattleInlineMount = null;
   let 跳过战斗终端自动挂载 = false;
+  let 自动战斗延后写回次数 = 0;
   let playerNameRepairInFlight = '';
   let liveSnapshot = null;
   let lastRenderableSnapshot = null;
@@ -1671,13 +1674,24 @@
 
   function 读取战斗提交模式() {
     try {
-      const 桥接模式 = window.BattleUIBridge?.getBattleSubmitMode?.();
-      if (桥接模式) return 规范化战斗提交模式(桥接模式);
       return 规范化战斗提交模式(window.localStorage?.getItem(战斗提交模式存储键));
     } catch (error) {
       return 'manual';
     }
   }
+
+  function 写入战斗提交模式(模式) {
+    const 下个模式 = 规范化战斗提交模式(模式);
+    try {
+      window.localStorage?.setItem(战斗提交模式存储键, 下个模式);
+    } catch (error) {}
+    return 下个模式;
+  }
+
+  window.BattleUIBridge = Object.assign(window.BattleUIBridge || {}, {
+    getBattleSubmitMode: () => 读取战斗提交模式(),
+    setBattleSubmitMode: 模式 => 写入战斗提交模式(模式),
+  });
 
   function htmlEscape(value) {
     return String(value == null ? '' : value)
@@ -34671,9 +34685,50 @@ ${播报文本}
         </div>`;
   }
 
+  function buildBattleHeadlessHostMarkup() {
+    return `<div class="battle-module-scope" aria-hidden="true">
+      <div id="ui-player-panel"></div>
+      <div id="ui-enemy-panel"></div>
+      <div id="ui-team-player"></div>
+      <div id="ui-team-enemy"></div>
+      <div id="ui-combat-chips"></div>
+      <div id="ui-summon-queue" hidden></div>
+      <div id="ui-action-filters"></div>
+      <div id="ui-action-grid"></div>
+      <div id="ui-target-controls" hidden></div>
+      <div id="ui-tower-settlement" hidden></div>
+      <textarea id="ui-intent-output" hidden></textarea>
+      <select id="ui-intent-mode"><option value="点到为止" selected>点到为止</option></select>
+    </div>`;
+  }
+
   function getBattleInlineHost() {
     const host = document.getElementById('mvu-battle-inline-host');
     return host instanceof Element && host.isConnected ? host : null;
+  }
+
+  async function 确保自动战斗运行器(snapshot, combatData) {
+    const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'auto_battle_headless_runner');
+    if (!模块加载结果 || 模块加载结果.ok === false) {
+      return { ok: false, reason: '战斗模块加载失败。' };
+    }
+    if (typeof window.mountBattleUI !== 'function') return { ok: false, reason: 'battle_mount_unavailable' };
+    if (!自动战斗运行宿主 || !自动战斗运行宿主.isConnected) {
+      自动战斗运行宿主 = document.createElement('div');
+      自动战斗运行宿主.id = 'mvu-battle-headless-host';
+      自动战斗运行宿主.hidden = true;
+      自动战斗运行宿主.style.display = 'none';
+      自动战斗运行宿主.innerHTML = buildBattleHeadlessHostMarkup();
+      document.body.appendChild(自动战斗运行宿主);
+      自动战斗运行组件 = null;
+    }
+    const 战斗快照 = buildBattleUiSnapshot(snapshot, combatData);
+    if (自动战斗运行组件 && typeof 自动战斗运行组件.updateData === 'function') {
+      自动战斗运行组件.updateData(战斗快照);
+    } else {
+      自动战斗运行组件 = window.mountBattleUI(自动战斗运行宿主, 战斗快照, {});
+    }
+    return { ok: true, component: 自动战斗运行组件 };
   }
 
   const 召唤夹具名称列表 = Object.freeze([
@@ -36184,7 +36239,7 @@ ${播报文本}
     const canUseBattle = isCombatActive && isSnapshotPlayerControlled(snapshot);
     const battleUiSnapshot = canUseBattle ? buildBattleUiSnapshot(snapshot, liveCombatData) : snapshot;
     syncBattleReturnEntries(snapshot, canUseBattle && battleInlineDismissed);
-    if (canUseBattle && 跳过战斗终端自动挂载 && !options.reopenBattle) {
+    if (canUseBattle && (跳过战斗终端自动挂载 || 读取战斗提交模式() !== 'manual') && !options.reopenBattle) {
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
       activeBattleUI = null;
       return;
@@ -36450,15 +36505,26 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
       return { ok: false, reason: 'battle_context_missing' };
     }
+    const 运行器结果 = await 确保自动战斗运行器(当前快照, 战斗数据);
+    if (!运行器结果?.ok) return 运行器结果;
     const 执行函数 = window.BattleUIBridge?.executeBattleFlow;
     if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_auto_engine_unavailable' };
-    const 执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 4 });
+    自动战斗延后写回次数 += 1;
+    let 执行结果 = null;
+    try {
+      执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 4 });
+    } catch (error) {
+      自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
+      return { ok: false, reason: error && error.message ? error.message : 'battle_auto_engine_failed' };
+    }
+    自动战斗延后写回次数 = 0;
     const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
     const 提交结果 = await dispatchUiAiRequest('自动战斗推进', 构建自动战斗裁断提示(战斗数据, 执行结果), {
       requestKind: 'battle_arbitration',
       patchOps,
       skipActionLock: true,
     });
+    跳过战斗终端自动挂载 = false;
     return {
       ok: 提交结果?.ok !== false,
       dispatch: 提交结果,
@@ -38527,6 +38593,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
     const patchOps = Array.isArray(detail.patchOps) ? detail.patchOps : [];
     if (!patchOps.length) return;
+    if (自动战斗延后写回次数 > 0) {
+      自动战斗延后写回次数 -= 1;
+      detail.delivery = { ok: true, channel: 'auto_battle_deferred_patch', patchCount: patchOps.length };
+      return;
+    }
     try {
       await applyJsonPatchOpsByEditor(patchOps);
       detail.delivery = { ok: true, channel: 'mvu_editor_patch', patchCount: patchOps.length };

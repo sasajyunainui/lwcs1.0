@@ -174,6 +174,7 @@ function 取内置角色最近快照_V1(角色记录 = {}, 当前tick = 0) {
 
 function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
   const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 0) || 0);
+  if (快照?.固定年龄投影 === true) return 快照年龄;
   const 快照tick = Number(快照?.tick);
   if (!Number.isFinite(快照tick)) return 快照年龄;
   const 每年tick = Math.max(1, Number(读取内置角色库_V1().每年tick || 51840));
