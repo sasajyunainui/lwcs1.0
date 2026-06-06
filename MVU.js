@@ -3584,6 +3584,7 @@ try {
     读取支持融锻数值表: 读取副职业支持融锻数值表_V1,
     读取阶位融锻数: 读取副职业阶位融锻数_V1,
     读取最高支持融锻数: 读取副职业最高支持融锻数_V1,
+    读取显示名: 读取副职业显示名_V1,
     派生运行时: 派生副职业运行时_V1,
   });
   globalThis.__LWCS_PROFESSION_DERIVATION__ = 副职业派生接口_V1;
@@ -3928,7 +3929,20 @@ function 是否同地图节点组(数据, 左角色, 右角色) {
   return !!(左父节点 && 右父节点 && 左父节点 === 右父节点);
 }
 
-const 本轮等级上升角色记录_V1 = new WeakSet();
+const 本轮等级上升角色记录_V1 = new WeakMap();
+let 当前归一化批次_V1 = 0;
+
+function 开始MVU归一化批次_V1() {
+  当前归一化批次_V1 = (当前归一化批次_V1 + 1) % Number.MAX_SAFE_INTEGER || 1;
+}
+
+function 标记本轮等级上升角色_V1(角色 = null) {
+  if (角色 && typeof 角色 === 'object') 本轮等级上升角色记录_V1.set(角色, 当前归一化批次_V1);
+}
+
+function 判断本轮等级上升角色_V1(角色 = null) {
+  return !!(角色 && typeof 角色 === 'object' && 本轮等级上升角色记录_V1.get(角色) === 当前归一化批次_V1);
+}
 
 function autoBreakthrough(data) {
   _(data.char).forEach((c, charName) => {
@@ -3957,7 +3971,7 @@ function autoBreakthrough(data) {
       if (currentLv >= maxLv) return;
 
       c.属性.等级 = nextLevelStep;
-      本轮等级上升角色记录_V1.add(c);
+      标记本轮等级上升角色_V1(c);
       const newLv = Number(c.属性.等级 || nextLevelStep);
       const newLvText = formatBreakthroughLevelText(newLv);
       let shouldStopAfterThisBreak = false;
@@ -24401,7 +24415,7 @@ const CharacterSchema = z
     const 原始等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
     const 标记本轮等级上升 = () => {
       const 当前等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
-      if (当前等级 > 原始等级) 本轮等级上升角色记录_V1.add(char);
+      if (当前等级 > 原始等级) 标记本轮等级上升角色_V1(char);
     };
     const normalizedCharName = String(char?.name || char?.属性?.name || char?.base?.name || '').trim();
     const isPlayerCharacter = char.__mvu_isPlayer === true;
@@ -26160,6 +26174,7 @@ function 判断传灵塔万年魂灵开放_V1(数据根 = {}) {
 }
 
 function markPlayerCharacterInSchemaInput(rawInput) {
+  开始MVU归一化批次_V1();
   if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return rawInput;
   const clonedInput = _.cloneDeep(rawInput);
   const markCandidate = candidate => {
@@ -29329,7 +29344,7 @@ export const Schema = z
 
       c.属性.HP上限 = Math.max(1, Number(c.属性.体力上限 || c.属性.HP上限 || 1));
       const resolvePreservedRatio = key => {
-        if (本轮等级上升角色记录_V1.has(c)) return 1.0;
+        if (判断本轮等级上升角色_V1(c)) return 1.0;
         if (
           是否新档初始化 ||
           isDefaultSeededResourceState ||
@@ -30325,7 +30340,7 @@ export const Schema = z
         _(sourceChar.职业 || {}).forEach((jobData, jobName) => {
           const 副职业 = 派生副职业运行时_V1(jobName, jobData);
           jobSummary.push({
-            职业: jobName,
+            职业: 读取副职业显示名_V1(jobName),
             等级: 副职业.等级,
             经验: 副职业.经验,
             称号: 副职业.称号,
