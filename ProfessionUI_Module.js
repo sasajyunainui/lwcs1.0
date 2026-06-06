@@ -597,7 +597,7 @@ class ProfessionUIComponent {
 
   applyInitialContext() {
     const req = this.getInitialRequest();
-    const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业 || req.职业);
+    const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业 || req.副职业);
     if (mode) this.setActiveMode(mode);
 
     this.setInitialTier(req);
@@ -818,7 +818,7 @@ class ProfessionUIComponent {
   }
 
   getJobRuntime(jobName, charObj = this.charData) {
-    const job = charObj?.职业?.[jobName] || {};
+    const job = charObj?.副职业?.[jobName] || {};
     const totalExp = Number(job.经验 || 0);
     const 派生接口 = this.读取副职业派生接口();
     let lv = 派生接口.读取等级(totalExp);
@@ -1250,7 +1250,7 @@ class ProfessionUIComponent {
     };
 
     const jobDisplayName = this.读取副职业显示名(cfg.jobName);
-    if (type === 'self' && !this.charData?.职业?.[cfg.jobName]) { ctx.error = `${this.activeName}未掌握【${jobDisplayName}】副职业，无法发起该类操作。`; return ctx; }
+    if (type === 'self' && !this.charData?.副职业?.[cfg.jobName]) { ctx.error = `${this.activeName}未掌握【${jobDisplayName}】副职业，无法发起该类操作。`; return ctx; }
 
     if (ctx.isOfficial) {
       ctx.executorName = `${jobDisplayName}协会`; ctx.executorRuntime = this.buildOfficialCommissionRuntime(cfg.jobName); ctx.validationRuntime = ctx.executorRuntime;
@@ -1268,7 +1268,7 @@ class ProfessionUIComponent {
         ctx.targetChar = targetChar || null;
         if (!targetChar) ctx.error = `找不到代工目标【${targetNpcName}】。`;
         else if (!this.isLocationCompatible(currentLoc, String(targetChar?.状态?.位置 || ''))) ctx.error = `【${targetNpcName}】当前不在你身边，无法进行当面代工交接。`;
-        else if (!targetChar?.职业?.[cfg.jobName]) ctx.error = `【${targetNpcName}】并未掌握【${jobDisplayName}】副职业。`;
+        else if (!targetChar?.副职业?.[cfg.jobName]) ctx.error = `【${targetNpcName}】并未掌握【${jobDisplayName}】副职业。`;
         else {
           const npcRuntime = this.getJobRuntime(cfg.jobName, targetChar);
           ctx.executorName = relationName; ctx.executorRuntime = npcRuntime; ctx.validationRuntime = npcRuntime;
@@ -1624,7 +1624,7 @@ class ProfessionUIComponent {
     const derived = this.deriveJobLimitsFromExp(nextExp);
     return {
       patches: [
-        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/经验`, value: nextExp }
+        { op: 'replace', path: `${this.activeCharBasePath}/副职业/${this.escapeJsonPointer(jobName)}/经验`, value: nextExp }
       ],
       oldLv: runtime.lv, newLv: derived.lv
     };

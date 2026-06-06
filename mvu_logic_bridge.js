@@ -261,7 +261,7 @@
     武装工坊详细页: {
       title: '武装工坊',
       summary: '查看当前武装、斗铠部件与副职业工坊。',
-      fields: ['activeChar.装备.武器', 'activeChar.装备.斗铠', 'activeChar.装备.机甲', 'activeChar.职业'],
+      fields: ['activeChar.装备.武器', 'activeChar.装备.斗铠', 'activeChar.装备.机甲', 'activeChar.副职业'],
       duties: ['展示武器/斗铠/机甲', '展示装备槽位状态', '显示副职业等级与融合信息'],
       actions: ['打开斗铠总览', '查看槽位覆盖', '浏览装备摘要'],
     },
@@ -4630,6 +4630,19 @@
     return true;
   }
 
+  async function 归一化Mvu包并按需写回_桥接(宿主, 原始MVU数据, 消息编号 = 'latest') {
+    const 安全MVU数据 = normalizeMvuDataEnvelopeForEditor(原始MVU数据);
+    const 归一化变量数据 = 归一化变量根_桥接(cloneJsonValue(安全MVU数据.stat_data, {}));
+    if (serializeMvuEditorStoreStatData(归一化变量数据) === serializeMvuEditorStoreStatData(安全MVU数据.stat_data)) {
+      return 安全MVU数据;
+    }
+    安全MVU数据.stat_data = 归一化变量数据;
+    if (宿主 && typeof 宿主.replaceMvuData === 'function') {
+      await Promise.resolve(宿主.replaceMvuData(安全MVU数据, { type: 'message', message_id: 消息编号 }));
+    }
+    return 安全MVU数据;
+  }
+
   async function readLatestMvuDataByEditor() {
     await waitForMvuReady();
     const host = getMvuHost();
@@ -4643,11 +4656,12 @@
     if (!currentMvuData || typeof currentMvuData !== 'object') {
       throw new Error('读取当前 MVU 数据失败。');
     }
-    const safeMvuData = normalizeMvuDataEnvelopeForEditor(currentMvuData);
+    const 消息编号 = scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest';
+    const 安全MVU数据 = await 归一化Mvu包并按需写回_桥接(host, currentMvuData, 消息编号);
     return {
       host,
-      mvuData: safeMvuData,
-      messageId: scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest',
+      mvuData: 安全MVU数据,
+      messageId: 消息编号,
     };
   }
 
@@ -4662,22 +4676,70 @@
     return null;
   }
 
-  function 规范化内置角色实例化结果_桥接(statData = {}) {
+  function 读取变量根归一化函数_桥接() {
     const 候选窗口 = [window];
     try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
     try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
     for (const 候选 of 候选窗口) {
       const 规范化 = 候选?.__LWCS_NORMALIZE_MVU_STAT_DATA__;
-      if (typeof 规范化 === 'function') return 规范化(statData);
+      if (typeof 规范化 === 'function') return 规范化;
     }
-    return statData;
+    return null;
+  }
+
+  function 归一化变量根_桥接(变量数据 = {}) {
+    const 规范化 = 读取变量根归一化函数_桥接();
+    return typeof 规范化 === 'function' ? 规范化(变量数据) : 变量数据;
+  }
+
+  function 计算内置角色实例化文本签名_桥接(文本 = '') {
+    const 规范文本 = String(文本 || '').trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    if (!规范文本) return '';
+    let 哈希 = 2166136261;
+    for (let 序号 = 0; 序号 < 规范文本.length; 序号 += 1) {
+      哈希 ^= 规范文本.charCodeAt(序号);
+      哈希 += (哈希 << 1) + (哈希 << 4) + (哈希 << 7) + (哈希 << 8) + (哈希 << 24);
+    }
+    return (哈希 >>> 0).toString(36);
+  }
+
+  async function 读取内置角色实例化当前状态_桥接() {
+    try {
+      const { mvuData: MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
+      return {
+        statData: MVU数据 && typeof MVU数据 === 'object' ? MVU数据.stat_data || {} : {},
+        messageId: 消息编号,
+      };
+    } catch (错误) {
+      return { statData: {}, messageId: null };
+    }
   }
 
   async function 按文本实例化内置角色_桥接(文本 = '', 附加选项 = {}) {
     const 接口 = 获取内置角色实例化接口_桥接();
-    if (!接口) return { changed: false, names: [], reason: 'runtime_api_missing' };
     const 合并文本 = [文本, 附加选项.剧情文本, 附加选项.最后剧情文本].join('\n');
-    if (!String(合并文本 || '').trim()) return { changed: false, names: [] };
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(合并文本);
+    if (!接口) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return {
+        changed: false,
+        names: [],
+        reason: 'runtime_api_missing',
+        statData: 当前状态.statData,
+        messageId: 当前状态.messageId,
+        textSignature: 文本签名,
+      };
+    }
+    if (!String(合并文本 || '').trim()) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return {
+        changed: false,
+        names: [],
+        statData: 当前状态.statData,
+        messageId: 当前状态.messageId,
+        textSignature: 文本签名,
+      };
+    }
     const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
     const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
     const 待写回变量数据 = cloneJsonValue(待写回MVU数据.stat_data, {});
@@ -4685,14 +4747,28 @@
       用户输入: 文本,
       剧情文本: 附加选项.剧情文本 || '',
       最后剧情文本: 附加选项.最后剧情文本 || '',
-      时间线事件命中: true,
+      时间线事件命中: 附加选项.时间线事件命中 !== false,
     });
-    if (!结果 || !结果.changed) return { changed: false, names: [] };
-    待写回MVU数据.stat_data = 规范化内置角色实例化结果_桥接(待写回变量数据);
+    if (!结果 || !结果.changed) {
+      return {
+        changed: false,
+        names: [],
+        statData: 待写回MVU数据.stat_data,
+        messageId: 消息编号,
+        textSignature: 文本签名,
+      };
+    }
+    待写回MVU数据.stat_data = 待写回变量数据;
     await Promise.resolve(主机.replaceMvuData(待写回MVU数据, { type: 'message', message_id: 消息编号 }));
     writeMvuEditorStoreSnapshot(待写回MVU数据.stat_data, { messageId: 消息编号 });
     await refreshLiveSnapshot({ force: true });
-    return { changed: true, names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []) };
+    return {
+      changed: true,
+      names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []),
+      statData: 待写回MVU数据.stat_data,
+      messageId: 消息编号,
+      textSignature: 文本签名,
+    };
   }
 
   async function ensureMvuEditorStoreReady(options = {}) {
@@ -4727,12 +4803,13 @@
       const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
       const nextMvuData = cloneJsonValue(mvuData, {});
       const safeFlushStatData = buildSafeStatDataForEditorWrite(flushStatData, mvuData.stat_data);
-      nextMvuData.stat_data = safeFlushStatData;
+      const 归一化写回变量数据 = 归一化变量根_桥接(safeFlushStatData);
+      nextMvuData.stat_data = 归一化写回变量数据;
       await Promise.resolve(host.replaceMvuData(nextMvuData, { type: 'message', message_id: messageId }));
       if (mvuEditorStore.version === flushVersion) {
         mvuEditorStore.dirty = false;
         mvuEditorStore.messageId = messageId;
-        mvuEditorStore.signature = serializeMvuEditorStoreStatData(safeFlushStatData);
+        mvuEditorStore.signature = serializeMvuEditorStoreStatData(归一化写回变量数据);
       }
       if (options.refresh !== false) {
         await refreshLiveSnapshot();
@@ -8282,7 +8359,6 @@
 
   const SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS = Object.freeze([
     '当前行动',
-    '当前技能元素',
     '命中',
     '被闪避',
     '状态存在',
@@ -8304,7 +8380,7 @@
     '连携前提',
   ]);
   const SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS = Object.freeze([
-    Object.freeze({ label: '使用时机', options: Object.freeze(['当前行动', '当前技能元素']) }),
+    Object.freeze({ label: '使用时机', options: Object.freeze(['当前行动']) }),
     Object.freeze({ label: '命中结果', options: Object.freeze(['命中', '被闪避']) }),
     Object.freeze({ label: '自身/目标状态', options: Object.freeze(['状态存在', '护盾']) }),
     Object.freeze({ label: '资源门槛', options: Object.freeze(['生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值']) }),
@@ -8324,7 +8400,6 @@
     目标: Object.freeze(['自身', '他人', '己方', '敌方', '全场', '召唤物']),
     使用者: Object.freeze(['使用者', '制作者']),
     当前行动: Object.freeze(['常规攻击', '释放魂技', '武魂融合技', '使用物品', '防御', '闪避', '撤离', '穿戴装备']),
-    当前技能元素: Object.freeze(['金', '木', '水', '火', '土', '风', '雷', '冰', '光', '暗', '精神', '空间', '时间', '创造', '毁灭']),
     环境满足: Object.freeze(['冰面', '水域', '阴影', '高空', '狭窄地形', '领域内', '场地内']),
     时间: Object.freeze(['白天', '黑夜', '清晨', '上午', '中午', '下午', '黄昏', '夜晚', '深夜']),
     装备状态: Object.freeze(['已装备主武器', '已装备斗铠', '已装备机甲']),
@@ -8373,7 +8448,6 @@
     if (type === '目标') return ['=='];
     if (SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type)) return ['有', '无'];
     if (type === '状态存在') return ['包含', '无'];
-    if (type === '当前技能元素') return ['包含', '无'];
     if (['使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提'].includes(type)) return ['==', '!='];
     if (
       SKILL_DESIGNER_CONDITION_BRANCH_RATIO_TYPES.includes(type) ||
@@ -8472,10 +8546,6 @@
     if (类型 === '装备状态') return `条件：${对象}${比较 === '!=' ? '未满足' : '满足'}${normalizeSkillUiText(condition['值'], '已装备主武器')}`;
     if (类型 === '自身状态') return `条件：${对象}${比较 === '!=' ? '不是' : '处于'}${normalizeSkillUiText(condition['值'], '蓄力中')}`;
     if (类型 === '连携前提') return `条件：${比较 === '!=' ? '不满足' : '满足'}${normalizeSkillUiText(condition['值'], '上一动作命中')}`;
-    if (类型 === '当前技能元素') {
-      const 值 = normalizeSkillUiText(condition['值'], '');
-      return 值 ? `条件：${对象}当前技能元素${比较}${值}` : '';
-    }
     if (技能设计台条件类型是否枚举值(类型))
       return condition['值'] !== undefined && normalizeSkillUiText(condition['值'], '') ? `条件：${对象}${类型}为${normalizeSkillUiText(condition['值'], '')}` : '';
     return condition['值'] !== undefined && normalizeSkillUiText(condition['值'], '') ? `条件：${对象}${类型} ${比较} ${normalizeSkillUiText(condition['值'], '')}` : '';
@@ -8536,7 +8606,6 @@
         const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
         if (显示配置.显示值) {
           const 值 = 读取技能设计台原型字段输入值(condition['值'] ?? condition['数值'] ?? '');
-          if (类型 === '当前技能元素' && !normalizeSkillUiText(值, '')) return null;
           if (显示配置.值控件 === '枚举')
             normalized['值'] = normalizeSkillDesignerSelectValue(值, 显示配置.值选项, 显示配置.值选项[0] || '');
           else if (显示配置.值控件 === '比例')
@@ -9808,6 +9877,20 @@
       .flatMap(项 => 展开表[项] || [项])));
   }
 
+  function 格式化技能设计台限定元素显示(value) {
+    const 原始列表 = Array.isArray(value) ? value : normalizeSkillUiText(value, '').split(/[、,，/|｜；;\s]+/g);
+    const 原始集合 = new Set(原始列表.map(项 => normalizeSkillUiText(项, '')).filter(Boolean));
+    if (原始集合.has('元素类')) return '元素类';
+    if (原始集合.has('五行类')) return '五行类';
+    const 列表 = 读取技能设计台限定元素列表(value).filter(元素 => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素));
+    const 等于集合 = 目标 => 列表.length === 目标.length && 目标.every(元素 => 列表.includes(元素));
+    if (等于集合(ELEMENT_ATTRIBUTE_TOKEN_OPTIONS)) return '元素类';
+    if (等于集合(WUXING_ATTRIBUTE_TOKEN_OPTIONS)) return '五行类';
+    if (!列表.length) return '';
+    if (列表.length <= 6) return 列表.join('、');
+    return `${列表.slice(0, 6).join('、')}等${列表.length}项`;
+  }
+
   function 读取技能设计台默认限定元素(context = {}) {
     const 技能 = (context && (context.技能 || context.skill)) || {};
     const draft = (context && context.draft) || {};
@@ -9817,12 +9900,6 @@
       normalizeSkillUiText(技能['显示元素'], ''),
     ];
     return 候选列表.find(元素 => SKILL_LIMITED_ELEMENT_OPTIONS.includes(元素)) || '元素类';
-  }
-
-  function 技能设计台条件分支包含当前技能元素(effect = {}) {
-    return (Array.isArray(effect && effect['条件分支']) ? effect['条件分支'] : []).some(分支 =>
-      (Array.isArray(分支 && 分支['条件']) ? 分支['条件'] : []).some(条件 => normalizeSkillUiText(条件 && 条件['类型'], '') === '当前技能元素'),
-    );
   }
 
   function 技能设计台条件分支包含释放后条件(effect = {}) {
@@ -9858,16 +9935,6 @@
         if (技能设计台效果列表包含释放前降低结算(分支 && 分支[字段名])) {
           throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${分支序号}]${字段名}不能用命中/被闪避条件降低消耗或前摇`);
         }
-      });
-    });
-  }
-
-  function 同步技能设计台当前元素条件(effect = {}) {
-    if (!Array.isArray(effect && effect['条件分支'])) return;
-    if (effect['限定元素'] === undefined) return;
-    effect['条件分支'].forEach(分支 => {
-      (Array.isArray(分支 && 分支['条件']) ? 分支['条件'] : []).forEach(条件 => {
-        if (normalizeSkillUiText(条件 && 条件['类型'], '') === '当前技能元素') 条件['值'] = effect['限定元素'];
       });
     });
   }
@@ -9926,10 +9993,9 @@
       const 限定元素列表 = 读取技能设计台限定元素列表(effect['限定元素']);
       if (!限定元素列表.length) throw new Error(`技能执行结构错误:${path}[${index}]${结算}必须填写限定元素`);
       if (限定元素列表.some(元素 => !SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素))) throw new Error(`技能执行结构错误:${path}[${index}]${结算}限定元素无效`);
-      if (!技能设计台条件分支包含当前技能元素(effect)) throw new Error(`技能执行结构错误:${path}[${index}]${结算}必须带当前技能元素条件`);
     }
     if (结算 === '反击' && path === '_效果数组') throw new Error(`技能执行结构错误:${path}[${index}]反击只能放在后续触发槽位`);
-    if (结算 === '技能效果' && !Array.isArray(effect['条件分支'])) throw new Error(`技能执行结构错误:${path}[${index}]技能效果必须绑定条件`);
+    if (结算 === '技能效果' && !Array.isArray(effect['条件分支']) && effect['限定元素'] === undefined) throw new Error(`技能执行结构错误:${path}[${index}]技能效果必须绑定条件`);
   }
 
   function 断言技能设计台炸环字段范围(effect = {}, path = '_效果数组', index = 0) {
@@ -10171,10 +10237,6 @@
       );
       if (限定元素列表.length) {
         字段['限定元素'] = 限定元素列表.length > 1 ? 限定元素列表 : 限定元素列表[0];
-        if (!技能设计台条件分支包含当前技能元素(字段)) {
-          字段['条件分支'] = [{ 条件: [{ 类型: '当前技能元素', 对象: '自身', 比较: '包含', 值: 字段['限定元素'] }], 处理: '生效' }];
-        }
-        同步技能设计台当前元素条件(字段);
       } else {
         delete 字段['限定元素'];
       }
@@ -10515,7 +10577,7 @@
     });
     const 条件分支源 =
       Array.isArray(字段['条件分支']) && 字段['条件分支'].length
-        ? [...(Array.isArray(value['条件分支']) ? value['条件分支'] : []), ...字段['条件分支']]
+        ? 字段['条件分支']
         : value['条件分支'] || [];
     delete 字段['条件分支'];
     const normalized = { 原型: 原型, 目标: 目标, ...字段 };
@@ -12852,7 +12914,7 @@
           ? `${原始数值文本}${项.绝对值每COST点数 ? '点' : ''}`
           : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
         const 伤害类型 = 原型 === '伤害结算' && 项.伤害类型 ? String(项.伤害类型).trim() : '';
-        const 限定 = String(项.限定元素 || '').trim();
+        const 限定 = 格式化技能设计台限定元素显示(项.限定元素);
         return [
           角色 || '基础',
           原型,
@@ -12882,7 +12944,7 @@
           项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
           项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
           项.持续系数 !== null && 项.持续系数 !== undefined ? `持续系数 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
-          项.限定元素 ? `限定元素 ${项.限定元素}` : '',
+          项.限定元素 ? `限定元素 ${格式化技能设计台限定元素显示(项.限定元素)}` : '',
           项.限制来源 ? `限制来源 ${项.限制来源}` : '',
           项.限制抵扣率 ? `限制抵扣率 ${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
           Number(项.限制抵扣 || 0) > 0 ? `限制 -${Number(项.限制抵扣 || 0).toFixed(1)}` : '',
@@ -13947,21 +14009,6 @@
         const 限定交集 = 默认元素.length ? 限定元素列表.filter(元素 => 默认元素.includes(元素)) : 限定元素列表;
         const 生效元素 = 限定交集.length ? 限定交集 : 默认元素;
         if (生效元素.length) 效果['限定元素'] = 生效元素.length > 1 ? 生效元素 : 生效元素[0];
-        if (!技能设计台条件分支包含当前技能元素(效果) && 生效元素.length) {
-          效果['条件分支'] = [
-            ...(Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []),
-            { 条件: [{ 类型: '当前技能元素', 对象: '自身', 比较: '包含', 值: 效果['限定元素'] }], 处理: '生效' },
-          ];
-        }
-        同步技能设计台当前元素条件(效果);
-      } else if (Array.isArray(效果['条件分支']) && 默认元素.length) {
-        效果['条件分支'].forEach(分支 => {
-          (Array.isArray(分支 && 分支['条件']) ? 分支['条件'] : []).forEach(条件 => {
-            if (normalizeSkillUiText(条件 && 条件['类型'], '') === '当前技能元素' && !normalizeSkillUiText(条件 && 条件['值'], '')) {
-              条件['值'] = 默认元素.length > 1 ? 默认元素 : 默认元素[0];
-            }
-          });
-        });
       }
       技能设计台嵌套效果数组字段表.forEach(字段名 => (Array.isArray(效果[字段名]) ? 效果[字段名] : []).forEach(访问));
       (Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []).forEach(分支 =>
@@ -15818,7 +15865,7 @@
           : '只在结算修正需要跨回合保留时填写；即时修正不要填。',
         数量: '群体分摊时最多由几个同阵营其他存活单位承接；单体分摊不需要数量。',
         转移对象: '受击成立续，额外伤害落到谁身上。',
-        限定元素: '限定当前行动技能元素；填写续必须同步当前技能元素条件，未命中元素不计收益。',
+        限定元素: '限定当前行动技能元素；未命中元素不计收益。',
         结算倍率: '持续伤害压缩或引爆用倍率；普通时长调整不要填。',
       },
       状态施加: {
@@ -22996,7 +23043,7 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
-    const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
+    const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
       ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
@@ -23734,7 +23781,7 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
-    const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
+    const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
@@ -24837,7 +24884,7 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
-    const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
+    const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const soulBoneEntries = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries : [];
     const armorText = toNumber(armor.等级, 0) > 0 ? toText(armor.名称, `${armor.等级}字斗铠`) : '无';
     const mechText =
@@ -26264,7 +26311,7 @@
     const 穿搭数据 = deepGet(snapshot, 'activeChar.穿搭', {});
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
-    const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
+    const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const 近期安排条目匹配 = /^近期安排[：:](\d+)$/.exec(previewKey);
     if (近期安排条目匹配) {
       return 构建近期安排条目详情(snapshot, Math.max(0, toNumber(近期安排条目匹配[1], 0)));
@@ -29658,7 +29705,7 @@
       const armorPath = activeCharKey ? ['char', activeCharKey, '装备', '斗铠'] : [];
       const mechPath = activeCharKey ? ['char', activeCharKey, '装备', '机甲'] : [];
       const weaponPath = activeCharKey ? ['char', activeCharKey, '装备', '武器'] : [];
-      const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
+      const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
       const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
       const armorSummary =
         toNumber(armor.等级, 0) > 0
@@ -32972,8 +33019,9 @@
         return;
       }
       const vars = options.sharedVars === undefined ? await getAllVariablesSafe() : options.sharedVars;
-      const root = resolveRootData(vars);
-      if (!root) return;
+      const 原始根 = resolveRootData(vars);
+      if (!原始根) return;
+      const root = 归一化变量根_桥接(cloneJsonValue(原始根, 原始根));
       const effective = buildEffectiveSd(root);
       if (!effective.rootData) return;
       if (isRootDataRelevantToCurrentChat(effective.rootData)) {
@@ -36880,7 +36928,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function buildProfessionRequestFromObject(snapshot, source) {
     const req = source && typeof source === 'object' ? source : {};
-    const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.职业 || req.类型);
+    const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.副职业 || req.类型);
     if (!mode) return null;
     const npc = toText(req.对象 || req.执行者 || req.执行者名称, '');
     return {
@@ -38251,8 +38299,8 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function 获取角色工坊委托能力摘要(角色数据) {
     const 职业集合 =
-      角色数据 && typeof 角色数据 === 'object' && 角色数据.职业 && typeof 角色数据.职业 === 'object'
-        ? 角色数据.职业
+      角色数据 && typeof 角色数据 === 'object' && 角色数据.副职业 && typeof 角色数据.副职业 === 'object'
+        ? 角色数据.副职业
         : {};
     return 地图工坊委托职业列表
       .map(职业名 => {
