@@ -304,7 +304,7 @@ const ProfessionTemplate = `
       <div class="form-group">
         <label id="qty-label">每种材料消耗</label>
         <input id="prof-cost" class="tech-input" type="number" min="1" value="1" />
-        <div class="hint" id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除职业资源。</div>
+        <div class="hint" id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。</div>
       </div>
     </div>
 
@@ -333,14 +333,14 @@ const ProfessionTemplate = `
       <div id="prof-materials-list" class="metal-list-container">
         <div style="color: var(--text-dim);">[读取库存中...]</div>
       </div>
-      <div class="hint" id="materials-hint">锻造支持多选融锻；其余职业按材料协同处理。</div>
+      <div class="hint" id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</div>
     </div>
   </div>
 
   <div class="section-card">
-    <div class="section-title">职业预演</div>
+    <div class="section-title">副职业预演</div>
     <div class="info-panel">
-      <div class="info-row"><span class="info-key">当前职业</span><span class="info-val" id="prev-job">-</span></div>
+      <div class="info-row"><span class="info-key">当前副职业</span><span class="info-val" id="prev-job">-</span></div>
       <div class="info-row"><span class="info-key">累计经验</span><span class="info-val" id="prev-exp">-</span></div>
       <div class="info-row"><span class="info-key">当前资源</span><span class="info-val" id="prev-res">-</span></div>
       <div class="info-row"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
@@ -384,7 +384,7 @@ const PROFESSION_CONFIG = {
     costs: { 1: [5, 10, 25], 2: [20, 40, 200], 3: [80, 150, 750], 4: [300, 600, 2500], 5: [1000, 2000, 9000] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
     targetHint: '这里填写设计图名称，例如：二字斗铠设计图。',
-    materialHint: '设计职业允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
+    materialHint: '设计副职业允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
   },
   repair: {
     mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '机甲修理', actionLabel: '开始修理',
@@ -597,7 +597,7 @@ class ProfessionUIComponent {
 
   applyInitialContext() {
     const req = this.getInitialRequest();
-    const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业 || req.副职业);
+    const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业);
     if (mode) this.setActiveMode(mode);
 
     this.setInitialTier(req);
@@ -688,7 +688,7 @@ class ProfessionUIComponent {
     this.$('#prof-submit').textContent = cfg.actionLabel;
     this.updateTierOptions();
     this.$('#qty-hint').textContent = this.activeMode === 'forge'
-      ? '锻造会按“每种材料消耗量”扣除材料，并同步扣除职业资源。'
+      ? '锻造会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。'
       : '副职业会按输入数量同步扩大基础资源消耗；材料按勾选项扣除。';
   }
 
@@ -777,7 +777,7 @@ class ProfessionUIComponent {
     this.syncCostInputState();
   }
 
-  // --- 职业算法核心 (移植原代码) ---
+  // --- 副职业算法核心 ---
   clamp(num, min, max) { return Math.max(min, Math.min(max, num)); }
   formatFedCoin(amount) { return `${Number(amount || 0).toLocaleString()} 联邦币`; }
   escapeJsonPointer(str) { return String(str).replace(/~/g, '~0').replace(/\//g, '~1'); }
@@ -790,8 +790,8 @@ class ProfessionUIComponent {
     return this.读取副职业派生接口().读取基础成功率(lv, exp);
   }
 
-  读取核心技艺文本(职业名, 等级) {
-    return this.读取副职业派生接口().读取核心技艺文本(职业名, 等级);
+  读取核心技艺文本(副职业名, 等级) {
+    return this.读取副职业派生接口().读取核心技艺文本(副职业名, 等级);
   }
 
   读取副职业派生接口() {
@@ -1246,7 +1246,7 @@ class ProfessionUIComponent {
       type, isCommission: type !== 'self', isOfficial: type === 'official', isPrivate: type === 'private',
       targetNpcName, targetName, fusionCount: fusion.fusionCount, fusionSync: fusion.fusionSync,
       relScore: 0, commissionFee: 0, successRate: null, executorName: this.activeName, executorRuntime: runtime, validationRuntime: runtime,
-      note: `由${this.activeName}亲自执行，按当前角色职业熟练度仲裁。`, error: null, targetChar: null, hasEnoughFunds: true
+      note: `由${this.activeName}亲自执行，按当前角色副职业熟练度仲裁。`, error: null, targetChar: null, hasEnoughFunds: true
     };
 
     const jobDisplayName = this.读取副职业显示名(cfg.jobName);
@@ -1466,7 +1466,7 @@ class ProfessionUIComponent {
     let ruleError = commissionCtx.error || null;
     let rateText = '-', fusionText = '-', maxQText = '-', noteText = '-';
     let 当前成功率数值 = 0;
-    let costText = commissionCtx.isCommission ? `<span class="val-cyan">委托模式不扣职业资源</span>` : this.formatResourceCost(costs);
+    let costText = commissionCtx.isCommission ? `<span class="val-cyan">委托模式不扣副职业资源</span>` : this.formatResourceCost(costs);
     let feeText = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? `<span class="val-highlight">${this.formatFedCoin(commissionCtx.commissionFee)}</span>` : `<span class="val-green">免单</span>`) : `<span class="val-cyan">无</span>`;
 
     if (this.activeMode === 'forge') {
@@ -1493,7 +1493,7 @@ class ProfessionUIComponent {
         rateText = `<span class="val-highlight">${rate}%</span>`;
         fusionText = isComp ? `<span class="val-cyan">复合工序 ${efc} 材</span>` : `<span class="val-cyan">单工序</span>`;
         maxQText = `<span class="val-highlight">${(isComp ? 1.25 : 1.15).toFixed(2)}</span>`;
-        noteText = commissionCtx.isCommission ? commissionCtx.note : (isComp ? `${cfg.displayName}的多材料协同成功率按职业公式推导。` : `${cfg.displayName}单工序成功率直接读取当前职业熟练度。`);
+        noteText = commissionCtx.isCommission ? commissionCtx.note : (isComp ? `${cfg.displayName}的多材料协同成功率按副职业公式推导。` : `${cfg.displayName}单工序成功率直接读取当前副职业熟练度。`);
         if (cfg.mode === 'manufacture') {
           const recipe = this.getManufactureRecipe(targetName, materialNames, tier, qty);
           if (recipe?.mode === 'mech' || recipe?.mode === 'armor') noteText = recipe.note;
@@ -1505,7 +1505,7 @@ class ProfessionUIComponent {
       }
     }
 
-    if (!commissionCtx.isCommission && !连续配置.连续模式开启 && !enoughResources) ruleError = ruleError || '职业资源不足。';
+    if (!commissionCtx.isCommission && !连续配置.连续模式开启 && !enoughResources) ruleError = ruleError || '副职业资源不足。';
 
     let 连续预估文本 = '<span class="val-cyan">关闭</span>';
     if (!ruleError) {
@@ -1960,7 +1960,7 @@ class ProfessionUIComponent {
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain);
         patchOps.push(...progress.patches);
-        if (progress.newLv > progress.oldLv) resultLog += `\n\n[职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
+        if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
       }
     }
     patchOps.push(...this.buildSystemResultPatches(resultLog, roll, successRate));
@@ -2055,7 +2055,7 @@ class ProfessionUIComponent {
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain);
         patchOps.push(...progress.patches);
-        if (progress.newLv > progress.oldLv) resultLog += `\n\n[职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
+        if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
       }
       if (isGreatSuccess) resultLog = `[大成功] ${commissionCtx.executorName}以极高完成度完成了【${targetName}】的${cfg.displayName}操作，品质系数 ${finalQ.toFixed(2)}。`;
       else if (commissionCtx.isCommission) resultLog += (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatFedCoin(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。');

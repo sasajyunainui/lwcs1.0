@@ -1767,7 +1767,7 @@
     图层控制与跑图: ['地图模块'],
     全息星图主画布: ['地图模块'],
     动态地点与扩展节点: ['地图模块'],
-    武装工坊详细页: ['职业模块'],
+    武装工坊详细页: ['副职业模块'],
     战斗终端: ['战斗模块'],
   });
   const 预览依赖任务表 = new Map();
@@ -5518,7 +5518,7 @@
       }
       if (key === '武装工坊详细页' || key.startsWith('武装详情')) {
         add('装备', ['char', activeCharKey, '装备'], ['装备', '武装', '斗铠', '机甲']);
-        add('职业', ['char', activeCharKey, '职业'], ['职业', '工坊']);
+        add('副职业', ['char', activeCharKey, '副职业'], ['副职业', '工坊']);
       }
       if (key === '生命图谱详细页' || key === '生命图谱详情页') {
         add('状态', ['char', activeCharKey, '状态'], ['状态', '当前状态']);
@@ -23001,15 +23001,15 @@
         `;
   }
 
-  function 构建副职业工坊上限摘要(职业名 = '', 职业数据 = {}) {
-    if (!职业数据 || typeof 职业数据 !== 'object') return '暂无工坊上限';
-    const 派生 = 派生副职业显示数据(职业名, 职业数据);
+  function 构建副职业工坊上限摘要(副职业名 = '', 副职业数据 = {}) {
+    if (!副职业数据 || typeof 副职业数据 !== 'object') return '暂无工坊上限';
+    const 派生 = 派生副职业显示数据(副职业名, 副职业数据);
     return `支持融锻数 ${派生.支持融锻数} / 基础成功率 ${派生.基础成功率}%`;
   }
 
-  function 读取职业显示等级(职业数据 = {}) {
-    if (!职业数据 || typeof 职业数据 !== 'object') return 0;
-    return 派生副职业显示数据('', 职业数据).等级;
+  function 读取副职业显示等级(副职业数据 = {}) {
+    if (!副职业数据 || typeof 副职业数据 !== 'object') return 0;
+    return 派生副职业显示数据('', 副职业数据).等级;
   }
 
   function 读取副职业派生接口() {
@@ -23027,12 +23027,12 @@
     return 接口;
   }
 
-  function 派生副职业显示数据(职业名 = '', 职业数据 = {}) {
-    return 读取副职业派生接口().派生运行时(职业名, 职业数据);
+  function 派生副职业显示数据(副职业名 = '', 副职业数据 = {}) {
+    return 读取副职业派生接口().派生运行时(副职业名, 副职业数据);
   }
 
-  function 读取副职业显示名(职业名 = '') {
-    return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[toText(职业名, '').trim()] || toText(职业名, '').trim();
+  function 读取副职业显示名(副职业名 = '') {
+    return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[toText(副职业名, '').trim()] || toText(副职业名, '').trim();
   }
 
   function 读取属性天赋梯队(属性 = {}) {
@@ -23044,7 +23044,7 @@
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
-    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
       ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
       : '暂无核心技术';
@@ -23782,7 +23782,7 @@
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
-    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未开启';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
     const hasWeapon = !!weaponName && !/^(无|未记录)$/.test(weaponName);
@@ -29722,7 +29722,7 @@
       const jobSummary = jobs.length
         ? jobs
             .slice(0, 2)
-            .map(([name, info]) => `${读取副职业显示名(name)} Lv.${读取职业显示等级(info)}`)
+            .map(([name, info]) => `${读取副职业显示名(name)} Lv.${读取副职业显示等级(info)}`)
             .join(' / ')
         : '未掌握';
       const jobCoreTechSummary = jobs.length
@@ -30235,7 +30235,7 @@
           }
           const professionMount = container.querySelector('#armoryProfessionMount');
           if (!professionMount) return null;
-          const 挂载职业工坊 = () =>
+          const 挂载副职业工坊 = () =>
             window.mountProfessionUI(professionMount, snapshot, {
               dispatchContext: mapDispatchContext,
               onAction: actionData => {
@@ -30246,7 +30246,7 @@
               },
             });
           if (typeof window.mountProfessionUI === 'function') {
-            return 挂载职业工坊();
+            return 挂载副职业工坊();
           }
           professionMount.innerHTML = '<div class="dossier-empty-note">工坊模块加载中...</div>';
           void 请求预热预览依赖('武装工坊详细页', 'armory_profession_mount')
@@ -30257,7 +30257,7 @@
                 return;
               }
               professionMount.innerHTML = '';
-              activeSubUI = 挂载职业工坊();
+              activeSubUI = 挂载副职业工坊();
             })
             .catch(() => {
               if (professionMount.isConnected)
@@ -36928,7 +36928,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function buildProfessionRequestFromObject(snapshot, source) {
     const req = source && typeof source === 'object' ? source : {};
-    const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.副职业 || req.类型);
+    const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.类型);
     if (!mode) return null;
     const npc = toText(req.对象 || req.执行者 || req.执行者名称, '');
     return {
@@ -37115,7 +37115,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   async function buildInlineProfessionAction(snapshot, professionRequest) {
-    const 模块加载结果 = await 确保模块依赖已加载('职业模块', 'inline_profession_action');
+    const 模块加载结果 = await 确保模块依赖已加载('副职业模块', 'inline_profession_action');
     if (!模块加载结果 || 模块加载结果.ok === false) {
       return { ok: false, reason: 'profession_module_load_failed', detail: 模块加载结果 };
     }
@@ -38250,16 +38250,16 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
   }
 
-  const 地图工坊委托职业列表 = Object.freeze(['锻造师', '制造师', '设计师', '修理师']);
+  const 地图工坊委托副职业列表 = Object.freeze(['锻造师', '制造师', '设计师', '修理师']);
 
-  function 获取副职业等级(职业数据) {
-    if (!职业数据 || typeof 职业数据 !== 'object') return 0;
-    return 派生副职业显示数据('', 职业数据).等级;
+  function 获取副职业等级(副职业数据) {
+    if (!副职业数据 || typeof 副职业数据 !== 'object') return 0;
+    return 派生副职业显示数据('', 副职业数据).等级;
   }
 
-  function 描述副职业可承接范围(职业名, 等级, 职业数据 = {}) {
+  function 描述副职业可承接范围(副职业名, 等级, 副职业数据 = {}) {
     const 等级数值 = Math.max(0, Math.floor(toNumber(等级, 0)));
-    const 派生 = 派生副职业显示数据(职业名, 职业数据);
+    const 派生 = 派生副职业显示数据(副职业名, 副职业数据);
     const 额外 = [
       `支持融锻数:${派生.支持融锻数}`,
       `基础成功率:${派生.基础成功率}%`,
@@ -38294,24 +38294,24 @@ ${toText(combatData.战斗意图, '点到为止')}
       ],
     };
     const 档 = Math.max(0, Math.min(5, 等级数值));
-    return `${读取副职业显示名(职业名)} Lv.${等级数值 || 0}：${(范围表[职业名] || 范围表.制造师)[档]}${额外 ? `（${额外}）` : ''}`;
+    return `${读取副职业显示名(副职业名)} Lv.${等级数值 || 0}：${(范围表[副职业名] || 范围表.制造师)[档]}${额外 ? `（${额外}）` : ''}`;
   }
 
   function 获取角色工坊委托能力摘要(角色数据) {
-    const 职业集合 =
+    const 副职业表 =
       角色数据 && typeof 角色数据 === 'object' && 角色数据.副职业 && typeof 角色数据.副职业 === 'object'
         ? 角色数据.副职业
         : {};
-    return 地图工坊委托职业列表
-      .map(职业名 => {
-        const 职业数据 = 职业集合[职业名];
-        const 等级 = 获取副职业等级(职业数据);
-        return 等级 > 0 ? 描述副职业可承接范围(职业名, 等级, 职业数据) : '';
+    return 地图工坊委托副职业列表
+      .map(副职业名 => {
+        const 副职业数据 = 副职业表[副职业名];
+        const 等级 = 获取副职业等级(副职业数据);
+        return 等级 > 0 ? 描述副职业可承接范围(副职业名, 等级, 副职业数据) : '';
       })
       .filter(Boolean);
   }
 
-  function 解析官方工坊委托职业(地点名 = '') {
+  function 解析官方工坊委托副职业(地点名 = '') {
     const 文本 = toText(地点名, '');
     if (/锻造/.test(文本)) return '锻造师';
     if (/制造/.test(文本)) return '制造师';
@@ -38320,8 +38320,8 @@ ${toText(combatData.战斗意图, '点到为止')}
     return '';
   }
 
-  function 获取地图工坊委托模式(职业名 = '') {
-    const 文本 = toText(职业名, '');
+  function 获取地图工坊委托模式(副职业名 = '') {
+    const 文本 = toText(副职业名, '');
     if (/锻造/.test(文本)) return 'forge';
     if (/制造/.test(文本)) return 'manufacture';
     if (/设计/.test(文本)) return 'design';
@@ -38334,11 +38334,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     const targetLoc = toText(detail.target, currentLoc);
     const executorType =
       toText(detail.executorType, '').trim() || (toText(detail.npcTarget, '') ? 'private' : 'official');
-    const 职业名 = executorType === 'official' ? 解析官方工坊委托职业(targetLoc || currentLoc) : '';
-    const 模式 = 获取地图工坊委托模式(职业名 || toText(detail.profession, ''));
+    const 副职业名 = executorType === 'official' ? 解析官方工坊委托副职业(targetLoc || currentLoc) : '';
+    const 模式 = 获取地图工坊委托模式(副职业名 || toText(detail.profession, ''));
     const 请求 = {
       模式,
-      职业: 职业名,
+      副职业: 副职业名,
       状态: 'ready',
     };
     if (toText(detail.npcTarget, '')) 请求.执行者 = toText(detail.npcTarget, '');
@@ -38353,9 +38353,9 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function 获取官方工坊委托能力摘要(地点名 = '') {
-    const 职业名 = 解析官方工坊委托职业(地点名);
-    if (!职业名) return [];
-    return [`${职业名}协会：可受理1-3级常规委托`, '高阶单需剧情审批/大师档期', '先询价与确认材料，不直接结算产物'];
+    const 副职业名 = 解析官方工坊委托副职业(地点名);
+    if (!副职业名) return [];
+    return [`${副职业名}协会：可受理1-3级常规委托`, '高阶单需剧情审批/大师档期', '先询价与确认材料，不直接结算产物'];
   }
 
   function 构建地图工坊委托请求(snapshot, detail = {}) {

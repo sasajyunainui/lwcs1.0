@@ -928,9 +928,8 @@ window.submitForm = function() {
             "机甲修理师": ["无", "一级修理师", "二级修理师", "三级修理师", "四级修理师", "五级修理师", "六级修理师", "七级修理师", "八级修理师", "九级修理师"]
         };
         var title = (titleMap[jobType] && titleMap[jobType][jobLv]) ? titleMap[jobType][jobLv] : (jobLv + "级" + jobType);
-        initialCharacterValue["职业"] = {};
-        initialCharacterValue["职业"][jobKey] = {
-            "等级": jobLv,
+        initialCharacterValue["副职业"] = {};
+        initialCharacterValue["副职业"][jobKey] = {
             "经验": exp,
             "称号": title
         };

@@ -29,7 +29,7 @@
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
-    职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
+    副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' }
   };
@@ -41,7 +41,7 @@
     图层控制与跑图: ['地图模块'],
     全息星图主画布: ['地图模块'],
     动态地点与扩展节点: ['地图模块'],
-    武装工坊详细页: ['职业模块'],
+    武装工坊详细页: ['副职业模块'],
     战斗终端: ['战斗模块']
   };
 
