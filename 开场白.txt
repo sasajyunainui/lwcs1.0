@@ -936,6 +936,46 @@ window.submitForm = function() {
         };
     }
 
+    function 回填开场最终属性资源() {
+        var runtimeWindow = window.parent || window.top || window;
+        var normalizeStatData = (runtimeWindow && runtimeWindow.__LWCS_NORMALIZE_MVU_STAT_DATA__) || window.__LWCS_NORMALIZE_MVU_STAT_DATA__;
+        if (typeof normalizeStatData !== "function") throw new Error("MVU结构规范化接口未就绪");
+        var 临时根 = {
+            "sys": { "玩家名": name, "系统播报": "初始化" },
+            "world": {
+                "时间": { "tick": 当前tick, "_上次结算tick": 当前tick },
+                "地点": {},
+                "战斗": { "进行中": false }
+            },
+            "char": {}
+        };
+        临时根.world.地点[loc] = { "名称": loc };
+        临时根.char[name] = JSON.parse(JSON.stringify(initialCharacterValue));
+        var normalizedRoot = normalizeStatData(临时根);
+        var normalizedChar = normalizedRoot && normalizedRoot.char && normalizedRoot.char[name];
+        if (!normalizedChar || !normalizedChar.属性) throw new Error("开场角色属性预览归一化失败");
+        [
+            "等级",
+            "HP",
+            "HP上限",
+            "体力",
+            "体力上限",
+            "魂力",
+            "魂力上限",
+            "精神力",
+            "精神力上限",
+            "精神境界",
+            "力量",
+            "防御",
+            "敏捷"
+        ].forEach(function(key) {
+            if (normalizedChar.属性[key] !== undefined) initialCharacterValue.属性[key] = normalizedChar.属性[key];
+        });
+        calculatedLv = initialCharacterValue.属性.等级 || calculatedLv;
+    }
+
+    回填开场最终属性资源();
+
     var initPatch = [
         {
             "op": "insert",

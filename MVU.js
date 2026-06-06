@@ -2,76 +2,70 @@ import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/ta
 import { TimelineEvents } from 'http://localhost:5502/lwcs/timeline.js';
 import { IntelEvents } from 'https://cdn.jsdelivr.net/gh/sasajyunainui/lwcs@main/IntelEvents.js';
 
-function getAbyssStats(tier, species) {
-  let lv = 10;
-  let speciesMult = { str: 1.0, def: 1.0, agi: 1.0, vit_max: 1.0, men_max: 1.0, sp_max: 1.0 };
+function 获取深渊属性(等阶, 物种) {
+  const 物种名 = String(物种 || '').trim();
+  let 对标等级 = 10;
+  const 种族倍率 = { str: 1.0, def: 1.0, agi: 1.0, vit_max: 1.0, men_max: 1.0, sp_max: 1.0 };
 
-  if (tier === '低阶生物') {
-    lv = 20 + Math.floor(Math.random() * 20);
-    speciesMult = { str: 0.8, def: 0.8, agi: 1.2, vit_max: 0.8, men_max: 0.5, sp_max: 1.0 };
-  } else if (tier === '中阶生物') {
-    lv = 40 + Math.floor(Math.random() * 30);
-    speciesMult = { str: 1.2, def: 1.2, agi: 1.0, vit_max: 1.2, men_max: 0.8, sp_max: 1.2 };
-  } else if (tier === '高阶生物') {
-    lv = 70 + Math.floor(Math.random() * 20);
-    speciesMult = { str: 1.5, def: 1.5, agi: 1.5, vit_max: 1.5, men_max: 1.2, sp_max: 1.5 };
-  } else if (tier === '深渊王者' || tier === '深渊帝君') {
-    lv = 99;
-    speciesMult = { str: 2.0, def: 2.0, agi: 2.0, vit_max: 2.0, men_max: 2.0, sp_max: 2.0 };
+  if (等阶 === '低阶生物') {
+    对标等级 = 20 + Math.floor(Math.random() * 20);
+    Object.assign(种族倍率, { str: 0.8, def: 0.8, agi: 1.2, vit_max: 0.8, men_max: 0.5, sp_max: 1.0 });
+  } else if (等阶 === '中阶生物') {
+    对标等级 = 40 + Math.floor(Math.random() * 30);
+    Object.assign(种族倍率, { str: 1.2, def: 1.2, agi: 1.0, vit_max: 1.2, men_max: 0.8, sp_max: 1.2 });
+  } else if (等阶 === '高阶生物') {
+    对标等级 = 70 + Math.floor(Math.random() * 20);
+    Object.assign(种族倍率, { str: 1.5, def: 1.5, agi: 1.5, vit_max: 1.5, men_max: 1.2, sp_max: 1.5 });
+  } else if (等阶 === '深渊王者' || 等阶 === '深渊帝君') {
+    对标等级 = 等阶 === '深渊帝君' || /帝$/.test(物种名) ? 99.5 : 99;
+    Object.assign(种族倍率, { str: 2.0, def: 2.0, agi: 2.0, vit_max: 2.0, men_max: 2.0, sp_max: 2.0 });
   }
 
-  if (species.includes('蝙蝠') || species.includes('魔魅') || species.includes('恶镰')) {
-    speciesMult.agi *= 1.5;
-    speciesMult.def *= 0.7;
-  } else if (species.includes('巴安') || species.includes('天牛') || species.includes('猛犸')) {
-    speciesMult.def *= 1.8;
-    speciesMult.vit_max *= 1.8;
-    speciesMult.agi *= 0.6;
-  } else if (species.includes('黑皇')) {
-    speciesMult.sp_max *= 1.5;
-    speciesMult.men_max *= 1.5;
+  if (物种名.includes('蝙蝠') || 物种名.includes('魔魅') || 物种名.includes('恶镰')) {
+    种族倍率.agi *= 1.5;
+    种族倍率.def *= 0.7;
+  } else if (物种名.includes('巴安') || 物种名.includes('天牛') || 物种名.includes('猛犸')) {
+    种族倍率.def *= 1.8;
+    种族倍率.vit_max *= 1.8;
+    种族倍率.agi *= 0.6;
+  } else if (物种名.includes('黑皇')) {
+    种族倍率.sp_max *= 1.5;
+    种族倍率.men_max *= 1.5;
   }
-  const base = getBaseStats(lv);
-  const finalStats = {
-    种族: species,
-    等阶: tier,
-    对标等级: lv,
-    str: Math.floor(base.str * speciesMult.str),
-    def: Math.floor(base.def * speciesMult.def),
-    agi: Math.floor(base.agi * speciesMult.agi),
-    vit_max: Math.floor(base.vit_max * speciesMult.vit_max),
-    men_max: Math.floor(base.men_max * speciesMult.men_max),
-    sp_max: Math.floor(base.sp_max * speciesMult.sp_max),
+
+  const 基础 = getBaseStats(对标等级);
+  const 结果 = {
+    种族: 物种名,
+    等阶,
+    对标等级,
+    str: Math.floor(基础.str * 种族倍率.str),
+    def: Math.floor(基础.def * 种族倍率.def),
+    agi: Math.floor(基础.agi * 种族倍率.agi),
+    vit_max: Math.floor(基础.vit_max * 种族倍率.vit_max),
+    men_max: Math.floor(基础.men_max * 种族倍率.men_max),
+    sp_max: Math.floor(基础.sp_max * 种族倍率.sp_max),
   };
 
-  if (species === '灵帝') {
-    finalStats.对标等级 = 99.5;
-    finalStats.men_max = 250000;
-  } else if (species === '烈帝') {
-    finalStats.对标等级 = 100;
-    const godBase = getBaseStats(100);
-    finalStats.sp_max = godBase.sp_max;
-    finalStats.str = Math.floor(godBase.str * 1.5);
-  } else if (species === '魔帝') {
-    finalStats.对标等级 = 99.5;
-    const godBase = getBaseStats(100);
-    finalStats.vit_max = godBase.vit_max;
-    finalStats.def = Math.floor(godBase.def * 2.0);
-  } else if (species === '智帝' || species === '化帝' || species === '黑帝' || species === '蜂帝') {
-    finalStats.对标等级 = 99.5;
-    const demiGodBase = getBaseStats(99.5);
-    finalStats.sp_max = Math.floor(demiGodBase.sp_max * 1.5);
-  } else if (species === '深渊圣君') {
-    finalStats.对标等级 = 100;
-    const godBase = getBaseStats(100);
-    finalStats.str = godBase.str * 3;
-    finalStats.def = godBase.def * 3;
-    finalStats.vit_max = godBase.vit_max * 3;
-    finalStats.sp_max = godBase.sp_max * 3;
-    finalStats.men_max = godBase.men_max * 3;
+  const 百级基准 = getBaseStats(100);
+  if (物种名 === '灵帝') {
+    结果.对标等级 = 99.5;
+    结果.men_max = Math.max(结果.men_max, 百级基准.men_max);
+  } else if (物种名 === '烈帝') {
+    结果.对标等级 = 99.5;
+    结果.sp_max = Math.max(结果.sp_max, 百级基准.sp_max);
+  } else if (物种名 === '魔帝') {
+    结果.对标等级 = 99.5;
+    结果.vit_max = Math.max(结果.vit_max, 百级基准.vit_max);
+  } else if (物种名 === '深渊圣君') {
+    结果.对标等级 = 100;
+    结果.str = 百级基准.str * 3;
+    结果.def = 百级基准.def * 3;
+    结果.vit_max = 百级基准.vit_max * 3;
+    结果.sp_max = 百级基准.sp_max * 3;
+    结果.men_max = 百级基准.men_max * 3;
   }
 
-  return finalStats;
+  return 结果;
 }
 
 const MAP_IMAGE_WIDTH = 3174;
@@ -3930,18 +3924,41 @@ function 是否同地图节点组(数据, 左角色, 右角色) {
 }
 
 const 本轮等级上升角色记录_V1 = new WeakMap();
+const 本轮等级上升角色名记录_V1 = new Map();
+const 本轮原始角色等级记录_V1 = new Map();
 let 当前归一化批次_V1 = 0;
 
 function 开始MVU归一化批次_V1() {
   当前归一化批次_V1 = (当前归一化批次_V1 + 1) % Number.MAX_SAFE_INTEGER || 1;
 }
 
-function 标记本轮等级上升角色_V1(角色 = null) {
-  if (角色 && typeof 角色 === 'object') 本轮等级上升角色记录_V1.set(角色, 当前归一化批次_V1);
+function 读取本轮角色记录键_V1(角色名 = '') {
+  const 名称 = String(角色名 || '').trim();
+  return 名称 ? `${当前归一化批次_V1}:${名称}` : '';
 }
 
-function 判断本轮等级上升角色_V1(角色 = null) {
-  return !!(角色 && typeof 角色 === 'object' && 本轮等级上升角色记录_V1.get(角色) === 当前归一化批次_V1);
+function 记录本轮原始角色等级_V1(角色名 = '', 等级 = 0) {
+  const 记录键 = 读取本轮角色记录键_V1(角色名);
+  if (记录键) 本轮原始角色等级记录_V1.set(记录键, Math.max(0, Number(等级 || 0) || 0));
+}
+
+function 读取本轮原始角色等级_V1(角色名 = '') {
+  const 记录键 = 读取本轮角色记录键_V1(角色名);
+  return 记录键 && 本轮原始角色等级记录_V1.has(记录键) ? 本轮原始角色等级记录_V1.get(记录键) : null;
+}
+
+function 标记本轮等级上升角色_V1(角色 = null, 角色名 = '') {
+  if (角色 && typeof 角色 === 'object') 本轮等级上升角色记录_V1.set(角色, 当前归一化批次_V1);
+  const 记录键 = 读取本轮角色记录键_V1(角色名);
+  if (记录键) 本轮等级上升角色名记录_V1.set(记录键, true);
+}
+
+function 判断本轮等级上升角色_V1(角色 = null, 角色名 = '') {
+  const 记录键 = 读取本轮角色记录键_V1(角色名);
+  return !!(
+    (角色 && typeof 角色 === 'object' && 本轮等级上升角色记录_V1.get(角色) === 当前归一化批次_V1) ||
+    (记录键 && 本轮等级上升角色名记录_V1.get(记录键) === true)
+  );
 }
 
 function autoBreakthrough(data) {
@@ -3971,7 +3988,7 @@ function autoBreakthrough(data) {
       if (currentLv >= maxLv) return;
 
       c.属性.等级 = nextLevelStep;
-      标记本轮等级上升角色_V1(c);
+      标记本轮等级上升角色_V1(c, charName);
       const newLv = Number(c.属性.等级 || nextLevelStep);
       const newLvText = formatBreakthroughLevelText(newLv);
       let shouldStopAfterThisBreak = false;
@@ -4801,7 +4818,7 @@ function buildTemporaryAbyssCombatant(seed = {}, slotName = 'enemy') {
   const race = String(seed?.标准种族 || '').trim();
   const tier = String(seed?.级别 || '').trim();
   const quantity = Math.max(1, Math.floor(Number(seed?.数量 || 1)));
-  const stats = withBattleSeedRandom(`${unitName}|深渊|${race}|${tier}|${slotName}`, () => getAbyssStats(tier, race));
+  const stats = withBattleSeedRandom(`${unitName}|深渊|${race}|${tier}|${slotName}`, () => 获取深渊属性(tier, race));
   const combatType = inferTemporaryAbyssCombatType(race, stats);
   const next = buildTemporaryCombatSkeleton(unitName, '深渊');
   next.数量 = quantity;
@@ -18554,6 +18571,27 @@ function getPersistentSoulPowerBonusFromPermanentRecords(char = {}) {
   );
 }
 
+function 读取深渊帝君百级侧重点_V1(char = {}, 角色名 = '') {
+  const 识别文本 = [
+    角色名,
+    char?.name,
+    char?.base?.name,
+    char?.属性?.姓名,
+    char?.属性?.背景,
+    char?.社交?.主身份,
+    char?.第1武魂?.表象名称,
+    char?.第1武魂?.属性体系,
+    char?.第1武魂?.描述,
+    char?.血脉之力?.血脉,
+  ].map(值 => String(值 || '').trim()).filter(Boolean).join('|');
+  if (!识别文本.includes('深渊')) return {};
+  return {
+    精神力上限: /灵帝|深渊灵龙|深渊灵族帝君/.test(识别文本),
+    魂力上限: /烈帝/.test(识别文本),
+    体力上限: /魔帝|深渊魔傀/.test(识别文本),
+  };
+}
+
 function isNoSoulPowerTalentTier(talentTier = '') {
   return String(talentTier || '').trim() === '天赋极差';
 }
@@ -24413,11 +24451,11 @@ const CharacterSchema = z
   .prefault({})
   .transform(char => {
     const 原始等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
+    const normalizedCharName = String(char?.name || char?.属性?.name || char?.base?.name || '').trim();
     const 标记本轮等级上升 = () => {
       const 当前等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
-      if (当前等级 > 原始等级) 标记本轮等级上升角色_V1(char);
+      if (当前等级 > 原始等级) 标记本轮等级上升角色_V1(char, normalizedCharName);
     };
-    const normalizedCharName = String(char?.name || char?.属性?.name || char?.base?.name || '').trim();
     const isPlayerCharacter = char.__mvu_isPlayer === true;
     归一化角色副职业键_V1(char);
     if (char?.属性 && 需要初始化生日(char.属性.生日)) {
@@ -25211,6 +25249,14 @@ const CharacterSchema = z
       getPersistentSoulPowerBonusFromPermanentRecords(char);
     const 修为魂力基底 = Math.max(自然魂力上限, 既有魂力上限 - 永久魂力来源加成);
     final_sp_max = Math.max(1, Math.floor(修为魂力基底 + 永久魂力来源加成));
+
+    const 深渊帝君侧重点 = 读取深渊帝君百级侧重点_V1(char, normalizedCharName || 角色路径名);
+    if (深渊帝君侧重点.精神力上限 || 深渊帝君侧重点.魂力上限 || 深渊帝君侧重点.体力上限) {
+      const 百级基准 = getBaseStats(100);
+      if (深渊帝君侧重点.精神力上限) final_men_max = Math.max(final_men_max, 百级基准.men_max);
+      if (深渊帝君侧重点.魂力上限) final_sp_max = Math.max(final_sp_max, 百级基准.sp_max);
+      if (深渊帝君侧重点.体力上限) final_vit_max = Math.max(final_vit_max, 百级基准.vit_max);
+    }
 
     const wpnBonus = 计算装备属性加成_V1(char.装备.武器, {
       属性: {
@@ -26177,6 +26223,18 @@ function markPlayerCharacterInSchemaInput(rawInput) {
   开始MVU归一化批次_V1();
   if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return rawInput;
   const clonedInput = _.cloneDeep(rawInput);
+  const 记录候选原始等级 = candidate => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
+    const charMap = candidate?.char;
+    if (!charMap || typeof charMap !== 'object' || Array.isArray(charMap)) return;
+    Object.entries(charMap).forEach(([charName, charData]) => {
+      if (!charName || !charData || typeof charData !== 'object' || Array.isArray(charData)) return;
+      const 原始等级 = Math.max(0, Number(charData?.属性?.等级 || 0) || 0);
+      记录本轮原始角色等级_V1(charName, 原始等级);
+      const 显示名 = String(charData?.name || charData?.属性?.name || charData?.base?.name || '').trim();
+      if (显示名 && 显示名 !== charName) 记录本轮原始角色等级_V1(显示名, 原始等级);
+    });
+  };
   const markCandidate = candidate => {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
     const playerName = String(candidate?.sys?.玩家名 || '').trim();
@@ -26201,6 +26259,7 @@ function markPlayerCharacterInSchemaInput(rawInput) {
       charMap[matchedKey].__mvu_isPlayer = true;
     }
   };
+  [clonedInput, clonedInput.stat_data, clonedInput.display_data].forEach(记录候选原始等级);
   [clonedInput, clonedInput.stat_data, clonedInput.display_data].forEach(markCandidate);
   return clonedInput;
 }
@@ -26653,6 +26712,12 @@ export const Schema = z
       if (charData && typeof charData === 'object' && !Array.isArray(charData)) {
         delete charData.__mvu_isPlayer;
       }
+    });
+    Object.entries(data.char).forEach(([charName, charData]) => {
+      if (!charData || typeof charData !== 'object' || Array.isArray(charData)) return;
+      const 原始等级 = 读取本轮原始角色等级_V1(charName);
+      const 当前等级 = Math.max(0, Number(charData?.属性?.等级 || 0) || 0);
+      if (原始等级 !== null && 当前等级 > 原始等级) 标记本轮等级上升角色_V1(charData, charName);
     });
     应用内置角色实例化_V1(data, { 开场常驻: true });
 
@@ -29344,7 +29409,7 @@ export const Schema = z
 
       c.属性.HP上限 = Math.max(1, Number(c.属性.体力上限 || c.属性.HP上限 || 1));
       const resolvePreservedRatio = key => {
-        if (判断本轮等级上升角色_V1(c)) return 1.0;
+        if (判断本轮等级上升角色_V1(c, charName)) return 1.0;
         if (
           是否新档初始化 ||
           isDefaultSeededResourceState ||
