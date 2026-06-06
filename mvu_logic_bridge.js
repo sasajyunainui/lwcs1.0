@@ -22984,6 +22984,10 @@
     return 读取副职业派生接口().派生运行时(职业名, 职业数据);
   }
 
+  function 读取副职业显示名(职业名 = '') {
+    return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[toText(职业名, '').trim()] || toText(职业名, '').trim();
+  }
+
   function 读取属性天赋梯队(属性 = {}) {
     return toText(属性?.天赋梯队 ?? 属性?.talent_tier, '未定');
   }
@@ -22993,7 +22997,7 @@
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
-    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
       ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
       : '暂无核心技术';
@@ -23731,7 +23735,7 @@
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
-    const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${读取职业显示等级(jobs[0][1])}` : '未开启';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取职业显示等级(jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
     const hasWeapon = !!weaponName && !/^(无|未记录)$/.test(weaponName);
@@ -24844,7 +24848,7 @@
     const jobItems = jobs.slice(0, 4).map(([name, info]) => {
       const 副职业 = 派生副职业显示数据(name, info);
       return {
-        title: name,
+        title: 读取副职业显示名(name),
         meta: `Lv.${副职业.等级} · ${toText(副职业.称号, '未定级')}`,
         note: `${副职业.核心技艺} / ${副职业.支持融锻数}`,
       };
@@ -29671,7 +29675,7 @@
       const jobSummary = jobs.length
         ? jobs
             .slice(0, 2)
-            .map(([name, info]) => `${name} Lv.${读取职业显示等级(info)}`)
+            .map(([name, info]) => `${读取副职业显示名(name)} Lv.${读取职业显示等级(info)}`)
             .join(' / ')
         : '未掌握';
       const jobCoreTechSummary = jobs.length
@@ -38242,7 +38246,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       ],
     };
     const 档 = Math.max(0, Math.min(5, 等级数值));
-    return `${职业名} Lv.${等级数值 || 0}：${(范围表[职业名] || 范围表.制造师)[档]}${额外 ? `（${额外}）` : ''}`;
+    return `${读取副职业显示名(职业名)} Lv.${等级数值 || 0}：${(范围表[职业名] || 范围表.制造师)[档]}${额外 ? `（${额外}）` : ''}`;
   }
 
   function 获取角色工坊委托能力摘要(角色数据) {

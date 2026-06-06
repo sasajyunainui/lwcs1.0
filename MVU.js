@@ -2453,6 +2453,40 @@ function 读取副职业显示名_V1(职业名 = '') {
   return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[String(职业名 || '').trim()] || String(职业名 || '').trim();
 }
 
+function 归一化角色副职业键_V1(角色 = {}) {
+  const 职业表 = 角色?.职业;
+  if (!职业表 || typeof 职业表 !== 'object' || Array.isArray(职业表)) return;
+  delete 职业表.机甲师;
+  const 合并职业 = (旧键, 新键) => {
+    if (!Object.prototype.hasOwnProperty.call(职业表, 旧键)) return;
+    const 来源 = 职业表[旧键];
+    if (!来源 || typeof 来源 !== 'object' || Array.isArray(来源)) {
+      delete 职业表[旧键];
+      return;
+    }
+    if (!职业表[新键] || typeof 职业表[新键] !== 'object' || Array.isArray(职业表[新键])) {
+      职业表[新键] = 来源;
+      delete 职业表[旧键];
+      return;
+    }
+    const 目标 = 职业表[新键];
+    const 来源经验 = Math.max(0, Number(来源.经验 || 0) || 0);
+    const 目标经验 = Math.max(0, Number(目标.经验 || 0) || 0);
+    const 来源称号 = String(来源.称号 || '').trim();
+    const 目标称号 = String(目标.称号 || '').trim();
+    if (来源经验 > 目标经验) {
+      目标.经验 = 来源经验;
+      if (来源称号 && 来源称号 !== '无') 目标.称号 = 来源称号;
+    } else if ((!目标称号 || 目标称号 === '无') && 来源称号 && 来源称号 !== '无') {
+      目标.称号 = 来源称号;
+    }
+    delete 职业表[旧键];
+  };
+  合并职业('机甲制造师', '制造师');
+  合并职业('机甲设计师', '设计师');
+  合并职业('机甲修理师', '修理师');
+}
+
 function 构建MVU正文副职业摘要_V1(角色 = {}) {
   const 输出 = {};
   Object.entries(角色?.职业 || {}).forEach(([职业名, 职业数据]) => {
@@ -24364,8 +24398,14 @@ const CharacterSchema = z
   })
   .prefault({})
   .transform(char => {
+    const 原始等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
+    const 标记本轮等级上升 = () => {
+      const 当前等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
+      if (当前等级 > 原始等级) 本轮等级上升角色记录_V1.add(char);
+    };
     const normalizedCharName = String(char?.name || char?.属性?.name || char?.base?.name || '').trim();
     const isPlayerCharacter = char.__mvu_isPlayer === true;
+    归一化角色副职业键_V1(char);
     if (char?.属性 && 需要初始化生日(char.属性.生日)) {
       char.属性.生日 = 随机生成生日();
     }
@@ -24561,6 +24601,7 @@ const CharacterSchema = z
       delete char.属性.天赋评级;
       if (isNoSoulPowerTalentTier(char.属性.天赋梯队)) {
         normalizeNoSoulPowerCharacterData(char);
+        标记本轮等级上升();
         return;
       }
     }
@@ -25223,6 +25264,7 @@ const CharacterSchema = z
       delete char.私密档案;
     }
 
+    标记本轮等级上升();
     return char;
   });
 
@@ -29287,6 +29329,7 @@ export const Schema = z
 
       c.属性.HP上限 = Math.max(1, Number(c.属性.体力上限 || c.属性.HP上限 || 1));
       const resolvePreservedRatio = key => {
+        if (本轮等级上升角色记录_V1.has(c)) return 1.0;
         if (
           是否新档初始化 ||
           isDefaultSeededResourceState ||

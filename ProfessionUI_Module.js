@@ -371,7 +371,7 @@ const PROFESSION_CONFIG = {
     materialHint: '多选材料 = 融锻。千锻融锻要求所有材料达到 1.15 以上（一品）。'
   },
   manufacture: {
-    mode: 'manufacture', jobName: '制造师', title: '制造工序', displayName: '制造', actionLabel: '开始制造',
+    mode: 'manufacture', jobName: '制造师', title: '制造工序', displayName: '机甲制造', actionLabel: '开始制造',
     requiresMaterials: true, supportsFusion: false,
     costs: { 1: [20, 35, 20], 2: [160, 280, 160], 3: [700, 1225, 600], 4: [3000, 5250, 2000], 5: [16000, 28000, 7200] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
@@ -379,7 +379,7 @@ const PROFESSION_CONFIG = {
     materialHint: '可选择金属、图纸、模块、回路等作为制造材料。'
   },
   design: {
-    mode: 'design', jobName: '设计师', title: '设计工序', displayName: '设计', actionLabel: '开始设计',
+    mode: 'design', jobName: '设计师', title: '设计工序', displayName: '机甲设计', actionLabel: '开始设计',
     requiresMaterials: false, supportsFusion: false,
     costs: { 1: [5, 10, 25], 2: [20, 40, 200], 3: [80, 150, 750], 4: [300, 600, 2500], 5: [1000, 2000, 9000] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
@@ -387,7 +387,7 @@ const PROFESSION_CONFIG = {
     materialHint: '设计职业允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
   },
   repair: {
-    mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '修理', actionLabel: '开始修理',
+    mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '机甲修理', actionLabel: '开始修理',
     requiresMaterials: false, supportsFusion: false,
     costs: { 1: [5, 10, 5], 2: [40, 80, 40], 3: [175, 350, 150], 4: [750, 1500, 500], 5: [4000, 8000, 2700] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
@@ -675,10 +675,14 @@ class ProfessionUIComponent {
     this.$('#chip-men-realm').textContent = stat.精神境界 || '未知';
   }
 
+  读取副职业显示名(jobName = '') {
+    return ({ 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' })[String(jobName || '').trim()] || String(jobName || '').trim();
+  }
+
   updateModeChrome() {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     this.$('#prof-ui-title').textContent = cfg.title;
-    this.$('#prof-ui-subtitle').textContent = `${cfg.displayName} / ${cfg.jobName}`;
+    this.$('#prof-ui-subtitle').textContent = `${cfg.displayName} / ${this.读取副职业显示名(cfg.jobName)}`;
     this.$('#materials-hint').textContent = cfg.materialHint;
     this.$('#target-hint').textContent = cfg.targetHint;
     this.$('#prof-submit').textContent = cfg.actionLabel;
@@ -1245,10 +1249,11 @@ class ProfessionUIComponent {
       note: `由${this.activeName}亲自执行，按当前角色职业熟练度仲裁。`, error: null, targetChar: null, hasEnoughFunds: true
     };
 
-    if (type === 'self' && !this.charData?.职业?.[cfg.jobName]) { ctx.error = `${this.activeName}未掌握【${cfg.jobName}】副职业，无法发起该类操作。`; return ctx; }
+    const jobDisplayName = this.读取副职业显示名(cfg.jobName);
+    if (type === 'self' && !this.charData?.职业?.[cfg.jobName]) { ctx.error = `${this.activeName}未掌握【${jobDisplayName}】副职业，无法发起该类操作。`; return ctx; }
 
     if (ctx.isOfficial) {
-      ctx.executorName = `${cfg.jobName}协会`; ctx.executorRuntime = this.buildOfficialCommissionRuntime(cfg.jobName); ctx.validationRuntime = ctx.executorRuntime;
+      ctx.executorName = `${jobDisplayName}协会`; ctx.executorRuntime = this.buildOfficialCommissionRuntime(cfg.jobName); ctx.validationRuntime = ctx.executorRuntime;
       ctx.successRate = 85; ctx.commissionFee = Number(OFFICIAL_COMMISSION_FEES[tier] || 0);
       const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
       ctx.note = `官方代工固定成功率 85%，支持 3 级复合工序。当前代工费 ${this.formatFedCoin(ctx.commissionFee)}。`;
@@ -1263,12 +1268,12 @@ class ProfessionUIComponent {
         ctx.targetChar = targetChar || null;
         if (!targetChar) ctx.error = `找不到代工目标【${targetNpcName}】。`;
         else if (!this.isLocationCompatible(currentLoc, String(targetChar?.状态?.位置 || ''))) ctx.error = `【${targetNpcName}】当前不在你身边，无法进行当面代工交接。`;
-        else if (!targetChar?.职业?.[cfg.jobName]) ctx.error = `【${targetNpcName}】并未掌握【${cfg.jobName}】副职业。`;
+        else if (!targetChar?.职业?.[cfg.jobName]) ctx.error = `【${targetNpcName}】并未掌握【${jobDisplayName}】副职业。`;
         else {
           const npcRuntime = this.getJobRuntime(cfg.jobName, targetChar);
           ctx.executorName = relationName; ctx.executorRuntime = npcRuntime; ctx.validationRuntime = npcRuntime;
           ctx.relScore = this.getRelationScore(relationName);
-          if (ctx.fusionCount > (cfg.mode === 'forge' ? this.读取阶位支持融锻数(npcRuntime.lv, tier) : npcRuntime.maxFusion)) ctx.error = `目标 NPC【${targetNpcName}】的${cfg.jobName}等级不足，无法承接 ${ctx.fusionCount} 级复合工序。`;
+          if (ctx.fusionCount > (cfg.mode === 'forge' ? this.读取阶位支持融锻数(npcRuntime.lv, tier) : npcRuntime.maxFusion)) ctx.error = `目标 NPC【${targetNpcName}】的${jobDisplayName}等级不足，无法承接 ${ctx.fusionCount} 级复合工序。`;
           else {
             const baseFee = Number(PRIVATE_COMMISSION_FEES[tier] || 100000);
             ctx.commissionFee = baseFee * Math.max(1, ctx.fusionCount);
@@ -1406,9 +1411,10 @@ class ProfessionUIComponent {
   validateGenericRules(cfg, runtime, tier, materialNames, targetName) {
     if (!targetName.trim()) return '请先填写目标产物/对象名称。';
     const uLv = this.getForgeUnlockLevel(tier);
-    if (runtime.lv < uLv) return `${this.getTierDisplayName(cfg.mode, tier)}尚未解锁，需要 Lv.${uLv} ${cfg.jobName}。`;
+    const jobDisplayName = this.读取副职业显示名(cfg.jobName);
+    if (runtime.lv < uLv) return `${this.getTierDisplayName(cfg.mode, tier)}尚未解锁，需要 Lv.${uLv} ${jobDisplayName}。`;
     if (cfg.requiresMaterials && materialNames.length === 0) return `${cfg.displayName}至少需要选择一种材料。`;
-    if (materialNames.length > runtime.maxFusion) return `当前${cfg.jobName}支持协同数为 ${runtime.maxFusion}。`;
+    if (materialNames.length > runtime.maxFusion) return `当前${jobDisplayName}支持协同数为 ${runtime.maxFusion}。`;
     if (cfg.mode === 'manufacture') {
       if (/斗铠|机甲/.test(targetName) && !this.hasBlueprintMaterial(materialNames)) return '制造斗铠/机甲至少需要对应设计图或蓝图。';
       const armorTier = this.getArmorTierFromName(targetName);
@@ -1519,7 +1525,7 @@ class ProfessionUIComponent {
     }
 
     this.$('#prof-submit').disabled = Boolean(ruleError);
-    this.setPreviewField('prev-job', `<span class="val-cyan">${cfg.jobName} Lv.${effectiveRuntime.lv}</span>${commissionCtx.isCommission ? ` / 执行者 ${commissionCtx.executorName}` : ''}`);
+    this.setPreviewField('prev-job', `<span class="val-cyan">${this.读取副职业显示名(cfg.jobName)} Lv.${effectiveRuntime.lv}</span>${commissionCtx.isCommission ? ` / 执行者 ${commissionCtx.executorName}` : ''}`);
     this.setPreviewField('prev-exp', commissionCtx.isCommission ? `<span class="val-highlight">${Number(effectiveRuntime.exp || 0).toLocaleString()}</span> / 执行者熟练度` : `<span class="val-highlight">${runtime.exp.toLocaleString()}</span> / 本级进度 <span class="val-cyan">${Math.floor(runtime.expRatio * 100)}%</span>`);
     this.setPreviewField('prev-res', this.formatCurrentResources());
     this.setPreviewField('prev-costs', enoughResources ? costText : `<span class="val-red">${costText}</span>`);
