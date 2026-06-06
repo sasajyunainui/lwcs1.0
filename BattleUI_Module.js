@@ -34,6 +34,40 @@ class BattleUIComponent {
     const byId = id => wrapperElement.querySelector(`#${id}`);
 
     const root = typeof globalThis !== 'undefined' ? globalThis : window;
+    const 战斗提交模式存储键 = 'lwcs_battle_submit_mode';
+    const 战斗提交模式列表 = ['auto', 'manual', 'free_narrative'];
+    const 战斗提交模式标签 = {
+      auto: '自动',
+      manual: '手动',
+      free_narrative: '自由',
+    };
+    function 规范化战斗提交模式(值) {
+      const 文本 = String(值 || '').trim();
+      return 战斗提交模式列表.includes(文本) ? 文本 : 'manual';
+    }
+    function 读取战斗提交模式() {
+      try {
+        return 规范化战斗提交模式(root.localStorage?.getItem(战斗提交模式存储键));
+      } catch (error) {
+        return 'manual';
+      }
+    }
+    function 写入战斗提交模式(模式) {
+      const 下个模式 = 规范化战斗提交模式(模式);
+      try {
+        root.localStorage?.setItem(战斗提交模式存储键, 下个模式);
+      } catch (error) {}
+      return 下个模式;
+    }
+    function 同步战斗提交模式控件() {
+      const 当前模式 = 读取战斗提交模式();
+      const 标签节点 = byId('ui-battle-submit-mode-label');
+      if (标签节点) 标签节点.textContent = 战斗提交模式标签[当前模式] || '手动';
+      document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(button => {
+        button.classList.toggle('active', button.dataset.submitMode === 当前模式);
+      });
+      return 当前模式;
+    }
     const resolveSharedSkillMechanismRegistry = () => {
       if (root.__LWCS_SKILL_MECHANISM_REGISTRY__ && typeof root.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object') {
         return root.__LWCS_SKILL_MECHANISM_REGISTRY__;
@@ -3475,6 +3509,17 @@ class BattleUIComponent {
       subscribeMvuUpdates(handler) {
         return subscribeMvuUpdates(handler);
       },
+      getBattleSubmitMode() {
+        return 读取战斗提交模式();
+      },
+      setBattleSubmitMode(mode) {
+        const 下个模式 = 写入战斗提交模式(mode);
+        同步战斗提交模式控件();
+        try {
+          root.dispatchEvent(new CustomEvent('battle-submit-mode-changed', { detail: { mode: 下个模式 } }));
+        } catch (error) {}
+        return 下个模式;
+      },
       persistCombatData(combatData, options = {}) {
         return persistCombatData(combatData, options);
       },
@@ -4073,6 +4118,14 @@ class BattleUIComponent {
         });
         btn.__battleModeBound = true;
       });
+      document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(btn => {
+        if (btn.__battleSubmitModeBound) return;
+        btn.addEventListener('click', () => {
+          root.BattleUIBridge?.setBattleSubmitMode?.(btn.dataset.submitMode || 'manual');
+        });
+        btn.__battleSubmitModeBound = true;
+      });
+      同步战斗提交模式控件();
       if (intentModeInput && !intentModeInput.__battleIntentBound) {
         intentModeInput.addEventListener('change', () => {
           if (root.BattleUI && root.BattleUI.state) root.BattleUI.state.currentIntentMode = intentModeInput.value || '点到为止';
@@ -31053,6 +31106,17 @@ class BattleUIComponent {
         }
 
         root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
+          getBattleSubmitMode() {
+            return 读取战斗提交模式();
+          },
+          setBattleSubmitMode(mode) {
+            const 下个模式 = 写入战斗提交模式(mode);
+            同步战斗提交模式控件();
+            try {
+              root.dispatchEvent(new CustomEvent('battle-submit-mode-changed', { detail: { mode: 下个模式 } }));
+            } catch (error) {}
+            return 下个模式;
+          },
           executeBattleFlow(combatData, options = {}) {
             return ui_executeBattleFlow(combatData, options);
           },
@@ -31823,6 +31887,14 @@ class BattleUIComponent {
             });
             btn.__battleModeBound = true;
           });
+          document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(btn => {
+            if (btn.__battleSubmitModeBound) return;
+            btn.addEventListener('click', () => {
+              window.BattleUIBridge?.setBattleSubmitMode?.(btn.dataset.submitMode || 'manual');
+            });
+            btn.__battleSubmitModeBound = true;
+          });
+          同步战斗提交模式控件();
 
           const intentModeInput = byId('ui-intent-mode');
           if (intentModeInput && !intentModeInput.__battleIntentBound) {

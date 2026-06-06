@@ -1631,12 +1631,15 @@
 
   let activeBattleUI = null;
   const BATTLE_INLINE_PREVIEW_KEY = '战斗终端';
+  const 战斗提交模式存储键 = 'lwcs_battle_submit_mode';
+  const 战斗提交模式列表 = ['auto', 'manual', 'free_narrative'];
   const PENDING_SOUL_RING_PREVIEW_KEY = '魂环生成确认';
   const PENDING_SKILL_DESIGN_PREVIEW_KEY = '技能设计确认';
   let battleInlineDismissed = false;
   let battleInlineMountToken = 0;
   let battleReturnEntrySyncToken = 0;
   let pendingBattleInlineMount = null;
+  let 跳过战斗终端自动挂载 = false;
   let playerNameRepairInFlight = '';
   let liveSnapshot = null;
   let lastRenderableSnapshot = null;
@@ -1660,6 +1663,21 @@
   let 慢刷新骨架已启用 = false;
   const 慢刷新骨架预览键列表 = Object.freeze(['系统播报与日志', '试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
+
+  function 规范化战斗提交模式(值) {
+    const 文本 = String(值 || '').trim();
+    return 战斗提交模式列表.includes(文本) ? 文本 : 'manual';
+  }
+
+  function 读取战斗提交模式() {
+    try {
+      const 桥接模式 = window.BattleUIBridge?.getBattleSubmitMode?.();
+      if (桥接模式) return 规范化战斗提交模式(桥接模式);
+      return 规范化战斗提交模式(window.localStorage?.getItem(战斗提交模式存储键));
+    } catch (error) {
+      return 'manual';
+    }
+  }
 
   function htmlEscape(value) {
     return String(value == null ? '' : value)
@@ -34621,6 +34639,12 @@ ${播报文本}
                         <button class="mode-btn active" type="button" data-mode="single_round">单回合</button>
                         <button class="mode-btn" type="button" data-mode="multi_round">连续推演</button>
                       </div>
+                      <div class="mode-group battle-submit-mode-group" id="ui-battle-submit-mode-group">
+                        <span class="battle-submit-mode-label" id="ui-battle-submit-mode-label">手动</span>
+                        <button class="mode-btn" type="button" data-submit-mode="auto" title="自动">自动</button>
+                        <button class="mode-btn active" type="button" data-submit-mode="manual" title="手动">手动</button>
+                        <button class="mode-btn" type="button" data-submit-mode="free_narrative" title="剧情自由">自由</button>
+                      </div>
                       <select class="request-console-input battle-intent-select" id="ui-intent-mode">
                         <option value="点到为止" selected>点到为止</option>
                         <option value="尽量生擒">尽量生擒</option>
@@ -36160,6 +36184,11 @@ ${播报文本}
     const canUseBattle = isCombatActive && isSnapshotPlayerControlled(snapshot);
     const battleUiSnapshot = canUseBattle ? buildBattleUiSnapshot(snapshot, liveCombatData) : snapshot;
     syncBattleReturnEntries(snapshot, canUseBattle && battleInlineDismissed);
+    if (canUseBattle && 跳过战斗终端自动挂载 && !options.reopenBattle) {
+      if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
+      activeBattleUI = null;
+      return;
+    }
     if (canUseBattle && battleInlineDismissed && !options.reopenBattle) {
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
       activeBattleUI = null;
@@ -36284,7 +36313,7 @@ ${播报文本}
     };
   }
 
-  async function openMapBattleModule(snapshot, dispatchDetail) {
+  async function openMapBattleModule(snapshot, dispatchDetail, options = {}) {
     const trialContext = 读取试炼状态上下文(snapshot);
     const trialBattleDetail = trialContext
       ? buildTrialBattleDispatchDetail(snapshot, dispatchDetail, trialContext)
@@ -36322,6 +36351,7 @@ ${播报文本}
         ? ` ${toText(combatData.大关标签, '魂灵塔')} 第${toNumber(combatData.floor, 1)}层`
         : '';
     battleInlineDismissed = false;
+    跳过战斗终端自动挂载 = options.skipUi === true;
     await applyJsonPatchOpsByEditor([
       ...towerEntryTicketPatches,
       { op: 'replace', path: '/world/战斗', value: compactCombatData },
@@ -36331,9 +36361,111 @@ ${播报文本}
         value: `[战斗模块] ${playerName} 向 ${enemyName} 发起${combatData.战斗类型 === '魂灵塔冲塔' ? `魂灵塔挑战${soulTowerText}` : '切磋'}，战斗模块已接管。`,
       },
     ]);
-    await refreshLiveSnapshot({ force: true, reopenBattle: true });
-    showUiToast('战斗模块已开启。', 'info', 2400);
+    await refreshLiveSnapshot({ force: true, reopenBattle: options.skipUi === true ? false : true });
+    if (options.skipUi === true) showUiToast('战斗模块自动结算中。', 'info', 1800);
+    else showUiToast('战斗模块已开启。', 'info', 2400);
     return { ok: true, combatData };
+  }
+
+  function 构建自动战斗裁断提示(combatData = {}, 执行结果 = {}) {
+    const 战报列表 = Array.isArray(执行结果.logs) ? 执行结果.logs : [];
+    const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
+    const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
+    const 战果类型 =
+      执行结果.winner === 'player'
+        ? 'player_win'
+        : 执行结果.winner === 'enemy'
+          ? 'enemy_win'
+          : 'unfinished';
+    const 战果说明 =
+      战果类型 === 'player_win'
+        ? '玩家方取得阶段胜势'
+        : 战果类型 === 'enemy_win'
+          ? '敌方取得阶段胜势'
+          : '战斗仍在持续';
+    return `<moduleSettlement>
+[battle_arbitration] 前端战斗模块已经按自动模式完成暗箱推演。剧情推进和正文只承接本次战报与结算结果，不要重新开启战斗模块，不要输出 <moduleIntent>、<UpdateVariable>、最小战斗种子或任何模块接管说明。
+[前端暗箱演算完毕]
+自动模式，实际推演 ${toNumber(执行结果.roundsExecuted, 0)} 回合。
+[前端战报]
+${战报列表.join('\n') || '无'}
+[前端战果类型]
+${战果类型}
+[前端战果说明]
+${战果说明}
+[存活统计]
+我方存活:${玩家存活}；敌方存活:${敌方存活}
+[战斗意图]
+${toText(combatData.战斗意图, '点到为止')}
+</moduleSettlement>
+
+请严格根据[前端战报]描写画面。你只判断剧情裁断，不直接输出 MVU 更新。若战斗未结束，模块会维持战斗；若战斗结束，战斗模块会读取你的 <战斗裁断> 并按胜败方与败方剩余HP比例完成最终数值写回。
+
+【战斗裁断固定输出】
+最终回复末尾必须额外追加一个 <战斗裁断>{...}</战斗裁断>。模块只强解析“模块结算”，“正文承接”只用于后续正文衔接。
+未结束时必须严格输出：
+<战斗裁断>
+{
+  "模块结算": {
+    "是否结束": false
+  },
+  "正文承接": "自然语言承接说明"
+}
+</战斗裁断>
+结束时必须严格输出：
+<战斗裁断>
+{
+  "模块结算": {
+    "是否结束": true,
+    "胜方": "参战者名称",
+    "败方": "参战者名称",
+    "败方剩余HP比例": 5
+  },
+  "正文承接": "自然语言承接说明"
+}
+</战斗裁断>
+模块结算规则：是否结束必须是 true 或 false；false 时模块结算只能包含 是否结束；true 时必须包含 是否结束、胜方、败方、败方剩余HP比例；胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。`;
+  }
+
+  async function 自动执行战斗模块路由(snapshot, request = {}) {
+    let 开启结果 = null;
+    let 当前快照 = snapshot;
+    if (deepGet(当前快照, 'rootData.world.战斗.进行中', false)) {
+      const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'auto_battle_route_continuation');
+      if (!模块加载结果 || 模块加载结果.ok === false) {
+        return { ok: false, reason: '战斗模块加载失败。' };
+      }
+    } else {
+      开启结果 = await openMapBattleModule(当前快照, request, { skipUi: true });
+      if (!开启结果?.ok && 开启结果?.reason === 'combat_context_unresolved') {
+        await refreshLiveSnapshot({ force: true });
+        当前快照 = liveSnapshot || lastRenderableSnapshot || 当前快照;
+        开启结果 = await openMapBattleModule(当前快照, request, { skipUi: true });
+      }
+      if (!开启结果?.ok) return 开启结果 || { ok: false, reason: 'battle_auto_open_failed' };
+      当前快照 = liveSnapshot || lastRenderableSnapshot || 当前快照;
+    }
+    const 原始战斗 = deepGet(当前快照, 'rootData.world.战斗', 开启结果?.combatData || {});
+    const 战斗数据 = normalizeCombatForBattleUI(buildBattleUiSnapshot(当前快照, 原始战斗)) || 原始战斗;
+    if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
+      return { ok: false, reason: 'battle_context_missing' };
+    }
+    const 执行函数 = window.BattleUIBridge?.executeBattleFlow;
+    if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_auto_engine_unavailable' };
+    const 执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 4 });
+    const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
+    const 提交结果 = await dispatchUiAiRequest('自动战斗推进', 构建自动战斗裁断提示(战斗数据, 执行结果), {
+      requestKind: 'battle_arbitration',
+      patchOps,
+      skipActionLock: true,
+    });
+    return {
+      ok: 提交结果?.ok !== false,
+      dispatch: 提交结果,
+      result: 执行结果,
+      combatData: 战斗数据,
+      reason: 提交结果?.reason || '',
+    };
   }
 
   function buildTradeDispatchFromRequest(snapshot, tradeRequest) {
@@ -37780,8 +37912,19 @@ ${播报文本}
     }
 
     if (moduleKind === 'battle') {
+      const 当前战斗提交模式 = 读取战斗提交模式();
       const trialContext = 读取试炼状态上下文(snapshot);
-      if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
+      if (当前战斗提交模式 === 'free_narrative') {
+        request = {
+          action: 'battle',
+          target: toText(
+            payload.location || payload.targetLocation || payload.arena || payload.target,
+            findBracketLocationToken(snapshot, text),
+          ),
+          currentLoc: toText(payload.currentLoc || payload.location, toText(snapshot && snapshot.currentLoc, '')),
+          source: toText(payload.source, 'module_intent_router_free_narrative'),
+        };
+      } else if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
       } else if (
         !trialContext &&
@@ -37860,12 +38003,7 @@ ${播报文本}
     }
 
     if (!request || !moduleKind) return { handled: false, reason: 'no_module_intent' };
-    if (moduleKind === 'battle' && deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
-      return 构建模块路由成功结果(moduleKind, request || {}, {
-        dispatchMode: 'battle_continuation',
-        reason: 'battle_continuation',
-      });
-    }
+    const 战斗提交模式 = moduleKind === 'battle' ? 读取战斗提交模式() : '';
     if (dryRun) return { handled: true, dryRun: true, kind: moduleKind, request };
 
     if (moduleKind === 'trial_entry') {
@@ -37880,6 +38018,31 @@ ${播报文本}
     }
 
     if (moduleKind === 'battle') {
+      if (战斗提交模式 === 'free_narrative') {
+        return 构建模块路由成功结果(moduleKind, request, {
+          dispatchMode: 'settled_summary',
+          skipped: true,
+          reason: 'battle_free_narrative',
+        });
+      }
+      if (战斗提交模式 === 'auto') {
+        const result = await 自动执行战斗模块路由(snapshot, request);
+        if (!result?.ok) {
+          return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_auto_failed', { result });
+        }
+        return 构建模块路由成功结果(moduleKind, request, {
+          dispatchMode: 'battle_auto_arbitration',
+          result,
+        });
+      }
+      跳过战斗终端自动挂载 = false;
+      if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
+        await refreshLiveSnapshot({ force: true, reopenBattle: true });
+        return 构建模块路由成功结果(moduleKind, request || {}, {
+          dispatchMode: 'battle_continuation',
+          reason: 'battle_continuation',
+        });
+      }
       let result = await openMapBattleModule(snapshot, request);
       if (!result?.ok && result?.reason === 'combat_context_unresolved') {
         await refreshLiveSnapshot({ force: true });
@@ -38236,6 +38399,25 @@ ${播报文本}
     }
 
     if (归一化动作 === 'battle') {
+      const arenaName = toText(
+        detail.currentLoc,
+        toText(detail.target, toText(liveSnapshot && liveSnapshot.currentLoc, '未知地点')),
+      );
+      const 战斗提交模式 = 读取战斗提交模式();
+      if (战斗提交模式 === 'free_narrative') {
+        dispatchUiAiRequest(
+          `我想在【${arenaName}】继续当前冲突。`,
+          `当前战斗提交模式为剧情自由。不要开启战斗模块，不要输出 <moduleIntent>，请直接按普通正文承接【${arenaName}】的冲突与角色行动。`,
+          { requestKind: 'map_interaction' },
+        );
+        return;
+      }
+      if (战斗提交模式 === 'auto') {
+        const autoResult = await 自动执行战斗模块路由(liveSnapshot || lastRenderableSnapshot || {}, detail);
+        if (autoResult?.ok) return;
+        showUiToast(`自动战斗失败：${autoResult?.reason || 'battle_auto_failed'}`, 'error', 4200);
+        return;
+      }
       let battleOpenResult = null;
       try {
         battleOpenResult = await openMapBattleModule(liveSnapshot, detail);

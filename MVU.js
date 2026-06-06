@@ -119,8 +119,14 @@ function 读取内置角色库_V1() {
   return { 版本: 0, 每年tick: 51840, 开场节点: {}, 角色: {} };
 }
 
-function 读取内置角色记录_V1(角色名 = '') {
-  const 规范名 = 解析内置角色规范名_V1(角色名);
+const 古月娜融合成立tick_V1 = 643159;
+
+function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
+  return Number(当前tick || 0) >= 古月娜融合成立tick_V1 || !!数据根?.char?.古月娜;
+}
+
+function 读取内置角色记录_V1(角色名 = '', 当前tick = 0, 数据根 = {}) {
+  const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
   if (!规范名) return null;
   return 读取内置角色库_V1().角色?.[规范名] || null;
 }
@@ -134,13 +140,25 @@ function 读取内置角色别名条目_V1() {
     .sort((a, b) => b.别名.length - a.别名.length);
 }
 
-function 解析内置角色规范名_V1(名称 = '') {
+function 规范化内置角色命中目标_V1(条目 = {}, 当前tick = 0, 数据根 = {}) {
+  if (条目?.角色名 === '古月娜' && !是否古月娜融合阶段_V1(当前tick, 数据根)) {
+    return '';
+  }
+  if (条目?.角色名 === '古月' && 条目?.别名 === '古月' && 是否古月娜融合阶段_V1(当前tick, 数据根) && 读取内置角色库_V1().角色?.古月娜) {
+    return '古月娜';
+  }
+  return String(条目?.角色名 || '').trim();
+}
+
+function 解析内置角色规范名_V1(名称 = '', 当前tick = 0, 数据根 = {}) {
   const 文本 = String(名称 || '').trim();
   if (!文本) return '';
   const 角色库 = 读取内置角色库_V1();
+  if (文本 === '古月' && 是否古月娜融合阶段_V1(当前tick, 数据根) && 角色库.角色?.古月娜) return '古月娜';
+  if (文本 === '古月娜' && !是否古月娜融合阶段_V1(当前tick, 数据根)) return '';
   if (角色库.角色?.[文本]) return 文本;
   const 命中 = 读取内置角色别名条目_V1().find(条目 => 条目.别名 === 文本);
-  return 命中?.角色名 || '';
+  return 命中 ? 规范化内置角色命中目标_V1(命中, 当前tick, 数据根) : '';
 }
 
 function 取内置角色最近快照_V1(角色记录 = {}, 当前tick = 0) {
@@ -162,36 +180,49 @@ function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
   return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
 }
 
-function 匹配文本内置角色名_V1(文本 = '') {
+function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 = {}) {
   const 内容 = String(文本 || '');
   if (!内容.trim()) return [];
-  return Array.from(new Set(读取内置角色别名条目_V1()
-    .filter(条目 => 内容.includes(条目.别名))
-    .map(条目 => 条目.角色名)));
+  const 已占用区间 = [];
+  const 命中角色 = [];
+  读取内置角色别名条目_V1().forEach(条目 => {
+    let 起点 = 内容.indexOf(条目.别名);
+    while (起点 >= 0) {
+      const 终点 = 起点 + 条目.别名.length;
+      const 被长别名覆盖 = 已占用区间.some(区间 => 起点 < 区间.终点 && 终点 > 区间.起点);
+      if (!被长别名覆盖) {
+        const 规范名 = 规范化内置角色命中目标_V1(条目, 当前tick, 数据根);
+        已占用区间.push({ 起点, 终点 });
+        if (规范名) 命中角色.push(规范名);
+      }
+      起点 = 内容.indexOf(条目.别名, 起点 + 1);
+    }
+  });
+  return Array.from(new Set(命中角色));
 }
 
-function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = '') {
-  const 命中 = new Set(匹配文本内置角色名_V1(文本));
+function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = '', 数据根 = {}) {
+  const 命中 = new Set(匹配文本内置角色名_V1(文本, 当前tick, 数据根));
   const 时间线事件列表 = Array.isArray(TimelineEvents) ? TimelineEvents : Object.values(TimelineEvents || {}).flat();
   const 当前tick数值 = Number(当前tick || 0);
   时间线事件列表
     .filter(事件 => Math.abs(Number(事件?.触发tick || 0) - 当前tick数值) <= 720)
     .forEach(事件 => {
       (Array.isArray(事件?.人物) ? 事件.人物 : []).forEach(角色名 => {
-        const 规范名 = 解析内置角色规范名_V1(角色名);
+        const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
         if (规范名) 命中.add(规范名);
       });
       const 事件文本 = [事件?.描述, 事件?.简述].join('\n');
-      匹配文本内置角色名_V1(事件文本).forEach(角色名 => 命中.add(角色名));
+      匹配文本内置角色名_V1(事件文本, 当前tick, 数据根).forEach(角色名 => 命中.add(角色名));
     });
   return Array.from(命中);
 }
 
 function 构建内置角色命中摘要_V1(数据根 = {}, 文本 = '') {
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
-  return 收集当前时间线命中内置角色名_V1(当前tick, 文本)
+  return 收集当前时间线命中内置角色名_V1(当前tick, 文本, 数据根)
     .filter(角色名 => !数据根?.char?.[角色名])
-    .map(角色名 => 读取内置角色记录_V1(角色名)?.摘要 || '')
+    .map(角色名 => 读取内置角色记录_V1(角色名, 当前tick, 数据根)?.摘要 || '')
     .filter(Boolean)
     .slice(0, 6);
 }
@@ -26138,8 +26169,8 @@ function 裁剪内置角色魂环到等级_V1(角色 = {}) {
   });
 }
 
-function 构建内置角色实例_V1(角色名 = '', 当前tick = 0) {
-  const 角色记录 = 读取内置角色记录_V1(角色名);
+function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 = {}) {
+  const 角色记录 = 读取内置角色记录_V1(角色名, 当前tick, 数据根);
   const 快照 = 取内置角色最近快照_V1(角色记录, 当前tick);
   if (!快照?.角色 || typeof 快照.角色 !== 'object') return null;
   const 角色 = cloneJsonValue(快照.角色, null);
@@ -26160,6 +26191,30 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0) {
   return 角色;
 }
 
+function 同步银龙融合旧实体状态_V1(数据根 = {}, 当前tick = 0) {
+  if (!是否古月娜融合阶段_V1(当前tick, 数据根)) return [];
+  const 角色表 = 数据根?.char && typeof 数据根.char === 'object' && !Array.isArray(数据根.char) ? 数据根.char : {};
+  const 已变更 = [];
+  ['古月', '娜儿'].forEach(角色名 => {
+    const 角色 = 角色表[角色名];
+    if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+    if (!角色.状态 || typeof 角色.状态 !== 'object' || Array.isArray(角色.状态)) 角色.状态 = {};
+    const 死亡tick = Math.max(0, Number(角色.状态.死亡tick ?? -1), 古月娜融合成立tick_V1);
+    const 需要变更 =
+      角色.状态.存活 !== false ||
+      Number(角色.状态.死亡tick ?? -1) !== 死亡tick ||
+      角色.状态.死亡类型 !== '自然' ||
+      角色.状态.行动 !== '已死亡';
+    if (!需要变更) return;
+    角色.状态.存活 = false;
+    角色.状态.死亡tick = 死亡tick;
+    角色.状态.死亡类型 = '自然';
+    角色.状态.行动 = '已死亡';
+    已变更.push(角色名);
+  });
+  return 已变更;
+}
+
 function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
@@ -26176,17 +26231,22 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   }
   const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
   if (选项.时间线事件命中 || String(命中文本 || '').trim()) {
-    收集当前时间线命中内置角色名_V1(当前tick, 命中文本).forEach(角色名 => 待写入.add(角色名));
+    收集当前时间线命中内置角色名_V1(当前tick, 命中文本, 数据根).forEach(角色名 => 待写入.add(角色名));
+  }
+  if (是否古月娜融合阶段_V1(当前tick, 数据根) && !数据根.char.古月娜 && (数据根.char.古月 || 数据根.char.娜儿)) {
+    待写入.add('古月娜');
   }
   const 已写入 = [];
   待写入.forEach(角色名 => {
     if (!角色名 || 数据根.char[角色名]) return;
-    const 角色 = 构建内置角色实例_V1(角色名, 当前tick);
+    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根);
     if (!角色) return;
     数据根.char[角色名] = CharacterSchema.parse(角色);
     已写入.push(角色名);
   });
-  return { changed: 已写入.length > 0, changedNames: 已写入, names: 已写入 };
+  const 已同步 = 同步银龙融合旧实体状态_V1(数据根, 当前tick);
+  const 已变更 = Array.from(new Set([...已写入, ...已同步]));
+  return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更 };
 }
 
 const SchemaRootObject = z

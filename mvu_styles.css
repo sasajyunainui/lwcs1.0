@@ -16484,6 +16484,21 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   flex-wrap: wrap;
 }
 
+#mvu-battle-inline-host .battle-submit-mode-group {
+  flex-wrap: nowrap;
+}
+
+#mvu-battle-inline-host .battle-submit-mode-label {
+  min-width: 28px;
+  padding: 5px 6px;
+  border-radius: var(--mvu-radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(224, 244, 248, 0.72);
+  font-size: var(--mvu-font-sm, 12px);
+  line-height: 1.2;
+  text-align: center;
+}
+
 #mvu-battle-inline-host .battle-intent-select {
   flex: 0 0 124px;
 }
@@ -16869,6 +16884,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #mvu-battle-inline-host .mode-group,
   #mvu-battle-inline-host .battle-toolbar-actions {
     width: 100%;
+  }
+
+  #mvu-battle-inline-host .battle-submit-mode-group {
+    flex-wrap: wrap;
   }
 }
 
