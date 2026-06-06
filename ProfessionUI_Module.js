@@ -346,9 +346,9 @@ const ProfessionTemplate = `
       <div class="info-row"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
       <div class="info-row"><span class="info-key">执行来源</span><span class="info-val" id="prev-executor">-</span></div>
       <div class="info-row"><span class="info-key">代工费用</span><span class="info-val" id="prev-fee">-</span></div>
-      <div class="info-row"><span class="info-key">成功率</span><span class="info-val" id="prev-rate">-%</span></div>
+      <div class="info-row"><span class="info-key">本次成功率</span><span class="info-val" id="prev-rate">-%</span></div>
       <div class="info-row"><span class="info-key">模式 / 融合率</span><span class="info-val" id="prev-fusion">-</span></div>
-      <div class="info-row"><span class="info-key">最大复合数</span><span class="info-val" id="prev-maxfusion">-</span></div>
+      <div class="info-row"><span class="info-key">支持融锻数</span><span class="info-val" id="prev-maxfusion">-</span></div>
       <div class="info-row"><span class="info-key">品质极限</span><span class="info-val" id="prev-maxq">-</span></div>
       <div class="info-row"><span class="info-key">连续预估</span><span class="info-val" id="prev-loop">-</span></div>
       <div class="info-row"><span class="info-key">规则提示</span><span class="info-val" id="prev-note">-</span></div>
@@ -359,7 +359,6 @@ const ProfessionTemplate = `
 </div>
 `;
 
-const JOB_EXP_THRESHOLDS = [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
 const TIER_LABELS = ['', '1阶', '2阶', '3阶', '4阶', '5阶'];
 
 const PROFESSION_CONFIG = {
@@ -780,45 +779,63 @@ class ProfessionUIComponent {
   escapeJsonPointer(str) { return String(str).replace(/~/g, '~0').replace(/\//g, '~1'); }
 
   getLevelFromTotalExp(exp) {
-    let lv = 0;
-    while (lv < 9 && exp >= JOB_EXP_THRESHOLDS[lv]) lv++;
-    return lv;
+    return this.读取副职业派生接口().读取等级(exp);
   }
 
   deriveLimitSuccessRate(lv, exp) {
-    if (lv === 9) {
-      const overflowExp = Math.max(0, exp - 3000000);
-      return Math.min(50, 10 + Math.floor(overflowExp / 500000));
-    }
-    if (lv > 0) {
-      const cExp = JOB_EXP_THRESHOLDS[lv - 1], nExp = JOB_EXP_THRESHOLDS[lv];
-      let progress = this.clamp((exp - cExp) / Math.max(1, (nExp - cExp)), 0, 1);
-      return lv % 2 === 0 ? Math.floor(80 + 15 * progress) : Math.floor(30 + 40 * progress);
-    }
-    return 0;
+    return this.读取副职业派生接口().读取基础成功率(lv, exp);
+  }
+
+  读取核心技艺文本(职业名, 等级) {
+    return this.读取副职业派生接口().读取核心技艺文本(职业名, 等级);
+  }
+
+  读取副职业派生接口() {
+    const 根列表 = [];
+    try { 根列表.push(globalThis); } catch (错误) {}
+    try { 根列表.push(window); } catch (错误) {}
+    try { if (window.parent && window.parent !== window) 根列表.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 根列表.push(window.top); } catch (错误) {}
+    const 接口 = 根列表
+      .map(根 => {
+        try { return 根.__LWCS_PROFESSION_DERIVATION__; } catch (错误) { return null; }
+      })
+      .find(候选接口 => 候选接口 && typeof 候选接口.派生运行时 === 'function');
+    if (!接口) throw new Error('副职业派生接口未加载');
+    return 接口;
+  }
+
+  读取支持融锻文本(等级) {
+    return this.读取副职业派生接口().读取支持融锻文本(等级);
+  }
+
+  读取阶位支持融锻数(等级, 阶位) {
+    return this.读取副职业派生接口().读取阶位融锻数(等级, 阶位);
   }
 
   getJobRuntime(jobName, charObj = this.charData) {
     const job = charObj?.职业?.[jobName] || {};
     const totalExp = Number(job.经验 || 0);
-    let lv = Math.max(Number(job.等级 || 0), this.getLevelFromTotalExp(totalExp));
-    lv = this.clamp(lv, 0, 9);
-    const cExp = JOB_EXP_THRESHOLDS[Math.max(0, lv - 1)] || 0;
-    const nExp = JOB_EXP_THRESHOLDS[Math.min(lv, 9)] || JOB_EXP_THRESHOLDS[9];
-    const expRatio = lv >= 9 ? 0 : this.clamp((totalExp - cExp) / Math.max(1, (nExp - cExp)), 0, 0.999);
-    const limitSuccessRate = Number(job?.限制?.成功率 ?? this.deriveLimitSuccessRate(lv, totalExp));
-    const maxFusion = Number(job?.限制?.最大融合数 ?? Math.max(1, Math.floor(lv / 2)));
+    const 派生接口 = this.读取副职业派生接口();
+    let lv = 派生接口.读取等级(totalExp);
+    const 经验阈值 = Array.isArray(派生接口.经验阈值) ? 派生接口.经验阈值 : [];
+    const cExp = 经验阈值[Math.max(0, lv - 1)] || 0;
+    const nExp = 经验阈值[Math.min(lv, 9)] || 经验阈值[9] || 0;
+    const expRatio = 派生接口.读取等级进度(lv, totalExp);
+    const limitSuccessRate = 派生接口.读取基础成功率(lv, totalExp);
+    const 支持融锻文本 = this.读取支持融锻文本(lv);
+    const maxFusion = 派生接口.读取最高支持融锻数(lv);
 
-    return { jobName, job, lv, exp: totalExp, expRatio, limitSuccessRate, maxFusion, currentBaseExp: cExp, nextLevelExp: nExp };
+    return { jobName, job, lv, exp: totalExp, expRatio, limitSuccessRate, maxFusion, 支持融锻文本, 核心技艺文本: this.读取核心技艺文本(jobName, lv), currentBaseExp: cExp, nextLevelExp: nExp };
   }
 
   buildOfficialCommissionRuntime(jobName) {
-    return { jobName, job: {}, lv: 9, exp: 99999999, expRatio: 1, limitSuccessRate: 85, maxFusion: 3, currentBaseExp: 0, nextLevelExp: 0 };
+    return { jobName, job: {}, lv: 9, exp: 99999999, expRatio: 1, limitSuccessRate: 85, maxFusion: 3, 支持融锻文本: '协会固定支持 3 级复合工序', 核心技艺文本: this.读取核心技艺文本(jobName, 9), currentBaseExp: 0, nextLevelExp: 0 };
   }
 
   deriveJobLimitsFromExp(exp) {
     const lv = this.getLevelFromTotalExp(exp);
-    return { lv, 最大融合数: Math.max(1, Math.floor(lv / 2)), 成功率: this.deriveLimitSuccessRate(lv, exp) };
+    return { lv, 支持融锻数: this.读取支持融锻文本(lv), 基础成功率: this.deriveLimitSuccessRate(lv, exp) };
   }
 
   getItemTier(itemName) {
@@ -830,7 +847,7 @@ class ProfessionUIComponent {
   }
 
   getForgeUnlockLevel(tier) { return [1, 3, 5, 7, 9][tier - 1] || 99; }
-  getForgeFusionUnlockLevel(tier) { return [0, 5, 6, 8, 9][tier - 1] || 99; }
+  getForgeFusionUnlockLevel(tier) { return [0, 4, 6, 7, 9][tier - 1] || 99; }
 
   getSingleTierSuccessRate(tier, runtime) {
     const { lv, expRatio } = runtime;
@@ -1234,7 +1251,7 @@ class ProfessionUIComponent {
       ctx.executorName = `${cfg.jobName}协会`; ctx.executorRuntime = this.buildOfficialCommissionRuntime(cfg.jobName); ctx.validationRuntime = ctx.executorRuntime;
       ctx.successRate = 85; ctx.commissionFee = Number(OFFICIAL_COMMISSION_FEES[tier] || 0);
       const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
-      ctx.note = `官方代工固定成功率 85%，最多承接 3 级复合工序。当前代工费 ${this.formatFedCoin(ctx.commissionFee)}。`;
+      ctx.note = `官方代工固定成功率 85%，支持 3 级复合工序。当前代工费 ${this.formatFedCoin(ctx.commissionFee)}。`;
       if (!currentLoc.includes(officialLocationName)) ctx.error = `必须前往【${officialLocationName}】大厅才能办理官方代工委托。`;
       else if (ctx.fusionCount > 3) ctx.error = `官方流水线拒收 ${ctx.fusionCount} 级复合工序，当前超出协会工艺上限。`;
     } else if (ctx.isPrivate) {
@@ -1251,7 +1268,7 @@ class ProfessionUIComponent {
           const npcRuntime = this.getJobRuntime(cfg.jobName, targetChar);
           ctx.executorName = relationName; ctx.executorRuntime = npcRuntime; ctx.validationRuntime = npcRuntime;
           ctx.relScore = this.getRelationScore(relationName);
-          if (ctx.fusionCount > npcRuntime.maxFusion) ctx.error = `目标 NPC【${targetNpcName}】的${cfg.jobName}等级不足，无法承接 ${ctx.fusionCount} 级复合工序。`;
+          if (ctx.fusionCount > (cfg.mode === 'forge' ? this.读取阶位支持融锻数(npcRuntime.lv, tier) : npcRuntime.maxFusion)) ctx.error = `目标 NPC【${targetNpcName}】的${cfg.jobName}等级不足，无法承接 ${ctx.fusionCount} 级复合工序。`;
           else {
             const baseFee = Number(PRIVATE_COMMISSION_FEES[tier] || 100000);
             ctx.commissionFee = baseFee * Math.max(1, ctx.fusionCount);
@@ -1376,7 +1393,8 @@ class ProfessionUIComponent {
     }
     const fusionUnlockLv = this.getForgeFusionUnlockLevel(tier);
     if (runtime.lv < fusionUnlockLv) return `${this.getForgeTierLabel(tier)}融锻尚未解锁，需要 Lv.${fusionUnlockLv} 锻造师。`;
-    if (materialNames.length > runtime.maxFusion) return `当前锻造师最多只能处理 ${runtime.maxFusion} 种金属。`;
+    const 当前阶位支持数 = this.读取阶位支持融锻数(runtime.lv, tier);
+    if (materialNames.length > 当前阶位支持数) return `当前锻造师${this.getForgeTierLabel(tier)}支持融锻数为 ${当前阶位支持数}。`;
     for (const mName of materialNames) {
       if (this.getItemTier(mName) !== tier) return `融锻要求材料阶位与目标完全一致：当前目标 ${this.getForgeTierLabel(tier)}，材料【${mName}】是 ${this.getForgeTierLabel(this.getItemTier(mName))}。`;
       const materialItem = this.resolveInventoryItem(mName);
@@ -1390,7 +1408,7 @@ class ProfessionUIComponent {
     const uLv = this.getForgeUnlockLevel(tier);
     if (runtime.lv < uLv) return `${this.getTierDisplayName(cfg.mode, tier)}尚未解锁，需要 Lv.${uLv} ${cfg.jobName}。`;
     if (cfg.requiresMaterials && materialNames.length === 0) return `${cfg.displayName}至少需要选择一种材料。`;
-    if (materialNames.length > runtime.maxFusion) return `最多协同 ${runtime.maxFusion} 种材料。`;
+    if (materialNames.length > runtime.maxFusion) return `当前${cfg.jobName}支持协同数为 ${runtime.maxFusion}。`;
     if (cfg.mode === 'manufacture') {
       if (/斗铠|机甲/.test(targetName) && !this.hasBlueprintMaterial(materialNames)) return '制造斗铠/机甲至少需要对应设计图或蓝图。';
       const armorTier = this.getArmorTierFromName(targetName);
@@ -1457,7 +1475,7 @@ class ProfessionUIComponent {
         rateText = `<span class="val-highlight">${rate}%</span>`;
         fusionText = isFusion ? `<span class="val-cyan">${efc}级复合 / 融合率${dfr}%</span>` : `<span class="val-cyan">单金属 / 融合率${dfr}%</span>`;
         maxQText = `<span class="val-highlight">${this.getForgeMaxQ(tier, efc).toFixed(1)}</span>`;
-        noteText = commissionCtx.isCommission ? commissionCtx.note : (isFusion ? `融锻走公式成功率；当前最大可处理 ${effectiveRuntime.maxFusion} 种金属。` : `单金属成功率按等级表 + 经验区间计算。`);
+        noteText = commissionCtx.isCommission ? commissionCtx.note : (isFusion ? `融锻走公式成功率；当前${this.getForgeTierLabel(tier)}支持融锻数 ${this.读取阶位支持融锻数(effectiveRuntime.lv, tier)}。` : `单金属成功率按等级表 + 经验区间计算。`);
       }
     } else {
       if (!ruleError) ruleError = this.validateGenericRules(cfg, effectiveRuntime, tier, materialNames, targetName);
@@ -1509,7 +1527,7 @@ class ProfessionUIComponent {
     this.setPreviewField('prev-fee', feeText);
     this.setPreviewField('prev-rate', ruleError ? `<span class="val-red">-</span>` : rateText);
     this.setPreviewField('prev-fusion', ruleError ? `<span class="val-red">-</span>` : fusionText);
-    this.setPreviewField('prev-maxfusion', `<span class="val-highlight">${effectiveRuntime.maxFusion}</span>`);
+    this.setPreviewField('prev-maxfusion', `<span class="val-highlight">${effectiveRuntime.支持融锻文本}</span>`);
     this.setPreviewField('prev-maxq', ruleError ? `<span class="val-red">-</span>` : maxQText);
     this.setPreviewField('prev-loop', ruleError ? `<span class="val-red">-</span>` : 连续预估文本);
     this.setPreviewField('prev-note', ruleError ? `<span class="val-red">${ruleError}</span>` : noteText);
@@ -1600,10 +1618,7 @@ class ProfessionUIComponent {
     const derived = this.deriveJobLimitsFromExp(nextExp);
     return {
       patches: [
-        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/经验`, value: nextExp },
-        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/等级`, value: derived.lv },
-        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/限制/最大融合数`, value: derived.最大融合数 },
-        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/限制/成功率`, value: derived.成功率 }
+        { op: 'replace', path: `${this.activeCharBasePath}/职业/${this.escapeJsonPointer(jobName)}/经验`, value: nextExp }
       ],
       oldLv: runtime.lv, newLv: derived.lv
     };

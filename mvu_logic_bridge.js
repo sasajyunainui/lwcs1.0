@@ -286,8 +286,8 @@
       actions: ['按分类筛选', '查看物品详情', '整理 / 使用道具'],
     },
     血脉封印详细页: {
-      title: '血脉封印弹窗',
-      summary: '承接血脉体系的状态模块，在 1 个页面内汇总封印层级与当前能力。',
+      title: '血脉详情',
+      summary: '承接血脉体系的状态模块，在 1 个页面内汇总血脉与当前能力。',
       fields: [
         'activeChar.第1武魂 / activeChar.第2武魂',
         'activeChar.魂骨',
@@ -1484,7 +1484,7 @@
 
     if (key === '血脉封印详细页') {
       return {
-        title: '血脉封印弹窗',
+        title: '血脉详情',
         body: `
             <div class="archive-modal-grid">
               <div class="archive-card full">
@@ -6846,6 +6846,40 @@
     return text;
   }
 
+  function 格式化技能消耗显示文本_桥接(消耗值, 兜底文本 = '无') {
+    if (消耗值 === undefined || 消耗值 === null || 消耗值 === '') return 兜底文本;
+    if (typeof 消耗值 !== 'object') return normalizeSkillUiText(消耗值, 兜底文本);
+    const 格式化原子值 = 值 => {
+      if (值 === undefined || 值 === null || 值 === '') return '';
+      if (typeof 值 === 'number') return Number.isFinite(值) ? formatNumber(值) : '';
+      if (typeof 值 === 'string') return normalizeSkillUiText(值, '');
+      return '';
+    };
+    const 格式化资源对象 = 资源对象 => {
+      if (!资源对象 || typeof 资源对象 !== 'object') return 格式化原子值(资源对象);
+      return Object.entries(资源对象)
+        .filter(([资源名]) => !['启动', 'upfront', '维持', 'sustain'].includes(String(资源名 || '')))
+        .map(([资源名, 数值]) => {
+          const 文本 = 格式化原子值(数值);
+          return 文本 ? `${资源名}:${文本}` : '';
+        })
+        .filter(Boolean)
+        .join(' | ');
+    };
+    if (Array.isArray(消耗值)) {
+      const 文本 = 消耗值.map(条目 => 格式化技能消耗显示文本_桥接(条目, '')).filter(Boolean).join(' | ');
+      return 文本 || 兜底文本;
+    }
+    const 启动消耗 = 消耗值.启动 || 消耗值.upfront || null;
+    const 维持消耗 = 消耗值.维持 || 消耗值.sustain || null;
+    const 基础文本 = 格式化资源对象(启动消耗 || 消耗值);
+    const 维持文本 = 格式化资源对象(维持消耗);
+    const 片段 = [];
+    if (基础文本) 片段.push(基础文本);
+    if (维持文本) 片段.push(`维持:${维持文本}`);
+    return 片段.join(' ') || 兜底文本;
+  }
+
   function summarizeUsageLikeArray(effectArray) {
     const entries = Array.isArray(effectArray) ? effectArray : [];
     const packedNames = entries
@@ -9844,7 +9878,7 @@
   }
 
   function 断言技能设计台维持契约(skill = {}) {
-    const 消耗文本 = normalizeSkillUiText(skill && skill['消耗'], '');
+    const 消耗文本 = 格式化技能消耗显示文本_桥接(skill && skill['消耗'], '');
     if (!/维持[:：]?/.test(消耗文本)) return;
     const 扫描 = (效果列表 = [], path = '_效果数组') => {
       (Array.isArray(效果列表) ? 效果列表 : []).forEach((effect, index) => {
@@ -12928,8 +12962,9 @@
       : null;
     const 翻译文本 = normalizeSkillUiText(正式翻译器(临时技能, { 预算 }), '') || buildSkillDesignerCompactSummary(规范化草稿);
     const 运行态消耗 = 构建技能设计台运行态消耗展示(临时技能['消耗'], 临时技能['_效果数组'], previewMeta, 临时技能);
-    return 运行态消耗 !== normalizeSkillUiText(临时技能['消耗'], '无')
-      ? 翻译文本.replace(`消耗:${normalizeSkillUiText(临时技能['消耗'], '无')}`, `消耗:${运行态消耗}`)
+    const 原消耗展示 = 格式化技能消耗显示文本_桥接(临时技能['消耗'], '无');
+    return 运行态消耗 !== 原消耗展示
+      ? 翻译文本.replace(`消耗:${原消耗展示}`, `消耗:${运行态消耗}`).replace(`消耗:${String({})}`, `消耗:${运行态消耗}`)
       : 翻译文本;
   }
 
@@ -13194,8 +13229,7 @@
     void effectArray;
     void previewMeta;
     void skill;
-    const 消耗文本 = normalizeSkillUiText(基础消耗, '无');
-    return 消耗文本;
+    return 格式化技能消耗显示文本_桥接(基础消耗, '无');
   }
 
   function 读取技能设计台防御效果列表(effectArray = []) {
@@ -20448,6 +20482,7 @@
     });
 
     if (skills.length) return skills;
+    if (options && options.空表不造占位 === true) return [];
 
     return [
       {
@@ -20490,12 +20525,10 @@
       sourceText: normalizeSkillUiText(options && options.sourceText, ''),
       sourceValue: toText(options && options.sourceValue, ''),
       sourcePath: Array.isArray(options && options.sourcePath) ? options.sourcePath : [],
-      carrierText: normalizeSkillUiText(options && options.carrierText, ''),
     };
   }
 
   function buildRingHoverMetaMarkup(ring) {
-    const rows = [];
     const colorMarkup =
       ring && Array.isArray(ring.path) && ring.path.length
         ? makeInlineEditableValue(toText(ring.colorText, '未定'), {
@@ -20505,27 +20538,22 @@
             editorMeta: { options: RING_COLOR_OPTIONS },
           })
         : htmlEscape(toText(ring && ring.colorText, '未定'));
-    rows.push(`<div class="ring-hover-meta-row"><em>颜色</em><strong>${colorMarkup}</strong></div>`);
-    rows.push(
-      `<div class="ring-hover-meta-row"><em>年限</em><strong>${htmlEscape(toText(ring && ring.ageText, '未定'))}</strong></div>`,
-    );
-    if (ring && ring.carrierText) {
-      rows.push(
-        `<div class="ring-hover-meta-row"><em>承载</em><strong>${htmlEscape(toText(ring.carrierText, '未定'))}</strong></div>`,
-      );
-    }
-    if ((ring && ring.sourcePath && ring.sourcePath.length) || (ring && ring.sourceText)) {
-      const sourceMarkup =
+    const 年限文本 = toText(ring && ring.ageText, '').trim();
+    const 来源文本 = toText(ring && ring.sourceText, '').trim();
+    const 来源存在 = !!来源文本;
+    let 来源Markup = '';
+    if (来源存在) {
+      来源Markup =
         ring && ring.sourcePath && ring.sourcePath.length
-          ? makeInlineEditableValue(toText(ring.sourceText, '未记录'), {
+          ? makeInlineEditableValue(来源文本, {
               path: ring.sourcePath,
               kind: 'string',
-              rawValue: toText(ring.sourceValue, toText(ring.sourceText, '未记录')),
+              rawValue: toText(ring.sourceValue, 来源文本),
             })
-          : htmlEscape(toText(ring && ring.sourceText, '未记录'));
-      rows.push(`<div class="ring-hover-meta-row"><em>来源</em><strong>${sourceMarkup}</strong></div>`);
+          : htmlEscape(来源文本);
     }
-    return rows.length ? `<div class="ring-hover-meta">${rows.join('')}</div>` : '';
+    const 片段 = [colorMarkup, 年限文本 ? htmlEscape(年限文本) : '', 来源存在 ? 来源Markup : ''].filter(Boolean);
+    return 片段.length ? `<div class="ring-hover-desc">${片段.join(' / ')}</div>` : '';
   }
 
   function 构建技能悬浮详情内容(技能, 选项 = {}) {
@@ -20589,7 +20617,7 @@
     const skills = (ring && Array.isArray(ring.skills) ? ring.skills : [])
       .map(技能 => 构建技能悬浮详情内容(技能, { 显示标题: true }))
       .join('');
-    return `<div class=\"ring-hover-card\"><div class=\"ring-hover-title\">${htmlEscape(toText(ring && ring.title, '魂环技能'))}</div><div class=\"ring-hover-desc\">${htmlEscape(toText(ring && ring.desc, ''))}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
+    return `<div class=\"ring-hover-card\"><div class=\"ring-hover-title\">${htmlEscape(toText(ring && ring.title, '魂环技能'))}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
   }
 
   function buildSpiritConfig(slotName, spiritData, previewKey, badgeText, badgeClass, spiritBasePath = [], 渲染快照 = null) {
@@ -20612,7 +20640,6 @@
             path: [...soulPath, ringIndex],
             title: `${ringIndex} · ${skills[0] ? skills[0].name : soulDisplayName}`,
             sourceText: soulDisplayName,
-            carrierText: `魂灵 · ${soulDisplayName}`,
           });
           summaryRings.push(ringInfo);
           return ringInfo;
@@ -20652,11 +20679,10 @@
         });
         const ringInfo = buildSpiritRingInfo(ringIndex, ring, skills, {
           path: ringPath,
-          title: `独立魂环 · 第${魂环位}环`,
-          sourceText: normalizeSkillUiText(ring && ring['来源'], '未记录'),
+          title: `第${魂环位}魂环`,
+          sourceText: normalizeSkillUiText(ring && ring['来源'], ''),
           sourceValue: toText(ring && ring['来源'], ''),
           sourcePath: [...ringPath, '来源'],
-          carrierText: '独立魂环',
         });
         summaryRings.push(ringInfo);
         return ringInfo;
@@ -20813,18 +20839,27 @@
     };
   }
 
-  function shouldRenderBloodline(activeChar, activeName = '') {
-    const displayName = String(activeName || deepGet(activeChar, '属性.name', '') || '').trim();
-    return displayName === '唐舞麟';
+  function shouldRenderBloodline(activeChar) {
+    const 血脉资料 = deepGet(activeChar, '血脉之力', {});
+    if (!血脉资料 || typeof 血脉资料 !== 'object') return false;
+    const 血脉名 = normalizeSkillUiText(血脉资料['血脉'], '无');
+    const 有血脉名 = !!血脉名 && !['无', '未觉醒', '未觉醒血脉'].includes(血脉名);
+    return (
+      有血脉名 ||
+      safeEntries(deepGet(血脉资料, '技能', {})).length > 0 ||
+      safeEntries(deepGet(血脉资料, '被动', {})).length > 0 ||
+      取血脉气血魂环条目_桥接(血脉资料).length > 0
+    );
   }
 
   function buildBloodlineConfig(activeChar, activeName = '', bloodlineBasePath = [], 渲染快照 = null) {
-    if (!shouldRenderBloodline(activeChar, activeName)) {
+    const bloodlineData = deepGet(activeChar, '血脉之力', {});
+    if (!shouldRenderBloodline(activeChar)) {
       return {
         kind: 'bloodline',
         valid: false,
         preview: '血脉封印详细页',
-        badge: '血脉封印',
+        badge: '血脉',
         badgeClass: 'gold',
         name: '',
         desc: '',
@@ -20835,21 +20870,23 @@
         core: '未凝聚',
         lifeFire: false,
         bloodline: '无',
+        使用封印界面: false,
       };
     }
     const bloodline = normalizeSkillUiText(deepGet(activeChar, '血脉之力.血脉', '无'), '无');
     const sealLv = toNumber(deepGet(activeChar, '血脉之力.解封层数', 0), 0);
     const core = normalizeSkillUiText(deepGet(activeChar, '血脉之力.核心', '未凝聚'), '未凝聚');
     const rawSkills = deepGet(activeChar, '血脉之力.技能', {});
-    const bloodlineData = deepGet(activeChar, '血脉之力', {});
     const rawRings = Object.fromEntries(取血脉气血魂环条目_桥接(bloodlineData));
     const rawPassives = deepGet(activeChar, '血脉之力.被动', {});
     const hasBloodlineData =
-      toText(bloodline, '无') !== '无' ||
-      sealLv > 0 ||
+      !['无', '未觉醒', '未觉醒血脉'].includes(toText(bloodline, '无')) ||
       safeEntries(rawRings).length > 0 ||
       safeEntries(rawSkills).length > 0 ||
       safeEntries(rawPassives).length > 0;
+    const 是金龙王 = bloodline === '金龙王';
+    const 是银龙王 = bloodline === '银龙王';
+    const 使用封印界面 = 是金龙王;
     const ringEntries = 取血脉气血魂环条目_桥接(bloodlineData)
       .sort((a, b) => 读取槽位序号_桥接(a[0], 1) - 读取槽位序号_桥接(b[0], 1))
       .map(([index, ring]) =>
@@ -20866,7 +20903,6 @@
             path: [...bloodlineBasePath, index],
             title: `血脉环位 · ${index}`,
             sourceText: toText(activeChar && activeChar['血脉之力'] && activeChar['血脉之力']['血脉'], '血脉本体'),
-            carrierText: '血脉魂环',
           },
         ),
       );
@@ -20876,28 +20912,46 @@
       kind: 'bloodline',
       valid: hasBloodlineData,
       preview: '血脉封印详细页',
-      badge: '血脉封印',
+      badge: 使用封印界面 ? '血脉封印' : '血脉能力',
       badgeClass: 'gold',
       name: `${bloodline === '无' ? '未觉醒血脉' : bloodline}`,
-      desc: `解封层数：${sealLv} / 体力魂核：${core}`,
-      魂环: normalizedRingEntries,
+      desc: 使用封印界面
+        ? `解封层数：${sealLv} / 体力魂核：${core}`
+        : `主动能力：${safeEntries(rawSkills).length} / 被动特性：${safeEntries(rawPassives).length}`,
+      魂环: 使用封印界面 || (!是银龙王 && normalizedRingEntries.length) ? normalizedRingEntries : [],
       bloodSkills: buildSkillList(rawSkills, {
-        basePath: [...bloodlineBasePath, 'skills'],
+        basePath: [...bloodlineBasePath, '技能'],
         category: '血脉散技',
         scope: 'blood_skill',
         渲染快照,
+        空表不造占位: true,
       }),
       bloodPassives: buildSkillList(rawPassives, {
         basePath: [...bloodlineBasePath, '被动'],
         category: '血脉特性',
         scope: 'blood_passive',
         渲染快照,
+        空表不造占位: true,
       }),
       sealLv,
       core,
       lifeFire: !!deepGet(activeChar, '血脉之力.生命之火', false),
       bloodline: bloodline === '无' ? '未觉醒血脉' : bloodline,
+      是金龙王,
+      是银龙王,
+      使用封印界面,
     };
+  }
+
+  function 构建血脉状态文本_桥接(血脉配置 = {}) {
+    const 血脉名 = toText((血脉配置 && (血脉配置.bloodline || 血脉配置.name)) || '', '血脉');
+    if (血脉配置 && 血脉配置.使用封印界面) return `${血脉名} / ${toText(血脉配置.sealLv, '0')}层`;
+    const 主动数量 = Array.isArray(血脉配置 && 血脉配置.bloodSkills) ? 血脉配置.bloodSkills.length : 0;
+    const 被动数量 = Array.isArray(血脉配置 && 血脉配置.bloodPassives) ? 血脉配置.bloodPassives.length : 0;
+    const 气血魂环数量 = Array.isArray(血脉配置 && 血脉配置.魂环) ? 血脉配置.魂环.length : 0;
+    return [血脉名, `主动${主动数量}`, `被动${被动数量}`, 气血魂环数量 ? `血环${气血魂环数量}` : '']
+      .filter(Boolean)
+      .join(' / ');
   }
 
   function getPrimaryFactionEntry(snapshot) {
@@ -22138,7 +22192,12 @@
     const battleDomain = toText(deepGet(snapshot, 'rootData.world.战斗.当前领域', ''), '');
     const bloodline =
       snapshot && snapshot.bloodline && snapshot.bloodline.valid
-        ? { bloodline: snapshot.bloodline.bloodline, sealLv: snapshot.bloodline.sealLv }
+        ? {
+            bloodline: snapshot.bloodline.bloodline,
+            sealLv: snapshot.bloodline.sealLv,
+            使用封印界面: !!snapshot.bloodline.使用封印界面,
+            状态文本: 构建血脉状态文本_桥接(snapshot.bloodline),
+          }
         : null;
     return buildRenderSignature({
       activeName: toText(snapshot && snapshot.activeName, ''),
@@ -22358,10 +22417,7 @@
         statusChips[2].style.display = shouldShowBloodline ? '' : 'none';
       }
       if (snapshot.bloodline && snapshot.bloodline.valid) {
-        setLiveNodeText(
-          statusChips[2].querySelector('span'),
-          `${snapshot.bloodline.bloodline} / ${snapshot.bloodline.sealLv}层`,
-        );
+        setLiveNodeText(statusChips[2].querySelector('span'), 构建血脉状态文本_桥接(snapshot.bloodline));
       }
     }
     if (statusChips[3])
@@ -23006,19 +23062,32 @@
 
   function 构建副职业工坊上限摘要(职业名 = '', 职业数据 = {}) {
     if (!职业数据 || typeof 职业数据 !== 'object') return '暂无工坊上限';
-    const 等级 = Math.max(0, toNumber(职业数据.等级 ?? 职业数据.lv, 0));
-    const 成功率 = toNumber(deepGet(职业数据, '限制.成功率', 0), 0);
-    const 最大融合数 = toNumber(deepGet(职业数据, '限制.最大融合数', 1), 1);
-    if (职业名 === '锻造师') {
-      const 锻造档位 = 等级 >= 9 ? '天锻' : 等级 >= 7 ? '魂锻' : 等级 >= 5 ? '灵锻' : 等级 >= 3 ? '千锻' : '百锻';
-      return 最大融合数 < 2 ? `${锻造档位}成功率 ${成功率}%` : `融锻上限 ${最大融合数}项 / 成功率 ${成功率}%`;
-    }
-    return 最大融合数 < 2 ? `单工序成功率 ${成功率}%` : `复合上限 ${最大融合数}项 / 成功率 ${成功率}%`;
+    const 派生 = 派生副职业显示数据(职业名, 职业数据);
+    return `支持融锻数 ${派生.支持融锻数} / 基础成功率 ${派生.基础成功率}%`;
   }
 
   function 读取职业显示等级(职业数据 = {}) {
     if (!职业数据 || typeof 职业数据 !== 'object') return 0;
-    return Math.max(0, Math.floor(toNumber(职业数据.等级 ?? 职业数据.lv ?? 职业数据.level, 0)));
+    return 派生副职业显示数据('', 职业数据).等级;
+  }
+
+  function 读取副职业派生接口() {
+    const 根列表 = [];
+    try { 根列表.push(__mvuBridgeRoot); } catch (错误) {}
+    try { 根列表.push(window); } catch (错误) {}
+    try { if (window.parent && window.parent !== window) 根列表.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 根列表.push(window.top); } catch (错误) {}
+    const 接口 = 根列表
+      .map(根 => {
+        try { return 根.__LWCS_PROFESSION_DERIVATION__; } catch (错误) { return null; }
+      })
+      .find(候选接口 => 候选接口 && typeof 候选接口.派生运行时 === 'function');
+    if (!接口) throw new Error('副职业派生接口未加载');
+    return 接口;
+  }
+
+  function 派生副职业显示数据(职业名 = '', 职业数据 = {}) {
+    return 读取副职业派生接口().派生运行时(职业名, 职业数据);
   }
 
   function 读取属性天赋梯队(属性 = {}) {
@@ -23032,9 +23101,7 @@
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.职业', {}));
     const jobSummary = jobs.length ? `${jobs[0][0]} Lv.${读取职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
-      ? Object.keys(deepGet(jobs[0][1], '核心技艺', {}))
-          .slice(0, 2)
-          .join(' / ') || '暂无核心技术'
+      ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
       : '暂无核心技术';
     const jobLimitSummary = jobs.length ? 构建副职业工坊上限摘要(jobs[0][0], jobs[0][1]) : '暂无工坊上限';
     const 斗铠名称 = toText(armor.名称 || armor['名称'], '');
@@ -23393,22 +23460,30 @@
     }
 
     if (config.kind === 'bloodline') {
+      const 血脉状态文本 = 构建血脉状态文本_桥接(config);
+      const 主动数量 = Array.isArray(config.bloodSkills) ? config.bloodSkills.length : 0;
+      const 被动数量 = Array.isArray(config.bloodPassives) ? config.bloodPassives.length : 0;
+      const 血环数量 = Array.isArray(config.魂环) ? config.魂环.length : 0;
       return buildShellSummaryCard({
         kicker: '血脉',
         title: shortenText(toText(config.bloodline, '未觉醒'), 20),
-        value: `封印 ${toText(config.sealLv, '0')} 层`,
-        meta: `核心 ${shortenText(toText(config.core, '未凝核'), 16)}`,
-        badges: [
-          config.lifeFire ? { text: '命火已燃', tone: 'gold' } : { text: '命火未燃' },
-          ...(config.魂环 || []).slice(0, 2).map(item => shortenText(toText(item && item.title, ''), 16)),
-        ],
+        value: config.使用封印界面 ? `封印 ${toText(config.sealLv, '0')} 层` : `主动 ${主动数量} / 被动 ${被动数量}`,
+        meta: config.使用封印界面
+          ? `核心 ${shortenText(toText(config.core, '未凝核'), 16)}`
+          : shortenText(toText(config.desc, 血脉状态文本), 22),
+        badges: config.使用封印界面
+          ? [
+              config.lifeFire ? { text: '命火已燃', tone: 'gold' } : { text: '命火未燃' },
+              ...(config.魂环 || []).slice(0, 2).map(item => shortenText(toText(item && item.title, ''), 16)),
+            ]
+          : (config.魂环 || []).slice(0, 2).map(item => shortenText(toText(item && item.title, ''), 16)),
         metrics: [
-          { label: '血环', value: String((config.魂环 || []).length || 0), tone: 'gold' },
-          { label: '技能', value: String((config.bloodSkills || []).length || 0) },
-          { label: '特性', value: String((config.bloodPassives || []).length || 0) },
+          ...(config.使用封印界面 || 血环数量 ? [{ label: '血环', value: String(血环数量 || 0), tone: 'gold' }] : []),
+          { label: '技能', value: String(主动数量 || 0) },
+          { label: '特性', value: String(被动数量 || 0) },
         ],
         rows: [
-          { label: '状态', value: config.lifeFire ? '已点燃' : '等待命火' },
+          { label: '状态', value: config.使用封印界面 ? (config.lifeFire ? '已点燃' : '等待命火') : 血脉状态文本 },
           { label: '概览', value: shortenText(toText(config.desc, '未记录'), 28) },
         ],
         tone: 'gold',
@@ -24872,11 +24947,14 @@
         ? `${toText(mech.名称 || mech['名称'], `${toText(mech.等级, '无')}机甲`)} · ${toText(mech.型号, '均衡')}`
         : '无';
     const weaponText = toText(weapon.名称 || weapon['名称'], '无');
-    const jobItems = jobs.slice(0, 4).map(([name, info]) => ({
-      title: name,
-      meta: `Lv.${toText(info && info.等级, 0)} · ${toText(info && info.称号, '未定级')}`,
-      note: '',
-    }));
+    const jobItems = jobs.slice(0, 4).map(([name, info]) => {
+      const 副职业 = 派生副职业显示数据(name, info);
+      return {
+        title: name,
+        meta: `Lv.${副职业.等级} · ${toText(副职业.称号, '未定级')}`,
+        note: `${副职业.核心技艺} / ${副职业.支持融锻数}`,
+      };
+    });
     return {
       title: '武装',
       body: `
@@ -24981,6 +25059,16 @@
         ? snapshot.bloodline
         : buildBloodlineConfig(deepGet(snapshot, 'activeChar', {}), toText(snapshot && snapshot.activeName, ''), [], snapshot);
     const rings = Array.isArray(config.魂环) ? config.魂环 : [];
+    const 统计项 = config.使用封印界面
+      ? [
+          { label: '封印', value: String(config.sealLv || 0) },
+          { label: '血环', value: String(rings.length || 0) },
+        ]
+      : [
+          { label: '主动', value: String((config.bloodSkills || []).length || 0) },
+          { label: '被动', value: String((config.bloodPassives || []).length || 0) },
+        ];
+    if (!config.使用封印界面 && rings.length) 统计项.push({ label: '血环', value: String(rings.length) });
     const skills = [
       ...(Array.isArray(config.bloodSkills) ? config.bloodSkills : []),
       ...(Array.isArray(config.bloodPassives) ? config.bloodPassives : []),
@@ -24998,13 +25086,10 @@
           <div class="mvu-shell-lite-root" data-shell-light-view="bloodline">
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero">
               <div class="mvu-shell-lite-head">
-                <span>${htmlEscape(toText(config.core, '未凝聚'))}</span>
+                <span>${htmlEscape(config.使用封印界面 ? toText(config.core, '未凝聚') : 构建血脉状态文本_桥接(config))}</span>
                 <strong>${htmlEscape(toText(config.bloodline || config.name, '未觉醒血脉'))}</strong>
               </div>
-              ${buildShellLiteStats([
-                { label: '封印', value: String(config.sealLv || 0) },
-                { label: '血环', value: String(rings.length || 0) },
-              ])}
+              ${buildShellLiteStats(统计项)}
             </section>
             <section class="mvu-shell-lite-card">
               <div class="mvu-shell-lite-section-title">能力</div>
@@ -28728,7 +28813,7 @@
                         ? [
                             {
                               label: '血脉状态',
-                              value: htmlEscape(`${snapshot.bloodline.bloodline} / ${snapshot.bloodline.sealLv}层`),
+                              value: htmlEscape(构建血脉状态文本_桥接(snapshot.bloodline)),
                             },
                           ]
                         : []),
@@ -29719,13 +29804,11 @@
       const jobSummary = jobs.length
         ? jobs
             .slice(0, 2)
-            .map(([name, info]) => `${name} Lv.${toText(info && info.等级, 0)}`)
+            .map(([name, info]) => `${name} Lv.${读取职业显示等级(info)}`)
             .join(' / ')
         : '未掌握';
       const jobCoreTechSummary = jobs.length
-        ? Object.keys(deepGet(jobs[0][1], '核心技艺', {}))
-            .slice(0, 2)
-            .join(' / ') || '暂无核心技术'
+        ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
         : '暂无核心技术';
       const jobLimitSummary = jobs.length ? 构建副职业工坊上限摘要(jobs[0][0], jobs[0][1]) : '暂无工坊上限';
       const battleForm = toText(deepGet(snapshot, 'activeChar.状态.行动', '日常'), '日常');
@@ -31018,97 +31101,122 @@
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
       const bloodlinePath = activeCharKey ? ['char', activeCharKey, '血脉之力'] : [];
-      const bloodMainSkill = snapshot.bloodline.bloodSkills[0] || null;
+      const 血脉配置 = snapshot.bloodline || {};
+      const 使用封印界面 = !!血脉配置.使用封印界面;
       const bloodlineRawName = toText(deepGet(snapshot, 'activeChar.血脉之力.血脉', '无'), '无');
+      const 血脉名Html = bloodlinePath.length
+        ? makeInlineEditableValue(toText(血脉配置.bloodline, '未觉醒血脉'), {
+            path: [...bloodlinePath, '血脉'],
+            kind: 'string',
+            rawValue: bloodlineRawName,
+          })
+        : htmlEscape(toText(血脉配置.bloodline, '未觉醒血脉'));
+      const 渲染能力卡 = (技能, 默认名 = '血脉能力') => {
+        const 安全技能 = 技能 && typeof 技能 === 'object' ? 技能 : null;
+        return `
+                <div class="ability-detail-card${安全技能 && 安全技能.preview ? ' clickable' : ''}"${安全技能 && 安全技能.preview ? ` data-preview="${escapeHtmlAttr(安全技能.preview)}"` : ''}>
+                  <div class="ability-detail-title">${htmlEscape(安全技能 ? 安全技能.name : 默认名)}</div>
+                  <div class="ring-hover-copy"><em>画面描述</em><span>${htmlEscape(安全技能 ? 安全技能.visualDesc : '未知')}</span></div>
+                  <div class="ring-hover-copy"><em>效果描述</em><span>${htmlEscape(安全技能 ? 安全技能.effectDesc : '未知')}</span></div>
+                </div>
+              `;
+      };
+      const 主动能力Html = (Array.isArray(血脉配置.bloodSkills) ? 血脉配置.bloodSkills : [])
+        .map(技能 => 渲染能力卡(技能, '暂无主动能力'))
+        .join('') || '<div class="dossier-empty-note">暂无主动能力。</div>';
+      const 被动特性Html = (Array.isArray(血脉配置.bloodPassives) ? 血脉配置.bloodPassives : [])
+        .map(
+          技能 =>
+            `<div class="ring-hover-copy"><em>${htmlEscape(技能.name || '被动特性')}</em><span>${htmlEscape(技能.effectDesc || 技能.visualDesc || '被动特性')}</span></div>`,
+        )
+        .join('') || '<div class="dossier-empty-note">暂无被动特性。</div>';
       return {
-        title: '血脉封印弹窗',
-        summary: '血脉层级、体力魂环与当前已固化能力。',
+        title: 使用封印界面 ? '血脉封印' : '血脉能力',
+        summary: 使用封印界面 ? '血脉层级、体力魂环与当前已固化能力。' : '血脉主动能力与被动特性。',
         body: `
             <div class="archive-modal-grid">
               <div class="archive-card full">
                 <div class="archive-card-head"><div class="archive-card-title">血脉本体</div></div>
                 <div class="spirit-main-card">
-                  <h4>${
-                    bloodlinePath.length
-                      ? makeInlineEditableValue(snapshot.bloodline.bloodline, {
-                          path: [...bloodlinePath, 'bloodline'],
-                          kind: 'string',
-                          rawValue: bloodlineRawName,
-                        })
-                      : htmlEscape(snapshot.bloodline.bloodline)
-                  }</h4>
+                  <h4>${血脉名Html}</h4>
                   <div class="spirit-head-tags">
+                    ${
+                      使用封印界面
+                        ? `
                     <span class="tag-chip warn">血脉封印</span>
                     <span class="tag-chip">${
                       bloodlinePath.length
-                        ? makeInlineEditableValue(`第${snapshot.bloodline.sealLv}层`, {
-                            path: [...bloodlinePath, 'seal_lv'],
+                        ? makeInlineEditableValue(`第${血脉配置.sealLv}层`, {
+                            path: [...bloodlinePath, '解封层数'],
                             kind: 'number',
-                            rawValue: snapshot.bloodline.sealLv,
+                            rawValue: 血脉配置.sealLv,
                             editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
                           })
-                        : htmlEscape(`第${snapshot.bloodline.sealLv}层`)
+                        : htmlEscape(`第${血脉配置.sealLv}层`)
                     }</span>
                     <span class="tag-chip">${
                       bloodlinePath.length
-                        ? makeInlineEditableValue(snapshot.bloodline.core, {
-                            path: [...bloodlinePath, 'core'],
+                        ? makeInlineEditableValue(血脉配置.core, {
+                            path: [...bloodlinePath, '核心'],
                             kind: 'string',
-                            rawValue: snapshot.bloodline.core,
+                            rawValue: 血脉配置.core,
                           })
-                        : htmlEscape(snapshot.bloodline.core)
+                        : htmlEscape(血脉配置.core)
                     }</span>
-                    <span class="tag-chip">${htmlEscape(snapshot.bloodline.lifeFire ? '生命之火' : '未点燃')}</span>
+                    <span class="tag-chip">${htmlEscape(血脉配置.lifeFire ? '生命之火' : '未点燃')}</span>`
+                        : `
+                    <span class="tag-chip warn">血脉能力</span>
+                    <span class="tag-chip">主动${Array.isArray(血脉配置.bloodSkills) ? 血脉配置.bloodSkills.length : 0}</span>
+                    <span class="tag-chip">被动${Array.isArray(血脉配置.bloodPassives) ? 血脉配置.bloodPassives.length : 0}</span>`
+                    }
                   </div>
                 </div>
               </div>
+              ${
+                使用封印界面
+                  ? `
               <div class="archive-card">
                 <div class="archive-card-head"><div class="archive-card-title">封印层级</div></div>
                 ${makeSealColumn(
-                  Array.from({ length: Math.max(4, snapshot.bloodline.sealLv + 2) }).map((_, index) => ({
+                  Array.from({ length: Math.max(4, 血脉配置.sealLv + 2) }).map((_, index) => ({
                     label: `第${index + 1}层封印`,
-                    state: index < snapshot.bloodline.sealLv ? '已解' : index % 2 === 1 ? '金环位' : '未解',
-                    className: index < snapshot.bloodline.sealLv ? 'active' : 'locked',
+                    state: index < 血脉配置.sealLv ? '已解' : index % 2 === 1 ? '金环位' : '未解',
+                    className: index < 血脉配置.sealLv ? 'active' : 'locked',
                   })),
                 )}
-              </div>
-              <div class="archive-card">
-                <div class="archive-card-head"><div class="archive-card-title">当前主动能力</div></div>
-                <div class="ability-detail-card${bloodMainSkill && bloodMainSkill.preview ? ' clickable' : ''}"${bloodMainSkill && bloodMainSkill.preview ? ` data-preview="${escapeHtmlAttr(bloodMainSkill.preview)}"` : ''}>
-                  <div class="ability-detail-title">${htmlEscape(bloodMainSkill ? bloodMainSkill.name : '暂无主动能力')}</div>
-                  <div class="ring-hover-copy"><em>画面描述</em><span>${htmlEscape(bloodMainSkill ? bloodMainSkill.visualDesc : '未知')}</span></div>
-                  <div class="ring-hover-copy"><em>效果描述</em><span>${htmlEscape(bloodMainSkill ? bloodMainSkill.effectDesc : '未知')}</span></div>
-                </div>
-              </div>
-              ${
-                snapshot.bloodline.bloodPassives && snapshot.bloodline.bloodPassives.length
-                  ? `
-                <div class="archive-card">
-                  <div class="archive-card-head"><div class="archive-card-title">被动特性</div></div>
-                  <div class="ability-detail-card">
-                    ${snapshot.bloodline.bloodPassives
-                      .slice(0, 4)
-                      .map(
-                        skill =>
-                          `<div class="ring-hover-copy"><em>${htmlEscape(skill.name || '被动特性')}</em><span>${htmlEscape(skill.effectDesc || skill.visualDesc || '被动特性')}</span></div>`,
-                      )
-                      .join('')}
-                  </div>
-                </div>
-              `
+              </div>`
                   : ''
               }
+              <div class="archive-card">
+                <div class="archive-card-head"><div class="archive-card-title">主动能力</div></div>
+                ${主动能力Html}
+              </div>
+              <div class="archive-card">
+                <div class="archive-card-head"><div class="archive-card-title">被动特性</div></div>
+                <div class="ability-detail-card">
+                  ${被动特性Html}
+                </div>
+              </div>
               ${
-                snapshot.bloodline.魂环.length
+                使用封印界面 && 血脉配置.魂环.length
                   ? `
                 <div class="archive-card full spirit-flow-card">
                   <div class="archive-card-head"><div class="archive-card-title">体力魂环轨道</div></div>
                   <div class="orbit-track">
-                    ${snapshot.bloodline.魂环.map(ring => `<div class="ring ${ring.ringClass || 'ring-gold'} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
+                    ${血脉配置.魂环.map(ring => `<div class="ring ${ring.ringClass || 'ring-gold'} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
                   </div>
                 </div>
               `
-                  : ''
+                  : !使用封印界面 && 血脉配置.魂环.length
+                    ? `
+                <div class="archive-card full spirit-flow-card">
+                  <div class="archive-card-head"><div class="archive-card-title">血脉魂环</div></div>
+                  <div class="orbit-track">
+                    ${血脉配置.魂环.map(ring => `<div class="ring ${ring.ringClass || 'ring-gold'} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
+                  </div>
+                </div>
+              `
+                    : ''
               }
             </div>
           `,
@@ -33194,12 +33302,14 @@
   }
 
   function renderArchiveBloodlineEntry(config) {
+    const 血脉摘要 = 构建血脉状态文本_桥接(config);
+    const 魂环Html = buildSpiritRingGrid(config.魂环, 'ring-gold');
     return `
         <div class="dual-side-top dual-side-top-right">
           <span class="badge ${config.badgeClass || 'gold'}">${config.badge}</span>
         </div>
         <div class="strip-name">${config.name}</div>
-        <div class="rings dual-grid secondary-rings">${buildSpiritRingGrid(config.魂环, 'ring-gold')}</div>
+        ${魂环Html ? `<div class="rings dual-grid secondary-rings">${魂环Html}</div>` : `<div class="strip-desc">${htmlEscape(血脉摘要)}</div>`}
       `;
   }
 
@@ -38048,18 +38158,15 @@ ${播报文本}
 
   function 获取副职业等级(职业数据) {
     if (!职业数据 || typeof 职业数据 !== 'object') return 0;
-    return Math.max(0, Math.floor(toNumber(职业数据.等级 ?? 职业数据.lv ?? 职业数据.level, 0)));
+    return 派生副职业显示数据('', 职业数据).等级;
   }
 
   function 描述副职业可承接范围(职业名, 等级, 职业数据 = {}) {
     const 等级数值 = Math.max(0, Math.floor(toNumber(等级, 0)));
-    const 限制 =
-      职业数据 && typeof 职业数据 === 'object' && 职业数据.限制 && typeof 职业数据.限制 === 'object'
-        ? 职业数据.限制
-        : {};
+    const 派生 = 派生副职业显示数据(职业名, 职业数据);
     const 额外 = [
-      toNumber(限制.最大融合数, 0) > 0 ? `最多${toNumber(限制.最大融合数, 0)}项复合` : '',
-      toNumber(限制.成功率, 0) > 0 ? `基准${toNumber(限制.成功率, 0)}%` : '',
+      `支持融锻数:${派生.支持融锻数}`,
+      `基础成功率:${派生.基础成功率}%`,
     ]
       .filter(Boolean)
       .join('，');
