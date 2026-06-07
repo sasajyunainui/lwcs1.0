@@ -2371,12 +2371,162 @@
     '丹药',
     '身份票据',
     '修炼秘籍',
+    '一次性武器',
     '一次性道具',
     '剧情杂物',
   ]);
   const 物品定义分类集合_桥接 = new Set(物品定义分类列表_桥接);
-  const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
+  const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '一次性武器', '一次性道具', '魂技造物']);
   const 装备物品分类集合_桥接 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+  const 物品经济品质列表_桥接 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
+  const 物品经济品质集合_桥接 = new Set(物品经济品质列表_桥接);
+
+  function 规范化物品经济品质_桥接(品质 = '', 物品名 = '', 分类 = '') {
+    const 文本 = toText(品质, '').trim();
+    if (物品经济品质集合_桥接.has(文本)) return 文本;
+    const 判定文本 = `${物品名} ${分类} ${文本}`;
+    if (/超神器/.test(判定文本)) return '超神器';
+    if (/神器|神级/.test(判定文本)) return '神器';
+    if (/十万年|天锻|十二级|弑神|位面核心|极限斗罗|血脉核心|战略级/.test(判定文本)) return '传说';
+    if (/万年|魂锻|灵锻|顶级|机密|高级|重型|最新型|九级|八级/.test(判定文本)) return '史诗';
+    if (/千年|千锻|有灵合金|稀有|战术|秘密|特殊|特种|珍贵|军用/.test(判定文本)) return '稀有';
+    if (/百年|黄级|优秀|高级制式/.test(判定文本)) return '优秀';
+    return '普通';
+  }
+
+  function 读取背包批次列表_桥接(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    return (Array.isArray(来源.批次) ? 来源.批次 : []).filter(
+      批次 => 批次 && typeof 批次 === 'object' && !Array.isArray(批次) && toNumber(批次.数量, 0) > 0,
+    );
+  }
+
+  function 读取背包总数量_桥接(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    const 普通数量 = Math.max(0, Math.floor(toNumber(来源.数量, 0)));
+    const 批次数量 = 读取背包批次列表_桥接(来源).reduce(
+      (总数, 批次) => 总数 + Math.max(0, Math.floor(toNumber(批次.数量, 0))),
+      0,
+    );
+    return 普通数量 + 批次数量;
+  }
+
+  function 读取首个背包批次_桥接(记录 = {}) {
+    return 读取背包批次列表_桥接(记录)[0] || null;
+  }
+
+  function 规范化背包批次_桥接(来源批次 = {}, 数量 = 1, fallback = {}) {
+    const 来源 = 来源批次 && typeof 来源批次 === 'object' && !Array.isArray(来源批次) ? 来源批次 : {};
+    const 有耐久 = 来源.耐久 !== undefined || fallback.耐久 !== undefined;
+    const 输出 = {
+      数量: Math.max(0, Math.floor(toNumber(数量 ?? 来源.数量, toNumber(来源.数量, 0)))),
+      品质: 规范化物品经济品质_桥接(来源.品质 ?? fallback.品质, fallback.物品名 || '', fallback.分类 || ''),
+      品质系数: Math.max(0.1, Math.min(2, toNumber(来源.品质系数 ?? fallback.品质系数, 1))),
+      制作者: toText(来源.制作者 ?? fallback.制作者, '').trim(),
+      来源: toText(来源.来源 ?? fallback.来源, '').trim(),
+      耐久: Math.max(0, Math.floor(toNumber(来源.耐久 ?? fallback.耐久, 0))),
+      绑定者: toText(来源.绑定者 ?? fallback.绑定者, '').trim(),
+      有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick ?? fallback.有效期至tick, 0))),
+    };
+    const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
+    if (融合参数 && typeof 融合参数 === 'object' && !Array.isArray(融合参数)) {
+      输出.副职业参数 = {
+        融合参数: {
+          数量: Math.max(1, Math.floor(toNumber(融合参数.数量, 1))),
+          融合率: Math.max(0, Math.min(100, Math.floor(toNumber(融合参数.融合率, 100)))),
+        },
+      };
+    }
+    Object.keys(输出).forEach(键 => {
+      const 值 = 输出[键];
+      if (
+        键 !== '数量' &&
+        (值 === '' ||
+          值 === '无' ||
+          (键 !== '耐久' && 值 === 0) ||
+          (键 === '耐久' && !有耐久) ||
+          (键 === '品质' && 值 === '普通') ||
+          (键 === '品质系数' && Number(值) === 1))
+      ) {
+        delete 输出[键];
+      }
+    });
+    return 输出.数量 > 0 ? 输出 : null;
+  }
+
+  function 需要批次入库_桥接(数据 = {}) {
+    const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
+    if (Array.isArray(来源.批次) && 来源.批次.length) return true;
+    if (来源.品质系数 !== undefined && Number(来源.品质系数) !== 1) return true;
+    if (来源.副职业参数?.融合参数 && typeof 来源.副职业参数.融合参数 === 'object' && !Array.isArray(来源.副职业参数.融合参数)) return true;
+    if (来源.耐久 !== undefined) return true;
+    if (toText(来源.制作者, '').trim()) return true;
+    if (toText(来源.来源, '').trim()) return true;
+    if (toText(来源.绑定者, '').trim()) return true;
+    if (toNumber(来源.有效期至tick, 0) > 0) return true;
+    return false;
+  }
+
+  function 构建入库批次列表_桥接(数据 = {}, 数量 = 1, fallback = {}) {
+    const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
+    const 目标数量 = Math.max(0, Math.floor(toNumber(数量, toNumber(来源.数量, 0))));
+    if (Array.isArray(来源.批次) && 来源.批次.length) {
+      let 剩余 = 目标数量;
+      const 批次列表 = [];
+      来源.批次.forEach(批次 => {
+        if (剩余 <= 0) return;
+        const 可取 = Math.min(剩余, Math.max(0, Math.floor(toNumber(批次?.数量, 0))));
+        const 新批次 = 规范化背包批次_桥接(批次, 可取, fallback);
+        if (新批次) {
+          批次列表.push(新批次);
+          剩余 -= 可取;
+        }
+      });
+      return 批次列表;
+    }
+    if (!需要批次入库_桥接(来源)) return [];
+    const 批次 = 规范化背包批次_桥接(来源, 目标数量, fallback);
+    return 批次 ? [批次] : [];
+  }
+
+  function 构建背包扣减值_桥接(记录 = {}, 数量 = 1) {
+    if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return null;
+    const 当前 = cloneJsonValue(记录, {});
+    let 剩余扣减 = Math.max(1, Math.floor(toNumber(数量, 1)));
+    const 批次列表 = 读取背包批次列表_桥接(当前).map(批次 => cloneJsonValue(批次, {}));
+    for (const 批次 of 批次列表) {
+      if (剩余扣减 <= 0) break;
+      const 当前批次数量 = Math.max(0, Math.floor(toNumber(批次.数量, 0)));
+      const 扣减 = Math.min(当前批次数量, 剩余扣减);
+      批次.数量 = 当前批次数量 - 扣减;
+      剩余扣减 -= 扣减;
+    }
+    当前.批次 = 批次列表.filter(批次 => Math.max(0, toNumber(批次.数量, 0)) > 0);
+    const 普通数量 = Math.max(0, Math.floor(toNumber(当前.数量, 0)));
+    当前.数量 = 剩余扣减 > 0 ? Math.max(0, 普通数量 - 剩余扣减) : 普通数量;
+    if (!当前.批次.length) delete 当前.批次;
+    if (读取背包总数量_桥接(当前) <= 0) return null;
+    if (当前.数量 <= 0 && 当前.批次) 当前.数量 = 0;
+    return 当前;
+  }
+
+  function 合并背包状态记录_桥接(已有 = {}, 新增 = {}) {
+    const 旧记录 = 已有 && typeof 已有 === 'object' && !Array.isArray(已有) ? 已有 : {};
+    const 新记录 = 新增 && typeof 新增 === 'object' && !Array.isArray(新增) ? 新增 : {};
+    const 合并 = {
+      ...cloneJsonValue(旧记录, {}),
+      ...cloneJsonValue(新记录, {}),
+      数量: Math.max(0, Math.floor(toNumber(旧记录.数量, 0))) + Math.max(0, Math.floor(toNumber(新记录.数量, 0))),
+    };
+    const 批次列表 = [
+      ...读取背包批次列表_桥接(旧记录).map(批次 => cloneJsonValue(批次, {})),
+      ...读取背包批次列表_桥接(新记录).map(批次 => cloneJsonValue(批次, {})),
+    ];
+    if (批次列表.length) 合并.批次 = 批次列表;
+    else delete 合并.批次;
+    if (合并.数量 <= 0 && 合并.批次) 合并.数量 = 0;
+    return 读取背包总数量_桥接(合并) > 0 ? 合并 : {};
+  }
 
   function 规范化物品定义分类_桥接(分类 = '', fallback = '剧情杂物') {
     const 文本 = toText(分类, '').trim();
@@ -2471,7 +2621,14 @@
   function 合并物品定义与状态_桥接(rootData = {}, 物品名 = '', 状态 = {}) {
     const 安全状态 = 状态 && typeof 状态 === 'object' && !Array.isArray(状态) ? 状态 : {};
     const 命中 = 查找物品定义_桥接(rootData, 物品名);
-    return { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', ...安全状态 };
+    const 首批 = 读取首个背包批次_桥接(安全状态);
+    return {
+      ...(命中?.定义 || {}),
+      物品分类: 命中?.分类 || '',
+      ...安全状态,
+      ...(首批 || {}),
+      数量: 读取背包总数量_桥接(安全状态),
+    };
   }
 
   function 构建物品定义记录_桥接(物品名 = '', 数据 = {}, 分类 = '') {
@@ -2479,25 +2636,21 @@
     const 物品分类 = 要求物品定义分类_桥接(物品名, 来源, 分类);
     const 记录 = {
       阶位: Math.max(0, Math.floor(toNumber(来源.阶位, 0))),
-      品质: toText(来源.品质, '普通'),
+      品质: 规范化物品经济品质_桥接(来源.品质 || 来源.品阶 || '普通', 物品名, 物品分类),
       描述: toText(来源.描述, `关于【${物品名}】的记录暂未展开。`),
       基础价格: Math.max(0, Math.floor(toNumber(来源.基础价格, 0))),
       默认货币: toText(来源.默认货币, '联邦币'),
     };
     const 来源副职业参数 = 来源.副职业参数 && typeof 来源.副职业参数 === 'object' && !Array.isArray(来源.副职业参数) ? 来源.副职业参数 : {};
     const 副职业参数 = {};
-    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '品质系数', '标准物种'].forEach(字段名 => {
+    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '标准物种'].forEach(字段名 => {
       if (来源副职业参数[字段名] !== undefined) 副职业参数[字段名] = cloneJsonValue(来源副职业参数[字段名]);
     });
-    if (物品分类 === '锻造金属') {
-      const 原始融合参数 = 来源副职业参数.融合参数 && typeof 来源副职业参数.融合参数 === 'object' && !Array.isArray(来源副职业参数.融合参数)
-        ? 来源副职业参数.融合参数
-        : null;
-      if (原始融合参数) {
-        副职业参数.融合参数 = {
-          数量: Math.max(1, Math.floor(toNumber(原始融合参数.数量, 1))),
-          融合率: Math.max(0, Math.min(100, Math.floor(toNumber(原始融合参数.融合率, 100)))),
-        };
+    if (物品分类 === '锻造金属' && 来源副职业参数.融合参数 && typeof 来源副职业参数.融合参数 === 'object' && !Array.isArray(来源副职业参数.融合参数)) {
+      const 融合数量 = Math.max(1, Math.floor(toNumber(来源副职业参数.融合参数.数量, 1)));
+      const 特性 = toText(副职业参数.锻造特性, '').trim();
+      if (融合数量 > 1 && !/融锻|融合|合金/.test(特性)) {
+        副职业参数.锻造特性 = `${特性 ? `${特性}；` : ''}${融合数量}种金属融锻模板`;
       }
     }
     if (Object.keys(副职业参数).length) 记录.副职业参数 = 副职业参数;
@@ -2545,14 +2698,29 @@
 
   function 构建背包状态记录_桥接(数据 = {}, 数量 = 1) {
     const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
-      const 记录 = {
-        数量: Math.max(1, Math.floor(toNumber(数量, toNumber(来源.数量, 1)))),
-        耐久: Math.max(0, Math.floor(toNumber(来源.耐久, 0))),
-        绑定者: toText(来源.绑定者, ''),
-        制作者: toText(来源.制作者, ''),
-        有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick, 0))),
-        来源: toText(来源.来源, ''),
-      };
+    const 目标数量 = Math.max(1, Math.floor(toNumber(数量, toNumber(来源.数量, 1))));
+    const 批次列表 = 构建入库批次列表_桥接(来源, 目标数量, {
+      物品名: toText(来源.名称 || 来源.name, ''),
+      分类: toText(来源.物品分类 || 来源.分类, ''),
+      品质: 来源.批次品质 || 来源.品质,
+      品质系数: 来源.品质系数,
+      制作者: 来源.制作者,
+      来源: 来源.来源,
+      耐久: 来源.耐久,
+      绑定者: 来源.绑定者,
+      有效期至tick: 来源.有效期至tick,
+      副职业参数: 来源.副职业参数,
+    });
+    const 记录 = 批次列表.length
+      ? { 数量: 0, 批次: 批次列表 }
+      : {
+          数量: 目标数量,
+          耐久: Math.max(0, Math.floor(toNumber(来源.耐久, 0))),
+          绑定者: toText(来源.绑定者, ''),
+          制作者: toText(来源.制作者, ''),
+          有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick, 0))),
+          来源: toText(来源.来源, ''),
+        };
     Object.keys(记录).forEach(键 => {
       if (键 !== '数量' && (记录[键] === '' || 记录[键] === 0)) delete 记录[键];
     });
@@ -2565,6 +2733,7 @@
     ['装备', '装备'],
     ['灵物', '灵物'],
     ['金属', '金属'],
+    ['一次性武器', '武器'],
     ['消耗品', '消耗'],
     ['票据', '票据'],
     ['杂项', '杂项'],
@@ -2580,6 +2749,7 @@
     const 描述文本 = toText(定义.描述 || 状态.描述, '');
     const 合并文本 = `${名称文本} ${分类文本} ${槽位文本} ${品质文本} ${描述文本}`;
     if (/魂骨|外附骨|头部骨|躯干骨|左臂骨|右臂骨|左腿骨|右腿骨/.test(合并文本) || 分类文本 === '魂骨') return '魂骨';
+    if (分类文本 === '一次性武器') return '一次性武器';
     if (槽位文本 && 槽位文本 !== '无') return '装备';
     if (/装备|武器|防具|斗铠|机甲|神器|超神器/.test(分类文本 + 名称文本)) return '装备';
     if (/灵物|仙草|药草|灵草|丹药|灵药/.test(合并文本) || toNumber(deepGet(定义, '副职业参数.年限', 定义.年限), 0) > 0)
@@ -2644,7 +2814,7 @@
     return '';
   }
 
-  const 物品品质选项_桥接 = Object.freeze(['灰', '白', '绿', '蓝', '紫', '金', '红', '普通']);
+  const 物品品质选项_桥接 = 物品经济品质列表_桥接;
   const 物品货币选项_桥接 = Object.freeze(['联邦币', '星罗币', '唐门积分', '学院积分', '战功', '血神功勋']);
   const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
   const 物品属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '生命上限', '力量', '防御', '敏捷', '体力上限']);
@@ -2659,6 +2829,7 @@
 
   function 判断物品为装备_桥接(物品名 = '', 定义 = {}) {
     const 类型 = toText(定义 && (定义.物品分类 || 定义.分类), '');
+    if (类型 === '一次性武器') return false;
     const 槽位 = toText(定义 && 定义.装备槽位, '无');
     return 装备物品分类集合_桥接.has(类型) || 槽位 !== '无' || /装备|武具|防具|武器|饰品|斗铠|机甲|神器/.test(`${物品名} ${类型}`);
   }
@@ -2808,20 +2979,20 @@
     const 是制造材料 = 物品分类 === '制造材料';
     const 是设计图纸 = 物品分类 === '设计图纸';
     const 是修炼秘籍 = 物品分类 === '修炼秘籍';
-    const 数量 = Math.max(0, Math.floor(toNumber(实例.数量, 新建 ? 1 : 0)));
+    const 数量 = 新建 ? 1 : 读取背包总数量_桥接(实例);
     const canUse = !!选项参数.canUse;
     const canEquip = !!选项参数.canEquip;
     const charKey = toText(选项参数.charKey, '').trim();
     const 原始副职业参数 = 定义.副职业参数 && typeof 定义.副职业参数 === 'object' ? 定义.副职业参数 : {};
     const 副职业参数 = {};
-    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '融合参数', '品质系数', '标准物种'].forEach(字段名 => {
+    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '标准物种'].forEach(字段名 => {
       if (原始副职业参数[字段名] !== undefined) 副职业参数[字段名] = 原始副职业参数[字段名];
     });
     const 基础模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('名称', '物品名称', 物品名, 'text')}
       ${构建物品定义字段('物品分类', '物品分类', 物品分类, 'select', 物品定义分类列表_桥接)}
       ${构建物品定义字段('阶位', '阶位/级别', toNumber(定义.阶位, 0), 'number')}
-      ${构建物品定义字段('品质', '品质/稀有度', toText(定义.品质, '普通'), 'select', 物品品质选项_桥接)}
+      ${构建物品定义字段('品质', '品质/稀有度', 规范化物品经济品质_桥接(定义.品质, 物品名, 物品分类), 'select', 物品品质选项_桥接)}
       ${构建物品定义字段('基础价格', '基础价格', toNumber(定义.基础价格, 0), 'number')}
       ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, '联邦币'), 'select', 物品货币选项_桥接)}
       ${构建物品定义字段('描述', '描述', toText(定义.描述, ''), 'textarea')}
@@ -2852,8 +3023,6 @@
     const 锻造模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('提纯度', '提纯度', toNumber(副职业参数.提纯度, 0), 'number')}
       ${构建物品定义字段('灵力值', '灵力值/灵性', toNumber(副职业参数.灵力值 ?? 副职业参数.灵性, 0), 'number')}
-      ${构建物品定义字段('融合数量', '融合数量', toNumber(deepGet(副职业参数, '融合参数.数量', 1), 1), 'number')}
-      ${构建物品定义字段('融合率', '融合率', toNumber(deepGet(副职业参数, '融合参数.融合率', 100), 100), 'number')}
       ${构建物品定义字段('锻造特性', '锻造特性', toText(副职业参数.锻造特性, ''), 'textarea')}
     </div>`;
     const 制造材料模块 = `<div class="item-definition-form-grid">
@@ -2990,13 +3159,13 @@
     const 实例 = 背包实例 && typeof 背包实例 === 'object' && !Array.isArray(背包实例) ? 背包实例 : {};
     const 合并物品 = 合并物品定义与状态_桥接(选项参数.rootData || {}, 物品名, 实例);
     const 分类 = 推断物品分类(物品名, 合并物品, 实例);
-    const 数量 = Math.max(0, toNumber(实例.数量, 0));
+    const 数量 = 读取背包总数量_桥接(实例);
     const charKey = toText(选项参数.charKey, '').trim();
     const 可用 = Array.isArray(合并物品.使用效果) && 合并物品.使用效果.length > 0;
     const 可装备 = !!(window.EquipmentManager && window.EquipmentManager.parseEquipSlot(物品名, 合并物品));
     const 原始副职业参数 = 定义.副职业参数 && typeof 定义.副职业参数 === 'object' ? 定义.副职业参数 : {};
     const 副职业参数 = {};
-    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '融合参数', '品质系数', '标准物种'].forEach(字段名 => {
+    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '标准物种'].forEach(字段名 => {
       if (原始副职业参数[字段名] !== undefined) 副职业参数[字段名] = 原始副职业参数[字段名];
     });
     const 装备技能 = 定义.装备技能 && typeof 定义.装备技能 === 'object' && !Array.isArray(定义.装备技能) ? 定义.装备技能 : {};
@@ -3040,10 +3209,10 @@
         <section class="mvu-inventory-inspector-section">
           <div class="mvu-editor-section-title">实例状态</div>
           ${构建物品解析字段组([
-            ['当前耐久', 实例.耐久 || 0],
-            ['绑定者', 实例.绑定者 || '无'],
-            ['来源', 实例.来源 || '背包持有'],
-            ['有效期', Number(实例.有效期至tick) > 0 ? resolveExpiryUiText(合并物品, '临时物品') : '无期限'],
+            ['当前耐久', 合并物品.耐久 || 0],
+            ['绑定者', 合并物品.绑定者 || '无'],
+            ['来源', 合并物品.来源 || '背包持有'],
+            ['有效期', Number(合并物品.有效期至tick) > 0 ? resolveExpiryUiText(合并物品, '临时物品') : '无期限'],
           ])}
         </section>
         ${
@@ -3187,7 +3356,11 @@
     );
     const 定义 = {
       阶位: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '阶位', 旧定义.阶位), 0))),
-      品质: 读取物品定义输入值(表单节点, '品质', toText(旧定义.品质, '普通')) || '普通',
+      品质: 规范化物品经济品质_桥接(
+        读取物品定义输入值(表单节点, '品质', toText(旧定义.品质, '普通')) || '普通',
+        新名,
+        分类,
+      ),
       描述: 读取物品定义输入值(表单节点, '描述', toText(旧定义.描述, '')),
       基础价格: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 0))),
       默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, '联邦币')) || '联邦币',
@@ -3204,8 +3377,6 @@
     const 提纯度 = 读取物品定义输入值(表单节点, '提纯度', '');
     const 灵力值 = 读取物品定义输入值(表单节点, '灵力值', '');
     const 锻造特性 = 读取物品定义输入值(表单节点, '锻造特性', '');
-    const 融合数量 = 读取物品定义输入值(表单节点, '融合数量', '');
-    const 融合率 = 读取物品定义输入值(表单节点, '融合率', '');
     const 出产年限 = 读取物品定义输入值(表单节点, '出产年限', '');
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
     if (装备物品分类集合_桥接.has(分类) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
@@ -3214,12 +3385,6 @@
       if (提纯度 !== '') 副职业参数.提纯度 = Math.max(0, Math.min(100, toNumber(提纯度, 0)));
       if (灵力值 !== '') 副职业参数.灵力值 = Math.max(0, toNumber(灵力值, 0));
       if (锻造特性) 副职业参数.锻造特性 = 锻造特性;
-      if (融合数量 !== '' || 融合率 !== '') {
-        副职业参数.融合参数 = {
-          数量: Math.max(1, Math.floor(toNumber(融合数量, 1))),
-          融合率: Math.max(0, Math.min(100, Math.floor(toNumber(融合率, 100)))),
-        };
-      }
     }
     if (分类 === '魂骨' && 出产年限 !== '') 副职业参数.年限 = Math.max(0, Math.floor(toNumber(出产年限, 0)));
     if (分类 === '制造材料') {
@@ -32461,7 +32626,7 @@
         .join('');
       const 当前物品分类 = 当前定义名 === '__new__' ? '新建' : 推断物品分类(当前定义名, 当前合并物品, 当前实例);
       const 当前物品标签 = [当前物品分类, toText(当前合并物品.品质, '普通')].filter(Boolean).join(' · ');
-      const 当前物品数量 = Math.max(0, toNumber(当前实例 && 当前实例.数量, 当前定义名 === '__new__' ? 1 : 0));
+      const 当前物品数量 = 当前定义名 === '__new__' ? 1 : 读取背包总数量_桥接(当前实例);
       const 当前物品可用 = Array.isArray(当前合并物品.使用效果) && 当前合并物品.使用效果.length > 0;
       const 当前物品可装备 = !!(window.EquipmentManager && window.EquipmentManager.parseEquipSlot(当前定义名, 当前合并物品));
       const 当前物品动作 = activeCharKey
@@ -35864,12 +36029,13 @@
       return { ok: false, reason: 'inventory_consume_context_invalid', patchOps: [] };
     }
     const inventoryItem = deepGet(snapshot, ['rootData', 'char', safeCharKey, '背包', safeItemName], null);
-    const currentQty = Math.max(0, Math.floor(toNumber(inventoryItem && inventoryItem['数量'], 0)));
+    const currentQty = 读取背包总数量_桥接(inventoryItem);
     if (currentQty < consumeCount) {
       return { ok: false, reason: `缺少【${safeItemName}】。`, patchOps: [] };
     }
     const itemPath = `/char/${escapeJsonPointerValue(safeCharKey)}/背包/${escapeJsonPointerValue(safeItemName)}`;
-    if (currentQty === consumeCount) {
+    const nextValue = 构建背包扣减值_桥接(inventoryItem, consumeCount);
+    if (!nextValue) {
       return {
         ok: true,
         patchOps: [{ op: 'remove', path: itemPath }],
@@ -35877,7 +36043,7 @@
     }
     return {
       ok: true,
-      patchOps: [{ op: 'replace', path: `${itemPath}/数量`, value: currentQty - consumeCount }],
+      patchOps: [{ op: 'replace', path: itemPath, value: nextValue }],
     };
   }
 
@@ -39160,21 +39326,39 @@ ${toText(combatData.战斗意图, '点到为止')}
     return { forge: '锻造', manufacture: '制造', design: '设计', repair: '修理' }[mode] || '副职业操作';
   }
 
-  function parseDirectProfessionTier(text) {
-    const raw = toText(text, '');
-    if (/天锻|四字|红级/.test(raw)) return 5;
-    if (/魂锻|三字|黑级/.test(raw)) return 4;
-    if (/灵锻|二字/.test(raw)) return 3;
-    if (/千锻|一字|紫级/.test(raw)) return 2;
-    const match = raw.match(/([1-5一二两三四五])\s*(?:阶|级)/);
-    const map = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5 };
-    return match ? Math.max(1, Math.min(5, Number(match[1]) || map[match[1]] || 1)) : 1;
+  function parseDirectProfessionTier(文本输入, 子类型输入 = '') {
+    const 原文 = toText(文本输入, '');
+    const 子类型 = toText(子类型输入, '').trim() || parseDirectProfessionSubtype(原文);
+    const 下拉匹配 = 原文.match(/\b(?:mech|armor)-([1-5])\b/i);
+    if (下拉匹配) return Math.max(1, Math.min(5, toNumber(下拉匹配[1], 1)));
+    const 数字匹配 = 原文.match(/([1-5一二两三四五])\s*(?:阶|级)/);
+    const 中文数字 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5 };
+    if (/mech|机甲/.test(子类型)) {
+      if (/红级/.test(原文)) return 4;
+      if (/黑级/.test(原文)) return 3;
+      if (/紫级/.test(原文)) return 2;
+      if (/黄级/.test(原文)) return 1;
+      return 数字匹配 ? Math.max(1, Math.min(5, Number(数字匹配[1]) || 中文数字[数字匹配[1]] || 1)) : 1;
+    }
+    if (/armor|斗铠/.test(子类型)) {
+      if (/四字|红级/.test(原文)) return 5;
+      if (/三字/.test(原文)) return 4;
+      if (/二字/.test(原文)) return 3;
+      if (/一字/.test(原文)) return 2;
+      return 数字匹配 ? Math.max(1, Math.min(5, Number(数字匹配[1]) || 中文数字[数字匹配[1]] || 1)) : 1;
+    }
+    if (/天锻|四字/.test(原文)) return 5;
+    if (/魂锻|三字|红级/.test(原文)) return 4;
+    if (/灵锻|二字|黑级/.test(原文)) return 3;
+    if (/千锻|一字|紫级/.test(原文)) return 2;
+    if (/黄级/.test(原文)) return 1;
+    return 数字匹配 ? Math.max(1, Math.min(5, Number(数字匹配[1]) || 中文数字[数字匹配[1]] || 1)) : 1;
   }
 
-  function parseDirectProfessionSubtype(text) {
-    const raw = toText(text, '');
-    if (/斗铠|一字|二字|三字|四字/.test(raw)) return 'armor';
-    if (/机甲|黄级|紫级|黑级|红级/.test(raw)) return 'mech';
+  function parseDirectProfessionSubtype(文本输入) {
+    const 原文 = toText(文本输入, '');
+    if (/\barmor-\d\b/i.test(原文) || /斗铠|一字|二字|三字|四字/.test(原文)) return 'armor';
+    if (/\bmech-\d\b/i.test(原文) || /机甲|黄级|紫级|黑级|红级/.test(原文)) return 'mech';
     return '';
   }
 
@@ -39217,10 +39401,20 @@ ${toText(combatData.战斗意图, '点到为止')}
     const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.类型);
     if (!mode) return null;
     const npc = toText(req.对象 || req.执行者 || req.执行者名称, '');
+    const 目标 = toText(req.目标 || req.产物 || req.物品, '');
+    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(目标);
+    const 显式阶级 = toNumber(req.阶级 || req.等级, 0);
+    const 阶级文本 = [
+      toText(req.阶级 || req.等级 || '', ''),
+      目标,
+      子类型,
+    ]
+      .filter(Boolean)
+      .join(' ');
     return {
       模式: mode,
       动作: normalizeProfessionActionLabel(mode),
-      目标: toText(req.目标 || req.产物 || req.物品, ''),
+      目标,
       材料: Array.isArray(req.材料)
         ? req.材料
             .map(item => {
@@ -39237,8 +39431,8 @@ ${toText(combatData.战斗意图, '点到为止')}
               .map(item => item.trim())
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
-      阶级: Math.max(1, Math.min(5, toNumber(req.阶级 || req.等级, 1))),
-      子类型: toText(req.子类型 || req.目标类型, ''),
+      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
+      子类型,
       对象: npc,
       执行者类型: toText(req.执行者类型 || (npc ? 'private' : ''), ''),
       目标地点: toText(req.目标地点 || req.地点, toText(snapshot && snapshot.currentLoc, '')),
@@ -39265,14 +39459,15 @@ ${toText(combatData.战斗意图, '点到为止')}
     const target = findDirectProfessionTarget(snapshot, raw, npc);
     if (!target && !/打开|进入|办理|工坊|协会|委托/.test(raw)) return null;
     const materials = findDirectProfessionMaterials(snapshot, raw, target, npc);
+    const 子类型 = parseDirectProfessionSubtype(`${raw} ${target}`);
     return {
       模式: mode,
       动作: normalizeProfessionActionLabel(mode),
       目标: target,
       材料: materials,
       数量: parseDirectIntentCount(raw, 1),
-      阶级: parseDirectProfessionTier(raw),
-      子类型: parseDirectProfessionSubtype(raw),
+      阶级: parseDirectProfessionTier(`${raw} ${target}`, 子类型),
+      子类型,
       对象: npc,
       执行者类型: /协会|官方/.test(raw) ? 'official' : npc || /委托|代工|帮/.test(raw) ? 'private' : 'self',
       目标地点: findBracketLocationToken(snapshot, raw),
@@ -39400,29 +39595,21 @@ ${toText(combatData.战斗意图, '点到为止')}
     return inlineAction ? { ok: true, inlineAction } : { ok: false, reason: 'trade_action_invalid' };
   }
 
-  async function buildInlineProfessionAction(snapshot, professionRequest) {
-    const 模块加载结果 = await 确保模块依赖已加载('副职业模块', 'inline_profession_action');
-    if (!模块加载结果 || 模块加载结果.ok === false) {
-      return { ok: false, reason: 'profession_module_load_failed', detail: 模块加载结果 };
-    }
-    if (typeof window.mountProfessionUI !== 'function') {
-      return { ok: false, reason: 'profession_ui_unavailable' };
-    }
-    const dispatchContext = buildCraftDispatchFromRequest(snapshot, professionRequest);
-    const capture = await captureInlineModuleAction(
-      (容器, 完成, 失败) =>
-        window.mountProfessionUI(容器, snapshot, {
-          dispatchContext,
-          professionRequest: cloneJsonValue(professionRequest, {}),
-          autoExecute: true,
-          onAction: 完成,
-          内联动作失败: 失败,
-        }),
-      { timeoutMs: 1600 },
-    );
-    if (!capture.ok) return capture;
-    const inlineAction = normalizeInlineModuleAction(capture.actionData, 'profession', professionRequest);
-    return inlineAction ? { ok: true, inlineAction } : { ok: false, reason: 'profession_action_invalid' };
+  function 执行副职业工坊打开路由(快照, 副职业请求) {
+    const 待确认请求 = {
+      ...cloneJsonValue(副职业请求, {}),
+      状态: 'pending',
+      自动执行: false,
+    };
+    mapDispatchContext = buildCraftDispatchFromRequest(快照, 待确认请求);
+    mapDispatchContext.professionRequest = 待确认请求;
+    打开地图工坊面板();
+    showUiToast('工坊流程已打开，请确认后执行。', 'info', 2200);
+    return 构建模块路由成功结果('profession', 待确认请求, {
+      dispatchMode: 'opened_profession_panel',
+      skipped: true,
+      reason: 'prefill_only',
+    });
   }
 
   function buildTradeRequestFromObject(snapshot, source) {
@@ -40512,14 +40699,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       }
     }
 
-    return await 执行内联模块意图路由(
-      snapshot,
-      moduleKind,
-      request,
-      buildInlineProfessionAction,
-      'profession_inline_action_unavailable',
-      'profession_continuation_dispatch_failed',
-    );
+    return 执行副职业工坊打开路由(snapshot, request);
   }
 
   function installDirectModuleIntentGuard() {
@@ -43813,8 +43993,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       const normalizedNextValue = 规范化背包持有者记录(charPath, nextValue);
       const existing = inventoryBuffer[itemName];
       if (existing) {
-        const nextQty = Math.max(1, toNumber(existing.数量, 1) + toNumber(normalizedNextValue.数量, 1));
-        inventoryBuffer[itemName] = { ...existing, ...normalizedNextValue, 数量: nextQty };
+        inventoryBuffer[itemName] = 合并背包状态记录_桥接(existing, normalizedNextValue);
         patches.push({
           op: 'replace',
           path: `${charPath}/背包/${this.escapePtr(itemName)}`,
@@ -43833,13 +44012,13 @@ ${toText(combatData.战斗意图, '点到为止')}
     queueInventoryConsume(patches, charPath, inventoryBuffer, itemName, quantity = 1) {
       const existing = inventoryBuffer[itemName];
       if (!existing) return false;
-      const nextQty = Math.max(0, toNumber(existing.数量, 1) - Math.max(1, toNumber(quantity, 1)));
-      if (nextQty <= 0) {
+      const nextValue = 构建背包扣减值_桥接(existing, quantity);
+      if (!nextValue) {
         delete inventoryBuffer[itemName];
         patches.push({ op: 'remove', path: `${charPath}/背包/${this.escapePtr(itemName)}` });
         return true;
       }
-      inventoryBuffer[itemName] = { ...existing, 数量: nextQty };
+      inventoryBuffer[itemName] = nextValue;
       patches.push({
         op: 'replace',
         path: `${charPath}/背包/${this.escapePtr(itemName)}`,
@@ -44160,6 +44339,64 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (目标 === '自身') return [使用者键];
       const 候选 = this.读取修炼增益同场角色候选(statData, 使用者键);
       return this.选择修炼增益目标角色(候选, 目标, `${名称}目标`);
+    },
+
+    读取耐久修复能力等级(修复等级 = '') {
+      const 文本 = toText(修复等级, '轻度磨损');
+      if (/彻底|重塑|神级/.test(文本)) return 4;
+      if (/本源|斗铠/.test(文本)) return 3;
+      if (/中重|严重|精密/.test(文本)) return 2;
+      return 1;
+    },
+
+    判定耐久损伤等级(物品名 = '', 物品数据 = {}, 当前耐久 = 100, 基础耐久 = 100) {
+      const 文本 = `${物品名} ${toText(物品数据.状态 || 物品数据.装备状态 || 物品数据.描述, '')}`;
+      const 比例 = 基础耐久 > 0 ? 当前耐久 / 基础耐久 : 1;
+      if (/彻底损毁|完全损毁|报废|粉碎|崩毁|重塑/.test(文本) || 当前耐久 <= 0) return { 标签: '彻底损毁', 等级: 4 };
+      if (/斗铠/.test(文本) && (/本源|根基|核心受损|灵性流失/.test(文本) || (当前耐久 > 0 && 比例 < 0.3))) return { 标签: '斗铠本源伤', 等级: 3 };
+      if (/严重|中度|重伤|裂纹|断裂|破损|损坏|失衡/.test(文本) || 比例 < 0.6) return { 标签: '中重度损伤', 等级: 2 };
+      return { 标签: '轻度磨损', 等级: 1 };
+    },
+
+    读取耐久修复候选(statData = {}, inventory = {}, 修复等级 = '轻度磨损', 排除物品名 = '') {
+      const 能力等级 = this.读取耐久修复能力等级(修复等级);
+      return safeEntries(inventory).flatMap(([物品名, 背包状态]) => {
+        if (!物品名 || 物品名 === 排除物品名 || !背包状态 || typeof 背包状态 !== 'object' || Array.isArray(背包状态)) return [];
+        const 合并物品 = 合并物品定义与状态_桥接(statData, 物品名, 背包状态);
+        const 分类 = 规范化物品定义分类_桥接(合并物品.物品分类 || 合并物品.分类, '');
+        if (!['主武器', '防具装备', '斗铠部件', '机甲机体'].includes(分类)) return [];
+        const 基础耐久 = Math.max(100, Math.floor(toNumber(合并物品.基础耐久, 100)));
+        if (背包状态.耐久 === undefined) return [];
+        const 当前耐久 = Math.max(0, Math.floor(toNumber(背包状态.耐久, 基础耐久)));
+        if (当前耐久 >= 基础耐久) return [];
+        const 损伤 = this.判定耐久损伤等级(物品名, 合并物品, 当前耐久, 基础耐久);
+        if (损伤.等级 > 能力等级) return [];
+        return [{
+          键: 物品名,
+          名称: `${物品名} · ${损伤.标签} · ${当前耐久}/${基础耐久}`,
+          当前耐久,
+          基础耐久,
+          损伤,
+        }];
+      });
+    },
+
+    async 选择耐久修复目标(候选列表 = [], 物品名 = '修复道具') {
+      const 候选 = Array.isArray(候选列表) ? 候选列表.filter(item => item && item.键) : [];
+      if (!候选.length) throw new Error('当前背包没有可修复目标。');
+      const 已选 = await this.选择修炼增益目标角色(候选, '单体', `${物品名}目标`);
+      return 候选.find(item => item.键 === 已选[0]) || null;
+    },
+
+    async 结算背包耐久修复(statData = {}, charData = {}, inventory = {}, 修复效果 = {}, 物品名 = '修复道具', 日志列表 = []) {
+      const 修复等级 = toText(修复效果?.value?.修复等级, '轻度磨损');
+      const 候选 = this.读取耐久修复候选(statData, inventory, 修复等级, 物品名);
+      const 目标 = await this.选择耐久修复目标(候选, 物品名);
+      if (!目标 || !目标.键 || !inventory[目标.键]) throw new Error('未选择可修复目标。');
+      if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = inventory;
+      charData.背包[目标.键].耐久 = 目标.基础耐久;
+      日志列表.push(`${目标.键}耐久恢复至${目标.基础耐久}`);
+      return true;
     },
 
     async 结算战斗外使用效果列表(statData = {}, 使用者键 = '', 效果列表 = [], 名称 = '技能效果', 日志列表 = [], 当前tick = 0) {
@@ -44534,6 +44771,14 @@ ${toText(combatData.战斗意图, '点到为止')}
       };
     }
       if (prototype === '伤害结算') return null;
+      if (prototype === '耐久修复') {
+        return {
+          target: '自身',
+          type: 'durability_repair',
+          description: description || '修复装备耐久',
+          value: { 修复等级: toText(effect['修复等级'], '轻度磨损') },
+        };
+      }
       if (prototype === '战斗外复活') {
         return {
           target,
@@ -44658,6 +44903,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (!charData.属性.状态效果 || typeof charData.属性.状态效果 !== 'object' || Array.isArray(charData.属性.状态效果))
         charData.属性.状态效果 = {};
       if (usableEffect.type === 'heal') return this.applyInventoryHealEffect(charData.属性, usableEffect, logs);
+      if (usableEffect.type === 'durability_repair') return false;
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'state_remove') return this.applyInventoryStateRemoveEffect(charData, usableEffect, logs);
       if (['buff', 'debuff', 'shield', 'custom', 'mechanism_grant', 'cultivation_gain'].includes(String(usableEffect.type || '')))
@@ -45158,7 +45404,17 @@ ${toText(combatData.战斗意图, '点到为止')}
             const usageEffectList = 原始使用效果列表.flatMap(effect =>
               this.expandInventoryEffectBranches(charData, effect, 条件上下文),
             );
-            appliedCount = await this.结算战斗外使用效果列表(statData, charKey, usageEffectList, itemName, logs, 当前tick);
+            const 常规效果列表 = [];
+            const 耐久修复效果列表 = [];
+            usageEffectList.forEach(effect => {
+              const 可用效果 = effect && effect.type ? effect : this.buildInventoryEffectFromPackedEffect(effect);
+              if (可用效果?.type === 'durability_repair') 耐久修复效果列表.push(可用效果);
+              else 常规效果列表.push(effect);
+            });
+            for (const 修复效果 of 耐久修复效果列表) {
+              if (await this.结算背包耐久修复(statData, charData, inventory, 修复效果, itemName, logs)) appliedCount += 1;
+            }
+            appliedCount += await this.结算战斗外使用效果列表(statData, charKey, 常规效果列表, itemName, logs, 当前tick);
 
             if (appliedCount <= 0) {
               throw new Error('当前物品的使用效果无法在背包场景中结算。');

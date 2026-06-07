@@ -113,6 +113,17 @@ function 读取内置角色库_V1() {
   return { 版本: 0, 每年tick: 51840, 开场节点: {}, 角色: {} };
 }
 
+function 读取内置物品库_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 物品库 = 候选?.__LWCS_内置物品库__;
+    if (物品库 && typeof 物品库 === 'object' && !Array.isArray(物品库)) return 物品库;
+  }
+  return {};
+}
+
 const 古月娜融合成立tick_V1 = 643159;
 
 function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
@@ -24591,16 +24602,32 @@ const 物品分类列表_V1 = Object.freeze([
   '丹药',
   '身份票据',
   '修炼秘籍',
+  '一次性武器',
   '一次性道具',
   '剧情杂物',
 ]);
 const 物品分类集合_V1 = new Set(物品分类列表_V1);
-const 可执行使用效果物品分类集合_V1 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
+const 可执行使用效果物品分类集合_V1 = new Set(['丹药', '天然灵物', '一次性武器', '一次性道具', '魂技造物']);
 const 装备物品分类集合_V1 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+const 物品经济品质列表_V1 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
+const 物品经济品质集合_V1 = new Set(物品经济品质列表_V1);
 
 function 规范化物品分类_V1(分类 = '', fallback = '剧情杂物') {
   const 文本 = String(分类 || '').trim();
   return 物品分类集合_V1.has(文本) ? 文本 : fallback;
+}
+
+function 规范化物品经济品质_V1(品质 = '', 物品名 = '', 分类 = '') {
+  const 文本 = String(品质 || '').trim();
+  if (物品经济品质集合_V1.has(文本)) return 文本;
+  const 判定文本 = `${物品名} ${分类} ${文本}`;
+  if (/超神器/.test(判定文本)) return '超神器';
+  if (/神器|神级/.test(判定文本)) return '神器';
+  if (/十万年|天锻|十二级|弑神|位面核心|极限斗罗|血脉核心|战略级/.test(判定文本)) return '传说';
+  if (/万年|魂锻|灵锻|顶级|机密|高级|重型|最新型|九级|八级/.test(判定文本)) return '史诗';
+  if (/千年|千锻|有灵合金|稀有|战术|秘密|特殊|特种|珍贵|军用/.test(判定文本)) return '稀有';
+  if (/百年|黄级|优秀|高级制式/.test(判定文本)) return '优秀';
+  return '普通';
 }
 
 function 创建空物品分类表_V1() {
@@ -24621,15 +24648,9 @@ function 要求物品定义分类_V1(物品名 = '', 定义 = {}, 分类 = '') {
 function 规范化物品副职业参数_V1(参数 = {}, 分类 = '') {
   const 来源 = 参数 && typeof 参数 === 'object' && !Array.isArray(参数) ? 参数 : {};
   const 输出 = {};
-  ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '品质系数', '标准物种'].forEach(字段名 => {
+  ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '标准物种'].forEach(字段名 => {
     if (来源[字段名] !== undefined) 输出[字段名] = cloneJsonValue(来源[字段名]);
   });
-  const 融合参数 = 来源.融合参数 && typeof 来源.融合参数 === 'object' && !Array.isArray(来源.融合参数) ? 来源.融合参数 : null;
-  if (融合参数 && 分类 === '锻造金属') {
-    const 数量 = Math.max(1, Math.floor(Number(融合参数.数量 || 1)));
-    const 融合率 = Math.max(0, Math.min(100, Math.floor(Number(融合参数.融合率 ?? 100))));
-    输出.融合参数 = { 数量, 融合率 };
-  }
   return 输出;
 }
 
@@ -24638,7 +24659,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
   const 物品分类 = 要求物品定义分类_V1(物品名, 来源, 分类);
   const 输出 = {
     阶位: Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0)))),
-    品质: String(来源.品质 || 来源.品阶 || '普通').trim() || '普通',
+    品质: 规范化物品经济品质_V1(来源.品质 || 来源.品阶 || '普通', 物品名, 物品分类),
     描述: String(来源.描述 || `关于【${物品名}】的记录暂未展开。`).trim(),
     基础价格: Math.max(0, Math.floor(Number(来源.基础价格 || 来源.价格 || 0))),
     默认货币: String(来源.默认货币 || 来源.货币 || '联邦币').trim() || '联邦币',
@@ -24747,6 +24768,22 @@ function 写入分类物品定义_V1(data = {}, 物品名 = '', 定义 = {}, 分
   }
   const 规范定义 = 规范化物品定义_V1(名称, 定义, 目标分类);
   if (!物品表[目标分类]) 物品表[目标分类] = {};
+  物品表[目标分类][名称] = 规范定义;
+  return { 物品名: 名称, 定义: 规范定义, 分类: 目标分类 };
+}
+
+function 合并分类物品定义_V1(data = {}, 物品名 = '', 定义 = {}, 分类 = '') {
+  const 名称 = String(物品名 || '').trim();
+  if (!名称) return null;
+  const 目标分类 = 要求物品定义分类_V1(名称, 定义, 分类);
+  const 物品表 = 确保物品分类表_V1(data);
+  const 规范定义 = 规范化物品定义_V1(名称, 定义, 目标分类);
+  const 现有 = 查找物品定义_V1(data, 名称);
+  if (现有) {
+    if (现有.分类 !== 目标分类) throw new Error(`同名物品已存在于【${现有.分类}】：${名称}`);
+    物品表[目标分类][名称] = { ...现有.定义, ...规范定义 };
+    return { 物品名: 名称, 定义: 物品表[目标分类][名称], 分类: 目标分类 };
+  }
   物品表[目标分类][名称] = 规范定义;
   return { 物品名: 名称, 定义: 规范定义, 分类: 目标分类 };
 }
@@ -25528,6 +25565,67 @@ const CharacterSchema = z
               .prefault(0)
               .describe('大于0时表示该临时道具会在指定 tick 自动失效并从背包删除'),
             来源: z.string().prefault('无'),
+            批次: z
+              .array(
+                z
+                  .object({
+                    数量: z.coerce.number().prefault(1),
+                    品质: z.string().transform(值 => 规范化物品经济品质_V1(值)).prefault('普通'),
+                    品质系数: z.coerce.number().prefault(1.0),
+                    副职业参数: z
+                      .object({
+                        融合参数: z
+                          .object({
+                            数量: z.coerce.number().prefault(1),
+                            融合率: z.coerce.number().prefault(100),
+                          })
+                          .prefault({}),
+                      })
+                      .prefault({}),
+                    制作者: z.string().prefault('无'),
+                    来源: z.string().prefault('无'),
+                    耐久: z.coerce.number().prefault(0),
+                    绑定者: z.string().prefault('无'),
+                    有效期至tick: z.coerce.number().prefault(0),
+                  })
+                  .prefault({}),
+              )
+              .prefault([]),
+          })
+          .transform(背包项 => {
+            背包项.数量 = Math.max(0, Math.floor(Number(背包项.数量 || 0)));
+            背包项.批次 = (Array.isArray(背包项.批次) ? 背包项.批次 : [])
+              .map(批次 => {
+                const 输出 = {
+                  数量: Math.max(0, Math.floor(Number(批次.数量 || 0))),
+                  品质: 规范化物品经济品质_V1(批次.品质),
+                  品质系数: Math.max(0.1, Math.min(2, Number(批次.品质系数 || 1))),
+                  制作者: String(批次.制作者 || '无').trim() || '无',
+                  来源: String(批次.来源 || '无').trim() || '无',
+                  耐久: Math.max(0, Math.floor(Number(批次.耐久 || 0))),
+                  绑定者: String(批次.绑定者 || '无').trim() || '无',
+                  有效期至tick: Math.max(0, Math.floor(Number(批次.有效期至tick || 0))),
+                };
+                const 原始融合参数 = 批次?.副职业参数?.融合参数;
+                if (原始融合参数 && typeof 原始融合参数 === 'object' && !Array.isArray(原始融合参数)) {
+                  输出.副职业参数 = {
+                    融合参数: {
+                      数量: Math.max(1, Math.floor(Number(原始融合参数.数量 || 1))),
+                      融合率: Math.max(0, Math.min(100, Math.floor(Number(原始融合参数.融合率 ?? 100)))),
+                    },
+                  };
+                }
+                Object.keys(输出).forEach(键 => {
+                  const 值 = 输出[键];
+                  if (
+                    键 !== '数量' &&
+                    (值 === '' || 值 === 0 || 值 === '无' || (键 === '品质' && 值 === '普通') || (键 === '品质系数' && Number(值) === 1))
+                  ) delete 输出[键];
+                });
+                return 输出;
+              })
+              .filter(批次 => Number(批次.数量 || 0) > 0);
+            return 背包项;
           })
           .prefault({}),
       )
@@ -26627,7 +26725,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     },
   },
   '3级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 3,
     品质: '稀有',
     描述: '三级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备39级魂师全力一击。',
@@ -26636,7 +26734,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 191, 固定攻势等级: 39, 伤害类型: '能量伤害', 防御穿透: 10 }],
   },
   '4级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 4,
     品质: '稀有',
     描述: '四级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备49级魂师全力一击。',
@@ -26645,7 +26743,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 267, 固定攻势等级: 49, 伤害类型: '能量伤害', 防御穿透: 12 }],
   },
   '5级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '史诗',
     描述: '五级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备59级魂师全力一击。',
@@ -26654,7 +26752,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 344, 固定攻势等级: 59, 伤害类型: '能量伤害', 防御穿透: 14 }],
   },
   '6级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '史诗',
     描述: '六级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备69级魂师全力一击。',
@@ -26663,7 +26761,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 420, 固定攻势等级: 69, 伤害类型: '能量伤害', 防御穿透: 16 }],
   },
   '7级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '史诗',
     描述: '七级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备79级魂师全力一击。',
@@ -26672,7 +26770,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 782, 固定攻势等级: 79, 伤害类型: '能量伤害', 防御穿透: 18 }],
   },
   '8级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '传说',
     描述: '八级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备89级魂师全力一击。',
@@ -26681,7 +26779,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 860, 固定攻势等级: 89, 伤害类型: '能量伤害', 防御穿透: 20 }],
   },
   '9级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '传说',
     描述: '九级定装魂导炮弹，群体攻击，一次性消耗，威力约等同无装备99级魂师全力一击。',
@@ -26690,7 +26788,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 7594, 固定攻势等级: 99, 伤害类型: '能量伤害', 防御穿透: 25 }],
   },
   '12级定装魂导炮弹': {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '传说',
     描述: '十二级定装魂导炮弹，群体攻击，一次性消耗，威力约等同110级存在的一击。',
@@ -26699,7 +26797,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
     使用效果: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 186008, 固定攻势等级: 110, 伤害类型: '能量伤害', 防御穿透: 40 }],
   },
   永恒天国: {
-    分类: '一次性道具',
+    分类: '一次性武器',
     阶位: 5,
     品质: '传说',
     描述: '弑神级定装魂导武器，通行规格按十二级定装魂导炮弹处理，但威力约等同120级存在的一击。',
@@ -26804,7 +26902,16 @@ const 内置神器与灵物定义_V1 = Object.freeze({
 function 写入内置物品定义_V1(data = {}) {
   确保物品分类表_V1(data);
   Object.entries(内置神器与灵物定义_V1).forEach(([物品名, 模板]) => {
-    if (!物品定义存在_V1(data, 物品名)) 写入分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板), 模板.分类);
+    合并分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板), 模板.分类);
+  });
+  遍历物品定义_V1(读取内置物品库_V1(), (物品名, 定义, 分类) => {
+    合并分类物品定义_V1(data, 物品名, 定义, 分类);
+  });
+  Object.entries(AssociationShopProducts.修理师协会 || {}).forEach(([物品名, 模板]) => {
+    const 使用效果 = Array.isArray(模板?.使用效果) ? 模板.使用效果 : [];
+    if (使用效果.some(效果 => String(效果?.原型 || '').trim() === '耐久修复')) {
+      合并分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板), 模板.分类);
+    }
   });
 }
 
@@ -26816,7 +26923,6 @@ const BaseProductPool = {
     描述: '长途旅行必备，能快速补充少量体力。',
     使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+10%' }],
   },
-  纯净水: { 价格: 10, 货币: '联邦币', 分类: '一次性道具', 描述: '基础的饮用水，能缓解口渴。' },
   初级恢复药剂: {
     价格: 500,
     货币: '联邦币',
@@ -27139,12 +27245,14 @@ const AssociationShopProducts = {
       货币: '联邦币',
       分类: '一次性道具',
       描述: '用于机甲和魂导器的日常保养。',
+      使用效果: [{ 原型: '耐久修复', 目标: '自身', 修复等级: '轻度磨损' }],
     },
     精密修复模块: {
       价格: 500000,
       货币: '联邦币',
       分类: '一次性道具',
       描述: '可以修复机甲或斗铠的中度损伤。',
+      使用效果: [{ 原型: '耐久修复', 目标: '自身', 修复等级: '中重度损伤' }],
     },
     机甲超频模块: {
       价格: 500000,
@@ -27157,12 +27265,14 @@ const AssociationShopProducts = {
       货币: '联邦币',
       分类: '一次性道具',
       描述: '极其珍贵的蕴养液，能修复受损的斗铠本源。',
+      使用效果: [{ 原型: '耐久修复', 目标: '自身', 修复等级: '斗铠本源伤' }],
     },
     神级重塑核心: {
       价格: 500000000,
       货币: '联邦币',
-      分类: '制造材料',
+      分类: '一次性道具',
       描述: '传说中的物品，据说能让彻底损毁的斗铠甚至神器重获新生。',
+      使用效果: [{ 原型: '耐久修复', 目标: '自身', 修复等级: '彻底损毁' }],
     },
   },
 };
@@ -27686,6 +27796,43 @@ const SchemaRootObject = z
                                 折扣: z.coerce.number().prefault(0),
                                 需求声望: z.coerce.number().prefault(0).describe('声望要求'),
                                 需求: z.record(z.string(), z.any()).prefault({}).describe('额外兑换条件'),
+                                批次: z.array(z.any()).prefault([]),
+                              })
+                              .transform(库存项 => {
+                                库存项.批次 = (Array.isArray(库存项.批次) ? 库存项.批次 : [])
+                                  .map(批次 => {
+                                    if (!批次 || typeof 批次 !== 'object' || Array.isArray(批次)) return null;
+                                    const 输出 = {
+                                      数量: Math.max(0, Math.floor(Number(批次.数量 || 0))),
+                                      品质: 规范化物品经济品质_V1(批次.品质),
+                                      品质系数: Math.max(0.1, Math.min(2, Number(批次.品质系数 || 1))),
+                                      制作者: String(批次.制作者 || '无').trim() || '无',
+                                      来源: String(批次.来源 || '无').trim() || '无',
+                                      耐久: Math.max(0, Math.floor(Number(批次.耐久 || 0))),
+                                      绑定者: String(批次.绑定者 || '无').trim() || '无',
+                                      有效期至tick: Math.max(0, Math.floor(Number(批次.有效期至tick || 0))),
+                                    };
+                                    const 原始融合参数 = 批次?.副职业参数?.融合参数;
+                                    if (原始融合参数 && typeof 原始融合参数 === 'object' && !Array.isArray(原始融合参数)) {
+                                      输出.副职业参数 = {
+                                        融合参数: {
+                                          数量: Math.max(1, Math.floor(Number(原始融合参数.数量 || 1))),
+                                          融合率: Math.max(0, Math.min(100, Math.floor(Number(原始融合参数.融合率 ?? 100)))),
+                                        },
+                                      };
+                                    }
+                                    Object.keys(输出).forEach(键 => {
+                                      const 值 = 输出[键];
+                                      if (
+                                        键 !== '数量' &&
+                                        (值 === '' || 值 === 0 || 值 === '无' || (键 === '品质' && 值 === '普通') || (键 === '品质系数' && Number(值) === 1))
+                                      ) delete 输出[键];
+                                    });
+                                    return 输出;
+                                  })
+                                  .filter(批次 => 批次 && Number(批次.数量 || 0) > 0);
+                                if (!库存项.批次.length) delete 库存项.批次;
+                                return 库存项;
                               })
                               .prefault({}),
                           )
@@ -31018,14 +31165,12 @@ export const Schema = z
       if (Math.random() * 100 > prob) return;
 
       let metalCount = 1;
-      let nameSuffix = '';
       if (tier >= 2 && itemName.includes('金属块')) {
         let roll = Math.floor(Math.random() * 100) + 1;
         if (roll <= 70) metalCount = 2;
         else if (roll <= 90) metalCount = 3;
         else if (roll <= 98) metalCount = 4;
         else metalCount = 5;
-        if (metalCount > 1) nameSuffix = `(${metalCount}种金属融锻)`;
       }
 
       let forgeMult = 1 + (metalCount - 1) * 0.3;
@@ -31038,24 +31183,31 @@ export const Schema = z
       else if (tier === 4) reqFame = 5000;
       else if (tier === 5) reqFame = 20000;
 
-      const 物品名 = `${itemName}${nameSuffix}`;
+      const 物品名 = itemName;
       if (!物品定义存在_V1(data, 物品名)) {
         写入分类物品定义_V1(data, 物品名, {
           阶位: Math.max(0, Math.min(5, Math.floor(Number(tier || 0)))),
-          品质: '普通',
+          品质: tier >= 5 ? '传说' : tier >= 4 ? '史诗' : tier >= 3 ? '稀有' : '优秀',
           描述: `一批限时供应的${itemName}。`,
-          基础价格: finalPrice,
+          基础价格: Math.max(0, Math.floor(Number(basePrice || 0))),
           默认货币: '联邦币',
-          副职业参数: metalCount > 1 ? { 融合参数: { 数量: metalCount, 融合率: Math.floor(85 + Math.random() * 16) } } : {},
         }, '锻造金属');
       }
-      背包[`[随机]${itemName}${nameSuffix}`] = {
+      背包[物品名] = {
         库存,
-        价格倍率: 1,
+        价格倍率: Math.max(0.01, Number((finalPrice / Math.max(1, basePrice)).toFixed(4))),
         折扣: 0,
         需求声望: reqFame,
         需求: {},
       };
+      if (metalCount > 1) {
+        背包[物品名].批次 = [{
+          数量: 库存,
+          品质: tier >= 5 ? '传说' : tier >= 4 ? '史诗' : tier >= 3 ? '稀有' : '优秀',
+          副职业参数: { 融合参数: { 数量: metalCount, 融合率: Math.floor(85 + Math.random() * 16) } },
+          来源: '锻造师协会限时供应',
+        }];
+      }
     }
 
     if (data && data.char) {

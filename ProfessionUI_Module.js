@@ -416,11 +416,14 @@ const 副职业物品定义分类列表 = Object.freeze([
   '丹药',
   '身份票据',
   '修炼秘籍',
+  '一次性武器',
   '一次性道具',
   '剧情杂物',
 ]);
 const 副职业物品定义分类集合 = new Set(副职业物品定义分类列表);
 const 副职业装备物品分类集合 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+const 副职业物品经济品质列表 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
+const 副职业物品经济品质集合 = new Set(副职业物品经济品质列表);
 
 const PROF_HIDDEN_ARBITRATION_NARRATION_RULES = `
 [前端仲裁器说明]
@@ -499,16 +502,19 @@ class ProfessionUIComponent {
   }
 
   getCurrentUiState() {
-    const tierVal = this.$('#prof-tier')?.value || '1';
-    let parsedTier = Number(tierVal);
-    let subtype = '';
-    if (tierVal.startsWith('mech-')) { parsedTier = Number(tierVal.split('-')[1]); subtype = 'mech'; }
-    else if (tierVal.startsWith('armor-')) { parsedTier = Number(tierVal.split('-')[1]); subtype = 'armor'; }
+    const 阶级值 = this.$('#prof-tier')?.value || '1';
+    let 解析阶级 = Number(阶级值);
+    let 子类型 = '';
+    if (阶级值.startsWith('mech-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'mech'; }
+    else if (阶级值.startsWith('armor-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'armor'; }
+    const 数量原文 = this.$('#prof-cost')?.value || '1';
+    const 数量数值 = Number(数量原文);
     return {
       activeMode: this.activeMode,
-      tier: parsedTier || 1,
-      subtype: subtype,
-      cost: this.$('#prof-cost')?.value || '1',
+      tier: 解析阶级 || 1,
+      subtype: 子类型,
+      cost: 数量原文,
+      数量: Number.isFinite(数量数值) && 数量数值 > 0 ? Math.max(1, Math.floor(数量数值)) : 1,
       target: this.$('#prof-target')?.value || '',
       selectedMaterials: this.getSelectedMaterialNames(),
       连续模式开启: this.$('#prof-loop-enabled')?.value === '1',
@@ -690,9 +696,144 @@ class ProfessionUIComponent {
     if (!分类) throw new Error(`副职业产物缺少分类：${String(物品名 || '未命名').trim() || '未命名'}`);
     return 分类;
   }
+  复制JSON(值, fallback = {}) {
+    if (值 === undefined || 值 === null) return fallback;
+    try {
+      return JSON.parse(JSON.stringify(值));
+    } catch (错误) {
+      return fallback;
+    }
+  }
+  规范化物品经济品质(品质 = '', 物品名 = '', 分类 = '') {
+    const 文本 = String(品质 || '').trim();
+    if (副职业物品经济品质集合.has(文本)) return 文本;
+    const 判定文本 = `${物品名} ${分类} ${文本}`;
+    if (/超神器/.test(判定文本)) return '超神器';
+    if (/神器|神级/.test(判定文本)) return '神器';
+    if (/十万年|天锻|十二级|弑神|位面核心|极限斗罗|血脉核心|战略级/.test(判定文本)) return '传说';
+    if (/万年|魂锻|灵锻|顶级|机密|高级|重型|最新型|九级|八级/.test(判定文本)) return '史诗';
+    if (/千年|千锻|有灵合金|稀有|战术|秘密|特殊|特种|珍贵|军用/.test(判定文本)) return '稀有';
+    if (/百年|黄级|优秀|高级制式/.test(判定文本)) return '优秀';
+    return '普通';
+  }
+  按品质系数映射经济品质(品质系数 = 1) {
+    const 数值 = Number(品质系数 || 1);
+    if (数值 >= 1.5) return '史诗';
+    if (数值 >= 1.25) return '稀有';
+    if (数值 >= 1.1) return '优秀';
+    return '普通';
+  }
+  读取背包批次列表(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    return (Array.isArray(来源.批次) ? 来源.批次 : []).filter(批次 => 批次 && typeof 批次 === 'object' && !Array.isArray(批次) && Number(批次.数量 || 0) > 0);
+  }
+  读取背包总数量(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    const 普通数量 = Math.max(0, Math.floor(Number(来源.数量 || 0)));
+    const 批次数量 = this.读取背包批次列表(来源).reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次.数量 || 0))), 0);
+    return 普通数量 + 批次数量;
+  }
+  读取首个背包批次(记录 = {}) {
+    return this.读取背包批次列表(记录)[0] || null;
+  }
+  规范化背包批次(来源批次 = {}, 数量 = 1, fallback = {}) {
+    const 来源 = 来源批次 && typeof 来源批次 === 'object' && !Array.isArray(来源批次) ? 来源批次 : {};
+    const 输出 = {
+      数量: Math.max(0, Math.floor(Number(数量 ?? 来源.数量 ?? 0))),
+      品质: this.规范化物品经济品质(来源.品质 ?? fallback.品质, fallback.物品名 || '', fallback.分类 || ''),
+      品质系数: Math.max(0.1, Math.min(2, Number(来源.品质系数 ?? fallback.品质系数 ?? 1))),
+      制作者: String(来源.制作者 ?? fallback.制作者 ?? '').trim(),
+      来源: String(来源.来源 ?? fallback.来源 ?? '').trim(),
+      耐久: Math.max(0, Math.floor(Number(来源.耐久 ?? fallback.耐久 ?? 0))),
+      绑定者: String(来源.绑定者 ?? fallback.绑定者 ?? '').trim(),
+      有效期至tick: Math.max(0, Math.floor(Number(来源.有效期至tick ?? fallback.有效期至tick ?? 0))),
+    };
+    const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
+    if (融合参数 && typeof 融合参数 === 'object' && !Array.isArray(融合参数)) {
+      输出.副职业参数 = {
+        融合参数: {
+          数量: Math.max(1, Math.floor(Number(融合参数.数量 || 1))),
+          融合率: Math.max(0, Math.min(100, Math.floor(Number(融合参数.融合率 ?? 100)))),
+        },
+      };
+    }
+    Object.keys(输出).forEach(键 => {
+      const 值 = 输出[键];
+      if (
+        键 !== '数量' &&
+        (值 === '' || 值 === 0 || 值 === '无' || (键 === '品质' && 值 === '普通') || (键 === '品质系数' && Number(值) === 1))
+      ) delete 输出[键];
+    });
+    return 输出.数量 > 0 ? 输出 : null;
+  }
+  需要批次入库(数据 = {}) {
+    const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
+    if (Array.isArray(来源.批次) && 来源.批次.length) return true;
+    if (来源.品质系数 !== undefined && Number(来源.品质系数) !== 1) return true;
+    if (来源.副职业参数?.融合参数 && typeof 来源.副职业参数.融合参数 === 'object' && !Array.isArray(来源.副职业参数.融合参数)) return true;
+    if (来源.耐久 !== undefined && Number(来源.耐久) > 0) return true;
+    if (String(来源.制作者 || '').trim()) return true;
+    if (String(来源.来源 || '').trim()) return true;
+    if (String(来源.绑定者 || '').trim()) return true;
+    if (Number(来源.有效期至tick || 0) > 0) return true;
+    return false;
+  }
+  构建入库批次列表(数据 = {}, 数量 = 1, fallback = {}) {
+    const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
+    if (Array.isArray(来源.批次) && 来源.批次.length) {
+      let 剩余 = Math.max(0, Math.floor(Number(数量 || 0)));
+      const 批次列表 = [];
+      来源.批次.forEach(批次 => {
+        if (剩余 <= 0) return;
+        const 可取 = Math.min(剩余, Math.max(0, Math.floor(Number(批次?.数量 || 0))));
+        const 新批次 = this.规范化背包批次(批次, 可取, fallback);
+        if (新批次) {
+          批次列表.push(新批次);
+          剩余 -= 可取;
+        }
+      });
+      return 批次列表;
+    }
+    if (!this.需要批次入库(来源)) return [];
+    const 批次 = this.规范化背包批次(来源, 数量, fallback);
+    return 批次 ? [批次] : [];
+  }
+  构建背包扣减值(记录 = {}, 数量 = 1) {
+    if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return null;
+    const 当前 = this.复制JSON(记录, {});
+    let 剩余扣减 = Math.max(1, Math.floor(Number(数量 || 1)));
+    const 批次列表 = this.读取背包批次列表(当前).map(批次 => this.复制JSON(批次, {}));
+    for (const 批次 of 批次列表) {
+      if (剩余扣减 <= 0) break;
+      const 当前批次数量 = Math.max(0, Math.floor(Number(批次.数量 || 0)));
+      const 扣减 = Math.min(当前批次数量, 剩余扣减);
+      批次.数量 = 当前批次数量 - 扣减;
+      剩余扣减 -= 扣减;
+    }
+    当前.批次 = 批次列表.filter(批次 => Math.max(0, Number(批次.数量 || 0)) > 0);
+    const 普通数量 = Math.max(0, Math.floor(Number(当前.数量 || 0)));
+    if (剩余扣减 > 0) {
+      当前.数量 = Math.max(0, 普通数量 - 剩余扣减);
+      剩余扣减 = Math.max(0, 剩余扣减 - 普通数量);
+    } else {
+      当前.数量 = 普通数量;
+    }
+    if (!当前.批次.length) delete 当前.批次;
+    if (当前.数量 <= 0 && !当前.批次) return null;
+    if (当前.数量 <= 0 && 当前.批次) 当前.数量 = 0;
+    return 当前;
+  }
   resolveInventoryItem(name = '') {
     const 命中 = this.查找物品定义(name);
-    return { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', ...(this.currentInventory?.[name] || {}) };
+    const 背包记录 = this.currentInventory?.[name] || {};
+    const 首批 = this.读取首个背包批次(背包记录);
+    return {
+      ...(命中?.定义 || {}),
+      物品分类: 命中?.分类 || '',
+      ...(背包记录 || {}),
+      ...(首批 || {}),
+      数量: this.读取背包总数量(背包记录),
+    };
   }
   get activeName() {
     const chars = this.allChars || {};
@@ -762,7 +903,12 @@ class ProfessionUIComponent {
   }
 
   getTierQualityLabel(mode, tier) {
-    return mode === 'forge' ? this.getForgeTierLabel(tier) : this.getGearTierFamilyLabel(tier);
+    const 阶位 = Math.max(1, Number(tier || 1));
+    if (阶位 >= 5) return '传说';
+    if (阶位 >= 4) return '史诗';
+    if (阶位 >= 3) return '稀有';
+    if (阶位 >= 2) return '优秀';
+    return '普通';
   }
 
   updateTierOptions() {
@@ -932,13 +1078,13 @@ class ProfessionUIComponent {
   getSelectedTierStock(materialNames) {
     const totals = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     for (const name of materialNames) {
-      totals[this.getItemTier(name)] += Number(this.currentInventory[name]?.数量 || 0);
+      totals[this.getItemTier(name)] += this.读取背包总数量(this.currentInventory[name]);
     }
     return totals;
   }
 
   getManufactureRecipe(targetName, materialNames, tier, qty = 1) {
-    const state = this.currentFormState;
+    const state = this.getCurrentUiState();
     const isMech = state.subtype === 'mech' || /机甲/.test(targetName);
     const isArmor = state.subtype === 'armor' || /斗铠|一字|二字|三字|四字/.test(targetName) || materialNames.some(name => /斗铠设计图/.test(name));
 
@@ -966,7 +1112,7 @@ class ProfessionUIComponent {
       for (const name of materialNames) {
         if (remaining <= 0) break;
         if (this.getItemTier(name) !== tier) continue;
-        const available = Number(this.currentInventory[name]?.数量 || 0) - Number(plan[name] || 0);
+        const available = this.读取背包总数量(this.currentInventory[name]) - Number(plan[name] || 0);
         const take = Math.min(available, remaining);
         if (take > 0) { plan[name] = Number(plan[name] || 0) + take; remaining -= take; }
       }
@@ -1012,14 +1158,6 @@ class ProfessionUIComponent {
       新定义.装备槽位 = definition.装备槽位 || (分类 === '主武器' ? '武器' : 分类 === '防具装备' ? '防具' : '无');
       if (definition.属性加成 && typeof definition.属性加成 === 'object' && !Array.isArray(definition.属性加成)) 新定义.属性加成 = definition.属性加成;
       if (definition.装备技能 && typeof definition.装备技能 === 'object' && !Array.isArray(definition.装备技能)) 新定义.装备技能 = definition.装备技能;
-    }
-    if (分类 === '锻造金属' && definition.副职业参数?.融合参数 && typeof definition.副职业参数.融合参数 === 'object' && !Array.isArray(definition.副职业参数.融合参数)) {
-      新定义.副职业参数 = {
-        融合参数: {
-          数量: Math.max(1, Math.floor(Number(definition.副职业参数.融合参数.数量 || 1))),
-          融合率: Math.max(0, Math.min(100, Math.floor(Number(definition.副职业参数.融合参数.融合率 ?? 100)))),
-        },
-      };
     }
     Object.keys(新定义).forEach(字段名 => {
       const 值 = 新定义[字段名];
@@ -1096,7 +1234,7 @@ class ProfessionUIComponent {
   构建材料库存快照(materialNames = []) {
     const 快照 = {};
     materialNames.forEach(名称 => {
-      快照[名称] = Math.max(0, Number(this.currentInventory[名称]?.数量 || 0));
+      快照[名称] = this.读取背包总数量(this.currentInventory[名称]);
     });
     return 快照;
   }
@@ -1258,17 +1396,19 @@ class ProfessionUIComponent {
   }
 
   getFusionContext(runtime, materialNames) {
-    if (materialNames.length === 1) {
-      const item = this.resolveInventoryItem(materialNames[0]);
-      const fMeta = item?.副职业参数?.融合参数 || {};
-      return { fusionCount: Math.max(1, Number(fMeta.数量 || 1)), fusionSync: Number(fMeta.融合率 ?? 100) };
+    if (this.activeMode === 'forge') {
+      if (materialNames.length === 1) {
+        const 物品 = this.resolveInventoryItem(materialNames[0]);
+        const 融合参数 = 物品?.副职业参数?.融合参数 || {};
+        return { fusionCount: Math.max(1, Number(融合参数.数量 || 1)), fusionSync: Number(融合参数.融合率 ?? 100) };
+      }
+      if (materialNames.length > 1) return { fusionCount: materialNames.length, fusionSync: this.getForgeFusionRate(runtime, materialNames) };
     }
-    if (materialNames.length > 1) return { fusionCount: materialNames.length, fusionSync: this.activeMode === 'forge' ? this.getForgeFusionRate(runtime, materialNames) : 0 };
     return { fusionCount: 1, fusionSync: 0 };
   }
 
   getModeSuccessRateForRuntime(mode, runtime, tier, materialNames, fusionCount) {
-    const ef = Math.max(1, Number(fusionCount || materialNames?.length || 1));
+    const ef = Math.max(1, Number(fusionCount || 1));
     if (mode === 'forge') return ef > 1 ? this.getForgeFusionSuccessRate(runtime, ef, false) : this.getSingleTierSuccessRate(tier, runtime);
     return ef > 1 ? this.getGenericCompositeRate(runtime, ef) : this.getGenericSingleRate(runtime);
   }
@@ -1404,7 +1544,7 @@ class ProfessionUIComponent {
         cb.type = 'checkbox'; cb.className = 'material-cb'; cb.value = itemName;
         cb.addEventListener('change', () => { this.autoGenerateTargetName(); this.updatePreview(); });
         const detail = [`剩${item.数量}`];
-        const qualityFactor = item?.副职业参数?.品质系数 ?? item?.品质系数;
+        const qualityFactor = item?.品质系数;
         if (qualityFactor) detail.push(`Q${Number(qualityFactor).toFixed(2)}`);
         const fusionRate = item?.副职业参数?.融合参数?.融合率;
         if (fusionRate !== undefined) detail.push(`融合率${fusionRate}%`);
@@ -1419,11 +1559,11 @@ class ProfessionUIComponent {
   autoGenerateTargetName() {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const materials = this.getSelectedMaterialNames();
-    const tier = Number(this.$('#prof-tier').value || 1);
+    const tier = this.getCurrentUiState().tier;
     const tierLabel = this.activeMode === 'forge' ? this.getForgeTierLabel(tier) : this.getTierDisplayName(this.activeMode, tier);
     if (materials.length === 0) return;
 
-    const rawNames = materials.map(name => name.replace(/百锻|千锻|灵锻|魂锻|天锻|极品·/g, '').trim());
+    const rawNames = materials.map(name => name.replace(/百锻|千锻|灵锻|魂锻|天锻/g, '').trim());
     let baseName = '';
 
     if (this.activeMode === 'forge') {
@@ -1484,7 +1624,7 @@ class ProfessionUIComponent {
     for (const mName of materialNames) {
       if (this.getItemTier(mName) !== tier) return `融锻要求材料阶位与目标完全一致：当前目标 ${this.getForgeTierLabel(tier)}，材料【${mName}】是 ${this.getForgeTierLabel(this.getItemTier(mName))}。`;
       const materialItem = this.resolveInventoryItem(mName);
-      if (tier === 2 && Number(materialItem?.副职业参数?.品质系数 ?? materialItem?.品质系数 ?? 1) < 1.15) return `千锻融锻要求所有材料达到“一品”(品质系数≥1.15)。`;
+      if (tier === 2 && Number(materialItem?.品质系数 ?? 1) < 1.15) return `千锻融锻要求所有材料达到“一品”(品质系数≥1.15)。`;
     }
     return null;
   }
@@ -1495,7 +1635,6 @@ class ProfessionUIComponent {
     const jobDisplayName = this.读取副职业显示名(cfg.jobName);
     if (runtime.lv < uLv) return `${this.getTierDisplayName(cfg.mode, tier)}尚未解锁，需要 Lv.${uLv} ${jobDisplayName}。`;
     if (cfg.requiresMaterials && materialNames.length === 0) return `${cfg.displayName}至少需要选择一种材料。`;
-    if (materialNames.length > runtime.maxFusion) return `当前${jobDisplayName}支持协同数为 ${runtime.maxFusion}。`;
     if (cfg.mode === 'manufacture') {
       if (/斗铠|机甲/.test(targetName) && !this.hasBlueprintMaterial(materialNames)) return '制造斗铠/机甲至少需要对应设计图或蓝图。';
       const armorTier = this.getArmorTierFromName(targetName);
@@ -1516,6 +1655,7 @@ class ProfessionUIComponent {
         }
       }
     }
+    if (this.getFusionContext(runtime, materialNames).fusionCount > runtime.maxFusion) return `当前${jobDisplayName}支持协同数为 ${runtime.maxFusion}。`;
     if (cfg.mode === 'design') {
       if (!/设计图|蓝图/.test(targetName)) return '目标名称应包含“设计图”或“蓝图”。';
       if (/斗铠/.test(targetName) && tier < 2) return '斗铠设计图至少 2 阶。';
@@ -1534,8 +1674,9 @@ class ProfessionUIComponent {
   updatePreview() {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const runtime = this.getJobRuntime(cfg.jobName);
-    const tier = Number(this.$('#prof-tier').value || 1);
-    const qty = Math.max(1, Number(this.$('#prof-cost').value || 1));
+    const 当前状态 = this.getCurrentUiState();
+    const tier = 当前状态.tier;
+    const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
@@ -1553,7 +1694,7 @@ class ProfessionUIComponent {
     if (this.activeMode === 'forge') {
       if (!ruleError) ruleError = this.validateForgeRules(effectiveRuntime, tier, materialNames, targetName, { isCommission: commissionCtx.isCommission });
       if (!ruleError) {
-        const efc = Math.max(commissionCtx.fusionCount || 1, materialNames.length || 1);
+        const efc = Math.max(commissionCtx.fusionCount || 1, 1);
         const isFusion = efc > 1;
         const rate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(runtime, efc, !!this.charData.功法?.['暗器百解']) : this.getSingleTierSuccessRate(tier, runtime));
         当前成功率数值 = Number(rate || 0);
@@ -1567,7 +1708,7 @@ class ProfessionUIComponent {
     } else {
       if (!ruleError) ruleError = this.validateGenericRules(cfg, effectiveRuntime, tier, materialNames, targetName);
       if (!ruleError) {
-        const efc = Math.max(materialNames.length || 0, commissionCtx.fusionCount || 1);
+        const efc = Math.max(commissionCtx.fusionCount || 1, 1);
         const isComp = efc > 1;
         const rate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isComp ? this.getGenericCompositeRate(runtime, efc) : this.getGenericSingleRate(runtime));
         当前成功率数值 = Number(rate || 0);
@@ -1638,12 +1779,14 @@ class ProfessionUIComponent {
   }
 
   buildMaterialFinalPatches(材料库存快照 = {}, 选中材料 = []) {
-    return 选中材料.map(材料名 => {
+    const 消耗计划 = {};
+    选中材料.forEach(材料名 => {
+      const 当前数量 = this.读取背包总数量(this.currentInventory[材料名]);
       const 剩余数量 = Math.max(0, Number(材料库存快照[材料名] || 0));
-      return 剩余数量 <= 0
-        ? { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(材料名)}` }
-        : { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(材料名)}/数量`, value: 剩余数量 };
+      const 消耗数量 = Math.max(0, 当前数量 - 剩余数量);
+      if (消耗数量 > 0) 消耗计划[材料名] = 消耗数量;
     });
+    return this.buildConsumePlanPatches(消耗计划);
   }
 
   buildTimeSkipPatch(跳过小时 = 0) {
@@ -1652,35 +1795,36 @@ class ProfessionUIComponent {
     return [{ op: 'replace', path: '/world/时间/tick', value: 目标tick }];
   }
   buildMaterialConsumePatches(materialNames, qty) {
-    return materialNames.map(mName => {
-      const nextQty = Number(this.currentInventory[mName]?.数量 || 0) - qty;
-      return nextQty <= 0 
-        ? { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(mName)}` } 
-        : { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(mName)}/数量`, value: nextQty };
-    });
+    return this.buildConsumePlanPatches(
+      materialNames.reduce((计划, 名称) => {
+        计划[名称] = Number(计划[名称] || 0) + Math.max(1, Number(qty || 1));
+        return 计划;
+      }, {})
+    );
   }
   buildConsumePlanPatches(plan) {
-    return Object.entries(plan || {}).filter(([_, q]) => Number(q) > 0).map(([name, consumeQty]) => {
-      const nextQty = Number(this.currentInventory[name]?.数量 || 0) - Number(consumeQty);
-      return nextQty <= 0 
-        ? { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}` } 
-        : { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}/数量`, value: nextQty };
-    });
+    return Object.entries(plan || {})
+      .filter(([_, q]) => Number(q) > 0)
+      .map(([name, consumeQty]) => {
+        const 当前记录 = this.currentInventory[name];
+        const nextValue = this.构建背包扣减值(当前记录, Number(consumeQty));
+        return nextValue
+          ? { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}`, value: nextValue }
+          : { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}` };
+      });
   }
   buildInventoryAddPatches(itemName, itemData, amount = 1) {
     const safeItem = itemData && typeof itemData === 'object' ? itemData : {};
     const 分类 = this.要求产物分类(itemName, safeItem, this.activeMode === 'forge' ? '锻造金属' : '');
-    const 副职业参数 = {};
-    if (safeItem.品质系数) 副职业参数.品质系数 = safeItem.品质系数;
-    if (分类 === '锻造金属' && safeItem.副职业参数?.融合参数 && typeof safeItem.副职业参数.融合参数 === 'object' && !Array.isArray(safeItem.副职业参数.融合参数)) {
-      副职业参数.融合参数 = {
-        数量: Math.max(1, Math.floor(Number(safeItem.副职业参数.融合参数.数量 || 1))),
-        融合率: Math.max(0, Math.min(100, Math.floor(Number(safeItem.副职业参数.融合参数.融合率 ?? 100)))),
-      };
-    }
+    const 数量 = Math.max(1, Math.floor(Number(amount || safeItem.数量 || 1)));
+    const 模板副职业参数 = {};
+    const 来源副职业参数 = safeItem.副职业参数 && typeof safeItem.副职业参数 === 'object' && !Array.isArray(safeItem.副职业参数) ? safeItem.副职业参数 : {};
+    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '标准物种'].forEach(字段名 => {
+      if (来源副职业参数[字段名] !== undefined) 模板副职业参数[字段名] = this.复制JSON(来源副职业参数[字段名], 来源副职业参数[字段名]);
+    });
     const definition = {
       阶位: Math.max(0, Math.floor(Number(safeItem.阶位 || this.getItemTier(itemName) || 0))),
-      品质: safeItem.品质 || '普通',
+      品质: this.规范化物品经济品质(safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), itemName, 分类),
       描述: safeItem.描述 || `副职业产物【${itemName}】`,
       基础价格: Math.max(0, Math.floor(Number(safeItem.基础价格 || 0))),
       默认货币: safeItem.默认货币 || '联邦币',
@@ -1704,7 +1848,7 @@ class ProfessionUIComponent {
       if (safeItem.研读条件) definition.研读条件 = safeItem.研读条件;
       if (safeItem.解锁内容) definition.解锁内容 = safeItem.解锁内容;
     }
-    if (Object.keys(副职业参数).length) definition.副职业参数 = 副职业参数;
+    if (Object.keys(模板副职业参数).length) definition.副职业参数 = 模板副职业参数;
     Object.keys(definition).forEach(字段名 => {
       const 值 = definition[字段名];
       if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete definition[字段名];
@@ -1714,11 +1858,36 @@ class ProfessionUIComponent {
     if (!this.查找物品定义(itemName)) {
       patches.push({ op: 'replace', path: `/物品/${this.escapeJsonPointer(分类)}/${this.escapeJsonPointer(itemName)}`, value: definition });
     }
-    if (this.currentInventory[itemName]) {
-      patches.push({ op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(itemName)}/数量`, value: Number(this.currentInventory[itemName].数量 || 0) + amount });
+    const 批次列表 = this.构建入库批次列表(safeItem, 数量, {
+      物品名: itemName,
+      分类,
+      品质: safeItem.批次品质 || safeItem.品质,
+      品质系数: safeItem.品质系数,
+      制作者: safeItem.制作者,
+      来源: safeItem.来源,
+      耐久: safeItem.耐久,
+      绑定者: safeItem.绑定者,
+      有效期至tick: safeItem.有效期至tick,
+      副职业参数: 来源副职业参数.融合参数 ? { 融合参数: 来源副职业参数.融合参数 } : undefined,
+    });
+    const 当前记录 = this.currentInventory[itemName] && typeof this.currentInventory[itemName] === 'object' && !Array.isArray(this.currentInventory[itemName])
+      ? this.复制JSON(this.currentInventory[itemName], {})
+      : null;
+    if (当前记录) {
+      if (批次列表.length) {
+        当前记录.批次 = [...(Array.isArray(当前记录.批次) ? 当前记录.批次 : []), ...批次列表];
+        if (当前记录.数量 === undefined) 当前记录.数量 = 0;
+      } else {
+        当前记录.数量 = Math.max(0, Math.floor(Number(当前记录.数量 || 0))) + 数量;
+      }
+      patches.push({ op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(itemName)}`, value: 当前记录 });
       return patches;
     }
-    patches.push({ op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(itemName)}`, value: { 数量: amount } });
+    patches.push({
+      op: 'replace',
+      path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(itemName)}`,
+      value: 批次列表.length ? { 数量: 0, 批次: 批次列表 } : { 数量 },
+    });
     return patches;
   }
   buildJobProgressPatches(jobName, expGain) {
@@ -1807,8 +1976,9 @@ class ProfessionUIComponent {
   executeContinuousProfession(连续配置 = this.获取连续模式配置()) {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const runtime = this.getJobRuntime(cfg.jobName);
-    const tier = Number(this.$('#prof-tier').value || 1);
-    const qty = Math.max(1, Number(this.$('#prof-cost').value || 1));
+    const 当前状态 = this.getCurrentUiState();
+    const tier = 当前状态.tier;
+    const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
@@ -1848,9 +2018,9 @@ class ProfessionUIComponent {
     const 产物汇总 = {};
     let 修理成功标记 = false;
 
-    const 锻造复合数 = Math.max(Number(commissionCtx.fusionCount || 1), materialNames.length || 1);
+    const 锻造复合数 = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const 锻造是否融锻 = 锻造复合数 > 1;
-    const 通用复合数 = Math.max(materialNames.length || 0, commissionCtx.fusionCount || 1);
+    const 通用复合数 = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const 通用是否复合 = 通用复合数 > 1;
 
     while (剩余小时 > 0) {
@@ -1889,12 +2059,12 @@ class ProfessionUIComponent {
               : (锻造是否融锻
                 ? this.getForgeFusionQuality(tier, this.getForgeMaxQ(tier, 锻造复合数), 本次融合率, roll, isGreatSuccess)
                 : this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2));
-            const 产物名 = isGreatSuccess ? `极品·${targetName}` : targetName;
+            const 产物名 = targetName;
             if (!产物汇总[产物名]) {
               产物汇总[产物名] = {
                 数量: 0,
                 物品分类: '锻造金属',
-                品质: isGreatSuccess ? '极品' : '标准',
+                品质: this.getTierQualityLabel(cfg.mode, tier),
                 品质系数累计: 0,
                 副职业参数: 锻造是否融锻 ? { 融合参数: { 数量: 锻造复合数, 融合率: Math.floor(本次融合率) } } : null,
                 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物`,
@@ -1902,7 +2072,6 @@ class ProfessionUIComponent {
             }
             产物汇总[产物名].数量 += 1;
             产物汇总[产物名].品质系数累计 += Number(本次品质 || 1);
-            if (isGreatSuccess) 产物汇总[产物名].品质 = '极品';
           } else if (this.activeMode === 'design') {
             const 产物名 = this.getDesignOutputName(targetName, tier, materialNames);
             const 品质系数 = commissionCtx.isOfficial ? 1 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess);
@@ -1952,7 +2121,7 @@ class ProfessionUIComponent {
       const 平均品质系数 = Number((Number(数据.品质系数累计 || 0) / Math.max(1, Number(数据.数量 || 1))).toFixed(2));
       const 物品数据 = {
         物品分类: 数据.物品分类 || '剧情杂物',
-        品质: 数据.品质 || '标准',
+        品质: 数据.品质 || '普通',
         品质系数: 平均品质系数,
         描述: 数据.描述 || `由${commissionCtx.executorName}完成的${cfg.jobName}产物`,
       };
@@ -2001,14 +2170,15 @@ class ProfessionUIComponent {
   executeForge() {
     const cfg = PROFESSION_CONFIG.forge;
     const runtime = this.getJobRuntime(cfg.jobName);
-    const tier = Number(this.$('#prof-tier').value || 1);
-    const qty = Math.max(1, Number(this.$('#prof-cost').value || 1));
+    const 当前状态 = this.getCurrentUiState();
+    const tier = 当前状态.tier;
+    const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     
-    const efc = Math.max(Number(commissionCtx.fusionCount || 1), materialNames.length || 1);
+    const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isFusion = efc > 1;
     const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(runtime, efc, !!this.charData.功法?.['暗器百解']) : this.getSingleTierSuccessRate(tier, runtime));
     const firstMaterial = this.resolveInventoryItem(materialNames[0]);
@@ -2019,14 +2189,13 @@ class ProfessionUIComponent {
     const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
     const isSuccess = isGreatSuccess || roll <= successRate;
 
-    let finalQ = 0, resultLog = '', productName = targetName, expGain = cfg.expGain[tier] || 50;
+    let finalQ = 0, resultLog = '', expGain = cfg.expGain[tier] || 50;
     if (isSuccess) {
       if (commissionCtx.isOfficial) finalQ = 1.0;
       else if (isFusion) finalQ = this.getForgeFusionQuality(tier, maxQ, fusionRate, roll, isGreatSuccess);
       else finalQ = this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2);
       
       if (isGreatSuccess) {
-        productName = `极品·${targetName}`;
         if (!commissionCtx.isCommission) expGain *= 2;
         resultLog = `[大成功] ${commissionCtx.executorName}触发极限锻压，成功打造出【${targetName}】。品质系数 ${finalQ.toFixed(2)}。`;
       } else {
@@ -2044,9 +2213,9 @@ class ProfessionUIComponent {
     patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
 
     if (isSuccess) {
-      const newItem = { 数量: 1, 物品分类: '锻造金属', 品质: isGreatSuccess ? '极品' : '标准', 品质系数: Number(finalQ.toFixed(2)), 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物` };
+      const newItem = { 数量: 1, 物品分类: '锻造金属', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: Number(finalQ.toFixed(2)), 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物` };
       if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
-      patchOps.push(...this.buildInventoryAddPatches(productName, newItem, 1));
+      patchOps.push(...this.buildInventoryAddPatches(targetName, newItem, 1));
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain);
         patchOps.push(...progress.patches);
@@ -2066,14 +2235,15 @@ class ProfessionUIComponent {
   executeGenericProfession() {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const runtime = this.getJobRuntime(cfg.jobName);
-    const tier = Number(this.$('#prof-tier').value || 1);
-    const qty = Math.max(1, Number(this.$('#prof-cost').value || 1));
+    const 当前状态 = this.getCurrentUiState();
+    const tier = 当前状态.tier;
+    const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     
-    const efc = Math.max(materialNames.length || 0, commissionCtx.fusionCount || 1);
+    const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isComp = efc > 1;
     const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isComp ? this.getGenericCompositeRate(runtime, efc) : this.getGenericSingleRate(runtime));
     const roll = Math.floor(Math.random() * 100) + 1;
