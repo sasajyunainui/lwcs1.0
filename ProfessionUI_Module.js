@@ -406,6 +406,7 @@ const 副职业物品定义分类列表 = Object.freeze([
   '制造材料',
   '设计图纸',
   '主武器',
+  '防具装备',
   '斗铠部件',
   '机甲机体',
   '魂骨',
@@ -419,7 +420,7 @@ const 副职业物品定义分类列表 = Object.freeze([
   '剧情杂物',
 ]);
 const 副职业物品定义分类集合 = new Set(副职业物品定义分类列表);
-const 副职业装备物品分类集合 = new Set(['主武器', '斗铠部件', '机甲机体', '魂骨']);
+const 副职业装备物品分类集合 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 
 const PROF_HIDDEN_ARBITRATION_NARRATION_RULES = `
 [前端仲裁器说明]
@@ -978,6 +979,7 @@ class ProfessionUIComponent {
     const armorBlueprint = materialNames.find(name => /(一字|二字|三字|四字)斗铠设计图/.test(name));
     if (armorBlueprint) return { name: armorBlueprint.replace('设计图', ''), 分类: '斗铠部件' };
     if (/机甲/.test(targetName)) return { name: /黄级|紫级|黑级|红级/.test(targetName) ? targetName : ({ 1: '黄级机甲组件', 2: '紫级机甲组件', 3: '黑级机甲组件', 4: '红级机甲组件' }[tier] || targetName), 分类: '机甲机体' };
+    if (/防具|护具|护甲|护服|防护服|胸甲|铠甲|护心镜|护盾|盾牌/.test(targetName)) return { name: targetName, 分类: '防具装备' };
     if (/武器|剑|刀|枪|炮|弓|锤|棍|刃|矛/.test(targetName)) return { name: targetName, 分类: '主武器' };
     return { name: targetName, 分类: '制造材料' };
   }
@@ -1007,7 +1009,7 @@ class ProfessionUIComponent {
       基础耐久: Math.max(100, Math.floor(Number(definition.基础耐久 || 100))),
     };
     if (副职业装备物品分类集合.has(分类)) {
-      新定义.装备槽位 = definition.装备槽位 || (分类 === '主武器' ? '武器' : '无');
+      新定义.装备槽位 = definition.装备槽位 || (分类 === '主武器' ? '武器' : 分类 === '防具装备' ? '防具' : '无');
       if (definition.属性加成 && typeof definition.属性加成 === 'object' && !Array.isArray(definition.属性加成)) 新定义.属性加成 = definition.属性加成;
       if (definition.装备技能 && typeof definition.装备技能 === 'object' && !Array.isArray(definition.装备技能)) 新定义.装备技能 = definition.装备技能;
     }
@@ -1686,6 +1688,7 @@ class ProfessionUIComponent {
     if (副职业装备物品分类集合.has(分类)) {
       if (safeItem.装备槽位) definition.装备槽位 = safeItem.装备槽位;
       else if (分类 === '主武器') definition.装备槽位 = '武器';
+      else if (分类 === '防具装备') definition.装备槽位 = '防具';
       if (Number(safeItem.基础耐久 || 0) > 0) definition.基础耐久 = Math.max(0, Math.floor(Number(safeItem.基础耐久 || 0)));
       if (safeItem.属性加成 && typeof safeItem.属性加成 === 'object' && !Array.isArray(safeItem.属性加成)) definition.属性加成 = safeItem.属性加成;
       if (safeItem.装备技能 && typeof safeItem.装备技能 === 'object' && !Array.isArray(safeItem.装备技能)) definition.装备技能 = safeItem.装备技能;

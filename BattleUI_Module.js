@@ -6965,6 +6965,7 @@ class BattleUIComponent {
     function 判断条件分支装备状态(unit = {}, value = '', op = '==') {
       const 装备 = unit?.装备 || {};
       const 武器 = 装备?.武器;
+      const 防具 = 装备?.防具;
       const 斗铠 = 装备?.斗铠;
       const 机甲 = 装备?.机甲;
       const 条件值 = String(value || '').trim();
@@ -6978,6 +6979,9 @@ class BattleUIComponent {
         命中 = String(斗铠?.装备状态 || '').trim() === '已装备';
       } else if (条件值 === '已装备机甲') {
         命中 = String(机甲?.装备状态 || '').trim() === '已装备' && String(机甲?.状态 || '').trim() !== '重创';
+      } else if (条件值 === '已装备防具') {
+        const 防具名 = String(防具?.名称 || 防具?.name || '').trim();
+        命中 = String(防具?.装备状态 || '').trim() === '已装备' && !!防具名 && 防具名 !== '无';
       }
       return op === '!=' || op === '无' ? !命中 : 命中;
     }
@@ -13598,7 +13602,7 @@ class BattleUIComponent {
       // Phase 3.F: 装备技能释放时机
       if (是装备技能) {
         const 装备 = actor?.装备 || {};
-        const 已装备数 = ['斗铠', '机甲', '武器'].filter(部位 =>
+        const 已装备数 = ['斗铠', '机甲', '武器', '防具'].filter(部位 =>
           String(装备?.[部位]?.装备状态 || '').trim() === '已装备').length;
         const 技能名_ = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '');
         if (已装备数 >= 1 && /(穿戴|装备|展开|附体|召唤机甲)/.test(技能名_)) {
@@ -30935,11 +30939,16 @@ class BattleUIComponent {
           const 标签 = [];
           const 机甲 = 装备.机甲 && typeof 装备.机甲 === 'object' ? 装备.机甲 : null;
           const 斗铠 = 装备.斗铠 && typeof 装备.斗铠 === 'object' ? 装备.斗铠 : null;
+          const 防具 = 装备.防具 && typeof 装备.防具 === 'object' ? 装备.防具 : null;
           if (机甲 && String(机甲.装备状态 || '').trim() === '已装备' && String(机甲.等级 || '无').trim() !== '无' && String(机甲.状态 || '') !== '重创') {
             标签.push(`${String(机甲.等级 || '').trim()}机甲`);
           }
           if (斗铠 && String(斗铠.装备状态 || '').trim() === '已装备' && Number(斗铠.等级 || 0) > 0) {
             标签.push(`${Number(斗铠.等级 || 0)}字斗铠`);
+          }
+          if (防具 && String(防具.装备状态 || '').trim() === '已装备') {
+            const 防具名 = String(防具.名称 || 防具.name || '防具').trim();
+            if (防具名 && 防具名 !== '无') 标签.push(防具名);
           }
           return 标签;
         }

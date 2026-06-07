@@ -261,8 +261,8 @@
     武装工坊详细页: {
       title: '武装工坊',
       summary: '查看当前武装、斗铠部件与副职业工坊。',
-      fields: ['activeChar.装备.武器', 'activeChar.装备.斗铠', 'activeChar.装备.机甲', 'activeChar.副职业'],
-      duties: ['展示武器/斗铠/机甲', '展示装备槽位状态', '显示副职业等级与融合信息'],
+      fields: ['activeChar.装备.武器', 'activeChar.装备.防具', 'activeChar.装备.斗铠', 'activeChar.装备.机甲', 'activeChar.副职业'],
+      duties: ['展示武器/防具/斗铠/机甲', '展示装备槽位状态', '显示副职业等级与融合信息'],
       actions: ['打开斗铠总览', '查看槽位覆盖', '浏览装备摘要'],
     },
     武魂融合技详细页: {
@@ -865,6 +865,7 @@
     const armor = deepGet(activeChar, '装备.斗铠', {});
     const mech = deepGet(activeChar, '装备.机甲', {});
     const weapon = deepGet(activeChar, '装备.武器', {});
+    const 防具 = deepGet(activeChar, '装备.防具', {});
     const armorName = toText(armor.名称 || armor['名称'], '当前斗铠');
     const mechName = toText(mech.名称 || mech['名称'] || mech.型号 || mech['型号'], '当前机甲');
     const actionMap = {
@@ -891,7 +892,7 @@
     };
     const actionMeta = actionMap[actionType];
     if (!actionMeta) return null;
-    const systemPrompt = `以下内容属于前端发起的装备管理请求，不要在正文直接复述“系统提示 / 请求类型 / JSONPatch”等术语。\n\n[装备管理]\n角色：${activeName}\n地点：${currentLoc}\n动作：${actionMeta.title}\n当前斗铠：${summarizeArmoryValue(armor.名称 || armor['名称'] || armor.装备状态 || '无')}\n当前机甲：${summarizeArmoryValue(mech.名称 || mech['名称'] || mech.等级 || mech.装备状态 || '无')}\n当前主武器：${summarizeArmoryValue(weapon.名称 || weapon['名称'] || '无')}\n\n${actionMeta.note}\n\n请将这次操作写成自然剧情，并在需要时同步更新角色的装备状态、相关装备字段与系统播报。`;
+    const systemPrompt = `以下内容属于前端发起的装备管理请求，不要在正文直接复述“系统提示 / 请求类型 / JSONPatch”等术语。\n\n[装备管理]\n角色：${activeName}\n地点：${currentLoc}\n动作：${actionMeta.title}\n当前斗铠：${summarizeArmoryValue(armor.名称 || armor['名称'] || armor.装备状态 || '无')}\n当前机甲：${summarizeArmoryValue(mech.名称 || mech['名称'] || mech.等级 || mech.装备状态 || '无')}\n当前主武器：${summarizeArmoryValue(weapon.名称 || weapon['名称'] || '无')}\n当前防具：${summarizeArmoryValue(防具.名称 || 防具['名称'] || 防具.装备状态 || '无')}\n\n${actionMeta.note}\n\n请将这次操作写成自然剧情，并在需要时同步更新角色的装备状态、相关装备字段与系统播报。`;
     return {
       playerInput: actionMeta.playerInput,
       systemPrompt,
@@ -1381,6 +1382,7 @@
                   { label: '斗铠', value: '' },
                   { label: '机甲', value: '' },
                   { label: '主武器', value: '' },
+                  { label: '防具', value: '' },
                   { label: '副职业', value: '' },
                   { label: '战斗形态', value: '' },
                 ])}
@@ -1740,6 +1742,7 @@
 
   const 常规魂骨槽位列表_桥接 = Object.freeze(['头部魂骨', '躯干魂骨', '右臂魂骨', '左臂魂骨', '右腿魂骨', '左腿魂骨']);
   const 外附魂骨槽位列表_桥接 = Object.freeze(['外附魂骨1', '外附魂骨2']);
+  const 魂骨固定槽位列表_桥接 = Object.freeze([...常规魂骨槽位列表_桥接, ...外附魂骨槽位列表_桥接]);
   const 魂骨倍率属性列表_桥接 = Object.freeze(['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限']);
 
   function 是外附魂骨槽位_桥接(槽位 = '') {
@@ -1747,11 +1750,15 @@
   }
 
   function 是有效魂骨记录_桥接(魂骨 = {}) {
+    const 名称有效 = [魂骨 && 魂骨.名称, 魂骨 && 魂骨.表象名称].some(值 => {
+      const 文本 = toText(值, '').trim();
+      return 文本 && 文本 !== '无';
+    });
     return !!(
       魂骨 &&
       typeof 魂骨 === 'object' &&
       !Array.isArray(魂骨) &&
-      (toText(魂骨.名称, '') || toNumber(魂骨.年限, 0) > 0 || Object.keys(魂骨.附带技能 || {}).length)
+      (名称有效 || toNumber(魂骨.年限, 0) > 0 || Object.keys(魂骨.附带技能 || {}).length)
     );
   }
 
@@ -2354,6 +2361,7 @@
     '制造材料',
     '设计图纸',
     '主武器',
+    '防具装备',
     '斗铠部件',
     '机甲机体',
     '魂骨',
@@ -2368,7 +2376,7 @@
   ]);
   const 物品定义分类集合_桥接 = new Set(物品定义分类列表_桥接);
   const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
-  const 装备物品分类集合_桥接 = new Set(['主武器', '斗铠部件', '机甲机体', '魂骨']);
+  const 装备物品分类集合_桥接 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 
   function 规范化物品定义分类_桥接(分类 = '', fallback = '剧情杂物') {
     const 文本 = toText(分类, '').trim();
@@ -2496,6 +2504,7 @@
     if (装备物品分类集合_桥接.has(物品分类)) {
       if (toText(来源.装备槽位, '')) 记录.装备槽位 = toText(来源.装备槽位, '');
       else if (物品分类 === '主武器') 记录.装备槽位 = '武器';
+      else if (物品分类 === '防具装备') 记录.装备槽位 = '防具';
       if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
       if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
@@ -2637,7 +2646,7 @@
 
   const 物品品质选项_桥接 = Object.freeze(['灰', '白', '绿', '蓝', '紫', '金', '红', '普通']);
   const 物品货币选项_桥接 = Object.freeze(['联邦币', '星罗币', '唐门积分', '学院积分', '战功', '血神功勋']);
-  const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '饰品']);
+  const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
   const 物品属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '生命上限', '力量', '防御', '敏捷', '体力上限']);
 
   function 构建物品定义选项列表(选项列表 = [], 当前值 = '') {
@@ -2818,7 +2827,7 @@
       ${构建物品定义字段('描述', '描述', toText(定义.描述, ''), 'textarea')}
     </div>`;
     const 装备模块 = `<div class="item-definition-form-grid">
-      ${构建物品定义字段('装备槽位', '装备槽位', toText(定义.装备槽位, '无'), 'select', 物品装备槽位选项_桥接)}
+      ${构建物品定义字段('装备槽位', '装备槽位', toText(定义.装备槽位, 物品分类 === '主武器' ? '武器' : 物品分类 === '防具装备' ? '防具' : '无'), 'select', 物品装备槽位选项_桥接)}
       ${构建物品定义字段('基础耐久', '基础耐久', toNumber(定义.基础耐久, 0), 'number')}
     </div>
     <div class="item-definition-subblock">
@@ -3183,7 +3192,7 @@
       基础价格: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 0))),
       默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, '联邦币')) || '联邦币',
     };
-    const 装备槽位 = 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, 分类 === '主武器' ? '武器' : '无')) || '无';
+    const 装备槽位 = 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, 分类 === '主武器' ? '武器' : 分类 === '防具装备' ? '防具' : '无')) || '无';
     if (装备物品分类集合_桥接.has(分类)) {
       if (装备槽位 && 装备槽位 !== '无') 定义.装备槽位 = 装备槽位;
       定义.基础耐久 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0)));
@@ -3334,6 +3343,7 @@
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 动态地点文件缓存: new Map() };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 物品文件缓存: new Map() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
+  const 冷归档自动归档批量硬上限_桥接 = 50;
   const 冷归档自动归档默认配置_桥接 = Object.freeze({
     启用自动归档: true,
     角色数量阈值: 20,
@@ -3342,7 +3352,6 @@
     动态地点字节阈值: 160000,
     物品分类数量阈值: 5,
     物品字节阈值: 180000,
-    单轮上限: 4,
     冷却毫秒: 90000,
     最近保护tick窗口: 2160,
   });
@@ -3374,7 +3383,6 @@
       动态地点字节阈值: 限制冷归档整数配置_桥接(来源.动态地点字节阈值, 默认配置.动态地点字节阈值, 20000, 2000000),
       物品分类数量阈值: 限制冷归档整数配置_桥接(来源.物品分类数量阈值, 默认配置.物品分类数量阈值, 1, 100),
       物品字节阈值: 限制冷归档整数配置_桥接(来源.物品字节阈值, 默认配置.物品字节阈值, 20000, 2000000),
-      单轮上限: 限制冷归档整数配置_桥接(来源.单轮上限, 默认配置.单轮上限, 1, 20),
       冷却毫秒: 限制冷归档整数配置_桥接(冷却秒数, 默认配置.冷却毫秒 / 1000, 5, 3600) * 1000,
       最近保护tick窗口: 限制冷归档整数配置_桥接(来源.最近保护tick窗口, 默认配置.最近保护tick窗口, 0, 100000),
     };
@@ -3405,7 +3413,6 @@
             角色数量阈值: 配置.角色数量阈值,
             动态地点数量阈值: 配置.动态地点数量阈值,
             物品分类数量阈值: 配置.物品分类数量阈值,
-            单轮上限: 配置.单轮上限,
             冷却秒数: Math.round(配置.冷却毫秒 / 1000),
           }),
         );
@@ -4639,7 +4646,7 @@
     };
   }
 
-  function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限) {
+  function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护角色 = 收集归档保护角色名_桥接(statData);
     return safeEntries(statData.char || {})
@@ -4653,7 +4660,7 @@
       .map(([角色名]) => 角色名);
   }
 
-  function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限) {
+  function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护地点 = 收集归档保护动态地点名_桥接(statData);
     const 本轮命中地点 = new Set(
@@ -4680,7 +4687,7 @@
       .map(([地点名]) => 地点名);
   }
 
-  function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限, 选项 = {}) {
+  function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护物品 = 收集归档保护物品名_桥接(statData);
     const 允许分类 = Array.isArray(选项.允许分类) ? new Set(选项.允许分类.map(分类 => 规范化物品定义分类_桥接(分类, '')).filter(Boolean)) : null;
@@ -4744,13 +4751,13 @@
         {
           类型: '物品',
           状态: 物品分类压力,
-          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 冷归档自动归档配置_桥接.单轮上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
+          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 冷归档自动归档批量硬上限_桥接, { ...选项, 允许分类: 物品分类压力.允许分类 }),
           执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
         },
       ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
       if (!类型列表.length) return { changed: false, reason: 'below_threshold' };
       for (const 类型项 of 类型列表) {
-        const 名称列表 = 类型项.名称列表().slice(0, 冷归档自动归档配置_桥接.单轮上限);
+        const 名称列表 = 类型项.名称列表().slice(0, 冷归档自动归档批量硬上限_桥接);
         if (!名称列表.length) continue;
         const 结果 = await 类型项.执行(名称列表);
         return { ...结果, type: 类型项.类型, auto: true };
@@ -5036,7 +5043,7 @@
               </label>
               <label class="mvu-editor-field">
                 <span class="mvu-editor-label">单轮上限</span>
-                <input type="number" min="1" max="20" step="1" class="request-console-input" data-cold-archive-setting="单轮上限" value="${escapeHtmlAttr(自动归档配置.单轮上限)}" />
+                <input type="number" class="request-console-input" value="${escapeHtmlAttr(冷归档自动归档批量硬上限_桥接)}" disabled />
               </label>
               <label class="mvu-editor-field">
                 <span class="mvu-editor-label">冷却秒数</span>
@@ -8699,6 +8706,7 @@
       world: rawSd.world || {},
       org: rawSd.org || {},
       char: rawSd.char || {},
+      物品: rawSd.物品 || {},
     };
     const currentPlayerName = toText(deepGet(rootData, 'sys.玩家名', ''), '').trim();
     if (isInvalidRuntimePlayerName(currentPlayerName)) {
@@ -10400,7 +10408,7 @@
     当前行动: Object.freeze(['常规攻击', '释放魂技', '武魂融合技', '使用物品', '防御', '闪避', '撤离', '穿戴装备']),
     环境满足: Object.freeze(['冰面', '水域', '阴影', '高空', '狭窄地形', '领域内', '场地内']),
     时间: Object.freeze(['白天', '黑夜', '清晨', '上午', '中午', '下午', '黄昏', '夜晚', '深夜']),
-    装备状态: Object.freeze(['已装备主武器', '已装备斗铠', '已装备机甲']),
+    装备状态: Object.freeze(['已装备主武器', '已装备防具', '已装备斗铠', '已装备机甲']),
     自身状态: Object.freeze(['蓄力中', '隐匿中']),
     连携前提: Object.freeze(['上一动作命中', '目标被控制']),
   });
@@ -23749,13 +23757,9 @@
     const recordEntries = safeEntries(deepGet(activeChar, '我的任务', {}));
     const conditionEntries = safeEntries(deepGet(activeChar, '属性.状态效果', {}));
     const 原始魂骨表 = deepGet(activeChar, '魂骨', {});
-    const soulBoneEntries = [
-      ...常规魂骨槽位列表_桥接,
-      ...外附魂骨槽位列表_桥接,
-      ...safeEntries(原始魂骨表)
-        .map(([槽位]) => 槽位)
-        .filter(槽位 => ![...常规魂骨槽位列表_桥接, ...外附魂骨槽位列表_桥接].includes(槽位)),
-    ].map(槽位 => [槽位, deepGet(原始魂骨表, 槽位, {})]);
+    const soulBoneEntries = 魂骨固定槽位列表_桥接
+      .map(槽位 => [槽位, deepGet(原始魂骨表, 槽位, {})])
+      .filter(([, 魂骨]) => 是有效魂骨记录_桥接(魂骨));
     const artEntries = safeEntries(deepGet(activeChar, '功法', {})).sort(
       (a, b) => toNumber(deepGet(b[1], 'lv', 0), 0) - toNumber(deepGet(a[1], 'lv', 0), 0),
     );
@@ -25049,6 +25053,7 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
+    const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
@@ -25063,12 +25068,14 @@
         : '无';
     const boneCount = snapshot.soulBoneEntries ? snapshot.soulBoneEntries.length : 0;
     const 武器摘要 = toText(weapon.名称, '') || toText(weapon.类型, '') || '无';
+    const 防具摘要 = toText(防具.名称 || 防具['名称'], '') || '无';
     return `
         <div class="module-name">武装工坊</div>
         <div class="module-grid armory-grid">
           <div class="mini-box"><b>当前斗铠</b><span>${htmlEscape(armorSummary)}</span></div>
           <div class="mini-box"><b>当前机甲</b><span>${htmlEscape(mechSummary)}</span></div>
           <div class="mini-box"><b>武器</b><span>${htmlEscape(shortenText(武器摘要, 28))}</span></div>
+          <div class="mini-box"><b>防具</b><span>${htmlEscape(shortenText(防具摘要, 28))}</span></div>
           <div class="mini-box"><b>装载魂骨</b><span>${htmlEscape(boneCount ? `${boneCount} 块` : '0 块')}</span></div>
         </div>
         <div class="module-foot">
@@ -25781,20 +25788,25 @@
           { label: '斗铠', value: '--' },
           { label: '机甲', value: '--' },
           { label: '主武器', value: '--' },
+          { label: '防具', value: '--' },
         ],
       });
     }
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
+    const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
+    const 防具名称 = toText(防具.名称 || 防具['名称'], '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
     const hasWeapon = !!weaponName && !/^(无|未记录)$/.test(weaponName);
+    const hasDefense = !!防具名称 && !/^(无|未记录)$/.test(防具名称);
     const hasMech = !!toText(mech.等级, '').trim();
-    const hasLoadout = hasArmor || hasWeapon || hasMech || (snapshot.soulBoneEntries || []).length;
+    const hasLoadout = hasArmor || hasWeapon || hasDefense || hasMech || (snapshot.soulBoneEntries || []).length;
     const armorSummary = toNumber(armor.等级, 0) > 0 ? toText(armor.名称, `${armor.等级}字斗铠`) : '无';
+    const 防具Summary = 防具名称 || '无';
     const mechSummary = toText(mech.等级, '')
       ? `${toText(mech.名称 || mech['名称'], `${toText(mech.等级, '')}机甲`)} · ${toText(mech.型号, '均衡')}`
       : '无';
@@ -25809,14 +25821,15 @@
     return buildShellSummaryCard({
       kicker: '武装',
       title: '武装',
-      value: toNumber(armor.等级, 0) > 0 ? shortenText(toText(armor.名称, `${armor.等级}字斗铠`), 12) : '无',
-      meta: shortenText(armorSummary, 24),
+      value: toNumber(armor.等级, 0) > 0 ? shortenText(toText(armor.名称, `${armor.等级}字斗铠`), 12) : shortenText(防具Summary, 12),
+      meta: shortenText(armorSummary !== '无' ? armorSummary : 防具Summary, 24),
       metrics: [
         { label: '机甲', value: toText(mech.等级, '--') || '--' },
         { label: '魂骨', value: String((snapshot.soulBoneEntries || []).length || 0), tone: 'gold' },
       ],
       rows: [
         { label: '主武器', value: shortenText(toText(weapon.名称, '未记录'), 14) },
+        { label: '防具', value: shortenText(防具Summary, 14) },
         { label: '工坊', value: shortenText(jobSummary, 14) },
         { label: '机甲', value: shortenText(mechSummary, 14) },
       ],
@@ -26890,6 +26903,7 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
+    const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
     const soulBoneEntries = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries : [];
     const armorText = toNumber(armor.等级, 0) > 0 ? toText(armor.名称, `${armor.等级}字斗铠`) : '无';
@@ -26898,6 +26912,7 @@
         ? `${toText(mech.名称 || mech['名称'], `${toText(mech.等级, '无')}机甲`)} · ${toText(mech.型号, '均衡')}`
         : '无';
     const weaponText = toText(weapon.名称 || weapon['名称'], '无');
+    const 防具Text = toText(防具.名称 || 防具['名称'], '无');
     const jobItems = jobs.slice(0, 4).map(([name, info]) => {
       const 副职业 = 派生副职业显示数据(name, info);
       return {
@@ -26913,10 +26928,11 @@
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero">
               <div class="mvu-shell-lite-head">
                 <span>${htmlEscape(shortenText(weaponText, 18))}</span>
-                <strong>${htmlEscape(shortenText(armorText, 24))}</strong>
+                <strong>${htmlEscape(shortenText(armorText !== '无' ? armorText : 防具Text, 24))}</strong>
               </div>
               ${buildShellLiteStats([
                 { label: '机甲', value: shortenText(mechText, 10) },
+                { label: '防具', value: shortenText(防具Text, 10) },
                 { label: '魂骨', value: String(soulBoneEntries.length || 0) },
               ])}
             </section>
@@ -31731,6 +31747,7 @@
       previewKey === '武装工坊详细页' ||
       previewKey === '武装详情：斗铠' ||
       previewKey === '武装详情：机甲' ||
+      previewKey === '武装详情：防具' ||
       previewKey === '武装详情：主武器' ||
       String(previewKey || '').startsWith('斗铠部件：')
     ) {
@@ -31739,9 +31756,11 @@
       const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
       const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
       const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
+      const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
       const armorPath = activeCharKey ? ['char', activeCharKey, '装备', '斗铠'] : [];
       const mechPath = activeCharKey ? ['char', activeCharKey, '装备', '机甲'] : [];
       const weaponPath = activeCharKey ? ['char', activeCharKey, '装备', '武器'] : [];
+      const 防具路径 = activeCharKey ? ['char', activeCharKey, '装备', '防具'] : [];
       const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
       const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
       const armorSummary =
@@ -31756,6 +31775,10 @@
         weapon && (weapon.名称 || weapon['名称'])
           ? `${toText(weapon.名称 || weapon['名称'], '无')} / ${toText(weapon.品阶 || weapon['品阶'], '无品阶')}`
           : '无';
+      const 防具摘要 =
+        防具 && (防具.名称 || 防具['名称'])
+          ? `${toText(防具.名称 || 防具['名称'], '无')} / ${toText(防具.装备状态, '未装备')}`
+          : '无';
       const jobSummary = jobs.length
         ? jobs
             .slice(0, 2)
@@ -31769,8 +31792,6 @@
       const battleForm = toText(deepGet(snapshot, 'activeChar.状态.行动', '日常'), '日常');
       const armorExists = toNumber(armor.等级, 0) > 0 || !!toText(armor.名称 || armor['名称'], '');
       const mechExists = toText(mech.等级, '无') !== '无' || !!toText(mech.名称 || mech['名称'] || mech.型号, '');
-      const armorEquipped = toText(armor.装备状态, '未装备') === '已装备';
-      const mechEquipped = toText(mech.装备状态, '未装备') === '已装备';
       const armorBonusItems = buildStatsBonusItems(deepGet(armor, '_属性加成', deepGet(armor, '属性加成', {})), {
         includeLvEquiv: true,
       });
@@ -31779,6 +31800,10 @@
       const weaponBonusItems = buildStatsBonusItems(deepGet(weapon, '属性加成', {}), {
         percentAsLevel: weaponTypeText === '神器' || weaponTypeText === '超神器',
       });
+      const 防具加成条目 = 防具路径.length
+        ? buildEditableStatBonusItems([...防具路径, '属性加成'], deepGet(防具, '属性加成', {}))
+        : buildStatsBonusItems(deepGet(防具, '属性加成', {}));
+      const 防具存在 = !!toText(防具.名称 || 防具['名称'], '');
       const armorSlotDefs = [
         { x: 50, y: 12, label: '头盔', preview: '斗铠部件：头盔' },
         { x: 50, y: 34, label: '胸铠', preview: '斗铠部件：胸铠' },
@@ -31976,6 +32001,87 @@
                   <div class="archive-card full">
                     <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
                       <button type="button" class="relation-action-btn equipment-action-btn" data-equipment-action="unequip" data-equipment-char="${escapeHtmlAttr(activeCharKey)}" data-equipment-kind="mech">卸下机甲</button>
+                    </div>
+                  </div>
+                `
+                    : ''
+                }
+              </div>
+            `,
+        };
+      }
+
+      if (previewKey === '武装详情：防具') {
+        return {
+          title: toText(防具.名称 || 防具['名称'], '防具详情'),
+          summary: '',
+          body: `
+              <div class="archive-modal-grid">
+                <div class="archive-card full">
+                  <div class="archive-card-head"><div class="archive-card-title">防具详情</div></div>
+                  ${makeTileGrid([
+                    {
+                      label: '名称',
+                      value: 防具路径.length
+                        ? makeInlineEditableValue(toText(防具.名称 || 防具['名称'], '无'), {
+                            path: [...防具路径, '名称'],
+                            kind: 'string',
+                            rawValue: toText(防具.名称 || 防具['名称'], '无'),
+                          })
+                        : htmlEscape(toText(防具.名称 || 防具['名称'], '无')),
+                    },
+                    {
+                      label: '品阶',
+                      value: 防具路径.length
+                        ? makeInlineEditableValue(toText(防具.品阶 || 防具['品阶'], '无'), {
+                            path: [...防具路径, '品阶'],
+                            kind: 'string',
+                            rawValue: toText(防具.品阶 || 防具['品阶'], '无'),
+                          })
+                        : htmlEscape(toText(防具.品阶 || 防具['品阶'], '无')),
+                    },
+                    {
+                      label: '装备状态',
+                      value: 防具路径.length
+                        ? makeInlineEditableValue(toText(防具.装备状态, '未装备'), {
+                            path: [...防具路径, '装备状态'],
+                            kind: 'enum_select',
+                            rawValue: toText(防具.装备状态, '未装备'),
+                            editorMeta: { options: ['未装备', '已装备'] },
+                          })
+                        : htmlEscape(toText(防具.装备状态, '未装备')),
+                    },
+                    { label: '特性数', value: String(Object.keys(deepGet(防具, '特性', {})).length) },
+                  ])}
+                </div>
+                <div class="archive-card full">
+                  <div class="archive-card-head"><div class="archive-card-title">防具加成</div></div>
+                  ${makeTileGrid(防具加成条目)}
+                </div>
+                <div class="archive-card full">
+                  <div class="archive-card-head"><div class="archive-card-title">防具特性</div></div>
+                  ${makeTimelineStack(
+                    safeEntries(deepGet(防具, '特性', {})).length
+                      ? safeEntries(deepGet(防具, '特性', {})).map(([name, item]) => ({
+                          title: htmlEscape(name),
+                          desc: 防具路径.length
+                            ? makeInlineEditableValue(toText(deepGet(item, '描述', '无'), '无'), {
+                                path: [...防具路径, '特性', name, '描述'],
+                                kind: 'string',
+                                rawValue: toText(deepGet(item, '描述', '无'), '无'),
+                                multiline: true,
+                              })
+                            : htmlEscape(toText(deepGet(item, '描述', '无'), '无')),
+                        }))
+                      : [{ title: '暂无防具特性', desc: '当前防具未记录额外特性。' }],
+                  )}
+                </div>
+                ${
+                  isPlayerControlled && 防具存在
+                    ? `
+                  <div class="archive-card full">
+                    <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
+                      <button type="button" class="relation-action-btn equipment-action-btn" data-equipment-action="unequip" data-equipment-char="${escapeHtmlAttr(activeCharKey)}" data-equipment-kind="def">卸下防具</button>
                     </div>
                   </div>
                 `
@@ -32238,6 +32344,7 @@
                   { label: '斗铠', value: armorSummary, preview: '武装详情：斗铠' },
                   { label: '机甲', value: mechSummary, preview: '武装详情：机甲' },
                   { label: '主武器', value: weaponSummary, preview: '武装详情：主武器' },
+                  { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
                   { label: '副职业', value: jobSummary },
                   { label: '战斗形态', value: battleForm },
                 ])}
@@ -33219,6 +33326,7 @@
       const targetArmor = deepGet(targetChar, '装备.斗铠', {});
       const targetMech = deepGet(targetChar, '装备.机甲', {});
       const targetWeapon = deepGet(targetChar, '装备.武器', {});
+      const targetDefense = deepGet(targetChar, '装备.防具', {});
       const targetSpiritEntries = 取角色武魂条目_桥接(targetChar);
       return {
         title: `${targetName} / 角色基本信息`,
@@ -33374,6 +33482,28 @@
                       : targetChar
                         ? targetWeapon && targetWeapon['名称']
                           ? `${toText(targetWeapon['名称'], '无')} / ${toText(targetWeapon.品阶 || targetWeapon['品阶'], '无品阶')}`
+                          : '无'
+                        : '未收录',
+                  },
+                  {
+                    label: '防具',
+                    value: targetCharPath.length
+                      ? `${makeInlineEditableValue(toText(targetDefense.名称 || targetDefense['名称'], '无'), {
+                          path: [...targetCharPath, '装备', '防具', '名称'],
+                          kind: 'string',
+                          rawValue: toText(targetDefense.名称 || targetDefense['名称'], '无'),
+                        })} / ${makeInlineEditableValue(toText(targetDefense.品阶 || targetDefense['品阶'], '无品阶'), {
+                          path: [...targetCharPath, '装备', '防具', '品阶'],
+                          kind: 'string',
+                          rawValue: toText(targetDefense.品阶 || targetDefense['品阶'], '无品阶'),
+                        })} / ${makeInlineEditableValue(toText(targetDefense.装备状态, '未装备'), {
+                          path: [...targetCharPath, '装备', '防具', '装备状态'],
+                          kind: 'string',
+                          rawValue: toText(targetDefense.装备状态, '未装备'),
+                        })}`
+                      : targetChar
+                        ? targetDefense && (targetDefense.名称 || targetDefense['名称'])
+                          ? `${toText(targetDefense.名称 || targetDefense['名称'], '无')} / ${toText(targetDefense.品阶 || targetDefense['品阶'], '无品阶')} / ${toText(targetDefense.装备状态, '未装备')}`
                           : '无'
                         : '未收录',
                   },
@@ -42782,10 +42912,10 @@ ${toText(combatData.战斗意图, '点到为止')}
       const 物品分类压力 = 当前冷归档页签 === '物品' ? 计算物品分类归档压力_桥接(数据根) : null;
       const 建议名称 = new Set(
         当前冷归档页签 === '动态地点'
-          ? 选择自动归档动态地点名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限)
+          ? 选择自动归档动态地点名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接)
           : 当前冷归档页签 === '物品'
-            ? 选择自动归档物品名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限, 物品分类压力 && 物品分类压力.允许分类.length ? { 允许分类: 物品分类压力.允许分类 } : {})
-            : 选择自动归档角色名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限),
+            ? 选择自动归档物品名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接, 物品分类压力 && 物品分类压力.允许分类.length ? { 允许分类: 物品分类压力.允许分类 } : {})
+            : 选择自动归档角色名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接),
       );
       const 复选框列表 = Array.from(detailSurfaceHost.querySelectorAll(
         当前冷归档页签 === '动态地点'
@@ -43799,7 +43929,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           patches.push({ op: 'add', path: `${charPath}/魂骨/${slotInfo.subSlot}`, value: newBoneData });
         } else {
           let oldItem = null;
-          const equipKeyMap = { armor: '斗铠', mech: '机甲', wpn: '武器' };
+          const equipKeyMap = { armor: '斗铠', mech: '机甲', wpn: '武器', def: '防具' };
           const equipKey = equipKeyMap[slotInfo.mainSlot] || slotInfo.mainSlot;
           let equipPath = `${charPath}/装备/${equipKey}`;
           if (slotInfo.subSlot) {
@@ -43817,6 +43947,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           const newEquipData = Object.assign({}, itemData, { 名称: itemName });
           delete newEquipData.name;
           delete newEquipData.数量;
+          if (slotInfo.mainSlot === 'def') newEquipData.装备状态 = '已装备';
           if (slotInfo.subSlot && (!装备数据[equipKey] || !装备数据[equipKey].部件)) {
             patches.push({ op: 'add', path: `${charPath}/装备/${equipKey}/部件`, value: {} });
           }
@@ -43874,6 +44005,16 @@ ${toText(combatData.战斗意图, '点到为止')}
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, weaponName, weapon);
           patches.push({ op: 'replace', path: `${charPath}/装备/武器`, value: {} });
           await this.submitPatch(patches, `已卸下主武器 ${weaponName}`);
+          return;
+        }
+
+        if (targetType === 'def') {
+          const 防具 = 装备数据.防具 || {};
+          const 防具名 = toText(防具.名称 || 防具['名称'], '');
+          if (!防具名) throw new Error('当前没有已装备的防具。');
+          this.queueInventoryAdd(patches, charPath, inventoryBuffer, 防具名, 防具);
+          patches.push({ op: 'replace', path: `${charPath}/装备/防具`, value: {} });
+          await this.submitPatch(patches, `已卸下防具 ${防具名}`);
           return;
         }
 
@@ -45251,8 +45392,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     parseEquipSlot(name, data) {
       const tName = name || '';
       const 槽位 = toText(data && data.装备槽位, '无');
+      const 分类文本 = toText(data && (data.物品分类 || data.分类), '');
       const 类型文本 = toText(data && data.类型, '');
       if (槽位 === '武器') return { mainSlot: 'wpn', subSlot: null };
+      if (槽位 === '防具' || 分类文本 === '防具装备') return { mainSlot: 'def', subSlot: null };
       if (槽位 === '机甲') return { mainSlot: 'mech', subSlot: null };
       if (槽位 === '外附魂骨1') return { mainSlot: 'soul_bone', subSlot: '外附魂骨1', external: true };
       if (槽位 === '外附魂骨2') return { mainSlot: 'soul_bone', subSlot: '外附魂骨2', external: true };
@@ -45282,7 +45425,8 @@ ${toText(combatData.战斗意图, '点到为止')}
 
       // 匹配其他品类
       if (/机甲/.test(tName)) return { mainSlot: 'mech', subSlot: null };
-      if (/(剑|刀|枪|戟|炮|弓|盾|锤|暗器|匕首)$/.test(tName)) return { mainSlot: 'wpn', subSlot: null };
+      if (/防具|护具|护甲|护服|防护服|胸甲|铠甲|护心镜|护盾|盾牌/.test(`${tName} ${分类文本} ${槽位}`)) return { mainSlot: 'def', subSlot: null };
+      if (/(剑|刀|枪|戟|炮|弓|锤|暗器|匕首)$/.test(tName)) return { mainSlot: 'wpn', subSlot: null };
 
       return null;
     },

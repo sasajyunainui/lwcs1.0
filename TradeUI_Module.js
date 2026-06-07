@@ -347,6 +347,7 @@ const 交易物品定义分类列表 = Object.freeze([
   '制造材料',
   '设计图纸',
   '主武器',
+  '防具装备',
   '斗铠部件',
   '机甲机体',
   '魂骨',
@@ -361,7 +362,7 @@ const 交易物品定义分类列表 = Object.freeze([
 ]);
 const 交易物品定义分类集合 = new Set(交易物品定义分类列表);
 const 交易可使用物品分类集合 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
-const 交易装备物品分类集合 = new Set(['主武器', '斗铠部件', '机甲机体', '魂骨']);
+const 交易装备物品分类集合 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 
 class TradeUIComponent {
   constructor(container, snapshot, options = {}) {
@@ -664,6 +665,7 @@ class TradeUIComponent {
     if (交易装备物品分类集合.has(分类)) {
       if (来源.装备槽位) 定义.装备槽位 = 来源.装备槽位;
       else if (分类 === '主武器') 定义.装备槽位 = '武器';
+      else if (分类 === '防具装备') 定义.装备槽位 = '防具';
       if (Number(来源.基础耐久 || 0) > 0) 定义.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 定义.属性加成 = 来源.属性加成;
       if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 定义.装备技能 = 来源.装备技能;

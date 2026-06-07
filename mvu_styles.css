@@ -10628,6 +10628,15 @@ body.mvu-layout-unified #mvu-unified-mount .org-matrix-summary-row {
   background: var(--mvu-hud-panel-soft) !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mini-box {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  align-content: start !important;
+  gap: 2px !important;
+  min-height: 38px !important;
+  overflow: hidden !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .world-core-tile {
   min-width: 0 !important;
   min-height: 0 !important;
@@ -10669,6 +10678,11 @@ body.mvu-layout-unified #mvu-unified-mount .terminal-home-line b {
   white-space: nowrap !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mini-box b {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .simple-row span,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-row span,
 body.mvu-layout-unified #mvu-unified-mount .hero-row span,
@@ -10686,14 +10700,22 @@ body.mvu-layout-unified #mvu-unified-mount .terminal-home-line span {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .terminal-home-line span,
-body.mvu-layout-unified #mvu-unified-mount .world-core-tile strong,
-body.mvu-layout-unified #mvu-unified-mount .mini-box span {
+body.mvu-layout-unified #mvu-unified-mount .world-core-tile strong {
   display: block !important;
   min-height: 1.34em !important;
   max-height: 3.9em !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mini-box span {
+  display: block !important;
+  min-height: 1.34em !important;
+  max-height: 1.34em !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .terminal-home-line span::-webkit-scrollbar,
@@ -11119,7 +11141,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive .inte
   transform-origin: center !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .armory-grid,
+body.mvu-layout-unified #mvu-unified-mount .armory-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .vault-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }

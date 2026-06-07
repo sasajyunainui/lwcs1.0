@@ -214,7 +214,13 @@ function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = 
   const 时间线事件列表 = Array.isArray(TimelineEvents) ? TimelineEvents : Object.values(TimelineEvents || {}).flat();
   const 当前tick数值 = Number(当前tick || 0);
   时间线事件列表
-    .filter(事件 => Math.abs(Number(事件?.触发tick || 0) - 当前tick数值) <= 720)
+    .filter(事件 => Number.isFinite(Number(事件?.触发tick)))
+    .sort((左事件, 右事件) => {
+      const 左距离 = Math.abs(Number(左事件?.触发tick || 0) - 当前tick数值);
+      const 右距离 = Math.abs(Number(右事件?.触发tick || 0) - 当前tick数值);
+      return 左距离 - 右距离 || Number(左事件?.触发tick || 0) - Number(右事件?.触发tick || 0);
+    })
+    .slice(0, 5)
     .forEach(事件 => {
       (Array.isArray(事件?.人物) ? 事件.人物 : []).forEach(角色名 => {
         const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
@@ -2978,8 +2984,15 @@ function 构建MVU正文武魂魂技行列表_V1(角色 = {}) {
 }
 
 function 构建MVU正文装备背包行列表_V1(角色 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' ? 角色.装备 : {};
+  const 装备摘要 = {
+    武器: 装备.武器,
+    防具: 装备.防具,
+    斗铠: 装备.斗铠,
+    机甲: 装备.机甲,
+  };
   return [
-    构建MVU正文普通行_V1('装备', 角色?.装备, 2),
+    构建MVU正文普通行_V1('装备', 装备摘要, 2),
     构建MVU正文普通行_V1('背包', 角色?.背包, 2),
   ].filter(Boolean);
 }
@@ -3139,13 +3152,20 @@ function 构建角色六维对标参照值_V1(角色 = {}, 等级 = 1) {
 function 读取角色装备六维加成_V1(角色 = {}) {
   const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' ? 角色.装备 : {};
   const 武器加成 = 计算装备属性加成_V1(装备.武器, { ...角色, 属性基准模式: '已含本武器加成' });
+  const 防具加成 = 装备.防具?.装备状态 === '已装备'
+    ? 计算装备属性加成_V1(装备.防具, { ...角色, 属性基准模式: '已含本武器加成' })
+    : {};
   const 斗铠加成 = 装备.斗铠?.装备状态 === '已装备'
     ? (装备.斗铠?._属性加成 || 计算斗铠属性加成_V1(装备.斗铠).属性加成 || {})
     : {};
   const 机甲加成 = 装备.机甲?.装备状态 === '已装备'
     ? (装备.机甲?._属性加成 || 计算机甲属性加成_V1(装备.机甲) || {})
     : {};
-  const 求和 = 字段 => Number(武器加成?.[字段] || 0) + Number(斗铠加成?.[字段] || 0) + Number(机甲加成?.[字段] || 0);
+  const 求和 = 字段 =>
+    Number(武器加成?.[字段] || 0) +
+    Number(防具加成?.[字段] || 0) +
+    Number(斗铠加成?.[字段] || 0) +
+    Number(机甲加成?.[字段] || 0);
   return {
     力量: 求和('力量'),
     防御: 求和('防御'),
@@ -3926,6 +3946,9 @@ function 计算当前装备生效属性加成_V1(角色或装备 = {}) {
   };
   if (装备?.斗铠?.装备状态 === '已装备') {
     追加加成(计算斗铠属性加成_V1(装备.斗铠).属性加成);
+  }
+  if (装备?.防具?.装备状态 === '已装备') {
+    追加加成(计算装备属性加成_V1(装备.防具, 角色或装备));
   }
   if (装备?.机甲?.装备状态 === '已装备') {
     追加加成(计算机甲属性加成_V1(装备.机甲));
@@ -5068,6 +5091,7 @@ function buildTemporaryCombatSkillMap(seedText, unitName, combatType, level, ski
 function buildTemporaryCombatEquipmentShell() {
   return {
     武器: { 名称: '无', 品阶: '无', 属性加成: { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 } },
+    防具: { 名称: '无', 品阶: '无', 装备状态: '未装备', 特性: {}, 属性加成: { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 } },
     斗铠: { 等级: 0, 名称: '无', 领域: '无', 材质: '无', 装备状态: '未装备', 部件: {} },
     机甲: { 等级: '无', 名称: '无', 型号: '无', 材质: '无', 状态: '无', 装备状态: '未装备', 武装: '无', 品质系数: 1.0 },
   };
@@ -10881,6 +10905,7 @@ function 收口执行条件分支条件条目_V1(value = {}, recordViolation = (
   };
   const 条件值别名 = {
     武器: '已装备主武器',
+    防具: '已装备防具',
     斗铠: '已装备斗铠',
     机甲: '已装备机甲',
     蓄力: '蓄力中',
@@ -19632,6 +19657,7 @@ function normalizeNoSoulPowerCharacterData(char = {}) {
   if (!char.装备.斗铠 || typeof char.装备.斗铠 !== 'object') char.装备.斗铠 = {};
   if (!char.装备.机甲 || typeof char.装备.机甲 !== 'object') char.装备.机甲 = {};
   if (!char.装备.武器 || typeof char.装备.武器 !== 'object') char.装备.武器 = {};
+  if (!char.装备.防具 || typeof char.装备.防具 !== 'object') char.装备.防具 = {};
 
   char.属性.等级 = 0;
   char.属性.等级惩罚 = 0;
@@ -19683,6 +19709,7 @@ function normalizeNoSoulPowerCharacterData(char = {}) {
   char.装备.机甲.武装 = '无';
   char.装备.机甲.品质系数 = 1.0;
   char.装备.机甲._属性加成 = { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
+  char.装备.防具 = { 名称: '无', 品阶: '无', 装备状态: '未装备', 特性: {}, 属性加成: { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 } };
 
   return char;
 }
@@ -24255,6 +24282,27 @@ const EquipmentSchema = z
           .prefault({}),
       })
       .prefault({}),
+    防具: z
+      .object({
+        名称: z.string().prefault('无'),
+        品阶: z.string().prefault('无').describe('普通防具、防护装备或魂导护具品阶'),
+        装备状态: z.string().prefault('未装备'),
+        特性: z
+          .record(z.string(), z.object({ 描述: z.string().prefault('无') }).prefault({}))
+          .prefault({})
+          .describe('附带的防护特性，如:抗冲击/减伤/元素抗性'),
+        属性加成: z
+          .object({
+            魂力上限: z.union([z.coerce.number(), z.string()]).prefault(0),
+            精神力上限: z.union([z.coerce.number(), z.string()]).prefault(0),
+            力量: z.union([z.coerce.number(), z.string()]).prefault(0),
+            防御: z.union([z.coerce.number(), z.string()]).prefault(0),
+            敏捷: z.union([z.coerce.number(), z.string()]).prefault(0),
+            体力上限: z.union([z.coerce.number(), z.string()]).prefault(0),
+          })
+          .prefault({}),
+      })
+      .prefault({}),
     斗铠: z
       .object({
         等级: z.coerce.number().prefault(0),
@@ -24533,6 +24581,7 @@ const 物品分类列表_V1 = Object.freeze([
   '制造材料',
   '设计图纸',
   '主武器',
+  '防具装备',
   '斗铠部件',
   '机甲机体',
   '魂骨',
@@ -24547,7 +24596,7 @@ const 物品分类列表_V1 = Object.freeze([
 ]);
 const 物品分类集合_V1 = new Set(物品分类列表_V1);
 const 可执行使用效果物品分类集合_V1 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
-const 装备物品分类集合_V1 = new Set(['主武器', '斗铠部件', '机甲机体', '魂骨']);
+const 装备物品分类集合_V1 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 
 function 规范化物品分类_V1(分类 = '', fallback = '剧情杂物') {
   const 文本 = String(分类 || '').trim();
@@ -24599,6 +24648,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
   if (装备物品分类集合_V1.has(物品分类)) {
     if (String(来源.装备槽位 || '').trim()) 输出.装备槽位 = String(来源.装备槽位).trim();
     else if (物品分类 === '主武器') 输出.装备槽位 = '武器';
+    else if (物品分类 === '防具装备') 输出.装备槽位 = '防具';
     if (Number(来源.基础耐久 || 0) > 0) 输出.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
     if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
     if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 输出.属性倍率 = cloneJsonValue(来源.属性倍率, {});
@@ -26331,6 +26381,19 @@ const CharacterSchema = z
         魂力上限: final_sp_max,
       },
     });
+    const 防具加成 = char.装备.防具?.装备状态 === '已装备'
+      ? 计算装备属性加成_V1(char.装备.防具, {
+          属性: {
+            等级: char.属性.等级,
+            力量: final_str,
+            防御: final_def,
+            敏捷: final_agi,
+            体力上限: final_vit_max,
+            精神力上限: final_men_max,
+            魂力上限: final_sp_max,
+          },
+        })
+      : {};
 
     if (final_men_max >= 50000) char.属性.精神境界 = '神元境';
     else if (final_men_max >= 20000) char.属性.精神境界 = '灵域境';
@@ -26339,15 +26402,15 @@ const CharacterSchema = z
     else if (final_men_max >= 50) char.属性.精神境界 = '灵通境';
     else char.属性.精神境界 = '灵元境';
 
-    char.属性.力量 = Math.floor(final_str + (wpnBonus.力量 || 0) + (armorBonus.力量 || 0) + (mechBonus.力量 || 0));
-    char.属性.防御 = Math.floor(final_def + (wpnBonus.防御 || 0) + (armorBonus.防御 || 0) + (mechBonus.防御 || 0));
-    char.属性.敏捷 = Math.floor(final_agi + (wpnBonus.敏捷 || 0) + (armorBonus.敏捷 || 0) + (mechBonus.敏捷 || 0));
+    char.属性.力量 = Math.floor(final_str + (wpnBonus.力量 || 0) + (防具加成.力量 || 0) + (armorBonus.力量 || 0) + (mechBonus.力量 || 0));
+    char.属性.防御 = Math.floor(final_def + (wpnBonus.防御 || 0) + (防具加成.防御 || 0) + (armorBonus.防御 || 0) + (mechBonus.防御 || 0));
+    char.属性.敏捷 = Math.floor(final_agi + (wpnBonus.敏捷 || 0) + (防具加成.敏捷 || 0) + (armorBonus.敏捷 || 0) + (mechBonus.敏捷 || 0));
     char.属性.体力上限 = Math.floor(
-      final_vit_max + (wpnBonus.体力上限 || 0) + (armorBonus.体力上限 || 0) + (mechBonus.体力上限 || 0),
+      final_vit_max + (wpnBonus.体力上限 || 0) + (防具加成.体力上限 || 0) + (armorBonus.体力上限 || 0) + (mechBonus.体力上限 || 0),
     );
     char.属性.HP上限 = Math.max(1, Number(char.属性.体力上限 || 1));
     char.属性.精神力上限 = Math.floor(
-      final_men_max + (wpnBonus.精神力上限 || 0) + (armorBonus.精神力上限 || 0) + (mechBonus.精神力上限 || 0),
+      final_men_max + (wpnBonus.精神力上限 || 0) + (防具加成.精神力上限 || 0) + (armorBonus.精神力上限 || 0) + (mechBonus.精神力上限 || 0),
     );
     char.属性.魂力上限 = Math.floor(final_sp_max);
     normalizeStatHpFields(char.属性);
@@ -26741,7 +26804,7 @@ const 内置神器与灵物定义_V1 = Object.freeze({
 function 写入内置物品定义_V1(data = {}) {
   确保物品分类表_V1(data);
   Object.entries(内置神器与灵物定义_V1).forEach(([物品名, 模板]) => {
-    if (!物品定义存在_V1(data, 物品名)) 写入分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板));
+    if (!物品定义存在_V1(data, 物品名)) 写入分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板), 模板.分类);
   });
 }
 
@@ -27069,12 +27132,6 @@ const AssociationShopProducts = {
       描述: '制式黑级机甲(流水线白板，品质系数1.0)。',
       品质: '黑级',
     },
-    红级机甲定制: {
-      价格: 5000000000,
-      货币: '联邦币',
-      分类: '剧情杂物',
-      描述: '神级机甲的顶级代工定制服务(需自备神级材料)。',
-    },
   },
   修理师协会: {
     基础维护套件: {
@@ -27136,7 +27193,7 @@ function 规范化商品模板为物品定义_V1(商品名 = '', 商品模板 = 
 function 写入物品定义并生成库存状态_V1(data = {}, 商品名 = '', 商品模板 = {}, 库存数量 = null) {
   确保物品分类表_V1(data);
   const 已有定义 = 查找物品定义_V1(data, 商品名);
-  if (!已有定义) 写入分类物品定义_V1(data, 商品名, 规范化商品模板为物品定义_V1(商品名, 商品模板));
+  if (!已有定义) 写入分类物品定义_V1(data, 商品名, 规范化商品模板为物品定义_V1(商品名, 商品模板), 商品模板.分类);
   else if (已有定义.分类 === '天然灵物') {
     const 模板年限 = Number(商品模板?.副职业参数?.年限 || 0);
     const 现有年限 = Number(已有定义.定义?.副职业参数?.年限 || 0);
@@ -30473,29 +30530,38 @@ export const Schema = z
       if (hasDragon) vitMult = Math.max(vitMult, 1.5);
 
       const wpnBonus = 计算装备属性加成_V1(c.装备?.武器, { ...c, 属性基准模式: '已含本武器加成' });
+      const 防具加成 = c.装备?.防具?.装备状态 === '已装备'
+        ? 计算装备属性加成_V1(c.装备?.防具, { ...c, 属性基准模式: '已含本武器加成' })
+        : {};
       let eb = {
         sp:
           (wpnBonus.魂力上限 || 0) +
+          (防具加成.魂力上限 || 0) +
           (c.装备?.斗铠?._属性加成?.魂力上限 || 0) +
           (c.装备?.机甲?._属性加成?.魂力上限 || 0),
         men:
           (wpnBonus.精神力上限 || 0) +
+          (防具加成.精神力上限 || 0) +
           (c.装备?.斗铠?._属性加成?.精神力上限 || 0) +
           (c.装备?.机甲?._属性加成?.精神力上限 || 0),
         str:
           (wpnBonus.力量 || 0) +
+          (防具加成.力量 || 0) +
           (c.装备?.斗铠?._属性加成?.力量 || 0) +
           (c.装备?.机甲?._属性加成?.力量 || 0),
         def:
           (wpnBonus.防御 || 0) +
+          (防具加成.防御 || 0) +
           (c.装备?.斗铠?._属性加成?.防御 || 0) +
           (c.装备?.机甲?._属性加成?.防御 || 0),
         agi:
           (wpnBonus.敏捷 || 0) +
+          (防具加成.敏捷 || 0) +
           (c.装备?.斗铠?._属性加成?.敏捷 || 0) +
           (c.装备?.机甲?._属性加成?.敏捷 || 0),
         vit:
           (wpnBonus.体力上限 || 0) +
+          (防具加成.体力上限 || 0) +
           (c.装备?.斗铠?._属性加成?.体力上限 || 0) +
           (c.装备?.机甲?._属性加成?.体力上限 || 0),
       };
@@ -30539,6 +30605,7 @@ export const Schema = z
       let finalMen =
         c.属性.精神力上限 -
         (wpnBonus.精神力上限 || 0) -
+        (防具加成.精神力上限 || 0) -
         (c.装备?.斗铠?._属性加成?.精神力上限 || 0) -
         (c.装备?.机甲?._属性加成?.精神力上限 || 0);
       if (finalMen >= 50000) c.属性.精神境界 = '神元境';
@@ -31572,6 +31639,21 @@ export const Schema = z
             体力上限: Number(armorBonus.体力上限 || 0),
             精神上限: Number(armorBonus.精神力上限 || 0),
             魂力上限: Number(armorBonus.魂力上限 || 0),
+          });
+        }
+        const 防具加成 = sourceChar.装备?.防具?.装备状态 === '已装备'
+          ? 计算装备属性加成_V1(sourceChar.装备?.防具, { ...sourceChar, 属性基准模式: '已含本武器加成' })
+          : {};
+        if (Object.values(防具加成).some(value => Number(value || 0) !== 0)) {
+          equipmentBonusSummary.push({
+            装备: '防具',
+            等效等级: 0,
+            力量: Number(防具加成.力量 || 0),
+            防御: Number(防具加成.防御 || 0),
+            敏捷: Number(防具加成.敏捷 || 0),
+            体力上限: Number(防具加成.体力上限 || 0),
+            精神上限: Number(防具加成.精神力上限 || 0),
+            魂力上限: Number(防具加成.魂力上限 || 0),
           });
         }
         const mechBonus = cloneValue(sourceChar.装备?.机甲?._属性加成 || {}, {});
