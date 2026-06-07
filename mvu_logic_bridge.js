@@ -2349,54 +2349,188 @@
     return 取槽位条目_桥接(魂环, 是血脉魂技槽位键_桥接);
   }
 
+  const 物品定义分类列表_桥接 = Object.freeze([
+    '锻造金属',
+    '制造材料',
+    '设计图纸',
+    '主武器',
+    '斗铠部件',
+    '机甲机体',
+    '魂骨',
+    '魂灵',
+    '魂技造物',
+    '天然灵物',
+    '丹药',
+    '身份票据',
+    '修炼秘籍',
+    '一次性道具',
+    '剧情杂物',
+  ]);
+  const 物品定义分类集合_桥接 = new Set(物品定义分类列表_桥接);
+  const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '一次性道具', '魂技造物']);
+  const 装备物品分类集合_桥接 = new Set(['主武器', '斗铠部件', '机甲机体', '魂骨']);
+
+  function 规范化物品定义分类_桥接(分类 = '', fallback = '剧情杂物') {
+    const 文本 = toText(分类, '').trim();
+    return 物品定义分类集合_桥接.has(文本) ? 文本 : fallback;
+  }
+
+  function 读取物品定义显式分类_桥接(定义 = {}, fallback = '') {
+    const 来源 = 定义 && typeof 定义 === 'object' && !Array.isArray(定义) ? 定义 : {};
+    return 规范化物品定义分类_桥接(来源.物品分类 || 来源.分类 || '', fallback);
+  }
+
+  function 要求物品定义分类_桥接(物品名 = '', 定义 = {}, 分类 = '') {
+    const 分类名 = 规范化物品定义分类_桥接(分类 || 读取物品定义显式分类_桥接(定义, ''), '');
+    if (!分类名) throw new Error(`物品定义缺少分类：${toText(物品名, '未命名') || '未命名'}`);
+    return 分类名;
+  }
+
+  function 确保物品定义分类表_桥接(rootData = {}) {
+    if (!rootData || typeof rootData !== 'object') return {};
+    if (!rootData.物品 || typeof rootData.物品 !== 'object' || Array.isArray(rootData.物品)) rootData.物品 = {};
+    物品定义分类列表_桥接.forEach(分类 => {
+      if (!rootData.物品[分类] || typeof rootData.物品[分类] !== 'object' || Array.isArray(rootData.物品[分类]))
+        rootData.物品[分类] = {};
+    });
+    return rootData.物品;
+  }
+
+  function 遍历物品定义_桥接(rootData = {}, 回调 = () => {}) {
+    const 物品表 = rootData && rootData.物品 && typeof rootData.物品 === 'object' && !Array.isArray(rootData.物品) ? rootData.物品 : {};
+    物品定义分类列表_桥接.forEach(分类 => {
+      safeEntries(物品表[分类] || {}).forEach(([物品名, 定义]) => {
+        if (物品名 && 定义 && typeof 定义 === 'object' && !Array.isArray(定义)) 回调(物品名, 定义, 分类);
+      });
+    });
+  }
+
+  function 取物品定义条目列表_桥接(rootData = {}) {
+    const 列表 = [];
+    遍历物品定义_桥接(rootData, (物品名, 定义, 分类) => 列表.push({ 物品名, 定义, 分类 }));
+    return 列表;
+  }
+
+  function 取物品定义平铺表_桥接(rootData = {}) {
+    return Object.fromEntries(
+      取物品定义条目列表_桥接(rootData).map(({ 物品名, 定义, 分类 }) => [
+        物品名,
+        { ...cloneJsonValue(定义, {}), 物品分类: 分类 },
+      ]),
+    );
+  }
+
+  function 查找物品定义_桥接(rootData = {}, 物品名 = '') {
+    const 名称 = toText(物品名, '').trim();
+    if (!名称) return null;
+    let 结果 = null;
+    遍历物品定义_桥接(rootData, (当前名, 定义, 分类) => {
+      if (!结果 && 当前名 === 名称) 结果 = { 物品名: 当前名, 定义, 分类 };
+    });
+    return 结果;
+  }
+
+  function 物品定义存在_桥接(rootData = {}, 物品名 = '') {
+    return !!查找物品定义_桥接(rootData, 物品名);
+  }
+
+  function 写入分类物品定义_桥接(rootData = {}, 物品名 = '', 定义 = {}, 分类 = '', 选项 = {}) {
+    const 名称 = toText(物品名, '').trim();
+    if (!名称) throw new Error('物品名称不能为空。');
+    const 分类名 = 要求物品定义分类_桥接(名称, 定义, 分类);
+    const 物品表 = 确保物品定义分类表_桥接(rootData);
+    const 已有 = 查找物品定义_桥接(rootData, 名称);
+    if (已有 && 已有.分类 !== 分类名 && !选项.允许覆盖) throw new Error(`同名物品已存在于【${已有.分类}】。`);
+    物品定义分类列表_桥接.forEach(当前分类 => {
+      if (当前分类 !== 分类名 && 物品表[当前分类]) delete 物品表[当前分类][名称];
+    });
+    物品表[分类名][名称] = 构建物品定义记录_桥接(名称, 定义, 分类名);
+    return { 物品名: 名称, 分类: 分类名, 定义: 物品表[分类名][名称] };
+  }
+
+  function 删除分类物品定义_桥接(rootData = {}, 物品名 = '') {
+    const 命中 = 查找物品定义_桥接(rootData, 物品名);
+    if (!命中) return false;
+    const 物品表 = 确保物品定义分类表_桥接(rootData);
+    if (物品表[命中.分类]) delete 物品表[命中.分类][命中.物品名];
+    return true;
+  }
+
   function 取物品定义_桥接(rootData = {}, 物品名 = '') {
-    const 物品表 = rootData && rootData.物品 && typeof rootData.物品 === 'object' ? rootData.物品 : {};
-    const 定义 = 物品表[物品名];
-    return 定义 && typeof 定义 === 'object' && !Array.isArray(定义) ? 定义 : {};
+    return 查找物品定义_桥接(rootData, 物品名)?.定义 || {};
   }
 
   function 合并物品定义与状态_桥接(rootData = {}, 物品名 = '', 状态 = {}) {
     const 安全状态 = 状态 && typeof 状态 === 'object' && !Array.isArray(状态) ? 状态 : {};
-    return { ...取物品定义_桥接(rootData, 物品名), ...安全状态 };
+    const 命中 = 查找物品定义_桥接(rootData, 物品名);
+    return { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', ...安全状态 };
   }
 
-  function 构建物品定义记录_桥接(物品名 = '', 数据 = {}) {
+  function 构建物品定义记录_桥接(物品名 = '', 数据 = {}, 分类 = '') {
     const 来源 = 数据 && typeof 数据 === 'object' && !Array.isArray(数据) ? 数据 : {};
+    const 物品分类 = 要求物品定义分类_桥接(物品名, 来源, 分类);
     const 记录 = {
-      类型: toText(来源.类型, '药剂'),
       阶位: Math.max(0, Math.floor(toNumber(来源.阶位, 0))),
       品质: toText(来源.品质, '普通'),
       描述: toText(来源.描述, `关于【${物品名}】的记录暂未展开。`),
       基础价格: Math.max(0, Math.floor(toNumber(来源.基础价格, 0))),
       默认货币: toText(来源.默认货币, '联邦币'),
-      装备槽位: toText(来源.装备槽位, '无'),
-      基础耐久: Math.max(0, Math.floor(toNumber(来源.基础耐久, 0))),
-      使用条件:
-        来源.使用条件 && typeof 来源.使用条件 === 'object' && !Array.isArray(来源.使用条件)
-          ? cloneJsonValue(来源.使用条件, {})
-          : {},
-      使用效果: Array.isArray(来源.使用效果) ? cloneJsonValue(来源.使用效果, []) : [],
-      副作用列表: Array.isArray(来源.副作用列表) ? cloneJsonValue(来源.副作用列表, []) : [],
-      属性加成:
-        来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)
-          ? cloneJsonValue(来源.属性加成, {})
-          : {},
-      属性倍率:
-        来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)
-          ? 归一化魂骨属性倍率_桥接(来源.属性倍率)
-          : {},
-      装备技能:
-        来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)
-          ? cloneJsonValue(来源.装备技能, {})
-          : {},
     };
     const 来源副职业参数 = 来源.副职业参数 && typeof 来源.副职业参数 === 'object' && !Array.isArray(来源.副职业参数) ? 来源.副职业参数 : {};
     const 副职业参数 = {};
-    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '融合参数', '品质系数', '标准物种'].forEach(字段名 => {
+    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '品质系数', '标准物种'].forEach(字段名 => {
       if (来源副职业参数[字段名] !== undefined) 副职业参数[字段名] = cloneJsonValue(来源副职业参数[字段名]);
     });
-    记录.副职业参数 = 副职业参数;
-    if (!记录.副作用列表.length) delete 记录.副作用列表;
+    if (物品分类 === '锻造金属') {
+      const 原始融合参数 = 来源副职业参数.融合参数 && typeof 来源副职业参数.融合参数 === 'object' && !Array.isArray(来源副职业参数.融合参数)
+        ? 来源副职业参数.融合参数
+        : null;
+      if (原始融合参数) {
+        副职业参数.融合参数 = {
+          数量: Math.max(1, Math.floor(toNumber(原始融合参数.数量, 1))),
+          融合率: Math.max(0, Math.min(100, Math.floor(toNumber(原始融合参数.融合率, 100)))),
+        };
+      }
+    }
+    if (Object.keys(副职业参数).length) 记录.副职业参数 = 副职业参数;
+    if (装备物品分类集合_桥接.has(物品分类)) {
+      if (toText(来源.装备槽位, '')) 记录.装备槽位 = toText(来源.装备槽位, '');
+      else if (物品分类 === '主武器') 记录.装备槽位 = '武器';
+      if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
+      if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
+      if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
+      if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
+      if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 记录.附带魂技 = cloneJsonValue(来源.附带魂技, {});
+    }
+    if (可使用物品分类集合_桥接.has(物品分类)) {
+      if (Array.isArray(来源.使用效果) && 来源.使用效果.length) {
+        记录.使用效果 = cloneJsonValue(来源.使用效果, []).map(效果 => {
+          if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
+          const 清理效果 = cloneJsonValue(效果, {});
+          delete 清理效果.描述;
+          return 清理效果;
+        });
+      }
+      if (Array.isArray(来源.副作用列表) && 来源.副作用列表.length) 记录.副作用列表 = cloneJsonValue(来源.副作用列表, []);
+    }
+    if (物品分类 === '修炼秘籍') {
+      if (来源.获取条件 !== undefined) 记录.获取条件 = cloneJsonValue(来源.获取条件);
+      if (来源.研读条件 !== undefined) 记录.研读条件 = cloneJsonValue(来源.研读条件);
+      if (来源.解锁内容 !== undefined) 记录.解锁内容 = cloneJsonValue(来源.解锁内容);
+    }
+    if (物品分类 === '设计图纸') {
+      ['图纸目标', '适用阶位', '产出方向'].forEach(字段名 => {
+        if (来源[字段名] !== undefined && toText(来源[字段名], '').trim()) 记录[字段名] = cloneJsonValue(来源[字段名]);
+      });
+    }
+    if (物品分类 === '制造材料' && 来源.材料用途 !== undefined && toText(来源.材料用途, '').trim()) {
+      记录.材料用途 = toText(来源.材料用途, '').trim();
+    }
+    Object.keys(记录).forEach(键 => {
+      const 值 = 记录[键];
+      if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete 记录[键];
+      else if (值 && typeof 值 === 'object' && !Array.isArray(值) && !Object.keys(值).length) delete 记录[键];
+    });
     return 记录;
   }
 
@@ -2431,14 +2565,14 @@
     const 名称文本 = toText(物品名, '');
     const 定义 = 物品定义 && typeof 物品定义 === 'object' && !Array.isArray(物品定义) ? 物品定义 : {};
     const 状态 = 背包状态 && typeof 背包状态 === 'object' && !Array.isArray(背包状态) ? 背包状态 : {};
-    const 类型文本 = toText(定义.类型 || 状态.类型, '');
+    const 分类文本 = toText(定义.物品分类 || 定义.分类, '');
     const 槽位文本 = toText(定义.装备槽位 || 状态.装备槽位, '无');
     const 品质文本 = toText(定义.品质 || 状态.品质, '');
     const 描述文本 = toText(定义.描述 || 状态.描述, '');
-    const 合并文本 = `${名称文本} ${类型文本} ${槽位文本} ${品质文本} ${描述文本}`;
-    if (/魂骨|外附骨|头部骨|躯干骨|左臂骨|右臂骨|左腿骨|右腿骨/.test(合并文本) || 类型文本 === '魂骨') return '魂骨';
+    const 合并文本 = `${名称文本} ${分类文本} ${槽位文本} ${品质文本} ${描述文本}`;
+    if (/魂骨|外附骨|头部骨|躯干骨|左臂骨|右臂骨|左腿骨|右腿骨/.test(合并文本) || 分类文本 === '魂骨') return '魂骨';
     if (槽位文本 && 槽位文本 !== '无') return '装备';
-    if (/装备|武器|防具|斗铠|机甲|神器|超神器/.test(类型文本 + 名称文本)) return '装备';
+    if (/装备|武器|防具|斗铠|机甲|神器|超神器/.test(分类文本 + 名称文本)) return '装备';
     if (/灵物|仙草|药草|灵草|丹药|灵药/.test(合并文本) || toNumber(deepGet(定义, '副职业参数.年限', 定义.年限), 0) > 0)
       return '灵物';
     if (
@@ -2447,7 +2581,7 @@
     )
       return '金属';
     if (Array.isArray(定义.使用效果) && 定义.使用效果.length) return '消耗品';
-    if (/消耗|药剂|食物|补给|一次性|魂技造物/.test(类型文本)) return '消耗品';
+    if (/消耗|药剂|食物|补给|一次性|魂技造物/.test(分类文本)) return '消耗品';
     if (/票据|门票|凭证|令牌|许可证|通行证|票/.test(合并文本)) return '票据';
     return '杂项';
   }
@@ -2476,19 +2610,28 @@
   function 取仓库物品定义名(snapshot = {}) {
     const 已选 = toText(modalFocusState['储物仓库详细页::物品定义'], '').trim();
     if (已选 === '__new__') return 已选;
-    const 物品表 = deepGet(snapshot, 'rootData.物品', {});
-    if (已选 && 物品表 && typeof 物品表 === 'object' && 物品表[已选]) return 已选;
+    const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
+    if (已选 && 查找物品定义_桥接(rootData, 已选)) return 已选;
     const 首个背包物品 =
       Array.isArray(snapshot.inventoryEntries) && snapshot.inventoryEntries[0] ? snapshot.inventoryEntries[0][0] : '';
     if (首个背包物品) return 首个背包物品;
-    const 首个定义 = safeEntries(物品表)[0];
-    return 首个定义 ? 首个定义[0] : '__new__';
+    const 首个定义 = 取物品定义条目列表_桥接(rootData)[0];
+    return 首个定义 ? 首个定义.物品名 : '__new__';
   }
 
   function 格式化物品字段值(值) {
     if (值 === undefined || 值 === null) return '';
     if (typeof 值 === 'number' || typeof 值 === 'boolean') return String(值);
     if (typeof 值 === 'string') return 值;
+    return '';
+  }
+
+  function 格式化物品结构字段值(值) {
+    if (值 === undefined || 值 === null || 值 === '') return '';
+    if (typeof 值 === 'string') return 值;
+    try {
+      return JSON.stringify(值, null, 2);
+    } catch (error) {}
     return '';
   }
 
@@ -2506,28 +2649,32 @@
   }
 
   function 判断物品为装备_桥接(物品名 = '', 定义 = {}) {
-    const 类型 = toText(定义 && 定义.类型, '');
+    const 类型 = toText(定义 && (定义.物品分类 || 定义.分类), '');
     const 槽位 = toText(定义 && 定义.装备槽位, '无');
-    return 槽位 !== '无' || /装备|武具|防具|武器|饰品|斗铠|机甲|神器/.test(`${物品名} ${类型}`);
+    return 装备物品分类集合_桥接.has(类型) || 槽位 !== '无' || /装备|武具|防具|武器|饰品|斗铠|机甲|神器/.test(`${物品名} ${类型}`);
   }
 
   function 判断物品为魂骨_桥接(物品名 = '', 定义 = {}) {
     return /魂骨|外附骨|头部骨|躯干骨|左臂骨|右臂骨|左腿骨|右腿骨/.test(
-      `${物品名} ${toText(定义 && 定义.类型, '')}`,
+      `${物品名} ${toText(定义 && (定义.物品分类 || 定义.分类), '')}`,
     );
   }
 
   function 判断物品为消耗品_桥接(物品名 = '', 定义 = {}) {
+    const 分类 = 规范化物品定义分类_桥接(定义 && (定义.物品分类 || 定义.分类), '');
     return (
+      可使用物品分类集合_桥接.has(分类) ||
       (Array.isArray(定义 && 定义.使用效果) && 定义.使用效果.length > 0) ||
-      /丹|草|药|瓶|灵物|消耗|补给|食物/.test(`${物品名} ${toText(定义 && 定义.类型, '')}`)
+      /丹|草|药|瓶|灵物|消耗|补给|食物/.test(`${物品名} ${分类}`)
     );
   }
 
   function 判断物品为锻造材料_桥接(物品名 = '', 定义 = {}) {
     const 参数 = 定义 && 定义.副职业参数 && typeof 定义.副职业参数 === 'object' ? 定义.副职业参数 : {};
+    const 分类 = 规范化物品定义分类_桥接(定义 && (定义.物品分类 || 定义.分类), '');
     return (
-      /金属|矿石|锻造|沉银|魔银|星铁|精金|秘银|灵锻|魂锻|天锻/.test(`${物品名} ${toText(定义 && 定义.类型, '')}`) ||
+      分类 === '锻造金属' ||
+      /金属|矿石|锻造|沉银|魔银|星铁|精金|秘银|灵锻|魂锻|天锻/.test(`${物品名} ${分类}`) ||
       参数.提纯度 !== undefined ||
       参数.灵力值 !== undefined ||
       参数.灵性 !== undefined
@@ -2640,11 +2787,18 @@
     const 定义 = 物品定义 && typeof 物品定义 === 'object' && !Array.isArray(物品定义) ? 物品定义 : {};
     const 新建 = !!选项参数.新建;
     const 实例 = 选项参数.实例 && typeof 选项参数.实例 === 'object' && !Array.isArray(选项参数.实例) ? 选项参数.实例 : {};
-    const 分类 = 推断物品分类(物品名, 定义, 实例);
-    const 是装备 = 判断物品为装备_桥接(物品名, 定义) || 判断物品为魂骨_桥接(物品名, 定义);
-    const 是魂骨 = 判断物品为魂骨_桥接(物品名, 定义);
-    const 是消耗 = 判断物品为消耗品_桥接(物品名, 定义);
-    const 是锻造 = 判断物品为锻造材料_桥接(物品名, 定义);
+    const 物品分类 = 规范化物品定义分类_桥接(
+      选项参数.分类 || 读取物品定义显式分类_桥接(定义, ''),
+      '剧情杂物',
+    );
+    const 显示分类 = 推断物品分类(物品名, { ...定义, 物品分类 }, 实例);
+    const 是装备 = 装备物品分类集合_桥接.has(物品分类);
+    const 是魂骨 = 物品分类 === '魂骨';
+    const 是消耗 = 可使用物品分类集合_桥接.has(物品分类);
+    const 是锻造 = 物品分类 === '锻造金属';
+    const 是制造材料 = 物品分类 === '制造材料';
+    const 是设计图纸 = 物品分类 === '设计图纸';
+    const 是修炼秘籍 = 物品分类 === '修炼秘籍';
     const 数量 = Math.max(0, Math.floor(toNumber(实例.数量, 新建 ? 1 : 0)));
     const canUse = !!选项参数.canUse;
     const canEquip = !!选项参数.canEquip;
@@ -2656,7 +2810,7 @@
     });
     const 基础模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('名称', '物品名称', 物品名, 'text')}
-      ${构建物品定义字段('类型', '内部类型', toText(定义.类型, '物品'), 'text')}
+      ${构建物品定义字段('物品分类', '物品分类', 物品分类, 'select', 物品定义分类列表_桥接)}
       ${构建物品定义字段('阶位', '阶位/级别', toNumber(定义.阶位, 0), 'number')}
       ${构建物品定义字段('品质', '品质/稀有度', toText(定义.品质, '普通'), 'select', 物品品质选项_桥接)}
       ${构建物品定义字段('基础价格', '基础价格', toNumber(定义.基础价格, 0), 'number')}
@@ -2683,23 +2837,34 @@
       ${构建物品装备技能组(定义.附带魂技 || 定义.装备技能, { placeholder: '魂技名' })}
     </div>`;
     const 消耗模块 = `<div class="item-definition-subblock">
-      <div class="mvu-editor-section-title">吸收/使用条件</div>
-      ${构建物品键值组('使用条件', 定义.使用条件, ['境界要求'])}
-    </div>
-    <div class="item-definition-subblock">
       <div class="mvu-editor-section-title">使用效果</div>
       ${构建物品使用效果组(定义.使用效果)}
     </div>`;
     const 锻造模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('提纯度', '提纯度', toNumber(副职业参数.提纯度, 0), 'number')}
       ${构建物品定义字段('灵力值', '灵力值/灵性', toNumber(副职业参数.灵力值 ?? 副职业参数.灵性, 0), 'number')}
+      ${构建物品定义字段('融合数量', '融合数量', toNumber(deepGet(副职业参数, '融合参数.数量', 1), 1), 'number')}
+      ${构建物品定义字段('融合率', '融合率', toNumber(deepGet(副职业参数, '融合参数.融合率', 100), 100), 'number')}
       ${构建物品定义字段('锻造特性', '锻造特性', toText(副职业参数.锻造特性, ''), 'textarea')}
+    </div>`;
+    const 制造材料模块 = `<div class="item-definition-form-grid">
+      ${构建物品定义字段('材料用途', '材料用途', toText(定义.材料用途, ''), 'textarea')}
+    </div>`;
+    const 设计图纸模块 = `<div class="item-definition-form-grid">
+      ${构建物品定义字段('图纸目标', '图纸目标', toText(定义.图纸目标, ''), 'text')}
+      ${构建物品定义字段('适用阶位', '适用阶位', toText(定义.适用阶位, ''), 'text')}
+      ${构建物品定义字段('产出方向', '产出方向', toText(定义.产出方向, ''), 'text')}
+    </div>`;
+    const 修炼秘籍模块 = `<div class="item-definition-form-grid">
+      ${构建物品定义字段('获取条件', '获取条件', 格式化物品结构字段值(定义.获取条件), 'textarea')}
+      ${构建物品定义字段('研读条件', '研读条件', 格式化物品结构字段值(定义.研读条件), 'textarea')}
+      ${构建物品定义字段('解锁内容', '解锁内容', 格式化物品结构字段值(定义.解锁内容), 'textarea')}
     </div>`;
     return `<div class="inventory-definition-editor" data-collection-panel="item-definition-editor" data-item-definition-old-name="${escapeHtmlAttr(新建 ? '' : 物品名)}">
         <div class="mvu-inventory-console-head">
           <div>
             <div class="archive-card-title">${htmlEscape(新建 ? '新增物品' : 物品名 || '未命名')}</div>
-            <div class="inventory-definition-subtitle">${htmlEscape(`${分类} · ${toText(定义.品质, '普通')} · ${数量 ? `持有 ${数量}` : '未持有'}`)}</div>
+            <div class="inventory-definition-subtitle">${htmlEscape(`${物品分类} · ${显示分类} · ${toText(定义.品质, '普通')} · ${数量 ? `持有 ${数量}` : '未持有'}`)}</div>
           </div>
           <div class="inventory-definition-actions">
             ${
@@ -2726,6 +2891,9 @@
           ${是魂骨 ? 构建物品定义折叠模块('魂骨专有', 魂骨模块, true) : ''}
           ${是消耗 ? 构建物品定义折叠模块('使用配置', 消耗模块, false) : ''}
           ${是锻造 ? 构建物品定义折叠模块('锻造参数', 锻造模块, false) : ''}
+          ${是制造材料 ? 构建物品定义折叠模块('材料参数', 制造材料模块, false) : ''}
+          ${是设计图纸 ? 构建物品定义折叠模块('图纸参数', 设计图纸模块, false) : ''}
+          ${是修炼秘籍 ? 构建物品定义折叠模块('秘籍参数', 修炼秘籍模块, false) : ''}
         </div>
         <div class="mvu-inventory-console-footer">
           <label class="mvu-editor-field item-definition-quantity-field">
@@ -2836,7 +3004,7 @@
       <div class="mvu-inventory-inspector-head">
         <div>
           <b>${htmlEscape(物品名)}</b>
-          <span>${htmlEscape([分类, toText(合并物品.品质, '普通'), toText(合并物品.类型, '物品')].filter(Boolean).join(' · '))}</span>
+          <span>${htmlEscape([分类, toText(合并物品.品质, '普通')].filter(Boolean).join(' · '))}</span>
         </div>
         <div class="inventory-console-actions">
           ${charKey && 可用 && 数量 > 0 ? `<button type="button" class="tag-chip live inventory-hover-action-btn" data-inventory-action="use" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">使用</button>` : ''}
@@ -2852,7 +3020,7 @@
           <div class="mvu-editor-section-title">基础属性</div>
           ${构建物品解析字段组([
             ['数量', 数量],
-            ['类型', 合并物品.类型 || '物品'],
+            ['分类', 合并物品.物品分类 || 分类],
             ['品质', 合并物品.品质 || '普通'],
             ['阶位', 合并物品.阶位 || 0],
             ['基础价格', 合并物品.基础价格 || 0],
@@ -2884,7 +3052,6 @@
         ${构建物品解析键值组('属性加成', 定义.属性加成)}
         ${构建物品解析键值组('装备技能', 装备技能)}
         ${构建物品解析键值组('附带魂技', 附带魂技)}
-        ${构建物品解析键值组('使用条件', 定义.使用条件)}
         ${构建物品解析数组组('使用效果', 合并物品.使用效果)}
         ${构建物品解析数组组('使用副作用', 合并物品.副作用列表)}
         ${构建物品解析键值组('锻造参数', 副职业参数)}
@@ -2899,6 +3066,17 @@
     if (文本 === 'false') return false;
     const 数值 = Number(文本);
     if (Number.isFinite(数值) && /^-?\d+(?:\.\d+)?$/.test(文本)) return 数值;
+    return 文本;
+  }
+
+  function 解析物品结构表单值(原始值 = '') {
+    const 文本 = toText(原始值, '').trim();
+    if (!文本) return '';
+    if (/^[\[{"]/.test(文本) || ['true', 'false', 'null'].includes(文本) || /^-?\d+(?:\.\d+)?$/.test(文本)) {
+      try {
+        return JSON.parse(文本);
+      } catch (error) {}
+    }
     return 文本;
   }
 
@@ -2958,7 +3136,7 @@
       if (目标) 新效果.目标 = 目标;
       if (属性) 新效果.属性 = 属性;
       if (数值原文 !== '') 新效果.数值 = 解析物品表单值(数值原文);
-      if (描述) 新效果.描述 = 描述;
+      delete 新效果.描述;
       输出.push(新效果);
     });
     return 输出;
@@ -2992,42 +3170,67 @@
     const 旧名 = toText(表单节点.getAttribute('data-item-definition-old-name'), '').trim();
     const 新名 = 读取物品定义输入值(表单节点, '名称', 旧名);
     if (!新名) throw new Error('物品名称不能为空。');
-    const 旧定义 = cloneJsonValue(取物品定义_桥接(数据根, 旧名 || 新名), {});
+    const 旧命中 = 查找物品定义_桥接(数据根, 旧名 || 新名);
+    const 旧定义 = cloneJsonValue(旧命中?.定义 || {}, {});
+    const 分类 = 规范化物品定义分类_桥接(
+      读取物品定义输入值(表单节点, '物品分类', 旧命中?.分类 || 读取物品定义显式分类_桥接(旧定义, '剧情杂物')),
+      '剧情杂物',
+    );
     const 定义 = {
-      ...构建物品定义记录_桥接(新名, 旧定义),
-      类型: 读取物品定义输入值(表单节点, '类型', toText(旧定义.类型, '物品')) || '物品',
       阶位: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '阶位', 旧定义.阶位), 0))),
       品质: 读取物品定义输入值(表单节点, '品质', toText(旧定义.品质, '普通')) || '普通',
       描述: 读取物品定义输入值(表单节点, '描述', toText(旧定义.描述, '')),
       基础价格: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 0))),
       默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, '联邦币')) || '联邦币',
-      装备槽位: 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, '无')) || '无',
-      基础耐久: Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0))),
     };
-    const 使用条件 = 读取物品键值对象(表单节点, '使用条件');
+    const 装备槽位 = 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, 分类 === '主武器' ? '武器' : '无')) || '无';
+    if (装备物品分类集合_桥接.has(分类)) {
+      if (装备槽位 && 装备槽位 !== '无') 定义.装备槽位 = 装备槽位;
+      定义.基础耐久 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0)));
+    }
     const 使用效果 = 读取物品使用效果列表(表单节点, 旧定义.使用效果);
     const 属性加成 = 读取物品键值对象(表单节点, '属性加成');
     const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.装备技能);
-    delete 定义.副职业参数;
-    const 旧副职业参数 = 旧定义.副职业参数 && typeof 旧定义.副职业参数 === 'object' && !Array.isArray(旧定义.副职业参数) ? 旧定义.副职业参数 : {};
     const 副职业参数 = {};
-    ['年限', '提纯度', '灵力值', '灵性', '锻造特性', '融合参数', '品质系数', '标准物种'].forEach(字段名 => {
-      if (旧副职业参数[字段名] !== undefined) 副职业参数[字段名] = cloneJsonValue(旧副职业参数[字段名]);
-    });
     const 提纯度 = 读取物品定义输入值(表单节点, '提纯度', '');
     const 灵力值 = 读取物品定义输入值(表单节点, '灵力值', '');
     const 锻造特性 = 读取物品定义输入值(表单节点, '锻造特性', '');
+    const 融合数量 = 读取物品定义输入值(表单节点, '融合数量', '');
+    const 融合率 = 读取物品定义输入值(表单节点, '融合率', '');
     const 出产年限 = 读取物品定义输入值(表单节点, '出产年限', '');
-    if (Object.keys(使用条件).length) 定义.使用条件 = 使用条件;
-    if (使用效果.length) 定义.使用效果 = 使用效果;
-    if (Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
-    if (Object.keys(装备技能).length) 定义.装备技能 = 装备技能;
-    if (提纯度 !== '') 副职业参数.提纯度 = Math.max(0, Math.min(100, toNumber(提纯度, 0)));
-    if (灵力值 !== '') 副职业参数.灵力值 = Math.max(0, toNumber(灵力值, 0));
-    if (锻造特性) 副职业参数.锻造特性 = 锻造特性;
-    if (出产年限 !== '') 副职业参数.年限 = Math.max(0, Math.floor(toNumber(出产年限, 0)));
+    if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
+    if (装备物品分类集合_桥接.has(分类) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
+    if (装备物品分类集合_桥接.has(分类) && Object.keys(装备技能).length) 定义.装备技能 = 装备技能;
+    if (分类 === '锻造金属') {
+      if (提纯度 !== '') 副职业参数.提纯度 = Math.max(0, Math.min(100, toNumber(提纯度, 0)));
+      if (灵力值 !== '') 副职业参数.灵力值 = Math.max(0, toNumber(灵力值, 0));
+      if (锻造特性) 副职业参数.锻造特性 = 锻造特性;
+      if (融合数量 !== '' || 融合率 !== '') {
+        副职业参数.融合参数 = {
+          数量: Math.max(1, Math.floor(toNumber(融合数量, 1))),
+          融合率: Math.max(0, Math.min(100, Math.floor(toNumber(融合率, 100)))),
+        };
+      }
+    }
+    if (分类 === '魂骨' && 出产年限 !== '') 副职业参数.年限 = Math.max(0, Math.floor(toNumber(出产年限, 0)));
+    if (分类 === '制造材料') {
+      const 材料用途 = 读取物品定义输入值(表单节点, '材料用途', '');
+      if (材料用途) 定义.材料用途 = 材料用途;
+    }
+    if (分类 === '设计图纸') {
+      ['图纸目标', '适用阶位', '产出方向'].forEach(字段名 => {
+        const 字段值 = 读取物品定义输入值(表单节点, 字段名, '');
+        if (字段值) 定义[字段名] = 字段值;
+      });
+    }
+    if (分类 === '修炼秘籍') {
+      ['获取条件', '研读条件', '解锁内容'].forEach(字段名 => {
+        const 字段值 = 解析物品结构表单值(读取物品定义输入值(表单节点, 字段名, ''));
+        if (字段值 !== '') 定义[字段名] = 字段值;
+      });
+    }
     if (Object.keys(副职业参数).length) 定义.副职业参数 = 副职业参数;
-    return { 旧名, 新名, 定义 };
+    return { 旧名, 新名, 分类, 定义: 构建物品定义记录_桥接(新名, 定义, 分类) };
   }
 
   function 迁移物品名称引用(数据根 = {}, 旧名 = '', 新名 = '') {
@@ -3130,19 +3333,97 @@
   const 角色归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 角色文件缓存: new Map() };
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 动态地点文件缓存: new Map() };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 物品文件缓存: new Map() };
-  const 冷归档自动归档配置_桥接 = Object.freeze({
-    角色数量阈值: 80,
+  const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
+  const 冷归档自动归档默认配置_桥接 = Object.freeze({
+    启用自动归档: true,
+    角色数量阈值: 20,
     角色字节阈值: 260000,
-    动态地点数量阈值: 60,
+    动态地点数量阈值: 20,
     动态地点字节阈值: 160000,
-    物品数量阈值: 90,
+    物品分类数量阈值: 5,
     物品字节阈值: 180000,
     单轮上限: 4,
     冷却毫秒: 90000,
     最近保护tick窗口: 2160,
   });
+  const 冷归档自动归档配置_桥接 = { ...冷归档自动归档默认配置_桥接 };
   const 冷归档自动归档状态_桥接 = { chatKey: '', 上次尝试毫秒: 0, promise: null };
-  const 冷归档服务状态_桥接 = { 已检查: false, 可用: false, 可写: false, 插件可用: false, 存储模式: '', root: '', customRoot: '', custom: false, error: '', promise: null };
+  const 冷归档服务状态_桥接 = { 已检查: false, 可用: false, 可写: false, 插件可用: false, 管理员: false, 存储模式: '', root: '', customRoot: '', custom: false, error: '', promise: null };
+
+  function 读取冷归档布尔配置值_桥接(值, 默认值 = true) {
+    if (值 === undefined || 值 === null || 值 === '') return !!默认值;
+    if (值 === false || 值 === 0) return false;
+    const 文本 = toText(值, '').trim().toLowerCase();
+    return !(文本 === 'false' || 文本 === '0' || 文本 === '否' || 文本 === '停用');
+  }
+
+  function 限制冷归档整数配置_桥接(值, 默认值 = 0, 最小值 = 0, 最大值 = 999999) {
+    const 数值 = Math.floor(toNumber(值, 默认值));
+    return Math.min(最大值, Math.max(最小值, Number.isFinite(数值) ? 数值 : 默认值));
+  }
+
+  function 规范化冷归档自动归档配置_桥接(输入 = {}) {
+    const 来源 = 输入 && typeof 输入 === 'object' ? 输入 : {};
+    const 默认配置 = 冷归档自动归档默认配置_桥接;
+    const 冷却秒数 = 来源.冷却秒数 !== undefined ? 来源.冷却秒数 : 默认配置.冷却毫秒 / 1000;
+    return {
+      启用自动归档: 读取冷归档布尔配置值_桥接(来源.启用自动归档, 默认配置.启用自动归档),
+      角色数量阈值: 限制冷归档整数配置_桥接(来源.角色数量阈值, 默认配置.角色数量阈值, 1, 200),
+      角色字节阈值: 限制冷归档整数配置_桥接(来源.角色字节阈值, 默认配置.角色字节阈值, 20000, 2000000),
+      动态地点数量阈值: 限制冷归档整数配置_桥接(来源.动态地点数量阈值, 默认配置.动态地点数量阈值, 1, 200),
+      动态地点字节阈值: 限制冷归档整数配置_桥接(来源.动态地点字节阈值, 默认配置.动态地点字节阈值, 20000, 2000000),
+      物品分类数量阈值: 限制冷归档整数配置_桥接(来源.物品分类数量阈值, 默认配置.物品分类数量阈值, 1, 100),
+      物品字节阈值: 限制冷归档整数配置_桥接(来源.物品字节阈值, 默认配置.物品字节阈值, 20000, 2000000),
+      单轮上限: 限制冷归档整数配置_桥接(来源.单轮上限, 默认配置.单轮上限, 1, 20),
+      冷却毫秒: 限制冷归档整数配置_桥接(冷却秒数, 默认配置.冷却毫秒 / 1000, 5, 3600) * 1000,
+      最近保护tick窗口: 限制冷归档整数配置_桥接(来源.最近保护tick窗口, 默认配置.最近保护tick窗口, 0, 100000),
+    };
+  }
+
+  function 应用冷归档自动归档配置_桥接(输入 = {}) {
+    Object.assign(冷归档自动归档配置_桥接, 规范化冷归档自动归档配置_桥接(输入));
+    return 冷归档自动归档配置_桥接;
+  }
+
+  function 读取冷归档自动归档保存配置_桥接() {
+    try {
+      const 原始值 = window.localStorage && window.localStorage.getItem(冷归档自动归档配置存储键_桥接);
+      return 原始值 ? JSON.parse(原始值) : {};
+    } catch (错误) {
+      return {};
+    }
+  }
+
+  function 保存冷归档自动归档配置_桥接(输入 = {}) {
+    const 配置 = 应用冷归档自动归档配置_桥接(输入);
+    try {
+      if (window.localStorage) {
+        window.localStorage.setItem(
+          冷归档自动归档配置存储键_桥接,
+          JSON.stringify({
+            启用自动归档: 配置.启用自动归档,
+            角色数量阈值: 配置.角色数量阈值,
+            动态地点数量阈值: 配置.动态地点数量阈值,
+            物品分类数量阈值: 配置.物品分类数量阈值,
+            单轮上限: 配置.单轮上限,
+            冷却秒数: Math.round(配置.冷却毫秒 / 1000),
+          }),
+        );
+      }
+    } catch (错误) {}
+    冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
+    return 配置;
+  }
+
+  function 重置冷归档自动归档配置_桥接() {
+    try {
+      if (window.localStorage) window.localStorage.removeItem(冷归档自动归档配置存储键_桥接);
+    } catch (错误) {}
+    冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
+    return 应用冷归档自动归档配置_桥接(冷归档自动归档默认配置_桥接);
+  }
+
+  应用冷归档自动归档配置_桥接(读取冷归档自动归档保存配置_桥接());
 
   function 取冷归档请求头_桥接() {
     const 头 = {};
@@ -3330,6 +3611,7 @@
       .then(结果 => {
         冷归档服务状态_桥接.已检查 = true;
         冷归档服务状态_桥接.插件可用 = !!结果.enabled;
+        冷归档服务状态_桥接.管理员 = !!结果.admin;
         冷归档服务状态_桥接.可用 = true;
         冷归档服务状态_桥接.可写 = 结果.enabled ? !!结果.writable : true;
         冷归档服务状态_桥接.存储模式 = 结果.enabled ? '插件' : '用户文件';
@@ -3344,6 +3626,7 @@
         冷归档服务状态_桥接.可用 = true;
         冷归档服务状态_桥接.可写 = true;
         冷归档服务状态_桥接.插件可用 = false;
+        冷归档服务状态_桥接.管理员 = false;
         冷归档服务状态_桥接.存储模式 = '用户文件';
         冷归档服务状态_桥接.root = '/user/files';
         冷归档服务状态_桥接.customRoot = '';
@@ -3370,7 +3653,7 @@
     if (冷归档服务状态_桥接.存储模式 === '用户文件') return '用户文件兼容';
     if (!冷归档服务状态_桥接.可用) return '服务不可用';
     if (!冷归档服务状态_桥接.可写) return '目录不可写';
-    return '归档就绪';
+    return '插件归档';
   }
 
   async function 设置冷归档根目录_桥接(customRoot = '') {
@@ -3729,20 +4012,22 @@
     };
   }
 
-  function 构建物品归档摘要_桥接(物品名 = '', 物品定义 = {}) {
+  function 构建物品归档摘要_桥接(物品名 = '', 物品定义 = {}, 物品分类 = '') {
+    const 分类 = 规范化物品定义分类_桥接(物品分类 || 读取物品定义显式分类_桥接(物品定义, ''), '剧情杂物');
     return [
       物品名,
-      toText(物品定义 && 物品定义.类型, ''),
+      分类,
       toText(物品定义 && 物品定义.品质, ''),
       toText(物品定义 && 物品定义.装备槽位, ''),
       toText(物品定义 && 物品定义.描述, ''),
     ].filter(Boolean).join(' / ').slice(0, 160);
   }
 
-  function 构建物品归档索引扩展_桥接(物品名 = '', 物品定义 = {}) {
-    const 摘要 = 构建物品归档摘要_桥接(物品名, 物品定义);
+  function 构建物品归档索引扩展_桥接(物品名 = '', 物品定义 = {}, 物品分类 = '') {
+    const 分类 = 规范化物品定义分类_桥接(物品分类 || 读取物品定义显式分类_桥接(物品定义, ''), '剧情杂物');
+    const 摘要 = 构建物品归档摘要_桥接(物品名, 物品定义, 分类);
     return {
-      类型: toText(物品定义 && 物品定义.类型, ''),
+      物品分类: 分类,
       品质: toText(物品定义 && 物品定义.品质, ''),
       装备槽位: toText(物品定义 && 物品定义.装备槽位, ''),
       关键词: 切分冷归档关键词_桥接(物品名, 摘要, 物品定义 && 物品定义.描述, 物品定义 && JSON.stringify(物品定义.副职业参数 || {})),
@@ -3784,49 +4069,6 @@
     }));
   }
 
-  function 计算归档动态地点命中分_桥接(地点名 = '', 索引 = {}, 文本 = '', 选项 = {}) {
-    const 名称 = toText(地点名, '').trim();
-    if (!名称) return 0;
-    const 当前地点文本 = [
-      选项.当前地点,
-      deepGet(选项.statData || {}, '当前.地点', ''),
-      deepGet(选项.statData || {}, 'world.战斗.环境.地点', ''),
-    ].filter(Boolean).join('\n');
-    const 相关动态地点 = 收集冷归档字符串列表_桥接(
-      选项.命中动态地点,
-      选项.相关动态地点,
-      deepGet(选项.statData || {}, '相关实体索引.命中动态地点', []),
-    );
-    let 分数 = 0;
-    let 有本轮锚点 = false;
-    if (冷归档文本包含_桥接(文本, 名称)) {
-      分数 += 8;
-      有本轮锚点 = true;
-    }
-    if (相关动态地点.some(候选 => 候选 === 名称)) {
-      分数 += 8;
-      有本轮锚点 = true;
-    }
-    const 归属 = toText(索引 && 索引.归属父节点, '').trim();
-    const 简称列表 = Array.isArray(索引 && 索引.简称列表) ? 索引.简称列表 : [];
-    简称列表.forEach(简称 => {
-      if (简称 !== 名称 && 冷归档文本包含_桥接(文本, 简称)) {
-        分数 += 3;
-        有本轮锚点 = true;
-      }
-    });
-    const 关键词命中数 = (Array.isArray(索引 && 索引.关键词) ? 索引.关键词 : []).filter(关键词 => 冷归档文本包含_桥接(文本, 关键词)).length;
-    if (关键词命中数 > 0) {
-      分数 += Math.min(3, 关键词命中数);
-      有本轮锚点 = true;
-    }
-    if (!有本轮锚点) return 0;
-    if (归属 && (冷归档文本包含_桥接(文本, 归属) || 冷归档文本包含_桥接(当前地点文本, 归属))) 分数 += 2;
-    if (冷归档文本包含_桥接(当前地点文本, 名称) || (归属 && 冷归档文本包含_桥接(名称, 当前地点文本))) 分数 += 3;
-    if (归属 && 冷归档文本包含_桥接(当前地点文本, 归属)) 分数 += 1;
-    return 分数;
-  }
-
   function 收集归档物品候选名_桥接(选项 = {}) {
     return 收集冷归档字符串列表_桥接(
       选项.命中物品,
@@ -3839,35 +4081,29 @@
     );
   }
 
-  function 计算归档物品命中分_桥接(物品名 = '', 索引 = {}, 文本 = '', 选项 = {}) {
-    const 名称 = toText(物品名, '').trim();
-    if (!名称) return 0;
-    const 候选物品 = 收集归档物品候选名_桥接(选项);
-    let 分数 = 0;
-    if (冷归档文本包含_桥接(文本, 名称)) 分数 += 7;
-    if (候选物品.some(候选 => 候选 === 名称)) 分数 += 9;
-    if (候选物品.some(候选 => 候选 !== 名称 && (冷归档文本包含_桥接(候选, 名称) || 冷归档文本包含_桥接(名称, 候选)))) 分数 += 5;
-    const 名称片段 = 名称
-      .replace(/[，。；：！？、,.!?;:()[\]{}【】《》<>「」『』"'“”‘’|｜/\\]+/g, ' ')
-      .split(/\s+|-/)
-      .map(片段 => 片段.trim())
-      .filter(片段 => 片段.length >= 2 && 片段 !== 名称);
-    分数 += Math.min(4, 名称片段.filter(片段 => 冷归档文本包含_桥接(文本, 片段)).length * 2);
-    const 关键词命中数 = (Array.isArray(索引 && 索引.关键词) ? 索引.关键词 : []).filter(关键词 => 冷归档文本包含_桥接(文本, 关键词)).length;
-    分数 += Math.min(4, 关键词命中数);
-    ['类型', '品质', '装备槽位'].forEach(字段 => {
-      if (冷归档文本包含_桥接(文本, 索引 && 索引[字段])) 分数 += 1;
-    });
-    return 分数;
+  function 收集归档动态地点命中名称_桥接(索引表 = {}, 文本 = '', 选项 = {}, 上限 = 6) {
+    const 接口 = 获取运行时实体命中接口_桥接();
+    if (!接口 || typeof 接口.收集运行时动态地点命中 !== 'function') return [];
+    const statData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : {};
+    return 接口.收集运行时动态地点命中(statData, 文本, {
+      ...选项,
+      动态地点目录: 索引表,
+      阈值: 5,
+      上限,
+    }).map(命中 => toText(命中 && 命中.名称, '').trim()).filter(名称 => 名称 && 索引表 && 索引表[名称]);
   }
 
-  function 取归档命中名称_桥接(索引表 = {}, 评分函数, 文本 = '', 选项 = {}, 阈值 = 1, 上限 = 8) {
-    return Object.entries(索引表 || {})
-      .map(([名称, 索引]) => ({ 名称, 分数: typeof 评分函数 === 'function' ? 评分函数(名称, 索引 || {}, 文本, 选项) : 0 }))
-      .filter(项 => 项.名称 && 项.分数 >= 阈值)
-      .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-      .slice(0, Math.max(1, Math.floor(toNumber(上限, 8))))
-      .map(项 => 项.名称);
+  function 收集归档物品命中名称_桥接(索引表 = {}, 文本 = '', 选项 = {}, 上限 = 8) {
+    const 接口 = 获取运行时实体命中接口_桥接();
+    if (!接口 || typeof 接口.收集运行时物品命中 !== 'function') return [];
+    const statData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : {};
+    return 接口.收集运行时物品命中(statData, 文本, {
+      ...选项,
+      物品目录: 索引表,
+      命中物品: 收集归档物品候选名_桥接(选项),
+      阈值: 5,
+      上限,
+    }).map(命中 => toText(命中 && 命中.名称, '').trim()).filter(名称 => 名称 && 索引表 && 索引表[名称]);
   }
 
   function 收集归档保护角色名_桥接(statData = {}) {
@@ -3913,10 +4149,9 @@
 
   function 收集归档保护物品名_桥接(statData = {}) {
     const 保护 = new Set();
-    const 物品表 = statData && statData.物品 && typeof statData.物品 === 'object' ? statData.物品 : {};
     const 添加 = 名称 => {
       const 文本 = toText(名称, '').trim();
-      if (文本 && 物品表[文本]) 保护.add(文本);
+      if (文本 && 查找物品定义_桥接(statData, 文本)) 保护.add(文本);
     };
     (Array.isArray(deepGet(statData, '相关实体索引.命物品', [])) ? deepGet(statData, '相关实体索引.命物品', []) : []).forEach(添加);
     const 玩家名 = toText(deepGet(statData, 'sys.玩家名', ''), '').trim();
@@ -3974,17 +4209,19 @@
   async function 上传物品归档文件_桥接(物品名 = '', 物品定义 = {}, 上下文 = {}) {
     const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
     const 归档时间 = 上下文.归档时间 || new Date().toISOString();
+    const 物品分类 = 要求物品定义分类_桥接(物品名, 物品定义, 上下文.物品分类 || 上下文.分类);
     const 物品文件 = {
       version: 冷归档Manifest版本_桥接,
       chatKey,
       物品名,
+      物品分类,
       归档tick: 上下文.归档tick ?? 0,
       归档时间,
       物品定义: cloneJsonValue(物品定义, {}),
     };
     const path = 构建物品归档文件路径_桥接(chatKey, 物品名);
     const 上传结果 = await 上传冷归档Json文件_桥接(path, 物品文件);
-    return { 物品名, path, checksum: 上传结果.checksum, byteSize: 上传结果.byteSize, 归档tick: 物品文件.归档tick, 归档时间, 摘要: 构建物品归档摘要_桥接(物品名, 物品定义), ...构建物品归档索引扩展_桥接(物品名, 物品定义) };
+    return { 物品名, 物品分类, path, checksum: 上传结果.checksum, byteSize: 上传结果.byteSize, 归档tick: 物品文件.归档tick, 归档时间, 摘要: 构建物品归档摘要_桥接(物品名, 物品定义, 物品分类), ...构建物品归档索引扩展_桥接(物品名, 物品定义, 物品分类) };
   }
 
   async function 读取角色归档文件_桥接(path = '', 选项 = {}) {
@@ -4113,12 +4350,11 @@
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    if (!statData.物品 || typeof statData.物品 !== 'object') statData.物品 = {};
-    const 物品表 = statData.物品;
+    确保物品定义分类表_桥接(statData);
     const 保护物品 = 收集归档保护物品名_桥接(statData);
     const 跳过 = [];
     const 可归档 = 待归档名称.filter(物品名 => {
-      if (!物品表[物品名] || typeof 物品表[物品名] !== 'object') {
+      if (!查找物品定义_桥接(statData, 物品名)) {
         跳过.push({ 物品名, reason: 'missing' });
         return false;
       }
@@ -4133,12 +4369,15 @@
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 上传索引 = [];
-    for (const 物品名 of 可归档) 上传索引.push(await 上传物品归档文件_桥接(物品名, 物品表[物品名], { chatKey, 归档时间, 归档tick }));
+    for (const 物品名 of 可归档) {
+      const 命中 = 查找物品定义_桥接(statData, 物品名);
+      上传索引.push(await 上传物品归档文件_桥接(物品名, 命中.定义, { chatKey, 归档时间, 归档tick, 物品分类: 命中.分类 }));
+    }
     const manifest = cloneJsonValue(await 读取物品归档Manifest_桥接({ force: true }), 创建空物品归档Manifest_桥接(chatKey));
     if (!manifest.物品索引 || typeof manifest.物品索引 !== 'object') manifest.物品索引 = {};
     上传索引.forEach(索引 => { manifest.物品索引[索引.物品名] = 索引; });
     await 写入物品归档Manifest_桥接(manifest);
-    可归档.forEach(物品名 => { delete 物品表[物品名]; });
+    可归档.forEach(物品名 => { 删除分类物品定义_桥接(statData, 物品名); });
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已归档 ${可归档.length} 个物品定义：${可归档.join('、')}。`;
     当前MVU数据.stat_data = statData;
@@ -4199,11 +4438,11 @@
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    if (!statData.物品 || typeof statData.物品 !== 'object') statData.物品 = {};
+    确保物品定义分类表_桥接(statData);
     const 跳过 = [];
     const 已恢复 = [];
     for (const 物品名 of 待恢复名称) {
-      if (statData.物品[物品名]) {
+      if (物品定义存在_桥接(statData, 物品名)) {
         跳过.push({ 物品名, reason: 'exists' });
         continue;
       }
@@ -4217,7 +4456,7 @@
         跳过.push({ 物品名, reason: 'archive_mismatch' });
         continue;
       }
-      statData.物品[物品名] = cloneJsonValue(文件.物品定义, {});
+      写入分类物品定义_桥接(statData, 物品名, 文件.物品定义, 文件.物品分类 || 索引.物品分类 || 索引.分类);
       已恢复.push(物品名);
     }
     if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
@@ -4285,7 +4524,7 @@
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取动态地点归档Manifest_桥接();
     const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
-    const 命中名称 = 取归档命中名称_桥接(动态地点索引, 计算归档动态地点命中分_桥接, 捕获文本, 选项, 5, 6);
+    const 命中名称 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 选项, 6);
     if (!命中名称.length) return await 读取冷归档空结果_桥接('no_match');
     return await 恢复MVU归档动态地点_桥接(命中名称, 选项);
   }
@@ -4295,7 +4534,7 @@
     if (!捕获文本.trim() && !收集归档物品候选名_桥接(选项).length) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取物品归档Manifest_桥接();
     const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
-    const 命中名称 = 取归档命中名称_桥接(物品索引, 计算归档物品命中分_桥接, 捕获文本, 选项, 5, 8);
+    const 命中名称 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 选项, 8);
     if (!命中名称.length) return await 读取冷归档空结果_桥接('no_match');
     return await 恢复MVU归档物品定义_桥接(命中名称, 选项);
   }
@@ -4361,6 +4600,45 @@
     };
   }
 
+  function 计算物品分类归档压力_桥接(statData = {}) {
+    const 分类阈值 = 冷归档自动归档配置_桥接.物品分类数量阈值;
+    const 字节阈值 = 冷归档自动归档配置_桥接.物品字节阈值;
+    const 分类统计表 = new Map();
+    物品定义分类列表_桥接.forEach(分类 => 分类统计表.set(分类, { 分类, 数量: 0, 字节: 0, 定义表: {} }));
+    取物品定义条目列表_桥接(statData).forEach(({ 物品名, 定义, 分类 }) => {
+      const 分类名 = 规范化物品定义分类_桥接(分类, '剧情杂物');
+      const 分类统计 = 分类统计表.get(分类名) || { 分类: 分类名, 数量: 0, 字节: 0, 定义表: {} };
+      分类统计.数量 += 1;
+      分类统计.定义表[物品名] = 定义;
+      分类统计表.set(分类名, 分类统计);
+    });
+    const 分类统计列表 = Array.from(分类统计表.values()).map(分类统计 => ({
+      分类: 分类统计.分类,
+      数量: 分类统计.数量,
+      字节: 计算冷归档Json字节_桥接(分类统计.定义表),
+    }));
+    const 总字节 = 分类统计列表.reduce((总和, 分类统计) => 总和 + 分类统计.字节, 0);
+    const 超阈值分类 = 分类统计列表.filter(分类统计 => 分类统计.数量 > 分类阈值);
+    const 兜底分类 = 超阈值分类.length
+      ? null
+      : 分类统计列表.filter(分类统计 => 分类统计.数量 > 0).sort((左, 右) => 右.字节 - 左.字节 || 右.数量 - 左.数量)[0] || null;
+    const 允许分类 = 超阈值分类.length
+      ? 超阈值分类.map(分类统计 => 分类统计.分类)
+      : 总字节 > 字节阈值 && 兜底分类
+        ? [兜底分类.分类]
+        : [];
+    const 数量压力 = 分类统计列表.reduce((最大值, 分类统计) => Math.max(最大值, 分类阈值 > 0 ? 分类统计.数量 / 分类阈值 : 0), 0);
+    const 字节压力 = 字节阈值 > 0 ? 总字节 / 字节阈值 : 0;
+    return {
+      数量: 分类统计列表.reduce((总和, 分类统计) => 总和 + 分类统计.数量, 0),
+      字节: 总字节,
+      超量: 允许分类.length > 0,
+      压力: Math.max(数量压力, 字节压力),
+      允许分类,
+      分类统计: 分类统计列表,
+    };
+  }
+
   function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护角色 = 收集归档保护角色名_桥接(statData);
@@ -4378,12 +4656,19 @@
   function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护地点 = 收集归档保护动态地点名_桥接(statData);
-    const 选项 = { statData, 当前地点: deepGet(statData, '当前.地点', ''), 命中动态地点: deepGet(statData, '相关实体索引.命中动态地点', []) };
+    const 本轮命中地点 = new Set(
+      收集归档动态地点命中名称_桥接(
+        Object.fromEntries(safeEntries(deepGet(statData, 'world.动态地点', {})).map(([地点名, 地点数据]) => [地点名, 构建动态地点归档索引扩展_桥接(地点名, 地点数据)])),
+        文本,
+        { statData, 当前地点: deepGet(statData, '当前.地点', ''), 命中动态地点: deepGet(statData, '相关实体索引.命中动态地点', []) },
+        32,
+      ),
+    );
     return safeEntries(deepGet(statData, 'world.动态地点', {}))
       .filter(([地点名, 地点数据]) => {
         if (!地点名 || !地点数据 || typeof 地点数据 !== 'object') return false;
         if (保护地点.has(地点名)) return false;
-        if (计算归档动态地点命中分_桥接(地点名, 构建动态地点归档索引扩展_桥接(地点名, 地点数据), 文本, 选项) >= 5) return false;
+        if (本轮命中地点.has(地点名)) return false;
         return !冷实体近期活跃_桥接(地点数据, 当前tick);
       })
       .sort((左, 右) => {
@@ -4398,17 +4683,26 @@
   function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档配置_桥接.单轮上限, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护物品 = 收集归档保护物品名_桥接(statData);
-    const 匹配选项 = { ...选项, statData, 命中物品: 收集归档物品候选名_桥接({ ...选项, statData }) };
-    return safeEntries(statData.物品 || {})
-      .filter(([物品名, 物品定义]) => {
+    const 允许分类 = Array.isArray(选项.允许分类) ? new Set(选项.允许分类.map(分类 => 规范化物品定义分类_桥接(分类, '')).filter(Boolean)) : null;
+    const 本轮命中物品 = new Set(
+      收集归档物品命中名称_桥接(
+        Object.fromEntries(取物品定义条目列表_桥接(statData).map(({ 物品名, 定义, 分类 }) => [物品名, 构建物品归档索引扩展_桥接(物品名, 定义, 分类)])),
+        文本,
+        { ...选项, statData, 命中物品: 收集归档物品候选名_桥接({ ...选项, statData }) },
+        64,
+      ),
+    );
+    return 取物品定义条目列表_桥接(statData)
+      .filter(({ 物品名, 定义: 物品定义, 分类 }) => {
         if (!物品名 || !物品定义 || typeof 物品定义 !== 'object') return false;
+        if (允许分类 && !允许分类.has(规范化物品定义分类_桥接(分类, '剧情杂物'))) return false;
         if (保护物品.has(物品名)) return false;
-        if (计算归档物品命中分_桥接(物品名, 构建物品归档索引扩展_桥接(物品名, 物品定义), 文本, 匹配选项) >= 5) return false;
+        if (本轮命中物品.has(物品名)) return false;
         return !冷实体近期活跃_桥接(物品定义, 当前tick);
       })
-      .sort((左, 右) => 读取冷实体最近tick_桥接(左[1]) - 读取冷实体最近tick_桥接(右[1]) || 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+      .sort((左, 右) => 读取冷实体最近tick_桥接(左.定义) - 读取冷实体最近tick_桥接(右.定义) || 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
       .slice(0, 上限)
-      .map(([物品名]) => 物品名);
+      .map(({ 物品名 }) => 物品名);
   }
 
   async function 按阈值自动归档MVU冷实体_桥接(选项 = {}) {
@@ -4418,6 +4712,7 @@
       冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
       冷归档自动归档状态_桥接.promise = null;
     }
+    if (!冷归档自动归档配置_桥接.启用自动归档 && !选项.force) return { changed: false, reason: 'disabled' };
     if (冷归档自动归档状态_桥接.promise) return await 冷归档自动归档状态_桥接.promise;
     const 当前毫秒 = Date.now();
     if (!选项.force && 当前毫秒 - 冷归档自动归档状态_桥接.上次尝试毫秒 < 冷归档自动归档配置_桥接.冷却毫秒) {
@@ -4432,7 +4727,7 @@
       const 捕获文本 = toText(选项.捕获文本 ?? [选项.userInput, 选项.最后角色消息文本].filter(Boolean).join('\n'), '');
       const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
       const 动态地点 = deepGet(statData, 'world.动态地点', {});
-      const 物品表 = statData.物品 && typeof statData.物品 === 'object' ? statData.物品 : {};
+      const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
       const 类型列表 = [
         {
           类型: '角色',
@@ -4448,8 +4743,8 @@
         },
         {
           类型: '物品',
-          状态: 冷归档表超过阈值_桥接(物品表, 冷归档自动归档配置_桥接.物品数量阈值, 冷归档自动归档配置_桥接.物品字节阈值),
-          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 冷归档自动归档配置_桥接.单轮上限, 选项),
+          状态: 物品分类压力,
+          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 冷归档自动归档配置_桥接.单轮上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
           执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
         },
       ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
@@ -4529,14 +4824,14 @@
   }
 
   function 构建物品归档选择行_桥接(物品名 = '', 物品定义 = {}, 选项 = {}) {
-    const 类型 = toText(物品定义 && 物品定义.类型, '物品');
+    const 分类 = 规范化物品定义分类_桥接(选项.分类 || 读取物品定义显式分类_桥接(物品定义, ''), '剧情杂物');
     const 品质 = toText(物品定义 && 物品定义.品质, '无');
     const 槽位 = toText(物品定义 && 物品定义.装备槽位, '');
     const 是否保护 = !!选项.保护;
     return `
-      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([物品名, 类型, 品质, 槽位, '物品'].join(' ').toLowerCase())}">
+      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([物品名, 分类, 品质, 槽位, '物品'].join(' ').toLowerCase())}">
         <span class="role-switch-head"><b>${htmlEscape(物品名)}</b><span class="state-tag ${是否保护 ? 'warn' : ''}">${是否保护 ? '保护' : '热'}</span></span>
-        <span class="role-switch-meta">${htmlEscape(`${类型} ｜ ${品质}`)}</span>
+        <span class="role-switch-meta">${htmlEscape(`${分类} ｜ ${品质}`)}</span>
         <span class="role-switch-meta">${htmlEscape(槽位 || '定义')}</span>
         <span class="role-switch-actions"><input type="checkbox" data-item-archive-hot="${escapeHtmlAttr(物品名)}"${是否保护 ? ' disabled data-item-archive-protected="1"' : ''} /></span>
       </label>
@@ -4586,16 +4881,18 @@
     const 当前页签 = 规范化冷归档页签_桥接(modalFocusState[`${冷归档预览键_桥接}::tab`]);
     const 角色集 = rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
     const 动态地点 = deepGet(rootData, 'world.动态地点', {});
-    const 物品表 = rootData.物品 && typeof rootData.物品 === 'object' ? rootData.物品 : {};
+    const 物品定义条目列表 = 取物品定义条目列表_桥接(rootData);
     const 角色Manifest = 读取角色归档Manifest缓存_桥接();
     const 动态地点Manifest = 读取动态地点归档Manifest缓存_桥接();
     const 物品Manifest = 读取物品归档Manifest缓存_桥接();
     const 角色索引 = 角色Manifest && 角色Manifest.角色索引 && typeof 角色Manifest.角色索引 === 'object' ? 角色Manifest.角色索引 : {};
     const 动态地点索引 = 动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {};
     const 物品索引 = 物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {};
+    const 自动归档配置 = 冷归档自动归档配置_桥接;
     const 归档服务标签 = 读取冷归档服务状态标签_桥接();
     const 归档服务可写 = 冷归档服务状态_桥接.可用 && 冷归档服务状态_桥接.可写;
-    const 允许设置归档路径 = !!冷归档服务状态_桥接.插件可用;
+    const 允许设置归档路径 = !!冷归档服务状态_桥接.插件可用 && !!冷归档服务状态_桥接.管理员;
+    const 显示归档高级设置 = modalFocusState[`${冷归档预览键_桥接}::advanced`] === true;
     const 归档路径 = 冷归档服务状态_桥接.root || 冷归档服务状态_桥接.error || '';
     const 保护角色 = 收集归档保护角色名_桥接(rootData);
     const 保护动态地点 = 收集归档保护动态地点名_桥接(rootData);
@@ -4603,7 +4900,7 @@
     const 排序名称 = 名称列表 => 名称列表.sort((左, 右) => 左.localeCompare(右, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }));
     const 热角色数量 = Object.keys(角色集).length;
     const 热地点数量 = Object.keys(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}).length;
-    const 热物品数量 = Object.keys(物品表).length;
+    const 热物品数量 = 物品定义条目列表.length;
     const 冷角色数量 = Object.keys(角色索引).length;
     const 冷地点数量 = Object.keys(动态地点索引).length;
     const 冷物品数量 = Object.keys(物品索引).length;
@@ -4614,9 +4911,9 @@
         ? safeEntries(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {})
           .sort((左, 右) => 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
           .map(([地点名, 地点数据]) => 构建动态地点归档选择行_桥接(地点名, 地点数据, { 保护: 保护动态地点.has(地点名) })).join('')
-        : safeEntries(物品表)
-          .sort((左, 右) => 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-          .map(([物品名, 物品定义]) => 构建物品归档选择行_桥接(物品名, 物品定义, { 保护: 保护物品.has(物品名) })).join('');
+        : 物品定义条目列表
+          .sort((左, 右) => 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+          .map(({ 物品名, 定义, 分类 }) => 构建物品归档选择行_桥接(物品名, 定义, { 分类, 保护: 保护物品.has(物品名) })).join('');
     const 冷行 = 当前页签 === '角色'
       ? 排序名称(Object.keys(角色索引)).map(角色名 => 构建角色归档索引行_桥接(角色名, 角色索引[角色名])).join('')
       : 当前页签 === '动态地点'
@@ -4659,7 +4956,7 @@
         ? 聚焦物品数据
           ? makeTileGrid([
             { label: '物品', value: 聚焦物品名 },
-            { label: '类型', value: toText(聚焦物品数据.类型, '物品') },
+            { label: '分类', value: toText(聚焦物品缓存 && 聚焦物品缓存.物品分类, 规范化物品定义分类_桥接(读取物品定义显式分类_桥接(聚焦物品数据, ''), '剧情杂物')) },
             { label: '品质', value: toText(聚焦物品数据.品质, '无') },
             { label: '槽位', value: toText(聚焦物品数据.装备槽位, '无') },
           ], 'two')
@@ -4708,9 +5005,47 @@
               { label: '归档物品', value: `${冷物品数量} 个` },
             ], 'two')}
             <div class="mvu-detail-search-row">
-              <input type="text" class="request-console-input" data-cold-archive-root-input="1" value="${escapeHtmlAttr(冷归档服务状态_桥接.customRoot || '')}" placeholder="${escapeHtmlAttr(归档路径 || '默认归档目录')}"${允许设置归档路径 ? '' : ' disabled'} />
-              <button type="button" class="tag-chip" data-cold-archive-set-root="1"${允许设置归档路径 ? '' : ' disabled'}>路径</button>
               <button type="button" class="tag-chip" data-cold-archive-refresh="1">刷新</button>
+              ${允许设置归档路径 ? `<button type="button" class="tag-chip ${显示归档高级设置 ? 'live' : ''}" data-cold-archive-toggle-advanced="1">高级</button>` : ''}
+            </div>
+            ${显示归档高级设置 && 允许设置归档路径 ? `
+              <div class="mvu-detail-search-row">
+                <input type="text" class="request-console-input" data-cold-archive-root-input="1" value="${escapeHtmlAttr(冷归档服务状态_桥接.customRoot || '')}" placeholder="${escapeHtmlAttr(归档路径 || '默认归档目录')}" />
+                <button type="button" class="tag-chip" data-cold-archive-set-root="1">路径</button>
+              </div>
+            ` : ''}
+            <div class="mvu-editor-field-grid">
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">自动归档</span>
+                <select class="request-console-input" data-cold-archive-setting="启用自动归档">
+                  <option value="true"${自动归档配置.启用自动归档 ? ' selected' : ''}>启用</option>
+                  <option value="false"${自动归档配置.启用自动归档 ? '' : ' selected'}>停用</option>
+                </select>
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">角色阈值</span>
+                <input type="number" min="1" max="200" step="1" class="request-console-input" data-cold-archive-setting="角色数量阈值" value="${escapeHtmlAttr(自动归档配置.角色数量阈值)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">地点阈值</span>
+                <input type="number" min="1" max="200" step="1" class="request-console-input" data-cold-archive-setting="动态地点数量阈值" value="${escapeHtmlAttr(自动归档配置.动态地点数量阈值)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">物品分类阈值</span>
+                <input type="number" min="1" max="100" step="1" class="request-console-input" data-cold-archive-setting="物品分类数量阈值" value="${escapeHtmlAttr(自动归档配置.物品分类数量阈值)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">单轮上限</span>
+                <input type="number" min="1" max="20" step="1" class="request-console-input" data-cold-archive-setting="单轮上限" value="${escapeHtmlAttr(自动归档配置.单轮上限)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">冷却秒数</span>
+                <input type="number" min="5" max="3600" step="1" class="request-console-input" data-cold-archive-setting="冷却秒数" value="${escapeHtmlAttr(Math.round(自动归档配置.冷却毫秒 / 1000))}" />
+              </label>
+            </div>
+            <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
+              <button type="button" class="tag-chip live" data-cold-archive-save-settings="1">保存设定</button>
+              <button type="button" class="tag-chip" data-cold-archive-reset-settings="1">默认值</button>
             </div>
             <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
               <button type="button" class="tag-chip ${当前页签 === '角色' ? 'live' : ''}" data-cold-archive-tab="角色">角色</button>
@@ -6318,6 +6653,21 @@
     for (const 候选 of 候选窗口) {
       const 接口 = 候选?.__LWCS_MVU_RUNTIME_VIEW__;
       if (接口 && typeof 接口.应用内置角色实例化 === 'function') return 接口;
+    }
+    return null;
+  }
+
+  function 获取运行时实体命中接口_桥接() {
+    const 候选窗口 = [window];
+    try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
+    for (const 候选 of 候选窗口) {
+      const 接口 = 候选?.__LWCS_MVU_RUNTIME_VIEW__;
+      if (
+        接口 &&
+        typeof 接口.收集运行时动态地点命中 === 'function' &&
+        typeof 接口.收集运行时物品命中 === 'function'
+      ) return 接口;
     }
     return null;
   }
@@ -26954,11 +27304,11 @@
     const inventoryEntries = Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries : [];
     const inventoryItems = inventoryEntries.slice(0, 6).map(([name, item]) => {
       const qty = toNumber(item && item['数量'], 1);
-      const type = toText(item && item['类型'], '物品');
-      const desc = resolveShellText(item && item['描述'], type) || type;
+      const 分类 = 推断物品分类(name, item, item);
+      const desc = resolveShellText(item && item['描述'], 分类) || 分类;
       return {
         title: `${name}${qty > 1 ? ` ×${formatNumber(qty)}` : ''}`,
-        meta: type,
+        meta: 分类,
         note: desc,
       };
     });
@@ -31977,7 +32327,7 @@
           : /万年|魂骨|魂灵|紫/.test(name + toText(item && item['品质'], ''))
             ? 'purple'
             : '',
-        type: `${toText(item && item['类型'], '物品')} / ${toText(item && item['品质'], '普通')}`,
+        type: `${分类} / ${toText(item && item['品质'], '普通')}`,
         rarity: toText(item && item['品质'], '普通'),
         source: toText(item && item['来源'], toText(item && item['绑定者'], '背包持有')),
         usage: toText(item && item['描述'], '暂无说明'),
@@ -31985,28 +32335,25 @@
         canUse: Array.isArray(item && item['使用效果']) && item['使用效果'].length > 0,
         actionLabel: '使用',
         tags: [
-          toText(item && item['类型'], ''),
-          toText(item && item['品质'], ''),
           分类,
+          toText(item && item['品质'], ''),
           Number(deepGet(item, '有效期至tick', 0)) > 0 ? '临时道具' : '',
         ].filter(Boolean),
       }));
       const 当前定义名 = 取仓库物品定义名(snapshot);
-      const 物品表 = deepGet(snapshot, 'rootData.物品', {});
       const 当前实例 = 当前定义名 === '__new__' ? {} : deepGet(snapshot, ['activeChar', '背包', 当前定义名], {});
       const 当前定义 = 当前定义名 === '__new__' ? {} : 取物品定义_桥接(snapshot.rootData || {}, 当前定义名);
       const 当前合并物品 = 当前定义名 === '__new__' ? {} : 合并物品定义与状态_桥接(snapshot.rootData || {}, 当前定义名, 当前实例);
       const 定义编辑展开 = modalFocusState['储物仓库详细页::定义编辑展开'] === '1';
-      const 物品定义选项 = safeEntries(物品表)
-        .sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'zh-Hans-CN'))
+      const 物品定义选项 = 取物品定义条目列表_桥接(snapshot.rootData || {})
+        .sort((左, 右) => 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
         .slice(0, 240)
-        .map(([名称, 定义]) => {
-          const 分类 = 推断物品分类(名称, 定义, {});
-          return `<option value="${escapeHtmlAttr(名称)}"${名称 === 当前定义名 ? ' selected' : ''}>${htmlEscape(`${名称} / ${分类}`)}</option>`;
+        .map(({ 物品名, 分类 }) => {
+          return `<option value="${escapeHtmlAttr(物品名)}"${物品名 === 当前定义名 ? ' selected' : ''}>${htmlEscape(`${物品名} / ${分类}`)}</option>`;
         })
         .join('');
       const 当前物品分类 = 当前定义名 === '__new__' ? '新建' : 推断物品分类(当前定义名, 当前合并物品, 当前实例);
-      const 当前物品标签 = [当前物品分类, toText(当前合并物品.品质, '普通'), toText(当前合并物品.类型, '物品')].filter(Boolean).join(' · ');
+      const 当前物品标签 = [当前物品分类, toText(当前合并物品.品质, '普通')].filter(Boolean).join(' · ');
       const 当前物品数量 = Math.max(0, toNumber(当前实例 && 当前实例.数量, 当前定义名 === '__new__' ? 1 : 0));
       const 当前物品可用 = Array.isArray(当前合并物品.使用效果) && 当前合并物品.使用效果.length > 0;
       const 当前物品可装备 = !!(window.EquipmentManager && window.EquipmentManager.parseEquipSlot(当前定义名, 当前合并物品));
@@ -35368,10 +35715,10 @@
     return (snapshot && Array.isArray(snapshot.inventoryEntries) ? snapshot.inventoryEntries : [])
       .filter(([name, item]) => {
         const safeName = toText(name, '');
-        const itemType = toText(item && item['类型'], '');
+        const itemType = toText(item && (item['物品分类'] || item['分类']), '');
         return (
           /魂灵塔/.test(safeName) &&
-          (/(票|券|令|凭证)/.test(safeName) || itemType === '门票') &&
+          (/(票|券|令|凭证)/.test(safeName) || itemType === '身份票据') &&
           toNumber(item && item['数量'], 0) > 0
         );
       })
@@ -37116,6 +37463,111 @@ ${播报文本}
       submitAfterSave: true,
     });
     return { ok: true, previewKey, skillKey };
+  }
+
+  function 规范化传授内容类型(内容类型 = '') {
+    const 文本 = toText(内容类型, '').trim();
+    if (/情报|信息|秘密|机密/.test(文本)) return '情报';
+    if (/功法|心法|绝学/.test(文本)) return '功法';
+    if (/秘技|战斗技巧|技巧|技艺/.test(文本)) return '战斗技巧';
+    if (/自创魂技|魂技|技能/.test(文本)) return '自创魂技';
+    return 文本 || '情报';
+  }
+
+  function 解析传授模块意图请求(snapshot, payload = {}) {
+    const 学生名 = toText(payload.学生 || payload.student || payload.角色 || payload.char || snapshot?.activeName, '').trim();
+    const 老师名 = toText(payload.老师 || payload.teacher || payload.对象 || payload.npc || payload.target, '').trim();
+    const 内容名称 = toText(payload.内容名称 || payload.名称 || payload.name || payload.内容 || payload.targetName, '').trim();
+    const 内容类型 = 规范化传授内容类型(payload.内容类型 || payload.type || payload.category || payload.类型);
+    const 结果 = toText(payload.结果 || payload.result || '成立', '成立').trim();
+    const 理由 = toText(payload.理由 || payload.reason, '').trim();
+    const 学生 = resolveSnapshotCharacter(snapshot, 学生名 || snapshot?.activeName);
+    const 老师 = 老师名 ? resolveSnapshotCharacter(snapshot, 老师名) : { key: '', displayName: '', char: null };
+    if (!学生.key || !学生.char) return { invalid: true, reason: 'teaching_student_unresolved', 学生: 学生名, 老师: 老师名, 内容类型, 内容名称, 结果, 理由 };
+    if (!内容名称) return { invalid: true, reason: 'teaching_content_missing', 学生: 学生.displayName || 学生.key, 老师: 老师.displayName || 老师名, 内容类型, 内容名称, 结果, 理由 };
+    return {
+      动作: toText(payload.动作 || payload.action, '请教'),
+      老师: 老师.displayName || 老师名,
+      teacherKey: 老师.key || '',
+      学生: 学生.displayName || 学生.key,
+      studentKey: 学生.key,
+      内容类型,
+      内容名称,
+      结果,
+      理由,
+    };
+  }
+
+  async function 打开传授技能设计台(request = {}) {
+    const studentKey = toText(request.studentKey, '').trim();
+    const skillLabel = toText(request.内容名称, '').trim();
+    const 内容类型 = 规范化传授内容类型(request.内容类型);
+    if (!studentKey || !skillLabel) throw new Error('传授内容缺少学生或名称。');
+    const scope = 内容类型 === '功法' ? 'art' : '自创魂技';
+    const category = 内容类型 === '功法' ? '功法' : '自创魂技';
+    const parentKey = 内容类型 === '功法' ? '功法' : '自创魂技';
+    const recordKey = skillLabel;
+    const previewKey = buildSkillDesignerPreviewKey({
+      path: ['char', studentKey, parentKey, recordKey],
+      label: skillLabel,
+      category,
+      scope,
+    });
+    await mutateStatDataByEditor(
+      statData => {
+        const charData = deepGet(statData, ['char', studentKey], null);
+        if (!charData || typeof charData !== 'object') throw new Error('未找到学生角色。');
+        if (!charData[parentKey] || typeof charData[parentKey] !== 'object' || Array.isArray(charData[parentKey]))
+          charData[parentKey] = {};
+        if (!charData[parentKey][recordKey]) {
+          charData[parentKey][recordKey] = 内容类型 === '功法'
+            ? { 魂技名: skillLabel, 境界: '未入门', lv: 0, exp: 0, 画面描述: '未知', 效果描述: '未知', _效果数组: [] }
+            : { 魂技名: skillLabel, 画面描述: '未知', 效果描述: '未知', _效果数组: [] };
+        }
+      },
+      { force: true },
+    );
+    await refreshLiveSnapshot({ force: true });
+    打开技能设计确认({
+      previewKey,
+      charName: toText(request.学生, studentKey),
+      sourceLabel: `${toText(request.老师, '他人')}传授${内容类型}`,
+      submitAfterSave: true,
+    });
+    return { ok: true, previewKey, recordKey, 内容类型 };
+  }
+
+  async function 执行传授模块意图路由(snapshot, request = {}) {
+    if (request.invalid) return 构建模块路由失败结果('teaching', request, request.reason || 'teaching_request_invalid');
+    if (toText(request.结果, '成立') !== '成立') {
+      return 构建模块路由成功结果('teaching', request, {
+        dispatchMode: 'patch',
+        skipped: true,
+        reason: 'teaching_not_established',
+      });
+    }
+    const 内容类型 = 规范化传授内容类型(request.内容类型);
+    if (内容类型 === '情报') {
+      await mutateStatDataByEditor(
+        statData => {
+          const intelPath = ['char', request.studentKey, '已掌握情报'];
+          let knowledges = deepGet(statData, intelPath, null);
+          if (!Array.isArray(knowledges)) {
+            deepSetMutable(statData, intelPath, []);
+            knowledges = deepGet(statData, intelPath, null);
+          }
+          if (!knowledges.some(item => toText(item, '').trim() === request.内容名称)) knowledges.push(request.内容名称);
+        },
+        { force: true },
+      );
+      await refreshLiveSnapshot({ force: true });
+      return 构建模块路由成功结果('teaching', request, { dispatchMode: 'patch', 内容类型 });
+    }
+    const result = await 打开传授技能设计台({ ...request, 内容类型 });
+    return 构建模块路由成功结果('teaching', request, {
+      dispatchMode: 'settled_summary',
+      result,
+    });
   }
 
   window.__LWCS_PROMPT_SKILL_DESIGN__ = async (选项 = {}) => {
@@ -38968,6 +39420,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (/battle|combat|战斗|切磋|单挑/.test(文本)) return 'battle';
     if (/trade|交易|购买|出售|竞拍|拍卖/.test(文本)) return 'trade';
     if (/craft|profession|job|副职业|工坊|锻造|制造|设计|修理|维修/.test(文本)) return 'profession';
+    if (/teaching|teach|传授|授课|教学|指点/.test(文本)) return 'teaching';
     if (/travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(文本)) return 'travel';
     if (/routine|daily|日常|修炼|冥想|拟态/.test(文本)) return 'routine';
     if (/trial_entry|trial|升灵台|魂灵塔|试炼/.test(文本)) return 'trial_entry';
@@ -39813,6 +40266,8 @@ ${toText(combatData.战斗意图, '点到为止')}
       request = buildTradeRequestFromObject(snapshot, payload);
     } else if (moduleKind === 'profession') {
       request = buildDirectProfessionRequest(snapshot, payload);
+    } else if (moduleKind === 'teaching') {
+      request = 解析传授模块意图请求(snapshot, payload);
     } else if (moduleKind === 'travel') {
       request = 解析移动模块意图请求(snapshot, payload, text);
     } else if (moduleKind === 'routine') {
@@ -39893,6 +40348,10 @@ ${toText(combatData.战斗意图, '点到为止')}
 
     if (moduleKind === 'travel') {
       return await 执行移动模块意图路由(snapshot, request);
+    }
+
+    if (moduleKind === 'teaching') {
+      return await 执行传授模块意图路由(snapshot, request);
     }
 
     if (moduleKind === 'routine') {
@@ -41769,21 +42228,20 @@ ${toText(combatData.战斗意图, '点到为止')}
         }
       if (actionType === 'save-item-definition') {
         const 表单节点 = collectionActionBtn.closest('[data-collection-panel="item-definition-editor"]');
-        const { 旧名, 新名, 定义 } = 读取物品定义表单(
+        const { 旧名, 新名, 分类, 定义 } = 读取物品定义表单(
           表单节点,
           (liveSnapshot && liveSnapshot.rootData) ||
             (lastRenderableSnapshot && lastRenderableSnapshot.rootData) ||
             {},
         );
         await mutateStatDataByEditor(statData => {
-          if (!statData.物品 || typeof statData.物品 !== 'object' || Array.isArray(statData.物品)) statData.物品 = {};
           if (旧名 && 旧名 !== 新名) {
-            if (Object.prototype.hasOwnProperty.call(statData.物品, 新名)) throw new Error('同名物品已存在。');
-            statData.物品[新名] = 定义;
-            delete statData.物品[旧名];
+            if (查找物品定义_桥接(statData, 新名)) throw new Error('同名物品已存在。');
+            删除分类物品定义_桥接(statData, 旧名);
+            写入分类物品定义_桥接(statData, 新名, 定义, 分类, { 允许覆盖: true });
             迁移物品名称引用(statData, 旧名, 新名);
           } else {
-            statData.物品[新名] = 定义;
+            写入分类物品定义_桥接(statData, 新名, 定义, 分类, { 允许覆盖: true });
           }
         });
         modalFocusState['储物仓库详细页::物品定义'] = 新名;
@@ -41816,7 +42274,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       }
       if (actionType === 'rename-item-definition') {
         const 表单节点 = collectionActionBtn.closest('[data-collection-panel="item-definition-editor"]');
-        const { 旧名, 新名, 定义 } = 读取物品定义表单(
+        const { 旧名, 新名, 分类, 定义 } = 读取物品定义表单(
           表单节点,
           (liveSnapshot && liveSnapshot.rootData) ||
             (lastRenderableSnapshot && lastRenderableSnapshot.rootData) ||
@@ -41825,11 +42283,10 @@ ${toText(combatData.战斗意图, '点到为止')}
         if (!旧名) throw new Error('新物品请直接保存。');
         if (新名 === 旧名) throw new Error('名称没有变化。');
         await mutateStatDataByEditor(statData => {
-          if (!statData.物品 || typeof statData.物品 !== 'object' || Array.isArray(statData.物品)) statData.物品 = {};
-          if (!Object.prototype.hasOwnProperty.call(statData.物品, 旧名)) throw new Error('原物品定义不存在。');
-          if (Object.prototype.hasOwnProperty.call(statData.物品, 新名)) throw new Error('同名物品已存在。');
-          statData.物品[新名] = 定义;
-          delete statData.物品[旧名];
+          if (!查找物品定义_桥接(statData, 旧名)) throw new Error('原物品定义不存在。');
+          if (查找物品定义_桥接(statData, 新名)) throw new Error('同名物品已存在。');
+          删除分类物品定义_桥接(statData, 旧名);
+          写入分类物品定义_桥接(statData, 新名, 定义, 分类, { 允许覆盖: true });
           迁移物品名称引用(statData, 旧名, 新名);
         });
           modalFocusState['储物仓库详细页::物品定义'] = 新名;
@@ -42270,6 +42727,41 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
 
+    const 冷归档高级按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-toggle-advanced]') : null;
+    if (冷归档高级按钮 && detailSurfaceHost.contains(冷归档高级按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      modalFocusState[`${冷归档预览键_桥接}::advanced`] = modalFocusState[`${冷归档预览键_桥接}::advanced`] !== true;
+      rerenderDetailSurface(冷归档预览键_桥接, options);
+      return;
+    }
+
+    const 冷归档设定保存按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-save-settings]') : null;
+    if (冷归档设定保存按钮 && detailSurfaceHost.contains(冷归档设定保存按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 输入配置 = {};
+      detailSurfaceHost.querySelectorAll('[data-cold-archive-setting]').forEach(节点 => {
+        const 字段 = toText(节点.getAttribute('data-cold-archive-setting'), '').trim();
+        if (!字段) return;
+        输入配置[字段] = 节点.value;
+      });
+      保存冷归档自动归档配置_桥接(输入配置);
+      showUiToast('冷归档设定已保存。', 'info', 1800);
+      rerenderDetailSurface(冷归档预览键_桥接, options);
+      return;
+    }
+
+    const 冷归档设定默认按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-reset-settings]') : null;
+    if (冷归档设定默认按钮 && detailSurfaceHost.contains(冷归档设定默认按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      重置冷归档自动归档配置_桥接();
+      showUiToast('冷归档设定已恢复默认。', 'info', 1800);
+      rerenderDetailSurface(冷归档预览键_桥接, options);
+      return;
+    }
+
     const 冷归档页签按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-tab]') : null;
     if (冷归档页签按钮 && detailSurfaceHost.contains(冷归档页签按钮)) {
       event.preventDefault();
@@ -42287,11 +42779,12 @@ ${toText(combatData.战斗意图, '点到为止')}
       event.preventDefault();
       event.stopPropagation();
       const 数据根 = (liveSnapshot && liveSnapshot.rootData) || (lastRenderableSnapshot && lastRenderableSnapshot.rootData) || {};
+      const 物品分类压力 = 当前冷归档页签 === '物品' ? 计算物品分类归档压力_桥接(数据根) : null;
       const 建议名称 = new Set(
         当前冷归档页签 === '动态地点'
           ? 选择自动归档动态地点名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限)
           : 当前冷归档页签 === '物品'
-            ? 选择自动归档物品名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限)
+            ? 选择自动归档物品名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限, 物品分类压力 && 物品分类压力.允许分类.length ? { 允许分类: 物品分类压力.允许分类 } : {})
             : 选择自动归档角色名_桥接(数据根, '', 冷归档自动归档配置_桥接.单轮上限),
       );
       const 复选框列表 = Array.from(detailSurfaceHost.querySelectorAll(
@@ -43662,6 +44155,26 @@ ${toText(combatData.战斗意图, '点到为止')}
       return false;
     },
 
+    applyInventoryStateRemoveEffect(charData = {}, effect = {}, logs = []) {
+      const value = effect && typeof effect === 'object' ? effect.value || {} : {};
+      const statusMap = charData?.属性?.状态效果 && typeof charData.属性.状态效果 === 'object' && !Array.isArray(charData.属性.状态效果)
+        ? charData.属性.状态效果
+        : {};
+      const 状态名 = toText(value.状态, '').trim();
+      const 数量文本 = toText(value.数量, '1').trim();
+      const 删除上限 = 数量文本 === '全部' ? Number.POSITIVE_INFINITY : Math.max(1, Math.floor(toNumber(数量文本, 1)));
+      const 候选 = Object.keys(statusMap).filter(名称 => {
+        const 记录 = statusMap[名称] && typeof statusMap[名称] === 'object' ? statusMap[名称] : {};
+        if (状态名 && 状态名 !== '任意负面') return 名称 === 状态名;
+        return toText(记录.类型, '') === 'debuff';
+      });
+      const 删除列表 = 候选.slice(0, 删除上限);
+      删除列表.forEach(名称 => delete statusMap[名称]);
+      if (!删除列表.length) return false;
+      logs.push(`移除状态:${删除列表.join('、')}`);
+      return true;
+    },
+
     appendInventoryStatusEffect(statusMap = {}, itemName, effect = {}, index = 0, logs = [], 当前tick = 0) {
       const key = `${itemName}#${index + 1}`;
       const value = effect && typeof effect === 'object' ? effect.value || {} : {};
@@ -43908,6 +44421,18 @@ ${toText(combatData.战斗意图, '点到为止')}
           value: { 属性: '吸收灵物年限', 数值: toNumber(effect['数值'], 0) },
         };
       }
+      if (prototype === '状态移除') {
+        return {
+          target,
+          type: 'state_remove',
+          description,
+          value: {
+            状态: toText(effect['状态'], ''),
+            匹配原型: toText(effect['匹配原型'], ''),
+            数量: toText(effect['数量'], '1'),
+          },
+        };
+      }
       if (prototype === '状态修正' && /吸收灵物年限/.test(toText(effect['属性'] || effect['目标'], ''))) {
         return {
           target,
@@ -43993,6 +44518,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         charData.属性.状态效果 = {};
       if (usableEffect.type === 'heal') return this.applyInventoryHealEffect(charData.属性, usableEffect, logs);
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);
+      if (usableEffect.type === 'state_remove') return this.applyInventoryStateRemoveEffect(charData, usableEffect, logs);
       if (['buff', 'debuff', 'shield', 'custom', 'mechanism_grant', 'cultivation_gain'].includes(String(usableEffect.type || '')))
         return this.appendInventoryStatusEffect(charData.属性.状态效果, itemName, usableEffect, index, logs, 当前tick);
       return false;
@@ -44426,27 +44952,13 @@ ${toText(combatData.战斗意图, '点到为止')}
       const itemName = toText(skill?.魂技名 || skill?.name, '临时造物');
       const relativeExpiryTick = Math.max(0, toNumber(effect?.有效期tick, 0));
       const itemDefinition = {
-        类型: '魂技造物',
+        分类: '魂技造物',
         阶位: Math.max(0, Math.floor(toNumber(effect?.阶位, 0))),
         品质: toText(effect?.品质, '普通'),
         描述: toText(effect?.描述 || skill?.效果描述, '使用后触发对应魂技效果'),
         基础价格: Math.max(0, Math.floor(toNumber(effect?.基础价格, 0))),
         默认货币: toText(effect?.默认货币, '联邦币'),
-        装备槽位: toText(effect?.装备槽位, '无'),
-        基础耐久: Math.max(0, Math.floor(toNumber(effect?.基础耐久, 0))),
-        使用条件:
-          effect?.使用条件 && typeof effect.使用条件 === 'object' && !Array.isArray(effect.使用条件)
-            ? cloneJsonValue(effect.使用条件, {})
-            : {},
         使用效果: cloneJsonValue(Array.isArray(effect?.使用效果) ? effect.使用效果 : [], []),
-        属性加成:
-          effect?.属性加成 && typeof effect.属性加成 === 'object' && !Array.isArray(effect.属性加成)
-            ? cloneJsonValue(effect.属性加成, {})
-            : {},
-        副职业参数:
-          effect?.副职业参数 && typeof effect.副职业参数 === 'object' && !Array.isArray(effect.副职业参数)
-            ? cloneJsonValue(effect.副职业参数, {})
-            : {},
       };
       const 使用副作用列表 = cloneJsonValue(Array.isArray(effect?.副作用列表) ? effect.副作用列表 : [], []);
       if (使用副作用列表.length) itemDefinition.副作用列表 = 使用副作用列表;
@@ -44588,9 +45100,6 @@ ${toText(combatData.战斗意图, '点到为止')}
               if (是否食物系技能造物 && 命中修炼增益效果) {
                 itemDefinition.品质 = toText(itemDefinition.品质, 'S');
               }
-              if (!statData.物品 || typeof statData.物品 !== 'object' || Array.isArray(statData.物品))
-                statData.物品 = {};
-              const 物品定义键 = itemName;
               let 背包键 = itemName;
               const 当前背包项 = charData.背包[背包键] && typeof charData.背包[背包键] === 'object' ? charData.背包[背包键] : null;
               if (当前背包项 && toText(当前背包项.制作者, charKey) !== charKey) {
@@ -44606,12 +45115,13 @@ ${toText(combatData.战斗意图, '点到为止')}
                   序号 += 1;
                 }
               }
+              const 已有物品定义 = 查找物品定义_桥接(statData, itemName);
               const 下一物品定义 = {
-                ...构建物品定义记录_桥接(itemName, statData.物品[物品定义键]),
+                ...构建物品定义记录_桥接(itemName, 已有物品定义?.定义 || {}, 已有物品定义?.分类 || '魂技造物'),
                 ...itemDefinition,
               };
               if (!Array.isArray(itemDefinition.副作用列表) || !itemDefinition.副作用列表.length) delete 下一物品定义.副作用列表;
-              statData.物品[物品定义键] = 下一物品定义;
+              写入分类物品定义_桥接(statData, itemName, 下一物品定义, '魂技造物', { 允许覆盖: true });
               const existing =
                 charData.背包[背包键] && typeof charData.背包[背包键] === 'object' ? charData.背包[背包键] : null;
               if (existing) {
