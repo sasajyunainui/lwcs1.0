@@ -530,6 +530,40 @@
     } catch (错误) {}
   }
 
+  function 注册冷归档脚本按钮() {
+    try {
+      if (宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__) return true;
+      if (
+        typeof appendInexistentScriptButtons !== 'function' ||
+        typeof getButtonEvent !== 'function' ||
+        typeof eventOn !== 'function'
+      ) {
+        return false;
+      }
+      appendInexistentScriptButtons([{ name: 'MVU冷归档', visible: true }]);
+      eventOn(getButtonEvent('MVU冷归档'), async () => {
+        try {
+          await 引导加载();
+          await 等待全局函数('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__', 12000);
+          const 打开冷归档面板 =
+            typeof 宿主窗口.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ === 'function'
+              ? 宿主窗口.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__
+              : typeof window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ === 'function'
+                ? window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__
+                : null;
+          if (打开冷归档面板) 打开冷归档面板();
+        } catch (错误) {
+          console.error('[MVU] MVU冷归档按钮执行失败:', 错误);
+        }
+      });
+      宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__ = true;
+      return true;
+    } catch (错误) {
+      console.warn('[MVU] MVU冷归档按钮注册失败:', 错误);
+      return false;
+    }
+  }
+
   function 安排空闲预取() {
     if (空闲预取已安排) return;
     空闲预取已安排 = true;
@@ -615,5 +649,6 @@
     } catch (错误) {}
   }
 
+  注册冷归档脚本按钮();
   监控并启动引导();
 })();
