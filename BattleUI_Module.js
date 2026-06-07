@@ -5292,7 +5292,7 @@ class BattleUIComponent {
         Object.assign(directPayload, scaled);
         if (directPayload.面板修改比例) directPayload.面板修改比例 = 缩放原型面板修改比例(directPayload.面板修改比例, 缩放系数);
         if (directPayload.面板固定修正) directPayload.面板固定修正 = 缩放原型面板固定修正(directPayload.面板固定修正, 缩放系数);
-        if (hydrated.威力倍率 !== undefined) hydrated.威力倍率 = scaleBattleValue(hydrated.威力倍率, 缩放系数, { min: 0, digits: 2 });
+        if (hydrated.威力倍率 !== undefined && !(读取固定攻势等级(hydrated) > 0)) hydrated.威力倍率 = scaleBattleValue(hydrated.威力倍率, 缩放系数, { min: 0, digits: 2 });
         if (hydrated.防御穿透 !== undefined) hydrated.防御穿透 = scaleBattleValue(hydrated.防御穿透, 缩放系数, { min: 0, max: 100, digits: 0 });
         if (String(effect?.原型 || '').trim() === '资源锁定' && hydrated.数值 !== undefined) {
           const 原比例 = Math.abs(读取战斗数值正负(hydrated.数值));
@@ -5546,6 +5546,46 @@ class BattleUIComponent {
       const 当前精神力 = 读取战斗资源当前值(单位, 最终属性, 'men');
       const 精神上限 = 读取战斗资源上限值(单位, 最终属性, 'men');
       return Math.max(当前精神力, 精神上限 * 0.25);
+    }
+
+    function 读取固定攻势等级(effect = {}) {
+      const 等级 = Math.round(Number(effect?.固定攻势等级 || 0));
+      if (!Number.isFinite(等级) || 等级 <= 0) return 0;
+      return Math.max(1, Math.min(180, 等级));
+    }
+
+    function 构建固定攻势数据(effect = {}) {
+      const 等级 = 读取固定攻势等级(effect);
+      if (!(等级 > 0)) return null;
+      const 读取基础属性 = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__ : null;
+      if (!读取基础属性) return null;
+      const 基础属性 = 读取基础属性(等级) || {};
+      const 最终属性 = {
+        level: 等级,
+        等级,
+        str: Math.max(1, Number(基础属性.str || 1)),
+        def: Math.max(1, Number(基础属性.def || 1)),
+        agi: Math.max(1, Number(基础属性.agi || 1)),
+        vit_max: Math.max(1, Number(基础属性.vit_max || 1)),
+        sp_max: Math.max(0, Number(基础属性.sp_max || 0)),
+        men_max: Math.max(1, Number(基础属性.men_max || 1)),
+      };
+      const 单位 = {
+        name: `固定攻势${等级}级`,
+        level: 等级,
+        等级,
+        str: 最终属性.str,
+        def: 最终属性.def,
+        agi: 最终属性.agi,
+        vit: 最终属性.vit_max,
+        vit_max: 最终属性.vit_max,
+        sp: 最终属性.sp_max,
+        sp_max: 最终属性.sp_max,
+        men: 最终属性.men_max,
+        men_max: 最终属性.men_max,
+        final: 最终属性,
+      };
+      return { 等级, 单位, 最终属性 };
     }
 
     function 读取技能启动消耗(skill = {}) {
@@ -7723,9 +7763,12 @@ class BattleUIComponent {
         '气运修正',
         '反噬系数',
       ];
+      const 原始效果文本 = JSON.stringify(effects);
       effects.forEach(effect => {
         const 机制名 = String(effect?.原型 || '').trim();
         if (!effect || typeof effect !== 'object' || 机制名 === '系统基础' || 机制名 === '技能效果增幅') return;
+        const 是固定攻势伤害 = 机制名 === '伤害结算' && 读取固定攻势等级(effect) > 0;
+        if (是固定攻势伤害) return;
         const 命中数量字段 = 数量字段.filter(字段 => Number.isFinite(Number(effect[字段])));
         if (命中数量字段.length > 0) {
           命中数量字段.forEach(字段 => {
@@ -7771,7 +7814,7 @@ class BattleUIComponent {
           effect.计算层效果 = scaleBattleSupportBuffCalc(effect.计算层效果, 效果倍率);
         }
       });
-      return { skill: nextSkill, 已增幅: true, 效果倍率 };
+      return { skill: nextSkill, 已增幅: JSON.stringify(effects) !== 原始效果文本, 效果倍率 };
     }
 
     function scaleSkillCostText(costText, ratio = 1) {
@@ -7865,7 +7908,7 @@ class BattleUIComponent {
         const mechanism = String(effect?.原型 || '');
         if (!mechanism) return;
 
-        if (directDamageMechanisms.has(mechanism) && effect.威力倍率 !== undefined) {
+        if (directDamageMechanisms.has(mechanism) && effect.威力倍率 !== undefined && !(读取固定攻势等级(effect) > 0)) {
           effect.威力倍率 = scaleBattleValue(effect.威力倍率, coeff.威力, { min: 0, digits: 2 });
         }
         if (mechanism === '护盾' && effect.护盾值 !== undefined) {
@@ -8141,7 +8184,7 @@ class BattleUIComponent {
         ['护盾值', '每回合伤害', 'dot_damage', 'final_damage_bonus', 'final_heal_bonus', 'shield_gain_bonus'].forEach(key => {
           if (effect[key] !== undefined) effect[key] = 按技能掌控度缩放数值(effect[key], 完整度);
         });
-        if (effect.威力倍率 !== undefined) effect.威力倍率 = 按技能掌控度缩放数值(effect.威力倍率, 完整度);
+        if (effect.威力倍率 !== undefined && !(String(effect.原型 || '').trim() === '伤害结算' && 读取固定攻势等级(effect) > 0)) effect.威力倍率 = 按技能掌控度缩放数值(effect.威力倍率, 完整度);
         const 面板修改比例 = effect.面板修改比例 && typeof effect.面板修改比例 === 'object' ? effect.面板修改比例 : null;
         if (面板修改比例) {
           ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => {
@@ -21951,16 +21994,20 @@ class BattleUIComponent {
         const defenderConditionEffects = defender.状态效果
           ? Object.values(defender.状态效果).map(c => c?.战斗效果 || {})
           : [];
-        const 预结算附加穿透 = 预结算效果列表.reduce((总和, effect) => {
+        const 固定攻势 = 构建固定攻势数据(pClash);
+        const 使用固定攻势 = !!固定攻势;
+        const 攻势单位 = 使用固定攻势 ? 固定攻势.单位 : attacker;
+        const 攻势最终属性 = 使用固定攻势 ? 固定攻势.最终属性 : attackerFinalStat;
+        const 预结算附加穿透 = 使用固定攻势 ? 0 : 预结算效果列表.reduce((总和, effect) => {
           if (String(effect?.原型 || '').trim() !== '结算修正') return 总和;
           if (String(effect?.结算 || '').trim() !== '防御穿透') return 总和;
           const 原始值 = Number(读取战斗数值正负(effect?.数值));
           if (!Number.isFinite(原始值) || 原始值 === 0) return 总和;
           return 总和 + (Math.abs(原始值) <= 1 ? 原始值 * 100 : 原始值) * 直接结算收益预算系数;
         }, 0);
-        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0)) * 直接结算收益预算系数;
+        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0)) * (使用固定攻势 ? 1 : 直接结算收益预算系数);
         const dmgType = String(pClash?.伤害类型 || '物理伤害');
-        const conditionArmorPen = 读取状态穿透比例(attackerConditionEffects);
+        const conditionArmorPen = 使用固定攻势 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const 目标防御剥夺 = Math.min(
           0.9,
           defenderConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.defense_strip || 0)), 0),
@@ -21976,41 +22023,41 @@ class BattleUIComponent {
           conditionArmorPen,
         );
         if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
-        const soulDriveScale = getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
-        const spiritDriveScale = getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
-        const 定位伤害倍率 = 计算定位伤害倍率(attacker, defender, dmgType);
-        const 消耗加成系数 = 计算伤害消耗加成系数(skill, attacker);
+        const soulDriveScale = 使用固定攻势 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
+        const spiritDriveScale = 使用固定攻势 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
+        const 定位伤害倍率 = 使用固定攻势 ? 1 : 计算定位伤害倍率(attacker, defender, dmgType);
+        const 消耗加成系数 = 使用固定攻势 ? 1 : 计算伤害消耗加成系数(skill, attacker);
         if (/真实/.test(dmgType)) {
-          const 真实驱动 = Math.max(1, 计算精神伤害攻势值(attacker, attackerFinalStat));
+          const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
           projectedDamage = skillPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
         } else if (/物理/.test(dmgType)) {
           projectedDamage =
             skillPower *
-            (Number(attackerFinalStat.str || attacker.str || 0) / actualDef) *
+            (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
             soulDriveScale *
             定位伤害倍率 *
             消耗加成系数;
         } else if (/能量/.test(dmgType)) {
           projectedDamage =
             skillPower *
-            (计算精神伤害攻势值(attacker, attackerFinalStat) / actualDef) *
+            (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
             spiritDriveScale *
             定位伤害倍率 *
             消耗加成系数;
         } else if (/精神/.test(dmgType)) {
           projectedDamage =
             skillPower *
-            (计算精神伤害攻势值(attacker, attackerFinalStat) /
+            (计算精神伤害攻势值(攻势单位, 攻势最终属性) /
               Math.max(1, 计算精神伤害攻势值(defender, defenderFinalStat) * (1 - 目标精神抗性剥夺))) *
             spiritDriveScale *
             定位伤害倍率 *
             消耗加成系数;
         }
-        const attackerFinalDamageMult = attackerConditionEffects.reduce(
+        const attackerFinalDamageMult = 使用固定攻势 ? 1 : attackerConditionEffects.reduce(
           (mult, ce) => mult * Number(ce.final_damage_mult || 1.0),
           1.0,
         );
-        const attackerFinalDamageBonus = attackerConditionEffects.reduce(
+        const attackerFinalDamageBonus = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) => sum + Number(ce.final_damage_bonus || 0),
           0,
         );
@@ -22022,7 +22069,7 @@ class BattleUIComponent {
           (mult, ce) => mult * Number(ce.received_damage_mult || 1.0),
           1.0,
         );
-        const extraTrueDamage = attackerConditionEffects.reduce(
+        const extraTrueDamage = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) =>
             sum + Math.floor((Number(attackerFinalStat.men_max || attacker.men_max || 0) || 0) * Number(ce.bonus_true_damage_ratio || 0)),
           0,
@@ -23121,7 +23168,13 @@ class BattleUIComponent {
         let 能力共享自身禁用命中 = 能力共享自身预禁用;
         const isBasicAttack =
           !playerAction?.skill || skillName === '普通攻击' || playerAction?.action_type === '常规攻击';
-        const isPhysicalMeleeAction = String(pClash.伤害类型 || '') === '物理伤害';
+        const 本次固定攻势 = 构建固定攻势数据(pClash);
+        const 使用固定攻势 = !!本次固定攻势;
+        const 攻势单位 = 使用固定攻势 ? 本次固定攻势.单位 : attacker;
+        const 攻势最终属性 = 使用固定攻势 ? 本次固定攻势.最终属性 : attackerFinalStat;
+        const 攻势敏捷 = Math.max(1, Number(攻势最终属性.agi || 攻势单位.agi || aAgi || 1));
+        const 攻势精神上限 = Math.max(1, Number(攻势最终属性.men_max || 攻势单位.men_max || attackerFinalStat.men_max || 1));
+        const isPhysicalMeleeAction = !使用固定攻势 && String(pClash.伤害类型 || '') === '物理伤害';
         const 登记行为防反候选 = (防反类型, 防反方, 参数 = {}) => {
           if (!防反方 || playerAction?.__行为防反 === true || result.__行为防反候选) return;
           const 反应余量 = Number(
@@ -23195,10 +23248,12 @@ class BattleUIComponent {
           result.interrupt_bonus = attackerInterruptBonus;
           return result;
         }
-        const attackerHitBonus = attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0);
+        const attackerHitBonus = 使用固定攻势 ? 0 : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0);
         const attackerHitPenalty =
-          attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_penalty || 0), 0) +
-          (attackerIsBlinded ? 0.35 : 0);
+          使用固定攻势
+            ? 0
+            : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_penalty || 0), 0) +
+              (attackerIsBlinded ? 0.35 : 0);
 
         let remainPower = pClash.威力倍率 || 0;
         const 当前来袭窗口 = 读取来袭窗口状态(defender, playerAction);
@@ -23245,15 +23300,15 @@ class BattleUIComponent {
           ? String(pClash.伤害类型 || '').trim()
           : '物理伤害';
 
-        const conditionArmorPen = 读取状态穿透比例(attackerConditionEffects);
+        const conditionArmorPen = 使用固定攻势 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const isAOE = resolvedDamageTargets.length > 1 || damageTargetContext.targetKind === '全场';
         let fluctuation = 0.9 + Math.random() * 0.2;
-        const 原始最终伤害倍率 = attackerConditionEffects.reduce(
+        const 原始最终伤害倍率 = 使用固定攻势 ? 1 : attackerConditionEffects.reduce(
           (mult, ce) => mult * Number(ce.final_damage_mult || 1.0),
           1.0,
         );
         const totalFinalDamageMult = 原始最终伤害倍率;
-        const 原始最终伤害加值 = attackerConditionEffects.reduce(
+        const 原始最终伤害加值 = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) => sum + Number(ce.final_damage_bonus || 0),
           0,
         );
@@ -23299,9 +23354,9 @@ class BattleUIComponent {
           let localGrazeMultiplier = grazeMultiplier;
           const allowEvasion = !targetsFriendlySkill || (hostileTargetRedirectedToSelf && targetObj === attacker);
           if (allowEvasion && remainPower > 0) {
-            const hitDelta = currentSkillHitBonus + attackerHitBonus - (currentSkillHitPenalty + attackerHitPenalty);
+            const hitDelta = 使用固定攻势 ? 0 : currentSkillHitBonus + attackerHitBonus - (currentSkillHitPenalty + attackerHitPenalty);
             if (targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避') {
-              const absoluteDodgeThreshold = (aAgi + attackerFinalStat.men_max) * 1.5;
+              const absoluteDodgeThreshold = (攻势敏捷 + 攻势精神上限) * 1.5;
               if (targetEffectiveAgi + targetDodgeBonus > absoluteDodgeThreshold) {
                 localLogParts.push(`[绝对闪避] ${targetName}残影一晃，完全躲过了攻击。`);
                 登记行为防反候选('完美闪避', targetObj, {
@@ -23320,7 +23375,7 @@ class BattleUIComponent {
             }
             const dodgeScale = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避' ? 26 : 10;
             const grazeWindow = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避' ? 16 : 6;
-            let dodgeRate = (targetEffectiveAgi / Math.max(1, aAgi + attackerFinalStat.men_max)) * dodgeScale;
+            let dodgeRate = (targetEffectiveAgi / Math.max(1, 攻势敏捷 + 攻势精神上限)) * dodgeScale;
             dodgeRate += targetDodgeBonus * 100 - targetDodgePenalty * 100;
             dodgeRate -= hitDelta * 100;
             dodgeRate -= targetLockLevel * 8;
@@ -23365,7 +23420,7 @@ class BattleUIComponent {
 
           let actualDef = 计算穿透后防御值(
             Number(targetFinalStat.def || targetObj.def || 1),
-            Number(pClash.防御穿透 || 0) + 当前行动附加穿透,
+            Number(pClash.防御穿透 || 0) + (使用固定攻势 ? 0 : 当前行动附加穿透),
             conditionArmorPen,
           );
           const 目标防御剥夺 = Math.min(
@@ -23377,27 +23432,27 @@ class BattleUIComponent {
             targetConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.spirit_resist_strip || 0)), 0),
           );
           if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
-          const soulDriveScale = getSoulDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
-          const spiritDriveScale = getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
-          const 定位伤害倍率 = 计算定位伤害倍率(attacker, targetObj, dmgType);
+          const soulDriveScale = 使用固定攻势 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
+          const spiritDriveScale = 使用固定攻势 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
+          const 定位伤害倍率 = 使用固定攻势 ? 1 : 计算定位伤害倍率(attacker, targetObj, dmgType);
           let projectedDamage = 0;
-          const 消耗加成系数 = 计算伤害消耗加成系数(playerAction.skill, attacker);
+          const 消耗加成系数 = 使用固定攻势 ? 1 : 计算伤害消耗加成系数(playerAction.skill, attacker);
           if (/真实/.test(dmgType)) {
-            const 真实驱动 = Math.max(1, 计算精神伤害攻势值(attacker, attackerFinalStat));
+            const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
             projectedDamage = remainPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
           } else if (/物理/.test(dmgType)) {
-            projectedDamage = remainPower * (aStr / actualDef) * soulDriveScale * 定位伤害倍率 * 消耗加成系数;
+            projectedDamage = remainPower * (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) * soulDriveScale * 定位伤害倍率 * 消耗加成系数;
           } else if (/能量/.test(dmgType)) {
             projectedDamage =
               remainPower *
-              (计算精神伤害攻势值(attacker, attackerFinalStat) / actualDef) *
+              (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
               spiritDriveScale *
               定位伤害倍率 *
               消耗加成系数;
           } else if (/精神/.test(dmgType)) {
             projectedDamage =
               remainPower *
-              (计算精神伤害攻势值(attacker, attackerFinalStat) / Math.max(1, 计算精神伤害攻势值(targetObj, targetFinalStat) * (1 - 目标精神抗性剥夺))) *
+              (计算精神伤害攻势值(攻势单位, 攻势最终属性) / Math.max(1, 计算精神伤害攻势值(targetObj, targetFinalStat) * (1 - 目标精神抗性剥夺))) *
               spiritDriveScale *
               定位伤害倍率 *
               消耗加成系数;
@@ -23431,6 +23486,7 @@ class BattleUIComponent {
           projectedDamage = projectedDamage * (1 - targetDamageReduction) * targetReceivedDamageMult * targetElementReceivedDamageMult * totalFinalDamageMult + totalFinalDamageBonus;
 
           if (
+            !使用固定攻势 &&
             directExecuteEffect &&
             String(directExecuteEffect?.原型 || '').trim() === '结算修正' &&
             String(directExecuteEffect?.结算 || '').trim() === '造成伤害' &&
@@ -23444,10 +23500,10 @@ class BattleUIComponent {
             }
           }
 
-          if (fusionProfile && projectedDamage > 0) {
+          if (!使用固定攻势 && fusionProfile && projectedDamage > 0) {
             projectedDamage *= Number(fusionProfile.damageMult || 1);
           }
-          if (projectedDamage > 0 && 直接结算收益预算系数 < 0.995) {
+          if (!使用固定攻势 && projectedDamage > 0 && 直接结算收益预算系数 < 0.995) {
             projectedDamage *= 直接结算收益预算系数;
             localLogParts.push(`[收益预算] 直接伤害按消耗与前摇承载调整为${Math.round(直接结算收益预算系数 * 100)}%。`);
           }
@@ -24903,7 +24959,7 @@ class BattleUIComponent {
           const 构建友方位移效果 = (效果强度 = 位移强度) => ({
             ...createEmptyCombatEffectMap(),
             dodge_bonus: 效果强度,
-            reaction_bonus: 效果强度,
+            hit_bonus: 效果强度,
           });
           const 构建敌向位移效果 = (效果强度 = 位移强度) => {
             const 战斗效果 = createEmptyCombatEffectMap();
@@ -31369,6 +31425,8 @@ class BattleUIComponent {
           if (动作是造物承载(action)) return;
           const candidates = 读取动作目标候选(action, state);
           if (!candidates.length) {
+            const 动作类型 = String(action?.action_type || '').trim();
+            if (动作类型 === '收回召唤' && String(action.target_name || '').trim()) return;
             delete action.target_name;
             return;
           }

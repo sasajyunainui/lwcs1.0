@@ -15230,6 +15230,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--faction,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--two,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--trial,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--quest,
@@ -15252,6 +15254,89 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     grid-template-areas: none !important;
   }
 
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--life-profile,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--life-core,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--life-record,
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .archive-card.dossier-card.dossier-card--life-record.full {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-profile,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--faction > .dossier-console-card {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list {
+    display: grid !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list .dossier-list--factions {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-auto-rows: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .dossier-shell--faction
+    > .dossier-console-card
+    .dossier-form-row--donate,
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .dossier-shell--faction
+    > .dossier-console-card
+    .dossier-contrib-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .dossier-shell--faction
+    > .dossier-console-card
+    .dossier-form-row--donate
+    > *,
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .dossier-shell--faction
+    > .dossier-console-card
+    .dossier-contrib-grid
+    > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .skill-designer-layout {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto auto auto !important;
@@ -15271,7 +15356,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--quest > .archive-card,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-brief-row > span,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-field-value,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide > span,
   body.mvu-layout-unified
     #mvu-unified-mount
@@ -15282,6 +15371,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
     padding-right: 0 !important;
   }
 }
@@ -15980,15 +16071,21 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--social > .dossier-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-card,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card,
   #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card,
   #detailModal.mvu-modal-display-unified .skill-designer-form-card,
   #detailModal.mvu-modal-display-unified .skill-designer-summary-card,
+  #detailModal.mvu-modal-display-unified .location-brief-row > span,
+  #detailModal.mvu-modal-display-unified .dossier-field-value,
   #detailModal.mvu-modal-display-unified .dossier-row--wide > span,
   #detailModal.mvu-modal-display-unified .dossier-row > span[data-inline-multiline='1'] {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
     padding-right: 0 !important;
   }
 
@@ -16007,6 +16104,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   }
 
   #detailModal.mvu-modal-display-unified .dossier-shell--life,
+  #detailModal.mvu-modal-display-unified .dossier-shell--relation,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction,
   #detailModal.mvu-modal-display-unified .dossier-card--life-profile,
   #detailModal.mvu-modal-display-unified .dossier-card--life-core .dossier-columns--life-core,
   #detailModal.mvu-modal-display-unified .dossier-card--life-record .dossier-columns--life-record {
@@ -16017,6 +16116,54 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .dossier-row-grid--two,
   #detailModal.mvu-modal-display-unified .dossier-row-grid--three {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-card--life-profile,
+  #detailModal.mvu-modal-display-unified .dossier-card--life-core,
+  #detailModal.mvu-modal-display-unified .dossier-card--life-record,
+  #detailModal.mvu-modal-display-unified .archive-card.dossier-card.dossier-card--life-record.full,
+  #detailModal.mvu-modal-display-unified .dossier-card--relation-overview,
+  #detailModal.mvu-modal-display-unified .dossier-card--relation-directory,
+  #detailModal.mvu-modal-display-unified .dossier-card--relation-focus,
+  #detailModal.mvu-modal-display-unified .dossier-card--faction-list,
+  #detailModal.mvu-modal-display-unified .dossier-card--faction-profile,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-card--faction-list {
+    display: grid !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-card--faction-list .dossier-list--factions {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-auto-rows: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card .dossier-form-row--donate,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card .dossier-contrib-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card .dossier-form-row--donate > *,
+  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card .dossier-contrib-grid > * {
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
   #detailModal.mvu-modal-display-unified .simple-row,
@@ -20316,6 +20463,66 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
     grid-template-columns: 1fr;
   }
 
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--faction,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-directory,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-focus,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-list,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-profile,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-shell--faction
+    > .dossier-console-card {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-list {
+    display: grid !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-card--faction-list
+    .dossier-list--factions {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-auto-rows: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-shell--faction
+    .dossier-form-row--donate
+    > *,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-shell--faction
+    .dossier-contrib-grid
+    > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-topology-board {
     min-height: 188px;
   }
@@ -20351,6 +20558,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-detail-grid > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--social > .dossier-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation > .dossier-card,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--faction > .dossier-card,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-shell--faction
+    > .dossier-console-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .location-detail-grid > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row--wide > span,
   #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -20361,6 +20573,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
     min-height: 0;
     max-height: none;
     overflow: visible;
+    overflow-x: visible;
+    overflow-y: visible;
     padding-right: 0;
   }
 }
