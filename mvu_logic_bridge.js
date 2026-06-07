@@ -3108,6 +3108,654 @@
     return fallback;
   }
 
+  const 角色归档Manifest版本_桥接 = 1;
+  const 角色归档文件前缀_桥接 = 'LWCS_MVU角色归档';
+  const 角色归档预览键_桥接 = '角色归档';
+  const 角色归档状态_桥接 = {
+    chatKey: '',
+    manifest: null,
+    manifestPromise: null,
+    角色文件缓存: new Map(),
+  };
+
+  function 取角色归档请求头_桥接() {
+    const 头 = {};
+    const 合并 = 候选 => {
+      if (!候选 || typeof 候选 !== 'object') return;
+      Object.entries(候选).forEach(([键, 值]) => {
+        if (值 !== undefined && 值 !== null) 头[键] = 值;
+      });
+    };
+    try {
+      if (window.SillyTavern && typeof window.SillyTavern.getRequestHeaders === 'function') {
+        合并(window.SillyTavern.getRequestHeaders());
+      }
+    } catch (错误) {}
+    try {
+      const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
+        ? window.SillyTavern.getContext()
+        : null;
+      if (上下文 && typeof 上下文.getRequestHeaders === 'function') 合并(上下文.getRequestHeaders());
+    } catch (错误) {}
+    if (!头['Content-Type'] && !头['content-type']) 头['Content-Type'] = 'application/json';
+    return 头;
+  }
+
+  function 规范化角色归档路径段_桥接(值 = '', 兜底 = 'default') {
+    const 安全段 = String(值 || '')
+      .trim()
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_')
+      .replace(/\s+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 96);
+    return 安全段 || 兜底;
+  }
+
+  function 编码用户文件路径_桥接(路径 = '') {
+    return String(路径 || '')
+      .split('/')
+      .filter(片段 => 片段.length > 0)
+      .map(片段 => encodeURIComponent(片段))
+      .join('/');
+  }
+
+  function 取用户文件URL_桥接(路径 = '') {
+    return `/user/files/${编码用户文件路径_桥接(路径)}?t=${Date.now()}`;
+  }
+
+  async function 编码Base64_桥接(文本 = '') {
+    const blob = new Blob([String(文本 || '')], { type: 'application/json' });
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+      reader.onerror = () => reject(reader.error || new Error('base64 编码失败。'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function 计算文本校验_桥接(文本 = '') {
+    const 内容 = String(文本 || '');
+    try {
+      if (globalThis.crypto && globalThis.crypto.subtle) {
+        const 摘要 = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(内容));
+        return Array.from(new Uint8Array(摘要)).map(字节 => 字节.toString(16).padStart(2, '0')).join('');
+      }
+    } catch (错误) {}
+    let 哈希 = 2166136261;
+    for (let 序号 = 0; 序号 < 内容.length; 序号 += 1) {
+      哈希 ^= 内容.charCodeAt(序号);
+      哈希 += (哈希 << 1) + (哈希 << 4) + (哈希 << 7) + (哈希 << 8) + (哈希 << 24);
+    }
+    return (哈希 >>> 0).toString(36);
+  }
+
+  function 取当前聊天归档标识_桥接() {
+    const 上下文 = getCurrentChatContextMeta();
+    const 原始标识 =
+      toText(getCurrentUiRequestChatId(), '').trim() ||
+      toText(上下文.chatId, '').trim() ||
+      [上下文.characterId, 上下文.groupId, 上下文.name1, 上下文.name2].map(值 => toText(值, '').trim()).filter(Boolean).join('_') ||
+      'current_chat';
+    return 规范化角色归档路径段_桥接(原始标识, 'current_chat');
+  }
+
+  function 构建角色归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return `${角色归档文件前缀_桥接}_${规范化角色归档路径段_桥接(chatKey, 'current_chat')}_manifest`;
+  }
+
+  function 构建角色归档文件路径_桥接(chatKey = '', 角色名 = '', 内容hash = '') {
+    const 聊天段 = 规范化角色归档路径段_桥接(chatKey || 取当前聊天归档标识_桥接(), 'current_chat');
+    const 角色段 = 规范化角色归档路径段_桥接(角色名, `char_${String(内容hash || '').slice(0, 12) || 'unknown'}`);
+    const hash段 = 规范化角色归档路径段_桥接(String(内容hash || '').slice(0, 16), 'hash');
+    return `${角色归档文件前缀_桥接}_${聊天段}_${角色段}_${hash段}`;
+  }
+
+  async function 上传角色归档Json文件_桥接(路径 = '', 数据 = {}) {
+    const json = JSON.stringify(数据);
+    const checksum = await 计算文本校验_桥接(json);
+    const 响应 = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: 取角色归档请求头_桥接(),
+      body: JSON.stringify({
+        name: 路径,
+        data: await 编码Base64_桥接(json),
+      }),
+    });
+    if (!响应.ok) {
+      const 详情 = await 响应.text().catch(() => 响应.statusText);
+      throw new Error(`上传失败 ${响应.status}: ${详情 || 响应.statusText}`);
+    }
+    return {
+      path: 路径,
+      checksum,
+      byteSize: new Blob([json]).size,
+    };
+  }
+
+  async function 读取角色归档Json文件_桥接(路径 = '') {
+    const 响应 = await fetch(取用户文件URL_桥接(路径));
+    if (!响应.ok) {
+      const 错误 = new Error(`读取失败 ${响应.status}: ${响应.statusText}`);
+      错误.status = 响应.status;
+      throw 错误;
+    }
+    return await 响应.json();
+  }
+
+  function 创建空角色归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return {
+      version: 角色归档Manifest版本_桥接,
+      chatKey,
+      updatedAt: '',
+      角色索引: {},
+    };
+  }
+
+  function 清除角色归档缓存_桥接(chatKey = '') {
+    const 当前chatKey = toText(chatKey, '').trim();
+    if (当前chatKey && 角色归档状态_桥接.chatKey && 当前chatKey === 角色归档状态_桥接.chatKey) return;
+    角色归档状态_桥接.chatKey = 当前chatKey;
+    角色归档状态_桥接.manifest = null;
+    角色归档状态_桥接.manifestPromise = null;
+    角色归档状态_桥接.角色文件缓存.clear();
+  }
+
+  async function 读取角色归档Manifest_桥接(选项 = {}) {
+    const chatKey = 取当前聊天归档标识_桥接();
+    if (角色归档状态_桥接.chatKey !== chatKey) 清除角色归档缓存_桥接(chatKey);
+    if (!选项.force && 角色归档状态_桥接.manifest) return 角色归档状态_桥接.manifest;
+    if (!选项.force && 角色归档状态_桥接.manifestPromise) return await 角色归档状态_桥接.manifestPromise;
+    角色归档状态_桥接.manifestPromise = (async () => {
+      try {
+        const manifest = await 读取角色归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey));
+        if (!manifest || typeof manifest !== 'object' || manifest.version !== 角色归档Manifest版本_桥接) {
+          throw new Error('角色归档 manifest 版本不匹配。');
+        }
+        if (manifest.chatKey !== chatKey) throw new Error('角色归档 manifest 不属于当前聊天。');
+        if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object' || Array.isArray(manifest.角色索引)) manifest.角色索引 = {};
+        角色归档状态_桥接.manifest = manifest;
+        return manifest;
+      } catch (错误) {
+        if (错误 && 错误.status === 404) {
+          const 空manifest = 创建空角色归档Manifest_桥接(chatKey);
+          角色归档状态_桥接.manifest = 空manifest;
+          return 空manifest;
+        }
+        throw 错误;
+      } finally {
+        角色归档状态_桥接.manifestPromise = null;
+      }
+    })();
+    return await 角色归档状态_桥接.manifestPromise;
+  }
+
+  async function 写入角色归档Manifest_桥接(manifest = {}) {
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 待写入 = {
+      version: 角色归档Manifest版本_桥接,
+      chatKey,
+      updatedAt: new Date().toISOString(),
+      角色索引: manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {},
+    };
+    await 上传角色归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey), 待写入);
+    角色归档状态_桥接.chatKey = chatKey;
+    角色归档状态_桥接.manifest = 待写入;
+    角色归档状态_桥接.manifestPromise = null;
+    return 待写入;
+  }
+
+  function 读取角色归档Manifest缓存_桥接() {
+    const chatKey = 取当前聊天归档标识_桥接();
+    if (角色归档状态_桥接.chatKey !== chatKey) 清除角色归档缓存_桥接(chatKey);
+    return 角色归档状态_桥接.manifest;
+  }
+
+  function 预热角色归档Manifest_桥接(选项 = {}) {
+    const chatKey = 取当前聊天归档标识_桥接();
+    if (角色归档状态_桥接.chatKey !== chatKey) 清除角色归档缓存_桥接(chatKey);
+    if (角色归档状态_桥接.manifest || 角色归档状态_桥接.manifestPromise) return 角色归档状态_桥接.manifestPromise;
+    角色归档状态_桥接.manifestPromise = 读取角色归档Manifest_桥接()
+      .then(manifest => {
+        if (
+          选项.刷新视图 &&
+          (currentModalPreviewKey === '角色切换器' ||
+            currentModalPreviewKey === 角色归档预览键_桥接 ||
+            currentUnifiedPreviewKey === '角色切换器' ||
+            currentUnifiedPreviewKey === 角色归档预览键_桥接)
+        ) {
+          rerenderDetailSurface(currentUnifiedPreviewKey || currentModalPreviewKey, {
+            surface: currentUnifiedPreviewKey ? 'unified' : 'modal',
+            force: true,
+          });
+        }
+        return manifest;
+      })
+      .catch(错误 => {
+        console.warn('[DragonUI] 角色归档 manifest 读取失败', 错误);
+        return 创建空角色归档Manifest_桥接(chatKey);
+      })
+      .finally(() => {
+        角色归档状态_桥接.manifestPromise = null;
+      });
+    return 角色归档状态_桥接.manifestPromise;
+  }
+
+  function 构建角色归档摘要_桥接(角色名 = '', 角色数据 = {}) {
+    const 等级 = toText(deepGet(角色数据, '属性.等级', ''), '');
+    const 身份 = toText(deepGet(角色数据, '社交.主身份', deepGet(角色数据, 'base.identity', '')), '');
+    const 位置 = toText(deepGet(角色数据, '状态.位置', ''), '').replace(/^斗罗大陆-/, '').replace(/^斗灵大陆-/, '');
+    return [角色名, 等级 ? `${等级}级` : '', 身份, 位置].filter(Boolean).join(' / ').slice(0, 160);
+  }
+
+  function 收集归档保护角色名_桥接(statData = {}) {
+    const 保护 = new Set();
+    const 添加 = 名称 => {
+      const 文本 = toText(名称, '').trim();
+      if (文本) 保护.add(文本);
+    };
+    添加(deepGet(statData, 'sys.玩家名', ''));
+    safeEntries(statData.char || {}).forEach(([角色名, 角色数据]) => {
+      if (角色数据 && typeof 角色数据 === 'object' && 角色数据.__mvu_isPlayer === true) 添加(角色名);
+    });
+    const 参战者 = deepGet(statData, 'world.战斗.参战者', {});
+    if (参战者 && typeof 参战者 === 'object') {
+      Object.values(参战者).forEach(队伍 => {
+        (Array.isArray(队伍) ? 队伍 : []).forEach(单位 => {
+          添加(单位 && (单位.name || 单位.名称));
+        });
+      });
+    }
+    (Array.isArray(deepGet(statData, '相关实体索引.角色', [])) ? deepGet(statData, '相关实体索引.角色', []) : []).forEach(添加);
+    return 保护;
+  }
+
+  async function 上传角色归档文件_桥接(角色名 = '', 角色数据 = {}, 上下文 = {}) {
+    const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
+    const 归档时间 = 上下文.归档时间 || new Date().toISOString();
+    const 角色文件 = {
+      version: 角色归档Manifest版本_桥接,
+      chatKey,
+      角色名,
+      归档tick: 上下文.归档tick ?? 0,
+      归档时间,
+      角色数据: cloneJsonValue(角色数据, {}),
+    };
+    const 预序列化 = JSON.stringify(角色文件);
+    const checksum = await 计算文本校验_桥接(预序列化);
+    const path = 构建角色归档文件路径_桥接(chatKey, 角色名, checksum);
+    const 上传结果 = await 上传角色归档Json文件_桥接(path, 角色文件);
+    return {
+      角色名,
+      path,
+      checksum: 上传结果.checksum || checksum,
+      byteSize: 上传结果.byteSize,
+      归档tick: 角色文件.归档tick,
+      归档时间,
+      摘要: 构建角色归档摘要_桥接(角色名, 角色数据),
+    };
+  }
+
+  async function 读取角色归档文件_桥接(path = '', 选项 = {}) {
+    const 安全路径 = toText(path, '').trim();
+    if (!安全路径) throw new Error('归档路径为空。');
+    if (!选项.force && 角色归档状态_桥接.角色文件缓存.has(安全路径)) {
+      return 角色归档状态_桥接.角色文件缓存.get(安全路径);
+    }
+    const 文件 = await 读取角色归档Json文件_桥接(安全路径);
+    if (!文件 || typeof 文件 !== 'object' || 文件.version !== 角色归档Manifest版本_桥接) {
+      throw new Error('角色归档文件版本不匹配。');
+    }
+    角色归档状态_桥接.角色文件缓存.set(安全路径, 文件);
+    return 文件;
+  }
+
+  async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
+    const 待归档名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
+    if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+    const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
+    const 保护角色 = 收集归档保护角色名_桥接(statData);
+    const 跳过 = [];
+    const 可归档 = 待归档名称.filter(角色名 => {
+      if (!角色集[角色名] || typeof 角色集[角色名] !== 'object') {
+        跳过.push({ 角色名, reason: 'missing' });
+        return false;
+      }
+      if (!选项.强制 && 保护角色.has(角色名)) {
+        跳过.push({ 角色名, reason: 'protected' });
+        return false;
+      }
+      return true;
+    });
+    if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 归档时间 = new Date().toISOString();
+    const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 上传索引 = [];
+    for (const 角色名 of 可归档) {
+      上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, 归档时间, 归档tick }));
+    }
+    const manifest = cloneJsonValue(await 读取角色归档Manifest_桥接({ force: true }), 创建空角色归档Manifest_桥接(chatKey));
+    if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object') manifest.角色索引 = {};
+    上传索引.forEach(索引 => {
+      manifest.角色索引[索引.角色名] = 索引;
+    });
+    await 写入角色归档Manifest_桥接(manifest);
+    可归档.forEach(角色名 => {
+      delete 角色集[角色名];
+    });
+    if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
+    statData.sys.系统播报 = `[角色归档] 已归档 ${可归档.length} 名角色：${可归档.join('、')}。`;
+    当前MVU数据.stat_data = statData;
+    try {
+      await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+    } catch (错误) {
+      throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
+    }
+    writeMvuEditorStoreSnapshot(statData, { messageId });
+    await refreshLiveSnapshot({ force: true });
+    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData, messageId };
+  }
+
+  async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
+    const 待恢复名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
+    if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    const manifest = await 读取角色归档Manifest_桥接();
+    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+    if (!statData.char || typeof statData.char !== 'object') statData.char = {};
+    const 跳过 = [];
+    const 已恢复 = [];
+    for (const 角色名 of 待恢复名称) {
+      if (statData.char[角色名]) {
+        跳过.push({ 角色名, reason: 'exists' });
+        continue;
+      }
+      const 索引 = 角色索引[角色名];
+      if (!索引 || !索引.path) {
+        跳过.push({ 角色名, reason: 'missing_archive' });
+        continue;
+      }
+      const 文件 = await 读取角色归档文件_桥接(索引.path, 选项);
+      if (!文件 || 文件.chatKey !== manifest.chatKey || toText(文件.角色名, '').trim() !== 角色名) {
+        跳过.push({ 角色名, reason: 'archive_mismatch' });
+        continue;
+      }
+      statData.char[角色名] = cloneJsonValue(文件.角色数据, {});
+      已恢复.push(角色名);
+    }
+    if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
+    if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
+    statData.sys.系统播报 = `[角色归档] 已恢复 ${已恢复.length} 名角色：${已恢复.join('、')}。`;
+    当前MVU数据.stat_data = statData;
+    await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+    writeMvuEditorStoreSnapshot(statData, { messageId });
+    await refreshLiveSnapshot({ force: true });
+    return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+  }
+
+  async function 按文本恢复归档角色_桥接(文本 = '', 选项 = {}) {
+    const 捕获文本 = String(文本 || '');
+    if (!捕获文本.trim()) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return { changed: false, names: [], restoredNames: [], statData: 当前状态.statData, messageId: 当前状态.messageId, reason: 'empty_text' };
+    }
+    const manifest = await 读取角色归档Manifest_桥接();
+    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+    const 命中名称 = Object.keys(角色索引).filter(角色名 => 角色名 && 捕获文本.includes(角色名));
+    if (!命中名称.length) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return { changed: false, names: [], restoredNames: [], statData: 当前状态.statData, messageId: 当前状态.messageId, reason: 'no_match' };
+    }
+    return await 恢复MVU归档角色_桥接(命中名称, 选项);
+  }
+
+  async function 读取MVU角色归档_桥接(输入 = '', 选项 = {}) {
+    const manifest = await 读取角色归档Manifest_桥接(选项);
+    const 标识 = toText(输入, '').trim();
+    if (!标识) return manifest;
+    const 索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引[标识] : null;
+    return await 读取角色归档文件_桥接(索引 && 索引.path ? 索引.path : 标识, 选项);
+  }
+
+  function 下载Json文件_桥接(文件名 = 'archive.json', 数据 = {}) {
+    const blob = new Blob([JSON.stringify(数据, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const 链接 = document.createElement('a');
+    链接.href = url;
+    链接.download = 文件名;
+    document.body.appendChild(链接);
+    链接.click();
+    链接.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+  }
+
+  async function 导出角色归档包_桥接() {
+    const manifest = await 读取角色归档Manifest_桥接({ force: true });
+    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+    const 文件列表 = [];
+    for (const 索引 of Object.values(角色索引)) {
+      if (!索引 || !索引.path) continue;
+      try {
+        文件列表.push(await 读取角色归档文件_桥接(索引.path));
+      } catch (错误) {
+        console.warn('[DragonUI] 导出角色归档文件失败', 索引.path, 错误);
+      }
+    }
+    const 导出包 = {
+      version: 角色归档Manifest版本_桥接,
+      chatKey: manifest.chatKey,
+      exportedAt: new Date().toISOString(),
+      manifest,
+      files: 文件列表,
+    };
+    下载Json文件_桥接(`${构建角色归档Manifest路径_桥接(manifest.chatKey)}_pack.json`, 导出包);
+    return { ok: true, count: 文件列表.length, pack: 导出包 };
+  }
+
+  async function 导入角色归档包_桥接(导入包 = {}) {
+    if (!导入包 || typeof 导入包 !== 'object' || 导入包.version !== 角色归档Manifest版本_桥接) {
+      throw new Error('归档包版本不匹配。');
+    }
+    const 文件列表 = Array.isArray(导入包.files) ? 导入包.files : [];
+    if (!文件列表.length) return { ok: false, changed: false, names: [], reason: 'empty_pack' };
+    const { mvuData } = await readLatestMvuDataByEditor();
+    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+    const chatKey = 取当前聊天归档标识_桥接();
+    const manifest = cloneJsonValue(await 读取角色归档Manifest_桥接({ force: true }), 创建空角色归档Manifest_桥接(chatKey));
+    if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object') manifest.角色索引 = {};
+    const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 写入名称 = [];
+    for (const 文件 of 文件列表) {
+      const 角色名 = toText(文件 && 文件.角色名, '').trim();
+      const 角色数据 = 文件 && 文件.角色数据 && typeof 文件.角色数据 === 'object' ? 文件.角色数据 : null;
+      if (!角色名 || !角色数据) continue;
+      const 索引 = await 上传角色归档文件_桥接(角色名, 角色数据, {
+        chatKey,
+        归档时间: toText(文件.归档时间, '') || new Date().toISOString(),
+        归档tick: Math.floor(toNumber(文件.归档tick, 归档tick)),
+      });
+      manifest.角色索引[角色名] = 索引;
+      写入名称.push(角色名);
+    }
+    await 写入角色归档Manifest_桥接(manifest);
+    await refreshLiveSnapshot({ force: true });
+    return { ok: true, changed: !!写入名称.length, names: 写入名称 };
+  }
+
+  async function 选择并导入角色归档包_桥接() {
+    return await new Promise((resolve, reject) => {
+      const 输入 = document.createElement('input');
+      输入.type = 'file';
+      输入.accept = '.json,application/json';
+      输入.style.display = 'none';
+      输入.addEventListener('change', () => {
+        const 文件 = 输入.files && 输入.files[0] ? 输入.files[0] : null;
+        输入.remove();
+        if (!文件) {
+          resolve({ ok: false, changed: false, reason: 'no_file' });
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            resolve(await 导入角色归档包_桥接(JSON.parse(String(reader.result || '{}'))));
+          } catch (错误) {
+            reject(错误);
+          }
+        };
+        reader.onerror = () => reject(reader.error || new Error('归档包读取失败。'));
+        reader.readAsText(文件, 'utf-8');
+      });
+      document.body.appendChild(输入);
+      输入.click();
+    });
+  }
+
+  function 构建角色归档选择行_桥接(角色名 = '', 角色数据 = {}, 选项 = {}) {
+    const 等级 = formatCultivationLevelBadge(deepGet(角色数据, '属性.等级', 0), '0');
+    const 身份 = toText(deepGet(角色数据, '社交.主身份', deepGet(角色数据, 'base.identity', '无')), '无');
+    const 位置 = toText(deepGet(角色数据, '状态.位置', '未知地点'), '未知地点').replace(/^斗罗大陆-/, '').replace(/^斗灵大陆-/, '');
+    const 是否保护 = !!选项.保护;
+    return `
+      <label class="role-switch-tile mvu-character-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([角色名, 等级, 身份, 位置].join(' ').toLowerCase())}">
+        <span class="role-switch-head">
+          <b>${htmlEscape(角色名)}</b>
+          <span class="state-tag ${是否保护 ? 'warn' : ''}">${是否保护 ? '保护' : '热'}</span>
+        </span>
+        <span class="role-switch-meta">${htmlEscape(`${等级} ｜ ${身份}`)}</span>
+        <span class="role-switch-meta">${htmlEscape(位置)}</span>
+        <span class="role-switch-actions">
+          <input type="checkbox" data-character-archive-hot="${escapeHtmlAttr(角色名)}"${是否保护 ? ' disabled data-character-archive-protected="1"' : ''} />
+        </span>
+      </label>
+    `;
+  }
+
+  function 构建角色归档索引行_桥接(角色名 = '', 索引 = {}) {
+    const 摘要 = toText(索引 && 索引.摘要, '已归档');
+    const 归档时间 = toText(索引 && 索引.归档时间, '');
+    return `
+      <label class="role-switch-tile mvu-character-archive-row archived" data-switch-search="${escapeHtmlAttr([角色名, 摘要, 归档时间, '已归档'].join(' ').toLowerCase())}">
+        <span class="role-switch-head">
+          <b>${htmlEscape(角色名)}</b>
+          <span class="state-tag warn">已归档</span>
+        </span>
+        <span class="role-switch-meta">${htmlEscape(摘要)}</span>
+        <span class="role-switch-meta">${htmlEscape(归档时间 ? 归档时间.replace('T', ' ').slice(0, 19) : '冷归档')}</span>
+        <span class="role-switch-actions">
+          <input type="checkbox" data-character-archive-cold="${escapeHtmlAttr(角色名)}" />
+          <button type="button" class="tag-chip role-switch-action-btn" data-character-archive-view="${escapeHtmlAttr(角色名)}">详情</button>
+        </span>
+      </label>
+    `;
+  }
+
+  function 构建角色归档面板_桥接(snapshot = liveSnapshot || lastRenderableSnapshot || {}) {
+    const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
+    const 角色集 = rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
+    const manifest = 读取角色归档Manifest缓存_桥接();
+    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+    const 保护角色 = 收集归档保护角色名_桥接(rootData);
+    const 热角色行 = sortCharacterEntries(safeEntries(角色集), {
+      playerName: toText(deepGet(rootData, 'sys.玩家名', ''), ''),
+      currentName: snapshot.activeName,
+    })
+      .map(([角色名, 角色数据]) => 构建角色归档选择行_桥接(角色名, 角色数据, { 保护: 保护角色.has(角色名) }))
+      .join('');
+    const 冷角色行 = Object.keys(角色索引).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+      .map(角色名 => 构建角色归档索引行_桥接(角色名, 角色索引[角色名]))
+      .join('');
+    const 聚焦角色名 = toText(modalFocusState[`${角色归档预览键_桥接}::cold-focus`], '').trim();
+    const 聚焦缓存 = 聚焦角色名 && 角色索引[聚焦角色名]
+      ? 角色归档状态_桥接.角色文件缓存.get(角色索引[聚焦角色名].path)
+      : null;
+    const 聚焦角色数据 = 聚焦缓存 && 聚焦缓存.角色数据 && typeof 聚焦缓存.角色数据 === 'object' ? 聚焦缓存.角色数据 : null;
+    const 聚焦详情 = 聚焦角色名
+      ? 聚焦角色数据
+        ? makeTileGrid([
+            { label: '角色', value: 聚焦角色名 },
+            { label: '等级', value: formatCultivationLevelBadge(deepGet(聚焦角色数据, '属性.等级', 0), '0') },
+            { label: '身份', value: toText(deepGet(聚焦角色数据, '社交.主身份', '无'), '无') },
+            { label: '位置', value: toText(deepGet(聚焦角色数据, '状态.位置', '未知地点'), '未知地点') },
+          ], 'two')
+        : `<div class="role-switch-empty">${htmlEscape(`${聚焦角色名} / 未读取`)}</div>`
+      : '<div class="role-switch-empty">未选择归档角色。</div>';
+    return {
+      title: '角色归档',
+      summary: '',
+      onMount: mountEl => {
+        预热角色归档Manifest_桥接({ 刷新视图: true });
+        const 输入 = mountEl.querySelector('.role-switch-search-input');
+        const 列表 = Array.from(mountEl.querySelectorAll('.mvu-character-archive-row'));
+        const 过滤 = () => {
+          const 关键词 = toText(输入 && 输入.value, '').trim().toLowerCase();
+          列表.forEach(行 => {
+            const 命中 = !关键词 || toText(行.getAttribute('data-switch-search'), '').toLowerCase().includes(关键词);
+            行.style.display = 命中 ? '' : 'none';
+          });
+        };
+        if (输入) 输入.addEventListener('input', 过滤);
+        过滤();
+        return {
+          destroy() {
+            if (输入) 输入.removeEventListener('input', 过滤);
+          },
+        };
+      },
+      body: `
+        <div class="archive-modal-grid mvu-detail-grid--single">
+          <div class="archive-card full">
+            <div class="archive-card-head"><div class="archive-card-title">角色归档</div></div>
+            ${makeTileGrid([
+              { label: '热角色', value: `${Object.keys(角色集).length} 名` },
+              { label: '已归档', value: `${Object.keys(角色索引).length} 名` },
+              { label: '聊天标识', value: 取当前聊天归档标识_桥接() },
+              { label: '状态', value: manifest ? '已连接' : '读取中' },
+            ], 'two')}
+            <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
+              <button type="button" class="tag-chip" data-character-archive-suggest="1">建议归档</button>
+              <button type="button" class="tag-chip warn" data-character-archive-selected="1">归档选中</button>
+              <button type="button" class="tag-chip live" data-character-restore-selected="1">恢复选中</button>
+              <button type="button" class="tag-chip" data-character-archive-export="1">导出归档包</button>
+              <button type="button" class="tag-chip" data-character-archive-import="1">导入归档包</button>
+            </div>
+          </div>
+          <div class="archive-card full role-switch-list-card mvu-detail-scroll-card">
+            <div class="archive-card-head"><div class="archive-card-title">角色列表</div></div>
+            <div class="mvu-detail-search-row">
+              <input type="search" class="request-console-input role-switch-search-input" placeholder="搜索角色 / 身份 / 地点 / 状态" />
+              <span class="role-switch-search-count">热 ${Object.keys(角色集).length} / 冷 ${Object.keys(角色索引).length}</span>
+            </div>
+            <div class="role-switch-grid mvu-detail-scroll-list">
+              ${热角色行 || '<div class="role-switch-empty">暂无热角色。</div>'}
+              ${冷角色行 || '<div class="role-switch-empty">暂无归档角色。</div>'}
+            </div>
+          </div>
+          <div class="archive-card full">
+            <div class="archive-card-head"><div class="archive-card-title">归档详情</div></div>
+            ${聚焦详情}
+          </div>
+        </div>
+      `,
+    };
+  }
+
+  function 读取角色归档面板选中_桥接(root = document) {
+    const 宿主 = root && typeof root.querySelectorAll === 'function' ? root : document;
+    const 热角色 = Array.from(宿主.querySelectorAll('[data-character-archive-hot]:checked'))
+      .map(节点 => toText(节点.getAttribute('data-character-archive-hot'), '').trim())
+      .filter(Boolean);
+    const 冷角色 = Array.from(宿主.querySelectorAll('[data-character-archive-cold]:checked'))
+      .map(节点 => toText(节点.getAttribute('data-character-archive-cold'), '').trim())
+      .filter(Boolean);
+    return { 热角色, 冷角色 };
+  }
+
   const TRAINED_BONUS_PREVIEW_FIELDS = Object.freeze(['力量', '防御', '敏捷', '体力上限', '精神力上限']);
   const trainedBonusPreviewOverrides = new Map();
 
@@ -26290,8 +26938,9 @@
   }
 
   function buildLiveArchiveModal(previewKey) {
-    if (!liveSnapshot) return null;
     previewKey = 归一化详情预览键(previewKey);
+    if (previewKey === 角色归档预览键_桥接) return 构建角色归档面板_桥接(liveSnapshot || lastRenderableSnapshot || {});
+    if (!liveSnapshot) return null;
     const snapshot = liveSnapshot;
     if (慢刷新骨架已启用 && 慢刷新骨架预览键集合.has(previewKey)) {
       const 骨架视图 = buildArchiveSkeletonModal(previewKey);
@@ -28178,11 +28827,16 @@
     if (previewKey === '角色切换器') {
       const playerName = toText(deepGet(snapshot, 'rootData.sys.玩家名', ''), '');
       const currentCharKey = resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, ''));
+      const 归档Manifest缓存 = 读取角色归档Manifest缓存_桥接();
+      const 归档角色索引 = 归档Manifest缓存 && 归档Manifest缓存.角色索引 && typeof 归档Manifest缓存.角色索引 === 'object'
+        ? 归档Manifest缓存.角色索引
+        : {};
+      const 热角色集 = deepGet(snapshot, 'rootData.char', {});
       const charEntries = sortCharacterEntries(safeEntries(deepGet(snapshot, 'rootData.char', {})), {
         playerName,
         currentName: snapshot.activeName,
       });
-      const switchCards = charEntries.length
+      const 热角色卡片 = charEntries.length
         ? charEntries
             .map(([name, char]) => {
               const displayName = toText(char && (char.name || deepGet(char, 'base.name', '')), name);
@@ -28220,10 +28874,34 @@
             })
             .join('')
         : '<div class="role-switch-empty">暂无可切换角色。</div>';
+      const 归档角色卡片 = Object.keys(归档角色索引)
+        .filter(name => !(热角色集 && typeof 热角色集 === 'object' && 热角色集[name]))
+        .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+        .map(name => {
+          const 索引 = 归档角色索引[name] || {};
+          const 摘要 = toText(索引.摘要, '已归档');
+          const 归档时间 = toText(索引.归档时间, '').replace('T', ' ').slice(0, 19);
+          const searchText = [name, 摘要, 归档时间, '已归档'].filter(Boolean).join(' ').toLowerCase();
+          return `
+                <div class="role-switch-tile archived" data-switch-search="${escapeHtmlAttr(searchText)}" data-mvu-archived-char="${escapeHtmlAttr(name)}" role="button" tabindex="0" title="${escapeHtmlAttr(`已归档：${name}`)}">
+                  <div class="role-switch-head"><b>${htmlEscape(name)}</b><span class="state-tag warn">已归档</span></div>
+                  <div class="role-switch-meta">${htmlEscape(摘要)}</div>
+                  <div class="role-switch-meta">${htmlEscape(归档时间 || '冷归档')}</div>
+                  <div class="role-switch-actions">
+                    <button type="button" class="tag-chip role-switch-action-btn" data-character-archive-view="${escapeHtmlAttr(name)}">详情</button>
+                    <button type="button" class="tag-chip role-switch-action-btn live" data-mvu-restore-archived-char="${escapeHtmlAttr(name)}">恢复</button>
+                  </div>
+                </div>
+              `;
+        })
+        .join('');
+      const switchCards = [热角色卡片, 归档角色卡片].filter(Boolean).join('');
+      const 角色总数 = charEntries.length + Object.keys(归档角色索引).filter(name => !(热角色集 && typeof 热角色集 === 'object' && 热角色集[name])).length;
       return {
         title: '角色浏览 / 切换',
         summary: '查看全部角色摘要，并切换当前查看角色。',
         onMount: mountEl => {
+          预热角色归档Manifest_桥接({ 刷新视图: true });
           const inputEl = mountEl.querySelector('.role-switch-search-input');
           const countEl = mountEl.querySelector('.role-switch-search-count');
           const prevBtn = mountEl.querySelector('[data-role-page-nav="prev"]');
@@ -28252,7 +28930,7 @@
             if (countEl) {
               countEl.textContent = keyword
                 ? `匹配 ${matchedTiles.length} / ${tileEls.length} 名`
-                : `共 ${tileEls.length} 名`;
+                : `热 ${charEntries.length} / 冷 ${角色总数 - charEntries.length}`;
             }
             if (pageIndicatorEl) pageIndicatorEl.textContent = `第 ${currentPage} / ${totalPages} 页`;
             if (prevBtn) prevBtn.disabled = currentPage <= 1;
@@ -28283,7 +28961,7 @@
           const 处理角色卡键盘切换 = event => {
             if (!event || (event.key !== 'Enter' && event.key !== ' ')) return;
             const tile = event.currentTarget;
-            if (!tile || !tile.getAttribute('data-mvu-switch-char')) return;
+            if (!tile || (!tile.getAttribute('data-mvu-switch-char') && !tile.getAttribute('data-mvu-archived-char'))) return;
             event.preventDefault();
             tile.click();
           };
@@ -28302,7 +28980,8 @@
                 [
                   { label: '当前查看', value: snapshot.activeName },
                   { label: '玩家角色', value: playerName || snapshot.activeName },
-                  { label: '角色总数', value: `${charEntries.length} 名` },
+                  { label: '热角色', value: `${charEntries.length} 名` },
+                  { label: '已归档', value: `${角色总数 - charEntries.length} 名` },
                   { label: '当前地点', value: snapshot.currentLoc },
                 ],
                 'two',
@@ -28311,10 +28990,11 @@
                 <div class="archive-card-head"><div class="archive-card-title">角色列表</div></div>
                 <div class="mvu-detail-search-row">
                   <input type="search" class="request-console-input role-switch-search-input" placeholder="搜索角色 / 身份 / 地点 / 状态" />
-                  <span class="role-switch-search-count">共 ${charEntries.length} 名</span>
+                  <span class="role-switch-search-count">热 ${charEntries.length} / 冷 ${角色总数 - charEntries.length}</span>
                 </div>
                 <div class="role-switch-grid mvu-detail-scroll-list">${switchCards}</div>
                 <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
+                  <button type="button" class="tag-chip clickable" data-preview="${escapeHtmlAttr(角色归档预览键_桥接)}">角色归档</button>
                   <button type="button" class="tag-chip role-switch-page-btn" data-role-page-nav="prev">上一页</button>
                   <span class="tag-chip role-switch-page-indicator">第 1 / 1 页</span>
                   <button type="button" class="tag-chip role-switch-page-btn" data-role-page-nav="next">下一页</button>
@@ -33139,6 +33819,44 @@
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
   window.__MVU_GET_LIVE_SNAPSHOT__ = () => liveSnapshot || lastRenderableSnapshot || null;
   window.__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置角色_桥接(文本, 选项);
+  window.__LWCS_ARCHIVE_MVU_CHARACTERS__ = (角色名列表, 选项 = {}) => 归档MVU角色_桥接(角色名列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS__ = (角色名列表, 选项 = {}) => 恢复MVU归档角色_桥接(角色名列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档角色_桥接(文本, 选项);
+  window.__LWCS_READ_MVU_CHARACTER_ARCHIVE__ = (输入 = '', 选项 = {}) => 读取MVU角色归档_桥接(输入, 选项);
+  window.__LWCS_OPEN_MVU_CHARACTER_ARCHIVE_PANEL__ = () => {
+    openDetailPreview(角色归档预览键_桥接, { preserveMapDispatchContext: true, replace: true });
+    return true;
+  };
+  (function 注册角色归档脚本按钮_桥接() {
+    try {
+      if (window.__LWCS_CHARACTER_ARCHIVE_BUTTON_BOUND__) return;
+      const 追加按钮 =
+        typeof __mvuBridgeRoot.appendInexistentScriptButtons === 'function'
+          ? __mvuBridgeRoot.appendInexistentScriptButtons.bind(__mvuBridgeRoot)
+          : typeof window.appendInexistentScriptButtons === 'function'
+            ? window.appendInexistentScriptButtons.bind(window)
+            : null;
+      const 监听事件 =
+        typeof __mvuBridgeRoot.eventOn === 'function'
+          ? __mvuBridgeRoot.eventOn.bind(__mvuBridgeRoot)
+          : typeof window.eventOn === 'function'
+            ? window.eventOn.bind(window)
+            : null;
+      const 取按钮事件 =
+        typeof __mvuBridgeRoot.getButtonEvent === 'function'
+          ? __mvuBridgeRoot.getButtonEvent.bind(__mvuBridgeRoot)
+          : typeof window.getButtonEvent === 'function'
+            ? window.getButtonEvent.bind(window)
+            : null;
+      if (追加按钮) 追加按钮([{ name: '角色归档', visible: true }]);
+      if (监听事件 && 取按钮事件) {
+        监听事件(取按钮事件('角色归档'), () => window.__LWCS_OPEN_MVU_CHARACTER_ARCHIVE_PANEL__());
+        window.__LWCS_CHARACTER_ARCHIVE_BUTTON_BOUND__ = true;
+      }
+    } catch (错误) {
+      console.warn('[DragonUI] 角色归档脚本按钮注册失败', 错误);
+    }
+  })();
   window.__MVU_OPEN_BATTLE_UI__ = async () => {
     const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'open_battle_ui');
     if (!模块加载结果 || 模块加载结果.ok === false) {
@@ -40498,6 +41216,146 @@ ${toText(combatData.战斗意图, '点到为止')}
           requestKind: actionData.requestKind,
           patchOps: actionData.patchOps,
         });
+      return;
+    }
+
+    const 归档建议按钮 = eventTarget ? eventTarget.closest('[data-character-archive-suggest]') : null;
+    if (归档建议按钮 && detailSurfaceHost.contains(归档建议按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 复选框列表 = Array.from(detailSurfaceHost.querySelectorAll('[data-character-archive-hot]'));
+      复选框列表.forEach(节点 => {
+        if (!节点.disabled && 节点.offsetParent !== null) 节点.checked = true;
+      });
+      showUiToast(`已选中 ${复选框列表.filter(节点 => 节点.checked).length} 名可归档角色。`, 'info', 1800);
+      return;
+    }
+
+    const 归档选中按钮 = eventTarget ? eventTarget.closest('[data-character-archive-selected]') : null;
+    if (归档选中按钮 && detailSurfaceHost.contains(归档选中按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const { 热角色 } = 读取角色归档面板选中_桥接(detailSurfaceHost);
+      if (!热角色.length) {
+        showUiToast('未选择热角色。', 'warning');
+        return;
+      }
+      if (!window.confirm(`归档 ${热角色.length} 名角色？`)) return;
+      归档选中按钮.disabled = true;
+      归档选中按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 归档MVU角色_桥接(热角色);
+        showUiToast(结果.changed ? `已归档 ${结果.archivedNames.length} 名角色。` : '没有角色被归档。', 结果.changed ? 'info' : 'warning');
+        if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '角色归档失败。', 'error');
+      } finally {
+        归档选中按钮.disabled = false;
+        归档选中按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
+    const 恢复选中按钮 = eventTarget ? eventTarget.closest('[data-character-restore-selected]') : null;
+    if (恢复选中按钮 && detailSurfaceHost.contains(恢复选中按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const { 冷角色 } = 读取角色归档面板选中_桥接(detailSurfaceHost);
+      if (!冷角色.length) {
+        showUiToast('未选择归档角色。', 'warning');
+        return;
+      }
+      恢复选中按钮.disabled = true;
+      恢复选中按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 恢复MVU归档角色_桥接(冷角色);
+        showUiToast(结果.changed ? `已恢复 ${结果.restoredNames.length} 名角色。` : '没有角色被恢复。', 结果.changed ? 'info' : 'warning');
+        if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '角色恢复失败。', 'error');
+      } finally {
+        恢复选中按钮.disabled = false;
+        恢复选中按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
+    const 单角色恢复按钮 = eventTarget ? eventTarget.closest('[data-mvu-restore-archived-char]') : null;
+    if (单角色恢复按钮 && detailSurfaceHost.contains(单角色恢复按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 角色名 = toText(单角色恢复按钮.getAttribute('data-mvu-restore-archived-char'), '').trim();
+      if (!角色名) return;
+      单角色恢复按钮.disabled = true;
+      单角色恢复按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 恢复MVU归档角色_桥接([角色名]);
+        showUiToast(结果.changed ? `已恢复【${角色名}】。` : `【${角色名}】无需恢复。`, 结果.changed ? 'info' : 'warning');
+        if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '角色恢复失败。', 'error');
+      } finally {
+        单角色恢复按钮.disabled = false;
+        单角色恢复按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
+    const 归档详情按钮 = eventTarget ? eventTarget.closest('[data-character-archive-view], [data-mvu-archived-char]') : null;
+    if (归档详情按钮 && detailSurfaceHost.contains(归档详情按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 角色名 =
+        toText(归档详情按钮.getAttribute('data-character-archive-view'), '').trim() ||
+        toText(归档详情按钮.getAttribute('data-mvu-archived-char'), '').trim();
+      if (!角色名) return;
+      try {
+        const manifest = await 读取角色归档Manifest_桥接();
+        const 索引 = manifest && manifest.角色索引 ? manifest.角色索引[角色名] : null;
+        if (!索引 || !索引.path) throw new Error('找不到角色归档索引。');
+        await 读取角色归档文件_桥接(索引.path);
+        modalFocusState[`${角色归档预览键_桥接}::cold-focus`] = 角色名;
+        rerenderDetailSurface(角色归档预览键_桥接, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '归档详情读取失败。', 'error');
+      }
+      return;
+    }
+
+    const 归档导出按钮 = eventTarget ? eventTarget.closest('[data-character-archive-export]') : null;
+    if (归档导出按钮 && detailSurfaceHost.contains(归档导出按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      归档导出按钮.disabled = true;
+      归档导出按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 导出角色归档包_桥接();
+        showUiToast(`已导出 ${结果.count} 个归档角色。`, 'info');
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '归档包导出失败。', 'error');
+      } finally {
+        归档导出按钮.disabled = false;
+        归档导出按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
+    const 归档导入按钮 = eventTarget ? eventTarget.closest('[data-character-archive-import]') : null;
+    if (归档导入按钮 && detailSurfaceHost.contains(归档导入按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      归档导入按钮.disabled = true;
+      归档导入按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 选择并导入角色归档包_桥接();
+        if (结果 && 结果.ok) showUiToast(`已导入 ${结果.names.length} 个归档角色。`, 'info');
+        if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '归档包导入失败。', 'error');
+      } finally {
+        归档导入按钮.disabled = false;
+        归档导入按钮.classList.remove('is-busy');
+      }
       return;
     }
 

@@ -20549,7 +20549,7 @@ function autoGenerateSkill(
     目标: blueprint.释放形态 === '造物承载' ? '自身' : '单体',
     passiveMode,
   };
-  if (skillSourceCategory === '魂技' && Math.max(1, Number(ringIndex || 1)) === 7) {
+  if ((skillSourceCategory === '魂技' && Math.max(1, Number(ringIndex || 1)) === 7) || skillSourceCategory === '武魂融合技') {
     收口结果.消耗 = 构建武魂真身默认承载消耗_V1(type, grade, blueprint.释放形态);
     收口结果.前摇 = 获取标准前摇_V1();
   }
