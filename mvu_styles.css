@@ -4357,9 +4357,12 @@
 }
 
 .archive-tile-grid .archive-tile span {
+  min-width: 0;
   font-size: var(--mvu-font-sm, 12px);
   color: var(--white);
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .figure-board {
@@ -5028,6 +5031,9 @@
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.35;
   color: var(--cyan);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .life-graph-grid {
@@ -6425,7 +6431,7 @@ button.tag-chip:active,
 
 .skill-designer-attribute-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(60px, 100%), 1fr));
   gap: 8px 10px;
   min-width: 0;
 }
@@ -6453,6 +6459,7 @@ button.tag-chip:active,
   color: #fff;
   line-height: 1.22;
   overflow-wrap: anywhere;
+  word-break: break-word;
   white-space: normal;
 }
 
@@ -7215,9 +7222,13 @@ button.tag-chip:active,
 }
 
 .wallet-chip span {
+  min-width: 0;
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.1;
   color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wallet-chip.gold {
@@ -7626,6 +7637,7 @@ button.tag-chip:active,
 .archive-tile {
   position: relative;
   z-index: 1;
+  min-width: 0;
   border-radius: 0 !important;
   padding: 6px 4px !important;
   background: transparent !important;
@@ -7660,7 +7672,7 @@ button.tag-chip:active,
 }
 
 .archive-tile-grid--compact-intel {
-  grid-template-columns: minmax(0, 2.2fr) minmax(120px, 0.8fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(min(120px, 100%), 0.8fr);
   gap: 12px;
 }
 
@@ -10670,7 +10682,7 @@ body.mvu-layout-unified #mvu-unified-mount .terminal-home-line span {
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.34 !important;
   overflow-wrap: anywhere !important;
-  word-break: normal !important;
+  word-break: break-word !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .terminal-home-line span,
@@ -14955,11 +14967,16 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 @media (max-width: 760px) {
+  body.mvu-layout-unified #mvu-unified-mount {
+    --mvu-hud-gap: 5px;
+    --mvu-hud-card-pad: 8px;
+  }
+
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame.is-detail {
     height: auto !important;
-    min-height: min(640px, 92svh) !important;
-    max-height: 92svh !important;
+    min-height: min(320px, 70svh) !important;
+    max-height: min(92svh, var(--mvu-unified-frame-max-height, 640px)) !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-overview-bar {
@@ -15049,9 +15066,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card],
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card],
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card],
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card] {
     grid-column: auto !important;
     grid-row: auto !important;
+    min-width: 0 !important;
     min-height: 0 !important;
   }
 
@@ -15079,6 +15098,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto !important;
     height: auto !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .archive-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource {
@@ -15819,7 +15842,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .mvu-modal-panel.archive-mode {
     width: calc(100vw - 8px) !important;
     max-width: calc(100vw - 8px) !important;
-    max-height: 78svh !important;
+    min-height: min(320px, 60svh) !important;
+    max-height: min(90svh, calc(var(--mvu-unified-frame-max-height, 640px) - 20px)) !important;
     border-radius: var(--mvu-radius-xl, 20px) var(--mvu-radius-xl, 20px) 0 0;
   }
 
@@ -15831,6 +15855,20 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .modal-body,
   #detailModal.mvu-modal-display-unified .modal-body.archive-body {
     padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .archive-card,
+  #detailModal.mvu-modal-display-unified .timeline-card,
+  #detailModal.mvu-modal-display-unified .relation-card,
+  #detailModal.mvu-modal-display-unified .intel-card,
+  #detailModal.mvu-modal-display-unified .location-summary-card,
+  #detailModal.mvu-modal-display-unified .nsfw-theme-card {
+    padding: 10px !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-section {
+    gap: 8px !important;
+    padding: 10px !important;
   }
 
   #detailModal.mvu-modal-display-unified .dossier-shell--life,
@@ -17124,7 +17162,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 #detailModal .archive-tile-grid {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -17134,7 +17172,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 #detailModal .archive-tile-grid--compact-intel {
-  grid-template-columns: minmax(0, 2.2fr) minmax(120px, 0.8fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(min(120px, 100%), 0.8fr);
 }
 
 #detailModal .archive-tile,
@@ -17516,6 +17554,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatc
 
 @media (max-width: 640px) {
   #detailModal .archive-tile-grid,
+  #detailModal .archive-tile-grid--compact-intel,
   #detailModal .map-action-grid {
     grid-template-columns: 1fr;
   }
