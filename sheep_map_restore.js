@@ -4464,26 +4464,7 @@
     const 标签匹配 = Array.from(播报文本.matchAll(/\[(买入热|卖出热|竞拍热|兑换热|市场波动)\]/g))
       .map(match => toText(match && match[1], '').trim())
       .filter(Boolean);
-    if (标签匹配.length) return 标签匹配[标签匹配.length - 1];
-    const 情报条目 = safeEntries(deepGet(rootData, 'world.机密情报', {}))
-      .filter(([, 条目]) => 条目 && typeof 条目 === 'object')
-      .map(([, 条目]) => ({
-        来源: toText(条目['触发来源'], ''),
-        证据来源列表: Array.isArray(条目['证据来源列表']) ? 条目['证据来源列表'] : [],
-        最近证据tick: toNumber(条目['最近证据tick'], 0),
-        最近核实tick: toNumber(条目['最近核实tick'], 0),
-        标题: toText(条目['标题'], ''),
-        内容: toText(条目['内容'], '')
-      }))
-      .filter(条目 => 条目.来源 === '交易' || 条目.证据来源列表.some(来源 => toText(来源, '') === '交易'))
-      .sort((左项, 右项) => Math.max(右项.最近证据tick, 右项.最近核实tick) - Math.max(左项.最近证据tick, 左项.最近核实tick));
-    if (!情报条目.length) return '平稳';
-    const 文本 = `${情报条目[0].标题} ${情报条目[0].内容}`;
-    if (/竞拍|拍卖/.test(文本)) return '竞拍热';
-    if (/兑换|魂灵塔/.test(文本)) return '兑换热';
-    if (/卖出|出售|抛售|回收/.test(文本)) return '卖出热';
-    if (/买入|购买|采购|抢购|求购/.test(文本)) return '买入热';
-    return '市场波动';
+    return 标签匹配.length ? 标签匹配[标签匹配.length - 1] : '平稳';
   }
 
   function 构建星图焦点运营信息(snapshot, focusItem, 焦点名称 = '') {

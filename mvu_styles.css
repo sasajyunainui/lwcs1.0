@@ -74,6 +74,13 @@
   --mvu-color-text-ice: #edf9fd;
   --mvu-color-accent-strong: #67f7ef;
   --mvu-color-cyan-muted: #8de1ef;
+  --qual-common: rgba(160, 160, 160, 0.8);
+  --qual-uncommon: #43a047;
+  --qual-rare: #0288d1;
+  --qual-epic: #8e24aa;
+  --qual-legendary: #fbc02d;
+  --qual-artifact: #d32f2f;
+  --qual-super: #e0e0e0;
   --font-ui: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
   --font-tech: var(--font-ui);
   --font-title: var(--font-ui);
@@ -7326,6 +7333,7 @@ button.tag-chip:active,
 }
 
 .mvu-inventory-inspector-head {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -7341,11 +7349,67 @@ button.tag-chip:active,
   line-height: 1.35;
 }
 
+.mvu-inventory-inspector-head.qual-epic b::before,
+.inventory-definition-current.qual-epic b::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--qual-epic);
+  box-shadow: 0 0 6px rgba(142, 36, 170, 0.38);
+  vertical-align: 2px;
+}
+
 .mvu-inventory-inspector-head span {
   display: block;
   margin-top: 4px;
   font-size: var(--mvu-font-sm, 12px);
   color: rgba(223, 247, 255, 0.62);
+}
+
+.mvu-inventory-inspector-head .quality-value,
+.inventory-definition-current .quality-value,
+.inventory-definition-subtitle .quality-value {
+  display: inline;
+  margin-top: 0;
+}
+
+.mvu-inventory-inspector-head.qual-uncommon,
+.inventory-definition-current.qual-uncommon {
+  border-color: rgba(67, 160, 71, 0.32);
+}
+
+.mvu-inventory-inspector-head.qual-rare,
+.inventory-definition-current.qual-rare {
+  border-color: rgba(2, 136, 209, 0.42);
+  background: linear-gradient(90deg, rgba(2, 136, 209, 0.08), transparent 72%);
+}
+
+.mvu-inventory-inspector-head.qual-epic,
+.inventory-definition-current.qual-epic {
+  border-color: rgba(142, 36, 170, 0.42);
+  box-shadow: 0 0 5px rgba(142, 36, 170, 0.18);
+}
+
+.mvu-inventory-inspector-head.qual-legendary,
+.inventory-definition-current.qual-legendary {
+  border-color: rgba(251, 192, 45, 0.45);
+  box-shadow: 0 0 8px rgba(251, 192, 45, 0.18);
+}
+
+.mvu-inventory-inspector-head.qual-artifact,
+.inventory-definition-current.qual-artifact {
+  border-color: rgba(211, 47, 47, 0.5);
+  background: linear-gradient(90deg, rgba(70, 0, 0, 0.22), rgba(0, 0, 0, 0.1));
+}
+
+.mvu-inventory-inspector-head.qual-super,
+.inventory-definition-current.qual-super {
+  border-color: rgba(183, 196, 204, 0.34);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.46), rgba(38, 24, 48, 0.16), transparent);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.3);
 }
 
 .mvu-inventory-inspector-scroll {
@@ -7386,6 +7450,50 @@ button.tag-chip:active,
   line-height: 1.4;
   color: var(--white);
   word-break: break-word;
+}
+
+.quality-value {
+  color: var(--qual-common);
+  font-weight: 800;
+}
+
+.quality-value.qual-common {
+  color: var(--qual-common);
+}
+
+.quality-value.qual-uncommon {
+  color: var(--qual-uncommon);
+}
+
+.quality-value.qual-rare {
+  color: var(--qual-rare);
+  text-shadow: 0 0 4px rgba(2, 136, 209, 0.36);
+}
+
+.quality-value.qual-epic {
+  color: var(--qual-epic);
+  text-shadow: 0 0 5px rgba(142, 36, 170, 0.36);
+}
+
+.quality-value.qual-legendary {
+  color: var(--qual-legendary);
+  text-shadow: 0 0 5px rgba(251, 192, 45, 0.32);
+}
+
+.quality-value.qual-artifact {
+  color: var(--qual-artifact);
+  text-shadow: 0 0 4px rgba(211, 47, 47, 0.34);
+}
+
+.quality-value.qual-super {
+  color: var(--qual-super);
+  text-shadow:
+    0 0 4px rgba(2, 136, 209, 0.28),
+    0 0 8px rgba(142, 36, 170, 0.22);
+}
+
+.mvu-inventory-inspector-field[data-field='品质'] .quality-value {
+  letter-spacing: 0;
 }
 
 .mvu-inventory-inspector-desc {
@@ -7715,6 +7823,7 @@ button.tag-chip:active,
   min-height: 72px;
   aspect-ratio: 1 / 1;
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -7723,10 +7832,12 @@ button.tag-chip:active,
   border: 1px solid rgba(223, 246, 255, 0.1);
   background: linear-gradient(180deg, rgba(223, 246, 255, 0.12), rgba(185, 236, 255, 0.06));
   cursor: pointer;
+  overflow: hidden;
   transition:
     transform 0.16s ease,
     box-shadow 0.16s ease,
-    border-color 0.16s ease;
+    border-color 0.16s ease,
+    background 0.16s ease;
 }
 
 .inventory-cell:hover {
@@ -7737,7 +7848,26 @@ button.tag-chip:active,
   border-color: rgba(103, 247, 239, 0.22);
 }
 
+.inventory-cell::before,
+.inventory-cell::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.inventory-cell::before {
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+}
+
+.inventory-cell::after {
+  z-index: 0;
+}
+
 .inventory-cell .cell-top {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -7746,6 +7876,7 @@ button.tag-chip:active,
 }
 
 .inventory-cell .cell-top b {
+  padding-right: 34px;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.28;
   color: var(--white);
@@ -7758,18 +7889,25 @@ button.tag-chip:active,
 }
 
 .inventory-cell .qty {
+  z-index: 2;
   position: absolute;
   top: 5px;
-  left: 5px;
+  right: 5px;
+  max-width: calc(100% - 10px);
   font-size: var(--mvu-font-xs, 10px);
   color: var(--gold);
   border-radius: var(--mvu-radius-pill, 999px);
   padding: 2px 6px;
   background: var(--mvu-color-gold-fill, rgba(255, 215, 0, 0.08));
   border: 1px solid rgba(255, 215, 0, 0.14);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inventory-cell .tier {
+  position: relative;
+  z-index: 1;
   margin-top: auto;
   padding-top: 5px;
   font-size: var(--mvu-font-xs, 10px);
@@ -7778,24 +7916,135 @@ button.tag-chip:active,
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.inventory-cell.gold {
-  border-color: var(--mvu-color-gold-line, rgba(255, 215, 0, 0.22));
-  background: rgba(255, 215, 0, 0.07);
+.inventory-cell.qual-common {
+  border-color: rgba(223, 246, 255, 0.1);
 }
-.inventory-cell.purple {
-  border-color: rgba(217, 70, 239, 0.22);
-  background: rgba(217, 70, 239, 0.06);
+
+.inventory-cell.qual-uncommon {
+  border-color: rgba(67, 160, 71, 0.44);
+  background: linear-gradient(180deg, rgba(67, 160, 71, 0.055), rgba(185, 236, 255, 0.04));
 }
-.inventory-cell.red {
-  border-color: rgba(255, 77, 122, 0.22);
-  background: rgba(255, 77, 122, 0.06);
+
+.inventory-cell.qual-uncommon:hover {
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.18),
+    inset 0 0 8px rgba(67, 160, 71, 0.2);
+}
+
+.inventory-cell.qual-rare {
+  border-color: rgba(2, 136, 209, 0.58);
+  background:
+    linear-gradient(145deg, rgba(2, 136, 209, 0.11), rgba(0, 0, 0, 0.02) 58%),
+    linear-gradient(180deg, rgba(223, 246, 255, 0.1), rgba(185, 236, 255, 0.045));
+}
+
+.inventory-cell.qual-rare::before {
+  inset: 5px auto auto 5px;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  opacity: 1;
+  border-top: 2px solid rgba(56, 189, 248, 0.78);
+  border-left: 2px solid rgba(56, 189, 248, 0.78);
+}
+
+.inventory-cell.qual-rare::after {
+  right: 5px;
+  bottom: 5px;
+  width: 14px;
+  height: 14px;
+  opacity: 1;
+  border-right: 2px solid rgba(56, 189, 248, 0.72);
+  border-bottom: 2px solid rgba(56, 189, 248, 0.72);
+}
+
+.inventory-cell.qual-epic {
+  border-color: rgba(142, 36, 170, 0.56);
+  background:
+    radial-gradient(circle at center, rgba(142, 36, 170, 0.08), transparent 64%),
+    linear-gradient(180deg, rgba(223, 246, 255, 0.08), rgba(185, 236, 255, 0.035));
+  box-shadow: 0 0 5px rgba(142, 36, 170, 0.3);
+}
+
+.inventory-cell.qual-legendary {
+  border-color: rgba(251, 192, 45, 0.64);
+  background:
+    linear-gradient(180deg, rgba(251, 192, 45, 0.08), rgba(0, 0, 0, 0.03)),
+    linear-gradient(180deg, rgba(223, 246, 255, 0.08), rgba(185, 236, 255, 0.035));
+  box-shadow: 0 0 8px rgba(251, 192, 45, 0.2);
+}
+
+.inventory-cell.qual-legendary::before {
+  background: radial-gradient(circle at center, rgba(251, 192, 45, 0.28), transparent 68%);
+  animation: 背包传说呼吸 4.8s ease-in-out infinite;
+}
+
+.inventory-cell.qual-artifact {
+  border: 2px solid transparent;
+  border-image: linear-gradient(135deg, rgba(211, 47, 47, 0.72), rgba(0, 0, 0, 0.82), rgba(211, 47, 47, 0.62)) 1;
+  background:
+    linear-gradient(180deg, rgba(65, 0, 0, 0.18), rgba(0, 0, 0, 0.28)),
+    rgba(8, 10, 14, 0.42);
+  box-shadow: inset 0 0 10px rgba(211, 47, 47, 0.1);
+}
+
+.inventory-cell.qual-artifact::before {
+  background: radial-gradient(circle at center, rgba(211, 47, 47, 0.16), transparent 70%);
+  animation: 背包神器呼吸 5.6s ease-in-out infinite;
+}
+
+.inventory-cell.qual-super {
+  --背包超神器角度: 0deg;
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(1, 2, 5, 0.9), rgba(1, 2, 5, 0.9)) padding-box,
+    conic-gradient(from var(--背包超神器角度), rgba(43, 157, 169, 0.58), rgba(83, 45, 112, 0.52), rgba(150, 122, 48, 0.48), rgba(43, 157, 169, 0.58)) border-box;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.42);
+  animation: 背包超神器边缘 8s linear infinite;
+}
+
+.inventory-cell.qual-super::before {
+  background: radial-gradient(circle at 50% 45%, rgba(224, 224, 224, 0.12), transparent 62%);
+  opacity: 0.22;
 }
 
 .inventory-cell.is-selected {
-  border-color: rgba(0, 229, 255, 0.46);
   box-shadow:
     0 0 0 1px var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18)),
+    0 0 0 3px rgba(0, 229, 255, 0.08),
     inset 0 0 18px rgba(0, 229, 255, 0.1);
+}
+
+@property --背包超神器角度 {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes 背包传说呼吸 {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes 背包神器呼吸 {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.24;
+  }
+}
+
+@keyframes 背包超神器边缘 {
+  to {
+    --背包超神器角度: 360deg;
+  }
 }
 
 .inventory-hover-panel {
@@ -13269,6 +13518,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-tag
   align-items: center !important;
 }
 
+#detailModal.mvu-modal-display-unified .relation-head-actions {
+  margin-left: auto !important;
+  justify-content: flex-end !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-pill,
 #detailModal.mvu-modal-display-unified .dossier-pill {
   appearance: none !important;
@@ -14723,7 +14977,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 .ring-hover-card.mvu-hover-card-floating--portal,
 .relation-hover-card.mvu-hover-card-floating--portal {
-  z-index: var(--mvu-z-popover, 10060) !important;
+  z-index: 2147483600 !important;
   width: min(460px, calc(100vw - 24px)) !important;
   max-height: min(78svh, 720px) !important;
   overflow: auto !important;
@@ -15660,16 +15914,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 #detailModal.mvu-modal-display-unified .dossier-card--relation-focus {
   align-content: start !important;
-  max-height: min(560px, calc(86svh - 170px)) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  scrollbar-width: none !important;
-}
-
-#detailModal.mvu-modal-display-unified .dossier-card--relation-focus::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-card--life-profile,
@@ -15879,7 +16126,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card,
 #detailModal.mvu-modal-display-unified .dossier-shell--social > .dossier-card,
-#detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card,
 #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card,
 #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card:not(.mvu-quest-list-card) {
   align-self: stretch !important;
@@ -15891,9 +16137,16 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   scrollbar-width: none !important;
 }
 
+#detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card {
+  align-self: stretch !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card::-webkit-scrollbar,
 #detailModal.mvu-modal-display-unified .dossier-shell--social > .dossier-card::-webkit-scrollbar,
-#detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card::-webkit-scrollbar,
 #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card::-webkit-scrollbar,
 #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card::-webkit-scrollbar {
   width: 0 !important;
@@ -16002,11 +16255,18 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 #detailModal.mvu-modal-display-unified .dossier-row--wide > span,
 #detailModal.mvu-modal-display-unified .dossier-row > span[data-inline-multiline='1'] {
-  max-height: min(150px, 26svh) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  padding-right: 4px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-right: 0 !important;
   font-weight: 500 !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-shell--relation .dossier-row:not(.dossier-row--wide) > span {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+  overflow: visible !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-list-row > span strong,
@@ -19337,10 +19597,6 @@ body.mvu-layout-unified
   .archive-redesign-root
   .dossier-shell--social
   > .dossier-card,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-shell--relation
-  > .dossier-card,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .location-detail-grid > .archive-card,
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
@@ -19354,6 +19610,18 @@ body.mvu-layout-unified
   overflow-y: auto;
   scrollbar-width: none;
 }
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-shell--relation
+  > .dossier-card {
+  align-self: stretch;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .mvu-armory-detail-grid
@@ -19361,10 +19629,6 @@ body.mvu-layout-unified
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .dossier-shell--social
-  > .dossier-card::-webkit-scrollbar,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-shell--relation
   > .dossier-card::-webkit-scrollbar,
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
@@ -19384,6 +19648,11 @@ body.mvu-layout-unified
   align-items: flex-start;
   padding-bottom: 8px;
   border-bottom-color: var(--dossier-line);
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-head-actions {
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell .archive-card-title {
@@ -19591,13 +19860,24 @@ body.mvu-layout-unified
   .archive-redesign-root
   .dossier-row
   > span[data-inline-multiline='1'] {
-  max-height: min(150px, 26svh);
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-right: 4px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
   font-weight: 500 !important;
   line-height: 1.6 !important;
   color: var(--dossier-text) !important;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-shell--relation
+  .dossier-row:not(.dossier-row--wide)
+  > span {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: initial;
+  overflow: visible;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split

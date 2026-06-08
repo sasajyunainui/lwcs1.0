@@ -3916,6 +3916,32 @@ class BattleUIComponent {
       return 补丁;
     }
 
+    function 构建魂导器技能表_战斗(魂导器装备 = {}) {
+      const 输出 = {};
+      const 装配 = 魂导器装备?.装配 && typeof 魂导器装备.装配 === 'object' && !Array.isArray(魂导器装备.装配) ? 魂导器装备.装配 : {};
+      const 魂导器默认魂力消耗表 = Object.freeze({ 1: 160, 2: 260, 3: 400, 4: 900, 5: 1600, 6: 2600, 7: 4500, 8: 6500, 9: 11000, 10: 16000, 11: 24000, 12: 36000 });
+      Object.entries(装配).forEach(([槽位, 魂导器]) => {
+        if (!魂导器 || typeof 魂导器 !== 'object' || Array.isArray(魂导器)) return;
+        const 名称 = String(魂导器.名称 || 魂导器.name || '').trim();
+        const 魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(魂导器.魂导等级 || 0))));
+        if (!名称 || 名称 === '无' || !(魂导等级 > 0)) return;
+        const 技能表 = 魂导器.装备技能 && typeof 魂导器.装备技能 === 'object' && !Array.isArray(魂导器.装备技能) ? 魂导器.装备技能 : {};
+        Object.entries(技能表).forEach(([技能名, 技能数据]) => {
+          if (!技能数据 || typeof 技能数据 !== 'object' || Array.isArray(技能数据)) return;
+          const 技能 = deepClonePlain(技能数据);
+          技能.魂导等级 = 魂导等级;
+          技能.__魂导等级 = 魂导等级;
+          技能.__魂导器名称 = 名称;
+          技能.__魂导器槽位 = 槽位;
+          if (!String(技能.消耗 || '').trim() || String(技能.消耗 || '').trim() === '无') 技能.消耗 = `魂力:${魂导器默认魂力消耗表[魂导等级] || 160}`;
+          技能.使用条件 = 技能.使用条件 && typeof 技能.使用条件 === 'object' && !Array.isArray(技能.使用条件) ? deepClonePlain(技能.使用条件) : {};
+          if (魂导等级 >= 10) 技能.使用条件.最低等级 = Math.max(95, Number(技能.使用条件.最低等级 || 0));
+          输出[`${槽位}:${技能名}`] = 技能;
+        });
+      });
+      return 输出;
+    }
+
     function fallbackPushSkill(actions, skill, fallbackName, category, 魂环路径 = null) {
       if (!skill || typeof skill !== 'object') return;
       const name = String(skill.魂技名 || skill.name || fallbackName || '').trim();
@@ -3964,10 +3990,15 @@ class BattleUIComponent {
         });
       });
       Object.entries(char.自创魂技 || {}).forEach(([name, skill]) => fallbackPushSkill(actions, skill, name, '自创魂技'));
-      Object.values(char.装备 || {}).forEach(equip => {
+      Object.entries(char.装备 || {}).forEach(([装备键, equip]) => {
+        if (装备键 === '魂导器') return;
         if (!equip || typeof equip !== 'object' || Array.isArray(equip)) return;
+        if (Number(equip.魂导等级 || 0) > 0) return;
         Object.entries(equip.装备技能 || {}).forEach(([name, skill]) => fallbackPushSkill(actions, skill, name, '装备技能'));
       });
+      Object.values(构建魂导器技能表_战斗(char.装备?.魂导器)).forEach(魂导技能 =>
+        fallbackPushSkill(actions, 魂导技能, 魂导技能?.魂技名 || 魂导技能?.name || '魂导器技能', '装备技能'),
+      );
       Object.entries(char.武魂融合技 || {}).forEach(([name, fusion]) =>
         fallbackPushSkill(actions, buildFusionCombatSkill(fusion, name, char), `武魂融合技·${name}`, '武魂融合技'),
       );
@@ -5292,7 +5323,7 @@ class BattleUIComponent {
         Object.assign(directPayload, scaled);
         if (directPayload.面板修改比例) directPayload.面板修改比例 = 缩放原型面板修改比例(directPayload.面板修改比例, 缩放系数);
         if (directPayload.面板固定修正) directPayload.面板固定修正 = 缩放原型面板固定修正(directPayload.面板固定修正, 缩放系数);
-        if (hydrated.威力倍率 !== undefined && !(读取固定攻势等级(hydrated) > 0)) hydrated.威力倍率 = scaleBattleValue(hydrated.威力倍率, 缩放系数, { min: 0, digits: 2 });
+        if (hydrated.威力倍率 !== undefined && !(读取对应等级(hydrated) > 0)) hydrated.威力倍率 = scaleBattleValue(hydrated.威力倍率, 缩放系数, { min: 0, digits: 2 });
         if (hydrated.防御穿透 !== undefined) hydrated.防御穿透 = scaleBattleValue(hydrated.防御穿透, 缩放系数, { min: 0, max: 100, digits: 0 });
         if (String(effect?.原型 || '').trim() === '资源锁定' && hydrated.数值 !== undefined) {
           const 原比例 = Math.abs(读取战斗数值正负(hydrated.数值));
@@ -5330,6 +5361,7 @@ class BattleUIComponent {
       if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return effect;
       if (String(effect?.原型 || '').trim() === '伤害结算') return effect;
       const 原型名 = String(effect?.原型 || '').trim();
+      if (当前效果来自物品使用(context) && 读取对应等级(effect) > 0) return effect;
       if (原型名 === '复制执行' && !/属性|全部/.test(String(effect?.复制类型 || '').trim())) return effect;
       if (!['机制授予', '时光回溯', '位移执行', '复制执行'].includes(原型名) && String(effect?.目标 || '').trim() === '自身') return effect;
       if (战斗原型命中绝对值默认无驱动(effect)) return effect;
@@ -5548,14 +5580,55 @@ class BattleUIComponent {
       return Math.max(当前精神力, 精神上限 * 0.25);
     }
 
-    function 读取固定攻势等级(effect = {}) {
-      const 等级 = Math.round(Number(effect?.固定攻势等级 || 0));
+    function 读取对应等级(effect = {}) {
+      const 等级 = Math.round(Number(effect?.对应等级 || 0));
       if (!Number.isFinite(等级) || 等级 <= 0) return 0;
       return Math.max(1, Math.min(180, 等级));
     }
 
-    function 构建固定攻势数据(effect = {}) {
-      const 等级 = 读取固定攻势等级(effect);
+    function 当前效果来自物品使用(context = {}) {
+      return !!String(context?.skill?.__物品名 || context?.action?.物品名 || context?.action?.skill?.__物品名 || '').trim();
+    }
+
+    function 读取物品非伤害效果目标(effect = {}, context = {}) {
+      const 目标 = String(effect?.目标 || '').trim();
+      if (!目标 || /自身|召唤物/.test(目标)) return context?.actor || context?.caster || context?.attacker || {};
+      return context?.target || context?.defender || {};
+    }
+
+    function 读取物品效果目标等级(目标 = {}) {
+      const 候选列表 = [
+        目标?.final?.lv,
+        目标?.lv,
+        目标?.等级,
+        目标?.对标等级,
+        目标?.属性?.对标等级,
+        目标?.属性?.等级,
+      ];
+      for (const 候选 of 候选列表) {
+        const 等级 = Number(候选);
+        if (Number.isFinite(等级)) return 等级;
+      }
+      const 文本 = [目标?.境界, 目标?.属性?.境界, 目标?.战力对标, 目标?.属性?.战力对标, 目标?.称号, 目标?.属性?.称号]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      if (/准神/.test(文本)) return 99.5;
+      if (/神级|百级|真神|一级神|二级神|三级神/.test(文本)) return 100;
+      return 0;
+    }
+
+    function 物品非伤害效果超过对应等级(effect = {}, context = {}) {
+      if (!当前效果来自物品使用(context)) return false;
+      if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return false;
+      if (String(effect?.原型 || '').trim() === '伤害结算') return false;
+      const 等级 = 读取对应等级(effect);
+      if (!(等级 > 0)) return false;
+      return 读取物品效果目标等级(读取物品非伤害效果目标(effect, context)) > 等级;
+    }
+
+    function 构建对应等级数据(effect = {}) {
+      const 等级 = 读取对应等级(effect);
       if (!(等级 > 0)) return null;
       const 读取基础属性 = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__ : null;
       if (!读取基础属性) return null;
@@ -5571,7 +5644,7 @@ class BattleUIComponent {
         men_max: Math.max(1, Number(基础属性.men_max || 1)),
       };
       const 单位 = {
-        name: `固定攻势${等级}级`,
+        name: `对应等级${等级}级`,
         level: 等级,
         等级,
         str: 最终属性.str,
@@ -7158,7 +7231,8 @@ class BattleUIComponent {
         .filter(shouldKeepByEffectiveMode)
         .flatMap(effect => 展开战斗原型数组字段(effect))
         .map(effect => hydrateBattleExecutionEffectEntry(effect, { ...context, skill }))
-        .map(effect => 应用战斗原型驱动判定(effect, context))
+        .filter(effect => !物品非伤害效果超过对应等级(effect, { ...context, skill }))
+        .map(effect => 应用战斗原型驱动判定(effect, { ...context, skill }))
         .filter(Boolean);
     }
 
@@ -7771,8 +7845,8 @@ class BattleUIComponent {
       effects.forEach(effect => {
         const 机制名 = String(effect?.原型 || '').trim();
         if (!effect || typeof effect !== 'object' || 机制名 === '系统基础' || 机制名 === '技能效果增幅') return;
-        const 是固定攻势伤害 = 机制名 === '伤害结算' && 读取固定攻势等级(effect) > 0;
-        if (是固定攻势伤害) return;
+        const 是对应等级伤害 = 机制名 === '伤害结算' && 读取对应等级(effect) > 0;
+        if (是对应等级伤害) return;
         const 命中数量字段 = 数量字段.filter(字段 => Number.isFinite(Number(effect[字段])));
         if (命中数量字段.length > 0) {
           命中数量字段.forEach(字段 => {
@@ -7912,7 +7986,7 @@ class BattleUIComponent {
         const mechanism = String(effect?.原型 || '');
         if (!mechanism) return;
 
-        if (directDamageMechanisms.has(mechanism) && effect.威力倍率 !== undefined && !(读取固定攻势等级(effect) > 0)) {
+        if (directDamageMechanisms.has(mechanism) && effect.威力倍率 !== undefined && !(读取对应等级(effect) > 0)) {
           effect.威力倍率 = scaleBattleValue(effect.威力倍率, coeff.威力, { min: 0, digits: 2 });
         }
         if (mechanism === '护盾' && effect.护盾值 !== undefined) {
@@ -8188,7 +8262,7 @@ class BattleUIComponent {
         ['护盾值', '每回合伤害', 'dot_damage', 'final_damage_bonus', 'final_heal_bonus', 'shield_gain_bonus'].forEach(key => {
           if (effect[key] !== undefined) effect[key] = 按技能掌控度缩放数值(effect[key], 完整度);
         });
-        if (effect.威力倍率 !== undefined && !(String(effect.原型 || '').trim() === '伤害结算' && 读取固定攻势等级(effect) > 0)) effect.威力倍率 = 按技能掌控度缩放数值(effect.威力倍率, 完整度);
+        if (effect.威力倍率 !== undefined && !(String(effect.原型 || '').trim() === '伤害结算' && 读取对应等级(effect) > 0)) effect.威力倍率 = 按技能掌控度缩放数值(effect.威力倍率, 完整度);
         const 面板修改比例 = effect.面板修改比例 && typeof effect.面板修改比例 === 'object' ? effect.面板修改比例 : null;
         if (面板修改比例) {
           ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => {
@@ -11246,10 +11320,13 @@ class BattleUIComponent {
         pushUnifiedSkillMapEntries(skills, bone?.附带技能 || {}, '魂骨技能', collectOptions, { 来源类别: '魂骨技能', 来源明细: bone?.名称 || bone?.表象名称 || '魂骨技能' });
       });
 
-      Object.values(charData?.装备 || {}).forEach(equip => {
+      Object.entries(charData?.装备 || {}).forEach(([装备键, equip]) => {
+        if (装备键 === '魂导器') return;
         if (!equip || typeof equip !== 'object' || Array.isArray(equip)) return;
+        if (Number(equip.魂导等级 || 0) > 0) return;
         pushUnifiedSkillMapEntries(skills, equip.装备技能 || {}, '装备技能', collectOptions, { 来源类别: '装备技能', 来源明细: equip?.名称 || equip?.name || '装备技能' });
       });
+      pushUnifiedSkillMapEntries(skills, 构建魂导器技能表_战斗(charData?.装备?.魂导器), '装备技能', collectOptions, { 来源类别: '装备技能', 来源明细: '魂导器' });
 
       pushUnifiedSkillMapEntries(skills, charData?.自创魂技 || {}, '自创魂技', collectOptions, { 来源类别: '自创魂技', 来源明细: '自创魂技' });
 
@@ -21998,20 +22075,20 @@ class BattleUIComponent {
         const defenderConditionEffects = defender.状态效果
           ? Object.values(defender.状态效果).map(c => c?.战斗效果 || {})
           : [];
-        const 固定攻势 = 构建固定攻势数据(pClash);
-        const 使用固定攻势 = !!固定攻势;
-        const 攻势单位 = 使用固定攻势 ? 固定攻势.单位 : attacker;
-        const 攻势最终属性 = 使用固定攻势 ? 固定攻势.最终属性 : attackerFinalStat;
-        const 预结算附加穿透 = 使用固定攻势 ? 0 : 预结算效果列表.reduce((总和, effect) => {
+        const 对应等级 = 构建对应等级数据(pClash);
+        const 使用对应等级 = !!对应等级;
+        const 攻势单位 = 使用对应等级 ? 对应等级.单位 : attacker;
+        const 攻势最终属性 = 使用对应等级 ? 对应等级.最终属性 : attackerFinalStat;
+        const 预结算附加穿透 = 使用对应等级 ? 0 : 预结算效果列表.reduce((总和, effect) => {
           if (String(effect?.原型 || '').trim() !== '结算修正') return 总和;
           if (String(effect?.结算 || '').trim() !== '防御穿透') return 总和;
           const 原始值 = Number(读取战斗数值正负(effect?.数值));
           if (!Number.isFinite(原始值) || 原始值 === 0) return 总和;
           return 总和 + (Math.abs(原始值) <= 1 ? 原始值 * 100 : 原始值) * 直接结算收益预算系数;
         }, 0);
-        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0)) * (使用固定攻势 ? 1 : 直接结算收益预算系数);
+        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0)) * (使用对应等级 ? 1 : 直接结算收益预算系数);
         const dmgType = String(pClash?.伤害类型 || '物理伤害');
-        const conditionArmorPen = 使用固定攻势 ? 0 : 读取状态穿透比例(attackerConditionEffects);
+        const conditionArmorPen = 使用对应等级 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const 目标防御剥夺 = Math.min(
           0.9,
           defenderConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.defense_strip || 0)), 0),
@@ -22027,10 +22104,10 @@ class BattleUIComponent {
           conditionArmorPen,
         );
         if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
-        const soulDriveScale = 使用固定攻势 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
-        const spiritDriveScale = 使用固定攻势 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
-        const 定位伤害倍率 = 使用固定攻势 ? 1 : 计算定位伤害倍率(attacker, defender, dmgType);
-        const 消耗加成系数 = 使用固定攻势 ? 1 : 计算伤害消耗加成系数(skill, attacker);
+        const soulDriveScale = 使用对应等级 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
+        const spiritDriveScale = 使用对应等级 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
+        const 定位伤害倍率 = 使用对应等级 ? 1 : 计算定位伤害倍率(attacker, defender, dmgType);
+        const 消耗加成系数 = 使用对应等级 ? 1 : 计算伤害消耗加成系数(skill, attacker);
         if (/真实/.test(dmgType)) {
           const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
           projectedDamage = skillPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
@@ -22057,11 +22134,11 @@ class BattleUIComponent {
             定位伤害倍率 *
             消耗加成系数;
         }
-        const attackerFinalDamageMult = 使用固定攻势 ? 1 : attackerConditionEffects.reduce(
+        const attackerFinalDamageMult = 使用对应等级 ? 1 : attackerConditionEffects.reduce(
           (mult, ce) => mult * Number(ce.final_damage_mult || 1.0),
           1.0,
         );
-        const attackerFinalDamageBonus = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
+        const attackerFinalDamageBonus = 使用对应等级 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) => sum + Number(ce.final_damage_bonus || 0),
           0,
         );
@@ -22073,7 +22150,7 @@ class BattleUIComponent {
           (mult, ce) => mult * Number(ce.received_damage_mult || 1.0),
           1.0,
         );
-        const extraTrueDamage = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
+        const extraTrueDamage = 使用对应等级 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) =>
             sum + Math.floor((Number(attackerFinalStat.men_max || attacker.men_max || 0) || 0) * Number(ce.bonus_true_damage_ratio || 0)),
           0,
@@ -22161,122 +22238,141 @@ class BattleUIComponent {
         return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
       }
 
-      function buildSkillCreationPatchBundle(skill, inventory = {}, ownerName = '', options = {}) {
-        const 原始效果列表 = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
-        const effects = String(skill?.承载方式 || '').trim() === '造物承载'
+      function 构建造物承载补丁包(技能 = {}, 背包状态 = {}, 持有者名参数 = '', 选项参数 = {}) {
+        const 原始效果列表 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : [];
+        const 水合效果列表 = String(技能?.承载方式 || '').trim() === '造物承载'
           ? 原始效果列表
-              .filter(effect => effect && typeof effect === 'object' && String(effect?.原型 || '').trim())
-              .flatMap(effect => 展开战斗原型数组字段(effect))
-              .map(effect => hydrateBattleExecutionEffectEntry(effect, { skill }))
+              .filter(效果 => 效果 && typeof 效果 === 'object' && String(效果?.原型 || '').trim())
+              .flatMap(效果 => 展开战斗原型数组字段(效果))
+              .map(效果 => hydrateBattleExecutionEffectEntry(效果, { skill: 技能 }))
               .filter(Boolean)
-          : getSkillEffects(skill);
-        const 有效期修正列表 = effects.filter(effect =>
-          effect &&
-          typeof effect === 'object' &&
-          !Array.isArray(effect) &&
-          String(effect?.原型 || '').trim() === '时窗修正' &&
-          String(effect?.调整字段 || '').trim() === '有效期tick',
+          : getSkillEffects(技能);
+        const 有效期修正列表 = 水合效果列表.filter(效果 =>
+          效果 &&
+          typeof 效果 === 'object' &&
+          !Array.isArray(效果) &&
+          String(效果?.原型 || '').trim() === '时窗修正' &&
+          String(效果?.调整字段 || '').trim() === '有效期tick',
         );
-        const 调制造物有效期 = 基础tick => 有效期修正列表.reduce((当前tick, effect) => {
-          const 步长 = Math.max(1, Math.min(1008, Math.floor(Number(effect?.调整tick || effect?.有效期tick || 1))));
-          return String(effect?.调整方式 || '').trim() === '压缩'
+        const 调制造物有效期 = 基础tick => 有效期修正列表.reduce((当前tick, 效果) => {
+          const 步长 = Math.max(1, Math.min(1008, Math.floor(Number(效果?.调整tick || 效果?.有效期tick || 1))));
+          return String(效果?.调整方式 || '').trim() === '压缩'
             ? Math.max(0, 当前tick - 步长)
             : 当前tick + 步长;
         }, Math.max(0, Number(基础tick || 0)));
-        const itemTemplates = String(skill?.承载方式 || '').trim() === '造物承载'
-          ? 原始效果列表.filter(effect =>
-              effect &&
-              typeof effect === 'object' &&
-              !Array.isArray(effect) &&
-              !String(effect?.原型 || '').trim() &&
-              Array.isArray(effect?.使用效果) &&
-              effect.使用效果.length > 0,
+        const 造物模板列表 = String(技能?.承载方式 || '').trim() === '造物承载'
+          ? 原始效果列表.filter(效果 =>
+              效果 &&
+              typeof 效果 === 'object' &&
+              !Array.isArray(效果) &&
+              !String(效果?.原型 || '').trim() &&
+              Array.isArray(效果?.使用效果) &&
+              效果.使用效果.length > 0,
             )
           : [];
-        if (!itemTemplates.length) return { patchOps: [], log: '' };
+        if (!造物模板列表.length) return { patchOps: [], log: '' };
 
-        const patchOps = [];
-        const logs = [];
-        const preferredOwnerName = String(window.BattleUIBridge?.getMVU('sys.玩家名') || '').trim();
-        const currentTick = Number(window.BattleUIBridge?.getMVU('world.时间.tick') || 0);
-        const resolvedOwnerName = String(ownerName || preferredOwnerName || '').trim();
-        if (!resolvedOwnerName) return { patchOps: [], log: '' };
-        const ownerPath = `/char/${escapeJsonPointerSegment(resolvedOwnerName)}/背包`;
-        const rootItems = window.BattleUIBridge?.getMVU('物品') || {};
-        const 原始产出者属性 = skill?.__造物产出者 && typeof skill.__造物产出者 === 'object' && !Array.isArray(skill.__造物产出者)
-          ? skill.__造物产出者
+        const 补丁列表 = [];
+        const 日志列表 = [];
+        const 默认持有者名 = String(window.BattleUIBridge?.getMVU('sys.玩家名') || '').trim();
+        const 当前tick = Number(window.BattleUIBridge?.getMVU('world.时间.tick') || 0);
+        const 持有者名 = String(持有者名参数 || 默认持有者名 || '').trim();
+        if (!持有者名) return { patchOps: [], log: '' };
+        const 持有者背包路径 = `/char/${escapeJsonPointerSegment(持有者名)}/背包`;
+        const 根层物品 = window.BattleUIBridge?.getMVU('物品') || {};
+        const 根层魂技造物 =
+          根层物品 && 根层物品.魂技造物 && typeof 根层物品.魂技造物 === 'object' && !Array.isArray(根层物品.魂技造物)
+            ? 根层物品.魂技造物
+            : {};
+        const 原始产出者属性 = 技能?.__造物产出者 && typeof 技能.__造物产出者 === 'object' && !Array.isArray(技能.__造物产出者)
+          ? 技能.__造物产出者
           : {};
         const 产出者属性快照 = 原始产出者属性.final && typeof 原始产出者属性.final === 'object' && !Array.isArray(原始产出者属性.final)
           ? deepClonePlain(原始产出者属性.final)
           : buildCombatFinalStats(原始产出者属性);
 
-        let remainingImmediateConsume = Math.max(0, Math.floor(Number(options.即时消耗数量 || 0)));
-        itemTemplates.forEach((templateEffect, index) => {
-          const baseItemName = String(skill?.魂技名 || skill?.name || '临时造物').trim() || '临时造物';
-          const itemName = itemTemplates.length > 1 ? `${baseItemName}·${index + 1}` : baseItemName;
-          const escapedItemName = escapeJsonPointerSegment(itemName);
-          const rawCount = Math.max(1, Math.floor(Number(templateEffect?.数量 || 1)));
-          const consumeNow = Math.min(rawCount, remainingImmediateConsume);
-          remainingImmediateConsume -= consumeNow;
-          const addCount = Math.max(0, rawCount - consumeNow);
-          const relativeExpiryTick = 调制造物有效期(templateEffect?.有效期tick || 0);
-          const itemDefinition = {
-            类型: '魂技造物',
-            阶位: Math.max(0, Math.floor(Number(templateEffect?.阶位 || 0))),
-            品质: String(templateEffect?.品质 || '普通'),
-            描述: String(templateEffect?.描述 || skill?.效果描述 || skill?.描述 || '使用后触发对应魂技效果').trim(),
-            基础价格: Math.max(0, Math.floor(Number(templateEffect?.基础价格 || 0))),
-            默认货币: String(templateEffect?.默认货币 || '联邦币'),
-            装备槽位: String(templateEffect?.装备槽位 || '无'),
-            基础耐久: Math.max(0, Math.floor(Number(templateEffect?.基础耐久 || 0))),
-            使用条件: templateEffect?.使用条件 && typeof templateEffect.使用条件 === 'object' && !Array.isArray(templateEffect.使用条件) ? deepClone(templateEffect.使用条件) : {},
-            使用效果: deepClone(Array.isArray(templateEffect?.使用效果) ? templateEffect.使用效果 : []),
+        let 剩余即时消耗 = Math.max(0, Math.floor(Number(选项参数.即时消耗数量 || 0)));
+        造物模板列表.forEach((造物模板, 索引) => {
+          const 基础物品名 = String(技能?.魂技名 || 技能?.name || '临时造物').trim() || '临时造物';
+          const 物品名 = 造物模板列表.length > 1 ? `${基础物品名}·${索引 + 1}` : 基础物品名;
+          const 转义物品名 = escapeJsonPointerSegment(物品名);
+          const 原始数量 = Math.max(1, Math.floor(Number(造物模板?.数量 || 1)));
+          const 即时消耗 = Math.min(原始数量, 剩余即时消耗);
+          剩余即时消耗 -= 即时消耗;
+          const 入包数量 = Math.max(0, 原始数量 - 即时消耗);
+          const 相对有效期tick = 调制造物有效期(造物模板?.有效期tick || 0);
+          const 物品定义 = {
+            阶位: Math.max(0, Math.floor(Number(造物模板?.阶位 || 0))),
+            品质: String(造物模板?.品质 || '普通'),
+            描述: String(造物模板?.描述 || 技能?.效果描述 || 技能?.描述 || '使用后触发对应魂技效果').trim(),
+            基础价格: Math.max(0, Math.floor(Number(造物模板?.基础价格 || 0))),
+            默认货币: String(造物模板?.默认货币 || '联邦币'),
+            装备槽位: String(造物模板?.装备槽位 || '无'),
+            基础耐久: Math.max(0, Math.floor(Number(造物模板?.基础耐久 || 0))),
+            使用条件: 造物模板?.使用条件 && typeof 造物模板.使用条件 === 'object' && !Array.isArray(造物模板.使用条件) ? deepClone(造物模板.使用条件) : {},
+            使用效果: deepClone(Array.isArray(造物模板?.使用效果) ? 造物模板.使用效果 : []),
             造物产出者属性: deepClonePlain(产出者属性快照),
-            属性加成: templateEffect?.属性加成 && typeof templateEffect.属性加成 === 'object' && !Array.isArray(templateEffect.属性加成) ? deepClone(templateEffect.属性加成) : {},
-            副职业参数: templateEffect?.副职业参数 && typeof templateEffect.副职业参数 === 'object' && !Array.isArray(templateEffect.副职业参数) ? deepClone(templateEffect.副职业参数) : {},
+            属性加成: 造物模板?.属性加成 && typeof 造物模板.属性加成 === 'object' && !Array.isArray(造物模板.属性加成) ? deepClone(造物模板.属性加成) : {},
+            副职业参数: 造物模板?.副职业参数 && typeof 造物模板.副职业参数 === 'object' && !Array.isArray(造物模板.副职业参数) ? deepClone(造物模板.副职业参数) : {},
           };
-          const 使用副作用列表 = deepClone(Array.isArray(templateEffect?.副作用列表) ? templateEffect.副作用列表 : []);
-          if (使用副作用列表.length) itemDefinition.副作用列表 = 使用副作用列表;
-          const nextItem = {
-            数量: addCount,
-            来源: String(skill?.魂技名 || skill?.name || itemName),
-            持有者: resolvedOwnerName,
+          const 使用副作用列表 = deepClone(Array.isArray(造物模板?.副作用列表) ? 造物模板.副作用列表 : []);
+          if (使用副作用列表.length) 物品定义.副作用列表 = 使用副作用列表;
+          const 下一背包物品 = {
+            数量: 入包数量,
+            来源: String(技能?.魂技名 || 技能?.name || 物品名),
+            持有者: 持有者名,
             造物产出者属性: deepClonePlain(产出者属性快照),
           };
-          if (relativeExpiryTick > 0) {
-            nextItem.有效期至tick = currentTick + relativeExpiryTick;
+          if (相对有效期tick > 0) {
+            下一背包物品.有效期至tick = 当前tick + 相对有效期tick;
           } else {
-            nextItem.有效期至tick = 0;
+            下一背包物品.有效期至tick = 0;
           }
 
-          const currentItem = inventory[itemName];
-          const itemPath = `${ownerPath}/${escapedItemName}`;
-          const nextItemValue =
-            currentItem && typeof currentItem === 'object'
+          const 当前背包物品 = 背包状态[物品名];
+          const 背包物品路径 = `${持有者背包路径}/${转义物品名}`;
+          const 下一背包物品值 =
+            当前背包物品 && typeof 当前背包物品 === 'object'
               ? {
-                  ...deepClonePlain(currentItem),
-                  数量: Number(currentItem.数量 || 0) + addCount,
+                  ...deepClonePlain(当前背包物品),
+                  数量: Number(当前背包物品.数量 || 0) + 入包数量,
                   造物产出者属性: deepClonePlain(产出者属性快照),
-              }
-            : nextItem;
-          const nextRootItem = { ...deepClonePlain(rootItems[itemName] || {}), ...itemDefinition };
-          if (!使用副作用列表.length) delete nextRootItem.副作用列表;
-          appendJsonPatchDiff(patchOps, `/物品/${escapedItemName}`, rootItems[itemName], nextRootItem);
-          if (addCount > 0) appendJsonPatchDiff(patchOps, itemPath, currentItem, nextItemValue);
+                }
+            : 下一背包物品;
+          const 下一根层物品 = { ...deepClonePlain(根层魂技造物[物品名] || {}), ...物品定义 };
+          if (!使用副作用列表.length) delete 下一根层物品.副作用列表;
+          appendJsonPatchDiff(补丁列表, `/物品/魂技造物/${转义物品名}`, 根层魂技造物[物品名], 下一根层物品);
+          if (入包数量 > 0) appendJsonPatchDiff(补丁列表, 背包物品路径, 当前背包物品, 下一背包物品值);
 
-          logs.push(`生成了造物【${itemName}】×${rawCount}${consumeNow > 0 ? `，即时使用${consumeNow}件` : ''}${addCount > 0 ? `，入包${addCount}件` : ''}`);
+          日志列表.push(`生成了造物【${物品名}】×${原始数量}${即时消耗 > 0 ? `，即时使用${即时消耗}件` : ''}${入包数量 > 0 ? `，入包${入包数量}件` : ''}`);
         });
 
         return {
-          patchOps,
-          log: logs.length ? ` [造物承载] ${logs.join('，')}。` : '',
+          patchOps: 补丁列表,
+          log: 日志列表.length ? ` [造物承载] ${日志列表.join('，')}。` : '',
         };
       }
 
       function 读取战斗背包物品数据(物品名 = '', 背包状态 = {}) {
-        const 根物品 = window.BattleUIBridge?.getMVU(`物品.${物品名}`) || {};
+        const 全部物品 = window.BattleUIBridge?.getMVU('物品') || {};
+        let 根物品 = {};
+        if (全部物品 && typeof 全部物品 === 'object' && !Array.isArray(全部物品)) {
+          Object.values(全部物品).some(分类表 => {
+            if (!分类表 || typeof 分类表 !== 'object' || Array.isArray(分类表)) return false;
+            if (!分类表[物品名] || typeof 分类表[物品名] !== 'object' || Array.isArray(分类表[物品名])) return false;
+            根物品 = 分类表[物品名];
+            return true;
+          });
+        }
         const 安全根物品 = 根物品 && typeof 根物品 === 'object' && !Array.isArray(根物品) ? 根物品 : {};
         const 安全背包状态 = 背包状态 && typeof 背包状态 === 'object' && !Array.isArray(背包状态) ? 背包状态 : {};
+        const 批次列表 = (Array.isArray(安全背包状态.批次) ? 安全背包状态.批次 : []).filter(
+          批次 => 批次 && typeof 批次 === 'object' && !Array.isArray(批次) && Number(批次.数量 || 0) > 0,
+        );
+        const 首批 = 批次列表[0] || {};
+        const 总数量 =
+          Math.max(0, Math.floor(Number(安全背包状态.数量 || 0))) +
+          批次列表.reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次.数量 || 0))), 0);
         const 取数组字段 = 字段名 =>
           deepClone(
             Array.isArray(安全背包状态?.[字段名]) && 安全背包状态[字段名].length
@@ -22288,6 +22384,8 @@ class BattleUIComponent {
         return {
           ...deepClonePlain(安全根物品),
           ...deepClonePlain(安全背包状态),
+          ...deepClonePlain(首批),
+          数量: 总数量,
           使用效果: 取数组字段('使用效果'),
           副作用列表: 取数组字段('副作用列表'),
           造物产出者属性: deepClonePlain(
@@ -22305,6 +22403,34 @@ class BattleUIComponent {
                 : {},
           ),
         };
+      }
+
+      function 读取战斗背包使用效果倍率(物品数据 = {}) {
+        const 品质系数 = Number(物品数据?.品质系数 ?? 1);
+        if (!Number.isFinite(品质系数) || Math.abs(品质系数 - 1) < 0.0001) return 1;
+        return Math.max(0.8, Math.min(1.25, roundBattleScaledNumber(1 + (品质系数 - 1) * 0.25, 4)));
+      }
+
+      function 按战斗背包批次倍率缩放使用效果(效果列表 = [], 物品数据 = {}) {
+        const 倍率 = 读取战斗背包使用效果倍率(物品数据);
+        const 输出 = deepClone(Array.isArray(效果列表) ? 效果列表 : []);
+        if (Math.abs(倍率 - 1) < 0.0001) return 输出;
+        const 缩放字段列表 = ['数值', '威力倍率', '效果倍率', '结算倍率', '强化倍率', '引爆倍率', '持续伤害', '治疗量', '恢复量', '护盾值'];
+        const 缩放效果列表 = effects =>
+          (Array.isArray(effects) ? effects : []).forEach(effect => {
+            if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
+            if (['耐久修复', 'durability_repair'].includes(String(effect.原型 || effect.type || '').trim())) return;
+            缩放字段列表.forEach(字段名 => {
+              if (effect[字段名] !== undefined) effect[字段名] = scaleBattleValue(effect[字段名], 倍率, { digits: 4 });
+            });
+            ['使用效果', '授予效果', '结算效果'].forEach(字段名 => 缩放效果列表(effect[字段名]));
+            (Array.isArray(effect.条件分支) ? effect.条件分支 : []).forEach(分支 => {
+              缩放效果列表(分支?.替换效果);
+              缩放效果列表(分支?.追加效果);
+            });
+          });
+        缩放效果列表(输出);
+        return 输出;
       }
 
       function 校验战斗背包物品可用(物品名 = '', 物品数据 = {}, 使用者名 = '', 当前tick = 0) {
@@ -22332,67 +22458,100 @@ class BattleUIComponent {
             __造物产出者属性: deepClonePlain(物品数据?.造物产出者属性 || {}),
             消耗: '无',
             前摇: 8,
-            _效果数组: deepClone(Array.isArray(物品数据?.使用效果) ? 物品数据.使用效果 : []),
+            _效果数组: 按战斗背包批次倍率缩放使用效果(物品数据?.使用效果, 物品数据),
             副作用列表: deepClone(Array.isArray(物品数据?.副作用列表) ? 物品数据.副作用列表 : []),
           },
           动作名,
         );
       }
 
-      function buildInventoryConsumePatchBundle(物品名 = '', inventory = {}, ownerName = '', consumeCount = 1) {
-        const patchOps = [];
+      function 扣减战斗背包数量(背包项 = {}, 消耗数量 = 1) {
+        const 当前 = deepClonePlain(背包项 && typeof 背包项 === 'object' && !Array.isArray(背包项) ? 背包项 : {});
+        let 剩余扣减 = Math.max(1, Math.floor(Number(消耗数量 || 1)));
+        const 批次列表 = (Array.isArray(当前.批次) ? 当前.批次 : [])
+          .map(批次 => deepClonePlain(批次))
+          .filter(批次 => 批次 && typeof 批次 === 'object' && !Array.isArray(批次) && Number(批次.数量 || 0) > 0);
+        for (const 批次 of 批次列表) {
+          if (剩余扣减 <= 0) break;
+          if (批次.剩余使用次数 !== undefined) {
+            const 剩余次数 = Math.max(0, Math.floor(Number(批次.剩余使用次数 || 0)));
+            if (剩余次数 > 1) {
+              批次.剩余使用次数 = 剩余次数 - 1;
+              剩余扣减 -= 1;
+              continue;
+            }
+            delete 批次.剩余使用次数;
+          }
+          const 当前批次数量 = Math.max(0, Math.floor(Number(批次.数量 || 0)));
+          const 扣减 = Math.min(当前批次数量, 剩余扣减);
+          批次.数量 = 当前批次数量 - 扣减;
+          剩余扣减 -= 扣减;
+        }
+        当前.批次 = 批次列表.filter(批次 => Number(批次.数量 || 0) > 0);
+        const 普通数量 = Math.max(0, Math.floor(Number(当前.数量 || 0)));
+        当前.数量 = 剩余扣减 > 0 ? Math.max(0, 普通数量 - 剩余扣减) : 普通数量;
+        if (!当前.批次.length) delete 当前.批次;
+        const 总数量 =
+          Math.max(0, Math.floor(Number(当前.数量 || 0))) +
+          (Array.isArray(当前.批次) ? 当前.批次 : []).reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次.数量 || 0))), 0);
+        if (总数量 <= 0) return undefined;
+        if (当前.数量 <= 0 && 当前.批次) 当前.数量 = 0;
+        return 当前;
+      }
+
+      function 构建战斗背包消耗补丁包(物品名 = '', 背包状态 = {}, 持有者名参数 = '', 消耗数量参数 = 1) {
+        const 补丁列表 = [];
         const 安全物品名 = String(物品名 || '').trim();
-        const 安全持有者 = String(ownerName || '').trim();
-        const 消耗数量 = Math.max(1, Math.floor(Number(consumeCount || 1)));
-        if (!安全物品名 || !安全持有者) return { patchOps, log: '' };
-        const 当前物品 = inventory?.[安全物品名];
-        if (!当前物品 || typeof 当前物品 !== 'object') return { patchOps, log: '' };
-        const 当前数量 = Math.max(0, Number(当前物品.数量 || 0));
-        if (!(当前数量 > 0)) return { patchOps, log: '' };
-        const 下个数量 = Math.max(0, 当前数量 - 消耗数量);
-        const 下个物品 =
-          下个数量 > 0
-            ? {
-                ...deepClonePlain(当前物品),
-                数量: 下个数量,
-              }
-            : undefined;
+        const 安全持有者 = String(持有者名参数 || '').trim();
+        const 消耗数量 = Math.max(1, Math.floor(Number(消耗数量参数 || 1)));
+        if (!安全物品名 || !安全持有者) return { patchOps: 补丁列表, log: '' };
+        const 当前物品 = 背包状态?.[安全物品名];
+        if (!当前物品 || typeof 当前物品 !== 'object') return { patchOps: 补丁列表, log: '' };
+        const 当前数量 =
+          Math.max(0, Math.floor(Number(当前物品.数量 || 0))) +
+          (Array.isArray(当前物品.批次) ? 当前物品.批次 : []).reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次?.数量 || 0))), 0);
+        if (!(当前数量 > 0)) return { patchOps: 补丁列表, log: '' };
+        const 下个物品 = 扣减战斗背包数量(当前物品, 消耗数量);
+        const 下个数量 = 下个物品
+          ? Math.max(0, Math.floor(Number(下个物品.数量 || 0))) +
+            (Array.isArray(下个物品.批次) ? 下个物品.批次 : []).reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次?.数量 || 0))), 0)
+          : 0;
         const 物品路径 = `/char/${escapeJsonPointerSegment(安全持有者)}/背包/${escapeJsonPointerSegment(安全物品名)}`;
-        appendJsonPatchDiff(patchOps, 物品路径, 当前物品, 下个物品);
+        appendJsonPatchDiff(补丁列表, 物品路径, 当前物品, 下个物品);
         return {
-          patchOps,
+          patchOps: 补丁列表,
           log: ` [物品消耗] 【${安全物品名}】${下个数量 > 0 ? `剩余${下个数量}件` : '已耗尽'}。`,
         };
       }
 
-      function 构建造物即时使用技能(skill = {}, action = {}) {
-        const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
-        const constructEffect = effects.find(effect =>
-          effect &&
-          typeof effect === 'object' &&
-          !String(effect?.原型 || '').trim() &&
-          Array.isArray(effect?.使用效果)
+      function 构建造物即时使用技能(技能 = {}, 动作 = {}) {
+        const 效果列表 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : [];
+        const 造物效果 = 效果列表.find(效果 =>
+          效果 &&
+          typeof 效果 === 'object' &&
+          !String(效果?.原型 || '').trim() &&
+          Array.isArray(效果?.使用效果)
         );
-        if (!constructEffect || !Array.isArray(constructEffect.使用效果) || !constructEffect.使用效果.length) return null;
-        const targetName = String(action?.食用目标 || action?.target_name || '').trim();
-        const usageEffects = deepClone(constructEffect.使用效果).map(effect => {
-          if (!effect || typeof effect !== 'object') return effect;
-          const next = { ...effect };
-          if (!String(next.目标 || '').trim()) next.目标 = targetName ? '单体' : '自身';
-          return next;
+        if (!造物效果 || !Array.isArray(造物效果.使用效果) || !造物效果.使用效果.length) return null;
+        const 目标名 = String(动作?.食用目标 || 动作?.target_name || '').trim();
+        const 使用效果列表 = deepClone(造物效果.使用效果).map(效果 => {
+          if (!效果 || typeof 效果 !== 'object') return 效果;
+          const 下一效果 = { ...效果 };
+          if (!String(下一效果.目标 || '').trim()) 下一效果.目标 = 目标名 ? '单体' : '自身';
+          return 下一效果;
         });
-        const immediateSkill = {
-          ...deepClone(skill || {}),
-          name: `${skill?.name || skill?.魂技名 || '造物承载魂技'}·即时使用`,
-          魂技名: `${skill?.魂技名 || skill?.name || '造物承载魂技'}·即时使用`,
+        const 即时技能 = {
+          ...deepClone(技能 || {}),
+          name: `${技能?.name || 技能?.魂技名 || '造物承载魂技'}·即时使用`,
+          魂技名: `${技能?.魂技名 || 技能?.name || '造物承载魂技'}·即时使用`,
           承载方式: '物品使用',
           目标: '自身',
-          _效果数组: usageEffects,
+          _效果数组: 使用效果列表,
         };
-        const 使用副作用列表 = deepClone(Array.isArray(constructEffect?.副作用列表) ? constructEffect.副作用列表 : []);
-        if (使用副作用列表.length) immediateSkill.副作用列表 = 使用副作用列表;
-        else delete immediateSkill.副作用列表;
-        return immediateSkill;
+        const 使用副作用列表 = deepClone(Array.isArray(造物效果?.副作用列表) ? 造物效果.副作用列表 : []);
+        if (使用副作用列表.length) 即时技能.副作用列表 = 使用副作用列表;
+        else delete 即时技能.副作用列表;
+        return 即时技能;
       }
 
       function 是否战斗即时使用造物(action = {}, skill = {}) {
@@ -22707,7 +22866,7 @@ class BattleUIComponent {
             playerAction.action_type = '施法失败';
             return result;
           }
-          const 消耗补丁包 = buildInventoryConsumePatchBundle(本次使用物品名, 当前背包, 使用者名, 1);
+          const 消耗补丁包 = 构建战斗背包消耗补丁包(本次使用物品名, 当前背包, 使用者名, 1);
           if (消耗补丁包.patchOps.length) result.extraPatchOps.push(...消耗补丁包.patchOps);
           if (消耗补丁包.log) result.desc += 消耗补丁包.log;
         }
@@ -22950,7 +23109,7 @@ class BattleUIComponent {
         const creationOwnerName = String(playerAction?.物品接收者 || playerAction?.食用目标 || attackerName).trim() || attackerName;
         const creationOwnerCharData = creationOwnerName ? window.BattleUIBridge?.getMVU(`char.${creationOwnerName}`) : null;
         const canPersistCreation = !!creationOwnerName;
-        const creationPatchBundle = buildSkillCreationPatchBundle(
+        const creationPatchBundle = 构建造物承载补丁包(
           { ...(本次原始造物技能 || playerAction.skill), __造物产出者: { ...attacker, final: attackerFinalStat } },
           creationOwnerCharData?.背包 || (creationOwnerName === attackerName ? actorCharData?.背包 || attacker?.背包 : {}) || {},
           creationOwnerName,
@@ -23172,13 +23331,13 @@ class BattleUIComponent {
         let 能力共享自身禁用命中 = 能力共享自身预禁用;
         const isBasicAttack =
           !playerAction?.skill || skillName === '普通攻击' || playerAction?.action_type === '常规攻击';
-        const 本次固定攻势 = 构建固定攻势数据(pClash);
-        const 使用固定攻势 = !!本次固定攻势;
-        const 攻势单位 = 使用固定攻势 ? 本次固定攻势.单位 : attacker;
-        const 攻势最终属性 = 使用固定攻势 ? 本次固定攻势.最终属性 : attackerFinalStat;
+        const 本次对应等级 = 构建对应等级数据(pClash);
+        const 使用对应等级 = !!本次对应等级;
+        const 攻势单位 = 使用对应等级 ? 本次对应等级.单位 : attacker;
+        const 攻势最终属性 = 使用对应等级 ? 本次对应等级.最终属性 : attackerFinalStat;
         const 攻势敏捷 = Math.max(1, Number(攻势最终属性.agi || 攻势单位.agi || aAgi || 1));
         const 攻势精神上限 = Math.max(1, Number(攻势最终属性.men_max || 攻势单位.men_max || attackerFinalStat.men_max || 1));
-        const isPhysicalMeleeAction = !使用固定攻势 && String(pClash.伤害类型 || '') === '物理伤害';
+        const isPhysicalMeleeAction = !使用对应等级 && String(pClash.伤害类型 || '') === '物理伤害';
         const 登记行为防反候选 = (防反类型, 防反方, 参数 = {}) => {
           if (!防反方 || playerAction?.__行为防反 === true || result.__行为防反候选) return;
           const 反应余量 = Number(
@@ -23252,9 +23411,9 @@ class BattleUIComponent {
           result.interrupt_bonus = attackerInterruptBonus;
           return result;
         }
-        const attackerHitBonus = 使用固定攻势 ? 0 : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0);
+        const attackerHitBonus = 使用对应等级 ? 0 : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0);
         const attackerHitPenalty =
-          使用固定攻势
+          使用对应等级
             ? 0
             : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_penalty || 0), 0) +
               (attackerIsBlinded ? 0.35 : 0);
@@ -23304,15 +23463,15 @@ class BattleUIComponent {
           ? String(pClash.伤害类型 || '').trim()
           : '物理伤害';
 
-        const conditionArmorPen = 使用固定攻势 ? 0 : 读取状态穿透比例(attackerConditionEffects);
+        const conditionArmorPen = 使用对应等级 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const isAOE = resolvedDamageTargets.length > 1 || damageTargetContext.targetKind === '全场';
         let fluctuation = 0.9 + Math.random() * 0.2;
-        const 原始最终伤害倍率 = 使用固定攻势 ? 1 : attackerConditionEffects.reduce(
+        const 原始最终伤害倍率 = 使用对应等级 ? 1 : attackerConditionEffects.reduce(
           (mult, ce) => mult * Number(ce.final_damage_mult || 1.0),
           1.0,
         );
         const totalFinalDamageMult = 原始最终伤害倍率;
-        const 原始最终伤害加值 = 使用固定攻势 ? 0 : attackerConditionEffects.reduce(
+        const 原始最终伤害加值 = 使用对应等级 ? 0 : attackerConditionEffects.reduce(
           (sum, ce) => sum + Number(ce.final_damage_bonus || 0),
           0,
         );
@@ -23358,7 +23517,7 @@ class BattleUIComponent {
           let localGrazeMultiplier = grazeMultiplier;
           const allowEvasion = !targetsFriendlySkill || (hostileTargetRedirectedToSelf && targetObj === attacker);
           if (allowEvasion && remainPower > 0) {
-            const hitDelta = 使用固定攻势 ? 0 : currentSkillHitBonus + attackerHitBonus - (currentSkillHitPenalty + attackerHitPenalty);
+            const hitDelta = 使用对应等级 ? 0 : currentSkillHitBonus + attackerHitBonus - (currentSkillHitPenalty + attackerHitPenalty);
             if (targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避') {
               const absoluteDodgeThreshold = (攻势敏捷 + 攻势精神上限) * 1.5;
               if (targetEffectiveAgi + targetDodgeBonus > absoluteDodgeThreshold) {
@@ -23424,7 +23583,7 @@ class BattleUIComponent {
 
           let actualDef = 计算穿透后防御值(
             Number(targetFinalStat.def || targetObj.def || 1),
-            Number(pClash.防御穿透 || 0) + (使用固定攻势 ? 0 : 当前行动附加穿透),
+            Number(pClash.防御穿透 || 0) + (使用对应等级 ? 0 : 当前行动附加穿透),
             conditionArmorPen,
           );
           const 目标防御剥夺 = Math.min(
@@ -23436,11 +23595,11 @@ class BattleUIComponent {
             targetConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.spirit_resist_strip || 0)), 0),
           );
           if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
-          const soulDriveScale = 使用固定攻势 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
-          const spiritDriveScale = 使用固定攻势 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
-          const 定位伤害倍率 = 使用固定攻势 ? 1 : 计算定位伤害倍率(attacker, targetObj, dmgType);
+          const soulDriveScale = 使用对应等级 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
+          const spiritDriveScale = 使用对应等级 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
+          const 定位伤害倍率 = 使用对应等级 ? 1 : 计算定位伤害倍率(attacker, targetObj, dmgType);
           let projectedDamage = 0;
-          const 消耗加成系数 = 使用固定攻势 ? 1 : 计算伤害消耗加成系数(playerAction.skill, attacker);
+          const 消耗加成系数 = 使用对应等级 ? 1 : 计算伤害消耗加成系数(playerAction.skill, attacker);
           if (/真实/.test(dmgType)) {
             const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
             projectedDamage = remainPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
@@ -23490,7 +23649,7 @@ class BattleUIComponent {
           projectedDamage = projectedDamage * (1 - targetDamageReduction) * targetReceivedDamageMult * targetElementReceivedDamageMult * totalFinalDamageMult + totalFinalDamageBonus;
 
           if (
-            !使用固定攻势 &&
+            !使用对应等级 &&
             directExecuteEffect &&
             String(directExecuteEffect?.原型 || '').trim() === '结算修正' &&
             String(directExecuteEffect?.结算 || '').trim() === '造成伤害' &&
@@ -23504,10 +23663,10 @@ class BattleUIComponent {
             }
           }
 
-          if (!使用固定攻势 && fusionProfile && projectedDamage > 0) {
+          if (!使用对应等级 && fusionProfile && projectedDamage > 0) {
             projectedDamage *= Number(fusionProfile.damageMult || 1);
           }
-          if (!使用固定攻势 && projectedDamage > 0 && 直接结算收益预算系数 < 0.995) {
+          if (!使用对应等级 && projectedDamage > 0 && 直接结算收益预算系数 < 0.995) {
             projectedDamage *= 直接结算收益预算系数;
             localLogParts.push(`[收益预算] 直接伤害按消耗与前摇承载调整为${Math.round(直接结算收益预算系数 * 100)}%。`);
           }

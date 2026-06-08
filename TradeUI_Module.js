@@ -344,9 +344,11 @@ const SOUL_TOWER_QUALITY_PRICE_MULTIPLIER = Object.freeze({
 
 const 交易物品定义分类列表 = Object.freeze([
   '锻造金属',
-  '制造材料',
   '设计图纸',
-  '主武器',
+  '近战武器',
+  '远程武器',
+  '战术装备',
+  '功能道具',
   '防具装备',
   '斗铠部件',
   '机甲机体',
@@ -357,13 +359,12 @@ const 交易物品定义分类列表 = Object.freeze([
   '丹药',
   '身份票据',
   '修炼秘籍',
-  '一次性武器',
   '一次性道具',
   '剧情杂物',
 ]);
 const 交易物品定义分类集合 = new Set(交易物品定义分类列表);
-const 交易可使用物品分类集合 = new Set(['丹药', '天然灵物', '一次性武器', '一次性道具', '魂技造物']);
-const 交易装备物品分类集合 = new Set(['主武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+const 交易可使用物品分类集合 = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
+const 交易装备物品分类集合 = new Set(['近战武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 const 交易物品经济品质列表 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
 const 交易物品经济品质集合 = new Set(交易物品经济品质列表);
 const 交易物品经济品质倍率 = Object.freeze({ 普通: 1, 优秀: 1.25, 稀有: 2, 史诗: 5, 传说: 20, 神器: 1, 超神器: 1 });
@@ -678,11 +679,77 @@ class TradeUIComponent {
     }
   }
 
+  读取背包普通数量(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    return Math.max(0, Math.floor(Number(来源.数量 || 0)));
+  }
+
+  读取背包批次列表(记录 = {}) {
+    const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    return (Array.isArray(来源.批次) ? 来源.批次 : [])
+      .map((批次, 索引) => ({ 批次, 索引 }))
+      .filter(项 => 项.批次 && typeof 项.批次 === 'object' && !Array.isArray(项.批次) && Math.max(0, Math.floor(Number(项.批次.数量 || 0))) > 0);
+  }
+
   读取背包总数量(记录 = {}) {
     const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
-    const 普通数量 = Math.max(0, Math.floor(Number(来源.数量 || 0)));
-    const 批次数量 = (Array.isArray(来源.批次) ? 来源.批次 : []).reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次?.数量 || 0))), 0);
+    const 普通数量 = this.读取背包普通数量(来源);
+    const 批次数量 = this.读取背包批次列表(来源).reduce((总数, 项) => 总数 + Math.max(0, Math.floor(Number(项.批次?.数量 || 0))), 0);
     return 普通数量 + 批次数量;
+  }
+
+  编码出售引用(物品名 = '', 批次索引 = -1) {
+    return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number(批次索引) });
+  }
+
+  解码出售引用(引用 = '') {
+    const 文本 = String(引用 || '').trim();
+    if (!文本) return { 物品名: '', 批次索引: -1 };
+    try {
+      const 数据 = JSON.parse(文本);
+      if (数据 && typeof 数据 === 'object' && !Array.isArray(数据)) {
+        return {
+          物品名: String(数据.物品名 || '').trim(),
+          批次索引: Number.isFinite(Number(数据.批次索引)) ? Math.floor(Number(数据.批次索引)) : -1,
+        };
+      }
+    } catch (错误) {}
+    const 背包记录 = this.charData?.背包?.[文本];
+    const 普通数量 = this.读取背包普通数量(背包记录);
+    if (普通数量 > 0) return { 物品名: 文本, 批次索引: -1 };
+    const 首批 = this.读取背包批次列表(背包记录)[0];
+    return { 物品名: 文本, 批次索引: 首批 ? 首批.索引 : -1 };
+  }
+
+  读取出售引用上下文(引用 = '', 数量 = 1) {
+    const { 物品名, 批次索引 } = this.解码出售引用(引用);
+    const 背包记录 = this.charData?.背包?.[物品名];
+    if (!物品名 || !背包记录) return null;
+    const 目标数量 = Math.max(1, Math.floor(Number(数量 || 1)));
+    const 命中定义 = this.查找物品定义(物品名);
+    const 分类 = 命中定义?.分类 || '物品';
+    if (批次索引 >= 0) {
+      const 批次 = Array.isArray(背包记录.批次) ? 背包记录.批次[批次索引] : null;
+      const 可用数量 = Math.max(0, Math.floor(Number(批次?.数量 || 0)));
+      if (!批次 || 可用数量 <= 0) return null;
+      return {
+        物品名,
+        分类,
+        批次索引,
+        可用数量,
+        来源状态: { 数量: 0, 批次: [{ ...this.复制JSON(批次, {}), 数量: 可用数量 }] },
+        展示物品: { ...(命中定义?.定义 || {}), ...(批次 || {}), 数量: 可用数量 },
+      };
+    }
+    const 普通数量 = this.读取背包普通数量(背包记录);
+    return {
+      物品名,
+      分类,
+      批次索引: -1,
+      可用数量: 普通数量,
+      来源状态: { 数量: 普通数量 },
+      展示物品: { ...(命中定义?.定义 || {}), 数量: 普通数量 },
+    };
   }
 
   规范化交易批次(来源批次 = {}, 数量 = 1, fallback = {}) {
@@ -691,14 +758,18 @@ class TradeUIComponent {
       数量: Math.max(0, Math.floor(Number(数量 ?? 来源.数量 ?? 0))),
       品质: this.规范化物品经济品质(来源.品质 ?? fallback.品质 ?? fallback.rarity, fallback.物品名 || '', fallback.分类 || ''),
       品质系数: Math.max(0.1, Math.min(2, Number(来源.品质系数 ?? fallback.品质系数 ?? 1))),
-      制作者: String(来源.制作者 ?? fallback.制作者 ?? '').trim(),
-      来源: String(来源.来源 ?? fallback.来源 ?? fallback.source ?? '').trim(),
       耐久: Math.max(0, Math.floor(Number(来源.耐久 ?? fallback.耐久 ?? 0))),
+      剩余使用次数: Math.max(0, Math.floor(Number(来源.剩余使用次数 ?? fallback.剩余使用次数 ?? fallback.基础使用次数 ?? 0))),
       绑定者: String(来源.绑定者 ?? fallback.绑定者 ?? '').trim(),
       有效期至tick: Math.max(0, Math.floor(Number(来源.有效期至tick ?? fallback.有效期至tick ?? fallback.expiryTick ?? 0))),
     };
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
-    if (融合参数 && typeof 融合参数 === 'object' && !Array.isArray(融合参数)) {
+    if (
+      融合参数 &&
+      typeof 融合参数 === 'object' &&
+      !Array.isArray(融合参数) &&
+      (融合参数.数量 !== undefined || 融合参数.融合率 !== undefined)
+    ) {
       输出.副职业参数 = {
         融合参数: {
           数量: Math.max(1, Math.floor(Number(融合参数.数量 || 1))),
@@ -710,7 +781,12 @@ class TradeUIComponent {
       const 值 = 输出[键];
       if (
         键 !== '数量' &&
-        (值 === '' || 值 === 0 || 值 === '无' || (键 === '品质' && 值 === '普通') || (键 === '品质系数' && Number(值) === 1))
+        (值 === '' ||
+          值 === 0 ||
+          值 === '无' ||
+          (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
+          (键 === '品质' && 值 === '普通') ||
+          (键 === '品质系数' && Number(值) === 1))
       ) delete 输出[键];
     });
     return 输出.数量 > 0 ? 输出 : null;
@@ -735,10 +811,14 @@ class TradeUIComponent {
     const 数据 = 来源 && typeof 来源 === 'object' && !Array.isArray(来源) ? 来源 : {};
     if (Array.isArray(数据.批次) && 数据.批次.length) return true;
     if (数据.品质系数 !== undefined && Number(数据.品质系数) !== 1) return true;
-    if (数据.副职业参数?.融合参数 && typeof 数据.副职业参数.融合参数 === 'object' && !Array.isArray(数据.副职业参数.融合参数)) return true;
+    if (
+      数据.副职业参数?.融合参数 &&
+      typeof 数据.副职业参数.融合参数 === 'object' &&
+      !Array.isArray(数据.副职业参数.融合参数) &&
+      (数据.副职业参数.融合参数.数量 !== undefined || 数据.副职业参数.融合参数.融合率 !== undefined)
+    ) return true;
     if (数据.耐久 !== undefined && Number(数据.耐久) > 0) return true;
-    if (String(数据.制作者 || '').trim()) return true;
-    if (String(数据.来源 || '').trim()) return true;
+    if (数据.剩余使用次数 !== undefined || Number(数据.基础使用次数 || 0) > 0) return true;
     if (String(数据.绑定者 || '').trim()) return true;
     if (Number(数据.有效期至tick || 0) > 0) return true;
     return false;
@@ -793,20 +873,36 @@ class TradeUIComponent {
     return this.读取背包总数量(当前) > 0 ? 当前 : null;
   }
 
+  构建背包指定扣减值(记录 = {}, 数量 = 1, 批次索引 = null) {
+    if (批次索引 === null || 批次索引 === undefined) return this.构建背包扣减值(记录, 数量);
+    const 当前 = this.复制JSON(记录, {});
+    const 扣减数量 = Math.max(1, Math.floor(Number(数量 || 1)));
+    if (Number(批次索引) >= 0) {
+      const 索引 = Math.floor(Number(批次索引));
+      const 批次列表 = Array.isArray(当前.批次) ? 当前.批次.map(批次 => this.复制JSON(批次, {})) : [];
+      if (!批次列表[索引]) return this.读取背包总数量(当前) > 0 ? 当前 : null;
+      批次列表[索引].数量 = Math.max(0, Math.floor(Number(批次列表[索引].数量 || 0)) - 扣减数量);
+      当前.批次 = 批次列表.filter(批次 => Math.max(0, Number(批次?.数量 || 0)) > 0);
+      if (!当前.批次.length) delete 当前.批次;
+    } else {
+      当前.数量 = Math.max(0, Math.floor(Number(当前.数量 || 0)) - 扣减数量);
+    }
+    return this.读取背包总数量(当前) > 0 ? 当前 : null;
+  }
+
   构建交易物品定义(物品名 = '', 来源物品 = {}, fallback = {}) {
     const 来源 = 来源物品 && typeof 来源物品 === 'object' && !Array.isArray(来源物品) ? JSON.parse(JSON.stringify(来源物品)) : {};
     const 分类 = this.要求物品定义分类(物品名, 来源, fallback.分类);
     const 定义 = {
-      阶位: Math.max(0, Math.floor(Number(来源.阶位 || 0))),
       品质: this.规范化物品经济品质(来源.品质 || fallback.rarity || 来源.品级 || '普通', 物品名, 分类),
       描述: 来源.描述 || fallback.desc || `获得了【${物品名}】。`,
-      基础价格: Math.max(0, Math.floor(Number(来源.基础价格 || 来源.价格 || this.estimateBasePrice(物品名, 分类) || 0))),
+      基础价格: Math.max(1, Math.floor(Number(来源.基础价格 || 来源.价格 || this.estimateBasePrice(物品名, 分类) || 1))),
       默认货币: 来源.默认货币 || 来源.货币 || fallback.currency || '联邦币',
     };
+    if (分类 === '锻造金属') 定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0))));
+    if (Number(来源.基础使用次数 || 0) > 0) 定义.基础使用次数 = Math.max(1, Math.floor(Number(来源.基础使用次数 || 1)));
     if (交易装备物品分类集合.has(分类)) {
       if (来源.装备槽位) 定义.装备槽位 = 来源.装备槽位;
-      else if (分类 === '主武器') 定义.装备槽位 = '武器';
-      else if (分类 === '防具装备') 定义.装备槽位 = '防具';
       if (Number(来源.基础耐久 || 0) > 0) 定义.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 定义.属性加成 = 来源.属性加成;
       if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 定义.装备技能 = 来源.装备技能;
@@ -823,27 +919,8 @@ class TradeUIComponent {
       }
       if (Array.isArray(来源.副作用列表) && 来源.副作用列表.length) 定义.副作用列表 = 来源.副作用列表;
     }
-    if (分类 === '锻造金属') {
-      const 副职业参数 = {};
-      const 来源副职业参数 = 来源.副职业参数 && typeof 来源.副职业参数 === 'object' && !Array.isArray(来源.副职业参数) ? 来源.副职业参数 : {};
-      ['提纯度', '灵力值', '灵性', '锻造特性'].forEach(字段名 => {
-        if (来源副职业参数[字段名] !== undefined) 副职业参数[字段名] = 来源副职业参数[字段名];
-      });
-      if (Object.keys(副职业参数).length) 定义.副职业参数 = 副职业参数;
-    }
-    if (分类 === '魂灵') {
-      const 来源副职业参数 = 来源.副职业参数 && typeof 来源.副职业参数 === 'object' && !Array.isArray(来源.副职业参数) ? 来源.副职业参数 : {};
-      const 魂灵参数 = {};
-      ['年限', '标准物种'].forEach(字段名 => {
-        if (来源副职业参数[字段名] !== undefined) 魂灵参数[字段名] = 来源副职业参数[字段名];
-      });
-      if (Object.keys(魂灵参数).length) 定义.副职业参数 = 魂灵参数;
-    }
-    if (分类 === '制造材料' && 来源.材料用途 !== undefined && String(来源.材料用途).trim()) {
-      定义.材料用途 = String(来源.材料用途).trim();
-    }
     if (分类 === '设计图纸') {
-      ['图纸目标', '适用阶位', '产出方向'].forEach(字段名 => {
+      ['图纸目标'].forEach(字段名 => {
         if (来源[字段名] !== undefined && String(来源[字段名]).trim()) 定义[字段名] = 来源[字段名];
       });
     }
@@ -1203,26 +1280,19 @@ class TradeUIComponent {
     const 命中定义 = this.查找物品定义(itemName);
     const safeItem = { ...(命中定义?.定义 || {}), ...(sourceItem && typeof sourceItem === 'object' ? JSON.parse(JSON.stringify(sourceItem)) : {}) };
     const { 分类, 定义: definition } = this.构建交易物品定义(itemName, safeItem, { ...fallback, 分类: 命中定义?.分类 || fallback.分类 });
-    const resolvedExpiryTick = Number(safeItem.有效期至tick ?? fallback.expiryTick ?? 0);
-    const state = { 数量: Math.max(0, Math.floor(Number(qty || 1))) };
-    if (resolvedExpiryTick > 0) state.有效期至tick = resolvedExpiryTick;
-    if (safeItem.绑定者 !== undefined) state.绑定者 = safeItem.绑定者;
-    if (fallback.source !== undefined || safeItem.来源 !== undefined) state.来源 = safeItem.来源 || fallback.source;
-    if (Number(safeItem.耐久 || 0) > 0) state.耐久 = Math.max(0, Math.floor(Number(safeItem.耐久 || 0)));
     const 批次列表 = this.构建交易入库批次(safeItem, qty, {
       物品名: itemName,
       分类,
       品质: safeItem.品质 || fallback.rarity,
-      来源: state.来源,
-      绑定者: state.绑定者,
-      有效期至tick: state.有效期至tick,
-      耐久: state.耐久,
+      绑定者: safeItem.绑定者,
+      有效期至tick: Number(safeItem.有效期至tick ?? fallback.expiryTick ?? 0),
+      耐久: Number(safeItem.耐久 || 0),
+      剩余使用次数: safeItem.剩余使用次数,
+      基础使用次数: safeItem.基础使用次数,
     });
-    if (批次列表.length) {
-      state.数量 = 0;
-      state.批次 = 批次列表;
-      ['来源', '绑定者', '有效期至tick', '耐久'].forEach(字段名 => delete state[字段名]);
-    }
+    const state = 批次列表.length
+      ? { 数量: 0, 批次: 批次列表 }
+      : { 数量: Math.max(0, Math.floor(Number(qty || 1))) };
     return { definition, 分类, state };
   }
 
@@ -1255,10 +1325,10 @@ class TradeUIComponent {
     }
   }
 
-  appendInventoryConsumePatches(patches, charBasePath, inventory = {}, itemName = '', qty = 1) {
+  appendInventoryConsumePatches(patches, charBasePath, inventory = {}, itemName = '', qty = 1, 批次索引 = null) {
     const current = inventory?.[itemName];
     const itemPath = `${charBasePath}/背包/${this.escapeJsonPointer(itemName)}`;
-    const next = this.构建背包扣减值(current, qty);
+    const next = this.构建背包指定扣减值(current, qty, 批次索引);
     if (!next) patches.push({ op: 'remove', path: itemPath });
     else patches.push({ op: 'replace', path: itemPath, value: next });
   }
@@ -1372,12 +1442,10 @@ class TradeUIComponent {
           需求: {},
           _临时定义: {
             物品分类: '魂灵',
-            阶位: 0,
             品质: record.品质,
-            描述: `魂灵塔第${record.层数}层守塔魂灵特许兑换，当前为五折价格。`,
+            描述: `魂灵塔第${record.层数}层守塔魂灵特许兑换，当前为五折价格。标准物种：${record.标准物种 || '未知'}；年限：${record.年限 || 0}年。`,
             基础价格: fullPrice,
             默认货币: '联邦币',
-            副职业参数: { 标准物种: record.标准物种, 年限: record.年限 },
           },
           _tower_discount_virtual: true,
         },
@@ -1573,25 +1641,40 @@ class TradeUIComponent {
     let hasItem = false;
     for (const iName in (this.charData?.背包 || {})) {
       const item = this.charData.背包[iName];
-      const 总数量 = this.读取背包总数量(item);
-      if (总数量 > 0) {
+      const 普通数量 = this.读取背包普通数量(item);
+      if (普通数量 > 0) {
         const opt = document.createElement('option');
-        opt.value = iName;
-        opt.textContent = `${iName} (拥有: ${总数量})`;
+        opt.value = this.编码出售引用(iName, -1);
+        opt.textContent = `${iName} (剩${普通数量})`;
         invSel.appendChild(opt);
         hasItem = true;
       }
+      this.读取背包批次列表(item).forEach(({ 批次, 索引 }) => {
+        const 数量 = Math.max(0, Math.floor(Number(批次.数量 || 0)));
+        const 明细 = [];
+        if (批次.品质) 明细.push(批次.品质);
+        if (批次.品质系数 !== undefined) 明细.push(`Q${Number(批次.品质系数 || 1).toFixed(2)}`);
+        const 融合率 = 批次?.副职业参数?.融合参数?.融合率;
+        if (融合率 !== undefined) 明细.push(`融合${融合率}%`);
+        if (批次.耐久 !== undefined) 明细.push(`耐久${批次.耐久}`);
+        const opt = document.createElement('option');
+        opt.value = this.编码出售引用(iName, 索引);
+        opt.textContent = `${iName} · 批次${索引 + 1} (${明细.concat(`剩${数量}`).join(' / ')})`;
+        invSel.appendChild(opt);
+        hasItem = true;
+      });
     }
     if (!hasItem) invSel.innerHTML = '<option value="">[背包空空如也]</option>';
     this.updateSellPreview();
   }
 
   updateSellPreview() {
-    const itemName = this.$('#sell-item-sel').value;
+    const 出售引用 = this.$('#sell-item-sel').value;
     const qty = parseInt(this.$('#sell-qty').value) || 1;
     const btn = this.$('#btn-sell');
+    const 出售项 = this.读取出售引用上下文(出售引用, qty);
 
-    if (!itemName || !this.charData.背包?.[itemName]) {
+    if (!出售项 || !出售项.物品名 || 出售项.可用数量 <= 0) {
       this.$('#sell-base-price').textContent = '-';
       this.$('#sell-market').textContent = '-';
       this.$('#sell-total').textContent = '-';
@@ -1600,13 +1683,12 @@ class TradeUIComponent {
       return;
     }
 
-    const 命中定义 = this.查找物品定义(itemName);
-    const item = { ...(命中定义?.定义 || {}), ...(this.charData.背包[itemName] || {}) };
-    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 命中定义?.分类 || '物品') * this.计算来源批次平均倍率(this.charData.背包[itemName] || {}, qty)));
+    const itemName = 出售项.物品名;
+    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
     const sellPrice = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell');
     const total = sellPrice * qty;
 
-    this.updateTradeMetaPanel('sell', this.resolveTradeItemInfo(itemName, item, { source: item?.来源 || item?.绑定者 || '背包持有' }));
+    this.updateTradeMetaPanel('sell', this.resolveTradeItemInfo(itemName, 出售项.展示物品, { source: 出售项.展示物品?.来源 || 出售项.展示物品?.绑定者 || '背包持有' }));
 
     if (basePrice === 0) {
       this.$('#sell-base-price').textContent = "禁售物品";
@@ -1617,19 +1699,22 @@ class TradeUIComponent {
       this.$('#sell-base-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
       this.$('#sell-market').textContent = this.getMarketAdjustmentText('sell');
       this.$('#sell-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
-      btn.disabled = (this.读取背包总数量(this.charData.背包[itemName]) < qty);
+      btn.disabled = 出售项.可用数量 < qty;
     }
   }
 
   executeSell() {
-    const itemName = this.$('#sell-item-sel').value;
+    const 出售引用 = this.$('#sell-item-sel').value;
     const qty = parseInt(this.$('#sell-qty').value) || 1;
-    const itemType = this.查找物品定义(itemName)?.分类 || '物品';
-    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, itemType) * this.计算来源批次平均倍率(this.charData.背包[itemName] || {}, qty)));
+    const 出售项 = this.读取出售引用上下文(出售引用, qty);
+    if (!出售项 || !出售项.物品名 || 出售项.可用数量 < qty) return this.显示提示('背包数量不足。');
+    const itemName = 出售项.物品名;
+    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
+    if (basePrice <= 0) return this.显示提示('该物品当前无法出售。');
     const totalEarn = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell') * qty;
 
     let patchOps = [];
-    this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty);
+    this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty, 出售项.批次索引);
     patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/联邦币`, value: (this.charData.财富?.联邦币 || 0) + totalEarn });
 
     const log = `[交易成功][卖出热][交易触发待处理] ${this.activeName} 向系统商店出售了 ${qty} 份【${itemName}】，获得 ${totalEarn} 联邦币。`;
