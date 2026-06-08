@@ -764,14 +764,9 @@ class TradeUIComponent {
       魂导等级: Math.max(0, Math.min(12, Math.floor(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0)))),
       耐久: Math.max(0, Math.floor(Number(来源.耐久 ?? fallback.耐久 ?? 0))),
       剩余使用次数: Math.max(0, Math.floor(Number(来源.剩余使用次数 ?? fallback.剩余使用次数 ?? fallback.基础使用次数 ?? 0))),
-      基础耐久: Math.max(0, Math.floor(Number(来源.基础耐久 ?? fallback.基础耐久 ?? 0))),
-      基础使用次数: Math.max(0, Math.floor(Number(来源.基础使用次数 ?? fallback.基础使用次数 ?? 0))),
       绑定者: String(来源.绑定者 ?? fallback.绑定者 ?? '').trim(),
       有效期至tick: Math.max(0, Math.floor(Number(来源.有效期至tick ?? fallback.有效期至tick ?? fallback.expiryTick ?? 0))),
     };
-    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = this.复制JSON(来源.属性加成, {});
-    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = this.复制JSON(来源.装备技能, {});
-    if (Array.isArray(来源.使用效果) && 来源.使用效果.length) 输出.使用效果 = this.复制JSON(来源.使用效果, []);
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
     if (
       融合参数 &&
@@ -795,8 +790,6 @@ class TradeUIComponent {
           值 === '无' ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
           (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
-          (键 === '基础耐久' && !(来源.基础耐久 !== undefined || fallback.基础耐久 !== undefined)) ||
-          (键 === '基础使用次数' && !(来源.基础使用次数 !== undefined || fallback.基础使用次数 !== undefined)) ||
           (键 === '品质' && 值 === '普通') ||
           (键 === '品质系数' && Number(值) === 1) ||
           (Array.isArray(值) && !值.length) ||
@@ -831,14 +824,11 @@ class TradeUIComponent {
       !Array.isArray(数据.副职业参数.融合参数) &&
       (数据.副职业参数.融合参数.数量 !== undefined || 数据.副职业参数.融合参数.融合率 !== undefined)
     ) return true;
-    if (数据.耐久 !== undefined && Number(数据.耐久) > 0) return true;
+    if (数据.耐久 !== undefined || Number(数据.基础耐久 || 0) > 0) return true;
     if (数据.剩余使用次数 !== undefined || Number(数据.基础使用次数 || 0) > 0) return true;
     if (String(数据.基础金属 || '').trim()) return true;
     if (Number(数据.魂导等级 || 0) > 0) return true;
     if (数据.基础耐久 !== undefined) return true;
-    if (数据.属性加成 && typeof 数据.属性加成 === 'object' && !Array.isArray(数据.属性加成) && Object.keys(数据.属性加成).length) return true;
-    if (数据.装备技能 && typeof 数据.装备技能 === 'object' && !Array.isArray(数据.装备技能) && Object.keys(数据.装备技能).length) return true;
-    if (Array.isArray(数据.使用效果) && 数据.使用效果.length) return true;
     if (String(数据.绑定者 || '').trim()) return true;
     if (Number(数据.有效期至tick || 0) > 0) return true;
     return false;
@@ -1316,13 +1306,10 @@ class TradeUIComponent {
       魂导等级: safeItem.魂导等级,
       绑定者: safeItem.绑定者,
       有效期至tick: Number(safeItem.有效期至tick ?? fallback.expiryTick ?? 0),
-      耐久: Number(safeItem.耐久 || 0),
+      耐久: Number(safeItem.耐久 ?? safeItem.基础耐久 ?? 0),
       剩余使用次数: safeItem.剩余使用次数,
       基础耐久: safeItem.基础耐久,
       基础使用次数: safeItem.基础使用次数,
-      属性加成: safeItem.属性加成,
-      装备技能: safeItem.装备技能,
-      使用效果: safeItem.使用效果,
     });
     const state = 批次列表.length
       ? { 数量: 0, 批次: 批次列表 }

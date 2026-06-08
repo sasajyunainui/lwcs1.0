@@ -1178,15 +1178,13 @@ function 校验AIJsonPatch路径层级_V1(路径 = [], { 原始路径 = '' } = {
   文本路径.forEach((片段, 序号) => {
     if (是魂灵槽位键_V1(片段)) {
       if (是武魂槽位键_V1(文本路径[序号 - 1])) return;
-      if (文本路径[0] === 'char' && 是武魂槽位键_V1(文本路径[序号 - 2])) 抛错(`${片段}必须位于武魂槽位下`);
+      if (文本路径[0] === 'char') 抛错(`${片段}必须位于武魂槽位下`);
       return;
     }
     if (是魂环槽位键_V1(片段)) {
       const 父级 = 文本路径[序号 - 1];
-      if (是武魂槽位键_V1(父级) || 是魂灵槽位键_V1(父级)) return;
-      if (文本路径[0] === 'char' && 文本路径.slice(0, 序号).some(段 => 是武魂槽位键_V1(段))) {
-        抛错(`${片段}必须位于武魂或魂灵下`);
-      }
+      if (是魂灵槽位键_V1(父级)) return;
+      if (文本路径[0] === 'char' && 文本路径.slice(0, 序号).some(段 => 是武魂槽位键_V1(段))) 抛错(`${片段}必须位于魂灵下`);
       return;
     }
     if (是魂技槽位键_V1(片段) && AIJsonPatch魂技槽位应按魂环校验_V1(文本路径, 序号)) {
@@ -25802,11 +25800,6 @@ const CharacterSchema = z
                     品质系数: z.coerce.number().optional(),
                     基础金属: z.string().optional(),
                     魂导等级: z.coerce.number().optional(),
-                    基础耐久: z.coerce.number().optional(),
-                    基础使用次数: z.coerce.number().optional(),
-                    属性加成: z.record(z.string(), z.any()).optional(),
-                    装备技能: z.record(z.string(), z.any()).optional(),
-                    使用效果: z.array(z.any()).optional(),
                     副职业参数: z
                       .object({
                         融合参数: z
@@ -25839,11 +25832,6 @@ const CharacterSchema = z
                 if (批次.魂导等级 !== undefined) 输出.魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(批次.魂导等级 || 0))));
                 if (批次.耐久 !== undefined) 输出.耐久 = Math.max(0, Math.floor(Number(批次.耐久 || 0)));
                 if (批次.剩余使用次数 !== undefined) 输出.剩余使用次数 = Math.max(0, Math.floor(Number(批次.剩余使用次数 || 0)));
-                if (批次.基础耐久 !== undefined) 输出.基础耐久 = Math.max(0, Math.floor(Number(批次.基础耐久 || 0)));
-                if (批次.基础使用次数 !== undefined) 输出.基础使用次数 = Math.max(0, Math.floor(Number(批次.基础使用次数 || 0)));
-                if (批次.属性加成 && typeof 批次.属性加成 === 'object' && !Array.isArray(批次.属性加成)) 输出.属性加成 = cloneJsonValue(批次.属性加成, {});
-                if (批次.装备技能 && typeof 批次.装备技能 === 'object' && !Array.isArray(批次.装备技能)) 输出.装备技能 = cloneJsonValue(批次.装备技能, {});
-                if (Array.isArray(批次.使用效果) && 批次.使用效果.length) 输出.使用效果 = cloneJsonValue(批次.使用效果, []);
                 if (批次.绑定者 !== undefined) 输出.绑定者 = String(批次.绑定者 || '无').trim() || '无';
                 if (批次.有效期至tick !== undefined) 输出.有效期至tick = Math.max(0, Math.floor(Number(批次.有效期至tick || 0)));
                 const 原始融合参数 = 批次?.副职业参数?.融合参数;
@@ -27777,9 +27765,6 @@ const SchemaRootObject = z
                                     if (批次.剩余使用次数 !== undefined) 输出.剩余使用次数 = Math.max(0, Math.floor(Number(批次.剩余使用次数 || 0)));
                                     if (批次.基础耐久 !== undefined) 输出.基础耐久 = Math.max(0, Math.floor(Number(批次.基础耐久 || 0)));
                                     if (批次.基础使用次数 !== undefined) 输出.基础使用次数 = Math.max(0, Math.floor(Number(批次.基础使用次数 || 0)));
-                                    if (批次.属性加成 && typeof 批次.属性加成 === 'object' && !Array.isArray(批次.属性加成)) 输出.属性加成 = cloneJsonValue(批次.属性加成, {});
-                                    if (批次.装备技能 && typeof 批次.装备技能 === 'object' && !Array.isArray(批次.装备技能)) 输出.装备技能 = cloneJsonValue(批次.装备技能, {});
-                                    if (Array.isArray(批次.使用效果) && 批次.使用效果.length) 输出.使用效果 = cloneJsonValue(批次.使用效果, []);
                                     if (批次.绑定者 !== undefined) 输出.绑定者 = String(批次.绑定者 || '无').trim() || '无';
                                     if (批次.有效期至tick !== undefined) 输出.有效期至tick = Math.max(0, Math.floor(Number(批次.有效期至tick || 0)));
                                     const 原始融合参数 = 批次?.副职业参数?.融合参数;

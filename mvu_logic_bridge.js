@@ -530,6 +530,21 @@
       `;
   }
 
+  function 构建详情项值HTML(条目) {
+    if (条目 && 条目.值Html) return 条目.值Html;
+    const 路径 = normalizeEditorPath(条目 && (条目.path || 条目.路径));
+    const 当前值 = 条目 && 条目.value !== undefined && 条目.value !== null ? 条目.value : '';
+    if (!路径.length) return 当前值;
+    return makeInlineEditableValue(条目 && 条目.displayText !== undefined ? 条目.displayText : 当前值, {
+      path: 路径,
+      kind: 条目 && (条目.kind || 条目.类型) ? 条目.kind || 条目.类型 : 'string',
+      rawValue: 条目 && (条目.rawValue !== undefined || 条目.原始值 !== undefined) ? 条目.rawValue ?? 条目.原始值 : 当前值,
+      multiline: !!(条目 && 条目.multiline),
+      提示文本: 条目 && 条目.提示文本,
+      editorMeta: 条目 && (条目.editorMeta || 条目.编辑元数据),
+    });
+  }
+
   function makeTileGrid(items, className = '') {
     const tileItems = Array.isArray(items) ? items : [];
     const compactIntelGrid =
@@ -549,7 +564,7 @@
                 return `
             <div class="archive-tile${紧凑情报格类}${悬浮类}"${标题属性}${聚焦属性}>
               <b>${item.label}</b>
-              <span${紧凑情报值类}>${item && item.值Html ? item.值Html : item.value}</span>
+              <span${紧凑情报值类}>${构建详情项值HTML(item)}</span>
               ${悬浮Html}
             </div>
           `;
@@ -581,7 +596,7 @@
                 return `
             <div class="archive-tile ${item.className || ''}${悬浮类} ${item.preview ? 'clickable' : ''}"${item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}${标题属性}${聚焦属性}>
               <b>${item.label}</b>
-              <span>${item && item.值Html ? item.值Html : item.value}</span>
+              <span>${构建详情项值HTML(item)}</span>
               ${悬浮Html}
             </div>
           `;
@@ -608,7 +623,7 @@
               item => `
             <div class="wallet-chip ${item.className || ''}">
               <b>${item.label}</b>
-              <span>${item.value}</span>
+              <span>${构建详情项值HTML(item)}</span>
             </div>
           `,
             )
@@ -1057,7 +1072,7 @@
                 : [];
               const 描述内容 = 描述行列表.length
                 ? 描述行列表.map(行 => `<em>${htmlEscape(行)}</em>`).join('')
-                : (item && item.desc ? item.desc : '');
+                : 构建详情项值HTML(item && item.desc !== undefined ? { ...item, value: item.desc } : item);
               return `
             <div class="timeline-card${item && item.className ? ` ${item.className}` : ''}${item && item.preview ? ' clickable' : ''}"${item && item.preview ? ` data-preview="${escapeHtmlAttr(item.preview)}"` : ''}>
               <b>${item.title}</b>
@@ -1118,7 +1133,7 @@
               item => `
             <div class="dossier-row ${item && item.className ? item.className : ''}">
               <b class="dossier-field-label">${htmlEscape(toText(item && item.label, ''))}</b>
-              <span class="dossier-field-value"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${item && item.值Html ? item.值Html : item && item.value !== undefined && item.value !== null ? item.value : ''}</span>
+              <span class="dossier-field-value"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${构建详情项值HTML(item)}</span>
             </div>
           `,
             )
@@ -2522,14 +2537,9 @@
       魂导等级: Math.max(0, Math.min(12, Math.floor(toNumber(来源.魂导等级 ?? fallback.魂导等级, 0)))),
       耐久: Math.max(0, Math.floor(toNumber(来源.耐久 ?? fallback.耐久, 0))),
       剩余使用次数: Math.max(0, Math.floor(toNumber(来源.剩余使用次数 ?? fallback.剩余使用次数 ?? fallback.基础使用次数, 0))),
-      基础耐久: Math.max(0, Math.floor(toNumber(来源.基础耐久 ?? fallback.基础耐久, 0))),
-      基础使用次数: Math.max(0, Math.floor(toNumber(来源.基础使用次数 ?? fallback.基础使用次数, 0))),
       绑定者: toText(来源.绑定者 ?? fallback.绑定者, '').trim(),
       有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick ?? fallback.有效期至tick, 0))),
     };
-    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
-    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
-    if (Array.isArray(来源.使用效果) && 来源.使用效果.length) 输出.使用效果 = cloneJsonValue(来源.使用效果, []);
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
     if (
       融合参数 &&
@@ -2554,8 +2564,6 @@
           (键 === '耐久' && !有耐久) ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
           (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
-          (键 === '基础耐久' && !(来源.基础耐久 !== undefined || fallback.基础耐久 !== undefined)) ||
-          (键 === '基础使用次数' && !(来源.基础使用次数 !== undefined || fallback.基础使用次数 !== undefined)) ||
           (键 === '品质' && 值 === '普通') ||
           (键 === '品质系数' && Number(值) === 1) ||
           (Array.isArray(值) && !值.length) ||
@@ -2577,15 +2585,12 @@
       !Array.isArray(来源.副职业参数.融合参数) &&
       (来源.副职业参数.融合参数.数量 !== undefined || 来源.副职业参数.融合参数.融合率 !== undefined)
     ) return true;
-    if (来源.耐久 !== undefined) return true;
+    if (来源.耐久 !== undefined || toNumber(来源.基础耐久, 0) > 0) return true;
     if (来源.剩余使用次数 !== undefined || Number(来源.基础使用次数 || 0) > 0) return true;
     if (toText(来源.基础金属, '').trim()) return true;
     if (toNumber(来源.魂导等级, 0) > 0) return true;
     if (来源.基础耐久 !== undefined) return true;
     if (来源.基础使用次数 !== undefined) return true;
-    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成) && Object.keys(来源.属性加成).length) return true;
-    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能) && Object.keys(来源.装备技能).length) return true;
-    if (Array.isArray(来源.使用效果) && 来源.使用效果.length) return true;
     if (toText(来源.绑定者, '').trim()) return true;
     if (toNumber(来源.有效期至tick, 0) > 0) return true;
     return false;
@@ -2836,13 +2841,10 @@
       品质系数: 来源.品质系数,
       基础金属: 来源.基础金属,
       魂导等级: 来源.魂导等级,
-      耐久: 来源.耐久,
+      耐久: 来源.耐久 ?? 来源.基础耐久,
       剩余使用次数: 来源.剩余使用次数,
       基础耐久: 来源.基础耐久,
       基础使用次数: 来源.基础使用次数,
-      属性加成: 来源.属性加成,
-      装备技能: 来源.装备技能,
-      使用效果: 来源.使用效果,
       绑定者: 来源.绑定者,
       有效期至tick: 来源.有效期至tick,
       副职业参数: 来源?.副职业参数?.融合参数 ? { 融合参数: 来源.副职业参数.融合参数 } : undefined,
@@ -30980,9 +30982,28 @@
                     <div class="dossier-section-title">成长信息</div>
                     ${makeDossierRows(
                       [
-                        { label: '等级', value: htmlEscape(formatCultivationLevelBadge(stat.等级, '0')) },
-                        { label: '精神境界', value: htmlEscape(读取显示精神境界(stat)) },
-                        { label: '天赋梯队', value: htmlEscape(读取属性天赋梯队(stat)) },
+                        {
+                          label: '等级',
+                          value: formatCultivationLevelBadge(stat.等级, '0'),
+                          path: activeCharKey ? ['char', activeCharKey, '属性', '等级'] : [],
+                          kind: 'number',
+                          rawValue: toNumber(stat.等级, 0),
+                          editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                        },
+                        {
+                          label: '精神境界',
+                          value: 读取显示精神境界(stat),
+                          path: activeCharKey ? ['char', activeCharKey, '属性', '精神境界'] : [],
+                          kind: 'string',
+                          rawValue: toText(stat.精神境界, 读取显示精神境界(stat)),
+                        },
+                        {
+                          label: '天赋梯队',
+                          value: 读取属性天赋梯队(stat),
+                          path: activeCharKey ? ['char', activeCharKey, '属性', '天赋梯队'] : [],
+                          kind: 'string',
+                          rawValue: 读取属性天赋梯队(stat),
+                        },
                         {
                           label: '名望',
                           value: htmlEscape(
@@ -31293,7 +31314,13 @@
                         label: '名望层级',
                         value: htmlEscape(toText(social.名望等级, toText(social.名望等级, '籍籍无名'))),
                       },
-                      { label: '公开情报', value: htmlEscape(snapshot.publicIntel ? '已公开' : '未公开') },
+                      {
+                        label: '公开情报',
+                        value: snapshot.publicIntel ? '已公开' : '未公开',
+                        path: activeCharKey ? ['char', activeCharKey, '社交', '公开情报'] : [],
+                        kind: 'boolean',
+                        rawValue: !!deepGet(snapshot, 'activeChar.社交.公开情报', snapshot.publicIntel),
+                      },
                       {
                         label: '主要圈层',
                         value: htmlEscape(snapshot.势力.map(([name]) => name).join(' / ') || '暂无'),
@@ -31897,7 +31924,16 @@
                   ${
                     snapshot.unlockedKnowledges.length
                       ? `
-                    <div class="intel-pending-editor">${htmlEscape(intelOverviewText)}</div>
+                    <div class="intel-pending-editor">${
+                      activeCharKey
+                        ? makeInlineEditableValue(intelOverviewText, {
+                            path: ['char', activeCharKey, '已掌握情报', Math.max(0, snapshot.unlockedKnowledges.length - 1)],
+                            kind: 'string',
+                            rawValue: snapshot.unlockedKnowledges[snapshot.unlockedKnowledges.length - 1],
+                            multiline: true,
+                          })
+                        : htmlEscape(intelOverviewText)
+                    }</div>
                   `
                       : `
                     <div class="intel-empty-state">
@@ -32641,7 +32677,14 @@
                   { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
                   { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器' },
                   { label: '副职业', value: jobSummary },
-                  { label: '战斗形态', value: battleForm },
+                  {
+                    label: '战斗形态',
+                    value: battleForm,
+                    path: activeCharKey ? ['char', activeCharKey, '状态', '行动'] : [],
+                    kind: 'enum_select',
+                    rawValue: battleForm,
+                    editorMeta: { options: getStatusActionEditorOptions(battleForm) },
+                  },
                 ])}
               </div>
               <div class="archive-card full mvu-detail-scroll-card">
@@ -33637,7 +33680,14 @@
                 ${makeTileGrid(
                   [
                     { label: '角色名', value: targetName || '未知' },
-                    { label: '等级', value: targetChar ? formatCultivationLevelBadge(targetStat.等级, '0') : '未收录' },
+                    {
+                      label: '等级',
+                      value: targetChar ? formatCultivationLevelBadge(targetStat.等级, '0') : '未收录',
+                      path: targetCharPath.length ? [...targetCharPath, '属性', '等级'] : [],
+                      kind: 'number',
+                      rawValue: toNumber(targetStat.等级, 0),
+                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                    },
                     {
                       label: '公开身份',
                       value: targetCharPath.length
@@ -33665,25 +33715,52 @@
                     },
                     {
                       label: '魂力',
-                      value: targetChar
-                        ? `${formatNumber(targetStat.魂力)} / ${formatNumber(targetStat.魂力上限)}`
-                        : '未收录',
+                      value: targetCharPath.length
+                        ? `${makeInlineEditableValue(formatNumber(targetStat.魂力), { path: [...targetCharPath, '属性', '魂力'], kind: 'number', rawValue: toNumber(targetStat.魂力, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(formatNumber(targetStat.魂力上限), { path: [...targetCharPath, '属性', '魂力上限'], kind: 'number', rawValue: toNumber(targetStat.魂力上限, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })}`
+                        : targetChar
+                          ? `${formatNumber(targetStat.魂力)} / ${formatNumber(targetStat.魂力上限)}`
+                          : '未收录',
                     },
                     {
                       label: '体力',
-                      value: targetChar
-                        ? `${formatNumber(targetStat.体力)} / ${formatNumber(targetStat.体力上限)}`
-                        : '未收录',
+                      value: targetCharPath.length
+                        ? `${makeInlineEditableValue(formatNumber(targetStat.体力), { path: [...targetCharPath, '属性', '体力'], kind: 'number', rawValue: toNumber(targetStat.体力, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(formatNumber(targetStat.体力上限), { path: [...targetCharPath, '属性', '体力上限'], kind: 'number', rawValue: toNumber(targetStat.体力上限, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })}`
+                        : targetChar
+                          ? `${formatNumber(targetStat.体力)} / ${formatNumber(targetStat.体力上限)}`
+                          : '未收录',
                     },
                     {
                       label: '精神力',
-                      value: targetChar
-                        ? `${formatNumber(targetStat.精神力)} / ${formatNumber(targetStat.精神力上限)}`
-                        : '未收录',
+                      value: targetCharPath.length
+                        ? `${makeInlineEditableValue(formatNumber(targetStat.精神力), { path: [...targetCharPath, '属性', '精神力'], kind: 'number', rawValue: toNumber(targetStat.精神力, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(formatNumber(targetStat.精神力上限), { path: [...targetCharPath, '属性', '精神力上限'], kind: 'number', rawValue: toNumber(targetStat.精神力上限, 0), editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })}`
+                        : targetChar
+                          ? `${formatNumber(targetStat.精神力)} / ${formatNumber(targetStat.精神力上限)}`
+                          : '未收录',
                     },
-                    { label: '力量', value: targetChar ? formatNumber(targetStat.力量) : '未收录' },
-                    { label: '防御', value: targetChar ? formatNumber(targetStat.防御) : '未收录' },
-                    { label: '敏捷', value: targetChar ? formatNumber(targetStat.敏捷) : '未收录' },
+                    {
+                      label: '力量',
+                      value: targetChar ? formatNumber(targetStat.力量) : '未收录',
+                      path: targetCharPath.length ? [...targetCharPath, '属性', '力量'] : [],
+                      kind: 'number',
+                      rawValue: toNumber(targetStat.力量, 0),
+                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                    },
+                    {
+                      label: '防御',
+                      value: targetChar ? formatNumber(targetStat.防御) : '未收录',
+                      path: targetCharPath.length ? [...targetCharPath, '属性', '防御'] : [],
+                      kind: 'number',
+                      rawValue: toNumber(targetStat.防御, 0),
+                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                    },
+                    {
+                      label: '敏捷',
+                      value: targetChar ? formatNumber(targetStat.敏捷) : '未收录',
+                      path: targetCharPath.length ? [...targetCharPath, '属性', '敏捷'] : [],
+                      kind: 'number',
+                      rawValue: toNumber(targetStat.敏捷, 0),
+                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                    },
                   ],
                   'three',
                 )}
@@ -34409,12 +34486,25 @@
       );
       const 驻地状态行 = makeDossierRows(
         [
-          { label: '综合', value: htmlEscape(经济文本) },
+          {
+            label: '综合',
+            value: 经济文本,
+            path: locationBasePath.length ? [...locationBasePath, '经济状况'] : [],
+            kind: 'enum_select',
+            rawValue: 经济文本,
+            editorMeta: { options: ['繁荣', '普通', '萧条', '未知'] },
+          },
           {
             label: '补给',
             value: htmlEscape(nodeStores.length ? `${nodeStores.length} 处贸易站或设施` : '无可见商店'),
           },
-          { label: '守备', value: htmlEscape(守备文本) },
+          {
+            label: '守备',
+            value: 守备文本,
+            path: locationBasePath.length ? [...locationBasePath, '守护军团'] : [],
+            kind: 'string',
+            rawValue: 守备文本,
+          },
           { label: '供给', value: htmlEscape(toText(snapshot && snapshot.本地供给, '无供给')) },
           { label: '价格', value: htmlEscape(toText(snapshot && snapshot.价格带, '无')) },
           { label: '成交', value: htmlEscape(toText(snapshot && snapshot.最近成交影响, '平稳')) },
@@ -34497,6 +34587,7 @@
     }
 
     if (previewKey === '图层控制与跑图') {
+      const 当前角色键 = resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
       const statusLoc = toText(deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc), snapshot.currentLoc);
       const statusCoordSystem = toText(deepGet(snapshot, 'activeChar.状态.坐标系', 'image'), 'image');
       return {
@@ -34510,8 +34601,20 @@
                   [
                     { label: '当前锚点', value: snapshot.currentLoc },
                     { label: '主视图', value: snapshot.normalizedLoc },
-                    { label: '角色定位', value: statusLoc },
-                    { label: '坐标系', value: statusCoordSystem },
+                    {
+                      label: '角色定位',
+                      value: statusLoc,
+                      path: 当前角色键 ? ['char', 当前角色键, '状态', '位置'] : [],
+                      kind: 'string',
+                      rawValue: statusLoc,
+                    },
+                    {
+                      label: '坐标系',
+                      value: statusCoordSystem,
+                      path: 当前角色键 ? ['char', 当前角色键, '状态', '坐标系'] : [],
+                      kind: 'string',
+                      rawValue: statusCoordSystem,
+                    },
                     { label: '移动结算', value: '地图仲裁器直结' },
                     { label: '动态节点', value: `${snapshot.dynamicLocationNames.length} 个` },
                   ],
@@ -34606,9 +34709,15 @@
                 ${makeTileGrid(
                   [
                     { label: '当前时间', value: htmlEscape(worldTime || '斗罗历未同步') },
-                    { label: '世界偏差', value: htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`) },
+                    {
+                      label: '世界偏差',
+                      value: `${makeInlineEditableValue(String(deviation), { path: ['world', '偏差值'], kind: 'number', rawValue: deviation, editorMeta: { min: 0, max: 100, hint: '范围 0 - 100' } })} / ${htmlEscape(偏差状态)} / x${makeInlineEditableValue(String(偏差倍率), { path: ['world', '偏差倍率'], kind: 'number', rawValue: 偏差倍率, editorMeta: { min: 0, step: 0.1, hint: '最小 0 · 可输入小数' } })}`,
+                    },
                     { label: '核心阶段', value: htmlEscape(核心阶段) },
-                    { label: '森林仇恨值', value: htmlEscape(`${forestStage} / ${forestRatio}%`) },
+                    {
+                      label: '森林仇恨值',
+                      value: `${makeInlineEditableValue(formatNumber(snapshot.forestKilledAge), { path: ['world', '累计击杀年限'], kind: 'number', rawValue: snapshot.forestKilledAge, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数 · 1000000 为兽潮阈值参考，不是硬上限' } })} / ${htmlEscape(`${forestStage} / ${forestRatio}%`)}`,
+                    },
                     { label: '传灵塔', value: htmlEscape(万年魂灵开放 ? '万年魂灵开放' : '常规开放') },
                   ],
                   'two',
@@ -34681,7 +34790,14 @@
 
     if (previewKey === '系统播报与日志') {
       const 终端原始条目 = [
-        { title: '最近播报', desc: resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), '') },
+        {
+          title: '最近播报',
+          desc: resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), ''),
+          path: ['sys', '系统播报'],
+          kind: 'string',
+          rawValue: resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), ''),
+          multiline: true,
+        },
         { title: '情报摘要', desc: getLatestUnlockedIntelText(snapshot, 24, '') },
       ].filter(item => item.title && resolveShellText(item.desc, ''));
       const 终端去重键 = new Set();

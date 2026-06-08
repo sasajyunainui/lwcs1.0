@@ -5432,6 +5432,16 @@
 
 .mvu-inline-editable {
   cursor: text;
+  pointer-events: auto;
+  text-decoration: underline;
+  text-decoration-color: rgba(125, 211, 252, 0.38);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.mvu-inline-editable:focus-visible {
+  outline: 1px solid rgba(125, 211, 252, 0.56);
+  outline-offset: 2px;
 }
 
 .mvu-inline-editor-input {
@@ -7233,9 +7243,14 @@ button.tag-chip:active,
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.1;
   color: var(--white);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.wallet-chip span > .mvu-inline-editable {
+  display: inline;
+  font: inherit;
+  color: inherit;
 }
 
 .wallet-chip.gold {
@@ -13472,6 +13487,13 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-lis
   word-break: break-word !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row > span > .mvu-inline-editable,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > span > .mvu-inline-editable {
+  display: inline !important;
+  font: inherit !important;
+  color: inherit !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row:not(.dossier-row--wide) > span {
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
@@ -16245,6 +16267,13 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   word-break: break-word !important;
 }
 
+#detailModal.mvu-modal-display-unified .dossier-row > span > .mvu-inline-editable,
+#detailModal.mvu-modal-display-unified .dossier-list-row > span > .mvu-inline-editable {
+  display: inline !important;
+  font: inherit !important;
+  color: inherit !important;
+}
+
 #detailModal.mvu-modal-display-unified .dossier-row:not(.dossier-row--wide) > span {
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
@@ -17806,6 +17835,16 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   word-break: break-word;
 }
 
+#detailModal .archive-tile span > .mvu-inline-editable,
+#detailModal .relation-card span > .mvu-inline-editable,
+#detailModal .intel-card span > .mvu-inline-editable,
+#detailModal .timeline-card span > .mvu-inline-editable,
+#detailModal .location-summary-card span > .mvu-inline-editable {
+  display: inline;
+  font: inherit;
+  color: inherit;
+}
+
 #detailModal .relation-side-list,
 #detailModal .timeline-stack,
 #detailModal .intel-layout {
@@ -17886,6 +17925,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .intel-card.
   line-height: 1.28;
   font-weight: 850;
   overflow-wrap: anywhere;
+}
+
+#detailModal .location-glance-tile strong > .mvu-inline-editable {
+  display: inline;
+  font: inherit;
+  color: inherit;
 }
 
 #detailModal .location-summary-card--highlight span {
@@ -18377,6 +18422,17 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .map-dispatc
   color: var(--archive-text) !important;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+#detailModal.archive-redesign-mode .archive-redesign-root .archive-card span > .mvu-inline-editable,
+#detailModal.archive-redesign-mode .archive-redesign-root .archive-tile span > .mvu-inline-editable,
+#detailModal.archive-redesign-mode .archive-redesign-root .relation-card span > .mvu-inline-editable,
+#detailModal.archive-redesign-mode .archive-redesign-root .intel-card span > .mvu-inline-editable,
+#detailModal.archive-redesign-mode .archive-redesign-root .timeline-card span > .mvu-inline-editable,
+#detailModal.archive-redesign-mode .archive-redesign-root .location-summary-card span > .mvu-inline-editable {
+  display: inline;
+  font: inherit;
+  color: inherit;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-note,
