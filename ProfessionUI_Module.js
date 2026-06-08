@@ -819,11 +819,8 @@ class ProfessionUIComponent {
       有效期至tick: Math.max(0, Math.floor(Number(来源.有效期至tick ?? fallback.有效期至tick ?? 0))),
     };
     if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = this.复制JSON(来源.属性加成, {});
-    else if (fallback.属性加成 && typeof fallback.属性加成 === 'object' && !Array.isArray(fallback.属性加成)) 输出.属性加成 = this.复制JSON(fallback.属性加成, {});
     if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = this.复制JSON(来源.装备技能, {});
-    else if (fallback.装备技能 && typeof fallback.装备技能 === 'object' && !Array.isArray(fallback.装备技能)) 输出.装备技能 = this.复制JSON(fallback.装备技能, {});
     if (Array.isArray(来源.使用效果) && 来源.使用效果.length) 输出.使用效果 = this.复制JSON(来源.使用效果, []);
-    else if (Array.isArray(fallback.使用效果) && fallback.使用效果.length) 输出.使用效果 = this.复制JSON(fallback.使用效果, []);
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
     if (
       融合参数 &&

@@ -22100,28 +22100,7 @@ function settleInternalSoulBeastReward(data = {}, winner = {}, winnerName = '', 
     追加系统播报文本(data, `[现实狩猎] ${winnerName} 击败了【${defeatedName}】，但未识别有效年限，背包无新增。`);
     return;
   }
-  if (!winner.背包 || typeof winner.背包 !== 'object') winner.背包 = {};
-
   let msg = `[现实狩猎] ${winnerName} 击杀了【${defeatedName}】，魂环随现场消散，不写入背包。`;
-
-  const dropRate = age >= 100000 ? 100 : (age / 100000) * 100;
-  const roll = Math.floor(Math.random() * 100) + 1;
-  if (roll <= dropRate) {
-    const boneName = `${age}年魂骨`;
-    if (!物品定义存在_V1(data, boneName)) {
-      写入分类物品定义_V1(data, boneName, {
-        品质: age >= 100000 ? '传说' : '稀有',
-        描述: `${age}年魂骨，未吸收的无主魂骨。`,
-        基础价格: age >= 100000 ? 80000000 : age >= 10000 ? 8000000 : 800000,
-        默认货币: '联邦币',
-      }, '魂骨');
-    }
-    if (!winner.背包[boneName]) {
-      winner.背包[boneName] = { 数量: 0 };
-    }
-    winner.背包[boneName].数量 = Math.max(0, Number(winner.背包[boneName].数量 || 0) + 1);
-    msg += `【好运爆发】成功剥离出【${boneName}】！(Roll: ${roll} <= ${dropRate}%)`;
-  }
 
   if (winner.状态?.位置 && String(winner.状态.位置).includes('星斗大森林')) {
     data.world.累计击杀年限 = Math.max(0, Number(data.world.累计击杀年限 || 0) + age);
@@ -24733,14 +24712,41 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
       : [];
     if (金属特性.length) 输出.金属特性 = 金属特性;
   }
+  if (物品分类 === '机甲机体') {
+    ['等级', '型号', '材质', '武装'].forEach(字段名 => {
+      if (来源[字段名] !== undefined && String(来源[字段名]).trim() && String(来源[字段名]).trim() !== '无') 输出[字段名] = cloneJsonValue(来源[字段名]);
+    });
+  }
   if (装备物品分类集合_V1.has(物品分类) || 是魂导器) {
     if (String(来源.装备槽位 || '').trim()) 输出.装备槽位 = String(来源.装备槽位).trim();
     if (Number(来源.基础耐久 || 0) > 0) 输出.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
     if (Number(来源.基础使用次数 || 0) > 0) 输出.基础使用次数 = Math.max(1, Math.floor(Number(来源.基础使用次数 || 0)));
     if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
     if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 输出.属性倍率 = cloneJsonValue(来源.属性倍率, {});
-    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
+    if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
     if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 输出.附带魂技 = cloneJsonValue(来源.附带魂技, {});
+  }
+  if (物品分类 === '魂骨') {
+    if (Number(来源.年限 || 来源.age || 0) > 0) 输出.年限 = Math.max(0, Math.floor(Number(来源.年限 || 来源.age || 0)));
+    ['来源', '品阶', '表象名称'].forEach(字段名 => {
+      if (来源[字段名] !== undefined && String(来源[字段名]).trim() && String(来源[字段名]).trim() !== '无') 输出[字段名] = String(来源[字段名]).trim();
+    });
+    const 附带技能 = 来源.附带技能 && typeof 来源.附带技能 === 'object' && !Array.isArray(来源.附带技能)
+      ? 来源.附带技能
+      : 来源.装备技能;
+    if (附带技能 && typeof 附带技能 === 'object' && !Array.isArray(附带技能)) 输出.附带技能 = cloneJsonValue(附带技能, {});
+  }
+  if (物品分类 === '魂灵') {
+    ['表象名称', '品阶', '状态'].forEach(字段名 => {
+      if (来源[字段名] !== undefined && String(来源[字段名]).trim() && String(来源[字段名]).trim() !== '无') 输出[字段名] = String(来源[字段名]).trim();
+    });
+    if (!输出.品阶 && 来源.魂灵品质 !== undefined && String(来源.魂灵品质).trim()) 输出.品阶 = String(来源.魂灵品质).trim();
+    if (Number(来源.年限 || 0) > 0) 输出.年限 = Math.max(0, Math.floor(Number(来源.年限 || 0)));
+    if (来源.契合度 !== undefined) 输出.契合度 = Math.max(0, Math.min(100, Math.floor(Number(来源.契合度 || 0))));
+    if (来源.战力面板 && typeof 来源.战力面板 === 'object' && !Array.isArray(来源.战力面板)) 输出.战力面板 = cloneJsonValue(来源.战力面板, {});
+    Object.entries(来源).forEach(([键, 值]) => {
+      if (是魂环槽位键_V1(键) && 值 && typeof 值 === 'object' && !Array.isArray(值)) 输出[键] = cloneJsonValue(值, {});
+    });
   }
   if (可执行使用效果物品分类集合_V1.has(物品分类)) {
     if (!输出.基础使用次数 && Number(来源.基础使用次数 || 0) > 0) 输出.基础使用次数 = Math.max(1, Math.floor(Number(来源.基础使用次数 || 0)));
@@ -24889,6 +24895,171 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
     结果[键] = Number.isFinite(数值) ? Math.floor(数值) : 0;
   });
   return 结果;
+}
+
+function 查找物品定义于分类表_V1(物品表 = {}, 物品名 = '') {
+  const 名称 = String(物品名 || '').trim();
+  if (!名称) return null;
+  const 来源表 = 物品表 && typeof 物品表 === 'object' && !Array.isArray(物品表) ? 物品表 : {};
+  for (const 分类 of 物品分类列表_V1) {
+    const 定义 = 来源表?.[分类]?.[名称];
+    if (定义 && typeof 定义 === 'object' && !Array.isArray(定义)) return { 物品名: 名称, 定义, 分类 };
+  }
+  return null;
+}
+
+function 构建引用水合物品表_V1(数据根 = {}) {
+  const 合并表 = 创建空物品分类表_V1();
+  const 写入表 = 来源表 => {
+    物品分类列表_V1.forEach(分类 => {
+      Object.entries(来源表?.[分类] || {}).forEach(([物品名, 定义]) => {
+        if (!物品名 || !定义 || typeof 定义 !== 'object' || Array.isArray(定义)) return;
+        合并表[分类][物品名] = cloneJsonValue(定义, {});
+      });
+    });
+  };
+  写入表(读取内置物品库_V1());
+  写入表(数据根?.物品);
+  return 合并表;
+}
+
+function 合并引用定义与状态_V1(物品表 = {}, 状态 = {}, 期望分类 = '') {
+  if (!状态 || typeof 状态 !== 'object' || Array.isArray(状态)) return 状态;
+  const 名称 = String(状态.名称 || '').trim();
+  if (!名称 || 名称 === '无') return 状态;
+  const 命中 = 查找物品定义于分类表_V1(物品表, 名称);
+  if (!命中 || (期望分类 && 命中.分类 !== 期望分类)) return 状态;
+  return { ...cloneJsonValue(命中.定义, {}), ...状态, 名称 };
+}
+
+function 水合角色物品引用_V1(数据根 = {}) {
+  const 物品表 = 构建引用水合物品表_V1(数据根);
+  Object.values(数据根?.char || {}).forEach(char => {
+    if (!char || typeof char !== 'object' || Array.isArray(char)) return;
+    if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
+      if (char.装备.武器 && typeof char.装备.武器 === 'object') char.装备.武器 = 合并引用定义与状态_V1(物品表, char.装备.武器, '近战武器');
+      if (char.装备.防具 && typeof char.装备.防具 === 'object') char.装备.防具 = 合并引用定义与状态_V1(物品表, char.装备.防具, '防具装备');
+      if (char.装备.机甲 && typeof char.装备.机甲 === 'object') char.装备.机甲 = 合并引用定义与状态_V1(物品表, char.装备.机甲, '机甲机体');
+      Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
+        if (部件 && typeof 部件 === 'object' && !Array.isArray(部件)) char.装备.斗铠.部件[部件名] = 合并引用定义与状态_V1(物品表, 部件, '斗铠部件');
+      });
+      Object.entries(char.装备.魂导器?.装配 || {}).forEach(([槽位, 装配]) => {
+        if (装配 && typeof 装配 === 'object' && !Array.isArray(装配)) char.装备.魂导器.装配[槽位] = 合并引用定义与状态_V1(物品表, 装配);
+      });
+    }
+    Object.entries(char.魂骨 || {}).forEach(([槽位, 魂骨]) => {
+      if (魂骨 && typeof 魂骨 === 'object' && !Array.isArray(魂骨)) char.魂骨[槽位] = 合并引用定义与状态_V1(物品表, 魂骨, '魂骨');
+    });
+    取角色武魂条目_V1(char).forEach(([, 武魂]) => {
+      取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
+        if (魂灵 && typeof 魂灵 === 'object' && !Array.isArray(魂灵)) 武魂[魂灵键] = 合并引用定义与状态_V1(物品表, 魂灵, '魂灵');
+      });
+    });
+  });
+  return 数据根;
+}
+
+function 注册角色应用物品定义_V1(data = {}) {
+  const 构建注册定义 = (物品名 = '', 分类 = '', 定义 = {}) => {
+    const 来源 = cloneJsonValue(定义, {});
+    if (分类 === '机甲机体') {
+      const 等级 = String(来源.等级 || 物品名.match(/(黄级|紫级|黑级|红级|规格外机甲)/)?.[1] || '黄级').trim();
+      const 价格 = { 黄级: 6000000, 紫级: 80000000, 黑级: 1000000000, 红级: 8000000000, 规格外机甲: 8000000000 }[等级] || 6000000;
+      return {
+        分类,
+        品质: 等级 === '红级' || 等级 === '规格外机甲' ? '神器' : 等级 === '黑级' ? '传说' : 等级 === '紫级' ? '史诗' : '稀有',
+        描述: `${等级}机甲机体的标准定义，应用侧仅保存名称与状态。`,
+        基础价格: 价格,
+        默认货币: '联邦币',
+        等级,
+        型号: String(来源.型号 || '均衡').trim() || '均衡',
+        装备槽位: '机甲',
+        基础耐久: 等级 === '红级' || 等级 === '规格外机甲' ? 200000 : 等级 === '黑级' ? 80000 : 等级 === '紫级' ? 30000 : 10000,
+      };
+    }
+    if (分类 === '斗铠部件') {
+      const 等级 = Math.max(1, Math.min(4, Math.floor(Number(来源.等级 || 物品名.match(/([一二三四])字斗铠/)?.[1]?.replace('一', 1).replace('二', 2).replace('三', 3).replace('四', 4) || 1))));
+      return {
+        分类,
+        品质: 等级 >= 4 ? '神器' : 等级 >= 3 ? '传说' : 等级 >= 2 ? '史诗' : '稀有',
+        描述: `${等级}字斗铠部件的标准定义，具体品质由背包批次或装配状态记录。`,
+        基础价格: [0, 500000, 5000000, 50000000, 800000000][等级] || 500000,
+        默认货币: '联邦币',
+        装备槽位: '斗铠部件',
+        基础耐久: [0, 3000, 10000, 30000, 100000][等级] || 3000,
+      };
+    }
+    return { ...来源, 分类 };
+  };
+  const 注册 = (名称 = '', 分类 = '', 定义 = {}) => {
+    const 物品名 = String(名称 || '').trim();
+    if (!物品名 || 物品名 === '无' || isAiTodoText(物品名)) return;
+    if (!定义 || typeof 定义 !== 'object' || Array.isArray(定义)) return;
+    const 已有 = 查找物品定义_V1(data, 物品名);
+    if (已有) return;
+    合并分类物品定义_V1(data, 物品名, 构建注册定义(物品名, 分类, 定义), 分类);
+  };
+  Object.values(data?.char || {}).forEach(char => {
+    if (!char || typeof char !== 'object' || Array.isArray(char)) return;
+    注册(char.装备?.武器?.名称, '近战武器', char.装备?.武器);
+    注册(char.装备?.防具?.名称, '防具装备', char.装备?.防具);
+    注册(char.装备?.机甲?.名称, '机甲机体', char.装备?.机甲);
+    Object.values(char.装备?.斗铠?.部件 || {}).forEach(部件 => 注册(部件?.名称, '斗铠部件', 部件));
+    Object.values(char.装备?.魂导器?.装配 || {}).forEach(装配 => 注册(装配?.名称, 读取物品定义显式分类_V1(装配, '功能道具'),装配));
+    Object.values(char.魂骨 || {}).forEach(魂骨 => 注册(魂骨?.名称, '魂骨', 魂骨));
+    取角色武魂条目_V1(char).forEach(([, 武魂]) => {
+      取武魂魂灵条目_V1(武魂).forEach(([, 魂灵]) => {
+        const 魂灵名 = String(魂灵?.名称 || 魂灵?.表象名称 || '').trim();
+        if (魂灵名 && !isAiTodoText(魂灵名)) 注册(魂灵名, '魂灵', { ...魂灵, 名称: 魂灵名 });
+      });
+    });
+  });
+}
+
+function 压缩应用物品记录_V1(记录 = {}, 选项 = {}) {
+  if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return 记录;
+  const 名称 = String(记录.名称 || '').trim();
+  if (!名称 || 名称 === '无' || isAiTodoText(名称)) return 记录;
+  const 保留字段 = new Set(['名称', ...(选项.状态字段 || [])]);
+  const 输出 = { 名称 };
+  保留字段.forEach(字段名 => {
+    if (字段名 === '名称') return;
+    const 值 = 记录[字段名];
+    if (值 === undefined || 值 === null || 值 === '' || 值 === '无') return;
+    if (值 && typeof 值 === 'object' && !Array.isArray(值) && !Object.keys(值).length) return;
+    输出[字段名] = cloneJsonValue(值, 值);
+  });
+  return 输出;
+}
+
+function 压缩角色应用物品引用_V1(data = {}) {
+  Object.values(data?.char || {}).forEach(char => {
+    if (!char || typeof char !== 'object' || Array.isArray(char)) return;
+    if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['耐久', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '绑定者', '有效期至tick'] });
+      char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick'] });
+      Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
+        char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
+      });
+      Object.entries(char.装备.魂导器?.装配 || {}).forEach(([槽位, 装配]) => {
+        char.装备.魂导器.装配[槽位] = 压缩应用物品记录_V1(装配, { 状态字段: ['剩余使用次数', '耐久', '绑定者', '有效期至tick'] });
+      });
+    }
+    Object.entries(char.魂骨 || {}).forEach(([槽位, 魂骨]) => {
+      const 名称 = String(魂骨?.名称 || '').trim();
+      char.魂骨[槽位] = 名称 && 名称 !== '无' && !isAiTodoText(名称)
+        ? 压缩应用物品记录_V1(魂骨, { 状态字段: [] })
+        : {};
+    });
+    取角色武魂条目_V1(char).forEach(([, 武魂]) => {
+      取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
+        const 魂灵名 = String(魂灵?.名称 || 魂灵?.表象名称 || '').trim();
+        if (魂灵名 && !isAiTodoText(魂灵名)) 武魂[魂灵键] = 压缩应用物品记录_V1({ ...魂灵, 名称: 魂灵名 }, { 状态字段: ['契合度', '状态'] });
+      });
+    });
+  });
+  return data;
 }
 
 const StatsSchema = z
@@ -26129,28 +26300,6 @@ const CharacterSchema = z
       }
     }
 
-    let boneCount = 0;
-    if (!isBeast) {
-      if (char.属性.等级 >= 90) boneCount += 2;
-      else if (char.属性.等级 >= 80) boneCount += 1;
-    }
-
-    if (!isBeast && boneCount > 0) {
-      let boneParts = 常规魂骨槽位列表_V1;
-
-      for (let i = 0; i < Math.min(boneCount, 6); i++) {
-        const 骨部位 = String(boneParts[i] || '魂骨').trim() || '魂骨';
-        const 魂骨来源文本 = AI_TODO_SOUL_BONE_SOURCE;
-
-        char.魂骨[骨部位] = {
-          名称: 归一化魂骨名称_V1('', 魂骨来源文本, 骨部位),
-          年限: char.属性.等级 >= 90 ? 50000 : 10000,
-          来源: 魂骨来源文本,
-          附带技能: { 被动增幅: cloneSkillStructData({}) },
-        };
-      }
-    }
-
     补齐角色魂骨槽位_V1(char);
 
     let totalSpirits = 0;
@@ -27210,6 +27359,7 @@ function markPlayerCharacterInSchemaInput(rawInput) {
     }
   };
   候选根列表.forEach(记录候选原始等级);
+  候选根列表.forEach(水合角色物品引用_V1);
   候选根列表.forEach(裁剪数据根非魂师角色结构_V1);
   候选根列表.forEach(markCandidate);
   return clonedInput;
@@ -27842,6 +27992,7 @@ export const Schema = z
     if (!data.world || typeof data.world !== 'object') data.world = {};
     if (!data.物品 || typeof data.物品 !== 'object' || Array.isArray(data.物品)) data.物品 = {};
     写入内置物品定义_V1(data);
+    水合角色物品引用_V1(data);
     if (data.map && typeof data.map === 'object') delete data.map;
     if (!data.world.时间 || typeof data.world.时间 !== 'object') data.world.时间 = {};
     if (!data.world.时间线 || typeof data.world.时间线 !== 'object' || Array.isArray(data.world.时间线))
@@ -31225,7 +31376,9 @@ export const Schema = z
           const 骨部位 = String(bonePart || '魂骨').trim() || '魂骨';
           const 魂骨来源文本 = String(boneData.来源 || '').trim();
           const 主武魂系别 = 取角色主武魂系别_V1(charData);
-          boneData.来源 = 是否有效魂骨来源_V1(魂骨来源文本) ? 魂骨来源文本 : AI_TODO_SOUL_BONE_SOURCE;
+          const 现有魂骨名 = String(boneData.名称 || '').trim();
+          if (!现有魂骨名 || 现有魂骨名 === '无' || isAiTodoText(现有魂骨名)) return;
+          if (魂骨来源文本) boneData.来源 = 魂骨来源文本;
           boneData.名称 = 归一化魂骨名称_V1(boneData.名称, boneData.来源, 骨部位);
           injectDisplaySkillMapDefaults(boneData?.附带技能, skillName => ({
             type: 主武魂系别,
@@ -31773,6 +31926,8 @@ export const Schema = z
       pruneDynamicLocationStorageFields(locData);
     });
 
+    注册角色应用物品定义_V1(data);
+    压缩角色应用物品引用_V1(data);
     裁剪数据根非魂师角色结构_V1(data);
     return data;
   });

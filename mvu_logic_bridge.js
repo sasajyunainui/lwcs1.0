@@ -1771,7 +1771,7 @@
       魂骨 &&
       typeof 魂骨 === 'object' &&
       !Array.isArray(魂骨) &&
-      (名称有效 || toNumber(魂骨.年限, 0) > 0 || Object.keys(魂骨.附带技能 || {}).length)
+      名称有效
     );
   }
 
@@ -2528,11 +2528,8 @@
       有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick ?? fallback.有效期至tick, 0))),
     };
     if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
-    else if (fallback.属性加成 && typeof fallback.属性加成 === 'object' && !Array.isArray(fallback.属性加成)) 输出.属性加成 = cloneJsonValue(fallback.属性加成, {});
     if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
-    else if (fallback.装备技能 && typeof fallback.装备技能 === 'object' && !Array.isArray(fallback.装备技能)) 输出.装备技能 = cloneJsonValue(fallback.装备技能, {});
     if (Array.isArray(来源.使用效果) && 来源.使用效果.length) 输出.使用效果 = cloneJsonValue(来源.使用效果, []);
-    else if (Array.isArray(fallback.使用效果) && fallback.使用效果.length) 输出.使用效果 = cloneJsonValue(fallback.使用效果, []);
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
     if (
       融合参数 &&
@@ -2790,8 +2787,15 @@
       if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
       if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
-      if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
+      if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
       if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 记录.附带魂技 = cloneJsonValue(来源.附带魂技, {});
+    }
+    if (物品分类 === '魂骨') {
+      const 附带技能 = 来源.附带技能 && typeof 来源.附带技能 === 'object' && !Array.isArray(来源.附带技能)
+        ? 来源.附带技能
+        : 来源.装备技能;
+      if (附带技能 && typeof 附带技能 === 'object' && !Array.isArray(附带技能)) 记录.附带技能 = cloneJsonValue(附带技能, {});
+      if (toNumber(来源.年限, 0) > 0) 记录.年限 = Math.max(0, Math.floor(toNumber(来源.年限, 0)));
     }
     if (可使用物品分类集合_桥接.has(物品分类)) {
       if (Array.isArray(来源.使用效果) && 来源.使用效果.length) {
@@ -3475,10 +3479,13 @@
     }
     const 使用效果 = 读取物品使用效果列表(表单节点, 旧定义.使用效果);
     const 属性加成 = 读取物品键值对象(表单节点, '属性加成');
-    const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.装备技能);
+    const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.附带技能 || 旧定义.装备技能);
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
     if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
-    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(装备技能).length) 定义.装备技能 = 装备技能;
+    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(装备技能).length) {
+      if (分类 === '魂骨') 定义.附带技能 = 装备技能;
+      else 定义.装备技能 = 装备技能;
+    }
     if (分类 === '设计图纸') {
       ['图纸目标'].forEach(字段名 => {
         const 字段值 = 读取物品定义输入值(表单节点, 字段名, '');
@@ -32567,13 +32574,15 @@
         }
         if (!是有效魂骨记录_桥接(bone)) return { title: slot, desc: '尚未装载魂骨。' };
         const boneName = toText(bone && (bone.name || bone['名称'] || bone['表象名称']), slot);
-        const age = toText(bone && (bone['年限'] || bone.age), '');
-        const quality = toText(bone && (bone['品质'] || bone['品阶']), '');
+        const boneDef = 查找物品定义_桥接(snapshot.rootData || {}, boneName)?.定义 || {};
+        const 合并魂骨 = { ...boneDef, ...(bone || {}), 名称: boneName };
+        const age = toText(合并魂骨 && (合并魂骨['年限'] || 合并魂骨.age), '');
+        const quality = toText(合并魂骨 && (合并魂骨['品质'] || 合并魂骨['品阶']), '');
         let descText = `${toText(bone && bone['状态'], '已装载')}`;
         if (age || quality) descText += ` ｜ ${[age ? `${age}年` : '', quality].filter(Boolean).join(' ')}`;
 
         const isExternalBone = 是外附魂骨槽位_桥接(slot);
-        const ratioParts = isExternalBone ? formatBoneRatioParts(bone && bone['属性倍率']) : [];
+        const ratioParts = isExternalBone ? formatBoneRatioParts(合并魂骨 && 合并魂骨['属性倍率']) : [];
         if (ratioParts.length) {
           descText += ` ｜ 属性倍率: ${ratioParts.join(' ')}`;
         } else if (!isExternalBone) {
@@ -32590,7 +32599,7 @@
           }
         }
 
-        const skillsObj = bone && bone['附带技能'];
+        const skillsObj = (合并魂骨 && (合并魂骨['附带技能'] || 合并魂骨['装备技能'])) || {};
         if (skillsObj && Object.keys(skillsObj).length) {
           const parsedSkills = buildSkillList(skillsObj, {
             basePath: ['char', snapshot.activeName, '魂骨', slot, '附带技能'],
@@ -44265,20 +44274,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           const 新魂导器 = 构建魂导器装配数据_桥接(itemName, itemData);
           patches.push({ op: 当前装配[空槽位] !== undefined ? 'replace' : 'add', path: `${charPath}/装备/魂导器/装配/${this.escapePtr(空槽位)}`, value: 新魂导器 });
         } else if (slotInfo.mainSlot === 'soul_bone') {
-          const isExternalBone = slotInfo.external || 是外附魂骨槽位_桥接(slotInfo.subSlot);
-          const newBoneData = {
-            名称: itemName,
-            年限: itemData['年限'] || (itemData['品质'] && itemData['品质'].includes('万') ? 10000 : 1000),
-            品质: itemData['品质'] || '常规',
-            状态: '已装载',
-          };
-          if (toText(itemData.来源, '')) newBoneData.来源 = toText(itemData.来源, '');
-          if (toText(itemData.描述, '')) newBoneData.描述 = toText(itemData.描述, '');
-          if (isExternalBone) newBoneData.属性倍率 = 归一化魂骨属性倍率_桥接(itemData.属性倍率);
-          if (itemData.装备技能 && typeof itemData.装备技能 === 'object' && Object.keys(itemData.装备技能).length) {
-            newBoneData.附带技能 = cloneJsonValue(itemData.装备技能, {});
-          }
-          patches.push({ op: 'add', path: `${charPath}/魂骨/${slotInfo.subSlot}`, value: newBoneData });
+          patches.push({ op: 'add', path: `${charPath}/魂骨/${slotInfo.subSlot}`, value: { 名称: itemName } });
         } else {
           let oldItem = null;
           const equipKeyMap = { armor: '斗铠', mech: '机甲', wpn: '武器', def: '防具' };
@@ -44296,11 +44292,20 @@ ${toText(combatData.战斗意图, '点到为止')}
             this.queueInventoryAdd(patches, charPath, inventoryBuffer, oldName, oldItem);
           }
 
-          const newEquipData = Object.assign({}, itemData, { 名称: itemName });
-          delete newEquipData.name;
-          delete newEquipData.数量;
-          delete newEquipData.批次;
+          const newEquipData = { 名称: itemName };
+          ['耐久', '剩余使用次数', '绑定者', '有效期至tick'].forEach(字段名 => {
+            if (itemData[字段名] !== undefined && itemData[字段名] !== '' && itemData[字段名] !== '无') newEquipData[字段名] = cloneJsonValue(itemData[字段名], itemData[字段名]);
+          });
           if (slotInfo.mainSlot === 'def') newEquipData.装备状态 = '已装备';
+          if (slotInfo.mainSlot === 'mech') {
+            newEquipData.状态 = toText(itemData.状态, '完好');
+            newEquipData.装备状态 = toText(itemData.装备状态, '未装备');
+            if (itemData.品质系数 !== undefined) newEquipData.品质系数 = Math.max(0.1, Math.min(2, toNumber(itemData.品质系数, 1)));
+          }
+          if (slotInfo.mainSlot === 'armor') {
+            newEquipData.状态 = toText(itemData.状态, '完好');
+            if (itemData.品质系数 !== undefined) newEquipData.品质系数 = Math.max(0.1, Math.min(2, toNumber(itemData.品质系数, 1)));
+          }
           if (slotInfo.subSlot && (!装备数据[equipKey] || !装备数据[equipKey].部件)) {
             patches.push({ op: 'add', path: `${charPath}/装备/${equipKey}/部件`, value: {} });
           }
@@ -45195,6 +45200,13 @@ ${toText(combatData.战斗意图, '点到为止')}
 
     收集角色可复刻技能列表(角色 = {}) {
       const 列表 = [];
+      const statData = this.readStatData();
+      const 取定义技能表 = 记录 => {
+        const 名称 = toText(记录 && 记录.名称, '').trim();
+        if (!名称) return {};
+        const 定义 = 查找物品定义_桥接(statData, 名称)?.定义 || {};
+        return 定义.附带技能 || 定义.装备技能 || {};
+      };
       const 技能含复制执行原型 = value => {
         if (!value || typeof value !== 'object') return false;
         if (Array.isArray(value)) return value.some(技能含复制执行原型);
@@ -45217,8 +45229,9 @@ ${toText(combatData.战斗意图, '点到为止')}
         取武魂直接魂环条目_桥接(武魂).forEach(([, ring]) => 取魂环技能(ring));
       });
       收集(deepGet(角色, '血脉之力.技能', {}), '血脉技能');
-      safeEntries(deepGet(角色, '魂骨', {})).forEach(([, bone]) => 收集(bone && bone['附带技能'], '魂骨技能'));
-      safeEntries(deepGet(角色, '装备', {})).forEach(([, equip]) => 收集(equip && equip['装备技能'], '装备技能'));
+      safeEntries(deepGet(角色, '魂骨', {})).forEach(([, bone]) => 收集((bone && bone['附带技能']) || 取定义技能表(bone), '魂骨技能'));
+      safeEntries(deepGet(角色, '装备', {})).forEach(([, equip]) => 收集((equip && equip['装备技能']) || 取定义技能表(equip), '装备技能'));
+      safeEntries(deepGet(角色, '装备.魂导器.装配', {})).forEach(([, equip]) => 收集((equip && equip['装备技能']) || 取定义技能表(equip), '装备技能'));
       收集(deepGet(角色, '自创魂技', {}), '自创魂技');
       return 列表;
     },

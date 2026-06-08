@@ -3916,16 +3916,34 @@ class BattleUIComponent {
       return 补丁;
     }
 
+    function 查找战斗物品定义_战斗(物品名 = '') {
+      const 名称 = String(物品名 || '').trim();
+      if (!名称 || 名称 === '无') return null;
+      const 物品表 = window.BattleUIBridge?.getMVU?.('物品') || {};
+      for (const 分类表 of Object.values(物品表 || {})) {
+        if (分类表 && typeof 分类表 === 'object' && !Array.isArray(分类表) && 分类表[名称]) return 分类表[名称];
+      }
+      return null;
+    }
+
+    function 合并战斗物品定义_战斗(记录 = {}) {
+      if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return {};
+      const 名称 = String(记录.名称 || 记录.name || '').trim();
+      const 定义 = 查找战斗物品定义_战斗(名称) || {};
+      return { ...deepClonePlain(定义), ...记录, 名称 };
+    }
+
     function 构建魂导器技能表_战斗(魂导器装备 = {}) {
       const 输出 = {};
       const 装配 = 魂导器装备?.装配 && typeof 魂导器装备.装配 === 'object' && !Array.isArray(魂导器装备.装配) ? 魂导器装备.装配 : {};
       const 魂导器默认魂力消耗表 = Object.freeze({ 1: 160, 2: 260, 3: 400, 4: 900, 5: 1600, 6: 2600, 7: 4500, 8: 6500, 9: 11000, 10: 16000, 11: 24000, 12: 36000 });
       Object.entries(装配).forEach(([槽位, 魂导器]) => {
         if (!魂导器 || typeof 魂导器 !== 'object' || Array.isArray(魂导器)) return;
-        const 名称 = String(魂导器.名称 || 魂导器.name || '').trim();
-        const 魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(魂导器.魂导等级 || 0))));
+        const 合并魂导器 = 合并战斗物品定义_战斗(魂导器);
+        const 名称 = String(合并魂导器.名称 || 合并魂导器.name || '').trim();
+        const 魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(合并魂导器.魂导等级 || 0))));
         if (!名称 || 名称 === '无' || !(魂导等级 > 0)) return;
-        const 技能表 = 魂导器.装备技能 && typeof 魂导器.装备技能 === 'object' && !Array.isArray(魂导器.装备技能) ? 魂导器.装备技能 : {};
+        const 技能表 = 合并魂导器.装备技能 && typeof 合并魂导器.装备技能 === 'object' && !Array.isArray(合并魂导器.装备技能) ? 合并魂导器.装备技能 : {};
         Object.entries(技能表).forEach(([技能名, 技能数据]) => {
           if (!技能数据 || typeof 技能数据 !== 'object' || Array.isArray(技能数据)) return;
           const 技能 = deepClonePlain(技能数据);
@@ -3993,8 +4011,9 @@ class BattleUIComponent {
       Object.entries(char.装备 || {}).forEach(([装备键, equip]) => {
         if (装备键 === '魂导器') return;
         if (!equip || typeof equip !== 'object' || Array.isArray(equip)) return;
-        if (Number(equip.魂导等级 || 0) > 0) return;
-        Object.entries(equip.装备技能 || {}).forEach(([name, skill]) => fallbackPushSkill(actions, skill, name, '装备技能'));
+        const 合并装备 = 合并战斗物品定义_战斗(equip);
+        if (Number(合并装备.魂导等级 || 0) > 0) return;
+        Object.entries(合并装备.装备技能 || {}).forEach(([name, skill]) => fallbackPushSkill(actions, skill, name, '装备技能'));
       });
       Object.values(构建魂导器技能表_战斗(char.装备?.魂导器)).forEach(魂导技能 =>
         fallbackPushSkill(actions, 魂导技能, 魂导技能?.魂技名 || 魂导技能?.name || '魂导器技能', '装备技能'),
@@ -11317,14 +11336,16 @@ class BattleUIComponent {
       }
 
       Object.values(charData?.魂骨 || {}).forEach(bone => {
-        pushUnifiedSkillMapEntries(skills, bone?.附带技能 || {}, '魂骨技能', collectOptions, { 来源类别: '魂骨技能', 来源明细: bone?.名称 || bone?.表象名称 || '魂骨技能' });
+        const 合并魂骨 = 合并战斗物品定义_战斗(bone);
+        pushUnifiedSkillMapEntries(skills, 合并魂骨?.附带技能 || 合并魂骨?.装备技能 || {}, '魂骨技能', collectOptions, { 来源类别: '魂骨技能', 来源明细: 合并魂骨?.名称 || 合并魂骨?.表象名称 || '魂骨技能' });
       });
 
       Object.entries(charData?.装备 || {}).forEach(([装备键, equip]) => {
         if (装备键 === '魂导器') return;
         if (!equip || typeof equip !== 'object' || Array.isArray(equip)) return;
-        if (Number(equip.魂导等级 || 0) > 0) return;
-        pushUnifiedSkillMapEntries(skills, equip.装备技能 || {}, '装备技能', collectOptions, { 来源类别: '装备技能', 来源明细: equip?.名称 || equip?.name || '装备技能' });
+        const 合并装备 = 合并战斗物品定义_战斗(equip);
+        if (Number(合并装备.魂导等级 || 0) > 0) return;
+        pushUnifiedSkillMapEntries(skills, 合并装备.装备技能 || {}, '装备技能', collectOptions, { 来源类别: '装备技能', 来源明细: 合并装备?.名称 || 合并装备?.name || '装备技能' });
       });
       pushUnifiedSkillMapEntries(skills, 构建魂导器技能表_战斗(charData?.装备?.魂导器), '装备技能', collectOptions, { 来源类别: '装备技能', 来源明细: '魂导器' });
 
