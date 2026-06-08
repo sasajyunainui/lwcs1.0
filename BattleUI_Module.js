@@ -22356,11 +22356,13 @@ class BattleUIComponent {
       function 读取战斗背包物品数据(物品名 = '', 背包状态 = {}) {
         const 全部物品 = window.BattleUIBridge?.getMVU('物品') || {};
         let 根物品 = {};
+        let 根物品分类 = '';
         if (全部物品 && typeof 全部物品 === 'object' && !Array.isArray(全部物品)) {
-          Object.values(全部物品).some(分类表 => {
+          Object.entries(全部物品).some(([分类名, 分类表]) => {
             if (!分类表 || typeof 分类表 !== 'object' || Array.isArray(分类表)) return false;
             if (!分类表[物品名] || typeof 分类表[物品名] !== 'object' || Array.isArray(分类表[物品名])) return false;
             根物品 = 分类表[物品名];
+            根物品分类 = String(分类名 || '').trim();
             return true;
           });
         }
@@ -22385,6 +22387,7 @@ class BattleUIComponent {
           ...deepClonePlain(安全根物品),
           ...deepClonePlain(安全背包状态),
           ...deepClonePlain(首批),
+          物品分类: String(安全背包状态?.物品分类 || 安全背包状态?.分类 || 安全根物品?.物品分类 || 安全根物品?.分类 || 根物品分类 || '').trim(),
           数量: 总数量,
           使用效果: 取数组字段('使用效果'),
           副作用列表: 取数组字段('副作用列表'),
@@ -22403,6 +22406,21 @@ class BattleUIComponent {
                 : {},
           ),
         };
+      }
+
+      function 读取战斗魂导等级(物品数据 = {}) {
+        const 等级 = Math.floor(Number(物品数据?.魂导等级 || 0));
+        return Number.isFinite(等级) ? Math.max(0, Math.min(12, 等级)) : 0;
+      }
+
+      function 判断战斗一次性魂导道具(物品名 = '', 物品数据 = {}) {
+        const 分类 = String(物品数据?.物品分类 || 物品数据?.分类 || '').trim();
+        const 文本 = `${物品名} ${分类} ${String(物品数据?.描述 || '')}`;
+        return 分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹|弹\b|弹$/.test(文本);
+      }
+
+      function 判断战斗可装配魂导器(物品名 = '', 物品数据 = {}) {
+        return 读取战斗魂导等级(物品数据) > 0 && !判断战斗一次性魂导道具(物品名, 物品数据);
       }
 
       function 读取战斗背包使用效果倍率(物品数据 = {}) {
@@ -22436,6 +22454,7 @@ class BattleUIComponent {
       function 校验战斗背包物品可用(物品名 = '', 物品数据 = {}, 使用者名 = '', 当前tick = 0) {
         const 数量 = Math.max(0, Number(物品数据?.数量 || 0));
         if (!(数量 > 0)) return { 可用: false, 原因: '剩余数量不足' };
+        if (判断战斗可装配魂导器(物品名, 物品数据)) return { 可用: false, 原因: '魂导器需要装配后使用' };
         const 持有者 = String(物品数据?.持有者 || '').trim();
         if (持有者 && 使用者名 && 持有者 !== 使用者名) return { 可用: false, 原因: `当前持有者不是${使用者名}` };
         const 有效期至tick = Math.max(0, Number(物品数据?.有效期至tick || 0));
@@ -30817,6 +30836,7 @@ class BattleUIComponent {
           Object.entries(charData?.背包 && typeof charData.背包 === 'object' ? charData.背包 : {}).forEach(([物品名, 背包状态]) => {
             if (!物品名 || !背包状态 || typeof 背包状态 !== 'object') return;
             const 物品数据 = 读取战斗背包物品数据(物品名, 背包状态);
+            if (判断战斗可装配魂导器(物品名, 物品数据)) return;
             if (!Array.isArray(物品数据?.使用效果) || !物品数据.使用效果.length) return;
             const 校验结果 = 校验战斗背包物品可用(物品名, 物品数据, 当前角色名, 当前tick);
             const 物品技能 = 构建战斗背包技能(物品名, 物品数据);

@@ -2517,11 +2517,21 @@
       数量: Math.max(0, Math.floor(toNumber(数量 ?? 来源.数量, toNumber(来源.数量, 0)))),
       品质: 规范化物品经济品质_桥接(来源.品质 ?? fallback.品质, fallback.物品名 || '', fallback.分类 || ''),
       品质系数: Math.max(0.1, Math.min(2, toNumber(来源.品质系数 ?? fallback.品质系数, 1))),
+      基础金属: toText(来源.基础金属 ?? fallback.基础金属, '').trim(),
+      魂导等级: Math.max(0, Math.min(12, Math.floor(toNumber(来源.魂导等级 ?? fallback.魂导等级, 0)))),
       耐久: Math.max(0, Math.floor(toNumber(来源.耐久 ?? fallback.耐久, 0))),
       剩余使用次数: Math.max(0, Math.floor(toNumber(来源.剩余使用次数 ?? fallback.剩余使用次数 ?? fallback.基础使用次数, 0))),
+      基础耐久: Math.max(0, Math.floor(toNumber(来源.基础耐久 ?? fallback.基础耐久, 0))),
+      基础使用次数: Math.max(0, Math.floor(toNumber(来源.基础使用次数 ?? fallback.基础使用次数, 0))),
       绑定者: toText(来源.绑定者 ?? fallback.绑定者, '').trim(),
       有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick ?? fallback.有效期至tick, 0))),
     };
+    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
+    else if (fallback.属性加成 && typeof fallback.属性加成 === 'object' && !Array.isArray(fallback.属性加成)) 输出.属性加成 = cloneJsonValue(fallback.属性加成, {});
+    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
+    else if (fallback.装备技能 && typeof fallback.装备技能 === 'object' && !Array.isArray(fallback.装备技能)) 输出.装备技能 = cloneJsonValue(fallback.装备技能, {});
+    if (Array.isArray(来源.使用效果) && 来源.使用效果.length) 输出.使用效果 = cloneJsonValue(来源.使用效果, []);
+    else if (Array.isArray(fallback.使用效果) && fallback.使用效果.length) 输出.使用效果 = cloneJsonValue(fallback.使用效果, []);
     const 融合参数 = 来源?.副职业参数?.融合参数 || fallback?.副职业参数?.融合参数;
     if (
       融合参数 &&
@@ -2545,8 +2555,13 @@
           (键 !== '耐久' && 值 === 0) ||
           (键 === '耐久' && !有耐久) ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
+          (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
+          (键 === '基础耐久' && !(来源.基础耐久 !== undefined || fallback.基础耐久 !== undefined)) ||
+          (键 === '基础使用次数' && !(来源.基础使用次数 !== undefined || fallback.基础使用次数 !== undefined)) ||
           (键 === '品质' && 值 === '普通') ||
-          (键 === '品质系数' && Number(值) === 1))
+          (键 === '品质系数' && Number(值) === 1) ||
+          (Array.isArray(值) && !值.length) ||
+          (值 && typeof 值 === 'object' && !Array.isArray(值) && !Object.keys(值).length))
       ) {
         delete 输出[键];
       }
@@ -2566,6 +2581,13 @@
     ) return true;
     if (来源.耐久 !== undefined) return true;
     if (来源.剩余使用次数 !== undefined || Number(来源.基础使用次数 || 0) > 0) return true;
+    if (toText(来源.基础金属, '').trim()) return true;
+    if (toNumber(来源.魂导等级, 0) > 0) return true;
+    if (来源.基础耐久 !== undefined) return true;
+    if (来源.基础使用次数 !== undefined) return true;
+    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成) && Object.keys(来源.属性加成).length) return true;
+    if (来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能) && Object.keys(来源.装备技能).length) return true;
+    if (Array.isArray(来源.使用效果) && 来源.使用效果.length) return true;
     if (toText(来源.绑定者, '').trim()) return true;
     if (toNumber(来源.有效期至tick, 0) > 0) return true;
     return false;
@@ -2751,7 +2773,13 @@
       基础价格: Math.max(1, Math.floor(toNumber(来源.基础价格, 1))),
       默认货币: toText(来源.默认货币, '联邦币'),
     };
-    if (物品分类 === '锻造金属') 记录.阶位 = Math.max(0, Math.min(5, Math.floor(toNumber(来源.阶位, 0))));
+    if (物品分类 === '锻造金属') {
+      记录.阶位 = Math.max(0, Math.min(5, Math.floor(toNumber(来源.阶位, 0))));
+      const 金属特性 = Array.isArray(来源.金属特性)
+        ? [...new Set(来源.金属特性.map(特性 => toText(特性, '').trim()).filter(Boolean))]
+        : [];
+      if (金属特性.length) 记录.金属特性 = 金属特性;
+    }
     if (读取魂导等级_桥接(来源) > 0) 记录.魂导等级 = 读取魂导等级_桥接(来源);
     if (Number(来源.基础使用次数 || 0) > 0) 记录.基础使用次数 = Math.max(1, Math.floor(toNumber(来源.基础使用次数, 1)));
     if (装备物品分类集合_桥接.has(物品分类)) {
@@ -2799,9 +2827,15 @@
       分类: toText(来源.物品分类 || 来源.分类, ''),
       品质: 来源.批次品质 || 来源.品质,
       品质系数: 来源.品质系数,
+      基础金属: 来源.基础金属,
+      魂导等级: 来源.魂导等级,
       耐久: 来源.耐久,
       剩余使用次数: 来源.剩余使用次数,
+      基础耐久: 来源.基础耐久,
       基础使用次数: 来源.基础使用次数,
+      属性加成: 来源.属性加成,
+      装备技能: 来源.装备技能,
+      使用效果: 来源.使用效果,
       绑定者: 来源.绑定者,
       有效期至tick: 来源.有效期至tick,
       副职业参数: 来源?.副职业参数?.融合参数 ? { 融合参数: 来源.副职业参数.融合参数 } : undefined,
@@ -25213,9 +25247,9 @@
     return `支持融锻数 ${派生.支持融锻数} / 基础成功率 ${派生.基础成功率}%`;
   }
 
-  function 读取副职业显示等级(副职业数据 = {}) {
+  function 读取副职业显示等级(副职业名 = '', 副职业数据 = {}) {
     if (!副职业数据 || typeof 副职业数据 !== 'object') return 0;
-    return 派生副职业显示数据('', 副职业数据).等级;
+    return 派生副职业显示数据(副职业名, 副职业数据).等级;
   }
 
   function 读取副职业派生接口() {
@@ -25251,7 +25285,7 @@
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
-    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未展开';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][0], jobs[0][1])}` : '未展开';
     const jobCoreTechSummary = jobs.length
       ? 派生副职业显示数据(jobs[0][0], jobs[0][1]).核心技艺
       : '暂无核心技术';
@@ -25990,7 +26024,7 @@
     const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
     const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
-    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][1])}` : '未开启';
+    const jobSummary = jobs.length ? `${读取副职业显示名(jobs[0][0])} Lv.${读取副职业显示等级(jobs[0][0], jobs[0][1])}` : '未开启';
     const weaponName = toText(weapon.名称, '').trim();
     const 防具名称 = toText(防具.名称 || 防具['名称'], '').trim();
     const hasArmor = toNumber(armor.等级, 0) > 0;
@@ -31897,6 +31931,7 @@
       previewKey === '武装详情：机甲' ||
       previewKey === '武装详情：防具' ||
       previewKey === '武装详情：主武器' ||
+      previewKey === '武装详情：魂导器' ||
       String(previewKey || '').startsWith('斗铠部件：')
     ) {
       const activeCharKey =
@@ -31905,10 +31940,12 @@
       const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
       const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
       const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
+      const 魂导器 = deepGet(snapshot, 'activeChar.装备.魂导器', {});
       const armorPath = activeCharKey ? ['char', activeCharKey, '装备', '斗铠'] : [];
       const mechPath = activeCharKey ? ['char', activeCharKey, '装备', '机甲'] : [];
       const weaponPath = activeCharKey ? ['char', activeCharKey, '装备', '武器'] : [];
       const 防具路径 = activeCharKey ? ['char', activeCharKey, '装备', '防具'] : [];
+      const 魂导器路径 = activeCharKey ? ['char', activeCharKey, '装备', '魂导器'] : [];
       const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
       const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
       const armorSummary =
@@ -31927,10 +31964,17 @@
         防具 && (防具.名称 || 防具['名称'])
           ? `${toText(防具.名称 || 防具['名称'], '无')} / ${toText(防具.装备状态, '未装备')}`
           : '无';
+      const 魂导器装配 = 魂导器 && 魂导器.装配 && typeof 魂导器.装配 === 'object' && !Array.isArray(魂导器.装配) ? 魂导器.装配 : {};
+      const 魂导器装配数量 = 魂导器装配槽位列表_桥接.reduce((数量, 槽位) => {
+        const 槽位物品 = 魂导器装配[槽位];
+        const 名称 = toText(槽位物品 && (槽位物品.名称 || 槽位物品.name), '');
+        return 名称 && 名称 !== '无' ? 数量 + 1 : 数量;
+      }, 0);
+      const 魂导器摘要 = `${魂导器装配数量}/10`;
       const jobSummary = jobs.length
         ? jobs
             .slice(0, 2)
-            .map(([name, info]) => `${读取副职业显示名(name)} Lv.${读取副职业显示等级(info)}`)
+            .map(([name, info]) => `${读取副职业显示名(name)} Lv.${读取副职业显示等级(name, info)}`)
             .join(' / ')
         : '未掌握';
       const jobCoreTechSummary = jobs.length
@@ -32317,6 +32361,43 @@
         };
       }
 
+      if (previewKey === '武装详情：魂导器') {
+        const 魂导器槽位卡片 = 魂导器装配槽位列表_桥接.map(槽位 => {
+          const 槽位物品 = 魂导器装配[槽位] && typeof 魂导器装配[槽位] === 'object' && !Array.isArray(魂导器装配[槽位]) ? 魂导器装配[槽位] : {};
+          const 名称 = toText(槽位物品.名称 || 槽位物品.name, '无');
+          if (!名称 || 名称 === '无') return { title: 槽位, desc: '空' };
+          const 等级 = 读取魂导等级_桥接(槽位物品);
+          const 技能数 = Object.keys(槽位物品.装备技能 && typeof 槽位物品.装备技能 === 'object' && !Array.isArray(槽位物品.装备技能) ? 槽位物品.装备技能 : {}).length;
+          const 卸下按钮 =
+            isPlayerControlled && activeCharKey
+              ? `<div class="tag-cloud armory-quick-actions mvu-detail-toolbar mvu-detail-toolbar--tight"><button type="button" class="relation-action-btn equipment-action-btn" data-equipment-action="unequip" data-equipment-char="${escapeHtmlAttr(activeCharKey)}" data-equipment-kind="soul_tool" data-equipment-name="${escapeHtmlAttr(槽位)}">卸下</button></div>`
+              : '';
+          return {
+            title: `${htmlEscape(槽位)} / ${htmlEscape(名称)}`,
+            desc: `Lv.${等级} ｜ 技能 ${技能数}${卸下按钮}`,
+          };
+        });
+        return {
+          title: '魂导器装配',
+          summary: '',
+          body: `
+              <div class="archive-modal-grid">
+                <div class="archive-card full">
+                  <div class="archive-card-head"><div class="archive-card-title">魂导器装配</div></div>
+                  ${makeTileGrid([
+                    { label: '装配', value: 魂导器摘要 },
+                    { label: '空位', value: String(Math.max(0, 10 - 魂导器装配数量)) },
+                  ], 'two')}
+                </div>
+                <div class="archive-card full mvu-detail-scroll-card">
+                  <div class="archive-card-head"><div class="archive-card-title">装配位</div></div>
+                  <div class="mvu-detail-scroll-list">${makeTimelineStack(魂导器槽位卡片)}</div>
+                </div>
+              </div>
+            `,
+        };
+      }
+
       if (String(previewKey || '').startsWith('斗铠部件：')) {
         const slotName = String(previewKey).replace('斗铠部件：', '');
         const partData = resolveArmorPartData(armor, slotName);
@@ -32493,6 +32574,7 @@
                   { label: '机甲', value: mechSummary, preview: '武装详情：机甲' },
                   { label: '主武器', value: weaponSummary, preview: '武装详情：主武器' },
                   { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
+                  { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器' },
                   { label: '副职业', value: jobSummary },
                   { label: '战斗形态', value: battleForm },
                 ])}
@@ -40706,14 +40788,31 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   const 地图工坊委托副职业列表 = Object.freeze(['锻造师', '制造师', '设计师', '修理师']);
 
-  function 获取副职业等级(副职业数据) {
-    if (!副职业数据 || typeof 副职业数据 !== 'object') return 0;
-    return 派生副职业显示数据('', 副职业数据).等级;
+  function 派生地图工坊有效副职业(副职业名, 副职业表 = {}) {
+    const 副职业数据 = 副职业表 && typeof 副职业表 === 'object' ? 副职业表[副职业名] || {} : {};
+    const 本职 = 派生副职业显示数据(副职业名, 副职业数据);
+    if (!['锻造师', '设计师', '制造师'].includes(toText(副职业名, '').trim())) return 本职;
+    const 接口 = 读取副职业派生接口();
+    const 魂导师 = 派生副职业显示数据('魂导师', 副职业表?.魂导师 || {});
+    const 魂导师解锁等级 = typeof 接口.读取魂导师解锁能力等级 === 'function'
+      ? Math.max(0, Math.floor(toNumber(接口.读取魂导师解锁能力等级(魂导师.等级, 副职业名), 0)))
+      : 0;
+    if (魂导师解锁等级 <= Math.max(0, Math.floor(toNumber(本职.等级, 0)))) return 本职;
+    return {
+      ...本职,
+      等级: 魂导师解锁等级,
+      经验: 魂导师.经验,
+      核心技艺: typeof 接口.读取核心技艺文本 === 'function' ? 接口.读取核心技艺文本(副职业名, 魂导师解锁等级) : 本职.核心技艺,
+      支持融锻数: typeof 接口.读取支持融锻文本 === 'function' ? 接口.读取支持融锻文本(魂导师解锁等级) : 本职.支持融锻数,
+      基础成功率: typeof 接口.读取基础成功率 === 'function' ? 接口.读取基础成功率(魂导师解锁等级, 魂导师.经验) : 本职.基础成功率,
+      有效等级来源: '魂导师',
+      魂导师等级: 魂导师.等级,
+      魂导师解锁等级,
+    };
   }
 
-  function 描述副职业可承接范围(副职业名, 等级, 副职业数据 = {}) {
-    const 等级数值 = Math.max(0, Math.floor(toNumber(等级, 0)));
-    const 派生 = 派生副职业显示数据(副职业名, 副职业数据);
+  function 描述副职业可承接范围(副职业名, 派生 = {}) {
+    const 等级数值 = Math.max(0, Math.floor(toNumber(派生.等级, 0)));
     const 额外 = [
       `支持融锻数:${派生.支持融锻数}`,
       `基础成功率:${派生.基础成功率}%`,
@@ -40758,9 +40857,8 @@ ${toText(combatData.战斗意图, '点到为止')}
         : {};
     return 地图工坊委托副职业列表
       .map(副职业名 => {
-        const 副职业数据 = 副职业表[副职业名];
-        const 等级 = 获取副职业等级(副职业数据);
-        return 等级 > 0 ? 描述副职业可承接范围(副职业名, 等级, 副职业数据) : '';
+        const 派生 = 派生地图工坊有效副职业(副职业名, 副职业表);
+        return Number(派生.等级 || 0) > 0 ? 描述副职业可承接范围(副职业名, 派生) : '';
       })
       .filter(Boolean);
   }
@@ -45719,6 +45817,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       const 槽位 = toText(data && data.装备槽位, '无');
       const 分类文本 = toText(data && (data.物品分类 || data.分类), '');
       const 类型文本 = toText(data && data.类型, '');
+      if (判断可装配魂导器_桥接(tName, data)) return { mainSlot: 'soul_tool', subSlot: null };
       if (槽位 === '武器') return { mainSlot: 'wpn', subSlot: null };
       if (槽位 === '防具' || 分类文本 === '防具装备') return { mainSlot: 'def', subSlot: null };
       if (槽位 === '机甲') return { mainSlot: 'mech', subSlot: null };

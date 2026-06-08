@@ -1113,14 +1113,6 @@ class ProfessionUIComponent {
   formatFedCoin(amount) { return `${Number(amount || 0).toLocaleString()} 联邦币`; }
   escapeJsonPointer(str) { return String(str).replace(/~/g, '~0').replace(/\//g, '~1'); }
 
-  getLevelFromTotalExp(exp) {
-    return 0;
-  }
-
-  deriveLimitSuccessRate(lv, exp) {
-    return this.读取副职业派生接口().读取基础成功率(lv, exp);
-  }
-
   读取核心技艺文本(副职业名, 等级) {
     return this.读取副职业派生接口().读取核心技艺文本(副职业名, 等级);
   }
@@ -1204,11 +1196,6 @@ class ProfessionUIComponent {
 
   buildOfficialCommissionRuntime(jobName) {
     return { jobName, job: {}, lv: 9, exp: 99999999, expRatio: 1, limitSuccessRate: 85, maxFusion: 3, 支持融锻文本: '协会固定支持 3 级复合工序', 核心技艺文本: this.读取核心技艺文本(jobName, 9), currentBaseExp: 0, nextLevelExp: 0 };
-  }
-
-  deriveJobLimitsFromExp(exp) {
-    const lv = 0;
-    return { lv, 支持融锻数: this.读取支持融锻文本(lv), 基础成功率: this.deriveLimitSuccessRate(lv, exp) };
   }
 
   读取本次作品认证等级(jobName, tier) {
