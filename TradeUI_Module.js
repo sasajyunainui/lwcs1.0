@@ -357,7 +357,8 @@ const 交易物品定义分类列表 = Object.freeze([
   '魂技造物',
   '天然灵物',
   '丹药',
-  '身份票据',
+  '身份凭证',
+  '入场凭证',
   '修炼秘籍',
   '一次性道具',
   '剧情杂物',
@@ -365,6 +366,7 @@ const 交易物品定义分类列表 = Object.freeze([
 const 交易物品定义分类集合 = new Set(交易物品定义分类列表);
 const 交易可使用物品分类集合 = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
 const 交易装备物品分类集合 = new Set(['近战武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+const 系统禁售物品分类集合 = new Set(['身份凭证', '入场凭证']);
 const 交易物品经济品质列表 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
 const 交易物品经济品质集合 = new Set(交易物品经济品质列表);
 const 交易物品经济品质倍率 = Object.freeze({ 普通: 1, 优秀: 1.25, 稀有: 2, 史诗: 5, 传说: 20, 神器: 1, 超神器: 1 });
@@ -1719,13 +1721,14 @@ class TradeUIComponent {
     }
 
     const itemName = 出售项.物品名;
+    const 系统禁售 = 系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName);
     const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
     const sellPrice = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell');
     const total = sellPrice * qty;
 
     this.updateTradeMetaPanel('sell', this.resolveTradeItemInfo(itemName, 出售项.展示物品, { source: 出售项.展示物品?.来源 || 出售项.展示物品?.绑定者 || '背包持有' }));
 
-    if (basePrice === 0) {
+    if (系统禁售 || basePrice === 0) {
       this.$('#sell-base-price').textContent = "禁售物品";
       this.$('#sell-market').textContent = '-';
       this.$('#sell-total').textContent = "无法交易";
@@ -1744,6 +1747,7 @@ class TradeUIComponent {
     const 出售项 = this.读取出售引用上下文(出售引用, qty);
     if (!出售项 || !出售项.物品名 || 出售项.可用数量 < qty) return this.显示提示('背包数量不足。');
     const itemName = 出售项.物品名;
+    if (系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName)) return this.显示提示('凭证类物品不能出售。');
     const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
     if (basePrice <= 0) return this.显示提示('该物品当前无法出售。');
     const totalEarn = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell') * qty;

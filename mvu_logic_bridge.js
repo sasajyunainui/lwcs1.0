@@ -2384,14 +2384,15 @@
     '魂技造物',
     '天然灵物',
     '丹药',
-    '身份票据',
+    '身份凭证',
+    '入场凭证',
     '修炼秘籍',
     '一次性道具',
     '剧情杂物',
   ]);
   const 物品定义分类集合_桥接 = new Set(物品定义分类列表_桥接);
   const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
-  const 装备物品分类集合_桥接 = new Set(['近战武器', '远程武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+  const 装备物品分类集合_桥接 = new Set(['近战武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
   const 魂导器装配槽位列表_桥接 = Object.freeze(['一号位', '二号位', '三号位', '四号位', '五号位', '六号位', '七号位', '八号位', '九号位', '十号位']);
   const 物品经济品质列表_桥接 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
   const 物品经济品质集合_桥接 = new Set(物品经济品质列表_桥接);
@@ -2780,9 +2781,11 @@
         : [];
       if (金属特性.length) 记录.金属特性 = 金属特性;
     }
-    if (读取魂导等级_桥接(来源) > 0) 记录.魂导等级 = 读取魂导等级_桥接(来源);
+    const 魂导等级 = 读取魂导等级_桥接(来源);
+    const 是魂导器 = 魂导等级 > 0 && !判断一次性魂导道具_桥接(物品名, { ...来源, 物品分类 });
+    if (魂导等级 > 0) 记录.魂导等级 = 魂导等级;
     if (Number(来源.基础使用次数 || 0) > 0) 记录.基础使用次数 = Math.max(1, Math.floor(toNumber(来源.基础使用次数, 1)));
-    if (装备物品分类集合_桥接.has(物品分类)) {
+    if (装备物品分类集合_桥接.has(物品分类) || 是魂导器) {
       if (toText(来源.装备槽位, '')) 记录.装备槽位 = toText(来源.装备槽位, '');
       if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
@@ -2851,7 +2854,8 @@
     ['金属', '金属'],
     ['武器', '武器'],
     ['消耗品', '消耗'],
-    ['票据', '票据'],
+    ['身份凭证', '身份'],
+    ['入场凭证', '入场'],
     ['杂项', '杂项'],
   ]);
 
@@ -2873,7 +2877,8 @@
     if (/金属|矿石|沉银|魔银|星铁|精金|秘银|锻金|灵锻|魂锻|天锻/.test(合并文本)) return '金属';
     if (Array.isArray(定义.使用效果) && 定义.使用效果.length) return '消耗品';
     if (/消耗|药剂|食物|补给|一次性|魂技造物/.test(分类文本)) return '消耗品';
-    if (/票据|门票|凭证|令牌|许可证|通行证|票/.test(合并文本)) return '票据';
+    if (分类文本 === '身份凭证' || /身份凭证|徽章|身份象征/.test(合并文本)) return '身份凭证';
+    if (分类文本 === '入场凭证' || /入场凭证|门票|通行证/.test(合并文本)) return '入场凭证';
     return '杂项';
   }
 
@@ -3084,6 +3089,7 @@
     );
     const 显示分类 = 推断物品分类(物品名, { ...定义, 物品分类 }, 实例);
     const 是装备 = 装备物品分类集合_桥接.has(物品分类);
+    const 是魂导器 = 读取魂导等级_桥接(定义) > 0 && !判断一次性魂导道具_桥接(物品名, { ...定义, 物品分类 });
     const 是魂骨 = 物品分类 === '魂骨';
     const 是消耗 = 可使用物品分类集合_桥接.has(物品分类);
     const 是锻造 = 物品分类 === '锻造金属';
@@ -3161,7 +3167,7 @@
         </div>
         <div class="mvu-inventory-definition-scroll">
           ${构建物品定义折叠模块('基础信息', 基础模块, true)}
-          ${是装备 ? 构建物品定义折叠模块('核心特性', 装备模块, true) : ''}
+          ${是装备 || 是魂导器 ? 构建物品定义折叠模块('核心特性', 装备模块, true) : ''}
           ${是魂骨 ? 构建物品定义折叠模块('魂骨专有', 魂骨模块, true) : ''}
           ${是消耗 ? 构建物品定义折叠模块('使用配置', 消耗模块, false) : ''}
           ${是设计图纸 ? 构建物品定义折叠模块('图纸参数', 设计图纸模块, false) : ''}
@@ -3462,7 +3468,8 @@
     const 魂导等级 = Math.max(0, Math.min(12, Math.floor(toNumber(读取物品定义输入值(表单节点, '魂导等级', 旧定义.魂导等级), 0))));
     if (魂导等级 > 0) 定义.魂导等级 = 魂导等级;
     const 装备槽位 = 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, '无')) || '无';
-    if (装备物品分类集合_桥接.has(分类)) {
+    const 是魂导器 = 魂导等级 > 0 && !判断一次性魂导道具_桥接(新名, { ...旧定义, 物品分类: 分类 });
+    if (装备物品分类集合_桥接.has(分类) || 是魂导器) {
       if (装备槽位 && 装备槽位 !== '无') 定义.装备槽位 = 装备槽位;
       定义.基础耐久 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0)));
     }
@@ -3470,8 +3477,8 @@
     const 属性加成 = 读取物品键值对象(表单节点, '属性加成');
     const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.装备技能);
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
-    if (装备物品分类集合_桥接.has(分类) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
-    if (装备物品分类集合_桥接.has(分类) && Object.keys(装备技能).length) 定义.装备技能 = 装备技能;
+    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
+    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(装备技能).length) 定义.装备技能 = 装备技能;
     if (分类 === '设计图纸') {
       ['图纸目标'].forEach(字段名 => {
         const 字段值 = 读取物品定义输入值(表单节点, 字段名, '');
@@ -3589,6 +3596,7 @@
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 物品文件缓存: new Map() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
   const 冷归档自动归档批量硬上限_桥接 = 50;
+  const 冷归档首次批量上限_桥接 = Number.POSITIVE_INFINITY;
   const 冷归档自动归档默认配置_桥接 = Object.freeze({
     启用自动归档: true,
     角色数量阈值: 20,
@@ -4154,10 +4162,20 @@
       rerenderDetailSurface(当前预览键, { surface: currentUnifiedPreviewKey ? 'unified' : 'modal', force: true });
     };
     if (冷归档服务状态_桥接.已检查 && !冷归档服务状态_桥接.可用) return Promise.resolve();
-    const 角色Manifest已缓存 = !!读取角色归档Manifest缓存_桥接();
-    const 动态地点Manifest已缓存 = !!读取动态地点归档Manifest缓存_桥接();
-    const 物品Manifest已缓存 = !!读取物品归档Manifest缓存_桥接();
-    if (!选项.force && !选项.初始化目录 && 角色Manifest已缓存 && 动态地点Manifest已缓存 && 物品Manifest已缓存) return Promise.resolve();
+    const 角色Manifest缓存 = 读取角色归档Manifest缓存_桥接();
+    const 动态地点Manifest缓存 = 读取动态地点归档Manifest缓存_桥接();
+    const 物品Manifest缓存 = 读取物品归档Manifest缓存_桥接();
+    const 角色Manifest已缓存 = !!角色Manifest缓存;
+    const 动态地点Manifest已缓存 = !!动态地点Manifest缓存;
+    const 物品Manifest已缓存 = !!物品Manifest缓存;
+    const Manifest已初始化 = manifest => !!toText(manifest && manifest.updatedAt, '').trim();
+    if (
+      !选项.force &&
+      角色Manifest已缓存 &&
+      动态地点Manifest已缓存 &&
+      物品Manifest已缓存 &&
+      (!选项.初始化目录 || (Manifest已初始化(角色Manifest缓存) && Manifest已初始化(动态地点Manifest缓存) && Manifest已初始化(物品Manifest缓存)))
+    ) return Promise.resolve();
     const 承诺 = Promise.allSettled([
       读取角色归档Manifest_桥接({ force: !!选项.force }),
       读取动态地点归档Manifest_桥接({ force: !!选项.force }),
@@ -4167,16 +4185,26 @@
         结果列表.forEach(结果 => {
           if (结果.status === 'rejected') console.warn('[DragonUI] 冷归档 manifest 读取失败', 结果.reason);
         });
+        let 已写入 = false;
         if (选项.初始化目录 && 冷归档服务状态_桥接.存储模式 === '插件' && 冷归档服务状态_桥接.可用 && 冷归档服务状态_桥接.可写) {
           let 角色Manifest = 结果列表[0] && 结果列表[0].status === 'fulfilled' ? 结果列表[0].value : null;
           let 动态地点Manifest = 结果列表[1] && 结果列表[1].status === 'fulfilled' ? 结果列表[1].value : null;
           let 物品Manifest = 结果列表[2] && 结果列表[2].status === 'fulfilled' ? 结果列表[2].value : null;
-          if (角色Manifest && !角色Manifest.updatedAt) 角色Manifest = await 写入角色归档Manifest_桥接(角色Manifest);
-          if (动态地点Manifest && !动态地点Manifest.updatedAt) 动态地点Manifest = await 写入动态地点归档Manifest_桥接(动态地点Manifest);
-          if (物品Manifest && !物品Manifest.updatedAt) 物品Manifest = await 写入物品归档Manifest_桥接(物品Manifest);
-          if (角色Manifest && 动态地点Manifest && 物品Manifest) await 写入冷归档聊天状态_桥接(角色Manifest, 动态地点Manifest, 物品Manifest);
+          if (角色Manifest && !角色Manifest.updatedAt) {
+            角色Manifest = await 写入角色归档Manifest_桥接(角色Manifest);
+            已写入 = true;
+          }
+          if (动态地点Manifest && !动态地点Manifest.updatedAt) {
+            动态地点Manifest = await 写入动态地点归档Manifest_桥接(动态地点Manifest);
+            已写入 = true;
+          }
+          if (物品Manifest && !物品Manifest.updatedAt) {
+            物品Manifest = await 写入物品归档Manifest_桥接(物品Manifest);
+            已写入 = true;
+          }
+          if (已写入 && 角色Manifest && 动态地点Manifest && 物品Manifest) await 写入冷归档聊天状态_桥接(角色Manifest, 动态地点Manifest, 物品Manifest);
         }
-        刷新视图();
+        if (!选项.初始化目录 || 已写入 || 选项.force) 刷新视图();
       });
     return 承诺;
   }
@@ -4891,9 +4919,20 @@
     };
   }
 
+  function 判断冷归档首次自动归档_桥接() {
+    const 角色Manifest = 读取角色归档Manifest缓存_桥接();
+    const 动态地点Manifest = 读取动态地点归档Manifest缓存_桥接();
+    const 物品Manifest = 读取物品归档Manifest缓存_桥接();
+    const 角色索引 = 角色Manifest && 角色Manifest.角色索引 && typeof 角色Manifest.角色索引 === 'object' ? 角色Manifest.角色索引 : {};
+    const 动态地点索引 = 动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {};
+    const 物品索引 = 物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {};
+    return !Object.keys(角色索引).length && !Object.keys(动态地点索引).length && !Object.keys(物品索引).length;
+  }
+
   function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护角色 = 收集归档保护角色名_桥接(statData);
+    const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     return safeEntries(statData.char || {})
       .filter(([角色名, 角色数据]) => {
         if (!角色名 || !角色数据 || typeof 角色数据 !== 'object') return false;
@@ -4901,13 +4940,14 @@
         return !冷实体近期活跃_桥接(角色数据, 当前tick);
       })
       .sort((左, 右) => 读取冷实体最近tick_桥接(左[1]) - 读取冷实体最近tick_桥接(右[1]) || 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-      .slice(0, 上限)
+      .slice(0, 数量上限)
       .map(([角色名]) => 角色名);
   }
 
   function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护地点 = 收集归档保护动态地点名_桥接(statData);
+    const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 本轮命中地点 = new Set(
       收集归档动态地点命中名称_桥接(
         Object.fromEntries(safeEntries(deepGet(statData, 'world.动态地点', {})).map(([地点名, 地点数据]) => [地点名, 构建动态地点归档索引扩展_桥接(地点名, 地点数据)])),
@@ -4928,13 +4968,14 @@
         const 右重要度 = Math.max(0, toNumber(右[1] && 右[1].重要度, 0));
         return 左重要度 - 右重要度 || 读取冷实体最近tick_桥接(左[1]) - 读取冷实体最近tick_桥接(右[1]) || 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' });
       })
-      .slice(0, 上限)
+      .slice(0, 数量上限)
       .map(([地点名]) => 地点名);
   }
 
   function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 保护物品 = 收集归档保护物品名_桥接(statData);
+    const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 允许分类 = Array.isArray(选项.允许分类) ? new Set(选项.允许分类.map(分类 => 规范化物品定义分类_桥接(分类, '')).filter(Boolean)) : null;
     const 本轮命中物品 = new Set(
       收集归档物品命中名称_桥接(
@@ -4953,7 +4994,7 @@
         return !冷实体近期活跃_桥接(物品定义, 当前tick);
       })
       .sort((左, 右) => 读取冷实体最近tick_桥接(左.定义) - 读取冷实体最近tick_桥接(右.定义) || 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-      .slice(0, 上限)
+      .slice(0, 数量上限)
       .map(({ 物品名 }) => 物品名);
   }
 
@@ -4980,32 +5021,43 @@
       const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
       const 动态地点 = deepGet(statData, 'world.动态地点', {});
       const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
+      await 预热冷归档Manifest_桥接();
+      const 是否首次自动归档 = 判断冷归档首次自动归档_桥接();
+      const 本轮批量上限 = 是否首次自动归档 ? 冷归档首次批量上限_桥接 : 冷归档自动归档批量硬上限_桥接;
       const 类型列表 = [
         {
           类型: '角色',
           状态: 冷归档表超过阈值_桥接(角色集, 冷归档自动归档配置_桥接.角色数量阈值, 冷归档自动归档配置_桥接.角色字节阈值),
-          名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本),
+          名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本, 本轮批量上限),
           执行: 名称列表 => 归档MVU角色_桥接(名称列表),
         },
         {
           类型: '动态地点',
           状态: 冷归档表超过阈值_桥接(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}, 冷归档自动归档配置_桥接.动态地点数量阈值, 冷归档自动归档配置_桥接.动态地点字节阈值),
-          名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本),
+          名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本, 本轮批量上限),
           执行: 名称列表 => 归档MVU动态地点_桥接(名称列表),
         },
         {
           类型: '物品',
           状态: 物品分类压力,
-          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 冷归档自动归档批量硬上限_桥接, { ...选项, 允许分类: 物品分类压力.允许分类 }),
+          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 本轮批量上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
           执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
         },
       ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
       if (!类型列表.length) return { changed: false, reason: 'below_threshold' };
+      const 归档结果列表 = [];
       for (const 类型项 of 类型列表) {
-        const 名称列表 = 类型项.名称列表().slice(0, 冷归档自动归档批量硬上限_桥接);
+        const 名称列表 = 类型项.名称列表().slice(0, 本轮批量上限);
         if (!名称列表.length) continue;
         const 结果 = await 类型项.执行(名称列表);
-        return { ...结果, type: 类型项.类型, auto: true };
+        if (结果 && 结果.changed) {
+          归档结果列表.push({ ...结果, type: 类型项.类型 });
+          if (!是否首次自动归档) return { ...结果, type: 类型项.类型, auto: true, 首次自动归档: false };
+        }
+      }
+      if (归档结果列表.length) {
+        const 归档数量 = 归档结果列表.reduce((总数, 结果) => 总数 + (Array.isArray(结果.archivedNames) ? 结果.archivedNames.length : 0), 0);
+        return { changed: true, 结果列表: 归档结果列表, archivedNames: 归档结果列表.flatMap(结果 => Array.isArray(结果.archivedNames) ? 结果.archivedNames : []), 归档数量, auto: true, 首次自动归档: 是否首次自动归档 };
       }
       return { changed: false, reason: 'no_candidate' };
     })().finally(() => {
@@ -5262,8 +5314,12 @@
             </div>
             ${显示归档高级设置 && 允许设置归档路径 ? `
               <div class="mvu-detail-search-row">
-                <input type="text" class="request-console-input" data-cold-archive-root-input="1" value="${escapeHtmlAttr(冷归档服务状态_桥接.customRoot || '')}" placeholder="${escapeHtmlAttr(归档路径 || '默认归档目录')}" />
-                <button type="button" class="tag-chip" data-cold-archive-set-root="1">路径</button>
+                <input type="text" class="request-console-input" value="${escapeHtmlAttr(归档路径 || '')}" disabled />
+              </div>
+              <div class="mvu-detail-search-row">
+                <input type="text" class="request-console-input" data-cold-archive-root-input="1" value="${escapeHtmlAttr(冷归档服务状态_桥接.customRoot || '')}" placeholder="自定义绝对路径" />
+                <button type="button" class="tag-chip live" data-cold-archive-save-root="1">保存</button>
+                <button type="button" class="tag-chip" data-cold-archive-reset-root="1">默认</button>
               </div>
             ` : ''}
             <div class="mvu-editor-field-grid">
@@ -36081,7 +36137,7 @@
         const itemType = toText(item && (item['物品分类'] || item['分类']), '');
         return (
           /魂灵塔/.test(safeName) &&
-          (/(票|券|令|凭证)/.test(safeName) || itemType === '身份票据') &&
+          (/(票|券|令|凭证)/.test(safeName) || itemType === '入场凭证') &&
           读取背包总数量_桥接(item) > 0
         );
       })
@@ -43093,24 +43149,48 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
 
-    const 冷归档路径按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-set-root]') : null;
-    if (冷归档路径按钮 && detailSurfaceHost.contains(冷归档路径按钮)) {
+    const 冷归档路径保存按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-save-root]') : null;
+    if (冷归档路径保存按钮 && detailSurfaceHost.contains(冷归档路径保存按钮)) {
       event.preventDefault();
       event.stopPropagation();
       const 输入 = detailSurfaceHost.querySelector('[data-cold-archive-root-input]');
       const 路径 = toText(输入 && 输入.value, '').trim();
-      冷归档路径按钮.disabled = true;
-      冷归档路径按钮.classList.add('is-busy');
+      if (!路径) {
+        showUiToast('请输入自定义路径，或点击默认。', 'warning');
+        return;
+      }
+      冷归档路径保存按钮.disabled = true;
+      冷归档路径保存按钮.classList.add('is-busy');
       try {
         await 设置冷归档根目录_桥接(路径);
         if (冷归档服务状态_桥接.可用) await 预热冷归档Manifest_桥接({ force: true, 初始化目录: 冷归档服务状态_桥接.存储模式 === '插件' });
-        showUiToast(路径 ? '归档路径已更新。' : '归档路径已恢复默认。', 'info');
+        showUiToast('归档路径已更新。', 'info');
         rerenderDetailSurface(冷归档预览键_桥接, options);
       } catch (错误) {
         showUiToast(错误 && 错误.message ? 错误.message : '归档路径设置失败。', 'error');
       } finally {
-        冷归档路径按钮.disabled = false;
-        冷归档路径按钮.classList.remove('is-busy');
+        冷归档路径保存按钮.disabled = false;
+        冷归档路径保存按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
+    const 冷归档路径默认按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-reset-root]') : null;
+    if (冷归档路径默认按钮 && detailSurfaceHost.contains(冷归档路径默认按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      冷归档路径默认按钮.disabled = true;
+      冷归档路径默认按钮.classList.add('is-busy');
+      try {
+        await 设置冷归档根目录_桥接('');
+        if (冷归档服务状态_桥接.可用) await 预热冷归档Manifest_桥接({ force: true, 初始化目录: 冷归档服务状态_桥接.存储模式 === '插件' });
+        showUiToast('归档路径已恢复默认。', 'info');
+        rerenderDetailSurface(冷归档预览键_桥接, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '归档路径设置失败。', 'error');
+      } finally {
+        冷归档路径默认按钮.disabled = false;
+        冷归档路径默认按钮.classList.remove('is-busy');
       }
       return;
     }
