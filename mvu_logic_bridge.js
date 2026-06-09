@@ -4463,6 +4463,39 @@
     return 保护;
   }
 
+  async function 复读确认归档角色已移出热区_桥接(角色名列表 = []) {
+    const { mvuData } = await readLatestMvuDataByEditor();
+    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+    const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
+    const 残留名称 = (Array.isArray(角色名列表) ? 角色名列表 : [角色名列表])
+      .map(名称 => toText(名称, '').trim())
+      .filter(名称 => 名称 && 角色集[名称]);
+    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
+    return statData;
+  }
+
+  async function 复读确认归档动态地点已移出热区_桥接(地点名列表 = []) {
+    const { mvuData } = await readLatestMvuDataByEditor();
+    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+    const 动态地点 = deepGet(statData, 'world.动态地点', {});
+    const 地点表 = 动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {};
+    const 残留名称 = (Array.isArray(地点名列表) ? 地点名列表 : [地点名列表])
+      .map(名称 => toText(名称, '').trim())
+      .filter(名称 => 名称 && 地点表[名称]);
+    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
+    return statData;
+  }
+
+  async function 复读确认归档物品已移出热区_桥接(物品名列表 = []) {
+    const { mvuData } = await readLatestMvuDataByEditor();
+    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+    const 残留名称 = (Array.isArray(物品名列表) ? 物品名列表 : [物品名列表])
+      .map(名称 => toText(名称, '').trim())
+      .filter(名称 => 名称 && 查找物品定义_桥接(statData, 名称));
+    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
+    return statData;
+  }
+
   async function 上传角色归档文件_桥接(角色名 = '', 角色数据 = {}, 上下文 = {}) {
     const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
     const 归档时间 = 上下文.归档时间 || new Date().toISOString();
@@ -4582,9 +4615,10 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    writeMvuEditorStoreSnapshot(statData, { messageId });
+    const 复读StatData = await 复读确认归档角色已移出热区_桥接(可归档);
+    writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
-    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData, messageId };
+    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU动态地点_桥接(地点名列表 = [], 选项 = {}) {
@@ -4628,9 +4662,10 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    writeMvuEditorStoreSnapshot(statData, { messageId });
+    const 复读StatData = await 复读确认归档动态地点已移出热区_桥接(可归档);
+    writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
-    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData, messageId };
+    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU物品定义_桥接(物品名列表 = [], 选项 = {}) {
@@ -4675,9 +4710,10 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    writeMvuEditorStoreSnapshot(statData, { messageId });
+    const 复读StatData = await 复读确认归档物品已移出热区_桥接(可归档);
+    writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
-    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData, messageId };
+    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
@@ -5214,9 +5250,15 @@
     const 热角色数量 = Object.keys(角色集).length;
     const 热地点数量 = Object.keys(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}).length;
     const 热物品数量 = 物品定义条目列表.length;
-    const 冷角色数量 = Object.keys(角色索引).length;
-    const 冷地点数量 = Object.keys(动态地点索引).length;
-    const 冷物品数量 = Object.keys(物品索引).length;
+    const 热角色名集合 = new Set(Object.keys(角色集));
+    const 热地点名集合 = new Set(Object.keys(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}));
+    const 热物品名集合 = new Set(物品定义条目列表.map(({ 物品名 }) => 物品名));
+    const 冷角色名称 = Object.keys(角色索引).filter(角色名 => !热角色名集合.has(角色名));
+    const 冷地点名称 = Object.keys(动态地点索引).filter(地点名 => !热地点名集合.has(地点名));
+    const 冷物品名称 = Object.keys(物品索引).filter(物品名 => !热物品名集合.has(物品名));
+    const 冷角色数量 = 冷角色名称.length;
+    const 冷地点数量 = 冷地点名称.length;
+    const 冷物品数量 = 冷物品名称.length;
     const 热行 = 当前页签 === '角色'
       ? sortCharacterEntries(safeEntries(角色集), { playerName: toText(deepGet(rootData, 'sys.玩家名', ''), ''), currentName: snapshot.activeName })
         .map(([角色名, 角色数据]) => 构建角色归档选择行_桥接(角色名, 角色数据, { 保护: 保护角色.has(角色名) })).join('')
@@ -5228,10 +5270,10 @@
           .sort((左, 右) => 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
           .map(({ 物品名, 定义, 分类 }) => 构建物品归档选择行_桥接(物品名, 定义, { 分类, 保护: 保护物品.has(物品名) })).join('');
     const 冷行 = 当前页签 === '角色'
-      ? 排序名称(Object.keys(角色索引)).map(角色名 => 构建角色归档索引行_桥接(角色名, 角色索引[角色名])).join('')
+      ? 排序名称(冷角色名称).map(角色名 => 构建角色归档索引行_桥接(角色名, 角色索引[角色名])).join('')
       : 当前页签 === '动态地点'
-        ? 排序名称(Object.keys(动态地点索引)).map(地点名 => 构建动态地点归档索引行_桥接(地点名, 动态地点索引[地点名])).join('')
-        : 排序名称(Object.keys(物品索引)).map(物品名 => 构建物品归档索引行_桥接(物品名, 物品索引[物品名])).join('');
+        ? 排序名称(冷地点名称).map(地点名 => 构建动态地点归档索引行_桥接(地点名, 动态地点索引[地点名])).join('')
+        : 排序名称(冷物品名称).map(物品名 => 构建物品归档索引行_桥接(物品名, 物品索引[物品名])).join('');
     const 聚焦角色名 = toText(modalFocusState[`${冷归档预览键_桥接}::character-focus`], '').trim();
     const 聚焦地点名 = toText(modalFocusState[`${冷归档预览键_桥接}::dynamic-location-focus`], '').trim();
     const 聚焦物品名 = toText(modalFocusState[`${冷归档预览键_桥接}::item-focus`], '').trim();
@@ -6968,6 +7010,17 @@
     return null;
   }
 
+  function 获取内置物品实例化接口_桥接() {
+    const 候选窗口 = [window];
+    try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
+    for (const 候选 of 候选窗口) {
+      const 接口 = 候选?.__LWCS_MVU_RUNTIME_VIEW__;
+      if (接口 && typeof 接口.应用内置物品实例化 === 'function') return 接口;
+    }
+    return null;
+  }
+
   function 获取运行时实体命中接口_桥接() {
     const 候选窗口 = [window];
     try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
@@ -7020,6 +7073,69 @@
     } catch (错误) {
       return { statData: {}, messageId: null };
     }
+  }
+
+  async function 按文本实例化内置物品_桥接(文本 = '', 附加选项 = {}) {
+    const 接口 = 获取内置物品实例化接口_桥接();
+    const 合并文本 = [文本, 附加选项.剧情文本, 附加选项.最后剧情文本].join('\n');
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(合并文本);
+    if (!接口) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return {
+        changed: false,
+        names: [],
+        reason: 'runtime_api_missing',
+        statData: 当前状态.statData,
+        messageId: 当前状态.messageId,
+        textSignature: 文本签名,
+      };
+    }
+    const 命中候选 = 收集归档物品候选名_桥接(附加选项);
+    if (!String(合并文本 || '').trim() && !命中候选.length) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      return {
+        changed: false,
+        names: [],
+        statData: 当前状态.statData,
+        messageId: 当前状态.messageId,
+        textSignature: 文本签名,
+      };
+    }
+    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
+    const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
+    const 前置变量数据 = 附加选项.statData && typeof 附加选项.statData === 'object' ? 附加选项.statData : 待写回MVU数据.stat_data;
+    const 待写回变量数据 = cloneJsonValue(前置变量数据, {});
+    const 结果 = 接口.应用内置物品实例化(待写回变量数据, {
+      用户输入: 文本,
+      剧情文本: 附加选项.剧情文本 || '',
+      最后剧情文本: 附加选项.最后剧情文本 || '',
+      命中物品: 命中候选,
+      相关物品: 附加选项.相关物品,
+      候选物品: 附加选项.候选物品,
+      模块路由: 附加选项.模块路由,
+      上限: 附加选项.上限,
+      阈值: 附加选项.阈值,
+    });
+    if (!结果 || !结果.changed) {
+      return {
+        changed: false,
+        names: [],
+        statData: 待写回变量数据,
+        messageId: 消息编号,
+        textSignature: 文本签名,
+      };
+    }
+    待写回MVU数据.stat_data = 待写回变量数据;
+    await Promise.resolve(主机.replaceMvuData(待写回MVU数据, { type: 'message', message_id: 消息编号 }));
+    writeMvuEditorStoreSnapshot(待写回MVU数据.stat_data, { messageId: 消息编号 });
+    await refreshLiveSnapshot({ force: true });
+    return {
+      changed: true,
+      names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []),
+      statData: 待写回MVU数据.stat_data,
+      messageId: 消息编号,
+      textSignature: 文本签名,
+    };
   }
 
   async function 按文本实例化内置角色_桥接(文本 = '', 附加选项 = {}) {
@@ -35713,6 +35829,7 @@
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
   window.__MVU_GET_LIVE_SNAPSHOT__ = () => liveSnapshot || lastRenderableSnapshot || null;
   window.__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置角色_桥接(文本, 选项);
+  window.__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置物品_桥接(文本, 选项);
   window.__LWCS_ARCHIVE_MVU_CHARACTERS__ = (角色名列表, 选项 = {}) => 归档MVU角色_桥接(角色名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS__ = (角色名列表, 选项 = {}) => 恢复MVU归档角色_桥接(角色名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档角色_桥接(文本, 选项);

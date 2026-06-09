@@ -605,6 +605,24 @@ function 构建运行时物品目录_V1(数据根 = {}, 目录 = null) {
   return 结果;
 }
 
+function 构建内置物品平铺表_V1() {
+  const 结果 = {};
+  遍历物品定义_V1(读取内置物品库_V1(), (物品名, 定义, 分类) => {
+    结果[物品名] = { ...cloneJsonValue(定义, {}), 物品分类: 分类 };
+  });
+  return 结果;
+}
+
+function 查找内置物品定义_V1(物品名 = '') {
+  const 名称 = String(物品名 || '').trim();
+  if (!名称) return null;
+  let 结果 = null;
+  遍历物品定义_V1(读取内置物品库_V1(), (当前名, 定义, 分类) => {
+    if (!结果 && 当前名 === 名称) 结果 = { 物品名: 当前名, 定义, 分类 };
+  });
+  return 结果;
+}
+
 function 收集运行时物品候选名_V1(数据根 = {}, 文本 = '', 选项 = {}) {
   const 候选 = new Set();
   const 添加 = 值 => 收集运行时字符串列表_V1(值).forEach(名称 => 候选.add(名称));
@@ -3481,6 +3499,7 @@ try {
     收集运行时动态地点命中: 收集运行时动态地点命中_V1,
     收集运行时物品命中: 收集运行时物品命中_V1,
     应用内置角色实例化: 应用内置角色实例化_V1,
+    应用内置物品实例化: 应用内置物品实例化_V1,
     构建内置角色命中摘要: 构建内置角色命中摘要_V1,
     替换MVU运行时视图占位符: 替换MVU运行时视图占位符_V1,
   });
@@ -26833,19 +26852,6 @@ const FactionSchema = z
   })
   .prefault({});
 
-function 写入内置物品定义_V1(data = {}) {
-  确保物品分类表_V1(data);
-  遍历物品定义_V1(读取内置物品库_V1(), (物品名, 定义, 分类) => {
-    合并分类物品定义_V1(data, 物品名, 定义, 分类);
-  });
-  Object.entries(AssociationShopProducts.修理师协会 || {}).forEach(([物品名, 模板]) => {
-    const 使用效果 = Array.isArray(模板?.使用效果) ? 模板.使用效果 : [];
-    if (使用效果.some(效果 => String(效果?.原型 || '').trim() === '耐久修复')) {
-      合并分类物品定义_V1(data, 物品名, 规范化商品模板为物品定义_V1(物品名, 模板), 模板.分类);
-    }
-  });
-}
-
 const BaseProductPool = {
   高能压缩干粮: {
     价格: 50,
@@ -27916,6 +27922,32 @@ function 应用内置角色成长技能模板_V1(数据根 = {}, 选项 = {}) {
   return 已变更;
 }
 
+function 应用内置物品实例化_V1(数据根 = {}, 选项 = {}) {
+  if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
+  确保物品分类表_V1(数据根);
+  const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
+  const 内置物品目录 = 构建内置物品平铺表_V1();
+  if (!Object.keys(内置物品目录).length || (!String(命中文本 || '').trim() && !收集运行时物品候选名_V1(数据根, 命中文本, 选项).length)) {
+    return { changed: false, changedNames: [], names: [] };
+  }
+  const 命中列表 = 收集运行时物品命中_V1(数据根, 命中文本, {
+    ...选项,
+    物品目录: 内置物品目录,
+    阈值: Math.max(1, Math.floor(Number(选项.阈值 ?? 5))),
+    上限: Math.max(1, Math.floor(Number(选项.上限 ?? 12))),
+  });
+  const 已写入 = [];
+  命中列表.forEach(命中 => {
+    const 物品名 = String(命中?.名称 || '').trim();
+    if (!物品名 || 物品定义存在_V1(数据根, 物品名)) return;
+    const 内置定义 = 查找内置物品定义_V1(物品名);
+    if (!内置定义) return;
+    写入分类物品定义_V1(数据根, 物品名, cloneJsonValue(内置定义.定义, {}), 内置定义.分类);
+    已写入.push(物品名);
+  });
+  return { changed: 已写入.length > 0, changedNames: 已写入, names: 已写入 };
+}
+
 function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 = {}) {
   const 角色记录 = 读取内置角色记录_V1(角色名, 当前tick, 数据根);
   const 快照 = 取内置角色最近快照_V1(角色记录, 当前tick);
@@ -28355,7 +28387,6 @@ export const Schema = z
     if (!data.org || typeof data.org !== 'object') data.org = {};
     if (!data.world || typeof data.world !== 'object') data.world = {};
     if (!data.物品 || typeof data.物品 !== 'object' || Array.isArray(data.物品)) data.物品 = {};
-    写入内置物品定义_V1(data);
     水合角色物品引用_V1(data);
     if (data.map && typeof data.map === 'object') delete data.map;
     if (!data.world.时间 || typeof data.world.时间 !== 'object') data.world.时间 = {};
