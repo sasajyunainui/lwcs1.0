@@ -257,7 +257,7 @@ var timelineData = {
   "9岁": {
     world: {
       时间: {
-        tick: 160000
+        tick: 160035
       }
     }
   },
@@ -959,7 +959,7 @@ window.submitForm = function() {
     ];
 
     var tlData = timelineData[selectedTimeline];
-    if (tlData) {
+    if (tlData) {
         if (tlData.world && tlData.world.时间) {
             initPatch.push({
                 "op": "replace",

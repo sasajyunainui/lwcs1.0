@@ -11243,6 +11243,7 @@ class BattleUIComponent {
 
     function isPassiveSkillData(skill, sourceContext = {}) {
       if (!skill || typeof skill !== 'object') return false;
+      if (String(skill?.承载方式 || '').trim() === '被动') return true;
       const 来源文本 = [
         sourceContext?.来源类别,
         sourceContext?.来源明细,
