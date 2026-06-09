@@ -6928,16 +6928,10 @@
     return true;
   }
 
-  async function 归一化Mvu包并按需写回_桥接(宿主, 原始MVU数据, 消息编号 = 'latest') {
+  function 归一化Mvu包供编辑器读取_桥接(原始MVU数据) {
     const 安全MVU数据 = normalizeMvuDataEnvelopeForEditor(原始MVU数据);
     const 归一化变量数据 = 归一化变量根_桥接(cloneJsonValue(安全MVU数据.stat_data, {}));
-    if (serializeMvuEditorStoreStatData(归一化变量数据) === serializeMvuEditorStoreStatData(安全MVU数据.stat_data)) {
-      return 安全MVU数据;
-    }
     安全MVU数据.stat_data = 归一化变量数据;
-    if (宿主 && typeof 宿主.replaceMvuData === 'function') {
-      await Promise.resolve(宿主.replaceMvuData(安全MVU数据, { type: 'message', message_id: 消息编号 }));
-    }
     return 安全MVU数据;
   }
 
@@ -6955,7 +6949,7 @@
       throw new Error('读取当前 MVU 数据失败。');
     }
     const 消息编号 = scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest';
-    const 安全MVU数据 = await 归一化Mvu包并按需写回_桥接(host, currentMvuData, 消息编号);
+    const 安全MVU数据 = 归一化Mvu包供编辑器读取_桥接(currentMvuData);
     return {
       host,
       mvuData: 安全MVU数据,
@@ -7578,7 +7572,9 @@
     路径.forEach(片段 => {
       if (是魂技槽位键_桥接(片段)) {
         const 父级 = String(结果[结果.length - 1] || '');
-        if (是武魂槽位键_桥接(父级) || 是魂灵槽位键_桥接(父级)) {
+        if (是武魂槽位键_桥接(父级)) {
+          结果.push('第1魂灵', `第${读取槽位序号_桥接(片段, 1)}魂环`);
+        } else if (是魂灵槽位键_桥接(父级)) {
           结果.push(`第${读取槽位序号_桥接(片段, 1)}魂环`);
         }
       } else if (是血脉魂技槽位键_桥接(片段) && String(结果[结果.length - 1] || '') === '血脉之力') {
@@ -7841,7 +7837,7 @@
       }
       if (key === '社会档案详细页') add('社会档案', ['char', activeCharKey, '社交'], ['社会', '名望', '称号']);
       if (key === '第1武魂详细页' || key === '第2武魂详细页' || key === '武魂融合技详细页') {
-        add('武魂', ['char', activeCharKey], ['第1武魂', '第2武魂', '第1魂灵', '第1魂环', '第1魂技']);
+        add('武魂', ['char', activeCharKey], ['第1武魂', '第2武魂', '第1魂灵', '第1魂灵.第1魂环', '第1魂灵.第1魂环.第1魂技']);
         add('融合技', ['char', activeCharKey, '武魂融合技'], ['融合']);
       }
       if (key === '血脉封印详细页') add('血脉', ['char', activeCharKey, '血脉之力'], ['血脉', '封印']);
