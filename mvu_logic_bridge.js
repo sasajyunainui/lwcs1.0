@@ -254,7 +254,7 @@
       title: '人物关系',
       summary: '由“关系摘要”芯片进入，承接重型 社交.关系 结构。',
       fields: ['activeChar.社交.关系'],
-      duties: ['显示好感度与阶段', '显示关系路线与推进提示', '展示对方身份、好感加成 与分析结果'],
+      duties: ['显示好感度与阶段', '显示关系路线与推进提示', '展示对方身份、相关度与分析结果'],
       actions: ['查看关系路线', '查看关系推进重点', '闲聊 / 送礼 / 请教 / 切磋 / 表白'],
     },
     情报库详细页: {
@@ -1734,7 +1734,7 @@
 
   function hasUiPlaceholderToken(value) {
     const text = String(value === undefined || value === null ? '' : value).trim();
-    return !!text && /待补全/i.test(text);
+    return !!text && /待补全|待生成|未知|未详|不详/i.test(text);
   }
 
   function toText(value, fallback = '无') {
@@ -6999,12 +6999,16 @@
     select.style.width = `${Math.max(120, Math.ceil(rect.width) + 24)}px`;
     const options = normalizeInlineEditorOptions(meta);
     const normalizedValue = toText(rawValue, '').trim();
-    select.innerHTML = options
+    const 允许空值 = meta && meta.允许空值 === true;
+    const 空值标签 = toText(meta && meta.空值标签, '--');
+    select.innerHTML = [
+      ...(允许空值 ? [`<option value=""${normalizedValue ? '' : ' selected'}>${htmlEscape(空值标签)}</option>`] : []),
+      ...options
       .map(
         option =>
           `<option value="${escapeHtmlAttr(option)}"${option === normalizedValue ? ' selected' : ''}>${htmlEscape(option)}</option>`,
-      )
-      .join('');
+      ),
+    ].join('');
     select.addEventListener('change', () => {
       commitInlineEditState(state);
     });
@@ -8463,7 +8467,11 @@
         if (焦点状态键 && 新键名) modalFocusState[焦点状态键] = 新键名;
       } else {
         previewRollback = queueTrainedBonusPreviewOverride(state.path, state.rawValue, nextValue);
-        await replaceStatDataByEditor([{ path: state.path, value: nextValue }]);
+        if (state.editorMeta?.允许空值 === true && toText(nextValue, '').trim() === '') {
+          await deleteStatDataPathByEditor(state.path);
+        } else {
+          await replaceStatDataByEditor([{ path: state.path, value: nextValue }]);
+        }
       }
     } catch (error) {
       restoreTrainedBonusPreviewOverride(previewRollback);
@@ -10149,7 +10157,6 @@
     if (!rootData || typeof rootData !== 'object') return false;
     if (toText(deepGet(rootData, 'sys.玩家名', ''), '').trim()) return true;
     if (safeEntries(deepGet(rootData, 'world.时间线', {})).length) return true;
-    if (toText(deepGet(rootData, 'world._引导.时间线预览', ''), '').trim()) return true;
     if (deepGet(rootData, 'world.偏差值', undefined) !== undefined) return true;
     if (toText(deepGet(rootData, 'world.时间._calendar', deepGet(rootData, 'world.时间.calendar', '')), '').trim())
       return true;
@@ -10178,7 +10185,6 @@
     if (rootData.sys && typeof rootData.sys === 'object') score += 6;
     if (toText(deepGet(rootData, 'sys.玩家名', ''), '').trim()) score += 12;
     if (safeEntries(deepGet(rootData, 'world.时间线', {})).length) score += 5;
-    if (toText(deepGet(rootData, 'world._引导.时间线预览', ''), '').trim()) score += 5;
     if (deepGet(rootData, 'world.偏差值', undefined) !== undefined) score += 3;
     if (safeEntries(chars).length) score += 1;
     if (contextMeta.name1 && chars[contextMeta.name1]) score += 10;
@@ -26358,7 +26364,7 @@
         <div class="archive-core-grid">
           <div class="archive-core-tile">
             <b>年龄 / 性别</b>
-            <strong>${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '未知')}`)}</strong>
+            <strong>${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</strong>
           </div>
           <div class="archive-core-tile">
             <b>修为等级</b>
@@ -27095,7 +27101,7 @@
     const hasVitalityMeter = toNumber(stat.体力上限, 0) > 0;
     const hasMentalMeter = toNumber(stat.精神力上限, 0) > 0;
     const ageMetric = toNumber(stat.年龄, 0);
-    const 性别文本 = toText(stat.性别, '未知');
+    const 性别文本 = toText(stat.性别, '--');
     const talentMetric = shortenText(读取属性天赋梯队(stat), 8);
     const factionJoined = primaryFactionName !== '未加入';
     const nextLevelNeeded = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.needed, 0));
@@ -28203,7 +28209,7 @@
               </div>
               ${buildShellLiteStats(
                 [
-                  { label: '年龄 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.性别, '未知')}` },
+                  { label: '年龄 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.性别, '--')}` },
                   { label: '修为等级', value: formatCultivationLevelBadge(stat.等级, '0') },
                   构建属性指标项('HP', hpPair.hp, hpPair.hpMax),
                   构建属性指标项('体力', stat.体力, stat.体力上限),
@@ -32213,7 +32219,7 @@
                     [
                       {
                         label: '年龄 / 性别',
-                        value: `${makeInlineEditableValue(`${toText(stat.年龄, '0')}岁`, { path: ['char', activeCharKey, '属性', '年龄'], kind: 'number', rawValue: stat.年龄, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(toText(stat.性别, '未知'), { path: ['char', activeCharKey, '属性', '性别'], kind: 'string', rawValue: stat.性别 })}`,
+                        value: `${makeInlineEditableValue(`${toText(stat.年龄, '0')}岁`, { path: ['char', activeCharKey, '属性', '年龄'], kind: 'number', rawValue: stat.年龄, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(toText(stat.性别, '--'), { path: ['char', activeCharKey, '属性', '性别'], kind: 'enum_select', rawValue: toText(stat.性别, ''), editorMeta: { options: ['男', '女', '无性别'], 允许空值: true, 空值标签: '--' } })}`,
                       },
                       {
                         label: '性格',
@@ -32506,7 +32512,7 @@
         .map(([name, rel], index) => {
           const pos = relationPositions[index];
           const 相关度视图 = 构建关系相关度视图数据_桥接(rel);
-          const 相关度公式文本 = `相关度 ${相关度视图.总分值} = 基础 ${相关度视图.基础显示值} + 好感 ${相关度视图.关系加成值}`;
+          const 相关度文本 = `相关度 ${相关度视图.总分值} / 基础 ${相关度视图.基础显示值}`;
           return `
             <div class="topology-node interactive-ring ${pos.className}" data-relation-focus="${escapeHtmlAttr(name)}" style="left:${pos.left}%;top:${pos.top}%">
               <b>${htmlEscape(name)}</b><span>${htmlEscape(toText(rel && rel['关系'], '陌生'))}</span>
@@ -32516,16 +32522,15 @@
                 <div class="relation-hover-tags">
                   <span class="relation-hover-chip">${htmlEscape(`好感 ${相关度视图.好感度}`)}</span>
                   <span class="relation-hover-chip">${htmlEscape(toText(rel && rel['对方身份'], '未知身份'))}</span>
-                  <span class="relation-hover-chip">${htmlEscape(相关度公式文本)}</span>
+                  <span class="relation-hover-chip">${htmlEscape(相关度文本)}</span>
                 </div>
                 <div class="relation-hover-skill">
-                  <span>${htmlEscape(`加成 ${toText(rel && rel['好感加成'], '暂无')}`)}</span>
                   <span>${htmlEscape(`推进 ${toText(rel && rel['_推进提示'], '暂无')}`)}</span>
                   <span>${htmlEscape(`阶段 ${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`)}</span>
-                  <span>${htmlEscape(`当前 ${toText(rel && rel['_当前关系加成'], toText(rel && rel['好感加成'], '无'))}`)}</span>
+                  <span>${htmlEscape(`当前 ${toText(rel && rel['_当前关系加成'], '无')}`)}</span>
                   <span>${htmlEscape(`解锁 ${toText(rel && rel['_下档解锁加成'], '无')}`)}</span>
                   <span>${htmlEscape(`维护 ${toText(rel && rel['_维护优先级'], '未知')} / ${toText(rel && rel['_切线限制原因'], '无')}`)}</span>
-                  <span>${htmlEscape(相关度公式文本)}</span>
+                  <span>${htmlEscape(相关度文本)}</span>
                   <span>${htmlEscape(`融合 ${相关度视图.融合触发状态} / 阈值70`)}</span>
                   <span>${htmlEscape(`同修 x${相关度视图.同修效率倍率}`)}</span>
                 </div>
@@ -32581,7 +32586,6 @@
       const relationRoute = toText(relationDetail && relationDetail['关系路线'], '朋友线');
       const 武魂相关度基础值 = 关系相关度视图.基础值;
       const 武魂相关度基础显示值 = 关系相关度视图.基础显示值;
-      const 武魂相关度关系加成值 = 关系相关度视图.关系加成值;
       const 武魂相关度总分值 = 关系相关度视图.总分值;
       const 融合触发状态值 = 关系相关度视图.融合触发状态;
       const 同修效率倍率值 = 关系相关度视图.同修效率倍率;
@@ -32599,7 +32603,7 @@
               editorMeta: { min: 0, max: 100, integer: true, hint: '0-100整数' },
             })
         : htmlEscape(武魂相关度基础显示值);
-      const 武魂相关度公式HTML = `总 ${htmlEscape(String(武魂相关度总分值))} = 基础 ${武魂相关度基础值HTML} + 好感 ${htmlEscape(String(武魂相关度关系加成值))}`;
+      const 武魂相关度HTML = `总 ${htmlEscape(String(武魂相关度总分值))} / 基础 ${武魂相关度基础值HTML}`;
       const routeSwitchable = !!deepGet(relationDetail, '_可切线', false);
       const isContactable = !!relationTargetChar && deepGet(relationTargetChar, '状态.存活', true) !== false;
       const isSameLocation = !!relationTargetChar && isLocationCompatible(currentLocFull, relationTargetLoc);
@@ -32654,7 +32658,7 @@
       const relationFocusHtml =
         (relationFocusTargets.length
           ? makeDossierList(
-              relationFocusTargets.slice(0, 2).map(item => {
+              relationFocusTargets.slice(0, 1).map(item => {
                 const targetName = toText(item && item.对象, '未知对象');
                 const detailEntry = snapshot.relations.find(([entryName]) => entryName === targetName);
                 const detail = detailEntry && detailEntry[1];
@@ -32666,7 +32670,7 @@
               'dossier-list--compact',
             )
           : makeDossierList(
-              snapshot.relations.slice(0, 2).map(([name, rel]) => ({
+              snapshot.relations.slice(0, 1).map(([name, rel]) => ({
                 title: `${name} / ${toText(rel && rel['关系'], '陌生')}`,
                 desc: `路线：${toText(rel && rel['关系路线'], '朋友线')} / 好感：${toText(rel && rel['好感度'], 0)} ｜ 下一阶段：${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`,
               })),
@@ -32706,7 +32710,6 @@
             ),
           },
           { label: '系统建议', value: htmlEscape(recommendedActions.slice(0, 3).join(' / ') || '无') },
-          { label: '在场目标', value: htmlEscape(sameLocationTargets.slice(0, 4).join(' / ') || '无') },
         ],
         'dossier-row-grid--two',
       );
@@ -32764,7 +32767,7 @@
                     })
                   : htmlEscape(toText(relationDetail && relationDetail['对方身份'], '无')),
               },
-              { label: '武魂相关度', 值Html: 武魂相关度公式HTML, className: 'dossier-row--wide' },
+              { label: '武魂相关度', 值Html: 武魂相关度HTML },
               { label: '融合触发', value: htmlEscape(`${融合触发状态值} / 阈值70`) },
               { label: '同修效率', value: htmlEscape(`x${同修效率倍率值}`) },
               {
@@ -32781,22 +32784,12 @@
                 ),
               },
             ],
-            'dossier-row-grid--two',
+            'dossier-row-grid--relation-focus',
           )
         : '<div class="dossier-empty-note">先从对象列表里选择一个目标。</div>';
       const relationRecordRowsHtml = relationDetail
         ? makeDossierRows(
             [
-              {
-                label: '好感加成',
-                value: relationDetailPath.length
-                  ? makeInlineEditableValue(toText(relationDetail && relationDetail['好感加成'], '无'), {
-                      path: [...relationDetailPath, '好感加成'],
-                      kind: 'string',
-                      rawValue: toText(relationDetail && relationDetail['好感加成'], '无'),
-                    })
-                  : htmlEscape(toText(relationDetail && relationDetail['好感加成'], '无')),
-              },
               { label: '当前加成', value: htmlEscape(toText(relationDetail && relationDetail['_当前关系加成'], '无')) },
               { label: '下一解锁', value: htmlEscape(toText(relationDetail && relationDetail['_下档解锁加成'], '无')) },
               {
@@ -32807,7 +32800,7 @@
               },
               { label: '推进路线', value: htmlEscape(routeSwitchable ? '可切恋人线' : relationRoute) },
             ],
-            'dossier-row-grid--two',
+            'dossier-row-grid--relation-focus',
           )
         : '';
       const relationActionSummaryHtml = relationDetail
@@ -32849,12 +32842,6 @@
       return {
         title: '人物关系',
         summary: '全局社会链路扫描、当前重点对象监控与智能关系行动推荐。',
-        onMount: () => {
-          const 当前快照 = liveSnapshot || lastRenderableSnapshot;
-          if (!当前快照 || !activeCharKey || !relationDetailName) return null;
-          void 尝试触发武魂相关度自动判定(当前快照, activeCharKey, relationDetailName);
-          return null;
-        },
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--relation">
               <div class="archive-card dossier-card dossier-card--relation-overview full">
@@ -37185,63 +37172,6 @@
     });
   }
 
-  const 武魂相关度请求锁 = new Set();
-
-  function 提取武魂判定摘要文本(角色数据 = {}) {
-    const 词条 = [];
-    取角色武魂条目_桥接(角色数据).forEach(([槽位名, 武魂]) => {
-      if (!武魂 || typeof 武魂 !== 'object') return;
-      const 表象名称 = toText(武魂.表象名称, 槽位名);
-      const 系别 = toText(武魂.系别, '未知系');
-      const 属性体系 = toText(武魂.属性体系, '无');
-      const 可调用元素 = Array.isArray(武魂.可调用元素)
-        ? 武魂.可调用元素.map(item => toText(item, '')).filter(Boolean)
-        : [];
-      const 描述 = toText(武魂.描述, '');
-      词条.push(
-        `${槽位名}:${表象名称}/${系别}/${属性体系}${可调用元素.length ? `/${可调用元素.join('|')}` : ''}${描述 ? `/${描述}` : ''}`,
-      );
-    });
-    return 词条.join('；') || '无武魂信息';
-  }
-
-  function 规则估算武魂相关度基础(主角数据 = {}, 对象数据 = {}, 关系数据 = {}) {
-    const 主角词 = 提取武魂判定摘要文本(主角数据);
-    const 对象词 = 提取武魂判定摘要文本(对象数据);
-    if (!主角词 || !对象词 || 主角词 === '无武魂信息' || 对象词 === '无武魂信息') return 0;
-
-    const 主角属性词 = new Set();
-    取角色武魂条目_桥接(主角数据).forEach(([, 武魂]) => {
-      if (!武魂 || typeof 武魂 !== 'object') return;
-      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.可调用元素) ? 武魂.可调用元素 : [])]
-        .map(item => toText(item, ''))
-        .filter(Boolean)
-        .forEach(item => 主角属性词.add(item));
-    });
-    const 对象属性词 = new Set();
-    取角色武魂条目_桥接(对象数据).forEach(([, 武魂]) => {
-      if (!武魂 || typeof 武魂 !== 'object') return;
-      [武魂.系别, 武魂.属性体系, ...(Array.isArray(武魂.可调用元素) ? 武魂.可调用元素 : [])]
-        .map(item => toText(item, ''))
-        .filter(Boolean)
-        .forEach(item => 对象属性词.add(item));
-    });
-
-    let 分数 = 0;
-    const 重叠属性词 = Array.from(主角属性词).filter(item => 对象属性词.has(item));
-    if (重叠属性词.length) 分数 += Math.min(40, 重叠属性词.length * 10);
-    if (Array.from(主角属性词).some(item => /龙/.test(item)) && Array.from(对象属性词).some(item => /龙/.test(item)))
-      分数 += 15;
-    if (
-      Array.from(主角属性词).some(item => /元素/.test(item)) &&
-      Array.from(对象属性词).some(item => /元素/.test(item))
-    )
-      分数 += 8;
-    if (String(关系数据?.关系路线 || '').trim() === '恋人线') 分数 += 5;
-
-    return Math.max(0, Math.min(100, Math.floor(分数)));
-  }
-
   function 读取武魂相关度基础值_桥接(关系数据 = {}) {
     const 原值 = Number(关系数据 && 关系数据['武魂相关度基础']);
     if (!Number.isFinite(原值)) return null;
@@ -37275,63 +37205,6 @@
       融合触发状态: 总分值 >= 70 ? '可触发' : '未达阈值',
       同修效率倍率: Number((1 + 总分值 * 0.0025).toFixed(3)),
     };
-  }
-
-  function 构建武魂相关度判定系统提示(主角名, 对象名, 主角摘要, 对象摘要) {
-    return [
-      '你是武魂相关度判定器，只输出简短中文结论。',
-      '判定口径：通常为0分，仅在武魂系别/属性体系/上下文出现明显协同时提高。',
-      '基础相关度范围0-100；关系加成由系统自动计算，不由你输出。',
-      `判定对象：${主角名} 与 ${对象名}。`,
-      `主角武魂：${主角摘要}`,
-      `对象武魂：${对象摘要}`,
-      '输出格式：一句话说明判定依据，不要输出JSON，不要输出多段。',
-    ].join('\n');
-  }
-
-  function 构建武魂相关度补丁路径前缀(角色键, 目标名) {
-    return `/char/${escapeJsonPointerValue(角色键)}/社交/关系/${escapeJsonPointerValue(目标名)}`;
-  }
-
-  async function 尝试触发武魂相关度自动判定(snapshot, 角色键, 目标名) {
-    const safe角色键 = toText(角色键, '').trim();
-    const safe目标名 = toText(目标名, '').trim();
-    if (!snapshot || !safe角色键 || !safe目标名) return;
-    const 锁键 = `${safe角色键}::${safe目标名}`;
-    if (武魂相关度请求锁.has(锁键)) return;
-
-    const 关系数据 = deepGet(snapshot, ['rootData', 'char', safe角色键, '社交', '关系', safe目标名], null);
-    if (!关系数据 || typeof 关系数据 !== 'object') return;
-    const 基础值 = 读取武魂相关度基础值_桥接(关系数据);
-    const 需要判定 = 基础值 == null;
-    if (!需要判定) return;
-
-    const 主角数据 = deepGet(snapshot, ['rootData', 'char', safe角色键], {}) || {};
-    const 对象解析 = resolveSnapshotCharacter(snapshot, safe目标名);
-    const 对象数据 = 对象解析.char || {};
-    const 基础分 = 规则估算武魂相关度基础(主角数据, 对象数据, 关系数据);
-    const 路径前缀 = 构建武魂相关度补丁路径前缀(safe角色键, safe目标名);
-    const 预写补丁 = [{ op: 'replace', path: `${路径前缀}/武魂相关度基础`, value: 基础分 }];
-    const 主角名 = toText(deepGet(主角数据, 'name', safe角色键), safe角色键);
-    const 对象名 = 对象解析.displayName || safe目标名;
-    const 主角摘要 = 提取武魂判定摘要文本(主角数据);
-    const 对象摘要 = 提取武魂判定摘要文本(对象数据);
-
-    武魂相关度请求锁.add(锁键);
-    try {
-      await dispatchUiAiRequest(
-        `请判定【${主角名}】与【${对象名}】的武魂相关度基础分，通常为0，按武魂系别/属性/上下文修正。`,
-        构建武魂相关度判定系统提示(主角名, 对象名, 主角摘要, 对象摘要),
-        {
-          requestKind: 'relation_wuhun_affinity',
-          patchOps: 预写补丁,
-          skipActionLock: true,
-        },
-      );
-    } catch (error) {
-    } finally {
-      window.setTimeout(() => 武魂相关度请求锁.delete(锁键), 2400);
-    }
   }
 
   function listAscensionTicketNames(snapshot) {
@@ -44856,15 +44729,18 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
     const 原卡片 = trigger.querySelector('.ring-hover-card, .relation-hover-card');
     if (!(原卡片 instanceof HTMLElement)) return;
-    const preferSidePlacement = 原卡片.classList.contains('ring-hover-card');
+    const 优先侧边放置 =
+      原卡片.classList.contains('ring-hover-card') ||
+      (原卡片.classList.contains('relation-hover-card') &&
+        (trigger.classList.contains('hover-left') || trigger.classList.contains('hover-right')));
     const triggerRect = trigger.getBoundingClientRect();
     const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
     const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     if (!viewportWidth || !viewportHeight) return;
 
     const 屏幕边距 = 12;
-    const 浮窗贴边间距 = -12;
-    const maxWidth = Math.max(300, Math.min(preferSidePlacement ? 460 : 430, viewportWidth - 屏幕边距 * 2));
+    const 浮窗贴边间距 = 12;
+    const maxWidth = Math.max(300, Math.min(优先侧边放置 ? 460 : 430, viewportWidth - 屏幕边距 * 2));
     const maxHeight = Math.max(260, Math.min(Math.floor(viewportHeight * 0.78), viewportHeight - 屏幕边距 * 2));
 
     trigger.classList.add('mvu-hover-floating-active');
@@ -44942,15 +44818,18 @@ ${toText(combatData.战斗意图, '点到为止')}
       viewportHeight - height - 屏幕边距,
     );
 
-    if (preferSidePlacement) {
-      const minSideWidth = Math.min(340, maxWidth);
+    if (优先侧边放置) {
+      const minSideWidth = Math.min(原卡片.classList.contains('relation-hover-card') ? 260 : 340, maxWidth);
       const rightSpace = Math.max(0, viewportWidth - triggerRect.right - 屏幕边距 - 浮窗贴边间距);
       const leftSpace = Math.max(0, triggerRect.left - 屏幕边距 - 浮窗贴边间距);
       const canUseRight = rightSpace >= minSideWidth;
       const canUseLeft = leftSpace >= minSideWidth;
 
       if (canUseRight || canUseLeft) {
-        const useRight = canUseRight && (!canUseLeft || rightSpace >= leftSpace);
+        const useRight =
+          canUseRight &&
+          (trigger.classList.contains('hover-right') ||
+            (!trigger.classList.contains('hover-left') && (!canUseLeft || rightSpace >= leftSpace)));
         const sideSpace = useRight ? rightSpace : leftSpace;
         width = Math.min(width, sideSpace);
         left = useRight ? triggerRect.right + 浮窗贴边间距 : triggerRect.left - width - 浮窗贴边间距;

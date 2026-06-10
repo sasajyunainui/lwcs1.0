@@ -4602,9 +4602,9 @@
 .topology-node {
   position: absolute;
   transform: translate(-50%, -50%);
-  min-width: 86px;
-  max-width: 124px;
-  padding: 7px 8px;
+  min-width: 96px;
+  max-width: 140px;
+  padding: 8px 10px;
   border-radius: var(--mvu-radius-md, 12px);
   background: rgba(7, 16, 30, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -4634,6 +4634,11 @@
   color: var(--white);
   font-weight: 700;
   line-height: 1.2;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .topology-node > span {
@@ -4641,6 +4646,11 @@
   font-size: var(--mvu-font-xs, 10px);
   color: var(--text-sub);
   line-height: 1.35;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .topology-node.interactive-ring {
@@ -4681,22 +4691,10 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.topology-node.interactive-ring:hover .relation-hover-card {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(-50%, 0);
-}
-
 .topology-node.interactive-ring.hover-up .relation-hover-card {
   top: auto;
   bottom: calc(100% - 10px);
   transform: translate(-50%, 6px);
-}
-
-.topology-node.interactive-ring.hover-up:hover .relation-hover-card {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(-50%, 0);
 }
 
 .topology-node.interactive-ring .relation-hover-title {
@@ -4755,7 +4753,9 @@
   color: var(--cyan);
   background: rgba(77, 240, 255, 0.08);
   border: 1px solid rgba(77, 240, 255, 0.18);
-  white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .topology-node.interactive-ring .relation-hover-card .energy-stack {
@@ -9018,7 +9018,7 @@ button.tag-chip:active,
   background:
     radial-gradient(circle at center, var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08)) 0%, transparent 72%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
-  overflow: hidden;
+  overflow: visible;
 }
 
 .relation-summary-stack {
@@ -10161,6 +10161,14 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame.is-detail {
   grid-template-rows: auto minmax(0, 1fr) auto !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame.is-detail:has(.dossier-shell--relation) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  grid-template-rows: auto auto auto !important;
+  overflow: visible !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame:not(.is-detail):has(.mvu-unified-page[data-target='page-org'].active) {
   height: auto !important;
   min-height: 0 !important;
@@ -10717,6 +10725,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-page-stack::-webkit-scro
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-page {
   overflow: hidden !important;
   padding: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-page-stack:has(.dossier-shell--relation),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-page.active:has(.dossier-shell--relation),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-page:has(.dossier-shell--relation) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-page,
@@ -12804,6 +12821,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host {
   scrollbar-width: none !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation) {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
@@ -12818,6 +12841,14 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-scroll {
   max-height: 100%;
   align-content: start;
   gap: 12px;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-root:has(.dossier-shell--relation),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-scroll:has(.dossier-shell--relation) {
+  height: auto;
+  max-height: none;
+  align-content: start;
+  overflow: visible;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .archive-modal-grid,
@@ -13038,7 +13069,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-detail-grid,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--social,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation,
 body.mvu-layout-unified
   #mvu-unified-mount
   .mvu-unified-detail-host
@@ -13049,7 +13079,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-detail-grid > .archive-card,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--social > .dossier-card,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation > .dossier-card,
 body.mvu-layout-unified
   #mvu-unified-mount
   .mvu-unified-detail-host
@@ -13067,6 +13096,109 @@ body.mvu-layout-unified
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.02fr) !important;
+  grid-template-rows: auto auto !important;
+  align-items: start !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation > .dossier-card {
+  align-self: start !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  scrollbar-width: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview {
+  display: grid !important;
+  grid-template-rows: auto auto !important;
+  grid-column: 1 / -1 !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .dossier-columns--relation-overview {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-rows: auto !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .relation-topology-panel {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .relation-topology-board {
+  height: auto !important;
+  min-height: 212px !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .dossier-section-stack {
+  grid-template-rows: auto auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .dossier-note--dense {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory {
+  display: grid !important;
+  grid-template-rows: auto auto auto !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus {
+  display: grid !important;
+  grid-template-rows: auto auto auto auto !important;
+  height: auto !important;
+  max-height: min(640px, calc(var(--mvu-hud-frame-height, 760px) - 170px)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-shell--relation
+  > .dossier-card--relation-focus {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 body.mvu-layout-unified
@@ -13421,6 +13553,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row
   grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)) !important;
 }
 
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row {
   position: relative !important;
@@ -13530,6 +13671,121 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-lis
   color: var(--mvu-dossier-muted) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.45 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation .dossier-section,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation .dossier-section-stack,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation .dossier-row-grid,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation .dossier-list {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-shell--relation
+  .dossier-card--relation-focus
+  .dossier-section {
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-shell--relation
+  .dossier-row--wide
+  > span,
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-shell--relation
+  .dossier-row
+  > span[data-inline-multiline='1'] {
+  max-height: none !important;
+  overflow: visible !important;
+  padding-right: 0 !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row--wide
+  > span,
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row
+  > span[data-inline-multiline='1'],
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus
+  .dossier-row
+  > span {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus
+  .dossier-row {
+  grid-template-columns: minmax(76px, 0.26fr) minmax(0, 1fr) !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus
+  .dossier-row
+  > span {
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory .dossier-list-row,
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .dossier-list-row,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview .dossier-row {
+  min-height: 30px !important;
+  padding-block: 7px !important;
+}
+
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-directory
+  .dossier-list-row
+  > span
+  > *,
+body.mvu-layout-unified
+  #mvu-unified-mount
+  .mvu-unified-detail-host
+  .dossier-card--relation-overview
+  .dossier-list-row
+  > span
+  > * {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-tag-row,
@@ -14869,7 +15125,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-car
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus {
   align-content: start !important;
-  max-height: min(560px, calc(var(--mvu-hud-frame-height, 760px) - 170px)) !important;
+  height: auto !important;
+  max-height: min(640px, calc(var(--mvu-hud-frame-height, 760px) - 170px)) !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-width: none !important;
@@ -15008,8 +15265,21 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 .ring-hover-card.mvu-hover-card-floating--portal .ring-hover-title,
 .relation-hover-card.mvu-hover-card-floating--portal .relation-hover-title {
+  display: block !important;
+  margin-bottom: 3px !important;
   font-size: var(--mvu-font-md, 14px) !important;
   line-height: 1.25 !important;
+  color: var(--white) !important;
+  font-weight: 700 !important;
+}
+
+.relation-hover-card.mvu-hover-card-floating--portal .relation-hover-desc {
+  display: block !important;
+  margin-bottom: 7px !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.35 !important;
+  color: var(--text-sub) !important;
+  white-space: normal !important;
 }
 
 .ring-hover-card.mvu-hover-card-floating--portal .ring-hover-meta {
@@ -15024,9 +15294,34 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   margin: 8px 0 10px !important;
 }
 
+.relation-hover-card.mvu-hover-card-floating--portal .relation-hover-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  padding: 3px 7px !important;
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  border: 1px solid rgba(77, 240, 255, 0.18) !important;
+  background: rgba(77, 240, 255, 0.08) !important;
+  color: var(--cyan) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+}
+
 .relation-hover-card.mvu-hover-card-floating--portal {
-  width: min(300px, calc(100vw - 24px)) !important;
-  max-height: min(72svh, 560px) !important;
+  box-sizing: border-box !important;
+  width: min(360px, calc(100vw - 24px)) !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 12px !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.16) !important;
+  background: rgba(6, 16, 30, 0.97) !important;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    inset 0 0 12px rgba(143, 233, 255, 0.05) !important;
+  text-align: left !important;
+  -webkit-font-smoothing: antialiased;
 }
 
 .relation-hover-card.mvu-hover-card-floating--portal .relation-hover-skill {
@@ -15036,13 +15331,44 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 .relation-hover-card.mvu-hover-card-floating--portal .relation-hover-skill > span {
+  display: block !important;
   margin: 0 !important;
   padding: 5px 7px !important;
   border-radius: var(--mvu-radius-sm, 8px) !important;
   border: 1px solid rgba(77, 240, 255, 0.1) !important;
   background: rgba(77, 240, 255, 0.05) !important;
+  color: var(--white) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.3 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+.relation-hover-card.mvu-hover-card-floating--portal .energy-stack {
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.relation-hover-card.mvu-hover-card-floating--portal .energy-headline {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 5px !important;
+}
+
+.relation-hover-card.mvu-hover-card-floating--portal .energy-headline b {
+  margin: 0 !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.3 !important;
+  color: var(--text-sub) !important;
+  font-weight: 500 !important;
+}
+
+.relation-hover-card.mvu-hover-card-floating--portal .energy-headline span {
+  display: block !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.3 !important;
+  color: var(--white) !important;
 }
 @media (max-width: 1180px) {
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-top-status {
@@ -15572,9 +15898,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     overflow: visible !important;
   }
 
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-profile,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--faction > .dossier-console-card {
@@ -15588,6 +15911,41 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     overflow: visible !important;
     overflow-x: visible !important;
     overflow-y: visible !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory {
+    grid-column: 1 / -1 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus {
+    grid-column: 1 / -1 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: min(520px, calc(100svh - 180px)) !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body.mvu-layout-unified
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .dossier-shell--relation
+    > .dossier-card--relation-focus {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list {
@@ -15657,9 +16015,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--quest > .archive-card,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-overview,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-directory,
-  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--relation-focus,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-brief-row > span,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-field-value,
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide > span,
@@ -15937,8 +16292,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 #detailModal.mvu-modal-display-unified .dossier-card--relation-focus {
   align-content: start !important;
   height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
+  max-height: min(640px, calc(86svh - 170px)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-card--life-profile,
@@ -16093,6 +16449,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)) !important;
 }
 
+#detailModal.mvu-modal-display-unified .dossier-card--relation-focus .dossier-row-grid--relation-focus {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+}
+
 #detailModal.mvu-modal-display-unified .mvu-detail-grid--two,
 #detailModal.mvu-modal-display-unified .mvu-detail-grid--trial,
 #detailModal.mvu-modal-display-unified .mvu-detail-intel-grid,
@@ -16146,6 +16507,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   align-items: stretch !important;
 }
 
+#detailModal.mvu-modal-display-unified .dossier-shell--relation {
+  align-items: start !important;
+}
+
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card,
 #detailModal.mvu-modal-display-unified .dossier-shell--social > .dossier-card,
 #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card,
@@ -16160,11 +16525,83 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 #detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card {
-  align-self: stretch !important;
+  align-self: start !important;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
   overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .mvu-unified-sheet-scroll:has(.dossier-shell--relation),
+#detailModal.mvu-modal-display-unified .mvu-unified-modal-root:has(.dossier-shell--relation) {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-shell--relation {
+  height: auto;
+  max-height: none;
+  grid-template-rows: auto auto;
+  overflow: visible;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview {
+  display: grid;
+  grid-template-rows: auto auto;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview .dossier-columns--relation-overview {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-rows: auto !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview .relation-topology-panel {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview .relation-topology-board {
+  height: auto !important;
+  min-height: 212px !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview .dossier-section-stack {
+  grid-template-rows: auto auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-overview .dossier-note--dense {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-directory {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-focus {
+  height: auto !important;
+  max-height: min(640px, calc(86svh - 170px)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card--relation-focus {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card::-webkit-scrollbar,
@@ -16298,6 +16735,25 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   overflow: visible !important;
 }
 
+#detailModal.mvu-modal-display-unified .dossier-card--relation-focus .dossier-row-grid--relation-focus .dossier-row {
+  grid-template-columns: minmax(76px, 0.26fr) minmax(0, 1fr) !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+
+#detailModal.mvu-modal-display-unified .dossier-card--relation-focus .dossier-row-grid--relation-focus .dossier-row > span {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+}
+
 #detailModal.mvu-modal-display-unified .dossier-list-row > span strong,
 #detailModal.mvu-modal-display-unified .dossier-list-row > span em,
 #detailModal.mvu-modal-display-unified .dossier-list-row > span small {
@@ -16384,7 +16840,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card,
   #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--social > .dossier-card,
-  #detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card,
   #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card,
@@ -16436,9 +16891,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   #detailModal.mvu-modal-display-unified .dossier-card--life-core,
   #detailModal.mvu-modal-display-unified .dossier-card--life-record,
   #detailModal.mvu-modal-display-unified .archive-card.dossier-card.dossier-card--life-record.full,
-  #detailModal.mvu-modal-display-unified .dossier-card--relation-overview,
-  #detailModal.mvu-modal-display-unified .dossier-card--relation-directory,
-  #detailModal.mvu-modal-display-unified .dossier-card--relation-focus,
   #detailModal.mvu-modal-display-unified .dossier-card--faction-list,
   #detailModal.mvu-modal-display-unified .dossier-card--faction-profile,
   #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card {
@@ -18602,7 +19054,7 @@ body.mvu-layout-unified
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .topology-node {
-  width: clamp(88px, 9vw, 118px);
+  width: clamp(104px, 11vw, 142px);
   min-height: 66px;
   padding: 8px 10px;
   border-radius: var(--mvu-radius-lg, 16px);
@@ -18611,7 +19063,7 @@ body.mvu-layout-unified
   box-shadow: var(--mvu-shadow-md);
 }
 
-#detailModal.archive-redesign-mode .archive-redesign-root .topology-node b,
+#detailModal.archive-redesign-mode .archive-redesign-root .topology-node > b,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-directory-identity b,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-heading b,
 #detailModal.archive-redesign-mode .archive-redesign-root .faction-row b,
@@ -18623,7 +19075,7 @@ body.mvu-layout-unified
   color: var(--archive-text-strong) !important;
 }
 
-#detailModal.archive-redesign-mode .archive-redesign-root .topology-node span,
+#detailModal.archive-redesign-mode .archive-redesign-root .topology-node > span,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-directory-identity span,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-heading span {
   font-size: var(--mvu-font-sm, 12px) !important;
@@ -19162,7 +19614,6 @@ body.mvu-layout-unified
   #detailModal .mvu-detail-grid--quest > .archive-card,
   #detailModal .mvu-armory-detail-grid > .archive-card,
   #detailModal .dossier-shell--social > .dossier-card,
-  #detailModal .dossier-shell--relation > .dossier-card,
   #detailModal .location-detail-grid > .archive-card,
   #detailModal .dossier-row--wide > span,
   #detailModal .dossier-row > span[data-inline-multiline='1'] {
@@ -19581,8 +20032,6 @@ body.mvu-layout-unified
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--social-main,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--social-side,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-directory,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-focus,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-list,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-profile {
   min-height: 100%;
@@ -19645,6 +20094,10 @@ body.mvu-layout-unified
   align-items: stretch;
 }
 
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation {
+  align-items: start;
+}
+
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .mvu-armory-detail-grid
@@ -19670,12 +20123,95 @@ body.mvu-layout-unified
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .dossier-shell--relation
-  > .dossier-card {
-  align-self: stretch;
+  > .archive-card.dossier-card {
+  align-self: start;
   height: auto;
   min-height: 0;
   max-height: none;
   overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation {
+  height: auto;
+  max-height: none;
+  grid-template-rows: auto auto;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview
+  .dossier-columns--relation-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  gap: 10px;
+  min-height: 0;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview
+  .relation-topology-panel {
+  min-height: 0;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview
+  .relation-topology-board {
+  height: auto;
+  min-height: 212px;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview
+  .dossier-section-stack {
+  grid-template-rows: auto auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview
+  .dossier-note--dense {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: initial;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-overview,
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-directory {
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-shell--relation
+  > .archive-card.dossier-card--relation-focus {
+  height: auto;
+  max-height: min(640px, calc(100svh - 170px));
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-shell--relation
+  > .dossier-card--relation-focus {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -19788,9 +20324,13 @@ body.mvu-layout-unified
   grid-template-columns: minmax(0, 1fr) minmax(208px, 0.92fr);
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-columns--life-record,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-columns--relation-overview {
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-columns--life-record {
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-columns--relation-overview {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid {
@@ -19818,6 +20358,14 @@ body.mvu-layout-unified
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--three {
   grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row {
@@ -19934,6 +20482,35 @@ body.mvu-layout-unified
   line-clamp: unset;
   -webkit-box-orient: initial;
   overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus
+  .dossier-row {
+  grid-template-columns: minmax(76px, 0.26fr) minmax(0, 1fr);
+  min-height: auto;
+  overflow: visible;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-card--relation-focus
+  .dossier-row-grid--relation-focus
+  .dossier-row
+  > span {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: initial;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+  color: var(--dossier-text) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -20355,20 +20932,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   border-color: rgba(77, 240, 255, 0.28) !important;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .dossier-columns--relation-overview,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .dossier-topology-board {
-  overflow: visible !important;
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview {
   z-index: 8;
+  overflow: visible;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -20380,67 +20946,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   z-index: 16;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.interactive-ring
-  .relation-hover-card {
-  max-width: min(236px, calc(100vw - 84px));
-  z-index: 220;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-right
-  .relation-hover-card {
-  left: 0;
-  right: auto;
-  transform: translate(0, 6px);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-right:hover
-  .relation-hover-card {
-  transform: translate(0, 0);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-left
-  .relation-hover-card {
-  left: auto;
-  right: 0;
-  transform: translate(0, 6px);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-left:hover
-  .relation-hover-card {
-  transform: translate(0, 0);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-up.hover-right
-  .relation-hover-card,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--relation-overview
-  .topology-node.hover-up.hover-left
-  .relation-hover-card {
-  top: auto;
-  bottom: calc(100% - 10px);
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-topology-board {
   min-height: 218px;
+  overflow: visible;
   background:
     repeating-linear-gradient(
       0deg,
@@ -20464,8 +20972,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   .archive-redesign-root
   .dossier-topology-board
   .topology-node {
-  width: clamp(80px, 7vw, 104px);
-  min-height: 54px;
+  width: clamp(104px, 10vw, 136px);
+  min-height: 60px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid rgba(77, 240, 255, 0.14);
   background: var(--dossier-card-bg);
@@ -20476,7 +20984,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   .archive-redesign-root
   .dossier-topology-board
   .topology-node
-  b {
+  > b {
   font-size: var(--mvu-font-sm, 12px) !important;
   color: var(--dossier-text-strong) !important;
 }
@@ -20485,7 +20993,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   .archive-redesign-root
   .dossier-topology-board
   .topology-node
-  span {
+  > span {
   font-size: var(--mvu-font-sm, 12px) !important;
   color: var(--dossier-text-muted) !important;
 }
@@ -20830,9 +21338,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
     grid-template-areas: none !important;
   }
 
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-directory,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-focus,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-list,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-profile,
   #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -20850,6 +21355,50 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
     overflow: visible !important;
     overflow-x: visible !important;
     overflow-y: visible !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-directory {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-focus {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: min(520px, calc(100svh - 180px)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-focus {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .dossier-shell--relation
+    > .dossier-card--relation-focus {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--faction-list {
@@ -20918,7 +21467,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .injury-acti
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-grid--quest > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-detail-grid > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--social > .dossier-card,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--relation > .dossier-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--faction > .dossier-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split
     .archive-redesign-root

@@ -8933,6 +8933,25 @@
         }
         同步地图结算补丁到本地快照(settleResult.patchOps);
         const followUpAction = toText(options && options.followUpAction, '');
+        const 自动执行后续动作 = !!(followUpAction && options && options.自动执行后续动作 === true);
+        if (自动执行后续动作) {
+          const 后续动作记录 = mapState.待移动后动作 && typeof mapState.待移动后动作 === 'object'
+            ? mapState.待移动后动作
+            : null;
+          const 后续节点名 = toText(后续动作记录 && 后续动作记录.target, toText(request.target_loc, mapState.selectedNode));
+          const 后续节点 = getItemByName(后续节点名) || getItemByName(mapState.selectedNode);
+          mapState.lastTravelNote = `[地图移动] 已抵达【${移动显示目标}】，继续执行【${getNodeInteractionLabel(followUpAction)}】。`;
+          mapState.pendingTravelRequest = null;
+          mapState.待移动后动作 = null;
+          syncInteractiveMapUI({ center: true, updateInfo: true });
+          if (后续节点) {
+            window.setTimeout(() => {
+              triggerPreviewNodeInteraction(后续节点, followUpAction);
+              syncInteractiveMapUI({ center: false, updateInfo: true });
+            }, 0);
+          }
+          return;
+        }
         const followUpLabel = followUpAction ? getNodeInteractionLabel(followUpAction) : '';
         const followUpLine = followUpLabel
           ? `\n[抵达后意图]\n玩家刚才点击的是【${followUpLabel}】。本轮只完成移动与到达描写；不要直接结算交易、工坊、商店购买或战斗胜负，抵达后由玩家再次发起对应模块。若抵达时已超过商店营业时间，剧情中只写到店铺关门。`
@@ -9129,8 +9148,7 @@ ${logMsg}
     if (原始动作 !== 'inspect' && !isFocusCurrentNode) {
       if (getMapTravelPreview()) {
         设置移动后待执行动作(原始动作, focusItem);
-        commitMapTravel({ followUpAction: 原始动作 });
-        return true;
+        return 打开移动动作确认层(原始动作, focusItem);
       }
       return false;
     }
@@ -9599,7 +9617,8 @@ ${logMsg}
         action: normalized,
         text: toText(text, getNodeInteractionLabel(normalized)),
         disabled: !!options.disabled,
-        reason: toText(options.reason, '')
+        reason: toText(options.reason, ''),
+        需要移动: !!options.需要移动
       });
     };
 
@@ -9612,32 +9631,35 @@ ${logMsg}
       动作预览?.slotReason || timedHint(默认说明),
       动作预览?.mimicHint || ''
     );
-    const pushMappedActionSlot = action => {
+    const pushMappedActionSlot = (action, options = {}) => {
       const normalized = toText(action, '');
       if (!normalized || ['inspect', 'enter'].includes(normalized)) return;
+      const 需要移动 = !!options.需要移动;
+      const 包装动作说明 = 文本 => 需要移动 ? 合并动作说明文本('抵达后执行', 文本) : 文本;
       if (['train', 'train_body', 'train_mind'].includes(normalized)) {
         const actionPreview = buildRoutineActionPreview(mapState.baseSnapshot || snapshot, 获取地图训练执行动作(), focusItem, 获取地图日常动作tick());
-        pushActionSlot('train', '训练', { reason: 构建动作摘要文本(actionPreview, '训练') });
+        pushActionSlot('train', '训练', { reason: 包装动作说明(构建动作摘要文本(actionPreview, '训练')), 需要移动 });
         return;
       }
       if (normalized === 'meditate') {
         const actionPreview = buildRoutineActionPreview(mapState.baseSnapshot || snapshot, normalized, focusItem, 获取地图日常动作tick());
-        pushActionSlot('meditate', '冥想', { reason: 构建动作摘要文本(actionPreview, '冥想') });
+        pushActionSlot('meditate', '冥想', { reason: 包装动作说明(构建动作摘要文本(actionPreview, '冥想')), 需要移动 });
         return;
       }
       if (normalized === 'rest') {
         const actionPreview = buildRoutineActionPreview(mapState.baseSnapshot || snapshot, normalized, focusItem, 获取地图日常动作tick());
-        pushActionSlot('rest', '休息', { reason: 构建动作摘要文本(actionPreview, '休息') });
+        pushActionSlot('rest', '休息', { reason: 包装动作说明(构建动作摘要文本(actionPreview, '休息')), 需要移动 });
         return;
       }
       if (normalized === 'sleep') {
         const actionPreview = buildRoutineActionPreview(mapState.baseSnapshot || snapshot, normalized, focusItem, 获取地图日常动作tick());
-        pushActionSlot('sleep', '睡眠', { reason: 构建动作摘要文本(actionPreview, '睡眠/恢复类动作') });
+        pushActionSlot('sleep', '睡眠', { reason: 包装动作说明(构建动作摘要文本(actionPreview, '睡眠/恢复类动作')), 需要移动 });
         return;
       }
-      pushActionSlot(normalized, getNodeInteractionLabel(normalized));
+      pushActionSlot(normalized, getNodeInteractionLabel(normalized), { reason: 需要移动 ? '抵达后执行' : '', 需要移动 });
     };
     const allowLocalActions = !!(isFocusCurrentNode && (!inPreview || previewCurrentBranch));
+    const allowTravelQueuedActions = !!(!allowLocalActions && focusItem && !isFreeSelection && !canPreviewEnter && travelPreview && (!inPreview || previewCurrentBranch));
 
     if (inPreview && !previewCurrentBranch && previewTrailNames[0]) {
       pushActionSlot('travel_anchor', `前往${previewTrailNames[0]}`, { reason: '移动到子图入口' });
@@ -9647,8 +9669,10 @@ ${logMsg}
     } else if (focusItem && canPreviewEnter) {
       pushActionSlot('enter', '进入子图', { reason: '预览子地图，不改变当前位置' });
     }
-    if (allowLocalActions && !canPreviewEnter) {
-      获取节点本地动作(focusItem, mapState.baseSnapshot || snapshot).forEach(pushMappedActionSlot);
+    if ((allowLocalActions || allowTravelQueuedActions) && !canPreviewEnter) {
+      获取节点本地动作(focusItem, mapState.baseSnapshot || snapshot).forEach(action => {
+        pushMappedActionSlot(action, { 需要移动: allowTravelQueuedActions });
+      });
     }
 
     let selectedAction = toText(mapState.selectedAction, '');
@@ -9670,7 +9694,7 @@ ${logMsg}
       labels: ['目标', '说明', '消耗'],
       values: ['无', '无', '无'],
       panelDisabled: !selectedActionSlot,
-      showTravelMethod: selectedAction === 'travel',
+      showTravelMethod: selectedAction === 'travel' || !!(selectedActionSlot && selectedActionSlot.需要移动),
       travelMethodLabel: '方式'
     };
 
@@ -9721,7 +9745,12 @@ ${logMsg}
       mapState.selectedAction = '';
       selectedAction = '';
     } else if (selectedActionSlot) {
-      if (selectedAction === 'travel') {
+      if (selectedActionSlot.需要移动) {
+        selectedActionDetail.title = `前往后${selectedActionLabel}`;
+        selectedActionDetail.labels = ['动作', '移动', '消耗'];
+        selectedActionDetail.values = [selectedActionLabel, actionMoveText, actionCostText];
+        selectedActionDetail.panelDisabled = !travelPreview;
+      } else if (selectedAction === 'travel') {
         selectedActionDetail.title = isFreeSelection && previewRequest ? '开始移动' : pendingForSelection ? '确认前往' : (previewRequest ? '开始移动' : '选择目标');
         selectedActionDetail.labels = ['目标', '时间', '消耗'];
         selectedActionDetail.values = [actionTargetText, actionMoveText, actionCostText];
@@ -10386,6 +10415,115 @@ ${logMsg}
     getMapUiElements('[data-map-travel-action]').forEach(card => {
       card.classList.toggle('disabled', !travelPreview || (hasActivePreview() && !isPreviewCurrentBranch()));
     });
+  }
+
+  function 关闭移动动作确认层(保留动作 = false) {
+    document.querySelectorAll('[data-map-move-action-confirm]').forEach(节点 => 节点.remove());
+    if (!保留动作) mapState.待移动后动作 = null;
+  }
+
+  function 构建移动动作确认数据(actionType = '', item = null) {
+    const 动作 = toText(actionType, '');
+    const 节点 = item || getItemByName(mapState.selectedNode);
+    if (!动作 || !节点) return null;
+    const 预览 = getMapTravelPreview();
+    if (!预览) return null;
+    const 请求 = buildMapTravelRequest();
+    if (!请求) return null;
+    const 快照 = mapState.snapshot || buildFallbackSnapshot();
+    const 方法列表 = getAvailableTravelMethods(预览.distance || 0, mapState.currentMapId, 快照);
+    return {
+      动作,
+      动作标签: getNodeInteractionLabel(动作),
+      节点,
+      节点名: toText(节点.name, mapState.selectedNode),
+      请求,
+      方法列表: 方法列表.length ? 方法列表 : [请求.method || 预览.method || '步行'],
+    };
+  }
+
+  function 打开移动动作确认层(actionType = '', item = null) {
+    const 确认数据 = 构建移动动作确认数据(actionType, item);
+    if (!确认数据) {
+      mapState.待移动后动作 = null;
+      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show('当前无法规划前往该节点。', 'warning');
+      return false;
+    }
+    mapState.pendingTravelRequest = null;
+    设置移动后待执行动作(确认数据.动作, 确认数据.节点);
+    关闭移动动作确认层(true);
+
+    const 请求 = 确认数据.请求;
+    const 可执行 = !(请求.costs && 请求.costs.canAfford === false);
+    const 消耗文本 = 请求.costs
+      ? (请求.costs.canAfford === false
+        ? ['不可用', 请求.costs.reason || '', 请求.costs.text && 请求.costs.text !== '无消耗' ? 请求.costs.text : ''].filter(Boolean).join(' · ')
+        : (请求.costs.text || '无'))
+      : '无';
+    const 方式选项 = 确认数据.方法列表.map(方式 => {
+      const 安全方式 = escapeMapHtml(方式);
+      return `<option value="${安全方式}"${方式 === 请求.method ? ' selected' : ''}>${安全方式}</option>`;
+    }).join('');
+    const 弹层 = document.createElement('div');
+    弹层.className = 'map-move-action-layer';
+    弹层.setAttribute('data-map-move-action-confirm', '1');
+    弹层.innerHTML = `
+      <div class="map-move-action-dialog" role="dialog" aria-modal="true">
+        <div class="map-move-action-head">
+          <b>前往后执行</b>
+          <span>${escapeMapHtml(确认数据.动作标签)} · ${escapeMapHtml(确认数据.节点名)}</span>
+        </div>
+        <div class="map-move-action-grid">
+          <label class="map-move-action-row map-move-action-method">
+            <b>方式</b>
+            <select data-map-move-action-method>${方式选项}</select>
+          </label>
+          <div class="map-move-action-row">
+            <b>耗时</b>
+            <span>${escapeMapHtml(请求.est_duration || '无')}</span>
+          </div>
+          <div class="map-move-action-row">
+            <b>消耗</b>
+            <span>${escapeMapHtml(消耗文本 || '无')}</span>
+          </div>
+        </div>
+        <div class="map-move-action-actions">
+          <button type="button" data-map-move-action-cancel>取消</button>
+          <button type="button" data-map-move-action-submit${可执行 ? '' : ' disabled'}>${可执行 ? '动身' : '不可用'}</button>
+        </div>
+      </div>
+    `;
+    弹层.addEventListener('click', 事件 => {
+      if (事件.target === 弹层) 关闭移动动作确认层();
+    });
+    const 方式选择 = 弹层.querySelector('[data-map-move-action-method]');
+    if (方式选择) {
+      方式选择.addEventListener('change', 事件 => {
+        mapState.travelMethodOverride = toText(事件.target && 事件.target.value, '');
+        打开移动动作确认层(确认数据.动作, 确认数据.节点);
+      });
+    }
+    const 取消按钮 = 弹层.querySelector('[data-map-move-action-cancel]');
+    if (取消按钮) 取消按钮.addEventListener('click', () => 关闭移动动作确认层());
+    const 确认按钮 = 弹层.querySelector('[data-map-move-action-submit]');
+    if (确认按钮) {
+      确认按钮.addEventListener('click', () => {
+        const 最新确认数据 = 构建移动动作确认数据(确认数据.动作, 确认数据.节点);
+        if (!最新确认数据 || (最新确认数据.请求.costs && 最新确认数据.请求.costs.canAfford === false)) {
+          if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show('当前移动方式不可用。', 'warning');
+          return;
+        }
+        mapState.pendingTravelRequest = null;
+        设置移动后待执行动作(最新确认数据.动作, 最新确认数据.节点);
+        关闭移动动作确认层(true);
+        Promise.resolve(commitMapTravel({ followUpAction: 最新确认数据.动作, 自动执行后续动作: true }))
+          .catch(错误 => {
+            if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(错误 && 错误.message ? 错误.message : '移动失败。', 'error');
+          });
+      });
+    }
+    document.body.appendChild(弹层);
+    return true;
   }
 
   function handleNodeLayerDoubleClick(event) {

@@ -1030,7 +1030,21 @@ window.submitForm = function() {
         delete nextData.stat_data.display_all;
         delete nextData.stat_data.display_chars;
         await mvu.replaceMvuData(nextData, { type: "message", message_id: "latest" });
-        await verifyInitPatchLatest();
+        var verifiedRoot = await verifyInitPatchLatest();
+        记录开场MVU运行时快照(verifiedRoot);
+    }
+
+    function 记录开场MVU运行时快照(statData) {
+        if (!statData || typeof statData !== "object") return;
+        var 写入时间 = Date.now();
+        var 宿主窗口 = getStartupRuntimeWindow();
+        [宿主窗口, window, window.parent, window.top].forEach(function(目标窗口) {
+            try {
+                if (!目标窗口 || typeof 目标窗口 !== "object") return;
+                目标窗口.__LWCS_STARTUP_MVU_STAT_DATA__ = statData;
+                目标窗口.__LWCS_STARTUP_MVU_STAT_DATA_AT__ = 写入时间;
+            } catch (_) {}
+        });
     }
 
     async function verifyInitPatchLatest() {
@@ -1048,6 +1062,11 @@ window.submitForm = function() {
         if (verifyRoot.char[name].状态 && verifyRoot.char[name].状态.位置 !== loc) {
             throw new Error("MVU初始化校验失败：角色位置未写入最新楼层");
         }
+        var 期望tick = tlData && tlData.world && tlData.world.时间 ? Number(tlData.world.时间.tick) : NaN;
+        if (Number.isFinite(期望tick) && Number(verifyRoot.world && verifyRoot.world.时间 ? verifyRoot.world.时间.tick : NaN) !== 期望tick) {
+            throw new Error("MVU初始化校验失败：时间线tick未写入最新楼层");
+        }
+        return verifyRoot;
     }
 
     try {
