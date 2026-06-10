@@ -222,8 +222,9 @@ const TradeTemplate = `
         <input type="number" id="shop-qty" class="tech-input" value="1" min="1">
       </div>
       <div class="info-panel">
-        <div class="info-row"><span>单价:</span><span class="val-highlight" id="shop-price">-</span></div>
+        <div class="info-row"><span>基础单价:</span><span class="val-highlight" id="shop-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="shop-market">-</span></div>
+        <div class="info-row"><span>成交单价:</span><span class="val-highlight" id="shop-price">-</span></div>
         <div class="info-row"><span>总计:</span><span class="val-highlight" id="shop-total">-</span></div>
         <div class="info-row"><span>需求声望:</span><span class="val-highlight" id="shop-fame">-</span></div>
         <div class="info-row"><span>当前库存:</span><span class="val-highlight" id="shop-stock">-</span></div>
@@ -246,8 +247,9 @@ const TradeTemplate = `
         <input type="number" id="sell-qty" class="tech-input" value="1" min="1">
       </div>
       <div class="info-panel">
-        <div class="info-row"><span>系统估值(单价):</span><span class="val-highlight" id="sell-base-price">-</span></div>
+        <div class="info-row"><span>基础估值:</span><span class="val-highlight" id="sell-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="sell-market">-</span></div>
+        <div class="info-row"><span>成交单价:</span><span class="val-highlight" id="sell-price">-</span></div>
         <div class="info-row"><span>出售总收益:</span><span class="val-highlight" id="sell-total">-</span></div>
         <div class="info-row"><span>触发方式:</span><span class="val-highlight" id="sell-trigger">-</span></div>
         <div class="info-row"><span>有效期至:</span><span class="val-highlight" id="sell-expiry">-</span></div>
@@ -283,7 +285,7 @@ const TradeTemplate = `
         <input type="number" id="priv-price" class="tech-input" value="1000" min="1">
       </div>
       <div class="info-panel">
-        <div class="info-row"><span>系统估值(参考):</span><span class="val-highlight" id="priv-base-price">-</span></div>
+        <div class="info-row"><span>市场参考:</span><span class="val-highlight" id="priv-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="priv-market">-</span></div>
         <div class="info-row"><span>总金额:</span><span class="val-highlight" id="priv-total">-</span></div>
         <div class="info-row"><span>NPC态度预测:</span><span id="priv-attitude">-</span></div>
@@ -644,8 +646,28 @@ class TradeUIComponent {
     return 结果;
   }
 
+  查找运行时物品定义(物品名 = '') {
+    const 名称 = String(物品名 || '').trim();
+    if (!名称) return null;
+    const 热区定义 = this.查找物品定义(名称);
+    if (热区定义) return 热区定义;
+    const 窗口列表 = [window];
+    try { if (window.parent && window.parent !== window) 窗口列表.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 窗口列表.push(window.top); } catch (错误) {}
+    for (const 当前窗口 of 窗口列表) {
+      try {
+        const 接口 = 当前窗口 && 当前窗口.__LWCS_MVU_RUNTIME_VIEW__;
+        const 查找函数 = 接口 && typeof 接口.查找运行时物品定义 === 'function' ? 接口.查找运行时物品定义 : null;
+        if (!查找函数) continue;
+        const 命中 = 查找函数(this.rootData, 名称);
+        if (命中 && 命中.定义 && typeof 命中.定义 === 'object') return 命中;
+      } catch (错误) {}
+    }
+    return null;
+  }
+
   取物品定义(物品名 = '') {
-    return this.查找物品定义(物品名)?.定义 || {};
+    return this.查找运行时物品定义(物品名)?.定义 || {};
   }
 
   读取物品定义显式分类(物品 = {}, fallback = '') {
@@ -1252,7 +1274,7 @@ class TradeUIComponent {
   }
 
   resolveTradeItemInfo(itemName, item = {}, fallback = {}) {
-    const 命中定义 = this.查找物品定义(itemName);
+    const 命中定义 = this.查找运行时物品定义(itemName);
     const safeItem = { ...(命中定义?.定义 || {}), ...(item && typeof item === 'object' ? item : {}) };
     const type = String(this.规范化物品定义分类(命中定义?.分类 || fallback.分类 || this.读取物品定义显式分类(safeItem, ''), '剧情杂物'));
     const rarity = String(safeItem.品质 || fallback.rarity || '普通');
@@ -1294,7 +1316,7 @@ class TradeUIComponent {
   }
 
   buildInventoryItemFromTradeSource(itemName, sourceItem = {}, qty = 1, fallback = {}) {
-    const 命中定义 = this.查找物品定义(itemName);
+    const 命中定义 = this.查找运行时物品定义(itemName);
     const safeItem = { ...(命中定义?.定义 || {}), ...(sourceItem && typeof sourceItem === 'object' ? JSON.parse(JSON.stringify(sourceItem)) : {}) };
     const { 分类, 定义: definition } = this.构建交易物品定义(itemName, safeItem, { ...fallback, 分类: 命中定义?.分类 || fallback.分类 });
     const 批次列表 = this.构建交易入库批次(safeItem, qty, {
@@ -1536,6 +1558,7 @@ class TradeUIComponent {
     const btn = this.$('#btn-buy');
 
     if (!storeName || !itemName || !this.currentStores[storeName]?.库存?.[itemName]) {
+      this.$('#shop-base-price').textContent = '-';
       this.$('#shop-price').textContent = '-';
       this.$('#shop-market').textContent = '-';
       this.$('#shop-total').textContent = '-';
@@ -1561,6 +1584,7 @@ class TradeUIComponent {
     const currency = this.resolveTradeCurrency(item, storeName, this.charData?.状态?.位置 || '', storeData);
     const userCoin = Number(this.charData?.财富?.[currency] || 0);
 
+    this.$('#shop-base-price').textContent = `${baseUnitPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
     this.$('#shop-price').textContent = `${unitPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
     this.$('#shop-market').textContent = 商店营业中 ? this.getMarketAdjustmentText('buy', { fixed: isSoulTowerDiscountTrade }) : this.getShopOpenStateText();
     
@@ -1698,6 +1722,7 @@ class TradeUIComponent {
     if (!出售项 || !出售项.物品名 || 出售项.可用数量 <= 0) {
       this.$('#sell-base-price').textContent = '-';
       this.$('#sell-market').textContent = '-';
+      this.$('#sell-price').textContent = '-';
       this.$('#sell-total').textContent = '-';
       btn.disabled = true;
       this.updateTradeMetaPanel('sell', null);
@@ -1707,7 +1732,8 @@ class TradeUIComponent {
     const itemName = 出售项.物品名;
     const 系统禁售 = 系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName);
     const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
-    const sellPrice = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell');
+    const baseSellPrice = Math.floor(basePrice * 0.5);
+    const sellPrice = this.getMarketAdjustedPrice(baseSellPrice, 'sell');
     const total = sellPrice * qty;
 
     this.updateTradeMetaPanel('sell', this.resolveTradeItemInfo(itemName, 出售项.展示物品, { source: 出售项.展示物品?.来源 || 出售项.展示物品?.绑定者 || '背包持有' }));
@@ -1715,11 +1741,13 @@ class TradeUIComponent {
     if (系统禁售 || basePrice === 0) {
       this.$('#sell-base-price').textContent = "禁售物品";
       this.$('#sell-market').textContent = '-';
+      this.$('#sell-price').textContent = '-';
       this.$('#sell-total').textContent = "无法交易";
       btn.disabled = true;
     } else {
-      this.$('#sell-base-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
+      this.$('#sell-base-price').textContent = `${baseSellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
       this.$('#sell-market').textContent = this.getMarketAdjustmentText('sell');
+      this.$('#sell-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
       this.$('#sell-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
       btn.disabled = 出售项.可用数量 < qty;
     }

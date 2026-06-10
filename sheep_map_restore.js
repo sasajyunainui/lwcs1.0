@@ -3121,6 +3121,125 @@
       display: none;
     }
 
+    .map-move-action-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0, 8, 14, 0.62);
+      backdrop-filter: blur(6px);
+    }
+
+    .map-move-action-dialog {
+      width: min(420px, 94vw);
+      border: 1px solid rgba(118, 226, 255, 0.22);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(10, 24, 36, 0.96), rgba(3, 12, 20, 0.98));
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+      color: #e8f7ff;
+      overflow: hidden;
+    }
+
+    .map-move-action-head,
+    .map-move-action-row,
+    .map-move-action-actions {
+      display: grid;
+      gap: 6px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(134, 171, 201, 0.12);
+    }
+
+    .map-move-action-head b {
+      font-size: 13px;
+      line-height: 1.2;
+      color: #f4fbff;
+    }
+
+    .map-move-action-head span,
+    .map-move-action-row span {
+      min-width: 0;
+      color: #9fbdd0;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .map-move-action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: rgba(134, 171, 201, 0.08);
+    }
+
+    .map-move-action-row {
+      background: rgba(5, 16, 25, 0.92);
+      border-bottom: 0;
+    }
+
+    .map-move-action-row b {
+      color: rgba(150, 200, 218, 0.82);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .map-move-action-method {
+      grid-column: 1 / -1;
+    }
+
+    .map-move-action-method select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(134, 171, 201, 0.16);
+      border-radius: 6px;
+      background: rgba(6, 17, 28, 0.94);
+      color: #f1fbff;
+      padding: 7px 8px;
+      font: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .map-move-action-method option {
+      background: #06111c;
+      color: #eef8ff;
+    }
+
+    .map-move-action-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-bottom: 0;
+      background: rgba(2, 9, 16, 0.72);
+    }
+
+    .map-move-action-actions button {
+      border: 1px solid rgba(134, 171, 201, 0.18);
+      border-radius: 7px;
+      background: rgba(12, 28, 41, 0.9);
+      color: #eaf8ff;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .map-move-action-actions button:hover:not(:disabled),
+    .map-move-action-actions button:focus-visible {
+      border-color: rgba(118, 226, 255, 0.34);
+      background: rgba(16, 45, 64, 0.96);
+      outline: none;
+    }
+
+    .map-move-action-actions button[data-map-move-action-submit] {
+      border-color: rgba(118, 226, 255, 0.28);
+      background: rgba(18, 74, 98, 0.92);
+    }
+
+    .map-move-action-actions button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
     .simple-row.actionable {
       cursor: pointer;
       transition: all 0.2s;
@@ -8655,11 +8774,6 @@
     return { target_loc: mapState.selectedNode, target_x: targetCoord ? roundCoord(targetCoord.x) : -1, target_y: targetCoord ? roundCoord(targetCoord.y) : -1, coord_system: coordSystem, method: preview.method, est_ticks: preview.ticks, est_duration: preview.duration, coord_text: preview.coordText, costs: preview.costs, route_plan: toText(preview.routePlanText, '') };
   }
 
-  function buildMapUpdateVariableBlock(analysis, patchOps, leadText) {
-    const safeAnalysis = toText(analysis, 'Front-end action completed.');
-    return `<UpdateVariable>\n<Analysis>${safeAnalysis}</Analysis>\n<JSONPatch>\n${JSON.stringify(patchOps || [], null, 2)}\n</JSONPatch>\n</UpdateVariable>`;
-  }
-
   function hasPendingTravelRequestForTarget() {
     if (!mapState.pendingTravelRequest) return false;
     if (mapState.pendingTravelRequest.target_loc !== '无' && 判断地图节点为精确当前位置(mapState.pendingTravelRequest.target_loc)) return false;
@@ -8977,11 +9091,9 @@
 
 ${logMsg}
 
-${buildMapUpdateVariableBlock('Map node routine action completed.', patchOps, '以下为本次节点动作结算的完整 MVU 更新。')}
+本次行动、时间推进与系统播报已由前端结算写回。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
 
-请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要直接复述 JSONPatch 或系统术语。`;
-
-        dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}` });
+        dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}`, patchOps });
       } catch (e) {
         console.error('Send map action to AI failed:', e);
       }

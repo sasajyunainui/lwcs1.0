@@ -2415,10 +2415,6 @@ class ProfessionUIComponent {
       { op: 'replace', path: '/sys/最终成功率', value: Number.isFinite(Number(successRate)) ? Number(successRate) : 0 }
     ];
   }
-  buildFrontEndStateBlock(analysis, patchOps) {
-    const safeAnalysis = String(analysis || 'Profession action prepared.').trim();
-    return `<UpdateVariable>\n<Analysis>${safeAnalysis}</Analysis>\n<JSONPatch>\n${JSON.stringify(patchOps || [], null, 2)}\n</JSONPatch>\n</UpdateVariable>`;
-  }
   getForgeSingleQuality(tier, runtime) {
     const unlockLv = this.getForgeUnlockLevel(tier);
     let q = 1.0;
@@ -2444,9 +2440,14 @@ class ProfessionUIComponent {
     return this.clamp(Number((base + runtime.expRatio * 0.12 + (isGreatSuccess ? 0.15 : 0) + Math.random() * 0.05).toFixed(2)), 0.8, 1.25);
   }
 
-  submitAction(playerInput, sysPrompt, requestKind) {
+  submitAction(playerInput, sysPrompt, requestKind, patchOps = []) {
     if (this.options.onAction) {
-      this.options.onAction({ playerInput, systemPrompt: sysPrompt, requestKind });
+      this.options.onAction({
+        playerInput,
+        systemPrompt: sysPrompt,
+        requestKind,
+        patchOps: Array.isArray(patchOps) ? patchOps : []
+      });
     }
   }
 
@@ -2653,8 +2654,8 @@ class ProfessionUIComponent {
     const consumptionText = commissionCtx.isCommission
       ? `连续代工单次费用：${this.formatFedCoin(commissionCtx.commissionFee)}。本轮执行 ${统计.执行次数} 次，累计扣费 ${this.formatFedCoin(统计.执行次数 * Number(commissionCtx.commissionFee || 0))}。`
       : `单次消耗：${this.formatResourceCost(costs)}。本轮执行 ${统计.执行次数} 次后，剩余资源为 体:${Math.floor(资源状态.体力)} / 魂:${Math.floor(资源状态.魂力)} / 精:${Math.floor(资源状态.精神力)}。`;
-    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${连续结果播报}\n\n[副职业资源消耗]\n${consumptionText}\n${this.buildFrontEndStateBlock('Continuous profession executed.', patchOps)}`;
-    this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}_continuous`);
+    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${连续结果播报}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、时间、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
+    this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}_continuous`, patchOps);
   }
 
   executeForge() {
@@ -2726,8 +2727,8 @@ class ProfessionUIComponent {
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托完成【${targetName}】的${cfg.displayName}` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${cfg.displayName}，目标是【${targetName}】` : `我要进行${cfg.displayName}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatFedCoin(commissionCtx.commissionFee)}。材料仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
-    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n${this.buildFrontEndStateBlock('Forge executed.', patchOps)}`;
-    this.submitAction(`${actionLead}，材料为：${materialText}。`, sysPrompt, 'prof_forge');
+    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
+    this.submitAction(`${actionLead}，材料为：${materialText}。`, sysPrompt, 'prof_forge', patchOps);
   }
 
   executeGenericProfession() {
@@ -2818,8 +2819,8 @@ class ProfessionUIComponent {
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托执行${本次工序显示名}，目标是【${targetName}】` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${本次工序显示名}，目标是【${targetName}】` : `我要进行${本次工序显示名}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatFedCoin(commissionCtx.commissionFee)}。材料与目标物仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
-    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n${this.buildFrontEndStateBlock('Generic profession executed.', patchOps)}`;
-    this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}`);
+    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
+    this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}`, patchOps);
   }
 }
 

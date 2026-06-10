@@ -3600,10 +3600,13 @@
   const 冷归档Api根_桥接 = '/api/plugins/lwcs-archive';
   const 冷归档用户文件前缀_桥接 = 'LWCS_MVU_archive_';
   const 冷归档预览键_桥接 = 'MVU冷归档';
-  const 角色归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 角色文件缓存: new Map() };
-  const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 动态地点文件缓存: new Map() };
-  const 物品归档状态_桥接 = { chatKey: '', 存储键: '', manifest: null, manifestPromise: null, 物品文件缓存: new Map() };
+  const 角色归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
+  const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
+  const 物品归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
+  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, pollTimer: 0, promise: null, 已安装: false };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
+  const 冷实体激活保护存储键_桥接 = 'LWCS_冷实体激活保护_v1';
+  const 冷实体激活保护楼层窗口_桥接 = 6;
   const 冷归档自动归档批量硬上限_桥接 = 50;
   const 冷归档首次批量上限_桥接 = Number.POSITIVE_INFINITY;
   const 冷归档自动归档默认配置_桥接 = Object.freeze({
@@ -3616,6 +3619,10 @@
     物品字节阈值: 180000,
     冷却毫秒: 90000,
     最近保护tick窗口: 2160,
+    历史清理模式: '停用',
+    历史保留楼层数: 200,
+    历史保留间隔楼层: 50,
+    历史清理触发MB: 48,
   });
   const 冷归档自动归档配置_桥接 = { ...冷归档自动归档默认配置_桥接 };
   const 冷归档自动归档状态_桥接 = { chatKey: '', 上次尝试毫秒: 0, promise: null };
@@ -3633,6 +3640,11 @@
     return Math.min(最大值, Math.max(最小值, Number.isFinite(数值) ? 数值 : 默认值));
   }
 
+  function 规范化冷归档历史清理模式_桥接(值 = '', 默认值 = '停用') {
+    const 文本 = toText(值, 默认值).trim();
+    return ['停用', '压缩当前', '间隔保留'].includes(文本) ? 文本 : 默认值;
+  }
+
   function 规范化冷归档自动归档配置_桥接(输入 = {}) {
     const 来源 = 输入 && typeof 输入 === 'object' ? 输入 : {};
     const 默认配置 = 冷归档自动归档默认配置_桥接;
@@ -3643,10 +3655,14 @@
       角色字节阈值: 限制冷归档整数配置_桥接(来源.角色字节阈值, 默认配置.角色字节阈值, 20000, 2000000),
       动态地点数量阈值: 限制冷归档整数配置_桥接(来源.动态地点数量阈值, 默认配置.动态地点数量阈值, 1, 200),
       动态地点字节阈值: 限制冷归档整数配置_桥接(来源.动态地点字节阈值, 默认配置.动态地点字节阈值, 20000, 2000000),
-      物品分类数量阈值: 限制冷归档整数配置_桥接(来源.物品分类数量阈值, 默认配置.物品分类数量阈值, 1, 100),
+      物品分类数量阈值: 限制冷归档整数配置_桥接(来源.物品分类数量阈值, 默认配置.物品分类数量阈值, 0, 100),
       物品字节阈值: 限制冷归档整数配置_桥接(来源.物品字节阈值, 默认配置.物品字节阈值, 20000, 2000000),
       冷却毫秒: 限制冷归档整数配置_桥接(冷却秒数, 默认配置.冷却毫秒 / 1000, 5, 3600) * 1000,
       最近保护tick窗口: 限制冷归档整数配置_桥接(来源.最近保护tick窗口, 默认配置.最近保护tick窗口, 0, 100000),
+      历史清理模式: 规范化冷归档历史清理模式_桥接(来源.历史清理模式, 默认配置.历史清理模式),
+      历史保留楼层数: 限制冷归档整数配置_桥接(来源.历史保留楼层数, 默认配置.历史保留楼层数, 0, 100000),
+      历史保留间隔楼层: 限制冷归档整数配置_桥接(来源.历史保留间隔楼层, 默认配置.历史保留间隔楼层, 1, 100000),
+      历史清理触发MB: 限制冷归档整数配置_桥接(来源.历史清理触发MB, 默认配置.历史清理触发MB, 1, 63),
     };
   }
 
@@ -3676,6 +3692,10 @@
             动态地点数量阈值: 配置.动态地点数量阈值,
             物品分类数量阈值: 配置.物品分类数量阈值,
             冷却秒数: Math.round(配置.冷却毫秒 / 1000),
+            历史清理模式: 配置.历史清理模式,
+            历史保留楼层数: 配置.历史保留楼层数,
+            历史保留间隔楼层: 配置.历史保留间隔楼层,
+            历史清理触发MB: 配置.历史清理触发MB,
           }),
         );
       }
@@ -3746,30 +3766,30 @@
   }
 
   function 构建角色归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return `${构建冷归档聊天路径_桥接(chatKey)}/characters/manifest.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey)}/characters/index.json`;
   }
 
   function 构建角色归档文件路径_桥接(chatKey = '', 角色名 = '') {
     const 名称 = toText(角色名, '').trim();
-    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/characters/${规范化冷归档路径段_桥接(名称, 'char')}__${计算归档路径短哈希_桥接(名称)}.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/characters/${规范化冷归档路径段_桥接(名称, 'char')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
   }
 
   function 构建动态地点归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return `${构建冷归档聊天路径_桥接(chatKey)}/dynamic_locations/manifest.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey)}/dynamic_locations/index.json`;
   }
 
   function 构建动态地点归档文件路径_桥接(chatKey = '', 地点名 = '') {
     const 名称 = toText(地点名, '').trim();
-    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/dynamic_locations/${规范化冷归档路径段_桥接(名称, 'dynamic_location')}__${计算归档路径短哈希_桥接(名称)}.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/dynamic_locations/${规范化冷归档路径段_桥接(名称, 'dynamic_location')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
   }
 
   function 构建物品归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return `${构建冷归档聊天路径_桥接(chatKey)}/items/manifest.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey)}/items/index.json`;
   }
 
   function 构建物品归档文件路径_桥接(chatKey = '', 物品名 = '') {
     const 名称 = toText(物品名, '').trim();
-    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/items/${规范化冷归档路径段_桥接(名称, 'item')}__${计算归档路径短哈希_桥接(名称)}.json`;
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/items/${规范化冷归档路径段_桥接(名称, 'item')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
   }
 
   function 构建冷归档状态路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
@@ -3954,49 +3974,407 @@
     return 结果.data;
   }
 
+  function 读取当前最新聊天楼层_桥接(兜底楼层 = -1) {
+    try {
+      const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null;
+      const 聊天 = Array.isArray(上下文 && 上下文.chat) ? 上下文.chat : [];
+      if (聊天.length > 0) return 聊天.length - 1;
+    } catch (错误) {}
+    const 数值 = Number(兜底楼层);
+    return Number.isFinite(数值) ? Math.max(-1, Math.floor(数值)) : -1;
+  }
+
+  function 规范化冷实体激活类型_桥接(类型 = '') {
+    const 文本 = toText(类型, '').trim();
+    return ['角色', '动态地点', '物品'].includes(文本) ? 文本 : '';
+  }
+
+  function 读取冷实体激活保护根_桥接() {
+    try {
+      const 原始值 = window.localStorage && window.localStorage.getItem(冷实体激活保护存储键_桥接);
+      const 解析 = 原始值 ? JSON.parse(原始值) : {};
+      return 解析 && typeof 解析 === 'object' && !Array.isArray(解析) ? 解析 : {};
+    } catch (错误) {}
+    return {};
+  }
+
+  function 保存冷实体激活保护根_桥接(数据 = {}) {
+    try {
+      if (window.localStorage) window.localStorage.setItem(冷实体激活保护存储键_桥接, JSON.stringify(数据 && typeof 数据 === 'object' ? 数据 : {}));
+    } catch (错误) {}
+  }
+
+  function 读取当前冷实体激活保护表_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    const 根 = 读取冷实体激活保护根_桥接();
+    const 表 = 根[chatKey] && typeof 根[chatKey] === 'object' && !Array.isArray(根[chatKey]) ? 根[chatKey] : {};
+    ['角色', '动态地点', '物品'].forEach(类型 => {
+      if (!表[类型] || typeof 表[类型] !== 'object' || Array.isArray(表[类型])) 表[类型] = {};
+    });
+    return { 根, 表 };
+  }
+
+  function 记录MVU冷实体激活_桥接(输入 = []) {
+    const 条目列表 = Array.isArray(输入) ? 输入 : [输入];
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (!chatKey || 当前楼层 < 0 || !条目列表.length) return { changed: false, reason: 'empty' };
+    const { 根, 表 } = 读取当前冷实体激活保护表_桥接(chatKey);
+    let changed = false;
+    条目列表.forEach(条目 => {
+      const 类型 = 规范化冷实体激活类型_桥接(条目 && 条目.类型);
+      const 名称 = toText(条目 && 条目.名称, '').trim();
+      if (!类型 || !名称) return;
+      const 旧楼层 = Number(表[类型][名称]);
+      if (!Number.isFinite(旧楼层) || 当前楼层 > 旧楼层) {
+        表[类型][名称] = 当前楼层;
+        changed = true;
+      }
+    });
+    清理冷实体激活保护表未来楼层_桥接(表, 当前楼层);
+    if (changed) {
+      根[chatKey] = 表;
+      保存冷实体激活保护根_桥接(根);
+    }
+    return { changed, chatKey, 当前楼层 };
+  }
+
+  function 清理冷实体激活保护表未来楼层_桥接(表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    ['角色', '动态地点', '物品'].forEach(类型 => {
+      const 类型表 = 表[类型] && typeof 表[类型] === 'object' && !Array.isArray(表[类型]) ? 表[类型] : {};
+      Object.keys(类型表).forEach(名称 => {
+        const 楼层 = Number(类型表[名称]);
+        if (!Number.isFinite(楼层) || 楼层 > 当前楼层) delete 类型表[名称];
+      });
+      表[类型] = 类型表;
+    });
+    return 表;
+  }
+
+  function 清理未来楼层冷实体激活记录_桥接(chatKey = 取当前聊天归档标识_桥接(), 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (!chatKey || 当前楼层 < 0) return { changed: false };
+    const 根 = 读取冷实体激活保护根_桥接();
+    const 表 = 根[chatKey] && typeof 根[chatKey] === 'object' && !Array.isArray(根[chatKey]) ? cloneJsonValue(根[chatKey], {}) : {};
+    const 原始文本 = JSON.stringify(表);
+    清理冷实体激活保护表未来楼层_桥接(表, 当前楼层);
+    const changed = JSON.stringify(表) !== 原始文本;
+    if (changed) {
+      根[chatKey] = 表;
+      保存冷实体激活保护根_桥接(根);
+    }
+    return { changed, chatKey, 当前楼层 };
+  }
+
+  function 冷实体激活保护中_桥接(类型 = '', 名称 = '', 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 实体类型 = 规范化冷实体激活类型_桥接(类型);
+    const 实体名 = toText(名称, '').trim();
+    if (!实体类型 || !实体名 || 当前楼层 < 0) return false;
+    const { 表 } = 读取当前冷实体激活保护表_桥接();
+    const 激活楼层 = Number(表[实体类型] && 表[实体类型][实体名]);
+    return Number.isFinite(激活楼层) && 当前楼层 >= 激活楼层 && 当前楼层 - 激活楼层 <= 冷实体激活保护楼层窗口_桥接;
+  }
+
+  function 规范化冷归档版本楼层_桥接(版本 = {}) {
+    const 来源 = 版本 && typeof 版本 === 'object' ? 版本 : {};
+    const 候选 = 来源.楼层 ?? -1;
+    const 数值 = Number(候选);
+    return Number.isFinite(数值) ? Math.max(-1, Math.floor(数值)) : -1;
+  }
+
   function 创建空角色归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return { version: 冷归档Manifest版本_桥接, chatKey, updatedAt: '', 角色索引: {} };
+    return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 角色索引: {} };
   }
 
   function 创建空动态地点归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return { version: 冷归档Manifest版本_桥接, chatKey, updatedAt: '', 动态地点索引: {} };
+    return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 动态地点索引: {} };
   }
 
   function 创建空物品归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
-    return { version: 冷归档Manifest版本_桥接, chatKey, updatedAt: '', 物品索引: {} };
+    return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 物品索引: {} };
+  }
+
+  function 是冷归档普通对象_桥接(值) {
+    return !!值 && typeof 值 === 'object' && !Array.isArray(值);
+  }
+
+  function 冷归档Json文本_桥接(值 = null) {
+    try {
+      return JSON.stringify(值 ?? null);
+    } catch (错误) {
+      return '';
+    }
+  }
+
+  function 冷归档值相等_桥接(左值 = null, 右值 = null) {
+    return 冷归档Json文本_桥接(左值) === 冷归档Json文本_桥接(右值);
+  }
+
+  function 生成冷归档差异_桥接(旧值 = null, 新值 = null, 路径 = []) {
+    if (冷归档值相等_桥接(旧值, 新值)) return [];
+    if (是冷归档普通对象_桥接(旧值) && 是冷归档普通对象_桥接(新值)) {
+      const 差异 = [];
+      const 键集合 = new Set([...Object.keys(旧值), ...Object.keys(新值)]);
+      Array.from(键集合).sort((左, 右) => 左.localeCompare(右, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })).forEach(键 => {
+        if (!Object.prototype.hasOwnProperty.call(新值, 键)) {
+          差异.push({ 操作: '删除', 路径: [...路径, 键] });
+          return;
+        }
+        if (!Object.prototype.hasOwnProperty.call(旧值, 键)) {
+          差异.push({ 操作: '设置', 路径: [...路径, 键], 值: cloneJsonValue(新值[键], null) });
+          return;
+        }
+        差异.push(...生成冷归档差异_桥接(旧值[键], 新值[键], [...路径, 键]));
+      });
+      return 差异;
+    }
+    return [{ 操作: '设置', 路径: [...路径], 值: cloneJsonValue(新值, null) }];
+  }
+
+  function 读取冷归档差异父级_桥接(根 = {}, 路径 = [], 创建 = false) {
+    if (!路径.length) return { 父级: null, 键: '' };
+    let 父级 = 根;
+    for (let 序号 = 0; 序号 < 路径.length - 1; 序号 += 1) {
+      const 键 = 路径[序号];
+      if (!父级 || typeof 父级 !== 'object') return { 父级: null, 键: '' };
+      if (创建 && (!父级[键] || typeof 父级[键] !== 'object' || Array.isArray(父级[键]))) 父级[键] = {};
+      父级 = 父级[键];
+    }
+    return { 父级, 键: 路径[路径.length - 1] };
+  }
+
+  function 应用冷归档差异_桥接(基础 = {}, 差异 = []) {
+    let 输出 = cloneJsonValue(基础, {});
+    (Array.isArray(差异) ? 差异 : []).forEach(条目 => {
+      if (!条目 || typeof 条目 !== 'object') return;
+      const 路径 = Array.isArray(条目.路径) ? 条目.路径 : [];
+      if (!路径.length) {
+        if (条目.操作 === '设置') 输出 = cloneJsonValue(条目.值, {});
+        if (条目.操作 === '删除') 输出 = {};
+        return;
+      }
+      const { 父级, 键 } = 读取冷归档差异父级_桥接(输出, 路径, 条目.操作 === '设置');
+      if (!父级 || typeof 父级 !== 'object') return;
+      if (条目.操作 === '删除') {
+        delete 父级[键];
+        return;
+      }
+      if (条目.操作 === '设置') 父级[键] = cloneJsonValue(条目.值, null);
+    });
+    return 输出;
+  }
+
+  function 取冷归档版本列表_桥接(索引 = {}) {
+    if (Array.isArray(索引)) return 索引;
+    if (索引 && typeof 索引 === 'object' && Array.isArray(索引.versions)) return 索引.versions;
+    return [];
+  }
+
+  function 规范化冷归档版本列表_桥接(索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    return 取冷归档版本列表_桥接(索引)
+      .filter(版本 => 版本 && typeof 版本 === 'object')
+      .map(版本 => ({ ...版本, 楼层: 规范化冷归档版本楼层_桥接(版本) }))
+      .filter(版本 => 版本.楼层 >= 0 && (当前楼层 < 0 || 版本.楼层 <= 当前楼层))
+      .sort((左, 右) => 左.楼层 - 右.楼层 || toText(左.归档时间, '').localeCompare(toText(右.归档时间, '')));
+  }
+
+  function 重建冷归档版本列表_桥接(索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 列表 = 规范化冷归档版本列表_桥接(索引, 当前楼层);
+    let 当前数据 = null;
+    const 输出 = [];
+    列表.forEach(版本 => {
+      if (版本.模式 === '全量' || 版本.模式 === 'full' || 版本.数据 !== undefined) {
+        当前数据 = cloneJsonValue(版本.数据, {});
+      } else if ((版本.模式 === '差异' || 版本.模式 === 'diff') && 当前数据 !== null) {
+        当前数据 = 应用冷归档差异_桥接(当前数据, 版本.差异);
+      } else {
+        return;
+      }
+      输出.push({ ...版本, 数据: cloneJsonValue(当前数据, {}) });
+    });
+    return 输出;
+  }
+
+  function 取当前冷归档版本_桥接(索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (索引 && typeof 索引 === 'object' && !Array.isArray(索引) && 索引.path && !Array.isArray(索引.versions)) {
+      const 楼层 = 规范化冷归档版本楼层_桥接(索引);
+      return 楼层 >= 0 && (当前楼层 < 0 || 楼层 <= 当前楼层) ? { ...索引, 楼层 } : null;
+    }
+    const 列表 = 重建冷归档版本列表_桥接(索引, 当前楼层);
+    return 列表.length ? 列表[列表.length - 1] : null;
+  }
+
+  function 构建冷归档对象索引条目_桥接(版本 = {}, 路径 = '', 版本数量 = 0) {
+    if (!版本 || typeof 版本 !== 'object') return null;
+    const 输出 = {
+      path: toText(路径 || 版本.path, '').trim(),
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      版本数量: Math.max(0, Math.floor(Number(版本数量) || 0)),
+      存储模式: 版本.模式 || '全量',
+    };
+    ['角色名', '地点名', '物品名', '物品分类', '分类', '归属父节点', '节点类型', '势力', '品质', '装备槽位'].forEach(键 => {
+      if (版本[键] !== undefined && 版本[键] !== null && toText(版本[键], '').trim()) 输出[键] = 版本[键];
+    });
+    if (Array.isArray(版本.简称列表) && 版本.简称列表.length) 输出.简称列表 = [...版本.简称列表];
+    if (Array.isArray(版本.关键词) && 版本.关键词.length) 输出.关键词 = [...版本.关键词];
+    return 输出.path ? 输出 : null;
+  }
+
+  function 选择冷归档历史保留快照_桥接(快照列表 = [], 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 列表 = Array.isArray(快照列表) ? 快照列表 : [];
+    if (!列表.length) return [];
+    const 模式 = 冷归档自动归档配置_桥接.历史清理模式;
+    if (模式 === '压缩当前') return [列表[列表.length - 1]];
+    const 最新楼层 = 当前楼层 >= 0 ? 当前楼层 : 规范化冷归档版本楼层_桥接(列表[列表.length - 1]);
+    const 保留近层数 = Math.max(0, Math.floor(Number(冷归档自动归档配置_桥接.历史保留楼层数) || 0));
+    const 间隔层数 = Math.max(1, Math.floor(Number(冷归档自动归档配置_桥接.历史保留间隔楼层) || 1));
+    const 近线楼层 = 最新楼层 - 保留近层数;
+    const 保留序号 = new Set();
+    const 分桶序号 = new Map();
+    列表.forEach((快照, 序号) => {
+      const 楼层 = 规范化冷归档版本楼层_桥接(快照);
+      if (楼层 >= 近线楼层) {
+        保留序号.add(序号);
+        return;
+      }
+      分桶序号.set(Math.floor(楼层 / 间隔层数), 序号);
+    });
+    分桶序号.forEach(序号 => 保留序号.add(序号));
+    保留序号.add(列表.length - 1);
+    return Array.from(保留序号)
+      .sort((左, 右) => 左 - 右)
+      .map(序号 => 列表[序号])
+      .filter(Boolean);
+  }
+
+  async function 重写冷归档历史版本链_桥接(快照列表 = []) {
+    const 输出 = [];
+    let 上个数据 = null;
+    for (const 快照 of Array.isArray(快照列表) ? 快照列表 : []) {
+      if (!快照 || typeof 快照 !== 'object' || !快照.数据 || typeof 快照.数据 !== 'object') continue;
+      const 数据 = cloneJsonValue(快照.数据, {});
+      const 基础 = { ...快照 };
+      delete 基础.数据;
+      delete 基础.差异;
+      delete 基础.diffByteSize;
+      delete 基础.byteSize;
+      delete 基础.模式;
+      const 全量文本 = 冷归档Json文本_桥接(数据);
+      const 差异 = 上个数据 ? 生成冷归档差异_桥接(上个数据, 数据) : [];
+      const 差异文本 = 冷归档Json文本_桥接(差异);
+      const 使用差异 = !!上个数据 && 差异.length > 0 && 差异文本.length < 全量文本.length;
+      const 版本 = {
+        ...基础,
+        模式: 使用差异 ? '差异' : '全量',
+        checksum: await 计算冷归档校验_桥接(全量文本),
+      };
+      if (使用差异) {
+        版本.差异 = 差异;
+        版本.diffByteSize = 计算冷归档Json字节_桥接(差异);
+      } else {
+        版本.数据 = 数据;
+      }
+      版本.byteSize = 计算冷归档Json字节_桥接(版本);
+      输出.push(版本);
+      上个数据 = 数据;
+    }
+    return 输出;
+  }
+
+  async function 整理冷归档对象时间线_桥接(时间线 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), 选项 = {}) {
+    if (冷归档自动归档配置_桥接.历史清理模式 === '停用') return { changed: false, 时间线 };
+    const 原字节 = 计算冷归档Json字节_桥接(时间线);
+    const 阈值字节 = Math.max(1, Math.floor(Number(冷归档自动归档配置_桥接.历史清理触发MB) || 1)) * 1024 * 1024;
+    if (!选项.force && 原字节 < 阈值字节) return { changed: false, 时间线, 原字节, 新字节: 原字节 };
+    const 快照列表 = 重建冷归档版本列表_桥接(时间线, 当前楼层);
+    const 保留快照 = 选择冷归档历史保留快照_桥接(快照列表, 当前楼层);
+    if (!保留快照.length) return { changed: false, 时间线, 原字节, 新字节: 原字节 };
+    const 版本列表 = await 重写冷归档历史版本链_桥接(保留快照);
+    const 新时间线 = {
+      ...时间线,
+      updatedAt: new Date().toISOString(),
+      versions: 版本列表,
+    };
+    const 新字节 = 计算冷归档Json字节_桥接(新时间线);
+    return {
+      changed: 冷归档Json文本_桥接(时间线.versions || []) !== 冷归档Json文本_桥接(版本列表),
+      时间线: 新时间线,
+      原字节,
+      新字节,
+    };
+  }
+
+  function 规范化冷归档时间线索引表_桥接(索引表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 输出 = {};
+    Object.entries(索引表 && typeof 索引表 === 'object' ? 索引表 : {}).forEach(([名称, 索引]) => {
+      const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
+      if (索引条目) 输出[名称] = 索引条目;
+    });
+    return 输出;
+  }
+
+  function 构建冷归档时间线写入索引表_桥接(索引表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 输出 = {};
+    Object.entries(索引表 && typeof 索引表 === 'object' ? 索引表 : {}).forEach(([名称, 索引]) => {
+      const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
+      if (索引条目) 输出[名称] = 索引条目;
+    });
+    return 输出;
+  }
+
+  function 截断冷归档时间线索引表_桥接(索引表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (当前楼层 < 0) return { 索引表: 规范化冷归档时间线索引表_桥接(索引表, 当前楼层), changed: false };
+    let changed = false;
+    const 输出 = {};
+    Object.entries(索引表 && typeof 索引表 === 'object' ? 索引表 : {}).forEach(([名称, 索引]) => {
+      const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
+      if (索引条目) 输出[名称] = 索引条目;
+      if (!索引条目 || 规范化冷归档版本楼层_桥接(索引) > 当前楼层) changed = true;
+    });
+    return { 索引表: 输出, changed };
   }
 
   function 清除角色归档缓存_桥接(chatKey = '') {
     const 当前chatKey = toText(chatKey, '').trim();
     const 当前存储键 = 取冷归档存储键_桥接();
-    if (当前chatKey && 角色归档状态_桥接.chatKey && 当前chatKey === 角色归档状态_桥接.chatKey && 当前存储键 === 角色归档状态_桥接.存储键) return;
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (当前chatKey && 角色归档状态_桥接.chatKey && 当前chatKey === 角色归档状态_桥接.chatKey && 当前存储键 === 角色归档状态_桥接.存储键 && 当前楼层 === 角色归档状态_桥接.楼层) return;
     角色归档状态_桥接.chatKey = 当前chatKey;
     角色归档状态_桥接.存储键 = 当前存储键;
+    角色归档状态_桥接.楼层 = 当前楼层;
     角色归档状态_桥接.manifest = null;
     角色归档状态_桥接.manifestPromise = null;
-    角色归档状态_桥接.角色文件缓存.clear();
   }
 
   function 清除动态地点归档缓存_桥接(chatKey = '') {
     const 当前chatKey = toText(chatKey, '').trim();
     const 当前存储键 = 取冷归档存储键_桥接();
-    if (当前chatKey && 动态地点归档状态_桥接.chatKey && 当前chatKey === 动态地点归档状态_桥接.chatKey && 当前存储键 === 动态地点归档状态_桥接.存储键) return;
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (当前chatKey && 动态地点归档状态_桥接.chatKey && 当前chatKey === 动态地点归档状态_桥接.chatKey && 当前存储键 === 动态地点归档状态_桥接.存储键 && 当前楼层 === 动态地点归档状态_桥接.楼层) return;
     动态地点归档状态_桥接.chatKey = 当前chatKey;
     动态地点归档状态_桥接.存储键 = 当前存储键;
+    动态地点归档状态_桥接.楼层 = 当前楼层;
     动态地点归档状态_桥接.manifest = null;
     动态地点归档状态_桥接.manifestPromise = null;
-    动态地点归档状态_桥接.动态地点文件缓存.clear();
   }
 
   function 清除物品归档缓存_桥接(chatKey = '') {
     const 当前chatKey = toText(chatKey, '').trim();
     const 当前存储键 = 取冷归档存储键_桥接();
-    if (当前chatKey && 物品归档状态_桥接.chatKey && 当前chatKey === 物品归档状态_桥接.chatKey && 当前存储键 === 物品归档状态_桥接.存储键) return;
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (当前chatKey && 物品归档状态_桥接.chatKey && 当前chatKey === 物品归档状态_桥接.chatKey && 当前存储键 === 物品归档状态_桥接.存储键 && 当前楼层 === 物品归档状态_桥接.楼层) return;
     物品归档状态_桥接.chatKey = 当前chatKey;
     物品归档状态_桥接.存储键 = 当前存储键;
+    物品归档状态_桥接.楼层 = 当前楼层;
     物品归档状态_桥接.manifest = null;
     物品归档状态_桥接.manifestPromise = null;
-    物品归档状态_桥接.物品文件缓存.clear();
   }
 
   async function 读取角色归档Manifest_桥接(选项 = {}) {
@@ -4008,15 +4386,20 @@
       try {
         const manifest = await 读取冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey));
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('角色归档 manifest 版本不匹配。');
+        if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('角色归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('角色归档 manifest 不属于当前聊天。');
         if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object' || Array.isArray(manifest.角色索引)) manifest.角色索引 = {};
+        manifest.schema = 'object_timeline_index';
+        manifest.角色索引 = 规范化冷归档时间线索引表_桥接(manifest.角色索引);
         角色归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+        角色归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
         角色归档状态_桥接.manifest = manifest;
         return manifest;
       } catch (错误) {
         if (错误 && 错误.status === 404) {
           const 空manifest = 创建空角色归档Manifest_桥接(chatKey);
           角色归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+          角色归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
           角色归档状态_桥接.manifest = 空manifest;
           return 空manifest;
         }
@@ -4037,15 +4420,20 @@
       try {
         const manifest = await 读取冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey));
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('动态地点归档 manifest 版本不匹配。');
+        if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('动态地点归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('动态地点归档 manifest 不属于当前聊天。');
         if (!manifest.动态地点索引 || typeof manifest.动态地点索引 !== 'object' || Array.isArray(manifest.动态地点索引)) manifest.动态地点索引 = {};
+        manifest.schema = 'object_timeline_index';
+        manifest.动态地点索引 = 规范化冷归档时间线索引表_桥接(manifest.动态地点索引);
         动态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+        动态地点归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
         动态地点归档状态_桥接.manifest = manifest;
         return manifest;
       } catch (错误) {
         if (错误 && 错误.status === 404) {
           const 空manifest = 创建空动态地点归档Manifest_桥接(chatKey);
           动态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+          动态地点归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
           动态地点归档状态_桥接.manifest = 空manifest;
           return 空manifest;
         }
@@ -4066,15 +4454,20 @@
       try {
         const manifest = await 读取冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey));
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('物品归档 manifest 版本不匹配。');
+        if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('物品归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('物品归档 manifest 不属于当前聊天。');
         if (!manifest.物品索引 || typeof manifest.物品索引 !== 'object' || Array.isArray(manifest.物品索引)) manifest.物品索引 = {};
+        manifest.schema = 'object_timeline_index';
+        manifest.物品索引 = 规范化冷归档时间线索引表_桥接(manifest.物品索引);
         物品归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+        物品归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
         物品归档状态_桥接.manifest = manifest;
         return manifest;
       } catch (错误) {
         if (错误 && 错误.status === 404) {
           const 空manifest = 创建空物品归档Manifest_桥接(chatKey);
           物品归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+          物品归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
           物品归档状态_桥接.manifest = 空manifest;
           return 空manifest;
         }
@@ -4086,52 +4479,67 @@
     return await 物品归档状态_桥接.manifestPromise;
   }
 
-  async function 写入角色归档Manifest_桥接(manifest = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+  async function 写入角色归档Manifest_桥接(manifest = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 角色索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.角色索引, 当前楼层);
     const 待写入 = {
       version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_index',
       chatKey,
       updatedAt: new Date().toISOString(),
-      角色索引: manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {},
+      角色索引,
     };
     await 上传冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey), 待写入);
+    const 缓存manifest = { ...待写入, 角色索引: 规范化冷归档时间线索引表_桥接(角色索引, 当前楼层) };
     角色归档状态_桥接.chatKey = chatKey;
     角色归档状态_桥接.存储键 = 取冷归档存储键_桥接();
-    角色归档状态_桥接.manifest = 待写入;
+    角色归档状态_桥接.楼层 = 当前楼层;
+    角色归档状态_桥接.manifest = 缓存manifest;
     角色归档状态_桥接.manifestPromise = null;
-    return 待写入;
+    return 缓存manifest;
   }
 
-  async function 写入动态地点归档Manifest_桥接(manifest = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+  async function 写入动态地点归档Manifest_桥接(manifest = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 动态地点索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.动态地点索引, 当前楼层);
     const 待写入 = {
       version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_index',
       chatKey,
       updatedAt: new Date().toISOString(),
-      动态地点索引: manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {},
+      动态地点索引,
     };
     await 上传冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey), 待写入);
+    const 缓存manifest = { ...待写入, 动态地点索引: 规范化冷归档时间线索引表_桥接(动态地点索引, 当前楼层) };
     动态地点归档状态_桥接.chatKey = chatKey;
     动态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
-    动态地点归档状态_桥接.manifest = 待写入;
+    动态地点归档状态_桥接.楼层 = 当前楼层;
+    动态地点归档状态_桥接.manifest = 缓存manifest;
     动态地点归档状态_桥接.manifestPromise = null;
-    return 待写入;
+    return 缓存manifest;
   }
 
-  async function 写入物品归档Manifest_桥接(manifest = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+  async function 写入物品归档Manifest_桥接(manifest = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 物品索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.物品索引, 当前楼层);
     const 待写入 = {
       version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_index',
       chatKey,
       updatedAt: new Date().toISOString(),
-      物品索引: manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {},
+      物品索引,
     };
     await 上传冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey), 待写入);
+    const 缓存manifest = { ...待写入, 物品索引: 规范化冷归档时间线索引表_桥接(物品索引, 当前楼层) };
     物品归档状态_桥接.chatKey = chatKey;
     物品归档状态_桥接.存储键 = 取冷归档存储键_桥接();
-    物品归档状态_桥接.manifest = 待写入;
+    物品归档状态_桥接.楼层 = 当前楼层;
+    物品归档状态_桥接.manifest = 缓存manifest;
     物品归档状态_桥接.manifestPromise = null;
-    return 待写入;
+    return 缓存manifest;
   }
 
   async function 写入冷归档聊天状态_桥接(角色Manifest = {}, 动态地点Manifest = {}, 物品Manifest = {}) {
@@ -4144,6 +4552,254 @@
       动态地点数量: Object.keys(动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {}).length,
       物品数量: Object.keys(物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {}).length,
     });
+  }
+
+  function 重置冷归档Manifest缓存_桥接() {
+    角色归档状态_桥接.manifest = null;
+    角色归档状态_桥接.manifestPromise = null;
+    动态地点归档状态_桥接.manifest = null;
+    动态地点归档状态_桥接.manifestPromise = null;
+    物品归档状态_桥接.manifest = null;
+    物品归档状态_桥接.manifestPromise = null;
+  }
+
+  async function 读取冷归档时间线原始Manifest_桥接(路径 = '', chatKey = '', 索引字段 = '') {
+    try {
+      const manifest = await 读取冷归档Json文件_桥接(路径);
+      if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('冷归档时间线版本不匹配。');
+      if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('冷归档索引结构不匹配。');
+      if (manifest.chatKey !== chatKey) throw new Error('冷归档时间线不属于当前聊天。');
+      if (!manifest[索引字段] || typeof manifest[索引字段] !== 'object' || Array.isArray(manifest[索引字段])) manifest[索引字段] = {};
+      manifest.schema = 'object_timeline_index';
+      return manifest;
+    } catch (错误) {
+      if (错误 && 错误.status === 404) return null;
+      throw 错误;
+    }
+  }
+
+  async function 清理单对象未来楼层冷归档_桥接(配置 = {}, 名称 = '', 索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
+    const 路径 = toText(索引 && 索引.path, '').trim() || 配置.构建文件路径(chatKey, 名称);
+    const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: 配置.类型, 名称, 路径 });
+    const 原版本列表 = 取冷归档版本列表_桥接(时间线);
+    const 新版本列表 = 原版本列表
+      .filter(版本 => 规范化冷归档版本楼层_桥接(版本) <= 当前楼层)
+      .sort((左, 右) => 规范化冷归档版本楼层_桥接(左) - 规范化冷归档版本楼层_桥接(右));
+    const changed = 新版本列表.length !== 原版本列表.length;
+    let 待写入时间线 = {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey,
+      类型: 配置.类型,
+      名称,
+      path: 路径,
+      updatedAt: new Date().toISOString(),
+      versions: 新版本列表,
+    };
+    if (changed) await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+    const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
+    return {
+      changed,
+      索引: 构建冷归档对象索引条目_桥接(当前版本, 路径, 新版本列表.length),
+    };
+  }
+
+  async function 清理单类未来楼层冷归档_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
+    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段);
+    if (!manifest) return { changed: false, manifest: null };
+    const 原索引表 = manifest[配置.索引字段] && typeof manifest[配置.索引字段] === 'object' ? manifest[配置.索引字段] : {};
+    const 新索引表 = {};
+    let changed = false;
+    for (const [名称, 索引] of Object.entries(原索引表)) {
+      try {
+        const 结果 = await 清理单对象未来楼层冷归档_桥接(配置, 名称, 索引, 当前楼层, chatKey);
+        if (结果.索引) 新索引表[名称] = 结果.索引;
+        if (结果.changed || !结果.索引 || 规范化冷归档版本楼层_桥接(索引) > 当前楼层) changed = true;
+      } catch (错误) {
+        console.warn('[DragonUI] 冷归档对象楼层清理失败', 名称, 错误);
+        const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
+        if (索引条目) 新索引表[名称] = 索引条目;
+      }
+    }
+    if (!changed && 冷归档Json文本_桥接(规范化冷归档时间线索引表_桥接(原索引表, 当前楼层)) !== 冷归档Json文本_桥接(新索引表)) changed = true;
+    if (!changed) return { changed: false, manifest: { ...manifest, [配置.索引字段]: 新索引表 } };
+    manifest[配置.索引字段] = 新索引表;
+    return { changed: true, manifest: await 配置.写入(manifest, { 楼层: 当前楼层, chatKey }) };
+  }
+
+  async function 清理未来楼层冷归档_桥接(选项 = {}) {
+    if (!选项.force && 冷归档楼层清理状态_桥接.promise) return await 冷归档楼层清理状态_桥接.promise;
+    冷归档楼层清理状态_桥接.promise = (async () => {
+      const chatKey = 取当前聊天归档标识_桥接();
+      const 当前楼层 = 读取当前最新聊天楼层_桥接();
+      const 上次chatKey = 冷归档楼层清理状态_桥接.chatKey;
+      const 上次楼层 = 冷归档楼层清理状态_桥接.最新楼层;
+      if (!选项.force && 上次chatKey === chatKey && 上次楼层 >= 0 && 当前楼层 >= 上次楼层) {
+        if (当前楼层 > 上次楼层) 调度冷归档楼层自动归档_桥接(1500);
+        冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
+        return { changed: false, chatKey, 当前楼层, reason: 'not_rollback' };
+      }
+      清理未来楼层冷实体激活记录_桥接(chatKey, 当前楼层);
+      const 状态 = await 检查冷归档服务_桥接();
+      if (!状态 || !状态.可用 || !状态.可写) {
+        冷归档楼层清理状态_桥接.chatKey = chatKey;
+        冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
+        return { changed: false, chatKey, 当前楼层, reason: 'archive_unavailable' };
+      }
+      const 配置列表 = [
+        { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
+        { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
+        { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
+      ];
+      const 结果列表 = [];
+      for (const 配置 of 配置列表) {
+        try {
+          结果列表.push(await 清理单类未来楼层冷归档_桥接(配置, 当前楼层, chatKey));
+        } catch (错误) {
+          console.warn('[DragonUI] 冷归档楼层清理失败', 错误);
+          结果列表.push({ changed: false, error: 错误 });
+        }
+      }
+      const changed = 结果列表.some(结果 => 结果 && 结果.changed);
+      冷归档楼层清理状态_桥接.chatKey = chatKey;
+      冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
+      if (changed) {
+        重置冷归档Manifest缓存_桥接();
+        const 当前预览键 = currentUnifiedPreviewKey || currentModalPreviewKey;
+        if (当前预览键 && [冷归档预览键_桥接, '角色切换器'].includes(当前预览键)) {
+          rerenderDetailSurface(当前预览键, { surface: currentUnifiedPreviewKey ? 'unified' : 'modal', force: true });
+        }
+      }
+      return { changed, chatKey, 当前楼层, 结果列表 };
+    })().finally(() => {
+      冷归档楼层清理状态_桥接.promise = null;
+    });
+    return await 冷归档楼层清理状态_桥接.promise;
+  }
+
+  async function 整理单类冷归档历史_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
+    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段);
+    if (!manifest) return { changed: false, manifest: null, 整理数量: 0 };
+    const 原索引表 = manifest[配置.索引字段] && typeof manifest[配置.索引字段] === 'object' ? manifest[配置.索引字段] : {};
+    const 新索引表 = {};
+    let changed = false;
+    let 整理数量 = 0;
+    for (const [名称, 索引] of Object.entries(原索引表)) {
+      try {
+        const 路径 = toText(索引 && 索引.path, '').trim() || 配置.构建文件路径(chatKey, 名称);
+        const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: 配置.类型, 名称, 路径 });
+        const 整理结果 = await 整理冷归档对象时间线_桥接(时间线, 当前楼层, { force: true });
+        const 待写入时间线 = 整理结果.时间线 || 时间线;
+        if (整理结果.changed) {
+          await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+          changed = true;
+          整理数量 += 1;
+        }
+        const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
+        const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 取冷归档版本列表_桥接(待写入时间线).length);
+        if (索引条目) 新索引表[名称] = 索引条目;
+      } catch (错误) {
+        console.warn('[DragonUI] 冷归档历史整理失败', 名称, 错误);
+        const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
+        if (索引条目) 新索引表[名称] = 索引条目;
+      }
+    }
+    if (冷归档Json文本_桥接(规范化冷归档时间线索引表_桥接(原索引表, 当前楼层)) !== 冷归档Json文本_桥接(新索引表)) changed = true;
+    if (!changed) return { changed: false, manifest, 整理数量 };
+    manifest[配置.索引字段] = 新索引表;
+    return { changed: true, manifest: await 配置.写入(manifest, { 楼层: 当前楼层, chatKey }), 整理数量 };
+  }
+
+  async function 整理全部冷归档历史_桥接(选项 = {}) {
+    if (冷归档自动归档配置_桥接.历史清理模式 === '停用') return { changed: false, 整理数量: 0, reason: 'disabled' };
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    const 状态 = await 检查冷归档服务_桥接();
+    if (!状态 || !状态.可用 || !状态.可写) return { changed: false, 整理数量: 0, reason: 'archive_unavailable' };
+    const 配置列表 = [
+      { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
+      { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
+      { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
+    ];
+    const 结果列表 = [];
+    for (const 配置 of 配置列表) {
+      try {
+        结果列表.push(await 整理单类冷归档历史_桥接(配置, 当前楼层, chatKey));
+      } catch (错误) {
+        console.warn('[DragonUI] 冷归档历史整理类别失败', 错误);
+        结果列表.push({ changed: false, 整理数量: 0, error: 错误 });
+      }
+    }
+    const changed = 结果列表.some(结果 => 结果 && 结果.changed);
+    const 整理数量 = 结果列表.reduce((总数, 结果) => 总数 + Math.max(0, Math.floor(Number(结果 && 结果.整理数量) || 0)), 0);
+    if (changed) {
+      重置冷归档Manifest缓存_桥接();
+      if (选项.刷新视图 !== false && [冷归档预览键_桥接, '角色切换器'].includes(currentUnifiedPreviewKey || currentModalPreviewKey)) {
+        rerenderDetailSurface(currentUnifiedPreviewKey || currentModalPreviewKey, { surface: currentUnifiedPreviewKey ? 'unified' : 'modal', force: true });
+      }
+    }
+    return { changed, 整理数量, 结果列表 };
+  }
+
+  function 调度冷归档楼层清理_桥接(延迟 = 200) {
+    if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
+    冷归档楼层清理状态_桥接.timer = window.setTimeout(() => {
+      冷归档楼层清理状态_桥接.timer = 0;
+      清理未来楼层冷归档_桥接().catch(错误 => console.warn('[DragonUI] 冷归档楼层清理调度失败', 错误));
+    }, Math.max(0, Number(延迟) || 0));
+  }
+
+  function 调度冷归档楼层自动归档_桥接(延迟 = 1500) {
+    if (冷归档楼层清理状态_桥接.autoTimer) window.clearTimeout(冷归档楼层清理状态_桥接.autoTimer);
+    冷归档楼层清理状态_桥接.autoTimer = window.setTimeout(() => {
+      冷归档楼层清理状态_桥接.autoTimer = 0;
+      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加' }).catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
+    }, Math.max(0, Number(延迟) || 0));
+  }
+
+  function 安装冷归档楼层监视器_桥接() {
+    if (冷归档楼层清理状态_桥接.已安装) return;
+    冷归档楼层清理状态_桥接.已安装 = true;
+    const 绑定酒馆事件 = () => {
+      let 上下文 = null;
+      try {
+        上下文 = typeof window.SillyTavern?.getContext === 'function' ? window.SillyTavern.getContext() : null;
+      } catch (错误) {}
+      const eventSource = 上下文 && 上下文.eventSource;
+      if (!eventSource || typeof eventSource.on !== 'function') return false;
+      const eventTypes = 上下文.eventTypes || {};
+      ['CHAT_CHANGED', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED'].forEach(事件键 => {
+        const 事件名 = eventTypes[事件键] || 事件键;
+        if (!事件名) return;
+        try {
+          eventSource.on(事件名, () => 调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180));
+        } catch (错误) {}
+      });
+      return true;
+    };
+    if (!绑定酒馆事件()) window.setTimeout(绑定酒馆事件, 1200);
+    if (!冷归档楼层清理状态_桥接.pollTimer) {
+      冷归档楼层清理状态_桥接.pollTimer = window.setInterval(() => {
+        const chatKey = 取当前聊天归档标识_桥接();
+        const 当前楼层 = 读取当前最新聊天楼层_桥接();
+        if (
+          chatKey !== 冷归档楼层清理状态_桥接.chatKey ||
+          冷归档楼层清理状态_桥接.最新楼层 < 0 ||
+          当前楼层 < 冷归档楼层清理状态_桥接.最新楼层
+        ) {
+          调度冷归档楼层清理_桥接(0);
+          return;
+        }
+        if (当前楼层 > 冷归档楼层清理状态_桥接.最新楼层) {
+          调度冷归档楼层自动归档_桥接(1500);
+        }
+        冷归档楼层清理状态_桥接.chatKey = chatKey;
+        冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
+      }, 2500);
+    }
+    调度冷归档楼层清理_桥接(600);
   }
 
   function 读取角色归档Manifest缓存_桥接() {
@@ -4496,84 +5152,281 @@
     return statData;
   }
 
-  async function 上传角色归档文件_桥接(角色名 = '', 角色数据 = {}, 上下文 = {}) {
-    const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
-    const 归档时间 = 上下文.归档时间 || new Date().toISOString();
-    const 角色文件 = {
+  function 创建空冷归档对象时间线_桥接(配置 = {}) {
+    return {
       version: 冷归档Manifest版本_桥接,
-      chatKey,
-      角色名,
-      归档tick: 上下文.归档tick ?? 0,
-      归档时间,
-      角色数据: cloneJsonValue(角色数据, {}),
+      schema: 'object_timeline_diff',
+      chatKey: toText(配置.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接(),
+      类型: toText(配置.类型, '').trim(),
+      名称: toText(配置.名称, '').trim(),
+      path: toText(配置.路径, '').trim(),
+      updatedAt: '',
+      versions: [],
     };
-    const path = 构建角色归档文件路径_桥接(chatKey, 角色名);
-    const 上传结果 = await 上传冷归档Json文件_桥接(path, 角色文件);
-    return { 角色名, path, checksum: 上传结果.checksum, byteSize: 上传结果.byteSize, 归档tick: 角色文件.归档tick, 归档时间, 摘要: 构建角色归档摘要_桥接(角色名, 角色数据) };
+  }
+
+  async function 读取冷归档对象时间线_桥接(配置 = {}) {
+    const 路径 = toText(配置.路径, '').trim();
+    if (!路径) throw new Error('冷归档对象路径为空。');
+    try {
+      const 时间线 = await 读取冷归档Json文件_桥接(路径);
+      if (!时间线 || typeof 时间线 !== 'object' || 时间线.version !== 冷归档Manifest版本_桥接) throw new Error('冷归档对象版本不匹配。');
+      if (时间线.schema !== 'object_timeline_diff') throw new Error('冷归档对象结构不匹配。');
+      if (时间线.chatKey !== 配置.chatKey) throw new Error('冷归档对象不属于当前聊天。');
+      if (toText(时间线.类型, '').trim() !== toText(配置.类型, '').trim()) throw new Error('冷归档对象类型不匹配。');
+      if (toText(时间线.名称, '').trim() !== toText(配置.名称, '').trim()) throw new Error('冷归档对象名称不匹配。');
+      if (!Array.isArray(时间线.versions)) 时间线.versions = [];
+      时间线.path = 路径;
+      return 时间线;
+    } catch (错误) {
+      if (错误 && 错误.status === 404) return 创建空冷归档对象时间线_桥接(配置);
+      throw 错误;
+    }
+  }
+
+  async function 写入冷归档对象时间线版本_桥接(配置 = {}) {
+    const 名称字段 = toText(配置.名称字段, '').trim();
+    const 名称 = toText(配置.名称, '').trim();
+    const chatKey = toText(配置.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 路径 = toText(配置.路径, '').trim();
+    if (!名称字段 || !名称 || !路径) throw new Error('冷归档对象写入参数缺失。');
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(配置.楼层);
+    const 数据 = cloneJsonValue(配置.数据, {});
+    const 时间线 = await 读取冷归档对象时间线_桥接({ ...配置, chatKey, 名称, 路径 });
+    const 原版本列表 = 取冷归档版本列表_桥接(时间线);
+    const 保留版本列表 = 原版本列表
+      .filter(版本 => 规范化冷归档版本楼层_桥接(版本) < 当前楼层)
+      .sort((左, 右) => 规范化冷归档版本楼层_桥接(左) - 规范化冷归档版本楼层_桥接(右));
+    const 上个版本列表 = 重建冷归档版本列表_桥接({ versions: 保留版本列表 }, 当前楼层);
+    const 上个版本 = 上个版本列表.length ? 上个版本列表[上个版本列表.length - 1] : null;
+    const 差异 = 上个版本 ? 生成冷归档差异_桥接(上个版本.数据, 数据) : [];
+    const 需要新增版本 = !上个版本 || 差异.length > 0;
+    const 已截断未来 = 原版本列表.length !== 保留版本列表.length;
+    if (需要新增版本) {
+      const 全量文本 = 冷归档Json文本_桥接(数据);
+      const 差异文本 = 冷归档Json文本_桥接(差异);
+      const 使用差异 = !!上个版本 && 差异.length > 0 && 差异文本.length < 全量文本.length;
+      const 新版本 = {
+        [名称字段]: 名称,
+        path: 路径,
+        模式: 使用差异 ? '差异' : '全量',
+        楼层: 当前楼层,
+        tick: 配置.归档tick ?? 0,
+        归档tick: 配置.归档tick ?? 0,
+        归档时间: 配置.归档时间 || new Date().toISOString(),
+        摘要: 配置.摘要 || '',
+        checksum: await 计算冷归档校验_桥接(全量文本),
+        ...(配置.扩展 && typeof 配置.扩展 === 'object' && !Array.isArray(配置.扩展) ? 配置.扩展 : {}),
+      };
+      if (使用差异) {
+        新版本.差异 = 差异;
+        新版本.diffByteSize = 计算冷归档Json字节_桥接(差异);
+      } else {
+        新版本.数据 = 数据;
+      }
+      新版本.byteSize = 计算冷归档Json字节_桥接(新版本);
+      保留版本列表.push(新版本);
+    }
+    const 待写入版本列表 = 保留版本列表.sort((左, 右) => 规范化冷归档版本楼层_桥接(左) - 规范化冷归档版本楼层_桥接(右));
+    const 待写入时间线 = {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey,
+      类型: toText(配置.类型, '').trim(),
+      名称,
+      path: 路径,
+      updatedAt: new Date().toISOString(),
+      versions: 待写入版本列表,
+    };
+    const 整理结果 = await 整理冷归档对象时间线_桥接(待写入时间线, 当前楼层);
+    if (整理结果.changed) 待写入时间线 = 整理结果.时间线;
+    if (需要新增版本 || 已截断未来 || !时间线.updatedAt || 整理结果.changed) {
+      try {
+        await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+      } catch (错误) {
+        if (冷归档自动归档配置_桥接.历史清理模式 === '停用' || !/payload_too_large/i.test(toText(错误 && 错误.message, ''))) throw 错误;
+        const 强制整理结果 = await 整理冷归档对象时间线_桥接(待写入时间线, 当前楼层, { force: true });
+        待写入时间线 = 强制整理结果.时间线;
+        await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+      }
+    }
+    const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
+    const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 待写入版本列表.length);
+    if (!索引条目) throw new Error(`冷归档对象索引生成失败：${名称}`);
+    return 索引条目;
+  }
+
+  async function 上传角色归档文件_桥接(角色名 = '', 角色数据 = {}, 上下文 = {}) {
+    const 数据 = cloneJsonValue(角色数据, {});
+    const chatKey = toText(上下文.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    return await 写入冷归档对象时间线版本_桥接({
+      chatKey,
+      类型: '角色',
+      名称字段: '角色名',
+      名称: 角色名,
+      路径: 构建角色归档文件路径_桥接(chatKey, 角色名),
+      楼层: 上下文.楼层,
+      归档tick: 上下文.归档tick ?? 0,
+      归档时间: 上下文.归档时间 || new Date().toISOString(),
+      摘要: 构建角色归档摘要_桥接(角色名, 数据),
+      数据,
+    });
   }
 
   async function 上传动态地点归档文件_桥接(地点名 = '', 地点数据 = {}, 上下文 = {}) {
-    const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
-    const 归档时间 = 上下文.归档时间 || new Date().toISOString();
-    const 地点文件 = {
-      version: 冷归档Manifest版本_桥接,
+    const 数据 = cloneJsonValue(地点数据, {});
+    const chatKey = toText(上下文.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    return await 写入冷归档对象时间线版本_桥接({
       chatKey,
-      地点名,
+      类型: '动态地点',
+      名称字段: '地点名',
+      名称: 地点名,
+      路径: 构建动态地点归档文件路径_桥接(chatKey, 地点名),
+      楼层: 上下文.楼层,
       归档tick: 上下文.归档tick ?? 0,
-      归档时间,
-      地点数据: cloneJsonValue(地点数据, {}),
-    };
-    const path = 构建动态地点归档文件路径_桥接(chatKey, 地点名);
-    const 上传结果 = await 上传冷归档Json文件_桥接(path, 地点文件);
-    return { 地点名, path, checksum: 上传结果.checksum, byteSize: 上传结果.byteSize, 归档tick: 地点文件.归档tick, 归档时间, 摘要: 构建动态地点归档摘要_桥接(地点名, 地点数据), ...构建动态地点归档索引扩展_桥接(地点名, 地点数据) };
+      归档时间: 上下文.归档时间 || new Date().toISOString(),
+      摘要: 构建动态地点归档摘要_桥接(地点名, 数据),
+      数据,
+      扩展: 构建动态地点归档索引扩展_桥接(地点名, 数据),
+    });
   }
 
   async function 上传物品归档文件_桥接(物品名 = '', 物品定义 = {}, 上下文 = {}) {
-    const chatKey = 上下文.chatKey || 取当前聊天归档标识_桥接();
-    const 归档时间 = 上下文.归档时间 || new Date().toISOString();
     const 物品分类 = 要求物品定义分类_桥接(物品名, 物品定义, 上下文.物品分类 || 上下文.分类);
-    const 物品文件 = {
-      version: 冷归档Manifest版本_桥接,
+    const 数据 = cloneJsonValue(物品定义, {});
+    const chatKey = toText(上下文.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    return await 写入冷归档对象时间线版本_桥接({
       chatKey,
-      物品名,
-      物品分类,
+      类型: '物品',
+      名称字段: '物品名',
+      名称: 物品名,
+      路径: 构建物品归档文件路径_桥接(chatKey, 物品名),
+      楼层: 上下文.楼层,
       归档tick: 上下文.归档tick ?? 0,
-      归档时间,
-      物品定义: cloneJsonValue(物品定义, {}),
+      归档时间: 上下文.归档时间 || new Date().toISOString(),
+      摘要: 构建物品归档摘要_桥接(物品名, 数据, 物品分类),
+      数据,
+      扩展: { 物品分类, 分类: 物品分类, ...构建物品归档索引扩展_桥接(物品名, 数据, 物品分类) },
+    });
+  }
+
+  function 构建角色归档文件视图_桥接(角色名 = '', 版本 = {}, manifest = {}) {
+    if (!版本 || typeof 版本 !== 'object') throw new Error('找不到角色归档版本。');
+    return {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey: manifest && manifest.chatKey ? manifest.chatKey : 取当前聊天归档标识_桥接(),
+      角色名: toText(版本.角色名, 角色名).trim(),
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      角色数据: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
     };
-    const path = 构建物品归档文件路径_桥接(chatKey, 物品名);
-    const 上传结果 = await 上传冷归档Json文件_桥接(path, 物品文件);
-    return { 物品名, 物品分类, path, checksum: 上传结果.checksum, byteSize: 上传结果.byteSize, 归档tick: 物品文件.归档tick, 归档时间, 摘要: 构建物品归档摘要_桥接(物品名, 物品定义, 物品分类), ...构建物品归档索引扩展_桥接(物品名, 物品定义, 物品分类) };
   }
 
-  async function 读取角色归档文件_桥接(path = '', 选项 = {}) {
-    const 安全路径 = toText(path, '').trim();
-    if (!安全路径) throw new Error('归档路径为空。');
-    if (!选项.force && 角色归档状态_桥接.角色文件缓存.has(安全路径)) return 角色归档状态_桥接.角色文件缓存.get(安全路径);
-    const 文件 = await 读取冷归档Json文件_桥接(安全路径);
-    if (!文件 || typeof 文件 !== 'object' || 文件.version !== 冷归档Manifest版本_桥接) throw new Error('角色归档文件版本不匹配。');
-    角色归档状态_桥接.角色文件缓存.set(安全路径, 文件);
-    return 文件;
+  function 构建动态地点归档文件视图_桥接(地点名 = '', 版本 = {}, manifest = {}) {
+    if (!版本 || typeof 版本 !== 'object') throw new Error('找不到动态地点归档版本。');
+    return {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey: manifest && manifest.chatKey ? manifest.chatKey : 取当前聊天归档标识_桥接(),
+      地点名: toText(版本.地点名, 地点名).trim(),
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      地点数据: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
+    };
   }
 
-  async function 读取动态地点归档文件_桥接(path = '', 选项 = {}) {
-    const 安全路径 = toText(path, '').trim();
-    if (!安全路径) throw new Error('归档路径为空。');
-    if (!选项.force && 动态地点归档状态_桥接.动态地点文件缓存.has(安全路径)) return 动态地点归档状态_桥接.动态地点文件缓存.get(安全路径);
-    const 文件 = await 读取冷归档Json文件_桥接(安全路径);
-    if (!文件 || typeof 文件 !== 'object' || 文件.version !== 冷归档Manifest版本_桥接) throw new Error('动态地点归档文件版本不匹配。');
-    动态地点归档状态_桥接.动态地点文件缓存.set(安全路径, 文件);
-    return 文件;
+  function 构建物品归档文件视图_桥接(物品名 = '', 版本 = {}, manifest = {}) {
+    if (!版本 || typeof 版本 !== 'object') throw new Error('找不到物品归档版本。');
+    return {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey: manifest && manifest.chatKey ? manifest.chatKey : 取当前聊天归档标识_桥接(),
+      物品名: toText(版本.物品名, 物品名).trim(),
+      物品分类: 版本.物品分类 || 版本.分类 || '',
+      分类: 版本.分类 || 版本.物品分类 || '',
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      物品定义: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
+    };
   }
 
-  async function 读取物品归档文件_桥接(path = '', 选项 = {}) {
-    const 安全路径 = toText(path, '').trim();
-    if (!安全路径) throw new Error('归档路径为空。');
-    if (!选项.force && 物品归档状态_桥接.物品文件缓存.has(安全路径)) return 物品归档状态_桥接.物品文件缓存.get(安全路径);
-    const 文件 = await 读取冷归档Json文件_桥接(安全路径);
-    if (!文件 || typeof 文件 !== 'object' || 文件.version !== 冷归档Manifest版本_桥接) throw new Error('物品归档文件版本不匹配。');
-    物品归档状态_桥接.物品文件缓存.set(安全路径, 文件);
-    return 文件;
+  async function 读取角色归档文件_桥接(输入 = '', 选项 = {}) {
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    if (输入 && typeof 输入 === 'object') {
+      if (输入.数据 && typeof 输入.数据 === 'object') {
+        const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
+        return 构建角色归档文件视图_桥接(toText(版本 && 版本.角色名, ''), 版本, {});
+      }
+      const 角色名 = toText(输入.角色名, '').trim();
+      const chatKey = toText(选项.chatKey || 输入.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+      const 路径 = toText(输入.path || 构建角色归档文件路径_桥接(chatKey, 角色名), '').trim();
+      const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: '角色', 名称: 角色名, 路径 });
+      const 版本 = 取当前冷归档版本_桥接(时间线, 当前楼层);
+      return 构建角色归档文件视图_桥接(toText(版本 && 版本.角色名, ''), 版本, {});
+    }
+    const 角色名 = toText(输入, '').trim();
+    if (!角色名) throw new Error('归档角色名为空。');
+    const manifest = await 读取角色归档Manifest_桥接(选项);
+    const 索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引[角色名] : null;
+    return await 读取角色归档文件_桥接(索引 || { 角色名, path: 构建角色归档文件路径_桥接(manifest.chatKey, 角色名) }, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
+  }
+
+  async function 读取动态地点归档文件_桥接(输入 = '', 选项 = {}) {
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    if (输入 && typeof 输入 === 'object') {
+      if (输入.数据 && typeof 输入.数据 === 'object') {
+        const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
+        return 构建动态地点归档文件视图_桥接(toText(版本 && 版本.地点名, ''), 版本, {});
+      }
+      const 地点名 = toText(输入.地点名, '').trim();
+      const chatKey = toText(选项.chatKey || 输入.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+      const 路径 = toText(输入.path || 构建动态地点归档文件路径_桥接(chatKey, 地点名), '').trim();
+      const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: '动态地点', 名称: 地点名, 路径 });
+      const 版本 = 取当前冷归档版本_桥接(时间线, 当前楼层);
+      return 构建动态地点归档文件视图_桥接(toText(版本 && 版本.地点名, ''), 版本, {});
+    }
+    const 地点名 = toText(输入, '').trim();
+    if (!地点名) throw new Error('归档地点名为空。');
+    const manifest = await 读取动态地点归档Manifest_桥接(选项);
+    const 索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引[地点名] : null;
+    return await 读取动态地点归档文件_桥接(索引 || { 地点名, path: 构建动态地点归档文件路径_桥接(manifest.chatKey, 地点名) }, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
+  }
+
+  async function 读取物品归档文件_桥接(输入 = '', 选项 = {}) {
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    if (输入 && typeof 输入 === 'object') {
+      if (输入.数据 && typeof 输入.数据 === 'object') {
+        const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
+        return 构建物品归档文件视图_桥接(toText(版本 && 版本.物品名, ''), 版本, {});
+      }
+      const 物品名 = toText(输入.物品名, '').trim();
+      const chatKey = toText(选项.chatKey || 输入.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+      const 路径 = toText(输入.path || 构建物品归档文件路径_桥接(chatKey, 物品名), '').trim();
+      const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: '物品', 名称: 物品名, 路径 });
+      const 版本 = 取当前冷归档版本_桥接(时间线, 当前楼层);
+      return 构建物品归档文件视图_桥接(toText(版本 && 版本.物品名, ''), 版本, {});
+    }
+    const 物品名 = toText(输入, '').trim();
+    if (!物品名) throw new Error('归档物品名为空。');
+    const manifest = await 读取物品归档Manifest_桥接(选项);
+    const 索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引[物品名] : null;
+    return await 读取物品归档文件_桥接(索引 || { 物品名, path: 构建物品归档文件路径_桥接(manifest.chatKey, 物品名) }, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
   }
 
   async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
@@ -4600,12 +5453,16 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const 上传索引 = [];
-    for (const 角色名 of 可归档) 上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, 归档时间, 归档tick }));
+    for (const 角色名 of 可归档) 上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
     const manifest = cloneJsonValue(await 读取角色归档Manifest_桥接({ force: true }), 创建空角色归档Manifest_桥接(chatKey));
     if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object') manifest.角色索引 = {};
-    上传索引.forEach(索引 => { manifest.角色索引[索引.角色名] = 索引; });
-    await 写入角色归档Manifest_桥接(manifest);
+    上传索引.forEach(索引 => {
+      const 角色名 = toText(索引 && 索引.角色名, '').trim();
+      if (角色名) manifest.角色索引[角色名] = 索引;
+    });
+    await 写入角色归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
     可归档.forEach(角色名 => { delete 角色集[角色名]; });
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已归档 ${可归档.length} 名角色：${可归档.join('、')}。`;
@@ -4646,12 +5503,16 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const 上传索引 = [];
-    for (const 地点名 of 可归档) 上传索引.push(await 上传动态地点归档文件_桥接(地点名, 动态地点[地点名], { chatKey, 归档时间, 归档tick }));
+    for (const 地点名 of 可归档) 上传索引.push(await 上传动态地点归档文件_桥接(地点名, 动态地点[地点名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
     const manifest = cloneJsonValue(await 读取动态地点归档Manifest_桥接({ force: true }), 创建空动态地点归档Manifest_桥接(chatKey));
     if (!manifest.动态地点索引 || typeof manifest.动态地点索引 !== 'object') manifest.动态地点索引 = {};
-    上传索引.forEach(索引 => { manifest.动态地点索引[索引.地点名] = 索引; });
-    await 写入动态地点归档Manifest_桥接(manifest);
+    上传索引.forEach(索引 => {
+      const 地点名 = toText(索引 && 索引.地点名, '').trim();
+      if (地点名) manifest.动态地点索引[地点名] = 索引;
+    });
+    await 写入动态地点归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
     可归档.forEach(地点名 => { delete 动态地点[地点名]; });
     statData.world.动态地点 = 动态地点;
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
@@ -4692,15 +5553,19 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const 上传索引 = [];
     for (const 物品名 of 可归档) {
       const 命中 = 查找物品定义_桥接(statData, 物品名);
-      上传索引.push(await 上传物品归档文件_桥接(物品名, 命中.定义, { chatKey, 归档时间, 归档tick, 物品分类: 命中.分类 }));
+      上传索引.push(await 上传物品归档文件_桥接(物品名, 命中.定义, { chatKey, 归档时间, 归档tick, 物品分类: 命中.分类, 楼层: 当前楼层 }));
     }
     const manifest = cloneJsonValue(await 读取物品归档Manifest_桥接({ force: true }), 创建空物品归档Manifest_桥接(chatKey));
     if (!manifest.物品索引 || typeof manifest.物品索引 !== 'object') manifest.物品索引 = {};
-    上传索引.forEach(索引 => { manifest.物品索引[索引.物品名] = 索引; });
-    await 写入物品归档Manifest_桥接(manifest);
+    上传索引.forEach(索引 => {
+      const 物品名 = toText(索引 && 索引.物品名, '').trim();
+      if (物品名) manifest.物品索引[物品名] = 索引;
+    });
+    await 写入物品归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
     可归档.forEach(物品名 => { 删除分类物品定义_桥接(statData, 物品名); });
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已归档 ${可归档.length} 个物品定义：${可归档.join('、')}。`;
@@ -4719,9 +5584,10 @@
   async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const manifest = await 读取角色归档Manifest_桥接();
     const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     if (!statData.char || typeof statData.char !== 'object') statData.char = {};
@@ -4733,16 +5599,23 @@
         continue;
       }
       const 索引 = 角色索引[角色名];
-      if (!索引 || !索引.path) {
+      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      if (!版本) {
         跳过.push({ 角色名, reason: 'missing_archive' });
         continue;
       }
-      const 文件 = await 读取角色归档文件_桥接(索引.path, 选项);
-      if (!文件 || 文件.chatKey !== manifest.chatKey || toText(文件.角色名, '').trim() !== 角色名) {
+      let 归档视图 = null;
+      try {
+        归档视图 = await 读取角色归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+      } catch (错误) {
+        跳过.push({ 角色名, reason: 'archive_read_failed', error: 错误 });
+        continue;
+      }
+      if (toText(归档视图 && 归档视图.角色名, '').trim() !== 角色名 || !归档视图.角色数据 || typeof 归档视图.角色数据 !== 'object') {
         跳过.push({ 角色名, reason: 'archive_mismatch' });
         continue;
       }
-      statData.char[角色名] = cloneJsonValue(文件.角色数据, {});
+      statData.char[角色名] = cloneJsonValue(归档视图.角色数据, {});
       已恢复.push(角色名);
     }
     if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
@@ -4758,9 +5631,10 @@
   async function 恢复MVU归档物品定义_桥接(物品名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const manifest = await 读取物品归档Manifest_桥接();
     const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     确保物品定义分类表_桥接(statData);
@@ -4772,16 +5646,23 @@
         continue;
       }
       const 索引 = 物品索引[物品名];
-      if (!索引 || !索引.path) {
+      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      if (!版本) {
         跳过.push({ 物品名, reason: 'missing_archive' });
         continue;
       }
-      const 文件 = await 读取物品归档文件_桥接(索引.path, 选项);
-      if (!文件 || 文件.chatKey !== manifest.chatKey || toText(文件.物品名, '').trim() !== 物品名) {
+      let 归档视图 = null;
+      try {
+        归档视图 = await 读取物品归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+      } catch (错误) {
+        跳过.push({ 物品名, reason: 'archive_read_failed', error: 错误 });
+        continue;
+      }
+      if (toText(归档视图 && 归档视图.物品名, '').trim() !== 物品名 || !归档视图.物品定义 || typeof 归档视图.物品定义 !== 'object') {
         跳过.push({ 物品名, reason: 'archive_mismatch' });
         continue;
       }
-      写入分类物品定义_桥接(statData, 物品名, 文件.物品定义, 文件.物品分类 || 索引.物品分类 || 索引.分类);
+      写入分类物品定义_桥接(statData, 物品名, 归档视图.物品定义, 归档视图.物品分类 || 归档视图.分类);
       已恢复.push(物品名);
     }
     if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
@@ -4797,9 +5678,10 @@
   async function 恢复MVU归档动态地点_桥接(地点名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
     const manifest = await 读取动态地点归档Manifest_桥接();
     const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     if (!statData.world || typeof statData.world !== 'object') statData.world = {};
@@ -4812,16 +5694,23 @@
         continue;
       }
       const 索引 = 动态地点索引[地点名];
-      if (!索引 || !索引.path) {
+      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      if (!版本) {
         跳过.push({ 地点名, reason: 'missing_archive' });
         continue;
       }
-      const 文件 = await 读取动态地点归档文件_桥接(索引.path, 选项);
-      if (!文件 || 文件.chatKey !== manifest.chatKey || toText(文件.地点名, '').trim() !== 地点名) {
+      let 归档视图 = null;
+      try {
+        归档视图 = await 读取动态地点归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+      } catch (错误) {
+        跳过.push({ 地点名, reason: 'archive_read_failed', error: 错误 });
+        continue;
+      }
+      if (toText(归档视图 && 归档视图.地点名, '').trim() !== 地点名 || !归档视图.地点数据 || typeof 归档视图.地点数据 !== 'object') {
         跳过.push({ 地点名, reason: 'archive_mismatch' });
         continue;
       }
-      statData.world.动态地点[地点名] = cloneJsonValue(文件.地点数据, {});
+      statData.world.动态地点[地点名] = cloneJsonValue(归档视图.地点数据, {});
       已恢复.push(地点名);
     }
     if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
@@ -4869,7 +5758,7 @@
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
     const 索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引[标识] : null;
-    return await 读取角色归档文件_桥接(索引 && 索引.path ? 索引.path : 标识, 选项);
+    return await 读取角色归档文件_桥接(索引 || 标识, { ...选项, chatKey: manifest.chatKey });
   }
 
   async function 读取MVU动态地点归档_桥接(输入 = '', 选项 = {}) {
@@ -4877,7 +5766,7 @@
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
     const 索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引[标识] : null;
-    return await 读取动态地点归档文件_桥接(索引 && 索引.path ? 索引.path : 标识, 选项);
+    return await 读取动态地点归档文件_桥接(索引 || 标识, { ...选项, chatKey: manifest.chatKey });
   }
 
   async function 读取MVU物品归档_桥接(输入 = '', 选项 = {}) {
@@ -4885,7 +5774,7 @@
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
     const 索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引[标识] : null;
-    return await 读取物品归档文件_桥接(索引 && 索引.path ? 索引.path : 标识, 选项);
+    return await 读取物品归档文件_桥接(索引 || 标识, { ...选项, chatKey: manifest.chatKey });
   }
 
   function 读取冷实体最近tick_桥接(数据 = {}) {
@@ -4976,12 +5865,14 @@
 
   function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
     const 保护角色 = 收集归档保护角色名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     return safeEntries(statData.char || {})
       .filter(([角色名, 角色数据]) => {
         if (!角色名 || !角色数据 || typeof 角色数据 !== 'object') return false;
         if (保护角色.has(角色名) || 冷归档文本包含_桥接(文本, 角色名)) return false;
+        if (冷实体激活保护中_桥接('角色', 角色名, 当前楼层)) return false;
         return !冷实体近期活跃_桥接(角色数据, 当前tick);
       })
       .sort((左, 右) => 读取冷实体最近tick_桥接(左[1]) - 读取冷实体最近tick_桥接(右[1]) || 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
@@ -4991,6 +5882,7 @@
 
   function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
     const 保护地点 = 收集归档保护动态地点名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 本轮命中地点 = new Set(
@@ -5006,6 +5898,7 @@
         if (!地点名 || !地点数据 || typeof 地点数据 !== 'object') return false;
         if (保护地点.has(地点名)) return false;
         if (本轮命中地点.has(地点名)) return false;
+        if (冷实体激活保护中_桥接('动态地点', 地点名, 当前楼层)) return false;
         return !冷实体近期活跃_桥接(地点数据, 当前tick);
       })
       .sort((左, 右) => {
@@ -5019,6 +5912,7 @@
 
   function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
     const 保护物品 = 收集归档保护物品名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 允许分类 = Array.isArray(选项.允许分类) ? new Set(选项.允许分类.map(分类 => 规范化物品定义分类_桥接(分类, '')).filter(Boolean)) : null;
@@ -5036,6 +5930,7 @@
         if (允许分类 && !允许分类.has(规范化物品定义分类_桥接(分类, '剧情杂物'))) return false;
         if (保护物品.has(物品名)) return false;
         if (本轮命中物品.has(物品名)) return false;
+        if (冷实体激活保护中_桥接('物品', 物品名, 当前楼层)) return false;
         return !冷实体近期活跃_桥接(物品定义, 当前tick);
       })
       .sort((左, 右) => 读取冷实体最近tick_桥接(左.定义) - 读取冷实体最近tick_桥接(右.定义) || 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
@@ -5277,9 +6172,21 @@
     const 聚焦角色名 = toText(modalFocusState[`${冷归档预览键_桥接}::character-focus`], '').trim();
     const 聚焦地点名 = toText(modalFocusState[`${冷归档预览键_桥接}::dynamic-location-focus`], '').trim();
     const 聚焦物品名 = toText(modalFocusState[`${冷归档预览键_桥接}::item-focus`], '').trim();
-    const 聚焦角色缓存 = 聚焦角色名 && 角色索引[聚焦角色名] ? 角色归档状态_桥接.角色文件缓存.get(角色索引[聚焦角色名].path) : null;
-    const 聚焦地点缓存 = 聚焦地点名 && 动态地点索引[聚焦地点名] ? 动态地点归档状态_桥接.动态地点文件缓存.get(动态地点索引[聚焦地点名].path) : null;
-    const 聚焦物品缓存 = 聚焦物品名 && 物品索引[聚焦物品名] ? 物品归档状态_桥接.物品文件缓存.get(物品索引[聚焦物品名].path) : null;
+    const 已读角色详情 = modalFocusState[`${冷归档预览键_桥接}::character-detail`];
+    const 已读地点详情 = modalFocusState[`${冷归档预览键_桥接}::dynamic-location-detail`];
+    const 已读物品详情 = modalFocusState[`${冷归档预览键_桥接}::item-detail`];
+    const 聚焦角色缓存 = (() => {
+      if (已读角色详情 && toText(已读角色详情.角色名, '').trim() === 聚焦角色名) return 已读角色详情;
+      try { return 聚焦角色名 && 角色索引[聚焦角色名] ? 构建角色归档文件视图_桥接(聚焦角色名, 角色索引[聚焦角色名], 角色Manifest) : null; } catch (错误) { return null; }
+    })();
+    const 聚焦地点缓存 = (() => {
+      if (已读地点详情 && toText(已读地点详情.地点名, '').trim() === 聚焦地点名) return 已读地点详情;
+      try { return 聚焦地点名 && 动态地点索引[聚焦地点名] ? 构建动态地点归档文件视图_桥接(聚焦地点名, 动态地点索引[聚焦地点名], 动态地点Manifest) : null; } catch (错误) { return null; }
+    })();
+    const 聚焦物品缓存 = (() => {
+      if (已读物品详情 && toText(已读物品详情.物品名, '').trim() === 聚焦物品名) return 已读物品详情;
+      try { return 聚焦物品名 && 物品索引[聚焦物品名] ? 构建物品归档文件视图_桥接(聚焦物品名, 物品索引[聚焦物品名], 物品Manifest) : null; } catch (错误) { return null; }
+    })();
     const 聚焦角色数据 = 聚焦角色缓存 && 聚焦角色缓存.角色数据 && typeof 聚焦角色缓存.角色数据 === 'object' ? 聚焦角色缓存.角色数据 : null;
     const 聚焦地点数据 = 聚焦地点缓存 && 聚焦地点缓存.地点数据 && typeof 聚焦地点缓存.地点数据 === 'object' ? 聚焦地点缓存.地点数据 : null;
     const 聚焦物品数据 = 聚焦物品缓存 && 聚焦物品缓存.物品定义 && typeof 聚焦物品缓存.物品定义 === 'object' ? 聚焦物品缓存.物品定义 : null;
@@ -5391,7 +6298,7 @@
               </label>
               <label class="mvu-editor-field">
                 <span class="mvu-editor-label">物品分类阈值</span>
-                <input type="number" min="1" max="100" step="1" class="request-console-input" data-cold-archive-setting="物品分类数量阈值" value="${escapeHtmlAttr(自动归档配置.物品分类数量阈值)}" />
+                <input type="number" min="0" max="100" step="1" class="request-console-input" data-cold-archive-setting="物品分类数量阈值" value="${escapeHtmlAttr(自动归档配置.物品分类数量阈值)}" />
               </label>
               <label class="mvu-editor-field">
                 <span class="mvu-editor-label">单轮上限</span>
@@ -5401,10 +6308,31 @@
                 <span class="mvu-editor-label">冷却秒数</span>
                 <input type="number" min="5" max="3600" step="1" class="request-console-input" data-cold-archive-setting="冷却秒数" value="${escapeHtmlAttr(Math.round(自动归档配置.冷却毫秒 / 1000))}" />
               </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">历史清理</span>
+                <select class="request-console-input" data-cold-archive-setting="历史清理模式">
+                  <option value="停用"${自动归档配置.历史清理模式 === '停用' ? ' selected' : ''}>停用</option>
+                  <option value="间隔保留"${自动归档配置.历史清理模式 === '间隔保留' ? ' selected' : ''}>间隔保留</option>
+                  <option value="压缩当前"${自动归档配置.历史清理模式 === '压缩当前' ? ' selected' : ''}>压缩当前</option>
+                </select>
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">保留近层</span>
+                <input type="number" min="0" max="100000" step="1" class="request-console-input" data-cold-archive-setting="历史保留楼层数" value="${escapeHtmlAttr(自动归档配置.历史保留楼层数)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">间隔层数</span>
+                <input type="number" min="1" max="100000" step="1" class="request-console-input" data-cold-archive-setting="历史保留间隔楼层" value="${escapeHtmlAttr(自动归档配置.历史保留间隔楼层)}" />
+              </label>
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">触发MB</span>
+                <input type="number" min="1" max="63" step="1" class="request-console-input" data-cold-archive-setting="历史清理触发MB" value="${escapeHtmlAttr(自动归档配置.历史清理触发MB)}" />
+              </label>
             </div>
             <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
               <button type="button" class="tag-chip live" data-cold-archive-save-settings="1">保存设定</button>
               <button type="button" class="tag-chip" data-cold-archive-reset-settings="1">默认值</button>
+              <button type="button" class="tag-chip warn" data-cold-archive-compact-history="1"${自动归档配置.历史清理模式 === '停用' ? ' disabled' : ''}>整理历史</button>
             </div>
             <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
               <button type="button" class="tag-chip ${当前页签 === '角色' ? 'live' : ''}" data-cold-archive-tab="角色">角色</button>
@@ -6618,7 +7546,7 @@
     }
   }
 
-  async function waitForUiContinuationAssistantMessage(userIndex = -1, attempts = 25) {
+  async function waitForUiContinuationAssistantMessage(userIndex = -1, attempts = 25, 起始索引 = -1) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
         const ctx =
@@ -6626,7 +7554,10 @@
             ? window.SillyTavern.getContext()
             : null;
         const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-        if (userIndex >= 0) {
+        if (Number.isInteger(起始索引) && 起始索引 >= 0) {
+          const found = chat.slice(起始索引).find(message => message && !message.is_user);
+          if (found) return found;
+        } else if (userIndex >= 0) {
           const found = chat.slice(userIndex + 1).find(message => message && !message.is_user);
           if (found) return found;
         } else {
@@ -6686,6 +7617,8 @@
     const 跳过动作锁 = meta && (meta.skipActionLock === true || meta.noActionLock === true);
     const 动作锁键 = 跳过动作锁 ? '' : 构建异步动作锁键(requestKind, userText, meta);
     let persistentInjection = null;
+    let 提交前消息数 = 0;
+    let 用户消息索引 = -1;
 
     if (!userText) {
       showUiToast('请求内容为空，无法提交。', 'error', 4200);
@@ -6711,6 +7644,16 @@
         await applyJsonPatchOpsByEditor(patchOps, { force: true });
         await refreshLiveSnapshot({ force: true });
       }
+      try {
+        const ctx =
+          window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
+            ? window.SillyTavern.getContext()
+            : null;
+        const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
+        提交前消息数 = chat.length;
+      } catch (error) {
+        提交前消息数 = 0;
+      }
       Array.from(pendingUiSystemInjections.keys()).forEach(injectionId => {
         clearPendingUiSystemInjection(injectionId);
       });
@@ -6725,12 +7668,21 @@
             : null;
         const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
         const lastMessage = chat.length ? chat[chat.length - 1] : null;
-        if (lastMessage && lastMessage.is_user && String(lastMessage.mes || '') === userText) {
-          lastMessage._mvu_hidden_system_prompt = hiddenPrompt;
-          lastMessage._mvu_request_kind = requestKind;
+        const 新用户消息索引 = chat.findIndex((message, index) =>
+          index >= 提交前消息数 && message && message.is_user && String(message.mes || '') === userText
+        );
+        用户消息索引 = 新用户消息索引 >= 0
+          ? 新用户消息索引
+          : lastMessage && lastMessage.is_user && String(lastMessage.mes || '') === userText
+            ? chat.length - 1
+            : -1;
+        const 用户消息 = 用户消息索引 >= 0 ? chat[用户消息索引] : null;
+        if (用户消息) {
+          用户消息._mvu_hidden_system_prompt = hiddenPrompt;
+          用户消息._mvu_request_kind = requestKind;
           if (persistentInjection) {
-            lastMessage._mvu_hidden_system_injection_id = persistentInjection.id;
-            persistentInjection.userIndex = chat.length - 1;
+            用户消息._mvu_hidden_system_injection_id = persistentInjection.id;
+            persistentInjection.userIndex = 用户消息索引;
             persistentInjection.helper = helper;
             persistentInjection.userText = userText;
             persistentInjection.requestKind = requestKind;
@@ -6738,7 +7690,24 @@
         }
       } catch (error) {}
       await helper.triggerSlash('/trigger await=true');
-      return { ok: true, requestKind };
+      const 后续搜索起点 = 用户消息索引 >= 0 ? 用户消息索引 + 1 : 提交前消息数;
+      const 助手消息 = await waitForUiContinuationAssistantMessage(用户消息索引, 60, 后续搜索起点);
+      if (!助手消息) {
+        if (persistentInjection && persistentInjection.id) clearPendingUiSystemInjection(persistentInjection.id);
+        console.warn('[DragonUI] UI request did not produce assistant continuation', { requestKind, userIndex: 用户消息索引 });
+        showUiToast('请求已发出，但酒馆没有生成回复。请检查生成状态后重试。', 'error', 5200);
+        return { ok: false, requestKind, reason: 'generation_not_started' };
+      }
+      if (persistentInjection && persistentInjection.id) {
+        if (persistentInjection.userIndex < 0) persistentInjection.userIndex = 后续搜索起点 - 1;
+        persistentInjection.processing = true;
+        try {
+          await postprocessUiContinuationResult(helper, userText, requestKind, persistentInjection);
+        } finally {
+          persistentInjection.processing = false;
+        }
+      }
+      return { ok: true, requestKind, assistantMessageId: 助手消息.message_id };
     } catch (error) {
       if (persistentInjection && persistentInjection.id) {
         clearPendingUiSystemInjection(persistentInjection.id);
@@ -35822,6 +36791,7 @@
     bindInlineEditing();
     await waitForMvuReady();
     installDirectModuleIntentGuard();
+    安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();
     bindMvuUpdates(vars => refreshLiveSnapshot({ sharedVars: vars }));
   }
@@ -35842,7 +36812,10 @@
   window.__LWCS_RESTORE_ARCHIVED_MVU_ITEMS__ = (物品名列表, 选项 = {}) => 恢复MVU归档物品定义_桥接(物品名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档物品定义_桥接(文本, 选项);
   window.__LWCS_READ_MVU_ITEM_ARCHIVE__ = (输入 = '', 选项 = {}) => 读取MVU物品归档_桥接(输入, 选项);
+  window.__LWCS_RECORD_MVU_COLD_ENTITY_ACTIVATION__ = 输入 => 记录MVU冷实体激活_桥接(输入);
   window.__LWCS_AUTO_ARCHIVE_MVU_COLD_ENTITIES__ = (选项 = {}) => 按阈值自动归档MVU冷实体_桥接(选项);
+  window.__LWCS_CLEAN_MVU_COLD_ARCHIVE_FUTURE_FLOORS__ = (选项 = {}) => 清理未来楼层冷归档_桥接({ ...选项, force: true });
+  window.__LWCS_COMPACT_MVU_COLD_ARCHIVE_HISTORY__ = (选项 = {}) => 整理全部冷归档历史_桥接(选项);
   window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ = () => {
     openDetailPreview(冷归档预览键_桥接, { preserveMapDispatchContext: true, replace: true });
     return true;
@@ -41440,9 +42413,13 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (requestKind === 'map_travel_settled') {
       登记本轮模块结算路径([['world', '动态地点']], { 记录本轮模块结算路径: true });
     }
-    detail.result = await dispatchUiAiRequest(playerInput, systemPrompt, {
+    const 提交参数 = {
       requestKind,
-    });
+      patchOps: Array.isArray(meta.patchOps) ? meta.patchOps : [],
+    };
+    if (meta.skipActionLock === true) 提交参数.skipActionLock = true;
+    if (meta.noActionLock === true) 提交参数.noActionLock = true;
+    detail.result = await dispatchUiAiRequest(playerInput, systemPrompt, 提交参数);
   }
 
   window.addEventListener('map-ai-request', handleMapAiRequest);
@@ -43468,6 +44445,25 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
 
+    const 冷归档历史整理按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-compact-history]') : null;
+    if (冷归档历史整理按钮 && detailSurfaceHost.contains(冷归档历史整理按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      冷归档历史整理按钮.disabled = true;
+      冷归档历史整理按钮.classList.add('is-busy');
+      try {
+        const 结果 = await 整理全部冷归档历史_桥接();
+        showUiToast(结果.changed ? `已整理 ${结果.整理数量} 个归档。` : '没有归档需要整理。', 结果.changed ? 'info' : 'warning', 2200);
+        rerenderDetailSurface(冷归档预览键_桥接, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '冷归档历史整理失败。', 'error');
+      } finally {
+        冷归档历史整理按钮.disabled = false;
+        冷归档历史整理按钮.classList.remove('is-busy');
+      }
+      return;
+    }
+
     const 冷归档页签按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-tab]') : null;
     if (冷归档页签按钮 && detailSurfaceHost.contains(冷归档页签按钮)) {
       event.preventDefault();
@@ -43616,8 +44612,8 @@ ${toText(combatData.战斗意图, '点到为止')}
       try {
         const manifest = await 读取角色归档Manifest_桥接();
         const 索引 = manifest && manifest.角色索引 ? manifest.角色索引[角色名] : null;
-        if (!索引 || !索引.path) throw new Error('找不到角色归档索引。');
-        await 读取角色归档文件_桥接(索引.path);
+        if (!取当前冷归档版本_桥接(索引)) throw new Error('找不到角色归档索引。');
+        modalFocusState[`${冷归档预览键_桥接}::character-detail`] = await 读取角色归档文件_桥接(索引, { chatKey: manifest.chatKey });
         modalFocusState[`${冷归档预览键_桥接}::tab`] = '角色';
         modalFocusState[`${冷归档预览键_桥接}::character-focus`] = 角色名;
         rerenderDetailSurface(冷归档预览键_桥接, options);
@@ -43636,8 +44632,8 @@ ${toText(combatData.战斗意图, '点到为止')}
       try {
         const manifest = await 读取动态地点归档Manifest_桥接();
         const 索引 = manifest && manifest.动态地点索引 ? manifest.动态地点索引[地点名] : null;
-        if (!索引 || !索引.path) throw new Error('找不到动态地点归档索引。');
-        await 读取动态地点归档文件_桥接(索引.path);
+        if (!取当前冷归档版本_桥接(索引)) throw new Error('找不到动态地点归档索引。');
+        modalFocusState[`${冷归档预览键_桥接}::dynamic-location-detail`] = await 读取动态地点归档文件_桥接(索引, { chatKey: manifest.chatKey });
         modalFocusState[`${冷归档预览键_桥接}::tab`] = '动态地点';
         modalFocusState[`${冷归档预览键_桥接}::dynamic-location-focus`] = 地点名;
         rerenderDetailSurface(冷归档预览键_桥接, options);
@@ -43656,8 +44652,8 @@ ${toText(combatData.战斗意图, '点到为止')}
       try {
         const manifest = await 读取物品归档Manifest_桥接();
         const 索引 = manifest && manifest.物品索引 ? manifest.物品索引[物品名] : null;
-        if (!索引 || !索引.path) throw new Error('找不到物品归档索引。');
-        await 读取物品归档文件_桥接(索引.path);
+        if (!取当前冷归档版本_桥接(索引)) throw new Error('找不到物品归档索引。');
+        modalFocusState[`${冷归档预览键_桥接}::item-detail`] = await 读取物品归档文件_桥接(索引, { chatKey: manifest.chatKey });
         modalFocusState[`${冷归档预览键_桥接}::tab`] = '物品';
         modalFocusState[`${冷归档预览键_桥接}::item-focus`] = 物品名;
         rerenderDetailSurface(冷归档预览键_桥接, options);
