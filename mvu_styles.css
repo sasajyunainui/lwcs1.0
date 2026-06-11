@@ -14919,6 +14919,46 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
 #detailModal.mvu-modal-display-unified .mvu-detail-toolbar--tight {
   margin-top: 8px !important;
 }
+
+.mvu-plot-audit-card {
+  gap: 12px;
+}
+
+.mvu-plot-audit-result {
+  min-height: 76px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid rgba(120, 220, 255, 0.14);
+  border-radius: var(--mvu-radius-md, 12px);
+  background: rgba(5, 14, 24, 0.56);
+  padding: 10px 12px;
+}
+
+.mvu-plot-audit-result pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: rgba(239, 249, 255, 0.92);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.mvu-plot-audit-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.mvu-plot-audit-editor summary {
+  cursor: pointer;
+  color: var(--gold);
+  font-size: var(--mvu-font-sm, 12px);
+  letter-spacing: 0.04em;
+}
+
+.mvu-plot-audit-editor .mvu-editor-textarea {
+  min-height: 190px;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-action-row--start,
 #detailModal.mvu-modal-display-unified .mvu-detail-action-row--start {
   justify-content: flex-start !important;

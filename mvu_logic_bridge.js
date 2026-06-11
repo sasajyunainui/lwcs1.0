@@ -1743,6 +1743,55 @@
     return hasUiPlaceholderToken(text) ? fallback : text;
   }
 
+  function 读取剧情审计提示词_桥接() {
+    try {
+      const 接口 = window.__LWCS_GET_PLOT_AUDIT_PROMPT__;
+      return typeof 接口 === 'function' ? String(接口() || '') : '';
+    } catch (错误) {
+      return '';
+    }
+  }
+
+  function 保存剧情审计提示词_桥接(文本) {
+    const 接口 = window.__LWCS_SET_PLOT_AUDIT_PROMPT__;
+    if (typeof 接口 !== 'function') throw new Error('剧情审计接口未就绪。');
+    return String(接口(String(文本 || '')) || '');
+  }
+
+  function 重置剧情审计提示词_桥接() {
+    const 接口 = window.__LWCS_RESET_PLOT_AUDIT_PROMPT__;
+    if (typeof 接口 !== 'function') throw new Error('剧情审计接口未就绪。');
+    return String(接口() || '');
+  }
+
+  function 读取最近剧情审查结果_桥接() {
+    try {
+      const 接口 = window.__LWCS_GET_LAST_PLOT_AUDIT_RESULT__;
+      return typeof 接口 === 'function' ? String(接口() || '').trim() : '';
+    } catch (错误) {
+      return '';
+    }
+  }
+
+  async function 复制文本到剪贴板_桥接(文本) {
+    const 内容 = String(文本 || '');
+    if (!内容.trim()) return false;
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(内容);
+      return true;
+    }
+    const 输入框 = document.createElement('textarea');
+    输入框.value = 内容;
+    输入框.setAttribute('readonly', 'readonly');
+    输入框.style.position = 'fixed';
+    输入框.style.opacity = '0';
+    document.body.appendChild(输入框);
+    输入框.select();
+    const 成功 = document.execCommand('copy');
+    输入框.remove();
+    return 成功;
+  }
+
   function toNumber(value, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -29422,10 +29471,12 @@
     const sys = deepGet(snapshot, 'rootData.sys', {});
     const latestBroadcast = toText(sys.系统播报, '暂无播报');
     const 最近播报摘要 = shortenText(latestBroadcast, 88);
+    const 剧情审计状态 = 读取最近剧情审查结果_桥接() ? '已记录' : '暂无';
     return `
         <div class="module-name">系统播报</div>
         <div class="terminal-home-log">
           <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></button>
+          <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[审计]</b><span>${htmlEscape(剧情审计状态)}</span></button>
         </div>
         <div class="terminal-home-metrics">
           <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
@@ -35896,6 +35947,8 @@
     }
 
     if (previewKey === '系统播报与日志') {
+      const 剧情审计结果 = 读取最近剧情审查结果_桥接();
+      const 剧情审计提示词 = 读取剧情审计提示词_桥接();
       const 终端原始条目 = [
         {
           title: '最近播报',
@@ -35923,6 +35976,24 @@
               <div class="archive-card full mvu-detail-scroll-card">
                 <div class="archive-card-head"><div class="archive-card-title">系统广播</div></div>
                 <div class="mvu-detail-scroll-list">${makeTimelineStack(终端条目)}</div>
+              </div>
+              <div class="archive-card full mvu-plot-audit-card">
+                <div class="archive-card-head">
+                  <div class="archive-card-title">剧情审计</div>
+                  <span class="dossier-pill ${剧情审计结果 ? 'live' : 'warn'}">${htmlEscape(剧情审计结果 ? '已记录' : '暂无')}</span>
+                </div>
+                <div class="mvu-plot-audit-result">
+                  ${剧情审计结果 ? `<pre>${htmlEscape(剧情审计结果)}</pre>` : '<div class="dossier-empty-note">暂无</div>'}
+                </div>
+                <details class="mvu-plot-audit-editor">
+                  <summary>审计设定</summary>
+                  <textarea class="mvu-editor-textarea" data-plot-audit-prompt>${htmlEscape(剧情审计提示词)}</textarea>
+                  <div class="mvu-editor-actions">
+                    <button type="button" class="tag-chip live" data-plot-audit-action="save">保存</button>
+                    <button type="button" class="tag-chip" data-plot-audit-action="reset">重置</button>
+                    <button type="button" class="tag-chip" data-plot-audit-action="copy">复制结果</button>
+                  </div>
+                </details>
               </div>
             </div>
           `,
@@ -43369,6 +43440,41 @@ ${toText(combatData.战斗意图, '点到为止')}
         event.stopPropagation();
         return;
       }
+    }
+    const 剧情审计动作按钮 = eventTarget ? eventTarget.closest('[data-plot-audit-action]') : null;
+    if (剧情审计动作按钮 && detailSurfaceHost.contains(剧情审计动作按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 动作 = 剧情审计动作按钮.getAttribute('data-plot-audit-action') || '';
+      const 输入框 = detailSurfaceHost.querySelector('[data-plot-audit-prompt]');
+      try {
+        if (动作 === 'save') {
+          保存剧情审计提示词_桥接(输入框 ? 输入框.value : '');
+          showUiToast('剧情审计已保存。', 'info', 1800);
+          if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+          return;
+        }
+        if (动作 === 'reset') {
+          const 默认提示词 = 重置剧情审计提示词_桥接();
+          if (输入框) 输入框.value = 默认提示词;
+          showUiToast('剧情审计已重置。', 'info', 1800);
+          if (detailPreviewKey) rerenderDetailSurface(detailPreviewKey, options);
+          return;
+        }
+        if (动作 === 'copy') {
+          const 结果 = 读取最近剧情审查结果_桥接();
+          if (!结果) {
+            showUiToast('暂无剧情审计结果。', 'warning', 1800);
+            return;
+          }
+          const 已复制 = await 复制文本到剪贴板_桥接(结果);
+          showUiToast(已复制 ? '剧情审计已复制。' : '复制失败。', 已复制 ? 'info' : 'error', 1800);
+          return;
+        }
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '剧情审计操作失败。', 'error', 3000);
+      }
+      return;
     }
     const actionBtn = eventTarget ? eventTarget.closest('.armory-action-btn') : null;
     if (actionBtn && detailSurfaceHost.contains(actionBtn)) {
