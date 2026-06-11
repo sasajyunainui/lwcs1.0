@@ -3119,10 +3119,19 @@
     const 列表 = Array.isArray(使用效果) ? 使用效果 : [];
     const 效果列表 = 列表.length ? 列表 : [创建技能设计台默认原型效果('资源变化', '自身')];
     return `<div class="item-definition-effect-list skill-designer-preview-stack" data-item-definition-effect-list data-skill-designer-prototype-grid="item-use" data-skill-designer-allow-empty="true">
-        ${构建技能设计台原型效果行列表(效果列表, '自身', true, { 禁用释放前降低结算: true })}
+        ${构建技能设计台原型效果行列表(效果列表, '自身', true, { 禁用释放前降低结算: true, 允许对应等级: true })}
       </div>
       <div class="mvu-editor-actions">
         <button type="button" class="tag-chip" data-collection-action="add-item-definition-effect">新增效果</button>
+      </div>`;
+  }
+
+  function 构建物品使用副作用组(副作用列表 = []) {
+    return `<div class="item-definition-side-effect-list skill-designer-side-effect-list" data-item-definition-side-effect-list>
+        ${构建技能设计台副作用行列表(副作用列表, { 字段名: '物品副作用列表' })}
+      </div>
+      <div class="mvu-editor-actions">
+        <button type="button" class="tag-chip" data-collection-action="add-item-definition-side-effect">新增副作用</button>
       </div>`;
   }
 
@@ -3206,6 +3215,10 @@
     const 消耗模块 = `<div class="item-definition-subblock">
       <div class="mvu-editor-section-title">使用效果</div>
       ${构建物品使用效果组(定义.使用效果)}
+    </div>
+    <div class="item-definition-subblock">
+      <div class="mvu-editor-section-title">使用副作用</div>
+      ${构建物品使用副作用组(定义.副作用列表)}
     </div>`;
     const 设计图纸模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('图纸目标', '图纸目标', toText(定义.图纸目标, ''), 'text')}
@@ -3472,7 +3485,7 @@
   function 读取物品使用效果列表(表单节点, 旧效果列表 = []) {
     const 容器 = 表单节点 ? 表单节点.querySelector('[data-item-definition-effect-list]') : null;
     if (容器 && 容器.matches('[data-skill-designer-prototype-grid]')) {
-      return 读取技能设计台原型效果状态(容器, '自身', '', true, { 强制独立: true });
+      return 读取技能设计台原型效果状态(容器, '自身', '', true, { 强制独立: true, 允许对应等级: true });
     }
     const 输出 = [];
     if (!容器) return 输出;
@@ -10675,7 +10688,6 @@
     if (!字段 || typeof 字段 !== 'object') return false;
     if (原型名 === '伤害结算') return false;
     if (!技能设计台原型支持驱动判定字段(原型名, 字段)) return false;
-    if (toNumber(字段['对应等级'], 0) > 0) return false;
     if (原型名 === '时光回溯') return true;
     if (原型名 === '机制授予') return true;
     if (原型名 === '复制执行') return /属性|全部/.test(normalizeSkillUiText(字段['复制类型'], ''));
@@ -11536,16 +11548,12 @@
 
   function buildSkillDesignerSideEffectSummary(draft = {}) {
     const 施展列表 = 规范化技能设计台副作用列表(draft && draft.副作用列表);
-    const 使用列表 = normalizeSkillUiText(draft && draft.deliveryForm, '') === '造物承载'
-      ? 规范化技能设计台副作用列表(draft && draft.使用副作用列表)
-      : [];
     const 格式化 = list => list
       .map(格式化技能设计台副作用摘要)
       .filter(Boolean)
       .join('；');
     const 片段 = [];
     if (施展列表.length) 片段.push(`施展副作用：${格式化(施展列表)}`);
-    if (使用列表.length) 片段.push(`使用副作用：${格式化(使用列表)}`);
     return 片段.join('；');
   }
 
@@ -13540,6 +13548,7 @@
 
   function 清理技能设计台行为闭环字段(原型 = '', 字段 = {}, context = {}) {
     if (!字段 || typeof 字段 !== 'object') return;
+    const 允许对应等级 = !!(context && context.允许对应等级);
     delete 字段['事件优先级'];
     delete 字段['快照规则'];
     技能执行旧数组键表_V1.forEach(字段名 => {
@@ -13553,11 +13562,11 @@
       delete 字段['影响方向'];
       字段['攻击段数'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['攻击段数'], 1, 1));
       字段['威力倍率'] = 规范化技能设计台伤害威力倍率(字段['威力倍率'], 100);
-      if (字段['对应等级'] !== undefined) {
+      if (允许对应等级 && 字段['对应等级'] !== undefined) {
         const 对应等级 = Math.round(toNumber(字段['对应等级'], 0));
         if (Number.isFinite(对应等级) && 对应等级 > 0) 字段['对应等级'] = Math.max(1, Math.min(180, 对应等级));
         else delete 字段['对应等级'];
-      }
+      } else delete 字段['对应等级'];
       if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(字段['目标'], ''))) delete 字段['目标'];
       const 伤害类型 = normalizeSkillUiText(字段['伤害类型'], '物理伤害');
       字段['伤害类型'] = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(伤害类型) ? 伤害类型 : '物理伤害';
@@ -14164,8 +14173,8 @@
       if (缺失必填字段.length) throw new Error(`技能执行结构错误:${path}[${index}]缺少必填字段${缺失必填字段.join('、')}`);
       if (原型 === '伤害结算' && effect['持续回合'] !== undefined)
         throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不支持持续回合`);
-      if (原型 === '伤害结算' && effect['对应等级'] !== undefined && (!Number.isFinite(Number(effect['对应等级'])) || Number(effect['对应等级']) <= 0))
-        throw new Error(`技能执行结构错误:${path}[${index}]对应等级必须大于0`);
+      if (effect['对应等级'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]对应等级只允许普通物品使用效果`);
       if (effect['资源转移角色'] !== undefined)
         throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
       const 正式字段集合 = new Set(Array.isArray(原型定义 && 原型定义['允许字段']) ? 原型定义['允许字段'] : []);
@@ -19034,10 +19043,11 @@
     return true;
   }
 
-  function 读取技能设计台原型字段列表(原型 = '', effect = {}) {
+  function 读取技能设计台原型字段列表(原型 = '', effect = {}, context = {}) {
     const 原型名 = normalizeSkillUiText(原型, '');
     const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
     const 字段 = Array.isArray(定义 && 定义['允许字段']) ? [...定义['允许字段']] : [];
+    const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
       const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
@@ -19046,13 +19056,13 @@
         : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
       return 固定顺序.filter(key =>
         字段.includes(key) &&
-        !技能设计台原型字段隐藏集合.has(key) &&
+        允许字段(key) &&
         技能设计台原型字段是否显示(原型名, key, effect),
       );
     }
     return Array.from(new Set(字段))
       .map(key => normalizeSkillUiText(key, ''))
-      .filter(key => key && !技能设计台原型字段隐藏集合.has(key))
+      .filter(允许字段)
       .filter(key => 技能设计台原型字段是否显示(原型名, key, effect));
   }
 
@@ -19621,6 +19631,7 @@
     const prototype = normalizeSkillUiText(source['原型'], '伤害结算');
     const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[prototype] || {};
     const 允许字段 = new Set(Array.isArray(定义['允许字段']) ? 定义['允许字段'] : ['原型', '目标']);
+    if (!(context && context.允许对应等级)) 允许字段.delete('对应等级');
     const target = 技能设计台按上下文默认目标(prototype, source['目标'] || fallbackTarget, context);
     const next = 创建技能设计台默认原型效果(prototype, target);
     ['原型', '目标', '生效方式', '条件分支'].forEach(key => {
@@ -19809,7 +19820,7 @@
     return next;
   }
 
-  function 筛选技能设计台显式原型效果列表(value = [], fallbackTarget = '单体') {
+  function 筛选技能设计台显式原型效果列表(value = [], fallbackTarget = '单体', context = {}) {
     const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
     const source = Array.isArray(value) ? value : [];
     return source
@@ -19821,7 +19832,7 @@
           原型: prototype,
           目标: normalizeSkillDesignerEffectTargetValue(safeEntry['目标'], target),
         };
-        读取技能设计台原型字段列表(prototype, safeEntry).forEach(key => {
+        读取技能设计台原型字段列表(prototype, safeEntry, context).forEach(key => {
           if (safeEntry[key] === undefined || safeEntry[key] === null) return;
           if (typeof safeEntry[key] === 'string' && !safeEntry[key].trim()) return;
           normalized[key] = cloneJsonValue(safeEntry[key]);
@@ -19831,9 +19842,9 @@
       .filter(Boolean);
   }
 
-  function 规范化技能设计台原型效果列表(value = [], fallbackTarget = '单体') {
+  function 规范化技能设计台原型效果列表(value = [], fallbackTarget = '单体', context = {}) {
     const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
-    const list = 筛选技能设计台显式原型效果列表(value, target);
+    const list = 筛选技能设计台显式原型效果列表(value, target, context);
     if (list.length) return list;
     const fallbackPrototype = 读取技能设计台原型名称列表()[0] || '伤害结算';
     return [创建技能设计台默认原型效果(fallbackPrototype, target)];
@@ -19848,6 +19859,7 @@
         .filter(effect => normalizeSkillUiText(effect['原型'], ''))
         .map(effect => cloneJsonValue(effect)),
       target,
+      {},
     );
   }
 
@@ -20453,8 +20465,9 @@
     const 当前效果 = 技能设计台清理并水合原型效果(effect, target, {
       嵌套字段: options && options.嵌套字段,
       强制独立: options && options.强制独立,
+      允许对应等级: options && options.允许对应等级,
     });
-    const 原始字段列表 = 读取技能设计台原型字段列表(prototype, 当前效果);
+    const 原始字段列表 = 读取技能设计台原型字段列表(prototype, 当前效果, options);
     const 字段列表 =
       prototype === '时窗修正'
         ? (() => {
@@ -20506,7 +20519,7 @@
     };
     return 列表.map((效果条目, 序号) => {
       if (!效果条目 || typeof 效果条目 !== 'object') return 效果条目;
-      const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立 });
+        const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立, 允许对应等级: context && context.允许对应等级 });
       const 当前目标 = normalizeSkillDesignerEffectTargetValue(下一条['目标'], 主目标 || '单体');
       const 当前生效方式 = normalizeSkillUiText(效果条目['生效方式'], '独立生效');
       下一条['生效方式'] =
@@ -20530,7 +20543,7 @@
     };
     return 列表.map((效果条目, 序号) => {
       if (!效果条目 || typeof 效果条目 !== 'object' || Array.isArray(效果条目)) return 效果条目;
-      const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立 });
+      const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立, 允许对应等级: context && context.允许对应等级 });
       const 当前目标 = normalizeSkillDesignerEffectTargetValue(下一条['目标'], 主目标 || '单体');
       const 当前生效方式 = normalizeSkillUiText(效果条目['生效方式'], '独立生效');
       下一条['生效方式'] =
@@ -20547,7 +20560,7 @@
     追加动画 = false,
   ) {
     const source = Array.isArray(effects) ? effects : [];
-    const normalized = 允许删空 && !source.length ? [] : 规范化技能设计台原型效果列表(source, fallbackTarget);
+    const normalized = 允许删空 && !source.length ? [] : 规范化技能设计台原型效果列表(source, fallbackTarget, options);
     const prototypeOptions = 读取技能设计台原型名称列表();
     return normalized
       .map((effect, index) => {
@@ -20695,6 +20708,7 @@
                 const nestedEffects = 读取技能设计台原型效果状态(nestedGrid, target, '', true, {
                   条件分支: true,
                   强制独立: true,
+                  允许对应等级: context && context.允许对应等级,
                 });
                 if (nestedEffects.length) branch[effectKey] = nestedEffects;
               }
@@ -20711,6 +20725,7 @@
           const nestedEffects = 读取技能设计台原型效果状态(nestedGrid, target, '', true, {
             嵌套字段: key,
             强制独立: true,
+            允许对应等级: context && context.允许对应等级,
           });
           if (nestedEffects.length) effect[key] = nestedEffects;
         });
@@ -20719,7 +20734,7 @@
       .filter(Boolean);
     const 规范续效果列表 = 规范化技能设计台原型生效方式列表(effects, context);
     const 归一效果列表 =
-      允许空列表 && !规范续效果列表.length ? [] : 规范化技能设计台原型效果列表(规范续效果列表, target);
+      允许空列表 && !规范续效果列表.length ? [] : 规范化技能设计台原型效果列表(规范续效果列表, target, context);
     清理技能设计台等价替换条件分支(归一效果列表);
     return 归一效果列表;
   }
@@ -30285,8 +30300,9 @@
                 )
               : [];
             const rowIndex = rows.indexOf(row);
-            const currentEffects = grid ? 读取技能设计台原型效果状态(grid, currentTarget, '', true) : [];
           const gridName = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-prototype-grid'), '');
+          const 允许对应等级 = gridName === 'item-use';
+            const currentEffects = grid ? 读取技能设计台原型效果状态(grid, currentTarget, '', true, { 允许对应等级 }) : [];
           const nestedKind = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-nested-kind'), '');
           const 禁用释放前降低结算 = !!row.closest('[data-skill-designer-condition-branch-row]')
             && 技能设计台条件列表包含释放后条件(
@@ -30317,7 +30333,7 @@
             const currentEffect = 技能设计台清理并水合原型效果(
               sourceEffect,
               currentTarget,
-              { 嵌套字段: nestedKind, 强制独立: gridName !== 'main' },
+              { 嵌套字段: nestedKind, 强制独立: gridName !== 'main', 允许对应等级 },
             );
             const 禁用条件分支 = !!row.closest('[data-skill-designer-condition-effect]');
             fields.innerHTML = 构建技能设计台原型字段编辑器(currentEffect, {
@@ -30328,6 +30344,7 @@
               固定生效方式: gridName === 'main' && rowIndex === 0 ? '独立生效' : '',
               默认生效方式: gridName === 'main' && rowIndex === 0 ? '独立生效' : '独立生效',
               当前效果: currentEffect,
+              允许对应等级,
             });
             row.setAttribute('data-skill-designer-rendered-prototype', currentEffect['原型']);
             if (currentEffect['原型'] === '状态施加') row.setAttribute('data-skill-designer-rendered-state', normalizeSkillUiText(currentEffect['状态'], ''));
@@ -30653,11 +30670,6 @@
             }
             const 施展副作用标题 = mountEl.querySelector('[data-skill-designer-side-effect-title]');
             if (施展副作用标题) 施展副作用标题.textContent = isConstruct ? '施展副作用' : '副作用';
-            const 使用副作用区 = mountEl.querySelector('[data-skill-designer-side-effect-section="使用副作用列表"]');
-            if (使用副作用区) {
-              使用副作用区.hidden = !isConstruct;
-              使用副作用区.style.display = isConstruct ? '' : 'none';
-            }
           };
 
           const syncScalingField = block => {
@@ -31577,15 +31589,6 @@
                     </div>
                     <div class=\"mvu-editor-actions\">
                       <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-side-effect=\"副作用列表\" data-skill-designer-disableable>+ 副作用</button>
-                    </div>
-                  </section>
-                  <section class=\"mvu-editor-section${规范化技能设计台副作用列表(designerDraft['使用副作用列表']).length ? '' : ' skill-designer-section-compact'}\" data-skill-designer-side-effect-section=\"使用副作用列表\"${是造物承载 ? '' : ' hidden style=\"display:none\"'}>
-                    <div class=\"mvu-editor-section-title\">使用副作用</div>
-                    <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-side-effect-list\" data-skill-designer-side-effect-list=\"使用副作用列表\">
-                      ${构建技能设计台副作用行列表(designerDraft['使用副作用列表'], { 字段名: '使用副作用列表' })}
-                    </div>
-                    <div class=\"mvu-editor-actions\">
-                      <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-side-effect=\"使用副作用列表\" data-skill-designer-disableable>+ 副作用</button>
                     </div>
                   </section>
 
@@ -43860,7 +43863,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           const 新效果 = 创建技能设计台默认原型效果('资源变化', '自身');
           列表节点.insertAdjacentHTML(
             'beforeend',
-            构建技能设计台原型效果行列表([新效果], '自身', true, { 禁用释放前降低结算: true }, true),
+            构建技能设计台原型效果行列表([新效果], '自身', true, { 禁用释放前降低结算: true, 允许对应等级: true }, true),
           );
         }
         return;
