@@ -2776,6 +2776,19 @@
       基础价格: Math.max(1, Math.floor(toNumber(来源.基础价格, 1))),
       默认货币: toText(来源.默认货币, '联邦币'),
     };
+    if (物品分类 === '魂灵') {
+      const 魂灵品质 = normalizeSoulSpiritQuality(来源.魂灵品质 || '');
+      if (魂灵品质) 记录.魂灵品质 = 魂灵品质;
+      if (toText(来源.表象名称, '').trim() && toText(来源.表象名称, '').trim() !== '无') 记录.表象名称 = toText(来源.表象名称, '').trim();
+      if (toText(来源.标准物种, '').trim() && toText(来源.标准物种, '').trim() !== '无') 记录.标准物种 = toText(来源.标准物种, '').trim();
+      if (toNumber(来源.年限, 0) > 0) 记录.年限 = Math.max(0, Math.floor(toNumber(来源.年限, 0)));
+      Object.keys(记录).forEach(键 => {
+        const 值 = 记录[键];
+        if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete 记录[键];
+        else if (值 && typeof 值 === 'object' && !Array.isArray(值) && !Object.keys(值).length) delete 记录[键];
+      });
+      return 记录;
+    }
     if (物品分类 === '锻造金属') {
       记录.阶位 = Math.max(0, Math.min(5, Math.floor(toNumber(来源.阶位, 0))));
       const 金属特性 = Array.isArray(来源.金属特性)
@@ -2939,6 +2952,7 @@
   }
 
   const 物品品质选项_桥接 = 物品经济品质列表_桥接;
+  const 魂灵品质选项_桥接 = Object.freeze(['F', 'D', 'C', 'B', 'A', 'S', 'S+']);
   const 物品货币选项_桥接 = Object.freeze(['联邦币', '星罗币', '唐门积分', '学院积分', '战功', '血神功勋']);
   const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
   const 物品属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '生命上限', '力量', '防御', '敏捷', '体力上限']);
@@ -3099,6 +3113,7 @@
     const 是魂骨 = 物品分类 === '魂骨';
     const 是消耗 = 可使用物品分类集合_桥接.has(物品分类);
     const 是锻造 = 物品分类 === '锻造金属';
+    const 是魂灵 = 物品分类 === '魂灵';
     const 是设计图纸 = 物品分类 === '设计图纸';
     const 是修炼秘籍 = 物品分类 === '修炼秘籍';
     const 数量 = 新建 ? 1 : 读取背包总数量_桥接(实例);
@@ -3106,7 +3121,7 @@
     const canEquip = !!选项参数.canEquip;
     const charKey = toText(选项参数.charKey, '').trim();
     const 阶位字段 = 是锻造 ? 构建物品定义字段('阶位', '阶位', toNumber(定义.阶位, 0), 'number') : '';
-    const 魂导等级字段 = 构建物品定义字段('魂导等级', '魂导等级', 读取魂导等级_桥接(定义), 'number');
+    const 魂导等级字段 = 是魂灵 ? '' : 构建物品定义字段('魂导等级', '魂导等级', 读取魂导等级_桥接(定义), 'number');
     const 基础模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('名称', '物品名称', 物品名, 'text')}
       ${构建物品定义字段('物品分类', '物品分类', 物品分类, 'select', 物品定义分类列表_桥接)}
@@ -3116,6 +3131,12 @@
       ${构建物品定义字段('基础价格', '基础价格', toNumber(定义.基础价格, 0), 'number')}
       ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, '联邦币'), 'select', 物品货币选项_桥接)}
       ${构建物品定义字段('描述', '描述', toText(定义.描述, ''), 'textarea')}
+    </div>`;
+    const 魂灵模块 = `<div class="item-definition-form-grid">
+      ${构建物品定义字段('魂灵品质', '魂灵品质', normalizeSoulSpiritQuality(定义.魂灵品质 || ''), 'select', 魂灵品质选项_桥接)}
+      ${构建物品定义字段('表象名称', '表象名称', toText(定义.表象名称, ''), 'text')}
+      ${构建物品定义字段('标准物种', '标准物种', toText(定义.标准物种, ''), 'text')}
+      ${构建物品定义字段('年限', '年限', toNumber(定义.年限, 0), 'number')}
     </div>`;
     const 装备模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('装备槽位', '装备槽位', toText(定义.装备槽位, '无'), 'select', 物品装备槽位选项_桥接)}
@@ -3173,6 +3194,7 @@
         </div>
         <div class="mvu-inventory-definition-scroll">
           ${构建物品定义折叠模块('基础信息', 基础模块, true)}
+          ${是魂灵 ? 构建物品定义折叠模块('魂灵参数', 魂灵模块, true) : ''}
           ${是装备 || 是魂导器 ? 构建物品定义折叠模块('核心特性', 装备模块, true) : ''}
           ${是魂骨 ? 构建物品定义折叠模块('魂骨专有', 魂骨模块, true) : ''}
           ${是消耗 ? 构建物品定义折叠模块('使用配置', 消耗模块, false) : ''}
@@ -3308,7 +3330,13 @@
             ['数量', 数量],
             ['分类', 合并物品.物品分类 || 分类],
             ['品质', 合并物品.品质 || '普通'],
-            ...(读取魂导等级_桥接(合并物品) > 0 ? [['魂导等级', 读取魂导等级_桥接(合并物品)]] : []),
+            ...((合并物品.物品分类 || 分类) === '魂灵' ? [
+              ['魂灵品质', 合并物品.魂灵品质 || ''],
+              ['表象名称', 合并物品.表象名称 || ''],
+              ['标准物种', 合并物品.标准物种 || ''],
+              ['年限', 合并物品.年限 || 0],
+            ] : []),
+            ...((合并物品.物品分类 || 分类) !== '魂灵' && 读取魂导等级_桥接(合并物品) > 0 ? [['魂导等级', 读取魂导等级_桥接(合并物品)]] : []),
             ...(分类 === '锻造金属' ? [['阶位', 合并物品.阶位 || 0]] : []),
             ['基础价格', 合并物品.基础价格 || 0],
             ['货币', 合并物品.默认货币 || '联邦币'],
@@ -3470,6 +3498,17 @@
       基础价格: Math.max(1, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 1))),
       默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, '联邦币')) || '联邦币',
     };
+    if (分类 === '魂灵') {
+      const 魂灵品质 = normalizeSoulSpiritQuality(读取物品定义输入值(表单节点, '魂灵品质', toText(旧定义.魂灵品质, '')));
+      const 表象名称 = 读取物品定义输入值(表单节点, '表象名称', toText(旧定义.表象名称, '')).trim();
+      const 标准物种 = 读取物品定义输入值(表单节点, '标准物种', toText(旧定义.标准物种, '')).trim();
+      const 年限 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '年限', 旧定义.年限), 0)));
+      if (魂灵品质) 定义.魂灵品质 = 魂灵品质;
+      if (表象名称 && 表象名称 !== '无') 定义.表象名称 = 表象名称;
+      if (标准物种 && 标准物种 !== '无') 定义.标准物种 = 标准物种;
+      if (年限 > 0) 定义.年限 = 年限;
+      return { 旧名, 新名, 分类, 定义: 构建物品定义记录_桥接(新名, 定义, 分类) };
+    }
     if (分类 === '锻造金属') 定义.阶位 = Math.max(0, Math.min(5, Math.floor(toNumber(读取物品定义输入值(表单节点, '阶位', 旧定义.阶位), 0))));
     const 魂导等级 = Math.max(0, Math.min(12, Math.floor(toNumber(读取物品定义输入值(表单节点, '魂导等级', 旧定义.魂导等级), 0))));
     if (魂导等级 > 0) 定义.魂导等级 = 魂导等级;
@@ -39793,6 +39832,7 @@ ${播报文本}
     for (let index = 0; index < teamPlayerSeeds.length; index += 1) {
       const itemCheck = validateBattleSeedParticipant(snapshot, teamPlayerSeeds[index], `team_player_${index}`);
       if (!itemCheck.ok) return { ok: false, reason: itemCheck.reason };
+      if (itemCheck.charKey && itemCheck.charKey === activeKey) continue;
       normalizedRoster.team_player.push(
         itemCheck.kind === 'char' ? { name: itemCheck.normalized.name } : itemCheck.normalized,
       );

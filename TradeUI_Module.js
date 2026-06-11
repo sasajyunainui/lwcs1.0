@@ -1475,6 +1475,11 @@ class TradeUIComponent {
     const qualityMult = Number(SOUL_TOWER_QUALITY_PRICE_MULTIPLIER[record.品质] || 1);
     const fullPrice = Math.max(1, Math.floor(basePrice * qualityMult));
     const discountPrice = Math.max(1, Math.floor(fullPrice * 0.5));
+    const 经济品质 =
+      record.年限 >= 100000 ? '传说' :
+      record.年限 >= 10000 ? '史诗' :
+      record.年限 >= 1000 ? '稀有' :
+      record.年限 >= 100 ? '优秀' : '普通';
     return {
       库存: {
         [itemName]: {
@@ -1485,8 +1490,12 @@ class TradeUIComponent {
           需求: {},
           _临时定义: {
             物品分类: '魂灵',
-            品质: record.品质,
-            描述: `魂灵塔第${record.层数}层守塔魂灵特许兑换，当前为五折价格。标准物种：${record.标准物种 || '未知'}；年限：${record.年限 || 0}年。`,
+            品质: 经济品质,
+            魂灵品质: record.品质,
+            表象名称: record.名称,
+            标准物种: record.标准物种,
+            年限: record.年限,
+            描述: `魂灵塔第${record.层数}层守塔魂灵特许兑换，当前为五折价格。标准物种：${record.标准物种}；年限：${record.年限}年。`,
             基础价格: fullPrice,
             默认货币: '联邦币',
           },
