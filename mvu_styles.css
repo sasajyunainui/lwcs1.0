@@ -7661,6 +7661,7 @@ button.tag-chip:active,
 
 .item-definition-kv-list,
 .item-definition-effect-list,
+.item-definition-side-effect-list,
 .item-definition-skill-list {
   display: grid;
   gap: 8px;
@@ -7690,6 +7691,24 @@ button.tag-chip:active,
 
 .item-definition-skill-row {
   grid-template-columns: minmax(120px, 1fr) auto;
+}
+
+.item-definition-side-effect-list .skill-designer-side-effect-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  align-items: end;
+  padding: 10px 42px 10px 10px;
+  border: 1px solid rgba(164, 221, 234, 0.12);
+  border-left: 3px solid rgba(245, 186, 92, 0.32);
+  border-radius: var(--mvu-radius-md, 12px);
+  background: rgba(7, 31, 42, 0.24);
+}
+
+.item-definition-side-effect-list .skill-designer-side-effect-summary,
+.item-definition-side-effect-list [data-skill-designer-side-effect-link-field] {
+  grid-column: 1 / -1;
 }
 
 .item-definition-desc {

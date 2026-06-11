@@ -3516,6 +3516,25 @@
     return 输出;
   }
 
+  function 读取物品使用副作用列表(表单节点) {
+    const 容器 = 表单节点 ? 表单节点.querySelector('[data-item-definition-side-effect-list]') : null;
+    return 规范化技能设计台副作用列表(
+      Array.from(容器 ? 容器.querySelectorAll('[data-skill-designer-side-effect-row]') : []).map(行节点 => {
+        const 条目 = {};
+        行节点.querySelectorAll('[data-skill-designer-side-effect-field]').forEach(输入 => {
+          const 字段名 = normalizeSkillUiText(输入.getAttribute('data-skill-designer-side-effect-field'), '');
+          if (!字段名) return;
+          const 值 =
+            输入 instanceof HTMLInputElement || 输入 instanceof HTMLSelectElement || 输入 instanceof HTMLTextAreaElement
+              ? normalizeSkillUiText(输入.value, '')
+              : '';
+          if (值 || ['触发概率', '持续回合'].includes(字段名)) 条目[字段名] = 值;
+        });
+        return 条目;
+      }),
+    );
+  }
+
   function 读取物品装备技能表(表单节点, 旧技能表 = {}) {
     const 输出 = {};
     const 容器 = 表单节点 ? 表单节点.querySelector('[data-item-definition-skill-list]') : null;
@@ -3581,9 +3600,11 @@
       定义.基础耐久 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0)));
     }
     const 使用效果 = 读取物品使用效果列表(表单节点, 旧定义.使用效果);
+    const 使用副作用列表 = 读取物品使用副作用列表(表单节点);
     const 属性加成 = 读取物品键值对象(表单节点, '属性加成');
     const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.附带技能 || 旧定义.装备技能);
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
+    if (可使用物品分类集合_桥接.has(分类) && 使用副作用列表.length) 定义.副作用列表 = 使用副作用列表;
     if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
     if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(装备技能).length) {
       if (分类 === '魂骨') 定义.附带技能 = 装备技能;
@@ -30300,36 +30321,41 @@
                 )
               : [];
             const rowIndex = rows.indexOf(row);
-          const gridName = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-prototype-grid'), '');
-          const 允许对应等级 = gridName === 'item-use';
-            const currentEffects = grid ? 读取技能设计台原型效果状态(grid, currentTarget, '', true, { 允许对应等级 }) : [];
-          const nestedKind = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-nested-kind'), '');
-          const 禁用释放前降低结算 = !!row.closest('[data-skill-designer-condition-branch-row]')
-            && 技能设计台条件列表包含释放后条件(
-              Array.from(row.closest('[data-skill-designer-condition-branch-row]').querySelectorAll(':scope [data-skill-designer-condition-row]'))
-                .map(conditionRow => ({ 类型: conditionRow.querySelector('[data-skill-designer-condition-field="类型"]')?.value }))
-            );
-          const currentSource = currentEffects[rowIndex] || {};
-          const sourceEffect =
-            renderedPrototype && renderedPrototype !== nextPrototype
+            const gridName = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-prototype-grid'), '');
+            const 允许对应等级 = gridName === 'item-use';
+            const currentEffects = grid
+              ? 读取技能设计台原型效果状态(grid, currentTarget, '', true, { 允许对应等级 })
+              : [];
+            const nestedKind = normalizeSkillUiText(grid && grid.getAttribute('data-skill-designer-nested-kind'), '');
+            const branchRow = row.closest('[data-skill-designer-condition-branch-row]');
+            const 禁用释放前降低结算 =
+              !!branchRow &&
+              技能设计台条件列表包含释放后条件(
+                Array.from(branchRow.querySelectorAll(':scope [data-skill-designer-condition-row]')).map(conditionRow => ({
+                  类型: conditionRow.querySelector('[data-skill-designer-condition-field="类型"]')?.value,
+                })),
+              );
+            const currentSource = currentEffects[rowIndex] || {};
+            const sourceEffect =
+              renderedPrototype && renderedPrototype !== nextPrototype
                 ? { 原型: nextPrototype, 目标: currentTarget, 生效方式: currentSource['生效方式'] }
                 : { ...currentSource, 原型: nextPrototype, 目标: currentTarget };
-          if (
-            nextPrototype === '状态施加' &&
-            renderedPrototype === '状态施加' &&
-            renderedState &&
-            normalizeSkillUiText(sourceEffect['状态'], '') !== renderedState
-          ) {
-            delete sourceEffect['数值'];
-            delete sourceEffect['副数值'];
-          }
-          if (
-            nextPrototype === '结算修正' &&
-            normalizeSkillUiText(sourceEffect['结算'], '') !== '持续伤害引爆' &&
-            是技能设计台持续伤害引爆自动条件(sourceEffect['条件分支'])
-          ) {
-            delete sourceEffect['条件分支'];
-          }
+            if (
+              nextPrototype === '状态施加' &&
+              renderedPrototype === '状态施加' &&
+              renderedState &&
+              normalizeSkillUiText(sourceEffect['状态'], '') !== renderedState
+            ) {
+              delete sourceEffect['数值'];
+              delete sourceEffect['副数值'];
+            }
+            if (
+              nextPrototype === '结算修正' &&
+              normalizeSkillUiText(sourceEffect['结算'], '') !== '持续伤害引爆' &&
+              是技能设计台持续伤害引爆自动条件(sourceEffect['条件分支'])
+            ) {
+              delete sourceEffect['条件分支'];
+            }
             const currentEffect = 技能设计台清理并水合原型效果(
               sourceEffect,
               currentTarget,
@@ -43793,6 +43819,19 @@ ${toText(combatData.战斗意图, '点到为止')}
       }
     }
 
+    const itemDefinitionSideEffectRemoveBtn = eventTarget
+      ? eventTarget.closest('[data-skill-designer-remove-side-effect]')
+      : null;
+    if (itemDefinitionSideEffectRemoveBtn && detailSurfaceHost.contains(itemDefinitionSideEffectRemoveBtn)) {
+      const 行节点 = itemDefinitionSideEffectRemoveBtn.closest('[data-skill-designer-side-effect-row]');
+      if (行节点 && 行节点.closest('[data-item-definition-side-effect-list]')) {
+        event.preventDefault();
+        event.stopPropagation();
+        行节点.remove();
+        return;
+      }
+    }
+
     const collectionActionBtn = eventTarget ? eventTarget.closest('[data-collection-action]') : null;
     if (collectionActionBtn && detailSurfaceHost.contains(collectionActionBtn)) {
       event.preventDefault();
@@ -43864,6 +43903,19 @@ ${toText(combatData.战斗意图, '点到为止')}
           列表节点.insertAdjacentHTML(
             'beforeend',
             构建技能设计台原型效果行列表([新效果], '自身', true, { 禁用释放前降低结算: true, 允许对应等级: true }, true),
+          );
+        }
+        return;
+      }
+      if (actionType === 'add-item-definition-side-effect') {
+        const 列表节点 = panel.querySelector('[data-item-definition-side-effect-list]');
+        if (列表节点) {
+          列表节点.insertAdjacentHTML(
+            'beforeend',
+            构建技能设计台副作用行列表(
+              [创建技能设计台默认副作用条目('自损反噬', { 生效对象: '效果承受者' })],
+              { 字段名: '物品副作用列表' },
+            ),
           );
         }
         return;
