@@ -15412,7 +15412,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
 
 function isSkillTodoText(text) {
   const value = String(text || '').trim();
-  return !value || value === '未知' || /待补全/i.test(value);
+  return !value || value === '未知' || /待补全|AI_TODO/i.test(value);
 }
 
 function clonePackedSkillEffects(effects) {
@@ -20935,21 +20935,18 @@ function compactSkillHintText(text = '', maxLen = 72) {
 function buildSkillEffectTodoText(packedEffects, skill = null) {
   const referenceText = compactSkillHintText(skill ? 编译技能结构为人类语言_V1(skill) : buildSkillEffectReferenceText(packedEffects), 180);
   const attributeText = compactSkillHintText(buildSkillAttributeReferenceText(skill), 56);
-  if (!referenceText && !attributeText) return AI_TODO_SKILL_EFFECT;
+  if (!referenceText && !attributeText) return '按技能结构结算。';
   const parts = [];
-  if (referenceText) parts.push(`_简易效果描述：${referenceText}`);
-  if (attributeText) parts.push(`属性参考：${attributeText}`);
-  return `待补全（${parts.join('；')}；只写玩家可读的技能效果说明，不写发动画面，不描写生成物外观，不新增机制）`;
+  if (referenceText) parts.push(referenceText);
+  if (attributeText) parts.push(attributeText);
+  return parts.join('；');
 }
 
 function buildSkillVisualDescriptionFromPackedEffects(packedEffects, context = {}) {
   const effects = getMeaningfulSkillEffects(packedEffects);
   if (effects.length === 0) return '无';
   const referenceText = compactSkillHintText(buildSkillEffectReferenceText(packedEffects), 72);
-  if (!referenceText) return AI_TODO_SKILL_VISUAL;
-  const parts = [];
-  if (referenceText) parts.push(`_简易效果描述：${referenceText}`);
-  return `待补全（${parts.join('；')}；只写释放、使用、召唤或成形时的画面，不重复机制条文，不写产物详细档案）`;
+  return referenceText ? `发动时形成${referenceText}。` : '发动时魂力凝聚并触发技能结构。';
 }
 
 function buildSkillProductDescriptionTodoText(packedEffects) {
@@ -23213,13 +23210,14 @@ function buildSkillNameTodoText(context = {}) {
     const 文本 = String(值 || '').trim();
     return 文本 && !isAiTodoText(文本) && !['未展露', '未知', '无'].includes(文本) ? 文本 : '';
   };
+  const 技能键 = 取有效来源名(context?.技能键 || context?.skillName || context?.name);
+  if (技能键 && !/^第\d+魂技(?:_\d+)?$/.test(技能键)) return 技能键;
   const 武魂名 = 取有效来源名(context?.martialSoulName) || 取有效来源名(context?.spiritName) || '武魂';
-  const 魂灵名 = 取有效来源名(context?.soulSpiritName) || 取有效来源名(context?.soulName);
   const 魂环来源 = 取有效来源名(context?.ringSource);
-  const 来源文本 = 魂灵名 ? `魂灵【${魂灵名}】` : 魂环来源 ? `魂环来源【${魂环来源}】` : '魂灵【魂灵】';
   const typeText = String(context?.type || '').trim();
-  const foodHint = typeText === '食物系' ? '食物系命名必须围绕该武魂与魂灵/魂环来源主材，不得替换为无关食材。' : '';
-  return `待补全（填写魂技名；必须严格参考武魂【${武魂名}】与${来源文本}同源命名并体现该武魂与来源能力特征，禁止无关命名；需与机制选择（主机制/副机制1/副机制2）保持一致。若为造物承载类技能，此名称同时作为生成物名称。${foodHint}）`;
+  if (武魂名 && 武魂名 !== '武魂') return typeText === '食物系' ? `${武魂名}造物` : `${武魂名}魂技`;
+  if (魂环来源) return typeText === '食物系' ? `${魂环来源}食物` : `${魂环来源}魂技`;
+  return typeText ? `${typeText}魂技` : '魂技';
 }
 
 function 构建魂骨名称待生成提示词_V1(骨部位 = '魂骨') {
@@ -25569,7 +25567,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
 
 function ensureSkillStructGenerated(skill, context = {}) {
   if (!skill || typeof skill !== 'object') return skill;
-  const 魂技位 = Math.max(1, Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 读取技能结构魂环位_V1(skill) ?? 1)) || 1);
+  const 魂技位 = Math.max(1, Math.floor(Number(context?.获得阶段魂环数 ?? context?.ringIndex ?? context?.魂环位 ?? 读取技能结构魂环位_V1(skill) ?? 1)) || 1);
   context = {
     ...(context || {}),
     ringIndex: 魂技位,
@@ -25658,13 +25656,6 @@ function ensureSkillMapGenerated(skillMap, contextFactory = () => ({}), 公共�
   return skillMap || {};
 }
 
-const 持久魂兽自创魂技档位_V1 = Object.freeze([
-  Object.freeze({ 技能键: '魂兽战技一', 魂环位: 3, 年限: 50000 }),
-  Object.freeze({ 技能键: '魂兽战技二', 魂环位: 5, 年限: 100000 }),
-  Object.freeze({ 技能键: '魂兽战技三', 魂环位: 7, 年限: 150000 }),
-  Object.freeze({ 技能键: '魂兽战技四', 魂环位: 9, 年限: 200000 }),
-]);
-
 function 初始化补齐角色技能效果数组_V1(rootData = {}) {
   const 角色集 = rootData && rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
   const 恢复增益重复账本缓存 = 创建恢复增益重复账本缓存_V1();
@@ -25695,16 +25686,6 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       men_max: Number(char?.属性?.精神力上限 || 0),
     }) : 取角色主武魂系别_V1(char);
     const 天赋梯队 = String(char?.属性?.天赋梯队 || '').trim() || (是持久魂兽 ? '顶级天才' : '正常');
-    const 魂兽自创魂技档位 = new Map(持久魂兽自创魂技档位_V1.map(档位 => [档位.技能键, 档位]));
-
-    if (是持久魂兽) {
-      if (!char.自创魂技 || typeof char.自创魂技 !== 'object' || Array.isArray(char.自创魂技)) char.自创魂技 = {};
-      if (Object.keys(char.自创魂技).length === 0) {
-        持久魂兽自创魂技档位_V1.forEach(档位 => {
-          char.自创魂技[档位.技能键] = { ...createDefaultRingSkillShell(), 魂技名: 档位.技能键 };
-        });
-      }
-    }
 
     取角色武魂条目_V1(char).forEach(([spiritKey, spiritData]) => {
       if (!spiritData || typeof spiritData !== 'object') return;
@@ -25829,23 +25810,22 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
     const 自创属性状态 = buildCharacterCustomSkillAttributeState(char);
     const 自创元素画像 = buildElementProfileFromAttributeState(自创属性状态);
     补齐技能映射(char.自创魂技, (_, skillName) => {
-      const 魂兽档位 = 是持久魂兽 ? 魂兽自创魂技档位.get(String(skillName || '').trim()) : null;
       return {
         type: 系别,
         武魂系别: 系别,
         角色: char,
         path: `char.${charName}.自创魂技.${skillName}`,
         talentTier: 天赋梯队,
-        age: 魂兽档位 ? 魂兽档位.年限 : Math.max(1000, 通用技能年限),
-        ringAge: 魂兽档位 ? 魂兽档位.年限 : Math.max(1000, 通用技能年限),
-        ringIndex: 魂兽档位 ? 魂兽档位.魂环位 : Math.max(1, Math.ceil(Number(char?.属性?.等级 || 1) / 10)),
+        age: Math.max(1000, 通用技能年限),
+        ringAge: Math.max(1000, 通用技能年限),
+        ringIndex: Math.max(1, Math.ceil(Number(char?.属性?.等级 || 1) / 10)),
         compatibility: 100,
         preferredSecondary: [],
         elementProfile: 自创元素画像,
         可调用元素: 自创属性状态.可调用元素,
         callableElements: 自创属性状态.可调用元素,
         elementTrigger: 是持久魂兽 ? '魂兽本体' : '自创',
-        sourceCategory: 魂兽档位 ? '魂兽自创魂技' : '自创魂技',
+        sourceCategory: '自创魂技',
         martialSoulName: 是持久魂兽 ? 魂兽名称 : '',
         forceTrueBody: false,
         textContext: {
@@ -25854,7 +25834,7 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
             : skillName,
           type: 系别,
           martialSoulName: 是持久魂兽 ? 魂兽名称 : '',
-          ringSource: 魂兽档位 ? `${魂兽档位.年限}年魂兽本体战技` : '',
+          ringSource: '',
         },
       };
     });
@@ -29606,14 +29586,17 @@ function 写入成长自创魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
   if (成长技能槽已写实_V1(角色.自创魂技[技能键], 模板)) return false;
   角色.自创魂技[技能键] = 构建成长模板技能数据_V1(模板);
   const 系别 = 取角色主武魂系别_V1(角色);
+  const 获得阶段魂环数 = Math.max(1, Math.floor(Number(模板?.需求魂环数 || 1)) || 1);
   return !!角色.自创魂技[技能键] && 记录成长技能写入结果_V1(变更列表, 角色.自创魂技[技能键], {
     写入路径: 模板?.写入路径,
     path: `char.${角色名}.${模板?.写入路径}`,
     type: 系别,
     武魂系别: 系别,
-    ringIndex: Math.max(1, Math.ceil(Number(角色?.属性?.等级 || 1) / 10)),
-    age: Math.max(1000, Number(角色?.属性?.等级 || 1) * 200),
-    ringAge: Math.max(1000, Number(角色?.属性?.等级 || 1) * 200),
+    ringIndex: 获得阶段魂环数,
+    魂环位: 获得阶段魂环数,
+    获得阶段魂环数,
+    age: Math.max(1000, 获得阶段魂环数 * 2000),
+    ringAge: Math.max(1000, 获得阶段魂环数 * 2000),
     sourceCategory: '自创魂技',
     来源: '自创魂技',
     textContext: { spiritName: 技能键, type: 系别 },
@@ -29629,14 +29612,17 @@ function 写入成长血脉技能_V1(角色 = {}, 模板 = {}, 变更列表 = nu
   if (成长技能槽已写实_V1(角色.血脉之力.技能[技能键], 模板)) return false;
   角色.血脉之力.技能[技能键] = 构建成长模板技能数据_V1(模板);
   const 系别 = 取角色主武魂系别_V1(角色);
+  const 获得阶段魂环数 = Math.max(1, Math.floor(Number(模板?.需求魂环数 || 1)) || 1);
   return !!角色.血脉之力.技能[技能键] && 记录成长技能写入结果_V1(变更列表, 角色.血脉之力.技能[技能键], {
     写入路径: 模板?.写入路径,
     path: `char.${角色名}.${模板?.写入路径}`,
     type: 系别,
     武魂系别: 系别,
-    ringIndex: Math.max(1, Math.ceil(Number(角色?.属性?.等级 || 1) / 10)),
-    age: Math.max(10000, Number(角色?.属性?.等级 || 1) * 200),
-    ringAge: Math.max(10000, Number(角色?.属性?.等级 || 1) * 200),
+    ringIndex: 获得阶段魂环数,
+    魂环位: 获得阶段魂环数,
+    获得阶段魂环数,
+    age: Math.max(10000, 获得阶段魂环数 * 5000),
+    ringAge: Math.max(10000, 获得阶段魂环数 * 5000),
     sourceCategory: '血脉技能',
     来源: '血脉技能',
     跳过预算门禁: true,
@@ -29680,14 +29666,17 @@ function 写入成长武魂融合技_V1(角色 = {}, 模板 = {}, 变更列表 =
   if (成长技能槽已写实_V1(角色.武魂融合技[技能名].技能数据, 模板)) return false;
   角色.武魂融合技[技能名].技能数据 = 构建成长模板技能数据_V1(模板);
   const 系别 = 取角色主武魂系别_V1(角色);
+  const 获得阶段魂环数 = Math.max(1, Math.floor(Number(模板?.需求魂环数 || 5)) || 5);
   return !!角色.武魂融合技[技能名].技能数据 && 记录成长技能写入结果_V1(变更列表, 角色.武魂融合技[技能名].技能数据, {
     写入路径: 模板?.写入路径,
     path: `char.${角色名}.${模板?.写入路径}.技能数据`,
     type: 系别,
     武魂系别: 系别,
-    ringIndex: Math.max(1, Math.ceil(Number(角色?.属性?.等级 || 1) / 10)),
-    age: Math.max(10000, Number(角色?.属性?.等级 || 1) * 200),
-    ringAge: Math.max(10000, Number(角色?.属性?.等级 || 1) * 200),
+    ringIndex: 获得阶段魂环数,
+    魂环位: 获得阶段魂环数,
+    获得阶段魂环数,
+    age: Math.max(10000, 获得阶段魂环数 * 5000),
+    ringAge: Math.max(10000, 获得阶段魂环数 * 5000),
     sourceCategory: '武魂融合技',
     来源: '武魂融合技',
     来源类别: '武魂融合技',
@@ -29816,41 +29805,12 @@ function 同步银龙融合旧实体状态_V1(数据根 = {}, 当前tick = 0) {
   return 已变更;
 }
 
-function 读取明确时间tick_V1(数据根 = {}) {
-  const 原始tick = 数据根?.world?.时间?.tick;
-  if (原始tick === undefined || 原始tick === null || 原始tick === '') return null;
-  const tick数值 = Number(原始tick);
-  return Number.isFinite(tick数值) ? tick数值 : null;
-}
-
-function 取当前开场常驻节点名_V1(开场节点表 = {}, 当前tick = null, 匹配窗口tick = 144) {
-  if (!Number.isFinite(Number(当前tick))) return '';
-  const 当前tick数值 = Number(当前tick);
-  const 窗口 = Math.max(0, Math.floor(Number(匹配窗口tick) || 0));
-  const 节点列表 = Object.entries(开场节点表 || {})
-    .map(([节点名, 节点]) => ({ 节点名, tick: Number(节点?.tick) }))
-    .filter(节点 => 节点.节点名 && Number.isFinite(节点.tick) && 节点.tick <= 当前tick数值)
-    .sort((左, 右) => 右.tick - 左.tick);
-  const 命中节点 = 节点列表[0];
-  if (!命中节点 || 当前tick数值 - 命中节点.tick > 窗口) return '';
-  return 命中节点.节点名;
-}
-
 function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
-  const 明确tick = 读取明确时间tick_V1(数据根);
-  const 当前tick = 明确tick ?? 0;
-  const 角色库 = 读取内置角色库_V1();
+  const tick数值 = Number(数据根?.world?.时间?.tick || 0);
+  const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
   const 待写入 = new Set();
-  if (选项.开场常驻 && 明确tick !== null) {
-    const 节点名 = 取当前开场常驻节点名_V1(角色库.开场节点, 明确tick, 选项.开场常驻匹配窗口tick);
-    if (节点名) {
-      Object.values(角色库.角色 || {}).forEach(角色记录 => {
-        if ((角色记录.开场常驻节点 || []).includes(节点名)) 待写入.add(角色记录.角色名);
-      });
-    }
-  }
   const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
   if (选项.时间线事件命中 || String(命中文本 || '').trim()) {
     收集当前时间线命中内置角色名_V1(当前tick, 命中文本, 数据根).forEach(角色名 => 待写入.add(角色名));
@@ -29877,6 +29837,45 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   const 已补成长技能 = 应用内置角色成长技能模板_V1(数据根, 选项);
   const 已变更 = Array.from(new Set([...已写入, ...已同步, ...已补成长技能]));
   return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更 };
+}
+
+function 解析开场时间线入库命令_V1(命令文本 = '') {
+  const 匹配 = String(命令文本 || '').match(/<LWCS_开场时间线入库>\s*([\s\S]*?)\s*<\/LWCS_开场时间线入库>/);
+  if (!匹配) throw new Error('缺少开场时间线入库命令');
+  const 开场节点 = String(匹配[1] || '').trim();
+  if (!['6岁', '9岁', '13岁'].includes(开场节点)) throw new Error(`开场时间线入库节点无效：${开场节点 || '空'}`);
+  return 开场节点;
+}
+
+function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本 = '') {
+  if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
+  if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
+  const 开场节点 = 解析开场时间线入库命令_V1(命令文本);
+  const tick数值 = Number(数据根?.world?.时间?.tick || 0);
+  const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
+  const 角色库 = 读取内置角色库_V1();
+  const 已写入 = [];
+  Object.values(角色库.角色 || {}).forEach(角色记录 => {
+    const 角色名 = String(角色记录?.角色名 || '').trim();
+    if (!角色名 || 数据根.char[角色名]) return;
+    const 节点列表 = Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [];
+    if (!节点列表.includes(开场节点)) return;
+    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根);
+    if (!角色) return;
+    数据根.char[角色名] = CharacterSchema.parse(角色);
+    已写入.push(角色名);
+  });
+  if (已写入.length > 0) {
+    const 新写入角色集 = {};
+    已写入.forEach(角色名 => {
+      if (数据根.char?.[角色名]) 新写入角色集[角色名] = 数据根.char[角色名];
+    });
+    初始化补齐角色技能效果数组_V1({ char: 新写入角色集 });
+  }
+  const 已同步 = 同步银龙融合旧实体状态_V1(数据根, 当前tick);
+  const 已补成长技能 = 应用内置角色成长技能模板_V1(数据根, {});
+  const 已变更 = Array.from(new Set([...已写入, ...已同步, ...已补成长技能]));
+  return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更, 开场节点 };
 }
 
 const SchemaRootObject = z
@@ -30275,7 +30274,7 @@ export const Schema = z
       const 当前等级 = Math.max(0, Number(charData?.属性?.等级 || 0) || 0);
       if (原始等级 !== null && 当前等级 > 原始等级) 标记本轮等级上升角色_V1(charData, charName);
     });
-    应用内置角色实例化_V1(data, { 开场常驻: true });
+    应用内置角色实例化_V1(data);
     裁剪数据根非魂师角色结构_V1(data);
 
     if (typeof data.sys.玩家名 !== 'string' || !data.sys.玩家名.trim()) data.sys.玩家名 = '无名氏';
@@ -34086,6 +34085,9 @@ function 规范化MVU数据根_V1(数据根 = {}) {
 globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ = 规范化MVU数据根_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_NORMALIZE_MVU_STAT_DATA__ = 规范化MVU数据根_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_NORMALIZE_MVU_STAT_DATA__ = 规范化MVU数据根_V1; } catch (错误) {}
+globalThis.__LWCS_应用开场时间线内置角色入库__ = 应用开场时间线内置角色入库_V1;
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_应用开场时间线内置角色入库__ = 应用开场时间线内置角色入库_V1; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_应用开场时间线内置角色入库__ = 应用开场时间线内置角色入库_V1; } catch (错误) {}
 globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}

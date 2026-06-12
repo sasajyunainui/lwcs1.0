@@ -16987,6 +16987,16 @@ $CONTENT
             return '';
         return ['【正文数值参照】', 摘要].join('\n');
     }
+    function 构建正文时间线预览临时注入_ACU(userInput = '', statData = null) {
+        const 预览 = 读取剧情钩子时间线预览_ACU(userInput, statData);
+        if (!预览 || 预览 === '无')
+            return '';
+        return [
+            '【正文时间线预览】',
+            '以下只作为原著参照与节奏压力；不得因为tick临近就强行落地，必须服从当前地点、人物认知、关系状态和事件后果。',
+            预览,
+        ].join('\n');
+    }
     function 合并剧情终稿片段_ACU(片段列表, 审查块 = '') {
         const 有效片段 = (Array.isArray(片段列表) ? 片段列表 : [片段列表])
             .map(片段 => String(片段 || '').trim())
@@ -17047,6 +17057,28 @@ $CONTENT
         });
         return true;
     }
+    function 追加正文时间线预览运行时注入_ACU(options, userInput = '', statData = null) {
+        if (!options || typeof options !== 'object')
+            return false;
+        const 文本 = 构建正文时间线预览临时注入_ACU(userInput, statData);
+        if (!文本)
+            return false;
+        const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
+        const 已存在 = 注入列表.some(item => String(item?.content || '').includes('【正文时间线预览】'));
+        if (已存在) {
+            options.injects = 注入列表;
+            return false;
+        }
+        options.injects = 注入列表;
+        options.injects.push({
+            position: 'in_chat',
+            depth: 0,
+            role: 'system',
+            content: 文本,
+            should_scan: false,
+        });
+        return true;
+    }
     function 注册正文审查一次性注入_ACU(审查约束文本 = '') {
         const 文本 = String(审查约束文本 || '').trim();
         if (!文本)
@@ -17077,6 +17109,28 @@ $CONTENT
         if (!助手 || typeof 助手.injectPrompts !== 'function')
             return false;
         const 注入编号 = `lwcs-正文数值参照-${hashUserInput_ACU(文本)}`;
+        try {
+            助手.uninjectPrompts?.([注入编号]);
+        }
+        catch (e) { }
+        助手.injectPrompts([{
+                id: 注入编号,
+                position: 'in_chat',
+                depth: 0,
+                role: 'system',
+                content: 文本,
+                should_scan: false,
+            }], { once: true });
+        return true;
+    }
+    function 注册正文时间线预览一次性注入_ACU(userInput = '', statData = null) {
+        const 文本 = 构建正文时间线预览临时注入_ACU(userInput, statData);
+        if (!文本)
+            return false;
+        const 助手 = window.TavernHelper || TavernHelper_API_ACU;
+        if (!助手 || typeof 助手.injectPrompts !== 'function')
+            return false;
+        const 注入编号 = `lwcs-正文时间线预览-${hashUserInput_ACU(文本)}`;
         try {
             助手.uninjectPrompts?.([注入编号]);
         }
@@ -53801,6 +53855,7 @@ $CONTENT
                                         }
                                         追加正文审查运行时注入_ACU(options, result.reviewPrompt);
                                         追加正文数值参照运行时注入_ACU(options, result.runtimePlotText || result.userMessage || '', result.writeBack?.statData || null);
+                                        追加正文时间线预览运行时注入_ACU(options, result.runtimePlotText || result.userMessage || '', result.writeBack?.statData || null);
                                         options._qrf_processed_by_hook = true;
                                         break;
                                     }
@@ -53987,6 +54042,7 @@ $CONTENT
                                     params.prompt = s1.finalMessage;
                                     注册正文审查一次性注入_ACU(s1.reviewPrompt);
                                     注册正文数值参照一次性注入_ACU(s1.runtimePlotText || s1.originalMessage || '', s1.statData || null);
+                                    注册正文时间线预览一次性注入_ACU(s1.runtimePlotText || s1.originalMessage || '', s1.statData || null);
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
                                     emitMessageUpdated_ACU(lastMessageIndex);
                                     if (getSendTextareaValue_ACU() === s1.originalMessage)
@@ -54037,6 +54093,7 @@ $CONTENT
                                     params.prompt = s2.finalMessage;
                                     注册正文审查一次性注入_ACU(s2.reviewPrompt);
                                     注册正文数值参照一次性注入_ACU(s2.runtimePlotText || s2.originalMessage || '', s2.statData || null);
+                                    注册正文时间线预览一次性注入_ACU(s2.runtimePlotText || s2.originalMessage || '', s2.statData || null);
                                 }
                                 catch (e) { }
                                 break;
