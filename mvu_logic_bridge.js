@@ -13049,7 +13049,7 @@
     return 字段名矩阵[状态名]?.[字段名] || (字段名 === '副数值' ? '附加数值' : 字段名);
   }
 
-  function 格式化技能设计台状态施加比例字段(value, fallback = '+0%') {
+  function 格式化技能设计台状态施加比例字段(value, fallback = '+5%') {
     const 原文 = normalizeSkillUiText(value, '');
     if (!原文) return fallback;
     const 数值 = parseSkillDesignerSignedValue(原文);
@@ -13065,13 +13065,13 @@
     const 数值 = parseSkillDesignerSignedValue(value);
     if (!Number.isFinite(数值)) return value;
     if (字段 === '数值' && (技能设计台状态施加状态分类矩阵.持续伤害类 || []).includes(状态名))
-      return formatSkillDesignerSignedValue(-Math.min(0.03, Math.abs(数值)), true);
+      return formatSkillDesignerSignedValue(-Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && 状态名 === '持续恢复')
-      return formatSkillDesignerSignedValue(Math.min(0.05, Math.max(0.01, Math.abs(数值))), true);
+      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
-      return formatSkillDesignerSignedValue(Math.min(0.03, Math.max(0.01, Math.abs(数值))), true);
+      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名))
-      return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
+      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     return value;
   }
 
@@ -30938,36 +30938,14 @@
                       );
                     }
                   }
-                  const 评估 = COST助手.评估技能预算_V1(nextSkill, {
+                  if (typeof COST助手.断言技能预算_V1 !== 'function') throw new Error('技能预算断言不可用');
+                  COST助手.断言技能预算_V1(nextSkill, {
                     ...预算上下文,
                     path: previewMeta.path,
                     魂环位: 魂技位,
                     来源: 预算上下文.来源类别,
                     启用位级硬上限: true,
-                  });
-                  if (评估 && 评估.是否超预算 && typeof COST助手.让技能符合预算_V1 === 'function') {
-                    const 降级结果 = COST助手.让技能符合预算_V1(nextSkill, 评估.魂技位, {
-                      ...预算上下文,
-                      path: previewMeta.path,
-                      魂环位: 魂技位,
-                      来源: 预算上下文.来源类别,
-                      强制上限: 评估.实际门禁,
-                      启用位级硬上限: true,
-                    });
-                    const 记录 = 降级结果?.降级记录 || {};
-                    if (记录.阻止保存) {
-                      throw new Error(`COST仍超预算：实际 ${Number(记录.后COST || 评估.实际COST).toFixed(1)} / 门禁 ${Number(记录.目标上限 || 评估.实际门禁).toFixed(1)}。请提高消耗、增加次数限制、手动添加副作用或降低机制复杂度。`);
-                    }
-                    if (typeof toastr !== 'undefined' && toastr && typeof toastr.info === 'function' && Array.isArray(记录.处理记录) && 记录.处理记录.length) {
-                      const 新副作用 = (记录.新增副作用 || []).map(项 => `${项.副作用类型} 抵扣${Number(项.抵扣COST || 0).toFixed(1)}`).join('；');
-                      const 字段变化 = (记录.字段变化 || []).map(项 => `${项.原型}.${项.字段} ${项.前值}→${项.后值}`).join('；');
-                      toastr.info(
-                        [`COST ${Number(记录.前COST || 评估.实际COST).toFixed(1)} → ${Number(记录.后COST || 0).toFixed(1)}`, 新副作用, 字段变化].filter(Boolean).join('<br/>'),
-                        '技能 COST 自动处理',
-                        { timeOut: 9000, escapeHtml: false },
-                      );
-                    }
-                  }
+                  }, normalizeSkillUiText(previewMeta.label || formState.name || '技能设计', '技能设计'));
                 }
                 await replaceStatDataByEditor(
                   buildSkillDesignerWriteUpdates(previewMeta, nextSkill, snapshot.rootData),
