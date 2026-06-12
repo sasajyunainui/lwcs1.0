@@ -1026,12 +1026,65 @@ window.submitForm = function() {
         if (!nextData || !nextData.stat_data) throw new Error("MVU初始化解析失败");
         var normalizeStatData = runtimeWindow.__LWCS_NORMALIZE_MVU_STAT_DATA__ || window.__LWCS_NORMALIZE_MVU_STAT_DATA__;
         if (typeof normalizeStatData !== "function") throw new Error("MVU结构规范化接口未就绪");
+        同步开场时间线数据(nextData.stat_data);
         nextData.stat_data = normalizeStatData(nextData.stat_data);
         delete nextData.stat_data.display_all;
         delete nextData.stat_data.display_chars;
         await mvu.replaceMvuData(nextData, { type: "message", message_id: "latest" });
         var verifiedRoot = await verifyInitPatchLatest();
         记录开场MVU运行时快照(verifiedRoot);
+    }
+
+    function 读取开场内置角色库() {
+        var 窗口列表 = [getStartupRuntimeWindow(), window, window.parent, window.top];
+        for (var 序号 = 0; 序号 < 窗口列表.length; 序号++) {
+            try {
+                var 角色库 = 窗口列表[序号] && 窗口列表[序号].__LWCS_内置角色库__;
+                if (角色库 && typeof 角色库 === "object" && 角色库.角色 && typeof 角色库.角色 === "object") return 角色库;
+            } catch (_) {}
+        }
+        return null;
+    }
+
+    function 同步开场常驻角色(statData) {
+        var 角色库 = 读取开场内置角色库();
+        if (!角色库 || !statData || typeof statData !== "object") return;
+        if (!statData.char || typeof statData.char !== "object") statData.char = {};
+        var 应保留 = {};
+        Object.keys(角色库.角色 || {}).forEach(function(角色名) {
+            var 角色记录 = 角色库.角色[角色名];
+            var 节点列表 = Array.isArray(角色记录 && 角色记录.开场常驻节点) ? 角色记录.开场常驻节点 : [];
+            if (节点列表.indexOf(selectedTimeline) >= 0) 应保留[角色名] = true;
+        });
+        var 已删除 = [];
+        Object.keys(角色库.角色 || {}).forEach(function(角色名) {
+            if (角色名 === name || 应保留[角色名]) return;
+            var 角色记录 = 角色库.角色[角色名];
+            var 节点列表 = Array.isArray(角色记录 && 角色记录.开场常驻节点) ? 角色记录.开场常驻节点 : [];
+            if (!节点列表.length || !statData.char[角色名]) return;
+            delete statData.char[角色名];
+            已删除.push(角色名);
+        });
+        if (!已删除.length) return;
+        Object.keys(statData.char || {}).forEach(function(角色名) {
+            var 角色 = statData.char[角色名];
+            var 关系 = 角色 && 角色.社交 && 角色.社交.关系;
+            if (!关系 || typeof 关系 !== "object") return;
+            已删除.forEach(function(删除名) {
+                delete 关系[删除名];
+            });
+        });
+    }
+
+    function 同步开场时间线数据(statData) {
+        if (!statData || typeof statData !== "object") throw new Error("MVU初始化数据为空");
+        var 期望tick = tlData && tlData.world && tlData.world.时间 ? Number(tlData.world.时间.tick) : NaN;
+        if (!Number.isFinite(期望tick)) return;
+        if (!statData.world || typeof statData.world !== "object") statData.world = {};
+        if (!statData.world.时间 || typeof statData.world.时间 !== "object") statData.world.时间 = {};
+        statData.world.时间.tick = 期望tick;
+        statData.world.时间._上次结算tick = 期望tick;
+        同步开场常驻角色(statData);
     }
 
     function 记录开场MVU运行时快照(statData) {
