@@ -24628,7 +24628,7 @@ $CONTENT
                     mainRows: mapRowsByIndexes(rawRows, mainColIndexes),
                 };
             };
-            const buildExtraIndexEntryBlock_ACU = ({ exportPrefix, extraIndexSpec, templateStr, startOrder, placement, usedOrderSet, enabled = true }) => {
+            const buildExtraIndexEntryBlock_ACU = ({ extraIndexSpec, templateStr, startOrder, placement, usedOrderSet, enabled = true }) => {
                 if (!extraIndexSpec)
                     return { entries: [], names: [], plans: [], nextOrder: startOrder, span: 0 };
                 const cursor = allocOrder_ACU(usedOrderSet || usedOrders, startOrder, 1, 99999);
@@ -24710,7 +24710,6 @@ $CONTENT
                 if (mainEntryDisabled && hasExtraIndex) {
                     // 只导出索引条目
                     const extraBlock = buildExtraIndexEntryBlock_ACU({
-                        exportPrefix,
                         extraIndexSpec,
                         templateStr: config.extraIndexInjectionTemplate,
                         startOrder: toIntOrFallback_ACU(extraIndexPlacement.order, nextCustomExportOrder),
@@ -24811,7 +24810,7 @@ $CONTENT
                     }
                     if (hasExtraIndexEntry) {
                         const extraBlock = buildExtraIndexEntryBlock_ACU({
-                            exportPrefix, extraIndexSpec, templateStr: config.extraIndexInjectionTemplate,
+                            extraIndexSpec, templateStr: config.extraIndexInjectionTemplate,
                             startOrder: toIntOrFallback_ACU(extraIndexPlacement.order, orderCursor),
                             placement: extraIndexPlacement, usedOrderSet: usedOrders, enabled: extraIndexEntryEnabled,
                         });
@@ -24878,7 +24877,7 @@ $CONTENT
                             }, entryPlacement));
                         }
                         const extraBlock = buildExtraIndexEntryBlock_ACU({
-                            exportPrefix, extraIndexSpec, templateStr: config.extraIndexInjectionTemplate,
+                            extraIndexSpec, templateStr: config.extraIndexInjectionTemplate,
                             startOrder: toIntOrFallback_ACU(extraIndexPlacement.order, cursor),
                             placement: extraIndexPlacement, usedOrderSet: usedOrders, enabled: extraIndexEntryEnabled,
                         });
@@ -24946,7 +24945,7 @@ $CONTENT
                 const baseOrder = allocConsecutiveOrderBlock_ACU(usedOrders, Math.max(1, blockSize), preferredBlockStart, 1, 99999);
                 let cursor = baseOrder;
                 if (useWrapperEntries && wrapperParts?.before) {
-                    const wrapperName = `${exportPrefix}${group.entryName}-包裹-上`;
+                    const wrapperName = getImportEntryName(`${group.entryName}-包裹-上`);
                     newGeneratedNames.push(wrapperName);
                     const wrapperContent = [wrapperParts.before, allHeadersContent].filter(Boolean).join('\n\n').trim();
                     postCreateOrderFixPlan.push({ comment: wrapperName, order: cursor, placement: groupPlacement });
@@ -24955,7 +24954,7 @@ $CONTENT
                     }, groupPlacement));
                 }
                 else if (!useWrapperEntries && allHeadersContent) {
-                    const headerName = `${exportPrefix}${group.entryName}-表头`;
+                    const headerName = getImportEntryName(`${group.entryName}-表头`);
                     newGeneratedNames.push(headerName);
                     postCreateOrderFixPlan.push({ comment: headerName, order: cursor, placement: groupPlacement });
                     blockEntries.push(applyPlacementToEntry_ACU({
@@ -24963,7 +24962,7 @@ $CONTENT
                     }, groupPlacement));
                 }
                 const finalContent = buildEntryContent(group.entryName, combinedTableData, group.injectionTemplate, useWrapperEntries, '$1');
-                const fullComment = `${exportPrefix}${group.entryName}`;
+                const fullComment = getImportEntryName(group.entryName);
                 newGeneratedNames.push(fullComment);
                 postCreateOrderFixPlan.push({ comment: fullComment, order: cursor, placement: groupPlacement });
                 blockEntries.push(applyPlacementToEntry_ACU({
@@ -24971,7 +24970,7 @@ $CONTENT
                     type: group.entryType, prevent_recursion: group.preventRecursion, order: cursor++
                 }, groupPlacement));
                 if (useWrapperEntries && wrapperParts?.after) {
-                    const wrapperName = `${exportPrefix}${group.entryName}-包裹-下`;
+                    const wrapperName = getImportEntryName(`${group.entryName}-包裹-下`);
                     newGeneratedNames.push(wrapperName);
                     postCreateOrderFixPlan.push({ comment: wrapperName, order: cursor, placement: groupPlacement });
                     blockEntries.push(applyPlacementToEntry_ACU({
@@ -33872,8 +33871,13 @@ $CONTENT
             }
             try {
                 const 填表API开始时间 = 读取性能时间_ACU();
-                const aiResponse = await callCustomOpenAI_ACU(dynamicContent, abortController, job.requestOptions);
-                记录性能耗时_ACU('数据库更新:单组填表API', 填表API开始时间, `attempt=${attempt} tables=${Array.isArray(job.targetSheetKeys) ? job.targetSheetKeys.length : 0}`);
+                let aiResponse = '';
+                try {
+                    aiResponse = await callCustomOpenAI_ACU(dynamicContent, abortController, job.requestOptions);
+                }
+                finally {
+                    记录性能耗时_ACU('数据库更新:单组填表API', 填表API开始时间, `attempt=${attempt} tables=${Array.isArray(job.targetSheetKeys) ? job.targetSheetKeys.length : 0}`);
+                }
                 if (abortController.signal.aborted || wasStoppedByUser_ACU$1) {
                     return { job, success: false, attempt, aborted: true };
                 }

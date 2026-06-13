@@ -1261,9 +1261,8 @@ class ProfessionUIComponent {
     return 100;
   }
 
-  getForgeFusionSuccessRate(runtime, materialCount, hasExtraTech) {
+  getForgeFusionSuccessRate(runtime, materialCount) {
     let rate = runtime.limitSuccessRate - Math.max(0, materialCount - 1) * 15;
-    if (hasExtraTech) rate = Math.floor(rate * 1.1);
     return this.clamp(rate, 0, 100);
   }
 
@@ -1834,13 +1833,20 @@ class ProfessionUIComponent {
     const 魂导等级 = mode === 'manufacture' ? this.读取目标魂导等级(targetName, materialNames) : 0;
     if (魂导等级 > 0) return this.getSoulToolSingleRate(runtime, 魂导等级);
     const ef = Math.max(1, Number(fusionCount || 1));
-    if (mode === 'forge') return ef > 1 ? this.getForgeFusionSuccessRate(runtime, ef, false) : this.getSingleTierSuccessRate(tier, runtime);
+    if (mode === 'forge') return ef > 1 ? this.getForgeFusionSuccessRate(runtime, ef) : this.getSingleTierSuccessRate(tier, runtime);
     return ef > 1 ? this.getGenericCompositeRate(runtime, ef) : this.getGenericSingleRate(runtime, tier);
   }
 
   读取本次通用成功率(cfg = {}, runtime = {}, commissionCtx = {}, tier = 1, materialNames = [], targetName = '') {
     if (commissionCtx?.isCommission) return Number(commissionCtx.successRate || 0);
-    return this.getModeSuccessRateForRuntime(cfg.mode, runtime, tier, materialNames, commissionCtx?.fusionCount || 1, targetName);
+    const 基础成功率 = this.getModeSuccessRateForRuntime(cfg.mode, runtime, tier, materialNames, commissionCtx?.fusionCount || 1, targetName);
+    return Math.min(100, Math.floor(基础成功率 * this.读取暗器百解副职业倍率(commissionCtx)));
+  }
+
+  读取暗器百解副职业倍率(委托上下文 = {}) {
+    if (this.activeMode === 'forge') return 1;
+    if (委托上下文?.isCommission) return 1;
+    return this.charData?.功法?.['暗器百解'] ? 1.1 : 1;
   }
 
   buildCommissionFeePatches(fee) {
@@ -2175,7 +2181,7 @@ class ProfessionUIComponent {
       if (!ruleError) {
         const efc = Math.max(commissionCtx.fusionCount || 1, 1);
         const isFusion = efc > 1;
-        const rate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc, !!this.charData.功法?.['暗器百解']) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
+        const rate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
         当前成功率数值 = Number(rate || 0);
         const firstMaterial = this.resolveInventoryItem(materialNames[0]);
         const dfr = isFusion ? Number(commissionCtx.fusionSync || (materialNames.length > 1 ? this.getForgeFusionRate(effectiveRuntime, materialNames) : 100)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
@@ -2404,10 +2410,10 @@ class ProfessionUIComponent {
     });
     return Math.max(0.1, Math.min(5, Number(mult.toFixed(4))));
   }
-  applyProfessionExpGainMultiplier(expGain) {
+  applyProfessionExpGainMultiplier(expGain, 委托上下文 = {}) {
     const base = Number(expGain || 0);
     if (!(base > 0)) return 0;
-    return Math.max(1, Math.round(base * this.getProfessionExpGainMultiplier()));
+    return Math.max(1, Math.round(base * this.getProfessionExpGainMultiplier() * this.读取暗器百解副职业倍率(委托上下文)));
   }
   buildSystemResultPatches(resultLog, roll, successRate) {
     return [
@@ -2523,7 +2529,7 @@ class ProfessionUIComponent {
         if (资金单次消耗 > 0) 当前资金 = Math.max(0, 当前资金 - 资金单次消耗);
 
         const 本次成功率 = this.activeMode === 'forge'
-          ? (是否委托 ? Number(commissionCtx.successRate || 0) : (锻造是否融锻 ? this.getForgeFusionSuccessRate(effectiveRuntime, 锻造复合数, !!this.charData.功法?.['暗器百解']) : this.getSingleTierSuccessRate(tier, effectiveRuntime)))
+          ? (是否委托 ? Number(commissionCtx.successRate || 0) : (锻造是否融锻 ? this.getForgeFusionSuccessRate(effectiveRuntime, 锻造复合数) : this.getSingleTierSuccessRate(tier, effectiveRuntime)))
           : this.读取本次通用成功率(cfg, effectiveRuntime, commissionCtx, tier, materialNames, targetName);
         const roll = Math.floor(Math.random() * 100) + 1;
         const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
@@ -2535,7 +2541,7 @@ class ProfessionUIComponent {
           if (isGreatSuccess) 统计.大成功次数 += 1;
           let 本次经验 = Number(cfg.expGain[tier] || 50);
           if (isGreatSuccess && !是否委托) 本次经验 *= 2;
-          本次经验 = this.applyProfessionExpGainMultiplier(本次经验);
+          本次经验 = this.applyProfessionExpGainMultiplier(本次经验, commissionCtx);
           if (!是否委托) 统计.累计经验 += 本次经验;
 
           if (this.activeMode === 'forge') {
@@ -2677,7 +2683,7 @@ class ProfessionUIComponent {
     
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isFusion = efc > 1;
-    const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc, !!this.charData.功法?.['暗器百解']) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
+    const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
     const firstMaterial = this.resolveInventoryItem(materialNames[0]);
     const fusionRate = isFusion ? Number(commissionCtx.fusionSync || this.getForgeFusionRate(commissionCtx.executorRuntime || runtime, materialNames)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
     const maxQ = this.getForgeMaxQ(tier, efc);
@@ -2699,7 +2705,7 @@ class ProfessionUIComponent {
         const feeMsg = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatFedCoin(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。') : '';
         resultLog = `${commissionCtx.isCommission ? '[委托成功]' : '[打造成功]'} ${commissionCtx.executorName}成功完成【${targetName}】的锻造，品质系数 ${finalQ.toFixed(2)}。${feeMsg}`;
       }
-      expGain = this.applyProfessionExpGainMultiplier(expGain);
+      expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
     } else {
       resultLog = `${commissionCtx.isCommission ? '[委托失败]' : '[打造失败]'} ${commissionCtx.executorName}尝试打造【${targetName}】失败。Roll ${roll} > 成功率 ${successRate}。`;
     }
@@ -2758,7 +2764,7 @@ class ProfessionUIComponent {
     const finalQ = isSuccess ? (commissionCtx.isOfficial ? 1.0 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess)) : 0;
     let expGain = cfg.expGain[tier] || 50;
     if (isGreatSuccess && !commissionCtx.isCommission) expGain *= 2;
-    expGain = this.applyProfessionExpGainMultiplier(expGain);
+    expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
 
     let patchOps = [];
     if (commissionCtx.isCommission) patchOps.push(...this.buildCommissionFeePatches(commissionCtx.commissionFee));

@@ -5599,6 +5599,50 @@ class BattleUIComponent {
       return Math.max(当前精神力, 精神上限 * 0.25);
     }
 
+    const 紫极魔瞳防守境界集合_战斗 = new Set(['芥子', '浩瀚']);
+
+    function 读取战斗单位功法表_战斗(单位 = {}) {
+      if (单位?.功法 && typeof 单位.功法 === 'object' && !Array.isArray(单位.功法)) return 单位.功法;
+      if (单位?.角色数据?.功法 && typeof 单位.角色数据.功法 === 'object' && !Array.isArray(单位.角色数据.功法)) return 单位.角色数据.功法;
+      if (单位?.raw?.功法 && typeof 单位.raw.功法 === 'object' && !Array.isArray(单位.raw.功法)) return 单位.raw.功法;
+      const 角色名 = String(单位?.name || 单位?.名称 || '').trim();
+      if (!角色名) return {};
+      const 功法表 = window.BattleUIBridge?.getMVU?.(`char.${角色名}.功法`);
+      return 功法表 && typeof 功法表 === 'object' && !Array.isArray(功法表) ? 功法表 : {};
+    }
+
+    function 掌握唐门功法_战斗(单位 = {}, 功法名 = '') {
+      const 名称 = String(功法名 || '').trim();
+      return !!名称 && !!读取战斗单位功法表_战斗(单位)[名称];
+    }
+
+    function 读取功法记录_战斗(单位 = {}, 功法名 = '') {
+      const 名称 = String(功法名 || '').trim();
+      const 记录 = 读取战斗单位功法表_战斗(单位)[名称];
+      return 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+    }
+
+    function 判断精神力驱动攻击_战斗(效果 = {}, 技能 = {}) {
+      const 文本 = [
+        效果?.伤害类型,
+        效果?.驱动属性,
+        效果?.状态,
+        效果?.结算,
+        技能?.魂技名,
+        技能?.name,
+        技能?.效果描述,
+      ].map(值 => String(值 || '').trim()).join('|');
+      return /精神伤害|精神力|精神控制|精神压制|识海|幻境|眩晕|混乱|封技|恐惧/.test(文本);
+    }
+
+    function 计算紫极魔瞳防守精神攻势值_战斗(单位 = {}, 最终属性 = {}, 效果 = {}, 技能 = {}) {
+      const 基础 = 计算精神伤害攻势值(单位, 最终属性);
+      const 记录 = 读取功法记录_战斗(单位, '紫极魔瞳');
+      return 紫极魔瞳防守境界集合_战斗.has(String(记录.境界 || '').trim()) && 判断精神力驱动攻击_战斗(效果, 技能)
+        ? 基础 * 1.3
+        : 基础;
+    }
+
     function 读取对应等级(effect = {}) {
       const 等级 = Math.round(Number(effect?.对应等级 || 0));
       if (!Number.isFinite(等级) || 等级 <= 0) return 0;
@@ -14825,12 +14869,30 @@ class BattleUIComponent {
       if (!驱动属性 || 驱动属性 === '无') return 1;
       if (!attacker || !targetChar || attacker === targetChar) return 1;
       if (String(effect?.影响方向 || '').trim() !== '成功率') return 1;
+      const 目标最终属性 = targetChar?.final || buildCombatFinalStats(targetChar);
+      const 状态目标 = String(effect?.目标 || '').trim();
+      const 状态文本 = [
+        effect?.类型,
+        effect?.状态,
+        effect?.状态名称,
+        effect?.效果描述,
+        effect?.计算层效果?.skip_turn === true ? '眩晕' : '',
+        effect?.计算层效果?.cannot_react === true ? '无法反应' : '',
+        effect?.计算层效果?.silence === true ? '沉默' : '',
+        effect?.计算层效果?.skill_seal === true ? '封技' : '',
+        Number(effect?.计算层效果?.random_target_rate || 0) > 0 ? '混乱' : '',
+      ].map(值 => String(值 || '').trim()).join('|');
+      const 是负面状态 = !['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(状态目标) &&
+        (/debuff|眩晕|麻痹|僵直|混乱|沉默|封技|失控|精神紊乱|恐惧|无法反应|致盲|锁定|位移限制|资源燃烧|虚弱|防御剥夺|精神抗性剥夺/.test(状态文本));
+      const 防守最终属性 = 是负面状态 && 判断精神力驱动攻击_战斗(effect, effect?.__skill || {})
+        ? { ...目标最终属性, men_max: 计算紫极魔瞳防守精神攻势值_战斗(targetChar, 目标最终属性, effect, effect?.__skill || {}) }
+        : 目标最终属性;
       const 缩放系数 = 计算原型驱动缩放系数(
         effect,
         attacker,
         attacker?.final || buildCombatFinalStats(attacker),
         targetChar,
-        targetChar?.final || buildCombatFinalStats(targetChar),
+        防守最终属性,
       );
       return Math.max(0.05, Math.min(1, Number.isFinite(缩放系数) ? 缩放系数 : 1));
     }
@@ -22151,7 +22213,7 @@ class BattleUIComponent {
           projectedDamage =
             skillPower *
             (计算精神伤害攻势值(攻势单位, 攻势最终属性) /
-              Math.max(1, 计算精神伤害攻势值(defender, defenderFinalStat) * (1 - 目标精神抗性剥夺))) *
+              Math.max(1, 计算紫极魔瞳防守精神攻势值_战斗(defender, defenderFinalStat, pClash, skill) * (1 - 目标精神抗性剥夺))) *
             spiritDriveScale *
             定位伤害倍率 *
             消耗加成系数;
@@ -23452,7 +23514,7 @@ class BattleUIComponent {
           result.interrupt_bonus = attackerInterruptBonus;
           return result;
         }
-        const attackerHitBonus = 使用对应等级 ? 0 : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0);
+        const attackerHitBonus = 使用对应等级 ? 0 : attackerConditionEffects.reduce((sum, ce) => sum + Number(ce.hit_bonus || 0), 0) + (掌握唐门功法_战斗(attacker, '控鹤擒龙') ? 0.05 : 0);
         const attackerHitPenalty =
           使用对应等级
             ? 0
@@ -23551,7 +23613,7 @@ class BattleUIComponent {
           const targetUsesReactionAction =
             targetObj === primaryResolvedTarget && !targetsFriendlySkill && targetObj !== attacker;
           const targetEffectiveAgi = Number(targetFinalStat.agi || targetObj.agi || 0) * Number(targetObj.temp_agi_mult || 1);
-          const targetDodgeBonus = 计算有效增加闪避(Number(targetObj.temp_dodge_bonus || 0));
+          const targetDodgeBonus = 计算有效增加闪避(Number(targetObj.temp_dodge_bonus || 0) + (掌握唐门功法_战斗(targetObj, '鬼影迷踪步') ? 0.05 : 0));
           const targetDodgePenalty = Number(targetObj.temp_dodge_penalty || 0) + currentSkillDodgePenalty;
           const targetLockLevel = Number(targetObj.temp_lock_level || 0) + currentSkillLockLevel;
           const localLogParts = [];
@@ -23656,7 +23718,7 @@ class BattleUIComponent {
           } else if (/精神/.test(dmgType)) {
             projectedDamage =
               remainPower *
-              (计算精神伤害攻势值(攻势单位, 攻势最终属性) / Math.max(1, 计算精神伤害攻势值(targetObj, targetFinalStat) * (1 - 目标精神抗性剥夺))) *
+              (计算精神伤害攻势值(攻势单位, 攻势最终属性) / Math.max(1, 计算紫极魔瞳防守精神攻势值_战斗(targetObj, targetFinalStat, pClash, playerAction.skill) * (1 - 目标精神抗性剥夺))) *
               spiritDriveScale *
               定位伤害倍率 *
               消耗加成系数;
@@ -23682,12 +23744,13 @@ class BattleUIComponent {
             0.9,
             targetConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.damage_reduction || 0)), 0),
           );
+          const 玄玉手防护减免 = targetUsesReactionAction && (npcAction.type === '危机自保' || npcAction.type === '肉体兜底') && 掌握唐门功法_战斗(targetObj, '玄玉手') ? 0.05 : 0;
           const targetReceivedDamageMult = targetConditionEffects.reduce(
             (mult, ce) => mult * Number(ce.received_damage_mult || 1.0),
             1.0,
           );
           const targetElementReceivedDamageMult = 读取目标元素承伤倍率(targetObj, playerAction.skill || {});
-          projectedDamage = projectedDamage * (1 - targetDamageReduction) * targetReceivedDamageMult * targetElementReceivedDamageMult * totalFinalDamageMult + totalFinalDamageBonus;
+          projectedDamage = projectedDamage * (1 - Math.min(0.9, targetDamageReduction + 玄玉手防护减免)) * targetReceivedDamageMult * targetElementReceivedDamageMult * totalFinalDamageMult + totalFinalDamageBonus;
 
           if (
             !使用对应等级 &&

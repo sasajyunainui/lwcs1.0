@@ -16231,7 +16231,6 @@
       coeff: normalizeSkillDesignerCoeffMap(designDraft['属性系数']),
       artStage: normalizeSkillUiText(功法记录['境界'] || designDraft['境界'], '未入门'),
       artLevel: Math.max(0, toNumber(功法记录['lv'] ?? designDraft['lv'], 0)),
-      artExp: Math.max(0, toNumber(功法记录['exp'] ?? designDraft['exp'], 0)),
       fusionMode:
         designDraft['融合模式'] || 外层记录['融合模式']
           ? normalizeSkillDesignerFusionMode(designDraft['融合模式'] || 外层记录['融合模式'])
@@ -16408,10 +16407,10 @@
   function buildSkillDesignerArtProgressSummary(draft = {}) {
     const type = normalizeSkillUiText(draft.type, '');
     if (type !== '功法') return '';
+    if (normalizeSkillUiText(draft.name, '') !== '紫极魔瞳') return '';
     const stage = normalizeSkillUiText(draft.artStage, '未入门');
     const level = Math.max(0, toNumber(draft.artLevel, 0));
-    const exp = Math.max(0, toNumber(draft.artExp, 0));
-    return `境界：${stage}；等级：${level}；熟练度：${exp}`;
+    return `境界：${stage}；等级：${level}`;
   }
 
   function buildSkillDesignerAttributeSummary(draft = {}) {
@@ -21101,7 +21100,6 @@
       effectDesc: normalizeSkillUiText(baseDraft.effectDesc, ''),
       artStage: normalizeSkillUiText(baseDraft.artStage, '未入门'),
       artLevel: Math.max(0, toNumber(baseDraft.artLevel, 0)),
-      artExp: Math.max(0, toNumber(baseDraft.artExp, 0)),
       fusionMode: derivedFusionFields.fusionMode,
       用法模式: 原始融合用法模式,
       fusionPartner: derivedFusionFields.fusionPartner,
@@ -21299,7 +21297,6 @@
       effectDesc: readField('effectDesc'),
       artStage: readField('artStage') || '未入门',
       artLevel: Math.max(0, toNumber(readField('artLevel'), 0)),
-      artExp: Math.max(0, toNumber(readField('artExp'), 0)),
       fusionMode,
       用法模式,
       fusionPartner: derivedFusionFields.fusionPartner,
@@ -23775,7 +23772,6 @@
     if (previewMeta && previewMeta.scope === 'art') {
       技能设计台写回元数据['功法境界'] = normalizeSkillUiText(normalized.artStage, '未入门');
       技能设计台写回元数据['功法等级'] = Math.max(0, toNumber(normalized.artLevel, 0));
-      技能设计台写回元数据['功法经验'] = Math.max(0, toNumber(normalized.artExp, 0));
     }
     if (previewMeta && previewMeta.scope === '武魂融合技') {
       技能设计台写回元数据['融合模式'] = normalizedFusionFields.fusionMode;
@@ -23866,22 +23862,28 @@
     const 技能设计台写回元数据 = nextSkill && typeof nextSkill === 'object' ? (nextSkill.技能设计台写回元数据 || {}) : {};
     const 功法境界 = normalizeSkillUiText(技能设计台写回元数据['功法境界'], '未入门');
     const 功法等级 = Math.max(0, toNumber(技能设计台写回元数据['功法等级'], 0));
-    const 功法经验 = Math.max(0, toNumber(技能设计台写回元数据['功法经验'], 0));
     const 融合模式草稿 = 技能设计台写回元数据['融合模式'];
     const 融合用法模式草稿 = 技能设计台写回元数据['融合用法模式'];
     const 融合对象草稿 = 技能设计台写回元数据['融合对象'];
     const 融合来源武魂草稿 = 技能设计台写回元数据['融合来源武魂'];
     const 融合参与者草稿 = 技能设计台写回元数据['融合参与者'];
-    const updates = [{ path, value: nextSkill }];
+    const updates = toText(previewMeta && previewMeta.scope, '') === 'art' ? [] : [{ path, value: nextSkill }];
     if (toText(previewMeta && previewMeta.scope, '') === 'art') {
       const charKey = path[0] === 'char' ? toText(path[1], '') : '';
       const 功法名 = normalizeSkillUiText(nextSkill?.魂技名 || path[path.length - 1], path[path.length - 1] || '未命名功法');
       if (charKey && 功法名) {
         const 功法路径 = ['char', charKey, '功法', 功法名];
-        updates.push({ path: [...功法路径, '境界'], value: 功法境界 });
-        updates.push({ path: [...功法路径, 'lv'], value: 功法等级 });
-        updates.push({ path: [...功法路径, 'exp'], value: 功法经验 });
-        updates.push({ path: [...功法路径, '描述'], value: normalizeSkillUiText(nextSkill?.效果描述, '无') });
+        if (功法名 === '紫极魔瞳') {
+          const 已有获得tick = toNumber(deepGet(rootData, [...功法路径, '获得tick'], deepGet(rootData, ['world', '时间', 'tick'], 0)), 0);
+          updates.push({ path: 功法路径, value: {
+            境界: ['纵观', '入微', '芥子', '浩瀚'].includes(功法境界) ? 功法境界 : '纵观',
+            lv: Math.max(1, Math.min(4, 功法等级 || 1)),
+            获得tick: Math.max(0, Math.floor(已有获得tick)),
+            描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
+          } });
+        } else {
+          updates.push({ path: 功法路径, value: { 描述: normalizeSkillUiText(nextSkill?.效果描述, '无') } });
+        }
       }
     }
     if (
@@ -31585,7 +31587,7 @@
                   ${fusionStructureSection}
 
                   ${
-                    previewMeta.scope === 'art'
+                    previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '紫极魔瞳'
                       ? `
                     <section class=\"mvu-editor-section\">
                       <div class=\"mvu-editor-section-title\">功法进度</div>
@@ -31596,11 +31598,7 @@
                         </label>
                         <label class=\"mvu-editor-field\">
                           <span class=\"mvu-editor-label\">等级</span>
-                          <input class=\"mvu-editor-input\" type=\"number\" min=\"0\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(0, toNumber(designerDraft.artLevel, 0))))}\" data-skill-designer-field=\"artLevel\" data-skill-designer-disableable />
-                        </label>
-                        <label class=\"mvu-editor-field\">
-                          <span class=\"mvu-editor-label\">熟练度</span>
-                          <input class=\"mvu-editor-input\" type=\"number\" min=\"0\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(0, toNumber(designerDraft.artExp, 0))))}\" data-skill-designer-field=\"artExp\" data-skill-designer-disableable />
+                          <input class=\"mvu-editor-input\" type=\"number\" min=\"1\" max=\"4\" step=\"1\" value=\"${escapeHtmlAttr(String(Math.max(1, toNumber(designerDraft.artLevel, 1))))}\" data-skill-designer-field=\"artLevel\" data-skill-designer-disableable />
                         </label>
                       </div>
                     </section>
@@ -39152,6 +39150,14 @@ ${播报文本}
     return 文本 || '情报';
   }
 
+  function 构建功法学习记录_桥接(功法名 = '', 描述 = '未知', 根数据 = {}) {
+    const 名称 = toText(功法名, '').trim();
+    const 功法描述 = normalizeSkillUiText(描述, '未知');
+    if (名称 !== '紫极魔瞳') return { 描述: 功法描述 };
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(根数据, ['world', '时间', 'tick'], 0), 0)));
+    return { 境界: '纵观', lv: 1, 获得tick: 当前tick, 描述: 功法描述 };
+  }
+
   function 解析传授模块意图请求(snapshot, payload = {}) {
     const 学生名 = toText(payload.学生 || payload.student || payload.角色 || payload.char || snapshot?.activeName, '').trim();
     const 老师名 = toText(payload.老师 || payload.teacher || payload.对象 || payload.npc || payload.target, '').trim();
@@ -39199,7 +39205,7 @@ ${播报文本}
           charData[parentKey] = {};
         if (!charData[parentKey][recordKey]) {
           charData[parentKey][recordKey] = 内容类型 === '功法'
-            ? { 魂技名: skillLabel, 境界: '未入门', lv: 0, exp: 0, 画面描述: '未知', 效果描述: '未知', _效果数组: [] }
+            ? 构建功法学习记录_桥接(skillLabel, '未知', statData)
             : { 魂技名: skillLabel, 画面描述: '未知', 效果描述: '未知', _效果数组: [] };
         }
       },

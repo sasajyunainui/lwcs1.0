@@ -2838,14 +2838,17 @@ function 构建MVU剧情提示当前段_V1(数据根 = {}, userInput = '') {
 function 构建MVU剧情提示角色段_V1(数据根 = {}, userInput = '', 最后剧情文本 = '') {
   const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本, 2);
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
-  const 行列表 = ['【角色简表】', '| 角色 | 位置/行动 | 剩余资源 | 外貌穿搭 | 性格 | 财富 | 身份关系 |', '|---|---|---|---|---|---|---|'];
+  const 列名列表 = ['角色', '位置/行动', '外貌穿搭', '性格', '财富', '身份关系'];
+  const 行列表 = ['【角色简表】', `| ${列名列表.join(' | ')} |`, `| ${列名列表.map(() => '---').join(' | ')} |`];
+  const 资源行列表 = [];
   角色名列表.forEach(角色名 => {
     const 角色 = 数据根?.char?.[角色名];
     if (!角色 || typeof 角色 !== 'object') return;
+    const 剩余资源 = 构建MVU剩余资源摘要_V1(角色);
+    if (剩余资源) 资源行列表.push(`- ${角色名}：${剩余资源}`);
     const 单元列表 = [
       角色名,
       构建MVU剧情提示当前位置行动_V1(角色),
-      构建MVU剩余资源摘要_V1(角色),
       构建MVU剧情提示外貌穿搭_V1(角色),
       角色?.性格,
       构建MVU剧情提示财富_V1(角色),
@@ -2853,7 +2856,9 @@ function 构建MVU剧情提示角色段_V1(数据根 = {}, userInput = '', 最�
     ].map(格式化MVU剧情提示单元_V1);
     行列表.push(`| ${单元列表.join(' | ')} |`);
   });
-  return 行列表.length > 3 ? 行列表.join('\n') : '【角色简表】\n无';
+  if (行列表.length <= 3) return '【角色简表】\n无';
+  if (资源行列表.length) 行列表.push('【剩余资源】', ...资源行列表);
+  return 行列表.join('\n');
 }
 
 function 构建MVU剧情提示引导段_V1(数据根 = {}, userInput = '') {
@@ -3105,7 +3110,7 @@ function 构建MVU正文武魂融合技摘要_V1(角色名 = '', 角色 = {}, �
   Object.entries(角色?.武魂融合技 || {}).forEach(([记录名, 融合技]) => {
     if (!融合技 || typeof 融合技 !== 'object') return;
     const 技能数据 = 融合技.技能数据 && typeof 融合技.技能数据 === 'object' ? 融合技.技能数据 : {};
-    const 技能名 = String(技能数据.魂技名 || 技能数据.name || 记录名 || '').trim();
+    const 技能名 = String(技能数据.魂技名 || 技能数据.name || '').trim();
     const 类型 = 融合技.融合模式 === 'self' ? '自体融合' : '武魂融合';
     const 参与者信息 = 读取MVU正文融合参与者信息_V1(融合技, 角色名, 正文角色表);
     const 摘要 = {
@@ -3113,8 +3118,8 @@ function 构建MVU正文武魂融合技摘要_V1(角色名 = '', 角色 = {}, �
       参与者: 参与者信息.文本,
       用法: 融合技.用法模式,
     };
-    if (!参与者信息.存在不可见融合源) 摘要.效果 = 技能数据._简易效果描述 || 技能数据.效果描述 || 技能数据.描述 || 技能数据.画面描述;
-    输出[技能名 || 记录名] = 摘要;
+    if (!参与者信息.存在不可见融合源) 摘要.效果 = 技能数据.效果描述 || 技能数据.描述 || 技能数据.画面描述;
+    输出[格式化MVU正文提示原子值_V1(技能名) || '未命名武魂融合技'] = 摘要;
   });
   return 输出;
 }
@@ -3148,9 +3153,9 @@ function 构建MVU正文魂灵行_V1(魂灵键 = '', 魂灵 = {}) {
   return 片段列表.length ? `- ${魂灵键}：${片段列表.join('；')}` : '';
 }
 
-function 构建MVU正文魂技文本_V1(魂技键 = '', 魂技 = {}) {
-  const 魂技名 = 格式化MVU正文提示原子值_V1(魂技?.魂技名 || 魂技?.name || 魂技键);
-  const 效果 = 格式化MVU正文提示原子值_V1(魂技?._简易效果描述 || 魂技?.效果描述 || 魂技?.描述);
+function 构建MVU正文魂技文本_V1(魂技 = {}) {
+  const 魂技名 = 格式化MVU正文提示原子值_V1(魂技?.魂技名 || 魂技?.name);
+  const 效果 = 格式化MVU正文提示原子值_V1(魂技?.效果描述 || 魂技?.描述);
   const 画面 = 格式化MVU正文提示原子值_V1(魂技?.画面描述);
   const 产物 = 格式化MVU正文提示原子值_V1(魂技?.产物描述);
   const 片段列表 = [];
@@ -3170,7 +3175,7 @@ function 构建MVU正文魂环行列表_V1(魂环键 = '', 魂环 = {}) {
   const 基础文本 = `${魂环键}：${基础片段.join('/') || '魂环'}`;
   const 魂技行 = 取魂环魂技条目_V1(魂环)
     .map(([魂技键, 魂技]) => {
-      const 魂技文本 = 构建MVU正文魂技文本_V1(魂技键, 魂技);
+      const 魂技文本 = 构建MVU正文魂技文本_V1(魂技);
       return 魂技文本 ? `- ${基础文本}；${魂技文本}` : '';
     })
     .filter(Boolean);
@@ -3539,7 +3544,8 @@ function 注入运行时技能默认提示_V1(skill = {}, context = {}) {
   if (String(skill.魂技名 ?? '').trim() === '') skill.魂技名 = 限流提示('技能名', buildSkillNameTodoText(textContext));
   if (String(skill.画面描述 ?? '').trim() === '')
     skill.画面描述 = 限流提示('技能画面描述', hasPackedEffects ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1);
-  if (hasPackedEffects && String(skill.效果描述 ?? '').trim() === '') skill.效果描述 = 限流提示('技能效果描述', AI_TODO_SKILL_EFFECT);
+  if (String(skill.效果描述 ?? '').trim() === '' || String(skill.效果描述 ?? '').trim() === SKILL_TEXT_UNKNOWN || isSkillTodoText(skill.效果描述))
+    skill.效果描述 = 限流提示('技能效果描述', AI_TODO_SKILL_EFFECT);
   const 是造物承载技能 = String(skill.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill._效果数组);
   if (!是造物承载技能) delete skill.产物描述;
   if (hasPackedEffects && 是造物承载技能 && (!String(skill.产物描述 ?? '').trim() || String(skill.产物描述 ?? '').trim() === '无')) {
@@ -4472,8 +4478,8 @@ function syncSoulTowerRecordEligibility(char = {}) {
 function createDefaultRingSkillShell() {
   return {
     ['\u9b42\u6280\u540d']: AI_TODO_SKILL_NAME,
-    ['\u753b\u9762\u63cf\u8ff0']: '\u672a\u77e5',
-    ['\u6548\u679c\u63cf\u8ff0']: '\u672a\u77e5',
+    ['\u753b\u9762\u63cf\u8ff0']: AI_TODO_SKILL_VISUAL_STAGE1,
+    ['\u6548\u679c\u63cf\u8ff0']: AI_TODO_SKILL_EFFECT,
     _\u6548\u679c\u6570\u7ec4: [],
   };
 }
@@ -5436,13 +5442,6 @@ function buildTemporaryCombatSkillMap(seedText, unitName, combatType, level, ski
         type: combatType || '强攻系',
       },
     }));
-  });
-  Object.keys(skillMap).forEach((skillName, index) => {
-    const skill = skillMap[skillName];
-    if (!skill || typeof skill !== 'object') return;
-    skill.魂技名 = `魂技${index + 1}`;
-    skill.画面描述 = '未知';
-    skill.效果描述 = '未知';
   });
   return skillMap;
 }
@@ -20943,23 +20942,8 @@ function buildSkillProductReferenceText(packedEffects) {
   return Array.from(new Set(products)).slice(0, 4).join('；');
 }
 
-function buildSkillSummaryReferenceText(packedEffects) {
-  return 编译效果数组为人类语言_V1(packedEffects || []);
-}
-
 function getSkillAttributeGateGuideText() {
   return '技能只写本招实际调用到的属性与演化；元素系技能必须从武魂可调用元素中调用，未手动指定时默认调用全部可调用元素；高阶属性表现优先遵守“可调用元素 + 魂力/精神力负荷”双门槛，不直接写死等级线；五行相关必须先集齐金木水火土后才可写五行剥离/五行遁法；元素融合的基础源属性为水/火/风/土，四基础元素齐备可导向元素剥离，雷若出现只能作为四元素归元后的法则性显化；水火风土光暗空间齐备时才可导向七元素爆裂';
-}
-
-function buildSkillAttributeReferenceText(skill = {}) {
-  if (!skill || typeof skill !== 'object') return '';
-  const attrs = normalizeSkillAttachedAttributeArray(skill?.附带属性);
-  const segments = [];
-  const summaryText = buildSkillSummaryReferenceText(skill?._效果数组 || []);
-  if (attrs.length && (!summaryText || !summaryText.includes('附带属性：')))
-    segments.push(`附带属性：${attrs.join('/')}`);
-  if (summaryText) segments.push(summaryText);
-  return segments.join('；');
 }
 
 function compactSkillHintText(text = '', maxLen = 72) {
@@ -20969,23 +20953,6 @@ function compactSkillHintText(text = '', maxLen = 72) {
   if (!raw) return '';
   if (raw.length <= maxLen) return raw;
   return raw.slice(0, maxLen) + '...';
-}
-
-function buildSkillEffectTodoText(packedEffects, skill = null) {
-  const referenceText = compactSkillHintText(skill ? 编译技能结构为人类语言_V1(skill) : buildSkillEffectReferenceText(packedEffects), 180);
-  const attributeText = compactSkillHintText(buildSkillAttributeReferenceText(skill), 56);
-  if (!referenceText && !attributeText) return '按技能结构结算。';
-  const parts = [];
-  if (referenceText) parts.push(referenceText);
-  if (attributeText) parts.push(attributeText);
-  return parts.join('；');
-}
-
-function buildSkillVisualDescriptionFromPackedEffects(packedEffects, context = {}) {
-  const effects = getMeaningfulSkillEffects(packedEffects);
-  if (effects.length === 0) return '无';
-  const referenceText = compactSkillHintText(buildSkillEffectReferenceText(packedEffects), 72);
-  return referenceText ? `发动时形成${referenceText}。` : '发动时魂力凝聚并触发技能结构。';
 }
 
 function buildSkillProductDescriptionTodoText(packedEffects) {
@@ -21027,23 +20994,9 @@ function buildTemporaryConstructDescription(itemName, usageEffects, ttl, options
   return text;
 }
 
-function hydrateSkillTextByPackedEffects(skill, context = {}, options = {}) {
+function hydrateSkillTextByPackedEffects(skill) {
   if (!skill || !Array.isArray(skill._效果数组) || skill._效果数组.length === 0) return skill;
   清理技能效果数组AI文本字段_V1(skill._效果数组);
-  if (
-    options.forceVisual ||
-    typeof skill.画面描述 !== 'string' ||
-    !skill.画面描述.trim() ||
-    isSkillTodoText(skill.画面描述)
-  )
-    skill.画面描述 = buildSkillVisualDescriptionFromPackedEffects(skill._效果数组, { ...context, skill });
-  if (
-    options.forceEffect ||
-    typeof skill.效果描述 !== 'string' ||
-    !skill.效果描述.trim() ||
-    isSkillTodoText(skill.效果描述)
-  )
-    skill.效果描述 = buildSkillEffectTodoText(skill._效果数组, skill);
   const 是造物承载技能 = String(skill.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill._效果数组);
   if (!是造物承载技能) {
     delete skill.产物描述;
@@ -21972,7 +21925,6 @@ Object.values(银龙王血脉技能_V1).forEach(skill => {
 const 武魂真身基础增幅机制_V1 = Object.freeze(['单属性增益', '多属性增益', '全属性增益']);
 const 武魂真身通用增幅机制_V1 = Object.freeze(['威力增幅', '技能效果增幅', '掌控提升', '速度提升']);
 const 武魂真身自身辅助增幅机制_V1 = Object.freeze(['技能效果增幅', '多属性增益', '修炼增益']);
-const 武魂真身工具名称候选_V1 = Object.freeze(['蒸笼', '锅', '酒坛', '模具', '案台', '烤炉', '丹炉', '蜜罐']);
 
 function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B', context = {}) {
   const 系别 = String(type || '强攻系').trim() || '强攻系';
@@ -22235,11 +22187,6 @@ function buildSeventhRingTrueBodySkill(
   const gradeInfo = judgeSkillGrade(talentTier, ringAge, ringIndex, compatibility, sourceQuality);
   const grade = normalizeSkillTableGrade(gradeInfo.grade);
   const quality = gradeInfo.quality;
-  const spiritName =
-    !isAiTodoText(textContext?.spiritName) && String(textContext?.spiritName || '') !== '未展露'
-      ? String(textContext.spiritName).trim()
-      : '';
-  const skillName = spiritName ? `${spiritName}真身` : '武魂真身';
   const 系别 = String(type || '强攻系').trim() || '强攻系';
   const 真身上下文 = {
     ...(options || {}),
@@ -22294,9 +22241,7 @@ function buildSeventhRingTrueBodySkill(
     targetKind: '自身',
     加成属性候选,
   });
-  skill.魂技名 = 食物工具分支
-    ? `${spiritName || '武魂'}${pickRandom(武魂真身工具名称候选_V1) || '工具'}真身`
-    : skillName;
+  skill.魂技名 = '武魂真身';
   skill.画面描述 = AI_TODO_SKILL_VISUAL;
   skill.效果描述 = AI_TODO_SKILL_EFFECT;
   const 效果数组 = clonePackedSkillEffects(skill._效果数组 || []);
@@ -23245,18 +23190,12 @@ function clearStorageTodoPlaceholders(node) {
 }
 
 function buildSkillNameTodoText(context = {}) {
-  const 取有效来源名 = (值 = '') => {
-    const 文本 = String(值 || '').trim();
-    return 文本 && !isAiTodoText(文本) && !['未展露', '未知', '无'].includes(文本) ? 文本 : '';
-  };
-  const 技能键 = 取有效来源名(context?.技能键 || context?.skillName || context?.name);
-  if (技能键 && !/^第\d+魂技(?:_\d+)?$/.test(技能键)) return 技能键;
-  const 武魂名 = 取有效来源名(context?.martialSoulName) || 取有效来源名(context?.spiritName) || '武魂';
-  const 魂环来源 = 取有效来源名(context?.ringSource);
+  const rawSpiritName = String(context?.spiritName || '').trim();
+  const spiritName =
+    rawSpiritName && !isAiTodoText(rawSpiritName) && rawSpiritName !== '未展露' ? rawSpiritName : '所属武魂';
   const typeText = String(context?.type || '').trim();
-  if (武魂名 && 武魂名 !== '武魂') return typeText === '食物系' ? `${武魂名}造物` : `${武魂名}魂技`;
-  if (魂环来源) return typeText === '食物系' ? `${魂环来源}食物` : `${魂环来源}魂技`;
-  return typeText ? `${typeText}魂技` : '魂技';
+  const foodHint = typeText === '食物系' ? '食物系命名必须围绕该武魂主材，不得替换为无关食材。' : '';
+  return `待补全（填写魂技名；必须围绕【${spiritName}】同源命名并体现该武魂能力特征，禁止无关命名；需与机制选择（主机制/副机制1/副机制2）保持一致。若为造物承载类技能，此名称同时作为生成物名称。${foodHint}）`;
 }
 
 function 构建魂骨名称待生成提示词_V1(骨部位 = '魂骨') {
@@ -24506,7 +24445,7 @@ function buildSkillRuntimeAttributeContext(skill = {}, context = {}) {
   });
   const initialElementStructure = finalizeSkillElementStructure(skill, source, preResolvedAttached);
   const initialWuxingInvocation = finalizeSkillWuxingInvocation(skill, source, preResolvedAttached, normalizedPolarity);
-  let resolvedAttached = resolveSkillAttachedAttributes(
+  const resolvedAttached = resolveSkillAttachedAttributes(
     skill,
     context,
     profile,
@@ -24514,8 +24453,6 @@ function buildSkillRuntimeAttributeContext(skill = {}, context = {}) {
     initialElementStructure,
     initialWuxingInvocation,
   );
-  const 上下文系别 = String(context?.系别 || context?.type || context?.武魂系别 || '').trim();
-  if (!resolvedAttached.length) resolvedAttached = [];
   const gateResult = applySkillAttachedAttributeHardGate(resolvedAttached, context);
   const attached = normalizeSkillAttachedAttributeArray(gateResult.attachedAttributes);
   const elementStructure = constrainSkillElementStructureByAttached(
@@ -24624,29 +24561,8 @@ function getElementProfilePrimaryLabel(profile = {}) {
 function applySkillElementInheritance(skill = {}, context = {}) {
   if (!skill || typeof skill !== 'object') return skill;
   if (!Array.isArray(skill._效果数组)) skill._效果数组 = [];
-  const 原始明确附带属性 = normalizeSkillAttachedAttributeArray(skill?.附带属性);
   const runtime = buildSkillRuntimeAttributeContext(skill, context);
-  if (原始明确附带属性.length) skill.附带属性 = runtime.attachedAttributes;
-  else delete skill.附带属性;
-  const 约束效果元素 = 效果 => {
-    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
-    if (效果.限定元素 !== undefined) {
-      const 限定元素列表 = 读取技能限定元素列表_V1(效果.限定元素).filter(元素 => runtime.attachedAttributes.includes(元素));
-      const 生效元素 = runtime.attachedAttributes.length ? (限定元素列表.length ? 限定元素列表 : runtime.attachedAttributes) : [];
-      if (生效元素.length) {
-        效果.限定元素 = 生效元素.length > 1 ? 生效元素 : 生效元素[0];
-      }
-    }
-    技能执行嵌套效果数组字段表_V1.forEach(字段名 => {
-      (Array.isArray(效果[字段名]) ? 效果[字段名] : []).forEach(约束效果元素);
-    });
-    (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach(分支 => {
-      技能条件分支效果数组字段表_V1.forEach(字段名 => {
-        (Array.isArray(分支?.[字段名]) ? 分支[字段名] : []).forEach(约束效果元素);
-      });
-    });
-  };
-  skill._效果数组.forEach(约束效果元素);
+  skill.附带属性 = runtime.attachedAttributes;
   stripSkillLegacyRuntimeFields(skill);
   return skill;
 }
@@ -24730,12 +24646,11 @@ function cloneSkillStructData(skill = {}) {
   const packedEffects = clonePackedSkillEffects(skill?._效果数组 || []);
   const attachedAttributes = normalizeSkillAttachedAttributeArray(skill?.附带属性);
   const 副作用列表 = normalizeSkillSideEffectList(skill?.副作用列表 || []);
-  const defaultText = packedEffects.length > 0 ? undefined : SKILL_TEXT_UNKNOWN;
   const 是造物承载技能 = String(skill?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(packedEffects);
   const working = {
     魂技名: String(skill?.魂技名 || skill?.技能名称 || skill?.name || AI_TODO_SKILL_NAME),
-    画面描述: String(skill?.画面描述 || defaultText || AI_TODO_SKILL_VISUAL),
-    效果描述: String(skill?.效果描述 || defaultText || AI_TODO_SKILL_EFFECT),
+    画面描述: String(skill?.画面描述 || AI_TODO_SKILL_VISUAL),
+    效果描述: String(skill?.效果描述 || AI_TODO_SKILL_EFFECT),
     承载方式: String(skill?.承载方式 || (是造物承载技能 ? '造物承载' : '直接生效')).trim() || '直接生效',
     消耗: cloneJsonValue(skill?.消耗 ?? '无'),
     前摇: Math.max(0, Number(skill?.前摇 ?? 0) || 0),
@@ -24749,7 +24664,7 @@ function cloneSkillStructData(skill = {}) {
   if (是造物承载技能) working.产物描述 = String(skill?.产物描述 || '无');
   applySkillElementInheritance(working, {});
   syncConstructSkillMetadata(working);
-  hydrateSkillTextByPackedEffects(working, {}, { forceVisual: true, forceEffect: true });
+  hydrateSkillTextByPackedEffects(working);
   const result = {
     魂技名: working.魂技名,
     画面描述: working.画面描述,
@@ -25632,7 +25547,7 @@ function ensureSkillStructGenerated(skill, context = {}) {
     if (typeof skill.画面描述 !== 'string' || !skill.画面描述.trim() || isSkillTodoText(skill.画面描述))
       skill.画面描述 = AI_TODO_SKILL_VISUAL_STAGE1;
     if (typeof skill.效果描述 !== 'string' || !skill.效果描述.trim() || isSkillTodoText(skill.效果描述))
-      skill.效果描述 = SKILL_TEXT_UNKNOWN;
+      skill.效果描述 = AI_TODO_SKILL_EFFECT;
   } else {
     if (typeof skill.画面描述 !== 'string' || !skill.画面描述.trim() || isSkillTodoText(skill.画面描述))
       skill.画面描述 = AI_TODO_SKILL_VISUAL;
@@ -25649,7 +25564,7 @@ function ensureSkillStructGenerated(skill, context = {}) {
   delete skill[技能机制决策临时字段_V1];
   if (skill.画面描述 === SKILL_TEXT_UNKNOWN) skill.画面描述 = AI_TODO_SKILL_VISUAL;
   if (skill.效果描述 === SKILL_TEXT_UNKNOWN) skill.效果描述 = AI_TODO_SKILL_EFFECT;
-  if (本次已自动生成) return hydrateSkillTextByPackedEffects(skill, context.textContext || {});
+  if (本次已自动生成) return hydrateSkillTextByPackedEffects(skill);
   const 临时技能 = cloneJsonValue(skill, {});
   收口技能执行结构_V1(临时技能, {
     目标: String(临时技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
@@ -25662,7 +25577,7 @@ function ensureSkillStructGenerated(skill, context = {}) {
     syncConstructSkillMetadata(临时技能);
     Object.keys(skill).forEach(键 => delete skill[键]);
     Object.assign(skill, 临时技能);
-    return hydrateSkillTextByPackedEffects(skill, context.textContext || {});
+    return hydrateSkillTextByPackedEffects(skill);
   }
   try {
     syncConstructSkillMetadata(临时技能);
@@ -25672,21 +25587,12 @@ function ensureSkillStructGenerated(skill, context = {}) {
   }
   Object.keys(skill).forEach(键 => delete skill[键]);
   Object.assign(skill, 临时技能);
-  return hydrateSkillTextByPackedEffects(skill, context.textContext || {});
+  return hydrateSkillTextByPackedEffects(skill);
 }
 
 function ensureSkillMapGenerated(skillMap, contextFactory = () => ({}), 公共上下文 = {}) {
   const 恢复增益重复账本缓存 = 公共上下文?.恢复增益重复账本缓存 || 创建恢复增益重复账本缓存_V1();
   _(skillMap || {}).forEach((skill, skillName) => {
-    if (
-      skill &&
-      typeof skill === 'object' &&
-      (!skill.魂技名 || !String(skill.魂技名).trim()) &&
-      skillName &&
-      !/^第\d+魂技(?:_2)?$/.test(String(skillName).trim())
-    ) {
-      skill.魂技名 = String(skillName);
-    }
     const 技能上下文 = { ...(公共上下文 || {}), ...(contextFactory(skill, skillName) || {}) };
     if (!技能上下文.技能键) 技能上下文.技能键 = String(skillName || '').trim();
     if (!技能上下文.恢复增益重复账本缓存) 技能上下文.恢复增益重复账本缓存 = 恢复增益重复账本缓存;
@@ -25694,6 +25600,13 @@ function ensureSkillMapGenerated(skillMap, contextFactory = () => ({}), 公共�
   });
   return skillMap || {};
 }
+
+const 持久魂兽自创魂技档位_V1 = Object.freeze([
+  Object.freeze({ 技能键: '魂兽战技一', 魂环位: 3, 年限: 50000 }),
+  Object.freeze({ 技能键: '魂兽战技二', 魂环位: 5, 年限: 100000 }),
+  Object.freeze({ 技能键: '魂兽战技三', 魂环位: 7, 年限: 150000 }),
+  Object.freeze({ 技能键: '魂兽战技四', 魂环位: 9, 年限: 200000 }),
+]);
 
 function 初始化补齐角色技能效果数组_V1(rootData = {}) {
   const 角色集 = rootData && rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
@@ -25725,6 +25638,16 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       men_max: Number(char?.属性?.精神力上限 || 0),
     }) : 取角色主武魂系别_V1(char);
     const 天赋梯队 = String(char?.属性?.天赋梯队 || '').trim() || (是持久魂兽 ? '顶级天才' : '正常');
+    const 魂兽自创魂技档位 = new Map(持久魂兽自创魂技档位_V1.map(档位 => [档位.技能键, 档位]));
+
+    if (是持久魂兽) {
+      if (!char.自创魂技 || typeof char.自创魂技 !== 'object' || Array.isArray(char.自创魂技)) char.自创魂技 = {};
+      if (Object.keys(char.自创魂技).length === 0) {
+        持久魂兽自创魂技档位_V1.forEach(档位 => {
+          char.自创魂技[档位.技能键] = createDefaultRingSkillShell();
+        });
+      }
+    }
 
     取角色武魂条目_V1(char).forEach(([spiritKey, spiritData]) => {
       if (!spiritData || typeof spiritData !== 'object') return;
@@ -25849,22 +25772,24 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
     const 自创属性状态 = buildCharacterCustomSkillAttributeState(char);
     const 自创元素画像 = buildElementProfileFromAttributeState(自创属性状态);
     补齐技能映射(char.自创魂技, (_, skillName) => {
+      const 魂兽档位 = 是持久魂兽 ? 魂兽自创魂技档位.get(String(skillName || '').trim()) : null;
       return {
         type: 系别,
         武魂系别: 系别,
         角色: char,
         path: `char.${charName}.自创魂技.${skillName}`,
         talentTier: 天赋梯队,
-        age: Math.max(1000, 通用技能年限),
-        ringAge: Math.max(1000, 通用技能年限),
-        ringIndex: Math.max(1, Math.ceil(Number(char?.属性?.等级 || 1) / 10)),
+        age: 魂兽档位 ? 魂兽档位.年限 : Math.max(1000, 通用技能年限),
+        ringAge: 魂兽档位 ? 魂兽档位.年限 : Math.max(1000, 通用技能年限),
+        ringIndex: 魂兽档位 ? 魂兽档位.魂环位 : Math.max(1, Math.ceil(Number(char?.属性?.等级 || 1) / 10)),
         compatibility: 100,
         preferredSecondary: [],
         elementProfile: 自创元素画像,
         可调用元素: 自创属性状态.可调用元素,
         callableElements: 自创属性状态.可调用元素,
         elementTrigger: 是持久魂兽 ? '魂兽本体' : '自创',
-        sourceCategory: '自创魂技',
+        sourceCategory: 魂兽档位 ? '魂兽自创魂技' : '自创魂技',
+        允许自动生成技能结构: 魂兽档位 ? true : undefined,
         martialSoulName: 是持久魂兽 ? 魂兽名称 : '',
         forceTrueBody: false,
         textContext: {
@@ -25984,81 +25909,6 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
   });
   return rootData;
 }
-
-const TANGMEN_SECRET_SKILL_TEMPLATES = {
-  玄天功: {
-    画面描述: '玄天功内息沿经脉周天往复，魂力在循环中不断被压缩提纯，整个人的气机因此愈发绵长稳固。',
-    效果描述: '被动：持续稳固自身魂力运转，小幅提升魂力上限与回复效率，并让输出更凝练稳定。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 属性: '魂力上限', 数值: '+8%' },
-      { 原型: '结算修正', 目标: '自身', 结算: '治疗', 数值: '+5%' },
-      { 原型: '结算修正', 目标: '自身', 结算: '造成伤害', 数值: '+5%' },
-    ],
-  },
-  紫极魔瞳: {
-    画面描述: '双瞳浮现幽紫光泽，视线仿佛能穿透雾障与魂力扰动，敌人的动作轨迹在眼底被提前拆解。',
-    效果描述: '被动：持续强化精神洞察、动态视觉与锁定能力，小幅提升命中、反应与精神相关判定表现。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+12%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '反应', 数值: '+12%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+8%' },
-    ],
-  },
-  玄玉手: {
-    画面描述: '双手泛起温润玉色，掌指在魂力浸润下变得坚韧沉稳，出手时可直接承接锋刃与魂力冲击。',
-    效果描述: '被动：持续强化双手抗性、近身擒拿与卸力表现，小幅提升防御、格挡和近身控制稳定性。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 属性: '防御', 数值: '+6%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '格挡', 数值: '+10%' },
-      { 原型: '结算修正', 目标: '自身', 结算: '近身控制', 数值: '+8%' },
-    ],
-  },
-  鬼影迷踪步: {
-    画面描述: '身形在步法变换间忽左忽右，落点像被影子提前遮住，使对手难以锁定真正的进攻路线。',
-    效果描述: '被动：持续强化步法变化、闪避与近身切位，小幅提升速度、闪避和突进命中表现。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 属性: '速度', 数值: '+8%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '闪避', 数值: '+12%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+6%' },
-    ],
-  },
-  控鹤擒龙: {
-    画面描述: '掌势一收一放，牵引劲力像无形丝线般缠住目标行动轨迹，可在近中距完成夺势、卸力与反制。',
-    效果描述: '被动：持续强化隔空牵引、擒拿卸力与夺势表现，小幅提升控制、反制和破招能力。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '结算修正', 目标: '自身', 结算: '控制效果', 数值: '+10%' },
-      { 原型: '判定修正', 目标: '自身', 判定: '反应', 数值: '+8%' },
-      { 原型: '判定修正', 目标: '单体', 判定: '闪避', 数值: '-6%' },
-    ],
-  },
-  暗器百解: {
-    画面描述: '无数暗器轨迹与发力角度在脑海中被迅速拆解重组，每一次出手都更接近教科书般的精准与狠辣。',
-    效果描述: '被动：精通暗器发力与手法，小幅提升命中、穿透与打断能力；若以暗器为媒介发招，往往更难被正面化解。',
-    消耗: {},
-    前摇: 0,
-    _效果数组: [
-      { 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' },
-      {
-        原型: '机制授予',
-        目标: '自身',
-        触发条件: '随下次行动触发',
-        授予效果: [{ 原型: '判定修正', 目标: '自身', 生效方式: '独立生效', 判定: '反应', 数值: '-10%', 打断效果: true }],
-      },
-      { 原型: '结算修正', 目标: '自身', 结算: '防御穿透', 数值: '+15%' },
-      { 原型: '结算修正', 目标: '自身', 结算: '造成伤害', 数值: '+5%' },
-    ],
-  },
-};
 
 const WealthSchema = z
   .object({
@@ -26295,6 +26145,81 @@ const SkillStructSchema = z
     return 收口技能执行结构_V1(skill, { 目标: '单体' });
   })
   .prefault({});
+
+const 紫极魔瞳境界等级表_V1 = Object.freeze({ 纵观: 1, 入微: 2, 芥子: 3, 浩瀚: 4 });
+const 紫极魔瞳精神境界阶位表_V1 = Object.freeze({ 灵元境: 1, 灵通境: 2, 灵海境: 3, 灵渊境: 4, 灵域境: 5, 神元境: 6 });
+const 紫极魔瞳三月tick_V1 = 3 * 30 * 144;
+const 紫极魔瞳三年tick_V1 = 3 * 51840;
+const 紫极魔瞳十年tick_V1 = 10 * 51840;
+
+function 读取紫极魔瞳精神境界阶位_V1(精神境界 = '') {
+  return 紫极魔瞳精神境界阶位表_V1[String(精神境界 || '').trim()] || 0;
+}
+
+function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
+  const 名称 = String(功法名 || '').trim();
+  const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
+  const 描述 = String(来源.描述 || 来源.效果描述 || 来源.画面描述 || '无').trim() || '无';
+  if (名称 !== '紫极魔瞳') return { 描述 };
+  const 境界 = 紫极魔瞳境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '纵观';
+  const 输出 = {
+    境界,
+    lv: 紫极魔瞳境界等级表_V1[境界],
+    描述,
+  };
+  if (Object.prototype.hasOwnProperty.call(来源, '获得tick')) 输出.获得tick = Math.max(0, Math.floor(Number(来源.获得tick || 0)));
+  return 输出;
+}
+
+function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 角色?.功法?.['紫极魔瞳'];
+  if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return null;
+  const 有获得tick = Object.prototype.hasOwnProperty.call(功法, '获得tick');
+  const 已获得tick = Math.max(0, Math.floor(Number(有获得tick ? 功法.获得tick : 当前tick || 0)));
+  if (!有获得tick) 功法.获得tick = 已获得tick;
+  const 持有tick = Math.max(0, Math.floor(Number(当前tick || 0)) - 已获得tick);
+  const 精神阶位 = 读取紫极魔瞳精神境界阶位_V1(角色?.属性?.精神境界);
+  let 境界 = '纵观';
+  if (持有tick >= 紫极魔瞳十年tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵域境')) 境界 = '浩瀚';
+  else if (持有tick >= 紫极魔瞳三年tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵渊境')) 境界 = '芥子';
+  else if (持有tick >= 紫极魔瞳三月tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵通境')) 境界 = '入微';
+  功法.境界 = 境界;
+  功法.lv = 紫极魔瞳境界等级表_V1[境界];
+  return 功法;
+}
+
+function 读取紫极魔瞳精神训练倍率_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 计算紫极魔瞳境界_V1(角色, 当前tick);
+  if (!功法) return 1;
+  return Number(功法.lv || 1) >= 2 ? 1.1 : 1.05;
+}
+
+function 构建紫极神光技能_V1(角色 = {}) {
+  const 精神力上限 = Math.max(1, Math.floor(Number(角色?.属性?.精神力上限 || 1)));
+  return {
+    魂技名: '紫极神光',
+    画面描述: '双眸凝出紫金神光，以实质化精神力直刺敌方识海。',
+    效果描述: '单体精神伤害，并短暂压制目标反应。',
+    承载方式: '直接生效',
+    消耗: `精神力:${Math.max(1, Math.floor(精神力上限 * 0.18))}`,
+    前摇: 18,
+    附带属性: ['精神'],
+    _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: 115, 伤害类型: '精神伤害' },
+      { 原型: '判定修正', 目标: '单体', 生效方式: '跟随主原型', 判定: '反应', 数值: '-15%', 持续回合: 1 },
+    ],
+  };
+}
+
+function 同步紫极神光技能_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 计算紫极魔瞳境界_V1(角色, 当前tick);
+  if (!功法 || 功法.境界 !== '浩瀚') return;
+  if (!角色.自创魂技 || typeof 角色.自创魂技 !== 'object' || Array.isArray(角色.自创魂技)) 角色.自创魂技 = {};
+  const 已有技能 = 角色.自创魂技['紫极神光'];
+  if (已有技能 && typeof 已有技能 === 'object' && !Array.isArray(已有技能)) return;
+  角色.自创魂技['紫极神光'] = SkillStructSchema.parse(构建紫极神光技能_V1(角色));
+}
+
 const SoulBoneSchema = z
   .record(
     z.string(),
@@ -27337,18 +27262,17 @@ const CharacterSchema = z
     第2武魂: MartialSoulSchema.optional(),
 
     功法: z
-      .record(
-        z.string(),
-        z
-          .object({
-            境界: z.string().prefault('未入门'),
-            lv: z.coerce.number().prefault(0),
-            exp: z.coerce.number().prefault(0),
-            描述: z.string().prefault('无'),
-          })
-          .prefault({}),
-      )
-      .prefault({}),
+      .record(z.string(), z.looseObject({}).prefault({}))
+      .prefault({})
+      .transform(功法表 => {
+        const 输出 = {};
+        Object.entries(功法表 || {}).forEach(([功法名, 记录]) => {
+          const 名称 = String(功法名 || '').trim();
+          if (!名称) return;
+          输出[名称] = 构建最新功法记录_V1(名称, 记录);
+        });
+        return 输出;
+      }),
     自创魂技: z
       .record(z.string().describe('能力名称'), SkillStructSchema)
       .prefault({})
@@ -27754,17 +27678,6 @@ const CharacterSchema = z
 
     同步内置血脉技能模板_V1(char);
     pruneExtendedBloodlineData(char, '');
-    if (!char.自创魂技) char.自创魂技 = {};
-    Object.keys(TANGMEN_SECRET_SKILL_TEMPLATES).forEach(artName => {
-      if (!char.功法?.[artName]) {
-        delete char.自创魂技[artName];
-        return;
-      }
-      const template = TANGMEN_SECRET_SKILL_TEMPLATES[artName];
-      if (template && !char.自创魂技[artName]) {
-        char.自创魂技[artName] = cloneSkillStructData(template);
-      }
-    });
 
     if (char._initial_state_override) {
       _.merge(char, char._initial_state_override);
@@ -28780,7 +28693,7 @@ const TangmenShopProducts = {
     描述: '唐门瞳术，修炼后可提升视力、动态视觉与精神力。',
     获取条件: { 势力: '唐门' },
     研读条件: {},
-    解锁内容: [{ 内容类型: '功法', 内容名称: '紫极魔瞳', 初始境界: '入门' }],
+    解锁内容: [{ 内容类型: '功法', 内容名称: '紫极魔瞳', 初始境界: '纵观' }],
   },
   玄玉手秘籍: {
     价格: 800,
@@ -31064,6 +30977,7 @@ export const Schema = z
     const applyCharacterActionSegment_ACU = (c, actionMode, segmentDelta, trainedBonus, 角色名 = '') => {
       const safeDelta = Math.max(0, Number(segmentDelta || 0));
       if (!(safeDelta > 0) || !c?.属性) return;
+      计算紫极魔瞳境界_V1(c, currentTick);
       const normalizedActionMode = normalizeCharacterActionMode_ACU(actionMode);
       const 应用伤势恢复到生命值 = 基础恢复倍率 => {
         const 安全基础恢复倍率 = Math.max(0, Number(基础恢复倍率 || 0));
@@ -31226,7 +31140,7 @@ export const Schema = z
         }
         if (actualCycles > 0 && c.属性.年龄 <= 40) {
           let gain = 0.02 * actualCycles * 基础成长倍率 * 精神训练收益倍率 * 读取属性成长倍率('精神力上限');
-          if (c.功法?.['紫极魔瞳']) gain = Math.floor(gain * 1.1);
+          gain = Math.floor(gain * 读取紫极魔瞳精神训练倍率_V1(c, currentTick));
           addNumericStatBonusValue(trainedBonus, '精神力上限', gain);
         }
       } else if (normalizedActionMode === '日常') {
@@ -32888,6 +32802,7 @@ export const Schema = z
       c.属性.力量 = Math.max(1, Math.floor(c.属性.力量 * fatiguePenaltyMult));
       c.属性.防御 = Math.max(1, Math.floor(c.属性.防御 * fatiguePenaltyMult));
       c.属性.敏捷 = Math.max(1, Math.floor(c.属性.敏捷 * fatiguePenaltyMult));
+      同步紫极神光技能_V1(c, currentTick);
     });
 
     if (!data.world.战斗 || typeof data.world.战斗 !== 'object') data.world.战斗 = {};
@@ -33377,9 +33292,7 @@ export const Schema = z
         if (isEmptyDisplayText(skill.魂技名)) skill.魂技名 = buildSkillNameTodoText(textContext);
         if (isEmptyDisplayText(skill.画面描述))
           skill.画面描述 = hasPackedEffects ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1;
-        if (!hasPackedEffects && (isEmptyDisplayText(skill.效果描述) || String(skill.效果描述 || '').trim() === SKILL_TEXT_UNKNOWN || isSkillTodoText(skill.效果描述))) {
-          delete skill.效果描述;
-        } else if (isEmptyDisplayText(skill.效果描述)) {
+        if (isEmptyDisplayText(skill.效果描述) || String(skill.效果描述 || '').trim() === SKILL_TEXT_UNKNOWN || isSkillTodoText(skill.效果描述)) {
           skill.效果描述 = AI_TODO_SKILL_EFFECT;
         }
         if (hasPackedEffects && skill?.[技能机制决策临时字段_V1] && typeof skill[技能机制决策临时字段_V1] === 'object') {
