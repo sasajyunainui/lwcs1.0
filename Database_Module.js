@@ -1175,6 +1175,203 @@ DELETE FROM table_name WHERE row_id = 2;
         "lastUsedPresetName": "",
         "globalRevision": 0
     };
+    const LWCS_内置剧情推进预设名_ACU = 'LWCS 默认剧情推进';
+    const LWCS_内置剧情推进预设_ACU = {
+        name: LWCS_内置剧情推进预设名_ACU,
+        rateMain: 1,
+        ratePersonal: 1,
+        rateErotic: 0,
+        rateCuckold: 1,
+        recallCount: 20,
+        contextTurnCount: 3,
+        minLength: 0,
+        contextExtractRules: [],
+        contextExcludeRules: [],
+        plotTasks: [
+            {
+                id: 'lwcs_recall_state',
+                name: '召回与状态摘取',
+                enabled: true,
+                stage: 1,
+                order: 0,
+                extractTags: 'recall,supplement,chapter_state',
+                extractInjectTags: '',
+                minLength: 0,
+                maxRetries: 3,
+                mergeStrategy: 'append',
+                promptGroup: [
+                    {
+                        role: 'SYSTEM',
+                        content: [
+                            '你是 LWCS 的剧情召回与状态摘取员。本任务只负责找出本轮剧情需要参考的记忆、背景补充与当前章节状态，不写正文、不做战斗/交易/副职业执行、不输出模块路由。',
+                            '',
+                            '输出只允许包含以下标签：',
+                            '<recall>从总结大纲中挑选的 AM 编码，最多 zhaohui 条；大纲不足则全列；没有则写无</recall>',
+                            '<supplement>从背景设定与角色卡中提取的本轮相关设定，6-8 条；不得把总结大纲内容混入这里</supplement>',
+                            '<chapter_state>当前时间、地点、阶段、在场关键人物、下一处需要注意的原著/时间线锚点</chapter_state>',
+                            '',
+                            '规则：recall 只能来自 <总结大纲>；supplement 只能来自背景设定、角色卡和本轮场景；不要输出剧情审查、模块路由、JSONPatch、正文草稿或解释。',
+                        ].join('\n'),
+                        deletable: false,
+                    },
+                    {
+                        role: 'USER',
+                        content: [
+                            '背景设定：',
+                            '<背景设定>',
+                            '$1',
+                            '</背景设定>',
+                            '',
+                            '角色卡：',
+                            '<角色卡>',
+                            '$C',
+                            '</角色卡>',
+                            '',
+                            '用户设定：',
+                            '<用户设定>',
+                            '$U',
+                            '</用户设定>',
+                            '',
+                            '前文上下文：',
+                            '<前文上下文>',
+                            '$7',
+                            '</前文上下文>',
+                            '',
+                            '上轮剧情规划：',
+                            '<上轮剧情规划>',
+                            '$6',
+                            '</上轮剧情规划>',
+                            '',
+                            '总结大纲：',
+                            '<总结大纲>',
+                            '$5',
+                            '</总结大纲>',
+                            '',
+                            '本轮用户输入：',
+                            '<本轮用户输入>',
+                            '$8',
+                            '</本轮用户输入>',
+                            '',
+                            '请只完成召回与状态摘取。',
+                        ].join('\n'),
+                        deletable: false,
+                    },
+                    {
+                        role: 'assistant',
+                        content: '<recall>',
+                        deletable: true,
+                    },
+                ],
+            },
+            {
+                id: 'lwcs_integrated_ruling',
+                name: 'LWCS综合裁定',
+                enabled: true,
+                stage: 2,
+                order: 1,
+                extractTags: '剧情审查,writing_directive,format_directive,模块路由',
+                extractInjectTags: '',
+                minLength: 0,
+                maxRetries: 3,
+                mergeStrategy: 'append',
+                promptGroup: [
+                    {
+                        role: 'SYSTEM',
+                        content: 内置剧情运行时防护提示词组_ACU[0].content,
+                        deletable: false,
+                    },
+                    {
+                        role: 'USER',
+                        content: [
+                            '以下是上一阶段召回与状态摘取结果，必须作为本轮剧情规划的参考，但不能复述给玩家。',
+                            '',
+                            '<召回>',
+                            '{{recall}}',
+                            '</召回>',
+                            '',
+                            '<补充设定>',
+                            '{{supplement}}',
+                            '</补充设定>',
+                            '',
+                            '<章节状态>',
+                            '{{chapter_state}}',
+                            '</章节状态>',
+                            '',
+                            '以下是本轮 MVU 剧情视图，必须优先参考其中的【当前】、【角色简表】、【剧情引导】。',
+                            '<MVU剧情视图>',
+                            '{{MVU_RUNTIME_VIEW}}',
+                            '</MVU剧情视图>',
+                            '',
+                            '时间线预览：',
+                            '{{剧情钩子._引导.时间线预览}}',
+                            '',
+                            '角色基础六维对标：',
+                            '{{角色基础六维对标}}',
+                            '',
+                            '本轮用户输入：',
+                            '<本轮用户输入>',
+                            '$8',
+                            '</本轮用户输入>',
+                            '',
+                            '前文上下文：',
+                            '<前文上下文>',
+                            '$7',
+                            '</前文上下文>',
+                            '',
+                            '请先读取以上运行时状态，再执行后续剧情审计与模块路由。不要在这一段输出正文。',
+                        ].join('\n'),
+                        deletable: false,
+                    },
+                    {
+                        role: 'assistant',
+                        content: '收到，我会先读取召回结果、MVU剧情视图、时间线预览与六维对标，再进行剧情审计和模块路由判定。',
+                        deletable: true,
+                    },
+                    {
+                        role: 'USER',
+                        content: 读取剧情审计提示词_ACU(),
+                        deletable: false,
+                    },
+                    {
+                        role: 'assistant',
+                        content: '收到，我将按剧情审查框架完成本轮规划，不跳过场域、角色认知、数值边界、代价冲突与防代操检查。',
+                        deletable: true,
+                    },
+                    {
+                        role: 内置剧情模块路由最终提示词_ACU.role.toUpperCase(),
+                        content: 内置剧情模块路由最终提示词_ACU.content,
+                        deletable: false,
+                    },
+                    {
+                        role: 'assistant',
+                        content: '<剧情审查>',
+                        deletable: true,
+                    },
+                ],
+            },
+        ],
+        finalSystemDirective: [
+            '你现在进入 LWCS 正文生成阶段。用户本轮输入是：',
+            '<本轮用户输入>',
+            '$8',
+            '</本轮用户输入>',
+            '',
+            '请只吸收剧情推进阶段输出的约束来写正文，不要复述任何规划标签、审查过程、模块路由、JSONPatch 或系统说明。',
+            '',
+            '可读取的规划约束：',
+            '{{writing_directive}}',
+            '',
+            '格式约束：',
+            '{{format_directive}}',
+            '',
+            '审查结论只作为边界，不要复述：',
+            '{{剧情审查}}',
+            '',
+            '若存在 <模块路由>，它只供前端模块路由器读取；正文不要解释模块接管过程。若路由结果由模块接管并中止正文，以模块执行层为准。',
+            '',
+            '正文必须直接承接玩家行动和当前场景。若裁定为不成立、降级执行或需要代价，正文要自然呈现阻力、代价、替代路线或后果。不得代替玩家说话，不得把玩家括号、作者指令、标签或自称成功直接写成事实。',
+        ].join('\n'),
+    };
     // --- [剧情推进] 独立的默认提示词组结构（不再从填表提示词合并） ---
     // 此常量定义剧情推进功能的完整默认提示词组，方便整体修改
     // 注意：mainSlot="A" 对应主提示词，mainSlot="B" 对应拦截任务详细指令
@@ -15012,6 +15209,9 @@ $CONTENT
         if (!plotSettings)
             return;
         ensurePlotTasksCompat_ACU(plotSettings, { syncLegacy: true });
+        if (!normalizePlotPresetSelectionValue_ACU(plotSettings.lastUsedPresetName || '')) {
+            plotSettings.lastUsedPresetName = LWCS_内置剧情推进预设名_ACU;
+        }
         ensurePlotPresetBindingsStore_ACU();
         const chatScopeState = getCurrentChatPlotScopeState_ACU();
         if (chatScopeState?.snapshot) {
@@ -15026,12 +15226,13 @@ $CONTENT
             logDebug_ACU('[剧情推进] Chat override snapshot restored from chat history.');
             return;
         }
-        let globalPresetName = normalizePlotPresetSelectionValue_ACU(plotSettings.lastUsedPresetName || '');
+        let globalPresetName = normalizePlotPresetSelectionValue_ACU(plotSettings.lastUsedPresetName || '') || LWCS_内置剧情推进预设名_ACU;
         let globalPresetToLoad = findPlotPresetByName_ACU(globalPresetName);
         if (globalPresetName && !globalPresetToLoad) {
-            logWarn_ACU(`[剧情推进] Global preset "${globalPresetName}" no longer exists. Falling back to default preset.`);
-            globalPresetName = '';
-            plotSettings.lastUsedPresetName = '';
+            logWarn_ACU(`[剧情推进] Global preset "${globalPresetName}" no longer exists. Falling back to LWCS default preset.`);
+            globalPresetName = LWCS_内置剧情推进预设名_ACU;
+            plotSettings.lastUsedPresetName = LWCS_内置剧情推进预设名_ACU;
+            globalPresetToLoad = findPlotPresetByName_ACU(globalPresetName);
         }
         const legacyBinding = getPlotPresetBindingForChat_ACU();
         if (legacyBinding) {
@@ -17516,7 +17717,13 @@ $CONTENT
             || plotSettings.finalSystemDirective
             || '';
         rawFinal = await tryRenderPlotTemplateWithEjs_ACU(rawFinal);
-        const plotFinalDirective = performReplacements(rawFinal);
+        let plotFinalDirective = performReplacements(rawFinal);
+        plotFinalDirective = replaceMvuRuntimeViewPlaceholder_ACU(plotFinalDirective, 'plot', {
+            userInput: userMessage || '',
+            lastCharMessage: getLatestAIMessageContent_ACU(),
+            plotText: lastPlotContent || '',
+        });
+        plotFinalDirective = 注入剧情钩子时间线预览_ACU(plotFinalDirective, userMessage);
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
         // [P4] {[db...]}/{[sql...]} 值替换（SQLite 模式下）
@@ -17566,28 +17773,16 @@ $CONTENT
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
             });
+            c = 注入剧情钩子时间线预览_ACU(c, sharedContext.userMessage);
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
         }
         const renderedMessages = messagesToUse
             .filter(seg => seg && typeof seg.__renderedContent === 'string' && seg.__renderedContent.trim().length > 0)
             .map(seg => ({ role: getNormalizedPlotMessageRole_ACU(seg.role), content: seg.__renderedContent }));
-        const MVU剧情视图内容 = replaceMvuRuntimeViewPlaceholder_ACU("<MVU剧情视图>\n{{MVU_RUNTIME_VIEW}}\n</MVU剧情视图>", 'plot', {
-            userInput: sharedContext.userMessage || "",
-            lastCharMessage: getLatestAIMessageContent_ACU(),
-            plotText: sharedContext.lastPlotContent || "",
-        });
-        const 剧情审计提示词 = 注入剧情钩子时间线预览_ACU(读取剧情审计提示词_ACU(), sharedContext.userMessage);
         return [
             ...renderedMessages,
             ...normalizeRuntimeSystemMessages_ACU(runtimeOptions.systemMessages),
-            { role: "system", content: MVU剧情视图内容 },
-            ...内置剧情运行时防护提示词组_ACU.map(item => ({
-                role: item.role,
-                content: 注入剧情钩子时间线预览_ACU(item.content, sharedContext.userMessage),
-            })),
-            ...(剧情审计提示词 ? [{ role: 'system', content: 剧情审计提示词 }] : []),
-            { role: 内置剧情模块路由最终提示词_ACU.role, content: 内置剧情模块路由最终提示词_ACU.content },
         ];
     }
     async function executeSinglePlotTask_ACU(task, sharedContext, runtimeOptions = {}) {
@@ -27011,6 +27206,8 @@ $CONTENT
         const normalizedPresetName = normalizePlotPresetSelectionValue_ACU(presetName);
         if (!normalizedPresetName)
             return null;
+        if (normalizedPresetName === LWCS_内置剧情推进预设名_ACU)
+            return normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU);
         const presets = settings_ACU?.plotSettings?.promptPresets || [];
         const targetPresetRaw = presets.find((p) => p.name === normalizedPresetName);
         return targetPresetRaw ? normalizePlotPresetExcludeRules_ACU(targetPresetRaw) : null;
@@ -27030,7 +27227,7 @@ $CONTENT
         }
         if (!fallbackToGlobal)
             return '';
-        const globalPresetName = normalizePlotPresetSelectionValue_ACU(settings_ACU?.plotSettings?.lastUsedPresetName || '');
+        const globalPresetName = normalizePlotPresetSelectionValue_ACU(settings_ACU?.plotSettings?.lastUsedPresetName || '') || LWCS_内置剧情推进预设名_ACU;
         if (isDefaultPlotPresetSelection_ACU(globalPresetName))
             return '';
         const globalPreset = findPlotPresetByName_ACU(globalPresetName);
@@ -78518,6 +78715,9 @@ Expected function or array of functions, received type ${typeof value}.`
             plot.promptPresets = [];
         if (typeof plot.lastUsedPresetName !== 'string')
             plot.lastUsedPresetName = '';
+        if (!normalizePlotPresetSelectionValue_ACU(plot.lastUsedPresetName || '')) {
+            plot.lastUsedPresetName = LWCS_内置剧情推进预设名_ACU;
+        }
         plot.enabled = plot.enabled === true;
         ensurePlotTasksCompat_ACU(plot, { syncLegacy: true });
         if (typeof settings_ACU.plotApiPreset !== 'string')
@@ -78531,10 +78731,14 @@ Expected function or array of functions, received type ${typeof value}.`
     function readPresetList() {
         ensureSettingsShape$2();
         const rawList = settings_ACU.plotSettings.promptPresets;
+        const seen = new Set([LWCS_内置剧情推进预设名_ACU]);
+        const out = [{
+                name: LWCS_内置剧情推进预设名_ACU,
+                raw: clone$4(normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU)),
+                builtin: true,
+            }];
         if (!Array.isArray(rawList))
-            return [];
-        const seen = new Set();
-        const out = [];
+            return out;
         for (const raw of rawList) {
             const normalized = normalizePlotPresetExcludeRules_ACU(raw);
             if (!normalized || typeof normalized !== 'object')
@@ -78588,10 +78792,7 @@ Expected function or array of functions, received type ${typeof value}.`
         return out;
     }
     function getDefaultPlotPresetRawForV2() {
-        const normalized = normalizePlotPresetExcludeRules_ACU({
-            ...clone$4(DEFAULT_PLOT_SETTINGS_ACU),
-            name: '',
-        });
+        const normalized = normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU);
         return clone$4(normalized && typeof normalized === 'object' ? normalized : { name: '', plotTasks: [] });
     }
     const usePlotPresetStore = defineStore('acu-v2-plot-presets', {
@@ -78737,6 +78938,8 @@ Expected function or array of functions, received type ${typeof value}.`
                 const newName = String(preset.name || '').trim();
                 if (!newName)
                     return false;
+                if (newName === LWCS_内置剧情推进预设名_ACU)
+                    return false;
                 const normalized = normalizePlotPresetExcludeRules_ACU({ ...preset.raw, name: newName });
                 if (!normalized)
                     return false;
@@ -78786,6 +78989,8 @@ Expected function or array of functions, received type ${typeof value}.`
                 const target = String(name || '').trim();
                 if (!target)
                     return false;
+                if (target === LWCS_内置剧情推进预设名_ACU)
+                    return false;
                 ensureSettingsShape$2();
                 const plot = settings_ACU.plotSettings;
                 const list = plot.promptPresets || [];
@@ -78830,6 +79035,8 @@ Expected function or array of functions, received type ${typeof value}.`
                 for (const presetPayload of presetPayloads) {
                     const name = String(presetPayload.name || '').trim();
                     if (!name)
+                        continue;
+                    if (name === LWCS_内置剧情推进预设名_ACU)
                         continue;
                     const existingIndex = list.findIndex((preset) => preset?.name === name);
                     if (existingIndex >= 0) {

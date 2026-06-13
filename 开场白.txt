@@ -250,7 +250,7 @@ var timelineData = {
   "6岁": {
     world: {
       时间: {
-        tick: 0
+        tick: 1
       }
     }
   },

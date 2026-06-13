@@ -1662,7 +1662,7 @@
       cursor: grab;
       touch-action: none;
       border-radius: 8px;
-      overflow: hidden;
+      overflow: visible;
       border: 1px solid rgba(164,196,219,0.20);
       background: rgba(14,24,34,0.92);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
@@ -3554,8 +3554,8 @@
   function getCoordFromMapRatio(left, top) {
     const 边界 = sanitizeBounds(mapState.bounds || DEFAULT_IMAGE_BOUNDS);
     return {
-      x: Number((边界.minX + clamp(toNumber(left, 0), 0, 1) * Math.max(1, 边界.width)).toFixed(2)),
-      y: Number((边界.minY + clamp(toNumber(top, 0), 0, 1) * Math.max(1, 边界.height)).toFixed(2))
+      x: Number((边界.minX + toNumber(left, 0) * Math.max(1, 边界.width)).toFixed(2)),
+      y: Number((边界.minY + toNumber(top, 0) * Math.max(1, 边界.height)).toFixed(2))
     };
   }
 
@@ -7451,8 +7451,11 @@
   function clampMapPan(canvasEl = getPrimaryMapCanvas()) {
     if (!canvasEl || !canvasEl.clientWidth || !canvasEl.clientHeight) return;
     const renderZoom = getMapRenderZoom();
-    const rangeX = Math.max(0, (renderZoom - 1) * canvasEl.clientWidth * 0.5);
-    const rangeY = Math.max(0, (renderZoom - 1) * canvasEl.clientHeight * 0.5);
+    // 增加额外的平移范围，允许访问边缘位置
+    const baseRange = 0.5; // 基础平移范围 50%
+    const zoomRange = Math.max(0, (renderZoom - 1) * 0.5);
+    const rangeX = canvasEl.clientWidth * (baseRange + zoomRange);
+    const rangeY = canvasEl.clientHeight * (baseRange + zoomRange);
     mapState.panX = clamp(mapState.panX, -rangeX, rangeX);
     mapState.panY = clamp(mapState.panY, -rangeY, rangeY);
   }
@@ -8174,10 +8177,10 @@
 
     const topLeft = convertMapLocalPointToCanvasRatio(0, 0, activeCanvas);
     const bottomRight = convertMapLocalPointToCanvasRatio(activeCanvas.clientWidth, activeCanvas.clientHeight, activeCanvas);
-    const viewportLeft = clamp(Math.min(topLeft.left, bottomRight.left), 0, 1);
-    const viewportTop = clamp(Math.min(topLeft.top, bottomRight.top), 0, 1);
-    const viewportRight = clamp(Math.max(topLeft.left, bottomRight.left), 0, 1);
-    const viewportBottom = clamp(Math.max(topLeft.top, bottomRight.top), 0, 1);
+    const viewportLeft = Math.min(topLeft.left, bottomRight.left);
+    const viewportTop = Math.min(topLeft.top, bottomRight.top);
+    const viewportRight = Math.max(topLeft.left, bottomRight.left);
+    const viewportBottom = Math.max(topLeft.top, bottomRight.top);
     const viewportLeftCss = `${viewportLeft * 100}%`;
     const viewportTopCss = `${viewportTop * 100}%`;
     const viewportWidthCss = `${Math.max(2, (viewportRight - viewportLeft) * 100)}%`;
@@ -8216,8 +8219,8 @@
     if (!rect || !rect.width || !rect.height) return;
     const centerClientX = clientX - toNumber(miniMapDragState.offsetX, 0);
     const centerClientY = clientY - toNumber(miniMapDragState.offsetY, 0);
-    const left = clamp((centerClientX - rect.left) / rect.width, 0, 1);
-    const top = clamp((centerClientY - rect.top) / rect.height, 0, 1);
+    const left = clamp((centerClientX - rect.left) / rect.width, -0.5, 1.5);
+    const top = clamp((centerClientY - rect.top) / rect.height, -0.5, 1.5);
     centerMapOnRatio(left, top, getPrimaryMapCanvas());
     applyMapWorldTransform({ updateReadout: !miniMapDragState.active, updateMiniMap: true });
   }

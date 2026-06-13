@@ -1,0 +1,75 @@
+[
+  {
+    "name": "LWCS 默认剧情推进",
+    "rateMain": 1,
+    "ratePersonal": 1,
+    "rateErotic": 0,
+    "rateCuckold": 1,
+    "recallCount": 20,
+    "contextTurnCount": 3,
+    "minLength": 0,
+    "contextExtractRules": [],
+    "contextExcludeRules": [],
+    "plotTasks": [
+      {
+        "id": "lwcs_recall_state",
+        "name": "召回与状态摘取",
+        "enabled": true,
+        "stage": 1,
+        "order": 0,
+        "extractTags": "recall,supplement,chapter_state",
+        "extractInjectTags": "",
+        "minLength": 0,
+        "maxRetries": 3,
+        "mergeStrategy": "append",
+        "promptGroup": [
+          {
+            "role": "system",
+            "content": "你是 LWCS 的剧情召回与状态摘取员。本任务只负责找出本轮剧情需要参考的记忆、背景补充与当前章节状态，不写正文、不做战斗/交易/副职业执行、不输出模块路由。\\n\\n输出只允许包含以下标签：\\n<recall>从总结大纲中挑选的 AM 编码，最多 zhaohui 条；大纲不足则全列；没有则写无</recall>\\n<supplement>从背景设定与角色卡中提取的本轮相关设定，6-8 条；不得把总结大纲内容混入这里</supplement>\\n<chapter_state>当前时间、地点、阶段、在场关键人物、下一处需要注意的原著/时间线锚点</chapter_state>\\n\\n规则：recall 只能来自 <总结大纲>；supplement 只能来自背景设定、角色卡和本轮场景；不要输出剧情审查、模块路由、JSONPatch、正文草稿或解释。",
+            "deletable": false
+          },
+          {
+            "role": "user",
+            "content": "背景设定：\\n<背景设定>\\n$1\\n</背景设定>\\n\\n角色卡：\\n<角色卡>\\n$C\\n</角色卡>\\n\\n用户设定：\\n<用户设定>\\n$U\\n</用户设定>\\n\\n前文上下文：\\n<前文上下文>\\n$7\\n</前文上下文>\\n\\n上轮剧情规划：\\n<上轮剧情规划>\\n$6\\n</上轮剧情规划>\\n\\n总结大纲：\\n<总结大纲>\\n$5\\n</总结大纲>\\n\\n本轮用户输入：\\n<本轮用户输入>\\n$8\\n</本轮用户输入>\\n\\n请只完成召回与状态摘取。",
+            "deletable": false
+          },
+          {
+            "role": "assistant",
+            "content": "<recall>",
+            "deletable": true
+          }
+        ]
+      },
+      {
+        "id": "lwcs_integrated_ruling",
+        "name": "LWCS综合裁定",
+        "enabled": true,
+        "stage": 2,
+        "order": 1,
+        "extractTags": "剧情审查,writing_directive,format_directive,模块路由",
+        "extractInjectTags": "",
+        "minLength": 0,
+        "maxRetries": 3,
+        "mergeStrategy": "append",
+        "promptGroup": [
+          {
+            "role": "system",
+            "content": "你是 LWCS 的剧情裁定与模块路由员。本任务读取上一阶段召回结果、MVU 当前状态、时间线预览和角色基础六维，对本轮输入做最终剧情规划。\\n\\n必须输出以下标签：\\n<剧情审查>按场域、角色认知、数值边界、时间线锚点、代价与冲突、防代操逐项裁定；只写结论，不写长篇推导</剧情审查>\\n<writing_directive>给正文 AI 的执行约束：允许发生什么、需要降级或阻断什么、必须呈现哪些客观后果</writing_directive>\\n<format_directive>正文输出格式和禁止项；默认要求自然正文，不复述规划标签</format_directive>\\n<模块路由>每轮末尾只给一个模块判定。未命中特殊模块时写模块：未命中</模块路由>\\n\\n模块路由分流标准：\\n- battle：只有本轮已经明确进入战斗、切磋、伏击、追击、魂灵塔/升灵台交锋节点时使用。\\n- trade：只有本轮明确购买、出售、竞拍、交换或与商店/交易对象成交时使用。\\n- profession：只有本轮明确锻造、制造、修理、设计、工坊加工或副职业委托时使用。\\n- teaching：只有本轮明确完成请教、传授、授课、指点并有可交付内容时使用。\\n- routine：只有地点能量环境明确支持拟态修炼时使用。\\n- trial_entry：只有本轮明确入场升灵台或魂灵塔时使用；入场不等于立刻战斗。\\n- travel：只有本轮明确移动到已有地点或新增地点节点时使用。\\n- 未命中：普通对话、探索、观察、铺垫、关系互动、犹豫和未成立行为。\\n\\n<模块路由>格式只能写字段行，不写 JSON、Markdown 或说明。示例：\\n<模块路由>\\n模块：未命中\\n理由：普通剧情承接\\n</模块路由>",
+            "deletable": false
+          },
+          {
+            "role": "user",
+            "content": "上一阶段召回：\\n{{recall}}\\n\\n上一阶段补充设定：\\n{{supplement}}\\n\\n章节状态：\\n{{chapter_state}}\\n\\nMVU剧情视图：\\n<MVU剧情视图>\\n{{MVU_RUNTIME_VIEW}}\\n</MVU剧情视图>\\n\\n时间线预览：\\n{{剧情钩子._引导.时间线预览}}\\n\\n角色基础六维对标：\\n{{角色基础六维对标}}\\n\\n本轮用户输入：\\n<本轮用户输入>\\n$8\\n</本轮用户输入>\\n\\n前文上下文：\\n<前文上下文>\\n$7\\n</前文上下文>\\n\\n请完成 LWCS 综合裁定。不要写正文。",
+            "deletable": false
+          },
+          {
+            "role": "assistant",
+            "content": "<剧情审查>",
+            "deletable": true
+          }
+        ]
+      }
+    ],
+    "finalSystemDirective": "你现在进入 LWCS 正文生成阶段。用户本轮输入是：\\n<本轮用户输入>\\n$8\\n</本轮用户输入>\\n\\n请只吸收剧情推进阶段输出的约束来写正文，不要复述任何规划标签、审查过程、模块路由、JSONPatch 或系统说明。\\n\\n可读取的规划约束：\\n{{writing_directive}}\\n\\n格式约束：\\n{{format_directive}}\\n\\n审查结论只作为边界，不要复述：\\n{{剧情审查}}\\n\\n若存在 <模块路由>，它只供前端模块路由器读取；正文不要解释模块接管过程。若路由结果由模块接管并中止正文，以模块执行层为准。\\n\\n正文必须直接承接玩家行动和当前场景。若裁定为不成立、降级执行或需要代价，正文要自然呈现阻力、代价、替代路线或后果。不得代替玩家说话，不得把玩家括号、作者指令、标签或自称成功直接写成事实。"
+  }
+]
