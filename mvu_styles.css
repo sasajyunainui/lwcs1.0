@@ -7763,7 +7763,7 @@ button.tag-chip:active,
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: 8px;
   align-content: start;
 }
@@ -7854,14 +7854,13 @@ button.tag-chip:active,
 }
 
 .inventory-cell {
-  min-height: 72px;
-  aspect-ratio: 1 / 1;
+  min-height: 86px;
   position: relative;
   isolation: isolate;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 7px;
+  padding: 8px;
   border-radius: var(--mvu-radius-sm, 8px);
   border: 1px solid rgba(223, 246, 255, 0.1);
   background: linear-gradient(180deg, rgba(223, 246, 255, 0.12), rgba(185, 236, 255, 0.06));
@@ -7902,32 +7901,28 @@ button.tag-chip:active,
 .inventory-cell .cell-top {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .inventory-cell .cell-top b {
-  padding-right: 34px;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.28;
   color: var(--white);
   font-weight: 700;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .inventory-cell .qty {
   z-index: 2;
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  max-width: calc(100% - 10px);
+  position: relative;
+  top: auto;
+  right: auto;
+  max-width: 100%;
   font-size: var(--mvu-font-xs, 10px);
   color: var(--gold);
   border-radius: var(--mvu-radius-pill, 999px);

@@ -3338,14 +3338,45 @@
             const 内容 =
               条目 && typeof 条目 === 'object'
                 ? safeEntries(条目)
-                    .filter(([键]) => !['原型', '类型'].includes(键))
-                    .map(([键, 值]) => `${键}:${格式化物品字段值(值) || toText(值, '')}`)
+                    .filter(([键]) => !['原型', '类型', '条件分支'].includes(键))
+                    .map(([键, 值]) => `${键}:${格式化物品解析值(值)}`)
                     .filter(Boolean)
                     .join(' / ')
                 : '';
             return `<div><span>${htmlEscape(原型)}</span><b>${htmlEscape(内容 || '已记录')}</b></div>`;
           })
           .join('')}
+      </div>
+    </section>`;
+  }
+
+  function 构建物品效果摘要组(标题 = '', 数据 = [], 描述 = '') {
+    const 列表 = Array.isArray(数据) ? 数据 : [];
+    const 展示列表 = cloneJsonValue(列表, []);
+    const 待处理 = [...展示列表];
+    while (待处理.length) {
+      const 当前 = 待处理.pop();
+      if (!当前 || typeof 当前 !== 'object' || Array.isArray(当前)) continue;
+      delete 当前.条件分支;
+      safeEntries(当前).forEach(([, 值]) => {
+        if (Array.isArray(值)) 待处理.push(...值);
+        else if (值 && typeof 值 === 'object') 待处理.push(值);
+      });
+    }
+    const 摘要 = toText(
+      展示列表.length ? 构建技能设计台原型摘要({ prototypeEffects: 展示列表, target: '自身' }) : '',
+      '',
+    )
+      .trim();
+    const 描述文本 = toText(描述, '').trim();
+    const 内容列表 = [];
+    if (描述文本) 内容列表.push(['效果', 描述文本]);
+    if (摘要 && 摘要 !== 描述文本) 内容列表.push(['结算', 摘要]);
+    if (!内容列表.length) return '';
+    return `<section class="mvu-inventory-inspector-section">
+      <div class="mvu-editor-section-title">${htmlEscape(标题)}</div>
+      <div class="mvu-inventory-inspector-list">
+        ${内容列表.map(([标签, 内容]) => `<div><span>${htmlEscape(标签)}</span><b>${htmlEscape(内容)}</b></div>`).join('')}
       </div>
     </section>`;
   }
@@ -3427,7 +3458,7 @@
         ${构建物品解析键值组('属性加成', 定义.属性加成)}
         ${构建物品解析键值组('装备技能', 装备技能)}
         ${构建物品解析键值组('附带魂技', 附带魂技)}
-        ${构建物品解析数组组('使用效果', 合并物品.使用效果)}
+        ${构建物品效果摘要组('物品效果', 合并物品.使用效果, 合并物品.描述)}
         ${构建物品解析数组组('使用副作用', 合并物品.副作用列表)}
       </div>
     </div>`;
@@ -25128,10 +25159,12 @@
       (a, b) => toNumber(deepGet(b[1], '好感度', 0), 0) - toNumber(deepGet(a[1], '好感度', 0), 0),
     );
     const unlockedKnowledges = Array.isArray(activeChar && activeChar.已掌握情报) ? activeChar.已掌握情报 : [];
-    const inventoryEntries = safeEntries(activeChar && activeChar.背包).map(([name, item]) => [
-      name,
-      合并物品定义与状态_桥接(sd, name, item),
-    ]);
+    const inventoryEntries = safeEntries(activeChar && activeChar.背包)
+      .filter(([, 物品状态]) => 读取背包总数量_桥接(物品状态) > 0)
+      .map(([名称, 物品状态]) => [
+        名称,
+        合并物品定义与状态_桥接(sd, 名称, 物品状态),
+      ]);
     const flagEntries = [];
     if (deepGet(sd, 'world.兽潮已触发', false)) flagEntries.push(['兽潮已触发', true]);
     if (判断传灵塔万年魂灵开放_桥接(sd)) flagEntries.push(['传灵塔万年魂灵开放', true]);
@@ -43229,6 +43262,44 @@ ${toText(combatData.战斗意图, '点到为止')}
     return !!(外层预览卡 && 外层预览卡 !== 控件节点);
   }
 
+  async function 处理技能内联动作按钮点击_桥接(技能动作按钮) {
+    if (!技能动作按钮 || typeof 技能动作按钮.getAttribute !== 'function') return false;
+    if (技能动作按钮.disabled || 技能动作按钮.getAttribute('aria-disabled') === 'true') return true;
+    const 动作 = 技能动作按钮.getAttribute('data-skill-action') || '';
+    const 技能路径原文 = 技能动作按钮.getAttribute('data-skill-path') || '[]';
+    let 技能路径 = [];
+    try {
+      const 解析结果 = JSON.parse(技能路径原文);
+      if (Array.isArray(解析结果)) 技能路径 = 解析结果;
+    } catch (错误) {}
+    if (!技能路径.length) {
+      showUiToast('当前技能缺少定位信息，无法施展。', 'error');
+      return true;
+    }
+    if (!window.EquipmentManager) {
+      showUiToast('技能执行器未就绪，暂时无法施展。', 'error');
+      return true;
+    }
+    if (动作 === 'cast-construct') {
+      if (typeof window.EquipmentManager.performConstructSkillUse !== 'function') {
+        showUiToast('日常施展执行器未就绪，暂时无法施展。', 'error');
+        return true;
+      }
+      await window.EquipmentManager.performConstructSkillUse(技能路径);
+      return true;
+    }
+    if (动作 === 'daily-writeback') {
+      if (typeof window.EquipmentManager.performDailyWritebackSkillUse !== 'function') {
+        showUiToast('技能使用执行器未就绪，暂时无法使用。', 'error');
+        return true;
+      }
+      await window.EquipmentManager.performDailyWritebackSkillUse(技能路径);
+      return true;
+    }
+    showUiToast('未知的技能动作，无法执行。', 'error');
+    return true;
+  }
+
   function 打开预览入口(预览入口, 预览键输入, 选项 = {}) {
     const 预览键 = toText(预览键输入, '').trim();
     if (!预览入口 || !预览键) return false;
@@ -43667,25 +43738,8 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (skillActionBtn && detailSurfaceHost.contains(skillActionBtn)) {
       event.preventDefault();
       event.stopPropagation();
-      const action = skillActionBtn.getAttribute('data-skill-action') || '';
-      const skillPathRaw = skillActionBtn.getAttribute('data-skill-path') || '[]';
-      let skillPath = [];
-      try {
-        const parsed = JSON.parse(skillPathRaw);
-        if (Array.isArray(parsed)) skillPath = parsed;
-      } catch (error) {}
-      if (!skillPath.length) {
-        showUiToast('当前技能缺少定位信息，无法施展。', 'error');
-        return;
-      }
-      if (action === 'cast-construct') {
-        await window.EquipmentManager.performConstructSkillUse(skillPath);
-        return;
-      }
-      if (action === 'daily-writeback') {
-        await window.EquipmentManager.performDailyWritebackSkillUse(skillPath);
-        return;
-      }
+      await 处理技能内联动作按钮点击_桥接(skillActionBtn);
+      return;
     }
 
     const equipmentActionBtn = eventTarget ? eventTarget.closest('.equipment-action-btn[data-equipment-action]') : null;
@@ -44717,6 +44771,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
     const previewClickable = eventTarget ? eventTarget.closest('.clickable[data-preview]') : null;
     if (previewClickable && detailSurfaceHost.contains(previewClickable)) {
+      if (是否保留卡片内部控件点击(eventTarget, detailSurfaceHost)) return;
       event.preventDefault();
       event.stopPropagation();
       const previewKey = previewClickable.dataset.preview;
@@ -44959,8 +45014,17 @@ ${toText(combatData.战斗意图, '点到为止')}
       }
       scheduleClearFloatingHoverCard(trigger);
     });
-    顶层卡片.addEventListener('click', event => {
+    顶层卡片.addEventListener('click', async event => {
       const eventTarget = event.target instanceof Element ? event.target : null;
+      const 技能动作按钮 = eventTarget ? eventTarget.closest('.skill-inline-action-btn[data-skill-action]') : null;
+      if (技能动作按钮 && 顶层卡片.contains(技能动作按钮)) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearFloatingHoverCard(trigger);
+        await 处理技能内联动作按钮点击_桥接(技能动作按钮);
+        return;
+      }
+      if (是否保留卡片内部控件点击(eventTarget, 顶层卡片)) return;
       const 预览入口 = eventTarget ? eventTarget.closest('.clickable[data-preview]') : null;
       if (!预览入口 || !顶层卡片.contains(预览入口)) return;
       const 预览键 = toText(预览入口.getAttribute('data-preview'), '').trim();
