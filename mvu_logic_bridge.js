@@ -5775,9 +5775,9 @@
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 名角色：${已恢复.join('、')}。`;
     当前MVU数据.stat_data = statData;
-    await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档角色');
     writeMvuEditorStoreSnapshot(statData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await 按需刷新MVU快照_桥接(选项);
     return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
   }
 
@@ -5822,9 +5822,9 @@
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 个物品定义：${已恢复.join('、')}。`;
     当前MVU数据.stat_data = statData;
-    await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档物品');
     writeMvuEditorStoreSnapshot(statData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await 按需刷新MVU快照_桥接(选项);
     return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
   }
 
@@ -5870,9 +5870,9 @@
     if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
     statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 处动态地点：${已恢复.join('、')}。`;
     当前MVU数据.stat_data = statData;
-    await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档地点');
     writeMvuEditorStoreSnapshot(statData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await 按需刷新MVU快照_桥接(选项);
     return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
   }
 
@@ -8178,6 +8178,30 @@
     return typeof 规范化 === 'function' ? 规范化(变量数据) : 变量数据;
   }
 
+  function 读取性能时间_桥接() {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+  }
+
+  function 记录性能耗时_桥接(标签, 开始时间, 附加文本 = '') {
+    const 耗时 = Math.max(0, 读取性能时间_桥接() - 开始时间).toFixed(1);
+    console.debug(`[LWCS性能] ${标签} ${耗时}ms${附加文本 ? ` ${附加文本}` : ''}`);
+  }
+
+  async function 写回MVU数据并记录耗时_桥接(主机, 待写回MVU数据, 选项 = {}, 标签 = 'MVU写回') {
+    const 开始时间 = 读取性能时间_桥接();
+    try {
+      return await Promise.resolve(主机.replaceMvuData(待写回MVU数据, 选项));
+    } finally {
+      记录性能耗时_桥接(标签, 开始时间);
+    }
+  }
+
+  async function 按需刷新MVU快照_桥接(选项 = {}) {
+    if (选项 && 选项.延迟刷新 === true) return false;
+    await refreshLiveSnapshot({ force: true });
+    return true;
+  }
+
   function 计算内置角色实例化文本签名_桥接(文本 = '') {
     const 规范文本 = String(文本 || '').trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     if (!规范文本) return '';
@@ -8252,9 +8276,9 @@
       };
     }
     待写回MVU数据.stat_data = 待写回变量数据;
-    await Promise.resolve(主机.replaceMvuData(待写回MVU数据, { type: 'message', message_id: 消息编号 }));
+    await 写回MVU数据并记录耗时_桥接(主机, 待写回MVU数据, { type: 'message', message_id: 消息编号 }, 'MVU写回:内置物品入库');
     writeMvuEditorStoreSnapshot(待写回MVU数据.stat_data, { messageId: 消息编号 });
-    await refreshLiveSnapshot({ force: true });
+    await 按需刷新MVU快照_桥接(附加选项);
     return {
       changed: true,
       names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []),
@@ -8309,9 +8333,9 @@
       };
     }
     待写回MVU数据.stat_data = 待写回变量数据;
-    await Promise.resolve(主机.replaceMvuData(待写回MVU数据, { type: 'message', message_id: 消息编号 }));
+    await 写回MVU数据并记录耗时_桥接(主机, 待写回MVU数据, { type: 'message', message_id: 消息编号 }, 'MVU写回:内置角色入库');
     writeMvuEditorStoreSnapshot(待写回MVU数据.stat_data, { messageId: 消息编号 });
-    await refreshLiveSnapshot({ force: true });
+    await 按需刷新MVU快照_桥接(附加选项);
     return {
       changed: true,
       names: Array.isArray(结果.changedNames) ? 结果.changedNames : (Array.isArray(结果.names) ? 结果.names : []),

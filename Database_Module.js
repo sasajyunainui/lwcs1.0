@@ -1791,6 +1791,13 @@ $CONTENT
         console.warn(`[${SCRIPT_ID_PREFIX_ACU}]`, ...args);
         pushLog('warn', [`[${SCRIPT_ID_PREFIX_ACU}]`, ...args]);
     }
+    function 读取性能时间_ACU() {
+        return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    }
+    function 记录性能耗时_ACU(标签, 开始时间, 附加文本 = '') {
+        const 耗时 = Math.max(0, 读取性能时间_ACU() - 开始时间).toFixed(1);
+        console.debug(`[LWCS性能] ${标签} ${耗时}ms${附加文本 ? ` ${附加文本}` : ''}`);
+    }
     function stripSeedRowsFromTemplate_ACU(templateObj) {
         if (!templateObj || typeof templateObj !== 'object')
             return templateObj;
@@ -14691,22 +14698,42 @@ $CONTENT
         if (本轮MVU更新前置承诺表_ACU.has(前置键))
             return await 本轮MVU更新前置承诺表_ACU.get(前置键);
         const 前置承诺 = (async () => {
+            const 总开始时间 = 读取性能时间_ACU();
             let 当前StatData = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
+            let 需要刷新MVU快照 = false;
             const 构建参数 = (附加 = {}) => ({
                 剧情文本,
                 最后剧情文本: 最后角色消息文本 || '',
                 statData: 当前StatData || undefined,
                 上限: 16,
+                延迟刷新: true,
                 ...附加,
             });
             const 应用结果 = (结果) => {
                 if (结果 && typeof 结果.statData === 'object') 当前StatData = 结果.statData;
+                if (结果 && 结果.changed === true) 需要刷新MVU快照 = true;
             };
-            应用结果(await 执行MVU文本前置函数_ACU('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 捕获文本, 构建参数(), '本轮归档角色前置恢复'));
-            应用结果(await 执行MVU文本前置函数_ACU('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 捕获文本, 构建参数(), '本轮归档动态地点前置恢复'));
-            应用结果(await 执行MVU文本前置函数_ACU('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 捕获文本, 构建参数(), '本轮归档物品前置恢复'));
-            应用结果(await 执行MVU文本前置函数_ACU('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 捕获文本, 构建参数(), '本轮内置物品前置入库'));
-            应用结果(await 执行MVU文本前置函数_ACU('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 捕获文本, 构建参数({ 时间线事件命中: true }), '本轮内置角色前置入库'));
+            const 执行前置步骤 = async (函数名, 参数, 日志标签) => {
+                const 步骤开始时间 = 读取性能时间_ACU();
+                const 结果 = await 执行MVU文本前置函数_ACU(函数名, 捕获文本, 参数, 日志标签);
+                const 名称数量 = Array.isArray(结果?.names) ? 结果.names.length : 0;
+                记录性能耗时_ACU(`正文生成前置:${日志标签}`, 步骤开始时间, `changed=${结果?.changed === true} names=${名称数量}`);
+                应用结果(结果);
+            };
+            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮归档角色前置恢复');
+            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复');
+            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复');
+            await 执行前置步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库');
+            await 执行前置步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数({ 时间线事件命中: true }), '本轮内置角色前置入库');
+            if (需要刷新MVU快照) {
+                const 刷新函数 = 获取运行时窗口函数_ACU('__MVU_REFRESH_LIVE_SNAPSHOT__');
+                if (typeof 刷新函数 === 'function') {
+                    const 刷新开始时间 = 读取性能时间_ACU();
+                    await Promise.resolve(刷新函数({ force: true }));
+                    记录性能耗时_ACU('正文生成前置:统一刷新状态栏', 刷新开始时间);
+                }
+            }
+            记录性能耗时_ACU('正文生成前置:MVU前置链总计', 总开始时间, `changed=${需要刷新MVU快照}`);
             return 当前StatData || null;
         })();
         本轮MVU更新前置承诺表_ACU.set(前置键, 前置承诺);
@@ -33844,7 +33871,9 @@ $CONTENT
                 dynamicContent.tableDataText += `${UNIFIED_GROUP_ERROR_MARKER_ACU}[统一提交失败，请修正后重新输出]\n错误信息: ${feedback.lastUnifiedError}`;
             }
             try {
+                const 填表API开始时间 = 读取性能时间_ACU();
                 const aiResponse = await callCustomOpenAI_ACU(dynamicContent, abortController, job.requestOptions);
+                记录性能耗时_ACU('数据库更新:单组填表API', 填表API开始时间, `attempt=${attempt} tables=${Array.isArray(job.targetSheetKeys) ? job.targetSheetKeys.length : 0}`);
                 if (abortController.signal.aborted || wasStoppedByUser_ACU$1) {
                     return { job, success: false, attempt, aborted: true };
                 }
@@ -35264,8 +35293,10 @@ $CONTENT
     let autoUpdateTriggerInFlight_ACU = false;
     async function triggerAutomaticUpdateIfNeeded_ACU() {
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
+        const 数据库更新开始时间 = 读取性能时间_ACU();
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
+            记录性能耗时_ACU('数据库更新:自动填表总计', 数据库更新开始时间, 'skipped=in_flight');
             return;
         }
         autoUpdateTriggerInFlight_ACU = true;
@@ -35376,6 +35407,7 @@ $CONTENT
         }
         finally {
             autoUpdateTriggerInFlight_ACU = false;
+            记录性能耗时_ACU('数据库更新:自动填表总计', 数据库更新开始时间);
         }
     }
     function collectManualExtraHint_ACU() {
@@ -52788,11 +52820,13 @@ $CONTENT
         // 4. 调用规划
         _set_isProcessing_Plot_ACU(true);
         try {
+            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(userMessage, {
                 originalUserInput: userMessage,
                 hasExistingUserMessage: false,
                 systemMessages: runtimeSystemMessages,
             });
+            记录性能耗时_ACU('剧情推进API:TavernHelper.generate', 剧情推进开始时间);
             // 5. 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in TavernHelper.generate hook (duplicate).');
@@ -52873,11 +52907,13 @@ $CONTENT
         // 3. 调用规划
         _set_isProcessing_Plot_ACU(true);
         try {
+            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(messageToProcess, {
                 originalUserInput: messageToProcess,
                 hasExistingUserMessage: true,
                 systemMessages: runtimeSystemMessages,
             });
+            记录性能耗时_ACU('剧情推进API:GENERATION_AFTER_COMMANDS策略1', 剧情推进开始时间);
             // 4. 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in Strategy 1 (duplicate).');
@@ -52996,11 +53032,13 @@ $CONTENT
         const runtimeSystemMessages = buildPlanningRuntimeSystemMessagesFromSettlement_ACU(moduleSettlementContext);
         _set_isProcessing_Plot_ACU(true);
         try {
+            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(originalInputText, {
                 originalUserInput: originalInputText,
                 hasExistingUserMessage: false,
                 systemMessages: runtimeSystemMessages,
             });
+            记录性能耗时_ACU('剧情推进API:GENERATION_AFTER_COMMANDS策略2', 剧情推进开始时间);
             // 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in Strategy 2 (duplicate).');

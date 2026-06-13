@@ -2736,6 +2736,42 @@ function 构建MVU剧情提示当前位置行动_V1(角色 = {}) {
   return 片段列表.join('；');
 }
 
+function 格式化MVU剩余资源数值_V1(数值 = 0) {
+  const 安全数值 = Math.max(0, Math.floor(Number(数值) || 0));
+  const 格式化 = (除数, 单位) => {
+    const 显示值 = 安全数值 / 除数;
+    return `${显示值.toFixed(1).replace(/\.0$/, '')}${单位}`;
+  };
+  if (安全数值 >= 100000000) return 格式化(100000000, '亿');
+  if (安全数值 >= 10000) return 格式化(10000, '万');
+  return String(安全数值);
+}
+
+function 构建MVU剩余资源摘要_V1(角色 = {}) {
+  const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
+  const 构建百分比资源 = (标签, 当前字段, 上限字段) => {
+    const 当前 = Number(属性?.[当前字段]);
+    const 上限 = Number(属性?.[上限字段]);
+    if (!Number.isFinite(当前) || !Number.isFinite(上限) || 上限 <= 0) return '';
+    const 百分比 = Math.max(0, Math.min(999, Math.round((Math.max(0, Math.min(当前, 上限)) / 上限) * 100)));
+    return `${标签} ${百分比}%`;
+  };
+  const 构建绝对资源 = (标签, 当前字段, 上限字段) => {
+    const 当前 = Number(属性?.[当前字段]);
+    const 上限 = Number(属性?.[上限字段]);
+    if (!Number.isFinite(当前) || !Number.isFinite(上限) || 上限 <= 0) return '';
+    const 安全当前 = Math.max(0, Math.min(当前, 上限));
+    const 百分比 = Math.max(0, Math.min(999, Math.round((安全当前 / 上限) * 100)));
+    return `${标签} ${格式化MVU剩余资源数值_V1(安全当前)}/${格式化MVU剩余资源数值_V1(上限)}(${百分比}%)`;
+  };
+  return [
+    构建百分比资源('血量', 'HP', 'HP上限'),
+    构建绝对资源('魂力', '魂力', '魂力上限'),
+    构建绝对资源('精神力', '精神力', '精神力上限'),
+    构建百分比资源('体力', '体力', '体力上限'),
+  ].filter(Boolean).join('｜');
+}
+
 function 构建MVU剧情提示外貌穿搭_V1(角色 = {}) {
   const 片段列表 = [];
   追加MVU剧情提示片段_V1(片段列表, '长相', 角色?.外貌?.长相描述);
@@ -2802,13 +2838,14 @@ function 构建MVU剧情提示当前段_V1(数据根 = {}, userInput = '') {
 function 构建MVU剧情提示角色段_V1(数据根 = {}, userInput = '', 最后剧情文本 = '') {
   const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本, 2);
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
-  const 行列表 = ['【角色简表】', '| 角色 | 位置/行动 | 外貌穿搭 | 性格 | 财富 | 身份关系 |', '|---|---|---|---|---|---|'];
+  const 行列表 = ['【角色简表】', '| 角色 | 位置/行动 | 剩余资源 | 外貌穿搭 | 性格 | 财富 | 身份关系 |', '|---|---|---|---|---|---|---|'];
   角色名列表.forEach(角色名 => {
     const 角色 = 数据根?.char?.[角色名];
     if (!角色 || typeof 角色 !== 'object') return;
     const 单元列表 = [
       角色名,
       构建MVU剧情提示当前位置行动_V1(角色),
+      构建MVU剩余资源摘要_V1(角色),
       构建MVU剧情提示外貌穿搭_V1(角色),
       角色?.性格,
       构建MVU剧情提示财富_V1(角色),
@@ -2902,6 +2939,8 @@ function 构建MVU正文状态摘要_V1(角色 = {}) {
   if (状态.存活 === true) delete 状态.存活;
   if (Number(状态.死亡tick || -1) < 0) delete 状态.死亡tick;
   if (!String(状态.死亡类型 || '').trim() || String(状态.死亡类型 || '').trim() === '无') delete 状态.死亡类型;
+  const 剩余资源 = 构建MVU剩余资源摘要_V1(角色);
+  if (剩余资源) 状态.剩余资源 = 剩余资源;
   return 状态;
 }
 
@@ -3418,6 +3457,7 @@ function 生成角色基础六维对标摘要_V1(数据输入 = null, userInput 
     const 字段文本 = 角色基础六维对标字段_V1.map(({ 标签, 字段 }) => {
       const 数值 = Math.max(1, Math.floor(Number(六维?.[字段] || 1)));
       const 对标 = 计算角色属性对标等级文本_V1(角色, 字段, 数值);
+      if (字段 === '精神力上限') return `${标签} ${格式化MVU剩余资源数值_V1(数值)}≈${对标}`;
       return `${标签}≈${对标}`;
     }).join('，');
     const 副职业文本 = Object.entries(角色?.副职业 || {})
@@ -3506,7 +3546,6 @@ function 注入运行时技能默认提示_V1(skill = {}, context = {}) {
     const 产物提示 = buildSkillProductDescriptionTodoText(skill._效果数组);
     if (产物提示) skill.产物描述 = 限流提示('技能产物描述', 产物提示);
   }
-  if (!Array.isArray(skill.附带属性) && (skill.附带属性 === undefined || skill.附带属性 === null || skill.附带属性 === '')) skill.附带属性 = [];
   if (!hasPackedEffects && 允许机制决策临时) skill[技能机制决策临时字段_V1] = 构建技能机制决策临时数据_V1(skill, context);
 }
 
@@ -24476,8 +24515,7 @@ function buildSkillRuntimeAttributeContext(skill = {}, context = {}) {
     initialWuxingInvocation,
   );
   const 上下文系别 = String(context?.系别 || context?.type || context?.武魂系别 || '').trim();
-  const 可调用元素 = buildSkillAttributeGateContext(context).callableElements;
-  if (!resolvedAttached.length && /元素系/.test(上下文系别)) resolvedAttached = 可调用元素;
+  if (!resolvedAttached.length) resolvedAttached = [];
   const gateResult = applySkillAttachedAttributeHardGate(resolvedAttached, context);
   const attached = normalizeSkillAttachedAttributeArray(gateResult.attachedAttributes);
   const elementStructure = constrainSkillElementStructureByAttached(
@@ -24586,13 +24624,15 @@ function getElementProfilePrimaryLabel(profile = {}) {
 function applySkillElementInheritance(skill = {}, context = {}) {
   if (!skill || typeof skill !== 'object') return skill;
   if (!Array.isArray(skill._效果数组)) skill._效果数组 = [];
+  const 原始明确附带属性 = normalizeSkillAttachedAttributeArray(skill?.附带属性);
   const runtime = buildSkillRuntimeAttributeContext(skill, context);
-  skill.附带属性 = runtime.attachedAttributes;
+  if (原始明确附带属性.length) skill.附带属性 = runtime.attachedAttributes;
+  else delete skill.附带属性;
   const 约束效果元素 = 效果 => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
     if (效果.限定元素 !== undefined) {
       const 限定元素列表 = 读取技能限定元素列表_V1(效果.限定元素).filter(元素 => runtime.attachedAttributes.includes(元素));
-      const 生效元素 = 限定元素列表.length ? 限定元素列表 : runtime.attachedAttributes;
+      const 生效元素 = runtime.attachedAttributes.length ? (限定元素列表.length ? 限定元素列表 : runtime.attachedAttributes) : [];
       if (生效元素.length) {
         效果.限定元素 = 生效元素.length > 1 ? 生效元素 : 生效元素[0];
       }
@@ -25431,7 +25471,6 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       if (副作用列表.length) 候选技能.副作用列表 = 副作用列表;
       else delete 候选技能.副作用列表;
       清理技能效果数组AI文本字段_V1(候选技能._效果数组);
-      if (!Array.isArray(候选技能.附带属性)) 候选技能.附带属性 = [];
       delete 候选技能[技能机制决策临时字段_V1];
       applySkillElementInheritance(候选技能, context);
       收口技能执行结构_V1(候选技能, {
@@ -33343,8 +33382,6 @@ export const Schema = z
         } else if (isEmptyDisplayText(skill.效果描述)) {
           skill.效果描述 = AI_TODO_SKILL_EFFECT;
         }
-        if (!Array.isArray(skill.附带属性) && (skill.附带属性 === undefined || skill.附带属性 === null || skill.附带属性 === ''))
-          skill.附带属性 = [];
         if (hasPackedEffects && skill?.[技能机制决策临时字段_V1] && typeof skill[技能机制决策临时字段_V1] === 'object') {
           delete skill[技能机制决策临时字段_V1];
         } else if (!hasPackedEffects && 允许机制决策临时) {
