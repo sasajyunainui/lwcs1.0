@@ -25,12 +25,9 @@
     壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置角色库: { 类型: 'inline-js', 地址: 资源基础地址 + 'CharacterLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置物品库: { 类型: 'inline-js', 地址: 资源基础地址 + 'ItemLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    变量技能运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Skill_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    变量结构运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Schema_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    变量视图运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Runtime_View.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    变量规则: { 类型: 'module-js', 地址: 资源基础地址 + 'MVU.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    变量事件钩子: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Hooks.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     魂技机制注册表: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_MECHANISM_REGISTRY__', 值类型: 'object', 关键: true, 分组: 'core' },
+    变量运行时视图: { 类型: 'wait-global', 全局键: '__LWCS_MVU_RUNTIME_VIEW__', 值类型: 'object', 关键: true, 分组: 'core' },
+    变量规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_MVU_STAT_DATA__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -91,6 +88,52 @@
   function 睡眠(毫秒) {
     return new Promise(resolve => setTimeout(resolve, 毫秒));
   }
+
+  async function 等待剧情推进预设接口(最大等待毫秒 = 12000) {
+    const 开始时间 = Date.now();
+    while (Date.now() - 开始时间 < 最大等待毫秒) {
+      const 数据库接口 = 宿主窗口.AutoCardUpdaterAPI;
+      if (
+        数据库接口 &&
+        typeof 数据库接口.importPlotPresetsFromData === 'function' &&
+        typeof 数据库接口.injectPlotPresetToCurrentChat === 'function' &&
+        typeof 数据库接口.getCurrentPlotPreset === 'function'
+      ) {
+        return 数据库接口;
+      }
+      await 睡眠(120);
+    }
+    throw new Error('剧情推进预设接口未就绪');
+  }
+
+  宿主窗口.__LWCS_注入默认剧情推进预设__ = async function 注入默认剧情推进预设(选项 = {}) {
+    const 预设名 = '缝合怪東方花映塚版本二改_专用剧情推进';
+    const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
+    const 强制切换 = 选项 && 选项.强制切换 === true;
+    const 数据库接口 = await 等待剧情推进预设接口();
+    const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
+
+    const 响应 = await fetch(资源基础地址 + 'LWCS_默认剧情推进.plot-preset.json' + 资源版本后缀, { cache: 'no-store' });
+    if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
+    const 预设数组 = await 响应.json();
+    const 导入结果 = await 数据库接口.importPlotPresetsFromData(预设数组, { overwrite: true });
+    if (!导入结果 || 导入结果.success === false) {
+      throw new Error(`LWCS 剧情推进预设导入失败: ${导入结果 && 导入结果.message ? 导入结果.message : 'unknown_error'}`);
+    }
+
+    if (当前预设名 && 当前预设名 !== 预设名 && !强制切换) {
+      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过 LWCS 默认预设绑定。来源=${来源}`);
+      return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
+    }
+
+    const 已绑定 = 数据库接口.injectPlotPresetToCurrentChat(预设名) === true;
+    if (!已绑定) throw new Error(`LWCS 剧情推进预设绑定失败: ${预设名}`);
+    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}`);
+    return { success: true, skipped: false, presetName: 预设名 };
+  };
+  try {
+    if (window !== 宿主窗口) window.__LWCS_注入默认剧情推进预设__ = 宿主窗口.__LWCS_注入默认剧情推进预设__;
+  } catch (错误) {}
 
   function 记录阶段(阶段, 附加错误 = '') {
     加载状态.阶段 = 阶段;
@@ -211,19 +254,16 @@
       await waitForMountsReady(10000);
       ensureGetAllVariablesShim();
       await 加载样式(模块注册表.样式核心.地址);
-      ['内置角色库', '内置物品库', '变量技能运行时', '变量结构运行时', '变量视图运行时', '变量规则', '变量事件钩子', '魂技机制注册表', '逻辑桥接', '战斗模块', '数据库模块'].forEach(模块名 => {
+      ['内置角色库', '内置物品库', '魂技机制注册表', '变量运行时视图', '变量规范化接口', '逻辑桥接', '战斗模块', '数据库模块'].forEach(模块名 => {
         if (!模块状态表[模块名]) return;
         模块状态表[模块名].状态 = 'pending';
         模块状态表[模块名].错误 = '';
       });
       await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量技能运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量结构运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量视图运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量规则', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量事件钩子', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('魂技机制注册表', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量运行时视图', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量规范化接口', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
       await 确保模块已加载('数据库模块', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
@@ -608,7 +648,7 @@
         ensureGetAllVariablesShim();
 
         记录阶段(加载阶段.核心加载中);
-        const 核心模块顺序 = ['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', '变量技能运行时', '变量结构运行时', '变量视图运行时', '变量规则', '变量事件钩子', '魂技机制注册表', '逻辑桥接', '数据库模块'];
+        const 核心模块顺序 = ['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', '魂技机制注册表', '变量运行时视图', '变量规范化接口', '逻辑桥接', '数据库模块'];
         for (const 模块名 of 核心模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }

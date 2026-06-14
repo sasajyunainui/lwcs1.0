@@ -237,7 +237,7 @@
 </label>
 </div>
 </div>
-<button class="submit-btn" onclick="submitForm()">[ 确认同步至世界线 ]</button>
+<button class="submit-btn" id="startup-main-button" onclick="处理开场主按钮()">[ 注入数据库剧情推进预设 ]</button>
 </div>
 </div>
 </div>
@@ -245,6 +245,8 @@
 
 var FORM_TEMPLATE_STORAGE_KEY = 'CHAR_FORM_TEMPLATES_V1';
 var FORM_LAST_SNAPSHOT_KEY = 'CHAR_FORM_LAST_SNAPSHOT_V1';
+var 剧情推进预设已注入 = false;
+var 开场主按钮处理中 = false;
 
 var timelineData = {
   "6岁": {
@@ -749,6 +751,84 @@ window.clearCreationForm = function() {
     });
     saveLastSnapshot(collectFormSnapshot());
     showTemplateMessage('已清空当前表单（不会删除模板）。');
+};
+
+window.注入数据库剧情推进预设 = async function() {
+    try {
+        showTemplateMessage('正在注入数据库剧情推进预设...');
+        var 宿主窗口 = window.parent || window.top || window;
+        var 注入剧情推进预设 = 宿主窗口 && typeof 宿主窗口.__LWCS_注入默认剧情推进预设__ === 'function'
+            ? 宿主窗口.__LWCS_注入默认剧情推进预设__
+            : (typeof window.__LWCS_注入默认剧情推进预设__ === 'function' ? window.__LWCS_注入默认剧情推进预设__ : null);
+        if (!注入剧情推进预设) throw new Error('数据库剧情推进预设注入接口未就绪');
+        var 结果 = await 注入剧情推进预设({ 来源: 'startup_panel_button', 强制切换: true });
+        if (结果 && 结果.success) {
+            showTemplateMessage('已注入并切换到缝合怪東方花映塚版本二改_专用剧情推进。');
+            return 结果;
+        } else {
+            showTemplateMessage('数据库剧情推进预设注入失败。', true);
+            return null;
+        }
+    } catch (错误) {
+        console.error('[开场白] 数据库剧情推进预设注入失败:', 错误);
+        showTemplateMessage('数据库剧情推进预设注入失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);
+        return null;
+    }
+};
+
+function 切换开场主按钮为同步() {
+    var 主按钮 = document.getElementById('startup-main-button');
+    if (!主按钮) return;
+    主按钮.textContent = '[ 确认同步至世界线 ]';
+}
+
+function 设置开场主按钮忙碌(忙碌, 文本) {
+    var 主按钮 = document.getElementById('startup-main-button');
+    if (!主按钮) return;
+    主按钮.disabled = !!忙碌;
+    if (文本) 主按钮.textContent = 文本;
+}
+
+function 打开数据库设置界面() {
+    var 宿主窗口 = window.parent || window.top || window;
+    var 宿主文档 = 宿主窗口 && 宿主窗口.document ? 宿主窗口.document : document;
+    var 数据库按钮 = 宿主文档.getElementById('acu-v2-menu-item');
+    if (!数据库按钮) {
+        showTemplateMessage('请从扩展菜单打开 SP·数据库 III 设置 API。');
+        return false;
+    }
+    数据库按钮.click();
+    return true;
+}
+
+window.处理开场主按钮 = async function() {
+    if (开场主按钮处理中) return;
+    if (剧情推进预设已注入) {
+        window.submitForm();
+        return;
+    }
+
+    开场主按钮处理中 = true;
+    设置开场主按钮忙碌(true, '[ 正在注入数据库剧情推进预设 ]');
+    try {
+        var 注入结果 = await window.注入数据库剧情推进预设();
+        if (!注入结果 || !注入结果.success) {
+            设置开场主按钮忙碌(false, '[ 注入数据库剧情推进预设 ]');
+            return;
+        }
+
+        剧情推进预设已注入 = true;
+        设置开场主按钮忙碌(false);
+        切换开场主按钮为同步();
+        var 是否设置API = confirm('数据库剧情推进预设已注入并切换。是否现在设置 API？');
+        if (是否设置API) 打开数据库设置界面();
+    } catch (错误) {
+        console.error('[开场白] 开场主按钮执行失败:', 错误);
+        showTemplateMessage('数据库剧情推进预设注入失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);
+        设置开场主按钮忙碌(false, '[ 注入数据库剧情推进预设 ]');
+    } finally {
+        开场主按钮处理中 = false;
+    }
 };
 
 window.updateLocByTimeline = function() {

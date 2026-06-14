@@ -215,17 +215,18 @@ try {
 
 async function 注册MVU变量结构_V1() {
   try {
-    if (globalThis.__LWCS_MVU变量结构已注册__) return;
     if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
     const 事件接口可用 = await 等待MVU事件接口_V1();
     if (!事件接口可用) {
       console.warn('LWCS MVU变量结构注册等待事件接口超时');
       return;
     }
-    globalThis.__LWCS_REGISTER_MVU_SCHEMA__(globalThis.__LWCS_MVU_SCHEMA__);
+    if (!globalThis.__LWCS_MVU变量结构已注册__) {
+      globalThis.__LWCS_REGISTER_MVU_SCHEMA__(globalThis.__LWCS_MVU_SCHEMA__);
+      globalThis.__LWCS_MVU变量结构已注册__ = true;
+    }
     暴露AIJsonPatch预处理接口_V1();
     安装AIJsonPatch解析钩子_V1();
-    globalThis.__LWCS_MVU变量结构已注册__ = true;
   } catch (错误) {
     console.warn('LWCS MVU变量结构注册失败', 错误);
   }
