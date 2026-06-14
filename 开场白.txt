@@ -757,9 +757,9 @@ window.注入数据库剧情推进预设 = async function() {
     try {
         showTemplateMessage('正在注入数据库剧情推进预设...');
         var 宿主窗口 = window.parent || window.top || window;
-        var 注入剧情推进预设 = 宿主窗口 && typeof 宿主窗口.__LWCS_注入默认剧情推进预设__ === 'function'
-            ? 宿主窗口.__LWCS_注入默认剧情推进预设__
-            : (typeof window.__LWCS_注入默认剧情推进预设__ === 'function' ? window.__LWCS_注入默认剧情推进预设__ : null);
+        var 注入剧情推进预设 = 宿主窗口 && typeof 宿主窗口.__LWCS_注入数据库剧情推进预设__ === 'function'
+            ? 宿主窗口.__LWCS_注入数据库剧情推进预设__
+            : (typeof window.__LWCS_注入数据库剧情推进预设__ === 'function' ? window.__LWCS_注入数据库剧情推进预设__ : null);
         if (!注入剧情推进预设) throw new Error('数据库剧情推进预设注入接口未就绪');
         var 结果 = await 注入剧情推进预设({ 来源: 'startup_panel_button', 强制切换: true });
         if (结果 && 结果.success) {

@@ -986,24 +986,6 @@ DELETE FROM table_name WHERE row_id = 2;
     });
     const DEFAULT_TABLE_TEMPLATE_ACU = buildDefaultTableTemplateString_ACU();
     let TABLE_TEMPLATE_ACU = DEFAULT_TABLE_TEMPLATE_ACU;
-    const 剧情钩子时间线预览占位符_ACU = '{{剧情钩子._引导.时间线预览}}';
-    const 远端原著时间线候选占位符_ACU = '{{剧情钩子._引导.远端原著时间线候选}}';
-    const 角色基础六维对标占位符_ACU = '{{角色基础六维对标}}';
-    let 最近剧情审查结果_ACU = '';
-    function 读取最近剧情审查结果_ACU() {
-        return 最近剧情审查结果_ACU;
-    }
-    function 记录最近剧情审查结果_ACU(审查块) {
-        最近剧情审查结果_ACU = String(审查块 || '').trim();
-        return 最近剧情审查结果_ACU;
-    }
-    function 缓存规划剧情审查结果_ACU(text) {
-        return 记录最近剧情审查结果_ACU(提取最后剧情审查块_ACU(text));
-    }
-    try {
-        window.__LWCS_GET_LAST_PLOT_AUDIT_RESULT__ = () => 读取最近剧情审查结果_ACU();
-    }
-    catch (错误) { }
     // --- [剧情推进] 默认设置 ---
     const DEFAULT_PLOT_SETTINGS_ACU = {
         "enabled": true,
@@ -1681,13 +1663,6 @@ $CONTENT
     function logWarn_ACU(...args) {
         console.warn(`[${SCRIPT_ID_PREFIX_ACU}]`, ...args);
         pushLog('warn', [`[${SCRIPT_ID_PREFIX_ACU}]`, ...args]);
-    }
-    function 读取性能时间_ACU() {
-        return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    }
-    function 记录性能耗时_ACU(标签, 开始时间, 附加文本 = '') {
-        const 耗时 = Math.max(0, 读取性能时间_ACU() - 开始时间).toFixed(1);
-        console.debug(`[LWCS性能] ${标签} ${耗时}ms${附加文本 ? ` ${附加文本}` : ''}`);
     }
     function stripSeedRowsFromTemplate_ACU(templateObj) {
         if (!templateObj || typeof templateObj !== 'object')
@@ -3371,27 +3346,6 @@ $CONTENT
     };
     function markUserSendIntent_ACU() {
         generationGate_ACU.lastUserSendIntentAt = Date.now();
-    }
-    async function persistUserMessageWithoutGeneration_ACU(用户消息) {
-        const 助手 = window.TavernHelper;
-        const 文本 = String(用户消息 || '').trim();
-        if (!助手 || typeof 助手.createChatMessages !== 'function' || !文本)
-            return false;
-        try {
-            const 聊天 = getChatArray_ACU();
-            const 最后一条消息 = Array.isArray(聊天) && 聊天.length > 0 ? 聊天[聊天.length - 1] : null;
-            if (最后一条消息 && 最后一条消息.is_user && String(最后一条消息.mes || '').trim() === 文本)
-                return true;
-        }
-        catch (error) { }
-        try {
-            await 助手.createChatMessages([{ role: 'user', message: 文本 }], { refresh: 'affected' });
-            return true;
-        }
-        catch (error) {
-            logWarn_ACU('[剧情推进] Failed to persist user message without generation:', error);
-            return false;
-        }
     }
     function isRecentUserSendIntent_ACU() {
         if (!generationGate_ACU.lastUserSendIntentAt)
@@ -14373,11 +14327,7 @@ $CONTENT
     function getTableDataForPrompt_ACU$1() {
         return currentJsonTableData_ACU || {};
     }
-    const MVU_RUNTIME_VIEW_PLACEHOLDER_ACU = '{{MVU_RUNTIME_VIEW}}';
-    const MVU_RUNTIME_UPDATE_PLACEHOLDER_ACU = '{{MVU_RUNTIME_UPDATE}}';
-    const MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_ACU = '{{MVU_UPDATE_STRUCTURE_HINTS}}';
-    const 本轮MVU更新前置承诺表_ACU = new Map();
-    function collectMvuRuntimeWindows_ACU() {
+    function 收集剧情推进运行时适配器窗口_ACU() {
         const 窗口列表 = [];
         const 加入窗口 = (候选窗口) => {
             try {
@@ -14396,101 +14346,53 @@ $CONTENT
         }
         return 窗口列表;
     }
-    function 获取运行时窗口字段_ACU(字段名) {
-        for (const 运行时窗口 of collectMvuRuntimeWindows_ACU()) {
+    function 获取剧情推进运行时适配器_ACU() {
+        for (const 运行时窗口 of 收集剧情推进运行时适配器窗口_ACU()) {
             try {
-                const 字段值 = 运行时窗口?.[字段名];
-                if (字段值)
-                    return 字段值;
+                const 适配器 = 运行时窗口?.__ACU_PLOT_RUNTIME_ADAPTER__;
+                if (适配器 && typeof 适配器 === 'object')
+                    return 适配器;
             }
             catch (_) { }
         }
         return null;
     }
-    function 获取运行时窗口函数_ACU(函数名) {
-        const 函数 = 获取运行时窗口字段_ACU(函数名);
-        return typeof 函数 === 'function' ? 函数 : null;
-    }
-    function getMvuRuntimeViewApi_ACU() {
-        const 接口 = 获取运行时窗口字段_ACU('__LWCS_MVU_RUNTIME_VIEW__');
-        if (接口 && typeof 接口 === 'object') {
-            try { window.__LWCS_MVU_RUNTIME_VIEW__ = 接口; } catch (_) { }
-            return 接口;
+    function 剧情推进运行时适配器需要处理_ACU(text = '') {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.needsRuntimeProcessing !== 'function')
+            return false;
+        try {
+            return 适配器.needsRuntimeProcessing(String(text || '')) === true;
         }
-        return null;
-    }
-    let 本轮MVU运行时StatData_ACU = null;
-    let 本轮MVU运行时输入_ACU = '';
-    function 缓存本轮MVU运行时StatData_ACU(statData, userInput = '') {
-        if (!statData || typeof statData !== 'object')
-            return null;
-        本轮MVU运行时StatData_ACU = statData;
-        本轮MVU运行时输入_ACU = String(userInput || '').trim();
-        return statData;
-    }
-    function 读取开场MVU运行时StatData_ACU(userInput = '') {
-        const statData = 获取运行时窗口字段_ACU('__LWCS_STARTUP_MVU_STAT_DATA__');
-        if (!statData || typeof statData !== 'object')
-            return null;
-        const 写入时间 = Number(获取运行时窗口字段_ACU('__LWCS_STARTUP_MVU_STAT_DATA_AT__') || 0);
-        if (写入时间 > 0 && Date.now() - 写入时间 > 30000)
-            return null;
-        const 开场提示 = 获取运行时窗口字段_ACU('__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__');
-        const 当前输入 = String(userInput || '').trim();
-        const 开场输入 = String(开场提示?.displayText || '').trim();
-        if (!当前输入 || !开场输入 || 当前输入 !== 开场输入)
-            return null;
-        return statData;
-    }
-    function 取MVU运行时StatData_ACU(statData = null, userInput = '') {
-        if (statData && typeof statData === 'object')
-            return 缓存本轮MVU运行时StatData_ACU(statData, userInput);
-        const 当前输入 = String(userInput || '').trim();
-        if (本轮MVU运行时StatData_ACU && typeof 本轮MVU运行时StatData_ACU === 'object') {
-            if (!当前输入 || !本轮MVU运行时输入_ACU || 当前输入 === 本轮MVU运行时输入_ACU)
-                return 本轮MVU运行时StatData_ACU;
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器处理判断失败:', 错误);
+            return false;
         }
-        const 开场StatData = 读取开场MVU运行时StatData_ACU(当前输入);
-        if (开场StatData)
-            return 缓存本轮MVU运行时StatData_ACU(开场StatData, 当前输入);
-        return null;
     }
-    function replaceMvuRuntimeViewPlaceholder_ACU(content, viewType = 'empty', context = {}) {
+    function 是剧情推进适配器占位符名_ACU(tagName) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.isRuntimePlaceholderName !== 'function')
+            return false;
+        try {
+            return 适配器.isRuntimePlaceholderName(String(tagName || '')) === true;
+        }
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时占位符名判断失败:', 错误);
+            return false;
+        }
+    }
+    function 替换剧情推进运行时占位符_ACU(content, viewType = 'empty', context = {}) {
         const source = String(content || '');
-        const hasRuntimeView = source.includes(MVU_RUNTIME_VIEW_PLACEHOLDER_ACU);
-        const hasRuntimeUpdate = source.includes(MVU_RUNTIME_UPDATE_PLACEHOLDER_ACU);
-        const hasStructureHints = source.includes(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_ACU);
-        if (!hasRuntimeView && !hasRuntimeUpdate && !hasStructureHints)
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.replaceRuntimePlaceholders !== 'function')
             return source;
-        const runtimeApi = getMvuRuntimeViewApi_ACU();
-        if (runtimeApi && typeof runtimeApi.替换MVU运行时视图占位符 === 'function') {
-            try {
-                const statData = 取MVU运行时StatData_ACU(context.statData, context.userInput || '');
-                const replaced = runtimeApi.替换MVU运行时视图占位符(source, viewType, {
-                    statData,
-                    userInput: context.userInput || '',
-                    lastCharMessage: context.lastCharMessage || '',
-                    plotText: context.plotText || '',
-                });
-                if (replaced !== source) {
-                    const viewLength = Math.max(0, replaced.length - source
-                        .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_ACU, '')
-                        .replaceAll(MVU_RUNTIME_UPDATE_PLACEHOLDER_ACU, '')
-                        .replaceAll(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_ACU, '').length);
-                    logDebug_ACU(`[MVU运行时视图] 已替换 ${viewType} 视图，估算注入字符数=${viewLength}`);
-                }
-                return replaced;
-            }
-            catch (error) {
-                logWarn_ACU('[MVU运行时视图] 占位符替换失败:', error);
-            }
+        try {
+            return String(适配器.replaceRuntimePlaceholders(source, viewType, context) ?? '');
         }
-        return source
-            .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_ACU, '')
-            .replaceAll(MVU_RUNTIME_UPDATE_PLACEHOLDER_ACU, '')
-            .replaceAll(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_ACU, '')
-            .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
-            .trim();
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时占位符替换失败:', 错误);
+            return source;
+        }
     }
     function 读取消息当前滑动编号_ACU(消息) {
         if (!消息 || typeof 消息 !== 'object')
@@ -14544,179 +14446,65 @@ $CONTENT
     function getLatestAIMessageContent_ACU() {
         return 读取最新角色消息元信息_ACU().文本 || '';
     }
-    function 构建本轮MVU前置键_ACU(最新角色消息, 捕获文本, 附加文本 = '') {
-        return [
-            String(currentChatFileIdentifier_ACU || 'current_chat').trim() || 'current_chat',
-            String(最新角色消息?.消息编号 || ''),
-            String(最新角色消息?.消息索引 ?? ''),
-            String(最新角色消息?.滑动编号 ?? ''),
-            hashUserInput_ACU(捕获文本),
-            hashUserInput_ACU(附加文本),
-        ].join('|');
-    }
-    function 限制MVU前置承诺表大小_ACU() {
-        while (本轮MVU更新前置承诺表_ACU.size > 20) {
-            const 首个键 = 本轮MVU更新前置承诺表_ACU.keys().next().value;
-            if (首个键 === undefined)
-                break;
-            本轮MVU更新前置承诺表_ACU.delete(首个键);
-        }
-    }
-    async function 执行MVU文本前置函数_ACU(函数名, 捕获文本, 参数 = {}, 日志标签 = '') {
-        const 前置函数 = 获取运行时窗口函数_ACU(函数名);
-        if (typeof 前置函数 !== 'function')
-            return { changed: false, names: [], statData: 参数.statData || null, reason: 'runtime_api_missing' };
-        try {
-            const 结果 = await Promise.resolve(前置函数(捕获文本, 参数));
-            return 结果 && typeof 结果 === 'object' ? 结果 : { changed: false, names: [], statData: 参数.statData || null };
-        }
-        catch (错误) {
-            logWarn_ACU(`[MVU运行时视图] ${日志标签}失败:`, 错误);
-            return { changed: false, names: [], statData: 参数.statData || null, reason: 'runtime_call_failed' };
-        }
-    }
-    async function 准备MVU更新视图前置数据_ACU(选项 = {}) {
-        const 用户输入文本 = String(选项?.userInput || '');
-        const 最后角色消息文本 = String(选项?.最后角色消息文本 || '');
-        const 剧情文本 = String(选项?.plotText || '');
-        const 最新角色消息 = 选项?.角色消息元信息 && typeof 选项.角色消息元信息 === 'object' ? 选项.角色消息元信息 : 读取最新角色消息元信息_ACU();
-        const 捕获文本 = String(选项?.捕获文本 ?? [用户输入文本, 剧情文本, 最后角色消息文本].filter(Boolean).join('\n'));
-        if (!捕获文本.trim())
+    async function 准备提示词运行时数据_ACU(选项 = {}) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.preparePromptRuntimeData !== 'function')
             return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
-        const 前置键 = 构建本轮MVU前置键_ACU(最新角色消息, 捕获文本);
-        if (本轮MVU更新前置承诺表_ACU.has(前置键))
-            return await 本轮MVU更新前置承诺表_ACU.get(前置键);
-        const 前置承诺 = (async () => {
-            const 总开始时间 = 读取性能时间_ACU();
-            let 当前StatData = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
-            let 需要刷新MVU快照 = false;
-            const 构建参数 = (附加 = {}) => ({
-                剧情文本,
-                最后剧情文本: 最后角色消息文本 || '',
-                statData: 当前StatData || undefined,
-                上限: 16,
-                延迟刷新: true,
-                ...附加,
-            });
-            const 应用结果 = (结果) => {
-                if (结果 && typeof 结果.statData === 'object') 当前StatData = 结果.statData;
-                if (结果 && 结果.changed === true) 需要刷新MVU快照 = true;
-            };
-            const 执行前置步骤 = async (函数名, 参数, 日志标签) => {
-                const 步骤开始时间 = 读取性能时间_ACU();
-                const 结果 = await 执行MVU文本前置函数_ACU(函数名, 捕获文本, 参数, 日志标签);
-                const 名称数量 = Array.isArray(结果?.names) ? 结果.names.length : 0;
-                记录性能耗时_ACU(`正文生成前置:${日志标签}`, 步骤开始时间, `changed=${结果?.changed === true} names=${名称数量}`);
-                应用结果(结果);
-            };
-            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮归档角色前置恢复');
-            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复');
-            await 执行前置步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复');
-            await 执行前置步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库');
-            await 执行前置步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数({ 时间线事件命中: true }), '本轮内置角色前置入库');
-            if (需要刷新MVU快照) {
-                const 刷新函数 = 获取运行时窗口函数_ACU('__MVU_REFRESH_LIVE_SNAPSHOT__');
-                if (typeof 刷新函数 === 'function') {
-                    const 刷新开始时间 = 读取性能时间_ACU();
-                    await Promise.resolve(刷新函数({ force: true }));
-                    记录性能耗时_ACU('正文生成前置:统一刷新状态栏', 刷新开始时间);
-                }
-            }
-            记录性能耗时_ACU('正文生成前置:MVU前置链总计', 总开始时间, `changed=${需要刷新MVU快照}`);
-            return 当前StatData || null;
-        })();
-        本轮MVU更新前置承诺表_ACU.set(前置键, 前置承诺);
-        限制MVU前置承诺表大小_ACU();
-        return await 前置承诺;
-    }
-    async function 准备正文生成运行时StatData_ACU(userInput = '', runtimePlotText = '', finalMessage = '') {
-        const 原始输入 = String(userInput || '');
-        const 规划文本 = String(runtimePlotText || '');
-        const 正文指导 = String(finalMessage || '');
-        const 最后角色消息文本 = getLatestAIMessageContent_ACU();
-        const 捕获文本 = [原始输入, 规划文本, 正文指导, 最后角色消息文本].filter(Boolean).join('\n');
-        return await 准备MVU更新视图前置数据_ACU({
-            userInput: 原始输入,
-            最后角色消息文本,
-            捕获文本,
-            plotText: 规划文本 || 正文指导,
-            statData: 取MVU运行时StatData_ACU(null, 原始输入) || undefined,
-        });
-    }
-    function 尝试触发冷归档自动归档_ACU(选项 = {}) {
         try {
-            const 自动归档函数 = 获取运行时窗口函数_ACU('__LWCS_AUTO_ARCHIVE_MVU_COLD_ENTITIES__');
-            if (typeof 自动归档函数 !== 'function')
-                return;
-            const 数据根 = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : {};
-            const 捕获文本 = String(选项?.捕获文本 ?? [选项?.userInput, 选项?.最后角色消息文本].filter(Boolean).join('\n'));
-            void Promise.resolve(自动归档函数({
-                ...选项,
-                statData: 数据根,
-                捕获文本,
-            })).catch(错误 => logWarn_ACU('[MVU运行时视图] 冷归档自动归档失败:', 错误));
+            return await Promise.resolve(适配器.preparePromptRuntimeData({
+                userInput: String(选项?.userInput || ''),
+                lastCharMessage: String(选项?.最后角色消息文本 || ''),
+                latestCharMessageInfo: 选项?.角色消息元信息,
+                captureText: String(选项?.捕获文本 || ''),
+                plotText: String(选项?.plotText || ''),
+                statData: 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : undefined,
+            }));
         }
         catch (错误) {
-            logWarn_ACU('[MVU运行时视图] 冷归档自动归档触发失败:', 错误);
+            logWarn_ACU('[剧情推进] 运行时适配器准备提示词数据失败:', 错误);
+            return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
         }
     }
-
-    function 读取剧情钩子时间线预览_ACU(userInput = '', statData = null) {
-        const 接口 = getMvuRuntimeViewApi_ACU();
-        if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function')
-            return '';
+    async function 准备正文生成运行时数据_ACU(userInput = '', runtimePlotText = '', finalMessage = '') {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.prepareStoryRuntimeData !== 'function')
+            return null;
         try {
-            const 剧情视图 = 接口.生成MVU剧情视图(取MVU运行时StatData_ACU(statData, userInput) || null, userInput);
-            return String(剧情视图?.剧情钩子?._引导?.时间线预览 || '').trim();
+            return await Promise.resolve(适配器.prepareStoryRuntimeData({
+                userInput: String(userInput || ''),
+                runtimePlotText: String(runtimePlotText || ''),
+                finalMessage: String(finalMessage || ''),
+                lastCharMessage: getLatestAIMessageContent_ACU(),
+            }));
         }
         catch (错误) {
-            logWarn_ACU('[剧情推进] 时间线预览读取失败:', 错误);
-            return '';
+            logWarn_ACU('[剧情推进] 运行时适配器准备正文数据失败:', 错误);
+            return null;
         }
     }
-
-    function 读取远端原著时间线候选_ACU(用户输入 = '', 运行态数据 = null, 捕获文本 = '') {
-        const 接口 = getMvuRuntimeViewApi_ACU();
-        if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function')
-            return '';
-        try {
-            const 剧情视图 = 接口.生成MVU剧情视图(取MVU运行时StatData_ACU(运行态数据, 用户输入) || null, 捕获文本 || 用户输入);
-            return String(剧情视图?.剧情钩子?._引导?.远端原著时间线候选 || '').trim();
-        }
-        catch (错误) {
-            logWarn_ACU('[剧情推进] 远端原著时间线候选读取失败:', 错误);
-            return '';
-        }
-    }
-
-    function 读取角色基础六维对标摘要_ACU(userInput = '', statData = null) {
-        const 接口 = getMvuRuntimeViewApi_ACU();
-        if (!接口 || typeof 接口.生成角色基础六维对标摘要 !== 'function')
-            return '无';
-        try {
-            return String(接口.生成角色基础六维对标摘要(取MVU运行时StatData_ACU(statData, userInput) || null, userInput) || '').trim() || '无';
-        }
-        catch (错误) {
-            logWarn_ACU('[剧情推进] 角色基础六维对标读取失败:', 错误);
-            return '无';
-        }
-    }
-
-    function 注入剧情钩子时间线预览_ACU(content, userInput = '', statData = null, 远端捕获文本 = '') {
+    function 注入剧情推进运行时特殊占位符_ACU(content, context = {}) {
         const 文本 = String(content || '');
-        if (!文本.includes(剧情钩子时间线预览占位符_ACU) && !文本.includes(远端原著时间线候选占位符_ACU) && !文本.includes(角色基础六维对标占位符_ACU))
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.replaceSpecialPlaceholders !== 'function')
             return 文本;
-        let 结果 = 文本;
-        if (结果.includes(剧情钩子时间线预览占位符_ACU)) {
-            结果 = 结果.replaceAll(剧情钩子时间线预览占位符_ACU, 读取剧情钩子时间线预览_ACU(userInput, statData) || '无');
+        try {
+            return String(适配器.replaceSpecialPlaceholders(文本, context) ?? '');
         }
-        if (结果.includes(远端原著时间线候选占位符_ACU)) {
-            结果 = 结果.replaceAll(远端原著时间线候选占位符_ACU, 读取远端原著时间线候选_ACU(userInput, statData, 远端捕获文本) || '无远端原著时间线候选。');
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器替换特殊占位符失败:', 错误);
+            return 文本;
         }
-        if (结果.includes(角色基础六维对标占位符_ACU)) {
-            结果 = 结果.replaceAll(角色基础六维对标占位符_ACU, 读取角色基础六维对标摘要_ACU(userInput, statData));
+    }
+    function 通知剧情推进运行时提示词处理完成_ACU(context = {}) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.afterPromptRuntimeReplacement !== 'function')
+            return;
+        try {
+            适配器.afterPromptRuntimeReplacement(context || {});
         }
-        return 结果;
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器提示词后处理失败:', 错误);
+        }
     }
 
     /**
@@ -16464,15 +16252,17 @@ $CONTENT
         return stripRuntimeBlocksForWorldbookScan_ACU(value);
     }
     function stripRuntimeBlocksForWorldbookScan_ACU(value) {
-        return String(value || "")
-            .replace(/<status_current_variables>[\s\S]*?<\/status_current_variables>/gi, " ")
-            .replace(/<MVU剧情视图>[\s\S]*?<\/MVU剧情视图>/gi, " ")
-            .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, " ")
-            .replace(/<JSONPatch>[\s\S]*?<\/JSONPatch>/gi, " ")
-            .replace(/<Analysis>[\s\S]*?<\/Analysis>/gi, " ")
-            .replace(/\{\{MVU_RUNTIME_VIEW\}\}/g, " ")
-            .replace(/\{\{MVU_RUNTIME_UPDATE\}\}/g, " ")
-            .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, " ");
+        const 文本 = String(value || "");
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.stripRuntimeBlocksForWorldbookScan !== 'function')
+            return 文本;
+        try {
+            return String(适配器.stripRuntimeBlocksForWorldbookScan(文本) ?? '');
+        }
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器清理世界书扫描文本失败:', 错误);
+            return 文本;
+        }
     }
 
     /**
@@ -16693,15 +16483,8 @@ $CONTENT
         }
         return [...new Set(names)];
     }
-    function 是MVU运行时占位符名_ACU(tagName) {
-        return ['MVU_RUNTIME_VIEW', 'MVU_RUNTIME_UPDATE', 'MVU_UPDATE_STRUCTURE_HINTS'].includes(String(tagName || '').trim());
-    }
     function 是剧情推进运行时占位符名_ACU(tagName) {
-        const 标准名 = String(tagName || '').trim();
-        return 是MVU运行时占位符名_ACU(标准名)
-            || 标准名 === '剧情钩子._引导.时间线预览'
-            || 标准名 === '剧情钩子._引导.远端原著时间线候选'
-            || 标准名 === '角色基础六维对标';
+        return 是剧情推进适配器占位符名_ACU(tagName);
     }
     function buildPlotTagMapFromText_ACU(text, requestedTagNames = null) {
         const sourceText = String(text || '');
@@ -16891,53 +16674,6 @@ $CONTENT
             .map(result => `【剧情任务：${result.taskName || result.taskId || '未命名任务'}】\n${result.rawResponse.trim()}`)
             .join('\n\n');
     }
-    function extractLastModuleRouteBlockFromTaskResults_ACU(taskResults) {
-        const successfulResults = sortPlotTaskResults_ACU(taskResults)
-            .filter(result => result?.success && typeof result.rawResponse === 'string' && result.rawResponse.trim());
-        for (let index = successfulResults.length - 1; index >= 0; index--) {
-            const matches = Array.from(String(successfulResults[index].rawResponse || '').matchAll(/<模块路由>[\s\S]*?<\/模块路由>/gi));
-            if (matches.length > 0)
-                return String(matches[matches.length - 1][0] || '').trim();
-        }
-        return '';
-    }
-    function 取最后剧情审查块_ACU(任务结果) {
-        const 成功结果 = sortPlotTaskResults_ACU(任务结果)
-            .filter(结果 => 结果?.success && typeof 结果.rawResponse === 'string' && 结果.rawResponse.trim());
-        for (let 索引 = 成功结果.length - 1; 索引 >= 0; 索引--) {
-            const 审查块 = 提取最后剧情审查块_ACU(成功结果[索引].rawResponse);
-            if (审查块)
-                return 审查块;
-        }
-        return '';
-    }
-    function 提取最后剧情审查块_ACU(text) {
-        const 匹配结果 = Array.from(String(text || '').matchAll(/<剧情审查>[\s\S]*?<\/剧情审查>/gi));
-        return 匹配结果.length > 0 ? String(匹配结果[匹配结果.length - 1][0] || '').trim() : '';
-    }
-    function 构建剧情审查临时注入_ACU(text) {
-        const 审查块 = 提取最后剧情审查块_ACU(text);
-        记录最近剧情审查结果_ACU(审查块);
-        if (!审查块)
-            return '';
-        return ['【剧情推进审查结果】', '以下为规划层已完成的审查结论，只约束本轮正文生成，不要复述或重新输出。', 审查块].join('\n');
-    }
-    function 构建正文数值参照临时注入_ACU(userInput = '', statData = null) {
-        const 摘要 = 读取角色基础六维对标摘要_ACU(userInput, statData);
-        if (!摘要 || 摘要 === '无')
-            return '';
-        return ['【正文数值参照】', 摘要].join('\n');
-    }
-    function 构建正文时间线预览临时注入_ACU(userInput = '', statData = null) {
-        const 预览 = 读取剧情钩子时间线预览_ACU(userInput, statData);
-        if (!预览 || 预览 === '无')
-            return '';
-        return [
-            '【正文时间线预览】',
-            '以下只作为原著参照与节奏压力；不得因为tick临近就强行落地，必须服从当前地点、人物认知、关系状态和事件后果。',
-            预览,
-        ].join('\n');
-    }
     function 合并剧情终稿片段_ACU(片段列表) {
         const 有效片段 = (Array.isArray(片段列表) ? 片段列表 : [片段列表])
             .map(片段 => String(片段 || '').trim())
@@ -16946,153 +16682,31 @@ $CONTENT
             return '';
         return 有效片段.join('\n');
     }
-    function 追加正文审查运行时注入_ACU(options, 审查约束文本 = '') {
+    function 追加正文运行时注入_ACU(options, context = {}) {
         if (!options || typeof options !== 'object')
             return false;
-        const 文本 = String(审查约束文本 || '').trim();
-        if (!文本)
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.appendStoryRuntimeInjects !== 'function')
             return false;
-        const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
-        const 已存在 = 注入列表.some(item => {
-            const 内容 = String(item?.content || '');
-            return 内容.includes('【剧情推进审查结果】')
-                || 内容.includes('<剧情审查>');
-        });
-        if (已存在) {
-            options.injects = 注入列表;
-            return false;
-        }
-        options.injects = 注入列表;
-        options.injects.push({
-            position: 'in_chat',
-            depth: 0,
-            role: 'system',
-            content: 文本,
-            should_scan: false,
-        });
-        return true;
-    }
-    function 追加正文数值参照运行时注入_ACU(options, userInput = '', statData = null) {
-        if (!options || typeof options !== 'object')
-            return false;
-        const 文本 = 构建正文数值参照临时注入_ACU(userInput, statData);
-        if (!文本)
-            return false;
-        const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
-        const 已存在 = 注入列表.some(item => String(item?.content || '').includes('【正文数值参照】'));
-        if (已存在) {
-            options.injects = 注入列表;
-            return false;
-        }
-        options.injects = 注入列表;
-        options.injects.push({
-            position: 'in_chat',
-            depth: 0,
-            role: 'system',
-            content: 文本,
-            should_scan: false,
-        });
-        return true;
-    }
-    function 追加正文时间线预览运行时注入_ACU(options, userInput = '', statData = null) {
-        if (!options || typeof options !== 'object')
-            return false;
-        const 文本 = 构建正文时间线预览临时注入_ACU(userInput, statData);
-        if (!文本)
-            return false;
-        const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
-        const 已存在 = 注入列表.some(item => String(item?.content || '').includes('【正文时间线预览】'));
-        if (已存在) {
-            options.injects = 注入列表;
-            return false;
-        }
-        options.injects = 注入列表;
-        options.injects.push({
-            position: 'in_chat',
-            depth: 0,
-            role: 'system',
-            content: 文本,
-            should_scan: false,
-        });
-        return true;
-    }
-    function 注册正文审查一次性注入_ACU(审查约束文本 = '') {
-        const 文本 = String(审查约束文本 || '').trim();
-        if (!文本)
-            return false;
-        const 助手 = window.TavernHelper || TavernHelper_API_ACU;
-        if (!助手 || typeof 助手.injectPrompts !== 'function')
-            return false;
-        const 注入编号 = `lwcs-正文审查-${hashUserInput_ACU(文本)}`;
         try {
-            助手.uninjectPrompts?.([注入编号]);
+            return 适配器.appendStoryRuntimeInjects(options, context) === true;
         }
-        catch (e) { }
-        助手.injectPrompts([{
-                id: 注入编号,
-                position: 'in_chat',
-                depth: 0,
-                role: 'system',
-                content: 文本,
-                should_scan: false,
-            }], { once: true });
-        return true;
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器追加正文注入失败:', 错误);
+            return false;
+        }
     }
-    function 注册正文数值参照一次性注入_ACU(userInput = '', statData = null) {
-        const 文本 = 构建正文数值参照临时注入_ACU(userInput, statData);
-        if (!文本)
+    function 注册正文运行时一次性注入_ACU(context = {}) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.registerStoryRuntimeInjects !== 'function')
             return false;
-        const 助手 = window.TavernHelper || TavernHelper_API_ACU;
-        if (!助手 || typeof 助手.injectPrompts !== 'function')
-            return false;
-        const 注入编号 = `lwcs-正文数值参照-${hashUserInput_ACU(文本)}`;
         try {
-            助手.uninjectPrompts?.([注入编号]);
+            return 适配器.registerStoryRuntimeInjects(context) === true;
         }
-        catch (e) { }
-        助手.injectPrompts([{
-                id: 注入编号,
-                position: 'in_chat',
-                depth: 0,
-                role: 'system',
-                content: 文本,
-                should_scan: false,
-            }], { once: true });
-        return true;
-    }
-    function 注册正文时间线预览一次性注入_ACU(userInput = '', statData = null) {
-        const 文本 = 构建正文时间线预览临时注入_ACU(userInput, statData);
-        if (!文本)
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器注册正文一次性注入失败:', 错误);
             return false;
-        const 助手 = window.TavernHelper || TavernHelper_API_ACU;
-        if (!助手 || typeof 助手.injectPrompts !== 'function')
-            return false;
-        const 注入编号 = `lwcs-正文时间线预览-${hashUserInput_ACU(文本)}`;
-        try {
-            助手.uninjectPrompts?.([注入编号]);
         }
-        catch (e) { }
-        助手.injectPrompts([{
-                id: 注入编号,
-                position: 'in_chat',
-                depth: 0,
-                role: 'system',
-                content: 文本,
-                should_scan: false,
-            }], { once: true });
-        return true;
-    }
-    function appendModuleRouteBlockIfMissing_ACU(finalMessage, moduleRouteBlock) {
-        const 正文 = String(finalMessage || '').trim();
-        const 路由块 = String(moduleRouteBlock || '').trim();
-        if (!正文 || !路由块 || /<模块路由>[\s\S]*?<\/模块路由>/i.test(正文))
-            return 正文;
-        return `${正文}\n${路由块}`;
-    }
-    function stripPlanningMachineBlocks_ACU(text) {
-        return String(text || '')
-            .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, '')
-            .trim();
     }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
         return buildPlotRawFallbackText_ACU(taskResults);
@@ -17418,12 +17032,15 @@ $CONTENT
             || '';
         rawFinal = await tryRenderPlotTemplateWithEjs_ACU(rawFinal);
         let plotFinalDirective = performReplacements(rawFinal);
-        plotFinalDirective = replaceMvuRuntimeViewPlaceholder_ACU(plotFinalDirective, 'plot', {
+        plotFinalDirective = 替换剧情推进运行时占位符_ACU(plotFinalDirective, 'plot', {
             userInput: userMessage || '',
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: lastPlotContent || '',
         });
-        plotFinalDirective = 注入剧情钩子时间线预览_ACU(plotFinalDirective, userMessage, null, [userMessage, contextInjectionText].filter(Boolean).join('\n'));
+        plotFinalDirective = 注入剧情推进运行时特殊占位符_ACU(plotFinalDirective, {
+            userInput: userMessage,
+            captureText: [userMessage, contextInjectionText].filter(Boolean).join('\n'),
+        });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
         // [P4] {[db...]}/{[sql...]} 值替换（SQLite 模式下）
@@ -17468,12 +17085,15 @@ $CONTENT
             c = await tryRenderPlotTemplateWithEjs_ACU(c);
             c = sharedContext.performReplacements(c, replacementOverrides);
             c = replacePlotTagPlaceholders_ACU(c, relayTagMap, historyTagMap);
-            c = replaceMvuRuntimeViewPlaceholder_ACU(c, 'plot', {
+            c = 替换剧情推进运行时占位符_ACU(c, 'plot', {
                 userInput: sharedContext.userMessage || "",
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
             });
-            c = 注入剧情钩子时间线预览_ACU(c, sharedContext.userMessage, null, [sharedContext.userMessage, sharedContext.lastPlotContent, replacementOverrides.$1].filter(Boolean).join('\n'));
+            c = 注入剧情推进运行时特殊占位符_ACU(c, {
+                userInput: sharedContext.userMessage,
+                captureText: [sharedContext.userMessage, sharedContext.lastPlotContent, replacementOverrides.$1].filter(Boolean).join('\n'),
+            });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
         }
@@ -17491,7 +17111,6 @@ $CONTENT
         const taskStage = normalizePositiveInteger_ACU$1(normalizedTask.stage, 1);
         const maxRetries = normalizePositiveInteger_ACU$1(normalizedTask.maxRetries, sharedContext?.plotSettings?.loopSettings?.maxRetries ?? DEFAULT_PLOT_SETTINGS_ACU.loopSettings?.maxRetries ?? 3);
         const minLength = normalizeNonNegativeInteger_ACU$1(normalizedTask.minLength, 0);
-        const taskStartTime = 读取性能时间_ACU();
         // 任务级世界书计算：基于当前任务实际使用的 {{tag}} 注入内容 + 本轮上下文触发，
         // 而不是固定使用整段上一轮剧情内容。
         // 标签来源与 renderPlotTaskMessages_ACU 一致：
@@ -17604,7 +17223,6 @@ $CONTENT
             else if (parseTagList_ACU(`${normalizedTask.extractTags || ''},${normalizedTask.extractInjectTags || ''}`).length > 0) {
                 logWarn_ACU(`[剧情推进] [阶段:${taskStage}] [任务:${taskLabel}] 未摘取到声明标签，请检查模型输出标签。`);
             }
-            记录性能耗时_ACU(`剧情推进任务:${taskLabel}`, taskStartTime);
             return {
                 taskId: normalizedTask.id,
                 taskName: taskLabel,
@@ -17743,16 +17361,12 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
-        const moduleRouteBlock = extractLastModuleRouteBlockFromTaskResults_ACU(successfulResults);
-        const planningDirective = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
-        const finalMessage = stripPlanningMachineBlocks_ACU(planningDirective);
-        const runtimePlotText = appendModuleRouteBlockIfMissing_ACU(planningDirective, moduleRouteBlock);
-        logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length, '，模块路由:', moduleRouteBlock ? '有' : '无');
+        const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
+        logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
         return {
             finalMessage,
-            runtimePlotText,
-            moduleRouteBlock,
+            runtimePlotText: finalMessage,
             successfulResults,
             failedResults,
             aggregatedTags,
@@ -17939,7 +17553,6 @@ $CONTENT
                 success: true,
                 finalMessage: runtimeResult.finalMessage,
                 runtimePlotText: runtimeResult.runtimePlotText || runtimeResult.finalMessage,
-                moduleRouteBlock: runtimeResult.moduleRouteBlock || '',
                 successCount: runtimeResult.successfulResults.length,
                 failCount: runtimeResult.failedResults.length,
                 enabledTaskCount: runtimeResult.enabledTaskCount,
@@ -18180,39 +17793,43 @@ $CONTENT
             if (Array.isArray(message?.content)) return message.content.map(part => part?.type === 'text' ? part.text || '' : '').join('\n');
             return '';
         }).join('\n');
-        const 需要MVU更新视图 = 提示词合并文本.includes(MVU_RUNTIME_UPDATE_PLACEHOLDER_ACU)
-            || 提示词合并文本.includes(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_ACU);
+        const 需要运行时提示词处理 = 剧情推进运行时适配器需要处理_ACU(提示词合并文本);
         const 本轮运行时捕获文本 = [用户输入文本, lastPlotContent, 最后角色消息文本].filter(Boolean).join('\n');
-        let 运行时视图StatData = 取MVU运行时StatData_ACU(null, 用户输入文本);
-        if (需要MVU更新视图) {
-            运行时视图StatData = await 准备MVU更新视图前置数据_ACU({
+        let 运行时数据 = null;
+        if (需要运行时提示词处理) {
+            运行时数据 = await 准备提示词运行时数据_ACU({
                 userInput: 用户输入文本,
                 最后角色消息文本,
                 角色消息元信息: 最新角色消息元信息,
                 捕获文本: 本轮运行时捕获文本,
                 plotText: lastPlotContent || '',
-                statData: 运行时视图StatData || undefined,
-            }) || 运行时视图StatData;
-            运行时视图StatData = 取MVU运行时StatData_ACU(运行时视图StatData, 用户输入文本);
+            }) || null;
         }
-        const mvuRuntimeViewType = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明/i.test(提示词合并文本) ? 'empty' : 'story';
+        const 运行时视图类型 = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明/i.test(提示词合并文本) ? 'empty' : 'story';
         const context = {
             seedContent: 最后角色消息文本 || '',
             allTablesJson: getTableDataForPrompt_ACU(),
             plotContent: lastPlotContent
         };
-        const replaceRuntimeViewOnly_ACU = (content) => replaceMvuRuntimeViewPlaceholder_ACU(content, mvuRuntimeViewType, {
-            statData: 运行时视图StatData,
-            userInput: 用户输入文本,
-            lastCharMessage: 最后角色消息文本 || '',
-            plotText: lastPlotContent || '',
-        });
+        const 替换提示词运行时内容_ACU = (content) => {
+            const 替换后内容 = 替换剧情推进运行时占位符_ACU(content, 运行时视图类型, {
+                statData: 运行时数据 || undefined,
+                userInput: 用户输入文本,
+                lastCharMessage: 最后角色消息文本 || '',
+                plotText: lastPlotContent || '',
+            });
+            return 注入剧情推进运行时特殊占位符_ACU(替换后内容, {
+                userInput: 用户输入文本,
+                statData: 运行时数据 || undefined,
+                captureText: 本轮运行时捕获文本,
+            });
+        };
         if (!settings_ACU?.promptTemplateSettings?.enabled) {
             let runtimeViewCount = 0;
             for (const message of data.messages) {
                 if (typeof message.content === 'string') {
                     const originalContent = message.content;
-                    message.content = replaceRuntimeViewOnly_ACU(message.content);
+                    message.content = 替换提示词运行时内容_ACU(message.content);
                     if (message.content !== originalContent)
                         runtimeViewCount++;
                 }
@@ -18220,23 +17837,23 @@ $CONTENT
                     for (const part of message.content) {
                         if (part.type === 'text' && part.text) {
                             const originalText = part.text;
-                            part.text = replaceRuntimeViewOnly_ACU(part.text);
+                            part.text = 替换提示词运行时内容_ACU(part.text);
                             if (part.text !== originalText)
                                 runtimeViewCount++;
                         }
                     }
                 }
             }
-            if (需要MVU更新视图) {
-                尝试触发冷归档自动归档_ACU({
+            if (需要运行时提示词处理) {
+                通知剧情推进运行时提示词处理完成_ACU({
                     userInput: 用户输入文本,
                     最后角色消息文本,
                     捕获文本: 本轮运行时捕获文本,
-                    statData: 运行时视图StatData,
+                    statData: 运行时数据,
                 });
             }
             const endTime = Date.now();
-            logDebug_ACU(`[MVU运行时视图] 提示词模板关闭，仅替换运行时视图 ${runtimeViewCount} 个消息块，耗时 ${endTime - startTime}ms`);
+            logDebug_ACU(`[剧情推进运行时] 提示词模板关闭，仅替换运行时内容 ${runtimeViewCount} 个消息块，耗时 ${endTime - startTime}ms`);
             return;
         }
         const processPromptTemplateContent_ACU = async (content) => {
@@ -18256,7 +17873,7 @@ $CONTENT
             // [P4] {[db...]}/{[sql...]} 值替换（SQLite 模式下，在 <if> 之前执行）
             processedContent = replaceDbSqlVariables(processedContent);
             processedContent = parseIfBlockRecursive_ACU(processedContent, context, 0);
-            processedContent = replaceRuntimeViewOnly_ACU(processedContent);
+            processedContent = 替换提示词运行时内容_ACU(processedContent);
             return processedContent;
         };
         let processedCount = 0;
@@ -18278,12 +17895,12 @@ $CONTENT
                 }
             }
         }
-        if (需要MVU更新视图) {
-            尝试触发冷归档自动归档_ACU({
+        if (需要运行时提示词处理) {
+            通知剧情推进运行时提示词处理完成_ACU({
                 userInput: 用户输入文本,
                 最后角色消息文本,
                 捕获文本: 本轮运行时捕获文本,
-                statData: 运行时视图StatData,
+                statData: 运行时数据,
             });
         }
         const endTime = Date.now();
@@ -27111,47 +26728,6 @@ $CONTENT
         delete cloned.contextExcludeTags;
         return cloned;
     }
-    function inspectPlotPreset_ACU(preset) {
-        const normalized = normalizePlotPresetExcludeRules_ACU(preset);
-        const issues = [];
-        if (!normalized || typeof normalized !== 'object') {
-            return { ok: false, issues: ['预设结构无效。'], referencedTags: [], extractedTags: [] };
-        }
-        const tasks = Array.isArray(normalized.plotTasks) ? normalized.plotTasks : [];
-        const enabledTasks = tasks.filter(task => task && task.enabled !== false);
-        if (enabledTasks.length === 0)
-            issues.push('至少需要一个启用任务。');
-        const extractedTags = new Set();
-        enabledTasks.forEach((task) => {
-            const taskName = String(task?.name || task?.id || '未命名任务');
-            if (!Array.isArray(task?.promptGroup) || !task.promptGroup.some(segment => String(segment?.content || '').trim())) {
-                issues.push(`任务「${taskName}」缺少有效提示词段。`);
-            }
-            parseTagList_ACU(task?.extractTags || '').forEach(tagName => extractedTags.add(tagName));
-            parseTagList_ACU(task?.extractInjectTags || '').forEach(tagName => extractedTags.add(tagName));
-        });
-        const referencedTags = getPlotPlaceholderTagNames_ACU(normalized.finalSystemDirective || '');
-        const missingTags = referencedTags.filter(tagName => !extractedTags.has(tagName));
-        if (missingTags.length > 0)
-            issues.push(`最终注入引用了未由任务抽取的标签：${missingTags.join('、')}。`);
-        return {
-            ok: issues.length === 0,
-            issues,
-            referencedTags,
-            extractedTags: Array.from(extractedTags),
-        };
-    }
-    function logPlotPresetInspection_ACU(preset, source = 'preset') {
-        const result = inspectPlotPreset_ACU(preset);
-        const presetName = String(preset?.name || '未命名预设');
-        if (result.issues.length > 0) {
-            logWarn_ACU(`[剧情推进] 预设自检(${source})「${presetName}」: ${result.issues.join('；')}`);
-        }
-        else {
-            logDebug_ACU(`[剧情推进] 预设自检(${source})「${presetName}」通过，引用标签: ${result.referencedTags.join(', ') || '无'}`);
-        }
-        return result;
-    }
     function stripPlotPresetWorldbookEntrySelectionForExport_ACU(preset) {
         const normalizedPreset = normalizePlotPresetExcludeRules_ACU(preset);
         if (!normalizedPreset || typeof normalizedPreset !== 'object')
@@ -27205,18 +26781,27 @@ $CONTENT
             item.content = content ?? '';
     }
     // ═══ 拦截标记 ═══
-    let lastPlotInterception_ACU = { text: '', ts: 0 };
+    let 剧情推进拦截记录_ACU = [];
     function markPlotIntercept_ACU(text) {
-        lastPlotInterception_ACU = { text: String(text || ''), ts: Date.now() };
+        const 文本 = String(text || '').trim();
+        if (!文本)
+            return;
+        const 当前时间 = Date.now();
+        剧情推进拦截记录_ACU = 剧情推进拦截记录_ACU
+            .filter(记录 => 当前时间 - Number(记录?.ts || 0) <= 5000 && String(记录?.text || '').trim())
+            .slice(-8);
+        剧情推进拦截记录_ACU.push({ text: 文本, ts: 当前时间 });
     }
     function shouldSkipPlotIntercept_ACU(text, windowMs = 5000) {
         const t = String(text || '');
         if (!t)
             return false;
-        const age = Date.now() - (lastPlotInterception_ACU?.ts || 0);
-        if (age < 0 || age > windowMs)
-            return false;
-        return t === String(lastPlotInterception_ACU?.text || '');
+        const 当前时间 = Date.now();
+        剧情推进拦截记录_ACU = 剧情推进拦截记录_ACU.filter(记录 => {
+            const age = 当前时间 - Number(记录?.ts || 0);
+            return age >= 0 && age <= windowMs;
+        });
+        return 剧情推进拦截记录_ACU.some(记录 => t === String(记录?.text || ''));
     }
     // ═══ 预设持久化（纯数据操作） ═══
     function queueSaveCurrentChatPlotScope_ACU(source = 'ui_plot_scope') {
@@ -33816,14 +33401,7 @@ $CONTENT
                 dynamicContent.tableDataText += `${UNIFIED_GROUP_ERROR_MARKER_ACU}[统一提交失败，请修正后重新输出]\n错误信息: ${feedback.lastUnifiedError}`;
             }
             try {
-                const 填表API开始时间 = 读取性能时间_ACU();
-                let aiResponse = '';
-                try {
-                    aiResponse = await callCustomOpenAI_ACU(dynamicContent, abortController, job.requestOptions);
-                }
-                finally {
-                    记录性能耗时_ACU('数据库更新:单组填表API', 填表API开始时间, `attempt=${attempt} tables=${Array.isArray(job.targetSheetKeys) ? job.targetSheetKeys.length : 0}`);
-                }
+                const aiResponse = await callCustomOpenAI_ACU(dynamicContent, abortController, job.requestOptions);
                 if (abortController.signal.aborted || wasStoppedByUser_ACU$1) {
                     return { job, success: false, attempt, aborted: true };
                 }
@@ -35243,10 +34821,8 @@ $CONTENT
     let autoUpdateTriggerInFlight_ACU = false;
     async function triggerAutomaticUpdateIfNeeded_ACU() {
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
-        const 数据库更新开始时间 = 读取性能时间_ACU();
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
-            记录性能耗时_ACU('数据库更新:自动填表总计', 数据库更新开始时间, 'skipped=in_flight');
             return;
         }
         autoUpdateTriggerInFlight_ACU = true;
@@ -35357,7 +34933,6 @@ $CONTENT
         }
         finally {
             autoUpdateTriggerInFlight_ACU = false;
-            记录性能耗时_ACU('数据库更新:自动填表总计', 数据库更新开始时间);
         }
     }
     function collectManualExtraHint_ACU() {
@@ -52259,6 +51834,11 @@ $CONTENT
         if (options?._qrf_processed_by_hook || options?._qrf_processed_by_after_commands) {
             return false;
         }
+        const hookMessage = extractUserMessageFromOptions_ACU(options);
+        if (shouldSkipPlotIntercept_ACU(hookMessage)) {
+            logDebug_ACU('[剧情推进] Skip TavernHelper.generate due to recent plot interception.');
+            return false;
+        }
         return true;
     }
     /**
@@ -52277,421 +51857,34 @@ $CONTENT
             params._qrf_processed_by_after_commands = true;
         }
     }
-    function extractModuleSettlementContextFromOptions_ACU(options) {
-        const injects = Array.isArray(options?.injects) ? options.injects : [];
-        const matched = [...injects].reverse().find((item) => {
-            const role = String(item?.role || '').trim().toLowerCase();
-            const content = String(item?.content || '');
-            return role === 'system' && (content.includes('<moduleSettlement>') || content.includes('[battle_arbitration]'));
-        });
-        return matched ? String(matched.content || '').trim() : '';
-    }
-    function buildPlanningRuntimeSystemMessagesFromSettlement_ACU(moduleSettlementContext = '') {
-        const content = String(moduleSettlementContext || '').trim();
-        return content ? [{ role: 'system', content }] : [];
-    }
-    function normalizeModuleIntentName_ACU(value) {
-        const text = String(value || '').trim().toLowerCase();
-        if (/^(none|no_match|not_matched|未命中|无|none_module)$/.test(text))
-            return 'none';
-        if (/ascension|升灵台/.test(text))
-            return 'trial_entry_ascension';
-        if (/tower|魂灵塔|冲塔/.test(text))
-            return 'trial_entry_tower';
-        if (/trial|试炼/.test(text))
-            return 'trial_entry';
-        if (/battle|combat|战斗|切磋|单挑/.test(text))
-            return 'battle';
-        if (/trade|交易|购买|出售|竞拍|拍卖/.test(text))
-            return 'trade';
-        if (/profession|craft|job|副职业|工坊|锻造|制造|设计|修理|维修/.test(text))
-            return 'profession';
-        if (/teaching|teach|传授|授课|教学|指点/.test(text))
-            return 'teaching';
-        if (/travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(text))
-            return 'travel';
-        if (/routine|daily|日常|修炼|冥想|拟态/.test(text))
-            return 'routine';
-        return 'none';
-    }
-    function 解析模块路由字段值_ACU(字段表, 字段名列表, 默认值 = '') {
-        for (const 字段名 of 字段名列表) {
-            if (Object.prototype.hasOwnProperty.call(字段表, 字段名)) {
-                return String(字段表[字段名] ?? '').trim();
-            }
-        }
-        return 默认值;
-    }
-    function 解析模块路由字段列表_ACU(字段表, 字段名列表) {
-        const 原始值 = 解析模块路由字段值_ACU(字段表, 字段名列表, '');
-        if (!原始值)
+    function 构建剧情推进运行时系统消息_ACU(options) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.buildPlanningRuntimeSystemMessages !== 'function')
             return [];
-        return 原始值
-            .split(/[、,，\/|；;]+/)
-            .map(条目 => String(条目 || '').trim())
-            .filter(Boolean);
-    }
-    function 解析模块路由字段布尔_ACU(字段表, 字段名列表, 默认值 = false) {
-        const 原始值 = 解析模块路由字段值_ACU(字段表, 字段名列表, '');
-        if (!原始值)
-            return 默认值;
-        if (/^(true|yes|y|是|允许|可以|可|启用|开启)$/i.test(原始值))
-            return true;
-        if (/^(false|no|n|否|不|不允许|不可|禁用|关闭)$/i.test(原始值))
-            return false;
-        return 默认值;
-    }
-    function 解析模块路由字段数字_ACU(字段表, 字段名列表, 默认值 = 0) {
-        const 原始值 = 解析模块路由字段值_ACU(字段表, 字段名列表, '');
-        const 数值 = Number(String(原始值 || '').match(/-?\d+(?:\.\d+)?/)?.[0]);
-        return Number.isFinite(数值) ? 数值 : 默认值;
-    }
-    function 规范化模块路由执行者类型_ACU(value) {
-        const 文本 = String(value || '').trim().toLowerCase();
-        if (/private|npc|代工|委托|角色|他人/.test(文本))
-            return 'private';
-        if (/official|协会|官方|工坊|机构/.test(文本))
-            return 'official';
-        return 'self';
-    }
-    function 解析字段行模块路由_ACU(text) {
-        const 字段表 = {};
-        String(text || '')
-            .split(/\r?\n/)
-            .forEach(行 => {
-                const 匹配 = String(行 || '').match(/^\s*([^:：]+)\s*[:：]\s*([\s\S]*?)\s*$/);
-                if (!匹配)
-                    return;
-                const 字段名 = 匹配[1].trim();
-                if (!字段名)
-                    return;
-                字段表[字段名] = 匹配[2].trim();
-            });
-        const 模块名 = normalizeModuleIntentName_ACU(解析模块路由字段值_ACU(字段表, ['模块', 'module', '类型'], ''));
-        if (模块名 === 'none') {
-            return { module: 'none', confidence: 0, request: { 理由: 解析模块路由字段值_ACU(字段表, ['理由'], '未命中特殊模块') }, auto_execute: false };
+        try {
+            const 结果 = 适配器.buildPlanningRuntimeSystemMessages(options || {});
+            return Array.isArray(结果) ? 结果 : [];
         }
-        if (模块名 === 'battle') {
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    地点: 解析模块路由字段值_ACU(字段表, ['地点', '目标地点', '位置'], ''),
-                    战斗类型: 解析模块路由字段值_ACU(字段表, ['战斗类型', '类型'], '切磋'),
-                    敌方: 解析模块路由字段列表_ACU(字段表, ['敌方', '对手', '敌人']),
-                    友方: 解析模块路由字段列表_ACU(字段表, ['友方', '队友', '己方']),
-                    允许撤离: 解析模块路由字段布尔_ACU(字段表, ['允许撤离', '可撤离'], true),
-                },
-                auto_execute: false,
-            };
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器构建临时系统消息失败:', 错误);
+            return [];
         }
-        if (模块名 === 'trade') {
-            const 动作 = 解析模块路由字段值_ACU(字段表, ['动作'], '交易');
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    动作,
-                    地点: 解析模块路由字段值_ACU(字段表, ['地点', '目标地点'], ''),
-                    对象: /购买|出售|竞拍|拍卖/.test(动作) ? '' : 解析模块路由字段值_ACU(字段表, ['对象', '交易对象'], ''),
-                    物品: 解析模块路由字段值_ACU(字段表, ['物品', '目标物品', '目标'], ''),
-                    数量: Math.max(1, Math.floor(解析模块路由字段数字_ACU(字段表, ['数量'], 1))),
-                },
-                auto_execute: false,
-            };
-        }
-        if (模块名 === 'profession') {
-            const 执行者类型 = 规范化模块路由执行者类型_ACU(解析模块路由字段值_ACU(字段表, ['执行者', '执行者类型'], 'self'));
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    动作: 解析模块路由字段值_ACU(字段表, ['动作'], '锻造'),
-                    地点: 解析模块路由字段值_ACU(字段表, ['地点', '目标地点'], ''),
-                    执行者类型,
-                    对象: 执行者类型 === 'private' ? 解析模块路由字段值_ACU(字段表, ['对象', '代工角色'], '') : '',
-                    目标: 解析模块路由字段值_ACU(字段表, ['目标', '产物', '物品'], ''),
-                    材料: 解析模块路由字段列表_ACU(字段表, ['材料']),
-                    数量: Math.max(1, Math.floor(解析模块路由字段数字_ACU(字段表, ['数量'], 1))),
-                    阶级: Math.max(1, Math.floor(解析模块路由字段数字_ACU(字段表, ['阶级', '等级'], 1))),
-                    子类型: 解析模块路由字段值_ACU(字段表, ['子类型', '类型'], ''),
-                },
-                auto_execute: false,
-            };
-        }
-        if (模块名 === 'teaching') {
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    动作: 解析模块路由字段值_ACU(字段表, ['动作'], '请教'),
-                    老师: 解析模块路由字段值_ACU(字段表, ['老师', '传授方'], ''),
-                    学生: 解析模块路由字段值_ACU(字段表, ['学生', '接受方'], ''),
-                    内容类型: 解析模块路由字段值_ACU(字段表, ['内容类型', '类型'], '情报'),
-                    内容名称: 解析模块路由字段值_ACU(字段表, ['内容名称', '名称', '内容'], ''),
-                    结果: 解析模块路由字段值_ACU(字段表, ['结果'], '成立'),
-                    理由: 解析模块路由字段值_ACU(字段表, ['理由'], ''),
-                },
-                auto_execute: false,
-            };
-        }
-        if (模块名 === 'routine') {
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    动作: 解析模块路由字段值_ACU(字段表, ['动作'], '地点拟态修炼'),
-                    启用: 解析模块路由字段布尔_ACU(字段表, ['启用'], false),
-                    理由: 解析模块路由字段值_ACU(字段表, ['理由'], ''),
-                    地点: 解析模块路由字段值_ACU(字段表, ['地点'], ''),
-                },
-                auto_execute: false,
-            };
-        }
-        if (模块名 === 'travel') {
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    角色: 解析模块路由字段值_ACU(字段表, ['角色', '人物'], ''),
-                    目标地点: 解析模块路由字段值_ACU(字段表, ['目标地点', '地点'], ''),
-                    归属父节点: 解析模块路由字段值_ACU(字段表, ['归属父节点', '父节点'], ''),
-                    节点类型: 解析模块路由字段值_ACU(字段表, ['节点类型'], '地点'),
-                    描述: 解析模块路由字段值_ACU(字段表, ['描述'], ''),
-                    方位: 解析模块路由字段值_ACU(字段表, ['方位'], ''),
-                    移动方式: 解析模块路由字段值_ACU(字段表, ['移动方式'], '步行'),
-                    耗时tick: 解析模块路由字段数字_ACU(字段表, ['耗时tick', '耗时'], 1),
-                },
-                auto_execute: false,
-            };
-        }
-        if (模块名 === 'trial_entry' || 模块名 === 'trial_entry_ascension' || 模块名 === 'trial_entry_tower') {
-            const 试炼类型 = 解析模块路由字段值_ACU(字段表, ['试炼类型', '类型'], 模块名 === 'trial_entry_tower' ? '魂灵塔' : 模块名 === 'trial_entry_ascension' ? '升灵台' : '');
-            return {
-                module: 模块名,
-                confidence: 1,
-                request: {
-                    试炼类型,
-                    动作: 解析模块路由字段值_ACU(字段表, ['动作'], 'entry'),
-                    层数: Math.max(1, Math.floor(解析模块路由字段数字_ACU(字段表, ['层数'], 1))),
-                },
-                auto_execute: false,
-            };
-        }
-        return null;
-    }
-    function extractModuleIntentFromText_ACU(text) {
-        const source = String(text || '');
-        const 匹配列表 = [...source.matchAll(/<模块路由>\s*([\s\S]*?)\s*<\/模块路由>/gi)];
-        const 最后匹配 = 匹配列表[匹配列表.length - 1];
-        return 最后匹配 ? 解析字段行模块路由_ACU(最后匹配[1]) : null;
-    }
-    function stripModuleRouteBlocks_ACU(text) {
-        return String(text || '')
-            .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, '')
-            .trim();
-    }
-    function stripModuleIntentBlocks_ACU(text) {
-        return String(text || '')
-            .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, '')
-            .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, '')
-            .trim();
     }
     function sanitizePlanningVisibleOutput_ACU(text) {
         return String(text || '').trim();
     }
-    const 可路由模块名单_ACU = Object.freeze([
-        'battle',
-        'trade',
-        'profession',
-        'teaching',
-        'travel',
-        'routine',
-        'trial_entry',
-        'trial_entry_ascension',
-        'trial_entry_tower',
-    ]);
-    function 获取模块展示名_ACU(moduleName) {
-        const 模块名 = String(moduleName || '').trim().toLowerCase();
-        if (模块名 === 'battle') return '战斗';
-        if (模块名 === 'trade') return '交易';
-        if (模块名 === 'profession') return '副职业';
-        if (模块名 === 'teaching') return '传授';
-        if (模块名 === 'travel') return '移动';
-        if (模块名 === 'routine') return '日常';
-        if (模块名 === 'trial_entry_ascension') return '升灵台试炼';
-        if (模块名 === 'trial_entry_tower') return '魂灵塔试炼';
-        return '试炼';
-    }
-    function 获取模块路由选项_ACU(moduleName) {
-        const 模块名 = String(moduleName || '').trim().toLowerCase();
-        if (模块名 === 'trade' || 模块名 === 'profession')
-            return { source: 'database_intent_pass', dispatchMode: 'inline', autoExecute: true };
-        if (模块名 === 'routine' || 模块名 === 'teaching')
-            return { source: 'database_intent_pass', dispatchMode: 'patch', continueAfterRoute: true };
-        return { source: 'database_intent_pass' };
-    }
-    function 构建战斗模块路由请求_ACU(request = {}) {
-        const 敌方列表 = Array.isArray(request.敌方) ? request.敌方 : [];
-        const 友方列表 = Array.isArray(request.友方) ? request.友方 : [];
-        return {
-            targetLocation: String(request.地点 || '').trim(),
-            location: String(request.地点 || '').trim(),
-            战斗类型: String(request.战斗类型 || '切磋').trim(),
-            允许撤离: request.允许撤离 !== false,
-            参战者: {
-                team_player: 友方列表.map(name => ({ name })),
-                team_enemy: 敌方列表.map(name => ({ name })),
-            },
-        };
-    }
-    function 构建交易模块路由请求_ACU(request = {}) {
-        const 动作 = String(request.动作 || '交易').trim();
-        return {
-            动作,
-            目标地点: String(request.地点 || '').trim(),
-            目标: String(request.地点 || '').trim(),
-            对象: /购买|出售|竞拍|拍卖/.test(动作) ? '' : String(request.对象 || '').trim(),
-            物品: String(request.物品 || '').trim(),
-            数量: Math.max(1, Math.floor(Number(request.数量) || 1)),
-        };
-    }
-    function 构建副职业模块路由请求_ACU(request = {}) {
-        const 执行者类型 = 规范化模块路由执行者类型_ACU(request.执行者类型);
-        return {
-            动作: String(request.动作 || '锻造').trim(),
-            目标地点: String(request.地点 || '').trim(),
-            地点: String(request.地点 || '').trim(),
-            执行者类型,
-            对象: 执行者类型 === 'private' ? String(request.对象 || '').trim() : '',
-            目标: String(request.目标 || '').trim(),
-            材料: Array.isArray(request.材料) ? request.材料 : [],
-            数量: Math.max(1, Math.floor(Number(request.数量) || 1)),
-            阶级: Math.max(1, Math.floor(Number(request.阶级) || 1)),
-            子类型: String(request.子类型 || '').trim(),
-        };
-    }
-    function 构建模块路由请求_ACU(moduleName, request = {}) {
-        if (moduleName === 'battle')
-            return 构建战斗模块路由请求_ACU(request);
-        if (moduleName === 'trade')
-            return 构建交易模块路由请求_ACU(request);
-        if (moduleName === 'profession')
-            return 构建副职业模块路由请求_ACU(request);
-        if (moduleName === 'trial_entry_ascension')
-            return { ...request, action: request.action || request.动作 || 'ascension', 试炼类型: request.试炼类型 || '升灵台', trialType: 'ascension' };
-        if (moduleName === 'trial_entry_tower')
-            return { ...request, action: request.action || request.动作 || 'tower', 试炼类型: request.试炼类型 || '魂灵塔', trialType: 'tower' };
-        if (moduleName === 'trial_entry')
-            return { ...request, action: request.action || request.动作 || 'entry' };
-        return { ...request };
-    }
-    function buildModuleIntentRouterPayload_ACU(intent) {
-        const request = intent?.request && typeof intent.request === 'object' ? intent.request : {};
-        const moduleName = String(intent?.module || 'none').trim().toLowerCase();
-        const normalizedRequest = 构建模块路由请求_ACU(moduleName, request);
-        return {
-            ...normalizedRequest,
-            module: intent?.module || 'none',
-            kind: intent?.module || 'none',
-            auto_execute: intent?.auto_execute === true,
-            source: normalizedRequest.source || 'database_planning',
-        };
-    }
-    async function processModuleIntentFromPlanning_ACU(intent) {
-        if (!intent || typeof intent !== 'object')
-            return { action: 'none', intent: null, reason: 'intent_pass_invalid' };
-        if (intent.module === 'none')
-            return { action: 'none', intent };
-        if (!可路由模块名单_ACU.includes(intent.module) || intent.confidence < 0.45) {
-            logWarn_ACU('[剧情推进] 模块意图结构非法，本轮按普通正文流程继续。', intent);
-            return { action: 'none', intent, reason: 'intent_invalid' };
-        }
-        return {
-            action: 'switch_body',
-            intent,
-            payload: buildModuleIntentRouterPayload_ACU(intent),
-            routeOptions: 获取模块路由选项_ACU(intent.module),
-            reason: `${intent.module}_pending_switch`,
-        };
-    }
-    async function finalizeModuleSwitchAfterPlanning_ACU(模块决策) {
-        if (!模块决策 || 模块决策.action !== 'switch_body')
-            return { action: 'continue', moduleDecision: 模块决策 };
-        const 模块名 = String(模块决策.intent?.module || 'none').trim().toLowerCase();
-        const 模块展示名 = 获取模块展示名_ACU(模块名);
-        const router = window.__MVU_ROUTE_MODULE_INTENT__;
-        if (typeof router !== 'function') {
-            const 路由结果 = { handled: false, kind: 模块名, request: 模块决策.payload || null, reason: 'router_unavailable' };
-            if (模块名 === 'battle') {
-                showToastr_ACU('error', 'MVU模块路由未就绪，正文生成已中止。');
-                return { action: 'failed', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: 'router_unavailable' };
-            }
-            logWarn_ACU(`[剧情推进] ${模块展示名}模块路由未就绪，正文按剧情意图继续。`);
-            return { action: 'continue', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: `${模块名}_router_unavailable_continue` };
-        }
-        let 路由结果 = null;
+    async function 确认剧情推进运行时生成前置_ACU(规划文本) {
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (!适配器 || typeof 适配器.confirmBeforeStoryGeneration !== 'function')
+            return { action: 'continue' };
         try {
-            const 原始路由结果 = await router(模块决策.payload, 模块决策.routeOptions);
-            路由结果 = 原始路由结果 && typeof 原始路由结果 === 'object'
-                ? 原始路由结果
-                : { handled: false, kind: 模块名, request: 模块决策.payload || null, reason: 'route_result_invalid' };
+            const 结果 = await Promise.resolve(适配器.confirmBeforeStoryGeneration({ planningText: String(规划文本 || '') }));
+            return 结果 && typeof 结果 === 'object' ? 结果 : { action: 'continue' };
         }
-        catch (error) {
-            路由结果 = { handled: false, kind: 模块名, request: 模块决策.payload || null, reason: error && error.message ? error.message : 'route_exception' };
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 运行时适配器正文生成前确认失败:', 错误);
+            return { action: 'continue', reason: 'runtime_confirm_failed' };
         }
-        const 应继续正文 = 路由结果?.handled && (模块决策.routeOptions?.continueAfterRoute === true || 路由结果.dispatchMode === 'settled_summary');
-        if (应继续正文)
-            return { action: 'continue', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: `${模块名}_routed_continue` };
-        if (模块名 === 'battle') {
-            if (路由结果?.handled) {
-                showToastr_ACU('info', `${模块展示名}模块已接管，本轮正文生成已中止。`);
-                return { action: 'switched', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: `${模块名}_routed` };
-            }
-            showToastr_ACU('error', `${模块展示名}模块接管失败，已中止本轮正文生成。`);
-            return { action: 'failed', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: `${模块名}_route_failed` };
-        }
-        if (!路由结果?.handled)
-            logWarn_ACU(`[剧情推进] ${模块展示名}模块结算未完成，正文按剧情意图继续。`, 路由结果);
-        return { action: 'continue', moduleDecision: { ...模块决策, routeResult: 路由结果 }, routeResult: 路由结果, reason: 路由结果?.handled ? `${模块名}_routed_continue` : `${模块名}_route_failed_continue` };
-    }
-    async function resolveModuleDecisionFromPlanningText_ACU(planningText, { moduleSettlementContext = '' } = {}) {
-        if (String(moduleSettlementContext || '').trim())
-            return { action: 'none', intent: null, reason: 'module_settlement_context_present' };
-        return await processModuleIntentFromPlanning_ACU(extractModuleIntentFromText_ACU(planningText));
-    }
-    function detectSkillGainFromPlanningText_ACU(规划文本) {
-        const 文本 = String(规划文本 || '').trim();
-        if (!文本 || /<module_intent\b/i.test(文本))
-            return null;
-        const 获得技能模式 = /(获得|领悟|习得|学会|掌握|觉醒|创出|自创|解锁|凝聚|生成|衍生|得到|参悟出).{0,24}(魂技|技能|绝学|功法|秘技|血脉技|融合技|被动)/;
-        const 技能名词模式 = /(新魂技|新技能|自创魂技|魂环技能|血脉技能|功法绝学|武魂融合技)/;
-        if (!获得技能模式.test(文本) && !技能名词模式.test(文本))
-            return null;
-        const 名称匹配 = 文本.match(/[【「《]([^】」》]{2,24})(?:】|」|》)/);
-        return {
-            label: 名称匹配 ? 名称匹配[1] : '剧情新技能',
-            sourceLabel: '剧情获得技能',
-        };
-    }
-    async function confirmSkillDesignBeforeGeneration_ACU(规划文本) {
-        const 检测结果 = detectSkillGainFromPlanningText_ACU(规划文本);
-        if (!检测结果)
-            return { action: 'continue' };
-        const 打开技能设计 = window.__LWCS_PROMPT_SKILL_DESIGN__;
-        if (typeof 打开技能设计 !== 'function')
-            return { action: 'continue', reason: 'skill_design_bridge_unavailable' };
-        const 需要自行设计 = typeof window.confirm === 'function'
-            ? window.confirm(`本轮剧情预计会获得【${检测结果.label}】。是否自行设计？`)
-            : false;
-        if (!需要自行设计)
-            return { action: 'continue' };
-        const 结果 = await 打开技能设计(检测结果);
-        if (结果 && 结果.ok) {
-            showToastr_ACU('info', '已打开技能设计台，本轮正文生成已暂停。');
-            return { action: 'blocked', reason: 'skill_design_requested' };
-        }
-        return { action: 'continue', reason: 'skill_design_open_failed' };
     }
     /**
      * 处理规划结果并决定如何写回 TavernHelper.generate 的 options
@@ -52699,21 +51892,26 @@ $CONTENT
      */
     async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '') {
         const 正文生成指导 = String(finalMessage || '').trim();
-        const 运行时StatData = await 准备正文生成运行时StatData_ACU(userMessage || 正文生成指导, runtimePlotText || 正文生成指导, 正文生成指导);
-        const 替换后正文生成指导 = replaceMvuRuntimeViewPlaceholder_ACU(正文生成指导, 'story', {
-            statData: 运行时StatData || undefined,
+        const 运行时数据 = await 准备正文生成运行时数据_ACU(userMessage || 正文生成指导, runtimePlotText || 正文生成指导, 正文生成指导);
+        const 替换运行时占位符后正文生成指导 = 替换剧情推进运行时占位符_ACU(正文生成指导, 'story', {
+            statData: 运行时数据 || undefined,
             userInput: userMessage || 正文生成指导,
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: runtimePlotText || 正文生成指导,
         });
+        const 替换后正文生成指导 = 注入剧情推进运行时特殊占位符_ACU(替换运行时占位符后正文生成指导, {
+            statData: 运行时数据 || undefined,
+            userInput: userMessage || 正文生成指导,
+            captureText: [userMessage, runtimePlotText, 正文生成指导].filter(Boolean).join('\n'),
+        });
         if (options.injects?.[0]?.content) {
-            return { target: 'injects', value: 替换后正文生成指导, statData: 运行时StatData || null };
+            return { target: 'injects', value: 替换后正文生成指导, statData: 运行时数据 || null };
         }
         else if (options.prompt) {
-            return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时StatData || null };
+            return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时数据 || null };
         }
         else {
-            return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时StatData || null };
+            return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时数据 || null };
         }
     }
     /**
@@ -52763,20 +51961,17 @@ $CONTENT
         if (!userMessage) {
             return { action: 'passthrough' };
         }
-        const moduleSettlementContext = extractModuleSettlementContextFromOptions_ACU(options);
-        const runtimeSystemMessages = buildPlanningRuntimeSystemMessagesFromSettlement_ACU(moduleSettlementContext);
+        const runtimeSystemMessages = 构建剧情推进运行时系统消息_ACU(options);
         // 3. 标记拦截（供 GENERATION_AFTER_COMMANDS 去重）
         markPlotIntercept_ACU(userMessage);
         // 4. 调用规划
         _set_isProcessing_Plot_ACU(true);
         try {
-            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(userMessage, {
                 originalUserInput: userMessage,
                 hasExistingUserMessage: false,
                 systemMessages: runtimeSystemMessages,
             });
-            记录性能耗时_ACU('剧情推进API:TavernHelper.generate', 剧情推进开始时间);
             // 5. 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in TavernHelper.generate hook (duplicate).');
@@ -52800,26 +51995,16 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                缓存规划剧情审查结果_ACU(完整规划文本);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
-                const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
-                if (moduleSwitchResult.action === 'switched') {
-                    await persistUserMessageWithoutGeneration_ACU(userMessage);
-                    return { action: 'module_switched', moduleDecision: moduleSwitchResult.moduleDecision, routeResult: moduleSwitchResult.routeResult, userMessage };
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                if (运行时生成决定.action === 'blocked') {
+                    return { action: 'blocked', reason: 运行时生成决定.reason || 'runtime_generation_blocked', userMessage };
                 }
-                if (moduleSwitchResult.action === 'failed') {
-                    await persistUserMessageWithoutGeneration_ACU(userMessage);
-                    return { action: 'module_switch_failed', moduleDecision: moduleSwitchResult.moduleDecision, routeResult: moduleSwitchResult.routeResult, userMessage };
-                }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
-                if (技能设计决定.action === 'blocked') {
-                    return { action: 'blocked', reason: 技能设计决定.reason || 'skill_design_requested', userMessage };
-                }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const writeBack = await applyPlanningResultToOptions_ACU(options, finalMessageForGeneration, userMessage, 完整规划文本);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: 完整规划文本, writeBack, moduleDecision, userMessage };
+                markPlotIntercept_ACU(userMessage);
+                markPlotIntercept_ACU(finalMessageForGeneration);
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, writeBack, userMessage };
             }
             // 9. 规划返回 null（未启用/失败），透传
             return { action: 'passthrough' };
@@ -52848,8 +52033,7 @@ $CONTENT
             return { action: 'no_match' };
         }
         const { messageToProcess, originalInputHash } = context;
-        const moduleSettlementContext = extractModuleSettlementContextFromOptions_ACU(requestOptions);
-        const runtimeSystemMessages = buildPlanningRuntimeSystemMessagesFromSettlement_ACU(moduleSettlementContext);
+        const runtimeSystemMessages = 构建剧情推进运行时系统消息_ACU(requestOptions);
         // 2. 标记循环模式
         const isLoopTriggered = loopState_ACU.isLooping && loopState_ACU.awaitingReply;
         if (isLoopTriggered) {
@@ -52859,13 +52043,11 @@ $CONTENT
         // 3. 调用规划
         _set_isProcessing_Plot_ACU(true);
         try {
-            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(messageToProcess, {
                 originalUserInput: messageToProcess,
                 hasExistingUserMessage: true,
                 systemMessages: runtimeSystemMessages,
             });
-            记录性能耗时_ACU('剧情推进API:GENERATION_AFTER_COMMANDS策略1', 剧情推进开始时间);
             // 4. 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in Strategy 1 (duplicate).');
@@ -52900,48 +52082,26 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                缓存规划剧情审查结果_ACU(完整规划文本);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
-                const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
-                if (moduleSwitchResult.action === 'switched') {
-                    return {
-                        action: 'module_switched',
-                        moduleDecision: moduleSwitchResult.moduleDecision,
-                        routeResult: moduleSwitchResult.routeResult,
-                        originalMessage: messageToProcess,
-                        lastMessageIndex,
-                    };
-                }
-                if (moduleSwitchResult.action === 'failed') {
-                    return {
-                        action: 'module_switch_failed',
-                        moduleDecision: moduleSwitchResult.moduleDecision,
-                        routeResult: moduleSwitchResult.routeResult,
-                        originalMessage: messageToProcess,
-                        lastMessageIndex,
-                    };
-                }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
-                if (技能设计决定.action === 'blocked') {
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                if (运行时生成决定.action === 'blocked') {
                     return {
                         action: 'blocked',
-                        reason: 技能设计决定.reason || 'skill_design_requested',
+                        reason: 运行时生成决定.reason || 'runtime_generation_blocked',
                         originalMessage: messageToProcess,
                         lastMessageIndex,
                     };
                 }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
-                const 运行时StatData = await 准备正文生成运行时StatData_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const 运行时数据 = await 准备正文生成运行时数据_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
+                markPlotIntercept_ACU(messageToProcess);
+                markPlotIntercept_ACU(finalMessageForGeneration);
                 return {
                     action: 'planned',
                     finalMessage: finalMessageForGeneration,
                     visibleMessage,
-                    reviewPrompt,
                     runtimePlotText: 完整规划文本,
-                    moduleDecision,
-                    statData: 运行时StatData || null,
+                    statData: 运行时数据 || null,
                     originalMessage: messageToProcess,
                     lastMessageIndex,
                 };
@@ -52982,17 +52142,14 @@ $CONTENT
             return { action: 'skip' };
         }
         const originalInputText = String(textInBox);
-        const moduleSettlementContext = extractModuleSettlementContextFromOptions_ACU(requestOptions);
-        const runtimeSystemMessages = buildPlanningRuntimeSystemMessagesFromSettlement_ACU(moduleSettlementContext);
+        const runtimeSystemMessages = 构建剧情推进运行时系统消息_ACU(requestOptions);
         _set_isProcessing_Plot_ACU(true);
         try {
-            const 剧情推进开始时间 = 读取性能时间_ACU();
             const finalMessage = await runPlanning(originalInputText, {
                 originalUserInput: originalInputText,
                 hasExistingUserMessage: false,
                 systemMessages: runtimeSystemMessages,
             });
-            记录性能耗时_ACU('剧情推进API:GENERATION_AFTER_COMMANDS策略2', 剧情推进开始时间);
             // 处理跳过
             if (finalMessage && finalMessage.skipped) {
                 logDebug_ACU('[剧情推进] Planning skipped in Strategy 2 (duplicate).');
@@ -53011,40 +52168,20 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                缓存规划剧情审查结果_ACU(完整规划文本);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
-                const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
-                if (moduleSwitchResult.action === 'switched') {
-                    await persistUserMessageWithoutGeneration_ACU(originalInputText);
-                    return {
-                        action: 'module_switched',
-                        moduleDecision: moduleSwitchResult.moduleDecision,
-                        routeResult: moduleSwitchResult.routeResult,
-                        originalMessage: originalInputText,
-                    };
-                }
-                if (moduleSwitchResult.action === 'failed') {
-                    await persistUserMessageWithoutGeneration_ACU(originalInputText);
-                    return {
-                        action: 'module_switch_failed',
-                        moduleDecision: moduleSwitchResult.moduleDecision,
-                        routeResult: moduleSwitchResult.routeResult,
-                        originalMessage: originalInputText,
-                    };
-                }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
-                if (技能设计决定.action === 'blocked') {
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                if (运行时生成决定.action === 'blocked') {
                     return {
                         action: 'blocked',
-                        reason: 技能设计决定.reason || 'skill_design_requested',
+                        reason: 运行时生成决定.reason || 'runtime_generation_blocked',
                         originalMessage: originalInputText,
                     };
                 }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
-                const 运行时StatData = await 准备正文生成运行时StatData_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: 完整规划文本, moduleDecision, statData: 运行时StatData || null, originalMessage: originalInputText };
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const 运行时数据 = await 准备正文生成运行时数据_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
+                markPlotIntercept_ACU(originalInputText);
+                markPlotIntercept_ACU(finalMessageForGeneration);
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, statData: 运行时数据 || null, originalMessage: originalInputText };
             }
             return { action: 'blocked', reason: 'empty_final_message', originalMessage: originalInputText };
         }
@@ -53176,7 +52313,6 @@ $CONTENT
             planned: true,
             finalMessage: result.finalMessage,
             runtimePlotText: result.runtimePlotText || result.finalMessage,
-            moduleRouteBlock: result.moduleRouteBlock || '',
         };
     }
 
@@ -53852,15 +52988,14 @@ $CONTENT
                                                 options.user_input = result.writeBack.value;
                                             }
                                         }
-                                        追加正文审查运行时注入_ACU(options, result.reviewPrompt);
-                                        追加正文数值参照运行时注入_ACU(options, result.runtimePlotText || result.userMessage || '', result.writeBack?.statData || null);
-                                        追加正文时间线预览运行时注入_ACU(options, result.runtimePlotText || result.userMessage || '', result.writeBack?.statData || null);
+                                        追加正文运行时注入_ACU(options, {
+                                            userInput: result.runtimePlotText || result.userMessage || '',
+                                            statData: result.writeBack?.statData || null,
+                                        });
                                         options._qrf_processed_by_hook = true;
                                         break;
                                     }
-                                    case 'blocked':
-                                    case 'module_switched':
-                                    case 'module_switch_failed': {
+                                    case 'blocked': {
                                         options._qrf_processed_by_hook = true;
                                         return;
                                     }
@@ -54039,17 +53174,16 @@ $CONTENT
                                     标记AfterCommands已接管剧情推进_ACU(params);
                                     // 写回 params 和消息对象
                                     params.prompt = s1.finalMessage;
-                                    注册正文审查一次性注入_ACU(s1.reviewPrompt);
-                                    注册正文数值参照一次性注入_ACU(s1.runtimePlotText || s1.originalMessage || '', s1.statData || null);
-                                    注册正文时间线预览一次性注入_ACU(s1.runtimePlotText || s1.originalMessage || '', s1.statData || null);
+                                    注册正文运行时一次性注入_ACU({
+                                        userInput: s1.runtimePlotText || s1.originalMessage || '',
+                                        statData: s1.statData || null,
+                                    });
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
                                     emitMessageUpdated_ACU(lastMessageIndex);
                                     if (getSendTextareaValue_ACU() === s1.originalMessage)
                                         setSendTextareaValue_ACU('');
                                     break;
                                 case 'blocked':
-                                case 'module_switched':
-                                case 'module_switch_failed':
                                     标记AfterCommands已接管剧情推进_ACU(params);
                                     stopGeneration_ACU();
                                     break;
@@ -54090,15 +53224,14 @@ $CONTENT
                                 setSendTextareaValue_ACU(s2.visibleMessage || s2.finalMessage);
                                 try {
                                     params.prompt = s2.finalMessage;
-                                    注册正文审查一次性注入_ACU(s2.reviewPrompt);
-                                    注册正文数值参照一次性注入_ACU(s2.runtimePlotText || s2.originalMessage || '', s2.statData || null);
-                                    注册正文时间线预览一次性注入_ACU(s2.runtimePlotText || s2.originalMessage || '', s2.statData || null);
+                                    注册正文运行时一次性注入_ACU({
+                                        userInput: s2.runtimePlotText || s2.originalMessage || '',
+                                        statData: s2.statData || null,
+                                    });
                                 }
                                 catch (e) { }
                                 break;
                             case 'blocked':
-                            case 'module_switched':
-                            case 'module_switch_failed':
                                 标记AfterCommands已接管剧情推进_ACU(params);
                                 stopGeneration_ACU();
                                 break;
@@ -78491,7 +77624,7 @@ Expected function or array of functions, received type ${typeof value}.`
         const seen = new Set();
         const out = [];
         if (!Array.isArray(rawList))
-            return out;
+            return [];
         for (const raw of rawList) {
             const normalized = normalizePlotPresetExcludeRules_ACU(raw);
             if (!normalized || typeof normalized !== 'object')
@@ -78697,9 +77830,6 @@ Expected function or array of functions, received type ${typeof value}.`
                 const normalized = normalizePlotPresetExcludeRules_ACU({ ...preset.raw, name: newName });
                 if (!normalized)
                     return false;
-                const inspection = logPlotPresetInspection_ACU(normalized, 'save');
-                if (inspection.issues.some(issue => issue.includes('至少需要一个启用任务') || issue.includes('缺少有效提示词段')))
-                    return false;
                 ensureSettingsShape$2();
                 const plot = settings_ACU.plotSettings;
                 const list = plot.promptPresets || [];
@@ -78790,9 +77920,6 @@ Expected function or array of functions, received type ${typeof value}.`
                 for (const presetPayload of presetPayloads) {
                     const name = String(presetPayload.name || '').trim();
                     if (!name)
-                        continue;
-                    const inspection = logPlotPresetInspection_ACU(presetPayload, 'import');
-                    if (inspection.issues.some(issue => issue.includes('至少需要一个启用任务') || issue.includes('缺少有效提示词段')))
                         continue;
                     const existingIndex = list.findIndex((preset) => preset?.name === name);
                     if (existingIndex >= 0) {
@@ -80485,19 +79612,16 @@ Expected function or array of functions, received type ${typeof value}.`
             if (!target)
                 return;
             resetDraft();
-            originalName.value = target.builtin ? '' : target.name;
-            draftMeta.name = target.builtin
-                ? uniquePresetName$1(`${target.name} 副本`, store.presets.map(p => p.name))
-                : target.name;
+            originalName.value = target.name;
+            draftMeta.name = target.name;
             draftMeta.taskApiPreset = '';
             draftRaw.value = JSON.parse(JSON.stringify(target.raw || {}));
-            draftRaw.value.name = draftMeta.name;
             contextRules.extractRules = normalizeRulePairs(target.raw?.contextExtractRules, target.raw?.contextExtractTags || '', 'extract');
             contextRules.excludeRules = normalizeRulePairs(target.raw?.contextExcludeRules, target.raw?.contextExcludeTags || '', 'exclude');
             Object.assign(draftRates, readDraftRates(target.raw || null));
             taskEditing.loadFromRaw(target.raw?.plotTasks || [], target.raw?.finalSystemDirective || '');
             error.value = '';
-            drawerView.value = target.builtin ? 'create' : 'edit';
+            drawerView.value = 'edit';
             saveSnapshot();
         }
         /** "编辑当前预设"按钮：打开抽屉并直接进入 edit 视图。 */
@@ -81969,11 +81093,18 @@ Expected function or array of functions, received type ${typeof value}.`
             const { apiStore, followActiveApiLabel, apiPresetSelectOptions: pageApiSelectOptions, } = useApiPresetSelectOptions();
             const management = usePlotPresetManagement();
             const devOptions = useDevOptions();
-            const presetDropdownItems = computed(() => store.presets.map((p) => ({
+            const presetDropdownItems = computed(() => [
+                {
+                    value: "",
+                    label: "默认预设",
+                    meta: `${store.defaultPresetTaskCount} 个任务`,
+                },
+                ...store.presets.map((p) => ({
                     value: p.name,
                     label: p.name,
                     meta: `${Array.isArray(p.raw?.plotTasks) ? p.raw.plotTasks.length : 0} 个任务`,
-                })));
+                })),
+            ]);
             const apiPresetOptions = computed(() => apiStore.presets.map((p) => ({ name: p.name })));
             const currentTaskApiOverride = computed(() => {
                 const taskId = management.taskEditing.currentTaskId.value;

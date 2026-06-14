@@ -38,6 +38,7 @@
     JSONPatch规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_JSON_PATCH_OPS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    数据库适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Database_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -59,8 +60,8 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
-  const 核心模块顺序 = Object.freeze(['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库模块']);
-  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '战斗模块', '数据库模块']);
+  const 核心模块顺序 = Object.freeze(['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '数据库模块']);
+  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '战斗模块', '数据库模块']);
 
   const 预览依赖映射 = {
     交易网络: ['交易模块'],
@@ -132,14 +133,14 @@
     throw new Error('剧情推进预设接口未就绪');
   }
 
-  宿主窗口.__LWCS_注入默认剧情推进预设__ = async function 注入默认剧情推进预设(选项 = {}) {
+  宿主窗口.__LWCS_注入数据库剧情推进预设__ = async function 注入数据库剧情推进预设(选项 = {}) {
     const 预设名 = '缝合怪東方花映塚版本二改_专用剧情推进';
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
     const 强制切换 = 选项 && 选项.强制切换 === true;
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
-    const 响应 = await fetch(资源基础地址 + 'LWCS_默认剧情推进.plot-preset.json' + 资源版本后缀, { cache: 'no-store' });
+    const 响应 = await fetch(资源基础地址 + '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset.json' + 资源版本后缀, { cache: 'no-store' });
     if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
     const 预设数组 = await 响应.json();
     const 导入结果 = await 数据库接口.importPlotPresetsFromData(预设数组, { overwrite: true });
@@ -148,7 +149,7 @@
     }
 
     if (当前预设名 && 当前预设名 !== 预设名 && !强制切换) {
-      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过 LWCS 默认预设绑定。来源=${来源}`);
+      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}`);
       return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
     }
 
@@ -158,7 +159,7 @@
     return { success: true, skipped: false, presetName: 预设名 };
   };
   try {
-    if (window !== 宿主窗口) window.__LWCS_注入默认剧情推进预设__ = 宿主窗口.__LWCS_注入默认剧情推进预设__;
+    if (window !== 宿主窗口) window.__LWCS_注入数据库剧情推进预设__ = 宿主窗口.__LWCS_注入数据库剧情推进预设__;
   } catch (错误) {}
 
   function 记录阶段(阶段, 附加错误 = '') {
