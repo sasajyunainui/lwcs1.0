@@ -987,6 +987,7 @@ DELETE FROM table_name WHERE row_id = 2;
     const DEFAULT_TABLE_TEMPLATE_ACU = buildDefaultTableTemplateString_ACU();
     let TABLE_TEMPLATE_ACU = DEFAULT_TABLE_TEMPLATE_ACU;
     const 剧情钩子时间线预览占位符_ACU = '{{剧情钩子._引导.时间线预览}}';
+    const 远端原著时间线候选占位符_ACU = '{{剧情钩子._引导.远端原著时间线候选}}';
     const 角色基础六维对标占位符_ACU = '{{角色基础六维对标}}';
     let 最近剧情审查结果_ACU = '';
     function 读取最近剧情审查结果_ACU() {
@@ -14674,6 +14675,20 @@ $CONTENT
         }
     }
 
+    function 读取远端原著时间线候选_ACU(用户输入 = '', 运行态数据 = null, 捕获文本 = '') {
+        const 接口 = getMvuRuntimeViewApi_ACU();
+        if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function')
+            return '';
+        try {
+            const 剧情视图 = 接口.生成MVU剧情视图(取MVU运行时StatData_ACU(运行态数据, 用户输入) || null, 捕获文本 || 用户输入);
+            return String(剧情视图?.剧情钩子?._引导?.远端原著时间线候选 || '').trim();
+        }
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 远端原著时间线候选读取失败:', 错误);
+            return '';
+        }
+    }
+
     function 读取角色基础六维对标摘要_ACU(userInput = '', statData = null) {
         const 接口 = getMvuRuntimeViewApi_ACU();
         if (!接口 || typeof 接口.生成角色基础六维对标摘要 !== 'function')
@@ -14687,13 +14702,16 @@ $CONTENT
         }
     }
 
-    function 注入剧情钩子时间线预览_ACU(content, userInput = '', statData = null) {
+    function 注入剧情钩子时间线预览_ACU(content, userInput = '', statData = null, 远端捕获文本 = '') {
         const 文本 = String(content || '');
-        if (!文本.includes(剧情钩子时间线预览占位符_ACU) && !文本.includes(角色基础六维对标占位符_ACU))
+        if (!文本.includes(剧情钩子时间线预览占位符_ACU) && !文本.includes(远端原著时间线候选占位符_ACU) && !文本.includes(角色基础六维对标占位符_ACU))
             return 文本;
         let 结果 = 文本;
         if (结果.includes(剧情钩子时间线预览占位符_ACU)) {
             结果 = 结果.replaceAll(剧情钩子时间线预览占位符_ACU, 读取剧情钩子时间线预览_ACU(userInput, statData) || '无');
+        }
+        if (结果.includes(远端原著时间线候选占位符_ACU)) {
+            结果 = 结果.replaceAll(远端原著时间线候选占位符_ACU, 读取远端原著时间线候选_ACU(userInput, statData, 远端捕获文本) || '无远端原著时间线候选。');
         }
         if (结果.includes(角色基础六维对标占位符_ACU)) {
             结果 = 结果.replaceAll(角色基础六维对标占位符_ACU, 读取角色基础六维对标摘要_ACU(userInput, statData));
@@ -16682,6 +16700,7 @@ $CONTENT
         const 标准名 = String(tagName || '').trim();
         return 是MVU运行时占位符名_ACU(标准名)
             || 标准名 === '剧情钩子._引导.时间线预览'
+            || 标准名 === '剧情钩子._引导.远端原著时间线候选'
             || 标准名 === '角色基础六维对标';
     }
     function buildPlotTagMapFromText_ACU(text, requestedTagNames = null) {
@@ -16919,17 +16938,13 @@ $CONTENT
             预览,
         ].join('\n');
     }
-    function 合并剧情终稿片段_ACU(片段列表, 审查块 = '') {
+    function 合并剧情终稿片段_ACU(片段列表) {
         const 有效片段 = (Array.isArray(片段列表) ? 片段列表 : [片段列表])
             .map(片段 => String(片段 || '').trim())
             .filter(Boolean);
         if (有效片段.length === 0)
             return '';
-        const 合并文本 = 有效片段.join('\n');
-        const 剧情审查块 = String(审查块 || '').trim();
-        if (!剧情审查块 || /<剧情审查>[\s\S]*?<\/剧情审查>/i.test(合并文本))
-            return 合并文本;
-        return [有效片段[0], 剧情审查块, ...有效片段.slice(1)].join('\n');
+        return 有效片段.join('\n');
     }
     function 追加正文审查运行时注入_ACU(options, 审查约束文本 = '') {
         if (!options || typeof options !== 'object')
@@ -17077,7 +17092,6 @@ $CONTENT
     function stripPlanningMachineBlocks_ACU(text) {
         return String(text || '')
             .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, '')
-            .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, '')
             .trim();
     }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
@@ -17088,7 +17102,6 @@ $CONTENT
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
         const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
-        const 剧情审查块 = 取最后剧情审查块_ACU(taskResults);
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
@@ -17112,7 +17125,7 @@ $CONTENT
                         return;
                     unusedTagBlocks.push(`<${tagName}>${(Array.isArray(contents) ? contents : [contents]).map(content => content ?? '').join('\n\n')}</${tagName}>`);
                 });
-                return 合并剧情终稿片段_ACU([finalDirectiveWithTags, unusedTagBlocks.join('\n\n')], 剧情审查块);
+                return 合并剧情终稿片段_ACU([finalDirectiveWithTags, unusedTagBlocks.join('\n\n')]);
             }
             // 没有占位符时：只追加非 injectOnly 的标签块
             const filteredTags = new Map();
@@ -17123,13 +17136,13 @@ $CONTENT
                 }
             });
             const aggregatedTagBlocks = buildAggregatedPlotTagBlocks_ACU(filteredTags);
-            return 合并剧情终稿片段_ACU([baseDirective, aggregatedTagBlocks], 剧情审查块);
+            return 合并剧情终稿片段_ACU([baseDirective, aggregatedTagBlocks]);
         }
         if (placeholderNames.length > 0) {
             const finalDirectiveWithoutTags = replacePlotTagPlaceholders_ACU(baseDirective, new Map());
-            return 合并剧情终稿片段_ACU([finalDirectiveWithoutTags, rawFallbackText], 剧情审查块);
+            return 合并剧情终稿片段_ACU([finalDirectiveWithoutTags, rawFallbackText]);
         }
-        return 合并剧情终稿片段_ACU([baseDirective, rawFallbackText], 剧情审查块);
+        return 合并剧情终稿片段_ACU([baseDirective, rawFallbackText]);
     }
 
     /**
@@ -17410,7 +17423,7 @@ $CONTENT
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: lastPlotContent || '',
         });
-        plotFinalDirective = 注入剧情钩子时间线预览_ACU(plotFinalDirective, userMessage);
+        plotFinalDirective = 注入剧情钩子时间线预览_ACU(plotFinalDirective, userMessage, null, [userMessage, contextInjectionText].filter(Boolean).join('\n'));
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
         // [P4] {[db...]}/{[sql...]} 值替换（SQLite 模式下）
@@ -17460,7 +17473,7 @@ $CONTENT
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
             });
-            c = 注入剧情钩子时间线预览_ACU(c, sharedContext.userMessage);
+            c = 注入剧情钩子时间线预览_ACU(c, sharedContext.userMessage, null, [sharedContext.userMessage, sharedContext.lastPlotContent, replacementOverrides.$1].filter(Boolean).join('\n'));
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
         }
