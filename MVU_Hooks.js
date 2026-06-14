@@ -165,7 +165,21 @@ function 暴露AIJsonPatch预处理接口_V1() {
     globalThis.window.__LWCS_NORMALIZE_JSON_PATCH_OPS__ = globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__;
     globalThis.window.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ = globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__;
   }
+  try {
+    if (globalThis.parent && globalThis.parent !== globalThis) {
+      globalThis.parent.__LWCS_NORMALIZE_JSON_PATCH_OPS__ = globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__;
+      globalThis.parent.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ = globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__;
+    }
+  } catch (错误) {}
+  try {
+    if (globalThis.top && globalThis.top !== globalThis) {
+      globalThis.top.__LWCS_NORMALIZE_JSON_PATCH_OPS__ = globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__;
+      globalThis.top.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ = globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__;
+    }
+  } catch (错误) {}
 }
+
+暴露AIJsonPatch预处理接口_V1();
 
 function 安装AIJsonPatch解析钩子_V1() {
   const 宿主 = globalThis.Mvu || globalThis.window?.Mvu;

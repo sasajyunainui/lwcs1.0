@@ -25,7 +25,16 @@ await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>
   typeof 初始化补齐角色技能效果数组_V1 === 'function' &&
   typeof 创建空魂导器装配表_V1 === 'function' &&
   globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ &&
-  typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object'
+  typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object' &&
+  globalThis.__LWCS_PROFESSION_DERIVATION__ &&
+  typeof globalThis.__LWCS_PROFESSION_DERIVATION__.派生运行时 === 'function' &&
+  typeof globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function' &&
+  globalThis.__LWCS_SKILL_COST_HELPERS_V1__ &&
+  typeof globalThis.__LWCS_SKILL_COST_HELPERS_V1__ === 'object' &&
+  typeof globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function' &&
+  typeof globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ === 'function' &&
+  typeof globalThis.__LWCS_GET_BASE_STATS__ === 'function' &&
+  typeof globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ === 'function'
 );
 
 await 加载MVU经典依赖_V1('MVU_Schema_Runtime.js', () =>
@@ -46,5 +55,7 @@ await import(`${new URL('MVU.js', MVU_ZOD_ENTRY_BASE_V1).href}?t=${Date.now()}`)
 globalThis.__LWCS_MVU变量结构已注册__ = true;
 
 await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
-  typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function'
+  typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function' &&
+  typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function' &&
+  typeof globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ === 'function'
 );

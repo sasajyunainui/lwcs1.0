@@ -388,6 +388,10 @@ function 读取副职业最高等级_V1(副职业名 = '') {
   return String(副职业名 || '').trim() === '魂导师' ? 10 : 9;
 }
 
+function 读取副职业显示名_V1(副职业名 = '') {
+  return { 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' }[String(副职业名 || '').trim()] || String(副职业名 || '').trim();
+}
+
 var 副职业中文等级数字_V1 = Object.freeze({ 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 });
 function 解析副职业称号认证等级_V1(文本 = '', 最高等级 = 9) {
   const 内容 = String(文本 || '').trim();
@@ -1505,6 +1509,8 @@ function getBaseStats(lv) {
 }
 
 globalThis.__LWCS_GET_BASE_STATS__ = getBaseStats;
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
 
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');

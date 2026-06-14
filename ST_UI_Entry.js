@@ -28,6 +28,15 @@
     魂技机制注册表: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_MECHANISM_REGISTRY__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量运行时视图: { 类型: 'wait-global', 全局键: '__LWCS_MVU_RUNTIME_VIEW__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_MVU_STAT_DATA__', 值类型: 'function', 关键: true, 分组: 'core' },
+    副职业派生接口: { 类型: 'wait-global', 全局键: '__LWCS_PROFESSION_DERIVATION__', 值类型: 'object', 关键: true, 分组: 'core' },
+    技能结构编译接口: { 类型: 'wait-global', 全局键: '__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
+    技能消耗助手: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_COST_HELPERS_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    直接结算预算接口: { 类型: 'wait-global', 全局键: '__LWCS_CALC_DIRECT_SETTLE_BUDGET__', 值类型: 'function', 关键: true, 分组: 'core' },
+    直接结算预算断言: { 类型: 'wait-global', 全局键: '__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__', 值类型: 'function', 关键: true, 分组: 'core' },
+    基础属性接口: { 类型: 'wait-global', 全局键: '__LWCS_GET_BASE_STATS__', 值类型: 'function', 关键: true, 分组: 'core' },
+    装备属性加成接口: { 类型: 'wait-global', 全局键: '__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__', 值类型: 'function', 关键: true, 分组: 'core' },
+    JSONPatch规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_JSON_PATCH_OPS__', 值类型: 'function', 关键: true, 分组: 'core' },
+    JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -35,6 +44,23 @@
     战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' }
   };
+
+  const 变量运行时接口模块顺序 = Object.freeze([
+    '魂技机制注册表',
+    '变量运行时视图',
+    '变量规范化接口',
+    '副职业派生接口',
+    '技能结构编译接口',
+    '技能消耗助手',
+    '直接结算预算接口',
+    '直接结算预算断言',
+    '基础属性接口',
+    '装备属性加成接口',
+    'JSONPatch规范化接口',
+    'JSONPatch文本预处理接口',
+  ]);
+  const 核心模块顺序 = Object.freeze(['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库模块']);
+  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '战斗模块', '数据库模块']);
 
   const 预览依赖映射 = {
     交易网络: ['交易模块'],
@@ -254,16 +280,16 @@
       await waitForMountsReady(10000);
       ensureGetAllVariablesShim();
       await 加载样式(模块注册表.样式核心.地址);
-      ['内置角色库', '内置物品库', '魂技机制注册表', '变量运行时视图', '变量规范化接口', '逻辑桥接', '战斗模块', '数据库模块'].forEach(模块名 => {
+      热更新重置模块顺序.forEach(模块名 => {
         if (!模块状态表[模块名]) return;
         模块状态表[模块名].状态 = 'pending';
         模块状态表[模块名].错误 = '';
       });
       await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('魂技机制注册表', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量运行时视图', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('变量规范化接口', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      for (const 模块名 of 变量运行时接口模块顺序) {
+        await 确保模块已加载(模块名, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      }
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
       await 确保模块已加载('数据库模块', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
@@ -542,8 +568,10 @@
       }
       return 窗口列表.some(当前窗口 => {
         try {
-          if (值类型 === 'function') return typeof 当前窗口[安全函数名] === 'function';
-          return 当前窗口[安全函数名] !== undefined && 当前窗口[安全函数名] !== null;
+          const 全局值 = 当前窗口[安全函数名];
+          if (值类型 === 'function') return typeof 全局值 === 'function';
+          if (值类型 === 'object') return !!全局值 && typeof 全局值 === 'object';
+          return 全局值 !== undefined && 全局值 !== null;
         } catch (错误) {
           return false;
         }
@@ -648,7 +676,6 @@
         ensureGetAllVariablesShim();
 
         记录阶段(加载阶段.核心加载中);
-        const 核心模块顺序 = ['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', '魂技机制注册表', '变量运行时视图', '变量规范化接口', '逻辑桥接', '数据库模块'];
         for (const 模块名 of 核心模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }

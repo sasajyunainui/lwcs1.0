@@ -1,18 +1,93 @@
 [
   {
     "name": "缝合怪東方花映塚版本二改_专用剧情推进",
-    "rateMain": 1,
-    "ratePersonal": 1,
-    "rateErotic": 0,
-    "rateCuckold": 1,
-    "recallCount": 20,
-    "contextTurnCount": 3,
-    "minLength": 0,
+    "extractTags": "recall",
+    "extractInjectTags": "",
     "contextExtractRules": [],
-    "contextExcludeRules": [],
+    "contextExcludeRules": [
+      {
+        "start": "<disclaimer",
+        "end": "</disclaimer>"
+      },
+      {
+        "start": "<JSONPatch",
+        "end": "</JSONPatch>"
+      },
+      {
+        "start": "<Analysis",
+        "end": "</Analysis>"
+      },
+      {
+        "start": "<UpdateVariable",
+        "end": "</UpdateVariable>"
+      },
+      {
+        "start": "<tucao",
+        "end": "</tucao>"
+      },
+      {
+        "start": "<StatusPlaceHolderImpl",
+        "end": "</StatusPlaceHolderImpl>"
+      },
+      {
+        "start": "<summary",
+        "end": "</summary>"
+      },
+      {
+        "start": "<options",
+        "end": "</options>"
+      },
+      {
+        "start": "<thinking",
+        "end": "</thinking>"
+      },
+      {
+        "start": "<think",
+        "end": "</think>"
+      },
+      {
+        "start": "<review",
+        "end": "</review>"
+      },
+      {
+        "start": "<refine",
+        "end": "</refine>"
+      },
+      {
+        "start": "<recall",
+        "end": "</recall>"
+      },
+      {
+        "start": "<itsuki>",
+        "end": "</itsuki>"
+      },
+      {
+        "start": "<output>",
+        "end": "</output>"
+      }
+    ],
+    "minLength": 10,
+    "contextTurnCount": 3,
+    "worldbookEnabled": true,
+    "worldbookSource": "character",
+    "selectedWorldbooks": [],
+    "disabledWorldbookEntries": "__ALL_SELECTED__",
+    "plotWorldbookConfig": {
+      "source": "character",
+      "manualSelection": []
+    },
+    "loopSettings": {
+      "quickReplyContent": [],
+      "currentPromptIndex": 0,
+      "loopTags": "",
+      "loopDelay": 5,
+      "retryDelay": 3,
+      "loopTotalDuration": 0,
+      "maxRetries": 1000
+    },
     "plotTasks": [
       {
-        "id": "lwcs_stitches_recall",
+        "id": "plotTask2",
         "name": "召回",
         "enabled": true,
         "promptGroup": [
@@ -67,8 +142,8 @@
         "order": 0
       },
       {
-        "id": "lwcs_stitches_persona_scene",
-        "name": "角色与场景摘取",
+        "id": "defaultPlotTask",
+        "name": "推进",
         "enabled": true,
         "promptGroup": [
           {
@@ -128,17 +203,22 @@
           },
           {
             "role": "USER",
-            "content": "Al: 哥哥，以上DM手册、角色理解规则、关系判断规则和资料都保持不变。\n这次不要输出<tabletop>，也不要写正文、stage、scene、模块路由或剧情规划。\n请只把本轮剧情裁定需要的人设、场景和关系资料摘出来，供后续LWCS裁定员使用。\n\n必须输出以下标签：\n<persona_context>\n本轮相关角色的人设基调、声口、行为边界、认知边界、已知与未知信息。\n</persona_context>\n\n<scene_state>\n当前时间、地点、在场人物、场域规则、前文承接点、用户本轮输入造成的即时局势。\n</scene_state>\n\n<relationship_context>\n在场角色与<user>及彼此之间的关系阶段、好感温度、潜在冲突、信任/戒备边界。\n</relationship_context>\n\n输出只允许包含上述三个标签。",
-            "deletable": false
+            "content": "Al: 以下是跑团记录的输出格式要求，每个主要角色都有npc_profile、npc_inner和act，次要配角可简写。\n\n<tabletop>\n<!-- ⚠ 别忘了代入对应角色的第一视角 -->\n<npcs>\n<file>\n<npc_profile name=\"角色名称\">\n我平时的样子: {认识我的人都知道，我就是这种人}\n我怎么变成这样的: {我怎么变成现在这样的（从小到大+后来经历的重大事件）}\n交际: {我跟其他角色的关系（不含主角）。无则写无}\n我知道的: {我确实知道的，来源标清。不知道的填\"未知的=XX\"}\n印象: {具体印象（来源事件）}  | 好感={XX}\n{我对<user>印象满三条消化后的态度。无则不写}\n社交能量={高/中/低} | 身体={正常/具体状况} | 表现={正常/放松/收敛}\n</npc_profile>\n\n<npc_inner name=\"角色名称\">\n关系: {实际关系+情感态度阶段}\nconcern: {我一直惦记的事/牵挂}\ninner_voice: {我没说出口的内心话（在意什么，心里怎么想的，想做什么）}\naside: {我脑子里飘过的别的事。没有就“—”}\nstance: {我对眼前这件事的态度。没有特别态度就不写这行}\n</npc_inner>\n</file>\n\n<stage>\n<act name=\"角色名称\">\nnow: {（承接上轮结尾）我当前动作姿态}\nbeat: {我这轮做的、说的。不分行}\ninitiative: {我主动发起的新动作或开口。无则写无}\nthen: {我接下来会做什么}\n</act>\n\n<!-- 仅当场上有≥2个角色且有互动必要时 -->\ninterplay: {角色之间的互动（眼神/小动作/对话，不含主角）}\n</stage>\n\n</npcs>\n\n<dmtrack>\n<scene>\nDay:{X, HH:MM} | 场景简述 | 天气=XX | 在场: NPC名\n【场景】{纯客观描述物理环境陈设} | 可交互={物件}\n【氛围】{基调}\n【类型】{冒险/日常/混合} | 难度={XX}\n期限={XX} | 跳跃={无/短跳/中跳/长跳}\n</scene>\n\n<!-- 每个已离场且跟主角后续可能有关联的角色一个 -->\n<npc_track name=\"角色名称\">\n当前动向:{延续个人线的进展和日常习惯，现在在做什么}\n心里惦记: {心里惦记着什么}\n交际: {延续自profile（关系/态度）}\n当前认知:{确知/听说/怀疑的内容附来源 | 还不知道的=XX}\n后续打算:{结合角色个人线的进展和交际，接下来可能做什么}\n前文因果:{有/无，简述}\n预计出场:{可能跟主角碰面的条件/时机}\n</npc_track>\n\n<!-- 仅有时间跳跃时（中跳/长跳）输出 -->\n<npc_jump name=\"NPC名称\" 跃过时间=\"DayX到DayY\">\n期间动向: {XX}\n心情变化: {XX}\n状态变化: 体能/社交状态变化={XX}\n对主角: 跃过期间有没有关于主角的念头或态度变化={XX}\n交际: {跟其他角色的关系有变动吗}\n</npc_jump>\n</dmtrack>\n\n<dm_box>\nEdward:\n  主线:{当前团主线走到哪。恋爱团记感情进展、冒险团记任务进度、日常团记生活主轴。}\n  进展:{这轮主线推进了什么}\n  走向:{顺着事件因果和角色行动看接下来大概往哪走（不是大纲）}\n  铺垫:{为让走向自然发生这几轮顺手埋的小伏笔（不是预定大纲）}\n（都只写正在发生的故事事件、用平实的话。例:✓「老兵在打听遗物下落」✗「命运的齿轮开始转动」「暗流涌动」。不用网文腔、不夸张、不上价值。）\n\n(每个重要角色还有一条自己的个人线——TA 私下在追的目标、在解决的麻烦、在发展的关系。跟角色长期惦记的事concern和眼下正在做的事相关。个人线和主线。两条线可以交汇，但同一件事别在主线和个人线里各写一遍。\n       例：✓ 师兄 — 备战掌门选拔：偷偷练成新剑式，还差实战检验 → 可能找人切磋\n       ✓ 队友 — 想攒钱买好匕首：这趟赏金到手攒够一半 → 会去打听哪家铁匠靠谱\n       ✗ 师兄 — 他是个努力的人，一直在变强 ← 这是设定不是进度，没具体的事)\n  - 角色名: {个人线现在进展到哪了 → 接下来做什么}\n\n支线与约定:\n  <!-- 从前文剧情和当前场景里总结追踪即可 -->\n  [支线]\n  · 线索描述 → 状态{活跃(N轮)/搁置} | 谁在意={NPC名(理由)}\n  [约定]\n  · 角色名/deadline: {约定内容}\n  [敌方]\n  · 敌对势力: {状态} | {预计行动时间}\n\n暗线: {水面下还没浮出来、但在酝酿的事：主角还不知道，相关角色可能只是隐约有动作。浮出水面后就转成支线里的线索。无则写无}\n下轮注意: {下一轮要记得的事}\n</dm_box>\n\n<!-- ⚠ 跑团记录到此结束，不要继续写了 -->\n</tabletop>\n\n\nAl: 在跑团流程前，按照以下条目仔细思考。\n思考用dm_set包裹，按步骤一步步来，不重复思考\n⚠ 注意：思考时要记得analysis_rules、behavior_rules、character_build、profile_foundation、npc_identity、relationship_system 的要求。\n<dm_set>\nstep1（查记录与时间轴）：\n- 上轮tabletop中scene的时间戳是？经过前文剧情末尾的发展和input里的行动，现在应该是Day几，几点？\n- 是什么特殊日子吗（如周末、节假日、约定日）？\n- 天气需要变化吗（鼓励结合剧情合理或出乎意料的变化，不要一成不变的晴天）？\n- 回顾<已发生事件概览>中的剧情，在场这些人跟<user>之间发生过什么？是什么关系？\n- <已发生事件概览>还有没有没完成的事件？\n- input提到或涉及历史事件时，在回应<前文剧情>以及<已发生事件概览>的历史记忆（特别是带有日期的）前，必须先注意它们与现在的关系 ，仔细看一下这些记忆与现在相差多远！！不要把几个月前的记忆当成昨天发生的！！\n\nstep2（读当前场面）：\n- <input>中的行为和意图是什么？\n- 谁在场？有你认识的既有IP角色（同人角色）登场吗？目标是让角色既贴合原作，又符合本团的背景设定。\n- 若<user>换场景，目的地有人吗（要登场的角色不写进dmtrack）？\n- 在场角色的位置和空间是？需要认知隔离吗？\n- 在场角色有什么物品、穿什么衣服？<user>这轮操作涉及物品了吗？\n- <user>或角色这轮有没有做超出自身能力范围的事？\n\nstep3：\n- 留意事件串联，各角色的印象、concern、前文经历里，有没有可能与主角交汇。\n- 对照旧tabletop的dm_box，有没有要更新的：\n  · 走向： 结合<前文剧情>判断：是顺着当前场景自然发展，还是到了该主动推一把主线的时候。\n  · 个人线：各角色的个人剧情走到哪了、有进展吗？有没有该主动行动的（去做自己的事、找主角、或离开）？\n  · 支线/约定/敌方：有新支线冒头吗？约定的deadline临近了吗？敌方到行动时机了吗？\n  · 暗线：有什么还没浮出水面但在酝酿的事？\n\nstep4：\n- 有角色的profile因为最后前文剧情需要更新吗？：\n  · 印象：有需要新增/删除吗？\n  · 我目前知道：获得了新信息吗？来源是什么？（如果太多就删掉旧的）\n  · 交际：跟其他角色的关系有变化吗？\n  · 身体和社交能量：发生了什么影响身体或社交状态的事？\n- 印象更新：看一下在场角色当前正面和负面的标签各有几条。同方向攒够3条了→合并成一句话，旧标签删除，温度走一格。\n\nstep5（开团前检查）：\n- 回看ban_list：这轮最容易踩哪几个雷？想三个。\n- 如何避免演绎角色套路化、标签化、刻板印象、网文腔。\n- 给自己鼓鼓劲，最强DM开始代入角色！\n</dm_set>",
+            "deletable": true
+          },
+          {
+            "role": "USER",
+            "content": "Al: 哥哥，<user>本轮行动了，轮到哥哥扮演角色们了。",
+            "deletable": true
           },
           {
             "role": "assistant",
-            "content": "<persona_context>",
+            "content": "Edward: 好，开始思考怎么跑团了！",
             "deletable": true
           }
         ],
-        "extractTags": "persona_context,scene_state,relationship_context",
-        "extractInjectTags": "",
+        "extractTags": "stage,scene",
+        "extractInjectTags": "tabletop",
         "finalDirectiveTemplate": "",
         "minLength": 300,
         "maxRetries": 1000,
@@ -150,53 +230,97 @@
         "id": "lwcs_integrated_ruling",
         "name": "LWCS综合裁定",
         "enabled": true,
+        "order": 3,
         "stage": 2,
-        "order": 2,
+        "apiPreset": "",
+        "maxRetries": 3,
+        "minLength": 0,
+        "worldbookEnabled": true,
+        "worldbookSource": "global",
+        "selectedWorldbooks": [],
+        "disabledWorldbookEntries": [],
+        "contextTurnCount": 8,
         "extractTags": "剧情审查,content,模块路由",
         "extractInjectTags": "",
-        "minLength": 0,
-        "maxRetries": 3,
-        "mergeStrategy": "append",
         "promptGroup": [
           {
+            "id": "lwcs_ruling_system",
             "role": "SYSTEM",
-            "content": "你正在执行内置剧情推进任务。\n必须先做剧情规划，再决定正文该进入普通叙事还是战斗/交易/副职业等模块。\n你必须参考 <MVU剧情视图> 中的【当前】、【角色简表】、【剧情引导】，并结合已发生事件概览/纪要和【时间线预览】判断原著节点是否仍然成立；时间线预览只作为原著参照与控速压力，本轮必须裁决是否需要铺垫、触发、推进或改写，禁止因tick临近而强行落地",
-            "deletable": false
+            "name": "LWCS裁定员",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 0,
+            "forbid_overrides": false,
+            "content": "你正在执行内置剧情推进任务。\n必须先做剧情规划，再决定正文该进入普通叙事还是战斗/交易/副职业等模块。\n你必须参考 <MVU剧情视图> 中的【当前】、【角色简表】、【剧情引导】，并结合已发生事件概览/纪要和【时间线预览】判断原著节点是否仍然成立；时间线预览只作为原著参照与控速压力，本轮必须裁决是否需要铺垫、触发、推进或改写，禁止因tick临近而强行落地\n\n你读取 Stitches 已产出的 tabletop/stage/scene、召回结果、MVU 当前状态、时间线预览和角色基础六维，只做本轮剧情边界审查与模块路由。\n不得重写 Stitches 的 tabletop 跑团记录，不得输出正文草稿，不得替代玩家行动。"
           },
           {
+            "id": "lwcs_ruling_context",
             "role": "USER",
-            "content": "以下是阶段1的召回与角色场景摘取结果，必须作为本轮剧情规划的参考，但不能复述给玩家。\n\n<召回>\n{{recall}}\n</召回>\n\n<角色人设摘取>\n{{persona_context}}\n</角色人设摘取>\n\n<场景状态摘取>\n{{scene_state}}\n</场景状态摘取>\n\n<关系状态摘取>\n{{relationship_context}}\n</关系状态摘取>\n\n以下是本轮 MVU 剧情视图，必须优先参考其中的【当前】、【角色简表】、【剧情引导】。\n<MVU剧情视图>\n{{MVU_RUNTIME_VIEW}}\n</MVU剧情视图>\n\n时间线预览：\n{{剧情钩子._引导.时间线预览}}\n\n角色基础六维对标：\n{{角色基础六维对标}}\n\n本轮用户输入：\n<本轮用户输入>\n$8\n</本轮用户输入>\n\n前文上下文：\n<前文上下文>\n$7\n</前文上下文>\n\n请先读取以上运行时状态，再执行后续剧情审计与模块路由。后续 <content> 只写正文 AI 的执行约束，不写正文草稿。",
-            "deletable": false
+            "name": "运行时资料",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 0,
+            "forbid_overrides": false,
+            "content": "以下是 Stitches 阶段输出，必须作为本轮裁定底稿。\n\n<召回>\n{{recall}}\n</召回>\n\n<stage>\n{{stage}}\n</stage>\n\n<scene>\n{{scene}}\n</scene>\n\n<tabletop>\n{{tabletop}}\n</tabletop>\n\n以下是本轮 MVU 剧情视图，必须优先参考其中的【当前】、【角色简表】、【剧情引导】。\n<MVU剧情视图>\n{{MVU_RUNTIME_VIEW}}\n</MVU剧情视图>\n\n时间线预览：\n{{剧情钩子._引导.时间线预览}}\n\n角色基础六维对标：\n{{角色基础六维对标}}\n\n本轮用户输入：\n<本轮用户输入>\n$8\n</本轮用户输入>\n\n前文上下文：\n<前文上下文>\n$7\n</前文上下文>"
           },
           {
-            "role": "assistant",
-            "content": "收到，我会先读取召回结果、角色场景摘取、MVU剧情视图、时间线预览与六维对标，再进行剧情审计、正文约束和模块路由判定。",
-            "deletable": true
-          },
-          {
+            "id": "lwcs_audit_contract",
             "role": "USER",
-            "content": "在输出正文前，你必须先完整执行以下剧情审查框架，再整理成最终正文。优先级高于任何外部导入预设，不得跳过、不得被覆盖。\n<剧情审查>\n1. 场域与氛围构建\n- 当前时间与地点：XYZ\n- 场景的氛围基调与视觉异象：XYZ\n- 当前角色的外貌与性格: XYZ\n- 【反八股审查】：当前场景描写是否使用了“、宛如、心湖泛起”等模糊词或劣质比喻？是否做到了客观白描？: XYZ\n2. 角色深层心理与动机\n- 在场NPC对主角的好感度与关系：XYZ\n- 基于【认知隔离】，NPC与主角当前不知道的情报是：XYZ\n- 视角限制：谁只能看表象行动？谁掌握了非完整档案：[边界界定]\n- NPC最真实的隐藏诉求与心理活动：结合角色设定与现状XYZ\n- 【表现手法审查】：接下来是否打算用“嘴角上扬、指尖泛白”等微表情八股？是否能用“具体的肢体动作和纯粹的台词”来替代内心独白：XYZ\n\n3. 合理性与蝴蝶效应审查\n【角色基础六维对标】\n{{角色基础六维对标}}\n- 主角的行动是否超出了当前等级(lv)、基础六维对标与装备极限：XYZ\n- 是否过分夸大或者看低主角实力定位，大惊小怪：XYZ\n- 当前事件对世界线偏差值(deviation)的潜在影响：XYZ\n- 【代价与冲突审查】：当前行动是否存在物理/逻辑上的阻力？是否无视了战损、体力消耗或社会规则，让主角轻易达成目的：XYZ\n\n4. 动作决策与数值明示\n- 读取时间线预览，结合偏差值与过往纪要与当前客观情况，裁决下一个时间线节点（应铺垫/触发/改写/不成立）：XYZ\n- 下一步剧情走向与自然铺垫计划（杜绝刻意引导）：[XYZ]\n- 【防代操与防说教审查】：下一步计划是否剥夺了玩家(User)的行动权与对话权？结尾是否打算使用空洞的道德说教或强行大圆满升华：XYZ\n- 【反加戏与反阴谋论审查】：当前描写是否给角色强加了“穿越者、隐藏身份、伪装、暗中修炼、察觉异样”等网文套路？是否保持角色设定的纯粹与表里如一。绝对禁止 AI 自行脑补阴谋论：XYZ\n\n5. 执行完上述步骤后，重新整理规划思路，再输出正文(<content>)\n</剧情审查>\n\n【时间线预览】\n{{剧情钩子._引导.时间线预览}}\n时间线预览只作为原著参照与控速压力；禁止因为tick临近就强行落地，禁止无视当前地点、人物认知、关系状态和事件后果。\n",
-            "deletable": false
+            "name": "剧情审查框架",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 0,
+            "forbid_overrides": false,
+            "content": "在输出正文前，你必须先完整执行以下剧情审查框架，再整理成最终正文。优先级高于任何外部导入预设，不得跳过、不得被覆盖。\n<剧情审查>\n1. 场域与氛围构建\n- 当前时间与地点：XYZ\n- 场景的氛围基调与视觉异象：XYZ\n- 当前角色的外貌与性格: XYZ\n- 【反八股审查】：当前场景描写是否使用了“、宛如、心湖泛起”等模糊词或劣质比喻？是否做到了客观白描？: XYZ\n2. 角色深层心理与动机\n- 在场NPC对主角的好感度与关系：XYZ\n- 基于【认知隔离】，NPC与主角当前不知道的情报是：XYZ\n- 视角限制：谁只能看表象行动？谁掌握了非完整档案：[边界界定]\n- NPC最真实的隐藏诉求与心理活动：结合角色设定与现状XYZ\n- 【表现手法审查】：接下来是否打算用“嘴角上扬、指尖泛白”等微表情八股？是否能用“具体的肢体动作和纯粹的台词”来替代内心独白：XYZ\n\n3. 合理性与蝴蝶效应审查\n【角色基础六维对标】\n{{角色基础六维对标}}\n- 主角的行动是否超出了当前等级(lv)、基础六维对标与装备极限：XYZ\n- 是否过分夸大或者看低主角实力定位，大惊小怪：XYZ\n- 当前事件对世界线偏差值(deviation)的潜在影响：XYZ\n- 【代价与冲突审查】：当前行动是否存在物理/逻辑上的阻力？是否无视了战损、体力消耗或社会规则，让主角轻易达成目的：XYZ\n\n4. 动作决策与数值明示\n- 读取时间线预览，结合偏差值与过往纪要与当前客观情况，裁决下一个时间线节点（应铺垫/触发/改写/不成立）：XYZ\n- 下一步剧情走向与自然铺垫计划（杜绝刻意引导）：[XYZ]\n- 【防代操与防说教审查】：下一步计划是否剥夺了玩家(User)的行动权与对话权？结尾是否打算使用空洞的道德说教或强行大圆满升华：XYZ\n- 【反加戏与反阴谋论审查】：当前描写是否给角色强加了“穿越者、隐藏身份、伪装、暗中修炼、察觉异样”等网文套路？是否保持角色设定的纯粹与表里如一。绝对禁止 AI 自行脑补阴谋论：XYZ\n\n5. 执行完上述步骤后，重新整理规划思路，再输出正文(<content>)\n</剧情审查>\n\n【时间线预览】\n{{剧情钩子._引导.时间线预览}}\n时间线预览只作为原著参照与控速压力；禁止因为tick临近就强行落地，禁止无视当前地点、人物认知、关系状态和事件后果。\n"
           },
           {
-            "role": "assistant",
-            "content": "收到，我将按剧情审查框架完成本轮规划，并在 <content> 中整理给正文 AI 的执行约束，不输出正文草稿。",
-            "deletable": true
+            "id": "lwcs_route_contract",
+            "role": "USER",
+            "name": "模块路由规则",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 0,
+            "forbid_overrides": false,
+            "content": "【模块路由分流标准】\n每轮末尾追加且只追加一个 <模块路由> 块。块内只写“字段：值”，不要写 JSON、Markdown、字段说明或注释。\n优先判断 battle / trade / profession / teaching / routine / trial_entry / travel；都不成立则输出 未命中。\n\n1. battle：本轮已经发生、即将发生或明确提出战斗、切磋、袭击、挑战。\n字段：模块；地点=战斗实际发生地点，不明确填当前地点；战斗类型=切磋/挑战/擂台战/突发遭遇/伏击/追杀/死战/试炼战斗；敌方=角色名，用顿号分隔；友方=额外参战友方，没有则留空；允许撤离=是/否。\n<模块路由>\n模块：battle\n地点：斗魂场\n战斗类型：切磋\n敌方：对手名\n友方：\n允许撤离：是\n</模块路由>\n\n2. trade：本轮明确发生购买、出售、交易、竞拍。\n字段：模块；动作=购买/出售/交易/竞拍；地点=地点名或商店名；对象=明确交易对象，没有则留空；物品=物品名；数量=正整数。\n<模块路由>\n模块：trade\n动作：购买\n地点：唐门商店\n对象：\n物品：初级魂导电池\n数量：1\n</模块路由>\n\n3. profession：本轮明确发生锻造、制造、设计、修理、维修。\n字段：模块；动作=锻造/制造/设计/修理/维修；地点=工坊、协会、店铺或当前操作地点；执行者=self/private/official；对象=代工角色名，没有则留空；目标=产物名、设计目标或待修对象名；材料=材料名，用顿号分隔；数量=正整数；阶级=正整数；子类型=细分类型。\n<模块路由>\n模块：profession\n动作：锻造\n地点：工坊\n执行者：self\n对象：\n目标：魂导器外壳\n材料：沉银、秘银\n数量：1\n阶级：1\n子类型：魂导器\n</模块路由>\n\n4. teaching：本轮确实发生传授、习得、获得情报或技能。\n字段：模块；动作=请教/传授/指点/交换情报；老师=传授方角色名；学生=接受方角色名；内容类型=情报/功法/自创魂技/秘技/战斗技巧；内容名称=具体名称；结果=成立/不成立；理由=一句话依据。\n<模块路由>\n模块：teaching\n动作：请教\n老师：老师名\n学生：学生名\n内容类型：功法\n内容名称：玄天功\n结果：成立\n理由：老师明确完成传授\n</模块路由>\n\n5. routine：本轮明确进行地点拟态修炼。\n字段：模块；动作=地点拟态修炼；启用=是/否；理由=一句话说明环境是否契合。\n<模块路由>\n模块：routine\n动作：地点拟态修炼\n启用：是\n理由：当前地点能量与武魂修炼方向契合\n</模块路由>\n\n6. trial_entry：本轮明确进入升灵台或魂灵塔。\n字段：模块；试炼类型=升灵台/魂灵塔；动作=entry；层数=正整数，只有魂灵塔需要。\n<模块路由>\n模块：trial_entry\n试炼类型：升灵台\n动作：entry\n</模块路由>\n\n7. travel：本轮行动明确造成位置变化，或剧情明确完成抵达结算。单纯说明当前位置、讨论目的地、计划以后去、询问路线时不要触发。\n字段：模块；角色=移动角色名；目标地点=已存在地点名或新地点名；归属父节点=新地点所属的已存在地点，已有地点可留空；节点类型=地点；描述=新地点一句话描述；方位=东/西/南/北/东北/东南/西北/西南；移动方式=步行/骑乘/乘车/飞行/传送；耗时tick=正数。\n<模块路由>\n模块：travel\n角色：角色名\n目标地点：已存在地点名\n</模块路由>\n\n8. 未命中：以上都不成立。\n字段：模块；理由=未命中特殊模块。\n<模块路由>\n模块：未命中\n理由：未命中特殊模块\n</模块路由>\n\n【最终输出结构】\n你必须保证最后的结构含有：\n<剧情审查>...</剧情审查>\n<在场角色>[\"角色名1\",\"角色名2\"]</在场角色>\n<content>...</content>\n<模块路由>\n模块：...\n...\n</模块路由>"
           },
           {
-            "role": "SYSTEM",
-            "content": "【模块路由分流标准】\n每轮末尾追加且只追加一个 <模块路由> 块。块内只写“字段：值”，不要写 JSON、Markdown、字段说明或注释。\n优先判断 battle / trade / profession / teaching / routine / trial_entry / travel；都不成立则输出 未命中。\n\n1. battle：本轮已经发生、即将发生或明确提出战斗、切磋、袭击、挑战。\n字段：模块；地点=战斗实际发生地点，不明确填当前地点；战斗类型=切磋/挑战/擂台战/突发遭遇/伏击/追杀/死战/试炼战斗；敌方=角色名，用顿号分隔；友方=额外参战友方，没有则留空；允许撤离=是/否。\n<模块路由>\n模块：battle\n地点：斗魂场\n战斗类型：切磋\n敌方：对手名\n友方：\n允许撤离：是\n</模块路由>\n\n2. trade：本轮明确发生购买、出售、交易、竞拍。\n字段：模块；动作=购买/出售/交易/竞拍；地点=地点名或商店名；对象=明确交易对象，没有则留空；物品=物品名；数量=正整数。\n<模块路由>\n模块：trade\n动作：购买\n地点：唐门商店\n对象：\n物品：初级魂导电池\n数量：1\n</模块路由>\n\n3. profession：本轮明确发生锻造、制造、设计、修理、维修。\n字段：模块；动作=锻造/制造/设计/修理/维修；地点=工坊、协会、店铺或当前操作地点；执行者=self/private/official；对象=代工角色名，没有则留空；目标=产物名、设计目标或待修对象名；材料=材料名，用顿号分隔；数量=正整数；阶级=正整数；子类型=细分类型。\n<模块路由>\n模块：profession\n动作：锻造\n地点：工坊\n执行者：self\n对象：\n目标：魂导器外壳\n材料：沉银、秘银\n数量：1\n阶级：1\n子类型：魂导器\n</模块路由>\n\n4. teaching：本轮确实发生传授、习得、获得情报或技能。\n字段：模块；动作=请教/传授/指点/交换情报；老师=传授方角色名；学生=接受方角色名；内容类型=情报/功法/自创魂技/秘技/战斗技巧；内容名称=具体名称；结果=成立/不成立；理由=一句话依据。\n<模块路由>\n模块：teaching\n动作：请教\n老师：老师名\n学生：学生名\n内容类型：功法\n内容名称：玄天功\n结果：成立\n理由：老师明确完成传授\n</模块路由>\n\n5. routine：本轮明确进行地点拟态修炼。\n字段：模块；动作=地点拟态修炼；启用=是/否；理由=一句话说明环境是否契合。\n<模块路由>\n模块：routine\n动作：地点拟态修炼\n启用：是\n理由：当前地点能量与武魂修炼方向契合\n</模块路由>\n\n6. trial_entry：本轮明确进入升灵台或魂灵塔。\n字段：模块；试炼类型=升灵台/魂灵塔；动作=entry；层数=正整数，只有魂灵塔需要。\n<模块路由>\n模块：trial_entry\n试炼类型：升灵台\n动作：entry\n</模块路由>\n\n7. travel：本轮行动明确造成位置变化，或剧情明确完成抵达结算。单纯说明当前位置、讨论目的地、计划以后去、询问路线时不要触发。\n字段：模块；角色=移动角色名；目标地点=已存在地点名或新地点名；归属父节点=新地点所属的已存在地点，已有地点可留空；节点类型=地点；描述=新地点一句话描述；方位=东/西/南/北/东北/东南/西北/西南；移动方式=步行/骑乘/乘车/飞行/传送；耗时tick=正数。\n<模块路由>\n模块：travel\n角色：角色名\n目标地点：已存在地点名\n</模块路由>\n\n8. 未命中：以上都不成立。\n字段：模块；理由=未命中特殊模块。\n<模块路由>\n模块：未命中\n理由：未命中特殊模块\n</模块路由>\n\n【最终输出结构】\n你必须保证最后的结构含有：\n<剧情审查>...</剧情审查>\n<在场角色>[\"角色名1\",\"角色名2\"]</在场角色>\n<content>...</content>\n<模块路由>\n模块：...\n...\n</模块路由>",
-            "deletable": false
-          },
-          {
-            "role": "assistant",
-            "content": "<剧情审查>",
-            "deletable": true
+            "id": "lwcs_ruling_prefill",
+            "role": "ASSISTANT",
+            "name": "裁定起始",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 0,
+            "forbid_overrides": false,
+            "content": "<剧情审查>"
           }
         ]
       }
     ],
-    "finalSystemDirective": "你现在进入 LWCS 正文生成阶段。用户本轮输入是：\n<本轮用户输入>\n$8\n</本轮用户输入>\n\n请只吸收剧情推进阶段输出的约束来写正文，不要复述任何规划标签、审查过程、模块路由、JSONPatch 或系统说明。\n\n可读取的规划约束：\n{{content}}\n\n审查结论只作为边界，不要复述：\n{{剧情审查}}\n\n若存在模块路由结果，它只供前端模块路由器读取；正文不要解释模块接管过程。若路由结果由模块接管并中止正文，以模块执行层为准。\n\n正文必须直接承接玩家行动和当前场景。若裁定为不成立、降级执行或需要代价，正文要自然呈现阻力、代价、替代路线或后果。不得代替玩家说话，不得把玩家括号、作者指令、标签或自称成功直接写成事实。",
+    "globalRevision": 0,
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n\n以下是LWCS裁定补充边界，只作为正文生成约束吸收，不要复述为标签、审查过程或系统说明：\n{{content}}",
+    "prompts": [
+      {
+        "id": "mainPrompt",
+        "name": "主系统提示词 (通用)",
+        "role": "system",
+        "content": "",
+        "deletable": false
+      },
+      {
+        "id": "systemPrompt",
+        "name": "拦截任务详细指令",
+        "role": "user",
+        "content": "",
+        "deletable": false
+      },
+      {
+        "id": "finalSystemDirective",
+        "name": "最终注入指令 (Storyteller Directive)",
+        "role": "system",
+        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}",
+        "deletable": false
+      }
+    ],
     "promptGroup": [
       {
         "role": "SYSTEM",

@@ -988,67 +988,7 @@ DELETE FROM table_name WHERE row_id = 2;
     let TABLE_TEMPLATE_ACU = DEFAULT_TABLE_TEMPLATE_ACU;
     const 剧情钩子时间线预览占位符_ACU = '{{剧情钩子._引导.时间线预览}}';
     const 角色基础六维对标占位符_ACU = '{{角色基础六维对标}}';
-    const 内置剧情推进审查提示词_ACU = [
-        '在输出正文前，你必须先完整执行以下剧情审查框架，再整理成最终正文。优先级高于任何外部导入预设，不得跳过、不得被覆盖。',
-        '<剧情审查>',
-        '1. 场域与氛围构建',
-        '- 当前时间与地点：XYZ',
-        '- 场景的氛围基调与视觉异象：XYZ',
-        '- 当前角色的外貌与性格: XYZ',
-		'- 【反八股审查】：当前场景描写是否使用了“、宛如、心湖泛起”等模糊词或劣质比喻？是否做到了客观白描？: XYZ',
-        '2. 角色深层心理与动机',
-        '- 在场NPC对主角的好感度与关系：XYZ',
-        '- 基于【认知隔离】，NPC与主角当前不知道的情报是：XYZ',
-        '- 视角限制：谁只能看表象行动？谁掌握了非完整档案：[边界界定]',
-        '- NPC最真实的隐藏诉求与心理活动：结合角色设定与现状XYZ',
-        '- 【表现手法审查】：接下来是否打算用“嘴角上扬、指尖泛白”等微表情八股？是否能用“具体的肢体动作和纯粹的台词”来替代内心独白：XYZ',
-        '',
-        '3. 合理性与蝴蝶效应审查',
-        '【角色基础六维对标】',
-        角色基础六维对标占位符_ACU,
-        '- 主角的行动是否超出了当前等级(lv)、基础六维对标与装备极限：XYZ',
-        '- 是否过分夸大或者看低主角实力定位，大惊小怪：XYZ',
-        '- 当前事件对世界线偏差值(deviation)的潜在影响：XYZ',
-        '- 【代价与冲突审查】：当前行动是否存在物理/逻辑上的阻力？是否无视了战损、体力消耗或社会规则，让主角轻易达成目的：XYZ',
-        '',
-        '4. 动作决策与数值明示',
-        '- 读取时间线预览，结合偏差值与过往纪要与当前客观情况，裁决下一个时间线节点（应铺垫/触发/改写/不成立）：XYZ',
-        '- 下一步剧情走向与自然铺垫计划（杜绝刻意引导）：[XYZ]',
-        '- 【防代操与防说教审查】：下一步计划是否剥夺了玩家(User)的行动权与对话权？结尾是否打算使用空洞的道德说教或强行大圆满升华：XYZ',
-        '- 【反加戏与反阴谋论审查】：当前描写是否给角色强加了“穿越者、隐藏身份、伪装、暗中修炼、察觉异样”等网文套路？是否保持角色设定的纯粹与表里如一。绝对禁止 AI 自行脑补阴谋论：XYZ',
-        '',
-        '5. 执行完上述步骤后，重新整理规划思路，再输出正文(<content>)',
-        '</剧情审查>',
-        '',
-        '【时间线预览】',
-        剧情钩子时间线预览占位符_ACU,
-        '时间线预览只作为原著参照与控速压力；禁止因为tick临近就强行落地，禁止无视当前地点、人物认知、关系状态和事件后果。',
-        '',
-    ].join('\n');
-    const 内置剧情运行时防护提示词组_ACU = Object.freeze([
-        Object.freeze({
-            role: 'system',
-            content: [
-                '你正在执行内置剧情推进任务。',
-                '必须先做剧情规划，再决定正文该进入普通叙事还是战斗/交易/副职业等模块。',
-                '你必须参考 <MVU剧情视图> 中的【当前】、【角色简表】、【剧情引导】，并结合已发生事件概览/纪要和【时间线预览】判断原著节点是否仍然成立；时间线预览只作为原著参照与控速压力，本轮必须裁决是否需要铺垫、触发、推进或改写，禁止因tick临近而强行落地',
-            ].join('\n')
-        })
-    ]);
     let 最近剧情审查结果_ACU = '';
-    function 读取剧情审计提示词_ACU() {
-        return String(globalMeta_ACU?.剧情审计提示词全局 || '').trim() || 内置剧情推进审查提示词_ACU;
-    }
-    function 写入剧情审计提示词_ACU(文本) {
-        globalMeta_ACU.剧情审计提示词全局 = String(文本 || '').trim();
-        saveGlobalMeta_ACU();
-        return 读取剧情审计提示词_ACU();
-    }
-    function 重置剧情审计提示词_ACU() {
-        globalMeta_ACU.剧情审计提示词全局 = '';
-        saveGlobalMeta_ACU();
-        return 读取剧情审计提示词_ACU();
-    }
     function 读取最近剧情审查结果_ACU() {
         return 最近剧情审查结果_ACU;
     }
@@ -1060,59 +1000,9 @@ DELETE FROM table_name WHERE row_id = 2;
         return 记录最近剧情审查结果_ACU(提取最后剧情审查块_ACU(text));
     }
     try {
-        window.__LWCS_GET_PLOT_AUDIT_PROMPT__ = () => 读取剧情审计提示词_ACU();
-        window.__LWCS_SET_PLOT_AUDIT_PROMPT__ = 文本 => 写入剧情审计提示词_ACU(文本);
-        window.__LWCS_RESET_PLOT_AUDIT_PROMPT__ = () => 重置剧情审计提示词_ACU();
         window.__LWCS_GET_LAST_PLOT_AUDIT_RESULT__ = () => 读取最近剧情审查结果_ACU();
     }
     catch (错误) { }
-    const 内置剧情模块路由最终提示词_ACU = Object.freeze({
-        role: 'system',
-        content: [
-            '【模块路由分流标准】\n' +
-            '每轮末尾追加且只追加一个 <模块路由> 块。块内只写“字段：值”，不要写 JSON、Markdown、字段说明或注释。\n' +
-            '优先判断 battle / trade / profession / teaching / routine / trial_entry / travel；都不成立则输出 未命中。\n\n' +
-
-            '1. battle：本轮已经发生、即将发生或明确提出战斗、切磋、袭击、挑战。\n' +
-            '字段：模块；地点=战斗实际发生地点，不明确填当前地点；战斗类型=切磋/挑战/擂台战/突发遭遇/伏击/追杀/死战/试炼战斗；敌方=角色名，用顿号分隔；友方=额外参战友方，没有则留空；允许撤离=是/否。\n' +
-            '<模块路由>\n模块：battle\n地点：斗魂场\n战斗类型：切磋\n敌方：对手名\n友方：\n允许撤离：是\n</模块路由>\n\n' +
-
-            '2. trade：本轮明确发生购买、出售、交易、竞拍。\n' +
-            '字段：模块；动作=购买/出售/交易/竞拍；地点=地点名或商店名；对象=明确交易对象，没有则留空；物品=物品名；数量=正整数。\n' +
-            '<模块路由>\n模块：trade\n动作：购买\n地点：唐门商店\n对象：\n物品：初级魂导电池\n数量：1\n</模块路由>\n\n' +
-
-            '3. profession：本轮明确发生锻造、制造、设计、修理、维修。\n' +
-            '字段：模块；动作=锻造/制造/设计/修理/维修；地点=工坊、协会、店铺或当前操作地点；执行者=self/private/official；对象=代工角色名，没有则留空；目标=产物名、设计目标或待修对象名；材料=材料名，用顿号分隔；数量=正整数；阶级=正整数；子类型=细分类型。\n' +
-            '<模块路由>\n模块：profession\n动作：锻造\n地点：工坊\n执行者：self\n对象：\n目标：魂导器外壳\n材料：沉银、秘银\n数量：1\n阶级：1\n子类型：魂导器\n</模块路由>\n\n' +
-
-            '4. teaching：本轮确实发生传授、习得、获得情报或技能。\n' +
-            '字段：模块；动作=请教/传授/指点/交换情报；老师=传授方角色名；学生=接受方角色名；内容类型=情报/功法/自创魂技/秘技/战斗技巧；内容名称=具体名称；结果=成立/不成立；理由=一句话依据。\n' +
-            '<模块路由>\n模块：teaching\n动作：请教\n老师：老师名\n学生：学生名\n内容类型：功法\n内容名称：玄天功\n结果：成立\n理由：老师明确完成传授\n</模块路由>\n\n' +
-
-            '5. routine：本轮明确进行地点拟态修炼。\n' +
-            '字段：模块；动作=地点拟态修炼；启用=是/否；理由=一句话说明环境是否契合。\n' +
-            '<模块路由>\n模块：routine\n动作：地点拟态修炼\n启用：是\n理由：当前地点能量与武魂修炼方向契合\n</模块路由>\n\n' +
-
-            '6. trial_entry：本轮明确进入升灵台或魂灵塔。\n' +
-            '字段：模块；试炼类型=升灵台/魂灵塔；动作=entry；层数=正整数，只有魂灵塔需要。\n' +
-            '<模块路由>\n模块：trial_entry\n试炼类型：升灵台\n动作：entry\n</模块路由>\n\n' +
-
-            '7. travel：本轮行动明确造成位置变化，或剧情明确完成抵达结算。单纯说明当前位置、讨论目的地、计划以后去、询问路线时不要触发。\n' +
-            '字段：模块；角色=移动角色名；目标地点=已存在地点名或新地点名；归属父节点=新地点所属的已存在地点，已有地点可留空；节点类型=地点；描述=新地点一句话描述；方位=东/西/南/北/东北/东南/西北/西南；移动方式=步行/骑乘/乘车/飞行/传送；耗时tick=正数。\n' +
-            '<模块路由>\n模块：travel\n角色：角色名\n目标地点：已存在地点名\n</模块路由>\n\n' +
-
-            '8. 未命中：以上都不成立。\n' +
-            '字段：模块；理由=未命中特殊模块。\n' +
-            '<模块路由>\n模块：未命中\n理由：未命中特殊模块\n</模块路由>\n\n' +
-
-            '【最终输出结构】\n' +
-            '你必须保证最后的结构含有：\n' +
-            '<剧情审查>...</剧情审查>\n' +
-            '<在场角色>["角色名1","角色名2"]</在场角色>\n' +
-            '<content>...</content>\n' +
-            '<模块路由>\n模块：...\n...\n</模块路由>'
-        ].join('\n')
-    });
     // --- [剧情推进] 默认设置 ---
     const DEFAULT_PLOT_SETTINGS_ACU = {
         "enabled": true,
@@ -3011,7 +2901,6 @@ $CONTENT
         summaryVectorIndexModeGlobal: false,
         plotEnabledGlobal: true,
         vectorMemoryConfigGlobal: null,
-        剧情审计提示词全局: '',
     };
     function buildDefaultGlobalMeta_ACU() {
         return {
@@ -3023,7 +2912,6 @@ $CONTENT
             summaryVectorIndexModeGlobal: false,
             plotEnabledGlobal: true,
             vectorMemoryConfigGlobal: null,
-            剧情审计提示词全局: '',
         };
     }
     function loadGlobalMeta_ACU() {
@@ -16782,13 +16670,19 @@ $CONTENT
         let match;
         while ((match = placeholderPattern.exec(String(text || ''))) !== null) {
             const tagName = String(match[1] || '').trim();
-            if (tagName && !是MVU运行时占位符名_ACU(tagName))
+            if (tagName && !是剧情推进运行时占位符名_ACU(tagName))
                 names.push(tagName);
         }
         return [...new Set(names)];
     }
     function 是MVU运行时占位符名_ACU(tagName) {
         return ['MVU_RUNTIME_VIEW', 'MVU_RUNTIME_UPDATE', 'MVU_UPDATE_STRUCTURE_HINTS'].includes(String(tagName || '').trim());
+    }
+    function 是剧情推进运行时占位符名_ACU(tagName) {
+        const 标准名 = String(tagName || '').trim();
+        return 是MVU运行时占位符名_ACU(标准名)
+            || 标准名 === '剧情钩子._引导.时间线预览'
+            || 标准名 === '角色基础六维对标';
     }
     function buildPlotTagMapFromText_ACU(text, requestedTagNames = null) {
         const sourceText = String(text || '');
@@ -16868,7 +16762,7 @@ $CONTENT
             return '';
         const placeholderPattern = /\{\{\s*([^{}\s]+)\s*\}\}/g;
         return sourceText.replace(placeholderPattern, (placeholder, tagName) => {
-            if (是MVU运行时占位符名_ACU(tagName))
+            if (是剧情推进运行时占位符名_ACU(tagName))
                 return placeholder;
             const resolvedValue = resolvePlotTagValueWithFallback_ACU(tagSourceMap, fallbackTagSourceMap, tagName);
             return buildPlotTagBlock_ACU(tagName, resolvedValue.value);
