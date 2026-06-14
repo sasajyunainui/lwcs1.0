@@ -25,7 +25,11 @@
     壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置角色库: { 类型: 'inline-js', 地址: 资源基础地址 + 'CharacterLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置物品库: { 类型: 'inline-js', 地址: 资源基础地址 + 'ItemLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    变量技能运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Skill_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    变量结构运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Schema_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    变量视图运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Runtime_View.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     变量规则: { 类型: 'module-js', 地址: 资源基础地址 + 'MVU.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    变量事件钩子: { 类型: 'inline-js', 地址: 资源基础地址 + 'MVU_Hooks.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     魂技机制注册表: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_MECHANISM_REGISTRY__', 值类型: 'object', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -207,14 +211,18 @@
       await waitForMountsReady(10000);
       ensureGetAllVariablesShim();
       await 加载样式(模块注册表.样式核心.地址);
-      ['内置角色库', '内置物品库', '变量规则', '魂技机制注册表', '逻辑桥接', '战斗模块', '数据库模块'].forEach(模块名 => {
+      ['内置角色库', '内置物品库', '变量技能运行时', '变量结构运行时', '变量视图运行时', '变量规则', '变量事件钩子', '魂技机制注册表', '逻辑桥接', '战斗模块', '数据库模块'].forEach(模块名 => {
         if (!模块状态表[模块名]) return;
         模块状态表[模块名].状态 = 'pending';
         模块状态表[模块名].错误 = '';
       });
       await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量技能运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量结构运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量视图运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('变量规则', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('变量事件钩子', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('魂技机制注册表', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
@@ -600,7 +608,7 @@
         ensureGetAllVariablesShim();
 
         记录阶段(加载阶段.核心加载中);
-        const 核心模块顺序 = ['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', '变量规则', '魂技机制注册表', '逻辑桥接', '数据库模块'];
+        const 核心模块顺序 = ['样式核心', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', '变量技能运行时', '变量结构运行时', '变量视图运行时', '变量规则', '变量事件钩子', '魂技机制注册表', '逻辑桥接', '数据库模块'];
         for (const 模块名 of 核心模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }

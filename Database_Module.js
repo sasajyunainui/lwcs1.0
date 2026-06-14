@@ -1176,18 +1176,19 @@ DELETE FROM table_name WHERE row_id = 2;
         "globalRevision": 0
     };
     const LWCS_内置剧情推进预设名_ACU = 'LWCS 默认剧情推进';
-    const LWCS_内置剧情推进预设_ACU = {
-        name: LWCS_内置剧情推进预设名_ACU,
-        rateMain: 1,
-        ratePersonal: 1,
-        rateErotic: 0,
-        rateCuckold: 1,
-        recallCount: 20,
-        contextTurnCount: 3,
-        minLength: 0,
-        contextExtractRules: [],
-        contextExcludeRules: [],
-        plotTasks: [
+    function 构建LWCS_内置剧情推进预设_ACU() {
+        return {
+            name: LWCS_内置剧情推进预设名_ACU,
+            rateMain: 1,
+            ratePersonal: 1,
+            rateErotic: 0,
+            rateCuckold: 1,
+            recallCount: 20,
+            contextTurnCount: 3,
+            minLength: 0,
+            contextExtractRules: [],
+            contextExcludeRules: [],
+            plotTasks: [
             {
                 id: 'lwcs_recall_state',
                 name: '召回与状态摘取',
@@ -1269,7 +1270,7 @@ DELETE FROM table_name WHERE row_id = 2;
                 enabled: true,
                 stage: 2,
                 order: 1,
-                extractTags: '剧情审查,writing_directive,format_directive,模块路由',
+                extractTags: '剧情审查,content,模块路由',
                 extractInjectTags: '',
                 minLength: 0,
                 maxRetries: 3,
@@ -1318,13 +1319,13 @@ DELETE FROM table_name WHERE row_id = 2;
                             '$7',
                             '</前文上下文>',
                             '',
-                            '请先读取以上运行时状态，再执行后续剧情审计与模块路由。不要在这一段输出正文。',
+                            '请先读取以上运行时状态，再执行后续剧情审计与模块路由。后续 <content> 只写正文 AI 的执行约束，不写正文草稿。',
                         ].join('\n'),
                         deletable: false,
                     },
                     {
                         role: 'assistant',
-                        content: '收到，我会先读取召回结果、MVU剧情视图、时间线预览与六维对标，再进行剧情审计和模块路由判定。',
+                        content: '收到，我会先读取召回结果、MVU剧情视图、时间线预览与六维对标，再进行剧情审计、正文约束和模块路由判定。',
                         deletable: true,
                     },
                     {
@@ -1334,7 +1335,7 @@ DELETE FROM table_name WHERE row_id = 2;
                     },
                     {
                         role: 'assistant',
-                        content: '收到，我将按剧情审查框架完成本轮规划，不跳过场域、角色认知、数值边界、代价冲突与防代操检查。',
+                        content: '收到，我将按剧情审查框架完成本轮规划，并在 <content> 中整理给正文 AI 的执行约束，不输出正文草稿。',
                         deletable: true,
                     },
                     {
@@ -1349,8 +1350,8 @@ DELETE FROM table_name WHERE row_id = 2;
                     },
                 ],
             },
-        ],
-        finalSystemDirective: [
+            ],
+            finalSystemDirective: [
             '你现在进入 LWCS 正文生成阶段。用户本轮输入是：',
             '<本轮用户输入>',
             '$8',
@@ -1359,19 +1360,17 @@ DELETE FROM table_name WHERE row_id = 2;
             '请只吸收剧情推进阶段输出的约束来写正文，不要复述任何规划标签、审查过程、模块路由、JSONPatch 或系统说明。',
             '',
             '可读取的规划约束：',
-            '{{writing_directive}}',
-            '',
-            '格式约束：',
-            '{{format_directive}}',
+            '{{content}}',
             '',
             '审查结论只作为边界，不要复述：',
             '{{剧情审查}}',
             '',
-            '若存在 <模块路由>，它只供前端模块路由器读取；正文不要解释模块接管过程。若路由结果由模块接管并中止正文，以模块执行层为准。',
+            '若存在模块路由结果，它只供前端模块路由器读取；正文不要解释模块接管过程。若路由结果由模块接管并中止正文，以模块执行层为准。',
             '',
             '正文必须直接承接玩家行动和当前场景。若裁定为不成立、降级执行或需要代价，正文要自然呈现阻力、代价、替代路线或后果。不得代替玩家说话，不得把玩家括号、作者指令、标签或自称成功直接写成事实。',
-        ].join('\n'),
-    };
+            ].join('\n'),
+        };
+    }
     // --- [剧情推进] 独立的默认提示词组结构（不再从填表提示词合并） ---
     // 此常量定义剧情推进功能的完整默认提示词组，方便整体修改
     // 注意：mainSlot="A" 对应主提示词，mainSlot="B" 对应拦截任务详细指令
@@ -16977,7 +16976,7 @@ $CONTENT
         return contents;
     }
     function getPlotPlaceholderTagNames_ACU(text) {
-        const placeholderPattern = /\{\{(\w+)\}\}/g;
+        const placeholderPattern = /\{\{\s*([^{}\s]+)\s*\}\}/g;
         const names = [];
         let match;
         while ((match = placeholderPattern.exec(String(text || ''))) !== null) {
@@ -17066,7 +17065,7 @@ $CONTENT
         const sourceText = String(text || '');
         if (!sourceText)
             return '';
-        const placeholderPattern = /\{\{(\w+)\}\}/g;
+        const placeholderPattern = /\{\{\s*([^{}\s]+)\s*\}\}/g;
         return sourceText.replace(placeholderPattern, (placeholder, tagName) => {
             if (是MVU运行时占位符名_ACU(tagName))
                 return placeholder;
@@ -17380,6 +17379,12 @@ $CONTENT
             return 正文;
         return `${正文}\n${路由块}`;
     }
+    function stripPlanningMachineBlocks_ACU(text) {
+        return String(text || '')
+            .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, '')
+            .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, '')
+            .trim();
+    }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
         return buildPlotRawFallbackText_ACU(taskResults);
     }
@@ -17387,32 +17392,19 @@ $CONTENT
         const defaultDirective = '[SYSTEM_DIRECTIVE: You are a storyteller. The following <plot> block is your absolute script for this turn. You MUST follow the <directive> within it to generate the story.]';
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
-        const placeholderPattern = /\{\{(\w+)\}\}/g;
-        const placeholderNames = [];
-        let match;
-        while ((match = placeholderPattern.exec(baseDirective)) !== null) {
-            if (!是MVU运行时占位符名_ACU(match[1]))
-                placeholderNames.push(match[1]);
-        }
+        const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
         const 剧情审查块 = 取最后剧情审查块_ACU(taskResults);
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
                 const injectOnlyTagNamesLower = new Set(Array.from(injectOnlyTagNames).map((name) => String(name || '').toLowerCase()));
-                const finalDirectiveWithTags = baseDirective.replace(placeholderPattern, (placeholder, tagName) => {
-                    if (是MVU运行时占位符名_ACU(tagName))
-                        return placeholder;
+                placeholderNames.forEach((tagName) => {
                     const resolvedValue = getPlotTagMapValue_ACU(aggregatedTags, tagName);
                     matchedTags.add(String(tagName || '').toLowerCase());
-                    if (resolvedValue.found) {
+                    if (resolvedValue.found)
                         matchedTags.add(String(resolvedValue.actualTagName || '').toLowerCase());
-                    }
-                    const contents = resolvedValue.value;
-                    if (hasMeaningfulTagContents_ACU(contents)) {
-                        return `<${tagName}>${(Array.isArray(contents) ? contents : [contents]).map(content => content ?? '').join('\n\n')}</${tagName}>`;
-                    }
-                    return '';
                 });
+                const finalDirectiveWithTags = replacePlotTagPlaceholders_ACU(baseDirective, aggregatedTags);
                 const unusedTagBlocks = [];
                 aggregatedTags.forEach((contents, tagName) => {
                     const loweredTagName = String(tagName || '').toLowerCase();
@@ -17439,7 +17431,7 @@ $CONTENT
             return 合并剧情终稿片段_ACU([baseDirective, aggregatedTagBlocks], 剧情审查块);
         }
         if (placeholderNames.length > 0) {
-            const finalDirectiveWithoutTags = baseDirective.replace(placeholderPattern, '');
+            const finalDirectiveWithoutTags = replacePlotTagPlaceholders_ACU(baseDirective, new Map());
             return 合并剧情终稿片段_ACU([finalDirectiveWithoutTags, rawFallbackText], 剧情审查块);
         }
         return 合并剧情终稿片段_ACU([baseDirective, rawFallbackText], 剧情审查块);
@@ -17791,6 +17783,7 @@ $CONTENT
         const taskStage = normalizePositiveInteger_ACU$1(normalizedTask.stage, 1);
         const maxRetries = normalizePositiveInteger_ACU$1(normalizedTask.maxRetries, sharedContext?.plotSettings?.loopSettings?.maxRetries ?? DEFAULT_PLOT_SETTINGS_ACU.loopSettings?.maxRetries ?? 3);
         const minLength = normalizeNonNegativeInteger_ACU$1(normalizedTask.minLength, 0);
+        const taskStartTime = 读取性能时间_ACU();
         // 任务级世界书计算：基于当前任务实际使用的 {{tag}} 注入内容 + 本轮上下文触发，
         // 而不是固定使用整段上一轮剧情内容。
         // 标签来源与 renderPlotTaskMessages_ACU 一致：
@@ -17900,6 +17893,10 @@ $CONTENT
             if (tagNames.length > 0 && Object.keys(extractedTags).length > 0) {
                 logDebug_ACU(`[剧情推进] [阶段:${taskStage}] [任务:${taskLabel}] 成功摘取标签: ${Object.keys(extractedTags).join(', ')}`);
             }
+            else if (parseTagList_ACU(`${normalizedTask.extractTags || ''},${normalizedTask.extractInjectTags || ''}`).length > 0) {
+                logWarn_ACU(`[剧情推进] [阶段:${taskStage}] [任务:${taskLabel}] 未摘取到声明标签，请检查模型输出标签。`);
+            }
+            记录性能耗时_ACU(`剧情推进任务:${taskLabel}`, taskStartTime);
             return {
                 taskId: normalizedTask.id,
                 taskName: taskLabel,
@@ -18038,13 +18035,16 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
-        const finalMessage = appendModuleRouteBlockIfMissing_ACU(
-            buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames),
-            extractLastModuleRouteBlockFromTaskResults_ACU(successfulResults)
-        );
+        const moduleRouteBlock = extractLastModuleRouteBlockFromTaskResults_ACU(successfulResults);
+        const planningDirective = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
+        const finalMessage = stripPlanningMachineBlocks_ACU(planningDirective);
+        const runtimePlotText = appendModuleRouteBlockIfMissing_ACU(planningDirective, moduleRouteBlock);
+        logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length, '，模块路由:', moduleRouteBlock ? '有' : '无');
         await savePlotToLatestMessage_ACU(true);
         return {
             finalMessage,
+            runtimePlotText,
+            moduleRouteBlock,
             successfulResults,
             failedResults,
             aggregatedTags,
@@ -18230,6 +18230,8 @@ $CONTENT
             return {
                 success: true,
                 finalMessage: runtimeResult.finalMessage,
+                runtimePlotText: runtimeResult.runtimePlotText || runtimeResult.finalMessage,
+                moduleRouteBlock: runtimeResult.moduleRouteBlock || '',
                 successCount: runtimeResult.successfulResults.length,
                 failCount: runtimeResult.failedResults.length,
                 enabledTaskCount: runtimeResult.enabledTaskCount,
@@ -27207,7 +27209,7 @@ $CONTENT
         if (!normalizedPresetName)
             return null;
         if (normalizedPresetName === LWCS_内置剧情推进预设名_ACU)
-            return normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU);
+            return normalizePlotPresetExcludeRules_ACU(构建LWCS_内置剧情推进预设_ACU());
         const presets = settings_ACU?.plotSettings?.promptPresets || [];
         const targetPresetRaw = presets.find((p) => p.name === normalizedPresetName);
         return targetPresetRaw ? normalizePlotPresetExcludeRules_ACU(targetPresetRaw) : null;
@@ -27402,6 +27404,47 @@ $CONTENT
         delete cloned.contextExtractTags;
         delete cloned.contextExcludeTags;
         return cloned;
+    }
+    function inspectPlotPreset_ACU(preset) {
+        const normalized = normalizePlotPresetExcludeRules_ACU(preset);
+        const issues = [];
+        if (!normalized || typeof normalized !== 'object') {
+            return { ok: false, issues: ['预设结构无效。'], referencedTags: [], extractedTags: [] };
+        }
+        const tasks = Array.isArray(normalized.plotTasks) ? normalized.plotTasks : [];
+        const enabledTasks = tasks.filter(task => task && task.enabled !== false);
+        if (enabledTasks.length === 0)
+            issues.push('至少需要一个启用任务。');
+        const extractedTags = new Set();
+        enabledTasks.forEach((task) => {
+            const taskName = String(task?.name || task?.id || '未命名任务');
+            if (!Array.isArray(task?.promptGroup) || !task.promptGroup.some(segment => String(segment?.content || '').trim())) {
+                issues.push(`任务「${taskName}」缺少有效提示词段。`);
+            }
+            parseTagList_ACU(task?.extractTags || '').forEach(tagName => extractedTags.add(tagName));
+            parseTagList_ACU(task?.extractInjectTags || '').forEach(tagName => extractedTags.add(tagName));
+        });
+        const referencedTags = getPlotPlaceholderTagNames_ACU(normalized.finalSystemDirective || '');
+        const missingTags = referencedTags.filter(tagName => !extractedTags.has(tagName));
+        if (missingTags.length > 0)
+            issues.push(`最终注入引用了未由任务抽取的标签：${missingTags.join('、')}。`);
+        return {
+            ok: issues.length === 0,
+            issues,
+            referencedTags,
+            extractedTags: Array.from(extractedTags),
+        };
+    }
+    function logPlotPresetInspection_ACU(preset, source = 'preset') {
+        const result = inspectPlotPreset_ACU(preset);
+        const presetName = String(preset?.name || '未命名预设');
+        if (result.issues.length > 0) {
+            logWarn_ACU(`[剧情推进] 预设自检(${source})「${presetName}」: ${result.issues.join('；')}`);
+        }
+        else {
+            logDebug_ACU(`[剧情推进] 预设自检(${source})「${presetName}」通过，引用标签: ${result.referencedTags.join(', ') || '无'}`);
+        }
+        return result;
     }
     function stripPlotPresetWorldbookEntrySelectionForExport_ACU(preset) {
         const normalizedPreset = normalizePlotPresetExcludeRules_ACU(preset);
@@ -53048,9 +53091,11 @@ $CONTENT
                 return { action: 'loop_retry' };
             }
             // 8. 规划成功，决定写回位置
-            if (finalMessage && typeof finalMessage === 'string') {
-                缓存规划剧情审查结果_ACU(finalMessage);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(finalMessage, { moduleSettlementContext });
+            const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
+            const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
+            if (正文指令文本) {
+                缓存规划剧情审查结果_ACU(完整规划文本);
+                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
                 const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
                 if (moduleSwitchResult.action === 'switched') {
                     await persistUserMessageWithoutGeneration_ACU(userMessage);
@@ -53060,15 +53105,15 @@ $CONTENT
                     await persistUserMessageWithoutGeneration_ACU(userMessage);
                     return { action: 'module_switch_failed', moduleDecision: moduleSwitchResult.moduleDecision, routeResult: moduleSwitchResult.routeResult, userMessage };
                 }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(finalMessage);
+                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
                 if (技能设计决定.action === 'blocked') {
                     return { action: 'blocked', reason: 技能设计决定.reason || 'skill_design_requested', userMessage };
                 }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(finalMessage);
-                const writeBack = await applyPlanningResultToOptions_ACU(options, finalMessageForGeneration, userMessage, finalMessage);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: finalMessage, writeBack, moduleDecision, userMessage };
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
+                const writeBack = await applyPlanningResultToOptions_ACU(options, finalMessageForGeneration, userMessage, 完整规划文本);
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: 完整规划文本, writeBack, moduleDecision, userMessage };
             }
             // 9. 规划返回 null（未启用/失败），透传
             return { action: 'passthrough' };
@@ -53146,9 +53191,11 @@ $CONTENT
                 return { action: 'loop_retry' };
             }
             // 7. 规划成功
-            if (finalMessage && typeof finalMessage === 'string') {
-                缓存规划剧情审查结果_ACU(finalMessage);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(finalMessage, { moduleSettlementContext });
+            const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
+            const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
+            if (正文指令文本) {
+                缓存规划剧情审查结果_ACU(完整规划文本);
+                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
                 const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
                 if (moduleSwitchResult.action === 'switched') {
                     return {
@@ -53168,7 +53215,7 @@ $CONTENT
                         lastMessageIndex,
                     };
                 }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(finalMessage);
+                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
                 if (技能设计决定.action === 'blocked') {
                     return {
                         action: 'blocked',
@@ -53177,16 +53224,16 @@ $CONTENT
                         lastMessageIndex,
                     };
                 }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(finalMessage);
-                const 运行时StatData = await 准备正文生成运行时StatData_ACU(messageToProcess, finalMessage, finalMessageForGeneration);
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
+                const 运行时StatData = await 准备正文生成运行时StatData_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
                 return {
                     action: 'planned',
                     finalMessage: finalMessageForGeneration,
                     visibleMessage,
                     reviewPrompt,
-                    runtimePlotText: finalMessage,
+                    runtimePlotText: 完整规划文本,
                     moduleDecision,
                     statData: 运行时StatData || null,
                     originalMessage: messageToProcess,
@@ -53255,9 +53302,11 @@ $CONTENT
                 return { action: 'blocked', reason: finalMessage.reason || 'blocked', originalMessage: originalInputText };
             }
             // 规划成功
-            if (finalMessage && typeof finalMessage === 'string') {
-                缓存规划剧情审查结果_ACU(finalMessage);
-                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(finalMessage, { moduleSettlementContext });
+            const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
+            const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
+            if (正文指令文本) {
+                缓存规划剧情审查结果_ACU(完整规划文本);
+                const moduleDecision = await resolveModuleDecisionFromPlanningText_ACU(完整规划文本, { moduleSettlementContext });
                 const moduleSwitchResult = await finalizeModuleSwitchAfterPlanning_ACU(moduleDecision);
                 if (moduleSwitchResult.action === 'switched') {
                     await persistUserMessageWithoutGeneration_ACU(originalInputText);
@@ -53277,7 +53326,7 @@ $CONTENT
                         originalMessage: originalInputText,
                     };
                 }
-                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(finalMessage);
+                const 技能设计决定 = await confirmSkillDesignBeforeGeneration_ACU(完整规划文本);
                 if (技能设计决定.action === 'blocked') {
                     return {
                         action: 'blocked',
@@ -53285,11 +53334,11 @@ $CONTENT
                         originalMessage: originalInputText,
                     };
                 }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(finalMessage));
-                const reviewPrompt = 构建剧情审查临时注入_ACU(finalMessage);
-                const 运行时StatData = await 准备正文生成运行时StatData_ACU(originalInputText, finalMessage, finalMessageForGeneration);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: finalMessage, moduleDecision, statData: 运行时StatData || null, originalMessage: originalInputText };
+                const visibleMessage = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(stripModuleIntentBlocks_ACU(正文指令文本));
+                const reviewPrompt = 构建剧情审查临时注入_ACU(完整规划文本);
+                const 运行时StatData = await 准备正文生成运行时StatData_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, reviewPrompt, runtimePlotText: 完整规划文本, moduleDecision, statData: 运行时StatData || null, originalMessage: originalInputText };
             }
             return { action: 'blocked', reason: 'empty_final_message', originalMessage: originalInputText };
         }
@@ -53417,7 +53466,12 @@ $CONTENT
         else {
             showToastr_ACU('success', `剧情规划成功，共完成 ${result.successCount} 个任务。`, '规划成功', { acuToastCategory: ACU_TOAST_CATEGORY_ACU.PLAN_OK });
         }
-        return result.finalMessage;
+        return {
+            planned: true,
+            finalMessage: result.finalMessage,
+            runtimePlotText: result.runtimePlotText || result.finalMessage,
+            moduleRouteBlock: result.moduleRouteBlock || '',
+        };
     }
 
     async function clearAllSummaryVectorIndexCaches_ACU() {
@@ -78734,9 +78788,10 @@ Expected function or array of functions, received type ${typeof value}.`
         const seen = new Set([LWCS_内置剧情推进预设名_ACU]);
         const out = [{
                 name: LWCS_内置剧情推进预设名_ACU,
-                raw: clone$4(normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU)),
+                raw: clone$4(normalizePlotPresetExcludeRules_ACU(构建LWCS_内置剧情推进预设_ACU())),
                 builtin: true,
             }];
+        logPlotPresetInspection_ACU(out[0].raw, 'builtin');
         if (!Array.isArray(rawList))
             return out;
         for (const raw of rawList) {
@@ -78792,7 +78847,7 @@ Expected function or array of functions, received type ${typeof value}.`
         return out;
     }
     function getDefaultPlotPresetRawForV2() {
-        const normalized = normalizePlotPresetExcludeRules_ACU(LWCS_内置剧情推进预设_ACU);
+        const normalized = normalizePlotPresetExcludeRules_ACU(构建LWCS_内置剧情推进预设_ACU());
         return clone$4(normalized && typeof normalized === 'object' ? normalized : { name: '', plotTasks: [] });
     }
     const usePlotPresetStore = defineStore('acu-v2-plot-presets', {
@@ -78943,6 +78998,9 @@ Expected function or array of functions, received type ${typeof value}.`
                 const normalized = normalizePlotPresetExcludeRules_ACU({ ...preset.raw, name: newName });
                 if (!normalized)
                     return false;
+                const inspection = logPlotPresetInspection_ACU(normalized, 'save');
+                if (inspection.issues.some(issue => issue.includes('至少需要一个启用任务') || issue.includes('缺少有效提示词段')))
+                    return false;
                 ensureSettingsShape$2();
                 const plot = settings_ACU.plotSettings;
                 const list = plot.promptPresets || [];
@@ -79037,6 +79095,9 @@ Expected function or array of functions, received type ${typeof value}.`
                     if (!name)
                         continue;
                     if (name === LWCS_内置剧情推进预设名_ACU)
+                        continue;
+                    const inspection = logPlotPresetInspection_ACU(presetPayload, 'import');
+                    if (inspection.issues.some(issue => issue.includes('至少需要一个启用任务') || issue.includes('缺少有效提示词段')))
                         continue;
                     const existingIndex = list.findIndex((preset) => preset?.name === name);
                     if (existingIndex >= 0) {
@@ -80729,16 +80790,19 @@ Expected function or array of functions, received type ${typeof value}.`
             if (!target)
                 return;
             resetDraft();
-            originalName.value = target.name;
-            draftMeta.name = target.name;
+            originalName.value = target.builtin ? '' : target.name;
+            draftMeta.name = target.builtin
+                ? uniquePresetName$1(`${target.name} 副本`, store.presets.map(p => p.name))
+                : target.name;
             draftMeta.taskApiPreset = '';
             draftRaw.value = JSON.parse(JSON.stringify(target.raw || {}));
+            draftRaw.value.name = draftMeta.name;
             contextRules.extractRules = normalizeRulePairs(target.raw?.contextExtractRules, target.raw?.contextExtractTags || '', 'extract');
             contextRules.excludeRules = normalizeRulePairs(target.raw?.contextExcludeRules, target.raw?.contextExcludeTags || '', 'exclude');
             Object.assign(draftRates, readDraftRates(target.raw || null));
             taskEditing.loadFromRaw(target.raw?.plotTasks || [], target.raw?.finalSystemDirective || '');
             error.value = '';
-            drawerView.value = 'edit';
+            drawerView.value = target.builtin ? 'create' : 'edit';
             saveSnapshot();
         }
         /** "编辑当前预设"按钮：打开抽屉并直接进入 edit 视图。 */
@@ -82210,18 +82274,11 @@ Expected function or array of functions, received type ${typeof value}.`
             const { apiStore, followActiveApiLabel, apiPresetSelectOptions: pageApiSelectOptions, } = useApiPresetSelectOptions();
             const management = usePlotPresetManagement();
             const devOptions = useDevOptions();
-            const presetDropdownItems = computed(() => [
-                {
-                    value: "",
-                    label: "默认预设",
-                    meta: `${store.defaultPresetTaskCount} 个任务`,
-                },
-                ...store.presets.map((p) => ({
+            const presetDropdownItems = computed(() => store.presets.map((p) => ({
                     value: p.name,
                     label: p.name,
                     meta: `${Array.isArray(p.raw?.plotTasks) ? p.raw.plotTasks.length : 0} 个任务`,
-                })),
-            ]);
+                })));
             const apiPresetOptions = computed(() => apiStore.presets.map((p) => ({ name: p.name })));
             const currentTaskApiOverride = computed(() => {
                 const taskId = management.taskEditing.currentTaskId.value;
