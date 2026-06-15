@@ -12773,8 +12773,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-shell-roster-action.warn:focus-v
 }
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--world {
   grid-template-columns: minmax(300px, 0.9fr) minmax(420px, 1.45fr);
-  grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: 'world timeline';
+  grid-template-rows: minmax(0, 1fr) minmax(126px, auto);
+  grid-template-areas:
+    'world timeline'
+    'bestiary timeline';
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -12806,6 +12808,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--world > [data
   grid-area: timeline;
   height: 100% !important;
   min-height: 0 !important;
+}
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card='world-bestiary'] {
+  grid-area: bestiary;
+  min-height: 126px !important;
 }
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card='org-hero'] {
   grid-area: matrix;
@@ -13023,8 +13029,7 @@ body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track {
   margin-left: 0 !important;
   padding: 8px 2px 8px 40px !important;
   border-left: 0 !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: rgba(92, 224, 255, 0.32) transparent !important;
+  scrollbar-width: none !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track::before {
@@ -13043,12 +13048,9 @@ body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track::before {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track::-webkit-scrollbar {
-  width: 5px !important;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track::-webkit-scrollbar-thumb {
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: rgba(92, 224, 255, 0.32) !important;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .hologram-chronicle-track .timeline-stack {
@@ -13249,7 +13251,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--terminal > [d
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-quest'] {
   grid-area: quest;
 }
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-bestiary'] {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-profession'] {
   grid-area: bestiary;
 }
 
@@ -13652,11 +13654,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-emp
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-detail-grid {
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  grid-template-areas:
-    'equipment bones'
-    'workshop workshop' !important;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.35fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  grid-template-areas: 'equipment bones' !important;
+  height: min(620px, calc(var(--mvu-hud-frame-height, 760px) - 150px)) !important;
+  min-height: 460px !important;
+  align-content: stretch !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--equipment {
@@ -13665,10 +13668,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--bones {
   grid-area: bones !important;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--workshop {
-  grid-area: workshop !important;
 }
 
 body.mvu-layout-unified
@@ -13684,13 +13683,6 @@ body.mvu-layout-unified
   .mvu-armory-detail-grid
   > .archive-card:nth-child(2) {
   grid-area: bones !important;
-}
-body.mvu-layout-unified
-  #mvu-unified-mount
-  .mvu-unified-detail-host
-  .mvu-armory-detail-grid
-  > .archive-card:nth-child(3) {
-  grid-area: workshop !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-detail-grid {
@@ -13734,39 +13726,45 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--equipment,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--bones {
-  align-self: start !important;
-  height: auto !important;
+  align-self: stretch !important;
+  height: 100% !important;
   min-height: 0 !important;
-  overflow: visible !important;
+  max-height: none !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card--bones.is-empty {
-  padding-bottom: 10px !important;
+  padding-bottom: var(--mvu-card-padding, 12px) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)) !important;
-  gap: 8px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  height: 100% !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-slot {
   position: relative !important;
   min-width: 0 !important;
-  min-height: 58px !important;
+  min-height: 0 !important;
   display: grid !important;
   grid-template-rows: auto minmax(0, 1fr) !important;
-  align-content: center !important;
-  gap: 5px !important;
-  padding: 8px 10px 8px 12px !important;
+  align-content: stretch !important;
+  gap: 8px !important;
+  padding: 10px 10px 9px 38px !important;
   border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid rgba(143, 233, 255, 0.11) !important;
+  border: 1px solid rgba(143, 233, 255, 0.12) !important;
   background:
-    linear-gradient(180deg, rgba(143, 233, 255, 0.052), rgba(0, 0, 0, 0.16)),
-    rgba(4, 15, 24, 0.32) !important;
+    linear-gradient(135deg, rgba(143, 233, 255, 0.07), rgba(0, 0, 0, 0.2)),
+    rgba(3, 13, 20, 0.48) !important;
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.24),
-    inset 0 0 18px rgba(0, 0, 0, 0.18) !important;
+    inset 0 0 22px rgba(0, 0, 0, 0.38),
+    inset 4px 0 0 rgba(143, 233, 255, 0.22) !important;
   overflow: hidden !important;
 }
 
@@ -13777,11 +13775,13 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-slot.clickable:hover {
   border-color: rgba(143, 233, 255, 0.38) !important;
   background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.16), transparent 54%),
-    rgba(6, 24, 34, 0.52) !important;
+    radial-gradient(circle at 72% 0%, rgba(143, 233, 255, 0.18), transparent 56%),
+    linear-gradient(135deg, rgba(143, 233, 255, 0.12), rgba(0, 0, 0, 0.2)),
+    rgba(6, 24, 34, 0.62) !important;
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.58),
-    0 0 18px rgba(143, 233, 255, 0.1) !important;
+    inset 0 0 22px rgba(0, 0, 0, 0.32),
+    inset 4px 0 0 rgba(143, 233, 255, 0.64),
+    0 0 18px rgba(143, 233, 255, 0.12) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-slot b {
@@ -13801,84 +13801,962 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
   overflow-wrap: anywhere !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-workshop-brief {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  margin-bottom: 10px !important;
-}
-
-body.mvu-layout-unified
-  #mvu-unified-mount
-  .mvu-unified-detail-host
-  .mvu-armory-workshop-brief
-  .archive-tile {
-  min-height: 36px !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  padding: 0 0 6px !important;
-  box-shadow: inset 0 -1px 0 rgba(143, 233, 255, 0.09) !important;
-}
-
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-bone-empty {
-  position: relative !important;
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot)::before,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot)::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot)::before {
+  content: attr(data-armory-mark) !important;
+  position: absolute !important;
+  left: 9px !important;
+  top: 10px !important;
+  width: 20px !important;
+  height: calc(100% - 20px) !important;
   display: grid !important;
-  gap: 8px !important;
-  min-height: 96px !important;
-  overflow: hidden !important;
-  padding: 8px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(143, 233, 255, 0.09) !important;
+  place-items: center !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(143, 233, 255, 0.16) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: rgba(143, 233, 255, 0.46) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-active),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-active),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-active) {
+  border-color: rgba(143, 233, 255, 0.28) !important;
   background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.06), transparent 56%),
-    rgba(0, 0, 0, 0.16) !important;
-  color: rgba(190, 218, 226, 0.7) !important;
-  font-size: var(--mvu-font-xs, 10px) !important;
-  letter-spacing: 0 !important;
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2) !important;
+    radial-gradient(circle at 85% 0%, rgba(113, 255, 207, 0.12), transparent 58%),
+    linear-gradient(135deg, rgba(143, 233, 255, 0.1), rgba(0, 0, 0, 0.18)),
+    rgba(3, 16, 24, 0.58) !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-empty),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-empty),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-empty) {
+  opacity: 0.48 !important;
+  border-style: dashed !important;
+  box-shadow:
+    inset 0 0 22px rgba(0, 0, 0, 0.48),
+    inset 4px 0 0 rgba(143, 233, 255, 0.08) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-head),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-head),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-head) {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-head b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-head b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-head b) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-head i),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-head i),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-head i) {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  padding-left: 8px !important;
+  color: rgba(113, 255, 207, 0.76) !important;
+  font-size: 8px !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-head i)::before,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-head i)::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-head i)::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  width: 4px !important;
+  height: 4px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+  transform: translateY(-50%) !important;
+  box-shadow: 0 0 8px currentColor !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-empty .mvu-armory-gear-head i),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-empty .mvu-armory-gear-head i),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-empty .mvu-armory-gear-head i) {
+  color: rgba(156, 175, 181, 0.58) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-topology),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-topology),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-topology) {
+  position: relative !important;
+  min-height: 0 !important;
+  height: 100% !important;
   display: grid !important;
-  grid-template-columns: repeat(6, minmax(34px, 1fr)) !important;
+  grid-template-columns: minmax(76px, 0.8fr) minmax(92px, 1fr) minmax(118px, 1.25fr) minmax(92px, 1fr) minmax(76px, 0.8fr) !important;
+  grid-template-rows: minmax(72px, 0.8fr) minmax(88px, 1fr) minmax(98px, 1.1fr) minmax(78px, 0.9fr) !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.1) !important;
+  background:
+    linear-gradient(rgba(143, 233, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 233, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% 45%, rgba(143, 233, 255, 0.12), transparent 54%),
+    rgba(0, 0, 0, 0.16) !important;
+  background-size: 28px 28px, 28px 28px, auto, auto !important;
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.42) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-topology)::after,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-topology)::after,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-topology)::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  background: linear-gradient(180deg, transparent, rgba(143, 233, 255, 0.05), transparent) !important;
+  transform: translateY(-40%) !important;
+  animation: mvu-armory-scan 5s linear infinite !important;
+}
+
+@keyframes mvu-armory-scan {
+  0% {
+    transform: translateY(-70%);
+  }
+  100% {
+    transform: translateY(70%);
+  }
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-body-silhouette),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-body-silhouette),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-body-silhouette) {
+  position: absolute !important;
+  left: 50% !important;
+  top: 12% !important;
+  width: 24% !important;
+  height: 78% !important;
+  border-radius: 999px 999px 44% 44% !important;
+  border: 1px solid rgba(143, 233, 255, 0.08) !important;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(143, 233, 255, 0.1) 0 12%, transparent 13%),
+    linear-gradient(180deg, rgba(143, 233, 255, 0.05), rgba(143, 233, 255, 0.015) 48%, transparent 80%) !important;
+  opacity: 0.86 !important;
+  transform: translateX(-50%) !important;
+  filter: drop-shadow(0 0 16px rgba(143, 233, 255, 0.08)) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-line),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-line),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-line) {
+  position: absolute !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  background: rgba(143, 233, 255, 0.12) !important;
+  box-shadow: 0 0 10px rgba(143, 233, 255, 0.05) !important;
+  transform-origin: left center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-line.is-active),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-line.is-active),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-line.is-active) {
+  background: rgba(113, 242, 255, 0.46) !important;
+  box-shadow: 0 0 14px rgba(113, 242, 255, 0.38) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-head-torso),
+#detailModal.mvu-modal-display-unified :where(.line-head-torso),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-head-torso) {
+  left: 50% !important;
+  top: 18% !important;
+  width: 1px !important;
+  height: 30% !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-left-arm),
+#detailModal.mvu-modal-display-unified :where(.line-left-arm),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-left-arm) {
+  left: 33% !important;
+  top: 42% !important;
+  width: 18% !important;
+  height: 1px !important;
+  transform: rotate(-8deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-right-arm),
+#detailModal.mvu-modal-display-unified :where(.line-right-arm),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-right-arm) {
+  left: 50% !important;
+  top: 42% !important;
+  width: 18% !important;
+  height: 1px !important;
+  transform: rotate(8deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-left-leg),
+#detailModal.mvu-modal-display-unified :where(.line-left-leg),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-left-leg) {
+  left: 37% !important;
+  top: 62% !important;
+  width: 15% !important;
+  height: 1px !important;
+  transform: rotate(32deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-right-leg),
+#detailModal.mvu-modal-display-unified :where(.line-right-leg),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-right-leg) {
+  left: 50% !important;
+  top: 62% !important;
+  width: 15% !important;
+  height: 1px !important;
+  transform: rotate(-32deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-ext-1),
+#detailModal.mvu-modal-display-unified :where(.line-ext-1),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-ext-1) {
+  left: 20% !important;
+  top: 27% !important;
+  width: 30% !important;
+  height: 1px !important;
+  transform: rotate(18deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.line-ext-2),
+#detailModal.mvu-modal-display-unified :where(.line-ext-2),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.line-ext-2) {
+  left: 50% !important;
+  top: 27% !important;
+  width: 30% !important;
+  height: 1px !important;
+  transform: rotate(-18deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node) {
+  position: relative !important;
+  z-index: 2 !important;
+  min-width: 0 !important;
+  width: min(126px, 100%) !important;
+  min-height: 70px !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto auto !important;
+  align-content: center !important;
+  gap: 4px !important;
+  padding: 8px !important;
+  border-radius: var(--mvu-radius-sm, 8px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.13) !important;
+  background: rgba(2, 11, 17, 0.72) !important;
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.44),
+    0 6px 18px rgba(0, 0, 0, 0.18) !important;
+  overflow: hidden !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node.is-active),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node.is-active),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node.is-active) {
+  border-color: rgba(113, 242, 255, 0.48) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(113, 242, 255, 0.16), transparent 58%),
+    rgba(3, 18, 26, 0.78) !important;
+  box-shadow:
+    inset 0 0 22px rgba(113, 242, 255, 0.08),
+    0 0 16px rgba(113, 242, 255, 0.14) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node.is-empty),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node.is-empty),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node.is-empty) {
+  opacity: 0.58 !important;
+  border-style: dashed !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-head),
+#detailModal.mvu-modal-display-unified :where(.slot-head),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-head) {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: center !important;
+  align-self: start !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-torso),
+#detailModal.mvu-modal-display-unified :where(.slot-torso),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-torso) {
+  grid-column: 3 !important;
+  grid-row: 2 / span 2 !important;
+  justify-self: center !important;
+  align-self: center !important;
+  min-height: 96px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-left-arm),
+#detailModal.mvu-modal-display-unified :where(.slot-left-arm),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-left-arm) {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  justify-self: center !important;
+  align-self: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-right-arm),
+#detailModal.mvu-modal-display-unified :where(.slot-right-arm),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-right-arm) {
+  grid-column: 4 !important;
+  grid-row: 2 !important;
+  justify-self: center !important;
+  align-self: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-left-leg),
+#detailModal.mvu-modal-display-unified :where(.slot-left-leg),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-left-leg) {
+  grid-column: 2 !important;
+  grid-row: 4 !important;
+  justify-self: center !important;
+  align-self: end !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-right-leg),
+#detailModal.mvu-modal-display-unified :where(.slot-right-leg),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-right-leg) {
+  grid-column: 4 !important;
+  grid-row: 4 !important;
+  justify-self: center !important;
+  align-self: end !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-ext-1),
+#detailModal.mvu-modal-display-unified :where(.slot-ext-1),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-ext-1) {
+  grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
+  justify-self: center !important;
+  align-self: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.slot-ext-2),
+#detailModal.mvu-modal-display-unified :where(.slot-ext-2),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.slot-ext-2) {
+  grid-column: 5 !important;
+  grid-row: 1 / span 2 !important;
+  justify-self: center !important;
+  align-self: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-label),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-label),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-label) {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   gap: 6px !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots span {
-  position: relative !important;
-  min-height: 48px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px dashed rgba(143, 233, 255, 0.17) !important;
-  background: rgba(0, 0, 0, 0.18) !important;
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.32),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.018) !important;
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-label b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-label b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-label b) {
+  min-width: 0 !important;
+  color: rgba(205, 241, 249, 0.9) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots span::before,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots span::after {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-label i),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-label i),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-label i) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: rgba(177, 202, 208, 0.48) !important;
+  font-size: 8px !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node strong),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node strong),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node strong),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node span),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node > em),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node > em),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node > em) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-style: normal !important;
+  line-height: 1.18 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node strong),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node strong),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node strong) {
+  color: rgba(243, 252, 255, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node span) {
+  color: rgba(183, 210, 217, 0.76) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node > em),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node > em),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node > em) {
+  color: rgba(113, 242, 255, 0.72) !important;
+  font-size: 9px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node .mvu-soul-bone-skill),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node .mvu-soul-bone-skill),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node .mvu-soul-bone-skill) {
+  min-height: 18px !important;
+  padding: 3px 5px !important;
+  overflow: hidden !important;
+  border-radius: 5px !important;
+  border: 1px solid rgba(143, 233, 255, 0.12) !important;
+  background: rgba(143, 233, 255, 0.05) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node .ring-hover-copy),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node .ring-hover-copy),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node .ring-hover-copy) {
+  display: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-layout),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-layout),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-layout) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-capacity),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-capacity),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-capacity) {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-capacity-row),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-capacity-row),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-capacity-row) {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-capacity-row b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-capacity-row b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-capacity-row b) {
+  color: rgba(242, 252, 255, 0.94) !important;
+  font-size: var(--mvu-font-md, 13px) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-capacity-row span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-capacity-row span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-capacity-row span) {
+  color: rgba(180, 205, 212, 0.68) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-meter),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-meter),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-meter) {
+  display: grid !important;
+  grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-meter span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-meter span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-meter span) {
+  height: 8px !important;
+  border-radius: 3px !important;
+  border: 1px solid rgba(143, 233, 255, 0.11) !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.34) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-meter span.is-active),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-meter span.is-active),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-meter span.is-active) {
+  border-color: rgba(113, 242, 255, 0.48) !important;
+  background: linear-gradient(90deg, rgba(113, 242, 255, 0.42), rgba(114, 255, 209, 0.3)) !important;
+  box-shadow: 0 0 10px rgba(113, 242, 255, 0.18) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-card),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-card),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-card) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-grid),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-grid),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-grid) {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  grid-auto-rows: minmax(104px, auto) !important;
+  gap: 10px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot) {
+  position: relative !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, auto) !important;
+  gap: 5px !important;
+  padding: 9px !important;
+  border-radius: var(--mvu-radius-sm, 8px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.13) !important;
+  background:
+    linear-gradient(135deg, rgba(143, 233, 255, 0.055), rgba(0, 0, 0, 0.19)),
+    rgba(2, 11, 17, 0.62) !important;
+  overflow: hidden !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-empty)::before,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-empty)::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-empty)::before,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-empty)::after,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-empty)::after,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-empty)::after {
   content: '' !important;
   position: absolute !important;
   left: 50% !important;
-  top: 50% !important;
+  top: 56% !important;
   border-radius: 999px !important;
-  background: rgba(143, 233, 255, 0.18) !important;
+  background: rgba(143, 233, 255, 0.12) !important;
   transform: translate(-50%, -50%) !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots span::before {
-  width: 16px !important;
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-empty)::before,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-empty)::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-empty)::before {
+  width: 22px !important;
   height: 1px !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-slots span::after {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-empty)::after,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-empty)::after,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-empty)::after {
   width: 1px !important;
-  height: 16px !important;
+  height: 22px !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-empty-copy {
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-active),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-active),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-active) {
+  border-color: rgba(113, 242, 255, 0.34) !important;
+  background:
+    radial-gradient(circle at 70% 0%, rgba(113, 242, 255, 0.16), transparent 58%),
+    rgba(3, 18, 26, 0.72) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot-head),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot-head),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot-head) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot-head b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot-head b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot-head b) {
+  color: rgba(113, 242, 255, 0.68) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot-head i),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot-head i),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot-head i) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: rgba(183, 210, 217, 0.54) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot strong),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot strong),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot strong),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot > span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot > span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot > span) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot strong),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot strong),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot strong) {
+  color: rgba(242, 252, 255, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot > span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot > span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot > span) {
+  color: rgba(183, 210, 217, 0.66) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.18 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-actions),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-actions),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-actions) {
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-blueprint-grid),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-blueprint-grid),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-blueprint-grid) {
+  grid-template-columns: minmax(220px, 0.76fr) minmax(0, 1.24fr) !important;
+  grid-template-areas:
+    'holo data'
+    'holo bonus'
+    'trait trait' !important;
+  align-items: stretch !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-blueprint-card),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-blueprint-card),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-blueprint-card) {
+  grid-area: holo !important;
+  display: grid !important;
+  grid-template-rows: minmax(210px, 1fr) auto !important;
+  gap: 10px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-data-card),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-data-card),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-data-card) {
+  grid-area: data !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-card),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-card),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-card) {
+  grid-area: bonus !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-card),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-trait-card),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-trait-card) {
+  grid-area: trait !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-stage),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-stage),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-stage) {
+  position: relative !important;
+  min-height: 210px !important;
   display: grid !important;
   place-items: center !important;
-  min-height: 20px !important;
+  overflow: hidden !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.12) !important;
+  background:
+    linear-gradient(rgba(143, 233, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 233, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 48%, rgba(113, 242, 255, 0.14), transparent 52%),
+    rgba(0, 0, 0, 0.18) !important;
+  background-size: 24px 24px, 24px 24px, auto, auto !important;
+  box-shadow: inset 0 0 38px rgba(0, 0, 0, 0.48) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-stage)::before,
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-stage)::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-stage)::before {
+  content: attr(data-blueprint-mark) !important;
+  position: relative !important;
+  z-index: 2 !important;
+  width: 82px !important;
+  height: 82px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(113, 242, 255, 0.4) !important;
+  color: rgba(214, 251, 255, 0.88) !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  box-shadow:
+    inset 0 0 24px rgba(113, 242, 255, 0.12),
+    0 0 24px rgba(113, 242, 255, 0.12) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-scan),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-scan),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-scan) {
+  position: absolute !important;
+  inset: 14px !important;
+  border: 1px solid rgba(113, 242, 255, 0.08) !important;
+  border-radius: 50% !important;
+  box-shadow: inset 0 0 20px rgba(113, 242, 255, 0.06) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-sigil),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-sigil),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-sigil) {
+  position: absolute !important;
+  width: 150px !important;
+  height: 150px !important;
+  border: 1px solid rgba(113, 242, 255, 0.12) !important;
+  transform: rotate(45deg) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-caption),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-caption),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-caption) {
+  display: grid !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-caption b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-caption b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-caption b) {
+  overflow: hidden !important;
+  color: rgba(242, 252, 255, 0.96) !important;
+  font-size: var(--mvu-font-md, 13px) !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-caption span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-holo-caption span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-caption span) {
+  overflow: hidden !important;
+  color: rgba(183, 210, 217, 0.62) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-head-actions),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-head-actions),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-head-actions) {
+  margin-left: auto !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-eject-btn),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-eject-btn),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-eject-btn) {
+  min-height: 24px !important;
+  padding: 4px 10px !important;
+  border-color: rgba(255, 107, 107, 0.36) !important;
+  background: rgba(65, 13, 18, 0.36) !important;
+  color: rgba(255, 198, 198, 0.92) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-data-grid),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-data-grid),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-data-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-data-grid .archive-tile),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-data-grid .archive-tile),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-data-grid .archive-tile) {
+  min-height: 58px !important;
+  border-color: rgba(143, 233, 255, 0.1) !important;
+  background: rgba(0, 0, 0, 0.18) !important;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pills),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pills),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pills) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill) {
+  min-width: 86px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 6px 9px !important;
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  border: 1px solid rgba(143, 233, 255, 0.12) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill b) {
+  color: rgba(183, 210, 217, 0.64) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill em),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill em),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill em) {
+  color: rgba(238, 249, 253, 0.9) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill.is-zero),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill.is-zero),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill.is-zero) {
+  opacity: 0.42 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill.is-live),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill.is-live),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill.is-live) {
+  border-color: rgba(113, 242, 255, 0.38) !important;
+  background: rgba(113, 242, 255, 0.065) !important;
+  box-shadow: 0 0 12px rgba(113, 242, 255, 0.08) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-empty),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-trait-empty),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-trait-empty) {
+  min-height: 74px !important;
+  display: grid !important;
+  align-content: center !important;
+  gap: 5px !important;
+  padding: 12px !important;
+  border-radius: var(--mvu-radius-sm, 8px) !important;
+  border: 1px dashed rgba(143, 233, 255, 0.16) !important;
+  background: rgba(0, 0, 0, 0.16) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-empty b),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-trait-empty b),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-trait-empty b) {
+  color: rgba(216, 239, 245, 0.82) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.2 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-empty span),
+#detailModal.mvu-modal-display-unified :where(.mvu-armory-trait-empty span),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-trait-empty span) {
+  color: rgba(183, 210, 217, 0.62) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.3 !important;
+}
+
+@media (max-width: 860px) {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-detail-grid),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-detail-grid),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-detail-grid) {
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    grid-template-areas: none !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-card--equipment, .mvu-armory-card--bones),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-card--equipment, .mvu-armory-card--bones),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-card--equipment, .mvu-armory-card--bones) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-card--equipment, .mvu-armory-card--bones),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-card--equipment, .mvu-armory-card--bones),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-card--equipment, .mvu-armory-card--bones) {
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-grid),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-grid),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-grid) {
+    grid-template-rows: repeat(3, minmax(74px, auto)) !important;
+    min-height: 240px !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-topology),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-topology),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-topology) {
+    height: 520px !important;
+    min-height: 520px !important;
+    grid-template-columns: minmax(52px, 0.8fr) minmax(70px, 1fr) minmax(94px, 1.2fr) minmax(70px, 1fr) minmax(52px, 0.8fr) !important;
+    gap: 7px !important;
+    padding: 10px !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node) {
+    width: min(100%, 104px) !important;
+    min-height: 66px !important;
+    padding: 7px !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-grid),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-grid),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-blueprint-grid),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-blueprint-grid),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-blueprint-grid) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      'holo'
+      'data'
+      'bonus'
+      'trait' !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-data-grid),
+  #detailModal.mvu-modal-display-unified :where(.mvu-armory-data-grid),
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-data-grid) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--relation {
@@ -15674,6 +16552,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
 #detailModal.mvu-modal-display-unified .mvu-detail-embed {
   max-height: min(440px, calc(var(--mvu-hud-frame-height, 760px) - 232px)) !important;
 }
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-profession-workshop-detail .mvu-detail-embed,
+#detailModal.mvu-modal-display-unified .mvu-profession-workshop-detail .mvu-detail-embed {
+  max-height: min(620px, calc(var(--mvu-hud-frame-height, 760px) - 168px)) !important;
+}
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed *,
 #detailModal.mvu-modal-display-unified .mvu-detail-embed * {
   max-width: 100% !important;
@@ -16821,8 +17703,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--world {
     grid-template-columns: minmax(260px, 0.9fr) minmax(340px, 1.28fr);
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-areas: 'world timeline';
+    grid-template-rows: minmax(0, 1fr) minmax(126px, auto);
+    grid-template-areas:
+      'world timeline'
+      'bestiary timeline';
     height: 100%;
     min-height: 0;
     align-content: stretch;
@@ -17092,7 +17976,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     grid-auto-rows: max-content !important;
     grid-template-areas:
       'world'
-      'timeline' !important;
+      'timeline'
+      'bestiary' !important;
     align-content: start !important;
     height: auto !important;
     min-height: 0 !important;
@@ -17889,11 +18774,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid {
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  grid-template-areas:
-    'equipment bones'
-    'workshop workshop' !important;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.35fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  grid-template-areas: 'equipment bones' !important;
+  height: min(620px, calc(86svh - 132px)) !important;
+  min-height: 460px !important;
+  align-content: stretch !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-card--equipment {
@@ -17904,18 +18790,11 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   grid-area: bones !important;
 }
 
-#detailModal.mvu-modal-display-unified .mvu-armory-card--workshop {
-  grid-area: workshop !important;
-}
-
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card:nth-child(1) {
   grid-area: equipment !important;
 }
 #detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card:nth-child(2) {
   grid-area: bones !important;
-}
-#detailModal.mvu-modal-display-unified .mvu-armory-detail-grid > .archive-card:nth-child(3) {
-  grid-area: workshop !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-spirit-detail-grid {
@@ -17952,39 +18831,44 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
 #detailModal.mvu-modal-display-unified .mvu-armory-card--equipment,
 #detailModal.mvu-modal-display-unified .mvu-armory-card--bones {
-  align-self: start !important;
-  height: auto !important;
+  align-self: stretch !important;
+  height: 100% !important;
   min-height: 0 !important;
-  overflow: visible !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-card--bones.is-empty {
-  padding-bottom: 10px !important;
+  padding-bottom: var(--mvu-card-padding, 12px) !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)) !important;
-  gap: 8px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  height: 100% !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-slot {
   position: relative !important;
   min-width: 0 !important;
-  min-height: 58px !important;
+  min-height: 0 !important;
   display: grid !important;
   grid-template-rows: auto minmax(0, 1fr) !important;
-  align-content: center !important;
-  gap: 5px !important;
-  padding: 8px 10px 8px 12px !important;
+  align-content: stretch !important;
+  gap: 8px !important;
+  padding: 10px 10px 9px 38px !important;
   border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid rgba(143, 233, 255, 0.11) !important;
+  border: 1px solid rgba(143, 233, 255, 0.12) !important;
   background:
-    linear-gradient(180deg, rgba(143, 233, 255, 0.052), rgba(0, 0, 0, 0.16)),
-    rgba(4, 15, 24, 0.32) !important;
+    linear-gradient(135deg, rgba(143, 233, 255, 0.07), rgba(0, 0, 0, 0.2)),
+    rgba(3, 13, 20, 0.48) !important;
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.24),
-    inset 0 0 18px rgba(0, 0, 0, 0.18) !important;
+    inset 0 0 22px rgba(0, 0, 0, 0.38),
+    inset 4px 0 0 rgba(143, 233, 255, 0.22) !important;
   overflow: hidden !important;
 }
 
@@ -17995,11 +18879,13 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.clickable:hover {
   border-color: rgba(143, 233, 255, 0.38) !important;
   background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.16), transparent 54%),
-    rgba(6, 24, 34, 0.52) !important;
+    radial-gradient(circle at 72% 0%, rgba(143, 233, 255, 0.18), transparent 56%),
+    linear-gradient(135deg, rgba(143, 233, 255, 0.12), rgba(0, 0, 0, 0.2)),
+    rgba(6, 24, 34, 0.62) !important;
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.58),
-    0 0 18px rgba(143, 233, 255, 0.1) !important;
+    inset 0 0 22px rgba(0, 0, 0, 0.32),
+    inset 4px 0 0 rgba(143, 233, 255, 0.64),
+    0 0 18px rgba(143, 233, 255, 0.12) !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-slot b {
@@ -18017,82 +18903,6 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.28 !important;
   overflow-wrap: anywhere !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-workshop-brief {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  margin-bottom: 10px !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-workshop-brief .archive-tile {
-  min-height: 36px !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  padding: 0 0 6px !important;
-  box-shadow: inset 0 -1px 0 rgba(143, 233, 255, 0.09) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-bone-empty {
-  position: relative !important;
-  display: grid !important;
-  gap: 8px !important;
-  min-height: 96px !important;
-  overflow: hidden !important;
-  padding: 8px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(143, 233, 255, 0.09) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.06), transparent 56%),
-    rgba(0, 0, 0, 0.16) !important;
-  color: rgba(190, 218, 226, 0.7) !important;
-  font-size: var(--mvu-font-xs, 10px) !important;
-  letter-spacing: 0 !important;
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots {
-  display: grid !important;
-  grid-template-columns: repeat(6, minmax(34px, 1fr)) !important;
-  gap: 6px !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots span {
-  position: relative !important;
-  min-height: 48px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px dashed rgba(143, 233, 255, 0.17) !important;
-  background: rgba(0, 0, 0, 0.18) !important;
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.32),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.018) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots span::before,
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots span::after {
-  content: '' !important;
-  position: absolute !important;
-  left: 50% !important;
-  top: 50% !important;
-  border-radius: 999px !important;
-  background: rgba(143, 233, 255, 0.18) !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots span::before {
-  width: 16px !important;
-  height: 1px !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-slots span::after {
-  width: 1px !important;
-  height: 16px !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-empty-copy {
-  display: grid !important;
-  place-items: center !important;
-  min-height: 20px !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-shell--relation > .dossier-card {
@@ -21702,10 +22512,12 @@ body.mvu-layout-unified
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-detail-grid {
-  grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas:
-    'equipment bones'
-    'workshop workshop';
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.35fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'equipment bones';
+  height: min(620px, calc(100svh - 170px));
+  min-height: 460px;
+  align-content: stretch;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-card--equipment {
@@ -21716,33 +22528,46 @@ body.mvu-layout-unified
   grid-area: bones;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-card--workshop {
-  grid-area: workshop;
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-card--equipment,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-card--bones {
+  align-self: stretch !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-card--bones.is-empty {
+  padding-bottom: var(--mvu-card-padding, 12px) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot {
   position: relative;
   min-width: 0;
-  min-height: 58px;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  align-content: center;
-  gap: 5px;
-  padding: 8px 10px 8px 12px;
+  align-content: stretch;
+  gap: 8px;
+  padding: 10px 10px 9px 38px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(143, 233, 255, 0.11);
+  border: 1px solid rgba(143, 233, 255, 0.12);
   background:
-    linear-gradient(180deg, rgba(143, 233, 255, 0.052), rgba(0, 0, 0, 0.16)),
-    rgba(4, 15, 24, 0.32);
+    linear-gradient(135deg, rgba(143, 233, 255, 0.07), rgba(0, 0, 0, 0.2)),
+    rgba(3, 13, 20, 0.48);
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.24),
-    inset 0 0 18px rgba(0, 0, 0, 0.18);
+    inset 0 0 22px rgba(0, 0, 0, 0.38),
+    inset 4px 0 0 rgba(143, 233, 255, 0.22);
   overflow: hidden;
 }
 
@@ -21753,11 +22578,13 @@ body.mvu-layout-unified
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.clickable:hover {
   border-color: rgba(143, 233, 255, 0.38);
   background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.16), transparent 54%),
-    rgba(6, 24, 34, 0.52);
+    radial-gradient(circle at 72% 0%, rgba(143, 233, 255, 0.18), transparent 56%),
+    linear-gradient(135deg, rgba(143, 233, 255, 0.12), rgba(0, 0, 0, 0.2)),
+    rgba(6, 24, 34, 0.62);
   box-shadow:
-    inset 3px 0 0 rgba(143, 233, 255, 0.58),
-    0 0 18px rgba(143, 233, 255, 0.1);
+    inset 0 0 22px rgba(0, 0, 0, 0.32),
+    inset 4px 0 0 rgba(143, 233, 255, 0.64),
+    0 0 18px rgba(143, 233, 255, 0.12);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot b {
@@ -21775,82 +22602,6 @@ body.mvu-layout-unified
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.28;
   overflow-wrap: anywhere;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-workshop-brief {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 10px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-workshop-brief .archive-tile {
-  min-height: 36px;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0 0 6px;
-  box-shadow: inset 0 -1px 0 rgba(143, 233, 255, 0.09);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-bone-empty {
-  position: relative;
-  display: grid;
-  gap: 8px;
-  min-height: 96px;
-  overflow: hidden;
-  padding: 8px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(143, 233, 255, 0.09);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(143, 233, 255, 0.06), transparent 56%),
-    rgba(0, 0, 0, 0.16);
-  color: rgba(190, 218, 226, 0.7);
-  font-size: var(--mvu-font-xs, 10px);
-  letter-spacing: 0;
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(34px, 1fr));
-  gap: 6px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots span {
-  position: relative;
-  min-height: 48px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px dashed rgba(143, 233, 255, 0.17);
-  background: rgba(0, 0, 0, 0.18);
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.32),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.018);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots span::before,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots span::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border-radius: 999px;
-  background: rgba(143, 233, 255, 0.18);
-  transform: translate(-50%, -50%);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots span::before {
-  width: 16px;
-  height: 1px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-slots span::after {
-  width: 1px;
-  height: 16px;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-empty-copy {
-  display: grid;
-  place-items: center;
-  min-height: 20px;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split

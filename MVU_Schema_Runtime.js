@@ -2095,6 +2095,16 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
   return 角色;
 }
 
+function 是内置角色空壳_V1(角色 = {}) {
+  if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return true;
+  const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
+  const 年龄 = Math.max(0, Number(角色?.属性?.年龄 || 0) || 0);
+  const 武魂名 = String(角色?.第1武魂?.表象名称 || '').trim();
+  const 有魂灵 = !!角色?.第1武魂?.第1魂灵;
+  const 有魂环 = Object.keys(角色?.第1武魂?.第1魂灵 || {}).some(键 => /^第\d+魂环$/.test(键));
+  return 等级 <= 1 && 年龄 <= 0 && (!武魂名 || 武魂名 === '无' || 武魂名.includes('待补全')) && !有魂灵 && !有魂环;
+}
+
 function 同步银龙融合旧实体状态_V1(数据根 = {}, 当前tick = 0) {
   if (!是否古月娜融合阶段_V1(当前tick, 数据根)) return [];
   const 角色表 = 数据根?.char && typeof 数据根.char === 'object' && !Array.isArray(数据根.char) ? 数据根.char : {};
@@ -2126,7 +2136,17 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
   const 待写入 = new Set();
   const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
-  if (String(命中文本 || '').trim()) {
+  const 使用统一命中 = 选项.使用统一命中 === true || Array.isArray(选项.命中角色) || Array.isArray(选项.候选角色) || Array.isArray(选项.相关角色);
+  const 添加命中角色 = 名称列表 => {
+    (Array.isArray(名称列表) ? 名称列表 : []).forEach(角色名 => {
+      const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
+      if (规范名) 待写入.add(规范名);
+    });
+  };
+  添加命中角色(选项.命中角色);
+  添加命中角色(选项.候选角色);
+  添加命中角色(选项.相关角色);
+  if (!使用统一命中 && String(命中文本 || '').trim()) {
     收集当前时间线命中内置角色名_V1(当前tick, 命中文本, 数据根).forEach(角色名 => 待写入.add(角色名));
   }
   if (是否古月娜融合阶段_V1(当前tick, 数据根) && !数据根.char.古月娜 && (数据根.char.古月 || 数据根.char.娜儿)) {
@@ -2134,7 +2154,8 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   }
   const 已写入 = [];
   待写入.forEach(角色名 => {
-    if (!角色名 || 数据根.char[角色名]) return;
+    if (!角色名) return;
+    if (数据根.char[角色名] && !是内置角色空壳_V1(数据根.char[角色名])) return;
     const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根);
     if (!角色) return;
     数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(角色);
@@ -7532,3 +7553,60 @@ function 规范化动态地点Schema_V1(地点数据) {
             return 地点数据;
           
 }
+
+function 补结算归档角色时间流逝_V1(角色名 = '', 角色数据 = {}, 数据根 = {}, 起始tick = 0, 结束tick = null) {
+  const 安全角色名 = String(角色名 || '').trim();
+  if (!安全角色名 || !角色数据 || typeof 角色数据 !== 'object' || Array.isArray(角色数据)) return 角色数据;
+  const 当前tick = Math.max(0, Math.floor(Number(结束tick ?? 数据根?.world?.时间?.tick ?? 0) || 0));
+  const 归档tick = Math.max(0, Math.floor(Number(起始tick || 0) || 0));
+  const 克隆 = (值, 兜底 = null) => {
+    try {
+      return structuredClone(值);
+    } catch (错误) {}
+    try {
+      return JSON.parse(JSON.stringify(值));
+    } catch (错误) {}
+    return 兜底;
+  };
+  if (当前tick <= 归档tick) return 克隆(角色数据, 角色数据);
+
+  const 临时根 = 克隆(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
+  临时根.char = { [安全角色名]: 克隆(角色数据, {}) };
+  if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
+  if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
+  临时根.world.时间.tick = 当前tick;
+  临时根.world.时间._上次结算tick = 归档tick;
+  规范化Schema根转换_V1(临时根);
+  return 临时根.char?.[安全角色名] && typeof 临时根.char[安全角色名] === 'object'
+    ? 克隆(临时根.char[安全角色名], 临时根.char[安全角色名])
+    : 克隆(角色数据, 角色数据);
+}
+
+globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
+  ...(globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ && typeof globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ === 'object'
+    ? globalThis.__LWCS_MVU_SCHEMA_RUNTIME__
+    : {}),
+  补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+};
+
+try {
+  if (globalThis.parent && globalThis.parent !== globalThis) {
+    globalThis.parent.__LWCS_MVU_SCHEMA_RUNTIME__ = {
+      ...(globalThis.parent.__LWCS_MVU_SCHEMA_RUNTIME__ && typeof globalThis.parent.__LWCS_MVU_SCHEMA_RUNTIME__ === 'object'
+        ? globalThis.parent.__LWCS_MVU_SCHEMA_RUNTIME__
+        : {}),
+      补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+    };
+  }
+} catch (错误) {}
+
+try {
+  if (globalThis.top && globalThis.top !== globalThis) {
+    globalThis.top.__LWCS_MVU_SCHEMA_RUNTIME__ = {
+      ...(globalThis.top.__LWCS_MVU_SCHEMA_RUNTIME__ && typeof globalThis.top.__LWCS_MVU_SCHEMA_RUNTIME__ === 'object'
+        ? globalThis.top.__LWCS_MVU_SCHEMA_RUNTIME__
+        : {}),
+      补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+    };
+  }
+} catch (错误) {}

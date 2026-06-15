@@ -488,6 +488,7 @@ const DesktopUnifiedLayout = {
               <div class="mvu-unified-dashboard mvu-unified-dashboard--world">
                 <div class="mvu-unified-card mvu-unified-card--featured clickable" data-unified-card="world-hero" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-unified-card="world-timeline" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="world-bestiary" data-unified-surface="panel"></div>
               </div>
             </section>
           </section>
@@ -507,7 +508,7 @@ const DesktopUnifiedLayout = {
               <div class="mvu-unified-dashboard mvu-unified-dashboard--terminal">
                 <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-unified-card="terminal-hero" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="terminal-bestiary" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-unified-card="terminal-profession" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="panel"></div>
               </div>
             </section>

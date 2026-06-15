@@ -17,10 +17,13 @@ const ProfessionStyles = `
     --text-dim: #87aeb7;
     --font-tech: 'Orbitron', sans-serif;
     --font-cjk: 'Noto Serif SC', serif;
+    --prof-font-base: 10.5px;
 
     width: 100%;
     color: var(--text);
     font-family: var(--font-cjk);
+    font-size: var(--prof-font-base);
+    line-height: 1.35;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -64,7 +67,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .chip-label {
     grid-area: label;
-    font-size: 10px;
+    font-size: 0.86em;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0;
@@ -73,7 +76,7 @@ const ProfessionStyles = `
   .prof-module-scope .chip-value {
     grid-area: value;
     font-family: var(--font-tech);
-    font-size: 12px;
+    font-size: 1em;
     line-height: 1.1;
     color: var(--status-color, var(--gold));
     overflow: hidden;
@@ -122,7 +125,7 @@ const ProfessionStyles = `
     border-radius: 6px;
     padding: 7px 4px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 0.95em;
     font-weight: 700;
     letter-spacing: 0;
     transition: 0.2s ease;
@@ -193,7 +196,7 @@ const ProfessionStyles = `
     gap: 8px;
     min-width: 0;
     font-family: var(--font-title);
-    font-size: 14px;
+    font-size: 1.16em;
     line-height: 1.2;
     color: var(--white);
     font-weight: 700;
@@ -205,7 +208,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .section-title::before {
     content: '◈';
-    font-size: 10px;
+    font-size: 0.78em;
     color: var(--cyan);
     flex: 0 0 auto;
   }
@@ -226,7 +229,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .prof-command-subtitle,
   .prof-module-scope .hint {
-    font-size: 10px;
+    font-size: 0.9em;
     color: var(--text-dim);
     line-height: 1.35;
   }
@@ -247,7 +250,7 @@ const ProfessionStyles = `
   .prof-module-scope .form-group label {
     display: block;
     margin-bottom: 3px;
-    font-size: 9px;
+    font-size: 0.82em;
     color: rgba(191, 221, 228, 0.68);
     text-transform: uppercase;
     font-weight: 700;
@@ -291,7 +294,7 @@ const ProfessionStyles = `
     padding: 6px 8px;
     border-radius: 6px;
     font-family: var(--font-cjk);
-    font-size: 12px;
+    font-size: 1em;
     font-weight: 760;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
@@ -320,7 +323,7 @@ const ProfessionStyles = `
       rgba(2, 10, 15, 0.34);
     background-size: 10px 10px;
     color: rgba(135, 174, 183, 0.72);
-    font-size: 10px;
+    font-size: 0.9em;
     letter-spacing: 0;
     text-align: center;
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24);
@@ -392,7 +395,7 @@ const ProfessionStyles = `
     background:
       linear-gradient(180deg, rgba(141, 225, 239, 0.055), rgba(0, 0, 0, 0.14)),
       rgba(4, 14, 21, 0.44);
-    font-size: 11px;
+    font-size: 0.95em;
     line-height: 1.25;
     overflow: hidden;
     box-shadow:
@@ -436,7 +439,7 @@ const ProfessionStyles = `
   .prof-module-scope .material-meta {
     color: var(--text-dim);
     font-family: var(--font-tech);
-    font-size: 9px;
+    font-size: 0.82em;
   }
 
   .prof-module-scope .prof-empty-slots {
@@ -485,7 +488,7 @@ const ProfessionStyles = `
     place-items: center;
     min-height: 30px;
     color: rgba(135, 174, 183, 0.74);
-    font-size: 11px;
+    font-size: 0.95em;
     letter-spacing: 0;
   }
 
@@ -503,7 +506,7 @@ const ProfessionStyles = `
     border: 1px solid rgba(141, 225, 239, 0.09);
     background: rgba(141, 225, 239, 0.045);
     color: rgba(191, 221, 228, 0.78);
-    font-size: 10px;
+    font-size: 0.9em;
     line-height: 1.35;
   }
 
@@ -517,7 +520,7 @@ const ProfessionStyles = `
     border: 1px solid rgba(141, 225, 239, 0.28);
     color: var(--cyan);
     font-family: var(--font-tech);
-    font-size: 10px;
+    font-size: 0.9em;
     font-style: normal;
   }
 
@@ -529,7 +532,7 @@ const ProfessionStyles = `
     border: 0;
     border-radius: 0;
     padding: 0;
-    font-size: 11px;
+    font-size: 0.95em;
     color: var(--text-sub);
     line-height: 1.3;
   }
@@ -558,8 +561,8 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .info-row--hero {
-    min-height: 66px;
-    padding: 8px 9px;
+    min-height: 56px;
+    padding: 7px 8px;
     border: 1px solid rgba(141, 225, 239, 0.13);
     background:
       radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.1), transparent 58%),
@@ -568,9 +571,13 @@ const ProfessionStyles = `
 
   .prof-module-scope .info-row--hero .info-val {
     font-family: var(--font-tech);
-    font-size: 18px;
-    line-height: 1.15;
+    font-size: 1.24em;
+    line-height: 1.2;
     color: var(--gold);
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .prof-module-scope .info-row--rate .info-val.rate-safe {
@@ -591,7 +598,7 @@ const ProfessionStyles = `
   .prof-module-scope .info-key {
     color: var(--text-dim);
     min-width: 0;
-    font-size: 9px;
+    font-size: 0.82em;
     line-height: 1;
     white-space: nowrap;
   }
@@ -627,7 +634,7 @@ const ProfessionStyles = `
   .prof-module-scope .prof-action-warning {
     min-height: 18px;
     color: var(--red);
-    font-size: 11px;
+    font-size: 0.95em;
     line-height: 1.35;
     text-align: center;
     opacity: 0;
@@ -652,6 +659,7 @@ const ProfessionStyles = `
     padding: 10px 18px;
     border-radius: 999px;
     font-family: var(--font-tech);
+    font-size: 1em;
     font-weight: 850;
     letter-spacing: 0;
     cursor: pointer;
@@ -719,7 +727,8 @@ const ProfessionStyles = `
       grid-column: 1 / -1;
     }
     .prof-module-scope .section-card { padding: 10px; }
-    .prof-module-scope .section-title { font-size: 12px; }
+    .prof-module-scope { --prof-font-base: 10px; }
+    .prof-module-scope .section-title { font-size: 1.12em; }
     .prof-module-scope .action-btn { width: min(240px, 100%); }
   }
 `;
