@@ -332,13 +332,6 @@
       duties: ['列出剧情新增地点', '显示归属父节点', '用于补地图树的动态扩展'],
       actions: ['按父节点筛选', '跳到地图节点详情'],
     },
-    拍卖与警报: {
-      title: '全息编年史',
-      summary: '拍卖状态、世界警报、近期安排与近期见闻。',
-      fields: ['sd.world.拍卖', 'sd.world.累计击杀年限'],
-      duties: ['显示拍卖状态与拍品', '显示生态风险与兽潮相关阈值', '合并世界安排与见闻'],
-      actions: ['查看统一时间轴', '评估当前世界风险'],
-    },
     势力矩阵总览: {
       title: '势力矩阵弹窗',
       summary: '满足“查看所有势力”的核心入口，不再只显示当前角色视角。',
@@ -387,13 +380,6 @@
       fields: ['sd.world.图鉴'],
       duties: ['查看已记录怪物', '复用物种基础数据', '回顾遭遇对象'],
       actions: ['按名称查阅', '查看已记录条目'],
-    },
-    森林仇恨值: {
-      title: '森林仇恨值',
-      summary: '星斗大森林累计击杀魂兽年限与兽潮阈值监控。',
-      fields: ['sd.world.累计击杀年限', 'sd.world.兽潮已触发'],
-      duties: ['查看累计击杀年限', '评估距离兽潮阈值', '观察是否触发兽潮'],
-      actions: ['查看阈值进度', '评估森林风险'],
     },
   };
 
@@ -1603,37 +1589,6 @@
                   { title: '交通', desc: '' },
                 ],
               )}</div>
-            </div>
-          `,
-      };
-    }
-
-    if (key === '全息编年史') {
-      return {
-        title: '全息编年史',
-        body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">统一时间轴</div></div>${makeTimelineStack([])}</div>
-            </div>
-          `,
-      };
-    }
-
-    if (key === '世界状态总览') {
-      return {
-        title: '世界状态总览',
-        body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">世界状态</div></div>${makeTileGrid(
-                [
-                  { label: '时间', value: '等待同步' },
-                  { label: '偏差', value: '--' },
-                  { label: '核心阶段', value: '等待同步' },
-                  { label: '森林仇恨值', value: '--' },
-                ],
-                'two',
-              )}</div>
-              <div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">全息编年史</div></div>${makeTimelineStack([])}</div>
             </div>
           `,
       };
@@ -9322,16 +9277,15 @@
     if (key === '试炼与情报') {
       add('图鉴', ['world', '图鉴'], ['图鉴', '怪物']);
     }
-    if (key === '近期见闻' || key === '近期安排' || key === '全息编年史' || key === '世界状态总览')
+    if (key === '近期见闻' || key === '近期安排')
       add('全息编年史', ['world', '时间线'], ['见闻', '编年', '时间线', '事件']);
-    if (key === '世界状态总览' || key === '当前节点详情' || key.startsWith('地图节点：')) {
+    if (key === '当前节点详情' || key.startsWith('地图节点：')) {
       add('地点', ['world', '地点'], ['地点', '当前节点', '据点']);
       add('动态地点', ['world', '动态地点'], ['动态地点', '扩展节点']);
     }
     if (key === '势力矩阵总览' || key === '我的阵营详情' || key === '所属势力详细页')
       add('势力', ['org'], ['势力', '阵营']);
     if (key === '怪物图鉴') add('图鉴', ['world', '图鉴'], ['图鉴', '怪物']);
-    if (key === '拍卖与警报') add('拍卖', ['world', '拍卖'], ['拍卖', '警报']);
     return groups;
   }
 
@@ -27337,6 +27291,37 @@
     };
   }
 
+  function 构建世界首页上下文网格(snapshot) {
+    const 位置摘要 = 获取首页当前位置摘要(snapshot, { 完整限制: 34, 地图限制: 14 });
+    const 拍卖状态 = resolveShellText(snapshot && snapshot.auctionStatus, '休市');
+    const 拍卖地点 = resolveShellText(snapshot && snapshot.auctionLocation, '');
+    const 有效拍卖地点 = 拍卖地点 && !/^(无|未知|待定)$/.test(拍卖地点);
+    const 动态地点名 = Array.isArray(snapshot && snapshot.dynamicLocationNames) ? snapshot.dynamicLocationNames : [];
+    const 动态地点摘要 = 动态地点名.length
+      ? `${动态地点名.length}处 / ${动态地点名.slice(0, 2).map(名称 => shortenText(名称, 10)).join('、')}`
+      : '无动态节点';
+    const 本地掌控 = toText(deepGet(snapshot, 'locationData.掌控势力', '未知'), '未知');
+    const 行列表 = [
+      { 标签: '当前位置', 文本: 位置摘要.展示位置, 标题: 位置摘要.完整位置 },
+      { 标签: '拍卖状态', 文本: 有效拍卖地点 ? `${拍卖状态} / ${shortenText(拍卖地点, 18)}` : 拍卖状态 },
+      { 标签: '动态节点', 文本: 动态地点摘要, 标题: 动态地点名.join('、') },
+      { 标签: '本地掌控', 文本: shortenText(本地掌控, 24), 标题: 本地掌控 },
+    ];
+    return `
+      <div class="world-hud-context-grid">
+        ${行列表
+          .map(
+            行 => `
+          <div class="world-hud-context-row"${行.标题 ? ` title="${escapeHtmlAttr(行.标题)}"` : ''}>
+            <b>${htmlEscape(行.标签)}</b><span>${htmlEscape(行.文本 || '--')}</span>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
   function 构建首页当前位置页脚(snapshot, options = {}) {
     const 摘要 = 获取首页当前位置摘要(snapshot, options);
     const 右侧文本 = toText(options && options.右侧文本, '').trim();
@@ -27921,8 +27906,7 @@
           <div class="module-name">时空中枢</div>
           <div class="world-hud-clock">待同步</div>
           <div class="world-alert-stack">
-            <div class="world-alert-bar is-muted"><span><b style="width:0%;"></b></span><em>世界偏差 --</em></div>
-            <div class="world-alert-bar is-muted"><span><b style="width:0%;"></b></span><em>森林仇恨 --</em></div>
+            <div class="world-alert-bar world-alert-bar--forest is-muted"><em>森林仇恨值 --</em><span><b style="width:0%;"></b></span></div>
           </div>
         </div>
       `;
@@ -27943,28 +27927,31 @@
       0,
       Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))),
     );
+    const 森林阶段 =
+      forestRatio >= 100 ? '兽潮临界' : forestRatio >= 70 ? '高度紧张' : forestRatio >= 30 ? '持续升温' : '相对安全';
     const 核心阶段 = 推断世界核心阶段(snapshot);
-    const 偏差比例 = Math.max(0, Math.min(100, deviation));
-    const 偏差样式 = deviation >= 40 ? 'is-warn' : deviation >= 10 ? 'is-gold' : 'is-live';
     const 森林样式 = forestRatio >= 70 ? 'is-warn' : forestRatio >= 30 ? 'is-gold' : 'is-live';
+    const 时间匹配 = worldTime.match(/^(.*?)(\s+\d{1,2}:\d{2}(?::\d{2})?)$/);
+    const 时间日期 = 时间匹配 ? 时间匹配[1].trim() : worldTime;
+    const 时间时刻 = 时间匹配 ? 时间匹配[2].trim() : '';
     return `
       <div class="world-hud-console">
         <div class="module-name">时空中枢</div>
-        <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime || '等待同步')}">${htmlEscape(worldTime || '等待同步')}</div>
+        <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime || '等待同步')}">
+          <span class="world-hud-date">${htmlEscape(时间日期 || '等待同步')}</span>
+          ${时间时刻 ? `<span class="world-hud-time">${htmlEscape(时间时刻)}</span>` : ''}
+        </div>
         <div class="world-hud-meta-grid">
           <span><b>偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></span>
           <span><b>阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></span>
         </div>
         <div class="world-alert-stack">
-          <div class="world-alert-bar ${偏差样式}">
-            <span><b style="width:${偏差比例}%;"></b></span>
-            <em>世界偏差 ${htmlEscape(String(deviation))}</em>
-          </div>
-          <div class="world-alert-bar ${森林样式}">
+          <div class="world-alert-bar world-alert-bar--forest ${森林样式}">
+            <em>${htmlEscape(`森林仇恨值 ${forestRatio}% / ${森林阶段}`)}</em>
             <span><b style="width:${forestRatio}%;"></b></span>
-            <em>森林仇恨 ${htmlEscape(`${forestRatio}%`)}</em>
           </div>
         </div>
+        ${构建世界首页上下文网格(snapshot)}
       </div>
     `;
   }
@@ -28015,7 +28002,6 @@
         ],
         descTitle: 警报描述,
         className: 'hologram-chronicle-card--alert',
-        preview: '拍卖与警报',
       },
       {
         title: htmlEscape('魂兽森林'),
@@ -28023,16 +28009,17 @@
         descLines: [
           森林阶段,
           `累计击杀年限：${formatNumber(森林击杀年限)} / 1000000`,
+          `剩余安全空间：${formatNumber(Math.max(0, 1000000 - 森林击杀年限))}`,
           `仇恨进度：${森林比例}%`,
+          deepGet(snapshot, 'rootData.world.兽潮已触发', false) ? '兽潮状态：已触发' : '兽潮状态：未触发',
         ],
         className: 森林比例 >= 70 ? 'hologram-chronicle-card--alert' : 'hologram-chronicle-card--state',
-        preview: '森林仇恨值',
       },
     ];
     const 安排条目 = (近期安排摘要.worldPlans || []).concat(近期安排摘要.personalPlans || []);
     const 见闻条目 = (近期见闻摘要.globalNews || []).concat(近期见闻摘要.personalNews || []);
     return 编年史条目.concat(
-      (安排条目.length ? 安排条目 : 近期安排摘要.cards || []).map((条目, 序号) => ({
+      (安排条目.length ? 安排条目 : 近期安排摘要.cards || []).map(条目 => ({
         title: htmlEscape(toText(条目 && 条目.title, '近期安排')),
         desc: '',
         descLines: [
@@ -28041,14 +28028,14 @@
             ? `地点：${toText(条目 && 条目.地点, '').trim()}`
             : '',
           toText(条目 && 条目.状态, '').trim() ? `状态：${toText(条目 && 条目.状态, '').trim()}` : '',
+          条目 && 条目.进度 !== undefined ? `进度：${Math.max(0, Math.min(100, toNumber(条目 && 条目.进度, 0)))}%` : '',
           toText(条目 && 条目.事件, '').trim() || toText(条目 && 条目.desc, '暂无安排'),
           toText(条目 && 条目.后续, '').trim() ? `后续：${toText(条目 && 条目.后续, '').trim()}` : '',
         ],
         descTitle: toText(条目 && 条目.desc, ''),
         className: 'hologram-chronicle-card--plan',
-        preview: `近期安排：${序号}`,
       })),
-      (见闻条目.length ? 见闻条目 : 近期见闻摘要.cards || []).map((条目, 序号) => ({
+      (见闻条目.length ? 见闻条目 : 近期见闻摘要.cards || []).map(条目 => ({
         title: htmlEscape(toText(条目 && 条目.title, '近期见闻')),
         desc: '',
         descLines: [
@@ -28060,7 +28047,6 @@
         ],
         descTitle: toText(条目 && 条目.desc, ''),
         className: 'hologram-chronicle-card--news',
-        preview: `近期见闻：${序号}`,
       })),
     );
   }
@@ -28071,156 +28057,6 @@
         <div class="simple-head"><div class="simple-title">全息编年史</div></div>
         <div class="hologram-chronicle-track">${makeTimelineStack(编年史条目)}</div>
       `;
-  }
-
-  function 构建近期安排条目详情(snapshot, 序号) {
-    const 近期安排摘要 = buildRecentPlanSummary(snapshot, { worldLimit: 6, recordLimit: 4 });
-    const 条目列表 = (近期安排摘要.worldPlans || []).concat(近期安排摘要.personalPlans || []);
-    const 条目 = 条目列表[序号] || 条目列表[0] || { title: '近期安排', desc: '暂无可展示的近期安排。' };
-    const 触发tick = toNumber(条目 && 条目.触发tick, 0);
-    const 进度值 = 条目 && 条目.进度 !== undefined ? `${toNumber(条目.进度, 0)}%` : '';
-    const 信息项 = [
-      { label: '来源', value: htmlEscape(toText(条目 && 条目.title, '近期安排').split('/')[0].trim() || '近期安排') },
-      条目 && 条目.事件名 ? { label: '事件', value: htmlEscape(toText(条目.事件名, '')) } : null,
-      触发tick > 0 ? { label: '触发时间', value: htmlEscape(formatTickToCalendarDateText(触发tick)) } : null,
-      条目 && 条目.时间摘要 ? { label: '距离', value: htmlEscape(toText(条目.时间摘要, '')) } : null,
-      条目 && 条目.地点 && !/^(无|未知|待定)$/.test(toText(条目.地点, '').trim())
-        ? { label: '地点', value: htmlEscape(toText(条目.地点, '')) }
-        : null,
-      条目 && 条目.状态 ? { label: '状态', value: htmlEscape(toText(条目.状态, '')) } : null,
-      进度值 ? { label: '进度', value: htmlEscape(进度值) } : null,
-      条目 && 条目.后续 ? { label: '后续', value: htmlEscape(toText(条目.后续, '')) } : null,
-    ].filter(Boolean);
-    return {
-      title: toText(条目 && 条目.title, '近期安排'),
-      summary: '',
-      body: `
-          <div class="archive-modal-grid mvu-detail-grid--single">
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">安排详情</div></div>
-              ${makeTimelineStack([
-                {
-                  title: htmlEscape(toText(条目 && 条目.title, '近期安排')),
-                  desc: '',
-                  descLines: [
-                    toText(条目 && 条目.事件, '').trim() || toText(条目 && 条目.desc, '暂无安排'),
-                    条目 && 条目.后续 ? `后续：${toText(条目.后续, '')}` : '',
-                  ],
-                },
-              ])}
-            </div>
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">节点信息</div></div>
-              ${makeTileGrid(信息项.length ? 信息项 : [{ label: '状态', value: '暂无记录' }], 'two')}
-            </div>
-          </div>
-        `,
-    };
-  }
-
-  function 构建近期见闻条目详情(snapshot, 序号) {
-    const 近期见闻摘要 = buildRecentNewsSummary(snapshot, { seqLimit: 6, intelLimit: 4 });
-    const 条目列表 = (近期见闻摘要.globalNews || []).concat(近期见闻摘要.personalNews || []);
-    const 条目 = 条目列表[序号] || 条目列表[0] || { title: '近期见闻', desc: '暂无新的全局或个人见闻。' };
-    const 触发tick = toNumber(条目 && 条目.触发tick, 0);
-    const 信息项 = [
-      { label: '来源', value: htmlEscape(toText(条目 && 条目.title, '近期见闻').split('/')[0].trim() || '近期见闻') },
-      条目 && 条目.事件名 ? { label: '事件', value: htmlEscape(toText(条目.事件名, '')) } : null,
-      触发tick > 0 ? { label: '发生时间', value: htmlEscape(formatTickToCalendarDateText(触发tick)) } : null,
-      条目 && 条目.状态 ? { label: '状态', value: htmlEscape(toText(条目.状态, '')) } : null,
-      条目 && 条目.影响 ? { label: '影响', value: htmlEscape(toText(条目.影响, '')) } : null,
-      条目 && 条目.后续 ? { label: '后续', value: htmlEscape(toText(条目.后续, '')) } : null,
-    ].filter(Boolean);
-    return {
-      title: toText(条目 && 条目.title, '近期见闻'),
-      summary: '',
-      body: `
-          <div class="archive-modal-grid mvu-detail-grid--single">
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">见闻详情</div></div>
-              ${makeTimelineStack([
-                {
-                  title: htmlEscape(toText(条目 && 条目.title, '近期见闻')),
-                  desc: '',
-                  descLines: [
-                    toText(条目 && 条目.事件, '').trim() || toText(条目 && 条目.desc, '暂无见闻'),
-                    条目 && 条目.影响 ? `影响：${toText(条目.影响, '')}` : '',
-                    条目 && 条目.后续 ? `后续：${toText(条目.后续, '')}` : '',
-                  ],
-                },
-              ])}
-            </div>
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">节点信息</div></div>
-              ${makeTileGrid(信息项.length ? 信息项 : [{ label: '状态', value: '暂无记录' }], 'two')}
-            </div>
-          </div>
-        `,
-    };
-  }
-
-  function 构建全息编年史详情(snapshot) {
-    const 近期安排摘要 = buildRecentPlanSummary(snapshot, { worldLimit: 12, recordLimit: 8 });
-    const 近期见闻摘要 = buildRecentNewsSummary(snapshot, { seqLimit: 12, intelLimit: 8 });
-    const 拍卖状态 = resolveShellText(deepGet(snapshot, 'rootData.world.拍卖.状态', ''), '休市');
-    const 拍卖地点 = resolveShellText(deepGet(snapshot, 'rootData.world.拍卖.地点', ''), '');
-    const 拍卖刷新tick = toNumber(deepGet(snapshot, 'rootData.world.拍卖.下次刷新tick', 0), 0);
-    const 拍品条目 = safeEntries(deepGet(snapshot, 'rootData.world.拍卖.拍品', {}));
-    const 生态警报文本 = resolveShellText(snapshot.worldAlert, '平稳');
-    const 安排条目 = (近期安排摘要.worldPlans || []).concat(近期安排摘要.personalPlans || []);
-    const 见闻条目 = (近期见闻摘要.globalNews || []).concat(近期见闻摘要.personalNews || []);
-    const 编年史条目 = 构建世界编年史条目(snapshot || {});
-    return {
-      title: '全息编年史',
-      summary: '',
-      body: `
-          <div class="archive-modal-grid mvu-detail-grid--single">
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">统一时间轴</div></div>
-              <div class="mvu-detail-scroll-list">${makeTimelineStack(编年史条目)}</div>
-            </div>
-            <div class="archive-card full">
-              <div class="archive-card-head"><div class="archive-card-title">拍卖与生态</div></div>
-              ${makeTileGrid(
-                [
-                  { label: '拍卖状态', value: htmlEscape(拍卖状态) },
-                  { label: '拍卖地点', value: htmlEscape(拍卖地点 || '无') },
-                  {
-                    label: '刷新时间',
-                    value: htmlEscape(拍卖刷新tick > 0 ? formatTickToCalendarDateText(拍卖刷新tick) : '未记录'),
-                  },
-                  { label: '拍品数量', value: htmlEscape(`${拍品条目.length} 件`) },
-                  { label: '生态警报', value: htmlEscape(生态警报文本) },
-                ],
-                'two',
-              )}
-            </div>
-            ${
-              拍品条目.length
-                ? `
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">拍品清单</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(
-                  拍品条目.slice(0, 8).map(([名称, 数据]) => ({
-                    title: htmlEscape(名称),
-                    desc: htmlEscape(
-                      [
-                        toText(deepGet(数据, '类型', ''), '').trim(),
-                        toText(deepGet(数据, '品阶', deepGet(数据, '阶位', '')), '').trim(),
-                        toText(deepGet(数据, '描述', ''), '').trim(),
-                      ]
-                        .filter(Boolean)
-                        .join(' ｜ ') || '暂无拍品说明',
-                    ),
-                  })),
-                )}</div>
-              </div>
-            `
-                : ''
-            }
-          </div>
-        `,
-    };
   }
 
   function buildShellOrgHeroCard(snapshot) {
@@ -29288,11 +29124,9 @@
 
     if (sectionSignatures.world !== previousSectionSignatures.world) {
       setUnifiedCardMarkup('world-hero', buildWorldHeroCard(snapshot), {
-        preview: '世界状态总览',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('world-timeline', 构建世界编年史卡(snapshot), {
-        preview: '全息编年史',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('org-hero', buildOrgHeroCard(snapshot), {
@@ -29701,7 +29535,7 @@
 
   function 归一化详情预览键(previewKey) {
     const 预览键 = toText(previewKey, '').trim();
-    return 预览键 === '操作总线' ? '全息编年史' : 预览键;
+    return 预览键;
   }
 
   function buildSimpleCard(title, badge, rows) {
@@ -29735,28 +29569,29 @@
     const forestStage =
       forestRatio >= 100 ? '兽潮临界' : forestRatio >= 70 ? '高度紧张' : forestRatio >= 30 ? '持续升温' : '相对安全';
     const 核心阶段 = 推断世界核心阶段(snapshot);
-    const 偏差比例 = Math.max(0, Math.min(100, deviation));
-    const 偏差样式 = deviation >= 40 ? 'is-warn' : deviation >= 10 ? 'is-gold' : 'is-live';
     const 森林样式 = forestRatio >= 70 ? 'is-warn' : forestRatio >= 30 ? 'is-gold' : 'is-live';
+    const 时间匹配 = worldTime.match(/^(.*?)(\s+\d{1,2}:\d{2}(?::\d{2})?)$/);
+    const 时间日期 = 时间匹配 ? 时间匹配[1].trim() : worldTime;
+    const 时间时刻 = 时间匹配 ? 时间匹配[2].trim() : '';
 
     return `
         <div class="world-hud-console">
           <div class="module-name">时空中枢</div>
-          <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime)}">${htmlEscape(worldTime)}</div>
+          <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime)}">
+            <span class="world-hud-date">${htmlEscape(时间日期)}</span>
+            ${时间时刻 ? `<span class="world-hud-time">${htmlEscape(时间时刻)}</span>` : ''}
+          </div>
           <div class="world-hud-meta-grid">
             <span><b>世界偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></span>
             <span><b>核心阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></span>
           </div>
           <div class="world-alert-stack">
-            <div class="world-alert-bar ${偏差样式}">
-              <span><b style="width:${偏差比例}%;"></b></span>
-              <em>世界偏差 ${htmlEscape(String(deviation))}</em>
-            </div>
-            <div class="world-alert-bar ${森林样式}">
+            <div class="world-alert-bar world-alert-bar--forest ${森林样式}">
+              <em>${htmlEscape(`森林仇恨值 ${forestRatio}% / ${forestStage}`)}</em>
               <span><b style="width:${forestRatio}%;"></b></span>
-              <em>${htmlEscape(`${forestStage} / ${formatNumber(snapshot.forestKilledAge)} / 1000000`)}</em>
             </div>
           </div>
+          ${构建世界首页上下文网格(snapshot)}
         </div>
       `;
   }
@@ -29996,16 +29831,6 @@
     }
 
     if (sectionSignatures.world !== previousSectionSignatures.world) {
-      getLiveUiElements('[data-preview="世界状态总览"].hero-card').forEach(el => {
-        el.classList.remove('clickable');
-        el.removeAttribute('data-preview');
-        setLiveNodeHtml(el, buildWorldHeroCard(snapshot));
-      });
-      setLiveHtml('[data-preview="全息编年史"].mvu-simple-card', 构建世界编年史卡(snapshot));
-      setLiveHtml(
-        '[data-preview="近期安排"].mvu-simple-card, [data-preview="近期见闻"].mvu-simple-card, [data-preview="拍卖与警报"].mvu-simple-card',
-        '',
-      );
       setLiveHtml('[data-preview="势力矩阵总览"].hero-card', buildOrgHeroCard(snapshot));
       setLiveHtml(
         '[data-preview="我的阵营详情"].mvu-simple-card',
@@ -30121,14 +29946,6 @@
     const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
     const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
     const jobs = safeEntries(deepGet(snapshot, 'activeChar.副职业', {}));
-    const 近期安排条目匹配 = /^近期安排[：:](\d+)$/.exec(previewKey);
-    if (近期安排条目匹配) {
-      return 构建近期安排条目详情(snapshot, Math.max(0, toNumber(近期安排条目匹配[1], 0)));
-    }
-    const 近期见闻条目匹配 = /^近期见闻[：:](\d+)$/.exec(previewKey);
-    if (近期见闻条目匹配) {
-      return 构建近期见闻条目详情(snapshot, Math.max(0, toNumber(近期见闻条目匹配[1], 0)));
-    }
     if (previewKey === '所属势力详细页' || previewKey === '我的阵营详情') {
       return buildFactionDossierModal(snapshot, previewKey);
     }
@@ -32709,7 +32526,7 @@
                         className: 'dossier-row--wide',
                       },
                     ],
-                    'dossier-row-grid--two',
+                    'dossier-row-grid--two dossier-profile-flow',
                   )}
                 </section>
               </div>
@@ -34045,14 +33862,8 @@
           .filter(Boolean);
       };
 
-      const soulBoneCards = (
-        snapshot.soulBoneEntries && snapshot.soulBoneEntries.length
-          ? snapshot.soulBoneEntries
-          : [['暂无魂骨装载', { empty: true }]]
-      ).map(([slot, bone]) => {
-        if (bone && bone.empty) {
-          return { title: slot, desc: '尚未装载魂骨。' };
-        }
+      const 有魂骨装载 = Array.isArray(snapshot.soulBoneEntries) && snapshot.soulBoneEntries.length > 0;
+      const 魂骨卡片列表 = (有魂骨装载 ? snapshot.soulBoneEntries : []).map(([slot, bone]) => {
         if (!是有效魂骨记录_桥接(bone)) return { title: slot, desc: '尚未装载魂骨。' };
         const boneName = toText(bone && (bone.name || bone['名称'] || bone['表象名称']), slot);
         const boneDef = 查找物品定义_桥接(snapshot.rootData || {}, boneName)?.定义 || {};
@@ -34107,51 +33918,72 @@
 
         return { title: `${boneName} / ${slot}`, desc: descText };
       });
+      const 魂骨装载HTML = 有魂骨装载
+        ? `<div class="mvu-detail-scroll-list">${makeTimelineStack(魂骨卡片列表)}</div>`
+        : `
+          <div class="mvu-armory-bone-empty">
+            <div class="mvu-armory-empty-slots" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <span class="mvu-armory-empty-copy">尚未装载魂骨</span>
+          </div>
+        `;
+      const 武装槽位HTML = [
+        { label: '斗铠', value: armorSummary, preview: '武装详情：斗铠' },
+        { label: '机甲', value: mechSummary, preview: '武装详情：机甲' },
+        { label: '主武器', value: weaponSummary, preview: '武装详情：主武器' },
+        { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
+        { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器' },
+        { label: '副职业', value: jobSummary },
+        {
+          label: '战斗形态',
+          value: battleForm,
+          path: activeCharKey ? ['char', activeCharKey, '状态', '行动'] : [],
+          kind: 'enum_select',
+          rawValue: battleForm,
+          editorMeta: { options: getStatusActionEditorOptions(battleForm) },
+        },
+      ]
+        .map(
+          条目 => `
+            <div class="mvu-armory-gear-slot${条目.preview ? ' clickable' : ''}"${条目.preview ? ` data-preview="${escapeHtmlAttr(条目.preview)}"` : ''}>
+              <b>${htmlEscape(条目.label)}</b>
+              <span>${构建详情项值HTML(条目)}</span>
+            </div>
+          `,
+        )
+        .join('');
+      const 工坊摘要HTML = makeTileGrid(
+        jobs.length
+          ? [
+              { label: '主副职', value: jobSummary },
+              { label: '核心技术', value: jobCoreTechSummary },
+              { label: '工坊上限', value: jobLimitSummary },
+            ]
+          : [
+              { label: '主副职', value: '未展开' },
+              { label: '核心技术', value: '暂无' },
+              { label: '工坊上限', value: '暂无' },
+            ],
+        'three mvu-armory-workshop-brief',
+      );
 
       return {
         title: '武装工坊',
         summary: '',
         body: `
             <div class="equipment-layout armory-layout-single mvu-armory-detail-grid">
-              <div class="archive-card full">
+              <div class="archive-card full mvu-armory-card mvu-armory-card--equipment">
                 <div class="archive-card-head"><div class="archive-card-title">当前武装</div></div>
-                ${makeInteractiveTileGrid([
-                  { label: '斗铠', value: armorSummary, preview: '武装详情：斗铠' },
-                  { label: '机甲', value: mechSummary, preview: '武装详情：机甲' },
-                  { label: '主武器', value: weaponSummary, preview: '武装详情：主武器' },
-                  { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
-                  { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器' },
-                  { label: '副职业', value: jobSummary },
-                  {
-                    label: '战斗形态',
-                    value: battleForm,
-                    path: activeCharKey ? ['char', activeCharKey, '状态', '行动'] : [],
-                    kind: 'enum_select',
-                    rawValue: battleForm,
-                    editorMeta: { options: getStatusActionEditorOptions(battleForm) },
-                  },
-                ])}
+                <div class="mvu-armory-gear-grid">${武装槽位HTML}</div>
               </div>
-              <div class="archive-card full mvu-detail-scroll-card">
+              <div class="archive-card full mvu-detail-scroll-card mvu-armory-card mvu-armory-card--bones${有魂骨装载 ? '' : ' is-empty'}">
                 <div class="archive-card-head"><div class="archive-card-title">魂骨装载</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(soulBoneCards)}</div>
+                ${魂骨装载HTML}
               </div>
-              <div class="archive-card full mvu-detail-embed-card">
+              <div class="archive-card full mvu-detail-embed-card mvu-armory-card mvu-armory-card--workshop">
                 <div class="archive-card-head"><div class="archive-card-title">副职业工坊</div></div>
-                ${makeTileGrid(
-                  jobs.length
-                    ? [
-                        { label: '主副职', value: jobSummary },
-                        { label: '核心技术', value: jobCoreTechSummary },
-                        { label: '工坊上限', value: jobLimitSummary },
-                      ]
-                    : [
-                        { label: '主副职', value: '未展开' },
-                        { label: '核心技术', value: '暂无' },
-                        { label: '工坊上限', value: '暂无' },
-                      ],
-                  'three',
-                )}
+                ${工坊摘要HTML}
                 ${isPlayerControlled ? '<div id="armoryProfessionMount" class="mvu-detail-embed"></div>' : '<div class="tag-cloud armory-quick-actions"><span class="tag-chip">仅玩家角色可进行锻造/工坊操作</span></div>'}
               </div>
             </div>
@@ -35086,10 +34918,6 @@
       };
     }
 
-    if (previewKey === '全息编年史') {
-      return 构建全息编年史详情(snapshot);
-    }
-
     if (String(previewKey || '').startsWith('角色档案：')) {
       const targetName = String(previewKey).replace('角色档案：', '').trim();
       const rootChars = deepGet(snapshot, 'rootData.char', {});
@@ -35331,90 +35159,6 @@
                 ],
                 'two',
               )}</div>
-            </div>
-          `,
-      };
-    }
-
-    if (previewKey === '拍卖与警报') {
-      const auctionItems = safeEntries(deepGet(snapshot, 'rootData.world.拍卖.拍品', {})).slice(0, 6);
-      const auctionPath = ['world', '拍卖'];
-      const auctionRefreshTick = toNumber(deepGet(snapshot, 'rootData.world.拍卖.下次刷新tick', 0), 0);
-      return {
-        title: '拍卖行 / 世界警报弹窗',
-        summary: '拍卖状态、拍品与当前世界警报。',
-        body: `
-            <div class="archive-modal-grid">
-              <div class="archive-card">
-                <div class="archive-card-head"><div class="archive-card-title">拍卖状态</div></div>
-                ${makeTileGrid(
-                  [
-                    {
-                      label: '状态',
-                      value: makeInlineEditableValue(
-                        toText(deepGet(snapshot, 'rootData.world.拍卖.状态', '休市'), '休市'),
-                        {
-                          path: [...auctionPath, '状态'],
-                          kind: 'string',
-                          rawValue: toText(deepGet(snapshot, 'rootData.world.拍卖.状态', '休市'), '休市'),
-                        },
-                      ),
-                    },
-                    {
-                      label: '地点',
-                      value: makeInlineEditableValue(
-                        toText(deepGet(snapshot, 'rootData.world.拍卖.地点', '无'), '无'),
-                        {
-                          path: [...auctionPath, '地点'],
-                          kind: 'string',
-                          rawValue: toText(deepGet(snapshot, 'rootData.world.拍卖.地点', '无'), '无'),
-                        },
-                      ),
-                    },
-                    {
-                      label: '下次刷新',
-                      value: makeInlineEditableValue(formatTickToCalendarDateText(auctionRefreshTick), {
-                        path: [...auctionPath, '下次刷新tick'],
-                        kind: 'number',
-                        rawValue: auctionRefreshTick,
-                        editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                      }),
-                    },
-                    { label: '当前拍品', value: `${auctionItems.length} 件` },
-                  ],
-                  'two',
-                )}
-              </div>
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">拍品列表</div></div>
-                ${makeTimelineStack(
-                  auctionItems.map(([name, item]) => {
-                    const itemPath = [...auctionPath, '拍品', name];
-                    return {
-                      title: name,
-                      desc: [
-                        `品阶 ${makeInlineEditableValue(toText(item && item.tier, '低阶'), {
-                          path: [...itemPath, 'tier'],
-                          kind: 'string',
-                          rawValue: toText(item && item.tier, '低阶'),
-                        })}`,
-                        `价格 ${makeInlineEditableValue(String(toNumber(item && item.价格, 0)), {
-                          path: [...itemPath, '价格'],
-                          kind: 'number',
-                          rawValue: toNumber(item && item.价格, 0),
-                          editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                        })}`,
-                        `说明 ${makeInlineEditableValue(toText(item && item.lore, '暂无说明'), {
-                          path: [...itemPath, 'lore'],
-                          kind: 'string',
-                          rawValue: toText(item && item.lore, '暂无说明'),
-                          multiline: true,
-                        })}`,
-                      ].join(' / '),
-                    };
-                  }),
-                )}
-              </div>
             </div>
           `,
       };
@@ -36121,56 +35865,6 @@
                       })
                     : [{ title: '暂无动态节点', desc: '当前剧情尚未扩展出新的动态地点。' }],
                 )}
-              </div>
-            </div>
-          `,
-      };
-    }
-
-    if (previewKey === '世界状态总览') {
-      const worldTime = resolveShellText(
-        deepGet(snapshot, 'rootData.world.时间._calendar', deepGet(snapshot, 'rootData.world.时间.calendar', '')),
-        '',
-      );
-      const deviation = toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0);
-      const 偏差倍率 = toNumber(deepGet(snapshot, 'rootData.world.偏差倍率', 1), 1);
-      const 偏差状态 = deviation >= 40 ? '高危' : deviation >= 10 ? '波动' : '平稳';
-      const forestRatio = Math.max(
-        0,
-        Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))),
-      );
-      const forestStage =
-        forestRatio >= 100 ? '兽潮临界' : forestRatio >= 70 ? '高度紧张' : forestRatio >= 30 ? '持续升温' : '相对安全';
-      const 核心阶段 = 推断世界核心阶段(snapshot);
-      const 万年魂灵开放 = 判断传灵塔万年魂灵开放_桥接(deepGet(snapshot, 'rootData', {}));
-      const 编年史条目 = 构建世界编年史条目(snapshot || {});
-      return {
-        title: '世界状态总览',
-        summary: '',
-        body: `
-            <div class="archive-modal-grid mvu-shell-compact-detail">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">世界状态</div></div>
-                ${makeTileGrid(
-                  [
-                    { label: '当前时间', value: htmlEscape(worldTime || '斗罗历未同步') },
-                    {
-                      label: '世界偏差',
-                      value: `${makeInlineEditableValue(String(deviation), { path: ['world', '偏差值'], kind: 'number', rawValue: deviation, editorMeta: { min: 0, max: 100, hint: '范围 0 - 100' } })} / ${htmlEscape(偏差状态)} / x${makeInlineEditableValue(String(偏差倍率), { path: ['world', '偏差倍率'], kind: 'number', rawValue: 偏差倍率, editorMeta: { min: 0, step: 0.1, hint: '最小 0 · 可输入小数' } })}`,
-                    },
-                    { label: '核心阶段', value: htmlEscape(核心阶段) },
-                    {
-                      label: '森林仇恨值',
-                      value: `${makeInlineEditableValue(formatNumber(snapshot.forestKilledAge), { path: ['world', '累计击杀年限'], kind: 'number', rawValue: snapshot.forestKilledAge, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数 · 1000000 为兽潮阈值参考，不是硬上限' } })} / ${htmlEscape(`${forestStage} / ${forestRatio}%`)}`,
-                    },
-                    { label: '传灵塔', value: htmlEscape(万年魂灵开放 ? '万年魂灵开放' : '常规开放') },
-                  ],
-                  'two',
-                )}
-              </div>
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">全息编年史</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(编年史条目)}</div>
               </div>
             </div>
           `,
@@ -36962,58 +36656,6 @@
               <div class="archive-card full mvu-detail-scroll-card">
                 <div class="archive-card-head"><div class="archive-card-title">已记录物种</div></div>
                 <div class="mvu-detail-scroll-list">${makeTimelineStack(bestiaryCards)}</div>
-              </div>
-            </div>
-          `,
-      };
-    }
-
-    if (previewKey === '森林仇恨值') {
-      const remaining = Math.max(0, 1000000 - snapshot.forestKilledAge);
-      const progress = Math.max(0, Math.min(100, Number(((snapshot.forestKilledAge / 1000000) * 100).toFixed(1))));
-      const stage =
-        progress >= 100 ? '兽潮临界' : progress >= 70 ? '高度紧张' : progress >= 30 ? '持续升温' : '相对安全';
-      return {
-        title: '森林仇恨值',
-        summary: '星斗大森林累计击杀年限与兽潮阈值监控。',
-        body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">仇恨累计</div></div>
-                ${makeTileGrid(
-                  [
-                    {
-                      label: '累计击杀年限',
-                      value: makeInlineEditableValue(formatNumber(snapshot.forestKilledAge), {
-                        path: ['world', '累计击杀年限'],
-                        kind: 'number',
-                        rawValue: snapshot.forestKilledAge,
-                        editorMeta: {
-                          min: 0,
-                          integer: true,
-                          hint: '最小 0 · 整数 · 1000000 为兽潮阈值参考，不是硬上限',
-                        },
-                      }),
-                    },
-                    { label: '兽潮阈值', value: '1000000' },
-                    { label: '剩余安全空间', value: remaining > 0 ? formatNumber(remaining) : '0' },
-                    { label: '当前阶段', value: stage },
-                  ],
-                  'two',
-                )}
-                <div class="mvu-detail-progress mvu-detail-progress--forest ${progress >= 100 ? 'is-critical' : progress >= 70 ? 'is-warn' : ''}">
-                  <div class="mvu-detail-progress-head"><span>阈值进度</span><span>${progress}%</span></div>
-                  <div class="mvu-detail-progress-track"><div class="mvu-detail-progress-fill" style="width:${progress}%;"></div></div>
-                </div>
-              </div>
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">阶段说明</div></div>
-                ${makeTimelineStack([
-                  { title: '0% - 29%', desc: '相对安全 / 森林尚未进入高压状态。' },
-                  { title: '30% - 69%', desc: '持续升温 / 已经开始积累明显仇恨。' },
-                  { title: '70% - 99%', desc: '高度紧张 / 接近恐怖阈值，应避免继续屠戮。' },
-                  { title: '100%', desc: '兽潮临界 / 已达到恐怖事件触发线。' },
-                ])}
               </div>
             </div>
           `,
@@ -43123,19 +42765,14 @@ ${toText(combatData.战斗意图, '点到为止')}
       '当前节点详情',
       '试炼与情报',
       '近期见闻',
-      '全息编年史',
-      '世界状态总览',
       '势力矩阵总览',
       '我的阵营详情',
       '系统播报与日志',
       '怪物图鉴',
-      '森林仇恨值',
     ]);
     return (
       liveRequiredKeys.has(key) ||
-      String(key || '').startsWith('地图节点：') ||
-      /^近期安排[：:]\d+$/.test(key) ||
-      /^近期见闻[：:]\d+$/.test(key)
+      String(key || '').startsWith('地图节点：')
     );
   }
 
@@ -43287,20 +42924,15 @@ ${toText(combatData.战斗意图, '点到为止')}
       '当前节点详情',
       '试炼与情报',
       '近期见闻',
-      '全息编年史',
-      '世界状态总览',
       '势力矩阵总览',
       '我的阵营详情',
       '系统播报与日志',
       '怪物图鉴',
-      '森林仇恨值',
     ]);
     if (
       !liveSnapshot &&
       (liveRequiredKeys.has(previewKey) ||
-        String(previewKey || '').startsWith('地图节点：') ||
-        /^近期安排[：:]\d+$/.test(toText(previewKey, '')) ||
-        /^近期见闻[：:]\d+$/.test(toText(previewKey, '')))
+        String(previewKey || '').startsWith('地图节点：'))
     ) {
       if (skeletonArchive) {
         const isVaultSkeleton = previewKey === '储物仓库详细页';
@@ -43406,9 +43038,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   };
 
   const 终端标签预览映射 = Object.freeze({
-    状态: '世界状态总览',
     播报: '系统播报与日志',
-    安排: '全息编年史',
   });
 
   function 应用终端标签切换(终端标签按钮) {

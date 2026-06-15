@@ -92,7 +92,7 @@
     "plotTasks": [
       {
         "id": "plotTask2",
-        "name": "召回",
+        "name": "召回（建议FLASH或轻量模型）",
         "enabled": true,
         "promptGroup": [
           {
@@ -147,7 +147,7 @@
       },
       {
         "id": "lwcs_integrated_ruling",
-        "name": "LWCS综合裁定",
+        "name": "LWCS综合裁定（建议PRO或高级模型）",
         "enabled": true,
         "promptGroup": [
           {
@@ -227,7 +227,7 @@
       },
       {
         "id": "defaultPlotTask",
-        "name": "推进",
+        "name": "推进（建议PRO或高级模型）",
         "enabled": true,
         "promptGroup": [
           {

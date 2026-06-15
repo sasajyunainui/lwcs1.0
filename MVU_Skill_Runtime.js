@@ -19295,17 +19295,17 @@ var AI_TODO_TEXT_PREFIX = '待补全';
 var SKILL_TEXT_UNKNOWN = '未知';
 var AI_TODO_SKILL_NAME =
   '待补全（填写魂技名；命名必须与所属武魂/魂灵同源，禁止无关命名；若为造物承载类技能，此名称同时作为生成物名称）';
-var AI_TODO_SKILL_VISUAL = '待补全（依据魂技名与_简易效果描述补全发动画面，保持与机制一致，不新增机制）';
+var AI_TODO_SKILL_VISUAL = '待补全（依据魂技名与_简易效果描述补全发动画面，文字须有小说分镜感与视觉张力，严禁新增未提及的机制）';
 var AI_TODO_SKILL_VISUAL_STAGE1 =
-  '待补全（请结合武魂特性、魂环来源魂兽特性、当前剧情上下文与机制选择（主机制/副机制1/副机制2）补全发动画面，不新增机制）';
-var AI_TODO_SKILL_EFFECT = '待补全（依据_简易效果描述补全效果描述，保持与机制一致，不新增机制，必须包含消耗与效果）';
+  '待补全（高阶视觉。结合武魂/魂兽生态与剧情氛围补全分镜，文字优美且禁止新增机制）';
+var AI_TODO_SKILL_EFFECT = '待补全（效果描述。须逻辑严密，按“触发条件-数值消耗-判定结果”的TRPG规则书体例编写';
 var AI_TODO_SPIRIT_NAME = '待补全(填写具体武魂名，如蓝银草/蓝银皇)';
 var AI_TODO_SPIRIT_DESC = '待补全(描述武魂外形、核心能力与战斗特征)';
 var AI_TODO_SPIRIT_ELEMENT = '待补全(填写元素倾向；无属性也请明确写无)';
 var AI_TODO_ATTRIBUTE_SYSTEM = '待补全（填写属性体系：无/元素/五行）';
 var AI_TODO_CALLABLE_ELEMENTS = '待补全（填写可调用元素列表：金 / 木 / 水 / 火 / 土 / 风 / 雷 / 冰 / 光 / 暗 / 精神 / 空间 / 时间 / 创造 / 毁灭，无属性体系请填“无”）';
 var AI_TODO_SOUL_SPIRIT_NAME = '待补全（魂兽名）';
-var AI_TODO_SOUL_SPIRIT_DESC = '待补全（请结合魂灵物种、年限、品质补全外形、血脉特征、行动风格与能力倾向）';
+var AI_TODO_SOUL_SPIRIT_DESC = '待补全（魂灵设定。结合物种、年限与品质，生动补全其形体细节、血脉威压与战斗风格）';
 var AI_TODO_SOUL_SPIRIT_QUALITY =
   '待补全（可选f/d/c/b/a/s/s+；f为劣质魂灵，如草蛇等杂血弱种；d为低劣魂灵，如普通凶性野兽型魂灵；c为普通魂灵，具备基础血脉与战斗价值；b为良品魂灵，常见强势魂兽；a为精英魂灵，稀有异种或强族后裔；s为顶尖魂灵，王族血脉或顶级龙种；s+为神话级魂灵，真龙、神兽后裔或极端变异个体）';
 var AI_TODO_SOUL_BONE_SOURCE = '待补全(请填写魂骨来源的魂兽名)';

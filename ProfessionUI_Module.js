@@ -2,14 +2,14 @@
 
 const ProfessionStyles = `
   .prof-module-scope {
-    --panel: rgba(18, 56, 69, 0.22);
-    --panel-strong: rgba(23, 68, 84, 0.30);
-    --line: rgba(150, 217, 228, 0.24);
-    --line-soft: rgba(150, 217, 228, 0.10);
+    --panel: rgba(8, 26, 36, 0.34);
+    --panel-strong: rgba(12, 35, 47, 0.48);
+    --line: rgba(150, 217, 228, 0.22);
+    --line-soft: rgba(150, 217, 228, 0.09);
     --cyan: #8de1ef;
-    --cyan-soft: rgba(141, 225, 239, 0.16);
-    --gold: #d7c070;
-    --gold-soft: rgba(228, 201, 111, 0.16);
+    --cyan-soft: rgba(141, 225, 239, 0.14);
+    --gold: #e2c866;
+    --gold-soft: rgba(226, 200, 102, 0.14);
     --red: #ff8aa2;
     --green: #7dffb2;
     --text: #e4f5f9;
@@ -33,38 +33,94 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .status-chip {
-    background: rgba(0,0,0,0.18);
-    border: 1px solid var(--line-soft);
-    border-radius: 6px;
-    padding: 8px;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "icon label"
+      "icon value"
+      "bar bar";
+    gap: 3px 8px;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid rgba(141, 225, 239, 0.1);
+    border-radius: 7px;
+    background:
+      linear-gradient(180deg, rgba(141, 225, 239, 0.055), rgba(0, 0, 0, 0.1)),
+      rgba(3, 12, 18, 0.28);
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.18);
+  }
+
+  .prof-module-scope .status-chip::before {
+    content: '';
+    grid-area: icon;
+    align-self: center;
+    width: 8px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--status-color, var(--cyan));
+    box-shadow: 0 0 12px rgba(141, 225, 239, 0.2);
   }
 
   .prof-module-scope .chip-label {
+    grid-area: label;
     font-size: 10px;
     color: var(--text-dim);
-    margin-bottom: 4px;
     text-transform: uppercase;
+    letter-spacing: 0.35px;
   }
 
   .prof-module-scope .chip-value {
+    grid-area: value;
     font-family: var(--font-tech);
     font-size: 12px;
-    color: var(--gold);
+    line-height: 1.1;
+    color: var(--status-color, var(--gold));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     word-break: break-all;
   }
+
+  .prof-module-scope .chip-bar {
+    grid-area: bar;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.055);
+    overflow: hidden;
+  }
+
+  .prof-module-scope .chip-bar-fill {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), var(--status-color, var(--cyan)));
+    box-shadow: 0 0 10px rgba(141, 225, 239, 0.18);
+    transition: width 0.2s ease;
+  }
+
+  .prof-module-scope .status-chip--vital { --status-color: #ff8aa2; }
+  .prof-module-scope .status-chip--soul { --status-color: #8de1ef; }
+  .prof-module-scope .status-chip--mind { --status-color: #d9c86f; }
 
   .prof-module-scope .tabs {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid rgba(141, 225, 239, 0.1);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.24);
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.22);
   }
 
   .prof-module-scope .tab-btn {
-    border: 1px solid var(--line-soft);
-    background: rgba(0,0,0,0.16);
+    border: 1px solid transparent;
+    background: transparent;
     color: var(--text-dim);
     border-radius: 6px;
-    padding: 8px 6px;
+    padding: 7px 4px;
     cursor: pointer;
     font-size: 11px;
     font-weight: 700;
@@ -74,16 +130,61 @@ const ProfessionStyles = `
 
   .prof-module-scope .tab-btn.active {
     color: var(--cyan);
-    border-color: var(--cyan);
-    background: rgba(141, 225, 239, 0.12);
-    box-shadow: inset 0 0 8px rgba(141, 225, 239, 0.08);
+    border-color: rgba(141, 225, 239, 0.42);
+    background:
+      linear-gradient(180deg, rgba(141, 225, 239, 0.18), rgba(141, 225, 239, 0.055)),
+      rgba(8, 28, 38, 0.72);
+    box-shadow:
+      0 0 16px rgba(141, 225, 239, 0.13),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .prof-module-scope .prof-workshop-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .prof-module-scope .prof-workshop-left,
+  .prof-module-scope .prof-workshop-right {
+    min-width: 0;
+  }
+
+  .prof-module-scope .prof-workshop-right {
+    position: sticky;
+    top: 8px;
+    display: grid;
+    gap: 9px;
   }
 
   .prof-module-scope .section-card {
-    background: rgba(0,0,0,0.18);
-    border: 1px solid var(--line-soft);
-    border-radius: 8px;
-    padding: 12px;
+    position: relative;
+    background: linear-gradient(180deg, rgba(141, 225, 239, 0.045), rgba(0, 0, 0, 0.08));
+    border: 0;
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+
+  .prof-module-scope .section-card--process {
+    display: grid;
+    gap: 9px;
+    box-shadow:
+      inset 0 0 0 1px rgba(141, 225, 239, 0.055),
+      inset 0 18px 36px rgba(0, 0, 0, 0.12);
+  }
+
+  .prof-module-scope .section-card--preview {
+    display: grid;
+    gap: 9px;
+    border: 1px solid rgba(141, 225, 239, 0.12);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(226, 200, 102, 0.07), transparent 42%),
+      linear-gradient(180deg, rgba(13, 42, 55, 0.46), rgba(4, 15, 22, 0.28));
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .prof-module-scope .section-title {
@@ -96,7 +197,7 @@ const ProfessionStyles = `
     line-height: 1.2;
     color: var(--white);
     font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     letter-spacing: 0.55px;
     text-transform: none;
     text-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 0 6px rgba(77,240,255,0.08);
@@ -118,105 +219,399 @@ const ProfessionStyles = `
     opacity: 0.78;
   }
 
-  .prof-module-scope .form-group {
-    margin-bottom: 12px;
+  .prof-module-scope .prof-command-head {
+    display: grid;
+    gap: 3px;
   }
-  .prof-module-scope .form-group:last-child { margin-bottom: 0; }
+
+  .prof-module-scope .prof-command-subtitle,
+  .prof-module-scope .hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.35;
+  }
+
+  .prof-module-scope .prof-command-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 9px 12px;
+    min-width: 0;
+  }
+
+  .prof-module-scope .form-group {
+    min-width: 0;
+    margin-bottom: 0;
+  }
 
   .prof-module-scope .form-group label {
     display: block;
-    font-size: 11px;
-    color: var(--cyan);
-    margin-bottom: 6px;
+    margin-bottom: 3px;
+    font-size: 9px;
+    color: rgba(191, 221, 228, 0.68);
     text-transform: uppercase;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.45px;
+    white-space: nowrap;
+  }
+
+  .prof-module-scope .param-token {
+    flex: 1 1 124px;
+  }
+
+  .prof-module-scope .param-token--small {
+    flex: 0 1 104px;
+  }
+
+  .prof-module-scope .param-token--target,
+  .prof-module-scope .param-token--materials {
+    flex: 1 1 100%;
+  }
+
+  .prof-module-scope .prof-input-shell {
+    display: grid;
+    gap: 6px;
+  }
+
+  .prof-module-scope .prof-blueprint-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 0.28fr);
+    gap: 8px;
+    align-items: stretch;
   }
 
   .prof-module-scope .tech-select, .prof-module-scope .tech-input {
     width: 100%;
-    background: var(--panel-strong);
-    border: 1px solid var(--line-soft);
+    min-height: 25px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(0, 0, 0, 0.18)),
+      rgba(3, 13, 19, 0.5);
+    border: 1px solid rgba(141, 225, 239, 0.13);
     color: var(--cyan);
-    padding: 8px 9px;
+    padding: 6px 8px;
     border-radius: 6px;
     font-family: var(--font-cjk);
     font-size: 12px;
+    font-weight: 760;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
     box-sizing: border-box;
   }
-  .prof-module-scope .tech-select:focus, .prof-module-scope .tech-input:focus { border-color: var(--cyan); }
+  .prof-module-scope .tech-select:focus, .prof-module-scope .tech-input:focus {
+    border-color: rgba(141, 225, 239, 0.62);
+    color: #f7fcff;
+    box-shadow:
+      0 0 0 1px rgba(141, 225, 239, 0.16),
+      inset 0 0 16px rgba(141, 225, 239, 0.08);
+  }
   .prof-module-scope .tech-select option { background: #1a2a32; color: var(--text); }
 
-  .prof-module-scope .inline-grid {
+  .prof-module-scope .prof-blueprint-node {
+    position: relative;
+    min-height: 52px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 7px;
+    border: 1px dashed rgba(141, 225, 239, 0.16);
+    background:
+      linear-gradient(rgba(141, 225, 239, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(141, 225, 239, 0.04) 1px, transparent 1px),
+      rgba(2, 10, 15, 0.34);
+    background-size: 10px 10px;
+    color: rgba(135, 174, 183, 0.72);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24);
+  }
+
+  .prof-module-scope .prof-blueprint-node::before {
+    content: '';
+    width: 18px;
+    height: 28px;
+    border: 1px solid currentColor;
+    clip-path: polygon(50% 0, 100% 32%, 78% 100%, 22% 100%, 0 32%);
+    opacity: 0.5;
+    filter: drop-shadow(0 0 8px rgba(141, 225, 239, 0.12));
+  }
+
+  .prof-module-scope .prof-blueprint-node span {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .prof-module-scope .prof-blueprint-node.is-ready {
+    border-style: solid;
+    border-color: rgba(141, 225, 239, 0.48);
+    color: var(--cyan);
+    background:
+      linear-gradient(rgba(141, 225, 239, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(141, 225, 239, 0.055) 1px, transparent 1px),
+      radial-gradient(circle at 50% 8%, rgba(141, 225, 239, 0.22), transparent 48%),
+      rgba(3, 18, 26, 0.46);
+    box-shadow:
+      inset 0 0 18px rgba(141, 225, 239, 0.08),
+      0 0 18px rgba(141, 225, 239, 0.12);
   }
 
   .prof-module-scope .metal-list-container {
-    max-height: 140px;
+    max-height: 188px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 8px;
     padding: 8px;
-    background: var(--panel-strong);
-    border: 1px solid var(--line-soft);
-    border-radius: 6px;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.06), transparent 52%),
+      rgba(0, 0, 0, 0.16);
+    border: 1px solid rgba(141, 225, 239, 0.11);
+    border-radius: 8px;
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.22);
+    scrollbar-width: thin;
   }
 
   .prof-module-scope .material-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 3px 7px;
     cursor: pointer;
     color: var(--text);
-    font-size: 12px;
-    line-height: 1.4;
+    min-width: 0;
+    min-height: 60px;
+    padding: 8px;
+    border-radius: 7px;
+    border: 1px solid rgba(141, 225, 239, 0.14);
+    background:
+      linear-gradient(180deg, rgba(141, 225, 239, 0.055), rgba(0, 0, 0, 0.14)),
+      rgba(4, 14, 21, 0.44);
+    font-size: 11px;
+    line-height: 1.25;
+    overflow: hidden;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+      inset 0 -12px 24px rgba(0, 0, 0, 0.14);
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
   }
+
+  .prof-module-scope .material-item:hover,
+  .prof-module-scope .material-item.is-selected {
+    border-color: rgba(141, 225, 239, 0.48);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.16), transparent 54%),
+      rgba(5, 21, 30, 0.58);
+    box-shadow:
+      inset 0 0 18px rgba(141, 225, 239, 0.08),
+      0 0 16px rgba(141, 225, 239, 0.1);
+  }
+
   .prof-module-scope .material-item input {
+    flex: 0 0 auto;
+    grid-row: 1 / span 2;
+    align-self: start;
     margin: 0;
     accent-color: var(--cyan);
   }
 
+  .prof-module-scope .material-name,
+  .prof-module-scope .material-meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .prof-module-scope .material-name {
+    color: var(--text);
+    font-weight: 760;
+  }
+
+  .prof-module-scope .material-meta {
+    color: var(--text-dim);
+    font-family: var(--font-tech);
+    font-size: 9px;
+  }
+
+  .prof-module-scope .prof-empty-slots {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(42px, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .prof-module-scope .prof-empty-slot {
+    position: relative;
+    min-height: 58px;
+    border-radius: 8px;
+    border: 1px dashed rgba(141, 225, 239, 0.17);
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow:
+      inset 0 0 18px rgba(0, 0, 0, 0.32),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  }
+
+  .prof-module-scope .prof-empty-slot::before,
+  .prof-module-scope .prof-empty-slot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 999px;
+    background: rgba(141, 225, 239, 0.18);
+    transform: translate(-50%, -50%);
+  }
+
+  .prof-module-scope .prof-empty-slot::before {
+    width: 18px;
+    height: 2px;
+  }
+
+  .prof-module-scope .prof-empty-slot::after {
+    width: 2px;
+    height: 18px;
+  }
+
+  .prof-module-scope .prof-empty-copy {
+    grid-column: 1 / -1;
+    display: grid;
+    place-items: center;
+    min-height: 30px;
+    color: rgba(135, 174, 183, 0.74);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
   .prof-module-scope .hint {
     margin-top: 4px;
+  }
+
+  .prof-module-scope .prof-info-alert {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 7px;
+    align-items: start;
+    padding: 7px 8px;
+    border-radius: 7px;
+    border: 1px solid rgba(141, 225, 239, 0.09);
+    background: rgba(141, 225, 239, 0.045);
+    color: rgba(191, 221, 228, 0.78);
     font-size: 10px;
-    color: var(--text-dim);
-    line-height: 1.4;
+    line-height: 1.35;
+  }
+
+  .prof-module-scope .prof-info-alert::before {
+    content: 'i';
+    display: grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid rgba(141, 225, 239, 0.28);
+    color: var(--cyan);
+    font-family: var(--font-tech);
+    font-size: 10px;
+    font-style: normal;
   }
 
   .prof-module-scope .info-panel {
-    background: rgba(0,0,0,0.3);
-    border: 1px dashed var(--line-soft);
-    border-radius: 6px;
-    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
     font-size: 11px;
     color: var(--text-sub);
-    line-height: 1.6;
+    line-height: 1.3;
   }
 
   .prof-module-scope .info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    padding: 4px 0;
+    display: grid;
+    grid-template-rows: auto minmax(17px, auto);
+    gap: 3px;
+    min-width: 0;
+    min-height: 43px;
+    padding: 6px 7px;
+    border: 0;
+    border-radius: 4px;
+    background: rgba(5, 19, 27, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(141, 225, 239, 0.06);
   }
-  .prof-module-scope .info-row:last-child { border-bottom: none; }
+
+  .prof-module-scope .info-row--wide {
+    grid-column: 1 / -1;
+  }
+
+  .prof-module-scope .info-row--subtle {
+    min-height: 36px;
+    background: transparent;
+    box-shadow: inset 0 -1px 0 rgba(141, 225, 239, 0.08);
+  }
+
+  .prof-module-scope .info-row--hero {
+    min-height: 66px;
+    padding: 8px 9px;
+    border: 1px solid rgba(141, 225, 239, 0.13);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.1), transparent 58%),
+      rgba(2, 12, 18, 0.34);
+  }
+
+  .prof-module-scope .info-row--hero .info-val {
+    font-family: var(--font-tech);
+    font-size: 18px;
+    line-height: 1.15;
+    color: var(--gold);
+  }
+
+  .prof-module-scope .info-row--rate .info-val.rate-safe {
+    color: var(--green);
+    text-shadow: 0 0 12px rgba(125, 255, 178, 0.18);
+  }
+
+  .prof-module-scope .info-row--rate .info-val.rate-warn {
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(226, 200, 102, 0.18);
+  }
+
+  .prof-module-scope .info-row--rate .info-val.rate-danger {
+    color: var(--red);
+    text-shadow: 0 0 12px rgba(255, 138, 162, 0.18);
+  }
 
   .prof-module-scope .info-key {
     color: var(--text-dim);
-    flex: 0 0 108px;
+    min-width: 0;
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
   }
   .prof-module-scope .info-val {
     color: var(--text);
-    text-align: right;
-    flex: 1;
-    word-break: break-word;
+    min-width: 0;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: normal;
+  }
+
+  .prof-module-scope .info-row--note .info-val,
+  .prof-module-scope .info-row--loop .info-val {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .prof-module-scope .val-highlight { color: var(--gold); font-family: var(--font-tech); }
@@ -224,25 +619,57 @@ const ProfessionStyles = `
   .prof-module-scope .val-red { color: var(--red); }
   .prof-module-scope .val-green { color: var(--green); }
 
+  .prof-module-scope .prof-action-zone {
+    display: grid;
+    gap: 7px;
+  }
+
+  .prof-module-scope .prof-action-warning {
+    min-height: 18px;
+    color: var(--red);
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+
+  .prof-module-scope .prof-action-warning.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
   .prof-module-scope .action-btn {
     width: 100%;
-    margin-top: 2px;
-    background: linear-gradient(90deg, rgba(141,225,239,0.1), rgba(141,225,239,0.3));
-    border: 1px solid var(--cyan);
-    color: var(--cyan);
-    padding: 11px;
-    border-radius: 6px;
+    align-self: center;
+    margin-top: 0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 220, 115, 0.4), transparent 38%),
+      linear-gradient(90deg, rgba(82, 229, 255, 0.88), rgba(226, 200, 102, 0.72));
+    border: 1px solid rgba(241, 219, 128, 0.58);
+    color: #07151b;
+    padding: 10px 18px;
+    border-radius: 999px;
     font-family: var(--font-tech);
-    font-weight: 700;
+    font-weight: 850;
     letter-spacing: 1.5px;
     cursor: pointer;
     text-transform: uppercase;
-    transition: all 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    box-shadow:
+      0 0 18px rgba(141, 225, 239, 0.22),
+      0 0 28px rgba(226, 200, 102, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.34);
   }
   .prof-module-scope .action-btn:hover:not(:disabled) {
-    background: var(--cyan);
-    color: #000;
-    box-shadow: 0 0 10px var(--cyan);
+    transform: translateY(-1px);
+    filter: saturate(1.12);
+    box-shadow:
+      0 0 24px rgba(141, 225, 239, 0.32),
+      0 0 34px rgba(226, 200, 102, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42);
+    animation: profession-ignition-pulse 1.4s ease-in-out infinite;
   }
   .prof-module-scope .action-btn:disabled {
     background: rgba(255,255,255,0.05);
@@ -252,30 +679,68 @@ const ProfessionStyles = `
     box-shadow: none;
   }
 
+  @keyframes profession-ignition-pulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(141, 225, 239, 0.2), 0 0 24px rgba(226, 200, 102, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.34); }
+    50% { box-shadow: 0 0 30px rgba(141, 225, 239, 0.38), 0 0 42px rgba(226, 200, 102, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.46); }
+  }
+
+  @media (max-width: 720px) {
+    .prof-module-scope .prof-workshop-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .prof-module-scope .prof-workshop-right {
+      position: static;
+    }
+  }
+
   @media (max-width: 480px) {
-    .prof-module-scope .tabs { flex-wrap: wrap; }
-    .prof-module-scope .tab-btn { flex: 1 0 50%; padding: 8px 0; font-size: 11px; }
-    .prof-module-scope .top-status { flex-wrap: wrap; gap: 6px; }
-    .prof-module-scope .status-chip { flex: 1 0 calc(50% - 6px); }
+    .prof-module-scope .top-status {
+      grid-template-columns: 1fr;
+    }
+    .prof-module-scope .info-panel {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .prof-module-scope .prof-blueprint-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .prof-module-scope .prof-empty-slots {
+      grid-template-columns: repeat(3, minmax(42px, 1fr));
+    }
+    .prof-module-scope .prof-command-line {
+      gap: 8px;
+    }
+    .prof-module-scope .param-token {
+      flex-basis: calc(50% - 8px);
+    }
+    .prof-module-scope .param-token--target,
+    .prof-module-scope .param-token--materials,
+    .prof-module-scope .info-row--wide {
+      flex-basis: 100%;
+      grid-column: 1 / -1;
+    }
     .prof-module-scope .section-card { padding: 10px; }
     .prof-module-scope .section-title { font-size: 12px; }
+    .prof-module-scope .action-btn { width: min(240px, 100%); }
   }
 `;
 
 const ProfessionTemplate = `
 <div class="prof-module-scope">
   <div class="top-status">
-    <div class="status-chip">
-      <div class="chip-label">体力 / 魂力</div>
-      <div class="chip-value" id="chip-vs">0 / 0</div>
+    <div class="status-chip status-chip--vital">
+      <div class="chip-label">体力</div>
+      <div class="chip-value" id="chip-vital">0 / 0</div>
+      <div class="chip-bar"><span class="chip-bar-fill" id="chip-vital-bar"></span></div>
     </div>
-    <div class="status-chip">
+    <div class="status-chip status-chip--soul">
+      <div class="chip-label">魂力</div>
+      <div class="chip-value" id="chip-soul">0 / 0</div>
+      <div class="chip-bar"><span class="chip-bar-fill" id="chip-soul-bar"></span></div>
+    </div>
+    <div class="status-chip status-chip--mind">
       <div class="chip-label">精神力</div>
-      <div class="chip-value" id="chip-men">0</div>
-    </div>
-    <div class="status-chip">
-      <div class="chip-label">精神境界</div>
-      <div class="chip-value" id="chip-men-realm">未知</div>
+      <div class="chip-value" id="chip-mind">0 / 0</div>
+      <div class="chip-bar"><span class="chip-bar-fill" id="chip-mind-bar"></span></div>
     </div>
   </div>
 
@@ -286,76 +751,94 @@ const ProfessionTemplate = `
     <button class="tab-btn" data-mode="repair">修理</button>
   </div>
 
-  <div class="section-card">
-    <div class="section-title" id="prof-ui-title">副职业工坊</div>
-    <div class="hint" id="prof-ui-subtitle" style="margin-top:-6px;margin-bottom:12px;">-</div>
+  <div class="prof-workshop-grid">
+    <div class="prof-workshop-left">
+      <div class="section-card section-card--process">
+        <div class="prof-command-head">
+          <div class="section-title" id="prof-ui-title">副职业工坊</div>
+          <div class="prof-command-subtitle" id="prof-ui-subtitle">-</div>
+        </div>
 
-    <div class="inline-grid">
-      <div class="form-group">
-        <label id="tier-label">操作阶位</label>
-        <select id="prof-tier" class="tech-select">
-          <option value="1">1阶</option>
-          <option value="2">2阶</option>
-          <option value="3">3阶</option>
-          <option value="4">4阶</option>
-          <option value="5">5阶</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label id="qty-label">每种材料消耗</label>
-        <input id="prof-cost" class="tech-input" type="number" min="1" value="1" />
+        <div class="prof-command-line">
+          <div class="form-group param-token">
+            <label id="tier-label">操作阶位</label>
+            <select id="prof-tier" class="tech-select">
+              <option value="1">1阶</option>
+              <option value="2">2阶</option>
+              <option value="3">3阶</option>
+              <option value="4">4阶</option>
+              <option value="5">5阶</option>
+            </select>
+          </div>
+          <div class="form-group param-token param-token--small">
+            <label id="qty-label">每种材料消耗</label>
+            <input id="prof-cost" class="tech-input" type="number" min="1" value="1" />
+          </div>
+          <div class="form-group param-token param-token--small">
+            <label>连续模式</label>
+            <select id="prof-loop-enabled" class="tech-select">
+              <option value="0">关闭</option>
+              <option value="1">开启</option>
+            </select>
+          </div>
+          <div class="form-group param-token param-token--small">
+            <label>连续天数</label>
+            <input id="prof-loop-days" class="tech-input" type="number" min="1" value="1" />
+          </div>
+          <div class="form-group param-token param-token--target">
+            <label id="target-label">目标产物 / 目标对象</label>
+            <div class="prof-blueprint-row">
+              <div class="prof-input-shell">
+                <input id="prof-target" class="tech-input" type="text" placeholder="自动生成或手动输入..." />
+                <div class="hint" id="target-hint">锻造会尝试根据所选材料自动生成产物名；修理模式下这里填待修对象名。</div>
+              </div>
+              <div class="prof-blueprint-node" id="prof-blueprint-node"><span id="prof-blueprint-state">蓝图待定</span></div>
+            </div>
+          </div>
+          <div class="form-group param-token param-token--materials">
+            <label id="materials-label">材料选择</label>
+            <div class="prof-info-alert"><span id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</span></div>
+            <div id="prof-materials-list" class="metal-list-container">
+              <div class="prof-empty-slots">
+                <div class="prof-empty-slot"></div>
+                <div class="prof-empty-slot"></div>
+                <div class="prof-empty-slot"></div>
+                <div class="prof-empty-slot"></div>
+                <div class="prof-empty-slot"></div>
+                <div class="prof-empty-copy">读取库存中</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="hint" id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。</div>
       </div>
     </div>
 
-    <div class="form-group">
-      <label id="target-label">目标产物 / 目标对象</label>
-      <input id="prof-target" class="tech-input" type="text" placeholder="自动生成或手动输入..." />
-      <div class="hint" id="target-hint">锻造会尝试根据所选材料自动生成产物名；修理模式下这里填待修对象名。</div>
-    </div>
-
-    <div class="inline-grid">
-      <div class="form-group">
-        <label>连续模式</label>
-        <select id="prof-loop-enabled" class="tech-select">
-          <option value="0">关闭</option>
-          <option value="1">开启</option>
-        </select>
+    <div class="prof-workshop-right">
+      <div class="section-card section-card--preview">
+        <div class="section-title">副职业预演</div>
+        <div class="info-panel">
+          <div class="info-row info-row--subtle"><span class="info-key">当前副职业</span><span class="info-val" id="prev-job">-</span></div>
+          <div class="info-row info-row--subtle"><span class="info-key">执行来源</span><span class="info-val" id="prev-executor">-</span></div>
+          <div class="info-row info-row--subtle"><span class="info-key">累计经验</span><span class="info-val" id="prev-exp">-</span></div>
+          <div class="info-row info-row--subtle"><span class="info-key">当前资源</span><span class="info-val" id="prev-res">-</span></div>
+          <div class="info-row info-row--hero"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
+          <div class="info-row info-row--hero info-row--rate"><span class="info-key">成功率</span><span class="info-val" id="prev-rate">-%</span></div>
+          <div class="info-row"><span class="info-key">代工费用</span><span class="info-val" id="prev-fee">-</span></div>
+          <div class="info-row"><span class="info-key">模式 / 融合率</span><span class="info-val" id="prev-fusion">-</span></div>
+          <div class="info-row"><span class="info-key">支持融锻数</span><span class="info-val" id="prev-maxfusion">-</span></div>
+          <div class="info-row"><span class="info-key">品质极限</span><span class="info-val" id="prev-maxq">-</span></div>
+          <div class="info-row info-row--wide info-row--loop"><span class="info-key">连续预估</span><span class="info-val" id="prev-loop">-</span></div>
+          <div class="info-row info-row--wide info-row--note"><span class="info-key">规则提示</span><span class="info-val" id="prev-note">-</span></div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>连续天数</label>
-        <input id="prof-loop-days" class="tech-input" type="number" min="1" value="1" />
+      <div class="prof-action-zone">
+        <div class="prof-action-warning" id="prof-action-warning"></div>
+        <button class="action-btn" id="prof-submit">执行操作</button>
       </div>
-    </div>
-
-    <div class="form-group">
-      <label id="materials-label">材料选择</label>
-      <div id="prof-materials-list" class="metal-list-container">
-        <div style="color: var(--text-dim);">[读取库存中...]</div>
-      </div>
-      <div class="hint" id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</div>
     </div>
   </div>
-
-  <div class="section-card">
-    <div class="section-title">副职业预演</div>
-    <div class="info-panel">
-      <div class="info-row"><span class="info-key">当前副职业</span><span class="info-val" id="prev-job">-</span></div>
-      <div class="info-row"><span class="info-key">累计经验</span><span class="info-val" id="prev-exp">-</span></div>
-      <div class="info-row"><span class="info-key">当前资源</span><span class="info-val" id="prev-res">-</span></div>
-      <div class="info-row"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
-      <div class="info-row"><span class="info-key">执行来源</span><span class="info-val" id="prev-executor">-</span></div>
-      <div class="info-row"><span class="info-key">代工费用</span><span class="info-val" id="prev-fee">-</span></div>
-      <div class="info-row"><span class="info-key">本次成功率</span><span class="info-val" id="prev-rate">-%</span></div>
-      <div class="info-row"><span class="info-key">模式 / 融合率</span><span class="info-val" id="prev-fusion">-</span></div>
-      <div class="info-row"><span class="info-key">支持融锻数</span><span class="info-val" id="prev-maxfusion">-</span></div>
-      <div class="info-row"><span class="info-key">品质极限</span><span class="info-val" id="prev-maxq">-</span></div>
-      <div class="info-row"><span class="info-key">连续预估</span><span class="info-val" id="prev-loop">-</span></div>
-      <div class="info-row"><span class="info-key">规则提示</span><span class="info-val" id="prev-note">-</span></div>
-    </div>
-  </div>
-
-  <button class="action-btn" id="prof-submit">执行操作</button>
 </div>
 `;
 
@@ -567,11 +1050,13 @@ class ProfessionUIComponent {
     const selected = new Set(state.selectedMaterials || []);
     this.$$('.material-cb').forEach(cb => {
       cb.checked = selected.has(cb.value);
+      const 标签 = cb.closest('.material-item');
+      if (标签) 标签.classList.toggle('is-selected', cb.checked);
     });
 
-    this.updatePreview();
     this.syncCostInputState();
     this.autoGenerateTargetName();
+    this.updatePreview();
   }
 
   updateData(newSnapshot) {
@@ -622,6 +1107,7 @@ class ProfessionUIComponent {
       tierSel.value = value;
     }
     this.syncCostInputState();
+    this.更新蓝图状态(targetInput.value);
   }
 
   applyInitialContext() {
@@ -1003,22 +1489,35 @@ class ProfessionUIComponent {
 
   updateHeaderStatus() {
     const stat = this.charData.属性 || {};
-    this.$('#chip-vs').textContent = `${Number(stat.体力 || 0).toLocaleString()} / ${Number(stat.魂力 || 0).toLocaleString()}`;
-    this.$('#chip-men').textContent = Number(stat.精神力 || 0).toLocaleString();
-    this.$('#chip-men-realm').textContent = stat.精神境界 || '未知';
+    this.写入资源芯片('vital', Number(stat.体力 || 0), Number(stat.体力上限 || stat.体力 || 0));
+    this.写入资源芯片('soul', Number(stat.魂力 || 0), Number(stat.魂力上限 || stat.魂力 || 0));
+    this.写入资源芯片('mind', Number(stat.精神力 || 0), Number(stat.精神力上限 || stat.精神力 || 0), stat.精神境界 || '');
   }
 
-  读取副职业显示名(jobName = '') {
-    return ({ 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' })[String(jobName || '').trim()] || String(jobName || '').trim();
+  写入资源芯片(键名, 当前值, 上限值, 附加文本 = '') {
+    const 数值节点 = this.$(`#chip-${键名}`);
+    const 进度节点 = this.$(`#chip-${键名}-bar`);
+    const 安全当前值 = Math.max(0, Number(当前值 || 0));
+    const 安全上限值 = Math.max(安全当前值, Number(上限值 || 0));
+    const 百分比 = 安全上限值 > 0 ? this.clamp((安全当前值 / 安全上限值) * 100, 0, 100) : 0;
+    if (数值节点) {
+      const 基础文本 = `${Math.floor(安全当前值).toLocaleString()} / ${Math.floor(安全上限值 || 安全当前值).toLocaleString()}`;
+      数值节点.textContent = 附加文本 ? `${基础文本} · ${附加文本}` : 基础文本;
+    }
+    if (进度节点) 进度节点.style.width = `${百分比}%`;
+  }
+
+  读取副职业显示名(副职业名 = '') {
+    return ({ 制造师: '机甲制造师', 设计师: '机甲设计师', 修理师: '机甲修理师' })[String(副职业名 || '').trim()] || String(副职业名 || '').trim();
   }
 
   updateModeChrome() {
-    const cfg = PROFESSION_CONFIG[this.activeMode];
-    this.$('#prof-ui-title').textContent = cfg.title;
-    this.$('#prof-ui-subtitle').textContent = `${cfg.displayName} / ${this.读取副职业显示名(cfg.jobName)}`;
-    this.$('#materials-hint').textContent = cfg.materialHint;
-    this.$('#target-hint').textContent = cfg.targetHint;
-    this.$('#prof-submit').textContent = cfg.actionLabel;
+    const 配置 = PROFESSION_CONFIG[this.activeMode];
+    this.$('#prof-ui-title').textContent = 配置.title;
+    this.$('#prof-ui-subtitle').textContent = `${配置.displayName} / ${this.读取副职业显示名(配置.jobName)}`;
+    this.$('#materials-hint').textContent = 配置.materialHint;
+    this.$('#target-hint').textContent = 配置.targetHint;
+    this.$('#prof-submit').textContent = 配置.actionLabel;
     this.updateTierOptions();
     this.$('#qty-hint').textContent = this.activeMode === 'forge'
       ? '锻造会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。'
@@ -1103,7 +1602,7 @@ class ProfessionUIComponent {
     if (!targetInput) return;
 
     if (mode === 'forge') {
-      const mat = Array.from(this.el.querySelectorAll('.material-checkbox:checked')).map(cb => cb.value)[0] || '未知金属';
+      const mat = Array.from(this.container.querySelectorAll('.material-checkbox:checked')).map(cb => cb.value)[0] || '未知金属';
       targetInput.value = `${mat}(${this.getForgeTierLabel(state.tier)})`;
     } else {
       const opt = this.$('#prof-tier').selectedOptions?.[0];
@@ -1979,6 +2478,45 @@ class ProfessionUIComponent {
     el.innerHTML = value;
   }
 
+  更新蓝图状态(目标名称 = '') {
+    const 蓝图节点 = this.$('#prof-blueprint-node');
+    const 蓝图状态 = this.$('#prof-blueprint-state');
+    const 目标名 = String(目标名称 || '').trim();
+    if (!蓝图节点 || !蓝图状态) return;
+    蓝图节点.classList.toggle('is-ready', !!目标名);
+    蓝图状态.textContent = 目标名 ? '蓝图已建立' : '蓝图待定';
+  }
+
+  设置动作错误(规则错误 = '') {
+    const 错误节点 = this.$('#prof-action-warning');
+    if (!错误节点) return;
+    const 错误文本 = String(规则错误 || '').trim();
+    错误节点.textContent = 错误文本;
+    错误节点.classList.toggle('is-visible', !!错误文本);
+  }
+
+  读取成功率类名(成功率数值 = 0, 有错误 = false) {
+    if (有错误) return 'rate-danger';
+    const 数值 = Number(成功率数值 || 0);
+    if (数值 >= 80) return 'rate-safe';
+    if (数值 >= 45) return 'rate-warn';
+    return 'rate-danger';
+  }
+
+  渲染材料空槽HTML(配置 = {}) {
+    const 文本 = 配置.requiresMaterials ? '未检测到可用材料' : '材料槽可留空';
+    return `
+      <div class="prof-empty-slots">
+        <div class="prof-empty-slot"></div>
+        <div class="prof-empty-slot"></div>
+        <div class="prof-empty-slot"></div>
+        <div class="prof-empty-slot"></div>
+        <div class="prof-empty-slot"></div>
+        <div class="prof-empty-copy">${文本}</div>
+      </div>
+    `;
+  }
+
   populateMaterialList() {
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const container = this.$('#prof-materials-list');
@@ -1990,15 +2528,27 @@ class ProfessionUIComponent {
       const label = document.createElement('label');
       label.className = 'material-item';
       const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.className = 'material-cb'; cb.value = 引用;
-      cb.addEventListener('change', () => { this.autoGenerateTargetName(); this.updatePreview(); });
+      cb.type = 'checkbox'; cb.className = 'material-cb material-checkbox'; cb.value = 引用;
+      cb.addEventListener('change', () => {
+        label.classList.toggle('is-selected', cb.checked);
+        this.autoGenerateTargetName();
+        this.updatePreview();
+      });
       const detail = [`剩${Math.max(0, Math.floor(Number(item.数量 || 0)))}`];
       const qualityFactor = item?.品质系数;
       if (qualityFactor !== undefined) detail.push(`Q${Number(qualityFactor).toFixed(2)}`);
       const fusionRate = item?.副职业参数?.融合参数?.融合率;
       if (fusionRate !== undefined) detail.push(`融合率${fusionRate}%`);
       if (item?.耐久 !== undefined) detail.push(`耐久${item.耐久}`);
-      label.appendChild(cb); label.appendChild(document.createTextNode(`${labelText} (${detail.join(' / ')})`));
+      const 名称节点 = document.createElement('span');
+      名称节点.className = 'material-name';
+      名称节点.textContent = labelText;
+      const 明细节点 = document.createElement('span');
+      明细节点.className = 'material-meta';
+      明细节点.textContent = detail.join(' / ');
+      label.appendChild(cb);
+      label.appendChild(名称节点);
+      label.appendChild(明细节点);
       container.appendChild(label);
       count++;
     };
@@ -2018,7 +2568,7 @@ class ProfessionUIComponent {
         );
       });
     });
-    if (count === 0) container.innerHTML = `<div style="color: var(--text-dim);">${cfg.requiresMaterials ? '[当前背包无可用材料]' : '[当前模式材料可选为空]'}</div>`;
+    if (count === 0) container.innerHTML = this.渲染材料空槽HTML(cfg);
   }
 
   autoGenerateTargetName() {
@@ -2037,18 +2587,22 @@ class ProfessionUIComponent {
       else if (rawNames.length === 2) baseName = `${rawNames.join('')}合金`;
       else baseName = `${rawNames.length}系融锻合金`;
       this.$('#prof-target').value = `${tierLabel}${baseName}`;
+      this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
     if (this.activeMode === 'manufacture') {
       this.$('#prof-target').value = this.getManufactureOutputMeta(this.$('#prof-target').value.trim() || rawNames[0] || '标准制件', materials, tier).name;
+      this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
     if (this.activeMode === 'design') {
       this.$('#prof-target').value = this.getDesignOutputName(this.$('#prof-target').value.trim() || rawNames[0] || `${tierLabel}`, tier, materials);
+      this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
     if (this.activeMode === 'repair' && !this.$('#prof-target').value.trim()) {
       this.$('#prof-target').value = materials[0];
+      this.更新蓝图状态(this.$('#prof-target').value);
     }
   }
 
@@ -2185,7 +2739,7 @@ class ProfessionUIComponent {
         当前成功率数值 = Number(rate || 0);
         const firstMaterial = this.resolveInventoryItem(materialNames[0]);
         const dfr = isFusion ? Number(commissionCtx.fusionSync || (materialNames.length > 1 ? this.getForgeFusionRate(effectiveRuntime, materialNames) : 100)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
-        rateText = `<span class="val-highlight">${rate}%</span>`;
+        rateText = `${rate}%`;
         fusionText = isFusion ? `<span class="val-cyan">${efc}级复合 / 融合率${dfr}%</span>` : `<span class="val-cyan">单金属 / 融合率${dfr}%</span>`;
         maxQText = `<span class="val-highlight">${this.getForgeMaxQ(tier, efc).toFixed(1)}</span>`;
         noteText = commissionCtx.isCommission ? commissionCtx.note : (isFusion ? `融锻走公式成功率；当前${this.getForgeTierLabel(tier)}支持融锻数 ${this.读取阶位支持融锻数(effectiveRuntime.lv, tier)}。` : `单金属成功率按等级表 + 经验区间计算。`);
@@ -2197,7 +2751,7 @@ class ProfessionUIComponent {
         const isComp = efc > 1;
         const rate = this.读取本次通用成功率(cfg, effectiveRuntime, commissionCtx, tier, materialNames, targetName);
         当前成功率数值 = Number(rate || 0);
-        rateText = `<span class="val-highlight">${rate}%</span>`;
+        rateText = `${rate}%`;
         fusionText = isComp ? `<span class="val-cyan">复合工序 ${efc} 材</span>` : `<span class="val-cyan">单工序</span>`;
         maxQText = `<span class="val-highlight">${(isComp ? 1.25 : 1.15).toFixed(2)}</span>`;
         noteText = commissionCtx.isCommission ? commissionCtx.note : (isComp ? `${本次工序显示名}的多材料协同成功率按副职业公式推导。` : `${本次工序显示名}单工序成功率直接读取当前副职业熟练度。`);
@@ -2232,6 +2786,8 @@ class ProfessionUIComponent {
       连续预估文本 = `${连续配置.连续模式开启 ? '<span class="val-green">开启</span>' : '<span class="val-cyan">未开启</span>'} / <span class="val-highlight">${连续配置.连续天数}天</span> / 可执行 <span class="val-cyan">${连续估算结果.可执行次数}</span> 次 / 期望成功 <span class="val-highlight">${期望成功数}</span> 次${!commissionCtx.isCommission ? ` / 冥想${连续估算结果.冥想小时}h 睡眠${连续估算结果.睡眠小时}h` : ''}`;
     }
 
+    this.更新蓝图状态(targetName);
+    this.设置动作错误(ruleError);
     this.$('#prof-submit').disabled = Boolean(ruleError);
     this.setPreviewField('prev-job', `<span class="val-cyan">${this.读取副职业显示名(本次进度副职业)} Lv.${effectiveRuntime.lv}</span>${commissionCtx.isCommission ? ` / 执行者 ${commissionCtx.executorName}` : ''}`);
     this.setPreviewField('prev-exp', commissionCtx.isCommission ? `<span class="val-highlight">${Number(effectiveRuntime.exp || 0).toLocaleString()}</span> / 执行者熟练度` : `<span class="val-highlight">${自身进度运行时.exp.toLocaleString()}</span> / 本级进度 <span class="val-cyan">${Math.floor(自身进度运行时.expRatio * 100)}%</span>`);
@@ -2239,12 +2795,12 @@ class ProfessionUIComponent {
     this.setPreviewField('prev-costs', enoughResources ? costText : `<span class="val-red">${costText}</span>`);
     this.setPreviewField('prev-executor', `<span class="val-cyan">${commissionCtx.executorName}</span>${commissionCtx.isPrivate ? ` / 好感 ${commissionCtx.relScore}` : (commissionCtx.isOfficial ? ' / 官方代工' : ' / 自行操作')}`);
     this.setPreviewField('prev-fee', feeText);
-    this.setPreviewField('prev-rate', ruleError ? `<span class="val-red">-</span>` : rateText);
+    this.setPreviewField('prev-rate', ruleError ? '-' : rateText, this.读取成功率类名(当前成功率数值, Boolean(ruleError)));
     this.setPreviewField('prev-fusion', ruleError ? `<span class="val-red">-</span>` : fusionText);
     this.setPreviewField('prev-maxfusion', `<span class="val-highlight">${effectiveRuntime.支持融锻文本}</span>`);
     this.setPreviewField('prev-maxq', ruleError ? `<span class="val-red">-</span>` : maxQText);
     this.setPreviewField('prev-loop', ruleError ? `<span class="val-red">-</span>` : 连续预估文本);
-    this.setPreviewField('prev-note', ruleError ? `<span class="val-red">${ruleError}</span>` : noteText);
+    this.setPreviewField('prev-note', noteText);
   }
 
   // --- 提交操作相关补丁生成 --- 
