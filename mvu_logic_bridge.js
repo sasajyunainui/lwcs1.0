@@ -4108,6 +4108,107 @@
     return Number.isFinite(数值) ? Math.max(-1, Math.floor(数值)) : -1;
   }
 
+  function 读取当前聊天数组_桥接() {
+    try {
+      const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null;
+      return Array.isArray(上下文 && 上下文.chat) ? 上下文.chat : [];
+    } catch (错误) {
+      return [];
+    }
+  }
+
+  function 读取聊天消息编号_桥接(消息 = {}, 索引 = -1) {
+    return toText(消息 && (消息.message_id ?? 索引), '').trim();
+  }
+
+  function 读取聊天消息当前滑动编号_桥接(消息 = {}) {
+    const 当前编号 = Number(消息 && 消息.swipe_id);
+    return Number.isInteger(当前编号) && 当前编号 >= 0 ? 当前编号 : '';
+  }
+
+  function 读取聊天消息正文_桥接(消息 = {}) {
+    if (!消息 || typeof 消息 !== 'object') return '';
+    const 当前滑动编号 = 读取聊天消息当前滑动编号_桥接(消息);
+    if (当前滑动编号 !== '' && Array.isArray(消息.swipes)) {
+      const 当前滑动正文 = 消息.swipes[当前滑动编号];
+      if (typeof 当前滑动正文 === 'string') return 当前滑动正文;
+      if (当前滑动正文 && typeof 当前滑动正文.mes === 'string') return 当前滑动正文.mes;
+    }
+    return toText(消息.mes, '');
+  }
+
+  function 读取事件消息引用_桥接(选项 = {}) {
+    const 来源 = 选项 && typeof 选项 === 'object' ? 选项 : {};
+    return 来源.消息引用 ?? 来源.消息编号 ?? 来源.消息索引;
+  }
+
+  function 定位聊天消息索引_桥接(聊天 = [], 消息引用 = '') {
+    if (!Array.isArray(聊天) || 聊天.length === 0) return -1;
+    const 引用文本 = toText(消息引用, '').trim();
+    if (引用文本) {
+      const 编号索引 = 聊天.findIndex((消息, 索引) => 读取聊天消息编号_桥接(消息, 索引) === 引用文本);
+      if (编号索引 >= 0) return 编号索引;
+    }
+    const 引用数值 = Number(消息引用);
+    if (Number.isInteger(引用数值) && 引用数值 >= 0 && 引用数值 < 聊天.length) return 引用数值;
+    return -1;
+  }
+
+  function 向前查找用户消息索引_桥接(聊天 = [], 起始索引 = -1) {
+    for (let 索引 = Math.min(Number(起始索引) || 0, 聊天.length - 1); 索引 >= 0; 索引 -= 1) {
+      if (聊天[索引] && 聊天[索引].is_user) return 索引;
+    }
+    return -1;
+  }
+
+  function 向后查找角色消息索引_桥接(聊天 = [], 起始索引 = 0) {
+    for (let 索引 = Math.max(0, Number(起始索引) || 0); 索引 < 聊天.length; 索引 += 1) {
+      if (!聊天[索引]) continue;
+      if (聊天[索引].is_user) return -1;
+      return 索引;
+    }
+    return -1;
+  }
+
+  function 读取冷归档自动归档消息对_桥接(选项 = {}) {
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 空结果 = { 用户文本: '', 角色文本: '', 捕获文本: '', 用户索引: -1, 角色索引: -1, 有消息对: false };
+    if (!聊天.length) return 空结果;
+    const 目标索引 = 定位聊天消息索引_桥接(聊天, 读取事件消息引用_桥接(选项));
+    let 用户索引 = -1;
+    let 角色索引 = -1;
+    if (目标索引 >= 0) {
+      const 目标消息 = 聊天[目标索引];
+      if (目标消息 && 目标消息.is_user) {
+        用户索引 = 目标索引;
+        角色索引 = 向后查找角色消息索引_桥接(聊天, 目标索引 + 1);
+      } else if (目标消息) {
+        角色索引 = 目标索引;
+        用户索引 = 向前查找用户消息索引_桥接(聊天, 目标索引 - 1);
+      }
+      if (用户索引 < 0 || 角色索引 < 0) return 空结果;
+    }
+    if (角色索引 < 0) {
+      for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
+        if (聊天[索引] && !聊天[索引].is_user) {
+          角色索引 = 索引;
+          break;
+        }
+      }
+    }
+    if (用户索引 < 0 && 角色索引 >= 0) 用户索引 = 向前查找用户消息索引_桥接(聊天, 角色索引 - 1);
+    const 用户文本 = 用户索引 >= 0 ? 读取聊天消息正文_桥接(聊天[用户索引]) : '';
+    const 角色文本 = 角色索引 >= 0 ? 读取聊天消息正文_桥接(聊天[角色索引]) : '';
+    return {
+      用户文本,
+      角色文本,
+      捕获文本: [用户文本, 角色文本].filter(Boolean).join('\n'),
+      用户索引,
+      角色索引,
+      有消息对: 用户索引 >= 0 && 角色索引 >= 0,
+    };
+  }
+
   function 规范化冷实体激活类型_桥接(类型 = '') {
     const 文本 = toText(类型, '').trim();
     return ['角色', '动态地点', '物品'].includes(文本) ? 文本 : '';
@@ -4898,12 +4999,14 @@
         const 事件名 = eventTypes[事件键] || 事件键;
         if (!事件名) return;
         try {
-          eventSource.on(事件名, () => {
+          eventSource.on(事件名, (...事件参数) => {
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
             if (事件键 === 'MESSAGE_UPDATED' || 事件键 === 'GENERATION_ENDED') {
               调度冷归档楼层自动归档_桥接(事件键 === 'GENERATION_ENDED' ? 1200 : 2200, {
                 触发来源: 事件键,
                 跳过冷却: true,
+                消息引用: 事件参数[0],
+                需要可见消息对: true,
               });
             }
           });
@@ -6119,7 +6222,10 @@
         if (!状态.可用 || !状态.可写) return { changed: false, reason: 'archive_unavailable' };
         const { mvuData } = await readLatestMvuDataByEditor();
         const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-        const 捕获文本 = toText(选项.捕获文本 ?? [选项.userInput, 选项.最后角色消息文本].filter(Boolean).join('\n'), '');
+        const 已传捕获文本 = Object.prototype.hasOwnProperty.call(选项, '捕获文本');
+        const 自动归档消息对 = 已传捕获文本 ? null : 读取冷归档自动归档消息对_桥接(选项);
+        if (!已传捕获文本 && 选项.需要可见消息对 && !自动归档消息对.有消息对) return { changed: false, reason: 'no_visible_message_pair' };
+        const 捕获文本 = 已传捕获文本 ? toText(选项.捕获文本, '') : toText(自动归档消息对.捕获文本, '');
         const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
         const 动态地点 = deepGet(statData, 'world.动态地点', {});
         const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
@@ -6849,6 +6955,92 @@
     return stripWrapperPathPrefix(normalized);
   }
 
+  function 任务奖励状态已终结(状态) {
+    return ['已完成', '已放弃', '失败', '已失败'].includes(toText(状态, '进行中'));
+  }
+
+  function 读取任务奖励进度(任务) {
+    return Math.max(0, Math.min(100, toNumber(任务 && 任务['当前进度'], 0)));
+  }
+
+  function 构建JSONPatch任务奖励结算上下文(补丁列表 = [], 读取值 = () => undefined) {
+    const 任务触碰表 = new Map();
+    const 显式奖励角色集合 = new Set();
+    (Array.isArray(补丁列表) ? 补丁列表 : []).forEach(补丁 => {
+      const 路径 = decodeJsonPointerPath(补丁 && 补丁.path);
+      if (路径[0] !== 'char' || !路径[1]) return;
+      const 角色键 = String(路径[1]);
+      if (
+        路径.length <= 2 ||
+        路径[2] === '财富' ||
+        (路径[2] === '社交' && (路径.length === 3 || 路径[3] === '声望'))
+      ) {
+        显式奖励角色集合.add(角色键);
+      }
+      if (路径[2] !== '我的任务' || 路径.length < 4) return;
+      const 任务名 = String(路径[3]);
+      const 结算键 = JSON.stringify([角色键, 任务名]);
+      if (任务触碰表.has(结算键)) return;
+      const 任务路径 = ['char', 角色键, '我的任务', 任务名];
+      const 原任务 = 读取值(任务路径);
+      任务触碰表.set(结算键, {
+        角色键,
+        任务名,
+        原任务: 原任务 && typeof 原任务 === 'object' && !Array.isArray(原任务) ? cloneJsonValue(原任务, {}) : null,
+      });
+    });
+    return { 任务列表: Array.from(任务触碰表.values()), 显式奖励角色集合 };
+  }
+
+  function 结算JSONPatch任务奖励(statData = {}, 结算上下文 = {}, 读取值 = () => undefined) {
+    const 任务列表 = Array.isArray(结算上下文.任务列表) ? 结算上下文.任务列表 : [];
+    if (!任务列表.length) return;
+    const 显式奖励角色集合 =
+      结算上下文.显式奖励角色集合 instanceof Set ? 结算上下文.显式奖励角色集合 : new Set();
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+    任务列表.forEach(记录 => {
+      const 角色键 = toText(记录 && 记录.角色键, '').trim();
+      const 任务名 = toText(记录 && 记录.任务名, '').trim();
+      if (!角色键 || !任务名 || 显式奖励角色集合.has(角色键)) return;
+      const 原任务 = 记录.原任务 && typeof 记录.原任务 === 'object' ? 记录.原任务 : null;
+      if (任务奖励状态已终结(原任务 && 原任务['状态']) || 读取任务奖励进度(原任务) >= 100) return;
+      const 任务路径 = ['char', 角色键, '我的任务', 任务名];
+      const 当前任务 = 读取值(任务路径);
+      if (!当前任务 || typeof 当前任务 !== 'object' || Array.isArray(当前任务)) return;
+      const 当前状态 = toText(当前任务['状态'], '进行中');
+      if (/失败|放弃/.test(当前状态) || 读取任务奖励进度(当前任务) < 100) return;
+      const 奖励币 = Math.max(0, Math.floor(toNumber(当前任务['奖励币'], 0)));
+      const 奖励声望 = Math.max(0, Math.floor(toNumber(当前任务['奖励声望'], 0)));
+      deepSetMutable(statData, [...任务路径, '状态'], '已完成');
+      deepSetMutable(statData, [...任务路径, '当前进度'], 100);
+      deepSetMutable(statData, [...任务路径, '最后更新时间tick'], 当前tick);
+      deepSetMutable(
+        statData,
+        ['char', 角色键, '财富', '联邦币'],
+        Math.max(0, toNumber(读取值(['char', 角色键, '财富', '联邦币'], 0), 0)) + 奖励币,
+      );
+      deepSetMutable(
+        statData,
+        ['char', 角色键, '社交', '声望'],
+        Math.max(0, toNumber(读取值(['char', 角色键, '社交', '声望'], 0), 0)) + 奖励声望,
+      );
+      const 委托 = 读取值(['world', '委托板', 任务名]);
+      if (
+        委托 &&
+        typeof 委托 === 'object' &&
+        !Array.isArray(委托) &&
+        toText(委托['承接者'], '') === 角色键 &&
+        !任务奖励状态已终结(委托['状态'])
+      ) {
+        deepSetMutable(statData, ['world', '委托板', 任务名, '状态'], '已完成');
+        deepSetMutable(statData, ['world', '委托板', 任务名, '承接者'], 角色键);
+      }
+      const 路径键 = JSON.stringify([角色键, 任务名]);
+      结算上下文.已结算任务键集合 = 结算上下文.已结算任务键集合 instanceof Set ? 结算上下文.已结算任务键集合 : new Set();
+      结算上下文.已结算任务键集合.add(路径键);
+    });
+  }
+
   function 规范化桥接JsonPatch列表(patches = [], statData = {}, options = {}) {
     const 预处理器 =
       (globalThis && typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function'
@@ -6902,6 +7094,7 @@
           }
           return current;
         };
+        const 任务奖励结算上下文 = 构建JSONPatch任务奖励结算上下文(normalizedPatches, readMutableValue);
         const getDeviationDeltaMultiplier = () => {
           const raw = Number(readMutableValue(['world', '偏差倍率']) ?? 1);
           return Number.isFinite(raw) && raw >= 0 ? raw : 1;
@@ -6942,6 +7135,20 @@
             const nextValue =
               (Number.isFinite(previousValue) ? previousValue : 0) + (Number.isFinite(deltaValue) ? deltaValue : 0);
             deepSetMutable(statData, path, nextValue);
+          }
+        });
+        结算JSONPatch任务奖励(statData, 任务奖励结算上下文, readMutableValue);
+        normalizedPatches.forEach(patch => {
+          const path = decodeJsonPointerPath(patch.path);
+          if (
+            path.length === 2 &&
+            path[0] === 'char' &&
+            path[1] &&
+            任务奖励结算上下文.已结算任务键集合 instanceof Set &&
+            任务奖励结算上下文.已结算任务键集合.size > 0
+          ) {
+            const 角色键 = String(path[1]);
+            if (!任务奖励结算上下文.已结算任务键集合.has(JSON.stringify([角色键, '']))) return;
           }
         });
       }, options);
@@ -26506,6 +26713,7 @@
     const 伤势显示 = woundLabel && woundLabel !== '无' ? woundLabel : '无伤';
     const 领域文本 = toText(deepGet(snapshot, 'rootData.world.战斗.当前领域', ''), '常态');
     const 领域显示 = 领域文本 && 领域文本 !== '无' ? 领域文本 : '常态';
+    const 状态标签样式 = 伤势显示 === '无伤' ? 'safe' : 'warn';
     const nextSoulDisplayText = nextLevelSoul.isMax
       ? '下级魂力 已满级'
       : nextLevelSoul.blocked
@@ -26516,6 +26724,11 @@
           ? `下级魂力 已达${formatNumber(nextLevelSoul.nextLevel)}级门槛`
           : `下级魂力 ${formatNumber(nextLevelSoul.needed)}`;
     const nextSoulValueText = nextSoulDisplayText.replace(/^下级魂力\s*/, '');
+    const 核心属性列表 = [
+      { 名称: '力量', 数值: stat.力量 },
+      { 名称: '防御', 数值: stat.防御 },
+      { 名称: '敏捷', 数值: stat.敏捷 },
+    ];
     const 资源指标列表 = [
       {
         名称: '生命',
@@ -26560,12 +26773,19 @@
           <div class="archive-core-profile">
             <strong class="archive-core-level cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
             <div class="archive-core-profile-main">
-              <b>${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</b>
-              <span>${htmlEscape(`${伤势显示} / ${领域显示}`)}</span>
+              <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</span>
+              <span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>
+              <span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>
+              <span class="archive-core-next"><em>突破所需魂力</em><strong>${htmlEscape(nextSoulValueText)}</strong></span>
             </div>
-            <div class="archive-core-profile-next">
-              <b>下级所需魂力</b>
-              <span>${htmlEscape(nextSoulValueText)}</span>
+            <div class="archive-core-attrs">
+              ${核心属性列表
+                .map(
+                  指标 => `
+              <span title="${escapeHtmlAttr(`${指标.名称}：${格式化属性完整数字(指标.数值)}`)}"><b>${htmlEscape(指标.名称)}</b><strong>${htmlEscape(格式化属性短数字(指标.数值))}</strong></span>
+            `,
+                )
+                .join('')}
             </div>
           </div>
           <div class="archive-resource-list">
@@ -36452,18 +36672,18 @@
                       : htmlEscape(toText(focusQuest['任务线'], activeQuestTab)),
                   )}
                   ${renderQuestField(
-                    '最近更新时间tick',
+                    '最后更新时间tick',
                     focusQuestPath.length
                       ? makeInlineEditableValue(
-                          String(Math.max(0, Math.floor(toNumber(focusQuest['最近更新时间tick'], 0)))),
+                          String(Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0)))),
                           {
-                            path: [...focusQuestPath, '最近更新时间tick'],
+                            path: [...focusQuestPath, '最后更新时间tick'],
                             kind: 'number',
-                            rawValue: Math.max(0, Math.floor(toNumber(focusQuest['最近更新时间tick'], 0))),
+                            rawValue: Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0))),
                             editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数 tick' },
                           },
                         )
-                      : htmlEscape(String(Math.max(0, Math.floor(toNumber(focusQuest['最近更新时间tick'], 0))))),
+                      : htmlEscape(String(Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0))))),
                   )}
                 </div>
                 <div class="mvu-quest-reward-strip">
@@ -37796,6 +38016,8 @@
     const targetFaction = toText(options.targetFaction, '').trim();
     const quantity = Math.max(1, Math.floor(toNumber(options.quantity, 1)));
     if (!itemName || !targetFaction || itemName === '无' || targetFaction === '无') return null;
+    const 已加入势力名 = (snapshot.势力 || []).map(([name]) => toText(name, '').trim()).filter(Boolean);
+    if (!已加入势力名.includes(targetFaction)) return null;
     const ownedCount = 读取背包总数量_桥接(deepGet(snapshot, ['activeChar', '背包', itemName], {}));
     if (ownedCount < quantity) return null;
     const chars = deepGet(snapshot, 'rootData.char', {});
@@ -37880,7 +38102,7 @@
       任务条目['当前进度'] = Math.max(0, Math.min(100, toNumber(任务条目['当前进度'], 0)));
       任务条目['奖励币'] = Math.max(0, toNumber(任务条目['奖励币'], 0));
       任务条目['奖励声望'] = Math.max(0, toNumber(任务条目['奖励声望'], 0));
-      任务条目['最近更新时间tick'] = Math.max(0, toNumber(任务条目['最近更新时间tick'], 当前tick));
+      任务条目['最后更新时间tick'] = Math.max(0, toNumber(任务条目['最后更新时间tick'], 当前tick));
       return 任务条目;
     };
 
@@ -37901,7 +38123,7 @@
         奖励币,
         奖励声望,
         描述: 任务说明,
-        最近更新时间tick: 当前tick,
+        最后更新时间tick: 当前tick,
       };
       const 委托条目 = cloneJsonValue(委托原始, {});
       委托条目['状态'] = '进行中';
@@ -37921,13 +38143,12 @@
       const 进度增量 = Math.max(0, Math.floor(toNumber(options.progressAdd, 1)));
       任务条目['当前进度'] = Math.max(0, Math.min(100, toNumber(任务条目['当前进度'], 0) + 进度增量));
       任务条目['状态'] = '进行中';
-      任务条目['最近更新时间tick'] = 当前tick;
+      任务条目['最后更新时间tick'] = 当前tick;
       播报文本 = `[任务进度] 【${任务名}】进度更新：${任务条目['当前进度']}%。`;
       const 委托条目 = 委托原始 && typeof 委托原始 === 'object' ? cloneJsonValue(委托原始, {}) : null;
       if (任务条目['当前进度'] >= 100) {
-        任务条目['状态'] = '可提交';
-        if (委托条目) 委托条目['状态'] = '可提交';
-        播报文本 += ` 已达成目标，可前往提交。`;
+        任务条目['状态'] = '已完成';
+        播报文本 += ` 已达成目标，奖励自动结算。`;
       } else if (委托条目) {
         委托条目['状态'] = '进行中';
       }
@@ -37949,7 +38170,7 @@
         const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
         联邦币 += 实得奖励币;
         声望 += 实得奖励声望;
-        任务条目['最近更新时间tick'] = 当前tick;
+        任务条目['最后更新时间tick'] = 当前tick;
         if (委托条目) {
           委托条目['状态'] = '已完成';
           委托条目['承接者'] = 角色键;
@@ -37957,7 +38178,7 @@
         播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
       } else {
         任务条目['状态'] = '进行中';
-        任务条目['最近更新时间tick'] = 当前tick;
+        任务条目['最后更新时间tick'] = 当前tick;
         if (委托条目) 委托条目['状态'] = '进行中';
         播报文本 = `[任务未完成] 【${任务名}】进度未达标 (${任务条目['当前进度']}%)，暂不能提交。`;
       }
@@ -37975,7 +38196,7 @@
       const 任务条目 = 补全任务条目(任务原始);
       if (!任务条目) return null;
       任务条目['状态'] = '已放弃';
-      任务条目['最近更新时间tick'] = 当前tick;
+      任务条目['最后更新时间tick'] = 当前tick;
       const 委托条目 = 委托原始 && typeof 委托原始 === 'object' ? cloneJsonValue(委托原始, {}) : null;
       if (委托条目) {
         委托条目['状态'] = '待接取';
@@ -38019,24 +38240,13 @@ ${播报文本}
 
   function buildFactionAffairConsoleHtml(snapshot, preferredFactionName = '') {
     const pendingDonateItem = '无';
-    const pendingDonateFaction = '无';
     const pendingDonateQty = 1;
     const factionNames = [];
-    [
-      preferredFactionName,
-      pendingDonateFaction,
-      ...(snapshot.势力 || []).map(([name]) => name),
-      '唐门',
-      '史莱克学院',
-      '战神殿',
-      '传灵塔',
-      '联邦军方',
-      '血神军团',
-      '圣灵教',
-    ].forEach(name => {
+    (snapshot.势力 || []).forEach(([name]) => {
       const text = toText(name, '').trim();
       if (text && text !== '无' && !factionNames.includes(text)) factionNames.push(text);
     });
+    const hasDonateFaction = factionNames.length > 0;
     const donationEntries = (snapshot.inventoryEntries || [])
       .filter(([, item]) => 读取背包总数量_桥接(item) > 0)
       .slice(0, 50);
@@ -38048,46 +38258,13 @@ ${播报文本}
           )
           .join('')
       : '<option value="">暂无可捐献物品</option>';
-    const defaultDonateFaction =
-      pendingDonateFaction !== '无' ? pendingDonateFaction : preferredFactionName || factionNames[0] || '';
-    const pendingSummary =
-      pendingDonateItem !== '无' ? `${pendingDonateItem} × ${pendingDonateQty} / ${pendingDonateFaction}` : '无';
-    const 已加入势力名 = (snapshot.势力 || []).map(([name]) => toText(name, '').trim()).filter(Boolean);
-    const 贡献池列表 = [
-      {
-        名称: '唐门',
-        数值: toNumber(deepGet(snapshot, 'activeChar.财富.唐门积分', 0), 0),
-        阈值: 1000,
-        样式: 'dossier-meter--cyan',
-        匹配: /唐门/,
-      },
-      {
-        名称: '史莱克学院',
-        数值: toNumber(deepGet(snapshot, 'activeChar.财富.学院积分', 0), 0),
-        阈值: 1000,
-        样式: 'dossier-meter--green',
-        匹配: /史莱克|学院/,
-      },
-      {
-        名称: '军功',
-        数值: toNumber(deepGet(snapshot, 'activeChar.财富.战功', 0), 0),
-        阈值: 1000,
-        样式: 'dossier-meter--red',
-        匹配: /战神殿|军方|联邦军方|血神军团/,
-      },
-    ].filter(贡献池 => 贡献池.数值 > 0 || 已加入势力名.some(势力名 => 贡献池.匹配.test(势力名)));
-    const 贡献池Html = 贡献池列表.length
-      ? `<div class="dossier-contrib-grid">${贡献池列表
-          .map(贡献池 =>
-            makeDossierMeter(
-              贡献池.名称,
-              htmlEscape(formatNumber(贡献池.数值)),
-              ratioPercent(贡献池.数值, 贡献池.阈值),
-              贡献池.样式,
-            ),
-          )
-          .join('')}</div>`
-      : '<div class="dossier-empty-note dossier-empty-note--compact">暂无贡献记录</div>';
+    const donateFactionOptionsHtml = hasDonateFaction
+      ? factionNames
+          .map(name => `<option value="${escapeHtmlAttr(name)}">${htmlEscape(name)}</option>`)
+          .join('')
+      : '<option value="">暂无可捐献势力</option>';
+    const canDonate = hasDonateFaction && donationEntries.length > 0;
+    const pendingSummary = '无';
     const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
     if (!isPlayerControlled) {
       return `
@@ -38103,10 +38280,6 @@ ${播报文本}
                 'dossier-row-grid--single',
               )}
             </section>
-            <section class="dossier-section">
-              <div class="dossier-section-title">主要贡献池</div>
-              ${贡献池Html}
-            </section>
           </div>
         `;
     }
@@ -38121,16 +38294,12 @@ ${播报文本}
             <div class="dossier-section-title">物资捐献</div>
             <div class="dossier-form-grid">
               <div class="dossier-form-row request-console-row request-console-row--donate dossier-form-row--donate">
-                <select class="request-console-input" data-faction-input="donateFaction">${factionNames.map(name => `<option value="${escapeHtmlAttr(name)}" ${name === defaultDonateFaction ? 'selected' : ''}>${htmlEscape(name)}</option>`).join('')}</select>
-                <select class="request-console-input" data-faction-input="donateItem" ${donationEntries.length ? '' : 'disabled'}>${donationOptionsHtml}</select>
-                <input type="number" min="1" class="request-console-input" data-faction-input="donateQty" value="${escapeHtmlAttr(String(pendingDonateQty))}" placeholder="数量" />
-                <button type="button" class="relation-action-btn faction-action-btn" data-faction-action="donate" ${donationEntries.length ? '' : 'disabled'}>提交捐献</button>
+                <select class="request-console-input" data-faction-input="donateFaction" ${hasDonateFaction ? '' : 'disabled'}>${donateFactionOptionsHtml}</select>
+                <select class="request-console-input" data-faction-input="donateItem" ${canDonate ? '' : 'disabled'}>${donationOptionsHtml}</select>
+                <input type="number" min="1" class="request-console-input" data-faction-input="donateQty" value="${escapeHtmlAttr(String(pendingDonateQty))}" placeholder="数量" ${canDonate ? '' : 'disabled'} />
+                <button type="button" class="relation-action-btn faction-action-btn" data-faction-action="donate" ${canDonate ? '' : 'disabled'}>提交捐献</button>
               </div>
             </div>
-          </section>
-          <section class="dossier-section">
-            <div class="dossier-section-title">主要贡献池</div>
-            ${贡献池Html}
           </section>
         </div>
       `;
@@ -44125,7 +44294,7 @@ ${toText(combatData.战斗意图, '点到为止')}
               奖励币: rewardCoin,
               奖励声望: rewardRep,
               描述: recordDesc,
-              最近更新时间tick: Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0))),
+              最后更新时间tick: Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0))),
             };
           });
           modalFocusState[recordLine === '主线' ? '任务界面::quest-focus-main' : '任务界面::quest-focus-side'] =

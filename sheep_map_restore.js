@@ -5664,31 +5664,76 @@
     };
   }
 
-  function getNestedPreviewChildMap(container, nodeName) {
-    if (!container || !nodeName) return null;
-    const targetKey = String(nodeName).split('-').pop();
-    const previewChildMaps = container && container.previewChildMaps && typeof container.previewChildMaps === 'object' ? container.previewChildMaps : {};
-    if (previewChildMaps[targetKey]) return previewChildMaps[targetKey];
-    const 下划线子图载荷 = container && container.preview_child_maps && typeof container.preview_child_maps === 'object' ? container.preview_child_maps : {};
-    if (下划线子图载荷[targetKey]) return 下划线子图载荷[targetKey];
-    const availableChildMaps = container && container.availableChildMaps && typeof container.availableChildMaps === 'object' ? container.availableChildMaps : {};
-    const 下划线可进入子图 = container && container.available_child_maps && typeof container.available_child_maps === 'object' ? container.available_child_maps : {};
-    if (!availableChildMaps[targetKey] && !下划线可进入子图[targetKey]) return null;
-    const visibleNodeEntries = Array.isArray(container.visibleNodes) ? container.visibleNodes : safeEntries(container.visible_nodes);
-    const visibleDynamicEntries = Array.isArray(container.visibleDynamics) ? container.visibleDynamics : safeEntries(container.visible_dynamic_locations);
-    const 命中条目 = [...visibleNodeEntries, ...visibleDynamicEntries]
-      .find(([name]) => toText(name, '') === targetKey || toText(name, '').split('-').pop() === targetKey);
+  function 解析子图预览节点键(容器, 节点名) {
+    if (!容器 || !节点名) return null;
+    const 原始节点名 = toText(节点名, '').trim();
+    if (!原始节点名) return null;
+    const 预载子图表 = 容器.previewChildMaps && typeof 容器.previewChildMaps === 'object' ? 容器.previewChildMaps : {};
+    const 下划线预载子图表 = 容器.preview_child_maps && typeof 容器.preview_child_maps === 'object' ? 容器.preview_child_maps : {};
+    const 可进入子图表 = 容器.availableChildMaps && typeof 容器.availableChildMaps === 'object' ? 容器.availableChildMaps : {};
+    const 下划线可进入子图表 = 容器.available_child_maps && typeof 容器.available_child_maps === 'object' ? 容器.available_child_maps : {};
+    const 可见节点条目 = Array.isArray(容器.visibleNodes) ? 容器.visibleNodes : safeEntries(容器.visible_nodes);
+    const 可见动态条目 = Array.isArray(容器.visibleDynamics) ? 容器.visibleDynamics : safeEntries(容器.visible_dynamic_locations);
+    const 可见条目列表 = [...可见节点条目, ...可见动态条目];
+    const 取可进入键 = 名称 => {
+      const 文本 = toText(名称, '').trim();
+      if (!文本) return '';
+      return 预载子图表[文本] || 下划线预载子图表[文本] || 可进入子图表[文本] || 下划线可进入子图表[文本] ? 文本 : '';
+    };
+    const 查找精确条目 = 名称 => 可见条目列表.find(([条目名]) => toText(条目名, '') === 名称) || null;
+    const 查找唯一叶名条目 = 名称 => {
+      const 叶名 = toText(名称, '').split('-').pop();
+      if (!叶名) return null;
+      const 候选条目 = 可见条目列表.filter(([条目名]) => {
+        const 文本 = toText(条目名, '');
+        return 文本 === 叶名 || 文本.split('-').pop() === 叶名;
+      });
+      return 候选条目.length === 1 ? 候选条目[0] : null;
+    };
+    const 原始可进入键 = 取可进入键(原始节点名);
+    if (原始可进入键) {
+      const 命中条目 = 查找精确条目(原始可进入键) || 查找唯一叶名条目(原始可进入键);
+      if (!命中条目 && !预载子图表[原始可进入键] && !下划线预载子图表[原始可进入键]) return null;
+      return { 节点名: 原始可进入键, 条目: 命中条目 };
+    }
+    const 叶名 = 原始节点名.split('-').pop();
+    if (!叶名 || 叶名 === 原始节点名) return null;
+    const 叶名候选 = 可见条目列表.filter(([名称]) => {
+      const 文本 = toText(名称, '');
+      return 文本 === 叶名 || 文本.split('-').pop() === 叶名;
+    });
+    const 可进入叶名候选 = 叶名候选.map(([名称, 条目]) => {
+      const 文本 = toText(名称, '');
+      const 匹配键 = 取可进入键(文本) || 取可进入键(文本.split('-').pop());
+      return 匹配键 ? { 节点名: 匹配键, 条目: [文本, 条目] } : null;
+    }).filter(Boolean);
+    if (可进入叶名候选.length !== 1) return null;
+    return 可进入叶名候选[0];
+  }
+
+  function getNestedPreviewChildMap(容器, 节点名) {
+    const 解析结果 = 解析子图预览节点键(容器, 节点名);
+    if (!解析结果) return null;
+    const 目标键 = 解析结果.节点名;
+    const 预载子图表 = 容器 && 容器.previewChildMaps && typeof 容器.previewChildMaps === 'object' ? 容器.previewChildMaps : {};
+    if (预载子图表[目标键]) return 预载子图表[目标键];
+    const 下划线预载子图表 = 容器 && 容器.preview_child_maps && typeof 容器.preview_child_maps === 'object' ? 容器.preview_child_maps : {};
+    if (下划线预载子图表[目标键]) return 下划线预载子图表[目标键];
+    const 可进入子图表 = 容器 && 容器.availableChildMaps && typeof 容器.availableChildMaps === 'object' ? 容器.availableChildMaps : {};
+    const 下划线可进入子图表 = 容器 && 容器.available_child_maps && typeof 容器.available_child_maps === 'object' ? 容器.available_child_maps : {};
+    if (!可进入子图表[目标键] && !下划线可进入子图表[目标键]) return null;
+    const 命中条目 = 解析结果.条目;
     const 原始节点 = 命中条目 && 命中条目[1] && typeof 命中条目[1] === 'object' ? 命中条目[1] : null;
     if (!原始节点) return null;
-    const 父地图ID = toText(container.currentMapId || container.current_map_id, '');
-    const 子图载荷 = buildPreviewPayloadFromRawLocation(targetKey, 原始节点, container, 父地图ID);
+    const 父地图ID = toText(容器.currentMapId || 容器.current_map_id, '');
+    const 子图载荷 = buildPreviewPayloadFromRawLocation(目标键, 原始节点, 容器, 父地图ID);
     if (!子图载荷) return null;
-    if (container.previewChildMaps && typeof container.previewChildMaps === 'object') {
-      container.previewChildMaps[targetKey] = 子图载荷;
-    } else if (container.preview_child_maps && typeof container.preview_child_maps === 'object') {
-      container.preview_child_maps[targetKey] = 子图载荷;
+    if (容器.previewChildMaps && typeof 容器.previewChildMaps === 'object') {
+      容器.previewChildMaps[目标键] = 子图载荷;
+    } else if (容器.preview_child_maps && typeof 容器.preview_child_maps === 'object') {
+      容器.preview_child_maps[目标键] = 子图载荷;
     } else {
-      container.previewChildMaps = { [targetKey]: 子图载荷 };
+      容器.previewChildMaps = { [目标键]: 子图载荷 };
     }
     return 子图载荷;
   }
@@ -5709,12 +5754,9 @@
     return getNestedPreviewChildMap(snapshot, nodeName);
   }
 
-  function canEnterPreviewNode(nodeName = mapState.selectedNode, snapshot = mapState.snapshot) {
-    if (!snapshot || !nodeName) return false;
-    const localNodeName = String(nodeName).split('-').pop();
-    const availableChildMaps = snapshot.availableChildMaps && typeof snapshot.availableChildMaps === 'object' ? snapshot.availableChildMaps : {};
-    const previewChildMaps = snapshot.previewChildMaps && typeof snapshot.previewChildMaps === 'object' ? snapshot.previewChildMaps : {};
-    return !!(availableChildMaps[localNodeName] || previewChildMaps[localNodeName]);
+  function canEnterPreviewNode(节点名 = mapState.selectedNode, 快照 = mapState.snapshot) {
+    if (!快照 || !节点名) return false;
+    return !!解析子图预览节点键(快照, 节点名);
   }
 
   function syncMapStateFromSnapshot(snapshot, options = {}) {
