@@ -15090,12 +15090,17 @@ $CONTENT
         if (!适配器 || typeof 适配器.preparePromptRuntimeData !== 'function')
             return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
         try {
+            const 用户输入文本 = String(选项?.userInput || '');
+            const 最后角色消息文本 = String(选项?.最后角色消息文本 || '');
+            const 捕获文本 = 选项?.捕获文本 === undefined || 选项?.捕获文本 === null
+                ? [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n')
+                : String(选项?.捕获文本 || '');
             return await Promise.resolve(适配器.preparePromptRuntimeData({
-                userInput: String(选项?.userInput || ''),
-                lastCharMessage: String(选项?.最后角色消息文本 || ''),
+                userInput: 用户输入文本,
+                lastCharMessage: 最后角色消息文本,
                 latestCharMessageInfo: 选项?.角色消息元信息,
-                captureText: String(选项?.捕获文本 || ''),
-                plotText: String(选项?.plotText || ''),
+                captureText: 捕获文本,
+                plotText: '',
                 statData: 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : undefined,
             }));
         }
@@ -17701,7 +17706,7 @@ $CONTENT
         });
         plotFinalDirective = 注入剧情推进运行时特殊占位符_ACU(plotFinalDirective, {
             userInput: userMessage,
-            captureText: [userMessage, contextInjectionText].filter(Boolean).join('\n'),
+            captureText: String(userMessage || ''),
         });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
@@ -17754,7 +17759,7 @@ $CONTENT
             });
             c = 注入剧情推进运行时特殊占位符_ACU(c, {
                 userInput: sharedContext.userMessage,
-                captureText: [sharedContext.userMessage, sharedContext.lastPlotContent].filter(Boolean).join('\n'),
+                captureText: String(sharedContext.userMessage || ''),
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
@@ -18456,7 +18461,7 @@ $CONTENT
             return '';
         }).join('\n');
         const 需要运行时提示词处理 = 剧情推进运行时适配器需要处理_ACU(提示词合并文本);
-        const 本轮运行时捕获文本 = [用户输入文本, lastPlotContent, 最后角色消息文本].filter(Boolean).join('\n');
+        const 本轮运行时捕获文本 = [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n');
         let 运行时数据 = null;
         if (需要运行时提示词处理) {
             运行时数据 = await 准备提示词运行时数据_ACU({
@@ -18464,7 +18469,7 @@ $CONTENT
                 最后角色消息文本,
                 角色消息元信息: 最新角色消息元信息,
                 捕获文本: 本轮运行时捕获文本,
-                plotText: lastPlotContent || '',
+                plotText: '',
             }) || null;
         }
         const 运行时视图类型 = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明/i.test(提示词合并文本) ? 'empty' : 'story';
@@ -52698,17 +52703,18 @@ $CONTENT
      */
     async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '') {
         const 正文生成指导 = String(finalMessage || '').trim();
-        const 运行时数据 = await 准备正文生成运行时数据_ACU(userMessage || 正文生成指导, runtimePlotText || 正文生成指导, 正文生成指导);
+        const 用户输入文本 = String(userMessage || '');
+        const 运行时数据 = await 准备正文生成运行时数据_ACU(用户输入文本, runtimePlotText || '', 正文生成指导);
         const 替换运行时占位符后正文生成指导 = 替换剧情推进运行时占位符_ACU(正文生成指导, 'story', {
             statData: 运行时数据 || undefined,
-            userInput: userMessage || 正文生成指导,
+            userInput: 用户输入文本,
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: runtimePlotText || 正文生成指导,
         });
         const 替换后正文生成指导 = 注入剧情推进运行时特殊占位符_ACU(替换运行时占位符后正文生成指导, {
             statData: 运行时数据 || undefined,
-            userInput: userMessage || 正文生成指导,
-            captureText: [userMessage, runtimePlotText, 正文生成指导].filter(Boolean).join('\n'),
+            userInput: 用户输入文本,
+            captureText: 用户输入文本,
         });
         if (options.injects?.[0]?.content) {
             return { target: 'injects', value: 替换后正文生成指导, statData: 运行时数据 || null };
@@ -53795,7 +53801,7 @@ $CONTENT
                                             }
                                         }
                                         追加正文运行时注入_ACU(options, {
-                                            userInput: result.runtimePlotText || result.userMessage || '',
+                                            userInput: result.userMessage || '',
                                             statData: result.writeBack?.statData || null,
                                         });
                                         options._qrf_processed_by_hook = true;
@@ -53981,7 +53987,7 @@ $CONTENT
                                     // 写回 params 和消息对象
                                     params.prompt = s1.finalMessage;
                                     注册正文运行时一次性注入_ACU({
-                                        userInput: s1.runtimePlotText || s1.originalMessage || '',
+                                        userInput: s1.originalMessage || '',
                                         statData: s1.statData || null,
                                     });
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
@@ -54031,7 +54037,7 @@ $CONTENT
                                 try {
                                     params.prompt = s2.finalMessage;
                                     注册正文运行时一次性注入_ACU({
-                                        userInput: s2.runtimePlotText || s2.originalMessage || '',
+                                        userInput: s2.originalMessage || '',
                                         statData: s2.statData || null,
                                     });
                                 }

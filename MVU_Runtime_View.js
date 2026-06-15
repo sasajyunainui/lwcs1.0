@@ -298,24 +298,6 @@ function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 =
 
 function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = '', 数据根 = {}) {
   const 命中 = new Set(匹配文本内置角色名_V1(文本, 当前tick, 数据根));
-  const 时间线事件列表 = Array.isArray(TimelineEvents) ? TimelineEvents : Object.values(TimelineEvents || {}).flat();
-  const 当前tick数值 = Number(当前tick || 0);
-  时间线事件列表
-    .filter(事件 => Number.isFinite(Number(事件?.触发tick)))
-    .sort((左事件, 右事件) => {
-      const 左距离 = Math.abs(Number(左事件?.触发tick || 0) - 当前tick数值);
-      const 右距离 = Math.abs(Number(右事件?.触发tick || 0) - 当前tick数值);
-      return 左距离 - 右距离 || Number(左事件?.触发tick || 0) - Number(右事件?.触发tick || 0);
-    })
-    .slice(0, 5)
-    .forEach(事件 => {
-      (Array.isArray(事件?.人物) ? 事件.人物 : []).forEach(角色名 => {
-        const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
-        if (规范名) 命中.add(规范名);
-      });
-      const 事件文本 = [事件?.描述, 事件?.简述].join('\n');
-      匹配文本内置角色名_V1(事件文本, 当前tick, 数据根).forEach(角色名 => 命中.add(角色名));
-    });
   return Array.from(命中);
 }
 
@@ -686,6 +668,17 @@ function 收集运行时物品候选名_V1(数据根 = {}, 文本 = '', 选项 =
   return Array.from(候选);
 }
 
+function 构建运行时物品候选上下文_V1(数据根 = {}, 文本 = '', 选项 = {}) {
+  const 来源列表 = Array.isArray(选项.候选物品列表)
+    ? 选项.候选物品列表
+    : 收集运行时物品候选名_V1(数据根, 文本, 选项);
+  const 候选物品列表 = Array.from(new Set(来源列表.map(名称 => String(名称 || '').trim()).filter(Boolean)));
+  const 候选物品集合 = 选项.候选物品集合 instanceof Set
+    ? 选项.候选物品集合
+    : new Set(候选物品列表);
+  return { 候选物品列表, 候选物品集合 };
+}
+
 function 计算运行时动态地点命中_V1(地点名 = '', 索引 = {}, 文本 = '', 数据根 = {}, 选项 = {}) {
   const 名称 = String(地点名 || '').trim();
   if (!名称) return null;
@@ -746,18 +739,18 @@ function 计算运行时动态地点命中_V1(地点名 = '', 索引 = {}, 文�
 function 计算运行时物品命中_V1(物品名 = '', 索引 = {}, 文本 = '', 数据根 = {}, 选项 = {}) {
   const 名称 = String(物品名 || '').trim();
   if (!名称) return null;
-  const 候选物品 = 收集运行时物品候选名_V1(数据根, 文本, 选项);
+  const { 候选物品列表, 候选物品集合 } = 构建运行时物品候选上下文_V1(数据根, 文本, 选项);
   let 分数 = 0;
   const 来源 = [];
   if (运行时文本命中商品名_V1(文本, 名称)) {
     分数 += 7;
     来源.push('商品名');
   }
-  if (候选物品.some(候选 => 候选 === 名称)) {
+  if (候选物品集合.has(名称)) {
     分数 += 9;
     来源.push('候选物品');
   }
-  if (候选物品.some(候选 => 候选 !== 名称 && (运行时文本包含片段_V1(候选, 名称) || 运行时文本包含片段_V1(名称, 候选)))) {
+  if (候选物品列表.some(候选 => 候选 !== 名称 && (运行时文本包含片段_V1(候选, 名称) || 运行时文本包含片段_V1(名称, 候选)))) {
     分数 += 5;
     来源.push('候选片段');
   }
@@ -800,10 +793,12 @@ function 收集运行时动态地点命中_V1(数据输入 = {}, 文本 = '', �
 function 收集运行时物品命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 目录 = 构建运行时物品目录_V1(数据根, 选项.物品目录);
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, 选项);
+  const 命中选项 = { ...选项, ...物品候选上下文 };
   const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 5)));
   const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 12)));
   return Object.entries(目录)
-    .map(([名称, 索引]) => 计算运行时物品命中_V1(名称, 索引, 文本, 数据根, 选项))
+    .map(([名称, 索引]) => 计算运行时物品命中_V1(名称, 索引, 文本, 数据根, 命中选项))
     .filter(命中 => 命中 && 命中.分数 >= 阈值)
     .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     .slice(0, 上限);
@@ -1095,23 +1090,11 @@ function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
   return 结果;
 }
 
-function 提取运行时剧情在场角色名_V1(数据根 = {}, 文本 = '') {
-  const 源文本 = String(文本 || '');
-  const 匹配 = 源文本.match(/<在场角色>\s*([\s\S]*?)\s*<\/在场角色>/i);
-  const 角色名集合 = new Set();
-  if (!匹配) return 角色名集合;
-  const 内容 = String(匹配[1] || '').trim();
-  let 列表 = null;
-  try {
-    const 解析 = JSON.parse(内容);
-    if (Array.isArray(解析)) 列表 = 解析;
-  } catch (错误) {}
-  if (!列表) 列表 = 内容.split(/[，,、\n]/);
-  列表.forEach(名称 => {
-    const 角色名 = String(名称 || '').replace(/^[-*]\s*/, '').trim();
-    if (角色名) 角色名集合.add(角色名);
-  });
-  return 角色名集合;
+function 构建运行时命中上下文_V1(数据根 = {}, 文本 = '', 选项 = {}) {
+  const 运行时命中名称 = 选项.运行时命中名称 && typeof 选项.运行时命中名称 === 'object'
+    ? 选项.运行时命中名称
+    : 收集运行时命中名称_V1(数据根, 文本);
+  return { 运行时命中名称 };
 }
 
 function 格式化MVU更新结构命中列表_V1(名称集合 = new Set()) {
@@ -1773,9 +1756,13 @@ function 读取运行时最后角色消息文本_V1() {
 function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最后角色消息输入 = '', plotText = '') {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 最后角色消息文本 = String(最后角色消息输入 || '').trim() || 读取运行时最后角色消息文本_V1();
-  const 命中文本 = [userInput, 最后角色消息文本, plotText].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
-  const 命中 = 收集运行时命中名称_V1(数据根, 命中文本);
-  const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息输入, plotText);
+  const 命中文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
+  const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 命中文本);
+  const 命中 = 运行时命中上下文.运行时命中名称;
+  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 命中文本, { 运行时命中名称: 命中 });
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 命中文本, { 角色名集合 });
+  const 更新视图选项 = { 运行时命中名称: 命中, 角色名集合, ...物品候选上下文 };
+  const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息文本, plotText, 更新视图选项);
   const 可见占位统计 = 收集运行时可见占位统计_V1(更新视图);
   const 魂技待补全路径 = 收集运行时魂技待补全路径_V1(更新视图);
  
@@ -1810,24 +1797,27 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   ].join('\n');
 }
 
-function 收集运行时相关物品名_V1(数据根 = {}, 文本 = '', 角色名集合 = new Set()) {
+function 收集运行时相关物品名_V1(数据根 = {}, 文本 = '', 角色名集合 = new Set(), 选项 = {}) {
   const 物品名集合 = new Set();
-  收集运行时物品命中_V1(数据根, 文本, { 角色名集合, 阈值: 5, 上限: 16 }).forEach(命中 => 物品名集合.add(命中.名称));
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, { ...选项, 角色名集合 });
+  收集运行时物品命中_V1(数据根, 文本, { ...选项, 角色名集合, ...物品候选上下文, 阈值: 5, 上限: 16 }).forEach(命中 => 物品名集合.add(命中.名称));
   return 物品名集合;
 }
 
-function 取运行时基础角色名集合_V1(数据根 = {}, 文本 = '') {
+function 取运行时基础角色名集合_V1(数据根 = {}, 文本 = '', 选项 = {}) {
   const { 玩家名 } = 取运行时当前范围_V1(数据根);
   const 角色名集合 = new Set([玩家名].filter(Boolean));
-  提取运行时剧情在场角色名_V1(数据根, 文本).forEach(角色名 => 角色名集合.add(角色名));
+  const 命中名称 = 构建运行时命中上下文_V1(数据根, 文本, 选项).运行时命中名称;
+  命中名称.角色.forEach(角色名 => 角色名集合.add(角色名));
   return 角色名集合;
 }
 
-function 取运行时地点名集合_V1(数据根 = {}, 文本 = '') {
+function 取运行时地点名集合_V1(数据根 = {}, 文本 = '', 选项 = {}) {
   const { 当前地点信息, 当前上下文节点 } = 取运行时当前范围_V1(数据根);
   const 地点名集合 = new Set([当前上下文节点].filter(Boolean));
   (Array.isArray(当前地点信息?.path) ? 当前地点信息.path : []).forEach(地点名 => 地点名集合.add(地点名));
-  收集运行时命中名称_V1(数据根, 文本).地点.forEach(地点名 => 地点名集合.add(地点名));
+  const 命中名称 = 构建运行时命中上下文_V1(数据根, 文本, 选项).运行时命中名称;
+  命中名称.地点.forEach(地点名 => 地点名集合.add(地点名));
   return 地点名集合;
 }
 
@@ -1868,6 +1858,8 @@ function 构建运行时商店摘要_V1(商店数据 = {}, 数据根 = {}, 文�
   const 刷新tick = Number(商店数据.下次刷新tick || 0);
   if (命中商店 && 刷新tick > 0) 输出.下次进货时间 = formatTickToCalendarDateText(刷新tick);
   const 商品输出 = {};
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, 选项);
+  const 命中选项 = { ...选项, ...物品候选上下文 };
   const 优先物品集合 = 选项.优先物品 instanceof Set ? 选项.优先物品 : new Set();
   const 有优先物品 = 优先物品集合.size > 0;
   const 库存物品上限 = Math.max(1, Math.floor(Number(选项.库存物品上限 ?? 16)));
@@ -1879,7 +1871,7 @@ function 构建运行时商店摘要_V1(商店数据 = {}, 数据根 = {}, 文�
       if (命中商店 && 有优先物品 && !商品命中文本 && !商品命中优先) return null;
       const 运行时定义 = 查找运行时物品定义_V1(数据根, 商品名);
       const 目录项 = 运行时定义?.定义 ? 构建运行时物品目录项_V1(商品名, 运行时定义.定义, 运行时定义.分类) : {};
-      const 命中 = 计算运行时物品命中_V1(商品名, 目录项, 文本, 数据根, 选项);
+      const 命中 = 计算运行时物品命中_V1(商品名, 目录项, 文本, 数据根, 命中选项);
       const 分数 = (商品命中优先 ? 100 : 0) + (命中?.分数 || (商品命中文本 ? 1 : 0));
       return { 商品名, 交易数据, 运行时定义, 分数, 原序号 };
     })
@@ -2687,13 +2679,18 @@ function 构建MVU战斗摘要_V1(战斗数据 = null) {
 
 function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText = '') {
   const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
-  const 文本 = `${userInput || ''}\n${plotText || ''}`;
+  const 文本 = [userInput, 读取运行时最后角色消息文本_V1()].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本);
   const 时间线视图 = 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8, { 派生时间文本: true, 当前tick });
-  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 文本);
-  const 地点名集合 = 取运行时地点名集合_V1(数据根, 文本);
+  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, { 角色名集合 });
+  const 地点名集合 = 取运行时地点名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
   const 动态地点名集合 = 取运行时动态地点名集合_V1(数据根, 文本);
-  const 物品名集合 = 收集运行时相关物品名_V1(数据根, 文本, 角色名集合);
+  const 物品名集合 = 收集运行时相关物品名_V1(数据根, 文本, 角色名集合, {
+    运行时命中名称: 运行时命中上下文.运行时命中名称,
+    ...物品候选上下文,
+  });
   const 已发送角色名集合 = new Set();
   const 已发送动态地点名集合 = new Set();
   const 已发送物品名集合 = new Set();
@@ -2721,7 +2718,13 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
     const 地点基础 = cloneJsonValue(地点, {});
     if (地点基础 && typeof 地点基础 === 'object') delete 地点基础.商店;
     const 清理后 = 过滤MVU正文视图值_V1(准备运行时地图视图数据_V1(地点基础, '', { 隐藏默认状态: true }), ['world', '地点', '示例地点']);
-    const 商店摘要 = 构建正文商店库存摘要_V1(地点, 数据根, 文本, { 已发送物品: 已发送物品名集合, 优先物品: 物品名集合, 库存物品上限: 16 });
+    const 商店摘要 = 构建正文商店库存摘要_V1(地点, 数据根, 文本, {
+      已发送物品: 已发送物品名集合,
+      优先物品: 物品名集合,
+      库存物品上限: 16,
+      运行时命中名称: 运行时命中上下文.运行时命中名称,
+      ...物品候选上下文,
+    });
     if (清理后 && 商店摘要) 清理后.商店 = 商店摘要;
     if (清理后) {
       if (!视图.world.地点) 视图.world.地点 = {};
@@ -2763,16 +2766,21 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
   return cloneJsonValue(视图, {}) || {};
 }
 
-function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一条角色消息 = '', plotText = '') {
+function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一条角色消息 = '', plotText = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
-  const 文本 = `${userInput || ''}\n${最后一条角色消息 || ''}\n${plotText || ''}`;
+  const 最后角色消息文本 = String(最后一条角色消息 || '').trim() || 读取运行时最后角色消息文本_V1();
+  const 文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本, 选项);
   const 运行时提示限流 = 创建运行时提示限流器_V1();
   const 注入数据根 = { ...数据根, __运行时提示限流__: 运行时提示限流 };
-  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 文本);
-  const 地点名集合 = 取运行时地点名集合_V1(数据根, 文本);
+  const 角色名集合 = 选项.角色名集合 instanceof Set
+    ? new Set([取运行时当前范围_V1(数据根).玩家名].filter(Boolean).concat(Array.from(选项.角色名集合)))
+    : 取运行时基础角色名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, { ...选项, 角色名集合 });
+  const 地点名集合 = 取运行时地点名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
   const 动态地点名集合 = 取运行时动态地点名集合_V1(数据根, 文本);
-  const 命中 = 收集运行时命中名称_V1(数据根, 文本);
+  const 命中 = 运行时命中上下文.运行时命中名称;
   const 已发送角色名集合 = new Set();
   const 已发送动态地点名集合 = new Set();
   const 已发送物品名集合 = new Set();
@@ -2783,7 +2791,10 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   角色名集合.forEach(角色名 => {
     Object.keys(数据根?.char?.[角色名]?.社交?.势力 || {}).forEach(势力名 => 势力名集合.add(势力名));
   });
-  const 物品名集合 = 收集运行时相关物品名_V1(数据根, 文本, 角色名集合);
+  const 物品名集合 = 收集运行时相关物品名_V1(数据根, 文本, 角色名集合, {
+    运行时命中名称: 命中,
+    ...物品候选上下文,
+  });
   const 拍卖视图 = 构建运行时拍卖薄片_V1(数据根?.world?.拍卖 || {}, 文本, 8);
   const 委托板视图 = 复制运行时命中记录表片段_V1(数据根?.world?.委托板 || {}, 文本, 8, 构建运行时委托草案条目_V1);
   const 图鉴视图 = 复制运行时命中记录表片段_V1(数据根?.world?.图鉴 || {}, 文本, 8, 构建运行时图鉴摘要条目_V1);
@@ -2998,24 +3009,13 @@ function 追加MVU剧情提示片段_V1(片段列表 = [], 标签 = '', 值 = ''
   if (文本) 片段列表.push(`${标签}:${文本}`);
 }
 
-function 取运行时剧情提示角色名集合_V1(数据根 = {}, userInput = '', 最后剧情文本 = '', 最大点名角色数 = 2) {
+function 取运行时剧情提示角色名集合_V1(数据根 = {}, userInput = '', 最后剧情文本 = '') {
   const { 玩家名 } = 取运行时当前范围_V1(数据根);
   const 角色名集合 = new Set();
   if (玩家名 && 数据根?.char?.[玩家名]) 角色名集合.add(玩家名);
-  提取运行时剧情在场角色名_V1(数据根, 最后剧情文本).forEach(角色名 => {
-    if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
-  });
-  let 历史点名数量 = 0;
-  收集运行时命中名称_V1(数据根, 最后剧情文本).角色.forEach(角色名 => {
-    if (!数据根?.char?.[角色名] || 角色名集合.has(角色名) || 历史点名数量 >= 4) return;
+  收集运行时命中名称_V1(数据根, [userInput, 最后剧情文本].filter(Boolean).join('\n')).角色.forEach(角色名 => {
+    if (!数据根?.char?.[角色名] || 角色名集合.has(角色名)) return;
     角色名集合.add(角色名);
-    历史点名数量 += 1;
-  });
-  let 点名数量 = 0;
-  收集运行时命中名称_V1(数据根, userInput).角色.forEach(角色名 => {
-    if (!数据根?.char?.[角色名] || 角色名集合.has(角色名) || 点名数量 >= 最大点名角色数) return;
-    角色名集合.add(角色名);
-    点名数量 += 1;
   });
   return 角色名集合;
 }
@@ -3134,7 +3134,7 @@ var MVU剧情角色简表字段表_V1 = Object.freeze([
 ]);
 
 function 构建MVU剧情角色简表_V1(数据根 = {}, userInput = '', 最后剧情文本 = '') {
-  const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本, 2);
+  const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本);
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
   const 角色简表 = [];
   角色名列表.forEach(角色名 => {
@@ -3577,7 +3577,7 @@ function 构建MVU正文情报可见度行列表_V1(情报可见度 = {}) {
 }
 
 function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}) {
-  const 行列表 = [`### ${角色名}`];
+  const 行列表 = [`━━━━━━━━ ${角色名} ━━━━━━━━`];
   添加MVU正文块_V1(行列表, '状态', 构建MVU正文对象行列表_V1(构建MVU正文状态摘要_V1(角色), 8, 2));
   添加MVU正文块_V1(行列表, '基础六维对标', 构建MVU正文对象行列表_V1(角色?.基础六维对标, 8, 1));
   添加MVU正文块_V1(行列表, '外貌穿搭', 构建MVU正文对象行列表_V1(构建MVU正文外貌穿搭摘要_V1(角色), 8, 2));
@@ -3595,7 +3595,7 @@ function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色�
     return 行 ? [行] : [];
   });
   添加MVU正文块_V1(行列表, '其他', 其他行);
-  return 行列表.length > 1 ? 行列表.join('\n') : `### ${角色名}\n无`;
+  return 行列表.length > 1 ? 行列表.join('\n') : `━━━━━━━━ ${角色名} ━━━━━━━━\n无`;
 }
 
 function 构建MVU正文其他信息卡_V1(正文视图 = {}) {
@@ -3794,12 +3794,12 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   ) return 源文本;
   const 数据根 = 上下文?.statData || 获取最新运行时Mvu数据根_V1();
   const userInput = 上下文?.userInput || '';
-  const 最后角色消息输入 = 上下文?.lastCharMessage || 上下文?.aiText || '';
+  const 最后角色消息输入 = String(上下文?.lastCharMessage || 上下文?.aiText || '').trim() || 读取运行时最后角色消息文本_V1();
   const plotText = 上下文?.plotText || '';
   const 正文视图 = 生成MVU正文视图_V1(数据根, userInput, plotText);
   const 正文提示文本 = 生成MVU正文提示文本_V1(数据根, userInput, plotText, 正文视图);
   const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息输入, plotText);
-  const 剧情历史文本 = [最后角色消息输入, plotText].filter(Boolean).join('\n');
+  const 剧情历史文本 = String(最后角色消息输入 || '');
   const 剧情视图 = 生成MVU剧情视图_V1(数据根, userInput, 剧情历史文本);
   const 剧情提示文本 = 生成MVU剧情提示文本_V1(数据根, userInput, 剧情历史文本);
   const 视图类型文本 = String(视图类型 || '').toLowerCase();

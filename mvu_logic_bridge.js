@@ -3734,11 +3734,11 @@
   const 冷归档首次批量上限_桥接 = Number.POSITIVE_INFINITY;
   const 冷归档自动归档默认配置_桥接 = Object.freeze({
     启用自动归档: true,
-    角色数量阈值: 20,
+    角色数量阈值: 10,
     角色字节阈值: 260000,
-    动态地点数量阈值: 20,
+    动态地点数量阈值: 10,
     动态地点字节阈值: 160000,
-    物品分类数量阈值: 5,
+    物品分类数量阈值: 0,
     物品字节阈值: 180000,
     冷却毫秒: 90000,
     最近保护tick窗口: 2160,
@@ -3749,6 +3749,7 @@
   });
   const 冷归档自动归档配置_桥接 = { ...冷归档自动归档默认配置_桥接 };
   const 冷归档自动归档状态_桥接 = { chatKey: '', 上次尝试毫秒: 0, promise: null };
+  const 冷归档写回状态_桥接 = { 正在恢复: false, 正在归档: false };
   const 冷归档服务状态_桥接 = { 已检查: false, 可用: false, 可写: false, 插件可用: false, 管理员: false, 存储模式: '', root: '', customRoot: '', custom: false, error: '', promise: null };
 
   function 读取冷归档布尔配置值_桥接(值, 默认值 = true) {
@@ -4874,11 +4875,11 @@
     }, Math.max(0, Number(延迟) || 0));
   }
 
-  function 调度冷归档楼层自动归档_桥接(延迟 = 1500) {
+  function 调度冷归档楼层自动归档_桥接(延迟 = 1500, 选项 = {}) {
     if (冷归档楼层清理状态_桥接.autoTimer) window.clearTimeout(冷归档楼层清理状态_桥接.autoTimer);
     冷归档楼层清理状态_桥接.autoTimer = window.setTimeout(() => {
       冷归档楼层清理状态_桥接.autoTimer = 0;
-      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加' }).catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
+      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加', ...(选项 && typeof 选项 === 'object' ? 选项 : {}) }).catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
     }, Math.max(0, Number(延迟) || 0));
   }
 
@@ -4897,7 +4898,15 @@
         const 事件名 = eventTypes[事件键] || 事件键;
         if (!事件名) return;
         try {
-          eventSource.on(事件名, () => 调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180));
+          eventSource.on(事件名, () => {
+            调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
+            if (事件键 === 'MESSAGE_UPDATED' || 事件键 === 'GENERATION_ENDED') {
+              调度冷归档楼层自动归档_桥接(事件键 === 'GENERATION_ENDED' ? 1200 : 2200, {
+                触发来源: 事件键,
+                跳过冷却: true,
+              });
+            }
+          });
         } catch (错误) {}
       });
       return true;
@@ -5707,143 +5716,170 @@
   async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
-    const manifest = await 读取角色归档Manifest_桥接();
-    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
-    const 当前MVU数据 = cloneJsonValue(mvuData, {});
-    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    if (!statData.char || typeof statData.char !== 'object') statData.char = {};
-    const 跳过 = [];
-    const 已恢复 = [];
-    for (const 角色名 of 待恢复名称) {
-      if (statData.char[角色名]) {
-        跳过.push({ 角色名, reason: 'exists' });
-        continue;
-      }
-      const 索引 = 角色索引[角色名];
-      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
-      if (!版本) {
-        跳过.push({ 角色名, reason: 'missing_archive' });
-        continue;
-      }
-      let 归档视图 = null;
-      try {
-        归档视图 = await 读取角色归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
-      } catch (错误) {
-        跳过.push({ 角色名, reason: 'archive_read_failed', error: 错误 });
-        continue;
-      }
-      if (toText(归档视图 && 归档视图.角色名, '').trim() !== 角色名 || !归档视图.角色数据 || typeof 归档视图.角色数据 !== 'object') {
-        跳过.push({ 角色名, reason: 'archive_mismatch' });
-        continue;
-      }
-      statData.char[角色名] = cloneJsonValue(归档视图.角色数据, {});
-      已恢复.push(角色名);
+    if (冷归档写回状态_桥接.正在归档) {
+      return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复名称.map(角色名 => ({ 角色名, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
     }
-    if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
-    if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
-    statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 名角色：${已恢复.join('、')}。`;
-    当前MVU数据.stat_data = statData;
-    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档角色');
-    writeMvuEditorStoreSnapshot(statData, { messageId });
-    await 按需刷新MVU快照_桥接(选项);
-    return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    冷归档写回状态_桥接.正在恢复 = true;
+    try {
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+      const manifest = await 读取角色归档Manifest_桥接();
+      const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+      const 当前MVU数据 = cloneJsonValue(mvuData, {});
+      const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+      if (!statData.char || typeof statData.char !== 'object') statData.char = {};
+      const 跳过 = [];
+      const 已恢复 = [];
+      for (const 角色名 of 待恢复名称) {
+        if (statData.char[角色名]) {
+          跳过.push({ 角色名, reason: 'exists' });
+          continue;
+        }
+        const 索引 = 角色索引[角色名];
+        const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        if (!版本) {
+          跳过.push({ 角色名, reason: 'missing_archive' });
+          continue;
+        }
+        let 归档视图 = null;
+        try {
+          归档视图 = await 读取角色归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+        } catch (错误) {
+          跳过.push({ 角色名, reason: 'archive_read_failed', error: 错误 });
+          continue;
+        }
+        if (toText(归档视图 && 归档视图.角色名, '').trim() !== 角色名 || !归档视图.角色数据 || typeof 归档视图.角色数据 !== 'object') {
+          跳过.push({ 角色名, reason: 'archive_mismatch' });
+          continue;
+        }
+        statData.char[角色名] = cloneJsonValue(归档视图.角色数据, {});
+        已恢复.push(角色名);
+      }
+      if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
+      if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
+      statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 名角色：${已恢复.join('、')}。`;
+      当前MVU数据.stat_data = statData;
+      await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档角色');
+      记录MVU冷实体激活_桥接(已恢复.map(角色名 => ({ 类型: '角色', 名称: 角色名 })));
+      writeMvuEditorStoreSnapshot(statData, { messageId });
+      await 按需刷新MVU快照_桥接(选项);
+      return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    } finally {
+      冷归档写回状态_桥接.正在恢复 = false;
+    }
   }
 
   async function 恢复MVU归档物品定义_桥接(物品名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
-    const manifest = await 读取物品归档Manifest_桥接();
-    const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
-    const 当前MVU数据 = cloneJsonValue(mvuData, {});
-    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    确保物品定义分类表_桥接(statData);
-    const 跳过 = [];
-    const 已恢复 = [];
-    for (const 物品名 of 待恢复名称) {
-      if (物品定义存在_桥接(statData, 物品名)) {
-        跳过.push({ 物品名, reason: 'exists' });
-        continue;
-      }
-      const 索引 = 物品索引[物品名];
-      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
-      if (!版本) {
-        跳过.push({ 物品名, reason: 'missing_archive' });
-        continue;
-      }
-      let 归档视图 = null;
-      try {
-        归档视图 = await 读取物品归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
-      } catch (错误) {
-        跳过.push({ 物品名, reason: 'archive_read_failed', error: 错误 });
-        continue;
-      }
-      if (toText(归档视图 && 归档视图.物品名, '').trim() !== 物品名 || !归档视图.物品定义 || typeof 归档视图.物品定义 !== 'object') {
-        跳过.push({ 物品名, reason: 'archive_mismatch' });
-        continue;
-      }
-      写入分类物品定义_桥接(statData, 物品名, 归档视图.物品定义, 归档视图.物品分类 || 归档视图.分类);
-      已恢复.push(物品名);
+    if (冷归档写回状态_桥接.正在归档) {
+      return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复名称.map(物品名 => ({ 物品名, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
     }
-    if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
-    if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
-    statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 个物品定义：${已恢复.join('、')}。`;
-    当前MVU数据.stat_data = statData;
-    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档物品');
-    writeMvuEditorStoreSnapshot(statData, { messageId });
-    await 按需刷新MVU快照_桥接(选项);
-    return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    冷归档写回状态_桥接.正在恢复 = true;
+    try {
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+      const manifest = await 读取物品归档Manifest_桥接();
+      const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+      const 当前MVU数据 = cloneJsonValue(mvuData, {});
+      const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+      确保物品定义分类表_桥接(statData);
+      const 跳过 = [];
+      const 已恢复 = [];
+      for (const 物品名 of 待恢复名称) {
+        if (物品定义存在_桥接(statData, 物品名)) {
+          跳过.push({ 物品名, reason: 'exists' });
+          continue;
+        }
+        const 索引 = 物品索引[物品名];
+        const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        if (!版本) {
+          跳过.push({ 物品名, reason: 'missing_archive' });
+          continue;
+        }
+        let 归档视图 = null;
+        try {
+          归档视图 = await 读取物品归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+        } catch (错误) {
+          跳过.push({ 物品名, reason: 'archive_read_failed', error: 错误 });
+          continue;
+        }
+        if (toText(归档视图 && 归档视图.物品名, '').trim() !== 物品名 || !归档视图.物品定义 || typeof 归档视图.物品定义 !== 'object') {
+          跳过.push({ 物品名, reason: 'archive_mismatch' });
+          continue;
+        }
+        写入分类物品定义_桥接(statData, 物品名, 归档视图.物品定义, 归档视图.物品分类 || 归档视图.分类);
+        已恢复.push(物品名);
+      }
+      if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
+      if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
+      statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 个物品定义：${已恢复.join('、')}。`;
+      当前MVU数据.stat_data = statData;
+      await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档物品');
+      记录MVU冷实体激活_桥接(已恢复.map(物品名 => ({ 类型: '物品', 名称: 物品名 })));
+      writeMvuEditorStoreSnapshot(statData, { messageId });
+      await 按需刷新MVU快照_桥接(选项);
+      return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    } finally {
+      冷归档写回状态_桥接.正在恢复 = false;
+    }
   }
 
   async function 恢复MVU归档动态地点_桥接(地点名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
-    const manifest = await 读取动态地点归档Manifest_桥接();
-    const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
-    const 当前MVU数据 = cloneJsonValue(mvuData, {});
-    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    if (!statData.world || typeof statData.world !== 'object') statData.world = {};
-    if (!statData.world.动态地点 || typeof statData.world.动态地点 !== 'object') statData.world.动态地点 = {};
-    const 跳过 = [];
-    const 已恢复 = [];
-    for (const 地点名 of 待恢复名称) {
-      if (statData.world.动态地点[地点名]) {
-        跳过.push({ 地点名, reason: 'exists' });
-        continue;
-      }
-      const 索引 = 动态地点索引[地点名];
-      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
-      if (!版本) {
-        跳过.push({ 地点名, reason: 'missing_archive' });
-        continue;
-      }
-      let 归档视图 = null;
-      try {
-        归档视图 = await 读取动态地点归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
-      } catch (错误) {
-        跳过.push({ 地点名, reason: 'archive_read_failed', error: 错误 });
-        continue;
-      }
-      if (toText(归档视图 && 归档视图.地点名, '').trim() !== 地点名 || !归档视图.地点数据 || typeof 归档视图.地点数据 !== 'object') {
-        跳过.push({ 地点名, reason: 'archive_mismatch' });
-        continue;
-      }
-      statData.world.动态地点[地点名] = cloneJsonValue(归档视图.地点数据, {});
-      已恢复.push(地点名);
+    if (冷归档写回状态_桥接.正在归档) {
+      return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复名称.map(地点名 => ({ 地点名, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
     }
-    if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
-    if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
-    statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 处动态地点：${已恢复.join('、')}。`;
-    当前MVU数据.stat_data = statData;
-    await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档地点');
-    writeMvuEditorStoreSnapshot(statData, { messageId });
-    await 按需刷新MVU快照_桥接(选项);
-    return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    冷归档写回状态_桥接.正在恢复 = true;
+    try {
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+      const manifest = await 读取动态地点归档Manifest_桥接();
+      const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+      const 当前MVU数据 = cloneJsonValue(mvuData, {});
+      const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+      if (!statData.world || typeof statData.world !== 'object') statData.world = {};
+      if (!statData.world.动态地点 || typeof statData.world.动态地点 !== 'object') statData.world.动态地点 = {};
+      const 跳过 = [];
+      const 已恢复 = [];
+      for (const 地点名 of 待恢复名称) {
+        if (statData.world.动态地点[地点名]) {
+          跳过.push({ 地点名, reason: 'exists' });
+          continue;
+        }
+        const 索引 = 动态地点索引[地点名];
+        const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        if (!版本) {
+          跳过.push({ 地点名, reason: 'missing_archive' });
+          continue;
+        }
+        let 归档视图 = null;
+        try {
+          归档视图 = await 读取动态地点归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+        } catch (错误) {
+          跳过.push({ 地点名, reason: 'archive_read_failed', error: 错误 });
+          continue;
+        }
+        if (toText(归档视图 && 归档视图.地点名, '').trim() !== 地点名 || !归档视图.地点数据 || typeof 归档视图.地点数据 !== 'object') {
+          跳过.push({ 地点名, reason: 'archive_mismatch' });
+          continue;
+        }
+        statData.world.动态地点[地点名] = cloneJsonValue(归档视图.地点数据, {});
+        已恢复.push(地点名);
+      }
+      if (!已恢复.length) return { changed: false, names: [], restoredNames: [], skippedNames: 跳过, statData, messageId };
+      if (!statData.sys || typeof statData.sys !== 'object') statData.sys = {};
+      statData.sys.系统播报 = `[冷归档] 已恢复 ${已恢复.length} 处动态地点：${已恢复.join('、')}。`;
+      当前MVU数据.stat_data = statData;
+      await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档地点');
+      记录MVU冷实体激活_桥接(已恢复.map(地点名 => ({ 类型: '动态地点', 名称: 地点名 })));
+      writeMvuEditorStoreSnapshot(statData, { messageId });
+      await 按需刷新MVU快照_桥接(选项);
+      return { changed: true, names: 已恢复, restoredNames: 已恢复, skippedNames: 跳过, statData, messageId };
+    } finally {
+      冷归档写回状态_桥接.正在恢复 = false;
+    }
   }
 
   async function 按文本恢复归档角色_桥接(文本 = '', 选项 = {}) {
@@ -6068,61 +6104,68 @@
       冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
       冷归档自动归档状态_桥接.promise = null;
     }
+    if (冷归档写回状态_桥接.正在恢复) return { changed: false, reason: 'restore_in_progress' };
+    if (冷归档写回状态_桥接.正在归档) return { changed: false, reason: 'archive_in_progress' };
     if (!冷归档自动归档配置_桥接.启用自动归档 && !选项.force) return { changed: false, reason: 'disabled' };
     if (冷归档自动归档状态_桥接.promise) return await 冷归档自动归档状态_桥接.promise;
     const 当前毫秒 = Date.now();
-    if (!选项.force && 当前毫秒 - 冷归档自动归档状态_桥接.上次尝试毫秒 < 冷归档自动归档配置_桥接.冷却毫秒) {
+    if (!选项.force && !选项.跳过冷却 && 当前毫秒 - 冷归档自动归档状态_桥接.上次尝试毫秒 < 冷归档自动归档配置_桥接.冷却毫秒) {
       return { changed: false, reason: 'cooldown' };
     }
-    冷归档自动归档状态_桥接.上次尝试毫秒 = 当前毫秒;
     冷归档自动归档状态_桥接.promise = (async () => {
-      const 状态 = await 检查冷归档服务_桥接();
-      if (!状态.可用 || !状态.可写) return { changed: false, reason: 'archive_unavailable' };
-      const { mvuData } = await readLatestMvuDataByEditor();
-      const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-      const 捕获文本 = toText(选项.捕获文本 ?? [选项.userInput, 选项.最后角色消息文本].filter(Boolean).join('\n'), '');
-      const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
-      const 动态地点 = deepGet(statData, 'world.动态地点', {});
-      const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
-      await 预热冷归档Manifest_桥接();
-      const 是否首次自动归档 = 判断冷归档首次自动归档_桥接();
-      const 本轮批量上限 = 是否首次自动归档 ? 冷归档首次批量上限_桥接 : 冷归档自动归档批量硬上限_桥接;
-      const 类型列表 = [
-        {
-          类型: '角色',
-          状态: 冷归档表超过阈值_桥接(角色集, 冷归档自动归档配置_桥接.角色数量阈值, 冷归档自动归档配置_桥接.角色字节阈值),
-          名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本, 本轮批量上限),
-          执行: 名称列表 => 归档MVU角色_桥接(名称列表),
-        },
-        {
-          类型: '动态地点',
-          状态: 冷归档表超过阈值_桥接(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}, 冷归档自动归档配置_桥接.动态地点数量阈值, 冷归档自动归档配置_桥接.动态地点字节阈值),
-          名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本, 本轮批量上限),
-          执行: 名称列表 => 归档MVU动态地点_桥接(名称列表),
-        },
-        {
-          类型: '物品',
-          状态: 物品分类压力,
-          名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 本轮批量上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
-          执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
-        },
-      ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
-      if (!类型列表.length) return { changed: false, reason: 'below_threshold' };
-      const 归档结果列表 = [];
-      for (const 类型项 of 类型列表) {
-        const 名称列表 = 类型项.名称列表().slice(0, 本轮批量上限);
-        if (!名称列表.length) continue;
-        const 结果 = await 类型项.执行(名称列表);
-        if (结果 && 结果.changed) {
-          归档结果列表.push({ ...结果, type: 类型项.类型 });
-          if (!是否首次自动归档) return { ...结果, type: 类型项.类型, auto: true, 首次自动归档: false };
+      冷归档写回状态_桥接.正在归档 = true;
+      try {
+        const 状态 = await 检查冷归档服务_桥接();
+        if (!状态.可用 || !状态.可写) return { changed: false, reason: 'archive_unavailable' };
+        const { mvuData } = await readLatestMvuDataByEditor();
+        const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+        const 捕获文本 = toText(选项.捕获文本 ?? [选项.userInput, 选项.最后角色消息文本].filter(Boolean).join('\n'), '');
+        const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
+        const 动态地点 = deepGet(statData, 'world.动态地点', {});
+        const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
+        await 预热冷归档Manifest_桥接();
+        const 是否首次自动归档 = 判断冷归档首次自动归档_桥接();
+        const 本轮批量上限 = 是否首次自动归档 ? 冷归档首次批量上限_桥接 : 冷归档自动归档批量硬上限_桥接;
+        const 类型列表 = [
+          {
+            类型: '角色',
+            状态: 冷归档表超过阈值_桥接(角色集, 冷归档自动归档配置_桥接.角色数量阈值, 冷归档自动归档配置_桥接.角色字节阈值),
+            名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本, 本轮批量上限),
+            执行: 名称列表 => 归档MVU角色_桥接(名称列表),
+          },
+          {
+            类型: '动态地点',
+            状态: 冷归档表超过阈值_桥接(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}, 冷归档自动归档配置_桥接.动态地点数量阈值, 冷归档自动归档配置_桥接.动态地点字节阈值),
+            名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本, 本轮批量上限),
+            执行: 名称列表 => 归档MVU动态地点_桥接(名称列表),
+          },
+          {
+            类型: '物品',
+            状态: 物品分类压力,
+            名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 本轮批量上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
+            执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
+          },
+        ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
+        if (!类型列表.length) return { changed: false, reason: 'below_threshold' };
+        const 归档结果列表 = [];
+        for (const 类型项 of 类型列表) {
+          const 名称列表 = 类型项.名称列表().slice(0, 本轮批量上限);
+          if (!名称列表.length) continue;
+          冷归档自动归档状态_桥接.上次尝试毫秒 = 当前毫秒;
+          const 结果 = await 类型项.执行(名称列表);
+          if (结果 && 结果.changed) {
+            归档结果列表.push({ ...结果, type: 类型项.类型 });
+            if (!是否首次自动归档) return { ...结果, type: 类型项.类型, auto: true, 首次自动归档: false };
+          }
         }
+        if (归档结果列表.length) {
+          const 归档数量 = 归档结果列表.reduce((总数, 结果) => 总数 + (Array.isArray(结果.archivedNames) ? 结果.archivedNames.length : 0), 0);
+          return { changed: true, 结果列表: 归档结果列表, archivedNames: 归档结果列表.flatMap(结果 => Array.isArray(结果.archivedNames) ? 结果.archivedNames : []), 归档数量, auto: true, 首次自动归档: 是否首次自动归档 };
+        }
+        return { changed: false, reason: 'no_candidate' };
+      } finally {
+        冷归档写回状态_桥接.正在归档 = false;
       }
-      if (归档结果列表.length) {
-        const 归档数量 = 归档结果列表.reduce((总数, 结果) => 总数 + (Array.isArray(结果.archivedNames) ? 结果.archivedNames.length : 0), 0);
-        return { changed: true, 结果列表: 归档结果列表, archivedNames: 归档结果列表.flatMap(结果 => Array.isArray(结果.archivedNames) ? 结果.archivedNames : []), 归档数量, auto: true, 首次自动归档: 是否首次自动归档 };
-      }
-      return { changed: false, reason: 'no_candidate' };
     })().finally(() => {
       冷归档自动归档状态_桥接.promise = null;
     });
@@ -8291,7 +8334,6 @@
       用户输入: 文本,
       剧情文本: 附加选项.剧情文本 || '',
       最后剧情文本: 附加选项.最后剧情文本 || '',
-      时间线事件命中: 附加选项.时间线事件命中 !== false,
     });
     if (!结果 || !结果.changed) {
       return {
@@ -36900,6 +36942,7 @@
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();
+    调度冷归档楼层自动归档_桥接(2200, { 触发来源: '初始化', 跳过冷却: true });
     bindMvuUpdates(vars => refreshLiveSnapshot({ sharedVars: vars }));
   }
 

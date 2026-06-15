@@ -153,24 +153,6 @@ function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 =
 
 function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = '', 数据根 = {}) {
   const 命中 = new Set(匹配文本内置角色名_V1(文本, 当前tick, 数据根));
-  const 时间线事件列表 = Array.isArray(TimelineEvents) ? TimelineEvents : Object.values(TimelineEvents || {}).flat();
-  const 当前tick数值 = Number(当前tick || 0);
-  时间线事件列表
-    .filter(事件 => Number.isFinite(Number(事件?.触发tick)))
-    .sort((左事件, 右事件) => {
-      const 左距离 = Math.abs(Number(左事件?.触发tick || 0) - 当前tick数值);
-      const 右距离 = Math.abs(Number(右事件?.触发tick || 0) - 当前tick数值);
-      return 左距离 - 右距离 || Number(左事件?.触发tick || 0) - Number(右事件?.触发tick || 0);
-    })
-    .slice(0, 5)
-    .forEach(事件 => {
-      (Array.isArray(事件?.人物) ? 事件.人物 : []).forEach(角色名 => {
-        const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
-        if (规范名) 命中.add(规范名);
-      });
-      const 事件文本 = [事件?.描述, 事件?.简述].join('\n');
-      匹配文本内置角色名_V1(事件文本, 当前tick, 数据根).forEach(角色名 => 命中.add(角色名));
-    });
   return Array.from(命中);
 }
 
@@ -2093,7 +2075,10 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
   if (!角色.属性 || typeof 角色.属性 !== 'object') 角色.属性 = {};
   const 投影年龄 = 计算内置角色投影年龄_V1(快照, 当前tick);
   角色.属性.年龄 = Number(投影年龄.toFixed(1));
-  if (是否内置少年成长角色_V1(角色, 快照, 当前tick)) {
+  const 快照显式等级 = 快照?.角色?.属性 && Object.prototype.hasOwnProperty.call(快照.角色.属性, '等级')
+    ? Number(快照.角色.属性.等级)
+    : null;
+  if (!Number.isFinite(快照显式等级) && 投影年龄 > 6) {
     角色.属性.等级 = 计算初始化修为等级(
       角色.属性.天赋梯队 || '正常',
       投影年龄,
@@ -2101,6 +2086,9 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
       角色.属性.生日 || '',
       当前tick,
     );
+    裁剪内置角色魂环到等级_V1(角色);
+  } else if (Number.isFinite(快照显式等级)) {
+    角色.属性.等级 = 快照显式等级;
     裁剪内置角色魂环到等级_V1(角色);
   }
   应用内置角色提前出场投影_V1(角色, 角色记录, 快照, 当前tick);
@@ -2138,7 +2126,7 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
   const 待写入 = new Set();
   const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
-  if (选项.时间线事件命中 || String(命中文本 || '').trim()) {
+  if (String(命中文本 || '').trim()) {
     收集当前时间线命中内置角色名_V1(当前tick, 命中文本, 数据根).forEach(角色名 => 待写入.add(角色名));
   }
   if (是否古月娜融合阶段_V1(当前tick, 数据根) && !数据根.char.古月娜 && (数据根.char.古月 || 数据根.char.娜儿)) {
@@ -2559,6 +2547,24 @@ function 规范化Schema根转换_V1(data = {}) {
         boundary = dayBase + DAY_TICK_SPAN_ACU;
       }
       return Math.min(safeEndTick, boundary);
+    };
+
+    const 获取跨过日界tick列表_ACU = (前tick, 后tick, 日内偏移 = 0) => {
+      const 前值 = Math.max(0, Math.floor(Number(前tick) || 0));
+      const 后值 = Math.max(0, Math.floor(Number(后tick) || 0));
+      const 偏移 = normalizeDayTickOffset_ACU(日内偏移);
+      if (后值 <= 前值) return [];
+      const 起始日序号 = Math.floor((前值 - 偏移) / DAY_TICK_SPAN_ACU);
+      const 结束日序号 = Math.floor((后值 - 偏移) / DAY_TICK_SPAN_ACU);
+      if (结束日序号 < 起始日序号 + 1) return [];
+      const 结果 = [];
+      for (let 日序号 = 起始日序号 + 1; 日序号 <= 结束日序号; 日序号++) {
+        const 判定tick = 日序号 * DAY_TICK_SPAN_ACU + 偏移;
+        if (判定tick > 前值 && 判定tick <= 后值) {
+          结果.push(判定tick);
+        }
+      }
+      return 结果;
     };
 
     const getResourceRatioForDailyAuto_ACU = (currentValue, maxValue) => {
@@ -3262,6 +3268,7 @@ function 规范化Schema根转换_V1(data = {}) {
       data.world.时间._上次结算tick = currentTick;
     }
     let delta = currentTick - lastTick;
+    const 本轮跨过日界tick列表 = delta > 0 ? 获取跨过日界tick列表_ACU(lastTick, currentTick) : [];
     if (delta > 0 && data.sys.系统播报 && data.sys.系统播报 !== '初始化') {
       data.sys.系统播报 = '初始化';
     }
@@ -4628,28 +4635,35 @@ function 规范化Schema根转换_V1(data = {}) {
         isKnownBuggedRecoveryRatio;
       if (c.私密档案) {
         const age = Number(c.属性?.年龄 || 0);
+        const 生理阶段文本 = String(c.私密档案._生理阶段 || '').trim();
+        const 需要初始化生理判定 = !生理阶段文本 || 生理阶段文本 === '计算中...';
 
         if (!c.私密档案._已来初潮) {
-          if (age >= 10 && currentTick % 144 === 0) {
-            let menarcheChance = 0;
-            if (age === 11) menarcheChance = 0.05;
-            else if (age === 12) menarcheChance = 0.30;
-            else if (age === 13) menarcheChance = 0.60;
-            else if (age >= 14) menarcheChance = 0.95;
-
-            if (Math.random() < menarcheChance) {
-              c.私密档案._已来初潮 = true;
-              c.私密档案.生理期偏移 = 4032 - (currentTick % 4032);
-
-              if (currentTick > 0 && !是否新档初始化) {
-                if (!data.sys.系统播报) data.sys.系统播报 = '';
-                data.sys.系统播报 += ` [生理变化] ${charName} 迎来了初潮，正式进入青春期！`;
+          if (age < 10) {
+            c.私密档案._生理阶段 = '未初潮(幼年)';
+          } else {
+            const 初潮判定tick列表 = 需要初始化生理判定 ? [currentTick] : 本轮跨过日界tick列表;
+            for (const 判定tick of 初潮判定tick列表) {
+              let 初潮概率 = 0;
+              if (age === 11) 初潮概率 = 0.05;
+              else if (age === 12) 初潮概率 = 0.3;
+              else if (age === 13) 初潮概率 = 0.6;
+              else if (age === 14) 初潮概率 = 0.95;
+              else if (age >= 15) 初潮概率 = 1;
+              if (!(初潮概率 > 0)) continue;
+              if (Math.random() < 初潮概率) {
+                c.私密档案._已来初潮 = true;
+                c.私密档案.生理期偏移 = 4032 - (判定tick % 4032);
+                if (currentTick > 0 && !是否新档初始化 && !需要初始化生理判定) {
+                  if (!data.sys.系统播报) data.sys.系统播报 = '';
+                  data.sys.系统播报 += ` [生理变化] ${charName} 迎来了初潮，正式进入青春期！`;
+                }
+                break;
               }
-            } else {
+            }
+            if (!c.私密档案._已来初潮) {
               c.私密档案._生理阶段 = '未初潮(青春期前)';
             }
-          } else if (age < 10) {
-            c.私密档案._生理阶段 = '未初潮(幼年)';
           }
         }
 
@@ -4658,19 +4672,34 @@ function 规范化Schema根转换_V1(data = {}) {
             const pregDays = Math.floor((currentTick - c.私密档案.受孕tick) / 144);
             c.私密档案._怀孕天数 = pregDays;
             c.私密档案._生理阶段 = '孕期停经';
-
-            if (pregDays >= 270 && currentTick % 144 === 0) {
-              const birthChance = (pregDays - 270) / 30;
-
-              if (Math.random() < birthChance || pregDays >= 300) {
+            let 已触发分娩 = false;
+            for (const 判定tick of 本轮跨过日界tick列表) {
+              const 判定怀孕天数 = Math.floor((判定tick - c.私密档案.受孕tick) / 144);
+              if (判定怀孕天数 < 270) continue;
+              const 分娩概率 = (判定怀孕天数 - 270) / 30;
+              if (Math.random() < 分娩概率 || 判定怀孕天数 >= 300) {
                 if (data.sys.系统播报 === '初始化' || !data.sys.系统播报) data.sys.系统播报 = '';
-                data.sys.系统播报 += ` [生命降生] ${charName} 经过 ${pregDays} 天的孕育，成功分娩！`;
+                data.sys.系统播报 += ` [生命降生] ${charName} 经过 ${判定怀孕天数} 天的孕育，成功分娩！`;
                 c.私密档案.受孕tick = -1;
                 c.私密档案.受孕对象 = '无';
                 c.私密档案._怀孕天数 = 0;
+                已触发分娩 = true;
+                break;
               }
             }
-          } else {
+            if (已触发分娩) {
+              const cycleTick = (currentTick + c.私密档案.生理期偏移) % 4032;
+              const cycleDays = cycleTick / 144;
+              if (cycleDays <= 5) {
+                c.私密档案._生理阶段 = '生理期(极度敏感/易疲劳)';
+              } else if (cycleDays > 11 && cycleDays <= 16) {
+                c.私密档案._生理阶段 = '排卵期(渴望繁衍/受孕率极高)';
+              } else {
+                c.私密档案._生理阶段 = '安全期';
+              }
+            }
+          }
+          if (c.私密档案.受孕tick <= 0) {
             c.私密档案._怀孕天数 = 0;
             const cycleTick = (currentTick + c.私密档案.生理期偏移) % 4032;
             const cycleDays = cycleTick / 144;

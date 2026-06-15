@@ -186,9 +186,8 @@
   async function 准备MVU前置数据(选项 = {}) {
     const 用户输入文本 = String(选项?.userInput || '');
     const 最后角色消息文本 = String(选项?.lastCharMessage || '');
-    const 剧情文本 = String(选项?.plotText || '');
     const 最新角色消息 = 选项?.latestCharMessageInfo && typeof 选项.latestCharMessageInfo === 'object' ? 选项.latestCharMessageInfo : 读取最新角色消息元信息();
-    const 捕获文本 = String(选项?.captureText ?? [用户输入文本, 剧情文本, 最后角色消息文本].filter(Boolean).join('\n'));
+    const 捕获文本 = String(选项?.captureText ?? [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n'));
     if (!捕获文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
     const 前置键 = 构建前置键(最新角色消息, 捕获文本);
     if (本轮前置承诺表.has(前置键)) return await 本轮前置承诺表.get(前置键);
@@ -197,7 +196,7 @@
       let 当前StatData = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
       let 需要刷新快照 = false;
       const 构建参数 = (附加 = {}) => ({
-        剧情文本,
+        剧情文本: '',
         最后剧情文本: 最后角色消息文本 || '',
         statData: 当前StatData || undefined,
         上限: 16,
@@ -219,7 +218,7 @@
       await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复');
       await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复');
       await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库');
-      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数({ 时间线事件命中: true }), '本轮内置角色前置入库');
+      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮内置角色前置入库');
       if (需要刷新快照) {
         const 刷新函数 = 读取窗口函数('__MVU_REFRESH_LIVE_SNAPSHOT__');
         if (typeof 刷新函数 === 'function') {
@@ -323,34 +322,31 @@
 
   async function 准备正文运行时数据(context = {}) {
     const 原始输入 = String(context.userInput || '');
-    const 规划文本 = String(context.runtimePlotText || '');
-    const 正文指导 = String(context.finalMessage || '');
     const 最后角色消息文本 = String(context.lastCharMessage || 读取最新角色消息元信息().文本 || '');
-    const 捕获文本 = [原始输入, 规划文本, 正文指导, 最后角色消息文本].filter(Boolean).join('\n');
+    const 捕获文本 = [原始输入, 最后角色消息文本].filter(Boolean).join('\n');
     return await 准备MVU前置数据({
       userInput: 原始输入,
       lastCharMessage: 最后角色消息文本,
       captureText: 捕获文本,
-      plotText: 规划文本 || 正文指导,
+      plotText: '',
       statData: 取StatData(context.statData, 原始输入) || undefined,
     });
   }
 
   async function 准备提示词运行时数据(context = {}) {
+    const 用户输入文本 = String(context.userInput || '');
+    const 最后角色消息文本 = String(context.lastCharMessage || '');
+    const 捕获文本 = context.captureText === undefined || context.captureText === null
+      ? [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n')
+      : String(context.captureText || '');
     return await 准备MVU前置数据({
-      userInput: String(context.userInput || ''),
-      lastCharMessage: String(context.lastCharMessage || ''),
+      userInput: 用户输入文本,
+      lastCharMessage: 最后角色消息文本,
       latestCharMessageInfo: context.latestCharMessageInfo,
-      captureText: String(context.captureText || ''),
-      plotText: String(context.plotText || ''),
+      captureText: 捕获文本,
+      plotText: '',
       statData: 取StatData(context.statData, context.userInput || '') || undefined,
     });
-  }
-
-  function 构建正文数值参照(userInput = '', statData = null) {
-    const 摘要 = 读取角色基础六维对标(userInput, statData);
-    if (!摘要 || 摘要 === '无') return '';
-    return ['【正文数值参照】', 摘要].join('\n');
   }
 
   function 构建正文时间线预览(userInput = '', statData = null) {
@@ -367,13 +363,13 @@
     if (!options || typeof options !== 'object') return false;
     const userInput = String(context.userInput || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 注入片段 = [构建正文数值参照(userInput, statData), 构建正文时间线预览(userInput, statData)].filter(Boolean);
+    const 注入片段 = [构建正文时间线预览(userInput, statData)].filter(Boolean);
     if (!注入片段.length) return false;
     const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
     options.injects = 注入列表;
     let 是否追加 = false;
     for (const 文本 of 注入片段) {
-      const 标题 = 文本.startsWith('【正文数值参照】') ? '【正文数值参照】' : '【正文时间线预览】';
+      const 标题 = '【正文时间线预览】';
       if (注入列表.some(item => String(item?.content || '').includes(标题))) continue;
       注入列表.push({ position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false });
       是否追加 = true;
@@ -386,7 +382,7 @@
     if (!助手 || typeof 助手.injectPrompts !== 'function') return false;
     const userInput = String(context.userInput || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 注入片段 = [构建正文数值参照(userInput, statData), 构建正文时间线预览(userInput, statData)].filter(Boolean);
+    const 注入片段 = [构建正文时间线预览(userInput, statData)].filter(Boolean);
     let 是否注册 = false;
     for (const 文本 of 注入片段) {
       const 注入编号 = `lwcs-runtime-${取哈希(文本)}`;
