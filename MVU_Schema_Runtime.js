@@ -114,9 +114,62 @@ function 取内置角色最近快照_V1(角色记录 = {}, 当前tick = 0) {
   const tick = Number(当前tick || 0);
   const 有tick快照 = 快照列表.filter(快照 => Number.isFinite(Number(快照?.tick)));
   if (!有tick快照.length) return 快照列表[0] || null;
+  const 开场前向快照 = 取内置角色开场前向快照_V1(角色记录, 有tick快照, tick);
+  if (开场前向快照) return 开场前向快照;
   const 之前快照 = 有tick快照.filter(快照 => Number(快照.tick) <= tick).sort((a, b) => Number(b.tick) - Number(a.tick))[0];
   if (之前快照) return 之前快照;
   return 有tick快照.sort((a, b) => Number(a.tick) - Number(b.tick))[0] || 快照列表[0] || null;
+}
+
+function 取内置角色指定节点快照_V1(角色记录 = {}, 指定节点 = '') {
+  const 节点 = String(指定节点 || '').trim();
+  if (!节点) return null;
+  return (Array.isArray(角色记录?.快照) ? 角色记录.快照 : []).find(快照 => String(快照?.节点 || '').trim() === 节点) || null;
+}
+
+function 读取内置角色节点年龄_V1(节点 = '') {
+  const 匹配 = String(节点 || '').match(/(\d+(?:\.\d+)?)\s*岁/);
+  const 年龄 = 匹配 ? Number(匹配[1]) : NaN;
+  return Number.isFinite(年龄) ? 年龄 : null;
+}
+
+function 读取内置角色快照年龄_V1(快照 = {}) {
+  const 节点年龄 = 读取内置角色节点年龄_V1(快照?.节点);
+  if (节点年龄 !== null) return 节点年龄;
+  const 年龄 = Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄);
+  return Number.isFinite(年龄) ? 年龄 : null;
+}
+
+function 估算内置角色当前投影年龄_V1(快照列表 = [], 当前tick = 0) {
+  const 每年tick = Math.max(1, Number(读取内置角色库_V1().每年tick || 51840));
+  const 候选 = (Array.isArray(快照列表) ? 快照列表 : [])
+    .map(快照 => {
+      const 快照tick = Number(快照?.tick);
+      const 快照年龄 = Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄);
+      if (!Number.isFinite(快照tick) || !Number.isFinite(快照年龄)) return null;
+      return {
+        距离: Math.abs(Number(当前tick || 0) - 快照tick),
+        年龄: Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.距离 - b.距离);
+  return 候选.length ? 候选[0].年龄 : null;
+}
+
+function 取内置角色开场前向快照_V1(角色记录 = {}, 快照列表 = [], 当前tick = 0) {
+  const 开场节点年龄 = (Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [])
+    .map(读取内置角色节点年龄_V1)
+    .filter(年龄 => 年龄 !== null)
+    .sort((a, b) => a - b);
+  if (开场节点年龄.length <= 1) return null;
+  const 当前年龄 = 估算内置角色当前投影年龄_V1(快照列表, 当前tick);
+  if (当前年龄 === null) return null;
+  const 目标节点年龄 = 开场节点年龄.find(年龄 => 年龄 > 当前年龄 + 0.001);
+  if (目标节点年龄 === undefined) return null;
+  return (Array.isArray(快照列表) ? 快照列表 : [])
+    .filter(快照 => Math.abs((读取内置角色快照年龄_V1(快照) ?? -9999) - 目标节点年龄) < 0.001)
+    .sort((a, b) => Number(a.tick) - Number(b.tick))[0] || null;
 }
 
 function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
@@ -1538,9 +1591,26 @@ function 格式化提前出场年数文本_V1(提前年数 = 0) {
 }
 
 function 构建提前出场未来身份提示_V1(快照 = {}, 提前年数 = 0) {
-  const 未来身份 = String(快照?.角色?.社交?.主身份 || '').trim();
-  if (!未来身份) return '';
-  return `原著中将在${格式化提前出场年数文本_V1(提前年数)}成为${未来身份}，请基于当前年龄与剧情时间生成目前身份。`;
+  const 角色 = 快照?.角色 || {};
+  const 片段 = [];
+  const 添加片段 = 值 => {
+    String(值 || '')
+      .split(/[\/、,，\-—>]+/)
+      .map(项 => 项.trim())
+      .filter(Boolean)
+      .forEach(项 => {
+        if (!片段.includes(项)) 片段.push(项);
+      });
+  };
+  添加片段(角色?.状态?.位置);
+  Object.entries(角色?.社交?.势力 || {}).forEach(([势力名, 势力数据]) => {
+    添加片段(势力名);
+    添加片段(势力数据?.身份);
+  });
+  添加片段(角色?.社交?.主身份);
+  Object.keys(角色?.社交?.称号 || {}).forEach(添加片段);
+  if (!片段.length) return '';
+  return `原著${格式化提前出场年数文本_V1(提前年数)}时为：${片段.join(' / ')}；请基于当前年龄与剧情时间生成目前身份。`;
 }
 
 function 应用提前出场副职业认证投影_V1(副职业表 = {}, 提前年数 = 0) {
@@ -1572,6 +1642,141 @@ function 应用提前出场副职业认证投影_V1(副职业表 = {}, 提前年
   });
 }
 
+var 内置角色斗铠标准部件列表_V1 = Object.freeze(['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴']);
+var 内置角色斗铠等级文本_V1 = Object.freeze(['无', '一', '二', '三', '四']);
+
+function 创建空内置角色装备加成_V1(包含等效等级 = false) {
+  return {
+    ...(包含等效等级 ? { 等效等级: 0 } : {}),
+    魂力上限: 0,
+    精神力上限: 0,
+    力量: 0,
+    防御: 0,
+    敏捷: 0,
+    体力上限: 0,
+  };
+}
+
+function 补齐内置角色完整斗铠部件_V1(斗铠 = {}) {
+  const 等级 = Math.max(0, Math.min(4, Math.floor(Number(斗铠?.等级 || 0) || 0)));
+  if (等级 <= 0) return;
+  if (!斗铠.部件 || typeof 斗铠.部件 !== 'object' || Array.isArray(斗铠.部件)) 斗铠.部件 = {};
+  if (Object.keys(斗铠.部件).length >= 内置角色斗铠标准部件列表_V1.length) return;
+  内置角色斗铠标准部件列表_V1.forEach(部件名 => {
+    if (!斗铠.部件[部件名] || typeof 斗铠.部件[部件名] !== 'object') {
+      斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
+    }
+  });
+}
+
+function 计算内置角色稳定哈希_V1(文本 = '') {
+  let 哈希 = 2166136261;
+  String(文本 || '').split('').forEach(字符 => {
+    哈希 ^= 字符.charCodeAt(0);
+    哈希 += (哈希 << 1) + (哈希 << 4) + (哈希 << 7) + (哈希 << 8) + (哈希 << 24);
+  });
+  return 哈希 >>> 0;
+}
+
+function 取内置角色斗铠稳定部件顺序_V1(种子 = '') {
+  return [...内置角色斗铠标准部件列表_V1]
+    .sort((a, b) => 计算内置角色稳定哈希_V1(`${种子}|${a}`) - 计算内置角色稳定哈希_V1(`${种子}|${b}`));
+}
+
+function 清空内置角色斗铠_V1(角色 = {}) {
+  if (!角色.装备 || typeof 角色.装备 !== 'object' || Array.isArray(角色.装备)) 角色.装备 = {};
+  if (!角色.装备.斗铠 || typeof 角色.装备.斗铠 !== 'object' || Array.isArray(角色.装备.斗铠)) 角色.装备.斗铠 = {};
+  角色.装备.斗铠.等级 = 0;
+  角色.装备.斗铠.名称 = '无';
+  角色.装备.斗铠.领域 = '无';
+  角色.装备.斗铠.材质 = '无';
+  角色.装备.斗铠.装备状态 = '未装备';
+  角色.装备.斗铠.部件 = {};
+  角色.装备.斗铠._属性加成 = 创建空内置角色装备加成_V1(true);
+  角色.装备.斗铠._已排异 = false;
+  const 武器 = 角色.装备.武器;
+  if (武器 && typeof 武器 === 'object' && !Array.isArray(武器) && /斗铠/.test(`${武器.名称 || ''}${武器.品阶 || ''}${武器.描述 || ''}`)) {
+    武器.名称 = '无';
+    武器.品阶 = '无';
+    武器.描述 = '';
+  }
+}
+
+function 应用内置角色斗铠有效等级_V1(角色 = {}, 有效等级 = 0, 原始斗铠 = {}) {
+  const 等级 = Math.max(0, Math.min(4, Math.floor(Number(有效等级 || 0) || 0)));
+  if (等级 <= 0) {
+    清空内置角色斗铠_V1(角色);
+    return;
+  }
+  if (!角色.装备 || typeof 角色.装备 !== 'object' || Array.isArray(角色.装备)) 角色.装备 = {};
+  if (!角色.装备.斗铠 || typeof 角色.装备.斗铠 !== 'object' || Array.isArray(角色.装备.斗铠)) 角色.装备.斗铠 = {};
+  角色.装备.斗铠.等级 = 等级;
+  if (Number(原始斗铠?.等级 || 0) !== 等级 || !String(角色.装备.斗铠.名称 || '').trim()) {
+    角色.装备.斗铠.名称 = `${内置角色斗铠等级文本_V1[等级] || 等级}字斗铠`;
+  }
+  角色.装备.斗铠.装备状态 = String(原始斗铠?.装备状态 || 角色.装备.斗铠.装备状态 || '未装备');
+  角色.装备.斗铠.部件 = {};
+  补齐内置角色完整斗铠部件_V1(角色.装备.斗铠);
+  delete 角色.装备.斗铠._属性加成;
+  delete 角色.装备.斗铠._已排异;
+}
+
+function 应用内置角色斗铠不完整投影_V1(角色 = {}, 等级 = 1, 移除部件数 = 0, 原始斗铠 = {}, 种子 = '') {
+  const 保留部件 = new Set(内置角色斗铠标准部件列表_V1);
+  取内置角色斗铠稳定部件顺序_V1(种子).slice(0, Math.max(0, Math.floor(Number(移除部件数 || 0) || 0))).forEach(部件名 => 保留部件.delete(部件名));
+  if (!保留部件.size) {
+    清空内置角色斗铠_V1(角色);
+    return;
+  }
+  if (!角色.装备 || typeof 角色.装备 !== 'object' || Array.isArray(角色.装备)) 角色.装备 = {};
+  if (!角色.装备.斗铠 || typeof 角色.装备.斗铠 !== 'object' || Array.isArray(角色.装备.斗铠)) 角色.装备.斗铠 = {};
+  角色.装备.斗铠.等级 = Math.max(1, Math.min(4, Math.floor(Number(等级 || 1) || 1)));
+  角色.装备.斗铠.名称 = String(原始斗铠?.名称 || 角色.装备.斗铠.名称 || '').trim() || `${内置角色斗铠等级文本_V1[角色.装备.斗铠.等级] || 角色.装备.斗铠.等级}字斗铠`;
+  角色.装备.斗铠.装备状态 = '未装备';
+  角色.装备.斗铠.部件 = {};
+  保留部件.forEach(部件名 => {
+    角色.装备.斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
+  });
+  角色.装备.斗铠._属性加成 = 创建空内置角色装备加成_V1(true);
+  角色.装备.斗铠._已排异 = false;
+  const 武器 = 角色.装备.武器;
+  if (武器 && typeof 武器 === 'object' && !Array.isArray(武器) && /斗铠/.test(`${武器.名称 || ''}${武器.品阶 || ''}${武器.描述 || ''}`)) {
+    武器.名称 = '无';
+    武器.品阶 = '无';
+    武器.描述 = '';
+  }
+}
+
+function 应用提前出场斗铠投影_V1(角色 = {}, 角色记录 = {}, 快照 = {}, 当前tick = 0) {
+  const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 0) || 0);
+  if (快照年龄 >= 30) return;
+  const 提前年数 = 计算内置角色提前年数_V1(快照, 当前tick);
+  const 斗铠 = 角色?.装备?.斗铠;
+  const 原等级 = Math.max(0, Math.min(4, Math.floor(Number(斗铠?.等级 || 0) || 0)));
+  if (!斗铠 || typeof 斗铠 !== 'object' || 原等级 <= 0) return;
+  补齐内置角色完整斗铠部件_V1(斗铠);
+  let 有效等级 = 原等级;
+  let 剩余移除部件数 = Math.max(0, Math.floor((提前年数 * 内置角色斗铠标准部件列表_V1.length) / 5));
+  let 不完整等级 = 0;
+  let 不完整移除部件数 = 0;
+  while (有效等级 > 0 && 剩余移除部件数 >= 内置角色斗铠标准部件列表_V1.length) {
+    有效等级 -= 1;
+    剩余移除部件数 -= 内置角色斗铠标准部件列表_V1.length;
+  }
+  if (有效等级 > 0 && 剩余移除部件数 > 0) {
+    不完整等级 = 有效等级;
+    不完整移除部件数 = 剩余移除部件数;
+    有效等级 -= 1;
+  }
+  const 当前等级 = Math.max(0, Math.floor(Number(角色?.属性?.等级 || 0) || 0));
+  while (有效等级 > 0 && 当前等级 < ([0, 50, 70, 80, 90][有效等级] || 0)) 有效等级 -= 1;
+  if (有效等级 <= 0 && 不完整等级 === 1 && 当前等级 >= 50) {
+    应用内置角色斗铠不完整投影_V1(角色, 1, 不完整移除部件数, 斗铠, `${角色记录?.角色名 || ''}|${当前tick}`);
+    return;
+  }
+  应用内置角色斗铠有效等级_V1(角色, 有效等级, 斗铠);
+}
+
 function 应用内置角色提前出场投影_V1(角色 = {}, 角色记录 = {}, 快照 = {}, 当前tick = 0) {
   if (是否内置角色预备出场_V1(快照, 当前tick)) return;
   const 提前年数 = 计算内置角色提前年数_V1(快照, 当前tick);
@@ -1584,6 +1789,7 @@ function 应用内置角色提前出场投影_V1(角色 = {}, 角色记录 = {},
     角色.社交.势力 = {};
   }
   应用提前出场副职业认证投影_V1(角色.副职业, 提前年数);
+  应用提前出场斗铠投影_V1(角色, 角色记录, 快照, 当前tick);
 }
 
 function 是否非魂师轻量角色_V1(角色 = {}) {
@@ -1735,8 +1941,52 @@ function 是否内置少年成长角色_V1(角色 = {}, 快照 = {}, 当前tick 
   return 快照年龄 <= 25 && 投影年龄 < 快照年龄 - 0.25;
 }
 
+function 读取内置角色快照等级_V1(快照 = {}) {
+  const 等级 = Number(快照?.角色?.属性?.等级);
+  return Number.isFinite(等级) ? Math.max(0, 等级) : null;
+}
+
+function 计算内置角色默认修为等级_V1(角色 = {}, 年龄 = 6, 当前tick = 0) {
+  const 安全年龄 = Math.max(0, Number(年龄 || 0));
+  if (安全年龄 < 6) return 0;
+  return Math.max(0, Math.floor(Number(计算初始化修为等级(
+    角色?.属性?.天赋梯队 || '正常',
+    安全年龄,
+    角色?.属性?.底子波动 || 1,
+    角色?.属性?.生日 || '',
+    当前tick,
+  )) || 0));
+}
+
+function 取内置角色前置等级快照_V1(角色记录 = {}, 当前快照 = {}) {
+  const 当前快照tick = Number(当前快照?.tick);
+  if (!Number.isFinite(当前快照tick)) return null;
+  return (Array.isArray(角色记录?.快照) ? 角色记录.快照 : [])
+    .filter(快照 => Number.isFinite(Number(快照?.tick)) && Number(快照.tick) < 当前快照tick && 读取内置角色快照等级_V1(快照) !== null)
+    .sort((a, b) => Number(b.tick) - Number(a.tick))[0] || null;
+}
+
+function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快照 = {}, 当前tick = 0, 投影年龄 = 0) {
+  const 快照等级 = 读取内置角色快照等级_V1(快照);
+  if (投影年龄 < 6) return 0;
+  if (快照等级 === null) return 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick);
+  const 快照tick = Number(快照?.tick);
+  if (!Number.isFinite(快照tick) || Number(当前tick || 0) >= 快照tick) return Math.max(0, Math.floor(快照等级));
+  const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
+  if (前置快照 && Number(当前tick || 0) >= Number(前置快照.tick)) {
+    const 前置等级 = 读取内置角色快照等级_V1(前置快照);
+    const 比例 = Math.max(0, Math.min(1, (Number(当前tick || 0) - Number(前置快照.tick)) / Math.max(1, 快照tick - Number(前置快照.tick))));
+    return Math.max(0, Math.min(Math.floor(快照等级), Math.floor(Number(前置等级 || 0) + (快照等级 - Number(前置等级 || 0)) * 比例)));
+  }
+  const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
+  const 默认快照等级 = 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+  const 默认当前等级 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick);
+  const 倒推等级 = Math.floor(快照等级 - Math.max(0, 默认快照等级 - 默认当前等级));
+  return Math.max(0, Math.min(Math.floor(快照等级), 倒推等级));
+}
+
 function 裁剪内置角色魂环到等级_V1(角色 = {}) {
-  const 等级 = Math.max(1, Number(角色?.属性?.等级 || 1) || 1);
+  const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
   const 最大第一武魂魂环数 = Math.max(0, Math.min(9, Math.floor(等级 / 10)));
   Object.entries(角色 || {}).forEach(([武魂键, 武魂]) => {
     if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return;
@@ -1756,6 +2006,22 @@ function 裁剪内置角色魂环到等级_V1(角色 = {}) {
       }
     });
   });
+}
+
+function 清理内置角色未觉醒战斗能力_V1(角色 = {}) {
+  裁剪内置角色魂环到等级_V1(角色);
+  if (角色.自创魂技 && typeof 角色.自创魂技 === 'object') 角色.自创魂技 = {};
+  if (角色.武魂融合技 && typeof 角色.武魂融合技 === 'object') 角色.武魂融合技 = {};
+  if (角色.装备 && typeof 角色.装备 === 'object') {
+    清空内置角色斗铠_V1(角色);
+    if (角色.装备.机甲 && typeof 角色.装备.机甲 === 'object') {
+      角色.装备.机甲.等级 = '无';
+      角色.装备.机甲.名称 = '无';
+      角色.装备.机甲.状态 = '无';
+      角色.装备.机甲.装备状态 = '未装备';
+      角色.装备.机甲._属性加成 = { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
+    }
+  }
 }
 
 function 读取成长模板附近事件文本_V1(当前tick = 0) {
@@ -2066,31 +2332,19 @@ function 应用内置物品实例化_V1(数据根 = {}, 选项 = {}) {
   return { changed: 已写入.length > 0, changedNames: 已写入, names: 已写入 };
 }
 
-function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 = {}) {
+function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 = {}, 选项 = {}) {
   const 角色记录 = 读取内置角色记录_V1(角色名, 当前tick, 数据根);
-  const 快照 = 取内置角色最近快照_V1(角色记录, 当前tick);
+  const 快照 = 取内置角色指定节点快照_V1(角色记录, 选项.指定快照节点) || 取内置角色最近快照_V1(角色记录, 当前tick);
   if (!快照?.角色 || typeof 快照.角色 !== 'object') return null;
   const 角色 = cloneJsonValue(快照.角色, null);
   if (!角色 || typeof 角色 !== 'object') return null;
   if (!角色.属性 || typeof 角色.属性 !== 'object') 角色.属性 = {};
+  if (角色.装备?.斗铠 && typeof 角色.装备.斗铠 === 'object') 补齐内置角色完整斗铠部件_V1(角色.装备.斗铠);
   const 投影年龄 = 计算内置角色投影年龄_V1(快照, 当前tick);
   角色.属性.年龄 = Number(投影年龄.toFixed(1));
-  const 快照显式等级 = 快照?.角色?.属性 && Object.prototype.hasOwnProperty.call(快照.角色.属性, '等级')
-    ? Number(快照.角色.属性.等级)
-    : null;
-  if (!Number.isFinite(快照显式等级) && 投影年龄 > 6) {
-    角色.属性.等级 = 计算初始化修为等级(
-      角色.属性.天赋梯队 || '正常',
-      投影年龄,
-      角色.属性.底子波动 || 1,
-      角色.属性.生日 || '',
-      当前tick,
-    );
-    裁剪内置角色魂环到等级_V1(角色);
-  } else if (Number.isFinite(快照显式等级)) {
-    角色.属性.等级 = 快照显式等级;
-    裁剪内置角色魂环到等级_V1(角色);
-  }
+  角色.属性.等级 = 计算内置角色投影等级_V1(角色, 角色记录, 快照, 当前tick, 投影年龄);
+  if (投影年龄 < 6) 清理内置角色未觉醒战斗能力_V1(角色);
+  else 裁剪内置角色魂环到等级_V1(角色);
   应用内置角色提前出场投影_V1(角色, 角色记录, 快照, 当前tick);
   return 角色;
 }
@@ -2195,7 +2449,7 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
     if (!角色名 || 数据根.char[角色名]) return;
     const 节点列表 = Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [];
     if (!节点列表.includes(开场节点)) return;
-    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根);
+    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根, { 指定快照节点: 开场节点 });
     if (!角色) return;
     数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(角色);
     已写入.push(角色名);

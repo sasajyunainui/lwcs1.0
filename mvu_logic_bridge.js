@@ -523,6 +523,84 @@
       `;
   }
 
+  function 构建星图详情雷达图HTML(指标列表 = [], 选项 = {}) {
+    const 安全指标 = (Array.isArray(指标列表) ? 指标列表 : [])
+      .map(指标 => ({
+        标签: toText(指标 && 指标.标签, '指标'),
+        数值: Math.max(0, Math.min(100, toNumber(指标 && 指标.数值, 0))),
+        文本: toText(指标 && 指标.文本, ''),
+      }))
+      .slice(0, 5);
+    if (!安全指标.length) return '';
+    const 尺寸 = 220;
+    const 中心 = 110;
+    const 半径 = 64;
+    const 层数 = 4;
+    const 角步长 = (Math.PI * 2) / 安全指标.length;
+    const 取点 = (索引, 比例) => {
+      const 角度 = -Math.PI / 2 + 角步长 * 索引;
+      return {
+        x: 中心 + Math.cos(角度) * 半径 * 比例,
+        y: 中心 + Math.sin(角度) * 半径 * 比例,
+      };
+    };
+    let 网格 = '';
+    for (let 层 = 1; 层 <= 层数; 层++) {
+      const 比例 = 层 / 层数;
+      网格 += `<polygon class="location-radar-grid-line" points="${安全指标
+        .map((_, 索引) => {
+          const 点 = 取点(索引, 比例);
+          return `${点.x},${点.y}`;
+        })
+        .join(' ')}"></polygon>`;
+    }
+    const 轴线 = 安全指标
+      .map((_, 索引) => {
+        const 点 = 取点(索引, 1);
+        return `<line class="location-radar-axis-line" x1="${中心}" y1="${中心}" x2="${点.x}" y2="${点.y}"></line>`;
+      })
+      .join('');
+    const 形状点 = 安全指标
+      .map((指标, 索引) => {
+        const 点 = 取点(索引, Math.max(0.08, 指标.数值 / 100));
+        return `${点.x},${点.y}`;
+      })
+      .join(' ');
+    const 标签文本 = 安全指标
+      .map((指标, 索引) => {
+        const 点 = 取点(索引, 1.28);
+        let 对齐 = 'middle';
+        if (点.x < 中心 - 10) 对齐 = 'end';
+        else if (点.x > 中心 + 10) 对齐 = 'start';
+        return `<text x="${点.x}" y="${点.y}" text-anchor="${对齐}" dominant-baseline="middle" class="location-radar-label"><tspan>${htmlEscape(指标.标签)}</tspan><tspan dx="4">${htmlEscape(String(指标.数值))}</tspan></text>`;
+      })
+      .join('');
+    const 指标行 = 安全指标
+      .map(
+        指标 => `
+          <span>
+            <b>${htmlEscape(指标.标签)}</b>
+            <em>${htmlEscape(指标.文本 || String(指标.数值))}</em>
+          </span>
+        `,
+      )
+      .join('');
+    const 类名 = toText(选项 && 选项.类名, '');
+    return `
+      <div class="location-radar-compact ${escapeHtmlAttr(类名)}">
+        <div class="location-radar-canvas">
+          <svg class="location-radar-svg" viewBox="0 0 ${尺寸} ${尺寸}">
+            ${网格}
+            ${轴线}
+            <polygon class="location-radar-data-shape" points="${形状点}"></polygon>
+            ${标签文本}
+          </svg>
+        </div>
+        <div class="location-radar-metrics">${指标行}</div>
+      </div>
+    `;
+  }
+
   function 构建详情项值HTML(条目) {
     if (条目 && 条目.值Html) return 条目.值Html;
     const 路径 = normalizeEditorPath(条目 && (条目.path || 条目.路径));
@@ -1218,52 +1296,67 @@
       return {
         title: '详细档案',
         body: `
-            <div class="archive-modal-grid life-graph-grid">
-              <div class="archive-card life-growth-card">
-                <div class="archive-card-head"><div class="archive-card-title">成长信息</div></div>
-                <div class="identity-growth-grid">
-                  <div class="meta-item"><b>等级</b><span></span></div>
-                  <div class="meta-item"><b>精神境界</b><span></span></div>
-                  <div class="meta-item"><b>天赋梯队</b><span></span></div>
-                  <div class="meta-item"><b>系别</b><span></span></div>
+            <div class="archive-modal-grid dossier-shell dossier-shell--life">
+              <div class="archive-card dossier-card dossier-card--life-core">
+                <div class="archive-card-head"><div class="archive-card-title">核心成长</div></div>
+                <div class="dossier-columns dossier-columns--life-core">
+                  <section class="dossier-section">
+                    <div class="dossier-section-title">成长信息</div>
+                    <div class="dossier-row-grid dossier-row-grid--two dossier-growth-flow">
+                      <div class="dossier-row"><b>等级</b><span></span></div>
+                      <div class="dossier-row"><b>精神境界</b><span></span></div>
+                      <div class="dossier-row"><b>天赋梯队</b><span></span></div>
+                      <div class="dossier-row"><b>名望</b><span></span></div>
+                    </div>
+                  </section>
+                  <section class="dossier-section dossier-section--radar">
+                    <div class="dossier-section-title">战斗轮廓</div>
+                    <div class="battle-radar-wrap dossier-radar-wrap"></div>
+                  </section>
                 </div>
+                <section class="dossier-section">
+                  <div class="dossier-section-title">当前状态</div>
+                    <div class="dossier-status-chip-row">
+                      <span class="dossier-status-chip is-safe"><b>行动</b><em></em></span>
+                      <span class="dossier-status-chip is-safe"><b>伤势</b><em></em></span>
+                    </div>
+                    <div class="dossier-row-grid dossier-row-grid--two dossier-profile-flow">
+                      <div class="dossier-row"><b>魂核状态</b><span></span></div>
+                      <div class="dossier-row"><b>灵物吸收</b><span></span></div>
+                      <div class="dossier-row"><b>血脉状态</b><span></span></div>
+                      <div class="dossier-row dossier-row--wide"><b>受伤部位</b><span></span></div>
+                    </div>
+                </section>
               </div>
-              <div class="archive-card life-profile-card">
-                <div class="archive-card-head"><div class="archive-card-title">角色名片</div></div>
-                <div class="profile-snapshot life-profile-snapshot">
-                  <div class="identity-card">
-                    <h3>当前角色</h3>
-                    <div class="identity-panel">
-                      <div class="identity-panel-title">基础描述</div>
-                      <div class="identity-basic-grid">
-                        <div class="meta-item"><b>年龄 / 性别</b><span></span></div>
-                        <div class="meta-item"><b>性格</b><span></span></div>
-                        <div class="meta-item meta-item-wide"><b>名望</b><span></span></div>
-                      </div>
-                    </div>
-                    <div class="identity-panel identity-look-panel">
-                      <div class="identity-panel-title">外貌概览</div>
-                      <div class="identity-look-grid">
-                        <div class="meta-item"><b>发色</b><span></span></div>
-                        <div class="meta-item"><b>发型</b><span></span></div>
-                        <div class="meta-item"><b>瞳色</b><span></span></div>
-                        <div class="meta-item"><b>身高</b><span></span></div>
-                        <div class="meta-item"><b>体型</b><span></span></div>
-                        <div class="meta-item meta-item-wide"><b>长相描述</b><span></span></div>
-                        <div class="meta-item meta-item-wide"><b>特征</b><span></span></div>
-                      </div>
-                    </div>
+              <div class="archive-card dossier-card dossier-card--life-profile">
+                <div class="archive-card-head archive-card-head--profile">
+                  <div class="archive-card-title">角色档案</div>
+                </div>
+                <section class="dossier-section">
+                  <div class="dossier-section-title">基础描述</div>
+                  <div class="dossier-row-grid dossier-row-grid--two dossier-profile-flow">
+                    <div class="dossier-row"><b>年龄 / 性别</b><span></span></div>
+                    <div class="dossier-row"><b>性格</b><span></span></div>
                   </div>
-                  <div class="status-card">
-                    <h4 class="status-card-title">当前状态</h4>
-                    <div class="status-list">
-                      <div class="status-row"><b>行动状态</b><span></span></div>
-                      <div class="status-row"><b>伤势</b><span></span></div>
-                      <div class="status-row"><b>灵物吸收</b><span></span></div>
-                      <div class="status-row"><b>魂核状态</b><span></span></div>
-                      <div class="status-row"><b>血脉状态</b><span></span></div>
-                    </div>
+                </section>
+                <section class="dossier-section">
+                  <div class="dossier-section-title">外貌与着装</div>
+                  <div class="dossier-row-grid dossier-row-grid--two dossier-profile-flow">
+                    <div class="dossier-row"><b>发色</b><span></span></div>
+                    <div class="dossier-row"><b>发型</b><span></span></div>
+                    <div class="dossier-row"><b>瞳色</b><span></span></div>
+                    <div class="dossier-row"><b>身高</b><span></span></div>
+                    <div class="dossier-row dossier-row--wide"><b>体型</b><span></span></div>
+                    <div class="dossier-row dossier-row--wide"><b>长相描述</b><span></span></div>
+                    <div class="dossier-row dossier-row--wide"><b>特征</b><span></span></div>
                   </div>
+                </section>
+              </div>
+              <div class="archive-card dossier-card dossier-card--life-record full">
+                <div class="archive-card-head"><div class="archive-card-title">能力与成长记录</div></div>
+                <div class="dossier-columns dossier-columns--life-record">
+                  <section class="dossier-section"><div class="dossier-section-title">额外成长加成</div></section>
+                  <section class="dossier-section"><div class="dossier-section-title">功法</div></section>
                 </div>
               </div>
             </div>
@@ -1343,28 +1436,50 @@
       return {
         title: '人物关系',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">羁绊星轨图</div></div>
-                <div class="topology-board topology-board--detail">
-                  <svg class="topology-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <line class="topology-link cyan" x1="50" y1="50" x2="20" y2="25"></line>
-                    <line class="topology-link gold" x1="50" y1="50" x2="50" y2="18"></line>
-                    <line class="topology-link cyan" x1="50" y1="50" x2="82" y2="25"></line>
-                    <line class="topology-link alert" x1="50" y1="50" x2="25" y2="75"></line>
-                    <line class="topology-link cyan" x1="50" y1="50" x2="75" y2="75"></line>
-                  </svg>
-                  <div class="topology-node center" style="left:50%;top:50%"><b>当前角色</b><span>自我</span></div>
-                  <div class="topology-node interactive-ring" style="left:20%;top:25%"><b></b><span></span></div>
-                  <div class="topology-node interactive-ring gold" style="left:50%;top:18%"><b></b><span></span></div>
-                  <div class="topology-node interactive-ring" style="left:82%;top:25%"><b></b><span></span></div>
-                  <div class="topology-node interactive-ring warn hover-up" style="left:25%;top:75%"><b></b><span></span></div>
-                  <div class="topology-node interactive-ring hover-up" style="left:75%;top:75%"><b></b><span></span></div>
+            <div class="archive-modal-grid dossier-shell dossier-shell--relation">
+              <div class="archive-card dossier-card dossier-card--relation-overview relation-network-zone full">
+                <div class="archive-card-head relation-network-head">
+                  <div class="archive-card-title">关系拓扑</div>
+                  <div class="relation-network-tools">
+                    <label class="relation-search-shell">
+                      <span>检索目标</span>
+                      <select class="relation-target-search" disabled><option>同步中</option></select>
+                    </label>
+                  </div>
+                </div>
+                <div class="relation-topology-panel">
+                  <div class="relation-topology-viewport">
+                    <div class="relation-topology-canvas">
+                      <div class="topology-board relation-topology-board dossier-topology-board">
+                        <svg class="topology-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <line class="topology-link is-active" x1="50" y1="50" x2="20" y2="25"></line>
+                          <line class="topology-link is-muted" x1="50" y1="50" x2="50" y2="18"></line>
+                          <line class="topology-link is-muted" x1="50" y1="50" x2="82" y2="25"></line>
+                          <line class="topology-link is-muted" x1="50" y1="50" x2="25" y2="75"></line>
+                          <line class="topology-link is-muted" x1="50" y1="50" x2="75" y2="75"></line>
+                        </svg>
+                        <div class="topology-node center" style="left:50%;top:50%"><b>当前角色</b><span>自我</span></div>
+                        <div class="topology-node interactive-ring is-active" style="left:20%;top:25%"><b></b><span></span></div>
+                        <div class="topology-node interactive-ring" style="left:50%;top:18%"><b></b><span></span></div>
+                        <div class="topology-node interactive-ring" style="left:82%;top:25%"><b></b><span></span></div>
+                        <div class="topology-node interactive-ring hover-up" style="left:25%;top:75%"><b></b><span></span></div>
+                        <div class="topology-node interactive-ring hover-up" style="left:75%;top:75%"><b></b><span></span></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">核心推进线索</div></div>
-                <div class="intel-layout"><div class="intel-card"><b></b><span></span></div><div class="intel-card"><b></b><span></span></div></div>
+              <div class="archive-card dossier-card dossier-card--relation-focus relation-dossier-zone full">
+                <div class="archive-card-head relation-dossier-head">
+                  <div class="relation-dossier-title">
+                    <div class="archive-card-title">目标卷宗</div>
+                    <span>同步中</span>
+                  </div>
+                </div>
+                <div class="relation-dossier-body">
+                  <section class="dossier-section relation-dossier-main"><div class="dossier-section-title">关系摘要</div></section>
+                  <section class="dossier-section relation-dossier-clue"><div class="dossier-section-title">推进线索</div></section>
+                </div>
               </div>
             </div>
           `,
@@ -6970,11 +7085,11 @@
     return Array.from(角色名集合);
   }
 
-  function 预入库JsonPatch目标内置角色_桥接(statData = {}, patches = []) {
+  function 预入库角色名内置角色_桥接(statData = {}, 角色名列表 = []) {
     const 接口 = 获取内置角色实例化接口_桥接();
     if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
     const 内置角色候选 = 读取内置角色候选表_桥接(接口);
-    const 命中角色 = Array.from(new Set(收集JsonPatch目标角色名_桥接(patches)
+    const 命中角色 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [])
       .filter(角色名 => Object.prototype.hasOwnProperty.call(内置角色候选, 角色名))
       .map(角色名 => 内置角色候选[角色名] || 角色名)));
     if (!命中角色.length) return [];
@@ -6982,10 +7097,14 @@
     return Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
   }
 
-  async function 预恢复JsonPatch目标归档角色_桥接(statData = {}, patches = []) {
+  function 预入库JsonPatch目标内置角色_桥接(statData = {}, patches = []) {
+    return 预入库角色名内置角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
+  }
+
+  async function 预恢复角色名归档角色_桥接(statData = {}, 角色名列表 = []) {
     if (!statData || typeof statData !== 'object') return [];
     if (!statData.char || typeof statData.char !== 'object') statData.char = {};
-    const 待恢复名称 = 收集JsonPatch目标角色名_桥接(patches)
+    const 待恢复名称 = (Array.isArray(角色名列表) ? 角色名列表 : [])
       .filter(角色名 => !statData.char[角色名] || 是桥接角色空壳_桥接(statData.char[角色名]));
     if (!待恢复名称.length) return [];
     let manifest = null;
@@ -7017,6 +7136,10 @@
       已恢复.push(角色名);
     }
     return 已恢复;
+  }
+
+  async function 预恢复JsonPatch目标归档角色_桥接(statData = {}, patches = []) {
+    return await 预恢复角色名归档角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
   }
 
   function 任务奖励状态已终结(状态) {
@@ -8421,6 +8544,195 @@
       });
     });
     return 候选表;
+  }
+
+  function 读取内置角色库_桥接(接口 = null) {
+    const 候选库 = [];
+    try { if (接口 && typeof 接口.读取内置角色库 === 'function') 候选库.push(接口.读取内置角色库()); } catch (错误) {}
+    try { 候选库.push(window.__LWCS_内置角色库__); } catch (错误) {}
+    try { if (window.parent && window.parent !== window) 候选库.push(window.parent.__LWCS_内置角色库__); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选库.push(window.top.__LWCS_内置角色库__); } catch (错误) {}
+    return 候选库.find(候选 => 候选 && 候选.角色 && typeof 候选.角色 === 'object') || null;
+  }
+
+  function 解析内置角色规范名_桥接(角色名 = '', 角色库 = null, 当前tick = 0, 数据根 = {}) {
+    const 文本 = toText(角色名, '').trim();
+    const 角色表 = 角色库 && 角色库.角色 && typeof 角色库.角色 === 'object' ? 角色库.角色 : {};
+    if (!文本 || !角色表 || typeof 角色表 !== 'object') return '';
+    if (文本 === '古月娜' && Number(当前tick || 0) < 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
+    if (文本 === '古月' && Number(当前tick || 0) >= 643159 && 角色表.古月娜) return '古月娜';
+    if (角色表[文本]) return 文本;
+    for (const [候选名, 角色记录] of Object.entries(角色表)) {
+      const 别名列表 = Array.isArray(角色记录 && 角色记录.别名) ? 角色记录.别名 : [];
+      if (别名列表.map(别名 => toText(别名, '').trim()).includes(文本)) {
+        if (候选名 === '古月娜' && Number(当前tick || 0) < 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
+        return 候选名;
+      }
+    }
+    return '';
+  }
+
+  function 取内置角色最近快照_桥接(角色记录 = {}, 当前tick = 0) {
+    const 快照列表 = Array.isArray(角色记录 && 角色记录.快照) ? 角色记录.快照 : [];
+    if (!快照列表.length) return null;
+    const tick = Number(当前tick || 0);
+    const 有tick快照 = 快照列表.filter(快照 => Number.isFinite(Number(快照 && 快照.tick)));
+    if (!有tick快照.length) return 快照列表[0] || null;
+    return 有tick快照
+      .filter(快照 => Number(快照.tick) <= tick)
+      .sort((a, b) => Number(b.tick) - Number(a.tick))[0] ||
+      有tick快照.sort((a, b) => Number(a.tick) - Number(b.tick))[0] ||
+      快照列表[0] ||
+      null;
+  }
+
+  function 计算内置角色投影年龄_桥接(角色库 = {}, 快照 = {}, 当前tick = 0) {
+    const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 0) || 0);
+    if (快照 && 快照.固定年龄投影 === true) return 快照年龄;
+    const 快照tick = Number(快照 && 快照.tick);
+    if (!Number.isFinite(快照tick)) return 快照年龄;
+    const 每年tick = Math.max(1, Number(角色库 && 角色库.每年tick ? 角色库.每年tick : 51840));
+    return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
+  }
+
+  function 限长角色锚点文本_桥接(值, 上限 = 2400) {
+    const 文本 = typeof 值 === 'string' ? 值 : (() => {
+      try { return JSON.stringify(值, null, 2); } catch (错误) { return toText(值, ''); }
+    })();
+    const 安全上限 = Math.max(120, Number(上限) || 2400);
+    return 文本.length > 安全上限 ? `${文本.slice(0, 安全上限)}\n...已截断...` : 文本;
+  }
+
+  function 构建角色锚点当前状态摘要_桥接(角色数据 = {}) {
+    const 取武魂浅层状态 = (武魂数据 = {}) => ({
+      表象名称: deepGet(武魂数据, '表象名称', ''),
+      描述: deepGet(武魂数据, '描述', ''),
+      系别: deepGet(武魂数据, '系别', ''),
+      属性体系: deepGet(武魂数据, '属性体系', ''),
+      可调用元素: deepGet(武魂数据, '可调用元素', []),
+    });
+    return {
+      身份: deepGet(角色数据, '社交.主身份', ''),
+      阵营: deepGet(角色数据, '社交.势力', {}),
+      年龄投影: deepGet(角色数据, '属性.年龄', ''),
+      武魂状态: {
+        第1武魂: 取武魂浅层状态(deepGet(角色数据, '第1武魂', {})),
+        第2武魂: 取武魂浅层状态(deepGet(角色数据, '第2武魂', {})),
+      },
+    };
+  }
+
+  function 构建角色锚点校对调用消息_桥接(角色名 = '', 输入 = {}) {
+    const 用户内容 = [
+      `[角色] ${角色名}`,
+      `[当前tick] ${输入.当前tick}`,
+      '',
+      '[CharacterLibrary 锚点快照]',
+      限长角色锚点文本_桥接(输入.锚点快照, 4200),
+      '',
+      '[当前角色精简状态]',
+      限长角色锚点文本_桥接(输入.当前角色状态, 3000),
+      '',
+      '[相关偏差表召回]',
+      String(输入.偏差账本召回 || '无相关偏差记录。').trim() || '无相关偏差记录。',
+    ].join('\n');
+    return [
+      {
+        role: 'system',
+        content: [
+          '你是 LWCS 角色锚点校对器。',
+          '你的任务是根据 CharacterLibrary 锚点快照、当前角色状态和本档偏差账本，输出一个受限 JSONPatch 数组。',
+          '只允许校对身份、阵营、年龄投影、武魂状态。禁止修改背包、任务、位置、当前行动、伤势、死亡、临时状态、财富、关系、系统播报、world、sys、org。',
+          '禁止直接用 CharacterLibrary 覆盖整名角色；只能输出必要的最小 patch。',
+          '若当前偏差账本显示世界线已经确认偏移，应尊重本档事实，不要强行回滚。',
+          '只输出 <JSONPatch>[...]</JSONPatch>，不要输出解释。',
+        ].join('\n'),
+      },
+      { role: 'user', content: 用户内容 },
+    ];
+  }
+
+  function 解析角色锚点JSONPatch文本_桥接(文本输入 = '') {
+    const 文本 = String(文本输入 || '').trim();
+    const 标签匹配 = 文本.match(/<JSONPatch[^>]*>([\s\S]*?)<\/JSONPatch>/i);
+    const 候选文本 = 标签匹配 ? 标签匹配[1] : 文本.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+    try {
+      const parsed = JSON.parse(候选文本);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (错误) {
+      const 数组匹配 = 候选文本.match(/\[[\s\S]*\]/);
+      if (!数组匹配) return [];
+      try {
+        const parsed = JSON.parse(数组匹配[0]);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (内层错误) {
+        return [];
+      }
+    }
+  }
+
+  function 角色锚点补丁路径允许_桥接(路径输入 = [], 角色名 = '') {
+    const 路径 = normalizeEditorPath(路径输入).map(片段 => (typeof 片段 === 'number' ? 片段 : String(片段)));
+    const 规范角色名 = toText(角色名, '').trim();
+    if (路径[0] !== 'char' || 路径[1] !== 规范角色名) return false;
+    const 局部 = 路径.slice(2);
+    if (!局部.length) return false;
+    const 一级 = 局部[0];
+    const 二级 = 局部[1];
+    if (局部.length !== 2) return false;
+    if (一级 === '社交' && (二级 === '主身份' || 二级 === '势力')) return true;
+    if (一级 === '属性' && 二级 === '年龄') return true;
+    if (/^第[12]武魂$/.test(一级) && ['表象名称', '描述', '系别', '属性体系', '可调用元素'].includes(二级)) return true;
+    return false;
+  }
+
+  function 过滤角色锚点校对补丁_桥接(补丁列表 = [], 角色名 = '') {
+    return (Array.isArray(补丁列表) ? 补丁列表 : [])
+      .filter(补丁 => 补丁 && ['add', 'replace'].includes(String(补丁.op || '').trim()))
+      .filter(补丁 => 角色锚点补丁路径允许_桥接(decodeJsonPointerPath(补丁.path), 角色名))
+      .map(补丁 => cloneJsonValue(补丁, 补丁));
+  }
+
+  async function 执行角色锚点校对_桥接(角色名 = '', 选项 = {}) {
+    const 数据库接口 = 获取AI维护数据库API();
+    if (!数据库接口) throw new Error('数据库 AI 接口不可用。');
+    const { mvuData: 最新MVU数据 } = await readLatestMvuDataByEditor();
+    const 变量数据 = 最新MVU数据 && 最新MVU数据.stat_data ? cloneJsonValue(最新MVU数据.stat_data, {}) : {};
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(变量数据, 'world.时间.tick', 0), 0)));
+    const 接口 = 获取内置角色实例化接口_桥接();
+    const 角色库 = 读取内置角色库_桥接(接口);
+    if (!角色库) throw new Error('内置角色库不可用。');
+    const 规范角色名 = 解析内置角色规范名_桥接(角色名, 角色库, 当前tick, 变量数据);
+    if (!规范角色名) throw new Error('未找到可校对的内置角色。');
+    const 角色记录 = 角色库.角色[规范角色名];
+    const 锚点快照 = 取内置角色最近快照_桥接(角色记录, 当前tick);
+    if (!锚点快照) throw new Error('未找到角色锚点快照。');
+    if (!变量数据.char || typeof 变量数据.char !== 'object') 变量数据.char = {};
+    if (!变量数据.char[规范角色名]) 预入库角色名内置角色_桥接(变量数据, [规范角色名]);
+    await 预恢复角色名归档角色_桥接(变量数据, [规范角色名]);
+    const 当前角色 = 变量数据.char && 变量数据.char[规范角色名] ? 变量数据.char[规范角色名] : {};
+    const 输入 = {
+      当前tick,
+      锚点快照: {
+        tick: 锚点快照.tick ?? null,
+        年龄投影: 计算内置角色投影年龄_桥接(角色库, 锚点快照, 当前tick),
+        摘要: 角色记录.摘要 || '',
+        快照: 锚点快照,
+      },
+      当前角色状态: 构建角色锚点当前状态摘要_桥接(当前角色),
+      偏差账本召回: 选项.偏差账本召回 || 选项.deviationLedgerRecall || '无相关偏差记录。',
+    };
+    const 对话消息 = 构建角色锚点校对调用消息_桥接(规范角色名, 输入);
+    const 预设名 = toText(选项.presetName ?? 选项.apiPreset ?? 读取AI维护有效API预设(), '').trim();
+    const AI文本 = await 数据库接口.callAI(对话消息, { presetName: 预设名, max_tokens: Math.max(600, Math.min(2200, Number(选项.max_tokens || 1200))) });
+    const 原始补丁 = 解析角色锚点JSONPatch文本_桥接(AI文本);
+    const 过滤补丁 = 过滤角色锚点校对补丁_桥接(原始补丁, 规范角色名);
+    if (!过滤补丁.length) {
+      return { ok: true, 角色名: 规范角色名, applied: 0, patches: [], rawPatches: 原始补丁 };
+    }
+    await applyJsonPatchOpsByEditor(过滤补丁, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    return { ok: true, 角色名: 规范角色名, applied: 过滤补丁.length, patches: 过滤补丁, rawPatches: 原始补丁 };
   }
 
   function 获取内置物品实例化接口_桥接() {
@@ -9957,10 +10269,52 @@
     );
   }
 
-  function 准备AI维护写回数据(oldMvuData, parsedMvuData) {
+  function 收集AI维护目标角色名_桥接(selectionItems = []) {
+    const 角色名集合 = new Set();
+    (Array.isArray(selectionItems) ? selectionItems : []).forEach(item => {
+      const 路径 = 规范化AI维护边界路径(item && item.path);
+      if (路径[0] !== 'char' || !路径[1]) return;
+      const 角色名 = toText(路径[1], '').trim();
+      if (角色名) 角色名集合.add(角色名);
+    });
+    return Array.from(角色名集合);
+  }
+
+  function 合并AI维护角色实例底稿_桥接(底稿值, 更新值) {
+    if (!isPlainObjectValue(底稿值) || !isPlainObjectValue(更新值)) return cloneJsonValue(更新值, 更新值);
+    const 结果 = cloneJsonValue(底稿值, {});
+    safeEntries(更新值).forEach(([键, 值]) => {
+      结果[键] = isPlainObjectValue(结果[键]) && isPlainObjectValue(值)
+        ? 合并AI维护角色实例底稿_桥接(结果[键], 值)
+        : cloneJsonValue(值, 值);
+    });
+    return 结果;
+  }
+
+  async function 准备AI维护基准数据_桥接(mvuData = {}, selectionItems = []) {
+    const 基准MVU数据 = cloneJsonValue(mvuData, {});
+    const 基准变量数据 = cloneJsonValue(基准MVU数据.stat_data, {});
+    const 目标角色 = 收集AI维护目标角色名_桥接(selectionItems);
+    if (目标角色.length) {
+      预入库角色名内置角色_桥接(基准变量数据, 目标角色);
+      await 预恢复角色名归档角色_桥接(基准变量数据, 目标角色);
+    }
+    基准MVU数据.stat_data = 基准变量数据;
+    return 基准MVU数据;
+  }
+
+  function 准备AI维护写回数据(oldMvuData, parsedMvuData, selectionItems = []) {
     const parsedEnvelope = normalizeMvuDataEnvelopeForEditor(parsedMvuData);
     const nextMvuData = cloneJsonValue(oldMvuData, {});
     const nextStatData = buildSafeStatDataForEditorWrite(parsedEnvelope.stat_data, oldMvuData.stat_data);
+    const 目标角色 = 收集AI维护目标角色名_桥接(selectionItems);
+    目标角色.forEach(角色名 => {
+      const 底稿角色 = oldMvuData?.stat_data?.char?.[角色名];
+      const 更新角色 = nextStatData?.char?.[角色名];
+      if (isPlainObjectValue(底稿角色) && isPlainObjectValue(更新角色)) {
+        nextStatData.char[角色名] = 合并AI维护角色实例底稿_桥接(底稿角色, 更新角色);
+      }
+    });
     delete nextStatData.display_all;
     delete nextStatData.display_chars;
     nextMvuData.stat_data = nextStatData;
@@ -10025,14 +10379,15 @@
     AI维护_状态.busy = true;
     if (bar) bar.classList.add('is-busy');
     try {
-      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const { host, mvuData: 原始MVU数据, messageId } = await readLatestMvuDataByEditor();
+      const mvuData = await 准备AI维护基准数据_桥接(原始MVU数据, selectionItems);
       const messages = 构建AI维护调用消息(selectionItems, mvuData, mode, extra);
       const presetName = 读取AI维护有效API预设();
       const aiText = await api.callAI(messages, { presetName, max_tokens: 2200 });
       if (!aiText || typeof aiText !== 'string') throw new Error('AI 没有返回可解析内容。');
       const 修正文本 = 预处理桥接AIJsonPatch文本(aiText, mvuData, { 必须启用兜底: true });
       const parsed = await Promise.resolve(parseHost.parseMessage(修正文本, mvuData));
-      const nextMvuData = 准备AI维护写回数据(mvuData, parsed);
+      const nextMvuData = 准备AI维护写回数据(mvuData, parsed, selectionItems);
       const check = 校验AI维护写回边界(mvuData, nextMvuData, selectionItems);
       if (!check.ok) throw new Error(check.reason || '变量改动未通过边界检查。');
       await Promise.resolve(host.replaceMvuData(nextMvuData, { type: 'message', message_id: messageId }));
@@ -32385,6 +32740,8 @@
       );
       const worldTimeText = getSnapshotWorldTimeText(snapshot);
       const actionText = toText(status.行动, '日常');
+      const 伤势文本 = getDisplayWoundLabel(stat);
+      const 伤势状态类 = ['无', '无伤'].includes(伤势文本) ? 'is-safe' : 'is-warn';
       const createAbilityPreview = activeCharKey
         ? buildSkillDesignerPreviewKey({
             path: [
@@ -32504,20 +32861,21 @@
                 </div>
                 <section class="dossier-section">
                   <div class="dossier-section-title">当前状态</div>
+                  <div class="dossier-status-chip-row">
+                    <span class="dossier-status-chip is-safe"><b>行动</b><em>${
+                      activeCharKey
+                        ? makeInlineEditableValue(actionText, {
+                            path: ['char', activeCharKey, '状态', '行动'],
+                            kind: 'enum_select',
+                            rawValue: actionText,
+                            editorMeta: { options: getStatusActionEditorOptions(actionText) },
+                          })
+                        : htmlEscape(actionText)
+                    }</em></span>
+                    <span class="dossier-status-chip ${伤势状态类}"><b>伤势</b><em>${htmlEscape(伤势文本)}</em></span>
+                  </div>
                   ${makeDossierRows(
                     [
-                      {
-                        label: '行动状态',
-                        value: activeCharKey
-                          ? makeInlineEditableValue(actionText, {
-                              path: ['char', activeCharKey, '状态', '行动'],
-                              kind: 'enum_select',
-                              rawValue: actionText,
-                              editorMeta: { options: getStatusActionEditorOptions(actionText) },
-                            })
-                          : htmlEscape(actionText),
-                      },
-                      { label: '伤势', value: htmlEscape(getDisplayWoundLabel(stat)) },
                       {
                         label: '魂核状态',
                         value: activeCharKey
@@ -32578,10 +32936,6 @@
               <div class="archive-card dossier-card dossier-card--life-profile">
                 <div class="archive-card-head archive-card-head--profile">
                   <div class="archive-card-title">角色档案</div>
-                  <div class="dossier-profile-strip" aria-label="角色当前状态摘要" title="${escapeHtmlAttr(`位置：${currentLocText} / 时间：${worldTimeText}`)}">
-                    <span class="dossier-profile-chip"><b>行动</b><em>${htmlEscape(actionText)}</em></span>
-                    <span class="dossier-profile-chip"><b>伤势</b><em>${htmlEscape(getDisplayWoundLabel(stat))}</em></span>
-                  </div>
                 </div>
                 <section class="dossier-section">
                   <div class="dossier-section-title">基础描述</div>
@@ -32646,6 +33000,7 @@
                           kind: 'string',
                           rawValue: deepGet(snapshot, 'activeChar.外貌.体型', snapshot.appearanceMeta.build),
                         }),
+                        className: 'dossier-row--wide',
                       },
                       {
                         label: '长相描述',
@@ -32672,6 +33027,7 @@
                           kind: 'string',
                           rawValue: 穿搭数据.上装,
                         }),
+                        className: 'dossier-row--wide',
                       },
                       {
                         label: '下装',
@@ -32680,6 +33036,7 @@
                           kind: 'string',
                           rawValue: 穿搭数据.下装,
                         }),
+                        className: 'dossier-row--wide',
                       },
                       {
                         label: '鞋子',
@@ -32688,6 +33045,7 @@
                           kind: 'string',
                           rawValue: 穿搭数据.鞋子,
                         }),
+                        className: 'dossier-row--wide',
                       },
                       {
                         label: '整体描述',
@@ -32856,32 +33214,98 @@
     if (previewKey === '人物关系详细页') {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
-      const relationPositions = [
-        { left: 20, top: 25, className: 'hover-right' },
-        { left: 50, top: 18, className: 'gold' },
-        { left: 82, top: 25, className: 'hover-left' },
-        { left: 25, top: 75, className: 'warn hover-up hover-right' },
-        { left: 75, top: 75, className: 'hover-up hover-left' },
-      ];
       const currentLocFull = toText(
         deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc || '未知地点'),
         snapshot.currentLoc || '未知地点',
       );
-      const relationNodes = snapshot.relations.slice(0, 5);
-      const relationLinks = relationPositions
-        .slice(0, relationNodes.length)
-        .map((pos, index) => {
-          const lineClass = index === 1 ? 'gold' : index === 3 ? 'alert' : 'cyan';
-          return `<line class="topology-link ${lineClass}" x1="50" y1="50" x2="${pos.left}" y2="${pos.top}"></line>`;
+      const relationFocusTargets = Array.isArray(deepGet(snapshot, '关系分析.重点对象', []))
+        ? deepGet(snapshot, '关系分析.重点对象', [])
+        : [];
+      const sameLocationTargets = Array.isArray(deepGet(snapshot, '关系分析.同地对象', []))
+        ? deepGet(snapshot, '关系分析.同地对象', [])
+        : [];
+      const trustTargets = Array.isArray(deepGet(snapshot, '关系分析.信任对象', []))
+        ? deepGet(snapshot, '关系分析.信任对象', [])
+        : [];
+      const 读取关系路线类 = (关系数据 = {}) => {
+        const 路线文本 = toText(关系数据 && 关系数据['关系路线'], '');
+        const 关系文本 = toText(关系数据 && 关系数据['关系'], '');
+        const 合并文本 = `${路线文本}${关系文本}`;
+        if (/敌对|死敌|宿敌|仇敌|危险|厌恶/.test(合并文本)) return 'relation-route-hostile';
+        if (/恋人|暧昧|伴侣/.test(合并文本)) return 'relation-route-romance';
+        if (/朋友|友善|亲密|信任/.test(合并文本)) return 'relation-route-friendly';
+        return 'relation-route-neutral';
+      };
+      const 构建关系数据卡 = (标签, 值HTML, 附加类 = '') => `
+        <div class="relation-dossier-stat ${附加类}">
+          <b>${htmlEscape(标签)}</b>
+          <span>${值HTML}</span>
+        </div>
+      `;
+      const relationFocusStateKey = `${previewKey}::relation-focus`;
+      const 默认重点对象名 = toText(
+        deepGet(relationFocusTargets, '0.对象', deepGet(relationFocusTargets, '0.target', '')),
+        '',
+      );
+      let relationDetailName = toText(
+        modalFocusState[relationFocusStateKey],
+        toText(deepGet(snapshot, '关系分析.关注对象', 默认重点对象名), 默认重点对象名),
+      );
+      if (!snapshot.relations.some(([entryName]) => entryName === relationDetailName))
+        relationDetailName = snapshot.relations[0] ? snapshot.relations[0][0] : '';
+      if (relationDetailName) modalFocusState[relationFocusStateKey] = relationDetailName;
+      else delete modalFocusState[relationFocusStateKey];
+      const 拓扑最大对象数 = 16;
+      const 拓扑位置列表 = [
+        { left: 50, top: 13, className: 'hover-left' },
+        { left: 68, top: 17, className: 'hover-left' },
+        { left: 82, top: 32, className: 'hover-left' },
+        { left: 84, top: 54, className: 'hover-left' },
+        { left: 70, top: 75, className: 'hover-up hover-left' },
+        { left: 50, top: 86, className: 'hover-up' },
+        { left: 30, top: 75, className: 'hover-up hover-right' },
+        { left: 16, top: 54, className: 'hover-right' },
+        { left: 18, top: 32, className: 'hover-right' },
+        { left: 32, top: 17, className: 'hover-right' },
+        { left: 61, top: 31, className: 'hover-left' },
+        { left: 68, top: 50, className: 'hover-left' },
+        { left: 59, top: 68, className: 'hover-up hover-left' },
+        { left: 41, top: 68, className: 'hover-up hover-right' },
+        { left: 32, top: 50, className: 'hover-right' },
+        { left: 39, top: 31, className: 'hover-right' },
+      ];
+      const 关系条目表 = new Map(snapshot.relations.map(([name, rel]) => [name, rel]));
+      const 拓扑候选名称 = [];
+      const 推入拓扑候选 = 名称输入 => {
+        const 名称 = toText(名称输入, '').trim();
+        if (!名称 || !关系条目表.has(名称) || 拓扑候选名称.includes(名称)) return;
+        拓扑候选名称.push(名称);
+      };
+      推入拓扑候选(relationDetailName);
+      relationFocusTargets.forEach(item => 推入拓扑候选(toText(item && (item.对象 || item.target), '')));
+      sameLocationTargets.forEach(推入拓扑候选);
+      trustTargets.forEach(推入拓扑候选);
+      snapshot.relations.forEach(([name]) => 推入拓扑候选(name));
+      const relationNodes = 拓扑候选名称
+        .slice(0, 拓扑最大对象数)
+        .map(name => [name, 关系条目表.get(name)])
+        .filter(([, rel]) => rel && typeof rel === 'object');
+      const relationLinks = relationNodes
+        .map(([name], index) => {
+          const pos = 拓扑位置列表[index] || 拓扑位置列表[index % 拓扑位置列表.length];
+          const 连线状态类 = name === relationDetailName ? 'is-active cyan' : 'is-muted';
+          return `<line class="topology-link ${连线状态类}" x1="50" y1="50" x2="${pos.left}" y2="${pos.top}"></line>`;
         })
         .join('');
       const relationHtml = relationNodes
         .map(([name, rel], index) => {
-          const pos = relationPositions[index];
+          const pos = 拓扑位置列表[index] || 拓扑位置列表[index % 拓扑位置列表.length];
           const 相关度视图 = 构建关系相关度视图数据_桥接(rel);
           const 相关度文本 = `相关度 ${相关度视图.总分值} / 基础 ${相关度视图.基础显示值}`;
+          const 路线类 = 读取关系路线类(rel);
+          const 选中类 = name === relationDetailName ? 'is-active' : '';
           return `
-            <div class="topology-node interactive-ring ${pos.className}" data-relation-focus="${escapeHtmlAttr(name)}" style="left:${pos.left}%;top:${pos.top}%">
+            <button type="button" class="topology-node interactive-ring relation-node--person ${路线类} ${pos.className} ${选中类}" data-relation-focus="${escapeHtmlAttr(name)}" aria-pressed="${name === relationDetailName ? 'true' : 'false'}" style="left:${pos.left}%;top:${pos.top}%">
               <b>${htmlEscape(name)}</b><span>${htmlEscape(toText(rel && rel['关系'], '陌生'))}</span>
               <div class="relation-hover-card">
                 <span class="relation-hover-title">${htmlEscape(name)}</span>
@@ -32908,31 +33332,18 @@
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           `;
         })
         .join('');
-
-      const relationFocusTargets = Array.isArray(deepGet(snapshot, '关系分析.重点对象', []))
-        ? deepGet(snapshot, '关系分析.重点对象', [])
-        : [];
-      const relationDirectoryPage = paginateModalItems(snapshot.relations, previewKey, 'relation-directory', 6);
-      const relationFocusStateKey = `${previewKey}::relation-focus`;
-      let relationDetailName = toText(
-        modalFocusState[relationFocusStateKey],
-        toText(
-          deepGet(
-            snapshot,
-            '关系分析.关注对象',
-            deepGet(relationFocusTargets, '0.target', relationNodes[0] ? relationNodes[0][0] : ''),
-          ),
-          '',
-        ),
-      );
-      if (!snapshot.relations.some(([entryName]) => entryName === relationDetailName))
-        relationDetailName = snapshot.relations[0] ? snapshot.relations[0][0] : '';
-      if (relationDetailName) modalFocusState[relationFocusStateKey] = relationDetailName;
-      else delete modalFocusState[relationFocusStateKey];
+      const 关系检索选项HTML = snapshot.relations.length
+        ? snapshot.relations
+            .map(([name, rel]) => {
+              const 选中属性 = name === relationDetailName ? ' selected' : '';
+              return `<option value="${escapeHtmlAttr(name)}"${选中属性}>${htmlEscape(`${name} / ${toText(rel && rel['关系'], '陌生')} / 好感 ${toNumber(rel && rel['好感度'], 0)}`)}</option>`;
+            })
+            .join('')
+        : '<option value="">暂无对象</option>';
 
       const relationDetailEntry = relationDetailName
         ? snapshot.relations.find(([entryName]) => entryName === relationDetailName)
@@ -32971,6 +33382,25 @@
             })
         : htmlEscape(武魂相关度基础显示值);
       const 武魂相关度HTML = `总 ${htmlEscape(String(武魂相关度总分值))} / 基础 ${武魂相关度基础值HTML}`;
+      const 好感度值HTML = relationDetailPath.length
+        ? makeInlineEditableValue(String(relationFavor), {
+            path: [...relationDetailPath, '好感度'],
+            kind: 'number',
+            rawValue: relationFavor,
+            editorMeta: { integer: true, hint: '整数 · 可正可负 · 不设硬上下限' },
+          })
+        : htmlEscape(String(relationFavor));
+      const 好感度百分比 = Math.max(0, Math.min(100, relationFavor));
+      const 好感度等级类 = relationFavor >= 80 ? 'is-high' : relationFavor >= 50 ? 'is-mid' : relationFavor < 0 ? 'is-low' : 'is-base';
+      const 好感度条HTML = `
+        <div class="relation-favor-meter ${好感度等级类}">
+          <div class="relation-favor-head">
+            <b>好感度</b>
+            <span>${好感度值HTML} / 100</span>
+          </div>
+          <div class="relation-favor-track" aria-hidden="true"><i style="width:${好感度百分比}%"></i></div>
+        </div>
+      `;
       const routeSwitchable = !!deepGet(relationDetail, '_可切线', false);
       const isContactable = !!relationTargetChar && deepGet(relationTargetChar, '状态.存活', true) !== false;
       const isSameLocation = !!relationTargetChar && isLocationCompatible(currentLocFull, relationTargetLoc);
@@ -32994,62 +33424,27 @@
             .join('')
         : '<option value="">暂无可送物品</option>';
 
-      const relationDirectoryHtml = relationDirectoryPage.items.length
-        ? relationDirectoryPage.items
-            .map(([name, rel]) => {
-              const resolved = resolveSnapshotCharacter(snapshot, name);
-              const targetChar = resolved.char || null;
-              const targetLoc = toText(deepGet(targetChar, '状态.位置', ''), '');
-              const alive = !!targetChar && deepGet(targetChar, '状态.存活', true) !== false;
-              const sameLocation = !!targetChar && isLocationCompatible(currentLocFull, targetLoc);
-              const favor = toNumber(rel && rel['好感度'], 0);
-              const stage = toText(rel && rel['关系'], '陌生');
-              const route = toText(rel && rel['关系路线'], '朋友线');
-              const availability = sameLocation ? '在场可接触' : alive ? '远端存活' : '不可接触';
-              const availabilityClass = sameLocation ? 'live' : alive ? 'warn' : '';
-              const progressNote = toText(rel && rel['_推进提示'], '暂无推进提示');
-              return `
-                <button type="button" class="dossier-list-row dossier-list-row--button relation-directory-item ${name === relationDetailName ? 'active' : ''}" data-relation-focus="${escapeHtmlAttr(name)}">
-                  <b>${htmlEscape(name)}</b>
-                  <span>
-                    <strong>${htmlEscape(toText(rel && rel['对方身份'], '未知身份'))}</strong>
-                    <em>${htmlEscape(`${stage} / ${route} / 好感 ${favor}`)}</em>
-                    <small class="${availabilityClass}">${htmlEscape(`${availability} ｜ ${progressNote}`)}</small>
-                  </span>
-                </button>
-              `;
-            })
-            .join('')
-        : '<div class="dossier-empty-note">关系网络尚未展开。</div>';
-
       const relationFocusHtml =
         (relationFocusTargets.length
-          ? makeDossierList(
-              relationFocusTargets.slice(0, 1).map(item => {
-                const targetName = toText(item && item.对象, '未知对象');
-                const detailEntry = snapshot.relations.find(([entryName]) => entryName === targetName);
-                const detail = detailEntry && detailEntry[1];
-                return {
-                  title: `${targetName} / ${toText(item && item.关系, '陌生')}`,
-                  desc: `${toText(item && item.原因, '暂无推进建议')} ｜ 建议：${toText(item && item.建议行动, '继续观察')} ｜ 下一阶段：${toText(detail && detail['_下一阶段'], '无')} / ${toNumber(detail && detail['_下一阶段阈值'], 0)}`,
-                };
-              }),
-              'dossier-list--compact',
-            )
-          : makeDossierList(
-              snapshot.relations.slice(0, 1).map(([name, rel]) => ({
-                title: `${name} / ${toText(rel && rel['关系'], '陌生')}`,
-                desc: `路线：${toText(rel && rel['关系路线'], '朋友线')} / 好感：${toText(rel && rel['好感度'], 0)} ｜ 下一阶段：${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`,
-              })),
-              'dossier-list--compact',
-            )) || '<div class="dossier-empty-note">关系线索仍在铺陈。</div>';
-
-      const sameLocationTargets = Array.isArray(deepGet(snapshot, '关系分析.同地对象', []))
-        ? deepGet(snapshot, '关系分析.同地对象', [])
-        : [];
-      const trustTargets = Array.isArray(deepGet(snapshot, '关系分析.信任对象', []))
-        ? deepGet(snapshot, '关系分析.信任对象', [])
-        : [];
+          ? relationFocusTargets.slice(0, 1).map(item => {
+              const targetName = toText(item && item.对象, '未知对象');
+              const detailEntry = snapshot.relations.find(([entryName]) => entryName === targetName);
+              const detail = detailEntry && detailEntry[1];
+              return `
+                <div class="relation-focus-callout">
+                  <b>${htmlEscape(`${targetName} / ${toText(item && item.关系, '陌生')}`)}</b>
+                  <span>${htmlEscape(toText(item && item.原因, '暂无推进建议'))}</span>
+                  <em>${htmlEscape(`建议：${toText(item && item.建议行动, '继续观察')} ｜ 下一阶段：${toText(detail && detail['_下一阶段'], '无')} / ${toNumber(detail && detail['_下一阶段阈值'], 0)}`)}</em>
+                </div>
+              `;
+            }).join('')
+          : snapshot.relations.slice(0, 1).map(([name, rel]) => `
+              <div class="relation-focus-callout">
+                <b>${htmlEscape(`${name} / ${toText(rel && rel['关系'], '陌生')}`)}</b>
+                <span>${htmlEscape(toText(rel && rel['_推进提示'], '暂无推进建议'))}</span>
+                <em>${htmlEscape(`路线：${toText(rel && rel['关系路线'], '朋友线')} / 好感：${toText(rel && rel['好感度'], 0)} ｜ 下一阶段：${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`)}</em>
+              </div>
+            `).join('')) || '<div class="dossier-empty-note">关系线索仍在铺陈。</div>';
       const recommendedActions = Array.from(
         new Set(relationFocusTargets.map(item => toText(item && item.建议行动, '')).filter(Boolean)),
       ).slice(0, 3);
@@ -33068,18 +33463,31 @@
             : trustTargets.length
               ? `高信任对象：${trustTargets.slice(0, 3).join('、')}`
               : '当前雷达未扫描到足够的社会链接数据，暂无总体分析倾向。';
-      const relationOverviewRowsHtml = makeDossierRows(
-        [
-          {
-            label: '焦点对象',
-            value: htmlEscape(
-              toText(deepGet(snapshot, '关系分析.关注对象', relationDetailName || '无'), relationDetailName || '无'),
-            ),
-          },
-          { label: '系统建议', value: htmlEscape(recommendedActions.slice(0, 3).join(' / ') || '无') },
-        ],
-        'dossier-row-grid--two',
-      );
+      const relationOverviewRowsHtml = `
+        <div class="relation-dossier-summary relation-dossier-summary--compact">
+          <div class="relation-dossier-stat-grid">
+            ${构建关系数据卡(
+              '焦点对象',
+              htmlEscape(
+                toText(deepGet(snapshot, '关系分析.关注对象', relationDetailName || '无'), relationDetailName || '无'),
+              ),
+            )}
+            ${构建关系数据卡('系统建议', htmlEscape(recommendedActions.slice(0, 3).join(' / ') || '无'))}
+            ${构建关系数据卡(
+              '当前可见',
+              htmlEscape(
+                sameLocationTargets.length
+                  ? `${sameLocationTargets.slice(0, 3).join('、')}`
+                  : trustTargets.length
+                    ? `信任 ${trustTargets.slice(0, 3).join('、')}`
+                    : relationFocusTargets.length
+                      ? `重点 ${relationFocusTargets.slice(0, 2).map(item => toText(item && item.对象, '无')).join('、')}`
+                      : '暂无',
+              ),
+            )}
+          </div>
+        </div>
+      `;
       const 关系概览标签HTML = makeDossierTags(
         [
           { text: `对象 ${snapshot.relations.length}`, className: snapshot.relations.length ? 'live' : 'warn' },
@@ -33089,22 +33497,24 @@
         'dossier-head-actions relation-head-actions',
       );
       const relationTargetSummaryHtml = relationDetail
-        ? makeDossierRows(
-            [
-              { label: '目标对象', value: htmlEscape(relationDetailName) },
-              {
-                label: '关系',
-                value: relationDetailPath.length
+        ? `
+          <div class="relation-dossier-summary ${读取关系路线类(relationDetail)}">
+            ${好感度条HTML}
+            <div class="relation-dossier-stat-grid">
+              ${构建关系数据卡('目标对象', htmlEscape(relationDetailName))}
+              ${构建关系数据卡(
+                '关系',
+                relationDetailPath.length
                   ? makeInlineEditableValue(toText(relationDetail && relationDetail['关系'], '陌生'), {
                       path: [...relationDetailPath, '关系'],
                       kind: 'string',
                       rawValue: toText(relationDetail && relationDetail['关系'], '陌生'),
                     })
                   : htmlEscape(toText(relationDetail && relationDetail['关系'], '陌生')),
-              },
-              {
-                label: '路线',
-                value: relationDetailPath.length
+              )}
+              ${构建关系数据卡(
+                '路线',
+                relationDetailPath.length
                   ? makeInlineEditableValue(relationRoute, {
                       path: [...relationDetailPath, '关系路线'],
                       kind: 'enum_select',
@@ -33112,47 +33522,33 @@
                       editorMeta: { options: ['朋友线', '恋人线'] },
                     })
                   : htmlEscape(relationRoute),
-              },
-              {
-                label: '好感度',
-                value: relationDetailPath.length
-                  ? makeInlineEditableValue(String(relationFavor), {
-                      path: [...relationDetailPath, '好感度'],
-                      kind: 'number',
-                      rawValue: relationFavor,
-                      editorMeta: { integer: true, hint: '整数 · 可正可负 · 不设硬上下限' },
-                    })
-                  : htmlEscape(String(relationFavor)),
-              },
-              {
-                label: '对方身份',
-                value: relationDetailPath.length
+              )}
+              ${构建关系数据卡(
+                '对方身份',
+                relationDetailPath.length
                   ? makeInlineEditableValue(toText(relationDetail && relationDetail['对方身份'], '无'), {
                       path: [...relationDetailPath, '对方身份'],
                       kind: 'string',
                       rawValue: toText(relationDetail && relationDetail['对方身份'], '无'),
                     })
                   : htmlEscape(toText(relationDetail && relationDetail['对方身份'], '无')),
-              },
-              { label: '武魂相关度', 值Html: 武魂相关度HTML },
-              { label: '融合触发', value: htmlEscape(`${融合触发状态值} / 阈值70`) },
-              { label: '同修效率', value: htmlEscape(`x${同修效率倍率值}`) },
-              {
-                label: '位置状态',
-                value: htmlEscape(
-                  `${relationTargetLocLabel} / ${isSameLocation ? '同地可接触' : isContactable ? '远端可联系' : '当前不可接触'}`,
-                ),
-              },
-              { label: '推进提示', value: htmlEscape(toText(relationDetail && relationDetail['_推进提示'], '暂无')) },
-              {
-                label: '关系状态',
-                value: htmlEscape(
-                  `${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(relationDetail && relationDetail['_切线限制原因'], '无')}`,
-                ),
-              },
-            ],
-            'dossier-row-grid--relation-focus',
-          )
+              )}
+              ${构建关系数据卡('武魂相关度', 武魂相关度HTML)}
+              ${构建关系数据卡('融合触发', htmlEscape(`${融合触发状态值} / 阈值70`))}
+              ${构建关系数据卡('同修效率', htmlEscape(`x${同修效率倍率值}`))}
+              ${构建关系数据卡(
+                '位置状态',
+                htmlEscape(`${relationTargetLocLabel} / ${isSameLocation ? '同地可接触' : isContactable ? '远端可联系' : '当前不可接触'}`),
+              )}
+              ${构建关系数据卡('推进提示', htmlEscape(toText(relationDetail && relationDetail['_推进提示'], '暂无')), 'is-wide')}
+              ${构建关系数据卡(
+                '关系状态',
+                htmlEscape(`${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(relationDetail && relationDetail['_切线限制原因'], '无')}`),
+                'is-wide',
+              )}
+            </div>
+          </div>
+        `
         : '<div class="dossier-empty-note">先从对象列表里选择一个目标。</div>';
       const relationRecordRowsHtml = relationDetail
         ? makeDossierRows(
@@ -33173,15 +33569,12 @@
       const relationActionSummaryHtml = relationDetail
         ? isPlayerControlled
           ? `
-                ${makeDossierTags(
-                  [
-                    { text: isSameLocation ? '同地' : '未在身边', className: isSameLocation ? 'live' : 'warn' },
-                    { text: isContactable ? '可接触' : '不可接触', className: isContactable ? 'live' : 'warn' },
-                    { text: routeSwitchable ? '可切恋人线' : relationRoute },
-                  ],
-                  'dossier-tag-row--wrap',
-                )}
-                <div class="dossier-action-toolbar">
+                <div class="relation-status-capsules">
+                  <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地' : '未在身边')}</span>
+                  <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
+                  <span>${htmlEscape(routeSwitchable ? '可切恋人线' : relationRoute)}</span>
+                </div>
+                <div class="relation-action-toolbar">
                   <button type="button" class="relation-action-btn action-primary" data-relation-action="talk" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canTalk ? 'disabled' : ''}>闲聊</button>
                   <button type="button" class="relation-action-btn action-primary" data-relation-action="ask" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canAsk ? 'disabled' : ''}>请教</button>
                   <button type="button" class="relation-action-btn action-warn" data-relation-action="battle" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canBattle ? 'disabled' : ''}>切磋</button>
@@ -33211,50 +33604,66 @@
         summary: '全局社会链路扫描、当前重点对象监控与智能关系行动推荐。',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--relation">
-              <div class="archive-card dossier-card dossier-card--relation-overview full">
-                <div class="archive-card-head"><div class="archive-card-title">关系概览</div>${关系概览标签HTML}</div>
-                <div class="dossier-columns dossier-columns--relation-overview">
-                  <div class="relation-topology-panel">
-                    <div class="topology-board relation-topology-board dossier-topology-board">
-                      <svg class="topology-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${relationLinks}</svg>
-                      <div class="topology-node center" style="left:50%;top:50%"><b>${htmlEscape(snapshot.activeName)}</b><span>自我</span></div>
-                      ${relationHtml || '<div class="topology-node" style="left:50%;top:18%"><b>暂无关系对象</b><span>关系网络尚未展开</span></div>'}
+              <div class="archive-card dossier-card dossier-card--relation-overview relation-network-zone full">
+                <div class="archive-card-head relation-network-head">
+                  <div class="archive-card-title">关系拓扑</div>
+                  <div class="relation-network-tools">
+                    ${关系概览标签HTML}
+                    <label class="relation-search-shell">
+                      <span>检索目标</span>
+                      <select class="relation-target-search" data-relation-focus-select>
+                        ${关系检索选项HTML}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="relation-topology-panel">
+                  <div class="relation-topology-viewport" data-relation-pan-viewport>
+                    <div class="relation-topology-canvas" data-relation-pan-canvas>
+                      <div class="topology-board relation-topology-board dossier-topology-board">
+                        <svg class="topology-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${relationLinks}</svg>
+                        <div class="topology-node center" style="left:50%;top:50%"><b>${htmlEscape(snapshot.activeName)}</b><span>自我</span></div>
+                        ${relationHtml || '<div class="topology-node" style="left:50%;top:18%"><b>暂无关系对象</b><span>关系网络尚未展开</span></div>'}
+                      </div>
                     </div>
                   </div>
-                  <div class="dossier-section-stack">
-                    <section class="dossier-section">
-                      <div class="dossier-section-title">关系态势</div>
-                      <div class="dossier-note dossier-note--dense">${htmlEscape(toText(relationSummaryText, '关系数据不足'))}</div>
-                      ${relationOverviewRowsHtml}
-                    </section>
-                    <section class="dossier-section">
-                      <div class="dossier-section-title">推进线索</div>
-                      ${relationFocusHtml}
-                    </section>
+                </div>
+              </div>
+              <div class="archive-card dossier-card dossier-card--relation-focus relation-dossier-zone full" data-relation-dossier="${escapeHtmlAttr(relationDetailName || 'none')}">
+                <div class="archive-card-head relation-dossier-head">
+                  <div class="relation-dossier-title">
+                    <div class="archive-card-title">${htmlEscape(relationDetailName || '目标卷宗')}</div>
+                    <span>${htmlEscape(relationDetail ? toText(relationDetail && relationDetail['对方身份'], '未知身份') : '未选中目标')}</span>
+                  </div>
+                  <div class="relation-status-capsules">
+                    <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地可接触' : '非同地')}</span>
+                    <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
+                    <span>${htmlEscape(relationRoute)}</span>
                   </div>
                 </div>
-              </div>
-              <div class="archive-card dossier-card dossier-card--relation-directory">
-                <div class="archive-card-head"><div class="archive-card-title">对象列表</div><span class="dossier-pill ${relationDirectoryPage.total ? 'live' : 'warn'}">${relationDirectoryPage.total ? `已收录 ${relationDirectoryPage.total} 名` : '暂无对象'}</span></div>
-                <div class="dossier-section">
-                  ${relationDirectoryHtml}
+                <div class="relation-dossier-body">
+                  <section class="dossier-section relation-dossier-main">
+                    <div class="dossier-section-title">关系摘要</div>
+                    ${relationTargetSummaryHtml}
+                  </section>
+                  <section class="dossier-section relation-dossier-brief">
+                    <div class="dossier-section-title">关系态势</div>
+                    <div class="dossier-note dossier-note--dense">${htmlEscape(toText(relationSummaryText, '关系数据不足'))}</div>
+                    ${relationOverviewRowsHtml}
+                  </section>
+                  <section class="dossier-section relation-dossier-clue">
+                    <div class="dossier-section-title">推进线索</div>
+                    ${relationFocusHtml}
+                  </section>
+                  <section class="dossier-section relation-dossier-actions">
+                    <div class="dossier-section-title">${htmlEscape(isPlayerControlled ? '互动操作' : '观察备注')}</div>
+                    ${relationActionSummaryHtml}
+                  </section>
+                  <section class="dossier-section relation-dossier-record">
+                    <div class="dossier-section-title">关系记录</div>
+                    ${relationRecordRowsHtml || '<div class="dossier-empty-note">当前没有可展示的推进记录。</div>'}
+                  </section>
                 </div>
-                ${makeModalPaginationControls('relation-directory', relationDirectoryPage.page, relationDirectoryPage.totalPages, relationDirectoryPage.total)}
-              </div>
-              <div class="archive-card dossier-card dossier-card--relation-focus">
-                <div class="archive-card-head"><div class="archive-card-title">目标卷宗</div><span class="dossier-pill ${relationDetailName ? 'live' : 'warn'}">${htmlEscape(relationDetailName || '未选中')}</span></div>
-                <section class="dossier-section">
-                  <div class="dossier-section-title">关系摘要</div>
-                  ${relationTargetSummaryHtml}
-                </section>
-                <section class="dossier-section">
-                  <div class="dossier-section-title">${htmlEscape(isPlayerControlled ? '互动操作' : '观察备注')}</div>
-                  ${relationActionSummaryHtml}
-                </section>
-                <section class="dossier-section">
-                  <div class="dossier-section-title">关系记录</div>
-                  ${relationRecordRowsHtml || '<div class="dossier-empty-note">当前没有可展示的推进记录。</div>'}
-                </section>
               </div>
             </div>
           `,
@@ -35642,15 +36051,6 @@
           return npcLoc ? isLocationCompatible(nodeName, npcLoc) : false;
         })
         .slice(0, 12);
-      const primaryNpc = localNpcEntries[0]
-        ? toText(
-            deepGet(localNpcEntries[0][1], 'name', deepGet(localNpcEntries[0][1], 'base.name', localNpcEntries[0][0])),
-            localNpcEntries[0][0],
-          )
-        : '';
-      const 主对象委托能力 = primaryNpc
-        ? 获取角色工坊委托能力摘要(resolveSnapshotCharacter(snapshot, primaryNpc).char)
-        : [];
       const officialCommissionLocationName =
         ['锻造师协会', '制造师协会', '设计师协会', '修理师协会'].find(
           locationName => isLocationCompatible(nodeName, locationName) || isLocationCompatible(locationName, nodeName),
@@ -35670,7 +36070,7 @@
         ? toText((nodeStores.find(([name]) => /传灵塔/.test(toText(name, ''))) || nodeStores[0] || [])[0], '')
         : toText((nodeStores[0] || [])[0], '');
 
-      const availableActionButtons = [
+      const 节点设施动作 = [
         ...(isTransmissionTowerNode
           ? [
               {
@@ -35722,36 +36122,7 @@
               },
             ]
           : []),
-        ...(primaryNpc
-          ? [
-              {
-                text: `与${primaryNpc}交易`,
-                action: 'trade',
-                npcTarget: primaryNpc,
-                className: 'warn',
-                desc: '角色交易',
-              },
-              ...(主对象委托能力.length
-                ? [
-                    {
-                      text: `委托${primaryNpc}工坊`,
-                      action: 'commission',
-                      npcTarget: primaryNpc,
-                      executorType: 'private',
-                      className: 'warn',
-                      desc: 主对象委托能力.join(' / '),
-                    },
-                  ]
-                : []),
-              { text: `与${primaryNpc}对话`, action: 'talk', npcTarget: primaryNpc, className: 'live' },
-              { text: `向${primaryNpc}请教`, action: 'intel', npcTarget: primaryNpc, className: '' },
-              { text: `向${primaryNpc}切磋`, action: 'battle', npcTarget: primaryNpc, className: 'warn' },
-            ]
-          : []),
       ];
-      const actionButtons = canDispatchHere ? availableActionButtons : [];
-      const actionSummaryText = availableActionButtons.map(btn => btn.text).join(' / ');
-      const actionCardTitle = isPlayerControlled ? '可执行操作' : '驻地操作概览';
       const travelPlan =
         !canDispatchHere &&
         isPlayerControlled &&
@@ -35759,85 +36130,57 @@
         typeof window.__sheepMapBridge.describeTravelToNode === 'function'
           ? window.__sheepMapBridge.describeTravelToNode(nodeName)
           : null;
-      const arrivalActionItems = availableActionButtons.map(btn => {
-        const metaParts = [];
-        if (btn.npcTarget) metaParts.push(`对象 ${btn.npcTarget}`);
-        if (btn.target && btn.target !== nodeName && !btn.npcTarget) metaParts.push(`目标 ${btn.target}`);
-        if (btn.executorType === 'official') metaParts.push('官方委托');
-        if (btn.executorType === 'private') metaParts.push('私人委托');
-        return {
-          title: btn.text,
-          desc: toText(btn.desc, '') || (metaParts.length ? metaParts.join(' / ') : '抵达后可直接发起'),
-        };
-      });
-      const 构建据点操作列表 = (按钮列表 = []) => {
-        const 列表 = Array.isArray(按钮列表) ? 按钮列表 : [];
-        if (!列表.length) return `<div class="location-empty-note">暂无可立即发起的本地行动。</div>`;
-        return `<div class="location-action-list">${列表
-          .map(btn => {
-            const 说明 = toText(btn.desc, '') || (btn.disabled ? '条件未满足' : '可执行');
-            return `
-              <button type="button" class="location-action-row map-dispatch-action-btn ${htmlEscape(btn.className || '')}" data-action="${htmlEscape(btn.action || '')}" data-target="${htmlEscape(btn.target || nodeName)}" data-current-loc="${htmlEscape(nodeName)}" data-npc-target="${htmlEscape(btn.npcTarget || '')}" data-executor-type="${htmlEscape(btn.executorType || '')}" data-services="${htmlEscape(Array.isArray(btn.services) ? btn.services.join('|') : '')}" ${btn.disabled ? 'disabled' : ''}>
-                <b>${htmlEscape(btn.text || '执行操作')}</b>
-                <span>${htmlEscape(说明)}</span>
-              </button>
-            `;
-          })
-          .join('')}</div>`;
+      const 构建设施卡片 = 动作 => {
+        const 说明 = toText(动作.desc, '') || (动作.disabled ? '条件未满足' : '可进入');
+        const 禁用 = 动作.disabled || !isPlayerControlled || !canDispatchHere;
+        return `
+          <button type="button" class="location-facility-card map-dispatch-action-btn ${escapeHtmlAttr(动作.className || '')}" data-action="${escapeHtmlAttr(动作.action || '')}" data-target="${escapeHtmlAttr(动作.target || nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="" data-executor-type="${escapeHtmlAttr(动作.executorType || '')}" data-services="${escapeHtmlAttr(Array.isArray(动作.services) ? 动作.services.join('|') : '')}" ${禁用 ? 'disabled' : ''}>
+            <b>${htmlEscape(动作.text || '设施入口')}</b>
+            <span>${htmlEscape(禁用 && !canDispatchHere ? `抵达后可用 · ${说明}` : 说明)}</span>
+          </button>
+        `;
       };
-      const actionButtonsHtml = isPlayerControlled
-        ? canDispatchHere
-          ? actionButtons.length
-            ? 构建据点操作列表(actionButtons)
-            : `<div class="relation-card"><b>暂无可执行操作</b><span>这里暂时没有能立刻发起的交易或互动。</span></div>`
-          : `
-              <section class="dossier-section">
-                <div class="dossier-section-title">移动到此处</div>
-                ${
-                  travelPlan && travelPlan.ok
-                    ? `${makeDossierRows(
-                        [
-                          { label: '移动方式', value: htmlEscape(toText(travelPlan.method, '未定')) },
-                          { label: '预计耗时', value: htmlEscape(toText(travelPlan.duration, '未定')) },
-                          { label: '资源消耗', value: htmlEscape(toText(travelPlan.costText, '无')) },
-                          { label: '坐标', value: htmlEscape(toText(travelPlan.coordText, '未定')) },
-                          ...(travelPlan.routePlan
-                            ? [
-                                {
-                                  label: '路径说明',
-                                  value: htmlEscape(toText(travelPlan.routePlan, '')),
-                                  className: 'dossier-row--wide',
-                                },
-                              ]
-                            : []),
-                          ...(!travelPlan.canAfford && travelPlan.reason
-                            ? [
-                                {
-                                  label: '当前限制',
-                                  value: htmlEscape(toText(travelPlan.reason, '资源不足')),
-                                  className: 'dossier-row--wide',
-                                },
-                              ]
-                            : []),
-                        ],
-                        'dossier-row-grid--two',
-                      )}
-                    <div class="tag-cloud armory-quick-actions mvu-detail-action-row mvu-detail-action-row--start">
-                      <button type="button" class="relation-action-btn action-primary" data-map-travel-node="${escapeHtmlAttr(nodeName)}" ${travelPlan.canAfford ? '' : 'disabled'}>${htmlEscape(travelPlan.canAfford ? `移动到 ${nodeName}` : '资源不足，暂不能移动')}</button>
-                    </div>`
-                    : `<div class="dossier-empty-note">${htmlEscape(toText(travelPlan && travelPlan.reason, '当前无法规划前往该节点的移动。'))}</div>`
-                }
-              </section>
-              <section class="dossier-section">
-                <div class="dossier-section-title">到达后可执行</div>
-                ${
-                  arrivalActionItems.length
-                    ? makeDossierList(arrivalActionItems, 'dossier-list--compact')
-                    : '<div class="dossier-empty-note">抵达后暂未识别到立即可执行的交易或社交入口。</div>'
-                }
-              </section>
-            `
-        : `<div class="relation-card"><b>旁观视角</b><span>${htmlEscape(actionSummaryText ? `可见入口：${actionSummaryText}` : '无本地操作')}</span></div>`;
+      const 移动设施卡片 =
+        !canDispatchHere && isPlayerControlled
+          ? travelPlan && travelPlan.ok
+            ? `
+          <button type="button" class="location-facility-card relation-action-btn action-primary" data-map-travel-node="${escapeHtmlAttr(nodeName)}" ${travelPlan.canAfford ? '' : 'disabled'}>
+            <b>${htmlEscape(travelPlan.canAfford ? `移动到 ${nodeName}` : '资源不足')}</b>
+            <span>${htmlEscape(
+              [
+                toText(travelPlan.method, '未定'),
+                toText(travelPlan.duration, '未定'),
+                toText(travelPlan.costText, '无消耗'),
+              ]
+                .filter(Boolean)
+                .join(' / '),
+            )}</span>
+          </button>
+        `
+            : `
+          <article class="location-facility-card is-disabled">
+            <b>移动到此处</b>
+            <span>${htmlEscape(toText(travelPlan && travelPlan.reason, '当前无法规划前往该节点的移动。'))}</span>
+          </article>
+        `
+          : '';
+      const 城市设施HTML = `
+        <div class="location-facility-grid">
+          ${移动设施卡片}
+          ${节点设施动作.map(构建设施卡片).join('')}
+          ${
+            !移动设施卡片 && !节点设施动作.length
+              ? '<div class="location-empty-note">当前节点没有可直接进入的城市设施。</div>'
+              : ''
+          }
+        </div>
+      `;
+      const 取人物状态色调 = 状态文本 => {
+        const 文本 = toText(状态文本, '');
+        if (/战斗|受伤|危险|昏迷|重伤|濒死/.test(文本)) return 'is-danger';
+        if (/修炼|任务|移动|赶路|执行|巡逻/.test(文本)) return 'is-warn';
+        return 'is-live';
+      };
       const localNpcCardsHtml = localNpcEntries.length
         ? `<div class="location-npc-list mvu-detail-scroll-list">${localNpcEntries
             .map(([name, char]) => {
@@ -35850,22 +36193,26 @@
               const npcButtons =
                 isPlayerControlled && canDispatchHere
                   ? `<div class="location-npc-actions">
-                    <button type="button" class="map-dispatch-action-btn live" data-action="trade" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}">交易</button>
-                    ${对象委托能力.length ? `<button type="button" class="map-dispatch-action-btn warn" data-action="commission" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="private">委托</button>` : ''}
-                    <button type="button" class="map-dispatch-action-btn live" data-action="talk" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}">对话</button>
-                    <button type="button" class="map-dispatch-action-btn" data-action="intel" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}">请教</button>
-                    <button type="button" class="map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}">切磋</button>
+                    <button type="button" class="map-dispatch-action-btn live" data-action="trade" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">交易</button>
+                    ${对象委托能力.length ? `<button type="button" class="map-dispatch-action-btn warn" data-action="commission" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="private" data-services="${escapeHtmlAttr(对象委托能力.join('|'))}">委托</button>` : ''}
+                    <button type="button" class="map-dispatch-action-btn live" data-action="talk" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">对话</button>
+                    <button type="button" class="map-dispatch-action-btn" data-action="intel" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">请教</button>
+                    <button type="button" class="map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">切磋</button>
                   </div>`
                   : '';
+              const 状态色调 = 取人物状态色调(npcAction);
               return `
                 <article class="location-npc-card">
-                  <div class="location-npc-card-head">
-                    <b>${htmlEscape(shortenText(displayName, 16))}</b>
-                    <span>${htmlEscape(shortenText(npcAction, 10))}</span>
-                  </div>
-                  <div class="location-npc-meta">
-                    <span>${htmlEscape(`身份 ${shortenText(identity, 20)}`)}</span>
-                    <span>${htmlEscape(`位置 ${shortenText(npcLoc.replace(/^斗罗大陆-/, '').replace(/^斗灵大陆-/, ''), 24)}`)}</span>
+                  <div class="location-npc-main">
+                    <div class="location-npc-title">
+                      <span class="location-npc-status ${状态色调}"></span>
+                      <b>${htmlEscape(shortenText(displayName, 18))}</b>
+                      <em>${htmlEscape(shortenText(npcAction, 12))}</em>
+                    </div>
+                    <div class="location-npc-tags">
+                      <span>${htmlEscape(shortenText(identity, 24))}</span>
+                      <span>${htmlEscape(shortenText(npcLoc.replace(/^斗罗大陆-/, '').replace(/^斗灵大陆-/, ''), 30))}</span>
+                    </div>
                   </div>
                   ${npcButtons}
                 </article>
@@ -35873,11 +36220,6 @@
             })
             .join('')}</div>`
         : '<div class="location-empty-note">当前节点未扫描到可直接互动的本地角色。</div>';
-      const travelTags = (
-        snapshot.mapTravelCandidates.length ? snapshot.mapTravelCandidates : snapshot.dynamicLocationNames
-      )
-        .filter(name => name !== nodeName)
-        .slice(0, 6);
       const 地图简报文本 = toText(
         deepGet(nodeInfo.data, 'desc', mapNode ? mapNode.desc : '无扫描数据'),
         mapNode ? mapNode.desc : '无扫描数据',
@@ -35894,167 +36236,106 @@
       const 守备文本 = toText(nodeInfo.data && nodeInfo.data['守护军团'], '无军团驻扎');
       const 掌控势力文本 = toText(nodeInfo.data && nodeInfo.data['掌控势力'], '未知');
       const 人口文本 = formatNumber(nodeInfo.data && nodeInfo.data['人口']);
-      const 速览卡片 = `
-          <div class="location-glance-grid">
-            <div class="location-glance-tile">
-              <b>掌控</b>
-              <strong>${
-                locationBasePath.length
-                  ? makeInlineEditableValue(掌控势力文本, {
-                      path: [...locationBasePath, '掌控势力'],
-                      kind: 'string',
-                      rawValue: 掌控势力文本,
-                    })
-                  : htmlEscape(掌控势力文本)
-              }</strong>
-            </div>
-            <div class="location-glance-tile">
-              <b>人口</b>
-              <strong>${
-                locationBasePath.length
-                  ? makeInlineEditableValue(人口文本, {
-                      path: [...locationBasePath, '人口'],
-                      kind: 'number',
-                      rawValue: toNumber(nodeInfo.data && nodeInfo.data['人口'], 0),
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    })
-                  : htmlEscape(人口文本)
-              }</strong>
-            </div>
-            <div class="location-glance-tile">
-              <b>经济</b>
-              <strong>${
-                locationBasePath.length
-                  ? makeInlineEditableValue(经济文本, {
-                      path: [...locationBasePath, '经济状况'],
-                      kind: 'enum_select',
-                      rawValue: 经济文本,
-                      editorMeta: { options: ['繁荣', '普通', '萧条', '未知'] },
-                    })
-                  : htmlEscape(经济文本)
-              }</strong>
-            </div>
-            <div class="location-glance-tile">
-              <b>守备</b>
-              <strong>${
-                locationBasePath.length
-                  ? makeInlineEditableValue(toText(nodeInfo.data && nodeInfo.data['守护军团'], '无'), {
-                      path: [...locationBasePath, '守护军团'],
-                      kind: 'string',
-                      rawValue: toText(nodeInfo.data && nodeInfo.data['守护军团'], '无'),
-                    })
-                  : htmlEscape(toText(nodeInfo.data && nodeInfo.data['守护军团'], '无'))
-              }</strong>
-            </div>
-            <div class="location-glance-tile location-glance-tile--wide">
-              <b>商店</b>
-              <strong>${htmlEscape(`${nodeStores.length} 处`)}</strong>
-            </div>
-          </div>
-        `;
-      const 据点概览行 = makeDossierRows(
-        [
-          { label: '所在地', value: nodeName, className: 'dossier-row--wide' },
-          { label: '简报', value: 地图简报内容, className: 'dossier-row--wide location-brief-row' },
-        ],
-        'dossier-row-grid--two location-dossier-rows',
+      const 取状态评分 = 文本 => {
+        if (!文本 || 文本 === '未知') return 50;
+        if (/繁华|核心|极佳|充裕/.test(文本)) return 95;
+        if (/良好|稳定|发展/.test(文本)) return 75;
+        if (/一般|普通|常态/.test(文本)) return 60;
+        if (/萧条|混乱|匮乏|危险/.test(文本)) return 30;
+        if (/废弃|毁灭|荒芜|极危/.test(文本)) return 10;
+        return 50;
+      };
+      const 经济评分 = 取状态评分(经济文本);
+      const 人口评分 = Math.min(
+        100,
+        Math.max(10, Math.round(Math.log10(Math.max(1, toNumber(nodeInfo.data && nodeInfo.data['人口'], 1000))) * 15)),
       );
-      const 驻地状态行 = makeDossierRows(
-        [
-          {
-            label: '综合',
-            value: 经济文本,
-            path: locationBasePath.length ? [...locationBasePath, '经济状况'] : [],
+      const 守备评分 = 守备文本 !== '无军团驻扎' && 守备文本 !== '无' ? (/精锐|主力/.test(守备文本) ? 95 : 70) : 20;
+      const 补给评分 = nodeStores.length ? Math.min(100, 30 + nodeStores.length * 20) : 10;
+      const 价值评分 = Math.round((经济评分 + 人口评分 + 守备评分 + 补给评分) / 4);
+      const 掌控势力HTML = locationBasePath.length
+        ? makeInlineEditableValue(掌控势力文本, {
+            path: [...locationBasePath, '掌控势力'],
+            kind: 'string',
+            rawValue: 掌控势力文本,
+          })
+        : htmlEscape(掌控势力文本);
+      const 人口HTML = locationBasePath.length
+        ? makeInlineEditableValue(人口文本, {
+            path: [...locationBasePath, '人口'],
+            kind: 'number',
+            rawValue: toNumber(nodeInfo.data && nodeInfo.data['人口'], 0),
+            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+          })
+        : htmlEscape(人口文本);
+      const 经济HTML = locationBasePath.length
+        ? makeInlineEditableValue(经济文本, {
+            path: [...locationBasePath, '经济状况'],
             kind: 'enum_select',
             rawValue: 经济文本,
             editorMeta: { options: ['繁荣', '普通', '萧条', '未知'] },
-          },
-          {
-            label: '补给',
-            value: htmlEscape(nodeStores.length ? `${nodeStores.length} 处贸易站或设施` : '无可见商店'),
-          },
-          {
-            label: '守备',
-            value: 守备文本,
-            path: locationBasePath.length ? [...locationBasePath, '守护军团'] : [],
+          })
+        : htmlEscape(经济文本);
+      const 守备HTML = locationBasePath.length
+        ? makeInlineEditableValue(守备文本, {
+            path: [...locationBasePath, '守护军团'],
             kind: 'string',
             rawValue: 守备文本,
-          },
-          { label: '供给', value: htmlEscape(toText(snapshot && snapshot.本地供给, '无供给')) },
-          { label: '价格', value: htmlEscape(toText(snapshot && snapshot.价格带, '无')) },
-          { label: '成交', value: htmlEscape(toText(snapshot && snapshot.最近成交影响, '平稳')) },
-        ],
-        'dossier-row-grid--two location-dossier-rows location-status-rows',
-      );
+          })
+        : htmlEscape(守备文本);
+      const 城市情报胶囊 = [
+        ['掌控', 掌控势力HTML],
+        ['人口', 人口HTML],
+        ['设施', htmlEscape(`${nodeStores.length}处`)],
+        ['经济', 经济HTML],
+        ['守备', 守备HTML],
+        ['供给', htmlEscape(toText(snapshot && snapshot.本地供给, '无供给'))],
+        ['价格', htmlEscape(toText(snapshot && snapshot.价格带, '无'))],
+        ['成交', htmlEscape(toText(snapshot && snapshot.最近成交影响, '平稳'))],
+      ]
+        .map(
+          ([标签, 值]) => `
+            <span class="location-intel-pill">
+              <b>${htmlEscape(标签)}</b>
+              <em>${值}</em>
+            </span>
+          `,
+        )
+        .join('');
+      const 城市雷达HTML = 构建星图详情雷达图HTML([
+        { 标签: '经济', 数值: 经济评分, 文本: 经济文本 },
+        { 标签: '人口', 数值: 人口评分, 文本: 人口文本 },
+        { 标签: '守备', 数值: 守备评分, 文本: 守备文本 },
+        { 标签: '补给', 数值: 补给评分, 文本: nodeStores.length ? `${nodeStores.length}处设施` : '无可见商店' },
+        { 标签: '价值', 数值: 价值评分, 文本: String(价值评分) },
+      ]);
       return {
         title: `本地据点 / ${nodeName}`,
         summary: '当前节点的地图属性、势力资料与可去方向。',
         body: `
             <div class="archive-modal-grid location-detail-grid location-detail-grid--refined">
-            <div class="archive-card location-card--overview">
-                  <div class="archive-card-head"><div class="archive-card-title">据点概览</div></div>
-                  ${速览卡片}
-                  ${据点概览行}
-                </div>
-                <div class="archive-card location-card--status">
-                  <div class="archive-card-head"><div class="archive-card-title">驻地状态</div></div>
-                  <div class="location-status-layout">
-                    ${(() => {
-                      const getScore = text => {
-                        if (!text || text === '未知') return 50;
-                        if (/繁华|核心|极佳|充裕/.test(text)) return 95;
-                        if (/良好|稳定|发展/.test(text)) return 75;
-                        if (/一般|普通|常态/.test(text)) return 60;
-                        if (/萧条|混乱|匮乏|危险/.test(text)) return 30;
-                        if (/废弃|毁灭|荒芜|极危/.test(text)) return 10;
-                        return 50;
-                      };
-                      const ecoText = toText(nodeInfo.data && nodeInfo.data['经济状况'], '未知');
-                      const ecoScore = getScore(ecoText);
-                      const popScore = Math.min(
-                        100,
-                        Math.max(
-                          10,
-                          Math.round(
-                            Math.log10(Math.max(1, toNumber(nodeInfo.data && nodeInfo.data['人口'], 1000))) * 15,
-                          ),
-                        ),
-                      );
-                      const guardText = toText(nodeInfo.data && nodeInfo.data['守护军团'], '无');
-                      const guardScore =
-                        guardText !== '无' ? (guardText.includes('精锐') || guardText.includes('主力') ? 95 : 70) : 20;
-                      const tradeScore = nodeStores.length ? Math.min(100, 30 + nodeStores.length * 20) : 10;
-                      return `
-                        <div class="location-radar-panel">
-                          ${makeRadarSvg(['经济状况', '常住人口', '守备力量', '贸易补给', '战略价值'], [ecoScore, popScore, guardScore, tradeScore, Math.round((ecoScore + popScore + guardScore + tradeScore) / 4)])}
-                        </div>
-                      `;
-                    })()}
-                    <div class="location-status-summary">${驻地状态行}</div>
+                <div class="archive-card full location-card--intel">
+                  <div class="archive-card-head"><div class="archive-card-title">城市情报</div></div>
+                  <div class="location-intel-shell">
+                    <div class="location-intel-main">
+                      <div class="location-intel-title">
+                        <b>${htmlEscape(nodeName)}</b>
+                        <span>${htmlEscape(canDispatchHere ? '当前节点' : '远端节点')}</span>
+                      </div>
+                      <div class="location-intel-brief">${地图简报内容}</div>
+                      <div class="location-intel-pill-row">${城市情报胶囊}</div>
+                    </div>
+                    <div class="location-intel-radar">${城市雷达HTML}</div>
                   </div>
                 </div>
-              ${
-                localNpcEntries.length > 0
-                  ? `
-                <div class="archive-card mvu-detail-scroll-card location-card--actions">
-                  <div class="archive-card-head"><div class="archive-card-title">${htmlEscape(actionCardTitle)}</div></div>
-                  <div class="mvu-detail-scroll-list">${actionButtonsHtml}</div>
+                <div class="archive-card full location-card--facilities">
+                  <div class="archive-card-head"><div class="archive-card-title">城市设施</div></div>
+                  ${城市设施HTML}
                 </div>
-                <div class="archive-card mvu-detail-scroll-card location-card--people">
-                  <div class="archive-card-head"><div class="archive-card-title">本地可接触人物</div></div>
+                <div class="archive-card full mvu-detail-scroll-card location-card--people">
+                  <div class="archive-card-head"><div class="archive-card-title">本地雷达扫描</div></div>
                   ${localNpcCardsHtml}
                 </div>
-              `
-                  : `
-                <div class="archive-card full location-card--actions">
-                  <div class="archive-card-head"><div class="archive-card-title">${htmlEscape(actionCardTitle)}</div></div>
-                  <div class="mvu-detail-scroll-list">
-                    ${actionButtonsHtml}
-                    <div class="location-empty-note">当前节点未扫描到可直接互动的本地角色。</div>
-                  </div>
-                </div>
-              `
-              }
             </div>
           `,
         onMount: () => null,
@@ -37109,6 +37390,8 @@
   window.__LWCS_AUTO_ARCHIVE_MVU_COLD_ENTITIES__ = (选项 = {}) => 按阈值自动归档MVU冷实体_桥接(选项);
   window.__LWCS_CLEAN_MVU_COLD_ARCHIVE_FUTURE_FLOORS__ = (选项 = {}) => 清理未来楼层冷归档_桥接({ ...选项, force: true });
   window.__LWCS_COMPACT_MVU_COLD_ARCHIVE_HISTORY__ = (选项 = {}) => 整理全部冷归档历史_桥接(选项);
+  window.__LWCS_CALIBRATE_CHARACTER_ANCHOR__ = (角色名, 选项 = {}) => 执行角色锚点校对_桥接(角色名, 选项);
+  window.__LWCS_FILTER_CHARACTER_ANCHOR_PATCHES__ = (patches, 角色名 = '') => 过滤角色锚点校对补丁_桥接(patches, 角色名);
   window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ = () => {
     openDetailPreview(冷归档预览键_桥接, { preserveMapDispatchContext: true, replace: true });
     return true;
@@ -43741,6 +44024,8 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (relationFocusBtn && detailSurfaceHost.contains(relationFocusBtn)) {
       event.preventDefault();
       event.stopPropagation();
+      const 拖拽视口 = relationFocusBtn.closest('.relation-topology-viewport');
+      if (拖拽视口 instanceof HTMLElement && toNumber(拖拽视口.dataset.relationPanSuppressClickUntil, 0) > Date.now()) return;
       const targetName = relationFocusBtn.getAttribute('data-relation-focus') || '';
       if (targetName && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::relation-focus`] = targetName;
@@ -44866,11 +45151,121 @@ ${toText(combatData.战斗意图, '点到为止')}
     });
   document.addEventListener('change', event => {
     const eventTarget = event.target instanceof Element ? event.target : null;
+    const 关系检索控件 = eventTarget ? eventTarget.closest('[data-relation-focus-select]') : null;
+    if (关系检索控件) {
+      const 目标名 = toText(关系检索控件.value, '').trim();
+      const 统一挂载 = document.getElementById('mvu-unified-mount');
+      const 在统一页 = !!(统一挂载 && 统一挂载.contains(关系检索控件));
+      const 预览键 = 在统一页
+        ? currentUnifiedPreviewKey || getDomUnifiedPreviewKey() || ''
+        : currentModalPreviewKey || currentUnifiedPreviewKey || '';
+      if (目标名 && 预览键 === '人物关系详细页') {
+        modalFocusState[`${预览键}::relation-focus`] = 目标名;
+        rerenderDetailSurface(预览键, { surface: 在统一页 ? 'unified' : 'modal', force: true });
+      }
+      return;
+    }
     const apiSelect = eventTarget ? eventTarget.closest('[data-ai-maintenance-api-select]') : null;
     if (!apiSelect) return;
     const presetName = 保存AI维护已选API预设(apiSelect.value || '');
     showUiToast(presetName ? `维护接口：${presetName}` : '维护接口：默认接口', 'info', 1800);
   });
+
+  const 关系拓扑拖拽状态 = {
+    视口: null,
+    画布: null,
+    指针ID: null,
+    起点X: 0,
+    起点Y: 0,
+    基准X: 0,
+    基准Y: 0,
+    当前X: 0,
+    当前Y: 0,
+    已拖动: false,
+  };
+
+  function 读取关系拓扑位移(视口) {
+    if (!(视口 instanceof HTMLElement)) return { x: 0, y: 0 };
+    return {
+      x: toNumber(视口.dataset.relationPanX, 0),
+      y: toNumber(视口.dataset.relationPanY, 0),
+    };
+  }
+
+  function 应用关系拓扑位移(视口, 画布, x, y) {
+    if (!(视口 instanceof HTMLElement) || !(画布 instanceof HTMLElement)) return;
+    const 限制X = Math.max(-180, Math.min(180, x));
+    const 限制Y = Math.max(-120, Math.min(120, y));
+    视口.dataset.relationPanX = String(Math.round(限制X));
+    视口.dataset.relationPanY = String(Math.round(限制Y));
+    画布.style.transform = `translate3d(${限制X}px, ${限制Y}px, 0)`;
+  }
+
+  function 结束关系拓扑拖拽() {
+    if (关系拓扑拖拽状态.视口) {
+      if (关系拓扑拖拽状态.已拖动) {
+        关系拓扑拖拽状态.视口.dataset.relationPanSuppressClickUntil = String(Date.now() + 180);
+      }
+      关系拓扑拖拽状态.视口.classList.remove('is-panning');
+      if (关系拓扑拖拽状态.指针ID != null && typeof 关系拓扑拖拽状态.视口.releasePointerCapture === 'function') {
+        try {
+          关系拓扑拖拽状态.视口.releasePointerCapture(关系拓扑拖拽状态.指针ID);
+        } catch (err) {}
+      }
+    }
+    关系拓扑拖拽状态.视口 = null;
+    关系拓扑拖拽状态.画布 = null;
+    关系拓扑拖拽状态.指针ID = null;
+    关系拓扑拖拽状态.已拖动 = false;
+  }
+
+  document.addEventListener('pointerdown', event => {
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const 视口 = eventTarget ? eventTarget.closest('.relation-topology-viewport') : null;
+    if (!(视口 instanceof HTMLElement) || event.button > 0) return;
+    if (eventTarget && eventTarget.closest('select, option, input, textarea')) return;
+    const 画布 = 视口.querySelector('.relation-topology-canvas');
+    if (!(画布 instanceof HTMLElement)) return;
+    const 当前位移 = 读取关系拓扑位移(视口);
+    关系拓扑拖拽状态.视口 = 视口;
+    关系拓扑拖拽状态.画布 = 画布;
+    关系拓扑拖拽状态.指针ID = event.pointerId;
+    关系拓扑拖拽状态.起点X = event.clientX;
+    关系拓扑拖拽状态.起点Y = event.clientY;
+    关系拓扑拖拽状态.基准X = 当前位移.x;
+    关系拓扑拖拽状态.基准Y = 当前位移.y;
+    关系拓扑拖拽状态.当前X = 当前位移.x;
+    关系拓扑拖拽状态.当前Y = 当前位移.y;
+    关系拓扑拖拽状态.已拖动 = false;
+    视口.classList.add('is-panning');
+    if (typeof 视口.setPointerCapture === 'function') {
+      try {
+        视口.setPointerCapture(event.pointerId);
+      } catch (err) {}
+    }
+  });
+
+  document.addEventListener(
+    'pointermove',
+    event => {
+      if (!关系拓扑拖拽状态.视口 || !关系拓扑拖拽状态.画布 || event.pointerId !== 关系拓扑拖拽状态.指针ID) return;
+      const 偏移X = event.clientX - 关系拓扑拖拽状态.起点X;
+      const 偏移Y = event.clientY - 关系拓扑拖拽状态.起点Y;
+      if (Math.abs(偏移X) + Math.abs(偏移Y) > 5) 关系拓扑拖拽状态.已拖动 = true;
+      关系拓扑拖拽状态.当前X = 关系拓扑拖拽状态.基准X + 偏移X;
+      关系拓扑拖拽状态.当前Y = 关系拓扑拖拽状态.基准Y + 偏移Y;
+      应用关系拓扑位移(
+        关系拓扑拖拽状态.视口,
+        关系拓扑拖拽状态.画布,
+        关系拓扑拖拽状态.当前X,
+        关系拓扑拖拽状态.当前Y,
+      );
+    },
+    { passive: true },
+  );
+
+  document.addEventListener('pointerup', 结束关系拓扑拖拽);
+  document.addEventListener('pointercancel', 结束关系拓扑拖拽);
 
   function getFloatingHoverTrigger(eventTarget) {
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;

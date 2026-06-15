@@ -727,6 +727,114 @@
     };
 
     /**
+     * 偏差表 — 本档世界线偏差账本
+     */
+    const 偏差表Sheet_ACU = {
+        uid: "sheet_DeviationLedger",
+        name: "偏差表",
+        sourceData: {
+            note: `记录本档已经出现、潜伏或已修正的世界线偏差。此表不替代纪要，专用于修正本档世界线基线，提供蝴蝶效应推演依据。
+
+- 列1: 编码 - 格式为 DVXXXX，从0001递增。
+- 列2: 状态 - 严格限制为4种之一：
+  1.【潜伏】(有改变的苗头，但尚未产生实质影响)
+  2.【活跃】(偏差已发生，正在对当前局势产生影响)
+  3.【固化】(已成为本档世界线不可推翻的新基石)
+  4.【收束】(被剧情圆回原著轨迹，不再产生后续影响)
+- 列3: 偏差类型 - 严格限制为以下5种之一：
+  1.【人物生死】(原著该死没死，该活没活)
+  2.【关系阵营】(敌友反转、拜师改变、脱离/加入特定势力)
+  3.【物品机缘】(魂骨/神器被截胡、核心机缘错位或提前获取)
+  4.【事件节点】(原著大事件提前、延后、流产或发生变异)
+  5.【情报认知】(隐藏身份提前暴露、核心机密泄露)
+- 列4: 偏差等级 - 严格限制为以下4种之一：
+  1.【微小】(细节偏移，不影响原著主干走向)
+  2.【局部】(改变了某个篇章或单个人物的发展，但大局可控)
+  3.【重大】(动摇原著核心大事件，未来走向需重新推演)
+  4.【断裂】(原著主线彻底崩溃，世界线走向完全原创的分支)
+- 列5: 偏差纪要 - 必须包含相关对象，并使用对比句式：[涉及人物/势力] 原著本该如何 VS 实际变成了什么。
+- 列6: 蝴蝶推演 - 简述该偏差在未来会导致哪个原著节点失效，或后续DM需重点监控、修改的剧情节点。
+
+【强制约束】
+1. 仅有苗头但未落地的偏差最多标为【潜伏】；实际改变了历史的标为【活跃】或【固化】。
+2. 偏差被修复时状态改为【收束】，并允许删除该记录；纪要表会保存已发生历史，偏差表只保留仍会影响后续的偏移。
+3. 记录必须客观精炼，禁止脑补正文中尚未发生的确定事实。
+4. 禁止记录纯细节偏移。只有影响人物生死、关系阵营、物品机缘、事件节点或情报认知的偏差才允许入表。
+5. 【活跃】和【固化】记录不能删除；【潜伏】被证明不会落地时可删除；【收束】应删除或不再保留。
+
+{{偏差表专用上下文}}`,
+            initNode: "初始化时无须写入偏差记录；除非正文已经明确发生偏差事实。",
+            deleteNode: "只允许删除状态为【收束】、被证明不会落地的【潜伏】、误写或重复记录。禁止删除仍影响当前世界线的【活跃】或【固化】记录。\nSQL示例: DELETE FROM deviation_ledger WHERE code = 'DV0001' AND status IN ('潜伏','收束');",
+            updateNode: "同一对象、同一原著节点、同一偏差类型优先更新已有 DV，禁止重复新增。潜伏偏差落地时更新为【活跃】或【固化】；偏差被剧情圆回时可先更新为【收束】，随后删除该行。\nSQL示例: UPDATE deviation_ledger SET status = '活跃', deviation_level = '局部', butterfly_projection = '后续需监控某原著节点是否失效' WHERE code = 'DV0001';",
+            insertNode: "仅当本轮最终正文或偏差专用上下文证明出现新的世界线偏差时插入。编码按现有最大 DV 递增，不得因为单纯预测风险插入确定性偏差。\nSQL示例: INSERT INTO deviation_ledger (row_id, code, status, deviation_type, deviation_level, deviation_note, butterfly_projection) VALUES ((SELECT COALESCE(MAX(row_id),0)+1 FROM deviation_ledger), 'DV0001', '活跃', '关系阵营', '局部', '【唐三】原著本该如何 VS 实际变成了什么。', '后续需监控某原著节点是否失效。');",
+            ddl: `CREATE TABLE deviation_ledger ( -- 偏差表
+  row_id INTEGER PRIMARY KEY, -- 行号
+  code TEXT NOT NULL UNIQUE CHECK(code GLOB 'DV[0-9][0-9][0-9][0-9]'), -- 编码
+  status TEXT NOT NULL CHECK(status IN ('潜伏','活跃','固化','收束')), -- 状态
+  deviation_type TEXT NOT NULL CHECK(deviation_type IN ('人物生死','关系阵营','物品机缘','事件节点','情报认知')), -- 偏差类型
+  deviation_level TEXT NOT NULL CHECK(deviation_level IN ('微小','局部','重大','断裂')), -- 偏差等级
+  deviation_note TEXT NOT NULL, -- 偏差纪要
+  butterfly_projection TEXT -- 蝴蝶推演
+);`
+        },
+        content: [
+            [
+                "row_id",
+                "编码",
+                "状态",
+                "偏差类型",
+                "偏差等级",
+                "偏差纪要",
+                "蝴蝶推演"
+            ]
+        ],
+        updateConfig: {
+            uiSentinel: -1,
+            contextDepth: 1,
+            updateFrequency: 1,
+            batchSize: 1,
+            skipFloors: 0,
+            sendLatestRows: -1
+        },
+        exportConfig: {
+            enabled: false,
+            splitByRow: false,
+            entryName: "偏差表",
+            entryType: "constant",
+            keywords: "",
+            preventRecursion: true,
+            injectionTemplate: "",
+            extraIndexEnabled: false,
+            extraIndexEntryName: "偏差表-索引",
+            extraIndexColumns: [],
+            extraIndexColumnModes: {},
+            extraIndexInjectionTemplate: "",
+            entryPlacement: {
+                position: "at_depth_as_system",
+                depth: 2,
+                order: 10000
+            },
+            extraIndexPlacement: {
+                position: "at_depth_as_system",
+                depth: 2,
+                order: 10010
+            },
+            fixedEntryPlacement: {
+                position: "at_depth_as_system",
+                depth: 2,
+                order: 99990
+            },
+            fixedIndexPlacement: {
+                position: "at_depth_as_system",
+                depth: 2,
+                order: 99991
+            },
+            injectIntoWorldbook: false
+        },
+        orderNo: 7
+    };
+
+    /**
      * 选项表 — 默认表定义
      */
     const optionsSheet = {
@@ -797,7 +905,7 @@
             },
             injectIntoWorldbook: false
         },
-        orderNo: 7
+        orderNo: 8
     };
 
     /**
@@ -1173,6 +1281,7 @@
     function buildDefaultTableTemplateObject_ACU() {
         return {
             [chronicleSheet.uid]: cloneTableDefault_ACU(chronicleSheet),
+            [偏差表Sheet_ACU.uid]: cloneTableDefault_ACU(偏差表Sheet_ACU),
             [optionsSheet.uid]: cloneTableDefault_ACU(optionsSheet),
             mate: cloneTableDefault_ACU(mateConfig)
         };
@@ -1225,7 +1334,7 @@
         },
         {
             "role": "USER",
-            "content": "你是【填表AI】，负责根据用户提供的资料对表格数据执行增删改操作。\n\n## 核心任务\n依据三类资料来源执行表格编辑：\n- <背景设定>：故事及人物设定\n- <正文数据>：上轮发生的故事\n- <当前表格数据>：之前的数据作为填表基础\n\n## 输出格式（严格执行）\n\n<thought>\n[分析当前轮次的剧情变化]\n[阅读所有填表相关规则]\n[根据填表规则确定需要修改的表格和字段]\n[逐步推理每个修改操作，说明理由]\n针对纪要表的额外规则：如果<当前表格数据>里存在纪要表，那么本轮就必须对其进行插入一条新的总结记录。\n日志与纪要语气校准：你在思考纪要时，必须区分“正常恋爱互动”与“暗黑主从文风”。你可以使用正常的交流词汇（如：提议、要求、同意、拒绝、引导、配合、安抚），但【绝对禁止】将情侣间的普通调情与互动过度解读为“权力掌控”、“剥夺反抗”、“精神支配”、“屈服”等单向压迫词汇！</thought>\n\n<content>\n<tableEdit>\ninsertRow(表格ID, {\"0\":\"字段0值\",\"1\":\"字段1值\",\"2\":\"字段2值\"})\nupdateRow(表格ID, 行号, {\"0\":\"字段0值\",\"1\":\"字段1值\",\"2\":\"字段2值\"})\ndeleteRow(表格ID, 行号)\n</tableEdit>\n</content>\n\n## 关键规则\n1. 必须逐表阅读每个表格的note部分，严格遵守其中的约束\n2. note的约束优先级最高，高于通用填表经验\n3. 若note要求禁止修改/格式固定/编码规则，必须严格执行\n4.除了note外，可能还存在某些存放特殊填表规则的表格，填表前需先进行阅读，并严格遵守其中的约束。\n5. 使用insertRow添加新行，updateRow更新已有行，deleteRow删除行\n\n## 格式要点\n- 必须使用双引号\n- 逗号后不加空格\n- `insertRow(表格ID, {...})` 和 `updateRow(表格ID, 行号, {...})` 里的表格ID、行号必须输出纯数字，不要写成字符串\n- 对象里的每一列都必须显式写成 `\"数字键\":\"值\"`，禁止省略键名后只连续输出裸字符串\n- 如果字段值内部需要出现双引号，必须转义为\\\"，例如：\"秉持\\\"谁欺负我就打谁\\\"的信念\"\n- 如果字段值内部需要换行，必须写成\\n，不能直接输出真实换行\n- 如果一句话里含有很多引号，优先改写措辞，尽量避免在JSON值里直接嵌套引号\n\n现在开始按此格式执行填表任务。",
+            "content": "你是【填表AI】，负责根据用户提供的资料对表格数据执行增删改操作。\n\n## 核心任务\n依据三类资料来源执行表格编辑：\n- <背景设定>：故事及人物设定\n- <正文数据>：上轮发生的故事\n- <当前表格数据>：之前的数据作为填表基础\n\n## 输出格式（严格执行）\n\n<thought>\n[分析当前轮次的剧情变化]\n[阅读所有填表相关规则]\n[根据填表规则确定需要修改的表格和字段]\n[逐步推理每个修改操作，说明理由]\n针对纪要表的额外规则：如果<当前表格数据>里存在纪要表，那么本轮就必须对其进行插入一条新的总结记录。\n针对偏差表的额外规则：偏差表只保留仍影响后续世界线的偏移；仅有苗头但未落地最多写为潜伏；最终正文实际改变历史后才写为活跃或固化；偏差被圆回原著时删除该行，禁止删除仍影响当前世界线的活跃或固化记录。\n日志与纪要语气校准：你在思考纪要时，必须区分“正常恋爱互动”与“暗黑主从文风”。你可以使用正常的交流词汇（如：提议、要求、同意、拒绝、引导、配合、安抚），但【绝对禁止】将情侣间的普通调情与互动过度解读为“权力掌控”、“剥夺反抗”、“精神支配”、“屈服”等单向压迫词汇！</thought>\n\n<content>\n<tableEdit>\ninsertRow(表格ID, {\"0\":\"字段0值\",\"1\":\"字段1值\",\"2\":\"字段2值\"})\nupdateRow(表格ID, 行号, {\"0\":\"字段0值\",\"1\":\"字段1值\",\"2\":\"字段2值\"})\ndeleteRow(表格ID, 行号)\n</tableEdit>\n</content>\n\n## 关键规则\n1. 必须逐表阅读每个表格的note部分，严格遵守其中的约束\n2. note的约束优先级最高，高于通用填表经验\n3. 若note要求禁止修改/格式固定/编码规则，必须严格执行\n4.除了note外，可能还存在某些存放特殊填表规则的表格，填表前需先进行阅读，并严格遵守其中的约束。\n5. 使用insertRow添加新行，updateRow更新已有行，deleteRow删除行\n\n## 格式要点\n- 必须使用双引号\n- 逗号后不加空格\n- `insertRow(表格ID, {...})` 和 `updateRow(表格ID, 行号, {...})` 里的表格ID、行号必须输出纯数字，不要写成字符串\n- 对象里的每一列都必须显式写成 `\"数字键\":\"值\"`，禁止省略键名后只连续输出裸字符串\n- 如果字段值内部需要出现双引号，必须转义为\\\"，例如：\"秉持\\\"谁欺负我就打谁\\\"的信念\"\n- 如果字段值内部需要换行，必须写成\\n，不能直接输出真实换行\n- 如果一句话里含有很多引号，优先改写措辞，尽量避免在JSON值里直接嵌套引号\n\n现在开始按此格式执行填表任务。",
             "deletable": false,
             "mainSlot": "A",
             "isMain": true
@@ -1270,6 +1379,7 @@
 [根据填表规则确定需要修改的表格和字段]
 [逐步推理每个修改操作，说明理由]
 针对纪要表的额外规则：如果<当前表格数据>里存在纪要表，那么本轮就必须对其进行插入一条新的总结记录。
+针对偏差表的额外规则：偏差表只保留仍影响后续世界线的偏移；仅有苗头但未落地最多写为潜伏；最终正文实际改变历史后才写为活跃或固化；偏差被圆回原著时删除该行，禁止删除仍影响当前世界线的活跃或固化记录。
 日志与纪要语气校准：你在思考纪要时，必须区分"正常恋爱互动"与"暗黑主从文风"。你可以使用正常的交流词汇（如：提议、要求、同意、拒绝、引导、配合、安抚），但【绝对禁止】将情侣间的普通调情与互动过度解读为"权力掌控"、"剥夺反抗"、"精神支配"、"屈服"等单向压迫词汇！</thought>
 
 <content>
@@ -15337,6 +15447,185 @@ $CONTENT
         }
     }
 
+    function 限长偏差账本文本_ACU(值 = '', 最大长度 = 160) {
+        const 文本 = String(值 ?? '').replace(/\s+/g, ' ').trim();
+        const 上限 = Math.max(12, Number(最大长度) || 160);
+        return 文本.length > 上限 ? `${文本.slice(0, 上限 - 1)}…` : 文本;
+    }
+
+    function 查找偏差表_ACU(全部表格数据) {
+        if (!全部表格数据 || typeof 全部表格数据 !== 'object') return null;
+        return Object.values(全部表格数据).find((sheet) => {
+            const 名称 = String(sheet?.name || '').trim();
+            return 名称 === '偏差表' && Array.isArray(sheet?.content);
+        }) || null;
+    }
+
+    function 读取偏差表列索引_ACU(表头行 = []) {
+        const 表头 = Array.isArray(表头行) ? 表头行 : [];
+        const 查找 = (名称列表) => 表头.findIndex((单元格) => 名称列表.includes(String(单元格 ?? '').trim()));
+        return {
+            编码: 查找(['编码', 'code']),
+            状态: 查找(['状态', 'status']),
+            偏差类型: 查找(['偏差类型', 'deviation_type']),
+            偏差等级: 查找(['偏差等级', 'deviation_level']),
+            偏差纪要: 查找(['偏差纪要', 'deviation_note']),
+            蝴蝶推演: 查找(['蝴蝶推演', 'butterfly_projection']),
+        };
+    }
+
+    function 读取偏差表单元格_ACU(行 = [], 列索引 = {}, 字段名 = '') {
+        const 索引 = 列索引[字段名];
+        if (!Array.isArray(行) || 索引 === undefined || 索引 < 0) return '';
+        return String(行[索引] ?? '').trim();
+    }
+
+    function 构建偏差表行记录_ACU(行 = [], 列索引 = {}, 原始序号 = 0) {
+        return {
+            原始序号,
+            编码: 读取偏差表单元格_ACU(行, 列索引, '编码'),
+            状态: 读取偏差表单元格_ACU(行, 列索引, '状态'),
+            偏差类型: 读取偏差表单元格_ACU(行, 列索引, '偏差类型'),
+            偏差等级: 读取偏差表单元格_ACU(行, 列索引, '偏差等级'),
+            偏差纪要: 读取偏差表单元格_ACU(行, 列索引, '偏差纪要'),
+            蝴蝶推演: 读取偏差表单元格_ACU(行, 列索引, '蝴蝶推演'),
+        };
+    }
+
+    function 拆分偏差账本检索词_ACU(值 = '') {
+        return Array.from(new Set(String(值 ?? '')
+            .split(/[,\s，、;；|/\\]+/g)
+            .map((文本) => 文本.trim())
+            .filter((文本) => 文本.length >= 2 && 文本.length <= 32)));
+    }
+
+    function 提取偏差账本条目检索词_ACU(记录 = {}) {
+        return Array.from(new Set([
+            ...拆分偏差账本检索词_ACU(记录.编码),
+            ...拆分偏差账本检索词_ACU(记录.状态),
+            ...拆分偏差账本检索词_ACU(记录.偏差类型),
+            ...拆分偏差账本检索词_ACU(记录.偏差等级),
+            ...拆分偏差账本检索词_ACU(记录.偏差纪要),
+            ...拆分偏差账本检索词_ACU(记录.蝴蝶推演),
+        ].filter(Boolean)));
+    }
+
+    function 计算偏差账本召回分_ACU(记录 = {}, 检索文本 = '') {
+        const 文本 = String(检索文本 || '');
+        if (!文本.trim()) return 0;
+        const 状态权重 = { 潜伏: 4, 活跃: 6, 固化: 5, 收束: 0 };
+        let 分数 = 状态权重[记录.状态] || 0;
+        提取偏差账本条目检索词_ACU(记录).forEach((关键词) => {
+            if (关键词 && 文本.includes(关键词)) 分数 += 10 + Math.min(关键词.length, 8);
+        });
+        拆分偏差账本检索词_ACU(`${记录.偏差纪要 || ''}\n${记录.蝴蝶推演 || ''}`).slice(0, 12).forEach((关键词) => {
+            if (关键词 && 文本.includes(关键词)) 分数 += 3;
+        });
+        return 分数;
+    }
+
+    function 格式化偏差账本候选记录_ACU(记录 = {}) {
+        const 段落 = [
+            记录.编码 || 'DV????',
+            `状态=${记录.状态 || '未定'}`,
+            `类型=${记录.偏差类型 || '未定'}`,
+            `等级=${记录.偏差等级 || '未定'}`,
+        ];
+        if (记录.偏差纪要) 段落.push(`纪要=${限长偏差账本文本_ACU(记录.偏差纪要, 120)}`);
+        if (记录.蝴蝶推演) 段落.push(`推演=${限长偏差账本文本_ACU(记录.蝴蝶推演, 80)}`);
+        return `- ${段落.join(' | ')}`;
+    }
+
+    function 格式化偏差账本完整记录_ACU(记录 = {}) {
+        return [
+            记录.编码 || 'DV????',
+            记录.状态 || '未定',
+            记录.偏差类型 || '未定',
+            记录.偏差等级 || '未定',
+            记录.偏差纪要 || '',
+            记录.蝴蝶推演 || '',
+        ].join(' | ');
+    }
+
+    function 读取偏差账本记录列表_ACU(全部表格数据) {
+        const 偏差表 = 查找偏差表_ACU(全部表格数据);
+        if (!偏差表 || !Array.isArray(偏差表.content) || 偏差表.content.length <= 1) return { success: true, records: [] };
+        const 表头 = Array.isArray(偏差表.content[0]) ? 偏差表.content[0] : [];
+        const 列索引 = 读取偏差表列索引_ACU(表头);
+        if (列索引.编码 < 0 || 列索引.状态 < 0 || 列索引.偏差纪要 < 0) {
+            return { success: false, records: [], error: '偏差账本：偏差表缺少必要列。' };
+        }
+        const 记录列表 = 偏差表.content
+            .slice(1)
+            .filter((行) => Array.isArray(行))
+            .map((行, 序号) => 构建偏差表行记录_ACU(行, 列索引, 序号))
+            .filter((记录) => 记录.编码 || 记录.偏差纪要);
+        return { success: true, records: 记录列表 };
+    }
+
+    function 提取偏差账本编码_ACU(文本 = '') {
+        const 匹配列表 = String(文本 || '').match(/\bDV\d{4}\b/g) || [];
+        return Array.from(new Set(匹配列表));
+    }
+
+    function 展开偏差账本召回_ACU(召回文本 = '', 全部表格数据 = currentJsonTableData_ACU) {
+        const 编码列表 = 提取偏差账本编码_ACU(召回文本);
+        if (!编码列表.length) return '无相关偏差记录。';
+        const 读取结果 = 读取偏差账本记录列表_ACU(全部表格数据);
+        if (!读取结果.success || !读取结果.records.length) return '无相关偏差记录。';
+        const 记录表 = new Map(读取结果.records.map((记录) => [记录.编码, 记录]));
+        const 展开列表 = 编码列表
+            .map((编码) => 记录表.get(编码))
+            .filter(Boolean)
+            .map(格式化偏差账本完整记录_ACU);
+        return 展开列表.length ? 展开列表.join('\n') : '无相关偏差记录。';
+    }
+
+    function 格式化偏差账本候选_ACU(全部表格数据, 选项 = {}) {
+        try {
+            const 读取结果 = 读取偏差账本记录列表_ACU(全部表格数据);
+            if (!读取结果.success) return { success: false, content: 读取结果.error || '偏差账本：偏差表缺少必要列。' };
+            const 记录列表 = 读取结果.records.filter((记录) => 记录.状态 !== '收束');
+            if (!记录列表.length) return { success: true, content: '无相关偏差记录。' };
+            const 检索文本 = [
+                选项.userMessage,
+                选项.contextText,
+                选项.lastPlotContent,
+                选项.anchorText,
+            ].map((文本) => String(文本 || '')).join('\n');
+            const 最大条数 = Math.max(3, Math.min(8, Number(选项.limit) || 8));
+            const 最少条数 = Math.max(0, Math.min(最大条数, Number(选项.min) || 3));
+            const 命中列表 = 记录列表
+                .map((记录) => ({ 记录, 分数: 计算偏差账本召回分_ACU(记录, 检索文本) }))
+                .filter((条目) => 条目.分数 > 0)
+                .sort((a, b) => b.分数 - a.分数 || b.记录.原始序号 - a.记录.原始序号)
+                .map((条目) => 条目.记录);
+            const 已选编码 = new Set();
+            const 选中列表 = [];
+            const 加入 = (记录) => {
+                const 键 = 记录.编码 || `row:${记录.原始序号}`;
+                if (已选编码.has(键) || 选中列表.length >= 最大条数) return;
+                已选编码.add(键);
+                选中列表.push(记录);
+            };
+            命中列表.forEach(加入);
+            if (选中列表.length < Math.max(1, 最少条数)) {
+                记录列表.slice().reverse().forEach(加入);
+            }
+            if (!选中列表.length) return { success: true, content: '无相关偏差记录。' };
+            const 内容 = [
+                '## 偏差账本候选',
+                ...选中列表.map(格式化偏差账本候选记录_ACU),
+                '阶段1只需从以上候选中输出真实存在的 DV 编码；完整偏差行会由脚本展开给阶段2。',
+            ].join('\n');
+            return { success: true, content: 内容 };
+        }
+        catch (error) {
+            logError_ACU('[剧情推进] 格式化偏差账本候选时出错:', error);
+            return { success: false, content: '偏差账本：格式化时发生错误。' };
+        }
+    }
+
     /**
      * service/runtime/plot-runtime/plot-history-preset.ts
      * 剧情推进 — 预设加载/迁移 + 历史记录读写
@@ -15783,6 +16072,52 @@ $CONTENT
             return null;
         }
     }
+
+    function 是偏差表_ACU(表格) {
+        return String(表格?.name || '').trim() === '偏差表';
+    }
+
+    function 构建偏差表专用上下文_ACU(全部表格数据 = currentJsonTableData_ACU) {
+        const 剧情文本 = String(getPlotFromHistory_ACU() || '');
+        const 远端时间线 = String(extractLastTagContent_ACU(剧情文本, '远端原著时间线命中')
+            ?? extractLastTagContent_ACU(剧情文本, 'timeline_recall')
+            ?? '').trim();
+        const 偏差召回原文 = String(extractLastTagContent_ACU(剧情文本, '偏差账本召回') ?? '').trim();
+        const 偏差召回 = 偏差召回原文 ? 展开偏差账本召回_ACU(偏差召回原文, 全部表格数据) : '';
+        const 偏差审查 = String(extractLastTagContent_ACU(剧情文本, '剧情审查_check_偏差') ?? '').trim();
+        const 片段列表 = [];
+        if (远端时间线 && 远端时间线 !== '无') {
+            片段列表.push(`<远端原著时间线命中>\n${远端时间线}\n</远端原著时间线命中>`);
+        }
+        if (偏差召回 && 偏差召回 !== '无相关偏差记录。') {
+            片段列表.push(`<偏差账本召回>\n${偏差召回}\n</偏差账本召回>`);
+        }
+        if (偏差审查) {
+            片段列表.push(`<剧情审查_check_偏差>\n${偏差审查}\n</剧情审查_check_偏差>`);
+        }
+        return 片段列表.length
+            ? 片段列表.join('\n\n')
+            : '本轮无可用偏差专用上下文。仅可根据最终正文事实更新偏差表。';
+    }
+
+    function 替换偏差表专用上下文_ACU(文本, 表格, 全部表格数据 = currentJsonTableData_ACU) {
+        const 原文 = String(文本 ?? '');
+        if (!是偏差表_ACU(表格) || !原文.includes('{{偏差表专用上下文}}')) return 原文;
+        return 原文.replace(/\{\{\s*偏差表专用上下文\s*\}\}/g, 构建偏差表专用上下文_ACU(全部表格数据));
+    }
+
+    function 获取提示用SourceData_ACU(表格, 全部表格数据 = currentJsonTableData_ACU) {
+        const 源数据 = 表格?.sourceData || {};
+        if (!是偏差表_ACU(表格)) return 源数据;
+        return {
+            ...源数据,
+            note: 替换偏差表专用上下文_ACU(源数据.note, 表格, 全部表格数据),
+            insertNode: 替换偏差表专用上下文_ACU(源数据.insertNode, 表格, 全部表格数据),
+            updateNode: 替换偏差表专用上下文_ACU(源数据.updateNode, 表格, 全部表格数据),
+            deleteNode: 替换偏差表专用上下文_ACU(源数据.deleteNode, 表格, 全部表格数据),
+        };
+    }
+
     async function prepareAIInput_ACU(messages, updateMode = 'standard', targetSheetKeys = null, options = {}) {
         const sqlMode = isSqliteMode();
         const sourceTableData = await resolvePromptSourceTableData_ACU(options, sqlMode);
@@ -15856,7 +16191,7 @@ $CONTENT
             }
             // SQLite 模式：输出 DDL + 注释数据格式；数据只来自运行时 DB，不再从模板 seedRows 兜底。
             if (sqlMode && table.sourceData?.ddl) {
-                tableDataText += formatTableForSqliteMode(table, tableIndex, sheetKey, _seedGuideDataForThisPrepare_ACU, { allowSeedRowsFallback: false });
+                tableDataText += formatTableForSqliteMode(table, tableIndex, sheetKey, _seedGuideDataForThisPrepare_ACU, { allowSeedRowsFallback: false, tableData: workingTableData });
                 return;
             }
             const allRows = table.content.slice(1);
@@ -15884,8 +16219,9 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    tableDataText += `  - Note: ${table.sourceData.note || 'N/A'}\n`;
-                    const initNodeContent = table.sourceData.initNode || table.sourceData.insertNode || 'N/A';
+                    const 提示源数据 = 获取提示用SourceData_ACU(table, workingTableData);
+                    tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
+                    const initNodeContent = 提示源数据.initNode || 提示源数据.insertNode || 'N/A';
                     tableDataText += `  - Init Trigger: ${initNodeContent}\n`;
                 }
                 tableDataText += `  (该表格为空，请进行初始化。)\n\n`;
@@ -15896,10 +16232,11 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    tableDataText += `  - Note: ${table.sourceData.note || 'N/A'}\n`;
-                    tableDataText += `  - Insert Trigger: ${table.sourceData.insertNode || table.sourceData.initNode || 'N/A'}\n`;
-                    tableDataText += `  - Update Trigger: ${table.sourceData.updateNode || 'N/A'}\n`;
-                    tableDataText += `  - Delete Trigger: ${table.sourceData.deleteNode || 'N/A'}\n`;
+                    const 提示源数据 = 获取提示用SourceData_ACU(table, workingTableData);
+                    tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
+                    tableDataText += `  - Insert Trigger: ${提示源数据.insertNode || 提示源数据.initNode || 'N/A'}\n`;
+                    tableDataText += `  - Update Trigger: ${提示源数据.updateNode || 'N/A'}\n`;
+                    tableDataText += `  - Delete Trigger: ${提示源数据.deleteNode || 'N/A'}\n`;
                 }
                 if (isUsingSeedRows) {
                     tableDataText += `  - SeedRows: 已提供模板基础数据（尚未写入聊天楼层数据；本次填表可直接基于这些行更新）\n`;
@@ -15979,14 +16316,15 @@ $CONTENT
         text += ddl.trim() + '\n';
         // 输出 Note 和 Trigger（作为 SQL 注释）
         if (table.sourceData) {
-            if (table.sourceData.note)
-                text += `-- Note: ${table.sourceData.note.replace(/\n/g, '\n-- ')}\n`;
-            if (table.sourceData.insertNode)
-                text += `-- INSERT: ${table.sourceData.insertNode}\n`;
-            if (table.sourceData.updateNode)
-                text += `-- UPDATE: ${table.sourceData.updateNode}\n`;
-            if (table.sourceData.deleteNode)
-                text += `-- DELETE: ${table.sourceData.deleteNode}\n`;
+            const 提示源数据 = 获取提示用SourceData_ACU(table, options.tableData || currentJsonTableData_ACU);
+            if (提示源数据.note)
+                text += `-- Note: ${提示源数据.note.replace(/\n/g, '\n-- ')}\n`;
+            if (提示源数据.insertNode)
+                text += `-- INSERT: ${提示源数据.insertNode}\n`;
+            if (提示源数据.updateNode)
+                text += `-- UPDATE: ${提示源数据.updateNode}\n`;
+            if (提示源数据.deleteNode)
+                text += `-- DELETE: ${提示源数据.deleteNode}\n`;
         }
         // 获取有效数据行
         const allRows = table.content.slice(1);
@@ -17640,6 +17978,25 @@ $CONTENT
         const contextInjectionText = formattedHistory && formattedHistory.trim()
             ? `以下是前文的故事发展（AI输出），给你用作参考：\n ${formattedHistory}`
             : '';
+        let deviationLedgerCandidateText = '无相关偏差记录。';
+        try {
+            if (currentJsonTableData_ACU && typeof currentJsonTableData_ACU === 'object') {
+                const deviationLedgerCandidateResult = 格式化偏差账本候选_ACU(currentJsonTableData_ACU, {
+                    userMessage,
+                    contextText: contextInjectionText,
+                    lastPlotContent,
+                    anchorText: outlineTableContent,
+                    limit: 8,
+                    min: 3,
+                });
+                if (deviationLedgerCandidateResult && typeof deviationLedgerCandidateResult.content === 'string' && deviationLedgerCandidateResult.content.trim()) {
+                    deviationLedgerCandidateText = deviationLedgerCandidateResult.content.trim();
+                }
+            }
+        }
+        catch (error) {
+            logWarn_ACU('[剧情推进] 生成偏差账本候选时出错:', error);
+        }
         let userInfoContent_Plot = '';
         try {
             userInfoContent_Plot = getPersonaDescription_ACU();
@@ -17728,6 +18085,7 @@ $CONTENT
             plotSettings,
             userMessage,
             lastPlotContent,
+            deviationLedgerCandidateText,
             performReplacements,
             finalSystemDirectiveContent,
             seedContentForConditional,
@@ -17741,6 +18099,8 @@ $CONTENT
             ? runtimeOptions.historyTagMap
             : buildPlotTagMapFromText_ACU(sharedContext.lastPlotContent, null);
         const relayTagMap = runtimeOptions.relayTagMap instanceof Map ? runtimeOptions.relayTagMap : new Map();
+        const fallbackTagMap = new Map(historyTagMap);
+        fallbackTagMap.set('偏差账本候选', [sharedContext.deviationLedgerCandidateText || '无相关偏差记录。']);
         // 构建 $1 的任务级覆盖值（任务级世界书内容）
         const replacementOverrides = {};
         if (sharedContext.taskWorldbookContent !== undefined) {
@@ -17752,7 +18112,7 @@ $CONTENT
             let c = seg.content;
             c = await tryRenderPlotTemplateWithEjs_ACU(c);
             c = sharedContext.performReplacements(c, replacementOverrides);
-            c = replacePlotTagPlaceholders_ACU(c, relayTagMap, historyTagMap);
+            c = replacePlotTagPlaceholders_ACU(c, relayTagMap, fallbackTagMap);
             c = 替换剧情推进运行时占位符_ACU(c, 'plot', {
                 userInput: sharedContext.userMessage || "",
                 lastCharMessage: getLatestAIMessageContent_ACU(),
@@ -17886,6 +18246,23 @@ $CONTENT
                 };
             }
             const { tagNames, extractedTags, injectedFragments, injectOnlyTags, injectOnlyFragments, injectOnlyTagNames } = extractPlotTagsFromResponse_ACU(rawResponse, normalizedTask.extractTags, normalizedTask.extractInjectTags);
+            if (Object.prototype.hasOwnProperty.call(extractedTags, '偏差账本召回')) {
+                const 展开内容 = 展开偏差账本召回_ACU(extractedTags.偏差账本召回, currentJsonTableData_ACU);
+                extractedTags.偏差账本召回 = 展开内容;
+                if (Object.prototype.hasOwnProperty.call(injectOnlyTags, '偏差账本召回')) {
+                    injectOnlyTags.偏差账本召回 = 展开内容;
+                }
+                const 替换偏差召回片段 = (片段列表) => {
+                    if (!Array.isArray(片段列表)) return;
+                    for (let 序号 = 0; 序号 < 片段列表.length; 序号++) {
+                        if (/^<偏差账本召回>/i.test(String(片段列表[序号] || '').trim())) {
+                            片段列表[序号] = `<偏差账本召回>${展开内容}</偏差账本召回>`;
+                        }
+                    }
+                };
+                替换偏差召回片段(injectedFragments);
+                替换偏差召回片段(injectOnlyFragments);
+            }
             if (tagNames.length > 0 && Object.keys(extractedTags).length > 0) {
                 logDebug_ACU(`[剧情推进] [阶段:${taskStage}] [任务:${taskLabel}] 成功摘取标签: ${Object.keys(extractedTags).join(', ')}`);
             }

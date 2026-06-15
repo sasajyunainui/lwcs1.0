@@ -1113,6 +1113,36 @@ function 构建运行时统一实体命中_V1(数据根 = {}, 文本 = '', 选�
   return { 当前MVU, 内置角色, 冷归档角色, 内置物品, 冷归档物品, 冷归档动态地点 };
 }
 
+function 构建运行时内置角色候选表_V1() {
+  const 角色表 = 读取内置角色库_V1()?.角色 || {};
+  const 候选表 = {};
+  Object.entries(角色表).forEach(([角色名, 角色记录]) => {
+    const 规范名 = String(角色名 || 角色记录?.角色名 || '').trim();
+    if (!规范名) return;
+    候选表[规范名] = 规范名;
+    (Array.isArray(角色记录?.别名) ? 角色记录.别名 : []).forEach(别名 => {
+      const 候选名 = String(别名 || '').trim();
+      if (候选名) 候选表[候选名] = 规范名;
+    });
+  });
+  return 候选表;
+}
+
+function 构建更新前运行时草稿_V1(数据根 = {}, 命中文本 = '', 选项 = {}) {
+  if (选项?.跳过提示前实例化 === true) return { 数据根, 命中角色: [] };
+  const 统一命中 = 构建运行时统一实体命中_V1(数据根, 命中文本, {
+    内置角色: 构建运行时内置角色候选表_V1(),
+  });
+  const 命中角色 = Array.isArray(统一命中.内置角色) ? 统一命中.内置角色 : [];
+  if (!命中角色.length) return { 数据根, 命中角色 };
+  const 草稿数据根 = cloneJsonValue(数据根, {});
+  应用内置角色实例化_V1(草稿数据根, {
+    命中角色,
+    使用统一命中: true,
+  });
+  return { 数据根: 草稿数据根, 命中角色 };
+}
+
 function 构建运行时命中上下文_V1(数据根 = {}, 文本 = '', 选项 = {}) {
   const 运行时命中名称 = 选项.运行时命中名称 && typeof 选项.运行时命中名称 === 'object'
     ? 选项.运行时命中名称
@@ -1777,14 +1807,19 @@ function 读取运行时最后角色消息文本_V1() {
 }
 
 function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最后角色消息输入 = '', plotText = '') {
-  const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 原始数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 最后角色消息文本 = String(最后角色消息输入 || '').trim() || 读取运行时最后角色消息文本_V1();
   const 命中文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
-  const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 命中文本);
-  const 命中 = 运行时命中上下文.运行时命中名称;
-  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 命中文本, { 运行时命中名称: 命中 });
+  const 原始命中 = 构建运行时命中上下文_V1(原始数据根, 命中文本).运行时命中名称;
+  const 草稿上下文 = 构建更新前运行时草稿_V1(原始数据根, 命中文本);
+  const 数据根 = 草稿上下文.数据根;
+  const 草稿命中 = 构建运行时命中上下文_V1(数据根, 命中文本).运行时命中名称;
+  const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 命中文本, { 运行时命中名称: 草稿命中 });
+  (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
+    if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
+  });
   const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 命中文本, { 角色名集合 });
-  const 更新视图选项 = { 运行时命中名称: 命中, 角色名集合, ...物品候选上下文 };
+  const 更新视图选项 = { 运行时命中名称: 草稿命中, 角色名集合, ...物品候选上下文, 跳过提示前实例化: true };
   const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息文本, plotText, 更新视图选项);
   const 可见占位统计 = 收集运行时可见占位统计_V1(更新视图);
   const 魂技待补全路径 = 收集运行时魂技待补全路径_V1(更新视图);
@@ -1792,7 +1827,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   return [
     'Existing MVU Entity Hits:',
     'Only names listed here count as already existing in MVU. Lore-known, worldbook-known, narratively familiar, or previously mentioned names do NOT count as existing unless listed here.',
-    `char=${格式化MVU更新结构命中列表_V1(命中.角色)}; world.地点=${格式化MVU更新结构命中列表_V1(命中.地点)}; world.动态地点=${格式化MVU更新结构命中列表_V1(命中.动态地点)}; org=${格式化MVU更新结构命中列表_V1(命中.势力)}; 物品=${格式化MVU更新结构命中列表_V1(命中.物品)}.`,
+    `char=${格式化MVU更新结构命中列表_V1(原始命中.角色)}; world.地点=${格式化MVU更新结构命中列表_V1(原始命中.地点)}; world.动态地点=${格式化MVU更新结构命中列表_V1(原始命中.动态地点)}; org=${格式化MVU更新结构命中列表_V1(原始命中.势力)}; 物品=${格式化MVU更新结构命中列表_V1(原始命中.物品)}.`,
     '',
     'Visible Placeholder Summary:',
     `待补全总数=${Number(可见占位统计?.总数 || 0)}; 角色=${(Array.isArray(可见占位统计.角色) ? 可见占位统计.角色 : []).filter(项 => 项 && 项.名称 !== '角色外' && Number(项.数量 || 0) > 0).map(项 => `${项.名称}${Number(项.数量 || 0)}项`).join('、') || '无'}; 角色外=${Number(可见占位统计?.角色外 || 0)}项.`,
@@ -2792,9 +2827,11 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
 }
 
 function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一条角色消息 = '', plotText = '', 选项 = {}) {
-  const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
+  const 原始数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
   const 最后角色消息文本 = String(最后一条角色消息 || '').trim() || 读取运行时最后角色消息文本_V1();
   const 文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
+  const 草稿上下文 = 构建更新前运行时草稿_V1(原始数据根, 文本, 选项);
+  const 数据根 = 草稿上下文.数据根;
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本, 选项);
   const 运行时提示限流 = 创建运行时提示限流器_V1();
@@ -2802,6 +2839,9 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 角色名集合 = 选项.角色名集合 instanceof Set
     ? new Set([取运行时当前范围_V1(数据根).玩家名].filter(Boolean).concat(Array.from(选项.角色名集合)))
     : 取运行时基础角色名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
+  (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
+    if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
+  });
   const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, { ...选项, 角色名集合 });
   const 地点名集合 = 取运行时地点名集合_V1(数据根, 文本, { 运行时命中名称: 运行时命中上下文.运行时命中名称 });
   const 动态地点名集合 = 取运行时动态地点名集合_V1(数据根, 文本);
