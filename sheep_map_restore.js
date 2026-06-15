@@ -2685,11 +2685,11 @@
     .map-npc-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin-top: 6px;
+      gap: 2px;
+      margin-top: 4px;
       max-height: min(360px, 42vh);
       overflow-y: auto;
-      padding-right: 4px;
+      padding-right: 2px;
       scrollbar-width: thin;
       scrollbar-color: rgba(118,226,255,0.34) rgba(255,255,255,0.04);
     }
@@ -2722,7 +2722,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 2px 2px 8px;
+      padding: 0 2px 6px;
       margin-bottom: 2px;
       border-bottom: 1px solid rgba(118,226,255,0.15);
       background: linear-gradient(180deg, rgba(8,16,24,0.98), rgba(8,16,24,0.74));
@@ -2788,32 +2788,65 @@
     }
 
     .map-npc-card {
+      position: relative;
       flex: 0 0 auto;
-      border-radius: 8px;
-      border: 1px solid rgba(168, 192, 214, 0.14);
-      border-left: 2px solid rgba(118,226,255,0.2);
-      background: linear-gradient(90deg, rgba(16,32,46,0.7), rgba(16,32,46,0.2));
-      padding: 8px 10px;
-      min-height: 42px;
+      border-radius: 6px;
+      border: 0;
+      background: transparent;
+      padding: 5px 7px 5px 10px;
+      min-height: 34px;
       transition: .18s ease;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       grid-template-rows: auto auto auto;
       align-items: start;
       column-gap: 8px;
-      row-gap: 4px;
+      row-gap: 2px;
       overflow: hidden;
     }
 
+    .map-npc-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 7px;
+      bottom: 7px;
+      width: 2px;
+      border-radius: 999px;
+      background: rgba(118,226,255,0.22);
+      opacity: 0.58;
+      transition: .18s ease;
+    }
+
+    .map-npc-card.is-child::before {
+      background: rgba(170,192,213,0.28);
+    }
+
     .map-npc-card.current {
-      border-color: rgba(118,226,255,0.34);
-      border-left-color: rgba(118,226,255,0.88);
-      background: linear-gradient(90deg, rgba(16,32,46,0.92), rgba(16,32,46,0.34));
-      box-shadow: 0 0 0 1px rgba(118,226,255,0.08), 0 10px 24px rgba(0,0,0,0.18), 0 0 18px rgba(118,226,255,0.12);
+      background: rgba(118,226,255,0.07);
+      box-shadow: inset 0 0 0 1px rgba(118,226,255,0.08);
+    }
+
+    .map-npc-card:hover,
+    .map-npc-card:focus-within {
+      background: rgba(255,255,255,0.045);
+    }
+
+    .map-npc-card.current::before,
+    .map-npc-card:hover::before,
+    .map-npc-card:focus-within::before {
+      background: #76e2ff;
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(118,226,255,0.42);
     }
 
     .map-npc-card-head {
-      display: contents;
+      grid-column: 1 / -1;
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
     }
 
     .map-npc-name {
@@ -2830,8 +2863,6 @@
       text-shadow: 0 0 8px rgba(118,226,255,0.16);
       text-align: left;
       cursor: pointer;
-      grid-column: 1;
-      grid-row: 1;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -2839,13 +2870,10 @@
     }
 
     .map-npc-card-head .map-event-chip {
-      grid-column: 2;
-      grid-row: 1;
-      justify-self: end;
-      align-self: start;
-      padding: 4px 7px;
+      flex: 0 0 auto;
+      padding: 3px 6px;
       font-size: 9px;
-      border-radius: 4px;
+      border-radius: 999px;
       background: rgba(118,226,255,0.1);
       border-color: rgba(118,226,255,0.16);
       color: #dff5ff;
@@ -2866,10 +2894,10 @@
 
     .map-npc-meta {
       margin-top: 0;
-      padding-top: 2px;
-      border-top: 1px solid rgba(118,226,255,0.08);
+      padding-top: 0;
+      border-top: 0;
       font-size: 10px;
-      line-height: 1.4;
+      line-height: 1.25;
       color: #8aabc2;
       grid-column: 1 / -1;
       grid-row: 2;
@@ -2889,7 +2917,7 @@
       gap: 4px;
       grid-column: 1 / -1;
       grid-row: 3;
-      margin-top: 2px;
+      margin-top: 3px;
     }
 
     .map-npc-card.current .map-npc-actions,
@@ -2905,7 +2933,7 @@
       background: rgba(13,24,35,0.82);
       color: #dfe9ef;
       border-radius: 999px;
-      padding: 5px 6px;
+      padding: 4px 6px;
       font-size: 9px;
       line-height: 1;
       cursor: pointer;
@@ -2952,7 +2980,7 @@
       display: grid;
       grid-template-columns: minmax(108px, 0.34fr) minmax(0, 1fr);
       align-items: stretch;
-      gap: 6px;
+      gap: 10px;
       min-width: 0;
       margin-bottom: 5px;
     }
@@ -2961,11 +2989,12 @@
     .map-action-select-wrap,
     .map-action-detail-cell {
       min-width: 0;
-      border: 1px solid rgba(134,171,201,0.14);
-      background: rgba(7,18,27,0.56);
+      border: 0;
+      border-bottom: 1px solid rgba(118,226,255,0.2);
+      background: transparent;
       color: #dcecf7;
       font: inherit;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+      box-shadow: none;
     }
 
     .map-action-primary {
@@ -2973,8 +3002,8 @@
       grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
       gap: 6px;
-      border-radius: 8px;
-      padding: 6px 9px;
+      border-radius: 0;
+      padding: 0 2px 4px;
       cursor: pointer;
       text-align: left;
     }
@@ -3005,13 +3034,14 @@
       grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
       gap: 7px;
-      border-radius: 8px;
-      padding: 5px 8px;
+      border-radius: 0;
+      padding: 0 2px 4px;
     }
 
     .map-action-select {
       min-width: 0;
       width: 100%;
+      appearance: none;
       border: 0;
       outline: none;
       background: transparent;
@@ -3034,16 +3064,16 @@
     .map-method-select:hover:not(.disabled),
     .map-method-select:focus-visible {
       border-color: rgba(118,226,255,0.32);
-      background: rgba(12,36,52,0.72);
+      background: transparent;
       outline: none;
     }
 
     .map-action-detail-row {
       display: grid;
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
-      gap: 1px;
+      gap: 7px;
       min-width: 0;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .map-action-detail-row.has-method {
@@ -3057,7 +3087,7 @@
       align-items: center;
       gap: 6px;
       border-radius: 0;
-      padding: 5px 9px;
+      padding: 4px 0;
     }
 
     .map-action-detail-cell > b,
@@ -3075,12 +3105,13 @@
       grid-column: 2;
     }
 
-    .map-action-detail-cell span {
+    .map-action-detail-cell > span {
       min-width: 0;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      overflow: visible;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
       text-overflow: clip;
       white-space: normal;
       color: #e9f9ff;
@@ -3100,7 +3131,61 @@
     .map-action-detail-cell.is-actionable:hover,
     .map-action-detail-cell.is-actionable:focus-visible {
       border-color: rgba(118, 226, 255, 0.28);
-      background: linear-gradient(180deg, rgba(13, 45, 64, 0.72), rgba(3, 16, 25, 0.72));
+      background: transparent;
+    }
+
+    .map-telemetry-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      min-height: 17px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(118,226,255,0.075);
+      color: rgba(224,246,255,0.9);
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 760;
+      white-space: nowrap;
+      box-shadow: inset 0 0 0 1px rgba(118,226,255,0.11);
+    }
+
+    .map-telemetry-pill b {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: rgba(177,220,233,0.72);
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 650;
+    }
+
+    .map-telemetry-pill strong {
+      color: #ecfdff;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 850;
+    }
+
+    .map-telemetry-pill.is-gain strong {
+      color: #7dfad0;
+    }
+
+    .map-telemetry-pill.is-cost strong {
+      color: #ffc78b;
+    }
+
+    .map-telemetry-pill.is-muted {
+      color: rgba(171,206,219,0.66);
+      background: rgba(171,206,219,0.055);
+      box-shadow: inset 0 0 0 1px rgba(171,206,219,0.07);
+    }
+
+    .map-telemetry-pill.is-time i {
+      color: rgba(118,226,255,0.8);
+      font-style: normal;
+      font-weight: 850;
     }
 
     .map-action-primary.disabled,
@@ -7799,6 +7884,53 @@
       .replace(/'/g, '&#39;');
   }
 
+  function 解析地图收益文本(文本 = '') {
+    const 原文 = toText(文本, '').trim();
+    if (!原文 || 原文 === '无') return [];
+    return 原文
+      .split(/\s*\/\s*|\s*·\s*/)
+      .map(片段 => toText(片段, '').trim())
+      .filter(Boolean)
+      .map(片段 => {
+        const 命中 = 片段.match(/^(.+?)([+-]\d+(?:\.\d+)?)$/);
+        if (!命中) return { 标签: 片段, 数值: '', 原文: 片段, 是否数值: false, 是否零值: false };
+        const 数值 = Number(命中[2]);
+        return {
+          标签: 命中[1].trim(),
+          数值文本: 命中[2],
+          数值,
+          原文: 片段,
+          是否数值: Number.isFinite(数值),
+          是否零值: Number.isFinite(数值) && Math.abs(数值) === 0,
+        };
+      });
+  }
+
+  function 渲染地图遥测胶囊HTML(文本 = '', 选项 = {}) {
+    const 类型 = toText(选项 && 选项.类型, '');
+    const 原文 = toText(文本, '').trim();
+    if (!原文) return '<span class="map-telemetry-pill is-muted">无</span>';
+    if (类型 === 'time') {
+      return `<span class="map-telemetry-pill is-time" title="${escapeMapHtml(原文)}"><i>◷</i>${escapeMapHtml(原文)}</span>`;
+    }
+    const 项列表 = 解析地图收益文本(原文).filter(项 => !项.是否零值);
+    if (!项列表.length && 解析地图收益文本(原文).some(项 => 项.是否零值)) {
+      return '<span class="map-telemetry-pill is-muted">无增益</span>';
+    }
+    if (!项列表.length) {
+      return `<span class="map-telemetry-pill is-muted" title="${escapeMapHtml(原文)}">${escapeMapHtml(原文)}</span>`;
+    }
+    return 项列表
+      .map(项 => {
+        if (!项.是否数值) {
+          return `<span class="map-telemetry-pill is-muted" title="${escapeMapHtml(项.原文)}">${escapeMapHtml(项.原文)}</span>`;
+        }
+        const 样式类 = 项.数值 > 0 ? 'is-gain' : 'is-cost';
+        return `<span class="map-telemetry-pill ${样式类}" title="${escapeMapHtml(项.原文)}"><b>${escapeMapHtml(项.标签)}</b><strong>${escapeMapHtml(项.数值文本)}</strong></span>`;
+      })
+      .join('');
+  }
+
   function getNpcActionCandidates(item, npcCount = 0) {
     if (!item) return [];
     const candidates = new Set();
@@ -7911,7 +8043,7 @@
       const 选中类 = 人物名 && 人物名 === 已选人物 ? ' current' : '';
       const 可交互人物 = 人物条目 && 人物条目.可交互 === true;
       const 人物信息 = 格式化人物卡信息(人物条目);
-      const 信息HTML = 人物信息 ? `<div class="map-npc-meta${可交互人物 ? '' : ' is-location'}">${escapeMapHtml(人物信息)}</div>` : '';
+      const 信息HTML = 人物信息 ? `<div class="map-npc-meta${可交互人物 ? '' : ' is-location'}" title="${escapeMapHtml(人物信息)}">${escapeMapHtml(人物信息)}</div>` : '';
       const 名称HTML = 输出模式 === 'dispatch'
         ? `<button type="button" class="map-npc-name clickable${选中类}" data-preview="角色档案：${escapeMapHtml(人物名)}" title="角色档案：${escapeMapHtml(人物名)}">${escapeMapHtml(人物名)}</button>`
         : (可交互人物
@@ -7928,7 +8060,7 @@
             已选人物
           })).join('')}</div>`
         : (可交互人物 ? `<div class="map-npc-meta">当前无可互动人物。</div>` : '');
-      return `<div class="map-npc-card${选中类}"><div class="map-npc-card-head">${名称HTML}<span class="map-event-chip${选中类 ? ' live' : ''}">${选中类 ? '已选' : (可交互人物 ? '在场' : '子节点')}</span></div>${信息HTML}${动作HTML}</div>`;
+      return `<div class="map-npc-card${选中类}${可交互人物 ? ' is-local' : ' is-child'}"><div class="map-npc-card-head">${名称HTML}<span class="map-event-chip${选中类 ? ' live' : ''}">${选中类 ? '已选' : (可交互人物 ? '在场' : '子节点')}</span></div>${信息HTML}${动作HTML}</div>`;
     }).join('');
     return {
       html: `${构建标题HTML(人物条目列表.length, 已选人物)}${列表HTML}`,
@@ -9612,7 +9744,7 @@ ${logMsg}
     setMapText('[data-map-request-method]', travelMethodDisplay);
     setMapText('[data-map-request-targetloc]', actionTargetText);
     setMapText('[data-map-request-coord]', actionMoveText);
-    setMapText('[data-map-request-cost]', actionCostText);
+    setMapHtml('[data-map-request-cost]', 渲染地图遥测胶囊HTML(actionCostText));
     setMapText('[data-map-request-panel-hint]', isFreeSelection && previewRequest ? '开始移动' : pendingForSelection ? '确认前往' : (previewRequest ? '开始移动' : '选择目标'));
     setMapText('[data-map-request-json]', travelNote);
     setMapText('[data-map-request-state]', pending ? `待前往 ${pendingTarget} / ${pending.method}${pending.route_plan ? ` / ${pending.route_plan}` : ''} / ${pending.est_duration}` : previewRequest ? `${isFreeSelection ? '可移动' : '可前往'} ${previewTarget} / ${previewRequest.method}${previewRequest.route_plan ? ` / ${previewRequest.route_plan}` : ''} / ${previewRequest.est_duration}` : '留驻当前地点');
@@ -9975,8 +10107,9 @@ ${logMsg}
     setMapText("[data-map-request-label='1']", selectedActionDetail.labels[1]);
     setMapText("[data-map-request-label='2']", selectedActionDetail.labels[2]);
     setMapText('[data-map-request-targetloc]', selectedActionDetail.values[0]);
-    setMapText('[data-map-request-coord]', selectedActionDetail.values[1]);
-    setMapText('[data-map-request-cost]', selectedActionDetail.values[2]);
+    if (是否地图可变时长动作(selectedAction)) setMapHtml('[data-map-request-coord]', 渲染地图遥测胶囊HTML(selectedActionDetail.values[1], { 类型: 'time' }));
+    else setMapText('[data-map-request-coord]', selectedActionDetail.values[1]);
+    setMapHtml('[data-map-request-cost]', 渲染地图遥测胶囊HTML(selectedActionDetail.values[2]));
 
     setMapText('[data-map-primary-panel-title]', '详细信息');
     setMapText('[data-map-secondary-panel-title]', '人物');
@@ -10455,7 +10588,7 @@ ${logMsg}
     
     setMapText('[data-map-request-method]', travelMethodDisplay);
     setMapText('[data-map-request-coord]', actionMoveText);
-    setMapText('[data-map-request-cost]', actionCostText);
+    setMapHtml('[data-map-request-cost]', 渲染地图遥测胶囊HTML(actionCostText));
     
     getMapUiElements('[data-map-travel-action]').forEach(card => {
       card.classList.toggle('disabled', !travelPreview || (hasActivePreview() && !isPreviewCurrentBranch()));

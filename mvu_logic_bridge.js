@@ -1152,6 +1152,7 @@
 
   function makeDossierList(items, className = '') {
     const listItems = Array.isArray(items) ? items : [];
+    if (!listItems.length) return '';
     return `
         <div class="dossier-list ${className}">
           ${listItems
@@ -6970,11 +6971,7 @@
       const 路径 = decodeJsonPointerPath(补丁 && 补丁.path);
       if (路径[0] !== 'char' || !路径[1]) return;
       const 角色键 = String(路径[1]);
-      if (
-        路径.length <= 2 ||
-        路径[2] === '财富' ||
-        (路径[2] === '社交' && (路径.length === 3 || 路径[3] === '声望'))
-      ) {
+      if (路径[2] === '财富' || (路径[2] === '社交' && (路径.length === 3 || 路径[3] === '声望'))) {
         显式奖励角色集合.add(角色键);
       }
       if (路径[2] !== '我的任务' || 路径.length < 4) return;
@@ -6992,12 +6989,12 @@
     return { 任务列表: Array.from(任务触碰表.values()), 显式奖励角色集合 };
   }
 
-  function 结算JSONPatch任务奖励(statData = {}, 结算上下文 = {}, 读取值 = () => undefined) {
+  function 结算JSONPatch任务奖励(变量根 = {}, 结算上下文 = {}, 读取值 = () => undefined) {
     const 任务列表 = Array.isArray(结算上下文.任务列表) ? 结算上下文.任务列表 : [];
     if (!任务列表.length) return;
     const 显式奖励角色集合 =
       结算上下文.显式奖励角色集合 instanceof Set ? 结算上下文.显式奖励角色集合 : new Set();
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(变量根, 'world.时间.tick', 0), 0)));
     任务列表.forEach(记录 => {
       const 角色键 = toText(记录 && 记录.角色键, '').trim();
       const 任务名 = toText(记录 && 记录.任务名, '').trim();
@@ -7011,16 +7008,16 @@
       if (/失败|放弃/.test(当前状态) || 读取任务奖励进度(当前任务) < 100) return;
       const 奖励币 = Math.max(0, Math.floor(toNumber(当前任务['奖励币'], 0)));
       const 奖励声望 = Math.max(0, Math.floor(toNumber(当前任务['奖励声望'], 0)));
-      deepSetMutable(statData, [...任务路径, '状态'], '已完成');
-      deepSetMutable(statData, [...任务路径, '当前进度'], 100);
-      deepSetMutable(statData, [...任务路径, '最后更新时间tick'], 当前tick);
+      deepSetMutable(变量根, [...任务路径, '状态'], '已完成');
+      deepSetMutable(变量根, [...任务路径, '当前进度'], 100);
+      deepSetMutable(变量根, [...任务路径, '最后更新时间tick'], 当前tick);
       deepSetMutable(
-        statData,
+        变量根,
         ['char', 角色键, '财富', '联邦币'],
         Math.max(0, toNumber(读取值(['char', 角色键, '财富', '联邦币'], 0), 0)) + 奖励币,
       );
       deepSetMutable(
-        statData,
+        变量根,
         ['char', 角色键, '社交', '声望'],
         Math.max(0, toNumber(读取值(['char', 角色键, '社交', '声望'], 0), 0)) + 奖励声望,
       );
@@ -7032,12 +7029,9 @@
         toText(委托['承接者'], '') === 角色键 &&
         !任务奖励状态已终结(委托['状态'])
       ) {
-        deepSetMutable(statData, ['world', '委托板', 任务名, '状态'], '已完成');
-        deepSetMutable(statData, ['world', '委托板', 任务名, '承接者'], 角色键);
+        deepSetMutable(变量根, ['world', '委托板', 任务名, '状态'], '已完成');
+        deepSetMutable(变量根, ['world', '委托板', 任务名, '承接者'], 角色键);
       }
-      const 路径键 = JSON.stringify([角色键, 任务名]);
-      结算上下文.已结算任务键集合 = 结算上下文.已结算任务键集合 instanceof Set ? 结算上下文.已结算任务键集合 : new Set();
-      结算上下文.已结算任务键集合.add(路径键);
     });
   }
 
@@ -7138,19 +7132,6 @@
           }
         });
         结算JSONPatch任务奖励(statData, 任务奖励结算上下文, readMutableValue);
-        normalizedPatches.forEach(patch => {
-          const path = decodeJsonPointerPath(patch.path);
-          if (
-            path.length === 2 &&
-            path[0] === 'char' &&
-            path[1] &&
-            任务奖励结算上下文.已结算任务键集合 instanceof Set &&
-            任务奖励结算上下文.已结算任务键集合.size > 0
-          ) {
-            const 角色键 = String(path[1]);
-            if (!任务奖励结算上下文.已结算任务键集合.has(JSON.stringify([角色键, '']))) return;
-          }
-        });
       }, options);
     } finally {
       if (需要在AI写回后清理结算锁) 清除本轮模块结算路径();
@@ -27935,21 +27916,16 @@
 
   function buildShellWorldHeroCard(snapshot) {
     if (!snapshot) {
-      return buildShellSummaryCard({
-        kicker: '世界',
-        title: '时空中枢',
-        value: '待同步',
-        meta: '当前聊天',
-        metrics: [
-          { label: '偏差', value: '--' },
-          { label: '事件', value: '--' },
-          { label: '阶段', value: '--' },
-          { label: '森怨', value: '--' },
-        ],
-        note: '等待同步',
-        tone: 'hero',
-        size: 'hero',
-      });
+      return `
+        <div class="world-hud-console world-hud-console--empty">
+          <div class="module-name">时空中枢</div>
+          <div class="world-hud-clock">待同步</div>
+          <div class="world-alert-stack">
+            <div class="world-alert-bar is-muted"><span><b style="width:0%;"></b></span><em>世界偏差 --</em></div>
+            <div class="world-alert-bar is-muted"><span><b style="width:0%;"></b></span><em>森林仇恨 --</em></div>
+          </div>
+        </div>
+      `;
     }
     const rawWorldTime = toText(
       deepGet(
@@ -27968,25 +27944,29 @@
       Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))),
     );
     const 核心阶段 = 推断世界核心阶段(snapshot);
-    return buildShellSummaryCard({
-      kicker: '世界',
-      title: '世界',
-      value: 偏差状态,
-      meta: shortenText(worldTime || '等待同步', 24),
-      metrics: [
-        { label: '时间', value: shortenText(worldTime || '等待同步', 12) },
-        { label: '偏差', value: String(deviation), tone: deviation >= 40 ? 'warn' : deviation >= 10 ? 'gold' : 'live' },
-        { label: '阶段', value: shortenText(核心阶段, 12) },
-        {
-          label: '森怨',
-          value: `${forestRatio}%`,
-          tone: forestRatio >= 70 ? 'warn' : forestRatio >= 30 ? 'gold' : 'live',
-        },
-      ],
-      note: shortenText(`安全等级 ${偏差状态} / x${偏差倍率} / ${核心阶段}`, 34),
-      tone: 'hero',
-      size: 'hero',
-    });
+    const 偏差比例 = Math.max(0, Math.min(100, deviation));
+    const 偏差样式 = deviation >= 40 ? 'is-warn' : deviation >= 10 ? 'is-gold' : 'is-live';
+    const 森林样式 = forestRatio >= 70 ? 'is-warn' : forestRatio >= 30 ? 'is-gold' : 'is-live';
+    return `
+      <div class="world-hud-console">
+        <div class="module-name">时空中枢</div>
+        <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime || '等待同步')}">${htmlEscape(worldTime || '等待同步')}</div>
+        <div class="world-hud-meta-grid">
+          <span><b>偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></span>
+          <span><b>阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></span>
+        </div>
+        <div class="world-alert-stack">
+          <div class="world-alert-bar ${偏差样式}">
+            <span><b style="width:${偏差比例}%;"></b></span>
+            <em>世界偏差 ${htmlEscape(String(deviation))}</em>
+          </div>
+          <div class="world-alert-bar ${森林样式}">
+            <span><b style="width:${forestRatio}%;"></b></span>
+            <em>森林仇恨 ${htmlEscape(`${forestRatio}%`)}</em>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function 构建世界编年史条目(snapshot) {
@@ -28245,16 +28225,15 @@
 
   function buildShellOrgHeroCard(snapshot) {
     if (!snapshot) {
-      return buildShellSummaryCard({
-        kicker: '势力',
-        title: '阵营待同步',
-        value: '待同步',
-        meta: '当前聊天',
-        rows: [
-          { label: '阵营', value: '--' },
-          { label: '身份', value: '--' },
-        ],
-      });
+      return `
+        <div class="org-console-panel">
+          <div class="module-name">势力矩阵</div>
+          <div class="org-console-grid">
+            <div class="org-kv-row"><b>当前阵营</b><span>待同步</span></div>
+            <div class="org-kv-row"><b>本地掌控</b><span>--</span></div>
+          </div>
+        </div>
+      `;
     }
     const primaryFactionEntry = getPrimaryFactionEntry(snapshot);
     const factionStats = getPrimaryFactionPowerStats(snapshot);
@@ -28262,25 +28241,26 @@
       deepGet(snapshot, 'locationData.掌控势力', primaryFactionEntry.name || '未知'),
       primaryFactionEntry.name || '未知',
     );
-    return buildShellSummaryCard({
-      kicker: '势力',
-      title: shortenText(primaryFactionEntry.name || '势力矩阵', 14),
-      value: `${(snapshot.orgEntries || []).length || 0} 个焦点`,
-      meta: `本地 ${shortenText(localFaction, 12)}`,
-      badges: [
-        snapshot.势力[0] ? { text: shortenText(snapshot.势力[0][0], 10), tone: 'gold' } : '',
-        buildFactionRelationSummary(primaryFactionEntry.data || {}, 2),
-      ],
-      metrics: [
-        { label: '极限', value: String(factionStats.limit || 0), tone: 'gold' },
-        { label: '超级', value: String(factionStats.super || 0) },
-        { label: '封号', value: String(factionStats.title || 0), tone: 'live' },
-        { label: '焦点', value: String((snapshot.orgEntries || []).length || 0) },
-      ],
-      note: shortenText(buildFactionRelationSummary(primaryFactionEntry.data || {}, 3) || '暂无势力关系', 34),
-      tone: 'hero',
-      size: 'hero',
-    });
+    const 当前阵营 = snapshot.势力[0] || null;
+    const 当前阵营名 = 当前阵营 ? 当前阵营[0] : '未加入';
+    const 当前阵营身份 = 当前阵营 ? toText(deepGet(当前阵营[1], '身份', '成员'), '成员') : '未加入';
+    const 关系摘要 = buildFactionRelationSummary(primaryFactionEntry.data || {}, 3) || '暂无';
+    return `
+      <div class="org-console-panel">
+        <div class="module-name">势力矩阵</div>
+        <div class="org-console-grid">
+          <div class="org-kv-row"><b>当前阵营</b><span>${htmlEscape(`${当前阵营名} / ${当前阵营身份}`)}</span></div>
+          <div class="org-kv-row"><b>本地掌控</b><span>${htmlEscape(shortenText(localFaction, 22))}</span></div>
+          <div class="org-kv-row"><b>战力焦点</b><span>${htmlEscape(`${toText(factionStats.name, '未知')} / 极限${formatNumber(factionStats.limit)} / 超级${formatNumber(factionStats.super)} / 封号${formatNumber(factionStats.title)}`)}</span></div>
+          <div class="org-kv-row"><b>关系摘要</b><span>${htmlEscape(关系摘要)}</span></div>
+        </div>
+        <div class="org-mini-metrics">
+          <span><b>势力</b><strong>${htmlEscape(String((snapshot.orgEntries || []).length || 0))}</strong></span>
+          <span><b>极限</b><strong>${htmlEscape(String(factionStats.limit || 0))}</strong></span>
+          <span><b>封号</b><strong>${htmlEscape(String(factionStats.title || 0))}</strong></span>
+        </div>
+      </div>
+    `;
   }
 
   function buildShellOrgFactionCard(snapshot) {
@@ -28318,44 +28298,33 @@
 
   function buildShellTerminalHeroCard(snapshot) {
     if (!snapshot) {
-      return buildShellSummaryCard({
-        kicker: '终端',
-        title: '系统待同步',
-        value: '待同步',
-        meta: '当前聊天',
-        rows: [
-          { label: '情报', value: '--' },
-          { label: '任务', value: '--' },
-          { label: '收录', value: '--' },
-        ],
-      });
+      return `
+        <div class="terminal-console-panel">
+          <div class="terminal-console-head"><div class="module-name">系统控制台</div></div>
+          <div class="terminal-home-log"><button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[待命]</b><span>等待同步</span></button></div>
+        </div>
+      `;
     }
     const sys = deepGet(snapshot, 'rootData.sys', {});
-    const recentNews = buildRecentNewsSummary(snapshot, { seqLimit: 2, intelLimit: 2 });
     const worldAlertText = resolveShellText(snapshot.worldAlert, '');
     const intelCount = (snapshot.unlockedKnowledges || []).length || 0;
-    return buildShellSummaryCard({
-      kicker: '终端',
-      title: '终端',
-      value: intelCount
-        ? `${intelCount} 情报`
-        : snapshot.questRecordCount
-          ? `${snapshot.questRecordCount} 任务`
-          : '在线',
-      meta: shortenText(resolveShellText(sys.系统播报, '待命中') || '待命中', 26),
-      badges: [
-        worldAlertText ? { text: shortenText(worldAlertText, 10), tone: 'warn' } : '',
-        intelCount ? { text: `已录 ${intelCount}`, tone: 'gold' } : snapshot.questRecordCount ? '任务待跟进' : '待命中',
-      ],
-      metrics: [
-        { label: '情报', value: String(intelCount), tone: 'gold' },
-        { label: '任务', value: String(snapshot.questRecordCount || 0), tone: 'live' },
-        { label: '收录', value: String((snapshot.bestiaryEntries || []).length || 0) },
-      ],
-      note: shortenText(resolveShellText(sys.系统播报, '待命中'), 34),
-      tone: 'hero',
-      size: 'hero',
-    });
+    const latestBroadcast = resolveShellText(sys.系统播报, '待命中');
+    return `
+      <div class="terminal-console-panel">
+        <div class="terminal-console-head">
+          <div class="module-name">系统控制台</div>
+          <div class="terminal-home-metrics">
+            <span><b>公开情报</b><strong>${htmlEscape(String(intelCount))}</strong></span>
+            <span><b>任务</b><strong>${htmlEscape(String(snapshot.questRecordCount || 0))}</strong></span>
+            <span><b>播报</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
+            <span><b>图鉴</b><strong>${htmlEscape(String((snapshot.bestiaryEntries || []).length || 0))}</strong></span>
+          </div>
+        </div>
+        <div class="terminal-home-log">
+          <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>${htmlEscape(worldAlertText ? '[警报]' : '[播报]')}</b><span>${htmlEscape(shortenText(latestBroadcast, 96))}</span></button>
+        </div>
+      </div>
+    `;
   }
 
   function buildShellTerminalIntelCard(snapshot) {
@@ -28873,16 +28842,29 @@
                 { label: '角色', value: String(safeEntries(deepGet(snapshot, 'rootData.char', {})).length || 0) },
                 { label: '势力', value: String((snapshot.orgEntries || []).length || 0) },
                 { label: '警报', value: shortenText(toText(snapshot.worldAlert, '无'), 8) },
-              ])}
+              ], { className: 'world-mini-metrics' })}
             </section>
             <section class="mvu-shell-lite-card">
-              <div class="mvu-shell-lite-section-title">动态</div>
-              <div class="mvu-shell-lite-list">${buildShellLiteItemList(
+              <div class="mvu-shell-lite-section-title">全息编年史</div>
+              <div class="hologram-chronicle-track">${makeTimelineStack(
                 [
-                  最近安排 ? { title: '近期安排', note: 最近安排.desc } : null,
-                  { title: '拍卖', meta: `${toText(auction.状态, '休市')} · ${toText(auction.地点, '无')}` },
-                ],
-                '暂无动态',
+                  最近安排
+                    ? {
+                        title: '近期安排',
+                        desc: '',
+                        descLines: [
+                          toText(最近安排.title, '近期安排'),
+                          toText(最近安排.时间摘要, ''),
+                          toText(最近安排.desc, '暂无动态'),
+                        ].filter(Boolean),
+                      }
+                    : null,
+                  {
+                    title: '拍卖',
+                    desc: '',
+                    descLines: [`${toText(auction.状态, '休市')} · ${toText(auction.地点, '无')}`],
+                  },
+                ].filter(Boolean),
               )}</div>
             </section>
           </div>
@@ -28939,10 +28921,11 @@
                 <span>${htmlEscape(toText(deepGet(factionData, '身份', '无'), '无'))}</span>
                 <strong>${htmlEscape(factionName)}</strong>
               </div>
-              ${buildShellLiteStats([
-                { label: '权限', value: toText(deepGet(factionData, '权限级', '--'), '--') },
-                { label: '关系', value: String(relations.length || 0) },
-              ])}
+              <div class="org-mini-metrics">
+                <span><b>权限</b><strong>${htmlEscape(toText(deepGet(factionData, '权限级', '--'), '--'))}</strong></span>
+                <span><b>关系</b><strong>${htmlEscape(String(relations.length || 0))}</strong></span>
+                <span><b>据点</b><strong>${htmlEscape(String((snapshot.storeNames || []).length || 0))}</strong></span>
+              </div>
             </section>
             <section class="mvu-shell-lite-card">
               <div class="mvu-shell-lite-section-title">关系</div>
@@ -28972,17 +28955,11 @@
                 <span>${htmlEscape(shortenText(localFaction, 18))}</span>
                 <strong>${htmlEscape(shortenText(currentLoc, 28))}</strong>
               </div>
-              ${buildShellLiteStats([
-                {
-                  label: '经济',
-                  value: shortenText(toText(deepGet(snapshot, 'locationData.经济状况', '未知'), '未知'), 8),
-                },
-                {
-                  label: '守备',
-                  value: shortenText(toText(deepGet(snapshot, 'locationData.守护军团', '未知'), '未知'), 8),
-                },
-                { label: '商店', value: String(商店列表.length || 0) },
-              ])}
+              <div class="org-mini-metrics">
+                <span><b>经济</b><strong>${htmlEscape(shortenText(toText(deepGet(snapshot, 'locationData.经济状况', '未知'), '未知'), 8))}</strong></span>
+                <span><b>守备</b><strong>${htmlEscape(shortenText(toText(deepGet(snapshot, 'locationData.守护军团', '未知'), '未知'), 8))}</strong></span>
+                <span><b>商店</b><strong>${htmlEscape(String(商店列表.length || 0))}</strong></span>
+              </div>
             </section>
             <section class="mvu-shell-lite-card">
               <div class="mvu-shell-lite-section-title">商店</div>
@@ -29004,11 +28981,15 @@
                 <span>系统</span>
                 <strong>${htmlEscape(shortenText(系统播报文本, 28))}</strong>
               </div>
-              ${buildShellLiteStats([
-                { label: '任务', value: String(snapshot.questRecordCount || 0) },
-                { label: '情报', value: String((snapshot.unlockedKnowledges || []).length || 0) },
-                { label: '图鉴', value: String((snapshot.bestiaryEntries || []).length || 0) },
-              ])}
+              <div class="terminal-home-metrics">
+                <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
+                <span><b>任务</b><strong>${htmlEscape(String(snapshot.questRecordCount || 0))}</strong></span>
+                <span><b>播报</b><strong>${htmlEscape(系统播报文本 ? '1' : '0')}</strong></span>
+                <span><b>图鉴</b><strong>${htmlEscape(String((snapshot.bestiaryEntries || []).length || 0))}</strong></span>
+              </div>
+              <div class="terminal-home-log">
+                <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(shortenText(系统播报文本, 96))}</span></button>
+              </div>
             </section>
           </div>
         `,
@@ -29754,17 +29735,27 @@
     const forestStage =
       forestRatio >= 100 ? '兽潮临界' : forestRatio >= 70 ? '高度紧张' : forestRatio >= 30 ? '持续升温' : '相对安全';
     const 核心阶段 = 推断世界核心阶段(snapshot);
+    const 偏差比例 = Math.max(0, Math.min(100, deviation));
+    const 偏差样式 = deviation >= 40 ? 'is-warn' : deviation >= 10 ? 'is-gold' : 'is-live';
+    const 森林样式 = forestRatio >= 70 ? 'is-warn' : forestRatio >= 30 ? 'is-gold' : 'is-live';
 
     return `
-        <div class="module-name">时空中枢</div>
-        <div class="world-core-grid">
-          <div class="world-core-tile world-core-tile--wide"><b>当前时间</b><strong>${htmlEscape(worldTime)}</strong></div>
-          <div class="world-core-tile"><b>世界偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></div>
-          <div class="world-core-tile"><b>核心阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></div>
-          <div class="world-core-tile world-core-tile--progress">
-            <b>森林仇恨值</b>
-            <strong>${htmlEscape(`${forestStage} / ${formatNumber(snapshot.forestKilledAge)} / 1000000`)}</strong>
-            <i><span style="width:${forestRatio}%;"></span></i>
+        <div class="world-hud-console">
+          <div class="module-name">时空中枢</div>
+          <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime)}">${htmlEscape(worldTime)}</div>
+          <div class="world-hud-meta-grid">
+            <span><b>世界偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></span>
+            <span><b>核心阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></span>
+          </div>
+          <div class="world-alert-stack">
+            <div class="world-alert-bar ${偏差样式}">
+              <span><b style="width:${偏差比例}%;"></b></span>
+              <em>世界偏差 ${htmlEscape(String(deviation))}</em>
+            </div>
+            <div class="world-alert-bar ${森林样式}">
+              <span><b style="width:${forestRatio}%;"></b></span>
+              <em>${htmlEscape(`${forestStage} / ${formatNumber(snapshot.forestKilledAge)} / 1000000`)}</em>
+            </div>
           </div>
         </div>
       `;
@@ -29780,14 +29771,20 @@
     const relationSummary = buildFactionRelationSummary(关系焦点 && 关系焦点.data ? 关系焦点.data : {}, 3) || '暂无';
     const 战力摘要 = `${toText(战力焦点.name, '未知')} · 极限 ${formatNumber(战力焦点.limit)} / 超级 ${formatNumber(战力焦点.super)} / 封号 ${formatNumber(战力焦点.title)}`;
     return `
-        <div class="module-name">势力矩阵</div>
-        <div class="org-matrix-summary">
-          <div class="org-matrix-summary-row"><b>当前阵营</b><span>${htmlEscape(`${当前阵营名} / ${当前阵营身份}`)}</span></div>
-          <div class="org-matrix-summary-row"><b>本地掌控</b><span>${htmlEscape(本地掌控势力)}</span></div>
-          <div class="org-matrix-summary-row"><b>战力焦点</b><span>${htmlEscape(战力摘要)}</span></div>
-          <div class="org-matrix-summary-row org-matrix-summary-row--wide"><b>关系摘要</b><span>${htmlEscape(relationSummary)}</span></div>
+        <div class="org-console-panel">
+          <div class="module-name">势力矩阵</div>
+          <div class="org-console-grid">
+            <div class="org-kv-row"><b>当前阵营</b><span>${htmlEscape(`${当前阵营名} / ${当前阵营身份}`)}</span></div>
+            <div class="org-kv-row"><b>本地掌控</b><span>${htmlEscape(本地掌控势力)}</span></div>
+            <div class="org-kv-row"><b>战力焦点</b><span>${htmlEscape(战力摘要)}</span></div>
+            <div class="org-kv-row"><b>关系摘要</b><span>${htmlEscape(relationSummary)}</span></div>
+          </div>
+          <div class="org-mini-metrics">
+            <span><b>势力</b><strong>${htmlEscape(String(snapshot.orgEntries.length || 0))}</strong></span>
+            <span><b>极限</b><strong>${htmlEscape(formatNumber(战力焦点.limit))}</strong></span>
+            <span><b>封号</b><strong>${htmlEscape(formatNumber(战力焦点.title))}</strong></span>
+          </div>
         </div>
-        ${构建首页状态页脚({ 文本: `${snapshot.orgEntries.length || 0} 个势力`, 样式: 'gold-chip' })}
       `;
   }
 
@@ -29796,15 +29793,19 @@
     const latestBroadcast = toText(sys.系统播报, '暂无播报');
     const 最近播报摘要 = shortenText(latestBroadcast, 88);
     return `
-        <div class="module-name">系统播报</div>
-        <div class="terminal-home-log">
-          <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></button>
-        </div>
-        <div class="terminal-home-metrics">
-          <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
-          <span><b>任务</b><strong>${htmlEscape(String((snapshot.recordEntries || []).length))}</strong></span>
-          <span><b>播报</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
-          <span><b>图鉴</b><strong>${htmlEscape(String((snapshot.bestiaryEntries || []).length))}</strong></span>
+        <div class="terminal-console-panel">
+          <div class="terminal-console-head">
+            <div class="module-name">系统控制台</div>
+            <div class="terminal-home-metrics">
+              <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
+              <span><b>任务</b><strong>${htmlEscape(String((snapshot.recordEntries || []).length))}</strong></span>
+              <span><b>播报</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
+              <span><b>图鉴</b><strong>${htmlEscape(String((snapshot.bestiaryEntries || []).length))}</strong></span>
+            </div>
+          </div>
+          <div class="terminal-home-log">
+            <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></button>
+          </div>
         </div>
       `;
   }
@@ -32477,7 +32478,7 @@
                           ),
                         },
                       ],
-                      'dossier-row-grid--two',
+                      'dossier-row-grid--two dossier-growth-flow',
                     )}
                   </section>
                   <section class="dossier-section dossier-section--radar">
@@ -32580,7 +32581,7 @@
                         className: 'dossier-row--wide',
                       },
                     ],
-                    'dossier-row-grid--two',
+                    'dossier-row-grid--two dossier-profile-flow',
                   )}
                 </section>
               </div>
@@ -32609,7 +32610,7 @@
                         }),
                       },
                     ],
-                    'dossier-row-grid--two',
+                    'dossier-row-grid--two dossier-profile-flow',
                   )}
                 </section>
                 <section class="dossier-section">
@@ -32723,19 +32724,19 @@
                 <div class="dossier-columns dossier-columns--life-record">
                   <section class="dossier-section">
                     <div class="dossier-section-title">额外成长加成</div>
-                    ${makeDossierRows(trainedBonusItems, 'dossier-row-grid--three')}
+                    ${makeDossierRows(trainedBonusItems, 'dossier-row-grid--three dossier-bonus-flow')}
                   </section>
                   <section class="dossier-section">
                     <div class="dossier-section-title">功法</div>
-                    ${makeDossierList(artArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-note">暂无功法记录。</div>'}
+                    ${makeDossierList(artArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-line">暂无功法记录</div>'}
                   </section>
                   <section class="dossier-section">
                     <div class="dossier-section-title">自创魂技</div>
-                    ${makeDossierList(customSkillArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-note">暂无自创魂技。</div>'}
+                    ${makeDossierList(customSkillArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-line">暂无自创魂技</div>'}
                   </section>
                   <section class="dossier-section">
                     <div class="dossier-section-title">血脉能力</div>
-                    ${makeDossierList(bloodlineArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-note">暂无血脉能力。</div>'}
+                    ${makeDossierList(bloodlineArchiveEntries, 'dossier-list--compact') || '<div class="dossier-empty-line">暂无血脉能力</div>'}
                   </section>
                 </div>
               </div>
