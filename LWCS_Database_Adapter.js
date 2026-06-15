@@ -12,6 +12,7 @@
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
   const 本轮前置承诺表 = new Map();
+  const 本轮模块路由接管表 = new Map();
   let 本轮StatData = null;
   let 本轮输入文本 = '';
 
@@ -431,7 +432,56 @@
     };
   }
 
+  function 提取模块路由块(规划文本) {
+    const 匹配 = String(规划文本 || '').match(/<模块路由>\s*([\s\S]*?)\s*<\/模块路由>/i);
+    return 匹配 ? String(匹配[1] || '').trim() : '';
+  }
+
+  function 限制模块路由接管表大小() {
+    while (本轮模块路由接管表.size > 20) {
+      const 首个键 = 本轮模块路由接管表.keys().next().value;
+      if (首个键 === undefined) break;
+      本轮模块路由接管表.delete(首个键);
+    }
+  }
+
+  function 模块路由结果应放行(结果) {
+    const 模块 = String(结果?.kind || '').trim();
+    const 原因 = String(结果?.reason || '').trim();
+    return 模块 === '未命中' || 原因 === 'no_special_module_hit' || 原因 === 'battle_free_narrative';
+  }
+
+  async function 尝试接管模块路由(规划文本) {
+    const 文本 = String(规划文本 || '');
+    const 路由块 = 提取模块路由块(文本);
+    if (!路由块) return { action: 'continue', reason: 'module_route_missing' };
+    const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
+    if (typeof 路由函数 !== 'function') return { action: 'continue', reason: 'module_route_bridge_unavailable' };
+    const 接管键 = 取哈希(文本);
+    if (本轮模块路由接管表.has(接管键)) return await 本轮模块路由接管表.get(接管键);
+    const 接管承诺 = (async () => {
+      let 结果 = null;
+      try {
+        结果 = await Promise.resolve(路由函数(文本, { source: 'story_generation_guard' }));
+      } catch (错误) {
+        console.warn('[LWCS适配器] 模块路由接管失败，放行正文生成:', 错误);
+        return { action: 'continue', reason: 'module_route_failed' };
+      }
+      if (!结果 || 结果.handled !== true) {
+        if (结果 && 结果.reason) console.warn('[LWCS适配器] 模块路由未接管，放行正文生成:', 结果.reason);
+        return { action: 'continue', reason: String(结果?.reason || 'module_route_not_handled') };
+      }
+      if (模块路由结果应放行(结果)) return { action: 'continue', reason: String(结果.reason || 'module_route_skipped') };
+      return { action: 'blocked', reason: 'module_route_handled', result: 结果 };
+    })();
+    本轮模块路由接管表.set(接管键, 接管承诺);
+    限制模块路由接管表大小();
+    return await 接管承诺;
+  }
+
   async function 正文生成前确认(context = {}) {
+    const 模块路由决定 = await 尝试接管模块路由(context.planningText || '');
+    if (模块路由决定.action === 'blocked') return 模块路由决定;
     const 检测结果 = 检测剧情获得技能(context.planningText || '');
     if (!检测结果) return { action: 'continue' };
     const 打开技能设计 = 读取窗口函数('__LWCS_PROMPT_SKILL_DESIGN__');

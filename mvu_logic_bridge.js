@@ -575,12 +575,23 @@
         return `<text x="${点.x}" y="${点.y}" text-anchor="${对齐}" dominant-baseline="middle" class="location-radar-label"><tspan>${htmlEscape(指标.标签)}</tspan><tspan dx="4">${htmlEscape(String(指标.数值))}</tspan></text>`;
       })
       .join('');
-    const 指标行 = 安全指标
+    const 摘要列表 = Array.isArray(选项 && 选项.摘要列表)
+      ? 选项.摘要列表
+          .map(摘要 => ({
+            标签: toText(摘要 && 摘要.标签, ''),
+            文本: toText(摘要 && 摘要.文本, ''),
+          }))
+          .filter(摘要 => 摘要.标签 || 摘要.文本)
+      : 安全指标.map(指标 => ({
+          标签: 指标.标签,
+          文本: 指标.文本 || String(指标.数值),
+        }));
+    const 指标行 = 摘要列表
       .map(
-        指标 => `
+        摘要 => `
           <span>
-            <b>${htmlEscape(指标.标签)}</b>
-            <em>${htmlEscape(指标.文本 || String(指标.数值))}</em>
+            <b>${htmlEscape(摘要.标签)}</b>
+            <em>${htmlEscape(摘要.文本)}</em>
           </span>
         `,
       )
@@ -1476,9 +1487,17 @@
                     <span>同步中</span>
                   </div>
                 </div>
-                <div class="relation-dossier-body">
-                  <section class="dossier-section relation-dossier-main"><div class="dossier-section-title">关系摘要</div></section>
-                  <section class="dossier-section relation-dossier-clue"><div class="dossier-section-title">推进线索</div></section>
+                <div class="relation-dossier-body relation-dossier-split-layout">
+                  <section class="relation-dossier-intel-column">
+                    <div class="relation-dossier-column-head"><b>基础情报与共鸣连结</b><span>同步中</span></div>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">情感阈值</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">身份特征</div></section>
+                  </section>
+                  <section class="relation-dossier-action-column">
+                    <div class="relation-dossier-column-head"><b>推演线索与交互终端</b><span>同步中</span></div>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">态势推演</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">交互终端</div></section>
+                  </section>
                 </div>
               </div>
             </div>
@@ -1676,8 +1695,8 @@
       return {
         title: isMapNode ? `本地据点 / ${nodeName}` : key === '当前节点详情' ? '当前节点详情' : '本地据点 / 当前节点',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--two">
-              <div class="archive-card"><div class="archive-card-head"><div class="archive-card-title">据点概览</div></div>${makeTileGrid(
+            <div class="archive-modal-grid location-detail-grid location-detail-grid--refined">
+              <div class="archive-card full location-card--intel"><div class="archive-card-head"><div class="archive-card-title">城市情报</div></div>${makeTileGrid(
                 [
                   { label: '所在地点', value: '' },
                   { label: '掌控势力', value: '' },
@@ -1687,7 +1706,8 @@
                   { label: '商店数量', value: '' },
                 ],
               )}</div>
-              <div class="archive-card"><div class="archive-card-head"><div class="archive-card-title">驻地氛围</div></div><div class="relation-side-list"><div class="relation-card"><b>街区秩序</b><span></span></div><div class="relation-card"><b>补给情况</b><span></span></div><div class="relation-card"><b>交通状态</b><span></span></div></div></div>
+              <div class="archive-card full location-card--facilities"><div class="archive-card-head"><div class="archive-card-title">城市设施</div></div><div class="location-facility-grid"><article class="location-facility-card is-disabled"><b>节点入口</b><span></span></article></div></div>
+              <div class="archive-card full location-card--people"><div class="archive-card-head"><div class="archive-card-title">本地雷达扫描</div></div><div class="location-empty-note"></div></div>
             </div>
           `,
       };
@@ -25433,6 +25453,70 @@
       `;
   }
 
+  function 判定势力外交色调(态度文本 = '') {
+    const 文本 = toText(态度文本, '');
+    if (/绝对死敌|死敌|敌对|仇视|战争|仇敌|宿敌/.test(文本)) return 'hostile';
+    if (/冲突|理念冲突|对立|摩擦|竞争|戒备/.test(文本)) return 'conflict';
+    if (/生死同盟|同盟|盟友|友好|合作|亲善/.test(文本)) return 'allied';
+    return 'neutral';
+  }
+
+  function 构建势力外交态势网格HTML(势力名, 势力数据, 配置 = {}) {
+    const 安全势力名 = toText(势力名, '').trim();
+    const 上限 = Math.max(1, toNumber(配置 && 配置.max, 8));
+    const 空标题 = toText(配置 && 配置.emptyTitle, '暂无对外关系');
+    const 空描述 = toText(配置 && 配置.emptyDesc, '当前势力未记录对外关系。');
+    const 关系条目 = safeEntries(deepGet(势力数据, '关系', {})).slice(0, 上限);
+    if (!关系条目.length) {
+      return `
+        <div class="org-detail-empty">
+          <b>${htmlEscape(空标题)}</b>
+          <span>${htmlEscape(空描述)}</span>
+        </div>
+      `;
+    }
+    return `
+      <div class="org-diplomacy-grid">
+        ${关系条目
+          .map(([关系名, 关系数据]) => {
+            const 安全关系数据 = 关系数据 && typeof 关系数据 === 'object' ? 关系数据 : {};
+            const 关系摘要 = buildFactionRelationMeta(关系名, 安全关系数据);
+            const 关系字段 = Object.prototype.hasOwnProperty.call(安全关系数据, '态度')
+              ? '态度'
+              : Object.prototype.hasOwnProperty.call(安全关系数据, '关系')
+                ? '关系'
+                : '态度';
+            const 关系值 = toText(deepGet(安全关系数据, 关系字段, 关系摘要.attitude), 关系摘要.attitude);
+            const 详情文本 = safeEntries(安全关系数据)
+              .filter(([键]) => !['态度', '关系'].includes(toText(键, '')))
+              .map(([键, 值]) => {
+                if (值 && typeof 值 === 'object') return `${toText(键, '关系项')} ${safeEntries(值).length}项`;
+                const 文本值 = toText(值, '');
+                return 文本值 ? `${toText(键, '关系项')} ${文本值}` : '';
+              })
+              .filter(Boolean)
+              .join(' / ');
+            const 可编辑关系值 = 安全势力名
+              ? makeInlineEditableValue(关系值, {
+                  path: ['org', 安全势力名, '关系', 关系名, 关系字段],
+                  kind: 'string',
+                  rawValue: 关系值,
+                })
+              : htmlEscape(关系值);
+            const 色调 = 判定势力外交色调(关系值);
+            return `
+              <div class="org-diplomacy-card org-diplomacy-card--${色调}">
+                <div class="org-diplomacy-name">${htmlEscape(关系摘要.name)}</div>
+                <div class="org-diplomacy-state">${可编辑关系值}</div>
+                ${详情文本 ? `<div class="org-diplomacy-note">${htmlEscape(详情文本)}</div>` : ''}
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+    `;
+  }
+
   function buildFactionRelationSummary(orgData, max = 3) {
     return safeEntries(deepGet(orgData, '关系', {}))
       .slice(0, Math.max(1, max))
@@ -33236,10 +33320,22 @@
         if (/朋友|友善|亲密|信任/.test(合并文本)) return 'relation-route-friendly';
         return 'relation-route-neutral';
       };
-      const 构建关系数据卡 = (标签, 值HTML, 附加类 = '') => `
-        <div class="relation-dossier-stat ${附加类}">
+      const 构建关系情报行 = (标签, 值HTML, 附加类 = '') => `
+        <div class="relation-dossier-line ${附加类}">
           <b>${htmlEscape(标签)}</b>
           <span>${值HTML}</span>
+        </div>
+      `;
+      const 构建关系情报组 = (标题, 内容HTML, 附加类 = '') => `
+        <section class="relation-dossier-flow ${附加类}">
+          <div class="relation-dossier-flow-title">${htmlEscape(标题)}</div>
+          ${内容HTML}
+        </section>
+      `;
+      const 构建关系分析行 = (标签, 文本) => `
+        <div class="relation-analysis-line">
+          <b>${htmlEscape(标签)}</b>
+          <span>${htmlEscape(toText(文本, '暂无'))}</span>
         </div>
       `;
       const relationFocusStateKey = `${previewKey}::relation-focus`;
@@ -33257,22 +33353,22 @@
       else delete modalFocusState[relationFocusStateKey];
       const 拓扑最大对象数 = 16;
       const 拓扑位置列表 = [
-        { left: 50, top: 13, className: 'hover-left' },
-        { left: 68, top: 17, className: 'hover-left' },
-        { left: 82, top: 32, className: 'hover-left' },
-        { left: 84, top: 54, className: 'hover-left' },
-        { left: 70, top: 75, className: 'hover-up hover-left' },
-        { left: 50, top: 86, className: 'hover-up' },
-        { left: 30, top: 75, className: 'hover-up hover-right' },
-        { left: 16, top: 54, className: 'hover-right' },
-        { left: 18, top: 32, className: 'hover-right' },
-        { left: 32, top: 17, className: 'hover-right' },
-        { left: 61, top: 31, className: 'hover-left' },
-        { left: 68, top: 50, className: 'hover-left' },
-        { left: 59, top: 68, className: 'hover-up hover-left' },
-        { left: 41, top: 68, className: 'hover-up hover-right' },
-        { left: 32, top: 50, className: 'hover-right' },
-        { left: 39, top: 31, className: 'hover-right' },
+        { left: 74, top: 50, className: 'hover-left' },
+        { left: 68, top: 24, className: 'hover-left' },
+        { left: 50, top: 16, className: 'hover-left' },
+        { left: 32, top: 24, className: 'hover-right' },
+        { left: 22, top: 50, className: 'hover-right' },
+        { left: 32, top: 76, className: 'hover-up hover-right' },
+        { left: 50, top: 84, className: 'hover-up' },
+        { left: 68, top: 76, className: 'hover-up hover-left' },
+        { left: 84, top: 34, className: 'hover-left' },
+        { left: 86, top: 66, className: 'hover-up hover-left' },
+        { left: 14, top: 34, className: 'hover-right' },
+        { left: 14, top: 66, className: 'hover-up hover-right' },
+        { left: 60, top: 35, className: 'hover-left' },
+        { left: 60, top: 65, className: 'hover-up hover-left' },
+        { left: 40, top: 65, className: 'hover-up hover-right' },
+        { left: 40, top: 35, className: 'hover-right' },
       ];
       const 关系条目表 = new Map(snapshot.relations.map(([name, rel]) => [name, rel]));
       const 拓扑候选名称 = [];
@@ -33463,31 +33559,21 @@
             : trustTargets.length
               ? `高信任对象：${trustTargets.slice(0, 3).join('、')}`
               : '当前雷达未扫描到足够的社会链接数据，暂无总体分析倾向。';
-      const relationOverviewRowsHtml = `
-        <div class="relation-dossier-summary relation-dossier-summary--compact">
-          <div class="relation-dossier-stat-grid">
-            ${构建关系数据卡(
-              '焦点对象',
-              htmlEscape(
-                toText(deepGet(snapshot, '关系分析.关注对象', relationDetailName || '无'), relationDetailName || '无'),
-              ),
-            )}
-            ${构建关系数据卡('系统建议', htmlEscape(recommendedActions.slice(0, 3).join(' / ') || '无'))}
-            ${构建关系数据卡(
-              '当前可见',
-              htmlEscape(
-                sameLocationTargets.length
-                  ? `${sameLocationTargets.slice(0, 3).join('、')}`
-                  : trustTargets.length
-                    ? `信任 ${trustTargets.slice(0, 3).join('、')}`
-                    : relationFocusTargets.length
-                      ? `重点 ${relationFocusTargets.slice(0, 2).map(item => toText(item && item.对象, '无')).join('、')}`
-                      : '暂无',
-              ),
-            )}
-          </div>
-        </div>
-      `;
+      const 系统建议文本 = recommendedActions.slice(0, 3).join(' / ') || '继续观察';
+      const 当前可见文本 = sameLocationTargets.length
+        ? `${sameLocationTargets.slice(0, 3).join('、')}`
+        : trustTargets.length
+          ? `信任 ${trustTargets.slice(0, 3).join('、')}`
+          : relationFocusTargets.length
+            ? `重点 ${relationFocusTargets
+                .slice(0, 2)
+                .map(item => toText(item && item.对象, '无'))
+                .join('、')}`
+            : '暂无';
+      const 焦点对象文本 = toText(
+        deepGet(snapshot, '关系分析.关注对象', relationDetailName || '无'),
+        relationDetailName || '无',
+      );
       const 关系概览标签HTML = makeDossierTags(
         [
           { text: `对象 ${snapshot.relations.length}`, className: snapshot.relations.length ? 'live' : 'warn' },
@@ -33496,84 +33582,55 @@
         ].filter(Boolean),
         'dossier-head-actions relation-head-actions',
       );
-      const relationTargetSummaryHtml = relationDetail
+      const 当前关系原值 = toText(relationDetail && relationDetail['关系'], '陌生');
+      const 对方身份原值 = toText(relationDetail && relationDetail['对方身份'], '无');
+      const 当前关系HTML =
+        relationDetail && relationDetailPath.length
+          ? makeInlineEditableValue(当前关系原值, {
+              path: [...relationDetailPath, '关系'],
+              kind: 'string',
+              rawValue: 当前关系原值,
+            })
+          : htmlEscape(当前关系原值);
+      const 关系路线HTML =
+        relationDetail && relationDetailPath.length
+          ? makeInlineEditableValue(relationRoute, {
+              path: [...relationDetailPath, '关系路线'],
+              kind: 'enum_select',
+              rawValue: relationRoute,
+              editorMeta: { options: ['朋友线', '恋人线'] },
+            })
+          : htmlEscape(relationRoute);
+      const 对方身份HTML =
+        relationDetail && relationDetailPath.length
+          ? makeInlineEditableValue(对方身份原值, {
+              path: [...relationDetailPath, '对方身份'],
+              kind: 'string',
+              rawValue: 对方身份原值,
+            })
+          : htmlEscape(对方身份原值);
+      const 位置状态文本 = `${relationTargetLocLabel} / ${
+        isSameLocation ? '同地可接触' : isContactable ? '远端可联系' : '当前不可接触'
+      }`;
+      const 下一阶段文本 = `${toText(relationDetail && relationDetail['_下一阶段'], '无')} / ${toNumber(
+        relationDetail && relationDetail['_下一阶段阈值'],
+        0,
+      )}`;
+      const 当前加成文本 = toText(relationDetail && relationDetail['_当前关系加成'], '无');
+      const 下一解锁文本 = toText(relationDetail && relationDetail['_下档解锁加成'], '无');
+      const 推进路线文本 = routeSwitchable ? '可切恋人线' : relationRoute;
+      const 关系状态胶囊HTML = relationDetail
         ? `
-          <div class="relation-dossier-summary ${读取关系路线类(relationDetail)}">
-            ${好感度条HTML}
-            <div class="relation-dossier-stat-grid">
-              ${构建关系数据卡('目标对象', htmlEscape(relationDetailName))}
-              ${构建关系数据卡(
-                '关系',
-                relationDetailPath.length
-                  ? makeInlineEditableValue(toText(relationDetail && relationDetail['关系'], '陌生'), {
-                      path: [...relationDetailPath, '关系'],
-                      kind: 'string',
-                      rawValue: toText(relationDetail && relationDetail['关系'], '陌生'),
-                    })
-                  : htmlEscape(toText(relationDetail && relationDetail['关系'], '陌生')),
-              )}
-              ${构建关系数据卡(
-                '路线',
-                relationDetailPath.length
-                  ? makeInlineEditableValue(relationRoute, {
-                      path: [...relationDetailPath, '关系路线'],
-                      kind: 'enum_select',
-                      rawValue: relationRoute,
-                      editorMeta: { options: ['朋友线', '恋人线'] },
-                    })
-                  : htmlEscape(relationRoute),
-              )}
-              ${构建关系数据卡(
-                '对方身份',
-                relationDetailPath.length
-                  ? makeInlineEditableValue(toText(relationDetail && relationDetail['对方身份'], '无'), {
-                      path: [...relationDetailPath, '对方身份'],
-                      kind: 'string',
-                      rawValue: toText(relationDetail && relationDetail['对方身份'], '无'),
-                    })
-                  : htmlEscape(toText(relationDetail && relationDetail['对方身份'], '无')),
-              )}
-              ${构建关系数据卡('武魂相关度', 武魂相关度HTML)}
-              ${构建关系数据卡('融合触发', htmlEscape(`${融合触发状态值} / 阈值70`))}
-              ${构建关系数据卡('同修效率', htmlEscape(`x${同修效率倍率值}`))}
-              ${构建关系数据卡(
-                '位置状态',
-                htmlEscape(`${relationTargetLocLabel} / ${isSameLocation ? '同地可接触' : isContactable ? '远端可联系' : '当前不可接触'}`),
-              )}
-              ${构建关系数据卡('推进提示', htmlEscape(toText(relationDetail && relationDetail['_推进提示'], '暂无')), 'is-wide')}
-              ${构建关系数据卡(
-                '关系状态',
-                htmlEscape(`${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(relationDetail && relationDetail['_切线限制原因'], '无')}`),
-                'is-wide',
-              )}
-            </div>
+          <div class="relation-status-capsules relation-status-capsules--console">
+            <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地可接触' : '非同地')}</span>
+            <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
+            <span>${htmlEscape(relationRoute)}</span>
           </div>
         `
-        : '<div class="dossier-empty-note">先从对象列表里选择一个目标。</div>';
-      const relationRecordRowsHtml = relationDetail
-        ? makeDossierRows(
-            [
-              { label: '当前加成', value: htmlEscape(toText(relationDetail && relationDetail['_当前关系加成'], '无')) },
-              { label: '下一解锁', value: htmlEscape(toText(relationDetail && relationDetail['_下档解锁加成'], '无')) },
-              {
-                label: '下一阶段',
-                value: htmlEscape(
-                  `${toText(relationDetail && relationDetail['_下一阶段'], '无')} / ${toNumber(relationDetail && relationDetail['_下一阶段阈值'], 0)}`,
-                ),
-              },
-              { label: '推进路线', value: htmlEscape(routeSwitchable ? '可切恋人线' : relationRoute) },
-            ],
-            'dossier-row-grid--relation-focus',
-          )
         : '';
-      const relationActionSummaryHtml = relationDetail
+      const 关系操作汇总HTML = relationDetail
         ? isPlayerControlled
           ? `
-                <div class="relation-status-capsules">
-                  <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地' : '未在身边')}</span>
-                  <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
-                  <span>${htmlEscape(routeSwitchable ? '可切恋人线' : relationRoute)}</span>
-                </div>
                 <div class="relation-action-toolbar">
                   <button type="button" class="relation-action-btn action-primary" data-relation-action="talk" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canTalk ? 'disabled' : ''}>闲聊</button>
                   <button type="button" class="relation-action-btn action-primary" data-relation-action="ask" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canAsk ? 'disabled' : ''}>请教</button>
@@ -33598,6 +33655,105 @@
                 )}
               `
         : '<div class="dossier-empty-note">当前没有可操作的关系目标。</div>';
+      const 目标推进线索HTML = relationDetail
+        ? `
+          <div class="relation-focus-callout relation-focus-callout--target">
+            <b>${htmlEscape(`${relationDetailName} / ${当前关系原值}`)}</b>
+            <span>${htmlEscape(toText(relationDetail && relationDetail['_推进提示'], '暂无推进建议'))}</span>
+            <em>${htmlEscape(`建议：${系统建议文本} ｜ 下一阶段：${下一阶段文本}`)}</em>
+          </div>
+        `
+        : relationFocusHtml;
+      const 关系情报聚合HTML = relationDetail
+        ? `
+          <section class="relation-dossier-intel-column ${读取关系路线类(relationDetail)}">
+            <div class="relation-dossier-column-head">
+              <b>${htmlEscape('基础情报与共鸣连结')}</b>
+              <span>${htmlEscape(relationSummaryText)}</span>
+            </div>
+            ${好感度条HTML}
+            ${构建关系情报组(
+              '情感阈值',
+              `
+                <div class="relation-dossier-line-list">
+                  ${构建关系情报行('目标对象', htmlEscape(relationDetailName))}
+                  ${构建关系情报行('当前关系', 当前关系HTML)}
+                  ${构建关系情报行('关系路线', 关系路线HTML)}
+                </div>
+                ${构建关系胶囊组([
+                  { 文本: `下一阶段 ${下一阶段文本}` },
+                  { 文本: `推进 ${推进路线文本}` },
+                ])}
+              `,
+            )}
+            ${构建关系情报组(
+              '身份特征',
+              `
+                <div class="relation-dossier-line-list">
+                  ${构建关系情报行('对方身份', 对方身份HTML)}
+                  ${构建关系情报行('位置状态', htmlEscape(位置状态文本))}
+                  ${构建关系情报行(
+                    '维护状态',
+                    htmlEscape(
+                      `${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(
+                        relationDetail && relationDetail['_切线限制原因'],
+                        '无',
+                      )}`,
+                    ),
+                  )}
+                </div>
+              `,
+            )}
+            ${构建关系情报组(
+              '武魂共鸣',
+              `
+                <div class="relation-dossier-line-list">
+                  ${构建关系情报行('相关度', 武魂相关度HTML)}
+                  ${构建关系情报行('融合触发', htmlEscape(`${融合触发状态值} / 阈值70`))}
+                  ${构建关系情报行('同修效率', htmlEscape(`x${同修效率倍率值}`))}
+                </div>
+              `,
+            )}
+            ${构建关系情报组(
+              '阶段记录',
+              `
+                ${构建关系胶囊组([
+                  { 文本: `当前加成 ${当前加成文本}` },
+                  { 文本: `下一解锁 ${下一解锁文本}` },
+                ])}
+              `,
+            )}
+          </section>
+        `
+        : '<section class="relation-dossier-intel-column"><div class="dossier-empty-note">先从上方拓扑选择一个目标。</div></section>';
+      const 关系行动聚合HTML = `
+        <section class="relation-dossier-action-column">
+          <div class="relation-dossier-column-head">
+            <b>${htmlEscape('推演线索与交互终端')}</b>
+            <span>${htmlEscape(`系统建议：${系统建议文本}`)}</span>
+          </div>
+          ${构建关系情报组(
+            '态势推演',
+            `
+              <div class="relation-dossier-lead">${htmlEscape(toText(relationSummaryText, '关系数据不足'))}</div>
+              ${构建关系胶囊组([
+                { 文本: `焦点 ${焦点对象文本}` },
+                { 文本: `可见 ${当前可见文本}` },
+                { 文本: `建议 ${系统建议文本}` },
+              ])}
+            `,
+          )}
+          ${构建关系情报组('推进线索', 目标推进线索HTML)}
+          ${构建关系情报组(
+            isPlayerControlled ? '交互终端' : '观察备注',
+            `
+              ${关系状态胶囊HTML}
+              ${关系操作汇总HTML}
+            `,
+            'relation-dossier-flow--terminal',
+          )}
+        </section>
+      `;
 
       return {
         title: '人物关系',
@@ -33635,34 +33791,10 @@
                     <div class="archive-card-title">${htmlEscape(relationDetailName || '目标卷宗')}</div>
                     <span>${htmlEscape(relationDetail ? toText(relationDetail && relationDetail['对方身份'], '未知身份') : '未选中目标')}</span>
                   </div>
-                  <div class="relation-status-capsules">
-                    <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地可接触' : '非同地')}</span>
-                    <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
-                    <span>${htmlEscape(relationRoute)}</span>
-                  </div>
                 </div>
-                <div class="relation-dossier-body">
-                  <section class="dossier-section relation-dossier-main">
-                    <div class="dossier-section-title">关系摘要</div>
-                    ${relationTargetSummaryHtml}
-                  </section>
-                  <section class="dossier-section relation-dossier-brief">
-                    <div class="dossier-section-title">关系态势</div>
-                    <div class="dossier-note dossier-note--dense">${htmlEscape(toText(relationSummaryText, '关系数据不足'))}</div>
-                    ${relationOverviewRowsHtml}
-                  </section>
-                  <section class="dossier-section relation-dossier-clue">
-                    <div class="dossier-section-title">推进线索</div>
-                    ${relationFocusHtml}
-                  </section>
-                  <section class="dossier-section relation-dossier-actions">
-                    <div class="dossier-section-title">${htmlEscape(isPlayerControlled ? '互动操作' : '观察备注')}</div>
-                    ${relationActionSummaryHtml}
-                  </section>
-                  <section class="dossier-section relation-dossier-record">
-                    <div class="dossier-section-title">关系记录</div>
-                    ${relationRecordRowsHtml || '<div class="dossier-empty-note">当前没有可展示的推进记录。</div>'}
-                  </section>
+                <div class="relation-dossier-body relation-dossier-split-layout">
+                  ${关系情报聚合HTML}
+                  ${关系行动聚合HTML}
                 </div>
               </div>
             </div>
@@ -34107,80 +34239,210 @@
       };
 
       if (previewKey === '武装详情：斗铠') {
+        const 斗铠状态文本 = toText(armor.装备状态, '未装备');
+        const 斗铠是否已装备 = 斗铠状态文本 === '已装备';
+        const 斗铠共鸣文本 = 斗铠是否已装备 ? '完美共鸣' : '未部署';
+        const 斗铠加成顺序 = ['体力加成', '魂力加成', '精神加成', '力量加成', '防御加成', '敏捷加成'];
+        const 斗铠加成图标表 = {
+          体力加成: { 图标: '♥', 类名: 'is-health' },
+          魂力加成: { 图标: '◉', 类名: 'is-soul' },
+          精神加成: { 图标: '✦', 类名: 'is-spirit' },
+          力量加成: { 图标: '✊', 类名: 'is-power' },
+          防御加成: { 图标: '🛡', 类名: 'is-defense' },
+          敏捷加成: { 图标: '➤', 类名: 'is-agile' },
+        };
+        const 斗铠加成映射 = new Map(armorBonusItems.map(条目 => [条目.label, 条目]));
+        const 斗铠节点定义 = armorSlotDefs.map(槽位 => {
+          const 部件数据 = resolveArmorPartData(armor, 槽位.label);
+          const 部件状态 = toText(部件数据 && 部件数据['状态'], '未打造');
+          const 是否空置 = !部件数据 || 部件状态 === '未打造';
+          const 是否警戒 = 部件状态 === '重创';
+          const 部件名称 = 是否空置
+            ? '空置'
+            : toText(部件数据 && (部件数据.名称 || 部件数据.name), 槽位.label);
+          return {
+            ...槽位,
+            部件名称,
+            状态文本: 是否空置 ? '待装配' : 部件状态 || '完好',
+            类名: 是否空置 ? 'is-empty' : 是否警戒 ? 'is-warn' : 'is-live',
+          };
+        });
+        const 斗铠槽位类名表 = {
+          头盔: 'slot-head',
+          胸铠: 'slot-chest',
+          左肩: 'slot-left-shoulder',
+          右肩: 'slot-right-shoulder',
+          左臂: 'slot-left-arm',
+          右臂: 'slot-right-arm',
+          左腿: 'slot-left-leg',
+          右腿: 'slot-right-leg',
+          战裙: 'slot-skirt',
+          战靴: 'slot-boots',
+        };
+        const 斗铠节点坐标表 = new Map(斗铠节点定义.map(节点 => [节点.label, { x: 节点.x, y: 节点.y }]));
+        const 斗铠节点坐标 = (名称, 默认值) => 斗铠节点坐标表.get(名称) || 默认值;
+        const 斗铠连线定义 = [
+          ['核心', '头盔'],
+          ['核心', '胸铠'],
+          ['胸铠', '左肩'],
+          ['胸铠', '右肩'],
+          ['胸铠', '左臂'],
+          ['胸铠', '右臂'],
+          ['胸铠', '战裙'],
+          ['战裙', '左腿'],
+          ['战裙', '右腿'],
+          ['战裙', '战靴'],
+        ];
+        const 斗铠字段值 = (路径尾段, 原始值, 类型 = 'string', 显示值 = 原始值, 编辑元数据 = null) =>
+          armorPath.length
+            ? makeInlineEditableValue(toText(显示值, ''), {
+                path: [...armorPath, ...(Array.isArray(路径尾段) ? 路径尾段 : [路径尾段])],
+                kind: 类型,
+                rawValue: 原始值,
+                ...(编辑元数据 ? { editorMeta: 编辑元数据 } : {}),
+              })
+            : htmlEscape(toText(显示值, ''));
+        const 斗铠信息项列表 = [
+          {
+            label: '名称',
+            value: 斗铠字段值('名称', toText(armor.名称, '无'), 'string', toText(armor.名称, '无')),
+          },
+          {
+            label: '字级',
+            value: 斗铠字段值(
+              '等级',
+              toNumber(armor.等级, 0),
+              'number',
+              toNumber(armor.等级, 0) > 0 ? `${toNumber(armor.等级, 0)}字斗铠` : '无',
+              { min: 0, max: 4, integer: true, hint: '范围 0 - 4 · 整数' },
+            ),
+          },
+          {
+            label: '领域',
+            value: 斗铠字段值('领域', toText(armor.领域, '无'), 'string', toText(armor.领域, '无')),
+          },
+          {
+            label: '装备状态',
+            value: 斗铠字段值(
+              '装备状态',
+              斗铠状态文本,
+              'enum_select',
+              斗铠状态文本,
+              { options: ['未装备', '已装备'] },
+            ),
+          },
+        ];
+        const 斗铠加成卡片列表 = 斗铠加成顺序.map(加成名 => {
+          const 条目 = 斗铠加成映射.get(加成名) || { label: 加成名, value: 0 };
+          const 纯文本 = toText(构建详情项值HTML(条目), '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\s+/g, '');
+          const 是否零值 = !/[1-9]/.test(纯文本);
+          const 图标信息 = 斗铠加成图标表[加成名] || { 图标: '◆', 类名: 'is-neutral' };
+          return `
+            <article class="mvu-armor-bonus-item ${图标信息.类名}${是否零值 ? ' is-zero' : ' is-live'}">
+              <span class="mvu-armor-bonus-icon">${htmlEscape(图标信息.图标)}</span>
+              <b>${htmlEscape(加成名.replace('加成', ''))}</b>
+              <em>${构建详情项值HTML(条目)}</em>
+            </article>
+          `;
+        });
+        const 斗铠节点HTML = 斗铠节点定义
+          .map(节点 => `
+            <button
+              type="button"
+              class="mvu-armor-node clickable ${节点.类名} ${斗铠槽位类名表[节点.label] || ''}"
+              data-preview="斗铠部件：${escapeHtmlAttr(节点.label)}"
+              title="${escapeHtmlAttr(`查看${节点.label}`)}"
+              style="left:${节点.x}%;top:${节点.y}%"
+            >
+              <b>${htmlEscape(节点.label)}</b>
+              <strong>${htmlEscape(节点.部件名称)}</strong>
+              <span>${htmlEscape(节点.状态文本)}</span>
+            </button>
+          `)
+          .join('');
+        const 斗铠连线HTML = 斗铠连线定义
+          .map(([起点名称, 终点名称]) => {
+            const 起点坐标 = 斗铠节点坐标(起点名称, { x: 50, y: 50 });
+            const 终点坐标 = 斗铠节点坐标(终点名称, { x: 50, y: 50 });
+            return `<line class="mvu-armor-line${armorExists ? ' is-live' : ' is-empty'}" x1="${起点坐标.x}" y1="${起点坐标.y}" x2="${终点坐标.x}" y2="${终点坐标.y}" />`;
+          })
+          .join('');
+        const 可卸下斗铠 = !!(isPlayerControlled && activeCharKey && armorExists && 斗铠是否已装备);
+        const 斗铠控制按钮HTML = `
+              <div class="mvu-armor-footer">
+                <button
+                  type="button"
+                  class="equipment-action-btn mvu-armor-eject-btn"
+                  data-equipment-action="unequip"
+                  data-equipment-char="${escapeHtmlAttr(activeCharKey || '')}"
+                  data-equipment-kind="armor"
+                  ${可卸下斗铠 ? '' : 'disabled'}
+                >卸下斗铠</button>
+              </div>
+            `;
+
         return {
           title: toText(armor.名称, '斗铠详情'),
           summary: '',
           body: `
-              <div class="equipment-layout">
-                <div class="archive-card full">
-                  <div class="archive-card-head"><div class="archive-card-title">斗铠详情</div></div>
-                  ${makeTileGrid([
-                    {
-                      label: '名称',
-                      value: armorPath.length
-                        ? makeInlineEditableValue(toText(armor.名称, '无'), {
-                            path: [...armorPath, '名称'],
-                            kind: 'string',
-                            rawValue: toText(armor.名称, '无'),
-                          })
-                        : htmlEscape(toText(armor.名称, '无')),
-                    },
-                    {
-                      label: '字级',
-                      value: armorPath.length
-                        ? makeInlineEditableValue(
-                            toNumber(armor.等级, 0) > 0 ? `${toNumber(armor.等级, 0)}字斗铠` : '无',
-                            {
-                              path: [...armorPath, '等级'],
-                              kind: 'number',
-                              rawValue: toNumber(armor.等级, 0),
-                              editorMeta: { min: 0, max: 4, integer: true, hint: '范围 0 - 4 · 整数' },
-                            },
-                          )
-                        : htmlEscape(toNumber(armor.等级, 0) > 0 ? `${toNumber(armor.等级, 0)}字斗铠` : '无'),
-                    },
-                    {
-                      label: '领域',
-                      value: armorPath.length
-                        ? makeInlineEditableValue(toText(armor.领域, '无'), {
-                            path: [...armorPath, '领域'],
-                            kind: 'string',
-                            rawValue: toText(armor.领域, '无'),
-                          })
-                        : htmlEscape(toText(armor.领域, '无')),
-                    },
-                    {
-                      label: '装备状态',
-                      value: armorPath.length
-                        ? makeInlineEditableValue(toText(armor.装备状态, '未装备'), {
-                            path: [...armorPath, '装备状态'],
-                            kind: 'enum_select',
-                            rawValue: toText(armor.装备状态, '未装备'),
-                            editorMeta: { options: ['未装备', '已装备'] },
-                          })
-                        : htmlEscape(toText(armor.装备状态, '未装备')),
-                    },
-                  ])}
-                </div>
-                <div class="archive-card full">
-                  <div class="archive-card-head"><div class="archive-card-title">斗铠加成</div></div>
-                  ${makeTileGrid(armorBonusItems)}
-                </div>
-                <div class="archive-card">
-                  <div class="archive-card-head"><div class="archive-card-title">斗铠部件</div></div>
-                  ${makeInteractiveFigureBoard(toText(armor.名称, '斗铠'), armorSlots, { preview: '武装详情：斗铠' })}
-                </div>
-                ${
-                  isPlayerControlled && armorExists
-                    ? `
-                  <div class="archive-card full">
-                    <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
-                      <button type="button" class="relation-action-btn equipment-action-btn" data-equipment-action="unequip" data-equipment-char="${escapeHtmlAttr(activeCharKey)}" data-equipment-kind="armor">卸下斗铠</button>
+              <div class="archive-modal-grid mvu-armor-assembly-grid">
+                <section class="archive-card full mvu-armor-topology-panel">
+                  <div class="archive-card-head">
+                    <div class="archive-card-title">斗铠图谱</div>
+                    <span class="mvu-armor-head-tag">${htmlEscape(armorExists ? '已加载' : '空载')}</span>
+                  </div>
+                  <div class="mvu-armor-topology">
+                    <div class="mvu-armor-body-silhouette" aria-hidden="true"></div>
+                    <svg class="mvu-armor-line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      ${斗铠连线HTML}
+                    </svg>
+                    <div
+                      class="mvu-armor-node mvu-armor-node--core ${斗铠是否已装备 ? 'is-live' : armorExists ? 'is-warn' : 'is-empty'}"
+                      style="left:50%;top:50%"
+                    >
+                      <b>核心</b>
+                      <strong>${htmlEscape(toText(armor.名称, armor.等级 > 0 ? `${toNumber(armor.等级, 0)}字斗铠` : '未部署'))}</strong>
+                      <span>${htmlEscape(斗铠共鸣文本)}</span>
+                    </div>
+                    ${斗铠节点HTML}
+                  </div>
+                </section>
+
+                <section class="archive-card full mvu-armor-control-panel">
+                  <div class="archive-card-head">
+                    <div class="archive-card-title">核心数据</div>
+                    <div class="mvu-armor-status-row">
+                      <span class="mvu-armor-status-light ${斗铠是否已装备 ? 'is-live' : armorExists ? 'is-warn' : 'is-off'}"></span>
+                      <b>${htmlEscape(斗铠共鸣文本)}</b>
                     </div>
                   </div>
-                `
-                    : ''
-                }
+
+                  <div class="mvu-armor-info-grid">
+                    ${斗铠信息项列表
+                      .map(
+                        项目 => `
+                          <div class="mvu-armor-info-item">
+                            <b>${htmlEscape(项目.label)}</b>
+                            <span>${项目.value}</span>
+                          </div>
+                        `,
+                      )
+                      .join('')}
+                  </div>
+
+                  <section class="mvu-armor-section">
+                    <div class="mvu-armor-section-head">
+                      <div class="mvu-armor-section-title">斗铠加成</div>
+                    </div>
+                    <div class="mvu-armor-bonus-grid">
+                      ${斗铠加成卡片列表.join('')}
+                    </div>
+                  </section>
+
+                  ${斗铠控制按钮HTML}
+                </section>
               </div>
             `,
         };
@@ -35889,143 +36151,147 @@
     }
 
     if (String(previewKey || '').startsWith('org_detail_')) {
-      const targetOrgName = String(previewKey).replace('org_detail_', '').trim();
-      const targetOrgEntry = snapshot.orgEntries.find(([name]) => name === targetOrgName) || [targetOrgName, {}];
-      const targetOrgData = targetOrgEntry[1] || {};
-      const targetOrgPath = targetOrgName ? ['org', targetOrgName] : [];
+      const 目标势力名 = String(previewKey).replace('org_detail_', '').trim();
+      const 目标势力条目 = snapshot.orgEntries.find(([名称]) => 名称 === 目标势力名) || [目标势力名, {}];
+      const 目标势力数据 = 目标势力条目[1] || {};
+      const 目标势力路径 = 目标势力名 ? ['org', 目标势力名] : [];
+      const 影响力数值 = toNumber(目标势力数据.影响力, 0);
+      const 规模数值 = toNumber(目标势力数据.规模, 0);
+      const 当前状态 = toText(目标势力数据.状态, '正常');
+      const 上级势力 = toText(目标势力数据.上级势力, '无');
+      const 极限斗罗数 = toNumber(deepGet(目标势力数据, '战力统计.极限斗罗', 0), 0);
+      const 超级斗罗数 = toNumber(deepGet(目标势力数据, '战力统计.超级斗罗', 0), 0);
+      const 封号斗罗数 = toNumber(deepGet(目标势力数据, '战力统计.封号斗罗', 0), 0);
+      const 影响力百分比 = Math.max(0, Math.min(100, Math.round((影响力数值 / 1000000) * 100)));
+      const 势力图腾 = Array.from(目标势力名 || '势')
+        .filter(字符 => toText(字符, '').trim())
+        .slice(0, 2)
+        .join('');
 
-      const factionRelationCards = buildFactionRelationEditorGrid(targetOrgName, targetOrgData, {
+      const 生成可编辑值 = (路径尾段, 原始值, 类型 = 'string', 显示值 = 原始值, 编辑配置 = {}) =>
+        目标势力路径.length
+          ? makeInlineEditableValue(toText(显示值, ''), {
+              path: [...目标势力路径, ...(Array.isArray(路径尾段) ? 路径尾段 : [路径尾段])],
+              kind: 类型,
+              rawValue: 原始值,
+              ...(编辑配置 && Object.keys(编辑配置).length ? { editorMeta: 编辑配置 } : {}),
+            })
+          : htmlEscape(toText(显示值, ''));
+
+      const 影响力展示 = 生成可编辑值('影响力', 影响力数值, 'number', formatNumber(影响力数值), {
+        min: 0,
+        integer: true,
+        hint: '最小 0 · 整数',
+      });
+      const 规模展示 = 生成可编辑值('规模', 规模数值, 'number', formatNumber(规模数值), {
+        min: 0,
+        integer: true,
+        hint: '最小 0 · 整数',
+      });
+      const 状态展示 = 生成可编辑值('状态', 当前状态);
+      const 上级势力展示 = 生成可编辑值('上级势力', 上级势力);
+      const 极限斗罗展示 = 生成可编辑值(['战力统计', '极限斗罗'], 极限斗罗数, 'number', String(极限斗罗数), {
+        min: 0,
+        integer: true,
+        hint: '最小 0 · 整数',
+      });
+      const 超级斗罗展示 = 生成可编辑值(['战力统计', '超级斗罗'], 超级斗罗数, 'number', String(超级斗罗数), {
+        min: 0,
+        integer: true,
+        hint: '最小 0 · 整数',
+      });
+      const 封号斗罗展示 = 生成可编辑值(['战力统计', '封号斗罗'], 封号斗罗数, 'number', String(封号斗罗数), {
+        min: 0,
+        integer: true,
+        hint: '最小 0 · 整数',
+      });
+
+      const 势力关系HTML = 构建势力外交态势网格HTML(目标势力名, 目标势力数据, {
         max: 8,
         emptyTitle: '暂无对外关系',
         emptyDesc: '当前势力未记录对外关系。',
       });
 
       // 收集已归属该势力的角色。
-      const orgMembers = [];
-      for (const [charName, charInfo] of snapshot.charEntries) {
-        const factions = safeEntries(deepGet(charInfo, '社交.势力', {}));
-        const matchingFaction = factions.find(([fName]) => fName === targetOrgName);
-        if (matchingFaction) {
-          orgMembers.push({
-            name: charName,
-            desc: `身份：${toText(matchingFaction[1] && matchingFaction[1]['身份'], '成员')} ｜ 权限：Lv.${toText(matchingFaction[1] && matchingFaction[1]['权限级'], '1')}`,
+      const 势力成员列表 = [];
+      for (const [角色名, 角色信息] of snapshot.charEntries) {
+        const 所属势力列表 = safeEntries(deepGet(角色信息, '社交.势力', {}));
+        const 匹配势力 = 所属势力列表.find(([势力名]) => 势力名 === 目标势力名);
+        if (匹配势力) {
+          const 成员数据 = 匹配势力[1] && typeof 匹配势力[1] === 'object' ? 匹配势力[1] : {};
+          势力成员列表.push({
+            名称: 角色名,
+            身份: toText(成员数据['身份'], '成员'),
+            权限级: toText(成员数据['权限级'], '1'),
           });
         }
       }
 
       return {
-        title: targetOrgName ? `势力档案 / ${targetOrgName}` : '势力档案',
+        title: 目标势力名 ? `势力档案 / ${目标势力名}` : '势力档案',
         summary: '展示该势力的规模战力、对外关系以及已知成员名册。',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">势力概况</div></div>
-                ${makeTileGrid(
-                  [
-                    {
-                      label: '影响力',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(formatNumber(targetOrgData.影响力 || 0), {
-                            path: [...targetOrgPath, '影响力'],
-                            kind: 'number',
-                            rawValue: toNumber(targetOrgData.影响力, 0),
-                            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                          })
-                        : formatNumber(targetOrgData.影响力 || 0),
-                    },
-                    {
-                      label: '势力规模',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(formatNumber(targetOrgData.规模 || 0), {
-                            path: [...targetOrgPath, '规模'],
-                            kind: 'number',
-                            rawValue: toNumber(targetOrgData.规模, 0),
-                            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                          })
-                        : formatNumber(targetOrgData.规模 || 0),
-                    },
-                    {
-                      label: '当前状态',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(toText(targetOrgData.状态, '正常'), {
-                            path: [...targetOrgPath, '状态'],
-                            kind: 'string',
-                            rawValue: toText(targetOrgData.状态, '正常'),
-                          })
-                        : toText(targetOrgData.状态, '正常'),
-                    },
-                    {
-                      label: '上级势力',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(toText(targetOrgData.上级势力, '无'), {
-                            path: [...targetOrgPath, '上级势力'],
-                            kind: 'string',
-                            rawValue: toText(targetOrgData.上级势力, '无'),
-                          })
-                        : toText(targetOrgData.上级势力, '无'),
-                    },
-                    {
-                      label: '极限斗罗',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(String(toNumber(deepGet(targetOrgData, '战力统计.极限斗罗', 0), 0)), {
-                            path: [...targetOrgPath, '战力统计', '极限斗罗'],
-                            kind: 'number',
-                            rawValue: toNumber(deepGet(targetOrgData, '战力统计.极限斗罗', 0), 0),
-                            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                          })
-                        : deepGet(targetOrgData, '战力统计.极限斗罗', 0),
-                    },
-                    {
-                      label: '超级斗罗',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(String(toNumber(deepGet(targetOrgData, '战力统计.超级斗罗', 0), 0)), {
-                            path: [...targetOrgPath, '战力统计', '超级斗罗'],
-                            kind: 'number',
-                            rawValue: toNumber(deepGet(targetOrgData, '战力统计.超级斗罗', 0), 0),
-                            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                          })
-                        : deepGet(targetOrgData, '战力统计.超级斗罗', 0),
-                    },
-                    {
-                      label: '封号斗罗',
-                      value: targetOrgPath.length
-                        ? makeInlineEditableValue(String(toNumber(deepGet(targetOrgData, '战力统计.封号斗罗', 0), 0)), {
-                            path: [...targetOrgPath, '战力统计', '封号斗罗'],
-                            kind: 'number',
-                            rawValue: toNumber(deepGet(targetOrgData, '战力统计.封号斗罗', 0), 0),
-                            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                          })
-                        : deepGet(targetOrgData, '战力统计.封号斗罗', 0),
-                    },
-                  ],
-                  'two',
-                )}
-              </div>
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">对外关系</div></div>
-                ${factionRelationCards}
-              </div>
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">角色名册</div></div>
-                <div class="mvu-detail-card-grid mvu-detail-scroll-list">
+            <div class="archive-modal-grid org-detail-shell">
+              <section class="org-detail-section org-intel-shell">
+                <div class="org-emblem-panel">
+                  <div class="org-emblem">${htmlEscape(势力图腾 || '势')}</div>
+                  <div class="org-emblem-name">${htmlEscape(目标势力名 || '未知势力')}</div>
+                </div>
+                <div class="org-influence-core" style="--org-influence-rate:${escapeHtmlAttr(String(影响力百分比))}%">
+                  <div class="org-section-kicker">影响力</div>
+                  <div class="org-influence-value">${影响力展示}</div>
+                  <div class="org-influence-track"><span></span></div>
+                  <div class="org-meta-grid">
+                    <div class="org-meta-row"><b>规模</b><span>${规模展示}</span></div>
+                    <div class="org-meta-row"><b>状态</b><span>${状态展示}</span></div>
+                    <div class="org-meta-row"><b>上级</b><span>${上级势力展示}</span></div>
+                  </div>
+                </div>
+                <div class="org-power-reserve">
+                  <div class="org-section-kicker">高端战力储备</div>
+                  <div class="org-power-row"><b>极限斗罗</b><span>${极限斗罗展示}</span></div>
+                  <div class="org-power-row"><b>超级斗罗</b><span>${超级斗罗展示}</span></div>
+                  <div class="org-power-row"><b>封号斗罗</b><span>${封号斗罗展示}</span></div>
+                </div>
+              </section>
+
+              <section class="org-detail-section">
+                <div class="org-detail-section-head">
+                  <div class="org-section-title">对外关系</div>
+                  <span>${htmlEscape(String(safeEntries(deepGet(目标势力数据, '关系', {})).length))}</span>
+                </div>
+                ${势力关系HTML}
+              </section>
+
+              <section class="org-detail-section">
+                <div class="org-detail-section-head">
+                  <div class="org-section-title">角色名册</div>
+                  <span>${htmlEscape(String(势力成员列表.length))}</span>
+                </div>
+                <div class="org-member-grid">
                   ${
-                    orgMembers.length > 0
-                      ? orgMembers
-                          .map(
-                            m => `
-                    <button type="button" class="role-switch-tile clickable mvu-detail-list-tile" data-preview="角色档案：${escapeHtmlAttr(m.name)}">
-                      <div class="role-switch-head mvu-detail-list-head"><b>${htmlEscape(m.name)}</b><span class="state-tag">角色</span></div>
-                      <div class="role-switch-meta mvu-detail-list-meta">
-                        ${htmlEscape(m.desc)}
-                      </div>
-                    </button>
-                  `,
-                          )
+                    势力成员列表.length > 0
+                      ? 势力成员列表
+                          .map(成员 => {
+                            const 成员图腾 = Array.from(toText(成员.名称, '人')).filter(字符 => toText(字符, '').trim())[0] || '人';
+                            return `
+                              <button type="button" class="org-member-id-card clickable" data-preview="角色档案：${escapeHtmlAttr(成员.名称)}">
+                                <span class="org-member-avatar">${htmlEscape(成员图腾)}</span>
+                                <span class="org-member-main">
+                                  <b>${htmlEscape(成员.名称)}</b>
+                                  <span class="org-member-tags">
+                                    <span>${htmlEscape(成员.身份)}</span>
+                                    <span>Lv.${htmlEscape(成员.权限级)}</span>
+                                  </span>
+                                </span>
+                              </button>
+                            `;
+                          })
                           .join('')
-                      : '<div class="mvu-detail-empty">未搜索到属于该势力的已知角色。</div>'
+                      : '<div class="org-detail-empty"><b>暂无成员</b><span>未搜索到属于该势力的已知角色。</span></div>'
                   }
                 </div>
-              </div>
+              </section>
             </div>
           `,
       };
@@ -36283,19 +36549,26 @@
             rawValue: 守备文本,
           })
         : htmlEscape(守备文本);
-      const 城市情报胶囊 = [
+      const 城市状态行 = [
         ['掌控', 掌控势力HTML],
-        ['人口', 人口HTML],
-        ['设施', htmlEscape(`${nodeStores.length}处`)],
-        ['经济', 经济HTML],
         ['守备', 守备HTML],
-        ['供给', htmlEscape(toText(snapshot && snapshot.本地供给, '无供给'))],
-        ['价格', htmlEscape(toText(snapshot && snapshot.价格带, '无'))],
-        ['成交', htmlEscape(toText(snapshot && snapshot.最近成交影响, '平稳'))],
       ]
         .map(
           ([标签, 值]) => `
-            <span class="location-intel-pill">
+            <span class="location-intel-field">
+              <b>${htmlEscape(标签)}</b>
+              <em>${值}</em>
+            </span>
+          `,
+        )
+        .join('');
+      const 城市核心指标 = [
+        ['人口', 人口HTML],
+        ['设施', htmlEscape(`${nodeStores.length}处`)],
+      ]
+        .map(
+          ([标签, 值]) => `
+            <span class="location-intel-core">
               <b>${htmlEscape(标签)}</b>
               <em>${值}</em>
             </span>
@@ -36308,7 +36581,12 @@
         { 标签: '守备', 数值: 守备评分, 文本: 守备文本 },
         { 标签: '补给', 数值: 补给评分, 文本: nodeStores.length ? `${nodeStores.length}处设施` : '无可见商店' },
         { 标签: '价值', 数值: 价值评分, 文本: String(价值评分) },
-      ]);
+      ], {
+        摘要列表: [
+          { 标签: '综合评级', 文本: 经济文本 },
+          { 标签: '物价指数', 文本: toText(snapshot && snapshot.价格带, '平稳') },
+        ],
+      });
       return {
         title: `本地据点 / ${nodeName}`,
         summary: '当前节点的地图属性、势力资料与可去方向。',
@@ -36322,8 +36600,9 @@
                         <b>${htmlEscape(nodeName)}</b>
                         <span>${htmlEscape(canDispatchHere ? '当前节点' : '远端节点')}</span>
                       </div>
-                      <div class="location-intel-brief">${地图简报内容}</div>
-                      <div class="location-intel-pill-row">${城市情报胶囊}</div>
+                      <div class="location-intel-brief"><b>简报</b><span>${地图简报内容}</span></div>
+                      <div class="location-intel-field-row">${城市状态行}</div>
+                      <div class="location-intel-core-row">${城市核心指标}</div>
                     </div>
                     <div class="location-intel-radar">${城市雷达HTML}</div>
                   </div>
@@ -40197,39 +40476,41 @@ ${播报文本}
     normalized.数量 = quantity;
 
     if (unitNature === '人类') {
-      const identity = toText(normalized.身份, '');
-      if (!['普通人', '魂师', '军人'].includes(identity)) return { ok: false, reason: `${role}_seed_invalid_identity` };
+      let identity = toText(normalized.身份, '');
+      const levelValue = Math.max(0, Math.floor(toNumber(normalized.等级, 0)));
+      if (!identity) identity = levelValue > 0 ? '魂师' : '普通人';
+      if (!['普通人', '魂师', '军人'].includes(identity)) {
+        identity = levelValue > 0 ? '魂师' : '普通人';
+      }
       normalized.身份 = identity;
-      if (identity !== '普通人' && toNumber(normalized.等级, 0) <= 0) {
-        return { ok: false, reason: `${role}_seed_missing_level` };
+      if (identity !== '普通人') {
+        if (levelValue <= 0) return { ok: false, reason: `${role}_seed_missing_level` };
+        normalized.等级 = levelValue;
+      } else {
+        normalized.等级 = 0;
       }
-      if (identity !== '普通人') normalized.等级 = Math.max(1, Math.floor(toNumber(normalized.等级, 1)));
     } else if (unitNature === '魂兽') {
-      if (toNumber(normalized.年限, 0) <= 0) return { ok: false, reason: `${role}_seed_missing_age` };
-      const species = toText(normalized.标准物种, '');
-      if (!species) return { ok: false, reason: `${role}_seed_missing_species` };
-      if (!BATTLE_SOUL_BEAST_STANDARD_SPECIES.includes(species)) {
-        return { ok: false, reason: `${role}_seed_invalid_species` };
+      const levelValue = Math.max(1, Math.floor(toNumber(normalized.等级, 1)));
+      normalized.等级 = levelValue;
+      if (toNumber(normalized.年限, 0) <= 0) normalized.年限 = 按模块路由等级换算魂兽年限(levelValue);
+      const species = toText(normalized.标准物种, '') || 推断模块路由魂兽标准物种(normalized.name);
+      normalized.标准物种 = BATTLE_SOUL_BEAST_STANDARD_SPECIES.includes(species)
+        ? species
+        : 推断模块路由魂兽标准物种(species || normalized.name);
+      normalized.具体物种 = toText(normalized.具体物种 || normalized.物种, '') || toText(normalized.name, '') || normalized.标准物种;
+      normalized.物种品质 = normalizeSoulBeastQualityTier(normalized.物种品质 || normalized.品质 || '');
+      if (normalized.品质 !== undefined) {
+        const quality = normalizeSoulSpiritQuality(normalized.品质 || '');
+        normalized.品质 = quality || '';
       }
-      const specificSpecies = toText(normalized.具体物种 || normalized.物种, '');
-      if (!specificSpecies) return { ok: false, reason: `${role}_seed_missing_specific_species` };
-      if (!toText(normalized.物种品质, '')) return { ok: false, reason: `${role}_seed_missing_quality_tier` };
-      normalized.年限 = Math.max(1, Math.floor(toNumber(normalized.年限, 1)));
-      normalized.标准物种 = species;
-      normalized.具体物种 = specificSpecies;
-      normalized.物种品质 = normalizeSoulBeastQualityTier(normalized.物种品质 || '');
-      const quality = normalizeSoulSpiritQuality(normalized.品质 || '');
-      if (normalized.品质 !== undefined && !quality) return { ok: false, reason: `${role}_seed_invalid_quality` };
-      if (quality) normalized.品质 = quality;
     } else if (unitNature === '深渊') {
-      const tier = toText(normalized.级别, '');
-      const race = toText(normalized.标准种族, '');
-      if (!tier) return { ok: false, reason: `${role}_seed_missing_tier` };
-      if (!race) return { ok: false, reason: `${role}_seed_missing_race` };
-      if (!BATTLE_ABYSS_STANDARD_TIERS.includes(tier)) return { ok: false, reason: `${role}_seed_invalid_tier` };
-      if (!BATTLE_ABYSS_STANDARD_RACES.includes(race)) return { ok: false, reason: `${role}_seed_invalid_race` };
-      normalized.级别 = tier;
-      normalized.标准种族 = race;
+      const levelValue = Math.max(1, Math.floor(toNumber(normalized.等级, 1)));
+      normalized.等级 = levelValue;
+      if (!toText(normalized.级别, '').trim()) normalized.级别 = 按模块路由等级换算深渊级别(levelValue);
+      const race = toText(normalized.标准种族, '') || 推断模块路由深渊标准种族(normalized.name);
+      normalized.标准种族 = BATTLE_ABYSS_STANDARD_RACES.includes(race)
+        ? race
+        : 推断模块路由深渊标准种族(race || normalized.name);
     }
 
     return { ok: true, normalized, charKey: '', kind: 'seed' };
@@ -41386,6 +41667,183 @@ ${toText(combatData.战斗意图, '点到为止')}
     };
   }
 
+  function 解析模块路由布尔值(value) {
+    const 文本 = toText(value, '').trim();
+    if (/^(是|true|yes|y|1|开启|启用|允许)$/i.test(文本)) return true;
+    if (/^(否|false|no|n|0|关闭|禁用|不允许)$/i.test(文本)) return false;
+    return value;
+  }
+
+  function 解析模块路由数值(value) {
+    const 文本 = toText(value, '').trim();
+    if (!/^-?\d+(?:\.\d+)?$/.test(文本)) return value;
+    const 数值 = Number(文本);
+    return Number.isFinite(数值) ? 数值 : value;
+  }
+
+  function 解析模块路由字段值(字段名, value) {
+    const 字段 = toText(字段名, '').trim();
+    if (/^(允许撤离|自动模式|自动执行|启用)$/u.test(字段)) return 解析模块路由布尔值(value);
+    if (/^(数量|阶级|层数|耗时tick|等级|年限)$/u.test(字段)) return 解析模块路由数值(value);
+    return toText(value, '').trim();
+  }
+
+  function 读取模块路由等级(value) {
+    const 数值 = Number(value);
+    if (!Number.isFinite(数值) || 数值 <= 0) return 0;
+    return Math.max(1, Math.floor(数值));
+  }
+
+  function 按模块路由等级换算魂兽年限(value) {
+    const 等级 = 读取模块路由等级(value);
+    if (等级 <= 0) return 0;
+    if (等级 >= 90) return Math.max(100000, Math.floor(100000 + (等级 - 90) * 100000));
+    if (等级 >= 50) return Math.max(10000, Math.floor(10000 + (等级 - 50) * 2250));
+    if (等级 >= 30) return Math.max(1000, Math.floor(1000 + (等级 - 30) * 450));
+    if (等级 >= 10) return Math.max(100, Math.floor(100 + (等级 - 10) * 45));
+    return Math.max(1, 等级 * 10);
+  }
+
+  function 按模块路由等级换算深渊级别(value) {
+    const 等级 = 读取模块路由等级(value);
+    if (等级 <= 0) return '';
+    if (等级 >= 90) return '深渊帝君';
+    if (等级 >= 70) return '深渊王者';
+    if (等级 >= 50) return '高阶生物';
+    if (等级 >= 30) return '中阶生物';
+    return '低阶生物';
+  }
+
+  function 推断模块路由魂兽标准物种(value = '') {
+    const 文本 = toText(value, '').trim();
+    if (BATTLE_SOUL_BEAST_STANDARD_SPECIES.includes(文本)) return 文本;
+    if (/龙|蛟|蜥/.test(文本)) return '龙类';
+    if (/蛛|蜘蛛/.test(文本)) return '蛛类';
+    if (/熊/.test(文本)) return '熊类';
+    if (/草|花|藤|树|木|植物/.test(文本)) return '植物系';
+    if (/海|水|鱼|鲨|鲸|龟/.test(文本)) return '海魂兽';
+    if (/鸟|鹰|隼|鸦|雀|鹤|凤/.test(文本)) return '鸟类';
+    if (/猫|虎|豹|狮|狼|狐|幽冥/.test(文本)) return '猫科';
+    if (/蛇|蟒|蚺/.test(文本)) return '蛇类';
+    return '猫科';
+  }
+
+  function 推断模块路由深渊标准种族(value = '') {
+    const 文本 = toText(value, '').trim();
+    if (BATTLE_ABYSS_STANDARD_RACES.includes(文本)) return 文本;
+    const 命中 = BATTLE_ABYSS_STANDARD_RACES.find(种族 => 文本.includes(种族) || 种族.includes(文本));
+    return 命中 || '四爪蝙蝠';
+  }
+
+  function 归一化模块路由参战者通用字段(单位) {
+    if (!单位 || typeof 单位 !== 'object') return 单位;
+    const 单位性质 = toText(单位.单位性质, '').trim();
+    const 等级 = 读取模块路由等级(单位.等级);
+    const 名称 = toText(单位.name, '').trim();
+    const 类型 = toText(单位.类型, '').trim();
+    const 亚型 = toText(单位.亚型, '').trim();
+    const 品质 = toText(单位.品质, '').trim();
+    if (单位性质 === '人类') {
+      if (!toText(单位.身份, '').trim()) 单位.身份 = ['普通人', '魂师', '军人'].includes(类型) ? 类型 : 等级 > 0 ? '魂师' : '普通人';
+      if (单位.等级 !== undefined) 单位.等级 = 等级;
+    } else if (单位性质 === '魂兽') {
+      if (toNumber(单位.年限, 0) <= 0 && 等级 > 0) 单位.年限 = 按模块路由等级换算魂兽年限(等级);
+      if (!toText(单位.标准物种, '').trim()) 单位.标准物种 = 推断模块路由魂兽标准物种(类型 || 名称);
+      if (!toText(单位.具体物种, '').trim()) 单位.具体物种 = 亚型 || 名称 || '魂兽';
+      if (!toText(单位.物种品质, '').trim()) 单位.物种品质 = normalizeSoulBeastQualityTier(品质 || '普通');
+      if (单位.品质 !== undefined && !normalizeSoulSpiritQuality(单位.品质)) delete 单位.品质;
+    } else if (单位性质 === '深渊') {
+      if (!toText(单位.级别, '').trim() && 等级 > 0) 单位.级别 = 按模块路由等级换算深渊级别(等级);
+      if (!toText(单位.标准种族, '').trim()) 单位.标准种族 = 推断模块路由深渊标准种族(类型 || 名称);
+    }
+    return 单位;
+  }
+
+  function 解析模块路由参战者项(value) {
+    const 文本 = toText(value, '').trim();
+    if (!文本) return null;
+    const 片段列表 = 文本
+      .split('|')
+      .map(片段 => 片段.trim())
+      .filter(Boolean);
+    const 单位 = {};
+    const 首段 = 片段列表.shift() || '';
+    if (/[=:：]/.test(首段)) {
+      片段列表.unshift(首段);
+    } else {
+      单位.name = 首段;
+    }
+    for (const 片段 of 片段列表) {
+      const 匹配 = 片段.match(/^\s*([^=:：]+)\s*[=:：]\s*(.*?)\s*$/u);
+      if (!匹配) continue;
+      const 字段 = toText(匹配[1], '').trim();
+      const 字段值 = 解析模块路由字段值(字段, 匹配[2]);
+      if (字段 === '名称' || 字段 === '名字' || /^name$/i.test(字段)) 单位.name = toText(字段值, '');
+      else 单位[字段] = 字段值;
+    }
+    return 单位.name ? 归一化模块路由参战者通用字段(单位) : null;
+  }
+
+  function 解析模块路由参战者列表(value) {
+    const 文本 = toText(value, '').trim();
+    if (!文本) return [];
+    const 粗分列表 = /[；;\n]/.test(文本)
+      ? 文本.split(/[；;\n]+/u)
+      : 文本.includes('|')
+        ? [文本]
+        : 文本.split(/[、,，]+/u);
+    return 粗分列表.map(解析模块路由参战者项).filter(Boolean);
+  }
+
+  function 设置模块路由字段(payload, 字段名, value) {
+    const 字段 = toText(字段名, '').trim();
+    if (!字段) return;
+    if (字段 === '我方' || 字段 === '己方') {
+      if (!payload.参战者 || typeof payload.参战者 !== 'object') payload.参战者 = {};
+      payload.参战者.team_player = 解析模块路由参战者列表(value);
+      return;
+    }
+    if (字段 === '敌方') {
+      if (!payload.参战者 || typeof payload.参战者 !== 'object') payload.参战者 = {};
+      payload.参战者.team_enemy = 解析模块路由参战者列表(value);
+      return;
+    }
+    if (/^参战者\.(team_player|team_enemy)$/i.test(字段)) {
+      const 队伍名 = 字段.match(/^参战者\.(team_player|team_enemy)$/i)[1];
+      if (!payload.参战者 || typeof payload.参战者 !== 'object') payload.参战者 = {};
+      payload.参战者[队伍名] = 解析模块路由参战者列表(value);
+      return;
+    }
+    const 字段值 = 解析模块路由字段值(字段, value);
+    if (字段 === '执行者') {
+      payload.执行者类型 = 字段值;
+      return;
+    }
+    payload[字段] = 字段值;
+    if (字段 === '模块') {
+      payload.module = 字段值;
+      payload.kind = 字段值;
+    } else if (字段 === '地点') {
+      payload.location = 字段值;
+      payload.targetLocation = 字段值;
+      payload.目标地点 = payload.目标地点 || 字段值;
+    } else if (字段 === '自动模式') {
+      payload.自动模式 = 字段值;
+    }
+  }
+
+  function 解析模块路由字段块(文本) {
+    const payload = {};
+    String(文本 || '')
+      .split(/\r?\n/u)
+      .forEach(行文本 => {
+        const 匹配 = 行文本.match(/^\s*([^:：]+?)\s*[:：]\s*(.*?)\s*$/u);
+        if (!匹配) return;
+        设置模块路由字段(payload, 匹配[1], 匹配[2]);
+      });
+    return Object.keys(payload).length ? payload : null;
+  }
+
   function resolveModuleIntentPayload(input) {
     let parsedInput = input;
     if (typeof input === 'string') {
@@ -41394,6 +41852,10 @@ ${toText(combatData.战斗意图, '点到为止')}
         try {
           parsedInput = JSON.parse(routeMatch[1]);
         } catch (error) {}
+        if (typeof parsedInput === 'string') {
+          const 字段块 = 解析模块路由字段块(routeMatch[1]);
+          if (字段块) parsedInput = { ...字段块, text: input, raw: routeMatch[1] };
+        }
       }
     }
     const outerPayload = parsedInput && typeof parsedInput === 'object' ? parsedInput : {};
@@ -42254,19 +42716,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
 
     if (moduleKind === 'battle') {
-      const 当前战斗提交模式 = 读取战斗提交模式();
       const trialContext = 读取试炼状态上下文(snapshot);
-      if (当前战斗提交模式 === 'free_narrative') {
-        request = {
-          action: 'battle',
-          target: toText(
-            payload.location || payload.targetLocation || payload.arena || payload.target,
-            findBracketLocationToken(snapshot, text),
-          ),
-          currentLoc: toText(payload.currentLoc || payload.location, toText(snapshot && snapshot.currentLoc, '')),
-          source: toText(payload.source, 'module_intent_router_free_narrative'),
-        };
-      } else if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
+      const 允许撤离值 = 解析模块路由布尔值(payload.允许撤离);
+      const 自动模式值 = 解析模块路由布尔值(payload.自动模式);
+      if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
       } else if (
         !trialContext &&
@@ -42275,7 +42728,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           !Array.isArray(payload.参战者.team_player) ||
           !Array.isArray(payload.参战者.team_enemy) ||
           payload.参战者.team_enemy.length < 1 ||
-          typeof payload.允许撤离 !== 'boolean')
+          typeof 允许撤离值 !== 'boolean')
       ) {
         return 构建模块路由失败结果(moduleKind, payload, 'battle_seed_invalid');
       }
@@ -42306,29 +42759,13 @@ ${toText(combatData.战斗意图, '点到为止')}
               /死战|生死|击杀|袭击|伏击/.test(text) ? '突发遭遇' : '擂台切磋',
             ),
             source: toText(payload.source, 'module_intent_router'),
-            允许撤离: payload.允许撤离 === false ? false : true,
+            允许撤离: typeof 允许撤离值 === 'boolean' ? 允许撤离值 : true,
+            自动模式: typeof 自动模式值 === 'boolean' ? 自动模式值 : undefined,
             参战者: explicitParticipants,
           };
-        } else {
-          const npcTarget = toText(payload.npcTarget || payload.enemy || payload.targetNpc || payload.npc, '');
-          request = {
-            action: 'battle',
-            target: toText(
-              payload.location || payload.targetLocation || payload.arena || payload.target,
-              findBracketLocationToken(snapshot, text),
-            ),
-            currentLoc: toText(payload.currentLoc || payload.location, toText(snapshot && snapshot.currentLoc, '')),
-            npcTarget,
-            战斗类型: toText(
-              payload.战斗类型 || payload.combatType,
-              /死战|生死|击杀|袭击|伏击/.test(text) ? '突发遭遇' : '擂台切磋',
-            ),
-            允许撤离: payload.允许撤离 === false ? false : true,
-            source: toText(payload.source, 'module_intent_router'),
-          };
-          if (!npcTarget) request = null;
         }
       }
+      if (request && typeof 自动模式值 === 'boolean') request.自动模式 = 自动模式值;
     } else if (moduleKind === 'trade') {
       request = buildTradeRequestFromObject(snapshot, payload);
     } else if (moduleKind === 'profession') {
@@ -42347,7 +42784,14 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
 
     if (!request || !moduleKind) return { handled: false, reason: 'no_module_intent' };
-    const 战斗提交模式 = moduleKind === 'battle' ? 读取战斗提交模式() : '';
+    const 战斗提交模式 =
+      moduleKind === 'battle'
+        ? request && request.自动模式 === true
+          ? 'auto'
+          : request && request.自动模式 === false
+            ? 'manual'
+            : 读取战斗提交模式()
+        : '';
     if (dryRun) return { handled: true, dryRun: true, kind: moduleKind, request };
 
     if (moduleKind === 'trial_entry') {

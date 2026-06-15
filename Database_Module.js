@@ -15573,7 +15573,7 @@ $CONTENT
         if (!编码列表.length) return '无相关偏差记录。';
         const 读取结果 = 读取偏差账本记录列表_ACU(全部表格数据);
         if (!读取结果.success || !读取结果.records.length) return '无相关偏差记录。';
-        const 记录表 = new Map(读取结果.records.map((记录) => [记录.编码, 记录]));
+        const 记录表 = new Map(读取结果.records.filter((记录) => 记录.状态 !== '收束').map((记录) => [记录.编码, 记录]));
         const 展开列表 = 编码列表
             .map((编码) => 记录表.get(编码))
             .filter(Boolean)
@@ -16106,7 +16106,7 @@ $CONTENT
         return 原文.replace(/\{\{\s*偏差表专用上下文\s*\}\}/g, 构建偏差表专用上下文_ACU(全部表格数据));
     }
 
-    function 获取提示用SourceData_ACU(表格, 全部表格数据 = currentJsonTableData_ACU) {
+    function 获取提示用源数据_ACU(表格, 全部表格数据 = currentJsonTableData_ACU) {
         const 源数据 = 表格?.sourceData || {};
         if (!是偏差表_ACU(表格)) return 源数据;
         return {
@@ -16219,7 +16219,7 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    const 提示源数据 = 获取提示用SourceData_ACU(table, workingTableData);
+                    const 提示源数据 = 获取提示用源数据_ACU(table, workingTableData);
                     tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
                     const initNodeContent = 提示源数据.initNode || 提示源数据.insertNode || 'N/A';
                     tableDataText += `  - Init Trigger: ${initNodeContent}\n`;
@@ -16232,7 +16232,7 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    const 提示源数据 = 获取提示用SourceData_ACU(table, workingTableData);
+                    const 提示源数据 = 获取提示用源数据_ACU(table, workingTableData);
                     tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
                     tableDataText += `  - Insert Trigger: ${提示源数据.insertNode || 提示源数据.initNode || 'N/A'}\n`;
                     tableDataText += `  - Update Trigger: ${提示源数据.updateNode || 'N/A'}\n`;
@@ -16316,7 +16316,7 @@ $CONTENT
         text += ddl.trim() + '\n';
         // 输出 Note 和 Trigger（作为 SQL 注释）
         if (table.sourceData) {
-            const 提示源数据 = 获取提示用SourceData_ACU(table, options.tableData || currentJsonTableData_ACU);
+            const 提示源数据 = 获取提示用源数据_ACU(table, options.tableData || currentJsonTableData_ACU);
             if (提示源数据.note)
                 text += `-- Note: ${提示源数据.note.replace(/\n/g, '\n-- ')}\n`;
             if (提示源数据.insertNode)
@@ -18388,6 +18388,29 @@ $CONTENT
             aggregatedTags = stageAggregated;
             stageInjectOnly.forEach((name) => aggregatedInjectOnlyTagNames.add(name));
             logDebug_ACU(`[剧情推进] 阶段 ${stageGroup.stage} 已完成，成功任务数: ${stageSuccessfulResults.length}`);
+            const 阶段模块路由文本 = stageSuccessfulResults
+                .map((result) => {
+                    const 模块路由内容 = result?.extractedTags && typeof result.extractedTags === 'object'
+                        ? String(result.extractedTags.模块路由 || '').trim()
+                        : '';
+                    return 模块路由内容 ? `<模块路由>${模块路由内容}</模块路由>` : '';
+                })
+                .filter(Boolean)
+                .join('\n\n');
+            if (阶段模块路由文本) {
+                const 模块路由决定 = await 确认剧情推进运行时生成前置_ACU(阶段模块路由文本);
+                if (模块路由决定.action === 'blocked') {
+                    return {
+                        finalMessage: null,
+                        successfulResults,
+                        failedResults,
+                        aggregatedTags,
+                        enabledTaskCount: enabledTasks.length,
+                        blockedByRuntime: true,
+                        blockReason: 模块路由决定.reason || 'module_route_handled',
+                    };
+                }
+            }
         }
         if (!successfulResults.length) {
             return {
@@ -18561,7 +18584,17 @@ $CONTENT
                 systemMessages,
             });
             if (!runtimeResult?.finalMessage) {
-                if (runtimeResult?.abortedByStageFailure) {
+                if (runtimeResult?.blockedByRuntime) {
+                    return {
+                        success: false,
+                        errorType: runtimeResult.blockReason || 'runtime_generation_blocked',
+                        errorMessage: '模块路由已接管本轮生成。',
+                        enabledTaskCount: runtimeResult.enabledTaskCount,
+                        successCount: runtimeResult.successfulResults?.length ?? 0,
+                        failCount: runtimeResult.failedResults?.length ?? 0,
+                    };
+                }
+                else if (runtimeResult?.abortedByStageFailure) {
                     return {
                         success: false,
                         errorType: 'stage_failure',
