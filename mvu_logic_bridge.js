@@ -7249,9 +7249,9 @@
   function buildInlineNumberEditor(target, rect, rawValue, meta = {}, state) {
     const wrapper = document.createElement('div');
     wrapper.className = 'mvu-inline-editor-shell';
-    wrapper.style.minWidth = `${Math.max(132, Math.ceil(rect.width) + 40)}px`;
+    wrapper.style.minWidth = `${Math.max(76, Math.ceil(rect.width) + 12)}px`;
     wrapper.style.display = 'grid';
-    wrapper.style.gap = '5px';
+    wrapper.style.gap = '3px';
 
     const numericMeta = normalizeInlineNumericMeta(meta, rawValue);
     const input = document.createElement('input');
@@ -7260,12 +7260,12 @@
     input.inputMode = numericMeta.integer ? 'numeric' : 'decimal';
     input.value = formatEditorValue(rawValue, 'number');
     input.style.width = '100%';
-    input.style.minHeight = `${Math.max(36, Math.ceil(rect.height) + 10)}px`;
-    input.style.padding = '0 14px';
-    input.style.borderRadius = '999px';
-    input.style.border = '1px solid rgba(0, 229, 255, 0.28)';
-    input.style.background = 'rgba(4, 14, 24, 0.96)';
-    input.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.25)';
+    input.style.minHeight = `${Math.max(26, Math.ceil(rect.height) + 4)}px`;
+    input.style.padding = '0 8px';
+    input.style.borderRadius = '6px';
+    input.style.border = '1px solid rgba(0, 229, 255, 0.22)';
+    input.style.background = 'rgba(5, 16, 23, 0.94)';
+    input.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.18)';
     input.style.color = 'var(--white)';
     input.style.outline = 'none';
     input.style.font = 'inherit';
@@ -7273,10 +7273,10 @@
 
     const hint = document.createElement('div');
     hint.textContent = formatInlineNumericHint(meta, rawValue);
-    hint.style.fontSize = '11px';
+    hint.style.fontSize = '10px';
     hint.style.lineHeight = '1.35';
-    hint.style.color = 'rgba(191, 233, 242, 0.82)';
-    hint.style.padding = '0 4px';
+    hint.style.color = 'rgba(156, 189, 198, 0.68)';
+    hint.style.padding = '0 2px';
 
     wrapper.appendChild(input);
     wrapper.appendChild(hint);
@@ -8871,13 +8871,13 @@
         input.style.whiteSpace = 'pre-wrap';
       }
       input.value = formatEditorValue(rawValue, kind);
-      input.style.width = `${Math.max(isMultiline ? 240 : 84, Math.ceil(rect.width) + 28)}px`;
-      input.style.minHeight = isMultiline ? input.style.minHeight : `${Math.max(36, Math.ceil(rect.height) + 10)}px`;
-      input.style.padding = isMultiline ? '10px 12px' : '0 14px';
-      input.style.borderRadius = isMultiline ? '14px' : '999px';
-      input.style.border = '1px solid rgba(0, 229, 255, 0.28)';
-      input.style.background = 'rgba(4, 14, 24, 0.96)';
-      input.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.25)';
+      input.style.width = `${Math.max(isMultiline ? 220 : 64, Math.ceil(rect.width) + 12)}px`;
+      input.style.minHeight = isMultiline ? input.style.minHeight : `${Math.max(26, Math.ceil(rect.height) + 4)}px`;
+      input.style.padding = isMultiline ? '8px 10px' : '0 8px';
+      input.style.borderRadius = isMultiline ? '8px' : '6px';
+      input.style.border = '1px solid rgba(0, 229, 255, 0.22)';
+      input.style.background = 'rgba(5, 16, 23, 0.94)';
+      input.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.18)';
       input.style.color = 'var(--white)';
       input.style.outline = 'none';
       input.style.font = 'inherit';
@@ -32541,7 +32541,7 @@
                 <div class="dossier-columns dossier-columns--life-record">
                   <section class="dossier-section">
                     <div class="dossier-section-title">额外成长加成</div>
-                    ${makeDossierRows(trainedBonusItems, 'dossier-row-grid--three dossier-bonus-flow')}
+                    ${makeDossierRows(trainedBonusItems, 'dossier-bonus-flow')}
                   </section>
                   <section class="dossier-section">
                     <div class="dossier-section-title">功法</div>

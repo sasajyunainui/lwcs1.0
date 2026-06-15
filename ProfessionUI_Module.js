@@ -67,7 +67,7 @@ const ProfessionStyles = `
     font-size: 10px;
     color: var(--text-dim);
     text-transform: uppercase;
-    letter-spacing: 0.35px;
+    letter-spacing: 0;
   }
 
   .prof-module-scope .chip-value {
@@ -124,7 +124,7 @@ const ProfessionStyles = `
     cursor: pointer;
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
     transition: 0.2s ease;
   }
 
@@ -198,7 +198,7 @@ const ProfessionStyles = `
     color: var(--white);
     font-weight: 700;
     margin-bottom: 0;
-    letter-spacing: 0.55px;
+    letter-spacing: 0;
     text-transform: none;
     text-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 0 6px rgba(77,240,255,0.08);
   }
@@ -251,7 +251,7 @@ const ProfessionStyles = `
     color: rgba(191, 221, 228, 0.68);
     text-transform: uppercase;
     font-weight: 700;
-    letter-spacing: 0.45px;
+    letter-spacing: 0;
     white-space: nowrap;
   }
 
@@ -321,7 +321,7 @@ const ProfessionStyles = `
     background-size: 10px 10px;
     color: rgba(135, 174, 183, 0.72);
     font-size: 10px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0;
     text-align: center;
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24);
   }
@@ -486,7 +486,7 @@ const ProfessionStyles = `
     min-height: 30px;
     color: rgba(135, 174, 183, 0.74);
     font-size: 11px;
-    letter-spacing: 0.06em;
+    letter-spacing: 0;
   }
 
   .prof-module-scope .hint {
@@ -653,7 +653,7 @@ const ProfessionStyles = `
     border-radius: 999px;
     font-family: var(--font-tech);
     font-weight: 850;
-    letter-spacing: 1.5px;
+    letter-spacing: 0;
     cursor: pointer;
     text-transform: uppercase;
     transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
@@ -1107,7 +1107,8 @@ class ProfessionUIComponent {
       tierSel.value = value;
     }
     this.syncCostInputState();
-    this.更新蓝图状态(targetInput.value);
+    const 目标输入 = this.$('#prof-target');
+    this.更新蓝图状态(目标输入 ? 目标输入.value : '');
   }
 
   applyInitialContext() {
@@ -1121,19 +1122,21 @@ class ProfessionUIComponent {
     const costInput = this.$('#prof-cost');
     if (qty > 0 && costInput && !costInput.disabled) costInput.value = String(qty);
 
-    const target = String(this.options.prefillTarget || req.目标 || req.物品 || req.产物 || '').trim();
-    if (target && this.$('#prof-target')) this.$('#prof-target').value = target;
+    const 预填目标 = String(this.options.prefillTarget || req.目标 || req.物品 || req.产物 || '').trim();
+    if (预填目标 && this.$('#prof-target')) this.$('#prof-target').value = 预填目标;
 
-    const materials = this.parseInitialMaterials(
+    const 预填材料列表 = this.parseInitialMaterials(
       this.options.prefillMaterials || req.材料 || ''
     );
-    if (materials.length) {
-      const materialSet = new Set(materials);
-      this.$$('.material-cb').forEach(cb => {
-        cb.checked = materialSet.has(cb.value);
+    if (预填材料列表.length) {
+      const 材料集合 = new Set(预填材料列表);
+      this.$$('.material-cb').forEach(勾选框 => {
+        勾选框.checked = 材料集合.has(勾选框.value) || 材料集合.has(this.取材料原名(勾选框.value));
+        const 标签 = 勾选框.closest('.material-item');
+        if (标签) 标签.classList.toggle('is-selected', 勾选框.checked);
       });
     }
-    if (!target && materials.length) this.autoGenerateTargetName();
+    if (!预填目标 && 预填材料列表.length) this.autoGenerateTargetName();
 
     this.updatePreview();
 
@@ -1593,25 +1596,6 @@ class ProfessionUIComponent {
     this.populateMaterialList();
     this.autoGenerateTargetName();
     this.updatePreview();
-  }
-
-  autoGenerateTargetName() {
-    const state = this.getCurrentUiState();
-    const mode = this.activeMode;
-    const targetInput = this.$('#prof-target');
-    if (!targetInput) return;
-
-    if (mode === 'forge') {
-      const mat = Array.from(this.container.querySelectorAll('.material-checkbox:checked')).map(cb => cb.value)[0] || '未知金属';
-      targetInput.value = `${mat}(${this.getForgeTierLabel(state.tier)})`;
-    } else {
-      const opt = this.$('#prof-tier').selectedOptions?.[0];
-      const text = opt ? opt.textContent.replace(/制造|设计|修理|处理/, '') : '';
-      if (state.subtype === 'armor') targetInput.value = `${text}胸铠`;
-      else if (state.subtype === 'mech') targetInput.value = text;
-      else targetInput.value = `${this.getGearTierFamilyLabel(state.tier)}部件`;
-    }
-    this.syncCostInputState();
   }
 
   // --- 副职业算法核心 ---

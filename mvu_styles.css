@@ -5445,19 +5445,24 @@
 
 .mvu-inline-editor-input {
   display: inline-block;
-  min-width: 56px;
+  min-width: 48px;
   max-width: 100%;
   box-sizing: border-box;
-  border: 1px solid rgba(120, 220, 255, 0.28);
-  border-radius: var(--mvu-radius-sm, 8px);
-  background: rgba(5, 14, 24, 0.92);
+  border: 1px solid rgba(120, 220, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(5, 16, 23, 0.92);
   color: inherit;
   font: inherit;
   line-height: inherit;
-  padding: 1px 8px;
+  padding: 1px 7px;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.12);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16);
   vertical-align: baseline;
+}
+
+.mvu-inline-editor-input:focus {
+  border-color: rgba(0, 229, 255, 0.38);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.1);
 }
 
 .mvu-inline-editor-input::-webkit-outer-spin-button,
@@ -13784,7 +13789,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
   color: rgba(179, 213, 222, 0.78) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: 0 !important;
   font-weight: 700 !important;
 }
 
@@ -13828,7 +13833,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-
     rgba(0, 0, 0, 0.16) !important;
   color: rgba(190, 218, 226, 0.7) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
-  letter-spacing: 0.12em !important;
+  letter-spacing: 0 !important;
   box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2) !important;
 }
 
@@ -16133,10 +16138,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-pro
 #detailModal.mvu-modal-display-unified .dossier-profile-flow .dossier-row,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-profile-flow .dossier-row {
   min-height: 0 !important;
-  padding: 4px 0 !important;
+  padding: 2px 0 !important;
   border: 0 !important;
   grid-template-columns: 80px minmax(0, 1fr) !important;
-  gap: 8px 12px !important;
+  gap: 6px 12px !important;
   overflow: visible !important;
 }
 
@@ -16171,20 +16176,20 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-gro
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow .dossier-row > span,
 #detailModal.mvu-modal-display-unified .dossier-profile-flow .dossier-row > span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-profile-flow .dossier-row > span {
-  display: inline-block !important;
-  width: fit-content !important;
+  display: block !important;
+  width: auto !important;
   max-width: 100% !important;
-  padding: 6px 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
-  border-radius: 6px !important;
-  background: rgba(0, 0, 0, 0.25) !important;
+  padding: 1px 0 2px !important;
+  border: 0 !important;
+  border-bottom: 1px dotted rgba(118, 226, 255, 0.12) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   color: rgba(229, 239, 242, 0.94) !important;
   font-size: 14px !important;
-  line-height: 1.56 !important;
+  line-height: 1.52 !important;
   letter-spacing: 0 !important;
-  font-weight: 450 !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+  font-weight: 420 !important;
+  box-shadow: none !important;
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
@@ -16219,11 +16224,9 @@ body.mvu-layout-unified
   .dossier-profile-flow
   .dossier-row
   > span:focus-within {
-  border-color: rgba(0, 229, 255, 0.32) !important;
-  background: rgba(0, 229, 255, 0.06) !important;
-  box-shadow:
-    0 0 10px rgba(0, 229, 255, 0.13),
-    inset 0 2px 4px rgba(0, 0, 0, 0.32) !important;
+  border-bottom-color: rgba(0, 229, 255, 0.36) !important;
+  background: rgba(0, 229, 255, 0.025) !important;
+  box-shadow: inset 0 -1px 0 rgba(0, 229, 255, 0.1) !important;
 }
 
 body.mvu-layout-unified
@@ -16240,8 +16243,8 @@ body.mvu-layout-unified
   > span {
   display: block !important;
   width: 100% !important;
-  padding: 8px 12px !important;
-  line-height: 1.6 !important;
+  padding: 2px 0 3px !important;
+  line-height: 1.58 !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow .dossier-row > span,
@@ -16288,6 +16291,12 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-bon
   gap: 6px !important;
   grid-template-columns: none !important;
   overflow: visible !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row--ghost,
+#detailModal.mvu-modal-display-unified .dossier-bonus-flow .dossier-row--ghost,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow .dossier-row--ghost {
+  display: none !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row:nth-child(1),
@@ -16547,6 +16556,8 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .archive-car
   .archive-redesign-root
   .archive-card-head--profile
   .archive-card-title {
+  order: initial !important;
+  flex: initial !important;
   min-width: 0 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -16556,6 +16567,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .archive-car
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-strip,
 #detailModal.mvu-modal-display-unified .dossier-profile-strip,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-profile-strip {
+  order: initial !important;
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr)) !important;
   gap: 6px !important;
@@ -17995,7 +18007,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
   color: rgba(179, 213, 222, 0.78) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: 0 !important;
   font-weight: 700 !important;
 }
 
@@ -18035,7 +18047,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     rgba(0, 0, 0, 0.16) !important;
   color: rgba(190, 218, 226, 0.7) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
-  letter-spacing: 0.12em !important;
+  letter-spacing: 0 !important;
   box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2) !important;
 }
 
@@ -21753,7 +21765,7 @@ body.mvu-layout-unified
   color: rgba(179, 213, 222, 0.78);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   font-weight: 700;
 }
 
@@ -21793,7 +21805,7 @@ body.mvu-layout-unified
     rgba(0, 0, 0, 0.16);
   color: rgba(190, 218, 226, 0.7);
   font-size: var(--mvu-font-xs, 10px);
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.2);
 }
 
