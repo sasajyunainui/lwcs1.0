@@ -17706,7 +17706,8 @@ $CONTENT
         });
         plotFinalDirective = 注入剧情推进运行时特殊占位符_ACU(plotFinalDirective, {
             userInput: userMessage,
-            captureText: String(userMessage || ''),
+            lastCharMessage: getLatestAIMessageContent_ACU(),
+            captureText: [userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
         });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
@@ -17759,7 +17760,8 @@ $CONTENT
             });
             c = 注入剧情推进运行时特殊占位符_ACU(c, {
                 userInput: sharedContext.userMessage,
-                captureText: String(sharedContext.userMessage || ''),
+                lastCharMessage: getLatestAIMessageContent_ACU(),
+                captureText: [sharedContext.userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
@@ -18487,6 +18489,7 @@ $CONTENT
             });
             return 注入剧情推进运行时特殊占位符_ACU(替换后内容, {
                 userInput: 用户输入文本,
+                lastCharMessage: 最后角色消息文本 || '',
                 statData: 运行时数据 || undefined,
                 captureText: 本轮运行时捕获文本,
             });
@@ -52714,7 +52717,8 @@ $CONTENT
         const 替换后正文生成指导 = 注入剧情推进运行时特殊占位符_ACU(替换运行时占位符后正文生成指导, {
             statData: 运行时数据 || undefined,
             userInput: 用户输入文本,
-            captureText: 用户输入文本,
+            lastCharMessage: getLatestAIMessageContent_ACU(),
+            captureText: [用户输入文本, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
         });
         if (options.injects?.[0]?.content) {
             return { target: 'injects', value: 替换后正文生成指导, statData: 运行时数据 || null };

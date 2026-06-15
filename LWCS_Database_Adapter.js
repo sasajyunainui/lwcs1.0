@@ -7,6 +7,7 @@
   const MVU运行时视图占位符 = '{{MVU_RUNTIME_VIEW}}';
   const MVU运行时更新占位符 = '{{MVU_RUNTIME_UPDATE}}';
   const MVU更新结构提示占位符 = '{{MVU_UPDATE_STRUCTURE_HINTS}}';
+  const MVU相互可见性视图占位符 = '{{MVU_MUTUAL_VISIBILITY_VIEW}}';
   const 时间线预览占位符 = '{{剧情钩子._引导.时间线预览}}';
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
@@ -163,6 +164,19 @@
     ].join('|');
   }
 
+  function 清理近场文本片段(文本 = '') {
+    return 清理世界书扫描文本(文本)
+      .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, ' ')
+      .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, ' ')
+      .replace(/<tabletop>[\s\S]*?<\/tabletop>/gi, ' ')
+      .replace(/<content>[\s\S]*?<\/content>/gi, ' ')
+      .trim();
+  }
+
+  function 构建近场文本(用户输入文本 = '', 最后角色消息文本 = '') {
+    return [清理近场文本片段(用户输入文本), 清理近场文本片段(最后角色消息文本)].filter(Boolean).join('\n');
+  }
+
   function 限制前置承诺表大小() {
     while (本轮前置承诺表.size > 20) {
       const 首个键 = 本轮前置承诺表.keys().next().value;
@@ -187,9 +201,9 @@
     const 用户输入文本 = String(选项?.userInput || '');
     const 最后角色消息文本 = String(选项?.lastCharMessage || '');
     const 最新角色消息 = 选项?.latestCharMessageInfo && typeof 选项.latestCharMessageInfo === 'object' ? 选项.latestCharMessageInfo : 读取最新角色消息元信息();
-    const 捕获文本 = String(选项?.captureText ?? [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n'));
-    if (!捕获文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
-    const 前置键 = 构建前置键(最新角色消息, 捕获文本);
+    const 近场文本 = 构建近场文本(用户输入文本, 最后角色消息文本);
+    if (!用户输入文本.trim() || !近场文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
+    const 前置键 = 构建前置键(最新角色消息, 近场文本);
     if (本轮前置承诺表.has(前置键)) return await 本轮前置承诺表.get(前置键);
     const 前置承诺 = (async () => {
       const 总开始时间 = 读取性能时间();
@@ -197,7 +211,7 @@
       let 需要刷新快照 = false;
       const 构建参数 = (附加 = {}) => ({
         剧情文本: '',
-        最后剧情文本: 最后角色消息文本 || '',
+        最后剧情文本: 清理近场文本片段(最后角色消息文本),
         statData: 当前StatData || undefined,
         上限: 16,
         延迟刷新: true,
@@ -209,7 +223,7 @@
       };
       const 执行步骤 = async (函数名, 参数, 日志标签) => {
         const 步骤开始时间 = 读取性能时间();
-        const 结果 = await 执行文本前置函数(函数名, 捕获文本, 参数, 日志标签);
+        const 结果 = await 执行文本前置函数(函数名, 近场文本, 参数, 日志标签);
         const 名称数量 = Array.isArray(结果?.names) ? 结果.names.length : 0;
         记录耗时(`正文生成前置:${日志标签}`, 步骤开始时间, `changed=${结果?.changed === true} names=${名称数量}`);
         应用结果(结果);
@@ -240,7 +254,8 @@
     if (
       !源文本.includes(MVU运行时视图占位符) &&
       !源文本.includes(MVU运行时更新占位符) &&
-      !源文本.includes(MVU更新结构提示占位符)
+      !源文本.includes(MVU更新结构提示占位符) &&
+      !源文本.includes(MVU相互可见性视图占位符)
     ) {
       return 源文本;
     }
@@ -262,6 +277,7 @@
       .replaceAll(MVU运行时视图占位符, '')
       .replaceAll(MVU运行时更新占位符, '')
       .replaceAll(MVU更新结构提示占位符, '')
+      .replaceAll(MVU相互可见性视图占位符, '')
       .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
       .trim();
   }
@@ -278,11 +294,11 @@
     }
   }
 
-  function 读取远端原著时间线候选(userInput = '', statData = null, captureText = '') {
+  function 读取远端原著时间线候选(userInput = '', statData = null, 近场文本 = '') {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function') return '';
     try {
-      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, captureText || userInput);
+      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, 近场文本 || userInput);
       return String(剧情视图?.剧情钩子?._引导?.远端原著时间线候选 || '').trim();
     } catch (错误) {
       console.warn('[LWCS适配器] 远端原著时间线候选读取失败:', 错误);
@@ -306,13 +322,14 @@
     if (!文本.includes(时间线预览占位符) && !文本.includes(远端原著时间线候选占位符) && !文本.includes(角色基础六维对标占位符)) return 文本;
     let 结果 = 文本;
     const userInput = String(context.userInput || '');
+    const lastCharMessage = String(context.lastCharMessage || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const captureText = String(context.captureText || '');
+    const 近场文本 = 构建近场文本(userInput, lastCharMessage);
     if (结果.includes(时间线预览占位符)) {
       结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData) || '无');
     }
     if (结果.includes(远端原著时间线候选占位符)) {
-      结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, captureText) || '无远端原著时间线候选。');
+      结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本) || '无远端原著时间线候选。');
     }
     if (结果.includes(角色基础六维对标占位符)) {
       结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData));
@@ -336,14 +353,12 @@
   async function 准备提示词运行时数据(context = {}) {
     const 用户输入文本 = String(context.userInput || '');
     const 最后角色消息文本 = String(context.lastCharMessage || '');
-    const 捕获文本 = context.captureText === undefined || context.captureText === null
-      ? [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n')
-      : String(context.captureText || '');
+    const 近场文本 = 构建近场文本(用户输入文本, 最后角色消息文本);
     return await 准备MVU前置数据({
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
       latestCharMessageInfo: context.latestCharMessageInfo,
-      captureText: 捕获文本,
+      captureText: 近场文本,
       plotText: '',
       statData: 取StatData(context.statData, context.userInput || '') || undefined,
     });
@@ -436,6 +451,7 @@
       'MVU_RUNTIME_VIEW',
       'MVU_RUNTIME_UPDATE',
       'MVU_UPDATE_STRUCTURE_HINTS',
+      'MVU_MUTUAL_VISIBILITY_VIEW',
       '剧情钩子._引导.时间线预览',
       '剧情钩子._引导.远端原著时间线候选',
       '角色基础六维对标',
@@ -447,6 +463,7 @@
     return 文本.includes(MVU运行时视图占位符)
       || 文本.includes(MVU运行时更新占位符)
       || 文本.includes(MVU更新结构提示占位符)
+      || 文本.includes(MVU相互可见性视图占位符)
       || 文本.includes(时间线预览占位符)
       || 文本.includes(远端原著时间线候选占位符)
       || 文本.includes(角色基础六维对标占位符);
@@ -456,26 +473,14 @@
     return String(value || '')
       .replace(/<status_current_variables>[\s\S]*?<\/status_current_variables>/gi, ' ')
       .replace(/<MVU剧情视图>[\s\S]*?<\/MVU剧情视图>/gi, ' ')
+      .replace(/<相互可见性>[\s\S]*?<\/相互可见性>/gi, ' ')
       .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, ' ')
       .replace(/<JSONPatch>[\s\S]*?<\/JSONPatch>/gi, ' ')
       .replace(/<Analysis>[\s\S]*?<\/Analysis>/gi, ' ')
       .replace(/\{\{MVU_RUNTIME_VIEW\}\}/g, ' ')
       .replace(/\{\{MVU_RUNTIME_UPDATE\}\}/g, ' ')
-      .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ');
-  }
-
-  function 尝试触发冷归档(context = {}) {
-    try {
-      const 自动归档函数 = 读取窗口函数('__LWCS_AUTO_ARCHIVE_MVU_COLD_ENTITIES__');
-      if (typeof 自动归档函数 !== 'function') return;
-      void Promise.resolve(自动归档函数({
-        ...context,
-        statData: context.statData && typeof context.statData === 'object' ? context.statData : {},
-        捕获文本: String(context.captureText || [context.userInput, context.lastCharMessage].filter(Boolean).join('\n')),
-      })).catch(错误 => console.warn('[LWCS适配器] 冷归档自动归档失败:', 错误));
-    } catch (错误) {
-      console.warn('[LWCS适配器] 冷归档自动归档触发失败:', 错误);
-    }
+      .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ')
+      .replace(/\{\{MVU_MUTUAL_VISIBILITY_VIEW\}\}/g, ' ');
   }
 
   const 适配器 = {
@@ -491,7 +496,6 @@
     buildPlanningRuntimeSystemMessages: 构建剧情推进临时系统消息,
     confirmBeforeStoryGeneration: 正文生成前确认,
     stripRuntimeBlocksForWorldbookScan: 清理世界书扫描文本,
-    afterPromptRuntimeReplacement: 尝试触发冷归档,
   };
 
   for (const 当前窗口 of 收集窗口()) {

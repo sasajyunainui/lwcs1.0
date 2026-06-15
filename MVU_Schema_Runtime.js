@@ -5900,7 +5900,6 @@ function 规范化Schema根转换_V1(data = {}) {
         });
         if (nextChar.社交) {
           delete nextChar.社交.名望等级;
-          delete nextChar.社交.公开情报;
           const rawRelationAnalysis =
             nextChar.社交.关系分析 && typeof nextChar.社交.关系分析 === 'object'
               ? nextChar.社交.关系分析

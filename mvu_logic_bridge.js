@@ -26518,22 +26518,6 @@
     const nextSoulValueText = nextSoulDisplayText.replace(/^下级魂力\s*/, '');
     const 资源指标列表 = [
       {
-        名称: '魂力',
-        数值: `${格式化属性短数字(stat.魂力)}/${格式化属性短数字(stat.魂力上限)}`,
-        值Html: 构建属性数值对Html('魂力', stat.魂力, stat.魂力上限),
-        提示文本: `魂力：${格式化属性完整数字(stat.魂力)} / ${格式化属性完整数字(stat.魂力上限)}`,
-        比例: ratioPercent(stat.魂力, stat.魂力上限),
-        样式: 'cyan',
-      },
-      {
-        名称: `精神力 · ${mentalRealmText}`,
-        数值: `${格式化属性短数字(stat.精神力)}/${格式化属性短数字(stat.精神力上限)}`,
-        值Html: 构建属性数值对Html('精神力', stat.精神力, stat.精神力上限),
-        提示文本: `精神力：${格式化属性完整数字(stat.精神力)} / ${格式化属性完整数字(stat.精神力上限)}`,
-        比例: ratioPercent(stat.精神力, stat.精神力上限),
-        样式: 'white',
-      },
-      {
         名称: '生命',
         数值: `${格式化属性短数字(hpPair.hp)}/${格式化属性短数字(hpPair.hpMax)}`,
         值Html: 构建属性数值对Html('生命', hpPair.hp, hpPair.hpMax),
@@ -26549,6 +26533,22 @@
         比例: ratioPercent(stat.体力, stat.体力上限),
         样式: 'red',
       },
+      {
+        名称: '魂力',
+        数值: `${格式化属性短数字(stat.魂力)}/${格式化属性短数字(stat.魂力上限)}`,
+        值Html: 构建属性数值对Html('魂力', stat.魂力, stat.魂力上限),
+        提示文本: `魂力：${格式化属性完整数字(stat.魂力)} / ${格式化属性完整数字(stat.魂力上限)}`,
+        比例: ratioPercent(stat.魂力, stat.魂力上限),
+        样式: 'cyan',
+      },
+      {
+        名称: `精神 · ${mentalRealmText}`,
+        数值: `${格式化属性短数字(stat.精神力)}/${格式化属性短数字(stat.精神力上限)}`,
+        值Html: 构建属性数值对Html('精神力', stat.精神力, stat.精神力上限),
+        提示文本: `精神力：${格式化属性完整数字(stat.精神力)} / ${格式化属性完整数字(stat.精神力上限)}`,
+        比例: ratioPercent(stat.精神力, stat.精神力上限),
+        样式: 'white',
+      },
     ];
     return `
         <div class="panel-head panel-head--archive archive-core-head">
@@ -26557,33 +26557,30 @@
           </div>
         </div>
         <div class="archive-core-grid">
-          <div class="archive-core-tile">
-            <b>年龄 / 性别</b>
-            <strong>${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</strong>
+          <div class="archive-core-profile">
+            <strong class="archive-core-level cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
+            <div class="archive-core-profile-main">
+              <b>${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</b>
+              <span>${htmlEscape(`${伤势显示} / ${领域显示}`)}</span>
+            </div>
+            <div class="archive-core-profile-next">
+              <b>下级所需魂力</b>
+              <span>${htmlEscape(nextSoulValueText)}</span>
+            </div>
           </div>
-          <div class="archive-core-tile">
-            <b>修为等级</b>
-            <strong class="cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
-          </div>
-          <div class="archive-core-tile">
-            <b>身体状态</b>
-            <strong>${htmlEscape(`${伤势显示} / ${领域显示}`)}</strong>
-          </div>
-          <div class="archive-core-tile">
-            <b>下级所需魂力</b>
-            <strong class="cyan">${htmlEscape(nextSoulValueText)}</strong>
-          </div>
-          ${资源指标列表
-            .map(
-              指标 => `
-            <div class="archive-core-tile archive-core-tile--resource is-${htmlEscape(指标.样式)}">
+          <div class="archive-resource-list">
+            ${资源指标列表
+              .map(
+                指标 => `
+            <div class="archive-resource-row is-${htmlEscape(指标.样式)}">
               <b>${htmlEscape(指标.名称)}</b>
-              <strong${指标.提示文本 ? ` title="${escapeHtmlAttr(指标.提示文本)}"` : ''}>${指标.值Html || htmlEscape(指标.数值)}</strong>
               <i><span style="width:${指标.比例}%;"></span></i>
+              <strong${指标.提示文本 ? ` title="${escapeHtmlAttr(指标.提示文本)}"` : ''}>${指标.值Html || htmlEscape(指标.数值)}</strong>
             </div>
           `,
-            )
-            .join('')}
+              )
+              .join('')}
+          </div>
         </div>
         `;
   }
@@ -26697,8 +26694,8 @@
         <div class="mvu-social-entry-grid">
           ${构建社交入口块('名望', 名望等级, 主身份, '社会档案详细页', 'gold', `声望 ${formatNumber(social.声望)}`)}
           ${构建社交入口块('势力', primaryFactionName, primaryFactionRole, '所属势力详细页', 'live', `${(snapshot.势力 || []).length || 0} 项`)}
-          ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', '', `${snapshot.relations.length} 条`)}
-          ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', '', `${snapshot.unlockedKnowledges.length} 条`)}
+          ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', 'cyan', `${snapshot.relations.length} 条`)}
+          ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', 'white', `${snapshot.unlockedKnowledges.length} 条`)}
         </div>
       `;
   }
@@ -27477,8 +27474,8 @@
           <div class="mvu-social-entry-grid">
             ${构建社交入口块('名望', '待同步', '社会档案', '社会档案详细页')}
             ${构建社交入口块('势力', '待同步', '所属势力', '所属势力详细页')}
-            ${构建社交入口块('关系', '待同步', '人物关系', '人物关系详细页')}
-            ${构建社交入口块('情报', '待同步', '情报库', '情报库详细页')}
+            ${构建社交入口块('关系', '待同步', '人物关系', '人物关系详细页', 'cyan')}
+            ${构建社交入口块('情报', '待同步', '情报库', '情报库详细页', 'white')}
           </div>
         `;
     }
@@ -27500,8 +27497,8 @@
         <div class="mvu-social-entry-grid">
           ${构建社交入口块('名望', fameLevel, mainIdentity || '社会档案', '社会档案详细页', 'gold', `声望 ${reputationText}`)}
           ${构建社交入口块('势力', factionSummary, primaryFactionRole, '所属势力详细页', 'live', `${(snapshot.势力 || []).length || 0} 项`)}
-          ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', '', `${(snapshot.relations || []).length || 0} 条`)}
-          ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', '', `${intelCount} 条`)}
+          ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', 'cyan', `${(snapshot.relations || []).length || 0} 条`)}
+          ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', 'white', `${intelCount} 条`)}
         </div>
       `;
   }
@@ -32566,9 +32563,6 @@
                       {
                         label: '公开情报',
                         value: snapshot.publicIntel ? '已公开' : '未公开',
-                        path: activeCharKey ? ['char', activeCharKey, '社交', '公开情报'] : [],
-                        kind: 'boolean',
-                        rawValue: !!deepGet(snapshot, 'activeChar.社交.公开情报', snapshot.publicIntel),
                       },
                       {
                         label: '主要圈层',

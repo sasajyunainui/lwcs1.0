@@ -11137,7 +11137,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: minmax(232px, 0.96fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
   grid-template-areas:
-    'core core core core core core core social social social social social'
+    'core core core core core core social social social social social social'
     'primary primary primary primary primary primary primary primary primary primary primary primary'
     'armory armory armory armory armory armory vault vault vault vault vault vault';
   height: 100%;
@@ -11146,7 +11146,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive:has([data-unified-card='secondary-spirit']:not(.is-empty)) {
   grid-template-areas:
-    'core core core core core core core social social social social social'
+    'core core core core core core social social social social social social'
     'primary primary primary primary primary primary secondary secondary secondary secondary secondary secondary'
     'armory armory armory armory armory armory vault vault vault vault vault vault';
 }
@@ -11178,31 +11178,128 @@ body.mvu-layout-unified
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  grid-template-rows: minmax(48px, 0.72fr) repeat(2, minmax(58px, 1fr)) !important;
-  grid-auto-rows: minmax(58px, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 10px !important;
   align-content: stretch !important;
   height: 100% !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile {
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile {
   display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
   grid-template-rows: auto auto !important;
-  align-content: center !important;
-  gap: 3px !important;
+  align-content: start !important;
+  gap: 8px 10px !important;
+  min-width: 0 !important;
+  padding: 8px 10px !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.065) !important;
+  background: var(--mvu-hud-panel-soft) !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile b {
-  display: block !important;
-  min-height: 13px !important;
+body.mvu-layout-unified #mvu-unified-mount .archive-core-level {
+  grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
+  align-self: start !important;
+  justify-self: start !important;
+  min-width: 0 !important;
+  font-size: clamp(15px, 1.35vw, 18px) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-main {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-main b {
+  min-width: 0 !important;
+  color: var(--mvu-hud-text) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile strong {
-  display: block !important;
-  max-width: 100% !important;
-  min-height: 16px !important;
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-main span,
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-next span {
+  min-width: 0 !important;
+  color: rgba(233, 246, 251, 0.88) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.3 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-next {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-next b {
+  min-width: 0 !important;
+  color: var(--mvu-hud-muted) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px 10px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) auto !important;
+  grid-template-rows: auto auto !important;
+  align-items: center !important;
+  gap: 4px 8px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 7px 8px !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.065) !important;
+  background: var(--mvu-hud-panel-soft) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row b {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  color: var(--mvu-hud-muted) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row strong {
+  grid-column: 3 !important;
+  grid-row: 1 / span 2 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  min-width: 0 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -11212,23 +11309,37 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-tile strong {
   letter-spacing: 0 !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource {
-  grid-column: span 2 !important;
-  grid-template-rows: auto auto 4px !important;
-  gap: 2px !important;
-  padding-block: 6px !important;
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i {
+  grid-column: 1 / 3 !important;
+  grid-row: 2 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 4px !important;
+  margin-top: 1px !important;
+  overflow: hidden !important;
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource i {
-  margin-top: 1px !important;
-  color: var(--cyan) !important;
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i span {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: currentColor !important;
 }
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource.is-red i {
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-red i {
   color: var(--red) !important;
 }
-body.mvu-layout-unified #mvu-unified-mount .archive-core-tile--resource.is-white i {
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-cyan i {
+  color: var(--cyan) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-white i {
   color: rgba(248, 252, 253, 0.94) !important;
 }
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
@@ -11247,8 +11358,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-social-entry {
   min-height: 0 !important;
   padding: 8px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(77, 240, 255, 0.14) !important;
-  background: linear-gradient(180deg, rgba(18, 42, 55, 0.42), rgba(5, 15, 24, 0.58)) !important;
+  border: 1px solid rgba(77, 240, 255, 0.12) !important;
+  border-left-width: 3px !important;
+  background: linear-gradient(180deg, rgba(18, 42, 55, 0.34), rgba(5, 15, 24, 0.54)) !important;
   color: inherit !important;
   text-align: left !important;
   cursor: pointer !important;
