@@ -219,6 +219,24 @@ function 读取紫极魔瞳精神境界阶位_V1(精神境界 = '') {
   return 紫极魔瞳精神境界阶位表_V1[String(精神境界 || '').trim()] || 0;
 }
 
+function 按精神力读取紫极魔瞳境界_V1(角色 = {}) {
+  const 精神境界 = String(角色?.属性?.精神境界 || '').trim();
+  const 精神力上限 = Math.max(0, Math.floor(Number(角色?.属性?.精神力上限 || 0)));
+  const 精神阶位 = 读取紫极魔瞳精神境界阶位_V1(精神境界);
+  if (精神力上限 >= 20000 || 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵域境')) return '浩瀚';
+  if (精神力上限 >= 5000 || 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵渊境')) return '芥子';
+  if (精神力上限 >= 50 || 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵通境')) return '入微';
+  return '纵观';
+}
+
+function 按精神力同步内置角色紫极魔瞳_V1(角色 = {}) {
+  const 功法 = 角色?.功法?.['紫极魔瞳'];
+  if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return;
+  const 境界 = 按精神力读取紫极魔瞳境界_V1(角色);
+  功法.境界 = 境界;
+  功法.lv = 紫极魔瞳境界等级表_V1[境界];
+}
+
 function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
   const 名称 = String(功法名 || '').trim();
   const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
@@ -1642,8 +1660,16 @@ function 应用提前出场副职业认证投影_V1(副职业表 = {}, 提前年
   });
 }
 
-var 内置角色斗铠标准部件列表_V1 = Object.freeze(['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴']);
+var 内置角色斗铠通用部件列表_V1 = Object.freeze(['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂']);
 var 内置角色斗铠等级文本_V1 = Object.freeze(['无', '一', '二', '三', '四']);
+
+function 取内置角色斗铠部件列表_V1(角色 = {}) {
+  return [
+    ...内置角色斗铠通用部件列表_V1,
+    ...(String(角色?.属性?.性别 ?? 角色?.性别 ?? '').includes('女') ? ['战裙'] : ['左腿', '右腿']),
+    '战靴',
+  ];
+}
 
 function 创建空内置角色装备加成_V1(包含等效等级 = false) {
   return {
@@ -1657,12 +1683,16 @@ function 创建空内置角色装备加成_V1(包含等效等级 = false) {
   };
 }
 
-function 补齐内置角色完整斗铠部件_V1(斗铠 = {}) {
+function 补齐内置角色完整斗铠部件_V1(斗铠 = {}, 角色 = {}) {
   const 等级 = Math.max(0, Math.min(4, Math.floor(Number(斗铠?.等级 || 0) || 0)));
   if (等级 <= 0) return;
   if (!斗铠.部件 || typeof 斗铠.部件 !== 'object' || Array.isArray(斗铠.部件)) 斗铠.部件 = {};
-  if (Object.keys(斗铠.部件).length >= 内置角色斗铠标准部件列表_V1.length) return;
-  内置角色斗铠标准部件列表_V1.forEach(部件名 => {
+  const 部件名列表 = 取内置角色斗铠部件列表_V1(角色);
+  const 有效部件名 = new Set(部件名列表);
+  Object.keys(斗铠.部件).forEach(部件名 => {
+    if (!有效部件名.has(部件名)) delete 斗铠.部件[部件名];
+  });
+  部件名列表.forEach(部件名 => {
     if (!斗铠.部件[部件名] || typeof 斗铠.部件[部件名] !== 'object') {
       斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
     }
@@ -1678,8 +1708,8 @@ function 计算内置角色稳定哈希_V1(文本 = '') {
   return 哈希 >>> 0;
 }
 
-function 取内置角色斗铠稳定部件顺序_V1(种子 = '') {
-  return [...内置角色斗铠标准部件列表_V1]
+function 取内置角色斗铠稳定部件顺序_V1(种子 = '', 部件名列表 = []) {
+  return [...部件名列表]
     .sort((a, b) => 计算内置角色稳定哈希_V1(`${种子}|${a}`) - 计算内置角色稳定哈希_V1(`${种子}|${b}`));
 }
 
@@ -1716,14 +1746,15 @@ function 应用内置角色斗铠有效等级_V1(角色 = {}, 有效等级 = 0, 
   }
   角色.装备.斗铠.装备状态 = String(原始斗铠?.装备状态 || 角色.装备.斗铠.装备状态 || '未装备');
   角色.装备.斗铠.部件 = {};
-  补齐内置角色完整斗铠部件_V1(角色.装备.斗铠);
+  补齐内置角色完整斗铠部件_V1(角色.装备.斗铠, 角色);
   delete 角色.装备.斗铠._属性加成;
   delete 角色.装备.斗铠._已排异;
 }
 
 function 应用内置角色斗铠不完整投影_V1(角色 = {}, 等级 = 1, 移除部件数 = 0, 原始斗铠 = {}, 种子 = '') {
-  const 保留部件 = new Set(内置角色斗铠标准部件列表_V1);
-  取内置角色斗铠稳定部件顺序_V1(种子).slice(0, Math.max(0, Math.floor(Number(移除部件数 || 0) || 0))).forEach(部件名 => 保留部件.delete(部件名));
+  const 部件名列表 = 取内置角色斗铠部件列表_V1(角色);
+  const 保留部件 = new Set(部件名列表);
+  取内置角色斗铠稳定部件顺序_V1(种子, 部件名列表).slice(0, Math.max(0, Math.floor(Number(移除部件数 || 0) || 0))).forEach(部件名 => 保留部件.delete(部件名));
   if (!保留部件.size) {
     清空内置角色斗铠_V1(角色);
     return;
@@ -1754,14 +1785,16 @@ function 应用提前出场斗铠投影_V1(角色 = {}, 角色记录 = {}, 快�
   const 斗铠 = 角色?.装备?.斗铠;
   const 原等级 = Math.max(0, Math.min(4, Math.floor(Number(斗铠?.等级 || 0) || 0)));
   if (!斗铠 || typeof 斗铠 !== 'object' || 原等级 <= 0) return;
-  补齐内置角色完整斗铠部件_V1(斗铠);
+  补齐内置角色完整斗铠部件_V1(斗铠, 角色);
   let 有效等级 = 原等级;
-  let 剩余移除部件数 = Math.max(0, Math.floor((提前年数 * 内置角色斗铠标准部件列表_V1.length) / 5));
+  const 部件名列表 = 取内置角色斗铠部件列表_V1(角色);
+  const 部件数量 = 部件名列表.length;
+  let 剩余移除部件数 = Math.max(0, Math.floor((提前年数 * 部件数量) / 5));
   let 不完整等级 = 0;
   let 不完整移除部件数 = 0;
-  while (有效等级 > 0 && 剩余移除部件数 >= 内置角色斗铠标准部件列表_V1.length) {
+  while (有效等级 > 0 && 剩余移除部件数 >= 部件数量) {
     有效等级 -= 1;
-    剩余移除部件数 -= 内置角色斗铠标准部件列表_V1.length;
+    剩余移除部件数 -= 部件数量;
   }
   if (有效等级 > 0 && 剩余移除部件数 > 0) {
     不完整等级 = 有效等级;
@@ -2339,13 +2372,14 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
   const 角色 = cloneJsonValue(快照.角色, null);
   if (!角色 || typeof 角色 !== 'object') return null;
   if (!角色.属性 || typeof 角色.属性 !== 'object') 角色.属性 = {};
-  if (角色.装备?.斗铠 && typeof 角色.装备.斗铠 === 'object') 补齐内置角色完整斗铠部件_V1(角色.装备.斗铠);
+  if (角色.装备?.斗铠 && typeof 角色.装备.斗铠 === 'object') 补齐内置角色完整斗铠部件_V1(角色.装备.斗铠, 角色);
   const 投影年龄 = 计算内置角色投影年龄_V1(快照, 当前tick);
   角色.属性.年龄 = Number(投影年龄.toFixed(1));
   角色.属性.等级 = 计算内置角色投影等级_V1(角色, 角色记录, 快照, 当前tick, 投影年龄);
   if (投影年龄 < 6) 清理内置角色未觉醒战斗能力_V1(角色);
   else 裁剪内置角色魂环到等级_V1(角色);
   应用内置角色提前出场投影_V1(角色, 角色记录, 快照, 当前tick);
+  按精神力同步内置角色紫极魔瞳_V1(角色);
   return 角色;
 }
 
@@ -2353,6 +2387,8 @@ function 是内置角色空壳_V1(角色 = {}) {
   if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return true;
   const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
   const 年龄 = Math.max(0, Number(角色?.属性?.年龄 || 0) || 0);
+  const 位置 = String(角色?.状态?.位置 || '').trim();
+  if (等级 <= 1 && 年龄 <= 0 && 位置.includes('待转移')) return true;
   const 武魂名 = String(角色?.第1武魂?.表象名称 || '').trim();
   const 有魂灵 = !!角色?.第1武魂?.第1魂灵;
   const 有魂环 = Object.keys(角色?.第1武魂?.第1魂灵 || {}).some(键 => /^第\d+魂环$/.test(键));
@@ -2371,13 +2407,11 @@ function 同步银龙融合旧实体状态_V1(数据根 = {}, 当前tick = 0) {
     const 需要变更 =
       角色.状态.存活 !== false ||
       Number(角色.状态.死亡tick ?? -1) !== 死亡tick ||
-      角色.状态.死亡类型 !== '自然' ||
-      角色.状态.行动 !== '已死亡';
+      角色.状态.死亡类型 !== '自然';
     if (!需要变更) return;
     角色.状态.存活 = false;
     角色.状态.死亡tick = 死亡tick;
     角色.状态.死亡类型 = '自然';
-    角色.状态.行动 = '已死亡';
     已变更.push(角色名);
   });
   return 已变更;
@@ -3470,10 +3504,7 @@ function 规范化Schema根转换_V1(data = {}) {
           if (c.属性.体力 >= c.属性.体力上限 * 0.3) {
             c.属性.体力 -= c.属性.体力上限 * 0.3;
             actualCycles++;
-          } else {
-            c.状态.行动 = '日常';
-            break;
-          }
+          } else break;
         }
         if (actualCycles > 0) {
           const gain = 0.05 * actualCycles * 基础成长倍率 * 肉体训练收益倍率;
@@ -3491,10 +3522,7 @@ function 规范化Schema根转换_V1(data = {}) {
           if (c.属性.精神力 > c.属性.精神力上限 * 0.1) {
             c.属性.精神力 -= c.属性.精神力 * 0.8;
             actualCycles++;
-          } else {
-            c.状态.行动 = '日常';
-            break;
-          }
+          } else break;
         }
         if (actualCycles > 0 && c.属性.年龄 <= 40) {
           let gain = 0.02 * actualCycles * 基础成长倍率 * 精神训练收益倍率 * 读取属性成长倍率('精神力上限');
@@ -3538,7 +3566,14 @@ function 规范化Schema根转换_V1(data = {}) {
       currentTick > 0 &&
       (!Number.isFinite(原始上次结算数值) || 原始上次结算数值 <= 0);
     let lastTick = Number.isFinite(原始上次结算数值) ? 原始上次结算数值 : currentTick;
-    if (是否新档初始化 && currentTick > 0) {
+    const 临时角色结算模式表 =
+      data.world.时间._临时角色结算模式 &&
+      typeof data.world.时间._临时角色结算模式 === 'object' &&
+      !Array.isArray(data.world.时间._临时角色结算模式)
+        ? data.world.时间._临时角色结算模式
+        : {};
+    delete data.world.时间._临时角色结算模式;
+    if (是否新档初始化 && currentTick > 0 && !Object.keys(临时角色结算模式表).length) {
       lastTick = currentTick;
       data.world.时间._上次结算tick = currentTick;
     }
@@ -4651,7 +4686,7 @@ function 规范化Schema根转换_V1(data = {}) {
     const isIntelRequestKey = requestKey => String(requestKey || '').trim().startsWith('intel_');
     const pendingSecretIntelReasonEntries = [];
 
-    if (typeof IntelEvents !== 'undefined') {
+    if (typeof IntelEvents !== 'undefined' && IntelEvents) {
       let dev = data.world.偏差值 || 0;
 
       let allIntels = Array.isArray(IntelEvents) ? IntelEvents : Object.values(IntelEvents).flat();
@@ -4760,7 +4795,7 @@ function 规范化Schema根转换_V1(data = {}) {
         }
 
         if (c.状态.存活 && getComputedWoundLevelFromStat(c.属性) !== '濒死') {
-          if (daysPassed > 0 && c.状态.行动 === '日常') {
+          if (daysPassed > 0) {
             const 城市档位信息 = 判定城市规模档位_ACU(c);
             const 城市档位索引 = Math.max(-1, Math.min(3, Number(城市档位信息.档位索引 ?? -1)));
 
@@ -4794,11 +4829,11 @@ function 规范化Schema根转换_V1(data = {}) {
             }
           }
 
-          const declaredAction = String(c.状态.行动 || '日常').trim() || '日常';
-          if (declaredAction === '凝聚魂核') c.状态.行动 = '冥想';
-          const normalizedDeclaredAction = normalizeCharacterActionMode_ACU(declaredAction);
           const beforeCoreCount = Math.max(0, Math.floor(Number(c.魂核?.核心?.数量 || 0)));
-          if (declaredAction === '日常') {
+          const 临时结算模式 = String(临时角色结算模式表[charName] || '').trim();
+          if (临时结算模式) {
+            applyCharacterActionSegment_ACU(c, 临时结算模式, delta, trainedBonus, charName);
+          } else {
             let segmentTickCursor = lastTick;
             while (segmentTickCursor < currentTick) {
               const nextBoundaryTick = getNextDailyAutoBoundaryTick_ACU(segmentTickCursor, currentTick);
@@ -4810,8 +4845,6 @@ function 规范化Schema根转换_V1(data = {}) {
               applyCharacterActionSegment_ACU(c, segmentAction, segmentDelta, trainedBonus, charName);
               segmentTickCursor = nextBoundaryTick;
             }
-          } else {
-            applyCharacterActionSegment_ACU(c, normalizedDeclaredAction, delta, trainedBonus, charName);
           }
           const afterCoreCount = Math.max(0, Math.floor(Number(c.魂核?.核心?.数量 || 0)));
           if (afterCoreCount > beforeCoreCount) {
@@ -4875,7 +4908,6 @@ function 规范化Schema根转换_V1(data = {}) {
       const isKnownBuggedRecoveryRatio = [0.05, 0.3, 0.7].some(value =>
         Math.abs(previousResourceRatios.HP - value) <= 0.001,
       );
-      const actionText = String(c.状态?.行动 || '').trim();
       const hasInjuryMarkers = Object.keys(c.状态?.受伤部位 || {}).length > 0;
       const looksLikePlaceholderExhaustedPack =
         previousResourceSnapshot.魂力 <= 10 &&
@@ -4888,7 +4920,6 @@ function 规范化Schema根转换_V1(data = {}) {
         previousResourceSnapshot.HP <= 20 &&
         Math.abs(previousResourceSnapshot.体力 - previousResourceSnapshot.HP) <= 2 &&
         !data.world?.战斗?.进行中 &&
-        actionText === '日常' &&
         !hasInjuryMarkers;
       const looksLikeNewCharacterDefaultLeak =
         previousResourceSnapshot.魂力 <= 10 &&
@@ -4898,12 +4929,10 @@ function 规范化Schema根转换_V1(data = {}) {
         previousResourceRatios.体力 >= 0.9 &&
         previousResourceRatios.HP >= 0.9 &&
         !data.world?.战斗?.进行中 &&
-        actionText === '日常' &&
         !hasInjuryMarkers;
       const shouldResetBuggedInitializedResources =
         Math.abs(previousResourceSnapshot.HP上限 - previousResourceSnapshot.体力上限) > 1 &&
         !data.world?.战斗?.进行中 &&
-        actionText !== '战斗' &&
         !hasInjuryMarkers &&
         resourceRatioValues.length === 4 &&
         ratioSpread <= 0.0015 &&
@@ -6625,6 +6654,7 @@ function 规范化关系分析重点对象Schema_V1(value) {
 
 function 规范化社交Schema_V1(社交) {
         社交.名望等级 = 社交.名望等级 || '籍籍无名';
+        社交.家世描述 = String(社交.家世描述 || '').trim() || '无';
 
         const topTargets = [];
         const romanceCandidates = [];
@@ -7044,6 +7074,7 @@ function 规范化角色Schema_V1(char) {
         );
       }
 
+      delete char.属性.背景;
       delete char.属性.背景阶层;
       delete char.属性.天赋评级;
       if (!原始已有魂师结构 && isNoSoulPowerTalentTier(char.属性.天赋梯队)) {
@@ -7222,8 +7253,7 @@ function 规范化角色Schema_V1(char) {
       if (armorLv > 0) {
         char.装备.斗铠.等级 = armorLv;
         char.装备.斗铠.装备状态 = '未装备';
-        let parts = ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴'];
-        parts.forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
+        取内置角色斗铠部件列表_V1(char).forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
       }
     } else if (!isBeast && tier === '优秀' && 可初始化机甲) {
       if (char.属性.等级 >= 70) {
@@ -7808,32 +7838,48 @@ function 规范化动态地点Schema_V1(地点数据) {
           
 }
 
+function 克隆普通数据_V1(值, 兜底 = null) {
+  try {
+    return structuredClone(值);
+  } catch (错误) {}
+  try {
+    return JSON.parse(JSON.stringify(值));
+  } catch (错误) {}
+  return 兜底;
+}
+
 function 补结算归档角色时间流逝_V1(角色名 = '', 角色数据 = {}, 数据根 = {}, 起始tick = 0, 结束tick = null) {
   const 安全角色名 = String(角色名 || '').trim();
   if (!安全角色名 || !角色数据 || typeof 角色数据 !== 'object' || Array.isArray(角色数据)) return 角色数据;
   const 当前tick = Math.max(0, Math.floor(Number(结束tick ?? 数据根?.world?.时间?.tick ?? 0) || 0));
   const 归档tick = Math.max(0, Math.floor(Number(起始tick || 0) || 0));
-  const 克隆 = (值, 兜底 = null) => {
-    try {
-      return structuredClone(值);
-    } catch (错误) {}
-    try {
-      return JSON.parse(JSON.stringify(值));
-    } catch (错误) {}
-    return 兜底;
-  };
-  if (当前tick <= 归档tick) return 克隆(角色数据, 角色数据);
+  if (当前tick <= 归档tick) return 克隆普通数据_V1(角色数据, 角色数据);
 
-  const 临时根 = 克隆(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
-  临时根.char = { [安全角色名]: 克隆(角色数据, {}) };
+  const 临时根 = 克隆普通数据_V1(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
+  临时根.char = { [安全角色名]: 克隆普通数据_V1(角色数据, {}) };
   if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
   if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
   临时根.world.时间.tick = 当前tick;
   临时根.world.时间._上次结算tick = 归档tick;
   规范化Schema根转换_V1(临时根);
   return 临时根.char?.[安全角色名] && typeof 临时根.char[安全角色名] === 'object'
-    ? 克隆(临时根.char[安全角色名], 临时根.char[安全角色名])
-    : 克隆(角色数据, 角色数据);
+    ? 克隆普通数据_V1(临时根.char[安全角色名], 临时根.char[安全角色名])
+    : 克隆普通数据_V1(角色数据, 角色数据);
+}
+
+function 按动作模式结算变量根时间流逝_V1(数据根 = {}, 角色名 = '', 起始tick = 0, 结束tick = null, 结算模式 = '') {
+  const 临时根 = 克隆普通数据_V1(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
+  if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
+  if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
+  const 当前tick = Math.max(0, Math.floor(Number(结束tick ?? 临时根.world.时间.tick ?? 0) || 0));
+  const 起始tick值 = Math.max(0, Math.floor(Number(起始tick || 0) || 0));
+  临时根.world.时间.tick = 当前tick;
+  临时根.world.时间._上次结算tick = 起始tick值;
+  const 安全角色名 = String(角色名 || '').trim();
+  const 临时结算模式 = String(结算模式 || '').trim();
+  if (安全角色名 && 临时结算模式) 临时根.world.时间._临时角色结算模式 = { [安全角色名]: 临时结算模式 };
+  规范化Schema根转换_V1(临时根);
+  return 克隆普通数据_V1(临时根, 临时根);
 }
 
 globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
@@ -7841,6 +7887,7 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
     ? globalThis.__LWCS_MVU_SCHEMA_RUNTIME__
     : {}),
   补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+  按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
 };
 
 try {
@@ -7850,6 +7897,7 @@ try {
         ? globalThis.parent.__LWCS_MVU_SCHEMA_RUNTIME__
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+      按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
     };
   }
 } catch (错误) {}
@@ -7861,6 +7909,7 @@ try {
         ? globalThis.top.__LWCS_MVU_SCHEMA_RUNTIME__
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
+      按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
     };
   }
 } catch (错误) {}

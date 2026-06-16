@@ -699,11 +699,11 @@
 
   function makeWalletStrip(items) {
     return `
-        <div class="wallet-strip">
+        <div class="wallet-strip wallet-data-ribbon">
           ${(items || [])
             .map(
               item => `
-            <div class="wallet-chip ${item.className || ''}">
+            <div class="wallet-chip wallet-data-chip ${item.className || ''}" data-wallet-key="${escapeHtmlAttr(toText(item.label, ''))}">
               <b>${item.label}</b>
               <span>${构建详情项值HTML(item)}</span>
             </div>
@@ -865,7 +865,6 @@
   function 规范化技能元素列表_桥接(value = []) {
     return Array.from(new Set(normalizeSkillDesignerArray(value).filter(token => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(token))));
   }
-  const STATUS_ACTION_RUNTIME_OPTIONS = Object.freeze(['日常', '冥想', '睡眠', '战斗', '肉体训练', '精神训练']);
   const RING_COLOR_META = Object.freeze({
     white: Object.freeze({ label: '白', glyph: '白', aliases: ['白色'] }),
     yellow: Object.freeze({ label: '黄', glyph: '黄', aliases: ['黄色'] }),
@@ -1095,7 +1094,7 @@
               data-hover-tags="${attr((item.tags || []).join('|'))}">
               <div class="cell-top">
                 <b>${item.name}</b>
-                <span class="qty">×${item.qty}</span>
+                <span class="qty inventory-qty-badge">×${item.qty}</span>
               </div>
               <div class="tier">${item.meta}</div>
             </div>
@@ -1328,7 +1327,6 @@
                 <section class="dossier-section">
                   <div class="dossier-section-title">当前状态</div>
                     <div class="dossier-status-chip-row">
-                      <span class="dossier-status-chip is-safe"><b>行动</b><em></em></span>
                       <span class="dossier-status-chip is-safe"><b>伤势</b><em></em></span>
                     </div>
                     <div class="dossier-row-grid dossier-row-grid--two dossier-profile-flow">
@@ -1489,13 +1487,11 @@
                 </div>
                 <div class="relation-dossier-body relation-dossier-split-layout">
                   <section class="relation-dossier-intel-column">
-                    <div class="relation-dossier-column-head"><b>基础情报与共鸣连结</b><span>同步中</span></div>
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">情感阈值</div></section>
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">身份特征</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">档案与属性</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">维护与记录</div></section>
                   </section>
                   <section class="relation-dossier-action-column">
-                    <div class="relation-dossier-column-head"><b>推演线索与交互终端</b><span>同步中</span></div>
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">态势推演</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">态势与推演</div></section>
                     <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">交互终端</div></section>
                   </section>
                 </div>
@@ -1582,8 +1578,8 @@
       return {
         title: '储物仓库',
         body: `
-            <div class="archive-modal-grid mvu-spirit-detail-grid">
-              <div class="archive-card full">
+            <div class="archive-modal-grid vault-modal-grid">
+              <div class="archive-card full vault-wallet-card">
                 <div class="archive-card-head"><div class="archive-card-title">钱包条</div></div>
                 ${makeWalletStrip([
                   { label: '联邦币', value: '', className: 'gold' },
@@ -1593,9 +1589,23 @@
                   { label: '战功', value: '', className: 'red' },
                 ])}
               </div>
-              <div class="archive-card full vault-main-card">
-                <div class="archive-card-head"><div class="archive-card-title">背包格阵列</div></div>
-                <div class="inventory-scroll-shell">${makeInventoryGrid([])}</div>
+              <div class="mvu-inventory-workbench inventory-definition-layout">
+                <div class="archive-card inventory-instance-panel mvu-inventory-registry">
+                  <div class="archive-card-head"><div class="archive-card-title">物资图谱</div></div>
+                  <div class="mvu-inventory-registry-scroll">
+                    <div class="inventory-scroll-shell">${makeInventoryGrid([], { className: 'mvu-inventory-grid' })}</div>
+                  </div>
+                </div>
+                <div class="archive-card inventory-definition-panel mvu-inventory-definition-console">
+                  <div class="mvu-inventory-inspector inventory-detail-terminal inventory-detail-terminal-empty">
+                    <div class="mvu-inventory-inspector-head">
+                      <div><b>未持有物品</b><span>当前背包暂无物资</span></div>
+                    </div>
+                    <div class="mvu-inventory-inspector-scroll">
+                      <div class="inventory-detail-quote">暂无说明</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           `,
@@ -1608,14 +1618,31 @@
       return {
         title: '武魂',
         body: `
-            <div class="archive-modal-grid mvu-spirit-detail-grid">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">武魂</div></div>
-                <div class="spirit-main-card"><h4></h4><div class="spirit-head-tags"><span class="tag-chip ${key === '第1武魂详细页' ? 'live' : 'warn'}">${badge}</span></div></div>
+            <div class="archive-modal-grid mvu-spirit-detail-grid mvu-spirit-archive-shell">
+              <div class="archive-card full spirit-terminal-card">
+                <div class="archive-card-head"><div class="archive-card-title">武魂档案</div></div>
+                <div class="spirit-main-card">
+                  <div class="mvu-spirit-terminal-head">
+                    <div class="mvu-spirit-terminal-title"></div>
+                    <div class="mvu-spirit-terminal-tags"><span class="mvu-spirit-terminal-tag">[ ${badge} ]</span></div>
+                  </div>
+                  <div class="mvu-spirit-terminal-grid">
+                    <div class="mvu-spirit-param-lines"><div class="mvu-spirit-section-label"></div><div><b></b><span></span></div><div><b></b><span></span></div><div><b></b><span></span></div></div>
+                    <div class="mvu-spirit-desc-lines"><div class="mvu-spirit-section-label"></div><p></p></div>
+                  </div>
+                  <div class="mvu-spirit-link-note"><span>↓</span><b></b><em></em></div>
+                </div>
               </div>
               <div class="archive-card full spirit-flow-card">
-                <div class="archive-card-head"><div class="archive-card-title">魂灵</div></div>
-                <div class="rings soul-ring-lane">${buildEmptyRingLane(key === '第1武魂详细页' ? 'ring-white' : 'ring-gold')}</div>
+                <div class="archive-card-head"><div class="archive-card-title">魂灵与魂环矩阵</div></div>
+                <div class="soul-expand-stack">
+                  <div class="soul-terminal-card">
+                    <div class="soul-terminal-head"><div class="soul-terminal-title"></div><div class="soul-terminal-tags"><span class="mvu-spirit-terminal-tag">[ 品质 ]</span><span class="mvu-spirit-terminal-tag">[ 状态 ]</span><span class="mvu-spirit-terminal-tag">[ 契合 ]</span></div></div>
+                    <div class="soul-terminal-desc"></div>
+                    <div class="soul-terminal-link"><span>↓</span><b>赋能魂环</b></div>
+                    <div class="soul-ring-terminal-row"><div class="rings soul-ring-lane">${buildEmptyRingLane(key === '第1武魂详细页' ? 'ring-white' : 'ring-gold')}</div><div class="soul-ring-terminal-body"></div></div>
+                  </div>
+                </div>
               </div>
             </div>
           `,
@@ -1806,6 +1833,8 @@
   let lastDashboardSectionRenderSignatures = null;
   let liveUiRefCache = new Map();
   let 慢刷新骨架已启用 = false;
+  let 上次仓库选中物品名 = '';
+  let 上次仓库钱包签名 = '';
   const 慢刷新骨架预览键列表 = Object.freeze(['系统播报与日志', '试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
 
@@ -2124,15 +2153,6 @@
     const list = Array.isArray(snapshot && snapshot.unlockedKnowledges) ? snapshot.unlockedKnowledges : [];
     if (!list.length) return fallback;
     return shortenText(格式化情报展示文本(list[list.length - 1], fallback), limit) || fallback;
-  }
-
-  function getStatusActionEditorOptions(currentValue = '') {
-    const current = toText(currentValue, '').trim();
-    if (current === '凝聚魂核') return [...STATUS_ACTION_RUNTIME_OPTIONS];
-    if (current && !STATUS_ACTION_RUNTIME_OPTIONS.includes(current)) {
-      return [current, ...STATUS_ACTION_RUNTIME_OPTIONS];
-    }
-    return [...STATUS_ACTION_RUNTIME_OPTIONS];
   }
 
   function formatNumber(value) {
@@ -3331,8 +3351,8 @@
             }
             ${
               !新建 && charKey && 数量 > 0
-                ? `<button type="button" class="tag-chip inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="one" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">丢弃1件</button>
-                   <button type="button" class="tag-chip inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="all" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">${数量 > 1 ? '全部丢弃' : '丢弃'}</button>`
+                ? `<button type="button" class="tag-chip inventory-hover-action-btn inventory-action-danger" data-inventory-action="discard" data-inventory-mode="one" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">丢弃1件</button>
+                   <button type="button" class="tag-chip inventory-hover-action-btn inventory-action-danger" data-inventory-action="discard" data-inventory-mode="all" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">${数量 > 1 ? '全部丢弃' : '丢弃'}</button>`
                 : ''
             }
           </div>
@@ -3363,7 +3383,7 @@
     const 条目 = 字段列表
       .map(([标签, 值]) => [标签, 值 === undefined || 值 === null || 值 === '' ? '无' : 值])
       .filter(([标签]) => 标签);
-    return `<div class="mvu-inventory-inspector-grid">
+    return `<div class="mvu-inventory-param-list">
       ${条目
         .map(([标签, 值]) => {
           const 字段值 = 标签 === '品质' && 品质档案 ? 品质档案.标签 : 格式化物品字段值(值) || toText(值, '无');
@@ -3371,7 +3391,7 @@
             标签 === '品质' && 品质档案
               ? `<b class="quality-value ${escapeHtmlAttr(品质档案.类名)}">${htmlEscape(字段值)}</b>`
               : `<b>${htmlEscape(字段值)}</b>`;
-          return `<div class="mvu-inventory-inspector-field" data-field="${escapeHtmlAttr(标签)}">
+          return `<div class="mvu-inventory-param-row" data-field="${escapeHtmlAttr(标签)}">
             <span>${htmlEscape(标签)}</span>
             ${值HTML}
           </div>`;
@@ -3401,9 +3421,12 @@
     if (!条目.length) return '';
     return `<section class="mvu-inventory-inspector-section">
       <div class="mvu-editor-section-title">${htmlEscape(标题)}</div>
-      <div class="mvu-inventory-inspector-list">
+      <div class="mvu-inventory-param-list">
         ${条目
-          .map(([键, 值]) => `<div><span>${htmlEscape(键)}</span><b>${htmlEscape(格式化物品解析值(值) || '已记录')}</b></div>`)
+          .map(
+            ([键, 值]) =>
+              `<div class="mvu-inventory-param-row"><span>${htmlEscape(键)}</span><b>${htmlEscape(格式化物品解析值(值) || '已记录')}</b></div>`,
+          )
           .join('')}
       </div>
     </section>`;
@@ -3414,7 +3437,7 @@
     if (!列表.length) return '';
     return `<section class="mvu-inventory-inspector-section">
       <div class="mvu-editor-section-title">${htmlEscape(标题)}</div>
-      <div class="mvu-inventory-inspector-list">
+      <div class="mvu-inventory-param-list">
         ${列表
           .map((条目, 序号) => {
             const 原型 = 条目 && typeof 条目 === 'object' ? toText(条目.原型 || 条目.类型 || 条目.描述, `效果${序号 + 1}`) : toText(条目, `效果${序号 + 1}`);
@@ -3426,14 +3449,14 @@
                     .filter(Boolean)
                     .join(' / ')
                 : '';
-            return `<div><span>${htmlEscape(原型)}</span><b>${htmlEscape(内容 || '已记录')}</b></div>`;
+            return `<div class="mvu-inventory-param-row"><span>${htmlEscape(原型)}</span><b>${htmlEscape(内容 || '已记录')}</b></div>`;
           })
           .join('')}
       </div>
     </section>`;
   }
 
-  function 构建物品效果摘要组(标题 = '', 数据 = [], 描述 = '') {
+  function 构建物品效果摘要组(标题 = '', 数据 = []) {
     const 列表 = Array.isArray(数据) ? 数据 : [];
     const 展示列表 = cloneJsonValue(列表, []);
     const 待处理 = [...展示列表];
@@ -3451,15 +3474,15 @@
       '',
     )
       .trim();
-    const 描述文本 = toText(描述, '').trim();
     const 内容列表 = [];
-    if (描述文本) 内容列表.push(['效果', 描述文本]);
-    if (摘要 && 摘要 !== 描述文本) 内容列表.push(['结算', 摘要]);
+    if (摘要) 内容列表.push(['结算', 摘要]);
     if (!内容列表.length) return '';
     return `<section class="mvu-inventory-inspector-section">
       <div class="mvu-editor-section-title">${htmlEscape(标题)}</div>
-      <div class="mvu-inventory-inspector-list">
-        ${内容列表.map(([标签, 内容]) => `<div><span>${htmlEscape(标签)}</span><b>${htmlEscape(内容)}</b></div>`).join('')}
+      <div class="mvu-inventory-param-list">
+        ${内容列表
+          .map(([标签, 内容]) => `<div class="mvu-inventory-param-row"><span>${htmlEscape(标签)}</span><b>${htmlEscape(内容)}</b></div>`)
+          .join('')}
       </div>
     </section>`;
   }
@@ -3477,29 +3500,45 @@
     const 装备技能 = 定义.装备技能 && typeof 定义.装备技能 === 'object' && !Array.isArray(定义.装备技能) ? 定义.装备技能 : {};
     const 附带魂技 = 定义.附带魂技 && typeof 定义.附带魂技 === 'object' && !Array.isArray(定义.附带魂技) ? 定义.附带魂技 : {};
     if (!物品名 || 物品名 === '__new__') {
-      return `<div class="mvu-inventory-inspector">
+      return `<div class="mvu-inventory-inspector inventory-detail-terminal inventory-detail-terminal-empty">
         <div class="mvu-inventory-inspector-head">
           <div><b>未持有物品</b><span>当前背包暂无物资</span></div>
+        </div>
+        <div class="mvu-inventory-inspector-scroll">
+          <div class="inventory-detail-quote">暂无说明</div>
+        </div>
+        <div class="inventory-action-toolbar">
           <button type="button" class="tag-chip live" data-collection-action="new-item-definition">加入物品</button>
         </div>
       </div>`;
     }
-    return `<div class="mvu-inventory-inspector">
+    const 动作按钮HTML = [
+      charKey && 可用 && 数量 > 0
+        ? `<button type="button" class="tag-chip live inventory-hover-action-btn" data-inventory-action="use" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">使用</button>`
+        : '',
+      charKey && 可装备 && 数量 > 0
+        ? `<button type="button" class="tag-chip live inventory-hover-action-btn" data-inventory-action="equip" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">装备</button>`
+        : '',
+      charKey && 数量 > 0
+        ? `<button type="button" class="tag-chip inventory-hover-action-btn inventory-action-danger" data-inventory-action="discard" data-inventory-mode="one" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">丢弃1件</button>`
+        : '',
+      charKey && 数量 > 0
+        ? `<button type="button" class="tag-chip inventory-hover-action-btn inventory-action-danger" data-inventory-action="discard" data-inventory-mode="all" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">${数量 > 1 ? '全部丢弃' : '丢弃'}</button>`
+        : '',
+      `<button type="button" class="tag-chip" data-collection-action="edit-item-definition">编辑</button>`,
+      `<button type="button" class="tag-chip" data-collection-action="new-item-definition">加入物品</button>`,
+    ]
+      .filter(Boolean)
+      .join('');
+    return `<div class="mvu-inventory-inspector inventory-detail-terminal ${escapeHtmlAttr(品质档案.类名)}" data-current-item="${escapeHtmlAttr(物品名)}" data-quality-tier="${escapeHtmlAttr(品质档案.档位)}">
       <div class="mvu-inventory-inspector-head ${escapeHtmlAttr(品质档案.类名)}" data-quality-tier="${escapeHtmlAttr(品质档案.档位)}">
         <div>
           <b>${htmlEscape(物品名)}</b>
           <span><span class="quality-value ${escapeHtmlAttr(品质档案.类名)}">${htmlEscape(品质档案.标签)}</span>${htmlEscape(` · ${[分类, `持有 ${数量}`].filter(Boolean).join(' · ')}`)}</span>
         </div>
-        <div class="inventory-console-actions">
-          ${charKey && 可用 && 数量 > 0 ? `<button type="button" class="tag-chip live inventory-hover-action-btn" data-inventory-action="use" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">使用</button>` : ''}
-          ${charKey && 可装备 && 数量 > 0 ? `<button type="button" class="tag-chip live inventory-hover-action-btn" data-inventory-action="equip" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">装备</button>` : ''}
-          ${charKey && 数量 > 0 ? `<button type="button" class="tag-chip inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="one" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">丢弃1件</button>` : ''}
-          ${charKey && 数量 > 0 ? `<button type="button" class="tag-chip inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="all" data-inventory-char="${escapeHtmlAttr(charKey)}" data-inventory-item="${escapeHtmlAttr(物品名)}">${数量 > 1 ? '全部丢弃' : '丢弃'}</button>` : ''}
-          <button type="button" class="tag-chip" data-collection-action="edit-item-definition">编辑</button>
-          <button type="button" class="tag-chip" data-collection-action="new-item-definition">加入物品</button>
-        </div>
       </div>
       <div class="mvu-inventory-inspector-scroll">
+        <div class="inventory-detail-quote">${htmlEscape(toText(合并物品.描述, '暂无说明'))}</div>
         <section class="mvu-inventory-inspector-section">
           <div class="mvu-editor-section-title">基础属性</div>
           ${构建物品解析字段组([
@@ -3517,7 +3556,6 @@
             ['基础价格', 合并物品.基础价格 || 0],
             ['货币', 合并物品.默认货币 || '联邦币'],
           ], { 品质档案 })}
-          <div class="mvu-inventory-inspector-desc">${htmlEscape(toText(合并物品.描述, '暂无说明'))}</div>
         </section>
         <section class="mvu-inventory-inspector-section">
           <div class="mvu-editor-section-title">实例状态</div>
@@ -3541,9 +3579,10 @@
         ${构建物品解析键值组('属性加成', 定义.属性加成)}
         ${构建物品解析键值组('装备技能', 装备技能)}
         ${构建物品解析键值组('附带魂技', 附带魂技)}
-        ${构建物品效果摘要组('物品效果', 合并物品.使用效果, 合并物品.描述)}
+        ${构建物品效果摘要组('物品效果', 合并物品.使用效果)}
         ${构建物品解析数组组('使用副作用', 合并物品.副作用列表)}
       </div>
+      <div class="inventory-action-toolbar">${动作按钮HTML}</div>
     </div>`;
   }
 
@@ -5927,6 +5966,8 @@
     if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return true;
     const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
     const 年龄 = Math.max(0, Number(角色?.属性?.年龄 || 0) || 0);
+    const 位置 = String(角色?.状态?.位置 || '').trim();
+    if (等级 <= 1 && 年龄 <= 0 && 位置.includes('待转移')) return true;
     const 武魂名 = toText(角色?.第1武魂?.表象名称, '').trim();
     const 有魂灵 = !!角色?.第1武魂?.第1魂灵;
     return 等级 <= 1 && 年龄 <= 0 && !武魂名 && !有魂灵;
@@ -24958,6 +24999,9 @@
   function 构建技能悬浮详情内容(技能, 选项 = {}) {
     const 安全技能 = 技能 && typeof 技能 === 'object' ? 技能 : {};
     const 显示标题 = 选项 && 选项.显示标题 !== false;
+    const 战术标签文本 =
+      [安全技能.mainRole, 安全技能.category || 安全技能.type].map(条目 => toText(条目, '').trim()).filter(Boolean)[0] ||
+      '魂技';
     const 元信息行 = [];
     const 添加元信息 = (label, value) => {
       const 文本 = toText(value, '').trim();
@@ -24966,11 +25010,11 @@
         `<div class="ring-hover-meta-row"><em>${htmlEscape(label)}</em><strong>${htmlEscape(文本)}</strong></div>`,
       );
     };
-    添加元信息('类别', [安全技能.category || 安全技能.type, 安全技能.mainRole].map(item => toText(item, '').trim()).filter(Boolean).join(' · '));
+    添加元信息('类别', [安全技能.category || 安全技能.type, 安全技能.mainRole].map(条目 => toText(条目, '').trim()).filter(Boolean).join(' · '));
     添加元信息('目标', 安全技能.target);
     添加元信息('消耗', 安全技能.cost);
     const 前摇 = Math.max(0, toNumber(安全技能.前摇, 0));
-    if (前摇 > 0) 添加元信息('前摇', `${formatNumber(前摇)} tick`);
+    if (前摇 > 0) 添加元信息('前摇', formatNumber(前摇));
     const 元信息Html = 元信息行.length ? `<div class="ring-hover-meta">${元信息行.join('')}</div>` : '';
     const 文案行Html = [
       ['画面描述', 安全技能.visualDesc],
@@ -24985,19 +25029,23 @@
       .join('');
     const 标签列表 = Array.isArray(安全技能.tags)
       ? 安全技能.tags
-          .map(item => toText(item, '').trim())
+          .map(条目 => toText(条目, '').trim())
           .filter(Boolean)
           .slice(0, 6)
       : [];
     const 标签Html = 标签列表.length
-      ? `<div class="ring-hover-tags">${标签列表.map(item => `<span class="ring-hover-chip">${htmlEscape(item)}</span>`).join('')}</div>`
+      ? `<div class="ring-hover-tags">${标签列表.map(条目 => `<span class="ring-hover-chip">${htmlEscape(条目)}</span>`).join('')}</div>`
       : '';
     const 预览属性 = 安全技能.preview
       ? ` data-preview="${escapeHtmlAttr(安全技能.preview)}" data-detail-mode="embed"`
       : '';
     return `
         <div class="ring-hover-skill skill-hover-detail${安全技能.preview ? ' clickable' : ''}"${预览属性}>
-          ${显示标题 ? `<b>${htmlEscape(安全技能.name || '未命名技能')}</b>` : ''}
+          ${
+            显示标题
+              ? `<div class="ring-hover-skill-head"><b>${htmlEscape(安全技能.name || '未命名技能')}</b><span class="ring-hover-tactical-tag">${htmlEscape(战术标签文本)}</span></div>`
+              : ''
+          }
           ${元信息Html}
           ${文案行Html || '<div class="ring-hover-copy"><em>效果描述</em><span>未知</span></div>'}
           ${标签Html}
@@ -25016,7 +25064,8 @@
     const skills = (ring && Array.isArray(ring.skills) ? ring.skills : [])
       .map(技能 => 构建技能悬浮详情内容(技能, { 显示标题: true }))
       .join('');
-    return `<div class=\"ring-hover-card\"><div class=\"ring-hover-title\">${htmlEscape(toText(ring && ring.title, '魂环技能'))}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
+    const 魂环标题 = toText(ring && ring.title, '魂环技能').split('·')[0].trim() || '魂环技能';
+    return `<div class="ring-hover-card soul-ring-tooltip"><div class="ring-hover-title">${htmlEscape(魂环标题)}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
   }
 
   function buildSpiritConfig(slotName, spiritData, previewKey, badgeText, badgeClass, spiritBasePath = [], 渲染快照 = null) {
@@ -25985,10 +26034,11 @@
         .filter(Boolean),
     );
     safeRecords(deepGet(activeChar, '功法', {})).forEach(art => {
+      const 是紫极魔瞳 = toText(art.name, '') === '紫极魔瞳';
       extraSkills.push({
         category: '功法绝学',
         name: art.name,
-        level: `Lv.${art.lv || 1} / ${toText(art.境界, '未入门')}`,
+        level: 是紫极魔瞳 ? `Lv.${art.lv || 1} / ${toText(art.境界, '纵观')}` : '已掌握',
         desc: toText(art.描述, '暂无描述'),
         preview: '',
       });
@@ -26449,7 +26499,6 @@
   }
 
   function buildHeaderRenderSignature(snapshot) {
-    const status = deepGet(snapshot, 'activeChar.状态', {});
     const battleDomain = toText(deepGet(snapshot, 'rootData.world.战斗.当前领域', ''), '');
     const bloodline =
       snapshot && snapshot.bloodline && snapshot.bloodline.valid
@@ -26467,10 +26516,9 @@
         deepGet(snapshot, 'rootData.world.时间._calendar', deepGet(snapshot, 'rootData.world.时间.calendar', '')),
         '',
       ),
-      action: toText(status && status.行动, ''),
       activeDomain: battleDomain,
       wound: getDisplayWoundLabel(deepGet(snapshot, 'activeChar.属性', {})),
-      alive: deepGet(status, '存活', true) !== false,
+      alive: deepGet(snapshot, 'activeChar.状态.存活', true) !== false,
       bloodline,
       armorStatus: toText(deepGet(snapshot, 'activeChar.装备.斗铠.装备状态', ''), ''),
       mechLv: toText(deepGet(snapshot, 'activeChar.装备.机甲.等级', ''), ''),
@@ -26508,7 +26556,6 @@
         本地人物: getShellLocalCharacterEntries(snapshot, 99).map(([名称, 角色]) => [
           名称,
           deepGet(角色, '状态.位置', ''),
-          deepGet(角色, '状态.行动', ''),
           deepGet(角色, '社交.主身份', ''),
         ]),
         latestTimeline: snapshot && snapshot.latestTimeline ? snapshot.latestTimeline : null,
@@ -26659,34 +26706,29 @@
     syncPrivateArchiveLongPressTargets(snapshot);
 
     const statusChips = getLiveUiElements('.header-status-row .header-status-chip');
-    if (statusChips[0])
-      setLiveNodeText(
-        statusChips[0].querySelector('span'),
-        toText(deepGet(snapshot, 'activeChar.状态.行动', '日常'), '日常'),
-      );
-    if (statusChips[1]) {
+    if (statusChips[0]) {
       const activeStatus = deepGet(snapshot, 'activeChar.状态', {});
       const injurySummary = buildInjurySummaryText(activeStatus, { limit: 1, empty: '' });
       setLiveNodeText(
-        statusChips[1].querySelector('span'),
+        statusChips[0].querySelector('span'),
         `${getDisplayWoundLabel(deepGet(snapshot, 'activeChar.属性', {}))} / ${injurySummary || (deepGet(snapshot, 'activeChar.状态.存活', true) ? '状态稳定' : '已陨落')}`,
       );
     }
-    if (statusChips[2]) {
+    if (statusChips[1]) {
       const shouldShowBloodline = !!(snapshot.bloodline && snapshot.bloodline.valid);
-      if (statusChips[2].style.display !== (shouldShowBloodline ? '' : 'none')) {
-        statusChips[2].style.display = shouldShowBloodline ? '' : 'none';
+      if (statusChips[1].style.display !== (shouldShowBloodline ? '' : 'none')) {
+        statusChips[1].style.display = shouldShowBloodline ? '' : 'none';
       }
       if (snapshot.bloodline && snapshot.bloodline.valid) {
-        setLiveNodeText(statusChips[2].querySelector('span'), 构建血脉状态文本_桥接(snapshot.bloodline));
+        setLiveNodeText(statusChips[1].querySelector('span'), 构建血脉状态文本_桥接(snapshot.bloodline));
       }
     }
-    if (statusChips[3])
+    if (statusChips[2])
       setLiveNodeText(
-        statusChips[3].querySelector('span'),
+        statusChips[2].querySelector('span'),
         `斗铠${toText(deepGet(snapshot, 'activeChar.装备.斗铠.装备状态', '未装备'), '未装备')} / 机甲${toText(deepGet(snapshot, 'activeChar.装备.机甲.等级', '无'), '无')}`,
       );
-    if (statusChips[4]) setLiveNodeText(statusChips[4].querySelector('span'), snapshot.worldAlert);
+    if (statusChips[3]) setLiveNodeText(statusChips[3].querySelector('span'), snapshot.worldAlert);
   }
 
   const PRIVATE_ARCHIVE_PREVIEW_KEY = '私密档案详细页';
@@ -26698,6 +26740,19 @@
     if (!normalized) return false;
     if (normalized.includes('女')) return true;
     return normalized === 'female' || normalized === 'woman' || normalized === 'girl' || normalized === 'f';
+  }
+
+  function 读取斗铠部件槽位列表_桥接(性别文本 = '') {
+    return [
+      '头盔',
+      '胸铠',
+      '左肩',
+      '右肩',
+      '左臂',
+      '右臂',
+      ...(isFemaleGenderText(性别文本) ? ['战裙'] : ['左腿', '右腿']),
+      '战靴',
+    ];
   }
 
   function getActiveSnapshotCharacter(snapshot) {
@@ -27300,8 +27355,8 @@
             <strong class="archive-core-level cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
             <div class="archive-core-profile-main">
               <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</span>
-              <span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>
-              <span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>
+              ${伤势显示 && 伤势显示 !== '无伤' ? `<span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>` : ''}
+              ${领域显示 && 领域显示 !== '常态' ? `<span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>` : ''}
               <span class="archive-core-next"><em>突破所需魂力</em><strong>${htmlEscape(nextSoulValueText)}</strong></span>
             </div>
             <div class="archive-core-attrs">
@@ -27859,12 +27914,11 @@
       });
     }
     const stat = deepGet(snapshot, 'activeChar.属性', {});
-    const status = deepGet(snapshot, 'activeChar.状态', {});
     const placeText = buildShellLocationLabel(snapshot, { fullLimit: 18, trailLimit: 8 });
     return buildShellAppPeek({
       value: toText(snapshot.activeName, '当前角色'),
       meta: `${formatCultivationLevelBadge(stat.等级, '0')} · ${placeText}`,
-      note: toText(status.行动, '日常'),
+      note: getDisplayWoundLabel(stat),
       tone: 'live',
     });
   }
@@ -28394,13 +28448,12 @@
         const identity =
           summarizeShellIdentityText(deepGet(char, '社交.主身份', ''), { limit: 14 }) ||
           shortenText(toText(deepGet(char, '社交.主身份', '未知身份'), '未知身份'), 14);
-        const action = resolveShellText(deepGet(char, '状态.行动', ''), '日常') || '日常';
         const 可委托 = 获取角色工坊委托能力摘要(char).length > 0;
         const 允许人物操作 = 启用操作 && (!地图人物条目 || 地图人物条目.可交互 === true);
         const 摘要状态 =
           地图人物条目 && 地图人物条目.可交互 === false
             ? toText(地图人物条目.meta, `位于：${toText(地图人物条目.所在子节点, '子节点')}`)
-            : action;
+            : shortenText(toText(deepGet(char, '状态.位置', 当前地点), 当前地点), 22);
         const 操作按钮 = 允许人物操作
           ? `
             <div class="mvu-shell-roster-actions">
@@ -29029,7 +29082,6 @@
 
   function buildShellLifeView(snapshot) {
     const stat = deepGet(snapshot, 'activeChar.属性', {});
-    const status = deepGet(snapshot, 'activeChar.状态', {});
     const social = deepGet(snapshot, 'activeChar.社交', {});
     const hpPair = getDisplayHpPair(stat);
     const woundLabel = getDisplayWoundLabel(stat);
@@ -29051,7 +29103,6 @@
                   构建属性指标项('体力', stat.体力, stat.体力上限),
                   构建属性指标项('魂力', stat.魂力, stat.魂力上限),
                   构建属性指标项('精神', stat.精神力, stat.精神力上限),
-                  { label: '状态', value: shortenText(toText(status.行动, '日常'), 16) },
                   { label: '伤势', value: woundLabel },
                 ],
                 { className: 'mvu-shell-lite-grid--two' },
@@ -32406,14 +32457,12 @@
               const locText = toText(deepGet(char, '状态.位置', '未知地点'), '未知地点')
                 .replace(/^斗罗大陆-/, '')
                 .replace(/^斗灵大陆-/, '');
-              const actionText = toText(deepGet(char, '状态.行动', '日常'), '日常');
               const 允许删除 = 判断角色允许删除(name, char, snapshot);
               const searchText = [
                 name,
                 isPlayer ? '玩家' : '角色',
                 identityText,
                 locText,
-                actionText,
                 isTangWulinCharacter(name) ? '唐舞麟' : '',
               ]
                 .filter(Boolean)
@@ -32423,7 +32472,7 @@
                 <div class="role-switch-tile${isCurrent ? ' active' : ''}" data-switch-search="${escapeHtmlAttr(searchText)}" data-mvu-switch-char="${escapeHtmlAttr(name)}" role="button" tabindex="0" title="${escapeHtmlAttr(`查看${displayName}`)}">
                   <div class="role-switch-head"><b>${htmlEscape(name)}</b><span class="state-tag ${isCurrent ? 'live' : isPlayer ? 'warn' : ''}">${isCurrent ? '当前查看' : isPlayer ? '玩家' : '角色'}</span></div>
                   <div class="role-switch-meta">${htmlEscape(`${lvText} ｜ ${identityText}`)}</div>
-                  <div class="role-switch-meta">${htmlEscape(`${locText} ｜ ${actionText}`)}</div>
+                  <div class="role-switch-meta">${htmlEscape(locText)}</div>
                   ${允许删除 ? `<div class="role-switch-actions"><button type="button" class="tag-chip role-switch-action-btn danger" data-role-delete-char="${escapeHtmlAttr(name)}">删除</button></div>` : ''}
                 </div>
               `;
@@ -32823,7 +32872,6 @@
         snapshot.currentLoc || '未知',
       );
       const worldTimeText = getSnapshotWorldTimeText(snapshot);
-      const actionText = toText(status.行动, '日常');
       const 伤势文本 = getDisplayWoundLabel(stat);
       const 伤势状态类 = ['无', '无伤'].includes(伤势文本) ? 'is-safe' : 'is-warn';
       const createAbilityPreview = activeCharKey
@@ -32946,16 +32994,6 @@
                 <section class="dossier-section">
                   <div class="dossier-section-title">当前状态</div>
                   <div class="dossier-status-chip-row">
-                    <span class="dossier-status-chip is-safe"><b>行动</b><em>${
-                      activeCharKey
-                        ? makeInlineEditableValue(actionText, {
-                            path: ['char', activeCharKey, '状态', '行动'],
-                            kind: 'enum_select',
-                            rawValue: actionText,
-                            editorMeta: { options: getStatusActionEditorOptions(actionText) },
-                          })
-                        : htmlEscape(actionText)
-                    }</em></span>
                     <span class="dossier-status-chip ${伤势状态类}"><b>伤势</b><em>${htmlEscape(伤势文本)}</em></span>
                   </div>
                   ${makeDossierRows(
@@ -33180,113 +33218,111 @@
     if (previewKey === '社会档案详细页') {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
+      const 名望等级 = toText(social.名望等级, toText(social.名望等级, '籍籍无名'));
+      const 主身份文本 = toText(social.主身份, '无');
+      const 家世描述文本 = toText(social.家世描述, '无');
+      const 主圈层文本 = snapshot.势力.map(([name]) => name).join(' / ') || '无圈层';
+      const 主称号文本 = snapshot.recentTitles[0] || '暂无主称号';
+      const 主阵营身份文本 = snapshot.primaryFaction
+        ? `${snapshot.primaryFaction[0]} / ${toText(deepGet(snapshot.primaryFaction[1], '身份', '无'), '无')}`
+        : '无';
+      const 声望进度 = ratioPercent(social.声望, 5000);
+      const 声望数值HTML = makeInlineEditableValue(`${formatNumber(social.声望)} / 5,000`, {
+        path: ['char', activeCharKey, '社交', '声望'],
+        kind: 'number',
+        rawValue: social.声望,
+        editorMeta: {
+          min: 0,
+          integer: true,
+          hint: '最小 0 · 整数 · 5,000 为当前量级阈值参考，不是硬上限',
+        },
+      });
       return {
         title: '社会档案',
         summary: '当前角色的公开身份、名望、头衔与社会可见度摘要。',
         body: `
-            <div class="archive-modal-grid dossier-shell dossier-shell--social">
-              <div class="archive-card dossier-card dossier-card--social-main">
+            <div class="archive-modal-grid dossier-shell dossier-shell--social social-archive-terminal">
+              <div class="archive-card dossier-card dossier-card--social-main social-archive-profile">
                 <div class="archive-card-head">
                   <div>
-                    <div class="archive-card-title">身份卷宗</div>
+                    <div class="archive-card-title">身份档案</div>
                     <div class="dossier-head-name">${htmlEscape(snapshot.activeName)}</div>
                   </div>
                   ${makeDossierTags([
-                    { text: toText(social.名望等级, toText(social.名望等级, '籍籍无名')), className: 'warn' },
+                    { text: 名望等级, className: 'warn' },
                     { text: snapshot.publicIntel ? '公开情报' : '未公开' },
                     { text: `称号 ${snapshot.recentTitles.length}` },
                   ])}
                 </div>
-                <section class="dossier-section">
-                  <div class="dossier-section-title">公开身份</div>
-                  ${makeDossierRows(
-                    [
-                      {
-                        label: '当前身份',
-                        value: makeInlineEditableValue(toText(social.主身份, '无'), {
-                          path: ['char', activeCharKey, '社交', '主身份'],
-                          kind: 'string',
-                          rawValue: social.主身份,
-                        }),
-                      },
-                      {
-                        label: '名望层级',
-                        value: htmlEscape(toText(social.名望等级, toText(social.名望等级, '籍籍无名'))),
-                      },
-                      {
-                        label: '公开情报',
-                        value: snapshot.publicIntel ? '已公开' : '未公开',
-                      },
-                      {
-                        label: '主要圈层',
-                        value: htmlEscape(snapshot.势力.map(([name]) => name).join(' / ') || '暂无'),
-                      },
-                      { label: '当前主称号', value: htmlEscape(snapshot.recentTitles[0] || '暂无') },
-                      {
-                        label: '主阵营身份',
-                        value: htmlEscape(
-                          snapshot.primaryFaction
-                            ? `${snapshot.primaryFaction[0]} / ${toText(deepGet(snapshot.primaryFaction[1], '身份', '无'), '无')}`
-                            : '无',
-                        ),
-                      },
-                    ],
-                    'dossier-row-grid--two',
-                  )}
+
+                <section class="dossier-section social-archive-brief">
+                  <div class="social-archive-note">
+                    ${makeInlineEditableValue(家世描述文本, {
+                      path: ['char', activeCharKey, '社交', '家世描述'],
+                      kind: 'string',
+                      rawValue: social.家世描述,
+                      multiline: true,
+                    })}
+                  </div>
                 </section>
+
                 <section class="dossier-section">
-                  <div class="dossier-section-title">社会标签</div>
-                  ${makeDossierTags(
-                    [
-                      { text: snapshot.activeName, className: 'live' },
-                      { text: toText(social.主身份, '无') },
-                      { text: snapshot.势力.map(([name]) => name).join(' / ') || '无圈层' },
-                      { text: snapshot.recentTitles[0] || '暂无主称号' },
-                    ],
-                    'dossier-tag-row--wrap',
-                  )}
+                  <div class="dossier-section-title">身份构成</div>
+                  <div class="social-identity-list">
+                    <div class="social-identity-item">
+                      <b>主身份</b>
+                      <span>${makeInlineEditableValue(主身份文本, {
+                        path: ['char', activeCharKey, '社交', '主身份'],
+                        kind: 'string',
+                        rawValue: social.主身份,
+                      })}</span>
+                    </div>
+                    <div class="social-identity-item">
+                      <b>主要圈层</b>
+                      <span>${htmlEscape(主圈层文本)}</span>
+                    </div>
+                    <div class="social-identity-item">
+                      <b>主称号</b>
+                      <span>${htmlEscape(主称号文本)}</span>
+                    </div>
+                    <div class="social-identity-item">
+                      <b>阵营身份</b>
+                      <span>${htmlEscape(主阵营身份文本)}</span>
+                    </div>
+                  </div>
                 </section>
               </div>
-              <div class="archive-card dossier-card dossier-card--social-side">
+              <div class="archive-card dossier-card dossier-card--social-side social-archive-data">
                 <div class="archive-card-head">
-                  <div class="archive-card-title">名望摘要</div>
+                  <div class="archive-card-title">社会数据</div>
                   <span class="dossier-pill ${snapshot.publicIntel ? 'live' : 'warn'}">${htmlEscape(snapshot.publicIntel ? '档案已公开' : '未公开')}</span>
                 </div>
                 <section class="dossier-section">
-                  <div class="dossier-section-title">个人声望量级</div>
-                  ${makeDossierMeter(
-                    '当前声望',
-                    makeInlineEditableValue(`${formatNumber(social.声望)} / 5,000 阈值`, {
-                      path: ['char', activeCharKey, '社交', '声望'],
-                      kind: 'number',
-                      rawValue: social.声望,
-                      editorMeta: {
-                        min: 0,
-                        integer: true,
-                        hint: '最小 0 · 整数 · 5,000 为当前量级阈值参考，不是硬上限',
-                      },
-                    }),
-                    ratioPercent(social.声望, 5000),
-                    'dossier-meter--accent',
-                  )}
+                  <div class="dossier-section-title">声望量级</div>
+                  <div class="dossier-meter social-reputation-meter">
+                    <div class="dossier-meter-head">
+                      <b>${htmlEscape(名望等级)}</b>
+                      <span>${声望数值HTML}</span>
+                    </div>
+                    <div class="dossier-meter-track social-reputation-track">
+                      <div class="dossier-meter-fill" style="width:${Math.max(0, Math.min(100, toNumber(声望进度, 0)))}%;"></div>
+                      <i></i><i></i><i></i><i></i>
+                    </div>
+                  </div>
                 </section>
                 <section class="dossier-section">
                   <div class="dossier-section-title">社会位置</div>
                   ${makeDossierRows(
                     [
+                      { label: '势力数量', value: String(snapshot.势力.length) },
                       { label: '头衔总数', value: String(snapshot.titleEntries.length) },
-                      {
-                        label: '主阵营身份',
-                        value: htmlEscape(
-                          snapshot.primaryFaction
-                            ? `${snapshot.primaryFaction[0]} / ${toText(deepGet(snapshot.primaryFaction[1], '身份', '无'), '无')}`
-                            : '无',
-                        ),
-                      },
+                      { label: '关系记录', value: String(snapshot.relations.length) },
+                      { label: '情报条目', value: String(snapshot.unlockedKnowledges.length) },
+                      { label: '主阵营身份', value: htmlEscape(主阵营身份文本), className: 'dossier-row--wide' },
                       { label: '档案状态', value: htmlEscape(snapshot.publicIntel ? '公开可见' : '仅内部可见') },
-                      { label: '当前摘要', value: htmlEscape(toText(social.主身份, '无')) },
+                      { label: '当前摘要', value: htmlEscape(主身份文本) },
                     ],
-                    'dossier-row-grid--single',
+                    'dossier-row-grid--two social-data-grid',
                   )}
                 </section>
               </div>
@@ -33377,31 +33413,41 @@
         if (!名称 || !关系条目表.has(名称) || 拓扑候选名称.includes(名称)) return;
         拓扑候选名称.push(名称);
       };
-      推入拓扑候选(relationDetailName);
       relationFocusTargets.forEach(item => 推入拓扑候选(toText(item && (item.对象 || item.target), '')));
       sameLocationTargets.forEach(推入拓扑候选);
       trustTargets.forEach(推入拓扑候选);
       snapshot.relations.forEach(([name]) => 推入拓扑候选(name));
-      const relationNodes = 拓扑候选名称
-        .slice(0, 拓扑最大对象数)
+      const 拓扑显示名称 = 拓扑候选名称.slice(0, 拓扑最大对象数);
+      if (relationDetailName && !拓扑显示名称.includes(relationDetailName)) {
+        if (拓扑显示名称.length >= 拓扑最大对象数) 拓扑显示名称[拓扑最大对象数 - 1] = relationDetailName;
+        else 拓扑显示名称.push(relationDetailName);
+      }
+      const 读取拓扑节点位置 = (name, index) => {
+        const 默认位置 = 拓扑位置列表[index] || 拓扑位置列表[index % 拓扑位置列表.length];
+        const 自定位置 = modalFocusState[`${previewKey}::relation-node-pos::${name}`];
+        const left = 自定位置 && Number.isFinite(Number(自定位置.left)) ? Number(自定位置.left) : 默认位置.left;
+        const top = 自定位置 && Number.isFinite(Number(自定位置.top)) ? Number(自定位置.top) : 默认位置.top;
+        return { ...默认位置, left, top };
+      };
+      const relationNodes = 拓扑显示名称
         .map(name => [name, 关系条目表.get(name)])
         .filter(([, rel]) => rel && typeof rel === 'object');
       const relationLinks = relationNodes
         .map(([name], index) => {
-          const pos = 拓扑位置列表[index] || 拓扑位置列表[index % 拓扑位置列表.length];
+          const pos = 读取拓扑节点位置(name, index);
           const 连线状态类 = name === relationDetailName ? 'is-active cyan' : 'is-muted';
-          return `<line class="topology-link ${连线状态类}" x1="50" y1="50" x2="${pos.left}" y2="${pos.top}"></line>`;
+          return `<line class="topology-link ${连线状态类}" data-relation-link="${escapeHtmlAttr(name)}" x1="50" y1="50" x2="${pos.left}" y2="${pos.top}"></line>`;
         })
         .join('');
       const relationHtml = relationNodes
         .map(([name, rel], index) => {
-          const pos = 拓扑位置列表[index] || 拓扑位置列表[index % 拓扑位置列表.length];
+          const pos = 读取拓扑节点位置(name, index);
           const 相关度视图 = 构建关系相关度视图数据_桥接(rel);
           const 相关度文本 = `相关度 ${相关度视图.总分值} / 基础 ${相关度视图.基础显示值}`;
           const 路线类 = 读取关系路线类(rel);
           const 选中类 = name === relationDetailName ? 'is-active' : '';
           return `
-            <button type="button" class="topology-node interactive-ring relation-node--person ${路线类} ${pos.className} ${选中类}" data-relation-focus="${escapeHtmlAttr(name)}" aria-pressed="${name === relationDetailName ? 'true' : 'false'}" style="left:${pos.left}%;top:${pos.top}%">
+            <button type="button" class="topology-node interactive-ring relation-node--person ${路线类} ${pos.className} ${选中类}" data-relation-focus="${escapeHtmlAttr(name)}" data-relation-node="${escapeHtmlAttr(name)}" aria-pressed="${name === relationDetailName ? 'true' : 'false'}" style="left:${pos.left}%;top:${pos.top}%">
               <b>${htmlEscape(name)}</b><span>${htmlEscape(toText(rel && rel['关系'], '陌生'))}</span>
               <div class="relation-hover-card">
                 <span class="relation-hover-title">${htmlEscape(name)}</span>
@@ -33520,60 +33566,10 @@
             .join('')
         : '<option value="">暂无可送物品</option>';
 
-      const relationFocusHtml =
-        (relationFocusTargets.length
-          ? relationFocusTargets.slice(0, 1).map(item => {
-              const targetName = toText(item && item.对象, '未知对象');
-              const detailEntry = snapshot.relations.find(([entryName]) => entryName === targetName);
-              const detail = detailEntry && detailEntry[1];
-              return `
-                <div class="relation-focus-callout">
-                  <b>${htmlEscape(`${targetName} / ${toText(item && item.关系, '陌生')}`)}</b>
-                  <span>${htmlEscape(toText(item && item.原因, '暂无推进建议'))}</span>
-                  <em>${htmlEscape(`建议：${toText(item && item.建议行动, '继续观察')} ｜ 下一阶段：${toText(detail && detail['_下一阶段'], '无')} / ${toNumber(detail && detail['_下一阶段阈值'], 0)}`)}</em>
-                </div>
-              `;
-            }).join('')
-          : snapshot.relations.slice(0, 1).map(([name, rel]) => `
-              <div class="relation-focus-callout">
-                <b>${htmlEscape(`${name} / ${toText(rel && rel['关系'], '陌生')}`)}</b>
-                <span>${htmlEscape(toText(rel && rel['_推进提示'], '暂无推进建议'))}</span>
-                <em>${htmlEscape(`路线：${toText(rel && rel['关系路线'], '朋友线')} / 好感：${toText(rel && rel['好感度'], 0)} ｜ 下一阶段：${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`)}</em>
-              </div>
-            `).join('')) || '<div class="dossier-empty-note">关系线索仍在铺陈。</div>';
-      const recommendedActions = Array.from(
+      const 建议行动列表 = Array.from(
         new Set(relationFocusTargets.map(item => toText(item && item.建议行动, '')).filter(Boolean)),
       ).slice(0, 3);
-      const relationSummaryText = relationFocusTargets.length
-        ? `当前重点关系对象：${relationFocusTargets
-            .slice(0, 2)
-            .map(
-              item =>
-                `${toText(item && item.对象, '无')}(${toText(item && item.关系, '陌生')}/${toNumber(item && item.好感度, 0)})`,
-            )
-            .join('、')}`
-        : sameLocationTargets.length
-          ? `当前可立即接触：${sameLocationTargets.slice(0, 3).join('、')}`
-          : recommendedActions.length
-            ? `当前建议：${recommendedActions.slice(0, 2).join('；')}`
-            : trustTargets.length
-              ? `高信任对象：${trustTargets.slice(0, 3).join('、')}`
-              : '当前雷达未扫描到足够的社会链接数据，暂无总体分析倾向。';
-      const 系统建议文本 = recommendedActions.slice(0, 3).join(' / ') || '继续观察';
-      const 当前可见文本 = sameLocationTargets.length
-        ? `${sameLocationTargets.slice(0, 3).join('、')}`
-        : trustTargets.length
-          ? `信任 ${trustTargets.slice(0, 3).join('、')}`
-          : relationFocusTargets.length
-            ? `重点 ${relationFocusTargets
-                .slice(0, 2)
-                .map(item => toText(item && item.对象, '无'))
-                .join('、')}`
-            : '暂无';
-      const 焦点对象文本 = toText(
-        deepGet(snapshot, '关系分析.关注对象', relationDetailName || '无'),
-        relationDetailName || '无',
-      );
+      const 系统建议文本 = 建议行动列表.slice(0, 3).join(' / ') || '继续观察';
       const 关系概览标签HTML = makeDossierTags(
         [
           { text: `对象 ${snapshot.relations.length}`, className: snapshot.relations.length ? 'live' : 'warn' },
@@ -33618,7 +33614,6 @@
       )}`;
       const 当前加成文本 = toText(relationDetail && relationDetail['_当前关系加成'], '无');
       const 下一解锁文本 = toText(relationDetail && relationDetail['_下档解锁加成'], '无');
-      const 推进路线文本 = routeSwitchable ? '可切恋人线' : relationRoute;
       const 关系状态胶囊HTML = relationDetail
         ? `
           <div class="relation-status-capsules relation-status-capsules--console">
@@ -33655,72 +33650,39 @@
                 )}
               `
         : '<div class="dossier-empty-note">当前没有可操作的关系目标。</div>';
-      const 目标推进线索HTML = relationDetail
-        ? `
-          <div class="relation-focus-callout relation-focus-callout--target">
-            <b>${htmlEscape(`${relationDetailName} / ${当前关系原值}`)}</b>
-            <span>${htmlEscape(toText(relationDetail && relationDetail['_推进提示'], '暂无推进建议'))}</span>
-            <em>${htmlEscape(`建议：${系统建议文本} ｜ 下一阶段：${下一阶段文本}`)}</em>
-          </div>
-        `
-        : relationFocusHtml;
+      const 维护状态文本 = `${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(
+        relationDetail && relationDetail['_切线限制原因'],
+        '无',
+      )}`;
+      const 推进提示文本 = toText(relationDetail && relationDetail['_推进提示'], '暂无推进建议');
+      const 去重建议行动列表 = 建议行动列表.filter(建议 => 建议 !== 推进提示文本);
+      const 关系建议文本 = 去重建议行动列表.slice(0, 3).join(' / ') || '继续观察';
       const 关系情报聚合HTML = relationDetail
         ? `
           <section class="relation-dossier-intel-column ${读取关系路线类(relationDetail)}">
-            <div class="relation-dossier-column-head">
-              <b>${htmlEscape('基础情报与共鸣连结')}</b>
-              <span>${htmlEscape(relationSummaryText)}</span>
-            </div>
             ${好感度条HTML}
             ${构建关系情报组(
-              '情感阈值',
+              '档案与属性',
               `
                 <div class="relation-dossier-line-list">
-                  ${构建关系情报行('目标对象', htmlEscape(relationDetailName))}
-                  ${构建关系情报行('当前关系', 当前关系HTML)}
-                  ${构建关系情报行('关系路线', 关系路线HTML)}
-                </div>
-                ${构建关系胶囊组([
-                  { 文本: `下一阶段 ${下一阶段文本}` },
-                  { 文本: `推进 ${推进路线文本}` },
-                ])}
-              `,
-            )}
-            ${构建关系情报组(
-              '身份特征',
-              `
-                <div class="relation-dossier-line-list">
+                  ${构建关系情报行('当前关系', `${当前关系HTML}<span class="relation-inline-punctuation">（</span>${关系路线HTML}<span class="relation-inline-punctuation">）</span>`)}
                   ${构建关系情报行('对方身份', 对方身份HTML)}
-                  ${构建关系情报行('位置状态', htmlEscape(位置状态文本))}
-                  ${构建关系情报行(
-                    '维护状态',
-                    htmlEscape(
-                      `${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(
-                        relationDetail && relationDetail['_切线限制原因'],
-                        '无',
-                      )}`,
-                    ),
-                  )}
-                </div>
-              `,
-            )}
-            ${构建关系情报组(
-              '武魂共鸣',
-              `
-                <div class="relation-dossier-line-list">
-                  ${构建关系情报行('相关度', 武魂相关度HTML)}
+                  ${构建关系情报行('当前位置', htmlEscape(位置状态文本))}
+                  ${构建关系情报行('武魂共鸣', 武魂相关度HTML)}
                   ${构建关系情报行('融合触发', htmlEscape(`${融合触发状态值} / 阈值70`))}
                   ${构建关系情报行('同修效率', htmlEscape(`x${同修效率倍率值}`))}
                 </div>
               `,
             )}
             ${构建关系情报组(
-              '阶段记录',
+              '维护与记录',
               `
-                ${构建关系胶囊组([
-                  { 文本: `当前加成 ${当前加成文本}` },
-                  { 文本: `下一解锁 ${下一解锁文本}` },
-                ])}
+                <div class="relation-dossier-line-list">
+                  ${构建关系情报行('推进限制', htmlEscape(维护状态文本), 'relation-dossier-line--wide')}
+                  ${构建关系情报行('当前加成', htmlEscape(当前加成文本), 'relation-dossier-line--wide')}
+                  ${构建关系情报行('下一解锁', htmlEscape(下一解锁文本), 'relation-dossier-line--wide')}
+                  ${构建关系情报行('阶段目标', htmlEscape(下一阶段文本), 'relation-dossier-line--wide')}
+                </div>
               `,
             )}
           </section>
@@ -33728,22 +33690,19 @@
         : '<section class="relation-dossier-intel-column"><div class="dossier-empty-note">先从上方拓扑选择一个目标。</div></section>';
       const 关系行动聚合HTML = `
         <section class="relation-dossier-action-column">
-          <div class="relation-dossier-column-head">
-            <b>${htmlEscape('推演线索与交互终端')}</b>
-            <span>${htmlEscape(`系统建议：${系统建议文本}`)}</span>
-          </div>
           ${构建关系情报组(
-            '态势推演',
-            `
-              <div class="relation-dossier-lead">${htmlEscape(toText(relationSummaryText, '关系数据不足'))}</div>
-              ${构建关系胶囊组([
-                { 文本: `焦点 ${焦点对象文本}` },
-                { 文本: `可见 ${当前可见文本}` },
-                { 文本: `建议 ${系统建议文本}` },
-              ])}
-            `,
+            '态势与推演',
+            relationDetail
+              ? `
+                <div class="relation-analysis-panel">
+                  ${构建关系分析行('情报', 推进提示文本)}
+                  ${构建关系分析行('建议', 关系建议文本)}
+                  ${构建关系分析行('目标', 下一阶段文本)}
+                </div>
+              `
+              : '<div class="dossier-empty-note">先从上方拓扑选择一个目标。</div>',
+            'relation-dossier-flow--analysis',
           )}
-          ${构建关系情报组('推进线索', 目标推进线索HTML)}
           ${构建关系情报组(
             isPlayerControlled ? '交互终端' : '观察备注',
             `
@@ -33774,8 +33733,8 @@
                   </div>
                 </div>
                 <div class="relation-topology-panel">
-                  <div class="relation-topology-viewport" data-relation-pan-viewport>
-                    <div class="relation-topology-canvas" data-relation-pan-canvas>
+                  <div class="relation-topology-viewport">
+                    <div class="relation-topology-canvas">
                       <div class="topology-board relation-topology-board dossier-topology-board">
                         <svg class="topology-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${relationLinks}</svg>
                         <div class="topology-node center" style="left:50%;top:50%"><b>${htmlEscape(snapshot.activeName)}</b><span>自我</span></div>
@@ -34057,8 +34016,7 @@
       previewKey === '武装详情：机甲' ||
       previewKey === '武装详情：防具' ||
       previewKey === '武装详情：主武器' ||
-      previewKey === '武装详情：魂导器' ||
-      String(previewKey || '').startsWith('斗铠部件：')
+      previewKey === '武装详情：魂导器'
     ) {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
@@ -34073,22 +34031,44 @@
       const 防具路径 = activeCharKey ? ['char', activeCharKey, '装备', '防具'] : [];
       const 魂导器路径 = activeCharKey ? ['char', activeCharKey, '装备', '魂导器'] : [];
       const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
-      const armorSummary =
-        toNumber(armor.等级, 0) > 0
-          ? `${toText(armor.名称, `${armor.等级}字斗铠`)} / ${toText(armor.装备状态, '未装备')}`
-          : '未装备';
-      const mechSummary =
-        toText(mech.等级, '无') !== '无'
-          ? `${toText(mech.名称 || mech['名称'], `${toText(mech.等级, '无')}机甲`)}·${toText(mech.型号, '均衡')} / ${toText(mech.装备状态, '未装备')}`
-          : '未部署';
-      const weaponSummary =
-        weapon && (weapon.名称 || weapon['名称'])
-          ? `${toText(weapon.名称 || weapon['名称'], '无')} / ${toText(weapon.品阶 || weapon['品阶'], '无品阶')}`
-          : '无';
-      const 防具摘要 =
-        防具 && (防具.名称 || 防具['名称'])
-          ? `${toText(防具.名称 || 防具['名称'], '无')} / ${toText(防具.装备状态, '未装备')}`
-          : '无';
+      const 读取有效武装文本 = 值 => {
+        const 文本 = toText(值, '').trim();
+        const 压缩文本 = 文本
+          .replace(/[·/|,，、\s]+/g, '')
+          .replace(/暂无记录|未装备|未部署|未展开|未掌握|未记录|暂无|无品阶|无|--|—/g, '')
+          .trim();
+        return 压缩文本 ? 文本 : '';
+      };
+      const 斗铠名称 = 读取有效武装文本(armor.名称 || armor['名称']);
+      const 机甲名称 = 读取有效武装文本(mech.名称 || mech['名称']);
+      const 机甲等级 = 读取有效武装文本(mech.等级);
+      const 机甲型号 = 读取有效武装文本(mech.型号);
+      const 主武器名称 = 读取有效武装文本(weapon && (weapon.名称 || weapon['名称']));
+      const 主武器品阶 = 读取有效武装文本(weapon && (weapon.品阶 || weapon['品阶']));
+      const 防具名称 = 读取有效武装文本(防具.名称 || 防具['名称']);
+      const armorExists = toNumber(armor.等级, 0) > 0 || !!斗铠名称;
+      const mechExists = !!(机甲等级 || 机甲名称 || 机甲型号);
+      const weaponExists = !!主武器名称;
+      const 防具存在 = !!防具名称;
+      const 斗铠已在线 = armorExists && toText(armor.装备状态, '') === '已装备';
+      const 主武器已在线 = weaponExists;
+      const 机甲已在线 = mechExists && toText(mech.装备状态, '') === '已装备';
+      const 防具已在线 = 防具存在 && toText(防具.装备状态, '') === '已装备';
+      const 斗铠待装配 = armorExists && !斗铠已在线;
+      const 机甲待装配 = mechExists && !机甲已在线;
+      const 防具待装配 = 防具存在 && !防具已在线;
+      const armorSummary = armorExists
+        ? `${斗铠名称 || `${toText(armor.等级, '0')}字斗铠`} / ${toText(armor.装备状态, '未装备')}`
+        : '未装备';
+      const mechSummary = mechExists
+        ? `${机甲名称 || `${机甲等级 || '无'}机甲`}${机甲型号 ? `·${机甲型号}` : ''} / ${toText(mech.装备状态, '未装备')}`
+        : '未部署';
+      const weaponSummary = weaponExists
+        ? `${主武器名称} / ${主武器品阶 || '无品阶'}`
+        : '无';
+      const 防具摘要 = 防具存在
+        ? `${防具名称} / ${toText(防具.装备状态, '未装备')}`
+        : '无';
       const 魂导器装配 = 魂导器 && 魂导器.装配 && typeof 魂导器.装配 === 'object' && !Array.isArray(魂导器.装配) ? 魂导器.装配 : {};
       const 魂导器装配数量 = 魂导器装配槽位列表_桥接.reduce((数量, 槽位) => {
         const 槽位物品 = 魂导器装配[槽位];
@@ -34096,9 +34076,6 @@
         return 名称 && 名称 !== '无' ? 数量 + 1 : 数量;
       }, 0);
       const 魂导器摘要 = `${魂导器装配数量}/10`;
-      const battleForm = toText(deepGet(snapshot, 'activeChar.状态.行动', '日常'), '日常');
-      const armorExists = toNumber(armor.等级, 0) > 0 || !!toText(armor.名称 || armor['名称'], '');
-      const mechExists = toText(mech.等级, '无') !== '无' || !!toText(mech.名称 || mech['名称'] || mech.型号, '');
       const armorBonusItems = buildStatsBonusItems(deepGet(armor, '_属性加成', deepGet(armor, '属性加成', {})), {
         includeLvEquiv: true,
       });
@@ -34110,28 +34087,22 @@
       const 防具加成条目 = 防具路径.length
         ? buildEditableStatBonusItems([...防具路径, '属性加成'], deepGet(防具, '属性加成', {}))
         : buildStatsBonusItems(deepGet(防具, '属性加成', {}));
-      const 防具存在 = !!toText(防具.名称 || 防具['名称'], '');
-      const armorSlotDefs = [
-        { x: 50, y: 12, label: '头盔', preview: '斗铠部件：头盔' },
-        { x: 50, y: 34, label: '胸铠', preview: '斗铠部件：胸铠' },
-        { x: 24, y: 34, label: '左肩', preview: '斗铠部件：左肩' },
-        { x: 76, y: 34, label: '右肩', preview: '斗铠部件：右肩' },
-        { x: 18, y: 52, label: '左臂', preview: '斗铠部件：左臂' },
-        { x: 82, y: 52, label: '右臂', preview: '斗铠部件：右臂' },
-        { x: 34, y: 82, label: '左腿', preview: '斗铠部件：左腿' },
-        { x: 66, y: 82, label: '右腿', preview: '斗铠部件：右腿' },
-        { x: 50, y: 68, label: '战裙', preview: '斗铠部件：战裙' },
-        { x: 50, y: 94, label: '战靴', preview: '斗铠部件：战靴' },
-      ];
-      const armorSlots = armorSlotDefs.map(slot => ({
-        ...slot,
-        className: (() => {
-          const partData = resolveArmorPartData(armor, slot.label);
-          const partStatus = toText(partData && partData['状态'], '未打造');
-          if (!partData || partStatus === '未打造') return 'off';
-          if (partStatus === '重创') return 'warn';
-          return 'on';
-        })(),
+      const 斗铠性别文本 = toText(deepGet(snapshot, 'activeChar.属性.性别', ''), '');
+      const 斗铠槽位坐标表 = {
+        头盔: { x: 50, y: 12 },
+        胸铠: { x: 50, y: 34 },
+        左肩: { x: 24, y: 34 },
+        右肩: { x: 76, y: 34 },
+        左臂: { x: 18, y: 52 },
+        右臂: { x: 82, y: 52 },
+        左腿: { x: 34, y: 80 },
+        右腿: { x: 66, y: 80 },
+        战裙: { x: 50, y: 76 },
+        战靴: { x: 50, y: 94 },
+      };
+      const armorSlotDefs = 读取斗铠部件槽位列表_桥接(斗铠性别文本).map(槽位 => ({
+        ...(斗铠槽位坐标表[槽位] || { x: 50, y: 50 }),
+        label: 槽位,
       }));
 
       const 构建武装卸下按钮 = (装备类型, 文本 = '卸下', 附加属性 = '') => {
@@ -34140,7 +34111,7 @@
       };
 
       const 读取武装模块标识 = 标签 =>
-        ({ 斗铠: 'AC', 主武器: 'WP', 魂导器: 'ST', 机甲: 'MX', 防具: 'DF', 战斗形态: 'BT' }[toText(标签, '')] || 'MD');
+        ({ 斗铠: 'AC', 主武器: 'WP', 魂导器: 'ST', 机甲: 'MX', 防具: 'DF' }[toText(标签, '')] || 'MD');
 
       const 判断武装槽为空 = 值 => {
         const 文本 = toText(值, '')
@@ -34151,16 +34122,32 @@
       };
 
       const 构建武装模块槽位 = 条目 => {
-        const 是否空槽 = 条目 && 条目.空槽 !== undefined ? !!条目.空槽 : 判断武装槽为空(条目 && 条目.value);
+        const 状态 = toText(条目 && 条目.状态, '').trim()
+          || (条目 && 条目.待装配
+            ? 'standby'
+            : 条目 && 条目.空槽 !== undefined
+              ? 条目.空槽
+                ? 'empty'
+                : 'active'
+              : 判断武装槽为空(条目 && 条目.value)
+                ? 'empty'
+                : 'active');
+        const 是否待装配 = 状态 === 'standby';
+        const 是否空槽 = 状态 === 'empty';
+        const 状态类名 = 是否空槽 ? 'is-empty' : 是否待装配 ? 'is-standby' : 'is-active';
+        const 状态文本 = 是否空槽 ? 'EMPTY' : 是否待装配 ? 'STANDBY' : 'ACTIVE';
         const 标识 = 读取武装模块标识(条目 && 条目.label);
         const 预览属性 = 条目 && 条目.preview ? ` data-preview="${escapeHtmlAttr(条目.preview)}"` : '';
         return `
-            <div class="mvu-armory-gear-slot${条目 && 条目.preview ? ' clickable' : ''}${是否空槽 ? ' is-empty' : ' is-active'}"${预览属性} data-armory-mark="${escapeHtmlAttr(标识)}">
-              <div class="mvu-armory-gear-head">
-                <b>${htmlEscape(条目 && 条目.label)}</b>
-                ${是否空槽 ? '<i>EMPTY</i>' : '<i>ACTIVE</i>'}
+            <div class="mvu-armory-gear-slot${条目 && 条目.preview ? ' clickable' : ''} ${状态类名}"${预览属性} data-armory-mark="${escapeHtmlAttr(标识)}">
+              <b class="mvu-armory-gear-mark">${htmlEscape(标识)}</b>
+              <div class="mvu-armory-gear-body">
+                <div class="mvu-armory-gear-head">
+                  <span>${htmlEscape(条目 && 条目.label)}</span>
+                  <i>${状态文本}</i>
+                </div>
+                <strong>${构建详情项值HTML(条目)}</strong>
               </div>
-              <span>${构建详情项值HTML(条目)}</span>
             </div>
           `;
       };
@@ -34252,47 +34239,59 @@
           敏捷加成: { 图标: '➤', 类名: 'is-agile' },
         };
         const 斗铠加成映射 = new Map(armorBonusItems.map(条目 => [条目.label, 条目]));
+        const 斗铠选中槽位键 = `${previewKey}::armor-part-slot`;
+        const 斗铠槽位列表 = armorSlotDefs.map(槽位 => 槽位.label);
+        const 判断斗铠部件已装配 = 槽位 => {
+          const 部件数据 = resolveArmorPartData(armor, 槽位);
+          const 部件状态 = toText(部件数据 && 部件数据['状态'], '未打造');
+          return !!部件数据 && 部件状态 !== '未打造';
+        };
+        const 斗铠默认选中槽位 =
+          (() => {
+            const 已选槽位 = toText(modalFocusState[斗铠选中槽位键], '').trim();
+            if (斗铠槽位列表.includes(已选槽位)) return 已选槽位;
+            const 已装槽位 = 斗铠槽位列表.find(判断斗铠部件已装配);
+            if (已装槽位) return 已装槽位;
+            if (斗铠槽位列表.includes('胸铠')) return '胸铠';
+            return 斗铠槽位列表[0] || '';
+          })();
+        if (斗铠默认选中槽位) modalFocusState[斗铠选中槽位键] = 斗铠默认选中槽位;
         const 斗铠节点定义 = armorSlotDefs.map(槽位 => {
           const 部件数据 = resolveArmorPartData(armor, 槽位.label);
           const 部件状态 = toText(部件数据 && 部件数据['状态'], '未打造');
           const 是否空置 = !部件数据 || 部件状态 === '未打造';
           const 是否警戒 = 部件状态 === '重创';
-          const 部件名称 = 是否空置
-            ? '空置'
-            : toText(部件数据 && (部件数据.名称 || 部件数据.name), 槽位.label);
           return {
             ...槽位,
-            部件名称,
+            部件名称: 是否空置 ? '空置' : 槽位.label,
             状态文本: 是否空置 ? '待装配' : 部件状态 || '完好',
             类名: 是否空置 ? 'is-empty' : 是否警戒 ? 'is-warn' : 'is-live',
+            已选中: 槽位.label === 斗铠默认选中槽位,
           };
         });
-        const 斗铠槽位类名表 = {
-          头盔: 'slot-head',
-          胸铠: 'slot-chest',
-          左肩: 'slot-left-shoulder',
-          右肩: 'slot-right-shoulder',
-          左臂: 'slot-left-arm',
-          右臂: 'slot-right-arm',
-          左腿: 'slot-left-leg',
-          右腿: 'slot-right-leg',
-          战裙: 'slot-skirt',
-          战靴: 'slot-boots',
-        };
         const 斗铠节点坐标表 = new Map(斗铠节点定义.map(节点 => [节点.label, { x: 节点.x, y: 节点.y }]));
         const 斗铠节点坐标 = (名称, 默认值) => 斗铠节点坐标表.get(名称) || 默认值;
-        const 斗铠连线定义 = [
-          ['核心', '头盔'],
-          ['核心', '胸铠'],
-          ['胸铠', '左肩'],
-          ['胸铠', '右肩'],
-          ['胸铠', '左臂'],
-          ['胸铠', '右臂'],
-          ['胸铠', '战裙'],
-          ['战裙', '左腿'],
-          ['战裙', '右腿'],
-          ['战裙', '战靴'],
-        ];
+        const 斗铠连线定义 = isFemaleGenderText(斗铠性别文本)
+          ? [
+              ['头盔', '胸铠'],
+              ['胸铠', '左肩'],
+              ['胸铠', '右肩'],
+              ['左肩', '左臂'],
+              ['右肩', '右臂'],
+              ['胸铠', '战裙'],
+              ['战裙', '战靴'],
+            ]
+          : [
+              ['头盔', '胸铠'],
+              ['胸铠', '左肩'],
+              ['胸铠', '右肩'],
+              ['左肩', '左臂'],
+              ['右肩', '右臂'],
+              ['胸铠', '左腿'],
+              ['胸铠', '右腿'],
+              ['左腿', '战靴'],
+              ['右腿', '战靴'],
+            ];
         const 斗铠字段值 = (路径尾段, 原始值, 类型 = 'string', 显示值 = 原始值, 编辑元数据 = null) =>
           armorPath.length
             ? makeInlineEditableValue(toText(显示值, ''), {
@@ -34332,6 +34331,45 @@
             ),
           },
         ];
+        const 选中部件数据 = 斗铠默认选中槽位 ? resolveArmorPartData(armor, 斗铠默认选中槽位) : null;
+        const 选中部件状态 = toText(选中部件数据 && 选中部件数据['状态'], '未打造');
+        const 选中部件品质 = toNumber(选中部件数据 && 选中部件数据['品质系数'], 1);
+        const 斗铠部件详情项列表 = [
+          { label: '槽位', value: htmlEscape(斗铠默认选中槽位 || '无') },
+          {
+            label: '状态',
+            value: armorPath.length
+              ? makeInlineEditableValue(选中部件状态 || '未打造', {
+                  path: [...armorPath, '部件', 斗铠默认选中槽位, '状态'],
+                  kind: 'string',
+                  rawValue: 选中部件状态 || '未打造',
+                })
+              : htmlEscape(选中部件状态 || '未打造'),
+          },
+          {
+            label: '品质系数',
+            value: armorPath.length
+              ? makeInlineEditableValue(String(选中部件品质), {
+                  path: [...armorPath, '部件', 斗铠默认选中槽位, '品质系数'],
+                  kind: 'number',
+                  rawValue: 选中部件品质,
+                  editorMeta: { min: 0.8, max: 2, step: 0.1, hint: '范围 0.8 - 2.0 · 可输入小数 · 步长 0.1' },
+                })
+              : htmlEscape(String(选中部件品质)),
+          },
+          { label: '所属斗铠', value: htmlEscape(toText(armor.名称, '无')) },
+          {
+            label: '装配状态',
+            value: armorPath.length
+              ? makeInlineEditableValue(toText(armor.装备状态, '未装备'), {
+                  path: [...armorPath, '装备状态'],
+                  kind: 'enum_select',
+                  rawValue: toText(armor.装备状态, '未装备'),
+                  editorMeta: { options: ['未装备', '已装备'] },
+                })
+              : htmlEscape(toText(armor.装备状态, '未装备')),
+          },
+        ];
         const 斗铠加成卡片列表 = 斗铠加成顺序.map(加成名 => {
           const 条目 = 斗铠加成映射.get(加成名) || { label: 加成名, value: 0 };
           const 纯文本 = toText(构建详情项值HTML(条目), '')
@@ -34351,8 +34389,9 @@
           .map(节点 => `
             <button
               type="button"
-              class="mvu-armor-node clickable ${节点.类名} ${斗铠槽位类名表[节点.label] || ''}"
-              data-preview="斗铠部件：${escapeHtmlAttr(节点.label)}"
+              class="mvu-armor-node ${节点.类名} ${节点.已选中 ? 'is-selected' : ''}"
+              data-armor-part-slot="${escapeHtmlAttr(节点.label)}"
+              aria-pressed="${节点.已选中 ? 'true' : 'false'}"
               title="${escapeHtmlAttr(`查看${节点.label}`)}"
               style="left:${节点.x}%;top:${节点.y}%"
             >
@@ -34398,21 +34437,13 @@
                     <svg class="mvu-armor-line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                       ${斗铠连线HTML}
                     </svg>
-                    <div
-                      class="mvu-armor-node mvu-armor-node--core ${斗铠是否已装备 ? 'is-live' : armorExists ? 'is-warn' : 'is-empty'}"
-                      style="left:50%;top:50%"
-                    >
-                      <b>核心</b>
-                      <strong>${htmlEscape(toText(armor.名称, armor.等级 > 0 ? `${toNumber(armor.等级, 0)}字斗铠` : '未部署'))}</strong>
-                      <span>${htmlEscape(斗铠共鸣文本)}</span>
-                    </div>
                     ${斗铠节点HTML}
                   </div>
                 </section>
 
                 <section class="archive-card full mvu-armor-control-panel">
                   <div class="archive-card-head">
-                    <div class="archive-card-title">核心数据</div>
+                    <div class="archive-card-title">斗铠数据</div>
                     <div class="mvu-armor-status-row">
                       <span class="mvu-armor-status-light ${斗铠是否已装备 ? 'is-live' : armorExists ? 'is-warn' : 'is-off'}"></span>
                       <b>${htmlEscape(斗铠共鸣文本)}</b>
@@ -34438,6 +34469,24 @@
                     </div>
                     <div class="mvu-armor-bonus-grid">
                       ${斗铠加成卡片列表.join('')}
+                    </div>
+                  </section>
+
+                  <section class="mvu-armor-section mvu-armor-part-detail">
+                    <div class="mvu-armor-section-head">
+                      <div class="mvu-armor-section-title">部件详情</div>
+                    </div>
+                    <div class="mvu-armor-part-grid">
+                      ${斗铠部件详情项列表
+                        .map(
+                          项目 => `
+                          <div class="mvu-armor-part-item">
+                            <b>${htmlEscape(项目.label)}</b>
+                            <span>${项目.value}</span>
+                          </div>
+                        `,
+                        )
+                        .join('')}
                     </div>
                   </section>
 
@@ -34712,73 +34761,6 @@
         };
       }
 
-      if (String(previewKey || '').startsWith('斗铠部件：')) {
-        const slotName = String(previewKey).replace('斗铠部件：', '');
-        const partData = resolveArmorPartData(armor, slotName);
-        const partPath = armorPath.length ? [...armorPath, '部件', slotName] : [];
-        const fallbackPartItems = [
-          { label: '部位', value: slotName },
-          { label: '记录', value: '当前未记录独立部件属性' },
-          { label: '所属斗铠', value: armorSummary },
-          { label: '装配状态', value: toText(armor.装备状态, '未装备') },
-        ];
-        return {
-          title: `${slotName}详情`,
-          summary: '',
-          body: `
-              <div class="archive-modal-grid mvu-detail-grid--single">
-                <div class="archive-card full">
-                  <div class="archive-card-head"><div class="archive-card-title">${slotName}</div></div>
-                  ${makeTileGrid(
-                    partData
-                      ? [
-                          {
-                            label: '状态',
-                            value: partPath.length
-                              ? makeInlineEditableValue(toText(partData['状态'], '未打造'), {
-                                  path: [...partPath, '状态'],
-                                  kind: 'string',
-                                  rawValue: toText(partData['状态'], '未打造'),
-                                })
-                              : htmlEscape(toText(partData['状态'], '未打造')),
-                          },
-                          {
-                            label: '品质系数',
-                            value: partPath.length
-                              ? makeInlineEditableValue(String(toNumber(partData['品质系数'], 1)), {
-                                  path: [...partPath, '品质系数'],
-                                  kind: 'number',
-                                  rawValue: toNumber(partData['品质系数'], 1),
-                                  editorMeta: {
-                                    min: 0.8,
-                                    max: 2,
-                                    step: 0.1,
-                                    hint: '范围 0.8 - 2.0 · 可输入小数 · 步长 0.1',
-                                  },
-                                })
-                              : htmlEscape(String(toNumber(partData['品质系数'], 1))),
-                          },
-                          { label: '所属斗铠', value: toText(armor.名称, '无') },
-                          {
-                            label: '装配状态',
-                            value: armorPath.length
-                              ? makeInlineEditableValue(toText(armor.装备状态, '未装备'), {
-                                  path: [...armorPath, '装备状态'],
-                                  kind: 'enum_select',
-                                  rawValue: toText(armor.装备状态, '未装备'),
-                                  editorMeta: { options: ['未装备', '已装备'] },
-                                })
-                              : htmlEscape(toText(armor.装备状态, '未装备')),
-                          },
-                        ]
-                      : fallbackPartItems,
-                  )}
-                </div>
-              </div>
-            `,
-        };
-      }
-
       const getBoneBonus = (age, part) => {
         let rb = {
           力量: Math.floor(age * 0.005),
@@ -34838,16 +34820,21 @@
       };
       const 魂骨拓扑节点列表 = 魂骨固定槽位列表_桥接.map(槽位 => {
         const 魂骨记录 = 魂骨映射.get(槽位) || {};
+        const 是否外附槽位 = 是外附魂骨槽位_桥接(槽位);
         if (!是有效魂骨记录_桥接(魂骨记录)) {
           return {
             槽位,
             布局类: 魂骨拓扑布局类[槽位] || '',
             短名: 魂骨短名[槽位] || 槽位,
+            是否外附: 是否外附槽位,
             已装载: false,
             名称: '空',
             状态: '未装载',
+            年限: '',
+            品质: '',
             加成: '待接入',
-            技能HTML: '',
+            属性加成: null,
+            技能数: 0,
           };
         }
         const 魂骨名称 = toText(魂骨记录 && (魂骨记录.name || 魂骨记录['名称'] || 魂骨记录['表象名称']), 槽位);
@@ -34861,59 +34848,55 @@
         const 是否外附魂骨 = 是外附魂骨槽位_桥接(槽位);
         const 倍率片段 = 是否外附魂骨 ? formatBoneRatioParts(合并魂骨 && 合并魂骨['属性倍率']) : [];
         const 加成片段 = [];
+        const 实际年限 = toNumber(年限, 0);
+        let 魂骨数值加成 = null;
         if (倍率片段.length) {
           加成片段.push(`倍率 ${倍率片段.slice(0, 2).join(' ')}`);
         } else if (!是否外附魂骨) {
-          const 实际年限 = toNumber(年限, 0);
           if (实际年限 > 0) {
-            const 属性加成 = getBoneBonus(实际年限, 槽位);
+            魂骨数值加成 = getBoneBonus(实际年限, 槽位);
             const 属性片段 = [];
-            if (属性加成.力量) 属性片段.push(`力+${formatNumber(属性加成.力量)}`);
-            if (属性加成.防御) 属性片段.push(`防+${formatNumber(属性加成.防御)}`);
-            if (属性加成.敏捷) 属性片段.push(`敏+${formatNumber(属性加成.敏捷)}`);
-            if (属性加成.体力上限) 属性片段.push(`体+${formatNumber(属性加成.体力上限)}`);
-            if (属性加成.精神力上限) 属性片段.push(`精+${formatNumber(属性加成.精神力上限)}`);
+            if (魂骨数值加成.力量) 属性片段.push(`力+${formatNumber(魂骨数值加成.力量)}`);
+            if (魂骨数值加成.防御) 属性片段.push(`防+${formatNumber(魂骨数值加成.防御)}`);
+            if (魂骨数值加成.敏捷) 属性片段.push(`敏+${formatNumber(魂骨数值加成.敏捷)}`);
+            if (魂骨数值加成.体力上限) 属性片段.push(`体+${formatNumber(魂骨数值加成.体力上限)}`);
+            if (魂骨数值加成.精神力上限) 属性片段.push(`精+${formatNumber(魂骨数值加成.精神力上限)}`);
             if (属性片段.length) 加成片段.push(属性片段.slice(0, 3).join(' '));
           }
         }
 
         const 技能表 = (合并魂骨 && (合并魂骨['附带技能'] || 合并魂骨['装备技能'])) || {};
-        let 技能HTML = '';
-        if (技能表 && Object.keys(技能表).length) {
-          const 技能列表 = buildSkillList(技能表, {
-            basePath: ['char', snapshot.activeName, '魂骨', 槽位, '附带技能'],
-            category: '魂骨附带技能',
-            scope: 'soul_bone_skill',
-            渲染快照: snapshot,
-          });
-          技能HTML = 技能列表
-            .map(
-              技能 => `
-              <div
-                class="ring-hover-skill mvu-soul-bone-skill${技能 && 技能.preview ? ' clickable' : ''}"
-                ${技能 && 技能.preview ? `data-preview="${escapeHtmlAttr(技能.preview)}"` : ''}
-              >
-                <b class="mvu-soul-bone-skill-title">${htmlEscape(技能 && 技能.name ? 技能.name : '未命名技能')}</b>
-                <div class="ring-hover-copy"><em>画面描述</em><span>${htmlEscape(技能 && 技能.visualDesc ? 技能.visualDesc : '未知')}</span></div>
-                <div class="ring-hover-copy"><em>效果描述</em><span>${htmlEscape(技能 && 技能.effectDesc ? 技能.effectDesc : '未知')}</span></div>
-              </div>
-            `,
-            )
-            .join('');
-        }
 
         return {
           槽位,
           布局类: 魂骨拓扑布局类[槽位] || '',
           短名: 魂骨短名[槽位] || 槽位,
+          是否外附: 是否外附魂骨,
           已装载: true,
           名称: 魂骨名称,
           状态: 状态片段.filter(Boolean).join(' / '),
+          年限,
+          品质,
           加成: 加成片段.join(' / ') || '共鸣稳定',
-          技能HTML,
+          属性加成: 魂骨数值加成,
+          技能数: Object.keys(技能表 && typeof 技能表 === 'object' && !Array.isArray(技能表) ? 技能表 : {}).length,
         };
       });
       const 有魂骨装载 = 魂骨拓扑节点列表.some(节点 => 节点.已装载);
+      const 魂骨选中槽位键 = '武装工坊详细页::bone-slot';
+      const 魂骨槽位集合 = new Set(魂骨拓扑节点列表.map(节点 => 节点.槽位));
+      const 魂骨默认选中槽位 = (() => {
+        const 已选槽位 = toText(modalFocusState[魂骨选中槽位键], '').trim();
+        if (魂骨槽位集合.has(已选槽位)) return 已选槽位;
+        const 已装槽位 = 魂骨拓扑节点列表.find(节点 => 节点.已装载);
+        if (已装槽位) return 已装槽位.槽位;
+        return '头部魂骨';
+      })();
+      modalFocusState[魂骨选中槽位键] = 魂骨默认选中槽位;
+      const 魂骨选中节点 = 魂骨拓扑节点列表.find(节点 => 节点.槽位 === 魂骨默认选中槽位) || 魂骨拓扑节点列表[0];
+      const 普通魂骨数量 = 魂骨拓扑节点列表.filter(节点 => 节点.已装载 && !节点.是否外附).length;
+      const 外附魂骨数量 = 魂骨拓扑节点列表.filter(节点 => 节点.已装载 && 节点.是否外附).length;
+      const 魂骨套装激活 = 普通魂骨数量 >= 6 || 魂骨拓扑节点列表.filter(节点 => 节点.已装载).length >= 6;
       const 魂骨激活集合 = new Set(魂骨拓扑节点列表.filter(节点 => 节点.已装载).map(节点 => 节点.槽位));
       const 构建魂骨连线 = (类名, ...槽位列表) =>
         `<span class="mvu-armory-bone-line ${类名}${槽位列表.some(槽位 => 魂骨激活集合.has(槽位)) ? ' is-active' : ''}" aria-hidden="true"></span>`;
@@ -34925,7 +34908,23 @@
         构建魂骨连线('line-right-leg', '躯干魂骨', '右腿魂骨'),
         构建魂骨连线('line-ext-1', '躯干魂骨', '外附魂骨1'),
         构建魂骨连线('line-ext-2', '躯干魂骨', '外附魂骨2'),
+        构建魂骨连线('line-set-left', '左腿魂骨'),
+        构建魂骨连线('line-set-right', '右腿魂骨'),
+        构建魂骨连线('line-set-torso', '躯干魂骨'),
       ].join('');
+      const 魂骨套装节点HTML = `
+        <div class="mvu-armory-bone-node mvu-armory-bone-set-node ${魂骨套装激活 ? 'is-active' : 'is-empty'}">
+          <div class="mvu-armory-bone-label">
+            <b>共鸣</b>
+            <i>套装共鸣</i>
+          </div>
+          <div class="mvu-armory-bone-copy">
+            <strong>${htmlEscape(魂骨套装激活 ? '魂骨套装' : '未激活')}</strong>
+            <span>${htmlEscape(`普通 ${普通魂骨数量}/6 · 外附 ${外附魂骨数量}/2`)}</span>
+            <em>${htmlEscape(魂骨套装激活 ? '回路接通' : '锁定')}</em>
+          </div>
+        </div>
+      `;
       const 魂骨装载HTML = `
         <div class="mvu-armory-bone-topology${有魂骨装载 ? ' is-live' : ' is-empty'}">
           <div class="mvu-armory-body-silhouette" aria-hidden="true"></div>
@@ -34933,52 +34932,123 @@
           ${魂骨拓扑节点列表
             .map(
               节点 => `
-                <div class="mvu-armory-bone-node ${节点.布局类}${节点.已装载 ? ' is-active' : ' is-empty'}" data-bone-slot="${escapeHtmlAttr(节点.槽位)}">
+                <button type="button" class="mvu-armory-bone-node ${节点.布局类}${节点.已装载 ? ' is-active' : ' is-empty'}${节点.槽位 === 魂骨默认选中槽位 ? ' is-selected' : ''}" data-armory-bone-slot="${escapeHtmlAttr(节点.槽位)}" aria-pressed="${节点.槽位 === 魂骨默认选中槽位 ? 'true' : 'false'}">
                   <div class="mvu-armory-bone-label">
                     <b>${htmlEscape(节点.短名)}</b>
                     <i>${htmlEscape(节点.槽位)}</i>
                   </div>
-                  <strong>${htmlEscape(节点.名称)}</strong>
-                  <span>${htmlEscape(节点.状态)}</span>
-                  <em>${htmlEscape(节点.加成)}</em>
-                  ${节点.技能HTML}
-                </div>
+                  <div class="mvu-armory-bone-copy">
+                    <strong>${htmlEscape(节点.名称)}</strong>
+                    <span>${htmlEscape(节点.状态)}</span>
+                    <em>${htmlEscape(节点.加成)}</em>
+                  </div>
+                </button>
               `,
             )
             .join('')}
+          ${魂骨套装节点HTML}
         </div>
       `;
-      const 武装槽位HTML = [
-        { label: '斗铠', value: armorSummary, preview: '武装详情：斗铠' },
-        { label: '主武器', value: weaponSummary, preview: '武装详情：主武器' },
-        { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器' },
-        { label: '机甲', value: mechSummary, preview: '武装详情：机甲' },
-        { label: '防具', value: 防具摘要, preview: '武装详情：防具' },
-        {
-          label: '战斗形态',
-          value: battleForm,
-          path: activeCharKey ? ['char', activeCharKey, '状态', '行动'] : [],
-          kind: 'enum_select',
-          rawValue: battleForm,
-          editorMeta: { options: getStatusActionEditorOptions(battleForm) },
-        },
-      ]
+      const 武装槽位条目列表 = [
+        { label: '斗铠', value: armorSummary, preview: '武装详情：斗铠', 状态: 斗铠已在线 ? 'active' : 斗铠待装配 ? 'standby' : 'empty' },
+        { label: '主武器', value: weaponSummary, preview: '武装详情：主武器', 空槽: !主武器已在线 },
+        { label: '魂导器', value: 魂导器摘要, preview: '武装详情：魂导器', 空槽: 魂导器装配数量 <= 0 },
+        { label: '机甲', value: mechSummary, preview: '武装详情：机甲', 状态: 机甲已在线 ? 'active' : 机甲待装配 ? 'standby' : 'empty' },
+        { label: '防具', value: 防具摘要, preview: '武装详情：防具', 状态: 防具已在线 ? 'active' : 防具待装配 ? 'standby' : 'empty' },
+      ];
+      const 武装槽位HTML = 武装槽位条目列表
         .map(构建武装模块槽位)
         .join('');
+      const 共鸣属性列表 = [
+        { 字段: '体力上限', 标签: '体力' },
+        { 字段: '魂力上限', 标签: '魂力' },
+        { 字段: '精神力上限', 标签: '精神' },
+        { 字段: '力量', 标签: '力量' },
+        { 字段: '防御', 标签: '防御' },
+        { 字段: '敏捷', 标签: '敏捷' },
+      ];
+      const 共鸣汇总 = Object.fromEntries(共鸣属性列表.map(属性 => [属性.字段, 0]));
+      const 累加共鸣属性 = 加成源 => {
+        if (!加成源 || typeof 加成源 !== 'object' || Array.isArray(加成源)) return;
+        共鸣属性列表.forEach(属性 => {
+          共鸣汇总[属性.字段] += toNumber(加成源[属性.字段], 0);
+        });
+      };
+      if (斗铠已在线) 累加共鸣属性(deepGet(armor, '_属性加成', deepGet(armor, '属性加成', {})));
+      if (机甲已在线) 累加共鸣属性(deepGet(mech, '_属性加成', deepGet(mech, '属性加成', {})));
+      if (主武器已在线) 累加共鸣属性(deepGet(weapon, '属性加成', {}));
+      if (防具已在线) 累加共鸣属性(deepGet(防具, '属性加成', {}));
+      魂骨拓扑节点列表.forEach(节点 => 累加共鸣属性(节点.属性加成));
+      const 武装在线数量 = 武装槽位条目列表
+        .filter(条目 => (toText(条目.状态, '') || (条目.空槽 ? 'empty' : 'active')) === 'active')
+        .length;
+      const 共鸣激活 = 共鸣属性列表.some(属性 => Math.abs(共鸣汇总[属性.字段]) > 0);
+      const 共鸣汇总HTML = `
+        <div class="mvu-armory-resonance-panel${共鸣激活 ? ' is-live' : ' is-empty'}">
+          <div class="mvu-armory-resonance-head">
+            <b>武装共鸣</b>
+            <span>${htmlEscape(String(武装在线数量))} 模块在线</span>
+          </div>
+          <div class="mvu-armory-resonance-grid">
+            ${共鸣属性列表
+              .map(属性 => {
+                const 数值 = Math.round(共鸣汇总[属性.字段]);
+                const 显示值 = 数值 > 0 ? `+${formatNumber(数值)}` : 数值 < 0 ? formatNumber(数值) : '0';
+                return `<span class="${数值 === 0 ? 'is-zero' : 'is-live'}"><b>${htmlEscape(属性.标签)}</b><em>${htmlEscape(显示值)}</em></span>`;
+              })
+              .join('')}
+          </div>
+        </div>
+      `;
+      const 魂骨选中属性HTML = 魂骨选中节点 && 魂骨选中节点.属性加成
+        ? 共鸣属性列表
+            .map(属性 => {
+              const 数值 = Math.round(toNumber(魂骨选中节点.属性加成[属性.字段], 0));
+              if (!数值) return '';
+              return `<span><b>${htmlEscape(属性.标签)}</b><em>+${htmlEscape(formatNumber(数值))}</em></span>`;
+            })
+            .filter(Boolean)
+            .join('')
+        : '';
+      const 魂骨详情抽屉HTML = `
+        <section class="archive-card full mvu-armory-detail-drawer">
+          <div class="mvu-armory-drawer-focus">
+            <b>${htmlEscape(魂骨选中节点 ? 魂骨选中节点.槽位 : '头部魂骨')}</b>
+            <span>${htmlEscape(魂骨选中节点 && 魂骨选中节点.已装载 ? 魂骨选中节点.名称 : '未装载')}</span>
+          </div>
+          <div class="mvu-armory-drawer-meta">
+            <span><b>状态</b><em>${htmlEscape(魂骨选中节点 ? 魂骨选中节点.状态 : '未装载')}</em></span>
+            <span><b>品阶</b><em>${htmlEscape([魂骨选中节点 && 魂骨选中节点.年限 ? `${魂骨选中节点.年限}年` : '', 魂骨选中节点 && 魂骨选中节点.品质].filter(Boolean).join(' / ') || '无')}</em></span>
+            <span><b>技能</b><em>${htmlEscape(String(魂骨选中节点 ? 魂骨选中节点.技能数 : 0))}</em></span>
+          </div>
+          <div class="mvu-armory-drawer-bonus${魂骨选中属性HTML ? '' : ' is-empty'}">
+            ${魂骨选中属性HTML || '<span><b>加成</b><em>待接入</em></span>'}
+          </div>
+          <div class="mvu-armory-drawer-state ${魂骨选中节点 && 魂骨选中节点.已装载 ? 'is-live' : 'is-empty'}">
+            ${htmlEscape(魂骨选中节点 && 魂骨选中节点.已装载 ? '已装载' : '空槽')}
+          </div>
+        </section>
+      `;
 
       return {
         title: '武装工坊',
         summary: '',
         body: `
             <div class="equipment-layout armory-layout-single mvu-armory-detail-grid">
-              <div class="archive-card full mvu-armory-card mvu-armory-card--equipment">
-                <div class="archive-card-head"><div class="archive-card-title">当前武装</div></div>
-                <div class="mvu-armory-gear-grid">${武装槽位HTML}</div>
+              <div class="mvu-armory-main-grid">
+                <div class="archive-card full mvu-armory-card mvu-armory-card--equipment">
+                  <div class="archive-card-head"><div class="archive-card-title">当前武装</div></div>
+                  <div class="mvu-armory-equipment-flow">
+                    <div class="mvu-armory-gear-grid">${武装槽位HTML}</div>
+                    ${共鸣汇总HTML}
+                  </div>
+                </div>
+                <div class="archive-card full mvu-armory-card mvu-armory-card--bones${有魂骨装载 ? '' : ' is-empty'}">
+                  <div class="archive-card-head"><div class="archive-card-title">魂骨装载</div></div>
+                  ${魂骨装载HTML}
+                </div>
               </div>
-              <div class="archive-card full mvu-armory-card mvu-armory-card--bones${有魂骨装载 ? '' : ' is-empty'}">
-                <div class="archive-card-head"><div class="archive-card-title">魂骨装载</div></div>
-                ${魂骨装载HTML}
-              </div>
+              ${魂骨详情抽屉HTML}
             </div>
           `,
       };
@@ -35064,8 +35134,8 @@
         title: '储物仓库',
         summary: '当前背包、货币与核心物资。',
         body: `
-            <div class="archive-modal-grid">
-              <div class="archive-card full">
+            <div class="archive-modal-grid vault-modal-grid">
+              <div class="archive-card full vault-wallet-card">
                 <div class="archive-card-head"><div class="archive-card-title">钱包条</div></div>
                 ${makeWalletStrip([
                   {
@@ -35130,15 +35200,6 @@
                   </div>
                   ${构建物品分类筛选按钮(背包条目列表, 当前分类)}
                   <div class="mvu-inventory-registry-scroll">
-                    <div class="inventory-inline-tools">
-                      ${makeTileGrid(
-                        [
-                          { label: '当前视图', value: `${当前分类} / ${筛选背包条目列表.length}件` },
-                          { label: '当前选择', value: 正在加入物品 ? '加入物品' : 当前定义名 || '无' },
-                        ],
-                        'two compact',
-                      )}
-                    </div>
                     <div class="inventory-scroll-shell">${makeInventoryGrid(背包物品格子列表, { className: 'mvu-inventory-grid', selectedName: 当前定义名 })}</div>
                   </div>
                 </div>
@@ -35317,63 +35378,182 @@
       if (!config) return null;
       const pendingSoulRing = buildPendingSoulRingState(snapshot);
       const hasPendingSoulRingForCurrentSpirit = !!(pendingSoulRing && pendingSoulRing.spiritSlot === config.slotName);
+      const 渲染方括号文本 = 文本 =>
+        `<span class="mvu-spirit-terminal-tag">[ ${htmlEscape(toText(文本, ''))} ]</span>`;
+      const 渲染方括号内容 = 内容 => `<span class="mvu-spirit-terminal-tag">[ ${内容} ]</span>`;
+      const 渲染魂环赋能行 = (魂环, 年限内容 = '') => {
+        const 安全魂环 = 魂环 && typeof 魂环 === 'object' ? 魂环 : {};
+        const 技能 = 安全魂环.skills && 安全魂环.skills[0] && typeof 安全魂环.skills[0] === 'object' ? 安全魂环.skills[0] : {};
+        const 魂环标题 = toText(安全魂环.title, '魂环').trim();
+        const 魂环编号 = 魂环标题.split('·')[0].trim() || 魂环标题 || '魂环';
+        const 技能名 =
+          toText(技能.name, '').trim() ||
+          魂环标题
+            .split('·')
+            .slice(1)
+            .join('·')
+            .trim() ||
+          '魂技未显现';
+        const 类别文本 =
+          [技能.category || 技能.type, 技能.mainRole].map(条目 => toText(条目, '').trim()).filter(Boolean).join(' / ') ||
+          '未定';
+        const 目标文本 = toText(技能.target, '未知');
+        const 消耗文本 = toText(技能.cost, '未知');
+        const 前摇值 = Math.max(0, toNumber(技能.前摇, 0));
+        const 前摇文本 = 前摇值 > 0 ? formatNumber(前摇值) : '无';
+        const 年限Html = 年限内容 || htmlEscape(toText(安全魂环.ageText, '未记录'));
+        return `
+                          <div class="soul-ring-terminal-row">
+                            <div class="rings soul-ring-lane">
+                              <div class="ring ${安全魂环.ringClass || ''} interactive-ring">${htmlEscape(安全魂环.glyph || '')}${buildRingHoverMarkup(安全魂环)}</div>
+                            </div>
+                            <div class="soul-ring-terminal-body">
+                              <div class="soul-ring-terminal-title"><b>${htmlEscape(魂环编号)}</b><span>${htmlEscape(技能名)}</span></div>
+                              <div class="soul-ring-terminal-meta">
+                                <span><b>年限</b>${年限Html}</span>
+                                <span><b>类别</b>${htmlEscape(类别文本)}</span>
+                                <span><b>目标</b>${htmlEscape(目标文本)}</span>
+                                <span><b>消耗</b>${htmlEscape(消耗文本)}</span>
+                                <span><b>前摇</b>${htmlEscape(前摇文本)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        `;
+      };
+      const 渲染魂灵终端卡 = (魂灵, 序号) => {
+        const 是空魂灵 = !(魂灵 && Array.isArray(魂灵.path) && 魂灵.path.length);
+        const 魂灵名Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.spiritName, {
+                path: [...魂灵.path, '表象名称'],
+                kind: 'string',
+                rawValue: 魂灵.spiritName,
+              })
+            : htmlEscape(是空魂灵 ? '尚未接入魂灵' : 魂灵.spiritName);
+        const 品质Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.quality, {
+                path: [...魂灵.path, '品质'],
+                kind: 'string',
+                rawValue: 魂灵.quality,
+              })
+            : htmlEscape(魂灵.quality);
+        const 状态Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.state, {
+                path: [...魂灵.path, '状态'],
+                kind: 'string',
+                rawValue: 魂灵.state,
+              })
+            : htmlEscape(魂灵.state);
+        const 年限Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.age, {
+                path: [...魂灵.path, '年限'],
+                kind: 'number',
+                rawValue: 魂灵.ageValue,
+                editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+              })
+            : htmlEscape(魂灵.age);
+        const 契合度Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.comp, {
+                path: [...魂灵.path, '契合度'],
+                kind: 'number',
+                rawValue: 魂灵.compValue,
+                editorMeta: { min: 0, max: 100, integer: true, hint: '范围 0 - 100 · 整数' },
+              })
+            : htmlEscape(魂灵.comp);
+        const 描述Html =
+          !是空魂灵 && 魂灵.path && 魂灵.path.length
+            ? makeInlineEditableValue(魂灵.description, {
+                path: [...魂灵.path, '描述'],
+                kind: 'string',
+                rawValue: 魂灵.description,
+                multiline: true,
+              })
+            : htmlEscape(魂灵.description || '尚未接入魂灵。');
+        const 魂环Html =
+          魂灵.魂环 && 魂灵.魂环.length
+            ? 魂灵.魂环.map(魂环 => 渲染魂环赋能行(魂环, 年限Html)).join('')
+            : '<div class="soul-ring-empty">未挂载魂环</div>';
+        return `
+                    <div class="soul-expand-card soul-terminal-card${是空魂灵 ? ' is-empty' : ''}">
+                      <div class="soul-terminal-head">
+                        <div class="soul-terminal-title">${是空魂灵 ? 魂灵名Html : `第${序号 + 1}魂灵：${魂灵名Html}`}</div>
+                        <div class="soul-terminal-tags">
+                          ${是空魂灵 ? 渲染方括号文本('未接入') : `${渲染方括号内容(`品质：${品质Html}`)}${渲染方括号内容(状态Html)}${渲染方括号内容(`契合：${契合度Html}`)}`}
+                        </div>
+                      </div>
+                      <div class="soul-terminal-desc"><b>描述</b><span>${描述Html}</span></div>
+                      <div class="soul-terminal-link"><span>↓</span><b>赋能魂环</b></div>
+                      ${魂环Html}
+                    </div>
+                  `;
+      };
       return {
         title: '武魂',
         summary: '武魂、魂灵、魂环与魂技的实时展开。',
         body: `
-            <div class="archive-modal-grid mvu-spirit-detail-grid">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">武魂</div></div>
+            <div class="archive-modal-grid mvu-spirit-detail-grid mvu-spirit-archive-shell">
+              <div class="archive-card full spirit-terminal-card">
+                <div class="archive-card-head"><div class="archive-card-title">武魂档案</div></div>
                 <div class="spirit-main-card">
-                  <h4>${
-                    config.spiritPath && config.spiritPath.length
-                      ? makeInlineEditableValue(config.spiritName, {
-                          path: [...config.spiritPath, '表象名称'],
-                          kind: 'string',
-                          rawValue: config.spiritName,
-                        })
-                      : htmlEscape(config.spiritName)
-                  }</h4>
-                  <div class="spirit-head-tags">
-                    <span class="tag-chip ${config.badgeClass === 'gold' ? 'warn' : 'live'}">${htmlEscape(config.badge)}</span>
-                    <span class="tag-chip">${
+                  <div class="mvu-spirit-terminal-head">
+                    <div class="mvu-spirit-terminal-title">${
                       config.spiritPath && config.spiritPath.length
-                        ? makeInlineEditableValue(config.spiritType, {
-                            path: [...config.spiritPath, 'type'],
+                        ? makeInlineEditableValue(config.spiritName, {
+                            path: [...config.spiritPath, '表象名称'],
                             kind: 'string',
-                            rawValue: config.spiritType,
+                            rawValue: config.spiritName,
                           })
-                        : htmlEscape(config.spiritType)
-                    }</span>
-                    <span class="tag-chip">${
-                      config.spiritPath && config.spiritPath.length
-                        ? makeInlineEditableValue(`属性：${config.spiritElement}`, {
-                            path: [...config.spiritPath, '属性体系'],
-                            kind: 'enum_select',
-                            rawValue: config.spiritElement,
-                            editorMeta: { options: SPIRIT_ATTRIBUTE_SYSTEM_OPTIONS },
-                          })
-                        : htmlEscape(`属性：${config.spiritElement}`)
-                    }</span>
-                    <span class="tag-chip">${htmlEscape(`魂灵：${toNumber(config.soulCount, 0)}`)}</span>
-                    <span class="tag-chip">${htmlEscape(`独立环：${toNumber(config.independentRingCount, 0)}`)}</span>
-                    ${hasPendingSoulRingForCurrentSpirit ? `<button type="button" class="tag-chip warn clickable" data-preview="${escapeHtmlAttr(PENDING_SOUL_RING_PREVIEW_KEY)}">待生成魂环</button>` : ''}
+                        : htmlEscape(config.spiritName)
+                    }</div>
+                    <div class="mvu-spirit-terminal-tags">
+                      ${渲染方括号文本(config.badge)}
+                      ${渲染方括号内容(
+                        config.spiritPath && config.spiritPath.length
+                          ? makeInlineEditableValue(config.spiritType, {
+                              path: [...config.spiritPath, 'type'],
+                              kind: 'string',
+                              rawValue: config.spiritType,
+                            })
+                          : htmlEscape(config.spiritType),
+                      )}
+                      ${hasPendingSoulRingForCurrentSpirit ? `<button type="button" class="mvu-spirit-terminal-tag is-action" data-preview="${escapeHtmlAttr(PENDING_SOUL_RING_PREVIEW_KEY)}">[ 待生成魂环 ]</button>` : ''}
+                    </div>
                   </div>
-                  <div class="mvu-detail-text mvu-detail-text--framed">
-                    <b>武魂描述</b>
-                    ${
-                      config.spiritPath && config.spiritPath.length
-                        ? makeInlineEditableValue(config.spiritDesc, {
-                            path: [...config.spiritPath, '描述'],
-                            kind: 'string',
-                            rawValue: config.spiritDesc,
-                            multiline: true,
-                          })
-                        : htmlEscape(config.spiritDesc)
-                    }
+                  <div class="mvu-spirit-terminal-grid">
+                    <div class="mvu-spirit-param-lines">
+                      <div class="mvu-spirit-section-label">核心参数</div>
+                      <div><b>属性</b><span>${
+                        config.spiritPath && config.spiritPath.length
+                          ? makeInlineEditableValue(config.spiritElement, {
+                              path: [...config.spiritPath, '属性体系'],
+                              kind: 'enum_select',
+                              rawValue: config.spiritElement,
+                              editorMeta: { options: SPIRIT_ATTRIBUTE_SYSTEM_OPTIONS },
+                            })
+                          : htmlEscape(config.spiritElement)
+                      }</span></div>
+                      <div><b>魂灵共鸣</b><span>${htmlEscape(String(toNumber(config.soulCount, 0)))}</span></div>
+                      <div><b>独立环</b><span>${htmlEscape(String(toNumber(config.independentRingCount, 0)))}</span></div>
+                    </div>
+                    <div class="mvu-spirit-desc-lines">
+                      <div class="mvu-spirit-section-label">档案描述</div>
+                      <p>${
+                        config.spiritPath && config.spiritPath.length
+                          ? makeInlineEditableValue(config.spiritDesc, {
+                              path: [...config.spiritPath, '描述'],
+                              kind: 'string',
+                              rawValue: config.spiritDesc,
+                              multiline: true,
+                            })
+                          : htmlEscape(config.spiritDesc)
+                      }</p>
+                    </div>
                   </div>
-                  <div class="soul-meta mvu-detail-meta">
-                    <div class="meta-item"><b>可调用元素</b><span>${
+                  <div class="mvu-spirit-link-note"><span>↓</span><b>可调用元素</b><em>${
                       config.spiritPath && config.spiritPath.length
                         ? makeInlineEditableValue(config.spiritCallableElements.join('、') || '未设置', {
                             path: [...config.spiritPath, '可调用元素'],
@@ -35387,117 +35567,27 @@
                             },
                           })
                         : htmlEscape(config.spiritCallableElements.join('、') || '未设置')
-                    }</span></div>
-                  </div>
+                    }</em></div>
                 </div>
               </div>
               <div class="archive-card full spirit-flow-card mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">魂灵</div></div>
+                <div class="archive-card-head"><div class="archive-card-title">魂灵与魂环矩阵</div></div>
                 <div class="soul-expand-stack mvu-detail-scroll-list">
-                  ${config.souls
-                    .map(
-                      soul => `
-                    <div class="soul-expand-card">
-                      <div class="soul-expand-head">
-                        <div>
-                          <div class="soul-expand-title">${htmlEscape(soul.name)}</div>
-                        </div>
-                      </div>
-                      <div class="soul-meta">
-                        <div class="meta-item"><b>魂灵名</b><span>${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.spiritName, {
-                                path: [...soul.path, '表象名称'],
-                                kind: 'string',
-                                rawValue: soul.spiritName,
-                              })
-                            : htmlEscape(soul.spiritName)
-                        }</span></div>
-                        <div class="meta-item"><b>品质</b><span>${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.quality, {
-                                path: [...soul.path, '品质'],
-                                kind: 'string',
-                                rawValue: soul.quality,
-                              })
-                            : htmlEscape(soul.quality)
-                        }</span></div>
-                        <div class="meta-item"><b>状态</b><span>${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.state, {
-                                path: [...soul.path, '状态'],
-                                kind: 'string',
-                                rawValue: soul.state,
-                              })
-                            : htmlEscape(soul.state)
-                        }</span></div>
-                        <div class="meta-item"><b>年限</b><span>${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.age, {
-                                path: [...soul.path, '年限'],
-                                kind: 'number',
-                                rawValue: soul.ageValue,
-                                editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                              })
-                            : htmlEscape(soul.age)
-                        }</span></div>
-                        <div class="meta-item"><b>契合度</b><span>${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.comp, {
-                                path: [...soul.path, '契合度'],
-                                kind: 'number',
-                                rawValue: soul.compValue,
-                                editorMeta: { min: 0, max: 100, integer: true, hint: '范围 0 - 100 · 整数' },
-                              })
-                            : htmlEscape(soul.comp)
-                        }</span></div>
-                      </div>
-                      <div class="mvu-detail-text mvu-detail-text--framed">
-                        <b>魂灵描述</b>
-                        ${
-                          soul.path && soul.path.length
-                            ? makeInlineEditableValue(soul.description, {
-                                path: [...soul.path, '描述'],
-                                kind: 'string',
-                                rawValue: soul.description,
-                                multiline: true,
-                              })
-                            : htmlEscape(soul.description)
-                        }
-                      </div>
-                      ${
-                        soul.魂环.length
-                          ? `
-                        <div class="soul-ring-section">
-                          <div class="rings soul-ring-lane">
-                            ${soul.魂环.map(ring => `<div class="ring ${ring.ringClass} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
-                          </div>
-                        </div>
-                      `
-                          : ''
-                      }
-                    </div>
-                  `,
-                    )
-                    .join('')}
+                  ${config.souls.map((魂灵, 序号) => 渲染魂灵终端卡(魂灵, 序号)).join('')}
                   ${
                     config.independentRings && config.independentRings.length
                       ? `
-                    <div class="soul-expand-card">
-                      <div class="soul-expand-head">
-                        <div>
-                          <div class="soul-expand-title">独立魂环</div>
+                    <div class="soul-expand-card soul-terminal-card soul-terminal-card--independent">
+                      <div class="soul-terminal-head">
+                        <div class="soul-terminal-title">独立魂环</div>
+                        <div class="soul-terminal-tags">
+                          ${渲染方括号文本(`数量：${config.independentRings.length}`)}
+                          ${渲染方括号文本('直接承载')}
                         </div>
                       </div>
-                      <div class="soul-meta">
-                        <div class="meta-item"><b>数量</b><span>${htmlEscape(String(config.independentRings.length))}</span></div>
-                        <div class="meta-item"><b>说明</b><span>独立承载，不绑定魂灵槽位</span></div>
-                      </div>
-                      <div class="soul-ring-section">
-                        <div class="rings soul-ring-lane">
-                          ${config.independentRings.map(ring => `<div class="ring ${ring.ringClass} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
-                        </div>
-                      </div>
+                      <div class="soul-terminal-desc"><b>说明</b><span>独立承载，不绑定魂灵槽位</span></div>
+                      <div class="soul-terminal-link"><span>↓</span><b>赋能魂技</b></div>
+                      ${config.independentRings.map(魂环 => 渲染魂环赋能行(魂环)).join('')}
                     </div>
                   `
                       : ''
@@ -36441,10 +36531,10 @@
           }
         </div>
       `;
-      const 取人物状态色调 = 状态文本 => {
-        const 文本 = toText(状态文本, '');
-        if (/战斗|受伤|危险|昏迷|重伤|濒死/.test(文本)) return 'is-danger';
-        if (/修炼|任务|移动|赶路|执行|巡逻/.test(文本)) return 'is-warn';
+      const 取人物状态色调 = 角色 => {
+        const 文本 = `${getDisplayWoundLabel(deepGet(角色, '属性', {}))} ${toText(deepGet(角色, '状态.死亡类型', '无'), '无')}`;
+        if (/战斗|受伤|危险|昏迷|重伤|濒死|死亡|意外|自然/.test(文本)) return 'is-danger';
+        if (/轻伤|中伤|重伤/.test(文本)) return 'is-warn';
         return 'is-live';
       };
       const localNpcCardsHtml = localNpcEntries.length
@@ -36454,7 +36544,6 @@
               const identityRaw = toText(deepGet(char, '社交.主身份', '未知身份'), '未知身份');
               const identity = identityRaw && identityRaw !== displayName ? identityRaw : '未标注';
               const npcLoc = toText(deepGet(char, '状态.位置', '未知地点'), '未知地点');
-              const npcAction = toText(deepGet(char, '状态.行动', '日常'), '日常');
               const 对象委托能力 = 获取角色工坊委托能力摘要(char);
               const npcButtons =
                 isPlayerControlled && canDispatchHere
@@ -36466,14 +36555,13 @@
                     <button type="button" class="map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">切磋</button>
                   </div>`
                   : '';
-              const 状态色调 = 取人物状态色调(npcAction);
+              const 状态色调 = 取人物状态色调(char);
               return `
                 <article class="location-npc-card">
                   <div class="location-npc-main">
                     <div class="location-npc-title">
                       <span class="location-npc-status ${状态色调}"></span>
                       <b>${htmlEscape(shortenText(displayName, 18))}</b>
-                      <em>${htmlEscape(shortenText(npcAction, 12))}</em>
                     </div>
                     <div class="location-npc-tags">
                       <span>${htmlEscape(shortenText(identity, 24))}</span>
@@ -38598,7 +38686,6 @@
     };
 
     let 玩家输入 = '';
-    let 状态行动 = '任务处理中';
     let 播报文本 = '';
     let 结果摘要 = '';
 
@@ -38623,7 +38710,6 @@
         { op: 'replace', path: 任务路径, value: 任务条目 },
         { op: 'replace', path: 委托路径, value: 委托条目 },
       );
-      状态行动 = '接取委托';
       玩家输入 = `我想接取委托板上的【${委托标题}】。`;
       播报文本 = `[任务接取] ${角色名} 接取了悬赏：【${任务名}】。目标：${任务说明}。`;
       结果摘要 = `任务已写入我的任务，委托板状态改为进行中。`;
@@ -38645,7 +38731,6 @@
       }
       补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
-      状态行动 = '任务推进';
       玩家输入 = `我想推进任务【${任务名}】的进度。`;
       结果摘要 = `任务进度已结算到我的任务${委托条目 ? '，委托板状态已同步' : ''}。`;
     } else if (actionType === 'submit') {
@@ -38679,7 +38764,6 @@
         { op: 'replace', path: `/char/${角色路径}/社交/声望`, value: 声望 },
       );
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
-      状态行动 = '提交任务';
       玩家输入 = `我想提交当前任务【${任务名}】。`;
       结果摘要 = `任务提交结果已结算到我的任务${委托条目 ? '，委托板状态已同步' : ''}。`;
     } else if (actionType === 'abandon') {
@@ -38695,7 +38779,6 @@
       }
       补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
-      状态行动 = '放弃任务';
       玩家输入 = `我想放弃当前任务【${任务名}】。`;
       播报文本 = `[任务放弃] ${角色名} 放弃了悬赏：【${任务名}】。`;
       结果摘要 = `任务已标记为放弃${委托条目 ? '，委托板已恢复待接取' : ''}。`;
@@ -38704,10 +38787,7 @@
     }
 
     if (!补丁列表.length || !播报文本) return null;
-    补丁列表.push(
-      { op: 'replace', path: `/char/${角色路径}/状态/行动`, value: 状态行动 },
-      { op: 'replace', path: '/sys/系统播报', value: 播报文本 },
-    );
+    补丁列表.push({ op: 'replace', path: '/sys/系统播报', value: 播报文本 });
 
     const systemPrompt = `以下内容属于前端已经完成的任务操作结算，不要在正文直接复述“JSONPatch / 系统分析 / 仲裁日志”等术语。
 
@@ -39072,10 +39152,17 @@ ${播报文本}
                   </div>
                   <div class="summon-queue" id="ui-summon-queue" hidden></div>
                   <div class="action-wrap">
-                    <div class="battle-toolbar">
+                    <div class="action-filters" id="ui-action-filters"></div>
+                    <div class="action-grid" id="ui-action-grid"></div>
+                    <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
+                    <textarea id="ui-intent-output" hidden></textarea>
+                  </div>
+                  <div class="battle-exec-bar">
+                    <div class="battle-target-controls" id="ui-target-controls" hidden></div>
+                    <div class="battle-settings-strip">
                       <div class="mode-group" id="ui-mode-group">
                         <button class="mode-btn active" type="button" data-mode="single_round">单回合</button>
-                        <button class="mode-btn" type="button" data-mode="multi_round">连续推演</button>
+                        <button class="mode-btn" type="button" data-mode="multi_round">连续</button>
                       </div>
                       <div class="mode-group battle-submit-mode-group" id="ui-battle-submit-mode-group">
                         <span class="battle-submit-mode-label" id="ui-battle-submit-mode-label">手动</span>
@@ -39085,25 +39172,20 @@ ${播报文本}
                       </div>
                       <select class="request-console-input battle-intent-select" id="ui-intent-mode">
                         <option value="点到为止" selected>点到为止</option>
-                        <option value="尽量生擒">尽量生擒</option>
-                        <option value="重伤压制">重伤压制</option>
+                        <option value="尽量生擒">生擒</option>
+                        <option value="重伤压制">压制</option>
                         <option value="必杀">必杀</option>
                       </select>
-                      <div class="battle-toolbar-actions">
-                        <button class="ghost-btn" id="ui-arbitrate" type="button">结算</button>
-                        <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">退出</button>
-                      </div>
                     </div>
-                    <div class="action-filters" id="ui-action-filters"></div>
-                    <div class="action-grid" id="ui-action-grid"></div>
-                    <div class="battle-target-controls" id="ui-target-controls" hidden></div>
-                    <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
-                    <textarea id="ui-intent-output" hidden></textarea>
+                    <div class="battle-exec-actions">
+                      <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">结算</button>
+                      <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">退出</button>
+                    </div>
                   </div>
                 </div>
                 <div class="side-rail"><div class="side-panel" id="ui-team-enemy"></div></div>
               </div>
-              <div class="skill-tooltip" id="ui-skill-tooltip"></div>
+              <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
             </section>
           </div>
         </div>`;
@@ -39408,8 +39490,6 @@ ${播报文本}
       'mvu-unified-action-btn mvu-unified-grid-btn mvu-battle-return-entry',
       `<span>${htmlEscape(summary.title)}</span><small>${htmlEscape(summary.meta)}</small>`,
     );
-    const unifiedTabRow = document.querySelector('#mvu-unified-mount .mvu-unified-tab-row');
-    ensureBattleReturnEntry(unifiedTabRow, 'mvu-tab-btn mvu-battle-return-tab', htmlEscape(summary.title));
   }
 
   function scheduleBattleReturnEntrySync(snapshot, isActive) {
@@ -40113,9 +40193,9 @@ ${播报文本}
     return 计算临时装备等效属性包(锚点.起始等级, 锚点.目标等级);
   }
 
-  function 填充临时斗铠部件(斗铠) {
+  function 填充临时斗铠部件(斗铠, 性别文本 = '') {
     if (!斗铠 || typeof 斗铠 !== 'object') return;
-    const 部件名列表 = ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴'];
+    const 部件名列表 = 读取斗铠部件槽位列表_桥接(性别文本);
     if (!斗铠.部件 || typeof 斗铠.部件 !== 'object') 斗铠.部件 = {};
     部件名列表.forEach(部件名 => {
       if (!斗铠.部件[部件名]) 斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
@@ -40138,7 +40218,7 @@ ${播报文本}
       equipment.斗铠.等级 = armorLevel;
       equipment.斗铠.名称 = `${armorLevel}字斗铠`;
       equipment.斗铠.装备状态 = '未装备';
-      填充临时斗铠部件(equipment.斗铠);
+      填充临时斗铠部件(equipment.斗铠, toText(seed?.性别 ?? seed?.gender ?? seed?.属性?.性别 ?? request?.性别 ?? request?.gender, ''));
     }
     return stats;
   }
@@ -41025,10 +41105,11 @@ ${toText(combatData.战斗意图, '点到为止')}
   async function 自动执行战斗模块路由(snapshot, request = {}) {
     let 开启结果 = null;
     let 当前快照 = snapshot;
+    let 战斗已接管 = deepGet(当前快照, 'rootData.world.战斗.进行中', false) === true;
     if (deepGet(当前快照, 'rootData.world.战斗.进行中', false)) {
       const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'auto_battle_route_continuation');
       if (!模块加载结果 || 模块加载结果.ok === false) {
-        return { ok: false, reason: '战斗模块加载失败。' };
+        return { ok: false, reason: '战斗模块加载失败。', 已接管: 战斗已接管 };
       }
     } else {
       开启结果 = await openMapBattleModule(当前快照, request, { skipUi: true });
@@ -41038,32 +41119,38 @@ ${toText(combatData.战斗意图, '点到为止')}
         开启结果 = await openMapBattleModule(当前快照, request, { skipUi: true });
       }
       if (!开启结果?.ok) return 开启结果 || { ok: false, reason: 'battle_auto_open_failed' };
+      战斗已接管 = true;
       当前快照 = liveSnapshot || lastRenderableSnapshot || 当前快照;
     }
     const 原始战斗 = deepGet(当前快照, 'rootData.world.战斗', 开启结果?.combatData || {});
     const 战斗数据 = normalizeCombatForBattleUI(buildBattleUiSnapshot(当前快照, 原始战斗)) || 原始战斗;
     if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
-      return { ok: false, reason: 'battle_context_missing' };
+      return { ok: false, reason: 'battle_context_missing', 已接管: 战斗已接管 };
     }
     const 运行器结果 = await 确保自动战斗运行器(当前快照, 战斗数据);
-    if (!运行器结果?.ok) return 运行器结果;
+    if (!运行器结果?.ok) return { ...(运行器结果 || {}), ok: false, 已接管: 战斗已接管 };
     const 执行函数 = window.BattleUIBridge?.executeBattleFlow;
-    if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_auto_engine_unavailable' };
+    if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_auto_engine_unavailable', 已接管: 战斗已接管 };
     自动战斗延后写回次数 += 1;
     let 执行结果 = null;
     try {
       执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 4 });
     } catch (error) {
       自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
-      return { ok: false, reason: error && error.message ? error.message : 'battle_auto_engine_failed' };
+      return { ok: false, reason: error && error.message ? error.message : 'battle_auto_engine_failed', 已接管: 战斗已接管 };
     }
     自动战斗延后写回次数 = 0;
     const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
-    const 提交结果 = await dispatchUiAiRequest('自动战斗推进', 构建自动战斗裁断提示(战斗数据, 执行结果), {
-      requestKind: 'battle_arbitration',
-      patchOps,
-      skipActionLock: true,
-    });
+    let 提交结果 = null;
+    try {
+      提交结果 = await dispatchUiAiRequest('自动战斗推进', 构建自动战斗裁断提示(战斗数据, 执行结果), {
+        requestKind: 'battle_arbitration',
+        patchOps,
+        skipActionLock: true,
+      });
+    } catch (error) {
+      return { ok: false, reason: error && error.message ? error.message : 'battle_auto_dispatch_failed', 已接管: 战斗已接管 };
+    }
     跳过战斗终端自动挂载 = false;
     return {
       ok: 提交结果?.ok !== false,
@@ -41071,6 +41158,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       result: 执行结果,
       combatData: 战斗数据,
       reason: 提交结果?.reason || '',
+      已接管: 战斗已接管,
     };
   }
 
@@ -42816,6 +42904,14 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (战斗提交模式 === 'auto') {
         const result = await 自动执行战斗模块路由(snapshot, request);
         if (!result?.ok) {
+          if (result?.已接管) {
+            showUiToast(`自动战斗失败：${result.reason || 'battle_auto_failed'}`, 'error', 4200);
+            return 构建模块路由成功结果(moduleKind, request, {
+              dispatchMode: 'battle_auto_failed_after_takeover',
+              reason: result.reason || 'battle_auto_failed',
+              result,
+            });
+          }
           return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_auto_failed', { result });
         }
         return 构建模块路由成功结果(moduleKind, request, {
@@ -43511,11 +43607,12 @@ ${toText(combatData.战斗意图, '点到为止')}
       统一挂载.contains(触发源)
     );
     if (来自统一状态栏) {
+      const 来自统一详情页 = !!触发源.closest('[data-unified-detail-host]');
       打开统一内嵌详情(targetKey, {
         ...options,
         triggerEl: 触发源,
         preserveMapDispatchContext: true,
-        replace: true,
+        replace: !来自统一详情页,
       });
       return;
     }
@@ -43790,6 +43887,47 @@ ${toText(combatData.战斗意图, '点到为止')}
     );
   }
 
+  function 读取仓库钱包签名(快照 = {}) {
+    const 当前角色 = deepGet(快照, 'activeChar', {});
+    const 财富 = 当前角色 && typeof 当前角色 === 'object' ? deepGet(当前角色, '财富', {}) : {};
+    return ['联邦币', '星罗币', '唐门积分', '学院积分', '战功'].map(字段名 => String(toNumber(财富[字段名], 0))).join('|');
+  }
+
+  function 同步仓库页动效(宿主节点, 快照, 选中物品名 = '') {
+    if (!(宿主节点 instanceof Element)) return;
+    const 详情节点 = 宿主节点.querySelector('.inventory-detail-terminal');
+    const 新选中 = toText((详情节点 && 详情节点.getAttribute('data-current-item')) || 选中物品名, '').trim();
+    const 首次渲染 = 上次仓库选中物品名 === '' && 上次仓库钱包签名 === '';
+    const 选中已变化 = 新选中 && 新选中 !== 上次仓库选中物品名;
+    if (选中已变化 && !首次渲染) {
+      if (详情节点) {
+        详情节点.classList.remove('is-holo-enter');
+        void 详情节点.offsetWidth;
+        详情节点.classList.add('is-holo-enter');
+        window.setTimeout(() => 详情节点.classList.remove('is-holo-enter'), 260);
+      }
+    }
+    上次仓库选中物品名 = 新选中;
+    const 新钱包签名 = 读取仓库钱包签名(快照 || {});
+    const 旧钱包值列表 = 上次仓库钱包签名.split('|');
+    const 新钱包值列表 = 新钱包签名.split('|');
+    const 钱包标签列表 = ['联邦币', '星罗币', '唐门积分', '学院积分', '战功'];
+    const 钱包节点列表 = Array.from(宿主节点.querySelectorAll('.wallet-data-chip'));
+    if (!首次渲染 && 新钱包签名 !== 上次仓库钱包签名) {
+      钱包节点列表.forEach(钱包节点 => {
+        const 标签 = toText(钱包节点.getAttribute('data-wallet-key'), '');
+        const 索引 = 钱包标签列表.indexOf(标签);
+        if (索引 >= 0 && 旧钱包值列表[索引] !== 新钱包值列表[索引]) {
+          钱包节点.classList.remove('is-value-pulse');
+          void 钱包节点.offsetWidth;
+          钱包节点.classList.add('is-value-pulse');
+          window.setTimeout(() => 钱包节点.classList.remove('is-value-pulse'), 360);
+        }
+      });
+    }
+    上次仓库钱包签名 = 新钱包签名;
+  }
+
   function bindUnifiedDetailDelegation(host) {
     if (!host || host.__mvuUnifiedDetailDelegationBound) return;
     host.addEventListener('click', event => {
@@ -43833,6 +43971,9 @@ ${toText(combatData.战斗意图, '点到为止')}
         activeSubUI = onMount(host);
       }
       scheduleUnifiedMapCanvasClamp(host);
+      if (targetKey === '储物仓库详细页') {
+        同步仓库页动效(host, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+      }
     };
 
     if (targetKey === BATTLE_INLINE_PREVIEW_KEY) {
@@ -43918,6 +44059,9 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (typeof liveArchive.onMount === 'function') {
         activeSubUI = liveArchive.onMount(modalBody);
       }
+      if (previewKey === '储物仓库详细页') {
+        同步仓库页动效(modalBody, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+      }
       return;
     }
     const liveRequiredKeys = new Set([
@@ -43964,6 +44108,9 @@ ${toText(combatData.战斗意图, '点到为止')}
         modalBody.innerHTML = wrapArchiveRedesignBody(skeletonArchive.body, { unifiedMode, previewKey });
         if (shouldResetModalScroll) modalBody.scrollTop = 0;
         同步AI维护标题入口(previewKey);
+        if (previewKey === '储物仓库详细页') {
+          同步仓库页动效(modalBody, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+        }
         return;
       }
       modalPanel.classList.add('archive-mode');
@@ -43979,6 +44126,9 @@ ${toText(combatData.战斗意图, '点到为止')}
       modalBody.innerHTML = wrapArchiveRedesignBody('', { unifiedMode, previewKey });
       if (shouldResetModalScroll) modalBody.scrollTop = 0;
       同步AI维护标题入口(previewKey);
+      if (previewKey === '储物仓库详细页') {
+        同步仓库页动效(modalBody, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+      }
       return;
     }
     const archiveBuilder = archiveModalBuilders[previewKey];
@@ -43998,6 +44148,9 @@ ${toText(combatData.战斗意图, '点到为止')}
       modalBody.innerHTML = wrapArchiveRedesignBody(view.body, { unifiedMode, previewKey });
       if (shouldResetModalScroll) modalBody.scrollTop = 0;
       同步AI维护标题入口(previewKey);
+      if (previewKey === '储物仓库详细页') {
+        同步仓库页动效(modalBody, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+      }
       return;
     }
     const config = previewMap[previewKey] || buildDynamicPreview(previewKey || '详细弹窗');
@@ -44138,10 +44291,11 @@ ${toText(combatData.战斗意图, '点到为止')}
       统一挂载 &&
       统一挂载.contains(预览入口)
     ) {
+      const 来自统一详情页 = !!预览入口.closest('[data-unified-detail-host]');
       return 打开统一内嵌详情(预览键, {
         triggerEl: 预览入口,
         preserveMapDispatchContext: true,
-        replace: true,
+        replace: !来自统一详情页,
       });
     }
     const 弹窗参数 = {
@@ -44469,7 +44623,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       event.preventDefault();
       event.stopPropagation();
       const 拖拽视口 = relationFocusBtn.closest('.relation-topology-viewport');
-      if (拖拽视口 instanceof HTMLElement && toNumber(拖拽视口.dataset.relationPanSuppressClickUntil, 0) > Date.now()) return;
+      if (拖拽视口 instanceof HTMLElement && toNumber(拖拽视口.dataset.relationDragSuppressClickUntil, 0) > Date.now()) return;
       const targetName = relationFocusBtn.getAttribute('data-relation-focus') || '';
       if (targetName && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::relation-focus`] = targetName;
@@ -44536,6 +44690,18 @@ ${toText(combatData.战斗意图, '点到为止')}
       event.preventDefault();
       event.stopPropagation();
       await 处理技能内联动作按钮点击_桥接(skillActionBtn);
+      return;
+    }
+
+    const 武装魂骨槽位按钮 = eventTarget ? eventTarget.closest('[data-armory-bone-slot]') : null;
+    if (武装魂骨槽位按钮 && detailSurfaceHost.contains(武装魂骨槽位按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 魂骨槽位 = toText(武装魂骨槽位按钮.getAttribute('data-armory-bone-slot'), '').trim();
+      if (魂骨槽位) {
+        modalFocusState['武装工坊详细页::bone-slot'] = 魂骨槽位;
+        rerenderDetailSurface('武装工坊详细页', options);
+      }
       return;
     }
 
@@ -45009,14 +45175,6 @@ ${toText(combatData.战斗意图, '点到为止')}
               value: `[委托发布] ${activeName} 在【${currentLoc}】发布委托【${boardName}】。`,
             },
           ];
-          const 行动路径角色 = resolveSnapshotCharKey(当前快照, activeName);
-          if (行动路径角色) {
-            委托补丁.push({
-              op: 'replace',
-              path: `/char/${escapeJsonPointerValue(行动路径角色)}/状态/行动`,
-              value: '发布委托',
-            });
-          }
           modalFocusState['任务界面::quest-board-focus'] = boardName;
           await dispatchUiAiRequest(
             `我想在【${currentLoc}】发布委托【${boardName}】。`,
@@ -45566,6 +45724,18 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
 
+    const 斗铠部件槽位按钮 = eventTarget ? eventTarget.closest('[data-armor-part-slot]') : null;
+    if (斗铠部件槽位按钮 && detailSurfaceHost.contains(斗铠部件槽位按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 槽位 = toText(斗铠部件槽位按钮.getAttribute('data-armor-part-slot'), '').trim();
+      if (槽位 && detailPreviewKey === '武装详情：斗铠') {
+        modalFocusState[`${detailPreviewKey}::armor-part-slot`] = 槽位;
+        rerenderDetailSurface(detailPreviewKey, options);
+      }
+      return;
+    }
+
     const previewClickable = eventTarget ? eventTarget.closest('.clickable[data-preview]') : null;
     if (previewClickable && detailSurfaceHost.contains(previewClickable)) {
       if (是否保留卡片内部控件点击(eventTarget, detailSurfaceHost)) return;
@@ -45617,74 +45787,123 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   const 关系拓扑拖拽状态 = {
     视口: null,
-    画布: null,
+    拓扑板: null,
+    节点: null,
+    连线: null,
     指针ID: null,
     起点X: 0,
     起点Y: 0,
-    基准X: 0,
-    基准Y: 0,
-    当前X: 0,
-    当前Y: 0,
+    起始Left: 0,
+    起始Top: 0,
+    当前Left: 0,
+    当前Top: 0,
     已拖动: false,
+    待选目标名: '',
+    待选预览键: '',
+    待选表面: '',
   };
 
-  function 读取关系拓扑位移(视口) {
-    if (!(视口 instanceof HTMLElement)) return { x: 0, y: 0 };
-    return {
-      x: toNumber(视口.dataset.relationPanX, 0),
-      y: toNumber(视口.dataset.relationPanY, 0),
-    };
+  function 写入关系拓扑节点位置(节点, 连线, left, top) {
+    if (节点 instanceof HTMLElement) {
+      节点.style.left = `${left}%`;
+      节点.style.top = `${top}%`;
+    }
+    if (连线 instanceof SVGLineElement) {
+      连线.setAttribute('x2', String(left));
+      连线.setAttribute('y2', String(top));
+    }
   }
 
-  function 应用关系拓扑位移(视口, 画布, x, y) {
-    if (!(视口 instanceof HTMLElement) || !(画布 instanceof HTMLElement)) return;
-    const 限制X = Math.max(-180, Math.min(180, x));
-    const 限制Y = Math.max(-120, Math.min(120, y));
-    视口.dataset.relationPanX = String(Math.round(限制X));
-    视口.dataset.relationPanY = String(Math.round(限制Y));
-    画布.style.transform = `translate3d(${限制X}px, ${限制Y}px, 0)`;
+  function 读取关系拓扑百分比值(值, fallback = 50) {
+    const 数值 = Number(String(值 ?? '').replace('%', '').trim());
+    return Number.isFinite(数值) ? 数值 : fallback;
   }
 
-  function 结束关系拓扑拖拽() {
+  function 结束关系拓扑拖拽(允许切换 = true) {
+    const 应切换关系焦点 =
+      允许切换 &&
+      !!关系拓扑拖拽状态.待选目标名 &&
+      关系拓扑拖拽状态.待选预览键 === '人物关系详细页' &&
+      !关系拓扑拖拽状态.已拖动;
+    const 应保存节点位置 =
+      !!关系拓扑拖拽状态.待选目标名 &&
+      !!关系拓扑拖拽状态.待选预览键 &&
+      关系拓扑拖拽状态.已拖动;
+    const 待选目标名 = 关系拓扑拖拽状态.待选目标名;
+    const 待选预览键 = 关系拓扑拖拽状态.待选预览键;
+    const 待选表面 = 关系拓扑拖拽状态.待选表面;
     if (关系拓扑拖拽状态.视口) {
-      if (关系拓扑拖拽状态.已拖动) {
-        关系拓扑拖拽状态.视口.dataset.relationPanSuppressClickUntil = String(Date.now() + 180);
+      if (关系拓扑拖拽状态.已拖动 || 应切换关系焦点) {
+        关系拓扑拖拽状态.视口.dataset.relationDragSuppressClickUntil = String(Date.now() + 180);
       }
-      关系拓扑拖拽状态.视口.classList.remove('is-panning');
-      if (关系拓扑拖拽状态.指针ID != null && typeof 关系拓扑拖拽状态.视口.releasePointerCapture === 'function') {
+      关系拓扑拖拽状态.视口.classList.remove('is-node-dragging');
+      if (关系拓扑拖拽状态.节点 instanceof HTMLElement) {
+        关系拓扑拖拽状态.节点.classList.remove('is-dragging');
+      }
+      const 捕获节点 = 关系拓扑拖拽状态.节点 || 关系拓扑拖拽状态.视口;
+      if (关系拓扑拖拽状态.指针ID != null && typeof 捕获节点.releasePointerCapture === 'function') {
         try {
-          关系拓扑拖拽状态.视口.releasePointerCapture(关系拓扑拖拽状态.指针ID);
+          捕获节点.releasePointerCapture(关系拓扑拖拽状态.指针ID);
         } catch (err) {}
       }
     }
+    if (应保存节点位置) {
+      modalFocusState[`${待选预览键}::relation-node-pos::${待选目标名}`] = {
+        left: Math.round(关系拓扑拖拽状态.当前Left * 10) / 10,
+        top: Math.round(关系拓扑拖拽状态.当前Top * 10) / 10,
+      };
+    }
     关系拓扑拖拽状态.视口 = null;
-    关系拓扑拖拽状态.画布 = null;
+    关系拓扑拖拽状态.拓扑板 = null;
+    关系拓扑拖拽状态.节点 = null;
+    关系拓扑拖拽状态.连线 = null;
     关系拓扑拖拽状态.指针ID = null;
     关系拓扑拖拽状态.已拖动 = false;
+    关系拓扑拖拽状态.待选目标名 = '';
+    关系拓扑拖拽状态.待选预览键 = '';
+    关系拓扑拖拽状态.待选表面 = '';
+    if (应切换关系焦点) {
+      modalFocusState[`${待选预览键}::relation-focus`] = 待选目标名;
+      rerenderDetailSurface(待选预览键, { surface: 待选表面 || 'modal', force: true });
+    }
   }
 
   document.addEventListener('pointerdown', event => {
     const eventTarget = event.target instanceof Element ? event.target : null;
     const 视口 = eventTarget ? eventTarget.closest('.relation-topology-viewport') : null;
+    const 关系焦点按钮 = eventTarget ? eventTarget.closest('[data-relation-focus]') : null;
     if (!(视口 instanceof HTMLElement) || event.button > 0) return;
     if (eventTarget && eventTarget.closest('select, option, input, textarea')) return;
-    const 画布 = 视口.querySelector('.relation-topology-canvas');
-    if (!(画布 instanceof HTMLElement)) return;
-    const 当前位移 = 读取关系拓扑位移(视口);
+    if (!(关系焦点按钮 instanceof HTMLElement)) return;
+    const 拓扑板 = 关系焦点按钮.closest('.relation-topology-board');
+    if (!(拓扑板 instanceof HTMLElement)) return;
+    const 目标名 = toText(关系焦点按钮.getAttribute('data-relation-focus'), '').trim();
+    const 关系连线 = Array.from(拓扑板.querySelectorAll('.topology-link[data-relation-link]')).find(
+      节点 => 节点 instanceof SVGLineElement && 节点.getAttribute('data-relation-link') === 目标名,
+    );
     关系拓扑拖拽状态.视口 = 视口;
-    关系拓扑拖拽状态.画布 = 画布;
+    关系拓扑拖拽状态.拓扑板 = 拓扑板;
+    关系拓扑拖拽状态.节点 = 关系焦点按钮;
+    关系拓扑拖拽状态.连线 = 关系连线 instanceof SVGLineElement ? 关系连线 : null;
     关系拓扑拖拽状态.指针ID = event.pointerId;
     关系拓扑拖拽状态.起点X = event.clientX;
     关系拓扑拖拽状态.起点Y = event.clientY;
-    关系拓扑拖拽状态.基准X = 当前位移.x;
-    关系拓扑拖拽状态.基准Y = 当前位移.y;
-    关系拓扑拖拽状态.当前X = 当前位移.x;
-    关系拓扑拖拽状态.当前Y = 当前位移.y;
+    关系拓扑拖拽状态.起始Left = 读取关系拓扑百分比值(关系焦点按钮.style.left, 50);
+    关系拓扑拖拽状态.起始Top = 读取关系拓扑百分比值(关系焦点按钮.style.top, 50);
+    关系拓扑拖拽状态.当前Left = 关系拓扑拖拽状态.起始Left;
+    关系拓扑拖拽状态.当前Top = 关系拓扑拖拽状态.起始Top;
     关系拓扑拖拽状态.已拖动 = false;
-    视口.classList.add('is-panning');
-    if (typeof 视口.setPointerCapture === 'function') {
+    const 统一挂载 = document.getElementById('mvu-unified-mount');
+    const 在统一页 = !!(关系焦点按钮 && 统一挂载 && 统一挂载.contains(关系焦点按钮));
+    关系拓扑拖拽状态.待选目标名 = 目标名;
+    关系拓扑拖拽状态.待选预览键 = 在统一页
+      ? currentUnifiedPreviewKey || getDomUnifiedPreviewKey() || ''
+      : currentModalPreviewKey || currentUnifiedPreviewKey || '';
+    关系拓扑拖拽状态.待选表面 = 在统一页 ? 'unified' : 'modal';
+    视口.classList.add('is-node-dragging');
+    if (typeof 关系焦点按钮.setPointerCapture === 'function') {
       try {
-        视口.setPointerCapture(event.pointerId);
+        关系焦点按钮.setPointerCapture(event.pointerId);
       } catch (err) {}
     }
   });
@@ -45692,24 +45911,39 @@ ${toText(combatData.战斗意图, '点到为止')}
   document.addEventListener(
     'pointermove',
     event => {
-      if (!关系拓扑拖拽状态.视口 || !关系拓扑拖拽状态.画布 || event.pointerId !== 关系拓扑拖拽状态.指针ID) return;
+      if (
+        !关系拓扑拖拽状态.视口 ||
+        !关系拓扑拖拽状态.拓扑板 ||
+        !关系拓扑拖拽状态.节点 ||
+        event.pointerId !== 关系拓扑拖拽状态.指针ID
+      )
+        return;
       const 偏移X = event.clientX - 关系拓扑拖拽状态.起点X;
       const 偏移Y = event.clientY - 关系拓扑拖拽状态.起点Y;
-      if (Math.abs(偏移X) + Math.abs(偏移Y) > 5) 关系拓扑拖拽状态.已拖动 = true;
-      关系拓扑拖拽状态.当前X = 关系拓扑拖拽状态.基准X + 偏移X;
-      关系拓扑拖拽状态.当前Y = 关系拓扑拖拽状态.基准Y + 偏移Y;
-      应用关系拓扑位移(
-        关系拓扑拖拽状态.视口,
-        关系拓扑拖拽状态.画布,
-        关系拓扑拖拽状态.当前X,
-        关系拓扑拖拽状态.当前Y,
+      if (Math.abs(偏移X) + Math.abs(偏移Y) > 5) {
+        关系拓扑拖拽状态.已拖动 = true;
+        关系拓扑拖拽状态.节点.classList.add('is-dragging');
+      }
+      if (!关系拓扑拖拽状态.已拖动) return;
+      const 拓扑矩形 = 关系拓扑拖拽状态.拓扑板.getBoundingClientRect();
+      if (!拓扑矩形.width || !拓扑矩形.height) return;
+      const 新Left = Math.max(
+        8,
+        Math.min(92, 关系拓扑拖拽状态.起始Left + (偏移X / 拓扑矩形.width) * 100),
       );
+      const 新Top = Math.max(
+        8,
+        Math.min(92, 关系拓扑拖拽状态.起始Top + (偏移Y / 拓扑矩形.height) * 100),
+      );
+      关系拓扑拖拽状态.当前Left = 新Left;
+      关系拓扑拖拽状态.当前Top = 新Top;
+      写入关系拓扑节点位置(关系拓扑拖拽状态.节点, 关系拓扑拖拽状态.连线, 新Left, 新Top);
     },
     { passive: true },
   );
 
-  document.addEventListener('pointerup', 结束关系拓扑拖拽);
-  document.addEventListener('pointercancel', 结束关系拓扑拖拽);
+  document.addEventListener('pointerup', () => 结束关系拓扑拖拽(true));
+  document.addEventListener('pointercancel', () => 结束关系拓扑拖拽(false));
 
   function getFloatingHoverTrigger(eventTarget) {
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
@@ -45775,7 +46009,21 @@ ${toText(combatData.战斗意图, '点到为止')}
   const 浮窗自动隐藏毫秒 = 0;
   const 浮窗关闭延迟毫秒 = 175;
   const 浮窗通道余量 = 18;
+  const 关系浮窗关闭延迟毫秒 = 70;
+  const 关系浮窗通道余量 = 6;
   const 顶层浮窗层级 = '2147483600';
+
+  function 是否关系浮窗触发(trigger) {
+    return !!(trigger instanceof Element && trigger.querySelector('.relation-hover-card'));
+  }
+
+  function 读取浮窗关闭延迟(trigger) {
+    return 是否关系浮窗触发(trigger) ? 关系浮窗关闭延迟毫秒 : 浮窗关闭延迟毫秒;
+  }
+
+  function 读取浮窗通道余量(trigger) {
+    return 是否关系浮窗触发(trigger) ? 关系浮窗通道余量 : 浮窗通道余量;
+  }
 
   function cancelFloatingHoverClearTimer() {
     if (!floatingHoverClearTimer) return;
@@ -45799,7 +46047,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         if (trigger.matches(':hover')) return;
       }
       clearFloatingHoverCard(trigger);
-    }, 浮窗关闭延迟毫秒);
+    }, 读取浮窗关闭延迟(trigger));
   }
 
   function 确保浮窗准备关闭(trigger) {
@@ -45829,7 +46077,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     return x >= rect.left - 余量 && x <= rect.right + 余量 && y >= rect.top - 余量 && y <= rect.bottom + 余量;
   }
 
-  function 指针在浮窗通道坐标(x, y, 余量 = 浮窗通道余量) {
+  function 指针在浮窗通道坐标(x, y, 余量 = 读取浮窗通道余量(activeFloatingHoverTrigger)) {
     const 触发节点 = activeFloatingHoverTrigger;
     if (!(触发节点 instanceof Element) || !(顶层浮窗卡片 instanceof HTMLElement)) return false;
     const 触发矩形 = 触发节点.getBoundingClientRect();
@@ -45940,10 +46188,11 @@ ${toText(combatData.战斗意图, '点到为止')}
       event.stopPropagation();
       clearFloatingHoverCard(trigger);
       if (trigger.closest('#mvu-unified-mount')) {
+        const 来自统一详情页 = !!trigger.closest('[data-unified-detail-host]');
         tryOpenUnifiedInlineDetail(预览键, {
           triggerEl: trigger,
           preserveMapDispatchContext: true,
-          replace: true,
+          replace: !来自统一详情页,
         });
         return;
       }
@@ -47395,7 +47644,6 @@ ${toText(combatData.战斗意图, '点到为止')}
         this.结算复活写回代价(charData, usableEffect.value || {}, logs, 当前tick);
         charData.状态.存活 = true;
         charData.存活 = true;
-        charData.状态.行动 = '日常';
         charData.属性.体力 = Math.max(1, Math.min(体力上限, Math.round(体力上限 * 恢复比例)));
         charData.属性.HP = Math.max(1, Math.min(生命上限, Math.round(生命上限 * 恢复比例)));
         charData.状态.死亡tick = -1;

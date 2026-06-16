@@ -18587,6 +18587,7 @@ $CONTENT
                 if (runtimeResult?.blockedByRuntime) {
                     return {
                         success: false,
+                        blocked: true,
                         errorType: runtimeResult.blockReason || 'runtime_generation_blocked',
                         errorMessage: '模块路由已接管本轮生成。',
                         enabledTaskCount: runtimeResult.enabledTaskCount,
@@ -53505,6 +53506,13 @@ $CONTENT
         // 用户中止
         if (result.aborted) {
             return { aborted: true, manual: result.manual, restoreText: result.restoreText };
+        }
+        if (result.blocked) {
+            return {
+                blocked: true,
+                reason: result.errorType || 'runtime_generation_blocked',
+                errorMessage: result.errorMessage || '',
+            };
         }
         // 失败：根据 errorType 弹对应 toast
         if (!result.success) {

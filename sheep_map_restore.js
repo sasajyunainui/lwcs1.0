@@ -3973,10 +3973,8 @@
       if (!npcName || npcName === activeName || charId === activeName) return;
       const charLoc = toText(charInfo && charInfo.状态 && charInfo.状态.位置, '');
       const npcFaction = toText(charInfo && (deepGet(charInfo, '社交.主身份', '') || deepGet(charInfo, '所属势力', '')), '');
-      const npcState = toText(deepGet(charInfo, '状态.行动', ''), '');
       const npcMetaParts = [];
       if (npcFaction) npcMetaParts.push(npcFaction);
-      if (npcState) npcMetaParts.push(`状态 ${npcState}`);
       const 地点片段列表 = 拆分地点路径(charLoc);
       const 去大陆前缀地点 = 归一地点名(charLoc);
       const 末级地点 = 地点片段列表[地点片段列表.length - 1] || '';
@@ -3996,7 +3994,7 @@
           可交互: false
         });
       });
-      digestParts.push([charId, npcName, charLoc, npcFaction, npcState].join(':'));
+      digestParts.push([charId, npcName, charLoc, npcFaction].join(':'));
     });
     charactersByLoc.forEach(entries => entries.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN')));
     digestParts.sort();
@@ -9256,22 +9254,44 @@
             ? `我想在【${item.name}】向【${npcTarget}】请教情报。`
             : `我想在【${item.name}】向在场人员收集情报。`;
         }
-        const 行动模式映射 = {
-          meditate: '冥想',
-          train_body: 获取地图训练项目标题(),
-          train: 获取地图训练项目标题(),
-          train_mind: '精神训练',
-          rest: '睡眠',
-          sleep: '睡眠',
-          study: '日常'
-        };
         const 角色名 = toText(actorName, toText(snapshot.activeName, '主角'));
-        const 角色路径 = escapeJsonPointer(角色名);
         const 当前tick = Math.max(0, toNumber(deepGet(mapState.baseSnapshot || snapshot, 'rootData.world.时间.tick', 0), 0));
+        const 下一tick = 当前tick + Math.max(1, baseTicks);
+        const 本次结算模式 = action === 'meditate'
+          ? '冥想'
+          : action === 'train_body' || action === 'train'
+            ? '肉体训练'
+            : action === 'train_mind'
+              ? '精神训练'
+              : action === 'rest' || action === 'sleep'
+                ? '睡眠'
+                : '日常';
+        const 结算接口候选 = [window, window.parent, window.top]
+          .map(窗口 => {
+            try {
+              return 窗口 && 窗口.__LWCS_MVU_SCHEMA_RUNTIME__;
+            } catch (错误) {
+              return null;
+            }
+          })
+          .find(接口 => 接口 && typeof 接口.按动作模式结算变量根时间流逝 === 'function');
+        if (!结算接口候选) throw new Error('MVU动作结算接口未就绪。');
+        const 根数据 = deepGet(mapState.baseSnapshot || snapshot, 'rootData', {});
+        if (!deepGet(根数据, ['char', 角色名], null)) throw new Error(`找不到动作结算角色：${角色名}`);
+        const 已结算根数据 = 结算接口候选.按动作模式结算变量根时间流逝(
+          根数据,
+          角色名,
+          当前tick,
+          下一tick,
+          本次结算模式,
+        );
+        const 地图动作播报 = `[地图节点动作] ${角色名} 在【${item.name}】执行【${actionLabel}】，耗时约 ${Math.max(1, baseTicks) * 10} 分钟。`;
+        const 结算播报 = toText(deepGet(已结算根数据, 'sys.系统播报', ''), '').trim();
+        const 写回播报 = 结算播报 && 结算播报 !== '初始化' ? `${结算播报} ${地图动作播报}` : 地图动作播报;
         const patchOps = [
-          { op: 'replace', path: `/char/${角色路径}/状态/行动`, value: 行动模式映射[action] || getNodeInteractionLabel(action) || '日常' },
-          { op: 'replace', path: `/world/时间/tick`, value: 当前tick + Math.max(1, baseTicks) },
-          { op: 'replace', path: `/sys/系统播报`, value: `[地图节点动作] ${角色名} 在【${item.name}】执行【${actionLabel}】，耗时约 ${Math.max(1, baseTicks) * 10} 分钟。` }
+          { op: 'replace', path: '/char', value: 已结算根数据.char || {} },
+          { op: 'replace', path: '/world', value: 已结算根数据.world || {} },
+          { op: 'replace', path: '/sys/系统播报', value: 写回播报 }
         ];
 
         const sysPrompt = `${HIDDEN_RULES}
@@ -9287,7 +9307,7 @@
 
 ${logMsg}
 
-本次行动、时间推进与系统播报已由前端结算写回。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
+本次行动收益、时间推进与系统播报已由前端结算写回。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
 
         dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}`, patchOps });
       } catch (e) {

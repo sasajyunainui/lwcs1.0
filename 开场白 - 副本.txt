@@ -4,51 +4,54 @@
 <head>
 <meta charset="UTF-8">
 <style>
-#character-creation-root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #e2e8f0; line-height: 1.6; }
-#character-creation-root * { box-sizing: border-box; }
-#character-creation-root .archive-panel { max-width: 760px; margin: 0 auto; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(45, 212, 191, 0.2); border-radius: 12px; padding: 32px 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset; position: relative; overflow: hidden; }
-#character-creation-root .archive-panel::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, transparent, #2dd4bf, transparent); opacity: 0.8; }
-#character-creation-root .panel-title { text-align: center; font-size: 22px; font-weight: 600; color: #2dd4bf; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(45, 212, 191, 0.15); letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-#character-creation-root .panel-title::before, #character-creation-root .panel-title::after { content: "❖"; font-size: 14px; opacity: 0.5; }
-#character-creation-root .form-group { margin-bottom: 24px; }
-#character-creation-root .form-group label { display: block; font-size: 13px; margin-bottom: 8px; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-#character-creation-root .form-control { width: 100%; padding: 12px 14px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 6px; color: #f8fafc; font-size: 14px; outline: none; transition: all 0.2s ease; }
-#character-creation-root .form-control:focus { border-color: #2dd4bf; background: rgba(15, 23, 42, 0.8); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15); }
-#character-creation-root .form-control::placeholder { color: #64748b; }
-#character-creation-root .form-control option { background: #0f172a; color: #e2e8f0; }
+#character-creation-root { font-family: "Microsoft YaHei", sans-serif; color: #e0f8f5; }
+#character-creation-root .archive-panel { max-width: 680px; margin: 0 auto; background: rgba(8, 18, 24, 0.85); border: 1px solid #00ffcc; border-radius: 4px; padding: 30px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 30px rgba(0, 255, 204, 0.1); position: relative; overflow: hidden; }
+#character-creation-root .archive-panel::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 204, 0.05) 2px, rgba(0, 255, 204, 0.05) 4px); pointer-events: none; z-index: 0; }
+#character-creation-root .corner { position: absolute; width: 20px; height: 20px; border: 2px solid #00ffcc; z-index: 1; }
+#character-creation-root .corner-tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+#character-creation-root .corner-tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+#character-creation-root .corner-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+#character-creation-root .corner-br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+#character-creation-root .panel-content { position: relative; z-index: 2; }
+#character-creation-root .panel-title { text-align: center; font-size: 24px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; margin-bottom: 25px; border-bottom: 1px dashed rgba(0, 255, 204, 0.5); padding-bottom: 15px; letter-spacing: 3px; }
+#character-creation-root .form-group { margin-bottom: 20px; }
+#character-creation-root .form-group label { display: block; font-size: 13px; margin-bottom: 8px; color: #88d8d0; font-weight: bold; letter-spacing: 1px; }
+#character-creation-root .form-control { width: 100%; padding: 10px 12px; background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.4); border-radius: 2px; color: #fff; font-size: 14px; outline: none; transition: all 0.3s; box-sizing: border-box; }
+#character-creation-root .form-control:focus { border-color: #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.4); background: rgba(0, 255, 204, 0.1); }
+#character-creation-root .form-control option { background: #081218; color: #00ffcc; }
 #character-creation-root .row { display: flex; gap: 20px; }
-#character-creation-root .col { flex: 1; min-width: 0; }
-#character-creation-root .spirit-type-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-#character-creation-root .spirit-type-item { background: rgba(30, 41, 59, 0.4); padding: 16px; border-radius: 8px; border: 1px solid rgba(71, 85, 105, 0.3); }
-#character-creation-root .radio-group { display: grid; gap: 12px; }
-#character-creation-root .radio-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(71, 85, 105, 0.4); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 6px; }
-#character-creation-root .radio-card input { display: none; }
-#character-creation-root .radio-title { font-weight: 600; font-size: 15px; color: #cbd5e1; transition: color 0.2s; }
-#character-creation-root .radio-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
-#character-creation-root .card-a:hover { background: rgba(234, 179, 8, 0.05); border-color: rgba(234, 179, 8, 0.3); }
-#character-creation-root .card-a.selected { background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.6); box-shadow: 0 4px 12px rgba(234, 179, 8, 0.1); }
-#character-creation-root .card-a.selected .radio-title { color: #facc15; }
-#character-creation-root .card-b:hover { background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.3); }
-#character-creation-root .card-b.selected { background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.6); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1); }
-#character-creation-root .card-b.selected .radio-title { color: #c084fc; }
-#character-creation-root .card-c:hover { background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.3); }
-#character-creation-root .card-c.selected { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.6); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1); }
-#character-creation-root .card-c.selected .radio-title { color: #f87171; }
-#character-creation-root .submit-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, rgba(20, 184, 166, 0.8), rgba(13, 148, 136, 0.8)); border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 32px; transition: all 0.2s ease; letter-spacing: 1px; box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.2), 0 2px 4px -1px rgba(20, 184, 166, 0.1); }
-#character-creation-root .submit-btn:hover { background: linear-gradient(135deg, rgba(20, 184, 166, 1), rgba(13, 148, 136, 1)); transform: translateY(-1px); box-shadow: 0 10px 15px -3px rgba(20, 184, 166, 0.3), 0 4px 6px -2px rgba(20, 184, 166, 0.15); }
-#character-creation-root .submit-btn:active { transform: translateY(1px); box-shadow: 0 2px 4px -1px rgba(20, 184, 166, 0.2); }
-#character-creation-root .template-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
-#character-creation-root .template-btn { flex: 1; min-width: 110px; padding: 10px; background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 6px; color: #cbd5e1; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-#character-creation-root .template-btn:hover { background: rgba(71, 85, 105, 0.6); color: #f8fafc; border-color: #94a3b8; }
-#character-creation-root .template-hint { min-height: 20px; margin-top: 10px; font-size: 13px; color: #2dd4bf; text-align: center; }
-#character-creation-root .background-picker { display: flex; flex-direction: column; gap: 12px; }
-#character-creation-root .background-textarea { min-height: 80px; resize: vertical; line-height: 1.55; }
+#character-creation-root .col { flex: 1; }
+#character-creation-root .spirit-type-container { display: flex; gap: 15px; flex-wrap: wrap; }
+#character-creation-root .spirit-type-item { flex: 1; min-width: 200px; background: rgba(0, 255, 204, 0.05); padding: 12px; border-radius: 2px; border: 1px solid rgba(0, 255, 204, 0.2); }
+#character-creation-root .radio-group { display: flex; flex-direction: column; gap: 12px; }
+#character-creation-root .radio-card { background: rgba(0, 0, 0, 0.5); border: 1px solid #333; border-radius: 4px; padding: 15px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+#character-creation-root .radio-card input { position: absolute; opacity: 0; }
+#character-creation-root .radio-title { font-weight: bold; margin-bottom: 6px; font-size: 15px; transition: color 0.3s; }
+#character-creation-root .radio-desc { font-size: 12px; color: #aaa; line-height: 1.5; }
+#character-creation-root .card-a:hover { border-color: #ffff00; background: rgba(255, 255, 0, 0.05); }
+#character-creation-root .card-a.selected { border-color: #ffff00; box-shadow: 0 0 15px rgba(255, 255, 0, 0.3); background: rgba(255, 255, 0, 0.1); }
+#character-creation-root .card-a.selected .radio-title { color: #ffff00; text-shadow: 0 0 8px #ffff00; }
+#character-creation-root .card-b:hover { border-color: #aa00ff; background: rgba(170, 0, 255, 0.05); }
+#character-creation-root .card-b.selected { border-color: #aa00ff; box-shadow: 0 0 15px rgba(170, 0, 255, 0.4); background: rgba(170, 0, 255, 0.15); }
+#character-creation-root .card-b.selected .radio-title { color: #e088ff; text-shadow: 0 0 8px #aa00ff; }
+#character-creation-root .card-c:hover { border-color: #ff0000; background: rgba(255, 0, 0, 0.05); }
+#character-creation-root .card-c.selected { border-color: #ff0000; box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); background: rgba(255, 0, 0, 0.15); }
+#character-creation-root .card-c.selected .radio-title { color: #ff3333; text-shadow: 0 0 10px #ff0000; }
+#character-creation-root .submit-btn { width: 100%; padding: 15px; background: rgba(0, 255, 204, 0.1); border: 1px solid #00ffcc; color: #00ffcc; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; transition: all 0.3s; letter-spacing: 2px; text-shadow: 0 0 5px #00ffcc; }
+#character-creation-root .submit-btn:hover { background: rgba(0, 255, 204, 0.3); box-shadow: 0 0 15px #00ffcc; }
+#character-creation-root .template-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+#character-creation-root .template-btn { flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(0, 255, 204, 0.08); border: 1px solid rgba(0, 255, 204, 0.45); color: #c7fff6; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+#character-creation-root .template-btn:hover { background: rgba(0, 255, 204, 0.2); border-color: #00ffcc; }
+#character-creation-root .template-hint { min-height: 18px; margin-top: 8px; font-size: 12px; color: #8fffe6; }
+#character-creation-root .background-picker { display: grid; gap: 8px; }
+#character-creation-root .background-textarea { min-height: 74px; resize: vertical; line-height: 1.55; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
 <div id="character-creation-root">
 <div class="archive-panel" id="panel-container">
-
+<div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div><div class="corner corner-br"></div>
 <div class="panel-content">
 <div class="panel-title">传灵塔·新晋魂师档案录入终端</div>
 
@@ -900,15 +903,15 @@ window.updateSpiritTypes = function() {
         var oldDesc = oldDescs[index] || '';
 
         html += '<div class="spirit-type-item">';
-        html += '<div style="font-size:14px; color:#2dd4bf; margin-bottom:12px; font-weight:600; border-bottom:1px solid rgba(45,212,191,0.2); padding-bottom:8px;">❖ ' + spiritName + '</div>';
-        html += '<label style="font-size:12px; color:#94a3b8; margin-bottom:6px; display:block; font-weight:500;">系别</label>';
+        html += '<div style="font-size:13px; color:#00ffcc; margin-bottom:10px; font-weight:bold; border-bottom:1px solid rgba(0,255,204,0.2); padding-bottom:5px;">【' + spiritName + '】</div>';
+        html += '<label style="font-size:11px; color:#88d8d0; margin-bottom:4px; display:block;">系别</label>';
         html += '<select class="form-control spirit-type-select" style="margin-bottom:10px;">';
         options.forEach(function(opt) {
             var selected = (opt === oldType) ? ' selected' : '';
             html += '<option value="' + opt + '"' + selected + '>' + opt + '</option>';
         });
         html += '</select>';
-        html += '<label style="font-size:12px; color:#94a3b8; margin-bottom:6px; margin-top:12px; display:block; font-weight:500;">武魂形态/描述</label>';
+        html += '<label style="font-size:11px; color:#88d8d0; margin-bottom:4px; display:block;">武魂形态/描述</label>';
         html += '<input type="text" class="form-control spirit-desc-input" placeholder="留空则AI自动生成：待生成（结合武魂名与系别补完形态和核心能力）" value="' + oldDesc + '">';
         html += '</div>';
     });
@@ -1220,7 +1223,7 @@ window.submitForm = function() {
         };
     }
 
-    document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 100px 20px; color: #2dd4bf; font-size: 18px; font-weight:600; letter-spacing: 1px;">❖ 档案及时间线底包已提交，正在同步世界线... ❖</div>';
+    document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 80px 20px; color: #00ffcc; font-size: 18px; font-weight:bold; text-shadow: 0 0 10px #00ffcc; letter-spacing: 2px;">[ 档案及时间线底包已提交，正在同步世界线... ]</div>';
 
     function 通过输入框发送开场白(文本) {
         var 宿主窗口 = getStartupRuntimeWindow();
@@ -1240,7 +1243,7 @@ window.submitForm = function() {
         通过输入框发送开场白(safeDisplayMessage);
     }).catch(function(error) {
         console.error('[开场白] MVU初始化写入失败:', error);
-        document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 100px 20px; color: #f87171; font-size: 18px; font-weight:600; letter-spacing: 1px;">⚠ MVU 初始化写入失败，请刷新后重试 ⚠</div>';
+        document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 80px 20px; color: #ff7777; font-size: 18px; font-weight:bold; letter-spacing: 2px;">[ MVU 初始化写入失败，请刷新后重试 ]</div>';
     });
 };
 $(function() {

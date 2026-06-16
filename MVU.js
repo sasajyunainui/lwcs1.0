@@ -504,7 +504,6 @@ const CharacterSchema = z
               .prefault({}),
           )
           .prefault({}),
-        行动: z.string().prefault('日常').describe('行为状态: 日常/冥想/战斗/睡眠/肉体训练/精神训练'),
         吸收灵物年限: z.coerce.number().prefault(0).describe('当前正在吸收的灵物年份(阅后即焚)'),
       })
       .catchall(z.any())
@@ -636,6 +635,7 @@ const CharacterSchema = z
         声望: z.coerce.number().prefault(0),
         名望等级: z.string().prefault('籍籍无名'),
         主身份: z.string().prefault(AI_TODO_MAIN_IDENTITY).describe('当前主要公开身份'),
+        家世描述: z.string().prefault('无').describe('公开档案中的家世/出身描述'),
         势力: z
           .record(
             z.string(),

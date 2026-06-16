@@ -3672,9 +3672,60 @@ class BattleUIComponent {
       return merged;
     }
 
+    function 单位是魂师单位(单位 = {}) {
+      const 属性 = 单位?.属性 && typeof 单位.属性 === 'object' ? 单位.属性 : {};
+      const 有武魂结构 = ['第1武魂', '第2武魂', '武魂', '自创魂技', '武魂融合技'].some(字段 => {
+        const 值 = 单位?.[字段] ?? 属性?.[字段];
+        return !!(值 && typeof 值 === 'object' && Object.keys(值).length);
+      });
+      if (有武魂结构) return true;
+      const 文本 = [
+        单位?.单位性质,
+        单位?.类型,
+        单位?.身份,
+        单位?.主身份,
+        单位?.职业,
+        单位?.来源,
+        属性?.单位性质,
+        属性?.类型,
+        属性?.身份,
+        属性?.主身份,
+        属性?.职业,
+      ]
+        .map(条目 => String(条目 || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      if (/非魂师|不是魂师/.test(文本)) return false;
+      return /魂师/.test(文本);
+    }
+
+    function 单位是魂兽单位(单位 = {}) {
+      const 属性 = 单位?.属性 && typeof 单位.属性 === 'object' ? 单位.属性 : {};
+      const 文本 = [单位?.单位性质, 单位?.类型, 单位?.身份, 单位?.标准物种, 单位?.具体物种, 属性?.单位性质, 属性?.类型]
+        .map(条目 => String(条目 || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      return /魂兽/.test(文本) || Math.max(0, fallbackNumber(单位?.年限 ?? 属性?.年限 ?? getCombatUnitAgeValue(单位), 0)) > 0;
+    }
+
+    function 读取战斗单位徽标文本(单位 = {}) {
+      const 属性 = 单位?.属性 && typeof 单位.属性 === 'object' ? 单位.属性 : {};
+      if (单位是魂师单位(单位)) return `Lv.${单位?.lv ?? 单位?.等级 ?? 属性?.等级 ?? 0}`;
+      if (!单位是魂兽单位(单位)) return '';
+      const 年限 = Math.max(0, Math.floor(fallbackNumber(单位?.年限 ?? 属性?.年限 ?? getCombatUnitAgeValue(单位), 0)));
+      return 年限 > 0 ? `${年限}年` : '';
+    }
+
     function fallbackText(id, value) {
       const node = byId(id);
       if (node) node.textContent = String(value ?? '');
+    }
+
+    function 切换回退文本(节点标识, 文本值, 是否显示 = true) {
+      const 节点 = byId(节点标识);
+      if (!节点) return;
+      节点.hidden = !是否显示;
+      节点.textContent = 是否显示 ? String(文本值 ?? '') : '';
     }
 
     function fallbackBar(id, value, max) {
@@ -3711,7 +3762,8 @@ class BattleUIComponent {
 
     function fallbackRenderUnit(prefix, rawUnit) {
       const unit = fallbackUnit(rawUnit);
-      fallbackText(`ui-${prefix}-lv`, `Lv.${unit.等级 || 0}`);
+      const 徽标文本 = 读取战斗单位徽标文本(unit);
+      切换回退文本(`ui-${prefix}-lv`, 徽标文本, !!徽标文本);
       fallbackText(`ui-${prefix}-name`, unit.name || (prefix === 'player' ? '玩家' : '对手'));
       fallbackText(`ui-${prefix}-hp-text`, `${Math.round(unit.HP)} / ${Math.round(unit.HP上限)}`);
       fallbackText(`ui-${prefix}-sta-text`, `${Math.round(unit.体力)} / ${Math.round(unit.体力上限)}`);
@@ -20594,8 +20646,7 @@ class BattleUIComponent {
         const restoreAmount = Math.max(1, Math.floor(maxVit * healRatio));
         设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
         targetChar.__本阶段已触发复活 = true;
-        if (!targetChar.状态 || typeof targetChar.状态 !== 'object') targetChar.状态 = {};
-        targetChar.状态.行动 = '战斗';
+        targetChar.__战斗行动状态 = '战斗';
         return `[复活触发] ${label}借[${状态复活候选.key}]重燃战意，恢复 ${restoreAmount} 点HP！剩余复活次数:${nextCount}`;
       }
       if (战斗机制抹消命中(targetChar, '最终结果', { 原型: '规则改写', 规则: '死亡转存活' }, { 用途: '封锁' })) {
@@ -20619,8 +20670,7 @@ class BattleUIComponent {
       const restoreAmount = Math.max(1, Math.floor(maxVit * Math.min(1, healRatio)));
       设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
       targetChar.__本阶段已触发复活 = true;
-      if (!targetChar.状态 || typeof targetChar.状态 !== 'object') targetChar.状态 = {};
-      targetChar.状态.行动 = '战斗';
+      targetChar.__战斗行动状态 = '战斗';
       const 来源名 = 被动复活候选?.skill?.name || 被动复活候选?.skill?.魂技名 || '死亡转存活';
       return `[复活触发] ${label}触发[${来源名}]，按死亡转存活规则恢复 ${restoreAmount} 点HP！`;
     }
@@ -21285,18 +21335,17 @@ class BattleUIComponent {
 
       function syncCombatActionState(char) {
         if (!char || typeof char !== 'object') return;
-      if (!char.状态 || typeof char.状态 !== 'object') char.状态 = {};
       if (!isCombatUnitAlive(char)) {
-        char.状态.行动 = '无法行动';
+        char.__战斗行动状态 = '无法行动';
           if (char.召唤键) 同步召唤单位镜像(char);
           return;
         }
         if (!isCombatUnitAbleToFight(char)) {
-          char.状态.行动 = '昏迷';
+          char.__战斗行动状态 = '昏迷';
           if (char.召唤键) 同步召唤单位镜像(char);
           return;
       }
-      char.状态.行动 = '战斗';
+      char.__战斗行动状态 = '战斗';
       if (char.召唤键) 同步召唤单位镜像(char);
     }
 
@@ -21386,7 +21435,7 @@ class BattleUIComponent {
       单位.action_declared = 有蓄力技能 ? true : 单位.action_declared === true;
       单位.is_controlled = 单位.is_controlled === true;
       单位.状态.蓄力 = 有蓄力技能 && 蓄力剩余 > 0 ? '蓄力中' : '无';
-      单位.状态.行动声明 = 单位.action_declared ? '已声明' : '未声明';
+      单位.__战斗行动声明 = 单位.action_declared ? '已声明' : '未声明';
       单位.状态.受控 = 单位.is_controlled ? '受控' : '正常';
     }
 
@@ -30702,7 +30751,11 @@ class BattleUIComponent {
               men: char.men || 0,
               men_max: char.men_max || 1,
               召唤键: char.召唤键 || '',
+              单位性质: char.单位性质 || '',
               类型: char.类型 || char.type || '',
+              年限: char.年限 || 0,
+              标准物种: char.标准物种 || '',
+              具体物种: char.具体物种 || '',
               行动模式: char.行动模式 || '',
               宿主名: char.宿主名 || '',
               精神负载: char.精神负载 || 0,
@@ -31222,6 +31275,13 @@ class BattleUIComponent {
           if (node) node.textContent = String(value ?? '');
         }
 
+        function 设置界面文本显隐(id, value, 是否显示 = true) {
+          const 节点 = byId(id);
+          if (!节点) return;
+          节点.hidden = !是否显示;
+          节点.textContent = 是否显示 ? String(value ?? '') : '';
+        }
+
         function setUiBar(id, value, max) {
           const node = byId(id);
           if (!node) return;
@@ -31267,7 +31327,8 @@ class BattleUIComponent {
 
         function renderUiCombatant(prefix, unit) {
           const safeUnit = flattenUiCombatant(unit);
-          setUiText(`ui-${prefix}-lv`, `Lv.${safeUnit.lv || 0}`);
+          const 徽标文本 = 读取战斗单位徽标文本(safeUnit);
+          设置界面文本显隐(`ui-${prefix}-lv`, 徽标文本, !!徽标文本);
           setUiText(`ui-${prefix}-name`, safeUnit.name || (prefix === 'player' ? '玩家' : '对手'));
           setUiText(`ui-${prefix}-hp-text`, `${Math.round(safeUnit.hp)} / ${Math.round(safeUnit.hp_max)}`);
           setUiText(`ui-${prefix}-sta-text`, `${Math.round(safeUnit.sta)} / ${Math.round(safeUnit.sta_max)}`);
@@ -31282,23 +31343,127 @@ class BattleUIComponent {
           return safeUnit;
         }
 
-        function renderUiTeam(containerId, units, activeName = '') {
-          const node = byId(containerId);
+        function 选择战斗动作目标(目标名 = '', 动作来源 = null) {
+          const 状态 = window.BattleUI?.state || {};
+          const 动作 = 动作来源 || 状态.selectedAction || null;
+          const 安全目标名 = String(目标名 || '').trim();
+          if (!动作 || !安全目标名) return false;
+          const 候选名称列表 = 读取动作目标候选(动作, 状态).map(读取战斗单位名).filter(Boolean);
+          if (!候选名称列表.includes(安全目标名)) return false;
+          动作.target_name = 安全目标名;
+          if (动作是造物承载(动作)) {
+            动作.物品接收者 = 安全目标名;
+            写入造物动作选择(动作, 状态);
+          } else {
+            写入普通动作目标(动作, 状态);
+          }
+          刷新战斗意图输出(动作);
+          return true;
+        }
+
+        function 同步主战斗面板目标态(面板前缀, 单位名 = '', 目标名称集合 = new Set(), 当前目标名 = '') {
+          const 面板 = byId(`ui-${面板前缀}-panel`);
+          const 安全单位名 = String(单位名 || '').trim();
+          if (!面板) return;
+          const 可作为目标 = !!(安全单位名 && 目标名称集合.has(安全单位名));
+          面板.classList.toggle('is-targetable', 可作为目标);
+          面板.classList.toggle('is-current-target', 可作为目标 && 安全单位名 === 当前目标名);
+          if (可作为目标) {
+            面板.setAttribute('data-target-name', 安全单位名);
+            面板.setAttribute('role', 'button');
+            面板.setAttribute('aria-pressed', 安全单位名 === 当前目标名 ? 'true' : 'false');
+            面板.setAttribute('tabindex', '0');
+          } else {
+            面板.removeAttribute('data-target-name');
+            面板.removeAttribute('role');
+            面板.removeAttribute('aria-pressed');
+            面板.removeAttribute('tabindex');
+          }
+          if (!面板.__battleTargetPanelBound) {
+            面板.addEventListener('click', () => {
+              const 目标名 = String(面板.getAttribute('data-target-name') || '').trim();
+              if (目标名) 选择战斗动作目标(目标名);
+            });
+            面板.addEventListener('keydown', event => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              const 目标名 = String(面板.getAttribute('data-target-name') || '').trim();
+              if (!目标名) return;
+              event.preventDefault();
+              选择战斗动作目标(目标名);
+            });
+            面板.__battleTargetPanelBound = true;
+          }
+        }
+
+        function renderUiTeam(容器ID, 单位来源列表, 激活名称 = '', 选项 = {}) {
+          const node = byId(容器ID);
           if (!node) return;
-          const list = (Array.isArray(units) ? units : []).map(flattenUiCombatant);
-          node.innerHTML = list
-            .map(unit => {
-              const active = unit.name === activeName ? ' active' : '';
-              const summon = unit.isSummon ? ' summon' : '';
-              const hpRatio = Math.max(0, Math.min(100, (unit.hp / Math.max(1, unit.hp_max)) * 100));
-              const 装备标签 = 获取可见装备标签(unit).join(' · ');
-              const metaParts = unit.isSummon
-                ? [unit.行动模式 || '召唤', unit.稳定状态 || '稳定']
+          const 目标名称集合 = new Set((Array.isArray(选项.targetNames) ? 选项.targetNames : []).map(name => String(name || '').trim()).filter(Boolean));
+          const 当前目标名 = String(选项.currentTargetName || '').trim();
+          const 单位列表 = (Array.isArray(单位来源列表) ? 单位来源列表 : []).map(flattenUiCombatant);
+          node.innerHTML = 单位列表
+            .map(单位 => {
+              const 激活类 = 单位.name === 激活名称 ? ' active' : '';
+              const 召唤类 = 单位.isSummon ? ' summon' : '';
+              const 可选目标类 = 目标名称集合.has(单位.name) ? ' is-targetable' : '';
+              const 当前目标类 = 单位.name === 当前目标名 ? ' is-current-target' : '';
+              const 血量比例 = Math.max(0, Math.min(100, (单位.hp / Math.max(1, 单位.hp_max)) * 100));
+              const 装备标签 = 获取可见装备标签(单位).join(' · ');
+              const 信息片段 = 单位.isSummon
+                ? [单位.行动模式 || '召唤', 单位.稳定状态 || '稳定']
                 : [装备标签];
-              const meta = metaParts.filter(Boolean).length ? `<div class="side-meta">${htmlEscapeText(metaParts.filter(Boolean).join(' · '))}</div>` : '';
-              return `<button class="side-card${active}${summon}" type="button"><div class="side-name">${htmlEscapeText(unit.name)}</div>${meta}<div class="side-mini-bar"><div class="side-mini-fill" style="width:${hpRatio}%"></div></div></button>`;
+              const 信息HTML = 信息片段.filter(Boolean).length ? `<div class="side-meta">${htmlEscapeText(信息片段.filter(Boolean).join(' · '))}</div>` : '';
+              const 目标属性 = 目标名称集合.has(单位.name)
+                ? ` data-target-name="${htmlEscapeText(单位.name)}" aria-pressed="${单位.name === 当前目标名 ? 'true' : 'false'}"`
+                : '';
+              const 目标标记 = 单位.name === 当前目标名 ? '<span class="side-target-mark" aria-hidden="true">·</span>' : '';
+              return `<button class="side-card${激活类}${召唤类}${可选目标类}${当前目标类}" type="button"${目标属性}><div class="side-head"><div class="side-name">${htmlEscapeText(单位.name)}</div>${目标标记}</div>${信息HTML}<div class="side-mini-bar"><div class="side-mini-fill" style="width:${血量比例}%"></div></div></button>`;
             })
             .join('');
+          node.querySelectorAll('[data-target-name]').forEach(button => {
+            if (button.__battleTargetBound) return;
+            button.addEventListener('click', () => {
+              const 状态 = window.BattleUI?.state || {};
+              const 动作 = 状态.selectedAction || null;
+              if (!动作) return;
+              const 目标名 = String(button.getAttribute('data-target-name') || '').trim();
+              选择战斗动作目标(目标名, 动作);
+            });
+            button.__battleTargetBound = true;
+          });
+        }
+
+        function 同步战斗目标显示(动作来源 = null) {
+          const state = window.BattleUI?.state || {};
+          const combatData = state.combatData || {};
+          if (!combatData || !combatData.参战者) {
+            renderUiTargetControls(动作来源 || state.selectedAction || null);
+            return;
+          }
+          const 当前动作 = 动作来源 || state.selectedAction || null;
+          const 目标候选列表 = 读取动作目标候选(当前动作 || {}, state);
+          const 目标候选名称 = 目标候选列表.map(读取战斗单位名).filter(Boolean);
+          const 目标名称集合 = new Set(目标候选名称);
+          const 当前目标名 = String(当前动作 && 当前动作.target_name ? 当前动作.target_name : '').trim();
+          同步主战斗面板目标态('player', state.player?.name || '', 目标名称集合, 当前目标名);
+          同步主战斗面板目标态('enemy', state.enemy?.name || '', 目标名称集合, 当前目标名);
+          const playerTeam = [
+            ...(combatData.参战者.team_player || []),
+            ...读取召唤单位列表(combatData, { 阵营: '玩家' }),
+          ];
+          const enemyTeam = [
+            ...(combatData.参战者.team_enemy || []),
+            ...读取召唤单位列表(combatData, { 阵营: '敌方' }),
+          ];
+          renderUiTeam('ui-team-player', playerTeam, state.player?.name || '', {
+            currentTargetName: 当前目标名,
+            targetNames: 目标候选名称,
+          });
+          renderUiTeam('ui-team-enemy', enemyTeam, state.enemy?.name || '', {
+            currentTargetName: 当前目标名,
+            targetNames: 目标候选名称,
+          });
+          renderUiTargetControls(当前动作);
         }
 
         function renderUiSummonQueue(combatData) {
@@ -31641,14 +31806,12 @@ class BattleUIComponent {
             .map(行 => `<span class="tt-effect-row"><span class="tt-effect-type">${htmlEscapeText(行.标签)}</span>${htmlEscapeText(行.内容)}</span>`)
             .join('');
           return `
-            <span class="skill-tooltip" role="tooltip">
-              <span class="tt-header">
-                <span class="tt-name">${htmlEscapeText(名称)}</span>
-                <span class="tt-cast">${htmlEscapeText(动作.cost_text || '无')} / ${htmlEscapeText(String(前摇 || '-'))}</span>
-              </span>
-              ${标签Html}
-              <span class="tt-effects">${描述Html}</span>
-            </span>
+            <div class="tt-header">
+              <span class="tt-name">${htmlEscapeText(名称)}</span>
+              <span class="tt-cast">${htmlEscapeText(动作.cost_text || '无')} / ${htmlEscapeText(String(前摇 || '-'))}</span>
+            </div>
+            ${标签Html}
+            <div class="tt-effects">${描述Html}</div>
           `;
         }
 
@@ -31667,6 +31830,47 @@ class BattleUIComponent {
           node.hidden = true;
           grid.insertAdjacentElement('afterend', node);
           return node;
+        }
+
+        function 读取技能悬浮节点() {
+          return byId('ui-skill-tooltip');
+        }
+
+        function 关闭技能悬浮() {
+          const 节点 = 读取技能悬浮节点();
+          if (!节点) return;
+          节点.hidden = true;
+          节点.classList.remove('show');
+          节点.innerHTML = '';
+          节点.style.left = '';
+          节点.style.top = '';
+        }
+
+        function 定位技能悬浮(触发节点) {
+          const 悬浮节点 = 读取技能悬浮节点();
+          if (!悬浮节点 || !触发节点 || typeof 触发节点.getBoundingClientRect !== 'function') return;
+          const 容器矩形 = wrapperElement.getBoundingClientRect();
+          const 触发矩形 = 触发节点.getBoundingClientRect();
+          悬浮节点.hidden = false;
+          悬浮节点.classList.add('show');
+          const 宽度 = Math.min(300, Math.max(220, 容器矩形.width - 28));
+          悬浮节点.style.width = `${宽度}px`;
+          const 估算高度 = Math.min(Math.max(悬浮节点.offsetHeight || 160, 120), Math.max(160, 容器矩形.height - 24));
+          let 左 = 触发矩形.left - 容器矩形.left;
+          let 上 = 触发矩形.bottom - 容器矩形.top + 8;
+          if (左 + 宽度 > 容器矩形.width - 12) 左 = 容器矩形.width - 宽度 - 12;
+          if (左 < 12) 左 = 12;
+          if (上 + 估算高度 > 容器矩形.height - 12) 上 = 触发矩形.top - 容器矩形.top - 估算高度 - 8;
+          if (上 < 12) 上 = 12;
+          悬浮节点.style.left = `${Math.round(左)}px`;
+          悬浮节点.style.top = `${Math.round(上)}px`;
+        }
+
+        function 显示技能悬浮(触发节点, action = {}) {
+          const 悬浮节点 = 读取技能悬浮节点();
+          if (!悬浮节点) return;
+          悬浮节点.innerHTML = 构建动作悬浮效果Html(action);
+          定位技能悬浮(触发节点);
         }
 
         function 动作是造物承载(action = {}) {
@@ -31742,7 +31946,7 @@ class BattleUIComponent {
           const state = window.BattleUI?.state || {};
           const output = byId('ui-intent-output');
           if (output) output.value = buildIntentText(action ? [action] : undefined);
-          renderUiTargetControls(action || state.selectedAction || null);
+          同步战斗目标显示(action || state.selectedAction || null);
         }
 
         function renderUiTargetControls(action = null) {
@@ -31762,14 +31966,15 @@ class BattleUIComponent {
             const modeHtml = modes
               .map(item => `<button class="target-chip${item === mode ? ' active' : ''}" type="button" data-construct-mode="${htmlEscapeText(item)}">${htmlEscapeText(item)}</button>`)
               .join('');
-            const targetHtml = candidates.length
-              ? `<div class="target-chip-row">${candidates.map(unit => {
-                  const name = 读取战斗单位名(unit);
-                  return `<button class="target-chip${name === String(action.target_name || action.物品接收者 || '') ? ' active' : ''}" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`;
-                }).join('')}</div>`
+            const 当前目标 = String(action.target_name || action.物品接收者 || '').trim();
+            const 可切换目标列表 = candidates
+              .map(unit => 读取战斗单位名(unit))
+              .filter(name => name && name !== 当前目标);
+            const targetHtml = 可切换目标列表.length
+              ? `<div class="target-chip-row">${可切换目标列表.map(目标名 => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(目标名)}">${htmlEscapeText(目标名)}</button>`).join('')}</div>`
               : '';
             node.hidden = false;
-            node.innerHTML = `<div class="target-chip-row">${modeHtml}</div>${targetHtml}`;
+            node.innerHTML = `<div class="target-current"><span>目标</span><b>${htmlEscapeText(当前目标 || '自身')}</b></div><div class="target-stack"><div class="target-chip-row">${modeHtml}</div>${targetHtml}</div>`;
             node.querySelectorAll('[data-construct-mode]').forEach(button => {
               button.addEventListener('click', () => {
                 action.造物处理 = button.getAttribute('data-construct-mode') || '生成到自己背包';
@@ -31779,10 +31984,7 @@ class BattleUIComponent {
             });
             node.querySelectorAll('[data-target-name]').forEach(button => {
               button.addEventListener('click', () => {
-                action.target_name = button.getAttribute('data-target-name') || '';
-                action.物品接收者 = action.target_name;
-                写入造物动作选择(action, state);
-                刷新战斗意图输出(action);
+                选择战斗动作目标(button.getAttribute('data-target-name') || '', action);
               });
             });
             return;
@@ -31794,15 +31996,18 @@ class BattleUIComponent {
             node.innerHTML = '';
             return;
           }
+          const 当前目标 = String(action.target_name || '').trim();
+          const 可切换目标列表 = candidates
+            .map(unit => 读取战斗单位名(unit))
+            .filter(name => name && name !== 当前目标);
+          const 切换目标Html = 可切换目标列表.length
+            ? `<div class="target-stack"><div class="target-chip-row">${可切换目标列表.map(name => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`).join('')}</div></div>`
+            : '';
           node.hidden = false;
-          node.innerHTML = `<div class="target-chip-row">${candidates.map(unit => {
-            const name = 读取战斗单位名(unit);
-            return `<button class="target-chip${name === String(action.target_name || '') ? ' active' : ''}" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`;
-          }).join('')}</div>`;
+          node.innerHTML = `<div class="target-current"><span>目标</span><b>${htmlEscapeText(当前目标 || '未锁定')}</b></div>${切换目标Html}`;
           node.querySelectorAll('[data-target-name]').forEach(button => {
             button.addEventListener('click', () => {
-              action.target_name = button.getAttribute('data-target-name') || '';
-              刷新战斗意图输出(action);
+              选择战斗动作目标(button.getAttribute('data-target-name') || '', action);
             });
           });
         }
@@ -31819,22 +32024,24 @@ class BattleUIComponent {
             .map(action => {
               const selected = action.id === selectedId ? ' is-selected' : '';
               const disabled = action.enabled === false ? ' disabled' : '';
-              const meta = [action.cost_text, action.cast_time ? `${action.cast_time}` : ''].filter(Boolean).join(' / ');
-              const categoryText = String(action.category || '战术').trim() || '战术';
-              const sourceDetail = String(action.source_detail || '').trim();
-              const categoryHtml =
-                sourceDetail && sourceDetail !== categoryText
-                  ? `${htmlEscapeText(categoryText)} · ${htmlEscapeText(sourceDetail)}`
-                  : htmlEscapeText(categoryText);
-              const 悬浮效果Html = 构建动作悬浮效果Html(action);
-              return `<button class="action-btn${selected}" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}><span class="action-name">${htmlEscapeText(action.name)}</span><span class="action-meta"><span>${categoryHtml}</span><span class="action-cost">${htmlEscapeText(meta)}</span></span>${悬浮效果Html}</button>`;
+              const 分类文本 = String(action.category || '战术').trim() || '战术';
+              const 类型文案 = action.action_type === '释放魂技' ? '魂技' : 分类文本;
+              const 消耗文本 = String(action.cost_text || '').trim();
+              const 前摇数值 = Number(action.cast_time || 0);
+              const 消耗文案 = `${消耗文本 && 消耗文本 !== '无' ? 消耗文本 : '无耗'}${前摇数值 ? ` · 前摇${前摇数值}` : ''}`;
+              return `<button class="action-btn${selected}" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}><span class="action-head"><span class="action-name">${htmlEscapeText(action.name)}</span></span><span class="action-foot"><span class="action-kind">${htmlEscapeText(类型文案)}</span><span class="action-cost">${htmlEscapeText(消耗文案)}</span></span></button>`;
             })
             .join('');
+          if (!node.__battleTooltipScrollBound) {
+            node.addEventListener('scroll', 关闭技能悬浮, { passive: true });
+            node.__battleTooltipScrollBound = true;
+          }
           node.querySelectorAll('[data-action-id]').forEach(button => {
             button.addEventListener('click', () => {
               const state = window.BattleUI?.state || {};
               const action = (state.availableActions || []).find(item => item.id === button.dataset.actionId);
               if (!action || action.enabled === false) return;
+              关闭技能悬浮();
               if (!打开炸环选择对话_V1(action, state)) return;
               state.selectedAction = action;
               state.selectedSkillActions = [action];
@@ -31843,8 +32050,26 @@ class BattleUIComponent {
               刷新战斗意图输出(action);
               renderUiActionGrid(state.availableActions || [], state.activeCategory || '全部');
             });
+            button.addEventListener('mouseenter', () => {
+              const state = window.BattleUI?.state || {};
+              const action = (state.availableActions || []).find(item => item.id === button.dataset.actionId);
+              if (!action) return;
+              显示技能悬浮(button, action);
+            });
+            button.addEventListener('focus', () => {
+              const state = window.BattleUI?.state || {};
+              const action = (state.availableActions || []).find(item => item.id === button.dataset.actionId);
+              if (!action) return;
+              显示技能悬浮(button, action);
+            });
+            button.addEventListener('mouseleave', () => {
+              const 悬浮节点 = 读取技能悬浮节点();
+              if (!悬浮节点) return;
+              if (!悬浮节点.matches(':hover')) 关闭技能悬浮();
+            });
+            button.addEventListener('blur', 关闭技能悬浮);
           });
-          renderUiTargetControls(state.selectedAction || null);
+          同步战斗目标显示(state.selectedAction || null);
         }
 
         function setUiBattleMode(mode) {
@@ -31875,16 +32100,6 @@ class BattleUIComponent {
           确保召唤单位表(combatData);
           const player = renderUiCombatant('player', combatData.参战者.team_player?.[0]);
           const enemy = renderUiCombatant('enemy', combatData.参战者.team_enemy?.[0]);
-          const teamPlayer = [
-            ...(combatData.参战者.team_player || []),
-            ...读取召唤单位列表(combatData, { 阵营: '玩家' }),
-          ];
-          const teamEnemy = [
-            ...(combatData.参战者.team_enemy || []),
-            ...读取召唤单位列表(combatData, { 阵营: '敌方' }),
-          ];
-          renderUiTeam('ui-team-player', teamPlayer, player.name);
-          renderUiTeam('ui-team-enemy', teamEnemy, enemy.name);
           renderUiChips(combatData, player, enemy);
 
           const charData =
@@ -31928,7 +32143,7 @@ class BattleUIComponent {
             if (动作是造物承载(selectedAction)) 写入造物动作选择(selectedAction, window.BattleUI.state);
             else 写入普通动作目标(selectedAction, window.BattleUI.state);
             if (output) output.value = buildIntentText([selectedAction]);
-            renderUiTargetControls(selectedAction);
+            同步战斗目标显示(selectedAction);
           }
           renderSoulTowerSettlementPanel(pendingTowerSettlement);
         }

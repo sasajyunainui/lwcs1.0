@@ -1876,8 +1876,9 @@ class ProfessionUIComponent {
       const blueprintName = this.getArmorBlueprintNameByTier(tier);
       const blueprint = materialNames.find(name => this.取材料原名(name) === blueprintName) || '';
       const isChest = /胸/.test(targetName);
-      const metalCount = isChest ? 3 : 2;
-      return { mode: 'armor', blueprint, blueprintName, blueprintCost: 1, variableQty: metalCount, note: `斗铠制造：固定消耗【${blueprintName}】1张 + ${metalCount}块同阶金属 (胸铠3块，其余2块)` };
+      const isSkirt = /战裙|裙/.test(targetName);
+      const metalCount = isChest ? 3 : isSkirt ? 4 : 2;
+      return { mode: 'armor', blueprint, blueprintName, blueprintCost: 1, variableQty: metalCount, note: `斗铠制造：固定消耗【${blueprintName}】1张 + ${metalCount}块同阶金属 (胸铠3块，战裙4块，其余部件2块)` };
     }
     return null;
   }
@@ -2119,6 +2120,26 @@ class ProfessionUIComponent {
     return { 连续模式开启, 连续天数, 连续总小时 };
   }
 
+  构建斗铠制造消耗计划(材料名列表 = [], 配方 = {}, 数量 = 1) {
+    const 计划 = {};
+    const 安全数量 = Math.max(1, Math.floor(Number(数量 || 1)));
+    let 剩余金属 = 安全数量 * Math.max(1, Math.floor(Number(配方?.variableQty || 1)));
+    const 金属材料列表 = 材料名列表.filter(材料名 => !this.是配方蓝图材料(材料名, 配方));
+    金属材料列表.forEach((材料名, 索引) => {
+      if (剩余金属 <= 0) return;
+      const 可用数量 = Math.max(0, Math.floor(Number(this.读取材料上下文(材料名)?.数量 || 0)));
+      const 消耗数量 = 索引 === 金属材料列表.length - 1 ? 剩余金属 : Math.min(可用数量, 剩余金属);
+      if (消耗数量 > 0) {
+        计划[材料名] = Number(计划[材料名] || 0) + 消耗数量;
+        剩余金属 -= 消耗数量;
+      }
+    });
+    if (配方?.blueprint && 材料名列表.some(材料名 => 材料名 === 配方.blueprint)) {
+      计划[配方.blueprint] = Number(计划[配方.blueprint] || 0) + Number(配方.blueprintCost || 1);
+    }
+    return 计划;
+  }
+
   构建单次材料消耗计划(cfg, tier, qty, targetName, materialNames = []) {
     const 安全数量 = Math.max(1, Number(qty || 1));
     if (!materialNames.length) return {};
@@ -2129,14 +2150,7 @@ class ProfessionUIComponent {
         return 计划 && typeof 计划 === 'object' ? 计划 : {};
       }
       if (recipe?.mode === 'armor') {
-        const 计划 = {};
-        materialNames.filter(name => !this.是配方蓝图材料(name, recipe)).forEach(name => {
-          计划[name] = Number(计划[name] || 0) + 安全数量;
-        });
-        if (recipe.blueprint && materialNames.some(name => name === recipe.blueprint)) {
-          计划[recipe.blueprint] = Number(计划[recipe.blueprint] || 0) + Number(recipe.blueprintCost || 1);
-        }
-        return 计划;
+        return this.构建斗铠制造消耗计划(materialNames, recipe, 安全数量);
       }
     }
     return materialNames.reduce((计划, 名称) => {
@@ -2671,10 +2685,14 @@ class ProfessionUIComponent {
       if (armorTier && armorTier !== tier) return `目标【${targetName}】属 ${this.getTierDisplayName(cfg.mode, armorTier)}，阶位不匹配。`;
       if (/斗铠/.test(targetName) && !materialNames.some(name => this.取材料原名(name) === this.getArmorBlueprintNameByTier(tier))) return `需要对应的【${this.getArmorBlueprintNameByTier(tier)}】。`;
       if (recipe?.mode === 'armor') {
-        const armorMaterials = materialNames.filter(name => !this.是配方蓝图材料(name, recipe));
-        if (armorMaterials.length === 0) return `制造【${targetName}】至少需要勾选对应位阶的金属材料。`;
-        const wrongArmorMaterial = armorMaterials.find(name => this.getItemTier(name) !== tier);
-        if (wrongArmorMaterial) return `当前斗铠制造要求使用${this.getTierMetalLabel(tier)}，材料【${wrongArmorMaterial}】阶位不匹配。`;
+        const 金属材料列表 = materialNames.filter(name => !this.是配方蓝图材料(name, recipe));
+        if (金属材料列表.length === 0) return `制造【${targetName}】至少需要勾选对应位阶的金属材料。`;
+        const 错阶金属 = 金属材料列表.find(name => this.getItemTier(name) !== tier);
+        if (错阶金属) return `当前斗铠制造要求使用${this.getTierMetalLabel(tier)}，材料【${错阶金属}】阶位不匹配。`;
+        const 当前数量 = Math.max(1, Math.floor(Number(this.getCurrentUiState().数量 || 1)));
+        const 金属需求 = 当前数量 * Math.max(1, Math.floor(Number(recipe.variableQty || 1)));
+        const 金属库存 = 金属材料列表.reduce((总数, 名称) => 总数 + Math.max(0, Math.floor(Number(this.读取材料上下文(名称)?.数量 || 0))), 0);
+        if (金属库存 < 金属需求) return `制造【${targetName}】需要${金属需求}块${this.getTierMetalLabel(tier)}。`;
       }
       if (recipe?.mode === 'mech') {
         if (tier !== recipe.expectedTier) return `固定阶位应为 ${this.getTierDisplayName(cfg.mode, recipe.expectedTier)}。`;
@@ -3324,10 +3342,7 @@ class ProfessionUIComponent {
       if (recipe?.mode === 'mech') {
         patchOps.push(...this.buildConsumePlanPatches(this.buildTierNeedConsumePlan(materialNames, recipe.fixedTierNeeds)));
       } else if (recipe?.mode === 'armor') {
-        const armorPlan = {};
-        materialNames.filter(n => !this.是配方蓝图材料(n, recipe)).forEach(n => armorPlan[n] = Number(armorPlan[n] || 0) + qty);
-        if (recipe.blueprint && materialNames.some(n => n === recipe.blueprint)) armorPlan[recipe.blueprint] = Number(armorPlan[recipe.blueprint] || 0) + Number(recipe.blueprintCost || 1);
-        patchOps.push(...this.buildConsumePlanPatches(armorPlan));
+        patchOps.push(...this.buildConsumePlanPatches(this.构建斗铠制造消耗计划(materialNames, recipe, qty)));
       } else if (materialNames.length > 0) patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
     } else if (materialNames.length > 0) patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
 

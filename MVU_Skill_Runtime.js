@@ -1636,9 +1636,22 @@ function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random,
   return pickBattleSeedItem(['强攻系', '敏攻系', '防御系', '控制系', '辅助系', '治疗系', '食物系', '召唤系'], rng) || '强攻系';
 }
 
-function 填充临时斗铠部件(斗铠) {
+function 取临时斗铠部件列表_V1(性别文本 = '') {
+  return [
+    '头盔',
+    '胸铠',
+    '左肩',
+    '右肩',
+    '左臂',
+    '右臂',
+    ...(String(性别文本 || '').includes('女') ? ['战裙'] : ['左腿', '右腿']),
+    '战靴',
+  ];
+}
+
+function 填充临时斗铠部件(斗铠, 性别文本 = '') {
   if (!斗铠 || typeof 斗铠 !== 'object') return;
-  const 部件名列表 = ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', '左腿', '右腿', '战裙', '战靴'];
+  const 部件名列表 = 取临时斗铠部件列表_V1(性别文本);
   if (!斗铠.部件 || typeof 斗铠.部件 !== 'object') 斗铠.部件 = {};
   部件名列表.forEach(部件名 => {
     if (!斗铠.部件[部件名]) 斗铠.部件[部件名] = { 状态: '完好', 品质系数: 1.0 };
@@ -1661,7 +1674,7 @@ function applyTemporaryHumanEquipment(stats, equipment, identity = '魂师', lev
     equipment.斗铠.等级 = armorLevel;
     equipment.斗铠.名称 = `${armorLevel}字斗铠`;
     equipment.斗铠.装备状态 = '未装备';
-    填充临时斗铠部件(equipment.斗铠);
+    填充临时斗铠部件(equipment.斗铠, String(seed?.性别 ?? seed?.gender ?? seed?.属性?.性别 ?? request?.性别 ?? request?.gender ?? ''));
   }
   return stats;
 }
