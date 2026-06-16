@@ -1082,6 +1082,82 @@ class ProfessionUIComponent {
     return fromDispatch && typeof fromDispatch === 'object' ? fromDispatch : {};
   }
 
+  读取委托任务条目() {
+    const req = this.getInitialRequest();
+    const 任务名 = String(req.任务名 || req.委托名 || '').trim();
+    const 任务表 = this.charData?.我的任务 && typeof this.charData.我的任务 === 'object' ? this.charData.我的任务 : {};
+    if (任务名 && 任务表[任务名]?.是否委托 === true) return { 任务名, 任务: 任务表[任务名] };
+    const 目标名 = String(this.$('#prof-target')?.value || req.目标 || req.产物 || '').trim();
+    const 模式 = this.activeMode;
+    const 命中 = Object.entries(任务表).find(([, 任务]) => {
+      if (!任务 || typeof 任务 !== 'object' || 任务.是否委托 !== true) return false;
+      if (['已完成', '已放弃', '失败', '已失败'].includes(String(任务.状态 || ''))) return false;
+      const 目标产物 = String(任务.目标产物 || '').trim();
+      const 副职业 = String(任务.副职业 || '').trim();
+      return (!目标名 || 目标产物 === 目标名) && (!副职业 || this.normalizeInitialMode(副职业) === 模式 || 副职业 === PROFESSION_CONFIG[模式]?.jobName);
+    });
+    return 命中 ? { 任务名: 命中[0], 任务: 命中[1] } : null;
+  }
+
+  读取委托任务上下文() {
+    const req = this.getInitialRequest();
+    const 条目 = this.读取委托任务条目();
+    const 来源 = 条目?.任务 || (req.是否委托 === true ? req : null);
+    if (!来源) return { isTaskCommission: false };
+    const 目标产物 = String(来源.目标产物 || req.目标 || req.产物 || '').trim();
+    const 成品估价 = this.读取统一交易估价(目标产物, { 数量: 1, 来源: '委托任务成品' });
+    const 成品实价 = Math.max(0, Math.floor(Number(来源.成品实价 || req.成品实价 || 成品估价.总价 || 0)));
+    const 材料清单 = Array.isArray(来源.材料清单) ? this.复制JSON(来源.材料清单, []) : [];
+    const 失败赔偿 = Math.max(0, Math.floor(Number(来源.失败赔偿 || this.计算委托材料赔偿(材料清单) || 0)));
+    const 违约金 = Math.max(0, Math.floor(Number(来源.违约金 || Math.floor(成品实价 * 0.3))));
+    return {
+      isTaskCommission: true,
+      任务名: 条目?.任务名 || String(req.任务名 || req.委托名 || '').trim(),
+      材料清单,
+      成品实价,
+      奖励币: Math.max(0, Math.floor(Number(来源.奖励币 || req.奖励币 || 0))),
+      奖励声望: Math.max(0, Math.floor(Number(来源.奖励声望 || req.奖励声望 || 0))),
+      失败赔偿,
+      违约金,
+      截止tick: Math.max(0, Math.floor(Number(来源.截止tick || 0))),
+      目标产物,
+    };
+  }
+
+  读取委托材料项(物品名 = '') {
+    const 原文 = String(物品名 || '').trim();
+    let 名称 = 原文;
+    if (原文.startsWith('{')) {
+      try {
+        const 数据 = JSON.parse(原文);
+        if (数据 && typeof 数据 === 'object' && !Array.isArray(数据)) 名称 = String(数据.物品名 || 原文).trim();
+      } catch (错误) {}
+    }
+    if (!名称) return null;
+    return this.读取委托任务上下文().材料清单?.find(材料 => String(材料?.名称 || '').trim() === 名称) || null;
+  }
+
+  读取统一交易估价(物品名 = '', 选项 = {}) {
+    const 名称 = String(物品名 || '').trim();
+    if (!名称 || typeof window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__ !== 'function') {
+      return { 物品名: 名称, 分类: '', 数量: Math.max(1, Math.floor(Number(选项.数量 || 1))), 基础单价: 0, 实际单价: 0, 总价: 0 };
+    }
+    try {
+      return window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__(this.snapshot, 名称, 选项) || {};
+    } catch (错误) {
+      return { 物品名: 名称, 分类: '', 数量: Math.max(1, Math.floor(Number(选项.数量 || 1))), 基础单价: 0, 实际单价: 0, 总价: 0 };
+    }
+  }
+
+  计算委托材料赔偿(材料清单 = []) {
+    return (Array.isArray(材料清单) ? 材料清单 : []).reduce((总额, 材料) => {
+      const 名称 = String(材料?.名称 || '').trim();
+      const 数量 = Math.max(1, Math.floor(Number(材料?.数量 || 1)));
+      const 单价 = Math.max(0, Math.floor(Number(材料?.单价 || this.读取统一交易估价(名称, { 数量, 来源: '委托任务材料' }).实际单价 || 0)));
+      return 总额 + 单价 * 数量;
+    }, 0);
+  }
+
   normalizeInitialMode(rawMode) {
     const value = String(rawMode || '').trim().toLowerCase();
     if (/manufacture|制造|组装|总装|封装/.test(value)) return 'manufacture';
@@ -1131,12 +1207,11 @@ class ProfessionUIComponent {
     const costInput = this.$('#prof-cost');
     if (qty > 0 && costInput && !costInput.disabled) costInput.value = String(qty);
 
-    const 预填目标 = String(this.options.prefillTarget || req.目标 || req.物品 || req.产物 || '').trim();
+    const 预填目标 = String(this.options.prefillTarget || req.目标 || req.物品 || req.产物 || req.目标产物 || '').trim();
     if (预填目标 && this.$('#prof-target')) this.$('#prof-target').value = 预填目标;
 
-    const 预填材料列表 = this.parseInitialMaterials(
-      this.options.prefillMaterials || req.材料 || ''
-    );
+    const 委托材料名 = Array.isArray(req.材料清单) ? req.材料清单.map(材料 => String(材料?.名称 || '').trim()).filter(Boolean) : [];
+    const 预填材料列表 = this.parseInitialMaterials(this.options.prefillMaterials || req.材料 || 委托材料名);
     if (预填材料列表.length) {
       const 材料集合 = new Set(预填材料列表);
       this.$$('.material-cb').forEach(勾选框 => {
@@ -1271,6 +1346,18 @@ class ProfessionUIComponent {
     const 解析 = this.解码材料引用(引用);
     const 物品名 = 解析.物品名;
     if (!物品名) return null;
+    const 委托材料 = this.读取委托材料项(物品名);
+    if (委托材料) {
+      const 命中 = this.查找物品定义(物品名);
+      const 数量 = Math.max(0, Math.floor(Number(委托材料.数量 || 0)));
+      return {
+        引用,
+        物品名,
+        批次索引: -1,
+        数量,
+        物品: { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', 数量 },
+      };
+    }
     const 命中 = this.查找物品定义(物品名);
     const 背包记录 = this.currentInventory?.[物品名] || {};
     if (解析.批次索引 >= 0) {
@@ -1432,7 +1519,7 @@ class ProfessionUIComponent {
   }
   resolveInventoryItem(name = '') {
     const 上下文 = this.读取材料上下文(name);
-    if (上下文?.物品名 && 上下文.批次索引 >= 0) return 上下文.物品;
+    if (上下文?.物品名 && (上下文.批次索引 >= 0 || this.读取委托材料项(上下文.物品名))) return 上下文.物品;
     const 物品名 = 上下文?.物品名 || String(name || '').trim();
     const 命中 = this.查找物品定义(物品名);
     const 背包记录 = this.currentInventory?.[物品名] || {};
@@ -2161,6 +2248,14 @@ class ProfessionUIComponent {
 
   构建材料库存快照(materialNames = []) {
     const 快照 = {};
+    const 委托上下文 = this.读取委托任务上下文();
+    if (委托上下文.isTaskCommission) {
+      委托上下文.材料清单.forEach(材料 => {
+        const 名称 = String(材料?.名称 || '').trim();
+        if (名称) 快照[名称] = Math.max(0, Math.floor(Number(材料?.数量 || 0)));
+      });
+      return 快照;
+    }
     materialNames.forEach(名称 => {
       快照[名称] = this.读取背包总数量(this.currentInventory[名称]);
     });
@@ -2360,6 +2455,57 @@ class ProfessionUIComponent {
     return amount <= 0 ? [] : [{ op: 'replace', path: `${this.activeCharBasePath}/财富/联邦币`, value: Math.max(0, Number(this.charData.财富?.联邦币 || 0) - amount) }];
   }
 
+  构建联邦币变化补丁(变化值 = 0) {
+    const 当前联邦币 = Number(this.charData?.财富?.联邦币 || 0);
+    return [{ op: 'replace', path: `${this.activeCharBasePath}/财富/联邦币`, value: 当前联邦币 + Math.floor(Number(变化值 || 0)) }];
+  }
+
+  读取当前tick() {
+    return Math.max(0, Math.floor(Number(this.snapshot?.sd?.world?.时间?.tick || this.rootData?.world?.时间?.tick || 0)));
+  }
+
+  委托任务已超时(任务委托 = {}) {
+    const 截止tick = Math.max(0, Math.floor(Number(任务委托?.截止tick || 0)));
+    return 截止tick > 0 && this.读取当前tick() > 截止tick;
+  }
+
+  构建委托任务状态补丁(任务委托 = {}, 状态 = '进行中') {
+    const 任务名 = String(任务委托?.任务名 || '').trim();
+    if (!任务名) return [];
+    const 当前tick = this.读取当前tick();
+    const 任务表 = this.charData?.我的任务 && typeof this.charData.我的任务 === 'object' ? this.charData.我的任务 : {};
+    const 委托板 = this.rootData?.world?.委托板 && typeof this.rootData.world.委托板 === 'object' ? this.rootData.world.委托板 : {};
+    const 任务条目 = this.复制JSON(任务表[任务名], {});
+    const 委托条目 = this.复制JSON(委托板[任务名], {});
+    const 补丁列表 = [];
+    if (任务条目 && typeof 任务条目 === 'object' && Object.keys(任务条目).length) {
+      任务条目.状态 = 状态;
+      任务条目.当前进度 = 状态 === '已完成' ? 100 : Math.max(0, Math.min(100, Math.floor(Number(任务条目.当前进度 || 0))));
+      任务条目.最后更新时间tick = 当前tick;
+      补丁列表.push({ op: 'replace', path: `${this.activeCharBasePath}/我的任务/${this.escapeJsonPointer(任务名)}`, value: 任务条目 });
+    }
+    if (委托条目 && typeof 委托条目 === 'object' && Object.keys(委托条目).length) {
+      委托条目.状态 = 状态;
+      委托条目.承接者 = this.activeName;
+      补丁列表.push({ op: 'replace', path: `/world/委托板/${this.escapeJsonPointer(任务名)}`, value: 委托条目 });
+    }
+    return 补丁列表;
+  }
+
+  构建委托任务结算补丁(委托上下文 = {}, 结果 = 'success') {
+    if (!委托上下文?.isTaskCommission) return [];
+    const 任务委托 = 委托上下文.task || {};
+    const 奖励币 = Math.max(0, Math.floor(Number(任务委托.成品实价 || 任务委托.奖励币 || 0)));
+    const 失败赔偿 = Math.max(0, Math.floor(Number(任务委托.失败赔偿 || 0)));
+    const 违约金 = Math.max(0, Math.floor(Number(任务委托.违约金 || Math.floor(奖励币 * 0.3))));
+    const 金额变化 = 结果 === 'success' ? 奖励币 : 结果 === 'timeout' ? -违约金 : -失败赔偿;
+    const 状态 = 结果 === 'success' ? '已完成' : '已失败';
+    return [
+      ...this.构建联邦币变化补丁(金额变化),
+      ...this.构建委托任务状态补丁(任务委托, 状态),
+    ];
+  }
+
   toggleCommissionFields() {
     const type = this.getCommissionType();
     const targetNpcName = this.getTargetNpcName();
@@ -2400,6 +2546,32 @@ class ProfessionUIComponent {
   }
 
   getCommissionContext(cfg, runtime, tier, materialNames, targetName) {
+    const 任务委托 = this.读取委托任务上下文();
+    if (任务委托.isTaskCommission) {
+      const 自行运行时 = this.读取本次执行运行时(cfg, runtime, {}, targetName, materialNames);
+      return {
+        type: 'task',
+        isCommission: false,
+        isOfficial: false,
+        isPrivate: false,
+        isTaskCommission: true,
+        task: 任务委托,
+        targetNpcName: '',
+        targetName,
+        fusionCount: this.getFusionContext(自行运行时, materialNames).fusionCount,
+        fusionSync: this.getFusionContext(自行运行时, materialNames).fusionSync,
+        relScore: 0,
+        commissionFee: 0,
+        successRate: null,
+        executorName: this.activeName,
+        executorRuntime: 自行运行时,
+        validationRuntime: 自行运行时,
+        note: `委托任务：${任务委托.任务名 || targetName}。`,
+        error: Number(自行运行时?.lv || 0) <= 0 ? `${this.activeName}未掌握【${this.读取副职业显示名(cfg.jobName)}】副职业，无法承接该委托。` : null,
+        targetChar: null,
+        hasEnoughFunds: true,
+      };
+    }
     const type = this.getCommissionType();
     const targetNpcName = this.getTargetNpcName();
     const currentLoc = String(this.charData?.状态?.位置 || '');
@@ -2476,7 +2648,13 @@ class ProfessionUIComponent {
     return () => false;
   }
 
-  getSelectedMaterialNames() { return Array.from(this.container.querySelectorAll('.material-cb:checked')).map(node => node.value); }
+  getSelectedMaterialNames() {
+    const 委托上下文 = this.读取委托任务上下文();
+    if (委托上下文.isTaskCommission && 委托上下文.材料清单.length) {
+      return 委托上下文.材料清单.map(材料 => String(材料?.名称 || '').trim()).filter(Boolean);
+    }
+    return Array.from(this.container.querySelectorAll('.material-cb:checked')).map(node => node.value);
+  }
 
   setPreviewField(id, value, cls = '') {
     const el = this.$('#' + id);
@@ -2530,12 +2708,14 @@ class ProfessionUIComponent {
     container.innerHTML = '';
     const filter = this.getMaterialFilter(this.activeMode);
     let count = 0;
-    const 添加材料项 = (itemName, 引用, item, labelText) => {
+    const 添加材料项 = (itemName, 引用, item, labelText, options = {}) => {
       if (!item || Number(item.数量 || 0) <= 0 || !filter(itemName, item)) return;
       const label = document.createElement('label');
-      label.className = 'material-item';
+      label.className = `material-item${options.checked ? ' is-selected' : ''}`;
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.className = 'material-cb material-checkbox'; cb.value = 引用;
+      cb.checked = options.checked === true;
+      cb.disabled = options.disabled === true;
       cb.addEventListener('change', () => {
         label.classList.toggle('is-selected', cb.checked);
         this.autoGenerateTargetName();
@@ -2559,6 +2739,23 @@ class ProfessionUIComponent {
       container.appendChild(label);
       count++;
     };
+    const 委托上下文 = this.读取委托任务上下文();
+    if (委托上下文.isTaskCommission) {
+      委托上下文.材料清单.forEach(材料 => {
+        const itemName = String(材料?.名称 || '').trim();
+        if (!itemName) return;
+        const 命中 = this.查找物品定义(itemName);
+        添加材料项(
+          itemName,
+          itemName,
+          { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', 数量: Math.max(1, Math.floor(Number(材料?.数量 || 1))) },
+          `${itemName} · 委托`,
+          { checked: true, disabled: true },
+        );
+      });
+      if (count === 0) container.innerHTML = this.渲染材料空槽HTML({ requiresMaterials: false });
+      return;
+    }
     Object.keys(this.currentInventory).forEach(itemName => {
       const 背包记录 = this.currentInventory[itemName];
       const 普通数量 = this.读取背包普通数量(背包记录);
@@ -2579,6 +2776,12 @@ class ProfessionUIComponent {
   }
 
   autoGenerateTargetName() {
+    const 委托上下文 = this.读取委托任务上下文();
+    if (委托上下文.isTaskCommission && 委托上下文.目标产物) {
+      this.$('#prof-target').value = 委托上下文.目标产物;
+      this.更新蓝图状态(委托上下文.目标产物);
+      return;
+    }
     const cfg = PROFESSION_CONFIG[this.activeMode];
     const materials = this.getSelectedMaterialNames();
     const tier = this.getCurrentUiState().tier;
@@ -2740,6 +2943,10 @@ class ProfessionUIComponent {
     let 当前成功率数值 = 0;
     let costText = commissionCtx.isCommission ? `<span class="val-cyan">委托模式不扣副职业资源</span>` : this.formatResourceCost(costs);
     let feeText = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? `<span class="val-highlight">${this.formatFedCoin(commissionCtx.commissionFee)}</span>` : `<span class="val-green">免单</span>`) : `<span class="val-cyan">无</span>`;
+    if (commissionCtx.isTaskCommission) {
+      costText = `${this.formatResourceCost(costs)} / <span class="val-cyan">材料由委托方提供</span>`;
+      feeText = `<span class="val-highlight">报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}</span>`;
+    }
 
     if (this.activeMode === 'forge') {
       if (!ruleError) ruleError = this.validateForgeRules(effectiveRuntime, tier, materialNames, targetName, { isCommission: commissionCtx.isCommission });
@@ -2800,11 +3007,11 @@ class ProfessionUIComponent {
     this.更新蓝图状态(targetName);
     this.设置动作错误(ruleError);
     this.$('#prof-submit').disabled = Boolean(ruleError);
-    this.setPreviewField('prev-job', `<span class="val-cyan">${this.读取副职业显示名(本次进度副职业)} Lv.${effectiveRuntime.lv}</span>${commissionCtx.isCommission ? ` / 执行者 ${commissionCtx.executorName}` : ''}`);
+    this.setPreviewField('prev-job', `<span class="val-cyan">${this.读取副职业显示名(本次进度副职业)} Lv.${effectiveRuntime.lv}</span>${commissionCtx.isCommission ? ` / 执行者 ${commissionCtx.executorName}` : ''}${commissionCtx.isTaskCommission ? ' / 委托任务' : ''}`);
     this.setPreviewField('prev-exp', commissionCtx.isCommission ? `<span class="val-highlight">${Number(effectiveRuntime.exp || 0).toLocaleString()}</span> / 执行者熟练度` : `<span class="val-highlight">${自身进度运行时.exp.toLocaleString()}</span> / 本级进度 <span class="val-cyan">${Math.floor(自身进度运行时.expRatio * 100)}%</span>`);
     this.setPreviewField('prev-res', this.formatCurrentResources());
     this.setPreviewField('prev-costs', enoughResources ? costText : `<span class="val-red">${costText}</span>`);
-    this.setPreviewField('prev-executor', `<span class="val-cyan">${commissionCtx.executorName}</span>${commissionCtx.isPrivate ? ` / 好感 ${commissionCtx.relScore}` : (commissionCtx.isOfficial ? ' / 官方代工' : ' / 自行操作')}`);
+    this.setPreviewField('prev-executor', `<span class="val-cyan">${commissionCtx.executorName}</span>${commissionCtx.isTaskCommission ? ' / 委托任务' : (commissionCtx.isPrivate ? ` / 好感 ${commissionCtx.relScore}` : (commissionCtx.isOfficial ? ' / 官方代工' : ' / 自行操作'))}`);
     this.setPreviewField('prev-fee', feeText);
     this.setPreviewField('prev-rate', ruleError ? '-' : rateText, this.读取成功率类名(当前成功率数值, Boolean(ruleError)));
     this.setPreviewField('prev-fusion', ruleError ? `<span class="val-red">-</span>` : fusionText);
@@ -3026,7 +3233,7 @@ class ProfessionUIComponent {
 
   executeProfessionAction() {
     const 连续配置 = this.获取连续模式配置();
-    if (连续配置.连续模式开启) {
+    if (连续配置.连续模式开启 && !this.读取委托任务上下文().isTaskCommission) {
       this.executeContinuousProfession(连续配置);
       return;
     }
@@ -3247,6 +3454,16 @@ class ProfessionUIComponent {
       this.显示提示(ruleError);
       return;
     }
+    const 任务超时 = commissionCtx.isTaskCommission && this.委托任务已超时(commissionCtx.task);
+    if (任务超时) {
+      const resultLog = `[委托超时] ${this.activeName}未能按期交付【${targetName}】，扣除违约金 ${this.formatFedCoin(commissionCtx.task.违约金)}。`;
+      const patchOps = [
+        ...this.构建委托任务结算补丁(commissionCtx, 'timeout'),
+        ...this.buildSystemResultPatches(resultLog, 0, 0),
+      ];
+      this.submitAction(`我想提交委托任务【${commissionCtx.task.任务名 || targetName}】。`, `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n${resultLog}\n\n本次委托任务结算已由前端写回；正文只承接自然剧情，不输出变量维护指令。`, 'prof_forge_task_commission', patchOps);
+      return;
+    }
     
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isFusion = efc > 1;
@@ -3278,21 +3495,34 @@ class ProfessionUIComponent {
     }
 
     let patchOps = [];
-    if (commissionCtx.isCommission) patchOps.push(...this.buildCommissionFeePatches(commissionCtx.commissionFee));
-    else patchOps.push(...this.buildResourcePatches(costs));
-    patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
+    if (commissionCtx.isTaskCommission) {
+      patchOps.push(...this.buildResourcePatches(costs));
+    } else if (commissionCtx.isCommission) {
+      patchOps.push(...this.buildCommissionFeePatches(commissionCtx.commissionFee));
+    } else {
+      patchOps.push(...this.buildResourcePatches(costs));
+      patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
+    }
 
     if (isSuccess) {
       const newItem = { 数量: 1, 物品分类: '锻造金属', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: Number(finalQ.toFixed(2)), 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物` };
       const 批次数据 = this.构建工坊产物批次数据('锻造金属', targetName, materialNames, tier, Number(finalQ.toFixed(2)), 0);
       Object.assign(newItem, 批次数据);
       if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
-      patchOps.push(...this.buildInventoryAddPatches(targetName, newItem, 1, Object.keys(批次数据).length > 0));
-      if (!commissionCtx.isCommission) {
+      if (commissionCtx.isTaskCommission) {
+        patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'success'));
+        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}。`;
+      } else {
+        patchOps.push(...this.buildInventoryAddPatches(targetName, newItem, 1, Object.keys(批次数据).length > 0));
+      }
+      if (!commissionCtx.isCommission && !commissionCtx.isTaskCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain, this.读取本次作品认证等级(cfg.jobName, tier));
         patchOps.push(...progress.patches);
         if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
       }
+    } else if (commissionCtx.isTaskCommission) {
+      patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'fail'));
+      resultLog += ` 赔付材料损耗 ${this.formatFedCoin(commissionCtx.task.失败赔偿)}。`;
     }
     patchOps.push(...this.buildSystemResultPatches(resultLog, roll, successRate));
 
@@ -3321,6 +3551,16 @@ class ProfessionUIComponent {
       this.显示提示(ruleError);
       return;
     }
+    const 任务超时 = commissionCtx.isTaskCommission && this.委托任务已超时(commissionCtx.task);
+    if (任务超时) {
+      const resultLog = `[委托超时] ${this.activeName}未能按期交付【${targetName}】，扣除违约金 ${this.formatFedCoin(commissionCtx.task.违约金)}。`;
+      const patchOps = [
+        ...this.构建委托任务结算补丁(commissionCtx, 'timeout'),
+        ...this.buildSystemResultPatches(resultLog, 0, 0),
+      ];
+      this.submitAction(`我想提交委托任务【${commissionCtx.task.任务名 || targetName}】。`, `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n${resultLog}\n\n本次委托任务结算已由前端写回；正文只承接自然剧情，不输出变量维护指令。`, `prof_${cfg.mode}_task_commission`, patchOps);
+      return;
+    }
     
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isComp = efc > 1;
@@ -3334,33 +3574,36 @@ class ProfessionUIComponent {
     expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
 
     let patchOps = [];
-    if (commissionCtx.isCommission) patchOps.push(...this.buildCommissionFeePatches(commissionCtx.commissionFee));
+    if (commissionCtx.isTaskCommission) patchOps.push(...this.buildResourcePatches(costs));
+    else if (commissionCtx.isCommission) patchOps.push(...this.buildCommissionFeePatches(commissionCtx.commissionFee));
     else patchOps.push(...this.buildResourcePatches(costs));
 
-    if (this.activeMode === 'manufacture') {
-      const recipe = this.getManufactureRecipe(targetName, materialNames, tier, qty);
-      if (recipe?.mode === 'mech') {
-        patchOps.push(...this.buildConsumePlanPatches(this.buildTierNeedConsumePlan(materialNames, recipe.fixedTierNeeds)));
-      } else if (recipe?.mode === 'armor') {
-        patchOps.push(...this.buildConsumePlanPatches(this.构建斗铠制造消耗计划(materialNames, recipe, qty)));
+    if (!commissionCtx.isTaskCommission) {
+      if (this.activeMode === 'manufacture') {
+        const recipe = this.getManufactureRecipe(targetName, materialNames, tier, qty);
+        if (recipe?.mode === 'mech') {
+          patchOps.push(...this.buildConsumePlanPatches(this.buildTierNeedConsumePlan(materialNames, recipe.fixedTierNeeds)));
+        } else if (recipe?.mode === 'armor') {
+          patchOps.push(...this.buildConsumePlanPatches(this.构建斗铠制造消耗计划(materialNames, recipe, qty)));
+        } else if (materialNames.length > 0) patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
       } else if (materialNames.length > 0) patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
-    } else if (materialNames.length > 0) patchOps.push(...this.buildMaterialConsumePatches(materialNames, qty));
+    }
 
     let resultLog = '';
     if (isSuccess) {
       if (this.activeMode === 'design') {
         const outputName = this.getDesignOutputName(targetName, tier, materialNames);
-        patchOps.push(...this.buildInventoryAddPatches(outputName, { 物品分类: '设计图纸', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: finalQ, 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}绘制` }, 1));
+        if (!commissionCtx.isTaskCommission) patchOps.push(...this.buildInventoryAddPatches(outputName, { 物品分类: '设计图纸', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: finalQ, 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}绘制` }, 1));
         resultLog = `[${commissionCtx.isCommission ? '委托成功' : cfg.displayName + '成功'}] ${commissionCtx.executorName}完成了【${outputName}】的设计绘制，完成度系数 ${finalQ.toFixed(2)}。`;
       } else if (this.activeMode === 'manufacture') {
         const mMeta = this.getManufactureOutputMeta(targetName, materialNames, tier);
         const 批次数据 = this.构建工坊产物批次数据(mMeta.分类, mMeta.name, materialNames, tier, finalQ, mMeta.魂导等级 || 0);
-        patchOps.push(...this.buildInventoryAddPatches(mMeta.name, { 物品分类: mMeta.分类, 魂导等级: mMeta.魂导等级 || 0, 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: finalQ, 描述: `由${commissionCtx.executorName}完成${本次工序显示名}`, ...批次数据 }, 1, Object.keys(批次数据).length > 0));
+        if (!commissionCtx.isTaskCommission) patchOps.push(...this.buildInventoryAddPatches(mMeta.name, { 物品分类: mMeta.分类, 魂导等级: mMeta.魂导等级 || 0, 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: finalQ, 描述: `由${commissionCtx.executorName}完成${本次工序显示名}`, ...批次数据 }, 1, Object.keys(批次数据).length > 0));
         resultLog = `[${commissionCtx.isCommission ? '委托成功' : 本次工序显示名 + '成功'}] ${commissionCtx.executorName}完成了【${mMeta.name}】的制造，完成度系数 ${finalQ.toFixed(2)}。`;
       } else if (this.activeMode === 'repair') {
         const definition = this.resolveInventoryItem(targetName);
         const repairDesc = this.getRepairDescriptor(materialNames);
-        if (!this.查找物品定义(targetName)) {
+        if (!commissionCtx.isTaskCommission && !this.查找物品定义(targetName)) {
           const 修理定义 = this.构建修理目标物品定义(targetName, definition, repairDesc);
           patchOps.push({
             op: 'replace',
@@ -3368,19 +3611,26 @@ class ProfessionUIComponent {
             value: 修理定义.定义
           });
         }
-        this.追加修理写回补丁(patchOps, targetName, definition, repairDesc);
+        if (!commissionCtx.isTaskCommission) this.追加修理写回补丁(patchOps, targetName, definition, repairDesc);
         resultLog = `[${commissionCtx.isCommission ? '委托成功' : 本次工序显示名 + '成功'}] ${commissionCtx.executorName}完成了对【${targetName}】的整备修理。当前状态：${repairDesc.status}。`;
       }
-      if (!commissionCtx.isCommission) {
+      if (commissionCtx.isTaskCommission) {
+        patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'success'));
+        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}。`;
+      } else if (!commissionCtx.isCommission) {
         const 进度副职业 = this.读取本次进度副职业(cfg, targetName, materialNames);
         const progress = this.buildJobProgressPatches(进度副职业, expGain, this.读取本次进度作品等级(进度副职业, tier, targetName, materialNames));
         patchOps.push(...progress.patches);
         if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${进度副职业}等级提升至 Lv.${progress.newLv}。`;
       }
-      if (isGreatSuccess) resultLog = `[大成功] ${commissionCtx.executorName}以极高完成度完成了【${targetName}】的${本次工序显示名}操作，品质系数 ${finalQ.toFixed(2)}。`;
+      if (!commissionCtx.isTaskCommission && isGreatSuccess) resultLog = `[大成功] ${commissionCtx.executorName}以极高完成度完成了【${targetName}】的${本次工序显示名}操作，品质系数 ${finalQ.toFixed(2)}。`;
       else if (commissionCtx.isCommission) resultLog += (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatFedCoin(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。');
     } else {
       resultLog = `[${commissionCtx.isCommission ? '委托失败' : 本次工序显示名 + '失败'}] ${commissionCtx.executorName}尝试处理【${targetName}】失败。Roll ${roll} > 成功率 ${successRate}。`;
+      if (commissionCtx.isTaskCommission) {
+        patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'fail'));
+        resultLog += ` 赔付材料损耗 ${this.formatFedCoin(commissionCtx.task.失败赔偿)}。`;
+      }
     }
 
     patchOps.push(...this.buildSystemResultPatches(resultLog, roll, successRate));

@@ -275,6 +275,7 @@ var FORM_TEMPLATE_STORAGE_KEY = 'CHAR_FORM_TEMPLATES_V1';
 var FORM_LAST_SNAPSHOT_KEY = 'CHAR_FORM_LAST_SNAPSHOT_V1';
 var 剧情推进预设已注入 = false;
 var 开场主按钮处理中 = false;
+var 当前原著角色选择 = '';
 
 var timelineData = {
   "6岁": {
@@ -300,11 +301,273 @@ var timelineData = {
   }
 };
 
+function 获取开场宿主窗口() {
+    return window.parent || window.top || window;
+}
+
+function 克隆JSON值(值, 兜底) {
+    if (值 === undefined || 值 === null) return 兜底;
+    try {
+        return JSON.parse(JSON.stringify(值));
+    } catch (错误) {
+        return 兜底;
+    }
+}
+
+function 读取开场内置角色库() {
+    var 窗口列表 = [window, window.parent, window.top, 获取开场宿主窗口()];
+    for (var 序号 = 0; 序号 < 窗口列表.length; 序号++) {
+        try {
+            var 角色库 = 窗口列表[序号] && 窗口列表[序号].__LWCS_内置角色库__;
+            if (角色库 && 角色库.角色 && typeof 角色库.角色 === 'object') return 角色库;
+        } catch (_) {}
+    }
+    return null;
+}
+
+function 读取开场tick(时间线节点) {
+    return (timelineData[时间线节点] && timelineData[时间线节点].world && timelineData[时间线节点].world.时间)
+        ? Number(timelineData[时间线节点].world.时间.tick || 0)
+        : 0;
+}
+
+function 读取原著角色节点年龄(节点) {
+    var 匹配 = String(节点 || '').match(/(\d+(?:\.\d+)?)\s*岁/);
+    var 年龄 = 匹配 ? Number(匹配[1]) : NaN;
+    return Number.isFinite(年龄) ? 年龄 : null;
+}
+
+function 读取原著角色快照年龄(快照) {
+    var 节点年龄 = 读取原著角色节点年龄(快照 && 快照.节点);
+    if (节点年龄 !== null) return 节点年龄;
+    var 年龄 = Number(快照 && (快照.年龄 !== undefined ? 快照.年龄 : 快照.角色 && 快照.角色.属性 && 快照.角色.属性.年龄));
+    return Number.isFinite(年龄) ? 年龄 : 0;
+}
+
+function 取原著角色快照(角色记录, 时间线节点) {
+    var 快照列表 = Array.isArray(角色记录 && 角色记录.快照) ? 角色记录.快照 : [];
+    if (!快照列表.length) return null;
+    var 指定快照 = 快照列表.find(function(快照) {
+        return String(快照 && 快照.节点 || '').trim() === 时间线节点;
+    });
+    if (指定快照) return 指定快照;
+    var 当前tick = 读取开场tick(时间线节点);
+    var 有tick快照 = 快照列表.filter(function(快照) {
+        return Number.isFinite(Number(快照 && 快照.tick));
+    });
+    if (!有tick快照.length) return 快照列表[0];
+    var 之前快照 = 有tick快照
+        .filter(function(快照) { return Number(快照.tick) <= 当前tick; })
+        .sort(function(a, b) { return Number(b.tick) - Number(a.tick); })[0];
+    if (之前快照) return 之前快照;
+    return 有tick快照.sort(function(a, b) { return Number(a.tick) - Number(b.tick); })[0];
+}
+
+function 计算原著角色投影年龄(角色库, 快照, 当前tick) {
+    var 快照年龄 = 读取原著角色快照年龄(快照);
+    if (快照 && 快照.固定年龄投影 === true) return 快照年龄;
+    var 快照tick = Number(快照 && 快照.tick);
+    if (!Number.isFinite(快照tick)) return 快照年龄;
+    var 每年tick = Math.max(1, Number(角色库 && 角色库.每年tick || 51840));
+    return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
+}
+
+function 角色库天赋转表单选项(天赋梯队) {
+    var 文本 = String(天赋梯队 || '').trim();
+    if (文本 === '绝世妖孽') return 'EX';
+    if (文本 === '顶级天才') return 'S';
+    if (文本 === '天才') return 'A';
+    if (文本 === '优秀') return 'B';
+    if (文本 === '劣等' || 文本 === '天赋极差') return 'D';
+    return 'C';
+}
+
+function 格式化开场表单文本(值) {
+    if (值 === undefined || 值 === null) return '';
+    if (typeof 值 === 'string') return 值;
+    if (Array.isArray(值)) return 值.map(格式化开场表单文本).filter(Boolean).join('、');
+    if (typeof 值 === 'object') {
+        return Object.entries(值)
+            .map(function(条目) {
+                var 子值 = 格式化开场表单文本(条目[1]);
+                return 子值 ? 条目[0] + '：' + 子值 : '';
+            })
+            .filter(Boolean)
+            .join('；');
+    }
+    return String(值);
+}
+
+function 读取原著角色武魂表单(角色数据) {
+    var 武魂列表 = ['第1武魂', '第2武魂']
+        .map(function(槽位) { return 角色数据 && 角色数据[槽位] && typeof 角色数据[槽位] === 'object' ? 角色数据[槽位] : null; })
+        .filter(function(武魂) {
+            var 名称 = String(武魂 && 武魂.表象名称 || '').trim();
+            return 名称 && 名称 !== '无' && 名称 !== '未展露';
+        });
+    return {
+        名称: 武魂列表.map(function(武魂) { return String(武魂.表象名称 || '').trim(); }).join(' '),
+        系别: 武魂列表.map(function(武魂) { return String(武魂.系别 || '强攻系').trim() || '强攻系'; }),
+        描述: 武魂列表.map(function(武魂) { return String(武魂.描述 || '').trim(); }),
+    };
+}
+
+function 读取原著角色副职业表单(角色数据) {
+    var 副职业表 = 角色数据 && 角色数据.副职业 && typeof 角色数据.副职业 === 'object' ? 角色数据.副职业 : {};
+    var 条目 = Object.entries(副职业表).find(function(项) { return 项[1] && typeof 项[1] === 'object'; });
+    if (!条目) return { 类型: '无', 等级: '1' };
+    var 副职业名 = 条目[0];
+    var 数据 = 条目[1] || {};
+    var 等级 = Math.max(1, Math.min(9, Math.floor(Number(数据.等级 || 0) || 0)));
+    if (!等级) {
+        var 称号 = String(数据.称号 || '');
+        var 匹配 = 称号.match(/([一二三四五六七八九])级|(\d+)级/);
+        var 中文等级 = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+        等级 = 匹配 ? (中文等级[匹配[1]] || Number(匹配[2]) || 1) : 1;
+    }
+    var 表单类型 = { 设计师: '机甲设计师', 制造师: '机甲制造师', 修理师: '机甲修理师' }[副职业名] || 副职业名;
+    return { 类型: 表单类型, 等级: String(Math.max(1, Math.min(9, 等级))) };
+}
+
+function 设置表单值(元素编号, 值, 触发事件) {
+    var 元素 = document.getElementById(元素编号);
+    if (!元素 || 值 === undefined || 值 === null) return;
+    元素.value = 值;
+    if (触发事件) {
+        元素.dispatchEvent(new Event('input', { bubbles: true }));
+        元素.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+function 构建原著角色开场投影(角色名, 时间线节点) {
+    var 角色库 = 读取开场内置角色库();
+    var 角色记录 = 角色库 && 角色库.角色 ? 角色库.角色[角色名] : null;
+    if (!角色库 || !角色记录) return null;
+    var 当前tick = 读取开场tick(时间线节点);
+    var 快照 = 取原著角色快照(角色记录, 时间线节点);
+    if (!快照 || !快照.角色 || typeof 快照.角色 !== 'object') return null;
+    var 角色数据 = 克隆JSON值(快照.角色, {});
+    if (!角色数据.属性 || typeof 角色数据.属性 !== 'object') 角色数据.属性 = {};
+    var 投影年龄 = 计算原著角色投影年龄(角色库, 快照, 当前tick);
+    角色数据.属性.年龄 = Number(投影年龄.toFixed(1));
+    return {
+        角色名: 角色名,
+        角色记录: 角色记录,
+        快照: 快照,
+        角色数据: 角色数据,
+        当前tick: 当前tick,
+        需要重算等级: Number(快照.tick || 0) > 当前tick,
+    };
+}
+
+function 读取开局模式() {
+    var 元素 = document.getElementById('startup-mode');
+    return 元素 && 元素.value === '原著角色' ? '原著角色' : '原创角色';
+}
+
+function 刷新原著角色选择() {
+    var 选择框 = document.getElementById('original-character-select');
+    if (!选择框) return;
+    var 旧值 = 选择框.value || 当前原著角色选择 || '';
+    var 角色库 = 读取开场内置角色库();
+    var 时间线节点 = (document.getElementById('timeline-select') || {}).value || '13岁';
+    选择框.innerHTML = '';
+    var 占位 = document.createElement('option');
+    占位.value = '';
+    占位.textContent = 角色库 ? '选择原著角色' : '角色库未加载';
+    选择框.appendChild(占位);
+    if (!角色库) return;
+    var 条目列表 = Object.entries(角色库.角色 || {})
+        .map(function(条目) {
+            var 角色名 = String(条目[0] || '').trim();
+            var 角色记录 = 条目[1] || {};
+            var 常驻 = Array.isArray(角色记录.开场常驻节点) && 角色记录.开场常驻节点.indexOf(时间线节点) >= 0;
+            var 首次登场 = Number(角色记录.首次登场tick);
+            return { 角色名: 角色名, 角色记录: 角色记录, 常驻: 常驻, 首次登场: Number.isFinite(首次登场) ? 首次登场 : 999999999 };
+        })
+        .filter(function(条目) { return 条目.角色名; })
+        .sort(function(a, b) {
+            if (a.常驻 !== b.常驻) return a.常驻 ? -1 : 1;
+            return a.首次登场 - b.首次登场 || a.角色名.localeCompare(b.角色名, 'zh-Hans-CN');
+        });
+    var 当前分组 = document.createElement('optgroup');
+    当前分组.label = 时间线节点 + '常驻';
+    var 其他分组 = document.createElement('optgroup');
+    其他分组.label = '其他原著角色';
+    条目列表.forEach(function(条目) {
+        var 选项 = document.createElement('option');
+        选项.value = 条目.角色名;
+        选项.textContent = 条目.角色名;
+        (条目.常驻 ? 当前分组 : 其他分组).appendChild(选项);
+    });
+    if (当前分组.children.length) 选择框.appendChild(当前分组);
+    if (其他分组.children.length) 选择框.appendChild(其他分组);
+    if (旧值 && 角色库.角色[旧值]) {
+        选择框.value = 旧值;
+    } else if (读取开局模式() === '原著角色') {
+        var 首个选项 = 选择框.querySelector('option[value]:not([value=""])');
+        if (首个选项) 选择框.value = 首个选项.value;
+    }
+    当前原著角色选择 = 选择框.value || '';
+}
+
+function 应用原著角色到表单(角色名) {
+    var 时间线节点 = (document.getElementById('timeline-select') || {}).value || '13岁';
+    var 投影 = 构建原著角色开场投影(角色名, 时间线节点);
+    if (!投影) return false;
+    当前原著角色选择 = 投影.角色名;
+    var 角色数据 = 投影.角色数据;
+    var 属性 = 角色数据.属性 || {};
+    var 武魂 = 读取原著角色武魂表单(角色数据);
+    var 副职业 = 读取原著角色副职业表单(角色数据);
+    设置表单值('char-name', 投影.角色名, true);
+    设置表单值('char-gender', 属性.性别 || '男', true);
+    设置表单值('char-age', 属性.年龄 !== undefined ? 属性.年龄 : 6, true);
+    写入开场生日(属性.生日 || 读取开场生日());
+    设置表单值('char-loc', 角色数据.状态 && 角色数据.状态.位置 ? 角色数据.状态.位置 : '', true);
+    设置表单值('char-spirit', 武魂.名称 || '未觉醒', true);
+    设置表单值('char-talent', 角色库天赋转表单选项(属性.天赋梯队), true);
+    设置表单值('char-personality', 格式化开场表单文本(角色数据.性格), true);
+    设置表单值('char-appearance', 格式化开场表单文本(角色数据.外貌 && (角色数据.外貌.长相描述 || 角色数据.外貌)), true);
+    设置表单值('char-bg', 格式化开场表单文本(角色数据.社交 && (角色数据.社交.家世描述 || 角色数据.社交.主身份 || 角色数据.社交.势力)), true);
+    设置表单值('char-job-type', 副职业.类型, true);
+    设置表单值('char-job-lv', 副职业.等级, true);
+    window.updateSpiritTypes();
+    document.querySelectorAll('.spirit-type-select').forEach(function(选择, 序号) {
+        if (武魂.系别[序号]) 选择.value = 武魂.系别[序号];
+    });
+    document.querySelectorAll('.spirit-desc-input').forEach(function(输入, 序号) {
+        if (武魂.描述[序号]) 输入.value = 武魂.描述[序号];
+    });
+    return true;
+}
+
+window.应用原著角色选择 = function() {
+    var 选择框 = document.getElementById('original-character-select');
+    var 角色名 = String(选择框 && 选择框.value || '').trim();
+    if (!角色名) return;
+    if (应用原著角色到表单(角色名)) saveLastSnapshot(collectFormSnapshot());
+};
+
+window.切换开局模式 = function(是否保存快照) {
+    var 原著模式 = 读取开局模式() === '原著角色';
+    var 原著分组 = document.getElementById('original-character-group');
+    var 姓名输入 = document.getElementById('char-name');
+    if (原著分组) 原著分组.classList.toggle('mode-hidden', !原著模式);
+    if (姓名输入) 姓名输入.readOnly = 原著模式;
+    if (原著模式) {
+        刷新原著角色选择();
+        var 选择框 = document.getElementById('original-character-select');
+        if (是否保存快照 !== false && 选择框 && 选择框.value) 应用原著角色到表单(选择框.value);
+    }
+    if (是否保存快照 !== false) saveLastSnapshot(collectFormSnapshot());
+};
+
 function splitSpirits(text) {
-    var value = (text || '').trim();
-    var list = value ? value.split(/[、,，;；\s]+/) : [];
-    list = list.map(function(item) { return item.trim(); }).filter(function(item) { return item !== ''; });
-    return list.length ? list.slice(0, 2) : ['未觉醒'];
+    var 文本 = (text || '').trim();
+    var 列表 = 文本 ? 文本.split(/[、,，;；\s]+/) : [];
+    列表 = 列表.map(function(条目) { return 条目.trim(); }).filter(function(条目) { return 条目 !== ''; });
+    return 列表.length ? 列表.slice(0, 2) : ['未觉醒'];
 }
 
 function getTalentConfig(talent) {
@@ -317,37 +580,6 @@ function getTalentConfig(talent) {
         D:  { label: '劣等' }
     };
     return configMap[talent] || configMap.C;
-}
-
-function 获取开场有效天赋(天赋标签, 年龄值) {
-    if (年龄值 < 15 && ['天才', '顶级天才', '绝世妖孽'].indexOf(天赋标签) >= 0) return '天才';
-    if (年龄值 < 18 && ['顶级天才', '绝世妖孽'].indexOf(天赋标签) >= 0) return '顶级天才';
-    return 天赋标签 || '正常';
-}
-
-function 插值开场等级(描点列表, 年龄值) {
-    var 等级值 = 描点列表[0][1];
-    for (var 序号 = 0; 序号 < 描点列表.length - 1; 序号++) {
-        var 当前描点 = 描点列表[序号];
-        var 下个描点 = 描点列表[序号 + 1];
-        if (年龄值 < 当前描点[0]) break;
-        if (年龄值 <= 下个描点[0]) {
-            var 比例 = Math.max(0, Math.min(1, (年龄值 - 当前描点[0]) / Math.max(1, 下个描点[0] - 当前描点[0])));
-            return 当前描点[1] + (下个描点[1] - 当前描点[1]) * 比例;
-        }
-        等级值 = 下个描点[1];
-    }
-    return 等级值;
-}
-
-function 解析开场生日年内日序(生日) {
-    var 文本 = String(生日 || '').trim();
-    if (!文本 || 文本 === '待生成') return null;
-    var 匹配 = 文本.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/) || 文本.match(/^(\d{1,2})\s*[-/.]\s*(\d{1,2})$/);
-    if (!匹配) return null;
-    var 月 = Math.max(1, Math.min(12, Math.floor(Number(匹配[1]) || 1)));
-    var 日 = Math.max(1, Math.min(30, Math.floor(Number(匹配[2]) || 1)));
-    return (月 - 1) * 30 + (日 - 1);
 }
 
 function 格式化开场生日(月, 日) {
@@ -388,110 +620,24 @@ function 初始化开场生日选项() {
     写入开场生日(读取开场生日());
 }
 
-function 计算开场tick年内日序(tick) {
-    var 总天数 = Math.floor(Math.max(0, Number(tick || 0)) / 144);
-    return ((总天数 % 360) + 360) % 360;
-}
-
-function 计算开场生日有效年龄(年龄值, 生日, 当前tick) {
-    var 基础年龄 = Math.max(0, Number(年龄值) || 0);
-    var 生日序 = 解析开场生日年内日序(生日);
-    if (生日序 === null) return 基础年龄;
-    var 当前序 = 计算开场tick年内日序(当前tick);
-    var 距上次生日天数 = (当前序 - 生日序 + 360) % 360;
-    return 基础年龄 + 距上次生日天数 / 360;
-}
-
-function 获取开场系别修炼难度系数(系别) {
-    if (typeof 系别 === 'number') return Math.max(0.1, Number(系别) || 1);
-    var 系别修炼难度表 = {
-        '强攻系': 1,
-        '防御系': 1,
-        '敏攻系': 1,
-        '控制系': 1,
-        '辅助系': 1.2,
-        '治疗系': 1.2,
-        '食物系': 1.2,
-        '精神系': 1,
-        '元素系': 1
-    };
-    return Math.max(0.1, Number(系别修炼难度表[String(系别 || '强攻系').trim()] || 1));
-}
-
-function 获取开场双生修炼难度系数(系别列表) {
-    var 有效列表 = Array.isArray(系别列表) && 系别列表.length ? 系别列表 : ['强攻系'];
-    var 最低倍率 = Infinity;
-    有效列表.forEach(function(系别) {
-        最低倍率 = Math.min(最低倍率, 获取开场系别修炼难度系数(系别));
-    });
-    return Math.max(0.1, Number.isFinite(最低倍率) ? 最低倍率 : 1);
-}
-
-function 规避开场魂环门槛等级(等级值) {
-    if (等级值 >= 99.5) return 99.5;
-    if (等级值 >= 10 && 等级值 <= 90 && 等级值 % 10 === 0) return 等级值 + 1;
-    return 等级值;
-}
-
-function 计算开场魂力上限(等级值) {
-    var 等级 = Math.max(1, Math.min(99.5, Number(等级值) || 1));
-    var 锚点 = [
-        [1, 100],
-        [10, 800],
-        [20, 2000],
-        [30, 4500],
-        [40, 8500],
-        [50, 15000],
-        [60, 26000],
-        [70, 55000],
-        [80, 95000],
-        [90, 180000],
-        [95, 360000]
-    ];
-    if (等级 >= 95 && 等级 <= 99) return 360000 * Math.pow(2, 等级 - 95);
-    if (等级 > 99 && 等级 <= 99.5) return 360000 * 16 * Math.pow(2, (等级 - 99) / 0.5);
-    for (var 序号 = 0; 序号 < 锚点.length - 1; 序号 += 1) {
-        var 起点 = 锚点[序号];
-        var 终点 = 锚点[序号 + 1];
-        if (等级 >= 起点[0] && 等级 <= 终点[0]) {
-            var 比例 = (等级 - 起点[0]) / (终点[0] - 起点[0]);
-            var 平滑比例 = 比例 * 比例 * (3 - 2 * 比例);
-            return 起点[1] + (终点[1] - 起点[1]) * 平滑比例;
-        }
+function 计算开场等级(天赋配置, 年龄值, 生日, 当前tick) {
+    var 窗口列表 = [window, window.parent, window.top, 获取开场宿主窗口()];
+    for (var 序号 = 0; 序号 < 窗口列表.length; 序号 += 1) {
+        try {
+            var 计算函数 = 窗口列表[序号] && 窗口列表[序号].__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__;
+            if (typeof 计算函数 === 'function') {
+                var 等级 = Number(计算函数({
+                    天赋梯队: 天赋配置 && 天赋配置.label ? 天赋配置.label : '正常',
+                    年龄: 年龄值,
+                    底子波动: 1,
+                    生日: 生日,
+                    当前tick: 当前tick
+                }));
+                if (Number.isFinite(等级)) return 等级;
+            }
+        } catch (_) {}
     }
-    return 100;
-}
-
-function 按开场系别折算等级(等级值, 系别) {
-    var 系别倍率 = 获取开场系别修炼难度系数(系别);
-    if (系别倍率 <= 1) return 等级值;
-    var 同等修炼魂力 = 计算开场魂力上限(等级值);
-    var 折算等级 = 1;
-    for (var 候选等级 = 1; 候选等级 <= 99.5; 候选等级 += 0.5) {
-        if (计算开场魂力上限(候选等级) * 系别倍率 <= 同等修炼魂力) {
-            折算等级 = 候选等级;
-        } else {
-            break;
-        }
-    }
-    return Math.min(等级值, 折算等级);
-}
-
-function 计算开场等级(天赋配置, 年龄值, 系别, 生日, 当前tick) {
-    var 有效年龄 = 计算开场生日有效年龄(年龄值, 生日, 当前tick);
-    var 有效天赋 = 获取开场有效天赋(天赋配置.label, 有效年龄);
-    var 等级描点表 = {
-        '劣等': [[6, 1], [10, 1], [20, 6], [30, 14], [40, 21], [150, 21]],
-        '正常': [[6, 3], [10, 6], [20, 21], [30, 32], [50, 41], [150, 41]],
-        '优秀': [[6, 6], [10, 14], [20, 40], [30, 69], [60, 70], [150, 70]],
-        '天才': [[6, 8], [9, 20], [10, 21], [20, 48], [30, 69], [40, 80], [50, 85], [100, 90], [150, 90]],
-        '顶级天才': [[6, 8], [10, 21], [20, 53], [30, 74], [40, 89], [50, 94], [100, 96], [150, 96]],
-        '绝世妖孽': [[6, 8], [10, 21], [20, 54], [30, 98], [40, 99.5], [150, 99.5]]
-    };
-    var 等级值 = 插值开场等级(等级描点表[有效天赋] || 等级描点表['正常'], Math.max(0, Number(有效年龄) || 6));
-    var 折算等级 = 按开场系别折算等级(等级值, 系别);
-    var 整理等级 = 折算等级 >= 99.5 ? 99.5 : Math.floor(折算等级);
-    return Math.max(1, Math.min(99.5, 规避开场魂环门槛等级(整理等级)));
+    throw new Error('MVU初始化修为计算入口未就绪');
 }
 
 function buildGuidedField(value, promptText) {
@@ -574,6 +720,8 @@ function collectFormSnapshot() {
 
     return {
         timeline: (document.getElementById('timeline-select') || {}).value || '13岁',
+        开局模式: (document.getElementById('startup-mode') || {}).value || '原创角色',
+        原著角色: (document.getElementById('original-character-select') || {}).value || '',
         name: (document.getElementById('char-name') || {}).value || '',
         gender: (document.getElementById('char-gender') || {}).value || '男',
         age: (document.getElementById('char-age') || {}).value || '13',
@@ -602,6 +750,7 @@ function applyFormSnapshot(snapshot) {
     }
 
     setValue('timeline-select', snapshot.timeline);
+    setValue('startup-mode', snapshot.开局模式 || '原创角色');
     setValue('char-name', snapshot.name);
     setValue('char-gender', snapshot.gender);
     setValue('char-age', snapshot.age);
@@ -643,6 +792,15 @@ function applyFormSnapshot(snapshot) {
         } else {
             selected.checked = true;
         }
+    }
+
+    if (typeof window.切换开局模式 === 'function') {
+        window.切换开局模式(false);
+    }
+    if (snapshot.开局模式 === '原著角色') {
+        刷新原著角色选择();
+        setValue('original-character-select', snapshot.原著角色);
+        当前原著角色选择 = snapshot.原著角色 || '';
     }
 }
 
@@ -773,6 +931,8 @@ window.deleteSelectedTemplate = function() {
 window.clearCreationForm = function() {
     applyFormSnapshot({
         timeline: '13岁',
+        开局模式: '原创角色',
+        原著角色: '',
         name: '',
         gender: '男',
         age: '13',
@@ -801,9 +961,9 @@ window.注入数据库剧情推进预设 = async function() {
             ? 宿主窗口.__LWCS_注入数据库剧情推进预设__
             : (typeof window.__LWCS_注入数据库剧情推进预设__ === 'function' ? window.__LWCS_注入数据库剧情推进预设__ : null);
         if (!注入剧情推进预设) throw new Error('数据库剧情推进预设注入接口未就绪');
-        var 结果 = await 注入剧情推进预设({ 来源: 'startup_panel_button', 强制切换: true });
+        var 结果 = await 注入剧情推进预设({ 来源: 'startup_panel_button', 强制切换: true, 开局模式: 读取开局模式() });
         if (结果 && 结果.success) {
-            showTemplateMessage('已注入并切换到缝合怪東方花映塚版本二改_专用剧情推进。');
+            showTemplateMessage('已注入并切换到' + (结果.presetName || '数据库剧情推进预设') + '。');
             return 结果;
         } else {
             showTemplateMessage('数据库剧情推进预设注入失败。', true);
@@ -877,24 +1037,32 @@ window.updateLocByTimeline = function() {
     var ageInput = document.getElementById('char-age');
     var jobTypeInput = document.getElementById('char-job-type');
     var jobLvInput = document.getElementById('char-job-lv');
+    var 原著模式 = 读取开局模式() === '原著角色';
 
-    if (tl === '6岁') {
-        locInput.value = '斗罗大陆-东海城-傲来城-红山学院';
-        ageInput.value = 6;
-        jobTypeInput.value = '无';
+    if (!原著模式) {
+        if (tl === '6岁') {
+            locInput.value = '斗罗大陆-东海城-傲来城-红山学院';
+            ageInput.value = 6;
+            jobTypeInput.value = '无';
+        }
+        else if (tl === '9岁') {
+            locInput.value = '斗罗大陆-东海城-东海学院';
+            ageInput.value = 9;
+            if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
+            jobLvInput.value = '2';
+        }
+        else if (tl === '13岁') {
+            locInput.value = '斗罗大陆-史莱克城-史莱克学院-外院';
+            ageInput.value = 13;
+            if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
+            jobLvInput.value = '3';
+        }
+    } else {
+        刷新原著角色选择();
+        var 姓名输入 = document.getElementById('char-name');
+        if (姓名输入 && 当前原著角色选择) 姓名输入.value = 当前原著角色选择;
     }
-    else if (tl === '9岁') {
-        locInput.value = '斗罗大陆-东海城-东海学院';
-        ageInput.value = 9;
-        if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
-        jobLvInput.value = '2';
-    }
-    else if (tl === '13岁') {
-        locInput.value = '斗罗大陆-史莱克城-史莱克学院-外院';
-        ageInput.value = 13;
-        if(jobTypeInput.value === '无') jobTypeInput.value = '锻造师';
-        jobLvInput.value = '3';
-    }
+    saveLastSnapshot(collectFormSnapshot());
 };
 
 window.updateSpiritTypes = function() {
@@ -942,8 +1110,11 @@ window.selectRadio = function(element) {
 };
 
 window.submitForm = function() {
+    var 开局模式 = 读取开局模式();
+    var 原著角色名 = '';
     var name = document.getElementById('char-name').value.trim().replace(/[\r\n]+/g, " ") || '无名氏';
-    var age = parseInt(document.getElementById('char-age').value) || 6;
+    var age = Number(document.getElementById('char-age').value);
+    if (!Number.isFinite(age)) age = NaN;
     var 生日 = 读取开场生日();
     var loc = document.getElementById('char-loc').value.trim().replace(/[\r\n]+/g, " ") || '去向不明';
     var spirit = document.getElementById('char-spirit').value.trim().replace(/[\r\n]+/g, " ") || '未觉醒';
@@ -978,7 +1149,38 @@ window.submitForm = function() {
     var 当前tick = (timelineData[selectedTimeline] && timelineData[selectedTimeline].world && timelineData[selectedTimeline].world.时间)
         ? timelineData[selectedTimeline].world.时间.tick
         : 0;
-    var calculatedLv = 计算开场等级(talentConfig, age, 获取开场双生修炼难度系数(types), 生日, 当前tick);
+    var 原著投影 = null;
+    var calculatedLv = null;
+    try {
+        if (开局模式 === '原著角色') {
+            原著角色名 = String((document.getElementById('original-character-select') || {}).value || 当前原著角色选择 || '').trim();
+            if (!原著角色名) {
+                alert('请先选择原著角色。');
+                return;
+            }
+            原著投影 = 构建原著角色开场投影(原著角色名, selectedTimeline);
+            if (!原著投影) {
+                alert('原著角色投影失败，请检查角色库。');
+                return;
+            }
+            name = 原著投影.角色名;
+            var 原著属性 = 原著投影.角色数据 && 原著投影.角色数据.属性 ? 原著投影.角色数据.属性 : {};
+            var 原著年龄 = Number(原著属性.年龄);
+            var 原著生日 = String(原著属性.生日 || '').trim();
+            var 原著天赋 = String(原著属性.天赋梯队 || '').trim();
+            if (!Number.isFinite(age)) age = Number.isFinite(原著年龄) ? 原著年龄 : 6;
+            if (!原著投影.需要重算等级 && Math.abs(age - 原著年龄) <= 0.001 && (!原著生日 || 原著生日 === 生日) && (!原著天赋 || 原著天赋 === talentConfig.label)) {
+                calculatedLv = Number(原著属性.等级);
+            }
+        }
+        if (!Number.isFinite(age)) age = 6;
+        if (!Number.isFinite(Number(calculatedLv))) {
+            calculatedLv = 计算开场等级(talentConfig, age, 生日, 当前tick);
+        }
+    } catch (错误) {
+        alert((错误 && 错误.message) || 'MVU初始化修为计算失败');
+        return;
+    }
 
     var multiplier = 0.1;
     document.querySelectorAll('input[name="destiny"]').forEach(function(radio) {
@@ -1003,34 +1205,62 @@ window.submitForm = function() {
         };
     }
 
-    var initialCharacterValue = {
-        "属性": {
-            "性别": gender,
-            "年龄": age,
-            "生日": 生日,
-            "等级": calculatedLv,
-            "天赋梯队": talentConfig.label,
-            "背景": "已推演"
-        },
-        "社交": {
-            "家世描述": 家世字段.value
-        },
-        "状态": {
-            "位置": loc
-        },
-        "外貌": {
-            "长相描述": appearanceField.value
-        },
-        "穿搭": {
-            "上装": "待补全(根据当前场景补完上装)",
-            "下装": "待补全(根据当前场景补完下装)",
-            "鞋子": "待补全(根据当前场景补完鞋子)",
-            "描述": "待补全(根据当前地点、家世、年龄、行动与场景补完整体穿着)"
-        },
-        "性格": personalityField.value
-    };
-    Object.assign(initialCharacterValue, spiritObj);
-
+    var initialCharacterValue = 开局模式 === '原著角色' && 原著投影 && 原著投影.角色数据
+        ? 克隆JSON值(原著投影.角色数据, {})
+        : {
+            "属性": {
+                "性别": gender,
+                "年龄": age,
+                "生日": 生日,
+                "等级": calculatedLv,
+                "天赋梯队": talentConfig.label,
+                "背景": "已推演"
+            },
+            "社交": {
+                "家世描述": 家世字段.value
+            },
+            "状态": {
+                "位置": loc
+            },
+            "外貌": {
+                "长相描述": appearanceField.value
+            },
+            "穿搭": {
+                "上装": "待补全(根据当前场景补完上装)",
+                "下装": "待补全(根据当前场景补完下装)",
+                "鞋子": "待补全(根据当前场景补完鞋子)",
+                "描述": "待补全(根据当前地点、家世、年龄、行动与场景补完整体穿着)"
+            },
+            "性格": personalityField.value
+        };
+    if (!initialCharacterValue.属性 || typeof initialCharacterValue.属性 !== 'object') initialCharacterValue.属性 = {};
+    if (!initialCharacterValue.社交 || typeof initialCharacterValue.社交 !== 'object') initialCharacterValue.社交 = {};
+    if (!initialCharacterValue.状态 || typeof initialCharacterValue.状态 !== 'object') initialCharacterValue.状态 = {};
+    if (!initialCharacterValue.外貌 || typeof initialCharacterValue.外貌 !== 'object') initialCharacterValue.外貌 = {};
+    if (!initialCharacterValue.穿搭 || typeof initialCharacterValue.穿搭 !== 'object') initialCharacterValue.穿搭 = {};
+    if (开局模式 === '原著角色') {
+        initialCharacterValue.属性.性别 = gender;
+        initialCharacterValue.属性.年龄 = age;
+        initialCharacterValue.属性.生日 = 生日;
+        initialCharacterValue.属性.等级 = calculatedLv;
+        initialCharacterValue.属性.天赋梯队 = talentConfig.label;
+        if (initialCharacterValue.属性.背景 === undefined) initialCharacterValue.属性.背景 = '已推演';
+        initialCharacterValue.状态.位置 = loc;
+        initialCharacterValue.外貌.长相描述 = appearanceField.value;
+        initialCharacterValue.性格 = personalityField.value;
+        initialCharacterValue.社交.家世描述 = 家世字段.value;
+        if (!spiritObj["第1武魂"]) delete initialCharacterValue["第1武魂"];
+        if (!spiritObj["第2武魂"]) delete initialCharacterValue["第2武魂"];
+    }
+    if (开局模式 === '原著角色') {
+        slotNames.forEach(function(槽位) {
+            if (!spiritObj[槽位]) return;
+            if (!initialCharacterValue[槽位] || typeof initialCharacterValue[槽位] !== 'object') initialCharacterValue[槽位] = {};
+            Object.assign(initialCharacterValue[槽位], spiritObj[槽位]);
+        });
+    } else {
+        Object.assign(initialCharacterValue, spiritObj);
+    }
     if (jobType !== '无') {
         var JobExpThresholds = [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
         var exp = JobExpThresholds[Math.max(0, jobLv - 1)] || 0;
@@ -1053,6 +1283,8 @@ window.submitForm = function() {
             "经验": exp,
             "称号": title
         };
+    } else {
+        delete initialCharacterValue["副职业"];
     }
 
     var initPatch = [
@@ -1096,7 +1328,7 @@ window.submitForm = function() {
 
     var summary = "【后台设定数据载入完成】\n";
     summary += "时间线节点：" + selectedTimeline + "\n";
-    summary += "角色：" + name + "（" + gender + "，" + age + "岁）\n";
+    summary += "角色：" + name + "（" + gender + "，" + age + "岁，生日" + 生日 + "）\n";
     summary += "当前位置：" + loc + "\n";
     summary += "性格：" + personalityField.prompt + "\n";
     summary += "外貌：" + appearanceField.prompt + "\n";
@@ -1262,6 +1494,8 @@ window.submitForm = function() {
 $(function() {
     初始化开场生日选项();
     window.updateSpiritTypes();
+    刷新原著角色选择();
+    window.切换开局模式(false);
     refreshTemplateSelect();
     bindTemplateMemoryEvents();
 
@@ -1270,6 +1504,9 @@ $(function() {
         applyFormSnapshot(lastSnapshot);
         showTemplateMessage('已自动恢复上次填写内容。');
     }
+    setTimeout(function() {
+        刷新原著角色选择();
+    }, 300);
 });
 </script>
 </body>

@@ -17459,7 +17459,7 @@ function 规避魂环门槛等级(等级 = 1) {
 
 function 计算初始化修为等级(天赋梯队 = '正常', 年龄 = 6, 底子波动 = 1, 生日 = '', 当前tick = null) {
   const 年龄值 = 计算生日有效年龄(年龄, 生日, 当前tick);
-  const 有效天赋 = 获取早期有效修炼天赋(年龄值, 天赋梯队);
+  const 有效天赋 = String(天赋梯队 || '').trim() || '正常';
   const 描点 = 初始化修为年龄描点表[有效天赋] || 初始化修为年龄描点表.正常;
   let 等级 = 描点[0][1];
   for (let 序号 = 0; 序号 < 描点.length - 1; 序号 += 1) {
@@ -17478,6 +17478,19 @@ function 计算初始化修为等级(天赋梯队 = '正常', 年龄 = 6, 底子
   const 修正等级 = Math.max(1, Math.min(99.5, 等级 + 波动修正));
   const 结果 = 修正等级 >= 99.5 ? 99.5 : Math.floor(修正等级);
   return Math.max(1, Math.min(99.5, 规避魂环门槛等级(结果)));
+}
+
+function 计算开场初始化修为等级_V1(选项 = {}) {
+  const 参数 = 选项 && typeof 选项 === 'object'
+    ? 选项
+    : { 天赋梯队: arguments[0], 年龄: arguments[1], 底子波动: arguments[2], 生日: arguments[3], 当前tick: arguments[4] };
+  return 计算初始化修为等级(
+    参数.天赋梯队 || '正常',
+    参数.年龄 === undefined ? 6 : 参数.年龄,
+    参数.底子波动 === undefined ? 1 : 参数.底子波动,
+    参数.生日 || '',
+    参数.当前tick ?? 参数.tick ?? null,
+  );
 }
 function isTopTalentLateBloom_ACU(char = {}) {
   return (
@@ -22093,10 +22106,13 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
 globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}
+globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1;
 globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1;
 globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ = 断言直接结算收益预算_V1;
 globalThis.__LWCS_GET_DIRECT_SETTLE_BUDGET_CONFIG__ = 读取直接结算收益预算系数_V1;
 globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ = 计算当前装备生效属性加成_V1;
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1; } catch (错误) {}
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1; } catch (错误) {}
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ = 断言直接结算收益预算_V1; } catch (错误) {}

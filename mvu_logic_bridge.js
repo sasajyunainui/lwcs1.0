@@ -1337,7 +1337,7 @@
                 <section class="dossier-section">
                   <div class="dossier-section-title">基础描述</div>
                   <div class="dossier-row-grid dossier-row-grid--two dossier-profile-flow">
-                    <div class="dossier-row"><b>年龄 / 性别</b><span></span></div>
+                    <div class="dossier-row"><b>年龄 / 生日 / 性别</b><span></span></div>
                     <div class="dossier-row"><b>性格</b><span></span></div>
                   </div>
                 </section>
@@ -10187,7 +10187,7 @@
     return [
       `当前角色：${toText(snapshot && snapshot.activeName, '未知')}`,
       `当前位置：${toText(snapshot && snapshot.currentLoc, '未知')}`,
-      `系统播报：${shortenText(toText(sys && sys.系统播报, '暂无'), 120)}`,
+      `世界线日志：${shortenText(toText(sys && sys.系统播报, '暂无'), 120)}`,
       `近期安排：${shortenText(toText(近期安排摘要.summary, '暂无'), 120)}`,
     ].join('\n');
   }
@@ -27355,7 +27355,7 @@
           <div class="archive-core-profile">
             <strong class="archive-core-level cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
             <div class="archive-core-profile-main">
-              <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</span>
+              <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.生日, '--')} / ${toText(stat.性别, '--')}`)}</span>
               ${伤势显示 && 伤势显示 !== '无伤' ? `<span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>` : ''}
               ${领域显示 && 领域显示 !== '常态' ? `<span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>` : ''}
             </div>
@@ -28260,7 +28260,7 @@
         ? `${intelCount} 条情报`
         : snapshot.questRecordCount
           ? `${snapshot.questRecordCount} 项任务`
-          : '系统在线',
+          : '日志待命',
       meta: `${snapshot.questRecordCount || 0} 项任务 · ${(snapshot.bestiaryEntries || []).length || 0} 条图鉴`,
       note: shortenText(最近播报文本 || '待命中', 18),
       tone: intelCount ? 'gold' : snapshot.questRecordCount ? 'gold' : 'live',
@@ -28331,7 +28331,7 @@
       metrics: [
         hpPair.hpMax > 0
           ? 构建属性指标项('HP', hpPair.hp, hpPair.hpMax, 'warn')
-          : { label: '年龄', value: ageMetric > 0 ? String(ageMetric) : '--' },
+          : { label: '年龄 / 生日 / 性别', value: `${ageMetric > 0 ? ageMetric : '--'} / ${toText(stat.生日, '--')} / ${性别文本}` },
         hasVitalityMeter
           ? 构建属性指标项('体力', stat.体力, stat.体力上限, 'gold')
           : { label: '天赋', value: talentMetric || '--', tone: 'gold' },
@@ -28340,13 +28340,13 @@
           : { label: '天赋', value: talentMetric || '--', tone: 'gold' },
         hasMentalMeter
           ? 构建属性指标项('精神', stat.精神力, stat.精神力上限)
-          : { label: '年龄', value: ageMetric > 0 ? String(ageMetric) : '--' },
+          : { label: '年龄 / 生日 / 性别', value: `${ageMetric > 0 ? ageMetric : '--'} / ${toText(stat.生日, '--')} / ${性别文本}` },
       ],
       rows: [
         { label: '身体', value: 体征摘要 || '--' },
         { label: factionJoined ? '阵营' : '身份', value: factionSummary },
         { label: '名望', value: social.声望 ? `${fameLevelText} · ${formatNumber(social.声望)}` : fameLevelText },
-        { label: '年龄', value: `${ageMetric > 0 ? ageMetric : '--'}岁 / ${性别文本}` },
+        { label: '年龄 / 生日 / 性别', value: `${ageMetric > 0 ? ageMetric : '--'}岁 / ${toText(stat.生日, '--')} / ${性别文本}` },
       ],
       tone: 'hero',
       size: 'hero',
@@ -28957,7 +28957,7 @@
     if (!snapshot) {
       return `
         <div class="terminal-console-panel">
-          <div class="terminal-console-head"><div class="module-name">系统控制台</div></div>
+          <div class="terminal-console-head"><div class="module-name">世界线日志</div></div>
           <div class="terminal-home-log"><div class="terminal-home-line roll"><b>[待命]</b><span>等待同步</span></div></div>
         </div>
       `;
@@ -28970,16 +28970,16 @@
     return `
       <div class="terminal-console-panel">
         <div class="terminal-console-head">
-          <div class="module-name">系统控制台</div>
+          <div class="module-name">世界线日志</div>
           <div class="terminal-home-metrics">
             <span><b>公开情报</b><strong>${htmlEscape(String(intelCount))}</strong></span>
             <span><b>任务</b><strong>${htmlEscape(String(snapshot.questRecordCount || 0))}</strong></span>
-            <span><b>播报</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
+            <span><b>日志</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
             <span><b>副职</b><strong>${htmlEscape(String(副职业数量 || 0))}</strong></span>
           </div>
         </div>
         <div class="terminal-home-log">
-          <div class="terminal-home-line roll"><b>${htmlEscape(worldAlertText ? '[警报]' : '[播报]')}</b><span>${htmlEscape(shortenText(latestBroadcast, 96))}</span></div>
+          <div class="terminal-home-line roll"><b>${htmlEscape(worldAlertText ? '[警报]' : '[世界线日志]')}</b><span>${htmlEscape(shortenText(latestBroadcast, 96))}</span></div>
         </div>
       </div>
     `;
@@ -29019,8 +29019,8 @@
     const personalNews = resolveShellText(((newsSummary.personalNews || [])[0] || {}).desc, '');
     const summaryText = resolveShellText(newsSummary.summary, '等待新见闻');
     return buildShellSummaryCard({
-      kicker: '播报',
-      title: '播报',
+      kicker: '世界线日志',
+      title: '世界线日志',
       value: `${(newsSummary.cards || []).length || 0} 条`,
       meta: shortenText(globalNews || personalNews || summaryText || '等待新见闻', 20),
       note: globalNews && personalNews ? shortenText(personalNews, 24) : '',
@@ -29247,7 +29247,7 @@
               </div>
               ${buildShellLiteStats(
                 [
-                  { label: '年龄 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.性别, '--')}` },
+                  { label: '年龄 / 生日 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.生日, '--')} / ${toText(stat.性别, '--')}` },
                   { label: '修为等级', value: formatCultivationLevelBadge(stat.等级, '0') },
                   构建属性指标项('HP', hpPair.hp, hpPair.hpMax),
                   构建属性指标项('体力', stat.体力, stat.体力上限),
@@ -29628,22 +29628,22 @@
     const 系统播报文本 = resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), '待命中');
     const 副职业数量 = safeEntries(deepGet(snapshot, 'activeChar.副职业', {})).length;
     return {
-      title: '终端',
+      title: '世界线日志',
       body: `
           <div class="mvu-shell-lite-root" data-shell-light-view="terminal">
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero">
               <div class="mvu-shell-lite-head">
-                <span>系统</span>
+                <span>日志</span>
                 <strong>${htmlEscape(shortenText(系统播报文本, 28))}</strong>
               </div>
               <div class="terminal-home-metrics">
                 <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
                 <span><b>任务</b><strong>${htmlEscape(String(snapshot.questRecordCount || 0))}</strong></span>
-                <span><b>播报</b><strong>${htmlEscape(系统播报文本 ? '1' : '0')}</strong></span>
+                <span><b>日志</b><strong>${htmlEscape(系统播报文本 ? '1' : '0')}</strong></span>
                 <span><b>副职</b><strong>${htmlEscape(String(副职业数量 || 0))}</strong></span>
               </div>
               <div class="terminal-home-log">
-                <div class="terminal-home-line roll"><b>[播报]</b><span>${htmlEscape(shortenText(系统播报文本, 96))}</span></div>
+                <div class="terminal-home-line roll"><b>[世界线日志]</b><span>${htmlEscape(shortenText(系统播报文本, 96))}</span></div>
               </div>
             </section>
           </div>
@@ -30439,22 +30439,22 @@
 
   function buildTerminalHeroCard(snapshot) {
     const sys = deepGet(snapshot, 'rootData.sys', {});
-    const latestBroadcast = toText(sys.系统播报, '暂无播报');
+    const latestBroadcast = toText(sys.系统播报, '暂无日志');
     const 最近播报摘要 = shortenText(latestBroadcast, 88);
     const 副职业数量 = safeEntries(deepGet(snapshot, 'activeChar.副职业', {})).length;
     return `
         <div class="terminal-console-panel">
           <div class="terminal-console-head">
-            <div class="module-name">系统控制台</div>
+            <div class="module-name">世界线日志</div>
             <div class="terminal-home-metrics">
               <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
               <span><b>任务</b><strong>${htmlEscape(String((snapshot.recordEntries || []).length))}</strong></span>
-              <span><b>播报</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
+              <span><b>日志</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
               <span><b>副职</b><strong>${htmlEscape(String(副职业数量 || 0))}</strong></span>
             </div>
           </div>
           <div class="terminal-home-log">
-            <div class="terminal-home-line roll"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></div>
+            <div class="terminal-home-line roll"><b>[世界线日志]</b><span>${htmlEscape(最近播报摘要)}</span></div>
           </div>
         </div>
       `;
@@ -33213,8 +33213,8 @@
                   ${makeDossierRows(
                     [
                       {
-                        label: '年龄 / 性别',
-                        value: `${makeInlineEditableValue(`${toText(stat.年龄, '0')}岁`, { path: ['char', activeCharKey, '属性', '年龄'], kind: 'number', rawValue: stat.年龄, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(toText(stat.性别, '--'), { path: ['char', activeCharKey, '属性', '性别'], kind: 'enum_select', rawValue: toText(stat.性别, ''), editorMeta: { options: ['男', '女', '无性别'], 允许空值: true, 空值标签: '--' } })}`,
+                        label: '年龄 / 生日 / 性别',
+                        value: `${makeInlineEditableValue(`${toText(stat.年龄, '0')}岁`, { path: ['char', activeCharKey, '属性', '年龄'], kind: 'number', rawValue: stat.年龄, editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' } })} / ${makeInlineEditableValue(toText(stat.生日, '--'), { path: ['char', activeCharKey, '属性', '生日'], kind: 'string', rawValue: toText(stat.生日, '') })} / ${makeInlineEditableValue(toText(stat.性别, '--'), { path: ['char', activeCharKey, '属性', '性别'], kind: 'enum_select', rawValue: toText(stat.性别, ''), editorMeta: { options: ['男', '女', '无性别'], 允许空值: true, 空值标签: '--' } })}`,
                       },
                       {
                         label: '性格',
@@ -38047,7 +38047,7 @@
     'page-map': { title: '星图 / 节点导航', subtitle: '当前位置、下钻路径、本地设施与动态地点', tag: '星图导航' },
     'page-world': { title: '世界 / 时空中枢', subtitle: '时间轴、偏差与拍卖警报的汇总面板', tag: '世界中枢' },
     'page-org': { title: '势力 / 矩阵沙盘', subtitle: '阵营归属、大陆格局与据点网络的视觉化入口', tag: '势力矩阵' },
-    'page-terminal': { title: '终端 / 系统总线', subtitle: '系统播报、试炼情报与任务索引', tag: '系统总线' },
+    'page-terminal': { title: '终端 / 世界线日志', subtitle: '世界线日志、试炼情报与任务索引', tag: '世界线日志' },
   };
 
   function setMainTab(targetId) {
@@ -38861,6 +38861,50 @@
     const 任务路径 = `/char/${角色路径}/我的任务/${escapeJsonPointerValue(任务名)}`;
     const 委托路径 = `/world/委托板/${escapeJsonPointerValue(任务名)}`;
     const 补丁列表 = [];
+    const 任务是否委托 = !!(委托原始 && typeof 委托原始 === 'object' && !Array.isArray(委托原始) && (委托原始['是否委托'] === true || toText(委托原始['类型'], '') === '委托任务'));
+    const 任务材料清单 = Array.isArray(委托原始?.['材料清单']) ? cloneJsonValue(委托原始['材料清单'], []) : [];
+    const 任务成品实价 = Math.max(0, Math.floor(toNumber(委托原始?.['成品实价'] ?? 委托原始?.['奖励币'], 0)));
+    const 任务失败赔偿 = Math.max(0, Math.floor(toNumber(委托原始?.['失败赔偿'], 0)));
+    const 任务违约金 = Math.max(0, Math.floor(toNumber(委托原始?.['违约金'], 0)));
+    const 任务截止tick = Math.max(0, Math.floor(toNumber(委托原始?.['截止tick'], 0)));
+    const 任务副职业 = toText(委托原始?.['副职业'], '');
+    const 任务目标产物 = toText(委托原始?.['目标产物'], '');
+
+    const 构建委托任务副职业请求 = 任务条目 => {
+      if (!任务条目 || 任务条目['是否委托'] !== true) return null;
+      const 副职业 = toText(任务条目['副职业'], 任务副职业);
+      const 模式 = 获取地图工坊委托模式(副职业);
+      const 目标产物 = toText(任务条目['目标产物'], 任务目标产物 || 任务名);
+      if (!模式 || !目标产物) return null;
+      return {
+        模式,
+        动作: normalizeProfessionActionLabel(模式),
+        目标: 目标产物,
+        材料: Array.isArray(任务条目['材料清单'])
+          ? 任务条目['材料清单'].map(材料 => toText(材料 && 材料['名称'], '')).filter(Boolean)
+          : [],
+        数量: 1,
+        阶级: parseDirectProfessionTier(`${目标产物} ${副职业}`, ''),
+        子类型: parseDirectProfessionSubtype(目标产物),
+        对象: '',
+        执行者类型: 'self',
+        目标地点: 当前地点,
+        状态: 'ready',
+        自动执行: true,
+        来源: 'quest_task_commission',
+        任务名,
+        是否委托: true,
+        副职业,
+        目标产物,
+        材料清单: Array.isArray(任务条目['材料清单']) ? cloneJsonValue(任务条目['材料清单'], []) : [],
+        成品实价: Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 0))),
+        奖励币: Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0))),
+        奖励声望: Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0))),
+        失败赔偿: Math.max(0, Math.floor(toNumber(任务条目['失败赔偿'], 0))),
+        违约金: Math.max(0, Math.floor(toNumber(任务条目['违约金'], 0))),
+        截止tick: Math.max(0, Math.floor(toNumber(任务条目['截止tick'], 0))),
+      };
+    };
 
     const 补全任务条目 = 来源 => {
       if (!来源 || typeof 来源 !== 'object' || Array.isArray(来源)) return null;
@@ -38869,7 +38913,29 @@
       任务条目['奖励币'] = Math.max(0, toNumber(任务条目['奖励币'], 0));
       任务条目['奖励声望'] = Math.max(0, toNumber(任务条目['奖励声望'], 0));
       任务条目['最后更新时间tick'] = Math.max(0, toNumber(任务条目['最后更新时间tick'], 当前tick));
+      任务条目['是否委托'] = 任务是否委托 || 任务条目['是否委托'] === true;
+      任务条目['副职业'] = toText(任务条目['副职业'], 任务副职业);
+      任务条目['目标产物'] = toText(任务条目['目标产物'], 任务目标产物);
+      任务条目['材料清单'] = Array.isArray(任务条目['材料清单']) ? cloneJsonValue(任务条目['材料清单'], []) : cloneJsonValue(任务材料清单, []);
+      任务条目['成品实价'] = Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 任务成品实价)));
+      任务条目['失败赔偿'] = Math.max(0, Math.floor(toNumber(任务条目['失败赔偿'], 任务失败赔偿)));
+      任务条目['违约金'] = Math.max(0, Math.floor(toNumber(任务条目['违约金'], 任务违约金)));
+      任务条目['截止tick'] = Math.max(0, Math.floor(toNumber(任务条目['截止tick'], 任务截止tick)));
       return 任务条目;
+    };
+
+    const 补全委托条目 = 来源 => {
+      if (!来源 || typeof 来源 !== 'object' || Array.isArray(来源)) return null;
+      const 条目 = cloneJsonValue(来源, {});
+      条目['是否委托'] = 条目['是否委托'] === true || 任务是否委托;
+      条目['副职业'] = toText(条目['副职业'], 任务副职业);
+      条目['目标产物'] = toText(条目['目标产物'], 任务目标产物 || 任务名);
+      条目['材料清单'] = Array.isArray(条目['材料清单']) ? cloneJsonValue(条目['材料清单'], []) : cloneJsonValue(任务材料清单, []);
+      条目['成品实价'] = Math.max(0, Math.floor(toNumber(条目['成品实价'], 任务成品实价)));
+      条目['失败赔偿'] = Math.max(0, Math.floor(toNumber(条目['失败赔偿'], 任务失败赔偿)));
+      条目['违约金'] = Math.max(0, Math.floor(toNumber(条目['违约金'], 任务违约金)));
+      条目['截止tick'] = Math.max(0, Math.floor(toNumber(条目['截止tick'], 任务截止tick)));
+      return 条目;
     };
 
     let 玩家输入 = '';
@@ -38889,10 +38955,19 @@
         奖励声望,
         描述: 任务说明,
         最后更新时间tick: 当前tick,
+        是否委托: 任务是否委托,
+        副职业: 任务副职业,
+        目标产物: 任务目标产物,
+        材料清单: cloneJsonValue(任务材料清单, []),
+        成品实价: 任务成品实价,
+        失败赔偿: 任务失败赔偿,
+        违约金: 任务违约金,
+        截止tick: 任务截止tick,
       };
-      const 委托条目 = cloneJsonValue(委托原始, {});
+      const 委托条目 = 补全委托条目(委托原始);
       委托条目['状态'] = '进行中';
       委托条目['承接者'] = 角色键;
+      if (任务是否委托) 委托条目['是否委托'] = true;
       补丁列表.push(
         { op: 'replace', path: 任务路径, value: 任务条目 },
         { op: 'replace', path: 委托路径, value: 委托条目 },
@@ -38904,15 +38979,31 @@
       if (!任务原始 || ['已完成', '已放弃', '失败', '已失败'].includes(任务状态)) return null;
       const 任务条目 = 补全任务条目(任务原始);
       if (!任务条目) return null;
+      const 副职业请求 = 构建委托任务副职业请求(任务条目);
+      if (副职业请求) {
+        return {
+          playerInput: `我想推进委托任务【${任务名}】。`,
+          systemPrompt: '',
+          requestKind: 'profession_task_commission',
+          patchOps: [],
+          professionRequest: 副职业请求,
+          openProfession: true,
+        };
+      }
       const 进度增量 = Math.max(0, Math.floor(toNumber(options.progressAdd, 1)));
       任务条目['当前进度'] = Math.max(0, Math.min(100, toNumber(任务条目['当前进度'], 0) + 进度增量));
       任务条目['状态'] = '进行中';
       任务条目['最后更新时间tick'] = 当前tick;
+      const 超时了 = 任务条目['是否委托'] && 任务条目['截止tick'] > 0 && 当前tick > 任务条目['截止tick'];
       播报文本 = `[任务进度] 【${任务名}】进度更新：${任务条目['当前进度']}%。`;
-      const 委托条目 = 委托原始 && typeof 委托原始 === 'object' ? cloneJsonValue(委托原始, {}) : null;
+      const 委托条目 = 补全委托条目(委托原始);
       if (任务条目['当前进度'] >= 100) {
-        任务条目['状态'] = '已完成';
-        播报文本 += ` 已达成目标，奖励自动结算。`;
+        任务条目['状态'] = '可提交';
+        播报文本 += ` 已达成目标，可以提交。`;
+      } else if (超时了) {
+        任务条目['状态'] = '已失败';
+        播报文本 += ` 已超过截止时间。`;
+        if (委托条目) 委托条目['状态'] = '已失败';
       } else if (委托条目) {
         委托条目['状态'] = '进行中';
       }
@@ -38926,8 +39017,36 @@
       if (!任务条目) return null;
       let 联邦币 = Math.max(0, toNumber(deepGet(当前角色, '财富.联邦币', 0), 0));
       let 声望 = Math.max(0, toNumber(deepGet(当前角色, '社交.声望', 0), 0));
-      const 委托条目 = 委托原始 && typeof 委托原始 === 'object' ? cloneJsonValue(委托原始, {}) : null;
-      if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
+      const 委托条目 = 补全委托条目(委托原始);
+      const 任务是否委托 = !!任务条目['是否委托'];
+      const 已过期 = 任务是否委托 && 任务条目['截止tick'] > 0 && 当前tick > 任务条目['截止tick'];
+      if (任务是否委托) {
+        if (已过期) {
+          任务条目['状态'] = '已失败';
+          const 违约扣款 = Math.max(0, Math.floor(toNumber(任务条目['违约金'], 任务条目['成品实价'] * 0.3)));
+          联邦币 -= 违约扣款;
+          任务条目['最后更新时间tick'] = 当前tick;
+          if (委托条目) 委托条目['状态'] = '已失败';
+          播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除违约金 ${违约扣款} 联邦币。`;
+        } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
+          任务条目['状态'] = '已完成';
+          const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 任务条目['奖励币'])));
+          const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
+          联邦币 += 实得奖励币;
+          声望 += 实得奖励声望;
+          任务条目['最后更新时间tick'] = 当前tick;
+          if (委托条目) {
+            委托条目['状态'] = '已完成';
+            委托条目['承接者'] = 角色键;
+          }
+          播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
+        } else {
+          任务条目['状态'] = '进行中';
+          任务条目['最后更新时间tick'] = 当前tick;
+          if (委托条目) 委托条目['状态'] = '进行中';
+          播报文本 = `[任务未完成] 【${任务名}】进度未达标 (${任务条目['当前进度']}%)，暂不能提交。`;
+        }
+      } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
         任务条目['状态'] = '已完成';
         const 实得奖励币 = Math.max(0, toNumber(任务条目['奖励币'], 0));
         const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
@@ -38959,7 +39078,7 @@
       if (!任务条目) return null;
       任务条目['状态'] = '已放弃';
       任务条目['最后更新时间tick'] = 当前tick;
-      const 委托条目 = 委托原始 && typeof 委托原始 === 'object' ? cloneJsonValue(委托原始, {}) : null;
+      const 委托条目 = 补全委托条目(委托原始);
       if (委托条目) {
         委托条目['状态'] = '待接取';
         委托条目['承接者'] = '无';
@@ -41745,6 +41864,13 @@ ${toText(combatData.战斗意图, '点到为止')}
       状态: toText(req.状态, req.自动执行 ? 'ready' : 'pending'),
       自动执行: req.自动执行 === true,
       来源: toText(req.来源, 'module_intent_router'),
+      任务名: toText(req.任务名 || req.委托名, ''),
+      是否委托: req.是否委托 === true,
+      材料清单: Array.isArray(req.材料清单) ? cloneJsonValue(req.材料清单, []) : [],
+      成品实价: Math.max(0, toNumber(req.成品实价 || req.奖励币, 0)),
+      失败赔偿: Math.max(0, toNumber(req.失败赔偿, 0)),
+      违约金: Math.max(0, toNumber(req.违约金, 0)),
+      截止tick: Math.max(0, toNumber(req.截止tick, 0)),
     };
   }
 
@@ -41780,6 +41906,13 @@ ${toText(combatData.战斗意图, '点到为止')}
       状态: /直接|立即|确认|开始|自动|执行/.test(raw) ? 'ready' : 'pending',
       自动执行: /直接|立即|确认|开始|自动|执行/.test(raw),
       来源: 'direct_input_guard',
+      任务名: '',
+      是否委托: false,
+      材料清单: [],
+      成品实价: 0,
+      失败赔偿: 0,
+      违约金: 0,
+      截止tick: 0,
     };
   }
 
@@ -41794,6 +41927,23 @@ ${toText(combatData.战斗意图, '点到为止')}
       services: ['craft'],
       professionRequest: cloneJsonValue(req, {}),
     };
+  }
+
+  function 执行交易预填路由(快照, 交易请求) {
+    const 待确认请求 = {
+      ...cloneJsonValue(交易请求, {}),
+      状态: 'pending',
+      自动执行: false,
+    };
+    mapDispatchContext = buildTradeDispatchFromRequest(快照, 待确认请求);
+    mapDispatchContext.tradeRequest = 待确认请求;
+    打开地图交易面板();
+    showUiToast('交易流程已打开，请确认后成交。', 'info', 2200);
+    return 构建模块路由成功结果('trade', 待确认请求, {
+      dispatchMode: 'opened_trade_panel',
+      skipped: true,
+      reason: 'prefill_only',
+    });
   }
 
   function normalizeInlineModuleAction(actionData, moduleKind, request) {
@@ -43130,14 +43280,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (privateTradeNpc && !resolveSnapshotCharKey(snapshot, privateTradeNpc)) {
         return 构建模块路由失败结果(moduleKind, request, 'trade_target_unresolved');
       }
-      return await 执行内联模块意图路由(
-        snapshot,
-        moduleKind,
-        request,
-        buildInlineTradeAction,
-        'trade_inline_action_unavailable',
-        'trade_continuation_dispatch_failed',
-      );
+      return 执行交易预填路由(snapshot, request);
     }
 
     if (moduleKind === 'travel') {
@@ -45435,6 +45578,10 @@ ${toText(combatData.战斗意图, '点到为止')}
       });
       if (!actionData) {
         showUiToast('任务操作参数不完整，请检查任务名称与说明。', 'error');
+        return;
+      }
+      if (actionData.openProfession && actionData.professionRequest) {
+        执行副职业工坊打开路由(liveSnapshot, actionData.professionRequest);
         return;
       }
       dispatchUiAiRequest(actionData.playerInput, actionData.systemPrompt, {

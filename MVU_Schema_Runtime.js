@@ -4171,7 +4171,7 @@ function 规范化Schema根转换_V1(data = {}) {
         if (!dataRef.sys?.系统播报 || dataRef.sys.系统播报 === '初始化') {
           追加系统播报文本(
             dataRef,
-            `[委托刷新] ${frame.publisher} 挂出了一份${frame.tier}级【${frame.descriptor?.label || '公开'}】委托框架：${frame.title}。`,
+            `[社会动态] ${frame.publisher} 挂出了一份${frame.tier}级【${frame.descriptor?.label || '公开'}】委托框架：${frame.title}。`,
           );
         }
       };
@@ -4802,7 +4802,7 @@ function 规范化Schema根转换_V1(data = {}) {
           if (opportunities.length > 0) {
             let event = opportunities[Math.floor(Math.random() * opportunities.length)];
             if (data.sys.系统播报 === '初始化' || !data.sys.系统播报) data.sys.系统播报 = '';
-            data.sys.系统播报 += ` 🎲[区域机遇] ${charName} 在【${locName}】触发了特殊事件：${event}！(请 AI 自由推演细节)`;
+            data.sys.系统播报 += ` 🎲[区域机遇] ${charName} 在【${locName}】触发了特殊事件：${event}！`;
           }
         }
         if (c.状态.位置 && c.状态.位置.includes('血神军团入伍考核')) {

@@ -449,8 +449,12 @@
 
   function 模块路由结果应放行(结果) {
     const 模块 = String(结果?.kind || '').trim();
+    const 模式 = String(结果?.dispatchMode || '').trim();
     const 原因 = String(结果?.reason || '').trim();
-    return 模块 === '未命中' || 原因 === 'no_special_module_hit' || 原因 === 'battle_free_narrative';
+    if (模块 === '未命中' || 原因 === 'no_special_module_hit') return true;
+    if (模块 !== 'battle') return true;
+    if (原因 === 'battle_free_narrative' || 模式 === 'battle_auto_arbitration') return true;
+    return false;
   }
 
   async function 尝试接管模块路由(规划文本) {

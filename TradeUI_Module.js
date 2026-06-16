@@ -1234,6 +1234,31 @@ class TradeUIComponent {
     return ctx;
   }
 
+  解析交易物品价格(物品名, 选项 = {}) {
+    const 名称 = String(物品名 || '').trim();
+    const 数量 = Math.max(1, Math.floor(Number(选项.数量 || 1)));
+    const 来源物品 = 选项.物品 && typeof 选项.物品 === 'object' && !Array.isArray(选项.物品) ? 选项.物品 : {};
+    const 命中定义 = this.查找运行时物品定义(名称);
+    const 分类 = this.规范化物品定义分类(命中定义?.分类 || 来源物品.物品分类 || 来源物品.分类 || 选项.分类 || '剧情杂物');
+    const 定义 = { ...(命中定义?.定义 || {}), ...来源物品 };
+    const 基础单价 = Math.max(0, Math.floor(Number(定义.基础价格 || 定义.价格 || this.estimateBasePrice(名称, 分类) || 0) * this.计算来源批次平均倍率(定义, 数量)));
+    const 方向 = /sell|出售|卖出/i.test(String(选项.方向 || 'buy')) ? 'sell' : 'buy';
+    const 实际单价 = this.getMarketAdjustedPrice(方向 === 'sell' ? Math.floor(基础单价 * 0.5) : 基础单价, 方向, {
+      fixed: 选项.fixed === true,
+    });
+    const 信息 = this.resolveTradeItemInfo(名称, 定义, { 分类, source: 选项.来源 || '统一估价' });
+    return {
+      物品名: 名称,
+      分类,
+      数量,
+      基础单价,
+      实际单价,
+      总价: 实际单价 * 数量,
+      货币: String(定义.默认货币 || 定义.货币 || 选项.货币 || '联邦币').trim() || '联邦币',
+      信息,
+    };
+  }
+
   formatTickToCalendarDateText(tickValue) {
     const safeTick = Math.max(0, Number(tickValue || 0));
     const totalMinutes = safeTick * 10;
@@ -1952,5 +1977,12 @@ class TradeUIComponent {
 // 向全局挂载
 window.mountTradeUI = function(containerElement, snapshot, options = {}) {
   return new TradeUIComponent(containerElement, snapshot, options);
+};
+
+window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__ = function(snapshot, 物品名, 选项 = {}) {
+  const 组件 = Object.create(TradeUIComponent.prototype);
+  组件.snapshot = snapshot || {};
+  组件.options = {};
+  return 组件.解析交易物品价格(物品名, 选项);
 };
 

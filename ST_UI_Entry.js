@@ -135,29 +135,34 @@
   }
 
   宿主窗口.__LWCS_注入数据库剧情推进预设__ = async function 注入数据库剧情推进预设(选项 = {}) {
-    const 预设名 = '缝合怪東方花映塚版本二改_专用剧情推进';
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
     const 强制切换 = 选项 && 选项.强制切换 === true;
+    const 开局模式 = String(选项 && 选项.开局模式 ? 选项.开局模式 : '原创角色').trim() === '原著角色' ? '原著角色' : '原创角色';
+    const 预设文件名 = 开局模式 === '原著角色'
+      ? '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_非原创用.json'
+      : '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_原创用.json';
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
-    const 响应 = await fetch(资源基础地址 + '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_非原创用.json' + 资源版本后缀, { cache: 'no-store' });
+    const 响应 = await fetch(资源基础地址 + 预设文件名 + 资源版本后缀, { cache: 'no-store' });
     if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
     const 预设数组 = await 响应.json();
+    const 预设名 = String(预设数组 && 预设数组[0] && 预设数组[0].name ? 预设数组[0].name : '').trim();
+    if (!预设名) throw new Error('LWCS 剧情推进预设缺少正式名称');
     const 导入结果 = await 数据库接口.importPlotPresetsFromData(预设数组, { overwrite: true });
     if (!导入结果 || 导入结果.success === false) {
       throw new Error(`LWCS 剧情推进预设导入失败: ${导入结果 && 导入结果.message ? 导入结果.message : 'unknown_error'}`);
     }
 
     if (当前预设名 && 当前预设名 !== 预设名 && !强制切换) {
-      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}`);
+      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}，开局模式=${开局模式}`);
       return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
     }
 
     const 已绑定 = 数据库接口.injectPlotPresetToCurrentChat(预设名) === true;
     if (!已绑定) throw new Error(`LWCS 剧情推进预设绑定失败: ${预设名}`);
-    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}`);
-    return { success: true, skipped: false, presetName: 预设名 };
+    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}，开局模式=${开局模式}`);
+    return { success: true, skipped: false, presetName: 预设名, startupMode: 开局模式 };
   };
   try {
     if (window !== 宿主窗口) window.__LWCS_注入数据库剧情推进预设__ = 宿主窗口.__LWCS_注入数据库剧情推进预设__;

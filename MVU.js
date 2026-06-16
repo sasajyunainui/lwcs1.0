@@ -346,6 +346,25 @@ const BloodlinePowerSchema = z
 
 const ItemLibrarySchema = z.looseObject({}).transform(规范化物品分类表_V1).prefault({});
 
+const 委托任务材料Schema_V1 = z
+  .object({
+    名称: z.string().prefault(''),
+    数量: z.coerce.number().prefault(1),
+    单价: z.coerce.number().prefault(0),
+  })
+  .prefault({});
+
+const 委托任务字段Schema_V1 = {
+  是否委托: z.boolean().prefault(false),
+  副职业: z.string().prefault(''),
+  目标产物: z.string().prefault(''),
+  材料清单: z.array(委托任务材料Schema_V1).prefault([]),
+  成品实价: z.coerce.number().prefault(0),
+  失败赔偿: z.coerce.number().prefault(0),
+  违约金: z.coerce.number().prefault(0),
+  截止tick: z.coerce.number().prefault(0),
+};
+
 const StatsSchema = z
   .object({
     年龄: z.coerce.number().prefault(0).describe('年龄(出场必填)'),
@@ -755,6 +774,7 @@ const CharacterSchema = z
             奖励声望: z.coerce.number().prefault(0),
             描述: z.string().prefault('无'),
             最后更新时间tick: z.coerce.number().prefault(0).describe('最近一次进度更新tick'),
+            ...委托任务字段Schema_V1,
           })
           .prefault({}),
       )
@@ -871,6 +891,7 @@ const SchemaRootObject = z
                 奖励声望: z.coerce.number().prefault(0),
                 承接者: z.string().prefault('无'),
                 生成tick: z.coerce.number().prefault(0),
+                ...委托任务字段Schema_V1,
               })
               .prefault({}),
           )
