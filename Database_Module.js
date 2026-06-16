@@ -733,7 +733,15 @@
         uid: "sheet_DeviationLedger",
         name: "偏差表",
         sourceData: {
-            note: `记录本档已经出现、潜伏或已修正的世界线偏差。此表不替代纪要，专用于修正本档世界线基线，提供蝴蝶效应推演依据。
+            note: `【核心定位】
+本模块用于记录本跑团档（跑团/安科/创作）中已经出现、潜伏或已修正的“世界线偏差”。此表绝不替代日常剧情纪要，专用于修正本档世界线的底层基线，并为DM提供因玩家/新角色介入导致的“蝴蝶效应”推演依据。
+
+🚨 【核心防线：生态位隔离原则】
+非替代原则：除非正文剧情明确发生“原主角死亡/未出生/彻底废柴化”，否则禁止默认新角色（OC/玩家角色）完全顶替原著主角的生态位。原著主角（如唐舞麟）依然在世界的某个角落按照其自身的轨迹成长。
+
+独立发展线：新角色的介入属于“外部扰动项”。在推演蝴蝶效应时，应优先推演“新角色对原主角及周围环境产生的交互影响”，而非“新角色直接穿上原主角的衣服走原著剧情”。
+
+生态位重叠冲突：若新角色与原主角出现职能重叠（如入学同一学院、截胡同一机缘），在推演中必须体现两者的竞争、分流或冲突关系，而不是让原主角直接隐形。
 
 - 列1: 编码 - 格式为 DVXXXX，从0001递增。
 - 列2: 状态 - 严格限制为4种之一：
@@ -756,11 +764,13 @@
 - 列6: 蝴蝶推演 - 简述该偏差在未来会导致哪个原著节点失效，或后续DM需重点监控、修改的剧情节点。
 
 【强制约束】
-1. 仅有苗头但未落地的偏差最多标为【潜伏】；实际改变了历史的标为【活跃】或【固化】。
-2. 偏差被修复时状态改为【收束】，并允许删除该记录；纪要表会保存已发生历史，偏差表只保留仍会影响后续的偏移。
-3. 记录必须客观精炼，禁止脑补正文中尚未发生的确定事实。
-4. 禁止记录纯细节偏移。只有影响人物生死、关系阵营、物品机缘、事件节点或情报认知的偏差才允许入表。
-5. 【活跃】和【固化】记录不能删除；【潜伏】被证明不会落地时可删除；【收束】应删除或不再保留。
+1. 状态与生命周期控制：
+	·仅有苗头未落地的偏差最高标为【潜伏】。
+	·【活跃】和【固化】的记录属于历史基石，绝不可删除。
+	·当【潜伏】被证明是虚惊一场或不会落地时，可直接删除。
+	·当偏差被成功圆回、修复时，应予以过滤/删除，保持表格只保留对未来有影响的偏移。
+2. 客观精炼：记录必须基于本档已发生的正文事实，禁止脑补、提前断言尚未发生的确定事实。
+3. 严防细节污染：禁止记录纯细节偏移（如衣服颜色、微小对话差异）。只有影响到上述5种“偏差类型”的事件才允许入表。
 
 {{偏差表专用上下文}}`,
             initNode: "初始化时无须写入偏差记录；除非正文已经明确发生偏差事实。",
@@ -4092,6 +4102,377 @@ $CONTENT
         if (isQuietLikeGeneration_ACU(g.type, g.params))
             return false;
         return true;
+    }
+    const 防截断流入完成标签_ACU = '<防截断流入>完成</防截断流入>';
+    const 防截断流入配置存储键_ACU = 'LWCS_防截断流入配置_v1';
+    const 防截断流入最大重试次数_ACU = 3;
+    const 防截断流入默认配置_ACU = Object.freeze({
+        启用: true,
+        自动重试: true,
+        自动重试次数: 2,
+        字数下限: 1000,
+        重试延迟毫秒: 1500,
+    });
+    let 防截断流入内存配置_ACU = { ...防截断流入默认配置_ACU };
+    const 防截断流入状态_ACU = {
+        等待检测: false,
+        自动重试中: false,
+        重试次数: 0,
+        已处理消息键: '',
+        已阻断消息键: '',
+        计时器: 0,
+        最后注入时间: 0,
+        受保护正文指令: '',
+    };
+    function 读取防截断流入布尔_ACU(值, 默认值) {
+        if (值 === true || 值 === 'true' || 值 === 1 || 值 === '1')
+            return true;
+        if (值 === false || 值 === 'false' || 值 === 0 || 值 === '0')
+            return false;
+        return 默认值;
+    }
+    function 夹取防截断流入重试次数_ACU(值, 默认值 = 防截断流入默认配置_ACU.自动重试次数) {
+        const 数值 = Number.parseInt(String(值 ?? ''), 10);
+        if (!Number.isFinite(数值))
+            return 默认值;
+        return Math.max(0, Math.min(防截断流入最大重试次数_ACU, 数值));
+    }
+    function 夹取防截断流入字数下限_ACU(值, 默认值 = 防截断流入默认配置_ACU.字数下限) {
+        const 数值 = Number.parseInt(String(值 ?? ''), 10);
+        if (!Number.isFinite(数值))
+            return 默认值;
+        return Math.max(0, Math.min(5000, 数值));
+    }
+    function 归一化防截断流入配置_ACU(原始配置 = {}) {
+        const 来源 = 原始配置 && typeof 原始配置 === 'object' && !Array.isArray(原始配置) ? 原始配置 : {};
+        const 延迟毫秒 = Number.parseInt(String(来源.重试延迟毫秒 ?? ''), 10);
+        return {
+            启用: 读取防截断流入布尔_ACU(来源.启用, 防截断流入默认配置_ACU.启用),
+            自动重试: 读取防截断流入布尔_ACU(来源.自动重试, 防截断流入默认配置_ACU.自动重试),
+            自动重试次数: 夹取防截断流入重试次数_ACU(来源.自动重试次数),
+            字数下限: 夹取防截断流入字数下限_ACU(来源.字数下限),
+            重试延迟毫秒: Number.isFinite(延迟毫秒) && 延迟毫秒 >= 0 ? 延迟毫秒 : 防截断流入默认配置_ACU.重试延迟毫秒,
+        };
+    }
+    function 读取防截断流入存储_ACU() {
+        try {
+            return topLevelWindow_ACU?.localStorage || window.localStorage || null;
+        }
+        catch (错误) {
+            return null;
+        }
+    }
+    function 读取防截断流入配置_ACU() {
+        const 存储 = 读取防截断流入存储_ACU();
+        if (!存储)
+            return { ...防截断流入内存配置_ACU };
+        try {
+            const 原始文本 = 存储.getItem(防截断流入配置存储键_ACU);
+            if (!原始文本)
+                return { ...防截断流入内存配置_ACU };
+            return 归一化防截断流入配置_ACU(JSON.parse(原始文本));
+        }
+        catch (错误) {
+            logWarn_ACU('[防截断流入] 读取配置失败，使用内存默认值:', 错误);
+            return { ...防截断流入内存配置_ACU };
+        }
+    }
+    function 保存防截断流入配置_ACU(配置) {
+        const 归一化配置 = 归一化防截断流入配置_ACU(配置);
+        防截断流入内存配置_ACU = { ...归一化配置 };
+        const 存储 = 读取防截断流入存储_ACU();
+        if (存储) {
+            try {
+                存储.setItem(防截断流入配置存储键_ACU, JSON.stringify(归一化配置));
+            }
+            catch (错误) {
+                logWarn_ACU('[防截断流入] 保存配置失败，仅保留本轮内存配置:', 错误);
+            }
+        }
+        return { ...归一化配置 };
+    }
+    function 构建防截断流入消息键_ACU(消息元信息, 事件消息编号) {
+        if (!消息元信息 || 消息元信息.消息索引 < 0)
+            return '';
+        return [
+            String(消息元信息.消息索引 ?? ''),
+            String(消息元信息.消息编号 ?? ''),
+            String(消息元信息.滑动编号 ?? ''),
+            String(消息元信息.文本签名 ?? ''),
+        ].join('|');
+    }
+    function 计算防截断流入可见字数_ACU(正文文本) {
+        return 剥离防截断流入完成标签_ACU(正文文本).replace(/\s+/gu, '').length;
+    }
+    function 剥离防截断流入完成标签_ACU(正文文本) {
+        const 标签正则 = new RegExp(`\\s*${escapeRegExp_ACU(防截断流入完成标签_ACU)}\\s*$`, 'u');
+        return String(正文文本 || '').replace(标签正则, '').trimEnd();
+    }
+    function 注入防截断流入完成要求_ACU(正文指令文本) {
+        const 原始文本 = String(正文指令文本 || '').trim();
+        if (!原始文本)
+            return 原始文本;
+        if (原始文本.includes(防截断流入完成标签_ACU))
+            return 原始文本;
+        return `${原始文本}\n\n必须在正文的最后输出 ${防截断流入完成标签_ACU}`;
+    }
+    function 准备防截断流入正文指令_ACU(正文指令文本) {
+        const 配置 = 读取防截断流入配置_ACU();
+        const 原始文本 = String(正文指令文本 || '').trim();
+        if (!配置.启用 || !原始文本) {
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+            防截断流入状态_ACU.受保护正文指令 = '';
+            return 原始文本;
+        }
+        if (!防截断流入状态_ACU.自动重试中)
+            防截断流入状态_ACU.重试次数 = 0;
+        const 受保护正文指令 = 注入防截断流入完成要求_ACU(原始文本);
+        防截断流入状态_ACU.等待检测 = true;
+        防截断流入状态_ACU.已处理消息键 = '';
+        防截断流入状态_ACU.已阻断消息键 = '';
+        防截断流入状态_ACU.最后注入时间 = Date.now();
+        防截断流入状态_ACU.受保护正文指令 = 受保护正文指令;
+        return 受保护正文指令;
+    }
+    function 防截断流入后置更新应阻断_ACU() {
+        const 配置 = 读取防截断流入配置_ACU();
+        if (!配置.启用 || !防截断流入状态_ACU.已阻断消息键)
+            return false;
+        const 消息键 = 构建防截断流入消息键_ACU(读取最新角色消息元信息_ACU());
+        return !!消息键 && 消息键 === 防截断流入状态_ACU.已阻断消息键;
+    }
+    async function 更新防截断流入消息正文_ACU(消息元信息, 新正文) {
+        const 聊天数组 = getChatArray_ACU();
+        const 消息索引 = Number(消息元信息?.消息索引 ?? -1);
+        const 消息 = Array.isArray(聊天数组) ? 聊天数组[消息索引] : null;
+        if (!消息 || 消息.is_user)
+            return false;
+        const 附加数据 = 消息.extra && typeof 消息.extra === 'object' ? { ...消息.extra } : {};
+        const 消息编号 = 消息.message_id ?? 消息.id ?? 消息索引;
+        const 更新成功 = await setChatMessages_ACU([{ message_id: 消息编号, mes: 新正文, extra: 附加数据 }], { refresh: 'affected' });
+        if (更新成功) {
+            消息.mes = 新正文;
+            消息.extra = 附加数据;
+            return true;
+        }
+        消息.mes = 新正文;
+        消息.extra = 附加数据;
+        await saveChatToHost_ACU();
+        emitMessageUpdated_ACU(消息索引);
+        return true;
+    }
+    async function 删除防截断流入截断楼层_ACU(消息元信息) {
+        const 聊天数组 = getChatArray_ACU();
+        const 消息索引 = Number(消息元信息?.消息索引 ?? -1);
+        if (!Array.isArray(聊天数组) || 消息索引 < 0 || 消息索引 !== 聊天数组.length - 1) {
+            logWarn_ACU('[防截断流入] 截断楼层不是当前最后一层，跳过自动删除。');
+            return false;
+        }
+        await deleteLastMessage_ACU();
+        return true;
+    }
+    async function 触发防截断流入重新生成_ACU() {
+        const 正文指令 = String(防截断流入状态_ACU.受保护正文指令 || '').trim();
+        if (!正文指令 || !正文指令.includes(防截断流入完成标签_ACU))
+            return false;
+        const 助手 = window.TavernHelper || topLevelWindow_ACU?.TavernHelper;
+        if (typeof window.original_TavernHelper_generate_ACU === 'function') {
+            await window.original_TavernHelper_generate_ACU({ user_input: 正文指令, automatic_trigger: true });
+            return true;
+        }
+        if (助手 && typeof 助手.generate === 'function') {
+            await 助手.generate({ user_input: 正文指令, automatic_trigger: true });
+            return true;
+        }
+        return false;
+    }
+    function 安排防截断流入重试_ACU(配置) {
+        if (防截断流入状态_ACU.计时器)
+            clearTimeout(防截断流入状态_ACU.计时器);
+        防截断流入状态_ACU.等待检测 = true;
+        防截断流入状态_ACU.自动重试中 = true;
+        防截断流入状态_ACU.已处理消息键 = '';
+        防截断流入状态_ACU.计时器 = setTimeout(async () => {
+            防截断流入状态_ACU.计时器 = 0;
+            try {
+                const 已触发 = await 触发防截断流入重新生成_ACU();
+                if (!已触发) {
+                    防截断流入状态_ACU.等待检测 = false;
+                    防截断流入状态_ACU.自动重试中 = false;
+                    showToastr_ACU('error', '重ROLL触发失败，已阻断数据库/MVU更新。', '防截断流入');
+                }
+            }
+            catch (错误) {
+                防截断流入状态_ACU.等待检测 = false;
+                防截断流入状态_ACU.自动重试中 = false;
+                logError_ACU('[防截断流入] 触发重ROLL失败:', 错误);
+                showToastr_ACU('error', '重ROLL触发失败，已阻断数据库/MVU更新。', '防截断流入');
+            }
+        }, Math.max(0, Number(配置.重试延迟毫秒) || 0));
+    }
+    async function 处理防截断流入生成结束_ACU(事件消息编号) {
+        const 配置 = 读取防截断流入配置_ACU();
+        if (!配置.启用)
+            return { action: 'continue' };
+        const 消息元信息 = 读取最新角色消息元信息_ACU();
+        const 消息键 = 构建防截断流入消息键_ACU(消息元信息, 事件消息编号);
+        if (!防截断流入状态_ACU.等待检测) {
+            if (消息键 && 防截断流入状态_ACU.已阻断消息键 === 消息键)
+                return { action: 'blocked', reason: 'truncation_already_blocked' };
+            return { action: 'continue' };
+        }
+        if (!消息键)
+            return { action: 'continue' };
+        if (防截断流入状态_ACU.已处理消息键 === 消息键)
+            return { action: 'blocked', reason: 'truncation_duplicate_event' };
+        防截断流入状态_ACU.已处理消息键 = 消息键;
+        const 正文文本 = String(消息元信息.文本 || '');
+        if (正文文本.trimEnd().endsWith(防截断流入完成标签_ACU)) {
+            const 清理后正文 = 剥离防截断流入完成标签_ACU(正文文本);
+            await 更新防截断流入消息正文_ACU(消息元信息, 清理后正文);
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+            防截断流入状态_ACU.重试次数 = 0;
+            防截断流入状态_ACU.已处理消息键 = '';
+            防截断流入状态_ACU.已阻断消息键 = '';
+            防截断流入状态_ACU.受保护正文指令 = '';
+            return { action: 'continue' };
+        }
+        const 可见字数 = 计算防截断流入可见字数_ACU(正文文本);
+        if (可见字数 >= 配置.字数下限) {
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+            防截断流入状态_ACU.重试次数 = 0;
+            防截断流入状态_ACU.已处理消息键 = '';
+            防截断流入状态_ACU.已阻断消息键 = '';
+            防截断流入状态_ACU.受保护正文指令 = '';
+            return { action: 'continue', reason: 'truncation_guard_length_passed' };
+        }
+        防截断流入状态_ACU.已阻断消息键 = 消息键;
+        if (配置.自动重试 && 防截断流入状态_ACU.受保护正文指令 && 防截断流入状态_ACU.重试次数 < 配置.自动重试次数) {
+            const 删除成功 = await 删除防截断流入截断楼层_ACU(消息元信息);
+            if (删除成功) {
+                防截断流入状态_ACU.重试次数 += 1;
+                showToastr_ACU('warning', `正文疑似截断，已阻断更新并重ROLL ${防截断流入状态_ACU.重试次数}/${配置.自动重试次数}。`, '防截断流入');
+                安排防截断流入重试_ACU(配置);
+                return { action: 'blocked_retrying', reason: 'truncation_retrying' };
+            }
+        }
+        防截断流入状态_ACU.等待检测 = false;
+        防截断流入状态_ACU.自动重试中 = false;
+        const 已耗尽 = 配置.自动重试 && 配置.自动重试次数 > 0 && 防截断流入状态_ACU.重试次数 >= 配置.自动重试次数;
+        showToastr_ACU('warning', 已耗尽 ? `正文低于字数下限 ${配置.字数下限}，已停止重试并阻断数据库/MVU更新。` : `正文低于字数下限 ${配置.字数下限}，已阻断数据库/MVU更新。`, '防截断流入');
+        return { action: 'blocked', reason: 'truncation_length_failed' };
+    }
+    function 打开防截断流入设置面板_ACU() {
+        const 文档 = topLevelWindow_ACU?.document || document;
+        const 旧面板 = 文档.getElementById('lwcs-truncation-guard-panel');
+        if (旧面板)
+            旧面板.remove();
+        const 配置 = 读取防截断流入配置_ACU();
+        const 遮罩 = 文档.createElement('div');
+        遮罩.id = 'lwcs-truncation-guard-panel';
+        遮罩.style.cssText = 'position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.48);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","Microsoft YaHei UI",sans-serif;';
+        const 面板 = 文档.createElement('section');
+        面板.style.cssText = 'width:min(360px,calc(100vw - 32px));border:1px solid rgba(110,220,255,.22);border-radius:8px;background:rgba(8,15,20,.96);box-shadow:0 18px 48px rgba(0,0,0,.42);color:#d8eef5;overflow:hidden;';
+        const 标题栏 = 文档.createElement('div');
+        标题栏.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(110,220,255,.12);font-size:14px;font-weight:650;';
+        const 标题 = 文档.createElement('span');
+        标题.textContent = '防截断流入';
+        const 关闭按钮 = 文档.createElement('button');
+        关闭按钮.type = 'button';
+        关闭按钮.textContent = '×';
+        关闭按钮.style.cssText = 'width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#9fbdc6;font-size:20px;line-height:1;cursor:pointer;';
+        标题栏.append(标题, 关闭按钮);
+        const 内容区 = 文档.createElement('div');
+        内容区.style.cssText = 'display:grid;gap:10px;padding:14px;';
+        const 创建开关行 = (文本, 输入) => {
+            const 行 = 文档.createElement('label');
+            行.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid rgba(255,255,255,.07);border-radius:6px;background:rgba(255,255,255,.03);font-size:13px;';
+            const 标签 = 文档.createElement('span');
+            标签.textContent = 文本;
+            行.append(标签, 输入);
+            return 行;
+        };
+        const 启用输入 = 文档.createElement('input');
+        启用输入.type = 'checkbox';
+        启用输入.checked = !!配置.启用;
+        const 自动重试输入 = 文档.createElement('input');
+        自动重试输入.type = 'checkbox';
+        自动重试输入.checked = !!配置.自动重试;
+        const 重试次数输入 = 文档.createElement('input');
+        重试次数输入.type = 'number';
+        重试次数输入.min = '0';
+        重试次数输入.max = String(防截断流入最大重试次数_ACU);
+        重试次数输入.step = '1';
+        重试次数输入.value = String(配置.自动重试次数);
+        重试次数输入.style.cssText = 'width:72px;padding:5px 7px;border:1px solid rgba(110,220,255,.22);border-radius:5px;background:rgba(0,0,0,.28);color:#e8f7fb;text-align:center;';
+        重试次数输入.addEventListener('change', () => {
+            重试次数输入.value = String(夹取防截断流入重试次数_ACU(重试次数输入.value));
+        });
+        const 字数下限输入 = 文档.createElement('input');
+        字数下限输入.type = 'number';
+        字数下限输入.min = '0';
+        字数下限输入.max = '5000';
+        字数下限输入.step = '50';
+        字数下限输入.value = String(配置.字数下限);
+        字数下限输入.style.cssText = 重试次数输入.style.cssText;
+        字数下限输入.addEventListener('change', () => {
+            字数下限输入.value = String(夹取防截断流入字数下限_ACU(字数下限输入.value));
+        });
+        内容区.append(创建开关行('启用', 启用输入), 创建开关行('自动重试', 自动重试输入), 创建开关行('重试次数', 重试次数输入), 创建开关行('字数下限', 字数下限输入));
+        const 按钮区 = 文档.createElement('div');
+        按钮区.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid rgba(110,220,255,.12);';
+        const 创建按钮 = (文本, 强调 = false) => {
+            const 按钮 = 文档.createElement('button');
+            按钮.type = 'button';
+            按钮.textContent = 文本;
+            按钮.style.cssText = 强调
+                ? 'padding:7px 13px;border:1px solid rgba(90,210,255,.42);border-radius:6px;background:rgba(50,180,225,.18);color:#dff8ff;cursor:pointer;font-size:13px;'
+                : 'padding:7px 13px;border:1px solid rgba(255,255,255,.1);border-radius:6px;background:rgba(255,255,255,.04);color:#adc5ce;cursor:pointer;font-size:13px;';
+            return 按钮;
+        };
+        const 保存按钮 = 创建按钮('保存', true);
+        const 默认值按钮 = 创建按钮('默认值');
+        const 底部关闭按钮 = 创建按钮('关闭');
+        按钮区.append(默认值按钮, 底部关闭按钮, 保存按钮);
+        面板.append(标题栏, 内容区, 按钮区);
+        遮罩.appendChild(面板);
+        const 关闭面板 = () => 遮罩.remove();
+        关闭按钮.addEventListener('click', 关闭面板);
+        底部关闭按钮.addEventListener('click', 关闭面板);
+        遮罩.addEventListener('click', (事件) => {
+            if (事件.target === 遮罩)
+                关闭面板();
+        });
+        默认值按钮.addEventListener('click', () => {
+            const 默认配置 = 保存防截断流入配置_ACU(防截断流入默认配置_ACU);
+            启用输入.checked = 默认配置.启用;
+            自动重试输入.checked = 默认配置.自动重试;
+            重试次数输入.value = String(默认配置.自动重试次数);
+            字数下限输入.value = String(默认配置.字数下限);
+            showToastr_ACU('success', '已恢复默认值。', '防截断流入');
+        });
+        保存按钮.addEventListener('click', () => {
+            保存防截断流入配置_ACU({
+                启用: 启用输入.checked,
+                自动重试: 自动重试输入.checked,
+                自动重试次数: 重试次数输入.value,
+                字数下限: 字数下限输入.value,
+                重试延迟毫秒: 防截断流入默认配置_ACU.重试延迟毫秒,
+            });
+            showToastr_ACU('success', '设置已保存。', '防截断流入');
+            关闭面板();
+        });
+        文档.body.appendChild(遮罩);
+    }
+    try {
+        topLevelWindow_ACU.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ = 打开防截断流入设置面板_ACU;
+        window.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ = 打开防截断流入设置面板_ACU;
+    }
+    catch (错误) {
+        logWarn_ACU('[防截断流入] 面板入口注册失败:', 错误);
     }
     // ═══ 业务运行时状态 ═══
     let coreApisAreReady_ACU = false;
@@ -36045,6 +36426,10 @@ $CONTENT
     }
     let autoUpdateTriggerInFlight_ACU = false;
     async function triggerAutomaticUpdateIfNeeded_ACU() {
+        if (防截断流入后置更新应阻断_ACU()) {
+            logDebug_ACU('ACU Auto-Trigger: 防截断流入已阻断本楼层更新。');
+            return;
+        }
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
@@ -36410,9 +36795,17 @@ $CONTENT
         return coreApisAreReady_ACU;
     }
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu') {
+        if (防截断流入后置更新应阻断_ACU()) {
+            logDebug_ACU(`[防截断流入] handleNewMessageDebounced 已阻断后置更新: eventType=${eventType}`);
+            return;
+        }
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
         _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
+            if (防截断流入后置更新应阻断_ACU()) {
+                logDebug_ACU(`[防截断流入] 防抖执行前已阻断后置更新: eventType=${eventType}`);
+                return;
+            }
             // [健全性] 如果用户已经开始对话，则解除"开场白阶段世界书注入抑制"
             try {
                 maybeLiftWorldbookSuppression_ACU();
@@ -53131,14 +53524,15 @@ $CONTENT
             lastCharMessage: getLatestAIMessageContent_ACU(),
             captureText: [用户输入文本, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
         });
+        const 防截断流入正文生成指导 = 准备防截断流入正文指令_ACU(替换后正文生成指导);
         if (options.injects?.[0]?.content) {
-            return { target: 'injects', value: 替换后正文生成指导, statData: 运行时数据 || null };
+            return { target: 'injects', value: 防截断流入正文生成指导, statData: 运行时数据 || null };
         }
         else if (options.prompt) {
-            return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时数据 || null };
+            return { target: 'prompt', value: 防截断流入正文生成指导, statData: 运行时数据 || null };
         }
         else {
-            return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时数据 || null };
+            return { target: 'user_input', value: 防截断流入正文生成指导, statData: 运行时数据 || null };
         }
     }
     /**
@@ -53319,7 +53713,7 @@ $CONTENT
                     };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = 准备防截断流入正文指令_ACU(sanitizePlanningVisibleOutput_ACU(正文指令文本));
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(messageToProcess);
                 markPlotIntercept_ACU(finalMessageForGeneration);
@@ -53404,7 +53798,7 @@ $CONTENT
                     };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = 准备防截断流入正文指令_ACU(sanitizePlanningVisibleOutput_ACU(正文指令文本));
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(originalInputText);
                 markPlotIntercept_ACU(finalMessageForGeneration);
@@ -54304,17 +54698,24 @@ $CONTENT
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, async (message_id) => {
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
                         if (shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
-                            handleNewMessageDebounced_ACU('GENERATION_ENDED');
+                            const 防截断结果 = await 处理防截断流入生成结束_ACU(message_id);
+                            if (防截断结果?.action === 'continue') {
+                                await handleNewMessageDebounced_ACU('GENERATION_ENDED');
+                            }
+                            else {
+                                logDebug_ACU(`[防截断流入] 已阻断后置更新: reason=${防截断结果?.reason || 'unknown'}`);
+                                return;
+                            }
                         }
                         else {
                             logDebug_ACU('ACU: Skip auto table update due to quiet/background generation.');
                         }
                         // [剧情推进] 保存Plot到消息和循环检测
                         // savePlotToLatestMessage_ACU(); // Moved to runOptimizationLogic_ACU
-                        onLoopGenerationEnded_ACU();
+                        await onLoopGenerationEnded_ACU();
                     });
                 }
                 // [剧情推进] 拦截用户输入进行剧情规划

@@ -6587,12 +6587,34 @@ class BattleUIComponent {
       );
     }
 
+    function 读取图鉴收集奖励档位() {
+      const 图鉴数据 = getMvuValue('world.图鉴', {}) || {};
+      const 数量 = 图鉴数据 && typeof 图鉴数据 === 'object' ? Object.keys(图鉴数据).length : 0;
+      return Math.max(0, Math.min(6, Math.floor(数量 / 25)));
+    }
+
+    function 单位获得图鉴收集奖励(单位 = {}, 战斗数据 = {}) {
+      if (!单位 || typeof 单位 !== 'object') return false;
+      const 阵营 = 读取规划单位阵营(单位, 战斗数据 || {});
+      if (阵营) return 阵营 === '玩家';
+      return 是玩家操控角色(单位, 战斗数据 || {});
+    }
+
+    function 读取图鉴收集反应加成(单位 = {}, 战斗数据 = {}) {
+      return 单位获得图鉴收集奖励(单位, 战斗数据) ? 读取图鉴收集奖励档位() * 0.01 : 0;
+    }
+
+    function 读取图鉴收集前摇折扣(单位 = {}, 战斗数据 = {}) {
+      return 单位获得图鉴收集奖励(单位, 战斗数据) ? (读取图鉴收集奖励档位() / 6) * 0.04 : 0;
+    }
+
     function 计算行为经验前摇折扣(单位 = {}, 目标 = null, 战斗数据 = null) {
       if (!单位 || !目标) return 0;
       const 战斗经验 = 计算行为战斗经验(单位, 目标, 战斗数据 || {});
       const 稳定度 = Math.max(0, Math.min(1, Number(战斗经验?.稳定度 ?? 0)));
       const 超出基准 = Math.max(0, 稳定度 - 0.45);
-      return Math.min(0.2, (超出基准 / 0.55) * 0.2);
+      const 基础折扣 = Math.min(0.2, (超出基准 / 0.55) * 0.2);
+      return Math.min(0.24, 基础折扣 + 读取图鉴收集前摇折扣(单位, 战斗数据 || {}));
     }
 
     function 计算行为经验反应倍率(单位 = {}, 目标 = null, 战斗数据 = null) {
@@ -6600,7 +6622,7 @@ class BattleUIComponent {
       const 战斗经验 = 计算行为战斗经验(单位, 目标, 战斗数据 || {});
       const 稳定度 = Math.max(0, Math.min(1, Number(战斗经验?.稳定度 ?? 0)));
       const 超出基准 = Math.max(0, 稳定度 - 0.45);
-      return 1 + Math.min(0.2, (超出基准 / 0.55) * 0.2);
+      return 1 + Math.min(0.2, (超出基准 / 0.55) * 0.2) + 读取图鉴收集反应加成(单位, 战斗数据 || {});
     }
 
     function 套用动作实际前摇(单位, 动作, 目标 = null, 战斗数据 = null) {
@@ -20646,7 +20668,6 @@ class BattleUIComponent {
         const restoreAmount = Math.max(1, Math.floor(maxVit * healRatio));
         设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
         targetChar.__本阶段已触发复活 = true;
-        targetChar.__战斗行动状态 = '战斗';
         return `[复活触发] ${label}借[${状态复活候选.key}]重燃战意，恢复 ${restoreAmount} 点HP！剩余复活次数:${nextCount}`;
       }
       if (战斗机制抹消命中(targetChar, '最终结果', { 原型: '规则改写', 规则: '死亡转存活' }, { 用途: '封锁' })) {
@@ -20670,7 +20691,6 @@ class BattleUIComponent {
       const restoreAmount = Math.max(1, Math.floor(maxVit * Math.min(1, healRatio)));
       设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
       targetChar.__本阶段已触发复活 = true;
-      targetChar.__战斗行动状态 = '战斗';
       const 来源名 = 被动复活候选?.skill?.name || 被动复活候选?.skill?.魂技名 || '死亡转存活';
       return `[复活触发] ${label}触发[${来源名}]，按死亡转存活规则恢复 ${restoreAmount} 点HP！`;
     }
@@ -21335,19 +21355,8 @@ class BattleUIComponent {
 
       function syncCombatActionState(char) {
         if (!char || typeof char !== 'object') return;
-      if (!isCombatUnitAlive(char)) {
-        char.__战斗行动状态 = '无法行动';
-          if (char.召唤键) 同步召唤单位镜像(char);
-          return;
-        }
-        if (!isCombatUnitAbleToFight(char)) {
-          char.__战斗行动状态 = '昏迷';
-          if (char.召唤键) 同步召唤单位镜像(char);
-          return;
+        if (char.召唤键) 同步召唤单位镜像(char);
       }
-      char.__战斗行动状态 = '战斗';
-      if (char.召唤键) 同步召唤单位镜像(char);
-    }
 
     function 清理本回合多威胁运行态(combatData = {}) {
       if (combatData && typeof combatData === 'object') delete combatData.__队伍临时意图;
@@ -21435,7 +21444,6 @@ class BattleUIComponent {
       单位.action_declared = 有蓄力技能 ? true : 单位.action_declared === true;
       单位.is_controlled = 单位.is_controlled === true;
       单位.状态.蓄力 = 有蓄力技能 && 蓄力剩余 > 0 ? '蓄力中' : '无';
-      单位.__战斗行动声明 = 单位.action_declared ? '已声明' : '未声明';
       单位.状态.受控 = 单位.is_controlled ? '受控' : '正常';
     }
 

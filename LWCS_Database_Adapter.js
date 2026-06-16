@@ -202,8 +202,10 @@
     const 用户输入文本 = String(选项?.userInput || '');
     const 最后角色消息文本 = String(选项?.lastCharMessage || '');
     const 最新角色消息 = 选项?.latestCharMessageInfo && typeof 选项.latestCharMessageInfo === 'object' ? 选项.latestCharMessageInfo : 读取最新角色消息元信息();
-    const 近场文本 = 构建近场文本(用户输入文本, 最后角色消息文本);
-    if (!用户输入文本.trim() || !近场文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
+    const 近场文本 = String(选项?.captureText ?? '').trim()
+      ? 清理近场文本片段(选项.captureText)
+      : 构建近场文本(用户输入文本, 最后角色消息文本);
+    if (!近场文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
     const 前置键 = 构建前置键(最新角色消息, 近场文本);
     if (本轮前置承诺表.has(前置键)) return await 本轮前置承诺表.get(前置键);
     const 前置承诺 = (async () => {

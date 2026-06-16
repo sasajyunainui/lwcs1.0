@@ -1836,7 +1836,6 @@ function 是否已有明确魂师数据_V1(角色 = {}) {
   const 属性 = 角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性) ? 角色.属性 : {};
   if (isNoSoulPowerTalentTier(属性.天赋梯队)) return false;
   if (Math.max(0, Number(属性.等级 || 0) || 0) > 1) return true;
-  if (Math.max(0, Number(属性.魂力 || 0) || 0) > 0 || Math.max(0, Number(属性.魂力上限 || 0) || 0) > 10) return true;
   if (
     取角色武魂条目_V1(角色).some(([, 武魂数据]) =>
       取武魂魂灵条目_V1(武魂数据).some(([, 魂灵数据]) =>
@@ -1870,7 +1869,6 @@ function 是否已有魂师结构_V1(角色 = {}) {
   const 属性 = 角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性) ? 角色.属性 : {};
   if (isNoSoulPowerTalentTier(属性.天赋梯队)) return false;
   if (Math.max(0, Number(属性.等级 || 0) || 0) > 1) return true;
-  if (Math.max(0, Number(属性.魂力 || 0) || 0) > 0 || Math.max(0, Number(属性.魂力上限 || 0) || 0) > 10) return true;
   if (取角色武魂条目_V1(角色).some(([, 武魂数据]) => 是否真实武魂数据_V1(武魂数据))) return true;
   const 有真实魂骨 = Object.values(角色.魂骨 || {}).some(魂骨 =>
     魂骨 &&
@@ -2931,6 +2929,36 @@ function 规范化Schema根转换_V1(data = {}) {
       return { 地点名, 地点信息, 文本 };
     };
 
+    const 判定角色所在地货币_ACU = 角色 => {
+      const 地点上下文 = 读取地点信息_ACU(角色);
+      const 文本 = [
+        地点上下文.文本,
+        地点上下文.地点信息?.归属父节点,
+        地点上下文.地点信息?.描述,
+        地点上下文.地点信息?.类型,
+        地点上下文.地点信息?.节点类型,
+      ]
+        .map(项 => String(项 || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      return /星罗大陆|斗灵大陆/.test(文本) ? '星罗币' : '联邦币';
+    };
+
+    const 发放魂师津贴_ACU = () => {
+      const payoutItems = [];
+      _(data.char).forEach((c, charName) => {
+        if (!isSoulMasterStipendEligible_ACU(c)) return;
+        if (!c.财富 || typeof c.财富 !== 'object' || Array.isArray(c.财富)) c.财富 = {};
+        const stipendDays = getSoulMasterStipendDaysByLevel_ACU(c.属性?.等级 || 0);
+        const stipendAmount = stipendDays * BASE_DAILY_LIVING_COST_ACU;
+        if (!(stipendAmount > 0)) return;
+        const 货币字段 = 判定角色所在地货币_ACU(c);
+        c.财富[货币字段] = Math.max(0, Number(c.财富[货币字段] || 0)) + stipendAmount;
+        payoutItems.push(`${charName}+${stipendAmount}${货币字段}`);
+      });
+      return payoutItems;
+    };
+
     const 判定城市规模档位_ACU = 角色 => {
       const 地点上下文 = 读取地点信息_ACU(角色);
       const 文本 = 地点上下文.文本;
@@ -3560,11 +3588,10 @@ function 规范化Schema根转换_V1(data = {}) {
       });
     });
 
-    const 原始上次结算tick = data.world.时间._上次结算tick ?? data.world.时间.上次结算tick;
+    const 已有上次结算tick = Object.prototype.hasOwnProperty.call(data.world.时间, '_上次结算tick');
+    const 原始上次结算tick = 已有上次结算tick ? data.world.时间._上次结算tick : data.world.时间.上次结算tick;
     const 原始上次结算数值 = Number(原始上次结算tick);
-    const 是否新档初始化 =
-      currentTick > 0 &&
-      (!Number.isFinite(原始上次结算数值) || 原始上次结算数值 <= 0);
+    const 是否新档初始化 = currentTick > 0 && !已有上次结算tick;
     let lastTick = Number.isFinite(原始上次结算数值) ? 原始上次结算数值 : currentTick;
     const 临时角色结算模式表 =
       data.world.时间._临时角色结算模式 &&
@@ -3574,6 +3601,12 @@ function 规范化Schema根转换_V1(data = {}) {
         : {};
     delete data.world.时间._临时角色结算模式;
     if (是否新档初始化 && currentTick > 0 && !Object.keys(临时角色结算模式表).length) {
+      const 首发津贴条目 = 发放魂师津贴_ACU();
+      if (首发津贴条目.length) {
+        appendSystemReasonBatchText('[魂师津贴首发]', [
+          `${formatTickToCalendar(currentTick)} ${首发津贴条目.slice(0, 3).join('；')}${首发津贴条目.length > 3 ? ` 等${首发津贴条目.length}人` : ''}`,
+        ]);
+      }
       lastTick = currentTick;
       data.world.时间._上次结算tick = currentTick;
     }
@@ -4749,16 +4782,7 @@ function 规范化Schema根转换_V1(data = {}) {
       const stipendPayoutTicks = getMonthlyStipendTicksCrossed_ACU(lastTick, currentTick);
       const stipendReasonEntries = [];
       stipendPayoutTicks.forEach(payoutTick => {
-        const payoutItems = [];
-        _(data.char).forEach((c, charName) => {
-          if (!isSoulMasterStipendEligible_ACU(c)) return;
-          if (!c.财富 || typeof c.财富 !== 'object' || Array.isArray(c.财富)) c.财富 = {};
-          const stipendDays = getSoulMasterStipendDaysByLevel_ACU(c.属性?.等级 || 0);
-          const stipendAmount = stipendDays * BASE_DAILY_LIVING_COST_ACU;
-          if (!(stipendAmount > 0)) return;
-          c.财富.联邦币 = Math.max(0, Number(c.财富.联邦币 || 0)) + stipendAmount;
-          payoutItems.push(`${charName}+${stipendAmount}`);
-        });
+        const payoutItems = 发放魂师津贴_ACU();
         if (payoutItems.length) {
           stipendReasonEntries.push(`${formatTickToCalendar(payoutTick)} ${payoutItems.slice(0, 3).join('；')}${payoutItems.length > 3 ? ` 等${payoutItems.length}人` : ''}`);
         }
@@ -4801,7 +4825,8 @@ function 规范化Schema根转换_V1(data = {}) {
 
             if (城市档位索引 >= 0) {
               if (!c.财富 || typeof c.财富 !== 'object' || Array.isArray(c.财富)) c.财富 = {};
-              const 当前存款 = Math.max(0, Number(c.财富?.联邦币 || 0));
+              const 消费货币字段 = 判定角色所在地货币_ACU(c);
+              const 当前存款 = Math.max(0, Number(c.财富?.[消费货币字段] || 0));
               const 基础日消费 = BASE_DAILY_LIVING_COST_ACU;
               const 可负担档位索引 = 计算可负担消费档位_ACU(当前存款, 基础日消费, 城市档位索引);
               const 消费倍率 = Number(城市消费倍率表_ACU[可负担档位索引] || 1);
@@ -4813,10 +4838,10 @@ function 规范化Schema根转换_V1(data = {}) {
                 );
               }
               if (实际可扣) {
-                c.财富.联邦币 = Math.max(0, 当前存款 - 实际消费);
+                c.财富[消费货币字段] = Math.max(0, 当前存款 - 实际消费);
                 delete c.属性.状态效果['饥饿'];
               } else {
-                c.财富.联邦币 = 0;
+                c.财富[消费货币字段] = 0;
                 const starvationLoss = Math.max(1, Math.floor(Math.max(1, Number(c.属性.体力上限 || 1)) * 0.05 * daysPassed));
                 c.属性.体力 = Math.max(0, Number(c.属性.体力 || 0) - starvationLoss);
                 c.属性.状态效果['饥饿'] = {
@@ -4957,7 +4982,11 @@ function 规范化Schema根转换_V1(data = {}) {
               if (!(初潮概率 > 0)) continue;
               if (Math.random() < 初潮概率) {
                 c.私密档案._已来初潮 = true;
-                c.私密档案.生理期偏移 = 4032 - (判定tick % 4032);
+                if (需要初始化生理判定 || 判定tick === 0) {
+                  c.私密档案.生理期偏移 = Math.floor(Math.random() * 4032);
+                } else {
+                  c.私密档案.生理期偏移 = 4032 - (判定tick % 4032);
+                }
                 if (currentTick > 0 && !是否新档初始化 && !需要初始化生理判定) {
                   if (!data.sys.系统播报) data.sys.系统播报 = '';
                   data.sys.系统播报 += ` [生理变化] ${charName} 迎来了初潮，正式进入青春期！`;
@@ -6973,6 +7002,17 @@ function 规范化角色Schema_V1(char) {
       const 原始背景阶层 = String(char.属性?.背景阶层 || '').trim();
       const 有效背景阶层 = ['顶级势力', '一流势力', '普通势力', '平民'].includes(原始背景阶层);
       const backgroundTier = 有效背景阶层 ? 原始背景阶层 : '平民';
+      const 等级字段存在 = Object.prototype.hasOwnProperty.call(char.属性, '等级');
+      const 等级值 = Number(char.属性?.等级);
+      const 等级为初始化默认态 =
+        !等级字段存在 ||
+        char.属性?.等级 === '' ||
+        char.属性?.等级 === null ||
+        (!Number.isFinite(等级值) && String(char.属性?.等级 ?? '').trim() !== '0') ||
+        Number(等级值) === 1;
+      const 有初始化种子 =
+        Math.max(0, Number(char.属性?.年龄 || 0)) > 6 &&
+        (有效背景阶层 || char.属性?.天赋评级 !== undefined || hasPresetTalent);
       初始化魂灵预算倍率记录_V1.set(
         char,
         !有效背景阶层 || backgroundTier === '顶级势力' || backgroundTier === '一流势力' ? 1 : 0.5,
@@ -7052,7 +7092,7 @@ function 规范化角色Schema_V1(char) {
 
         char.属性.天赋梯队 = tier;
 
-        if (char.属性.等级 === 1 && char.属性.年龄 > 6) {
+        if (等级为初始化默认态 && 有初始化种子) {
           char.属性.等级 = Math.min(
             maxLimit,
             计算初始化修为等级(
@@ -7065,7 +7105,7 @@ function 规范化角色Schema_V1(char) {
         }
       }
 
-      if (!原始已有魂师结构 && hasPresetTalent && char.属性.等级 === 1 && char.属性.年龄 > 6) {
+      if (!原始已有魂师结构 && hasPresetTalent && 等级为初始化默认态 && 有初始化种子) {
         char.属性.等级 = 计算初始化修为等级(
           char.属性.天赋梯队,
           char.属性.年龄,

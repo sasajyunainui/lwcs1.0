@@ -435,6 +435,7 @@ function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
   const 排除路径列表 = 选项.排除路径列表 || [];
   const 正文模式 = 选项.正文模式 === true;
   const 字段名 = String(路径[路径.length - 1] || '');
+  if (字段名 === '生理期偏移') return undefined;
   if (正文模式 && 字段名 === '死亡tick' && Number(值) < 0) return undefined;
   if (正文模式 && 字段名 === '死亡类型' && (!String(值 || '').trim() || String(值 || '').trim() === '无')) return undefined;
   const 排除状态 = MVU视图路径排除状态_V1(路径, 排除路径列表);
@@ -3050,6 +3051,7 @@ function 格式化MVU剧情提示对象片段_V1(对象 = {}, 最大字段数 = 
   const 片段列表 = [];
   Object.entries(对象 || {}).forEach(([字段, 值]) => {
     if (片段列表.length >= 最大字段数) return;
+    if (字段 === '生理期偏移') return;
     const 文本 = 格式化MVU剧情提示值_V1(值);
     if (文本) 片段列表.push(`${字段}:${文本}`);
   });
@@ -3715,9 +3717,15 @@ var 角色基础六维对标字段_V1 = Object.freeze([
   Object.freeze({ 标签: '防御', 字段: '防御' }),
   Object.freeze({ 标签: '敏捷', 字段: '敏捷' }),
   Object.freeze({ 标签: '体力/气血', 字段: '体力上限' }),
-  Object.freeze({ 标签: '魂力', 字段: '魂力上限' }),
   Object.freeze({ 标签: '精神力', 字段: '精神力上限' }),
 ]);
+
+var 六维对标同龄等级年龄描点表_V1 = Object.freeze({
+  正常: Object.freeze([[6, 3], [10, 6], [20, 21], [30, 32], [50, 41], [150, 41]]),
+  优秀: Object.freeze([[6, 6], [10, 14], [20, 40], [30, 69], [60, 70], [150, 70]]),
+  天才: Object.freeze([[6, 8], [9, 20], [10, 21], [20, 48], [30, 69], [40, 80], [50, 85], [100, 90], [150, 90]]),
+  顶级天才: Object.freeze([[6, 8], [10, 21], [20, 53], [30, 74], [40, 89], [50, 94], [100, 96], [150, 96]]),
+});
 
 function 读取六维对标天赋档位_V1(等级 = 1) {
   const 数值 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
@@ -3731,6 +3739,52 @@ function 读取六维对标训练系数_V1(天赋档位 = '正常') {
   return { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1.0, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[
     String(天赋档位 || '').trim()
   ] ?? 0.5;
+}
+
+function 计算六维对标等级年龄描点_V1(等级 = 1) {
+  const 安全等级 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
+  const 描点表 = 六维对标同龄等级年龄描点表_V1[读取六维对标天赋档位_V1(安全等级)] || 六维对标同龄等级年龄描点表_V1.正常;
+  for (let 序号 = 0; 序号 < 描点表.length - 1; 序号 += 1) {
+    const 当前 = 描点表[序号];
+    const 下个 = 描点表[序号 + 1];
+    const 当前等级 = Number(当前[1]);
+    const 下个等级 = Number(下个[1]);
+    if (安全等级 < Math.min(当前等级, 下个等级) || 安全等级 > Math.max(当前等级, 下个等级)) continue;
+    if (当前等级 === 下个等级) return Number(当前[0]);
+    const 比例 = Math.max(0, Math.min(1, (安全等级 - 当前等级) / (下个等级 - 当前等级)));
+    return Number(当前[0]) + (Number(下个[0]) - Number(当前[0])) * 比例;
+  }
+  return Number(描点表[描点表.length - 1]?.[0] || 150);
+}
+
+function 读取六维对标同龄等级描点_V1(年龄 = 0) {
+  const 安全年龄 = Math.max(0, Number(年龄) || 0);
+  let 最佳等级 = 1;
+  let 最小差值 = Infinity;
+  for (let 等级 = 1; 等级 <= 99; 等级 += 1) {
+    const 描点年龄 = 计算六维对标等级年龄描点_V1(等级);
+    const 差值 = Math.abs(描点年龄 - 安全年龄);
+    if (差值 < 最小差值 || (Math.abs(差值 - 最小差值) < 0.001 && 等级 > 最佳等级)) {
+      最小差值 = 差值;
+      最佳等级 = 等级;
+    }
+  }
+  return 最佳等级;
+}
+
+function 读取六维对标同龄比较文本_V1(当前等级 = 0, 同龄等级 = 1) {
+  const 当前 = Number(当前等级) || 0;
+  const 同龄 = Number(同龄等级) || 1;
+  if (Math.abs(当前 - 同龄) < 0.001) return '同龄持平';
+  return 当前 > 同龄 ? '高于同龄' : '低于同龄';
+}
+
+function 是角色基础对标非魂师_V1(角色 = {}) {
+  const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
+  return String(属性.天赋梯队 || '').trim() === '天赋极差'
+    || Math.max(0, Number(属性.等级 || 0)) <= 0
+    || Math.max(0, Number(属性.魂力 || 0)) <= 0
+    || Math.max(0, Number(属性.魂力上限 || 0)) <= 0;
 }
 
 function 读取角色六维强攻系对标倍率_V1() {
@@ -3749,7 +3803,6 @@ function 构建角色六维对标参照值_V1(角色 = {}, 等级 = 1) {
     防御: Math.floor(Number(基准.def || 0) * Number(系别倍率.def || 1)) + Math.floor(Number(基准.def || 0) * 训练倍率),
     敏捷: Math.floor(Number(基准.agi || 0) * Number(系别倍率.agi || 1)) + Math.floor(Number(基准.agi || 0) * 训练倍率),
     体力上限: Math.floor(Number(基准.vit_max || 0) * Number(系别倍率.vit_max || 1)) + Math.floor(Number(基准.vit_max || 0) * 训练倍率),
-    魂力上限: Math.floor(Number(基准.sp_max || 0) * Number(系别倍率.sp_max || 1)),
     精神力上限: Math.floor(Number(基准.men_max || 0) * Number(系别倍率.men_max || 1)) + Math.floor(Number(基准.men_max || 0) * 训练倍率),
   };
 }
@@ -3776,7 +3829,6 @@ function 读取角色装备六维加成_V1(角色 = {}) {
     防御: 求和('防御'),
     敏捷: 求和('敏捷'),
     体力上限: 求和('体力上限'),
-    魂力上限: 0,
     精神力上限: 求和('精神力上限'),
   };
 }
@@ -3811,10 +3863,14 @@ function 计算角色属性对标等级文本_V1(角色 = {}, 字段 = '', 数�
 
 function 构建角色基础六维对标条目_V1(角色 = {}) {
   if (!角色 || typeof 角色 !== 'object' || !角色.属性 || typeof 角色.属性 !== 'object') return {};
+  if (是角色基础对标非魂师_V1(角色)) return { 非魂师: true };
   const 六维 = 读取角色非装备六维_V1(角色);
   const 条目 = {};
   const 等级 = Number(角色.属性.等级);
-  if (Number.isFinite(等级)) 条目.等级 = `Lv${等级}`;
+  if (Number.isFinite(等级)) {
+    const 同龄等级 = 读取六维对标同龄等级描点_V1(角色.属性.年龄);
+    条目.等级 = `Lv${等级}（同龄等级描点：${同龄等级}级，${读取六维对标同龄比较文本_V1(等级, 同龄等级)}）`;
+  }
   角色基础六维对标字段_V1.forEach(({ 标签, 字段 }) => {
     const 数值 = Math.max(1, Math.floor(Number(六维?.[字段] || 1)));
     const 对标 = 计算角色属性对标等级文本_V1(角色, 字段, 数值);
@@ -3834,6 +3890,7 @@ function 构建角色基础六维对标条目_V1(角色 = {}) {
 
 function 格式化角色基础六维对标条目_V1(角色名 = '', 条目 = {}) {
   if (!条目 || typeof 条目 !== 'object' || !Object.keys(条目).length) return '';
+  if (条目.非魂师) return `${角色名}：非魂师`;
   const 字段文本 = 角色基础六维对标字段_V1.map(({ 标签 }) => {
     const 文本 = String(条目?.[标签] || '').trim();
     if (!文本) return '';

@@ -43,6 +43,8 @@
 #character-creation-root .template-hint { min-height: 20px; margin-top: 10px; font-size: 13px; color: #2dd4bf; text-align: center; }
 #character-creation-root .background-picker { display: flex; flex-direction: column; gap: 12px; }
 #character-creation-root .background-textarea { min-height: 80px; resize: vertical; line-height: 1.55; }
+#character-creation-root .mode-hidden { display: none; }
+#character-creation-root .form-control[readonly] { color: #94a3b8; border-color: rgba(45, 212, 191, 0.25); }
 </style>
 </head>
 <body>
@@ -59,6 +61,22 @@
 <option value="9岁">9岁·东海学院开局</option>
 <option value="13岁" selected>13岁·史莱克学院开局</option>
 </select>
+</div>
+
+<div class="row">
+<div class="col form-group">
+<label>▶ 开局模式</label>
+<select id="startup-mode" class="form-control" onchange="切换开局模式()">
+<option value="原创角色" selected>原创角色</option>
+<option value="原著角色">原著角色</option>
+</select>
+</div>
+<div class="col form-group mode-hidden" id="original-character-group">
+<label>▶ 原著角色</label>
+<select id="original-character-select" class="form-control" onchange="应用原著角色选择()">
+<option value="">选择原著角色</option>
+</select>
+</div>
 </div>
 
 <div class="form-group">
@@ -134,36 +152,36 @@
 <div class="row">
   <div class="col form-group">
     <label>▶ 性格特征 (可自由填写或下拉选择)</label>
-    <input type="text" id="char-personality" class="form-control" list="personality-options" placeholder="留空则由AI结合武魂与身世，生成非脸谱化的立体性格">
-    <datalist id="personality-options">
-      <option value="是个随时散发活力的开朗小太阳，但偶尔也会悄悄露出带着恶作剧笑意的恶魔尾巴。"></option>
-<option value="日常说话总是老气横秋地试图说教别人，但在遇到自己真正喜欢的东西时，立刻就会破功暴露出幼稚雀跃的本性。"></option>
-<option value="像一只精力过剩的小狗般永远横冲直撞，哪怕面对强敌也绝不退缩，但只要被人当面直白地夸奖一句，就会瞬间涨红脸结巴起来。"></option>
-<option value="在遇到麻烦时总是游刃有余地掌控全场并包容照顾所有人，但一旦回到私下独处的状态，就会变成连烧水都不会的极度生活废柴。"></option>
-<option value="表面上是个满脸写着'别惹我'、一言不合就要动手的暴躁家伙，遇到路边的流浪猫却会毫不犹豫地蹲下来偷偷喂半天火腿肠。"></option>
-<option value="日常总是表现出一副什么都无所谓、敷衍轻浮的摸鱼态度，背地里却对某项极度硬核的事物有着常人无法理解的狂热与专注。"></option>
-<option value="看到符合喜好的人就会条件反射般凑上去疯狂输出直球情话，哪怕被无情拒绝或者揍飞，拍拍灰尘后依然能笑嘻嘻地当做什么都没发生。"></option>
-<option value="对认定的人有着近乎病态的狂热执念，极少主动搭话，日常绝技是在不远不近的距离进行深情注视，并密密麻麻地记满对方哪怕是最微小的生活习惯。"></option>
-    </datalist>
+    <div style="display: flex; flex-direction: column;">
+        <select class="form-control" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px dashed rgba(45, 212, 191, 0.3); background-color: rgba(30, 41, 59, 0.8); color: #5eead4; cursor: pointer; font-size: 13px; font-weight: 500;" onchange="if(this.value){ document.getElementById('char-personality').value = this.value; this.value=''; document.getElementById('char-personality').dispatchEvent(new Event('input', {bubbles:true})); }">
+            <option value="">▼ 展开选择预设模版...</option>
+            <option value="是个随时散发活力的开朗小太阳，但偶尔也会悄悄露出带着恶作剧笑意的恶魔尾巴。">[开朗小太阳] 随时散发活力，偶尔恶作剧</option>
+            <option value="日常说话总是老气横秋地试图说教别人，但在遇到自己真正喜欢的东西时，立刻就会破功暴露出幼稚雀跃的本性。">[老气横秋] 喜欢说教，遇真爱破功雀跃</option>
+            <option value="像一只精力过剩的小狗般永远横冲直撞，哪怕面对强敌也绝不退缩，但只要被人当面直白地夸奖一句，就会瞬间涨红脸结巴起来。">[直球克星] 横冲直撞，被夸就脸红结巴</option>
+            <option value="在遇到麻烦时总是游刃有余地掌控全场并包容照顾所有人，但一旦回到私下独处的状态，就会变成连烧水都不会的极度生活废柴。">[温柔废柴] 游刃有余包容全场，私下生活废柴</option>
+            <option value="表面上是个满脸写着'别惹我'、一言不合就要动手的暴躁家伙，遇到路边的流浪猫却会毫不犹豫地蹲下来偷偷喂半天火腿肠。">[暴躁护短] 满脸别惹我，偷偷喂流浪猫</option>
+            <option value="日常总是表现出一副什么都无所谓、敷衍轻浮的摸鱼态度，背地里却对某项极度硬核的事物有着常人无法理解的狂热与专注。">[轻浮狂热] 敷衍摸鱼，对某事极度硬核专注</option>
+            <option value="看到符合喜好的人就会条件反射般凑上去疯狂输出直球情话，哪怕被无情拒绝或者揍飞，拍拍灰尘后依然能笑嘻嘻地当做什么都没发生。">[情话机器] 疯狂输出直球情话，被拒当没发生</option>
+            <option value="对认定的人有着近乎病态的狂热执念，极少主动搭话，日常绝技是在不远不近的距离进行深情注视，并密密麻麻地记满对方哪怕是最微小的生活习惯。">[病态痴汉] 狂热执念，深情注视记满生活习惯</option>
+        </select>
+        <textarea id="char-personality" class="form-control" style="border-top-left-radius: 0; border-top-right-radius: 0; resize: vertical; min-height: 72px;" placeholder="可在此直接输入，或从上方选择预设...\n留空则由AI结合武魂与身世，生成非脸谱化的立体性格"></textarea>
+    </div>
   </div>
   <div class="col form-group">
     <label>▶ 外貌与气质 (可自由填写或下拉选择)</label>
-    <input type="text" id="char-appearance" class="form-control" list="appearance-options" placeholder="留空则由AI生成符合其生存环境的写实外貌细节">
-    <datalist id="appearance-options">
-<option value="身高刚好停留在成年男性的腰部位置。穿着带有蕾丝花边的连衣短裙，腿上套着白色的过膝长袜。走路时步距只有普通人的一半，与高个子交谈时需要将头部抬起至少四十五度。"></option>
-
-<option value="四肢纤细，骨架偏小。常穿着宽松的短袖和不过膝的短裤，膝盖处带有几道浅色的旧疤痕。手里总是习惯性地抓着一个小物件或衣角，站立时双腿习惯并拢。"></option>
-
-<option value="纯色的基础款T恤搭配洗得有些泛白的牛仔裤。头发用皮筋简单扎起，身上没有任何金属首饰。手里常拿着手机或纯色帆布包，与人交谈时视线多数时间落在对方下巴到锁骨的区域。"></option>
-
-<option value="身高超出人群平均线，背部线条始终保持笔挺。鼻梁骨的凸起程度高于常人，下颌线转折分明。常穿剪裁得体的单色衬衫，袖口习惯挽到手肘下方三厘米处。"></option>
-
-<option value="身高偏高，视线通常与大多数成年男性平齐。穿着修身的衣物，站立时重心常压在单侧腿上。手指修长，右手中指关节处有一层薄薄的老茧，走路时步伐频率稳定。"></option>
-
-<option value="穿着深蓝色的水手服上衣和过膝的百褶裙。领口系着红色的领结，腿上套着紧贴小腿的黑色长袜。手腕上常套着一根备用的发圈，提包的金属扣上挂着两个毛绒挂件。"></option>
-
-<option value="头发染成偏浅的色系或带有明显的挑染。外套的拉链完全敞开，内搭衬衫的下摆一边塞在裤子里一边垂在外面。双手常年插在裤兜底端，走路时鞋底摩擦地面的声音明显大于常人。"></option>
-    </datalist>
+    <div style="display: flex; flex-direction: column;">
+        <select class="form-control" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px dashed rgba(45, 212, 191, 0.3); background-color: rgba(30, 41, 59, 0.8); color: #5eead4; cursor: pointer; font-size: 13px; font-weight: 500;" onchange="if(this.value){ document.getElementById('char-appearance').value = this.value; this.value=''; document.getElementById('char-appearance').dispatchEvent(new Event('input', {bubbles:true})); }">
+            <option value="">▼ 展开选择预设模版...</option>
+            <option value="身高刚好停留在成年男性的腰部位置。穿着带有蕾丝花边的连衣短裙，腿上套着白色的过膝长袜。走路时步距只有普通人的一半，与高个子交谈时需要将头部抬起至少四十五度。">[娇小体型] 到腰部位置，需抬起头部至少四十五度</option>
+            <option value="四肢纤细，骨架偏小。常穿着宽松的短袖和不过膝的短裤，膝盖处带有几道浅色的旧疤痕。手里总是习惯性地抓着一个小物件或衣角，站立时双腿习惯并拢。">[纤细骨架] 膝盖带旧疤痕，习惯抓衣角双腿并拢</option>
+            <option value="纯色的基础款T恤搭配洗得有些泛白的牛仔裤。头发用皮筋简单扎起，身上没有任何金属首饰。手里常拿着手机或纯色帆布包，与人交谈时视线多数时间落在对方下巴到锁骨的区域。">[素净打扮] 基础款T恤无首饰，视线落在下巴到锁骨</option>
+            <option value="身高超出人群平均线，背部线条始终保持笔挺。鼻梁骨的凸起程度高于常人，下颌线转折分明。常穿剪裁得体的单色衬衫，袖口习惯挽到手肘下方三厘米处。">[高挑挺拔] 背部笔挺，袖口挽到手肘下方三厘米</option>
+            <option value="身高偏高，视线通常与大多数成年男性平齐。穿着修身的衣物，站立时重心常压在单侧腿上。手指修长，右手中指关节处有一层薄薄的老茧，走路时步伐频率稳定。">[修长沉稳] 视线平齐，中指关节有老茧重心压单侧</option>
+            <option value="穿着深蓝色的水手服上衣和过膝的百褶裙。领口系着红色的领结，腿上套着紧贴小腿的黑色长袜。手腕上常套着一根备用的发圈，提包的金属扣上挂着两个毛绒挂件。">[制服搭配] 水手服过膝袜，手腕套备用发圈</option>
+            <option value="头发染成偏浅的色系或带有明显的挑染。外套的拉链完全敞开，内搭衬衫的下摆一边塞在裤子里一边垂在外面。双手常年插在裤兜底端，走路时鞋底摩擦地面的声音明显大于常人。">[张扬叛逆] 挑染敞开拉链，双手插兜鞋底摩擦声大</option>
+        </select>
+        <textarea id="char-appearance" class="form-control" style="border-top-left-radius: 0; border-top-right-radius: 0; resize: vertical; min-height: 72px;" placeholder="可在此直接输入，或从上方选择预设...\n留空则由AI生成符合其生存环境的写实外貌细节"></textarea>
+    </div>
   </div>
 </div>
 <div class="row">
@@ -180,24 +198,22 @@
   </div>
   <div class="col form-group">
     <label>▶ 家世与成长背景 (可自由填写或下拉选择)</label>
-    <div class="background-picker">
-      <select id="char-bg-preset" class="form-control" onchange="应用家世模板(this.value)">
- <option value="拥有第一或第二顺位的帝国皇室继承权。居住于首都内城的独立宫殿，出行标配三名以上魂圣级别的近卫。皇家宝库中保存着不对外公开的十万年传承魂骨，以及整个帝国最核心的情报网络。"></option>
-<option value="直系亲属为传灵塔总部核心议员。生活在传灵塔总部的内部核心区，拥有最高级别的虚拟升灵台登入权限，能够在任何分塔自由调用十万年以下任意属性的顶级魂灵资源。"></option>
-<option value="大陆排名前三隐世或入世宗门的核心传人。专属修炼场地建立在宗门魂力最密集的极品拟态环境中，日常药浴和恢复消耗品均为外界拍卖行的压轴级天材地宝，由宗门长老会共同规划资源配给。"></option>
-<option value="家族掌控着大陆多条高级斗铠与机甲的核心生产线。住所内随处可见散发能量波动的稀有金属原矿，家族工坊中备有完整的定制四字斗铠设计图纸与高阶锻造传承手稿。"></option>
-<option value="父母为大陆顶级魂师学院的正职院长或海神阁成员。居住在学院内环的独立区域，拥有无限制进入内院藏书阁最高层的权限，可查阅历代封号斗罗与神祇留下的原始修炼手札。"></option>
-<option value="二级城市拍卖行或中型商会的主事家庭。居住在城市商业区的独栋复式建筑内，库房里存放着大量流通的金币与中低级魂导器，拥有固定且安全的跨城池商业运输渠道。"></option>
-<option value="驻扎在深渊通道边界防线的普通士官家庭。配发有磨损痕迹的制式防御魂导器，日常居住在用灰石与金属堆砌的防御工事后方，营地内常年弥漫着防兽粉与铁锈的味道。"></option>
-<option value="父母在主城外围的城防军或巡逻队担任普通职员。家庭居住在城主府统一分配的联排砖房内，每个月有固定的薪水发放。家里有一个专门用来存放制式武器和基础疗伤药草的木柜。"></option>
-<option value="父亲是往返于两座城市之间的小型商队的随车护卫，武魂是常见的盾牌类器武魂。家里有一件磨损严重的防御类一阶魂导器，每个月能收到两瓶商队配发的劣质魂力恢复药剂。"></option>
-<option value="父母在初级魂师学院担任食堂帮厨与宿舍管理员。全家居住在学院统一分配的单间宿舍里，窗外能直接看到新生训练的操场。家里的墙上贴着一张别人丢弃的初级魂力运行路线图。"></option>
-<option value="父母在东海城外围的锻造工坊负责低级金属的粗加工。家里有一个生锈的小型锻造台，角落里堆放着带有废渣的生铁块，日常收入刚好能维持购买最基础的体能恢复营养液。"></option>
-<option value="居住在城市边缘的农业村落。全家人依靠觉醒的镰刀或锄头类废武魂承包了几亩农田，日常产出仅够缴纳城市的税收和维持全家温饱。家里没有多余的金属器具。"></option>
-<option value="生活在主城外城的仓储区。父母在附近的初级魂师学院或商会仓库负责日常重物的搬运。家里唯一与超凡相关的物品，是墙上贴着的一张残破的基础冥想图。"></option>
-<option value="生活在沿海城市的底层码头区。父亲是负责装卸商船货物的普通劳力，母亲在码头区接修补渔网的手工活。住所空间狭小，常年弥漫着海腥味与廉价烟草的味道。"></option>
+    <div style="display: flex; flex-direction: column;">
+      <select id="char-bg-preset" class="form-control" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px dashed rgba(45, 212, 191, 0.3); background-color: rgba(30, 41, 59, 0.8); color: #5eead4; cursor: pointer; font-size: 13px; font-weight: 500;" onchange="if(this.value){ document.getElementById('char-bg').value = this.value; this.value=''; document.getElementById('char-bg').dispatchEvent(new Event('input', {bubbles:true})); }">
+ <option value="">▼ 展开选择预设模版...</option>
+ <option value="拥有第一顺位的天斗帝国皇室继承权。出行标配三名以上魂圣级别的近卫">[帝国皇室] </option>
+<option value="直系亲属为传灵塔总部核心议员。生活在传灵塔总部的内部核心区">[传灵塔高层]</option>
+<option value="昊天宗的核心传人">[隐世宗门] </option>
+<option value="家族掌控着大陆多条高级斗铠与机甲的核心生产线。住所内随处可见散发能量波动的稀有金属原矿">[机甲财阀] </option>
+<option value="现任海神阁长老的后代。出身后一直居住在史莱克学院内院">[学院高层之后] </option>
+<option value="二级城市拍卖行或中型商会的主事家庭。居住在城市商业区的独栋复式建筑内，库房里存放着大量流通的金币与中低级魂导器，拥有固定且安全的跨城池商业运输渠道。">[中型商会] </option>
+<option value="驻扎在深渊通道边界防线的普通士官家庭。配发有磨损痕迹的制式防御魂导器，日常居住在用灰石与金属堆砌的防御工事后方，营地内常年弥漫着防兽粉与铁锈的味道。">[边境士官]</option>
+<option value="父母在主城外围的城防军或巡逻队担任普通职员。家庭居住在城主府统一分配的联排砖房内，每个月有固定的薪水发放。">[城防军属] </option>
+<option value="父亲是往返于两座城市之间的小型商队的随车护卫，武魂是常见的盾牌类器武魂。">[商队护卫] </option>
+<option value="父母在初级魂师学院担任食堂帮厨与宿舍管理员。全家居住在学院统一分配的单间宿舍里，窗外能直接看到新生训练的操场。">[学院职工]</option>
+<option value="居住在城市边缘的农业村落。父母长辈承包了几亩农田，日常产出仅够缴纳城市的税收和维持全家温饱">[边缘农户] </option>
       </select>
-      <textarea id="char-bg" class="form-control background-textarea" rows="3" placeholder="留空则由AI补完：生成社会阶层、成长环境与人际羁绊"></textarea>
+      <textarea id="char-bg" class="form-control background-textarea" style="border-top-left-radius: 0; border-top-right-radius: 0; resize: vertical; min-height: 72px;" placeholder="可在此直接输入，或从上方选择预设...\n留空则由AI补完：生成社会阶层、成长环境与人际羁绊"></textarea>
     </div>
   </div>
 </div>

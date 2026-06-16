@@ -11686,6 +11686,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-section--dashboard {
   padding: 6px !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-section--dashboard:has(.mvu-unified-dashboard--archive) {
+  padding: 4px !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard {
   display: grid !important;
   width: 100% !important;
@@ -12017,7 +12021,8 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-tile i span {
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(232px, 0.96fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
+  grid-template-rows: minmax(230px, 0.96fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
+  gap: 4px !important;
   grid-template-areas:
     'core core core core core core social social social social social social'
     'primary primary primary primary primary primary primary primary primary primary primary primary'
@@ -12064,41 +12069,59 @@ body.mvu-layout-unified
 body.mvu-layout-unified #mvu-unified-mount .archive-core-grid {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: auto minmax(0, 1fr) !important;
-  gap: 9px !important;
+  gap: 7px !important;
   align-content: stretch !important;
   height: 100% !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-profile {
+  position: relative !important;
   display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) !important;
+  grid-template-columns: auto minmax(0, 1fr) max-content !important;
   grid-template-rows: auto auto !important;
   align-items: center !important;
   align-content: start !important;
-  gap: 8px 10px !important;
+  gap: 7px 10px !important;
   min-width: 0 !important;
-  padding: 8px 10px !important;
+  padding: 8px 10px 7px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
   border: 1px solid rgba(77, 240, 255, 0.1) !important;
   background: linear-gradient(180deg, rgba(16, 39, 50, 0.42), rgba(8, 18, 26, 0.58)) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-level {
+  position: relative !important;
   grid-column: 1 !important;
   grid-row: 1 !important;
   align-self: center !important;
   justify-self: start !important;
   min-width: 0 !important;
-  padding: 3px 8px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid rgba(77, 240, 255, 0.28) !important;
-  background: linear-gradient(135deg, rgba(77, 240, 255, 0.18), rgba(77, 240, 255, 0.05)) !important;
-  box-shadow: inset 0 0 14px rgba(77, 240, 255, 0.08), 0 0 16px rgba(77, 240, 255, 0.08) !important;
-  color: rgba(223, 252, 255, 0.98) !important;
-  font-size: 15px !important;
+  overflow: hidden !important;
+  padding: 5px 10px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(34, 211, 238, 0.32) !important;
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.03)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 18px rgba(34, 211, 238, 0.08),
+    0 0 16px rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  font-size: 16px !important;
+  line-height: 1.1 !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
   white-space: nowrap !important;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-level::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  top: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, rgba(156, 245, 255, 0.8), transparent) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-main {
@@ -12125,10 +12148,10 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-profile-main span {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-pill {
-  padding: 4px 7px !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  background: rgba(255, 255, 255, 0.055) !important;
-  color: rgba(225, 241, 246, 0.9) !important;
+  padding: 3px 7px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  color: rgba(209, 228, 236, 0.82) !important;
   font-weight: 650 !important;
 }
 
@@ -12169,33 +12192,60 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-status.is-muted {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-next {
-  display: inline-grid !important;
-  grid-template-columns: auto auto !important;
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  display: inline-flex !important;
   align-items: baseline !important;
-  gap: 5px !important;
-  max-width: 158px !important;
-  padding: 3px 7px !important;
-  border: 1px solid rgba(77, 240, 255, 0.09) !important;
-  background: rgba(77, 240, 255, 0.035) !important;
-  color: rgba(230, 248, 252, 0.95) !important;
+  justify-content: flex-end !important;
+  gap: 3px !important;
+  max-width: min(190px, 100%) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(154, 180, 190, 0.72) !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-core-next i {
+  flex: 0 0 auto !important;
+  align-self: center !important;
+  width: 7px !important;
+  height: 12px !important;
+  margin-right: 1px !important;
+  border-radius: 1px !important;
+  background: linear-gradient(180deg, #67e8f9 0%, #22d3ee 45%, #0f9bb0 100%) !important;
+  clip-path: polygon(62% 0, 17% 52%, 46% 52%, 31% 100%, 83% 39%, 54% 39%) !important;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.48) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-next em {
-  color: var(--mvu-hud-muted) !important;
+  flex: 0 0 auto !important;
+  color: rgba(154, 180, 190, 0.72) !important;
   font-size: 9px !important;
   line-height: 1 !important;
   font-weight: 650 !important;
   font-style: normal !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .archive-core-next em::after {
+  content: ':' !important;
+  margin-left: 1px !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .archive-core-next strong {
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  color: rgba(247, 253, 255, 0.98) !important;
+  color: #22d3ee !important;
   font-size: 12px !important;
   line-height: 1 !important;
   font-weight: 820 !important;
   font-variant-numeric: tabular-nums !important;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.42) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs {
@@ -12203,24 +12253,27 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs {
   grid-row: 2 !important;
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 12px !important;
+  gap: 6px !important;
   min-width: 0 !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs span {
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
+  gap: 6px !important;
   min-width: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
+  min-height: 25px !important;
+  padding: 3px 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+  border-radius: 4px !important;
+  background: rgba(255, 255, 255, 0.024) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs b {
   min-width: 0 !important;
-  color: var(--mvu-hud-muted) !important;
+  color: rgba(154, 180, 190, 0.62) !important;
   font-size: 10px !important;
   line-height: 1.2 !important;
   font-weight: 620 !important;
@@ -12228,6 +12281,7 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs b {
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs strong {
+  justify-self: end !important;
   min-width: 0 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -12235,6 +12289,7 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs strong {
   font-size: 12px !important;
   line-height: 1.2 !important;
   font-weight: 780 !important;
+  font-family: var(--font-mono, 'DIN Alternate', 'Roboto Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
   white-space: nowrap !important;
 }
@@ -12242,10 +12297,10 @@ body.mvu-layout-unified #mvu-unified-mount .archive-core-attrs strong {
 body.mvu-layout-unified #mvu-unified-mount .archive-resource-list {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
-  gap: 7px !important;
+  gap: 6px !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  padding: 8px 10px !important;
+  padding: 7px 10px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
   background: rgba(6, 18, 26, 0.26) !important;
 }
@@ -12255,7 +12310,7 @@ body.mvu-layout-unified #mvu-unified-mount .archive-resource-row {
   grid-template-columns: minmax(0, 1fr) auto !important;
   grid-template-rows: auto auto !important;
   align-items: center !important;
-  gap: 3px 8px !important;
+  gap: 4px 8px !important;
   min-width: 0 !important;
   min-height: 0 !important;
   padding: 0 !important;
@@ -12263,15 +12318,32 @@ body.mvu-layout-unified #mvu-unified-mount .archive-resource-row {
   background: transparent !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .archive-resource-row b {
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-label {
   grid-column: 1 !important;
   grid-row: 1 !important;
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 4px !important;
   min-width: 0 !important;
-  color: var(--mvu-hud-muted) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-label b {
+  min-width: 0 !important;
+  color: rgba(154, 180, 190, 0.64) !important;
   font-size: 10px !important;
   line-height: 1.2 !important;
   font-weight: 600 !important;
   letter-spacing: 0.02em !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-label span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  color: rgba(154, 180, 190, 0.48) !important;
+  font-size: 9px !important;
+  line-height: 1.2 !important;
   white-space: nowrap !important;
 }
 
@@ -12284,9 +12356,10 @@ body.mvu-layout-unified #mvu-unified-mount .archive-resource-row strong {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  color: rgba(229, 241, 246, 0.88) !important;
-  font-size: 11px !important;
+  color: rgba(245, 251, 253, 0.92) !important;
+  font-size: 12px !important;
   line-height: 1.2 !important;
+  font-family: var(--font-mono, 'DIN Alternate', 'Roboto Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
   letter-spacing: 0 !important;
 }
@@ -12296,26 +12369,54 @@ body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i {
   grid-row: 2 !important;
   display: block !important;
   width: 100% !important;
-  height: 3px !important;
-  margin-top: 2px !important;
+  height: 4px !important;
+  margin-top: 0 !important;
   overflow: hidden !important;
   border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(2, 9, 14, 0.62) !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i span {
+  position: relative !important;
   display: block !important;
   height: 100% !important;
   border-radius: inherit !important;
   background: currentColor !important;
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor 42%, transparent) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i span::after {
+  content: '' !important;
+  position: absolute !important;
+  right: -1px !important;
+  top: 50% !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  background: currentColor !important;
+  box-shadow: 0 0 10px currentColor !important;
+  transform: translateY(-50%) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i span[style^='width:0']::after,
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row i span[style^='width: 0']::after {
+  display: none !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-red i {
   color: var(--red) !important;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-orange i {
+  color: #f59e0b !important;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-cyan i {
   color: var(--cyan) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-purple i {
+  color: #c084fc !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .archive-resource-row.is-white i {
@@ -12475,9 +12576,18 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-secondary-track-card {
   grid-auto-rows: auto !important;
   grid-template-rows: none !important;
   align-content: start !important;
-  gap: 8px !important;
+  gap: 5px !important;
   min-height: 0 !important;
   height: 100% !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-spirit-card > .dual-side-top {
+  min-height: 24px !important;
+  margin: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-spirit-card > .dual-side-top .strip-head {
+  margin: 0 !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-spirit-pair-head {
@@ -14200,8 +14310,8 @@ body.mvu-layout-unified #mvu-unified-mount .terminal-home-line b {
   letter-spacing: 0 !important;
 }
 
-body.mvu-layout-unified #mvu-unified-mount .terminal-home-line:hover,
-body.mvu-layout-unified #mvu-unified-mount .terminal-home-line:focus-visible {
+body.mvu-layout-unified #mvu-unified-mount .terminal-home-line.clickable:hover,
+body.mvu-layout-unified #mvu-unified-mount .terminal-home-line.clickable:focus-visible {
   background: rgba(77, 240, 255, 0.06) !important;
   outline: none !important;
 }
@@ -14404,6 +14514,1134 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--two,
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--trial {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-shell,
+#detailModal.mvu-modal-display-unified .bestiary-research-shell,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-research-shell {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid rgba(143, 233, 255, 0.16) !important;
+  border-radius: 6px !important;
+  background:
+    linear-gradient(rgba(143, 233, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 233, 255, 0.028) 1px, transparent 1px),
+    radial-gradient(circle at 76% 18%, rgba(71, 210, 255, 0.09), transparent 34%),
+    rgba(3, 12, 18, 0.68) !important;
+  background-size: 22px 22px, 22px 22px, auto, auto !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025), 0 16px 44px rgba(0, 0, 0, 0.18) !important;
+  overflow: hidden !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-shell::before,
+#detailModal.mvu-modal-display-unified .bestiary-research-shell::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-research-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.026) 0,
+    rgba(255, 255, 255, 0.026) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  opacity: 0.36;
+  mix-blend-mode: screen;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-shell > *,
+#detailModal.mvu-modal-display-unified .bestiary-research-shell > *,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-research-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-overview,
+#detailModal.mvu-modal-display-unified .bestiary-research-overview,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-research-overview {
+  display: grid !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  padding: 11px 12px !important;
+  border: 1px solid rgba(143, 233, 255, 0.13) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, rgba(143, 233, 255, 0.055), rgba(255, 255, 255, 0.018)) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head,
+#detailModal.mvu-modal-display-unified .bestiary-overview-head,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head div,
+#detailModal.mvu-modal-display-unified .bestiary-overview-head div,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head div {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head span,
+#detailModal.mvu-modal-display-unified .bestiary-overview-head span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head span,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head span,
+#detailModal.mvu-modal-display-unified .bestiary-panel-head span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head span {
+  color: rgba(147, 180, 190, 0.72) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.1em !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head b,
+#detailModal.mvu-modal-display-unified .bestiary-overview-head b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head b {
+  color: rgba(239, 253, 255, 0.96) !important;
+  font-size: 16px !important;
+  line-height: 1.1 !important;
+  font-weight: 780 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head em,
+#detailModal.mvu-modal-display-unified .bestiary-overview-head em,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head em,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head em,
+#detailModal.mvu-modal-display-unified .bestiary-panel-head em,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head em {
+  flex: 0 0 auto !important;
+  color: rgba(116, 231, 255, 0.88) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.12em !important;
+  font-family: var(--font-mono, monospace) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-row,
+#detailModal.mvu-modal-display-unified .bestiary-progress-row,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-row {
+  display: grid !important;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-row > span,
+#detailModal.mvu-modal-display-unified .bestiary-progress-row > span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-row > span {
+  color: rgba(205, 230, 236, 0.86) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-track,
+#detailModal.mvu-modal-display-unified .bestiary-progress-track,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-track {
+  position: relative !important;
+  height: 10px !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(143, 233, 255, 0.14) !important;
+  border-radius: 2px !important;
+  background:
+    repeating-linear-gradient(90deg, rgba(143, 233, 255, 0.12) 0 1px, transparent 1px 22px),
+    rgba(1, 8, 14, 0.78) !important;
+  overflow: hidden !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-fill,
+#detailModal.mvu-modal-display-unified .bestiary-progress-fill,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-fill {
+  display: block !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  background: linear-gradient(90deg, rgba(65, 219, 255, 0.34), rgba(147, 255, 225, 0.84)) !important;
+  box-shadow: 0 0 16px rgba(75, 226, 255, 0.34) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics,
+#detailModal.mvu-modal-display-unified .bestiary-overview-metrics,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics span,
+#detailModal.mvu-modal-display-unified .bestiary-overview-metrics span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics span {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  padding: 7px 8px !important;
+  border-left: 1px solid rgba(143, 233, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.026) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics b,
+#detailModal.mvu-modal-display-unified .bestiary-overview-metrics b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics b {
+  color: rgba(140, 170, 180, 0.72) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.1 !important;
+  font-weight: 620 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics em,
+#detailModal.mvu-modal-display-unified .bestiary-overview-metrics em,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics em {
+  color: rgba(236, 249, 252, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.2 !important;
+  font-style: normal !important;
+  font-weight: 750 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-archive-layout,
+#detailModal.mvu-modal-display-unified .bestiary-archive-layout,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-archive-layout {
+  display: grid !important;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  align-items: stretch !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.bestiary-species-directory, .bestiary-detail-console),
+#detailModal.mvu-modal-display-unified :where(.bestiary-species-directory, .bestiary-detail-console),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.bestiary-species-directory, .bestiary-detail-console) {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  min-height: 360px !important;
+  padding: 10px !important;
+  border: 1px solid rgba(143, 233, 255, 0.13) !important;
+  border-radius: 4px !important;
+  background: rgba(1, 9, 15, 0.58) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-directory,
+#detailModal.mvu-modal-display-unified .bestiary-species-directory,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-directory {
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-console,
+#detailModal.mvu-modal-display-unified .bestiary-detail-console,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-console {
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(143, 233, 255, 0.08), transparent 42%),
+    rgba(6, 18, 26, 0.72) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head,
+#detailModal.mvu-modal-display-unified .bestiary-panel-head,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head {
+  display: flex !important;
+  align-items: start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px dashed rgba(143, 233, 255, 0.16) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head div,
+#detailModal.mvu-modal-display-unified .bestiary-panel-head div,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head div {
+  display: grid !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head b,
+#detailModal.mvu-modal-display-unified .bestiary-panel-head b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head b {
+  color: rgba(235, 251, 254, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.1 !important;
+  font-weight: 760 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-directory-tools,
+#detailModal.mvu-modal-display-unified .bestiary-directory-tools,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-directory-tools {
+  display: grid !important;
+  grid-template-columns: 96px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-directory-tools :where(select, input),
+#detailModal.mvu-modal-display-unified .bestiary-directory-tools :where(select, input),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-directory-tools :where(select, input) {
+  min-width: 0 !important;
+  height: 30px !important;
+  padding: 0 9px !important;
+  border: 1px solid rgba(143, 233, 255, 0.15) !important;
+  border-radius: 3px !important;
+  background: rgba(0, 8, 13, 0.76) !important;
+  color: rgba(230, 248, 252, 0.9) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  outline: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid,
+#detailModal.mvu-modal-display-unified .bestiary-species-grid,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 520px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding-right: 2px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(143, 233, 255, 0.26) transparent !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid::-webkit-scrollbar,
+#detailModal.mvu-modal-display-unified .bestiary-species-grid::-webkit-scrollbar,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid::-webkit-scrollbar-thumb,
+#detailModal.mvu-modal-display-unified .bestiary-species-grid::-webkit-scrollbar-thumb,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid::-webkit-scrollbar-thumb {
+  background: rgba(143, 233, 255, 0.22) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot,
+#detailModal.mvu-modal-display-unified .bestiary-species-slot,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot {
+  position: relative !important;
+  display: grid !important;
+  align-content: space-between !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  height: 82px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(143, 233, 255, 0.13) !important;
+  border-radius: 4px !important;
+  background: rgba(255, 255, 255, 0.026) !important;
+  color: inherit !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot[hidden],
+#detailModal.mvu-modal-display-unified .bestiary-species-slot[hidden],
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot[hidden],
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-signal-row[hidden],
+#detailModal.mvu-modal-display-unified .bestiary-signal-row[hidden],
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-signal-row[hidden] {
+  display: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host button.bestiary-species-slot,
+#detailModal.mvu-modal-display-unified button.bestiary-species-slot,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root button.bestiary-species-slot {
+  cursor: pointer !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host button.bestiary-species-slot:hover,
+#detailModal.mvu-modal-display-unified button.bestiary-species-slot:hover,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root button.bestiary-species-slot:hover {
+  border-color: rgba(143, 233, 255, 0.34) !important;
+  background: rgba(143, 233, 255, 0.06) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot.is-active,
+#detailModal.mvu-modal-display-unified .bestiary-species-slot.is-active,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-active {
+  border-color: rgba(104, 239, 255, 0.72) !important;
+  background: rgba(86, 220, 255, 0.09) !important;
+  box-shadow: 0 0 18px rgba(71, 220, 255, 0.16), inset 0 0 0 1px rgba(180, 255, 255, 0.08) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot.is-locked,
+#detailModal.mvu-modal-display-unified .bestiary-species-slot.is-locked,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-locked {
+  place-items: center !important;
+  text-align: center !important;
+  opacity: 0.52 !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.025) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.02) 50% 75%, transparent 75%),
+    rgba(255, 255, 255, 0.012) !important;
+  background-size: 12px 12px, auto !important;
+  animation: bestiary-slot-pulse 2.8s ease-in-out infinite !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-slot-no,
+#detailModal.mvu-modal-display-unified .bestiary-slot-no,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-slot-no {
+  color: rgba(113, 194, 210, 0.7) !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.08em !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot b,
+#detailModal.mvu-modal-display-unified .bestiary-species-slot b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot b {
+  min-width: 0 !important;
+  color: rgba(237, 249, 252, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.12 !important;
+  font-weight: 760 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-slot-meta,
+#detailModal.mvu-modal-display-unified .bestiary-slot-meta,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-slot-meta {
+  color: rgba(166, 195, 204, 0.72) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars,
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars {
+  display: flex !important;
+  align-items: end !important;
+  gap: 2px !important;
+  height: 12px !important;
+  margin-top: 1px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars em,
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars em,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars em {
+  display: block !important;
+  width: 6px !important;
+  height: 8px !important;
+  background: rgba(143, 233, 255, 0.16) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars[data-danger='1'] em:nth-child(-n + 1),
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars[data-danger='1'] em:nth-child(-n + 1),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars[data-danger='1'] em:nth-child(-n + 1),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars[data-danger='2'] em:nth-child(-n + 2),
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars[data-danger='2'] em:nth-child(-n + 2),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars[data-danger='2'] em:nth-child(-n + 2),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars[data-danger='3'] em:nth-child(-n + 3),
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars[data-danger='3'] em:nth-child(-n + 3),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars[data-danger='3'] em:nth-child(-n + 3),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars[data-danger='4'] em:nth-child(-n + 4),
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars[data-danger='4'] em:nth-child(-n + 4),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars[data-danger='4'] em:nth-child(-n + 4),
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars[data-danger='5'] em:nth-child(-n + 5),
+#detailModal.mvu-modal-display-unified .bestiary-danger-bars[data-danger='5'] em:nth-child(-n + 5),
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-danger-bars[data-danger='5'] em:nth-child(-n + 5) {
+  background: linear-gradient(180deg, rgba(255, 220, 112, 0.92), rgba(255, 91, 91, 0.72)) !important;
+  box-shadow: 0 0 8px rgba(255, 171, 75, 0.22) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-lock-mark,
+#detailModal.mvu-modal-display-unified .bestiary-lock-mark,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-lock-mark {
+  position: relative !important;
+  display: block !important;
+  width: 26px !important;
+  height: 28px !important;
+  opacity: 0.72 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-lock-mark::before,
+#detailModal.mvu-modal-display-unified .bestiary-lock-mark::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-lock-mark::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 3px !important;
+  right: 3px !important;
+  bottom: 2px !important;
+  height: 16px !important;
+  border: 1px solid rgba(143, 233, 255, 0.32) !important;
+  background: rgba(143, 233, 255, 0.055) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-lock-mark::after,
+#detailModal.mvu-modal-display-unified .bestiary-lock-mark::after,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-lock-mark::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 7px !important;
+  top: 0 !important;
+  width: 12px !important;
+  height: 13px !important;
+  border: 1px solid rgba(143, 233, 255, 0.32) !important;
+  border-bottom: 0 !important;
+  border-radius: 9px 9px 0 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-signal-row,
+#detailModal.mvu-modal-display-unified .bestiary-signal-row,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-signal-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-height: 30px !important;
+  color: rgba(143, 233, 255, 0.7) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  letter-spacing: 0.08em !important;
+  border-top: 1px dashed rgba(143, 233, 255, 0.14) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-signal-row span,
+#detailModal.mvu-modal-display-unified .bestiary-signal-row span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-signal-row span {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(143, 233, 255, 0.68) !important;
+  box-shadow: 0 0 10px rgba(143, 233, 255, 0.3) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-stage,
+#detailModal.mvu-modal-display-unified .bestiary-detail-stage,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-stage {
+  display: grid !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-panel,
+#detailModal.mvu-modal-display-unified .bestiary-detail-panel,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-panel {
+  display: none !important;
+  min-width: 0 !important;
+  align-content: start !important;
+  gap: 12px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-panel.is-active,
+#detailModal.mvu-modal-display-unified .bestiary-detail-panel.is-active,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-panel.is-active {
+  display: grid !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-console.is-refreshing .bestiary-detail-panel.is-active,
+#detailModal.mvu-modal-display-unified .bestiary-detail-console.is-refreshing .bestiary-detail-panel.is-active,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-console.is-refreshing .bestiary-detail-panel.is-active {
+  animation: bestiary-detail-flicker 0.16s ease-out !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head,
+#detailModal.mvu-modal-display-unified .bestiary-detail-head,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head {
+  display: flex !important;
+  align-items: start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  min-width: 0 !important;
+  padding: 4px 0 10px !important;
+  border-bottom: 1px dashed rgba(143, 233, 255, 0.17) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head div,
+#detailModal.mvu-modal-display-unified .bestiary-detail-head div,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head div {
+  display: grid !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head b,
+#detailModal.mvu-modal-display-unified .bestiary-detail-head b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head b {
+  color: rgba(241, 253, 255, 0.96) !important;
+  font-size: 17px !important;
+  line-height: 1.18 !important;
+  font-weight: 780 !important;
+  overflow-wrap: anywhere !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head span,
+#detailModal.mvu-modal-display-unified .bestiary-detail-head span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head span {
+  color: rgba(143, 233, 255, 0.72) !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  letter-spacing: 0.1em !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head em,
+#detailModal.mvu-modal-display-unified .bestiary-detail-head em,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head em {
+  flex: 0 0 auto !important;
+  padding: 4px 7px !important;
+  border: 1px solid rgba(143, 233, 255, 0.18) !important;
+  color: rgba(211, 242, 248, 0.88) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-lines,
+#detailModal.mvu-modal-display-unified .bestiary-detail-lines,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-lines {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-line,
+#detailModal.mvu-modal-display-unified .bestiary-detail-line,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-line {
+  display: grid !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+  padding: 8px 0 8px 9px !important;
+  border-left: 1px solid rgba(143, 233, 255, 0.15) !important;
+  background: linear-gradient(90deg, rgba(143, 233, 255, 0.036), transparent 78%) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-line--wide,
+#detailModal.mvu-modal-display-unified .bestiary-detail-line--wide,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-line--wide {
+  grid-column: 1 / -1 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-line b,
+#detailModal.mvu-modal-display-unified .bestiary-detail-line b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-line b {
+  color: rgba(135, 166, 176, 0.76) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.1 !important;
+  font-weight: 640 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-line span,
+#detailModal.mvu-modal-display-unified .bestiary-detail-line span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-line span {
+  min-width: 0 !important;
+  color: rgba(232, 246, 250, 0.91) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.48 !important;
+  font-weight: 540 !important;
+  overflow-wrap: anywhere !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-skill-strip,
+#detailModal.mvu-modal-display-unified .bestiary-skill-strip,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-skill-strip {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-skill-strip span,
+#detailModal.mvu-modal-display-unified .bestiary-skill-strip span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-skill-strip span {
+  flex: 0 1 auto !important;
+  padding: 3px 7px !important;
+  border: 1px solid rgba(143, 233, 255, 0.14) !important;
+  color: rgba(228, 247, 250, 0.9) !important;
+  background: rgba(143, 233, 255, 0.045) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-skill-strip .is-muted,
+#detailModal.mvu-modal-display-unified .bestiary-skill-strip .is-muted,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-skill-strip .is-muted {
+  opacity: 0.58 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-empty-scan,
+#detailModal.mvu-modal-display-unified .bestiary-empty-scan,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-empty-scan {
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  gap: 10px !important;
+  min-height: 300px !important;
+  color: rgba(220, 240, 246, 0.84) !important;
+  text-align: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-scan-mark,
+#detailModal.mvu-modal-display-unified .bestiary-scan-mark,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-scan-mark {
+  position: relative !important;
+  width: 88px !important;
+  height: 88px !important;
+  border: 1px solid rgba(143, 233, 255, 0.2) !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle, rgba(143, 233, 255, 0.12) 0 2px, transparent 3px),
+    conic-gradient(from 0deg, rgba(143, 233, 255, 0.04), rgba(143, 233, 255, 0.28), rgba(143, 233, 255, 0.04)) !important;
+  animation: bestiary-scan-spin 7s linear infinite !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-scan-mark::before,
+#detailModal.mvu-modal-display-unified .bestiary-scan-mark::before,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-scan-mark::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 16px !important;
+  border: 1px dashed rgba(143, 233, 255, 0.28) !important;
+  border-radius: 50% !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-empty-scan b,
+#detailModal.mvu-modal-display-unified .bestiary-empty-scan b,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-empty-scan b {
+  color: rgba(236, 249, 252, 0.9) !important;
+  font-size: var(--mvu-font-base, 13px) !important;
+  line-height: 1.2 !important;
+  font-weight: 760 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-empty-scan span,
+#detailModal.mvu-modal-display-unified .bestiary-empty-scan span,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-empty-scan span {
+  color: rgba(156, 184, 194, 0.72) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.35 !important;
+}
+
+@keyframes bestiary-scan-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bestiary-slot-pulse {
+  0%,
+  100% {
+    opacity: 0.44;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes bestiary-detail-flicker {
+  0% {
+    opacity: 0.48;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1080px) {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-archive-layout,
+  #detailModal.mvu-modal-display-unified .bestiary-archive-layout,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-archive-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid,
+  #detailModal.mvu-modal-display-unified .bestiary-species-grid,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics,
+  #detailModal.mvu-modal-display-unified .bestiary-overview-metrics,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-lines,
+  #detailModal.mvu-modal-display-unified .bestiary-detail-lines,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-lines {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-row,
+  #detailModal.mvu-modal-display-unified .bestiary-progress-row,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-row,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-directory-tools,
+  #detailModal.mvu-modal-display-unified .bestiary-directory-tools,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-directory-tools {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head,
+  #detailModal.mvu-modal-display-unified .bestiary-overview-head,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head,
+  #detailModal.mvu-modal-display-unified .bestiary-detail-head,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head {
+    align-items: start !important;
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid,
+  #detailModal.mvu-modal-display-unified .bestiary-species-grid,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot.is-locked,
+  #detailModal.mvu-modal-display-unified .bestiary-species-slot.is-locked,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-locked,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-scan-mark,
+  #detailModal.mvu-modal-display-unified .bestiary-scan-mark,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-scan-mark,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-console.is-refreshing .bestiary-detail-panel.is-active,
+  #detailModal.mvu-modal-display-unified .bestiary-detail-console.is-refreshing .bestiary-detail-panel.is-active,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .bestiary-detail-console.is-refreshing
+    .bestiary-detail-panel.is-active {
+    animation: none !important;
+  }
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-dashboard {
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  grid-template-areas:
+    'overview access'
+    'feed feed' !important;
+  align-items: stretch !important;
+  align-content: stretch !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-dashboard > .archive-card.full {
+  grid-column: auto !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-overview-card {
+  grid-area: overview !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-card {
+  grid-area: access !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-feed-card {
+  grid-area: feed !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host :where(.trial-overview-card, .trial-access-card, .trial-feed-card) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core {
+  position: relative !important;
+  display: grid !important;
+  align-content: center !important;
+  gap: 6px !important;
+  min-height: 118px !important;
+  padding: 16px !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid rgba(77, 240, 255, 0.13) !important;
+  background:
+    radial-gradient(circle at 24px 24px, rgba(77, 240, 255, 0.13), transparent 34px),
+    linear-gradient(180deg, rgba(77, 240, 255, 0.06), rgba(255, 255, 255, 0.02)) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core span {
+  color: rgba(154, 180, 190, 0.68) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.08em !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core strong {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  color: rgba(236, 253, 255, 0.96) !important;
+  font-size: 23px !important;
+  line-height: 1.14 !important;
+  font-weight: 760 !important;
+  letter-spacing: 0 !important;
+  text-shadow: 0 0 16px rgba(77, 240, 255, 0.22) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core em {
+  min-width: 0 !important;
+  color: rgba(183, 211, 222, 0.76) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.35 !important;
+  font-style: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-stat-list {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row {
+  display: grid !important;
+  grid-template-columns: 20px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding: 5px 7px !important;
+  border-radius: var(--mvu-radius-sm, 8px) !important;
+  background: rgba(255, 255, 255, 0.032) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row i {
+  display: grid !important;
+  place-items: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: var(--mvu-radius-xs, 6px) !important;
+  background: rgba(77, 240, 255, 0.08) !important;
+  color: rgba(77, 240, 255, 0.86) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  font-weight: 780 !important;
+  font-family: var(--font-mono, monospace) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row b {
+  min-width: 0 !important;
+  color: rgba(154, 180, 190, 0.68) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.2 !important;
+  font-weight: 620 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row strong {
+  min-width: 0 !important;
+  justify-self: end !important;
+  color: rgba(244, 251, 253, 0.94) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.2 !important;
+  font-weight: 760 !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-body {
+  display: grid !important;
+  min-height: 146px !important;
+  min-width: 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-list {
+  display: grid !important;
+  gap: 8px !important;
+  align-content: start !important;
+  min-width: 0 !important;
+  max-height: min(260px, calc(var(--mvu-hud-frame-height, 760px) - 320px)) !important;
+  overflow: hidden auto !important;
+  scrollbar-width: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 3px 8px !important;
+  min-width: 0 !important;
+  padding: 8px 9px !important;
+  border-radius: var(--mvu-radius-sm, 8px) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row b,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row b {
+  color: rgba(237, 250, 252, 0.92) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.2 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row span {
+  grid-column: 1 !important;
+  color: rgba(154, 180, 190, 0.64) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.25 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row em {
+  grid-column: 2 !important;
+  grid-row: 1 / span 2 !important;
+  align-self: center !important;
+  color: var(--cyan) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1 !important;
+  font-style: normal !important;
+  font-weight: 760 !important;
+  font-family: var(--font-mono, monospace) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty {
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  gap: 10px !important;
+  min-height: 146px !important;
+  min-width: 0 !important;
+  color: rgba(154, 180, 190, 0.62) !important;
+  text-align: center !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty i {
+  position: relative !important;
+  display: block !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(77, 240, 255, 0.16) !important;
+  opacity: 0.28 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty i::before,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty i::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 13px 10px !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(77, 240, 255, 0.62) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty i::after {
+  inset: 8px 16px 24px !important;
+  border-bottom: 0 !important;
+  border-radius: 9px 9px 0 0 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty[data-empty-kind='intel'] i {
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  animation: trial-intel-empty-pulse 2.2s ease-in-out infinite !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty[data-empty-kind='intel'] i::before {
+  inset: 11px !important;
+  border-radius: inherit !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty[data-empty-kind='intel'] i::after {
+  inset: 21px !important;
+  border: 0 !important;
+  border-radius: var(--mvu-radius-pill, 999px) !important;
+  background: rgba(77, 240, 255, 0.72) !important;
+}
+
+@keyframes trial-intel-empty-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(77, 240, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(77, 240, 255, 0.18);
+  }
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty b {
+  color: rgba(183, 211, 222, 0.68) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.25 !important;
+  font-weight: 620 !important;
+  letter-spacing: 0.04em !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-discount-line {
+  align-self: end !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: rgba(154, 180, 190, 0.62) !important;
+  font-size: var(--mvu-font-xs, 10px) !important;
+  line-height: 1.25 !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-feed {
+  display: grid !important;
+  align-content: start !important;
+  min-width: 0 !important;
+  overflow: hidden auto !important;
+  scrollbar-width: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-feed::-webkit-scrollbar {
+  display: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-log {
+  display: grid !important;
+  grid-template-columns: 76px minmax(0, 1fr) !important;
+  align-items: baseline !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  padding: 8px 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055) !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-log b {
+  color: rgba(154, 180, 190, 0.58) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-log span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: rgba(235, 247, 250, 0.88) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
+  line-height: 1.4 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--quest {
@@ -20543,7 +21781,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(248px, 0.94fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
+    grid-template-rows: minmax(246px, 0.94fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
     grid-template-areas:
       'core social'
       'primary primary'
@@ -21061,6 +22299,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .location-np
     .dossier-columns--life-record {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas: none !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .trial-intel-dashboard {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas:
+      'overview'
+      'access'
+      'feed' !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-unified-detail-host .dossier-card--life-profile,

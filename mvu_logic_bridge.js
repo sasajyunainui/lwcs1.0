@@ -360,13 +360,6 @@
       duties: ['显示掌控势力/人口/守护军团', '显示经济状况', '整理本地设施与商店'],
       actions: ['查看本地商店信息', '跳回地图节点详情'],
     },
-    系统播报与日志: {
-      title: '系统播报 / 日志弹窗',
-      summary: '终端页左侧主模块，集中展示系统广播与最近日志。',
-      fields: ['sd.sys.系统播报'],
-      duties: ['显示最新播报', '显示系统日志'],
-      actions: ['按时间倒序', '保留日志筛选与复制能力'],
-    },
     试炼与情报: {
       title: '情报',
       summary: '把试炼入口、近期线索和下一步调查重点放在同一页里直接看。',
@@ -1523,6 +1516,55 @@
       };
     }
 
+    if (key === '怪物图鉴') {
+      return {
+        title: '怪物图鉴',
+        body: `
+            <div class="archive-modal-grid mvu-detail-grid--single bestiary-research-shell">
+              <section class="bestiary-research-overview">
+                <div class="bestiary-overview-head">
+                  <div><span>DATABASE OVERVIEW</span><b>见习生态学者</b></div>
+                  <em>STANDBY</em>
+                </div>
+                <div class="bestiary-progress-row">
+                  <span>收集进度 0 / 50</span>
+                  <div class="bestiary-progress-track"><i class="bestiary-progress-fill" style="width:0%"></i></div>
+                </div>
+                <div class="bestiary-overview-metrics">
+                  <span><b>已收录物种</b><em>0</em></span>
+                  <span><b>字段覆盖率</b><em>0 项</em></span>
+                  <span><b>类型覆盖</b><em>0 类</em></span>
+                  <span><b>收集奖励</b><em>反应校准 +0%</em></span>
+                </div>
+              </section>
+              <section class="bestiary-archive-layout">
+                <div class="bestiary-species-directory">
+                  <div class="bestiary-panel-head"><div><b>物种图谱</b><span>SPECIES DIRECTORY</span></div><em>0 REC</em></div>
+                  <div class="bestiary-directory-tools">
+                    <select disabled><option>全部</option></select>
+                    <input type="search" placeholder="同步中" disabled>
+                  </div>
+                  <div class="bestiary-species-grid">
+                    ${Array.from({ length: 6 }).map(() => '<div class="bestiary-species-slot is-locked"><span class="bestiary-slot-no">No.???</span><span class="bestiary-lock-mark"></span><b>???</b></div>').join('')}
+                  </div>
+                  <div class="bestiary-signal-row"><span></span><b>持续侦测未知生态信号</b></div>
+                </div>
+                <div class="bestiary-detail-console">
+                  <div class="bestiary-panel-head"><div><b>档案详情</b><span>RECENT / DETAIL</span></div><em>STANDBY</em></div>
+                  <div class="bestiary-detail-stage">
+                    <section class="bestiary-empty-scan">
+                      <div class="bestiary-scan-mark"></div>
+                      <b>目标基因序列未捕获</b>
+                      <span>前往未知区域完成首次生态扫描</span>
+                    </section>
+                  </div>
+                </div>
+              </section>
+            </div>
+          `,
+      };
+    }
+
     if (key === '副职业工坊') {
       return {
         title: '副职业工坊',
@@ -1777,24 +1819,6 @@
       };
     }
 
-    if (key === '系统播报与日志') {
-      return {
-        title: '系统播报 / 日志弹窗',
-        body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">系统广播</div></div>${makeTimelineStack(
-                [
-                  { title: '最近播报', desc: '' },
-                  { title: '最近事件', desc: '' },
-                  { title: '安排摘要', desc: '' },
-                  { title: '情报摘要', desc: '' },
-                ],
-              )}</div>
-            </div>
-          `,
-      };
-    }
-
     return null;
   }
 
@@ -1835,7 +1859,7 @@
   let 慢刷新骨架已启用 = false;
   let 上次仓库选中物品名 = '';
   let 上次仓库钱包签名 = '';
-  const 慢刷新骨架预览键列表 = Object.freeze(['系统播报与日志', '试炼与情报']);
+  const 慢刷新骨架预览键列表 = Object.freeze(['试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
 
   function 规范化战斗提交模式(值) {
@@ -9800,9 +9824,6 @@
     }
 
     if (key === '任务界面') add('委托板', ['world', '委托板'], ['委托板', '委托详情', '发布委托']);
-    if (key === '系统播报与日志') {
-      add('系统播报', ['sys', '系统播报'], ['系统广播', '最近播报']);
-    }
     if (key === '试炼与情报') {
       add('图鉴', ['world', '图鉴'], ['图鉴', '怪物']);
     }
@@ -26634,26 +26655,6 @@
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, value));
   }
 
-  function 构建慢刷新骨架终端卡() {
-    return `
-        <div class="module-name">系统播报</div>
-        <div class="terminal-log terminal-log--single-pane" data-terminal-tab-host="terminal-hero">
-          <div class="terminal-tab-strip">
-            <button type="button" class="terminal-tab terminal-skeleton-row" data-terminal-tab="播报">播报</button>
-          </div>
-          <div class="terminal-tab-panels">
-            <div class="terminal-tab-panel active terminal-skeleton-row" data-terminal-tab-panel="播报">
-              <div class="log-line roll log-line--single"><b>[播报]</b> 加载中...</div>
-            </div>
-          </div>
-        </div>
-        <div class="module-foot">
-          <span class="foot-hint">数据刷新中</span>
-          <span class="enter-chip">同步中</span>
-        </div>
-      `;
-  }
-
   function 构建慢刷新骨架侧卡(标题 = '加载中') {
     return `
         <div class="simple-head"><div class="simple-title">${htmlEscape(toText(标题, '加载中'))}</div></div>
@@ -26665,7 +26666,6 @@
   }
 
   function 应用慢刷新骨架卡片() {
-    setLiveHtml('[data-preview="系统播报与日志"].terminal-hero-card', 构建慢刷新骨架终端卡());
     setLiveHtml(
       '[data-preview="试炼与情报"].terminal-side-card, [data-preview="试炼与情报"].mvu-simple-card, [data-preview="试炼与情报"].simple-card',
       构建慢刷新骨架侧卡('试炼与情报'),
@@ -27325,7 +27325,7 @@
         值Html: 构建属性数值对Html('体力', stat.体力, stat.体力上限),
         提示文本: `体力：${格式化属性完整数字(stat.体力)} / ${格式化属性完整数字(stat.体力上限)}`,
         比例: ratioPercent(stat.体力, stat.体力上限),
-        样式: 'red',
+        样式: 'orange',
       },
       {
         名称: '魂力',
@@ -27336,12 +27336,13 @@
         样式: 'cyan',
       },
       {
-        名称: `精神 · ${mentalRealmText}`,
+        名称: '精神',
+        副标题: mentalRealmText,
         数值: `${格式化属性短数字(stat.精神力)}/${格式化属性短数字(stat.精神力上限)}`,
         值Html: 构建属性数值对Html('精神力', stat.精神力, stat.精神力上限),
         提示文本: `精神力：${格式化属性完整数字(stat.精神力)} / ${格式化属性完整数字(stat.精神力上限)}`,
         比例: ratioPercent(stat.精神力, stat.精神力上限),
-        样式: 'white',
+        样式: 'purple',
       },
     ];
     return `
@@ -27357,8 +27358,8 @@
               <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.性别, '--')}`)}</span>
               ${伤势显示 && 伤势显示 !== '无伤' ? `<span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>` : ''}
               ${领域显示 && 领域显示 !== '常态' ? `<span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>` : ''}
-              <span class="archive-core-next"><em>突破所需魂力</em><strong>${htmlEscape(nextSoulValueText)}</strong></span>
             </div>
+            <span class="archive-core-next"><i aria-hidden="true"></i><em>距突破</em><strong>${htmlEscape(nextSoulValueText)}</strong></span>
             <div class="archive-core-attrs">
               ${核心属性列表
                 .map(
@@ -27374,7 +27375,7 @@
               .map(
                 指标 => `
             <div class="archive-resource-row is-${htmlEscape(指标.样式)}">
-              <b>${htmlEscape(指标.名称)}</b>
+              <div class="archive-resource-label"><b>${htmlEscape(指标.名称)}</b>${指标.副标题 ? `<span>${htmlEscape(指标.副标题)}</span>` : ''}</div>
               <i><span style="width:${指标.比例}%;"></span></i>
               <strong${指标.提示文本 ? ` title="${escapeHtmlAttr(指标.提示文本)}"` : ''}>${指标.值Html || htmlEscape(指标.数值)}</strong>
             </div>
@@ -27418,16 +27419,165 @@
     ]);
   }
 
+  function 读取图鉴收集奖励档位_桥接(数量 = 0) {
+    return Math.max(0, Math.min(6, Math.floor(Math.max(0, Number(数量 || 0)) / 25)));
+  }
+
+  function 读取图鉴研究档位_桥接(数量 = 0) {
+    const 档位名列表 = ['见习生态学者', '野外调查员', '生态编目官', '危险谱系研究员', '世界边境观察者'];
+    let 当前门槛 = 50;
+    let 剩余数量 = Math.max(0, Math.floor(Number(数量 || 0)));
+    let 档位序号 = 0;
+    while (剩余数量 >= 当前门槛 && 当前门槛 < 51200) {
+      剩余数量 -= 当前门槛;
+      档位序号 = Math.min(档位序号 + 1, 档位名列表.length - 1);
+      当前门槛 *= 2;
+    }
+    return {
+      名称: 档位名列表[档位序号] || 档位名列表[档位名列表.length - 1],
+      当前: Math.max(0, Math.min(当前门槛, 剩余数量)),
+      门槛: 当前门槛,
+      进度: 当前门槛 > 0 ? Math.max(0, Math.min(100, Math.round((剩余数量 / 当前门槛) * 100))) : 0,
+    };
+  }
+
+  function 读取图鉴条目等级_桥接(条目 = {}) {
+    const 明确等级 = toNumber(条目 && 条目['对标等级'], 0);
+    if (明确等级 > 0) return 明确等级;
+    const 等级文本 = [
+      toText(条目 && 条目['常见级别'], ''),
+      toText(条目 && 条目['年限档'], ''),
+      toText(条目 && 条目['物种品质'], ''),
+    ].join(' ');
+    const 数字匹配 = 等级文本.match(/\d+/);
+    if (数字匹配) return toNumber(数字匹配[0], 0);
+    if (/十万|凶兽|红色|极危/.test(等级文本)) return 86;
+    if (/万年|黑色|高危/.test(等级文本)) return 66;
+    if (/千年|紫色|中危/.test(等级文本)) return 42;
+    if (/百年|黄色|低危/.test(等级文本)) return 18;
+    if (/十年|白色|普通/.test(等级文本)) return 6;
+    return 0;
+  }
+
+  function 读取图鉴危险级_桥接(条目 = {}) {
+    const 等级 = 读取图鉴条目等级_桥接(条目);
+    if (等级 >= 81) return 5;
+    if (等级 >= 61) return 4;
+    if (等级 >= 41) return 3;
+    if (等级 >= 21) return 2;
+    return 1;
+  }
+
+  function 读取图鉴危险文本_桥接(危险级 = 1) {
+    const 星级 = Math.max(1, Math.min(5, Math.floor(Number(危险级 || 1))));
+    const 标签表 = ['极低', '较低', '中等', '高危', '极危'];
+    return `${'★'.repeat(星级)}${'☆'.repeat(5 - 星级)}（${标签表[星级 - 1] || '未知'}）`;
+  }
+
+  function 读取图鉴条目类型_桥接(条目 = {}) {
+    const 类型文本 = toText(条目 && (条目['类型'] || 条目['物种类型'] || 条目['分类']), '怪物');
+    if (/魂兽/.test(类型文本)) return '魂兽';
+    if (/深渊/.test(类型文本)) return '深渊';
+    if (/怪物/.test(类型文本)) return '怪物';
+    return 类型文本 || '怪物';
+  }
+
+  function 排序图鉴条目_桥接(条目列表 = []) {
+    return (Array.isArray(条目列表) ? 条目列表 : [])
+      .filter(([, 条目]) => 条目 && typeof 条目 === 'object')
+      .sort((左, 右) => {
+        const 左等级 = 读取图鉴条目等级_桥接(左[1]);
+        const 右等级 = 读取图鉴条目等级_桥接(右[1]);
+        if (左等级 !== 右等级) return 右等级 - 左等级;
+        return toText(左[0], '').localeCompare(toText(右[0], ''), 'zh-Hans-CN');
+      });
+  }
+
+  function 读取图鉴字段文本_桥接(条目 = {}, 字段列表 = [], 默认值 = '未记录') {
+    const 字段 = (Array.isArray(字段列表) ? 字段列表 : []).find(键 => {
+      const 值 = 条目 && 条目[键];
+      return 值 !== undefined && 值 !== null && 值 !== '';
+    });
+    if (!字段) return 默认值;
+    const 值 = 条目[字段];
+    if (Array.isArray(值)) {
+      return 值
+        .map(项 => (项 && typeof 项 === 'object' ? toText(项.name || 项['名称'] || 项['魂技名'], '') : toText(项, '')))
+        .filter(Boolean)
+        .join(' / ') || 默认值;
+    }
+    if (值 && typeof 值 === 'object') {
+      return safeEntries(值)
+        .slice(0, 6)
+        .map(([键, 子值]) => {
+          if (子值 && typeof 子值 === 'object') return toText(键, '');
+          return `${toText(键, '')}:${toText(子值, '')}`;
+        })
+        .filter(Boolean)
+        .join(' / ') || 默认值;
+    }
+    return toText(值, 默认值);
+  }
+
+  function 构建图鉴字段覆盖_桥接(条目列表 = []) {
+    const 字段集合 = new Set();
+    (Array.isArray(条目列表) ? 条目列表 : []).forEach(([, 条目]) => {
+      if (!条目 || typeof 条目 !== 'object') return;
+      safeEntries(条目).forEach(([字段]) => 字段集合.add(字段));
+    });
+    return 字段集合.size;
+  }
+
+  function 构建图鉴技能摘要_桥接(条目 = {}) {
+    const 技能 = 条目 && 条目['标准技能'];
+    if (Array.isArray(技能)) {
+      return 技能
+        .map(项 => (项 && typeof 项 === 'object' ? toText(项.name || 项['名称'] || 项['魂技名'], '') : toText(项, '')))
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+    if (技能 && typeof 技能 === 'object') {
+      return safeEntries(技能)
+        .map(([名称, 数据]) => toText((数据 && (数据.name || 数据['名称'] || 数据['魂技名'])) || 名称, ''))
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+    return toText(技能, '')
+      .split(/[、,，/|]/)
+      .map(项 => 项.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+  }
+
+  function 构建图鉴详情可编辑值_桥接(名称 = '', 条目 = {}, 字段列表 = [], 默认值 = '未记录', 选项 = {}) {
+    const 字段 = (Array.isArray(字段列表) ? 字段列表 : []).find(键 => {
+      const 值 = 条目 && 条目[键];
+      return 值 !== undefined && 值 !== null && 值 !== '' && (值 === null || typeof 值 !== 'object');
+    });
+    if (!字段) return htmlEscape(默认值);
+    const 值 = 条目[字段];
+    const 类型 = typeof 值 === 'number' ? 'number' : typeof 值 === 'boolean' ? 'boolean' : 'string';
+    return makeInlineEditableValue(toText(值, 默认值), {
+      path: ['world', '图鉴', 名称, 字段],
+      kind: 选项.kind || 类型,
+      rawValue: 值,
+      multiline: !!选项.multiline,
+    });
+  }
+
   function 构建怪物图鉴摘要卡(snapshot) {
     const 已记录物种 = Array.isArray(snapshot && snapshot.bestiaryEntries) ? snapshot.bestiaryEntries : [];
-    const latestName = 已记录物种[0] ? toText(已记录物种[0][0], '暂无') : '暂无';
-    const latestType = 已记录物种[0] ? toText(deepGet(已记录物种[0][1], '类型', '无'), '无') : '无';
-    const latestSpec = 已记录物种[0] ? toText(snapshot && snapshot.图鉴聚焦规格, '--') : '--';
+    const 排序条目 = 排序图鉴条目_桥接(已记录物种);
+    const 聚焦条目 = 排序条目[0] || null;
+    const 最新名称 = 聚焦条目 ? toText(聚焦条目[0], '暂无') : '暂无';
+    const 最新类型 = 聚焦条目 ? 读取图鉴条目类型_桥接(聚焦条目[1]) : '无';
+    const 研究档位 = 读取图鉴研究档位_桥接(已记录物种.length);
+    const 奖励档位 = 读取图鉴收集奖励档位_桥接(已记录物种.length);
     return buildSimpleCard('怪物图鉴', null, [
       { label: '已记录', value: `${已记录物种.length} 种` },
-      { label: '最新收录', value: latestName },
-      { label: '聚焦条目', value: `${latestName} / ${latestType}` },
-      { label: '模板规格', value: latestSpec },
+      { label: '研究档位', value: `${研究档位.名称} ${研究档位.当前}/${研究档位.门槛}` },
+      { label: '聚焦条目', value: `${最新名称} / ${最新类型}` },
+      { label: '收集奖励', value: `反应校准 +${奖励档位}%` },
     ]);
   }
 
@@ -28808,7 +28958,7 @@
       return `
         <div class="terminal-console-panel">
           <div class="terminal-console-head"><div class="module-name">系统控制台</div></div>
-          <div class="terminal-home-log"><button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[待命]</b><span>等待同步</span></button></div>
+          <div class="terminal-home-log"><div class="terminal-home-line roll"><b>[待命]</b><span>等待同步</span></div></div>
         </div>
       `;
     }
@@ -28829,7 +28979,7 @@
           </div>
         </div>
         <div class="terminal-home-log">
-          <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>${htmlEscape(worldAlertText ? '[警报]' : '[播报]')}</b><span>${htmlEscape(shortenText(latestBroadcast, 96))}</span></button>
+          <div class="terminal-home-line roll"><b>${htmlEscape(worldAlertText ? '[警报]' : '[播报]')}</b><span>${htmlEscape(shortenText(latestBroadcast, 96))}</span></div>
         </div>
       </div>
     `;
@@ -29493,7 +29643,7 @@
                 <span><b>副职</b><strong>${htmlEscape(String(副职业数量 || 0))}</strong></span>
               </div>
               <div class="terminal-home-log">
-                <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(shortenText(系统播报文本, 96))}</span></button>
+                <div class="terminal-home-line roll"><b>[播报]</b><span>${htmlEscape(shortenText(系统播报文本, 96))}</span></div>
               </div>
             </section>
           </div>
@@ -29856,7 +30006,6 @@
 
     if (sectionSignatures.terminal !== previousSectionSignatures.terminal) {
       setUnifiedCardMarkup('terminal-hero', buildTerminalHeroCard(snapshot), {
-        preview: '系统播报与日志',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup(
@@ -30305,7 +30454,7 @@
             </div>
           </div>
           <div class="terminal-home-log">
-            <button type="button" class="terminal-home-line roll clickable" data-preview="系统播报与日志"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></button>
+            <div class="terminal-home-line roll"><b>[播报]</b><span>${htmlEscape(最近播报摘要)}</span></div>
           </div>
         </div>
       `;
@@ -30529,7 +30678,7 @@
     }
 
     if (sectionSignatures.terminal !== previousSectionSignatures.terminal) {
-      setLiveHtml('[data-preview="系统播报与日志"].terminal-hero-card', buildTerminalHeroCard(snapshot));
+      setLiveHtml('#mvu-unified-mount .terminal-hero-card', buildTerminalHeroCard(snapshot));
       setLiveHtml(
         '[data-preview="试炼与情报"].terminal-side-card, [data-preview="试炼与情报"].mvu-simple-card, [data-preview="试炼与情报"].simple-card',
         `
@@ -36861,159 +37010,107 @@
       };
     }
 
-    if (previewKey === '系统播报与日志') {
-      const 终端原始条目 = [
-        {
-          title: '最近播报',
-          desc: resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), ''),
-          path: ['sys', '系统播报'],
-          kind: 'string',
-          rawValue: resolveShellText(deepGet(snapshot, 'rootData.sys.系统播报', ''), ''),
-          multiline: true,
-        },
-        { title: '情报摘要', desc: getLatestUnlockedIntelText(snapshot, 24, '') },
-      ].filter(item => item.title && resolveShellText(item.desc, ''));
-      const 终端去重键 = new Set();
-      const 终端条目 = 终端原始条目.filter(条目 => {
-        const 内容键 = resolveShellText(条目 && 条目.desc, '') || toText(条目 && 条目.title, '');
-        if (!内容键) return false;
-        if (终端去重键.has(内容键)) return false;
-        终端去重键.add(内容键);
-        return true;
-      });
-      return {
-        title: '终端',
-        summary: '',
-        body: `
-            <div class="archive-modal-grid terminal-detail-grid mvu-detail-grid--terminal">
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">系统广播</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(终端条目)}</div>
-              </div>
-            </div>
-          `,
-      };
-    }
-
     if (previewKey === '试炼与情报') {
-      const activeCharKey =
+      const 当前角色键 =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
-      const activeChar = getActiveSnapshotCharacter(snapshot);
-      const soulTowerEligible = isSoulTowerEligibleCharacterData(activeChar);
-      const towerPath = soulTowerEligible && activeCharKey ? ['char', activeCharKey, '魂灵塔记录'] : [];
-      const towerDiscountSpirit = createEmptySoulTowerDiscountSpiritRecord();
-      const ascensionTicketCount = (snapshot.inventoryEntries || [])
-        .filter(([name]) => /升灵台/.test(toText(name, '')))
-        .reduce((sum, [, item]) => sum + 读取背包总数量_桥接(item), 0);
-      const trialTickets = (snapshot.inventoryEntries || [])
-        .filter(([name]) =>
-          soulTowerEligible ? /升灵台|魂灵塔/.test(toText(name, '')) : /升灵台/.test(toText(name, '')),
+      const 当前角色 = getActiveSnapshotCharacter(snapshot);
+      const 可进魂灵塔 = isSoulTowerEligibleCharacterData(当前角色);
+      const 魂灵塔路径 = 可进魂灵塔 && 当前角色键 ? ['char', 当前角色键, '魂灵塔记录'] : [];
+      const 魂灵塔五折魂灵 = createEmptySoulTowerDiscountSpiritRecord();
+      const 升灵台门票数 = (snapshot.inventoryEntries || [])
+        .filter(([物品名]) => /升灵台/.test(toText(物品名, '')))
+        .reduce((总数, [, 物品]) => 总数 + 读取背包总数量_桥接(物品), 0);
+      const 试炼门票列表 = (snapshot.inventoryEntries || [])
+        .filter(([物品名]) =>
+          可进魂灵塔 ? /升灵台|魂灵塔/.test(toText(物品名, '')) : /升灵台/.test(toText(物品名, '')),
         )
         .slice(0, 8);
-      const towerHighestFloor = toNumber(deepGet(snapshot, 'activeChar.魂灵塔记录.最高层', 0), 0);
-      const towerGateText = getSoulTowerStageTextByHighestFloor(towerHighestFloor);
-      const towerNextBossText = getSoulTowerNextBossFloorText(towerHighestFloor);
-      const ticketCards = trialTickets.length
-        ? trialTickets.map(([name, item]) => {
-            const 原始描述 = toText(item && item['描述'], '可用于对应试炼场景。');
-            return {
-              title: `${name} ×${读取背包总数量_桥接(item)}`,
-              desc: shortenText(原始描述, 22),
-              descTitle: 原始描述,
-              className: 'intel-card--single',
-            };
+      const 魂灵塔最高层 = toNumber(deepGet(snapshot, 'activeChar.魂灵塔记录.最高层', 0), 0);
+      const 魂灵塔分区文本 = 可进魂灵塔 ? getSoulTowerStageTextByHighestFloor(魂灵塔最高层) : '魂灵塔未开放';
+      const 魂灵塔下段文本 = 可进魂灵塔 ? getSoulTowerNextBossFloorText(魂灵塔最高层) : '资格未达成';
+      const 魂灵塔最高层Html = 魂灵塔路径.length
+        ? makeInlineEditableValue(String(魂灵塔最高层), {
+            path: [...魂灵塔路径, '最高层'],
+            kind: 'number',
+            rawValue: 魂灵塔最高层,
+            editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
           })
-        : [{ title: '暂无试炼门票', desc: '暂无可用门票', className: 'intel-card--single' }];
+        : htmlEscape(String(魂灵塔最高层));
+      const 试炼统计列表 = [
+        { 标记: 'T', 标签: '升灵台门票', 数值: String(升灵台门票数) },
+        { 标记: 'A', 标签: '累计猎杀年限', 数值: formatNumber(snapshot.forestKilledAge || 0) },
+        { 标记: 'B', 标签: '图鉴条目', 数值: String((snapshot.bestiaryEntries || []).length || 0) },
+        { 标记: 'W', 标签: '当前战功', 数值: formatNumber(deepGet(snapshot, 'activeChar.财富.战功', 0)) },
+      ];
+      const 门票列表Html = 试炼门票列表.length
+        ? `<div class="trial-ticket-list">${试炼门票列表
+            .map(([物品名, 物品]) => {
+              const 原始描述 = toText(物品 && 物品['描述'], '可用于对应试炼场景。');
+              return `
+                <div class="trial-ticket-row" title="${escapeHtmlAttr(原始描述)}">
+                  <b>${htmlEscape(物品名)}</b>
+                  <span>${htmlEscape(shortenText(原始描述, 28))}</span>
+                  <em>×${htmlEscape(String(读取背包总数量_桥接(物品)))}</em>
+                </div>
+              `;
+            })
+            .join('')}</div>`
+        : `<div class="trial-access-empty" data-empty-kind="ticket"><i aria-hidden="true"></i><b>[ 未检测到可用门票 ]</b></div>`;
+      const 折扣资格文本 = hasActiveSoulTowerDiscountSpirit(魂灵塔五折魂灵)
+        ? `${buildSoulTowerDiscountSpiritDisplay(魂灵塔五折魂灵)} · 前往传灵塔后可半价购买`
+        : '· 暂无可用折扣资格 ·';
+      const 近期情报列表 = (snapshot.unlockedKnowledges || [])
+        .slice(-5)
+        .reverse()
+        .map(情报项 => 格式化情报展示文本(情报项));
+      const 近期情报Html = 近期情报列表.length
+        ? `<div class="trial-intel-feed">${近期情报列表
+            .map(
+              (情报文本, 索引) => `
+                <div class="trial-intel-log">
+                  <b>INTEL ${htmlEscape(String(索引 + 1).padStart(2, '0'))}</b>
+                  <span title="${escapeHtmlAttr(情报文本)}">${htmlEscape(shortenText(情报文本, 86))}</span>
+                </div>
+              `,
+            )
+            .join('')}</div>`
+        : `<div class="trial-access-empty trial-intel-empty" data-empty-kind="intel"><i aria-hidden="true"></i><b>[ 信号无接入 ]</b></div>`;
       delete modalFocusState[`${previewKey}::trial-focus`];
       return {
         title: '试炼与情报',
         summary: '',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--trial">
-              <div class="archive-card full">
+            <div class="archive-modal-grid mvu-detail-grid--trial trial-intel-dashboard">
+              <div class="archive-card full trial-overview-card">
                 <div class="archive-card-head"><div class="archive-card-title">试炼总览</div></div>
-                ${makeTileGrid(
-                  [
-                    { label: '升灵台门票', value: String(ascensionTicketCount) },
-                    ...(soulTowerEligible
-                      ? [
-                          {
-                            label: '魂灵塔最高',
-                            value: towerPath.length
-                              ? makeInlineEditableValue(
-                                  String(toNumber(deepGet(snapshot, 'activeChar.魂灵塔记录.最高层', 0), 0)),
-                                  {
-                                    path: [...towerPath, '最高层'],
-                                    kind: 'number',
-                                    rawValue: toNumber(deepGet(snapshot, 'activeChar.魂灵塔记录.最高层', 0), 0),
-                                    editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                                  },
-                                )
-                              : htmlEscape(String(toNumber(deepGet(snapshot, 'activeChar.魂灵塔记录.最高层', 0), 0))),
-                          },
-                          {
-                            label: '当前分区',
-                            value: towerGateText,
-                          },
-                          {
-                            label: '下个区间上限',
-                            value: towerNextBossText,
-                          },
-                        ]
-                      : []),
-                    { label: '累计猎杀年限', value: formatNumber(snapshot.forestKilledAge || 0) },
-                    { label: '图鉴条目', value: String((snapshot.bestiaryEntries || []).length || 0) },
-                    { label: '当前战功', value: formatNumber(deepGet(snapshot, 'activeChar.财富.战功', 0)) },
-                  ],
-                  'two',
-                )}
-              </div>
-
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">门票与资格</div></div>
-                <div class="intel-layout mvu-detail-intel-grid mvu-detail-scroll-list">
-                  ${ticketCards.map(item => `<div class="intel-card ${item.className || ''} mvu-detail-intel-card"><b>${htmlEscape(item.title)}</b><span${item.descTitle ? ` title="${escapeHtmlAttr(item.descTitle)}"` : ''}>${htmlEscape(item.desc)}</span></div>`).join('')}
+                <div class="trial-overview-core">
+                  <span>当前进度</span>
+                  <strong>${htmlEscape(魂灵塔分区文本)}</strong>
+                  <em>下个区间上限 ${htmlEscape(魂灵塔下段文本)} · 最高 ${魂灵塔最高层Html} 层</em>
                 </div>
-                ${
-                  soulTowerEligible
-                    ? `
-                  <div class="mvu-detail-scroll-list mvu-detail-stack-gap">
-                    ${makeTimelineStack(
-                      hasActiveSoulTowerDiscountSpirit(towerDiscountSpirit)
-                        ? [
-                            {
-                              title: '当前可五折魂灵',
-                              desc: shortenText(
-                                `${buildSoulTowerDiscountSpiritDisplay(towerDiscountSpirit)} · 前往传灵塔后可半价购买`,
-                                34,
-                              ),
-                              descTitle: `${buildSoulTowerDiscountSpiritDisplay(towerDiscountSpirit)} · 前往传灵塔后可半价购买`,
-                              className: 'timeline-card--single',
-                            },
-                          ]
-                        : [{ title: '暂无折扣资格', desc: '暂无可用的五折目标', className: 'timeline-card--single' }],
-                    )}
-                  </div>
-                `
-                    : ''
-                }
-              </div>
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">近期情报</div></div>
-                <div class="intel-layout mvu-detail-intel-grid mvu-detail-scroll-list">
-                  ${(snapshot.unlockedKnowledges.length
-                    ? snapshot.unlockedKnowledges
-                        .slice(-4)
-                        .reverse()
-                        .map(item => 格式化情报展示文本(item))
-                    : ['情报仍待收集']
-                  )
+                <div class="trial-stat-list">
+                  ${试炼统计列表
                     .map(
-                      item =>
-                        `<div class="intel-card intel-card--single mvu-detail-intel-card"><b>${htmlEscape(shortenText(item, 20))}</b><span title="${escapeHtmlAttr(item)}">${htmlEscape(shortenText(item, 24))}</span></div>`,
+                      统计 => `
+                        <div class="trial-stat-row">
+                          <i aria-hidden="true">${htmlEscape(统计.标记)}</i>
+                          <b>${htmlEscape(统计.标签)}</b>
+                          <strong>${htmlEscape(统计.数值)}</strong>
+                        </div>
+                      `,
                     )
                     .join('')}
                 </div>
+              </div>
+
+              <div class="archive-card full mvu-detail-scroll-card trial-access-card">
+                <div class="archive-card-head"><div class="archive-card-title">门票与资格</div></div>
+                <div class="trial-access-body">${门票列表Html}</div>
+                <div class="trial-discount-line" title="${escapeHtmlAttr(折扣资格文本)}">${htmlEscape(shortenText(折扣资格文本, 38))}</div>
+              </div>
+              <div class="archive-card full mvu-detail-scroll-card trial-feed-card">
+                <div class="archive-card-head"><div class="archive-card-title">近期情报</div></div>
+                ${近期情报Html}
               </div>
             </div>
           `,
@@ -37529,68 +37626,158 @@
     }
 
     if (previewKey === '怪物图鉴') {
-      const bestiaryRecordToCard = ([name, item]) => {
-        if (item && item.empty) {
-          return { title: name, desc: '暂未记录任何深渊生物或魂兽。' };
-        }
-        const scalarParts = safeEntries(item)
-          .filter(([, value]) => value === null || typeof value !== 'object')
-          .slice(0, 6)
-          .map(([key, value]) => {
-            const displayValue = value === undefined || value === null || value === '' ? '无' : String(value);
-            const kind = typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'string';
-            return `${htmlEscape(toText(key, '字段'))}：${makeInlineEditableValue(displayValue, {
-              path: ['world', '图鉴', name, key],
-              kind,
-              rawValue: value === undefined ? displayValue : value,
-            })}`;
-          });
-        const objectParts = safeEntries(item)
-          .filter(([, value]) => value && typeof value === 'object')
-          .slice(0, 3)
-          .map(([key, value]) => `${htmlEscape(toText(key, '字段'))}：${htmlEscape(`${safeEntries(value).length}项`)}`);
-        return {
-          title: htmlEscape(name),
-          desc: scalarParts.concat(objectParts).join(' / ') || '当前仅建立了空白图鉴壳。',
-        };
+      const 图鉴条目 = 排序图鉴条目_桥接(snapshot.bestiaryEntries || []);
+      const 研究档位 = 读取图鉴研究档位_桥接(图鉴条目.length);
+      const 收集奖励档位 = 读取图鉴收集奖励档位_桥接(图鉴条目.length);
+      const 字段覆盖数 = 构建图鉴字段覆盖_桥接(图鉴条目);
+      const 系统状态 =
+        图鉴条目.length <= 0 ? '等待首次数据注入' : 图鉴条目.length < 12 ? '生态档案同步中' : '研究网络稳定';
+      const 已记录类型 = new Set(图鉴条目.map(([, 条目]) => 读取图鉴条目类型_桥接(条目)).filter(Boolean));
+      const 默认锁定槽数量 = 图鉴条目.length ? Math.max(3, Math.min(6, 6 - Math.min(3, 图鉴条目.length % 6))) : 6;
+      const 构建编号 = 序号 => `No.${String(序号 + 1).padStart(3, '0')}`;
+      const 构建图鉴详情面板 = ([名称, 条目], 序号) => {
+        const 编号 = 构建编号(序号);
+        const 类型 = 读取图鉴条目类型_桥接(条目);
+        const 危险级 = 读取图鉴危险级_桥接(条目);
+        const 分类主值 = 读取图鉴字段文本_桥接(条目, ['标准物种', '标准种族', '分类', '类型'], 类型);
+        const 分类副值 = 读取图鉴字段文本_桥接(条目, ['常见系别', '定位', '物种品质'], '未标注');
+        const 分类文本 = `${分类主值}${分类副值 && 分类副值 !== '未标注' ? ` / ${分类副值}` : ''}`;
+        const 描述HTML = 构建图鉴详情可编辑值_桥接(
+          名称,
+          条目,
+          ['生态描述', '描述', '习性', '说明'],
+          '数据库仅完成基础捕获',
+          { multiline: true },
+        );
+        const 掉落文本 = 读取图鉴字段文本_桥接(
+          条目,
+          ['核心掉落', '掉落', '提取字段', '可提取素材'],
+          '未登记可提取素材',
+        );
+        const 技能列表 = 构建图鉴技能摘要_桥接(条目);
+        const 技能HTML = 技能列表.length
+          ? 技能列表.map(技能名 => `<span>${htmlEscape(技能名)}</span>`).join('')
+          : '<span class="is-muted">未解析标准技能</span>';
+        return `
+          <section class="bestiary-detail-panel${序号 === 0 ? ' is-active' : ''}" data-bestiary-detail="${escapeHtmlAttr(名称)}">
+            <div class="bestiary-detail-head">
+              <div>
+                <b>[ ${htmlEscape(名称)} ]</b>
+                <span>#${htmlEscape(编号.toUpperCase())}</span>
+              </div>
+              <em>${htmlEscape(类型)}</em>
+            </div>
+            <div class="bestiary-detail-lines">
+              <div class="bestiary-detail-line"><b>分类</b><span>${htmlEscape(分类文本)}</span></div>
+              <div class="bestiary-detail-line"><b>威胁</b><span>${htmlEscape(读取图鉴危险文本_桥接(危险级))}</span></div>
+              <div class="bestiary-detail-line bestiary-detail-line--wide"><b>生态描述</b><span>${描述HTML}</span></div>
+              <div class="bestiary-detail-line bestiary-detail-line--wide"><b>核心提取</b><span>${htmlEscape(掉落文本)}</span></div>
+              <div class="bestiary-detail-line bestiary-detail-line--wide">
+                <b>标准技能</b>
+                <span class="bestiary-skill-strip">${技能HTML}</span>
+              </div>
+              <div class="bestiary-detail-line"><b>字段覆盖</b><span>${safeEntries(条目).length} 项</span></div>
+            </div>
+          </section>
+        `;
       };
-      const bestiaryCards = (
-        snapshot.bestiaryEntries.length ? snapshot.bestiaryEntries.slice(0, 24) : [['暂无图鉴记录', { empty: true }]]
-      ).map(bestiaryRecordToCard);
-      const latestBestiaryCard = snapshot.bestiaryEntries[0] ? bestiaryRecordToCard(snapshot.bestiaryEntries[0]) : null;
+      const 物种插槽HTML = 图鉴条目
+        .map(([名称, 条目], 序号) => {
+          const 类型 = 读取图鉴条目类型_桥接(条目);
+          const 危险级 = 读取图鉴危险级_桥接(条目);
+          const 搜索文本 = `${名称} ${构建编号(序号)} ${类型} ${读取图鉴字段文本_桥接(条目, ['常见系别', '标准物种', '标准种族'], '')}`;
+          return `
+            <button type="button"
+              class="bestiary-species-slot is-unlocked${序号 === 0 ? ' is-active' : ''}"
+              data-bestiary-focus="${escapeHtmlAttr(名称)}"
+              data-bestiary-type="${escapeHtmlAttr(类型)}"
+              data-bestiary-search="${escapeHtmlAttr(搜索文本)}"
+              aria-selected="${序号 === 0 ? 'true' : 'false'}">
+              <span class="bestiary-slot-no">${htmlEscape(构建编号(序号))}</span>
+              <b>${htmlEscape(shortenText(名称, 16))}</b>
+              <span class="bestiary-slot-meta">${htmlEscape(类型)}</span>
+              <i class="bestiary-danger-bars" data-danger="${危险级}" aria-label="${escapeHtmlAttr(`${危险级}星威胁`)}"><em></em><em></em><em></em><em></em><em></em></i>
+            </button>
+          `;
+        })
+        .join('');
+      const 锁定插槽HTML = Array.from({ length: 默认锁定槽数量 })
+        .map(
+          () => `
+            <div class="bestiary-species-slot is-locked" aria-hidden="true">
+              <span class="bestiary-slot-no">No.???</span>
+              <span class="bestiary-lock-mark"></span>
+              <b>???</b>
+            </div>
+          `,
+        )
+        .join('');
+      const 详情面板HTML = 图鉴条目.length
+        ? 图鉴条目.map(构建图鉴详情面板).join('')
+        : `
+          <section class="bestiary-empty-scan">
+            <div class="bestiary-scan-mark" aria-hidden="true"></div>
+            <b>目标基因序列未捕获</b>
+            <span>前往未知区域完成首次生态扫描</span>
+          </section>
+        `;
       return {
         title: '怪物图鉴',
-        summary: '已遭遇深渊生物与魂兽的标准化记录。',
+        summary: '生态研究数据库与收集奖励。',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">图鉴总览</div></div>
-                ${makeTileGrid(
-                  [
-                    { label: '已记录物种', value: `${snapshot.bestiaryEntries.length} 种` },
-                    { label: '最近收录', value: snapshot.bestiaryEntries[0] ? snapshot.bestiaryEntries[0][0] : '暂无' },
-                    {
-                      label: '可复用状态',
-                      value: snapshot.bestiaryEntries.length ? '可作为后续标准数据源' : '等待首次收录',
-                    },
-                    {
-                      label: '字段覆盖',
-                      value: snapshot.bestiaryEntries[0]
-                        ? `${safeEntries(snapshot.bestiaryEntries[0][1]).length} 项`
-                        : '0 项',
-                    },
-                  ],
-                  'two',
-                )}
-              </div>
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">最近收录详情</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(latestBestiaryCard ? [latestBestiaryCard] : [{ title: '暂无最近收录', desc: '当前图鉴仍为空。' }])}</div>
-              </div>
-              <div class="archive-card full mvu-detail-scroll-card">
-                <div class="archive-card-head"><div class="archive-card-title">已记录物种</div></div>
-                <div class="mvu-detail-scroll-list">${makeTimelineStack(bestiaryCards)}</div>
-              </div>
+            <div class="archive-modal-grid mvu-detail-grid--single bestiary-research-shell">
+              <section class="bestiary-research-overview">
+                <div class="bestiary-overview-head">
+                  <div>
+                    <span>DATABASE OVERVIEW</span>
+                    <b>${htmlEscape(研究档位.名称)}</b>
+                  </div>
+                  <em>${htmlEscape(系统状态)}</em>
+                </div>
+                <div class="bestiary-progress-row">
+                  <span>收集进度 ${研究档位.当前} / ${研究档位.门槛}</span>
+                  <div class="bestiary-progress-track" role="progressbar" aria-valuenow="${研究档位.当前}" aria-valuemin="0" aria-valuemax="${研究档位.门槛}">
+                    <i class="bestiary-progress-fill" style="width:${研究档位.进度}%"></i>
+                  </div>
+                </div>
+                <div class="bestiary-overview-metrics">
+                  <span><b>已收录物种</b><em>${图鉴条目.length}</em></span>
+                  <span><b>字段覆盖率</b><em>${字段覆盖数} 项</em></span>
+                  <span><b>类型覆盖</b><em>${已记录类型.size || 0} 类</em></span>
+                  <span><b>收集奖励</b><em>反应校准 +${收集奖励档位}%</em></span>
+                </div>
+              </section>
+              <section class="bestiary-archive-layout">
+                <div class="bestiary-species-directory">
+                  <div class="bestiary-panel-head">
+                    <div><b>物种图谱</b><span>SPECIES DIRECTORY</span></div>
+                    <em>${图鉴条目.length} REC</em>
+                  </div>
+                  <div class="bestiary-directory-tools">
+                    <select data-bestiary-filter aria-label="类型筛选">
+                      <option value="全部">全部</option>
+                      <option value="魂兽">魂兽</option>
+                      <option value="深渊">深渊</option>
+                      <option value="怪物">怪物</option>
+                    </select>
+                    <input type="search" data-bestiary-search-input placeholder="检索编号 / 名称" autocomplete="off">
+                  </div>
+                  <div class="bestiary-species-grid">
+                    ${物种插槽HTML}
+                    ${锁定插槽HTML}
+                  </div>
+                  <div class="bestiary-signal-row"><span></span><b>持续侦测未知生态信号</b></div>
+                </div>
+                <div class="bestiary-detail-console">
+                  <div class="bestiary-panel-head">
+                    <div><b>档案详情</b><span>RECENT / DETAIL</span></div>
+                    <em>${图鉴条目.length ? 'LINKED' : 'STANDBY'}</em>
+                  </div>
+                  <div class="bestiary-detail-stage">
+                    ${详情面板HTML}
+                  </div>
+                </div>
+              </section>
             </div>
           `,
       };
@@ -43878,7 +44065,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       '近期见闻',
       '势力矩阵总览',
       '我的阵营详情',
-      '系统播报与日志',
       '怪物图鉴',
     ]);
     return (
@@ -44085,7 +44271,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       '近期见闻',
       '势力矩阵总览',
       '我的阵营详情',
-      '系统播报与日志',
       '怪物图鉴',
     ]);
     if (
@@ -44205,10 +44390,6 @@ ${toText(combatData.战斗意图, '点到为止')}
     applyModalDisplayMode(refs, { displayMode: currentModalDisplayMode });
   };
 
-  const 终端标签预览映射 = Object.freeze({
-    播报: '系统播报与日志',
-  });
-
   function 应用终端标签切换(终端标签按钮) {
     if (!终端标签按钮 || !(终端标签按钮 instanceof Element)) return false;
     const 标签宿主 = 终端标签按钮.closest('[data-terminal-tab-host]');
@@ -44223,9 +44404,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     标签宿主.querySelectorAll('[data-terminal-tab-panel]').forEach(panel => {
       panel.classList.toggle('active', toText(panel.getAttribute('data-terminal-tab-panel'), '') === 目标标签);
     });
-    const 目标预览 =
-      toText(终端标签按钮.getAttribute('data-terminal-preview'), '').trim() ||
-      toText(终端标签预览映射[目标标签], '').trim();
+    const 目标预览 = toText(终端标签按钮.getAttribute('data-terminal-preview'), '').trim();
     if (目标预览) {
       const 可点击卡片 = 标签宿主.closest('.clickable[data-preview]');
       if (可点击卡片) 可点击卡片.setAttribute('data-preview', 目标预览);
@@ -44629,6 +44808,15 @@ ${toText(combatData.战斗意图, '点到为止')}
         modalFocusState[`${detailPreviewKey}::relation-focus`] = targetName;
         rerenderDetailSurface(detailPreviewKey, options);
       }
+      return;
+    }
+
+    const 图鉴物种按钮 = eventTarget ? eventTarget.closest('[data-bestiary-focus]') : null;
+    if (图鉴物种按钮 && detailSurfaceHost.contains(图鉴物种按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 图鉴壳 = 图鉴物种按钮.closest('.bestiary-research-shell');
+      同步图鉴详情焦点(图鉴壳, 图鉴物种按钮.getAttribute('data-bestiary-focus') || '');
       return;
     }
 
@@ -45763,6 +45951,56 @@ ${toText(combatData.战斗意图, '点到为止')}
         panel: modalPanel,
       });
     });
+
+  function 同步图鉴详情焦点(图鉴壳, 目标名 = '') {
+    if (!(图鉴壳 instanceof HTMLElement)) return;
+    const 焦点名 = toText(目标名, '').trim();
+    if (!焦点名) return;
+    const 物种按钮列表 = Array.from(图鉴壳.querySelectorAll('[data-bestiary-focus]'));
+    const 目标按钮 = 物种按钮列表.find(按钮 => toText(按钮.getAttribute('data-bestiary-focus'), '').trim() === 焦点名);
+    if (!目标按钮) return;
+    物种按钮列表.forEach(按钮 => {
+      const 命中 = 按钮 === 目标按钮;
+      按钮.classList.toggle('is-active', 命中);
+      按钮.setAttribute('aria-selected', 命中 ? 'true' : 'false');
+    });
+    图鉴壳.querySelectorAll('[data-bestiary-detail]').forEach(面板 => {
+      面板.classList.toggle('is-active', toText(面板.getAttribute('data-bestiary-detail'), '').trim() === 焦点名);
+    });
+    const 详情台 = 图鉴壳.querySelector('.bestiary-detail-console');
+    if (详情台 instanceof HTMLElement) {
+      详情台.classList.remove('is-refreshing');
+      void 详情台.offsetWidth;
+      详情台.classList.add('is-refreshing');
+      window.setTimeout(() => 详情台.classList.remove('is-refreshing'), 180);
+    }
+  }
+
+  function 同步图鉴筛选(图鉴壳) {
+    if (!(图鉴壳 instanceof HTMLElement)) return;
+    const 类型控件 = 图鉴壳.querySelector('[data-bestiary-filter]');
+    const 搜索控件 = 图鉴壳.querySelector('[data-bestiary-search-input]');
+    const 类型 = toText(类型控件 && 类型控件.value, '全部').trim() || '全部';
+    const 检索 = toText(搜索控件 && 搜索控件.value, '').trim().toLocaleLowerCase();
+    const 正在过滤 = 类型 !== '全部' || !!检索;
+    const 物种按钮列表 = Array.from(图鉴壳.querySelectorAll('[data-bestiary-focus]'));
+    let 首个可见按钮 = null;
+    物种按钮列表.forEach(按钮 => {
+      const 按钮类型 = toText(按钮.getAttribute('data-bestiary-type'), '').trim();
+      const 检索文本 = toText(按钮.getAttribute('data-bestiary-search'), '').toLocaleLowerCase();
+      const 显示 = (类型 === '全部' || 按钮类型 === 类型) && (!检索 || 检索文本.includes(检索));
+      按钮.hidden = !显示;
+      if (显示 && !首个可见按钮) 首个可见按钮 = 按钮;
+    });
+    图鉴壳.querySelectorAll('.bestiary-species-slot.is-locked, .bestiary-signal-row').forEach(节点 => {
+      if (节点 instanceof HTMLElement) 节点.hidden = 正在过滤;
+    });
+    const 当前按钮 = 物种按钮列表.find(按钮 => 按钮.classList.contains('is-active'));
+    if (当前按钮 && 当前按钮.hidden && 首个可见按钮) {
+      同步图鉴详情焦点(图鉴壳, 首个可见按钮.getAttribute('data-bestiary-focus') || '');
+    }
+  }
+
   document.addEventListener('change', event => {
     const eventTarget = event.target instanceof Element ? event.target : null;
     const 关系检索控件 = eventTarget ? eventTarget.closest('[data-relation-focus-select]') : null;
@@ -45779,10 +46017,22 @@ ${toText(combatData.战斗意图, '点到为止')}
       }
       return;
     }
+    const 图鉴筛选控件 = eventTarget ? eventTarget.closest('[data-bestiary-filter]') : null;
+    if (图鉴筛选控件) {
+      同步图鉴筛选(图鉴筛选控件.closest('.bestiary-research-shell'));
+      return;
+    }
     const apiSelect = eventTarget ? eventTarget.closest('[data-ai-maintenance-api-select]') : null;
     if (!apiSelect) return;
     const presetName = 保存AI维护已选API预设(apiSelect.value || '');
     showUiToast(presetName ? `维护接口：${presetName}` : '维护接口：默认接口', 'info', 1800);
+  });
+
+  document.addEventListener('input', event => {
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const 图鉴搜索控件 = eventTarget ? eventTarget.closest('[data-bestiary-search-input]') : null;
+    if (!图鉴搜索控件) return;
+    同步图鉴筛选(图鉴搜索控件.closest('.bestiary-research-shell'));
   });
 
   const 关系拓扑拖拽状态 = {

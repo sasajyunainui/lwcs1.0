@@ -141,7 +141,7 @@
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
-    const 响应 = await fetch(资源基础地址 + '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset.json' + 资源版本后缀, { cache: 'no-store' });
+    const 响应 = await fetch(资源基础地址 + '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_非原创用.json' + 资源版本后缀, { cache: 'no-store' });
     if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
     const 预设数组 = await 响应.json();
     const 导入结果 = await 数据库接口.importPlotPresetsFromData(预设数组, { overwrite: true });
@@ -653,6 +653,49 @@
     尝试注册();
   }
 
+  function 注册防截断流入脚本按钮() {
+    try {
+      if (宿主窗口.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__) return true;
+      if (
+        typeof appendInexistentScriptButtons !== 'function' ||
+        typeof getButtonEvent !== 'function' ||
+        typeof eventOn !== 'function'
+      ) {
+        return false;
+      }
+      appendInexistentScriptButtons([{ name: '防截断流入', visible: true }]);
+      eventOn(getButtonEvent('防截断流入'), async () => {
+        try {
+          await 引导加载();
+          await 等待全局函数('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__', 12000);
+          const 打开防截断流入面板 =
+            typeof 宿主窗口.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ === 'function'
+              ? 宿主窗口.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__
+              : typeof window.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ === 'function'
+                ? window.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__
+                : null;
+          if (打开防截断流入面板) 打开防截断流入面板();
+        } catch (错误) {
+          console.error('[MVU] 防截断流入按钮执行失败:', 错误);
+        }
+      });
+      宿主窗口.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__ = true;
+      return true;
+    } catch (错误) {
+      console.warn('[MVU] 防截断流入按钮注册失败:', 错误);
+      return false;
+    }
+  }
+
+  function 安排防截断流入脚本按钮注册() {
+    const 启动时间 = Date.now();
+    const 尝试注册 = () => {
+      if (注册防截断流入脚本按钮()) return;
+      if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
+    };
+    尝试注册();
+  }
+
   function 安排空闲预取() {
     if (空闲预取已安排) return;
     空闲预取已安排 = true;
@@ -738,5 +781,6 @@
   }
 
   安排冷归档脚本按钮注册();
+  安排防截断流入脚本按钮注册();
   监控并启动引导();
 })();
