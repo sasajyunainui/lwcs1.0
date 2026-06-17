@@ -782,6 +782,7 @@ class TradeUIComponent {
       数量: Math.max(0, Math.floor(Number(数量 ?? 来源.数量 ?? 0))),
       品质: this.规范化物品经济品质(来源.品质 ?? fallback.品质 ?? fallback.rarity, fallback.物品名 || '', fallback.分类 || ''),
       品质系数: Math.max(0.1, Math.min(2, Number(来源.品质系数 ?? fallback.品质系数 ?? 1))),
+      阶位: Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 ?? fallback.阶位 ?? 0)))),
       基础金属: String(来源.基础金属 ?? fallback.基础金属 ?? '').trim(),
       魂导等级: Math.max(0, Math.min(12, Math.floor(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0)))),
       耐久: Math.max(0, Math.floor(Number(来源.耐久 ?? fallback.耐久 ?? 0))),
@@ -810,6 +811,7 @@ class TradeUIComponent {
         (值 === '' ||
           值 === 0 ||
           值 === '无' ||
+          (键 === '阶位' && !(Number(来源.阶位 ?? fallback.阶位 ?? 0) > 0)) ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
           (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
           (键 === '品质' && 值 === '普通') ||
@@ -849,6 +851,7 @@ class TradeUIComponent {
     if (数据.耐久 !== undefined || Number(数据.基础耐久 || 0) > 0) return true;
     if (数据.剩余使用次数 !== undefined || Number(数据.基础使用次数 || 0) > 0) return true;
     if (String(数据.基础金属 || '').trim()) return true;
+    if (Number(数据.阶位 || 0) > 0) return true;
     if (Number(数据.魂导等级 || 0) > 0) return true;
     if (数据.基础耐久 !== undefined) return true;
     if (String(数据.绑定者 || '').trim()) return true;
@@ -1349,6 +1352,7 @@ class TradeUIComponent {
       分类,
       品质: safeItem.品质 || fallback.rarity,
       品质系数: safeItem.品质系数,
+      阶位: safeItem.阶位,
       基础金属: safeItem.基础金属,
       魂导等级: safeItem.魂导等级,
       绑定者: safeItem.绑定者,

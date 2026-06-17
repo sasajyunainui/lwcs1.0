@@ -1414,6 +1414,39 @@ function AIJsonPatch写入父路径可用_V1(根 = {}, 路径 = [], 本批新增
   return AIJsonPatch路径已存在或本批新增_V1(根, 文本路径.slice(0, -1), 本批新增路径集合);
 }
 
+function 规范化AIJsonPatch交付需求值_V1(值 = {}) {
+  const 输入 = 值 && typeof 值 === 'object' && !Array.isArray(值) ? 值 : {};
+  if (!Object.keys(输入).length) return null;
+  const 输出 = { 类型: '物品' };
+  const 名称 = String(输入.名称 || '').trim();
+  const 分类 = String(输入.分类 || '').trim();
+  const 基础金属 = String(输入.基础金属 || '').trim();
+  const 数量 = Math.max(1, Math.floor(Number(输入.数量 || 1)));
+  const 阶位下限 = Math.max(0, Math.floor(Number(输入.阶位下限 || 0)));
+  const 品质系数下限 = Math.max(0, Number(输入.品质系数下限 || 0));
+  const 魂导等级下限 = Math.max(0, Math.floor(Number(输入.魂导等级下限 || 0)));
+  const 耐久下限 = Math.max(0, Math.floor(Number(输入.耐久下限 || 0)));
+  const 剩余使用次数下限 = Math.max(0, Math.floor(Number(输入.剩余使用次数下限 || 0)));
+  if (名称) 输出.名称 = 名称;
+  if (数量 > 1) 输出.数量 = 数量;
+  if (分类) 输出.分类 = 分类;
+  if (阶位下限 > 0) 输出.阶位下限 = 阶位下限;
+  if (品质系数下限 > 1) 输出.品质系数下限 = Number(品质系数下限.toFixed(2));
+  if (基础金属) 输出.基础金属 = 基础金属;
+  if (魂导等级下限 > 0) 输出.魂导等级下限 = 魂导等级下限;
+  if (耐久下限 > 0) 输出.耐久下限 = 耐久下限;
+  if (剩余使用次数下限 > 0) 输出.剩余使用次数下限 = 剩余使用次数下限;
+  return Object.keys(输出).length > 1 ? 输出 : null;
+}
+
+function 写入AIJsonPatch任务可选字段_V1(输出 = {}, 输入 = {}) {
+  const 截止tick = Math.max(0, Math.floor(Number(输入.截止tick || 0)));
+  const 交付需求 = 规范化AIJsonPatch交付需求值_V1(输入.交付需求);
+  if (截止tick > 0) 输出.截止tick = 截止tick;
+  if (交付需求) 输出.交付需求 = 交付需求;
+  return 输出;
+}
+
 function 规范化AIJsonPatch任务对象值_V1(路径 = [], 值 = {}, 根 = {}) {
   const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
   if (!(文本路径.length === 4 && 文本路径[0] === 'char' && 文本路径[2] === '我的任务')) return cloneJsonValue(值, 值);
@@ -1423,7 +1456,7 @@ function 规范化AIJsonPatch任务对象值_V1(路径 = [], 值 = {}, 根 = {})
     delete 输入.目前进度;
   }
   const 当前tick = Math.max(0, Number(根?.world?.时间?.tick || 0));
-  return {
+  return 写入AIJsonPatch任务可选字段_V1({
     任务线: String(输入.任务线 || '支线').trim() || '支线',
     状态: String(输入.状态 || '进行中').trim() || '进行中',
     当前进度: Math.max(0, Math.min(100, Number(输入.当前进度 || 0))),
@@ -1431,8 +1464,29 @@ function 规范化AIJsonPatch任务对象值_V1(路径 = [], 值 = {}, 根 = {})
     奖励声望: Math.max(0, Number(输入.奖励声望 || 0)),
     描述: String(输入.描述 || '待生成').trim() || '待生成',
     最后更新时间tick: Math.max(0, Number(输入.最后更新时间tick || 当前tick || 0)),
-    ...Object.fromEntries(Object.entries(输入).filter(([键]) => !['任务线', '状态', '当前进度', '奖励币', '奖励声望', '描述', '最后更新时间tick'].includes(键))),
-  };
+  }, 输入);
+}
+
+function 规范化AIJsonPatch委托对象值_V1(路径 = [], 值 = {}, 根 = {}) {
+  const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
+  if (!(文本路径.length === 3 && 文本路径[0] === 'world' && 文本路径[1] === '委托板')) return cloneJsonValue(值, 值);
+  const 输入 = 值 && typeof 值 === 'object' && !Array.isArray(值) ? cloneJsonValue(值, {}) : {};
+  const 当前tick = Math.max(0, Number(根?.world?.时间?.tick || 0));
+  return 写入AIJsonPatch任务可选字段_V1({
+    标题: String(输入.标题 || 文本路径[2] || '无').trim() || '无',
+    描述: String(输入.描述 || 输入.框架描述 || '无').trim() || '无',
+    框架描述: String(输入.框架描述 || 输入.描述 || '无').trim() || '无',
+    发布者: String(输入.发布者 || '系统').trim() || '系统',
+    面向: String(输入.面向 || '公开').trim() || '公开',
+    指定对象: String(输入.指定对象 || '无').trim() || '无',
+    状态: String(输入.状态 || '待接取').trim() || '待接取',
+    难度: String(输入.难度 || '中').trim() || '中',
+    资源级别: String(输入.资源级别 || '无').trim() || '无',
+    奖励币: Math.max(0, Number(输入.奖励币 || 0)),
+    奖励声望: Math.max(0, Number(输入.奖励声望 || 0)),
+    承接者: String(输入.承接者 || '无').trim() || '无',
+    生成tick: Math.max(0, Number(输入.生成tick || 当前tick || 0)),
+  }, 输入);
 }
 
 function 规范化AIJsonPatch状态效果值_V1(路径 = [], 值 = {}) {
@@ -1458,7 +1512,8 @@ function 规范化AIJsonPatch状态效果值_V1(路径 = [], 值 = {}) {
 
 function 规范化AIJsonPatch对象值_V1(路径 = [], 值 = {}, 根 = {}) {
   const 任务值 = 规范化AIJsonPatch任务对象值_V1(路径, 值, 根);
-  const 状态值 = 规范化AIJsonPatch状态效果值_V1(路径, 任务值);
+  const 委托值 = 规范化AIJsonPatch委托对象值_V1(路径, 任务值, 根);
+  const 状态值 = 规范化AIJsonPatch状态效果值_V1(路径, 委托值);
   return cloneJsonValue(状态值, 状态值);
 }
 
@@ -1851,9 +1906,10 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
     '特殊剧情突破：不要直接写 属性.等级；当正文里出现临时突破时，只在更新视图里把对应角色的 临时突破 改为突破后的等级数字。',
     '',
     '[Task/Commission Creation]',
-    '剧情中新出现长期个人目标时，直接写 /char/${角色名}/我的任务/${任务名}，字段={任务线,状态,当前进度,奖励币,奖励声望,描述,最后更新时间tick}；任务线=主线/支线；当前进度按百分比数字填写，0=刚开始，100=完成；任务进度达到100时，任务奖励由脚本自动结算，不要为任务奖励额外手写财富或声望。',
-    '剧情中新出现公开/指定委托时，直接写 /world/委托板/${委托名}，字段={标题,描述,框架描述,发布者,面向,指定对象,状态,难度,资源级别,奖励币,奖励声望,承接者,生成tick}.',
-    '若剧情中委托已被角色当场接下，同时写 char.我的任务 与 world.委托板',
+    '剧情中新出现长期个人目标时，直接写 /char/${角色名}/我的任务/${任务名}，字段={任务线,状态,当前进度,奖励币,奖励声望,描述,最后更新时间tick,截止tick?}；任务线=主线/支线；最后更新时间tick用当前 world.时间.tick；限时任务才写截止tick，不限时不要写该字段；任务进度达到100时，任务奖励由脚本自动结算，不要为任务奖励额外手写财富或声望。',
+    '剧情中新出现公开/指定委托时，直接写 /world/委托板/${委托名}，字段={标题,描述,框架描述,发布者,面向,指定对象,状态,难度,资源级别,奖励币,奖励声望,承接者,生成tick,截止tick?,交付需求?}；生成tick用当前 world.时间.tick；限时委托才写截止tick。',
+    '物品交付委托才写交付需求={类型:"物品",名称,数量,分类,阶位下限?,品质系数下限?,基础金属?,魂导等级下限?,耐久下限?,剩余使用次数下限?}；没有限制的下限字段不要写；名称只用于显示和优先定位，验收以分类/阶位/品质/基础金属/魂导等级等下限为准；服务类委托不写交付需求。',
+    '若剧情中委托已被角色当场接下，同时写 char.我的任务 与 world.委托板，并同步截止tick与交付需求。',
 	'若只是一次性小动作，如开学报到，不创建持久任务或委托。',
   ].join('\n');
 }
@@ -3725,11 +3781,11 @@ var 角色基础六维对标字段_V1 = Object.freeze([
   Object.freeze({ 标签: '精神力', 字段: '精神力上限' }),
 ]);
 
-function 读取六维对标天赋档位_V1(等级 = 1) {
-  const 数值 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
-  if (数值 <= 20) return '正常';
-  if (数值 <= 60) return '优秀';
-  if (数值 <= 90) return '天才';
+function 读取年龄段对标天赋档位_V1(年龄 = 0) {
+  const 年龄值 = Math.max(0, Number(年龄 || 0));
+  if (年龄值 < 9) return '正常';
+  if (年龄值 < 13) return '优秀';
+  if (年龄值 < 21) return '天才';
   return '顶级天才';
 }
 
@@ -3739,22 +3795,23 @@ function 读取六维对标训练系数_V1(天赋档位 = '正常') {
   ] ?? 0.5;
 }
 
-function 读取初始化修为同龄等级_V1(角色 = {}, 当前tick = null) {
+function 读取初始化修为同龄描点_V1(角色 = {}, 当前tick = null) {
   const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
   const 年龄 = Math.max(0, Number(属性.年龄 || 0));
-  if (年龄 < 6) return 0;
+  if (年龄 < 6) return null;
   const 计算函数 = typeof globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ === 'function'
     ? globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__
     : null;
   if (!计算函数) return null;
+  const 档位 = 读取年龄段对标天赋档位_V1(年龄);
   const 等级 = Number(计算函数({
-    天赋梯队: String(属性.天赋梯队 || '正常').trim() || '正常',
+    天赋梯队: 档位,
     年龄,
     底子波动: Number(属性.底子波动 || 1),
     生日: String(属性.生日 || '').trim(),
     当前tick,
   }));
-  return Number.isFinite(等级) ? Math.max(0, Math.floor(等级)) : null;
+  return Number.isFinite(等级) ? { 档位, 等级: Math.max(0, Math.floor(等级)) } : null;
 }
 
 function 读取初始化修为同龄比较文本_V1(当前等级 = 0, 同龄等级 = 0) {
@@ -3780,7 +3837,7 @@ function 构建角色六维对标参照值_V1(角色 = {}, 等级 = 1) {
   const 安全等级 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
   const 基准 = getBaseStats(安全等级);
   const 系别倍率 = 读取角色六维强攻系对标倍率_V1();
-  const 天赋档位 = 读取六维对标天赋档位_V1(安全等级);
+  const 天赋档位 = 读取年龄段对标天赋档位_V1(角色?.属性?.年龄);
   const 训练系数 = 读取六维对标训练系数_V1(天赋档位);
   const 训练倍率 = 安全等级 > 10 ? 0.005 * (安全等级 - 10) * 训练系数 : 0;
   return {
@@ -3853,9 +3910,9 @@ function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null)
   const 条目 = {};
   const 等级 = Number(角色.属性.等级);
   if (Number.isFinite(等级)) {
-    const 同龄等级 = 读取初始化修为同龄等级_V1(角色, 当前tick);
-    条目.等级 = Number.isFinite(Number(同龄等级))
-      ? `Lv${等级}（同龄等级描点：${同龄等级}级，${读取初始化修为同龄比较文本_V1(等级, 同龄等级)}）`
+    const 同龄描点 = 读取初始化修为同龄描点_V1(角色, 当前tick);
+    条目.等级 = 同龄描点 && Number.isFinite(Number(同龄描点.等级))
+      ? `Lv${等级}（同龄${同龄描点.档位}描点：${同龄描点.等级}级，${读取初始化修为同龄比较文本_V1(等级, 同龄描点.等级)}）`
       : `Lv${等级}`;
   }
   角色基础六维对标字段_V1.forEach(({ 标签, 字段 }) => {

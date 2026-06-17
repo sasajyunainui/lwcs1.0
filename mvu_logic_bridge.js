@@ -2709,6 +2709,7 @@
       数量: Math.max(0, Math.floor(toNumber(数量 ?? 来源.数量, toNumber(来源.数量, 0)))),
       品质: 规范化物品经济品质_桥接(来源.品质 ?? fallback.品质, fallback.物品名 || '', fallback.分类 || ''),
       品质系数: Math.max(0.1, Math.min(2, toNumber(来源.品质系数 ?? fallback.品质系数, 1))),
+      阶位: Math.max(0, Math.min(5, Math.floor(toNumber(来源.阶位 ?? fallback.阶位, 0)))),
       基础金属: toText(来源.基础金属 ?? fallback.基础金属, '').trim(),
       魂导等级: Math.max(0, Math.min(12, Math.floor(toNumber(来源.魂导等级 ?? fallback.魂导等级, 0)))),
       耐久: Math.max(0, Math.floor(toNumber(来源.耐久 ?? fallback.耐久, 0))),
@@ -2738,6 +2739,7 @@
           值 === '无' ||
           (键 !== '耐久' && 值 === 0) ||
           (键 === '耐久' && !有耐久) ||
+          (键 === '阶位' && !(toNumber(来源.阶位 ?? fallback.阶位, 0) > 0)) ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
           (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
           (键 === '品质' && 值 === '普通') ||
@@ -2764,6 +2766,7 @@
     if (来源.耐久 !== undefined || toNumber(来源.基础耐久, 0) > 0) return true;
     if (来源.剩余使用次数 !== undefined || Number(来源.基础使用次数 || 0) > 0) return true;
     if (toText(来源.基础金属, '').trim()) return true;
+    if (toNumber(来源.阶位, 0) > 0) return true;
     if (toNumber(来源.魂导等级, 0) > 0) return true;
     if (来源.基础耐久 !== undefined) return true;
     if (来源.基础使用次数 !== undefined) return true;
@@ -2838,6 +2841,245 @@
     else delete 合并.批次;
     if (合并.数量 <= 0 && 合并.批次) 合并.数量 = 0;
     return 读取背包总数量_桥接(合并) > 0 ? 合并 : {};
+  }
+
+  function 规范化交付需求_桥接(来源需求 = {}) {
+    const 来源 = 来源需求 && typeof 来源需求 === 'object' && !Array.isArray(来源需求) ? 来源需求 : {};
+    if (!Object.keys(来源).length) return null;
+    const 类型 = toText(来源.类型, '物品').trim() || '物品';
+    if (类型 !== '物品') return null;
+    const 输出 = { 类型: '物品' };
+    const 名称 = toText(来源.名称, '').trim();
+    const 分类 = toText(来源.分类, '').trim();
+    const 基础金属 = toText(来源.基础金属, '').trim();
+    const 数量 = Math.max(1, Math.floor(toNumber(来源.数量, 1)));
+    const 阶位下限 = Math.max(0, Math.floor(toNumber(来源.阶位下限, 0)));
+    const 品质系数下限 = Number(Math.max(0, toNumber(来源.品质系数下限, 0)).toFixed(2));
+    const 魂导等级下限 = Math.max(0, Math.floor(toNumber(来源.魂导等级下限, 0)));
+    const 耐久下限 = Math.max(0, Math.floor(toNumber(来源.耐久下限, 0)));
+    const 剩余使用次数下限 = Math.max(0, Math.floor(toNumber(来源.剩余使用次数下限, 0)));
+    if (名称) 输出.名称 = 名称;
+    if (数量 > 1) 输出.数量 = 数量;
+    if (分类) 输出.分类 = 分类;
+    if (阶位下限 > 0) 输出.阶位下限 = 阶位下限;
+    if (品质系数下限 > 1) 输出.品质系数下限 = 品质系数下限;
+    if (基础金属) 输出.基础金属 = 基础金属;
+    if (魂导等级下限 > 0) 输出.魂导等级下限 = 魂导等级下限;
+    if (耐久下限 > 0) 输出.耐久下限 = 耐久下限;
+    if (剩余使用次数下限 > 0) 输出.剩余使用次数下限 = 剩余使用次数下限;
+    return Object.keys(输出).length > 1 ? 输出 : null;
+  }
+
+  function 推断交付阶位下限_桥接(交付需求 = {}) {
+    const 显式阶位 = Math.max(0, Math.floor(toNumber(交付需求 && 交付需求.阶位下限, 0)));
+    if (显式阶位 > 0) return Math.min(5, 显式阶位);
+    const 文本 = `${toText(交付需求 && 交付需求.名称, '')} ${toText(交付需求 && 交付需求.分类, '')}`;
+    if (/天锻|四字|十万年/.test(文本)) return 5;
+    if (/魂锻|三字|红级/.test(文本)) return 4;
+    if (/灵锻|二字|黑级/.test(文本)) return 3;
+    if (/千锻|一字|紫级/.test(文本)) return 2;
+    if (/百锻|黄级/.test(文本)) return 1;
+    return 0;
+  }
+
+  function 推断交付候选阶位_桥接(物品名 = '', 物品定义 = {}, 候选数据 = {}) {
+    const 定义阶位 = Math.max(0, Math.floor(toNumber(物品定义 && 物品定义.阶位, 0)));
+    const 候选阶位 = Math.max(0, Math.floor(toNumber(候选数据 && 候选数据.阶位, 0)));
+    if (候选阶位 > 0 || 定义阶位 > 0) return Math.min(5, 候选阶位 || 定义阶位);
+    const 文本 = `${toText(物品定义 && 物品定义.品质, '')} ${toText(物品定义 && 物品定义.品阶, '')} ${toText(候选数据 && 候选数据.品质, '')} ${toText(候选数据 && 候选数据.品阶, '')}`;
+    if (/天锻|四字|十万年/.test(文本)) return 5;
+    if (/魂锻|三字|红级/.test(文本)) return 4;
+    if (/灵锻|二字|黑级/.test(文本)) return 3;
+    if (/千锻|一字|紫级/.test(文本)) return 2;
+    if (/百锻|黄级/.test(文本)) return 1;
+    return 0;
+  }
+
+  function 构建交付候选数据_桥接(根数据 = {}, 物品名 = '', 背包记录 = {}, 批次 = null, 批次索引 = -1) {
+    const 命中定义 = 查找物品定义_桥接(根数据, 物品名);
+    const 定义 = 命中定义?.定义 || {};
+    const 分类 =
+      命中定义?.分类 ||
+      toText(背包记录 && (背包记录.物品分类 || 背包记录.分类), '') ||
+      toText(定义.物品分类 || 定义.分类, '') ||
+      推断物品分类(物品名, 定义, 背包记录);
+    const 数量 = Math.max(0, Math.floor(toNumber(批次 ? 批次.数量 : 背包记录.数量, 0)));
+    const 候选 = {
+      ...(定义 || {}),
+      物品分类: 分类,
+      ...(背包记录 || {}),
+      ...(批次 || {}),
+      名称: 物品名,
+      物品名,
+      批次索引,
+      数量,
+    };
+    delete 候选.批次;
+    候选.阶位 = 推断交付候选阶位_桥接(物品名, 定义, 候选);
+    候选.品质系数 = Math.max(0.1, toNumber(候选.品质系数, 1));
+    候选.魂导等级 = Math.max(0, Math.floor(toNumber(候选.魂导等级, 0)));
+    return 候选;
+  }
+
+  function 交付候选满足需求_桥接(候选 = {}, 交付需求 = {}) {
+    const 需求 = 规范化交付需求_桥接(交付需求);
+    if (!需求) return false;
+    const 需求分类 = toText(需求.分类, '').trim();
+    const 候选分类 = toText(候选.物品分类 || 候选.分类, '').trim();
+    if (需求分类 && 候选分类 !== 需求分类) return false;
+    const 阶位下限 = 推断交付阶位下限_桥接(需求);
+    if (阶位下限 > 0 && 推断交付候选阶位_桥接(候选.物品名 || 候选.名称, 候选, 候选) < 阶位下限) return false;
+    const 品质系数下限 = Math.max(0, toNumber(需求.品质系数下限, 0));
+    if (品质系数下限 > 0 && toNumber(候选.品质系数, 1) < 品质系数下限) return false;
+    const 基础金属 = toText(需求.基础金属, '').trim();
+    if (基础金属 && toText(候选.基础金属, '').trim() !== 基础金属) return false;
+    const 魂导等级下限 = Math.max(0, Math.floor(toNumber(需求.魂导等级下限, 0)));
+    if (魂导等级下限 > 0 && Math.floor(toNumber(候选.魂导等级, 0)) < 魂导等级下限) return false;
+    const 耐久下限 = Math.max(0, Math.floor(toNumber(需求.耐久下限, 0)));
+    if (耐久下限 > 0 && Math.floor(toNumber(候选.耐久, 0)) < 耐久下限) return false;
+    const 剩余使用次数下限 = Math.max(0, Math.floor(toNumber(需求.剩余使用次数下限, 0)));
+    if (剩余使用次数下限 > 0 && Math.floor(toNumber(候选.剩余使用次数, 0)) < 剩余使用次数下限) return false;
+    return true;
+  }
+
+  function 格式化交付需求文本_桥接(交付需求 = {}) {
+    const 需求 = 规范化交付需求_桥接(交付需求);
+    if (!需求) return '';
+    const 片段 = [];
+    const 名称 = toText(需求.名称, '').trim();
+    const 数量 = Math.max(1, Math.floor(toNumber(需求.数量, 1)));
+    const 阶位下限 = 推断交付阶位下限_桥接(需求);
+    if (名称) 片段.push(名称);
+    片段.push(`×${数量}`);
+    if (需求.分类) 片段.push(toText(需求.分类, ''));
+    if (阶位下限 > 0) 片段.push(`阶位≥${阶位下限}`);
+    if (toNumber(需求.品质系数下限, 0) > 0) 片段.push(`Q≥${toNumber(需求.品质系数下限, 0).toFixed(2)}`);
+    if (需求.基础金属) 片段.push(`基:${toText(需求.基础金属, '')}`);
+    if (toNumber(需求.魂导等级下限, 0) > 0) 片段.push(`魂导≥${Math.floor(toNumber(需求.魂导等级下限, 0))}`);
+    if (toNumber(需求.耐久下限, 0) > 0) 片段.push(`耐久≥${Math.floor(toNumber(需求.耐久下限, 0))}`);
+    if (toNumber(需求.剩余使用次数下限, 0) > 0) 片段.push(`次数≥${Math.floor(toNumber(需求.剩余使用次数下限, 0))}`);
+    return 片段.filter(Boolean).join(' / ') || '物品交付';
+  }
+
+  function 收集交付候选列表_桥接(快照 = {}, 角色键 = '', 交付需求 = {}) {
+    const 根数据 = 快照?.rootData || {};
+    const 背包 = deepGet(根数据, ['char', 角色键, '背包'], {});
+    if (!背包 || typeof 背包 !== 'object' || Array.isArray(背包)) return [];
+    const 需求 = 规范化交付需求_桥接(交付需求);
+    if (!需求) return [];
+    const 需求名 = toText(需求.名称, '').trim();
+    const 阶位下限 = 推断交付阶位下限_桥接(需求);
+    const 列表 = [];
+    Object.entries(背包).forEach(([物品名, 背包记录]) => {
+      if (!物品名 || !背包记录 || typeof 背包记录 !== 'object' || Array.isArray(背包记录)) return;
+      const 普通数量 = Math.max(0, Math.floor(toNumber(背包记录.数量, 0)));
+      if (普通数量 > 0) {
+        const 候选 = 构建交付候选数据_桥接(根数据, 物品名, 背包记录, null, -1);
+        if (交付候选满足需求_桥接(候选, 需求)) 列表.push(候选);
+      }
+      读取背包批次列表_桥接(背包记录).forEach((批次, 批次索引) => {
+        const 候选 = 构建交付候选数据_桥接(根数据, 物品名, 背包记录, 批次, 批次索引);
+        if (交付候选满足需求_桥接(候选, 需求)) 列表.push(候选);
+      });
+    });
+    return 列表.sort((甲, 乙) => {
+      const 甲名中 = 需求名 && 甲.物品名 === 需求名 ? 0 : 1;
+      const 乙名中 = 需求名 && 乙.物品名 === 需求名 ? 0 : 1;
+      if (甲名中 !== 乙名中) return 甲名中 - 乙名中;
+      const 甲阶差 = Math.max(0, 推断交付候选阶位_桥接(甲.物品名, 甲, 甲) - 阶位下限);
+      const 乙阶差 = Math.max(0, 推断交付候选阶位_桥接(乙.物品名, 乙, 乙) - 阶位下限);
+      if (甲阶差 !== 乙阶差) return 甲阶差 - 乙阶差;
+      const 甲品质差 = Math.max(0, toNumber(甲.品质系数, 1) - toNumber(需求.品质系数下限, 0));
+      const 乙品质差 = Math.max(0, toNumber(乙.品质系数, 1) - toNumber(需求.品质系数下限, 0));
+      if (甲品质差 !== 乙品质差) return 甲品质差 - 乙品质差;
+      return toText(甲.物品名, '').localeCompare(toText(乙.物品名, ''), 'zh-Hans-CN');
+    });
+  }
+
+  function 构建交付需求扣减补丁_桥接(快照 = {}, 角色键 = '', 交付需求 = {}) {
+    const 需求 = 规范化交付需求_桥接(交付需求);
+    const 需要数量 = Math.max(1, Math.floor(toNumber(需求 && 需求.数量, 1)));
+    const 候选列表 = 收集交付候选列表_桥接(快照, 角色键, 需求);
+    const 合格总数 = 候选列表.reduce((总数, 候选) => 总数 + Math.max(0, Math.floor(toNumber(候选.数量, 0))), 0);
+    if (!需求 || 合格总数 < 需要数量) {
+      return {
+        ok: false,
+        reason: `缺少合格交付物：${格式化交付需求文本_桥接(需求)}。`,
+        patchOps: [],
+      };
+    }
+    const 背包路径 = ['rootData', 'char', 角色键, '背包'];
+    const 更新表 = new Map();
+    const 消耗记录 = [];
+    let 剩余数量 = 需要数量;
+    候选列表.forEach(候选 => {
+      if (剩余数量 <= 0) return;
+      const 物品名 = toText(候选.物品名, '').trim();
+      if (!物品名) return;
+      const 现有记录 = 更新表.has(物品名)
+        ? 更新表.get(物品名)
+        : cloneJsonValue(deepGet(快照, [...背包路径, 物品名], {}), {});
+      if (!现有记录 || typeof 现有记录 !== 'object' || Array.isArray(现有记录)) return;
+      const 可扣数量 = Math.min(剩余数量, Math.max(0, Math.floor(toNumber(候选.数量, 0))));
+      if (可扣数量 <= 0) return;
+      if (候选.批次索引 >= 0) {
+        const 批次列表 = Array.isArray(现有记录.批次) ? 现有记录.批次.map(批次 => cloneJsonValue(批次, {})) : [];
+        const 批次 = 批次列表[候选.批次索引];
+        if (!批次) return;
+        批次.数量 = Math.max(0, Math.floor(toNumber(批次.数量, 0)) - 可扣数量);
+        现有记录.批次 = 批次列表;
+      } else {
+        现有记录.数量 = Math.max(0, Math.floor(toNumber(现有记录.数量, 0)) - 可扣数量);
+      }
+      更新表.set(物品名, 现有记录);
+      消耗记录.push({ 物品名, 数量: 可扣数量 });
+      剩余数量 -= 可扣数量;
+    });
+    const 补丁列表 = [];
+    更新表.forEach((记录, 物品名) => {
+      if (Array.isArray(记录.批次)) {
+        记录.批次 = 记录.批次.filter(批次 => Math.max(0, Math.floor(toNumber(批次 && 批次.数量, 0))) > 0);
+        if (!记录.批次.length) delete 记录.批次;
+      }
+      if (记录.数量 === undefined && 记录.批次) 记录.数量 = 0;
+      if (记录.数量 <= 0 && 记录.批次) 记录.数量 = 0;
+      const 物品路径 = `/char/${escapeJsonPointerValue(角色键)}/背包/${escapeJsonPointerValue(物品名)}`;
+      if (读取背包总数量_桥接(记录) <= 0) 补丁列表.push({ op: 'remove', path: 物品路径 });
+      else 补丁列表.push({ op: 'replace', path: 物品路径, value: 记录 });
+    });
+    return {
+      ok: 剩余数量 <= 0,
+      reason: 剩余数量 <= 0 ? '' : `缺少合格交付物：${格式化交付需求文本_桥接(需求)}。`,
+      patchOps: 剩余数量 <= 0 ? 补丁列表 : [],
+      消耗文本: 消耗记录.map(记录 => `${记录.数量}份${记录.物品名}`).join('、'),
+    };
+  }
+
+  function 估算交付需求总价_桥接(快照 = {}, 交付需求 = {}, 候选物品 = null) {
+    const 需求 = 规范化交付需求_桥接(交付需求);
+    if (!需求) return 0;
+    const 名称 = toText(候选物品?.物品名 || 候选物品?.名称 || 需求.名称, '').trim();
+    const 数量 = Math.max(1, Math.floor(toNumber(需求.数量, 1)));
+    const 根数据 = 快照?.rootData || {};
+    const 命中定义 = 名称 ? 查找物品定义_桥接(根数据, 名称) : null;
+    const 估价物品 = {
+      ...(命中定义?.定义 || {}),
+      ...(候选物品 && typeof 候选物品 === 'object' && !Array.isArray(候选物品) ? 候选物品 : {}),
+    };
+    if (typeof window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__ === 'function' && 名称) {
+      try {
+        const 估价结果 = window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__(快照, 名称, {
+          数量,
+          物品: 估价物品,
+          来源: '交付需求估价',
+        });
+        const 总价 = Math.max(0, Math.floor(toNumber(估价结果 && 估价结果.总价, 0)));
+        if (总价 > 0) return 总价;
+      } catch (错误) {}
+    }
+    const 基础价格 = Math.max(0, Math.floor(toNumber(估价物品.基础价格 || 估价物品.价格, 0)));
+    const 品质系数 = Math.max(0.1, toNumber(估价物品.品质系数, 1));
+    return Math.max(0, Math.floor(基础价格 * 品质系数 * 数量));
   }
 
   function 规范化物品定义分类_桥接(分类 = '', fallback = '剧情杂物') {
@@ -3028,6 +3270,7 @@
       分类: toText(来源.物品分类 || 来源.分类, ''),
       品质: 来源.批次品质 || 来源.品质,
       品质系数: 来源.品质系数,
+      阶位: 来源.阶位,
       基础金属: 来源.基础金属,
       魂导等级: 来源.魂导等级,
       耐久: 来源.耐久 ?? 来源.基础耐久,
@@ -37229,6 +37472,11 @@
         `;
       const questProgress = item => Math.max(0, Math.min(100, toNumber(item && item['当前进度'], 0)));
       const 当前任务tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
+      const 格式化任务日期时间 = tickValue => {
+        const tick = Math.max(0, Math.floor(toNumber(tickValue, 0)));
+        if (!tick) return '未记录';
+        return formatTickToCalendarDateText(tick).replace(/^斗罗历/, '');
+      };
       const 格式化任务短数值 = 数值 => {
         const 绝对值 = Math.abs(Math.floor(toNumber(数值, 0)));
         if (绝对值 >= 10000) return `${(绝对值 / 10000).toFixed(绝对值 >= 100000 ? 0 : 1).replace(/\.0$/, '')}w`;
@@ -37238,9 +37486,15 @@
       const 读取任务契约 = item => {
         const 奖励币 = Math.max(0, Math.floor(toNumber(item && item['奖励币'], 0)));
         const 奖励声望 = Math.max(0, Math.floor(toNumber(item && item['奖励声望'], 0)));
-        const 失败赔偿 = Math.max(0, Math.floor(toNumber(item && item['失败赔偿'], 0)));
-        const 违约金 = Math.max(0, Math.floor(toNumber(item && item['违约金'], 0)));
-        return { 奖励币, 奖励声望, 失败赔偿, 违约金, 有惩罚: 失败赔偿 > 0 || 违约金 > 0 };
+        return { 奖励币, 奖励声望 };
+      };
+      const 读取任务交付需求 = item => 规范化交付需求_桥接(item && item['交付需求']);
+      const 读取任务预计违约扣款 = item => {
+        const 交付需求 = 读取任务交付需求(item);
+        const 截止tick = Math.max(0, Math.floor(toNumber(item && item['截止tick'], 0)));
+        if (!交付需求 || 截止tick <= 0) return 0;
+        const 候选 = activeCharKey ? 收集交付候选列表_桥接(snapshot, activeCharKey, 交付需求)[0] || null : null;
+        return Math.max(0, Math.floor(估算交付需求总价_桥接(snapshot, 交付需求, 候选) * 0.3));
       };
       const 格式化任务剩余时限 = 剩余tick => {
         const 绝对tick = Math.abs(Math.floor(toNumber(剩余tick, 0)));
@@ -37267,7 +37521,9 @@
           已过期,
           紧急,
           类名: 已过期 ? 'is-overdue' : 紧急 ? 'is-urgent' : '',
-          文本: 已过期 ? `逾期 ${格式化任务剩余时限(剩余tick)}` : `剩余 ${格式化任务剩余时限(剩余tick)}`,
+          文本: 已过期
+            ? `截止 ${格式化任务日期时间(截止tick)} / 逾期 ${格式化任务剩余时限(剩余tick)}`
+            : `截止 ${格式化任务日期时间(截止tick)} / 剩余 ${格式化任务剩余时限(剩余tick)}`,
           短文本: 已过期 ? `逾期 ${格式化任务剩余时限(剩余tick)}` : 格式化任务剩余时限(剩余tick),
         };
       };
@@ -37296,12 +37552,12 @@
         `;
       const 构建任务收益风险摘要 = item => {
         const 契约 = 读取任务契约(item);
+        const 预计违约扣款 = 读取任务预计违约扣款(item);
         const 收益文本 = 契约.奖励币 > 0 ? 格式化任务短数值(契约.奖励币) : 契约.奖励声望 > 0 ? `${格式化任务短数值(契约.奖励声望)}声` : '0';
-        const 最大风险 = Math.max(契约.失败赔偿, 契约.违约金);
         return `
           <div class="mvu-quest-card-contract">
             <span class="mvu-quest-card-gain">✅ +${htmlEscape(收益文本)}</span>
-            ${最大风险 > 0 ? `<span class="mvu-quest-card-risk">❌ -${htmlEscape(格式化任务短数值(最大风险))}</span>` : ''}
+            ${预计违约扣款 > 0 ? `<span class="mvu-quest-card-risk">⚠ -${htmlEscape(格式化任务短数值(预计违约扣款))}</span>` : ''}
           </div>
         `;
       };
@@ -37311,30 +37567,29 @@
           ? `<span class="mvu-quest-card-deadline ${时限状态.类名}">${htmlEscape(时限状态.紧急 || 时限状态.已过期 ? '🔴' : '⏳')} ${htmlEscape(时限状态.短文本)}</span>`
           : '';
       };
-      const 构建任务契约面板 = (item, 显示风险 = false) => {
+      const 构建任务契约面板 = item => {
         const 契约 = 读取任务契约(item);
+        const 预计违约扣款 = 读取任务预计违约扣款(item);
         const 报酬行 = [
           `<span><em>联邦币</em><b>+${htmlEscape(formatNumber(契约.奖励币))}</b></span>`,
           `<span><em>声望</em><b>+${htmlEscape(formatNumber(契约.奖励声望))}</b></span>`,
         ].join('');
-        const 风险行 = [
-          `<span><em>违约</em><b>-${htmlEscape(formatNumber(契约.违约金))}</b></span>`,
-          `<span><em>失败</em><b>-${htmlEscape(formatNumber(契约.失败赔偿))}</b></span>`,
-        ].join('');
+        const 风险侧栏 =
+          预计违约扣款 > 0
+            ? `
+            <div class="mvu-quest-contract-side mvu-quest-contract-side--risk">
+              <strong>逾期预估</strong>
+              <div><span><em>预计扣款</em><b>-${htmlEscape(formatNumber(预计违约扣款))}</b></span></div>
+            </div>
+          `
+            : '';
         return `
-          <div class="mvu-quest-contract-panel ${显示风险 ? '' : 'mvu-quest-contract-panel--reward-only'}">
+          <div class="mvu-quest-contract-panel ${预计违约扣款 > 0 ? '' : 'mvu-quest-contract-panel--reward-only'}">
             <div class="mvu-quest-contract-side mvu-quest-contract-side--gain">
               <strong>履约报酬</strong>
               <div>${报酬行}</div>
             </div>
-            ${
-              显示风险
-                ? `<div class="mvu-quest-contract-side mvu-quest-contract-side--risk">
-                    <strong>违约代价</strong>
-                    <div>${风险行}</div>
-                  </div>`
-                : ''
-            }
+            ${风险侧栏}
           </div>
         `;
       };
@@ -37399,6 +37654,7 @@
             <div class="request-console-row quest-guided-row mvu-detail-form-row mvu-quest-form-grid" data-collection-panel="quest-record-create" data-collection-line="${escapeHtmlAttr(activeQuestTab)}">
               ${表单字段('任务名', '<input class="request-console-input" data-collection-input="record-name" value="" placeholder="调查失踪机甲" aria-label="任务名" />', 'mvu-quest-form-field--wide')}
               ${表单字段('状态', `<select class="request-console-input request-console-input--medium" data-collection-input="record-status" aria-label="状态">${下拉选项(任务状态选项, '进行中')}</select>`)}
+              ${表单字段('时限天数', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="record-deadlineDays" value="0" aria-label="时限天数" />')}
               ${表单字段('奖励币', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="record-rewardCoin" value="0" aria-label="奖励币" />')}
               ${表单字段('声望', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="record-rewardRep" value="0" aria-label="奖励声望" />')}
               ${表单字段('描述', '<input class="request-console-input" data-collection-input="record-desc" value="" placeholder="找到线索 / 护送到东门" aria-label="描述" />', 'mvu-quest-form-field--full')}
@@ -37419,6 +37675,7 @@
               ${表单字段('指定对象', '<input class="request-console-input request-console-input--medium" data-collection-input="board-target" value="无" aria-label="指定对象" />')}
               ${表单字段('难度', `<select class="request-console-input request-console-input--compact" data-collection-input="board-difficulty" aria-label="难度">${下拉选项(['低', '中', '高', '极高'], '中')}</select>`)}
               ${表单字段('资源', `<select class="request-console-input request-console-input--compact" data-collection-input="board-resource" aria-label="资源级别">${下拉选项(['无', '低', '中', '高', '稀有'], '无')}</select>`)}
+              ${表单字段('时限天数', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="board-deadlineDays" value="0" aria-label="时限天数" />')}
               ${表单字段('奖励币', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="board-rewardCoin" value="0" aria-label="奖励币" />')}
               ${表单字段('声望', '<input type="number" min="0" step="1" inputmode="numeric" class="request-console-input request-console-input--compact" data-collection-input="board-rewardRep" value="0" aria-label="奖励声望" />')}
               ${表单字段('描述', '<input class="request-console-input" data-collection-input="board-desc" value="" placeholder="取回材料 / 核实情报" aria-label="描述" />', 'mvu-quest-form-field--full')}
@@ -37463,7 +37720,6 @@
             ? (() => {
                 const 进度 = questProgress(focusQuest);
                 const 时限状态 = 读取任务时限状态(focusQuest);
-                const 是委托任务 = focusQuest['是否委托'] === true;
                 return `
               <div class="mvu-quest-detail-shell mvu-quest-detail-shell--${escapeHtmlAttr(questTheme)} ${时限状态.类名}">
                 <div class="mvu-quest-detail-header">
@@ -37483,6 +37739,12 @@
                   </div>
                 </div>
                 <div class="mvu-quest-meta-grid">
+                  ${(() => {
+                    const 任务交付需求 = 读取任务交付需求(focusQuest);
+                    return 任务交付需求
+                      ? renderQuestField('交付需求', htmlEscape(格式化交付需求文本_桥接(任务交付需求)), 'mvu-quest-delivery-row')
+                      : '';
+                  })()}
                   ${renderQuestField(
                     '任务线',
                     focusQuestPath.length
@@ -37493,12 +37755,11 @@
                         })
                       : htmlEscape(toText(focusQuest['任务线'], activeQuestTab)),
                   )}
-                  ${renderQuestField('委托性质', htmlEscape(是委托任务 ? '委托任务' : '个人任务'))}
                   ${renderQuestField(
-                    '最后更新时间tick',
+                    '最后更新',
                     focusQuestPath.length
                       ? makeInlineEditableValue(
-                          String(Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0)))),
+                          格式化任务日期时间(focusQuest['最后更新时间tick']),
                           {
                             path: [...focusQuestPath, '最后更新时间tick'],
                             kind: 'number',
@@ -37506,7 +37767,7 @@
                             editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数 tick' },
                           },
                         )
-                      : htmlEscape(String(Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0))))),
+                      : htmlEscape(格式化任务日期时间(focusQuest['最后更新时间tick'])),
                   )}
                   ${
                     时限状态.有时限
@@ -37514,7 +37775,7 @@
                       : ''
                   }
                 </div>
-                ${构建任务契约面板(focusQuest, 是委托任务 && 读取任务契约(focusQuest).有惩罚)}
+                ${构建任务契约面板(focusQuest)}
                 <div class="mvu-quest-detail-section">
                   <div class="mvu-quest-detail-section-title">任务说明</div>
                   <div class="mvu-quest-detail-text">${
@@ -37554,6 +37815,17 @@
                           rawValue: toText(focusBoard['发布者'], '系统'),
                         })
                       : htmlEscape(toText(focusBoard['发布者'], '系统')),
+                  )}
+                  ${renderQuestField(
+                    '生成时间',
+                    focusBoardPath.length
+                      ? makeInlineEditableValue(格式化任务日期时间(focusBoard['生成tick']), {
+                          path: [...focusBoardPath, '生成tick'],
+                          kind: 'number',
+                          rawValue: Math.max(0, Math.floor(toNumber(focusBoard['生成tick'], 0))),
+                          editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数 tick' },
+                        })
+                      : htmlEscape(格式化任务日期时间(focusBoard['生成tick'])),
                   )}
                   ${renderQuestField(
                     '面向',
@@ -37605,13 +37877,17 @@
                         })
                       : htmlEscape(toText(focusBoard['指定对象'], '无')),
                   )}
+                  ${(() => {
+                    const 交付需求 = 读取任务交付需求(focusBoard);
+                    return 交付需求 ? renderQuestField('交付需求', htmlEscape(格式化交付需求文本_桥接(交付需求)), 'mvu-quest-delivery-row') : '';
+                  })()}
                   ${
                     时限状态.有时限
                       ? renderQuestField('截止期限', htmlEscape(时限状态.文本), `mvu-quest-deadline-row ${时限状态.类名}`)
                       : ''
                   }
                 </div>
-                ${构建任务契约面板(focusBoard, 读取任务契约(focusBoard).有惩罚)}
+                ${构建任务契约面板(focusBoard)}
                 <div class="mvu-quest-detail-section">
                   <div class="mvu-quest-detail-section-title">${htmlEscape(focusBoardStatus === '待接取' ? '委托框架' : '委托说明')}</div>
                   <div class="mvu-quest-detail-text">${
@@ -37635,7 +37911,7 @@
               <div class="request-console-row mvu-detail-action-row mvu-quest-detail-actions mvu-quest-action-bar">
                 ${
                   focusQuest && isPlayerControlled && !['已完成', '已放弃', '失败', '已失败'].includes(focusQuestStatus)
-                    ? `${focusQuest['是否委托'] === true && focusQuestStatus !== '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="progress" data-quest-target="${escapeHtmlAttr(focusQuestName)}">执行委托</button>` : ''}${focusQuestStatus === '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="submit" data-quest-target="${escapeHtmlAttr(focusQuestName)}">提交任务</button>` : ''}<button type="button" class="relation-action-btn quest-action-btn mvu-quest-danger-action" data-quest-action="abandon" data-quest-target="${escapeHtmlAttr(focusQuestName)}">放弃任务</button>`
+                    ? `${!读取任务交付需求(focusQuest) && focusQuestStatus !== '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="progress" data-quest-target="${escapeHtmlAttr(focusQuestName)}">推进任务</button>` : ''}${读取任务交付需求(focusQuest) || focusQuestStatus === '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="submit" data-quest-target="${escapeHtmlAttr(focusQuestName)}">提交任务</button>` : ''}<button type="button" class="relation-action-btn quest-action-btn mvu-quest-danger-action" data-quest-action="abandon" data-quest-target="${escapeHtmlAttr(focusQuestName)}">放弃任务</button>`
                     : ''
                 }
                 <button type="button" class="tag-chip mvu-quest-danger-action" data-collection-action="delete-record" data-collection-char="${escapeHtmlAttr(activeCharKey)}" data-collection-key="${escapeHtmlAttr(focusQuestName)}">删除任务</button>
@@ -38946,113 +39222,90 @@
     };
   }
 
-  function buildQuestDispatchRequest(snapshot, actionType, options = {}) {
-    if (!snapshot || !snapshot.rootData) return null;
-    if (!isSnapshotPlayerControlled(snapshot)) return null;
-    const 角色键 = resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, ''));
+  function buildQuestDispatchRequest(快照, 动作类型, 选项 = {}) {
+    if (!快照 || !快照.rootData) return null;
+    if (!isSnapshotPlayerControlled(快照)) return null;
+    const 角色键 = resolveSnapshotCharKey(快照, toText(快照.activeName, ''));
     if (!角色键) return null;
-    const 任务名 = toText(options.questName, '').trim();
+    const 任务名 = toText(选项.questName, '').trim();
     if (!任务名 || 任务名 === '无') return null;
 
-    const 根数据 = snapshot.rootData || {};
-    const 角色表 = deepGet(根数据, 'char', {});
-    const 当前角色 = 角色表 && typeof 角色表 === 'object' ? 角色表[角色键] || {} : {};
+    const 根数据 = 快照.rootData || {};
+    const 当前角色 = deepGet(根数据, ['char', 角色键], {}) || {};
     const 角色名 = toText(
       当前角色 && (当前角色.name || deepGet(当前角色, 'base.name', '')),
-      toText(snapshot.activeName, 角色键),
+      toText(快照.activeName, 角色键),
     );
     const 当前地点 = toText(
-      deepGet(当前角色, '状态.位置', snapshot.currentLoc || '当前位置'),
-      snapshot.currentLoc || '当前位置',
+      deepGet(当前角色, '状态.位置', 快照.currentLoc || '当前位置'),
+      快照.currentLoc || '当前位置',
     )
       .replace(/^斗罗大陆-/, '')
       .replace(/^斗灵大陆-/, '');
-    const 委托原始 = deepGet(snapshot, ['rootData', 'world', '委托板', 任务名], null);
-    const 任务原始 = deepGet(snapshot, ['rootData', 'char', 角色键, '我的任务', 任务名], null);
+    const 委托原始 = deepGet(快照, ['rootData', 'world', '委托板', 任务名], null);
+    const 任务原始 = deepGet(快照, ['rootData', 'char', 角色键, '我的任务', 任务名], null);
     const 委托标题 = toText(委托原始 && 委托原始['标题'], 任务名);
     const 委托框架 = toText(委托原始 && 委托原始['框架描述'], '无');
     const 委托说明 = toText(委托原始 && 委托原始['描述'], 委托框架);
     const 委托状态 = toText(委托原始 && 委托原始['状态'], '待接取');
     const 任务状态 = toText(任务原始 && 任务原始['状态'], '进行中');
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(快照, 'rootData.world.时间.tick', 0), 0)));
     const 角色路径 = escapeJsonPointerValue(角色键);
     const 任务路径 = `/char/${角色路径}/我的任务/${escapeJsonPointerValue(任务名)}`;
     const 委托路径 = `/world/委托板/${escapeJsonPointerValue(任务名)}`;
     const 补丁列表 = [];
-    const 任务是否委托 = !!(委托原始 && typeof 委托原始 === 'object' && !Array.isArray(委托原始) && (委托原始['是否委托'] === true || toText(委托原始['类型'], '') === '委托任务'));
-    const 任务材料清单 = Array.isArray(委托原始?.['材料清单']) ? cloneJsonValue(委托原始['材料清单'], []) : [];
-    const 任务成品实价 = Math.max(0, Math.floor(toNumber(委托原始?.['成品实价'], 0)));
-    const 任务失败赔偿 = Math.max(0, Math.floor(toNumber(委托原始?.['失败赔偿'], 0)));
-    const 任务违约金 = Math.max(0, Math.floor(toNumber(委托原始?.['违约金'], 0)));
-    const 任务截止tick = Math.max(0, Math.floor(toNumber(委托原始?.['截止tick'], 0)));
-    const 任务副职业 = toText(委托原始?.['副职业'], '');
-    const 任务目标产物 = toText(委托原始?.['目标产物'], '');
+    const 终止状态 = ['已完成', '已放弃', '失败', '已失败'];
 
-    const 构建委托任务副职业请求 = 任务条目 => {
-      if (!任务条目 || 任务条目['是否委托'] !== true) return null;
-      const 副职业 = toText(任务条目['副职业'], 任务副职业);
-      const 模式 = 获取地图工坊委托模式(副职业);
-      const 目标产物 = toText(任务条目['目标产物'], 任务目标产物 || 任务名);
-      if (!模式 || !目标产物) return null;
-      return {
-        模式,
-        动作: normalizeProfessionActionLabel(模式),
-        目标: 目标产物,
-        材料: Array.isArray(任务条目['材料清单'])
-          ? 任务条目['材料清单'].map(材料 => toText(材料 && 材料['名称'], '')).filter(Boolean)
-          : [],
-        数量: 1,
-        阶级: parseDirectProfessionTier(`${目标产物} ${副职业}`, ''),
-        子类型: parseDirectProfessionSubtype(目标产物),
-        对象: '',
-        执行者类型: 'self',
-        目标地点: 当前地点,
-        状态: 'ready',
-        自动执行: true,
-        来源: 'quest_task_commission',
-        任务名,
-        是否委托: true,
-        副职业,
-        目标产物,
-        材料清单: Array.isArray(任务条目['材料清单']) ? cloneJsonValue(任务条目['材料清单'], []) : [],
-        成品实价: Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 0))),
-        奖励币: Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0))),
-        奖励声望: Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0))),
-        失败赔偿: Math.max(0, Math.floor(toNumber(任务条目['失败赔偿'], 0))),
-        违约金: Math.max(0, Math.floor(toNumber(任务条目['违约金'], 0))),
-        截止tick: Math.max(0, Math.floor(toNumber(任务条目['截止tick'], 0))),
+    const 读取截止tick = 来源 => {
+      const 值 = Math.max(0, Math.floor(toNumber(来源 && 来源['截止tick'], 0)));
+      return 值 > 0 ? 值 : 0;
+    };
+    const 读取交付需求 = (...来源列表) => {
+      for (const 来源 of 来源列表) {
+        const 需求 = 规范化交付需求_桥接(来源 && 来源['交付需求']);
+        if (需求) return 需求;
+      }
+      return null;
+    };
+    const 构建任务条目 = (来源 = {}, 覆盖 = {}) => {
+      const 源 = 来源 && typeof 来源 === 'object' && !Array.isArray(来源) ? 来源 : {};
+      const 交付需求 = 规范化交付需求_桥接(覆盖.交付需求) || 规范化交付需求_桥接(源['交付需求']) || 规范化交付需求_桥接(委托原始 && 委托原始['交付需求']);
+      const 截止tick = Math.max(读取截止tick(覆盖), 读取截止tick(源), 读取截止tick(委托原始));
+      const 条目 = {
+        任务线: toText(覆盖.任务线 ?? 源['任务线'], '支线'),
+        状态: toText(覆盖.状态 ?? 源['状态'], '进行中'),
+        当前进度: Math.max(0, Math.min(100, toNumber(覆盖.当前进度 ?? 源['当前进度'], 0))),
+        奖励币: Math.max(0, Math.floor(toNumber(覆盖.奖励币 ?? 源['奖励币'] ?? (委托原始 && 委托原始['奖励币']), 0))),
+        奖励声望: Math.max(0, Math.floor(toNumber(覆盖.奖励声望 ?? 源['奖励声望'] ?? (委托原始 && 委托原始['奖励声望']), 0))),
+        描述: toText(覆盖.描述 ?? 源['描述'], '无'),
+        最后更新时间tick: Math.max(0, Math.floor(toNumber(覆盖.最后更新时间tick ?? 源['最后更新时间tick'], 当前tick))),
       };
+      if (交付需求) 条目.交付需求 = 交付需求;
+      if (截止tick > 0) 条目.截止tick = 截止tick;
+      return 条目;
     };
-
-    const 补全任务条目 = 来源 => {
-      if (!来源 || typeof 来源 !== 'object' || Array.isArray(来源)) return null;
-      const 任务条目 = cloneJsonValue(来源, {});
-      任务条目['当前进度'] = Math.max(0, Math.min(100, toNumber(任务条目['当前进度'], 0)));
-      任务条目['奖励币'] = Math.max(0, toNumber(任务条目['奖励币'], 0));
-      任务条目['奖励声望'] = Math.max(0, toNumber(任务条目['奖励声望'], 0));
-      任务条目['最后更新时间tick'] = Math.max(0, toNumber(任务条目['最后更新时间tick'], 当前tick));
-      任务条目['是否委托'] = 任务是否委托 || 任务条目['是否委托'] === true;
-      任务条目['副职业'] = toText(任务条目['副职业'], 任务副职业);
-      任务条目['目标产物'] = toText(任务条目['目标产物'], 任务目标产物);
-      任务条目['材料清单'] = Array.isArray(任务条目['材料清单']) ? cloneJsonValue(任务条目['材料清单'], []) : cloneJsonValue(任务材料清单, []);
-      任务条目['成品实价'] = Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 任务成品实价)));
-      任务条目['失败赔偿'] = Math.max(0, Math.floor(toNumber(任务条目['失败赔偿'], 任务失败赔偿)));
-      任务条目['违约金'] = Math.max(0, Math.floor(toNumber(任务条目['违约金'], 任务违约金)));
-      任务条目['截止tick'] = Math.max(0, Math.floor(toNumber(任务条目['截止tick'], 任务截止tick)));
-      return 任务条目;
-    };
-
-    const 补全委托条目 = 来源 => {
-      if (!来源 || typeof 来源 !== 'object' || Array.isArray(来源)) return null;
-      const 条目 = cloneJsonValue(来源, {});
-      条目['是否委托'] = 条目['是否委托'] === true || 任务是否委托;
-      条目['副职业'] = toText(条目['副职业'], 任务副职业);
-      条目['目标产物'] = toText(条目['目标产物'], 任务目标产物 || 任务名);
-      条目['材料清单'] = Array.isArray(条目['材料清单']) ? cloneJsonValue(条目['材料清单'], []) : cloneJsonValue(任务材料清单, []);
-      条目['成品实价'] = Math.max(0, Math.floor(toNumber(条目['成品实价'], 任务成品实价)));
-      条目['失败赔偿'] = Math.max(0, Math.floor(toNumber(条目['失败赔偿'], 任务失败赔偿)));
-      条目['违约金'] = Math.max(0, Math.floor(toNumber(条目['违约金'], 任务违约金)));
-      条目['截止tick'] = Math.max(0, Math.floor(toNumber(条目['截止tick'], 任务截止tick)));
+    const 构建委托条目 = (来源 = {}, 覆盖 = {}) => {
+      const 源 = 来源 && typeof 来源 === 'object' && !Array.isArray(来源) ? 来源 : {};
+      if (!Object.keys(源).length) return null;
+      const 交付需求 = 规范化交付需求_桥接(覆盖.交付需求) || 规范化交付需求_桥接(源['交付需求']);
+      const 截止tick = Math.max(读取截止tick(覆盖), 读取截止tick(源));
+      const 条目 = {
+        标题: toText(覆盖.标题 ?? 源['标题'], 任务名),
+        描述: toText(覆盖.描述 ?? 源['描述'], toText(源['框架描述'], '无')),
+        框架描述: toText(覆盖.框架描述 ?? 源['框架描述'], toText(源['描述'], '无')),
+        发布者: toText(覆盖.发布者 ?? 源['发布者'], '系统'),
+        面向: toText(覆盖.面向 ?? 源['面向'], '公开'),
+        指定对象: toText(覆盖.指定对象 ?? 源['指定对象'], '无'),
+        状态: toText(覆盖.状态 ?? 源['状态'], '待接取'),
+        难度: toText(覆盖.难度 ?? 源['难度'], '中'),
+        资源级别: toText(覆盖.资源级别 ?? 源['资源级别'], '无'),
+        奖励币: Math.max(0, Math.floor(toNumber(覆盖.奖励币 ?? 源['奖励币'], 0))),
+        奖励声望: Math.max(0, Math.floor(toNumber(覆盖.奖励声望 ?? 源['奖励声望'], 0))),
+        承接者: toText(覆盖.承接者 ?? 源['承接者'], '无'),
+        生成tick: Math.max(0, Math.floor(toNumber(覆盖.生成tick ?? 源['生成tick'], 当前tick))),
+      };
+      if (交付需求) 条目.交付需求 = 交付需求;
+      if (截止tick > 0) 条目.截止tick = 截止tick;
       return 条目;
     };
 
@@ -39060,32 +39313,22 @@
     let 播报文本 = '';
     let 结果摘要 = '';
 
-    if (actionType === 'accept') {
-      if (!委托原始 || 委托状态 !== '待接取') return null;
+    if (动作类型 === 'accept') {
+      if (!委托原始 || typeof 委托原始 !== 'object' || Array.isArray(委托原始) || 委托状态 !== '待接取') return null;
       const 任务说明 = 委托说明 !== '无' ? 委托说明 : 委托框架;
-      const 奖励币 = Math.max(0, Math.floor(toNumber(委托原始['奖励币'], 0)));
-      const 奖励声望 = Math.max(0, Math.floor(toNumber(委托原始['奖励声望'], 0)));
-      const 任务条目 = {
+      const 交付需求 = 读取交付需求(委托原始);
+      const 任务条目 = 构建任务条目({}, {
         任务线: '支线',
         状态: '进行中',
         当前进度: 0,
-        奖励币,
-        奖励声望,
+        奖励币: Math.max(0, Math.floor(toNumber(委托原始['奖励币'], 0))),
+        奖励声望: Math.max(0, Math.floor(toNumber(委托原始['奖励声望'], 0))),
         描述: 任务说明,
         最后更新时间tick: 当前tick,
-        是否委托: 任务是否委托,
-        副职业: 任务副职业,
-        目标产物: 任务目标产物,
-        材料清单: cloneJsonValue(任务材料清单, []),
-        成品实价: 任务成品实价,
-        失败赔偿: 任务失败赔偿,
-        违约金: 任务违约金,
-        截止tick: 任务截止tick,
-      };
-      const 委托条目 = 补全委托条目(委托原始);
-      委托条目['状态'] = '进行中';
-      委托条目['承接者'] = 角色键;
-      if (任务是否委托) 委托条目['是否委托'] = true;
+        交付需求,
+        截止tick: 读取截止tick(委托原始),
+      });
+      const 委托条目 = 构建委托条目(委托原始, { 状态: '进行中', 承接者: 角色键 });
       补丁列表.push(
         { op: 'replace', path: 任务路径, value: 任务条目 },
         { op: 'replace', path: 委托路径, value: 委托条目 },
@@ -39093,114 +39336,98 @@
       玩家输入 = `我想接取委托板上的【${委托标题}】。`;
       播报文本 = `[任务接取] ${角色名} 接取了悬赏：【${任务名}】。目标：${任务说明}。`;
       结果摘要 = `任务已写入我的任务，委托板状态改为进行中。`;
-    } else if (actionType === 'progress') {
-      if (!任务原始 || ['已完成', '已放弃', '失败', '已失败'].includes(任务状态)) return null;
-      const 任务条目 = 补全任务条目(任务原始);
-      if (!任务条目) return null;
-      const 副职业请求 = 构建委托任务副职业请求(任务条目);
-      if (副职业请求) {
-        return {
-          playerInput: `我想推进委托任务【${任务名}】。`,
-          systemPrompt: '',
-          requestKind: 'profession_task_commission',
-          patchOps: [],
-          professionRequest: 副职业请求,
-          openProfession: true,
-        };
-      }
-      const 进度增量 = Math.max(0, Math.floor(toNumber(options.progressAdd, 1)));
-      任务条目['当前进度'] = Math.max(0, Math.min(100, toNumber(任务条目['当前进度'], 0) + 进度增量));
-      任务条目['状态'] = '进行中';
-      任务条目['最后更新时间tick'] = 当前tick;
-      const 超时了 = 任务条目['是否委托'] && 任务条目['截止tick'] > 0 && 当前tick > 任务条目['截止tick'];
-      播报文本 = `[任务进度] 【${任务名}】进度更新：${任务条目['当前进度']}%。`;
-      const 委托条目 = 补全委托条目(委托原始);
-      if (任务条目['当前进度'] >= 100) {
-        任务条目['状态'] = '可提交';
-        播报文本 += ` 已达成目标，可以提交。`;
-      } else if (超时了) {
-        任务条目['状态'] = '已失败';
-        播报文本 += ` 已超过截止时间。`;
-        if (委托条目) 委托条目['状态'] = '已失败';
-      } else if (委托条目) {
-        委托条目['状态'] = '进行中';
-      }
+    } else if (动作类型 === 'progress') {
+      if (!任务原始 || typeof 任务原始 !== 'object' || Array.isArray(任务原始) || 终止状态.includes(任务状态)) return null;
+      const 交付需求 = 读取交付需求(任务原始, 委托原始);
+      if (交付需求) return null;
+      const 截止tick = Math.max(读取截止tick(任务原始), 读取截止tick(委托原始));
+      const 进度增量 = Math.max(0, Math.floor(toNumber(选项.progressAdd, 1)));
+      let 当前进度 = Math.max(0, Math.min(100, toNumber(任务原始['当前进度'], 0) + 进度增量));
+      let 下一状态 = '进行中';
+      if (截止tick > 0 && 当前tick > 截止tick) 下一状态 = '已失败';
+      else if (当前进度 >= 100) 下一状态 = '可提交';
+      const 任务条目 = 构建任务条目(任务原始, {
+        状态: 下一状态,
+        当前进度,
+        最后更新时间tick: 当前tick,
+      });
+      const 委托条目 = 委托原始
+        ? 构建委托条目(委托原始, {
+            状态: 下一状态 === '已失败' ? '已失败' : '进行中',
+            承接者: 角色键,
+          })
+        : null;
       补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
       玩家输入 = `我想推进任务【${任务名}】的进度。`;
+      播报文本 = `[任务进度] 【${任务名}】进度更新：${当前进度}%。`;
+      if (下一状态 === '可提交') 播报文本 += ` 已达成目标，可以提交。`;
+      if (下一状态 === '已失败') 播报文本 += ` 已超过截止时间。`;
       结果摘要 = `任务进度已结算到我的任务${委托条目 ? '，委托板状态已同步' : ''}。`;
-    } else if (actionType === 'submit') {
-      if (!任务原始 || ['已完成', '已放弃', '失败', '已失败'].includes(任务状态)) return null;
-      const 任务条目 = 补全任务条目(任务原始);
-      if (!任务条目) return null;
+    } else if (动作类型 === 'submit') {
+      if (!任务原始 || typeof 任务原始 !== 'object' || Array.isArray(任务原始) || 终止状态.includes(任务状态)) return null;
+      const 交付需求 = 读取交付需求(任务原始, 委托原始);
+      const 截止tick = Math.max(读取截止tick(任务原始), 读取截止tick(委托原始));
       let 联邦币 = toNumber(deepGet(当前角色, '财富.联邦币', 0), 0);
       let 声望 = Math.max(0, toNumber(deepGet(当前角色, '社交.声望', 0), 0));
-      const 委托条目 = 补全委托条目(委托原始);
-      const 任务是否委托 = !!任务条目['是否委托'];
-      const 已过期 = 任务是否委托 && 任务条目['截止tick'] > 0 && 当前tick > 任务条目['截止tick'];
-      if (任务是否委托) {
-        if (已过期) {
-          任务条目['状态'] = '已失败';
-          const 违约扣款 = Math.max(0, Math.floor(toNumber(任务条目['违约金'], 任务条目['成品实价'] * 0.3)));
+      const 原联邦币 = 联邦币;
+      const 原声望 = 声望;
+      let 任务条目 = 构建任务条目(任务原始, { 最后更新时间tick: 当前tick });
+      let 委托条目 = 委托原始 ? 构建委托条目(委托原始, { 承接者: 角色键 }) : null;
+
+      if (交付需求) {
+        if (截止tick > 0 && 当前tick > 截止tick) {
+          const 候选 = 收集交付候选列表_桥接(快照, 角色键, 交付需求)[0] || null;
+          const 违约扣款 = Math.max(0, Math.floor(估算交付需求总价_桥接(快照, 交付需求, 候选) * 0.3));
           联邦币 -= 违约扣款;
-          任务条目['最后更新时间tick'] = 当前tick;
-          if (委托条目) 委托条目['状态'] = '已失败';
-          播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除违约金 ${违约扣款} 联邦币。`;
-        } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
-          任务条目['状态'] = '已完成';
-          const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
-          const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
-          联邦币 += 实得奖励币;
-          声望 += 实得奖励声望;
-          任务条目['最后更新时间tick'] = 当前tick;
-          if (委托条目) {
-            委托条目['状态'] = '已完成';
-            委托条目['承接者'] = 角色键;
-          }
-          播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
+          任务条目 = 构建任务条目(任务原始, { 状态: '已失败', 最后更新时间tick: 当前tick });
+          if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已失败', 承接者: 角色键 });
+          播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除 ${违约扣款} 联邦币。`;
         } else {
-          任务条目['状态'] = '进行中';
-          任务条目['最后更新时间tick'] = 当前tick;
-          if (委托条目) 委托条目['状态'] = '进行中';
-          播报文本 = `[任务未完成] 【${任务名}】进度未达标 (${任务条目['当前进度']}%)，暂不能提交。`;
+          const 交付扣减 = 构建交付需求扣减补丁_桥接(快照, 角色键, 交付需求);
+          if (交付扣减.ok) {
+            const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
+            const 实得奖励声望 = Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0)));
+            联邦币 += 实得奖励币;
+            声望 += 实得奖励声望;
+            补丁列表.push(...交付扣减.patchOps);
+            任务条目 = 构建任务条目(任务原始, { 状态: '已完成', 当前进度: 100, 最后更新时间tick: 当前tick });
+            if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已完成', 承接者: 角色键 });
+            播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】。交付：${交付扣减.消耗文本 || 格式化交付需求文本_桥接(交付需求)}。获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
+          } else {
+            任务条目 = 构建任务条目(任务原始, { 状态: '进行中', 最后更新时间tick: 当前tick });
+            if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '进行中', 承接者: 角色键 });
+            播报文本 = `[任务未完成] 【${任务名}】${交付扣减.reason}`;
+          }
         }
+      } else if (截止tick > 0 && 当前tick > 截止tick && 任务条目['状态'] !== '可提交') {
+        任务条目 = 构建任务条目(任务原始, { 状态: '已失败', 最后更新时间tick: 当前tick });
+        if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已失败', 承接者: 角色键 });
+        播报文本 = `[任务失败] 【${任务名}】已超过截止时间。`;
       } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
-        任务条目['状态'] = '已完成';
-        const 实得奖励币 = Math.max(0, toNumber(任务条目['奖励币'], 0));
-        const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
+        const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
+        const 实得奖励声望 = Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0)));
         联邦币 += 实得奖励币;
         声望 += 实得奖励声望;
-        任务条目['最后更新时间tick'] = 当前tick;
-        if (委托条目) {
-          委托条目['状态'] = '已完成';
-          委托条目['承接者'] = 角色键;
-        }
+        任务条目 = 构建任务条目(任务原始, { 状态: '已完成', 当前进度: 100, 最后更新时间tick: 当前tick });
+        if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已完成', 承接者: 角色键 });
         播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
       } else {
-        任务条目['状态'] = '进行中';
-        任务条目['最后更新时间tick'] = 当前tick;
-        if (委托条目) 委托条目['状态'] = '进行中';
+        任务条目 = 构建任务条目(任务原始, { 状态: '进行中', 最后更新时间tick: 当前tick });
+        if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '进行中', 承接者: 角色键 });
         播报文本 = `[任务未完成] 【${任务名}】进度未达标 (${任务条目['当前进度']}%)，暂不能提交。`;
       }
-      补丁列表.push(
-        { op: 'replace', path: 任务路径, value: 任务条目 },
-        { op: 'replace', path: `/char/${角色路径}/财富/联邦币`, value: 联邦币 },
-        { op: 'replace', path: `/char/${角色路径}/社交/声望`, value: 声望 },
-      );
+
+      补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
+      if (联邦币 !== 原联邦币) 补丁列表.push({ op: 'replace', path: `/char/${角色路径}/财富/联邦币`, value: 联邦币 });
+      if (声望 !== 原声望) 补丁列表.push({ op: 'replace', path: `/char/${角色路径}/社交/声望`, value: 声望 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
       玩家输入 = `我想提交当前任务【${任务名}】。`;
       结果摘要 = `任务提交结果已结算到我的任务${委托条目 ? '，委托板状态已同步' : ''}。`;
-    } else if (actionType === 'abandon') {
-      if (!任务原始 || ['已完成', '已放弃', '失败', '已失败'].includes(任务状态)) return null;
-      const 任务条目 = 补全任务条目(任务原始);
-      if (!任务条目) return null;
-      任务条目['状态'] = '已放弃';
-      任务条目['最后更新时间tick'] = 当前tick;
-      const 委托条目 = 补全委托条目(委托原始);
-      if (委托条目) {
-        委托条目['状态'] = '待接取';
-        委托条目['承接者'] = '无';
-      }
+    } else if (动作类型 === 'abandon') {
+      if (!任务原始 || typeof 任务原始 !== 'object' || Array.isArray(任务原始) || 终止状态.includes(任务状态)) return null;
+      const 任务条目 = 构建任务条目(任务原始, { 状态: '已放弃', 最后更新时间tick: 当前tick });
+      const 委托条目 = 委托原始 ? 构建委托条目(委托原始, { 状态: '待接取', 承接者: '无' }) : null;
       补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
       玩家输入 = `我想放弃当前任务【${任务名}】。`;
@@ -41982,13 +42209,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       状态: toText(req.状态, req.自动执行 ? 'ready' : 'pending'),
       自动执行: req.自动执行 === true,
       来源: toText(req.来源, 'module_intent_router'),
-      任务名: toText(req.任务名 || req.委托名, ''),
-      是否委托: req.是否委托 === true,
-      材料清单: Array.isArray(req.材料清单) ? cloneJsonValue(req.材料清单, []) : [],
-      成品实价: Math.max(0, toNumber(req.成品实价, 0)),
-      失败赔偿: Math.max(0, toNumber(req.失败赔偿, 0)),
-      违约金: Math.max(0, toNumber(req.违约金, 0)),
-      截止tick: Math.max(0, toNumber(req.截止tick, 0)),
     };
   }
 
@@ -42024,13 +42244,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       状态: /直接|立即|确认|开始|自动|执行/.test(raw) ? 'ready' : 'pending',
       自动执行: /直接|立即|确认|开始|自动|执行/.test(raw),
       来源: 'direct_input_guard',
-      任务名: '',
-      是否委托: false,
-      材料清单: [],
-      成品实价: 0,
-      失败赔偿: 0,
-      违约金: 0,
-      截止tick: 0,
     };
   }
 
@@ -45536,6 +45749,7 @@ ${toText(combatData.战斗意图, '点到为止')}
               ? '主线'
               : '支线';
           const 任务状态 = readCollectionInput('record-status') || '进行中';
+          const 任务时限天数 = Math.max(0, Math.floor(readCollectionNumber('record-deadlineDays', 0)));
           const rewardCoin = Math.max(0, Math.floor(readCollectionNumber('record-rewardCoin', 0)));
           const rewardRep = Math.max(0, Math.floor(readCollectionNumber('record-rewardRep', 0)));
           const recordDesc = readCollectionInput('record-desc') || '未知';
@@ -45550,15 +45764,18 @@ ${toText(combatData.战斗意图, '点到为止')}
               records = deepGet(statData, recordPath, null);
             }
             if (records[recordName] !== undefined) throw new Error('同名任务已存在。');
-            records[recordName] = {
+            const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+            const 任务数据 = {
               任务线: recordLine,
               状态: 任务状态,
               当前进度: 0,
               奖励币: rewardCoin,
               奖励声望: rewardRep,
               描述: recordDesc,
-              最后更新时间tick: Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0))),
+              最后更新时间tick: 当前tick,
             };
+            if (任务时限天数 > 0) 任务数据.截止tick = 当前tick + 任务时限天数 * 144;
+            records[recordName] = 任务数据;
           });
           modalFocusState[recordLine === '主线' ? '任务界面::quest-focus-main' : '任务界面::quest-focus-side'] =
             recordName;
@@ -45587,6 +45804,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           const 指定对象 = readCollectionInput('board-target') || '无';
           const boardDifficulty = readCollectionInput('board-difficulty') || '中';
           const boardResource = readCollectionInput('board-resource') || '无';
+          const 委托时限天数 = Math.max(0, Math.floor(readCollectionNumber('board-deadlineDays', 0)));
           const boardRewardCoin = Math.max(0, Math.floor(readCollectionNumber('board-rewardCoin', 0)));
           const boardRewardRep = Math.max(0, Math.floor(readCollectionNumber('board-rewardRep', 0)));
           if (!boardName) throw new Error('请输入委托名。');
@@ -45601,6 +45819,7 @@ ${toText(combatData.战斗意图, '点到为止')}
             deepGet(当前快照, 'activeChar.状态.位置', 当前快照.currentLoc),
             当前快照.currentLoc || '当前位置',
           );
+          const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(当前快照, 'rootData.world.时间.tick', 0), 0)));
           const 委托数据 = {
             标题: boardName,
             状态: '待接取',
@@ -45614,8 +45833,13 @@ ${toText(combatData.战斗意图, '点到为止')}
             奖励声望: boardRewardRep,
             框架描述: boardDesc,
             描述: boardDesc,
-            生成tick: Math.max(0, Math.floor(toNumber(deepGet(当前快照, 'rootData.world.时间.tick', 0), 0))),
+            生成tick: 当前tick,
           };
+          if (委托时限天数 > 0) 委托数据.截止tick = 当前tick + 委托时限天数 * 144;
+          const 委托截止文本 =
+            委托数据.截止tick > 0
+              ? 格式化任务日期时间(委托数据.截止tick)
+              : '不限';
           const 委托补丁 = [
             { op: 'replace', path: `/world/委托板/${escapeJsonPointerValue(boardName)}`, value: 委托数据 },
             {
@@ -45635,6 +45859,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 目标：${boardDesc}
 难度：${boardDifficulty}
 资源级别：${boardResource}
+截止：${委托截止文本}
 奖励：${boardRewardCoin} 联邦币 / ${boardRewardRep} 声望
 
 委托已经写入委托板。正文需要自然反馈发布结果、周围反应与后续可接取空间，不要重复输出这批变量更新。`,

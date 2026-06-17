@@ -137,10 +137,7 @@
   宿主窗口.__LWCS_注入数据库剧情推进预设__ = async function 注入数据库剧情推进预设(选项 = {}) {
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
     const 强制切换 = 选项 && 选项.强制切换 === true;
-    const 开局模式 = String(选项 && 选项.开局模式 ? 选项.开局模式 : '原创角色').trim() === '原著角色' ? '原著角色' : '原创角色';
-    const 预设文件名 = 开局模式 === '原著角色'
-      ? '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_非原创用.json'
-      : '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset_原创用.json';
+    const 预设文件名 = '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset.json';
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
@@ -155,14 +152,14 @@
     }
 
     if (当前预设名 && 当前预设名 !== 预设名 && !强制切换) {
-      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}，开局模式=${开局模式}`);
+      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}`);
       return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
     }
 
     const 已绑定 = 数据库接口.injectPlotPresetToCurrentChat(预设名) === true;
     if (!已绑定) throw new Error(`LWCS 剧情推进预设绑定失败: ${预设名}`);
-    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}，开局模式=${开局模式}`);
-    return { success: true, skipped: false, presetName: 预设名, startupMode: 开局模式 };
+    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}`);
+    return { success: true, skipped: false, presetName: 预设名 };
   };
   try {
     if (window !== 宿主窗口) window.__LWCS_注入数据库剧情推进预设__ = 宿主窗口.__LWCS_注入数据库剧情推进预设__;

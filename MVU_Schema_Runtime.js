@@ -3601,12 +3601,15 @@ function 规范化Schema根转换_V1(data = {}) {
         : {};
     delete data.world.时间._临时角色结算模式;
     if (是否新档初始化 && currentTick > 0 && !Object.keys(临时角色结算模式表).length) {
+      /*
+      魂师津贴系统暂时隐藏，保留备用。
       const 首发津贴条目 = 发放魂师津贴_ACU();
       if (首发津贴条目.length) {
         appendSystemReasonBatchText('[魂师津贴首发]', [
           `${formatTickToCalendar(currentTick)} ${首发津贴条目.slice(0, 3).join('；')}${首发津贴条目.length > 3 ? ` 等${首发津贴条目.length}人` : ''}`,
         ]);
       }
+      */
       lastTick = currentTick;
       data.world.时间._上次结算tick = currentTick;
     }
@@ -3644,6 +3647,14 @@ function 规范化Schema根转换_V1(data = {}) {
       const QUEST_BOARD_PENDING_LIMIT = 8;
       const QUEST_BOARD_PENDING_STALE_TICKS = 4032;
       const QUEST_BOARD_ARCHIVE_STALE_TICKS = 2016;
+      const 委托板每日tick数 = 144;
+      const 委托板时限天数范围 = Object.freeze({
+        D: [2, 4],
+        C: [3, 6],
+        B: [5, 9],
+        A: [7, 14],
+        S: [10, 21],
+      });
 
       const QUEST_BOARD_GENERAL_DESCRIPTORS = Object.freeze([
         {
@@ -3940,6 +3951,51 @@ function 规范化Schema根转换_V1(data = {}) {
         return questBoardRandomInt(min, max);
       }
 
+      function 构建委托板截止tick(tier = 'D', descriptor = {}, currentTickValue = 0) {
+        const 范围 = 委托板时限天数范围[tier] || 委托板时限天数范围.D;
+        let 最短天数 = Number(范围[0] || 2);
+        let 最长天数 = Number(范围[1] || 最短天数);
+        if (descriptor.id === 'daily') {
+          最短天数 = 1;
+          最长天数 = Math.min(3, 最长天数);
+        } else if (descriptor.id === 'escort') {
+          最长天数 += 2;
+        } else if (descriptor.id === 'battle') {
+          最长天数 += 1;
+        } else if (descriptor.class === 'profession') {
+          最长天数 += 2;
+        }
+        const 时限天数 = questBoardRandomInt(最短天数, Math.max(最短天数, 最长天数));
+        return Math.max(0, Math.floor(Number(currentTickValue || 0) + 时限天数 * 委托板每日tick数));
+      }
+
+      function 推断委托板交付阶位(tier = 'D', title = '') {
+        const 文本 = String(title || '');
+        if (/天锻/.test(文本)) return 5;
+        if (/魂锻/.test(文本)) return 4;
+        if (/灵锻/.test(文本)) return 3;
+        if (/千锻/.test(文本)) return 2;
+        if (/百锻/.test(文本)) return 1;
+        return { D: 0, C: 1, B: 2, A: 3, S: 4 }[tier] ?? 0;
+      }
+
+      function 构建委托板交付需求(tier = 'D', descriptor = {}, title = '') {
+        if (descriptor.id !== 'gathering') return null;
+        const 文本 = `${String(title || '')} ${String(QUEST_BOARD_TIER_SETTINGS[tier]?.resourceLabel || '')}`;
+        if (/药|草|灵物/.test(文本)) {
+          const 名称 = { D: '常规药草', C: '高级药材', B: '稀有药材', A: '高危灵草', S: '极品灵物' }[tier] || '常规药草';
+          return { 类型: '物品', 名称, 数量: 1, 分类: '天然灵物' };
+        }
+        const 阶位下限 = 推断委托板交付阶位(tier, title);
+        const 名称 =
+          { 0: '基础矿料', 1: '百锻金属块', 2: '千锻金属块', 3: '灵锻金属块', 4: '魂锻金属块', 5: '天锻金属块' }[
+            阶位下限
+          ] || '基础矿料';
+        const 需求 = { 类型: '物品', 名称, 数量: 1, 分类: '锻造金属' };
+        if (阶位下限 > 0) 需求.阶位下限 = 阶位下限;
+        return 需求;
+      }
+
       function buildQuestBoardTitle(descriptor = {}, tier = 'D') {
         const titles = descriptor?.titles?.[tier] ||
           descriptor?.titles?.A ||
@@ -4082,6 +4138,8 @@ function 规范化Schema根转换_V1(data = {}) {
         );
         const reward = buildQuestBoardReward(tier, powerFactor);
         const title = buildQuestBoardTitle(descriptor, tier);
+        const 截止tick = 构建委托板截止tick(tier, descriptor, currentTickValue);
+        const 交付需求 = 构建委托板交付需求(tier, descriptor, title);
         const textPackage = buildQuestBoardTextPackage(descriptor, tier, {
           regionLabel,
           publisher,
@@ -4100,6 +4158,8 @@ function 规范化Schema根转换_V1(data = {}) {
           rewardRep: reward.rewardRep,
           publicDesc: textPackage.publicDesc,
           hiddenDesc: textPackage.hiddenDesc,
+          截止tick,
+          交付需求,
         };
       }
 
@@ -4167,6 +4227,8 @@ function 规范化Schema根转换_V1(data = {}) {
           承接者: '无',
           生成tick: Number(currentTickValue || 0),
         };
+        if (Number(frame.截止tick || 0) > 0) board[questId].截止tick = Number(frame.截止tick || 0);
+        if (frame.交付需求) board[questId].交付需求 = cloneJsonValue(frame.交付需求, {});
 
         if (!dataRef.sys?.系统播报 || dataRef.sys.系统播报 === '初始化') {
           追加系统播报文本(
@@ -4779,6 +4841,8 @@ function 规范化Schema根转换_V1(data = {}) {
 
     if (delta > 0) {
       let daysPassed = Math.floor(currentTick / 144) - Math.floor(lastTick / 144);
+      /*
+      魂师津贴系统暂时隐藏，保留备用。
       const stipendPayoutTicks = getMonthlyStipendTicksCrossed_ACU(lastTick, currentTick);
       const stipendReasonEntries = [];
       stipendPayoutTicks.forEach(payoutTick => {
@@ -4788,6 +4852,7 @@ function 规范化Schema根转换_V1(data = {}) {
         }
       });
       appendSystemReasonBatchText('[魂师津贴发放]', stipendReasonEntries, { limit: 2 });
+      */
 
       _(data.char).forEach((c, charName) => {
         const trainedBonus = ensureNumericStatBonusMap(c.属性, '训练加成');
