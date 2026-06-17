@@ -144,9 +144,9 @@ const ProfessionStyles = `
 
   .prof-module-scope .prof-workshop-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
+    grid-template-columns: minmax(0, 1.56fr) minmax(300px, 0.92fr);
     gap: 12px;
-    align-items: start;
+    align-items: stretch;
   }
 
   .prof-module-scope .prof-workshop-left,
@@ -158,7 +158,9 @@ const ProfessionStyles = `
     position: sticky;
     top: 8px;
     display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
     gap: 9px;
+    align-self: start;
   }
 
   .prof-module-scope .section-card {
@@ -172,7 +174,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .section-card--process {
     display: grid;
-    gap: 9px;
+    gap: 10px;
     box-shadow:
       inset 0 0 0 1px rgba(141, 225, 239, 0.055),
       inset 0 18px 36px rgba(0, 0, 0, 0.12);
@@ -180,7 +182,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .section-card--preview {
     display: grid;
-    gap: 9px;
+    gap: 10px;
     border: 1px solid rgba(141, 225, 239, 0.12);
     background:
       radial-gradient(circle at 50% 0%, rgba(226, 200, 102, 0.07), transparent 42%),
@@ -235,11 +237,18 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .prof-command-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 9px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
     min-width: 0;
+  }
+
+  .prof-module-scope .prof-config-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.2fr) repeat(3, minmax(96px, 0.72fr));
+    gap: 8px;
+    min-width: 0;
+    align-items: end;
   }
 
   .prof-module-scope .form-group {
@@ -259,28 +268,17 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .param-token {
-    flex: 1 1 124px;
-  }
-
-  .prof-module-scope .param-token--small {
-    flex: 0 1 104px;
+    min-width: 0;
   }
 
   .prof-module-scope .param-token--target,
   .prof-module-scope .param-token--materials {
-    flex: 1 1 100%;
+    min-width: 0;
   }
 
   .prof-module-scope .prof-input-shell {
     display: grid;
     gap: 6px;
-  }
-
-  .prof-module-scope .prof-blueprint-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(112px, 0.28fr);
-    gap: 8px;
-    align-items: stretch;
   }
 
   .prof-module-scope .tech-select, .prof-module-scope .tech-input {
@@ -311,9 +309,11 @@ const ProfessionStyles = `
 
   .prof-module-scope .prof-blueprint-node {
     position: relative;
-    min-height: 52px;
+    min-height: 38px;
     display: grid;
-    place-items: center;
+    grid-template-columns: 18px minmax(0, 1fr);
+    place-items: center start;
+    gap: 8px;
     overflow: hidden;
     border-radius: 7px;
     border: 1px dashed rgba(141, 225, 239, 0.16);
@@ -325,14 +325,15 @@ const ProfessionStyles = `
     color: rgba(135, 174, 183, 0.72);
     font-size: 0.9em;
     letter-spacing: 0;
-    text-align: center;
+    text-align: left;
+    padding: 7px 10px;
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24);
   }
 
   .prof-module-scope .prof-blueprint-node::before {
     content: '';
-    width: 18px;
-    height: 28px;
+    width: 13px;
+    height: 18px;
     border: 1px solid currentColor;
     clip-path: polygon(50% 0, 100% 32%, 78% 100%, 22% 100%, 0 32%);
     opacity: 0.5;
@@ -340,10 +341,9 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .prof-blueprint-node span {
-    position: absolute;
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
+    position: static;
+    min-width: 0;
+    width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -364,7 +364,7 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .metal-list-container {
-    max-height: 188px;
+    max-height: 208px;
     overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -510,6 +510,22 @@ const ProfessionStyles = `
     line-height: 1.35;
   }
 
+  .prof-module-scope .prof-workshop-tips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    min-width: 0;
+    padding-top: 2px;
+  }
+
+  .prof-module-scope .prof-workshop-tip-title {
+    grid-column: 1 / -1;
+    color: rgba(191, 221, 228, 0.72);
+    font-size: 0.82em;
+    font-weight: 760;
+    letter-spacing: 0;
+  }
+
   .prof-module-scope .prof-info-alert::before {
     content: 'i';
     display: grid;
@@ -526,8 +542,8 @@ const ProfessionStyles = `
 
   .prof-module-scope .info-panel {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
     background: transparent;
     border: 0;
     border-radius: 0;
@@ -537,17 +553,50 @@ const ProfessionStyles = `
     line-height: 1.3;
   }
 
+  .prof-module-scope .prof-preview-summary,
+  .prof-module-scope .prof-preview-hero,
+  .prof-module-scope .prof-resource-compare,
+  .prof-module-scope .prof-preview-detail-list {
+    display: grid;
+    min-width: 0;
+  }
+
+  .prof-module-scope .prof-preview-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(141, 225, 239, 0.1);
+  }
+
+  .prof-module-scope .prof-preview-hero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .prof-module-scope .prof-resource-compare {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(141, 225, 239, 0.09);
+    border-bottom: 1px solid rgba(141, 225, 239, 0.09);
+  }
+
+  .prof-module-scope .prof-preview-detail-list {
+    gap: 0;
+  }
+
   .prof-module-scope .info-row {
     display: grid;
-    grid-template-rows: auto minmax(17px, auto);
-    gap: 3px;
+    grid-template-columns: minmax(82px, 0.36fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
     min-width: 0;
-    min-height: 43px;
-    padding: 6px 7px;
+    min-height: 0;
+    padding: 7px 0;
     border: 0;
-    border-radius: 4px;
-    background: rgba(5, 19, 27, 0.18);
-    box-shadow: inset 0 0 0 1px rgba(141, 225, 239, 0.06);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: inset 0 -1px 0 rgba(141, 225, 239, 0.07);
   }
 
   .prof-module-scope .info-row--wide {
@@ -555,14 +604,17 @@ const ProfessionStyles = `
   }
 
   .prof-module-scope .info-row--subtle {
-    min-height: 36px;
+    min-height: 0;
     background: transparent;
     box-shadow: inset 0 -1px 0 rgba(141, 225, 239, 0.08);
   }
 
   .prof-module-scope .info-row--hero {
-    min-height: 56px;
-    padding: 7px 8px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    min-height: 82px;
+    padding: 10px 11px;
+    border-radius: 7px;
     border: 1px solid rgba(141, 225, 239, 0.13);
     background:
       radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.1), transparent 58%),
@@ -571,7 +623,7 @@ const ProfessionStyles = `
 
   .prof-module-scope .info-row--hero .info-val {
     font-family: var(--font-tech);
-    font-size: 1.24em;
+    font-size: 1.72em;
     line-height: 1.2;
     color: var(--gold);
     overflow: visible;
@@ -615,10 +667,39 @@ const ProfessionStyles = `
   .prof-module-scope .info-row--note .info-val,
   .prof-module-scope .info-row--loop .info-val {
     white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: block;
+    overflow: visible;
+  }
+
+  .prof-module-scope .prof-loop-tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .prof-module-scope .prof-loop-token {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 100%;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(141, 225, 239, 0.1);
+    background: rgba(141, 225, 239, 0.045);
+    color: var(--text-sub);
+    line-height: 1.2;
+  }
+
+  .prof-module-scope .prof-loop-token b {
+    color: var(--text-dim);
+    font-weight: 620;
+  }
+
+  .prof-module-scope .prof-loop-token strong {
+    color: var(--cyan);
+    font-family: var(--font-tech);
+    font-weight: 780;
   }
 
   .prof-module-scope .val-highlight { color: var(--gold); font-family: var(--font-tech); }
@@ -628,7 +709,14 @@ const ProfessionStyles = `
 
   .prof-module-scope .prof-action-zone {
     display: grid;
-    gap: 7px;
+    gap: 8px;
+    align-self: end;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(141, 225, 239, 0.1);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.08), transparent 58%),
+      rgba(0, 0, 0, 0.18);
   }
 
   .prof-module-scope .prof-action-warning {
@@ -656,10 +744,10 @@ const ProfessionStyles = `
       linear-gradient(90deg, rgba(82, 229, 255, 0.88), rgba(226, 200, 102, 0.72));
     border: 1px solid rgba(241, 219, 128, 0.58);
     color: #07151b;
-    padding: 10px 18px;
+    padding: 12px 18px;
     border-radius: 999px;
     font-family: var(--font-tech);
-    font-size: 1em;
+    font-size: 1.06em;
     font-weight: 850;
     letter-spacing: 0;
     cursor: pointer;
@@ -706,9 +794,6 @@ const ProfessionStyles = `
       grid-template-columns: 1fr;
     }
     .prof-module-scope .info-panel {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .prof-module-scope .prof-blueprint-row {
       grid-template-columns: minmax(0, 1fr);
     }
     .prof-module-scope .prof-empty-slots {
@@ -717,19 +802,22 @@ const ProfessionStyles = `
     .prof-module-scope .prof-command-line {
       gap: 8px;
     }
-    .prof-module-scope .param-token {
-      flex-basis: calc(50% - 8px);
+    .prof-module-scope .prof-config-grid,
+    .prof-module-scope .prof-workshop-tips,
+    .prof-module-scope .prof-preview-summary,
+    .prof-module-scope .prof-preview-hero,
+    .prof-module-scope .prof-resource-compare {
+      grid-template-columns: minmax(0, 1fr);
     }
     .prof-module-scope .param-token--target,
     .prof-module-scope .param-token--materials,
     .prof-module-scope .info-row--wide {
-      flex-basis: 100%;
       grid-column: 1 / -1;
     }
     .prof-module-scope .section-card { padding: 10px; }
     .prof-module-scope { --prof-font-base: 10px; }
     .prof-module-scope .section-title { font-size: 1.12em; }
-    .prof-module-scope .action-btn { width: min(240px, 100%); }
+    .prof-module-scope .action-btn { width: 100%; }
   }
 `;
 
@@ -769,44 +857,41 @@ const ProfessionTemplate = `
         </div>
 
         <div class="prof-command-line">
-          <div class="form-group param-token">
-            <label id="tier-label">操作阶位</label>
-            <select id="prof-tier" class="tech-select">
-              <option value="1">1阶</option>
-              <option value="2">2阶</option>
-              <option value="3">3阶</option>
-              <option value="4">4阶</option>
-              <option value="5">5阶</option>
-            </select>
-          </div>
-          <div class="form-group param-token param-token--small">
-            <label id="qty-label">每种材料消耗</label>
-            <input id="prof-cost" class="tech-input" type="number" min="1" value="1" />
-          </div>
-          <div class="form-group param-token param-token--small">
-            <label>连续模式</label>
-            <select id="prof-loop-enabled" class="tech-select">
-              <option value="0">关闭</option>
-              <option value="1">开启</option>
-            </select>
-          </div>
-          <div class="form-group param-token param-token--small">
-            <label>连续天数</label>
-            <input id="prof-loop-days" class="tech-input" type="number" min="1" value="1" />
+          <div class="prof-config-grid">
+            <div class="form-group param-token">
+              <label id="tier-label">操作阶位</label>
+              <select id="prof-tier" class="tech-select">
+                <option value="1">1阶</option>
+                <option value="2">2阶</option>
+                <option value="3">3阶</option>
+                <option value="4">4阶</option>
+                <option value="5">5阶</option>
+              </select>
+            </div>
+            <div class="form-group param-token param-token--small">
+              <label id="qty-label">每种材料消耗</label>
+              <input id="prof-cost" class="tech-input" type="number" min="1" value="1" />
+            </div>
+            <div class="form-group param-token param-token--small">
+              <label>连续模式</label>
+              <select id="prof-loop-enabled" class="tech-select">
+                <option value="0">关闭</option>
+                <option value="1">开启</option>
+              </select>
+            </div>
+            <div class="form-group param-token param-token--small">
+              <label>连续天数</label>
+              <input id="prof-loop-days" class="tech-input" type="number" min="1" value="1" />
+            </div>
           </div>
           <div class="form-group param-token param-token--target">
             <label id="target-label">目标产物 / 目标对象</label>
-            <div class="prof-blueprint-row">
-              <div class="prof-input-shell">
-                <input id="prof-target" class="tech-input" type="text" placeholder="自动生成或手动输入..." />
-                <div class="hint" id="target-hint">锻造会尝试根据所选材料自动生成产物名；修理模式下这里填待修对象名。</div>
-              </div>
-              <div class="prof-blueprint-node" id="prof-blueprint-node"><span id="prof-blueprint-state">蓝图待定</span></div>
+            <div class="prof-input-shell">
+              <input id="prof-target" class="tech-input" type="text" placeholder="自动生成或手动输入..." />
             </div>
           </div>
           <div class="form-group param-token param-token--materials">
             <label id="materials-label">材料选择</label>
-            <div class="prof-info-alert"><span id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</span></div>
             <div id="prof-materials-list" class="metal-list-container">
               <div class="prof-empty-slots">
                 <div class="prof-empty-slot"></div>
@@ -820,29 +905,43 @@ const ProfessionTemplate = `
           </div>
         </div>
 
-        <div class="hint" id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。</div>
+        <div class="prof-workshop-tips">
+          <div class="prof-workshop-tip-title">工坊提示</div>
+          <div class="prof-info-alert"><span id="target-hint">锻造会尝试根据所选材料自动生成产物名；修理模式下这里填待修对象名。</span></div>
+          <div class="prof-info-alert"><span id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</span></div>
+          <div class="prof-info-alert"><span id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。</span></div>
+        </div>
       </div>
     </div>
 
     <div class="prof-workshop-right">
       <div class="section-card section-card--preview">
         <div class="section-title">副职业预演</div>
-        <div class="info-panel">
+        <div class="prof-preview-summary">
           <div class="info-row info-row--subtle"><span class="info-key">当前副职业</span><span class="info-val" id="prev-job">-</span></div>
           <div class="info-row info-row--subtle"><span class="info-key">执行来源</span><span class="info-val" id="prev-executor">-</span></div>
-          <div class="info-row info-row--subtle"><span class="info-key">累计经验</span><span class="info-val" id="prev-exp">-</span></div>
-          <div class="info-row info-row--subtle"><span class="info-key">当前资源</span><span class="info-val" id="prev-res">-</span></div>
-          <div class="info-row info-row--hero"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
-          <div class="info-row info-row--hero info-row--rate"><span class="info-key">成功率</span><span class="info-val" id="prev-rate">-%</span></div>
-          <div class="info-row"><span class="info-key">代工费用</span><span class="info-val" id="prev-fee">-</span></div>
-          <div class="info-row"><span class="info-key">模式 / 融合率</span><span class="info-val" id="prev-fusion">-</span></div>
-          <div class="info-row"><span class="info-key">支持融锻数</span><span class="info-val" id="prev-maxfusion">-</span></div>
-          <div class="info-row"><span class="info-key">品质极限</span><span class="info-val" id="prev-maxq">-</span></div>
-          <div class="info-row info-row--wide info-row--loop"><span class="info-key">连续预估</span><span class="info-val" id="prev-loop">-</span></div>
-          <div class="info-row info-row--wide info-row--note"><span class="info-key">规则提示</span><span class="info-val" id="prev-note">-</span></div>
+        </div>
+        <div class="info-panel">
+          <div class="prof-preview-hero">
+            <div class="info-row info-row--hero info-row--rate"><span class="info-key">成功率</span><span class="info-val" id="prev-rate">-%</span></div>
+            <div class="info-row info-row--hero info-row--fee"><span class="info-key">代工费用 / 报酬</span><span class="info-val" id="prev-fee">-</span></div>
+          </div>
+          <div class="prof-resource-compare">
+            <div class="info-row info-row--resource"><span class="info-key">本次消耗</span><span class="info-val" id="prev-costs">-</span></div>
+            <div class="info-row info-row--resource"><span class="info-key">当前资源</span><span class="info-val" id="prev-res">-</span></div>
+          </div>
+          <div class="prof-preview-detail-list">
+            <div class="info-row"><span class="info-key">累计经验</span><span class="info-val" id="prev-exp">-</span></div>
+            <div class="info-row"><span class="info-key">模式 / 融合率</span><span class="info-val" id="prev-fusion">-</span></div>
+            <div class="info-row"><span class="info-key">支持融锻数</span><span class="info-val" id="prev-maxfusion">-</span></div>
+            <div class="info-row"><span class="info-key">品质极限</span><span class="info-val" id="prev-maxq">-</span></div>
+            <div class="info-row info-row--wide info-row--loop"><span class="info-key">连续预估</span><span class="info-val" id="prev-loop">-</span></div>
+            <div class="info-row info-row--wide info-row--note"><span class="info-key">规则提示</span><span class="info-val" id="prev-note">-</span></div>
+          </div>
         </div>
       </div>
       <div class="prof-action-zone">
+        <div class="prof-blueprint-node" id="prof-blueprint-node"><span id="prof-blueprint-state">蓝图待定</span></div>
         <div class="prof-action-warning" id="prof-action-warning"></div>
         <button class="action-btn" id="prof-submit">执行操作</button>
       </div>
@@ -1112,7 +1211,7 @@ class ProfessionUIComponent {
     const 违约金 = Math.max(0, Math.floor(Number(来源.违约金 || Math.floor(成品实价 * 0.3))));
     return {
       isTaskCommission: true,
-      任务名: 条目?.任务名 || String(req.任务名 || req.委托名 || '').trim(),
+      任务名: 条目?.任务名 || String(req.任务名 || req.委托名 || this.options?.dispatchContext?.questName || '').trim(),
       材料清单,
       成品实价,
       奖励币: Math.max(0, Math.floor(Number(来源.奖励币 || req.奖励币 || 0))),
@@ -2495,9 +2594,10 @@ class ProfessionUIComponent {
   构建委托任务结算补丁(委托上下文 = {}, 结果 = 'success') {
     if (!委托上下文?.isTaskCommission) return [];
     const 任务委托 = 委托上下文.task || {};
-    const 奖励币 = Math.max(0, Math.floor(Number(任务委托.成品实价 || 任务委托.奖励币 || 0)));
+    const 奖励币 = Math.max(0, Math.floor(Number(任务委托.奖励币 || 0)));
+    const 成品实价 = Math.max(0, Math.floor(Number(任务委托.成品实价 || 0)));
     const 失败赔偿 = Math.max(0, Math.floor(Number(任务委托.失败赔偿 || 0)));
-    const 违约金 = Math.max(0, Math.floor(Number(任务委托.违约金 || Math.floor(奖励币 * 0.3))));
+    const 违约金 = Math.max(0, Math.floor(Number(任务委托.违约金 || Math.floor(成品实价 * 0.3))));
     const 金额变化 = 结果 === 'success' ? 奖励币 : 结果 === 'timeout' ? -违约金 : -失败赔偿;
     const 状态 = 结果 === 'success' ? '已完成' : '已失败';
     return [
@@ -2708,14 +2808,14 @@ class ProfessionUIComponent {
     container.innerHTML = '';
     const filter = this.getMaterialFilter(this.activeMode);
     let count = 0;
-    const 添加材料项 = (itemName, 引用, item, labelText, options = {}) => {
+    const 添加材料项 = (itemName, 引用, item, labelText, 选项 = {}) => {
       if (!item || Number(item.数量 || 0) <= 0 || !filter(itemName, item)) return;
       const label = document.createElement('label');
-      label.className = `material-item${options.checked ? ' is-selected' : ''}`;
+      label.className = `material-item${选项.checked ? ' is-selected' : ''}`;
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.className = 'material-cb material-checkbox'; cb.value = 引用;
-      cb.checked = options.checked === true;
-      cb.disabled = options.disabled === true;
+      cb.checked = 选项.checked === true;
+      cb.disabled = 选项.disabled === true;
       cb.addEventListener('change', () => {
         label.classList.toggle('is-selected', cb.checked);
         this.autoGenerateTargetName();
@@ -2945,7 +3045,7 @@ class ProfessionUIComponent {
     let feeText = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? `<span class="val-highlight">${this.formatFedCoin(commissionCtx.commissionFee)}</span>` : `<span class="val-green">免单</span>`) : `<span class="val-cyan">无</span>`;
     if (commissionCtx.isTaskCommission) {
       costText = `${this.formatResourceCost(costs)} / <span class="val-cyan">材料由委托方提供</span>`;
-      feeText = `<span class="val-highlight">报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}</span>`;
+      feeText = `<span class="val-highlight">报酬 ${this.formatFedCoin(commissionCtx.task.奖励币)}</span>`;
     }
 
     if (this.activeMode === 'forge') {
@@ -2987,7 +3087,7 @@ class ProfessionUIComponent {
 
     if (!commissionCtx.isCommission && !连续配置.连续模式开启 && !enoughResources) ruleError = ruleError || '副职业资源不足。';
 
-    let 连续预估文本 = '<span class="val-cyan">关闭</span>';
+    let 连续预估文本 = '<div class="prof-loop-tokens"><span class="prof-loop-token"><b>状态</b><strong>关闭</strong></span></div>';
     if (!ruleError) {
       const 单次材料消耗计划 = this.构建单次材料消耗计划(cfg, tier, qty, targetName, materialNames);
       const 连续估算结果 = this.估算连续可执行次数({
@@ -3001,7 +3101,16 @@ class ProfessionUIComponent {
         当前资金: Number(this.charData?.财富?.联邦币 || 0),
       });
       const 期望成功数 = Number((Number(连续估算结果.可执行次数 || 0) * Math.max(0, 当前成功率数值) / 100).toFixed(2));
-      连续预估文本 = `${连续配置.连续模式开启 ? '<span class="val-green">开启</span>' : '<span class="val-cyan">未开启</span>'} / <span class="val-highlight">${连续配置.连续天数}天</span> / 可执行 <span class="val-cyan">${连续估算结果.可执行次数}</span> 次 / 期望成功 <span class="val-highlight">${期望成功数}</span> 次${!commissionCtx.isCommission ? ` / 冥想${连续估算结果.冥想小时}h 睡眠${连续估算结果.睡眠小时}h` : ''}`;
+      const 恢复安排文本 = commissionCtx.isCommission ? '委托执行' : `冥想${连续估算结果.冥想小时}h 睡眠${连续估算结果.睡眠小时}h`;
+      连续预估文本 = `
+        <div class="prof-loop-tokens">
+          <span class="prof-loop-token"><b>状态</b><strong>${连续配置.连续模式开启 ? '开启' : '未开启'}</strong></span>
+          <span class="prof-loop-token"><b>天数</b><strong>${连续配置.连续天数}天</strong></span>
+          <span class="prof-loop-token"><b>可执行</b><strong>${连续估算结果.可执行次数}次</strong></span>
+          <span class="prof-loop-token"><b>期望</b><strong>${期望成功数}次</strong></span>
+          <span class="prof-loop-token"><b>安排</b><strong>${恢复安排文本}</strong></span>
+        </div>
+      `;
     }
 
     this.更新蓝图状态(targetName);
@@ -3511,7 +3620,7 @@ class ProfessionUIComponent {
       if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
       if (commissionCtx.isTaskCommission) {
         patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'success'));
-        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}。`;
+        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.奖励币)}。`;
       } else {
         patchOps.push(...this.buildInventoryAddPatches(targetName, newItem, 1, Object.keys(批次数据).length > 0));
       }
@@ -3616,7 +3725,7 @@ class ProfessionUIComponent {
       }
       if (commissionCtx.isTaskCommission) {
         patchOps.push(...this.构建委托任务结算补丁(commissionCtx, 'success'));
-        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.成品实价 || commissionCtx.task.奖励币)}。`;
+        resultLog = `[委托成功] ${commissionCtx.executorName}完成【${targetName}】，成品已交付委托方，获得报酬 ${this.formatFedCoin(commissionCtx.task.奖励币)}。`;
       } else if (!commissionCtx.isCommission) {
         const 进度副职业 = this.读取本次进度副职业(cfg, targetName, materialNames);
         const progress = this.buildJobProgressPatches(进度副职业, expGain, this.读取本次进度作品等级(进度副职业, tier, targetName, materialNames));

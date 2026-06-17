@@ -37228,6 +37228,49 @@
           </label>
         `;
       const questProgress = item => Math.max(0, Math.min(100, toNumber(item && item['当前进度'], 0)));
+      const 当前任务tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
+      const 格式化任务短数值 = 数值 => {
+        const 绝对值 = Math.abs(Math.floor(toNumber(数值, 0)));
+        if (绝对值 >= 10000) return `${(绝对值 / 10000).toFixed(绝对值 >= 100000 ? 0 : 1).replace(/\.0$/, '')}w`;
+        if (绝对值 >= 1000) return `${(绝对值 / 1000).toFixed(绝对值 >= 10000 ? 0 : 1).replace(/\.0$/, '')}k`;
+        return formatNumber(绝对值);
+      };
+      const 读取任务契约 = item => {
+        const 奖励币 = Math.max(0, Math.floor(toNumber(item && item['奖励币'], 0)));
+        const 奖励声望 = Math.max(0, Math.floor(toNumber(item && item['奖励声望'], 0)));
+        const 失败赔偿 = Math.max(0, Math.floor(toNumber(item && item['失败赔偿'], 0)));
+        const 违约金 = Math.max(0, Math.floor(toNumber(item && item['违约金'], 0)));
+        return { 奖励币, 奖励声望, 失败赔偿, 违约金, 有惩罚: 失败赔偿 > 0 || 违约金 > 0 };
+      };
+      const 格式化任务剩余时限 = 剩余tick => {
+        const 绝对tick = Math.abs(Math.floor(toNumber(剩余tick, 0)));
+        if (绝对tick >= 144) {
+          const 天数 = Math.floor(绝对tick / 144);
+          const 小时数 = Math.floor((绝对tick % 144) / 6);
+          return `${天数}天${小时数 > 0 ? `${小时数}时` : ''}`;
+        }
+        if (绝对tick >= 6) return `${Math.floor(绝对tick / 6)}时`;
+        return `${绝对tick}tick`;
+      };
+      const 读取任务时限状态 = item => {
+        const 截止tick = Math.max(0, Math.floor(toNumber(item && item['截止tick'], 0)));
+        if (!截止tick) {
+          return { 截止tick, 有时限: false, 剩余tick: 0, 已过期: false, 紧急: false, 类名: '', 文本: '未设限', 短文本: '' };
+        }
+        const 剩余tick = 截止tick - 当前任务tick;
+        const 已过期 = 剩余tick < 0;
+        const 紧急 = !已过期 && 剩余tick <= 72;
+        return {
+          截止tick,
+          有时限: true,
+          剩余tick,
+          已过期,
+          紧急,
+          类名: 已过期 ? 'is-overdue' : 紧急 ? 'is-urgent' : '',
+          文本: 已过期 ? `逾期 ${格式化任务剩余时限(剩余tick)}` : `剩余 ${格式化任务剩余时限(剩余tick)}`,
+          短文本: 已过期 ? `逾期 ${格式化任务剩余时限(剩余tick)}` : 格式化任务剩余时限(剩余tick),
+        };
+      };
       const 解析任务状态键 = 状态 => {
         const 文本 = toText(状态, '进行中');
         if (/失败|放弃/.test(文本)) return 'failed';
@@ -37246,11 +37289,55 @@
           </div>
         `;
       const renderQuestField = (label, value, className = '') => `
-          <div class="mvu-quest-detail-field ${className}">
-            <b>${htmlEscape(label)}</b>
-            <span>${value}</span>
+          <div class="mvu-quest-meta-row ${className}">
+            <span>${htmlEscape(label)}</span>
+            <b>${value}</b>
           </div>
         `;
+      const 构建任务收益风险摘要 = item => {
+        const 契约 = 读取任务契约(item);
+        const 收益文本 = 契约.奖励币 > 0 ? 格式化任务短数值(契约.奖励币) : 契约.奖励声望 > 0 ? `${格式化任务短数值(契约.奖励声望)}声` : '0';
+        const 最大风险 = Math.max(契约.失败赔偿, 契约.违约金);
+        return `
+          <div class="mvu-quest-card-contract">
+            <span class="mvu-quest-card-gain">✅ +${htmlEscape(收益文本)}</span>
+            ${最大风险 > 0 ? `<span class="mvu-quest-card-risk">❌ -${htmlEscape(格式化任务短数值(最大风险))}</span>` : ''}
+          </div>
+        `;
+      };
+      const 构建任务列表时限 = item => {
+        const 时限状态 = 读取任务时限状态(item);
+        return 时限状态.有时限
+          ? `<span class="mvu-quest-card-deadline ${时限状态.类名}">${htmlEscape(时限状态.紧急 || 时限状态.已过期 ? '🔴' : '⏳')} ${htmlEscape(时限状态.短文本)}</span>`
+          : '';
+      };
+      const 构建任务契约面板 = (item, 显示风险 = false) => {
+        const 契约 = 读取任务契约(item);
+        const 报酬行 = [
+          `<span><em>联邦币</em><b>+${htmlEscape(formatNumber(契约.奖励币))}</b></span>`,
+          `<span><em>声望</em><b>+${htmlEscape(formatNumber(契约.奖励声望))}</b></span>`,
+        ].join('');
+        const 风险行 = [
+          `<span><em>违约</em><b>-${htmlEscape(formatNumber(契约.违约金))}</b></span>`,
+          `<span><em>失败</em><b>-${htmlEscape(formatNumber(契约.失败赔偿))}</b></span>`,
+        ].join('');
+        return `
+          <div class="mvu-quest-contract-panel ${显示风险 ? '' : 'mvu-quest-contract-panel--reward-only'}">
+            <div class="mvu-quest-contract-side mvu-quest-contract-side--gain">
+              <strong>履约报酬</strong>
+              <div>${报酬行}</div>
+            </div>
+            ${
+              显示风险
+                ? `<div class="mvu-quest-contract-side mvu-quest-contract-side--risk">
+                    <strong>违约代价</strong>
+                    <div>${风险行}</div>
+                  </div>`
+                : ''
+            }
+          </div>
+        `;
+      };
       const 任务页签按钮 = (页签文本, 页签值, 数量) => {
         const 页签短标 = 页签值 === '委托板' ? '委' : 页签文本.slice(0, 1);
         return `
@@ -37265,19 +37352,20 @@
         const progress = questProgress(item);
         const status = toText(item && item['状态'], '进行中');
         const statusKey = 解析任务状态键(status);
-        const rewardText = `${formatNumber(toNumber(item && item['奖励币'], 0))} / ${formatNumber(toNumber(item && item['奖励声望'], 0))}`;
+        const 时限状态 = 读取任务时限状态(item);
+        const 是否当前 = (kind === 'main' || kind === 'side') && name === focusQuestName;
         return `
-            <button type="button" class="role-switch-tile mvu-detail-list-tile mvu-quest-bookmark ${kind === 'main' && name === focusQuestName ? 'active' : ''} ${kind === 'side' && name === focusQuestName ? 'active' : ''}" data-quest-kind="${escapeHtmlAttr(kind)}" data-quest-focus="${escapeHtmlAttr(name)}" data-quest-theme="${escapeHtmlAttr(kind === 'main' ? 'main' : 'side')}" data-quest-status="${escapeHtmlAttr(statusKey)}">
+            <button type="button" class="role-switch-tile mvu-detail-list-tile mvu-quest-bookmark mvu-quest-entry-card ${是否当前 ? 'active' : ''} ${时限状态.类名}" data-quest-kind="${escapeHtmlAttr(kind)}" data-quest-focus="${escapeHtmlAttr(name)}" data-quest-theme="${escapeHtmlAttr(kind === 'main' ? 'main' : 'side')}" data-quest-status="${escapeHtmlAttr(statusKey)}">
               <div class="mvu-quest-card-top">
                 <b class="mvu-quest-card-title">${htmlEscape(name)}</b>
                 <span class="mvu-quest-card-status">${htmlEscape(status)}</span>
               </div>
               <div class="mvu-quest-card-sub">
                 <span>${htmlEscape(kind === 'main' ? '主线' : '支线')}</span>
-                <span>${htmlEscape(`${progress}%`)}</span>
+                ${构建任务列表时限(item) || `<span>${htmlEscape(`${progress}%`)}</span>`}
               </div>
               ${renderMiniProgress(progress)}
-              <div class="mvu-quest-card-foot">${htmlEscape(`奖励 ${rewardText}`)}</div>
+              ${构建任务收益风险摘要(item)}
             </button>
           `;
       };
@@ -37287,18 +37375,19 @@
         const statusKey = 解析委托状态键(status);
         const progress = questProgress(item);
         const publisher = toText(item && item['发布者'], '系统');
+        const 时限状态 = 读取任务时限状态(item);
         return `
-            <button type="button" class="role-switch-tile mvu-detail-list-tile mvu-quest-bookmark ${id === focusBoardId ? 'active' : ''}" data-quest-board-focus="${escapeHtmlAttr(id)}" data-quest-theme="board" data-quest-status="${escapeHtmlAttr(statusKey)}">
+            <button type="button" class="role-switch-tile mvu-detail-list-tile mvu-quest-bookmark mvu-quest-entry-card ${id === focusBoardId ? 'active' : ''} ${时限状态.类名}" data-quest-board-focus="${escapeHtmlAttr(id)}" data-quest-theme="board" data-quest-status="${escapeHtmlAttr(statusKey)}">
               <div class="mvu-quest-card-top">
                 <b class="mvu-quest-card-title">${htmlEscape(title)}</b>
                 <span class="mvu-quest-card-status">${htmlEscape(status)}</span>
               </div>
               <div class="mvu-quest-card-sub">
                 <span>${htmlEscape(publisher)}</span>
-                <span>${htmlEscape(`${progress}%`)}</span>
+                ${构建任务列表时限(item) || `<span>${htmlEscape(`${progress}%`)}</span>`}
               </div>
               ${renderMiniProgress(progress)}
-              <div class="mvu-quest-card-foot">${htmlEscape(`奖励 ${formatNumber(toNumber(item && item['奖励币'], 0))} / ${formatNumber(toNumber(item && item['奖励声望'], 0))}`)}</div>
+              ${构建任务收益风险摘要(item)}
             </button>
           `;
       };
@@ -37371,22 +37460,29 @@
       const questDetailHtml =
         activeQuestTab === '主线' || activeQuestTab === '支线'
           ? focusQuest
-            ? `
-              <div class="mvu-quest-detail-shell mvu-quest-detail-shell--${escapeHtmlAttr(questTheme)}">
+            ? (() => {
+                const 进度 = questProgress(focusQuest);
+                const 时限状态 = 读取任务时限状态(focusQuest);
+                const 是委托任务 = focusQuest['是否委托'] === true;
+                return `
+              <div class="mvu-quest-detail-shell mvu-quest-detail-shell--${escapeHtmlAttr(questTheme)} ${时限状态.类名}">
                 <div class="mvu-quest-detail-header">
-                  <div class="mvu-quest-detail-title">${聚焦任务名内容}</div>
+                  <div class="mvu-quest-detail-heading">
+                    <div class="mvu-quest-detail-kicker">${htmlEscape(toText(focusQuest['任务线'], activeQuestTab))}</div>
+                    <div class="mvu-quest-detail-title">${聚焦任务名内容}</div>
+                  </div>
                   <div class="state-tag ${focusQuestStatus === '可提交' ? 'live' : ['已完成', '已放弃', '失败', '已失败'].includes(focusQuestStatus) ? 'warn' : 'live'}">${htmlEscape(focusQuestStatus)}</div>
                 </div>
                 <div class="mvu-quest-detail-progress">
                   <div class="mvu-quest-detail-progress-head">
                     <span>当前进度</span>
-                    <span>${Math.max(0, Math.min(100, toNumber(focusQuest['当前进度'], 0)))}%</span>
+                    <span>${进度}%</span>
                   </div>
                   <div class="mvu-quest-detail-progress-track">
-                    <div class="mvu-quest-detail-progress-fill" style="width:${ratioPercent(toNumber(focusQuest['当前进度'], 0), 100)}%;"></div>
+                    <div class="mvu-quest-detail-progress-fill" style="width:${ratioPercent(进度, 100)}%;"></div>
                   </div>
                 </div>
-                <div class="mvu-quest-detail-strip">
+                <div class="mvu-quest-meta-grid">
                   ${renderQuestField(
                     '任务线',
                     focusQuestPath.length
@@ -37397,6 +37493,7 @@
                         })
                       : htmlEscape(toText(focusQuest['任务线'], activeQuestTab)),
                   )}
+                  ${renderQuestField('委托性质', htmlEscape(是委托任务 ? '委托任务' : '个人任务'))}
                   ${renderQuestField(
                     '最后更新时间tick',
                     focusQuestPath.length
@@ -37411,11 +37508,13 @@
                         )
                       : htmlEscape(String(Math.max(0, Math.floor(toNumber(focusQuest['最后更新时间tick'], 0))))),
                   )}
+                  ${
+                    时限状态.有时限
+                      ? renderQuestField('截止期限', htmlEscape(时限状态.文本), `mvu-quest-deadline-row ${时限状态.类名}`)
+                      : ''
+                  }
                 </div>
-                <div class="mvu-quest-reward-strip">
-                  <span class="mvu-quest-reward-tag">${htmlEscape(`奖励金币 +${formatNumber(toNumber(focusQuest['奖励币'], 0))}`)}</span>
-                  <span class="mvu-quest-reward-tag">${htmlEscape(`奖励声望 +${formatNumber(toNumber(focusQuest['奖励声望'], 0))}`)}</span>
-                </div>
+                ${构建任务契约面板(focusQuest, 是委托任务 && 读取任务契约(focusQuest).有惩罚)}
                 <div class="mvu-quest-detail-section">
                   <div class="mvu-quest-detail-section-title">任务说明</div>
                   <div class="mvu-quest-detail-text">${
@@ -37430,16 +37529,22 @@
                   }</div>
                 </div>
               </div>
-            `
+            `;
+              })()
             : '<div class="mvu-quest-detail-empty">未选择任务</div>'
           : focusBoard
-            ? `
-              <div class="mvu-quest-detail-shell mvu-quest-detail-shell--board">
+            ? (() => {
+                const 时限状态 = 读取任务时限状态(focusBoard);
+                return `
+              <div class="mvu-quest-detail-shell mvu-quest-detail-shell--board ${时限状态.类名}">
                 <div class="mvu-quest-detail-header">
-                  <div class="mvu-quest-detail-title">${聚焦委托名内容}</div>
+                  <div class="mvu-quest-detail-heading">
+                    <div class="mvu-quest-detail-kicker">${htmlEscape(toText(focusBoard['发布者'], '系统'))}</div>
+                    <div class="mvu-quest-detail-title">${聚焦委托名内容}</div>
+                  </div>
                   <div class="state-tag ${focusBoardStatus === '待接取' ? 'warn' : 'live'}">${htmlEscape(focusBoardStatus)}</div>
                 </div>
-                <div class="mvu-quest-detail-strip mvu-quest-detail-strip--board">
+                <div class="mvu-quest-meta-grid mvu-quest-meta-grid--board">
                   ${renderQuestField(
                     '发布者',
                     focusBoardPath.length
@@ -37490,11 +37595,23 @@
                         })
                       : htmlEscape(toText(focusBoard['资源级别'], '无')),
                   )}
+                  ${renderQuestField(
+                    '指定对象',
+                    focusBoardPath.length
+                      ? makeInlineEditableValue(toText(focusBoard['指定对象'], '无'), {
+                          path: [...focusBoardPath, '指定对象'],
+                          kind: 'string',
+                          rawValue: toText(focusBoard['指定对象'], '无'),
+                        })
+                      : htmlEscape(toText(focusBoard['指定对象'], '无')),
+                  )}
+                  ${
+                    时限状态.有时限
+                      ? renderQuestField('截止期限', htmlEscape(时限状态.文本), `mvu-quest-deadline-row ${时限状态.类名}`)
+                      : ''
+                  }
                 </div>
-                <div class="mvu-quest-reward-strip">
-                  <span class="mvu-quest-reward-tag">${htmlEscape(`奖励金币 +${formatNumber(toNumber(focusBoard['奖励币'], 0))}`)}</span>
-                  <span class="mvu-quest-reward-tag">${htmlEscape(`奖励声望 +${formatNumber(toNumber(focusBoard['奖励声望'], 0))}`)}</span>
-                </div>
+                ${构建任务契约面板(focusBoard, 读取任务契约(focusBoard).有惩罚)}
                 <div class="mvu-quest-detail-section">
                   <div class="mvu-quest-detail-section-title">${htmlEscape(focusBoardStatus === '待接取' ? '委托框架' : '委托说明')}</div>
                   <div class="mvu-quest-detail-text">${
@@ -37509,29 +37626,30 @@
                   }</div>
                 </div>
               </div>
-            `
+            `;
+              })()
             : '<div class="mvu-quest-detail-empty">未选择委托</div>';
       const questActionHtml =
         (activeQuestTab === '主线' || activeQuestTab === '支线') && focusQuestPath.length
           ? `
-              <div class="request-console-row mvu-detail-action-row mvu-quest-detail-actions">
-                <button type="button" class="tag-chip" data-collection-action="delete-record" data-collection-char="${escapeHtmlAttr(activeCharKey)}" data-collection-key="${escapeHtmlAttr(focusQuestName)}">删除任务</button>
+              <div class="request-console-row mvu-detail-action-row mvu-quest-detail-actions mvu-quest-action-bar">
                 ${
                   focusQuest && isPlayerControlled && !['已完成', '已放弃', '失败', '已失败'].includes(focusQuestStatus)
-                    ? `${focusQuestStatus === '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn" data-quest-action="submit" data-quest-target="${escapeHtmlAttr(focusQuestName)}">提交任务</button>` : ''}<button type="button" class="relation-action-btn quest-action-btn" data-quest-action="abandon" data-quest-target="${escapeHtmlAttr(focusQuestName)}">放弃任务</button>`
+                    ? `${focusQuest['是否委托'] === true && focusQuestStatus !== '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="progress" data-quest-target="${escapeHtmlAttr(focusQuestName)}">执行委托</button>` : ''}${focusQuestStatus === '可提交' ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="submit" data-quest-target="${escapeHtmlAttr(focusQuestName)}">提交任务</button>` : ''}<button type="button" class="relation-action-btn quest-action-btn mvu-quest-danger-action" data-quest-action="abandon" data-quest-target="${escapeHtmlAttr(focusQuestName)}">放弃任务</button>`
                     : ''
                 }
+                <button type="button" class="tag-chip mvu-quest-danger-action" data-collection-action="delete-record" data-collection-char="${escapeHtmlAttr(activeCharKey)}" data-collection-key="${escapeHtmlAttr(focusQuestName)}">删除任务</button>
               </div>
             `
           : activeQuestTab === '委托板' && focusBoardPath.length
             ? `
-                <div class="request-console-row mvu-detail-action-row">
-                  <button type="button" class="tag-chip" data-collection-action="delete-board" data-collection-key="${escapeHtmlAttr(focusBoardId)}">删除委托</button>
+                <div class="request-console-row mvu-detail-action-row mvu-quest-action-bar">
                   ${
                     focusBoard && isPlayerControlled && focusBoardStatus === '待接取'
-                      ? `<button type="button" class="relation-action-btn quest-action-btn" data-quest-action="accept" data-quest-target="${escapeHtmlAttr(focusBoardId)}">接取委托</button>`
+                      ? `<button type="button" class="relation-action-btn quest-action-btn mvu-quest-primary-action" data-quest-action="accept" data-quest-target="${escapeHtmlAttr(focusBoardId)}">接取委托</button>`
                       : ''
                   }
+                  <button type="button" class="tag-chip mvu-quest-danger-action" data-collection-action="delete-board" data-collection-key="${escapeHtmlAttr(focusBoardId)}">删除委托</button>
                 </div>
               `
             : '';
@@ -38863,7 +38981,7 @@
     const 补丁列表 = [];
     const 任务是否委托 = !!(委托原始 && typeof 委托原始 === 'object' && !Array.isArray(委托原始) && (委托原始['是否委托'] === true || toText(委托原始['类型'], '') === '委托任务'));
     const 任务材料清单 = Array.isArray(委托原始?.['材料清单']) ? cloneJsonValue(委托原始['材料清单'], []) : [];
-    const 任务成品实价 = Math.max(0, Math.floor(toNumber(委托原始?.['成品实价'] ?? 委托原始?.['奖励币'], 0)));
+    const 任务成品实价 = Math.max(0, Math.floor(toNumber(委托原始?.['成品实价'], 0)));
     const 任务失败赔偿 = Math.max(0, Math.floor(toNumber(委托原始?.['失败赔偿'], 0)));
     const 任务违约金 = Math.max(0, Math.floor(toNumber(委托原始?.['违约金'], 0)));
     const 任务截止tick = Math.max(0, Math.floor(toNumber(委托原始?.['截止tick'], 0)));
@@ -39015,7 +39133,7 @@
       if (!任务原始 || ['已完成', '已放弃', '失败', '已失败'].includes(任务状态)) return null;
       const 任务条目 = 补全任务条目(任务原始);
       if (!任务条目) return null;
-      let 联邦币 = Math.max(0, toNumber(deepGet(当前角色, '财富.联邦币', 0), 0));
+      let 联邦币 = toNumber(deepGet(当前角色, '财富.联邦币', 0), 0);
       let 声望 = Math.max(0, toNumber(deepGet(当前角色, '社交.声望', 0), 0));
       const 委托条目 = 补全委托条目(委托原始);
       const 任务是否委托 = !!任务条目['是否委托'];
@@ -39030,7 +39148,7 @@
           播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除违约金 ${违约扣款} 联邦币。`;
         } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
           任务条目['状态'] = '已完成';
-          const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['成品实价'], 任务条目['奖励币'])));
+          const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
           const 实得奖励声望 = Math.max(0, toNumber(任务条目['奖励声望'], 0));
           联邦币 += 实得奖励币;
           声望 += 实得奖励声望;
@@ -41867,7 +41985,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       任务名: toText(req.任务名 || req.委托名, ''),
       是否委托: req.是否委托 === true,
       材料清单: Array.isArray(req.材料清单) ? cloneJsonValue(req.材料清单, []) : [],
-      成品实价: Math.max(0, toNumber(req.成品实价 || req.奖励币, 0)),
+      成品实价: Math.max(0, toNumber(req.成品实价, 0)),
       失败赔偿: Math.max(0, toNumber(req.失败赔偿, 0)),
       违约金: Math.max(0, toNumber(req.违约金, 0)),
       截止tick: Math.max(0, toNumber(req.截止tick, 0)),

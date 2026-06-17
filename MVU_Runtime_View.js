@@ -2805,7 +2805,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
     const 原角色 = 数据根?.char?.[角色名];
     const 清理后 = 过滤MVU正文视图值_V1(cloneJsonValue(原角色, null), ['char', '示例角色']);
     if (清理后) {
-      const 基础六维对标 = 过滤MVU正文视图值_V1(构建角色基础六维对标条目_V1(原角色), ['char', '示例角色', '基础六维对标']);
+      const 基础六维对标 = 过滤MVU正文视图值_V1(构建角色基础六维对标条目_V1(原角色, 当前tick), ['char', '示例角色', '基础六维对标']);
       delete 清理后.属性;
       if (基础六维对标) 清理后.基础六维对标 = 基础六维对标;
       删除正文视图机制字段_V1(清理后, 当前tick);
@@ -3739,6 +3739,31 @@ function 读取六维对标训练系数_V1(天赋档位 = '正常') {
   ] ?? 0.5;
 }
 
+function 读取初始化修为同龄等级_V1(角色 = {}, 当前tick = null) {
+  const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
+  const 年龄 = Math.max(0, Number(属性.年龄 || 0));
+  if (年龄 < 6) return 0;
+  const 计算函数 = typeof globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ === 'function'
+    ? globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__
+    : null;
+  if (!计算函数) return null;
+  const 等级 = Number(计算函数({
+    天赋梯队: String(属性.天赋梯队 || '正常').trim() || '正常',
+    年龄,
+    底子波动: Number(属性.底子波动 || 1),
+    生日: String(属性.生日 || '').trim(),
+    当前tick,
+  }));
+  return Number.isFinite(等级) ? Math.max(0, Math.floor(等级)) : null;
+}
+
+function 读取初始化修为同龄比较文本_V1(当前等级 = 0, 同龄等级 = 0) {
+  const 当前 = Number(当前等级) || 0;
+  const 同龄 = Number(同龄等级) || 0;
+  if (Math.abs(当前 - 同龄) < 0.001) return '同龄持平';
+  return 当前 > 同龄 ? '高于同龄' : '低于同龄';
+}
+
 function 是角色基础对标非魂师_V1(角色 = {}) {
   const 属性 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
   return String(属性.天赋梯队 || '').trim() === '天赋极差'
@@ -3821,14 +3846,17 @@ function 计算角色属性对标等级文本_V1(角色 = {}, 字段 = '', 数�
   return `强攻系${最佳等级}级`;
 }
 
-function 构建角色基础六维对标条目_V1(角色 = {}) {
+function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null) {
   if (!角色 || typeof 角色 !== 'object' || !角色.属性 || typeof 角色.属性 !== 'object') return {};
   if (是角色基础对标非魂师_V1(角色)) return { 非魂师: true };
   const 六维 = 读取角色非装备六维_V1(角色);
   const 条目 = {};
   const 等级 = Number(角色.属性.等级);
   if (Number.isFinite(等级)) {
-    条目.等级 = `Lv${等级}`;
+    const 同龄等级 = 读取初始化修为同龄等级_V1(角色, 当前tick);
+    条目.等级 = Number.isFinite(Number(同龄等级))
+      ? `Lv${等级}（同龄等级描点：${同龄等级}级，${读取初始化修为同龄比较文本_V1(等级, 同龄等级)}）`
+      : `Lv${等级}`;
   }
   角色基础六维对标字段_V1.forEach(({ 标签, 字段 }) => {
     const 数值 = Math.max(1, Math.floor(Number(六维?.[字段] || 1)));
@@ -3867,7 +3895,7 @@ function 生成角色基础六维对标摘要_V1(数据输入 = null, userInput 
   const 行列表 = [];
   角色名列表.forEach(角色名 => {
     const 角色 = 数据根?.char?.[角色名];
-    const 行文本 = 格式化角色基础六维对标条目_V1(角色名, 构建角色基础六维对标条目_V1(角色));
+    const 行文本 = 格式化角色基础六维对标条目_V1(角色名, 构建角色基础六维对标条目_V1(角色, 数据根?.world?.时间?.tick ?? null));
     if (行文本) 行列表.push(行文本);
   });
   return 行列表.length ? 行列表.join('\n') : '无';

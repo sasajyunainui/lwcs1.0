@@ -7004,15 +7004,16 @@ function 规范化角色Schema_V1(char) {
       const backgroundTier = 有效背景阶层 ? 原始背景阶层 : '平民';
       const 等级字段存在 = Object.prototype.hasOwnProperty.call(char.属性, '等级');
       const 等级值 = Number(char.属性?.等级);
+      const 有初始化种子 =
+        Math.max(0, Number(char.属性?.年龄 || 0)) > 6 &&
+        (有效背景阶层 || char.属性?.天赋评级 !== undefined || hasPresetTalent);
       const 等级为初始化默认态 =
         !等级字段存在 ||
         char.属性?.等级 === '' ||
         char.属性?.等级 === null ||
         (!Number.isFinite(等级值) && String(char.属性?.等级 ?? '').trim() !== '0') ||
-        Number(等级值) === 1;
-      const 有初始化种子 =
-        Math.max(0, Number(char.属性?.年龄 || 0)) > 6 &&
-        (有效背景阶层 || char.属性?.天赋评级 !== undefined || hasPresetTalent);
+        Number(等级值) === 1 ||
+        (Number(等级值) === 0 && 有初始化种子 && !isNoSoulPowerTalentTier(currentTier));
       初始化魂灵预算倍率记录_V1.set(
         char,
         !有效背景阶层 || backgroundTier === '顶级势力' || backgroundTier === '一流势力' ? 1 : 0.5,
@@ -7106,6 +7107,14 @@ function 规范化角色Schema_V1(char) {
       }
 
       if (!原始已有魂师结构 && hasPresetTalent && 等级为初始化默认态 && 有初始化种子) {
+        char.属性.等级 = 计算初始化修为等级(
+          char.属性.天赋梯队,
+          char.属性.年龄,
+          char.属性.底子波动,
+          char.属性.生日,
+        );
+      }
+      if (!原始已有魂师结构 && 有初始化种子 && !isNoSoulPowerTalentTier(char.属性.天赋梯队) && Math.max(0, Number(char.属性.等级 || 0)) <= 0) {
         char.属性.等级 = 计算初始化修为等级(
           char.属性.天赋梯队,
           char.属性.年龄,

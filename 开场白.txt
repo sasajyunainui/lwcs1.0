@@ -1169,14 +1169,23 @@ window.submitForm = function() {
             var 原著生日 = String(原著属性.生日 || '').trim();
             var 原著天赋 = String(原著属性.天赋梯队 || '').trim();
             if (!Number.isFinite(age)) age = Number.isFinite(原著年龄) ? 原著年龄 : 6;
-            if (!原著投影.需要重算等级 && Math.abs(age - 原著年龄) <= 0.001 && (!原著生日 || 原著生日 === 生日) && (!原著天赋 || 原著天赋 === talentConfig.label)) {
-                calculatedLv = Number(原著属性.等级);
+            var 原著等级 = Number(原著属性.等级);
+            if (
+                !原著投影.需要重算等级 &&
+                Math.abs(age - 原著年龄) <= 0.001 &&
+                (!原著生日 || 原著生日 === 生日) &&
+                (!原著天赋 || 原著天赋 === talentConfig.label) &&
+                Number.isFinite(原著等级) &&
+                (原著等级 > 0 || age < 6 || 原著天赋 === '天赋极差')
+            ) {
+                calculatedLv = 原著等级;
             }
         }
         if (!Number.isFinite(age)) age = 6;
-        if (!Number.isFinite(Number(calculatedLv))) {
+        if (!Number.isFinite(Number(calculatedLv)) || (age >= 6 && Number(calculatedLv) <= 0)) {
             calculatedLv = 计算开场等级(talentConfig, age, 生日, 当前tick);
         }
+        if (age >= 6 && Number(calculatedLv) <= 0) throw new Error('MVU初始化修为计算返回0级，请刷新脚本后重试');
     } catch (错误) {
         alert((错误 && 错误.message) || 'MVU初始化修为计算失败');
         return;
