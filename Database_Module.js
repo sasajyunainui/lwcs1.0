@@ -4004,18 +4004,6 @@ $CONTENT
         inProgress: false,
         ignoreNextGenerationEndedCount: 0,
     };
-    const 正文完成后置状态_ACU = {
-        待处理: new Map(),
-        正在处理: new Set(),
-        已提交: new Set(),
-        已阻断消息键: '',
-        准备中消息键: '',
-        主动提交中: false,
-        调度计时器: 0,
-        最终正文前置承诺: new Map(),
-        最终正文已前置: new Set(),
-        终止序号: 0,
-    };
     let abortController_ACU = null;
     let isProcessing_Plot_ACU = false;
     let tempPlotToSave_ACU = null;
@@ -4350,266 +4338,27 @@ $CONTENT
         防截断流入状态_ACU.已处理消息键 = '';
         防截断流入状态_ACU.已阻断消息键 = '';
     }
-    function 读取后置窗口函数_ACU(函数名) {
-        for (const 候选窗口 of 收集剧情推进运行时适配器窗口_ACU()) {
-            try {
-                const 函数 = 候选窗口?.[函数名];
-                if (typeof 函数 === 'function')
-                    return 函数;
-            }
-            catch (_) { }
-        }
-        return null;
-    }
-    function 读取正文完成后置任务_ACU(事件消息编号, 来源 = 'unknown') {
-        const 消息元信息 = 读取最新角色消息元信息_ACU();
-        const 消息键 = 构建防截断流入消息键_ACU(消息元信息, 事件消息编号);
-        if (!消息键)
-            return null;
-        return {
-            消息键,
-            来源,
-            事件消息编号,
-            消息元信息: { ...消息元信息 },
-            终止序号: 正文完成后置状态_ACU.终止序号,
-            创建时间: Date.now(),
-        };
-    }
-    function 正文完成后置任务有效_ACU(任务) {
-        return !!任务?.消息键
-            && 任务.终止序号 === 正文完成后置状态_ACU.终止序号
-            && 正文完成后置消息仍匹配_ACU(任务);
-    }
-    function 正文完成后置消息仍匹配_ACU(任务) {
-        if (!任务?.消息键)
-            return false;
-        const 最新消息元信息 = 读取最新角色消息元信息_ACU();
-        return 构建防截断流入消息键_ACU(最新消息元信息, 任务.事件消息编号) === 任务.消息键;
-    }
-    function 正文完成后置入口应跳过_ACU(来源 = 'unknown', 外部事件 = false) {
-        if (防截断流入后置更新应阻断_ACU())
-            return true;
-        const 消息键 = 构建防截断流入消息键_ACU(读取最新角色消息元信息_ACU());
-        if (!消息键)
-            return false;
-        if (正文完成后置状态_ACU.已阻断消息键 === 消息键)
-            return true;
-        if (来源 === '正文完成后置主动提交')
-            return false;
-        if (正文完成后置状态_ACU.主动提交中)
-            return 外部事件;
-        if (正文完成后置状态_ACU.待处理.has(消息键) || 正文完成后置状态_ACU.正在处理.has(消息键))
-            return true;
-        if (正文完成后置状态_ACU.准备中消息键 === 消息键)
-            return true;
-        return 正文完成后置状态_ACU.已提交.has(消息键);
-    }
-    function 清理正文完成后置挂起_ACU(原因 = 'cleared') {
-        if (正文完成后置状态_ACU.调度计时器) {
-            clearTimeout(正文完成后置状态_ACU.调度计时器);
-            正文完成后置状态_ACU.调度计时器 = 0;
-        }
-        if (newMessageDebounceTimer_ACU) {
-            clearTimeout(newMessageDebounceTimer_ACU);
-            _set_newMessageDebounceTimer_ACU(null);
-        }
-        if (newMessageDebounceTimer_ACU$1) {
-            clearTimeout(newMessageDebounceTimer_ACU$1);
-            _set_newMessageDebounceTimer_ACU$1(null);
-        }
-        正文完成后置状态_ACU.待处理.clear();
-        logDebug_ACU(`[正文后置入口] 已清理挂起任务: ${原因}`);
-    }
-    function 重置正文完成后置状态_ACU(原因 = 'reset') {
-        正文完成后置状态_ACU.终止序号 += 1;
-        清理正文完成后置挂起_ACU(原因);
-        正文完成后置状态_ACU.正在处理.clear();
-        正文完成后置状态_ACU.已提交.clear();
-        正文完成后置状态_ACU.已阻断消息键 = '';
-        正文完成后置状态_ACU.准备中消息键 = '';
-        正文完成后置状态_ACU.主动提交中 = false;
-        正文完成后置状态_ACU.最终正文前置承诺.clear();
-        正文完成后置状态_ACU.最终正文已前置.clear();
-        logDebug_ACU(`[正文后置入口] 已重置后置状态: ${原因}`);
-    }
-    async function 执行最终正文恢复实例化_ACU(任务) {
-        const 最新消息元信息 = 读取最新角色消息元信息_ACU();
-        const 最终正文 = String(最新消息元信息.文本 || '').trim();
-        if (!最终正文)
-            return { changed: false, reason: 'empty_final_text' };
-        const 用户输入文本 = 读取最新用户消息文本_ACU();
-        const 捕获文本 = [用户输入文本, 最终正文].filter(Boolean).join('\n');
-        const 调用列表 = [
-            ['__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', '最终正文归档角色恢复'],
-            ['__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', '最终正文归档地点恢复'],
-            ['__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', '最终正文归档物品恢复'],
-            ['__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', '最终正文内置物品入库'],
-            ['__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', '最终正文内置角色入库'],
-        ];
-        let 已变化 = false;
-        let 当前StatData = null;
-        const 名称列表 = [];
-        for (const [函数名, 标签] of 调用列表) {
-            const 函数 = 读取后置窗口函数_ACU(函数名);
-            if (typeof 函数 !== 'function')
-                continue;
-            const 开始时间 = Date.now();
-            try {
-                const 结果 = await Promise.resolve(函数(捕获文本, {
-                    剧情文本: '',
-                    最后剧情文本: 最终正文,
-                    上限: 16,
-                    延迟刷新: true,
-                }));
-                if (结果?.changed === true)
-                    已变化 = true;
-                if (结果?.statData && typeof 结果.statData === 'object')
-                    当前StatData = 结果.statData;
-                if (Array.isArray(结果?.names))
-                    名称列表.push(...结果.names);
-                logDebug_ACU(`[正文后置入口] ${标签}: changed=${结果?.changed === true} names=${Array.isArray(结果?.names) ? 结果.names.length : 0} cost=${Date.now() - 开始时间}ms`);
-            }
-            catch (错误) {
-                logWarn_ACU(`[正文后置入口] ${标签}失败:`, 错误);
-            }
-        }
-        if (已变化) {
-            const 刷新函数 = 读取后置窗口函数_ACU('__MVU_REFRESH_LIVE_SNAPSHOT__');
-            if (typeof 刷新函数 === 'function') {
-                try {
-                    await Promise.resolve(刷新函数({ force: true }));
-                }
-                catch (错误) {
-                    logWarn_ACU('[正文后置入口] 最终正文恢复后刷新 MVU 视图失败:', 错误);
-                }
-            }
-        }
-        return { changed: 已变化, names: Array.from(new Set(名称列表)), messageKey: 任务?.消息键 || '', statData: 当前StatData };
-    }
-    async function 确保最终正文恢复实例化_ACU(来源 = 'final_text_prepare', 事件消息编号 = undefined) {
-        const 任务 = 读取正文完成后置任务_ACU(事件消息编号, 来源);
-        if (!任务)
-            return null;
-        if (正文完成后置状态_ACU.最终正文已前置.has(任务.消息键))
-            return { changed: false, messageKey: 任务.消息键, reason: 'already_prepared' };
-        const 既有承诺 = 正文完成后置状态_ACU.最终正文前置承诺.get(任务.消息键);
-        if (既有承诺)
-            return await 既有承诺;
-        const 承诺 = 执行最终正文恢复实例化_ACU(任务)
-            .then(结果 => {
-                正文完成后置状态_ACU.最终正文已前置.add(任务.消息键);
-                return 结果;
-            })
-            .finally(() => {
-                正文完成后置状态_ACU.最终正文前置承诺.delete(任务.消息键);
-            });
-        正文完成后置状态_ACU.最终正文前置承诺.set(任务.消息键, 承诺);
-        return await 承诺;
-    }
-    async function 执行正文完成后置任务_ACU(任务) {
-        if (!正文完成后置状态_ACU.待处理.has(任务.消息键))
-            return;
-        if (!正文完成后置任务有效_ACU(任务)) {
-            正文完成后置状态_ACU.待处理.delete(任务.消息键);
-            return;
-        }
-        正文完成后置状态_ACU.待处理.delete(任务.消息键);
-        if (!正文完成后置任务有效_ACU(任务)) {
-            logDebug_ACU('[正文后置入口] 楼层已变化，跳过后置更新。');
-            return;
-        }
-        if (正文完成后置状态_ACU.正在处理.has(任务.消息键) || 正文完成后置状态_ACU.已提交.has(任务.消息键)) {
-            logDebug_ACU('[正文后置入口] 同楼层已进入后置更新，跳过重复任务。');
-            return;
-        }
-        正文完成后置状态_ACU.正在处理.add(任务.消息键);
-        正文完成后置状态_ACU.准备中消息键 = 任务.消息键;
-        try {
-            const 防截断结果 = await 处理防截断流入生成结束_ACU(任务.事件消息编号);
-            if (防截断结果?.action === 'continue') {
-                await 确保最终正文恢复实例化_ACU('generation_ended', 任务.事件消息编号);
-                if (!正文完成后置任务有效_ACU(任务)) {
-                    logDebug_ACU('[正文后置入口] 最终正文恢复后楼层已变化，跳过提交。');
-                    return;
-                }
-                正文完成后置状态_ACU.准备中消息键 = '';
-                正文完成后置状态_ACU.已提交.add(任务.消息键);
-                正文完成后置状态_ACU.主动提交中 = true;
-                void 执行新消息后置更新_ACU('正文完成后置主动提交')
-                    .catch(错误 => {
-                        logError_ACU('[正文后置入口] 数据库后置更新调度失败:', 错误);
-                    })
-                    .finally(() => {
-                        正文完成后置状态_ACU.主动提交中 = false;
-                    });
-            }
-            else {
-                正文完成后置状态_ACU.已阻断消息键 = 任务.消息键;
-                logDebug_ACU(`[防截断流入] 已阻断后置更新: reason=${防截断结果?.reason || 'unknown'}`);
-            }
-        }
-        finally {
-            正文完成后置状态_ACU.正在处理.delete(任务.消息键);
-            if (正文完成后置状态_ACU.准备中消息键 === 任务.消息键)
-                正文完成后置状态_ACU.准备中消息键 = '';
-        }
-    }
-    function 执行正文完成后置队列_ACU() {
-        const 任务列表 = [...正文完成后置状态_ACU.待处理.values()];
-        for (const 任务 of 任务列表) {
-            void 执行正文完成后置任务_ACU(任务).catch(错误 => {
-                logError_ACU('[正文后置入口] 后置任务执行失败:', 错误);
-            });
-        }
-    }
-    function 安排正文完成后置处理_ACU() {
-        if (正文完成后置状态_ACU.调度计时器)
-            return;
-        正文完成后置状态_ACU.调度计时器 = setTimeout(() => {
-            正文完成后置状态_ACU.调度计时器 = 0;
-            执行正文完成后置队列_ACU();
-        }, 0);
-    }
-    function 登记正文完成后置更新_ACU(事件消息编号, 来源 = 'generation_ended') {
-        if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
-            logDebug_ACU('ACU: Skip auto table update due to quiet/background generation.');
-            return false;
-        }
-        const 任务 = 读取正文完成后置任务_ACU(事件消息编号, 来源);
-        if (!任务)
-            return false;
-        if (正文完成后置状态_ACU.待处理.has(任务.消息键)
-            || 正文完成后置状态_ACU.正在处理.has(任务.消息键)
-            || 正文完成后置状态_ACU.已提交.has(任务.消息键)) {
-            logDebug_ACU('[正文后置入口] 同楼层后置更新已登记，跳过重复登记。');
-            return true;
-        }
-        正文完成后置状态_ACU.待处理.set(任务.消息键, 任务);
-        安排正文完成后置处理_ACU();
-        return true;
-    }
     function 终止挂起后置任务_ACU(原因 = 'user_abort') {
-        重置正文完成后置状态_ACU(原因);
         清理防截断流入挂起_ACU();
         try {
             if (abortController_ACU && typeof abortController_ACU.abort === 'function')
                 abortController_ACU.abort();
         }
         catch (错误) {
-            logWarn_ACU('[正文后置入口] 终止剧情推进请求失败:', 错误);
+            logWarn_ACU('[后置任务] 终止剧情推进请求失败:', 错误);
         }
         try {
             if (typeof cancelContentOptimization_ACU === 'function')
                 cancelContentOptimization_ACU('后置任务已终止。');
         }
         catch (错误) {
-            logWarn_ACU('[正文后置入口] 终止正文优化失败:', 错误);
+            logWarn_ACU('[后置任务] 终止正文优化失败:', 错误);
         }
         try {
             abortAllActiveRequests_ACU$1();
         }
         catch (错误) {
-            logWarn_ACU('[正文后置入口] 终止填表请求失败:', 错误);
+            logWarn_ACU('[后置任务] 终止填表请求失败:', 错误);
         }
     }
     function 打开防截断流入设置面板_ACU() {
@@ -19511,7 +19260,7 @@ $CONTENT
         const 需要运行时提示词处理 = 剧情推进运行时适配器需要处理_ACU(提示词合并文本);
         const 本轮运行时捕获文本 = [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n');
         let 运行时数据 = null;
-        if (需要运行时提示词处理 && 运行时视图类型 === 'story') {
+        if (需要运行时提示词处理) {
             运行时数据 = await 准备提示词运行时数据_ACU({
                 userInput: 用户输入文本,
                 最后角色消息文本,
@@ -19519,11 +19268,6 @@ $CONTENT
                 捕获文本: 本轮运行时捕获文本,
                 plotText: '',
             }) || null;
-        }
-        else if (需要运行时提示词处理) {
-            const 最终正文前置结果 = await 确保最终正文恢复实例化_ACU('后台提示词占位符替换');
-            if (最终正文前置结果?.statData && typeof 最终正文前置结果.statData === 'object')
-                运行时数据 = 最终正文前置结果.statData;
         }
         const context = {
             seedContent: 最后角色消息文本 || '',
@@ -20511,7 +20255,6 @@ $CONTENT
             return;
         }
         logDebug_ACU(`ACU: Resetting script state for new chat: "${chatFileName}"`);
-        重置正文完成后置状态_ACU('CHAT_CHANGED');
         清理防截断流入挂起_ACU();
         _set_wasStoppedByUser_ACU$1(false);
         // 直接使用有效的 chatFileName，不再需要调用 /getchatname 或其他回退逻辑。
@@ -36693,10 +36436,6 @@ $CONTENT
     }
     let autoUpdateTriggerInFlight_ACU = false;
     async function triggerAutomaticUpdateIfNeeded_ACU(来源 = 'unknown_acu') {
-        if (正文完成后置入口应跳过_ACU(来源, false)) {
-            logDebug_ACU('ACU Auto-Trigger: 正文完成后置门闸已阻断本楼层更新。');
-            return;
-        }
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
@@ -37062,8 +36801,8 @@ $CONTENT
         return coreApisAreReady_ACU;
     }
     async function 执行新消息后置更新_ACU(eventType = 'unknown_acu') {
-        if (正文完成后置入口应跳过_ACU(eventType, false)) {
-            logDebug_ACU(`[正文后置入口] 已阻断后置更新执行: eventType=${eventType}`);
+        if (防截断流入后置更新应阻断_ACU()) {
+            logDebug_ACU(`[防截断流入] 已阻断后置更新执行: eventType=${eventType}`);
             return;
         }
         if (wasStoppedByUser_ACU) {
@@ -37104,15 +36843,15 @@ $CONTENT
         }
     }
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu') {
-        if (正文完成后置入口应跳过_ACU(eventType, true)) {
-            logDebug_ACU(`[正文后置入口] handleNewMessageDebounced 已阻断后置更新: eventType=${eventType}`);
+        if (防截断流入后置更新应阻断_ACU()) {
+            logDebug_ACU(`[防截断流入] handleNewMessageDebounced 已阻断后置更新: eventType=${eventType}`);
             return;
         }
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
         _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
-            if (正文完成后置入口应跳过_ACU(eventType, true)) {
-                logDebug_ACU(`[正文后置入口] 防抖执行前已阻断后置更新: eventType=${eventType}`);
+            if (防截断流入后置更新应阻断_ACU()) {
+                logDebug_ACU(`[防截断流入] 防抖执行前已阻断后置更新: eventType=${eventType}`);
                 return;
             }
             await 执行新消息后置更新_ACU(eventType);
@@ -54979,7 +54718,25 @@ $CONTENT
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
-                        登记正文完成后置更新_ACU(message_id, 'generation_ended');
+                        setTimeout(async () => {
+                            try {
+                                if (shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+                                    const 防截断结果 = await 处理防截断流入生成结束_ACU(message_id);
+                                    if (防截断结果?.action === 'continue') {
+                                        await handleNewMessageDebounced_ACU('GENERATION_ENDED');
+                                    }
+                                    else {
+                                        logDebug_ACU(`[防截断流入] 已阻断后置更新: reason=${防截断结果?.reason || 'unknown'}`);
+                                    }
+                                }
+                                else {
+                                    logDebug_ACU('ACU: Skip auto table update due to quiet/background generation.');
+                                }
+                            }
+                            catch (错误) {
+                                logError_ACU('ACU GENERATION_ENDED 后置更新调度失败:', 错误);
+                            }
+                        }, 0);
                         // [剧情推进] 保存Plot到消息和循环检测
                         // savePlotToLatestMessage_ACU(); // Moved to runOptimizationLogic_ACU
                         void onLoopGenerationEnded_ACU().catch(错误 => {
@@ -55154,7 +54911,6 @@ $CONTENT
                     if (SillyTavern_API_ACU.eventTypes[evName]) {
                         SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes[evName], async (data) => {
                             logDebug_ACU(`ACU ${evName} event detected. Triggering data reload and merge from chat history.`);
-                            重置正文完成后置状态_ACU(evName);
                             clearTimeout(newMessageDebounceTimer_ACU$1);
                             _set_newMessageDebounceTimer_ACU$1(setTimeout(async () => {
                                 // [6.7.3] SQLite 模式下，楼层删除/滑动后需要重建内存数据库

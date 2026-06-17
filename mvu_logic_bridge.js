@@ -5773,37 +5773,57 @@
     return 保护;
   }
 
-  async function 复读确认归档角色已移出热区_桥接(角色名列表 = []) {
-    const { mvuData } = await readLatestMvuDataByEditor();
-    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-    const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
-    const 残留名称 = (Array.isArray(角色名列表) ? 角色名列表 : [角色名列表])
+  const 归档复读确认次数_桥接 = 6;
+  const 归档复读确认间隔毫秒_桥接 = 120;
+
+  function 等待毫秒_桥接(毫秒 = 0) {
+    return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(毫秒) || 0)));
+  }
+
+  async function 复读确认归档已移出热区_桥接(名称列表 = [], 查找残留名称, 类型名 = '对象') {
+    const 待确认名称 = (Array.isArray(名称列表) ? 名称列表 : [名称列表])
       .map(名称 => toText(名称, '').trim())
-      .filter(名称 => 名称 && 角色集[名称]);
-    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
-    return statData;
+      .filter(Boolean);
+    let 最后残留名称 = [];
+    for (let 尝试次数 = 0; 尝试次数 < 归档复读确认次数_桥接; 尝试次数 += 1) {
+      if (尝试次数 > 0) await 等待毫秒_桥接(归档复读确认间隔毫秒_桥接);
+      const { mvuData } = await readLatestMvuDataByEditor();
+      const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
+      最后残留名称 = typeof 查找残留名称 === 'function' ? 查找残留名称(statData, 待确认名称) : [];
+      if (!最后残留名称.length) return statData;
+    }
+    throw new Error(`归档副本已生成，但热 MVU 同步未完成：${类型名} ${最后残留名称.join('、')}`);
+  }
+
+  async function 复读确认归档角色已移出热区_桥接(角色名列表 = []) {
+    return 复读确认归档已移出热区_桥接(
+      角色名列表,
+      (statData, 名称列表) => {
+        const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
+        return 名称列表.filter(名称 => 角色集[名称]);
+      },
+      '角色',
+    );
   }
 
   async function 复读确认归档动态地点已移出热区_桥接(地点名列表 = []) {
-    const { mvuData } = await readLatestMvuDataByEditor();
-    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-    const 动态地点 = deepGet(statData, 'world.动态地点', {});
-    const 地点表 = 动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {};
-    const 残留名称 = (Array.isArray(地点名列表) ? 地点名列表 : [地点名列表])
-      .map(名称 => toText(名称, '').trim())
-      .filter(名称 => 名称 && 地点表[名称]);
-    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
-    return statData;
+    return 复读确认归档已移出热区_桥接(
+      地点名列表,
+      (statData, 名称列表) => {
+        const 动态地点 = deepGet(statData, 'world.动态地点', {});
+        const 地点表 = 动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {};
+        return 名称列表.filter(名称 => 地点表[名称]);
+      },
+      '动态地点',
+    );
   }
 
   async function 复读确认归档物品已移出热区_桥接(物品名列表 = []) {
-    const { mvuData } = await readLatestMvuDataByEditor();
-    const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-    const 残留名称 = (Array.isArray(物品名列表) ? 物品名列表 : [物品名列表])
-      .map(名称 => toText(名称, '').trim())
-      .filter(名称 => 名称 && 查找物品定义_桥接(statData, 名称));
-    if (残留名称.length) throw new Error(`已生成归档副本但未移出热 MVU：${残留名称.join('、')}`);
-    return statData;
+    return 复读确认归档已移出热区_桥接(
+      物品名列表,
+      (statData, 名称列表) => 名称列表.filter(名称 => 查找物品定义_桥接(statData, 名称)),
+      '物品',
+    );
   }
 
   function 创建空冷归档对象时间线_桥接(配置 = {}) {
