@@ -1,8 +1,8 @@
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
-import { TimelineEvents } from 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/timeline.js';
+import { TimelineEvents } from 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/timeline.js';
 
-import { IntelEvents } from 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/IntelEvents.js';
+import { IntelEvents } from 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/IntelEvents.js';
 
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
