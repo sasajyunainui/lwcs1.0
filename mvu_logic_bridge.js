@@ -17130,7 +17130,7 @@
     for (const 候选路径 of 候选路径列表) {
       const 节点 = 候选路径.length ? deepGet(rootData, 候选路径, null) : null;
       const 名称 = normalizeSkillUiText(节点 && (节点.表象名称 || 节点.名称 || 节点.name), '');
-      if (名称 && !isAiTodoText(名称) && 名称 !== '未展露') return /真身/.test(名称) ? 名称 : `${名称}真身`;
+      if (名称 && !hasUiPlaceholderToken(名称) && 名称 !== '未展露') return /真身/.test(名称) ? 名称 : `${名称}真身`;
     }
     return '武魂真身';
   }
@@ -17138,7 +17138,7 @@
   function 规范第七魂环真身名称_桥接(名称 = '', previewMeta = {}) {
     const 原名 = normalizeSkillUiText(名称, '');
     if (!是第七魂环魂技设计_桥接(previewMeta)) return 原名;
-    if (!原名 || isAiTodoText(原名) || /^(待补全|未知|未命名|第7魂技|第七魂技)$/u.test(原名))
+    if (!原名 || hasUiPlaceholderToken(原名) || /^(待补全|未知|未命名|第7魂技|第七魂技)$/u.test(原名))
       return 读取第七魂环真身默认名_桥接(previewMeta);
     return /真身/.test(原名) ? 原名 : `${原名}真身`;
   }

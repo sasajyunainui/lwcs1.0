@@ -1553,6 +1553,9 @@ function markPlayerCharacterInSchemaInput(rawInput) {
       记录本轮原始角色等级_V1(charName, 原始等级);
       const 显示名 = String(charData?.name || charData?.属性?.name || charData?.base?.name || '').trim();
       if (显示名 && 显示名 !== charName) 记录本轮原始角色等级_V1(显示名, 原始等级);
+      const 原始天赋梯队 = 规范化显式天赋梯队_V1(charData?.属性?.天赋梯队);
+      if (原始天赋梯队) charData.__mvu_显式天赋梯队 = 原始天赋梯队;
+      else delete charData.__mvu_显式天赋梯队;
     });
   };
   const markCandidate = candidate => {
@@ -2609,6 +2612,7 @@ function 规范化Schema根转换_V1(data = {}) {
     Object.values(data.char).forEach(charData => {
       if (charData && typeof charData === 'object' && !Array.isArray(charData)) {
         delete charData.__mvu_isPlayer;
+        delete charData.__mvu_显式天赋梯队;
       }
     });
     Object.entries(data.char).forEach(([charName, charData]) => {
@@ -3441,8 +3445,6 @@ function 规范化Schema根转换_V1(data = {}) {
       if (!c.属性.训练加成 || typeof c.属性.训练加成 !== 'object' || Array.isArray(c.属性.训练加成)) {
         c.属性.训练加成 = createNumericStatBonusMap({});
       }
-      c.属性.训练加成.修炼倍率 = Number(基础成长倍率.toFixed(4));
-      c.属性.训练加成.修炼倍率来源 = String(修炼倍率信息.构成说明 || '常规');
       const hasNoSoulPowerTalent = isNoSoulPowerTalentTier(c?.属性?.天赋梯队);
       const coreCount = c.魂核?.核心?.数量 || 0;
       let spRate = 0.01;
@@ -3473,9 +3475,10 @@ function 规范化Schema根转换_V1(data = {}) {
       if (hasNoSoulPowerTalent) spRate = 0;
       c.属性.魂力 = Math.min(c.属性.魂力上限, roundRuntimeGrowthValue_ACU(c.属性.魂力 + c.属性.魂力上限 * spRate * safeDelta));
 
-      const 血脉核心 = c.血脉之力?.核心 || '未凝聚';
-      if (血脉核心 !== '未凝聚') {
+      const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
+      if (血脉核心 && 血脉核心 !== '未凝聚' && 血脉核心 !== '无') {
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * 0.05 * safeDelta));
+        应用伤势恢复到生命值(0.003);
       }
 
       if (normalizedActionMode === '冥想' && !hasNoSoulPowerTalent) {
@@ -4770,7 +4773,7 @@ function 规范化Schema根转换_V1(data = {}) {
         char[firstSpiritName] = {
           ...原有武魂壳,
           表象名称: String(原有武魂壳.表象名称 || '').trim() || '未展露',
-          系别: String(原有武魂壳.系别 || '').trim() || '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)',
+          系别: String(原有武魂壳.系别 || '').trim() || 武魂系别待补全文案_V1,
         };
         spiritEntries = [[firstSpiritName, char[firstSpiritName]]];
       }
@@ -4778,7 +4781,7 @@ function 规范化Schema根转换_V1(data = {}) {
       spiritEntries.forEach(([, 武魂数据]) => {
         if (!武魂数据 || typeof 武魂数据 !== 'object' || Array.isArray(武魂数据)) return;
         if (!String(武魂数据.系别 || '').trim()) {
-          武魂数据.系别 = '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)';
+          武魂数据.系别 = 武魂系别待补全文案_V1;
         }
         delete 武魂数据.领域;
       });
@@ -5215,10 +5218,6 @@ function 规范化Schema根转换_V1(data = {}) {
         strMult = 1.0,
         allMult = 1.0,
         menMult = 1.0;
-      if (c.血脉之力?.核心 !== '未凝聚') {
-        vitMult = Math.max(vitMult, 1.5);
-        strMult = Math.max(strMult, 1.5);
-      }
       if (c.血脉之力?.生命之火 === true) {
         allMult = 2.0;
       }
@@ -5919,10 +5918,11 @@ function 规范化Schema根转换_V1(data = {}) {
 
         取角色武魂条目_V1(charData).forEach(([spiritKey, spiritData]) => {
           if (!spiritData || typeof spiritData !== 'object') return;
-          const 武魂系别 = String(spiritData?.系别 || '强攻系').trim() || '强攻系';
+          const 武魂系别 = 取角色主武魂系别_V1(charData);
           const isSecondarySpirit = spiritKey === '第2武魂';
           ensureDisplayText(spiritData, '表象名称', isSecondarySpirit ? '未展露' : AI_TODO_SPIRIT_NAME);
           ensureDisplayText(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC);
+          ensureDisplayText(spiritData, '系别', 武魂系别待补全文案_V1);
           ensureDisplayText(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
           if (Array.isArray(spiritData.可调用元素)) {
             const hasCallableElements = spiritData.可调用元素.some(item => String(item ?? '').trim());
@@ -6620,6 +6620,7 @@ function 规范化武魂Schema_V1(武魂) {
     Object.keys(武魂).forEach(键 => {
       if (是魂灵槽位键_V1(键)) 武魂[键] = 读取MVUSchema部件_V1('SoulSpiritSchema').parse(武魂[键]);
     });
+    delete 武魂.领域;
     delete 武魂.魂灵;
     delete 武魂.独立魂环;
     return 武魂;
@@ -6650,6 +6651,11 @@ function 规范化等级输入Schema_V1(val) {
         let num = Number(val);
         return isNaN(num) ? 1 : num;
       
+}
+
+function 规范化显式天赋梯队_V1(天赋梯队 = '') {
+    const 文本 = String(天赋梯队 || '').trim();
+    return ['天赋极差', '劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'].includes(文本) ? 文本 : '';
 }
 
 function 计算等级反推天赋梯队_V1(年龄 = 0, 等级 = 1, 生日 = '') {
@@ -7052,6 +7058,8 @@ function 规范化角色Schema_V1(char) {
     let 本轮初始化魂师面板 = false;
     const 跳过真实魂环等级底线 = char?.状态?.__内置角色未来快照投影 === true;
     if (char?.状态 && typeof char.状态 === 'object') delete char.状态.__内置角色未来快照投影;
+    const 显式天赋梯队 = 规范化显式天赋梯队_V1(char.__mvu_显式天赋梯队);
+    delete char.__mvu_显式天赋梯队;
     const 标记本轮等级上升 = () => {
       const 当前等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
       if (当前等级 > 原始等级) 标记本轮等级上升角色_V1(char, normalizedCharName);
@@ -7137,7 +7145,7 @@ function 规范化角色Schema_V1(char) {
       const 等级值 = Math.max(0, Number(char.属性?.等级 || 0) || 0);
       初始化魂灵预算倍率记录_V1.set(char, 1);
       if (!原始已有魂师结构) {
-        char.属性.天赋梯队 = 计算等级反推天赋梯队_V1(char.属性.年龄, 等级值, char.属性.生日);
+        char.属性.天赋梯队 = 显式天赋梯队 || 计算等级反推天赋梯队_V1(char.属性.年龄, 等级值, char.属性.生日);
         if (等级值 > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) {
           填充默认训练加成_V1(char.属性, true);
           本轮初始化魂师面板 = true;
@@ -7275,6 +7283,20 @@ function 规范化角色Schema_V1(char) {
     const 机甲初始化概率 = 属于军方联邦势力 ? 0.7 : 0.18;
     const 可初始化机甲 =
       !isBeast && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
+    const 斗铠名称文本 = String(char?.装备?.斗铠?.名称 || '').trim();
+    const 机甲等级文本 = String(char?.装备?.机甲?.等级 || '').trim();
+    const 机甲名称文本 = String(char?.装备?.机甲?.名称 || '').trim();
+    const 机甲状态文本 = String(char?.装备?.机甲?.状态 || '').trim();
+    const 机甲装备状态文本 = String(char?.装备?.机甲?.装备状态 || '').trim();
+    const 已有明确斗铠 =
+      Number(char?.装备?.斗铠?.等级 || 0) > 0 ||
+      (!!斗铠名称文本 && 斗铠名称文本 !== '无') ||
+      Object.keys(char?.装备?.斗铠?.部件 || {}).length > 0;
+    const 已有明确机甲 =
+      (!!机甲等级文本 && 机甲等级文本 !== '无') ||
+      (!!机甲名称文本 && 机甲名称文本 !== '无') ||
+      (!!机甲状态文本 && 机甲状态文本 !== '无') ||
+      (!!机甲装备状态文本 && 机甲装备状态文本 !== '未装备');
 
     if (isBeast) {
       char.装备.斗铠.等级 = 0;
@@ -7311,11 +7333,13 @@ function 规范化角色Schema_V1(char) {
           armorLv = 3;
         } else {
           armorLv = 0;
-          char.装备.机甲.等级 = char.属性.等级 >= 90 ? '黑级' : '紫级';
-          char.装备.机甲.名称 = `${char.装备.机甲.等级}机甲`;
-          char.装备.机甲.型号 = '均衡';
-          char.装备.机甲.状态 = '完好';
-          char.装备.机甲.装备状态 = '未装备';
+          if (!已有明确机甲) {
+            char.装备.机甲.等级 = char.属性.等级 >= 90 ? '黑级' : '紫级';
+            char.装备.机甲.名称 = `${char.装备.机甲.等级}机甲`;
+            char.装备.机甲.型号 = '均衡';
+            char.装备.机甲.状态 = '完好';
+            char.装备.机甲.装备状态 = '未装备';
+          }
         }
       } else if (char.属性.等级 >= 80) armorLv = 3;
       else if (char.属性.等级 >= 70) armorLv = 2;
@@ -7325,12 +7349,12 @@ function 规范化角色Schema_V1(char) {
         armorLv = 3;
       }
 
-      if (armorLv > 0) {
+      if (armorLv > 0 && !已有明确斗铠) {
         char.装备.斗铠.等级 = armorLv;
         char.装备.斗铠.装备状态 = '未装备';
         取内置角色斗铠部件列表_V1(char).forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
       }
-    } else if (!isBeast && tier === '优秀' && 可初始化机甲) {
+    } else if (!isBeast && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
       if (char.属性.等级 >= 70) {
         char.装备.机甲.等级 = '黑级';
         char.装备.机甲.名称 = '黑级机甲';

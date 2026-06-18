@@ -19311,6 +19311,7 @@ var AI_TODO_SKILL_VISUAL_STAGE1 =
 var AI_TODO_SKILL_EFFECT = '待补全（效果描述。须逻辑严密，按“触发条件-数值消耗-判定结果”的TRPG规则书体例编写';
 var AI_TODO_SPIRIT_NAME = '待补全(填写具体武魂名，如蓝银草/蓝银皇)';
 var AI_TODO_SPIRIT_DESC = '待补全(描述武魂外形、核心能力与战斗特征)';
+var 武魂系别待补全文案_V1 = '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)';
 var AI_TODO_SPIRIT_ELEMENT = '待补全(填写元素倾向；无属性也请明确写无)';
 var AI_TODO_ATTRIBUTE_SYSTEM = '待补全（填写属性体系：无/元素/五行）';
 var AI_TODO_CALLABLE_ELEMENTS = '待补全（填写可调用元素列表：金 / 木 / 水 / 火 / 土 / 风 / 雷 / 冰 / 光 / 暗 / 精神 / 空间 / 时间 / 创造 / 毁灭，无属性体系请填“无”）';
@@ -21338,6 +21339,46 @@ function 技能需要自动生成结构_V1(skill = {}, context = {}) {
   return !!读取技能合法自动生成机制标签_V1(skill, context);
 }
 
+function 是技能生成可软化错误_V1(错误 = null) {
+  const 文本 = String(错误?.message || 错误 || '').trim();
+  return /技能生成错误|预算收敛诊断/.test(文本) || !!错误?.预算收敛技能 || Array.isArray(错误?.生成失败记录);
+}
+
+function 技能生成失败软落地_V1(skill = {}, context = {}, 错误 = null, 备选技能 = null) {
+  if (!skill || typeof skill !== 'object') return skill;
+  const 收敛技能 =
+    错误 && typeof 错误 === 'object' && 错误.预算收敛技能 && typeof 错误.预算收敛技能 === 'object' && !Array.isArray(错误.预算收敛技能)
+      ? 错误.预算收敛技能
+      : null;
+  const 备选对象 = 备选技能 && typeof 备选技能 === 'object' && !Array.isArray(备选技能) ? 备选技能 : null;
+  const 下个技能 = cloneJsonValue(收敛技能 || 备选对象 || skill, {});
+  if (!Array.isArray(下个技能._效果数组)) 下个技能._效果数组 = [];
+  delete 下个技能[技能机制决策临时字段_V1];
+  if (typeof 下个技能.魂技名 !== 'string' || !下个技能.魂技名.trim() || isSkillTodoText(下个技能.魂技名)) {
+    下个技能.魂技名 = buildSkillNameTodoText(context?.textContext || context);
+  }
+  const 有效果数组 = Array.isArray(下个技能._效果数组) && 下个技能._效果数组.length > 0;
+  if (typeof 下个技能.画面描述 !== 'string' || !下个技能.画面描述.trim() || 下个技能.画面描述 === SKILL_TEXT_UNKNOWN) {
+    下个技能.画面描述 = 有效果数组 ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1;
+  }
+  if (typeof 下个技能.效果描述 !== 'string' || !下个技能.效果描述.trim() || 下个技能.效果描述 === SKILL_TEXT_UNKNOWN) {
+    下个技能.效果描述 = AI_TODO_SKILL_EFFECT;
+  }
+  if (有效果数组) 清理技能效果数组AI文本字段_V1(下个技能._效果数组);
+  Object.keys(skill).forEach(键 => delete skill[键]);
+  Object.assign(skill, 下个技能);
+  记录技能生成事件_V1(context, {
+    类型: '生成软失败保留收敛结果',
+    失败类型: 归类技能生成错误_V1(错误),
+    错误信息: String(错误?.message || 错误 || ''),
+    保留效果数: Array.isArray(skill._效果数组) ? skill._效果数组.length : 0,
+    来源: 收敛技能 ? '预算收敛技能' : (备选对象 ? '候选技能' : '原技能'),
+    path: String(context?.path || context?.路径 || ''),
+    技能键: String(context?.技能键 || context?.skillName || ''),
+  });
+  return 有效果数组 ? hydrateSkillTextByPackedEffects(skill) : skill;
+}
+
 function 构建副作用条目_V1(副作用类型 = '', context = {}) {
   const 类型文本 = String(副作用类型 || '').trim();
   if (!类型文本) return null;
@@ -21505,6 +21546,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     const 候选开始毫秒 = 读取性能计时毫秒_V1();
     let 候选蓝图 = undefined;
     let 当前候选机制原型 = '';
+    let 当前候选保留技能 = null;
     记录技能生成事件_V1(context, {
       类型: '候选尝试',
       候选序号,
@@ -21603,6 +21645,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         释放形态: 候选技能.承载方式,
       });
       const 最终正式技能 = 校验生成技能正式结构_V1(候选技能, '生成技能最终预算', 候选预算上下文);
+      当前候选保留技能 = 最终正式技能;
       if (!是武魂真身候选) {
         收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 机制标签: 候选机制标签 }, 候选预算档案);
         断言并同步自动生成最终预算_V1(最终正式技能, {
@@ -21625,6 +21668,15 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       break;
     } catch (错误) {
       最后错误 = 错误;
+      if (
+        错误 &&
+        typeof 错误 === 'object' &&
+        !错误.预算收敛技能 &&
+        当前候选保留技能 &&
+        typeof 当前候选保留技能 === 'object'
+      ) {
+        错误.预算收敛技能 = cloneJsonValue(当前候选保留技能, {});
+      }
       const 错误文本 = String(错误?.message || 错误 || '未知错误');
       const 大类匹配 = 错误文本.match(/技能生成错误:([^:：]+?)没有合法子原型/);
       if (大类匹配?.[1]) 失败主机制大类.add(String(大类匹配[1]).trim());
@@ -21678,6 +21730,10 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       失败记录: [...失败记录],
       耗时毫秒: Number(Math.max(0, 读取性能计时毫秒_V1() - 直接生成开始毫秒).toFixed(3)),
     });
+    if (context?.技能生成失败软落地 === true) {
+      清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
+      return 技能生成失败软落地_V1(skill, context, 错误, null);
+    }
     throw 错误;
   }
   Object.keys(skill).forEach(键 => delete skill[键]);
@@ -21715,7 +21771,12 @@ function ensureSkillStructGenerated(skill, context = {}) {
   let hasPackedEffects = Array.isArray(skill._效果数组) && skill._效果数组.length > 0;
   let 本次已自动生成 = false;
   if (技能需要自动生成结构_V1(skill, context)) {
-    直接自动生成技能结构_V1(skill, context);
+    try {
+      直接自动生成技能结构_V1(skill, { ...context, 技能生成失败软落地: true });
+    } catch (错误) {
+      if (!是技能生成可软化错误_V1(错误)) throw 错误;
+      技能生成失败软落地_V1(skill, context, 错误, null);
+    }
     hasPackedEffects = Array.isArray(skill._效果数组) && skill._效果数组.length > 0;
     本次已自动生成 = hasPackedEffects;
   }
@@ -21769,7 +21830,8 @@ function ensureSkillStructGenerated(skill, context = {}) {
     }, context?.sourceCategory || context?.来源类别 || context?.来源 || '技能');
     断言直接结算收益预算_V1(临时技能, '技能', context || {});
   } catch (错误) {
-    throw 错误;
+    if (!是技能生成可软化错误_V1(错误)) throw 错误;
+    return 技能生成失败软落地_V1(skill, context, 错误, 临时技能);
   }
   Object.keys(skill).forEach(键 => delete skill[键]);
   Object.assign(skill, 临时技能);

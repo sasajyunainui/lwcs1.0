@@ -314,7 +314,7 @@ const MartialSoulSchema = z
   .looseObject({
     表象名称: z.string().prefault(AI_TODO_SPIRIT_NAME).describe('武魂名'),
     描述: z.string().prefault(AI_TODO_SPIRIT_DESC).describe('武魂的具体形态与能力描述'),
-    系别: z.string().prefault('未知系'),
+    系别: z.string().prefault(武魂系别待补全文案_V1),
     属性体系: z.string().prefault(AI_TODO_ATTRIBUTE_SYSTEM).describe('武魂属性体系：无/元素/五行'),
     可调用元素: z.array(z.string()).prefault([AI_TODO_CALLABLE_ELEMENTS]).describe('武魂当前可调用的元素列表'),
   })
@@ -776,6 +776,7 @@ const CharacterSchema = z
       .prefault({}),
 
     __mvu_isPlayer: z.boolean().optional().prefault(false),
+    __mvu_显式天赋梯队: z.string().optional(),
   })
   .prefault({})
   .transform(规范化角色Schema_V1);
