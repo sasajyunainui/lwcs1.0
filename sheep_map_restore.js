@@ -35,7 +35,7 @@
   const DEFAULT_IMAGE_BOUNDS = { minX: 0, minY: 0, width: WORLD_IMAGE_WIDTH, height: WORLD_IMAGE_HEIGHT };
   const MAP_COORD_SYSTEM_IMAGE = 'image';
   const ASSETS = {
-    world: encodeURI('https://cdn.jsdelivr.net/gh/sasajyunainui/lwcs@main/MAP.webp')
+    world: encodeURI('https://fastly.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/MAP.webp')
   };
 
   const SMALL_SETTLEMENT_NAMES = new Set(['傲来城', '上陵城', '海陆城', '烈火盆地']);

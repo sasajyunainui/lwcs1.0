@@ -13,7 +13,7 @@
   const 调试热更新模式 = !!宿主窗口[加载器键];
   宿主窗口[加载器键] = true;
 
-  const 资源基础地址 = 'http://localhost:5502/lwcs/';
+  const 资源基础地址 = 'https://fastly.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/';
   const 资源版本后缀 = '';
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
   const 首次重试延迟毫秒 = 260;

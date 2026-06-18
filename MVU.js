@@ -1,8 +1,8 @@
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
-import { TimelineEvents } from 'http://localhost:5502/lwcs/timeline.js';
+import { TimelineEvents } from 'https://fastly.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/timeline.js';
 
-import { IntelEvents } from 'https://cdn.jsdelivr.net/gh/sasajyunainui/lwcs@main/IntelEvents.js';
+import { IntelEvents } from 'https://fastly.jsdelivr.net/gh/sasajyunainui/lwcs1.0@master/IntelEvents.js';
 
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
