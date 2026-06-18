@@ -1932,13 +1932,6 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
  'New Entity Table:',
 'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new important plot items (generic keys/clothes write 无).',
 '',
-'When registering a NEW character via /char/${name}:',
-'TIER 1 — Init-critical inputs (MUST provide on NEW character insert): 属性.年龄 (number), 属性.生日 (e.g. "3月14日"), 属性.等级 (number).',
-'CRITICAL CONSTRAINT — The INITIAL 属性.等级 must strictly match the character\'s identity or event thresholds mentioned in the context (e.g., if enrollment requires lvl >= 11, do NOT write 10 or below; if tournament limits lvl <= 40, do NOT write 41 or above).',
-'',
-'When updating an EXISTING character:',
-'特殊剧情突破：对既有角色绝对不要直接写 属性.等级；当正文里出现临时突破时，只在更新视图里把对应角色的 临时突破 改为突破后的等级数字。',
-    '',
     '[Task/Commission Creation]',
     '剧情中新出现长期个人目标时，直接写 /char/${角色名}/我的任务/${任务名}，字段={任务线,状态,当前进度,奖励币,奖励声望,描述,最后更新时间tick,截止tick?}；任务线=主线/支线；最后更新时间tick用当前 world.时间.tick；限时任务才写截止tick，不限时不要写该字段；任务进度达到100时，任务奖励由脚本自动结算，不要为任务奖励额外手写财富或声望。',
     '剧情中新出现公开/指定委托时，直接写 /world/委托板/${委托名}，字段={标题,描述,框架描述,发布者,面向,指定对象,状态,难度,资源级别,奖励币,奖励声望,承接者,生成tick,截止tick?,交付需求?}；生成tick用当前 world.时间.tick；限时委托才写截止tick。',
@@ -3823,10 +3816,89 @@ function 读取年龄段对标天赋档位_V1(年龄 = 0) {
   return '顶级天才';
 }
 
+function 读取年龄对标天赋档位列表_V1(年龄 = 0) {
+  const 年龄值 = Math.max(0, Number(年龄 || 0));
+  if (年龄值 < 9) return ['正常', '优秀', '天才'];
+  if (年龄值 < 13) return ['优秀', '天才'];
+  if (年龄值 < 21) return ['天才', '顶级天才'];
+  return ['顶级天才'];
+}
+
+function 读取年龄对标天赋显示名_V1(天赋档位 = '') {
+  const 档位 = String(天赋档位 || '').trim();
+  return 档位 === '正常' ? '普通' : 档位;
+}
+
 function 读取六维对标训练系数_V1(天赋档位 = '正常') {
   return { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1.0, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[
     String(天赋档位 || '').trim()
   ] ?? 0.5;
+}
+
+function 读取六维对标精神训练系数_V1(天赋档位 = '正常') {
+  return String(天赋档位 || '').trim() === '绝世妖孽' ? 2.0 : 读取六维对标训练系数_V1(天赋档位);
+}
+
+function 读取角色六维对标天赋档位_V1(角色 = {}) {
+  const 档位 = String(角色?.属性?.天赋梯队 || '').trim();
+  return 档位 || '正常';
+}
+
+function 读取角色六维对标底子波动_V1(角色 = {}) {
+  const 波动 = Number(角色?.属性?.底子波动);
+  return Number.isFinite(波动) && 波动 > 0 ? 波动 : 1;
+}
+
+function 读取六维对标标准魂环年限_V1(魂环位 = 1, 等级 = 1, 天赋档位 = '正常', 精神境界 = '') {
+  const 安全魂环位 = Math.max(1, Math.min(9, Math.floor(Number(魂环位 || 1))));
+  const 等级值 = Math.max(1, Number(等级 || 1));
+  if (等级值 >= 98) {
+    const 九十八级目标 = [36000, 40000, 46000, 52000, 60000, 69000, 80000, 92000, 106000][安全魂环位 - 1] || 36000;
+    const 九十九级目标 = [82000, 86000, 91000, 96000, 102000, 108000, 115000, 124000, 138000][安全魂环位 - 1] || 82000;
+    const 天赋倍率 = { 绝世妖孽: 1.06, 顶级天才: 1, 天才: 0.94, 优秀: 0.88, 正常: 0.82, 劣等: 0.74, 天赋极差: 0.62 }[
+      String(天赋档位 || '').trim()
+    ] || 0.82;
+    const 上限 = { 神元境: 999999, 灵域境: 999999, 灵渊境: 100000, 灵海境: 15000, 灵通境: 3000, 灵元境: 400 }[
+      String(精神境界 || '').trim()
+    ] || 400;
+    const 进度 = Math.max(0, Math.min(1, 等级值 - 98));
+    return Math.max(50, Math.min(上限, Math.floor((九十八级目标 + (九十九级目标 - 九十八级目标) * 进度) * 天赋倍率)));
+  }
+
+  const 天赋分 = { 绝世妖孽: 100, 顶级天才: 80, 天才: 60, 优秀: 40, 正常: 20, 劣等: 0, 天赋极差: -100 }[
+    String(天赋档位 || '').trim()
+  ] || 20;
+  const 序号分 = [0, 40, 90, 150, 220, 300, 400, 500, 600][安全魂环位 - 1] || (安全魂环位 - 1) * 80;
+  const 总分 = 50 + 天赋分 + 等级值 * 2 + 序号分 + (等级值 > 95 ? Math.floor(等级值 - 95) * 50 : 0);
+  let 年限 = 50;
+  if (总分 >= 600) 年限 = 100000 + (总分 - 600) * 1000;
+  else if (总分 >= 300) 年限 = 10000 + (总分 - 300) * 200;
+  else if (总分 >= 240) 年限 = 1000 + (总分 - 240) * 100;
+  else if (总分 >= 180) 年限 = 100 + (总分 - 180) * 10;
+
+  if (安全魂环位 === 1 && 等级值 < 30) {
+    if (['绝世妖孽', '顶级天才', '天才'].includes(String(天赋档位 || '').trim())) {
+      年限 = Math.min(400, Math.max(100, 100 + Math.max(0, 总分 - 80) * 2));
+    } else {
+      年限 = Math.min(100, Math.max(50, 年限));
+    }
+  }
+  return Math.max(50, Math.floor(年限));
+}
+
+function 读取六维对标标准魂环加成_V1(等级 = 1, 天赋档位 = '正常', 精神境界 = '') {
+  const 魂环数 = Math.max(0, Math.min(9, Math.floor(Number(等级 || 1) / 10)));
+  const 结果 = { 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0, 精神力上限: 0 };
+  if (!魂环数 || typeof getRingBonus !== 'function') return 结果;
+  for (let 魂环位 = 1; 魂环位 <= 魂环数; 魂环位 += 1) {
+    const 加成 = getRingBonus(读取六维对标标准魂环年限_V1(魂环位, 等级, 天赋档位, 精神境界));
+    结果.力量 += Math.floor(Number(加成?.str || 0));
+    结果.防御 += Math.floor(Number(加成?.def || 0));
+    结果.敏捷 += Math.floor(Number(加成?.agi || 0));
+    结果.体力上限 += Math.floor(Number(加成?.vit_max || 0));
+    结果.精神力上限 += Math.floor(Number(加成?.men_max || 0));
+  }
+  return 结果;
 }
 
 function 读取初始化修为同龄描点_V1(角色 = {}, 当前tick = null) {
@@ -3846,6 +3918,21 @@ function 读取初始化修为同龄描点_V1(角色 = {}, 当前tick = null) {
     当前tick,
   }));
   return Number.isFinite(等级) ? { 档位, 等级: Math.max(0, Math.floor(等级)) } : null;
+}
+
+function 读取指定天赋年龄描点等级_V1(天赋档位 = '正常', 年龄 = 6) {
+  const 计算函数 = typeof globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ === 'function'
+    ? globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__
+    : null;
+  if (!计算函数) return null;
+  const 等级 = Number(计算函数({
+    天赋梯队: String(天赋档位 || '正常').trim() || '正常',
+    年龄: Math.max(0, Number(年龄 || 0)),
+    底子波动: 1,
+    生日: '',
+    当前tick: null,
+  }));
+  return Number.isFinite(等级) ? Math.max(0, Math.floor(等级)) : null;
 }
 
 function 读取初始化修为同龄比较文本_V1(当前等级 = 0, 同龄等级 = 0) {
@@ -3871,15 +3958,17 @@ function 构建角色六维对标参照值_V1(角色 = {}, 等级 = 1) {
   const 安全等级 = Math.max(1, Math.min(99, Math.floor(Number(等级) || 1)));
   const 基准 = getBaseStats(安全等级);
   const 系别倍率 = 读取角色六维强攻系对标倍率_V1();
-  const 天赋档位 = 读取年龄段对标天赋档位_V1(角色?.属性?.年龄);
-  const 训练系数 = 读取六维对标训练系数_V1(天赋档位);
-  const 训练倍率 = 安全等级 > 10 ? 0.005 * (安全等级 - 10) * 训练系数 : 0;
+  const 天赋档位 = 读取角色六维对标天赋档位_V1(角色);
+  const 底子波动 = 读取角色六维对标底子波动_V1(角色);
+  const 训练倍率 = 安全等级 > 10 ? 0.005 * (安全等级 - 10) * 读取六维对标训练系数_V1(天赋档位) : 0;
+  const 精神训练倍率 = 安全等级 > 10 ? 0.005 * (安全等级 - 10) * 读取六维对标精神训练系数_V1(天赋档位) : 0;
+  const 魂环加成 = 读取六维对标标准魂环加成_V1(安全等级, 天赋档位, 角色?.属性?.精神境界);
   return {
-    力量: Math.floor(Number(基准.str || 0) * Number(系别倍率.str || 1)) + Math.floor(Number(基准.str || 0) * 训练倍率),
-    防御: Math.floor(Number(基准.def || 0) * Number(系别倍率.def || 1)) + Math.floor(Number(基准.def || 0) * 训练倍率),
-    敏捷: Math.floor(Number(基准.agi || 0) * Number(系别倍率.agi || 1)) + Math.floor(Number(基准.agi || 0) * 训练倍率),
-    体力上限: Math.floor(Number(基准.vit_max || 0) * Number(系别倍率.vit_max || 1)) + Math.floor(Number(基准.vit_max || 0) * 训练倍率),
-    精神力上限: Math.floor(Number(基准.men_max || 0) * Number(系别倍率.men_max || 1)) + Math.floor(Number(基准.men_max || 0) * 训练倍率),
+    力量: Math.floor(Number(基准.str || 0) * Number(系别倍率.str || 1) * 底子波动) + Math.floor(Number(基准.str || 0) * 训练倍率) + 魂环加成.力量,
+    防御: Math.floor(Number(基准.def || 0) * Number(系别倍率.def || 1) * 底子波动) + Math.floor(Number(基准.def || 0) * 训练倍率) + 魂环加成.防御,
+    敏捷: Math.floor(Number(基准.agi || 0) * Number(系别倍率.agi || 1) * 底子波动) + Math.floor(Number(基准.agi || 0) * 训练倍率) + 魂环加成.敏捷,
+    体力上限: Math.floor(Number(基准.vit_max || 0) * Number(系别倍率.vit_max || 1) * 底子波动) + Math.floor(Number(基准.vit_max || 0) * 训练倍率) + 魂环加成.体力上限,
+    精神力上限: Math.floor(Number(基准.men_max || 0) * Number(系别倍率.men_max || 1) * 底子波动) + Math.floor(Number(基准.men_max || 0) * 精神训练倍率) + 魂环加成.精神力上限,
   };
 }
 
@@ -3944,10 +4033,7 @@ function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null)
   const 条目 = {};
   const 等级 = Number(角色.属性.等级);
   if (Number.isFinite(等级)) {
-    const 同龄描点 = 读取初始化修为同龄描点_V1(角色, 当前tick);
-    条目.等级 = 同龄描点 && Number.isFinite(Number(同龄描点.等级))
-      ? `Lv${等级}（同龄${同龄描点.档位}描点：${同龄描点.等级}级，${读取初始化修为同龄比较文本_V1(等级, 同龄描点.等级)}）`
-      : `Lv${等级}`;
+    条目.等级 = `Lv${等级}`;
   }
   角色基础六维对标字段_V1.forEach(({ 标签, 字段 }) => {
     const 数值 = Math.max(1, Math.floor(Number(六维?.[字段] || 1)));
@@ -3979,11 +4065,39 @@ function 格式化角色基础六维对标条目_V1(角色名 = '', 条目 = {})
   return `${角色名} ${String(条目.等级 || 'Lv?').trim()}：${字段文本}${副职业文本 ? `；副职业：${副职业文本}` : ''}`;
 }
 
+function 构建年龄对标等级行列表_V1(数据根 = {}, 角色名集合 = new Set()) {
+  const 年龄集合 = new Set();
+  Array.from(角色名集合 || []).forEach(角色名 => {
+    const 年龄 = Number(数据根?.char?.[角色名]?.属性?.年龄);
+    if (!Number.isFinite(年龄) || 年龄 < 6 || 年龄 >= 30) return;
+    年龄集合.add(Math.floor(年龄));
+  });
+  return Array.from(年龄集合)
+    .sort((a, b) => a - b)
+    .map(年龄 => {
+      const 计算年龄 = 年龄 + 0.5;
+      const 档位文本 = 读取年龄对标天赋档位列表_V1(计算年龄)
+        .map(档位 => {
+          const 等级 = 读取指定天赋年龄描点等级_V1(档位, 计算年龄);
+          return Number.isFinite(Number(等级)) ? `${读取年龄对标天赋显示名_V1(档位)}${等级}级` : '';
+        })
+        .filter(Boolean)
+        .join('，');
+      return 档位文本 ? `${年龄}岁对标等级：${档位文本}` : '';
+    })
+    .filter(Boolean);
+}
+
 function 生成角色基础六维对标摘要_V1(数据输入 = null, userInput = '') {
   const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
   const 角色名集合 = 取运行时基础角色名集合_V1(数据根, String(userInput || ''));
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
   const 行列表 = [];
+  const 年龄对标行列表 = 构建年龄对标等级行列表_V1(数据根, 角色名集合);
+  if (年龄对标行列表.length) {
+    行列表.push('档位说明：普通=正常魂师/大众水平；优秀=学院精英/局部拔尖；天才=全市前列/史莱克报考门槛；顶级天才=全国顶尖；绝世妖孽=时代断层。');
+    行列表.push(...年龄对标行列表);
+  }
   角色名列表.forEach(角色名 => {
     const 角色 = 数据根?.char?.[角色名];
     const 行文本 = 格式化角色基础六维对标条目_V1(角色名, 构建角色基础六维对标条目_V1(角色, 数据根?.world?.时间?.tick ?? null));

@@ -146,26 +146,40 @@
     return statData;
   }
 
-  function 读取开场StatData(userInput = '') {
-    const statData = 读取窗口字段('__LWCS_STARTUP_MVU_STAT_DATA__');
-    if (!statData || typeof statData !== 'object') return null;
-    const 写入时间 = Number(读取窗口字段('__LWCS_STARTUP_MVU_STAT_DATA_AT__') || 0);
-    if (写入时间 > 0 && Date.now() - 写入时间 > 30000) return null;
-    const 开场提示 = 读取窗口字段('__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__');
+  function 读取开场MVU初始化事务(userInput = '') {
+    const 开场事务 = 读取窗口字段('__LWCS_开场MVU初始化事务__');
+    if (!开场事务 || typeof 开场事务 !== 'object') return null;
     const 当前输入 = String(userInput || '').trim();
-    const 开场输入 = String(开场提示?.displayText || '').trim();
+    const 开场输入 = String(开场事务.开场输入 || '').trim();
     if (!当前输入 || !开场输入 || 当前输入 !== 开场输入) return null;
-    return statData;
+    return 开场事务;
+  }
+
+  async function 等待开场MVU初始化事务(userInput = '') {
+    const 开场事务 = 读取开场MVU初始化事务(userInput);
+    if (!开场事务) return null;
+    if (开场事务.状态 === 'ready' && 开场事务.statData && typeof 开场事务.statData === 'object') return 开场事务.statData;
+    if (开场事务.状态 === 'error') return null;
+    if (开场事务.promise && typeof 开场事务.promise.then === 'function') {
+      try {
+        const statData = await Promise.race([
+          开场事务.promise,
+          new Promise(resolve => setTimeout(() => resolve(null), 6000)),
+        ]);
+        return statData && typeof statData === 'object' ? statData : null;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   function 取StatData(statData = null, userInput = '') {
     if (statData && typeof statData === 'object') return 缓存StatData(statData, userInput);
     const 当前输入 = String(userInput || '').trim();
     if (本轮StatData && typeof 本轮StatData === 'object') {
-      if (!当前输入 || !本轮输入文本 || 当前输入 === 本轮输入文本) return 本轮StatData;
+      if (当前输入 && 本轮输入文本 && 当前输入 === 本轮输入文本) return 本轮StatData;
     }
-    const 开场StatData = 读取开场StatData(当前输入);
-    if (开场StatData) return 缓存StatData(开场StatData, 当前输入);
     return null;
   }
 
@@ -332,11 +346,11 @@
     }
   }
 
-  function 读取角色基础六维对标(userInput = '', statData = null) {
+  function 读取角色基础六维对标(userInput = '', statData = null, 近场文本 = '') {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成角色基础六维对标摘要 !== 'function') return '无';
     try {
-      return String(接口.生成角色基础六维对标摘要(取StatData(statData, userInput) || null, userInput) || '').trim() || '无';
+      return String(接口.生成角色基础六维对标摘要(取StatData(statData, userInput) || null, 近场文本 || userInput) || '').trim() || '无';
     } catch (错误) {
       console.warn('[LWCS适配器] 角色基础六维对标读取失败:', 错误);
       return '无';
@@ -358,21 +372,39 @@
       结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本) || '无远端原著时间线候选。');
     }
     if (结果.includes(角色基础六维对标占位符)) {
-      结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData));
+      结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData, 近场文本));
     }
     return 结果;
+  }
+
+  function 处理提示词运行时内容(内容, 上下文 = {}) {
+    const 文本 = String(内容 || '');
+    const 视图类型 = String(上下文.viewType || 'empty');
+    const 替换后内容 = 替换运行时占位符(文本, 视图类型, {
+      statData: 上下文.statData,
+      userInput: 上下文.userInput || '',
+      lastCharMessage: 上下文.lastCharMessage || '',
+      plotText: 上下文.plotText || '',
+    });
+    return 替换专属占位符(替换后内容, {
+      userInput: 上下文.userInput || '',
+      lastCharMessage: 上下文.lastCharMessage || '',
+      statData: 上下文.statData,
+      captureText: 上下文.captureText || '',
+    });
   }
 
   async function 准备正文运行时数据(context = {}) {
     const 原始输入 = String(context.userInput || '');
     const 最后角色消息文本 = String(context.lastCharMessage || 读取最新角色消息元信息().文本 || '');
     const 捕获文本 = [原始输入, 最后角色消息文本].filter(Boolean).join('\n');
+    const 开场StatData = await 等待开场MVU初始化事务(原始输入);
     return await 准备MVU前置数据({
       userInput: 原始输入,
       lastCharMessage: 最后角色消息文本,
       captureText: 捕获文本,
       plotText: '',
-      statData: 取StatData(context.statData, 原始输入) || undefined,
+      statData: 取StatData(context.statData, 原始输入) || 开场StatData || undefined,
     });
   }
 
@@ -380,13 +412,14 @@
     const 用户输入文本 = String(context.userInput || '');
     const 最后角色消息文本 = String(context.lastCharMessage || '');
     const 近场文本 = 构建近场文本(用户输入文本, 最后角色消息文本);
+    const 开场StatData = await 等待开场MVU初始化事务(用户输入文本);
     return await 准备MVU前置数据({
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
       latestCharMessageInfo: context.latestCharMessageInfo,
       captureText: 近场文本,
       plotText: '',
-      statData: 取StatData(context.statData, context.userInput || '') || undefined,
+      statData: 取StatData(context.statData, context.userInput || '') || 开场StatData || undefined,
     });
   }
 
@@ -566,6 +599,7 @@
     版本: 适配器版本,
     isRuntimePlaceholderName: 是否运行时占位符名,
     needsRuntimeProcessing: 文本需要运行时处理,
+    processPromptRuntimeContent: 处理提示词运行时内容,
     replaceRuntimePlaceholders: 替换运行时占位符,
     replaceSpecialPlaceholders: 替换专属占位符,
     prepareStoryRuntimeData: 准备正文运行时数据,

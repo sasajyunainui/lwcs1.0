@@ -714,7 +714,7 @@ function 取角色主武魂系别_V1(char = {}, fallback = '强攻系') {
   const 条目 = 取角色武魂条目_V1(char);
   const 第1武魂 = 条目.find(([键]) => 键 === '第1武魂')?.[1] || 条目[0]?.[1] || {};
   const 系别 = String(第1武魂?.系别 || '').trim();
-  return 系别 && 系别 !== '未知系' ? 系别 : fallback;
+  return 系别 && 系别 !== '未知系' && !/待补全|AI_TODO/.test(系别) ? 系别 : fallback;
 }
 
 function 取武魂魂灵条目_V1(武魂数据 = {}) {
@@ -21758,6 +21758,15 @@ function ensureSkillStructGenerated(skill, context = {}) {
   }
   try {
     syncConstructSkillMetadata(临时技能);
+    收敛技能到预算区间_V1(临时技能, {
+      ...context,
+      path: context?.path || '技能',
+      机制标签: context?.sourceCategory || context?.来源类别 || context?.来源 || '技能',
+    }, context?.候选预算档案 || null);
+    断言技能预算_V1(临时技能, {
+      ...context,
+      path: context?.path || '技能',
+    }, context?.sourceCategory || context?.来源类别 || context?.来源 || '技能');
     断言直接结算收益预算_V1(临时技能, '技能', context || {});
   } catch (错误) {
     throw 错误;

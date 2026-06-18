@@ -15867,6 +15867,20 @@ $CONTENT
             return source;
         }
     }
+    function 处理剧情推进提示词运行时内容_ACU(内容, 上下文 = {}) {
+        const 文本 = String(内容 || '');
+        const 适配器 = 获取剧情推进运行时适配器_ACU();
+        if (适配器 && typeof 适配器.processPromptRuntimeContent === 'function') {
+            try {
+                return String(适配器.processPromptRuntimeContent(文本, 上下文 || {}) ?? '');
+            }
+            catch (错误) {
+                logWarn_ACU('[剧情推进] 运行时提示词内容处理失败:', 错误);
+            }
+        }
+        const 替换后内容 = 替换剧情推进运行时占位符_ACU(文本, 上下文?.viewType || 'empty', 上下文 || {});
+        return 注入剧情推进运行时特殊占位符_ACU(替换后内容, 上下文 || {});
+    }
     function 读取消息当前滑动编号_ACU(消息) {
         if (!消息 || typeof 消息 !== 'object')
             return '';
@@ -18780,14 +18794,11 @@ $CONTENT
             || '';
         rawFinal = await tryRenderPlotTemplateWithEjs_ACU(rawFinal);
         let plotFinalDirective = performReplacements(rawFinal);
-        plotFinalDirective = 替换剧情推进运行时占位符_ACU(plotFinalDirective, 'plot', {
+        plotFinalDirective = 处理剧情推进提示词运行时内容_ACU(plotFinalDirective, {
+            viewType: 'plot',
             userInput: userMessage || '',
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: lastPlotContent || '',
-        });
-        plotFinalDirective = 注入剧情推进运行时特殊占位符_ACU(plotFinalDirective, {
-            userInput: userMessage,
-            lastCharMessage: getLatestAIMessageContent_ACU(),
             captureText: [userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
         });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
@@ -18837,14 +18848,11 @@ $CONTENT
             c = await tryRenderPlotTemplateWithEjs_ACU(c);
             c = sharedContext.performReplacements(c, replacementOverrides);
             c = replacePlotTagPlaceholders_ACU(c, relayTagMap, fallbackTagMap);
-            c = 替换剧情推进运行时占位符_ACU(c, 'plot', {
+            c = 处理剧情推进提示词运行时内容_ACU(c, {
+                viewType: 'plot',
                 userInput: sharedContext.userMessage || "",
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
-            });
-            c = 注入剧情推进运行时特殊占位符_ACU(c, {
-                userInput: sharedContext.userMessage,
-                lastCharMessage: getLatestAIMessageContent_ACU(),
                 captureText: [sharedContext.userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
@@ -19616,16 +19624,12 @@ $CONTENT
             plotContent: lastPlotContent
         };
         const 替换提示词运行时内容_ACU = (content) => {
-            const 替换后内容 = 替换剧情推进运行时占位符_ACU(content, 运行时视图类型, {
+            return 处理剧情推进提示词运行时内容_ACU(content, {
+                viewType: 运行时视图类型,
                 statData: 运行时数据 || undefined,
                 userInput: 用户输入文本,
                 lastCharMessage: 最后角色消息文本 || '',
                 plotText: lastPlotContent || '',
-            });
-            return 注入剧情推进运行时特殊占位符_ACU(替换后内容, {
-                userInput: 用户输入文本,
-                lastCharMessage: 最后角色消息文本 || '',
-                statData: 运行时数据 || undefined,
                 captureText: 本轮运行时捕获文本,
             });
         };
@@ -54373,16 +54377,12 @@ $CONTENT
         const 正文生成指导 = String(finalMessage || '').trim();
         const 用户输入文本 = String(userMessage || '');
         const 运行时数据 = await 准备正文生成运行时数据_ACU(用户输入文本, runtimePlotText || '', 正文生成指导);
-        const 替换运行时占位符后正文生成指导 = 替换剧情推进运行时占位符_ACU(正文生成指导, 'story', {
+        const 替换后正文生成指导 = 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
+            viewType: 'story',
             statData: 运行时数据 || undefined,
             userInput: 用户输入文本,
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: runtimePlotText || 正文生成指导,
-        });
-        const 替换后正文生成指导 = 注入剧情推进运行时特殊占位符_ACU(替换运行时占位符后正文生成指导, {
-            statData: 运行时数据 || undefined,
-            userInput: 用户输入文本,
-            lastCharMessage: getLatestAIMessageContent_ACU(),
             captureText: [用户输入文本, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
         });
         登记防截断流入等待检测_ACU(替换后正文生成指导);

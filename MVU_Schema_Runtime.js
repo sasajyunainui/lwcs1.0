@@ -4770,14 +4770,18 @@ function 规范化Schema根转换_V1(data = {}) {
         char[firstSpiritName] = {
           ...原有武魂壳,
           表象名称: String(原有武魂壳.表象名称 || '').trim() || '未展露',
-          系别: String(原有武魂壳.系别 || '').trim() || 取角色主武魂系别_V1(char),
-          领域:
-            原有武魂壳.领域 && typeof 原有武魂壳.领域 === 'object' && !Array.isArray(原有武魂壳.领域)
-              ? 原有武魂壳.领域
-              : {},
+          系别: String(原有武魂壳.系别 || '').trim() || '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)',
         };
         spiritEntries = [[firstSpiritName, char[firstSpiritName]]];
       }
+
+      spiritEntries.forEach(([, 武魂数据]) => {
+        if (!武魂数据 || typeof 武魂数据 !== 'object' || Array.isArray(武魂数据)) return;
+        if (!String(武魂数据.系别 || '').trim()) {
+          武魂数据.系别 = '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)';
+        }
+        delete 武魂数据.领域;
+      });
 
       const 待补武魂列表 = spiritEntries
         .map(([spiritKey, targetSpirit]) => {
@@ -6653,16 +6657,36 @@ function 计算等级反推天赋梯队_V1(年龄 = 0, 等级 = 1, 生日 = '') 
     if (等级值 <= 0) return '天赋极差';
     const 年龄值 = Math.max(0, Number(年龄 || 0) || 0);
     const 档位列表 = ['劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'];
-    const 候选列表 = 档位列表.map(档位 => ({
+    const 基准列表 = 档位列表.map(档位 => ({
       档位,
-      差值: Math.abs((Number(计算初始化修为等级(档位, 年龄值, 1, 生日)) || 1) - 等级值),
+      基准等级: Number(计算初始化修为等级(档位, 年龄值, 1, 生日)) || 1,
     }));
-    const 最小差值 = Math.min(...候选列表.map(项 => 项.差值));
-    const 最贴近列表 = 候选列表.filter(项 => Math.abs(项.差值 - 最小差值) <= 0.0001);
-    if (最贴近列表.length <= 1) return 最贴近列表[0]?.档位 || '正常';
+    const 基准组列表 = [];
+    for (const 项 of 基准列表) {
+      const 末组 = 基准组列表[基准组列表.length - 1];
+      if (末组 && Math.abs(末组.基准等级 - 项.基准等级) <= 0.0001) {
+        末组.档位列表.push(项.档位);
+      } else {
+        基准组列表.push({ 基准等级: 项.基准等级, 档位列表: [项.档位] });
+      }
+    }
+    const 入档组列表 = 基准组列表.map((组, 序号) => {
+      const 前组 = 基准组列表[序号 - 1];
+      const 入档线 = 前组 ? Math.floor((前组.基准等级 + 组.基准等级) / 2) : -Infinity;
+      return { ...组, 入档线 };
+    });
+    const 可用组列表 = 入档组列表.filter(组 => 等级值 >= 组.入档线);
+    if (!可用组列表.length) return '劣等';
+    const 选中组 = 可用组列表[可用组列表.length - 1];
+    const 候选列表 = 选中组.档位列表.map(档位 => ({ 档位 }));
+    if (候选列表.length <= 1) return 候选列表[0]?.档位 || '正常';
     const 百面骰 = Math.floor(Math.random() * 100) + 1;
-    const 索引 = Math.min(最贴近列表.length - 1, Math.floor((百面骰 - 1) * 最贴近列表.length / 100));
-    return 最贴近列表[索引]?.档位 || '正常';
+    if (选中组.档位列表.includes('绝世妖孽') && 百面骰 <= 1) return '绝世妖孽';
+    if (选中组.档位列表.includes('顶级天才') && 百面骰 <= 11) return '顶级天才';
+    if (选中组.档位列表.includes('天才')) return '天才';
+    if (选中组.档位列表.includes('优秀')) return '优秀';
+    if (选中组.档位列表.includes('正常')) return '正常';
+    return 候选列表[0]?.档位 || '劣等';
 }
 
 function 填充默认训练加成_V1(属性 = {}, 强制重算 = false) {

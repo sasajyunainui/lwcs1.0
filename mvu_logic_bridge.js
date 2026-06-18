@@ -31160,6 +31160,8 @@
 
   function 归一化详情预览键(previewKey) {
     const 预览键 = toText(previewKey, '').trim();
+    if (预览键 === '第一武魂详细页') return '第1武魂详细页';
+    if (预览键 === '第二武魂详细页') return '第2武魂详细页';
     return 预览键;
   }
 
@@ -44797,7 +44799,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function tryOpenUnifiedInlineDetail(previewKey, options = {}) {
-    const targetKey = toText(previewKey, '').trim();
+    const targetKey = 归一化详情预览键(previewKey);
     if (
       !targetKey ||
       !isUnifiedInlineDetailMode() ||
@@ -44815,7 +44817,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function openDetailPreview(previewKey, options = {}) {
-    const targetKey = toText(previewKey, '').trim();
+    const targetKey = 归一化详情预览键(previewKey);
     if (!targetKey) return false;
     if (tryOpenUnifiedInlineDetail(targetKey, options)) return true;
     if (isUnifiedInlineDetailMode()) return false;
@@ -44828,7 +44830,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       pendingLiveRefresh = true;
       return;
     }
-    const targetKey = previewKey || '';
+    const targetKey = 归一化详情预览键(previewKey);
     const 统一挂载 = document.getElementById('mvu-unified-mount');
     const 触发源 = options && options.triggerEl instanceof Element ? options.triggerEl : null;
     const 来自统一状态栏 = !!(
@@ -44871,7 +44873,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function 打开统一内嵌详情(预览键输入, 选项 = {}) {
-    const 预览键 = toText(预览键输入, '').trim();
+    const 预览键 = 归一化详情预览键(预览键输入);
     if (!预览键) return false;
     if (tryOpenUnifiedInlineDetail(预览键, 选项)) return true;
     window.setTimeout(() => {
@@ -44881,7 +44883,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function toggleModal(previewKey, options = {}) {
-    const targetKey = previewKey || '';
+    const targetKey = 归一化详情预览键(previewKey);
     if (!targetKey) return;
     const refs = getModalRefs();
     if (refs.detailModal && refs.detailModal.classList.contains('show') && currentModalPreviewKey === targetKey) {
@@ -45507,7 +45509,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function 打开预览入口(预览入口, 预览键输入, 选项 = {}) {
-    const 预览键 = toText(预览键输入, '').trim();
+    const 预览键 = 归一化详情预览键(预览键输入);
     if (!预览入口 || !预览键) return false;
     const 统一挂载 = document.getElementById('mvu-unified-mount');
     if (

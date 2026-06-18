@@ -1358,6 +1358,65 @@ window.submitForm = function() {
         return window.parent || window.top || window;
     }
 
+    function 读取开场酒馆上下文() {
+        var 宿主窗口 = getStartupRuntimeWindow();
+        try {
+            if (宿主窗口 && 宿主窗口.SillyTavern && typeof 宿主窗口.SillyTavern.getContext === "function") return 宿主窗口.SillyTavern.getContext();
+        } catch (_) {}
+        try {
+            if (window.SillyTavern && typeof window.SillyTavern.getContext === "function") return window.SillyTavern.getContext();
+        } catch (_) {}
+        return null;
+    }
+
+    function 读取开场聊天数组() {
+        var 上下文 = 读取开场酒馆上下文();
+        return Array.isArray(上下文 && 上下文.chat) ? 上下文.chat : [];
+    }
+
+    function 读取开场聊天编号() {
+        var 上下文 = 读取开场酒馆上下文();
+        return String((上下文 && (上下文.chatId || 上下文.chat_id || 上下文.characterId)) || "current_chat");
+    }
+
+    function 读取开场目标消息候选(消息, 索引) {
+        var 候选列表 = [];
+        [消息 && 消息.message_id, 消息 && 消息.id, 索引].forEach(function(候选) {
+            if (候选 === undefined || 候选 === null || 候选 === "") return;
+            var 文本 = String(候选).trim();
+            if (!文本 || 文本 === "latest" || 候选列表.indexOf(文本) >= 0) return;
+            候选列表.push(文本);
+        });
+        return 候选列表;
+    }
+
+    async function 锁定开场MVU目标楼层(mvu) {
+        var 聊天数组 = 读取开场聊天数组();
+        for (var 索引 = 聊天数组.length - 1; 索引 >= 0; 索引--) {
+            var 消息 = 聊天数组[索引];
+            if (!消息 || 消息.is_user) continue;
+            var 候选列表 = 读取开场目标消息候选(消息, 索引);
+            for (var 候选序号 = 0; 候选序号 < 候选列表.length; 候选序号++) {
+                var 消息编号 = 候选列表[候选序号];
+                var 当前数据 = await Promise.resolve(mvu.getMvuData({ type: "message", message_id: 消息编号 })).catch(function() { return null; });
+                if (当前数据 && typeof 当前数据 === "object" && 当前数据.stat_data) {
+                    return { 消息索引: 索引, 消息编号: 消息编号, 当前数据: 当前数据 };
+                }
+            }
+        }
+        throw new Error("MVU初始化失败：未找到可写入的明确AI目标楼层");
+    }
+
+    function 写入开场MVU初始化事务(事务) {
+        var 宿主窗口 = getStartupRuntimeWindow();
+        [宿主窗口, window, window.parent, window.top].forEach(function(目标窗口) {
+            try {
+                if (!目标窗口 || typeof 目标窗口 !== "object") return;
+                目标窗口.__LWCS_开场MVU初始化事务__ = 事务;
+            } catch (_) {}
+        });
+    }
+
     function buildInitUpdateVariableText(patchList) {
         var tagStart = '<' + 'UpdateVariable' + '>';
         var tagEnd = '<' + '/UpdateVariable' + '>';
@@ -1390,13 +1449,17 @@ window.submitForm = function() {
         return null;
     }
 
-    async function applyInitPatchByMvuParser(patchList) {
+    async function applyInitPatchByMvuParser(patchList, 开场事务) {
         var runtimeWindow = getStartupRuntimeWindow();
         var mvu = (runtimeWindow && runtimeWindow.Mvu) || window.Mvu;
         if (!mvu || typeof mvu.getMvuData !== "function" || typeof mvu.replaceMvuData !== "function" || typeof mvu.parseMessage !== "function") {
             throw new Error("MVU更新解析接口未就绪");
         }
-        var currentData = await mvu.getMvuData({ type: "message", message_id: "latest" });
+        var 目标楼层 = await 锁定开场MVU目标楼层(mvu);
+        开场事务.目标消息编号 = 目标楼层.消息编号;
+        开场事务.目标消息索引 = 目标楼层.消息索引;
+        写入开场MVU初始化事务(开场事务);
+        var currentData = 目标楼层.当前数据;
         var parsedData = await Promise.resolve(mvu.parseMessage(buildInitUpdateVariableText(patchList), currentData));
         var nextData = parsedData && parsedData.stat_data ? parsedData : currentData;
         if (!nextData || !nextData.stat_data) throw new Error("MVU初始化解析失败");
@@ -1409,9 +1472,10 @@ window.submitForm = function() {
         nextData.stat_data = normalizeStatData(nextData.stat_data);
         delete nextData.stat_data.display_all;
         delete nextData.stat_data.display_chars;
-        await mvu.replaceMvuData(nextData, { type: "message", message_id: "latest" });
-        var verifiedRoot = await verifyInitPatchLatest();
-        记录开场MVU运行时快照(verifiedRoot);
+        await mvu.replaceMvuData(nextData, { type: "message", message_id: 目标楼层.消息编号 });
+        var verifiedRoot = await verifyInitPatchTarget(目标楼层.消息编号);
+        开场事务.statData = verifiedRoot;
+        return verifiedRoot;
     }
 
     function 同步开场时间线数据(statData) {
@@ -1424,30 +1488,18 @@ window.submitForm = function() {
         statData.world.时间._上次结算tick = 期望tick;
     }
 
-    function 记录开场MVU运行时快照(statData) {
-        if (!statData || typeof statData !== "object") return;
-        var 写入时间 = Date.now();
-        var 宿主窗口 = getStartupRuntimeWindow();
-        [宿主窗口, window, window.parent, window.top].forEach(function(目标窗口) {
-            try {
-                if (!目标窗口 || typeof 目标窗口 !== "object") return;
-                目标窗口.__LWCS_STARTUP_MVU_STAT_DATA__ = statData;
-                目标窗口.__LWCS_STARTUP_MVU_STAT_DATA_AT__ = 写入时间;
-            } catch (_) {}
-        });
-    }
-
-    async function verifyInitPatchLatest() {
+    async function verifyInitPatchTarget(目标消息编号) {
         var runtimeWindow = getStartupRuntimeWindow();
         var mvu = (runtimeWindow && runtimeWindow.Mvu) || window.Mvu;
         if (!mvu || typeof mvu.getMvuData !== "function") throw new Error("MVU接口未就绪");
-        var verifyData = await mvu.getMvuData({ type: "message", message_id: "latest" });
+        if (目标消息编号 === undefined || 目标消息编号 === null || 目标消息编号 === "") throw new Error("MVU初始化校验失败：目标楼层为空");
+        var verifyData = await mvu.getMvuData({ type: "message", message_id: 目标消息编号 });
         var verifyRoot = verifyData && verifyData.stat_data ? verifyData.stat_data : {};
         if (verifyRoot.sys && verifyRoot.sys.玩家名 !== name) {
-            throw new Error("MVU初始化校验失败：玩家名未写入最新楼层");
+            throw new Error("MVU初始化校验失败：玩家名未写入目标楼层");
         }
         if (!verifyRoot.char || !verifyRoot.char[name]) {
-            throw new Error("MVU初始化校验失败：角色未写入最新楼层");
+            throw new Error("MVU初始化校验失败：角色未写入目标楼层");
         }
         if (verifyRoot.char[name].状态 && verifyRoot.char[name].状态.位置 !== loc) {
             throw new Error("MVU初始化校验失败：角色位置未写入最新楼层");
@@ -1457,24 +1509,6 @@ window.submitForm = function() {
             throw new Error("MVU初始化校验失败：时间线tick未写入最新楼层");
         }
         return verifyRoot;
-    }
-
-    try {
-        if (typeof window.registerPendingInternalStartupPrompt_ACU === 'function') {
-            window.registerPendingInternalStartupPrompt_ACU(summary, displayMessage);
-        } else {
-            window.__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__ = {
-                text: summary,
-                displayText: displayMessage,
-                at: Date.now()
-            };
-        }
-    } catch (e) {
-        window.__LWCS_PENDING_INTERNAL_STARTUP_PROMPT__ = {
-            text: summary,
-            displayText: displayMessage,
-            at: Date.now()
-        };
     }
 
     document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 100px 20px; color: #2dd4bf; font-size: 18px; font-weight:600; letter-spacing: 1px;">❖ 档案及时间线底包已提交，正在同步世界线... ❖</div>';
@@ -1492,8 +1526,32 @@ window.submitForm = function() {
 
     Promise.resolve().then(async function() {
         var safeDisplayMessage = displayMessage.replace(/\r/g, "").replace(/\n/g, " ");
-        await applyInitPatchByMvuParser(initPatch);
-        await verifyInitPatchLatest();
+        var 开场事务 = {
+            状态: "pending",
+            chatId: 读取开场聊天编号(),
+            目标消息编号: "",
+            目标消息索引: -1,
+            开场输入: safeDisplayMessage,
+            statData: null,
+            error: null,
+            创建时间: Date.now()
+        };
+        开场事务.promise = (async function() {
+            try {
+                var statData = await applyInitPatchByMvuParser(initPatch, 开场事务);
+                开场事务.状态 = "ready";
+                开场事务.statData = statData;
+                写入开场MVU初始化事务(开场事务);
+                return statData;
+            } catch (错误) {
+                开场事务.状态 = "error";
+                开场事务.error = 错误 && 错误.message ? 错误.message : String(错误 || "未知错误");
+                写入开场MVU初始化事务(开场事务);
+                throw 错误;
+            }
+        })();
+        写入开场MVU初始化事务(开场事务);
+        await 开场事务.promise;
         通过输入框发送开场白(safeDisplayMessage);
     }).catch(function(error) {
         console.error('[开场白] MVU初始化写入失败:', error);
