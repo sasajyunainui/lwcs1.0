@@ -200,7 +200,7 @@ function 记录运行时冷实体发送_V1(实体表 = {}) {
 }
 
 var 古月娜融合成立tick_V1 = 643159;
-var 内置角色预备出场窗口tick_V1 = 1440;
+var 内置角色预备出场窗口tick_V1 = 3 * 30 * 144;
 
 function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
   return Number(当前tick || 0) >= 古月娜融合成立tick_V1 || !!数据根?.char?.古月娜;
@@ -1137,11 +1137,12 @@ function 构建更新前运行时草稿_V1(数据根 = {}, 命中文本 = '', �
   const 命中角色 = Array.isArray(统一命中.内置角色) ? 统一命中.内置角色 : [];
   if (!命中角色.length) return { 数据根, 命中角色 };
   const 草稿数据根 = cloneJsonValue(数据根, {});
-  应用内置角色实例化_V1(草稿数据根, {
+  const 结果 = 应用内置角色实例化_V1(草稿数据根, {
+    用户输入: 命中文本,
     命中角色,
     使用统一命中: true,
   });
-  return { 数据根: 草稿数据根, 命中角色 };
+  return { 数据根: 草稿数据根, 命中角色: Array.isArray(结果?.changedNames) ? 结果.changedNames : [] };
 }
 
 function 构建运行时命中上下文_V1(数据根 = {}, 文本 = '', 选项 = {}) {
@@ -1155,6 +1156,18 @@ function 格式化MVU更新结构命中列表_V1(名称集合 = new Set()) {
   const 名称列表 = Array.from(名称集合 || []).filter(名称 => String(名称 || '').trim());
   if (!名称列表.length) return '无';
   return 名称列表.join(', ');
+}
+
+function 合并运行时命中集合_V1(...命中列表) {
+  const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set() };
+  命中列表.forEach(命中 => {
+    Object.keys(结果).forEach(类型 => {
+      (命中?.[类型] instanceof Set ? Array.from(命中[类型]) : []).forEach(名称 => {
+        if (String(名称 || '').trim()) 结果[类型].add(名称);
+      });
+    });
+  });
+  return 结果;
 }
 
 function 转义运行时JsonPointer片段_V1(片段 = '') {
@@ -1870,6 +1883,10 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   const 草稿上下文 = 构建更新前运行时草稿_V1(原始数据根, 命中文本);
   const 数据根 = 草稿上下文.数据根;
   const 草稿命中 = 构建运行时命中上下文_V1(数据根, 命中文本).运行时命中名称;
+  const 更新提示命中 = 合并运行时命中集合_V1(原始命中, 草稿命中);
+  (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
+    if (数据根?.char?.[角色名]) 更新提示命中.角色.add(角色名);
+  });
   const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 命中文本, { 运行时命中名称: 草稿命中 });
   (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
     if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
@@ -1883,7 +1900,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   return [
     'Existing MVU Entity Hits:',
     'Only names listed here count as already existing in MVU. Lore-known, worldbook-known, narratively familiar, or previously mentioned names do NOT count as existing unless listed here.',
-    `char=${格式化MVU更新结构命中列表_V1(原始命中.角色)}; world.地点=${格式化MVU更新结构命中列表_V1(原始命中.地点)}; world.动态地点=${格式化MVU更新结构命中列表_V1(原始命中.动态地点)}; org=${格式化MVU更新结构命中列表_V1(原始命中.势力)}; 物品=${格式化MVU更新结构命中列表_V1(原始命中.物品)}.`,
+    `char=${格式化MVU更新结构命中列表_V1(更新提示命中.角色)}; world.地点=${格式化MVU更新结构命中列表_V1(更新提示命中.地点)}; world.动态地点=${格式化MVU更新结构命中列表_V1(更新提示命中.动态地点)}; org=${格式化MVU更新结构命中列表_V1(更新提示命中.势力)}; 物品=${格式化MVU更新结构命中列表_V1(更新提示命中.物品)}.`,
     '',
     'Visible Placeholder Summary:',
     `待补全总数=${Number(可见占位统计?.总数 || 0)}; 角色=${(Array.isArray(可见占位统计.角色) ? 可见占位统计.角色 : []).filter(项 => 项 && 项.名称 !== '角色外' && Number(项.数量 || 0) > 0).map(项 => `${项.名称}${Number(项.数量 || 0)}项`).join('、') || '无'}; 角色外=${Number(可见占位统计?.角色外 || 0)}项.`,

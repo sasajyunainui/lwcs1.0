@@ -4536,6 +4536,13 @@
     }
   }
 
+  function 读取当前最后AI正文_桥接() {
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 消息 = 聊天.length ? 聊天[聊天.length - 1] : null;
+    if (!消息 || 消息.is_user) return '';
+    return 读取聊天消息正文_桥接(消息);
+  }
+
   function 读取聊天消息编号_桥接(消息 = {}, 索引 = -1) {
     return toText(消息 && (消息.message_id ?? 索引), '').trim();
   }
@@ -6257,6 +6264,13 @@
     if (等级 <= 1 && 年龄 <= 0 && 位置.includes('待转移')) return true;
     const 武魂名 = toText(角色?.第1武魂?.表象名称, '').trim();
     const 有魂灵 = !!角色?.第1武魂?.第1魂灵;
+    const 主身份 = toText(角色?.社交?.主身份, '').trim();
+    const 势力 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力) ? 角色.社交.势力 : {};
+    const 有魂环 = Object.entries(角色?.第1武魂?.第1魂灵 || {}).some(([键, 值]) =>
+      /^第\d+魂环$/.test(String(键)) && 值 && typeof 值 === 'object' && Object.keys(值).length > 0
+    );
+    if (等级 <= 1 && 年龄 <= 0 && !主身份 && Object.keys(势力).length === 0 && !有魂环) return true;
+    if (等级 <= 1 && !主身份 && Object.keys(势力).length === 0 && !有魂环) return true;
     return 等级 <= 1 && 年龄 <= 0 && !武魂名 && !有魂灵;
   }
 
@@ -6287,7 +6301,7 @@
     }
     冷归档写回状态_桥接.正在恢复 = true;
     try {
-      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
       const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
       const manifest = await 读取角色归档Manifest_桥接();
       const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
@@ -6346,7 +6360,7 @@
     }
     冷归档写回状态_桥接.正在恢复 = true;
     try {
-      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
       const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
       const manifest = await 读取物品归档Manifest_桥接();
       const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
@@ -6400,7 +6414,7 @@
     }
     冷归档写回状态_桥接.正在恢复 = true;
     try {
-      const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
       const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
       const manifest = await 读取动态地点归档Manifest_桥接();
       const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
@@ -7433,7 +7447,7 @@
     return Array.from(角色名集合);
   }
 
-  function 预入库角色名内置角色_桥接(statData = {}, 角色名列表 = []) {
+  function 预入库角色名内置角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
     const 接口 = 获取内置角色实例化接口_桥接();
     if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
     const 内置角色候选 = 读取内置角色候选表_桥接(接口);
@@ -7441,12 +7455,29 @@
       .filter(角色名 => Object.prototype.hasOwnProperty.call(内置角色候选, 角色名))
       .map(角色名 => 内置角色候选[角色名] || 角色名)));
     if (!命中角色.length) return [];
-    const 结果 = 接口.应用内置角色实例化(statData, { 命中角色 });
+    const 文本 = toText(选项?.文本, '');
+    const 结果 = 接口.应用内置角色实例化(statData, 文本.trim()
+      ? { 命中角色, 用户输入: 文本, 使用统一命中: true }
+      : { 命中角色 });
     return Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
   }
 
   function 预入库JsonPatch目标内置角色_桥接(statData = {}, patches = []) {
     return 预入库角色名内置角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
+  }
+
+  function 预入库当前正文命中内置角色_桥接(变量包 = {}) {
+    const statData = resolveRootData(变量包);
+    if (!statData || typeof statData !== 'object') return [];
+    const 接口 = 获取内置角色实例化接口_桥接();
+    if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
+    const 正文文本 = 读取当前最后AI正文_桥接();
+    if (!正文文本.trim()) return [];
+    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 正文文本, '角色');
+    if (!命中角色.length) return [];
+    const 已写入 = 预入库角色名内置角色_桥接(statData, 命中角色, { 文本: 正文文本 });
+    if (已写入.length) console.info(`[LWCS] MVU更新前已按最终正文实例化内置角色：${已写入.join('、')}`);
+    return 已写入;
   }
 
   async function 预恢复角色名归档角色_桥接(statData = {}, 角色名列表 = []) {
@@ -8840,20 +8871,180 @@
     return 安全MVU数据;
   }
 
-  async function readLatestMvuDataByEditor() {
+  function 计算角色结构完整度_桥接(角色 = {}) {
+    if (!isPlainObjectValue(角色)) return 0;
+    const 属性 = isPlainObjectValue(角色.属性) ? 角色.属性 : {};
+    const 社交 = isPlainObjectValue(角色.社交) ? 角色.社交 : {};
+    const 势力 = isPlainObjectValue(社交.势力) ? 社交.势力 : {};
+    let 分数 = 0;
+    if (toNumber(属性.等级, 0) > 1) 分数 += 8;
+    if (toNumber(属性.年龄, 0) > 0) 分数 += 4;
+    if (toText(属性.生日, '').trim()) 分数 += 1;
+    if (toText(属性.天赋梯队, '').trim()) 分数 += 1;
+    if (toNumber(属性.天赋评级, 0) > 0) 分数 += 1;
+    if (toText(角色.位置, '').trim() && !toText(角色.位置, '').includes('待转移')) 分数 += 3;
+    if (toText(社交.主身份, '').trim() && toText(社交.主身份, '').trim() !== '无') 分数 += 5;
+    if (Object.keys(势力).length > 0) 分数 += 4;
+    ['第1武魂', '第2武魂', '魂骨', '血脉之力', '魂核', '装备', '财富', '状态', '背包', '我的任务'].forEach(字段 => {
+      if (isPlainObjectValue(角色[字段]) && Object.keys(角色[字段]).length > 0) 分数 += 1;
+    });
+    safeEntries(角色)
+      .filter(([, 值]) => isPlainObjectValue(值) || Array.isArray(值))
+      .forEach(() => { 分数 += 0.25; });
+    const 有魂环 = safeEntries(角色)
+      .filter(([键]) => /^第\d+武魂$/.test(String(键 || '')))
+      .some(([, 武魂]) => safeEntries(武魂).some(([魂灵键, 魂灵]) =>
+        /^第\d+魂灵$/.test(String(魂灵键 || '')) &&
+        safeEntries(魂灵).some(([魂环键]) => /^第\d+魂环$/.test(String(魂环键 || '')))
+      ));
+    if (有魂环) 分数 += 6;
+    return 分数;
+  }
+
+  function 角色写回明显劣化_桥接(当前角色 = {}, 写回角色 = {}) {
+    if (!isPlainObjectValue(当前角色)) return false;
+    const 当前分数 = 计算角色结构完整度_桥接(当前角色);
+    if (当前分数 < 14) return false;
+    if (!isPlainObjectValue(写回角色)) return true;
+    const 写回分数 = 计算角色结构完整度_桥接(写回角色);
+    const 当前等级 = toNumber(当前角色?.属性?.等级, 0);
+    const 写回等级 = toNumber(写回角色?.属性?.等级, 0);
+    const 当前年龄 = toNumber(当前角色?.属性?.年龄, 0);
+    const 写回年龄 = toNumber(写回角色?.属性?.年龄, 0);
+    const 当前身份 = toText(当前角色?.社交?.主身份, '').trim();
+    const 写回身份 = toText(写回角色?.社交?.主身份, '').trim();
+    if (当前等级 > 1 && 写回等级 <= 1 && 当前年龄 > 0 && 写回年龄 <= 0) return true;
+    if (当前身份 && 当前身份 !== '无' && !写回身份 && 当前分数 >= 写回分数 + 5) return true;
+    return 当前分数 >= 写回分数 + 8;
+  }
+
+  function 合并MVU当前楼层角色底稿_桥接(当前变量 = {}, 写回变量 = {}, 选项 = {}) {
+    if (!写回变量 || typeof 写回变量 !== 'object' || 选项?.type !== 'message') return 写回变量;
+    const 当前根 = resolveRootData(当前变量);
+    const 写回副本 = cloneJsonValue(写回变量, 写回变量);
+    const 写回根 = resolveRootData(写回副本);
+    if (!isPlainObjectValue(当前根?.char) || !isPlainObjectValue(写回根)) return 写回副本;
+    if (!isPlainObjectValue(写回根.char)) 写回根.char = {};
+    let 已修复 = false;
+    safeEntries(当前根.char).forEach(([角色名, 当前角色]) => {
+      if (!toText(角色名, '').trim()) return;
+      const 写回角色 = 写回根.char[角色名];
+      if (!角色写回明显劣化_桥接(当前角色, 写回角色)) return;
+      写回根.char[角色名] = isPlainObjectValue(写回角色)
+        ? 合并AI维护角色实例底稿_桥接(当前角色, 写回角色)
+        : cloneJsonValue(当前角色, {});
+      已修复 = true;
+    });
+    if (已修复) console.warn('[LWCS] 已阻止 MVU 更新写回劣化当前楼层完整角色。');
+    return 写回副本;
+  }
+
+  function 读取消息变量写回当前底稿_桥接(选项 = {}) {
+    try {
+      if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
+        const 变量 = window.TavernHelper.getVariables(选项);
+        if (变量 && typeof 变量 === 'object') return 变量;
+      }
+    } catch (错误) {}
+    try {
+      const 主机 = getMvuHost();
+      if (主机 && typeof 主机.getMvuData === 'function') {
+        const 变量 = 主机.getMvuData(选项);
+        if (变量 && typeof 变量 === 'object') return 变量;
+      }
+    } catch (错误) {}
+    return null;
+  }
+
+  function 安装MVU当前楼层写回保护_桥接() {
+    const 助手 = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
+    if (!助手 || 助手.__LWCS_CURRENT_MESSAGE_MVU_WRITE_GUARD__ === true) return false;
+    const 原更新变量 = typeof 助手.updateVariablesWith === 'function' ? 助手.updateVariablesWith.bind(助手) : null;
+    const 原替换变量 = typeof 助手.replaceVariables === 'function' ? 助手.replaceVariables.bind(助手) : null;
+    if (原更新变量) {
+      助手.updateVariablesWith = function(更新器, 选项 = { type: 'chat' }) {
+        if (选项?.type !== 'message' || typeof 更新器 !== 'function') return 原更新变量(更新器, 选项);
+        return 原更新变量(当前变量 => {
+          const 当前底稿 = cloneJsonValue(当前变量, {});
+          const 写回结果 = 更新器(当前变量);
+          if (写回结果 && typeof 写回结果.then === 'function') {
+            return 写回结果.then(结果 => 合并MVU当前楼层角色底稿_桥接(当前底稿, 结果, 选项));
+          }
+          return 合并MVU当前楼层角色底稿_桥接(当前底稿, 写回结果, 选项);
+        }, 选项);
+      };
+    }
+    if (原替换变量) {
+      助手.replaceVariables = function(写回变量, 选项 = { type: 'chat' }) {
+        if (选项?.type !== 'message') return 原替换变量(写回变量, 选项);
+        const 当前底稿 = 读取消息变量写回当前底稿_桥接(选项);
+        return 原替换变量(合并MVU当前楼层角色底稿_桥接(当前底稿, 写回变量, 选项), 选项);
+      };
+    }
+    助手.__LWCS_CURRENT_MESSAGE_MVU_WRITE_GUARD__ = true;
+    return true;
+  }
+
+  function 覆盖对象内容_桥接(目标 = {}, 来源 = {}) {
+    if (!目标 || typeof 目标 !== 'object' || !来源 || typeof 来源 !== 'object') return 目标;
+    Object.keys(目标).forEach(键 => { delete 目标[键]; });
+    Object.assign(目标, 来源);
+    return 目标;
+  }
+
+  function 安装MVU变量更新基底合并_桥接() {
+    if (__mvuBridgeRoot.__LWCS_MVU_UPDATE_BASE_MERGE_GUARD__ === true) return false;
+    const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null;
+    const 事件源 = 上下文?.eventSource;
+    const 主机 = getMvuHost();
+    const 事件名 = 主机?.events?.VARIABLE_UPDATE_STARTED || window.Mvu?.events?.VARIABLE_UPDATE_STARTED || 'mag_variable_update_started';
+    if (!事件源 || typeof 事件源.on !== 'function' || !事件名) return false;
+    事件源.on(事件名, 变量包 => {
+      if (!变量包 || typeof 变量包 !== 'object') return;
+      预入库当前正文命中内置角色_桥接(变量包);
+      const 当前底稿 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 'latest' });
+      const 合并包 = 合并MVU当前楼层角色底稿_桥接(当前底稿, 变量包, { type: 'message' });
+      if (合并包 && 合并包 !== 变量包) 覆盖对象内容_桥接(变量包, 合并包);
+    });
+    __mvuBridgeRoot.__LWCS_MVU_UPDATE_BASE_MERGE_GUARD__ = true;
+    return true;
+  }
+
+  function 读取目标消息编号_桥接(选项 = {}) {
+    const 候选列表 = [选项.消息索引, 选项.messageId, 选项.message_id, 选项.消息编号];
+    for (const 候选 of 候选列表) {
+      if (候选 === undefined || 候选 === null || 候选 === '') continue;
+      const 数值 = Number(候选);
+      if (Number.isInteger(数值) && 数值 >= 0) return 数值;
+    }
+    return null;
+  }
+
+  async function readLatestMvuDataByEditor(选项 = {}) {
     await waitForMvuReady();
     const host = getMvuHost();
     if (!host || typeof host.getMvuData !== 'function' || typeof host.replaceMvuData !== 'function') {
       throw new Error('未找到可用的 MVU 写回接口。');
     }
+    const 目标消息编号 = 读取目标消息编号_桥接(选项);
+    if (目标消息编号 !== null) {
+      const 目标MVU数据 = await Promise.resolve(host.getMvuData({ type: 'message', message_id: 目标消息编号 })).catch(() => null);
+      if (目标MVU数据 && typeof 目标MVU数据 === 'object' && resolveRootData(目标MVU数据)) {
+        return {
+          host,
+          mvuData: 归一化Mvu包供编辑器读取_桥接(目标MVU数据),
+          messageId: 目标消息编号,
+        };
+      }
+    }
     const scanned = await scanRecentMessageVariablesWithReaders([
       messageId => Promise.resolve(host.getMvuData({ type: 'message', message_id: messageId })),
-    ]);
+    ], { 使用最近有效快照: true });
     const currentMvuData = scanned && scanned.vars ? scanned.vars : null;
     if (!currentMvuData || typeof currentMvuData !== 'object') {
       throw new Error('读取当前 MVU 数据失败。');
     }
-    const 消息编号 = scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest';
+    const 消息编号 = 目标消息编号 !== null ? 目标消息编号 : (scanned && scanned.messageId !== undefined ? scanned.messageId : 'latest');
     const 安全MVU数据 = 归一化Mvu包供编辑器读取_桥接(currentMvuData);
     return {
       host,
@@ -9216,7 +9407,7 @@
         textSignature: 文本签名,
       };
     }
-    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
+    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor(附加选项);
     const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
     const 前置变量数据 = 附加选项.statData && typeof 附加选项.statData === 'object' ? 附加选项.statData : 待写回MVU数据.stat_data;
     const 待写回变量数据 = cloneJsonValue(前置变量数据, {});
@@ -9278,7 +9469,7 @@
         textSignature: 文本签名,
       };
     }
-    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor();
+    const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor(附加选项);
     const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
     const 前置变量数据 = 附加选项.statData && typeof 附加选项.statData === 'object' ? 附加选项.statData : 待写回MVU数据.stat_data;
     const 待写回变量数据 = cloneJsonValue(前置变量数据, {});
@@ -10967,6 +11158,7 @@
   async function scanRecentMessageVariablesWithReaders(readers = [], options = {}) {
     const depth = toNumber(options && options.depth, MVU_RECENT_MESSAGE_SCAN_DEPTH);
     const messageIds = buildRecentMessageIdCandidates(depth);
+    const 使用最近有效快照 = options?.使用最近有效快照 === true;
     let fallbackVars = null;
     let fallbackMessageId = 'latest';
     let bestVars = null;
@@ -10984,6 +11176,9 @@
             fallbackMessageId = messageId;
           }
           const rootData = resolveRootData(vars);
+          if (使用最近有效快照 && rootData && typeof rootData === 'object') {
+            return { vars, messageId };
+          }
           const nextScore = scoreRootDataCandidate(rootData);
           if (nextScore > bestScore) {
             bestScore = nextScore;
@@ -38331,6 +38526,8 @@
   async function initLiveBindings() {
     bindInlineEditing();
     await waitForMvuReady();
+    安装MVU当前楼层写回保护_桥接();
+    安装MVU变量更新基底合并_桥接();
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();

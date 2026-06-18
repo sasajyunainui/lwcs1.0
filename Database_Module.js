@@ -4226,13 +4226,6 @@ $CONTENT
         return !!消息键 && 消息键 === 防截断流入状态_ACU.已阻断消息键;
     }
     async function 删除防截断流入截断楼层_ACU(消息元信息) {
-        const 原消息键 = 构建防截断流入消息键_ACU(消息元信息);
-        await new Promise(resolve => setTimeout(resolve, 0));
-        const 当前消息键 = 构建防截断流入消息键_ACU(读取最新角色消息元信息_ACU());
-        if (!原消息键 || 当前消息键 !== 原消息键) {
-            logWarn_ACU('[防截断流入] 截断楼层已变化，跳过自动删除。');
-            return false;
-        }
         const 聊天数组 = getChatArray_ACU();
         const 消息索引 = Number(消息元信息?.消息索引 ?? -1);
         if (!Array.isArray(聊天数组) || 消息索引 < 0 || 消息索引 !== 聊天数组.length - 1) {
@@ -4327,39 +4320,6 @@ $CONTENT
         const 已耗尽 = 配置.自动重试 && 配置.自动重试次数 > 0 && 防截断流入状态_ACU.重试次数 >= 配置.自动重试次数;
         showToastr_ACU('warning', 已耗尽 ? `正文低于字数下限 ${配置.字数下限}，已停止重试并阻断数据库/MVU更新。` : `正文低于字数下限 ${配置.字数下限}，已阻断数据库/MVU更新。`, '防截断流入');
         return { action: 'blocked', reason: 'truncation_length_failed' };
-    }
-    function 清理防截断流入挂起_ACU() {
-        if (防截断流入状态_ACU.计时器) {
-            clearTimeout(防截断流入状态_ACU.计时器);
-            防截断流入状态_ACU.计时器 = 0;
-        }
-        防截断流入状态_ACU.等待检测 = false;
-        防截断流入状态_ACU.自动重试中 = false;
-        防截断流入状态_ACU.已处理消息键 = '';
-        防截断流入状态_ACU.已阻断消息键 = '';
-    }
-    function 终止挂起后置任务_ACU(原因 = 'user_abort') {
-        清理防截断流入挂起_ACU();
-        try {
-            if (abortController_ACU && typeof abortController_ACU.abort === 'function')
-                abortController_ACU.abort();
-        }
-        catch (错误) {
-            logWarn_ACU('[后置任务] 终止剧情推进请求失败:', 错误);
-        }
-        try {
-            if (typeof cancelContentOptimization_ACU === 'function')
-                cancelContentOptimization_ACU('后置任务已终止。');
-        }
-        catch (错误) {
-            logWarn_ACU('[后置任务] 终止正文优化失败:', 错误);
-        }
-        try {
-            abortAllActiveRequests_ACU$1();
-        }
-        catch (错误) {
-            logWarn_ACU('[后置任务] 终止填表请求失败:', 错误);
-        }
     }
     function 打开防截断流入设置面板_ACU() {
         const 文档 = topLevelWindow_ACU?.document || document;
@@ -4597,15 +4557,9 @@ $CONTENT
         activeAbortControllers_ACU$1.clear();
     }
     function _set_currentAbortController_ACU$1(v) { currentAbortController_ACU$1 = v; }
-    function _set_isAutoUpdatingCard_ACU$1(v) {
-        isAutoUpdatingCard_ACU$1 = v;
-        isAutoUpdatingCard_ACU = v;
-    }
+    function _set_isAutoUpdatingCard_ACU$1(v) { isAutoUpdatingCard_ACU$1 = v; }
     function _set_manualExtraHint_ACU$1(v) { manualExtraHint_ACU$1 = v; }
-    function _set_wasStoppedByUser_ACU$1(v) {
-        wasStoppedByUser_ACU$1 = v;
-        wasStoppedByUser_ACU = v;
-    }
+    function _set_wasStoppedByUser_ACU$1(v) { wasStoppedByUser_ACU$1 = v; }
     function _set_newMessageDebounceTimer_ACU$1(v) { newMessageDebounceTimer_ACU$1 = v; }
 
     function normalizeArchiveTriggerCount_ACU(value, fallbackValue) {
@@ -19256,7 +19210,6 @@ $CONTENT
             if (Array.isArray(message?.content)) return message.content.map(part => part?.type === 'text' ? part.text || '' : '').join('\n');
             return '';
         }).join('\n');
-        const 运行时视图类型 = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明|\{\{MVU_RUNTIME_UPDATE\}\}|\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}|<UpdateVariable|<JSONPatch|Existing MVU Entity Hits/i.test(提示词合并文本) ? 'empty' : 'story';
         const 需要运行时提示词处理 = 剧情推进运行时适配器需要处理_ACU(提示词合并文本);
         const 本轮运行时捕获文本 = [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n');
         let 运行时数据 = null;
@@ -19269,6 +19222,7 @@ $CONTENT
                 plotText: '',
             }) || null;
         }
+        const 运行时视图类型 = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明/i.test(提示词合并文本) ? 'empty' : 'story';
         const context = {
             seedContent: 最后角色消息文本 || '',
             allTablesJson: getTableDataForPrompt_ACU(),
@@ -19308,7 +19262,7 @@ $CONTENT
                     }
                 }
             }
-            if (需要运行时提示词处理 && 运行时视图类型 === 'story') {
+            if (需要运行时提示词处理) {
                 通知剧情推进运行时提示词处理完成_ACU({
                     userInput: 用户输入文本,
                     最后角色消息文本,
@@ -19359,7 +19313,7 @@ $CONTENT
                 }
             }
         }
-        if (需要运行时提示词处理 && 运行时视图类型 === 'story') {
+        if (需要运行时提示词处理) {
             通知剧情推进运行时提示词处理完成_ACU({
                 userInput: 用户输入文本,
                 最后角色消息文本,
@@ -20255,8 +20209,6 @@ $CONTENT
             return;
         }
         logDebug_ACU(`ACU: Resetting script state for new chat: "${chatFileName}"`);
-        清理防截断流入挂起_ACU();
-        _set_wasStoppedByUser_ACU$1(false);
         // 直接使用有效的 chatFileName，不再需要调用 /getchatname 或其他回退逻辑。
         _set_currentChatFileIdentifier_ACU(cleanChatName_ACU(chatFileName));
         // [FIX] Reload all settings to ensure template is not stale for new chats.
@@ -30651,15 +30603,9 @@ $CONTENT
     }
     // --- [新增] 内部保存函数：保存单个表格的数据到聊天历史 ---
     function _set_currentAbortController_ACU(v) { currentAbortController_ACU = v; }
-    function _set_isAutoUpdatingCard_ACU(v) {
-        isAutoUpdatingCard_ACU = v;
-        isAutoUpdatingCard_ACU$1 = v;
-    }
+    function _set_isAutoUpdatingCard_ACU(v) { isAutoUpdatingCard_ACU = v; }
     function _set_manualExtraHint_ACU(v) { manualExtraHint_ACU = v; }
-    function _set_wasStoppedByUser_ACU(v) {
-        wasStoppedByUser_ACU = v;
-        wasStoppedByUser_ACU$1 = v;
-    }
+    function _set_wasStoppedByUser_ACU(v) { wasStoppedByUser_ACU = v; }
     // _set_currentEditablePlotPresetState_ACU, _set_activePlotEditorSettings_ACU, _set_currentPlotTaskEditorId_ACU 已搬到 service/plot/plot-state.ts
     function _set_newMessageDebounceTimer_ACU(v) { newMessageDebounceTimer_ACU = v; }
 
@@ -36435,7 +36381,11 @@ $CONTENT
         }
     }
     let autoUpdateTriggerInFlight_ACU = false;
-    async function triggerAutomaticUpdateIfNeeded_ACU(来源 = 'unknown_acu') {
+    async function triggerAutomaticUpdateIfNeeded_ACU() {
+        if (防截断流入后置更新应阻断_ACU()) {
+            logDebug_ACU('ACU Auto-Trigger: 防截断流入已阻断本楼层更新。');
+            return;
+        }
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
@@ -36493,7 +36443,7 @@ $CONTENT
                             bindTableFillStopButton_ACU(stopButtonId, () => {
                                 _set_wasStoppedByUser_ACU$1(true);
                                 autoGroupedAbortController.abort();
-                                终止挂起后置任务_ACU('auto_grouped_stop_button');
+                                abortAllActiveRequests_ACU$1();
                                 _set_isAutoUpdatingCard_ACU(false);
                                 updateAutoUpdateToastMessage_ACU(autoProgressToast, '填表任务已终止，正在停止当前任务与后续批次...');
                                 showToastr_ACU('warning', '填表任务已由用户终止，当前任务与后续批次将立即停止。');
@@ -36800,48 +36750,6 @@ $CONTENT
             logError_ACU('Failed to load one or more critical APIs for AutoCardUpdater.');
         return coreApisAreReady_ACU;
     }
-    async function 执行新消息后置更新_ACU(eventType = 'unknown_acu') {
-        if (防截断流入后置更新应阻断_ACU()) {
-            logDebug_ACU(`[防截断流入] 已阻断后置更新执行: eventType=${eventType}`);
-            return;
-        }
-        if (wasStoppedByUser_ACU) {
-            logDebug_ACU(`[NewMessage] 用户已终止，跳过后置更新: eventType=${eventType}`);
-            return;
-        }
-        try {
-            maybeLiftWorldbookSuppression_ACU();
-        }
-        catch (e) { }
-        await loadAllChatMessages_ACU();
-        const liveChat = getChatArray_ACU();
-        const result = evaluateNewMessageAction_ACU(liveChat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings);
-        logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
-        if (result.action === 'skip') {
-            logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
-            return;
-        }
-        switch (result.action) {
-            case 'optimize_parallel':
-                logDebug_ACU('[正文优化] 并行模式已启用，正文优化与填表将同时进行...');
-                await Promise.all([
-                    executeContentOptimization_ACU(result.lastMessageIndex),
-                    triggerAutomaticUpdateIfNeeded_ACU(eventType)
-                ]);
-                break;
-            case 'optimize_manual':
-                logDebug_ACU('[正文优化] 手动确认模式：等待用户确认后再填表...');
-                await executeContentOptimization_ACU(result.lastMessageIndex);
-                break;
-            case 'optimize_then_update':
-                await executeContentOptimization_ACU(result.lastMessageIndex);
-                await triggerAutomaticUpdateIfNeeded_ACU(eventType);
-                break;
-            case 'update_only':
-                await triggerAutomaticUpdateIfNeeded_ACU(eventType);
-                break;
-        }
-    }
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu') {
         if (防截断流入后置更新应阻断_ACU()) {
             logDebug_ACU(`[防截断流入] handleNewMessageDebounced 已阻断后置更新: eventType=${eventType}`);
@@ -36854,7 +36762,40 @@ $CONTENT
                 logDebug_ACU(`[防截断流入] 防抖执行前已阻断后置更新: eventType=${eventType}`);
                 return;
             }
-            await 执行新消息后置更新_ACU(eventType);
+            // [健全性] 如果用户已经开始对话，则解除"开场白阶段世界书注入抑制"
+            try {
+                maybeLiftWorldbookSuppression_ACU();
+            }
+            catch (e) { }
+            await loadAllChatMessages_ACU();
+            const liveChat = getChatArray_ACU();
+            // [重构] 调用 service 层的 evaluateNewMessageAction_ACU 进行决策
+            const result = evaluateNewMessageAction_ACU(liveChat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings);
+            logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
+            if (result.action === 'skip') {
+                logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
+                return;
+            }
+            switch (result.action) {
+                case 'optimize_parallel':
+                    logDebug_ACU('[正文优化] 并行模式已启用，正文优化与填表将同时进行...');
+                    await Promise.all([
+                        executeContentOptimization_ACU(result.lastMessageIndex),
+                        triggerAutomaticUpdateIfNeeded_ACU()
+                    ]);
+                    break;
+                case 'optimize_manual':
+                    logDebug_ACU('[正文优化] 手动确认模式：等待用户确认后再填表...');
+                    await executeContentOptimization_ACU(result.lastMessageIndex);
+                    break;
+                case 'optimize_then_update':
+                    await executeContentOptimization_ACU(result.lastMessageIndex);
+                    await triggerAutomaticUpdateIfNeeded_ACU();
+                    break;
+                case 'update_only':
+                    await triggerAutomaticUpdateIfNeeded_ACU();
+                    break;
+            }
         }, NEW_MESSAGE_DEBOUNCE_DELAY_ACU));
     }
     // [重构] 核心触发逻辑：基于独立表格参数的触发检查
@@ -39531,7 +39472,7 @@ $CONTENT
                     if (typeof bindTableFillStopButton_ACU === 'function') {
                         bindTableFillStopButton_ACU(stopButtonId, () => {
                             _set_wasStoppedByUser_ACU$1(true);
-                            终止挂起后置任务_ACU('table_update_stop_button');
+                            abortAllActiveRequests_ACU$1();
                             _set_isAutoUpdatingCard_ACU$1(false);
                             updateStatusText('填表任务已终止，正在停止当前任务与后续批次...', false);
                             updateLoadingToastMessage(loadingToast, '填表任务已终止，正在停止当前任务与后续批次...');
@@ -39626,7 +39567,7 @@ $CONTENT
                     if (typeof bindTableFillStopButton_ACU === 'function') {
                         bindTableFillStopButton_ACU(stopButtonId, () => {
                             _set_wasStoppedByUser_ACU$1(true);
-                            终止挂起后置任务_ACU('manual_update_stop_button');
+                            abortAllActiveRequests_ACU$1();
                             _set_isAutoUpdatingCard_ACU$1(false);
                             updateStatusText('填表任务已终止，正在停止当前任务与后续批次...', false);
                             updateLoadingToastMessage(manualProgressToast, '填表任务已终止，正在停止当前任务与后续批次...');
@@ -53876,7 +53817,6 @@ $CONTENT
                         abortController_ACU.abort();
                         logDebug_ACU('[剧情推进] 用户手动中止了规划任务。');
                     }
-                    终止挂起后置任务_ACU('plot_abort_button');
                     try {
                         if ($toast)
                             toastr_API_ACU.clear($toast);
@@ -54742,11 +54682,6 @@ $CONTENT
                         void onLoopGenerationEnded_ACU().catch(错误 => {
                             logError_ACU('[剧情推进] GENERATION_ENDED 循环检查失败:', 错误);
                         });
-                    });
-                }
-                if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED, () => {
-                        终止挂起后置任务_ACU('GENERATION_STOPPED');
                     });
                 }
                 // [剧情推进] 拦截用户输入进行剧情规划
@@ -86597,7 +86532,7 @@ Expected function or array of functions, received type ${typeof value}.`
                 return;
             abortRequested = true;
             _set_wasStoppedByUser_ACU$1(true);
-            终止挂起后置任务_ACU('v2_manual_update_stop_button');
+            abortAllActiveRequests_ACU$1();
             _set_isAutoUpdatingCard_ACU$1(false);
             if (progressToastId) {
                 toast.update(progressToastId, 'warning', '手动填表已终止，正在停止当前任务与后续批次...', {
@@ -89436,7 +89371,7 @@ Expected function or array of functions, received type ${typeof value}.`
             abortRequested = true;
             _set_wasStoppedByUser_ACU$1(true);
             currentAbortController?.abort();
-            终止挂起后置任务_ACU('external_import_stop_button');
+            abortAllActiveRequests_ACU$1();
             const text = '外部导入已请求终止，正在停止当前分块并保存断点...';
             if (progressToastId) {
                 toast.update(progressToastId, 'warning', text, {

@@ -55,7 +55,7 @@ function 记录运行时冷实体发送_V1(实体表 = {}) {
 }
 
 var 古月娜融合成立tick_V1 = 643159;
-var 内置角色预备出场窗口tick_V1 = 1440;
+var 内置角色预备出场窗口tick_V1 = 3 * 30 * 144;
 
 function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
   return Number(当前tick || 0) >= 古月娜融合成立tick_V1 || !!数据根?.char?.古月娜;
@@ -2016,6 +2016,11 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   return Math.max(0, Math.min(Math.floor(快照等级), 倒推等级));
 }
 
+function 读取真实魂环等级底线_V1(角色 = {}) {
+  const 魂环数 = 读取角色实际魂环数量_V1(角色);
+  return 魂环数 > 0 ? Math.min(99, 魂环数 * 10 + 1) : 0;
+}
+
 function 裁剪内置角色魂环到等级_V1(角色 = {}) {
   const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
   const 最大第一武魂魂环数 = Math.max(0, Math.min(9, Math.floor(等级 / 10)));
@@ -2372,8 +2377,15 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
   if (!角色.属性 || typeof 角色.属性 !== 'object') 角色.属性 = {};
   if (角色.装备?.斗铠 && typeof 角色.装备.斗铠 === 'object') 补齐内置角色完整斗铠部件_V1(角色.装备.斗铠, 角色);
   const 投影年龄 = 计算内置角色投影年龄_V1(快照, 当前tick);
+  const 快照tick = Number(快照?.tick);
+  const 是未来快照投影 = Number.isFinite(快照tick) && Number(当前tick || 0) < 快照tick;
   角色.属性.年龄 = Number(投影年龄.toFixed(1));
   角色.属性.等级 = 计算内置角色投影等级_V1(角色, 角色记录, 快照, 当前tick, 投影年龄);
+  if (!是未来快照投影) 角色.属性.等级 = Math.max(Number(角色.属性.等级 || 0), 读取真实魂环等级底线_V1(角色));
+  if (是未来快照投影) {
+    if (!角色.状态 || typeof 角色.状态 !== 'object' || Array.isArray(角色.状态)) 角色.状态 = {};
+    角色.状态.__内置角色未来快照投影 = true;
+  }
   if (投影年龄 < 6) 清理内置角色未觉醒战斗能力_V1(角色);
   else 裁剪内置角色魂环到等级_V1(角色);
   应用内置角色提前出场投影_V1(角色, 角色记录, 快照, 当前tick);
@@ -2389,7 +2401,14 @@ function 是内置角色空壳_V1(角色 = {}) {
   if (等级 <= 1 && 年龄 <= 0 && 位置.includes('待转移')) return true;
   const 武魂名 = String(角色?.第1武魂?.表象名称 || '').trim();
   const 有魂灵 = !!角色?.第1武魂?.第1魂灵;
-  const 有魂环 = Object.keys(角色?.第1武魂?.第1魂灵 || {}).some(键 => /^第\d+魂环$/.test(键));
+  const 有魂环 = Object.entries(角色?.第1武魂?.第1魂灵 || {}).some(([键, 值]) =>
+    /^第\d+魂环$/.test(String(键)) && 值 && typeof 值 === 'object' && Object.keys(值).length > 0
+  );
+  const 主身份 = String(角色?.社交?.主身份 || '').trim();
+  const 势力 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力) ? 角色.社交.势力 : {};
+  const 缺少基础社交 = !主身份 && Object.keys(势力).length === 0;
+  if (等级 <= 1 && 年龄 <= 0 && 缺少基础社交 && !有魂环) return true;
+  if (等级 <= 1 && 缺少基础社交 && !有魂环) return true;
   return 等级 <= 1 && 年龄 <= 0 && (!武魂名 || 武魂名 === '无' || 武魂名.includes('待补全')) && !有魂灵 && !有魂环;
 }
 
@@ -2423,10 +2442,11 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   const 待写入 = new Set();
   const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
   const 使用统一命中 = 选项.使用统一命中 === true || Array.isArray(选项.命中角色) || Array.isArray(选项.候选角色) || Array.isArray(选项.相关角色);
+  const 文本自动命中 = 选项.使用统一命中 === true && String(命中文本 || '').trim();
   const 添加命中角色 = 名称列表 => {
     (Array.isArray(名称列表) ? 名称列表 : []).forEach(角色名 => {
       const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
-      if (规范名) 待写入.add(规范名);
+      if (规范名 && (!文本自动命中 || 内置角色文本命中满足二级关键词_V1(规范名, 命中文本))) 待写入.add(规范名);
     });
   };
   添加命中角色(选项.命中角色);
@@ -6981,6 +7001,9 @@ function 规范化角色Schema_V1(char) {
     const 原始等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
     const normalizedCharName = String(char?.name || char?.属性?.name || char?.base?.name || '').trim();
     const 原始已有魂师结构 = 是否已有明确魂师数据_V1(char);
+    let 本轮初始化魂师面板 = false;
+    const 跳过真实魂环等级底线 = char?.状态?.__内置角色未来快照投影 === true;
+    if (char?.状态 && typeof char.状态 === 'object') delete char.状态.__内置角色未来快照投影;
     const 标记本轮等级上升 = () => {
       const 当前等级 = Math.max(0, Number(char?.属性?.等级 || 0) || 0);
       if (当前等级 > 原始等级) 标记本轮等级上升角色_V1(char, normalizedCharName);
@@ -7168,6 +7191,7 @@ function 规范化角色Schema_V1(char) {
               char.属性.生日,
             ),
           );
+          if (Math.max(0, Number(char.属性.等级 || 0)) > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) 本轮初始化魂师面板 = true;
         }
       }
 
@@ -7178,6 +7202,7 @@ function 规范化角色Schema_V1(char) {
           char.属性.底子波动,
           char.属性.生日,
         );
+        if (Math.max(0, Number(char.属性.等级 || 0)) > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) 本轮初始化魂师面板 = true;
       }
       if (!原始已有魂师结构 && 有初始化种子 && !isNoSoulPowerTalentTier(char.属性.天赋梯队) && Math.max(0, Number(char.属性.等级 || 0)) <= 0) {
         char.属性.等级 = 计算初始化修为等级(
@@ -7186,6 +7211,7 @@ function 规范化角色Schema_V1(char) {
           char.属性.底子波动,
           char.属性.生日,
         );
+        if (Math.max(0, Number(char.属性.等级 || 0)) > 0) 本轮初始化魂师面板 = true;
       }
 
       delete char.属性.背景;
@@ -7206,6 +7232,7 @@ function 规范化角色Schema_V1(char) {
       魂力上限种子 <= 10;
 
     if (需要静态高等级初始化) {
+      本轮初始化魂师面板 = true;
       if (!char.魂核) char.魂核 = {};
       if (!char.魂核.核心 || typeof char.魂核.核心 !== 'object') char.魂核.核心 = { 数量: 0, 进度: 0 };
       if (显式等级 >= 99 && Number(char.魂核.核心.数量 || 0) < 3) {
@@ -7217,6 +7244,14 @@ function 规范化角色Schema_V1(char) {
       } else if (显式等级 >= 70 && Number(char.魂核.核心.数量 || 0) < 1) {
         char.魂核.核心.数量 = 1;
         char.魂核.核心.进度 = 0;
+      }
+    }
+
+    if (!跳过真实魂环等级底线) {
+      const 真实魂环等级底线 = 读取真实魂环等级底线_V1(char);
+      if (真实魂环等级底线 > 0 && Number(char.属性.等级 || 0) < 真实魂环等级底线) {
+        char.属性.等级 = 真实魂环等级底线;
+        标记本轮等级上升();
       }
     }
 
@@ -7826,6 +7861,12 @@ function 规范化角色Schema_V1(char) {
     );
     char.属性.魂力上限 = Math.floor(final_sp_max);
     normalizeStatHpFields(char.属性);
+    if (本轮初始化魂师面板) {
+      char.属性.魂力 = char.属性.魂力上限;
+      char.属性.精神力 = char.属性.精神力上限;
+      char.属性.体力 = char.属性.体力上限;
+      char.属性.HP = char.属性.HP上限;
+    }
 
     let rep = char.社交.声望 || 0;
     if (rep >= 10000) char.社交.名望等级 = '举世无双';
