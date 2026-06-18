@@ -24455,6 +24455,25 @@ $CONTENT
      * 替换聊天消息内容（正文优化核心逻辑）
      * 从 presentation/components/optimization-ui/optimization-ui-exec.ts 搬迁
      */
+    function 提取正文后端块_ACU(正文 = '') {
+        const 文本 = String(正文 || '');
+        const 结果 = [];
+        const 块规则 = /<UpdateVariable\b[^>]*>[\s\S]*?<\/UpdateVariable>|<StatusPlaceHolderImpl\b[^>]*\/>|<StatusPlaceHolderImpl\b[^>]*>[\s\S]*?<\/StatusPlaceHolderImpl>|<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi;
+        for (const 匹配 of 文本.matchAll(块规则)) {
+            const 命中 = 匹配[0];
+            if (命中 && !结果.includes(命中)) 结果.push(命中);
+        }
+        return 结果;
+    }
+    function 保留正文后端块_ACU(新正文 = '', 当前正文 = '') {
+        let 结果 = String(新正文 || '');
+        const 当前后端块 = 提取正文后端块_ACU(当前正文);
+        if (!当前后端块.length) return 结果;
+        const 新正文后端块 = 提取正文后端块_ACU(结果);
+        const 待保留 = 当前后端块.filter(块 => !新正文后端块.includes(块));
+        if (!待保留.length) return 结果;
+        return `${结果.trimEnd()}\n\n${待保留.join('\n')}`;
+    }
     async function replaceChatMessage_ACU(messageIndex, newContent, options = {}) {
         try {
             logDebug_ACU(`[正文优化] replaceChatMessage_ACU 开始执行, messageIndex=${messageIndex}, newContent长度=${newContent?.length || 0}`);
@@ -24479,18 +24498,20 @@ $CONTENT
                 messageId: chat[messageIndex].message_id,
                 baseContent: extra._acu_original_content || options.originalContent || oldContent || ''
             });
+            const 当前内容 = chat[messageIndex]?.mes ?? oldContent;
+            const 写回内容 = 保留正文后端块_ACU(newContent, 当前内容);
             // 使用酒馆的 setChatMessages API 来更新消息内容，确保渲染及时生效
-            const success = await setChatMessages_ACU([{ message_id: chat[messageIndex].message_id, mes: newContent, extra: extra }], { refresh: 'affected' });
+            const success = await setChatMessages_ACU([{ message_id: chat[messageIndex].message_id, mes: 写回内容, extra: extra }], { refresh: 'affected' });
             if (success) {
                 logDebug_ACU('[正文优化] 消息已通过 setChatMessages API 更新');
             }
             else {
                 // 降级方案：如果 setChatMessages 不可用，使用原有逻辑
                 logDebug_ACU('[正文优化] setChatMessages API 不可用，使用降级方案...');
-                chat[messageIndex].mes = newContent;
+                chat[messageIndex].mes = 写回内容;
                 chat[messageIndex].extra = extra;
                 const verifyContent = chat[messageIndex].mes;
-                logDebug_ACU(`[正文优化] 修改后验证 - 内容长度: ${verifyContent?.length || 0}, 是否匹配: ${verifyContent === newContent}`);
+                logDebug_ACU(`[正文优化] 修改后验证 - 内容长度: ${verifyContent?.length || 0}, 是否匹配: ${verifyContent === 写回内容}`);
                 await saveChatToHost_ACU();
                 logDebug_ACU('[正文优化] 聊天已保存');
                 emitMessageUpdated_ACU(messageIndex);

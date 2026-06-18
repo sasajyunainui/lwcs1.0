@@ -5287,7 +5287,6 @@
       const 上次chatKey = 冷归档楼层清理状态_桥接.chatKey;
       const 上次楼层 = 冷归档楼层清理状态_桥接.最新楼层;
       if (!选项.force && 上次chatKey === chatKey && 上次楼层 >= 0 && 当前楼层 >= 上次楼层) {
-        if (当前楼层 > 上次楼层) 调度冷归档楼层自动归档_桥接(1500);
         冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
         return { changed: false, chatKey, 当前楼层, reason: 'not_rollback' };
       }
@@ -5427,14 +5426,6 @@
         try {
           eventSource.on(事件名, (...事件参数) => {
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
-            if (事件键 === 'MESSAGE_UPDATED' || 事件键 === 'GENERATION_ENDED') {
-              调度冷归档楼层自动归档_桥接(事件键 === 'GENERATION_ENDED' ? 1200 : 2200, {
-                触发来源: 事件键,
-                跳过冷却: true,
-                消息引用: 事件参数[0],
-                需要可见消息对: true,
-              });
-            }
           });
         } catch (错误) {}
       });
@@ -5452,9 +5443,6 @@
         ) {
           调度冷归档楼层清理_桥接(0);
           return;
-        }
-        if (当前楼层 > 冷归档楼层清理状态_桥接.最新楼层) {
-          调度冷归档楼层自动归档_桥接(1500);
         }
         冷归档楼层清理状态_桥接.chatKey = chatKey;
         冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
@@ -8523,10 +8511,11 @@
     await 应用复刻裁定结果(rawText, requestKind);
     const visibleText = sanitizeUiContinuationVisibleText(rawText);
     if (visibleText && visibleText !== rawText && typeof helper?.setChatMessages === 'function') {
-      await helper.setChatMessages([{ message_id: assistantMessage.message_id, mes: visibleText }], {
+      const 写回可见文本 = 保留桥接正文后端块(visibleText, assistantMessage.mes || rawText);
+      await helper.setChatMessages([{ message_id: assistantMessage.message_id, mes: 写回可见文本 }], {
         refresh: 'affected',
       });
-      assistantMessage.mes = visibleText;
+      assistantMessage.mes = 写回可见文本;
     }
     if (persistentInjection?.id) {
       clearPendingUiSystemInjection(persistentInjection.id);
@@ -8939,6 +8928,26 @@
     return 写回副本;
   }
 
+  function 提取桥接正文后端块(正文 = '') {
+    const 文本 = toText(正文, '');
+    const 结果 = [];
+    const 块规则 = /<UpdateVariable\b[^>]*>[\s\S]*?<\/UpdateVariable>|<StatusPlaceHolderImpl\b[^>]*\/>|<StatusPlaceHolderImpl\b[^>]*>[\s\S]*?<\/StatusPlaceHolderImpl>|<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi;
+    for (const 匹配 of 文本.matchAll(块规则)) {
+      const 命中 = 匹配[0];
+      if (命中 && !结果.includes(命中)) 结果.push(命中);
+    }
+    return 结果;
+  }
+
+  function 保留桥接正文后端块(新正文 = '', 当前正文 = '') {
+    let 结果 = toText(新正文, '');
+    const 当前后端块 = 提取桥接正文后端块(当前正文);
+    if (!当前后端块.length) return 结果;
+    const 新正文后端块 = 提取桥接正文后端块(结果);
+    const 待保留 = 当前后端块.filter(块 => !新正文后端块.includes(块));
+    return 待保留.length ? `${结果.trimEnd()}\n\n${待保留.join('\n')}` : 结果;
+  }
+
   function 读取消息变量写回当前底稿_桥接(选项 = {}) {
     try {
       if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
@@ -8957,32 +8966,7 @@
   }
 
   function 安装MVU当前楼层写回保护_桥接() {
-    const 助手 = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
-    if (!助手 || 助手.__LWCS_CURRENT_MESSAGE_MVU_WRITE_GUARD__ === true) return false;
-    const 原更新变量 = typeof 助手.updateVariablesWith === 'function' ? 助手.updateVariablesWith.bind(助手) : null;
-    const 原替换变量 = typeof 助手.replaceVariables === 'function' ? 助手.replaceVariables.bind(助手) : null;
-    if (原更新变量) {
-      助手.updateVariablesWith = function(更新器, 选项 = { type: 'chat' }) {
-        if (选项?.type !== 'message' || typeof 更新器 !== 'function') return 原更新变量(更新器, 选项);
-        return 原更新变量(当前变量 => {
-          const 当前底稿 = cloneJsonValue(当前变量, {});
-          const 写回结果 = 更新器(当前变量);
-          if (写回结果 && typeof 写回结果.then === 'function') {
-            return 写回结果.then(结果 => 合并MVU当前楼层角色底稿_桥接(当前底稿, 结果, 选项));
-          }
-          return 合并MVU当前楼层角色底稿_桥接(当前底稿, 写回结果, 选项);
-        }, 选项);
-      };
-    }
-    if (原替换变量) {
-      助手.replaceVariables = function(写回变量, 选项 = { type: 'chat' }) {
-        if (选项?.type !== 'message') return 原替换变量(写回变量, 选项);
-        const 当前底稿 = 读取消息变量写回当前底稿_桥接(选项);
-        return 原替换变量(合并MVU当前楼层角色底稿_桥接(当前底稿, 写回变量, 选项), 选项);
-      };
-    }
-    助手.__LWCS_CURRENT_MESSAGE_MVU_WRITE_GUARD__ = true;
-    return true;
+    return false;
   }
 
   function 覆盖对象内容_桥接(目标 = {}, 来源 = {}) {
@@ -9002,7 +8986,9 @@
     事件源.on(事件名, 变量包 => {
       if (!变量包 || typeof 变量包 !== 'object') return;
       预入库当前正文命中内置角色_桥接(变量包);
-      const 当前底稿 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 'latest' });
+      const 目标消息编号 = 读取目标消息编号_桥接(变量包);
+      if (目标消息编号 === null) return;
+      const 当前底稿 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 目标消息编号 });
       const 合并包 = 合并MVU当前楼层角色底稿_桥接(当前底稿, 变量包, { type: 'message' });
       if (合并包 && 合并包 !== 变量包) 覆盖对象内容_桥接(变量包, 合并包);
     });
@@ -38531,7 +38517,6 @@
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();
-    调度冷归档楼层自动归档_桥接(2200, { 触发来源: '初始化', 跳过冷却: true });
     bindMvuUpdates(vars => refreshLiveSnapshot({ sharedVars: vars }));
   }
 
