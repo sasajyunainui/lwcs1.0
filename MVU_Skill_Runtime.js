@@ -17350,25 +17350,6 @@ var TOP_TALENT_LATE_BLOOM_THRESHOLD_ACU = 1.03;
 var TOP_TALENT_LATE_BLOOM_GROWTH_MULTIPLIER_ACU = 1.0;
 var TOP_TALENT_LATE_BLOOM_STAGE3_CHANCE_MULTIPLIER_ACU = 1.0;
 var TOP_TALENT_LATE_BLOOM_STAGE3_BOTTLENECK_MULTIPLIER_ACU = 2.45;
-var TALENT_BACKGROUND_SCORE_BONUS_ACU = Object.freeze({
-  平民: 0,
-  普通势力: 20,
-  一流势力: 50,
-  顶级势力: 80,
-});
-var TALENT_BACKGROUND_RARE_BONUS_ODDS_ACU = Object.freeze({
-  平民: Object.freeze({ 顶级天才: 0.001, 绝世妖孽: 0.0002 }),
-  普通势力: Object.freeze({ 顶级天才: 0.003, 绝世妖孽: 0.0005 }),
-  一流势力: Object.freeze({ 顶级天才: 0.008, 绝世妖孽: 0.001 }),
-  顶级势力: Object.freeze({ 顶级天才: 0, 绝世妖孽: 0 }),
-});
-var TALENT_SCORE_THRESHOLDS_ACU = Object.freeze({
-  正常: 450,
-  优秀: 750,
-  天才: 950,
-  顶级天才: 1051,
-  绝世妖孽: 1071,
-});
 var GOOD_TALENT_LATE_BLOOM_THRESHOLD_ACU = 1.0456;
 var GOOD_TALENT_LATE_BLOOM_GROWTH_MULTIPLIER_ACU = 1.0;
 var GOOD_TALENT_LATE_BLOOM_STAGE12_CHANCE_MULTIPLIER_ACU = 1.0;
@@ -19341,8 +19322,7 @@ var AI_TODO_SOUL_BONE_SOURCE = '待补全(请填写魂骨来源的魂兽名)';
 var AI_TODO_MAIN_IDENTITY = '待补全(填写当前主要公开身份)';
 var AI_TODO_PERSONALITY = '待补全(根据角色设定补全性格特征)';
 var AI_TODO_STATUS_LOC = '斗罗大陆-待补全(按大陆-城市-地点完整路径填写，禁止只填单一地名)';
-var AI_TODO_BACKGROUND = '待补全(请结合角色的家庭出身、成长环境、资源条件、父母来历与所属圈层，补全其家世或出身背景描述)';
-var AI_TODO_TALENT_RATING = '待补全(请根据角色的武魂潜力、血脉资质、悟性、心性、成长环境与资源条件，给出1-100的天赋评级分数，仅填写数字)';
+var AI_TODO_FAMILY_BACKGROUND = '待补全(请结合角色家庭出身、成长环境、资源条件、父母来历与公开身份，补全家世或出身背景描述)';
 var 角色穿搭上装待补全文案_V1 = '待补全(根据当前场景补完上装)';
 var 角色穿搭下装待补全文案_V1 = '待补全(根据当前场景补完下装)';
 var 角色穿搭鞋子待补全文案_V1 = '待补全(根据当前场景补完鞋子)';
@@ -19358,7 +19338,7 @@ function isStorageTodoPlaceholderText(value) {
   return /待补全|待生成|未知|未详|不详/.test(text);
 }
 
-function clearStorageTodoPlaceholders(node) {
+function clearStorageTodoPlaceholders(node, path = []) {
   if (!node || typeof node !== 'object') return node;
 
   if (Array.isArray(node)) {
@@ -19367,7 +19347,7 @@ function clearStorageTodoPlaceholders(node) {
       if (typeof item === 'string') {
         if (isStorageTodoPlaceholderText(item)) node.splice(i, 1);
       } else {
-        clearStorageTodoPlaceholders(item);
+        clearStorageTodoPlaceholders(item, path.concat(String(i)));
       }
     }
     return node;
@@ -19375,11 +19355,13 @@ function clearStorageTodoPlaceholders(node) {
 
   Object.keys(node).forEach(key => {
     const value = node[key];
+    const nextPath = path.concat(key);
     if (typeof value === 'string') {
+      if (nextPath.length >= 3 && nextPath[nextPath.length - 2] === '社交' && nextPath[nextPath.length - 1] === '家世描述') return;
       if (isStorageTodoPlaceholderText(value)) delete node[key];
       return;
     }
-    clearStorageTodoPlaceholders(value);
+    clearStorageTodoPlaceholders(value, nextPath);
   });
   return node;
 }

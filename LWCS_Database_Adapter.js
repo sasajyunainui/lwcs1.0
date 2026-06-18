@@ -94,6 +94,21 @@
     return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '' };
   }
 
+  function 读取最新用户消息元信息() {
+    const 聊天数组 = 读取聊天数组();
+    for (let 消息索引 = 聊天数组.length - 1; 消息索引 >= 0; 消息索引 -= 1) {
+      const 消息 = 聊天数组[消息索引];
+      if (!消息 || !消息.is_user) continue;
+      return {
+        文本: 读取消息正文(消息),
+        消息索引,
+        消息编号: String(消息?.id ?? 消息?.message_id ?? 消息索引),
+        滑动编号: 读取消息当前滑动编号(消息),
+      };
+    }
+    return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '' };
+  }
+
   function 取哈希(文本) {
     const 源文本 = String(文本 || '');
     let 哈希 = 2166136261;
@@ -154,9 +169,14 @@
     return null;
   }
 
-  function 构建前置键(最新角色消息, 捕获文本, 附加文本 = '') {
+  function 构建前置键(最新角色消息, 最新用户消息, 捕获文本, 附加文本 = '') {
+    const 聊天数组 = 读取聊天数组();
     return [
       String(读取酒馆上下文()?.chatId || 'current_chat').trim() || 'current_chat',
+      String(聊天数组.length),
+      String(最新用户消息?.消息编号 || ''),
+      String(最新用户消息?.消息索引 ?? ''),
+      String(最新用户消息?.滑动编号 ?? ''),
       String(最新角色消息?.消息编号 || ''),
       String(最新角色消息?.消息索引 ?? ''),
       String(最新角色消息?.滑动编号 ?? ''),
@@ -170,7 +190,7 @@
       .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, ' ')
       .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, ' ')
       .replace(/<tabletop>[\s\S]*?<\/tabletop>/gi, ' ')
-      .replace(/<content>[\s\S]*?<\/content>/gi, ' ')
+      .replace(/<\/?content>/gi, ' ')
       .trim();
   }
 
@@ -202,11 +222,12 @@
     const 用户输入文本 = String(选项?.userInput || '');
     const 最后角色消息文本 = String(选项?.lastCharMessage || '');
     const 最新角色消息 = 选项?.latestCharMessageInfo && typeof 选项.latestCharMessageInfo === 'object' ? 选项.latestCharMessageInfo : 读取最新角色消息元信息();
+    const 最新用户消息 = 读取最新用户消息元信息();
     const 近场文本 = String(选项?.captureText ?? '').trim()
       ? 清理近场文本片段(选项.captureText)
       : 构建近场文本(用户输入文本, 最后角色消息文本);
     if (!近场文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
-    const 前置键 = 构建前置键(最新角色消息, 近场文本);
+    const 前置键 = 构建前置键(最新角色消息, 最新用户消息, 近场文本);
     if (本轮前置承诺表.has(前置键)) return await 本轮前置承诺表.get(前置键);
     const 前置承诺 = (async () => {
       const 总开始时间 = 读取性能时间();

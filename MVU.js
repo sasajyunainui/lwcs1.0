@@ -373,9 +373,6 @@ const StatsSchema = z
     上次灵物等级: z.coerce.number().prefault(-20).describe('上次吸收灵物的等级'),
     等级惩罚: z.coerce.number().prefault(0).describe('违规吸收导致的等级上限永久扣除'),
     天赋梯队: z.string().prefault('正常').describe('天赋梯队'),
-    天赋评级: z.union([z.coerce.number(), z.string()]).optional().describe('AI输出的1-100天赋评分，仅用于初始化天赋判定，判定后删除'),
-    背景: z.string().prefault(AI_TODO_BACKGROUND).describe('家世或出身背景描述'),
-    背景阶层: z.enum(['顶级势力', '一流势力', '普通势力', '平民']).optional().describe('用于初始天赋推演的背景阶层标签'),
     邪魂师: z.boolean().prefault(false).describe('是否为邪魂师'),
     底子波动: z.coerce.number().prefault(0).describe('先天底子波动值'),
     魂力: z.coerce.number().prefault(-1).describe('当前魂力'),
@@ -650,7 +647,7 @@ const CharacterSchema = z
         声望: z.coerce.number().prefault(0),
         名望等级: z.string().prefault('籍籍无名'),
         主身份: z.string().prefault(AI_TODO_MAIN_IDENTITY).describe('当前主要公开身份'),
-        家世描述: z.string().prefault('无').describe('公开档案中的家世/出身描述'),
+        家世描述: z.string().prefault(AI_TODO_FAMILY_BACKGROUND).describe('公开档案中的家世/出身描述'),
         势力: z
           .record(
             z.string(),

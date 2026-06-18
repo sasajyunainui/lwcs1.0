@@ -1835,7 +1835,6 @@ function 是否已有明确魂师数据_V1(角色 = {}) {
   if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return false;
   const 属性 = 角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性) ? 角色.属性 : {};
   if (isNoSoulPowerTalentTier(属性.天赋梯队)) return false;
-  if (Math.max(0, Number(属性.等级 || 0) || 0) > 1) return true;
   if (
     取角色武魂条目_V1(角色).some(([, 武魂数据]) =>
       取武魂魂灵条目_V1(武魂数据).some(([, 魂灵数据]) =>
@@ -1931,8 +1930,8 @@ function 裁剪非魂师角色结构_V1(角色 = {}, 角色名 = '') {
   if (!凌梓晨特例 && !本轮轻量非魂师 && !是否非魂师轻量角色_V1(角色)) return false;
   if (角色.属性 && typeof 角色.属性 === 'object') {
     const 删除属性字段 = 凌梓晨特例
-      ? ['上次灵物等级', '等级惩罚', '天赋梯队', '天赋评级', '背景阶层', '邪魂师', '底子波动', '精神力', '精神力上限', '精神境界', '训练加成', '状态效果']
-      : ['等级', '上次灵物等级', '等级惩罚', '天赋梯队', '天赋评级', '背景阶层', '邪魂师', '底子波动', '魂力', '魂力上限', '精神力', '精神力上限', '精神境界', '力量', '防御', '敏捷', 'HP', 'HP上限', '体力', '体力上限', '训练加成', '状态效果'];
+      ? ['上次灵物等级', '等级惩罚', '天赋梯队', '邪魂师', '底子波动', '精神力', '精神力上限', '精神境界', '训练加成', '状态效果']
+      : ['等级', '上次灵物等级', '等级惩罚', '天赋梯队', '邪魂师', '底子波动', '魂力', '魂力上限', '精神力', '精神力上限', '精神境界', '力量', '防御', '敏捷', 'HP', 'HP上限', '体力', '体力上限', '训练加成', '状态效果'];
     删除属性字段.forEach(字段 => delete 角色.属性[字段]);
   }
   if (角色.状态 && typeof 角色.状态 === 'object' && !Array.isArray(角色.状态)) {
@@ -4759,13 +4758,23 @@ function 规范化Schema根转换_V1(data = {}) {
         if (!spiritEntries.some(([, 武魂数据]) => 是否真实武魂数据_V1(武魂数据))) spiritEntries = [];
       }
 
-      if (读取内置角色记录_V1(charName, currentTick, data)) return;
-
-      if (spiritEntries.length === 0 && 是否新档初始化 && 是否已有明确魂师数据_V1(char)) {
+      if (
+        spiritEntries.length === 0 &&
+        !isNoSoulPowerTalentTier(char?.属性?.天赋梯队) &&
+        Math.max(0, Number(char?.属性?.等级 || 0) || 0) > 0
+      ) {
+        const 原有武魂壳 =
+          char[firstSpiritName] && typeof char[firstSpiritName] === 'object' && !Array.isArray(char[firstSpiritName])
+            ? char[firstSpiritName]
+            : {};
         char[firstSpiritName] = {
-          表象名称: '未展露',
-          系别: 取角色主武魂系别_V1(char),
-          领域: {},
+          ...原有武魂壳,
+          表象名称: String(原有武魂壳.表象名称 || '').trim() || '未展露',
+          系别: String(原有武魂壳.系别 || '').trim() || 取角色主武魂系别_V1(char),
+          领域:
+            原有武魂壳.领域 && typeof 原有武魂壳.领域 === 'object' && !Array.isArray(原有武魂壳.领域)
+              ? 原有武魂壳.领域
+              : {},
         };
         spiritEntries = [[firstSpiritName, char[firstSpiritName]]];
       }
@@ -5840,20 +5849,9 @@ function 规范化Schema根转换_V1(data = {}) {
           (charName === PLAYER_NAME || 是否同地图节点组(data, sourceChar, protagonist));
 
         ensureDisplayText(charData, '性格', AI_TODO_PERSONALITY);
-        if (charData.属性 && typeof charData.属性 === 'object') {
-          const currentBackground = String(charData.属性.背景 ?? '').trim();
-          if (!currentBackground || currentBackground === '无' || isAiTodoText(currentBackground)) {
-            charData.属性.背景 = AI_TODO_BACKGROUND;
-          }
-          const shouldDisplayTalentRatingTodo =
-            !!sourceAttr && Object.prototype.hasOwnProperty.call(sourceAttr, '天赋评级');
-          const currentTalentRating = String(charData.属性.天赋评级 ?? '').trim();
-          if (shouldDisplayTalentRatingTodo && (!currentTalentRating || currentTalentRating === '无' || isAiTodoText(currentTalentRating))) {
-            charData.属性.天赋评级 = AI_TODO_TALENT_RATING;
-          }
-        }
         if (charData.社交 && typeof charData.社交 === 'object') {
           ensureDisplayText(charData.社交, '主身份', AI_TODO_MAIN_IDENTITY);
+          ensureDisplayText(charData.社交, '家世描述', AI_TODO_FAMILY_BACKGROUND);
           _(charData.社交.关系 || {}).forEach(relData => {
             if (!relData || typeof relData !== 'object') return;
             规范武魂相关度基础字段(relData);
@@ -6572,7 +6570,7 @@ function 规范化装备Schema_V1(装备) {
     });
 
     return 装备;
-  
+
 }
 
 function 规范化技能结构Schema_V1(skill) {
@@ -6582,7 +6580,7 @@ function 规范化技能结构Schema_V1(skill) {
     // v3 阶段 7：旧档迁移——_效果数组 内 状态:'沉默' 自动转为 '封技'（沉默与封技语义重合，统一）
     迁移沉默到封技_V1(skill._效果数组);
     return 收口技能执行结构_V1(skill, { 目标: '单体' });
-  
+
 }
 
 function 规范化魂骨Schema_V1(魂骨表) {
@@ -6592,7 +6590,7 @@ function 规范化魂骨Schema_V1(魂骨表) {
       if (是外附魂骨槽位_V1(槽位)) 魂骨表[槽位].属性倍率 = 按品质派生外附魂骨属性倍率_V1(魂骨表[槽位].品质);
     });
     return 魂骨表;
-  
+
 }
 
 function 规范化魂环Schema_V1(魂环) {
@@ -6601,7 +6599,7 @@ function 规范化魂环Schema_V1(魂环) {
     });
     delete 魂环.魂技;
     return 魂环;
-  
+
 }
 
 function 规范化魂灵Schema_V1(魂灵) {
@@ -6650,6 +6648,42 @@ function 规范化等级输入Schema_V1(val) {
       
 }
 
+function 计算等级反推天赋梯队_V1(年龄 = 0, 等级 = 1, 生日 = '') {
+    const 等级值 = Math.max(0, Number(等级 || 0) || 0);
+    if (等级值 <= 0) return '天赋极差';
+    const 年龄值 = Math.max(0, Number(年龄 || 0) || 0);
+    const 档位列表 = ['劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'];
+    const 候选列表 = 档位列表.map(档位 => ({
+      档位,
+      差值: Math.abs((Number(计算初始化修为等级(档位, 年龄值, 1, 生日)) || 1) - 等级值),
+    }));
+    const 最小差值 = Math.min(...候选列表.map(项 => 项.差值));
+    const 最贴近列表 = 候选列表.filter(项 => Math.abs(项.差值 - 最小差值) <= 0.0001);
+    if (最贴近列表.length <= 1) return 最贴近列表[0]?.档位 || '正常';
+    const 百面骰 = Math.floor(Math.random() * 100) + 1;
+    const 索引 = Math.min(最贴近列表.length - 1, Math.floor((百面骰 - 1) * 最贴近列表.length / 100));
+    return 最贴近列表[索引]?.档位 || '正常';
+}
+
+function 填充默认训练加成_V1(属性 = {}, 强制重算 = false) {
+    if (!属性 || typeof 属性 !== 'object') return 属性;
+    属性.训练加成 = createNumericStatBonusMap(属性.训练加成);
+    if (!强制重算 && !(属性.等级 > 10 && 属性.训练加成.力量 === 0 && 属性.训练加成.精神力上限 === 0)) return 属性;
+    if (!(属性.等级 > 10)) return 属性;
+    const 常规训练系数 =
+      { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1.0, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[属性.天赋梯队] || 0.5;
+    const 精神训练系数 = 属性.天赋梯队 === '绝世妖孽' ? 2.0 : 常规训练系数;
+    const 基础属性 = getBaseStats(属性.等级);
+    const 常规训练倍率 = 0.005 * (属性.等级 - 10) * 常规训练系数;
+    const 精神训练倍率 = 0.005 * (属性.等级 - 10) * 精神训练系数;
+    属性.训练加成.力量 = Math.floor(基础属性.str * 常规训练倍率);
+    属性.训练加成.防御 = Math.floor(基础属性.def * 常规训练倍率);
+    属性.训练加成.敏捷 = Math.floor(基础属性.agi * 常规训练倍率);
+    属性.训练加成.体力上限 = Math.floor(基础属性.vit_max * 常规训练倍率);
+    属性.训练加成.精神力上限 = Math.floor(基础属性.men_max * 精神训练倍率);
+    return 属性;
+}
+
 function 规范化属性Schema_V1(data) {
     data.训练加成 = createNumericStatBonusMap(data.训练加成);
 
@@ -6665,19 +6699,7 @@ function 规范化属性Schema_V1(data) {
     data.HP上限 = Math.max(1, Number(data.HP上限 || 1));
     data.HP = Math.max(0, Math.min(Number(data.HP || 0), data.HP上限));
 
-    if (data.等级 > 10 && data.训练加成.力量 === 0 && data.训练加成.精神力上限 === 0) {
-      const 常规训练系数 =
-        { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1.0, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[data.天赋梯队] || 0.5;
-      const 精神训练系数 = data.天赋梯队 === '绝世妖孽' ? 2.0 : 常规训练系数;
-      const baseForTrace = getBaseStats(data.等级);
-      const 常规训练倍率 = 0.005 * (data.等级 - 10) * 常规训练系数;
-      const 精神训练倍率 = 0.005 * (data.等级 - 10) * 精神训练系数;
-      data.训练加成.力量 = Math.floor(baseForTrace.str * 常规训练倍率);
-      data.训练加成.防御 = Math.floor(baseForTrace.def * 常规训练倍率);
-      data.训练加成.敏捷 = Math.floor(baseForTrace.agi * 常规训练倍率);
-      data.训练加成.体力上限 = Math.floor(baseForTrace.vit_max * 常规训练倍率);
-      data.训练加成.精神力上限 = Math.floor(baseForTrace.men_max * 精神训练倍率);
-    }
+    填充默认训练加成_V1(data, false);
     return data;
   
 }
@@ -6768,7 +6790,9 @@ function 规范化关系分析重点对象Schema_V1(value) {
 
 function 规范化社交Schema_V1(社交) {
         社交.名望等级 = 社交.名望等级 || '籍籍无名';
-        社交.家世描述 = String(社交.家世描述 || '').trim() || '无';
+        社交.主身份 = String(社交.主身份 || '').trim() || AI_TODO_MAIN_IDENTITY;
+        const 家世描述 = String(社交.家世描述 || '').trim();
+        社交.家世描述 = 家世描述 && 家世描述 !== '无' ? 家世描述 : AI_TODO_FAMILY_BACKGROUND;
 
         const topTargets = [];
         const romanceCandidates = [];
@@ -7085,138 +7109,16 @@ function 规范化角色Schema_V1(char) {
     }
 
     {
-      const currentTier = String(char.属性.天赋梯队 || '').trim();
-      const hasPresetTalent = !!(currentTier && currentTier !== '正常');
-      const 原始背景阶层 = String(char.属性?.背景阶层 || '').trim();
-      const 有效背景阶层 = ['顶级势力', '一流势力', '普通势力', '平民'].includes(原始背景阶层);
-      const backgroundTier = 有效背景阶层 ? 原始背景阶层 : '平民';
-      const 等级字段存在 = Object.prototype.hasOwnProperty.call(char.属性, '等级');
-      const 等级值 = Number(char.属性?.等级);
-      const 有初始化种子 =
-        Math.max(0, Number(char.属性?.年龄 || 0)) > 6 &&
-        (有效背景阶层 || char.属性?.天赋评级 !== undefined || hasPresetTalent);
-      const 等级为初始化默认态 =
-        !等级字段存在 ||
-        char.属性?.等级 === '' ||
-        char.属性?.等级 === null ||
-        (!Number.isFinite(等级值) && String(char.属性?.等级 ?? '').trim() !== '0') ||
-        Number(等级值) === 1 ||
-        (Number(等级值) === 0 && 有初始化种子 && !isNoSoulPowerTalentTier(currentTier));
-      初始化魂灵预算倍率记录_V1.set(
-        char,
-        !有效背景阶层 || backgroundTier === '顶级势力' || backgroundTier === '一流势力' ? 1 : 0.5,
-      );
-      const ageValue = Math.max(0, Number(char.属性?.年龄 || 0));
-      const isEvilSoulMaster = char.属性?.邪魂师 === true;
-      const shouldIgnoreFactionBackgroundForTalent = !isEvilSoulMaster && ageValue < 13;
-      const effectiveBackgroundTier = isEvilSoulMaster
-        ? '顶级势力'
-        : shouldIgnoreFactionBackgroundForTalent
-          ? '平民'
-          : backgroundTier;
-
-      if (!原始已有魂师结构 && !hasPresetTalent) {
-        const rawTalentRating = Number(char.属性?.天赋评级);
-        const talentRatingValue = Number.isFinite(rawTalentRating)
-          ? Math.max(1, Math.min(100, Math.floor(rawTalentRating)))
-          : null;
-        const backgroundScoreBonus = TALENT_BACKGROUND_SCORE_BONUS_ACU[effectiveBackgroundTier] || 0;
-        const talentRatingScore = Number.isFinite(talentRatingValue)
-          ? Math.round((talentRatingValue - 50) * 0.1)
-          : 0;
-        const totalScore = Math.floor(Math.random() * 1000) + 1 + backgroundScoreBonus + talentRatingScore;
-        const rareBonusOdds = TALENT_BACKGROUND_RARE_BONUS_ODDS_ACU[effectiveBackgroundTier] || TALENT_BACKGROUND_RARE_BONUS_ODDS_ACU.平民;
-        const baseNoSoulPowerChance =
-          {
-            平民: 0.70,
-            普通势力: 0.40,
-            一流势力: 0.20,
-            顶级势力: 0.10,
-          }[effectiveBackgroundTier] ?? 0.70;
-        let noSoulPowerChance = baseNoSoulPowerChance;
-        if (Number.isFinite(talentRatingValue)) {
-          const normalizedTalentRating = (talentRatingValue - 50) / 50;
-          if (normalizedTalentRating >= 0) {
-            noSoulPowerChance = noSoulPowerChance * Math.max(0.02, 1 - normalizedTalentRating * 0.9);
-          } else {
-            noSoulPowerChance = Math.min(0.98, noSoulPowerChance * (1 + Math.abs(normalizedTalentRating) * 0.8));
-          }
-        }
-
-        let tier = '劣等';
-        if (Math.random() < noSoulPowerChance) {
-          tier = '天赋极差';
-        } else if (rareBonusOdds.绝世妖孽 > 0 && Math.random() < rareBonusOdds.绝世妖孽) {
-          tier = '绝世妖孽';
-        } else if (rareBonusOdds.顶级天才 > 0 && Math.random() < rareBonusOdds.顶级天才) {
-          tier = '顶级天才';
-        } else if (totalScore >= TALENT_SCORE_THRESHOLDS_ACU.绝世妖孽) {
-          tier = '绝世妖孽';
-        } else if (totalScore >= TALENT_SCORE_THRESHOLDS_ACU.顶级天才) {
-          tier = '顶级天才';
-        } else if (totalScore >= TALENT_SCORE_THRESHOLDS_ACU.天才) {
-          tier = '天才';
-        } else if (totalScore >= TALENT_SCORE_THRESHOLDS_ACU.优秀) {
-          tier = '优秀';
-        } else if (totalScore >= TALENT_SCORE_THRESHOLDS_ACU.正常) {
-          tier = '正常';
-        }
-        let maxLimit = 69;
-
-        if (tier === '天赋极差') {
-          maxLimit = 0;
-        } else if (tier === '绝世妖孽') {
-          maxLimit = 99.5;
-        } else if (tier === '顶级天才') {
-          maxLimit = 99.5;
-        } else if (tier === '天才') {
-          maxLimit = 95;
-        } else if (tier === '优秀') {
-          maxLimit = 85;
-        } else if (tier === '正常') {
-          maxLimit = 59;
-        } else if (tier === '劣等') {
-          maxLimit = 29;
-        }
-
-        char.属性.天赋梯队 = tier;
-
-        if (等级为初始化默认态 && 有初始化种子) {
-          char.属性.等级 = Math.min(
-            maxLimit,
-            计算初始化修为等级(
-              tier,
-              char.属性.年龄,
-              char.属性.底子波动,
-              char.属性.生日,
-            ),
-          );
-          if (Math.max(0, Number(char.属性.等级 || 0)) > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) 本轮初始化魂师面板 = true;
-        }
-      }
-
-      if (!原始已有魂师结构 && hasPresetTalent && 等级为初始化默认态 && 有初始化种子) {
-        char.属性.等级 = 计算初始化修为等级(
-          char.属性.天赋梯队,
-          char.属性.年龄,
-          char.属性.底子波动,
-          char.属性.生日,
-        );
-        if (Math.max(0, Number(char.属性.等级 || 0)) > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) 本轮初始化魂师面板 = true;
-      }
-      if (!原始已有魂师结构 && 有初始化种子 && !isNoSoulPowerTalentTier(char.属性.天赋梯队) && Math.max(0, Number(char.属性.等级 || 0)) <= 0) {
-        char.属性.等级 = 计算初始化修为等级(
-          char.属性.天赋梯队,
-          char.属性.年龄,
-          char.属性.底子波动,
-          char.属性.生日,
-        );
-        if (Math.max(0, Number(char.属性.等级 || 0)) > 0) 本轮初始化魂师面板 = true;
-      }
-
       delete char.属性.背景;
-      delete char.属性.背景阶层;
-      delete char.属性.天赋评级;
+      const 等级值 = Math.max(0, Number(char.属性?.等级 || 0) || 0);
+      初始化魂灵预算倍率记录_V1.set(char, 1);
+      if (!原始已有魂师结构) {
+        char.属性.天赋梯队 = 计算等级反推天赋梯队_V1(char.属性.年龄, 等级值, char.属性.生日);
+        if (等级值 > 0 && !isNoSoulPowerTalentTier(char.属性.天赋梯队)) {
+          填充默认训练加成_V1(char.属性, true);
+          本轮初始化魂师面板 = true;
+        }
+      }
       if (!原始已有魂师结构 && isNoSoulPowerTalentTier(char.属性.天赋梯队)) {
         normalizeNoSoulPowerCharacterData(char);
         标记本轮等级上升();

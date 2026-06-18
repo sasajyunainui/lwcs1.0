@@ -4145,12 +4145,12 @@
   const 角色归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
-  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, pollTimer: 0, promise: null, 已安装: false };
+  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, pollTimer: 0, promise: null, 已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
   const 冷实体激活保护存储键_桥接 = 'LWCS_冷实体激活保护_v1';
   const 冷实体激活保护楼层窗口_桥接 = 6;
   const 冷归档自动归档批量硬上限_桥接 = 50;
-  const 冷归档首次批量上限_桥接 = Number.POSITIVE_INFINITY;
+  const 冷归档首次批量上限_桥接 = 冷归档自动归档批量硬上限_桥接;
   const 冷归档自动归档默认配置_桥接 = Object.freeze({
     启用自动归档: true,
     角色数量阈值: 10,
@@ -4565,7 +4565,69 @@
 
   function 读取事件消息引用_桥接(选项 = {}) {
     const 来源 = 选项 && typeof 选项 === 'object' ? 选项 : {};
-    return 来源.消息引用 ?? 来源.消息编号 ?? 来源.消息索引;
+    return 来源.消息引用 ?? 来源.消息编号 ?? 来源.消息索引 ?? 来源.messageId ?? 来源.message_id;
+  }
+
+  function 读取冷档恢复目标楼层_桥接(选项 = {}) {
+    const 目标索引 = 定位聊天消息索引_桥接(读取当前聊天数组_桥接(), 读取事件消息引用_桥接(选项));
+    if (目标索引 >= 0) return 目标索引;
+    const 签名楼层 = Number(选项 && 选项.签名匹配楼层);
+    if (Number.isInteger(签名楼层) && 签名楼层 >= 0) return 签名楼层;
+    return 读取当前最新聊天楼层_桥接();
+  }
+
+  function 构建变量包楼层匹配签名_桥接(变量根 = {}) {
+    const 副本 = cloneJsonValue(变量根, {});
+    if (副本 && typeof 副本 === 'object') delete 副本.$internal;
+    return serializeMvuEditorStoreStatData(副本);
+  }
+
+  async function 定位MVU命令变量包楼层_桥接(变量包 = {}, 扫描深度 = 16) {
+    const 目标根 = resolveRootData(变量包);
+    if (!目标根 || typeof 目标根 !== 'object') return -1;
+    const 目标签名 = 构建变量包楼层匹配签名_桥接(目标根);
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 主机 = getMvuHost();
+    const 匹配楼层 = [];
+    const 起点 = Math.max(0, 聊天.length - Math.max(1, Math.floor(Number(扫描深度) || 16)));
+    for (let 索引 = 聊天.length - 1; 索引 >= 起点; 索引 -= 1) {
+      const 消息 = 聊天[索引];
+      if (!消息 || 消息.is_user) continue;
+      const 消息编号 = 读取聊天消息编号_桥接(消息, 索引);
+      const 候选列表 = [];
+      if (主机 && typeof 主机.getMvuData === 'function') {
+        const 候选 = await Promise.resolve(主机.getMvuData({ type: 'message', message_id: 消息编号 })).catch(() => null);
+        if (候选) 候选列表.push(候选);
+      }
+      if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
+        const 候选 = await Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: 消息编号 })).catch(() => null);
+        if (候选) 候选列表.push(候选);
+      }
+      if (候选列表.some(候选 => 构建变量包楼层匹配签名_桥接(resolveRootData(候选)) === 目标签名)) 匹配楼层.push(索引);
+      if (匹配楼层.length > 1) break;
+    }
+    return 匹配楼层.length === 1 ? 匹配楼层[0] : -1;
+  }
+
+  function 构建冷归档自动检查消息键_桥接(选项 = {}) {
+    const 聊天 = 读取当前聊天数组_桥接();
+    let 目标索引 = 定位聊天消息索引_桥接(聊天, 读取事件消息引用_桥接(选项));
+    if (目标索引 < 0 && 选项.使用最新AI !== false) {
+      for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
+        if (聊天[索引] && !聊天[索引].is_user) {
+          目标索引 = 索引;
+          break;
+        }
+      }
+    }
+    if (目标索引 < 0) return '';
+    const 目标消息 = 聊天[目标索引];
+    if (!目标消息 || 目标消息.is_user) return '';
+    return [
+      取当前聊天归档标识_桥接(),
+      读取聊天消息编号_桥接(目标消息, 目标索引),
+      读取聊天消息当前滑动编号_桥接(目标消息),
+    ].join('|');
   }
 
   function 定位聊天消息索引_桥接(聊天 = [], 消息引用 = '') {
@@ -5402,10 +5464,24 @@
   }
 
   function 调度冷归档楼层自动归档_桥接(延迟 = 1500, 选项 = {}) {
+    const 自动检查消息键 = 构建冷归档自动检查消息键_桥接(选项);
+    if (!选项.force && 自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
     if (冷归档楼层清理状态_桥接.autoTimer) window.clearTimeout(冷归档楼层清理状态_桥接.autoTimer);
     冷归档楼层清理状态_桥接.autoTimer = window.setTimeout(() => {
       冷归档楼层清理状态_桥接.autoTimer = 0;
-      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加', ...(选项 && typeof 选项 === 'object' ? 选项 : {}) }).catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
+      if (冷归档楼层清理状态_桥接.变量更新中) {
+        const 等待次数 = Math.max(0, Math.floor(Number(选项.等待变量更新次数) || 0));
+        if (等待次数 < 20) {
+          调度冷归档楼层自动归档_桥接(3000, { ...选项, 等待变量更新次数: 等待次数 + 1 });
+        }
+        return;
+      }
+      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加', ...(选项 && typeof 选项 === 'object' ? 选项 : {}) })
+        .then(结果 => {
+          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'no_visible_message_pair'].includes(结果 && 结果.reason);
+          if (!选项.force && 自动检查消息键 && !未进入检查) 冷归档楼层清理状态_桥接.已自动检查消息键表.add(自动检查消息键);
+        })
+        .catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
     }, Math.max(0, Number(延迟) || 0));
   }
 
@@ -5429,6 +5505,31 @@
           });
         } catch (错误) {}
       });
+      const 主机 = getMvuHost();
+      const 变量更新开始事件 = 主机?.events?.VARIABLE_UPDATE_STARTED || window.Mvu?.events?.VARIABLE_UPDATE_STARTED || 'mag_variable_update_started';
+      const 变量更新结束事件 = 主机?.events?.VARIABLE_UPDATE_ENDED || window.Mvu?.events?.VARIABLE_UPDATE_ENDED || 'mag_variable_update_ended';
+      if (变量更新开始事件) {
+        try {
+          eventSource.on(变量更新开始事件, () => {
+            冷归档楼层清理状态_桥接.变量更新中 = true;
+            if (冷归档楼层清理状态_桥接.变量更新兜底计时器) window.clearTimeout(冷归档楼层清理状态_桥接.变量更新兜底计时器);
+            冷归档楼层清理状态_桥接.变量更新兜底计时器 = window.setTimeout(() => {
+              冷归档楼层清理状态_桥接.变量更新中 = false;
+              冷归档楼层清理状态_桥接.变量更新兜底计时器 = 0;
+            }, 120000);
+          });
+        } catch (错误) {}
+      }
+      if (变量更新结束事件) {
+        try {
+          eventSource.on(变量更新结束事件, () => {
+            冷归档楼层清理状态_桥接.变量更新中 = false;
+            if (冷归档楼层清理状态_桥接.变量更新兜底计时器) window.clearTimeout(冷归档楼层清理状态_桥接.变量更新兜底计时器);
+            冷归档楼层清理状态_桥接.变量更新兜底计时器 = 0;
+            调度冷归档楼层自动归档_桥接(2500, { 需要可见消息对: true, 使用最新AI: true, 触发来源: 'MVU更新完成' });
+          });
+        } catch (错误) {}
+      }
       return true;
     };
     if (!绑定酒馆事件()) window.setTimeout(绑定酒馆事件, 1200);
@@ -6693,7 +6794,6 @@
         const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
         const 已传捕获文本 = Object.prototype.hasOwnProperty.call(选项, '捕获文本');
         const 自动归档消息对 = 已传捕获文本 ? null : 读取冷归档自动归档消息对_桥接(选项);
-        if (!已传捕获文本 && 选项.需要可见消息对 && !自动归档消息对.有消息对) return { changed: false, reason: 'no_visible_message_pair' };
         const 捕获文本 = 已传捕获文本 ? toText(选项.捕获文本, '') : toText(自动归档消息对.捕获文本, '');
         const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
         const 动态地点 = deepGet(statData, 'world.动态地点', {});
@@ -7435,6 +7535,58 @@
     return Array.from(角色名集合);
   }
 
+  function 读取MVU命令路径参数_桥接(命令 = {}) {
+    if (!命令 || typeof 命令 !== 'object') return [];
+    const 类型 = toText(命令.type, '').trim();
+    const 参数 = Array.isArray(命令.args) ? 命令.args : [];
+    if (类型 === 'move') return [参数[0], 参数[1]];
+    return [参数[0]];
+  }
+
+  function 规范化MVU命令路径_桥接(路径值 = '') {
+    if (Array.isArray(路径值)) return normalizeEditorPath(路径值);
+    const 原文 = toText(路径值, '').trim();
+    if (!原文) return [];
+    if (原文.startsWith('/')) return decodeJsonPointerPath(原文);
+    return normalizeEditorPath(原文);
+  }
+
+  function 收集MVU命令目标实体名_桥接(命令列表 = []) {
+    const 结果 = { 角色: new Set(), 物品: new Set(), 动态地点: new Set() };
+    (Array.isArray(命令列表) ? 命令列表 : []).forEach(命令 => {
+      读取MVU命令路径参数_桥接(命令).forEach(路径值 => {
+        const 路径 = 规范化MVU命令路径_桥接(路径值);
+        if (路径.length < 2) return;
+        const 头 = toText(路径[0], '').trim();
+        const 次 = toText(路径[1], '').trim();
+        if (头 === 'char' && 次) {
+          结果.角色.add(次);
+          return;
+        }
+        if (头 === '物品' && 次) {
+          const 第三 = toText(路径[2], '').trim();
+          结果.物品.add(第三 && 物品定义分类集合_桥接.has(次) ? 第三 : 次);
+          return;
+        }
+        if (头 === 'world' && 次 === '动态地点' && 路径.length >= 3) {
+          const 地点名 = toText(路径[2], '').trim();
+          if (地点名) 结果.动态地点.add(地点名);
+        }
+      });
+    });
+    return {
+      角色: Array.from(结果.角色),
+      物品: Array.from(结果.物品),
+      动态地点: Array.from(结果.动态地点),
+    };
+  }
+
+  function 创建MVU命令兜底阻断错误_桥接(消息 = '') {
+    const 错误 = new Error(消息 || 'MVU命令应用前实体兜底失败。');
+    错误.__LWCS_MVU命令兜底阻断 = true;
+    return 错误;
+  }
+
   function 预入库角色名内置角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
     const 接口 = 获取内置角色实例化接口_桥接();
     if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
@@ -7454,6 +7606,25 @@
     return 预入库角色名内置角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
   }
 
+  function 预入库物品名内置物品_桥接(statData = {}, 物品名列表 = [], 选项 = {}) {
+    const 接口 = 获取内置物品实例化接口_桥接();
+    if (!接口 || typeof 接口.应用内置物品实例化 !== 'function') return [];
+    const 命中物品 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [])
+      .map(物品名 => toText(物品名, '').trim())
+      .filter(Boolean)));
+    if (!命中物品.length) return [];
+    const 结果 = 接口.应用内置物品实例化(statData, {
+      用户输入: '',
+      剧情文本: '',
+      最后剧情文本: '',
+      命中物品,
+      上限: Math.max(12, 命中物品.length),
+      阈值: 1,
+      ...(选项 && typeof 选项 === 'object' ? 选项 : {}),
+    });
+    return Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
+  }
+
   function 预入库当前正文命中内置角色_桥接(变量包 = {}) {
     const statData = resolveRootData(变量包);
     if (!statData || typeof statData !== 'object') return [];
@@ -7468,7 +7639,7 @@
     return 已写入;
   }
 
-  async function 预恢复角色名归档角色_桥接(statData = {}, 角色名列表 = []) {
+  async function 预恢复角色名归档角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
     if (!statData || typeof statData !== 'object') return [];
     if (!statData.char || typeof statData.char !== 'object') statData.char = {};
     const 待恢复名称 = (Array.isArray(角色名列表) ? 角色名列表 : [])
@@ -7481,7 +7652,8 @@
       return [];
     }
     const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
-    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return [];
     const 已恢复 = [];
     for (const 角色名 of 待恢复名称) {
       const 索引 = 角色索引[角色名];
@@ -7507,6 +7679,179 @@
 
   async function 预恢复JsonPatch目标归档角色_桥接(statData = {}, patches = []) {
     return await 预恢复角色名归档角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
+  }
+
+  async function 收集可用归档角色名_桥接(角色名列表 = [], 选项 = {}) {
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return new Set();
+    let manifest = null;
+    try {
+      manifest = await 读取角色归档Manifest_桥接();
+    } catch (错误) {
+      return new Set();
+    }
+    const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+    return new Set((Array.isArray(角色名列表) ? 角色名列表 : []).filter(角色名 => 取当前冷归档版本_桥接(角色索引[角色名], 当前楼层)));
+  }
+
+  async function 收集可用归档物品名_桥接(物品名列表 = [], 选项 = {}) {
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return new Set();
+    let manifest = null;
+    try {
+      manifest = await 读取物品归档Manifest_桥接();
+    } catch (错误) {
+      return new Set();
+    }
+    const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+    return new Set((Array.isArray(物品名列表) ? 物品名列表 : []).filter(物品名 => 取当前冷归档版本_桥接(物品索引[物品名], 当前楼层)));
+  }
+
+  async function 收集可用归档动态地点名_桥接(地点名列表 = [], 选项 = {}) {
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return new Set();
+    let manifest = null;
+    try {
+      manifest = await 读取动态地点归档Manifest_桥接();
+    } catch (错误) {
+      return new Set();
+    }
+    const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+    return new Set((Array.isArray(地点名列表) ? 地点名列表 : []).filter(地点名 => 取当前冷归档版本_桥接(动态地点索引[地点名], 当前楼层)));
+  }
+
+  async function 预恢复物品名归档物品_桥接(statData = {}, 物品名列表 = [], 选项 = {}) {
+    if (!statData || typeof statData !== 'object') return [];
+    确保物品定义分类表_桥接(statData);
+    const 待恢复名称 = (Array.isArray(物品名列表) ? 物品名列表 : [])
+      .filter(物品名 => !物品定义存在_桥接(statData, 物品名));
+    if (!待恢复名称.length) return [];
+    let manifest = null;
+    try {
+      manifest = await 读取物品归档Manifest_桥接();
+    } catch (错误) {
+      return [];
+    }
+    const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return [];
+    const 已恢复 = [];
+    for (const 物品名 of 待恢复名称) {
+      const 索引 = 物品索引[物品名];
+      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      if (!版本) continue;
+      let 归档视图 = null;
+      try {
+        归档视图 = await 读取物品归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+      } catch (错误) {
+        continue;
+      }
+      if (toText(归档视图 && 归档视图.物品名, '').trim() !== 物品名 || !归档视图.物品定义 || typeof 归档视图.物品定义 !== 'object') continue;
+      try {
+        写入分类物品定义_桥接(statData, 物品名, 归档视图.物品定义, 归档视图.物品分类 || 归档视图.分类);
+        已恢复.push(物品名);
+      } catch (错误) {}
+    }
+    return 已恢复;
+  }
+
+  async function 预恢复地点名归档动态地点_桥接(statData = {}, 地点名列表 = [], 选项 = {}) {
+    if (!statData || typeof statData !== 'object') return [];
+    if (!statData.world || typeof statData.world !== 'object') statData.world = {};
+    if (!statData.world.动态地点 || typeof statData.world.动态地点 !== 'object') statData.world.动态地点 = {};
+    const 待恢复名称 = (Array.isArray(地点名列表) ? 地点名列表 : [])
+      .filter(地点名 => !statData.world.动态地点[地点名]);
+    if (!待恢复名称.length) return [];
+    let manifest = null;
+    try {
+      manifest = await 读取动态地点归档Manifest_桥接();
+    } catch (错误) {
+      return [];
+    }
+    const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+    const 当前楼层 = 读取冷档恢复目标楼层_桥接(选项);
+    if (当前楼层 < 0) return [];
+    const 已恢复 = [];
+    for (const 地点名 of 待恢复名称) {
+      const 索引 = 动态地点索引[地点名];
+      const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+      if (!版本) continue;
+      let 归档视图 = null;
+      try {
+        归档视图 = await 读取动态地点归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+      } catch (错误) {
+        continue;
+      }
+      if (toText(归档视图 && 归档视图.地点名, '').trim() !== 地点名 || !归档视图.地点数据 || typeof 归档视图.地点数据 !== 'object') continue;
+      statData.world.动态地点[地点名] = cloneJsonValue(归档视图.地点数据, {});
+      已恢复.push(地点名);
+    }
+    return 已恢复;
+  }
+
+  async function 补齐MVU命令目标角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
+    const 可用冷档 = await 收集可用归档角色名_桥接(角色名列表, 选项);
+    const 已恢复角色 = await 预恢复角色名归档角色_桥接(statData, 角色名列表, 选项);
+    const 已恢复集合 = new Set(已恢复角色);
+    const 冷档未恢复 = Array.from(可用冷档).filter(角色名 => !已恢复集合.has(角色名) && (!statData.char?.[角色名] || 是桥接角色空壳_桥接(statData.char[角色名])));
+    if (冷档未恢复.length) throw 创建MVU命令兜底阻断错误_桥接(`MVU命令目标角色存在冷档但未能恢复：${冷档未恢复.join('、')}`);
+    const 需内置兜底 = (Array.isArray(角色名列表) ? 角色名列表 : [])
+      .filter(角色名 => !已恢复集合.has(角色名) && !可用冷档.has(角色名));
+    const 已实例化角色 = 预入库角色名内置角色_桥接(statData, 需内置兜底);
+    return { 已恢复角色, 已实例化角色 };
+  }
+
+  async function 补齐MVU命令目标物品_桥接(statData = {}, 物品名列表 = [], 选项 = {}) {
+    const 可用冷档 = await 收集可用归档物品名_桥接(物品名列表, 选项);
+    const 已恢复物品 = await 预恢复物品名归档物品_桥接(statData, 物品名列表, 选项);
+    const 已恢复集合 = new Set(已恢复物品);
+    const 冷档未恢复 = Array.from(可用冷档).filter(物品名 => !已恢复集合.has(物品名) && !物品定义存在_桥接(statData, 物品名));
+    if (冷档未恢复.length) throw 创建MVU命令兜底阻断错误_桥接(`MVU命令目标物品存在冷档但未能恢复：${冷档未恢复.join('、')}`);
+    const 需内置兜底 = (Array.isArray(物品名列表) ? 物品名列表 : [])
+      .filter(物品名 => !已恢复集合.has(物品名) && !可用冷档.has(物品名));
+    const 已实例化物品 = 预入库物品名内置物品_桥接(statData, 需内置兜底);
+    return { 已恢复物品, 已实例化物品 };
+  }
+
+  async function 补齐MVU命令目标动态地点_桥接(statData = {}, 地点名列表 = [], 选项 = {}) {
+    const 可用冷档 = await 收集可用归档动态地点名_桥接(地点名列表, 选项);
+    const 已恢复地点 = await 预恢复地点名归档动态地点_桥接(statData, 地点名列表, 选项);
+    const 已恢复集合 = new Set(已恢复地点);
+    const 动态地点 = statData.world && typeof statData.world === 'object' && statData.world.动态地点 && typeof statData.world.动态地点 === 'object' ? statData.world.动态地点 : {};
+    const 冷档未恢复 = Array.from(可用冷档).filter(地点名 => !已恢复集合.has(地点名) && !动态地点[地点名]);
+    if (冷档未恢复.length) throw 创建MVU命令兜底阻断错误_桥接(`MVU命令目标动态地点存在冷档但未能恢复：${冷档未恢复.join('、')}`);
+    return { 已恢复地点 };
+  }
+
+  async function 执行MVU命令应用前实体兜底_桥接(变量包 = {}, 命令列表 = [], 选项 = {}) {
+    const statData = resolveRootData(变量包);
+    if (!statData || typeof statData !== 'object') return { changed: false };
+    const 目标 = 收集MVU命令目标实体名_桥接(命令列表);
+    const 定位选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}) };
+    if (!读取事件消息引用_桥接(定位选项) && !Number.isInteger(Number(定位选项.签名匹配楼层))) {
+      const 匹配楼层 = await 定位MVU命令变量包楼层_桥接(变量包);
+      if (匹配楼层 >= 0) 定位选项.签名匹配楼层 = 匹配楼层;
+    }
+    const { 已恢复角色, 已实例化角色 } = await 补齐MVU命令目标角色_桥接(statData, 目标.角色, 定位选项);
+    const { 已恢复物品, 已实例化物品 } = await 补齐MVU命令目标物品_桥接(statData, 目标.物品, 定位选项);
+    const { 已恢复地点 } = await 补齐MVU命令目标动态地点_桥接(statData, 目标.动态地点, 定位选项);
+    const 激活条目 = [
+      ...已恢复角色.map(名称 => ({ 类型: '角色', 名称 })),
+      ...已恢复物品.map(名称 => ({ 类型: '物品', 名称 })),
+      ...已恢复地点.map(名称 => ({ 类型: '动态地点', 名称 })),
+    ];
+    if (激活条目.length) 记录MVU冷实体激活_桥接(激活条目);
+    const 已补齐 = 已实例化角色.length || 已恢复角色.length || 已恢复物品.length || 已实例化物品.length || 已恢复地点.length;
+    if (已补齐) {
+      console.info(`[LWCS] MVU命令应用前已补齐实体：${[
+        已实例化角色.length ? `内置角色 ${已实例化角色.join('、')}` : '',
+        已恢复角色.length ? `归档角色 ${已恢复角色.join('、')}` : '',
+        已恢复物品.length ? `归档物品 ${已恢复物品.join('、')}` : '',
+        已实例化物品.length ? `内置物品 ${已实例化物品.join('、')}` : '',
+        已恢复地点.length ? `归档地点 ${已恢复地点.join('、')}` : '',
+      ].filter(Boolean).join('；')}`);
+    }
+    return { changed: !!已补齐, 已实例化角色, 已恢复角色, 已恢复物品, 已实例化物品, 已恢复地点 };
   }
 
   function 任务奖励状态已终结(状态) {
@@ -8870,7 +9215,6 @@
     if (toNumber(属性.年龄, 0) > 0) 分数 += 4;
     if (toText(属性.生日, '').trim()) 分数 += 1;
     if (toText(属性.天赋梯队, '').trim()) 分数 += 1;
-    if (toNumber(属性.天赋评级, 0) > 0) 分数 += 1;
     if (toText(角色.位置, '').trim() && !toText(角色.位置, '').includes('待转移')) 分数 += 3;
     if (toText(社交.主身份, '').trim() && toText(社交.主身份, '').trim() !== '无') 分数 += 5;
     if (Object.keys(势力).length > 0) 分数 += 4;
@@ -8890,11 +9234,16 @@
     return 分数;
   }
 
-  function 角色写回明显劣化_桥接(当前角色 = {}, 写回角色 = {}) {
+  function 角色数据足够完整_桥接(角色 = {}) {
+    return 计算角色结构完整度_桥接(角色) >= 14;
+  }
+
+  function 角色写回是不完整半对象_桥接(当前角色 = {}, 写回角色 = {}) {
     if (!isPlainObjectValue(当前角色)) return false;
-    const 当前分数 = 计算角色结构完整度_桥接(当前角色);
-    if (当前分数 < 14) return false;
+    if (!角色数据足够完整_桥接(当前角色)) return false;
     if (!isPlainObjectValue(写回角色)) return true;
+    if (角色数据足够完整_桥接(写回角色)) return false;
+    const 当前分数 = 计算角色结构完整度_桥接(当前角色);
     const 写回分数 = 计算角色结构完整度_桥接(写回角色);
     const 当前等级 = toNumber(当前角色?.属性?.等级, 0);
     const 写回等级 = toNumber(写回角色?.属性?.等级, 0);
@@ -8918,7 +9267,7 @@
     safeEntries(当前根.char).forEach(([角色名, 当前角色]) => {
       if (!toText(角色名, '').trim()) return;
       const 写回角色 = 写回根.char[角色名];
-      if (!角色写回明显劣化_桥接(当前角色, 写回角色)) return;
+      if (!角色写回是不完整半对象_桥接(当前角色, 写回角色)) return;
       写回根.char[角色名] = isPlainObjectValue(写回角色)
         ? 合并AI维护角色实例底稿_桥接(当前角色, 写回角色)
         : cloneJsonValue(当前角色, {});
@@ -8985,7 +9334,6 @@
     if (!事件源 || typeof 事件源.on !== 'function' || !事件名) return false;
     事件源.on(事件名, 变量包 => {
       if (!变量包 || typeof 变量包 !== 'object') return;
-      预入库当前正文命中内置角色_桥接(变量包);
       const 目标消息编号 = 读取目标消息编号_桥接(变量包);
       if (目标消息编号 === null) return;
       const 当前底稿 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 目标消息编号 });
@@ -8993,6 +9341,25 @@
       if (合并包 && 合并包 !== 变量包) 覆盖对象内容_桥接(变量包, 合并包);
     });
     __mvuBridgeRoot.__LWCS_MVU_UPDATE_BASE_MERGE_GUARD__ = true;
+    return true;
+  }
+
+  function 安装MVU命令应用前实体兜底_桥接() {
+    if (__mvuBridgeRoot.__LWCS_MVU_COMMAND_PREAPPLY_ENTITY_GUARD__ === true) return false;
+    const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null;
+    const 事件源 = 上下文?.eventSource;
+    const 主机 = getMvuHost();
+    const 事件名 = 主机?.events?.COMMAND_PARSED || window.Mvu?.events?.COMMAND_PARSED || 'mag_command_parsed';
+    if (!事件源 || typeof 事件源.on !== 'function' || !事件名) return false;
+    事件源.on(事件名, async (变量包, 命令列表) => {
+      try {
+        await 执行MVU命令应用前实体兜底_桥接(变量包, 命令列表);
+      } catch (错误) {
+        if (错误 && 错误.__LWCS_MVU命令兜底阻断 === true) throw 错误;
+        console.warn('[LWCS] MVU命令应用前实体兜底失败，已交回原生流程', 错误);
+      }
+    });
+    __mvuBridgeRoot.__LWCS_MVU_COMMAND_PREAPPLY_ENTITY_GUARD__ = true;
     return true;
   }
 
@@ -38514,6 +38881,7 @@
     await waitForMvuReady();
     安装MVU当前楼层写回保护_桥接();
     安装MVU变量更新基底合并_桥接();
+    安装MVU命令应用前实体兜底_桥接();
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();
@@ -45375,42 +45743,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
 
-    const switchCharBtn = eventTarget ? eventTarget.closest('[data-mvu-switch-char]') : null;
-    if (switchCharBtn && detailSurfaceHost.contains(switchCharBtn)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const targetName = switchCharBtn.getAttribute('data-mvu-switch-char') || '';
-      const switched = applyActiveCharacterSelection(targetName);
-      if (!switched) {
-        showUiToast(`切换角色失败：找不到【${targetName}】。`, 'error');
-      }
-      return;
-    }
-
-    const 归档角色切换卡片 = eventTarget ? eventTarget.closest('[data-mvu-archived-char]') : null;
-    if (归档角色切换卡片 && detailSurfaceHost.contains(归档角色切换卡片)) {
-      const 内部按钮 = eventTarget.closest('[data-character-archive-view], [data-mvu-restore-archived-char], button, input, a');
-      if (!内部按钮 || 内部按钮 === 归档角色切换卡片) {
-        event.preventDefault();
-        event.stopPropagation();
-        const 角色名 = toText(归档角色切换卡片.getAttribute('data-mvu-archived-char'), '').trim();
-        if (!角色名) return;
-        归档角色切换卡片.classList.add('is-busy');
-        try {
-          await 恢复MVU归档角色_桥接([角色名]);
-          const switched = applyActiveCharacterSelection(角色名);
-          if (!switched) {
-            showUiToast(`切换角色失败：找不到【${角色名}】。`, 'error');
-          }
-        } catch (错误) {
-          showUiToast(错误 && 错误.message ? 错误.message : '角色恢复失败。', 'error');
-        } finally {
-          归档角色切换卡片.classList.remove('is-busy');
-        }
-        return;
-      }
-    }
-
     const deleteCharBtn = eventTarget ? eventTarget.closest('[data-role-delete-char]') : null;
     if (deleteCharBtn && detailSurfaceHost.contains(deleteCharBtn)) {
       event.preventDefault();
@@ -45485,6 +45817,45 @@ ${toText(combatData.战斗意图, '点到为止')}
         rerenderDetailSurface(detailPreviewKey, options);
       }
       return;
+    }
+
+    const switchCharBtn = eventTarget ? eventTarget.closest('[data-mvu-switch-char]') : null;
+    if (switchCharBtn && detailSurfaceHost.contains(switchCharBtn)) {
+      const 内部动作按钮 = eventTarget.closest('[data-role-delete-char], button, input, a');
+      if (!内部动作按钮 || 内部动作按钮 === switchCharBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const targetName = switchCharBtn.getAttribute('data-mvu-switch-char') || '';
+        const switched = applyActiveCharacterSelection(targetName);
+        if (!switched) {
+          showUiToast(`切换角色失败：找不到【${targetName}】。`, 'error');
+        }
+        return;
+      }
+    }
+
+    const 归档角色切换卡片 = eventTarget ? eventTarget.closest('[data-mvu-archived-char]') : null;
+    if (归档角色切换卡片 && detailSurfaceHost.contains(归档角色切换卡片)) {
+      const 内部按钮 = eventTarget.closest('[data-character-archive-view], [data-mvu-restore-archived-char], button, input, a');
+      if (!内部按钮 || 内部按钮 === 归档角色切换卡片) {
+        event.preventDefault();
+        event.stopPropagation();
+        const 角色名 = toText(归档角色切换卡片.getAttribute('data-mvu-archived-char'), '').trim();
+        if (!角色名) return;
+        归档角色切换卡片.classList.add('is-busy');
+        try {
+          await 恢复MVU归档角色_桥接([角色名]);
+          const switched = applyActiveCharacterSelection(角色名);
+          if (!switched) {
+            showUiToast(`切换角色失败：找不到【${角色名}】。`, 'error');
+          }
+        } catch (错误) {
+          showUiToast(错误 && 错误.message ? 错误.message : '角色恢复失败。', 'error');
+        } finally {
+          归档角色切换卡片.classList.remove('is-busy');
+        }
+        return;
+      }
     }
 
     const 图鉴物种按钮 = eventTarget ? eventTarget.closest('[data-bestiary-focus]') : null;

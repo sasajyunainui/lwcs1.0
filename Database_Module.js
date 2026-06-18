@@ -4214,6 +4214,7 @@ $CONTENT
     const 防截断流入默认配置_ACU = Object.freeze({
         启用: true,
         自动重试: true,
+        生成错误重试: true,
         自动重试次数: 2,
         字数下限: 2000,
         重试延迟毫秒: 1500,
@@ -4253,6 +4254,7 @@ $CONTENT
         return {
             启用: 读取防截断流入布尔_ACU(来源.启用, 防截断流入默认配置_ACU.启用),
             自动重试: 读取防截断流入布尔_ACU(来源.自动重试, 防截断流入默认配置_ACU.自动重试),
+            生成错误重试: 读取防截断流入布尔_ACU(来源.生成错误重试, 防截断流入默认配置_ACU.生成错误重试),
             自动重试次数: 夹取防截断流入重试次数_ACU(来源.自动重试次数),
             字数下限: 夹取防截断流入字数下限_ACU(来源.字数下限),
             重试延迟毫秒: Number.isFinite(延迟毫秒) && 延迟毫秒 >= 0 ? 延迟毫秒 : 防截断流入默认配置_ACU.重试延迟毫秒,
@@ -4330,6 +4332,171 @@ $CONTENT
             return false;
         const 消息键 = 构建防截断流入消息键_ACU(读取最新角色消息元信息_ACU());
         return !!消息键 && 消息键 === 防截断流入状态_ACU.已阻断消息键;
+    }
+    const 生成错误可重试状态码_ACU = new Set(['408', '429', '500', '502', '503', '504', '520', '522', '524']);
+    const 生成错误不可重试状态码_ACU = new Set(['400', '401', '403']);
+    const 生成错误状态_ACU = {
+        本轮: null,
+        重试次数: 0,
+        已处理键: '',
+        计时器: 0,
+        最近停止时间: 0,
+    };
+    function 读取生成错误聊天末端_ACU() {
+        const 聊天数组 = getChatArray_ACU();
+        if (!Array.isArray(聊天数组))
+            return { 聊天长度: 0, 最新角色消息: 读取最新角色消息元信息_ACU() };
+        return {
+            聊天长度: 聊天数组.length,
+            最新角色消息: 读取最新角色消息元信息_ACU(),
+        };
+    }
+    function 提取生成错误类型_ACU(文本) {
+        const 原文 = String(文本 || '');
+        if (!原文.trim())
+            return '';
+        const 小写 = 原文.toLowerCase();
+        const 状态码命中 = 原文.match(/(?:http|status|状态码|错误码|error|api|response|响应|请求|网关)[\s\S]{0,40}\b(400|401|403|408|429|500|502|503|504|520|522|524)\b|\b(400|401|403|408|429|500|502|503|504|520|522|524)\b[\s\S]{0,40}(?:http|status|错误|error|api|response|too\s+many\s+requests|rate\s*limit|timeout|timed\s*out|网关|超时|限流)/iu);
+        if (状态码命中) {
+            const 状态码 = 状态码命中[1] || 状态码命中[2];
+            if (生成错误不可重试状态码_ACU.has(状态码))
+                return `不可重试状态码${状态码}`;
+            if (生成错误可重试状态码_ACU.has(状态码))
+                return `状态码${状态码}`;
+        }
+        if (/failed\s+to\s+fetch|fetch\s+failed|network\s+error|networkerror|net::|connection\s*(?:reset|closed|refused)|socket\s*(?:hang\s*up|closed)/iu.test(小写))
+            return '网络错误';
+        if (/timeout|timed\s*out|超时|请求超时|网关超时/iu.test(小写))
+            return '请求超时';
+        if (/rate\s*limit|too\s+many\s+requests|限流|频率限制|请求过多/iu.test(小写))
+            return '限流';
+        return '';
+    }
+    function 生成错误类型可重试_ACU(错误类型) {
+        if (!错误类型)
+            return false;
+        if (String(错误类型).startsWith('不可重试状态码'))
+            return false;
+        return true;
+    }
+    function 构建生成错误重试键_ACU(错误类型, 末端信息) {
+        const 本轮 = 生成错误状态_ACU.本轮 || {};
+        const 最新角色消息 = 末端信息?.最新角色消息 || {};
+        return [
+            String(本轮.最后用户消息编号 ?? ''),
+            String(本轮.开始聊天长度 ?? ''),
+            String(末端信息?.聊天长度 ?? ''),
+            String(最新角色消息.消息索引 ?? ''),
+            String(最新角色消息.文本签名 ?? ''),
+            String(错误类型 || ''),
+        ].join('|');
+    }
+    function 登记生成错误开始_ACU(生成类型, 生成参数, 是否干跑) {
+        if (生成错误状态_ACU.计时器) {
+            clearTimeout(生成错误状态_ACU.计时器);
+            生成错误状态_ACU.计时器 = 0;
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+        }
+        const 末端信息 = 读取生成错误聊天末端_ACU();
+        生成错误状态_ACU.本轮 = {
+            类型: 生成类型,
+            参数: 生成参数 || null,
+            干跑: !!是否干跑,
+            开始时间: Date.now(),
+            开始聊天长度: 末端信息.聊天长度,
+            开始最后角色索引: 末端信息.最新角色消息?.消息索引 ?? -1,
+            开始最后角色签名: 末端信息.最新角色消息?.文本签名 || '',
+            最后用户消息编号: generationGate_ACU.lastUserMessageId,
+        };
+        生成错误状态_ACU.已处理键 = '';
+        生成错误状态_ACU.最近停止时间 = 0;
+        if (!防截断流入状态_ACU.自动重试中)
+            生成错误状态_ACU.重试次数 = 0;
+    }
+    function 标记生成错误停止_ACU() {
+        生成错误状态_ACU.最近停止时间 = Date.now();
+    }
+    function 本轮生成已经停止_ACU() {
+        const 本轮 = 生成错误状态_ACU.本轮;
+        return !!(本轮 && 生成错误状态_ACU.最近停止时间 >= 本轮.开始时间);
+    }
+    async function 删除生成错误楼层_ACU(末端信息) {
+        const 最新角色消息 = 末端信息?.最新角色消息;
+        if (!最新角色消息 || 最新角色消息.消息索引 < 0)
+            return true;
+        const 聊天数组 = getChatArray_ACU();
+        if (!Array.isArray(聊天数组) || 最新角色消息.消息索引 !== 聊天数组.length - 1)
+            return true;
+        await deleteLastMessage_ACU();
+        return true;
+    }
+    function 安排生成错误重试_ACU(配置, 错误类型) {
+        if (生成错误状态_ACU.计时器)
+            clearTimeout(生成错误状态_ACU.计时器);
+        防截断流入状态_ACU.等待检测 = true;
+        防截断流入状态_ACU.自动重试中 = true;
+        生成错误状态_ACU.计时器 = setTimeout(async () => {
+            生成错误状态_ACU.计时器 = 0;
+            try {
+                const 已触发 = await 触发防截断流入重新生成_ACU();
+                if (!已触发) {
+                    防截断流入状态_ACU.等待检测 = false;
+                    防截断流入状态_ACU.自动重试中 = false;
+                    showToastr_ACU('error', '生成错误重试触发失败，已阻断数据库/MVU更新。', '防截断流入');
+                }
+            }
+            catch (错误) {
+                防截断流入状态_ACU.等待检测 = false;
+                防截断流入状态_ACU.自动重试中 = false;
+                logError_ACU(`[生成错误重试] 触发重试失败: type=${错误类型}`, 错误);
+                showToastr_ACU('error', '生成错误重试触发失败，已阻断数据库/MVU更新。', '防截断流入');
+            }
+        }, Math.max(0, Number(配置.重试延迟毫秒) || 0));
+    }
+    async function 处理生成错误门闸_ACU(事件名 = 'unknown') {
+        const 配置 = 读取防截断流入配置_ACU();
+        if (!配置.启用 || !配置.生成错误重试)
+            return { action: 'continue' };
+        const 本轮 = 生成错误状态_ACU.本轮;
+        if (!本轮 || 本轮.干跑 || isQuietLikeGeneration_ACU(本轮.类型, 本轮.参数))
+            return { action: 'continue' };
+        const 末端信息 = 读取生成错误聊天末端_ACU();
+        const 最新角色消息 = 末端信息.最新角色消息 || {};
+        const 新角色楼层 = 最新角色消息.消息索引 >= 0
+            && (最新角色消息.消息索引 > 本轮.开始最后角色索引 || 最新角色消息.文本签名 !== 本轮.开始最后角色签名);
+        if (!新角色楼层 && 本轮生成已经停止_ACU()) {
+            logDebug_ACU(`[生成错误重试] 本轮已收到 GENERATION_STOPPED，跳过错误重试: event=${事件名}`);
+            return { action: 'blocked', reason: 'generation_stopped' };
+        }
+        const 正文文本 = 新角色楼层 ? String(最新角色消息.文本 || '') : '';
+        const 错误类型 = 新角色楼层 ? 提取生成错误类型_ACU(正文文本) : '未生成正文';
+        if (!错误类型)
+            return { action: 'continue' };
+        const 重试键 = 构建生成错误重试键_ACU(错误类型, 末端信息);
+        if (重试键 && 生成错误状态_ACU.已处理键 === 重试键)
+            return { action: 'blocked', reason: 'generation_error_duplicate' };
+        生成错误状态_ACU.已处理键 = 重试键;
+        if (!生成错误类型可重试_ACU(错误类型)) {
+            logWarn_ACU(`[生成错误重试] 检测到不可重试错误，阻断后置更新: type=${错误类型}, event=${事件名}`);
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+            showToastr_ACU('warning', `生成失败：${错误类型}，已阻断数据库/MVU更新。`, '防截断流入');
+            return { action: 'blocked', reason: 'generation_error_not_retryable' };
+        }
+        if (!配置.自动重试 || 生成错误状态_ACU.重试次数 >= 配置.自动重试次数) {
+            logWarn_ACU(`[生成错误重试] 已达到重试上限或未启用自动重试: type=${错误类型}, event=${事件名}`);
+            防截断流入状态_ACU.等待检测 = false;
+            防截断流入状态_ACU.自动重试中 = false;
+            showToastr_ACU('warning', `生成失败：${错误类型}，已阻断数据库/MVU更新。`, '防截断流入');
+            return { action: 'blocked', reason: 'generation_error_retry_capped' };
+        }
+        if (新角色楼层)
+            await 删除生成错误楼层_ACU(末端信息);
+        生成错误状态_ACU.重试次数 += 1;
+        showToastr_ACU('warning', `生成失败：${错误类型}，正在重试 ${生成错误状态_ACU.重试次数}/${配置.自动重试次数}。`, '防截断流入');
+        安排生成错误重试_ACU(配置, 错误类型);
+        return { action: 'blocked_retrying', reason: 'generation_error_retrying' };
     }
     async function 删除防截断流入截断楼层_ACU(消息元信息) {
         const 聊天数组 = getChatArray_ACU();
@@ -4463,6 +4630,9 @@ $CONTENT
         const 自动重试输入 = 文档.createElement('input');
         自动重试输入.type = 'checkbox';
         自动重试输入.checked = !!配置.自动重试;
+        const 生成错误重试输入 = 文档.createElement('input');
+        生成错误重试输入.type = 'checkbox';
+        生成错误重试输入.checked = !!配置.生成错误重试;
         const 重试次数输入 = 文档.createElement('input');
         重试次数输入.type = 'number';
         重试次数输入.min = '0';
@@ -4483,7 +4653,7 @@ $CONTENT
         字数下限输入.addEventListener('change', () => {
             字数下限输入.value = String(夹取防截断流入字数下限_ACU(字数下限输入.value));
         });
-        内容区.append(创建开关行('启用', 启用输入), 创建开关行('自动重试', 自动重试输入), 创建开关行('重试次数', 重试次数输入), 创建开关行('字数下限', 字数下限输入));
+        内容区.append(创建开关行('启用', 启用输入), 创建开关行('自动重试', 自动重试输入), 创建开关行('生成错误重试', 生成错误重试输入), 创建开关行('重试次数', 重试次数输入), 创建开关行('字数下限', 字数下限输入));
         const 按钮区 = 文档.createElement('div');
         按钮区.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid rgba(110,220,255,.12);';
         const 创建按钮 = (文本, 强调 = false) => {
@@ -4512,6 +4682,7 @@ $CONTENT
             const 默认配置 = 保存防截断流入配置_ACU(防截断流入默认配置_ACU);
             启用输入.checked = 默认配置.启用;
             自动重试输入.checked = 默认配置.自动重试;
+            生成错误重试输入.checked = 默认配置.生成错误重试;
             重试次数输入.value = String(默认配置.自动重试次数);
             字数下限输入.value = String(默认配置.字数下限);
             showToastr_ACU('success', '已恢复默认值。', '防截断流入');
@@ -4520,6 +4691,7 @@ $CONTENT
             保存防截断流入配置_ACU({
                 启用: 启用输入.checked,
                 自动重试: 自动重试输入.checked,
+                生成错误重试: 生成错误重试输入.checked,
                 自动重试次数: 重试次数输入.value,
                 字数下限: 字数下限输入.value,
                 重试延迟毫秒: 防截断流入默认配置_ACU.重试延迟毫秒,
@@ -55427,6 +55599,15 @@ $CONTENT
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STARTED, (type, params, dryRun) => {
                         try {
                             recordGenerationContext_ACU(type, params, dryRun);
+                            登记生成错误开始_ACU(type, params, dryRun);
+                        }
+                        catch (e) { }
+                    });
+                }
+                if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED, () => {
+                        try {
+                            标记生成错误停止_ACU();
                         }
                         catch (e) { }
                     });
@@ -55437,6 +55618,11 @@ $CONTENT
                         setTimeout(async () => {
                             try {
                                 if (shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+                                    const 生成错误结果 = await 处理生成错误门闸_ACU('GENERATION_ENDED');
+                                    if (生成错误结果?.action !== 'continue') {
+                                        logDebug_ACU(`[生成错误重试] 已阻断后置更新: reason=${生成错误结果?.reason || 'unknown'}`);
+                                        return;
+                                    }
                                     const 防截断结果 = await 处理防截断流入生成结束_ACU(message_id);
                                     if (防截断结果?.action === 'continue') {
                                         await handleNewMessageDebounced_ACU('GENERATION_ENDED');
