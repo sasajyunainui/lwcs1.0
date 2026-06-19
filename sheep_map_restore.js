@@ -34,8 +34,15 @@
   const WORLD_IMAGE_HEIGHT = 2246;
   const DEFAULT_IMAGE_BOUNDS = { minX: 0, minY: 0, width: WORLD_IMAGE_WIDTH, height: WORLD_IMAGE_HEIGHT };
   const MAP_COORD_SYSTEM_IMAGE = 'image';
+  const 资源基础地址 = (() => {
+    try {
+      const 覆盖地址 = String(window.__LWCS_资源基础地址__ || window.parent?.__LWCS_资源基础地址__ || '').trim();
+      if (覆盖地址) return 覆盖地址.endsWith('/') ? 覆盖地址 : `${覆盖地址}/`;
+    } catch (错误) {}
+    return 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/';
+  })();
   const ASSETS = {
-    world: encodeURI('https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/MAP.webp')
+    world: encodeURI(资源基础地址 + 'MAP.webp')
   };
 
   const SMALL_SETTLEMENT_NAMES = new Set(['傲来城', '上陵城', '海陆城', '烈火盆地']);
