@@ -3057,7 +3057,6 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧
     当前: {
       时间: {
         当前: 数据根?.world?.时间?._calendar || 数据根?.world?.时间?.当前 || '',
-        tick: Number(数据根?.world?.时间?.tick || 0),
       },
       地点: 当前地点,
       玩家: 玩家名,
