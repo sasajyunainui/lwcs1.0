@@ -13,7 +13,12 @@
   const 调试热更新模式 = !!宿主窗口[加载器键];
   宿主窗口[加载器键] = true;
 
-  const 资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/';
+  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/';
+  const 资源基础地址 = (() => {
+    const 覆盖地址 = String(宿主窗口.__LWCS_资源基础地址__ || window.__LWCS_资源基础地址__ || '').trim();
+    if (!覆盖地址) return 默认资源基础地址;
+    return 覆盖地址.endsWith('/') ? 覆盖地址 : `${覆盖地址}/`;
+  })();
   const 资源版本后缀 = '';
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
   const 首次重试延迟毫秒 = 260;
