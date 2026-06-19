@@ -50,9 +50,8 @@
       }
     } catch (错误) {}
 
-    const 脚本节点 = 宿主文档.createElement('script');
-    脚本节点.text = `${入口代码}\n//# sourceURL=${入口地址}`;
-    (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+    const 执行入口 = new Function(`${入口代码}\n//# sourceURL=${入口地址}`);
+    执行入口();
   }
 
   async function 启动远程入口() {

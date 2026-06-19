@@ -4120,6 +4120,7 @@ $CONTENT
         lastUserMessageAt: 0,
         lastUserSendIntentAt: 0,
         lastGeneration: null,
+        正文后置上下文: null,
     };
     function markUserSendIntent_ACU() {
         generationGate_ACU.lastUserSendIntentAt = Date.now();
@@ -4146,8 +4147,7 @@ $CONTENT
     function recordGenerationContext_ACU(type, params, dryRun) {
         const 聊天数组 = getChatArray_ACU();
         const 最新角色消息 = 读取最新角色消息元信息_ACU();
-        生成结束后置状态_ACU.已处理消息键 = '';
-        生成结束后置状态_ACU.已处理时间 = 0;
+        const 是否正文生成 = !dryRun && !isQuietLikeGeneration_ACU(type, params) && !params?.automatic_trigger;
         generationGate_ACU.lastGeneration = {
             type,
             params,
@@ -4157,6 +4157,20 @@ $CONTENT
             开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
             开始最后角色签名: 最新角色消息?.文本签名 || '',
         };
+        if (是否正文生成) {
+            generationGate_ACU.正文后置上下文 = {
+                type,
+                params,
+                dryRun,
+                at: Date.now(),
+                开始聊天长度: Array.isArray(聊天数组) ? 聊天数组.length : 0,
+                开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
+                开始最后角色签名: 最新角色消息?.文本签名 || '',
+                最后用户消息编号: generationGate_ACU.lastUserMessageId,
+            };
+            生成结束后置状态_ACU.已处理消息键 = '';
+            生成结束后置状态_ACU.已处理时间 = 0;
+        }
     }
     function isQuietLikeGeneration_ACU(type, params) {
         if (type === 'quiet')
@@ -4211,27 +4225,25 @@ $CONTENT
         logDebug_ACU(`[状态管理] shouldProcessSummaryVectorIndex: type=${type}, dryRun=${dryRun}, globalEnabled=${globalEnabled}, worldbookProjection=${worldbookProjectionEnabled}, freshMsg=${fresh.hasFreshUserMessage}, freshIntent=${fresh.hasFreshIntent}, result=${fresh.result}`);
         return fresh.result;
     }
+    function 读取正文后置上下文_ACU() {
+        return generationGate_ACU.正文后置上下文 || null;
+    }
     function shouldProcessAutoTableUpdateForGenerationEnded_ACU() {
-        const g = generationGate_ACU.lastGeneration;
-        if (!g)
-            return true;
-        if (g.dryRun)
-            return false;
-        if (isQuietLikeGeneration_ACU(g.type, g.params))
-            return false;
-        return true;
+        return !!读取正文后置上下文_ACU();
     }
     async function 执行生成结束后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
         if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
-            logDebug_ACU(`ACU: Skip auto table update due to quiet/background generation. event=${事件名}`);
+            logWarn_ACU(`ACU: Skip auto table update because no 正文生成上下文 is available. event=${事件名}`);
             return;
         }
-        const 目标消息元信息 = 读取指定角色消息元信息_ACU(事件消息编号, generationGate_ACU.lastGeneration);
+        const 正文上下文 = 读取正文后置上下文_ACU();
+        const 目标消息元信息 = 读取指定角色消息元信息_ACU(事件消息编号, 正文上下文);
         const 消息键 = 构建防截断流入消息键_ACU(目标消息元信息, 事件消息编号);
         if (!消息键) {
-            logDebug_ACU(`[生成结束后置] 未找到本轮明确 AI 楼层，跳过数据库自动提交: event=${事件名}`);
+            logWarn_ACU(`[生成结束后置] 未找到本轮明确 AI 楼层，跳过数据库自动提交: event=${事件名}`);
             return;
         }
+        generationGate_ACU.正文后置上下文 = null;
         if (生成结束后置状态_ACU.已处理消息键 === 消息键) {
             logDebug_ACU(`[生成结束后置] 同一楼层已处理，跳过重复事件: event=${事件名}`);
             return;
@@ -4691,7 +4703,7 @@ $CONTENT
         const 配置 = 读取防截断流入配置_ACU();
         if (!配置.启用)
             return { action: 'continue' };
-        const 消息元信息 = 目标消息元信息 || 读取指定角色消息元信息_ACU(事件消息编号, generationGate_ACU.lastGeneration);
+        const 消息元信息 = 目标消息元信息 || 读取指定角色消息元信息_ACU(事件消息编号, 读取正文后置上下文_ACU() || generationGate_ACU.lastGeneration);
         const 消息键 = 构建防截断流入消息键_ACU(消息元信息, 事件消息编号);
         if (!防截断流入状态_ACU.等待检测) {
             if (消息键 && 防截断流入状态_ACU.已阻断消息键 === 消息键)
@@ -20739,6 +20751,7 @@ $CONTENT
                 generationGate_ACU.lastUserMessageAt = 0;
                 generationGate_ACU.lastUserSendIntentAt = 0;
                 generationGate_ACU.lastGeneration = null;
+                generationGate_ACU.正文后置上下文 = null;
                 return;
             }
             logWarn_ACU(`ACU: Received invalid chat file name: "${chatFileName}". This can happen after an update error. Ignoring event to preserve current state.`);
@@ -20761,6 +20774,7 @@ $CONTENT
         generationGate_ACU.lastUserMessageAt = 0;
         generationGate_ACU.lastUserSendIntentAt = 0;
         generationGate_ACU.lastGeneration = null;
+        generationGate_ACU.正文后置上下文 = null;
         logDebug_ACU(`ACU: currentChatFileIdentifier FINAL set to: "${currentChatFileIdentifier_ACU}" (Source: CHAT_CHANGED event)`);
         // 持久化聊天数据读取由 presentation/bootstrap/init.ts 的延迟 CHAT_CHANGED 阶段统一执行。
         // 这里绝不从当前内存缓存派生表格/模板，避免在宿主 chatMetadata 尚未切换完成时读到旧上下文。
@@ -33443,6 +33457,7 @@ $CONTENT
      */
     function buildAutoUpdatePlan_ACU(liveChat, tableData, settings, isolationKey) {
         const tablesToUpdate = [];
+        const diagnostics = [];
         const sheetKeys = getSortedSheetKeys_ACU(tableData);
         // 预计算所有 AI 消息索引
         const allAiMessageIndices = liveChat
@@ -33478,6 +33493,16 @@ $CONTENT
             // 计算未记录楼层数
             const effectiveUnrecordedFloors = Math.max(0, (totalAiMessages - skipFloors) - lastUpdatedAiFloor);
             logDebug_ACU(`[Trigger Check] Table: ${table.name}, TotalAI: ${totalAiMessages}, Skip: ${skipFloors}, LastUpdated: ${lastUpdatedAiFloor}, Unrecorded: ${effectiveUnrecordedFloors}, Freq: ${frequency}`);
+            diagnostics.push({
+                sheetKey,
+                sheetName: table.name,
+                totalAiMessages,
+                lastUpdatedAiFloor,
+                frequency,
+                threshold,
+                skipFloors,
+                effectiveUnrecordedFloors,
+            });
             // updateFrequency=0：该表不参与自动更新
             if (frequency > 0 && effectiveUnrecordedFloors >= frequency && threshold > 0) {
                 const effectiveAiIndices = skipFloors > 0
@@ -33521,7 +33546,7 @@ $CONTENT
             updateGroups[key].sheetKeys.push(item.sheetKey);
             updateGroups[key].sheetNames.push(item.sheetName);
         });
-        return { tablesToUpdate, updateGroups };
+        return { tablesToUpdate, updateGroups, diagnostics };
     }
     // ============================================================
     // 前置检查
@@ -37037,11 +37062,11 @@ $CONTENT
     async function triggerAutomaticUpdateIfNeeded_ACU(选项 = {}) {
         const 目标消息元信息 = 选项?.目标消息元信息 || null;
         if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
-            logDebug_ACU('[自动更新] 目标楼层已变化或不存在，跳过本次自动提交。');
+            logWarn_ACU('[自动更新] 目标楼层已变化或不存在，跳过本次自动提交。');
             return;
         }
         if (防截断流入后置更新应阻断_ACU(目标消息元信息)) {
-            logDebug_ACU('ACU Auto-Trigger: 防截断流入已阻断本楼层更新。');
+            logWarn_ACU('ACU Auto-Trigger: 防截断流入已阻断本楼层更新。');
             return;
         }
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
@@ -37054,7 +37079,7 @@ $CONTENT
             // [重构] 调用 service 层前置检查
             const preCheck = checkAutoUpdatePreConditions_ACU(settings_ACU, coreApisAreReady_ACU, isAutoUpdatingCard_ACU, currentJsonTableData_ACU, allChatMessages_ACU.length);
             if (!preCheck.canProceed) {
-                logDebug_ACU(`ACU Auto-Trigger: ${preCheck.reason} Skipping.`);
+                logWarn_ACU(`ACU Auto-Trigger: ${preCheck.reason} Skipping.`);
                 return;
             }
             let liveChat = getChatArray_ACU();
@@ -37072,8 +37097,10 @@ $CONTENT
             // [重构] 调用 service 层构建更新计划
             const triggerIsolationKey = getCurrentIsolationKey_ACU();
             const plan = buildAutoUpdatePlan_ACU(liveChat, currentJsonTableData_ACU, settings_ACU, triggerIsolationKey);
-            if (plan.tablesToUpdate.length === 0)
+            if (plan.tablesToUpdate.length === 0) {
+                logWarn_ACU('[自动更新] 计划为空，未提交数据库更新。', plan.diagnostics || []);
                 return;
+            }
             // UI：显示开始 toast
             const totalGroups = Object.keys(plan.updateGroups).length;
             const maxConcurrentGroups = Math.max(1, settings_ACU.maxConcurrentGroups || 1);
