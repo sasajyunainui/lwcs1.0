@@ -279,6 +279,16 @@ function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
   return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
 }
 
+function 格式化年龄岁月文本_V1(年龄 = 0) {
+  const 数值 = Number(年龄);
+  if (!Number.isFinite(数值)) return '';
+  const 安全年龄 = Math.max(0, 数值);
+  const 总月数 = Math.max(0, Math.floor(安全年龄 * 12 + 1e-6));
+  const 年 = Math.floor(总月数 / 12);
+  const 月 = 总月数 % 12;
+  return `${年}岁零${月}个月`;
+}
+
 function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 = {}) {
   const 内容 = String(文本 || '');
   if (!内容.trim()) return [];
@@ -3516,7 +3526,6 @@ var MVU剧情当前段字段表_V1 = Object.freeze([
 var MVU剧情角色简表字段表_V1 = Object.freeze([
   Object.freeze({ 标签: '角色', 取值: (角色, 上下文) => 上下文.角色名 }),
   Object.freeze({ 标签: '性别', 取值: 角色 => 角色?.属性?.性别 }),
-  Object.freeze({ 标签: '年龄', 取值: 角色 => 角色?.属性?.年龄 }),
   Object.freeze({ 标签: '生日', 取值: 角色 => 角色?.属性?.生日 }),
   Object.freeze({ 标签: '位置', 取值: 角色 => 角色?.状态?.位置 }),
   Object.freeze({ 标签: '行动', 取值: 角色 => 角色?.状态?.行动 }),
@@ -3977,7 +3986,7 @@ function 构建MVU正文情报可见度行列表_V1(情报可见度 = {}) {
 function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}) {
   const 行列表 = [`━━━━━━━━ ${角色名} ━━━━━━━━`];
   添加MVU正文块_V1(行列表, '基础信息', 构建MVU正文对象行列表_V1({
-    年龄: 角色?.属性?.年龄,
+    年龄: 格式化年龄岁月文本_V1(角色?.属性?.年龄),
     生日: 角色?.属性?.生日,
     性别: 角色?.属性?.性别,
   }, 6, 1));
@@ -4281,6 +4290,8 @@ function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null)
   if (是角色基础对标非魂师_V1(角色)) return { 非魂师: true };
   const 六维 = 读取角色非装备六维_V1(角色);
   const 条目 = {};
+  const 年龄文本 = 格式化年龄岁月文本_V1(角色?.属性?.年龄);
+  if (年龄文本) 条目.年龄 = 年龄文本;
   const 等级 = Number(角色.属性.等级);
   if (Number.isFinite(等级)) {
     条目.等级 = `Lv${等级}`;
@@ -4305,14 +4316,18 @@ function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null)
 function 格式化角色基础六维对标条目_V1(角色名 = '', 条目 = {}) {
   if (!条目 || typeof 条目 !== 'object' || !Object.keys(条目).length) return '';
   if (条目.非魂师) return `${角色名}：非魂师`;
+  const 片段列表 = [];
+  const 年龄文本 = String(条目.年龄 || '').trim();
+  if (年龄文本) 片段列表.push(`年龄 ${年龄文本}`);
   const 字段文本 = 角色基础六维对标字段_V1.map(({ 标签 }) => {
     const 文本 = String(条目?.[标签] || '').trim();
     if (!文本) return '';
     return 标签 === '精神力' ? `${标签} ${文本}` : `${标签}≈${文本}`;
   }).filter(Boolean).join('，');
   const 副职业文本 = String(条目.副职业 || '').trim();
-  if (!字段文本 && !副职业文本) return '';
-  return `${角色名} ${String(条目.等级 || 'Lv?').trim()}：${字段文本}${副职业文本 ? `；副职业：${副职业文本}` : ''}`;
+  if (字段文本) 片段列表.push(字段文本);
+  if (!片段列表.length && !副职业文本) return '';
+  return `${角色名} ${String(条目.等级 || 'Lv?').trim()}：${片段列表.join('，')}${副职业文本 ? `；副职业：${副职业文本}` : ''}`;
 }
 
 function 构建年龄对标等级行列表_V1(数据根 = {}, 角色名集合 = new Set()) {
