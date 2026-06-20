@@ -279,11 +279,34 @@ function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
   return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
 }
 
-function 格式化年龄岁月文本_V1(年龄 = 0) {
-  const 数值 = Number(年龄);
-  if (!Number.isFinite(数值)) return '';
-  const 安全年龄 = Math.max(0, 数值);
-  const 总月数 = Math.max(0, Math.floor(安全年龄 * 12 + 1e-6));
+function 解析生日年内日序_V1(生日 = '') {
+  const 文本 = String(生日 || '').trim();
+  if (!文本 || 文本 === '待生成') return null;
+  const 匹配 = 文本.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/) || 文本.match(/^(\d{1,2})\s*[-/.]\s*(\d{1,2})$/);
+  if (!匹配) return null;
+  const 月 = Math.max(1, Math.min(12, Math.floor(Number(匹配[1]) || 1)));
+  const 日 = Math.max(1, Math.min(30, Math.floor(Number(匹配[2]) || 1)));
+  return (月 - 1) * 30 + (日 - 1);
+}
+
+function 计算tick年内日序_V1(当前tick = 0) {
+  const 总天数 = Math.floor(Math.max(0, Number(当前tick || 0)) / 144);
+  return ((总天数 % 360) + 360) % 360;
+}
+
+function 计算角色有效年龄_V1(年龄 = 0, 生日 = '', 当前tick = null) {
+  const 基础年龄 = Math.max(0, Number(年龄 || 0));
+  if (当前tick === null || 当前tick === undefined) return 基础年龄;
+  const 生日序 = 解析生日年内日序_V1(生日);
+  if (生日序 === null) return 基础年龄;
+  const 当前序 = 计算tick年内日序_V1(当前tick);
+  const 距上次生日天数 = (当前序 - 生日序 + 360) % 360;
+  return 基础年龄 + 距上次生日天数 / 360;
+}
+
+function 格式化年龄岁月文本_V1(年龄 = 0, 生日 = '', 当前tick = null) {
+  const 有效年龄 = 计算角色有效年龄_V1(年龄, 生日, 当前tick);
+  const 总月数 = Math.max(0, Math.floor(有效年龄 * 12 + 1e-6));
   const 年 = Math.floor(总月数 / 12);
   const 月 = 总月数 % 12;
   return `${年}岁零${月}个月`;
@@ -3983,10 +4006,10 @@ function 构建MVU正文情报可见度行列表_V1(情报可见度 = {}) {
   });
 }
 
-function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}) {
+function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
   const 行列表 = [`━━━━━━━━ ${角色名} ━━━━━━━━`];
   添加MVU正文块_V1(行列表, '基础信息', 构建MVU正文对象行列表_V1({
-    年龄: 格式化年龄岁月文本_V1(角色?.属性?.年龄),
+    年龄: 格式化年龄岁月文本_V1(角色?.属性?.年龄, 角色?.属性?.生日, 当前tick),
     生日: 角色?.属性?.生日,
     性别: 角色?.属性?.性别,
   }, 6, 1));
@@ -4032,8 +4055,9 @@ function 生成MVU正文提示文本_V1(数据输入 = null, userInput = '', plo
   const 正文视图 = 已生成正文视图 && typeof 已生成正文视图 === 'object'
     ? 已生成正文视图
     : 生成MVU正文视图_V1(数据输入, userInput, plotText);
+  const 当前tick = 正文视图.world?.时间?.tick ?? null;
   const 角色块 = Object.entries(正文视图.char || {})
-    .map(([角色名, 角色]) => 构建MVU正文角色卡_V1(角色名, 角色, 正文视图.char || {}))
+    .map(([角色名, 角色]) => 构建MVU正文角色卡_V1(角色名, 角色, 正文视图.char || {}, 当前tick))
     .filter(Boolean);
   return [
     '【角色卡】',
@@ -4290,7 +4314,7 @@ function 构建角色基础六维对标条目_V1(角色 = {}, 当前tick = null)
   if (是角色基础对标非魂师_V1(角色)) return { 非魂师: true };
   const 六维 = 读取角色非装备六维_V1(角色);
   const 条目 = {};
-  const 年龄文本 = 格式化年龄岁月文本_V1(角色?.属性?.年龄);
+  const 年龄文本 = 格式化年龄岁月文本_V1(角色?.属性?.年龄, 角色?.属性?.生日, 当前tick);
   if (年龄文本) 条目.年龄 = 年龄文本;
   const 等级 = Number(角色.属性.等级);
   if (Number.isFinite(等级)) {
