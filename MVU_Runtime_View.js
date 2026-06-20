@@ -265,9 +265,56 @@ function 取内置角色最近快照_V1(角色记录 = {}, 当前tick = 0) {
   const tick = Number(当前tick || 0);
   const 有tick快照 = 快照列表.filter(快照 => Number.isFinite(Number(快照?.tick)));
   if (!有tick快照.length) return 快照列表[0] || null;
+  const 开场前向快照 = 取内置角色开场前向快照_V1(角色记录, 有tick快照, tick);
+  if (开场前向快照) return 开场前向快照;
   const 之前快照 = 有tick快照.filter(快照 => Number(快照.tick) <= tick).sort((a, b) => Number(b.tick) - Number(a.tick))[0];
   if (之前快照) return 之前快照;
   return 有tick快照.sort((a, b) => Number(a.tick) - Number(b.tick))[0] || 快照列表[0] || null;
+}
+
+function 读取内置角色节点年龄_V1(节点 = '') {
+  const 匹配 = String(节点 || '').match(/(\d+(?:\.\d+)?)\s*岁/);
+  const 年龄 = 匹配 ? Number(匹配[1]) : NaN;
+  return Number.isFinite(年龄) ? 年龄 : null;
+}
+
+function 读取内置角色快照年龄_V1(快照 = {}) {
+  const 节点年龄 = 读取内置角色节点年龄_V1(快照?.节点);
+  if (节点年龄 !== null) return 节点年龄;
+  const 年龄 = Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄);
+  return Number.isFinite(年龄) ? 年龄 : null;
+}
+
+function 估算内置角色当前投影年龄_V1(快照列表 = [], 当前tick = 0) {
+  const 每年tick = Math.max(1, Number(读取内置角色库_V1().每年tick || 51840));
+  const 候选 = (Array.isArray(快照列表) ? 快照列表 : [])
+    .map(快照 => {
+      const 快照tick = Number(快照?.tick);
+      const 快照年龄 = Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄);
+      if (!Number.isFinite(快照tick) || !Number.isFinite(快照年龄)) return null;
+      return {
+        距离: Math.abs(Number(当前tick || 0) - 快照tick),
+        年龄: Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.距离 - b.距离);
+  return 候选.length ? 候选[0].年龄 : null;
+}
+
+function 取内置角色开场前向快照_V1(角色记录 = {}, 快照列表 = [], 当前tick = 0) {
+  const 开场节点年龄 = (Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [])
+    .map(读取内置角色节点年龄_V1)
+    .filter(年龄 => 年龄 !== null)
+    .sort((a, b) => a - b);
+  if (开场节点年龄.length <= 1) return null;
+  const 当前年龄 = 估算内置角色当前投影年龄_V1(快照列表, 当前tick);
+  if (当前年龄 === null) return null;
+  const 目标节点年龄 = 开场节点年龄.find(年龄 => 年龄 > 当前年龄 + 0.001);
+  if (目标节点年龄 === undefined) return null;
+  return (Array.isArray(快照列表) ? 快照列表 : [])
+    .filter(快照 => Math.abs((读取内置角色快照年龄_V1(快照) ?? -9999) - 目标节点年龄) < 0.001)
+    .sort((a, b) => Number(a.tick) - Number(b.tick))[0] || null;
 }
 
 function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
@@ -1153,11 +1200,13 @@ function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
 
 function 收集运行时命中候选名称_V1(文本 = '', 候选 = {}, 类型 = '名称') {
   const 命中函数 = 类型 === '物品' ? 运行时文本命中商品名_V1 : 运行时文本命中名称_V1;
+  const 捕获文本 = String(文本 || '');
   const 结果 = new Set();
   Object.entries(候选 || {}).forEach(([名称, 映射]) => {
     const 实体名 = String(名称 || '').trim();
-    if (!实体名 || !命中函数(文本, 实体名)) return;
+    if (!实体名 || !命中函数(捕获文本, 实体名)) return;
     const 规范名 = typeof 映射 === 'string' && String(映射 || '').trim() ? String(映射).trim() : 实体名;
+    if (类型 === '角色' && !内置角色文本命中满足二级关键词_V1(规范名, 捕获文本)) return;
     结果.add(规范名);
   });
   return Array.from(结果);
