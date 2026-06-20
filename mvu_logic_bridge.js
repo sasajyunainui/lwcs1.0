@@ -1952,6 +1952,81 @@
     return toNumber(value, fallback);
   }
 
+  const 非神器品质等级段表_桥接 = Object.freeze({
+    普通: Object.freeze([1, 30]),
+    优秀: Object.freeze([31, 50]),
+    稀有: Object.freeze([51, 70]),
+    史诗: Object.freeze([71, 90]),
+    传说: Object.freeze([91, 99]),
+  });
+
+  const 品质道具灵物年限表_桥接 = Object.freeze({
+    普通: 100,
+    优秀: 500,
+    稀有: 1000,
+    史诗: 10000,
+    传说: 100000,
+  });
+
+  const 品质道具修炼倍率表_桥接 = Object.freeze({
+    普通: 1.1,
+    优秀: 1.25,
+    稀有: 1.5,
+    史诗: 2,
+    传说: 3,
+  });
+
+  function 计算稳定哈希数值_桥接(文本 = '') {
+    let 哈希 = 2166136261;
+    String(文本 || '').split('').forEach(字符 => {
+      哈希 ^= 字符.charCodeAt(0);
+      哈希 += (哈希 << 1) + (哈希 << 4) + (哈希 << 7) + (哈希 << 8) + (哈希 << 24);
+    });
+    return 哈希 >>> 0;
+  }
+
+  function 读取稳定随机数_桥接(文本 = '') {
+    return (计算稳定哈希数值_桥接(文本) % 10000) / 10000;
+  }
+
+  function 读取品质随机等级_桥接(品质 = '普通', 种子 = '') {
+    const 等级段 = 非神器品质等级段表_桥接[品质];
+    if (!等级段) return 0;
+    const [下限, 上限] = 等级段;
+    return 下限 + Math.floor(读取稳定随机数_桥接(`${品质}|${种子}`) * (上限 - 下限 + 1));
+  }
+
+  function 读取品质基础属性_桥接(品质 = '普通', 属性键 = 'sp_max', 种子 = '') {
+    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
+    const 等级 = 读取品质随机等级_桥接(品质, 种子);
+    if (typeof 基础属性函数 !== 'function' || !(等级 > 0)) return 0;
+    return Math.floor(toNumber(基础属性函数(等级)?.[属性键], 0) * 0.3);
+  }
+
+  function 读取品质使用效果属性键_桥接(属性 = '') {
+    const 文本 = toText(属性, '').trim();
+    const 映射 = {
+      体力: 'vit_max',
+      生命: 'vit_max',
+      HP: 'vit_max',
+      魂力: 'sp_max',
+      精神力: 'men_max',
+      力量: 'str',
+      防御: 'def',
+      敏捷: 'agi',
+      体力上限: 'vit_max',
+      魂力上限: 'sp_max',
+      精神力上限: 'men_max',
+      速度: 'agi',
+    };
+    return 映射[文本] || '';
+  }
+
+  function 读取品质道具绝对数值_桥接(品质 = '普通', 属性 = '魂力', 种子 = '') {
+    const 属性键 = 读取品质使用效果属性键_桥接(属性);
+    return 属性键 ? 读取品质基础属性_桥接(品质, 属性键, 种子) : 0;
+  }
+
   const 常规魂骨槽位列表_桥接 = Object.freeze(['头部魂骨', '躯干魂骨', '右臂魂骨', '左臂魂骨', '右腿魂骨', '左腿魂骨']);
   const 外附魂骨槽位列表_桥接 = Object.freeze(['外附魂骨1', '外附魂骨2']);
   const 魂骨固定槽位列表_桥接 = Object.freeze([...常规魂骨槽位列表_桥接, ...外附魂骨槽位列表_桥接]);
@@ -3229,13 +3304,9 @@
         if (加成方向.length) 记录.加成方向 = 加成方向;
       }
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
-        校验装备属性加成百分比_桥接(来源.属性加成, { 物品名, 品质: 记录.品质 });
-        const 有效加成 = 是神器装备
-          ? cloneJsonValue(来源.属性加成, {})
-          : 读取有效手工装备属性加成_桥接(来源.属性加成, false);
-        if (Object.keys(有效加成).length) 记录.属性加成 = 有效加成;
+        if (是神器装备) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
       }
-      if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
+      if (物品分类 === '魂骨' && 来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
       if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
       if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 记录.附带魂技 = cloneJsonValue(来源.附带魂技, {});
     }
@@ -3416,40 +3487,6 @@
       const 文本 = toText(方向, '').trim();
       if (!文本 || !装备加成方向集合_桥接.has(文本) || 输出.includes(文本)) return;
       输出.push(文本);
-    });
-    return 输出;
-  }
-
-  function 读取装备属性加成百分比字段_桥接(值, 路径 = []) {
-    if (值 === undefined || 值 === null) return '';
-    if (/^[+-]?\d+(?:\.\d+)?%$/.test(toText(值, '').trim())) return 路径.join('.');
-    if (!值 || typeof 值 !== 'object' || Array.isArray(值)) return '';
-    for (const [键, 子值] of safeEntries(值)) {
-      const 命中 = 读取装备属性加成百分比字段_桥接(子值, [...路径, 键]);
-      if (命中) return 命中;
-    }
-    return '';
-  }
-
-  function 校验装备属性加成百分比_桥接(属性加成 = {}, 选项 = {}) {
-    if (判断神器品质_桥接(选项.品质)) return;
-    const 百分比字段 = 读取装备属性加成百分比字段_桥接(属性加成);
-    if (百分比字段) throw new Error(`非神器装备属性加成禁止百分比：${toText(选项.物品名, '未命名') || '未命名'}·${百分比字段}`);
-  }
-
-  function 读取有效手工装备属性加成_桥接(属性加成 = {}, 允许百分比 = false) {
-    const 来源 = 属性加成 && typeof 属性加成 === 'object' && !Array.isArray(属性加成) ? 属性加成 : {};
-    const 输出 = {};
-    safeEntries(来源).forEach(([键, 值]) => {
-      if (!装备加成属性集合_桥接.has(键)) return;
-      const 文本值 = toText(值, '').trim();
-      if (/^[+-]?\d+(?:\.\d+)?%$/.test(文本值)) {
-        if (允许百分比) 输出[键] = 文本值;
-        return;
-      }
-      const 数值 = Number(值);
-      if (!Number.isFinite(数值) || Math.floor(数值) === 0) return;
-      输出[键] = Math.floor(数值);
     });
     return 输出;
   }
@@ -4139,10 +4176,7 @@
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
     if (可使用物品分类集合_桥接.has(分类) && 使用副作用列表.length) 定义.副作用列表 = 使用副作用列表;
     if (是常规装备 && 加成方向.length) 定义.加成方向 = 加成方向;
-    if ((是装备定义 || 是魂导器) && Object.keys(属性加成).length) {
-      校验装备属性加成百分比_桥接(属性加成, { 物品名: 新名, 品质: 定义.品质 });
-      定义.属性加成 = 属性加成;
-    }
+    if ((是装备定义 || 是魂导器) && 判断神器品质_桥接(定义.品质) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
     if ((是装备定义 || 是魂导器) && Object.keys(装备技能).length) {
       if (分类 === '魂骨') 定义.附带技能 = 装备技能;
       else 定义.装备技能 = 装备技能;
@@ -48922,7 +48956,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       return true;
     },
 
-    appendInventoryStatusEffect(statusMap = {}, itemName, effect = {}, index = 0, logs = [], 当前tick = 0) {
+    appendInventoryStatusEffect(statusMap = {}, itemName, effect = {}, index = 0, logs = [], 当前tick = 0, 角色数据 = {}) {
       const key = `${itemName}#${index + 1}`;
       const value = effect && typeof effect === 'object' ? effect.value || {} : {};
       const record = this.createInventoryStatusRecord(itemName, effect, key, 当前tick);
@@ -48947,16 +48981,25 @@ ${toText(combatData.战斗意图, '点到为止')}
         record.收益倍率 = Math.max(0.1, toNumber(value.收益倍率, 1));
       }
       if (value && value.statMods && typeof value.statMods === 'object') {
-        record.stat_mods = cloneJsonValue(value.statMods, {});
+        const 面板倍率 = {};
+        Object.entries(value.statMods).forEach(([属性键, 倍率]) => {
+          const 字段名 = { str: '力量', def: '防御', agi: '敏捷', vit_max: '体力上限', sp_max: '魂力上限', men_max: '精神力上限' }[属性键] || 属性键;
+          面板倍率[字段名] = toNumber(倍率, 1);
+        });
+        if (Object.keys(面板倍率).length) record.面板倍率 = 面板倍率;
       } else {
         const propertyMeta = this.mapUsagePropertyKey(value.属性);
         const numericValue = Number(value.数值 || 0);
         if (propertyMeta && propertyMeta.statMod && Number.isFinite(numericValue) && numericValue !== 0) {
-          record.stat_mods = {
-            [propertyMeta.statMod]: Math.max(
-              0.1,
-              Number((Math.abs(numericValue) <= 1 ? 1 + numericValue : numericValue).toFixed(4)),
-            ),
+          const 面板字段 = { str: '力量', def: '防御', agi: '敏捷', vit_max: '体力上限', sp_max: '魂力上限', men_max: '精神力上限' }[propertyMeta.statMod] || propertyMeta.label;
+          const 当前属性值 = Math.max(1, toNumber(角色数据?.属性?.[面板字段], 1));
+          const 倍率 = value.数值为绝对增量
+            ? 1 + numericValue / 当前属性值
+            : Math.abs(numericValue) <= 1
+              ? 1 + numericValue
+              : numericValue;
+          record.面板倍率 = {
+            [面板字段]: Math.max(0.1, Number(倍率.toFixed(4))),
           };
         }
       }
@@ -48964,7 +49007,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         record.战斗效果 = cloneJsonValue(value.combatEffects, {});
       }
       if (effect?.type === 'shield') {
-        record.护盾值 = Math.max(0, toNumber(value, 0));
+        record.护盾值 = Math.max(0, toNumber(value?.数值 ?? value, 0));
       }
       const cleanseLevel = Math.max(0, toNumber(value && value.cleanseLevel, 0));
       if (cleanseLevel > 0) {
@@ -49167,7 +49210,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         };
       }
       if (prototype === '护盾变化') {
-        return { target, type: 'shield', description, value: Math.max(0, toNumber(effect['数值'], 0)) };
+        return { target, type: 'shield', description, value: { 数值: Math.max(0, toNumber(effect['数值'], 0)) } };
       }
       if (prototype === '灵物吸收') {
         return {
@@ -49203,6 +49246,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         prototype === '修炼增益'
       ) {
         const 属性 = toText(effect['资源'] || effect['属性'], '');
+        const 原始数值文本 = toText(effect['数值'], '').trim();
         const 数值 = 解析带符号比例数值(effect['数值'], 0);
         const 持续 = toNumber(effect['持续回合'], 0);
         if (prototype === '修炼增益') {
@@ -49227,7 +49271,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         if (prototype === '资源变化' && ['体力', '生命', '魂力', '精神力'].includes(属性) && 数值 > 0) {
           return { target, type: 'heal', description, value: { 属性, 数值, 持续 } };
         }
-        return { target, type: 数值 < 0 ? 'debuff' : 'buff', description, value: { 属性, 数值, 持续 } };
+        return { target, type: 数值 < 0 ? 'debuff' : 'buff', description, value: { 属性, 数值, 持续, 数值为绝对增量: prototype === '属性修正' && !/%$/.test(原始数值文本) } };
       }
       const value = {};
       if (Number(effect['持续回合'] || 0) > 0) value.durationRounds = toNumber(effect['持续回合'], 0);
@@ -49276,7 +49320,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'state_remove') return this.applyInventoryStateRemoveEffect(charData, usableEffect, logs);
       if (['buff', 'debuff', 'shield', 'custom', 'mechanism_grant', 'cultivation_gain'].includes(String(usableEffect.type || '')))
-        return this.appendInventoryStatusEffect(charData.属性.状态效果, itemName, usableEffect, index, logs, 当前tick);
+        return this.appendInventoryStatusEffect(charData.属性.状态效果, itemName, usableEffect, index, logs, 当前tick, charData);
       return false;
     },
 
@@ -49622,26 +49666,40 @@ ${toText(combatData.战斗意图, '点到为止')}
       return Math.max(0.8, Math.min(1.25, Number((1 + (品质系数 - 1) * 0.25).toFixed(4))));
     },
 
-    按背包批次倍率缩放使用效果列表(效果列表 = [], 物品数据 = {}) {
+    按品质结算道具使用效果列表(效果列表 = [], 物品数据 = {}, 物品名 = '') {
+      const 分类 = toText(物品数据?.物品分类 || 物品数据?.分类, '');
+      if (分类 === '魂技造物') return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
+      const 品质 = 规范化物品经济品质_桥接(物品数据?.品质 || '普通', 物品名, 分类);
+      if (判断神器品质_桥接(品质)) return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
       const 倍率 = this.读取背包批次使用效果倍率(物品数据);
-      const 输出 = cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
-      if (Math.abs(倍率 - 1) < 0.0001) return 输出;
-      const 缩放字段列表 = ['数值', '威力倍率', '效果倍率', '结算倍率', '强化倍率', '引爆倍率', '持续伤害', '治疗量', '恢复量', '护盾值'];
-      const 缩放效果 = 子效果列表 =>
-        (Array.isArray(子效果列表) ? 子效果列表 : []).forEach(效果 => {
-          if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
-          if (['耐久修复', 'durability_repair'].includes(toText(效果.原型 || 效果.type, ''))) return;
-          缩放字段列表.forEach(字段名 => {
-            if (效果[字段名] !== undefined) 效果[字段名] = this.scaleDailySkillMasteryValue(效果[字段名], 倍率);
-          });
-          ['使用效果', '授予效果', '结算效果'].forEach(字段名 => 缩放效果(效果[字段名]));
-          (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach(分支 => {
-            缩放效果(分支?.替换效果);
-            缩放效果(分支?.追加效果);
-          });
+      const 计算数值 = (属性, 盐) => Math.max(1, Math.floor(读取品质道具绝对数值_桥接(品质, 属性, `${物品名}|${分类}|${盐}`) * 倍率));
+      const 处理效果 = (效果, 路径 = '') => {
+        if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
+        const 输出 = cloneJsonValue(效果, {});
+        const 原型 = toText(输出.原型 || 输出.type, '').trim();
+        if (原型 === '耐久修复' || 输出.type === 'durability_repair') return 输出;
+        const 原始数值文本 = toText(输出.数值 ?? 输出.value?.数值, '').trim();
+        if (/^-/.test(原始数值文本)) return 输出;
+        const 属性 = toText(输出.资源 || 输出.属性 || 输出.value?.属性, '魂力');
+        if (原型 === '资源变化') 输出.数值 = 计算数值(属性, `${路径}|资源变化|${属性}`);
+        else if (原型 === '属性修正') 输出.数值 = 计算数值(属性, `${路径}|属性修正|${属性}`);
+        else if (原型 === '护盾变化') 输出.数值 = 计算数值(属性 || '体力上限', `${路径}|护盾变化`);
+        else if (原型 === '灵物吸收') 输出.数值 = Math.max(1, Math.floor(toNumber(品质道具灵物年限表_桥接[品质], 100) * 倍率));
+        else if (原型 === '修炼增益') 输出.数值 = Number((Math.max(1, toNumber(品质道具修炼倍率表_桥接[品质], 1.1)) * 倍率).toFixed(2));
+        ['使用效果', '授予效果', '结算效果'].forEach(字段名 => {
+          if (Array.isArray(输出[字段名])) 输出[字段名] = 输出[字段名].map((子效果, 子索引) => 处理效果(子效果, `${路径}|${字段名}${子索引}`));
         });
-      缩放效果(输出);
-      return 输出;
+        if (Array.isArray(输出.条件分支)) {
+          输出.条件分支 = 输出.条件分支.map((分支, 分支索引) => {
+            const 下一分支 = cloneJsonValue(分支, {});
+            if (Array.isArray(下一分支.替换效果)) 下一分支.替换效果 = 下一分支.替换效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|替换${分支索引}_${子索引}`));
+            if (Array.isArray(下一分支.追加效果)) 下一分支.追加效果 = 下一分支.追加效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|追加${分支索引}_${子索引}`));
+            return 下一分支;
+          });
+        }
+        return 输出;
+      };
+      return (Array.isArray(效果列表) ? 效果列表 : []).map((效果, 索引) => 处理效果(效果, `效果${索引}`));
     },
 
     applyDailySkillMastery(skill = {}, charData = {}) {
@@ -49798,7 +49856,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
             const logs = [];
             let appliedCount = 0;
-            const 原始使用效果列表 = this.按背包批次倍率缩放使用效果列表(物品数据.使用效果, 物品数据);
+            const 原始使用效果列表 = this.按品质结算道具使用效果列表(物品数据.使用效果, 物品数据, itemName);
             const 条件上下文 = {
               使用者: charKey,
             };

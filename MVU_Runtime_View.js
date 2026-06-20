@@ -4388,16 +4388,19 @@ function 格式化角色基础六维对标条目_V1(角色名 = '', 条目 = {})
 }
 
 function 构建年龄对标等级行列表_V1(数据根 = {}, 角色名集合 = new Set()) {
-  const 年龄集合 = new Set();
+  const 年龄对标表 = new Map();
+  const 当前tick = 数据根?.world?.时间?.tick ?? null;
   Array.from(角色名集合 || []).forEach(角色名 => {
-    const 年龄 = Number(数据根?.char?.[角色名]?.属性?.年龄);
-    if (!Number.isFinite(年龄) || 年龄 < 6 || 年龄 >= 30) return;
-    年龄集合.add(Math.floor(年龄));
+    const 角色 = 数据根?.char?.[角色名];
+    const 有效年龄 = 计算角色有效年龄_V1(角色?.属性?.年龄, 角色?.属性?.生日, 当前tick);
+    if (!Number.isFinite(有效年龄) || 有效年龄 < 6 || 有效年龄 >= 30) return;
+    const 整岁 = Math.floor(有效年龄);
+    const 已记录年龄 = 年龄对标表.get(整岁);
+    if (!Number.isFinite(已记录年龄) || 有效年龄 > 已记录年龄) 年龄对标表.set(整岁, 有效年龄);
   });
-  return Array.from(年龄集合)
-    .sort((a, b) => a - b)
-    .map(年龄 => {
-      const 计算年龄 = 年龄 + 0.5;
+  return Array.from(年龄对标表.entries())
+    .sort(([年龄A], [年龄B]) => 年龄A - 年龄B)
+    .map(([年龄, 计算年龄]) => {
       const 档位文本 = 读取年龄对标天赋档位列表_V1(计算年龄)
         .map(档位 => {
           const 等级 = 读取指定天赋年龄描点等级_V1(档位, 计算年龄);

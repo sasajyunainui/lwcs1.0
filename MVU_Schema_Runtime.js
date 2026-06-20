@@ -337,7 +337,13 @@ var 物品经济品质集合_V1 = new Set(物品经济品质列表_V1);
 var 装备加成属性列表_V1 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
 var 装备加成方向列表_V1 = Object.freeze([...装备加成属性列表_V1, '全属性']);
 var 装备加成方向集合_V1 = new Set(装备加成方向列表_V1);
-var 非神器装备品质等级差表_V1 = Object.freeze({ 普通: 0.2, 优秀: 0.4, 稀有: 1.0, 史诗: 1.4, 传说: 1.8 });
+var 非神器品质等级段表_V1 = Object.freeze({
+  普通: Object.freeze([1, 30]),
+  优秀: Object.freeze([31, 50]),
+  稀有: Object.freeze([51, 70]),
+  史诗: Object.freeze([71, 90]),
+  传说: Object.freeze([91, 99]),
+});
 var 装备属性键映射_V1 = Object.freeze({ 魂力上限: 'sp_max', 精神力上限: 'men_max', 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max' });
 
 function 规范化物品分类_V1(分类 = '', fallback = '剧情杂物') {
@@ -378,18 +384,6 @@ function 规范化装备加成方向_V1(来源方向 = []) {
   return 输出;
 }
 
-function 校验装备属性加成百分比_V1(属性加成 = {}, 选项 = {}) {
-  const 来源 = 属性加成 && typeof 属性加成 === 'object' && !Array.isArray(属性加成) ? 属性加成 : {};
-  const 允许百分比 = !!选项.允许百分比;
-  Object.entries(来源).forEach(([属性名, 属性值]) => {
-    if (!装备加成属性列表_V1.includes(属性名)) return;
-    if (/^[+-]?\d+(?:\.\d+)?%$/.test(String(属性值 ?? '').trim()) && !允许百分比) {
-      throw new Error(`非神器装备属性加成禁止百分比：${String(选项.物品名 || '未命名')}·${属性名}`);
-    }
-  });
-  return 来源;
-}
-
 function 计算稳定哈希数值_V1(文本 = '') {
   let 哈希 = 2166136261;
   String(文本 || '').split('').forEach(字符 => {
@@ -403,6 +397,20 @@ function 读取稳定随机数_V1(文本 = '') {
   return (计算稳定哈希数值_V1(文本) % 10000) / 10000;
 }
 
+function 读取品质随机等级_V1(品质 = '普通', 种子 = '') {
+  const 等级段 = 非神器品质等级段表_V1[品质];
+  if (!等级段) return 0;
+  const [下限, 上限] = 等级段;
+  return 下限 + Math.floor(读取稳定随机数_V1(`${品质}|${种子}`) * (上限 - 下限 + 1));
+}
+
+function 计算品质属性基础值_V1(品质 = '普通', 属性名 = '', 种子 = '') {
+  const 属性键 = 装备属性键映射_V1[属性名];
+  const 随机等级 = 读取品质随机等级_V1(品质, `${种子}|${属性名}`);
+  if (!属性键 || !(随机等级 > 0)) return 0;
+  return Math.floor(Number(getBaseStats(随机等级)?.[属性键] || 0) * 0.3);
+}
+
 function 展开装备加成方向_V1(方向列表 = []) {
   const 输出 = [];
   规范化装备加成方向_V1(方向列表).forEach(方向 => {
@@ -414,26 +422,17 @@ function 展开装备加成方向_V1(方向列表 = []) {
   return 输出;
 }
 
-function 计算装备方向等级差表_V1(装备 = {}, 分类 = '') {
+function 计算装备方向属性加成表_V1(装备 = {}, 分类 = '') {
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || '普通', 装备?.名称 || '', 分类);
-  const 主等级差 = Number(非神器装备品质等级差表_V1[品质] || 0);
   const 方向列表 = 展开装备加成方向_V1(装备?.加成方向 || []);
-  if (!主等级差 || !方向列表.length || 判断神器品质_V1(品质)) return {};
-  if (方向列表.length === 1) {
-    const 属性名 = 方向列表[0];
-    const 浮动 = 0.9 + 读取稳定随机数_V1(`${装备?.名称 || ''}|${品质}|${分类}|${属性名}|单`) * 0.2;
-    return { [属性名]: 主等级差 * 浮动 };
-  }
-  const 总预算 = 主等级差 + 主等级差 * 0.6 * Math.max(0, 方向列表.length - 1);
-  const 权重表 = 方向列表.map(属性名 => ({
+  if (!方向列表.length || 判断神器品质_V1(品质)) return {};
+  return Object.fromEntries(方向列表.map(属性名 => [
     属性名,
-    权重: 0.75 + 读取稳定随机数_V1(`${装备?.名称 || ''}|${品质}|${分类}|${属性名}|多`) * 0.5,
-  }));
-  const 权重总和 = 权重表.reduce((总和, 条目) => 总和 + 条目.权重, 0) || 1;
-  return Object.fromEntries(权重表.map(条目 => [条目.属性名, 总预算 * 条目.权重 / 权重总和]));
+    计算品质属性基础值_V1(品质, 属性名, `${装备?.名称 || ''}|${分类}|装备`),
+  ]).filter(([, 数值]) => Number(数值 || 0) > 0));
 }
 
-function 读取有效手工装备属性加成_V1(装备 = {}, 允许百分比 = false) {
+function 读取神器手工装备属性加成_V1(装备 = {}) {
   const 原始加成 = 装备?.属性加成 && typeof 装备.属性加成 === 'object' && !Array.isArray(装备.属性加成) ? 装备.属性加成 : {};
   const 输出 = {};
   let 有有效数值 = false;
@@ -441,7 +440,6 @@ function 读取有效手工装备属性加成_V1(装备 = {}, 允许百分比 = 
     if (!装备加成属性列表_V1.includes(键)) return;
     const 文本值 = String(值 ?? '').trim();
     if (/^[+-]?\d+(?:\.\d+)?%$/.test(文本值)) {
-      if (!允许百分比) throw new Error(`非神器装备属性加成禁止百分比：${String(装备?.名称 || '未命名')}·${键}`);
       输出[键] = 文本值;
       有有效数值 = true;
       return;
@@ -468,9 +466,13 @@ function 角色应用物品定义可注册_V1(分类 = '', 定义 = {}) {
   if (来源.品阶 === '无') delete 来源.品阶;
   if (来源.描述 === undefined || 来源.描述 === null || String(来源.描述 || '').trim() === '') delete 来源.描述;
   if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
-    const 有效加成 = 读取有效手工装备属性加成_V1({ ...定义, 属性加成: 来源.属性加成 }, 判断神器品质_V1(定义?.品质 || 定义?.品阶));
-    if (Object.keys(有效加成).length) 来源.属性加成 = 有效加成;
-    else delete 来源.属性加成;
+    if (判断神器品质_V1(定义?.品质 || 定义?.品阶)) {
+      const 有效加成 = 读取神器手工装备属性加成_V1({ ...定义, 属性加成: 来源.属性加成 });
+      if (Object.keys(有效加成).length) 来源.属性加成 = 有效加成;
+      else delete 来源.属性加成;
+    } else {
+      delete 来源.属性加成;
+    }
   }
   if (Array.isArray(来源.加成方向)) {
     const 方向 = 规范化装备加成方向_V1(来源.加成方向);
@@ -562,12 +564,9 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
       if (是神器定义) {
         输出.属性加成 = cloneJsonValue(来源.属性加成, {});
-      } else {
-        const 手工加成 = 读取有效手工装备属性加成_V1({ 名称: 物品名, 属性加成: 来源.属性加成 }, false);
-        if (Object.keys(手工加成).length) 输出.属性加成 = 手工加成;
       }
     }
-    if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 输出.属性倍率 = cloneJsonValue(来源.属性倍率, {});
+    if (物品分类 === '魂骨' && 来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 输出.属性倍率 = cloneJsonValue(来源.属性倍率, {});
     if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
     if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 输出.附带魂技 = cloneJsonValue(来源.附带魂技, {});
   }
@@ -702,7 +701,7 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
   const 是神器装备 = 判断神器品质_V1(品质);
   const 角色等级 = Math.max(1, Number(角色?.属性?.等级 ?? 角色?.等级 ?? 角色?.lv ?? 1) || 1);
-  const 手工加成 = 读取有效手工装备属性加成_V1(装备, 是神器装备);
+  const 手工加成 = 是神器装备 ? 读取神器手工装备属性加成_V1(装备) : {};
   const 写入等级差加成 = (属性名, 等级差) => {
     const 属性键 = 装备属性键映射_V1[属性名];
     if (!属性键) return;
@@ -722,7 +721,9 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
     结果[键] = Number.isFinite(数值) ? Math.floor(数值) : 0;
   });
   if (!Object.keys(结果).length && !是神器装备) {
-    Object.entries(计算装备方向等级差表_V1({ ...装备, 品质 }, 分类)).forEach(([属性名, 等级差]) => 写入等级差加成(属性名, 等级差));
+    Object.entries(计算装备方向属性加成表_V1({ ...装备, 品质 }, 分类)).forEach(([属性名, 数值]) => {
+      结果[属性名] = Math.floor(Number(数值 || 0));
+    });
   }
   return 结果;
 }
