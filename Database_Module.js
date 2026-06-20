@@ -4301,8 +4301,44 @@ $CONTENT
         lastGeneration: null,
         正文后置上下文: null,
     };
+    function broadcastUserSendIntent_ACU(at) {
+        try {
+            const detail = { at, source: 'Database_Module' };
+            const targets = [];
+            const addTarget = (target) => {
+                if (target && typeof target.dispatchEvent === 'function' && !targets.includes(target))
+                    targets.push(target);
+            };
+            try {
+                addTarget(window);
+            }
+            catch (e) { }
+            try {
+                addTarget(topLevelWindow_ACU);
+            }
+            catch (e) { }
+            try {
+                addTarget(window.parent);
+            }
+            catch (e) { }
+            try {
+                addTarget(window.top);
+            }
+            catch (e) { }
+            targets.forEach((target) => {
+                try {
+                    const EventCtor = target.CustomEvent || CustomEvent;
+                    target.dispatchEvent(new EventCtor('LWCS_USER_SEND_INTENT', { detail }));
+                }
+                catch (e) { }
+            });
+        }
+        catch (e) { }
+    }
     function markUserSendIntent_ACU() {
-        generationGate_ACU.lastUserSendIntentAt = Date.now();
+        const now = Date.now();
+        generationGate_ACU.lastUserSendIntentAt = now;
+        broadcastUserSendIntent_ACU(now);
     }
     function isRecentUserSendIntent_ACU() {
         if (!generationGate_ACU.lastUserSendIntentAt)

@@ -4266,7 +4266,7 @@
   const 角色归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
-  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, pollTimer: 0, promise: null, 已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
+  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, 提交前自动归档Timer: 0, pollTimer: 0, promise: null, 已安装: false, 提交意图监听已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
   const 冷实体激活保护存储键_桥接 = 'LWCS_冷实体激活保护_v1';
   const 冷实体激活保护楼层窗口_桥接 = 6;
@@ -5684,28 +5684,96 @@
   }
 
   function 检查冷归档楼层增长自动归档_桥接(触发来源 = '楼层增长') {
-    const chatKey = 取当前聊天归档标识_桥接();
-    const 当前楼层 = 读取当前最新聊天楼层_桥接();
-    if (
-      chatKey !== 冷归档楼层清理状态_桥接.chatKey ||
-      冷归档楼层清理状态_桥接.最新楼层 < 0 ||
-      当前楼层 <= 冷归档楼层清理状态_桥接.最新楼层
-    ) {
-      return;
+    return false;
+  }
+
+  function 查找当前最后AI楼层元信息_桥接() {
+    const 聊天 = 读取当前聊天数组_桥接();
+    for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
+      const 元信息 = 读取AI楼层元信息_桥接(索引);
+      if (元信息) return 元信息;
     }
-    const 目标消息元信息 = 查找上一AI楼层元信息_桥接(当前楼层);
+    return null;
+  }
+
+  function 构建提交前冷归档检查键_桥接(目标消息元信息 = null) {
+    if (!目标消息元信息) return '';
+    return [
+      目标消息元信息.chatKey || 取当前聊天归档标识_桥接(),
+      '用户提交前',
+      目标消息元信息.消息编号,
+      目标消息元信息.滑动编号,
+      目标消息元信息.文本签名,
+    ].join('|');
+  }
+
+  function 执行提交前冷归档_桥接(目标消息元信息 = null, 来源详情 = {}) {
     if (!目标消息元信息 || !目标AI楼层仍匹配_桥接(目标消息元信息)) return;
-    调度冷归档楼层自动归档_桥接(350, {
-      目标消息元信息,
-      使用最新AI: false,
-      需要可见消息对: false,
-      触发来源,
+    const 自动检查消息键 = 构建提交前冷归档检查键_桥接(目标消息元信息);
+    if (自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
+    if (自动检查消息键) 冷归档楼层清理状态_桥接.已自动检查消息键表.add(自动检查消息键);
+    const 触发归档 = () => {
+      if (!目标AI楼层仍匹配_桥接(目标消息元信息)) return;
+      if (冷归档楼层清理状态_桥接.变量更新中) {
+        if (冷归档楼层清理状态_桥接.提交前自动归档Timer) window.clearTimeout(冷归档楼层清理状态_桥接.提交前自动归档Timer);
+        冷归档楼层清理状态_桥接.提交前自动归档Timer = window.setTimeout(() => {
+          冷归档楼层清理状态_桥接.提交前自动归档Timer = 0;
+          触发归档();
+        }, 600);
+        return;
+      }
+      console.debug('[DragonUI] 冷归档用户提交前触发', 目标消息元信息);
+      按阈值自动归档MVU冷实体_桥接({
+        触发来源: '用户提交前',
+        跳过冷却: true,
+        需要明确目标: true,
+        目标消息元信息,
+        禁止目标回退: true,
+        来源详情,
+      })
+        .then(结果 => {
+          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'target_missing', 'target_changed'].includes(结果 && 结果.reason);
+          if (自动检查消息键 && 未进入检查) 冷归档楼层清理状态_桥接.已自动检查消息键表.delete(自动检查消息键);
+        })
+        .catch(错误 => {
+          if (自动检查消息键) 冷归档楼层清理状态_桥接.已自动检查消息键表.delete(自动检查消息键);
+          console.warn('[DragonUI] 冷归档用户提交前自动归档失败', 错误);
+        });
+    };
+    触发归档();
+  }
+
+  function 读取事件安全详情_桥接(detail = {}) {
+    return detail && typeof detail === 'object' && !Array.isArray(detail) ? { ...detail } : {};
+  }
+
+  function 处理冷归档用户提交意图_桥接(事件 = null) {
+    const 目标消息元信息 = 查找当前最后AI楼层元信息_桥接();
+    if (!目标消息元信息) return;
+    执行提交前冷归档_桥接(目标消息元信息, 事件 && typeof 事件 === 'object' ? 读取事件安全详情_桥接(事件.detail) : {});
+  }
+
+  function 安装冷归档用户提交意图监听_桥接() {
+    if (冷归档楼层清理状态_桥接.提交意图监听已安装) return;
+    冷归档楼层清理状态_桥接.提交意图监听已安装 = true;
+    const 目标列表 = [];
+    const 添加目标 = 目标 => {
+      if (目标 && typeof 目标.addEventListener === 'function' && !目标列表.includes(目标)) 目标列表.push(目标);
+    };
+    try { 添加目标(window); } catch (错误) {}
+    try { if (window.parent && window.parent !== window) 添加目标(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 添加目标(window.top); } catch (错误) {}
+    目标列表.forEach(目标 => {
+      try {
+        目标.addEventListener('LWCS_USER_SEND_INTENT', 处理冷归档用户提交意图_桥接, true);
+      } catch (错误) {}
     });
   }
 
   function 安装冷归档楼层监视器_桥接() {
     if (冷归档楼层清理状态_桥接.已安装) return;
     冷归档楼层清理状态_桥接.已安装 = true;
+    安装冷归档用户提交意图监听_桥接();
     const 绑定酒馆事件 = () => {
       let 上下文 = null;
       try {
@@ -5719,7 +5787,6 @@
         if (!事件名) return;
         try {
           eventSource.on(事件名, (...事件参数) => {
-            检查冷归档楼层增长自动归档_桥接(事件键);
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
         } catch (错误) {}
@@ -5763,7 +5830,6 @@
           调度冷归档楼层清理_桥接(0);
           return;
         }
-        检查冷归档楼层增长自动归档_桥接('轮询楼层增长');
         冷归档楼层清理状态_桥接.chatKey = chatKey;
         冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
       }, 2500);
