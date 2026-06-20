@@ -4631,6 +4631,11 @@
     if (状态.存储模式 === '用户文件') return await 读取用户文件冷归档Json_桥接(路径);
     if (!状态.可用) throw new Error('冷归档服务不可用。');
     const 结果 = await 请求冷归档Api_桥接('/json/read', { path: 路径 });
+    if (结果 && 结果.missing) {
+      const 错误 = new Error('not_found');
+      错误.status = 404;
+      throw 错误;
+    }
     return 结果.data;
   }
 
