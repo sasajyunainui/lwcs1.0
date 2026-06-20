@@ -142,6 +142,11 @@ var 物品分类列表_V1 = Object.freeze([
   '任务物品',
   '其他',
 ]);
+var 物品分类集合_V1 = new Set(物品分类列表_V1);
+var AIJsonPatch装备定义分类集合_V1 = new Set(['近战武器', '远程武器', '防具', '防具装备', '饰品', '魂导器', '战术装备', '功能道具', '斗铠', '斗铠部件', '机甲机体', '机甲部件']);
+var AIJsonPatch装备槽位集合_V1 = new Set(['武器', '防具']);
+var AIJsonPatch装备加成方向列表_V1 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限', '全属性']);
+var AIJsonPatch装备加成方向集合_V1 = new Set(AIJsonPatch装备加成方向列表_V1);
 
 function 遍历物品定义_V1(物品表 = {}, 回调 = () => {}) {
   const 分类表 = 物品表 && typeof 物品表 === 'object' && !Array.isArray(物品表) ? 物品表 : {};
@@ -1212,6 +1217,62 @@ function 运行时路径片段安全_V1(片段 = '', { 允许斜杠 = true } = {
   return true;
 }
 
+function 是AIJsonPatch装备属性加成路径_V1(路径 = []) {
+  const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
+  if (文本路径.length >= 5 && 文本路径[0] === 'char' && 文本路径[2] === '装备' && AIJsonPatch装备槽位集合_V1.has(文本路径[3]) && 文本路径[4] === '属性加成') return true;
+  if (文本路径.length >= 4 && 文本路径[0] === '物品' && AIJsonPatch装备定义分类集合_V1.has(文本路径[1]) && 文本路径[3] === '属性加成') return true;
+  return false;
+}
+
+function 是AIJsonPatch装备加成方向路径_V1(路径 = []) {
+  const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
+  if (文本路径.length === 5 && 文本路径[0] === 'char' && 文本路径[2] === '装备' && AIJsonPatch装备槽位集合_V1.has(文本路径[3]) && 文本路径[4] === '加成方向') return true;
+  if (文本路径.length === 4 && 文本路径[0] === '物品' && AIJsonPatch装备定义分类集合_V1.has(文本路径[1]) && 文本路径[3] === '加成方向') return true;
+  return false;
+}
+
+function 规范化AIJsonPatch装备加成方向值_V1(值 = [], 选项 = {}) {
+  if (!Array.isArray(值) && typeof 值 !== 'string') {
+    throw new Error(`装备加成方向必须为字符串数组：${选项.原始路径 || '未知路径'}`);
+  }
+  const 原始列表 = Array.isArray(值)
+    ? 值
+    : String(值 || '')
+      .split(/[,\n，、|/]+/)
+      .map(片段 => 片段.trim());
+  const 输出 = [];
+  const 非法 = [];
+  原始列表.forEach(方向 => {
+    const 文本 = String(方向 || '').trim();
+    if (!文本) return;
+    if (!AIJsonPatch装备加成方向集合_V1.has(文本)) {
+      非法.push(文本);
+      return;
+    }
+    if (!输出.includes(文本)) 输出.push(文本);
+  });
+  if (非法.length) throw new Error(`装备加成方向非法：${非法.join('、')}；可选=${AIJsonPatch装备加成方向列表_V1.join('、')}`);
+  return 输出;
+}
+
+function 规范化AIJsonPatch装备写入值_V1(路径 = [], 值 = null, 根 = {}, 选项 = {}) {
+  const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
+  if (是AIJsonPatch装备属性加成路径_V1(文本路径)) {
+    throw new Error(`装备属性加成禁止由AI直接写入：${选项.原始路径 || 构建运行时JsonPointer路径_V1(文本路径)}`);
+  }
+  if (是AIJsonPatch装备加成方向路径_V1(文本路径)) {
+    return 规范化AIJsonPatch装备加成方向值_V1(值, { 原始路径: 选项.原始路径 || 构建运行时JsonPointer路径_V1(文本路径) });
+  }
+  if (!值 || typeof 值 !== 'object' || Array.isArray(值)) return cloneJsonValue(值, 值);
+  const 输出 = {};
+  Object.entries(值).forEach(([键, 子值]) => {
+    if (!运行时路径片段安全_V1(键, { 允许斜杠: false })) throw new Error(`JSONPatch对象字段非法：${键}`);
+    const 子路径 = 纠正AIJsonPatch槽位漏层路径_V1([...文本路径, 键]);
+    输出[键] = 规范化AIJsonPatch装备写入值_V1(子路径, 子值, 根, 选项);
+  });
+  return 输出;
+}
+
 var AIJsonPatch技能字段集合_V1 = Object.freeze(new Set([
   '魂技名',
   '画面描述',
@@ -1377,9 +1438,10 @@ function 写入AIJsonPatch对象相对路径值_V1(目标 = {}, 相对路径 = [
 }
 
 function 规范化AIJsonPatch对象层级值_V1(路径 = [], 值 = null, 根 = {}, 选项 = {}) {
-  if (!值 || typeof 值 !== 'object' || Array.isArray(值)) return cloneJsonValue(值, 值);
   const 文本路径 = (Array.isArray(路径) ? 路径 : []).map(片段 => String(片段));
-  const 类型值 = 规范化AIJsonPatch对象值_V1(文本路径, 值, 根);
+  const 装备值 = 规范化AIJsonPatch装备写入值_V1(文本路径, 值, 根, 选项);
+  if (!装备值 || typeof 装备值 !== 'object' || Array.isArray(装备值)) return cloneJsonValue(装备值, 装备值);
+  const 类型值 = 规范化AIJsonPatch对象值_V1(文本路径, 装备值, 根);
   if (!类型值 || typeof 类型值 !== 'object' || Array.isArray(类型值)) return cloneJsonValue(类型值, 类型值);
   const 输出 = {};
   Object.entries(类型值).forEach(([键, 子值]) => {
@@ -1658,6 +1720,9 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
     });
     let 路径 = 纠正AIJsonPatch槽位漏层路径_V1(原路径);
     校验AIJsonPatch路径层级_V1(路径, { 原始路径: patch.path });
+    if (['add', 'insert', 'replace', 'delta'].includes(op) && 是AIJsonPatch装备属性加成路径_V1(路径)) {
+      throw new Error(`装备属性加成禁止由AI直接写入：${patch.path}`);
+    }
     const 原父路径 = 原路径.slice(0, -1);
     let 精确存在 = AIJsonPatch路径已存在或本批新增_V1(根, 路径, 本批新增路径集合);
     const replace可按父级写入 = op === 'replace' && !精确存在 && AIJsonPatch写入父路径可用_V1(根, 路径, 本批新增路径集合);
@@ -1714,6 +1779,13 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
       const value = 规范化AIJsonPatch对象层级值_V1(路径, patch.value, 根, { 原始路径: patch.path });
       校验AIJsonPatch对象子路径层级_V1(路径, value, { 原始路径: patch.path });
       const 输出Patch = { ...patch, op: 'add', path: 构建运行时JsonPointer路径_V1(路径), value };
+      记录AIJsonPatch本批新增路径_V1(本批新增路径集合, 路径, value);
+      return 输出Patch;
+    }
+    if (op === 'replace') {
+      const value = 规范化AIJsonPatch对象层级值_V1(路径, patch.value, 根, { 原始路径: patch.path });
+      校验AIJsonPatch对象子路径层级_V1(路径, value, { 原始路径: patch.path });
+      const 输出Patch = { ...patch, op, path: 构建运行时JsonPointer路径_V1(路径), value };
       记录AIJsonPatch本批新增路径_V1(本批新增路径集合, 路径, value);
       return 输出Patch;
     }
@@ -1929,9 +2001,15 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   '2. 【Filter Passing NPCs/Scenes】: Strictly IGNORE generic descriptive NPCs (e.g., "板寸头", "瘦高个", "胖宿管") and one-off background places. Do NOT create MVU entities for them.',
   '3. 【Location Granularity Lock (FATAL)】: ABSOLUTELY FORBIDDEN to register micro-locations (e.g., specific rooms like "104号宿舍", floors, seats, corridors) as new locations! You MUST snap them to the parent 【Major Building/Functional Area】 (e.g., "宿舍区", "教学楼"). If a character enters "104号宿舍" and "宿舍区" is already in Hits, the location is deemed ALREADY EXISTING. DO NOT register it in the table!',
   '',
- 'New Entity Table:',
+'New Entity Table:',
 'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new important plot items (generic keys/clothes write 无).',
 '',
+  '[Equipment Bonus Rule]',
+  '装备定义和角色装备禁止写 属性加成；只写 品质 与 加成方向。',
+  '加成方向只能取：魂力上限、精神力上限、力量、防御、敏捷、体力上限、全属性；全属性由脚本展开。',
+  '神器以下装备由脚本结算为整数绝对值，不写百分比；神器/超神器才可保留百分比或特殊算法。',
+  '神器生成最低标准：7 金属天锻，即副职业参数.融合参数.数量>=7 且 阶位=5；未达到时不要标为神器。',
+  '',
     '[Task/Commission Creation]',
     '剧情中新出现长期个人目标时，直接写 /char/${角色名}/我的任务/${任务名}，字段={任务线,状态,当前进度,奖励币,奖励声望,描述,最后更新时间tick,截止tick?}；任务线=主线/支线；最后更新时间tick用当前 world.时间.tick；限时任务才写截止tick，不限时不要写该字段；任务进度达到100时，任务奖励由脚本自动结算，不要为任务奖励额外手写财富或声望。',
     '剧情中新出现公开/指定委托时，直接写 /world/委托板/${委托名}，字段={标题,描述,框架描述,发布者,面向,指定对象,状态,难度,资源级别,奖励币,奖励声望,承接者,生成tick,截止tick?,交付需求?}；生成tick用当前 world.时间.tick；限时委托才写截止tick。',
@@ -2054,23 +2132,21 @@ function 构建正文商店库存摘要_V1(地点数据 = {}, 数据根 = {}, �
 }
 
 function 构建更新地点薄片_V1(地点数据 = {}, 文本 = '') {
-  const 地点基础 = cloneJsonValue(地点数据, {});
-  if (地点基础 && typeof 地点基础 === 'object') delete 地点基础.商店;
-  return 过滤MVU更新视图值_V1(准备运行时地图视图数据_V1(地点基础), ['world', '地点', '示例地点']) || {};
+  const 地点 = 地点数据 && typeof 地点数据 === 'object' ? 地点数据 : {};
+  const 输出 = {};
+  ['掌控势力', '人口', '守护军团', '经济状况', '状态'].forEach(字段 => {
+    const 忽略列表 = 字段 === '状态' ? ['intact'] : [];
+    if (更新视图字段有运行值_V1(地点[字段], { 忽略文本列表: 忽略列表 })) 输出[字段] = 地点[字段];
+  });
+  return 过滤MVU更新视图值_V1(准备运行时地图视图数据_V1(输出), ['world', '地点', '示例地点']) || {};
 }
 
 function 构建更新动态地点条目_V1(地点数据 = {}, 地点名 = '') {
   const 地点 = 地点数据 && typeof 地点数据 === 'object' ? 地点数据 : {};
-  return 过滤MVU更新视图值_V1({
-    归属父节点: 地点.归属父节点 || '',
-    层级: Number.isFinite(Number(地点.层级)) ? Number(地点.层级) : 4,
-    描述: 地点.描述 || '',
-    x: Number.isFinite(Number(地点.x)) ? Number(地点.x) : -1,
-    y: Number.isFinite(Number(地点.y)) ? Number(地点.y) : -1,
-    节点类型: normalizeDynamicLocationNodeType(地点.节点类型, 地点.层级, 地点名),
-    势力: 地点.势力 || '未知',
-    状态: 地点.状态 || 'intact',
-  }, ['world', '动态地点', '示例动态地点']) || {};
+  const 输出 = {};
+  if (更新视图字段有运行值_V1(地点.势力, { 忽略文本列表: ['未知'] })) 输出.势力 = 地点.势力;
+  if (更新视图字段有运行值_V1(地点.状态, { 忽略文本列表: ['intact'] })) 输出.状态 = 地点.状态;
+  return 过滤MVU更新视图值_V1(输出, ['world', '动态地点', '示例动态地点']) || {};
 }
 
 function 构建更新视图标准结构样例_V1(字段 = '') {
@@ -2086,16 +2162,22 @@ function 构建更新视图标准结构样例_V1(字段 = '') {
     case '战斗':
       return { 进行中: false, 战斗类型: '未知', 先攻: '无', 允许撤离: true, 回合: 0, 环境: '正常', 战斗意图: '点到为止', 裁断结果: '', 参战者: {} };
     case '地点':
-      return { 示例地点: { 掌控势力: '未知', 人口: 0, 守护军团: '无', 经济状况: '未知', x: -1, y: -1, 类型: '地图节点', 描述: '无', 状态: 'intact', 子节点: {}, 商店: {} } };
+      return { 示例地点: { 掌控势力: '未知', 人口: 0, 守护军团: '无', 经济状况: '未知', 状态: 'intact' } };
     case '动态地点':
-      return { 示例动态地点: { 归属父节点: '父节点名称', 层级: 4, 描述: '无', x: -1, y: -1, 节点类型: '设施', 势力: '未知', 状态: 'intact' } };
+      return { 示例动态地点: { 势力: '未知', 状态: 'intact' } };
     default:
       return {};
   }
 }
 
 function 为运行时物品定义注入提示_V1(物品定义 = {}) {
-  return 过滤MVU更新视图值_V1(cloneJsonValue(物品定义, {}), ['物品', '示例物品']) || {};
+  const 定义 = cloneJsonValue(物品定义, {});
+  const 装备技能 = 构建更新视图技能表薄片_V1(定义.装备技能);
+  if (装备技能) 定义.装备技能 = 装备技能;
+  else delete 定义.装备技能;
+  const 输出 = 过滤MVU更新视图值_V1(定义, ['物品', '示例物品']) || {};
+  if (装备技能) 输出.装备技能 = 装备技能;
+  return 输出;
 }
 
 function 构建运行时委托草案条目_V1(条目 = {}) {
@@ -2712,6 +2794,164 @@ function 清理运行时已补全技能效果数组_V1(节点 = null) {
   Object.values(节点).forEach(子节点 => 清理运行时已补全技能效果数组_V1(子节点));
 }
 
+function 更新视图字段有运行值_V1(值, 选项 = {}) {
+  if (值 === undefined || 值 === null) return false;
+  if (typeof 值 === 'string') {
+    const 文本 = 值.trim();
+    if (!文本 || 文本 === '无' || 文本 === '未知') return false;
+    if (Array.isArray(选项.忽略文本列表) && 选项.忽略文本列表.includes(文本)) return false;
+    if (选项.允许待补全 !== true && (/^待补全/.test(文本) || /^AI_TODO/.test(文本))) return false;
+    return true;
+  }
+  if (typeof 值 === 'number') return Number.isFinite(Number(值));
+  if (typeof 值 === 'boolean') return 值 === true;
+  if (Array.isArray(值)) return 值.some(项 => 更新视图字段有运行值_V1(项, 选项));
+  if (typeof 值 === 'object') return Object.keys(值).length > 0;
+  return false;
+}
+
+function 更新视图技能节点已补全_V1(技能 = {}) {
+  if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能)) return false;
+  const 效果已补全 = 正文视图值已初始化_V1(技能.效果描述 || 技能.描述);
+  const 画面已补全 = 正文视图值已初始化_V1(技能.画面描述);
+  if (!效果已补全 || !画面已补全) return false;
+  if (Object.prototype.hasOwnProperty.call(技能, '魂技名') && !正文视图值已初始化_V1(技能.魂技名)) return false;
+  if (Object.prototype.hasOwnProperty.call(技能, '产物描述') && !正文视图值已初始化_V1(技能.产物描述)) return false;
+  return true;
+}
+
+function 构建更新视图技能薄片_V1(技能 = {}) {
+  if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能)) return undefined;
+  if (更新视图技能节点已补全_V1(技能)) return undefined;
+  const 输出 = {};
+  ['_简易效果描述', '画面描述', '效果描述', '产物描述'].forEach(字段 => {
+    if (更新视图字段有运行值_V1(技能[字段], { 允许待补全: true })) 输出[字段] = cloneJsonValue(技能[字段], 技能[字段]);
+  });
+  return Object.keys(输出).length ? 输出 : undefined;
+}
+
+function 构建更新视图技能表薄片_V1(技能表 = {}) {
+  if (!技能表 || typeof 技能表 !== 'object' || Array.isArray(技能表)) return undefined;
+  const 输出 = {};
+  Object.entries(技能表).forEach(([技能名, 技能]) => {
+    const 技能薄片 = 构建更新视图技能薄片_V1(技能);
+    if (技能薄片) 输出[技能名] = 技能薄片;
+  });
+  return Object.keys(输出).length ? 输出 : undefined;
+}
+
+function 收口更新视图魂环技能_V1(魂环 = {}) {
+  if (!魂环 || typeof 魂环 !== 'object' || Array.isArray(魂环)) return;
+  取魂环魂技条目_V1(魂环).forEach(([魂技键, 魂技]) => {
+    const 技能薄片 = 构建更新视图技能薄片_V1(魂技);
+    if (技能薄片) 魂环[魂技键] = 技能薄片;
+    else delete 魂环[魂技键];
+  });
+}
+
+function 收口更新视图气血魂环技能_V1(魂环 = {}) {
+  if (!魂环 || typeof 魂环 !== 'object' || Array.isArray(魂环)) return;
+  取气血魂环魂技条目_V1(魂环).forEach(([魂技键, 魂技]) => {
+    const 技能薄片 = 构建更新视图技能薄片_V1(魂技);
+    if (技能薄片) 魂环[魂技键] = 技能薄片;
+    else delete 魂环[魂技键];
+  });
+}
+
+function 收口更新视图角色技能_V1(角色 = {}) {
+  if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+  取角色武魂条目_V1(角色).forEach(([, 武魂]) => {
+    取武魂魂灵条目_V1(武魂).forEach(([, 魂灵]) => {
+      取魂灵魂环条目_V1(魂灵).forEach(([, 魂环]) => 收口更新视图魂环技能_V1(魂环));
+    });
+    取武魂直接魂环条目_V1(武魂).forEach(([, 魂环]) => 收口更新视图魂环技能_V1(魂环));
+  });
+  const 自创魂技 = 构建更新视图技能表薄片_V1(角色.自创魂技);
+  if (自创魂技) 角色.自创魂技 = 自创魂技;
+  else delete 角色.自创魂技;
+
+  Object.entries(角色.武魂融合技 || {}).forEach(([技能名, 融合技]) => {
+    const 技能薄片 = 构建更新视图技能薄片_V1(融合技?.技能数据);
+    if (技能薄片) 角色.武魂融合技[技能名] = { 技能数据: 技能薄片 };
+    else delete 角色.武魂融合技[技能名];
+  });
+  if (角色.武魂融合技 && !Object.keys(角色.武魂融合技).length) delete 角色.武魂融合技;
+
+  if (角色.血脉之力 && typeof 角色.血脉之力 === 'object' && !Array.isArray(角色.血脉之力)) {
+    const 血脉技能 = 构建更新视图技能表薄片_V1(角色.血脉之力.技能);
+    const 血脉被动 = 构建更新视图技能表薄片_V1(角色.血脉之力.被动);
+    if (血脉技能) 角色.血脉之力.技能 = 血脉技能;
+    else delete 角色.血脉之力.技能;
+    if (血脉被动) 角色.血脉之力.被动 = 血脉被动;
+    else delete 角色.血脉之力.被动;
+    取血脉气血魂环条目_V1(角色.血脉之力).forEach(([, 魂环]) => 收口更新视图气血魂环技能_V1(魂环));
+    if (!Object.keys(角色.血脉之力).length) delete 角色.血脉之力;
+  }
+
+  Object.values(角色.魂骨 || {}).forEach(魂骨 => {
+    if (!魂骨 || typeof 魂骨 !== 'object' || Array.isArray(魂骨)) return;
+    const 附带技能 = 构建更新视图技能表薄片_V1(魂骨.附带技能);
+    if (附带技能) 魂骨.附带技能 = 附带技能;
+    else delete 魂骨.附带技能;
+  });
+}
+
+function 构建更新视图状态物品薄片_V1(记录 = {}, 字段列表 = []) {
+  if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return undefined;
+  const 输出 = {};
+  字段列表.forEach(字段 => {
+    const 忽略列表 = 字段 === '装备状态' ? ['未装备'] : 字段 === '状态' ? ['未装备', 'intact', '完好', '无'] : [];
+    if (更新视图字段有运行值_V1(记录[字段], { 忽略文本列表: 忽略列表 })) 输出[字段] = cloneJsonValue(记录[字段], 记录[字段]);
+  });
+  const 装备技能 = 构建更新视图技能表薄片_V1(记录.装备技能);
+  if (装备技能) 输出.装备技能 = 装备技能;
+  return Object.keys(输出).length ? 输出 : undefined;
+}
+
+function 构建更新视图斗铠薄片_V1(斗铠 = {}) {
+  if (!斗铠 || typeof 斗铠 !== 'object' || Array.isArray(斗铠)) return undefined;
+  const 输出 = {};
+  const 部件输出 = {};
+  Object.entries(斗铠.部件 || {}).forEach(([部件名, 部件]) => {
+    if (!部件 || typeof 部件 !== 'object' || Array.isArray(部件)) return;
+    const 部件薄片 = {};
+    ['状态', '耐久', '绑定者'].forEach(字段 => {
+      const 忽略列表 = 字段 === '状态' ? ['完好', '未打造', '无'] : [];
+      if (更新视图字段有运行值_V1(部件[字段], { 忽略文本列表: 忽略列表 })) 部件薄片[字段] = cloneJsonValue(部件[字段], 部件[字段]);
+    });
+    if (Object.keys(部件薄片).length) 部件输出[部件名] = 部件薄片;
+  });
+  if (Object.keys(部件输出).length) 输出.部件 = 部件输出;
+  if (更新视图字段有运行值_V1(斗铠.装备状态, { 忽略文本列表: ['未装备'] })) 输出.装备状态 = cloneJsonValue(斗铠.装备状态, 斗铠.装备状态);
+  return Object.keys(输出).length ? 输出 : undefined;
+}
+
+function 构建更新视图魂导器薄片_V1(魂导器 = {}) {
+  const 装配 = 魂导器?.装配 && typeof 魂导器.装配 === 'object' && !Array.isArray(魂导器.装配) ? 魂导器.装配 : {};
+  const 输出装配 = {};
+  Object.entries(装配).forEach(([槽位, 记录]) => {
+    const 薄片 = 构建更新视图状态物品薄片_V1(记录, ['耐久', '剩余使用次数', '绑定者']);
+    if (薄片) 输出装配[槽位] = 薄片;
+  });
+  return Object.keys(输出装配).length ? { 装配: 输出装配 } : undefined;
+}
+
+function 构建更新视图装备薄片_V1(装备 = {}) {
+  if (!装备 || typeof 装备 !== 'object' || Array.isArray(装备)) return undefined;
+  const 输出 = {};
+  const 武器 = 构建更新视图状态物品薄片_V1(装备.武器, ['耐久', '剩余使用次数', '绑定者']);
+  const 防具 = 构建更新视图状态物品薄片_V1(装备.防具, ['装备状态', '耐久', '绑定者']);
+  const 斗铠 = 构建更新视图斗铠薄片_V1(装备.斗铠);
+  const 机甲 = 构建更新视图状态物品薄片_V1(装备.机甲, ['状态', '装备状态', '耐久', '绑定者']);
+  const 魂导器 = 构建更新视图魂导器薄片_V1(装备.魂导器);
+  if (武器) 输出.武器 = 武器;
+  if (防具) 输出.防具 = 防具;
+  if (斗铠) 输出.斗铠 = 斗铠;
+  if (机甲) 输出.机甲 = 机甲;
+  if (魂导器) 输出.魂导器 = 魂导器;
+  return Object.keys(输出).length ? 输出 : undefined;
+}
+
 function 注入运行时简易效果描述_V1(节点 = null, 选项 = {}) {
   if (!节点 || typeof 节点 !== 'object') return;
   if (Array.isArray(节点)) {
@@ -2981,16 +3221,22 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     if (!角色 || typeof 角色 !== 'object') return;
     injectRuntimeCharacterTodoDefaults_V1(角色, 角色名, 数据根?.char?.[角色名], 注入数据根);
     注入运行时简易效果描述_V1(角色, { 当前tick });
+    收口更新视图角色技能_V1(角色);
     清理运行时已补全技能效果数组_V1(角色);
-    const 过滤后角色 = 过滤MVU更新视图值_V1(角色, ['char', '示例角色']);
-    if (过滤后角色) {
+    const 过滤后角色 = 过滤MVU更新视图值_V1(角色, ['char', '示例角色']) || {};
+    const 装备薄片 = 构建更新视图装备薄片_V1(角色.装备);
+    if (装备薄片) 过滤后角色.装备 = 装备薄片;
+    else delete 过滤后角色.装备;
+    if (Object.keys(过滤后角色).length) {
       if (!魂骨命中 && 过滤后角色.魂骨) delete 过滤后角色.魂骨;
       if (战斗进行中) {
         战斗中无关字段_V1.forEach(字段 => { if (字段 in 过滤后角色) delete 过滤后角色[字段]; });
         if (过滤后角色.属性 && typeof 过滤后角色.属性 === 'object') delete 过滤后角色.属性.背景;
       }
-      视图.char[角色名] = 过滤后角色;
-      已发送角色名集合.add(角色名);
+      if (Object.keys(过滤后角色).length) {
+        视图.char[角色名] = 过滤后角色;
+        已发送角色名集合.add(角色名);
+      }
     }
     Object.keys(角色?.社交?.势力 || {}).forEach(势力名 => 势力名集合.add(势力名));
   });

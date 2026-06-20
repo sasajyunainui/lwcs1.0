@@ -88,6 +88,7 @@ const EquipmentSchema = z
             体力上限: z.union([z.coerce.number(), z.string()]).prefault(0),
           })
           .prefault({}),
+        加成方向: z.array(z.enum(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限', '全属性'])).prefault([]),
       })
       .prefault({}),
     防具: z
@@ -109,6 +110,7 @@ const EquipmentSchema = z
             体力上限: z.union([z.coerce.number(), z.string()]).prefault(0),
           })
           .prefault({}),
+        加成方向: z.array(z.enum(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限', '全属性'])).prefault([]),
       })
       .prefault({}),
     斗铠: z

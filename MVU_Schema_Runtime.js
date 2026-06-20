@@ -324,7 +324,7 @@ var 物品分类列表_V1 = Object.freeze([
 ]);
 var 物品分类集合_V1 = new Set(物品分类列表_V1);
 var 可执行使用效果物品分类集合_V1 = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
-var 装备物品分类集合_V1 = new Set(['近战武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+var 装备物品分类集合_V1 = new Set(['近战武器', '远程武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
 var 动态金属块基础金属候选表_V1 = Object.freeze({
   1: Object.freeze(['钢精']),
   2: Object.freeze(['沉银', '钢精']),
@@ -334,6 +334,11 @@ var 动态金属块基础金属候选表_V1 = Object.freeze({
 });
 var 物品经济品质列表_V1 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
 var 物品经济品质集合_V1 = new Set(物品经济品质列表_V1);
+var 装备加成属性列表_V1 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
+var 装备加成方向列表_V1 = Object.freeze([...装备加成属性列表_V1, '全属性']);
+var 装备加成方向集合_V1 = new Set(装备加成方向列表_V1);
+var 非神器装备品质等级差表_V1 = Object.freeze({ 普通: 0.2, 优秀: 0.4, 稀有: 1.0, 史诗: 1.4, 传说: 1.8 });
+var 装备属性键映射_V1 = Object.freeze({ 魂力上限: 'sp_max', 精神力上限: 'men_max', 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max' });
 
 function 规范化物品分类_V1(分类 = '', fallback = '剧情杂物') {
   const 文本 = String(分类 || '').trim();
@@ -345,12 +350,140 @@ function 规范化物品经济品质_V1(品质 = '', 物品名 = '', 分类 = ''
   if (物品经济品质集合_V1.has(文本)) return 文本;
   const 判定文本 = `${物品名} ${分类} ${文本}`;
   if (/超神器/.test(判定文本)) return '超神器';
-  if (/神器|神级/.test(判定文本)) return '神器';
-  if (/十万年|天锻|十二级|弑神|位面核心|极限斗罗|血脉核心|战略级/.test(判定文本)) return '传说';
+  if (/神器/.test(判定文本)) return '神器';
+  if (/十万年|天锻|神级金属|十二级|弑神|位面核心|极限斗罗|血脉核心|战略级/.test(判定文本)) return '传说';
   if (/万年|魂锻|灵锻|顶级|机密|高级|重型|最新型|九级|八级/.test(判定文本)) return '史诗';
   if (/千年|千锻|有灵合金|稀有|战术|秘密|特殊|特种|珍贵|军用/.test(判定文本)) return '稀有';
   if (/百年|黄级|优秀|高级制式/.test(判定文本)) return '优秀';
   return '普通';
+}
+
+function 判断神器品质_V1(品质 = '') {
+  const 文本 = String(品质 || '').trim();
+  return 文本 === '神器' || 文本 === '超神器';
+}
+
+function 规范化装备加成方向_V1(来源方向 = []) {
+  const 原始列表 = Array.isArray(来源方向)
+    ? 来源方向
+    : String(来源方向 || '')
+      .split(/[,\n，、|/]+/)
+      .map(片段 => 片段.trim());
+  const 输出 = [];
+  原始列表.forEach(方向 => {
+    const 文本 = String(方向 || '').trim();
+    if (!文本 || !装备加成方向集合_V1.has(文本) || 输出.includes(文本)) return;
+    输出.push(文本);
+  });
+  return 输出;
+}
+
+function 校验装备属性加成百分比_V1(属性加成 = {}, 选项 = {}) {
+  const 来源 = 属性加成 && typeof 属性加成 === 'object' && !Array.isArray(属性加成) ? 属性加成 : {};
+  const 允许百分比 = !!选项.允许百分比;
+  Object.entries(来源).forEach(([属性名, 属性值]) => {
+    if (!装备加成属性列表_V1.includes(属性名)) return;
+    if (/^[+-]?\d+(?:\.\d+)?%$/.test(String(属性值 ?? '').trim()) && !允许百分比) {
+      throw new Error(`非神器装备属性加成禁止百分比：${String(选项.物品名 || '未命名')}·${属性名}`);
+    }
+  });
+  return 来源;
+}
+
+function 计算稳定哈希数值_V1(文本 = '') {
+  let 哈希 = 2166136261;
+  String(文本 || '').split('').forEach(字符 => {
+    哈希 ^= 字符.charCodeAt(0);
+    哈希 += (哈希 << 1) + (哈希 << 4) + (哈希 << 7) + (哈希 << 8) + (哈希 << 24);
+  });
+  return 哈希 >>> 0;
+}
+
+function 读取稳定随机数_V1(文本 = '') {
+  return (计算稳定哈希数值_V1(文本) % 10000) / 10000;
+}
+
+function 展开装备加成方向_V1(方向列表 = []) {
+  const 输出 = [];
+  规范化装备加成方向_V1(方向列表).forEach(方向 => {
+    const 展开列表 = 方向 === '全属性' ? 装备加成属性列表_V1 : [方向];
+    展开列表.forEach(属性名 => {
+      if (!输出.includes(属性名)) 输出.push(属性名);
+    });
+  });
+  return 输出;
+}
+
+function 计算装备方向等级差表_V1(装备 = {}, 分类 = '') {
+  const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || '普通', 装备?.名称 || '', 分类);
+  const 主等级差 = Number(非神器装备品质等级差表_V1[品质] || 0);
+  const 方向列表 = 展开装备加成方向_V1(装备?.加成方向 || []);
+  if (!主等级差 || !方向列表.length || 判断神器品质_V1(品质)) return {};
+  if (方向列表.length === 1) {
+    const 属性名 = 方向列表[0];
+    const 浮动 = 0.9 + 读取稳定随机数_V1(`${装备?.名称 || ''}|${品质}|${分类}|${属性名}|单`) * 0.2;
+    return { [属性名]: 主等级差 * 浮动 };
+  }
+  const 总预算 = 主等级差 + 主等级差 * 0.6 * Math.max(0, 方向列表.length - 1);
+  const 权重表 = 方向列表.map(属性名 => ({
+    属性名,
+    权重: 0.75 + 读取稳定随机数_V1(`${装备?.名称 || ''}|${品质}|${分类}|${属性名}|多`) * 0.5,
+  }));
+  const 权重总和 = 权重表.reduce((总和, 条目) => 总和 + 条目.权重, 0) || 1;
+  return Object.fromEntries(权重表.map(条目 => [条目.属性名, 总预算 * 条目.权重 / 权重总和]));
+}
+
+function 读取有效手工装备属性加成_V1(装备 = {}, 允许百分比 = false) {
+  const 原始加成 = 装备?.属性加成 && typeof 装备.属性加成 === 'object' && !Array.isArray(装备.属性加成) ? 装备.属性加成 : {};
+  const 输出 = {};
+  let 有有效数值 = false;
+  Object.entries(原始加成).forEach(([键, 值]) => {
+    if (!装备加成属性列表_V1.includes(键)) return;
+    const 文本值 = String(值 ?? '').trim();
+    if (/^[+-]?\d+(?:\.\d+)?%$/.test(文本值)) {
+      if (!允许百分比) throw new Error(`非神器装备属性加成禁止百分比：${String(装备?.名称 || '未命名')}·${键}`);
+      输出[键] = 文本值;
+      有有效数值 = true;
+      return;
+    }
+    const 数值 = Number(值);
+    if (!Number.isFinite(数值)) return;
+    输出[键] = 数值;
+    if (Math.floor(数值) !== 0) 有有效数值 = true;
+  });
+  return 有有效数值 ? 输出 : {};
+}
+
+function 判断常规装备定义_V1(物品分类 = '', 是魂导器 = false, 定义 = {}) {
+  const 分类 = String(物品分类 || '').trim();
+  if (['近战武器', '远程武器', '防具装备', '战术装备', '功能道具'].includes(分类) || 是魂导器) return true;
+  const 槽位 = String(定义?.装备槽位 || '').trim();
+  return !!槽位 && 槽位 !== '无' && !['魂骨', '斗铠部件', '机甲机体'].includes(分类);
+}
+
+function 角色应用物品定义可注册_V1(分类 = '', 定义 = {}) {
+  if (!定义 || typeof 定义 !== 'object' || Array.isArray(定义)) return false;
+  const 来源 = cloneJsonValue(定义, {});
+  ['名称', '装备状态', '状态', '耐久', '剩余使用次数', '绑定者', '有效期至tick', '品质系数', '_属性加成', '_已排异'].forEach(字段名 => delete 来源[字段名]);
+  if (来源.品阶 === '无') delete 来源.品阶;
+  if (来源.描述 === undefined || 来源.描述 === null || String(来源.描述 || '').trim() === '') delete 来源.描述;
+  if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
+    const 有效加成 = 读取有效手工装备属性加成_V1({ ...定义, 属性加成: 来源.属性加成 }, 判断神器品质_V1(定义?.品质 || 定义?.品阶));
+    if (Object.keys(有效加成).length) 来源.属性加成 = 有效加成;
+    else delete 来源.属性加成;
+  }
+  if (Array.isArray(来源.加成方向)) {
+    const 方向 = 规范化装备加成方向_V1(来源.加成方向);
+    if (方向.length) 来源.加成方向 = 方向;
+    else delete 来源.加成方向;
+  }
+  return Object.entries(来源).some(([键, 值]) => {
+    if (值 === undefined || 值 === null || 值 === '' || 值 === '无') return false;
+    if (Array.isArray(值)) return 值.length > 0;
+    if (值 && typeof 值 === 'object') return Object.keys(值).length > 0;
+    if (键 === '品质') return String(值 || '').trim() !== '普通';
+    return true;
+  });
 }
 
 function 是污染魂灵物品定义_V1(来源 = {}) {
@@ -414,11 +547,26 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
       if (来源[字段名] !== undefined && String(来源[字段名]).trim() && String(来源[字段名]).trim() !== '无') 输出[字段名] = cloneJsonValue(来源[字段名]);
     });
   }
-  if (装备物品分类集合_V1.has(物品分类) || 是魂导器) {
-    if (String(来源.装备槽位 || '').trim()) 输出.装备槽位 = String(来源.装备槽位).trim();
+  const 装备槽位 = String(来源.装备槽位 || '').trim();
+  const 是装备定义 = 装备物品分类集合_V1.has(物品分类) || 是魂导器 || (!!装备槽位 && 装备槽位 !== '无');
+  if (是装备定义) {
+    const 是神器定义 = 判断神器品质_V1(输出.品质);
+    const 是常规装备 = 判断常规装备定义_V1(物品分类, 是魂导器, 来源);
+    if (装备槽位) 输出.装备槽位 = 装备槽位;
     if (Number(来源.基础耐久 || 0) > 0) 输出.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
     if (Number(来源.基础使用次数 || 0) > 0) 输出.基础使用次数 = Math.max(1, Math.floor(Number(来源.基础使用次数 || 0)));
-    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 输出.属性加成 = cloneJsonValue(来源.属性加成, {});
+    if (是常规装备) {
+      const 加成方向 = 规范化装备加成方向_V1(来源.加成方向 || []);
+      if (加成方向.length) 输出.加成方向 = 加成方向;
+    }
+    if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
+      if (是神器定义) {
+        输出.属性加成 = cloneJsonValue(来源.属性加成, {});
+      } else {
+        const 手工加成 = 读取有效手工装备属性加成_V1({ 名称: 物品名, 属性加成: 来源.属性加成 }, false);
+        if (Object.keys(手工加成).length) 输出.属性加成 = 手工加成;
+      }
+    }
     if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 输出.属性倍率 = cloneJsonValue(来源.属性倍率, {});
     if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 输出.装备技能 = cloneJsonValue(来源.装备技能, {});
     if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 输出.附带魂技 = cloneJsonValue(来源.附带魂技, {});
@@ -549,37 +697,33 @@ function 合并分类物品定义_V1(data = {}, 物品名 = '', 定义 = {}, 分
 }
 
 function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
-  const 原始加成 = 装备?.属性加成 && typeof 装备.属性加成 === 'object' && !Array.isArray(装备.属性加成) ? 装备.属性加成 : {};
   const 结果 = {};
-  const 属性基准 = 角色?.属性 && typeof 角色.属性 === 'object' ? 角色.属性 : {};
-  const 基准已含本武器加成 = 角色?.属性基准模式 === '已含本武器加成';
-  const 类型文本 = String(装备?.类型 || 装备?.品阶 || 装备?.品质 || '').trim();
-  const 是神器装备 = 类型文本 === '神器' || 类型文本 === '超神器';
+  const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
+  const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
+  const 是神器装备 = 判断神器品质_V1(品质);
   const 角色等级 = Math.max(1, Number(角色?.属性?.等级 ?? 角色?.等级 ?? 角色?.lv ?? 1) || 1);
-  const 属性键映射 = { 魂力上限: 'sp_max', 精神力上限: 'men_max', 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max' };
-  Object.entries(原始加成).forEach(([键, 值]) => {
+  const 手工加成 = 读取有效手工装备属性加成_V1(装备, 是神器装备);
+  const 写入等级差加成 = (属性名, 等级差) => {
+    const 属性键 = 装备属性键映射_V1[属性名];
+    if (!属性键) return;
+    const 起始属性 = getBaseStats(角色等级);
+    const 目标属性 = getBaseStats(Math.max(1, 角色等级 + Number(等级差 || 0)));
+    结果[属性名] = Math.floor(Number(目标属性[属性键] || 0) - Number(起始属性[属性键] || 0));
+  };
+  Object.entries(手工加成).forEach(([键, 值]) => {
     const 文本值 = String(值 ?? '').trim();
     const 百分比匹配 = 文本值.match(/^([+-]?\d+(?:\.\d+)?)%$/);
     if (百分比匹配) {
       const 百分比数字 = Number(百分比匹配[1]);
-      const 属性键 = 属性键映射[键];
-      if (是神器装备 && 属性键) {
-        const 起始属性 = getBaseStats(角色等级);
-        const 目标属性 = getBaseStats(Math.max(1, 角色等级 + 百分比数字 / 10));
-        结果[键] = Math.floor(Number(目标属性[属性键] || 0) - Number(起始属性[属性键] || 0));
-        return;
-      }
-      const 百分比 = 百分比数字 / 100;
-      const 原始基准值 = Number(属性基准[键] || 0);
-      const 基准值 = 基准已含本武器加成 && 百分比 > -1
-        ? 原始基准值 / Math.max(0.0001, 1 + 百分比)
-        : 原始基准值;
-      结果[键] = Number.isFinite(基准值) && Number.isFinite(百分比) ? Math.floor(基准值 * 百分比) : 0;
+      if (是神器装备) 写入等级差加成(键, 百分比数字 / 10);
       return;
     }
     const 数值 = Number(值);
     结果[键] = Number.isFinite(数值) ? Math.floor(数值) : 0;
   });
+  if (!Object.keys(结果).length && !是神器装备) {
+    Object.entries(计算装备方向等级差表_V1({ ...装备, 品质 }, 分类)).forEach(([属性名, 等级差]) => 写入等级差加成(属性名, 等级差));
+  }
   return 结果;
 }
 
@@ -614,8 +758,11 @@ function 合并引用定义与状态_V1(物品表 = {}, 状态 = {}, 期望分�
   const 名称 = String(状态.名称 || '').trim();
   if (!名称 || 名称 === '无') return 状态;
   const 命中 = 查找物品定义于分类表_V1(物品表, 名称);
-  if (!命中 || (期望分类 && 命中.分类 !== 期望分类)) return 状态;
-  return { ...cloneJsonValue(命中.定义, {}), ...状态, 名称 };
+  const 期望集合 = Array.isArray(期望分类)
+    ? new Set(期望分类.map(分类 => String(分类 || '').trim()).filter(Boolean))
+    : new Set(String(期望分类 || '').trim() ? [String(期望分类 || '').trim()] : []);
+  if (!命中 || (期望集合.size && !期望集合.has(命中.分类))) return 状态;
+  return { ...cloneJsonValue(命中.定义, {}), ...状态, 名称, 物品分类: 命中.分类 };
 }
 
 function 水合角色物品引用_V1(数据根 = {}) {
@@ -623,7 +770,7 @@ function 水合角色物品引用_V1(数据根 = {}) {
   Object.values(数据根?.char || {}).forEach(char => {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
-      if (char.装备.武器 && typeof char.装备.武器 === 'object') char.装备.武器 = 合并引用定义与状态_V1(物品表, char.装备.武器, '近战武器');
+      if (char.装备.武器 && typeof char.装备.武器 === 'object') char.装备.武器 = 合并引用定义与状态_V1(物品表, char.装备.武器, ['近战武器', '远程武器']);
       if (char.装备.防具 && typeof char.装备.防具 === 'object') char.装备.防具 = 合并引用定义与状态_V1(物品表, char.装备.防具, '防具装备');
       if (char.装备.机甲 && typeof char.装备.机甲 === 'object') char.装备.机甲 = 合并引用定义与状态_V1(物品表, char.装备.机甲, '机甲机体');
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
@@ -682,7 +829,7 @@ function 注册角色应用物品定义_V1(data = {}) {
   };
   Object.values(data?.char || {}).forEach(char => {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
-    注册(char.装备?.武器?.名称, '近战武器', char.装备?.武器);
+    注册(char.装备?.武器?.名称, 读取物品定义显式分类_V1(char.装备?.武器, '近战武器'), char.装备?.武器);
     注册(char.装备?.防具?.名称, '防具装备', char.装备?.防具);
     注册(char.装备?.机甲?.名称, '机甲机体', char.装备?.机甲);
     Object.values(char.装备?.斗铠?.部件 || {}).forEach(部件 => 注册(部件?.名称, '斗铠部件', 部件));
@@ -1426,6 +1573,7 @@ function 规范化商品模板为物品定义_V1(商品名 = '', 商品模板 = 
   if (Number(模板.基础耐久 || 0) > 0) 定义.基础耐久 = Math.max(0, Math.floor(Number(模板.基础耐久 || 0)));
   if (Number(模板.基础使用次数 || 0) > 0) 定义.基础使用次数 = Math.max(1, Math.floor(Number(模板.基础使用次数 || 0)));
   if (Array.isArray(模板.使用效果) && 模板.使用效果.length) 定义.使用效果 = cloneJsonValue(模板.使用效果, []);
+  if (模板.加成方向 !== undefined) 定义.加成方向 = cloneJsonValue(模板.加成方向, []);
   if (模板.属性加成 && typeof 模板.属性加成 === 'object' && !Array.isArray(模板.属性加成)) 定义.属性加成 = cloneJsonValue(模板.属性加成, {});
   if (模板.属性倍率 && typeof 模板.属性倍率 === 'object' && !Array.isArray(模板.属性倍率)) 定义.属性倍率 = cloneJsonValue(模板.属性倍率, {});
   if (模板.装备技能 && typeof 模板.装备技能 === 'object' && !Array.isArray(模板.装备技能)) 定义.装备技能 = cloneJsonValue(模板.装备技能, {});
@@ -2466,7 +2614,9 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
     if (数据根.char[角色名] && !是内置角色空壳_V1(数据根.char[角色名])) return;
     const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根);
     if (!角色) return;
-    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(角色);
+    const 临时根 = { ...数据根, char: { [角色名]: 角色 } };
+    水合角色物品引用_V1(临时根);
+    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(临时根.char[角色名]);
     已写入.push(角色名);
   });
   if (已写入.length > 0) {
@@ -2505,7 +2655,9 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
     if (!节点列表.includes(开场节点)) return;
     const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根, { 指定快照节点: 开场节点 });
     if (!角色) return;
-    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(角色);
+    const 临时根 = { ...数据根, char: { [角色名]: 角色 } };
+    水合角色物品引用_V1(临时根);
+    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(临时根.char[角色名]);
     已写入.push(角色名);
   });
   if (已写入.length > 0) {
@@ -6545,6 +6697,7 @@ function 规范化Schema根转换_V1(data = {}) {
       pruneDynamicLocationStorageFields(locData);
     });
 
+    水合角色物品引用_V1(data);
     注册角色应用物品定义_V1(data);
     压缩角色应用物品引用_V1(data);
     裁剪数据根非魂师角色结构_V1(data);
@@ -7993,6 +8146,7 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
     : {}),
   补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
   按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+  计算装备属性加成: 计算装备属性加成_V1,
 };
 
 try {
@@ -8003,6 +8157,7 @@ try {
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
       按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+      计算装备属性加成: 计算装备属性加成_V1,
     };
   }
 } catch (错误) {}
@@ -8015,6 +8170,7 @@ try {
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
       按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+      计算装备属性加成: 计算装备属性加成_V1,
     };
   }
 } catch (错误) {}

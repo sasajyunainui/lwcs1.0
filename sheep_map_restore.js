@@ -39,7 +39,7 @@
       const 覆盖地址 = String(window.__LWCS_资源基础地址__ || window.parent?.__LWCS_资源基础地址__ || '').trim();
       if (覆盖地址) return 覆盖地址.endsWith('/') ? 覆盖地址 : `${覆盖地址}/`;
     } catch (错误) {}
-    return 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@af8ccb824f97b1f4ed0f77b7aec8abfeee975393/';
+    return 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@bf0218a6c40d25b246b46aa2a52a7482f9e1971b/';
   })();
   const ASSETS = {
     world: encodeURI(资源基础地址 + 'MAP.webp')

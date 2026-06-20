@@ -773,7 +773,7 @@
 3. 严防细节污染：禁止记录纯细节偏移（如衣服颜色、微小对话差异）。只有影响到上述5种“偏差类型”的事件才允许入表。
 
 {{偏差表专用上下文}}`,
-            initNode: "初始化时无须写入偏差记录；除非正文已经明确发生偏差事实。",
+            initNode: "正文已经明确发生偏差事实时，插入一条新记录用于记录偏差详情",
             deleteNode: "只允许删除状态为【收束】、被证明不会落地的【潜伏】、误写或重复记录。禁止删除仍影响当前世界线的【活跃】或【固化】记录。\nSQL示例: DELETE FROM deviation_ledger WHERE code = 'DV0001' AND status IN ('潜伏','收束');",
             updateNode: "同一对象、同一原著节点、同一偏差类型优先更新已有 DV，禁止重复新增。潜伏偏差落地时更新为【活跃】或【固化】；偏差被剧情圆回时可先更新为【收束】，随后删除该行。\nSQL示例: UPDATE deviation_ledger SET status = '活跃', deviation_level = '局部', butterfly_projection = '后续需监控某原著节点是否失效' WHERE code = 'DV0001';",
             insertNode: "仅当本轮最终正文或偏差专用上下文证明出现新的世界线偏差时插入。编码按现有最大 DV 递增，不得因为单纯预测风险插入确定性偏差。\nSQL示例: INSERT INTO deviation_ledger (row_id, code, status, deviation_type, deviation_level, deviation_note, butterfly_projection) VALUES ((SELECT COALESCE(MAX(row_id),0)+1 FROM deviation_ledger), 'DV0001', '活跃', '关系阵营', '局部', '【唐三】原著本该如何 VS 实际变成了什么。', '后续需监控某原著节点是否失效。');",
@@ -3713,7 +3713,7 @@ $CONTENT
     // --- [填表功能] 自动更新阈值默认常量 ---
     const DEFAULT_AUTO_UPDATE_THRESHOLD_ACU = 3;
     const DEFAULT_AUTO_UPDATE_FREQUENCY_ACU = 1;
-    const DEFAULT_AUTO_UPDATE_TOKEN_THRESHOLD_ACU = 500;
+    const DEFAULT_AUTO_UPDATE_TOKEN_THRESHOLD_ACU = 200;
     const AUTO_UPDATE_FLOOR_INCREASE_DELAY_ACU = 2000;
     // --- [填表功能] V2 checkpoint 自动生成默认阈值 ---
     const DEFAULT_CHECKPOINT_MAX_ENTRIES_AFTER_CHECKPOINT_ACU = 50;

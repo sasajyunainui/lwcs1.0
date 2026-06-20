@@ -2583,7 +2583,7 @@
   ]);
   const 物品定义分类集合_桥接 = new Set(物品定义分类列表_桥接);
   const 可使用物品分类集合_桥接 = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
-  const 装备物品分类集合_桥接 = new Set(['近战武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
+  const 装备物品分类集合_桥接 = new Set(['近战武器', '远程武器', '防具装备', '斗铠部件', '机甲机体', '魂骨']);
   const 魂导器装配槽位列表_桥接 = Object.freeze(['一号位', '二号位', '三号位', '四号位', '五号位', '六号位', '七号位', '八号位', '九号位', '十号位']);
   const 物品经济品质列表_桥接 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
   const 物品经济品质集合_桥接 = new Set(物品经济品质列表_桥接);
@@ -3178,9 +3178,9 @@
     const 首批 = 读取首个背包批次_桥接(安全状态);
     return {
       ...(命中?.定义 || {}),
-      物品分类: 命中?.分类 || '',
       ...安全状态,
       ...(首批 || {}),
+      物品分类: 命中?.分类 || 安全状态.物品分类 || '',
       数量: 读取背包总数量_桥接(安全状态),
     };
   }
@@ -3218,10 +3218,23 @@
     const 是魂导器 = 魂导等级 > 0 && !判断一次性魂导道具_桥接(物品名, { ...来源, 物品分类 });
     if (魂导等级 > 0) 记录.魂导等级 = 魂导等级;
     if (Number(来源.基础使用次数 || 0) > 0) 记录.基础使用次数 = Math.max(1, Math.floor(toNumber(来源.基础使用次数, 1)));
-    if (装备物品分类集合_桥接.has(物品分类) || 是魂导器) {
+    const 是装备定义 = 判断物品为装备_桥接(物品名, { ...来源, 物品分类 });
+    if (是装备定义 || 是魂导器) {
+      const 是神器装备 = 判断神器品质_桥接(记录.品质);
+      const 是常规装备 = 判断常规装备定义_桥接(物品分类, 是魂导器);
       if (toText(来源.装备槽位, '')) 记录.装备槽位 = toText(来源.装备槽位, '');
       if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
-      if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
+      if (是常规装备) {
+        const 加成方向 = 规范化装备加成方向_桥接(来源.加成方向 || []);
+        if (加成方向.length) 记录.加成方向 = 加成方向;
+      }
+      if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
+        校验装备属性加成百分比_桥接(来源.属性加成, { 物品名, 品质: 记录.品质 });
+        const 有效加成 = 是神器装备
+          ? cloneJsonValue(来源.属性加成, {})
+          : 读取有效手工装备属性加成_桥接(来源.属性加成, false);
+        if (Object.keys(有效加成).length) 记录.属性加成 = 有效加成;
+      }
       if (来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
       if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
       if (来源.附带魂技 && typeof 来源.附带魂技 === 'object' && !Array.isArray(来源.附带魂技)) 记录.附带魂技 = cloneJsonValue(来源.附带魂技, {});
@@ -3374,7 +3387,72 @@
   const 魂灵品质选项_桥接 = Object.freeze(['F', 'D', 'C', 'B', 'A', 'S', 'S+']);
   const 物品货币选项_桥接 = Object.freeze(['联邦币', '星罗币', '唐门积分', '学院积分', '战功', '血神功勋']);
   const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
-  const 物品属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '生命上限', '力量', '防御', '敏捷', '体力上限']);
+  const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
+  const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
+  const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
+  const 装备加成方向集合_桥接 = new Set(装备加成方向选项_桥接);
+  const 物品属性选项_桥接 = 装备加成属性选项_桥接;
+
+  function 判断神器品质_桥接(品质 = '') {
+    const 文本 = toText(品质, '').trim();
+    return 文本 === '神器' || 文本 === '超神器';
+  }
+
+  function 判断常规装备定义_桥接(物品分类 = '', 是魂导器 = false, 定义 = {}) {
+    const 分类 = toText(物品分类, '').trim();
+    if (['近战武器', '远程武器', '防具装备', '战术装备', '功能道具'].includes(分类) || !!是魂导器) return true;
+    const 槽位 = toText(定义?.装备槽位, '').trim();
+    return !!槽位 && 槽位 !== '无' && !['魂骨', '斗铠部件', '机甲机体'].includes(分类);
+  }
+
+  function 规范化装备加成方向_桥接(来源方向 = []) {
+    const 原始列表 = Array.isArray(来源方向)
+      ? 来源方向
+      : toText(来源方向, '')
+        .split(/[,\n，、|/]+/)
+        .map(片段 => 片段.trim());
+    const 输出 = [];
+    原始列表.forEach(方向 => {
+      const 文本 = toText(方向, '').trim();
+      if (!文本 || !装备加成方向集合_桥接.has(文本) || 输出.includes(文本)) return;
+      输出.push(文本);
+    });
+    return 输出;
+  }
+
+  function 读取装备属性加成百分比字段_桥接(值, 路径 = []) {
+    if (值 === undefined || 值 === null) return '';
+    if (/^[+-]?\d+(?:\.\d+)?%$/.test(toText(值, '').trim())) return 路径.join('.');
+    if (!值 || typeof 值 !== 'object' || Array.isArray(值)) return '';
+    for (const [键, 子值] of safeEntries(值)) {
+      const 命中 = 读取装备属性加成百分比字段_桥接(子值, [...路径, 键]);
+      if (命中) return 命中;
+    }
+    return '';
+  }
+
+  function 校验装备属性加成百分比_桥接(属性加成 = {}, 选项 = {}) {
+    if (判断神器品质_桥接(选项.品质)) return;
+    const 百分比字段 = 读取装备属性加成百分比字段_桥接(属性加成);
+    if (百分比字段) throw new Error(`非神器装备属性加成禁止百分比：${toText(选项.物品名, '未命名') || '未命名'}·${百分比字段}`);
+  }
+
+  function 读取有效手工装备属性加成_桥接(属性加成 = {}, 允许百分比 = false) {
+    const 来源 = 属性加成 && typeof 属性加成 === 'object' && !Array.isArray(属性加成) ? 属性加成 : {};
+    const 输出 = {};
+    safeEntries(来源).forEach(([键, 值]) => {
+      if (!装备加成属性集合_桥接.has(键)) return;
+      const 文本值 = toText(值, '').trim();
+      if (/^[+-]?\d+(?:\.\d+)?%$/.test(文本值)) {
+        if (允许百分比) 输出[键] = 文本值;
+        return;
+      }
+      const 数值 = Number(值);
+      if (!Number.isFinite(数值) || Math.floor(数值) === 0) return;
+      输出[键] = Math.floor(数值);
+    });
+    return 输出;
+  }
 
   function 构建物品定义选项列表(选项列表 = [], 当前值 = '') {
     const 当前文本 = toText(当前值, '').trim();
@@ -3471,6 +3549,18 @@
       </div>`;
   }
 
+  function 构建物品加成方向组(方向列表 = []) {
+    const 已选 = new Set(规范化装备加成方向_桥接(方向列表));
+    return `<div class="item-definition-kv-list" data-item-definition-direction-list>
+      ${装备加成方向选项_桥接
+        .map(方向 => `<label class="tag-chip">
+          <input type="checkbox" data-item-definition-direction value="${escapeHtmlAttr(方向)}"${已选.has(方向) ? ' checked' : ''} />
+          <span>${htmlEscape(方向)}</span>
+        </label>`)
+        .join('')}
+    </div>`;
+  }
+
   function 构建物品使用效果行(效果 = {}, 序号 = 0) {
     const 数据 = 效果 && typeof 效果 === 'object' && !Array.isArray(效果) ? 效果 : {};
     return `<div class="item-definition-effect-row" data-item-definition-effect-row data-item-effect-index="${escapeHtmlAttr(String(序号))}">
@@ -3536,8 +3626,9 @@
       '剧情杂物',
     );
     const 显示分类 = 推断物品分类(物品名, { ...定义, 物品分类 }, 实例);
-    const 是装备 = 装备物品分类集合_桥接.has(物品分类);
+    const 是装备 = 判断物品为装备_桥接(物品名, { ...定义, 物品分类 });
     const 是魂导器 = 读取魂导等级_桥接(定义) > 0 && !判断一次性魂导道具_桥接(物品名, { ...定义, 物品分类 });
+    const 是常规装备 = 判断常规装备定义_桥接(物品分类, 是魂导器, 定义);
     const 是魂骨 = 物品分类 === '魂骨';
     const 是消耗 = 可使用物品分类集合_桥接.has(物品分类);
     const 是锻造 = 物品分类 === '锻造金属';
@@ -3570,6 +3661,10 @@
       ${构建物品定义字段('装备槽位', '装备槽位', toText(定义.装备槽位, '无'), 'select', 物品装备槽位选项_桥接)}
       ${构建物品定义字段('基础耐久', '基础耐久', toNumber(定义.基础耐久, 0), 'number')}
     </div>
+    ${是常规装备 ? `<div class="item-definition-subblock">
+      <div class="mvu-editor-section-title">加成方向</div>
+      ${构建物品加成方向组(定义.加成方向)}
+    </div>` : ''}
     <div class="item-definition-subblock">
       <div class="mvu-editor-section-title">属性加成</div>
       ${构建物品键值组('属性加成', 定义.属性加成, ['力量', '防御'])}
@@ -3766,6 +3861,12 @@
     const 品质档案 = 读取物品品质档位_桥接(物品名, 合并物品);
     const 装备技能 = 定义.装备技能 && typeof 定义.装备技能 === 'object' && !Array.isArray(定义.装备技能) ? 定义.装备技能 : {};
     const 附带魂技 = 定义.附带魂技 && typeof 定义.附带魂技 === 'object' && !Array.isArray(定义.附带魂技) ? 定义.附带魂技 : {};
+    const 合并分类 = 合并物品.物品分类 || 合并物品.分类 || 分类;
+    const 是常规装备 = 判断常规装备定义_桥接(合并分类, 读取魂导等级_桥接(合并物品) > 0 && !判断一次性魂导道具_桥接(物品名, 合并物品), 合并物品);
+    const 加成方向 = 规范化装备加成方向_桥接(合并物品.加成方向 || []);
+    const 角色数据 = charKey && 选项参数.rootData?.char ? 选项参数.rootData.char[charKey] || {} : {};
+    const 派生属性加成 = 是常规装备 ? 计算装备属性加成_桥接({ ...合并物品, 名称: 物品名 }, 角色数据) : {};
+    const 展示属性加成 = Object.keys(派生属性加成).length ? 派生属性加成 : 定义.属性加成;
     if (!物品名 || 物品名 === '__new__') {
       return `<div class="mvu-inventory-inspector inventory-detail-terminal inventory-detail-terminal-empty">
         <div class="mvu-inventory-inspector-head">
@@ -3839,11 +3940,12 @@
                 ${构建物品解析字段组([
                   ['装备槽位', 合并物品.装备槽位 || '无'],
                   ['基础耐久', 合并物品.基础耐久 || 0],
+                  ...(加成方向.length ? [['加成方向', 加成方向.join('、')]] : []),
                 ])}
               </section>`
             : ''
         }
-        ${构建物品解析键值组('属性加成', 定义.属性加成)}
+        ${构建物品解析键值组('属性加成', 展示属性加成)}
         ${构建物品解析键值组('装备技能', 装备技能)}
         ${构建物品解析键值组('附带魂技', 附带魂技)}
         ${构建物品效果摘要组('物品效果', 合并物品.使用效果)}
@@ -3900,6 +4002,14 @@
       写入物品嵌套键(输出, 键名, 解析物品表单值(值节点 && 'value' in 值节点 ? 值节点.value : ''));
     });
     return 输出;
+  }
+
+  function 读取物品加成方向列表(表单节点) {
+    return 规范化装备加成方向_桥接(
+      Array.from(表单节点 ? 表单节点.querySelectorAll('[data-item-definition-direction]:checked') : [])
+        .map(输入 => toText(输入 && 'value' in 输入 ? 输入.value : '', '').trim())
+        .filter(Boolean),
+    );
   }
 
   function 读取物品使用效果列表(表单节点, 旧效果列表 = []) {
@@ -4015,18 +4125,25 @@
     if (魂导等级 > 0) 定义.魂导等级 = 魂导等级;
     const 装备槽位 = 读取物品定义输入值(表单节点, '装备槽位', toText(旧定义.装备槽位, '无')) || '无';
     const 是魂导器 = 魂导等级 > 0 && !判断一次性魂导道具_桥接(新名, { ...旧定义, 物品分类: 分类 });
-    if (装备物品分类集合_桥接.has(分类) || 是魂导器) {
+    const 是常规装备 = 判断常规装备定义_桥接(分类, 是魂导器, { ...旧定义, 装备槽位 });
+    const 是装备定义 = 判断物品为装备_桥接(新名, { ...旧定义, 物品分类: 分类, 装备槽位 });
+    if (是装备定义 || 是魂导器) {
       if (装备槽位 && 装备槽位 !== '无') 定义.装备槽位 = 装备槽位;
       定义.基础耐久 = Math.max(0, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础耐久', 旧定义.基础耐久), 0)));
     }
     const 使用效果 = 读取物品使用效果列表(表单节点, 旧定义.使用效果);
     const 使用副作用列表 = 读取物品使用副作用列表(表单节点);
     const 属性加成 = 读取物品键值对象(表单节点, '属性加成');
+    const 加成方向 = 读取物品加成方向列表(表单节点);
     const 装备技能 = 读取物品装备技能表(表单节点, 旧定义.附带技能 || 旧定义.装备技能);
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
     if (可使用物品分类集合_桥接.has(分类) && 使用副作用列表.length) 定义.副作用列表 = 使用副作用列表;
-    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
-    if ((装备物品分类集合_桥接.has(分类) || 是魂导器) && Object.keys(装备技能).length) {
+    if (是常规装备 && 加成方向.length) 定义.加成方向 = 加成方向;
+    if ((是装备定义 || 是魂导器) && Object.keys(属性加成).length) {
+      校验装备属性加成百分比_桥接(属性加成, { 物品名: 新名, 品质: 定义.品质 });
+      定义.属性加成 = 属性加成;
+    }
+    if ((是装备定义 || 是魂导器) && Object.keys(装备技能).length) {
       if (分类 === '魂骨') 定义.附带技能 = 装备技能;
       else 定义.装备技能 = 装备技能;
     }
@@ -4565,7 +4682,7 @@
 
   function 读取事件消息引用_桥接(选项 = {}) {
     const 来源 = 选项 && typeof 选项 === 'object' ? 选项 : {};
-    return 来源.消息引用 ?? 来源.消息编号 ?? 来源.消息索引 ?? 来源.messageId ?? 来源.message_id;
+    return 来源?.目标消息元信息?.消息编号 ?? 来源.消息引用 ?? 来源.消息编号 ?? 来源.消息索引 ?? 来源.messageId ?? 来源.message_id;
   }
 
   function 读取冷档恢复目标楼层_桥接(选项 = {}) {
@@ -4610,6 +4727,15 @@
   }
 
   function 构建冷归档自动检查消息键_桥接(选项 = {}) {
+    const 目标元信息 = 读取自动归档目标消息元信息_桥接(选项);
+    if (目标元信息) {
+      return [
+        目标元信息.chatKey || 取当前聊天归档标识_桥接(),
+        目标元信息.消息编号,
+        目标元信息.滑动编号,
+        目标元信息.文本签名,
+      ].join('|');
+    }
     const 聊天 = 读取当前聊天数组_桥接();
     let 目标索引 = 定位聊天消息索引_桥接(聊天, 读取事件消息引用_桥接(选项));
     if (目标索引 < 0 && 选项.使用最新AI !== false) {
@@ -4695,6 +4821,61 @@
       角色索引,
       有消息对: 用户索引 >= 0 && 角色索引 >= 0,
     };
+  }
+
+  function 构建聊天消息文本签名_桥接(消息 = {}) {
+    return 计算内置角色实例化文本签名_桥接(读取聊天消息正文_桥接(消息));
+  }
+
+  function 读取AI楼层元信息_桥接(消息索引 = -1) {
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 索引 = Math.floor(Number(消息索引));
+    const 消息 = Number.isInteger(索引) && 索引 >= 0 && 索引 < 聊天.length ? 聊天[索引] : null;
+    if (!消息 || 消息.is_user) return null;
+    return {
+      chatKey: 取当前聊天归档标识_桥接(),
+      消息索引: 索引,
+      消息编号: 读取聊天消息编号_桥接(消息, 索引),
+      滑动编号: 读取聊天消息当前滑动编号_桥接(消息),
+      文本签名: 构建聊天消息文本签名_桥接(消息),
+    };
+  }
+
+  function 查找上一AI楼层元信息_桥接(当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    const 聊天 = 读取当前聊天数组_桥接();
+    for (let 索引 = Math.min(Math.floor(Number(当前楼层)) - 1, 聊天.length - 1); 索引 >= 0; 索引 -= 1) {
+      const 元信息 = 读取AI楼层元信息_桥接(索引);
+      if (元信息) return 元信息;
+    }
+    return null;
+  }
+
+  function 读取归档目标楼层_桥接(选项 = {}, 消息编号 = '') {
+    const 来源 = 选项 && typeof 选项 === 'object' ? 选项 : {};
+    const 明确索引 = Number(来源?.目标消息元信息?.消息索引 ?? 来源.楼层);
+    if (Number.isInteger(明确索引) && 明确索引 >= 0) return 明确索引;
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 定位索引 = 定位聊天消息索引_桥接(聊天, 消息编号 || 读取事件消息引用_桥接(来源));
+    if (定位索引 >= 0) return 定位索引;
+    return 读取当前最新聊天楼层_桥接();
+  }
+
+  function 目标AI楼层仍匹配_桥接(目标消息元信息 = null) {
+    if (!目标消息元信息 || typeof 目标消息元信息 !== 'object') return false;
+    if (目标消息元信息.chatKey && 目标消息元信息.chatKey !== 取当前聊天归档标识_桥接()) return false;
+    const 当前元信息 = 读取AI楼层元信息_桥接(目标消息元信息.消息索引);
+    if (!当前元信息) return false;
+    return 当前元信息.消息编号 === toText(目标消息元信息.消息编号, '')
+      && String(当前元信息.滑动编号) === String(目标消息元信息.滑动编号 ?? '')
+      && 当前元信息.文本签名 === toText(目标消息元信息.文本签名, '');
+  }
+
+  function 读取自动归档目标消息元信息_桥接(选项 = {}) {
+    const 来源 = 选项 && typeof 选项 === 'object' ? 选项 : {};
+    if (来源.目标消息元信息 && typeof 来源.目标消息元信息 === 'object') return 来源.目标消息元信息;
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 目标索引 = 定位聊天消息索引_桥接(聊天, 读取事件消息引用_桥接(来源));
+    return 目标索引 >= 0 ? 读取AI楼层元信息_桥接(目标索引) : null;
   }
 
   function 规范化冷实体激活类型_桥接(类型 = '') {
@@ -5464,25 +5645,53 @@
   }
 
   function 调度冷归档楼层自动归档_桥接(延迟 = 1500, 选项 = {}) {
+    const 目标消息元信息 = 读取自动归档目标消息元信息_桥接(选项);
+    if (!目标消息元信息) {
+      console.warn('[DragonUI] 冷归档自动归档跳过：缺少明确目标楼层。');
+      return;
+    }
     const 自动检查消息键 = 构建冷归档自动检查消息键_桥接(选项);
     if (!选项.force && 自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
     if (冷归档楼层清理状态_桥接.autoTimer) window.clearTimeout(冷归档楼层清理状态_桥接.autoTimer);
     冷归档楼层清理状态_桥接.autoTimer = window.setTimeout(() => {
       冷归档楼层清理状态_桥接.autoTimer = 0;
+      if (!目标AI楼层仍匹配_桥接(目标消息元信息)) return;
       if (冷归档楼层清理状态_桥接.变量更新中) {
-        const 等待次数 = Math.max(0, Math.floor(Number(选项.等待变量更新次数) || 0));
-        if (等待次数 < 20) {
-          调度冷归档楼层自动归档_桥接(3000, { ...选项, 等待变量更新次数: 等待次数 + 1 });
-        }
         return;
       }
-      按阈值自动归档MVU冷实体_桥接({ 触发来源: '楼层增加', ...(选项 && typeof 选项 === 'object' ? 选项 : {}) })
+      按阈值自动归档MVU冷实体_桥接({
+        触发来源: '下一楼层',
+        跳过冷却: true,
+        需要明确目标: true,
+        ...(选项 && typeof 选项 === 'object' ? 选项 : {}),
+        目标消息元信息,
+      })
         .then(结果 => {
-          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'no_visible_message_pair'].includes(结果 && 结果.reason);
+          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'target_missing', 'target_changed'].includes(结果 && 结果.reason);
           if (!选项.force && 自动检查消息键 && !未进入检查) 冷归档楼层清理状态_桥接.已自动检查消息键表.add(自动检查消息键);
         })
         .catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
     }, Math.max(0, Number(延迟) || 0));
+  }
+
+  function 检查冷归档楼层增长自动归档_桥接(触发来源 = '楼层增长') {
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (
+      chatKey !== 冷归档楼层清理状态_桥接.chatKey ||
+      冷归档楼层清理状态_桥接.最新楼层 < 0 ||
+      当前楼层 <= 冷归档楼层清理状态_桥接.最新楼层
+    ) {
+      return;
+    }
+    const 目标消息元信息 = 查找上一AI楼层元信息_桥接(当前楼层);
+    if (!目标消息元信息 || !目标AI楼层仍匹配_桥接(目标消息元信息)) return;
+    调度冷归档楼层自动归档_桥接(350, {
+      目标消息元信息,
+      使用最新AI: false,
+      需要可见消息对: false,
+      触发来源,
+    });
   }
 
   function 安装冷归档楼层监视器_桥接() {
@@ -5496,11 +5705,12 @@
       const eventSource = 上下文 && 上下文.eventSource;
       if (!eventSource || typeof eventSource.on !== 'function') return false;
       const eventTypes = 上下文.eventTypes || {};
-      ['CHAT_CHANGED', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED'].forEach(事件键 => {
+      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED'].forEach(事件键 => {
         const 事件名 = eventTypes[事件键] || 事件键;
         if (!事件名) return;
         try {
           eventSource.on(事件名, (...事件参数) => {
+            检查冷归档楼层增长自动归档_桥接(事件键);
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
         } catch (错误) {}
@@ -5526,7 +5736,6 @@
             冷归档楼层清理状态_桥接.变量更新中 = false;
             if (冷归档楼层清理状态_桥接.变量更新兜底计时器) window.clearTimeout(冷归档楼层清理状态_桥接.变量更新兜底计时器);
             冷归档楼层清理状态_桥接.变量更新兜底计时器 = 0;
-            调度冷归档楼层自动归档_桥接(2500, { 需要可见消息对: true, 使用最新AI: true, 触发来源: 'MVU更新完成' });
           });
         } catch (错误) {}
       }
@@ -5545,6 +5754,7 @@
           调度冷归档楼层清理_桥接(0);
           return;
         }
+        检查冷归档楼层增长自动归档_桥接('轮询楼层增长');
         冷归档楼层清理状态_桥接.chatKey = chatKey;
         冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
       }, 2500);
@@ -5876,14 +6086,14 @@
     return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(毫秒) || 0)));
   }
 
-  async function 复读确认归档已移出热区_桥接(名称列表 = [], 查找残留名称, 类型名 = '对象') {
+  async function 复读确认归档已移出热区_桥接(名称列表 = [], 查找残留名称, 类型名 = '对象', 选项 = {}) {
     const 待确认名称 = (Array.isArray(名称列表) ? 名称列表 : [名称列表])
       .map(名称 => toText(名称, '').trim())
       .filter(Boolean);
     let 最后残留名称 = [];
     for (let 尝试次数 = 0; 尝试次数 < 归档复读确认次数_桥接; 尝试次数 += 1) {
       if (尝试次数 > 0) await 等待毫秒_桥接(归档复读确认间隔毫秒_桥接);
-      const { mvuData } = await readLatestMvuDataByEditor();
+      const { mvuData } = await readLatestMvuDataByEditor(选项);
       const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
       最后残留名称 = typeof 查找残留名称 === 'function' ? 查找残留名称(statData, 待确认名称) : [];
       if (!最后残留名称.length) return statData;
@@ -5891,7 +6101,7 @@
     throw new Error(`归档副本已生成，但热 MVU 同步未完成：${类型名} ${最后残留名称.join('、')}`);
   }
 
-  async function 复读确认归档角色已移出热区_桥接(角色名列表 = []) {
+  async function 复读确认归档角色已移出热区_桥接(角色名列表 = [], 选项 = {}) {
     return 复读确认归档已移出热区_桥接(
       角色名列表,
       (statData, 名称列表) => {
@@ -5899,10 +6109,11 @@
         return 名称列表.filter(名称 => 角色集[名称]);
       },
       '角色',
+      选项,
     );
   }
 
-  async function 复读确认归档动态地点已移出热区_桥接(地点名列表 = []) {
+  async function 复读确认归档动态地点已移出热区_桥接(地点名列表 = [], 选项 = {}) {
     return 复读确认归档已移出热区_桥接(
       地点名列表,
       (statData, 名称列表) => {
@@ -5911,14 +6122,16 @@
         return 名称列表.filter(名称 => 地点表[名称]);
       },
       '动态地点',
+      选项,
     );
   }
 
-  async function 复读确认归档物品已移出热区_桥接(物品名列表 = []) {
+  async function 复读确认归档物品已移出热区_桥接(物品名列表 = [], 选项 = {}) {
     return 复读确认归档已移出热区_桥接(
       物品名列表,
       (statData, 名称列表) => 名称列表.filter(名称 => 查找物品定义_桥接(statData, 名称)),
       '物品',
+      选项,
     );
   }
 
@@ -6137,7 +6350,8 @@
   }
 
   async function 读取角色归档文件_桥接(输入 = '', 选项 = {}) {
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 指定楼层 = Math.floor(Number(选项.楼层));
+    const 当前楼层 = Number.isInteger(指定楼层) && 指定楼层 >= 0 ? 指定楼层 : 读取当前最新聊天楼层_桥接();
     if (输入 && typeof 输入 === 'object') {
       if (输入.数据 && typeof 输入.数据 === 'object') {
         const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
@@ -6158,7 +6372,8 @@
   }
 
   async function 读取动态地点归档文件_桥接(输入 = '', 选项 = {}) {
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 指定楼层 = Math.floor(Number(选项.楼层));
+    const 当前楼层 = Number.isInteger(指定楼层) && 指定楼层 >= 0 ? 指定楼层 : 读取当前最新聊天楼层_桥接();
     if (输入 && typeof 输入 === 'object') {
       if (输入.数据 && typeof 输入.数据 === 'object') {
         const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
@@ -6179,7 +6394,8 @@
   }
 
   async function 读取物品归档文件_桥接(输入 = '', 选项 = {}) {
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 指定楼层 = Math.floor(Number(选项.楼层));
+    const 当前楼层 = Number.isInteger(指定楼层) && 指定楼层 >= 0 ? 指定楼层 : 读取当前最新聊天楼层_桥接();
     if (输入 && typeof 输入 === 'object') {
       if (输入.数据 && typeof 输入.数据 === 'object') {
         const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
@@ -6202,7 +6418,7 @@
   async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
     const 待归档名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
@@ -6223,7 +6439,7 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+    const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
     for (const 角色名 of 可归档) 上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
     const manifest = cloneJsonValue(await 读取角色归档Manifest_桥接({ force: true }), 创建空角色归档Manifest_桥接(chatKey));
@@ -6240,7 +6456,7 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档角色已移出热区_桥接(可归档);
+    const 复读StatData = await 复读确认归档角色已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
@@ -6249,7 +6465,7 @@
   async function 归档MVU动态地点_桥接(地点名列表 = [], 选项 = {}) {
     const 待归档名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     if (!statData.world || typeof statData.world !== 'object') statData.world = {};
@@ -6271,7 +6487,7 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+    const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
     for (const 地点名 of 可归档) 上传索引.push(await 上传动态地点归档文件_桥接(地点名, 动态地点[地点名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
     const manifest = cloneJsonValue(await 读取动态地点归档Manifest_桥接({ force: true }), 创建空动态地点归档Manifest_桥接(chatKey));
@@ -6289,7 +6505,7 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档动态地点已移出热区_桥接(可归档);
+    const 复读StatData = await 复读确认归档动态地点已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
@@ -6298,7 +6514,7 @@
   async function 归档MVU物品定义_桥接(物品名列表 = [], 选项 = {}) {
     const 待归档名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
-    const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     确保物品定义分类表_桥接(statData);
@@ -6319,7 +6535,7 @@
     const chatKey = 取当前聊天归档标识_桥接();
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+    const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
     for (const 物品名 of 可归档) {
       const 命中 = 查找物品定义_桥接(statData, 物品名);
@@ -6339,7 +6555,7 @@
     } catch (错误) {
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档物品已移出热区_桥接(可归档);
+    const 复读StatData = await 复读确认归档物品已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
     await refreshLiveSnapshot({ force: true });
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
@@ -6380,6 +6596,14 @@
       throw new Error('MVU Schema 归档角色时间补结算接口未加载');
     }
     return 运行时接口.补结算归档角色时间流逝(角色名, 角色数据, 变量根, 起始tick, 当前tick);
+  }
+
+  function 计算装备属性加成_桥接(装备 = {}, 角色 = {}) {
+    const 运行时接口 = 读取MVUSchema运行时接口_桥接();
+    if (运行时接口 && typeof 运行时接口.计算装备属性加成 === 'function') {
+      return 运行时接口.计算装备属性加成(装备, 角色);
+    }
+    return cloneJsonValue(装备 && typeof 装备 === 'object' ? 装备.属性加成 || {} : {}, {});
   }
 
   async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
@@ -6695,9 +6919,9 @@
     return !Object.keys(角色索引).length && !Object.keys(动态地点索引).length && !Object.keys(物品索引).length;
   }
 
-  function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
+  function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    const 当前楼层 = 读取归档目标楼层_桥接(选项);
     const 保护角色 = 收集归档保护角色名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     return safeEntries(statData.char || {})
@@ -6712,9 +6936,9 @@
       .map(([角色名]) => 角色名);
   }
 
-  function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接) {
+  function 选择自动归档动态地点名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    const 当前楼层 = 读取归档目标楼层_桥接(选项);
     const 保护地点 = 收集归档保护动态地点名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 本轮命中地点 = new Set(
@@ -6744,7 +6968,7 @@
 
   function 选择自动归档物品名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
     const 当前tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
-    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    const 当前楼层 = 读取归档目标楼层_桥接(选项);
     const 保护物品 = 收集归档保护物品名_桥接(statData);
     const 数量上限 = Number.isFinite(Number(上限)) ? Math.max(0, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     const 允许分类 = Array.isArray(选项.允许分类) ? new Set(选项.允许分类.map(分类 => 规范化物品定义分类_桥接(分类, '')).filter(Boolean)) : null;
@@ -6772,6 +6996,12 @@
 
   async function 按阈值自动归档MVU冷实体_桥接(选项 = {}) {
     const chatKey = 取当前聊天归档标识_桥接();
+    const 目标消息元信息 = 读取自动归档目标消息元信息_桥接(选项);
+    if (选项.需要明确目标 && !目标消息元信息) return { changed: false, reason: 'target_missing' };
+    if (目标消息元信息 && !目标AI楼层仍匹配_桥接(目标消息元信息)) return { changed: false, reason: 'target_changed' };
+    const 归档选项 = 目标消息元信息
+      ? { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), 目标消息元信息, message_id: 目标消息元信息.消息编号, 消息编号: 目标消息元信息.消息编号, 楼层: 目标消息元信息.消息索引, 禁止目标回退: true }
+      : 选项;
     if (冷归档自动归档状态_桥接.chatKey !== chatKey) {
       冷归档自动归档状态_桥接.chatKey = chatKey;
       冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
@@ -6790,11 +7020,11 @@
       try {
         const 状态 = await 检查冷归档服务_桥接();
         if (!状态.可用 || !状态.可写) return { changed: false, reason: 'archive_unavailable' };
-        const { mvuData } = await readLatestMvuDataByEditor();
+        const { mvuData } = await readLatestMvuDataByEditor(归档选项);
         const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
-        const 已传捕获文本 = Object.prototype.hasOwnProperty.call(选项, '捕获文本');
-        const 自动归档消息对 = 已传捕获文本 ? null : 读取冷归档自动归档消息对_桥接(选项);
-        const 捕获文本 = 已传捕获文本 ? toText(选项.捕获文本, '') : toText(自动归档消息对.捕获文本, '');
+        const 已传捕获文本 = Object.prototype.hasOwnProperty.call(归档选项, '捕获文本');
+        const 自动归档消息对 = 已传捕获文本 ? null : 读取冷归档自动归档消息对_桥接(归档选项);
+        const 捕获文本 = 已传捕获文本 ? toText(归档选项.捕获文本, '') : toText(自动归档消息对.捕获文本, '');
         const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
         const 动态地点 = deepGet(statData, 'world.动态地点', {});
         const 物品分类压力 = 计算物品分类归档压力_桥接(statData);
@@ -6805,20 +7035,20 @@
           {
             类型: '角色',
             状态: 冷归档表超过阈值_桥接(角色集, 冷归档自动归档配置_桥接.角色数量阈值, 冷归档自动归档配置_桥接.角色字节阈值),
-            名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本, 本轮批量上限),
-            执行: 名称列表 => 归档MVU角色_桥接(名称列表),
+            名称列表: () => 选择自动归档角色名_桥接(statData, 捕获文本, 本轮批量上限, 归档选项),
+            执行: 名称列表 => 归档MVU角色_桥接(名称列表, 归档选项),
           },
           {
             类型: '动态地点',
             状态: 冷归档表超过阈值_桥接(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}, 冷归档自动归档配置_桥接.动态地点数量阈值, 冷归档自动归档配置_桥接.动态地点字节阈值),
-            名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本, 本轮批量上限),
-            执行: 名称列表 => 归档MVU动态地点_桥接(名称列表),
+            名称列表: () => 选择自动归档动态地点名_桥接(statData, 捕获文本, 本轮批量上限, 归档选项),
+            执行: 名称列表 => 归档MVU动态地点_桥接(名称列表, 归档选项),
           },
           {
             类型: '物品',
             状态: 物品分类压力,
-            名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 本轮批量上限, { ...选项, 允许分类: 物品分类压力.允许分类 }),
-            执行: 名称列表 => 归档MVU物品定义_桥接(名称列表),
+            名称列表: () => 选择自动归档物品名_桥接(statData, 捕获文本, 本轮批量上限, { ...归档选项, 允许分类: 物品分类压力.允许分类 }),
+            执行: 名称列表 => 归档MVU物品定义_桥接(名称列表, 归档选项),
           },
         ].filter(项 => 项.状态.超量).sort((左, 右) => 右.状态.压力 - 左.状态.压力);
         if (!类型列表.length) return { changed: false, reason: 'below_threshold' };
@@ -7625,18 +7855,56 @@
     return Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
   }
 
-  function 预入库当前正文命中内置角色_桥接(变量包 = {}) {
-    const statData = resolveRootData(变量包);
-    if (!statData || typeof statData !== 'object') return [];
-    const 接口 = 获取内置角色实例化接口_桥接();
-    if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
-    const 正文文本 = 读取当前最后AI正文_桥接();
-    if (!正文文本.trim()) return [];
-    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 正文文本, '角色');
-    if (!命中角色.length) return [];
-    const 已写入 = 预入库角色名内置角色_桥接(statData, 命中角色, { 文本: 正文文本 });
-    if (已写入.length) console.info(`[LWCS] MVU更新前已按最终正文实例化内置角色：${已写入.join('、')}`);
-    return 已写入;
+  function 读取数据库适配器_桥接() {
+    const 候选窗口 = [window];
+    try { if (window.parent && window.parent !== window) 候选窗口.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 候选窗口.push(window.top); } catch (错误) {}
+    for (const 候选 of 候选窗口) {
+      const 适配器 = 候选 && (候选.__LWCS_DATABASE_ADAPTER__ || 候选.__ACU_PLOT_RUNTIME_ADAPTER__);
+      if (适配器 && typeof 适配器 === 'object') return 适配器;
+    }
+    return null;
+  }
+
+  function 读取最近MVU前置记录_桥接() {
+    const 适配器 = 读取数据库适配器_桥接();
+    if (!适配器 || typeof 适配器.读取最近MVU前置记录 !== 'function') return null;
+    try {
+      const 记录 = 适配器.读取最近MVU前置记录();
+      return 记录 && typeof 记录 === 'object' ? 记录 : null;
+    } catch (错误) {
+      return null;
+    }
+  }
+
+  function 合并实体名到集合_桥接(集合, 名称列表 = []) {
+    if (!(集合 instanceof Set)) return;
+    (Array.isArray(名称列表) ? 名称列表 : [名称列表])
+      .map(名称 => toText(名称, '').trim())
+      .filter(Boolean)
+      .forEach(名称 => 集合.add(名称));
+  }
+
+  async function 收集当前正文归档命中实体_桥接(选项 = {}) {
+    const 正文文本 = toText(选项.文本 ?? 读取当前最后AI正文_桥接(), '');
+    const 结果 = { 角色: [], 物品: [], 动态地点: [] };
+    if (!正文文本.trim()) return 结果;
+    try {
+      const manifest = await 读取角色归档Manifest_桥接();
+      const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+      结果.角色 = 收集统一实体命中名称_桥接(角色索引, 正文文本, '角色');
+    } catch (错误) {}
+    try {
+      const manifest = await 读取动态地点归档Manifest_桥接();
+      const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+      结果.动态地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 正文文本, 选项, 32);
+    } catch (错误) {}
+    try {
+      const manifest = await 读取物品归档Manifest_桥接();
+      const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+      结果.物品 = 收集归档物品命中名称_桥接(物品索引, 正文文本, 选项, 64);
+    } catch (错误) {}
+    return 结果;
   }
 
   async function 预恢复角色名归档角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
@@ -7827,31 +8095,50 @@
     const statData = resolveRootData(变量包);
     if (!statData || typeof statData !== 'object') return { changed: false };
     const 目标 = 收集MVU命令目标实体名_桥接(命令列表);
+    const 合并目标 = {
+      角色: new Set(目标.角色),
+      物品: new Set(目标.物品),
+      动态地点: new Set(目标.动态地点),
+    };
+    const 前置记录 = 读取最近MVU前置记录_桥接();
+    合并实体名到集合_桥接(合并目标.角色, 前置记录?.命中角色);
+    合并实体名到集合_桥接(合并目标.物品, 前置记录?.命中物品);
+    合并实体名到集合_桥接(合并目标.动态地点, 前置记录?.命中动态地点);
+    const 正文归档命中 = await 收集当前正文归档命中实体_桥接(选项);
+    合并实体名到集合_桥接(合并目标.角色, 正文归档命中.角色);
+    合并实体名到集合_桥接(合并目标.物品, 正文归档命中.物品);
+    合并实体名到集合_桥接(合并目标.动态地点, 正文归档命中.动态地点);
     const 定位选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}) };
     if (!读取事件消息引用_桥接(定位选项) && !Number.isInteger(Number(定位选项.签名匹配楼层))) {
       const 匹配楼层 = await 定位MVU命令变量包楼层_桥接(变量包);
       if (匹配楼层 >= 0) 定位选项.签名匹配楼层 = 匹配楼层;
     }
-    const { 已恢复角色, 已实例化角色 } = await 补齐MVU命令目标角色_桥接(statData, 目标.角色, 定位选项);
-    const { 已恢复物品, 已实例化物品 } = await 补齐MVU命令目标物品_桥接(statData, 目标.物品, 定位选项);
-    const { 已恢复地点 } = await 补齐MVU命令目标动态地点_桥接(statData, 目标.动态地点, 定位选项);
+    const 内置角色接口 = 获取内置角色实例化接口_桥接();
+    const 正文内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口) : {};
+    const 正文内置角色 = 收集统一实体命中名称_桥接(正文内置角色候选, 读取当前最后AI正文_桥接(), '角色');
+    const 已实例化正文角色 = 正文内置角色.length ? 预入库角色名内置角色_桥接(statData, 正文内置角色, { 文本: 读取当前最后AI正文_桥接() }) : [];
+    合并实体名到集合_桥接(合并目标.角色, 已实例化正文角色);
+    const { 已恢复角色, 已实例化角色 } = await 补齐MVU命令目标角色_桥接(statData, [...合并目标.角色], 定位选项);
+    const { 已恢复物品, 已实例化物品 } = await 补齐MVU命令目标物品_桥接(statData, [...合并目标.物品], 定位选项);
+    const { 已恢复地点 } = await 补齐MVU命令目标动态地点_桥接(statData, [...合并目标.动态地点], 定位选项);
     const 激活条目 = [
       ...已恢复角色.map(名称 => ({ 类型: '角色', 名称 })),
       ...已恢复物品.map(名称 => ({ 类型: '物品', 名称 })),
       ...已恢复地点.map(名称 => ({ 类型: '动态地点', 名称 })),
     ];
     if (激活条目.length) 记录MVU冷实体激活_桥接(激活条目);
-    const 已补齐 = 已实例化角色.length || 已恢复角色.length || 已恢复物品.length || 已实例化物品.length || 已恢复地点.length;
+    const 全部已实例化角色 = Array.from(new Set([...已实例化正文角色, ...已实例化角色]));
+    const 已补齐 = 全部已实例化角色.length || 已恢复角色.length || 已恢复物品.length || 已实例化物品.length || 已恢复地点.length;
     if (已补齐) {
       console.info(`[LWCS] MVU命令应用前已补齐实体：${[
-        已实例化角色.length ? `内置角色 ${已实例化角色.join('、')}` : '',
+        全部已实例化角色.length ? `内置角色 ${全部已实例化角色.join('、')}` : '',
         已恢复角色.length ? `归档角色 ${已恢复角色.join('、')}` : '',
         已恢复物品.length ? `归档物品 ${已恢复物品.join('、')}` : '',
         已实例化物品.length ? `内置物品 ${已实例化物品.join('、')}` : '',
         已恢复地点.length ? `归档地点 ${已恢复地点.join('、')}` : '',
       ].filter(Boolean).join('；')}`);
     }
-    return { changed: !!已补齐, 已实例化角色, 已恢复角色, 已恢复物品, 已实例化物品, 已恢复地点 };
+    return { changed: !!已补齐, 已实例化角色: 全部已实例化角色, 已恢复角色, 已恢复物品, 已实例化物品, 已恢复地点 };
   }
 
   function 任务奖励状态已终结(状态) {
@@ -9364,7 +9651,7 @@
   }
 
   function 读取目标消息编号_桥接(选项 = {}) {
-    const 候选列表 = [选项.消息索引, 选项.messageId, 选项.message_id, 选项.消息编号];
+    const 候选列表 = [选项?.目标消息元信息?.消息编号, 选项.messageId, 选项.message_id, 选项.消息编号, 选项.消息索引];
     for (const 候选 of 候选列表) {
       if (候选 === undefined || 候选 === null || 候选 === '') continue;
       const 数值 = Number(候选);
@@ -9389,6 +9676,7 @@
           messageId: 目标消息编号,
         };
       }
+      if (选项.禁止目标回退 === true) throw new Error(`读取目标楼层 MVU 数据失败：${目标消息编号}`);
     }
     const scanned = await scanRecentMessageVariablesWithReaders([
       messageId => Promise.resolve(host.getMvuData({ type: 'message', message_id: messageId })),
@@ -35012,6 +35300,15 @@
       const mechExists = !!(机甲等级 || 机甲名称 || 机甲型号);
       const weaponExists = !!主武器名称;
       const 防具存在 = !!防具名称;
+      const 角色加成基准 = snapshot.activeChar && typeof snapshot.activeChar === 'object' ? snapshot.activeChar : {};
+      const 主武器结算装备 = 主武器名称 ? 合并物品定义与状态_桥接(snapshot.rootData || {}, 主武器名称, weapon) : weapon;
+      const 防具结算装备 = 防具名称 ? 合并物品定义与状态_桥接(snapshot.rootData || {}, 防具名称, 防具) : 防具;
+      const 主武器属性加成 = 主武器名称
+        ? 计算装备属性加成_桥接({ ...主武器结算装备, 名称: 主武器名称 }, { ...角色加成基准, 属性基准模式: '已含本武器加成' })
+        : {};
+      const 防具属性加成 = 防具名称
+        ? 计算装备属性加成_桥接({ ...防具结算装备, 名称: 防具名称 }, { ...角色加成基准, 属性基准模式: '已含本武器加成' })
+        : {};
       const 斗铠已在线 = armorExists && toText(armor.装备状态, '') === '已装备';
       const 主武器已在线 = weaponExists;
       const 机甲已在线 = mechExists && toText(mech.装备状态, '') === '已装备';
@@ -35042,13 +35339,11 @@
         includeLvEquiv: true,
       });
       const mechBonusItems = buildStatsBonusItems(deepGet(mech, '_属性加成', deepGet(mech, '属性加成', {})));
-      const weaponTypeText = toText(weapon.类型 || weapon.品阶 || weapon.品质, '');
-      const weaponBonusItems = buildStatsBonusItems(deepGet(weapon, '属性加成', {}), {
+      const weaponTypeText = toText(主武器结算装备.类型 || 主武器结算装备.品阶 || 主武器结算装备.品质, '');
+      const weaponBonusItems = buildStatsBonusItems(主武器属性加成, {
         percentAsLevel: weaponTypeText === '神器' || weaponTypeText === '超神器',
       });
-      const 防具加成条目 = 防具路径.length
-        ? buildEditableStatBonusItems([...防具路径, '属性加成'], deepGet(防具, '属性加成', {}))
-        : buildStatsBonusItems(deepGet(防具, '属性加成', {}));
+      const 防具加成条目 = buildStatsBonusItems(防具属性加成);
       const 斗铠性别文本 = toText(deepGet(snapshot, 'activeChar.属性.性别', ''), '');
       const 斗铠槽位坐标表 = {
         头盔: { x: 50, y: 12 },
@@ -35628,9 +35923,7 @@
             : htmlEscape(toText(deepGet(特性数据, '描述', '无'), '无')),
         }));
         const 主武器存在 = !!(weapon && (weapon.名称 || weapon['名称']));
-        const 主武器加成条目 = weaponPath.length
-          ? buildEditableStatBonusItems([...weaponPath, '属性加成'], deepGet(weapon, '属性加成', {}))
-          : weaponBonusItems;
+        const 主武器加成条目 = weaponBonusItems;
         const 主武器详情条目 = [
           {
             label: '名称',
@@ -35938,8 +36231,8 @@
       };
       if (斗铠已在线) 累加共鸣属性(deepGet(armor, '_属性加成', deepGet(armor, '属性加成', {})));
       if (机甲已在线) 累加共鸣属性(deepGet(mech, '_属性加成', deepGet(mech, '属性加成', {})));
-      if (主武器已在线) 累加共鸣属性(deepGet(weapon, '属性加成', {}));
-      if (防具已在线) 累加共鸣属性(deepGet(防具, '属性加成', {}));
+      if (主武器已在线) 累加共鸣属性(主武器属性加成);
+      if (防具已在线) 累加共鸣属性(防具属性加成);
       魂骨拓扑节点列表.forEach(节点 => 累加共鸣属性(节点.属性加成));
       const 武装在线数量 = 武装槽位条目列表
         .filter(条目 => (toText(条目.状态, '') || (条目.空槽 ? 'empty' : 'active')) === 'active')

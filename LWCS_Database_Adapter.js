@@ -13,6 +13,8 @@
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
+  const 本轮MVU前置记录表 = new Map();
+  let 最近MVU前置记录键 = '';
   let 本轮StatData = null;
   let 本轮输入文本 = '';
 
@@ -119,6 +121,21 @@
     return (哈希 >>> 0).toString(16);
   }
 
+  function 构建MVU前置记录键(最新角色消息, 最新用户消息, 捕获文本) {
+    const 聊天数组 = 读取聊天数组();
+    return [
+      String(读取酒馆上下文()?.chatId || 'current_chat').trim() || 'current_chat',
+      String(聊天数组.length),
+      String(最新用户消息?.消息编号 || ''),
+      String(最新用户消息?.消息索引 ?? ''),
+      String(最新用户消息?.滑动编号 ?? ''),
+      String(最新角色消息?.消息编号 || ''),
+      String(最新角色消息?.消息索引 ?? ''),
+      String(最新角色消息?.滑动编号 ?? ''),
+      取哈希(捕获文本 || ''),
+    ].join('|');
+  }
+
   function 读取性能时间() {
     try {
       if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
@@ -131,6 +148,48 @@
       const 耗时 = Math.round(读取性能时间() - Number(开始时间 || 0));
       console.debug(`[LWCS适配器] ${标签} ${耗时}ms${附加文本 ? ` ${附加文本}` : ''}`);
     } catch (_) {}
+  }
+
+  function 记录本轮MVU前置结果(键, 结果) {
+    if (!键) return;
+    const 命中角色 = Array.isArray(结果?.命中角色) ? Array.from(new Set(结果.命中角色.map(名称 => String(名称 || '').trim()).filter(Boolean))) : [];
+    const 命中物品 = Array.isArray(结果?.命中物品) ? Array.from(new Set(结果.命中物品.map(名称 => String(名称 || '').trim()).filter(Boolean))) : [];
+    const 命中动态地点 = Array.isArray(结果?.命中动态地点) ? Array.from(new Set(结果.命中动态地点.map(名称 => String(名称 || '').trim()).filter(Boolean))) : [];
+    最近MVU前置记录键 = 键;
+    本轮MVU前置记录表.set(键, {
+      键,
+      时间: Date.now(),
+      目标消息编号: String(结果?.目标消息编号 || ''),
+      目标消息索引: Number.isInteger(Number(结果?.目标消息索引)) ? Math.floor(Number(结果?.目标消息索引)) : -1,
+      滑动编号: String(结果?.滑动编号 ?? ''),
+      文本签名: String(结果?.文本签名 || ''),
+      statData: 结果 && typeof 结果.statData === 'object' ? cloneJsonValue(结果.statData, {}) : null,
+      命中角色,
+      命中物品,
+      命中动态地点,
+    });
+    while (本轮MVU前置记录表.size > 20) {
+      const 首个键 = 本轮MVU前置记录表.keys().next().value;
+      if (首个键 === undefined) break;
+      本轮MVU前置记录表.delete(首个键);
+    }
+  }
+
+  function 读取最近MVU前置记录() {
+    const 记录 = 本轮MVU前置记录表.get(最近MVU前置记录键);
+    if (!记录) return null;
+    return {
+      键: 记录.键,
+      时间: 记录.时间,
+      目标消息编号: 记录.目标消息编号,
+      目标消息索引: 记录.目标消息索引,
+      滑动编号: 记录.滑动编号,
+      文本签名: 记录.文本签名,
+      statData: 记录.statData && typeof 记录.statData === 'object' ? cloneJsonValue(记录.statData, {}) : null,
+      命中角色: Array.isArray(记录.命中角色) ? [...记录.命中角色] : [],
+      命中物品: Array.isArray(记录.命中物品) ? [...记录.命中物品] : [],
+      命中动态地点: Array.isArray(记录.命中动态地点) ? [...记录.命中动态地点] : [],
+    };
   }
 
   function 读取MVU运行时视图接口() {
@@ -242,11 +301,17 @@
       : 构建近场文本(用户输入文本, 最后角色消息文本);
     if (!近场文本.trim()) return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
     const 前置键 = 构建前置键(最新角色消息, 最新用户消息, 近场文本);
+    const 前置记录键 = 构建MVU前置记录键(最新角色消息, 最新用户消息, 近场文本);
     if (本轮前置承诺表.has(前置键)) return await 本轮前置承诺表.get(前置键);
     const 前置承诺 = (async () => {
       const 总开始时间 = 读取性能时间();
       let 当前StatData = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
       let 需要刷新快照 = false;
+      const 前置命中 = {
+        命中角色: new Set(),
+        命中物品: new Set(),
+        命中动态地点: new Set(),
+      };
       const 构建参数 = (附加 = {}) => ({
         剧情文本: '',
         最后剧情文本: 清理近场文本片段(最后角色消息文本),
@@ -261,18 +326,29 @@
         if (结果 && typeof 结果.statData === 'object') 当前StatData = 结果.statData;
         if (结果 && 结果.changed === true) 需要刷新快照 = true;
       };
-      const 执行步骤 = async (函数名, 参数, 日志标签) => {
+      const 记录前置命中名称 = (类型, 结果) => {
+        const 容器 = 前置命中[类型];
+        if (!容器) return;
+        const 名称列表 = [
+          ...(Array.isArray(结果?.names) ? 结果.names : []),
+          ...(Array.isArray(结果?.changedNames) ? 结果.changedNames : []),
+          ...(Array.isArray(结果?.restoredNames) ? 结果.restoredNames : []),
+        ];
+        名称列表.map(名称 => String(名称 || '').trim()).filter(Boolean).forEach(名称 => 容器.add(名称));
+      };
+      const 执行步骤 = async (函数名, 参数, 日志标签, 命中类型 = '') => {
         const 步骤开始时间 = 读取性能时间();
         const 结果 = await 执行文本前置函数(函数名, 近场文本, 参数, 日志标签);
         const 名称数量 = Array.isArray(结果?.names) ? 结果.names.length : 0;
         记录耗时(`正文生成前置:${日志标签}`, 步骤开始时间, `changed=${结果?.changed === true} names=${名称数量}`);
         应用结果(结果);
+        记录前置命中名称(命中类型, 结果);
       };
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮归档角色前置恢复');
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复');
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复');
-      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库');
-      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮内置角色前置入库');
+      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮归档角色前置恢复', '命中角色');
+      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复', '命中动态地点');
+      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复', '命中物品');
+      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库', '命中物品');
+      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮内置角色前置入库', '命中角色');
       if (需要刷新快照) {
         const 刷新函数 = 读取窗口函数('__MVU_REFRESH_LIVE_SNAPSHOT__');
         if (typeof 刷新函数 === 'function') {
@@ -282,6 +358,16 @@
         }
       }
       记录耗时('正文生成前置:MVU前置链总计', 总开始时间, `changed=${需要刷新快照}`);
+      记录本轮MVU前置结果(前置记录键, {
+        statData: 当前StatData,
+        目标消息编号: 最新角色消息.消息编号,
+        目标消息索引: 最新角色消息.消息索引,
+        滑动编号: 最新角色消息.滑动编号,
+        文本签名: 取哈希(近场文本 || ''),
+        命中角色: [...前置命中.命中角色],
+        命中物品: [...前置命中.命中物品],
+        命中动态地点: [...前置命中.命中动态地点],
+      });
       return 当前StatData || null;
     })();
     本轮前置承诺表.set(前置键, 前置承诺);
@@ -604,6 +690,7 @@
     replaceSpecialPlaceholders: 替换专属占位符,
     prepareStoryRuntimeData: 准备正文运行时数据,
     preparePromptRuntimeData: 准备提示词运行时数据,
+    读取最近MVU前置记录,
     appendStoryRuntimeInjects: 追加正文注入,
     registerStoryRuntimeInjects: 注册正文一次性注入,
     buildPlanningRuntimeSystemMessages: 构建剧情推进临时系统消息,
