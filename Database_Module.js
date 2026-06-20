@@ -16533,12 +16533,12 @@ $CONTENT
             return source;
         }
     }
-    function 处理剧情推进提示词运行时内容_ACU(内容, 上下文 = {}) {
+    async function 处理剧情推进提示词运行时内容_ACU(内容, 上下文 = {}) {
         const 文本 = String(内容 || '');
         const 适配器 = 获取剧情推进运行时适配器_ACU();
         if (适配器 && typeof 适配器.processPromptRuntimeContent === 'function') {
             try {
-                return String(适配器.processPromptRuntimeContent(文本, 上下文 || {}) ?? '');
+                return String(await Promise.resolve(适配器.processPromptRuntimeContent(文本, 上下文 || {})) ?? '');
             }
             catch (错误) {
                 logWarn_ACU('[剧情推进] 运行时提示词内容处理失败:', 错误);
@@ -19436,7 +19436,7 @@ $CONTENT
             || '';
         rawFinal = await tryRenderPlotTemplateWithEjs_ACU(rawFinal);
         let plotFinalDirective = performReplacements(rawFinal);
-        plotFinalDirective = 处理剧情推进提示词运行时内容_ACU(plotFinalDirective, {
+        plotFinalDirective = await 处理剧情推进提示词运行时内容_ACU(plotFinalDirective, {
             viewType: 'plot',
             userInput: userMessage || '',
             lastCharMessage: getLatestAIMessageContent_ACU(),
@@ -19490,7 +19490,7 @@ $CONTENT
             c = await tryRenderPlotTemplateWithEjs_ACU(c);
             c = sharedContext.performReplacements(c, replacementOverrides);
             c = replacePlotTagPlaceholders_ACU(c, relayTagMap, fallbackTagMap);
-            c = 处理剧情推进提示词运行时内容_ACU(c, {
+            c = await 处理剧情推进提示词运行时内容_ACU(c, {
                 viewType: 'plot',
                 userInput: sharedContext.userMessage || "",
                 lastCharMessage: getLatestAIMessageContent_ACU(),
@@ -20265,8 +20265,8 @@ $CONTENT
             allTablesJson: getTableDataForPrompt_ACU(),
             plotContent: lastPlotContent
         };
-        const 替换提示词运行时内容_ACU = (content) => {
-            return 处理剧情推进提示词运行时内容_ACU(content, {
+        const 替换提示词运行时内容_ACU = async (content) => {
+            return await 处理剧情推进提示词运行时内容_ACU(content, {
                 viewType: 运行时视图类型,
                 statData: 运行时数据 || undefined,
                 userInput: 用户输入文本,
@@ -20280,7 +20280,7 @@ $CONTENT
             for (const message of data.messages) {
                 if (typeof message.content === 'string') {
                     const originalContent = message.content;
-                    message.content = 替换提示词运行时内容_ACU(message.content);
+                    message.content = await 替换提示词运行时内容_ACU(message.content);
                     if (message.content !== originalContent)
                         runtimeViewCount++;
                 }
@@ -20288,7 +20288,7 @@ $CONTENT
                     for (const part of message.content) {
                         if (part.type === 'text' && part.text) {
                             const originalText = part.text;
-                            part.text = 替换提示词运行时内容_ACU(part.text);
+                            part.text = await 替换提示词运行时内容_ACU(part.text);
                             if (part.text !== originalText)
                                 runtimeViewCount++;
                         }
@@ -20324,7 +20324,7 @@ $CONTENT
             // [P4] {[db...]}/{[sql...]} 值替换（SQLite 模式下，在 <if> 之前执行）
             processedContent = replaceDbSqlVariables(processedContent);
             processedContent = parseIfBlockRecursive_ACU(processedContent, context, 0);
-            processedContent = 替换提示词运行时内容_ACU(processedContent);
+            processedContent = await 替换提示词运行时内容_ACU(processedContent);
             return processedContent;
         };
         let processedCount = 0;
@@ -55159,7 +55159,7 @@ $CONTENT
         const 正文生成指导 = String(finalMessage || '').trim();
         const 用户输入文本 = String(userMessage || '');
         const 运行时数据 = await 准备正文生成运行时数据_ACU(用户输入文本, runtimePlotText || '', 正文生成指导);
-        const 替换后正文生成指导 = 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
+        const 替换后正文生成指导 = await 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
             viewType: 'story',
             statData: 运行时数据 || undefined,
             userInput: 用户输入文本,

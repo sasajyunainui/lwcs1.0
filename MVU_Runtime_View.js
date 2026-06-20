@@ -558,6 +558,19 @@ function 收集运行时命中键列表_V1(文本 = '', 来源 = {}, 选项 = {}
   return Array.from(new Set(结果));
 }
 
+function 收集运行时地图命中键列表_V1(数据根 = {}, 文本 = '') {
+  const 结果 = [];
+  const 遍历 = (节点 = null, 名称 = '') => {
+    const 地点名 = String(名称 || '').trim();
+    if (!地点名 || !节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
+    if (typeof 节点.condition === 'function' && !节点.condition(数据根)) return;
+    if (运行时文本命中名称_V1(文本, 地点名)) 结果.push(地点名);
+    Object.entries(节点.子节点 || {}).forEach(([子名, 子节点]) => 遍历(子节点, 子名));
+  };
+  Object.entries(数据根?.world?.地点 || {}).forEach(([名称, 节点]) => 遍历(节点, 名称));
+  return Array.from(new Set(结果));
+}
+
 function 运行时文本包含片段_V1(文本 = '', 片段 = '') {
   const 左 = String(文本 || '').toLowerCase();
   const 右 = String(片段 || '').trim().toLowerCase();
@@ -1131,7 +1144,7 @@ function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
   const 源文本 = String(文本 || '');
   const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set() };
   收集运行时命中键列表_V1(源文本, 数据根?.char || {}).forEach(名称 => 结果.角色.add(名称));
-  收集运行时命中键列表_V1(源文本, 数据根?.world?.地点 || {}).forEach(名称 => 结果.地点.add(名称));
+  收集运行时地图命中键列表_V1(数据根, 源文本).forEach(名称 => 结果.地点.add(名称));
   收集运行时命中键列表_V1(源文本, 数据根?.world?.动态地点 || {}).forEach(名称 => 结果.动态地点.add(名称));
   收集运行时命中键列表_V1(源文本, 数据根?.org || {}).forEach(名称 => 结果.势力.add(名称));
   收集运行时命中键列表_V1(源文本, 构建运行时物品目录_V1(数据根), { 命中函数: 运行时文本命中商品名_V1 }).forEach(名称 => 结果.物品.add(名称));
@@ -2175,6 +2188,24 @@ function 构建更新地点薄片_V1(地点数据 = {}, 文本 = '') {
   return 过滤MVU更新视图值_V1(准备运行时地图视图数据_V1(输出), ['world', '地点', '示例地点']) || {};
 }
 
+function 写入运行时地点树薄片_V1(地点输出 = {}, 地图条目 = null, 薄片 = {}) {
+  if (!地点输出 || typeof 地点输出 !== 'object' || !地图条目?.path?.length || !薄片 || typeof 薄片 !== 'object' || Array.isArray(薄片)) return;
+  let 当前 = 地点输出;
+  地图条目.path.forEach((路径名, 序号) => {
+    const 名称 = String(路径名 || '').trim();
+    if (!名称) return;
+    if (序号 === 0) {
+      if (!当前[名称] || typeof 当前[名称] !== 'object' || Array.isArray(当前[名称])) 当前[名称] = {};
+      当前 = 当前[名称];
+      return;
+    }
+    if (!当前.子节点 || typeof 当前.子节点 !== 'object' || Array.isArray(当前.子节点)) 当前.子节点 = {};
+    if (!当前.子节点[名称] || typeof 当前.子节点[名称] !== 'object' || Array.isArray(当前.子节点[名称])) 当前.子节点[名称] = {};
+    当前 = 当前.子节点[名称];
+  });
+  Object.assign(当前, 薄片);
+}
+
 function 构建更新动态地点条目_V1(地点数据 = {}, 地点名 = '') {
   const 地点 = 地点数据 && typeof 地点数据 === 'object' ? 地点数据 : {};
   const 输出 = {};
@@ -3132,7 +3163,8 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
   };
   if (运行时对象有内容_V1(战斗摘要)) 视图.world.战斗 = 战斗摘要;
   地点名集合.forEach(地点名 => {
-    const 地点 = 数据根?.world?.地点?.[地点名];
+    const 地图条目 = findMapNodeEntry(地点名, 数据根);
+    const 地点 = 地图条目?.node;
     const 地点基础 = cloneJsonValue(地点, {});
     if (地点基础 && typeof 地点基础 === 'object') delete 地点基础.商店;
     const 清理后 = 过滤MVU正文视图值_V1(准备运行时地图视图数据_V1(地点基础, '', { 隐藏默认状态: true }), ['world', '地点', '示例地点']);
@@ -3146,7 +3178,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
     if (清理后 && 商店摘要) 清理后.商店 = 商店摘要;
     if (清理后) {
       if (!视图.world.地点) 视图.world.地点 = {};
-      视图.world.地点[地点名] = 清理后;
+      写入运行时地点树薄片_V1(视图.world.地点, 地图条目, 清理后);
     }
   });
   动态地点名集合.forEach(地点名 => {
@@ -3242,7 +3274,8 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     物品: {},
   };
   地点名集合.forEach(地点名 => {
-    if (数据根?.world?.地点?.[地点名]) 视图.world.地点[地点名] = 构建更新地点薄片_V1(数据根.world.地点[地点名], 文本);
+    const 地图条目 = findMapNodeEntry(地点名, 数据根);
+    if (地图条目?.node) 写入运行时地点树薄片_V1(视图.world.地点, 地图条目, 构建更新地点薄片_V1(地图条目.node, 文本));
   });
   动态地点名集合.forEach(地点名 => {
     if (数据根?.world?.动态地点?.[地点名]) {

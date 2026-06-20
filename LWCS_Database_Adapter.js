@@ -14,6 +14,8 @@
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
+  const 正则引擎缓存 = { 模块: null, 承诺: null };
+  const 正则近场缓存表 = new Map();
   let 最近MVU前置记录键 = '';
   let 本轮StatData = null;
   let 本轮输入文本 = '';
@@ -294,6 +296,69 @@
     return [清理近场文本片段(用户输入文本), 清理近场文本片段(最后角色消息文本)].filter(Boolean).join('\n');
   }
 
+  function 限制正则近场缓存表大小() {
+    while (正则近场缓存表.size > 20) {
+      const 首个键 = 正则近场缓存表.keys().next().value;
+      if (首个键 === undefined) break;
+      正则近场缓存表.delete(首个键);
+    }
+  }
+
+  function 取正则近场缓存键(用户输入文本 = '', 最后角色消息文本 = '') {
+    return `${取哈希(String(用户输入文本 || ''))}|${取哈希(String(最后角色消息文本 || ''))}`;
+  }
+
+  async function 读取正则引擎模块() {
+    if (正则引擎缓存.模块) return 正则引擎缓存.模块;
+    if (!正则引擎缓存.承诺) {
+      正则引擎缓存.承诺 = import('/scripts/extensions/regex/engine.js')
+        .then((模块) => {
+          正则引擎缓存.模块 = 模块 && typeof 模块 === 'object' ? 模块 : null;
+          return 正则引擎缓存.模块;
+        })
+        .catch((错误) => {
+          console.warn('[LWCS适配器] 正则引擎加载失败:', 错误);
+          return null;
+        });
+    }
+    return await 正则引擎缓存.承诺;
+  }
+
+  async function 套用酒馆正则过滤(文本 = '', placement = '') {
+    const 源文本 = String(文本 || '');
+    if (!源文本) return '';
+    const 模块 = await 读取正则引擎模块();
+    const getRegexedString = 模块?.getRegexedString;
+    const regexPlacement = 模块?.regex_placement;
+    if (typeof getRegexedString !== 'function' || !regexPlacement) return 源文本;
+    const 位置 = placement === 'user' ? regexPlacement.USER_INPUT : regexPlacement.AI_OUTPUT;
+    if (位置 === undefined || 位置 === null) return 源文本;
+    try {
+      return String(getRegexedString(源文本, 位置, { isPrompt: true }) ?? 源文本);
+    } catch (错误) {
+      console.warn('[LWCS适配器] 正则过滤失败:', 错误);
+      return 源文本;
+    }
+  }
+
+  async function 生成过滤后近场上下文(用户输入文本 = '', 最后角色消息文本 = '') {
+    const 缓存键 = 取正则近场缓存键(用户输入文本, 最后角色消息文本);
+    const 已缓存 = 正则近场缓存表.get(缓存键);
+    if (已缓存) return 克隆JSON值(已缓存, {});
+    const [过滤后用户输入, 过滤后最后角色消息] = await Promise.all([
+      套用酒馆正则过滤(用户输入文本, 'user'),
+      套用酒馆正则过滤(最后角色消息文本, 'ai'),
+    ]);
+    const 结果 = {
+      userInput: 清理近场文本片段(过滤后用户输入),
+      lastCharMessage: 清理近场文本片段(过滤后最后角色消息),
+    };
+    结果.captureText = [结果.userInput, 结果.lastCharMessage].filter(Boolean).join('\n');
+    正则近场缓存表.set(缓存键, 结果);
+    限制正则近场缓存表大小();
+    return 克隆JSON值(结果, {});
+  }
+
   function 限制前置承诺表大小() {
     while (本轮前置承诺表.size > 20) {
       const 首个键 = 本轮前置承诺表.keys().next().value;
@@ -473,7 +538,7 @@
     const userInput = String(context.userInput || '');
     const lastCharMessage = String(context.lastCharMessage || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 近场文本 = 构建近场文本(userInput, lastCharMessage);
+    const 近场文本 = String(context.captureText || '').trim() || 构建近场文本(userInput, lastCharMessage);
     if (结果.includes(时间线预览占位符)) {
       结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData) || '无');
     }
@@ -486,32 +551,35 @@
     return 结果;
   }
 
-  function 处理提示词运行时内容(内容, 上下文 = {}) {
+  async function 处理提示词运行时内容(内容, 上下文 = {}) {
     const 文本 = String(内容 || '');
     const 视图类型 = String(上下文.viewType || 'empty');
+    const 用户输入文本 = String(上下文.userInput || '');
+    const 最后角色消息文本 = String(上下文.lastCharMessage || '');
+    const 近场上下文 = await 生成过滤后近场上下文(用户输入文本, 最后角色消息文本);
     const 替换后内容 = 替换运行时占位符(文本, 视图类型, {
       statData: 上下文.statData,
-      userInput: 上下文.userInput || '',
-      lastCharMessage: 上下文.lastCharMessage || '',
+      userInput: 用户输入文本,
+      lastCharMessage: 最后角色消息文本,
       plotText: 上下文.plotText || '',
     });
     return 替换专属占位符(替换后内容, {
-      userInput: 上下文.userInput || '',
-      lastCharMessage: 上下文.lastCharMessage || '',
+      userInput: 用户输入文本,
+      lastCharMessage: 最后角色消息文本,
       statData: 上下文.statData,
-      captureText: 上下文.captureText || '',
+      captureText: 近场上下文.captureText || '',
     });
   }
 
   async function 准备正文运行时数据(context = {}) {
     const 原始输入 = String(context.userInput || '');
     const 最后角色消息文本 = String(context.lastCharMessage || 读取最新角色消息元信息().文本 || '');
-    const 捕获文本 = [原始输入, 最后角色消息文本].filter(Boolean).join('\n');
+    const 近场上下文 = await 生成过滤后近场上下文(原始输入, 最后角色消息文本);
     const 开场StatData = await 等待开场MVU初始化事务(原始输入);
     return await 准备MVU前置数据({
       userInput: 原始输入,
       lastCharMessage: 最后角色消息文本,
-      captureText: 捕获文本,
+      captureText: 近场上下文.captureText || '',
       plotText: '',
       statData: 取StatData(context.statData, 原始输入) || 开场StatData || undefined,
     });
@@ -520,13 +588,13 @@
   async function 准备提示词运行时数据(context = {}) {
     const 用户输入文本 = String(context.userInput || '');
     const 最后角色消息文本 = String(context.lastCharMessage || '');
-    const 近场文本 = 构建近场文本(用户输入文本, 最后角色消息文本);
+    const 近场上下文 = await 生成过滤后近场上下文(用户输入文本, 最后角色消息文本);
     const 开场StatData = await 等待开场MVU初始化事务(用户输入文本);
     return await 准备MVU前置数据({
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
       latestCharMessageInfo: context.latestCharMessageInfo,
-      captureText: 近场文本,
+      captureText: 近场上下文.captureText || '',
       plotText: '',
       statData: 取StatData(context.statData, context.userInput || '') || 开场StatData || undefined,
     });
