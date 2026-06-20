@@ -121,6 +121,29 @@
     return (哈希 >>> 0).toString(16);
   }
 
+  function 克隆JSON值(值, 回退值 = {}) {
+    if (值 === null || typeof 值 !== 'object') {
+      if (typeof 值 === 'function' || typeof 值 === 'symbol') return 回退值;
+      return 值;
+    }
+    if (Array.isArray(值)) return 值.map(项 => 克隆JSON值(项, 项));
+    const 原型 = Object.getPrototypeOf(值);
+    if (原型 === Object.prototype || 原型 === null) {
+      const 输出 = {};
+      Object.entries(值).forEach(([键, 子值]) => {
+        输出[键] = 克隆JSON值(子值, 子值);
+      });
+      return 输出;
+    }
+    try {
+      return structuredClone(值);
+    } catch (_) {}
+    try {
+      return JSON.parse(JSON.stringify(值));
+    } catch (_) {}
+    return 回退值;
+  }
+
   function 构建MVU前置记录键(最新角色消息, 最新用户消息, 捕获文本) {
     const 聊天数组 = 读取聊天数组();
     return [
@@ -163,7 +186,7 @@
       目标消息索引: Number.isInteger(Number(结果?.目标消息索引)) ? Math.floor(Number(结果?.目标消息索引)) : -1,
       滑动编号: String(结果?.滑动编号 ?? ''),
       文本签名: String(结果?.文本签名 || ''),
-      statData: 结果 && typeof 结果.statData === 'object' ? cloneJsonValue(结果.statData, {}) : null,
+      statData: 结果 && typeof 结果.statData === 'object' ? 克隆JSON值(结果.statData, {}) : null,
       命中角色,
       命中物品,
       命中动态地点,
@@ -185,7 +208,7 @@
       目标消息索引: 记录.目标消息索引,
       滑动编号: 记录.滑动编号,
       文本签名: 记录.文本签名,
-      statData: 记录.statData && typeof 记录.statData === 'object' ? cloneJsonValue(记录.statData, {}) : null,
+      statData: 记录.statData && typeof 记录.statData === 'object' ? 克隆JSON值(记录.statData, {}) : null,
       命中角色: Array.isArray(记录.命中角色) ? [...记录.命中角色] : [],
       命中物品: Array.isArray(记录.命中物品) ? [...记录.命中物品] : [],
       命中动态地点: Array.isArray(记录.命中动态地点) ? [...记录.命中动态地点] : [],
