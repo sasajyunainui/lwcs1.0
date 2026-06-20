@@ -37,7 +37,7 @@
   async function 加载正式入口(提交哈希) {
     const 资源基础地址 = 构建资源基础地址(提交哈希);
     const 入口地址 = `${资源基础地址}${入口文件名}`;
-    const 响应 = await fetch(入口地址, { cache: 'no-store' });
+    const 响应 = await fetch(入口地址, { cache: 'force-cache' });
     if (!响应.ok) throw new Error(`LWCS 入口读取失败: ${响应.status}`);
     const 入口代码 = await 响应.text();
 

@@ -102,6 +102,7 @@
 
   const 模块状态表 = Object.create(null);
   const 模块加载承诺表 = new Map();
+  const 文本资源缓存表 = new Map();
   let 引导承诺 = null;
   let 空闲预取已安排 = false;
 
@@ -146,7 +147,8 @@
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
-    const 响应 = await fetch(资源基础地址 + 预设文件名 + 资源版本后缀, { cache: 'no-store' });
+    const 预设地址 = 资源基础地址 + 预设文件名 + 资源版本后缀;
+    const 响应 = await fetch(预设地址, 取资源请求选项(预设地址));
     if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
     const 预设数组 = await 响应.json();
     const 预设名 = String(预设数组 && 预设数组[0] && 预设数组[0].name ? 预设数组[0].name : '').trim();
@@ -188,6 +190,43 @@
     加载状态.错误数 += 1;
   }
 
+  function 是提交哈希资源地址(地址) {
+    return /\/gh\/[^?#]+@[0-9a-f]{40}(?:\/|$)/i.test(String(地址 || ''));
+  }
+
+  function 取资源请求选项(地址) {
+    return { cache: 是提交哈希资源地址(地址) ? 'force-cache' : 'no-store' };
+  }
+
+  async function 读取文本资源(地址, 错误前缀) {
+    if (!文本资源缓存表.has(地址)) {
+      const 读取承诺 = fetch(地址, 取资源请求选项(地址))
+        .then(响应 => {
+          if (!响应.ok) throw new Error(`${错误前缀}: ${地址} [${响应.status}]`);
+          return 响应.text();
+        })
+        .catch(错误 => {
+          文本资源缓存表.delete(地址);
+          throw 错误;
+        });
+      文本资源缓存表.set(地址, 读取承诺);
+    }
+    return 文本资源缓存表.get(地址);
+  }
+
+  function 取文本资源错误前缀(模块) {
+    if (!模块) return 'Resource load failed';
+    if (模块.类型 === 'css') return 'CSS load failed';
+    if (模块.类型 === 'module-js') return 'Module JS load failed';
+    return 'JS load failed';
+  }
+
+  function 预取模块文本(模块名) {
+    const 模块 = 模块注册表[模块名];
+    if (!模块 || (模块.类型 !== 'css' && 模块.类型 !== 'inline-js' && 模块.类型 !== 'module-js')) return;
+    读取文本资源(模块.地址, 取文本资源错误前缀(模块)).catch(() => {});
+  }
+
   function 取样式标记(地址) {
     return 'mvu-style-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
   }
@@ -206,9 +245,7 @@
     if (旧样式 && !调试热更新模式) return 地址;
     if (旧样式) 旧样式.remove();
 
-    const 响应 = await fetch(地址, { cache: 'no-store' });
-    if (!响应.ok) throw new Error(`CSS load failed: ${地址} [${响应.status}]`);
-    const 样式文本 = await 响应.text();
+    const 样式文本 = await 读取文本资源(地址, 'CSS load failed');
     const 样式节点 = 宿主文档.createElement('style');
     样式节点.id = 样式标记;
     样式节点.textContent = 样式文本;
@@ -239,9 +276,7 @@
     if (旧脚本 && !调试热更新模式) return 地址;
     if (旧脚本) 旧脚本.remove();
 
-    const 响应 = await fetch(地址, { cache: 'no-store' });
-    if (!响应.ok) throw new Error(`JS load failed: ${地址} [${响应.status}]`);
-    const 代码文本 = await 响应.text();
+    const 代码文本 = await 读取文本资源(地址, 'JS load failed');
     const 脚本节点 = 宿主文档.createElement('script');
     脚本节点.id = 脚本标记;
     脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
@@ -260,9 +295,7 @@
       if (旧脚本) 旧脚本.remove();
 
       try {
-        const 响应 = await fetch(地址, { cache: 'no-store' });
-        if (!响应.ok) throw new Error(`Module JS load failed: ${地址} [${响应.status}]`);
-        const 代码文本 = await 响应.text();
+        const 代码文本 = await 读取文本资源(地址, 'Module JS load failed');
         const 脚本节点 = 宿主文档.createElement('script');
         let 已完成 = false;
         const 完成加载 = () => {
@@ -710,10 +743,12 @@
     const 空闲执行器 = typeof 宿主窗口.requestIdleCallback === 'function'
       ? 宿主窗口.requestIdleCallback.bind(宿主窗口)
       : callback => setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 8 }), 160);
+    ['地图模块', '战斗模块'].forEach(预取模块文本);
     空闲执行器(async () => {
-      await 确保模块已加载('地图模块', { 来源: 'idle_prefetch:map' });
-      await 确保模块已加载('战斗模块', { 来源: 'idle_prefetch:battle' });
-      await 确保模块已加载('逻辑桥接', { 来源: 'idle_prefetch:bridge', 允许失败降级: false });
+      await Promise.allSettled([
+        确保模块已加载('地图模块', { 来源: 'idle_prefetch:map' }),
+        确保模块已加载('战斗模块', { 来源: 'idle_prefetch:battle' })
+      ]);
       记录阶段(加载阶段.完成);
       加载状态.结束时间 = Date.now();
     });
@@ -728,6 +763,7 @@
         ensureGetAllVariablesShim();
 
         记录阶段(加载阶段.核心加载中);
+        ['样式核心', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '数据库模块', '战斗模块'].forEach(预取模块文本);
         for (const 模块名 of 核心模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }

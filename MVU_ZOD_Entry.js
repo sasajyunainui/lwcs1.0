@@ -1,5 +1,18 @@
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
 
+function 是MVU提交哈希资源地址_V1(地址) {
+  return /\/gh\/[^?#]+@[0-9a-f]{40}(?:\/|$)/i.test(String(地址 || ''));
+}
+
+function 取MVU资源请求选项_V1(地址) {
+  return { cache: 是MVU提交哈希资源地址_V1(地址) ? 'force-cache' : 'no-store' };
+}
+
+function 构建MVU模块导入地址_V1(文件名) {
+  const 地址 = new URL(文件名, MVU_ZOD_ENTRY_BASE_V1).href;
+  return 是MVU提交哈希资源地址_V1(地址) ? 地址 : `${地址}?t=${Date.now()}`;
+}
+
 async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   const 文档 = globalThis.document;
   if (!文档 || !文档.createElement) throw new Error(`MVU依赖加载缺少document：${文件名}`);
@@ -7,7 +20,7 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   const 标记 = `lwcs-mvu-zod-entry-${文件名.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   const 旧脚本 = 文档.getElementById(标记);
   if (旧脚本) 旧脚本.remove();
-  const 响应 = await fetch(地址, { cache: 'no-store' });
+  const 响应 = await fetch(地址, 取MVU资源请求选项_V1(地址));
   if (!响应.ok) throw new Error(`MVU依赖加载失败：${文件名} [${响应.status}]`);
   const 代码文本 = await 响应.text();
   const 脚本 = 文档.createElement('script');
@@ -50,7 +63,7 @@ await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () =>
   typeof globalThis.__LWCS_MVU_RUNTIME_VIEW__ === 'object'
 );
 
-await import(`${new URL('MVU.js', MVU_ZOD_ENTRY_BASE_V1).href}?t=${Date.now()}`);
+await import(构建MVU模块导入地址_V1('MVU.js'));
 
 globalThis.__LWCS_MVU变量结构已注册__ = true;
 
