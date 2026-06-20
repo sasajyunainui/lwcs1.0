@@ -1553,26 +1553,14 @@ function AIJsonPatch写入父路径可用_V1(根 = {}, 路径 = [], 本批新增
 function 规范化AIJsonPatch交付需求值_V1(值 = {}) {
   const 输入 = 值 && typeof 值 === 'object' && !Array.isArray(值) ? 值 : {};
   if (!Object.keys(输入).length) return null;
-  const 输出 = { 类型: '物品' };
+  const 品质集合 = new Set(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
   const 名称 = String(输入.名称 || '').trim();
-  const 分类 = String(输入.分类 || '').trim();
-  const 基础金属 = String(输入.基础金属 || '').trim();
+  if (!名称) return null;
   const 数量 = Math.max(1, Math.floor(Number(输入.数量 || 1)));
-  const 阶位下限 = Math.max(0, Math.floor(Number(输入.阶位下限 || 0)));
-  const 品质系数下限 = Math.max(0, Number(输入.品质系数下限 || 0));
-  const 魂导等级下限 = Math.max(0, Math.floor(Number(输入.魂导等级下限 || 0)));
-  const 耐久下限 = Math.max(0, Math.floor(Number(输入.耐久下限 || 0)));
-  const 剩余使用次数下限 = Math.max(0, Math.floor(Number(输入.剩余使用次数下限 || 0)));
-  if (名称) 输出.名称 = 名称;
-  if (数量 > 1) 输出.数量 = 数量;
-  if (分类) 输出.分类 = 分类;
-  if (阶位下限 > 0) 输出.阶位下限 = 阶位下限;
-  if (品质系数下限 > 1) 输出.品质系数下限 = Number(品质系数下限.toFixed(2));
-  if (基础金属) 输出.基础金属 = 基础金属;
-  if (魂导等级下限 > 0) 输出.魂导等级下限 = 魂导等级下限;
-  if (耐久下限 > 0) 输出.耐久下限 = 耐久下限;
-  if (剩余使用次数下限 > 0) 输出.剩余使用次数下限 = 剩余使用次数下限;
-  return Object.keys(输出).length > 1 ? 输出 : null;
+  const 品质下限 = String(输入.品质下限 || '').trim();
+  const 输出 = { 类型: '物品', 名称, 数量 };
+  if (品质集合.has(品质下限)) 输出.品质下限 = 品质下限;
+  return 输出;
 }
 
 function 写入AIJsonPatch任务可选字段_V1(输出 = {}, 输入 = {}) {
@@ -1978,7 +1966,7 @@ function 格式化运行时占位统计_V1(统计 = {}) {
     .map(项 => `${项.名称}xx/${Number(项.数量 || 0)}项`)
     .join('、');
   const 角色外总数 = Number(统计?.角色外 || 0);
-  return `本次补全数量=xx/${总数}; 角色=${角色文本 || '无'}; 角色外=xx/${角色外总数}项. 只把 xx 替换为本轮实际补全数量；不要列路径或具体值。不准因为“剧情尚未涉及”“正文未直接描写”等原因拒绝补全。可根据当前角色设定、武魂/魂灵来源、字段名、父级对象和世界观常识推断稳定值。 最终必须保证xx=${总数}`;
+  return `本次补全数量=xx/${总数}; 角色=${角色文本 || '无'}; 角色外=xx/${角色外总数}项. 只把 xx 替换为本轮实际补全数量；不要列路径或具体值。不准因为“剧情尚未涉及”“正文未直接描写”等原因拒绝补全。可根据当前角色设定、武魂/魂灵来源、字段名、父级对象和世界观常识推断稳定值。 是否全部补全:是/否`;
 }
 
 function 读取运行时最后角色消息文本_V1() {
@@ -2051,18 +2039,6 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
 'New Entity Table:',
 'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new important plot items (generic keys/clothes write 无).',
 '',
-  '[Equipment Bonus Rule]',
-  '装备定义和角色装备禁止写 属性加成；只写 品质 与 加成方向。',
-  '加成方向只能取：魂力上限、精神力上限、力量、防御、敏捷、体力上限、全属性；全属性由脚本展开。',
-  '神器以下装备由脚本结算为整数绝对值，不写百分比；神器/超神器才可保留百分比或特殊算法。',
-  '神器生成最低标准：7 金属天锻，即副职业参数.融合参数.数量>=7 且 阶位=5；未达到时不要标为神器。',
-  '',
-    '[Task/Commission Creation]',
-    '剧情中新出现长期个人目标时，直接写 /char/${角色名}/我的任务/${任务名}，字段={任务线,状态,当前进度,奖励币,奖励声望,描述,最后更新时间tick,截止tick?}；任务线=主线/支线；最后更新时间tick用当前 world.时间.tick；限时任务才写截止tick，不限时不要写该字段；任务进度达到100时，任务奖励由脚本自动结算，不要为任务奖励额外手写财富或声望。',
-    '剧情中新出现公开/指定委托时，直接写 /world/委托板/${委托名}，字段={标题,描述,框架描述,发布者,面向,指定对象,状态,难度,资源级别,奖励币,奖励声望,承接者,生成tick,截止tick?,交付需求?}；生成tick用当前 world.时间.tick；限时委托才写截止tick。',
-    '物品交付委托才写交付需求={类型:"物品",名称,数量,分类,阶位下限?,品质系数下限?,基础金属?,魂导等级下限?,耐久下限?,剩余使用次数下限?}；没有限制的下限字段不要写；名称只用于显示和优先定位，验收以分类/阶位/品质/基础金属/魂导等级等下限为准；服务类委托不写交付需求。',
-    '若剧情中委托已被角色当场接下，同时写 char.我的任务 与 world.委托板，并同步截止tick与交付需求。',
-	'若只是一次性小动作，如开学报到，不创建持久任务或委托。',
   ].join('\n');
 }
 

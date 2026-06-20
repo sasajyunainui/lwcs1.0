@@ -4144,7 +4144,7 @@ function 规范化Schema根转换_V1(data = {}) {
         return Math.max(0, Math.floor(Number(currentTickValue || 0) + 时限天数 * 委托板每日tick数));
       }
 
-      function 推断委托板交付阶位(tier = 'D', title = '') {
+      function 推断委托板金属阶位(tier = 'D', title = '') {
         const 文本 = String(title || '');
         if (/天锻/.test(文本)) return 5;
         if (/魂锻/.test(文本)) return 4;
@@ -4154,21 +4154,27 @@ function 规范化Schema根转换_V1(data = {}) {
         return { D: 0, C: 1, B: 2, A: 3, S: 4 }[tier] ?? 0;
       }
 
+      function 读取委托板交付品质下限(tier = 'D', 阶位 = 0) {
+        const 品质 = { D: '普通', C: '优秀', B: '稀有', A: '史诗', S: '传说' }[tier] || '普通';
+        const 阶位品质 = { 1: '优秀', 2: '稀有', 3: '史诗', 4: '史诗', 5: '传说' }[阶位] || 品质;
+        return 物品经济品质列表_V1.indexOf(阶位品质) > 0 ? 阶位品质 : '';
+      }
+
       function 构建委托板交付需求(tier = 'D', descriptor = {}, title = '') {
         if (descriptor.id !== 'gathering') return null;
         const 文本 = `${String(title || '')} ${String(QUEST_BOARD_TIER_SETTINGS[tier]?.resourceLabel || '')}`;
         if (/药|草|灵物/.test(文本)) {
           const 名称 = { D: '常规药草', C: '高级药材', B: '稀有药材', A: '高危灵草', S: '极品灵物' }[tier] || '常规药草';
-          return { 类型: '物品', 名称, 数量: 1, 分类: '天然灵物' };
+          const 品质下限 = 读取委托板交付品质下限(tier, 0);
+          return 品质下限 ? { 类型: '物品', 名称, 数量: 1, 品质下限 } : { 类型: '物品', 名称, 数量: 1 };
         }
-        const 阶位下限 = 推断委托板交付阶位(tier, title);
+        const 金属阶位 = 推断委托板金属阶位(tier, title);
         const 名称 =
           { 0: '基础矿料', 1: '百锻金属块', 2: '千锻金属块', 3: '灵锻金属块', 4: '魂锻金属块', 5: '天锻金属块' }[
-            阶位下限
+            金属阶位
           ] || '基础矿料';
-        const 需求 = { 类型: '物品', 名称, 数量: 1, 分类: '锻造金属' };
-        if (阶位下限 > 0) 需求.阶位下限 = 阶位下限;
-        return 需求;
+        const 品质下限 = 读取委托板交付品质下限(tier, 金属阶位);
+        return 品质下限 ? { 类型: '物品', 名称, 数量: 1, 品质下限 } : { 类型: '物品', 名称, 数量: 1 };
       }
 
       function buildQuestBoardTitle(descriptor = {}, tier = 'D') {

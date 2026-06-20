@@ -350,18 +350,12 @@ const ItemLibrarySchema = z.looseObject({}).transform(规范化物品分类表_V
 
 const 交付需求Schema_V1 = z
   .object({
-    类型: z.literal('物品').optional(),
-    名称: z.string().optional(),
-    数量: z.coerce.number().optional(),
-    分类: z.string().optional(),
-    阶位下限: z.coerce.number().optional(),
-    品质系数下限: z.coerce.number().optional(),
-    基础金属: z.string().optional(),
-    魂导等级下限: z.coerce.number().optional(),
-    耐久下限: z.coerce.number().optional(),
-    剩余使用次数下限: z.coerce.number().optional(),
+    类型: z.literal('物品').prefault('物品'),
+    名称: z.string().min(1),
+    数量: z.coerce.number().int().min(1).prefault(1),
+    品质下限: z.enum(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']).optional(),
   })
-  .prefault({});
+  .optional();
 
 const StatsSchema = z
   .object({

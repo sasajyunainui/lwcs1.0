@@ -2923,51 +2923,47 @@
     if (!Object.keys(来源).length) return null;
     const 类型 = toText(来源.类型, '物品').trim() || '物品';
     if (类型 !== '物品') return null;
-    const 输出 = { 类型: '物品' };
     const 名称 = toText(来源.名称, '').trim();
-    const 分类 = toText(来源.分类, '').trim();
-    const 基础金属 = toText(来源.基础金属, '').trim();
+    if (!名称) return null;
     const 数量 = Math.max(1, Math.floor(toNumber(来源.数量, 1)));
-    const 阶位下限 = Math.max(0, Math.floor(toNumber(来源.阶位下限, 0)));
-    const 品质系数下限 = Number(Math.max(0, toNumber(来源.品质系数下限, 0)).toFixed(2));
-    const 魂导等级下限 = Math.max(0, Math.floor(toNumber(来源.魂导等级下限, 0)));
-    const 耐久下限 = Math.max(0, Math.floor(toNumber(来源.耐久下限, 0)));
-    const 剩余使用次数下限 = Math.max(0, Math.floor(toNumber(来源.剩余使用次数下限, 0)));
-    if (名称) 输出.名称 = 名称;
-    if (数量 > 1) 输出.数量 = 数量;
-    if (分类) 输出.分类 = 分类;
-    if (阶位下限 > 0) 输出.阶位下限 = 阶位下限;
-    if (品质系数下限 > 1) 输出.品质系数下限 = 品质系数下限;
-    if (基础金属) 输出.基础金属 = 基础金属;
-    if (魂导等级下限 > 0) 输出.魂导等级下限 = 魂导等级下限;
-    if (耐久下限 > 0) 输出.耐久下限 = 耐久下限;
-    if (剩余使用次数下限 > 0) 输出.剩余使用次数下限 = 剩余使用次数下限;
-    return Object.keys(输出).length > 1 ? 输出 : null;
+    const 品质下限 = toText(来源.品质下限, '').trim();
+    const 输出 = { 类型: '物品', 名称, 数量 };
+    if (物品经济品质集合_桥接.has(品质下限)) 输出.品质下限 = 品质下限;
+    return 输出;
   }
 
-  function 推断交付阶位下限_桥接(交付需求 = {}) {
-    const 显式阶位 = Math.max(0, Math.floor(toNumber(交付需求 && 交付需求.阶位下限, 0)));
-    if (显式阶位 > 0) return Math.min(5, 显式阶位);
-    const 文本 = `${toText(交付需求 && 交付需求.名称, '')} ${toText(交付需求 && 交付需求.分类, '')}`;
-    if (/天锻|四字|十万年/.test(文本)) return 5;
-    if (/魂锻|三字|红级/.test(文本)) return 4;
-    if (/灵锻|二字|黑级/.test(文本)) return 3;
-    if (/千锻|一字|紫级/.test(文本)) return 2;
-    if (/百锻|黄级/.test(文本)) return 1;
-    return 0;
+  function 读取交付品质序号_桥接(品质 = '') {
+    const 序号 = 物品经济品质列表_桥接.indexOf(toText(品质, '').trim());
+    return 序号 >= 0 ? 序号 : 0;
   }
 
-  function 推断交付候选阶位_桥接(物品名 = '', 物品定义 = {}, 候选数据 = {}) {
-    const 定义阶位 = Math.max(0, Math.floor(toNumber(物品定义 && 物品定义.阶位, 0)));
-    const 候选阶位 = Math.max(0, Math.floor(toNumber(候选数据 && 候选数据.阶位, 0)));
-    if (候选阶位 > 0 || 定义阶位 > 0) return Math.min(5, 候选阶位 || 定义阶位);
-    const 文本 = `${toText(物品定义 && 物品定义.品质, '')} ${toText(物品定义 && 物品定义.品阶, '')} ${toText(候选数据 && 候选数据.品质, '')} ${toText(候选数据 && 候选数据.品阶, '')}`;
-    if (/天锻|四字|十万年/.test(文本)) return 5;
-    if (/魂锻|三字|红级/.test(文本)) return 4;
-    if (/灵锻|二字|黑级/.test(文本)) return 3;
-    if (/千锻|一字|紫级/.test(文本)) return 2;
-    if (/百锻|黄级/.test(文本)) return 1;
-    return 0;
+  function 读取交付候选品质_桥接(候选 = {}) {
+    return 规范化物品经济品质_桥接(
+      候选.品质 || 候选.品阶 || 候选.批次品质 || '普通',
+      候选.物品名 || 候选.名称 || '',
+      候选.物品分类 || 候选.分类 || '',
+    );
+  }
+
+  function 交付候选达到品质下限_桥接(候选 = {}, 交付需求 = {}) {
+    const 品质下限 = toText(交付需求 && 交付需求.品质下限, '').trim();
+    if (!品质下限) return true;
+    return 读取交付品质序号_桥接(读取交付候选品质_桥接(候选)) >= 读取交付品质序号_桥接(品质下限);
+  }
+
+  function 交付候选精确命中名称_桥接(候选 = {}, 需求名 = '') {
+    const 名称 = toText(需求名, '').trim();
+    if (!名称) return false;
+    return [候选.物品名, 候选.名称].some(值 => toText(值, '').trim() === 名称);
+  }
+
+  function 交付候选包含命中名称_桥接(候选 = {}, 需求名 = '') {
+    const 名称 = toText(需求名, '').trim();
+    if (!名称) return false;
+    return [候选.物品名, 候选.名称].some(值 => {
+      const 候选名 = toText(值, '').trim();
+      return 候选名 && (候选名.includes(名称) || 名称.includes(候选名));
+    });
   }
 
   function 构建交付候选数据_桥接(根数据 = {}, 物品名 = '', 背包记录 = {}, 批次 = null, 批次索引 = -1) {
@@ -2990,7 +2986,6 @@
       数量,
     };
     delete 候选.批次;
-    候选.阶位 = 推断交付候选阶位_桥接(物品名, 定义, 候选);
     候选.品质系数 = Math.max(0.1, toNumber(候选.品质系数, 1));
     候选.魂导等级 = Math.max(0, Math.floor(toNumber(候选.魂导等级, 0)));
     return 候选;
@@ -2999,22 +2994,7 @@
   function 交付候选满足需求_桥接(候选 = {}, 交付需求 = {}) {
     const 需求 = 规范化交付需求_桥接(交付需求);
     if (!需求) return false;
-    const 需求分类 = toText(需求.分类, '').trim();
-    const 候选分类 = toText(候选.物品分类 || 候选.分类, '').trim();
-    if (需求分类 && 候选分类 !== 需求分类) return false;
-    const 阶位下限 = 推断交付阶位下限_桥接(需求);
-    if (阶位下限 > 0 && 推断交付候选阶位_桥接(候选.物品名 || 候选.名称, 候选, 候选) < 阶位下限) return false;
-    const 品质系数下限 = Math.max(0, toNumber(需求.品质系数下限, 0));
-    if (品质系数下限 > 0 && toNumber(候选.品质系数, 1) < 品质系数下限) return false;
-    const 基础金属 = toText(需求.基础金属, '').trim();
-    if (基础金属 && toText(候选.基础金属, '').trim() !== 基础金属) return false;
-    const 魂导等级下限 = Math.max(0, Math.floor(toNumber(需求.魂导等级下限, 0)));
-    if (魂导等级下限 > 0 && Math.floor(toNumber(候选.魂导等级, 0)) < 魂导等级下限) return false;
-    const 耐久下限 = Math.max(0, Math.floor(toNumber(需求.耐久下限, 0)));
-    if (耐久下限 > 0 && Math.floor(toNumber(候选.耐久, 0)) < 耐久下限) return false;
-    const 剩余使用次数下限 = Math.max(0, Math.floor(toNumber(需求.剩余使用次数下限, 0)));
-    if (剩余使用次数下限 > 0 && Math.floor(toNumber(候选.剩余使用次数, 0)) < 剩余使用次数下限) return false;
-    return true;
+    return 交付候选达到品质下限_桥接(候选, 需求);
   }
 
   function 格式化交付需求文本_桥接(交付需求 = {}) {
@@ -3023,16 +3003,9 @@
     const 片段 = [];
     const 名称 = toText(需求.名称, '').trim();
     const 数量 = Math.max(1, Math.floor(toNumber(需求.数量, 1)));
-    const 阶位下限 = 推断交付阶位下限_桥接(需求);
     if (名称) 片段.push(名称);
     片段.push(`×${数量}`);
-    if (需求.分类) 片段.push(toText(需求.分类, ''));
-    if (阶位下限 > 0) 片段.push(`阶位≥${阶位下限}`);
-    if (toNumber(需求.品质系数下限, 0) > 0) 片段.push(`Q≥${toNumber(需求.品质系数下限, 0).toFixed(2)}`);
-    if (需求.基础金属) 片段.push(`基:${toText(需求.基础金属, '')}`);
-    if (toNumber(需求.魂导等级下限, 0) > 0) 片段.push(`魂导≥${Math.floor(toNumber(需求.魂导等级下限, 0))}`);
-    if (toNumber(需求.耐久下限, 0) > 0) 片段.push(`耐久≥${Math.floor(toNumber(需求.耐久下限, 0))}`);
-    if (toNumber(需求.剩余使用次数下限, 0) > 0) 片段.push(`次数≥${Math.floor(toNumber(需求.剩余使用次数下限, 0))}`);
+    if (需求.品质下限) 片段.push(`品质≥${toText(需求.品质下限, '')}`);
     return 片段.filter(Boolean).join(' / ') || '物品交付';
   }
 
@@ -3043,29 +3016,26 @@
     const 需求 = 规范化交付需求_桥接(交付需求);
     if (!需求) return [];
     const 需求名 = toText(需求.名称, '').trim();
-    const 阶位下限 = 推断交付阶位下限_桥接(需求);
     const 列表 = [];
     Object.entries(背包).forEach(([物品名, 背包记录]) => {
       if (!物品名 || !背包记录 || typeof 背包记录 !== 'object' || Array.isArray(背包记录)) return;
       const 普通数量 = Math.max(0, Math.floor(toNumber(背包记录.数量, 0)));
       if (普通数量 > 0) {
         const 候选 = 构建交付候选数据_桥接(根数据, 物品名, 背包记录, null, -1);
-        if (交付候选满足需求_桥接(候选, 需求)) 列表.push(候选);
+        列表.push(候选);
       }
       读取背包批次列表_桥接(背包记录).forEach((批次, 批次索引) => {
         const 候选 = 构建交付候选数据_桥接(根数据, 物品名, 背包记录, 批次, 批次索引);
-        if (交付候选满足需求_桥接(候选, 需求)) 列表.push(候选);
+        列表.push(候选);
       });
     });
-    return 列表.sort((甲, 乙) => {
-      const 甲名中 = 需求名 && 甲.物品名 === 需求名 ? 0 : 1;
-      const 乙名中 = 需求名 && 乙.物品名 === 需求名 ? 0 : 1;
-      if (甲名中 !== 乙名中) return 甲名中 - 乙名中;
-      const 甲阶差 = Math.max(0, 推断交付候选阶位_桥接(甲.物品名, 甲, 甲) - 阶位下限);
-      const 乙阶差 = Math.max(0, 推断交付候选阶位_桥接(乙.物品名, 乙, 乙) - 阶位下限);
-      if (甲阶差 !== 乙阶差) return 甲阶差 - 乙阶差;
-      const 甲品质差 = Math.max(0, toNumber(甲.品质系数, 1) - toNumber(需求.品质系数下限, 0));
-      const 乙品质差 = Math.max(0, toNumber(乙.品质系数, 1) - toNumber(需求.品质系数下限, 0));
+    const 精确列表 = 列表.filter(候选 => 交付候选精确命中名称_桥接(候选, 需求名));
+    const 可用列表 = (精确列表.length ? 精确列表 : 列表.filter(候选 => 交付候选包含命中名称_桥接(候选, 需求名))).filter(候选 =>
+      交付候选满足需求_桥接(候选, 需求),
+    );
+    return 可用列表.sort((甲, 乙) => {
+      const 甲品质差 = Math.max(0, 读取交付品质序号_桥接(读取交付候选品质_桥接(甲)) - 读取交付品质序号_桥接(需求.品质下限));
+      const 乙品质差 = Math.max(0, 读取交付品质序号_桥接(读取交付候选品质_桥接(乙)) - 读取交付品质序号_桥接(需求.品质下限));
       if (甲品质差 !== 乙品质差) return 甲品质差 - 乙品质差;
       return toText(甲.物品名, '').localeCompare(toText(乙.物品名, ''), 'zh-Hans-CN');
     });
