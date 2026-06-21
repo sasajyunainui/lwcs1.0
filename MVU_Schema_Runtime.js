@@ -1613,15 +1613,7 @@ function 判断传灵塔万年魂灵开放_V1(数据根 = {}) {
 function markPlayerCharacterInSchemaInput(rawInput) {
   开始MVU归一化批次_V1();
   if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return rawInput;
-  const 取Schema根字段数量 = value => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return 0;
-    return ['sys', 'world', 'org', 'char'].filter(key => value[key] && typeof value[key] === 'object' && !Array.isArray(value[key])).length;
-  };
-  const 输入候选列表 = [rawInput?.stat_data, rawInput?.display_data, rawInput];
-  const 源输入 = 输入候选列表
-    .filter(候选 => 候选 && typeof 候选 === 'object' && !Array.isArray(候选))
-    .sort((左, 右) => 取Schema根字段数量(右) - 取Schema根字段数量(左))[0] || rawInput;
-  const clonedInput = _.cloneDeep(源输入);
+  const clonedInput = _.cloneDeep(rawInput);
   const 候选根列表 = [
     clonedInput,
     clonedInput?.stat_data,
