@@ -1006,9 +1006,29 @@ const SchemaRootObject = z
   })
   .prefault({});
 
-export const Schema = z
+const StatDataSchema = z
   .preprocess(markPlayerCharacterInSchemaInput, SchemaRootObject)
   .transform(规范化Schema根转换_V1);
+
+export const Schema = z.any().transform((输入值, 上下文) => {
+  const 是对象 = 输入值 && typeof 输入值 === 'object' && !Array.isArray(输入值);
+  const 是MVU外层包 =
+    是对象 &&
+    输入值.stat_data &&
+    typeof 输入值.stat_data === 'object' &&
+    !Array.isArray(输入值.stat_data) &&
+    (Object.prototype.hasOwnProperty.call(输入值, 'display_data') ||
+      Object.prototype.hasOwnProperty.call(输入值, 'delta_data') ||
+      Object.prototype.hasOwnProperty.call(输入值, 'schema') ||
+      Object.prototype.hasOwnProperty.call(输入值, 'initialized_lorebooks'));
+  const 解析结果 = StatDataSchema.safeParse(是MVU外层包 ? 输入值.stat_data : 输入值);
+  if (!解析结果.success) {
+    解析结果.error.issues.forEach(issue => 上下文.addIssue(issue));
+    return z.NEVER;
+  }
+  if (!是MVU外层包) return 解析结果.data;
+  return { ...输入值, stat_data: 解析结果.data };
+});
 
 globalThis.__LWCS_MVU_SCHEMA__ = Schema;
 
