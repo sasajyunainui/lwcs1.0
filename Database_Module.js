@@ -4132,6 +4132,36 @@ $CONTENT
     function getChatArray_ACU() {
         return SillyTavern_API_ACU?.chat || [];
     }
+    let 正则引擎模块承诺_ACU = null;
+    async function 读取酒馆正则引擎模块_ACU() {
+        if (正则引擎模块承诺_ACU)
+            return await 正则引擎模块承诺_ACU;
+        正则引擎模块承诺_ACU = import('/scripts/extensions/regex/engine.js').catch(error => {
+            logWarn_ACU('[正则过滤] 加载酒馆正则引擎失败:', error);
+            return null;
+        });
+        return await 正则引擎模块承诺_ACU;
+    }
+    async function 套用酒馆Prompt正则_ACU(text = '', placement = 'ai') {
+        const source = String(text || '');
+        if (!source)
+            return '';
+        const 模块 = await 读取酒馆正则引擎模块_ACU();
+        const getRegexedString = 模块?.getRegexedString;
+        const regexPlacement = 模块?.regex_placement;
+        if (typeof getRegexedString !== 'function' || !regexPlacement)
+            return source;
+        const 位置 = placement === 'user' ? regexPlacement.USER_INPUT : regexPlacement.AI_OUTPUT;
+        if (位置 === undefined || 位置 === null)
+            return source;
+        try {
+            return String(getRegexedString(source, 位置, { isPrompt: true }) ?? source);
+        }
+        catch (error) {
+            logWarn_ACU('[正则过滤] 处理数据库提示词正文失败:', error);
+            return source;
+        }
+    }
     /**
      * 获取当前聊天数组的长度
      * @returns 消息数量
@@ -18030,10 +18060,11 @@ $CONTENT
                 return text;
             return applyExcludeRulesToText_ACU(text, { excludeRules: tableExcludeRules, excludeTags: tableExcludeTags });
         };
+        const 过滤后填表正文数据 = await 套用酒馆Prompt正则_ACU(dynamicContent.messagesText || '', 'ai');
         for (const segment of promptSegments) {
             let finalContent = segment.content;
             finalContent = finalContent.replace('$0', filterTableInjectedContent(dynamicContent.tableDataText, '$0'));
-            finalContent = finalContent.replace('$1', filterTableInjectedContent(dynamicContent.messagesText, '$1'));
+            finalContent = finalContent.replace('$1', filterTableInjectedContent(过滤后填表正文数据, '$1'));
             finalContent = finalContent.replace('$4', filterTableInjectedContent(dynamicContent.worldbookContent, '$4'));
             finalContent = finalContent.replace(/\$6/g, filterTableInjectedContent(lastPlotContent || '', '$6'));
             finalContent = finalContent.replace('$8', filterTableInjectedContent(dynamicContent.manualExtraHint || '', '$8'));
@@ -19297,6 +19328,7 @@ $CONTENT
     }
     async function buildPlotSharedContext_ACU(plotSettings, userMessage, runtimeOptions = {}) {
         const chat = getChatArray_ACU();
+        const 过滤后用户消息 = await 套用酒馆Prompt正则_ACU(userMessage || '', 'user');
         const contextTurnCount = plotSettings.contextTurnCount ?? 1;
         let slicedContext = [];
         if (contextTurnCount > 0) {
@@ -19324,6 +19356,7 @@ $CONTENT
                 if (extractTags || extractRules.length > 0 || excludeTags || excludeRules.length > 0) {
                     content = applyContextTagFilters_ACU(content, { extractTags, extractRules, excludeTags, excludeRules });
                 }
+                content = await 套用酒馆Prompt正则_ACU(content || '', 'ai');
                 extracted.unshift({ role: 'assistant', content });
                 aiCount++;
             }
@@ -19412,7 +19445,7 @@ $CONTENT
         try {
             if (currentJsonTableData_ACU && typeof currentJsonTableData_ACU === 'object') {
                 const deviationLedgerCandidateResult = 格式化偏差账本候选_ACU(currentJsonTableData_ACU, {
-                    userMessage,
+                    userMessage: 过滤后用户消息,
                     contextText: contextInjectionText,
                     lastPlotContent,
                     anchorText: outlineTableContent,
@@ -19454,7 +19487,7 @@ $CONTENT
             $5: outlineTableContent,
             $6: lastPlotContent,
             $7: contextInjectionText,
-            $8: userMessage,
+            $8: 过滤后用户消息,
             $U: userInfoContent_Plot,
             $C: charInfoContent_Plot,
         };
@@ -19488,10 +19521,10 @@ $CONTENT
         let plotFinalDirective = performReplacements(rawFinal);
         plotFinalDirective = await 处理剧情推进提示词运行时内容_ACU(plotFinalDirective, {
             viewType: 'plot',
-            userInput: userMessage || '',
+            userInput: 过滤后用户消息 || '',
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: lastPlotContent || '',
-            captureText: [userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
+            captureText: [过滤后用户消息, await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai')].filter(Boolean).join('\n'),
         });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
@@ -19510,7 +19543,7 @@ $CONTENT
         }
         return {
             plotSettings,
-            userMessage,
+            userMessage: 过滤后用户消息,
             lastPlotContent,
             deviationLedgerCandidateText,
             performReplacements,
@@ -19545,7 +19578,7 @@ $CONTENT
                 userInput: sharedContext.userMessage || "",
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
-                captureText: [sharedContext.userMessage, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
+                captureText: [sharedContext.userMessage, await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai')].filter(Boolean).join('\n'),
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
@@ -20292,18 +20325,20 @@ $CONTENT
         const 用户输入文本 = getSendTextareaValue_ACU() || 读取最新用户消息文本_ACU();
         const 最新角色消息元信息 = 读取最新角色消息元信息_ACU();
         const 最后角色消息文本 = 最新角色消息元信息.文本 || getLatestAIMessageContent_ACU();
+        const 过滤后用户输入文本 = await 套用酒馆Prompt正则_ACU(用户输入文本 || '', 'user');
+        const 过滤后最后角色消息文本 = await 套用酒馆Prompt正则_ACU(最后角色消息文本 || '', 'ai');
         const 提示词合并文本 = data.messages.map(message => {
             if (typeof message?.content === 'string') return message.content;
             if (Array.isArray(message?.content)) return message.content.map(part => part?.type === 'text' ? part.text || '' : '').join('\n');
             return '';
         }).join('\n');
         const 需要运行时提示词处理 = 剧情推进运行时适配器需要处理_ACU(提示词合并文本);
-        const 本轮运行时捕获文本 = [用户输入文本, 最后角色消息文本].filter(Boolean).join('\n');
+        const 本轮运行时捕获文本 = [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n');
         let 运行时数据 = null;
         if (需要运行时提示词处理) {
             运行时数据 = await 准备提示词运行时数据_ACU({
-                userInput: 用户输入文本,
-                最后角色消息文本,
+                userInput: 过滤后用户输入文本,
+                最后角色消息文本: 过滤后最后角色消息文本,
                 角色消息元信息: 最新角色消息元信息,
                 捕获文本: 本轮运行时捕获文本,
                 plotText: '',
@@ -20311,7 +20346,7 @@ $CONTENT
         }
         const 运行时视图类型 = /<tableEdit>|填表AI|当前表格数据|SQL 编辑格式说明/i.test(提示词合并文本) ? 'empty' : 'story';
         const context = {
-            seedContent: 最后角色消息文本 || '',
+            seedContent: 过滤后最后角色消息文本 || '',
             allTablesJson: getTableDataForPrompt_ACU(),
             plotContent: lastPlotContent
         };
@@ -20319,8 +20354,8 @@ $CONTENT
             return await 处理剧情推进提示词运行时内容_ACU(content, {
                 viewType: 运行时视图类型,
                 statData: 运行时数据 || undefined,
-                userInput: 用户输入文本,
-                lastCharMessage: 最后角色消息文本 || '',
+                userInput: 过滤后用户输入文本,
+                lastCharMessage: 过滤后最后角色消息文本 || '',
                 plotText: lastPlotContent || '',
                 captureText: 本轮运行时捕获文本,
             });
@@ -22015,12 +22050,13 @@ $CONTENT
      * @returns {Promise<object>} 占位符内容映射
      */
     async function getOptimizationPlaceholders_ACU(userMessage = '') {
+        const 过滤后用户消息 = await 套用酒馆Prompt正则_ACU(userMessage || '', 'user');
         const placeholders = {
             $1: '', // 世界书内容
             $5: '', // 纪要表/总体大纲表内容
             $6: '', // 上一轮剧情规划数据
             $7: '', // 前文上下文
-            $8: userMessage, // 本轮用户输入
+            $8: 过滤后用户消息, // 本轮用户输入
             $U: '', // 用户设定描述
             $C: '' // 角色描述
         };
@@ -22073,9 +22109,9 @@ $CONTENT
             const contextMessages = chat
                 .filter(msg => !msg.is_user)
                 .slice(-10) // 最近10条AI消息
-                .map(msg => `assistant："${msg.mes || ''}"`)
-                .join('\n');
-            placeholders.$7 = contextMessages ? `以下是前文的故事发展（AI输出）：\n${contextMessages}` : '';
+                .map(async msg => `assistant："${await 套用酒馆Prompt正则_ACU(msg.mes || '', 'ai')}"`)
+            const filteredContextMessages = await Promise.all(contextMessages);
+            placeholders.$7 = filteredContextMessages.join('\n') ? `以下是前文的故事发展（AI输出）：\n${filteredContextMessages.join('\n')}` : '';
             logDebug_ACU('[正文优化] $7 前文上下文:', placeholders.$7 ? `长度=${placeholders.$7.length}` : '(空)');
         }
         catch (e) {
@@ -55229,14 +55265,16 @@ $CONTENT
     async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '') {
         const 正文生成指导 = String(finalMessage || '').trim();
         const 用户输入文本 = String(userMessage || '');
-        const 运行时数据 = await 准备正文生成运行时数据_ACU(用户输入文本, runtimePlotText || '', 正文生成指导);
+        const 过滤后用户输入文本 = await 套用酒馆Prompt正则_ACU(用户输入文本, 'user');
+        const 过滤后最后角色消息文本 = await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai');
+        const 运行时数据 = await 准备正文生成运行时数据_ACU(过滤后用户输入文本, runtimePlotText || '', 正文生成指导);
         const 替换后正文生成指导 = await 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
             viewType: 'story',
             statData: 运行时数据 || undefined,
-            userInput: 用户输入文本,
-            lastCharMessage: getLatestAIMessageContent_ACU(),
+            userInput: 过滤后用户输入文本,
+            lastCharMessage: 过滤后最后角色消息文本,
             plotText: runtimePlotText || 正文生成指导,
-            captureText: [用户输入文本, getLatestAIMessageContent_ACU()].filter(Boolean).join('\n'),
+            captureText: [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n'),
         });
         登记防截断流入等待检测_ACU(替换后正文生成指导);
         if (options.injects?.[0]?.content) {

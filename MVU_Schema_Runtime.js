@@ -5242,17 +5242,28 @@ function 规范化Schema根转换_V1(data = {}) {
 
       let vitMult = 1.0,
         strMult = 1.0,
+        defMult = 1.0,
         allMult = 1.0,
         menMult = 1.0;
       if (c.血脉之力?.生命之火 === true) {
         allMult = 2.0;
       }
 
-      let hasDragon = false;
+      let 龙族体质类型 = '';
       取角色武魂条目_V1(c).forEach(([, sp]) => {
-        if (/龙/.test(sp.表象名称)) hasDragon = true;
+        const 武魂名 = String(sp?.表象名称 || '').trim();
+        if (/龙王/.test(武魂名)) 龙族体质类型 = '龙王';
+        else if (!龙族体质类型 && /龙/.test(武魂名)) 龙族体质类型 = '龙';
       });
-      if (hasDragon) vitMult = Math.max(vitMult, 1.5);
+      if (龙族体质类型) {
+        const 天赋层级 = { 天赋极差: 0, 劣等: 0, 正常: 1, 优秀: 2, 天才: 3, 顶级天才: 4, 绝世妖孽: 5 }[
+          String(c?.属性?.天赋梯队 || '').trim()
+        ] ?? 1;
+        const 龙族体质倍率 = 1 + Math.max(0, 天赋层级) * (龙族体质类型 === '龙王' ? 0.5 : 0.1);
+        vitMult = Math.max(vitMult, 龙族体质倍率);
+        strMult = Math.max(strMult, 龙族体质倍率);
+        defMult = Math.max(defMult, 龙族体质倍率);
+      }
 
       const wpnBonus = 计算装备属性加成_V1(c.装备?.武器, { ...c, 属性基准模式: '已含本武器加成' });
       const 防具加成 = c.装备?.防具?.装备状态 === '已装备'
@@ -5302,6 +5313,7 @@ function 规范化Schema根转换_V1(data = {}) {
       if (vitMult > 1.0)
         c.属性.体力上限 = Math.max(c.属性.体力上限, Math.floor((c.属性.体力上限 - eb.vit) * vitMult) + eb.vit);
       if (strMult > 1.0) c.属性.力量 = Math.max(c.属性.力量, Math.floor((c.属性.力量 - eb.str) * strMult) + eb.str);
+      if (defMult > 1.0) c.属性.防御 = Math.max(c.属性.防御, Math.floor((c.属性.防御 - eb.def) * defMult) + eb.def);
       if (menMult > 1.0)
         c.属性.精神力上限 = Math.max(c.属性.精神力上限, Math.floor((c.属性.精神力上限 - eb.men) * menMult) + eb.men);
 
@@ -6740,6 +6752,17 @@ function 填充默认训练加成_V1(属性 = {}, 强制重算 = false) {
     return 属性;
 }
 
+function 读取高天赋精神倍率_V1(属性 = {}) {
+    const 固定倍率 = { 优秀: 1.25, 天才: 2, 顶级天才: 3.5, 绝世妖孽: 4 }[String(属性?.天赋梯队 || '').trim()] || 1;
+    if (固定倍率 <= 1) return 1;
+    const 等级 = Math.max(1, Number(属性?.等级 || 1) || 1);
+    let 解锁系数 = 0;
+    if (等级 <= 20) 解锁系数 = 0;
+    else if (等级 <= 45) 解锁系数 = (等级 - 20) / 25;
+    else 解锁系数 = 1;
+    return 1 + (固定倍率 - 1) * Math.max(0, Math.min(1, 解锁系数));
+}
+
 function 规范化属性Schema_V1(data) {
     data.训练加成 = createNumericStatBonusMap(data.训练加成);
 
@@ -7249,14 +7272,15 @@ function 规范化角色Schema_V1(char) {
     let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + char.属性.训练加成.防御;
     let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + char.属性.训练加成.敏捷;
     let final_vit_max = Math.floor(base.vit_max * typeMult.vit_max * hiddenVar) + char.属性.训练加成.体力上限;
-    let final_men_max = Math.floor(base.men_max * typeMult.men_max * hiddenVar) + char.属性.训练加成.精神力上限;
+    let final_men_max = Math.floor((Math.floor(base.men_max * typeMult.men_max * hiddenVar) + char.属性.训练加成.精神力上限) * 读取高天赋精神倍率_V1(char.属性));
     let final_sp_max = Math.max(自然魂力上限, 既有魂力上限);
     let bName = char.血脉之力?.血脉 || '无';
 
   if (bName.includes('金龙王')) {
+      const 金龙王基础倍率 = 2 + Math.max(0, Math.floor(Number(char?.血脉之力?.解封层数 || 0)));
       const 金龙王力量体力最终值 = 基础值 => {
         const 数值 = Math.max(0, Math.floor(Number(基础值 || 0)));
-        if (数值 * 10 <= 100000) return Math.floor(数值 * 10);
+        if (数值 * 金龙王基础倍率 <= 100000) return Math.floor(数值 * 金龙王基础倍率);
         if (数值 * 5 <= 200000) return Math.max(100000, Math.floor(数值 * 5));
         return Math.max(200000, Math.floor(数值 * 2));
       };
@@ -7269,7 +7293,7 @@ function 规范化角色Schema_V1(char) {
       final_vit_max += Math.min(vitInc, 20000);
       let strInc = final_str * 1;
       final_str += Math.min(strInc, 20000);
-      let menInc = final_men_max * 9;
+      let menInc = final_men_max * 6;
       final_men_max += Math.min(menInc, 40000);
     }
     if (char.社交?.势力?.['本体宗']) {
