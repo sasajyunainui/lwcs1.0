@@ -585,17 +585,193 @@ function 收集运行时命中键列表_V1(文本 = '', 来源 = {}, 选项 = {}
   return Array.from(new Set(结果));
 }
 
-function 收集运行时地图命中键列表_V1(数据根 = {}, 文本 = '') {
-  const 结果 = [];
-  const 遍历 = (节点 = null, 名称 = '') => {
+function 规范化运行时地点名_V1(名称 = '') {
+  return String(名称 || '')
+    .replace(/^斗罗大陆-/, '')
+    .replace(/^斗灵大陆-/, '')
+    .trim();
+}
+
+function 构建运行时地点路径名_V1(路径 = []) {
+  return (Array.isArray(路径) ? 路径 : [])
+    .map(片段 => String(片段 || '').trim())
+    .filter(Boolean)
+    .join('-');
+}
+
+function 添加运行时地点匹配词_V1(集合 = new Set(), 值 = '') {
+  const 文本 = String(值 || '').trim();
+  if (!文本 || 文本 === '无' || 文本 === '未知') return;
+  集合.add(文本);
+  const 清理名 = 规范化运行时地点名_V1(文本);
+  if (清理名) 集合.add(清理名);
+  const 片段 = 清理名.split('-').map(项 => 项.trim()).filter(Boolean);
+  片段.forEach(项 => 集合.add(项));
+  const 后缀列表 = ['分会', '分部', '总部', '协会', '学院', '分店', '驻地', '拍卖场', '杂货店'];
+  [文本, 清理名, ...片段].forEach(原词 => {
+    后缀列表.forEach(后缀 => {
+      if (原词.endsWith(后缀) && 原词.length > 后缀.length) 集合.add(原词.slice(0, -后缀.length));
+    });
+  });
+}
+
+function 运行时地点匹配词命中文本_V1(文本 = '', 匹配词 = '') {
+  const 源文本 = String(文本 || '').replace(/\s+/g, '');
+  const 词 = String(匹配词 || '').replace(/\s+/g, '').trim();
+  if (!源文本 || !词 || 词 === '无' || 词 === '未知') return false;
+  if (源文本.includes(词)) return true;
+  if (词.length < 2) return false;
+  for (let 序号 = 0; 序号 < 词.length - 1; 序号 += 1) {
+    const 双字 = 词.slice(序号, 序号 + 2);
+    if (/^[\u4e00-\u9fa5A-Za-z0-9]{2}$/.test(双字) && 源文本.includes(双字)) return true;
+  }
+  return false;
+}
+
+function 构建运行时地点索引_V1(数据根 = {}) {
+  const 静态地点 = [];
+  const 动态地点 = [];
+  const 遍历静态 = (节点 = null, 名称 = '', 路径 = []) => {
     const 地点名 = String(名称 || '').trim();
     if (!地点名 || !节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
     if (typeof 节点.condition === 'function' && !节点.condition(数据根)) return;
-    if (运行时文本命中名称_V1(文本, 地点名)) 结果.push(地点名);
-    Object.entries(节点.子节点 || {}).forEach(([子名, 子节点]) => 遍历(子节点, 子名));
+    const 当前路径 = [...路径, 地点名];
+    const 匹配词 = new Set();
+    添加运行时地点匹配词_V1(匹配词, 地点名);
+    添加运行时地点匹配词_V1(匹配词, 构建运行时地点路径名_V1(当前路径));
+    添加运行时地点匹配词_V1(匹配词, 节点.掌控势力);
+    Object.keys(节点.商店 || {}).forEach(商店名 => 添加运行时地点匹配词_V1(匹配词, 商店名));
+    静态地点.push({
+      类型: '地点',
+      名称: 地点名,
+      输出名: 构建运行时地点路径名_V1(当前路径),
+      路径: 当前路径,
+      父节点: 当前路径.length >= 2 ? 当前路径[当前路径.length - 2] : '',
+      顶层: 当前路径[0] || '',
+      匹配词: Array.from(匹配词).filter(词 => 词.length >= 2),
+    });
+    Object.entries(节点.子节点 || {}).forEach(([子名, 子节点]) => 遍历静态(子节点, 子名, 当前路径));
   };
-  Object.entries(数据根?.world?.地点 || {}).forEach(([名称, 节点]) => 遍历(节点, 名称));
-  return Array.from(new Set(结果));
+  Object.entries(数据根?.world?.地点 || {}).forEach(([名称, 节点]) => 遍历静态(节点, 名称, []));
+  Object.entries(数据根?.world?.动态地点 || {}).forEach(([名称, 地点数据]) => {
+    const 地点名 = String(名称 || '').trim();
+    if (!地点名 || !地点数据 || typeof 地点数据 !== 'object' || Array.isArray(地点数据)) return;
+    const 父节点 = String(地点数据.归属父节点 || '').trim();
+    const 匹配词 = new Set();
+    添加运行时地点匹配词_V1(匹配词, 地点名);
+    添加运行时地点匹配词_V1(匹配词, 父节点 ? `${父节点}-${地点名}` : 地点名);
+    添加运行时地点匹配词_V1(匹配词, 地点数据.势力);
+    添加运行时地点匹配词_V1(匹配词, 地点数据.归属父节点);
+    动态地点.push({
+      类型: '动态地点',
+      名称: 地点名,
+      输出名: 父节点 ? `${父节点}-${地点名}` : 地点名,
+      父节点,
+      匹配词: Array.from(匹配词).filter(词 => 词.length >= 2),
+    });
+  });
+  return { 静态地点, 动态地点 };
+}
+
+function 收集运行时地点父级上下文_V1(数据根 = {}, 文本 = '', 选项 = {}) {
+  const 索引 = 选项.地点索引 || 构建运行时地点索引_V1(数据根);
+  const 父级 = new Set();
+  const 添加 = 值 => {
+    const 文本值 = 规范化运行时地点名_V1(值);
+    if (!文本值 || 文本值 === '无' || 文本值 === '未知') return;
+    文本值.split('-').map(项 => 项.trim()).filter(Boolean).forEach(片段 => 父级.add(片段));
+  };
+  const 当前范围 = 取运行时当前范围_V1(数据根);
+  (Array.isArray(当前范围?.当前地点信息?.path) ? 当前范围.当前地点信息.path : []).forEach(添加);
+  添加(当前范围?.当前上下文节点);
+  [
+    选项.归属父节点,
+    选项.父节点,
+    选项.当前地点,
+    选项.模块路由?.请求?.归属父节点,
+    选项.模块路由?.请求?.父节点,
+  ].forEach(添加);
+  索引.静态地点.forEach(条目 => {
+    if (条目.路径.length === 1 && 运行时文本命中名称_V1(文本, 条目.名称)) 添加(条目.名称);
+  });
+  收集运行时字符串列表_V1(
+    选项.命中地点,
+    数据根?.相关实体索引?.命中地点,
+    选项.命中动态地点,
+    数据根?.相关实体索引?.命中动态地点,
+  ).forEach(名称 => {
+    const 动态 = 索引.动态地点.find(条目 => 条目.名称 === 名称 || 条目.输出名 === 名称);
+    if (动态?.父节点) 添加(动态.父节点);
+    添加(名称);
+  });
+  return 父级;
+}
+
+function 运行时地点条目在父级范围_V1(条目 = {}, 父级集合 = new Set()) {
+  if (!(父级集合 instanceof Set) || !父级集合.size) return false;
+  if (条目.类型 === '动态地点') return !!条目.父节点 && 父级集合.has(条目.父节点);
+  const 路径 = Array.isArray(条目.路径) ? 条目.路径 : [];
+  return 路径.some(片段 => 父级集合.has(片段));
+}
+
+function 计算运行时地点命中_V1(条目 = {}, 文本 = '', 父级集合 = new Set()) {
+  const 捕获文本 = String(文本 || '');
+  if (!条目 || typeof 条目 !== 'object') return null;
+  const 名称 = String(条目.名称 || '').trim();
+  const 输出名 = String(条目.输出名 || 名称).trim();
+  if (!名称) return null;
+  const 来源 = [];
+  let 分数 = 0;
+  const 有父级 = 父级集合 instanceof Set && 父级集合.size > 0;
+  const 允许裸名精确 = 有父级 || 条目.类型 === '动态地点' || !Array.isArray(条目.路径) || 条目.路径.length <= 1;
+  if (运行时文本命中名称_V1(捕获文本, 输出名) || (允许裸名精确 && 运行时文本命中名称_V1(捕获文本, 名称))) {
+    分数 += 10;
+    来源.push('精确名');
+  }
+  if (运行时地点条目在父级范围_V1(条目, 父级集合)) {
+    const 命中词 = (Array.isArray(条目.匹配词) ? 条目.匹配词 : [])
+      .find(词 => 运行时地点匹配词命中文本_V1(捕获文本, 词));
+    if (命中词) {
+      分数 += 7;
+      来源.push(`父级模糊:${命中词}`);
+    }
+  }
+  if (分数 <= 0) return null;
+  if (运行时地点条目在父级范围_V1(条目, 父级集合)) {
+    分数 += 2;
+    来源.push('父级限定');
+  }
+  return { 类型: 条目.类型, 名称: 输出名, 原名: 名称, 路径: 条目.路径, 父节点: 条目.父节点, 分数, 来源 };
+}
+
+function 收集运行时地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
+  const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 索引 = 选项.地点索引 || 构建运行时地点索引_V1(数据根);
+  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 文本, { ...选项, 地点索引: 索引 });
+  const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 1)));
+  const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 16)));
+  return 索引.静态地点
+    .map(条目 => 计算运行时地点命中_V1(条目, 文本, 父级集合))
+    .filter(命中 => 命中 && 命中.分数 >= 阈值)
+    .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+    .slice(0, 上限);
+}
+
+function 收集运行时父级限定动态地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
+  const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 索引 = 选项.地点索引 || 构建运行时地点索引_V1(数据根);
+  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 文本, { ...选项, 地点索引: 索引 });
+  const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 1)));
+  const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 12)));
+  return 索引.动态地点
+    .map(条目 => 计算运行时地点命中_V1(条目, 文本, 父级集合))
+    .filter(命中 => 命中 && 命中.分数 >= 阈值)
+    .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+    .slice(0, 上限);
+}
+
+function 收集运行时地图命中键列表_V1(数据根 = {}, 文本 = '') {
+  return 收集运行时地点命中_V1(数据根, 文本, { 上限: 24 }).map(命中 => 命中.名称);
 }
 
 function 运行时文本包含片段_V1(文本 = '', 片段 = '') {
@@ -876,14 +1052,21 @@ function 计算运行时物品命中_V1(物品名 = '', 索引 = {}, 文本 = ''
 
 function 收集运行时动态地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
-  const 目录 = 构建运行时动态地点目录_V1(数据根, 选项.动态地点目录);
-  const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 5)));
-  const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 8)));
-  return Object.entries(目录)
-    .map(([名称, 索引]) => 计算运行时动态地点命中_V1(名称, 索引, 文本, 数据根, 选项))
-    .filter(命中 => 命中 && 命中.分数 >= 阈值)
-    .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-    .slice(0, 上限);
+  if (选项.动态地点目录 && typeof 选项.动态地点目录 === 'object') {
+    const 目录 = 构建运行时动态地点目录_V1(数据根, 选项.动态地点目录);
+    const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 5)));
+    const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 8)));
+    return Object.entries(目录)
+      .map(([名称, 索引]) => 计算运行时动态地点命中_V1(名称, 索引, 文本, 数据根, 选项))
+      .filter(命中 => 命中 && 命中.分数 >= 阈值)
+      .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+      .slice(0, 上限);
+  }
+  return 收集运行时父级限定动态地点命中_V1(数据根, 文本, {
+    ...选项,
+    阈值: Math.max(1, Math.floor(Number(选项.阈值 ?? 1))),
+    上限: Math.max(1, Math.floor(Number(选项.上限 ?? 8))),
+  });
 }
 
 function 收集运行时物品命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
@@ -2087,7 +2270,11 @@ function 取运行时基础角色名集合_V1(数据根 = {}, 文本 = '', 选�
 function 取运行时地点名集合_V1(数据根 = {}, 文本 = '', 选项 = {}) {
   const { 当前地点信息, 当前上下文节点 } = 取运行时当前范围_V1(数据根);
   const 地点名集合 = new Set([当前上下文节点].filter(Boolean));
-  (Array.isArray(当前地点信息?.path) ? 当前地点信息.path : []).forEach(地点名 => 地点名集合.add(地点名));
+  const 当前路径 = Array.isArray(当前地点信息?.path) ? 当前地点信息.path : [];
+  当前路径.forEach((地点名, 序号) => {
+    地点名集合.add(地点名);
+    if (序号 > 0) 地点名集合.add(构建运行时地点路径名_V1(当前路径.slice(0, 序号 + 1)));
+  });
   const 命中名称 = 构建运行时命中上下文_V1(数据根, 文本, 选项).运行时命中名称;
   命中名称.地点.forEach(地点名 => 地点名集合.add(地点名));
   return 地点名集合;
@@ -2099,12 +2286,12 @@ function 取运行时动态地点名集合_V1(数据根 = {}, 文本 = '') {
   Object.entries(数据根?.world?.动态地点 || {}).forEach(([动态地点名, 动态地点数据]) => {
     if (运行时动态地点在当前范围_V1(动态地点名, 动态地点数据, 当前范围名集合)) 动态地点名集合.add(动态地点名);
   });
-  收集运行时动态地点命中_V1(数据根, 文本, {
+  收集运行时父级限定动态地点命中_V1(数据根, 文本, {
     当前地点,
     命中动态地点: 数据根?.相关实体索引?.命中动态地点,
-    阈值: 5,
+    阈值: 1,
     上限: 12,
-  }).forEach(命中 => 动态地点名集合.add(命中.名称));
+  }).forEach(命中 => 动态地点名集合.add(命中.原名 || 命中.名称));
   return 动态地点名集合;
 }
 
@@ -4695,7 +4882,10 @@ try {
     生成MVU更新结构提示: 生成MVU更新结构提示_V1,
     读取内置角色库: 读取内置角色库_V1,
     读取内置物品库: 读取内置物品库_V1,
+    构建运行时地点索引: 构建运行时地点索引_V1,
+    收集运行时地点命中: 收集运行时地点命中_V1,
     收集运行时动态地点命中: 收集运行时动态地点命中_V1,
+    收集运行时父级限定动态地点命中: 收集运行时父级限定动态地点命中_V1,
     收集运行时物品命中: 收集运行时物品命中_V1,
     收集运行时命中候选名称: 收集运行时命中候选名称_V1,
     构建运行时统一实体命中: 构建运行时统一实体命中_V1,

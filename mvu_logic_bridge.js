@@ -43711,15 +43711,74 @@ ${toText(combatData.战斗意图, '点到为止')}
     });
     const 静态地点 = deepGet(rootData, 'world.地点', {});
     const 动态地点 = deepGet(rootData, 'world.动态地点', {});
+    const 查找静态路径 = 路径名 => {
+      const 片段列表 = 规范地点键名(路径名)
+        .split('-')
+        .map(片段 => 片段.trim())
+        .filter(Boolean);
+      if (!片段列表.length) return null;
+      let 当前 = 静态地点?.[片段列表[0]];
+      if (!当前) return null;
+      for (let 序号 = 1; 序号 < 片段列表.length; 序号 += 1) {
+        当前 = 当前?.子节点?.[片段列表[序号]];
+        if (!当前) return null;
+      }
+      return {
+        name: 片段列表.join('-'),
+        leafName: 片段列表[片段列表.length - 1],
+        path: 片段列表,
+        data: 当前,
+        source: 'world.地点',
+      };
+    };
     for (const 候选名 of 候选名列表) {
       if (静态地点 && typeof 静态地点 === 'object' && 静态地点[候选名]) {
         return { name: 候选名, data: 静态地点[候选名], source: 'world.地点' };
       }
+      const 静态路径命中 = 查找静态路径(候选名);
+      if (静态路径命中) return 静态路径命中;
       if (动态地点 && typeof 动态地点 === 'object' && 动态地点[候选名]) {
         return { name: 候选名, data: 动态地点[候选名], source: 'world.动态地点' };
       }
     }
     return { name: 清理名 || 叶名, data: null, source: '' };
+  }
+
+  function 查找父级限定世界地点数据(snapshot, 目标名称 = '', 父节点 = '') {
+    const rootData = deepGet(snapshot, 'rootData', {});
+    const 父级名 = 规范地点键名(父节点);
+    const 目标名 = 规范地点键名(目标名称) || 取地点叶名(目标名称);
+    if (!目标名) return { name: '', data: null, source: '' };
+    const 直接路径 = 父级名 && !目标名.startsWith(`${父级名}-`) ? `${父级名}-${目标名}` : 目标名;
+    const 精确命中 = 查找世界地点数据(snapshot, 直接路径);
+    if (精确命中.data) return 精确命中;
+    if (!父级名) return 查找世界地点数据(snapshot, 目标名);
+    const 接口 = 获取运行时实体命中接口_桥接();
+    if (接口 && typeof 接口.收集运行时地点命中 === 'function') {
+      try {
+        const 命中 = 接口.收集运行时地点命中(rootData, 目标名, {
+          归属父节点: 父级名,
+          父节点: 父级名,
+          当前地点: toText(deepGet(snapshot, 'activeChar.状态.位置', ''), ''),
+          阈值: 1,
+          上限: 1,
+        })?.[0];
+        if (命中?.名称) {
+          const 命中数据 = 查找世界地点数据(snapshot, 命中.名称);
+          if (命中数据.data) return 命中数据;
+        }
+      } catch (错误) {}
+    }
+    const 动态地点 = deepGet(rootData, 'world.动态地点', {});
+    for (const [动态名, 动态数据] of safeEntries(动态地点)) {
+      if (!动态数据 || typeof 动态数据 !== 'object') continue;
+      if (规范地点键名(动态数据.归属父节点) !== 父级名) continue;
+      const 匹配文本 = `${动态名}\n${动态数据.势力 || ''}\n${动态数据.归属父节点 || ''}`;
+      if (匹配文本.includes(目标名) || 目标名.includes(toText(动态名, ''))) {
+        return { name: 动态名, data: 动态数据, source: 'world.动态地点' };
+      }
+    }
+    return { name: 目标名, data: null, source: '' };
   }
 
   function 构建移动绝对位置(snapshot, 目标地点 = '', 父节点 = '') {
@@ -43873,7 +43932,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       return { ok: false, reason: request?.reason || 'travel_request_invalid', patchOps: [] };
     const 父级 = 查找世界地点数据(snapshot, request.归属父节点);
     if (!request.归属父节点 || !父级.data) return { ok: false, reason: 'travel_parent_missing', patchOps: [] };
-    const 已有目标 = 查找世界地点数据(snapshot, request.原始目标地点 || request.目标地点);
+    const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级.name || request.归属父节点);
     if (已有目标.data) return { ok: false, reason: 'travel_target_already_exists', patchOps: [] };
     const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 归属父节点: 父级.name });
     if (!坐标.ok) return { ok: false, reason: 坐标.reason || 'travel_coord_unavailable', patchOps: [] };
@@ -43940,7 +43999,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
     const activePath = escapeJsonPointerValue(request.charKey);
     const targetName = toText(targetInfo && targetInfo.name, toText(mapRequest.target_loc, request.目标地点));
-    const parentName = toText(targetInfo && targetInfo.data && targetInfo.data.归属父节点, '');
+    const targetPath = Array.isArray(targetInfo?.path) ? targetInfo.path : [];
+    const parentName = targetPath.length >= 2
+      ? targetPath.slice(0, -1).join('-')
+      : toText(targetInfo && targetInfo.data && targetInfo.data.归属父节点, '');
     const finalLocName = 构建移动绝对位置(snapshot, targetName, parentName);
     const targetX = Number.isFinite(toNumber(mapRequest.target_x, NaN))
       ? Math.round(toNumber(mapRequest.target_x, -1))
@@ -44075,7 +44137,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const mapBridge = window.__sheepMapBridge;
-    const 已有目标 = 查找世界地点数据(snapshot, request.原始目标地点 || request.目标地点);
+    const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, request.归属父节点);
     const 当前所在 = 读取快照当前位置(snapshot);
     if (已有目标.data && 当前所在 && 移动目标是否已到达(当前所在, 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, deepGet(已有目标.data, '归属父节点', '')))) {
       return 构建模块路由成功结果('travel', request, {
