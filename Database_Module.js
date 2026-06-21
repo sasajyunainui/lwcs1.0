@@ -756,6 +756,7 @@
   4.【事件节点】(原著大事件提前、延后、流产或发生变异)
   5.【情报认知】(隐藏身份提前暴露、核心机密泄露)
 - 列4: 偏差等级 - 严格限制为以下4种之一：
+  0.【无】(与原著事件平行，对原著无任何干涉)
   1.【微小】(细节偏移，不影响原著主干走向)
   2.【局部】(改变了某个篇章或单个人物的发展，但大局可控)
   3.【重大】(动摇原著核心大事件，未来走向需重新推演)
@@ -773,10 +774,10 @@
 3. 严防细节污染：禁止记录纯细节偏移（如衣服颜色、微小对话差异）。只有影响到上述5种“偏差类型”的事件才允许入表。
 
 {{偏差表专用上下文}}`,
-            initNode: "正文已经明确发生偏差事实时，插入一条新记录用于记录偏差详情",
+            initNode: "偏差等级为1.【微小】以上时，插入一条新记录用于记录偏差详情",
             deleteNode: "只允许删除状态为【收束】、被证明不会落地的【潜伏】、误写或重复记录。禁止删除仍影响当前世界线的【活跃】或【固化】记录。\nSQL示例: DELETE FROM deviation_ledger WHERE code = 'DV0001' AND status IN ('潜伏','收束');",
             updateNode: "同一对象、同一原著节点、同一偏差类型优先更新已有 DV，禁止重复新增。潜伏偏差落地时更新为【活跃】或【固化】；偏差被剧情圆回时可先更新为【收束】，随后删除该行。\nSQL示例: UPDATE deviation_ledger SET status = '活跃', deviation_level = '局部', butterfly_projection = '后续需监控某原著节点是否失效' WHERE code = 'DV0001';",
-            insertNode: "仅当本轮最终正文或偏差专用上下文证明出现新的世界线偏差时插入。编码按现有最大 DV 递增，不得因为单纯预测风险插入确定性偏差。\nSQL示例: INSERT INTO deviation_ledger (row_id, code, status, deviation_type, deviation_level, deviation_note, butterfly_projection) VALUES ((SELECT COALESCE(MAX(row_id),0)+1 FROM deviation_ledger), 'DV0001', '活跃', '关系阵营', '局部', '【唐三】原著本该如何 VS 实际变成了什么。', '后续需监控某原著节点是否失效。');",
+            insertNode: "偏差等级为1.【微小】以上时插入。为0.【无】时禁止插入。 编码按现有最大 DV 递增，不得因为单纯预测风险插入确定性偏差。\nSQL示例: INSERT INTO deviation_ledger (row_id, code, status, deviation_type, deviation_level, deviation_note, butterfly_projection) VALUES ((SELECT COALESCE(MAX(row_id),0)+1 FROM deviation_ledger), 'DV0001', '活跃', '关系阵营', '局部', '【唐三】原著本该如何 VS 实际变成了什么。', '后续需监控某原著节点是否失效。');",
             ddl: `CREATE TABLE deviation_ledger ( -- 偏差表
   row_id INTEGER PRIMARY KEY, -- 行号
   code TEXT NOT NULL UNIQUE CHECK(code GLOB 'DV[0-9][0-9][0-9][0-9]'), -- 编码

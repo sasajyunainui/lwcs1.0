@@ -29204,6 +29204,7 @@
   function normalizeUnifiedSurfaceKey(surface) {
     const value = toText(surface, '').trim().toLowerCase();
     if (value === 'panel') return 'panel';
+    if (value === 'holo') return 'holo';
     return '';
   }
 
@@ -31411,13 +31412,14 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
+        preview: normalizedSurface === 'holo' ? '人物关系详细页' : '',
         surface: normalizedSurface,
       });
       renderUnifiedSpiritCardsBySurface(snapshot, normalizedSurface);
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
-      ensureUnifiedSheepMapStage('panel');
+      ensureUnifiedSheepMapStage(normalizedSurface === 'holo' ? 'holo' : 'panel');
       setUnifiedCardMarkup('map-hero', '', { enabled: false, surface: normalizedSurface });
       const 地图节点面板 = 读取地图模块星图节点面板(星图焦点态);
       setUnifiedCardMarkup(
@@ -31603,7 +31605,7 @@
       setLiveNodeHtml(node, html);
       if (preview && enabled) node.setAttribute('data-preview', preview);
       else node.removeAttribute('data-preview');
-      if (preview && enabled && surface === 'panel' && node.classList.contains('mvu-unified-card')) {
+      if (preview && enabled && (surface === 'panel' || surface === 'holo') && node.classList.contains('mvu-unified-card')) {
         node.setAttribute('data-detail-mode', 'embed');
       } else {
         node.removeAttribute('data-detail-mode');
@@ -31646,12 +31648,49 @@
     });
   }
 
+  function 更新全息星轨读数(snapshot) {
+    const 世界时间 = snapshot ? getSnapshotWorldTimeText(snapshot) : '时间未同步';
+    const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
+    const 时刻文本 = 时间匹配 ? 时间匹配[1] : '--:--';
+    const 历法文本 = 时间匹配 ? 世界时间.slice(0, 时间匹配.index).trim() : 世界时间;
+    const 当前位置 = snapshot
+      ? toText(
+          deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc),
+          snapshot.currentLoc || '未知地点',
+        )
+          .replace(/^斗罗大陆-/, '')
+          .replace(/^斗灵大陆-/, '')
+      : '地点未同步';
+    const 偏差值 = snapshot ? toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0) : 0;
+    const 偏差倍率 = snapshot ? toNumber(deepGet(snapshot, 'rootData.world.偏差倍率', 1), 1) : 1;
+    const 森林敌意 = snapshot
+      ? Math.max(0, Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))))
+      : 0;
+    const 拍卖状态 = snapshot ? toText(deepGet(snapshot, 'rootData.world.拍卖.状态', snapshot.auctionStatus), '休市') : '休市';
+    const 写文本 = (选择器, 文本) => {
+      getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
+        节点.textContent = 文本;
+      });
+    };
+    写文本('[data-holo-core-time]', 时刻文本);
+    写文本('[data-holo-core-calendar]', 历法文本 || '斗罗历');
+    写文本('[data-holo-location]', shortenText(当前位置, 18));
+    写文本('[data-holo-deviation]', `偏差 ${偏差值} / x${偏差倍率}`);
+    getLiveUiElements('#mvu-unified-mount .mvu-unified-frame').forEach(节点 => {
+      if (!(节点 instanceof Element)) return;
+      节点.setAttribute('data-holo-alert', 森林敌意 >= 70 || 偏差值 >= 40 ? '高危' : 森林敌意 >= 30 || 偏差值 >= 10 ? '波动' : '稳定');
+      节点.setAttribute('data-holo-auction', 拍卖状态);
+    });
+  }
+
   function renderUnifiedCards(snapshot, precomputedSectionSignatures = null, previousSectionSignaturesOverride = null) {
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures =
       previousSectionSignaturesOverride || lastDashboardSectionRenderSignatures || Object.create(null);
     设置统一顶部状态条(snapshot);
+    更新全息星轨读数(snapshot);
     renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'panel');
+    renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'holo');
   }
 
   function getFusionArchiveMeta(snapshot) {
@@ -32018,9 +32057,13 @@
     };
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
+      setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'holo', enabled: true });
     });
     setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false, empty: true, 空态标签: '未启用' });
+    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'holo', enabled: false, empty: true, 空态标签: '未启用' });
     setUnifiedMapStageMarkup('panel', '');
+    setUnifiedMapStageMarkup('holo', '');
+    更新全息星轨读数(null);
   }
 
   function rerenderUnifiedCardsFromLive(options = {}) {
@@ -44001,6 +44044,27 @@ ${toText(combatData.战斗意图, '点到为止')}
     return 片段[片段.length - 1] || 清理名;
   }
 
+  function 取地点路径片段(名称 = '') {
+    return 规范地点键名(名称)
+      .split('-')
+      .map(片段 => 片段.trim())
+      .filter(Boolean);
+  }
+
+  function 推导移动父级上下文(snapshot, request = {}) {
+    const 显式父级 = 规范地点键名(request && request.归属父节点);
+    if (显式父级) return 显式父级;
+    const 目标片段 = 取地点路径片段(request && (request.原始目标地点 || request.目标地点));
+    if (目标片段.length > 1) return 目标片段.slice(0, -1).join('-');
+    const 当前位置 = 读取快照当前位置(snapshot);
+    const 当前信息 = 查找世界地点数据(snapshot, 当前位置);
+    if (Array.isArray(当前信息.path) && 当前信息.path.length) return 当前信息.path.join('-');
+    const 当前片段 = 取地点路径片段(当前位置);
+    if (当前片段.length > 1) return 当前片段.slice(0, -1).join('-');
+    const 动态父级 = toText(当前信息?.data?.归属父节点, '').trim();
+    return 规范地点键名(动态父级);
+  }
+
   function 查找世界地点数据(snapshot, 名称 = '') {
     const rootData = deepGet(snapshot, 'rootData', {});
     const 候选名列表 = [];
@@ -44050,10 +44114,12 @@ ${toText(combatData.战斗意图, '点到为止')}
     const 父级名 = 规范地点键名(父节点);
     const 目标名 = 规范地点键名(目标名称) || 取地点叶名(目标名称);
     if (!目标名) return { name: '', data: null, source: '' };
+    const 完整路径命中 = 查找世界地点数据(snapshot, 目标名);
+    if (完整路径命中.data && (目标名.includes('-') || !父级名)) return 完整路径命中;
     const 直接路径 = 父级名 && !目标名.startsWith(`${父级名}-`) ? `${父级名}-${目标名}` : 目标名;
     const 精确命中 = 查找世界地点数据(snapshot, 直接路径);
     if (精确命中.data) return 精确命中;
-    if (!父级名) return 查找世界地点数据(snapshot, 目标名);
+    if (!父级名) return { name: 目标名, data: null, source: '' };
     const 接口 = 获取运行时实体命中接口_桥接();
     if (接口 && typeof 接口.收集运行时地点命中 === 'function') {
       try {
@@ -44092,6 +44158,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (!父清理名 || 父清理名 === 大陆前缀) return `${大陆前缀}-${目标清理名}`;
     if (目标清理名 === 父清理名 || 目标清理名.startsWith(`${父清理名}-`)) return `${大陆前缀}-${目标清理名}`;
     return `${大陆前缀}-${父清理名}-${目标清理名}`;
+  }
+
+  function 取移动目标父节点名(targetInfo = {}, request = {}) {
+    if (Array.isArray(targetInfo?.path) && targetInfo.path.length >= 2) return targetInfo.path.slice(0, -1).join('-');
+    return toText(targetInfo?.data?.归属父节点, toText(request && request.归属父节点, ''));
   }
 
   function 推导移动动态地点坐标(snapshot, request = {}) {
@@ -44231,17 +44302,19 @@ ${toText(combatData.战斗意图, '点到为止')}
   function 构建新动态地点移动补丁(snapshot, request = {}) {
     if (!request || request.invalid)
       return { ok: false, reason: request?.reason || 'travel_request_invalid', patchOps: [] };
-    const 父级 = 查找世界地点数据(snapshot, request.归属父节点);
-    if (!request.归属父节点 || !父级.data) return { ok: false, reason: 'travel_parent_missing', patchOps: [] };
+    const 父级名 = 推导移动父级上下文(snapshot, request);
+    const 父级 = 查找世界地点数据(snapshot, 父级名);
+    if (!父级名 || !父级.data) return { ok: false, reason: 'travel_parent_missing', patchOps: [] };
     const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级.name || request.归属父节点);
     if (已有目标.data) return { ok: false, reason: 'travel_target_already_exists', patchOps: [] };
-    const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 归属父节点: 父级.name });
+    const 目标短名 = 取地点叶名(request.目标地点);
+    const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 目标地点: 目标短名, 归属父节点: 父级.name });
     if (!坐标.ok) return { ok: false, reason: 坐标.reason || 'travel_coord_unavailable', patchOps: [] };
     const 消耗 = 计算移动基础消耗(snapshot, request);
     if (!消耗.ok) return { ok: false, reason: 消耗.reason || 'travel_cost_unavailable', patchOps: [] };
     const activePath = escapeJsonPointerValue(request.charKey);
-    const targetPath = escapeJsonPointerValue(request.目标地点);
-    const finalLocName = 构建移动绝对位置(snapshot, request.目标地点, 父级.name);
+    const targetPath = escapeJsonPointerValue(目标短名);
+    const finalLocName = 构建移动绝对位置(snapshot, 目标短名, 父级.name);
     const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
     const 下一tick = Number((当前tick + request.耗时tick).toFixed(2));
     const patchOps = [
@@ -44300,10 +44373,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
     const activePath = escapeJsonPointerValue(request.charKey);
     const targetName = toText(targetInfo && targetInfo.name, toText(mapRequest.target_loc, request.目标地点));
-    const targetPath = Array.isArray(targetInfo?.path) ? targetInfo.path : [];
-    const parentName = targetPath.length >= 2
-      ? targetPath.slice(0, -1).join('-')
-      : toText(targetInfo && targetInfo.data && targetInfo.data.归属父节点, '');
+    const parentName = 取移动目标父节点名(targetInfo, request);
     const finalLocName = 构建移动绝对位置(snapshot, targetName, parentName);
     const targetX = Number.isFinite(toNumber(mapRequest.target_x, NaN))
       ? Math.round(toNumber(mapRequest.target_x, -1))
@@ -44438,9 +44508,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const mapBridge = window.__sheepMapBridge;
-    const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, request.归属父节点);
+    const 父级上下文 = 推导移动父级上下文(snapshot, request);
+    const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级上下文);
     const 当前所在 = 读取快照当前位置(snapshot);
-    if (已有目标.data && 当前所在 && 移动目标是否已到达(当前所在, 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, deepGet(已有目标.data, '归属父节点', '')))) {
+    const 已有目标父级 = 取移动目标父节点名(已有目标, { ...request, 归属父节点: 父级上下文 });
+    if (已有目标.data && 当前所在 && 移动目标是否已到达(当前所在, 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, 已有目标父级))) {
       return 构建模块路由成功结果('travel', request, {
         dispatchMode: 'settled_summary',
         alreadyThere: true,
