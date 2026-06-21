@@ -5787,6 +5787,11 @@
         if (!事件名) return;
         try {
           eventSource.on(事件名, (...事件参数) => {
+            if (事件键 === 'MESSAGE_SWIPED') {
+              处理前端模块重Roll恢复_桥接(事件键, 事件参数).catch(错误 => {
+                console.warn('[DragonUI] 前端模块重ROLL恢复调度失败', 错误);
+              });
+            }
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
         } catch (错误) {}
@@ -5815,6 +5820,13 @@
           });
         } catch (错误) {}
       }
+      const 生成命令后事件 = eventTypes.GENERATION_AFTER_COMMANDS || 'GENERATION_AFTER_COMMANDS';
+      try {
+        eventSource.on(生成命令后事件, async (type, params, dryRun) => {
+          if (dryRun || (type !== 'regenerate' && type !== 'swipe')) return;
+          await 处理前端模块重Roll恢复_桥接(`GENERATION_AFTER_COMMANDS:${type}`, [读取当前最新聊天楼层_桥接()]);
+        });
+      } catch (错误) {}
       return true;
     };
     if (!绑定酒馆事件()) window.setTimeout(绑定酒馆事件, 1200);
@@ -8766,6 +8778,8 @@
   }
 
   const pendingUiSystemInjections = new Map();
+  const 前端模块重Roll恢复表 = new Map();
+  const 前端模块重Roll恢复保留毫秒 = 10 * 60 * 1000;
   const 异步动作锁表 = new Map();
   const 异步动作锁超时毫秒 = 120000;
 
@@ -9245,6 +9259,8 @@
     let persistentInjection = null;
     let 提交前消息数 = 0;
     let 用户消息索引 = -1;
+    let 重Roll恢复基底 = null;
+    let 重Roll写后记录 = [];
 
     if (!userText) {
       showUiToast('请求内容为空，无法提交。', 'error', 4200);
@@ -9267,7 +9283,13 @@
     try {
       // Always persist MVU patches first, so generation reads newest state.
       if (patchOps.length) {
+        重Roll恢复基底 = 读取当前最后AI消息回滚基底_桥接(patchOps);
         await applyJsonPatchOpsByEditor(patchOps, { force: true });
+        if (重Roll恢复基底) {
+          const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 重Roll恢复基底.目标消息元信息.消息编号 });
+          const 写后根 = resolveRootData(写后包);
+          if (写后根) 重Roll写后记录 = 构建前端模块路径当前记录_桥接(写后根, 重Roll恢复基底.回滚记录);
+        }
         await refreshLiveSnapshot({ force: true });
       }
       try {
@@ -9332,6 +9354,19 @@
         } finally {
           persistentInjection.processing = false;
         }
+      }
+      if (patchOps.length && 重Roll恢复基底) {
+        登记前端模块重Roll恢复记录({
+          requestKind,
+          新AI消息编号: 助手消息.message_id,
+          旧AI消息编号: 重Roll恢复基底.目标消息元信息.消息编号,
+          旧AI消息索引: 重Roll恢复基底.目标消息元信息.消息索引,
+          旧AI滑动编号: 重Roll恢复基底.目标消息元信息.滑动编号,
+          旧AI文本签名: 重Roll恢复基底.目标消息元信息.文本签名,
+          回滚记录: 重Roll恢复基底.回滚记录,
+          写后记录: 重Roll写后记录,
+          patchOps: cloneJsonValue(patchOps, []),
+        });
       }
       return { ok: true, requestKind, assistantMessageId: 助手消息.message_id };
     } catch (error) {
@@ -9556,6 +9591,102 @@
     return mvuEditorStore.statData;
   }
 
+  function 清理过期前端模块重Roll恢复记录() {
+    const 当前时间 = Date.now();
+    for (const [键, 记录] of 前端模块重Roll恢复表.entries()) {
+      if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) 前端模块重Roll恢复表.delete(键);
+    }
+  }
+
+  function 读取路径当前值_桥接(来源 = {}, 路径输入 = []) {
+    const 路径 = normalizeEditorPath(路径输入);
+    if (!路径.length) return { 存在: true, 值: cloneJsonValue(来源, {}) };
+    let 当前 = 来源;
+    for (const 片段 of 路径) {
+      if (!当前 || typeof 当前 !== 'object' || !(片段 in 当前)) return { 存在: false, 值: undefined };
+      当前 = 当前[片段];
+    }
+    return { 存在: true, 值: cloneJsonValue(当前, 当前) };
+  }
+
+  function 构建前端模块路径回滚记录_桥接(变量根 = {}, 补丁列表 = []) {
+    const 路径表 = new Map();
+    const 规范补丁 = 规范化桥接JsonPatch列表(
+      Array.isArray(补丁列表) ? 补丁列表.filter(补丁 => 补丁 && 补丁.op && 补丁.path) : [],
+      变量根,
+      { force: true },
+    );
+    规范补丁.forEach(补丁 => {
+      const 路径 = decodeJsonPointerPath(补丁.path);
+      if (!路径.length) return;
+      const 路径键 = JSON.stringify(路径);
+      if (路径表.has(路径键)) return;
+      const 当前值 = 读取路径当前值_桥接(变量根, 路径);
+      路径表.set(路径键, {
+        path: 补丁.path,
+        路径,
+        存在: 当前值.存在,
+        值: 当前值.值,
+      });
+    });
+    return Array.from(路径表.values());
+  }
+
+  function 构建前端模块路径当前记录_桥接(变量根 = {}, 路径记录 = []) {
+    return (Array.isArray(路径记录) ? 路径记录 : [])
+      .map(项 => {
+        const 路径 = Array.isArray(项.路径) ? 项.路径 : decodeJsonPointerPath(项.path);
+        if (!路径.length) return null;
+        const 当前值 = 读取路径当前值_桥接(变量根, 路径);
+        return {
+          路径,
+          存在: 当前值.存在,
+          值: 当前值.值,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function 路径记录值一致_桥接(当前记录 = [], 期望记录 = []) {
+    const 当前表 = new Map((Array.isArray(当前记录) ? 当前记录 : []).map(项 => [JSON.stringify(项.路径 || []), 项]));
+    return (Array.isArray(期望记录) ? 期望记录 : []).every(期望 => {
+      const 当前 = 当前表.get(JSON.stringify(期望.路径 || []));
+      if (!当前 || 当前.存在 !== 期望.存在) return false;
+      return serializeMvuEditorStoreStatData(当前.值) === serializeMvuEditorStoreStatData(期望.值);
+    });
+  }
+
+  function 读取当前最后AI消息回滚基底_桥接(补丁列表 = []) {
+    const 目标消息元信息 = 查找当前最后AI楼层元信息_桥接();
+    if (!目标消息元信息) return null;
+    const 变量包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 目标消息元信息.消息编号 });
+    if (!变量包 || typeof 变量包 !== 'object' || !resolveRootData(变量包)) return null;
+    const 变量根 = resolveRootData(变量包);
+    const 回滚记录 = 构建前端模块路径回滚记录_桥接(变量根, 补丁列表);
+    if (!回滚记录.length) return null;
+    return {
+      目标消息元信息,
+      回滚记录,
+    };
+  }
+
+  function 登记前端模块重Roll恢复记录(记录 = {}) {
+    const 新AI消息编号 = toText(记录.新AI消息编号, '').trim();
+    const 旧AI消息编号 = toText(记录.旧AI消息编号, '').trim();
+    const 回滚记录 = Array.isArray(记录.回滚记录) ? 记录.回滚记录 : [];
+    if (!新AI消息编号 || !旧AI消息编号 || !回滚记录.length) return;
+    清理过期前端模块重Roll恢复记录();
+    前端模块重Roll恢复表.set(新AI消息编号, {
+      ...记录,
+      新AI消息编号,
+      旧AI消息编号,
+      回滚记录: cloneJsonValue(回滚记录, []),
+      写后记录: cloneJsonValue(Array.isArray(记录.写后记录) ? 记录.写后记录 : [], []),
+      createdAt: Date.now(),
+      正在恢复: false,
+    });
+  }
+
   function syncMvuEditorStoreFromRoot(statData, options = {}) {
     const safeStatData = statData && typeof statData === 'object' ? statData : {};
     const nextSignature = serializeMvuEditorStoreStatData(safeStatData);
@@ -9728,6 +9859,87 @@
     });
     __mvuBridgeRoot.__LWCS_MVU_COMMAND_PREAPPLY_ENTITY_GUARD__ = true;
     return true;
+  }
+
+  function 读取事件消息编号_桥接(事件参数 = []) {
+    for (const 参数 of Array.isArray(事件参数) ? 事件参数 : []) {
+      if (参数 === undefined || 参数 === null || 参数 === '') continue;
+      if (typeof 参数 === 'number' || typeof 参数 === 'string') {
+        const 索引 = Number(参数);
+        if (Number.isInteger(索引) && 索引 >= 0) {
+          const 聊天 = 读取当前聊天数组_桥接();
+          if (聊天[索引]) return 读取聊天消息编号_桥接(聊天[索引], 索引);
+        }
+        return toText(参数, '').trim();
+      }
+      if (参数 && typeof 参数 === 'object') {
+        const 候选 = 参数.message_id ?? 参数.messageId ?? 参数.id ?? 参数.index ?? 参数.messageIndex;
+        if (候选 !== undefined && 候选 !== null && 候选 !== '') {
+          const 索引 = Number(候选);
+          if (Number.isInteger(索引) && 索引 >= 0) {
+            const 聊天 = 读取当前聊天数组_桥接();
+            if (聊天[索引]) return 读取聊天消息编号_桥接(聊天[索引], 索引);
+          }
+          return toText(候选, '').trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  async function 处理前端模块重Roll恢复_桥接(事件键 = '', 事件参数 = []) {
+    if (!前端模块重Roll恢复表.size) return;
+    清理过期前端模块重Roll恢复记录();
+    const 事件消息编号 = 读取事件消息编号_桥接(事件参数);
+    if (!事件消息编号) return;
+    const 记录 = 前端模块重Roll恢复表.get(事件消息编号);
+    if (!记录 || 记录.正在恢复) return;
+    记录.正在恢复 = true;
+    try {
+      const 当前旧楼元信息 = 读取AI楼层元信息_桥接(记录.旧AI消息索引);
+      if (
+        !当前旧楼元信息 ||
+        当前旧楼元信息.消息编号 !== 记录.旧AI消息编号 ||
+        String(当前旧楼元信息.滑动编号) !== String(记录.旧AI滑动编号 ?? '') ||
+        当前旧楼元信息.文本签名 !== toText(记录.旧AI文本签名, '')
+      ) return;
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor({
+        message_id: 记录.旧AI消息编号,
+        禁止目标回退: true,
+      });
+      const nextMvuData = cloneJsonValue(mvuData, {});
+      const statData = cloneJsonValue(nextMvuData.stat_data, {});
+      const 当前写后记录 = 构建前端模块路径当前记录_桥接(statData, 记录.回滚记录);
+      if (Array.isArray(记录.写后记录) && 记录.写后记录.length && !路径记录值一致_桥接(当前写后记录, 记录.写后记录)) {
+        console.warn('[DragonUI] 前端模块重ROLL恢复跳过：目标路径已被其他流程改动', { requestKind: 记录.requestKind, 事件键 });
+        return;
+      }
+      (Array.isArray(记录.回滚记录) ? 记录.回滚记录 : []).forEach(项 => {
+        const 路径 = Array.isArray(项.路径) ? 项.路径 : decodeJsonPointerPath(项.path);
+        if (!路径.length) return;
+        if (项.存在) deepSetMutable(statData, 路径, cloneJsonValue(项.值, 项.值));
+        else deepDeleteMutable(statData, 路径);
+      });
+      nextMvuData.stat_data = 归一化变量根_桥接(statData);
+      await 写回MVU数据并记录耗时_桥接(
+        host,
+        nextMvuData,
+        { type: 'message', message_id: messageId },
+        `MVU写回:前端模块重Roll路径回滚:${事件键}`,
+      );
+      if (Array.isArray(记录.patchOps) && 记录.patchOps.length) {
+        await applyJsonPatchOpsByEditor(cloneJsonValue(记录.patchOps, []), {
+          force: true,
+          message_id: 记录.旧AI消息编号,
+          禁止目标回退: true,
+        });
+      }
+      await refreshLiveSnapshot({ force: true });
+    } catch (错误) {
+      console.warn('[DragonUI] 前端模块重ROLL恢复失败', 错误);
+    } finally {
+      记录.正在恢复 = false;
+    }
   }
 
   function 读取目标消息编号_桥接(选项 = {}) {
