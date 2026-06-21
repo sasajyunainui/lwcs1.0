@@ -3445,7 +3445,14 @@ $CONTENT
     let toastr_API_ACU;
     function _set_SillyTavern_API_ACU(v) { SillyTavern_API_ACU = v; }
     function _set_TavernHelper_API_ACU(v) { TavernHelper_API_ACU = v; }
-    function _set_jQuery_API_ACU(v) { jQuery_API_ACU = v; }
+    function 解析可调用jQuery_ACU(...候选列表) {
+        for (const 候选 of 候选列表) {
+            if (typeof 候选 === 'function')
+                return 候选;
+        }
+        return null;
+    }
+    function _set_jQuery_API_ACU(v) { jQuery_API_ACU = 解析可调用jQuery_ACU(v); }
     function _set_toastr_API_ACU(v) { toastr_API_ACU = v; }
 
     /**
@@ -38075,9 +38082,7 @@ $CONTENT
         const iframeTH = typeof window.TavernHelper !== 'undefined' ? window.TavernHelper : undefined;
         const parentTH = typeof hostWin.TavernHelper !== 'undefined' ? hostWin.TavernHelper : undefined;
         _set_TavernHelper_API_ACU(iframeTH || parentTH);
-        const iframe$ = typeof window.$ !== 'undefined' ? window.$ : undefined;
-        const parent$ = typeof hostWin.$ !== 'undefined' ? hostWin.$ : undefined;
-        _set_jQuery_API_ACU(iframe$ || parent$);
+        _set_jQuery_API_ACU(解析可调用jQuery_ACU(window.jQuery, window.$, hostWin.jQuery, hostWin.$));
         _set_toastr_API_ACU((typeof window.toastr !== 'undefined' ? window.toastr : null) || hostWin.toastr || null);
         _set_coreApisAreReady_ACU(!!(SillyTavern_API_ACU &&
             TavernHelper_API_ACU &&
@@ -47231,6 +47236,8 @@ $CONTENT
     };
     // [核心重构] 定义全局刷新函数，确保无论何时调用都能从本地数据（聊天记录）中获取最新数据并刷新UI
     window.ACU_Visualizer_Refresh = async function () {
+        if (typeof jQuery_API_ACU !== 'function')
+            return;
         if (!jQuery_API_ACU('#acu-visualizer-content').length && !ACU_WindowManager.isOpen(`${SCRIPT_ID_PREFIX_ACU}-visualizer-window`))
             return;
         // 1. 尝试从聊天记录重新构建完整数据

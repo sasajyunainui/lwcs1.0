@@ -1,5 +1,7 @@
 /* BattleUI_Module.js - 战斗终端系统 (JS 模块版) */
 
+(() => {
+
 class BattleUIComponent {
   constructor(container, snapshot, options = {}) {
     this.container = container;
@@ -32500,3 +32502,5 @@ window.mountBattleUI = function(containerElement, snapshot, options = {}) {
 window.__LWCS_DUMP_BATTLE__ = function () {
   return window.__LWCS_LAST_BATTLE_SNAPSHOT__ || null;
 };
+
+})();
