@@ -486,21 +486,21 @@ const DesktopUnifiedLayout = {
     <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
       <div
         class="mvu-unified-frame"
-        :class="{ 'is-detail': detailState.isOpen, 'is-holo-shell': 全息星轨状态.外壳 === '星轨' }"
+        :class="{ 'is-detail': detailState.isOpen && 全息星轨状态.外壳 !== '星轨', 'is-holo-shell': 全息星轨状态.外壳 === '星轨', 'is-holo-detail': detailState.isOpen && 全息星轨状态.外壳 === '星轨' }"
         :data-holo-shell="全息星轨状态.外壳"
         :data-holo-theme="全息星轨状态.主题"
         :data-holo-orbit="全息星轨状态.星仪"
         :data-holo-tab="tabState.current"
       >
-        <div class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen }">
+        <div class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen && 全息星轨状态.外壳 !== '星轨' }">
           <div class="mvu-unified-toolbar-main">
-            <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
+            <div class="mvu-unified-detail-bar" v-show="detailState.isOpen && 全息星轨状态.外壳 !== '星轨'">
               <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
               <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
             </div>
-            <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
+            <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen || 全息星轨状态.外壳 === '星轨'">
               <div class="mvu-unified-top-status" data-unified-top-status="panel"></div>
-              <div class="mvu-unified-tab-row">
+              <div class="mvu-unified-tab-row" v-show="全息星轨状态.外壳 !== '星轨'">
                 <button
                   v-for="标签 in tabs"
                   :key="'unified-tab-' + 标签.id"
@@ -586,7 +586,7 @@ const DesktopUnifiedLayout = {
           </section>
         </div>
 
-        <div v-show="!detailState.isOpen && 全息星轨状态.外壳 === '星轨'" class="mvu-holo-page-stack">
+        <div v-if="全息星轨状态.外壳 === '星轨'" class="mvu-holo-page-stack">
           <section class="mvu-holo-layout" @mouseenter="设置全息星轨星仪('激活')">
             <aside class="mvu-holo-orbital-hub" @mouseenter="设置全息星轨星仪('激活')">
               <div class="mvu-holo-orbit">
@@ -621,7 +621,11 @@ const DesktopUnifiedLayout = {
             <div class="mvu-holo-beam" aria-hidden="true"><span></span><i></i></div>
 
             <section class="mvu-holo-projection" @mouseenter="设置全息星轨星仪('休眠')">
-              <div class="mvu-holo-path">{{ 全息星轨路径标题 }}</div>
+              <div class="mvu-holo-path" :class="{ 'is-detail': detailState.isOpen }">
+                <button v-show="detailState.isOpen" type="button" class="mvu-holo-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
+                <span>{{ detailState.isOpen ? 详情路径标题 : 全息星轨路径标题 }}</span>
+              </div>
+              <template v-if="!detailState.isOpen">
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--archive">
                   <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="holo"></div>
@@ -665,11 +669,15 @@ const DesktopUnifiedLayout = {
                   <div class="mvu-unified-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="holo"></div>
                 </div>
               </section>
+              </template>
+              <section v-else class="mvu-holo-detail-page" :data-unified-detail-preview="detailState.previewKey">
+                <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-host" data-unified-detail-host></div>
+              </section>
             </section>
           </section>
         </div>
 
-        <section v-show="detailState.isOpen" class="mvu-unified-detail-page" :data-unified-detail-preview="detailState.previewKey">
+        <section v-if="全息星轨状态.外壳 !== '星轨'" v-show="detailState.isOpen" class="mvu-unified-detail-page" :data-unified-detail-preview="detailState.previewKey">
           <div ref="detailHostRef" class="mvu-unified-detail-host" data-unified-detail-host></div>
         </section>
       </div>
@@ -879,6 +887,7 @@ const DesktopUnifiedLayout = {
       scheduleFrameTask(() => {
         const host = detailHostRef.value;
         if (!host || !host.isConnected || !nextPreviewKey || !detailState.isOpen) return;
+        bindDetailWheelBridge();
         if (typeof window.__MVU_RENDER_UNIFIED_PREVIEW__ !== 'function') {
           if (重试次数 < 8) {
             window.setTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
@@ -961,6 +970,14 @@ const DesktopUnifiedLayout = {
     };
     const setUnifiedTab = tabId => {
       清理顶层浮窗();
+      if (当前全息星轨状态.外壳 === '星轨' && detailState.isOpen) {
+        detailState.isOpen = false;
+        detailState.previewKey = '';
+        detailState.stack.splice(0);
+        if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+        }
+      }
       requestTabChange(tabId);
       scheduleUnifiedFrameViewportSync();
     };
@@ -969,6 +986,7 @@ const DesktopUnifiedLayout = {
       写入全息星轨外壳(当前全息星轨状态.外壳);
       清理顶层浮窗();
       forceUnifiedCardSync();
+      if (detailState.isOpen && detailState.previewKey) requestUnifiedDetailRender({ force: true, replace: true });
       scheduleUnifiedFrameViewportSync();
       if (mvuTabState.current === 'page-map') requestMapSurfaceSync();
     };

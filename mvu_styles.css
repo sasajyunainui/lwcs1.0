@@ -48,6 +48,33 @@
   --panel: rgba(170, 255, 245, 0.045);
   --panel-strong: rgba(170, 255, 245, 0.075);
   --panel-elevated: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+  --全息材质底:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
+    radial-gradient(circle at 8% 0%, rgba(103, 247, 239, 0.1), transparent 34%),
+    rgba(5, 12, 18, 0.58);
+  --全息材质悬停底:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.018)),
+    radial-gradient(circle at 10% 0%, rgba(103, 247, 239, 0.16), transparent 38%),
+    rgba(5, 12, 18, 0.66);
+  --全息材质线: rgba(103, 247, 239, 0.16);
+  --全息材质弱线: rgba(255, 255, 255, 0.055);
+  --全息材质角光: rgba(103, 247, 239, 0.12);
+  --全息材质侧线: rgba(77, 240, 255, 0.14);
+  --全息材质辉光: rgba(103, 247, 239, 0.11);
+  --全息材质强辉光: rgba(103, 247, 239, 0.2);
+  --全息材质阴影:
+    inset 3px 0 0 var(--全息材质侧线),
+    inset 0 0 0 1px var(--全息材质线),
+    inset 0 1px 0 var(--全息材质弱线),
+    inset 0 -24px 46px rgba(0, 0, 0, 0.18),
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 18px var(--全息材质辉光);
+  --全息材质悬停阴影:
+    inset 3px 0 0 var(--全息材质侧线),
+    inset 0 0 0 1px rgba(103, 247, 239, 0.26),
+    inset 0 0 26px var(--全息材质辉光),
+    0 10px 26px rgba(0, 0, 0, 0.24),
+    0 0 24px var(--全息材质强辉光);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
   --cyan-line: rgba(77, 240, 255, 0.35);
@@ -554,12 +581,16 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--mvu-radius-lg, 16px);
-  border: 1px solid var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
-  border-top: 1px solid var(--mvu-color-line-muted, rgba(255, 255, 255, 0.1));
-  background: var(--panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.24);
+  border: 0;
+  background: var(--全息材质底);
+  backdrop-filter: blur(14px) saturate(124%);
+  -webkit-backdrop-filter: blur(14px) saturate(124%);
+  box-shadow: var(--全息材质阴影);
+  isolation: isolate;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .mvu-panel::before,
@@ -571,9 +602,13 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(0, 229, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.022) 1px, transparent 1px);
-  background-size: 16px 16px;
+    linear-gradient(90deg, var(--全息材质角光), transparent 42%) left top / 46px 1px no-repeat,
+    linear-gradient(180deg, var(--全息材质角光), transparent 42%) left top / 1px 46px no-repeat,
+    linear-gradient(270deg, var(--全息材质角光), transparent 42%) right bottom / 46px 1px no-repeat,
+    linear-gradient(0deg, var(--全息材质角光), transparent 42%) right bottom / 1px 46px no-repeat,
+    radial-gradient(circle at 9% 0%, rgba(103, 247, 239, 0.08), transparent 32%);
+  opacity: 0.92;
+  z-index: 0;
 }
 
 .mvu-panel::after,
@@ -602,8 +637,9 @@
 }
 
 .mvu-panel {
+  --全息材质侧线: color-mix(in srgb, var(--gold) 34%, transparent);
+  --全息材质角光: color-mix(in srgb, var(--gold) 26%, transparent);
   padding: 9px 10px 9px;
-  border-left: 3px solid var(--gold);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -808,19 +844,21 @@
 }
 
 .core-card {
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border-color: rgba(0, 229, 255, 0.1);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+  --全息材质侧线: rgba(77, 240, 255, 0.2);
+  --全息材质角光: rgba(77, 240, 255, 0.18);
+  --全息材质辉光: rgba(77, 240, 255, 0.13);
 }
 
 .entry-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
-  border-color: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
+  --全息材质侧线: rgba(255, 255, 255, 0.07);
+  --全息材质角光: rgba(255, 255, 255, 0.07);
+  --全息材质辉光: rgba(103, 247, 239, 0.08);
 }
 
 .live-card {
-  background: linear-gradient(180deg, var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.018));
-  border-color: rgba(255, 255, 255, 0.06);
+  --全息材质侧线: rgba(255, 226, 89, 0.18);
+  --全息材质角光: rgba(255, 226, 89, 0.14);
+  --全息材质辉光: rgba(255, 226, 89, 0.09);
 }
 
 .social-chip {
@@ -836,11 +874,12 @@
 }
 
 .social-chip.clickable:hover,
+.mvu-panel.clickable:hover,
 .mvu-module-card.clickable:hover,
 .strip.clickable:hover,
 .mvu-simple-card.clickable:hover {
-  box-shadow: var(--shadow-cyan);
-  border-color: rgba(0, 229, 255, 0.2);
+  background: var(--全息材质悬停底);
+  box-shadow: var(--全息材质悬停阴影);
   transform: translateY(-1px);
 }
 
@@ -874,6 +913,8 @@
 }
 
 .mvu-module-card {
+  --全息材质侧线: rgba(77, 240, 255, 0.13);
+  --全息材质角光: rgba(77, 240, 255, 0.12);
   padding: 8px 8px 8px;
   display: flex;
   flex-direction: column;
@@ -976,8 +1017,9 @@
 }
 
 .strip {
+  --全息材质侧线: rgba(77, 240, 255, 0.2);
+  --全息材质角光: rgba(77, 240, 255, 0.16);
   padding: 6px 8px;
-  border-left: 3px solid var(--cyan);
   min-height: 92px;
   display: grid;
   grid-template-columns: 1.2fr auto auto;
@@ -1748,6 +1790,8 @@
 }
 
 .mvu-simple-card {
+  --全息材质侧线: rgba(255, 255, 255, 0.08);
+  --全息材质角光: rgba(255, 255, 255, 0.07);
   padding: 7px 8px 7px;
   min-height: min-content;
   height: auto;
@@ -1922,9 +1966,9 @@
 }
 
 .map-side-card {
-  background: linear-gradient(180deg, rgba(30, 80, 110, 0.25), rgba(24, 60, 85, 0.35));
-  border-color: rgba(60, 180, 210, 0.18);
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.08);
+  --全息材质侧线: rgba(77, 240, 255, 0.18);
+  --全息材质角光: rgba(77, 240, 255, 0.14);
+  --全息材质辉光: rgba(77, 240, 255, 0.1);
 }
 
 .map-side-card .simple-head {
@@ -2630,9 +2674,9 @@
 }
 
 .terminal-side-card {
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border-color: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
-  box-shadow: inset 0 0 14px rgba(0, 229, 255, 0.04);
+  --全息材质侧线: rgba(255, 226, 89, 0.16);
+  --全息材质角光: rgba(255, 226, 89, 0.12);
+  --全息材质辉光: rgba(255, 226, 89, 0.08);
 }
 
 .terminal-side-card .simple-head {
@@ -2954,19 +2998,19 @@
 .split-shell .mvu-module-card,
 .split-shell .strip,
 .split-shell .mvu-simple-card {
-  background: linear-gradient(180deg, rgba(30, 80, 110, 0.25), rgba(24, 60, 85, 0.35));
-  border-color: rgba(60, 180, 210, 0.18);
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.08);
+  --全息材质侧线: rgba(77, 240, 255, 0.16);
+  --全息材质角光: rgba(77, 240, 255, 0.12);
+  --全息材质辉光: rgba(77, 240, 255, 0.1);
 }
 
 .split-shell .mvu-panel.clickable,
 .split-shell .mvu-module-card.clickable,
+.split-shell .strip.clickable,
 .split-shell .mvu-simple-card.clickable {
   cursor: pointer;
   transition:
     transform 0.18s ease,
     background 0.18s ease,
-    border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
 
@@ -2980,12 +3024,10 @@
 
 .split-shell .mvu-panel.clickable:hover,
 .split-shell .mvu-module-card.clickable:hover,
+.split-shell .strip.clickable:hover,
 .split-shell .mvu-simple-card.clickable:hover {
-  background: linear-gradient(180deg, rgba(40, 100, 130, 0.35), rgba(30, 80, 110, 0.45));
-  border-color: rgba(90, 210, 240, 0.32);
-  box-shadow:
-    inset 0 0 16px rgba(0, 0, 0, 0.05),
-    0 6px 18px rgba(0, 0, 0, 0.25);
+  background: var(--全息材质悬停底);
+  box-shadow: var(--全息材质悬停阴影);
 }
 
 .split-shell-left {
@@ -3366,10 +3408,6 @@
 .split-shell-right .mvu-simple-card {
   border-radius: var(--mvu-radius-lg, 16px);
   padding: 14px 16px;
-  box-shadow:
-    inset 0 0 0 1px var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)),
-    inset 0 0 18px rgba(77, 240, 255, 0.03),
-    0 10px 26px rgba(0, 0, 0, 0.12);
 }
 
 .split-shell-left .dual-spirit-strip {
@@ -22084,6 +22122,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-theme='�
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] {
   border-color: var(--mvu-holo-line) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
   background:
     radial-gradient(circle at 12% 16%, color-mix(in srgb, var(--mvu-holo-main) 16%, transparent), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
@@ -22095,6 +22134,24 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='�
     0 0 30px rgba(0, 0, 0, 0.26) !important;
   backdrop-filter: blur(22px) saturate(118%);
   -webkit-backdrop-filter: blur(22px) saturate(118%);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] .mvu-unified-overview-bar {
+  grid-template-columns: minmax(64px, max-content) minmax(180px, 1fr) max-content !important;
+  grid-template-areas: 'identity status shell' !important;
+  grid-template-rows: auto !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] .mvu-unified-tab-row {
+  display: none !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] .mvu-unified-top-status {
+  border-color: color-mix(in srgb, var(--mvu-holo-main) 22%, transparent);
+  background:
+    radial-gradient(circle at 14px 50%, color-mix(in srgb, var(--mvu-holo-main) 18%, transparent), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    rgba(5, 15, 23, 0.52);
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-toolbar {
@@ -22217,9 +22274,9 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-ring {
   inset: 0;
   border-radius: 50%;
   pointer-events: none;
-  border: 1px dashed var(--mvu-holo-line);
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-line) 68%, transparent);
   box-shadow:
-    0 0 18px var(--mvu-holo-glow),
+    0 0 12px color-mix(in srgb, var(--mvu-holo-glow) 68%, transparent),
     inset 0 0 18px rgba(255, 255, 255, 0.035);
   animation: mvu-holo-orbit-spin 30s linear infinite;
 }
@@ -22228,15 +22285,15 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-ring--middle {
   inset: 15%;
   animation-duration: 42s;
   animation-direction: reverse;
-  opacity: 0.78;
+  opacity: 0.52;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-ring--inner {
   inset: 29%;
   border-style: solid;
-  border-color: color-mix(in srgb, var(--mvu-holo-main) 42%, transparent);
+  border-color: color-mix(in srgb, var(--mvu-holo-main) 28%, transparent);
   animation-duration: 54s;
-  opacity: 0.7;
+  opacity: 0.44;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-orbit::before {
@@ -22245,7 +22302,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-orbit::before {
   inset: 6%;
   border-radius: 50%;
   background: conic-gradient(from 300deg, transparent 0 70%, color-mix(in srgb, var(--mvu-holo-main) 22%, transparent) 76%, transparent 86% 100%);
-  opacity: 0.45;
+  opacity: 0.28;
   filter: blur(1px);
   animation: mvu-holo-orbit-spin 12s linear infinite;
   pointer-events: none;
@@ -22309,7 +22366,7 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-node {
   appearance: none;
   -webkit-appearance: none;
   position: absolute;
-  z-index: 5;
+  z-index: 7;
   display: grid;
   grid-template-columns: auto max-content;
   align-items: center;
@@ -22434,66 +22491,123 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment {
   appearance: none;
   -webkit-appearance: none;
   position: absolute;
-  z-index: 6;
+  z-index: 3;
   min-width: 0;
-  height: 20px;
-  padding: 0 7px 0 18px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  background: rgba(5, 12, 18, 0.74);
+  background:
+    radial-gradient(circle, currentColor 0 24%, rgba(5, 12, 18, 0.86) 25% 100%);
   color: rgba(218, 236, 240, 0.76);
-  font-size: 9px;
+  font-size: 0;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.24);
+  opacity: 0.36;
+  box-shadow:
+    0 0 10px color-mix(in srgb, currentColor 28%, transparent),
+    inset 0 0 8px rgba(255, 255, 255, 0.06);
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment::before {
   content: '';
   position: absolute;
-  left: 7px;
+  left: 50%;
   top: 50%;
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 9px currentColor;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment::after {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 5px);
+  display: none;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(5, 12, 18, 0.84);
+  color: rgba(232, 246, 250, 0.92);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment:hover,
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment:focus-visible {
+  opacity: 0.9;
+  transform: scale(1.12);
+  outline: none;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment:hover::after,
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment:focus-visible::after {
+  display: block;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--low {
-  left: 2%;
-  bottom: 5%;
+  left: 8%;
+  bottom: 12%;
   color: rgba(255, 215, 0, 0.72);
   animation: mvu-holo-fragment-drift 14s ease-in-out infinite;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--low::after {
+  content: '拍卖';
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--mid {
-  right: 5%;
-  top: 8%;
+  right: 12%;
+  top: 15%;
   color: var(--mvu-holo-main);
   animation: mvu-holo-fragment-drift 10s ease-in-out infinite reverse;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--mid::after {
+  content: '偏差';
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--high {
-  right: 9%;
-  bottom: 32%;
+  right: 16%;
+  bottom: 35%;
   color: var(--mvu-holo-alert);
   animation: mvu-holo-alert-pulse 1.4s ease-in-out infinite;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--high::after {
+  content: '敌意';
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--battle {
-  left: 12%;
-  top: 29%;
+  left: 17%;
+  top: 31%;
   color: #ffcf5a;
   animation: mvu-holo-alert-pulse 1.8s ease-in-out infinite;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--battle::after {
+  content: '战斗';
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-alert='稳定'] .mvu-holo-fragment--high,
-body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-auction='休市'] .mvu-holo-fragment--low {
-  opacity: 0.42;
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-auction='休市'] .mvu-holo-fragment--low,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-battle='休止'] .mvu-holo-fragment--battle {
+  opacity: 0.16;
   animation-duration: 18s;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-alert='高危'] .mvu-holo-fragment--high,
+body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-battle='进行中'] .mvu-holo-fragment--battle {
+  z-index: 6;
+  opacity: 0.96;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-readout {
@@ -22657,6 +22771,10 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-theme='�
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-path {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   margin: 0 0 8px;
   padding: 0 2px;
@@ -22669,12 +22787,44 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-path {
   white-space: nowrap;
 }
 
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-path span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-path::after {
   content: '';
+  grid-column: 1 / -1;
   display: block;
   height: 1px;
   margin-top: 7px;
   background: linear-gradient(90deg, var(--mvu-holo-line), transparent);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-back {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  border: 1px solid var(--mvu-holo-line);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
+  color: var(--mvu-holo-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 0 12px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-back:hover,
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-back:focus-visible {
+  border-color: var(--mvu-holo-main);
+  color: var(--mvu-holo-high);
+  outline: none;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-page {
@@ -22689,6 +22839,36 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-holo-page {
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-page.active {
   display: grid;
   animation: mvu-holo-projection-build 0.26s ease both;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-page {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  animation: mvu-holo-projection-build 0.26s ease both;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  padding: 3px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  background: transparent !important;
+}
+
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host:has(.dossier-shell--relation),
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host .mvu-unified-detail-root:has(.dossier-shell--relation),
+body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host .mvu-unified-detail-scroll:has(.dossier-shell--relation) {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 body.mvu-layout-unified #mvu-unified-mount .mvu-holo-dashboard {
@@ -23336,6 +23516,18 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-theme='�
     gap: 4px !important;
   }
 
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] .mvu-unified-overview-bar {
+    grid-template-columns: minmax(58px, max-content) minmax(0, 1fr) !important;
+    grid-template-areas:
+      'identity status'
+      'shell shell' !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-shell='星轨'] .mvu-unified-tab-row {
+    display: none !important;
+  }
+
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-toolbar {
     justify-content: end;
     overflow: hidden;
@@ -23491,29 +23683,30 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-theme='�
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment {
-    height: 18px;
-    padding: 0 6px 0 16px;
-    font-size: 8.5px;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    font-size: 0;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--low {
-    left: 9%;
-    bottom: 16%;
+    left: 15%;
+    bottom: 23%;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--mid {
-    right: 12%;
-    top: 29%;
+    right: 19%;
+    top: 31%;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--high {
-    right: 9%;
-    bottom: 30%;
+    right: 17%;
+    bottom: 36%;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-fragment--battle {
-    left: 11%;
-    top: 34%;
+    left: 18%;
+    top: 39%;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-readout {
@@ -23545,6 +23738,19 @@ body.mvu-layout-unified #mvu-unified-mount .mvu-unified-frame[data-holo-theme='�
     height: auto;
     padding: 9px;
     overflow: visible;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-page {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host,
+  body.mvu-layout-unified #mvu-unified-mount .mvu-holo-detail-host:has(.dossier-shell--relation) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-unified #mvu-unified-mount .mvu-holo-page {

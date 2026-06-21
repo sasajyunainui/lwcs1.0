@@ -31667,6 +31667,8 @@
       ? Math.max(0, Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))))
       : 0;
     const 拍卖状态 = snapshot ? toText(deepGet(snapshot, 'rootData.world.拍卖.状态', snapshot.auctionStatus), '休市') : '休市';
+    const 战斗数据 = snapshot ? deepGet(snapshot, 'rootData.world.战斗', {}) : {};
+    const 战斗状态 = 战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中 ? '进行中' : '休止';
     const 写文本 = (选择器, 文本) => {
       getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
         节点.textContent = 文本;
@@ -31680,6 +31682,7 @@
       if (!(节点 instanceof Element)) return;
       节点.setAttribute('data-holo-alert', 森林敌意 >= 70 || 偏差值 >= 40 ? '高危' : 森林敌意 >= 30 || 偏差值 >= 10 ? '波动' : '稳定');
       节点.setAttribute('data-holo-auction', 拍卖状态);
+      节点.setAttribute('data-holo-battle', 战斗状态);
     });
   }
 
