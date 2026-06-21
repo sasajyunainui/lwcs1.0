@@ -5782,7 +5782,7 @@
       const eventSource = 上下文 && 上下文.eventSource;
       if (!eventSource || typeof eventSource.on !== 'function') return false;
       const eventTypes = 上下文.eventTypes || {};
-      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED'].forEach(事件键 => {
+      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED', 'GENERATION_STOPPED'].forEach(事件键 => {
         const 事件名 = eventTypes[事件键] || 事件键;
         if (!事件名) return;
         try {
@@ -5791,6 +5791,13 @@
               处理前端模块重Roll恢复_桥接(事件键, 事件参数).catch(错误 => {
                 console.warn('[DragonUI] 前端模块重ROLL恢复调度失败', 错误);
               });
+            }
+            if (事件键 === 'GENERATION_ENDED' || 事件键 === 'GENERATION_STOPPED') {
+              window.setTimeout(() => {
+                处理前端模块预写中断恢复_桥接(事件键).catch(错误 => {
+                  console.warn('[DragonUI] 前端模块预写中断恢复调度失败', 错误);
+                });
+              }, 250);
             }
             调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
@@ -8779,6 +8786,7 @@
 
   const pendingUiSystemInjections = new Map();
   const 前端模块重Roll恢复表 = new Map();
+  const 前端模块预写待确认表 = new Map();
   const 前端模块重Roll恢复保留毫秒 = 10 * 60 * 1000;
   const 异步动作锁表 = new Map();
   const 异步动作锁超时毫秒 = 120000;
@@ -9261,6 +9269,7 @@
     let 用户消息索引 = -1;
     let 重Roll恢复基底 = null;
     let 重Roll写后记录 = [];
+    let 预写待确认键 = '';
 
     if (!userText) {
       showUiToast('请求内容为空，无法提交。', 'error', 4200);
@@ -9289,6 +9298,15 @@
           const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 重Roll恢复基底.目标消息元信息.消息编号 });
           const 写后根 = resolveRootData(写后包);
           if (写后根) 重Roll写后记录 = 构建前端模块路径当前记录_桥接(写后根, 重Roll恢复基底.回滚记录);
+          预写待确认键 = 登记前端模块预写待确认记录({
+            requestKind,
+            旧AI消息编号: 重Roll恢复基底.目标消息元信息.消息编号,
+            旧AI消息索引: 重Roll恢复基底.目标消息元信息.消息索引,
+            旧AI滑动编号: 重Roll恢复基底.目标消息元信息.滑动编号,
+            旧AI文本签名: 重Roll恢复基底.目标消息元信息.文本签名,
+            回滚记录: 重Roll恢复基底.回滚记录,
+            写后记录: 重Roll写后记录,
+          });
         }
         await refreshLiveSnapshot({ force: true });
       }
@@ -9356,6 +9374,7 @@
         }
       }
       if (patchOps.length && 重Roll恢复基底) {
+        if (预写待确认键) 前端模块预写待确认表.delete(预写待确认键);
         登记前端模块重Roll恢复记录({
           requestKind,
           新AI消息编号: 助手消息.message_id,
@@ -9596,6 +9615,9 @@
     for (const [键, 记录] of 前端模块重Roll恢复表.entries()) {
       if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) 前端模块重Roll恢复表.delete(键);
     }
+    for (const [键, 记录] of 前端模块预写待确认表.entries()) {
+      if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) 前端模块预写待确认表.delete(键);
+    }
   }
 
   function 读取路径当前值_桥接(来源 = {}, 路径输入 = []) {
@@ -9685,6 +9707,23 @@
       createdAt: Date.now(),
       正在恢复: false,
     });
+  }
+
+  function 登记前端模块预写待确认记录(记录 = {}) {
+    const 旧AI消息编号 = toText(记录.旧AI消息编号, '').trim();
+    const 回滚记录 = Array.isArray(记录.回滚记录) ? 记录.回滚记录 : [];
+    if (!旧AI消息编号 || !回滚记录.length) return '';
+    清理过期前端模块重Roll恢复记录();
+    const 键 = `${旧AI消息编号}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+    前端模块预写待确认表.set(键, {
+      ...记录,
+      旧AI消息编号,
+      回滚记录: cloneJsonValue(回滚记录, []),
+      写后记录: cloneJsonValue(Array.isArray(记录.写后记录) ? 记录.写后记录 : [], []),
+      createdAt: Date.now(),
+      正在恢复: false,
+    });
+    return 键;
   }
 
   function syncMvuEditorStoreFromRoot(statData, options = {}) {
@@ -9887,6 +9926,60 @@
     return '';
   }
 
+  function 读取旧楼层后首个AI回复_桥接(旧AI消息索引 = -1) {
+    const 起点 = Number(旧AI消息索引);
+    if (!Number.isInteger(起点) || 起点 < 0) return null;
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 后续 = 聊天.slice(起点 + 1);
+    const 用户相对索引 = 后续.findIndex(消息 => 消息 && 消息.is_user);
+    if (用户相对索引 < 0) return null;
+    const AI相对索引 = 后续.slice(用户相对索引 + 1).findIndex(消息 => 消息 && !消息.is_user);
+    if (AI相对索引 < 0) return null;
+    const 消息索引 = 起点 + 1 + 用户相对索引 + 1 + AI相对索引;
+    const 消息 = 聊天[消息索引];
+    return {
+      消息,
+      消息索引,
+      消息编号: 读取聊天消息编号_桥接(消息, 消息索引),
+    };
+  }
+
+  async function 执行前端模块路径回滚_桥接(记录 = {}, 事件键 = '') {
+    const 当前旧楼元信息 = 读取AI楼层元信息_桥接(记录.旧AI消息索引);
+    if (
+      !当前旧楼元信息 ||
+      当前旧楼元信息.消息编号 !== 记录.旧AI消息编号 ||
+      String(当前旧楼元信息.滑动编号) !== String(记录.旧AI滑动编号 ?? '') ||
+      当前旧楼元信息.文本签名 !== toText(记录.旧AI文本签名, '')
+    ) return false;
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor({
+      message_id: 记录.旧AI消息编号,
+      禁止目标回退: true,
+    });
+    const nextMvuData = cloneJsonValue(mvuData, {});
+    const statData = cloneJsonValue(nextMvuData.stat_data, {});
+    const 当前写后记录 = 构建前端模块路径当前记录_桥接(statData, 记录.回滚记录);
+    if (Array.isArray(记录.写后记录) && 记录.写后记录.length && !路径记录值一致_桥接(当前写后记录, 记录.写后记录)) {
+      console.warn('[DragonUI] 前端模块预写恢复跳过：目标路径已被其他流程改动', { requestKind: 记录.requestKind, 事件键 });
+      return false;
+    }
+    (Array.isArray(记录.回滚记录) ? 记录.回滚记录 : []).forEach(项 => {
+      const 路径 = Array.isArray(项.路径) ? 项.路径 : decodeJsonPointerPath(项.path);
+      if (!路径.length) return;
+      if (项.存在) deepSetMutable(statData, 路径, cloneJsonValue(项.值, 项.值));
+      else deepDeleteMutable(statData, 路径);
+    });
+    nextMvuData.stat_data = 归一化变量根_桥接(statData);
+    await 写回MVU数据并记录耗时_桥接(
+      host,
+      nextMvuData,
+      { type: 'message', message_id: messageId },
+      `MVU写回:前端模块路径回滚:${事件键}`,
+    );
+    await refreshLiveSnapshot({ force: true });
+    return true;
+  }
+
   async function 处理前端模块重Roll恢复_桥接(事件键 = '', 事件参数 = []) {
     if (!前端模块重Roll恢复表.size) return;
     清理过期前端模块重Roll恢复记录();
@@ -9896,49 +9989,45 @@
     if (!记录 || 记录.正在恢复) return;
     记录.正在恢复 = true;
     try {
-      const 当前旧楼元信息 = 读取AI楼层元信息_桥接(记录.旧AI消息索引);
-      if (
-        !当前旧楼元信息 ||
-        当前旧楼元信息.消息编号 !== 记录.旧AI消息编号 ||
-        String(当前旧楼元信息.滑动编号) !== String(记录.旧AI滑动编号 ?? '') ||
-        当前旧楼元信息.文本签名 !== toText(记录.旧AI文本签名, '')
-      ) return;
-      const { host, mvuData, messageId } = await readLatestMvuDataByEditor({
-        message_id: 记录.旧AI消息编号,
-        禁止目标回退: true,
-      });
-      const nextMvuData = cloneJsonValue(mvuData, {});
-      const statData = cloneJsonValue(nextMvuData.stat_data, {});
-      const 当前写后记录 = 构建前端模块路径当前记录_桥接(statData, 记录.回滚记录);
-      if (Array.isArray(记录.写后记录) && 记录.写后记录.length && !路径记录值一致_桥接(当前写后记录, 记录.写后记录)) {
-        console.warn('[DragonUI] 前端模块重ROLL恢复跳过：目标路径已被其他流程改动', { requestKind: 记录.requestKind, 事件键 });
-        return;
-      }
-      (Array.isArray(记录.回滚记录) ? 记录.回滚记录 : []).forEach(项 => {
-        const 路径 = Array.isArray(项.路径) ? 项.路径 : decodeJsonPointerPath(项.path);
-        if (!路径.length) return;
-        if (项.存在) deepSetMutable(statData, 路径, cloneJsonValue(项.值, 项.值));
-        else deepDeleteMutable(statData, 路径);
-      });
-      nextMvuData.stat_data = 归一化变量根_桥接(statData);
-      await 写回MVU数据并记录耗时_桥接(
-        host,
-        nextMvuData,
-        { type: 'message', message_id: messageId },
-        `MVU写回:前端模块重Roll路径回滚:${事件键}`,
-      );
+      const 已回滚 = await 执行前端模块路径回滚_桥接(记录, 事件键);
+      if (!已回滚) return;
       if (Array.isArray(记录.patchOps) && 记录.patchOps.length) {
         await applyJsonPatchOpsByEditor(cloneJsonValue(记录.patchOps, []), {
           force: true,
           message_id: 记录.旧AI消息编号,
           禁止目标回退: true,
         });
+        await refreshLiveSnapshot({ force: true });
       }
-      await refreshLiveSnapshot({ force: true });
     } catch (错误) {
       console.warn('[DragonUI] 前端模块重ROLL恢复失败', 错误);
     } finally {
       记录.正在恢复 = false;
+    }
+  }
+
+  async function 处理前端模块预写中断恢复_桥接(事件键 = '') {
+    if (!前端模块预写待确认表.size) return;
+    清理过期前端模块重Roll恢复记录();
+    for (const [键, 记录] of Array.from(前端模块预写待确认表.entries())) {
+      if (!记录 || 记录.正在恢复) continue;
+      const 新AI楼层 = 读取旧楼层后首个AI回复_桥接(记录.旧AI消息索引);
+      if (新AI楼层 && 新AI楼层.消息编号) {
+        登记前端模块重Roll恢复记录({
+          ...记录,
+          新AI消息编号: 新AI楼层.消息编号,
+        });
+        前端模块预写待确认表.delete(键);
+        continue;
+      }
+      记录.正在恢复 = true;
+      try {
+        if (await 执行前端模块路径回滚_桥接(记录, 事件键)) 前端模块预写待确认表.delete(键);
+      } catch (错误) {
+        console.warn('[DragonUI] 前端模块预写中断恢复失败', 错误);
+      } finally {
+        记录.正在恢复 = false;
+      }
     }
   }
 
