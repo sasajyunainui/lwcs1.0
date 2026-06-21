@@ -7277,7 +7277,8 @@ function 规范化角色Schema_V1(char) {
     let bName = char.血脉之力?.血脉 || '无';
 
   if (bName.includes('金龙王')) {
-      const 金龙王基础倍率 = 2 + Math.max(0, Math.floor(Number(char?.血脉之力?.解封层数 || 0)));
+      const 金龙王解封层数 = Math.max(0, Math.floor(Number(char?.血脉之力?.解封层数 || 0)));
+      const 金龙王基础倍率 = 金龙王解封层数 <= 0 ? 1.5 : 2 + 金龙王解封层数;
       const 金龙王力量体力最终值 = 基础值 => {
         const 数值 = Math.max(0, Math.floor(Number(基础值 || 0)));
         if (数值 * 金龙王基础倍率 <= 100000) return Math.floor(数值 * 金龙王基础倍率);
@@ -7286,7 +7287,7 @@ function 规范化角色Schema_V1(char) {
       };
       final_vit_max = 金龙王力量体力最终值(final_vit_max);
       final_str = 金龙王力量体力最终值(final_str);
-      let menInc = final_men_max * 4;
+      let menInc = final_men_max * (金龙王解封层数 <= 0 ? 2 : 4);
       final_men_max += Math.min(menInc, 20000);
     } else if (bName.includes('银龙王')) {
       let vitInc = final_vit_max * 1;
