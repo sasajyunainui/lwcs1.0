@@ -324,7 +324,7 @@
     return await 正则引擎缓存.承诺;
   }
 
-  async function 套用酒馆正则过滤(文本 = '', placement = '') {
+  async function 套用酒馆正则过滤(文本 = '', placement = '', options = {}) {
     const 源文本 = String(文本 || '');
     if (!源文本) return '';
     const 模块 = await 读取正则引擎模块();
@@ -334,7 +334,9 @@
     const 位置 = placement === 'user' ? regexPlacement.USER_INPUT : regexPlacement.AI_OUTPUT;
     if (位置 === undefined || 位置 === null) return 源文本;
     try {
-      return String(getRegexedString(源文本, 位置, { isPrompt: true }) ?? 源文本);
+      const 正则选项 = { isPrompt: true };
+      正则选项.depth = Number.isInteger(options?.depth) ? options.depth : 0;
+      return String(getRegexedString(源文本, 位置, 正则选项) ?? 源文本);
     } catch (错误) {
       console.warn('[LWCS适配器] 正则过滤失败:', 错误);
       return 源文本;
@@ -346,8 +348,8 @@
     const 已缓存 = 正则近场缓存表.get(缓存键);
     if (已缓存) return 克隆JSON值(已缓存, {});
     const [过滤后用户输入, 过滤后最后角色消息] = await Promise.all([
-      套用酒馆正则过滤(用户输入文本, 'user'),
-      套用酒馆正则过滤(最后角色消息文本, 'ai'),
+      套用酒馆正则过滤(用户输入文本, 'user', { depth: 0 }),
+      套用酒馆正则过滤(最后角色消息文本, 'ai', { depth: 0 }),
     ]);
     const 结果 = {
       userInput: 清理近场文本片段(过滤后用户输入),

@@ -4142,7 +4142,7 @@ $CONTENT
         });
         return await 正则引擎模块承诺_ACU;
     }
-    async function 套用酒馆Prompt正则_ACU(text = '', placement = 'ai') {
+    async function 套用酒馆Prompt正则_ACU(text = '', placement = 'ai', options = {}) {
         const source = String(text || '');
         if (!source)
             return '';
@@ -4155,7 +4155,9 @@ $CONTENT
         if (位置 === undefined || 位置 === null)
             return source;
         try {
-            return String(getRegexedString(source, 位置, { isPrompt: true }) ?? source);
+            const 正则选项 = { isPrompt: true };
+            正则选项.depth = Number.isInteger(options?.depth) ? options.depth : 0;
+            return String(getRegexedString(source, 位置, 正则选项) ?? source);
         }
         catch (error) {
             logWarn_ACU('[正则过滤] 处理数据库提示词正文失败:', error);
@@ -17761,14 +17763,18 @@ $CONTENT
             const extractRules = normalizeExtractRules_ACU(settings_ACU.tableContextExtractRules, extractTags);
             const excludeTags = (settings_ACU.tableContextExcludeTags || '').trim();
             const excludeRules = normalizeExcludeRules_ACU(settings_ACU.tableContextExcludeRules, excludeTags);
-            messagesText += messages.map((msg) => {
+            const 消息总数 = messages.length;
+            const 正则处理结果 = await Promise.all(messages.map(async (msg, index) => {
                 const prefix = msg.is_user ? getUserName_ACU() : msg.name || '角色';
                 let content = msg.mes || msg.message || '';
                 if (!msg.is_user && (extractTags || extractRules.length > 0 || excludeTags || excludeRules.length > 0)) {
                     content = applyContextTagFilters_ACU(content, { extractTags, extractRules, excludeTags, excludeRules });
                 }
+                const depth = Math.max(0, 消息总数 - 1 - index);
+                content = await 套用酒馆Prompt正则_ACU(content, msg.is_user ? 'user' : 'ai', { depth });
                 return `${prefix}: ${content}`;
-            }).join('\n');
+            }));
+            messagesText += 正则处理结果.join('\n');
         }
         else {
             messagesText += '(无最新对话内容)';
@@ -18060,11 +18066,10 @@ $CONTENT
                 return text;
             return applyExcludeRulesToText_ACU(text, { excludeRules: tableExcludeRules, excludeTags: tableExcludeTags });
         };
-        const 过滤后填表正文数据 = await 套用酒馆Prompt正则_ACU(dynamicContent.messagesText || '', 'ai');
         for (const segment of promptSegments) {
             let finalContent = segment.content;
             finalContent = finalContent.replace('$0', filterTableInjectedContent(dynamicContent.tableDataText, '$0'));
-            finalContent = finalContent.replace('$1', filterTableInjectedContent(过滤后填表正文数据, '$1'));
+            finalContent = finalContent.replace('$1', filterTableInjectedContent(dynamicContent.messagesText || '', '$1'));
             finalContent = finalContent.replace('$4', filterTableInjectedContent(dynamicContent.worldbookContent, '$4'));
             finalContent = finalContent.replace(/\$6/g, filterTableInjectedContent(lastPlotContent || '', '$6'));
             finalContent = finalContent.replace('$8', filterTableInjectedContent(dynamicContent.manualExtraHint || '', '$8'));
@@ -22108,9 +22113,12 @@ $CONTENT
             const chat = getChatArray_ACU();
             const contextMessages = chat
                 .filter(msg => !msg.is_user)
-                .slice(-10) // 最近10条AI消息
-                .map(async msg => `assistant："${await 套用酒馆Prompt正则_ACU(msg.mes || '', 'ai')}"`)
-            const filteredContextMessages = await Promise.all(contextMessages);
+                .slice(-10); // 最近10条AI消息
+            const contextCount = contextMessages.length;
+            const filteredContextMessages = await Promise.all(contextMessages.map(async (msg, index) => {
+                const depth = Math.max(0, contextCount - 1 - index);
+                return `assistant："${await 套用酒馆Prompt正则_ACU(msg.mes || '', 'ai', { depth })}"`;
+            }));
             placeholders.$7 = filteredContextMessages.join('\n') ? `以下是前文的故事发展（AI输出）：\n${filteredContextMessages.join('\n')}` : '';
             logDebug_ACU('[正文优化] $7 前文上下文:', placeholders.$7 ? `长度=${placeholders.$7.length}` : '(空)');
         }
