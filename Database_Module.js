@@ -4618,6 +4618,13 @@ $CONTENT
         const 签名文本 = 清理后端块后正文_ACU(文本);
         return { 文本, 消息索引, 消息编号, 滑动编号, 文本签名: hashUserInput_ACU(签名文本) };
     }
+    function 读取消息索引角色消息元信息_ACU(消息索引) {
+        const 聊天数组 = getChatArray_ACU();
+        const 索引 = Number(消息索引);
+        if (!Array.isArray(聊天数组) || !Number.isInteger(索引))
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        return 读取角色消息元信息_ACU(聊天数组[索引], 索引);
+    }
     function 读取指定角色消息元信息_ACU(事件消息编号, 生成上下文 = null) {
         const 聊天数组 = getChatArray_ACU();
         if (!Array.isArray(聊天数组) || 聊天数组.length === 0)
@@ -34152,13 +34159,15 @@ $CONTENT
      * 纯业务编排逻辑：决定执行顺序、并发策略、错误处理。
      * 不驱动 UI，只返回结果。presentation 层根据返回值自行决定 UI 操作。
      */
-    async function executeAutoUpdatePlan_ACU(plan, settings, setAutoUpdating, ops) {
+    async function executeAutoUpdatePlan_ACU(plan, settings, setAutoUpdating, ops, 选项 = {}) {
         const { tablesToUpdate, updateGroups } = plan;
         const groupKeys = Object.keys(updateGroups);
         if (groupKeys.length === 0)
             return { success: true, failedGroups: 0, totalGroups: 0 };
         const totalGroups = groupKeys.length;
         const maxConcurrentGroups = Math.max(1, settings.maxConcurrentGroups || 1);
+        const 目标消息元信息 = 选项?.目标消息元信息 || null;
+        const 目标锁定选项 = 目标消息元信息 ? { 目标消息元信息, 禁止目标回退: true } : {};
         setAutoUpdating(true);
         const failedGroupKeys = [];
         const failedGroupErrors = [];
@@ -34183,7 +34192,7 @@ $CONTENT
                         requestOptions: { skipProfileSwitch: true, forceDirectApi: true },
                     };
                 });
-                const groupedResult = await ops.processGroupedUpdates(groupedChunk, 'auto_independent', {});
+                const groupedResult = await ops.processGroupedUpdates(groupedChunk, 'auto_independent', 目标锁定选项);
                 if (!groupedResult.success) {
                     failedGroupKeys.push(...groupedResult.failedGroups);
                     const groupedError = groupedResult.error || '分组更新失败，未返回具体错误。';
@@ -34195,6 +34204,7 @@ $CONTENT
                     const group = updateGroups[key];
                     logDebug_ACU(`[Parallel] Processing group update for groupId=${group.groupId}, sheets: ${group.sheetNames.join(', ')}`);
                     const success = await ops.processUpdates(group.indices, 'auto_independent', {
+                        ...目标锁定选项,
                         targetSheetKeys: group.sheetKeys,
                         batchSize: group.batchSize,
                         requestOptions: { skipProfileSwitch: true, forceDirectApi: true }
@@ -36644,6 +36654,11 @@ $CONTENT
         if (!Array.isArray(groups) || groups.length === 0) {
             return { success: true, failedGroups: [] };
         }
+        const 目标消息元信息 = options?.目标消息元信息 || null;
+        const 锁定保存索引 = 目标消息元信息 && Number.isInteger(Number(目标消息元信息.消息索引)) ? Number(目标消息元信息.消息索引) : null;
+        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+            return { success: false, failedGroups: groups.map(group => group.key), error: '目标楼层已变化，已跳过本次自动更新。' };
+        }
         const migration = await ensureLegacyStorageMigratedBeforeWrite_ACU('processGroupedRuntimeChunk');
         if (!migration.success) {
             return { success: false, failedGroups: groups.map(group => group.key), error: migration.error || '旧存储迁移失败，已阻止本次填表。' };
@@ -36666,7 +36681,7 @@ $CONTENT
                 const batchNumber = i + 1;
                 const firstMessageIndexOfBatch = batchIndices[0];
                 const lastMessageIndexOfBatch = batchIndices[batchIndices.length - 1];
-                const finalSaveTargetIndex = lastMessageIndexOfBatch;
+                const finalSaveTargetIndex = 锁定保存索引 !== null ? 锁定保存索引 : lastMessageIndexOfBatch;
                 const updateMode = resolveUpdateMode_ACU(mode);
                 const bucketKey = `${finalSaveTargetIndex}|${batchNumber}|${updateMode}|${options.isImportMode === true ? 1 : 0}`;
                 const plannedJob = {
@@ -36831,6 +36846,11 @@ $CONTENT
                     }
                 }
                 emitBucketProgress(bucketIndex, { phase: 'saving' });
+                if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+                    jobs.forEach(job => failedGroups.add(job.groupKey));
+                    firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
+                    break;
+                }
                 const applyResult = useDeferredSqliteRuntime
                     ? await applySqlResponsesToCurrentRuntime_ACU(responses, baseSnapshot, bucket.updateMode)
                     : await applyUnifiedGroupFillResponses_ACU(responses, baseSnapshot, {
@@ -37301,6 +37321,11 @@ $CONTENT
             return { success: true };
         }
         const { targetSheetKeys, batchSize: specificBatchSize, requestOptions } = options;
+        const 目标消息元信息 = options?.目标消息元信息 || null;
+        const 锁定保存索引 = 目标消息元信息 && Number.isInteger(Number(目标消息元信息.消息索引)) ? Number(目标消息元信息.消息索引) : null;
+        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+            return { success: false, error: '目标楼层已变化，已跳过本次自动更新。' };
+        }
         const migration = await ensureLegacyStorageMigratedBeforeWrite_ACU('processUpdatesBatch');
         if (!migration.success) {
             return { success: false, error: migration.error || '旧存储迁移失败，已阻止本次填表。' };
@@ -37326,7 +37351,7 @@ $CONTENT
                 const batchNumber = i + 1;
                 const firstMessageIndexOfBatch = batchIndices[0];
                 const lastMessageIndexOfBatch = batchIndices[batchIndices.length - 1];
-                const finalSaveTargetIndex = lastMessageIndexOfBatch;
+                const finalSaveTargetIndex = 锁定保存索引 !== null ? 锁定保存索引 : lastMessageIndexOfBatch;
                 // 构建合并基底
                 const baseResult = await buildBatchMergeBase_ACU(batchNumber, { maxMessageIndex: firstMessageIndexOfBatch - 1 });
                 if (!baseResult.data) {
@@ -37367,6 +37392,9 @@ $CONTENT
                     if (resolvedPreset) {
                         effectiveRequestOptions = { ...(effectiveRequestOptions || {}), tableApiPreset: resolvedPreset };
                     }
+                }
+                if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+                    return { success: false, failedBatch: batchNumber, error: '目标楼层已变化，已跳过本次自动更新。' };
                 }
                 const result = await executeUpdate(messagesForContext, finalSaveTargetIndex, updateMode, isSilentMode, targetSheetKeys, effectiveRequestOptions, {
                     currentBatch: batchNumber,
@@ -37790,7 +37818,7 @@ $CONTENT
                     refreshData: () => refreshRuntimeDataAndNotifyAfterAutoUpdate_ACU(),
                     loadAllChatMessages: () => loadAllChatMessages_ACU(),
                     purgeOldLayerData: () => purgeOldLayerData_ACU(),
-                });
+                }, { 目标消息元信息 });
             }
             finally {
                 clearAutoUpdateToast_ACU(autoProgressToast);
@@ -38398,7 +38426,7 @@ $CONTENT
                 showToastr_ACU('success', '优化已应用');
                 // [新增] 手动确认模式下，应用优化后触发填表
                 logDebug_ACU('[正文优化] 手动确认模式：应用优化后触发填表...');
-                await triggerAutomaticUpdateIfNeeded_ACU();
+                await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
             }
             else {
                 jQuery_API_ACU(this).prop('disabled', false).text('应用优化');
@@ -38409,7 +38437,7 @@ $CONTENT
         jQuery_API_ACU('#acu-opt-cancel').on('click', async function () {
             jQuery_API_ACU('.acu-optimization-dialog, #acu-opt-backdrop').remove();
             logDebug_ACU('[正文优化] 手动确认模式：用户取消优化，触发填表...');
-            await triggerAutomaticUpdateIfNeeded_ACU();
+            await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
         });
     }
     /**
@@ -38832,7 +38860,7 @@ $CONTENT
                 return false;
             }
             // 如果是后续轮次失败，使用之前的结果触发填表
-            await triggerAutomaticUpdateIfNeeded_ACU();
+            await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
             return true;
         }
         // 检查是否有实际优化
@@ -38851,7 +38879,7 @@ $CONTENT
                 else {
                     showToastr_ACU('info', '正文无需优化');
                 }
-                await triggerAutomaticUpdateIfNeeded_ACU();
+                await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
                 return true;
             }
         }
@@ -38878,7 +38906,7 @@ $CONTENT
                         // 所有轮次完成，应用最终结果并触发填表
                         await replaceChatMessage_ACU(messageIndex, result.optimizedContent);
                         showToastr_ACU('success', `正文优化完成，共 ${totalLoops} 轮优化，累计 ${newTotalOptimizations.length} 处改进`);
-                        await triggerAutomaticUpdateIfNeeded_ACU();
+                        await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
                         resolve(true);
                     }
                 }
@@ -38895,19 +38923,19 @@ $CONTENT
                         if (totalOptimizations.length > 0) {
                             // 如果有之前的优化，应用之前的结果
                             // 注意：这里需要应用之前累积的优化内容
-                            await triggerAutomaticUpdateIfNeeded_ACU();
+                            await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
                             showToastr_ACU('success', `正文优化完成，共 ${totalLoops} 轮优化，累计 ${totalOptimizations.length} 处改进`);
                         }
                         else {
                             showToastr_ACU('info', '正文优化已跳过');
                         }
-                        await triggerAutomaticUpdateIfNeeded_ACU();
+                        await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
                         resolve(true);
                     }
                 }
                 else {
                     // 用户取消，结束优化流程
-                    await triggerAutomaticUpdateIfNeeded_ACU();
+                    await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex) });
                     resolve(true);
                 }
             });

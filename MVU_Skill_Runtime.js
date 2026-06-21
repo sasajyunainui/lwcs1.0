@@ -17549,6 +17549,7 @@ function normalizeNoSoulPowerCharacterData(char = {}) {
   if (!char.装备.机甲 || typeof char.装备.机甲 !== 'object') char.装备.机甲 = {};
   if (!char.装备.武器 || typeof char.装备.武器 !== 'object') char.装备.武器 = {};
   if (!char.装备.防具 || typeof char.装备.防具 !== 'object') char.装备.防具 = {};
+  if (!char.装备.魂导器 || typeof char.装备.魂导器 !== 'object') char.装备.魂导器 = { 装配: 创建空魂导器装配表_V1() };
 
   char.属性.等级 = 0;
   char.属性.等级惩罚 = 0;
@@ -17559,19 +17560,14 @@ function normalizeNoSoulPowerCharacterData(char = {}) {
 
   if (char.状态 && typeof char.状态 === 'object') delete char.状态.待选魂环;
 
-  取角色武魂条目_V1(char).forEach(([spiritKey, spiritData]) => {
-    const spiritName = String(spiritData?.表象名称 || spiritData?.名称 || spiritKey || '无').trim() || '无';
-    char[spiritKey] = {
-      名称: spiritName,
-      表象名称: spiritName,
-    };
-  });
+  取角色武魂条目_V1(char).forEach(([spiritKey]) => { delete char[spiritKey]; });
   delete char.武魂;
 
   char.魂核 = {};
   char.魂骨 = {};
-  补齐角色魂骨槽位_V1(char);
   char.武魂融合技 = {};
+  char.魂灵塔记录 = {};
+  char.自创魂技 = {};
 
   if (char.血脉之力 && typeof char.血脉之力 === 'object') {
     char.血脉之力.核心 = '未凝聚';
@@ -17582,25 +17578,6 @@ function normalizeNoSoulPowerCharacterData(char = {}) {
       if (是气血魂环槽位键_V1(键)) delete char.血脉之力[键];
     });
   }
-
-  char.装备.斗铠.等级 = 0;
-  char.装备.斗铠.名称 = '无';
-  char.装备.斗铠.装备状态 = '未装备';
-  char.装备.斗铠.领域 = '无';
-  char.装备.斗铠.材质 = '无';
-  char.装备.斗铠.部件 = {};
-  char.装备.斗铠._属性加成 = { 等效等级: 0, 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
-
-  char.装备.机甲.等级 = '无';
-  char.装备.机甲.名称 = '无';
-  char.装备.机甲.型号 = '无';
-  char.装备.机甲.材质 = '无';
-  char.装备.机甲.状态 = '无';
-  char.装备.机甲.装备状态 = '未装备';
-  char.装备.机甲.武装 = '无';
-  char.装备.机甲.品质系数 = 1.0;
-  char.装备.机甲._属性加成 = { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
-  char.装备.防具 = { 名称: '无', 品阶: '无', 装备状态: '未装备', 特性: {}, 属性加成: { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 } };
 
   return char;
 }

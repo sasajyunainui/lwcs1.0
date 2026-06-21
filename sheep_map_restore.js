@@ -4240,13 +4240,13 @@
   };
 
   const 地图维护地点模板 = {
-    place: { 标签: '普通地点', 类型: '动态地点', 节点类型: '地点' },
-    city: { 标签: '城市', 类型: '城市', 节点类型: '城市', 默认商店: true },
-    shop: { 标签: '商店', 类型: '商店', 节点类型: '商店', 默认商店: true },
-    craft: { 标签: '工坊', 类型: '工坊', 节点类型: '工坊' },
-    guild: { 标签: '协会', 类型: '协会', 节点类型: '协会', 默认商店: true },
-    training: { 标签: '训练点', 类型: '训练设施', 节点类型: '训练' },
-    rest: { 标签: '休息点', 类型: '休息设施', 节点类型: '休息' },
+    place: { 标签: '普通地点', 类型: '动态地点' },
+    city: { 标签: '城市', 类型: '城市', 默认商店: true },
+    shop: { 标签: '商店', 类型: '商店', 默认商店: true },
+    craft: { 标签: '工坊', 类型: '工坊' },
+    guild: { 标签: '协会', 类型: '协会', 默认商店: true },
+    training: { 标签: '训练点', 类型: '训练设施' },
+    rest: { 标签: '休息点', 类型: '休息设施' },
   };
 
   function getNodeKindLabel(kind = '') {
@@ -4815,7 +4815,6 @@
     const 坐标 = 获取地图维护坐标();
     const 新地点 = {
       类型: 模板.类型,
-      节点类型: 模板.节点类型,
       状态: 'intact',
       描述: toText(输入.描述, '').trim() || `${模板.标签}。`,
       x: 坐标.x,
@@ -5160,7 +5159,7 @@
     const resolvedImportanceCandidate = getMapNodeNumberField(rawItem, ['importance', '重要度'], NaN);
     const resolvedImportance = Number.isFinite(resolvedImportanceCandidate) ? resolvedImportanceCandidate : importance;
     const resolvedDesc = getMapNodeTextField(rawItem, ['desc', '描述'], extra.desc !== undefined ? toText(extra.desc, '无') : '无');
-    const resolvedNodeKind = getMapNodeTextField(rawItem, ['node_kind', 'nodeKind', '节点类型'], extra.nodeKind || '') || extra.nodeKind || '';
+    const resolvedNodeKind = getMapNodeTextField(rawItem, ['node_kind', 'nodeKind'], extra.nodeKind || '') || extra.nodeKind || '';
     const resolvedInteractions = getMapNodeListField(rawItem, ['interactions']).length ? getMapNodeListField(rawItem, ['interactions']) : (extra.interactions || []);
     const resolvedServices = getMapNodeListField(rawItem, ['services']).length ? getMapNodeListField(rawItem, ['services']) : (extra.services || []);
     const resolvedActionSlots = getMapNodeListField(rawItem, ['action_slots', 'actionSlots']).length ? getMapNodeListField(rawItem, ['action_slots', 'actionSlots']) : (extra.actionSlots || []);
@@ -5702,14 +5701,14 @@
         children: getMapNodeChildren(动态节点),
         x: Number.isFinite(x) ? x : toNumber(rawLocation && rawLocation.x, NaN),
         y: Number.isFinite(y) ? y : toNumber(rawLocation && rawLocation.y, NaN),
-        type: getMapNodeTextField(动态节点, ['节点类型', 'type'], '动态地点'),
+        type: getMapNodeTextField(动态节点, ['type'], '动态地点'),
         desc: getMapNodeTextField(动态节点, ['描述', 'desc'], '无'),
         state: getMapNodeTextField(动态节点, ['状态', 'state'], '动态'),
         faction: getMapNodeTextField(动态节点, ['势力', 'faction', '掌控势力'], '未知'),
         importance: getMapNodeNumberField(动态节点, ['重要度', 'importance'], NaN),
         node_kind: getMapNodeTextField(动态节点, ['node_kind', 'nodeKind'], ''),
         source: 'dynamic',
-        类型: getMapNodeTextField(动态节点, ['节点类型', 'type'], '动态地点'),
+        类型: getMapNodeTextField(动态节点, ['type'], '动态地点'),
         描述: getMapNodeTextField(动态节点, ['描述', 'desc'], '无'),
         状态: getMapNodeTextField(动态节点, ['状态', 'state'], '动态'),
         掌控势力: getMapNodeTextField(动态节点, ['势力', 'faction', '掌控势力'], ''),

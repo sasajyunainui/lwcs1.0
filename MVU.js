@@ -944,18 +944,9 @@ const SchemaRootObject = z
             z
               .object({
                 归属父节点: z.string().describe('归属父节点名称'),
-                层级: z.coerce
-                  .number()
-                  .prefault(4)
-                  .describe('2=大地图主城/遗迹；3=城内大型设施/学院；4=街区/小店/营地'),
                 描述: z.string().prefault('无'),
                 x: z.coerce.number().prefault(-1).describe('地图坐标X'),
                 y: z.coerce.number().prefault(-1).describe('地图坐标Y'),
-                节点类型: z
-                  .any()
-                  .transform(规范化动态地点节点类型Schema_V1)
-                  .prefault('未知')
-                  .describe('地点类型'),
                 势力: z.string().prefault('未知'),
                 状态: z.string().prefault('intact'),
               })
@@ -1026,5 +1017,3 @@ globalThis.__LWCS_MVU_SCHEMA_PARTS__ = { CharacterSchema, SkillStructSchema, Sou
 try { if (globalThis.parent && globalThis.parent !== globalThis) { globalThis.parent.__LWCS_MVU_SCHEMA__ = Schema; globalThis.parent.__LWCS_MVU_SCHEMA_PARTS__ = globalThis.__LWCS_MVU_SCHEMA_PARTS__; } } catch (错误) {}
 
 try { if (globalThis.top && globalThis.top !== globalThis) { globalThis.top.__LWCS_MVU_SCHEMA__ = Schema; globalThis.top.__LWCS_MVU_SCHEMA_PARTS__ = globalThis.__LWCS_MVU_SCHEMA_PARTS__; } } catch (错误) {}
-
-registerMvuSchema(Schema);

@@ -879,75 +879,6 @@ function 压缩角色应用物品引用_V1(data = {}) {
   return data;
 }
 
-var DYNAMIC_LOCATION_NODE_TYPE_VALUES = Object.freeze([
-  '主城',
-  '城市',
-  '城镇',
-  '村落',
-  '聚落',
-  '遗迹',
-  '大型设施',
-  '海外首都',
-  '禁区',
-  '学院总部',
-  '势力分部',
-  '据点',
-  '街区',
-  '设施',
-  '店铺',
-  '临时营地',
-  '地标',
-  '未知',
-]);
-
-function inferDynamicLocationNodeTypeByLevel(level = 4) {
-  const normalizedLevel = Math.max(0, Math.floor(Number(level || 0)));
-  if (normalizedLevel <= 2) return '城市';
-  if (normalizedLevel === 3) return '大型设施';
-  if (normalizedLevel === 4) return '设施';
-  return '地标';
-}
-
-function normalizeDynamicLocationNodeType(value = '', level = 4, locName = '') {
-  const text = String(value || '').trim();
-  const nameText = String(locName || '').trim();
-  const sampleText = `${text}/${nameText}`;
-  if (DYNAMIC_LOCATION_NODE_TYPE_VALUES.includes(text)) return text;
-
-  const aliasMap = {
-    动态地点: inferDynamicLocationNodeTypeByLevel(level),
-    宿舍: '设施',
-    寝室: '设施',
-    房间: '设施',
-    教室: '设施',
-    实验室: '设施',
-    图书馆: '设施',
-    食堂: '设施',
-    店面: '店铺',
-    商铺: '店铺',
-    商店: '店铺',
-    酒馆: '店铺',
-    客栈: '店铺',
-    旅馆: '店铺',
-    街道: '街区',
-    街巷: '街区',
-    营地: '临时营地',
-    帐篷: '临时营地',
-    学院: '学院总部',
-    分院: '大型设施',
-    宿舍楼: '大型设施',
-  };
-  const alias = aliasMap[text] || aliasMap[nameText];
-  if (alias) return alias;
-  if (/宿舍|寝室|房间|教室|实验室|图书馆|食堂|训练室|办公室|休息室/.test(sampleText)) return '设施';
-  if (/店|铺|酒馆|客栈|旅馆|商会|餐馆|餐厅|药房|摊位/.test(sampleText)) return '店铺';
-  if (/街|巷|路|道|广场|步行街/.test(sampleText)) return '街区';
-  if (/营地|帐篷|驻地/.test(sampleText)) return '临时营地';
-  if (/学院|教学楼|研究所|斗魂场|高塔|塔楼|大殿|宫/.test(sampleText)) return '大型设施';
-  if (/城|都/.test(sampleText) && Math.max(0, Number(level || 0)) <= 2) return '城市';
-  return inferDynamicLocationNodeTypeByLevel(level);
-}
-
 var FLAT_LOCATIONS = {};
 
 function refreshFlatLocationsFromTree(node, name) {
@@ -1049,11 +980,9 @@ function normalizeDynamicLocationTextList(value = []) {
 function buildCompactDynamicLocationDisplayPayload(dynData = {}) {
   const nextData = {
     归属父节点: dynData.归属父节点,
-    层级: dynData.层级,
     描述: dynData.描述,
     x: dynData.x,
     y: dynData.y,
-    节点类型: normalizeDynamicLocationNodeType(dynData.节点类型, dynData.层级, dynData.描述),
   };
 
   const faction = String(dynData.势力 || '').trim();
@@ -1733,7 +1662,7 @@ function markPlayerCharacterInSchemaInput(rawInput) {
   };
   候选根列表.forEach(记录候选原始等级);
   候选根列表.forEach(水合角色物品引用_V1);
-  候选根列表.forEach(裁剪数据根非魂师角色结构_V1);
+  候选根列表.forEach(记录数据根非魂师角色_V1);
   候选根列表.forEach(markCandidate);
   return clonedInput;
 }
@@ -2039,80 +1968,12 @@ function 是否已有魂师结构_V1(角色 = {}) {
   );
 }
 
-function 是否凌梓晨机甲特例_V1(角色 = {}, 角色名 = '') {
-  return [角色名, 角色?.角色名, 角色?.name, 角色?.属性?.姓名]
-    .map(名称 => String(名称 || '').trim())
-    .includes('凌梓晨');
-}
-
-function 应用凌梓晨规格外机甲属性_V1(角色 = {}) {
-  if (!角色.装备 || typeof 角色.装备 !== 'object' || Array.isArray(角色.装备)) 角色.装备 = {};
-  const 原机甲 = 角色.装备.机甲 && typeof 角色.装备.机甲 === 'object' && !Array.isArray(角色.装备.机甲) ? 角色.装备.机甲 : {};
-  角色.装备 = {
-    机甲: {
-      等级: '规格外机甲',
-      名称: String(原机甲.名称 || '源泉核心驱动规格外机甲').trim() || '源泉核心驱动规格外机甲',
-      型号: String(原机甲.型号 || '均衡').trim() || '均衡',
-      材质: String(原机甲.材质 || '源泉核心复合结构').trim() || '源泉核心复合结构',
-      状态: String(原机甲.状态 || '可用').trim() || '可用',
-      装备状态: '已装备',
-      武装: String(原机甲.武装 || '魂导科技').trim() || '魂导科技',
-      品质系数: Math.max(1, Number(原机甲.品质系数 || 1)),
-    },
-  };
-  if (!角色.属性 || typeof 角色.属性 !== 'object' || Array.isArray(角色.属性)) 角色.属性 = {};
-  Object.assign(角色.属性, {
-    等级: 0,
-    HP: 10,
-    HP上限: 10,
-    体力: 10,
-    体力上限: 10,
-    力量: 10,
-    防御: 10,
-    敏捷: 10,
-    魂力: 0,
-    魂力上限: 0,
-  });
-}
-
-function 裁剪非魂师角色结构_V1(角色 = {}, 角色名 = '') {
-  const 凌梓晨特例 = 是否凌梓晨机甲特例_V1(角色, 角色名);
-  const 本轮轻量非魂师 = 判断本轮轻量非魂师角色_V1(角色名);
-  if (!凌梓晨特例 && !本轮轻量非魂师 && 是否已有魂师结构_V1(角色)) return false;
-  if (!凌梓晨特例 && !本轮轻量非魂师 && !是否非魂师轻量角色_V1(角色)) return false;
-  if (角色.属性 && typeof 角色.属性 === 'object') {
-    const 删除属性字段 = 凌梓晨特例
-      ? ['上次灵物等级', '等级惩罚', '天赋梯队', '邪魂师', '底子波动', '精神力', '精神力上限', '精神境界', '训练加成', '状态效果']
-      : ['上次灵物等级', '等级惩罚', '天赋梯队', '邪魂师', '底子波动', '魂力', '魂力上限', '精神力', '精神力上限', '精神境界', '力量', '防御', '敏捷', 'HP', 'HP上限', '体力', '体力上限', '训练加成', '状态效果'];
-    删除属性字段.forEach(字段 => delete 角色.属性[字段]);
-  }
-  if (角色.状态 && typeof 角色.状态 === 'object' && !Array.isArray(角色.状态)) {
-    delete 角色.状态.吸收灵物年限;
-    delete 角色.状态.待选魂环;
-  }
-  [
-    '第1武魂',
-    '第2武魂',
-    '魂骨',
-    '血脉之力',
-    '魂核',
-    '功法',
-    '自创魂技',
-    '武魂融合技',
-    '精神领域',
-    '魂灵塔记录',
-    '复制效果',
-  ].forEach(字段 => delete 角色[字段]);
-  if (凌梓晨特例) 应用凌梓晨规格外机甲属性_V1(角色);
-  else delete 角色.装备;
-  return true;
-}
-
-function 裁剪数据根非魂师角色结构_V1(数据根 = {}) {
+function 记录数据根非魂师角色_V1(数据根 = {}) {
   Object.entries(数据根?.char || {}).forEach(([角色名, 角色]) => {
-    if (角色 && typeof 角色 === 'object' && !Array.isArray(角色) && 裁剪非魂师角色结构_V1(角色, 角色名)) {
-      记录本轮轻量非魂师角色_V1(角色名);
-    }
+    if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+    if (是否已有魂师结构_V1(角色)) return;
+    const 显式天赋梯队 = 规范化显式天赋梯队_V1(角色.__mvu_显式天赋梯队 || 角色?.属性?.天赋梯队);
+    if (isNoSoulPowerTalentTier(显式天赋梯队) || 判断本轮轻量非魂师角色_V1(角色名)) 记录本轮轻量非魂师角色_V1(角色名);
   });
 }
 
@@ -2775,7 +2636,7 @@ function 规范化Schema根转换_V1(data = {}) {
       if (原始等级 !== null && 当前等级 > 原始等级) 标记本轮等级上升角色_V1(charData, charName);
     });
     应用内置角色实例化_V1(data);
-    裁剪数据根非魂师角色结构_V1(data);
+    记录数据根非魂师角色_V1(data);
 
     if (typeof data.sys.玩家名 !== 'string' || !data.sys.玩家名.trim()) data.sys.玩家名 = '无名氏';
     if (typeof data.sys.系统播报 !== 'string' || !data.sys.系统播报.trim()) data.sys.系统播报 = '初始化';
@@ -3092,17 +2953,21 @@ function 规范化Schema根转换_V1(data = {}) {
       const 动态地点信息 = data?.world?.动态地点?.[地点名];
       const 静态地点信息 = data?.world?.地点?.[地点名];
       const 地点信息 = 动态地点信息 && typeof 动态地点信息 === 'object' ? 动态地点信息 : 静态地点信息 || null;
+      const 父节点名 = String(地点信息?.归属父节点 || '').trim();
+      const 父节点条目 = 父节点名 ? findMapNodeEntry(父节点名, data) : null;
       const 文本 = [
         地点名,
-        地点信息?.节点类型,
         地点信息?.类型,
         地点信息?.描述,
-        地点信息?.归属父节点,
+        父节点名,
+        Array.isArray(父节点条目?.path) ? 父节点条目.path.join('-') : '',
+        父节点条目?.node?.类型,
+        父节点条目?.node?.描述,
       ]
         .map(项 => String(项 || '').trim())
         .filter(Boolean)
         .join(' ');
-      return { 地点名, 地点信息, 文本 };
+      return { 地点名, 地点信息, 父节点信息: 父节点条目?.node || null, 文本 };
     };
 
     const 判定角色所在地货币_ACU = 角色 => {
@@ -3112,7 +2977,8 @@ function 规范化Schema根转换_V1(data = {}) {
         地点上下文.地点信息?.归属父节点,
         地点上下文.地点信息?.描述,
         地点上下文.地点信息?.类型,
-        地点上下文.地点信息?.节点类型,
+        地点上下文.父节点信息?.类型,
+        地点上下文.父节点信息?.描述,
       ]
         .map(项 => String(项 || '').trim())
         .filter(Boolean)
@@ -3139,15 +3005,16 @@ function 规范化Schema根转换_V1(data = {}) {
       const 地点上下文 = 读取地点信息_ACU(角色);
       const 文本 = 地点上下文.文本;
       if (!文本) return { 档位索引: -1, 名称: '无城市环境' };
-      const 层级 = Math.max(0, Math.floor(Number(地点上下文.地点信息?.层级 || 0)));
-      const 节点类型 = String(地点上下文.地点信息?.节点类型 || '').trim();
-      if (/首都|皇城|帝都|都城|主城|海外首都/.test(文本) || 节点类型 === '主城') {
+      const 当前层级 = Math.max(0, Math.floor(Number(地点上下文.地点信息?.层级 || 0)));
+      const 父节点层级 = Math.max(0, Math.floor(Number(地点上下文.父节点信息?.层级 || 0)));
+      const 层级 = 当前层级 || 父节点层级;
+      if (/首都|皇城|帝都|都城|主城|海外首都/.test(文本)) {
         return { 档位索引: 3, 名称: 城市档位名称表_ACU[3] };
       }
-      if (/城|学院|塔|都会|都市/.test(文本) || ['城市', '学院总部', '大型设施'].includes(节点类型) || 层级 === 2) {
+      if (/城|学院|塔|都会|都市/.test(文本) || 层级 === 2) {
         return { 档位索引: 2, 名称: 城市档位名称表_ACU[2] };
       }
-      if (/镇|村|街|巷|营地|分部|据点|市集|聚落/.test(文本) || ['城镇', '村落', '聚落', '街区', '店铺'].includes(节点类型)) {
+      if (/镇|村|街|巷|营地|分部|据点|市集|聚落/.test(文本)) {
         return { 档位索引: 1, 名称: 城市档位名称表_ACU[1] };
       }
       if (/居住|驿站|客栈|宿舍|据点|营地/.test(文本) || 层级 >= 3) {
@@ -5825,7 +5692,6 @@ function 规范化Schema根转换_V1(data = {}) {
       _(data.world.动态地点).forEach((locData, locName) => {
         if (locData.x === undefined) locData.x = FLAT_LOCATIONS[locData.归属父节点]?.x ?? -1;
         if (locData.y === undefined) locData.y = FLAT_LOCATIONS[locData.归属父节点]?.y ?? -1;
-        locData.节点类型 = normalizeDynamicLocationNodeType(locData.节点类型, locData.层级, locName);
       });
 
       // 先删除存储态占位文本；AI 维护提示只在运行时更新视图中按需注入。
@@ -6707,7 +6573,7 @@ function 规范化Schema根转换_V1(data = {}) {
     水合角色物品引用_V1(data);
     注册角色应用物品定义_V1(data);
     压缩角色应用物品引用_V1(data);
-    裁剪数据根非魂师角色结构_V1(data);
+    记录数据根非魂师角色_V1(data);
     clearStorageTodoPlaceholders(data.char);
     return data;
 }
@@ -7226,7 +7092,7 @@ function 规范化角色Schema_V1(char) {
     };
     const isPlayerCharacter = char.__mvu_isPlayer === true;
     归一化角色副职业键_V1(char);
-    if (裁剪非魂师角色结构_V1(char, normalizedCharName)) return char;
+    记录数据根非魂师角色_V1({ char: { [normalizedCharName || char?.name || '']: char } });
     if (char?.属性 && 需要初始化生日(char.属性.生日)) {
       char.属性.生日 = 随机生成生日();
     }
@@ -8068,13 +7934,8 @@ function 规范化商店库存项Schema_V1(库存项) {
                               
 }
 
-function 规范化动态地点节点类型Schema_V1(value) {
-  return normalizeDynamicLocationNodeType(value);
-}
-
 function 规范化动态地点Schema_V1(地点数据) {
             _(地点数据).forEach((locData, locName) => {
-              locData.节点类型 = normalizeDynamicLocationNodeType(locData.节点类型, locData.层级, locName);
               if (locData.x === -1 || locData.y === -1) {
                 const siblingCoords = new Set();
                 _(地点数据).forEach(otherLoc => {

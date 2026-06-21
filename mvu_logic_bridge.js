@@ -5119,7 +5119,7 @@
       版本数量: Math.max(0, Math.floor(Number(版本数量) || 0)),
       存储模式: 版本.模式 || '全量',
     };
-    ['角色名', '地点名', '物品名', '物品分类', '分类', '归属父节点', '节点类型', '势力', '品质', '装备槽位'].forEach(键 => {
+    ['角色名', '地点名', '物品名', '物品分类', '分类', '归属父节点', '势力', '品质', '装备槽位'].forEach(键 => {
       if (版本[键] !== undefined && 版本[键] !== null && toText(版本[键], '').trim()) 输出[键] = 版本[键];
     });
     if (Array.isArray(版本.简称列表) && 版本.简称列表.length) 输出.简称列表 = [...版本.简称列表];
@@ -5943,7 +5943,6 @@
     return [
       地点名,
       toText(地点数据 && 地点数据.归属父节点, ''),
-      toText(地点数据 && 地点数据.节点类型, ''),
       toText(地点数据 && 地点数据.势力, ''),
       toText(地点数据 && (地点数据.状态 || 地点数据.state), ''),
     ].filter(Boolean).join(' / ').slice(0, 160);
@@ -5985,7 +5984,6 @@
     const 摘要 = 构建动态地点归档摘要_桥接(地点名, 地点数据);
     return {
       归属父节点: toText(地点数据 && 地点数据.归属父节点, ''),
-      节点类型: toText(地点数据 && 地点数据.节点类型, ''),
       势力: toText(地点数据 && 地点数据.势力, ''),
       简称列表,
       关键词: 切分冷归档关键词_桥接(地点名, 摘要, 地点数据 && 地点数据.描述, 地点数据 && 地点数据.状态),
@@ -7184,14 +7182,13 @@
 
   function 构建动态地点归档选择行_桥接(地点名 = '', 地点数据 = {}, 选项 = {}) {
     const 归属 = toText(地点数据 && 地点数据.归属父节点, '未知');
-    const 类型 = toText(地点数据 && 地点数据.节点类型, '动态地点');
     const 势力 = toText(地点数据 && 地点数据.势力, '未知');
     const 状态 = toText(地点数据 && (地点数据.状态 || 地点数据.state), 'intact');
     const 是否保护 = !!选项.保护;
     return `
-      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([地点名, 归属, 类型, 势力, 状态, '动态地点'].join(' ').toLowerCase())}">
+      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([地点名, 归属, 势力, 状态, '动态地点'].join(' ').toLowerCase())}">
         <span class="role-switch-head"><b>${htmlEscape(地点名)}</b><span class="state-tag ${是否保护 ? 'warn' : ''}">${是否保护 ? '保护' : '热'}</span></span>
-        <span class="role-switch-meta">${htmlEscape(`${归属} ｜ ${类型}`)}</span>
+        <span class="role-switch-meta">${htmlEscape(归属)}</span>
         <span class="role-switch-meta">${htmlEscape(`${势力} ｜ ${状态}`)}</span>
         <span class="role-switch-actions"><input type="checkbox" data-dynamic-location-archive-hot="${escapeHtmlAttr(地点名)}"${是否保护 ? ' disabled data-dynamic-location-archive-protected="1"' : ''} /></span>
       </label>
@@ -7261,7 +7258,7 @@
   }
 
   function 读取冷归档页签搜索占位_桥接(页签 = '角色') {
-    if (页签 === '动态地点') return '搜索动态地点 / 归属 / 类型 / 势力';
+    if (页签 === '动态地点') return '搜索动态地点 / 归属 / 势力';
     if (页签 === '物品') return '搜索物品 / 类型 / 品质 / 槽位';
     return '搜索角色 / 身份 / 地点 / 状态';
   }
@@ -7354,7 +7351,6 @@
           ? makeTileGrid([
             { label: '动态地点', value: 聚焦地点名 },
             { label: '归属', value: toText(聚焦地点数据.归属父节点, '未知') },
-            { label: '类型', value: toText(聚焦地点数据.节点类型, '动态地点') },
             { label: '势力', value: toText(聚焦地点数据.势力, '未知') },
           ], 'two')
           : `<div class="role-switch-empty">${htmlEscape(`${聚焦地点名} / 未读取`)}</div>`
@@ -7717,9 +7713,6 @@
       const 路径 = normalizeEditorPath(原始路径);
       if (!路径.length) return;
       扩展路径列表.push(路径);
-      if (路径[0] === 'world' && 路径[1] === '时间' && (路径[2] === 'tick' || 路径[2] === '_calendar')) {
-        扩展路径列表.push(['world', '时间', '当前']);
-      }
     });
     登记本轮模块结算路径(扩展路径列表, { 结算类型: 'travel' });
   }
@@ -9738,7 +9731,7 @@
   }
 
   function 读取目标消息编号_桥接(选项 = {}) {
-    const 候选列表 = [选项?.目标消息元信息?.消息编号, 选项.messageId, 选项.message_id, 选项.消息编号, 选项.消息索引];
+    const 候选列表 = [选项?.目标消息元信息?.消息编号, 选项?.目标消息元信息?.消息索引, 选项.messageId, 选项.message_id, 选项.消息编号, 选项.消息索引, 选项.楼层];
     for (const 候选 of 候选列表) {
       if (候选 === undefined || 候选 === null || 候选 === '') continue;
       const 数值 = Number(候选);
@@ -38133,11 +38126,6 @@
                               kind: 'string',
                               rawValue: toText(item && item.势力, '未知'),
                             })}`,
-                            `类型 ${makeInlineEditableValue(toText(item && item.节点类型, '未知'), {
-                              path: [...basePath, '节点类型'],
-                              kind: 'string',
-                              rawValue: toText(item && item.节点类型, '未知'),
-                            })}`,
                             `状态 ${makeInlineEditableValue(toText(item && item.state, 'intact'), {
                               path: [...basePath, 'state'],
                               kind: 'string',
@@ -43868,8 +43856,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       目标地点: 规范地点键名(目标地点) || 取地点叶名(目标地点),
       原始目标地点: 目标地点,
       归属父节点: 读取移动请求文本(payload, ['归属父节点', '父节点', 'parent', 'parentNode'], ''),
-      层级: Math.max(1, Math.floor(读取移动请求数值(payload, ['层级', 'level'], 4))),
-      节点类型: 读取移动请求文本(payload, ['节点类型', 'nodeType', 'type'], '地点'),
       移动方式:
         读取移动请求文本(
           payload,
@@ -43904,8 +43890,6 @@ ${toText(combatData.战斗意图, '点到为止')}
         path: `/world/动态地点/${targetPath}`,
         value: {
           归属父节点: 父级.name,
-          层级: request.层级,
-          节点类型: request.节点类型,
           描述: request.描述,
           x: 坐标.x,
           y: 坐标.y,
