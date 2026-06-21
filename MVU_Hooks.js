@@ -230,14 +230,14 @@ try {
 async function 注册MVU变量结构_V1() {
   try {
     if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
+    if (!globalThis.__LWCS_MVU变量结构已注册__ && typeof globalThis.__LWCS_REGISTER_MVU_SCHEMA__ === 'function') {
+      globalThis.__LWCS_REGISTER_MVU_SCHEMA__(globalThis.__LWCS_MVU_SCHEMA__);
+      globalThis.__LWCS_MVU变量结构已注册__ = true;
+    }
     const 事件接口可用 = await 等待MVU事件接口_V1();
     if (!事件接口可用) {
       console.warn('LWCS MVU变量结构注册等待事件接口超时');
       return;
-    }
-    if (!globalThis.__LWCS_MVU变量结构已注册__) {
-      globalThis.__LWCS_REGISTER_MVU_SCHEMA__(globalThis.__LWCS_MVU_SCHEMA__);
-      globalThis.__LWCS_MVU变量结构已注册__ = true;
     }
     暴露AIJsonPatch预处理接口_V1();
     安装AIJsonPatch解析钩子_V1();
