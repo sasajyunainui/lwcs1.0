@@ -207,6 +207,8 @@ const 全息星轨状态 = window.__MVU_HOLO_STATUS_STATE__ || (window.__MVU_HOL
   环境标签: [],
   生命比例: 0,
   魂力比例: 0,
+  生命缩放: 0,
+  魂力缩放: 0,
   生命文本: '--',
   魂力文本: '--',
   透镜可见: false,
@@ -226,6 +228,8 @@ mvuUnifiedDetailState.returnTab = normalizeTabId(mvuUnifiedDetailState.returnTab
 全息星轨状态.态势 = ['safe', '暗流', '领域', 'combat'].includes(全息星轨状态.态势) ? 全息星轨状态.态势 : 'safe';
 全息星轨状态.战斗 = 全息星轨状态.战斗 === '进行中' ? '进行中' : '休止';
 全息星轨状态.转场 = 全息星轨状态.转场 === 'lens-shift' ? 'lens-shift' : 'idle';
+全息星轨状态.生命缩放 = Number.isFinite(Number(全息星轨状态.生命缩放)) ? Math.max(0, Math.min(1, Number(全息星轨状态.生命缩放))) : 0;
+全息星轨状态.魂力缩放 = Number.isFinite(Number(全息星轨状态.魂力缩放)) ? Math.max(0, Math.min(1, Number(全息星轨状态.魂力缩放))) : 0;
 if (!Array.isArray(全息星轨状态.环境标签)) 全息星轨状态.环境标签 = [];
 
 function syncUnifiedMountPlacement() {
@@ -484,9 +488,9 @@ const DesktopUnifiedLayout = {
         ><span>{{ 全息星轨状态.透镜标签 }}</span><i></i></div>
         <header class="mvu-holo-topbar">
           <div class="mvu-holo-topbar-left">
-            <span class="mvu-holo-system-badge">LWCS</span>
+            <span class="mvu-holo-system-badge">ID</span>
             <div class="mvu-holo-topbar-copy">
-              <b>全息星轨状态栏</b>
+              <b data-holo-identity>-- // SYS_ON</b>
               <span>{{ detailState.isOpen ? 详情路径标题 : 全息星轨路径标题 }}</span>
             </div>
           </div>
@@ -502,13 +506,13 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
 
-        <section class="mvu-holo-layout" @mouseenter="设置全息星轨星仪('激活')">
-          <aside class="mvu-holo-orbit-zone" @mouseenter="设置全息星轨星仪('激活')">
-            <div class="mvu-holo-orbit-title">时空星轨中枢</div>
+        <section class="mvu-holo-layout">
+          <aside class="mvu-holo-orbit-zone">
             <div class="mvu-holo-orbit">
               <div class="mvu-holo-ring mvu-holo-ring--outer"></div>
               <div class="mvu-holo-ring mvu-holo-ring--middle"></div>
               <div class="mvu-holo-ring mvu-holo-ring--inner"></div>
+              <div class="mvu-holo-seek-ring" aria-hidden="true"></div>
               <div class="mvu-holo-combat-ring" aria-hidden="true">
                 <i class="mvu-holo-combat-ring--hp" :style="全息星轨生命环样式"><span>HP {{ 全息星轨状态.生命文本 }}</span></i>
                 <i class="mvu-holo-combat-ring--mp" :style="全息星轨魂力环样式"><span>MP {{ 全息星轨状态.魂力文本 }}</span></i>
@@ -539,8 +543,8 @@ const DesktopUnifiedLayout = {
               </div>
             </div>
             <div class="mvu-holo-readout">
-              <span><b>位置</b><i data-holo-location>--</i></span>
-              <span><b>世界偏差</b><i data-holo-deviation>--</i></span>
+              <span><b>波形</b><i data-holo-wave>正常</i></span>
+              <span><b>终端</b><i data-holo-terminal>SYS_TERMINAL_RDY</i></span>
             </div>
           </aside>
 
@@ -549,7 +553,7 @@ const DesktopUnifiedLayout = {
             <span class="mvu-holo-beam-sub"></span>
           </div>
 
-          <section class="mvu-holo-projection" @mouseenter="设置全息星轨星仪('休眠')">
+          <section class="mvu-holo-projection">
             <div class="mvu-holo-projection-inner">
               <div class="mvu-holo-path" :class="{ 'is-detail': detailState.isOpen }" data-ai-maintenance-title-target="panel">
                 <button v-show="detailState.isOpen" type="button" class="mvu-holo-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
@@ -627,9 +631,11 @@ const DesktopUnifiedLayout = {
     }));
     const 全息星轨生命环样式 = computed(() => ({
       '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.生命比例 || 0)))}%`,
+      '--mvu-holo-combat-ratio': String(Math.max(0, Math.min(1, Number(当前全息星轨状态.生命缩放 || 0)))),
     }));
     const 全息星轨魂力环样式 = computed(() => ({
       '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.魂力比例 || 0)))}%`,
+      '--mvu-holo-combat-ratio': String(Math.max(0, Math.min(1, Number(当前全息星轨状态.魂力缩放 || 0)))),
     }));
     const 读取当前详情标题 = () => {
       const 预览键 = String(detailState.previewKey || '').trim();
@@ -994,9 +1000,6 @@ const DesktopUnifiedLayout = {
       当前全息星轨状态.主题 = 规范化全息星轨主题(主题);
       写入全息星轨主题(当前全息星轨状态.主题);
     };
-    const 设置全息星轨星仪 = 状态 => {
-      当前全息星轨状态.星仪 = 状态 === '休眠' ? '休眠' : '激活';
-    };
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
     };
@@ -1054,7 +1057,6 @@ const DesktopUnifiedLayout = {
       全息星轨魂力环样式,
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,
-      设置全息星轨星仪,
       详情路径标题,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,

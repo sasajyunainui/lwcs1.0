@@ -31732,12 +31732,26 @@
     const 资源环 = 读取战斗资源环(snapshot);
     const 环境标签 = 构建环境身份标签(snapshot);
     const 主框架状态 = 态势 === 'combat' ? 'combat' : 'narrative';
-    const 星仪状态 = 态势 === 'combat'
-      ? '激活'
-      : 状态对象 && 状态对象.星仪 === '休眠'
-        ? '休眠'
-        : '激活';
+    const 星仪状态 = '激活';
     const 战斗状态 = 战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中 ? '进行中' : '休止';
+    const 角色标识 = snapshot
+      ? shortenText(
+          toText(
+            snapshot.activeName
+              || snapshot.activeCharName
+              || deepGet(snapshot, 'activeChar.姓名', deepGet(snapshot, 'activeChar.名称', '')),
+            'UNKNOWN',
+          ),
+          12,
+        )
+      : '--';
+    const 波形文本 = 主框架状态 === 'combat'
+      ? '战术展开'
+      : 态势 === '领域'
+        ? '领域扰动'
+        : 态势 === '暗流'
+          ? '暗流'
+          : '正常';
     const 更新文本 = (选择器, 文本) => {
       getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
         节点.textContent = 文本;
@@ -31749,6 +31763,8 @@
       状态对象.战斗 = 战斗状态;
       状态对象.生命比例 = 资源环.hp;
       状态对象.魂力比例 = 资源环.mp;
+      状态对象.生命缩放 = 资源环.hp / 100;
+      状态对象.魂力缩放 = 资源环.mp / 100;
       状态对象.生命文本 = 资源环.hpText;
       状态对象.魂力文本 = 资源环.mpText;
       状态对象.环境标签 = 环境标签;
@@ -31773,17 +31789,9 @@
       const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
       return 时间匹配 ? 世界时间.slice(0, 时间匹配.index).trim() : 世界时间 || '斗罗历';
     })() : '斗罗历');
-    更新文本('[data-holo-location]', snapshot
-      ? shortenText(
-          toText(deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc), snapshot.currentLoc || '未知地点')
-            .replace(/^斗罗大陆-/, '')
-            .replace(/^斗灵大陆-/, ''),
-          18,
-        )
-      : '--');
-    更新文本('[data-holo-deviation]', snapshot
-      ? `偏差 ${toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0)} / x${toNumber(deepGet(snapshot, 'rootData.world.偏差倍率', 1), 1)}`
-      : '--');
+    更新文本('[data-holo-identity]', `${角色标识} // SYS_ON`);
+    更新文本('[data-holo-wave]', 波形文本);
+    更新文本('[data-holo-terminal]', 'SYS_TERMINAL_RDY');
     更新文本('[data-holo-state-text]', 主框架状态 === 'combat' ? '战术' : '日常');
     更新文本('[data-holo-battle-text]', 战斗状态);
   }
