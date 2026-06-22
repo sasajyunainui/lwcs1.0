@@ -28893,7 +28893,7 @@
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
-    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-identity"] .mvu-archive-skyband').forEach(node => {
+    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-core"] .mvu-archive-skyband').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
@@ -28913,6 +28913,7 @@
           ? `Lv.${formatNumber(nextLevelSoul.nextLevel)}`
           : 格式化属性短数字(nextLevelSoul.needed);
     return `
+        ${构建档案身份天幕(snapshot)}
         <div class="mvu-archive-panel-head">
           <span>体征与轮廓</span>
           <b>${htmlEscape(getDisplayWoundLabel(stat))}</b>
@@ -28926,9 +28927,9 @@
         <div class="mvu-archive-radar">
           ${雷达HTML}
         </div>
-        <div class="mvu-archive-life-link">
-          <span><b>距突破</b><em>${htmlEscape(突破文本)}</em></span>
-          <span><b>精神境界</b><em>${htmlEscape(读取显示精神境界(stat))}</em></span>
+        <div class="mvu-archive-life-link mvu-archive-life-link--inline">
+          <span><b>突破</b><em>${htmlEscape(突破文本)}</em></span>
+          <span><b>精神</b><em>${htmlEscape(读取显示精神境界(stat))}</em></span>
         </div>
         `;
   }
@@ -28999,9 +29000,9 @@
       return 格式化属性短数字(值);
     });
     return makeRadarSvg(
-      条目.map(([标签]) => 标签),
+      条目.map(([标签], 索引) => `${标签} ${展示值[索引]}`),
       归一值,
-      展示值,
+      null,
       'cyan',
     );
   }
@@ -29247,7 +29248,8 @@
     const 槽位HTML = 槽位
       .map(([标记, 数据, 名称]) => {
         const 文本 = 数据 && typeof 数据 === 'object' ? toText(数据.名称 || 数据.name || 数据.等级 || 数据.装备状态, '') : '';
-        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}"><b>${htmlEscape(标记)}</b></span>`;
+        const 品质类 = /神|红|S|金/.test(文本) ? ' is-rare' : /紫|A|魂骨/.test(文本) ? ' is-epic' : '';
+        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}${品质类}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}"><b>${htmlEscape(标记)}</b><i>${htmlEscape(名称)}</i><em>${htmlEscape(shortenText(文本 || '空槽', 6))}</em></span>`;
       })
       .join('');
     const 联邦币 = toNumber(财富.联邦币, 0);
@@ -29258,9 +29260,10 @@
           <b>${htmlEscape(`${物资数} 件`)}</b>
         </div>
         <div class="mvu-archive-gear-grid">${槽位HTML}</div>
-        <div class="mvu-archive-mini-link-row">
-          <button type="button" class="mvu-archive-mini-link clickable" data-preview="储物仓库详细页" data-detail-mode="embed">仓库 ${htmlEscape(formatNumber(物资数))}</button>
-          <span>币 ${htmlEscape(formatNumber(联邦币 || 星罗币))}</span>
+        <div class="mvu-archive-armory-strip clickable" data-preview="储物仓库详细页" data-detail-mode="embed">
+          <span><b>仓储</b><em>${htmlEscape(formatNumber(物资数))} 件</em></span>
+          <span><b>资金</b><em>${htmlEscape(formatNumber(联邦币 || 星罗币))}</em></span>
+          <span><b>魂骨</b><em>${htmlEscape(formatNumber(魂骨数))}</em></span>
         </div>
       `;
   }
@@ -29285,9 +29288,10 @@
           <b>${htmlEscape(统计文本)}</b>
         </div>
         <div class="mvu-archive-terminal-log" title="${escapeHtmlAttr(主文本)}"><b>[LOG]</b><span>${htmlEscape(shortenText(主文本, 42))}</span></div>
-        <div class="mvu-archive-mini-link-row">
-          <button type="button" class="mvu-archive-mini-link clickable" data-preview="情报库详细页" data-detail-mode="embed">情报库</button>
-          <span>${htmlEscape(shortenText(最近任务 || '任务待命', 16))}</span>
+        <div class="mvu-archive-intel-stack">
+          <span><b>情报</b><em>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))} 条</em></span>
+          <span><b>任务</b><em>${htmlEscape(shortenText(最近任务 || '待命', 12))}</em></span>
+          <button type="button" class="mvu-archive-mini-link clickable" data-preview="情报库详细页" data-detail-mode="embed">进入情报库</button>
         </div>
       `;
   }
@@ -29308,6 +29312,7 @@
           <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
           <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
           <span><b>羁绊</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
+          <button type="button" class="mvu-archive-mini-link clickable" data-preview="人物关系详细页" data-detail-mode="embed">关系网络</button>
         </div>
       `;
   }
@@ -31553,10 +31558,6 @@
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
-      setUnifiedCardMarkup('archive-identity', 构建档案身份天幕(snapshot), {
-        preview: '生命图谱详细页',
-        surface: normalizedSurface,
-      });
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
         preview: '生命图谱详细页',
         surface: normalizedSurface,
@@ -32108,7 +32109,6 @@
 
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
-      'archive-identity': ['档案', '待同步'],
       'archive-core': ['角色', '无数据'],
       'primary-spirit': ['主武魂', '未记录'],
       armory: ['武装', '0'],
@@ -39687,7 +39687,7 @@
         <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard mvu-soul-ring-showcase--overview">${魂环数组}</div>
       </div>
       <div class="mvu-archive-spirit-foot">
-        <span>魂灵 ${htmlEscape(String(config.soulCount || 0))} / 独立环 ${htmlEscape(String(config.independentRingCount || 0))}</span>
+        <span>${htmlEscape(`${魂环数量}环 · 魂灵${config.soulCount || 0} · 独立${config.independentRingCount || 0}`)}</span>
         <button type="button" class="mvu-archive-mini-link clickable" data-preview="${escapeHtmlAttr(config.preview || (isPrimary ? '第1武魂详细页' : '第2武魂详细页'))}" data-detail-mode="embed">详情</button>
       </div>
     `;

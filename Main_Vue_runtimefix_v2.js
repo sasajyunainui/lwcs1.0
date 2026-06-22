@@ -455,10 +455,6 @@ const DesktopUnifiedLayout = {
               <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
             </div>
             <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
-              <div class="mvu-unified-top-status" data-unified-top-status="panel">
-                <span class="mvu-unified-system-badge">ID</span>
-                <b data-holo-identity>{{ 统一路径标题 }}</b>
-              </div>
               <nav class="mvu-unified-tab-row" aria-label="状态栏页面">
                 <button
                   v-for="标签 in tabs"
@@ -499,7 +495,6 @@ const DesktopUnifiedLayout = {
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
-                <div class="mvu-unified-card mvu-unified-card--sky clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-identity" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-unified-card="primary-spirit" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-unified-card="secondary-spirit" data-unified-surface="panel"></div>
