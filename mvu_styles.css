@@ -18933,6 +18933,67 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
   opacity: 0.68;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone {
+  --mvu-holo-lens-dx: 72px;
+  --mvu-holo-lens-dy: 0px;
+  position: absolute;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: max-content 16px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--mvu-holo-main);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: mvu-holo-lens-extrude 0.56s cubic-bezier(0.18, 0.86, 0.26, 1) both;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone span {
+  max-width: 46px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 10px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone i {
+  position: relative;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--mvu-holo-main);
+  border-radius: 50%;
+  background: rgba(5, 14, 22, 0.9);
+  box-shadow: 0 0 16px var(--mvu-holo-glow-strong);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone i::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone::after {
+  content: '';
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 50%;
+  width: 132px;
+  height: 54px;
+  background: radial-gradient(ellipse at left center, color-mix(in srgb, var(--mvu-holo-main) 38%, transparent), transparent 70%);
+  clip-path: polygon(0 42%, 100% 0, 100% 100%, 0 58%);
+  opacity: 0.68;
+  transform: translateY(-50%) perspective(900px) rotateY(-34deg);
+  transform-origin: left center;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-topbar {
   position: relative;
   z-index: 2;
@@ -19137,6 +19198,102 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-ring--inner {
   border-color: color-mix(in srgb, var(--mvu-holo-main) 28%, transparent);
   animation-duration: 54s;
   opacity: 0.44;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-alert='暗流'] .mvu-holo-ring--inner {
+  border-color: rgba(255, 196, 87, 0.46);
+  box-shadow:
+    0 0 14px rgba(255, 196, 87, 0.28),
+    inset 0 0 18px rgba(255, 196, 87, 0.08);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-alert='领域'] .mvu-holo-ring--inner {
+  border-color: rgba(177, 110, 255, 0.48);
+  box-shadow:
+    0 0 14px rgba(177, 110, 255, 0.28),
+    inset 0 0 18px rgba(177, 110, 255, 0.08);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-state='combat'] .mvu-holo-ring--inner {
+  opacity: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring {
+  position: absolute;
+  inset: 18%;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-state='combat'] .mvu-holo-combat-ring {
+  opacity: 1;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring i {
+  --mvu-holo-combat-value: 0%;
+  position: absolute;
+  top: 50%;
+  display: block;
+  width: 42%;
+  height: 5px;
+  overflow: visible;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  transform-origin: center;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring i::before,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring i::before {
+  width: var(--mvu-holo-combat-value);
+  background: currentColor;
+  box-shadow: 0 0 14px currentColor;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring i::after {
+  border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring span {
+  position: absolute;
+  top: -18px;
+  display: block;
+  max-width: 74px;
+  overflow: hidden;
+  color: currentColor;
+  font: 700 9px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.88;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring--hp {
+  left: 2%;
+  color: #ff596a;
+  transform: translateY(-50%) rotate(-18deg);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring--hp span {
+  left: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring--mp {
+  right: 2%;
+  color: #67f7ef;
+  transform: translateY(-50%) rotate(18deg);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-combat-ring--mp span {
+  right: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-orbit::before {
@@ -19356,127 +19513,87 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-tab='page-map'
   opacity: 0.72;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment {
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tags {
+  position: absolute;
+  left: -2%;
+  top: 44%;
+  z-index: 8;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  pointer-events: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tags.is-empty {
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag {
   appearance: none;
   -webkit-appearance: none;
-  position: absolute;
-  z-index: 3;
+  position: relative;
+  display: grid;
+  grid-template-columns: 13px minmax(0, max-content);
+  align-items: center;
+  gap: 5px;
+  max-width: 112px;
   min-width: 0;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  height: 24px;
+  padding: 0 8px 0 5px;
+  border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
   border-radius: 999px;
   background:
-    radial-gradient(circle, currentColor 0 24%, rgba(5, 12, 18, 0.86) 25% 100%);
-  color: rgba(218, 236, 240, 0.76);
-  font-size: 0;
+    linear-gradient(90deg, color-mix(in srgb, currentColor 16%, rgba(5, 12, 18, 0.72)), rgba(5, 12, 18, 0.58));
+  color: var(--mvu-holo-main);
+  font-size: 10px;
   line-height: 1;
   white-space: nowrap;
-  cursor: pointer;
-  opacity: 0.36;
-  box-shadow:
-    0 0 10px color-mix(in srgb, currentColor 28%, transparent),
-    inset 0 0 8px rgba(255, 255, 255, 0.06);
-  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 16px color-mix(in srgb, currentColor 16%, transparent);
+  pointer-events: auto;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment::before {
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag::before {
   content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 4px;
-  height: 4px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 9px currentColor;
-  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px currentColor;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment::after {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 5px);
-  display: none;
-  padding: 3px 6px;
-  border-radius: 999px;
-  background: rgba(5, 12, 18, 0.84);
-  color: rgba(232, 246, 250, 0.92);
-  font-size: 9px;
-  line-height: 1;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.24);
-  transform: translateX(-50%);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment:hover,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment:focus-visible {
-  opacity: 0.9;
-  transform: scale(1.12);
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag:focus-visible {
+  opacity: 1;
+  transform: translate3d(3px, 0, 0);
   outline: none;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment:hover::after,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment:focus-visible::after {
-  display: block;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag[data-tone='身份'] {
+  color: #67f7ef;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--low {
-  left: 8%;
-  bottom: 12%;
-  color: rgba(255, 215, 0, 0.72);
-  animation: mvu-holo-fragment-drift 14s ease-in-out infinite;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag[data-tone='环境'] {
+  color: #ffc457;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--low::after {
-  content: '拍卖';
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag[data-tone='领域'] {
+  color: #b16eff;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--mid {
-  right: 12%;
-  top: 15%;
-  color: var(--mvu-holo-main);
-  animation: mvu-holo-fragment-drift 10s ease-in-out infinite reverse;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag[data-tone='警示'] {
+  color: #ff596a;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--mid::after {
-  content: '偏差';
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--high {
-  right: 16%;
-  bottom: 35%;
-  color: var(--mvu-holo-alert);
-  animation: mvu-holo-alert-pulse 1.4s ease-in-out infinite;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--high::after {
-  content: '敌意';
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--battle {
-  left: 17%;
-  top: 31%;
-  color: #ffcf5a;
-  animation: mvu-holo-alert-pulse 1.8s ease-in-out infinite;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--battle::after {
-  content: '战斗';
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-alert='稳定'] .mvu-holo-fragment--high,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-auction='休市'] .mvu-holo-fragment--low,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-battle='休止'] .mvu-holo-fragment--battle {
-  opacity: 0.16;
-  animation-duration: 18s;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-alert='高危'] .mvu-holo-fragment--high,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-battle='进行中'] .mvu-holo-fragment--battle {
-  z-index: 6;
-  opacity: 0.96;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag[data-tone='回响'] {
+  color: #9ee7ff;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-readout {
@@ -19618,6 +19735,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-projection-inner {
   min-width: 0;
   min-height: 0;
   height: 100%;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-exposure-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), color-mix(in srgb, var(--mvu-holo-main) 46%, transparent), transparent),
+    radial-gradient(circle at 16% 50%, color-mix(in srgb, var(--mvu-holo-high) 50%, var(--mvu-holo-main)), transparent 34%);
+  opacity: 0;
+  transform: translate3d(-8px, 0, 0);
+  will-change: opacity, transform;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-transition='lens-shift'] .mvu-holo-exposure-overlay {
+  animation: mvu-holo-exposure-fade 0.42s ease-out both;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-state='combat'] .mvu-holo-projection {
+  border-color: rgba(255, 89, 106, 0.42);
+  box-shadow:
+    0 0 28px rgba(255, 89, 106, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 0 32px rgba(255, 89, 106, 0.12);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-projection::before,
@@ -20571,38 +20714,46 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
   }
 }
 
-@keyframes mvu-holo-fragment-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(4px, -5px, 0);
-  }
-}
-
-@keyframes mvu-holo-alert-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 10px rgba(255, 89, 106, 0.16);
-    opacity: 0.76;
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(255, 89, 106, 0.42);
-    opacity: 1;
-  }
-}
-
 @keyframes mvu-holo-projection-build {
   0% {
     opacity: 0;
-    transform: scaleY(0.98) translateY(4px);
-    filter: blur(2px);
+    transform: translate3d(0, 8px, 0) scaleY(0.99);
   }
   100% {
     opacity: 1;
-    transform: scaleY(1) translateY(0);
-    filter: blur(0);
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+}
+
+@keyframes mvu-holo-lens-extrude {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(0.82);
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.96;
+    transform: translate(-50%, -50%) translate3d(var(--mvu-holo-lens-dx), var(--mvu-holo-lens-dy), 0) scale(1.22);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate3d(var(--mvu-holo-lens-dx), var(--mvu-holo-lens-dy), 0) scale(1.3);
+  }
+}
+
+@keyframes mvu-holo-exposure-fade {
+  0% {
+    opacity: 0;
+    transform: translate3d(-12px, 0, 0);
+  }
+  24% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, 0, 0);
   }
 }
 
@@ -20986,31 +21137,34 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
     bottom: 13%;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment {
-    width: 14px;
-    height: 14px;
-    padding: 0;
-    font-size: 0;
+  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tags {
+    left: 50%;
+    top: 78%;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, max-content);
+    max-width: calc(100vw - 42px);
+    overflow: hidden;
+    transform: translateX(-50%);
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--low {
-    left: 15%;
-    bottom: 23%;
+  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-context-tag {
+    max-width: 92px;
+    height: 22px;
+    font-size: 9px;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--mid {
-    right: 19%;
-    top: 31%;
+  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone {
+    grid-template-columns: max-content;
+    justify-items: center;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--high {
-    right: 17%;
-    bottom: 36%;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-fragment--battle {
-    left: 18%;
-    top: 39%;
+  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-lens-clone::after {
+    left: 50%;
+    top: calc(100% + 3px);
+    width: 84px;
+    height: 84px;
+    clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+    transform: translateX(-50%);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-holo-readout {

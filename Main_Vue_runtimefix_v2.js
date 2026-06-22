@@ -199,13 +199,34 @@ const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__M
 }));
 const 全息星轨状态 = window.__MVU_HOLO_STATUS_STATE__ || (window.__MVU_HOLO_STATUS_STATE__ = reactive({
   主题: 读取全息星轨主题(),
-  星仪: '激活'
+  星仪: '激活',
+  主框架状态: 'narrative',
+  态势: 'safe',
+  战斗: '休止',
+  转场: 'idle',
+  环境标签: [],
+  生命比例: 0,
+  魂力比例: 0,
+  生命文本: '--',
+  魂力文本: '--',
+  透镜可见: false,
+  透镜目标: '',
+  透镜标签: '',
+  透镜左: '50%',
+  透镜上: '50%',
+  透镜位移X: '0px',
+  透镜位移Y: '0px'
 }));
 mvuTabState.current = normalizeTabId(mvuTabState.current);
 if (!Array.isArray(mvuUnifiedDetailState.stack)) mvuUnifiedDetailState.stack = [];
 mvuUnifiedDetailState.returnTab = normalizeTabId(mvuUnifiedDetailState.returnTab || mvuTabState.current);
 全息星轨状态.主题 = 规范化全息星轨主题(全息星轨状态.主题);
 全息星轨状态.星仪 = 全息星轨状态.星仪 === '休眠' ? '休眠' : '激活';
+全息星轨状态.主框架状态 = ['narrative', 'combat', 'shifting'].includes(全息星轨状态.主框架状态) ? 全息星轨状态.主框架状态 : 'narrative';
+全息星轨状态.态势 = ['safe', '暗流', '领域', 'combat'].includes(全息星轨状态.态势) ? 全息星轨状态.态势 : 'safe';
+全息星轨状态.战斗 = 全息星轨状态.战斗 === '进行中' ? '进行中' : '休止';
+全息星轨状态.转场 = 全息星轨状态.转场 === 'lens-shift' ? 'lens-shift' : 'idle';
+if (!Array.isArray(全息星轨状态.环境标签)) 全息星轨状态.环境标签 = [];
 
 function syncUnifiedMountPlacement() {
   if (window.__MVU_UNIFIED_ANCHOR_MANAGER__ && typeof window.__MVU_UNIFIED_ANCHOR_MANAGER__.scheduleRelocate === 'function') {
@@ -449,7 +470,18 @@ const DesktopUnifiedLayout = {
         :data-holo-orbit="全息星轨状态.星仪"
         :data-orbit-mode="全息星轨状态.星仪"
         :data-holo-tab="tabState.current"
+        :data-holo-state="全息星轨框架状态"
+        :data-holo-alert="全息星轨状态.态势"
+        :data-holo-battle="全息星轨状态.战斗"
+        :data-holo-transition="全息星轨状态.转场"
       >
+        <div
+          v-if="全息星轨状态.透镜可见"
+          class="mvu-holo-lens-clone"
+          :data-target="全息星轨状态.透镜目标"
+          :style="全息星轨透镜样式"
+          aria-hidden="true"
+        ><span>{{ 全息星轨状态.透镜标签 }}</span><i></i></div>
         <header class="mvu-holo-topbar">
           <div class="mvu-holo-topbar-left">
             <span class="mvu-holo-system-badge">LWCS</span>
@@ -477,6 +509,10 @@ const DesktopUnifiedLayout = {
               <div class="mvu-holo-ring mvu-holo-ring--outer"></div>
               <div class="mvu-holo-ring mvu-holo-ring--middle"></div>
               <div class="mvu-holo-ring mvu-holo-ring--inner"></div>
+              <div class="mvu-holo-combat-ring" aria-hidden="true">
+                <i class="mvu-holo-combat-ring--hp" :style="全息星轨生命环样式"><span>HP {{ 全息星轨状态.生命文本 }}</span></i>
+                <i class="mvu-holo-combat-ring--mp" :style="全息星轨魂力环样式"><span>MP {{ 全息星轨状态.魂力文本 }}</span></i>
+              </div>
               <button
                 v-for="标签 in tabs"
                 :key="'holo-node-' + 标签.id"
@@ -485,16 +521,22 @@ const DesktopUnifiedLayout = {
                 :class="'mvu-holo-node--' + 标签.id.replace('page-', '')"
                 :data-target="标签.id"
                 :aria-pressed="tabState.current === 标签.id ? 'true' : 'false'"
-                @click="setTab(标签.id)"
+                @click="setTab(标签.id, $event)"
               ><span>{{ 标签.label }}</span><i></i></button>
               <button type="button" class="mvu-holo-core clickable" data-preview="近期安排" data-detail-mode="embed">
                 <span data-holo-core-time>--:--</span>
                 <em data-holo-core-calendar>斗罗历</em>
               </button>
-              <button type="button" class="mvu-holo-fragment mvu-holo-fragment--low clickable" data-preview="近期安排">拍卖</button>
-              <button type="button" class="mvu-holo-fragment mvu-holo-fragment--mid clickable" data-preview="近期安排">偏差</button>
-              <button type="button" class="mvu-holo-fragment mvu-holo-fragment--high clickable" data-preview="近期安排">敌意</button>
-              <button type="button" class="mvu-holo-fragment mvu-holo-fragment--battle clickable" data-preview="战斗终端">战斗</button>
+              <div class="mvu-holo-context-tags" :class="{ 'is-empty': !全息星轨状态.环境标签.length }" data-holo-context-tags>
+                <button
+                  v-for="(标签, 序号) in 全息星轨状态.环境标签"
+                  :key="'holo-context-' + 序号 + '-' + 标签.文本"
+                  type="button"
+                  class="mvu-holo-context-tag"
+                  :data-tone="标签.色调 || 'info'"
+                  :title="标签.说明 || 标签.文本"
+                ><span>{{ 标签.文本 }}</span></button>
+              </div>
             </div>
             <div class="mvu-holo-readout">
               <span><b>位置</b><i data-holo-location>--</i></span>
@@ -513,6 +555,7 @@ const DesktopUnifiedLayout = {
                 <button v-show="detailState.isOpen" type="button" class="mvu-holo-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
                 <span>{{ detailState.isOpen ? 详情路径标题 : 全息星轨路径标题 }}</span>
               </div>
+              <div class="mvu-holo-exposure-overlay" aria-hidden="true"></div>
               <div class="mvu-holo-scanline" aria-hidden="true"></div>
               <template v-if="!detailState.isOpen">
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
@@ -574,6 +617,20 @@ const DesktopUnifiedLayout = {
     const detailState = mvuUnifiedDetailState;
     const 当前全息星轨状态 = 全息星轨状态;
     const 上次详情标题 = ref('详情');
+    let 透镜转场计时器 = 0;
+    const 全息星轨框架状态 = computed(() => 当前全息星轨状态.转场 === 'lens-shift' ? 'shifting' : 当前全息星轨状态.主框架状态);
+    const 全息星轨透镜样式 = computed(() => ({
+      left: 当前全息星轨状态.透镜左 || '50%',
+      top: 当前全息星轨状态.透镜上 || '50%',
+      '--mvu-holo-lens-dx': 当前全息星轨状态.透镜位移X || '0px',
+      '--mvu-holo-lens-dy': 当前全息星轨状态.透镜位移Y || '0px',
+    }));
+    const 全息星轨生命环样式 = computed(() => ({
+      '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.生命比例 || 0)))}%`,
+    }));
+    const 全息星轨魂力环样式 = computed(() => ({
+      '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.魂力比例 || 0)))}%`,
+    }));
     const 读取当前详情标题 = () => {
       const 预览键 = String(detailState.previewKey || '').trim();
       const 默认标题 = activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '详情';
@@ -604,6 +661,54 @@ const DesktopUnifiedLayout = {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
         try { window.__MVU_CLEAR_FLOATING_HOVER__(); } catch (err) {}
       }
+    };
+    const 清理维度透镜转场 = () => {
+      if (透镜转场计时器) {
+        window.clearTimeout(透镜转场计时器);
+        透镜转场计时器 = 0;
+      }
+      当前全息星轨状态.转场 = 'idle';
+      当前全息星轨状态.透镜可见 = false;
+      当前全息星轨状态.透镜目标 = '';
+      当前全息星轨状态.透镜标签 = '';
+    };
+    const 启动维度透镜转场 = (tabId, event = null) => {
+      清理维度透镜转场();
+      const 框架 = document.querySelector('#mvu-unified-mount .mvu-holo-frame');
+      const 安全Tab选择器 = typeof CSS !== 'undefined' && CSS && typeof CSS.escape === 'function' ? CSS.escape(tabId) : tabId;
+      const 触发节点 = event && event.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : 框架 && 框架.querySelector(`.mvu-holo-node[data-target="${安全Tab选择器}"]`);
+      const 投影幕 = 框架 ? 框架.querySelector('.mvu-holo-projection') : null;
+      const 标签 = TAB_ITEMS.find(条目 => 条目.id === normalizeTabId(tabId));
+      当前全息星轨状态.转场 = 'lens-shift';
+      当前全息星轨状态.透镜目标 = normalizeTabId(tabId);
+      当前全息星轨状态.透镜标签 = 标签 ? 标签.label : '维度';
+      if (框架 instanceof HTMLElement && 触发节点 instanceof HTMLElement) {
+        const 框架矩形 = 框架.getBoundingClientRect();
+        const 节点矩形 = 触发节点.getBoundingClientRect();
+        const 起点X = 节点矩形.left + 节点矩形.width / 2 - 框架矩形.left;
+        const 起点Y = 节点矩形.top + 节点矩形.height / 2 - 框架矩形.top;
+        let 目标X = 起点X + 74;
+        let 目标Y = 起点Y;
+        if (投影幕 instanceof HTMLElement) {
+          const 投影矩形 = 投影幕.getBoundingClientRect();
+          const 移动端 = 框架矩形.width <= 760;
+          目标X = 移动端 ? 框架矩形.width / 2 : 投影矩形.left - 框架矩形.left + Math.min(38, 投影矩形.width * 0.08);
+          目标Y = 移动端 ? 投影矩形.top - 框架矩形.top - 24 : 起点Y;
+        }
+        当前全息星轨状态.透镜左 = `${Math.round(起点X)}px`;
+        当前全息星轨状态.透镜上 = `${Math.round(起点Y)}px`;
+        当前全息星轨状态.透镜位移X = `${Math.round(目标X - 起点X)}px`;
+        当前全息星轨状态.透镜位移Y = `${Math.round(目标Y - 起点Y)}px`;
+      } else {
+        当前全息星轨状态.透镜左 = '50%';
+        当前全息星轨状态.透镜上 = '50%';
+        当前全息星轨状态.透镜位移X = '74px';
+        当前全息星轨状态.透镜位移Y = '0px';
+      }
+      当前全息星轨状态.透镜可见 = true;
+      透镜转场计时器 = window.setTimeout(清理维度透镜转场, 560);
     };
     const isVerticallyScrollable = element => {
       if (!(element instanceof HTMLElement)) return false;
@@ -870,8 +975,9 @@ const DesktopUnifiedLayout = {
         }
       }, 40);
     };
-    const setUnifiedTab = tabId => {
+    const setUnifiedTab = (tabId, event = null) => {
       清理顶层浮窗();
+      启动维度透镜转场(tabId, event);
       if (detailState.isOpen) {
         detailState.isOpen = false;
         detailState.previewKey = '';
@@ -915,6 +1021,7 @@ const DesktopUnifiedLayout = {
       }
     });
     onUnmounted(() => {
+      清理维度透镜转场();
       window.removeEventListener('resize', handleDesktopUnifiedResize);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
@@ -941,6 +1048,10 @@ const DesktopUnifiedLayout = {
       detailState,
       全息星轨路径标题,
       全息星轨状态: 当前全息星轨状态,
+      全息星轨框架状态,
+      全息星轨透镜样式,
+      全息星轨生命环样式,
+      全息星轨魂力环样式,
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,
       设置全息星轨星仪,

@@ -31666,6 +31666,128 @@
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, html));
   }
 
+  function 派生星仪态势等级(snapshot = null) {
+    if (!snapshot) return 'safe';
+    const 战斗数据 = deepGet(snapshot, 'rootData.world.战斗', {});
+    if (战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中) return 'combat';
+    const 战斗意图 = toText(战斗数据 && 战斗数据.战斗意图, '');
+    const 战斗环境 = toText(战斗数据 && 战斗数据.环境, '');
+    const 偏差值 = toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0);
+    const 森林敌意 = Math.max(0, Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))));
+    if (/领域|深渊|禁区|封锁|异常|极寒|暴风雪|毒|灾|崩/.test(战斗环境)) return '领域';
+    if (/必杀|重伤|压制|生擒/.test(战斗意图) || 偏差值 >= 40 || 森林敌意 >= 70) return '暗流';
+    if (偏差值 >= 10 || 森林敌意 >= 30) return '暗流';
+    return 'safe';
+  }
+
+  function 读取战斗资源环(snapshot = null) {
+    const 属性 = deepGet(snapshot, 'activeChar.属性', {});
+    const hpPair = typeof getDisplayHpPair === 'function'
+      ? getDisplayHpPair(属性)
+      : { hp: toNumber(deepGet(属性, 'HP', 0), 0), hpMax: Math.max(1, toNumber(deepGet(属性, 'HP上限', 0), 1)) };
+    const hp = Math.max(0, Math.min(100, ratioPercent(hpPair.hp, hpPair.hpMax)));
+    const 魂力当前 = toNumber(deepGet(属性, '魂力', 0), 0);
+    const 魂力上限 = Math.max(1, toNumber(deepGet(属性, '魂力上限', 1), 1));
+    const mp = Math.max(0, Math.min(100, ratioPercent(魂力当前, 魂力上限)));
+    return {
+      hp,
+      mp,
+      hpText: `${formatNumber(hpPair.hp)}/${formatNumber(hpPair.hpMax)}`,
+      mpText: `${formatNumber(魂力当前)}/${formatNumber(魂力上限)}`,
+    };
+  }
+
+  function 构建环境身份标签(snapshot = null) {
+    if (!snapshot) return [];
+    const 标签 = [];
+    const 主身份 = toText(deepGet(snapshot, 'activeChar.社交.主身份', ''), '').trim();
+    const 位置 = toText(deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc), '').trim();
+    const 战斗环境 = toText(deepGet(snapshot, 'rootData.world.战斗.环境', ''), '').trim();
+    const 受伤部位 = deepGet(snapshot, 'activeChar.状态.受伤部位', {});
+    const 复制效果 = deepGet(snapshot, 'activeChar.复制效果', {});
+    const 复制数量 = safeEntries(复制效果).length;
+    const 受伤数量 = safeEntries(受伤部位).length;
+    if (主身份 && !/^(无|未知|普通|平民|待补全|AI_TODO)/.test(主身份)) {
+      标签.push({ 文本: 主身份, 色调: '身份', 说明: '当前公开身份' });
+    }
+    if (战斗环境 && !/^(正常|无|空)$/.test(战斗环境)) {
+      标签.push({ 文本: 战斗环境, 色调: /领域|极寒|暴风雪|禁区|封锁|异常/.test(战斗环境) ? '领域' : '环境', 说明: '战斗环境' });
+    } else if (位置 && /极寒|暴风雪|禁区|秘境|遗迹|战场|升灵台|森林|危险|深渊/.test(位置)) {
+      标签.push({ 文本: 位置, 色调: '环境', 说明: '当前位置' });
+    }
+    if (受伤数量 > 0) {
+      标签.push({ 文本: `伤势 ${受伤数量}`, 色调: '警示', 说明: '受伤部位记录' });
+    }
+    if (复制数量 > 0) {
+      标签.push({ 文本: `复刻 ${复制数量}`, 色调: '回响', 说明: '复制效果' });
+    }
+    return 标签.slice(0, 3);
+  }
+
+  function 同步主框架状态(snapshot = null) {
+    const frameNodes = getLiveUiElements('#mvu-unified-mount .mvu-holo-frame');
+    const 状态对象 = window.__MVU_HOLO_STATUS_STATE__;
+    const 态势 = 派生星仪态势等级(snapshot);
+    const 战斗数据 = snapshot ? deepGet(snapshot, 'rootData.world.战斗', {}) : {};
+    const 资源环 = 读取战斗资源环(snapshot);
+    const 环境标签 = 构建环境身份标签(snapshot);
+    const 主框架状态 = 态势 === 'combat' ? 'combat' : 'narrative';
+    const 星仪状态 = 态势 === 'combat'
+      ? '激活'
+      : 状态对象 && 状态对象.星仪 === '休眠'
+        ? '休眠'
+        : '激活';
+    const 战斗状态 = 战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中 ? '进行中' : '休止';
+    const 更新文本 = (选择器, 文本) => {
+      getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
+        节点.textContent = 文本;
+      });
+    };
+    if (状态对象 && typeof 状态对象 === 'object') {
+      状态对象.主框架状态 = 主框架状态;
+      状态对象.态势 = 态势;
+      状态对象.战斗 = 战斗状态;
+      状态对象.生命比例 = 资源环.hp;
+      状态对象.魂力比例 = 资源环.mp;
+      状态对象.生命文本 = 资源环.hpText;
+      状态对象.魂力文本 = 资源环.mpText;
+      状态对象.环境标签 = 环境标签;
+      状态对象.星仪 = 星仪状态;
+    }
+    frameNodes.forEach(frame => {
+      if (!(frame instanceof Element)) return;
+      frame.setAttribute('data-holo-state', 主框架状态 === 'combat' ? 'combat' : 主框架状态 === 'shifting' ? 'shifting' : 'narrative');
+      frame.setAttribute('data-holo-alert', 态势);
+      frame.setAttribute('data-holo-battle', 战斗状态);
+      frame.setAttribute('data-holo-orbit', 星仪状态);
+      frame.setAttribute('data-orbit-mode', 星仪状态);
+      frame.setAttribute('data-holo-transition', 状态对象 && 状态对象.转场 === 'lens-shift' ? 'lens-shift' : 'idle');
+    });
+    更新文本('[data-holo-core-time]', snapshot ? (() => {
+      const 世界时间 = getSnapshotWorldTimeText(snapshot);
+      const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
+      return 时间匹配 ? 时间匹配[1] : '--:--';
+    })() : '--:--');
+    更新文本('[data-holo-core-calendar]', snapshot ? (() => {
+      const 世界时间 = getSnapshotWorldTimeText(snapshot);
+      const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
+      return 时间匹配 ? 世界时间.slice(0, 时间匹配.index).trim() : 世界时间 || '斗罗历';
+    })() : '斗罗历');
+    更新文本('[data-holo-location]', snapshot
+      ? shortenText(
+          toText(deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc), snapshot.currentLoc || '未知地点')
+            .replace(/^斗罗大陆-/, '')
+            .replace(/^斗灵大陆-/, ''),
+          18,
+        )
+      : '--');
+    更新文本('[data-holo-deviation]', snapshot
+      ? `偏差 ${toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0)} / x${toNumber(deepGet(snapshot, 'rootData.world.偏差倍率', 1), 1)}`
+      : '--');
+    更新文本('[data-holo-state-text]', 主框架状态 === 'combat' ? '战术' : '日常');
+    更新文本('[data-holo-battle-text]', 战斗状态);
+  }
+
   function 全息概览槽位已挂载() {
     const 统一挂载 = document.getElementById('mvu-unified-mount');
     return !!(
@@ -31676,41 +31798,7 @@
   }
 
   function 更新全息星轨读数(snapshot) {
-    const 世界时间 = snapshot ? getSnapshotWorldTimeText(snapshot) : '时间未同步';
-    const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
-    const 时刻文本 = 时间匹配 ? 时间匹配[1] : '--:--';
-    const 历法文本 = 时间匹配 ? 世界时间.slice(0, 时间匹配.index).trim() : 世界时间;
-    const 当前位置 = snapshot
-      ? toText(
-          deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc),
-          snapshot.currentLoc || '未知地点',
-        )
-          .replace(/^斗罗大陆-/, '')
-          .replace(/^斗灵大陆-/, '')
-      : '地点未同步';
-    const 偏差值 = snapshot ? toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0) : 0;
-    const 偏差倍率 = snapshot ? toNumber(deepGet(snapshot, 'rootData.world.偏差倍率', 1), 1) : 1;
-    const 森林敌意 = snapshot
-      ? Math.max(0, Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))))
-      : 0;
-    const 拍卖状态 = snapshot ? toText(deepGet(snapshot, 'rootData.world.拍卖.状态', snapshot.auctionStatus), '休市') : '休市';
-    const 战斗数据 = snapshot ? deepGet(snapshot, 'rootData.world.战斗', {}) : {};
-    const 战斗状态 = 战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中 ? '进行中' : '休止';
-    const 写文本 = (选择器, 文本) => {
-      getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
-        节点.textContent = 文本;
-      });
-    };
-    写文本('[data-holo-core-time]', 时刻文本);
-    写文本('[data-holo-core-calendar]', 历法文本 || '斗罗历');
-    写文本('[data-holo-location]', shortenText(当前位置, 18));
-    写文本('[data-holo-deviation]', `偏差 ${偏差值} / x${偏差倍率}`);
-    getLiveUiElements('#mvu-unified-mount .mvu-holo-frame').forEach(节点 => {
-      if (!(节点 instanceof Element)) return;
-      节点.setAttribute('data-holo-alert', 森林敌意 >= 70 || 偏差值 >= 40 ? '高危' : 森林敌意 >= 30 || 偏差值 >= 10 ? '波动' : '稳定');
-      节点.setAttribute('data-holo-auction', 拍卖状态);
-      节点.setAttribute('data-holo-battle', 战斗状态);
-    });
+    同步主框架状态(snapshot);
   }
 
   function renderUnifiedCards(snapshot, precomputedSectionSignatures = null, previousSectionSignaturesOverride = null) {
@@ -41319,25 +41407,8 @@ ${播报文本}
   function syncBattleReturnEntries(snapshot, isActive) {
     if (!isActive) {
       removeBattleReturnEntries();
-      document.querySelectorAll('#mvu-unified-mount .mvu-holo-fragment--battle').forEach(node => {
-        node.removeAttribute('data-mvu-battle-return');
-        node.classList.remove('is-live');
-        node.textContent = '战斗';
-        node.onclick = null;
-      });
       return;
     }
-    const summary = getBattleInlineSummary(snapshot);
-    document.querySelectorAll('#mvu-unified-mount .mvu-holo-fragment--battle').forEach(node => {
-      node.setAttribute('data-mvu-battle-return', '1');
-      node.classList.add('is-live');
-      node.textContent = summary.roundText || summary.title || '战斗';
-      node.onclick = event => {
-        event.preventDefault();
-        event.stopPropagation();
-        openBattleInlineFromReturnEntry();
-      };
-    });
   }
 
   function scheduleBattleReturnEntrySync(snapshot, isActive) {
