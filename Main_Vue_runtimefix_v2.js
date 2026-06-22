@@ -213,41 +213,6 @@ function syncUnifiedMountPlacement() {
   }
 }
 
-function requestUnifiedShellCardRefresh(options = {}) {
-  const force = options.force !== false;
-  const runRender = () => {
-    if (typeof window.__MVU_RERENDER_UNIFIED_CARDS__ === 'function') {
-      try { window.__MVU_RERENDER_UNIFIED_CARDS__({ force }); } catch (err) {}
-    }
-  };
-  const run = () => {
-    if (typeof window.__MVU_GET_LIVE_SNAPSHOT__ === 'function') {
-      try {
-        const liveSnapshot = window.__MVU_GET_LIVE_SNAPSHOT__();
-        if (liveSnapshot) {
-          runRender();
-          return;
-        }
-      } catch (err) {}
-    }
-    if (typeof window.__MVU_REFRESH_LIVE_SNAPSHOT__ === 'function') {
-      try {
-        const refreshResult = window.__MVU_REFRESH_LIVE_SNAPSHOT__({ force });
-        if (refreshResult && typeof refreshResult.then === 'function') {
-          refreshResult.finally(runRender);
-          return;
-        }
-      } catch (err) {}
-    }
-    runRender();
-  };
-  if (typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(() => window.requestAnimationFrame(run));
-  } else {
-    window.setTimeout(run, 0);
-  }
-}
-
 function applyLayoutBodyClasses() {
   const body = document.body;
   if (!body) return;
@@ -475,7 +440,7 @@ function createUnifiedAnchorManager(options = {}) {
 
 const DesktopUnifiedLayout = {
   template: `
-    <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
+    <div class="mvu-holo-shell mvu-root">
       <section
         class="mvu-holo-frame"
         :class="{ 'is-detail': detailState.isOpen }"
@@ -593,7 +558,7 @@ const DesktopUnifiedLayout = {
               </section>
               </template>
               <section v-else class="mvu-holo-detail-page" :data-unified-detail-preview="detailState.previewKey">
-                <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host></div>
+                <div ref="detailHostRef" class="mvu-holo-detail-stage" data-unified-detail-host></div>
               </section>
             </div>
           </section>
@@ -771,9 +736,7 @@ const DesktopUnifiedLayout = {
     };
     const scheduleUnifiedFrameViewportSync = () => {
       scheduleFrameTask(syncUnifiedFrameViewport);
-      [120, 360, 760].forEach(delay => {
-        window.setTimeout(syncUnifiedFrameViewport, delay);
-      });
+      window.setTimeout(syncUnifiedFrameViewport, 80);
     };
     const rememberReturnScroll = () => {
       const target = getDetailScrollTarget();
@@ -870,7 +833,6 @@ const DesktopUnifiedLayout = {
         try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
       }
       requestTabChange(normalizeTabId(detailState.returnTab));
-      forceUnifiedCardSync();
       scheduleUnifiedFrameViewportSync();
       scheduleFrameTask(restoreReturnScroll);
     };
@@ -897,7 +859,6 @@ const DesktopUnifiedLayout = {
         }
       }
       requestTabChange(tabId);
-      forceUnifiedCardSync();
       scheduleUnifiedFrameViewportSync();
     };
     const 设置全息星轨主题 = 主题 => {
@@ -907,12 +868,8 @@ const DesktopUnifiedLayout = {
     const 设置全息星轨星仪 = 状态 => {
       当前全息星轨状态.星仪 = 状态 === '休眠' ? '休眠' : '激活';
     };
-    const forceUnifiedCardSync = () => {
-      requestUnifiedShellCardRefresh({ force: true });
-    };
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
-      forceUnifiedCardSync();
     };
     onMounted(() => {
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
@@ -921,7 +878,6 @@ const DesktopUnifiedLayout = {
       window.addEventListener('resize', handleDesktopUnifiedResize);
       bindDetailWheelBridge();
       scheduleUnifiedFrameViewportSync();
-      forceUnifiedCardSync();
       if (mvuTabState.current === 'page-map') {
         requestMapSurfaceSync();
       }
