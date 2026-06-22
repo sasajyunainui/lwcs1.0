@@ -486,21 +486,21 @@ const DesktopUnifiedLayout = {
         <div v-show="!detailState.isOpen" class="mvu-unified-page-stack">
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
-              <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
-                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-unified-card="spirit-summary" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-unified-card="ring-matrix" data-unified-surface="panel"></div>
-              </div>
+                <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
+                  <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-unified-card="primary-spirit" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-unified-card="secondary-spirit" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="panel"></div>
+                </div>
+              </section>
             </section>
-          </section>
 
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-map' }" data-target="page-map">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--map">
-                <div class="mvu-unified-map-stage mvu-unified-card" data-mvu-map-stage="panel"></div>
+                <div class="mvu-unified-map-stage" data-mvu-map-stage="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-unified-card="map-current" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card" data-unified-card="map-locals" data-unified-surface="panel"></div>
               </div>

@@ -29177,25 +29177,6 @@
     return 构建全息入口卡('储物仓库', snapshot.inventoryEntries.length || 0, '件', '资产 / 物品');
   }
 
-  function 构建魂环矩阵入口卡(snapshot) {
-    const 主轨魂环 = Array.isArray(snapshot && snapshot.primarySpirit && snapshot.primarySpirit.魂环) ? snapshot.primarySpirit.魂环 : [];
-    const 副轨魂环 = Array.isArray(snapshot && snapshot.secondaryTrack && snapshot.secondaryTrack.魂环) ? snapshot.secondaryTrack.魂环 : [];
-    const 有效魂环 = [...主轨魂环, ...副轨魂环].filter(魂环 => 魂环 && !魂环.empty);
-    const 魂环图形 = 有效魂环.length
-      ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--micro">${构建魂环阵列(有效魂环.slice(0, 8), 'micro')}</div>`
-      : 构建魂环空阵列('micro');
-    return `
-        <div class="mvu-holo-card-head">
-          <span class="mvu-holo-card-title">魂环矩阵</span>
-          <b class="mvu-holo-card-value">${htmlEscape(formatNumber(有效魂环.length))} 环</b>
-        </div>
-        <div class="mvu-holo-ring-entry">
-          ${魂环图形}
-          <small class="mvu-holo-entry-sub">${htmlEscape(有效魂环.length ? '武魂 / 魂环' : '暂无魂环附着')}</small>
-        </div>
-      `;
-  }
-
   function buildUnifiedSocialCard(snapshot) {
     return 构建全息入口卡('关系网络', snapshot.relations.length || 0, '', '关键关系');
   }
@@ -29221,48 +29202,6 @@
     const content =
       config.kind === 'bloodline' ? renderArchiveBloodlineEntry(config) : renderArchiveSpiritEntry(config, primary);
     return `<div class="mvu-holo-spirit-card">${content}</div>`;
-  }
-
-  function 构建全息武魂摘要卡(snapshot) {
-    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
-    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
-    const 主名称 = 主轨 ? 读取武魂概览名称(主轨, '第一武魂') : '未记录';
-    const 第二名称 = 第二轨 ? 读取武魂概览名称(第二轨, '第二武魂') : '未启用';
-    const 标题 = [主名称, 第二轨 ? 第二名称 : ''].filter(Boolean).join(' / ') || '未记录';
-    return `
-        <div class="mvu-holo-card-head">
-          <span class="mvu-holo-card-title">核心武魂</span>
-          <b class="mvu-holo-card-value">${htmlEscape(shortenText(标题, 22))}</b>
-        </div>
-        <div class="mvu-holo-dual-summary">
-          ${构建武魂摘要行('第一：', 主名称, 读取武魂魂环概览值(主轨, '未附'))}
-          ${构建武魂摘要行('第二：', 第二名称, 读取武魂魂环概览值(第二轨, '未附'))}
-        </div>
-        <div class="mvu-holo-slot-key">${htmlEscape('第1武魂详细页 / 第2武魂详细页')}</div>
-      `;
-  }
-
-  function 读取武魂概览名称(轨道, 默认名称) {
-    if (!轨道 || typeof 轨道 !== 'object') return 默认名称;
-    const 名称 = toText(轨道.spiritName, '').trim() || toText(轨道.name, 默认名称).replace(/（[^）]*）/g, '').trim();
-    return shortenText(名称 || 默认名称, 12);
-  }
-
-  function 读取武魂魂环概览值(轨道, 默认值) {
-    if (!轨道 || typeof 轨道 !== 'object') return 默认值;
-    if (轨道.kind === 'bloodline') return shortenText(构建血脉状态文本_桥接(轨道), 6) || 默认值;
-    const 魂环 = Array.isArray(轨道.魂环) ? 轨道.魂环.filter(环 => 环 && !环.empty) : [];
-    const 末环 = 魂环[魂环.length - 1] || null;
-    const 魂灵 = Array.isArray(轨道.souls) ? 轨道.souls.find(项 => toText(项 && 项.age, '').trim() && toText(项 && 项.age, '').trim() !== '--') : null;
-    return (
-      shortenText(toText(末环 && (末环.ageText || 末环.colorText || 末环.desc), '').split('/').pop().trim(), 6) ||
-      shortenText(toText(魂灵 && 魂灵.age, ''), 6) ||
-      默认值
-    );
-  }
-
-  function 构建武魂摘要行(前缀, 名称, 状态) {
-    return `<span><b>${htmlEscape(`${前缀}${名称}`)}</b><i>${htmlEscape(状态)}</i></span>`;
   }
 
   function 构建统一副轨摘要卡(snapshot) {
