@@ -18819,7 +18819,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame {
   --mvu-holo-medium:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
     radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--mvu-holo-main) 14%, transparent), transparent 34%),
-    rgba(5, 12, 18, 0.76);
+    rgba(5, 12, 18, 0.58);
   position: relative;
   box-sizing: border-box;
   display: grid;
@@ -18904,12 +18904,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
   --mvu-holo-card-radius: 22px 28px 18px 26px;
   --mvu-holo-beam: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
   --mvu-holo-medium:
-    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.12), transparent 20%),
-    linear-gradient(135deg, rgba(0, 210, 255, 0.07), rgba(255, 126, 179, 0.055), rgba(255, 215, 0, 0.035)),
-    rgba(5, 12, 18, 0.72);
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.2), transparent 18%),
+    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05)),
+    rgba(5, 12, 18, 0.38);
   --mvu-holo-frame-texture:
-    radial-gradient(ellipse at 18% 24%, rgba(255, 255, 255, 0.16), transparent 18%),
-    radial-gradient(ellipse at 72% 66%, rgba(0, 210, 255, 0.14), transparent 24%),
+    radial-gradient(circle at 12% 18%, rgba(0, 210, 255, 0.22), transparent 28%),
+    radial-gradient(ellipse at 72% 66%, rgba(255, 126, 179, 0.12), transparent 28%),
+    repeating-linear-gradient(135deg, transparent 0 18px, rgba(0, 210, 255, 0.07) 18px 19px),
     linear-gradient(135deg, rgba(0, 210, 255, 0.055), rgba(255, 126, 179, 0.05), rgba(255, 215, 0, 0.03));
 }
 
@@ -18923,6 +18924,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame::before {
     linear-gradient(90deg, transparent, color-mix(in srgb, var(--mvu-holo-main) 16%, transparent), transparent),
     radial-gradient(circle at right bottom, color-mix(in srgb, var(--mvu-holo-high) 7%, transparent), transparent 28%);
   opacity: 0.6;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海蝶舞']::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.2), rgba(255, 126, 179, 0.12), transparent),
+    radial-gradient(circle at right bottom, rgba(255, 215, 0, 0.07), transparent 28%);
+  opacity: 0.68;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-topbar {
@@ -19590,6 +19598,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-projection {
   background: var(--mvu-holo-medium);
   box-shadow:
     0 0 28px var(--mvu-holo-glow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
     inset 0 0 22px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
   backdrop-filter: blur(14px) saturate(112%);
   -webkit-backdrop-filter: blur(14px) saturate(112%);
@@ -19663,6 +19672,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='银龙�
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海蝶舞'] .mvu-holo-projection {
   border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 22px rgba(0, 210, 255, 0.22),
+    0 0 42px rgba(255, 126, 179, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 0 28px rgba(0, 210, 255, 0.12);
   backdrop-filter: blur(12px) saturate(116%);
   -webkit-backdrop-filter: blur(12px) saturate(116%);
 }
@@ -19963,13 +19977,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard > .mvu-holo-map-stag
   border-radius: var(--mvu-holo-card-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
-    color-mix(in srgb, rgba(11, 24, 34, 0.62) 72%, transparent);
+    color-mix(in srgb, rgba(9, 17, 24, 0.58) 68%, transparent);
   box-shadow:
     2px 4px 10px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px rgba(255, 255, 255, 0.075),
     inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海蝶舞'] .mvu-holo-dashboard > .mvu-holo-scaffold,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海蝶舞'] .mvu-holo-dashboard > .mvu-holo-map-stage {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.018)),
+    rgba(9, 17, 24, 0.36);
+  box-shadow:
+    2px 4px 10px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 18px rgba(0, 210, 255, 0.08),
+    0 0 20px rgba(255, 126, 179, 0.07);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard > .mvu-holo-scaffold::before,
