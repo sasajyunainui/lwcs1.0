@@ -11078,7 +11078,6 @@ body.mvu-layout-holo #mvu-unified-mount .map-side-title {
 }
 
 /* 大标题(角色名 / 第一武魂名 / 当前位置名)— 用 700 但加大字距 */
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card .strip-name,
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-detail-stage .strip-name {
   font-weight: 600 !important;
   letter-spacing: 0.03em;
@@ -11286,283 +11285,42 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-ai-maintenance-home-api--top select
   }
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: 100% !important;
-  overflow-x: hidden !important;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-page,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-detail-page {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-  overflow: hidden !important;
-  padding: 0 !important;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-page {
+  display: none;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:has(.dossier-shell--relation) {
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: 100% !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page {
-  display: none !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
-  display: grid !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section {
-  display: grid !important;
-  gap: 8px !important;
-  padding: 10px !important;
-  border-radius: var(--mvu-radius-lg, 16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.065) !important;
-  background: rgba(8, 14, 20, 0.42) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
-  container-type: inline-size !important;
-  container-name: mvu-dashboard-area !important;
-  padding: 6px !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard:has(.mvu-holo-dashboard--archive) {
-  padding: 4px !important;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-page.active {
+  display: grid;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard {
-  display: grid !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  gap: var(--mvu-hud-gap) !important;
-  align-items: stretch !important;
-  align-content: start !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page:has(.mvu-holo-dashboard--map),
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page:has(.mvu-holo-dashboard--world),
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard:has(.mvu-holo-dashboard--map),
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard:has(.mvu-holo-dashboard--world) {
-  height: 100% !important;
-  min-height: 0 !important;
-  grid-template-rows: minmax(0, 1fr) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  box-sizing: border-box !important;
-  border-radius: var(--mvu-hud-radius) !important;
-  border-color: var(--mvu-hud-line) !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.016)), var(--mvu-hud-panel) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card {
-  align-self: stretch !important;
-  display: grid !important;
-  grid-template-rows: auto minmax(0, 1fr) auto !important;
-  gap: 8px !important;
-  padding: var(--mvu-hud-card-pad) !important;
-  height: 100% !important;
-  overflow: hidden !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage {
-  align-self: stretch !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card.clickable,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card .clickable,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage .clickable {
-  cursor: pointer !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card.clickable:hover,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card .clickable:hover {
-  border-color: var(--mvu-hud-line-strong) !important;
-  background-color: rgba(77, 240, 255, 0.035) !important;
-}
-body.mvu-layout-holo #mvu-unified-mount [data-holo-slot='social'],
-body.mvu-layout-holo #mvu-unified-mount [data-holo-slot='map-locals'] {
-  cursor: default !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-empty-note {
-  min-width: 0;
-  color: var(--mvu-hud-muted);
-  font-size: var(--mvu-font-sm, 12px);
-  line-height: 1.42;
-  overflow-wrap: anywhere;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-empty-note--compact {
   display: grid;
-  align-content: center;
-  min-height: 64px;
-}
-body.mvu-layout-holo #mvu-unified-mount .module-name,
-body.mvu-layout-holo #mvu-unified-mount .simple-title,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card-title,
-body.mvu-layout-holo #mvu-unified-mount .panel-title {
-  min-width: 0 !important;
-  margin: 0 !important;
-  color: var(--mvu-hud-text) !important;
-  font-size: var(--mvu-font-base, 13px) !important;
-  line-height: 1.24 !important;
-  letter-spacing: 0.02em !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  gap: var(--mvu-holo-gap);
+  align-items: stretch;
+  align-content: start;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .simple-head,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card-head,
-body.mvu-layout-holo #mvu-unified-mount .panel-head,
-body.mvu-layout-holo #mvu-unified-mount .panel-title-row {
-  display: flex !important;
-  justify-content: space-between !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  gap: 8px !important;
-  align-items: center !important;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage {
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .simple-list,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row-list,
-body.mvu-layout-holo #mvu-unified-mount .hero-metrics,
-body.mvu-layout-holo #mvu-unified-mount .hero-list,
-body.mvu-layout-holo #mvu-unified-mount .module-grid,
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-log,
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-metrics,
-body.mvu-layout-holo #mvu-unified-mount .terminal-console-panel,
-body.mvu-layout-holo #mvu-unified-mount .archive-core-grid,
-body.mvu-layout-holo #mvu-unified-mount .world-hud-console,
-body.mvu-layout-holo #mvu-unified-mount .world-hud-meta-grid,
-body.mvu-layout-holo #mvu-unified-mount .world-hud-context-grid,
-body.mvu-layout-holo #mvu-unified-mount .world-alert-stack,
-body.mvu-layout-holo #mvu-unified-mount .org-console-panel,
-body.mvu-layout-holo #mvu-unified-mount .org-console-grid,
-body.mvu-layout-holo #mvu-unified-mount .org-mini-metrics,
-body.mvu-layout-holo #mvu-unified-mount .mvu-social-entry-grid {
-  display: grid !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  gap: 7px !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .simple-list,
-body.mvu-layout-holo #mvu-unified-mount .hero-list,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row-list {
-  align-content: start !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .simple-row,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row,
-body.mvu-layout-holo #mvu-unified-mount .hero-row,
-body.mvu-layout-holo #mvu-unified-mount .archive-core-tile,
-body.mvu-layout-holo #mvu-unified-mount .mini-box {
-  min-width: 0 !important;
-  min-height: 24px !important;
-  box-sizing: border-box !important;
-  padding: 4px 10px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.065) !important;
-  background: var(--mvu-hud-panel-soft) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mini-box {
-  display: grid !important;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  align-content: start !important;
-  gap: 2px !important;
-  min-height: 38px !important;
-  overflow: hidden !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .simple-row,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row,
-body.mvu-layout-holo #mvu-unified-mount .hero-row {
-  display: grid !important;
-  grid-template-columns: minmax(58px, 76px) minmax(0, 1fr) !important;
-  gap: 8px !important;
-  align-items: center !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .simple-row b,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row b,
-body.mvu-layout-holo #mvu-unified-mount .hero-row b,
-body.mvu-layout-holo #mvu-unified-mount .mini-box b,
-body.mvu-layout-holo #mvu-unified-mount .archive-core-tile b,
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-line b {
-  min-width: 0 !important;
-  color: var(--mvu-hud-muted) !important;
-  font-size: var(--mvu-font-sm, 12px) !important;
-  line-height: 1.25 !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.04em !important;
-  white-space: nowrap !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mini-box b {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .simple-row span,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-row span,
-body.mvu-layout-holo #mvu-unified-mount .hero-row span,
-body.mvu-layout-holo #mvu-unified-mount .mini-box span,
-body.mvu-layout-holo #mvu-unified-mount .archive-core-tile strong,
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-line span {
-  min-width: 0 !important;
-  color: var(--mvu-hud-text) !important;
-  font-size: var(--mvu-font-sm, 12px) !important;
-  line-height: 1.34 !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-line span {
-  display: block !important;
-  min-height: 1.34em !important;
-  max-height: 3.9em !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  scrollbar-width: none !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mini-box span {
-  display: block !important;
-  min-height: 1.34em !important;
-  max-height: 1.34em !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .terminal-home-line span::-webkit-scrollbar,
-body.mvu-layout-holo #mvu-unified-mount .mini-box span::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage .clickable {
+  cursor: pointer;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .module-foot {
@@ -12316,16 +12074,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-spirit-empty-compact em {
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.35 !important;
   font-style: normal !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-card .strip-name {
-  min-width: 0 !important;
-  color: var(--mvu-hud-text) !important;
-  font-size: var(--mvu-font-base, 13px) !important;
-  line-height: 1.25 !important;
-  font-weight: 600 !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .rings.dual-grid,
@@ -14069,37 +13817,6 @@ body.mvu-layout-holo #mvu-unified-mount .terminal-quest-item span {
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 800 !important;
   text-align: right !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--world > [data-holo-slot] .simple-list,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--terminal > [data-holo-slot] .simple-list {
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow-y: auto !important;
-  padding-right: 0 !important;
-  scrollbar-width: none !important;
-}
-
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-holo-dashboard--world
-  > [data-holo-slot]
-  .simple-list::-webkit-scrollbar,
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-holo-dashboard--terminal
-  > [data-holo-slot]
-  .simple-list::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--org > [data-holo-slot] .simple-list {
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-  padding-right: 0 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-detail-stage {
@@ -22946,16 +22663,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .archive-core-tile i
   box-shadow: 0 0 12px currentColor !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .mini-box,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .mvu-unified-row,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .simple-row,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .hero-row,
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .archive-core-tile {
-  background: rgba(255, 255, 255, 0.035) !important;
-  border-color: color-mix(in srgb, var(--mvu-holo-high) 8%, transparent) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-map-stage {
   min-height: 0 !important;
 }
@@ -23752,8 +23459,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
 
   body.mvu-layout-holo #mvu-unified-mount .world-hud-console,
   body.mvu-layout-holo #mvu-unified-mount .org-console-panel,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--world > [data-holo-slot] .simple-list,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--org > [data-holo-slot] .simple-list,
   body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--map .mvu-map-node-panel,
   body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--map .mvu-map-node-action-list,
   body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--map .mvu-map-stock-list,

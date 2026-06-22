@@ -11190,7 +11190,7 @@
         node =>
           node instanceof Element &&
           node.isConnected &&
-          toText(node.getAttribute('data-unified-preview'), '').trim() === key,
+          toText(node.getAttribute('data-holo-preview'), '').trim() === key,
       ) || null
     );
   }
@@ -41244,15 +41244,25 @@ ${播报文本}
   function syncBattleReturnEntries(snapshot, isActive) {
     if (!isActive) {
       removeBattleReturnEntries();
+      document.querySelectorAll('#mvu-unified-mount .mvu-holo-fragment--battle').forEach(node => {
+        node.removeAttribute('data-mvu-battle-return');
+        node.classList.remove('is-live');
+        node.textContent = '战斗';
+        node.onclick = null;
+      });
       return;
     }
     const summary = getBattleInlineSummary(snapshot);
-    const unifiedActionGrid = document.querySelector('#mvu-unified-mount .mvu-unified-action-grid');
-    ensureBattleReturnEntry(
-      unifiedActionGrid,
-      'mvu-unified-action-btn mvu-unified-grid-btn mvu-battle-return-entry',
-      `<span>${htmlEscape(summary.title)}</span><small>${htmlEscape(summary.meta)}</small>`,
-    );
+    document.querySelectorAll('#mvu-unified-mount .mvu-holo-fragment--battle').forEach(node => {
+      node.setAttribute('data-mvu-battle-return', '1');
+      node.classList.add('is-live');
+      node.textContent = summary.roundText || summary.title || '战斗';
+      node.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openBattleInlineFromReturnEntry();
+      };
+    });
   }
 
   function scheduleBattleReturnEntrySync(snapshot, isActive) {
@@ -41274,7 +41284,7 @@ ${播报文本}
     if (
       当前宿主 &&
       统一宿主 &&
-      toText(统一宿主.dataset.unifiedPreview, '').trim() === BATTLE_INLINE_PREVIEW_KEY
+      toText(统一宿主.dataset.holoPreview, '').trim() === BATTLE_INLINE_PREVIEW_KEY
     ) {
       return Promise.resolve(当前宿主);
     }
@@ -45467,12 +45477,12 @@ ${toText(combatData.战斗意图, '点到为止')}
       统一挂载.contains(触发源)
     );
     if (来自统一状态栏) {
-      const 来自统一详情页 = !!触发源.closest('[data-unified-detail-host]');
+      const 来自全息详情页 = !!触发源.closest('[data-holo-detail-host]');
       打开统一内嵌详情(targetKey, {
         ...options,
         triggerEl: 触发源,
         preserveMapDispatchContext: true,
-        replace: !来自统一详情页,
+        replace: !来自全息详情页,
       });
       return;
     }
@@ -45579,11 +45589,11 @@ ${toText(combatData.战斗意图, '点到为止')}
   function wrapArchiveRedesignBody(html, options = {}) {
     const previewKey = toText(options.previewKey, '');
     if (options.unifiedMode) {
-      return `<div class="archive-redesign-root mvu-holo-detail-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
+      return `<div class="archive-redesign-root mvu-holo-detail-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
           ${html || ''}
         </div>`;
     }
-    return `<div class="archive-redesign-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
+    return `<div class="archive-redesign-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
         ${html || ''}
       </div>`;
   }
@@ -45632,13 +45642,13 @@ ${toText(combatData.战斗意图, '点到为止')}
         if (bridgeHost instanceof Element && bridgeHost.isConnected) return bridgeHost;
       }
     } catch (err) {}
-    const host = document.querySelector('#mvu-unified-mount [data-unified-detail-host]');
+    const host = document.querySelector('#mvu-unified-mount [data-holo-detail-host]');
     return host instanceof Element && host.isConnected ? host : null;
   }
 
   function getDomUnifiedPreviewKey() {
     const host = getUnifiedInlineHost();
-    return host ? toText(host.dataset.unifiedPreview, '').trim() : '';
+    return host ? toText(host.dataset.holoPreview, '').trim() : '';
   }
 
   function getEffectiveUnifiedPreviewKey() {
@@ -45655,14 +45665,14 @@ ${toText(combatData.战斗意图, '点到为止')}
     const host = getUnifiedInlineHost();
     return !!(
       host &&
-      toText(host.dataset.unifiedPreview, '') &&
+      toText(host.dataset.holoPreview, '') &&
       document.body &&
       document.body.classList.contains('mvu-layout-holo')
     );
   }
 
   function syncUnifiedTitleLongPress(previewKey) {
-    const title = document.querySelector('#mvu-unified-mount .mvu-unified-detail-title');
+    const title = document.querySelector('#mvu-unified-mount .mvu-holo-path.is-detail span');
     if (!title) return;
     title.classList.remove('nsfw-trigger-title');
     title.removeAttribute('data-longpress');
@@ -45699,12 +45709,12 @@ ${toText(combatData.战斗意图, '点到为止')}
     同步AI维护标题入口('');
     if (!host) return;
     host.innerHTML = '';
-    delete host.dataset.unifiedPreview;
+    delete host.dataset.holoPreview;
   }
 
   function wrapUnifiedInlineBody(html, options = {}) {
     const previewKey = toText(options.previewKey, '');
-    return `<div class="mvu-holo-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
+    return `<div class="mvu-holo-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
         <div class="mvu-holo-detail-scroll">
           ${html || ''}
         </div>
@@ -45810,10 +45820,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     syncModalTitleLongPress('', false);
 
     const shouldResetScroll =
-      lastRenderedUnifiedPreviewKey !== targetKey || toText(host.dataset.unifiedPreview, '') !== targetKey;
+      lastRenderedUnifiedPreviewKey !== targetKey || toText(host.dataset.holoPreview, '') !== targetKey;
     currentUnifiedPreviewKey = targetKey;
     lastRenderedUnifiedPreviewKey = targetKey;
-    host.dataset.unifiedPreview = targetKey;
+    host.dataset.holoPreview = targetKey;
     bindUnifiedDetailDelegation(host);
 
     const setHostMarkup = (html, onMount = null) => {
@@ -46133,11 +46143,11 @@ ${toText(combatData.战斗意图, '点到为止')}
       统一挂载 &&
       统一挂载.contains(预览入口)
     ) {
-      const 来自统一详情页 = !!预览入口.closest('[data-unified-detail-host]');
+      const 来自全息详情页 = !!预览入口.closest('[data-holo-detail-host]');
       return 打开统一内嵌详情(预览键, {
         triggerEl: 预览入口,
         preserveMapDispatchContext: true,
-        replace: !来自统一详情页,
+        replace: !来自全息详情页,
       });
     }
     const 弹窗参数 = {
@@ -48120,11 +48130,11 @@ ${toText(combatData.战斗意图, '点到为止')}
       event.stopPropagation();
       clearFloatingHoverCard(trigger);
       if (trigger.closest('#mvu-unified-mount')) {
-        const 来自统一详情页 = !!trigger.closest('[data-unified-detail-host]');
+        const 来自全息详情页 = !!trigger.closest('[data-holo-detail-host]');
         tryOpenUnifiedInlineDetail(预览键, {
           triggerEl: trigger,
           preserveMapDispatchContext: true,
-          replace: !来自统一详情页,
+          replace: !来自全息详情页,
         });
         return;
       }

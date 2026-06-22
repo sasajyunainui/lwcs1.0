@@ -558,8 +558,8 @@ const DesktopUnifiedLayout = {
                 </div>
               </section>
               </template>
-              <section v-else class="mvu-holo-detail-page" :data-unified-detail-preview="detailState.previewKey">
-                <div ref="detailHostRef" class="mvu-holo-detail-stage" data-unified-detail-host></div>
+              <section v-else class="mvu-holo-detail-page" :data-holo-detail-preview="detailState.previewKey">
+                <div ref="detailHostRef" class="mvu-holo-detail-stage" data-holo-detail-host></div>
               </section>
             </div>
           </section>
@@ -757,11 +757,11 @@ const DesktopUnifiedLayout = {
     const 标记待渲染详情 = 预览键 => {
       const 详情宿主 = detailHostRef.value;
       if (!(详情宿主 instanceof HTMLElement) || !详情宿主.isConnected) return;
-      const 当前预览键 = String(详情宿主.dataset.unifiedPreview || '').trim();
+      const 当前预览键 = String(详情宿主.dataset.holoPreview || '').trim();
       const 目标预览键 = String(预览键 || '').trim();
       if (!目标预览键 || 当前预览键 === 目标预览键) return;
       详情宿主.innerHTML = '';
-      delete 详情宿主.dataset.unifiedPreview;
+      delete 详情宿主.dataset.holoPreview;
     };
     const requestUnifiedDetailRender = (options = {}) => {
       const nextPreviewKey = String(detailState.previewKey || '').trim();
@@ -782,7 +782,7 @@ const DesktopUnifiedLayout = {
             closeUnifiedDetail({ force: true });
             return;
           }
-          const 已渲染预览键 = String(host.dataset.unifiedPreview || '').trim();
+          const 已渲染预览键 = String(host.dataset.holoPreview || '').trim();
           if (detailState.previewKey === nextPreviewKey && 已渲染预览键 !== nextPreviewKey) {
             if (重试次数 < 8) {
               window.setTimeout(
