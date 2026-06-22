@@ -1,4 +1,4 @@
-﻿const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vue;
+const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vue;
 
 const TAB_ITEMS = [
   {
@@ -198,39 +198,12 @@ const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__M
   returnScrollTop: 0
 }));
 const 全息星轨状态 = window.__MVU_HOLO_STATUS_STATE__ || (window.__MVU_HOLO_STATUS_STATE__ = reactive({
-  主题: 读取全息星轨主题(),
-  星仪: '激活',
-  主框架状态: 'narrative',
-  态势: 'safe',
-  战斗: '休止',
-  转场: 'idle',
-  环境标签: [],
-  生命比例: 0,
-  魂力比例: 0,
-  生命缩放: 0,
-  魂力缩放: 0,
-  生命文本: '--',
-  魂力文本: '--',
-  透镜可见: false,
-  透镜目标: '',
-  透镜标签: '',
-  透镜左: '50%',
-  透镜上: '50%',
-  透镜位移X: '0px',
-  透镜位移Y: '0px'
+  主题: 读取全息星轨主题()
 }));
 mvuTabState.current = normalizeTabId(mvuTabState.current);
 if (!Array.isArray(mvuUnifiedDetailState.stack)) mvuUnifiedDetailState.stack = [];
 mvuUnifiedDetailState.returnTab = normalizeTabId(mvuUnifiedDetailState.returnTab || mvuTabState.current);
 全息星轨状态.主题 = 规范化全息星轨主题(全息星轨状态.主题);
-全息星轨状态.星仪 = 全息星轨状态.星仪 === '休眠' ? '休眠' : '激活';
-全息星轨状态.主框架状态 = ['narrative', 'combat', 'shifting'].includes(全息星轨状态.主框架状态) ? 全息星轨状态.主框架状态 : 'narrative';
-全息星轨状态.态势 = ['safe', '暗流', '领域', 'combat'].includes(全息星轨状态.态势) ? 全息星轨状态.态势 : 'safe';
-全息星轨状态.战斗 = 全息星轨状态.战斗 === '进行中' ? '进行中' : '休止';
-全息星轨状态.转场 = 全息星轨状态.转场 === 'lens-shift' ? 'lens-shift' : 'idle';
-全息星轨状态.生命缩放 = Number.isFinite(Number(全息星轨状态.生命缩放)) ? Math.max(0, Math.min(1, Number(全息星轨状态.生命缩放))) : 0;
-全息星轨状态.魂力缩放 = Number.isFinite(Number(全息星轨状态.魂力缩放)) ? Math.max(0, Math.min(1, Number(全息星轨状态.魂力缩放))) : 0;
-if (!Array.isArray(全息星轨状态.环境标签)) 全息星轨状态.环境标签 = [];
 
 function syncUnifiedMountPlacement() {
   if (window.__MVU_UNIFIED_ANCHOR_MANAGER__ && typeof window.__MVU_UNIFIED_ANCHOR_MANAGER__.scheduleRelocate === 'function') {
@@ -466,35 +439,39 @@ function createUnifiedAnchorManager(options = {}) {
 
 const DesktopUnifiedLayout = {
   template: `
-    <div class="mvu-holo-shell mvu-root">
+    <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
       <section
-        class="mvu-holo-frame"
+        class="mvu-unified-frame"
         :class="{ 'is-detail': detailState.isOpen }"
         :data-holo-theme="全息星轨状态.主题"
-        :data-holo-orbit="全息星轨状态.星仪"
-        :data-orbit-mode="全息星轨状态.星仪"
-        :data-holo-tab="tabState.current"
-        :data-holo-state="全息星轨框架状态"
-        :data-holo-alert="全息星轨状态.态势"
-        :data-holo-battle="全息星轨状态.战斗"
-        :data-holo-transition="全息星轨状态.转场"
+        :data-unified-tab="tabState.current"
       >
-        <div
-          v-if="全息星轨状态.透镜可见"
-          class="mvu-holo-lens-clone"
-          :data-target="全息星轨状态.透镜目标"
-          :style="全息星轨透镜样式"
-          aria-hidden="true"
-        ><span>{{ 全息星轨状态.透镜标签 }}</span><i></i></div>
-        <header class="mvu-holo-topbar">
-          <div class="mvu-holo-topbar-left">
-            <span class="mvu-holo-system-badge">ID</span>
-            <div class="mvu-holo-topbar-copy">
-              <b data-holo-identity>-- // SYS_ON</b>
-              <span>{{ detailState.isOpen ? 详情路径标题 : 全息星轨路径标题 }}</span>
+        <header class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen }">
+          <div class="mvu-unified-toolbar-main">
+            <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
+              <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
+              <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
+            </div>
+            <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
+              <div class="mvu-unified-top-status" data-unified-top-status="panel">
+                <span class="mvu-unified-system-badge">ID</span>
+                <b data-holo-identity>{{ 统一路径标题 }}</b>
+              </div>
+              <nav class="mvu-unified-tab-row" aria-label="状态栏页面">
+                <button
+                  v-for="标签 in tabs"
+                  :key="'unified-tab-' + 标签.id"
+                  type="button"
+                  class="mvu-tab-btn mvu-unified-tab-btn"
+                  :class="{ active: tabState.current === 标签.id }"
+                  :data-target="标签.id"
+                  :aria-pressed="tabState.current === 标签.id ? 'true' : 'false'"
+                  @click="setTab(标签.id)"
+                ><span class="mvu-unified-tab-icon" v-html="标签.icon"></span><span>{{ 标签.label }}</span></button>
+              </nav>
             </div>
           </div>
-          <div class="mvu-holo-topbar-right" aria-label="主题切换">
+          <div class="mvu-unified-theme-row" aria-label="主题切换">
             <button
               v-for="主题 in 全息星轨主题"
               :key="'holo-theme-' + 主题.名称"
@@ -506,111 +483,64 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
 
-        <section class="mvu-holo-layout">
-          <aside class="mvu-holo-orbit-zone">
-            <div class="mvu-holo-orbit">
-              <div class="mvu-holo-ring mvu-holo-ring--outer"></div>
-              <div class="mvu-holo-ring mvu-holo-ring--middle"></div>
-              <div class="mvu-holo-ring mvu-holo-ring--inner"></div>
-              <div class="mvu-holo-seek-ring" aria-hidden="true"></div>
-              <div class="mvu-holo-combat-ring" aria-hidden="true">
-                <i class="mvu-holo-combat-ring--hp" :style="全息星轨生命环样式"><span>HP {{ 全息星轨状态.生命文本 }}</span></i>
-                <i class="mvu-holo-combat-ring--mp" :style="全息星轨魂力环样式"><span>MP {{ 全息星轨状态.魂力文本 }}</span></i>
+        <div v-show="!detailState.isOpen" class="mvu-unified-page-stack">
+          <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
+            <section class="mvu-unified-section mvu-unified-section--dashboard">
+              <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-unified-card="spirit-summary" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-unified-card="ring-matrix" data-unified-surface="panel"></div>
               </div>
-              <button
-                v-for="标签 in tabs"
-                :key="'holo-node-' + 标签.id"
-                type="button"
-                class="mvu-holo-node"
-                :class="'mvu-holo-node--' + 标签.id.replace('page-', '')"
-                :data-target="标签.id"
-                :aria-pressed="tabState.current === 标签.id ? 'true' : 'false'"
-                @click="setTab(标签.id, $event)"
-              ><span>{{ 标签.label }}</span><i></i></button>
-              <button type="button" class="mvu-holo-core clickable" data-preview="近期安排" data-detail-mode="embed">
-                <span data-holo-core-time>--:--</span>
-                <em data-holo-core-calendar>斗罗历</em>
-              </button>
-              <div class="mvu-holo-context-tags" :class="{ 'is-empty': !全息星轨状态.环境标签.length }" data-holo-context-tags>
-                <button
-                  v-for="(标签, 序号) in 全息星轨状态.环境标签"
-                  :key="'holo-context-' + 序号 + '-' + 标签.文本"
-                  type="button"
-                  class="mvu-holo-context-tag"
-                  :data-tone="标签.色调 || 'info'"
-                  :title="标签.说明 || 标签.文本"
-                ><span>{{ 标签.文本 }}</span></button>
-              </div>
-            </div>
-            <div class="mvu-holo-readout">
-              <span><b>波形</b><i data-holo-wave>正常</i></span>
-              <span><b>终端</b><i data-holo-terminal>SYS_TERMINAL_RDY</i></span>
-            </div>
-          </aside>
-
-          <div class="mvu-holo-beam" aria-hidden="true">
-            <span class="mvu-holo-beam-main"></span>
-            <span class="mvu-holo-beam-sub"></span>
-          </div>
-
-          <section class="mvu-holo-projection">
-            <div class="mvu-holo-projection-inner">
-              <div class="mvu-holo-path" :class="{ 'is-detail': detailState.isOpen }" data-ai-maintenance-title-target="panel">
-                <button v-show="detailState.isOpen" type="button" class="mvu-holo-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
-                <span>{{ detailState.isOpen ? 详情路径标题 : 全息星轨路径标题 }}</span>
-              </div>
-              <div class="mvu-holo-exposure-overlay" aria-hidden="true"></div>
-              <div class="mvu-holo-scanline" aria-hidden="true"></div>
-              <template v-if="!detailState.isOpen">
-              <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
-                <div class="mvu-holo-dashboard mvu-holo-dashboard--archive">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-holo-slot="archive-core"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-holo-slot="spirit-summary"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-holo-slot="armory"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-holo-slot="vault"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-holo-slot="social"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-holo-slot="ring-matrix"></div>
-                </div>
-              </section>
-
-              <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-map' }" data-target="page-map">
-                <div class="mvu-holo-dashboard mvu-holo-dashboard--map">
-                  <div class="mvu-holo-map-stage mvu-holo-scaffold mvu-holo-slot-card" data-mvu-map-stage="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-holo-slot="map-current"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="map-locals"></div>
-                </div>
-              </section>
-
-              <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-world' }" data-target="page-world">
-                <div class="mvu-holo-dashboard mvu-holo-dashboard--world">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured" data-holo-slot="world-hero"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-holo-slot="world-timeline"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-holo-slot="world-bestiary"></div>
-                </div>
-              </section>
-
-              <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-org' }" data-target="page-org">
-                <div class="mvu-holo-dashboard mvu-holo-dashboard--org">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-holo-slot="org-hero"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-holo-slot="org-faction"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-holo-slot="org-node"></div>
-                </div>
-              </section>
-
-              <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal">
-                <div class="mvu-holo-dashboard mvu-holo-dashboard--terminal">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-holo-slot="terminal-hero"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-holo-slot="terminal-intel"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-holo-slot="terminal-profession"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="任务界面" data-detail-mode="embed" data-holo-slot="terminal-quest"></div>
-                </div>
-              </section>
-              </template>
-              <section v-else class="mvu-holo-detail-page" :data-holo-detail-preview="detailState.previewKey">
-                <div ref="detailHostRef" class="mvu-holo-detail-stage" data-holo-detail-host></div>
-              </section>
-            </div>
+            </section>
           </section>
+
+          <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-map' }" data-target="page-map">
+            <section class="mvu-unified-section mvu-unified-section--dashboard">
+              <div class="mvu-unified-dashboard mvu-unified-dashboard--map">
+                <div class="mvu-unified-map-stage mvu-unified-card" data-mvu-map-stage="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-unified-card="map-current" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card" data-unified-card="map-locals" data-unified-surface="panel"></div>
+              </div>
+            </section>
+          </section>
+
+          <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-world' }" data-target="page-world">
+            <section class="mvu-unified-section mvu-unified-section--dashboard">
+              <div class="mvu-unified-dashboard mvu-unified-dashboard--world">
+                <div class="mvu-unified-card mvu-unified-card--featured" data-unified-card="world-hero" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-unified-card="world-timeline" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="world-bestiary" data-unified-surface="panel"></div>
+              </div>
+            </section>
+          </section>
+
+          <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-org' }" data-target="page-org">
+            <section class="mvu-unified-section mvu-unified-section--dashboard">
+              <div class="mvu-unified-dashboard mvu-unified-dashboard--org">
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-unified-card="org-hero" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-unified-card="org-faction" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-unified-card="org-node" data-unified-surface="panel"></div>
+              </div>
+            </section>
+          </section>
+
+          <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal">
+            <section class="mvu-unified-section mvu-unified-section--dashboard">
+              <div class="mvu-unified-dashboard mvu-unified-dashboard--terminal">
+                <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-unified-card="terminal-hero" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-unified-card="terminal-profession" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="panel"></div>
+              </div>
+            </section>
+          </section>
+        </div>
+
+        <section v-show="detailState.isOpen" class="mvu-unified-detail-page" :data-unified-detail-preview="detailState.previewKey">
+          <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
         </section>
       </section>
     </div>
@@ -621,22 +551,6 @@ const DesktopUnifiedLayout = {
     const detailState = mvuUnifiedDetailState;
     const 当前全息星轨状态 = 全息星轨状态;
     const 上次详情标题 = ref('详情');
-    let 透镜转场计时器 = 0;
-    const 全息星轨框架状态 = computed(() => 当前全息星轨状态.转场 === 'lens-shift' ? 'shifting' : 当前全息星轨状态.主框架状态);
-    const 全息星轨透镜样式 = computed(() => ({
-      left: 当前全息星轨状态.透镜左 || '50%',
-      top: 当前全息星轨状态.透镜上 || '50%',
-      '--mvu-holo-lens-dx': 当前全息星轨状态.透镜位移X || '0px',
-      '--mvu-holo-lens-dy': 当前全息星轨状态.透镜位移Y || '0px',
-    }));
-    const 全息星轨生命环样式 = computed(() => ({
-      '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.生命比例 || 0)))}%`,
-      '--mvu-holo-combat-ratio': String(Math.max(0, Math.min(1, Number(当前全息星轨状态.生命缩放 || 0)))),
-    }));
-    const 全息星轨魂力环样式 = computed(() => ({
-      '--mvu-holo-combat-value': `${Math.max(0, Math.min(100, Number(当前全息星轨状态.魂力比例 || 0)))}%`,
-      '--mvu-holo-combat-ratio': String(Math.max(0, Math.min(1, Number(当前全息星轨状态.魂力缩放 || 0)))),
-    }));
     const 读取当前详情标题 = () => {
       const 预览键 = String(detailState.previewKey || '').trim();
       const 默认标题 = activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '详情';
@@ -658,63 +572,15 @@ const DesktopUnifiedLayout = {
       if (页面标题 && 标题 && 页面标题 !== 标题) return `${页面标题} · ${标题}`;
       return 标题 || 页面标题 || '详情';
     });
-    const 全息星轨路径标题 = computed(() => {
+    const 统一路径标题 = computed(() => {
       const 标题 = String(activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '档案').trim();
-      return `${标题} ▰▱▱ 概览`;
+      return `${标题} / 概览`;
     });
     let removeDetailWheelBridge = null;
     const 清理顶层浮窗 = () => {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
         try { window.__MVU_CLEAR_FLOATING_HOVER__(); } catch (err) {}
       }
-    };
-    const 清理维度透镜转场 = () => {
-      if (透镜转场计时器) {
-        window.clearTimeout(透镜转场计时器);
-        透镜转场计时器 = 0;
-      }
-      当前全息星轨状态.转场 = 'idle';
-      当前全息星轨状态.透镜可见 = false;
-      当前全息星轨状态.透镜目标 = '';
-      当前全息星轨状态.透镜标签 = '';
-    };
-    const 启动维度透镜转场 = (tabId, event = null) => {
-      清理维度透镜转场();
-      const 框架 = document.querySelector('#mvu-unified-mount .mvu-holo-frame');
-      const 安全Tab选择器 = typeof CSS !== 'undefined' && CSS && typeof CSS.escape === 'function' ? CSS.escape(tabId) : tabId;
-      const 触发节点 = event && event.currentTarget instanceof HTMLElement
-        ? event.currentTarget
-        : 框架 && 框架.querySelector(`.mvu-holo-node[data-target="${安全Tab选择器}"]`);
-      const 投影幕 = 框架 ? 框架.querySelector('.mvu-holo-projection') : null;
-      const 标签 = TAB_ITEMS.find(条目 => 条目.id === normalizeTabId(tabId));
-      当前全息星轨状态.转场 = 'lens-shift';
-      当前全息星轨状态.透镜目标 = normalizeTabId(tabId);
-      当前全息星轨状态.透镜标签 = 标签 ? 标签.label : '维度';
-      if (框架 instanceof HTMLElement && 触发节点 instanceof HTMLElement) {
-        const 框架矩形 = 框架.getBoundingClientRect();
-        const 节点矩形 = 触发节点.getBoundingClientRect();
-        const 起点X = 节点矩形.left + 节点矩形.width / 2 - 框架矩形.left;
-        const 起点Y = 节点矩形.top + 节点矩形.height / 2 - 框架矩形.top;
-        let 目标X = 起点X + 74;
-        let 目标Y = 起点Y;
-        if (投影幕 instanceof HTMLElement) {
-          const 投影矩形 = 投影幕.getBoundingClientRect();
-          const 移动端 = 框架矩形.width <= 760;
-          目标X = 移动端 ? 框架矩形.width / 2 : 投影矩形.left - 框架矩形.left + Math.min(38, 投影矩形.width * 0.08);
-          目标Y = 移动端 ? 投影矩形.top - 框架矩形.top - 24 : 起点Y;
-        }
-        当前全息星轨状态.透镜左 = `${Math.round(起点X)}px`;
-        当前全息星轨状态.透镜上 = `${Math.round(起点Y)}px`;
-        当前全息星轨状态.透镜位移X = `${Math.round(目标X - 起点X)}px`;
-        当前全息星轨状态.透镜位移Y = `${Math.round(目标Y - 起点Y)}px`;
-      } else {
-        当前全息星轨状态.透镜左 = '50%';
-        当前全息星轨状态.透镜上 = '50%';
-        当前全息星轨状态.透镜位移X = '74px';
-        当前全息星轨状态.透镜位移Y = '0px';
-      }
-      当前全息星轨状态.透镜可见 = true;
-      透镜转场计时器 = window.setTimeout(清理维度透镜转场, 560);
     };
     const isVerticallyScrollable = element => {
       if (!(element instanceof HTMLElement)) return false;
@@ -772,7 +638,7 @@ const DesktopUnifiedLayout = {
       };
     };
     const getDetailScrollTarget = () => {
-      let current = detailHostRef.value ? detailHostRef.value.closest('.mvu-holo-frame') : document.getElementById('mvu-unified-mount');
+      let current = detailHostRef.value ? detailHostRef.value.closest('.mvu-unified-frame') : document.getElementById('mvu-unified-mount');
       while (current && current !== document.body) {
         try {
           const style = window.getComputedStyle(current);
@@ -795,28 +661,28 @@ const DesktopUnifiedLayout = {
         window.setTimeout(run, 0);
       }
     };
-    const 请求全息概览同步 = (原因 = '', 选项 = {}) => {
+    const 请求统一概览同步 = (原因 = '', 选项 = {}) => {
       if (detailState.isOpen && !选项.允许详情态) return;
       const 重试次数 = Number(选项.重试次数 || 0);
       scheduleFrameTask(() => {
         if (detailState.isOpen && !选项.允许详情态) return;
-        const 概览页 = document.querySelector('#mvu-unified-mount .mvu-holo-page.active');
-        const 概览槽位 = 概览页 ? 概览页.querySelector('[data-holo-slot], [data-mvu-map-stage]') : null;
+        const 概览页 = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
+        const 概览槽位 = 概览页 ? 概览页.querySelector('[data-unified-card], [data-mvu-map-stage]') : null;
         const 概览为空 = !!(概览页 && !(概览页.textContent || '').trim());
         const 可同步 = typeof window.__MVU_RERENDER_UNIFIED_CARDS__ === 'function';
         if (可同步 && 概览槽位) {
           try {
-            window.__MVU_RERENDER_UNIFIED_CARDS__({ force: true, source: 原因 || 'holo-shell' });
+            window.__MVU_RERENDER_UNIFIED_CARDS__({ force: true, source: 原因 || 'unified-shell' });
           } catch (错误) {}
         }
         if ((!可同步 || !概览槽位 || 概览为空) && 重试次数 < 8) {
-          window.setTimeout(() => 请求全息概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
+          window.setTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
         }
       });
     };
     const syncUnifiedFrameViewport = () => {
-      const frame = (detailHostRef.value && detailHostRef.value.closest('.mvu-holo-frame'))
-        || document.querySelector('#mvu-unified-mount .mvu-holo-frame');
+      const frame = (detailHostRef.value && detailHostRef.value.closest('.mvu-unified-frame'))
+        || document.querySelector('#mvu-unified-mount .mvu-unified-frame');
       if (!frame || !frame.isConnected) return;
       const 视口高度 = Number(window.innerHeight) || Number(document.documentElement.clientHeight) || 720;
       const 发送栏 = document.getElementById('send_form');
@@ -837,9 +703,9 @@ const DesktopUnifiedLayout = {
 
       const detailHost = detailHostRef.value;
       if (detailHost && detailHost.isConnected) {
-        const toolbar = frame.querySelector('.mvu-holo-topbar');
+        const toolbar = frame.querySelector('.mvu-unified-toolbar');
         const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 64;
-        const 详情页 = frame.querySelector('.mvu-holo-detail-page');
+        const 详情页 = frame.querySelector('.mvu-unified-detail-page');
         const 详情页高度 = 详情页 ? 详情页.getBoundingClientRect().height : 0;
         const 详情最大高度 = Math.max(420, 详情页高度 || (状态栏最大高度 - toolbarHeight - 18));
         detailHost.style.setProperty('--mvu-unified-detail-max-height', `${Math.floor(详情最大高度)}px`);
@@ -965,7 +831,7 @@ const DesktopUnifiedLayout = {
         try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
       }
       requestTabChange(normalizeTabId(detailState.returnTab));
-      请求全息概览同步('detail-close');
+      请求统一概览同步('detail-close');
       scheduleUnifiedFrameViewportSync();
       scheduleFrameTask(restoreReturnScroll);
     };
@@ -981,9 +847,8 @@ const DesktopUnifiedLayout = {
         }
       }, 40);
     };
-    const setUnifiedTab = (tabId, event = null) => {
+    const setUnifiedTab = tabId => {
       清理顶层浮窗();
-      启动维度透镜转场(tabId, event);
       if (detailState.isOpen) {
         detailState.isOpen = false;
         detailState.previewKey = '';
@@ -993,7 +858,7 @@ const DesktopUnifiedLayout = {
         }
       }
       requestTabChange(tabId);
-      请求全息概览同步('tab-change');
+      请求统一概览同步('tab-change');
       scheduleUnifiedFrameViewportSync();
     };
     const 设置全息星轨主题 = 主题 => {
@@ -1004,7 +869,7 @@ const DesktopUnifiedLayout = {
       scheduleUnifiedFrameViewportSync();
     };
     const handleDesktopUnifiedFocusRestore = () => {
-      if (!document.hidden) 请求全息概览同步('focus-restore');
+      if (!document.hidden) 请求统一概览同步('focus-restore');
     };
     onMounted(() => {
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
@@ -1015,7 +880,7 @@ const DesktopUnifiedLayout = {
       document.addEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       bindDetailWheelBridge();
       scheduleUnifiedFrameViewportSync();
-      请求全息概览同步('mounted');
+      请求统一概览同步('mounted');
       if (mvuTabState.current === 'page-map') {
         requestMapSurfaceSync();
       }
@@ -1024,7 +889,6 @@ const DesktopUnifiedLayout = {
       }
     });
     onUnmounted(() => {
-      清理维度透镜转场();
       window.removeEventListener('resize', handleDesktopUnifiedResize);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
@@ -1040,7 +904,7 @@ const DesktopUnifiedLayout = {
     });
     watch(() => mvuTabState.current, () => {
       if (mvuTabState.current === 'page-map') requestMapSurfaceSync();
-      请求全息概览同步('tab-watch');
+      请求统一概览同步('tab-watch');
       scheduleUnifiedFrameViewportSync();
     });
     return {
@@ -1049,12 +913,8 @@ const DesktopUnifiedLayout = {
       closeUnifiedDetail,
       detailHostRef,
       detailState,
-      全息星轨路径标题,
+      统一路径标题,
       全息星轨状态: 当前全息星轨状态,
-      全息星轨框架状态,
-      全息星轨透镜样式,
-      全息星轨生命环样式,
-      全息星轨魂力环样式,
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,
       详情路径标题,
@@ -1064,13 +924,12 @@ const DesktopUnifiedLayout = {
     };
   }
 };
-
 const UnifiedLayoutRoot = {
   components: {
     DesktopUnifiedLayout
   },
   template: `
-    <div class="mvu-holo-layout-host">
+    <div class="mvu-unified-layout-host">
       <desktop-unified-layout></desktop-unified-layout>
     </div>
   `,

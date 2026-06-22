@@ -11227,7 +11227,7 @@
       return;
     }
     const 统一标题目标 = document.querySelector(
-      '#mvu-unified-mount .mvu-holo-path.is-detail[data-ai-maintenance-title-target="panel"]',
+      '#mvu-unified-mount .mvu-unified-detail-title',
     );
     if (统一标题目标) {
       统一标题目标.insertAdjacentHTML(
@@ -28893,7 +28893,7 @@
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
-    getLiveUiElements('#mvu-unified-mount [data-holo-slot="archive-core"] .mvu-holo-card-title').forEach(node => {
+    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-core"] .mvu-holo-card-title').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
@@ -31448,7 +31448,7 @@
   }
 
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
-    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'holo';
+    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
@@ -31468,7 +31468,7 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
-        preview: normalizedSurface === 'holo' ? '人物关系详细页' : '',
+        preview: '人物关系详细页',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('ring-matrix', 构建魂环矩阵入口卡(snapshot), {
@@ -31478,7 +31478,7 @@
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
-      ensureUnifiedSheepMapStage('holo');
+      ensureUnifiedSheepMapStage('panel');
       setUnifiedCardMarkup('map-hero', '', { enabled: false, surface: normalizedSurface });
       const 地图节点面板 = 读取地图模块星图节点面板(星图焦点态);
       setUnifiedCardMarkup(
@@ -31592,8 +31592,8 @@
     同步AI维护首页配置入口();
   }
 
-  function ensureUnifiedSheepMapStage(stage = 'holo') {
-    const stageKey = normalizeUnifiedSurfaceKey(stage) || 'holo';
+  function ensureUnifiedSheepMapStage(stage = 'panel') {
+    const stageKey = normalizeUnifiedSurfaceKey(stage) || 'panel';
     const selector = `#mvu-unified-mount [data-mvu-map-stage="${stageKey}"]`;
     getLiveUiElements(selector).forEach(node => {
       if (!(node instanceof Element)) return;
@@ -31638,7 +31638,7 @@
   }
 
   function setUnifiedCardMarkup(slot, html, options = {}) {
-    const selector = `#mvu-unified-mount [data-holo-slot="${slot}"]`;
+    const selector = `#mvu-unified-mount [data-unified-card="${slot}"][data-unified-surface="panel"]`;
     const preview = toText(options.preview, '');
     const hasMarkup = !!toText(html, '').trim();
     const enabled = options.enabled !== false && hasMarkup;
@@ -31666,155 +31666,20 @@
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, html));
   }
 
-  function 派生星仪态势等级(snapshot = null) {
-    if (!snapshot) return 'safe';
-    const 战斗数据 = deepGet(snapshot, 'rootData.world.战斗', {});
-    if (战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中) return 'combat';
-    const 战斗意图 = toText(战斗数据 && 战斗数据.战斗意图, '');
-    const 战斗环境 = toText(战斗数据 && 战斗数据.环境, '');
-    const 偏差值 = toNumber(deepGet(snapshot, 'rootData.world.偏差值', 0), 0);
-    const 森林敌意 = Math.max(0, Math.min(100, Number(((toNumber(snapshot.forestKilledAge, 0) / 1000000) * 100).toFixed(1))));
-    if (/领域|深渊|禁区|封锁|异常|极寒|暴风雪|毒|灾|崩/.test(战斗环境)) return '领域';
-    if (/必杀|重伤|压制|生擒/.test(战斗意图) || 偏差值 >= 40 || 森林敌意 >= 70) return '暗流';
-    if (偏差值 >= 10 || 森林敌意 >= 30) return '暗流';
-    return 'safe';
-  }
-
-  function 读取战斗资源环(snapshot = null) {
-    const 属性 = deepGet(snapshot, 'activeChar.属性', {});
-    const hpPair = typeof getDisplayHpPair === 'function'
-      ? getDisplayHpPair(属性)
-      : { hp: toNumber(deepGet(属性, 'HP', 0), 0), hpMax: Math.max(1, toNumber(deepGet(属性, 'HP上限', 0), 1)) };
-    const hp = Math.max(0, Math.min(100, ratioPercent(hpPair.hp, hpPair.hpMax)));
-    const 魂力当前 = toNumber(deepGet(属性, '魂力', 0), 0);
-    const 魂力上限 = Math.max(1, toNumber(deepGet(属性, '魂力上限', 1), 1));
-    const mp = Math.max(0, Math.min(100, ratioPercent(魂力当前, 魂力上限)));
-    return {
-      hp,
-      mp,
-      hpText: `${formatNumber(hpPair.hp)}/${formatNumber(hpPair.hpMax)}`,
-      mpText: `${formatNumber(魂力当前)}/${formatNumber(魂力上限)}`,
-    };
-  }
-
-  function 构建环境身份标签(snapshot = null) {
-    if (!snapshot) return [];
-    const 标签 = [];
-    const 主身份 = toText(deepGet(snapshot, 'activeChar.社交.主身份', ''), '').trim();
-    const 位置 = toText(deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc), '').trim();
-    const 战斗环境 = toText(deepGet(snapshot, 'rootData.world.战斗.环境', ''), '').trim();
-    const 受伤部位 = deepGet(snapshot, 'activeChar.状态.受伤部位', {});
-    const 复制效果 = deepGet(snapshot, 'activeChar.复制效果', {});
-    const 复制数量 = safeEntries(复制效果).length;
-    const 受伤数量 = safeEntries(受伤部位).length;
-    if (主身份 && !/^(无|未知|普通|平民|待补全|AI_TODO)/.test(主身份)) {
-      标签.push({ 文本: 主身份, 色调: '身份', 说明: '当前公开身份' });
-    }
-    if (战斗环境 && !/^(正常|无|空)$/.test(战斗环境)) {
-      标签.push({ 文本: 战斗环境, 色调: /领域|极寒|暴风雪|禁区|封锁|异常/.test(战斗环境) ? '领域' : '环境', 说明: '战斗环境' });
-    } else if (位置 && /极寒|暴风雪|禁区|秘境|遗迹|战场|升灵台|森林|危险|深渊/.test(位置)) {
-      标签.push({ 文本: 位置, 色调: '环境', 说明: '当前位置' });
-    }
-    if (受伤数量 > 0) {
-      标签.push({ 文本: `伤势 ${受伤数量}`, 色调: '警示', 说明: '受伤部位记录' });
-    }
-    if (复制数量 > 0) {
-      标签.push({ 文本: `复刻 ${复制数量}`, 色调: '回响', 说明: '复制效果' });
-    }
-    return 标签.slice(0, 3);
-  }
-
-  function 同步主框架状态(snapshot = null) {
-    const frameNodes = getLiveUiElements('#mvu-unified-mount .mvu-holo-frame');
-    const 状态对象 = window.__MVU_HOLO_STATUS_STATE__;
-    const 态势 = 派生星仪态势等级(snapshot);
-    const 战斗数据 = snapshot ? deepGet(snapshot, 'rootData.world.战斗', {}) : {};
-    const 资源环 = 读取战斗资源环(snapshot);
-    const 环境标签 = 构建环境身份标签(snapshot);
-    const 主框架状态 = 态势 === 'combat' ? 'combat' : 'narrative';
-    const 星仪状态 = '激活';
-    const 战斗状态 = 战斗数据 && typeof 战斗数据 === 'object' && 战斗数据.进行中 ? '进行中' : '休止';
-    const 角色标识 = snapshot
-      ? shortenText(
-          toText(
-            snapshot.activeName
-              || snapshot.activeCharName
-              || deepGet(snapshot, 'activeChar.姓名', deepGet(snapshot, 'activeChar.名称', '')),
-            'UNKNOWN',
-          ),
-          12,
-        )
-      : '--';
-    const 波形文本 = 主框架状态 === 'combat'
-      ? '战术展开'
-      : 态势 === '领域'
-        ? '领域扰动'
-        : 态势 === '暗流'
-          ? '暗流'
-          : '正常';
-    const 更新文本 = (选择器, 文本) => {
-      getLiveUiElements(`#mvu-unified-mount ${选择器}`).forEach(节点 => {
-        节点.textContent = 文本;
-      });
-    };
-    if (状态对象 && typeof 状态对象 === 'object') {
-      状态对象.主框架状态 = 主框架状态;
-      状态对象.态势 = 态势;
-      状态对象.战斗 = 战斗状态;
-      状态对象.生命比例 = 资源环.hp;
-      状态对象.魂力比例 = 资源环.mp;
-      状态对象.生命缩放 = 资源环.hp / 100;
-      状态对象.魂力缩放 = 资源环.mp / 100;
-      状态对象.生命文本 = 资源环.hpText;
-      状态对象.魂力文本 = 资源环.mpText;
-      状态对象.环境标签 = 环境标签;
-      状态对象.星仪 = 星仪状态;
-    }
-    frameNodes.forEach(frame => {
-      if (!(frame instanceof Element)) return;
-      frame.setAttribute('data-holo-state', 主框架状态 === 'combat' ? 'combat' : 主框架状态 === 'shifting' ? 'shifting' : 'narrative');
-      frame.setAttribute('data-holo-alert', 态势);
-      frame.setAttribute('data-holo-battle', 战斗状态);
-      frame.setAttribute('data-holo-orbit', 星仪状态);
-      frame.setAttribute('data-orbit-mode', 星仪状态);
-      frame.setAttribute('data-holo-transition', 状态对象 && 状态对象.转场 === 'lens-shift' ? 'lens-shift' : 'idle');
-    });
-    更新文本('[data-holo-core-time]', snapshot ? (() => {
-      const 世界时间 = getSnapshotWorldTimeText(snapshot);
-      const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
-      return 时间匹配 ? 时间匹配[1] : '--:--';
-    })() : '--:--');
-    更新文本('[data-holo-core-calendar]', snapshot ? (() => {
-      const 世界时间 = getSnapshotWorldTimeText(snapshot);
-      const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
-      return 时间匹配 ? 世界时间.slice(0, 时间匹配.index).trim() : 世界时间 || '斗罗历';
-    })() : '斗罗历');
-    更新文本('[data-holo-identity]', `${角色标识} // SYS_ON`);
-    更新文本('[data-holo-wave]', 波形文本);
-    更新文本('[data-holo-terminal]', 'SYS_TERMINAL_RDY');
-    更新文本('[data-holo-state-text]', 主框架状态 === 'combat' ? '战术' : '日常');
-    更新文本('[data-holo-battle-text]', 战斗状态);
-  }
-
   function 全息概览槽位已挂载() {
     const 统一挂载 = document.getElementById('mvu-unified-mount');
     return !!(
       统一挂载 &&
       统一挂载.isConnected &&
-      统一挂载.querySelector('[data-holo-slot], [data-mvu-map-stage="holo"]')
+      统一挂载.querySelector('[data-unified-card], [data-mvu-map-stage="panel"]')
     );
-  }
-
-  function 更新全息星轨读数(snapshot) {
-    同步主框架状态(snapshot);
   }
 
   function renderUnifiedCards(snapshot, precomputedSectionSignatures = null, previousSectionSignaturesOverride = null) {
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures =
       previousSectionSignaturesOverride || lastDashboardSectionRenderSignatures || Object.create(null);
-    更新全息星轨读数(snapshot);
-    renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'holo');
+    renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'panel');
   }
 
   function getFusionArchiveMeta(snapshot) {
@@ -32168,8 +32033,7 @@
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'holo', enabled: true });
     });
-    setUnifiedMapStageMarkup('holo', '');
-    更新全息星轨读数(null);
+    setUnifiedMapStageMarkup('panel', '');
   }
 
   function rerenderUnifiedCardsFromLive(options = {}) {
@@ -32195,7 +32059,7 @@
     if (!document.body || !document.body.classList.contains('mvu-layout-holo')) return;
     const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
     const canvases = scope.querySelectorAll(
-      '#mvu-unified-mount .mvu-holo-map-stage .map-canvas.map-canvas-large, #mvu-unified-mount .mvu-holo-detail-stage .map-canvas.map-canvas-large',
+      '#mvu-unified-mount .mvu-unified-map-stage .map-canvas.map-canvas-large, #mvu-unified-mount .mvu-holo-detail-stage .map-canvas.map-canvas-large',
     );
     const viewportHeight = Math.max(
       520,
@@ -32204,7 +32068,7 @@
     canvases.forEach(canvas => {
       if (!(canvas instanceof HTMLElement)) return;
       const isDetail = !!canvas.closest('.mvu-holo-detail-stage');
-      const 是概览星图 = !isDetail && !!canvas.closest('.mvu-holo-map-stage');
+      const 是概览星图 = !isDetail && !!canvas.closest('.mvu-unified-map-stage');
       if (是概览星图) {
         canvas.style.setProperty('height', '100%', 'important');
         canvas.style.setProperty('width', '100%', 'important');
@@ -32214,7 +32078,7 @@
         canvas.style.setProperty('flex-basis', 'auto', 'important');
         return;
       }
-      const 所属舞台 = canvas.closest('.mvu-holo-map-stage, .mvu-holo-detail-stage');
+      const 所属舞台 = canvas.closest('.mvu-unified-map-stage, .mvu-holo-detail-stage');
       const 舞台高度 =
         所属舞台 instanceof HTMLElement
           ? Math.round(所属舞台.getBoundingClientRect().height || 所属舞台.clientHeight || 0)
@@ -32296,7 +32160,7 @@
         body: `
             <div class="archive-modal-grid">
               <div class="archive-card full mvu-map-detail-card">
-                <div class="mvu-holo-map-stage mvu-archive-map-stage" data-mvu-map-stage="detail"></div>
+                <div class="mvu-unified-map-stage mvu-archive-map-stage" data-mvu-map-stage="detail"></div>
               </div>
             </div>
           `,
@@ -33305,7 +33169,7 @@
               if (node && node.parentNode) node.parentNode.removeChild(node);
             });
             const 标题容器 = currentUnifiedPreviewKey
-              ? document.querySelector('#mvu-unified-mount .mvu-holo-path.is-detail')
+              ? document.querySelector('#mvu-unified-mount .mvu-unified-detail-title')
               : document.querySelector('#detailModal .modal-title-wrap');
             if (!标题容器) return null;
             const 操作槽 = document.createElement('div');
@@ -45826,7 +45690,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function syncUnifiedTitleLongPress(previewKey) {
-    const title = document.querySelector('#mvu-unified-mount .mvu-holo-path.is-detail span');
+    const title = document.querySelector('#mvu-unified-mount .mvu-unified-detail-title');
     if (!title) return;
     title.classList.remove('nsfw-trigger-title');
     title.removeAttribute('data-longpress');
