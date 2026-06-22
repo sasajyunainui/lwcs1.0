@@ -447,6 +447,7 @@ const DesktopUnifiedLayout = {
         :class="{ 'is-detail': detailState.isOpen }"
         :data-holo-theme="全息星轨状态.主题"
         :data-holo-orbit="全息星轨状态.星仪"
+        :data-orbit-mode="全息星轨状态.星仪"
         :data-holo-tab="tabState.current"
       >
         <header class="mvu-holo-topbar">

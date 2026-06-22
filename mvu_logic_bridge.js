@@ -1285,9 +1285,11 @@
   }
 
   function buildEmptyRingLane(ringClass = 'ring-white', count = 10) {
-    return Array.from({ length: count })
-      .map(() => `<div class="ring ${ringClass} empty"></div>`)
-      .join('');
+    const 列表 = Array.from({ length: Math.max(1, Number(count) || 1) }).map(() => ({
+      empty: true,
+      ringClass,
+    }));
+    return 构建魂环阵列(列表, 'micro');
   }
 
   function buildArchiveSkeletonModal(previewKey) {
@@ -1682,7 +1684,7 @@
                     <div class="soul-terminal-head"><div class="soul-terminal-title"></div><div class="soul-terminal-tags"><span class="mvu-spirit-terminal-tag">[ 品质 ]</span><span class="mvu-spirit-terminal-tag">[ 状态 ]</span><span class="mvu-spirit-terminal-tag">[ 契合 ]</span></div></div>
                     <div class="soul-terminal-desc"></div>
                     <div class="soul-terminal-link"><span>↓</span><b>赋能魂环</b></div>
-                    <div class="soul-ring-terminal-row"><div class="rings soul-ring-lane">${buildEmptyRingLane(key === '第1武魂详细页' ? 'ring-white' : 'ring-gold')}</div><div class="soul-ring-terminal-body"></div></div>
+                    <div class="soul-ring-terminal-row"><div class="mvu-soul-ring-terminal-lane">${buildEmptyRingLane(key === '第1武魂详细页' ? 'ring-white' : 'ring-gold')}</div><div class="soul-ring-terminal-body"></div></div>
                   </div>
                 </div>
               </div>
@@ -1738,7 +1740,7 @@
                 { label: '第3层封印', state: '', className: 'locked' },
                 { label: '第4层封印', state: '', className: 'locked' },
               ])}</div>
-              <div class="archive-card full spirit-flow-card"><div class="archive-card-head"><div class="archive-card-title">金色魂环轨道</div></div><div class="orbit-track">${buildEmptyRingLane('ring-gold', 3)}</div></div>
+              <div class="archive-card full spirit-flow-card"><div class="archive-card-head"><div class="archive-card-title">金色魂环轨道</div></div>${buildEmptyRingLane('ring-gold', 3)}</div>
             </div>
           `,
       };
@@ -26582,6 +26584,130 @@
     return `<div class="ring-hover-card soul-ring-tooltip"><div class="ring-hover-title">${htmlEscape(魂环标题)}</div>${buildRingHoverMetaMarkup(ring)}${skills}</div>`;
   }
 
+  const 魂环颜色类映射 = Object.freeze({
+    white: 'color-white',
+    yellow: 'color-yellow',
+    purple: 'color-purple',
+    black: 'color-black',
+    red: 'color-red',
+    gold: 'color-gold',
+    orangegold: 'color-orange-gold',
+    whitegold: 'color-platinum',
+    silver: 'color-silver',
+    frostsilver: 'color-frost-silver',
+    moonwhite: 'color-moon-white',
+    iceblue: 'color-ice-blue',
+    starblue: 'color-star-blue',
+    cyan: 'color-cyan',
+    teal: 'color-sea-cyan',
+    jade: 'color-jasper',
+    emerald: 'color-emerald',
+    'green-gold': 'color-green-gold',
+    'blue-gold': 'color-blue-gold',
+    'purple-gold': 'color-purple-gold',
+    'scarlet-gold': 'color-red-gold',
+    'rose-gold': 'color-rose-gold',
+    'amber-gold': 'color-amber-gold',
+    'obsidian-gold': 'color-obsidian-gold',
+    aurora: 'color-aurora',
+    rainbow: 'color-prismatic',
+    crimson: 'color-crimson',
+  });
+
+  function 渲染魂环SVG(颜色令牌 = 'color-white', 是否虹彩 = false) {
+    const 底色 = 是否虹彩 || 颜色令牌 === 'color-prismatic' ? 'url(#rainbow)' : 'var(--c-base)';
+    let 主尖刺 = '';
+    for (let 角度 = 0; 角度 < 360; 角度 += 90) {
+      主尖刺 += `<use href="#spike-major" transform="rotate(${角度} 100 100)"/>`;
+    }
+    let 副尖刺 = '';
+    for (let 角度 = 0; 角度 < 360; 角度 += 15) {
+      if (角度 % 90 !== 0) 副尖刺 += `<use href="#spike-minor" transform="rotate(${角度} 100 100)"/>`;
+    }
+    let 内花纹 = '';
+    for (let 角度 = 0; 角度 < 360; 角度 += 45) {
+      内花纹 += `<use href="#fleur-inner" transform="rotate(${角度} 100 100)"/>`;
+    }
+    return `
+      <svg class="mvu-soul-ring-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff0000" />
+            <stop offset="25%" stop-color="#ffcc00" />
+            <stop offset="50%" stop-color="#00ffaa" />
+            <stop offset="75%" stop-color="#0088ff" />
+            <stop offset="100%" stop-color="#b000ff" />
+          </linearGradient>
+          <g id="spike-major">
+            <polygon points="100,2 108,22 100,35 92,22" fill="none" stroke="${底色}" stroke-width="1.5" stroke-linejoin="round"/>
+            <polygon points="100,6 103,22 100,32 97,22" fill="var(--c-acc)"/>
+          </g>
+          <g id="spike-minor">
+            <polygon points="100,18 103,28 100,35 97,28" fill="none" stroke="${底色}" stroke-width="1.5" stroke-linejoin="round"/>
+            <polygon points="100,20 101,28 100,33 99,28" fill="var(--c-acc)"/>
+          </g>
+          <g id="fleur-inner">
+            <polygon points="100,32 104,45 100,58 96,45" fill="var(--c-acc)"/>
+            <path d="M 100 35 Q 115 40 108 52 Q 104 46 100 42 Q 96 46 92 52 Q 85 40 100 35 Z" fill="none" stroke="${底色}" stroke-width="1.5"/>
+          </g>
+        </defs>
+        <g class="spin-cw">
+          <circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-band)" stroke-width="14" />
+          <circle cx="100" cy="100" r="59" fill="none" stroke="${底色}" stroke-width="1.5" opacity="0.8"/>
+          <circle cx="100" cy="100" r="73" fill="none" stroke="${底色}" stroke-width="1.5" opacity="0.8"/>
+          ${主尖刺}${副尖刺}${内花纹}
+        </g>
+        <g class="spin-ccw">
+          <circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-acc)" stroke-width="2" stroke-dasharray="2 4 8 4 3 10" opacity="1"/>
+        </g>
+      </svg>`;
+  }
+
+  function 映射魂环颜色令牌(魂环, fallbackClass = 'ring-white') {
+    const 安全魂环 = 魂环 && typeof 魂环 === 'object' ? 魂环 : {};
+    const 直取颜色 = getRingColorKey(安全魂环.colorValue || 安全魂环.colorText || '');
+    const 类名颜色 = toText(安全魂环.ringClass || fallbackClass, '')
+      .replace(/^ring-/, '')
+      .trim();
+    const 颜色键 = 直取颜色 || 类名颜色 || 'white';
+    return 魂环颜色类映射[颜色键] || 'color-white';
+  }
+
+  function 构建魂环节点(魂环, 序号, 总数, 选项 = {}) {
+    const 安全魂环 = 魂环 && typeof 魂环 === 'object' ? 魂环 : {};
+    const 颜色令牌 = 映射魂环颜色令牌(安全魂环, 选项.fallbackClass || 'ring-white');
+    const 是否虹彩 = 颜色令牌 === 'color-prismatic';
+    const 数量 = Math.max(1, Number(总数) || 1);
+    const 位置 = Math.max(0, Number(序号) || 0);
+    const 比例 = 数量 > 1 ? 位置 / (数量 - 1) : 0.5;
+    const 平面缩放 = 0.58 + 比例 * 1.22;
+    const 深度缩放 = 1.34 - 比例 * 0.74;
+    const 深度 = -80 + 比例 * 200;
+    const 透明度 = 0.78 + 比例 * 0.22;
+    const 样式 = [
+      `--ring-scale:${平面缩放.toFixed(3)}`,
+      `--ring-depth-scale:${深度缩放.toFixed(3)}`,
+      `--ring-z:${深度.toFixed(0)}px`,
+      `--ring-depth-opacity:${透明度.toFixed(2)}`,
+      `--ring-z-index:${数量 - 位置}`,
+      `--ring-index:${位置 + 1}`,
+      `--ring-total:${数量}`,
+    ].join(';');
+    return `<div class="mvu-soul-ring-slot ${颜色令牌}" tabindex="0" data-ring-index="${位置 + 1}" style="${样式}">${渲染魂环SVG(颜色令牌, 是否虹彩)}${buildRingHoverMarkup(安全魂环)}</div>`;
+  }
+
+  function 构建魂环阵列(魂环列表, 展示尺寸 = 'standard', 选项 = {}) {
+    const 有效魂环 = (Array.isArray(魂环列表) ? 魂环列表 : []).filter(魂环 => 魂环 && !魂环.empty);
+    if (!有效魂环.length) return 构建魂环空阵列(展示尺寸);
+    return `<div class="mvu-soul-ring-stage" data-ring-count="${有效魂环.length}">${有效魂环
+      .map((魂环, 序号) => 构建魂环节点(魂环, 序号, 有效魂环.length, 选项))
+      .join('')}</div>`;
+  }
+
+  function 构建魂环空阵列(展示尺寸 = 'standard') {
+    return `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--${escapeHtmlAttr(展示尺寸)} mvu-soul-ring-showcase--empty"><div class="mvu-soul-ring-empty-core"></div></div>`;
+  }
+
   function buildSpiritConfig(slotName, spiritData, previewKey, badgeText, badgeClass, spiritBasePath = [], 渲染快照 = null) {
     const spiritPath = Array.isArray(spiritBasePath) ? spiritBasePath : [];
     const soulEntries = 取武魂魂灵条目_桥接(spiritData);
@@ -36909,11 +37035,10 @@
         const 前摇值 = Math.max(0, toNumber(技能.前摇, 0));
         const 前摇文本 = 前摇值 > 0 ? formatNumber(前摇值) : '无';
         const 年限Html = 年限内容 || htmlEscape(toText(安全魂环.ageText, '未记录'));
+        const 魂环图形 = 构建魂环阵列([安全魂环], 'micro', { fallbackClass: 安全魂环.ringClass || 'ring-white' });
         return `
                           <div class="soul-ring-terminal-row">
-                            <div class="rings soul-ring-lane">
-                              <div class="ring ${安全魂环.ringClass || ''} interactive-ring">${htmlEscape(安全魂环.glyph || '')}${buildRingHoverMarkup(安全魂环)}</div>
-                            </div>
+                            <div class="mvu-soul-ring-terminal-lane"><div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--micro">${魂环图形}</div></div>
                             <div class="soul-ring-terminal-body">
                               <div class="soul-ring-terminal-title"><b>${htmlEscape(魂环编号)}</b><span>${htmlEscape(技能名)}</span></div>
                               <div class="soul-ring-terminal-meta">
@@ -37434,18 +37559,14 @@
                   ? `
                 <div class="archive-card full spirit-flow-card">
                   <div class="archive-card-head"><div class="archive-card-title">体力魂环轨道</div></div>
-                  <div class="orbit-track">
-                    ${血脉配置.魂环.map(ring => `<div class="ring ${ring.ringClass || 'ring-gold'} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
-                  </div>
+                  <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${构建魂环阵列(血脉配置.魂环, 'standard', { fallbackClass: 'ring-gold' })}</div>
                 </div>
               `
                   : !使用封印界面 && 血脉配置.魂环.length
                     ? `
                 <div class="archive-card full spirit-flow-card">
                   <div class="archive-card-head"><div class="archive-card-title">血脉魂环</div></div>
-                  <div class="orbit-track">
-                    ${血脉配置.魂环.map(ring => `<div class="ring ${ring.ringClass || 'ring-gold'} interactive-ring">${htmlEscape(ring.glyph)}${buildRingHoverMarkup(ring)}</div>`).join('')}
-                  </div>
+                  <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${构建魂环阵列(血脉配置.魂环, 'standard', { fallbackClass: 'ring-gold' })}</div>
                 </div>
               `
                     : ''
@@ -39520,31 +39641,31 @@
   function buildSpiritRingGrid(rings, fallbackClass = 'ring-white') {
     const normalized = [...(rings || [])].filter(ring => ring && !ring.empty && ring.glyph && ring.glyph !== '空');
     if (!normalized.length) return '';
-    return normalized
-      .slice(0, 10)
-      .map(ring => {
-        return `<div class="ring ${ring.ringClass || fallbackClass} interactive-ring">${ring.glyph}${buildRingHoverMarkup(ring)}</div>`;
-      })
-      .join('');
+    return 构建魂环阵列(normalized.slice(0, 10), 'standard', { fallbackClass });
   }
 
   function renderArchiveSpiritEntry(config, isPrimary = false) {
-    const head = isPrimary
-      ? `<div class="dual-side-top"><div class="strip-head"><div class="strip-title cyan">武魂档案</div></div><span class="badge ${config.badgeClass || 'cyan'}">${config.badge}</span></div>`
-      : `<div class="dual-side-top dual-side-top-right"><span class="badge ${config.badgeClass || 'gold'}">${config.badge}</span></div>`;
-
-    return `${head}<div class="strip-name">${config.name}</div><div class="rings dual-grid ${isPrimary ? 'primary-rings' : 'secondary-rings'}">${buildSpiritRingGrid(config.魂环, isPrimary ? 'ring-white' : 'ring-gold')}</div>`;
+    const 魂环数组 = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: isPrimary ? 'ring-white' : 'ring-gold' });
+    return `
+      <div class="mvu-holo-card-head">
+        <div class="mvu-holo-card-title">${isPrimary ? '武魂档案' : '第2武魂'}</div>
+        <span class="mvu-holo-card-badge ${config.badgeClass || (isPrimary ? 'cyan' : 'gold')}">${htmlEscape(config.badge || '')}</span>
+      </div>
+      <div class="mvu-holo-spirit-name">${htmlEscape(config.name || '')}</div>
+      <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${魂环数组}</div>
+    `;
   }
 
   function renderArchiveBloodlineEntry(config) {
     const 血脉摘要 = 构建血脉状态文本_桥接(config);
-    const 魂环Html = buildSpiritRingGrid(config.魂环, 'ring-gold');
+    const 魂环Html = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: 'ring-gold' });
     return `
-        <div class="dual-side-top dual-side-top-right">
-          <span class="badge ${config.badgeClass || 'gold'}">${config.badge}</span>
+        <div class="mvu-holo-card-head">
+          <div class="mvu-holo-card-title">血脉档案</div>
+          <span class="mvu-holo-card-badge ${config.badgeClass || 'gold'}">${htmlEscape(config.badge || '')}</span>
         </div>
-        <div class="strip-name">${config.name}</div>
-        ${魂环Html ? `<div class="rings dual-grid secondary-rings">${魂环Html}</div>` : `<div class="strip-desc">${htmlEscape(血脉摘要)}</div>`}
+        <div class="mvu-holo-spirit-name">${htmlEscape(config.name || '')}</div>
+        ${config.魂环 && config.魂环.length ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${魂环Html}</div>` : `<div class="mvu-holo-empty-note">${htmlEscape(血脉摘要)}</div>`}
       `;
   }
 
@@ -47889,7 +48010,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function getFloatingHoverTrigger(eventTarget) {
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
-    const trigger = eventTarget.closest('.interactive-ring');
+    const trigger = eventTarget.closest('.mvu-soul-ring-slot, .interactive-ring');
     if (!trigger) return null;
     if (!trigger.querySelector('.ring-hover-card, .relation-hover-card')) return null;
     return trigger;
@@ -47940,7 +48061,9 @@ ${toText(combatData.战斗意图, '点到为止')}
   function clearAllFloatingHoverCards() {
     cancelFloatingHoverClearTimer();
     cancelFloatingHoverAutoHideTimer();
-    document.querySelectorAll('.interactive-ring.mvu-hover-floating-active').forEach(clearFloatingHoverCard);
+    document
+      .querySelectorAll('.interactive-ring.mvu-hover-floating-active, .mvu-soul-ring-slot.mvu-hover-floating-active')
+      .forEach(clearFloatingHoverCard);
     移除顶层浮窗卡片();
     activeFloatingHoverTrigger = null;
   }
@@ -48326,7 +48449,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (
         target &&
         target.closest(
-          '.ring-hover-card.mvu-hover-card-floating, .relation-hover-card.mvu-hover-card-floating, .interactive-ring',
+          '.ring-hover-card.mvu-hover-card-floating, .relation-hover-card.mvu-hover-card-floating, .interactive-ring, .mvu-soul-ring-slot',
         )
       )
         return;

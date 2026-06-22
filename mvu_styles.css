@@ -11491,17 +11491,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive {
   gap: 4px !important;
   grid-template-areas:
     'core core core core core core social social social social social social'
-    'primary primary primary primary primary primary primary primary primary primary primary primary'
+    'primary primary primary primary primary primary secondary secondary secondary secondary secondary secondary'
     'armory armory armory armory armory armory vault vault vault vault vault vault';
   height: 100%;
   min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive:has([data-holo-slot='secondary-spirit']:not(.is-empty)) {
-  grid-template-areas:
-    'core core core core core core social social social social social social'
-    'primary primary primary primary primary primary secondary secondary secondary secondary secondary secondary'
-    'armory armory armory armory armory armory vault vault vault vault vault vault';
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='archive-core'] {
@@ -11518,18 +11511,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-hol
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='secondary-spirit'] {
   grid-area: secondary;
 }
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='primary-spirit'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='secondary-spirit'] {
+  overflow: visible !important;
+  z-index: 2;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='primary-spirit']:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='secondary-spirit']:hover {
+  z-index: 8;
+}
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='armory'] {
   grid-area: armory;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-holo-slot='vault'] {
   grid-area: vault;
-}
-
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-holo-dashboard--archive
-  > [data-holo-slot='secondary-spirit'].is-empty {
-  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .archive-core-grid {
@@ -21438,6 +21433,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame {
   --mvu-holo-panel: rgba(5, 12, 18, 0.72);
   --mvu-holo-panel-strong: rgba(7, 15, 22, 0.88);
   --mvu-holo-card: rgba(255, 255, 255, 0.045);
+  --mvu-holo-frame-texture:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--mvu-holo-main) 16%, transparent), transparent 28%),
+    radial-gradient(circle at 94% 88%, color-mix(in srgb, var(--mvu-holo-high) 8%, transparent), transparent 30%);
   --mvu-holo-text: rgba(240, 250, 252, 0.96);
   --mvu-holo-muted: rgba(183, 211, 222, 0.74);
   --mvu-holo-radius: 18px;
@@ -21462,9 +21460,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame {
   border: 1px solid var(--mvu-holo-line);
   border-radius: var(--mvu-holo-radius);
   background:
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--mvu-holo-main) 22%, transparent), transparent 28%),
-    repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--mvu-holo-main) 7%, transparent) 18px 19px),
-    linear-gradient(145deg, rgba(5, 12, 18, 0.86), color-mix(in srgb, #000 44%, var(--mvu-holo-sub)));
+    var(--mvu-holo-frame-texture),
+    linear-gradient(145deg, rgba(5, 12, 18, 0.84), color-mix(in srgb, #000 52%, var(--mvu-holo-sub)));
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.36),
     inset 0 20px 44px var(--mvu-holo-glow),
@@ -21485,6 +21482,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='炫世�
   --mvu-holo-radius: 4px;
   --mvu-holo-card-radius: 6px;
   --mvu-holo-beam: linear-gradient(90deg, #00ffcc, rgba(0, 255, 204, 0.46), transparent);
+  --mvu-holo-frame-texture:
+    repeating-linear-gradient(0deg, transparent 0 5px, rgba(0, 0, 0, 0.16) 5px 6px),
+    radial-gradient(circle at 12% 18%, rgba(0, 255, 204, 0.14), transparent 28%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='金龙王'] {
@@ -21498,6 +21498,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='金龙�
   --mvu-holo-radius: 0;
   --mvu-holo-card-radius: 4px;
   --mvu-holo-beam: linear-gradient(90deg, #ffd700, rgba(255, 51, 0, 0.58), transparent);
+  --mvu-holo-frame-texture:
+    radial-gradient(circle at 16% 24%, rgba(255, 215, 0, 0.13), transparent 28%),
+    radial-gradient(circle at 92% 88%, rgba(255, 51, 0, 0.12), transparent 30%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='银龙王'] {
@@ -21510,6 +21513,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='银龙�
   --mvu-holo-radius: 22px;
   --mvu-holo-card-radius: 18px;
   --mvu-holo-beam: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.86), rgba(224, 234, 255, 0.38), transparent);
+  --mvu-holo-frame-texture:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 34%, rgba(224, 234, 255, 0.06)),
+    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.12), transparent 22%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海蝶舞'] {
@@ -21527,6 +21533,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
     radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.12), transparent 20%),
     linear-gradient(135deg, rgba(0, 210, 255, 0.07), rgba(255, 126, 179, 0.055), rgba(255, 215, 0, 0.035)),
     rgba(5, 12, 18, 0.72);
+  --mvu-holo-frame-texture:
+    radial-gradient(ellipse at 18% 24%, rgba(255, 255, 255, 0.16), transparent 18%),
+    radial-gradient(ellipse at 72% 66%, rgba(0, 210, 255, 0.14), transparent 24%),
+    linear-gradient(135deg, rgba(0, 210, 255, 0.055), rgba(255, 126, 179, 0.05), rgba(255, 215, 0, 0.03));
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame::before {
@@ -22402,21 +22412,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive > [data-hol
   grid-area: vault;
 }
 
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-holo-dashboard--archive > [data-holo-slot='secondary-spirit'].is-empty {
-  display: none !important;
-}
-
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-holo-dashboard--archive:has([data-holo-slot='secondary-spirit'].is-empty) {
-  grid-template-areas:
-    'core core core social social social'
-    'primary primary primary primary primary primary'
-    'armory armory armory vault vault vault';
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--map {
   grid-template-columns: minmax(0, 1fr) clamp(250px, 28%, 320px);
   grid-template-rows: minmax(0, 1fr) minmax(126px, auto);
@@ -22683,7 +22678,44 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-empty-note {
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-spirit-card {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
   min-width: 0;
+  min-height: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-spirit-name {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mvu-holo-high);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 14px var(--mvu-holo-glow);
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-spirit-card > .mvu-soul-ring-showcase {
+  align-self: center;
+  min-height: 126px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-soul-ring-terminal-lane {
+  display: grid;
+  place-items: center;
+  flex: 0 0 64px;
+  min-width: 56px;
+  min-height: 52px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .soul-ring-terminal-row .mvu-soul-ring-showcase--micro {
+  --ring-stage-width: 54px;
+  --ring-stage-height: 48px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .archive-core-attrs strong,
@@ -22701,7 +22733,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .archive-core-status
   white-space: nowrap !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .strip-name,
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .mvu-holo-spirit-name,
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard .archive-core-profile-main span {
   min-width: 0 !important;
   overflow: hidden !important;
@@ -22907,18 +22939,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-frame[data-holo-theme='幻海�
     grid-template-rows: minmax(246px, 0.94fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
     grid-template-areas:
       'core social'
-      'primary primary'
+      'primary secondary'
       'armory vault';
     height: 100%;
     min-height: min(540px, calc(var(--mvu-hud-frame-height) - 140px));
     align-content: stretch;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-holo-dashboard--archive:has([data-holo-slot='secondary-spirit']:not(.is-empty)) {
-    grid-template-areas:
-      'core social'
-      'primary secondary'
-      'armory vault';
   }
 
   body.mvu-layout-holo #mvu-unified-mount .archive-core-grid {
