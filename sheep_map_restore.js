@@ -1483,7 +1483,7 @@
       gap: 10px !important;
     }
 
-    #page-map .map-layout > .map-side-stack {
+    #page-map .map-layout > .mvu-holo-map-side-stack {
       display: flex !important;
     }
 
@@ -2607,7 +2607,7 @@
       background: rgba(52,43,25,0.86);
     }
 
-    .map-side-card {
+    .mvu-holo-map-card {
       background: linear-gradient(180deg, rgba(8,16,24,0.88), rgba(11,21,31,0.78));
       border-color: rgba(165,188,208,0.10);
       box-shadow: 0 12px 28px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.03);
@@ -3332,7 +3332,7 @@
       cursor: default;
     }
 
-    .simple-row.actionable {
+    .mvu-holo-map-row.actionable {
       cursor: pointer;
       transition: all 0.2s;
       border-radius: 6px;
@@ -3342,19 +3342,19 @@
       border: 1px solid transparent;
     }
 
-    .simple-row.actionable:hover {
+    .mvu-holo-map-row.actionable:hover {
       background: rgba(255,255,255,0.06);
       border-color: rgba(255,255,255,0.1);
       color: #ffffff;
     }
 
-    .simple-row.actionable.active {
+    .mvu-holo-map-row.actionable.active {
       background: rgba(118,226,255,0.12);
       border-color: rgba(118,226,255,0.2);
       color: #76e2ff;
     }
 
-    .simple-row.actionable.disabled {
+    .mvu-holo-map-row.actionable.disabled {
       opacity: 0.4;
       cursor: default;
       opacity: 0.42;
@@ -3478,9 +3478,9 @@
             <span data-map-hover-terrain>地形：无</span>
           </div>
         </div>
-        <div class='mvu-simple-card map-side-card map-route-card map-left-route-card map-command-card'>
-          <div class='simple-head'>
-            <div class='simple-title'>行动</div>
+        <div class='mvu-holo-map-card map-route-card map-left-route-card map-command-card'>
+          <div class='mvu-holo-map-card-head'>
+            <div class='mvu-holo-map-card-title'>行动</div>
             <span class='map-side-badge gold' data-map-request-chip>停留中</span>
           </div>
           <div class='map-action-control-row'>
@@ -3523,27 +3523,27 @@
         </div>
       </div>
 
-      <div class='stack-3 map-side-stack'>
-        <div class='mvu-simple-card map-side-card'>
-          <div class='simple-head'>
-            <div class='simple-title' data-map-primary-panel-title>详细信息</div>
+      <div class='stack-3 mvu-holo-map-side-stack'>
+        <div class='mvu-holo-map-card'>
+          <div class='mvu-holo-map-card-head'>
+            <div class='mvu-holo-map-card-title' data-map-primary-panel-title>详细信息</div>
             <span class='map-side-badge' data-map-panel-mode-badge>跟随</span>
           </div>
           <div class='map-panel-mode-strip'>
             <button type='button' class='map-layer-pill map-panel-mode-btn current' data-map-panel-mode='follow'>跟随当前位置</button>
             <button type='button' class='map-layer-pill map-panel-mode-btn' data-map-panel-mode='selection'>查看选中节点</button>
           </div>
-          <div class='simple-list'>
-            <div class='simple-row'><b data-map-panel-primary-label>当前位置</b><span data-map-current-name>载入中 · --,--</span></div>
-            <div class='simple-row'><b>类别</b><span data-map-focus-type>无</span></div>
-            <div class='simple-row'><b>功能</b><span data-map-focus-faction>无</span></div>
-            <div class='simple-row'><b>可用</b><span data-map-focus-childmap>无</span></div>
+          <div class='mvu-holo-map-row-list'>
+            <div class='mvu-holo-map-row'><b data-map-panel-primary-label>当前位置</b><span data-map-current-name>载入中 · --,--</span></div>
+            <div class='mvu-holo-map-row'><b>类别</b><span data-map-focus-type>无</span></div>
+            <div class='mvu-holo-map-row'><b>功能</b><span data-map-focus-faction>无</span></div>
+            <div class='mvu-holo-map-row'><b>可用</b><span data-map-focus-childmap>无</span></div>
           </div>
         </div>
 
-        <div class='mvu-simple-card map-side-card'>
-          <div class='simple-head'>
-            <div class='simple-title' data-map-secondary-panel-title>人物</div>
+        <div class='mvu-holo-map-card'>
+          <div class='mvu-holo-map-card-head'>
+            <div class='mvu-holo-map-card-title' data-map-secondary-panel-title>人物</div>
             <span class='map-side-badge' data-map-secondary-panel-badge><span data-map-npc-count>0</span> 人</span>
           </div>
           <div class='map-npc-list' data-map-npc-list><div class='map-npc-empty'>点击当前节点后，在此浏览在场人物与可执行互动。</div></div>
@@ -5999,7 +5999,7 @@
   function refreshSplitMapPages() {
     const layoutSource = document.querySelector('#page-map .map-layout');
     const leftSource = document.querySelector('#page-map .map-layout > .map-hero-card');
-    const rightSource = document.querySelector('#page-map .map-layout > .map-side-stack');
+    const rightSource = document.querySelector('#page-map .map-layout > .mvu-holo-map-side-stack');
     let shellMutated = false;
 
     function resetMapBindingFlags(root) {
@@ -6024,7 +6024,7 @@
 
     function hasHydratedRightMap(page) {
       if (!page) return false;
-      return !!page.querySelector('.map-side-stack [data-map-current-name]');
+      return !!page.querySelector('.mvu-holo-map-side-stack [data-map-current-name]');
     }
 
     function hydrateMapShell(page, source, isReady) {
@@ -11097,7 +11097,7 @@ ${logMsg}
       const refreshSignature = buildMapRefreshSignature(snapshot, currentPreviewTrail);
       const shellMissing = !document.querySelector('#page-map .map-layout')
         || !document.querySelector(".split-left-page[data-target='page-map'] .map-hero-card")
-        || !document.querySelector(".split-right-page[data-target='page-map'] .map-side-stack");
+        || !document.querySelector(".split-right-page[data-target='page-map'] .mvu-holo-map-side-stack");
       window.__sheepMapSnapshot = snapshot;
       if (preserveSelection && !firstLoad && !shellMissing && mapState.lastRefreshSignature === refreshSignature) {
         mapState.snapshot = snapshot;
