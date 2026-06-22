@@ -28105,10 +28105,11 @@
     liveSnapshot = buildSnapshot(rootData);
     lastHeaderRenderSignature = buildHeaderRenderSignature(liveSnapshot);
     const nextDashboardSectionRenderSignatures = buildDashboardSectionRenderSignatures(liveSnapshot);
-    lastDashboardRenderSignature = buildDashboardRenderSignature(liveSnapshot, nextDashboardSectionRenderSignatures);
     lastDashboardSectionRenderSignatures = null;
     renderHeader(liveSnapshot);
-    renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures);
+    if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
+      lastDashboardRenderSignature = buildDashboardRenderSignature(liveSnapshot, nextDashboardSectionRenderSignatures);
+    }
     syncPrivateArchiveLongPressTargets(liveSnapshot);
     maybeAutoOpenPendingSoulRingPreview(liveSnapshot, { force: true });
 
@@ -31725,6 +31726,15 @@
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, html));
   }
 
+  function 全息概览槽位已挂载() {
+    const 统一挂载 = document.getElementById('mvu-unified-mount');
+    return !!(
+      统一挂载 &&
+      统一挂载.isConnected &&
+      统一挂载.querySelector('[data-holo-slot], [data-mvu-map-stage="holo"]')
+    );
+  }
+
   function 更新全息星轨读数(snapshot) {
     const 世界时间 = snapshot ? getSnapshotWorldTimeText(snapshot) : '时间未同步';
     const 时间匹配 = 世界时间.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
@@ -32128,6 +32138,7 @@
 
   function rerenderUnifiedCardsFromLive(options = {}) {
     const snapshot = liveSnapshot || lastRenderableSnapshot;
+    if (!全息概览槽位已挂载()) return false;
     if (!snapshot) {
       渲染统一空态卡片();
       return false;
@@ -32199,6 +32210,7 @@
   window.addEventListener('resize', () => scheduleUnifiedMapCanvasClamp());
 
   function renderLiveCards(snapshot, precomputedSectionSignatures = null) {
+    if (!全息概览槽位已挂载()) return false;
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures = lastDashboardSectionRenderSignatures || Object.create(null);
     renderUnifiedCards(snapshot, sectionSignatures, previousSectionSignatures);
@@ -32211,6 +32223,7 @@
     }
 
     lastDashboardSectionRenderSignatures = sectionSignatures;
+    return true;
   }
 
   function buildLiveArchiveModal(previewKey) {
@@ -39477,9 +39490,10 @@
       }
 
       if (需要渲染仪表盘) {
-        renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures);
-        lastDashboardRenderSignature = nextDashboardRenderSignature;
-        已写回真实卡片 = true;
+        if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
+          lastDashboardRenderSignature = nextDashboardRenderSignature;
+          已写回真实卡片 = true;
+        }
       }
       syncPrivateArchiveLongPressTargets(liveSnapshot);
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);

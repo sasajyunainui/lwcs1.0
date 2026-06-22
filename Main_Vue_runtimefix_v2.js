@@ -684,6 +684,25 @@ const DesktopUnifiedLayout = {
         window.setTimeout(run, 0);
       }
     };
+    const 请求全息概览同步 = (原因 = '', 选项 = {}) => {
+      if (detailState.isOpen && !选项.允许详情态) return;
+      const 重试次数 = Number(选项.重试次数 || 0);
+      scheduleFrameTask(() => {
+        if (detailState.isOpen && !选项.允许详情态) return;
+        const 概览页 = document.querySelector('#mvu-unified-mount .mvu-holo-page.active');
+        const 概览槽位 = 概览页 ? 概览页.querySelector('[data-holo-slot], [data-mvu-map-stage]') : null;
+        const 概览为空 = !!(概览页 && !(概览页.textContent || '').trim());
+        const 可同步 = typeof window.__MVU_RERENDER_UNIFIED_CARDS__ === 'function';
+        if (可同步 && 概览槽位) {
+          try {
+            window.__MVU_RERENDER_UNIFIED_CARDS__({ force: true, source: 原因 || 'holo-shell' });
+          } catch (错误) {}
+        }
+        if ((!可同步 || !概览槽位 || 概览为空) && 重试次数 < 8) {
+          window.setTimeout(() => 请求全息概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
+        }
+      });
+    };
     const syncUnifiedFrameViewport = () => {
       const frame = (detailHostRef.value && detailHostRef.value.closest('.mvu-holo-frame'))
         || document.querySelector('#mvu-unified-mount .mvu-holo-frame');
@@ -835,6 +854,7 @@ const DesktopUnifiedLayout = {
         try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
       }
       requestTabChange(normalizeTabId(detailState.returnTab));
+      请求全息概览同步('detail-close');
       scheduleUnifiedFrameViewportSync();
       scheduleFrameTask(restoreReturnScroll);
     };
@@ -861,6 +881,7 @@ const DesktopUnifiedLayout = {
         }
       }
       requestTabChange(tabId);
+      请求全息概览同步('tab-change');
       scheduleUnifiedFrameViewportSync();
     };
     const 设置全息星轨主题 = 主题 => {
@@ -873,13 +894,19 @@ const DesktopUnifiedLayout = {
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
     };
+    const handleDesktopUnifiedFocusRestore = () => {
+      if (!document.hidden) 请求全息概览同步('focus-restore');
+    };
     onMounted(() => {
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
       window.addEventListener('resize', handleDesktopUnifiedResize);
+      window.addEventListener('focus', handleDesktopUnifiedFocusRestore);
+      document.addEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       bindDetailWheelBridge();
       scheduleUnifiedFrameViewportSync();
+      请求全息概览同步('mounted');
       if (mvuTabState.current === 'page-map') {
         requestMapSurfaceSync();
       }
@@ -889,6 +916,8 @@ const DesktopUnifiedLayout = {
     });
     onUnmounted(() => {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
+      window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
+      document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       if (typeof removeDetailWheelBridge === 'function') {
         removeDetailWheelBridge();
         removeDetailWheelBridge = null;
@@ -901,6 +930,7 @@ const DesktopUnifiedLayout = {
     });
     watch(() => mvuTabState.current, () => {
       if (mvuTabState.current === 'page-map') requestMapSurfaceSync();
+      请求全息概览同步('tab-watch');
       scheduleUnifiedFrameViewportSync();
     });
     return {
