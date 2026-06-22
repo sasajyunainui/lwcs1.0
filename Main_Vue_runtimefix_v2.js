@@ -180,14 +180,14 @@ function resolveShellPreviewTitle(previewKey, fallback = '') {
 }
 
 const mvuLayoutState = window.__MVU_LAYOUT_STATE__ || (window.__MVU_LAYOUT_STATE__ = reactive({
-  effectiveMode: 'unified',
+  effectiveMode: 'holo',
   unifiedAnchorReady: false
 }));
 
 if (!('unifiedAnchorReady' in mvuLayoutState)) {
   mvuLayoutState.unifiedAnchorReady = false;
 }
-mvuLayoutState.effectiveMode = 'unified';
+mvuLayoutState.effectiveMode = 'holo';
 
 const mvuTabState = window.__MVU_TAB_STATE__ || (window.__MVU_TAB_STATE__ = reactive({ current: 读取统一标签存储() }));
 const mvuUnifiedDetailState = window.__MVU_UNIFIED_DETAIL_STATE__ || (window.__MVU_UNIFIED_DETAIL_STATE__ = reactive({
@@ -225,17 +225,18 @@ function applyLayoutBodyClasses() {
     unifiedMount.removeAttribute('data-mvu-booting');
   }
   body.classList.toggle('mvu-unified-mount-ready', !!mvuLayoutState.unifiedAnchorReady);
-  body.classList.remove('mvu-layout-split');
-  body.classList.toggle('mvu-layout-unified', true);
+  body.classList.remove('mvu-layout-split', 'mvu-layout-unified');
+  body.classList.toggle('mvu-layout-holo', true);
   body.classList.add('mvu-surface-panel');
   body.classList.remove(
     'mvu-layout-split',
+    'mvu-layout-unified',
     'mvu-layout-unified-locked'
   );
 }
 
 function syncLayoutMode() {
-  mvuLayoutState.effectiveMode = 'unified';
+  mvuLayoutState.effectiveMode = 'holo';
   applyLayoutBodyClasses();
   return mvuLayoutState.effectiveMode;
 }
@@ -925,7 +926,7 @@ const UnifiedLayoutRoot = {
     DesktopUnifiedLayout
   },
   template: `
-    <div class="mvu-unified-layout-host">
+    <div class="mvu-holo-layout-host">
       <desktop-unified-layout></desktop-unified-layout>
     </div>
   `,

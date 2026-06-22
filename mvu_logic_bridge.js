@@ -11406,10 +11406,10 @@
     const card =
       node && typeof node.closest === 'function'
         ? node.closest(
-            '.archive-card, .timeline-card, .intel-card, .relation-card, .archive-tile, .role-switch-tile, .dossier-row, .simple-row',
+            '.archive-card, .timeline-card, .intel-card, .relation-card, .archive-tile, .role-switch-tile, .dossier-row, .mvu-holo-row',
           )
         : null;
-    const titleNode = card ? card.querySelector('.archive-card-title, .simple-title, .role-switch-head b, b') : null;
+    const titleNode = card ? card.querySelector('.archive-card-title, .mvu-holo-card-title, .role-switch-head b, b') : null;
     const title = toText(titleNode ? titleNode.textContent : '', '')
       .replace(/\s+/g, ' ')
       .trim();
@@ -11444,7 +11444,7 @@
       const pathKey = 构建AI维护路径键(group.path);
       const keywords = group.keywords && group.keywords.length ? group.keywords : [group.label];
       const matched = cards.filter(card => {
-        const titleNode = card.querySelector('.archive-card-title, b, .simple-title, .role-switch-head');
+        const titleNode = card.querySelector('.archive-card-title, b, .mvu-holo-card-title, .role-switch-head');
         const titleText = toText(titleNode ? titleNode.textContent : card.textContent, '').trim();
         return keywords.some(keyword => keyword && titleText.includes(keyword));
       });
@@ -28149,20 +28149,17 @@
   }
 
   function 构建慢刷新骨架侧卡(标题 = '加载中') {
-    return `
-        <div class="simple-head"><div class="simple-title">${htmlEscape(toText(标题, '加载中'))}</div></div>
-        <div class="simple-list">
-          <div class="simple-row"><b>状态</b><span>加载中...</span></div>
-          <div class="simple-row"><b>数据</b><span>正在同步</span></div>
-        </div>
-      `;
+    return buildSimpleCard(toText(标题, '加载中'), null, [
+      { label: '状态', value: '加载中...' },
+      { label: '数据', value: '正在同步' },
+    ]);
   }
 
   function 应用慢刷新骨架卡片() {
-    setLiveHtml(
-      '[data-preview="试炼与情报"].terminal-side-card, [data-preview="试炼与情报"].mvu-simple-card, [data-preview="试炼与情报"].simple-card',
-      构建慢刷新骨架侧卡('试炼与情报'),
-    );
+    setUnifiedCardMarkup('terminal-intel', 构建慢刷新骨架侧卡('试炼与情报'), {
+      preview: '试炼与情报',
+      surface: 'holo',
+    });
   }
 
   function 设置慢刷新骨架状态(启用 = false, 选项 = {}) {
@@ -28769,7 +28766,7 @@
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
-    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-core"] .panel-title').forEach(node => {
+    getLiveUiElements('#mvu-unified-mount [data-holo-slot="archive-core"] .mvu-holo-card-title').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
@@ -29115,35 +29112,33 @@
     const 武器摘要 = toText(weapon.名称, '') || toText(weapon.类型, '') || '无';
     const 防具摘要 = toText(防具.名称 || 防具['名称'], '') || '无';
     return `
-        <div class="module-name">武装工坊</div>
-        <div class="module-grid armory-grid">
-          <div class="mini-box"><b>当前斗铠</b><span>${htmlEscape(armorSummary)}</span></div>
-          <div class="mini-box"><b>当前机甲</b><span>${htmlEscape(mechSummary)}</span></div>
-          <div class="mini-box"><b>武器</b><span>${htmlEscape(shortenText(武器摘要, 28))}</span></div>
-          <div class="mini-box"><b>防具</b><span>${htmlEscape(shortenText(防具摘要, 28))}</span></div>
-          <div class="mini-box"><b>装载魂骨</b><span>${htmlEscape(boneCount ? `${boneCount} 块` : '0 块')}</span></div>
-        </div>
-        <div class="module-foot">
-          <span class="foot-hint">${htmlEscape(副职业等级摘要)}</span>
+        ${构建全息卡头('武装工坊')}
+        ${构建全息指标网格([
+          { label: '当前斗铠', value: armorSummary },
+          { label: '当前机甲', value: mechSummary },
+          { label: '武器', value: shortenText(武器摘要, 28) },
+          { label: '防具', value: shortenText(防具摘要, 28) },
+          { label: '装载魂骨', value: boneCount ? `${boneCount} 块` : '0 块' },
+        ])}
+        <div class="mvu-holo-card-foot">
+          <span>${htmlEscape(副职业等级摘要)}</span>
         </div>
       `;
   }
 
   function buildVaultCard(snapshot) {
     const wealth = deepGet(snapshot, 'activeChar.财富', {});
-    const activeCharKey =
-      resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '当前角色');
     return `
-        <div class="module-name">储物仓库</div>
-        <div class="module-grid vault-grid">
-          <div class="mini-box"><b>物品种类</b><span>${htmlEscape(String(snapshot.inventoryEntries.length || 0))}</span></div>
-          <div class="mini-box"><b>联邦币</b><span>${htmlEscape(formatNumber(wealth.联邦币))}</span></div>
-          <div class="mini-box"><b>星罗币</b><span>${htmlEscape(formatNumber(wealth.星罗币))}</span></div>
-          <div class="mini-box"><b>唐门积分</b><span>${htmlEscape(formatNumber(wealth.唐门积分))}</span></div>
-        </div>
-        <div class="module-foot">
-          <span class="foot-hint">记录物资总计 ${htmlEscape(String(snapshot.inventoryEntries.length || 0))} 件</span>
-          <span class="enter-chip gold-chip">学院/战功：${htmlEscape(formatNumber(wealth.学院积分))} / ${htmlEscape(formatNumber(wealth.战功))}</span>
+        ${构建全息卡头('储物仓库')}
+        ${构建全息指标网格([
+          { label: '物品种类', value: `${snapshot.inventoryEntries.length || 0}` },
+          { label: '联邦币', value: formatNumber(wealth.联邦币) },
+          { label: '星罗币', value: formatNumber(wealth.星罗币) },
+          { label: '唐门积分', value: formatNumber(wealth.唐门积分) },
+        ])}
+        <div class="mvu-holo-card-foot">
+          <span>物资 ${htmlEscape(String(snapshot.inventoryEntries.length || 0))} 件</span>
+          <span>学院/战功：${htmlEscape(formatNumber(wealth.学院积分))} / ${htmlEscape(formatNumber(wealth.战功))}</span>
         </div>
       `;
   }
@@ -29174,15 +29169,15 @@
     const primary = !!(options && options.primary);
     if (!config) {
       return `
-          <div class="mvu-unified-card-head">
-            <div class="mvu-unified-card-title">${primary ? '主武魂' : '第2武魂'}</div>
+          <div class="mvu-holo-card-head">
+            <div class="mvu-holo-card-title">${primary ? '主武魂' : '第2武魂'}</div>
           </div>
-          <div class="mvu-unified-empty-note mvu-unified-empty-note--compact">${primary ? '当前未加载武魂信息。' : '未启用第2武魂或血脉'}</div>
+          <div class="mvu-holo-empty-note">${primary ? '当前未加载武魂信息。' : '未启用第2武魂或血脉'}</div>
         `;
     }
     const content =
       config.kind === 'bloodline' ? renderArchiveBloodlineEntry(config) : renderArchiveSpiritEntry(config, primary);
-    return `<div class="mvu-unified-spirit-card">${content}</div>`;
+    return `<div class="mvu-holo-spirit-card">${content}</div>`;
   }
 
   function 构建统一副轨摘要卡(snapshot) {
@@ -30215,7 +30210,7 @@
     if (!snapshot) {
       return `
         <div class="world-hud-console world-hud-console--empty">
-          <div class="module-name">时空中枢</div>
+          ${构建全息卡头('时空中枢')}
           <div class="world-hud-clock">待同步</div>
           <div class="world-alert-stack">
             <div class="world-alert-bar world-alert-bar--forest is-muted"><em>森林仇恨值 --</em><span><b style="width:0%;"></b></span></div>
@@ -30248,7 +30243,7 @@
     const 时间时刻 = 时间匹配 ? 时间匹配[2].trim() : '';
     return `
       <div class="world-hud-console">
-        <div class="module-name">时空中枢</div>
+        ${构建全息卡头('时空中枢')}
         <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime || '等待同步')}">
           <span class="world-hud-date">${htmlEscape(时间日期 || '等待同步')}</span>
           ${时间时刻 ? `<span class="world-hud-time">${htmlEscape(时间时刻)}</span>` : ''}
@@ -30366,7 +30361,7 @@
   function 构建世界编年史卡(snapshot) {
     const 编年史条目 = 构建世界编年史条目(snapshot || {});
     return `
-        <div class="simple-head"><div class="simple-title">全息编年史</div></div>
+        ${构建全息卡头('全息编年史')}
         <div class="hologram-chronicle-track">${makeTimelineStack(编年史条目)}</div>
       `;
   }
@@ -30375,7 +30370,7 @@
     if (!snapshot) {
       return `
         <div class="org-console-panel">
-          <div class="module-name">势力矩阵</div>
+          ${构建全息卡头('势力矩阵')}
           <div class="org-console-grid">
             <div class="org-kv-row"><b>当前阵营</b><span>待同步</span></div>
             <div class="org-kv-row"><b>本地掌控</b><span>--</span></div>
@@ -30395,7 +30390,7 @@
     const 关系摘要 = buildFactionRelationSummary(primaryFactionEntry.data || {}, 3) || '暂无';
     return `
       <div class="org-console-panel">
-        <div class="module-name">势力矩阵</div>
+        ${构建全息卡头('势力矩阵')}
         <div class="org-console-grid">
           <div class="org-kv-row"><b>当前阵营</b><span>${htmlEscape(`${当前阵营名} / ${当前阵营身份}`)}</span></div>
           <div class="org-kv-row"><b>本地掌控</b><span>${htmlEscape(shortenText(localFaction, 22))}</span></div>
@@ -30448,7 +30443,7 @@
     if (!snapshot) {
       return `
         <div class="terminal-console-panel">
-          <div class="terminal-console-head"><div class="module-name">世界线日志</div></div>
+          ${构建全息卡头('世界线日志')}
           <div class="terminal-home-log"><div class="terminal-home-line roll"><b>[待命]</b><span>等待同步</span></div></div>
         </div>
       `;
@@ -30461,7 +30456,7 @@
     return `
       <div class="terminal-console-panel">
         <div class="terminal-console-head">
-          <div class="module-name">世界线日志</div>
+          ${构建全息卡头('世界线日志')}
           <div class="terminal-home-metrics">
             <span><b>公开情报</b><strong>${htmlEscape(String(intelCount))}</strong></span>
             <span><b>任务</b><strong>${htmlEscape(String(snapshot.questRecordCount || 0))}</strong></span>
@@ -31502,14 +31497,11 @@
       });
       setUnifiedCardMarkup(
         'terminal-intel',
-        `
-            <div class="simple-head"><div class="simple-title">试炼与情报</div></div>
-            <div class="simple-list">
-              <div class="simple-row"><b>试炼状态</b><span>${htmlEscape(getTrialEntranceText(snapshot))}</span></div>
-              <div class="simple-row"><b>公开情报</b><span>${htmlEscape(`${(snapshot.unlockedKnowledges || []).length || 0} 条`)}</span></div>
-              <div class="simple-row"><b>最新记录</b><span>${htmlEscape(getLatestUnlockedIntelText(snapshot, 18, '暂无公开情报'))}</span></div>
-            </div>
-          `,
+        buildSimpleCard('试炼与情报', null, [
+          { label: '试炼状态', value: getTrialEntranceText(snapshot) },
+          { label: '公开情报', value: `${(snapshot.unlockedKnowledges || []).length || 0} 条` },
+          { label: '最新记录', value: getLatestUnlockedIntelText(snapshot, 18, '暂无公开情报') },
+        ]),
         { preview: '试炼与情报', surface: normalizedSurface },
       );
       setUnifiedCardMarkup(
@@ -31520,7 +31512,7 @@
       setUnifiedCardMarkup(
         'terminal-quest',
         `
-            <div class="simple-head"><div class="simple-title">任务界面</div></div>
+            ${构建全息卡头('任务界面')}
             <div class="terminal-quest-grid">
               <div class="terminal-quest-item"><b>我的任务</b><span>${htmlEscape(`${(snapshot.recordEntries || []).length} 项`)}</span></div>
               <div class="terminal-quest-item"><b>委托板</b><span>${htmlEscape(`${safeEntries(deepGet(snapshot, 'rootData.world.委托板', {})).length} 条`)}</span></div>
@@ -31846,15 +31838,41 @@
     return 预览键;
   }
 
+  function 构建全息卡头(标题, 标记 = null) {
+    const 标记类名 = toText(标记 && 标记.className, '').trim();
+    const 标记文本 = toText(标记 && 标记.text, '').trim();
+    return `
+        <div class="mvu-holo-card-head">
+          <div class="mvu-holo-card-title">${htmlEscape(标题)}</div>
+          ${标记文本 ? `<span class="mvu-holo-card-badge${标记类名 ? ` ${escapeHtmlAttr(标记类名)}` : ''}">${htmlEscape(标记文本)}</span>` : ''}
+        </div>
+      `;
+  }
+
+  function 构建全息行列表(行列表 = []) {
+    return `
+        <div class="mvu-holo-row-list">
+          ${(Array.isArray(行列表) ? 行列表 : [])
+            .map(行 => `<div class="mvu-holo-row"><b>${htmlEscape(行.label)}</b><span>${htmlEscape(行.value)}</span></div>`)
+            .join('')}
+        </div>
+      `;
+  }
+
+  function 构建全息指标网格(指标列表 = []) {
+    return `
+        <div class="mvu-holo-metric-grid">
+          ${(Array.isArray(指标列表) ? 指标列表 : [])
+            .map(指标 => `<div class="mvu-holo-metric"><b>${htmlEscape(指标.label)}</b><span>${htmlEscape(指标.value)}</span></div>`)
+            .join('')}
+        </div>
+      `;
+  }
+
   function buildSimpleCard(title, badge, rows) {
     return `
-        <div class="simple-head">
-          <div class="simple-title">${htmlEscape(title)}</div>
-          ${badge ? `<span class="map-side-badge ${badge.className || ''}">${htmlEscape(badge.text)}</span>` : ''}
-        </div>
-        <div class="simple-list">
-          ${rows.map(row => `<div class="simple-row"><b>${htmlEscape(row.label)}</b><span>${htmlEscape(row.value)}</span></div>`).join('')}
-        </div>
+        ${构建全息卡头(title, badge)}
+        ${构建全息行列表(rows)}
       `;
   }
 
@@ -31884,15 +31902,15 @@
 
     return `
         <div class="world-hud-console">
-          <div class="module-name">时空中枢</div>
+          ${构建全息卡头('时空中枢')}
           <div class="world-hud-clock" title="${escapeHtmlAttr(worldTime)}">
             <span class="world-hud-date">${htmlEscape(时间日期)}</span>
             ${时间时刻 ? `<span class="world-hud-time">${htmlEscape(时间时刻)}</span>` : ''}
           </div>
-          <div class="world-hud-meta-grid">
-            <span><b>世界偏差</b><strong>${htmlEscape(`${deviation} / ${偏差状态} / x${偏差倍率}`)}</strong></span>
-            <span><b>核心阶段</b><strong>${htmlEscape(shortenText(核心阶段, 34))}</strong></span>
-          </div>
+          ${构建全息指标网格([
+            { label: '世界偏差', value: `${deviation} / ${偏差状态} / x${偏差倍率}` },
+            { label: '核心阶段', value: shortenText(核心阶段, 34) },
+          ])}
           <div class="world-alert-stack">
             <div class="world-alert-bar world-alert-bar--forest ${森林样式}">
               <em>${htmlEscape(`森林仇恨值 ${forestRatio}% / ${forestStage}`)}</em>
@@ -31915,18 +31933,18 @@
     const 战力摘要 = `${toText(战力焦点.name, '未知')} · 极限 ${formatNumber(战力焦点.limit)} / 超级 ${formatNumber(战力焦点.super)} / 封号 ${formatNumber(战力焦点.title)}`;
     return `
         <div class="org-console-panel">
-          <div class="module-name">势力矩阵</div>
-          <div class="org-console-grid">
-            <div class="org-kv-row"><b>当前阵营</b><span>${htmlEscape(`${当前阵营名} / ${当前阵营身份}`)}</span></div>
-            <div class="org-kv-row"><b>本地掌控</b><span>${htmlEscape(本地掌控势力)}</span></div>
-            <div class="org-kv-row"><b>战力焦点</b><span>${htmlEscape(战力摘要)}</span></div>
-            <div class="org-kv-row"><b>关系摘要</b><span>${htmlEscape(relationSummary)}</span></div>
-          </div>
-          <div class="org-mini-metrics">
-            <span><b>势力</b><strong>${htmlEscape(String(snapshot.orgEntries.length || 0))}</strong></span>
-            <span><b>极限</b><strong>${htmlEscape(formatNumber(战力焦点.limit))}</strong></span>
-            <span><b>封号</b><strong>${htmlEscape(formatNumber(战力焦点.title))}</strong></span>
-          </div>
+          ${构建全息卡头('势力矩阵')}
+          ${构建全息行列表([
+            { label: '当前阵营', value: `${当前阵营名} / ${当前阵营身份}` },
+            { label: '本地掌控', value: 本地掌控势力 },
+            { label: '战力焦点', value: 战力摘要 },
+            { label: '关系摘要', value: relationSummary },
+          ])}
+          ${构建全息指标网格([
+            { label: '势力', value: String(snapshot.orgEntries.length || 0) },
+            { label: '极限', value: formatNumber(战力焦点.limit) },
+            { label: '封号', value: formatNumber(战力焦点.title) },
+          ])}
         </div>
       `;
   }
@@ -31938,17 +31956,15 @@
     const 副职业数量 = safeEntries(deepGet(snapshot, 'activeChar.副职业', {})).length;
     return `
         <div class="terminal-console-panel">
-          <div class="terminal-console-head">
-            <div class="module-name">世界线日志</div>
-            <div class="terminal-home-metrics">
-              <span><b>公开情报</b><strong>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))}</strong></span>
-              <span><b>任务</b><strong>${htmlEscape(String((snapshot.recordEntries || []).length))}</strong></span>
-              <span><b>日志</b><strong>${htmlEscape(latestBroadcast ? '1' : '0')}</strong></span>
-              <span><b>副职</b><strong>${htmlEscape(String(副职业数量 || 0))}</strong></span>
-            </div>
-          </div>
-          <div class="terminal-home-log">
-            <div class="terminal-home-line roll"><b>[世界线日志]</b><span>${htmlEscape(最近播报摘要)}</span></div>
+          ${构建全息卡头('世界线日志')}
+          ${构建全息指标网格([
+            { label: '公开情报', value: String((snapshot.unlockedKnowledges || []).length || 0) },
+            { label: '任务', value: String((snapshot.recordEntries || []).length) },
+            { label: '日志', value: latestBroadcast ? '1' : '0' },
+            { label: '副职', value: String(副职业数量 || 0) },
+          ])}
+          <div class="mvu-holo-terminal-flow">
+            <div class="mvu-holo-row"><b>世界线日志</b><span>${htmlEscape(最近播报摘要)}</span></div>
           </div>
         </div>
       `;
@@ -32003,10 +32019,10 @@
   window.__MVU_RERENDER_UNIFIED_CARDS__ = rerenderUnifiedCardsFromLive;
 
   function clampUnifiedMapCanvas(root = document) {
-    if (!document.body || !document.body.classList.contains('mvu-layout-unified')) return;
+    if (!document.body || !document.body.classList.contains('mvu-layout-holo')) return;
     const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
     const canvases = scope.querySelectorAll(
-      '#mvu-unified-mount .mvu-unified-map-stage .map-canvas.map-canvas-large, #mvu-unified-mount .mvu-unified-detail-host .map-canvas.map-canvas-large',
+      '#mvu-unified-mount .mvu-holo-map-stage .map-canvas.map-canvas-large, #mvu-unified-mount .mvu-holo-detail-stage .map-canvas.map-canvas-large',
     );
     const viewportHeight = Math.max(
       520,
@@ -32014,8 +32030,8 @@
     );
     canvases.forEach(canvas => {
       if (!(canvas instanceof HTMLElement)) return;
-      const isDetail = !!canvas.closest('.mvu-unified-detail-host');
-      const 是概览星图 = !isDetail && !!canvas.closest('.mvu-unified-map-stage');
+      const isDetail = !!canvas.closest('.mvu-holo-detail-stage');
+      const 是概览星图 = !isDetail && !!canvas.closest('.mvu-holo-map-stage');
       if (是概览星图) {
         canvas.style.setProperty('height', '100%', 'important');
         canvas.style.setProperty('width', '100%', 'important');
@@ -32025,7 +32041,7 @@
         canvas.style.setProperty('flex-basis', 'auto', 'important');
         return;
       }
-      const 所属舞台 = canvas.closest('.mvu-unified-map-stage, .mvu-unified-detail-host');
+      const 所属舞台 = canvas.closest('.mvu-holo-map-stage, .mvu-holo-detail-stage');
       const 舞台高度 =
         所属舞台 instanceof HTMLElement
           ? Math.round(所属舞台.getBoundingClientRect().height || 所属舞台.clientHeight || 0)
@@ -32057,136 +32073,17 @@
   window.addEventListener('resize', () => scheduleUnifiedMapCanvasClamp());
 
   function renderLiveCards(snapshot, precomputedSectionSignatures = null) {
-    const social = deepGet(snapshot, 'activeChar.社交', {});
-    const primaryFactionName = snapshot.primaryFaction ? snapshot.primaryFaction[0] : '无';
-    const primaryFactionRole = snapshot.primaryFaction
-      ? toText(deepGet(snapshot.primaryFaction[1], '身份', '无'), '无')
-      : '未加入';
-    const topRelationText = snapshot.topRelation
-      ? `${shortenText(snapshot.topRelation[0], 8)} / ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')} · ${toNumber(deepGet(snapshot.topRelation[1], '好感度', 0), 0)}`
-      : `${snapshot.relations.length} 条`;
-    const latestIntelText = getLatestUnlockedIntelText(snapshot, 12, '暂无');
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures = lastDashboardSectionRenderSignatures || Object.create(null);
     renderUnifiedCards(snapshot, sectionSignatures, previousSectionSignatures);
 
-    if (sectionSignatures.archive !== previousSectionSignatures.archive) {
-      setLiveHtml('[data-preview="生命图谱详细页"].mvu-panel.core-card', buildArchiveCoreCard(snapshot));
-      setLiveHtml('[data-preview="武装工坊详细页"].mvu-module-card', buildArmoryCard(snapshot));
-      setLiveHtml('[data-preview="储物仓库详细页"].mvu-module-card', buildVaultCard(snapshot));
-      renderSpiritStrips(snapshot);
+    if (sectionSignatures.map !== previousSectionSignatures.map && typeof window.__sheepMapResync === 'function') {
+      try {
+        window.__sheepMapResync({ center: false, syncVisual: false });
+      } catch (err) {}
+      scheduleUnifiedMapCanvasClamp();
     }
 
-    if (sectionSignatures.map !== previousSectionSignatures.map) {
-      if (typeof window.__sheepMapResync === 'function') {
-        try {
-          window.__sheepMapResync({ center: false, syncVisual: false });
-        } catch (err) {}
-        scheduleUnifiedMapCanvasClamp();
-      }
-    }
-
-    if (sectionSignatures.social !== previousSectionSignatures.social) {
-      setLiveText(
-        '.archive-social-card .social-chip[data-preview="社会档案详细页"] span',
-        `${toText(social.名望等级, toText(social.名望等级, '籍籍无名'))} / ${formatNumber(social.声望)}`,
-      );
-      setLiveText(
-        '.archive-social-card .social-chip[data-preview="所属势力详细页"] span',
-        `${shortenText(primaryFactionName, 8)} / ${shortenText(primaryFactionRole, 8)}`,
-      );
-      setLiveText('.archive-social-card .social-chip[data-preview="人物关系详细页"] span', topRelationText);
-      setLiveText(
-        '.archive-social-card .social-chip[data-preview="情报库详细页"] span',
-        `${snapshot.unlockedKnowledges.length} / ${latestIntelText}`,
-      );
-    }
-
-    if (sectionSignatures.world !== previousSectionSignatures.world) {
-      setLiveHtml('[data-preview="势力矩阵总览"].hero-card', buildOrgHeroCard(snapshot));
-      setLiveHtml(
-        '[data-preview="我的阵营详情"].mvu-simple-card',
-        buildSimpleCard('我的阵营权限', null, [
-          {
-            label: '权限级',
-            value: snapshot.势力[0] ? `Lv.${toText(deepGet(snapshot.势力[0][1], '权限级', 0), '0')}` : '未加入',
-          },
-          {
-            label: '当前职务',
-            value: snapshot.势力[0] ? toText(deepGet(snapshot.势力[0][1], '身份', '无'), '无') : '未加入',
-          },
-        ]),
-      );
-      setLiveHtml(
-        '[data-preview="本地据点详情"].mvu-simple-card',
-        buildSimpleCard('本地据点', null, [
-          { label: '掌控势力', value: toText(deepGet(snapshot, 'locationData.掌控势力', '未知'), '未知') },
-          {
-            label: '经济状况',
-            value: `${toText(deepGet(snapshot, 'locationData.经济状况', '未知'), '未知')} / ${toText(deepGet(snapshot, 'locationData.守护军团', '守护军团未知'), '守护军团未知')}`,
-          },
-        ]),
-      );
-      setLiveHtml(
-        '[data-preview="怪物图鉴"].mvu-simple-card, [data-preview="怪物图鉴"].simple-card',
-        构建怪物图鉴摘要卡(snapshot),
-      );
-    }
-
-    if (sectionSignatures.terminal !== previousSectionSignatures.terminal) {
-      setLiveHtml('#mvu-unified-mount .terminal-hero-card', buildTerminalHeroCard(snapshot));
-      setLiveHtml(
-        '[data-preview="试炼与情报"].terminal-side-card, [data-preview="试炼与情报"].mvu-simple-card, [data-preview="试炼与情报"].simple-card',
-        `
-        <div class="simple-head"><div class="simple-title">试炼与情报</div></div>
-        <div class="simple-list">
-          <div class="simple-row"><b>试炼入口</b><span>${htmlEscape(getTrialEntranceText(snapshot))}</span></div>
-          <div class="simple-row"><b>公开情报</b><span>${htmlEscape(`${(snapshot.unlockedKnowledges || []).length || 0} 条`)}</span></div>
-          <div class="simple-row"><b>最新记录</b><span>${htmlEscape(getLatestUnlockedIntelText(snapshot, 18, '暂无公开情报'))}</span></div>
-        </div>
-      `,
-      );
-      setLiveHtml(
-        '[data-preview="副职业工坊"].terminal-side-card, [data-preview="副职业工坊"].mvu-simple-card, [data-preview="副职业工坊"].simple-card',
-        构建副职业操作卡(snapshot),
-      );
-      const questRecords = (snapshot.recordEntries || []).filter(
-        ([, item]) =>
-          item &&
-          typeof item === 'object' &&
-          (Object.prototype.hasOwnProperty.call(item, '状态') ||
-            Object.prototype.hasOwnProperty.call(item, '当前进度') ||
-            Object.prototype.hasOwnProperty.call(item, '奖励币') ||
-            Object.prototype.hasOwnProperty.call(item, '奖励声望')),
-      );
-      const activeQuestEntry =
-        questRecords.find(
-          ([, item]) => !['已完成', '已放弃', '失败', '已失败'].includes(toText(item && item['状态'], '进行中')),
-        ) ||
-        questRecords[0] ||
-        null;
-      const activeQuestName = activeQuestEntry ? activeQuestEntry[0] : '';
-      const activeQuestState = activeQuestEntry
-        ? toText(activeQuestEntry[1] && activeQuestEntry[1]['状态'], '进行中')
-        : '暂无';
-      const questBoardEntries = safeEntries(deepGet(snapshot, 'rootData.world.委托板', {})).filter(
-        ([, item]) => item && typeof item === 'object',
-      );
-      const openBoardCount = questBoardEntries.filter(
-        ([, item]) => toText(item && item['状态'], '待接取') === '待接取',
-      ).length;
-      setLiveHtml(
-        '[data-preview="任务界面"].terminal-side-card, [data-preview="任务界面"].mvu-simple-card, [data-preview="任务界面"].simple-card',
-        `
-          <div class="simple-head"><div class="simple-title">任务界面</div></div>
-          <div class="terminal-quest-grid">
-            <div class="terminal-quest-item"><b>我的任务</b><span>${htmlEscape(questRecords.length ? `${questRecords.length} 项` : '暂无')}</span></div>
-            <div class="terminal-quest-item"><b>委托板</b><span>${htmlEscape(questBoardEntries.length ? `${questBoardEntries.length} 条` : '暂无')}</span></div>
-            <div class="terminal-quest-item terminal-quest-item--wide"><b>当前进度</b><span>${htmlEscape(toText(snapshot && snapshot.当前任务进度, '--'))}</span></div>
-          </div>
-        `,
-      );
-    }
     lastDashboardSectionRenderSignatures = sectionSignatures;
   }
 
@@ -32224,7 +32121,7 @@
         body: `
             <div class="archive-modal-grid">
               <div class="archive-card full mvu-map-detail-card">
-                <div class="mvu-unified-map-stage mvu-archive-map-stage" data-mvu-map-stage="detail"></div>
+                <div class="mvu-holo-map-stage mvu-archive-map-stage" data-mvu-map-stage="detail"></div>
               </div>
             </div>
           `,
@@ -45303,7 +45200,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   function 打开地图交易面板() {
     if (
       document.body &&
-      document.body.classList.contains('mvu-layout-unified') &&
+      document.body.classList.contains('mvu-layout-holo') &&
       typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function'
     ) {
       window.__MVU_OPEN_UNIFIED_PREVIEW__('交易网络', { preserveMapDispatchContext: true, replace: true });
@@ -45315,7 +45212,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   function 打开地图工坊面板() {
     if (
       document.body &&
-      document.body.classList.contains('mvu-layout-unified') &&
+      document.body.classList.contains('mvu-layout-holo') &&
       typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function'
     ) {
       window.__MVU_OPEN_UNIFIED_PREVIEW__('副职业工坊', { preserveMapDispatchContext: true, replace: true });
@@ -45682,12 +45579,8 @@ ${toText(combatData.战斗意图, '点到为止')}
   function wrapArchiveRedesignBody(html, options = {}) {
     const previewKey = toText(options.previewKey, '');
     if (options.unifiedMode) {
-      return `<div class="archive-redesign-root mvu-unified-modal-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
-          <div class="mvu-unified-sheet">
-            <div class="mvu-unified-sheet-scroll">
-              ${html || ''}
-            </div>
-          </div>
+      return `<div class="archive-redesign-root mvu-holo-detail-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
+          ${html || ''}
         </div>`;
     }
     return `<div class="archive-redesign-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
@@ -45723,7 +45616,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       delete currentModalPanel.dataset.modalDisplayMode;
     }
     if (currentModalBody) {
-      currentModalBody.classList.remove('vault-body', 'archive-redesign-body', 'mvu-unified-sheet-body');
+      currentModalBody.classList.remove('vault-body', 'archive-redesign-body');
     }
     if (currentDetailModal) {
       syncDetailModalHost(refs, { unifiedMode: false });
@@ -45764,7 +45657,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       host &&
       toText(host.dataset.unifiedPreview, '') &&
       document.body &&
-      document.body.classList.contains('mvu-layout-unified')
+      document.body.classList.contains('mvu-layout-holo')
     );
   }
 
@@ -45811,8 +45704,8 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function wrapUnifiedInlineBody(html, options = {}) {
     const previewKey = toText(options.previewKey, '');
-    return `<div class="mvu-unified-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
-        <div class="mvu-unified-detail-scroll">
+    return `<div class="mvu-holo-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-unified-preview="${escapeHtmlAttr(previewKey)}">
+        <div class="mvu-holo-detail-scroll">
           ${html || ''}
         </div>
       </div>`;
@@ -45997,7 +45890,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       modalPanel.classList.toggle('vault-mode', previewKey === '储物仓库详细页');
       modalBody.className =
         previewKey === '储物仓库详细页' ? 'modal-body archive-body vault-body' : 'modal-body archive-body';
-      if (unifiedMode) modalBody.classList.add('mvu-unified-sheet-body');
       if (modalLevel) modalLevel.textContent = '';
       if (modalPath) modalPath.textContent = '';
       modalTitle.textContent = liveArchive.title;
@@ -46058,7 +45950,6 @@ ${toText(combatData.战斗意图, '点到为止')}
         modalPanel.classList.add('archive-mode');
         modalPanel.classList.toggle('vault-mode', isVaultSkeleton);
         modalBody.className = isVaultSkeleton ? 'modal-body archive-body vault-body' : 'modal-body archive-body';
-        if (unifiedMode) modalBody.classList.add('mvu-unified-sheet-body');
         if (modalLevel) modalLevel.textContent = '';
         if (modalPath) modalPath.textContent = '';
         modalTitle.textContent = skeletonArchive.title;
@@ -46076,7 +45967,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       modalPanel.classList.add('archive-mode');
       modalPanel.classList.remove('vault-mode');
       modalBody.className = 'modal-body archive-body';
-      if (unifiedMode) modalBody.classList.add('mvu-unified-sheet-body');
       if (modalLevel) modalLevel.textContent = '';
       if (modalPath) modalPath.textContent = '';
       modalTitle.textContent = previewKey || '详细信息';
@@ -46098,7 +45988,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       modalPanel.classList.add('archive-mode');
       modalPanel.classList.toggle('vault-mode', isVaultModal);
       modalBody.className = isVaultModal ? 'modal-body archive-body vault-body' : 'modal-body archive-body';
-      if (unifiedMode) modalBody.classList.add('mvu-unified-sheet-body');
       if (modalLevel) modalLevel.textContent = '';
       if (modalPath) modalPath.textContent = '';
       modalTitle.textContent = view.title;
@@ -46116,7 +46005,6 @@ ${toText(combatData.战斗意图, '点到为止')}
     const config = previewMap[previewKey] || buildDynamicPreview(previewKey || '详细弹窗');
     modalPanel.classList.remove('archive-mode', 'vault-mode');
     modalBody.className = 'modal-body';
-    if (unifiedMode) modalBody.classList.add('mvu-unified-sheet-body');
     setArchiveRedesignState(refs, false);
     if (modalLevel) modalLevel.textContent = '';
     if (modalPath) modalPath.textContent = '';
