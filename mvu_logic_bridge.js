@@ -31386,16 +31386,37 @@
     };
   }
 
+  function renderUnifiedSpiritCardsBySurface(snapshot, surface) {
+    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
+    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
+    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
+    setUnifiedCardMarkup('primary-spirit', buildUnifiedSpiritCard(主轨, { primary: true }), {
+      enabled: true,
+      preview: 主轨 ? toText(主轨.preview, '第1武魂详细页') : '',
+      surface: normalizedSurface,
+    });
+    if (第二轨) {
+      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
+        enabled: true,
+        preview: toText(第二轨.preview, '血脉封印详细页'),
+        surface: normalizedSurface,
+      });
+    } else {
+      setUnifiedCardMarkup('secondary-spirit', '', {
+        enabled: false,
+        empty: true,
+        空态标签: '未启用',
+        surface: normalizedSurface,
+      });
+    }
+  }
+
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
         preview: '生命图谱详细页',
-        surface: normalizedSurface,
-      });
-      setUnifiedCardMarkup('spirit-summary', 构建全息武魂摘要卡(snapshot), {
-        preview: snapshot && snapshot.primarySpirit ? toText(snapshot.primarySpirit.preview, '第1武魂详细页') : '第1武魂详细页',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('armory', buildArmoryCard(snapshot), {
@@ -31410,10 +31431,7 @@
         preview: '人物关系详细页',
         surface: normalizedSurface,
       });
-      setUnifiedCardMarkup('ring-matrix', 构建魂环矩阵入口卡(snapshot), {
-        preview: snapshot && snapshot.primarySpirit ? toText(snapshot.primarySpirit.preview, '第1武魂详细页') : '第1武魂详细页',
-        surface: normalizedSurface,
-      });
+      renderUnifiedSpiritCardsBySurface(snapshot, normalizedSurface);
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
@@ -31949,11 +31967,10 @@
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
       'archive-core': ['角色', '无数据'],
-      'spirit-summary': ['核心武魂', '未记录'],
+      'primary-spirit': ['主武魂', '未记录'],
       armory: ['武装', '0'],
       vault: ['仓库', '0'],
       social: ['社交', '0'],
-      'ring-matrix': ['魂环', '0'],
       'map-current': ['当前位置', '无数据'],
       'map-locals': ['本地角色', '0'],
       'map-route': ['路线', '0'],
@@ -31970,8 +31987,9 @@
       'terminal-quest': ['任务', '0'],
     };
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
-      setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'holo', enabled: true });
+      setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
     });
+    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false, empty: true, 空态标签: '未启用' });
     setUnifiedMapStageMarkup('panel', '');
   }
 
