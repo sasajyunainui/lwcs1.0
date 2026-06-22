@@ -518,11 +518,11 @@ const DesktopUnifiedLayout = {
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--archive">
                   <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-holo-slot="archive-core"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="primary-spirit"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="secondary-spirit"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-holo-slot="spirit-summary"></div>
                   <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-holo-slot="armory"></div>
                   <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-holo-slot="vault"></div>
                   <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-holo-slot="social"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="第1武魂详细页" data-detail-mode="embed" data-holo-slot="ring-matrix"></div>
                 </div>
               </section>
 

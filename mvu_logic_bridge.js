@@ -28900,16 +28900,9 @@
 
   function buildArchiveCoreCard(snapshot) {
     const stat = deepGet(snapshot, 'activeChar.属性', {});
-    const status = deepGet(snapshot, 'activeChar.状态', {});
     const hpPair = getDisplayHpPair(stat);
-    const woundLabel = getDisplayWoundLabel(stat);
     const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}));
     const allowNsfwLongPress = canOpenPrivateArchive(snapshot);
-    const mentalRealmText = 读取显示精神境界(stat);
-    const 伤势显示 = woundLabel && woundLabel !== '无' ? woundLabel : '无伤';
-    const 领域文本 = toText(deepGet(snapshot, 'rootData.world.战斗.当前领域', ''), '常态');
-    const 领域显示 = 领域文本 && 领域文本 !== '无' ? 领域文本 : '常态';
-    const 状态标签样式 = 伤势显示 === '无伤' ? 'safe' : 'warn';
     const nextSoulDisplayText = nextLevelSoul.isMax
       ? '下级魂力 已满级'
       : nextLevelSoul.blocked
@@ -28920,86 +28913,37 @@
           ? `下级魂力 已达${formatNumber(nextLevelSoul.nextLevel)}级门槛`
           : `下级魂力 ${formatNumber(nextLevelSoul.needed)}`;
     const nextSoulValueText = nextSoulDisplayText.replace(/^下级魂力\s*/, '');
-    const 核心属性列表 = [
-      { 名称: '力量', 数值: stat.力量 },
-      { 名称: '防御', 数值: stat.防御 },
-      { 名称: '敏捷', 数值: stat.敏捷 },
-    ];
-    const 资源指标列表 = [
-      {
-        名称: '生命',
-        数值: `${格式化属性短数字(hpPair.hp)}/${格式化属性短数字(hpPair.hpMax)}`,
-        值Html: 构建属性数值对Html('生命', hpPair.hp, hpPair.hpMax),
-        提示文本: `生命：${格式化属性完整数字(hpPair.hp)} / ${格式化属性完整数字(hpPair.hpMax)}`,
-        比例: ratioPercent(hpPair.hp, hpPair.hpMax),
-        样式: 'red',
-      },
-      {
-        名称: '体力',
-        数值: `${格式化属性短数字(stat.体力)}/${格式化属性短数字(stat.体力上限)}`,
-        值Html: 构建属性数值对Html('体力', stat.体力, stat.体力上限),
-        提示文本: `体力：${格式化属性完整数字(stat.体力)} / ${格式化属性完整数字(stat.体力上限)}`,
-        比例: ratioPercent(stat.体力, stat.体力上限),
-        样式: 'orange',
-      },
-      {
-        名称: '魂力',
-        数值: `${格式化属性短数字(stat.魂力)}/${格式化属性短数字(stat.魂力上限)}`,
-        值Html: 构建属性数值对Html('魂力', stat.魂力, stat.魂力上限),
-        提示文本: `魂力：${格式化属性完整数字(stat.魂力)} / ${格式化属性完整数字(stat.魂力上限)}`,
-        比例: ratioPercent(stat.魂力, stat.魂力上限),
-        样式: 'cyan',
-      },
-      {
-        名称: '精神',
-        副标题: mentalRealmText,
-        数值: `${格式化属性短数字(stat.精神力)}/${格式化属性短数字(stat.精神力上限)}`,
-        值Html: 构建属性数值对Html('精神力', stat.精神力, stat.精神力上限),
-        提示文本: `精神力：${格式化属性完整数字(stat.精神力)} / ${格式化属性完整数字(stat.精神力上限)}`,
-        比例: ratioPercent(stat.精神力, stat.精神力上限),
-        样式: 'purple',
-      },
-    ];
+    const 角色名 = toText(snapshot && snapshot.activeName, '当前角色');
+    const 等级 = formatCultivationLevelBadge(stat.等级, '0');
     return `
-        <div class="panel-head panel-head--archive archive-core-head">
-          <div class="panel-title-row">
-            <div class="panel-title${allowNsfwLongPress ? ' nsfw-trigger-title' : ''}"${allowNsfwLongPress ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>详细档案</div>
-          </div>
+        <div class="mvu-holo-card-head">
+          <span class="mvu-holo-card-title${allowNsfwLongPress ? ' nsfw-trigger-title' : ''}"${allowNsfwLongPress ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>详细档案</span>
+          <b class="mvu-holo-card-value">${htmlEscape(`${shortenText(角色名, 8)} ${等级}`)}</b>
         </div>
-        <div class="archive-core-grid">
-          <div class="archive-core-profile">
-            <strong class="archive-core-level cyan">${htmlEscape(formatCultivationLevelBadge(stat.等级, '0'))}</strong>
-            <div class="archive-core-profile-main">
-              <span class="archive-core-pill">${htmlEscape(`${toText(stat.年龄, '0')}岁 / ${toText(stat.生日, '--')} / ${toText(stat.性别, '--')}`)}</span>
-              ${伤势显示 && 伤势显示 !== '无伤' ? `<span class="archive-core-status is-${htmlEscape(状态标签样式)}">${htmlEscape(伤势显示)}</span>` : ''}
-              ${领域显示 && 领域显示 !== '常态' ? `<span class="archive-core-status is-muted">${htmlEscape(领域显示)}</span>` : ''}
-            </div>
-            <span class="archive-core-next"><i aria-hidden="true"></i><em>距突破</em><strong>${htmlEscape(nextSoulValueText)}</strong></span>
-            <div class="archive-core-attrs">
-              ${核心属性列表
-                .map(
-                  指标 => `
-              <span title="${escapeHtmlAttr(`${指标.名称}：${格式化属性完整数字(指标.数值)}`)}"><b>${htmlEscape(指标.名称)}</b><strong>${htmlEscape(格式化属性短数字(指标.数值))}</strong></span>
-            `,
-                )
-                .join('')}
-            </div>
-          </div>
-          <div class="archive-resource-list">
-            ${资源指标列表
-              .map(
-                指标 => `
-            <div class="archive-resource-row is-${htmlEscape(指标.样式)}">
-              <div class="archive-resource-label"><b>${htmlEscape(指标.名称)}</b>${指标.副标题 ? `<span>${htmlEscape(指标.副标题)}</span>` : ''}</div>
-              <i><span style="width:${指标.比例}%;"></span></i>
-              <strong${指标.提示文本 ? ` title="${escapeHtmlAttr(指标.提示文本)}"` : ''}>${指标.值Html || htmlEscape(指标.数值)}</strong>
-            </div>
-          `,
-              )
-              .join('')}
-          </div>
+        <div class="mvu-holo-resource-stack">
+          ${构建全息资源槽('生命', hpPair.hp, hpPair.hpMax)}
+          ${构建全息资源槽('魂力', stat.魂力, stat.魂力上限)}
+        </div>
+        <div class="mvu-holo-core-attrs">
+          ${构建全息核心属性('力量', stat.力量)}
+          ${构建全息核心属性('敏捷', stat.敏捷)}
+          ${构建全息核心属性('距突破', nextSoulValueText)}
         </div>
         `;
+  }
+
+  function 构建全息资源槽(标签, 当前值, 上限值) {
+    const 比例 = ratioPercent(当前值, 上限值);
+    return `
+        <div class="mvu-holo-resource">
+          <label>${htmlEscape(标签)} <span>${htmlEscape(`${格式化属性短数字(当前值)} / ${格式化属性短数字(上限值)}`)}</span></label>
+          <div class="mvu-holo-resource-track"><i style="width:${比例}%;"></i></div>
+        </div>
+      `;
+  }
+
+  function 构建全息核心属性(标签, 数值) {
+    return `<span><b>${htmlEscape(标签)}</b><i>${htmlEscape(格式化属性短数字(数值))}</i></span>`;
   }
 
   function 读取副职业显示等级(副职业名 = '', 副职业数据 = {}) {
@@ -29224,71 +29168,43 @@
   }
 
   function buildArmoryCard(snapshot) {
-    const armor = deepGet(snapshot, 'activeChar.装备.斗铠', {});
-    const mech = deepGet(snapshot, 'activeChar.装备.机甲', {});
-    const weapon = deepGet(snapshot, 'activeChar.装备.武器', {});
-    const 防具 = deepGet(snapshot, 'activeChar.装备.防具', {});
-    const 副职业等级摘要 = 构建副职业等级摘要(snapshot);
-    const 斗铠名称 = toText(armor.名称 || armor['名称'], '');
-    const armorSummary = toNumber(armor.等级, 0) > 0 || 斗铠名称 ? 斗铠名称 || `${armor.等级}字斗铠` : '无';
-    const mechSummary =
-      toText(mech.等级, '无') !== '无'
-        ? `${toText(mech.名称 || mech['名称'], `${toText(mech.等级, '无')}机甲`)}·${toText(mech.型号, '均衡')}`
-        : '无';
-    const boneCount = snapshot.soulBoneEntries ? snapshot.soulBoneEntries.length : 0;
-    const 武器摘要 = toText(weapon.名称, '') || toText(weapon.类型, '') || '无';
-    const 防具摘要 = toText(防具.名称 || 防具['名称'], '') || '无';
-    return `
-        ${构建全息卡头('武装工坊')}
-        ${构建全息指标网格([
-          { label: '当前斗铠', value: armorSummary },
-          { label: '当前机甲', value: mechSummary },
-          { label: '武器', value: shortenText(武器摘要, 28) },
-          { label: '防具', value: shortenText(防具摘要, 28) },
-          { label: '装载魂骨', value: boneCount ? `${boneCount} 块` : '0 块' },
-        ])}
-        <div class="mvu-holo-card-foot">
-          <span>${htmlEscape(副职业等级摘要)}</span>
-        </div>
-      `;
+    const 装备 = deepGet(snapshot, 'activeChar.装备', {});
+    const 槽位数 = ['武器', '防具', '斗铠', '机甲'].filter(槽位 => Object.prototype.hasOwnProperty.call(装备 || {}, 槽位)).length || 4;
+    return 构建全息入口卡('装备摘要', 槽位数, '槽', '武器 / 防具 / 斗铠 / 机甲');
   }
 
   function buildVaultCard(snapshot) {
-    const wealth = deepGet(snapshot, 'activeChar.财富', {});
+    return 构建全息入口卡('储物仓库', snapshot.inventoryEntries.length || 0, '件', '资产 / 物品');
+  }
+
+  function 构建魂环矩阵入口卡(snapshot) {
+    const 主轨魂环 = Array.isArray(snapshot && snapshot.primarySpirit && snapshot.primarySpirit.魂环) ? snapshot.primarySpirit.魂环 : [];
+    const 副轨魂环 = Array.isArray(snapshot && snapshot.secondaryTrack && snapshot.secondaryTrack.魂环) ? snapshot.secondaryTrack.魂环 : [];
+    const 有效魂环 = [...主轨魂环, ...副轨魂环].filter(魂环 => 魂环 && !魂环.empty);
+    const 魂环图形 = 有效魂环.length
+      ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--micro">${构建魂环阵列(有效魂环.slice(0, 8), 'micro')}</div>`
+      : 构建魂环空阵列('micro');
     return `
-        ${构建全息卡头('储物仓库')}
-        ${构建全息指标网格([
-          { label: '物品种类', value: `${snapshot.inventoryEntries.length || 0}` },
-          { label: '联邦币', value: formatNumber(wealth.联邦币) },
-          { label: '星罗币', value: formatNumber(wealth.星罗币) },
-          { label: '唐门积分', value: formatNumber(wealth.唐门积分) },
-        ])}
-        <div class="mvu-holo-card-foot">
-          <span>物资 ${htmlEscape(String(snapshot.inventoryEntries.length || 0))} 件</span>
-          <span>学院/战功：${htmlEscape(formatNumber(wealth.学院积分))} / ${htmlEscape(formatNumber(wealth.战功))}</span>
+        <div class="mvu-holo-card-head">
+          <span class="mvu-holo-card-title">魂环矩阵</span>
+          <b class="mvu-holo-card-value">${htmlEscape(formatNumber(有效魂环.length))} 环</b>
+        </div>
+        <div class="mvu-holo-ring-entry">
+          ${魂环图形}
+          <small class="mvu-holo-entry-sub">${htmlEscape(有效魂环.length ? '武魂 / 魂环' : '暂无魂环附着')}</small>
         </div>
       `;
   }
 
   function buildUnifiedSocialCard(snapshot) {
-    const social = deepGet(snapshot, 'activeChar.社交', {});
-    const primaryFactionName = snapshot.primaryFaction ? snapshot.primaryFaction[0] : '无';
-    const primaryFactionRole = snapshot.primaryFaction
-      ? toText(deepGet(snapshot.primaryFaction[1], '身份', '无'), '无')
-      : '未加入';
-    const topRelationText = snapshot.topRelation
-      ? `${toText(snapshot.topRelation[0], '未知人物')} / ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')} / ${toNumber(deepGet(snapshot.topRelation[1], '好感度', 0), 0)}`
-      : '暂无高亮关系';
-    const latestIntelText = getLatestUnlockedIntelText(snapshot, 32, '暂无情报');
-    const 名望等级 = toText(social.名望等级, toText(social.名望等级, '籍籍无名'));
-    const 主身份 = toText(social.主身份, '社会档案');
+    return 构建全息入口卡('关系网络', snapshot.relations.length || 0, '', '关键关系');
+  }
+
+  function 构建全息入口卡(标题, 数字, 单位, 副标题) {
     return `
-        <div class="mvu-social-entry-grid">
-          ${构建社交入口块('名望', 名望等级, 主身份, '社会档案详细页', 'gold', `声望 ${formatNumber(social.声望)}`)}
-          ${构建社交入口块('势力', primaryFactionName, primaryFactionRole, '所属势力详细页', 'live', `${(snapshot.势力 || []).length || 0} 项`)}
-          ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', 'cyan', `${snapshot.relations.length} 条`)}
-          ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', 'white', `${snapshot.unlockedKnowledges.length} 条`)}
-        </div>
+        <span class="mvu-holo-entry-label">${htmlEscape(标题)}</span>
+        <b class="mvu-holo-entry-number"><i>${htmlEscape(formatNumber(数字))}</i>${单位 ? `<em>${htmlEscape(单位)}</em>` : ''}</b>
+        <small class="mvu-holo-entry-sub">${htmlEscape(副标题)}</small>
       `;
   }
 
@@ -29305,6 +29221,48 @@
     const content =
       config.kind === 'bloodline' ? renderArchiveBloodlineEntry(config) : renderArchiveSpiritEntry(config, primary);
     return `<div class="mvu-holo-spirit-card">${content}</div>`;
+  }
+
+  function 构建全息武魂摘要卡(snapshot) {
+    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
+    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
+    const 主名称 = 主轨 ? 读取武魂概览名称(主轨, '第一武魂') : '未记录';
+    const 第二名称 = 第二轨 ? 读取武魂概览名称(第二轨, '第二武魂') : '未启用';
+    const 标题 = [主名称, 第二轨 ? 第二名称 : ''].filter(Boolean).join(' / ') || '未记录';
+    return `
+        <div class="mvu-holo-card-head">
+          <span class="mvu-holo-card-title">核心武魂</span>
+          <b class="mvu-holo-card-value">${htmlEscape(shortenText(标题, 22))}</b>
+        </div>
+        <div class="mvu-holo-dual-summary">
+          ${构建武魂摘要行('第一：', 主名称, 读取武魂魂环概览值(主轨, '未附'))}
+          ${构建武魂摘要行('第二：', 第二名称, 读取武魂魂环概览值(第二轨, '未附'))}
+        </div>
+        <div class="mvu-holo-slot-key">${htmlEscape('第1武魂详细页 / 第2武魂详细页')}</div>
+      `;
+  }
+
+  function 读取武魂概览名称(轨道, 默认名称) {
+    if (!轨道 || typeof 轨道 !== 'object') return 默认名称;
+    const 名称 = toText(轨道.spiritName, '').trim() || toText(轨道.name, 默认名称).replace(/（[^）]*）/g, '').trim();
+    return shortenText(名称 || 默认名称, 12);
+  }
+
+  function 读取武魂魂环概览值(轨道, 默认值) {
+    if (!轨道 || typeof 轨道 !== 'object') return 默认值;
+    if (轨道.kind === 'bloodline') return shortenText(构建血脉状态文本_桥接(轨道), 6) || 默认值;
+    const 魂环 = Array.isArray(轨道.魂环) ? 轨道.魂环.filter(环 => 环 && !环.empty) : [];
+    const 末环 = 魂环[魂环.length - 1] || null;
+    const 魂灵 = Array.isArray(轨道.souls) ? 轨道.souls.find(项 => toText(项 && 项.age, '').trim() && toText(项 && 项.age, '').trim() !== '--') : null;
+    return (
+      shortenText(toText(末环 && (末环.ageText || 末环.colorText || 末环.desc), '').split('/').pop().trim(), 6) ||
+      shortenText(toText(魂灵 && 魂灵.age, ''), 6) ||
+      默认值
+    );
+  }
+
+  function 构建武魂摘要行(前缀, 名称, 状态) {
+    return `<span><b>${htmlEscape(`${前缀}${名称}`)}</b><i>${htmlEscape(状态)}</i></span>`;
   }
 
   function 构建统一副轨摘要卡(snapshot) {
@@ -31489,37 +31447,16 @@
     };
   }
 
-  function renderUnifiedSpiritCardsBySurface(snapshot, surface) {
-    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'holo';
-    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
-    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
-    setUnifiedCardMarkup('primary-spirit', buildUnifiedSpiritCard(主轨, { primary: true }), {
-      enabled: true,
-      preview: 主轨 ? toText(主轨.preview, '第1武魂详细页') : '',
-      surface: normalizedSurface,
-    });
-    if (第二轨) {
-      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
-        enabled: true,
-        preview: toText(第二轨.preview, '血脉封印详细页'),
-        surface: normalizedSurface,
-      });
-    } else {
-      setUnifiedCardMarkup('secondary-spirit', '', {
-        enabled: false,
-        empty: true,
-        空态标签: '未启用',
-        surface: normalizedSurface,
-      });
-    }
-  }
-
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'holo';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
         preview: '生命图谱详细页',
+        surface: normalizedSurface,
+      });
+      setUnifiedCardMarkup('spirit-summary', 构建全息武魂摘要卡(snapshot), {
+        preview: snapshot && snapshot.primarySpirit ? toText(snapshot.primarySpirit.preview, '第1武魂详细页') : '第1武魂详细页',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('armory', buildArmoryCard(snapshot), {
@@ -31534,7 +31471,10 @@
         preview: normalizedSurface === 'holo' ? '人物关系详细页' : '',
         surface: normalizedSurface,
       });
-      renderUnifiedSpiritCardsBySurface(snapshot, normalizedSurface);
+      setUnifiedCardMarkup('ring-matrix', 构建魂环矩阵入口卡(snapshot), {
+        preview: snapshot && snapshot.primarySpirit ? toText(snapshot.primarySpirit.preview, '第1武魂详细页') : '第1武魂详细页',
+        surface: normalizedSurface,
+      });
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
@@ -32109,10 +32049,11 @@
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
       'archive-core': ['角色', '无数据'],
-      'primary-spirit': ['主武魂', '无数据'],
+      'spirit-summary': ['核心武魂', '未记录'],
       armory: ['武装', '0'],
       vault: ['仓库', '0'],
       social: ['社交', '0'],
+      'ring-matrix': ['魂环', '0'],
       'map-current': ['当前位置', '无数据'],
       'map-locals': ['本地角色', '0'],
       'map-route': ['路线', '0'],
@@ -32131,7 +32072,6 @@
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'holo', enabled: true });
     });
-    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'holo', enabled: false, empty: true, 空态标签: '未启用' });
     setUnifiedMapStageMarkup('holo', '');
     更新全息星轨读数(null);
   }
