@@ -221,6 +221,15 @@ function requestUnifiedShellCardRefresh(options = {}) {
     }
   };
   const run = () => {
+    if (typeof window.__MVU_GET_LIVE_SNAPSHOT__ === 'function') {
+      try {
+        const liveSnapshot = window.__MVU_GET_LIVE_SNAPSHOT__();
+        if (liveSnapshot) {
+          runRender();
+          return;
+        }
+      } catch (err) {}
+    }
     if (typeof window.__MVU_REFRESH_LIVE_SNAPSHOT__ === 'function') {
       try {
         const refreshResult = window.__MVU_REFRESH_LIVE_SNAPSHOT__({ force });
@@ -888,6 +897,7 @@ const DesktopUnifiedLayout = {
         }
       }
       requestTabChange(tabId);
+      forceUnifiedCardSync();
       scheduleUnifiedFrameViewportSync();
     };
     const 设置全息星轨主题 = 主题 => {
