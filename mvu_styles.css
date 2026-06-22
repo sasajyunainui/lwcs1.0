@@ -20035,6 +20035,39 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   min-height: var(--ring-stage-height);
 }
 
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-archive-spirit-card:hover
+  .mvu-soul-ring-showcase--overview
+  .mvu-soul-ring-stage,
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-archive-spirit-card:focus-within
+  .mvu-soul-ring-showcase--overview
+  .mvu-soul-ring-stage {
+  animation: float-spin 20s ease-in-out infinite alternate;
+  transform: rotateX(65deg) rotateZ(-15deg);
+}
+
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-archive-spirit-card:hover
+  .mvu-soul-ring-showcase--overview
+  .mvu-soul-ring-slot,
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-archive-spirit-card:focus-within
+  .mvu-soul-ring-showcase--overview
+  .mvu-soul-ring-slot {
+  pointer-events: auto;
+  opacity: var(--ring-depth-opacity, 0.92);
+  transform:
+    translate(-50%, -50%)
+    translateZ(var(--ring-z, 0px))
+    translateY(var(--ring-hover-y, 0))
+    scale(var(--ring-depth-scale, 1));
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-svg .spin-cw,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-svg .spin-cw {
   animation-duration: 40s;
