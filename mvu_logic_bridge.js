@@ -11225,7 +11225,7 @@
       return;
     }
     const 统一标题目标 = document.querySelector(
-      '#mvu-unified-mount .mvu-unified-toolbar.is-detail [data-ai-maintenance-title-target="panel"]',
+      '#mvu-unified-mount .mvu-holo-path.is-detail[data-ai-maintenance-title-target="panel"]',
     );
     if (统一标题目标) {
       统一标题目标.insertAdjacentHTML(
@@ -28769,10 +28769,8 @@
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
-    getLiveUiElements('#mvu-unified-mount .mvu-unified-section-title').forEach(node => {
-      if (toText(node.textContent, '').trim() === '详细档案') {
-        setPrivateArchiveLongPressTarget(node, enabled);
-      }
+    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-core"] .panel-title').forEach(node => {
+      setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
 
@@ -29203,7 +29201,6 @@
 
   function normalizeUnifiedSurfaceKey(surface) {
     const value = toText(surface, '').trim().toLowerCase();
-    if (value === 'panel') return 'panel';
     if (value === 'holo') return 'holo';
     return '';
   }
@@ -30203,12 +30200,12 @@
       地图节点面板 ? 地图节点面板.primaryHtml : '',
       {
         preview: 地图节点面板 ? toText(地图节点面板.primaryPreview, '') : '',
-        surface: 'panel',
+        surface: 'holo',
       },
     );
     setUnifiedCardMarkup('map-locals', 地图节点面板 ? 地图节点面板.secondaryHtml : '', {
       preview: 地图节点面板 ? toText(地图节点面板.secondaryPreview, '') : '',
-      surface: 'panel',
+      surface: 'holo',
     });
   }
 
@@ -31371,7 +31368,7 @@
   }
 
   function renderUnifiedSpiritCardsBySurface(snapshot, surface) {
-    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
+    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'holo';
     const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
     const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
     setUnifiedCardMarkup('primary-spirit', buildUnifiedSpiritCard(主轨, { primary: true }), {
@@ -31396,7 +31393,7 @@
   }
 
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
-    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
+    const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'holo';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
@@ -31419,7 +31416,7 @@
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
-      ensureUnifiedSheepMapStage(normalizedSurface === 'holo' ? 'holo' : 'panel');
+      ensureUnifiedSheepMapStage('holo');
       setUnifiedCardMarkup('map-hero', '', { enabled: false, surface: normalizedSurface });
       const 地图节点面板 = 读取地图模块星图节点面板(星图焦点态);
       setUnifiedCardMarkup(
@@ -31536,29 +31533,19 @@
     同步AI维护首页配置入口();
   }
 
-  function ensureUnifiedSheepMapStage(stage = 'panel') {
-    const stageKey = toText(stage, '').trim();
-    if (!stageKey) return;
+  function ensureUnifiedSheepMapStage(stage = 'holo') {
+    const stageKey = normalizeUnifiedSurfaceKey(stage) || 'holo';
     const selector = `#mvu-unified-mount [data-mvu-map-stage="${stageKey}"]`;
-    const 清理旧状态条 = () => {
-      if (stageKey !== 'panel') return;
-      getLiveUiElements(selector).forEach(node => {
-        if (!(node instanceof Element)) return;
-        node.querySelectorAll('.map-status-strip').forEach(状态条 => 状态条.remove());
-      });
-    };
     getLiveUiElements(selector).forEach(node => {
       if (!(node instanceof Element)) return;
       const hasSheepMap = !!node.querySelector('.map-layout .map-canvas.interactive-map [data-map-node-layer]');
       if (!hasSheepMap) setLiveNodeHtml(node, '');
     });
-    清理旧状态条();
     if (typeof window.__sheepMapResync === 'function') {
       window.setTimeout(() => {
         try {
           window.__sheepMapResync({ center: false, syncVisual: false });
         } catch (err) {}
-        清理旧状态条();
         if (typeof scheduleUnifiedMapCanvasClamp === 'function') scheduleUnifiedMapCanvasClamp();
       }, 0);
     }
@@ -31605,7 +31592,12 @@
       setLiveNodeHtml(node, html);
       if (preview && enabled) node.setAttribute('data-preview', preview);
       else node.removeAttribute('data-preview');
-      if (preview && enabled && (surface === 'panel' || surface === 'holo') && node.classList.contains('mvu-unified-card')) {
+      if (
+        preview &&
+        enabled &&
+        surface === 'holo' &&
+        node.classList.contains('mvu-holo-scaffold')
+      ) {
         node.setAttribute('data-detail-mode', 'embed');
       } else {
         node.removeAttribute('data-detail-mode');
@@ -31624,28 +31616,6 @@
     if (!stageKey) return;
     const selector = `#mvu-unified-mount [data-mvu-map-stage="${stageKey}"]`;
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, html));
-  }
-
-  function 设置统一顶部状态条(snapshot) {
-    getLiveUiElements('#mvu-unified-mount [data-unified-top-status="panel"]').forEach(node => {
-      node.removeAttribute('data-preview');
-      node.classList.remove('clickable');
-      setLiveNodeHtml(node, 构建统一顶部状态条(snapshot));
-      // 把角色名(identity)节点搬到 overview-bar 最左,与 tab/status 三列并排显示
-      const overviewBar = node.closest('.mvu-unified-overview-bar');
-      const identity = node.querySelector('.mvu-unified-top-identity');
-      if (overviewBar && identity) {
-        // 移除 overview-bar 上已存在的孤儿 identity(避免重复搬入)
-        Array.from(overviewBar.children).forEach(child => {
-          if (child !== identity && child.classList.contains('mvu-unified-top-identity')) {
-            child.remove();
-          }
-        });
-        if (identity.parentElement !== overviewBar) {
-          overviewBar.insertBefore(identity, overviewBar.firstChild);
-        }
-      }
-    });
   }
 
   function 更新全息星轨读数(snapshot) {
@@ -31678,7 +31648,7 @@
     写文本('[data-holo-core-calendar]', 历法文本 || '斗罗历');
     写文本('[data-holo-location]', shortenText(当前位置, 18));
     写文本('[data-holo-deviation]', `偏差 ${偏差值} / x${偏差倍率}`);
-    getLiveUiElements('#mvu-unified-mount .mvu-unified-frame').forEach(节点 => {
+    getLiveUiElements('#mvu-unified-mount .mvu-holo-frame').forEach(节点 => {
       if (!(节点 instanceof Element)) return;
       节点.setAttribute('data-holo-alert', 森林敌意 >= 70 || 偏差值 >= 40 ? '高危' : 森林敌意 >= 30 || 偏差值 >= 10 ? '波动' : '稳定');
       节点.setAttribute('data-holo-auction', 拍卖状态);
@@ -31690,9 +31660,7 @@
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures =
       previousSectionSignaturesOverride || lastDashboardSectionRenderSignatures || Object.create(null);
-    设置统一顶部状态条(snapshot);
     更新全息星轨读数(snapshot);
-    renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'panel');
     renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'holo');
   }
 
@@ -31997,46 +31965,7 @@
       `;
   }
 
-  function 构建统一顶部状态条(snapshot) {
-    if (!snapshot) {
-      return `
-          <div class="mvu-unified-top-identity">
-            <div class="mvu-unified-top-name">当前聊天</div>
-          </div>
-          <div class="mvu-unified-top-chip-row">
-            <span class="is-context">
-              <i class="is-time">时间未同步</i>
-              <i class="is-place">地点未同步</i>
-            </span>
-          </div>
-        `;
-    }
-    const 角色名 = toText(
-      deepGet(snapshot, 'activeChar.name', deepGet(snapshot, 'activeChar.base.name', snapshot.activeName)),
-      snapshot.activeName || '当前角色',
-    );
-    const 世界时间 = getSnapshotWorldTimeText(snapshot);
-    const 当前位置 = toText(
-      deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc),
-      snapshot.currentLoc || '未知地点',
-    )
-      .replace(/^斗罗大陆-/, '')
-      .replace(/^斗灵大陆-/, '');
-    return `
-        <div class="mvu-unified-top-identity">
-          <button type="button" class="mvu-unified-top-name mvu-unified-top-name-button clickable" data-preview="角色切换器" data-detail-mode="embed" title="${escapeHtmlAttr(`切换当前查看角色：${角色名}`)}">${htmlEscape(角色名)}</button>
-        </div>
-        <div class="mvu-unified-top-chip-row">
-          <span class="is-context" title="${escapeHtmlAttr(`${世界时间}｜${当前位置}`)}">
-            <i class="is-time">${htmlEscape(世界时间)}</i>
-            <i class="is-place">${htmlEscape(当前位置)}</i>
-          </span>
-        </div>
-      `;
-  }
-
   function 渲染统一空态卡片() {
-    设置统一顶部状态条(null);
     const 统一空态卡片 = {
       'archive-core': ['角色', '无数据'],
       'primary-spirit': ['主武魂', '无数据'],
@@ -32059,12 +31988,9 @@
       'terminal-quest': ['任务', '0'],
     };
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
-      setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'holo', enabled: true });
     });
-    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false, empty: true, 空态标签: '未启用' });
     setUnifiedCardMarkup('secondary-spirit', '', { surface: 'holo', enabled: false, empty: true, 空态标签: '未启用' });
-    setUnifiedMapStageMarkup('panel', '');
     setUnifiedMapStageMarkup('holo', '');
     更新全息星轨读数(null);
   }
@@ -33318,7 +33244,7 @@
               if (node && node.parentNode) node.parentNode.removeChild(node);
             });
             const 标题容器 = currentUnifiedPreviewKey
-              ? document.querySelector('#mvu-unified-mount .mvu-unified-toolbar.is-detail .mvu-unified-toolbar-main')
+              ? document.querySelector('#mvu-unified-mount .mvu-holo-path.is-detail')
               : document.querySelector('#detailModal .modal-title-wrap');
             if (!标题容器) return null;
             const 操作槽 = document.createElement('div');
@@ -46007,7 +45933,6 @@ ${toText(combatData.战斗意图, '点到为止')}
     lastRenderedUnifiedPreviewKey = targetKey;
     host.dataset.unifiedPreview = targetKey;
     bindUnifiedDetailDelegation(host);
-    设置统一顶部状态条(liveSnapshot || lastRenderableSnapshot || null);
 
     const setHostMarkup = (html, onMount = null) => {
       host.innerHTML = wrapUnifiedInlineBody(html, { previewKey: targetKey });
