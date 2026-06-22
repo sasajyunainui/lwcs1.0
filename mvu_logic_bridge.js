@@ -28926,10 +28926,7 @@
         </div>
         <div class="mvu-archive-radar">
           ${雷达HTML}
-        </div>
-        <div class="mvu-archive-life-link mvu-archive-life-link--inline">
-          <span><b>突破</b><em>${htmlEscape(突破文本)}</em></span>
-          <span><b>精神</b><em>${htmlEscape(读取显示精神境界(stat))}</em></span>
+          <div class="mvu-archive-radar-core"><b>突破</b><em>${htmlEscape(突破文本)}</em></div>
         </div>
         `;
   }
@@ -29249,7 +29246,7 @@
       .map(([标记, 数据, 名称]) => {
         const 文本 = 数据 && typeof 数据 === 'object' ? toText(数据.名称 || 数据.name || 数据.等级 || 数据.装备状态, '') : '';
         const 品质类 = /神|红|S|金/.test(文本) ? ' is-rare' : /紫|A|魂骨/.test(文本) ? ' is-epic' : '';
-        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}${品质类}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}"><b>${htmlEscape(标记)}</b><i>${htmlEscape(名称)}</i><em>${htmlEscape(shortenText(文本 || '空槽', 6))}</em></span>`;
+        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}${品质类}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}" data-slot="${escapeHtmlAttr(名称)}"><b>${htmlEscape(标记)}</b><em>${htmlEscape(shortenText(文本 || '空槽', 6))}</em></span>`;
       })
       .join('');
     const 联邦币 = toNumber(财富.联邦币, 0);
