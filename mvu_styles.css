@@ -19316,21 +19316,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(230px, 0.96fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
+  grid-template-columns: minmax(230px, 0.92fr) minmax(300px, 1.14fr) minmax(230px, 0.88fr);
+  grid-template-rows: minmax(78px, auto) minmax(0, 1fr) minmax(0, 0.78fr) minmax(0, 0.78fr);
   grid-template-areas:
-    'core core core core core core social social social social social social'
-    'primary primary primary primary primary primary primary primary primary primary primary primary'
-    'armory armory armory armory armory armory vault vault vault vault vault vault';
+    'sky sky sky'
+    'core primary armory'
+    'core primary social'
+    'core secondary vault';
   height: 100%;
-  min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
+  min-height: min(620px, calc(var(--mvu-hud-frame-height) - 130px));
+  align-content: stretch;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive:has([data-unified-card='secondary-spirit']:not(.is-empty)) {
-  grid-template-areas:
-    'core core core core core core social social social social social social'
-    'primary primary primary primary primary primary secondary secondary secondary secondary secondary secondary'
-    'armory armory armory armory armory armory vault vault vault vault vault vault';
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-identity'] {
+  grid-area: sky;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'] {
@@ -19354,11 +19353,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
   grid-area: vault;
 }
 
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--archive
-  > [data-unified-card='secondary-spirit'].is-empty {
-  display: none;
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='primary-spirit'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='secondary-spirit'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='armory'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='vault'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='social'] {
+  display: grid;
+  min-height: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
@@ -19552,6 +19554,682 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
     inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 24%, transparent),
     0 0 18px color-mix(in srgb, var(--mvu-holo-main) 20%, transparent);
   transform: translateY(-1px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card--sky {
+  min-height: 78px;
+  padding: 10px 12px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.54fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  height: 100%;
+  padding: 4px;
+  color: var(--mvu-holo-text);
+  overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.72;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 26%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 9%, transparent) 0 1px, transparent 1px 18px);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-avatar-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 44%, transparent);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--mvu-holo-high) 22%, transparent), transparent 52%),
+    color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent),
+    0 0 18px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
+  color: var(--mvu-holo-high);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main b {
+  color: var(--mvu-holo-high);
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-shadow: 0 0 14px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main em {
+  margin-top: 4px;
+  color: var(--mvu-holo-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.15;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta span,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-life-link span,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.025);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-life-link b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack b {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--mvu-holo-muted) 78%, transparent);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta em,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-life-link em,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mvu-holo-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 780;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head span,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head span {
+  color: var(--mvu-holo-high);
+  font-size: 13px;
+  font-weight: 850;
+  text-shadow: 0 0 12px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
+  flex: 0 0 auto;
+  max-width: 46%;
+  padding: 3px 7px;
+  border: 1px solid var(--mvu-holo-line-soft);
+  border-radius: 999px;
+  color: var(--mvu-holo-main);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vitals {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led {
+  --led-color: var(--mvu-holo-main);
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--hp {
+  --led-color: #ff5c70;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--soul {
+  --led-color: #54d9ff;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--stamina {
+  --led-color: #ffd45f;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--mind {
+  --led-color: #b891ff;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: color-mix(in srgb, var(--mvu-holo-muted) 82%, transparent);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.12;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label span {
+  flex: 0 0 auto;
+  color: var(--mvu-holo-text);
+  font: 800 11px var(--font-mono, "Cascadia Code", Consolas, monospace);
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track {
+  position: relative;
+  height: 13px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.09) 0 4px, transparent 4px 6px),
+    rgba(0, 0, 0, 0.22);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 0 10px rgba(0, 0, 0, 0.32);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i {
+  position: relative;
+  display: block;
+  width: var(--value, 0%);
+  max-width: 100%;
+  height: 100%;
+  background: var(--led-color);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--led-color) 54%, transparent),
+    0 0 18px color-mix(in srgb, var(--led-color) 24%, transparent);
+  mask-image: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  width: 4px;
+  height: calc(100% + 6px);
+  border-radius: 999px;
+  background: var(--mvu-holo-high);
+  box-shadow:
+    0 0 8px var(--mvu-holo-high),
+    0 0 14px color-mix(in srgb, var(--led-color) 62%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led.is-critical .mvu-archive-led-track i {
+  animation: mvu-archive-critical-pulse 1s ease-in-out infinite;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 188px;
+  overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-shell {
+  display: grid;
+  grid-template-rows: minmax(118px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 230px);
+  min-width: 0;
+  margin: 0 auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-visual {
+  display: grid;
+  place-items: center;
+  min-height: 126px;
+  animation: mvu-archive-radar-heartbeat 6.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-svg {
+  width: min(100%, 154px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mvu-holo-main) 22%, transparent));
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-grid-line,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-axis-line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mvu-holo-main) 36%, transparent);
+  stroke-width: 1;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-data-shape {
+  fill: color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
+  stroke: color-mix(in srgb, var(--mvu-holo-main) 78%, transparent);
+  stroke-width: 1.5;
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-label {
+  fill: color-mix(in srgb, var(--mvu-holo-muted) 86%, transparent);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.032);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip span {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip b {
+  color: color-mix(in srgb, var(--mvu-holo-muted) 74%, transparent);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip span {
+  color: var(--mvu-holo-text);
+  font-size: 10px;
+  font-weight: 820;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-life-link {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto auto minmax(124px, 1fr) auto;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--empty {
+  grid-template-rows: auto minmax(94px, 1fr) auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b {
+  color: var(--mvu-holo-high);
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-shadow: 0 0 14px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
+  color: var(--mvu-holo-muted);
+  font-size: 11px;
+  line-height: 1.16;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 132px;
+  overflow: visible;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory::before {
+  content: "";
+  position: absolute;
+  inset: 8px 10%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--mvu-holo-main) 13%, transparent), transparent 54%),
+    radial-gradient(circle, transparent 46%, color-mix(in srgb, var(--mvu-holo-main) 12%, transparent) 47%, transparent 49%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview {
+  --ring-stage-width: min(260px, 100%);
+  --ring-stage-height: clamp(126px, 20vh, 176px);
+  min-height: var(--ring-stage-height);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-stage,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-stage {
+  animation: none;
+  transform: translateZ(0) scale(1.05);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-slot,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-slot {
+  transform:
+    translate(-50%, -50%)
+    translateY(var(--ring-hover-y, 0))
+    scale(var(--ring-scale, 1));
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-svg .spin-cw,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-svg .spin-cw {
+  animation-duration: 40s;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-svg .spin-ccw,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-svg .spin-ccw {
+  animation-duration: 50s;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-empty-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(168px, 68%);
+  aspect-ratio: 1;
+  margin: auto;
+  border-radius: 50%;
+  opacity: 0.72;
+  background:
+    repeating-radial-gradient(circle, transparent 0 16px, color-mix(in srgb, var(--mvu-holo-main) 18%, transparent) 17px 18px),
+    radial-gradient(circle, color-mix(in srgb, var(--mvu-holo-main) 14%, transparent), transparent 58%);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-empty-orbit::after {
+  content: "";
+  width: 34%;
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 38%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--mvu-holo-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot span,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 58%;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mvu-holo-main) 9%, transparent);
+  color: var(--mvu-holo-high);
+  font: 800 11px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid::after {
+  content: "";
+  position: absolute;
+  inset: -30% -45%;
+  background: linear-gradient(110deg, transparent 42%, rgba(255, 255, 255, 0.2) 50%, transparent 58%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-48%);
+  animation: mvu-archive-scanline 5s ease-in-out infinite;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: color-mix(in srgb, var(--mvu-holo-muted) 72%, transparent);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.025);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-live {
+  border-color: color-mix(in srgb, var(--mvu-holo-main) 36%, transparent);
+  color: var(--mvu-holo-high);
+  box-shadow:
+    inset 0 0 14px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent),
+    0 0 10px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--mvu-holo-high) 60%, transparent);
+  box-shadow:
+    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent),
+    0 0 14px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell b {
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 48%),
+    rgba(0, 0, 0, 0.18);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log b {
+  color: var(--mvu-holo-main);
+  font: 900 11px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mvu-holo-text);
+  font: 760 12px/1.25 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: mvu-archive-log-reveal 0.55s steps(14, end) both;
+}
+
+@keyframes mvu-archive-critical-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+@keyframes mvu-archive-radar-heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.96;
+  }
+  50% {
+    transform: scale(1.025);
+    opacity: 1;
+  }
+}
+
+@keyframes mvu-archive-scanline {
+  0%,
+  64% {
+    opacity: 0;
+    transform: translateX(-48%);
+  }
+  72% {
+    opacity: 0.5;
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: translateX(48%);
+  }
+}
+
+@keyframes mvu-archive-log-reveal {
+  from {
+    transform: translateX(-6px);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-entry-card {
@@ -20247,21 +20925,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-rows: minmax(230px, 0.96fr) minmax(170px, 0.7fr) minmax(132px, 0.52fr);
+    grid-template-rows: minmax(78px, auto) minmax(250px, auto) minmax(180px, auto) minmax(148px, auto);
     grid-template-areas:
-      'core core core core core core social social social social social social'
-      'primary primary primary primary primary primary primary primary primary primary primary primary'
-      'armory armory armory armory armory armory vault vault vault vault vault vault';
+      'sky sky sky sky sky sky sky sky sky sky sky sky'
+      'core core core core core primary primary primary primary primary primary primary'
+      'core core core core core secondary secondary secondary secondary secondary secondary secondary'
+      'armory armory armory armory social social social social vault vault vault vault';
     height: 100%;
     min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
     align-content: stretch;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive:has([data-unified-card='secondary-spirit']:not(.is-empty)) {
-    grid-template-areas:
-      'core core core core core core social social social social social social'
-      'primary primary primary primary primary primary secondary secondary secondary secondary secondary secondary'
-      'armory armory armory armory armory armory vault vault vault vault vault vault';
   }
 
   body.mvu-layout-holo #mvu-unified-mount .armory-grid,
@@ -20339,27 +21011,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 @container mvu-dashboard-area (max-width: 560px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto auto auto !important;
+    grid-template-rows: auto auto auto auto auto auto auto !important;
     grid-template-areas:
-      'core'
-      'primary'
-      'armory'
-      'vault'
-      'social' !important;
-    height: auto !important;
-  }
-
-  body.mvu-layout-holo
-    #mvu-unified-mount
-    .mvu-unified-dashboard--archive:has([data-unified-card='secondary-spirit']:not(.is-empty)) {
-    grid-template-rows: auto auto auto auto auto auto !important;
-    grid-template-areas:
+      'sky'
       'core'
       'primary'
       'secondary'
       'armory'
-      'vault'
-      'social' !important;
+      'social'
+      'vault' !important;
+    height: auto !important;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-identity'] {
+    min-height: 112px !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -20549,28 +21214,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto !important;
+    grid-template-rows: auto auto auto auto auto auto auto !important;
     grid-template-areas:
-      'core'
-      'primary'
-      'armory'
-      'vault'
-      'social' !important;
-    align-content: start !important;
-    height: auto !important;
-  }
-
-  body.mvu-layout-holo
-    #mvu-unified-mount
-    .mvu-unified-dashboard--archive:has([data-unified-card='secondary-spirit']:not(.is-empty)) {
-    grid-template-rows: auto auto auto auto auto auto !important;
-    grid-template-areas:
+      'sky'
       'core'
       'primary'
       'secondary'
       'armory'
-      'vault'
-      'social' !important;
+      'social'
+      'vault' !important;
+    align-content: start !important;
+    height: auto !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {

@@ -28893,7 +28893,7 @@
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
-    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-core"] .mvu-holo-card-title').forEach(node => {
+    getLiveUiElements('#mvu-unified-mount [data-unified-card="archive-identity"] .mvu-archive-skyband').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
@@ -28902,48 +28902,108 @@
     const stat = deepGet(snapshot, 'activeChar.属性', {});
     const hpPair = getDisplayHpPair(stat);
     const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}));
-    const allowNsfwLongPress = canOpenPrivateArchive(snapshot);
-    const nextSoulDisplayText = nextLevelSoul.isMax
-      ? '下级魂力 已满级'
+    const 雷达HTML = 构建档案属性雷达(stat);
+    const 突破文本 = nextLevelSoul.isMax
+      ? '已满级'
       : nextLevelSoul.blocked
         ? nextLevelSoul.blockedBy === 'ring'
-          ? `下级魂力 受魂环限制`
-          : `下级魂力 受魂核限制`
+          ? '魂环限制'
+          : '魂核限制'
         : toNumber(nextLevelSoul.needed, 0) <= 0
-          ? `下级魂力 已达${formatNumber(nextLevelSoul.nextLevel)}级门槛`
-          : `下级魂力 ${formatNumber(nextLevelSoul.needed)}`;
-    const nextSoulValueText = nextSoulDisplayText.replace(/^下级魂力\s*/, '');
-    const 角色名 = toText(snapshot && snapshot.activeName, '当前角色');
-    const 等级 = formatCultivationLevelBadge(stat.等级, '0');
+          ? `Lv.${formatNumber(nextLevelSoul.nextLevel)}`
+          : 格式化属性短数字(nextLevelSoul.needed);
     return `
-        <div class="mvu-holo-card-head">
-          <span class="mvu-holo-card-title${allowNsfwLongPress ? ' nsfw-trigger-title' : ''}"${allowNsfwLongPress ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>详细档案</span>
-          <b class="mvu-holo-card-value">${htmlEscape(`${shortenText(角色名, 8)} ${等级}`)}</b>
+        <div class="mvu-archive-panel-head">
+          <span>体征与轮廓</span>
+          <b>${htmlEscape(getDisplayWoundLabel(stat))}</b>
         </div>
-        <div class="mvu-holo-resource-stack">
-          ${构建全息资源槽('生命', hpPair.hp, hpPair.hpMax)}
-          ${构建全息资源槽('魂力', stat.魂力, stat.魂力上限)}
+        <div class="mvu-archive-vitals">
+          ${构建档案资源条('生命', hpPair.hp, hpPair.hpMax, 'hp')}
+          ${构建档案资源条('魂力', stat.魂力, stat.魂力上限, 'soul')}
+          ${构建档案资源条('体力', stat.体力, stat.体力上限, 'stamina')}
+          ${构建档案资源条('精神', stat.精神力, stat.精神力上限, 'mind')}
         </div>
-        <div class="mvu-holo-core-attrs">
-          ${构建全息核心属性('力量', stat.力量)}
-          ${构建全息核心属性('敏捷', stat.敏捷)}
-          ${构建全息核心属性('距突破', nextSoulValueText)}
+        <div class="mvu-archive-radar">
+          ${雷达HTML}
+        </div>
+        <div class="mvu-archive-life-link">
+          <span><b>距突破</b><em>${htmlEscape(突破文本)}</em></span>
+          <span><b>精神境界</b><em>${htmlEscape(读取显示精神境界(stat))}</em></span>
         </div>
         `;
   }
 
-  function 构建全息资源槽(标签, 当前值, 上限值) {
-    const 比例 = ratioPercent(当前值, 上限值);
+  function 构建档案身份天幕(snapshot) {
+    const 角色 = deepGet(snapshot, 'activeChar', {});
+    const 属性 = deepGet(snapshot, 'activeChar.属性', {});
+    const 社交 = deepGet(snapshot, 'activeChar.社交', {});
+    const 允许私密长按 = canOpenPrivateArchive(snapshot);
+    const 名称 = toText(snapshot && snapshot.activeName, '当前角色');
+    const 年龄 = toNumber(属性.年龄, 0) > 0 ? `${formatNumber(属性.年龄)}岁` : '年龄未录';
+    const 性别 = toText(属性.性别, '性别未录');
+    const 种族 = toText(角色.标准种族 || 角色.种族 || 属性.种族, '人类');
+    const 等级 = formatCultivationLevelBadge(属性.等级, '0');
+    const 境界 = 读取显示精神境界(属性);
+    const 称号 = Array.isArray(snapshot && snapshot.recentTitles) && snapshot.recentTitles.length
+      ? snapshot.recentTitles[0]
+      : toText(社交.名望等级, '籍籍无名');
+    const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 18 }) || toText(社交.主身份, '未记录');
+    const 位置 = buildShellLocationLabel(snapshot, { fullLimit: 24, trailLimit: 12 }) || '未知地点';
     return `
-        <div class="mvu-holo-resource">
-          <label>${htmlEscape(标签)} <span>${htmlEscape(`${格式化属性短数字(当前值)} / ${格式化属性短数字(上限值)}`)}</span></label>
-          <div class="mvu-holo-resource-track"><i style="width:${比例}%;"></i></div>
+        <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
+          <div class="mvu-archive-identity-main">
+            <span class="mvu-archive-avatar-mark">${htmlEscape(shortenText(名称, 1) || '档')}</span>
+            <div>
+              <b>${htmlEscape(shortenText(名称, 14))}</b>
+              <em>${htmlEscape([性别, 年龄, 种族].filter(Boolean).join(' / '))}</em>
+            </div>
+          </div>
+          <div class="mvu-archive-identity-meta">
+            <span><b>境界</b><em>${htmlEscape(`${等级} · ${境界}`)}</em></span>
+            <span><b>称号</b><em>${htmlEscape(shortenText(称号, 18))}</em></span>
+            <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
+            <span><b>位置</b><em>${htmlEscape(shortenText(位置, 20))}</em></span>
+          </div>
         </div>
       `;
   }
 
-  function 构建全息核心属性(标签, 数值) {
-    return `<span><b>${htmlEscape(标签)}</b><i>${htmlEscape(格式化属性短数字(数值))}</i></span>`;
+  function 构建档案资源条(标签, 当前值, 上限值, 色调 = '') {
+    const 上限 = Math.max(0, toNumber(上限值, 0));
+    const 当前原值 = toNumber(当前值, NaN);
+    const 当前 = Number.isFinite(当前原值) && 当前原值 >= 0 ? 当前原值 : 上限;
+    const 比例 = ratioPercent(当前, 上限);
+    const 危急 = 上限 > 0 && 比例 <= 20;
+    return `
+        <div class="mvu-archive-led mvu-archive-led--${escapeHtmlAttr(色调)}${危急 ? ' is-critical' : ''}" style="--value:${比例}%">
+          <label>${htmlEscape(标签)}<span>${htmlEscape(`${格式化属性短数字(当前)} / ${格式化属性短数字(上限)}`)}</span></label>
+          <div class="mvu-archive-led-track"><i></i></div>
+        </div>
+      `;
+  }
+
+  function 构建档案属性雷达(stat = {}) {
+    const 条目 = [
+      ['力量', stat.力量],
+      ['敏捷', stat.敏捷],
+      ['精神', stat.精神力],
+      ['体质', stat.体力上限 || stat.HP上限],
+      ['防御', stat.防御],
+      ['悟性', stat.悟性],
+    ];
+    const 数值 = 条目.map(([, 值]) => Math.max(0, toNumber(值, 0)));
+    const 最大值 = Math.max(10, ...数值);
+    const 归一值 = 数值.map(值 => Math.max(8, Math.min(100, Math.round((值 / 最大值) * 100))));
+    const 展示值 = 条目.map(([标签, 值]) => {
+      if (标签 === '悟性' && !toNumber(值, 0)) return shortenText(读取属性天赋梯队(stat), 6) || '--';
+      return 格式化属性短数字(值);
+    });
+    return makeRadarSvg(
+      条目.map(([标签]) => 标签),
+      归一值,
+      展示值,
+      'cyan',
+    );
   }
 
   function 读取副职业显示等级(副职业名 = '', 副职业数据 = {}) {
@@ -29168,40 +29228,98 @@
   }
 
   function buildArmoryCard(snapshot) {
-    const 装备 = deepGet(snapshot, 'activeChar.装备', {});
-    const 槽位数 = ['武器', '防具', '斗铠', '机甲'].filter(槽位 => Object.prototype.hasOwnProperty.call(装备 || {}, 槽位)).length || 4;
-    return 构建全息入口卡('装备摘要', 槽位数, '槽', '武器 / 防具 / 斗铠 / 机甲');
+    const 装备 = deepGet(snapshot, 'activeChar.装备', {}) || {};
+    const 财富 = deepGet(snapshot, 'activeChar.财富', {}) || {};
+    const 物资数 = Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries.length : 0;
+    const 魂骨数 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
+    const 融合数 = safeEntries(deepGet(snapshot, 'activeChar.武魂融合技', {})).length;
+    const 槽位 = [
+      ['武', 装备.武器, '武器'],
+      ['防', 装备.防具, '防具'],
+      ['铠', 装备.斗铠, '斗铠'],
+      ['机', 装备.机甲, '机甲'],
+      ['导', 装备.魂导器, '魂导器'],
+      ['骨', 魂骨数 ? { 名称: `${魂骨数}块魂骨` } : null, '魂骨'],
+      ['仓', 物资数 ? { 名称: `${物资数}件物资` } : null, '仓库'],
+      ['融', 融合数 ? { 名称: `${融合数}项融合技` } : null, '融合'],
+      ['备', null, '备用'],
+    ];
+    const 槽位HTML = 槽位
+      .map(([标记, 数据, 名称]) => {
+        const 文本 = 数据 && typeof 数据 === 'object' ? toText(数据.名称 || 数据.name || 数据.等级 || 数据.装备状态, '') : '';
+        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}"><b>${htmlEscape(标记)}</b></span>`;
+      })
+      .join('');
+    const 联邦币 = toNumber(财富.联邦币, 0);
+    const 星罗币 = toNumber(财富.星罗币, 0);
+    return `
+        <div class="mvu-archive-panel-head">
+          <span>装备与仓储</span>
+          <b>${htmlEscape(`${物资数} 件`)}</b>
+        </div>
+        <div class="mvu-archive-gear-grid">${槽位HTML}</div>
+        <div class="mvu-archive-mini-link-row">
+          <button type="button" class="mvu-archive-mini-link clickable" data-preview="储物仓库详细页" data-detail-mode="embed">仓库 ${htmlEscape(formatNumber(物资数))}</button>
+          <span>币 ${htmlEscape(formatNumber(联邦币 || 星罗币))}</span>
+        </div>
+      `;
   }
 
   function buildVaultCard(snapshot) {
-    return 构建全息入口卡('储物仓库', snapshot.inventoryEntries.length || 0, '件', '资产 / 物品');
+    const 最近交战 = Array.isArray(snapshot && snapshot.combatHistoryEntries) && snapshot.combatHistoryEntries.length
+      ? snapshot.combatHistoryEntries[0]
+      : null;
+    const 最近情报 = getLatestUnlockedIntelText(snapshot, 30, '');
+    const 最近任务 = Array.isArray(snapshot && snapshot.recordEntries) && snapshot.recordEntries.length
+      ? toText(snapshot.recordEntries[0][0], '')
+      : '';
+    const 主文本 = 最近交战
+      ? `${toText(最近交战[0], '未知目标')} · ${toText(deepGet(最近交战[1], 'last_result', '未记录'), '未记录')}`
+      : 最近情报 || 最近任务 || '暂无记录';
+    const 统计文本 = 最近交战
+      ? `${formatNumber(toNumber(deepGet(最近交战[1], '次数', 0), 0))} 次`
+      : `${(snapshot.unlockedKnowledges || []).length || 0} 条`;
+    return `
+        <div class="mvu-archive-panel-head">
+          <span>交战与情报</span>
+          <b>${htmlEscape(统计文本)}</b>
+        </div>
+        <div class="mvu-archive-terminal-log" title="${escapeHtmlAttr(主文本)}"><b>[LOG]</b><span>${htmlEscape(shortenText(主文本, 42))}</span></div>
+        <div class="mvu-archive-mini-link-row">
+          <button type="button" class="mvu-archive-mini-link clickable" data-preview="情报库详细页" data-detail-mode="embed">情报库</button>
+          <span>${htmlEscape(shortenText(最近任务 || '任务待命', 16))}</span>
+        </div>
+      `;
   }
 
   function buildUnifiedSocialCard(snapshot) {
-    return 构建全息入口卡('关系网络', snapshot.relations.length || 0, '', '关键关系');
-  }
-
-  function 构建全息入口卡(标题, 数字, 单位, 副标题) {
+    const 社交 = deepGet(snapshot, 'activeChar.社交', {}) || {};
+    const 核心羁绊 = snapshot.topRelation
+      ? `${shortenText(snapshot.topRelation[0], 10)} · ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')}`
+      : '暂无核心羁绊';
+    const 名望 = toText(社交.名望等级, '籍籍无名');
+    const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 16 }) || toText(社交.主身份, '未记录');
     return `
-        <span class="mvu-holo-entry-label">${htmlEscape(标题)}</span>
-        <b class="mvu-holo-entry-number"><i>${htmlEscape(formatNumber(数字))}</i>${单位 ? `<em>${htmlEscape(单位)}</em>` : ''}</b>
-        <small class="mvu-holo-entry-sub">${htmlEscape(副标题)}</small>
+        <div class="mvu-archive-panel-head">
+          <span>社会与羁绊</span>
+          <b>${htmlEscape(`${(snapshot.relations || []).length || 0} 人`)}</b>
+        </div>
+        <div class="mvu-archive-social-stack">
+          <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
+          <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
+          <span><b>羁绊</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
+        </div>
       `;
   }
 
   function buildUnifiedSpiritCard(config, options = {}) {
     const primary = !!(options && options.primary);
     if (!config) {
-      return `
-          <div class="mvu-holo-card-head">
-            <div class="mvu-holo-card-title">${primary ? '主武魂' : '第2武魂'}</div>
-          </div>
-          <div class="mvu-holo-empty-note">${primary ? '当前未加载武魂信息。' : '未启用第2武魂或血脉'}</div>
-        `;
+      return 构建档案空武魂卡(primary ? '第一武魂' : '第二武魂', primary ? '当前未加载武魂信息' : '未启用第2武魂或血脉');
     }
-    const content =
+    const 内容 =
       config.kind === 'bloodline' ? renderArchiveBloodlineEntry(config) : renderArchiveSpiritEntry(config, primary);
-    return `<div class="mvu-holo-spirit-card">${content}</div>`;
+    return `<div class="mvu-archive-spirit-card">${内容}</div>`;
   }
 
   function 构建统一副轨摘要卡(snapshot) {
@@ -29210,10 +29328,29 @@
     const 融合资料 = getFusionArchiveMeta(snapshot || {});
     const 魂骨数量 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
     return `
-        <div class="mvu-spirit-empty-compact">
-          <b>第2武魂 / 血脉</b>
-          <span>未启用第2武魂。</span>
-          <em>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))} 项 · 魂骨 ${htmlEscape(String(魂骨数量 || 0))} 块</em>
+        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty">
+          <div class="mvu-archive-panel-head">
+            <span>第二武魂</span>
+            <b>未启用</b>
+          </div>
+          <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
+          <div class="mvu-archive-spirit-foot">
+            <button type="button" class="mvu-archive-mini-link clickable" data-preview="武魂融合技详细页" data-detail-mode="embed">融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))}</button>
+            <span>魂骨 ${htmlEscape(String(魂骨数量 || 0))}</span>
+          </div>
+        </div>
+      `;
+  }
+
+  function 构建档案空武魂卡(标题, 文本) {
+    return `
+        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty">
+          <div class="mvu-archive-panel-head">
+            <span>${htmlEscape(标题)}</span>
+            <b>空槽</b>
+          </div>
+          <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
+          <div class="mvu-archive-spirit-foot"><span>${htmlEscape(文本)}</span></div>
         </div>
       `;
   }
@@ -31402,8 +31539,9 @@
         surface: normalizedSurface,
       });
     } else {
-      setUnifiedCardMarkup('secondary-spirit', '', {
-        enabled: false,
+      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
+        enabled: true,
+        preview: '武魂融合技详细页',
         empty: true,
         空态标签: '未启用',
         surface: normalizedSurface,
@@ -31415,6 +31553,10 @@
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
+      setUnifiedCardMarkup('archive-identity', 构建档案身份天幕(snapshot), {
+        preview: '生命图谱详细页',
+        surface: normalizedSurface,
+      });
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
         preview: '生命图谱详细页',
         surface: normalizedSurface,
@@ -31424,7 +31566,7 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('vault', buildVaultCard(snapshot), {
-        preview: '储物仓库详细页',
+        preview: '情报库详细页',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
@@ -31966,6 +32108,7 @@
 
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
+      'archive-identity': ['档案', '待同步'],
       'archive-core': ['角色', '无数据'],
       'primary-spirit': ['主武魂', '未记录'],
       armory: ['武装', '0'],
@@ -31989,7 +32132,12 @@
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
     });
-    setUnifiedCardMarkup('secondary-spirit', '', { surface: 'panel', enabled: false, empty: true, 空态标签: '未启用' });
+    setUnifiedCardMarkup('secondary-spirit', 构建档案空武魂卡('第二武魂', '待同步'), {
+      surface: 'panel',
+      enabled: true,
+      empty: true,
+      空态标签: '未启用',
+    });
     setUnifiedMapStageMarkup('panel', '');
   }
 
@@ -39517,26 +39665,58 @@
 
   function renderArchiveSpiritEntry(config, isPrimary = false) {
     const 魂环数组 = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: isPrimary ? 'ring-white' : 'ring-gold' });
+    const 魂环数量 = Array.isArray(config.魂环) ? config.魂环.length : 0;
+    const 标题 = isPrimary ? '第一武魂' : '第二武魂';
+    const 标签 = config.badge || 标题;
+    const 名称 = config.spiritName || config.name || '未命名武魂';
+    const 摘要 = [
+      config.spiritType || '',
+      config.spiritElement || '',
+      魂环数量 ? `${魂环数量}环` : '',
+    ].filter(Boolean).join(' / ') || '武魂谱系';
     return `
-      <div class="mvu-holo-card-head">
-        <div class="mvu-holo-card-title">${isPrimary ? '武魂档案' : '第2武魂'}</div>
-        <span class="mvu-holo-card-badge ${config.badgeClass || (isPrimary ? 'cyan' : 'gold')}">${htmlEscape(config.badge || '')}</span>
+      <div class="mvu-archive-panel-head">
+        <span>${htmlEscape(标题)}</span>
+        <b class="${escapeHtmlAttr(config.badgeClass || (isPrimary ? 'cyan' : 'gold'))}">${htmlEscape(标签)}</b>
       </div>
-      <div class="mvu-holo-spirit-name">${htmlEscape(config.name || '')}</div>
-      <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${魂环数组}</div>
+      <div class="mvu-archive-spirit-name">
+        <b>${htmlEscape(shortenText(名称, 18))}</b>
+        <span>${htmlEscape(shortenText(摘要, 28))}</span>
+      </div>
+      <div class="mvu-archive-ring-observatory">
+        <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard mvu-soul-ring-showcase--overview">${魂环数组}</div>
+      </div>
+      <div class="mvu-archive-spirit-foot">
+        <span>魂灵 ${htmlEscape(String(config.soulCount || 0))} / 独立环 ${htmlEscape(String(config.independentRingCount || 0))}</span>
+        <button type="button" class="mvu-archive-mini-link clickable" data-preview="${escapeHtmlAttr(config.preview || (isPrimary ? '第1武魂详细页' : '第2武魂详细页'))}" data-detail-mode="embed">详情</button>
+      </div>
     `;
   }
 
   function renderArchiveBloodlineEntry(config) {
     const 血脉摘要 = 构建血脉状态文本_桥接(config);
     const 魂环Html = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: 'ring-gold' });
+    const 魂环数量 = Array.isArray(config.魂环) ? config.魂环.length : 0;
     return `
-        <div class="mvu-holo-card-head">
-          <div class="mvu-holo-card-title">血脉档案</div>
-          <span class="mvu-holo-card-badge ${config.badgeClass || 'gold'}">${htmlEscape(config.badge || '')}</span>
+        <div class="mvu-archive-panel-head">
+          <span>血脉档案</span>
+          <b class="${escapeHtmlAttr(config.badgeClass || 'gold')}">${htmlEscape(config.badge || '血脉')}</b>
         </div>
-        <div class="mvu-holo-spirit-name">${htmlEscape(config.name || '')}</div>
-        ${config.魂环 && config.魂环.length ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard">${魂环Html}</div>` : `<div class="mvu-holo-empty-note">${htmlEscape(血脉摘要)}</div>`}
+        <div class="mvu-archive-spirit-name">
+          <b>${htmlEscape(shortenText(config.name || '血脉之力', 18))}</b>
+          <span>${htmlEscape(shortenText(血脉摘要, 28))}</span>
+        </div>
+        <div class="mvu-archive-ring-observatory">
+          ${
+            config.魂环 && config.魂环.length
+              ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard mvu-soul-ring-showcase--overview">${魂环Html}</div>`
+              : `<div class="mvu-archive-empty-orbit" aria-hidden="true"></div>`
+          }
+        </div>
+        <div class="mvu-archive-spirit-foot">
+          <span>血脉魂环 ${htmlEscape(String(魂环数量))}</span>
+          <button type="button" class="mvu-archive-mini-link clickable" data-preview="${escapeHtmlAttr(config.preview || '血脉封印详细页')}" data-detail-mode="embed">详情</button>
+        </div>
       `;
   }
 
