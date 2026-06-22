@@ -29260,7 +29260,7 @@
           <b>${htmlEscape(`${物资数} 件`)}</b>
         </div>
         <div class="mvu-archive-gear-grid">${槽位HTML}</div>
-        <div class="mvu-archive-armory-strip clickable" data-preview="储物仓库详细页" data-detail-mode="embed">
+        <div class="mvu-archive-armory-strip">
           <span><b>仓储</b><em>${htmlEscape(formatNumber(物资数))} 件</em></span>
           <span><b>资金</b><em>${htmlEscape(formatNumber(联邦币 || 星罗币))}</em></span>
           <span><b>魂骨</b><em>${htmlEscape(formatNumber(魂骨数))}</em></span>
@@ -29291,7 +29291,6 @@
         <div class="mvu-archive-intel-stack">
           <span><b>情报</b><em>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))} 条</em></span>
           <span><b>任务</b><em>${htmlEscape(shortenText(最近任务 || '待命', 12))}</em></span>
-          <button type="button" class="mvu-archive-mini-link clickable" data-preview="情报库详细页" data-detail-mode="embed">进入情报库</button>
         </div>
       `;
   }
@@ -29312,7 +29311,6 @@
           <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
           <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
           <span><b>羁绊</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
-          <button type="button" class="mvu-archive-mini-link clickable" data-preview="人物关系详细页" data-detail-mode="embed">关系网络</button>
         </div>
       `;
   }
@@ -29340,7 +29338,7 @@
           </div>
           <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
           <div class="mvu-archive-spirit-foot">
-            <button type="button" class="mvu-archive-mini-link clickable" data-preview="武魂融合技详细页" data-detail-mode="embed">融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))}</button>
+            <span>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))}</span>
             <span>魂骨 ${htmlEscape(String(魂骨数量 || 0))}</span>
           </div>
         </div>
@@ -39688,7 +39686,6 @@
       </div>
       <div class="mvu-archive-spirit-foot">
         <span>${htmlEscape(`${魂环数量}环 · 魂灵${config.soulCount || 0} · 独立${config.independentRingCount || 0}`)}</span>
-        <button type="button" class="mvu-archive-mini-link clickable" data-preview="${escapeHtmlAttr(config.preview || (isPrimary ? '第1武魂详细页' : '第2武魂详细页'))}" data-detail-mode="embed">详情</button>
       </div>
     `;
   }
@@ -39715,7 +39712,6 @@
         </div>
         <div class="mvu-archive-spirit-foot">
           <span>血脉魂环 ${htmlEscape(String(魂环数量))}</span>
-          <button type="button" class="mvu-archive-mini-link clickable" data-preview="${escapeHtmlAttr(config.preview || '血脉封印详细页')}" data-detail-mode="embed">详情</button>
         </div>
       `;
   }

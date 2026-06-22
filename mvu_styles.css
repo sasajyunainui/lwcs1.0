@@ -20012,8 +20012,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-empty-orbit::after {
   box-shadow: 0 0 16px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot,
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link-row {
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot {
   position: relative;
   z-index: 1;
   display: flex;
@@ -20026,28 +20025,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link-row {
   line-height: 1.2;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot span,
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link-row span {
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-foot span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-mini-link {
-  flex: 0 0 auto;
-  min-width: 0;
-  max-width: 58%;
-  padding: 5px 9px;
-  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 32%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mvu-holo-main) 9%, transparent);
-  color: var(--mvu-holo-high);
-  font: 800 11px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid {
