@@ -31579,10 +31579,7 @@
   }
 
   function setUnifiedCardMarkup(slot, html, options = {}) {
-    const surface = normalizeUnifiedSurfaceKey(options.surface);
-    const selector = surface
-      ? `#mvu-unified-mount [data-unified-card="${slot}"][data-unified-surface="${surface}"]`
-      : `#mvu-unified-mount [data-unified-card="${slot}"]`;
+    const selector = `#mvu-unified-mount [data-holo-slot="${slot}"]`;
     const preview = toText(options.preview, '');
     const hasMarkup = !!toText(html, '').trim();
     const enabled = options.enabled !== false && hasMarkup;
@@ -31592,16 +31589,8 @@
       setLiveNodeHtml(node, html);
       if (preview && enabled) node.setAttribute('data-preview', preview);
       else node.removeAttribute('data-preview');
-      if (
-        preview &&
-        enabled &&
-        surface === 'holo' &&
-        node.classList.contains('mvu-holo-scaffold')
-      ) {
-        node.setAttribute('data-detail-mode', 'embed');
-      } else {
-        node.removeAttribute('data-detail-mode');
-      }
+      if (preview && enabled && node.classList.contains('clickable')) node.setAttribute('data-detail-mode', 'embed');
+      else node.removeAttribute('data-detail-mode');
       node.classList.toggle('clickable', !!(preview && enabled));
       node.classList.toggle('is-empty', 显式空卡 || !enabled);
       if ((显式空卡 || !enabled) && 空态标签) node.setAttribute('data-empty-label', 空态标签);

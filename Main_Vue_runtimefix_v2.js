@@ -515,45 +515,45 @@ const DesktopUnifiedLayout = {
               <template v-if="!detailState.isOpen">
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--archive">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-unified-card="primary-spirit" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-unified-card="secondary-spirit" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="holo"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-holo-slot="archive-core"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="primary-spirit"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="secondary-spirit"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-holo-slot="armory"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="储物仓库详细页" data-detail-mode="embed" data-holo-slot="vault"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-holo-slot="social"></div>
                 </div>
               </section>
 
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-map' }" data-target="page-map">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--map">
-                  <div class="mvu-unified-map-stage mvu-holo-map-stage mvu-holo-scaffold mvu-holo-slot-card" data-mvu-map-stage="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-unified-card="map-current" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-unified-card="map-locals" data-unified-surface="holo"></div>
+                  <div class="mvu-holo-map-stage mvu-holo-scaffold mvu-holo-slot-card" data-mvu-map-stage="holo"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card clickable" data-preview="当前节点详情" data-detail-mode="embed" data-holo-slot="map-current"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card" data-holo-slot="map-locals"></div>
                 </div>
               </section>
 
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-world' }" data-target="page-world">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--world">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured" data-unified-card="world-hero" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-unified-card="world-timeline" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="world-bestiary" data-unified-surface="holo"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured" data-holo-slot="world-hero"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-holo-slot="world-timeline"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-holo-slot="world-bestiary"></div>
                 </div>
               </section>
 
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-org' }" data-target="page-org">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--org">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-unified-card="org-hero" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-unified-card="org-faction" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-unified-card="org-node" data-unified-surface="holo"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-holo-slot="org-hero"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-holo-slot="org-faction"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-holo-slot="org-node"></div>
                 </div>
               </section>
 
               <section class="mvu-holo-page" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal">
                 <div class="mvu-holo-dashboard mvu-holo-dashboard--terminal">
-                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-unified-card="terminal-hero" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-unified-card="terminal-profession" data-unified-surface="holo"></div>
-                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="holo"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-slot-card mvu-holo-slot-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-holo-slot="terminal-hero"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-holo-slot="terminal-intel"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-holo-slot="terminal-profession"></div>
+                  <div class="mvu-holo-scaffold mvu-holo-entry-card clickable" data-preview="任务界面" data-detail-mode="embed" data-holo-slot="terminal-quest"></div>
                 </div>
               </section>
               </template>
