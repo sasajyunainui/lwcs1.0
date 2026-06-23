@@ -48,32 +48,41 @@
   --panel: rgba(170, 255, 245, 0.045);
   --panel-strong: rgba(170, 255, 245, 0.075);
   --panel-elevated: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+  --原型暗玻底: rgba(8, 14, 25, 0.42);
+  --原型暗玻强: rgba(6, 12, 20, 0.66);
+  --原型玻璃虚化: blur(16px) saturate(120%);
+  --原型光刻线: rgba(0, 243, 255, 0.15);
+  --原型光刻强线: rgba(0, 243, 255, 0.34);
+  --原型弱分隔线: rgba(0, 243, 255, 0.1);
+  --原型内辉光: rgba(0, 243, 255, 0.06);
+  --原型文字辉光: 0 0 8px rgba(0, 243, 255, 0.6), 0 0 2px rgba(255, 255, 255, 0.82);
+  --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息材质底:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
-    radial-gradient(circle at 8% 0%, rgba(103, 247, 239, 0.1), transparent 34%),
-    rgba(5, 12, 18, 0.58);
+    radial-gradient(circle at 8% 0%, rgba(0, 243, 255, 0.095), transparent 34%),
+    var(--原型暗玻底);
   --全息材质悬停底:
     linear-gradient(180deg, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.018)),
-    radial-gradient(circle at 10% 0%, rgba(103, 247, 239, 0.16), transparent 38%),
-    rgba(5, 12, 18, 0.66);
-  --全息材质线: rgba(103, 247, 239, 0.16);
+    radial-gradient(circle at 10% 0%, rgba(0, 243, 255, 0.16), transparent 38%),
+    var(--原型暗玻强);
+  --全息材质线: var(--原型光刻线);
   --全息材质弱线: rgba(255, 255, 255, 0.055);
   --全息材质角光: rgba(103, 247, 239, 0.12);
-  --全息材质侧线: rgba(77, 240, 255, 0.14);
-  --全息材质辉光: rgba(103, 247, 239, 0.11);
-  --全息材质强辉光: rgba(103, 247, 239, 0.2);
+  --全息材质侧线: rgba(0, 243, 255, 0.18);
+  --全息材质辉光: var(--原型内辉光);
+  --全息材质强辉光: rgba(0, 243, 255, 0.2);
   --全息材质阴影:
-    inset 3px 0 0 var(--全息材质侧线),
     inset 0 0 0 1px var(--全息材质线),
     inset 0 1px 0 var(--全息材质弱线),
-    inset 0 -24px 46px rgba(0, 0, 0, 0.18),
-    0 14px 28px rgba(0, 0, 0, 0.18),
+    inset 0 0 20px var(--全息材质辉光),
+    inset 0 -24px 46px rgba(0, 0, 0, 0.22),
+    0 10px 30px rgba(0, 0, 0, 0.5),
     0 0 18px var(--全息材质辉光);
   --全息材质悬停阴影:
-    inset 3px 0 0 var(--全息材质侧线),
-    inset 0 0 0 1px rgba(103, 247, 239, 0.26),
-    inset 0 0 26px var(--全息材质辉光),
-    0 10px 26px rgba(0, 0, 0, 0.24),
+    inset 2px 0 0 var(--全息材质侧线),
+    inset 0 0 0 1px rgba(0, 243, 255, 0.26),
+    inset 0 0 26px rgba(0, 243, 255, 0.09),
+    0 10px 26px rgba(0, 0, 0, 0.36),
     0 0 24px var(--全息材质强辉光);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
@@ -4274,14 +4283,14 @@
 .archive-card {
   position: relative;
   overflow: hidden;
-  border-radius: var(--mvu-radius-lg, 16px);
-  border: 1px solid rgba(210, 245, 255, 0.12);
-  background: linear-gradient(180deg, rgba(20, 47, 61, 0.9), rgba(12, 30, 40, 0.86));
+  border-radius: var(--mvu-radius-md, 12px);
+  border: 1px solid var(--原型光刻线);
+  background: var(--全息材质底);
   min-height: 0;
   padding: 16px;
-  box-shadow:
-    inset 0 0 14px rgba(223, 246, 255, 0.05),
-    0 10px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--全息材质阴影);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 .archive-card:has(.interactive-ring),
@@ -4301,9 +4310,11 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(0, 229, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.018) 1px, transparent 1px);
-  background-size: 16px 16px;
+    linear-gradient(rgba(0, 243, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.018) 1px, transparent 1px),
+    radial-gradient(circle at 100% 0%, rgba(0, 243, 255, 0.055), transparent 34%);
+  background-size: 16px 16px, 16px 16px, auto;
+  opacity: 0.82;
 }
 
 .archive-card.full {
@@ -4386,9 +4397,10 @@
 }
 
 .radar-label {
-  fill: var(--text-sub);
+  fill: #ffffff;
   font-size: var(--mvu-font-xs, 10px);
   font-family: var(--font-tech);
+  filter: drop-shadow(0 0 4px #000);
 }
 
 .radar-legend {
@@ -4400,8 +4412,8 @@
 .legend-chip {
   border-radius: var(--mvu-radius-md, 12px);
   padding: 7px 8px;
-  background: rgba(223, 246, 255, 0.08);
-  border: 1px solid rgba(210, 245, 255, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--原型弱分隔线);
 }
 
 .legend-chip b {
@@ -4433,18 +4445,16 @@
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: 0.55px;
-  color: var(--mvu-color-text-ice, #edf9fd);
+  color: #ffffff;
   white-space: normal;
-  text-shadow:
-    0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05)),
-    0 0 6px rgba(77, 240, 255, 0.08);
+  text-shadow: var(--原型文字辉光);
 }
 
 .archive-card-head::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(103, 247, 239, 0.28), rgba(255, 226, 89, 0.2), transparent);
+  background: linear-gradient(90deg, var(--原型光刻强线), rgba(255, 255, 255, 0.16), transparent);
   opacity: 0.8;
 }
 
@@ -7618,17 +7628,16 @@ button.tag-chip:active,
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(0, 229, 255, 0.08);
+  border: 1px solid var(--原型光刻线);
   background:
-    linear-gradient(rgba(4, 15, 24, 0.92), rgba(4, 15, 24, 0.92)),
-    linear-gradient(90deg, rgba(77, 240, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(77, 240, 255, 0.035) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 30px rgba(0, 229, 255, 0.03);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+    linear-gradient(90deg, rgba(0, 243, 255, 0.044) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(0, 243, 255, 0.032) 1px, transparent 1px),
+    radial-gradient(circle at top right, rgba(0, 243, 255, 0.075), transparent 42%),
+    var(--全息材质底);
+  background-size: 28px 28px, 28px 28px, auto, auto;
+  box-shadow: var(--全息材质阴影);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 .inventory-detail-terminal::before {
@@ -7636,8 +7645,12 @@ button.tag-chip:active,
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.06), transparent 42%);
-  opacity: 0.8;
+  background:
+    linear-gradient(90deg, rgba(0, 243, 255, 0.58), transparent) left top / 30px 1px no-repeat,
+    linear-gradient(180deg, rgba(0, 243, 255, 0.58), transparent) left top / 1px 30px no-repeat,
+    linear-gradient(270deg, rgba(0, 243, 255, 0.42), transparent) right bottom / 30px 1px no-repeat,
+    linear-gradient(0deg, rgba(0, 243, 255, 0.42), transparent) right bottom / 1px 30px no-repeat;
+  opacity: 0.72;
 }
 
 .inventory-detail-terminal::after {
@@ -7650,8 +7663,8 @@ button.tag-chip:active,
 
 .inventory-detail-terminal.is-holo-enter::after {
   opacity: 1;
-  background: linear-gradient(180deg, transparent 0%, rgba(120, 255, 245, 0.04) 49%, rgba(120, 255, 245, 0.28) 50%, rgba(120, 255, 245, 0.04) 51%, transparent 100%);
-  animation: 仓库详情扫描线 0.2s ease-out;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 243, 255, 0.04) 49%, rgba(0, 243, 255, 0.32) 50%, rgba(0, 243, 255, 0.04) 51%, transparent 100%);
+  animation: 仓库详情扫描线 0.42s ease-out;
 }
 
 @keyframes 仓库详情扫描线 {
@@ -12509,18 +12522,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
   flex-direction: column !important;
   gap: 12px !important;
   padding: 15px 16px !important;
-  border: 1px solid rgba(118, 226, 255, 0.1) !important;
-  border-radius: var(--mvu-radius-lg, 16px) !important;
+  border: 1px solid var(--原型光刻线) !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
   background:
-    linear-gradient(rgba(77, 240, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(77, 240, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(15, 34, 45, 0.82), rgba(7, 18, 26, 0.9)) !important;
+    linear-gradient(rgba(0, 243, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.02) 1px, transparent 1px),
+    var(--全息材质底) !important;
   background-size: 18px 18px, 18px 18px, auto !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 14px 28px rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  box-shadow: var(--全息材质阴影) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive-profile,
@@ -15481,12 +15492,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   min-height: max-content !important;
   padding: 12px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid var(--mvu-dossier-line) !important;
+  border: 1px solid var(--原型弱分隔线) !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)), var(--mvu-dossier-panel) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.006)),
+    rgba(8, 14, 25, 0.18) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    inset 0 0 18px rgba(77, 240, 255, 0.025) !important;
+    inset 0 0 18px rgba(0, 243, 255, 0.025) !important;
   overflow: visible !important;
 }
 
@@ -15518,8 +15530,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list {
   gap: 0 !important;
   min-width: 0 !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(118, 226, 255, 0.075) !important;
-  background: rgba(4, 15, 24, 0.18) !important;
+  border: 1px solid var(--原型弱分隔线) !important;
+  background: rgba(255, 255, 255, 0.012) !important;
   overflow: hidden !important;
 }
 
@@ -15594,8 +15606,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row > 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > b {
   min-width: 0 !important;
   margin: 0 !important;
-  color: var(--mvu-dossier-label) !important;
-  font-size: var(--mvu-font-xs, 10px) !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.35 !important;
   font-weight: 700 !important;
   letter-spacing: 0.04em !important;
@@ -15606,10 +15618,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row > 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > span {
   display: block !important;
   min-width: 0 !important;
-  color: var(--mvu-dossier-value) !important;
+  color: #ffffff !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.46 !important;
   font-weight: 600 !important;
+  text-shadow: var(--原型文字辉光) !important;
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
@@ -18876,9 +18889,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   --mvu-holo-line-soft: rgba(103, 247, 239, 0.14);
   --mvu-holo-glow: rgba(103, 247, 239, 0.24);
   --mvu-holo-glow-strong: rgba(103, 247, 239, 0.44);
-  --mvu-holo-panel: rgba(5, 12, 18, 0.72);
-  --mvu-holo-panel-strong: rgba(7, 15, 22, 0.88);
-  --mvu-holo-card: rgba(255, 255, 255, 0.045);
+  --mvu-holo-panel: rgba(5, 12, 18, 0.62);
+  --mvu-holo-panel-strong: rgba(7, 15, 22, 0.82);
+  --mvu-holo-card: var(--原型暗玻底);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--mvu-holo-main) 16%, transparent), transparent 28%),
     radial-gradient(circle at 94% 88%, color-mix(in srgb, var(--mvu-holo-high) 8%, transparent), transparent 30%),
@@ -18890,7 +18903,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   --mvu-holo-medium:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
     radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--mvu-holo-main) 14%, transparent), transparent 34%),
-    rgba(5, 12, 18, 0.58);
+    rgba(8, 14, 25, 0.42);
   position: relative;
   box-sizing: border-box;
   display: grid;
@@ -19436,14 +19449,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   overflow-y: auto;
   background:
     radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 32%),
-    rgba(1, 7, 13, 0.24);
+    rgba(1, 7, 13, 0.18);
   color: rgba(244, 250, 252, 0.98);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   scrollbar-width: none;
   border-radius: calc(var(--mvu-holo-card-radius) * 0.9);
-  backdrop-filter: blur(18px) saturate(112%);
-  -webkit-backdrop-filter: blur(18px) saturate(112%);
+  backdrop-filter: blur(18px) saturate(116%);
+  -webkit-backdrop-filter: blur(18px) saturate(116%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::-webkit-scrollbar {
@@ -19476,18 +19489,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
   border: 0;
   border-radius: 2px;
   background:
-    linear-gradient(rgba(0, 243, 255, 0.026) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(circle at 12% 8%, rgba(0, 243, 255, 0.11), transparent 34%),
+    linear-gradient(rgba(0, 243, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(0, 243, 255, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(5, 12, 22, 0.72), rgba(3, 8, 16, 0.58)),
-    rgba(8, 14, 25, 0.4);
+    var(--原型暗玻底);
   background-size: 24px 24px, 24px 24px, auto, auto, auto;
   box-shadow:
-    inset 0 0 0 1px rgba(0, 243, 255, 0.12),
-    inset 0 0 28px rgba(0, 243, 255, 0.06),
+    inset 0 0 0 1px var(--原型光刻线),
+    inset 0 0 28px var(--原型内辉光),
     0 18px 46px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(16px) saturate(118%);
-  -webkit-backdrop-filter: blur(16px) saturate(118%);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
@@ -19507,6 +19520,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
     linear-gradient(270deg, rgba(0, 243, 255, 0.78), transparent) right bottom / 36px 1px no-repeat,
     linear-gradient(0deg, rgba(0, 243, 255, 0.78), transparent) right bottom / 1px 36px no-repeat;
   opacity: 0.78;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::after,
+#detailModal .mvu-holo-slab-root::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -22%;
+  height: 20%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0, 243, 255, 0.26), transparent);
+  opacity: 0;
+  animation: 全息晶板扫描 0.8s ease-out 0.08s both;
+}
+
+@keyframes 全息晶板扫描 {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(620%);
+    opacity: 0;
+  }
 }
 
 @keyframes mvu-holo-slab-projection {
@@ -19733,17 +19772,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 0;
+  border: 1px solid var(--mvu-holo-line-soft);
   border-radius: var(--mvu-holo-card-radius);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
-    color-mix(in srgb, rgba(9, 17, 24, 0.58) 68%, transparent);
+    var(--mvu-holo-medium);
   box-shadow:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
-    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(14px) saturate(114%);
+  -webkit-backdrop-filter: blur(14px) saturate(114%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -19794,9 +19832,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
   box-shadow:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--mvu-holo-main) 20%, transparent);
+    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 58%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 26%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--mvu-holo-main) 7%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.32),
+    0 0 20px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
   transform: translateY(-1px);
 }
 
@@ -20604,6 +20644,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
   color: rgba(255, 255, 255, 0.65);
   box-shadow: none;
   transition:
+    background 0.18s ease,
     transform 0.18s ease,
     box-shadow 0.18s ease,
     border-color 0.18s ease,
@@ -20673,8 +20714,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-rare {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 8%, transparent), transparent 72%);
   transform: translateY(-1px);
   box-shadow:
+    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 44%, transparent),
     inset 0 -1px 0 color-mix(in srgb, var(--mvu-holo-high) 40%, transparent),
     0 0 12px color-mix(in srgb, var(--mvu-holo-main) 12%, transparent);
 }
@@ -20746,6 +20789,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window {
   box-shadow: none;
   cursor: pointer;
   text-decoration: none;
+  transition:
+    background 0.2s var(--原型悬浮曲线),
+    box-shadow 0.2s var(--原型悬浮曲线),
+    transform 0.2s var(--原型悬浮曲线);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:last-child {
@@ -20755,8 +20802,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:last-child {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:focus-visible {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 8%, transparent), transparent 72%);
+  box-shadow:
+    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 58%, transparent),
+    inset 10px 0 20px -10px color-mix(in srgb, var(--mvu-holo-main) 36%, transparent);
   outline: none;
-  transform: translateY(-1px);
+  transform: translateX(2px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head {
@@ -20822,9 +20873,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link:focus-visible {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 8%, transparent), transparent 72%);
   outline: none;
   box-shadow:
-    inset 0 -1px 0 color-mix(in srgb, var(--mvu-holo-main) 28%, transparent),
+    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 58%, transparent),
+    inset 10px 0 20px -10px color-mix(in srgb, var(--mvu-holo-main) 36%, transparent),
     0 0 14px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
 }
 
@@ -21125,8 +21178,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric {
   min-height: 30px;
   padding: 7px 9px;
   border-radius: 6px 10px 10px 6px;
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.045);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 4%, transparent), transparent 72%),
+    rgba(255, 255, 255, 0.018);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--mvu-holo-main) 3%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-row {
@@ -21146,7 +21203,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-row b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric b {
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--mvu-holo-muted) 78%, transparent);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
@@ -21158,9 +21215,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-row span,
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric span {
   min-width: 0;
   overflow: hidden;
-  color: var(--mvu-holo-text);
+  color: #ffffff;
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.35;
+  text-shadow: var(--原型文字辉光);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22355,9 +22414,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center;
   justify-content: center;
   padding: 18px 24px calc(18px + env(safe-area-inset-bottom, 0px));
-  background: rgba(3, 6, 9, 0.18);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(3, 6, 9, 0.22);
+  backdrop-filter: blur(8px) saturate(112%);
+  -webkit-backdrop-filter: blur(8px) saturate(112%);
   --mvu-dossier-panel: rgba(8, 23, 34, 0.72);
   --mvu-dossier-panel-soft: rgba(255, 255, 255, 0.035);
   --mvu-dossier-line: rgba(118, 226, 255, 0.13);
@@ -22373,12 +22432,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   max-width: min(1120px, calc(100vw - 48px)) !important;
   min-height: 0 !important;
   max-height: min(86svh, 920px) !important;
-  border-radius: var(--mvu-radius-xl, 20px);
+  border: 1px solid var(--原型光刻线);
+  border-radius: var(--mvu-radius-lg, 16px);
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)), rgba(9, 16, 22, 0.82);
+  background: var(--全息材质底);
   box-shadow:
-    0 28px 58px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
+    var(--全息材质阴影),
+    0 28px 58px rgba(0, 0, 0, 0.38);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 #detailModal.mvu-modal-display-unified .modal-head {
@@ -22387,8 +22449,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   z-index: 4;
   min-height: 84px;
   padding: 14px 18px 12px;
-  background: linear-gradient(180deg, rgba(7, 14, 20, 0.96), rgba(7, 14, 20, 0.76));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    rgba(5, 12, 18, 0.48);
+  border-bottom: 1px solid var(--原型弱分隔线);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -24800,16 +24864,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   padding: 8px 10px;
   border-top: 1px solid rgba(0, 243, 255, 0.12);
   background:
-    linear-gradient(90deg, rgba(0, 243, 255, 0.09), transparent 72%),
-    rgba(0, 0, 0, 0.14);
-  box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.035);
+    linear-gradient(90deg, rgba(0, 243, 255, 0.08), transparent 72%),
+    rgba(255, 255, 255, 0.018);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 243, 255, 0.055),
+    inset 0 0 12px rgba(0, 243, 255, 0.035);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-stats b,
 #detailModal .mvu-intel-terminal-stats b {
   min-width: 0;
   overflow: hidden;
-  color: rgba(183, 211, 222, 0.78);
+  color: rgba(255, 255, 255, 0.68);
   font-size: 10px;
   line-height: 1;
   text-overflow: ellipsis;
@@ -24818,10 +24884,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-stats em,
 #detailModal .mvu-intel-terminal-stats em {
-  color: rgba(240, 252, 255, 0.98);
+  color: #ffffff;
   font: 850 13px/1 "Consolas", "Microsoft YaHei", monospace;
   font-style: normal;
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.46);
+  text-shadow: var(--原型文字辉光);
   white-space: nowrap;
 }
 
@@ -24845,7 +24911,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-trac
   border-left: 1px solid rgba(0, 243, 255, 0.16);
   background:
     radial-gradient(circle at 100% 0%, rgba(0, 243, 255, 0.08), transparent 52%),
-    rgba(0, 0, 0, 0.12);
+    rgba(255, 255, 255, 0.014);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 243, 255, 0.055),
+    inset 0 0 18px rgba(0, 243, 255, 0.024);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-track-head,
@@ -24857,7 +24926,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-trac
   min-width: 0;
   padding: 9px 11px;
   border-bottom: 1px solid rgba(0, 243, 255, 0.1);
-  background: rgba(0, 243, 255, 0.045);
+  background: linear-gradient(90deg, rgba(0, 243, 255, 0.07), transparent 68%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-track-head b,
@@ -24899,8 +24968,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   padding: 10px;
   background:
     linear-gradient(90deg, rgba(0, 243, 255, 0.08), transparent 72%),
-    rgba(0, 0, 0, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(0, 243, 255, 0.08);
+    rgba(255, 255, 255, 0.018);
+  box-shadow:
+    inset 2px 0 0 rgba(0, 243, 255, 0.22),
+    inset 0 0 0 1px rgba(0, 243, 255, 0.08);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-latest b,
@@ -24939,8 +25010,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   gap: 5px;
   min-width: 0;
   padding: 9px 10px 9px 13px;
-  background: rgba(0, 0, 0, 0.16);
-  box-shadow: inset 2px 0 0 rgba(0, 243, 255, 0.22);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow:
+    inset 2px 0 0 rgba(0, 243, 255, 0.22),
+    inset 0 0 0 1px rgba(0, 243, 255, 0.045);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-record:hover,
@@ -24948,7 +25021,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   transform: translateX(2px);
   box-shadow:
     inset 2px 0 0 rgba(0, 243, 255, 0.7),
-    inset 0 0 16px rgba(0, 243, 255, 0.05);
+    inset 0 0 16px rgba(0, 243, 255, 0.06);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-record-head,
@@ -25009,7 +25082,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
   flex-shrink: 0;
   padding: 8px;
   border-top: 1px solid rgba(0, 243, 255, 0.16);
-  background: rgba(0, 0, 0, 0.18);
+  background:
+    linear-gradient(90deg, rgba(0, 243, 255, 0.035), transparent 72%),
+    rgba(255, 255, 255, 0.014);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draft-head,
@@ -25047,7 +25122,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
   resize: none;
   border: 1px solid rgba(0, 243, 255, 0.12);
   border-radius: 0;
-  background: rgba(0, 0, 0, 0.24);
+  background: rgba(2, 8, 15, 0.36);
   color: rgba(240, 252, 255, 0.96);
   font: 800 12px/1.35 "Consolas", "Microsoft YaHei", monospace;
   transition: height 0.22s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -25415,11 +25490,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 /* Archive modal redesign */
 #detailModal.archive-redesign-mode {
   --archive-shell-bg: #0b1520;
-  --archive-shell-surface: rgba(11, 20, 31, 0.96);
-  --archive-shell-edge: rgba(60, 180, 210, 0.18);
-  --archive-shell-edge-strong: rgba(90, 205, 228, 0.24);
-  --archive-card-bg: linear-gradient(180deg, rgba(30, 80, 110, 0.25), rgba(24, 60, 85, 0.35));
-  --archive-card-muted: linear-gradient(180deg, rgba(18, 44, 64, 0.22), rgba(12, 28, 42, 0.28));
+  --archive-shell-surface: rgba(8, 14, 25, 0.46);
+  --archive-shell-edge: var(--原型光刻线);
+  --archive-shell-edge-strong: var(--原型光刻强线);
+  --archive-card-bg: var(--全息材质底);
+  --archive-card-muted:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
+    rgba(8, 14, 25, 0.28);
   --archive-text-strong: #eef8ff;
   --archive-text: #d8e7f2;
   --archive-text-muted: #adc3d4;
@@ -25435,9 +25512,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-mask {
-  background: rgba(5, 11, 19, 0.64);
-  backdrop-filter: blur(12px) saturate(112%);
-  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  background: rgba(5, 11, 19, 0.54);
+  backdrop-filter: blur(16px) saturate(118%);
+  -webkit-backdrop-filter: blur(16px) saturate(118%);
 }
 
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel {
@@ -25446,13 +25523,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   max-height: calc(100svh - 24px);
   border-radius: var(--archive-radius);
   border: 1px solid var(--archive-shell-edge);
-  border-top-color: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
+  border-top-color: var(--archive-shell-edge-strong);
   background:
-    radial-gradient(circle at top right, rgba(77, 240, 255, 0.1), transparent 30%),
-    linear-gradient(180deg, rgba(11, 20, 31, 0.98), rgba(9, 18, 28, 0.96));
+    radial-gradient(circle at top right, rgba(0, 243, 255, 0.1), transparent 30%),
+    var(--全息材质底);
   box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    var(--全息材质阴影),
+    0 24px 64px rgba(0, 0, 0, 0.36);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 #detailModal.archive-redesign-mode.relation-preview-mode .mvu-modal-panel.archive-redesign-panel {
@@ -25462,10 +25541,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .modal-head {
   min-height: 68px;
   padding: 16px 20px 14px;
-  border-bottom: 1px solid rgba(60, 180, 210, 0.14);
+  border-bottom: 1px solid var(--原型弱分隔线);
   background:
-    linear-gradient(180deg, rgba(17, 31, 45, 0.98), rgba(12, 22, 34, 0.94)),
-    linear-gradient(90deg, rgba(77, 240, 255, 0.06), transparent 42%, rgba(243, 201, 105, 0.04));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.048), transparent),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.065), transparent 42%, rgba(243, 201, 105, 0.04)),
+    rgba(5, 12, 18, 0.48);
+  backdrop-filter: blur(14px) saturate(112%);
+  -webkit-backdrop-filter: blur(14px) saturate(112%);
 }
 
 #detailModal.archive-redesign-mode .modal-head::after {
@@ -25478,7 +25560,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--archive-text-strong);
-  text-shadow: none;
+  text-shadow: var(--原型文字辉光);
 }
 
 #detailModal.archive-redesign-mode .modal-close {
@@ -25507,7 +25589,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .modal-body.archive-redesign-body {
   padding-bottom: 0;
   background:
-    linear-gradient(180deg, rgba(8, 16, 25, 0.99), rgba(9, 18, 28, 0.98)),
+    linear-gradient(180deg, rgba(8, 16, 25, 0.72), rgba(9, 18, 28, 0.58)),
     radial-gradient(circle at top, rgba(77, 240, 255, 0.05), transparent 40%);
 }
 
@@ -25545,13 +25627,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 10px;
   padding: 14px !important;
-  border-radius: var(--archive-card-radius) !important;
-  border: 1px solid rgba(60, 180, 210, 0.18) !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 1px solid var(--原型光刻线) !important;
   background: var(--archive-card-bg) !important;
-  box-shadow:
-    inset 0 0 0 1px var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)),
-    inset 0 0 18px rgba(77, 240, 255, 0.03),
-    0 10px 26px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--全息材质阴影) !important;
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
   overflow: hidden;
 }
 
@@ -25566,9 +25647,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   gap: 6px;
   padding: 10px 12px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(60, 180, 210, 0.1) !important;
+  border: 1px solid var(--原型弱分隔线) !important;
   background: var(--archive-card-muted) !important;
-  box-shadow: inset 0 1px 0 var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)) !important;
+  box-shadow:
+    inset 0 1px 0 var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)),
+    inset 0 0 12px rgba(0, 243, 255, 0.025) !important;
   overflow: hidden;
 }
 
