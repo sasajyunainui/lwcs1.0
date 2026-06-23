@@ -21669,6 +21669,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 @container mvu-dashboard-area (max-width: 840px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active:has(.mvu-unified-dashboard--archive) {
+    grid-template-rows: auto;
+    align-content: start;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(210px, 0.88fr) minmax(0, 1.12fr);
     grid-template-rows: auto auto auto;
