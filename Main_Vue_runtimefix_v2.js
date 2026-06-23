@@ -698,7 +698,6 @@ const DesktopUnifiedLayout = {
           try {
             window.__MVU_RERENDER_UNIFIED_CARDS__({ force: true, source: 原因 || 'unified-shell' });
           } catch (错误) {}
-          scheduleUnifiedFrameViewportSync();
         }
         if ((!可同步 || !概览槽位 || 概览为空) && 重试次数 < 8) {
           window.setTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
@@ -899,9 +898,6 @@ const DesktopUnifiedLayout = {
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
     };
-    const handleDesktopUnifiedScroll = () => {
-      scheduleUnifiedFrameViewportSync();
-    };
     const handleDesktopUnifiedFocusRestore = () => {
       if (!document.hidden) 请求统一概览同步('focus-restore');
     };
@@ -910,7 +906,6 @@ const DesktopUnifiedLayout = {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
       window.addEventListener('resize', handleDesktopUnifiedResize);
-      document.getElementById('chat')?.addEventListener('scroll', handleDesktopUnifiedScroll, { passive: true });
       window.addEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.addEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       bindDetailWheelBridge();
@@ -925,7 +920,6 @@ const DesktopUnifiedLayout = {
     });
     onUnmounted(() => {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
-      document.getElementById('chat')?.removeEventListener('scroll', handleDesktopUnifiedScroll);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       if (typeof removeDetailWheelBridge === 'function') {
