@@ -31960,7 +31960,7 @@
   function setUnifiedCardMarkup(slot, html, options = {}) {
     const selector = `#mvu-unified-mount [data-unified-card="${slot}"][data-unified-surface="panel"]`;
     const preview = toText(options.preview, '');
-    const hasMarkup = !!toText(html, '').trim();
+    const hasMarkup = !!String(html ?? '').trim();
     const enabled = options.enabled !== false && hasMarkup;
     const 显式空卡 = !!options.empty;
     const 空态标签 = toText(options.空态标签, '').trim();
