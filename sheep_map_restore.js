@@ -1427,20 +1427,12 @@
     <div class='map-layout'>
       <div class='map-hero-card'>
         <div class='map-stage-head'>
-          <div class='map-control-strip'>
+          <div class='map-control-strip' aria-label='地图控制'>
             <button type='button' class='map-tool-btn' data-map-control='zoom-in' title='放大'>+</button>
             <button type='button' class='map-tool-btn' data-map-control='zoom-out' title='缩小'>−</button>
-            <button type='button' class='map-tool-btn' data-map-control='back' title='返回上级预览'>↶</button>
-            <button type='button' class='map-tool-btn' data-map-control='focus' title='Current location'>◎</button>
-            <button type='button' class='map-tool-btn' data-map-control='reset' title='全图'>⌂</button>
-          </div>
-          <div class='map-mini-panel'>
-            <div class='map-mini-world'>
-              <div class='map-mini-art'></div>
-              <div class='map-mini-viewport' data-map-mini-viewport></div>
-              <div class='map-mini-marker current is-hidden' data-map-mini-current></div>
-              <div class='map-mini-marker target is-hidden' data-map-mini-target></div>
-            </div>
+            <button type='button' class='map-tool-btn' data-map-control='back' title='返回上级预览'>‹</button>
+            <button type='button' class='map-tool-btn' data-map-control='focus' title='定位当前位置'>⌾</button>
+            <button type='button' class='map-tool-btn' data-map-control='reset' title='全图'>□</button>
           </div>
         </div>
           <div class='map-canvas map-canvas-large interactive-map'>
@@ -1573,8 +1565,7 @@
     忽略画布点击至: 0
   };
 
-  const mapDragState = { active: false, startX: 0, startY: 0, 起始客户端X: 0, 起始客户端Y: 0, originX: 0, originY: 0, sourceCanvas: null, moved: false, lastDragAt: 0, raf: 0, lastMiniMapSyncAt: 0 };
-  const miniMapDragState = { active: false, sourceEl: null, pointerId: null, offsetX: 0, offsetY: 0 };
+  const mapDragState = { active: false, startX: 0, startY: 0, 起始客户端X: 0, 起始客户端Y: 0, originX: 0, originY: 0, sourceCanvas: null, moved: false, lastDragAt: 0, raf: 0 };
   const mapDerivedCache = { renderableItems: new Map(), terrainInfo: new Map(), nearestVisibleNode: new Map() };
   let pointerBound = false;
   let hoverSyncRaf = 0;
@@ -3990,12 +3981,10 @@
       if (!root || !(root instanceof Element)) return root;
       if (root.dataset) {
         delete root.dataset.mapBound;
-        delete root.dataset.mapMiniBound;
       }
-      root.querySelectorAll('[data-map-bound], [data-map-mini-bound], .map-canvas.interactive-map, .map-mini-world, [data-map-node-layer], [data-map-control], [data-map-action-select], [data-map-duration-text], [data-map-training-select], [data-map-action-execute], [data-map-node-action], [data-map-maintenance], [data-map-npc-select], [data-map-travel-cycle], [data-map-layer-pill]').forEach(el => {
+      root.querySelectorAll('[data-map-bound], .map-canvas.interactive-map, [data-map-node-layer], [data-map-control], [data-map-action-select], [data-map-duration-text], [data-map-training-select], [data-map-action-execute], [data-map-node-action], [data-map-maintenance], [data-map-npc-select], [data-map-travel-cycle], [data-map-layer-pill]').forEach(el => {
         if (el.dataset) {
           delete el.dataset.mapBound;
-          delete el.dataset.mapMiniBound;
         }
       });
       return root;
@@ -5647,29 +5636,6 @@
     if (!force && mapState.lastLayoutSignature === layoutSignature) return;
 
     mapState.lastLayoutSignature = layoutSignature;
-    const canvasRatio = WORLD_IMAGE_HEIGHT / WORLD_IMAGE_WIDTH;
-    canvasEls.forEach((canvasEl, index) => {
-      const width = canvasWidths[index] || 0;
-      if (!width) return;
-      const 统一面板画布 = !!canvasEl.closest('.mvu-unified-map-stage');
-      if (统一面板画布) {
-        canvasEl.style.setProperty('height', '100%', 'important');
-        canvasEl.style.setProperty('min-height', '0px', 'important');
-        canvasEl.style.setProperty('max-height', 'none', 'important');
-        canvasEl.style.setProperty('align-self', 'stretch', 'important');
-        canvasEl.style.setProperty('flex', 'initial', 'important');
-        canvasEl.style.setProperty('aspect-ratio', 'auto', 'important');
-        return;
-      }
-      const height = Math.max(160, Math.round(width * canvasRatio));
-      const nextHeight = `${height}px`;
-      const nextAspectRatio = `${WORLD_IMAGE_WIDTH} / ${WORLD_IMAGE_HEIGHT}`;
-      if (canvasEl.style.height !== nextHeight) canvasEl.style.setProperty('height', nextHeight, 'important');
-      if (canvasEl.style.minHeight !== '0px') canvasEl.style.setProperty('min-height', '0px', 'important');
-      if (canvasEl.style.flex !== '0 0 auto') canvasEl.style.setProperty('flex', '0 0 auto', 'important');
-      if (canvasEl.style.aspectRatio !== nextAspectRatio) canvasEl.style.setProperty('aspect-ratio', nextAspectRatio, 'important');
-    });
-
     heroCards.forEach(card => {
       const canvasEl = card.querySelector('.map-canvas.map-canvas-large');
       const width = canvasEl ? (Number.isFinite(canvasEl.__mapMeasuredWidth) ? canvasEl.__mapMeasuredWidth : getMapElementWidth(canvasEl)) : 0;
@@ -6194,12 +6160,6 @@
         art.dataset.bgToken = bgToken;
       }
     });
-    getMapUiElements('.map-mini-art').forEach(el => {
-      if (el.dataset.bgToken !== bgToken) {
-        el.style.backgroundImage = bgImage;
-        el.dataset.bgToken = bgToken;
-      }
-    });
   }
 
   function getMapNodeLabelOffset(name) {
@@ -6291,7 +6251,6 @@
         el.dataset.structureKey = structureKey;
       }
       
-      // Efficiently update dynamic classes without touching innerHTML
       const nodeEls = getScopedMapUiElements(el, '.map-node');
       for (let i = 0; i < visibleItems.length; i++) {
         const item = visibleItems[i];
@@ -6305,60 +6264,6 @@
         if (节点结构已变化) delete 关联画布.dataset.mapEdgeMeasureKey;
       }
     });
-  }
-
-  function renderMiniMapState(canvasEl = getPrimaryMapCanvas()) {
-    const activeCanvas = canvasEl || getPrimaryMapCanvas();
-    if (!activeCanvas || !activeCanvas.clientWidth || !activeCanvas.clientHeight) return;
-
-    const topLeft = convertMapLocalPointToCanvasRatio(0, 0, activeCanvas);
-    const bottomRight = convertMapLocalPointToCanvasRatio(activeCanvas.clientWidth, activeCanvas.clientHeight, activeCanvas);
-    const viewportLeft = Math.min(topLeft.left, bottomRight.left);
-    const viewportTop = Math.min(topLeft.top, bottomRight.top);
-    const viewportRight = Math.max(topLeft.left, bottomRight.left);
-    const viewportBottom = Math.max(topLeft.top, bottomRight.top);
-    const viewportLeftCss = `${viewportLeft * 100}%`;
-    const viewportTopCss = `${viewportTop * 100}%`;
-    const viewportWidthCss = `${Math.max(2, (viewportRight - viewportLeft) * 100)}%`;
-    const viewportHeightCss = `${Math.max(2, (viewportBottom - viewportTop) * 100)}%`;
-
-    getMapUiElements('[data-map-mini-viewport]').forEach(el => {
-      setMapNodeStyle(el, 'left', viewportLeftCss);
-      setMapNodeStyle(el, 'top', viewportTopCss);
-      setMapNodeStyle(el, 'width', viewportWidthCss);
-      setMapNodeStyle(el, 'height', viewportHeightCss);
-    });
-
-    const setMarker = (selector, coord) => {
-      const ratio = coord ? projectCoord(coord) : null;
-      getMapUiElements(selector).forEach(marker => {
-        if (!ratio || !Number.isFinite(ratio.left) || !Number.isFinite(ratio.top)) {
-          setMapNodeClass(marker, 'is-hidden', true);
-          return;
-        }
-        setMapNodeClass(marker, 'is-hidden', false);
-        setMapNodeStyle(marker, 'left', `${ratio.left * 100}%`);
-        setMapNodeStyle(marker, 'top', `${ratio.top * 100}%`);
-      });
-    };
-
-    setMarker('[data-map-mini-current]', hasActivePreview() ? null : getCurrentCoord());
-    const targetCoord = mapState.selectedFreePoint
-      ? mapState.selectedFreePoint
-      : (mapState.selectedNode && mapState.selectedNode !== getVisibleCurrentNode() ? getMapNodeCoord(mapState.selectedNode) : null);
-    setMarker('[data-map-mini-target]', targetCoord);
-  }
-
-  function updateMapFromMiniMapClientPoint(miniWorldEl, clientX, clientY) {
-    if (!miniWorldEl || clientX === null || clientY === null || clientX === undefined || clientY === undefined) return;
-    const rect = typeof miniWorldEl.getBoundingClientRect === 'function' ? miniWorldEl.getBoundingClientRect() : null;
-    if (!rect || !rect.width || !rect.height) return;
-    const centerClientX = clientX - toNumber(miniMapDragState.offsetX, 0);
-    const centerClientY = clientY - toNumber(miniMapDragState.offsetY, 0);
-    const left = clamp((centerClientX - rect.left) / rect.width, -0.5, 1.5);
-    const top = clamp((centerClientY - rect.top) / rect.height, -0.5, 1.5);
-    centerMapOnRatio(left, top, getPrimaryMapCanvas());
-    applyMapWorldTransform({ updateReadout: !miniMapDragState.active, updateMiniMap: true });
   }
 
   function updateMapCoordinateReadout(canvasEl = null) {
@@ -8070,7 +7975,6 @@ ${logMsg}
   function applyMapWorldTransform(options = {}) {
     const {
       updateReadout = true,
-      updateMiniMap = true,
       measureEdges = true,
       updateNodeScale = true,
       canvasEl = null
@@ -8091,19 +7995,17 @@ ${logMsg}
       if (measureEdges && 关联画布) 更新地图节点标签边缘状态(关联画布);
     });
     if (updateReadout) updateMapCoordinateReadout(canvasEl || null);
-    if (updateMiniMap) renderMiniMapState(canvasEl || undefined);
   }
 
   function 延后同步地图交互附属状态(canvasEl = getPrimaryMapCanvas()) {
     if (延后同步地图交互附属状态.计时器) clearTimeout(延后同步地图交互附属状态.计时器);
     延后同步地图交互附属状态.计时器 = setTimeout(() => {
       延后同步地图交互附属状态.计时器 = null;
-      if (mapDragState.active || miniMapDragState.active) return;
-      applyMapWorldTransform({ canvasEl, updateReadout: false, updateMiniMap: false, measureEdges: false, updateNodeScale: true });
+      if (mapDragState.active) return;
+      applyMapWorldTransform({ canvasEl, updateReadout: false, measureEdges: false, updateNodeScale: true });
       if (canvasEl) canvasEl.classList.remove('map-transforming');
       if (canvasEl) 更新地图节点标签边缘状态(canvasEl);
       updateMapCoordinateReadout(canvasEl);
-      renderMiniMapState(canvasEl);
     }, 120);
   }
 
@@ -8114,7 +8016,6 @@ ${logMsg}
       applyMapWorldTransform({
         canvasEl: mapDragState.sourceCanvas || getPrimaryMapCanvas(),
         updateReadout: false,
-        updateMiniMap: false,
         measureEdges: false,
         updateNodeScale: false
       });
@@ -8171,7 +8072,7 @@ ${logMsg}
       return;
     }
     if (canvasEl) canvasEl.classList.add('map-transforming');
-    applyMapWorldTransform({ canvasEl, updateReadout: false, updateMiniMap: false, measureEdges: false, updateNodeScale: false });
+    applyMapWorldTransform({ canvasEl, updateReadout: false, measureEdges: false, updateNodeScale: false });
     延后同步地图交互附属状态(canvasEl);
   }
 
@@ -8185,7 +8086,6 @@ ${logMsg}
       cancelAnimationFrame(mapDragState.raf);
       mapDragState.raf = 0;
     }
-    mapDragState.lastMiniMapSyncAt = 0;
     const point = resolveMapClientPoint(event.currentTarget, event.clientX, event.clientY);
     mapDragState.active = true;
     mapDragState.moved = false;
@@ -8225,61 +8125,11 @@ ${logMsg}
     if (mapDragState.active) {
       if (移动事件) handleMapPointerMove(事件);
       else handleMapPointerUp(事件);
-    } else if (miniMapDragState.active) {
-      if (移动事件) handleMiniMapPointerMove(事件);
-      else handleMiniMapPointerUp(事件);
     } else {
       return;
     }
     if (typeof 事件.stopImmediatePropagation === 'function') 事件.stopImmediatePropagation();
     else 事件.stopPropagation();
-  }
-
-  function handleMiniMapPointerDown(event) {
-    if (event.button !== 0) return;
-    cancelScheduledHoverSync();
-    const miniWorldEl = event.currentTarget.closest('.map-mini-world') || event.currentTarget;
-    miniMapDragState.active = true;
-    miniMapDragState.sourceEl = miniWorldEl;
-    miniMapDragState.pointerId = event.pointerId;
-    const viewportEl = miniWorldEl.querySelector('[data-map-mini-viewport]');
-    const viewportRect = viewportEl && typeof viewportEl.getBoundingClientRect === 'function' ? viewportEl.getBoundingClientRect() : null;
-    if (event.target.closest('[data-map-mini-viewport]') && viewportRect && viewportRect.width > 0 && viewportRect.height > 0) {
-      miniMapDragState.offsetX = event.clientX - (viewportRect.left + viewportRect.width / 2);
-      miniMapDragState.offsetY = event.clientY - (viewportRect.top + viewportRect.height / 2);
-    } else {
-      miniMapDragState.offsetX = 0;
-      miniMapDragState.offsetY = 0;
-    }
-    miniWorldEl.classList.add('dragging');
-    updateMapFromMiniMapClientPoint(miniWorldEl, event.clientX, event.clientY);
-    
-    if (typeof event.currentTarget.setPointerCapture === 'function') {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  function handleMiniMapPointerMove(event) {
-    if (!miniMapDragState.active || !miniMapDragState.sourceEl) return;
-    if (miniMapDragState.pointerId !== null && event.pointerId !== undefined && event.pointerId !== miniMapDragState.pointerId) return;
-    updateMapFromMiniMapClientPoint(miniMapDragState.sourceEl, event.clientX, event.clientY);
-  }
-
-  function handleMiniMapPointerUp(event) {
-    if (!miniMapDragState.active) return;
-    if (miniMapDragState.pointerId !== null && event && event.pointerId !== undefined && event.pointerId !== miniMapDragState.pointerId) return;
-    if (miniMapDragState.sourceEl) miniMapDragState.sourceEl.classList.remove('dragging');
-    if (event && event.currentTarget && typeof event.currentTarget.releasePointerCapture === 'function') {
-      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch(e) {}
-    }
-    miniMapDragState.active = false;
-    miniMapDragState.sourceEl = null;
-    miniMapDragState.pointerId = null;
-    miniMapDragState.offsetX = 0;
-    miniMapDragState.offsetY = 0;
-    scheduleHoverSync(getPrimaryMapCanvas());
   }
 
   function handleMapPointerUp(event) {
@@ -8297,8 +8147,7 @@ ${logMsg}
     }
     setMapHoverPoint(releaseCanvas, event.clientX, event.clientY);
     getMapUiElements('.map-canvas.interactive-map').forEach(canvasEl => canvasEl.classList.remove('dragging'));
-    applyMapWorldTransform({ canvasEl: releaseCanvas, updateReadout: true, updateMiniMap: true, measureEdges: true });
-    mapDragState.lastMiniMapSyncAt = 0;
+    applyMapWorldTransform({ canvasEl: releaseCanvas, updateReadout: true, measureEdges: true });
     scheduleHoverSync(mapState.hoverCanvas || releaseCanvas);
     if (event) {
       event.preventDefault();
@@ -8406,7 +8255,7 @@ ${logMsg}
   }
 
   function scheduleHoverSync(canvasEl = null) {
-    if (mapDragState.active || miniMapDragState.active) return;
+    if (mapDragState.active) return;
     hoverSyncCanvas = canvasEl || null;
     const 当前时间 = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     const 延迟 = Math.max(0, MAP_HOVER_READOUT_INTERVAL_MS - (当前时间 - hoverReadoutLastAt));
@@ -8415,7 +8264,7 @@ ${logMsg}
       hoverSyncRaf = requestAnimationFrame(() => {
         hoverSyncRaf = 0;
         hoverReadoutLastAt = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
-        if (!mapDragState.active && !miniMapDragState.active) {
+        if (!mapDragState.active) {
           updateMapCoordinateReadout(hoverSyncCanvas);
         }
       });
@@ -8435,7 +8284,7 @@ ${logMsg}
     }
     hoverSyncTimeout = setTimeout(() => {
         hoverSyncTimeout = null;
-        if (!mapDragState.active && !miniMapDragState.active) {
+        if (!mapDragState.active) {
           renderMapInfoState();
         }
     }, MAP_HOVER_INFO_DEBOUNCE_MS);
@@ -8446,17 +8295,12 @@ ${logMsg}
       handleMapPointerMove(event);
       return;
     }
-    if (miniMapDragState.active) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
     setMapHoverPoint(event.currentTarget, event.clientX, event.clientY);
     scheduleHoverSync(event.currentTarget);
   }
 
   function handleMapCanvasLeave() {
-    if (mapDragState.active || miniMapDragState.active) return;
+    if (mapDragState.active) return;
     setMapHoverPoint(null, null, null);
     scheduleHoverSync(null);
   }
@@ -8475,8 +8319,9 @@ ${logMsg}
     mapState.selectedNode = nextNode;
     mapState.infoPanelMode = 'selection';
     mapState.travelMethodOverride = null;
+    if (canEnterPreviewNode(nextNode, mapState.snapshot)) mapState.selectedAction = 'enter';
 
-    // 全局防抖的手工双击逻辑：解决 DOM 重绘吃掉原生 dblclick 的问题！
+    // 手工双击：节点状态刷新可能重建 DOM，原生 dblclick 不一定可靠。
     const now = Date.now();
     if (_globalLastClickNodeName === nextNode && now - _globalLastClickTime < 350) {
       const canPreviewEnter = canEnterPreviewNode(nextNode, mapState.snapshot);
@@ -8514,8 +8359,7 @@ ${logMsg}
     idx = (idx + 1) % methods.length;
     mapState.travelMethodOverride = methods[idx];
     
-    // 老板发话：不能卡！！坚决不能用全局庞大的 syncInteractiveMapUI！
-    // 仅仅更新移动面板相关的局部文字！实现零延迟丝滑切换！
+    // 切换移动方式只刷新行动面板，避免触发地图全量重绘。
     const travelPreview = getMapTravelPreview();
     const 待执行移动 = mapState.pendingTravelRequest;
     const 预览移动请求 = travelPreview ? buildMapTravelRequest() : null;
@@ -8704,11 +8548,8 @@ ${logMsg}
       注册地图事件(document, 'mousemove', 拦截地图拖动全局指针事件, true);
       注册地图事件(document, 'mouseup', 拦截地图拖动全局指针事件, true);
       注册地图事件(window, 'pointermove', handleMapPointerMove);
-      注册地图事件(window, 'pointermove', handleMiniMapPointerMove);
       注册地图事件(window, 'pointerup', handleMapPointerUp);
-      注册地图事件(window, 'pointerup', handleMiniMapPointerUp);
       注册地图事件(window, 'pointercancel', handleMapPointerUp);
-      注册地图事件(window, 'pointercancel', handleMiniMapPointerUp);
     }
 
     if (!mapState.全局动作委托已绑定) {
@@ -8782,12 +8623,6 @@ ${logMsg}
         }
       });
     }
-
-    getMapUiElements('.map-mini-world').forEach(miniWorldEl => {
-      if (miniWorldEl.dataset.mapMiniBound === '1') return;
-      miniWorldEl.dataset.mapMiniBound = '1';
-      注册地图元素事件(miniWorldEl, 'mapMiniBound', 'pointerdown', handleMiniMapPointerDown);
-    });
 
     getMapUiElements('.map-canvas.interactive-map').forEach(canvasEl => {
       if (canvasEl.dataset.mapBound === '1') return;
