@@ -1447,16 +1447,6 @@
           <div class='map-world' data-map-world>
             <div class='map-terrain' data-map-terrain></div>
             <div class='map-node-layer' data-map-node-layer></div>
-            <div class='map-free-marker current is-hidden' data-map-free-current></div>
-            <div class='map-free-marker target is-hidden' data-map-free-target></div>
-          </div>
-          <div class='map-crosshair is-hidden' data-map-crosshair>
-            <div class='map-crosshair-line h'></div>
-            <div class='map-crosshair-line v'></div>
-            <div class='map-crosshair-dot'></div>
-          </div>
-          <div class='map-canvas-hud'>
-            <div class='map-hud-card live'><b>位置链</b><span data-map-chain>正在读取地图数据</span></div>
           </div>
           <div class='map-hover-tooltip is-hidden' data-map-hover-tooltip>
             <b data-map-hover-coord>--,--</b>
@@ -6339,42 +6329,8 @@
     applyMapWorldTransform({ updateReadout: !miniMapDragState.active, updateMiniMap: true });
   }
 
-  function renderMapCrosshair(activeCanvas = null) {
-    const currentCanvas = activeCanvas || mapDragState.sourceCanvas || mapState.hoverCanvas || null;
-    getActiveMapCanvases().forEach(canvasEl => {
-      const crosshairEls = getScopedMapUiElements(canvasEl, '[data-map-crosshair]');
-      if (!crosshairEls.length) return;
-      const width = toNumber(canvasEl.clientWidth, 0);
-      const height = toNumber(canvasEl.clientHeight, 0);
-      crosshairEls.forEach(crosshair => {
-        if (!currentCanvas || currentCanvas !== canvasEl || mapState.cursorClientX === null || mapState.cursorClientY === null) {
-          setMapNodeClass(crosshair, 'is-hidden', true);
-          return;
-        }
-        let localX = null;
-        let localY = null;
-        if (currentCanvas === mapState.hoverCanvas && Number.isFinite(mapState.hoverLocalX) && Number.isFinite(mapState.hoverLocalY)) {
-          localX = mapState.hoverLocalX;
-          localY = mapState.hoverLocalY;
-        } else {
-          const rect = canvasEl.getBoundingClientRect();
-          localX = mapState.cursorClientX - rect.left;
-          localY = mapState.cursorClientY - rect.top;
-        }
-        if (localX < 0 || localY < 0 || localX > width || localY > height) {
-          setMapNodeClass(crosshair, 'is-hidden', true);
-          return;
-        }
-        setMapNodeClass(crosshair, 'is-hidden', false);
-        setMapNodeStyle(crosshair, '--cross-x', `${(localX / Math.max(width, 1)) * 100}%`);
-        setMapNodeStyle(crosshair, '--cross-y', `${(localY / Math.max(height, 1)) * 100}%`);
-      });
-    });
-  }
-
   function updateMapCoordinateReadout(canvasEl = null) {
     const activeCanvas = canvasEl || mapDragState.sourceCanvas || mapState.hoverCanvas || getPrimaryMapCanvas();
-    renderMapCrosshair(activeCanvas);
     const tooltipEl = activeCanvas ? getScopedMapUiElements(activeCanvas, '[data-map-hover-tooltip]')[0] : null;
     const tooltipCoordEl = tooltipEl ? getScopedMapUiElements(tooltipEl, '[data-map-hover-coord]')[0] : null;
     const tooltipTerrainEl = tooltipEl ? getScopedMapUiElements(tooltipEl, '[data-map-hover-terrain]')[0] : null;
@@ -6421,32 +6377,8 @@
     setMapText('[data-map-cursor-coord]', `游标 图 ${cursorImageCoord.x},${cursorImageCoord.y}`);
   }
 
-  function renderMapFreeMarkers() {
-    getActiveMapCanvases().forEach(canvasEl => {
-      const placeMarker = (selector, point) => {
-        getScopedMapUiElements(canvasEl, selector).forEach(marker => {
-          if (!point) {
-            setMapNodeClass(marker, 'is-hidden', true);
-            return;
-          }
-          const pos = convertMapCoordToLocalPoint(point, canvasEl);
-          if (!pos) {
-            setMapNodeClass(marker, 'is-hidden', true);
-            return;
-          }
-          setMapNodeClass(marker, 'is-hidden', false);
-          setMapNodeStyle(marker, 'left', `${pos.left * 100}%`);
-          setMapNodeStyle(marker, 'top', `${pos.top * 100}%`);
-        });
-      };
-      placeMarker('[data-map-free-current]', mapState.currentFreePoint);
-      placeMarker('[data-map-free-target]', mapState.selectedFreePoint);
-    });
-  }
-
   function renderMapVisualState() {
     renderMapNodeLayer();
-    renderMapFreeMarkers();
     getMapUiElements('[data-map-layer-pill]').forEach(pill => {
       setMapNodeClass(pill, 'current', pill.dataset.mapLayerPill === mapState.layer);
     });
@@ -7660,7 +7592,6 @@ ${logMsg}
 
     const currentMapDisplayName = getMapDisplayName(snapshot.currentMapId, snapshot.mapMeta);
     setMapText('[data-map-focus]', inPreview ? `${toText(deepGet(snapshot, 'mapMeta.name', '地图预览'), '地图预览')} · ${previewAnchorName} [预览]` : `${toText(deepGet(snapshot, 'mapMeta.name', '全息星图'), '全息星图')} · ${focusName}`);
-    setMapText('[data-map-chain]', inPreview ? `${previewTrailText} · ${currentMapDisplayName}` : `${currentMapDisplayName} → ${focusName}`);
     setMapText('[data-map-recommend]', recommendText);
     setMapText('[data-map-recommend-side]', dynamicRecommendText);
     setMapText('[data-map-anchor]', focusName);
