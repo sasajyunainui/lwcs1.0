@@ -19022,17 +19022,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   height: 28px;
   min-width: 0;
   padding: 0 10px;
-  border: 1px solid var(--mvu-holo-line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
+  border: 1px solid var(--全息材质线);
+  border-radius: 4px;
+  background: var(--全息材质底);
   color: var(--mvu-holo-text);
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 0 12px var(--全息材质辉光),
+    0 0 16px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
@@ -19093,14 +19095,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-status-strip {
   min-width: 0;
   min-height: 30px;
   padding: 3px 6px;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: calc(var(--mvu-holo-card-radius) * 0.72);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 11%, transparent), transparent 56%),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 50%, transparent);
+  border: 1px solid var(--全息材质线);
+  border-radius: 4px;
+  background: var(--全息材质底);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.028),
-    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 5%, transparent);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 0 18px var(--全息材质辉光),
+    0 8px 22px rgba(0, 0, 0, 0.34);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch {
@@ -19187,12 +19190,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   min-width: 0;
   min-height: 30px;
   padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--mvu-holo-line-soft) 76%, rgba(255, 255, 255, 0.06));
-  border-bottom-color: color-mix(in srgb, var(--mvu-holo-line-soft) 92%, rgba(255, 255, 255, 0.08));
-  border-radius: calc(var(--mvu-holo-card-radius) * 0.62);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--全息材质线) 86%, rgba(255, 255, 255, 0.05));
+  border-bottom-color: color-mix(in srgb, var(--mvu-holo-main) 22%, transparent);
+  border-radius: 4px;
+  background: var(--全息材质底);
   color: var(--mvu-holo-muted);
   font-family: inherit;
   font-size: 12px;
@@ -19200,7 +19201,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   letter-spacing: 0;
   line-height: 1;
   text-shadow: none;
-  box-shadow: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+    inset 0 0 14px color-mix(in srgb, var(--mvu-holo-main) 4%, transparent);
+  backdrop-filter: blur(12px) saturate(114%);
+  -webkit-backdrop-filter: blur(12px) saturate(114%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::before,
@@ -19213,9 +19218,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:focus-visible {
   color: var(--mvu-holo-text);
   border-color: color-mix(in srgb, var(--mvu-holo-main) 34%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 9%, transparent), rgba(255, 255, 255, 0.014)),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 44%, transparent);
+  background: var(--全息材质悬停底);
+  box-shadow: var(--全息材质悬停阴影);
   outline: none;
 }
 
@@ -19225,11 +19229,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn[aria-pressed='true'
   border-bottom-color: color-mix(in srgb, var(--mvu-holo-main) 72%, transparent);
   color: var(--mvu-holo-high);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 15%, transparent), transparent),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 48%, transparent);
+    linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 18%, transparent), transparent),
+    var(--全息材质底);
   box-shadow:
-    inset 0 -10px 18px color-mix(in srgb, var(--mvu-holo-main) 7%, transparent),
-    0 0 14px color-mix(in srgb, var(--mvu-holo-main) 12%, transparent);
+    inset 0 -10px 18px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 22%, transparent),
+    0 0 16px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent);
+  text-shadow: var(--原型文字辉光);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
@@ -19258,11 +19264,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   min-width: 36px;
   height: 30px;
   padding: 0 8px;
-  border: 1px solid var(--mvu-holo-line);
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 86%, transparent);
+  border: 1px solid var(--全息材质线);
+  border-radius: 4px;
+  background: var(--全息材质底);
   color: var(--mvu-holo-main);
   font-size: 11px;
   font-weight: 780;
@@ -19271,8 +19275,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
     inset 0 0 12px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent),
     0 0 16px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent);
   cursor: pointer;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
   opacity: 0.62;
 }
 
@@ -19772,16 +19776,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: var(--mvu-holo-card-radius);
-  background:
-    var(--mvu-holo-medium);
+  border: 1px solid var(--全息材质线);
+  border-radius: 4px;
+  background: var(--全息材质底);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.055),
-    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent),
-    0 10px 28px rgba(0, 0, 0, 0.26);
-  backdrop-filter: blur(14px) saturate(114%);
-  -webkit-backdrop-filter: blur(14px) saturate(114%);
+    inset 0 0 20px var(--全息材质辉光),
+    0 12px 30px rgba(0, 0, 0, 0.32);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -19794,16 +19797,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-map-stage {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.018)),
-    rgba(9, 17, 24, 0.36);
+  background: var(--全息材质底);
   box-shadow:
-    2px 4px 10px rgba(0, 0, 0, 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 0 18px rgba(0, 210, 255, 0.08),
-    0 0 20px rgba(255, 126, 179, 0.07);
-  backdrop-filter: blur(12px) saturate(112%);
-  -webkit-backdrop-filter: blur(12px) saturate(112%);
+    inset 0 0 20px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
+    0 12px 30px rgba(0, 0, 0, 0.32),
+    0 0 20px rgba(255, 126, 179, 0.08);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before,
@@ -19842,13 +19843,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 4px;
+  background: var(--全息材质底);
   box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--mvu-holo-main) 14%, transparent),
-    inset -1px 0 0 rgba(255, 255, 255, 0.026);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 0 18px var(--全息材质辉光),
+    0 10px 24px rgba(0, 0, 0, 0.3);
+  backdrop-filter: var(--原型玻璃虚化);
+  -webkit-backdrop-filter: var(--原型玻璃虚化);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -19862,12 +19864,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   overflow: visible;
   padding-inline: 16px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::before,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::after {
-  content: none;
-  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
