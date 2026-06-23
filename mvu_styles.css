@@ -19341,6 +19341,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section {
   overflow: hidden;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
   grid-row: 2;
   grid-column: 1;
@@ -21669,13 +21681,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 @container mvu-dashboard-area (max-width: 840px) {
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active:has(.mvu-unified-dashboard--archive) {
-    grid-template-rows: auto;
-    align-content: start;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(210px, 0.88fr) minmax(0, 1.12fr);
     grid-template-rows: auto auto auto;
