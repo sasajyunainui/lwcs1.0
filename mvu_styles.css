@@ -18984,78 +18984,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar-main {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-overview-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  align-items: center;
-  gap: 8px;
+  display: block;
   min-width: 0;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-status-strip {
-  display: grid;
-  grid-template-columns: minmax(118px, max-content) minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: calc(var(--mvu-holo-card-radius) * 0.72);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 11%, transparent), transparent 56%),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 50%, transparent);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.028),
-    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 5%, transparent);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch {
-  min-height: 28px;
-  padding: 4px 8px;
-  border-color: var(--mvu-holo-line-soft);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mvu-holo-main) 6%, transparent);
-  box-shadow: none;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch .char-emblem {
-  width: 20px;
-  height: 20px;
-  border-color: color-mix(in srgb, var(--mvu-holo-high) 26%, transparent);
-  background: color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
-  color: var(--mvu-holo-high);
-  font-size: 10px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch .char-name {
-  max-width: 104px;
-  color: var(--mvu-holo-text);
-  font-size: 12px;
-  line-height: 1;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc {
-  align-items: center;
-  min-width: 0;
-  padding-left: 9px;
-  border-left: 1px solid var(--mvu-holo-line-soft);
-  text-shadow: none;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc span {
-  min-width: 0;
-  gap: 2px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc .mvu-header-time {
-  color: var(--mvu-holo-high);
-  font: 760 11px/1.1 var(--font-mono, "Cascadia Code", Consolas, monospace);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc .mvu-header-location {
-  color: var(--mvu-holo-muted);
-  font-size: 11px;
-  line-height: 1.12;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-title {
@@ -19072,8 +19002,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-title {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-row {
   display: flex;
   align-items: center;
-  justify-content: stretch;
-  gap: 8px;
+  gap: 2px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -19089,16 +19018,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
-  min-width: 84px;
-  min-height: 36px;
+  flex: 0 0 auto;
+  min-width: 58px;
+  min-height: 26px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--mvu-holo-line-soft) 76%, rgba(255, 255, 255, 0.06));
-  border-bottom-color: color-mix(in srgb, var(--mvu-holo-line-soft) 92%, rgba(255, 255, 255, 0.08));
-  border-radius: calc(var(--mvu-holo-card-radius) * 0.62);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 40%, transparent);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
   color: var(--mvu-holo-muted);
   font-family: inherit;
   font-size: 12px;
@@ -19118,24 +19045,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::after {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:focus-visible {
   color: var(--mvu-holo-text);
-  border-color: color-mix(in srgb, var(--mvu-holo-main) 34%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 9%, transparent), rgba(255, 255, 255, 0.014)),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 44%, transparent);
+  background: color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
   outline: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn.active,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--mvu-holo-main) 48%, transparent);
   border-bottom-color: color-mix(in srgb, var(--mvu-holo-main) 72%, transparent);
   color: var(--mvu-holo-high);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 15%, transparent), transparent),
-    color-mix(in srgb, var(--mvu-holo-panel-strong) 48%, transparent);
-  box-shadow:
-    inset 0 -10px 18px color-mix(in srgb, var(--mvu-holo-main) 7%, transparent),
-    0 0 14px color-mix(in srgb, var(--mvu-holo-main) 12%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent);
+  box-shadow: inset 0 -10px 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
@@ -20220,12 +20139,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid {
   flex: 1 1 auto;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  flex: 0 0 auto;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid::after {
   content: "";
   position: absolute;
@@ -20257,28 +20170,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
     box-shadow 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact .mvu-archive-gear-cell {
-  grid-template-rows: auto auto;
-  align-content: center;
-  aspect-ratio: auto;
-  min-height: 58px;
-  padding: 8px 9px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact .mvu-archive-gear-cell b {
-  width: auto;
-  aspect-ratio: auto;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact .mvu-archive-gear-cell em {
-  max-width: 100%;
-  font-size: 10px;
-  line-height: 1.2;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-live {

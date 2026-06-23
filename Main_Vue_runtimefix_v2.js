@@ -455,19 +455,6 @@ const DesktopUnifiedLayout = {
               <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
             </div>
             <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
-              <div class="mvu-unified-status-strip">
-                <button
-                  type="button"
-                  class="character-switch mvu-unified-character-switch clickable"
-                  data-preview="角色切换器"
-                  data-detail-mode="embed"
-                  aria-label="角色切换"
-                >
-                  <span class="char-emblem">角</span>
-                  <span class="char-name">当前角色</span>
-                </button>
-                <div class="header-loc mvu-unified-header-loc" aria-live="polite"><span>时间与地点同步中</span></div>
-              </div>
               <nav class="mvu-unified-tab-row" aria-label="状态栏页面">
                 <button
                   v-for="标签 in tabs"
