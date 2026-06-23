@@ -343,8 +343,6 @@
         宿主窗口.__sheepMapRestoreLoaded = false;
         if (window !== 宿主窗口) window.__sheepMapRestoreLoaded = false;
       } catch (错误) {}
-      const 地图内置样式 = 宿主文档.getElementById('sheep-map-restore-style');
-      if (地图内置样式) 地图内置样式.remove();
       宿主文档.querySelectorAll('#page-map .map-layout').forEach(节点 => 节点.remove());
       宿主文档.querySelectorAll([
         ".split-left-page[data-target='page-map']",
