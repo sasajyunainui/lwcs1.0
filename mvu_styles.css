@@ -8819,7 +8819,7 @@ body #mvu-unified-mount[data-mvu-booting='1'] {
 
 body.mvu-surface-panel.mvu-layout-holo #mvu-unified-mount {
   width: min(1180px, 100%);
-  margin: 8px 0 calc(12px + var(--mvu-compose-bottom-reserve, 128px));
+  margin: 8px 0 12px;
   z-index: 32;
 }
 
@@ -8866,12 +8866,7 @@ body.mvu-surface-panel.mvu-layout-holo #mvu-unified-mount {
 }
 
 body.mvu-layout-holo #mvu-unified-mount {
-  --mvu-compose-bottom-reserve: clamp(160px, 22svh, 220px);
-  --mvu-hud-frame-height: clamp(
-    420px,
-    calc(100svh - 220px - var(--mvu-compose-bottom-reserve)),
-    var(--mvu-unified-frame-max-height, 660px)
-  );
+  --mvu-hud-frame-height: clamp(480px, calc(100svh - 220px), var(--mvu-unified-frame-max-height, 660px));
   --mvu-hud-gap: 6px;
   --mvu-hud-card-pad: 9px;
   --mvu-hud-radius: 14px;
@@ -19573,8 +19568,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @media (max-width: 760px) {
   body.mvu-layout-holo #mvu-unified-mount {
-    --mvu-compose-bottom-reserve: clamp(152px, 24svh, 220px);
-    --mvu-hud-frame-height: clamp(420px, calc(82svh - var(--mvu-compose-bottom-reserve)), 620px);
+    --mvu-hud-frame-height: clamp(520px, 82svh, 720px);
     --mvu-hud-gap: 5px;
     --mvu-hud-card-pad: 8px;
   }
