@@ -19742,7 +19742,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   padding: 0;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-card,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-map-stage {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.018)),
