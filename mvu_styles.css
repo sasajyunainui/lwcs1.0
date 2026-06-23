@@ -2419,8 +2419,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-c
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 4px;
-  width: auto;
-  max-width: min(380px, calc(100% - 16px));
+  width: min(360px, calc(100% - 16px));
+  max-width: calc(100% - 16px);
   padding: 6px;
   background: var(--全息材质底);
   box-shadow: var(--全息材质阴影);
@@ -2474,6 +2474,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     left: auto;
     right: auto;
     bottom: auto;
+    width: 100%;
     max-width: 100%;
     margin-top: 8px;
     grid-template-columns: minmax(0, 1fr);
