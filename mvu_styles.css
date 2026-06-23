@@ -2995,6 +2995,8 @@
 }
 
 .map-left-route-card.map-command-card {
+  container-name: map-action-card;
+  container-type: inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
@@ -3134,6 +3136,17 @@
 .map-method-select.disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+@container map-action-card (max-width: 420px) {
+  .map-action-detail-row,
+  .map-action-detail-row.has-method {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .map-action-detail-cell:nth-child(3) {
+    grid-column: 1 / -1;
+  }
 }
 
 .map-telemetry-pill {
