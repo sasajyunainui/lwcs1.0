@@ -504,7 +504,7 @@ const DesktopUnifiedLayout = {
           </div>
         </div>
 
-        <div v-show="!detailState.isOpen" class="mvu-unified-page-stack">
+        <div class="mvu-unified-page-stack" :aria-hidden="detailState.isOpen ? 'true' : 'false'">
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">

@@ -29235,31 +29235,61 @@
     const 财富 = deepGet(snapshot, 'activeChar.财富', {}) || {};
     const 物资数 = Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries.length : 0;
     const 魂骨数 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
-    const 装备槽列表 = [
-      装备.武器,
-      装备.防具,
-      装备.斗铠,
-      装备.机甲,
-      装备.魂导器,
-    ];
+    const 读取槽位文本 = 槽 => {
+      if (!槽 || typeof 槽 !== 'object') return '';
+      return toText(槽.名称 || 槽.name || 槽.型号 || 槽.等级, '').trim();
+    };
+    const 读取槽位状态 = 槽 => {
+      if (!槽 || typeof 槽 !== 'object') return '空载';
+      const 状态 = toText(槽.装备状态 || 槽.状态, '').trim();
+      if (状态) return 状态;
+      return 读取槽位文本(槽) ? '在线' : '空载';
+    };
+    const 装备槽列表 = [装备.武器, 装备.防具, 装备.斗铠, 装备.机甲, 装备.魂导器];
     const 已装备数 = 装备槽列表.filter(槽 => {
       if (!槽 || typeof 槽 !== 'object') return false;
-      const 名称 = toText(槽.名称 || 槽.name || 槽.型号 || 槽.等级, '');
-      const 状态 = toText(槽.装备状态 || 槽.状态, '');
+      const 名称 = 读取槽位文本(槽);
+      const 状态 = 读取槽位状态(槽);
       return !!名称 && !/^(无|未装备|空)$/.test(名称) && 状态 !== '未装备';
     }).length;
     const 装备摘要 = 已装备数 || 魂骨数 ? `${已装备数} 件 / 魂骨 ${魂骨数}` : '未装配';
     const 联邦币 = toNumber(财富.联邦币, 0);
     const 仓库摘要 = `${formatNumber(物资数)} 件`;
     const 资金摘要 = 联邦币 > 0 ? `联邦 ${格式化属性短数字(联邦币)}` : '资金 0';
+    const 装备格 = [
+      { 标识: '武', 标签: '武器', 数据: 装备.武器, 摘要: 读取槽位文本(装备.武器) || '空槽' },
+      { 标识: '防', 标签: '防具', 数据: 装备.防具, 摘要: 读取槽位文本(装备.防具) || '空槽' },
+      {
+        标识: '铠',
+        标签: '斗铠',
+        数据: 装备.斗铠,
+        摘要: 读取槽位文本(装备.斗铠) || (toNumber(装备.斗铠 && 装备.斗铠.等级, 0) > 0 ? `${装备.斗铠.等级}字斗铠` : '空槽'),
+      },
+      { 标识: '机', 标签: '机甲', 数据: 装备.机甲, 摘要: 读取槽位文本(装备.机甲) || '空槽' },
+      { 标识: '导', 标签: '魂导器', 数据: 装备.魂导器, 摘要: 读取槽位文本(装备.魂导器) || '空槽' },
+      { 标识: '骨', 标签: '魂骨', 数据: null, 摘要: 魂骨数 ? `${formatNumber(魂骨数)} 件` : '空槽', 强制在线: 魂骨数 > 0 },
+    ];
     return `
         <div class="mvu-archive-panel-head">
           <span>装备与仓储</span>
-          <b>${htmlEscape(仓库摘要)}</b>
+          <b>${htmlEscape(装备摘要)}</b>
         </div>
-        <div class="mvu-archive-gear-grid mvu-archive-gear-grid--compact">
-          <span class="mvu-archive-gear-cell is-live" title="${escapeHtmlAttr(`装备 / ${装备摘要}`)}" data-slot="装备"><b>装备</b><em>${htmlEscape(shortenText(装备摘要, 14))}</em></span>
-          <span class="mvu-archive-gear-cell${物资数 ? ' is-live' : ' is-empty'}" title="${escapeHtmlAttr(`仓库 / ${仓库摘要} / ${资金摘要}`)}" data-slot="仓库"><b>仓库</b><em>${htmlEscape(`${仓库摘要} · ${资金摘要}`)}</em></span>
+        <div class="mvu-archive-armory-summary">
+          <span><b>仓储</b><em>${htmlEscape(仓库摘要)}</em></span>
+          <span><b>资金</b><em>${htmlEscape(资金摘要)}</em></span>
+        </div>
+        <div class="mvu-archive-gear-grid mvu-archive-gear-grid--loadout">
+          ${装备格
+            .map(格 => {
+              const 状态 = 格.强制在线 ? '在线' : 读取槽位状态(格.数据);
+              const 在线 = 格.强制在线 || (!!读取槽位文本(格.数据) && 状态 !== '未装备');
+              return `<span class="mvu-archive-gear-cell${在线 ? ' is-live' : ' is-empty'} clickable" title="${escapeHtmlAttr(`${格.标签} / ${格.摘要} / ${状态}`)}" data-preview="武装工坊详细页" data-detail-mode="embed" data-slot="${escapeHtmlAttr(格.标签)}"><b>${htmlEscape(格.标识)}</b><em>${htmlEscape(shortenText(格.摘要, 10))}</em></span>`;
+            })
+            .join('')}
+        </div>
+        <div class="mvu-archive-armory-strip">
+          <span class="mvu-archive-armory-link clickable" data-preview="武装工坊详细页" data-detail-mode="embed"><b>装备</b><em>${htmlEscape(装备摘要)}</em></span>
+          <span class="mvu-archive-armory-link clickable" data-preview="储物仓库详细页" data-detail-mode="embed"><b>仓库</b><em>${htmlEscape(`${仓库摘要} · ${资金摘要}`)}</em></span>
         </div>
       `;
   }
@@ -35404,63 +35434,39 @@
     if (previewKey === '情报库详细页') {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
-      const intelNodes = snapshot.unlockedKnowledges
-        .slice(-5)
-        .reverse()
-        .map(item => 格式化情报展示文本(item, ''))
-        .filter(Boolean);
-      const coreIntel = intelNodes[0] || '暂无核心情报';
-      const sideIntels = intelNodes.slice(1, 5);
-      const unlockedIntelEntries = (snapshot.unlockedKnowledges || [])
-        .map((text, index) => ({ text, index }))
-        .slice()
-        .reverse();
-      const unlockedIntelPageSize = 6;
-      const unlockedIntelPage = paginateModalItems(
-        unlockedIntelEntries,
-        previewKey,
-        'intel-records',
-        unlockedIntelPageSize,
-      );
-      const latestUnlockedIntel = snapshot.unlockedKnowledges.length
-        ? 格式化情报展示文本(snapshot.unlockedKnowledges[snapshot.unlockedKnowledges.length - 1], '暂无')
+      const 已解锁情报 = Array.isArray(snapshot && snapshot.unlockedKnowledges) ? snapshot.unlockedKnowledges : [];
+      const 交战档案 = Array.isArray(snapshot && snapshot.combatHistoryEntries) ? snapshot.combatHistoryEntries : [];
+      const 任务档案 = Array.isArray(snapshot && snapshot.recordEntries) ? snapshot.recordEntries : [];
+      const 情报条目 = 已解锁情报.map((text, index) => ({ text, index })).slice().reverse();
+      const 最新情报 = 已解锁情报.length
+        ? 格式化情报展示文本(已解锁情报[已解锁情报.length - 1], '暂无')
         : '暂无';
-      const intelOverviewText = latestUnlockedIntel;
-      const combatHistoryTotalCount = snapshot.combatHistoryEntries.reduce(
-        (total, [, info]) => total + Math.max(0, toNumber(info && info.次数, 0)),
-        0,
-      );
-      const latestCombatEntry = snapshot.combatHistoryEntries.length ? snapshot.combatHistoryEntries[0] : null;
-      const latestCombatTarget = latestCombatEntry ? toText(latestCombatEntry[0], '暂无') : '暂无';
-      const latestCombatResult = latestCombatEntry
-        ? toText(latestCombatEntry[1] && latestCombatEntry[1].last_result, '未记录')
-        : '未记录';
-      const combatHistoryCards = (
-        snapshot.combatHistoryEntries.length
-          ? snapshot.combatHistoryEntries.slice(0, 8)
-          : [['暂无交战档案', { empty: true }]]
-      ).map(([name, info]) => {
-        if (info && info.empty) {
-          return {
-            title: name,
-            desc: '当前角色还没有任何交战档案。',
-          };
-        }
-        const countValue = Math.max(0, toNumber(info && info.次数, 0));
-        const tickValue = toText(info && info.最近tick, '未记录');
-        const lastResult = toText(info && info.last_result, '');
-        return {
-          title: `${name}`,
-          desc: [`累计交战 ${countValue} 次`, `最近记录轮次 ${tickValue}`, lastResult ? `最近结果：${lastResult}` : '']
-            .filter(Boolean)
-            .join(' · '),
-        };
-      });
-      const unlockedIntelHtml = unlockedIntelPage.items.length
-        ? unlockedIntelPage.items
+      const 累计交战 = 交战档案.reduce((total, [, info]) => total + Math.max(0, toNumber(info && info.次数, 0)), 0);
+      const 最近交战 = 交战档案.length ? 交战档案[0] : null;
+      const 最近目标 = 最近交战 ? toText(最近交战[0], '暂无') : '暂无';
+      const 最近结果 = 最近交战 ? toText(最近交战[1] && 最近交战[1].last_result, '未记录') : '未记录';
+      const 当前任务 = 任务档案.length ? shortenText(toText(任务档案[0] && 任务档案[0][0], '任务记录'), 18) : '无追踪';
+      const 交战记录HTML = 交战档案.length
+        ? 交战档案
+            .map(([name, info]) => {
+              const 次数 = Math.max(0, toNumber(info && info.次数, 0));
+              const 轮次 = toText(info && info.最近tick, '未记录');
+              const 结果 = toText(info && info.last_result, '');
+              const 描述 = [`累计交战 ${次数} 次`, `最近轮次 ${轮次}`, 结果 ? `结果：${结果}` : ''].filter(Boolean).join(' · ');
+              return `
+            <div class="mvu-intel-terminal-record">
+              <div class="mvu-intel-record-head"><b>${htmlEscape(toText(name, '未知目标'))}</b></div>
+              <span>${htmlEscape(描述)}</span>
+            </div>
+          `;
+            })
+            .join('')
+        : '<div class="mvu-intel-empty-scan"><i></i><b>无交战目标锁定</b></div>';
+      const 情报记录HTML = 情报条目.length
+        ? 情报条目
             .map(
               item => `
-              <div class="intel-card mvu-intel-record-card">
+              <div class="mvu-intel-terminal-record">
                 <div class="mvu-intel-record-head">
                   <b>${
                     activeCharKey
@@ -35474,7 +35480,7 @@
                   }</b>
                   ${
                     activeCharKey
-                      ? `<button type="button" class="tag-chip" data-collection-action="delete-intel" data-collection-char="${escapeHtmlAttr(activeCharKey)}" data-collection-index="${escapeHtmlAttr(String(toNumber(item && item.index, 0)))}">删除</button>`
+                      ? `<button type="button" class="mvu-intel-terminal-action" data-collection-action="delete-intel" data-collection-char="${escapeHtmlAttr(activeCharKey)}" data-collection-index="${escapeHtmlAttr(String(toNumber(item && item.index, 0)))}">删除</button>`
                       : ''
                   }
                 </div>
@@ -35483,117 +35489,71 @@
             `,
             )
             .join('')
-        : '<div class="intel-card mvu-intel-record-card"><b>暂无情报</b></div>';
+        : '<div class="mvu-intel-empty-scan"><i></i><b>暂无情报数据流</b></div>';
       return {
         title: '情报库',
-        summary: '当前已解锁情报、我的任务与交战档案概览。',
+        summary: '双轨情报终端。',
         body: `
-            <div class="intel-layout-dashboard is-empty">
-              <div class="archive-card intel-pending-card intel-pending-card--empty">
-                <div class="archive-card-head">
-                  <div class="archive-card-title">最新情报</div>
-                  <span class="state-tag state-tag--dim">已整理</span>
-                </div>
-
-                <div class="intel-pending-shell is-empty">
-                  ${
-                    snapshot.unlockedKnowledges.length
-                      ? `
-                    <div class="intel-pending-editor">${
-                      activeCharKey
-                        ? makeInlineEditableValue(intelOverviewText, {
-                            path: ['char', activeCharKey, '已掌握情报', Math.max(0, snapshot.unlockedKnowledges.length - 1)],
-                            kind: 'string',
-                            rawValue: snapshot.unlockedKnowledges[snapshot.unlockedKnowledges.length - 1],
-                            multiline: true,
-                          })
-                        : htmlEscape(intelOverviewText)
-                    }</div>
-                  `
-                      : `
-                    <div class="intel-empty-state">
-                      <div class="intel-empty-state-mark">◈</div>
-                      <div class="intel-empty-state-copy">当前还没有已收录情报</div>
+            <div class="mvu-intel-terminal">
+              <div class="mvu-intel-terminal-stats">
+                <span><b>已解锁情报</b><em>${htmlEscape(String(已解锁情报.length))}</em></span>
+                <span><b>当前追踪任务</b><em>${htmlEscape(String(任务档案.length))}</em></span>
+                <span><b>已记录交战</b><em>${htmlEscape(String(交战档案.length))}</em></span>
+                <span><b>累计交战次数</b><em>${htmlEscape(String(累计交战))}</em></span>
+              </div>
+              <div class="mvu-intel-terminal-tracks">
+                <section class="mvu-intel-track mvu-intel-track--combat">
+                  <div class="mvu-intel-track-head">
+                    <b>战术交战</b>
+                    <span>${htmlEscape(`${最近目标} / ${最近结果}`)}</span>
+                  </div>
+                  <div class="mvu-intel-track-body">
+                    <div class="mvu-intel-terminal-latest">
+                      <b>最新交战记录</b>
+                      <span>${htmlEscape(`${最近目标} · ${最近结果}`)}</span>
                     </div>
-                  `
-                  }
-                </div>
-              </div>
-
-              <div class="archive-card intel-overview-card">
-                <div class="archive-card-head"><div class="archive-card-title">情报概览</div></div>
-                ${makeTileGrid(
-                  [
-                    { label: '已解锁', value: String(snapshot.unlockedKnowledges.length) },
-                    { label: '最新', value: htmlEscape(shortenText(intelOverviewText, 10) || '暂无') },
-                    { label: '我的任务', value: String(snapshot.questRecordCount) },
-                    { label: '交战目标', value: String(snapshot.combatHistoryEntries.length) },
-                  ],
-                  'two',
-                )}
-              </div>
-
-              <div class="archive-card intel-combat-card">
-                <div class="archive-card-head"><div class="archive-card-title">交战档案</div></div>
-                ${makeTileGrid(
-                  [
-                    { label: '记录目标', value: String(snapshot.combatHistoryEntries.length) },
-                    { label: '累计交战', value: String(combatHistoryTotalCount) },
-                    { label: '最近目标', value: latestCombatTarget },
-                    { label: '最近结果', value: latestCombatResult },
-                  ],
-                  'two',
-                )}
-                <div class="intel-combat-summary">
-                  <div class="simple-sub simple-sub--compact">按目标聚合</div>
-                  <div class="intel-combat-list">
-                    ${combatHistoryCards
-                      .map(
-                        c => `
-                      <div class="intel-combat-row">
-                        <b>${htmlEscape(c.title)}</b>
-                        <span>${htmlEscape(c.desc)}</span>
-                      </div>
-                    `,
-                      )
-                      .join('')}
+                    <div class="mvu-intel-terminal-list">${交战记录HTML}</div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="archive-card intel-unlocked-card mvu-detail-stack-gap mvu-detail-scroll-card">
-              <div class="archive-card-head">
-                <div class="archive-card-title">已解锁情报列表</div>
-                <span class="state-tag live">${unlockedIntelPage.items.length} 条</span>
-              </div>
-              <div class="intel-list-grid mvu-detail-scroll-list">
-                ${
-                  activeCharKey
-                    ? `
-                  <div class="intel-card intel-card-add">
-                    <div class="request-console-row intel-add-row" data-collection-panel="intel-create">
-                      <input type="text" class="request-console-input intel-add-input" data-collection-input="intel-text" placeholder="新增情报内容（支持长文本）" />
-                      <button type="button" class="tag-chip live intel-add-btn" data-collection-action="add-intel" data-collection-char="${escapeHtmlAttr(activeCharKey)}">新增</button>
+                </section>
+                <section class="mvu-intel-track mvu-intel-track--archive">
+                  <div class="mvu-intel-track-head">
+                    <b>机密情报</b>
+                    <span>${htmlEscape(当前任务)}</span>
+                  </div>
+                  <div class="mvu-intel-track-body">
+                    <div class="mvu-intel-terminal-latest">
+                      <b>最新截获</b>
+                      <span>${
+                        activeCharKey && 已解锁情报.length
+                          ? makeInlineEditableValue(最新情报, {
+                              path: ['char', activeCharKey, '已掌握情报', Math.max(0, 已解锁情报.length - 1)],
+                              kind: 'string',
+                              rawValue: 已解锁情报[已解锁情报.length - 1],
+                              multiline: true,
+                            })
+                          : htmlEscape(最新情报)
+                      }</span>
                     </div>
+                    <div class="mvu-intel-terminal-list">${情报记录HTML}</div>
                   </div>
-                `
-                    : ''
-                }
-                ${unlockedIntelHtml}
-
-                ${
-                  unlockedIntelPage.totalPages > 1
-                    ? `
-                  <div class="tag-cloud mvu-detail-toolbar mvu-detail-toolbar--tight">
-                    <button type="button" class="tag-chip" data-pagination="intel-records" data-page="${unlockedIntelPage.currentPage - 1}" ${unlockedIntelPage.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
-                    <span class="tag-chip">第 ${unlockedIntelPage.currentPage} / ${unlockedIntelPage.totalPages} 页</span>
-                    <button type="button" class="tag-chip" data-pagination="intel-records" data-page="${unlockedIntelPage.currentPage + 1}" ${unlockedIntelPage.currentPage >= unlockedIntelPage.totalPages ? 'disabled' : ''}>下一页</button>
-                  </div>
-                `
-                    : ''
-                }
+                </section>
               </div>
+              ${
+                activeCharKey
+                  ? `
+                <div class="mvu-intel-draft-console" data-collection-panel="intel-create">
+                  <div class="mvu-intel-draft-head">
+                    <b>机密起草协议</b>
+                    <button type="button" class="mvu-intel-terminal-action" data-intel-draft-fullscreen>全屏</button>
+                  </div>
+                  <div class="mvu-intel-draft-row">
+                    <textarea class="request-console-input intel-add-input mvu-intel-draft-input" data-collection-input="intel-text" placeholder=">_"></textarea>
+                    <button type="button" class="mvu-intel-write-btn" data-collection-action="add-intel" data-collection-char="${escapeHtmlAttr(activeCharKey)}">写入</button>
+                  </div>
+                </div>
+              `
+                  : ''
+              }
             </div>
           `,
       };
@@ -45737,11 +45697,15 @@ ${toText(combatData.战斗意图, '点到为止')}
     const previewKey = toText(options.previewKey, '');
     if (options.unifiedMode) {
       return `<div class="archive-redesign-root mvu-holo-detail-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
-          ${html || ''}
+          <div class="mvu-holo-slab-root" data-slab-preview="${escapeHtmlAttr(previewKey)}">
+            ${html || ''}
+          </div>
         </div>`;
     }
     return `<div class="archive-redesign-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
-        ${html || ''}
+        <div class="mvu-holo-slab-root" data-slab-preview="${escapeHtmlAttr(previewKey)}">
+          ${html || ''}
+        </div>
       </div>`;
   }
 
@@ -45863,7 +45827,9 @@ ${toText(combatData.战斗意图, '点到为止')}
     const previewKey = toText(options.previewKey, '');
     return `<div class="mvu-holo-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
         <div class="mvu-holo-detail-scroll">
-          ${html || ''}
+          <div class="mvu-holo-slab-root" data-slab-preview="${escapeHtmlAttr(previewKey)}">
+            ${html || ''}
+          </div>
         </div>
       </div>`;
   }
@@ -46836,6 +46802,20 @@ ${toText(combatData.战斗意图, '点到为止')}
         行节点.remove();
         return;
       }
+    }
+
+    const 情报起草全屏按钮 = eventTarget ? eventTarget.closest('[data-intel-draft-fullscreen]') : null;
+    if (情报起草全屏按钮 && detailSurfaceHost.contains(情报起草全屏按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 起草台 = 情报起草全屏按钮.closest('.mvu-intel-draft-console');
+      if (起草台) {
+        const 已全屏 = 起草台.classList.toggle('is-fullscreen');
+        情报起草全屏按钮.textContent = 已全屏 ? '收起' : '全屏';
+        const 输入框 = 起草台.querySelector('[data-collection-input="intel-text"]');
+        if (输入框 && typeof 输入框.focus === 'function') 输入框.focus();
+      }
+      return;
     }
 
     const collectionActionBtn = eventTarget ? eventTarget.closest('[data-collection-action]') : null;
