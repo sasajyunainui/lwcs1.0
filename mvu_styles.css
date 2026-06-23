@@ -19875,66 +19875,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband::before {
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main {
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
   min-width: 0;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-avatar-mark {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 44%, transparent);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--mvu-holo-high) 22%, transparent), transparent 52%),
-    color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
-  box-shadow:
-    inset 0 0 16px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent),
-    0 0 18px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
-  color: var(--mvu-holo-high);
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main b,
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main em {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main b {
-  color: var(--mvu-holo-high);
-  font-size: 18px;
-  font-weight: 850;
-  line-height: 1.1;
-  text-shadow: 0 0 14px var(--mvu-holo-glow);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-main em {
-  margin-top: 4px;
-  color: var(--mvu-holo-muted);
-  font-size: 11px;
-  font-style: normal;
-  line-height: 1.15;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  min-width: 0;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta span,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid span,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack span,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip span,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack span {
@@ -19947,31 +19895,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack span {
   box-shadow: none;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta b,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack b {
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--mvu-holo-muted) 78%, transparent);
-  font-size: 10px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-meta em,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack em,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip em,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack em {
   min-width: 0;
   overflow: hidden;
-  color: var(--mvu-holo-text);
+  color: #ffffff;
   font-size: 12px;
   font-style: normal;
-  font-weight: 780;
+  font-weight: 600;
   line-height: 1.18;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -20051,16 +20000,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  color: color-mix(in srgb, var(--mvu-holo-muted) 82%, transparent);
-  font-size: 11px;
-  font-weight: 760;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 650;
   line-height: 1.12;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label span {
   flex: 0 0 auto;
-  color: var(--mvu-holo-text);
-  font: 800 11px var(--font-mono, "Cascadia Code", Consolas, monospace);
+  color: #ffffff;
+  font: 600 11px var(--font-mono, "Cascadia Code", Consolas, monospace);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
   white-space: nowrap;
 }
 
@@ -20152,16 +20102,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core em {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core b {
-  color: color-mix(in srgb, var(--mvu-holo-muted) 76%, transparent);
-  font-size: 9px;
-  font-weight: 720;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core em {
-  color: var(--mvu-holo-high);
-  font: 850 10px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  color: #ffffff;
+  font: 600 10px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
   font-style: normal;
-  text-shadow: 0 0 10px var(--mvu-holo-glow);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-shell {
@@ -20204,9 +20154,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-data-shape {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-label {
-  fill: color-mix(in srgb, var(--mvu-holo-muted) 86%, transparent);
+  fill: #ffffff;
+  filter: drop-shadow(0 0 4px #000);
   font-size: 10px;
-  font-weight: 720;
+  font-weight: 600;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-legend {
@@ -20597,9 +20548,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot b {
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--mvu-holo-muted) 78%, transparent);
-  font-size: 10px;
-  font-weight: 720;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 650;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -20609,11 +20560,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link em,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot em {
   min-width: 0;
   overflow: hidden;
-  color: var(--mvu-holo-text);
+  color: #ffffff;
   font-size: 11px;
   font-style: normal;
-  font-weight: 820;
+  font-weight: 600;
   line-height: 1.12;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -20649,7 +20601,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
   padding: 3px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
   background: transparent;
-  color: color-mix(in srgb, var(--mvu-holo-muted) 72%, transparent);
+  color: rgba(255, 255, 255, 0.65);
   box-shadow: none;
   transition:
     transform 0.18s ease,
@@ -20751,14 +20703,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell b {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell em {
   align-self: end;
-  color: var(--mvu-holo-text);
+  color: #ffffff;
   font-size: 10px;
   font-style: normal;
-  font-weight: 760;
-  opacity: 0.72;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-content: start;
+  overflow: visible;
+  background: transparent;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack {
   position: relative;
   z-index: 1;
@@ -20770,6 +20734,72 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack {
   overflow-y: auto;
   scrollbar-width: thin;
   background: transparent;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--mvu-holo-high);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.12;
+  text-shadow: 0 0 12px var(--mvu-holo-glow);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head b {
+  flex: 0 0 auto;
+  max-width: 46%;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
+  background: transparent;
+  color: var(--mvu-holo-main);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip {
@@ -20835,8 +20865,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log b {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log span {
   min-width: 0;
   overflow: hidden;
-  color: var(--mvu-holo-text);
-  font: 760 12px/1.25 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  color: #ffffff;
+  font: 600 12px/1.25 var(--font-mono, "Cascadia Code", Consolas, monospace);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
   text-overflow: ellipsis;
   white-space: nowrap;
   animation: mvu-archive-log-reveal 0.55s steps(14, end) both;

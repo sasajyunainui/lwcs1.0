@@ -28935,26 +28935,23 @@
 
   function 构建档案身份天幕(snapshot) {
     const 属性 = deepGet(snapshot, 'activeChar.属性', {});
-    const 社交 = deepGet(snapshot, 'activeChar.社交', {});
     const 允许私密长按 = canOpenPrivateArchive(snapshot);
     const 名称 = toText(snapshot && snapshot.activeName, '当前角色');
     const 等级 = formatCultivationLevelBadge(属性.等级, '0');
     const 境界 = 读取显示精神境界(属性);
-    const 主称号 = Array.isArray(snapshot && snapshot.recentTitles) && snapshot.recentTitles.length
-      ? snapshot.recentTitles[0]
-      : toText(属性.称号 || snapshot?.activeChar?.称号, '');
-    const 称号 = 主称号 || '无称号';
+    const 年龄数值 = toNumber(属性.年龄, NaN);
+    const 身份字段 = [
+      ['角色名', shortenText(名称, 14)],
+      ['性别', toText(属性.性别, '').trim() || '--'],
+      ['年龄', Number.isFinite(年龄数值) && 年龄数值 > 0 ? `${formatNumber(年龄数值)}岁` : '--'],
+      ['生日', toText(属性.生日, '').trim() || '--'],
+      ['等级', 等级],
+      ['精神境界', 境界],
+    ];
     return `
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
-          <div class="mvu-archive-identity-main">
-            <span class="mvu-archive-avatar-mark">${htmlEscape(shortenText(名称, 1) || '档')}</span>
-            <div>
-              <b>${htmlEscape(shortenText(名称, 14))}</b>
-              <em>${htmlEscape(`${等级} · ${境界}`)}</em>
-            </div>
-          </div>
-          <div class="mvu-archive-identity-meta">
-            <span><b>称号</b><em>${htmlEscape(shortenText(称号, 18))}</em></span>
+          <div class="mvu-archive-identity-grid">
+            ${身份字段.map(([标签, 文本]) => `<span><b>${htmlEscape(标签)}</b><em>${htmlEscape(文本)}</em></span>`).join('')}
           </div>
         </div>
       `;
@@ -29303,20 +29300,33 @@
 
   function buildUnifiedSocialCard(snapshot) {
     const 社交 = deepGet(snapshot, 'activeChar.社交', {}) || {};
+    const 关系数量 = (snapshot.relations || []).length || 0;
     const 核心羁绊 = snapshot.topRelation
       ? `${shortenText(snapshot.topRelation[0], 10)} · ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')}`
       : '暂无核心羁绊';
+    const 羁绊路线 = snapshot.topRelation ? toText(deepGet(snapshot.topRelation[1], '关系路线', '朋友线'), '朋友线') : '未建立';
     const 名望 = toText(社交.名望等级, '籍籍无名');
     const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 16 }) || toText(社交.主身份, '未记录');
     return `
         <div class="mvu-archive-panel-head">
           <span>社会与羁绊</span>
-          <b>${htmlEscape(`${(snapshot.relations || []).length || 0} 人`)}</b>
+          <b>2窗</b>
         </div>
         <div class="mvu-archive-social-stack">
-          <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
-          <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
-          <span><b>羁绊</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
+          <div class="mvu-archive-social-window clickable" data-preview="社会档案详细页" data-detail-mode="embed">
+            <div class="mvu-archive-social-window-head"><span>社会档案</span><b>${htmlEscape(shortenText(名望, 10))}</b></div>
+            <div class="mvu-archive-social-window-body">
+              <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
+              <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
+            </div>
+          </div>
+          <div class="mvu-archive-social-window clickable" data-preview="人物关系详细页" data-detail-mode="embed">
+            <div class="mvu-archive-social-window-head"><span>羁绊</span><b>${htmlEscape(`${关系数量} 人`)}</b></div>
+            <div class="mvu-archive-social-window-body">
+              <span><b>核心</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
+              <span><b>路线</b><em>${htmlEscape(shortenText(羁绊路线, 18))}</em></span>
+            </div>
+          </div>
         </div>
       `;
   }
@@ -31559,7 +31569,6 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
-        preview: '人物关系详细页',
         surface: normalizedSurface,
       });
       渲染统一武魂中轴舞台(snapshot, normalizedSurface);
