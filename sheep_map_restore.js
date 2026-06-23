@@ -1462,24 +1462,22 @@
             <button type='button' class='map-action-primary' data-map-action-execute title='执行当前行动'>
               <b>行动</b><span data-map-selected-action data-map-request-panel-hint>待命</span>
             </button>
-            <label class='map-action-select-wrap'>
+            <div class='map-action-select-wrap' data-map-action-menu>
               <b>选择</b>
-              <select class='map-action-select' data-map-action-select aria-label='选择行动'>
-                <option value=''>待命</option>
-              </select>
-            </label>
+              <button type='button' class='map-action-select' data-map-action-select data-map-action-toggle aria-haspopup='listbox' aria-expanded='false'>
+                <span data-map-action-current>待命</span>
+              </button>
+              <div class='map-action-menu is-hidden' data-map-action-menu-list role='listbox' aria-label='选择行动'></div>
+            </div>
           </div>
           <div class='map-action-detail-row' data-map-travel-panel>
             <div class='map-action-detail-cell' data-map-training-cell>
               <b data-map-request-label='0'>目标</b>
               <span data-map-request-targetloc>无</span>
-              <select class='map-action-select map-inline-training-select is-hidden' data-map-training-select aria-label='选择训练内容'>
-                <option value='力量'>力量</option>
-                <option value='防御'>防御</option>
-                <option value='敏捷'>敏捷</option>
-                <option value='体魄'>体魄</option>
-                <option value='精神'>精神</option>
-              </select>
+              <button type='button' class='map-action-select map-inline-training-select is-hidden' data-map-training-select data-map-training-toggle aria-haspopup='listbox' aria-expanded='false'>
+                <span data-map-training-current>力量</span>
+              </button>
+              <div class='map-action-menu map-training-menu is-hidden' data-map-training-menu-list role='listbox' aria-label='选择训练内容'></div>
             </div>
             <button type='button' class='map-action-detail-cell map-method-select is-hidden' data-map-travel-cycle title='切换移动方式'><b>方式</b><span data-map-request-method>无</span></button>
             <div class='map-action-detail-cell' data-map-duration-cell>
@@ -1571,6 +1569,7 @@
     syncStatus: '待同步',
     syncDetail: '',
     lastSyncAt: 0,
+    打开地图操作菜单: '',
     忽略画布点击至: 0
   };
 
@@ -1581,7 +1580,10 @@
   let hoverSyncRaf = 0;
   let hoverSyncCanvas = null;
   let hoverSyncTimeout = null;
-  const MAP_HOVER_INFO_DEBOUNCE_MS = 180;
+  let hoverReadoutTimeout = null;
+  let hoverReadoutLastAt = 0;
+  const MAP_HOVER_READOUT_INTERVAL_MS = 48;
+  const MAP_HOVER_INFO_DEBOUNCE_MS = 420;
 
   function invalidateMapDerivedCache() {
     mapDerivedCache.renderableItems.clear();
@@ -1597,6 +1599,10 @@
     if (hoverSyncTimeout) {
       clearTimeout(hoverSyncTimeout);
       hoverSyncTimeout = null;
+    }
+    if (hoverReadoutTimeout) {
+      clearTimeout(hoverReadoutTimeout);
+      hoverReadoutTimeout = null;
     }
   }
 
@@ -3591,11 +3597,21 @@
 
   function getDynamicEntriesByParent(dynamicSource, parentName) {
     const source = dynamicSource && typeof dynamicSource === 'object' ? dynamicSource : {};
-    const target = toText(parentName, '').trim();
-    if (!target) return [];
+    const 目标父节点 = 归一地点名(parentName);
+    const 目标片段 = 拆分地点路径(parentName);
+    const 目标叶名 = 目标片段[目标片段.length - 1] || 目标父节点;
+    if (!目标父节点 && !目标叶名) return [];
+    const 父节点匹配 = 父节点名 => {
+      const 父节点 = 归一地点名(父节点名);
+      if (!父节点) return false;
+      if (父节点 === 目标父节点 || 父节点 === 目标叶名) return true;
+      const 父片段 = 拆分地点路径(父节点);
+      const 父叶名 = 父片段[父片段.length - 1] || 父节点;
+      return 父叶名 === 目标父节点 || 父叶名 === 目标叶名;
+    };
     return Object.entries(source).filter(([, dynData]) => {
       if (!dynData || typeof dynData !== 'object') return false;
-      return toText(dynData['归属父节点'], '').trim() === target;
+      return 父节点匹配(dynData['归属父节点']);
     });
   }
 
@@ -5861,6 +5877,22 @@
       .join('');
   }
 
+  function 渲染地图菜单按钮列表(选项列表 = [], 当前值 = '', 属性名 = '') {
+    const 安全属性名 = toText(属性名, '');
+    if (!安全属性名) return '';
+    if (!Array.isArray(选项列表) || !选项列表.length) {
+      return `<button type="button" class="map-action-option disabled" disabled role="option">暂无可用行动</button>`;
+    }
+    return 选项列表.map(选项 => {
+      const 值 = toText(选项 && 选项.value, '');
+      const 文本 = toText(选项 && 选项.text, 值 || '未命名');
+      const 禁用 = !!(选项 && 选项.disabled);
+      const 当前 = 值 === 当前值;
+      const 说明 = toText(选项 && 选项.reason, '');
+      return `<button type="button" class="map-action-option${当前 ? ' current' : ''}${禁用 ? ' disabled' : ''}" ${安全属性名}="${escapeMapHtml(值)}" role="option" aria-selected="${当前 ? 'true' : 'false'}"${禁用 ? ' disabled' : ''} title="${escapeMapHtml(说明 || 文本)}"><span>${escapeMapHtml(文本)}</span>${说明 ? `<small>${escapeMapHtml(说明)}</small>` : ''}</button>`;
+    }).join('');
+  }
+
   function getNpcActionCandidates(item, npcCount = 0) {
     if (!item) return [];
     const candidates = new Set();
@@ -7733,11 +7765,13 @@ ${logMsg}
 
     if (inPreview && !previewCurrentBranch && previewTrailNames[0]) {
       pushActionSlot('travel_anchor', `前往${previewTrailNames[0]}`, { reason: '移动到子图入口' });
-    } else if (travelPreview) {
-      const travelDisabled = !!(previewRequest && previewRequest.costs && !previewRequest.costs.canAfford);
-      pushActionSlot('travel', isFreeSelection ? '开始移动' : pendingForSelection ? '确认前往' : '规划路线', { reason: '', disabled: travelDisabled });
-    } else if (focusItem && canPreviewEnter) {
-      pushActionSlot('enter', '进入子图', { reason: '预览子地图，不改变当前位置' });
+      if (focusItem && canPreviewEnter) pushActionSlot('enter', '进入子图', { reason: '预览子地图，不改变当前位置' });
+    } else {
+      if (focusItem && canPreviewEnter) pushActionSlot('enter', '进入子图', { reason: '预览子地图，不改变当前位置' });
+      if (travelPreview) {
+        const travelDisabled = !!(previewRequest && previewRequest.costs && !previewRequest.costs.canAfford);
+        pushActionSlot('travel', isFreeSelection ? '开始移动' : pendingForSelection ? '确认前往' : '规划路线', { reason: '', disabled: travelDisabled });
+      }
     }
     if ((allowLocalActions || allowTravelQueuedActions) && !canPreviewEnter) {
       获取节点本地动作(focusItem, mapState.baseSnapshot || snapshot).forEach(action => {
@@ -7925,31 +7959,30 @@ ${logMsg}
       slot.disabled ? '1' : '0',
       slot.reason
     ].join('::')).join('|');
-    getMapUiElements('[data-map-action-select]').forEach(选择框 => {
-      if (!(选择框 instanceof HTMLSelectElement)) return;
-      if (选择框.dataset.mapActionOptionsSignature !== 行动选择签名) {
-        选择框.innerHTML = '';
-        if (!actionSlotCandidates.length) {
-          const 空选项 = document.createElement('option');
-          空选项.value = '';
-          空选项.textContent = '暂无可用行动';
-          空选项.disabled = true;
-          选择框.appendChild(空选项);
-        } else {
-          actionSlotCandidates.forEach(slot => {
-            const 行动选项 = document.createElement('option');
-            行动选项.value = slot.action;
-            行动选项.textContent = slot.disabled ? `${slot.text}（不可用）` : slot.text;
-            行动选项.disabled = !!slot.disabled && slot.action !== selectedAction;
-            行动选项.title = slot.reason || slot.text;
-            选择框.appendChild(行动选项);
-          });
-        }
-        选择框.dataset.mapActionOptionsSignature = 行动选择签名;
+    const 行动菜单打开 = mapState.打开地图操作菜单 === 'action' && actionSlotCandidates.length > 0;
+    const 行动菜单选项 = actionSlotCandidates.map(slot => ({
+      value: slot.action,
+      text: slot.disabled ? `${slot.text}（不可用）` : slot.text,
+      disabled: !!slot.disabled && slot.action !== selectedAction,
+      reason: slot.reason || slot.text
+    }));
+    getMapUiElements('[data-map-action-select]').forEach(按钮 => {
+      按钮.disabled = !actionSlotCandidates.length;
+      按钮.classList.toggle('disabled', !actionSlotCandidates.length);
+      按钮.setAttribute('aria-expanded', 行动菜单打开 ? 'true' : 'false');
+      按钮.title = 当前行动展示槽 ? [当前行动展示槽.text, 当前行动展示槽.reason].filter(Boolean).join(' · ') : '暂无可用行动';
+      const 当前文本 = 按钮.querySelector('[data-map-action-current]');
+      setMapNodeText(当前文本 || 按钮, 当前行动标题 || '待命');
+    });
+    getMapUiElements('[data-map-action-menu]').forEach(容器 => {
+      容器.classList.toggle('menu-open', 行动菜单打开);
+    });
+    getMapUiElements('[data-map-action-menu-list]').forEach(菜单 => {
+      if (菜单.dataset.mapActionOptionsSignature !== `${行动选择签名}|${selectedAction}`) {
+        菜单.innerHTML = 渲染地图菜单按钮列表(行动菜单选项, selectedAction, 'data-map-action-option');
+        菜单.dataset.mapActionOptionsSignature = `${行动选择签名}|${selectedAction}`;
       }
-      选择框.disabled = !actionSlotCandidates.length;
-      选择框.value = actionSlotCandidates.some(slot => slot.action === selectedAction) ? selectedAction : '';
-      选择框.title = 当前行动展示槽 ? [当前行动展示槽.text, 当前行动展示槽.reason].filter(Boolean).join(' · ') : '暂无可用行动';
+      菜单.classList.toggle('is-hidden', !行动菜单打开);
     });
     getMapUiElements('[data-map-duration-wrap]').forEach(容器 => {
       容器.classList.toggle('is-hidden', !是否地图可变时长动作(selectedAction));
@@ -7967,16 +8000,29 @@ ${logMsg}
       文本.classList.remove('is-hidden');
     });
     getMapUiElements('[data-map-request-targetloc]').forEach(文本 => {
-      文本.classList.remove('is-hidden');
+      文本.classList.toggle('is-hidden', selectedAction === 'train');
     });
     getMapUiElements('[data-map-duration-text]').forEach(文本 => {
       文本.contentEditable = 是否地图可变时长动作(selectedAction) ? 'true' : 'false';
     });
-    getMapUiElements('[data-map-training-select]').forEach(选择框 => {
-      if (!(选择框 instanceof HTMLSelectElement)) return;
-      选择框.disabled = selectedAction !== 'train';
-      选择框.classList.toggle('is-hidden', selectedAction !== 'train');
-      选择框.value = 获取地图训练项目();
+    const 训练菜单打开 = mapState.打开地图操作菜单 === 'training' && selectedAction === 'train';
+    const 训练菜单选项 = ['力量', '防御', '敏捷', '体魄', '精神'].map(项目 => ({ value: 项目, text: 项目 }));
+    getMapUiElements('[data-map-training-select]').forEach(按钮 => {
+      按钮.disabled = selectedAction !== 'train';
+      按钮.classList.toggle('is-hidden', selectedAction !== 'train');
+      按钮.classList.toggle('disabled', selectedAction !== 'train');
+      按钮.setAttribute('aria-expanded', 训练菜单打开 ? 'true' : 'false');
+      按钮.title = '选择训练内容';
+      const 当前文本 = 按钮.querySelector('[data-map-training-current]');
+      setMapNodeText(当前文本 || 按钮, 获取地图训练项目());
+    });
+    getMapUiElements('[data-map-training-menu-list]').forEach(菜单 => {
+      const 训练菜单签名 = `${获取地图训练项目()}|${selectedAction}`;
+      if (菜单.dataset.mapTrainingOptionsSignature !== 训练菜单签名) {
+        菜单.innerHTML = 渲染地图菜单按钮列表(训练菜单选项, 获取地图训练项目(), 'data-map-training-option');
+        菜单.dataset.mapTrainingOptionsSignature = 训练菜单签名;
+      }
+      菜单.classList.toggle('is-hidden', !训练菜单打开);
     });
     getMapUiElements('[data-map-action-execute]').forEach(按钮 => {
       按钮.classList.toggle('disabled', !当前行动展示槽 || !!selectedActionDetail.panelDisabled);
@@ -8362,13 +8408,28 @@ ${logMsg}
   function scheduleHoverSync(canvasEl = null) {
     if (mapDragState.active || miniMapDragState.active) return;
     hoverSyncCanvas = canvasEl || null;
-    if (hoverSyncRaf) cancelAnimationFrame(hoverSyncRaf);
-    hoverSyncRaf = requestAnimationFrame(() => {
-      hoverSyncRaf = 0;
-      if (!mapDragState.active && !miniMapDragState.active) {
-        updateMapCoordinateReadout(hoverSyncCanvas);
+    const 当前时间 = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    const 延迟 = Math.max(0, MAP_HOVER_READOUT_INTERVAL_MS - (当前时间 - hoverReadoutLastAt));
+    const 安排读数刷新 = () => {
+      if (hoverSyncRaf) return;
+      hoverSyncRaf = requestAnimationFrame(() => {
+        hoverSyncRaf = 0;
+        hoverReadoutLastAt = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+        if (!mapDragState.active && !miniMapDragState.active) {
+          updateMapCoordinateReadout(hoverSyncCanvas);
+        }
+      });
+    };
+    if (!hoverSyncRaf && !hoverReadoutTimeout) {
+      if (延迟 <= 0) {
+        安排读数刷新();
+      } else {
+        hoverReadoutTimeout = setTimeout(() => {
+          hoverReadoutTimeout = null;
+          安排读数刷新();
+        }, 延迟);
       }
-    });
+    }
     if (hoverSyncTimeout) {
       clearTimeout(hoverSyncTimeout);
     }
@@ -8531,10 +8592,11 @@ ${logMsg}
         ? ['不可用', 请求.costs.reason || '', 请求.costs.text && 请求.costs.text !== '无消耗' ? 请求.costs.text : ''].filter(Boolean).join(' · ')
         : (请求.costs.text || '无'))
       : '无';
-    const 方式选项 = 确认数据.方法列表.map(方式 => {
-      const 安全方式 = escapeMapHtml(方式);
-      return `<option value="${安全方式}"${方式 === 请求.method ? ' selected' : ''}>${安全方式}</option>`;
-    }).join('');
+    const 方式选项 = 渲染地图菜单按钮列表(
+      确认数据.方法列表.map(方式 => ({ value: 方式, text: 方式 })),
+      请求.method,
+      'data-map-move-action-method'
+    );
     const 弹层 = document.createElement('div');
     弹层.className = 'map-move-action-layer';
     弹层.setAttribute('data-map-move-action-confirm', '1');
@@ -8545,10 +8607,10 @@ ${logMsg}
           <span>${escapeMapHtml(确认数据.动作标签)} · ${escapeMapHtml(确认数据.节点名)}</span>
         </div>
         <div class="map-move-action-grid">
-          <label class="map-move-action-row map-move-action-method">
+          <div class="map-move-action-row map-move-action-method">
             <b>方式</b>
-            <select data-map-move-action-method>${方式选项}</select>
-          </label>
+            <div class="map-action-menu map-move-method-menu" role="listbox" aria-label="选择移动方式">${方式选项}</div>
+          </div>
           <div class="map-move-action-row">
             <b>耗时</b>
             <span>${escapeMapHtml(请求.est_duration || '无')}</span>
@@ -8567,13 +8629,15 @@ ${logMsg}
     弹层.addEventListener('click', 事件 => {
       if (事件.target === 弹层) 关闭移动动作确认层();
     });
-    const 方式选择 = 弹层.querySelector('[data-map-move-action-method]');
-    if (方式选择) {
-      方式选择.addEventListener('change', 事件 => {
-        mapState.travelMethodOverride = toText(事件.target && 事件.target.value, '');
+    弹层.querySelectorAll('[data-map-move-action-method]').forEach(方式按钮 => {
+      方式按钮.addEventListener('click', 事件 => {
+        事件.preventDefault();
+        事件.stopPropagation();
+        if (方式按钮.disabled) return;
+        mapState.travelMethodOverride = toText(方式按钮.dataset.mapMoveActionMethod, '');
         打开移动动作确认层(确认数据.动作, 确认数据.节点);
       });
-    }
+    });
     const 取消按钮 = 弹层.querySelector('[data-map-move-action-cancel]');
     if (取消按钮) 取消按钮.addEventListener('click', () => 关闭移动动作确认层());
     const 确认按钮 = 弹层.querySelector('[data-map-move-action-submit]');
@@ -8652,6 +8716,47 @@ ${logMsg}
       注册地图事件(document, 'click', event => {
         const 目标 = event.target instanceof Element ? event.target : null;
         if (!目标) return;
+        const 动作菜单按钮 = 目标.closest('[data-map-action-toggle]');
+        if (动作菜单按钮) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (动作菜单按钮.disabled) return;
+          mapState.打开地图操作菜单 = mapState.打开地图操作菜单 === 'action' ? '' : 'action';
+          syncInteractiveMapUI({ center: false, infoOnly: true });
+          return;
+        }
+        const 动作菜单选项 = 目标.closest('[data-map-action-option]');
+        if (动作菜单选项) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (动作菜单选项.disabled) return;
+          const 动作 = toText(动作菜单选项.dataset.mapActionOption, '');
+          if (!动作) return;
+          mapState.selectedAction = 动作;
+          mapState.打开地图操作菜单 = '';
+          syncInteractiveMapUI({ center: false, infoOnly: true });
+          return;
+        }
+        const 训练菜单按钮 = 目标.closest('[data-map-training-toggle]');
+        if (训练菜单按钮) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (训练菜单按钮.disabled || 训练菜单按钮.classList.contains('is-hidden')) return;
+          mapState.打开地图操作菜单 = mapState.打开地图操作菜单 === 'training' ? '' : 'training';
+          syncInteractiveMapUI({ center: false, infoOnly: true });
+          return;
+        }
+        const 训练菜单选项 = 目标.closest('[data-map-training-option]');
+        if (训练菜单选项) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (训练菜单选项.disabled) return;
+          const 项目 = toText(训练菜单选项.dataset.mapTrainingOption, '力量');
+          mapState.训练项目 = ['力量', '防御', '敏捷', '体魄', '精神'].includes(项目) ? 项目 : '力量';
+          mapState.打开地图操作菜单 = '';
+          syncInteractiveMapUI({ center: false, infoOnly: true });
+          return;
+        }
         const 动作按钮 = 目标.closest('[data-map-node-action]');
         if (动作按钮 && !动作按钮.dataset.mapBound) {
           event.preventDefault();
@@ -8659,6 +8764,7 @@ ${logMsg}
           if (动作按钮.disabled) return;
           const 动作 = toText(动作按钮.dataset.mapNodeAction, '');
           if (!动作) return;
+          mapState.打开地图操作菜单 = '';
           mapState.selectedAction = 动作;
           syncInteractiveMapUI({ center: false, infoOnly: true });
           return;
@@ -8668,6 +8774,11 @@ ${logMsg}
           event.preventDefault();
           event.stopPropagation();
           执行地图维护操作(维护按钮.dataset.mapMaintenance || '');
+          return;
+        }
+        if (mapState.打开地图操作菜单 && !目标.closest('[data-map-action-menu]') && !目标.closest('[data-map-training-cell]')) {
+          mapState.打开地图操作菜单 = '';
+          syncInteractiveMapUI({ center: false, infoOnly: true });
         }
       });
     }
@@ -8736,17 +8847,6 @@ ${logMsg}
       });
     });
 
-    getMapUiElements('[data-map-action-select]').forEach(选择框 => {
-      if (选择框.dataset.mapBound === '1') return;
-      选择框.dataset.mapBound = '1';
-      注册地图元素事件(选择框, 'mapBound', 'change', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        mapState.selectedAction = toText(选择框.value, '');
-        syncInteractiveMapUI({ center: false, infoOnly: true });
-      });
-    });
-
     getMapUiElements('[data-map-duration-text]').forEach(文本 => {
       if (文本.dataset.mapBound === '1') return;
       文本.dataset.mapBound = '1';
@@ -8786,18 +8886,6 @@ ${logMsg}
         event.stopPropagation();
         const 粘贴文本 = event.clipboardData ? event.clipboardData.getData('text/plain') : '';
         document.execCommand('insertText', false, 粘贴文本);
-      });
-    });
-
-    getMapUiElements('[data-map-training-select]').forEach(选择框 => {
-      if (选择框.dataset.mapBound === '1') return;
-      选择框.dataset.mapBound = '1';
-      注册地图元素事件(选择框, 'mapBound', 'change', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const 项目 = toText(选择框.value, '力量');
-        mapState.训练项目 = ['力量', '防御', '敏捷', '体魄', '精神'].includes(项目) ? 项目 : '力量';
-        syncInteractiveMapUI({ center: false, infoOnly: true });
       });
     });
 
