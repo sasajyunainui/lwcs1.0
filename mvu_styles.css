@@ -21712,15 +21712,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @container mvu-dashboard-area (max-width: 560px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto auto auto !important;
-    grid-template-areas:
-      'core'
-      'spirit'
-      'armory'
-      'social'
-      'vault' !important;
+    display: flex !important;
+    flex-direction: column;
     height: auto !important;
     min-height: 0 !important;
     align-content: start !important;
@@ -21941,15 +21934,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto !important;
-    grid-template-areas:
-      'core'
-      'spirit'
-      'armory'
-      'social'
-      'vault' !important;
+    display: flex !important;
+    flex-direction: column;
     align-content: start !important;
     height: auto !important;
   }
