@@ -29334,32 +29334,17 @@
   function 构建统一副轨摘要卡(snapshot) {
     const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
     if (第二轨) return buildUnifiedSpiritCard(第二轨, { primary: false });
-    const 融合资料 = getFusionArchiveMeta(snapshot || {});
-    const 魂骨数量 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
     return `
-        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty">
-          <div class="mvu-archive-panel-head">
-            <span>第二武魂</span>
-            <b>未启用</b>
-          </div>
+        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty mvu-archive-spirit-card--dormant">
           <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
-          <div class="mvu-archive-spirit-foot">
-            <span>融合技 ${htmlEscape(String(融合资料.fusionEntries.length || 0))}</span>
-            <span>魂骨 ${htmlEscape(String(魂骨数量 || 0))}</span>
-          </div>
         </div>
       `;
   }
 
   function 构建档案空武魂卡(标题, 文本) {
     return `
-        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty">
-          <div class="mvu-archive-panel-head">
-            <span>${htmlEscape(标题)}</span>
-            <b>空槽</b>
-          </div>
+        <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty mvu-archive-spirit-card--dormant" title="${escapeHtmlAttr(`${标题} / ${文本}`)}">
           <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
-          <div class="mvu-archive-spirit-foot"><span>${htmlEscape(文本)}</span></div>
         </div>
       `;
   }
@@ -39590,29 +39575,14 @@
 
   function renderArchiveSpiritEntry(config, isPrimary = false) {
     const 魂环数组 = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: isPrimary ? 'ring-white' : 'ring-gold' });
-    const 魂环数量 = Array.isArray(config.魂环) ? config.魂环.length : 0;
-    const 标题 = isPrimary ? '第一武魂' : '第二武魂';
-    const 标签 = config.badge || 标题;
     const 名称 = config.spiritName || config.name || '未命名武魂';
-    const 摘要 = [
-      config.spiritType || '',
-      config.spiritElement || '',
-      魂环数量 ? `${魂环数量}环` : '',
-    ].filter(Boolean).join(' / ') || '武魂谱系';
+    const 系别 = toText(config.spiritType, '').trim();
     return `
-      <div class="mvu-archive-panel-head">
-        <span>${htmlEscape(标题)}</span>
-        <b class="${escapeHtmlAttr(config.badgeClass || (isPrimary ? 'cyan' : 'gold'))}">${htmlEscape(标签)}</b>
-      </div>
       <div class="mvu-archive-spirit-name">
-        <b>${htmlEscape(shortenText(名称, 18))}</b>
-        <span>${htmlEscape(shortenText(摘要, 28))}</span>
+        <b>${htmlEscape(shortenText(名称, 18))}${系别 ? `<i>${htmlEscape(shortenText(系别, 8))}</i>` : ''}</b>
       </div>
       <div class="mvu-archive-ring-observatory">
         <div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard mvu-soul-ring-showcase--overview">${魂环数组}</div>
-      </div>
-      <div class="mvu-archive-spirit-foot">
-        <span>${htmlEscape(`${魂环数量}环 · 魂灵${config.soulCount || 0} · 独立${config.independentRingCount || 0}`)}</span>
       </div>
     `;
   }
@@ -39620,15 +39590,9 @@
   function renderArchiveBloodlineEntry(config) {
     const 血脉摘要 = 构建血脉状态文本_桥接(config);
     const 魂环Html = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: 'ring-gold' });
-    const 魂环数量 = Array.isArray(config.魂环) ? config.魂环.length : 0;
     return `
-        <div class="mvu-archive-panel-head">
-          <span>血脉档案</span>
-          <b class="${escapeHtmlAttr(config.badgeClass || 'gold')}">${htmlEscape(config.badge || '血脉')}</b>
-        </div>
         <div class="mvu-archive-spirit-name">
-          <b>${htmlEscape(shortenText(config.name || '血脉之力', 18))}</b>
-          <span>${htmlEscape(shortenText(血脉摘要, 28))}</span>
+          <b>${htmlEscape(shortenText(config.name || '血脉之力', 18))}<i>${htmlEscape(shortenText(血脉摘要, 8))}</i></b>
         </div>
         <div class="mvu-archive-ring-observatory">
           ${
@@ -39636,9 +39600,6 @@
               ? `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard mvu-soul-ring-showcase--overview">${魂环Html}</div>`
               : `<div class="mvu-archive-empty-orbit" aria-hidden="true"></div>`
           }
-        </div>
-        <div class="mvu-archive-spirit-foot">
-          <span>血脉魂环 ${htmlEscape(String(魂环数量))}</span>
         </div>
       `;
   }

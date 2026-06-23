@@ -19536,15 +19536,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-  grid-template-columns: minmax(250px, 0.92fr) minmax(342px, 1.24fr) minmax(252px, 0.92fr);
-  grid-template-rows: minmax(112px, auto) minmax(0, 1fr) minmax(96px, auto);
+  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.24fr) minmax(220px, 0.9fr);
+  grid-template-rows: minmax(112px, auto) minmax(116px, auto) minmax(96px, auto);
   grid-template-areas:
     'core spirit armory'
     'core spirit social'
     'core spirit vault';
   height: 100%;
   min-height: min(620px, calc(var(--mvu-hud-frame-height) - 130px));
-  align-content: stretch;
+  align-content: start;
   gap: 9px;
 }
 
@@ -20311,8 +20311,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto auto minmax(122px, auto) auto;
-  gap: 8px;
+  grid-template-rows: auto minmax(122px, 1fr);
+  gap: 10px;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -20323,7 +20323,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--empty {
-  grid-template-rows: auto minmax(126px, auto) auto;
+  grid-template-rows: auto minmax(126px, 1fr) auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--dormant {
+  grid-template-rows: minmax(98px, 1fr);
+  place-items: center;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name {
@@ -20341,11 +20346,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
   color: var(--mvu-holo-high);
   font-size: 18px;
   font-weight: 850;
   line-height: 1.1;
   text-shadow: 0 0 14px var(--mvu-holo-glow);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b i {
+  flex: 0 0 auto;
+  max-width: 76px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 22%, transparent);
+  border-radius: 999px;
+  color: var(--mvu-holo-main);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-shadow: none;
+  white-space: nowrap;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
@@ -20355,7 +20380,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
+  --archive-ring-field-width: min(278px, 100%);
+  --archive-ring-field-height: clamp(152px, 22vh, 212px);
+  --archive-ring-center-x: 50%;
+  --archive-ring-center-y: 50%;
   position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   min-width: 0;
@@ -20366,20 +20396,34 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory::before {
   content: "";
   position: absolute;
-  inset: 8px 10%;
+  left: var(--archive-ring-center-x);
+  top: var(--archive-ring-center-y);
+  width: var(--archive-ring-field-width);
+  height: var(--archive-ring-field-height);
+  max-width: 100%;
   border-radius: 50%;
   background:
     radial-gradient(circle, color-mix(in srgb, var(--mvu-holo-main) 13%, transparent), transparent 54%),
     radial-gradient(circle, transparent 46%, color-mix(in srgb, var(--mvu-holo-main) 12%, transparent) 47%, transparent 49%);
   opacity: 0.9;
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview {
   --ring-size: 96px;
-  --ring-stage-width: min(278px, 100%);
-  --ring-stage-height: clamp(152px, 22vh, 212px);
+  --ring-stage-width: var(--archive-ring-field-width);
+  --ring-stage-height: var(--archive-ring-field-height);
+  width: var(--archive-ring-field-width);
   min-height: var(--ring-stage-height);
+}
+
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-archive-spirit-stage-node--primary
+  .mvu-archive-ring-observatory {
+  --archive-ring-field-width: min(300px, 100%);
+  --archive-ring-field-height: clamp(198px, 30vh, 286px);
 }
 
 body.mvu-layout-holo
@@ -20388,21 +20432,20 @@ body.mvu-layout-holo
   .mvu-archive-ring-observatory
   .mvu-soul-ring-showcase--overview {
   --ring-size: 104px;
-  --ring-stage-height: clamp(198px, 30vh, 286px);
 }
 
 body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-archive-spirit-stage-node--secondary
   .mvu-archive-spirit-card {
-  grid-template-rows: auto auto minmax(96px, auto) auto;
+  grid-template-rows: auto minmax(96px, 1fr);
   gap: 6px;
 }
 
 body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-archive-spirit-stage-node--secondary
-  .mvu-archive-spirit-card--empty {
+  .mvu-archive-spirit-card--empty:not(.mvu-archive-spirit-card--dormant) {
   grid-template-rows: auto minmax(98px, auto) auto;
 }
 
@@ -21542,15 +21585,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.22fr) minmax(220px, 0.88fr);
-    grid-template-rows: minmax(104px, auto) minmax(0, 1fr) minmax(92px, auto);
+    grid-template-columns: minmax(210px, 0.9fr) minmax(290px, 1.22fr) minmax(210px, 0.88fr);
+    grid-template-rows: minmax(104px, auto) minmax(110px, auto) minmax(92px, auto);
     grid-template-areas:
       'core spirit armory'
       'core spirit social'
       'core spirit vault';
     height: 100%;
     min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
-    align-content: stretch;
+    align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .armory-grid,
@@ -21625,10 +21668,39 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
+@container mvu-dashboard-area (max-width: 840px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
+    grid-template-columns: minmax(210px, 0.88fr) minmax(0, 1.12fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'core spirit'
+      'armory spirit'
+      'social vault';
+    height: auto;
+    min-height: 0;
+    align-items: start;
+    align-content: start;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='armory'],
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='vault'],
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='social'] {
+    height: auto;
+    min-height: 0;
+    align-self: start;
+    overflow: visible;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
+    min-height: min(560px, 72svh);
+    align-self: stretch;
+  }
+}
+
 @container mvu-dashboard-area (max-width: 560px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto auto auto auto auto !important;
     grid-template-areas:
@@ -21638,6 +21710,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'social'
       'vault' !important;
     height: auto !important;
+    min-height: 0 !important;
+    align-content: start !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -21855,8 +21929,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto auto !important;
     grid-template-areas:
