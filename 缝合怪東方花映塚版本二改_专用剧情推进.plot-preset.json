@@ -1,7 +1,7 @@
 [
   {
     "name": "缝合怪東方花映塚版本二改_专用剧情推进",
-    "extractTags": "recall",
+    "extractTags": "recall,偏差账本召回",
     "extractInjectTags": "timeline_recall,偏差账本召回",
     "contextExtractRules": [],
     "contextExcludeRules": [
@@ -117,7 +117,7 @@
           },
           {
             "role": "USER",
-            "content": "<story_context>\n<背景设定>\n【仅供寻找记忆的参考辅助】\n$1\n</背景设定>\n------\n【以下是主要历史记忆来源】\n<纪要索引>\n$5\n</纪要索引>\n\n<前文剧情>\n$7\n</前文剧情>\n\n------\n【以下是原著未来时间线候选，只能用于筛选 timeline_recall，禁止写入 recall】\n<远端原著时间线候选>\n{{剧情钩子._引导.远端原著时间线候选}}\n</远端原著时间线候选>\n\n【以下是本档当前仍影响世界线的偏差账本候选。只能用于筛选 DV 编码，禁止复制完整偏差正文，禁止写入 recall 或 timeline_recall】\n<偏差账本候选>\n{{偏差账本候选}}\n</偏差账本候选>\n\n</story_context>\n\n═══ 故事信息结束，下接玩家本轮输入 ═══\n<user_input>\n$8\n</user_input>\n\nEdward:好，玩家本轮的行动、远端原著候选和偏差账本候选我都看到了，我会同时寻找相关历史记忆，筛选匹配的未来节点和影响当前局势的 DV 偏差编码。",
+            "content": "<story_context>\n<背景设定>\n【仅供寻找记忆的参考辅助】\n$1\n</背景设定>\n------\n【以下是主要历史记忆来源】\n<纪要索引>\n$5\n</纪要索引>\n\n<前文剧情>\n$7\n</前文剧情>\n\n------\n【以下是原著未来时间线候选】\n<远端原著时间线候选>\n{{剧情钩子._引导.远端原著时间线候选}}\n</远端原著时间线候选>\n\n【以下是本档当前仍影响世界线的偏差账本候选】\n<偏差账本候选>\n{{偏差账本候选}}\n</偏差账本候选>\n\n</story_context>\n\n═══ 故事信息结束，下接玩家本轮输入 ═══\n<user_input>\n$8\n</user_input>\n\nEdward:好，玩家本轮的行动、远端原著候选和偏差账本候选我都看到了，我会同时寻找相关历史记忆，筛选匹配的未来节点和影响当前局势的 DV 偏差编码。",
             "deletable": true
           },
           {
@@ -136,8 +136,8 @@
             "deletable": true
           }
         ],
-        "extractTags": "recall",
-        "extractInjectTags": "timeline_recall,偏差账本召回",
+        "extractTags": "recall,偏差账本召回",
+        "extractInjectTags": "timeline_recall",
         "finalDirectiveTemplate": "",
         "minLength": 10,
         "maxRetries": 1000,
@@ -317,7 +317,7 @@
       }
     ],
     "globalRevision": 0,
-    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n\n以下是剧情审查\n{{剧情审查}}",
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是<偏差账本>的编码：\n{{偏差账本召回}}\n\n以下是剧情审查\n{{剧情审查}}",
     "prompts": [
       {
         "id": "mainPrompt",
@@ -337,7 +337,7 @@
         "id": "finalSystemDirective",
         "name": "最终注入指令 (Storyteller Directive)",
         "role": "system",
-        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n\n以下是剧情审查\n{{剧情审查}}",
+        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是<偏差账本>的编码：\n{{偏差账本召回}}\n\n以下是剧情审查\n{{剧情审查}}",
         "deletable": false
       }
     ],
@@ -364,7 +364,7 @@
       },
       {
         "role": "USER",
-        "content": "<story_context>\n<背景设定>\n【仅供寻找记忆的参考辅助】\n$1\n</背景设定>\n------\n【以下是主要历史记忆来源】\n<纪要索引>\n$5\n</纪要索引>\n\n<前文剧情>\n$7\n</前文剧情>\n\n------\n【以下是原著未来时间线候选，只能用于筛选 timeline_recall，禁止写入 recall】\n<远端原著时间线候选>\n{{剧情钩子._引导.远端原著时间线候选}}\n</远端原著时间线候选>\n\n【以下是本档当前仍影响世界线的偏差账本候选。只能用于筛选 DV 编码，禁止复制完整偏差正文，禁止写入 recall 或 timeline_recall】\n<偏差账本候选>\n{{偏差账本候选}}\n</偏差账本候选>\n\n</story_context>\n\n═══ 故事信息结束，下接玩家本轮输入 ═══\n<user_input>\n$8\n</user_input>\n\nEdward:好，玩家本轮的行动、远端原著候选和偏差账本候选我都看到了，我会同时寻找相关历史记忆，筛选匹配的未来节点和影响当前局势的 DV 偏差编码。",
+        "content": "<story_context>\n<背景设定>\n【仅供寻找记忆的参考辅助】\n$1\n</背景设定>\n------\n【以下是主要历史记忆来源】\n<纪要索引>\n$5\n</纪要索引>\n\n<前文剧情>\n$7\n</前文剧情>\n\n------\n【以下是原著未来时间线候选】\n<远端原著时间线候选>\n{{剧情钩子._引导.远端原著时间线候选}}\n</远端原著时间线候选>\n\n【以下是本档当前仍影响世界线的偏差账本候选】\n<偏差账本候选>\n{{偏差账本候选}}\n</偏差账本候选>\n\n</story_context>\n\n═══ 故事信息结束，下接玩家本轮输入 ═══\n<user_input>\n$8\n</user_input>\n\nEdward:好，玩家本轮的行动、远端原著候选和偏差账本候选我都看到了，我会同时寻找相关历史记忆，筛选匹配的未来节点和影响当前局势的 DV 偏差编码。",
         "deletable": true
       },
       {

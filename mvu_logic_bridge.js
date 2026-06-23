@@ -28935,6 +28935,7 @@
     const 角色 = deepGet(snapshot, 'activeChar', {});
     const 属性 = deepGet(snapshot, 'activeChar.属性', {});
     const 社交 = deepGet(snapshot, 'activeChar.社交', {});
+    const 财富 = deepGet(snapshot, 'activeChar.财富', {}) || {};
     const 允许私密长按 = canOpenPrivateArchive(snapshot);
     const 名称 = toText(snapshot && snapshot.activeName, '当前角色');
     const 年龄 = toNumber(属性.年龄, 0) > 0 ? `${formatNumber(属性.年龄)}岁` : '年龄未录';
@@ -28946,7 +28947,15 @@
       ? snapshot.recentTitles[0]
       : toText(社交.名望等级, '籍籍无名');
     const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 18 }) || toText(社交.主身份, '未记录');
-    const 位置 = buildShellLocationLabel(snapshot, { fullLimit: 24, trailLimit: 12 }) || '未知地点';
+    const 财富条目 = ['联邦币', '星罗币', '唐门积分', '学院积分', '战功']
+      .map(字段 => ({ 字段, 数值: toNumber(财富[字段], 0) }))
+      .filter(条目 => 条目.数值 > 0);
+    const 财富文本 = 财富条目.length
+      ? 财富条目
+          .slice(0, 2)
+          .map(条目 => `${条目.字段.replace('联邦币', '联邦').replace('唐门积分', '唐门').replace('学院积分', '学院')}:${格式化属性短数字(条目.数值)}`)
+          .join(' / ')
+      : '0';
     return `
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
           <div class="mvu-archive-identity-main">
@@ -28960,7 +28969,7 @@
             <span><b>境界</b><em>${htmlEscape(`${等级} · ${境界}`)}</em></span>
             <span><b>称号</b><em>${htmlEscape(shortenText(称号, 18))}</em></span>
             <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
-            <span><b>位置</b><em>${htmlEscape(shortenText(位置, 20))}</em></span>
+            <span><b>财富</b><em>${htmlEscape(shortenText(财富文本, 20))}</em></span>
           </div>
         </div>
       `;
@@ -28987,15 +28996,11 @@
       ['精神', stat.精神力],
       ['体质', stat.体力上限 || stat.HP上限],
       ['防御', stat.防御],
-      ['悟性', stat.悟性],
     ];
     const 数值 = 条目.map(([, 值]) => Math.max(0, toNumber(值, 0)));
     const 最大值 = Math.max(10, ...数值);
     const 归一值 = 数值.map(值 => Math.max(8, Math.min(100, Math.round((值 / 最大值) * 100))));
-    const 展示值 = 条目.map(([标签, 值]) => {
-      if (标签 === '悟性' && !toNumber(值, 0)) return shortenText(读取属性天赋梯队(stat), 6) || '--';
-      return 格式化属性短数字(值);
-    });
+    const 展示值 = 条目.map(([, 值]) => 格式化属性短数字(值));
     return makeRadarSvg(
       条目.map(([标签], 索引) => `${标签} ${展示值[索引]}`),
       归一值,
@@ -29230,37 +29235,31 @@
     const 财富 = deepGet(snapshot, 'activeChar.财富', {}) || {};
     const 物资数 = Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries.length : 0;
     const 魂骨数 = Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries.length : 0;
-    const 融合数 = safeEntries(deepGet(snapshot, 'activeChar.武魂融合技', {})).length;
-    const 槽位 = [
-      ['武', 装备.武器, '武器'],
-      ['防', 装备.防具, '防具'],
-      ['铠', 装备.斗铠, '斗铠'],
-      ['机', 装备.机甲, '机甲'],
-      ['导', 装备.魂导器, '魂导器'],
-      ['骨', 魂骨数 ? { 名称: `${魂骨数}块魂骨` } : null, '魂骨'],
-      ['仓', 物资数 ? { 名称: `${物资数}件物资` } : null, '仓库'],
-      ['融', 融合数 ? { 名称: `${融合数}项融合技` } : null, '融合'],
-      ['备', null, '备用'],
+    const 装备槽列表 = [
+      装备.武器,
+      装备.防具,
+      装备.斗铠,
+      装备.机甲,
+      装备.魂导器,
     ];
-    const 槽位HTML = 槽位
-      .map(([标记, 数据, 名称]) => {
-        const 文本 = 数据 && typeof 数据 === 'object' ? toText(数据.名称 || 数据.name || 数据.等级 || 数据.装备状态, '') : '';
-        const 品质类 = /神|红|S|金/.test(文本) ? ' is-rare' : /紫|A|魂骨/.test(文本) ? ' is-epic' : '';
-        return `<span class="mvu-archive-gear-cell${文本 ? ' is-live' : ' is-empty'}${品质类}" title="${escapeHtmlAttr(`${名称} / ${文本 || '空'}`)}" data-slot="${escapeHtmlAttr(名称)}"><b>${htmlEscape(标记)}</b><em>${htmlEscape(shortenText(文本 || '空槽', 6))}</em></span>`;
-      })
-      .join('');
+    const 已装备数 = 装备槽列表.filter(槽 => {
+      if (!槽 || typeof 槽 !== 'object') return false;
+      const 名称 = toText(槽.名称 || 槽.name || 槽.型号 || 槽.等级, '');
+      const 状态 = toText(槽.装备状态 || 槽.状态, '');
+      return !!名称 && !/^(无|未装备|空)$/.test(名称) && 状态 !== '未装备';
+    }).length;
+    const 装备摘要 = 已装备数 || 魂骨数 ? `${已装备数} 件 / 魂骨 ${魂骨数}` : '未装配';
     const 联邦币 = toNumber(财富.联邦币, 0);
-    const 星罗币 = toNumber(财富.星罗币, 0);
+    const 仓库摘要 = `${formatNumber(物资数)} 件`;
+    const 资金摘要 = 联邦币 > 0 ? `联邦 ${格式化属性短数字(联邦币)}` : '资金 0';
     return `
         <div class="mvu-archive-panel-head">
           <span>装备与仓储</span>
-          <b>${htmlEscape(`${物资数} 件`)}</b>
+          <b>${htmlEscape(仓库摘要)}</b>
         </div>
-        <div class="mvu-archive-gear-grid">${槽位HTML}</div>
-        <div class="mvu-archive-armory-strip">
-          <span><b>仓储</b><em>${htmlEscape(formatNumber(物资数))} 件</em></span>
-          <span><b>资金</b><em>${htmlEscape(formatNumber(联邦币 || 星罗币))}</em></span>
-          <span><b>魂骨</b><em>${htmlEscape(formatNumber(魂骨数))}</em></span>
+        <div class="mvu-archive-gear-grid mvu-archive-gear-grid--compact">
+          <span class="mvu-archive-gear-cell is-live" title="${escapeHtmlAttr(`装备 / ${装备摘要}`)}" data-slot="装备"><b>装备</b><em>${htmlEscape(shortenText(装备摘要, 14))}</em></span>
+          <span class="mvu-archive-gear-cell${物资数 ? ' is-live' : ' is-empty'}" title="${escapeHtmlAttr(`仓库 / ${仓库摘要} / ${资金摘要}`)}" data-slot="仓库"><b>仓库</b><em>${htmlEscape(`${仓库摘要} · ${资金摘要}`)}</em></span>
         </div>
       `;
   }
@@ -31377,11 +31376,11 @@
   function buildShellVaultView(snapshot) {
     const wealth = deepGet(snapshot, 'activeChar.财富', {});
     const currencies = [
-      { key: 'fed_coin', label: '联邦币', value: toNumber(wealth.fed_coin, 0) },
-      { key: 'star_coin', label: '星罗币', value: toNumber(wealth.star_coin, 0) },
-      { key: 'tang_pt', label: '唐门积分', value: toNumber(wealth.tang_pt, 0) },
-      { key: 'shrek_pt', label: '学院积分', value: toNumber(wealth.shrek_pt, 0) },
-      { key: 'blood_pt', label: '战功', value: toNumber(wealth.blood_pt, 0) },
+      { key: '联邦币', label: '联邦币', value: toNumber(wealth.联邦币, 0) },
+      { key: '星罗币', label: '星罗币', value: toNumber(wealth.星罗币, 0) },
+      { key: '唐门积分', label: '唐门积分', value: toNumber(wealth.唐门积分, 0) },
+      { key: '学院积分', label: '学院积分', value: toNumber(wealth.学院积分, 0) },
+      { key: '战功', label: '战功', value: toNumber(wealth.战功, 0) },
     ];
     const primaryCurrency = currencies.find(item => item.value > 0) || currencies[0];
     const secondaryCurrencies = currencies.filter(item => item !== primaryCurrency && item.value > 0);
