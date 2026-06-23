@@ -2419,6 +2419,8 @@ function 是内置角色空壳_V1(角色 = {}) {
   const 主身份 = String(角色?.社交?.主身份 || '').trim();
   const 势力 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力) ? 角色.社交.势力 : {};
   const 缺少基础社交 = !主身份 && Object.keys(势力).length === 0;
+  const 缺少武魂主体 = !武魂名 || 武魂名 === '无' || 武魂名.includes('待补全');
+  if (等级 <= 1 && 年龄 <= 0 && 缺少武魂主体 && !有魂灵 && !有魂环) return true;
   if (等级 <= 1 && 年龄 <= 0 && 缺少基础社交 && !有魂环) return true;
   if (等级 <= 1 && 缺少基础社交 && !有魂环) return true;
   return 等级 <= 1 && 年龄 <= 0 && (!武魂名 || 武魂名 === '无' || 武魂名.includes('待补全')) && !有魂灵 && !有魂环;
@@ -2512,9 +2514,10 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
   const 已写入 = [];
   Object.values(角色库.角色 || {}).forEach(角色记录 => {
     const 角色名 = String(角色记录?.角色名 || '').trim();
-    if (!角色名 || 数据根.char[角色名]) return;
+    if (!角色名) return;
     const 节点列表 = Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [];
     if (!节点列表.includes(开场节点)) return;
+    if (数据根.char[角色名] && !是内置角色空壳_V1(数据根.char[角色名])) return;
     const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根, { 指定快照节点: 开场节点 });
     if (!角色) return;
     const 临时根 = { ...数据根, char: { [角色名]: 角色 } };

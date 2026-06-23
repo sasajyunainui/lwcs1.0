@@ -6668,6 +6668,8 @@
     const 有魂环 = Object.entries(角色?.第1武魂?.第1魂灵 || {}).some(([键, 值]) =>
       /^第\d+魂环$/.test(String(键)) && 值 && typeof 值 === 'object' && Object.keys(值).length > 0
     );
+    const 缺少武魂主体 = !武魂名 || 武魂名 === '无' || 武魂名.includes('待补全');
+    if (等级 <= 1 && 年龄 <= 0 && 缺少武魂主体 && !有魂灵 && !有魂环) return true;
     if (等级 <= 1 && 年龄 <= 0 && !主身份 && Object.keys(势力).length === 0 && !有魂环) return true;
     if (等级 <= 1 && !主身份 && Object.keys(势力).length === 0 && !有魂环) return true;
     return 等级 <= 1 && 年龄 <= 0 && !武魂名 && !有魂灵;
@@ -7914,16 +7916,17 @@
       .filter(角色名 => Object.prototype.hasOwnProperty.call(内置角色候选, 角色名))
       .map(角色名 => 内置角色候选[角色名] || 角色名)));
     if (!命中角色.length) return [];
+    const 排除角色 = new Set((Array.isArray(选项?.排除角色) ? 选项.排除角色 : [])
+      .map(角色名 => toText(角色名, '').trim())
+      .filter(Boolean));
+    const 过滤后角色 = 命中角色.filter(角色名 => !排除角色.has(角色名));
+    if (!过滤后角色.length) return [];
     const 文本 = toText(选项?.文本, '');
     if (!文本.trim() && 选项?.允许无文本预入库 !== true) return [];
     const 结果 = 接口.应用内置角色实例化(statData, 文本.trim()
-      ? { 命中角色, 用户输入: 文本, 使用统一命中: true }
-      : { 命中角色 });
+      ? { 命中角色: 过滤后角色, 用户输入: 文本, 使用统一命中: true }
+      : { 命中角色: 过滤后角色 });
     return Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
-  }
-
-  function 预入库JsonPatch目标内置角色_桥接(statData = {}, patches = []) {
-    return 预入库角色名内置角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches), { 允许无文本预入库: true });
   }
 
   function 预入库物品名内置物品_桥接(statData = {}, 物品名列表 = [], 选项 = {}) {
@@ -8035,8 +8038,36 @@
     return 已恢复;
   }
 
-  async function 预恢复JsonPatch目标归档角色_桥接(statData = {}, patches = []) {
-    return await 预恢复角色名归档角色_桥接(statData, 收集JsonPatch目标角色名_桥接(patches));
+  function 收集JsonPatch深路径角色名_桥接(patches = []) {
+    const 角色名集合 = new Set();
+    (Array.isArray(patches) ? patches : []).forEach(patch => {
+      const 路径 = decodeJsonPointerPath(patch && (patch.path || patch.to || ''));
+      if (路径[0] !== 'char' || 路径.length < 3) return;
+      const 角色名 = toText(路径[1], '').trim();
+      if (角色名) 角色名集合.add(角色名);
+    });
+    return Array.from(角色名集合);
+  }
+
+  async function 校验JsonPatch深路径角色目标已补齐_桥接(statData = {}, patches = [], 选项 = {}) {
+    const 目标角色名列表 = 收集JsonPatch深路径角色名_桥接(patches);
+    if (!目标角色名列表.length) return [];
+    const 不完整角色 = 目标角色名列表.filter(角色名 => !statData?.char?.[角色名] || 是桥接角色空壳_桥接(statData.char[角色名]));
+    if (!不完整角色.length) return [];
+    const 可用冷档角色 = await 收集可用归档角色名_桥接(不完整角色, 选项);
+    const 内置角色接口 = 获取内置角色实例化接口_桥接();
+    const 内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口) : {};
+    const 仍未补齐 = 不完整角色.filter(角色名 => !statData?.char?.[角色名] || 是桥接角色空壳_桥接(statData.char[角色名]));
+    if (!仍未补齐.length) return [];
+    const 冷档未补齐 = 仍未补齐.filter(角色名 => 可用冷档角色.has(角色名));
+    const 内置未补齐 = 仍未补齐.filter(角色名 => Object.prototype.hasOwnProperty.call(内置角色候选, 角色名) && !可用冷档角色.has(角色名));
+    const 其他未补齐 = 仍未补齐.filter(角色名 => !Object.prototype.hasOwnProperty.call(内置角色候选, 角色名) && !可用冷档角色.has(角色名));
+    const 错误片段 = [];
+    if (冷档未补齐.length) 错误片段.push(`冷档未恢复：${冷档未补齐.join('、')}`);
+    if (内置未补齐.length) 错误片段.push(`内置未补齐：${内置未补齐.join('、')}`);
+    if (其他未补齐.length) 错误片段.push(`角色未补齐：${其他未补齐.join('、')}`);
+    if (错误片段.length) throw 创建MVU命令兜底阻断错误_桥接(`MVU深路径角色目标补齐失败：${错误片段.join('；')}`);
+    return [];
   }
 
   async function 收集可用归档角色名_桥接(角色名列表 = [], 选项 = {}) {
@@ -8359,8 +8390,15 @@
       return await mutateStatDataByEditor(async statData => {
         const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, options);
         if (!(options && options.force === true)) 校验本轮模块结算补丁边界(normalizedPatches);
-        预入库JsonPatch目标内置角色_桥接(statData, normalizedPatches);
-        await 预恢复JsonPatch目标归档角色_桥接(statData, normalizedPatches);
+        const JsonPatch目标角色 = 收集JsonPatch目标角色名_桥接(normalizedPatches);
+        const 可用冷档角色 = await 收集可用归档角色名_桥接(JsonPatch目标角色, options);
+        await 预恢复角色名归档角色_桥接(statData, JsonPatch目标角色, options);
+        预入库角色名内置角色_桥接(
+          statData,
+          JsonPatch目标角色.filter(角色名 => !可用冷档角色.has(角色名)),
+          { 允许无文本预入库: true },
+        );
+        await 校验JsonPatch深路径角色目标已补齐_桥接(statData, normalizedPatches, options);
         登记本轮模块结算路径(
           normalizedPatches.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length),
           options,
@@ -10283,8 +10321,12 @@
     const 锚点快照 = 取内置角色最近快照_桥接(角色记录, 当前tick);
     if (!锚点快照) throw new Error('未找到角色锚点快照。');
     if (!变量数据.char || typeof 变量数据.char !== 'object') 变量数据.char = {};
-    if (!变量数据.char[规范角色名]) 预入库角色名内置角色_桥接(变量数据, [规范角色名], { 允许无文本预入库: true });
-    await 预恢复角色名归档角色_桥接(变量数据, [规范角色名]);
+    const 可用冷档角色 = await 收集可用归档角色名_桥接([规范角色名], 选项);
+    await 预恢复角色名归档角色_桥接(变量数据, [规范角色名], 选项);
+    if (!变量数据.char[规范角色名] || 是桥接角色空壳_桥接(变量数据.char[规范角色名])) {
+      if (可用冷档角色.has(规范角色名)) throw new Error(`角色冷档未能恢复，已停止锚点校对：${规范角色名}`);
+      预入库角色名内置角色_桥接(变量数据, [规范角色名], { 允许无文本预入库: true });
+    }
     const 当前角色 = 变量数据.char && 变量数据.char[规范角色名] ? 变量数据.char[规范角色名] : {};
     const 输入 = {
       当前tick,
@@ -10506,11 +10548,15 @@
         textSignature: 文本签名,
       };
     }
+    const 排除角色 = new Set((Array.isArray(附加选项.排除角色) ? 附加选项.排除角色 : [])
+      .map(角色名 => toText(角色名, '').trim())
+      .filter(Boolean));
     const { host: 主机, mvuData: 当前MVU数据, messageId: 消息编号 } = await readLatestMvuDataByEditor(附加选项);
     const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
     const 前置变量数据 = 附加选项.statData && typeof 附加选项.statData === 'object' ? 附加选项.statData : 待写回MVU数据.stat_data;
     const 待写回变量数据 = cloneJsonValue(前置变量数据, {});
-    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 合并文本, '角色');
+    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 合并文本, '角色')
+      .filter(角色名 => !排除角色.has(角色名));
     const 结果 = 接口.应用内置角色实例化(待写回变量数据, {
       用户输入: 合并文本,
       剧情文本: '',
@@ -10537,6 +10583,183 @@
       statData: 待写回MVU数据.stat_data,
       messageId: 消息编号,
       textSignature: 文本签名,
+    };
+  }
+
+  async function 准备本轮MVU上下文_桥接(文本 = '', 附加选项 = {}) {
+    const 捕获文本 = String(文本 || '');
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(捕获文本);
+    const 前置命中 = {
+      命中角色: new Set(),
+      命中物品: new Set(),
+      命中动态地点: new Set(),
+    };
+    const 记录命中 = (类型, 名称列表, 存在判断 = () => true) => {
+      const 容器 = 前置命中[类型];
+      if (!容器) return;
+      (Array.isArray(名称列表) ? 名称列表 : [])
+        .map(名称 => toText(名称, '').trim())
+        .filter(Boolean)
+        .filter(存在判断)
+        .forEach(名称 => 容器.add(名称));
+    };
+    let 主机 = null;
+    let 当前MVU数据 = null;
+    let 消息编号 = null;
+    try {
+      const 读取结果 = await readLatestMvuDataByEditor(附加选项);
+      主机 = 读取结果.host;
+      当前MVU数据 = cloneJsonValue(读取结果.mvuData, {});
+      消息编号 = 读取结果.messageId;
+    } catch (错误) {
+      const 当前状态 = await 读取内置角色实例化当前状态_桥接();
+      当前MVU数据 = { stat_data: cloneJsonValue(附加选项.statData || 当前状态.statData || {}, {}) };
+      消息编号 = 当前状态.messageId;
+    }
+    let 当前StatData = cloneJsonValue(
+      附加选项.statData && typeof 附加选项.statData === 'object'
+        ? 附加选项.statData
+        : 当前MVU数据?.stat_data || {},
+      {},
+    );
+    if (!当前StatData || typeof 当前StatData !== 'object') 当前StatData = {};
+    if (!捕获文本.trim()) {
+      return {
+        changed: false,
+        names: [],
+        statData: 当前StatData,
+        messageId: 消息编号,
+        textSignature: 文本签名,
+        命中角色: [],
+        命中物品: [],
+        命中动态地点: [],
+      };
+    }
+
+    const 定位选项 = { ...(附加选项 && typeof 附加选项 === 'object' ? 附加选项 : {}), statData: 当前StatData };
+    if (消息编号 !== null && 消息编号 !== undefined && 定位选项.message_id === undefined && 定位选项.消息编号 === undefined) {
+      定位选项.message_id = 消息编号;
+      定位选项.消息编号 = 消息编号;
+    }
+
+    const 已恢复角色 = [];
+    const 已恢复物品 = [];
+    const 已恢复动态地点 = [];
+    const 已实例化角色 = [];
+    const 已实例化物品 = [];
+    let 可用冷档角色 = new Set();
+    let changed = false;
+    let 角色归档检查失败 = false;
+
+    let 归档角色命中 = [];
+    try {
+      const manifest = await 读取角色归档Manifest_桥接();
+      const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+      归档角色命中 = 收集统一实体命中名称_桥接(角色索引, 捕获文本, '角色');
+      可用冷档角色 = await 收集可用归档角色名_桥接(归档角色命中, 定位选项);
+      const 恢复角色 = await 预恢复角色名归档角色_桥接(当前StatData, 归档角色命中, 定位选项);
+      恢复角色.forEach(角色名 => 已恢复角色.push(角色名));
+      changed = changed || 恢复角色.length > 0;
+    } catch (错误) {
+      角色归档检查失败 = true;
+      console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
+    }
+
+    try {
+      const manifest = await 读取动态地点归档Manifest_桥接();
+      const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+      const 命中地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 定位选项, 6);
+      const 恢复地点 = await 预恢复地点名归档动态地点_桥接(当前StatData, 命中地点, 定位选项);
+      恢复地点.forEach(地点名 => 已恢复动态地点.push(地点名));
+      changed = changed || 恢复地点.length > 0;
+    } catch (错误) {
+      console.warn('[LWCS] 本轮MVU上下文归档动态地点恢复失败:', 错误);
+    }
+
+    try {
+      const manifest = await 读取物品归档Manifest_桥接();
+      const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+      const 命中物品 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 定位选项, 8);
+      const 恢复物品 = await 预恢复物品名归档物品_桥接(当前StatData, 命中物品, 定位选项);
+      恢复物品.forEach(物品名 => 已恢复物品.push(物品名));
+      changed = changed || 恢复物品.length > 0;
+    } catch (错误) {
+      console.warn('[LWCS] 本轮MVU上下文归档物品恢复失败:', 错误);
+    }
+
+    try {
+      const 接口 = 获取内置物品实例化接口_桥接();
+      if (接口 && typeof 接口.应用内置物品实例化 === 'function') {
+        const 结果 = 接口.应用内置物品实例化(当前StatData, {
+          用户输入: 捕获文本,
+          剧情文本: '',
+          最后剧情文本: '',
+          命中物品: 收集归档物品候选名_桥接(定位选项),
+          相关物品: 定位选项.相关物品,
+          候选物品: 定位选项.候选物品,
+          模块路由: 定位选项.模块路由,
+          上限: 定位选项.上限,
+          阈值: 定位选项.阈值,
+        });
+        const 名称列表 = Array.isArray(结果?.changedNames) ? 结果.changedNames : (Array.isArray(结果?.names) ? 结果.names : []);
+        名称列表.forEach(物品名 => 已实例化物品.push(物品名));
+        changed = changed || 结果?.changed === true || 名称列表.length > 0;
+      }
+    } catch (错误) {
+      console.warn('[LWCS] 本轮MVU上下文内置物品入库失败:', 错误);
+    }
+
+    try {
+      const 接口 = 获取内置角色实例化接口_桥接();
+      const 命中内置角色 = 接口 && !角色归档检查失败
+        ? 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 捕获文本, '角色')
+            .filter(角色名 => !可用冷档角色.has(角色名))
+        : [];
+      const 写入角色 = 预入库角色名内置角色_桥接(当前StatData, 命中内置角色, {
+        文本: 捕获文本,
+        排除角色: Array.from(可用冷档角色),
+      });
+      写入角色.forEach(角色名 => 已实例化角色.push(角色名));
+      changed = changed || 写入角色.length > 0;
+    } catch (错误) {
+      console.warn('[LWCS] 本轮MVU上下文内置角色入库失败:', 错误);
+    }
+
+    记录命中('命中角色', [...归档角色命中, ...已恢复角色, ...已实例化角色], 角色名 =>
+      !!当前StatData?.char?.[角色名] && !是桥接角色空壳_桥接(当前StatData.char[角色名])
+    );
+    记录命中('命中物品', [...已恢复物品, ...已实例化物品], 物品名 => 物品定义存在_桥接(当前StatData, 物品名));
+    记录命中('命中动态地点', 已恢复动态地点, 地点名 => !!当前StatData?.world?.动态地点?.[地点名]);
+
+    if (changed && 主机 && 当前MVU数据 && 消息编号 !== null && 消息编号 !== undefined) {
+      当前MVU数据.stat_data = 当前StatData;
+      await 写回MVU数据并记录耗时_桥接(主机, 当前MVU数据, { type: 'message', message_id: 消息编号 }, 'MVU写回:本轮前置上下文');
+      const 激活条目 = [
+        ...已恢复角色.map(名称 => ({ 类型: '角色', 名称 })),
+        ...已恢复物品.map(名称 => ({ 类型: '物品', 名称 })),
+        ...已恢复动态地点.map(名称 => ({ 类型: '动态地点', 名称 })),
+      ];
+      if (激活条目.length) 记录MVU冷实体激活_桥接(激活条目);
+      writeMvuEditorStoreSnapshot(当前StatData, { messageId: 消息编号 });
+      await 按需刷新MVU快照_桥接(附加选项);
+    }
+
+    return {
+      changed,
+      names: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已实例化角色, ...已实例化物品])),
+      statData: 当前StatData,
+      messageId: 消息编号,
+      textSignature: 文本签名,
+      restoredNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点])),
+      changedNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已实例化角色, ...已实例化物品])),
+      命中角色: Array.from(前置命中.命中角色),
+      命中物品: Array.from(前置命中.命中物品),
+      命中动态地点: Array.from(前置命中.命中动态地点),
+      已恢复角色,
+      已实例化角色,
+      已恢复物品,
+      已实例化物品,
+      已恢复动态地点,
     };
   }
 
@@ -39491,6 +39714,7 @@
 
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
   window.__MVU_GET_LIVE_SNAPSHOT__ = () => liveSnapshot || lastRenderableSnapshot || null;
+  window.__LWCS_PREPARE_MVU_CONTEXT_FOR_PROMPT__ = (文本, 选项 = {}) => 准备本轮MVU上下文_桥接(文本, 选项);
   window.__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置角色_桥接(文本, 选项);
   window.__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本实例化内置物品_桥接(文本, 选项);
   window.__LWCS_ARCHIVE_MVU_CHARACTERS__ = (角色名列表, 选项 = {}) => 归档MVU角色_桥接(角色名列表, 选项);

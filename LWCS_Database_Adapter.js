@@ -369,18 +369,6 @@
     }
   }
 
-  async function 执行文本前置函数(函数名, 捕获文本, 参数 = {}, 日志标签 = '') {
-    const 前置函数 = 读取窗口函数(函数名);
-    if (typeof 前置函数 !== 'function') return { changed: false, names: [], statData: 参数.statData || null, reason: 'runtime_api_missing' };
-    try {
-      const 结果 = await Promise.resolve(前置函数(捕获文本, 参数));
-      return 结果 && typeof 结果 === 'object' ? 结果 : { changed: false, names: [], statData: 参数.statData || null };
-    } catch (错误) {
-      console.warn(`[LWCS适配器] ${日志标签}失败:`, 错误);
-      return { changed: false, names: [], statData: 参数.statData || null, reason: 'runtime_call_failed' };
-    }
-  }
-
   async function 准备MVU前置数据(选项 = {}) {
     const 用户输入文本 = String(选项?.userInput || '');
     const 最后角色消息文本 = String(选项?.lastCharMessage || '');
@@ -396,67 +384,48 @@
     const 前置承诺 = (async () => {
       const 总开始时间 = 读取性能时间();
       let 当前StatData = 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
-      let 需要刷新快照 = false;
-      const 前置命中 = {
-        命中角色: new Set(),
-        命中物品: new Set(),
-        命中动态地点: new Set(),
-      };
-      const 构建参数 = (附加 = {}) => ({
+      const 准备上下文 = 读取窗口函数('__LWCS_PREPARE_MVU_CONTEXT_FOR_PROMPT__');
+      if (typeof 准备上下文 !== 'function') {
+        记录耗时('正文生成前置:MVU统一前置缺失', 总开始时间);
+        记录本轮MVU前置结果(前置记录键, {
+          statData: 当前StatData,
+          目标消息编号: 最新角色消息.消息编号,
+          目标消息索引: 最新角色消息.消息索引,
+          滑动编号: 最新角色消息.滑动编号,
+          文本签名: 取哈希(近场文本 || ''),
+          命中角色: [],
+          命中物品: [],
+          命中动态地点: [],
+        });
+        return 当前StatData || null;
+      }
+      const 参数 = {
         剧情文本: '',
         最后剧情文本: 清理近场文本片段(最后角色消息文本),
         statData: 当前StatData || undefined,
         消息索引: 最新角色消息.消息索引,
         消息编号: 最新角色消息.消息编号,
         上限: 16,
-        延迟刷新: true,
-        ...附加,
-      });
-      const 应用结果 = (结果) => {
-        if (结果 && typeof 结果.statData === 'object') 当前StatData = 结果.statData;
-        if (结果 && 结果.changed === true) 需要刷新快照 = true;
       };
-      const 记录前置命中名称 = (类型, 结果) => {
-        const 容器 = 前置命中[类型];
-        if (!容器) return;
-        const 名称列表 = [
-          ...(Array.isArray(结果?.names) ? 结果.names : []),
-          ...(Array.isArray(结果?.changedNames) ? 结果.changedNames : []),
-          ...(Array.isArray(结果?.restoredNames) ? 结果.restoredNames : []),
-        ];
-        名称列表.map(名称 => String(名称 || '').trim()).filter(Boolean).forEach(名称 => 容器.add(名称));
-      };
-      const 执行步骤 = async (函数名, 参数, 日志标签, 命中类型 = '') => {
-        const 步骤开始时间 = 读取性能时间();
-        const 结果 = await 执行文本前置函数(函数名, 近场文本, 参数, 日志标签);
-        const 名称数量 = Array.isArray(结果?.names) ? 结果.names.length : 0;
-        记录耗时(`正文生成前置:${日志标签}`, 步骤开始时间, `changed=${结果?.changed === true} names=${名称数量}`);
-        应用结果(结果);
-        记录前置命中名称(命中类型, 结果);
-      };
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮归档角色前置恢复', '命中角色');
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__', 构建参数(), '本轮归档动态地点前置恢复', '命中动态地点');
-      await 执行步骤('__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__', 构建参数(), '本轮归档物品前置恢复', '命中物品');
-      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_ITEMS_FOR_TEXT__', 构建参数(), '本轮内置物品前置入库', '命中物品');
-      await 执行步骤('__LWCS_INSTANTIATE_BUILTIN_CHARACTERS_FOR_TEXT__', 构建参数(), '本轮内置角色前置入库', '命中角色');
-      if (需要刷新快照) {
-        const 刷新函数 = 读取窗口函数('__MVU_REFRESH_LIVE_SNAPSHOT__');
-        if (typeof 刷新函数 === 'function') {
-          const 刷新开始时间 = 读取性能时间();
-          await Promise.resolve(刷新函数({ force: true }));
-          记录耗时('正文生成前置:统一刷新状态栏', 刷新开始时间);
-        }
-      }
-      记录耗时('正文生成前置:MVU前置链总计', 总开始时间, `changed=${需要刷新快照}`);
+      const 结果 = await Promise.resolve(准备上下文(近场文本, 参数));
+      if (结果 && typeof 结果.statData === 'object') 当前StatData = 结果.statData;
+      const 命中角色 = Array.isArray(结果?.命中角色) ? 结果.命中角色 : [];
+      const 命中物品 = Array.isArray(结果?.命中物品) ? 结果.命中物品 : [];
+      const 命中动态地点 = Array.isArray(结果?.命中动态地点) ? 结果.命中动态地点 : [];
+      记录耗时(
+        '正文生成前置:MVU统一前置',
+        总开始时间,
+        `changed=${结果?.changed === true} names=${Array.isArray(结果?.names) ? 结果.names.length : 0}`,
+      );
       记录本轮MVU前置结果(前置记录键, {
         statData: 当前StatData,
         目标消息编号: 最新角色消息.消息编号,
         目标消息索引: 最新角色消息.消息索引,
         滑动编号: 最新角色消息.滑动编号,
         文本签名: 取哈希(近场文本 || ''),
-        命中角色: [...前置命中.命中角色],
-        命中物品: [...前置命中.命中物品],
-        命中动态地点: [...前置命中.命中动态地点],
+        命中角色,
+        命中物品,
+        命中动态地点,
       });
       return 当前StatData || null;
     })();
@@ -559,8 +528,17 @@
     const 用户输入文本 = String(上下文.userInput || '');
     const 最后角色消息文本 = String(上下文.lastCharMessage || '');
     const 近场上下文 = await 生成过滤后近场上下文(用户输入文本, 最后角色消息文本);
+    const 基准StatData = 取StatData(上下文.statData, 用户输入文本);
+    const 运行时StatData = await 准备MVU前置数据({
+      userInput: 用户输入文本,
+      lastCharMessage: 最后角色消息文本,
+      latestCharMessageInfo: 上下文.latestCharMessageInfo,
+      captureText: 近场上下文.captureText || '',
+      plotText: 上下文.plotText || '',
+      statData: 基准StatData || undefined,
+    }) || 基准StatData || 上下文.statData;
     const 替换后内容 = 替换运行时占位符(文本, 视图类型, {
-      statData: 上下文.statData,
+      statData: 运行时StatData,
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
       plotText: 上下文.plotText || '',
@@ -568,7 +546,7 @@
     return 替换专属占位符(替换后内容, {
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
-      statData: 上下文.statData,
+      statData: 运行时StatData,
       captureText: 近场上下文.captureText || '',
     });
   }
