@@ -18926,8 +18926,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
     0 0 28px var(--mvu-holo-glow);
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
-  backdrop-filter: blur(22px) saturate(118%);
-  -webkit-backdrop-filter: blur(22px) saturate(118%);
+  backdrop-filter: blur(22px) saturate(118%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(118%) !important;
   perspective: 1200px;
 }
 
@@ -19033,8 +19033,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   box-shadow:
     inset 0 0 12px var(--全息材质辉光),
     0 0 16px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
@@ -19070,8 +19070,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent),
     color-mix(in srgb, var(--mvu-holo-panel-strong) 72%, transparent);
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(14px) saturate(112%);
-  -webkit-backdrop-filter: blur(14px) saturate(112%);
+  backdrop-filter: blur(14px) saturate(112%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(112%) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar-main {
@@ -19102,8 +19102,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-status-strip {
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 0 18px var(--全息材质辉光),
     0 8px 22px rgba(0, 0, 0, 0.34);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch {
@@ -19204,8 +19204,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.025),
     inset 0 0 14px color-mix(in srgb, var(--mvu-holo-main) 4%, transparent);
-  backdrop-filter: blur(12px) saturate(114%);
-  -webkit-backdrop-filter: blur(12px) saturate(114%);
+  backdrop-filter: blur(12px) saturate(114%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(114%) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::before,
@@ -19275,8 +19275,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
     inset 0 0 12px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent),
     0 0 16px color-mix(in srgb, var(--mvu-holo-main) 16%, transparent);
   cursor: pointer;
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
   opacity: 0.62;
 }
 
@@ -19459,8 +19459,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   line-height: 1.4;
   scrollbar-width: none;
   border-radius: calc(var(--mvu-holo-card-radius) * 0.9);
-  backdrop-filter: blur(18px) saturate(116%);
-  -webkit-backdrop-filter: blur(18px) saturate(116%);
+  backdrop-filter: blur(18px) saturate(116%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(116%) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::-webkit-scrollbar {
@@ -19503,8 +19503,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
     inset 0 0 0 1px var(--原型光刻线),
     inset 0 0 28px var(--原型内辉光),
     0 18px 46px rgba(0, 0, 0, 0.34);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
@@ -19783,8 +19783,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
     inset 0 0 0 1px rgba(255, 255, 255, 0.055),
     inset 0 0 20px var(--全息材质辉光),
     0 12px 30px rgba(0, 0, 0, 0.32);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -19803,8 +19803,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻�
     inset 0 0 20px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
     0 12px 30px rgba(0, 0, 0, 0.32),
     0 0 20px rgba(255, 126, 179, 0.08);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before,
@@ -19849,8 +19849,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 0 18px var(--全息材质辉光),
     0 10px 24px rgba(0, 0, 0, 0.3);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--原型玻璃虚化) !important;
+  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
