@@ -28914,19 +28914,21 @@
           : 格式化属性短数字(nextLevelSoul.needed);
     return `
         ${构建档案身份天幕(snapshot)}
-        <div class="mvu-archive-panel-head">
-          <span>体征与轮廓</span>
-          <b>${htmlEscape(getDisplayWoundLabel(stat))}</b>
-        </div>
-        <div class="mvu-archive-vitals">
+        <div class="mvu-archive-core-section mvu-archive-core-section--vitals">
+          <div class="mvu-archive-panel-head">
+            <span>体征</span>
+            <b>${htmlEscape(getDisplayWoundLabel(stat))}</b>
+          </div>
           ${构建档案资源条('生命', hpPair.hp, hpPair.hpMax, 'hp')}
           ${构建档案资源条('魂力', stat.魂力, stat.魂力上限, 'soul')}
           ${构建档案资源条('体力', stat.体力, stat.体力上限, 'stamina')}
           ${构建档案资源条('精神', stat.精神力, stat.精神力上限, 'mind')}
         </div>
-        <div class="mvu-archive-radar">
-          ${雷达HTML}
-          <div class="mvu-archive-radar-core"><b>突破</b><em>${htmlEscape(突破文本)}</em></div>
+        <div class="mvu-archive-core-section mvu-archive-core-section--radar">
+          <div class="mvu-archive-radar">
+            ${雷达HTML}
+            <div class="mvu-archive-radar-core"><b>突破</b><em>${htmlEscape(突破文本)}</em></div>
+          </div>
         </div>
         `;
   }
@@ -28938,9 +28940,10 @@
     const 名称 = toText(snapshot && snapshot.activeName, '当前角色');
     const 等级 = formatCultivationLevelBadge(属性.等级, '0');
     const 境界 = 读取显示精神境界(属性);
-    const 称号 = Array.isArray(snapshot && snapshot.recentTitles) && snapshot.recentTitles.length
+    const 主称号 = Array.isArray(snapshot && snapshot.recentTitles) && snapshot.recentTitles.length
       ? snapshot.recentTitles[0]
-      : toText(社交.名望等级, '籍籍无名');
+      : toText(属性.称号 || snapshot?.activeChar?.称号, '');
+    const 称号 = 主称号 || '无称号';
     return `
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
           <div class="mvu-archive-identity-main">
@@ -29371,7 +29374,6 @@
           <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
             ${buildUnifiedSpiritCard(主轨, { primary: true })}
           </section>
-          <div class="mvu-archive-spirit-stage-depth" aria-hidden="true"></div>
           <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--secondary clickable" data-preview="${escapeHtmlAttr(副预览)}" data-detail-mode="embed">
             ${构建统一副轨摘要卡(snapshot)}
           </section>

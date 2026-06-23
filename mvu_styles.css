@@ -19537,7 +19537,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: minmax(250px, 0.92fr) minmax(342px, 1.24fr) minmax(252px, 0.92fr);
-  grid-template-rows: minmax(0, 0.88fr) minmax(0, 0.74fr) minmax(0, 0.68fr);
+  grid-template-rows: minmax(112px, auto) minmax(0, 1fr) minmax(96px, auto);
   grid-template-areas:
     'core spirit armory'
     'core spirit social'
@@ -19592,7 +19592,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='armory'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='vault'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='social'] {
-  overflow: hidden;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
@@ -19799,8 +19799,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
   -webkit-backdrop-filter: none;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='armory'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='vault'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='social'] {
+  padding: 12px;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   overflow: visible;
+  padding-inline: 16px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::before,
@@ -19821,6 +19830,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
   border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 12%, transparent);
   color: var(--mvu-holo-text);
   overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-core-section {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-core-section--radar {
+  flex: 1 1 auto;
+  align-content: center;
+  border-bottom: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband::before {
@@ -19981,8 +20008,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vitals {
   display: grid;
   gap: 8px;
   min-width: 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led {
@@ -20209,13 +20234,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip span {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(74px, 1fr) auto;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(24px, 7%, 54px);
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
+  padding: 4px 0;
   overflow: visible;
   perspective: 1100px;
   transform-style: preserve-3d;
@@ -20224,7 +20251,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage::before {
   content: "";
   position: absolute;
-  inset: 32px 50% 38px;
+  inset: 36px 50% 36px;
   width: 1px;
   z-index: 0;
   background: linear-gradient(
@@ -20239,9 +20266,29 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage::before {
   pointer-events: none;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 50%;
+  z-index: 0;
+  height: 32%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--mvu-holo-main) 9%, transparent), transparent 68%),
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent);
+  opacity: 0.78;
+  pointer-events: none;
+  transform: translateY(-50%) rotateX(62deg);
+  transform-origin: center;
+  filter: blur(0.2px);
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node {
   position: relative;
   z-index: 1;
+  flex: 0 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: visible;
@@ -20249,35 +20296,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--primary {
   align-self: start;
+  width: 100%;
+  transform: translateZ(22px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--secondary {
   align-self: end;
-  transform: translateZ(-14px);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-depth {
-  position: relative;
-  z-index: 0;
-  min-height: 68px;
-  pointer-events: none;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-depth::before {
-  content: "";
-  position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 50%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent);
+  width: min(100%, 92%);
+  margin-left: auto;
+  transform: translateZ(-22px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto auto minmax(124px, 1fr) auto;
+  grid-template-rows: auto auto minmax(122px, auto) auto;
   gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
@@ -20289,7 +20323,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--empty {
-  grid-template-rows: auto minmax(142px, 1fr) auto;
+  grid-template-rows: auto minmax(126px, auto) auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name {
@@ -20325,7 +20359,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   display: grid;
   place-items: center;
   min-width: 0;
-  min-height: 128px;
+  min-height: 138px;
   overflow: visible;
 }
 
@@ -20354,14 +20388,14 @@ body.mvu-layout-holo
   .mvu-archive-ring-observatory
   .mvu-soul-ring-showcase--overview {
   --ring-size: 104px;
-  --ring-stage-height: clamp(184px, 28vh, 260px);
+  --ring-stage-height: clamp(198px, 30vh, 286px);
 }
 
 body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-archive-spirit-stage-node--secondary
   .mvu-archive-spirit-card {
-  grid-template-rows: auto auto minmax(88px, auto) auto;
+  grid-template-rows: auto auto minmax(96px, auto) auto;
   gap: 6px;
 }
 
@@ -20369,7 +20403,7 @@ body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-archive-spirit-stage-node--secondary
   .mvu-archive-spirit-card--empty {
-  grid-template-rows: auto minmax(88px, auto) auto;
+  grid-template-rows: auto minmax(98px, auto) auto;
 }
 
 body.mvu-layout-holo
@@ -20380,7 +20414,7 @@ body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-archive-spirit-stage-node--secondary
   .mvu-archive-empty-orbit {
-  min-height: 88px;
+  min-height: 98px;
 }
 
 body.mvu-layout-holo
@@ -20531,7 +20565,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot em {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(28px, auto);
+  grid-auto-rows: minmax(24px, auto);
   flex: 0 0 auto;
   min-height: 0;
   align-content: start;
@@ -20556,8 +20590,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
   place-items: center;
   align-items: center;
   min-width: 0;
-  gap: 5px;
-  padding: 4px 0;
+  gap: 4px;
+  padding: 3px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
   background: transparent;
   color: color-mix(in srgb, var(--mvu-holo-muted) 72%, transparent);
@@ -20600,6 +20634,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout .mvu-arc
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout .mvu-archive-gear-cell b {
   width: auto;
   font-size: 12px;
+  letter-spacing: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout .mvu-archive-gear-cell em {
@@ -20689,7 +20724,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
-  margin-top: 8px;
+  margin-top: 4px;
   flex-shrink: 0;
 }
 
@@ -21508,7 +21543,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.22fr) minmax(220px, 0.88fr);
-    grid-template-rows: minmax(0, 0.88fr) minmax(0, 0.7fr) minmax(0, 0.64fr);
+    grid-template-rows: minmax(104px, auto) minmax(0, 1fr) minmax(92px, auto);
     grid-template-areas:
       'core spirit armory'
       'core spirit social'
