@@ -2995,16 +2995,19 @@
 }
 
 .map-left-route-card.map-command-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .map-action-control-row {
   display: grid;
-  grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(128px, 0.36fr) minmax(0, 1fr);
   align-items: stretch;
   gap: 8px;
   min-width: 0;
-  margin-bottom: 7px;
 }
 
 .map-action-primary,
@@ -3033,15 +3036,27 @@
 .map-action-select-wrap,
 .map-action-detail-cell {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
+  align-items: start;
+  align-content: center;
   padding: 0 2px 5px;
+}
+
+.map-action-select-wrap {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+}
+
+.map-action-detail-cell {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  min-height: 34px;
+  padding-top: 3px;
 }
 
 .map-action-primary b,
 .map-action-select-wrap b,
 .map-action-detail-cell b {
+  display: block;
   color: rgba(170, 218, 233, 0.74);
   font-size: 10px;
   font-weight: 700;
@@ -3057,6 +3072,13 @@
   font-size: 11px;
   font-weight: 760;
   line-height: 1.18;
+}
+
+.map-action-detail-cell > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-action-primary span,
@@ -3093,14 +3115,13 @@
 
 .map-action-detail-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: minmax(96px, 0.78fr) minmax(82px, 0.52fr) minmax(180px, 1.45fr);
+  gap: 8px;
   min-width: 0;
 }
 
 .map-action-detail-row.has-method {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(28px, auto));
+  grid-template-columns: minmax(96px, 0.78fr) minmax(82px, 0.52fr) repeat(2, minmax(120px, 1fr));
 }
 
 .map-method-select,
@@ -3590,11 +3611,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-c
   bottom: 10px;
   z-index: 13;
   display: grid;
-  grid-template-columns: minmax(188px, 0.42fr) minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  gap: 7px 10px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 8px;
   width: auto;
-  max-width: min(720px, calc(100% - 20px));
+  max-width: min(680px, calc(100% - 20px));
   background: rgba(5, 14, 23, 0.72);
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
@@ -3607,11 +3628,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .map-action-control-row {
   grid-column: 1;
-  margin-bottom: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .map-action-detail-row {
-  grid-column: 2;
+  grid-column: 1;
 }
 
 .split-left-page[data-target='page-map'] > .map-hero-card {
@@ -22708,21 +22728,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-card.map-command-card {
     width: auto !important;
-    height: 112px !important;
-    max-height: 112px !important;
+    height: auto !important;
+    max-height: none !important;
   }
 }
 
 @container (max-width: 320px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-card.map-command-card {
-    height: 132px !important;
-    max-height: 132px !important;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: 32px 88px !important;
+    grid-template-rows: auto auto auto !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .map-action-control-row {
-    grid-template-columns: minmax(74px, 0.42fr) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     align-content: stretch !important;
   }
 
@@ -22733,9 +22751,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     .map-command-card
     .map-action-detail-row.has-method {
     grid-column: 1 !important;
-    grid-row: 2 !important;
+    grid-row: auto !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    grid-auto-rows: 30px !important;
+    grid-auto-rows: minmax(30px, auto) !important;
     gap: 3px !important;
   }
 
