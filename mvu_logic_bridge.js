@@ -28932,44 +28932,26 @@
   }
 
   function 构建档案身份天幕(snapshot) {
-    const 角色 = deepGet(snapshot, 'activeChar', {});
     const 属性 = deepGet(snapshot, 'activeChar.属性', {});
     const 社交 = deepGet(snapshot, 'activeChar.社交', {});
-    const 财富 = deepGet(snapshot, 'activeChar.财富', {}) || {};
     const 允许私密长按 = canOpenPrivateArchive(snapshot);
     const 名称 = toText(snapshot && snapshot.activeName, '当前角色');
-    const 年龄 = toNumber(属性.年龄, 0) > 0 ? `${formatNumber(属性.年龄)}岁` : '年龄未录';
-    const 性别 = toText(属性.性别, '性别未录');
-    const 种族 = toText(角色.标准种族 || 角色.种族 || 属性.种族, '人类');
     const 等级 = formatCultivationLevelBadge(属性.等级, '0');
     const 境界 = 读取显示精神境界(属性);
     const 称号 = Array.isArray(snapshot && snapshot.recentTitles) && snapshot.recentTitles.length
       ? snapshot.recentTitles[0]
       : toText(社交.名望等级, '籍籍无名');
-    const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 18 }) || toText(社交.主身份, '未记录');
-    const 财富条目 = ['联邦币', '星罗币', '唐门积分', '学院积分', '战功']
-      .map(字段 => ({ 字段, 数值: toNumber(财富[字段], 0) }))
-      .filter(条目 => 条目.数值 > 0);
-    const 财富文本 = 财富条目.length
-      ? 财富条目
-          .slice(0, 2)
-          .map(条目 => `${条目.字段.replace('联邦币', '联邦').replace('唐门积分', '唐门').replace('学院积分', '学院')}:${格式化属性短数字(条目.数值)}`)
-          .join(' / ')
-      : '0';
     return `
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
           <div class="mvu-archive-identity-main">
             <span class="mvu-archive-avatar-mark">${htmlEscape(shortenText(名称, 1) || '档')}</span>
             <div>
               <b>${htmlEscape(shortenText(名称, 14))}</b>
-              <em>${htmlEscape([性别, 年龄, 种族].filter(Boolean).join(' / '))}</em>
+              <em>${htmlEscape(`${等级} · ${境界}`)}</em>
             </div>
           </div>
           <div class="mvu-archive-identity-meta">
-            <span><b>境界</b><em>${htmlEscape(`${等级} · ${境界}`)}</em></span>
             <span><b>称号</b><em>${htmlEscape(shortenText(称号, 18))}</em></span>
-            <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
-            <span><b>财富</b><em>${htmlEscape(shortenText(财富文本, 20))}</em></span>
           </div>
         </div>
       `;
@@ -29375,6 +29357,24 @@
           </div>
           <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
           <div class="mvu-archive-spirit-foot"><span>${htmlEscape(文本)}</span></div>
+        </div>
+      `;
+  }
+
+  function 构建档案武魂中轴舞台(snapshot) {
+    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
+    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
+    const 主预览 = 主轨 ? toText(主轨.preview, '第1武魂详细页') : '';
+    const 副预览 = 第二轨 ? toText(第二轨.preview, '血脉封印详细页') : '武魂融合技详细页';
+    return `
+        <div class="mvu-archive-spirit-stage">
+          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
+            ${buildUnifiedSpiritCard(主轨, { primary: true })}
+          </section>
+          <div class="mvu-archive-spirit-stage-depth" aria-hidden="true"></div>
+          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--secondary clickable" data-preview="${escapeHtmlAttr(副预览)}" data-detail-mode="embed">
+            ${构建统一副轨摘要卡(snapshot)}
+          </section>
         </div>
       `;
   }
@@ -31547,30 +31547,12 @@
     };
   }
 
-  function renderUnifiedSpiritCardsBySurface(snapshot, surface) {
+  function 渲染统一武魂中轴舞台(snapshot, surface) {
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
-    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
-    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
-    setUnifiedCardMarkup('primary-spirit', buildUnifiedSpiritCard(主轨, { primary: true }), {
+    setUnifiedCardMarkup('spirit-stage', 构建档案武魂中轴舞台(snapshot), {
       enabled: true,
-      preview: 主轨 ? toText(主轨.preview, '第1武魂详细页') : '',
       surface: normalizedSurface,
     });
-    if (第二轨) {
-      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
-        enabled: true,
-        preview: toText(第二轨.preview, '血脉封印详细页'),
-        surface: normalizedSurface,
-      });
-    } else {
-      setUnifiedCardMarkup('secondary-spirit', 构建统一副轨摘要卡(snapshot), {
-        enabled: true,
-        preview: '武魂融合技详细页',
-        empty: true,
-        空态标签: '未启用',
-        surface: normalizedSurface,
-      });
-    }
   }
 
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
@@ -31593,7 +31575,7 @@
         preview: '人物关系详细页',
         surface: normalizedSurface,
       });
-      renderUnifiedSpiritCardsBySurface(snapshot, normalizedSurface);
+      渲染统一武魂中轴舞台(snapshot, normalizedSurface);
     }
 
     if (sectionSignatures.map !== previousSectionSignatures.map) {
@@ -32129,7 +32111,7 @@
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
       'archive-core': ['角色', '无数据'],
-      'primary-spirit': ['主武魂', '未记录'],
+      'spirit-stage': ['武魂', '未记录'],
       armory: ['武装', '0'],
       vault: ['仓库', '0'],
       social: ['社交', '0'],
@@ -32150,12 +32132,6 @@
     };
     Object.entries(统一空态卡片).forEach(([slot, [title, value]]) => {
       setUnifiedCardMarkup(slot, buildShellEmptyCard(title, value), { surface: 'panel', enabled: true });
-    });
-    setUnifiedCardMarkup('secondary-spirit', 构建档案空武魂卡('第二武魂', '待同步'), {
-      surface: 'panel',
-      enabled: true,
-      empty: true,
-      空态标签: '未启用',
     });
     setUnifiedMapStageMarkup('panel', '');
   }

@@ -509,8 +509,7 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-section mvu-unified-section--dashboard">
               <div class="mvu-unified-dashboard mvu-unified-dashboard--archive">
                 <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="生命图谱详细页" data-detail-mode="embed" data-unified-card="archive-core" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-unified-card="primary-spirit" data-unified-surface="panel"></div>
-                <div class="mvu-unified-card clickable" data-unified-card="secondary-spirit" data-unified-surface="panel"></div>
+                <div class="mvu-unified-card" data-unified-card="spirit-stage" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="panel"></div>
                 <div class="mvu-unified-card clickable" data-preview="情报库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></div>
