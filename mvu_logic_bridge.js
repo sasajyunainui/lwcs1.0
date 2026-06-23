@@ -29252,7 +29252,7 @@
       const 状态 = 读取槽位状态(槽);
       return !!名称 && !/^(无|未装备|空)$/.test(名称) && 状态 !== '未装备';
     }).length;
-    const 装备摘要 = 已装备数 || 魂骨数 ? `${已装备数} 件 / 魂骨 ${魂骨数}` : '未装配';
+    const 装备摘要 = 已装备数 || 魂骨数 ? `${已装备数}/${装备槽列表.length} 在线` : '未装配';
     const 联邦币 = toNumber(财富.联邦币, 0);
     const 仓库摘要 = `${formatNumber(物资数)} 件`;
     const 资金摘要 = 联邦币 > 0 ? `联邦 ${格式化属性短数字(联邦币)}` : '资金 0';
@@ -29272,11 +29272,7 @@
     return `
         <div class="mvu-archive-panel-head">
           <span>装备与仓储</span>
-          <b>${htmlEscape(装备摘要)}</b>
-        </div>
-        <div class="mvu-archive-armory-summary">
-          <span><b>仓储</b><em>${htmlEscape(仓库摘要)}</em></span>
-          <span><b>资金</b><em>${htmlEscape(资金摘要)}</em></span>
+          <b>${htmlEscape(`${装备格.length}槽`)}</b>
         </div>
         <div class="mvu-archive-gear-grid mvu-archive-gear-grid--loadout">
           ${装备格
@@ -29305,18 +29301,17 @@
     const 主文本 = 最近交战
       ? `${toText(最近交战[0], '未知目标')} · ${toText(deepGet(最近交战[1], 'last_result', '未记录'), '未记录')}`
       : 最近情报 || 最近任务 || '暂无记录';
-    const 统计文本 = 最近交战
-      ? `${formatNumber(toNumber(deepGet(最近交战[1], '次数', 0), 0))} 次`
-      : `${(snapshot.unlockedKnowledges || []).length || 0} 条`;
+    const 情报数 = (snapshot.unlockedKnowledges || []).length || 0;
+    const 任务数 = Array.isArray(snapshot && snapshot.recordEntries) ? snapshot.recordEntries.length : 0;
     return `
         <div class="mvu-archive-panel-head">
           <span>交战与情报</span>
-          <b>${htmlEscape(统计文本)}</b>
+          <b>双轨</b>
         </div>
         <div class="mvu-archive-terminal-log" title="${escapeHtmlAttr(主文本)}"><b>[LOG]</b><span>${htmlEscape(shortenText(主文本, 42))}</span></div>
-        <div class="mvu-archive-intel-stack">
-          <span><b>情报</b><em>${htmlEscape(String((snapshot.unlockedKnowledges || []).length || 0))} 条</em></span>
-          <span><b>任务</b><em>${htmlEscape(shortenText(最近任务 || '待命', 12))}</em></span>
+        <div class="mvu-archive-vault-foot">
+          <span><b>情报</b><em>${htmlEscape(String(情报数))}</em></span>
+          <span><b>任务</b><em>${htmlEscape(String(任务数))}</em></span>
         </div>
       `;
   }
@@ -35505,7 +35500,6 @@
                 <section class="mvu-intel-track mvu-intel-track--combat">
                   <div class="mvu-intel-track-head">
                     <b>战术交战</b>
-                    <span>${htmlEscape(`${最近目标} / ${最近结果}`)}</span>
                   </div>
                   <div class="mvu-intel-track-body">
                     <div class="mvu-intel-terminal-latest">
@@ -35518,7 +35512,6 @@
                 <section class="mvu-intel-track mvu-intel-track--archive">
                   <div class="mvu-intel-track-head">
                     <b>机密情报</b>
-                    <span>${htmlEscape(当前任务)}</span>
                   </div>
                   <div class="mvu-intel-track-body">
                     <div class="mvu-intel-terminal-latest">
