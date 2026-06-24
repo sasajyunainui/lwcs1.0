@@ -28576,6 +28576,80 @@
     getLiveUiElements(selector).forEach(node => setLiveNodeHtml(node, value));
   }
 
+  const 档案魂环锚点同步状态 = {
+    计时器: 0,
+    观察器: typeof ResizeObserver === 'function' ? new ResizeObserver(() => 安排档案魂环锚点同步()) : null,
+  };
+
+  function 更新档案魂环锚点观察器() {
+    const 观察器 = 档案魂环锚点同步状态.观察器;
+    if (!观察器) return;
+    观察器.disconnect();
+    getLiveUiElements('#mvu-unified-mount .mvu-archive-ring-observatory').forEach(node => {
+      if (node instanceof Element) 观察器.observe(node);
+    });
+  }
+
+  function 同步档案魂环锚点布局() {
+    档案魂环锚点同步状态.计时器 = 0;
+    const 观测塔列表 = getLiveUiElements('#mvu-unified-mount .mvu-archive-ring-observatory');
+    if (!观测塔列表.length) return;
+    观测塔列表.forEach(观测塔 => {
+      if (!(观测塔 instanceof HTMLElement)) return;
+      const 展示 = 观测塔.querySelector('.mvu-soul-ring-showcase--overview');
+      const 扫描场 = 展示 instanceof HTMLElement ? 展示.querySelector('.mvu-soul-ring-scanfield') : null;
+      if (!(扫描场 instanceof HTMLElement)) return;
+      const 锚点轨道 = 扫描场.querySelector('.mvu-soul-ring-anchor-rail');
+      if (!(锚点轨道 instanceof HTMLElement)) return;
+      const 轨道矩形 = 锚点轨道.getBoundingClientRect();
+      const 扫描矩形 = 扫描场.getBoundingClientRect();
+      if (!(轨道矩形.width > 0 && 轨道矩形.height > 0 && 扫描矩形.width > 0 && 扫描矩形.height > 0)) return;
+
+      const 锚点映射 = new Map();
+      锚点轨道.querySelectorAll('.mvu-soul-ring-anchor[data-ring-anchor]').forEach(节点 => {
+        if (!(节点 instanceof HTMLElement)) return;
+        const 序号 = toText(节点.getAttribute('data-ring-anchor'), '').trim();
+        if (序号) 锚点映射.set(序号, 节点);
+      });
+
+      const 槽位映射 = new Map();
+      扫描场.querySelectorAll('.mvu-soul-ring-slot[data-ring-index]').forEach(节点 => {
+        if (!(节点 instanceof HTMLElement)) return;
+        const 序号 = toText(节点.getAttribute('data-ring-index'), '').trim();
+        if (序号) 槽位映射.set(序号, 节点);
+      });
+      if (!锚点映射.size || !槽位映射.size) return;
+
+      槽位映射.forEach((槽位, 序号) => {
+        const 锚点 = 锚点映射.get(序号);
+        if (!(槽位 instanceof HTMLElement) || !(锚点 instanceof HTMLElement)) return;
+        const 槽位矩形 = 槽位.getBoundingClientRect();
+        if (!(槽位矩形.width > 0 && 槽位矩形.height > 0)) return;
+        const 中心Y = 槽位矩形.top + 槽位矩形.height / 2 - 扫描矩形.top;
+        const 比例 = 扫描矩形.height > 0 ? 中心Y / 扫描矩形.height : 0.5;
+        const 线宽 = Math.max(34, Math.round(Math.max(0, 轨道矩形.right - 槽位矩形.right - 18)));
+        锚点.style.setProperty('--anchor-y', `${中心Y.toFixed(2)}px`);
+        锚点.style.setProperty('--anchor-ratio', 比例.toFixed(3));
+        锚点.style.setProperty('--anchor-line-width', `${线宽}px`);
+      });
+    });
+    更新档案魂环锚点观察器();
+  }
+
+  function 安排档案魂环锚点同步() {
+    if (档案魂环锚点同步状态.计时器) return;
+    const 执行同步 = () => {
+      同步档案魂环锚点布局();
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+      档案魂环锚点同步状态.计时器 = window.requestAnimationFrame(() => {
+        档案魂环锚点同步状态.计时器 = window.requestAnimationFrame(执行同步);
+      });
+      return;
+    }
+    档案魂环锚点同步状态.计时器 = window.setTimeout(执行同步, 0);
+  }
+
   function 构建慢刷新骨架侧卡(标题 = '加载中') {
     return buildSimpleCard(toText(标题, '加载中'), null, [
       { label: '状态', value: '加载中...' },
@@ -31922,6 +31996,7 @@
       enabled: true,
       surface: normalizedSurface,
     });
+    安排档案魂环锚点同步();
   }
 
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
@@ -32224,7 +32299,7 @@
         if (strip.style.display !== '') strip.style.display = '';
         setLiveNodeHtml(
           strip,
-          `<div class="dual-spirit-body"><div class="spirit-side primary-side"></div><div class="spirit-side secondary-side clickable" data-preview="${htmlEscape(secondary.preview)}">${secondary.kind === 'bloodline' ? renderArchiveBloodlineEntry(secondary) : renderArchiveSpiritEntry(secondary, false)}</div></div>`,
+          `<div class="dual-spirit-body dual-spirit-body--secondary-only"><div class="spirit-side secondary-side clickable" data-preview="${htmlEscape(secondary.preview)}">${secondary.kind === 'bloodline' ? renderArchiveBloodlineEntry(secondary) : renderArchiveSpiritEntry(secondary, false)}</div></div>`,
         );
         return;
       }
@@ -32233,7 +32308,7 @@
         if (strip.style.display !== '') strip.style.display = '';
         setLiveNodeHtml(
           strip,
-          `<div class="dual-spirit-body"><div class="spirit-side primary-side clickable" data-preview="${htmlEscape(primary.preview)}">${renderArchiveSpiritEntry(primary, true)}</div><div class="spirit-side secondary-side clickable"></div></div>`,
+          `<div class="dual-spirit-body dual-spirit-body--single"><div class="spirit-side primary-side clickable" data-preview="${htmlEscape(primary.preview)}">${renderArchiveSpiritEntry(primary, true)}</div></div>`,
         );
         return;
       }
@@ -39955,8 +40030,11 @@
     return 构建魂环阵列(normalized.slice(0, 10), 'standard', { fallbackClass });
   }
 
-  function renderArchiveSpiritEntry(config, isPrimary = false) {
-    const 魂环数组 = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: isPrimary ? 'ring-white' : 'ring-gold' });
+  function renderArchiveSpiritEntry(config, isPrimary = false, 启用扫描锚点 = false) {
+    const 魂环数组 = 构建魂环阵列(config.魂环, 'standard', {
+      fallbackClass: isPrimary ? 'ring-white' : 'ring-gold',
+      启用扫描锚点,
+    });
     const 名称 = config.spiritName || config.name || '未命名武魂';
     const 系别 = toText(config.spiritType, '').trim();
     return `
@@ -39969,9 +40047,9 @@
     `;
   }
 
-  function renderArchiveBloodlineEntry(config) {
+  function renderArchiveBloodlineEntry(config, 启用扫描锚点 = false) {
     const 血脉摘要 = 构建血脉状态文本_桥接(config);
-    const 魂环Html = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: 'ring-gold' });
+    const 魂环Html = 构建魂环阵列(config.魂环, 'standard', { fallbackClass: 'ring-gold', 启用扫描锚点 });
     return `
         <div class="mvu-archive-spirit-name">
           <b>${htmlEscape(shortenText(config.name || '血脉之力', 18))}<i>${htmlEscape(shortenText(血脉摘要, 8))}</i></b>

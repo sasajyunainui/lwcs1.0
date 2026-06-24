@@ -2981,15 +2981,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--投影圆角);
-  border: 1px solid var(--边线颜色);
-  background: var(--投影背景);
+  border: var(--投影屏边线宽) solid var(--投影屏边线);
+  background: var(--投影屏背景);
   backdrop-filter: var(--玻璃滤镜) !important;
   -webkit-backdrop-filter: var(--玻璃滤镜) !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.36),
-    var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent),
-    0 20px 52px rgba(0, 0, 0, 0.34);
+  box-shadow: var(--投影屏阴影);
   opacity: 1;
   transform: none;
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
@@ -3006,56 +3002,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 #detailModal .mvu-modal-panel::before {
-  background: var(--投影雾光);
-  opacity: 0.52;
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
 }
 
 #detailModal .mvu-modal-panel::after {
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
 }
 
 #detailModal .mvu-modal-panel > * {
   position: relative;
   z-index: 1;
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-detail-host,
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-holo-slab-root,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-modal-panel,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-holo-slab-root,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal.mvu-modal-display-unified .mvu-modal-panel {
-  border-color: transparent;
-  background:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
-    var(--投影背景);
-  box-shadow:
-    var(--主题发光),
-    0 0 30px rgba(255, 126, 179, 0.22);
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-detail-host::before,
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-holo-slab-root::before,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-modal-panel::before,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-holo-slab-root::before,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal.mvu-modal-display-unified .mvu-modal-panel::before {
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
-    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
-    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
-  background-size: 160% 160%;
-  mix-blend-mode: screen;
-  opacity: 0.86;
-  animation: 水幕焦散 8s ease-in-out infinite;
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-detail-host::after,
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-holo-slab-root::after,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-modal-panel::after,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-holo-slab-root::after,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal.mvu-modal-display-unified .mvu-modal-panel::after {
-  display: none;
 }
 
 #detailModal.show .mvu-modal-panel {
@@ -16976,10 +16938,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --投影雾光:
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
     radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
+  --投影屏边线宽: 1px;
+  --投影屏边线: var(--边线颜色);
+  --投影屏背景: var(--投影背景);
+  --投影屏阴影:
+    var(--主题发光),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  --投影屏前景: var(--投影雾光);
+  --投影屏前景混合: normal;
+  --投影屏前景透明: 0.52;
+  --投影屏前景动画: none;
+  --投影屏后景显示: block;
+  --投影屏后景: var(--投影暗扫线);
+  --投影屏后景混合: multiply;
+  --投影屏后景透明: 0.38;
   --mvu-holo-shell-bg:
     var(--mvu-holo-frame-texture),
     var(--投影暗玻底);
-  --全息材质底: var(--实体背景);
+  --全息材质底:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 28%),
+    var(--实体背景);
   --全息材质悬停底:
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
     var(--实体背景);
@@ -17084,6 +17062,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #8ba9b7;
   --主题光束: linear-gradient(90deg, #00ffcc, rgba(0, 255, 204, 0.52), transparent);
   --主题发光: 0 0 18px rgba(0, 255, 204, 0.46);
+  --投影屏边线: transparent;
+  --投影屏前景:
+    linear-gradient(90deg, var(--主题主色) 0 2px, transparent 2px) left top / 46px 2px no-repeat,
+    linear-gradient(180deg, var(--主题主色) 0 2px, transparent 2px) left top / 2px 46px no-repeat,
+    linear-gradient(270deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 46px 2px no-repeat,
+    linear-gradient(0deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 2px 46px no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 30%, transparent), transparent 28%) left top / auto no-repeat;
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17123,6 +17108,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #c9966c;
   --主题光束: radial-gradient(circle, #ffd700, #ff3300 48%, transparent 70%);
   --主题发光: 0 0 22px rgba(255, 51, 0, 0.42);
+  --投影屏边线宽: 2px;
+  --投影屏背景:
+    radial-gradient(circle at 10% 10%, rgba(255, 170, 0, 0.14), transparent 24%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 7px),
+    var(--投影背景);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17158,6 +17148,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #b8c7da;
   --主题光束: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), rgba(224,234,255,0.4), transparent);
   --主题发光: inset 0 0 18px rgba(255,255,255,0.12), 0 0 20px rgba(224, 234, 255, 0.28);
+  --投影屏阴影:
+    inset 0 0 15px rgba(255,255,255,0.1),
+    var(--主题发光);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17199,6 +17192,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #8ec9d7;
   --主题光束: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
   --主题发光: 0 0 15px rgba(0, 210, 255, 0.4), inset 0 0 20px rgba(255, 126, 179, 0.2);
+  --投影屏边线: transparent;
+  --投影屏背景:
+    radial-gradient(circle at 18% 24%, rgba(255,255,255,0.22), transparent 18%),
+    var(--投影背景);
+  --投影屏阴影:
+    var(--主题发光),
+    0 0 30px rgba(255, 126, 179, 0.22);
+  --投影屏前景:
+    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%) center / 160% 160%,
+    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%) center / 160% 160%,
+    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%) center / 160% 160%;
+  --投影屏前景透明: 0.86;
+  --投影屏前景动画: 水幕焦散 8s ease-in-out infinite;
+  --投影屏后景显示: none;
+  --投影屏后景: none;
+  --投影屏后景透明: 0;
   --mvu-holo-medium:
     var(--介质纹理),
     var(--投影背景),
@@ -17748,19 +17757,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   padding: 6px;
   overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid var(--边线颜色);
-  background: var(--投影背景);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.36),
-    var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  border: var(--投影屏边线宽) solid var(--投影屏边线);
+  border-radius: var(--投影圆角);
+  background: var(--投影屏背景);
+  box-shadow: var(--投影屏阴影);
   color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   scrollbar-width: none;
-  border-radius: calc(var(--mvu-holo-card-radius) * 0.9);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::before,
@@ -17774,14 +17780,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::after {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::before {
-  background: var(--投影雾光);
-  opacity: 0.52;
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::after {
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host > * {
@@ -17819,11 +17828,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
   border: 0;
   border-radius: 2px;
   background: transparent;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--边线颜色) 24%, transparent),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 4%, transparent);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  box-shadow: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
@@ -17840,6 +17847,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::after,
 #detailModal .mvu-holo-slab-root::after {
   content: "";
+  display: none;
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -18595,6 +18603,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   transform-style: preserve-3d;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage::before {
   content: "";
   position: absolute;
@@ -18650,10 +18663,29 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--primary 
   transform: translateZ(22px);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single .mvu-archive-spirit-stage-node--primary {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--secondary {
   align-self: stretch;
   width: 100%;
   transform: translateZ(22px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single .mvu-archive-spirit-stage-node--secondary {
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single .mvu-archive-spirit-card {
+  width: 100%;
+  height: 100%;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single .mvu-archive-spirit-card > .mvu-archive-ring-observatory,
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single .mvu-archive-spirit-card > .mvu-archive-empty-orbit {
+  width: 100%;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
@@ -18776,6 +18808,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-scanfield {
+  min-width: calc(var(--archive-ring-field-width) + var(--ring-anchor-rail-width));
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-rail {
+  width: var(--ring-anchor-rail-width);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor {
+  --ring-anchor-line-width: 74px;
+  --ring-anchor-node-size: 16px;
+  right: 0;
+  left: auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-node {
+  font-size: 13px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-scanfield {
   width: var(--archive-ring-field-width);
   height: var(--archive-ring-field-height);
   min-height: var(--archive-ring-field-height);
@@ -18786,6 +18837,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   width: var(--archive-ring-field-width);
   height: var(--archive-ring-field-height);
   min-height: var(--archive-ring-field-height);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-rail {
+  right: 0;
+  width: var(--ring-anchor-rail-width);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor {
+  --ring-anchor-line-width: 74px;
+  --ring-anchor-node-size: 16px;
+  right: 0;
+  left: auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-node {
+  font-size: 13px;
 }
 
 body.mvu-layout-holo
@@ -18828,10 +18895,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:hover .mvu-soul-ring-svg .spin-ccw,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview:focus-within .mvu-soul-ring-svg .spin-ccw {
   animation-duration: 50s;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-anchor-rail {
-  right: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-empty-orbit {
@@ -20570,37 +20633,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   max-width: min(1120px, calc(100vw - 48px)) !important;
   min-height: 0 !important;
   max-height: min(86svh, 920px) !important;
-  border: 1px solid var(--原型光刻线);
-  border-radius: var(--mvu-radius-lg, 16px);
+  border: var(--投影屏边线宽) solid var(--投影屏边线);
+  border-radius: var(--投影圆角);
   overflow: hidden;
-  background: var(--投影背景);
-  box-shadow:
-    var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent),
-    0 28px 58px rgba(0, 0, 0, 0.38);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  background: var(--投影屏背景);
+  box-shadow: var(--投影屏阴影);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 #detailModal.mvu-modal-display-unified .mvu-modal-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影雾光);
-  opacity: 0.52;
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
 }
 
 #detailModal.mvu-modal-display-unified .mvu-modal-panel::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
 }
 
 #detailModal.mvu-modal-display-unified .mvu-modal-panel > * {
@@ -23647,9 +23700,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 
 /* Archive modal redesign */
 #detailModal.archive-redesign-mode {
-  --archive-shell-bg: var(--投影背景);
-  --archive-shell-surface: var(--投影背景);
-  --archive-shell-edge: var(--边线颜色);
+  --archive-shell-bg: var(--投影屏背景);
+  --archive-shell-surface: var(--投影屏背景);
+  --archive-shell-edge: var(--投影屏边线);
   --archive-shell-edge-strong: var(--强线);
   --archive-card-bg: var(--全息材质底);
   --archive-card-muted:
@@ -23680,11 +23733,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   min-height: min(580px, calc(100svh - 32px));
   max-height: calc(100svh - 24px);
   border-radius: var(--archive-radius);
-  border: 1px solid var(--archive-shell-edge);
-  background: var(--投影背景);
-  box-shadow:
-    var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  border: var(--投影屏边线宽) solid var(--archive-shell-edge);
+  background: var(--投影屏背景);
+  box-shadow: var(--投影屏阴影);
   backdrop-filter: var(--玻璃滤镜);
   -webkit-backdrop-filter: var(--玻璃滤镜);
 }
@@ -23700,14 +23751,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 }
 
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel::before {
-  background: var(--投影雾光);
-  opacity: 0.52;
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
 }
 
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel::after {
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
 }
 
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel > * {
@@ -25397,9 +25451,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-shell-top-gap: 11px;
   --dossier-shell-radius: var(--投影圆角);
   --dossier-title: var(--文字主色);
-  --dossier-underlay: var(--投影背景);
+  --dossier-underlay: var(--投影屏背景);
   --dossier-film: transparent;
-  --dossier-panel-bg: var(--投影背景);
+  --dossier-panel-bg: var(--投影屏背景);
   --dossier-card-bg: var(--全息材质底);
   --dossier-card-bg-strong: var(--全息材质悬停底);
   --dossier-section-bg: transparent;
@@ -25448,11 +25502,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   z-index: 1;
   overflow: hidden;
   border-radius: var(--dossier-shell-radius);
-  border: 1px solid var(--边线颜色);
+  border: var(--投影屏边线宽) solid var(--投影屏边线);
   background: var(--dossier-panel-bg);
-  box-shadow:
-    var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  box-shadow: var(--投影屏阴影);
   backdrop-filter: var(--玻璃滤镜);
   -webkit-backdrop-filter: var(--玻璃滤镜);
 }
@@ -25467,8 +25519,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: var(--投影雾光);
-  opacity: 0.52;
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .mvu-modal-panel.archive-redesign-panel::after {
@@ -25477,9 +25531,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split.relation-preview-mode {
