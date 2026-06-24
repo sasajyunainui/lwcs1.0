@@ -16906,25 +16906,61 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     var(--介质纹理),
     var(--投影背景),
     color-mix(in srgb, var(--实体背景) 72%, transparent);
-  --mvu-holo-shell-bg:
-    var(--mvu-holo-frame-texture),
+  --玻璃滤镜: var(--虚化强度) saturate(132%) brightness(1.04);
+  --雾化乳光层:
+    radial-gradient(ellipse at 10% 8%, rgba(255, 255, 255, 0.32), transparent 30%),
+    radial-gradient(ellipse at 84% 14%, color-mix(in srgb, var(--主题高光) 22%, transparent), transparent 28%),
+    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 40%),
+    radial-gradient(ellipse at 42% 58%, rgba(255, 255, 255, 0.12), transparent 44%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--主题主色) 16%, transparent),
+      color-mix(in srgb, var(--主题辅色) 18%, transparent) 46%,
+      color-mix(in srgb, var(--主题高光) 12%, transparent)
+    );
+  --雾化暗玻层:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--主题底色) 92%, transparent),
-      color-mix(in srgb, #000 44%, var(--主题辅色))
+      color-mix(in srgb, var(--主题底色) 88%, rgba(255, 255, 255, 0.1)),
+      color-mix(in srgb, #000 40%, var(--主题辅色))
     );
+  --雾化玻璃底:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, rgba(255, 255, 255, 0.22) 58%, var(--实体背景)),
+      color-mix(in srgb, var(--暗场底板强) 58%, rgba(255, 255, 255, 0.12))
+    );
+  --雾化玻璃扫光:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.26), transparent 28%, rgba(255, 255, 255, 0.09) 54%, transparent 76%);
+  --雾化扫描层:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.1) 3px 4px);
+  --雾化角光层:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 56%, transparent), transparent) left top / 32px 1px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 56%, transparent), transparent) left top / 1px 32px no-repeat,
+    linear-gradient(270deg, color-mix(in srgb, var(--主题高光) 36%, transparent), transparent) right bottom / 32px 1px no-repeat,
+    linear-gradient(0deg, color-mix(in srgb, var(--主题高光) 36%, transparent), transparent) right bottom / 1px 32px no-repeat;
+  --mvu-holo-shell-bg:
+    var(--雾化乳光层),
+    var(--mvu-holo-frame-texture),
+    var(--雾化暗玻层);
   --全息材质底:
+    var(--雾化乳光层),
+    var(--雾化玻璃扫光),
     var(--全息噪点层),
     var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.045)),
     var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 82%, transparent);
+    var(--雾化玻璃底),
+    color-mix(in srgb, var(--实体背景) 62%, rgba(255, 255, 255, 0.14));
   --全息材质悬停底:
+    var(--雾化乳光层),
+    var(--雾化玻璃扫光),
     var(--全息噪点层),
     var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.022)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06)),
     var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 88%, var(--主题主色) 8%);
+    var(--雾化玻璃底),
+    color-mix(in srgb, var(--实体背景) 66%, var(--主题主色) 14%);
   --全息材质线: var(--边线颜色);
   --全息材质弱线: color-mix(in srgb, var(--边线颜色) 36%, rgba(255, 255, 255, 0.075));
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
@@ -16932,19 +16968,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
   --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 18px 42px rgba(0, 0, 0, 0.16),
+    0 0 38px color-mix(in srgb, var(--主题主色) 10%, transparent),
+    2px 4px 10px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
     inset 0 0 0 1px var(--全息材质弱线),
-    inset 0 0 18px var(--全息材质辉光);
+    inset 0 0 38px color-mix(in srgb, var(--主题主色) 8%, transparent),
+    inset 0 -30px 70px rgba(255, 255, 255, 0.08);
   --全息材质悬停阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 20px 46px rgba(0, 0, 0, 0.2),
+    0 0 42px color-mix(in srgb, var(--主题主色) 12%, transparent),
+    2px 4px 10px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
     inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    inset 0 0 20px color-mix(in srgb, var(--主题主色) 8%, transparent),
+    inset 0 0 42px color-mix(in srgb, var(--主题主色) 14%, transparent),
+    inset 0 -30px 72px rgba(255, 255, 255, 0.09),
     0 0 18px var(--全息材质强辉光);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
   --原型暗玻浮层: var(--暗场浮层);
-  --原型玻璃虚化: var(--虚化强度);
+  --原型玻璃虚化: var(--玻璃滤镜);
   --原型光刻线: var(--边线颜色);
   --原型光刻强线: var(--强线);
   --原型弱分隔线: var(--虚线);
@@ -16990,9 +17034,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   border-radius: var(--mvu-holo-radius);
   background: var(--mvu-holo-shell-bg);
   box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.36),
+    0 22px 48px rgba(0, 0, 0, 0.24),
     var(--主题发光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 44px color-mix(in srgb, var(--主题主色) 14%, transparent),
+    inset 0 -48px 110px rgba(255, 255, 255, 0.06);
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   backdrop-filter: var(--虚化强度) !important;
@@ -17165,9 +17211,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
-    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
-  opacity: 0.52;
+    radial-gradient(ellipse at 8% 12%, rgba(255, 255, 255, 0.22), transparent 26%),
+    radial-gradient(ellipse at 74% 70%, color-mix(in srgb, var(--主题辅色) 22%, transparent), transparent 38%),
+    radial-gradient(ellipse at 48% 54%, rgba(255, 255, 255, 0.085), transparent 44%),
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 34%, transparent), transparent 24%),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 24%, transparent), transparent 24%);
+  mix-blend-mode: screen;
+  opacity: 0.72;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
@@ -17209,9 +17259,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.16), transparent 30%, rgba(255, 255, 255, 0.055) 56%, transparent 78%),
+    var(--雾化扫描层);
+  mix-blend-mode: screen;
+  opacity: 0.46;
 }
 
 @keyframes mvu-unified-frame-scan {
@@ -17513,13 +17565,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-  position: fixed;
+  position: absolute;
   z-index: var(--mvu-z-popover, 10060);
-  top: max(72px, env(safe-area-inset-top));
-  left: auto;
-  right: max(8px, env(safe-area-inset-right));
+  top: 0;
+  left: -34px;
+  right: auto;
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: flex-start;
   gap: 5px;
   pointer-events: none;
@@ -17577,7 +17629,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
   padding: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(8px);
   transition:
     max-height 180ms ease,
     max-width 180ms ease,
@@ -17591,7 +17643,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-uni
   max-width: 196px;
   max-height: 34px;
   grid-template-columns: repeat(5, 34px);
-  padding: 0 0 0 6px;
+  padding: 0 6px 0 0;
   opacity: 1;
   transform: translateX(0);
 }
@@ -17784,16 +17836,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
   border: 0;
   border-radius: 2px;
   background:
+    var(--雾化乳光层),
+    var(--雾化玻璃扫光),
     linear-gradient(color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2.2%, transparent) 1px, transparent 1px),
     radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in srgb, var(--暗场底板强) 72%, transparent), color-mix(in srgb, var(--暗场底板强) 58%, transparent)),
+    var(--雾化暗玻层),
     var(--原型暗玻底);
-  background-size: 24px 24px, 24px 24px, auto, auto, auto;
+  background-size: auto, auto, 24px 24px, 24px 24px, auto, auto, auto;
   box-shadow:
     inset 0 0 0 1px var(--原型光刻线),
-    inset 0 0 28px var(--原型内辉光),
-    0 18px 46px rgba(0, 0, 0, 0.34);
+    var(--全息材质阴影),
+    inset 0 0 28px var(--原型内辉光);
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
@@ -17806,15 +17860,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 78%, transparent), transparent) left top / 36px 1px no-repeat,
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 78%, transparent), transparent) left top / 1px 36px no-repeat,
-    linear-gradient(270deg, color-mix(in srgb, var(--主题主色) 62%, transparent), transparent) right top / 36px 1px no-repeat,
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 62%, transparent), transparent) right top / 1px 36px no-repeat,
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 62%, transparent), transparent) left bottom / 36px 1px no-repeat,
-    linear-gradient(0deg, color-mix(in srgb, var(--主题主色) 62%, transparent), transparent) left bottom / 1px 36px no-repeat,
-    linear-gradient(270deg, color-mix(in srgb, var(--主题主色) 78%, transparent), transparent) right bottom / 36px 1px no-repeat,
-    linear-gradient(0deg, color-mix(in srgb, var(--主题主色) 78%, transparent), transparent) right bottom / 1px 36px no-repeat;
-  opacity: 0.78;
+    var(--雾化角光层),
+    radial-gradient(ellipse at 18% 12%, rgba(255, 255, 255, 0.16), transparent 28%),
+    radial-gradient(ellipse at 84% 86%, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 38%);
+  opacity: 0.82;
+  mix-blend-mode: screen;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::after,
@@ -18074,24 +18124,38 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
   content: "";
   position: absolute;
-  width: 16px;
-  height: 16px;
+  inset: 0;
+  width: auto;
+  height: auto;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before {
-  left: 7px;
-  top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.22), transparent 30%),
+    radial-gradient(ellipse at 80% 86%, color-mix(in srgb, var(--主题高光) 14%, transparent), transparent 38%),
+    radial-gradient(ellipse at 52% 58%, rgba(255, 255, 255, 0.075), transparent 42%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.15), transparent 30%, rgba(255, 255, 255, 0.05) 58%, transparent 78%);
+  mix-blend-mode: screen;
+  opacity: 0.92;
+  border-radius: inherit;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
-  right: 7px;
-  bottom: 7px;
-  border-right: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
+  z-index: 0;
+  background:
+    var(--雾化角光层),
+    var(--雾化扫描层);
+  mix-blend-mode: screen;
+  opacity: 0.68;
+  border-radius: inherit;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
@@ -23735,10 +23799,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   border-radius: var(--archive-card-radius) !important;
   border: 0 !important;
   background: var(--全息材质底) !important;
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: var(--全息材质阴影) !important;
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
   overflow: hidden;
@@ -23773,15 +23834,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   content: "";
   display: block !important;
   position: absolute;
-  top: 7px;
-  left: 7px;
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: auto;
+  height: auto;
   pointer-events: none;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  opacity: 0.7;
-  background: none;
+  border: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.2), transparent 30%),
+    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 38%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.13), transparent 30%, rgba(255, 255, 255, 0.045) 58%, transparent 78%);
+  mix-blend-mode: screen;
+  opacity: 0.86;
+  z-index: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card::after,
@@ -23790,15 +23855,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   content: "";
   display: block !important;
   position: absolute;
-  right: 7px;
-  bottom: 7px;
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: auto;
+  height: auto;
   pointer-events: none;
-  border-right: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  opacity: 0.7;
-  background: none;
+  border: 0;
+  border-radius: inherit;
+  background:
+    var(--雾化角光层),
+    var(--雾化扫描层);
+  mix-blend-mode: screen;
+  opacity: 0.58;
+  z-index: 0;
+}
+
+#detailModal.archive-redesign-mode .archive-redesign-root .archive-card > *,
+#detailModal.archive-redesign-mode .archive-redesign-root .dossier-card > *,
+#detailModal.archive-redesign-mode .archive-redesign-root .timeline-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-tile::before,
@@ -25550,10 +25625,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   background: var(--全息材质底) !important;
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: var(--全息材质阴影) !important;
   transform-style: preserve-3d;
 }
 
@@ -25563,15 +25635,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   .archive-card.dossier-card::before {
   content: "";
   position: absolute;
-  top: 7px;
-  left: 7px;
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: auto;
+  height: auto;
   pointer-events: none;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  background: none;
-  opacity: 0.7;
+  border: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.2), transparent 30%),
+    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 38%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.13), transparent 30%, rgba(255, 255, 255, 0.045) 58%, transparent 78%);
+  mix-blend-mode: screen;
+  opacity: 0.86;
+  z-index: 0;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -25580,16 +25656,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   .archive-card.dossier-card::after {
   content: "";
   position: absolute;
-  right: 7px;
-  bottom: 7px;
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: auto;
+  height: auto;
   pointer-events: none;
-  border-right: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 45%, transparent);
-  background: none;
-  opacity: 0.7;
+  border: 0;
+  border-radius: inherit;
+  background:
+    var(--雾化角光层),
+    var(--雾化扫描层);
+  mix-blend-mode: screen;
+  opacity: 0.58;
   z-index: 0;
+}
+
+#detailModal.archive-redesign-mode.mvu-modal-display-split
+  .archive-redesign-root
+  .dossier-shell
+  .archive-card.dossier-card
+  > * {
+  position: relative;
+  z-index: 1;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
