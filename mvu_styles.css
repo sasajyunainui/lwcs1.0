@@ -2980,8 +2980,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border-radius: var(--投影圆角);
   border: 1px solid var(--边线颜色);
   background: var(--投影背景);
-  backdrop-filter: var(--玻璃滤镜);
-  -webkit-backdrop-filter: var(--玻璃滤镜);
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.36),
     var(--主题发光),
@@ -17186,7 +17186,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --介质纹理:
     linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
   --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
     linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
   --实体背景: rgba(255, 255, 255, 0.11);
   --虚幻背景: rgba(0, 210, 255, 0.045);
@@ -17209,37 +17208,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影雾光);
-  opacity: 0.52;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
-    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
-    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
-  background-size: 160% 160%;
-  opacity: 0.86;
-  animation: 水幕焦散 8s ease-in-out infinite;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 26%, transparent), transparent 22%),
-    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 14%, transparent), transparent 22%);
-  clip-path: polygon(0 0, 100% 0, 92% 28%, 100% 100%, 0 100%, 8% 66%);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::after {
-  display: none;
-}
-
 @keyframes 水幕焦散 {
   0%,
   100% {
@@ -17248,17 +17216,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻�
   50% {
     background-position: 100% 55%;
   }
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
 }
 
 @keyframes mvu-unified-frame-scan {
@@ -18128,32 +18085,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-map-stage {
   padding: 0;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-  opacity: 1;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before {
-  z-index: 0;
-  background: var(--投影雾光);
-  opacity: 0.52;
-  border-radius: inherit;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
-  z-index: 0;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
-  border-radius: inherit;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card > * {
