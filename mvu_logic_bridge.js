@@ -26933,7 +26933,7 @@
         <g class="spin-ccw">
           <circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-acc)" stroke-width="2" stroke-dasharray="2 4 8 4 3 10" opacity="1"/>
         </g>
-        <circle class="mvu-soul-ring-hit" cx="100" cy="100" r="66" fill="none" stroke="transparent" stroke-width="34"/>
+        <circle class="mvu-soul-ring-hit" cx="100" cy="100" r="66" fill="none" stroke="transparent" stroke-width="22"/>
       </svg>`;
   }
 
@@ -48415,7 +48415,39 @@ ${toText(combatData.战斗意图, '点到为止')}
   document.addEventListener('pointerup', () => 结束关系拓扑拖拽(true));
   document.addEventListener('pointercancel', () => 结束关系拓扑拖拽(false));
 
-  function getFloatingHoverTrigger(eventTarget) {
+  function 读取指针魂环触发节点(eventTarget, event) {
+    if (!(event instanceof PointerEvent) && !(event instanceof MouseEvent)) return null;
+    const 原节点 = eventTarget instanceof Element ? eventTarget : null;
+    const 命中节点 = document.elementFromPoint(event.clientX, event.clientY);
+    const 舞台 =
+      (原节点 && 原节点.closest('.mvu-soul-ring-showcase')) ||
+      (命中节点 instanceof Element ? 命中节点.closest('.mvu-soul-ring-showcase') : null);
+    if (!(舞台 instanceof Element)) return null;
+    let 最佳节点 = null;
+    let 最佳分数 = Infinity;
+    舞台.querySelectorAll('.mvu-soul-ring-slot').forEach(节点 => {
+      if (!(节点 instanceof HTMLElement) || !节点.querySelector('.ring-hover-card')) return;
+      const 矩形 = 节点.getBoundingClientRect();
+      if (!(矩形.width > 0 && 矩形.height > 0)) return;
+      const 中心X = 矩形.left + 矩形.width / 2;
+      const 中心Y = 矩形.top + 矩形.height / 2;
+      const 半径X = Math.max(8, 矩形.width * 0.34);
+      const 半径Y = Math.max(6, 矩形.height * 0.34);
+      const 归一距离 = Math.sqrt(
+        Math.pow((event.clientX - 中心X) / 半径X, 2) + Math.pow((event.clientY - 中心Y) / 半径Y, 2),
+      );
+      const 分数 = Math.abs(归一距离 - 1);
+      if (分数 < 最佳分数) {
+        最佳分数 = 分数;
+        最佳节点 = 节点;
+      }
+    });
+    return 最佳分数 <= 0.48 ? 最佳节点 : null;
+  }
+
+  function getFloatingHoverTrigger(eventTarget, event = null) {
+    const 指针魂环 = event && event.type !== 'pointerout' ? 读取指针魂环触发节点(eventTarget, event) : null;
+    if (指针魂环) return 指针魂环;
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
     const trigger = eventTarget.closest('.mvu-soul-ring-slot, .interactive-ring');
     if (!trigger) return null;
@@ -48737,7 +48769,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     event => {
       浮窗最新指针坐标 = { x: event.clientX, y: event.clientY };
       const eventTarget = event.target instanceof Element ? event.target : null;
-      const trigger = getFloatingHoverTrigger(eventTarget);
+      const trigger = getFloatingHoverTrigger(eventTarget, event);
       if (!trigger) {
         if (eventTarget && 顶层浮窗卡片 && 顶层浮窗卡片.contains(eventTarget)) {
           cancelFloatingHoverClearTimer();
@@ -48776,6 +48808,14 @@ ${toText(combatData.战斗意图, '点到为止')}
     'pointermove',
     event => {
       浮窗最新指针坐标 = { x: event.clientX, y: event.clientY };
+      const eventTarget = event.target instanceof Element ? event.target : null;
+      const trigger = getFloatingHoverTrigger(eventTarget, event);
+      if (trigger) {
+        cancelFloatingHoverClearTimer();
+        positionFloatingHoverCard(trigger);
+        scheduleFloatingHoverAutoHide(trigger);
+        return;
+      }
       if (!activeFloatingHoverTrigger || !顶层浮窗卡片) return;
       if (指针仍在浮窗区域(event)) {
         cancelFloatingHoverClearTimer();
