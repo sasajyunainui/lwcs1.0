@@ -22158,6 +22158,18 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
   return rootData;
 }
 
+function 注册技能正式结构补齐接口_V1() {
+  const 注册到根 = root => {
+    if (!root || typeof root !== 'object') return;
+    root.__LWCS_INITIALIZE_SKILL_EFFECTS__ = 初始化补齐角色技能效果数组_V1;
+  };
+  注册到根(globalThis);
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 注册到根(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 注册到根(globalThis.top); } catch (错误) {}
+}
+
+注册技能正式结构补齐接口_V1();
+
 
 globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}

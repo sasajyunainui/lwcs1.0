@@ -2526,7 +2526,7 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
     已写入.forEach(角色名 => {
       if (数据根.char?.[角色名]) 新写入角色集[角色名] = 数据根.char[角色名];
     });
-    初始化补齐角色技能效果数组_V1({ char: 新写入角色集 });
+    globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__({ char: 新写入角色集 });
   }
   const 已同步 = 同步银龙融合旧实体状态_V1(数据根, 当前tick);
   const 已补成长技能 = 应用内置角色成长技能模板_V1(数据根, 选项);
@@ -2568,12 +2568,26 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
     已写入.forEach(角色名 => {
       if (数据根.char?.[角色名]) 新写入角色集[角色名] = 数据根.char[角色名];
     });
-    初始化补齐角色技能效果数组_V1({ char: 新写入角色集 });
+    globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__({ char: 新写入角色集 });
   }
   const 已同步 = 同步银龙融合旧实体状态_V1(数据根, 当前tick);
   const 已补成长技能 = 应用内置角色成长技能模板_V1(数据根, {});
   const 已变更 = Array.from(new Set([...已写入, ...已同步, ...已补成长技能]));
   return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更, 开场节点 };
+}
+
+function 角色存在空技能效果数组_V1(节点 = null) {
+    if (!节点 || typeof 节点 !== 'object') return false;
+    if (Array.isArray(节点)) return 节点.some(角色存在空技能效果数组_V1);
+    if (Object.prototype.hasOwnProperty.call(节点, '_效果数组')) {
+      const 是技能对象 =
+        Object.prototype.hasOwnProperty.call(节点, '魂技名') ||
+        Object.prototype.hasOwnProperty.call(节点, '画面描述') ||
+        Object.prototype.hasOwnProperty.call(节点, '效果描述') ||
+        Object.prototype.hasOwnProperty.call(节点, '承载方式');
+      if (是技能对象) return !Array.isArray(节点._效果数组) || 节点._效果数组.length === 0;
+    }
+    return Object.values(节点).some(角色存在空技能效果数组_V1);
 }
 
 function 规范化Schema根转换_V1(data = {}) {
@@ -5106,13 +5120,13 @@ function 规范化Schema根转换_V1(data = {}) {
       autoBreakthrough(data);
     }
     if (是否新档初始化) {
-      初始化补齐角色技能效果数组_V1(data);
-    } else if (本轮补齐魂环角色.size > 0) {
+      globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__(data);
+    } else {
       const 补齐角色集 = {};
-      本轮补齐魂环角色.forEach(角色名 => {
-        if (data.char?.[角色名]) 补齐角色集[角色名] = data.char[角色名];
+      Object.entries(data.char || {}).forEach(([角色名, 角色数据]) => {
+        if (本轮补齐魂环角色.has(角色名) || 角色存在空技能效果数组_V1(角色数据)) 补齐角色集[角色名] = 角色数据;
       });
-      初始化补齐角色技能效果数组_V1({ char: 补齐角色集 });
+      if (Object.keys(补齐角色集).length > 0) globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__({ char: 补齐角色集 });
     }
 
     _(data.char).forEach((c, charName) => {

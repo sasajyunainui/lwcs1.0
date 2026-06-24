@@ -72,7 +72,7 @@ if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆�
 
 await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>
   typeof 角色穿搭上装待补全文案_V1 === 'string' &&
-  typeof 初始化补齐角色技能效果数组_V1 === 'function' &&
+  typeof globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__ === 'function' &&
   typeof 创建空魂导器装配表_V1 === 'function' &&
   globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ &&
   typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object' &&
