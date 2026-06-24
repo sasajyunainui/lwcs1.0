@@ -62,7 +62,17 @@
   --虚幻背景: rgba(103, 247, 239, 0.04);
   --边线颜色: rgba(103, 247, 239, 0.32);
   --虚化强度: blur(8px);
-  --玻璃滤镜: var(--虚化强度) saturate(132%) brightness(1.04);
+  --玻璃滤镜: var(--虚化强度);
+  --投影暗玻底: linear-gradient(145deg, color-mix(in srgb, var(--主题底色) 92%, transparent), color-mix(in srgb, #000 44%, var(--主题辅色)));
+  --投影暗扫线: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
+  --投影边角光:
+    linear-gradient(90deg, var(--主题主色) 0 2px, transparent 2px) left top / 46px 2px no-repeat,
+    linear-gradient(180deg, var(--主题主色) 0 2px, transparent 2px) left top / 2px 46px no-repeat,
+    linear-gradient(270deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 46px 2px no-repeat,
+    linear-gradient(0deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 2px 46px no-repeat;
+  --投影雾光:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
   --虚线: rgba(118, 226, 255, 0.18);
   --强线: rgba(118, 226, 255, 0.38);
   --文字主色: rgba(240, 250, 252, 0.96);
@@ -80,7 +90,7 @@
   --全息噪点纹理: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .03'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --全息噪点层: var(--全息噪点纹理);
   --视差浮出深度: 15px;
-  --光学混合模式: screen;
+  --光学混合模式: normal;
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -95,18 +105,10 @@
   --全息数值字影: 0 1px 1px rgba(0, 0, 0, 0.92), 0 0 2px color-mix(in srgb, var(--主题主色) 18%, transparent);
   --原型文字辉光: var(--全息标题字影);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --全息材质底:
-    var(--全息噪点层),
-    var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
-    var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 82%, transparent);
+  --全息材质底: var(--实体背景);
   --全息材质悬停底:
-    var(--全息噪点层),
-    var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.022)),
-    var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 88%, var(--主题主色) 8%);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
+    var(--实体背景);
   --全息材质线: var(--边线颜色);
   --全息材质弱线: rgba(255, 255, 255, 0.075);
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
@@ -115,12 +117,10 @@
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
   --全息材质阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px var(--全息材质弱线),
-    inset 0 0 18px var(--全息材质辉光);
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 10%, transparent);
   --全息材质悬停阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    inset 0 0 20px color-mix(in srgb, var(--主题主色) 8%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--主题主色) 12%, transparent),
     0 0 18px var(--全息材质强辉光);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
@@ -3284,11 +3284,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border: 0;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.2), transparent 30%),
-    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 38%),
-    linear-gradient(105deg, rgba(255, 255, 255, 0.13), transparent 30%, rgba(255, 255, 255, 0.045) 58%, transparent 78%);
-  mix-blend-mode: screen;
-  opacity: 0.86;
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
+  opacity: 0.52;
   z-index: 0;
 }
 
@@ -3301,11 +3299,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   pointer-events: none;
   border: 0;
   border-radius: inherit;
-  background:
-    var(--雾化角光层),
-    var(--雾化扫描层);
-  mix-blend-mode: screen;
-  opacity: 0.58;
+  background: var(--投影暗扫线);
+  mix-blend-mode: multiply;
+  opacity: 0.38;
   z-index: 0;
 }
 
@@ -13464,9 +13460,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --archive-shell-edge-strong: var(--强线);
   --archive-card-bg: var(--全息材质底);
   --archive-card-muted:
-    var(--介质纹理),
-    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
-    color-mix(in srgb, var(--实体背景) 58%, transparent);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 7%, transparent), transparent 76%),
+    var(--虚幻背景);
   --archive-text-strong: var(--文字主色);
   --archive-text: var(--文字主色);
   --archive-text-muted: var(--文字弱色);
@@ -16911,65 +16906,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --mvu-holo-muted: var(--文字弱色);
   --mvu-holo-radius: var(--投影圆角);
   --mvu-holo-card-radius: var(--卡片圆角);
-  --mvu-holo-medium:
-    var(--介质纹理),
-    var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 72%, transparent);
-  --玻璃滤镜: var(--虚化强度) saturate(132%) brightness(1.04);
-  --雾化乳光层:
-    radial-gradient(ellipse at 10% 8%, rgba(255, 255, 255, 0.32), transparent 30%),
-    radial-gradient(ellipse at 84% 14%, color-mix(in srgb, var(--主题高光) 22%, transparent), transparent 28%),
-    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 40%),
-    radial-gradient(ellipse at 42% 58%, rgba(255, 255, 255, 0.12), transparent 44%),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--主题主色) 16%, transparent),
-      color-mix(in srgb, var(--主题辅色) 18%, transparent) 46%,
-      color-mix(in srgb, var(--主题高光) 12%, transparent)
-    );
-  --雾化暗玻层:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--主题底色) 88%, rgba(255, 255, 255, 0.1)),
-      color-mix(in srgb, #000 40%, var(--主题辅色))
-    );
-  --雾化玻璃底:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, rgba(255, 255, 255, 0.22) 58%, var(--实体背景)),
-      color-mix(in srgb, var(--暗场底板强) 58%, rgba(255, 255, 255, 0.12))
-    );
-  --雾化玻璃扫光:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.26), transparent 28%, rgba(255, 255, 255, 0.09) 54%, transparent 76%);
-  --雾化扫描层:
-    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.1) 3px 4px);
-  --雾化角光层:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 56%, transparent), transparent) left top / 32px 1px no-repeat,
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 56%, transparent), transparent) left top / 1px 32px no-repeat,
-    linear-gradient(270deg, color-mix(in srgb, var(--主题高光) 36%, transparent), transparent) right bottom / 32px 1px no-repeat,
-    linear-gradient(0deg, color-mix(in srgb, var(--主题高光) 36%, transparent), transparent) right bottom / 1px 32px no-repeat;
+  --mvu-holo-medium: var(--投影背景);
+  --玻璃滤镜: var(--虚化强度);
+  --投影暗玻底: linear-gradient(145deg, color-mix(in srgb, var(--主题底色) 92%, transparent), color-mix(in srgb, #000 44%, var(--主题辅色)));
+  --投影暗扫线: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
+  --投影边角光:
+    linear-gradient(90deg, var(--主题主色) 0 2px, transparent 2px) left top / 46px 2px no-repeat,
+    linear-gradient(180deg, var(--主题主色) 0 2px, transparent 2px) left top / 2px 46px no-repeat,
+    linear-gradient(270deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 46px 2px no-repeat,
+    linear-gradient(0deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 2px 46px no-repeat;
+  --投影雾光:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
   --mvu-holo-shell-bg:
-    var(--雾化乳光层),
     var(--mvu-holo-frame-texture),
-    var(--雾化暗玻层);
-  --全息材质底:
-    var(--雾化乳光层),
-    var(--雾化玻璃扫光),
-    var(--全息噪点层),
-    var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.045)),
-    var(--投影背景),
-    var(--雾化玻璃底),
-    color-mix(in srgb, var(--实体背景) 62%, rgba(255, 255, 255, 0.14));
+    var(--投影暗玻底);
+  --全息材质底: var(--实体背景);
   --全息材质悬停底:
-    var(--雾化乳光层),
-    var(--雾化玻璃扫光),
-    var(--全息噪点层),
-    var(--介质纹理),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06)),
-    var(--投影背景),
-    var(--雾化玻璃底),
-    color-mix(in srgb, var(--实体背景) 66%, var(--主题主色) 14%);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
+    var(--实体背景);
   --全息材质线: var(--边线颜色);
   --全息材质弱线: color-mix(in srgb, var(--边线颜色) 36%, rgba(255, 255, 255, 0.075));
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
@@ -16977,22 +16932,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
   --全息材质阴影:
-    0 18px 42px rgba(0, 0, 0, 0.16),
-    0 0 38px color-mix(in srgb, var(--主题主色) 10%, transparent),
-    2px 4px 10px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 0 0 1px var(--全息材质弱线),
-    inset 0 0 38px color-mix(in srgb, var(--主题主色) 8%, transparent),
-    inset 0 -30px 70px rgba(255, 255, 255, 0.08);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 10px color-mix(in srgb, var(--主题主色) 18%, transparent);
   --全息材质悬停阴影:
-    0 20px 46px rgba(0, 0, 0, 0.2),
-    0 0 42px color-mix(in srgb, var(--主题主色) 12%, transparent),
-    2px 4px 10px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    inset 0 0 42px color-mix(in srgb, var(--主题主色) 14%, transparent),
-    inset 0 -30px 72px rgba(255, 255, 255, 0.09),
-    0 0 18px var(--全息材质强辉光);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 14px color-mix(in srgb, var(--主题主色) 28%, transparent);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -17043,11 +16987,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   border-radius: var(--mvu-holo-radius);
   background: var(--mvu-holo-shell-bg);
   box-shadow:
-    0 22px 48px rgba(0, 0, 0, 0.24),
-    var(--主题发光),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 0 44px color-mix(in srgb, var(--主题主色) 14%, transparent),
-    inset 0 -48px 110px rgba(255, 255, 255, 0.06);
+    0 18px 42px rgba(0, 0, 0, 0.36),
+    var(--主题发光);
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   backdrop-filter: var(--玻璃滤镜) !important;
@@ -17189,10 +17130,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源游标: #ff7eb3;
   --介质纹理:
     linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
-  --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
-    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
-  --实体背景: rgba(255, 255, 255, 0.11);
+  --投影背景: linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
+  --实体背景: rgba(0, 210, 255, 0.07);
   --虚幻背景: rgba(0, 210, 255, 0.045);
   --边线颜色: rgba(255, 255, 255, 0.18);
   --虚线: rgba(255, 255, 255, 0.16);
@@ -17219,37 +17158,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at 8% 12%, rgba(255, 255, 255, 0.22), transparent 26%),
-    radial-gradient(ellipse at 74% 70%, color-mix(in srgb, var(--主题辅色) 22%, transparent), transparent 38%),
-    radial-gradient(ellipse at 48% 54%, rgba(255, 255, 255, 0.085), transparent 44%),
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 34%, transparent), transparent 24%),
-    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 24%, transparent), transparent 24%);
-  mix-blend-mode: screen;
-  opacity: 0.72;
+  background: var(--投影雾光);
+  opacity: 0.52;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
+    radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--主题高光) 8%, transparent), transparent 18%),
     radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
-    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
+    linear-gradient(115deg, transparent 0 22%, rgba(255,126,179,0.08) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
   background-size: 160% 160%;
-  mix-blend-mode: screen;
-  opacity: 0.86;
+  opacity: 0.58;
   animation: 水幕焦散 8s ease-in-out infinite;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
   background:
-    radial-gradient(circle at 18% 20%, rgba(255,255,255,0.28), transparent 18%),
-    linear-gradient(120deg, rgba(255,255,255,0.12), transparent 30%, rgba(224,234,255,0.12));
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 26%, transparent), transparent 22%),
+    radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 14%, transparent), transparent 22%);
   clip-path: polygon(0 0, 100% 0, 92% 28%, 100% 100%, 0 100%, 8% 66%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::after {
-  background: none;
-  opacity: 0;
+  background: var(--投影暗扫线);
+  opacity: 0.22;
 }
 
 @keyframes 水幕焦散 {
@@ -17268,11 +17200,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.16), transparent 30%, rgba(255, 255, 255, 0.055) 56%, transparent 78%),
-    var(--雾化扫描层);
-  mix-blend-mode: screen;
-  opacity: 0.46;
+  background: var(--投影暗扫线);
+  mix-blend-mode: multiply;
+  opacity: 0.38;
 }
 
 @keyframes mvu-unified-frame-scan {
@@ -17803,9 +17733,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   padding: 6px;
   overflow-x: hidden;
   overflow-y: auto;
-  background:
-    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 32%),
-    color-mix(in srgb, var(--暗场底板强) 18%, transparent);
+  border: 1px solid var(--边线颜色);
+  background: var(--投影背景);
+  box-shadow:
+    var(--主题发光),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
   color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
@@ -17845,18 +17777,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
   border: 0;
   border-radius: 2px;
   background:
-    var(--雾化乳光层),
-    var(--雾化玻璃扫光),
     linear-gradient(color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2.2%, transparent) 1px, transparent 1px),
     radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 34%),
-    var(--雾化暗玻层),
-    var(--原型暗玻底);
-  background-size: auto, auto, 24px 24px, 24px 24px, auto, auto, auto;
+    var(--投影背景);
+  background-size: 24px 24px, 24px 24px, auto, auto;
   box-shadow:
     inset 0 0 0 1px var(--原型光刻线),
-    var(--全息材质阴影),
-    inset 0 0 28px var(--原型内辉光);
+    var(--主题发光),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
@@ -17868,12 +17797,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    var(--雾化角光层),
-    radial-gradient(ellipse at 18% 12%, rgba(255, 255, 255, 0.16), transparent 28%),
-    radial-gradient(ellipse at 84% 86%, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 38%);
-  opacity: 0.82;
-  mix-blend-mode: screen;
+  background: var(--投影雾光);
+  opacity: 0.52;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::after,
@@ -18142,23 +18067,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before {
   z-index: 0;
-  background:
-    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.22), transparent 30%),
-    radial-gradient(ellipse at 80% 86%, color-mix(in srgb, var(--主题高光) 14%, transparent), transparent 38%),
-    radial-gradient(ellipse at 52% 58%, rgba(255, 255, 255, 0.075), transparent 42%),
-    linear-gradient(105deg, rgba(255, 255, 255, 0.15), transparent 30%, rgba(255, 255, 255, 0.05) 58%, transparent 78%);
-  mix-blend-mode: screen;
-  opacity: 0.92;
+  background: var(--投影雾光);
+  opacity: 0.52;
   border-radius: inherit;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
   z-index: 0;
-  background:
-    var(--雾化角光层),
-    var(--雾化扫描层);
-  mix-blend-mode: screen;
-  opacity: 0.68;
+  background: var(--投影暗扫线);
+  mix-blend-mode: multiply;
+  opacity: 0.38;
   border-radius: inherit;
 }
 
@@ -23672,9 +23590,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   --archive-shell-edge-strong: var(--强线);
   --archive-card-bg: var(--全息材质底);
   --archive-card-muted:
-    var(--介质纹理),
-    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
-    color-mix(in srgb, var(--实体背景) 58%, transparent);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 7%, transparent), transparent 76%),
+    var(--虚幻背景);
   --archive-text-strong: var(--文字主色);
   --archive-text: var(--文字主色);
   --archive-text-muted: var(--文字弱色);
@@ -23849,12 +23766,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   pointer-events: none;
   border: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.2), transparent 30%),
-    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 38%),
-    linear-gradient(105deg, rgba(255, 255, 255, 0.13), transparent 30%, rgba(255, 255, 255, 0.045) 58%, transparent 78%);
-  mix-blend-mode: screen;
-  opacity: 0.86;
+  background: var(--投影雾光);
+  opacity: 0.52;
   z-index: 0;
 }
 
@@ -23870,11 +23783,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   pointer-events: none;
   border: 0;
   border-radius: inherit;
-  background:
-    var(--雾化角光层),
-    var(--雾化扫描层);
-  mix-blend-mode: screen;
-  opacity: 0.58;
+  background: var(--投影暗扫线);
+  mix-blend-mode: multiply;
+  opacity: 0.38;
   z-index: 0;
 }
 
@@ -25647,12 +25558,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   pointer-events: none;
   border: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(ellipse at 14% 10%, rgba(255, 255, 255, 0.2), transparent 30%),
-    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 38%),
-    linear-gradient(105deg, rgba(255, 255, 255, 0.13), transparent 30%, rgba(255, 255, 255, 0.045) 58%, transparent 78%);
-  mix-blend-mode: screen;
-  opacity: 0.86;
+  background: var(--投影雾光);
+  opacity: 0.52;
   z-index: 0;
 }
 
@@ -25668,11 +25575,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   pointer-events: none;
   border: 0;
   border-radius: inherit;
-  background:
-    var(--雾化角光层),
-    var(--雾化扫描层);
-  mix-blend-mode: screen;
-  opacity: 0.58;
+  background: var(--投影暗扫线);
+  mix-blend-mode: multiply;
+  opacity: 0.38;
   z-index: 0;
 }
 
