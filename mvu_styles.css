@@ -1028,11 +1028,11 @@
 .ring-hover-chip {
   border-radius: var(--mvu-radius-pill, 999px);
   padding: 4px 7px;
-  background: rgba(0, 229, 255, 0.06);
-  border: 1px solid rgba(0, 229, 255, 0.1);
+  background: color-mix(in srgb, var(--主题主色) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--主题主色) 28%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
-  color: var(--text-sub);
+  color: color-mix(in srgb, var(--文字主色) 74%, var(--主题主色));
 }
 
 .state-tag {
@@ -3026,12 +3026,13 @@ body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-holo-slab-root,
 body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-modal-panel,
 body[data-mvu-holo-theme='幻海蝶舞'] #detailModal .mvu-holo-slab-root,
 body[data-mvu-holo-theme='幻海蝶舞'] #detailModal.mvu-modal-display-unified .mvu-modal-panel {
-  background: var(--投影背景);
+  border-color: transparent;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
+    var(--投影背景);
   box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.36),
     var(--主题发光),
-    0 0 30px rgba(255, 126, 179, 0.22),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+    0 0 30px rgba(255, 126, 179, 0.22);
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-detail-host::before,
@@ -7505,13 +7506,13 @@ button.tag-chip:active,
   padding: 8px 9px;
   border-radius: 0;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-  border-color: rgba(143, 233, 255, 0.2);
+  border-color: color-mix(in srgb, var(--边线颜色) 60%, transparent);
   background:
-    repeating-linear-gradient(0deg, rgba(143, 233, 255, 0.028) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(5, 15, 27, 0.98), rgba(3, 9, 17, 0.98));
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--主题主色) 5%, transparent) 0 1px, transparent 1px 16px),
+    linear-gradient(180deg, color-mix(in srgb, var(--主题底色) 98%, transparent), color-mix(in srgb, #000 58%, var(--主题底色)));
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.42),
-    inset 0 0 0 1px rgba(143, 233, 255, 0.045);
+    inset 0 0 0 1px color-mix(in srgb, var(--边线颜色) 18%, transparent);
 }
 
 .ring-hover-skill-head {
@@ -7524,7 +7525,7 @@ button.tag-chip:active,
 
 .ring-hover-skill-head b {
   margin-bottom: 0;
-  color: #f4fbff;
+  color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
 }
 
@@ -7534,7 +7535,7 @@ button.tag-chip:active,
   border-radius: 0;
   border: 0;
   background: transparent;
-  color: rgba(172, 251, 221, 0.92);
+  color: color-mix(in srgb, var(--主题主色) 62%, var(--文字主色));
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   box-shadow: none;
@@ -7543,14 +7544,14 @@ button.tag-chip:active,
 .ring-hover-card.soul-ring-tooltip .ring-hover-title {
   margin-bottom: 3px;
   font-size: var(--mvu-font-sm, 12px);
-  color: #f4fbff;
+  color: var(--文字主色);
 }
 
 .ring-hover-card.soul-ring-tooltip .ring-hover-desc {
   margin-bottom: 7px;
   padding-bottom: 6px;
-  border-bottom: 1px dashed rgba(143, 233, 255, 0.12);
-  color: rgba(157, 183, 191, 0.76);
+  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 20%, transparent);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.35;
 }
@@ -7586,7 +7587,7 @@ button.tag-chip:active,
 .ring-hover-card.soul-ring-tooltip .ring-hover-copy {
   margin-bottom: 6px;
   padding-top: 5px;
-  border-top: 1px dashed rgba(143, 233, 255, 0.09);
+  border-top: 1px dashed color-mix(in srgb, var(--边线颜色) 16%, transparent);
 }
 
 .ring-hover-card.soul-ring-tooltip .ring-hover-copy:last-child {
@@ -7594,11 +7595,11 @@ button.tag-chip:active,
 }
 
 .ring-hover-card.soul-ring-tooltip .ring-hover-copy em {
-  color: rgba(157, 183, 191, 0.72);
+  color: color-mix(in srgb, var(--文字弱色) 88%, transparent);
 }
 
 .ring-hover-card.soul-ring-tooltip .ring-hover-copy span {
-  color: #f4fbff;
+  color: var(--文字主色);
   line-height: 1.45;
 }
 
@@ -16990,14 +16991,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
   --全息材质阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 14px color-mix(in srgb, var(--边线颜色) 20%, transparent),
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
+    0 0 12px color-mix(in srgb, var(--主题主色) 26%, transparent);
   --全息材质悬停阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 18px color-mix(in srgb, var(--边线颜色) 28%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--边线颜色) 36%, rgba(255,255,255,0.075)),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 8%, transparent);
+    0 0 18px color-mix(in srgb, var(--主题主色) 38%, transparent);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -17086,7 +17083,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字主色: #e9fffb;
   --文字弱色: #8ba9b7;
   --主题光束: linear-gradient(90deg, #00ffcc, rgba(0, 255, 204, 0.52), transparent);
-  --主题发光: 0 0 22px rgba(0, 255, 204, 0.42);
+  --主题发光: 0 0 18px rgba(0, 255, 204, 0.46);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17125,7 +17122,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字主色: #fff0d7;
   --文字弱色: #c9966c;
   --主题光束: radial-gradient(circle, #ffd700, #ff3300 48%, transparent 70%);
-  --主题发光: 0 0 26px rgba(255, 51, 0, 0.42);
+  --主题发光: 0 0 22px rgba(255, 51, 0, 0.42);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17160,7 +17157,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字主色: #f7fbff;
   --文字弱色: #b8c7da;
   --主题光束: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), rgba(224,234,255,0.4), transparent);
-  --主题发光: inset 0 0 20px rgba(255,255,255,0.13), 0 0 24px rgba(224, 234, 255, 0.28);
+  --主题发光: inset 0 0 18px rgba(255,255,255,0.12), 0 0 20px rgba(224, 234, 255, 0.28);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17191,9 +17188,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源游标: #ff7eb3;
   --介质纹理:
     linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
-  --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
-    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
+  --投影背景: linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
   --实体背景: rgba(255, 255, 255, 0.11);
   --虚幻背景: rgba(0, 210, 255, 0.045);
   --边线颜色: rgba(255, 255, 255, 0.18);
@@ -17203,10 +17198,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字主色: #f7feff;
   --文字弱色: #8ec9d7;
   --主题光束: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
-  --主题发光:
-    0 0 22px rgba(0, 210, 255, 0.38),
-    0 0 42px rgba(255, 126, 179, 0.18),
-    inset 0 0 28px rgba(0, 210, 255, 0.13);
+  --主题发光: 0 0 15px rgba(0, 210, 255, 0.4), inset 0 0 20px rgba(255, 126, 179, 0.2);
   --mvu-holo-medium:
     var(--介质纹理),
     var(--投影背景),
