@@ -96,12 +96,14 @@
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息材质底:
     var(--全息噪点层),
+    var(--介质纹理),
     linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
-    color-mix(in srgb, var(--暗场卡片) 72%, transparent);
+    color-mix(in srgb, var(--实体背景) 64%, var(--暗场卡片) 36%);
   --全息材质悬停底:
     var(--全息噪点层),
+    var(--介质纹理),
     linear-gradient(135deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.022)),
-    color-mix(in srgb, var(--暗场卡片) 72%, var(--主题主色) 8%);
+    color-mix(in srgb, var(--实体背景) 70%, var(--主题主色) 8%);
   --全息材质线: var(--边线颜色);
   --全息材质弱线: rgba(255, 255, 255, 0.075);
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
