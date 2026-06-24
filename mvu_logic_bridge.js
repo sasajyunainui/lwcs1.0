@@ -29223,15 +29223,7 @@
     const hpPair = getDisplayHpPair(stat);
     const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}));
     const 雷达HTML = 构建档案属性雷达(stat);
-    const 突破文本 = nextLevelSoul.isMax
-      ? '已满级'
-      : nextLevelSoul.blocked
-        ? nextLevelSoul.blockedBy === 'ring'
-          ? '魂环限制'
-          : '魂核限制'
-        : toNumber(nextLevelSoul.needed, 0) <= 0
-          ? `Lv.${formatNumber(nextLevelSoul.nextLevel)}`
-          : 格式化属性短数字(nextLevelSoul.needed);
+    const 魂力经验条HTML = 构建档案魂力经验条(stat, nextLevelSoul);
     return `
         ${构建档案身份天幕(snapshot)}
         <div class="mvu-archive-core-section mvu-archive-core-section--vitals">
@@ -29243,11 +29235,11 @@
           ${构建档案资源条('魂力', stat.魂力, stat.魂力上限, 'soul')}
           ${构建档案资源条('体力', stat.体力, stat.体力上限, 'stamina')}
           ${构建档案资源条('精神', stat.精神力, stat.精神力上限, 'mind')}
+          ${魂力经验条HTML}
         </div>
         <div class="mvu-archive-core-section mvu-archive-core-section--radar">
           <div class="mvu-archive-radar">
             ${雷达HTML}
-            <div class="mvu-archive-radar-core"><b>突破</b><em>${htmlEscape(突破文本)}</em></div>
           </div>
         </div>
         `;
@@ -29283,6 +29275,34 @@
     return `
         <div class="mvu-archive-led mvu-archive-led--${escapeHtmlAttr(色调)}${危急 ? ' is-critical' : ''}" style="--value:${比例}%">
           <label>${htmlEscape(标签)}<span>${htmlEscape(`${格式化属性短数字(当前)} / ${格式化属性短数字(上限)}`)}</span></label>
+          <div class="mvu-archive-led-track"><i></i></div>
+        </div>
+      `;
+  }
+
+  function 构建档案魂力经验条(stat = {}, nextLevelSoul = {}) {
+    const 当前魂力上限 = Math.max(0, toNumber(stat && stat.魂力上限, 0));
+    const 待补魂力 = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.needed, 0));
+    const 目标等级 = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.nextLevel, toNumber(stat && stat.等级, 0) + 1));
+    const 是否满级 = !!(nextLevelSoul && nextLevelSoul.isMax);
+    const 是否受限 = !!(nextLevelSoul && nextLevelSoul.blocked);
+    const 状态文本 = 是否满级
+      ? '已满级'
+      : 是否受限
+        ? nextLevelSoul.blockedBy === 'ring'
+          ? '魂环限制'
+          : '魂核限制'
+        : 待补魂力 <= 0
+          ? `可至 Lv.${formatNumber(目标等级)}`
+          : `还需 ${格式化属性短数字(待补魂力)}`;
+    const 目标魂力上限 = 当前魂力上限 + 待补魂力;
+    const 进度 = 是否满级 || 是否受限 || 待补魂力 <= 0 ? 100 : ratioPercent(当前魂力上限, 目标魂力上限);
+    const 提示文本 = 是否满级
+      ? '魂力经验：已抵达上限'
+      : `${状态文本}；当前魂力上限 ${格式化属性完整数字(当前魂力上限)}；目标 Lv.${formatNumber(目标等级)}`;
+    return `
+        <div class="mvu-archive-led mvu-archive-led--soul mvu-archive-led--breakthrough" style="--value:${进度}%" title="${escapeHtmlAttr(提示文本)}">
+          <label>魂力经验<span>${htmlEscape(状态文本)}</span></label>
           <div class="mvu-archive-led-track"><i></i></div>
         </div>
       `;

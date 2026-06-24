@@ -543,7 +543,7 @@ const DesktopUnifiedLayout = {
           <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
         </section>
       </section>
-      <div class="mvu-unified-theme-dock" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
+      <div class="mvu-unified-theme-dock" :data-holo-theme="全息星轨状态.主题" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
         <button
           type="button"
           class="mvu-unified-theme-toggle"

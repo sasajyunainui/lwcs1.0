@@ -92,7 +92,10 @@
   --原型光刻强线: var(--强线);
   --原型弱分隔线: var(--虚线);
   --原型内辉光: var(--自发光微光);
-  --原型文字辉光: 0 0 12px color-mix(in srgb, var(--主题主色) 48%, transparent), 0 0 2px rgba(255, 255, 255, 0.82);
+  --全息清晰字影: 0 1px 1px rgba(0, 0, 0, 0.88), 0 0 1px rgba(255, 255, 255, 0.26);
+  --全息标题字影: 0 1px 1px rgba(0, 0, 0, 0.92), 0 0 3px color-mix(in srgb, var(--主题主色) 26%, transparent);
+  --全息数值字影: 0 1px 1px rgba(0, 0, 0, 0.92), 0 0 2px color-mix(in srgb, var(--主题主色) 18%, transparent);
+  --原型文字辉光: var(--全息标题字影);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息投影遮罩:
     var(--全息噪点层),
@@ -16834,31 +16837,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] {
-  --主题主色: #00d2ff;
-  --主题辅色: #ff7eb3;
-  --主题高光: #ffffff;
-  --主题底色: #062333;
-  --投影圆角: 30px 40px 20px 40px;
-  --卡片圆角: 22px 28px 18px 26px;
-  --自发光颜色: rgba(255, 126, 179, 0.72);
-  --自发光微光: rgba(0, 210, 255, 0.2);
-  --资源亮色: #00d2ff;
-  --资源暗格: rgba(0, 210, 255, 0.13);
-  --资源游标: #ff7eb3;
+  --主题主色: #67f7ef;
+  --主题辅色: #88b8ff;
+  --主题高光: rgba(240, 250, 252, 0.98);
+  --主题底色: #06111e;
+  --投影圆角: 2px;
+  --卡片圆角: 4px;
+  --自发光颜色: rgba(103, 247, 239, 0.62);
+  --自发光微光: rgba(103, 247, 239, 0.18);
+  --资源亮色: #67f7ef;
+  --资源暗格: rgba(103, 247, 239, 0.14);
+  --资源游标: #f0fafc;
   --介质纹理:
-    linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
+    linear-gradient(135deg, rgba(103, 247, 239, 0.055), rgba(136, 184, 255, 0.04), rgba(255, 255, 255, 0.018));
   --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
-    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
-  --实体背景: rgba(255, 255, 255, 0.11);
-  --虚幻背景: rgba(0, 210, 255, 0.045);
-  --边线颜色: rgba(255, 255, 255, 0.18);
+    radial-gradient(circle at 18% 24%, rgba(103, 247, 239, 0.12), transparent 20%),
+    linear-gradient(135deg, rgba(103, 247, 239, 0.058), rgba(136, 184, 255, 0.04), rgba(255, 255, 255, 0.016));
+  --实体背景: rgba(9, 17, 24, 0.7);
+  --虚幻背景: rgba(103, 247, 239, 0.04);
+  --边线颜色: rgba(103, 247, 239, 0.3);
   --虚化强度: blur(24px) saturate(150%);
-  --主题光束: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
+  --主题光束: linear-gradient(90deg, transparent, rgba(103, 247, 239, 0.86), rgba(136, 184, 255, 0.34), transparent);
   --主题发光:
-    0 0 22px rgba(0, 210, 255, 0.38),
-    0 0 42px rgba(255, 126, 179, 0.18),
-    inset 0 0 28px rgba(0, 210, 255, 0.13);
+    0 0 24px rgba(103, 247, 239, 0.24),
+    0 0 40px rgba(136, 184, 255, 0.1),
+    inset 0 0 28px rgba(103, 247, 239, 0.1);
   --mvu-holo-main: var(--主题主色);
   --mvu-holo-sub: var(--主题辅色);
   --mvu-holo-high: var(--主题高光);
@@ -16890,12 +16893,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
-    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
-    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
+    radial-gradient(ellipse at 20% 30%, rgba(240, 250, 252, 0.1), transparent 18%),
+    radial-gradient(ellipse at 70% 60%, rgba(103, 247, 239, 0.16), transparent 24%),
+    linear-gradient(115deg, transparent 0 22%, rgba(240, 250, 252, 0.07) 24%, transparent 31%, rgba(136, 184, 255, 0.055) 45%, transparent 52%);
   background-size: 160% 160%;
   mix-blend-mode: screen;
-  opacity: 0.86;
+  opacity: 0.62;
   animation: 水幕焦散 8s ease-in-out infinite;
 }
 
@@ -16930,6 +16933,37 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::after {
   background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
   mix-blend-mode: multiply;
   opacity: 0.38;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
+  --mvu-holo-main: var(--主题主色);
+  --mvu-holo-high: var(--主题高光);
+  --mvu-holo-text: var(--文字主色);
+  --mvu-holo-line: var(--边线颜色);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='炫世唐门'] {
+  --主题主色: #00ffcc;
+  --主题高光: #ffffff;
+  --边线颜色: rgba(0, 255, 204, 0.34);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='金龙王'] {
+  --主题主色: #ff3300;
+  --主题高光: #ffd700;
+  --边线颜色: rgba(255, 215, 0, 0.42);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='银龙王'] {
+  --主题主色: #e0eaff;
+  --主题高光: #ffffff;
+  --边线颜色: rgba(255, 255, 255, 0.3);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='幻海蝶舞'] {
+  --主题主色: #67f7ef;
+  --主题高光: rgba(240, 250, 252, 0.98);
+  --边线颜色: rgba(103, 247, 239, 0.3);
 }
 
 @keyframes mvu-unified-frame-scan {
@@ -17200,7 +17234,7 @@ body.noShadows.mvu-layout-holo #mvu-unified-mount
     .mvu-holo-metric b,
     .mvu-holo-row b
   ) {
-  text-shadow: var(--原型文字辉光) !important;
+  text-shadow: var(--全息清晰字影) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount
@@ -17223,7 +17257,7 @@ body.mvu-layout-holo #mvu-unified-mount
     .mvu-holo-metric b,
     .mvu-holo-row b
   ) {
-  mix-blend-mode: var(--光学混合模式);
+  mix-blend-mode: normal;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
@@ -17232,9 +17266,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   position: absolute;
-  z-index: 7;
+  z-index: 18;
   top: 48px;
-  left: calc(100% + 6px);
+  left: calc(100% + 8px);
+  right: auto;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -17253,8 +17288,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   height: 72px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--mvu-holo-main) 28%, transparent);
-  border-left: 0;
-  border-radius: 0 6px 6px 0;
+  border-radius: 4px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
     rgba(5, 12, 18, 0.72);
@@ -17268,7 +17302,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   cursor: pointer;
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
-  opacity: 0.62;
+  opacity: 0.88;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle span {
@@ -17362,6 +17396,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
   scrollbar-width: none;
 }
 
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-unified-page[data-target='page-archive']
+  .mvu-unified-section--dashboard {
+  overflow: hidden;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -17421,6 +17462,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page[data-target='page-archive'].active {
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active::-webkit-scrollbar {
@@ -17921,7 +17966,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid strong {
   font-size: 17px;
   font-weight: 860;
   line-height: 1.08;
-  text-shadow: var(--原型文字辉光);
+  text-shadow: var(--全息标题字影);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -17973,7 +18018,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack em {
   font-style: normal;
   font-weight: 600;
   line-height: 1.18;
-  text-shadow: var(--原型文字辉光);
+  text-shadow: var(--全息清晰字影);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -17987,7 +18032,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em:first-child {
   color: #ffffff;
-  text-shadow: var(--原型文字辉光);
+  text-shadow: var(--全息清晰字影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em + em::before {
@@ -18019,7 +18064,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head span {
   color: #ffffff;
   font-size: 13px;
   font-weight: 850;
-  text-shadow: var(--原型文字辉光);
+  text-shadow: var(--全息标题字影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
@@ -18065,6 +18110,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--mind {
   --led-color: #b891ff;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough {
+  --led-color: var(--mvu-holo-main);
+  gap: 4px;
+  padding-top: 1px;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label {
   display: flex;
   align-items: center;
@@ -18082,9 +18133,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label span {
   color: #ffffff;
   font: 850 12px var(--font-mono, "Cascadia Code", Consolas, monospace);
   text-shadow:
-    0 0 4px rgba(255, 255, 255, 0.72),
-    0 0 12px color-mix(in srgb, var(--led-color) 58%, transparent);
+    0 1px 1px rgba(0, 0, 0, 0.86),
+    0 0 3px color-mix(in srgb, var(--led-color) 28%, transparent);
   white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough label {
+  color: rgba(240, 250, 252, 0.76);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough label span {
+  color: var(--mvu-holo-high);
+  font-size: 11px;
+  text-shadow: var(--全息数值字影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track {
@@ -18122,6 +18185,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i {
   mix-blend-mode: var(--光学混合模式);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough .mvu-archive-led-track {
+  height: 9px;
+  padding: 2px 0;
+  background:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--led-color) 12%, transparent) 0 6px, transparent 6px 10px),
+    rgba(0, 0, 0, 0.22);
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i::after {
   content: "";
   position: absolute;
@@ -18150,50 +18221,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar {
   overflow: hidden;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core {
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar::after {
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
   z-index: 3;
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  width: 58px;
-  height: 58px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background:
     radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--mvu-holo-high) 14%, transparent), transparent 58%),
     radial-gradient(circle, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.08) 70%, transparent);
-  color: var(--mvu-holo-text);
-  text-align: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent),
     0 0 18px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core b,
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core em {
-  display: block;
-  max-width: 50px;
-  overflow: hidden;
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core b {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar-core em {
-  color: #ffffff;
-  font: 600 10px/1 var(--font-mono, "Cascadia Code", Consolas, monospace);
-  font-style: normal;
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .radar-shell {
@@ -18279,15 +18323,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip span {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: clamp(24px, 7%, 54px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(8px, 1.6vh, 16px);
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 4px 0;
+  padding: 0;
   overflow: visible;
   perspective: 1100px;
   transform-style: preserve-3d;
@@ -18333,20 +18378,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage::after {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node {
   position: relative;
   z-index: 1;
-  flex: 0 1 auto;
+  display: grid;
+  align-items: stretch;
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--primary {
-  align-self: start;
+  align-self: stretch;
   width: 100%;
   transform: translateZ(22px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node--secondary {
-  align-self: end;
+  align-self: stretch;
   width: 100%;
   transform: translateZ(22px);
 }
@@ -18355,9 +18403,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto minmax(122px, 1fr);
-  gap: 10px;
-  flex: 1 1 auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 6px;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -18367,11 +18415,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--empty {
-  grid-template-rows: auto minmax(126px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--dormant {
-  grid-template-rows: minmax(98px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
 }
 
@@ -18395,9 +18443,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b {
   gap: 7px;
   color: var(--mvu-holo-high);
   font-size: 18px;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1.1;
-  text-shadow: 0 0 14px var(--mvu-holo-glow);
+  text-shadow: var(--全息标题字影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b i {
@@ -18425,7 +18473,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   --archive-ring-field-width: min(300px, 100%);
-  --archive-ring-field-height: clamp(198px, 30vh, 286px);
+  --archive-ring-field-height: min(100%, clamp(164px, 24vh, 224px));
   --archive-ring-center-x: 50%;
   --archive-ring-center-y: 50%;
   position: relative;
@@ -18433,7 +18481,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   display: grid;
   place-items: center;
   min-width: 0;
-  min-height: 138px;
+  min-height: 0;
+  height: 100%;
   overflow: visible;
 }
 
@@ -18614,7 +18663,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot em {
   font-style: normal;
   font-weight: 600;
   line-height: 1.12;
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  text-shadow: var(--全息清晰字影);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18861,9 +18910,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head span {
   box-shadow: none;
   color: var(--mvu-holo-high);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1.12;
-  text-shadow: 0 0 12px var(--mvu-holo-glow);
+  text-shadow: var(--全息标题字影);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18966,7 +19015,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log span {
   overflow: hidden;
   color: #ffffff;
   font: 600 12px/1.25 var(--font-mono, "Cascadia Code", Consolas, monospace);
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  text-shadow: var(--全息清晰字影);
   text-overflow: ellipsis;
   white-space: nowrap;
   animation: mvu-archive-log-reveal 0.55s steps(14, end) both;
