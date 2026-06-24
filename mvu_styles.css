@@ -4127,7 +4127,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .status-pill.live,
 .tag-chip.live,
 .ring-chip.white {
-  border-color: rgba(0, 229, 255, 0.2);
+  border-color: color-mix(in srgb, var(--边线颜色) 64%, transparent);
   background: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
   color: var(--cyan);
 }
@@ -13446,13 +13446,55 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .role-switch-ti
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root {
+  --archive-shell-bg: var(--投影背景);
+  --archive-shell-surface: var(--投影背景);
+  --archive-shell-edge: var(--边线颜色);
+  --archive-shell-edge-strong: var(--强线);
+  --archive-card-bg: var(--全息材质底);
+  --archive-card-muted:
+    var(--介质纹理),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
+    color-mix(in srgb, var(--实体背景) 58%, transparent);
+  --archive-text-strong: var(--文字主色);
+  --archive-text: var(--文字主色);
+  --archive-text-muted: var(--文字弱色);
+  --archive-text-faint: color-mix(in srgb, var(--文字弱色) 72%, transparent);
+  --archive-accent: var(--主题主色);
+  --archive-accent-strong: var(--主题主色);
+  --archive-gold: var(--主题高光);
+  --archive-danger: #fb7185;
+  --archive-success: #4ade80;
+  --archive-radius: var(--投影圆角);
+  --archive-card-radius: var(--卡片圆角);
+  --archive-gap: 14px;
+  --dossier-shell-radius: var(--投影圆角);
+  --dossier-title: var(--文字主色);
+  --dossier-underlay: var(--投影背景);
+  --dossier-film: transparent;
+  --dossier-panel-bg: var(--投影背景);
+  --dossier-card-bg: var(--全息材质底);
+  --dossier-card-bg-strong: var(--全息材质悬停底);
+  --dossier-section-bg: transparent;
+  --dossier-line: var(--原型弱分隔线);
+  --dossier-line-strong: var(--原型光刻线);
+  --dossier-line-soft: color-mix(in srgb, var(--边线颜色) 42%, transparent);
+  --dossier-text-strong: var(--文字主色);
+  --dossier-text: var(--文字主色);
+  --dossier-text-muted: var(--文字弱色);
+  --dossier-text-soft: color-mix(in srgb, var(--文字弱色) 72%, transparent);
+  --dossier-accent: var(--主题主色);
+  --dossier-accent-strong: var(--主题主色);
+  --dossier-green: #78ddc2;
+  --dossier-red: #ff8baa;
+  --dossier-warn: var(--主题高光);
+  --dossier-shadow: 0 18px 36px rgba(0, 0, 0, 0.26);
   --mvu-dossier-panel: color-mix(in srgb, var(--暗场底板强) 72%, transparent);
-  --mvu-dossier-panel-soft: rgba(255, 255, 255, 0.035);
+  --mvu-dossier-panel-soft: color-mix(in srgb, var(--实体背景) 34%, transparent);
   --mvu-dossier-line: color-mix(in srgb, var(--边线颜色) 13%, transparent);
   --mvu-dossier-line-strong: color-mix(in srgb, var(--边线颜色) 24%, transparent);
-  --mvu-dossier-label: rgba(154, 193, 209, 0.86);
-  --mvu-dossier-value: rgba(242, 250, 252, 0.97);
-  --mvu-dossier-muted: rgba(188, 214, 224, 0.78);
+  --mvu-dossier-label: color-mix(in srgb, var(--文字弱色) 86%, transparent);
+  --mvu-dossier-value: color-mix(in srgb, var(--文字主色) 97%, transparent);
+  --mvu-dossier-muted: color-mix(in srgb, var(--文字弱色) 78%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section {
@@ -13477,7 +13519,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   align-items: center !important;
   gap: 8px !important;
   min-width: 0 !important;
-  color: rgba(232, 247, 251, 0.94) !important;
+  color: color-mix(in srgb, var(--文字主色) 94%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.25 !important;
   font-weight: 700 !important;
@@ -13576,7 +13618,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row > 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > b {
   min-width: 0 !important;
   margin: 0 !important;
-  color: rgba(255, 255, 255, 0.65) !important;
+  color: color-mix(in srgb, var(--文字弱色) 82%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.35 !important;
   font-weight: 700 !important;
@@ -13588,7 +13630,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row > 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > span {
   display: block !important;
   min-width: 0 !important;
-  color: #ffffff !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.46 !important;
   font-weight: 600 !important;
@@ -14492,12 +14534,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-overview-grid {
-  --mvu-quest-accent: rgba(77, 240, 255, 0.98);
-  --mvu-quest-accent-soft: rgba(77, 240, 255, 0.18);
-  --mvu-quest-accent-glow: rgba(77, 240, 255, 0.24);
-  --mvu-quest-accent-border: rgba(77, 240, 255, 0.24);
-  --mvu-quest-track: rgba(77, 240, 255, 0.14);
-  --mvu-quest-card-bg: linear-gradient(180deg, rgba(11, 26, 36, 0.72), rgba(7, 17, 24, 0.64));
+  --mvu-quest-accent: color-mix(in srgb, var(--主题主色) 98%, transparent);
+  --mvu-quest-accent-soft: color-mix(in srgb, var(--主题主色) 18%, transparent);
+  --mvu-quest-accent-glow: color-mix(in srgb, var(--主题主色) 24%, transparent);
+  --mvu-quest-accent-border: color-mix(in srgb, var(--边线颜色) 56%, transparent);
+  --mvu-quest-track: color-mix(in srgb, var(--主题主色) 14%, transparent);
+  --mvu-quest-card-bg:
+    linear-gradient(180deg, color-mix(in srgb, var(--暗场底板强) 72%, transparent), color-mix(in srgb, var(--暗场底板) 64%, transparent)),
+    var(--全息材质底);
   --mvu-quest-card-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
   height: min(720px, calc(100svh - 108px));
   min-height: min(620px, calc(100svh - 132px));
@@ -14507,11 +14551,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-overview-grid[data-quest-theme='board'] {
-  --mvu-quest-accent: rgba(212, 160, 255, 0.98);
-  --mvu-quest-accent-soft: rgba(212, 160, 255, 0.18);
-  --mvu-quest-accent-glow: rgba(212, 160, 255, 0.24);
-  --mvu-quest-accent-border: rgba(212, 160, 255, 0.24);
-  --mvu-quest-track: rgba(212, 160, 255, 0.14);
+  --mvu-quest-accent: color-mix(in srgb, var(--主题高光) 72%, var(--主题主色));
+  --mvu-quest-accent-soft: color-mix(in srgb, var(--主题高光) 18%, transparent);
+  --mvu-quest-accent-glow: color-mix(in srgb, var(--主题高光) 24%, transparent);
+  --mvu-quest-accent-border: color-mix(in srgb, var(--主题高光) 24%, transparent);
+  --mvu-quest-track: color-mix(in srgb, var(--主题高光) 14%, transparent);
 }
 
 .mvu-quest-list-card,
@@ -14527,8 +14571,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   max-height: none !important;
   align-self: stretch;
   padding: 14px;
-  border-color: rgba(118, 226, 255, 0.1);
-  background: rgba(5, 15, 22, 0.48);
+  border-color: color-mix(in srgb, var(--边线颜色) 24%, transparent);
+  background: var(--mvu-quest-card-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
@@ -14568,10 +14612,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-height: 44px;
   padding: 7px 12px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(118, 226, 255, 0.11);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 26%, transparent);
   background:
-    linear-gradient(90deg, rgba(77, 240, 255, 0.07), rgba(255, 255, 255, 0.018)),
-    rgba(5, 15, 22, 0.5);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 7%, transparent), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, var(--暗场底板强) 50%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
@@ -14587,7 +14631,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   padding: 3px 8px;
   border-radius: var(--mvu-radius-pill, 999px);
   border: 1px solid var(--mvu-quest-accent-border);
-  background: rgba(77, 240, 255, 0.065);
+  background: color-mix(in srgb, var(--主题主色) 6.5%, transparent);
   color: var(--mvu-quest-accent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
@@ -14596,7 +14640,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-summary-main b {
   min-width: 0;
-  color: rgba(236, 248, 252, 0.92);
+  color: color-mix(in srgb, var(--文字主色) 92%, transparent);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.3;
   font-weight: 800;
@@ -14626,14 +14670,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-summary-stats b {
-  color: rgba(246, 253, 255, 0.94);
+  color: color-mix(in srgb, var(--文字主色) 94%, transparent);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.1;
   font-weight: 900;
 }
 
 .mvu-quest-summary-stats em {
-  color: rgba(181, 211, 222, 0.72);
+  color: color-mix(in srgb, var(--文字弱色) 72%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   font-style: normal;
@@ -14684,9 +14728,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-height: 30px;
   padding: 0;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(118, 226, 255, 0.12);
-  background: rgba(4, 14, 20, 0.86);
-  color: rgba(233, 249, 252, 0.72);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
+  background: color-mix(in srgb, var(--暗场底板强) 86%, transparent);
+  color: color-mix(in srgb, var(--文字主色) 72%, transparent);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.1;
   font-weight: 800;
@@ -14718,20 +14762,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 .mvu-quest-tab:hover,
 .mvu-quest-tab:focus-visible {
   z-index: 30;
-  background: rgba(8, 28, 38, 0.92);
-  color: #f7feff;
+  background: color-mix(in srgb, var(--暗场底板强) 92%, var(--主题主色) 7%);
+  color: var(--文字主色);
   outline: none;
   box-shadow:
     0 6px 14px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(118, 226, 255, 0.12);
+    inset 0 0 0 1px color-mix(in srgb, var(--边线颜色) 28%, transparent);
 }
 
 .mvu-quest-tab.is-active {
   z-index: 25;
   background:
-    linear-gradient(180deg, rgba(118, 226, 255, 0.17), rgba(118, 226, 255, 0.08)),
-    rgba(5, 17, 24, 0.92);
-  color: #f7feff;
+    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 17%, transparent), color-mix(in srgb, var(--主题主色) 8%, transparent)),
+    color-mix(in srgb, var(--暗场底板强) 92%, transparent);
+  color: var(--文字主色);
   box-shadow:
     0 6px 14px rgba(0, 0, 0, 0.2),
     inset 0 0 0 1px var(--mvu-quest-accent-border);
@@ -14795,8 +14839,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-height: 72px;
   padding: 14px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(118, 226, 255, 0.08);
-  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
+  background: color-mix(in srgb, var(--实体背景) 18%, transparent);
 }
 
 .mvu-quest-create-panel {
@@ -14832,11 +14876,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   max-width: 28px;
   padding: 0;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(77, 240, 255, 0.34);
-  background: rgba(8, 35, 48, 0.86);
-  color: #f6feff;
+  border: 1px solid color-mix(in srgb, var(--主题主色) 34%, transparent);
+  background: color-mix(in srgb, var(--暗场底板强) 86%, var(--主题主色) 7%);
+  color: var(--文字主色);
   box-shadow:
-    0 0 14px rgba(77, 240, 255, 0.1),
+    0 0 14px color-mix(in srgb, var(--主题主色) 10%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
   font-size: 0;
@@ -14878,8 +14922,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   overflow: auto;
   padding: 10px;
   border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(118, 226, 255, 0.18);
-  background: rgba(5, 16, 23, 0.96);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 42%, transparent);
+  background:
+    var(--介质纹理),
+    color-mix(in srgb, var(--暗场浮层) 96%, transparent);
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -14900,7 +14946,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-form-field > span {
   min-width: 0;
-  color: rgba(170, 223, 236, 0.72);
+  color: color-mix(in srgb, var(--文字弱色) 82%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   font-weight: 800;
@@ -14933,10 +14979,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   padding: 10px 10px 10px 15px !important;
   border-radius: var(--mvu-radius-sm, 8px) !important;
   border: 0;
-  border-left: 4px solid rgba(118, 226, 255, 0.18);
+  border-left: 4px solid color-mix(in srgb, var(--边线颜色) 42%, transparent);
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
-    rgba(5, 15, 22, 0.62);
+    color-mix(in srgb, var(--暗场底板强) 62%, transparent);
   box-shadow: var(--mvu-quest-card-shadow);
   cursor: pointer;
   overflow: hidden;
@@ -14958,7 +15004,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-bookmark[data-quest-status='active'] {
-  border-left-color: var(--mvu-color-tech-cyan, #00f3ff);
+  border-left-color: var(--主题主色);
 }
 
 .mvu-quest-bookmark[data-quest-status='completed'] {
@@ -14971,7 +15017,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-bookmark:hover,
 .mvu-quest-bookmark:focus-visible {
-  border-color: rgba(118, 226, 255, 0.42);
+  border-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
   outline: none;
   transform: translateY(-1px);
   box-shadow:
@@ -14983,8 +15029,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   border-left-color: var(--mvu-quest-accent);
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--mvu-quest-accent) 12%, rgba(12, 30, 40, 0.76)),
-    rgba(8, 20, 28, 0.58)
+    color-mix(in srgb, var(--mvu-quest-accent) 12%, var(--暗场底板强)),
+    color-mix(in srgb, var(--暗场底板) 58%, transparent)
   );
   box-shadow:
     0 0 18px var(--mvu-quest-accent-glow),
@@ -15038,7 +15084,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 .mvu-quest-card-title {
   min-width: 0;
   flex: 1 1 auto;
-  color: var(--white);
+  color: var(--文字主色);
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.3;
   font-weight: 900;
@@ -15051,7 +15097,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   flex: 0 0 auto;
   padding: 2px 8px;
   border-radius: var(--mvu-radius-xs, 4px);
-  color: rgba(239, 250, 253, 0.94);
+  color: color-mix(in srgb, var(--文字主色) 94%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   font-weight: 800;
@@ -15059,9 +15105,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-bookmark[data-quest-status='active'] .mvu-quest-card-status {
-  border: 1px solid rgba(0, 243, 255, 0.3);
-  background: rgba(0, 243, 255, 0.1);
-  color: var(--mvu-color-tech-cyan, #00f3ff);
+  border: 1px solid color-mix(in srgb, var(--主题主色) 30%, transparent);
+  background: color-mix(in srgb, var(--主题主色) 10%, transparent);
+  color: var(--主题主色);
 }
 
 .mvu-quest-bookmark[data-quest-status='completed'] .mvu-quest-card-status {
@@ -15083,7 +15129,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   gap: 8px;
   min-width: 0;
   padding-left: 10px;
-  color: rgba(204, 225, 232, 0.88);
+  color: color-mix(in srgb, var(--文字主色) 70%, var(--文字弱色));
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.35;
   overflow: hidden;
@@ -15099,7 +15145,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-card-foot {
   padding-left: 10px;
-  color: rgba(184, 210, 219, 0.8);
+  color: color-mix(in srgb, var(--文字弱色) 84%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.35;
   overflow: hidden;
@@ -15133,7 +15179,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-card-deadline {
   flex: 0 0 auto;
-  color: rgba(226, 238, 243, 0.84);
+  color: color-mix(in srgb, var(--文字主色) 84%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   font-weight: 900;
 }
@@ -15194,7 +15240,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-detail-title {
   min-width: 0;
-  color: var(--white);
+  color: var(--文字主色);
   font-size: var(--mvu-font-xl, 18px);
   line-height: 1.18;
   font-weight: 900;
@@ -15217,7 +15263,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--mvu-color-tech-cyan, #00f3ff);
+  color: var(--主题主色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   font-weight: 700;
@@ -15292,7 +15338,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-meta-row > span {
-  color: rgba(148, 163, 184, 0.84);
+  color: color-mix(in srgb, var(--文字弱色) 84%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   font-weight: 800;
@@ -15300,7 +15346,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-meta-row > b {
   min-width: 0;
-  color: rgba(248, 250, 252, 0.96);
+  color: color-mix(in srgb, var(--文字主色) 96%, transparent);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.35;
   font-weight: 800;
@@ -15322,7 +15368,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-deadline-row > b {
-  color: rgba(248, 250, 252, 0.9);
+  color: color-mix(in srgb, var(--文字主色) 90%, transparent);
   text-shadow: none;
 }
 
@@ -15347,7 +15393,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-contract-side strong {
-  color: rgba(226, 238, 243, 0.78);
+  color: color-mix(in srgb, var(--文字主色) 78%, transparent);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.2;
   font-weight: 800;
@@ -15367,7 +15413,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-contract-side em {
-  color: rgba(148, 163, 184, 0.78);
+  color: color-mix(in srgb, var(--文字弱色) 78%, transparent);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
   font-style: normal;
@@ -15412,7 +15458,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-detail-section-title {
-  color: rgba(194, 217, 226, 0.86);
+  color: color-mix(in srgb, var(--文字弱色) 86%, transparent);
   font-size: var(--mvu-font-sm, 12px);
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -15420,7 +15466,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 .mvu-quest-detail-text {
   min-width: 0;
-  color: rgba(233, 243, 247, 0.96);
+  color: color-mix(in srgb, var(--文字主色) 96%, transparent);
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -15440,26 +15486,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-width: 0;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
-  background: linear-gradient(180deg, transparent, rgba(5, 15, 22, 0.58));
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--暗场底板强) 58%, transparent));
 }
 
 .mvu-quest-detail-card > .mvu-quest-action-bar .mvu-quest-primary-action {
-  border-color: rgba(77, 240, 255, 0.34);
-  background: linear-gradient(180deg, rgba(77, 240, 255, 0.95), rgba(8, 148, 168, 0.9));
-  color: rgba(3, 18, 24, 0.96);
-  box-shadow: 0 0 18px rgba(77, 240, 255, 0.2);
+  border-color: color-mix(in srgb, var(--主题主色) 34%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 88%, var(--主题高光) 12%), color-mix(in srgb, var(--主题主色) 72%, #000 28%));
+  color: color-mix(in srgb, var(--主题底色) 86%, #000);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent);
   font-weight: 950;
 }
 
 .mvu-quest-detail-card > .mvu-quest-action-bar .mvu-quest-primary-action:hover,
 .mvu-quest-detail-card > .mvu-quest-action-bar .mvu-quest-primary-action:focus-visible {
-  box-shadow: 0 0 24px rgba(77, 240, 255, 0.34);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--主题主色) 34%, transparent);
 }
 
 .mvu-quest-detail-card > .mvu-quest-action-bar .mvu-quest-danger-action {
   border-color: rgba(244, 63, 94, 0.18);
   background: rgba(9, 16, 22, 0.52);
-  color: rgba(248, 250, 252, 0.7);
+  color: color-mix(in srgb, var(--文字主色) 70%, transparent);
   box-shadow: none;
 }
 
@@ -15476,9 +15522,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-height: 160px;
   padding: 18px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(118, 226, 255, 0.08);
-  background: rgba(255, 255, 255, 0.018);
-  color: rgba(191, 214, 223, 0.76);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
+  background: color-mix(in srgb, var(--实体背景) 18%, transparent);
+  color: color-mix(in srgb, var(--文字弱色) 76%, transparent);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.5;
   text-align: center;
@@ -15613,9 +15659,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
     min-width: 18px;
     padding: 2px 6px;
     border-radius: var(--mvu-radius-pill, 999px);
-    border: 1px solid rgba(118, 226, 255, 0.12);
-    background: rgba(3, 13, 18, 0.68);
-    color: rgba(238, 250, 253, 0.82);
+    border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
+    background: color-mix(in srgb, var(--暗场底板强) 68%, transparent);
+    color: color-mix(in srgb, var(--文字主色) 82%, transparent);
     font-size: var(--mvu-font-xs, 10px);
     line-height: 1.2;
     font-weight: 800;
@@ -15760,7 +15806,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-sea
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-search-row .role-switch-search-count {
   flex: 0 0 auto !important;
-  color: rgba(220, 245, 255, 0.72) !important;
+  color: color-mix(in srgb, var(--文字弱色) 82%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-text,
@@ -15768,7 +15814,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-not
 #detailModal.mvu-modal-display-unified .mvu-detail-text,
 #detailModal.mvu-modal-display-unified .mvu-detail-note {
   min-width: 0 !important;
-  color: rgba(190, 215, 224, 0.86) !important;
+  color: color-mix(in srgb, var(--文字弱色) 86%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.55 !important;
   overflow-wrap: anywhere !important;
@@ -15798,7 +15844,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-met
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-text--framed b {
   display: block !important;
   margin-bottom: 6px !important;
-  color: rgba(244, 250, 252, 0.95) !important;
+  color: color-mix(in srgb, var(--文字主色) 95%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
 }
 
@@ -15827,7 +15873,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-pro
   display: flex !important;
   justify-content: space-between !important;
   gap: 8px !important;
-  color: rgba(190, 215, 224, 0.82) !important;
+  color: color-mix(in srgb, var(--文字弱色) 82%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-track,
@@ -15843,7 +15889,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-pro
   display: block !important;
   height: 100% !important;
   border-radius: inherit !important;
-  background: linear-gradient(90deg, rgba(0, 229, 255, 0.68), rgba(125, 255, 178, 0.88)) !important;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 68%, transparent), color-mix(in srgb, var(--主题高光) 68%, var(--主题主色) 20%)) !important;
 }
 
 .mvu-detail-progress--forest.is-warn .mvu-detail-progress-fill {
@@ -15986,11 +16032,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell-
   border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
   border-top: 2px solid color-mix(in srgb, var(--主题主色) 24%, transparent) !important;
   background:
-    linear-gradient(180deg, rgba(18, 30, 38, 0.94), rgba(9, 18, 24, 0.96)),
-    rgba(18, 26, 35, 0.6) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--暗场底板强) 82%, transparent), color-mix(in srgb, var(--暗场底板) 78%, transparent)),
+    var(--全息材质底) !important;
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .archive-card-head,
@@ -16175,7 +16222,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth
   padding: 10px 12px !important;
   border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
   border-radius: var(--mvu-radius-sm, 8px) !important;
-  background: rgba(0, 229, 255, 0.035) !important;
+  background: color-mix(in srgb, var(--主题主色) 3.5%, transparent) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
   overflow: visible !important;
 }
@@ -16188,7 +16235,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow .dossier-row > b {
   width: auto !important;
   min-width: 0 !important;
-  color: rgba(150, 172, 182, 0.72) !important;
+  color: color-mix(in srgb, var(--文字弱色) 82%, transparent) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.25 !important;
   letter-spacing: 0.06em !important;
@@ -16205,7 +16252,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profil
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: rgba(229, 239, 242, 0.94) !important;
+  color: color-mix(in srgb, var(--文字主色) 92%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.5 !important;
   letter-spacing: 0 !important;
@@ -16245,7 +16292,7 @@ body.mvu-layout-holo
   .dossier-profile-flow
   .dossier-row
   > span:focus-within {
-  color: rgba(246, 253, 255, 0.98) !important;
+  color: var(--文字主色) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow .dossier-row--wide,
@@ -16277,7 +16324,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth
 #detailModal.mvu-modal-display-unified .dossier-growth-flow .dossier-row > span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow .dossier-row > span {
   display: block !important;
-  color: rgba(236, 250, 253, 0.96) !important;
+  color: color-mix(in srgb, var(--文字主色) 96%, transparent) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.32 !important;
   letter-spacing: 0 !important;
@@ -16322,7 +16369,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
   border-radius: var(--mvu-radius-pill, 999px) !important;
   border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
   background: rgba(255, 255, 255, 0.032) !important;
-  color: rgba(230, 243, 247, 0.9) !important;
+  color: color-mix(in srgb, var(--文字主色) 88%, transparent) !important;
   overflow: hidden !important;
 }
 
@@ -16358,7 +16405,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip b,
 #detailModal.mvu-modal-display-unified .dossier-status-chip b,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip b {
-  color: rgba(154, 193, 209, 0.86) !important;
+  color: color-mix(in srgb, var(--文字弱色) 86%, transparent) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
   letter-spacing: 0.04em !important;
@@ -16369,7 +16416,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
 #detailModal.mvu-modal-display-unified .dossier-status-chip em,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip em {
   min-width: 0 !important;
-  color: rgba(242, 250, 252, 0.96) !important;
+  color: color-mix(in srgb, var(--文字主色) 96%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.15 !important;
   font-style: normal !important;
@@ -16398,7 +16445,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row,
 #detailModal.mvu-modal-display-unified .dossier-bonus-flow .dossier-row,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow .dossier-row {
-  --dossier-bonus-accent: 77, 240, 255;
+  --dossier-bonus-color: var(--主题主色);
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -16406,9 +16453,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
   min-width: 0 !important;
   min-height: 30px !important;
   padding: 5px 10px !important;
-  border: 1px solid rgba(var(--dossier-bonus-accent), 0.22) !important;
+  border: 1px solid color-mix(in srgb, var(--dossier-bonus-color) 22%, transparent) !important;
   border-radius: 999px !important;
-  background: rgba(var(--dossier-bonus-accent), 0.075) !important;
+  background: color-mix(in srgb, var(--dossier-bonus-color) 7.5%, transparent) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   gap: 6px !important;
   grid-template-columns: none !important;
@@ -16424,7 +16471,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row:nth-child(1),
 #detailModal.mvu-modal-display-unified .dossier-bonus-flow .dossier-row:nth-child(1),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow .dossier-row:nth-child(1) {
-  --dossier-bonus-accent: 255, 120, 132;
+  --dossier-bonus-color: color-mix(in srgb, var(--主题高光) 58%, #ff7884);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row:nth-child(2),
@@ -16433,7 +16480,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row:nth-child(3),
 #detailModal.mvu-modal-display-unified .dossier-bonus-flow .dossier-row:nth-child(3),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow .dossier-row:nth-child(3) {
-  --dossier-bonus-accent: 96, 180, 255;
+  --dossier-bonus-color: color-mix(in srgb, var(--主题主色) 70%, var(--主题高光));
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow .dossier-row > b,
@@ -16441,7 +16488,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow .dossier-row > b {
   width: auto !important;
   min-width: 0 !important;
-  color: rgba(215, 233, 239, 0.82) !important;
+  color: color-mix(in srgb, var(--文字弱色) 82%, var(--文字主色) 18%) !important;
   font-size: 11px !important;
   line-height: 1.2 !important;
   letter-spacing: 0 !important;
@@ -16461,7 +16508,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: rgba(var(--dossier-bonus-accent), 0.96) !important;
+  color: color-mix(in srgb, var(--dossier-bonus-color) 96%, transparent) !important;
   font-size: 13px !important;
   line-height: 1.2 !important;
   font-weight: 700 !important;
@@ -16586,7 +16633,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-
   padding: 8px 6px !important;
   border-radius: 8px !important;
   border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.06), rgba(0, 0, 0, 0.18)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 6%, transparent), rgba(0, 0, 0, 0.18)) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 6px 16px rgba(0, 0, 0, 0.08) !important;
@@ -16604,7 +16651,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-radar-wrap .legend-chip b {
   display: block !important;
   margin: 0 !important;
-  color: rgba(148, 171, 181, 0.72) !important;
+  color: color-mix(in srgb, var(--文字弱色) 72%, transparent) !important;
   font-size: 11px !important;
   line-height: 1.15 !important;
   letter-spacing: 0 !important;
@@ -16616,7 +16663,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-
 #detailModal.mvu-modal-display-unified .dossier-radar-wrap .legend-chip span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-radar-wrap .legend-chip span {
   display: block !important;
-  color: rgba(102, 218, 239, 0.96) !important;
+  color: color-mix(in srgb, var(--主题主色) 96%, var(--主题高光) 8%) !important;
   font-size: 19px !important;
   line-height: 1.12 !important;
   letter-spacing: 0 !important;
@@ -16645,13 +16692,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-empty-
   margin: 2px auto !important;
   padding: 4px 12px !important;
   justify-content: center !important;
-  color: rgba(136, 162, 174, 0.62) !important;
+  color: color-mix(in srgb, var(--文字弱色) 62%, transparent) !important;
   font-size: 12px !important;
   line-height: 1.35 !important;
   font-weight: 400 !important;
   border: 1px dashed color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
   border-radius: 999px !important;
-  background: rgba(7, 16, 22, 0.96) !important;
+  background: color-mix(in srgb, var(--暗场浮层) 96%, transparent) !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28) !important;
 }
 
@@ -16833,7 +16880,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
 
 body[data-mvu-holo-theme],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
+  --panel: color-mix(in srgb, var(--实体背景) 58%, transparent);
+  --panel-strong: color-mix(in srgb, var(--实体背景) 76%, transparent);
   --mvu-holo-main: var(--主题主色);
   --mvu-holo-sub: var(--主题辅色);
   --mvu-holo-high: var(--主题高光);
@@ -16899,6 +16949,29 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --原型光刻强线: var(--强线);
   --原型弱分隔线: var(--虚线);
   --原型内辉光: var(--自发光微光);
+  --cyan: var(--主题主色);
+  --cyan-soft: color-mix(in srgb, var(--主题主色) 15%, transparent);
+  --cyan-line: color-mix(in srgb, var(--边线颜色) 78%, transparent);
+  --gold: var(--主题高光);
+  --gold-soft: color-mix(in srgb, var(--主题高光) 14%, transparent);
+  --white: var(--文字主色);
+  --text-sub: var(--文字弱色);
+  --text-dim: color-mix(in srgb, var(--文字弱色) 66%, transparent);
+  --mvu-color-line-soft: color-mix(in srgb, var(--边线颜色) 34%, transparent);
+  --mvu-color-line-muted: color-mix(in srgb, var(--边线颜色) 42%, transparent);
+  --mvu-color-panel-soft: color-mix(in srgb, var(--实体背景) 42%, transparent);
+  --mvu-color-panel-muted: color-mix(in srgb, var(--实体背景) 56%, transparent);
+  --mvu-color-cyan-fill: color-mix(in srgb, var(--主题主色) 8%, transparent);
+  --mvu-color-cyan-line: color-mix(in srgb, var(--边线颜色) 64%, transparent);
+  --mvu-color-gold-fill: color-mix(in srgb, var(--主题高光) 8%, transparent);
+  --mvu-color-gold-line: color-mix(in srgb, var(--主题高光) 22%, transparent);
+  --mvu-color-tech-cyan: var(--主题主色);
+  --mvu-color-text-bright: var(--文字主色);
+  --mvu-color-text-ice: var(--文字主色);
+  --mvu-color-accent-strong: var(--主题主色);
+  --mvu-color-cyan-muted: color-mix(in srgb, var(--主题主色) 48%, var(--文字弱色));
+  --grad-top: linear-gradient(90deg, transparent, color-mix(in srgb, var(--主题主色) 72%, transparent) 18%, var(--主题高光) 50%, color-mix(in srgb, var(--主题主色) 68%, var(--主题高光)) 82%, transparent);
+  --shadow-cyan: 0 4px 15px color-mix(in srgb, var(--主题主色) 15%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
@@ -17672,7 +17745,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   background:
     radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 32%),
     color-mix(in srgb, var(--暗场底板强) 18%, transparent);
-  color: rgba(244, 250, 252, 0.98);
+  color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   scrollbar-width: none;
@@ -20460,12 +20533,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   backdrop-filter: blur(8px) saturate(112%);
   -webkit-backdrop-filter: blur(8px) saturate(112%);
   --mvu-dossier-panel: color-mix(in srgb, var(--暗场底板强) 72%, transparent);
-  --mvu-dossier-panel-soft: rgba(255, 255, 255, 0.035);
+  --mvu-dossier-panel-soft: color-mix(in srgb, var(--实体背景) 34%, transparent);
   --mvu-dossier-line: color-mix(in srgb, var(--边线颜色) 13%, transparent);
   --mvu-dossier-line-strong: color-mix(in srgb, var(--边线颜色) 24%, transparent);
-  --mvu-dossier-label: rgba(154, 193, 209, 0.86);
-  --mvu-dossier-value: rgba(242, 250, 252, 0.97);
-  --mvu-dossier-muted: rgba(188, 214, 224, 0.78);
+  --mvu-dossier-label: color-mix(in srgb, var(--文字弱色) 86%, transparent);
+  --mvu-dossier-value: color-mix(in srgb, var(--文字主色) 97%, transparent);
+  --mvu-dossier-muted: color-mix(in srgb, var(--文字弱色) 78%, transparent);
 }
 
 #detailModal.mvu-modal-display-unified .mvu-modal-panel,
@@ -20799,7 +20872,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center !important;
   gap: 8px !important;
   min-width: 0 !important;
-  color: rgba(232, 247, 251, 0.94) !important;
+  color: color-mix(in srgb, var(--文字主色) 94%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.25 !important;
   font-weight: 700 !important;
@@ -21859,8 +21932,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   height: 26px;
   padding: 3px 8px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid rgba(0, 229, 255, 0.18);
-  background: rgba(6, 20, 36, 0.84);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 58%, transparent);
+  background: color-mix(in srgb, var(--暗场底板强) 84%, transparent);
   color: var(--cyan);
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
@@ -21887,7 +21960,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
   background: var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.12);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 12%, transparent);
   color: #fff;
 }
 
@@ -23413,9 +23486,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 }
 #detailModal .map-dispatch-action-btn.live,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.live {
-  border-color: rgba(0, 229, 255, 0.26);
-  color: #dcffff;
-  box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.05);
+  border-color: color-mix(in srgb, var(--主题主色) 26%, transparent);
+  color: var(--文字主色);
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
 }
 #detailModal .map-dispatch-action-btn.warn,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.warn {
@@ -23535,7 +23608,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   --archive-text-faint: color-mix(in srgb, var(--文字弱色) 72%, transparent);
   --archive-accent: var(--主题主色);
   --archive-accent-strong: var(--主题主色);
-  --archive-gold: #dbeff4;
+  --archive-gold: var(--主题高光);
   --archive-danger: #fb7185;
   --archive-success: #4ade80;
   --archive-radius: var(--投影圆角);
@@ -25263,15 +25336,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-accent-strong: var(--主题主色);
   --dossier-green: #78ddc2;
   --dossier-red: #ff8baa;
-  --dossier-warn: #d5e7ee;
+  --dossier-warn: var(--主题高光);
   --dossier-shadow: 0 18px 36px rgba(0, 0, 0, 0.26);
   color-scheme: dark;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split.mvu-modal-mask {
-  background: rgba(4, 12, 18, 0.58);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--暗场底板强) 58%, transparent);
+  backdrop-filter: var(--虚化强度);
+  -webkit-backdrop-filter: var(--虚化强度);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split.mvu-modal-mask::before {
@@ -25908,7 +25981,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 12px;
   border: 1px solid var(--dossier-line);
   border-radius: var(--mvu-radius-md, 12px);
-  background: var(--dossier-section-bg), rgba(7, 24, 36, 0.42);
+  background: var(--dossier-section-bg), color-mix(in srgb, var(--暗场底板强) 42%, transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
     inset 0 0 18px color-mix(in srgb, var(--主题主色) 2.5%, transparent);
@@ -26769,7 +26842,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   padding: 8px 6px;
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent);
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.06), rgba(0, 0, 0, 0.18));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 6%, transparent), rgba(0, 0, 0, 0.18));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 6px 16px rgba(0, 0, 0, 0.08);
