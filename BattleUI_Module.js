@@ -451,7 +451,7 @@ class BattleUIComponent {
       const age = buildSoulTowerGuardianAgeForFloor(meta.floor);
       const quality = normalizeSoulSpiritQuality(getSoulTowerGuardianQualityForFloor(meta.floor)) || 'C';
       return {
-        name: `${species}守塔魂兽`,
+        name: '',
         来源: '临时单位',
         单位性质: '魂兽',
         数量: 1,
@@ -17824,7 +17824,7 @@ class BattleUIComponent {
           层数: floor,
           区域标签: String(settlement.区域标签 || '').trim() || getSoulTowerGateMeta(floor).gateLabel,
           区间标签: String(settlement.区间标签 || '').trim() || getSoulTowerGateMeta(floor).gateRangeLabel,
-          守塔名称: String(settlement.守塔名称 || '').trim() || spirit.名称 || `${spirit.标准物种}守塔魂兽`,
+          守塔名称: String(settlement.守塔名称 || '').trim() || spirit.名称 || '',
           五折魂灵: spirit,
           下一层: Math.min(SOUL_TOWER_TOTAL_FLOORS, Math.max(floor + 1, Math.floor(Number(settlement.下一层 || floor + 1)))),
           可继续: settlement.可继续 !== false && floor < SOUL_TOWER_TOTAL_FLOORS,
@@ -17845,7 +17845,7 @@ class BattleUIComponent {
           层数: floor,
           区域标签: meta.gateLabel,
           区间标签: meta.gateRangeLabel,
-          守塔名称: String(defender?.name || spiritRecord.名称 || '守塔魂兽').trim() || '守塔魂兽',
+          守塔名称: String(defender?.name || spiritRecord.名称 || '').trim(),
           五折魂灵: spiritRecord,
           下一层: Math.min(SOUL_TOWER_TOTAL_FLOORS, floor + 1),
           可继续: floor < SOUL_TOWER_TOTAL_FLOORS,
@@ -32343,7 +32343,8 @@ class BattleUIComponent {
             combatData.关底战 = nextMeta.isGateBoss;
             combatData.环境 = 构建魂灵塔试炼地点(nextFloor);
             combatData.试炼状态 = 构建魂灵塔试炼地点(nextFloor);
-            combatData.参战者.team_enemy = [buildSoulTowerGuardianSeed(nextFloor)];
+            combatData.进行中 = false;
+            if (combatData.参战者 && typeof combatData.参战者 === 'object') combatData.参战者.team_enemy = [];
             const 冲塔续层位置补丁 = 构建角色位置补丁(playerName, 构建魂灵塔试炼地点(nextFloor));
             if (冲塔续层位置补丁) extraPatchOps.push(冲塔续层位置补丁);
             extraPatchOps.push({

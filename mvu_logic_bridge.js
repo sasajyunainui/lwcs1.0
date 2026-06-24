@@ -28894,7 +28894,7 @@
     const quality =
       normalizeSoulSpiritQuality(options.品质 || options.quality || getSoulTowerGuardianQualityForFloor(safeFloor)) ||
       'C';
-    const name = toText(options.name, `${species}守塔魂兽`) || `${species}守塔魂兽`;
+    const name = toText(options.name, '');
     return {
       name,
       名称: name,
@@ -28902,7 +28902,7 @@
       单位性质: '魂兽',
       数量: 1,
       标准物种: species,
-      具体物种: `${species}守塔魂兽`,
+      具体物种: toText(options.具体物种, species),
       物种品质: '普通',
       年限: age,
       品质: quality,
@@ -29045,6 +29045,28 @@
       );
       const requestedFloor = Math.min(SOUL_TOWER_TOTAL_FLOORS, Math.max(1, Math.floor(塔层基准值)));
       const guardianSeed = 构建魂灵塔守塔种子({ ...safeContext, 当前层: requestedFloor });
+      const 显式敌方队伍 = Array.isArray(显式参战者 && 显式参战者.team_enemy)
+        ? cloneJsonValue(显式参战者.team_enemy, [])
+        : [];
+      const 显式敌方 = 显式敌方队伍[0] && typeof 显式敌方队伍[0] === 'object' ? cloneJsonValue(显式敌方队伍[0], {}) : null;
+      const 显式敌方名称 = toText(显式敌方 && (显式敌方.name || 显式敌方.名称), '').trim();
+      if (!显式敌方名称) {
+        return {
+          invalid: true,
+          reason: '魂灵塔 battle 路由缺少正式敌方名称。',
+          战斗类型: '魂灵塔冲塔',
+          floor: requestedFloor,
+        };
+      }
+      const 敌方种子 = {
+        ...guardianSeed,
+        ...(显式敌方 || {}),
+        name: 显式敌方名称,
+        名称: 显式敌方名称,
+        标准物种: toText(显式敌方 && 显式敌方.标准物种, guardianSeed.标准物种),
+        年限: Math.max(1, Math.floor(toNumber(显式敌方 && 显式敌方.年限, guardianSeed.年限))),
+        品质: normalizeSoulSpiritQuality((显式敌方 && 显式敌方.品质) || guardianSeed.品质) || guardianSeed.品质,
+      };
       return {
         ...baseDetail,
         action: 'battle',
@@ -29059,7 +29081,7 @@
         门票已扣除: true,
         参战者: {
           team_player: [{ name: activeName || activeKey }, ...显式己方队伍],
-          team_enemy: [cloneJsonValue(guardianSeed, {})],
+          team_enemy: [cloneJsonValue(敌方种子, {})],
         },
       };
     }
@@ -40495,6 +40517,7 @@
       return {
         ok: true,
         context: trialContext,
+        trialLocation: 试炼内地点,
         requestKind: trialContext.试炼类型 === '升灵台' ? 'trial_entry_ascension' : 'trial_entry_tower',
         skippedDispatch: true,
       };
@@ -40516,6 +40539,7 @@
     return {
       ok: true,
       context: trialContext,
+      trialLocation: 试炼内地点,
       requestKind: dispatchRequest.requestKind,
       dispatchResult,
     };
@@ -42720,14 +42744,7 @@ ${播报文本}
         };
       }
       if (!soulTowerCombat) return { ok: false, reason: 'combat_context_unresolved' };
-      const guardianSeed = buildSoulTowerGuardianSeed(soulTowerFloor);
-      return {
-        ok: true,
-        participants: {
-          team_player: [playerChar],
-          team_enemy: [guardianSeed],
-        },
-      };
+      return { ok: false, reason: '魂灵塔 battle 路由缺少正式敌方名称。' };
     }
 
     const normalizedRoster = {
@@ -43665,7 +43682,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     打开地图交易面板();
     showUiToast('交易流程已打开，请确认后成交。', 'info', 2200);
     return 构建模块路由成功结果('trade', 待确认请求, {
-      dispatchMode: 'opened_trade_panel',
+      dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
     });
@@ -43787,7 +43804,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     打开地图工坊面板();
     showUiToast('工坊流程已打开，请确认后执行。', 'info', 2200);
     return 构建模块路由成功结果('profession', 待确认请求, {
-      dispatchMode: 'opened_profession_panel',
+      dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
     });
@@ -44069,22 +44086,159 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function 构建模块路由失败结果(moduleKind = '', request = null, reason = 'module_route_failed', extra = {}) {
+    const kind = moduleKind || '';
+    const safeReason = toText(reason, 'module_route_failed');
+    if (kind && kind !== '未命中') {
+      return {
+        handled: true,
+        kind,
+        request: request || null,
+        reason: safeReason,
+        dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
+        runtimeEvent: 构建模块路由运行事件文本(kind, extra && extra.request ? extra.request : request, {
+          ...extra,
+          dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
+          status: '执行失败',
+          reason: safeReason,
+        }),
+        ...extra,
+      };
+    }
     return {
       handled: false,
-      kind: moduleKind || '',
+      kind,
       request: request || null,
-      reason: toText(reason, 'module_route_failed'),
+      reason: safeReason,
       ...extra,
     };
   }
 
   function 构建模块路由成功结果(moduleKind = '', request = null, extra = {}) {
+    const kind = moduleKind || '';
     return {
       handled: true,
-      kind: moduleKind || '',
+      kind,
       request: request || null,
+      runtimeEvent: extra && extra.runtimeEvent ? extra.runtimeEvent : 构建模块路由运行事件文本(kind, request, extra),
       ...extra,
     };
+  }
+
+  function 格式化模块路由值(value = '') {
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
+    if (typeof value === 'boolean') return value ? '是' : '否';
+    return toText(value, '').trim();
+  }
+
+  function 格式化模块路由资源消耗(cost = {}) {
+    if (!cost || typeof cost !== 'object') return '';
+    const parts = [];
+    const fedCoin = toNumber(cost.fedCoin, 0);
+    const sp = toNumber(cost.sp, 0);
+    const vit = toNumber(cost.vit, 0);
+    if (fedCoin > 0) parts.push(`联邦币${formatNumber(fedCoin)}`);
+    if (sp > 0) parts.push(`魂力${formatNumber(sp)}`);
+    if (vit > 0) parts.push(`体力${formatNumber(vit)}`);
+    return parts.join('、');
+  }
+
+  function 构建模块路由运行事件文本(moduleKind = '', request = {}, extra = {}) {
+    const 模块 = toText(moduleKind, 'unknown');
+    if (!模块 || 模块 === '未命中') return '';
+    const 模式 = toText(extra && extra.dispatchMode, 'settled_summary');
+    const 状态 =
+      toText(extra && extra.status, '') ||
+      (模式 === 'failed_summary'
+        ? '执行失败'
+        : 模式 === 'pending_confirmation' || /opened_.*panel/.test(模式)
+          ? '待确认'
+          : /battle_takeover|battle_continuation/.test(模式)
+            ? '实时接管'
+            : '执行成功');
+    const 原因 = toText(extra && extra.reason, '');
+    let 事实 = '';
+    let 约束 = '后续剧情只承接该事实，不要重复触发相同模块或重复结算。';
+    if (模块 === 'trial_entry') {
+      const 试炼类型 = toText(request && request.试炼类型, '试炼');
+      const 层数 = Math.max(0, Math.floor(toNumber(request && request.floor, toNumber(extra?.result?.context?.当前层, 0))));
+      const 地点 = toText(extra?.trialLocation || extra?.result?.context?.试炼内地点, '');
+      if (状态 === '执行失败') {
+        事实 = `${试炼类型}入场失败${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = `后续剧情不得描写角色已进入${试炼类型}，不得扣门票或写入试炼状态。`;
+      } else {
+        事实 = `${试炼类型}入场成功，已消耗门票${request?.ticketName ? `【${toText(request.ticketName, '')}】` : ''}${层数 > 0 ? `，进入第${层数}层` : ''}${地点 ? `，当前位置已更新为${地点}` : ''}。`;
+        约束 = `后续剧情只能承接已进入${试炼类型}后的场景，不要再次扣票，不要重复输出 trial_entry。`;
+      }
+    } else if (模块 === 'travel') {
+      const 起点 = toText(extra && extra.startLoc, '');
+      const 终点 = toText(extra && extra.finalLocName, toText(request && request.目标地点, '目标地点'));
+      const 消耗 = 格式化模块路由资源消耗(extra && extra.cost);
+      if (状态 === '执行失败') {
+        事实 = `移动失败${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = '后续剧情不得按已抵达目标地点描写。';
+      } else if (extra && extra.alreadyThere) {
+        事实 = `角色已经位于${终点}，无需移动。`;
+        约束 = '后续剧情按已在目标地点承接，不要重复移动。';
+      } else {
+        事实 = `移动完成${起点 ? `，起点：${起点}` : ''}，终点：${终点}${消耗 ? `，消耗：${消耗}` : ''}。`;
+        约束 = '后续剧情按新位置承接，不要再次结算同一次移动。';
+      }
+    } else if (模块 === 'trade') {
+      const 动作 = toText(request && request.动作, '交易');
+      const 物品 = toText(request && request.物品, '物品');
+      const 数量 = Math.max(1, Math.floor(toNumber(request && request.数量, 1)));
+      if (状态 === '待确认') {
+        事实 = `交易面板已打开并预填：${动作}${物品}${数量 > 1 ? ` x${数量}` : ''}，尚未成交。`;
+        约束 = '后续剧情不得描写交易已经完成，不要改账、改库存或改背包。';
+      } else if (状态 === '执行失败') {
+        事实 = `交易流程失败${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = '后续剧情不得按交易已完成描写。';
+      } else {
+        事实 = `交易已结算：${动作}${物品}${数量 > 1 ? ` x${数量}` : ''}。`;
+        约束 = '后续剧情只承接成交结果，不要重复改账或重复成交。';
+      }
+    } else if (模块 === 'profession') {
+      const 动作 = toText(request && (request.动作 || request.模式), '工坊');
+      const 目标 = toText(request && request.目标, '');
+      if (状态 === '待确认') {
+        事实 = `工坊面板已打开并预填：${动作}${目标 ? `【${目标}】` : ''}，尚未执行。`;
+        约束 = '后续剧情不得描写制作已经完成，不要扣材料或生成成品。';
+      } else if (状态 === '执行失败') {
+        事实 = `工坊流程失败${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = '后续剧情不得按工坊已完成描写。';
+      } else {
+        事实 = `工坊已结算：${动作}${目标 ? `【${目标}】` : ''}。`;
+        约束 = '后续剧情只承接工坊结算结果，不要重复扣材料或重复生成物品。';
+      }
+    } else if (模块 === 'battle') {
+      if (/battle_takeover|battle_continuation/.test(模式) || 状态 === '实时接管') {
+        事实 = `战斗模块已接管${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = '本轮停止后续剧情任务和正文生成，由战斗模块继续处理。';
+      } else if (模式 === 'battle_auto_arbitration') {
+        const 战报轮数 = toNumber(extra?.result?.result?.roundsExecuted, 0);
+        const 战果 = toText(extra?.result?.result?.winner, '');
+        const 战报列表 = Array.isArray(extra?.result?.result?.logs) ? extra.result.result.logs.slice(-6).map(item => toText(item, '')).filter(Boolean) : [];
+        事实 = `自动战斗已完成前端推演${战报轮数 > 0 ? `，实际推演${战报轮数}回合` : ''}${战果 ? `，结果标记：${战果}` : ''}${战报列表.length ? `。\n战报摘要：${战报列表.join('；')}` : '。'}`;
+        约束 = '后续剧情只承接战报和裁断结果，不要重新开启战斗或重复结算。';
+      } else if (状态 === '执行失败') {
+        事实 = `战斗模块启动失败${原因 ? `，原因：${原因}` : ''}。`;
+        约束 = '后续剧情不得按战斗已开启描写。';
+      } else {
+        const 敌方 = toText(deepGet(request, '参战者.team_enemy.0.name', ''), '');
+        事实 = `战斗模块已开启${敌方 ? `，敌方：${敌方}` : ''}。`;
+        约束 = '后续剧情不得继续生成普通正文，等待战斗模块处理。';
+      }
+    } else if (模块 === 'routine') {
+      事实 = 状态 === '执行失败' ? `日常模块失败${原因 ? `，原因：${原因}` : ''}。` : '日常模块已完成结算。';
+      约束 = '后续剧情只承接本次结算，不要重复写入相同效果。';
+    } else if (模块 === 'teaching') {
+      事实 = 状态 === '执行失败' ? `传授模块失败${原因 ? `，原因：${原因}` : ''}。` : '传授模块已处理本轮请求。';
+      约束 = '后续剧情只承接本次处理结果，不要重复结算同一传授。';
+    } else {
+      事实 = 状态 === '执行失败' ? `模块执行失败${原因 ? `，原因：${原因}` : ''}。` : `模块已处理，模式：${模式}。`;
+    }
+    return `<模块路由结果>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：${约束}\n</模块路由结果>`;
   }
 
   function 读取快照当前位置(snapshot) {
@@ -44614,6 +44768,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         dispatchMode: 'settled_summary',
         alreadyThere: true,
         patchOps: [],
+        startLoc: 当前所在,
         finalLocName: 当前所在,
       });
     }
@@ -44640,7 +44795,9 @@ ${toText(combatData.战斗意图, '点到为止')}
       return 构建模块路由成功结果('travel', request, {
         dispatchMode: 'settled_summary',
         patchOps: 补丁结果.patchOps,
+        startLoc: 当前所在,
         finalLocName: 补丁结果.finalLocName,
+        cost: 补丁结果.cost || 补丁结果.mapRequest?.costs,
         result,
       });
     }
@@ -44659,6 +44816,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     return 构建模块路由成功结果('travel', request, {
       dispatchMode: 'settled_summary',
       patchOps: 补丁结果.patchOps,
+      startLoc: 当前所在,
       finalLocName: 补丁结果.finalLocName,
       cost: 补丁结果.cost,
       coord: 补丁结果.coord,
@@ -44975,10 +45133,14 @@ ${toText(combatData.战斗意图, '点到为止')}
           snapshot,
           {
             source: toText(payload.source, 'module_intent_router_trial'),
+            ...(payload.参战者 && typeof payload.参战者 === 'object' ? { 参战者: cloneJsonValue(payload.参战者, {}) } : {}),
             ...(指定层数 > 0 ? { floor: 指定层数 } : {}),
           },
           trialContext,
         );
+        if (request && request.invalid) {
+          return 构建模块路由失败结果(moduleKind, request, request.reason || 'battle_seed_invalid');
+        }
       }
       if (!request) {
         const explicitParticipants =
@@ -45039,7 +45201,11 @@ ${toText(combatData.战斗意图, '点到为止')}
         return 构建模块路由失败结果(moduleKind, request, error && error.message ? error.message : 'trial_entry_failed');
       }
       await refreshLiveSnapshot({ force: true });
-      return 构建模块路由成功结果(moduleKind, request, { dispatchMode: 'settled_summary', result });
+      return 构建模块路由成功结果(moduleKind, request, {
+        dispatchMode: 'settled_summary',
+        result,
+        trialLocation: result && result.trialLocation,
+      });
     }
 
     if (moduleKind === 'battle') {
@@ -45084,7 +45250,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       if (!result?.ok) {
         return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_open_failed', { result });
       }
-      return 构建模块路由成功结果(moduleKind, request, { result });
+      return 构建模块路由成功结果(moduleKind, request, { dispatchMode: 'battle_takeover', result });
     }
 
     if (moduleKind === 'trade') {
@@ -49650,7 +49816,7 @@ ${toText(combatData.战斗意图, '点到为止')}
           charData.属性.HP = 0;
           charData.状态.存活 = false;
           charData.存活 = false;
-          charData.状态.死亡类型 = '副作用';
+          charData.状态.死亡类型 = '意外';
           logs.push(`${来源名}:致死献祭`);
           已结算 += 1;
           return;

@@ -572,6 +572,29 @@ function getRingColorByAge(age) {
   return '白';
 }
 
+var 自动生成魂灵最低年限_V1 = 10;
+
+function 读取魂灵年限承载上限_V1(魂灵数据 = {}) {
+  const 年限 = Math.max(0, Math.floor(Number(typeof 魂灵数据 === 'number' ? 魂灵数据 : 魂灵数据?.年限 || 0)));
+  if (年限 >= 10000) return 4;
+  if (年限 >= 1000) return 3;
+  if (年限 >= 100) return 2;
+  if (年限 >= 自动生成魂灵最低年限_V1) return 1;
+  return 0;
+}
+
+function 读取突破魂灵序位承载上限_V1(武魂槽位 = '第1武魂', 魂灵序号 = 0) {
+  if (String(武魂槽位 || '').trim() === '第2武魂') return 4;
+  return Math.max(0, Math.floor(Number(魂灵序号 || 0))) <= 1 ? 2 : 4;
+}
+
+function 读取突破魂灵承载上限_V1(魂灵数据 = {}, 武魂槽位 = '第1武魂', 魂灵序号 = 0) {
+  return Math.min(
+    读取魂灵年限承载上限_V1(魂灵数据),
+    读取突破魂灵序位承载上限_V1(武魂槽位, 魂灵序号),
+  );
+}
+
 var SOUL_TOWER_MAX_AGE = 30;
 
 function createEmptySoulTowerDiscountSpiritRecord() {
@@ -761,7 +784,7 @@ function 构建直挂魂环承载魂灵_V1(武魂数据 = {}) {
       品质: AI_TODO_SOUL_SPIRIT_QUALITY,
       状态: '活跃',
     }),
-    年限: 0,
+    年限: 自动生成魂灵最低年限_V1,
     品质: AI_TODO_SOUL_SPIRIT_QUALITY,
     契合度: 60,
     状态: '活跃',
@@ -805,9 +828,10 @@ function 取武魂全部魂环条目_V1(武魂数据 = {}) {
 }
 
 function 创建默认魂环数据_V1(魂环位 = 1, 年限 = 0, 来源 = '') {
-  const 魂环 = { 年限: Math.max(0, Math.floor(Number(年限 || 0))), 颜色: getRingColorByAge(年限) };
+  const 安全年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(年限 || 自动生成魂灵最低年限_V1)));
+  const 魂环 = { 年限: 安全年限, 颜色: getRingColorByAge(安全年限) };
   if (String(来源 || '').trim()) 魂环.来源 = String(来源 || '').trim();
-  Object.assign(魂环, buildDefaultRingSkillMap(魂环位, 年限));
+  Object.assign(魂环, buildDefaultRingSkillMap(魂环位, 安全年限));
   return 魂环;
 }
 
@@ -1035,14 +1059,10 @@ function autoBreakthrough(data) {
           let ringAssigned = false;
           let candidateSpirit = null;
 
-          取武魂魂灵条目_V1(targetSpirit).forEach(([ssName, ss]) => {
+          取武魂魂灵条目_V1(targetSpirit).forEach(([ssName, ss], 魂灵索引) => {
             if (ringAssigned || candidateSpirit) return;
 
-            let cap = 1;
-            if (ss.年限 >= 10000) cap = 4;
-            else if (ss.年限 >= 1000) cap = 3;
-            else if (ss.年限 >= 100) cap = 2;
-
+            const cap = 读取突破魂灵承载上限_V1(ss, spiritKey, 魂灵索引);
             const currentRingsCount = 取魂灵魂环条目_V1(ss).length;
             if (currentRingsCount < cap) {
               candidateSpirit = { ss, ssName };
@@ -1126,7 +1146,7 @@ function autoBreakthrough(data) {
             const 剩余魂灵年限预算 = 读取角色剩余魂灵年限预算_V1(c);
 
             if (data.sys.系统播报 === '初始化' || !data.sys.系统播报) data.sys.系统播报 = '';
-            if (剩余魂灵年限预算 < 50) {
+            if (剩余魂灵年限预算 < 自动生成魂灵最低年限_V1) {
               data.sys.系统播报 += ` [修为突破] ${charName} 踏入 ${newLvText}！但精神力仅为【${c.属性.精神境界}】，无法承载更多魂灵，【${spiritKey}】暂缓附加魂环！`;
             } else if (isPlayer) {
               data.sys.系统播报 += ` [修为突破] ${charName} 踏入 ${newLvText}！达到魂环门槛，但当前未有可继续产环的魂灵，需通过剧情吸收新魂灵后方可附环。`;

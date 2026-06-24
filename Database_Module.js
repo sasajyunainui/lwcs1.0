@@ -18993,6 +18993,67 @@ $CONTENT
             return '';
         return `<${normalizedTagName}>${normalizedContents.join('\n\n')}</${normalizedTagName}>`;
     }
+    const 模块路由结果标签_ACU = '模块路由结果';
+    function 清理模块路由运行事件文本_ACU(text = '') {
+        return String(text || '')
+            .replace(/<\s*模块路由\s*>[\s\S]*?<\s*\/\s*模块路由\s*>/gi, '[模块路由已执行]')
+            .replace(/<\s*JSONPatch\b[\s\S]*?<\s*\/\s*JSONPatch\s*>/gi, '[结构化写入已省略]')
+            .replace(/<\s*UpdateVariable\b[\s\S]*?<\s*\/\s*UpdateVariable\s*>/gi, '[变量写入已省略]')
+            .trim();
+    }
+    function 规范化模块路由运行事件文本_ACU(模块路由决定 = {}) {
+        const 原始事件列表 = Array.isArray(模块路由决定?.runtimeEvents)
+            ? 模块路由决定.runtimeEvents
+            : [模块路由决定?.runtimeEvent || 模块路由决定?.result?.runtimeEvent || ''];
+        const 事件正文 = 原始事件列表
+            .map(item => 清理模块路由运行事件文本_ACU(item))
+            .filter(Boolean)
+            .join('\n\n');
+        if (!事件正文)
+            return '';
+        if (/^<模块路由结果>[\s\S]*<\/模块路由结果>$/i.test(事件正文.trim()))
+            return 事件正文.trim();
+        return `<模块路由结果>\n${事件正文}\n</模块路由结果>`;
+    }
+    function 合并模块路由事件到标签_ACU(aggregatedTags, 事件列表 = []) {
+        const nextTags = new Map(aggregatedTags instanceof Map ? aggregatedTags : []);
+        const 有效事件列表 = (Array.isArray(事件列表) ? 事件列表 : [])
+            .map(item => String(item || '').trim())
+            .filter(Boolean);
+        if (有效事件列表.length > 0)
+            nextTags.set(模块路由结果标签_ACU, 有效事件列表);
+        return nextTags;
+    }
+    function 过滤阶段传递标签_ACU(aggregatedTags) {
+        const nextTags = new Map(aggregatedTags instanceof Map ? aggregatedTags : []);
+        for (const tagName of [...nextTags.keys()]) {
+            if (String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase())
+                nextTags.delete(tagName);
+        }
+        return nextTags;
+    }
+    function 构建模块路由事件系统消息_ACU(事件列表 = []) {
+        const 有效事件列表 = (Array.isArray(事件列表) ? 事件列表 : [])
+            .map(item => String(item || '').trim())
+            .filter(Boolean);
+        if (!有效事件列表.length)
+            return null;
+        return {
+            role: 'system',
+            content: [
+                '以下内容是本轮前端脚本已经完成或拒绝的模块路由事实，优先级高于此前阶段的推测与审查。',
+                '后续剧情任务和正文只能承接这些事实，不要重复触发相同模块，不要重复扣资源、改账、移动或结算。',
+                ...有效事件列表,
+            ].join('\n\n'),
+        };
+    }
+    function 合并模块路由事件系统消息_ACU(systemMessages = [], 事件列表 = []) {
+        const 基础消息 = Array.isArray(systemMessages) ? [...systemMessages] : [];
+        const 事件消息 = 构建模块路由事件系统消息_ACU(事件列表);
+        if (事件消息)
+            基础消息.push(事件消息);
+        return 基础消息;
+    }
     function hasMeaningfulTagContents_ACU(contents) {
         if (Array.isArray(contents)) {
             return contents.some((content) => String(content ?? '').trim() !== '');
@@ -19038,6 +19099,8 @@ $CONTENT
         return sourceText.replace(placeholderPattern, (placeholder, tagName) => {
             if (是剧情推进运行时占位符名_ACU(tagName))
                 return placeholder;
+            if (String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase())
+                return '';
             const resolvedValue = resolvePlotTagValueWithFallback_ACU(tagSourceMap, fallbackTagSourceMap, tagName);
             return buildPlotTagBlock_ACU(tagName, resolvedValue.value);
         });
@@ -19188,6 +19251,7 @@ $CONTENT
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
         const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
+        const shouldSkipFinalTag = (tagName) => String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase();
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
@@ -19202,6 +19266,8 @@ $CONTENT
                 const unusedTagBlocks = [];
                 aggregatedTags.forEach((contents, tagName) => {
                     const loweredTagName = String(tagName || '').toLowerCase();
+                    if (shouldSkipFinalTag(tagName))
+                        return;
                     if (matchedTags.has(loweredTagName))
                         return;
                     // injectOnly 标签（extractInjectTags 提取的）即使未使用也不追加到末尾
@@ -19217,7 +19283,7 @@ $CONTENT
             const filteredTags = new Map();
             const injectOnlyTagNamesLower = new Set(Array.from(injectOnlyTagNames).map((name) => String(name || '').toLowerCase()));
             aggregatedTags.forEach((contents, tagName) => {
-                if (!injectOnlyTagNamesLower.has(String(tagName || '').toLowerCase()) && hasMeaningfulTagContents_ACU(contents)) {
+                if (!shouldSkipFinalTag(tagName) && !injectOnlyTagNamesLower.has(String(tagName || '').toLowerCase()) && hasMeaningfulTagContents_ACU(contents)) {
                     filteredTags.set(tagName, contents);
                 }
             });
@@ -19799,6 +19865,8 @@ $CONTENT
         let aggregatedTags = new Map();
         let completedSuccessfulResults = [];
         let aggregatedInjectOnlyTagNames = new Set();
+        const 本轮模块路由事件列表 = [];
+        const 本轮模块路由执行键集合 = new Set();
         for (let stageIndex = 0; stageIndex < stageGroups.length; stageIndex++) {
             const stageGroup = stageGroups[stageIndex];
             let stageEffectivePreset = String(settings_ACU.plotApiPreset || '').trim();
@@ -19813,7 +19881,8 @@ $CONTENT
                 }
             }
             logDebug_ACU(`[剧情推进] 阶段 ${stageGroup.stage} 开始执行，任务级API预设将按各任务独立决议。`);
-            const stageRelayTagMap = new Map(aggregatedTags);
+            const stageRelayTagMap = 合并模块路由事件到标签_ACU(过滤阶段传递标签_ACU(aggregatedTags), 本轮模块路由事件列表);
+            const stageSystemMessages = 合并模块路由事件系统消息_ACU(systemMessages, 本轮模块路由事件列表);
             const stageResults = await Promise.all(stageGroup.tasks.map((task) => {
                 const stageTask = stageEffectivePreset
                     ? { ...task, taskApiPreset: stageEffectivePreset }
@@ -19822,7 +19891,7 @@ $CONTENT
                     relayTagMap: stageRelayTagMap,
                     historyTagMap,
                     historyLookupOptions,
-                    systemMessages,
+                    systemMessages: stageSystemMessages,
                 });
             }));
             checkPlotAbortRequested_ACU();
@@ -19848,20 +19917,40 @@ $CONTENT
                 };
             }
             const { aggregated: stageAggregated, injectOnlyTagNames: stageInjectOnly } = aggregatePlotTaskTags_ACU(completedSuccessfulResults);
-            aggregatedTags = stageAggregated;
+            aggregatedTags = 合并模块路由事件到标签_ACU(stageAggregated, 本轮模块路由事件列表);
             stageInjectOnly.forEach((name) => aggregatedInjectOnlyTagNames.add(name));
             logDebug_ACU(`[剧情推进] 阶段 ${stageGroup.stage} 已完成，成功任务数: ${stageSuccessfulResults.length}`);
-            const 阶段模块路由文本 = stageSuccessfulResults
+            const 阶段模块路由块列表 = stageSuccessfulResults
                 .map((result) => {
                     const 模块路由内容 = result?.extractedTags && typeof result.extractedTags === 'object'
                         ? String(result.extractedTags.模块路由 || '').trim()
                         : '';
                     return 模块路由内容 ? `<模块路由>${模块路由内容}</模块路由>` : '';
                 })
-                .filter(Boolean)
-                .join('\n\n');
-            if (阶段模块路由文本) {
-                const 模块路由决定 = await 确认剧情推进运行时生成前置_ACU(阶段模块路由文本);
+                .filter(Boolean);
+            for (const 阶段模块路由文本 of 阶段模块路由块列表) {
+                const 模块路由执行键 = hashUserInput_ACU(阶段模块路由文本);
+                if (本轮模块路由执行键集合.has(模块路由执行键))
+                    continue;
+                本轮模块路由执行键集合.add(模块路由执行键);
+                const 模块路由决定 = await 确认剧情推进运行时生成前置_ACU(阶段模块路由文本, {
+                    skipSkillDesign: true,
+                    source: 'plot_stage_runtime',
+                });
+                const 事件文本 = 规范化模块路由运行事件文本_ACU(模块路由决定);
+                if (事件文本) {
+                    本轮模块路由事件列表.push(事件文本);
+                    aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
+                    if (typeof reloadStorageProvider === 'function') {
+                        try {
+                            await reloadStorageProvider();
+                            sharedContext.allTablesJson = currentJsonTableData_ACU;
+                        }
+                        catch (错误) {
+                            logWarn_ACU('[剧情推进] 模块路由执行后刷新运行时数据失败:', 错误);
+                        }
+                    }
+                }
                 if (模块路由决定.action === 'blocked') {
                     return {
                         finalMessage: null,
@@ -19893,6 +19982,7 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
+        aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
         const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
@@ -55254,12 +55344,12 @@ $CONTENT
     function sanitizePlanningVisibleOutput_ACU(text) {
         return String(text || '').trim();
     }
-    async function 确认剧情推进运行时生成前置_ACU(规划文本) {
+    async function 确认剧情推进运行时生成前置_ACU(规划文本, options = {}) {
         const 适配器 = 获取剧情推进运行时适配器_ACU();
         if (!适配器 || typeof 适配器.confirmBeforeStoryGeneration !== 'function')
             return { action: 'continue' };
         try {
-            const 结果 = await Promise.resolve(适配器.confirmBeforeStoryGeneration({ planningText: String(规划文本 || '') }));
+            const 结果 = await Promise.resolve(适配器.confirmBeforeStoryGeneration({ planningText: String(规划文本 || ''), ...(options || {}) }));
             return 结果 && typeof 结果 === 'object' ? 结果 : { action: 'continue' };
         }
         catch (错误) {

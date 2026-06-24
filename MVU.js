@@ -500,7 +500,7 @@ const CharacterSchema = z
         纵坐标: z.coerce.number().prefault(-1).describe('当前位置纵坐标'),
         存活: z.boolean().prefault(true),
         死亡tick: z.coerce.number().prefault(-1).describe('-1表示未死亡；非负数表示死亡发生tick'),
-        死亡类型: z.enum(['无', '自然', '意外']).prefault('无').describe('复活只允许意外死亡'),
+        死亡类型: z.enum(['无', '自然', '意外']).prefault('无').describe('死亡时由AI判断为自然或意外；复活只允许意外死亡'),
         受伤部位: z
           .record(
             z.string(),

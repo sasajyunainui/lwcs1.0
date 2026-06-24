@@ -19,6 +19,14 @@
   let 最近MVU前置记录键 = '';
   let 本轮StatData = null;
   let 本轮输入文本 = '';
+  const 魂灵塔层规则 = Object.freeze([
+    Object.freeze({ label: '千年魂灵区', gateStart: 1, gateEnd: 18, minAge: 1000, maxAge: 9999, qualitySteps: Object.freeze(['C', 'B', 'A']) }),
+    Object.freeze({ label: '万年魂灵区', gateStart: 19, gateEnd: 36, minAge: 10000, maxAge: 99999, qualitySteps: Object.freeze(['B', 'A', 'S']) }),
+    Object.freeze({ label: '万年以上魂灵区', gateStart: 37, gateEnd: 99, minAge: 10000, maxAge: 99999, qualitySteps: Object.freeze(['A', 'S']) }),
+    Object.freeze({ label: '凶兽魂灵区', gateStart: 100, gateEnd: 108, minAge: 100000, maxAge: 200000, qualitySteps: Object.freeze(['S+']) }),
+  ]);
+  const 魂灵塔总层数 = 108;
+  const 魂灵塔标准物种 = Object.freeze(['龙类', '蛛类', '熊类', '植物系', '海魂兽', '鸟类', '猫科', '蛇类']);
 
   function 收集窗口() {
     const 窗口列表 = [];
@@ -144,6 +152,72 @@
       return JSON.parse(JSON.stringify(值));
     } catch (_) {}
     return 回退值;
+  }
+
+  function 深读对象(对象, 路径, 回退值 = undefined) {
+    const 片段列表 = Array.isArray(路径) ? 路径 : String(路径 || '').split('.').filter(Boolean);
+    let 当前值 = 对象;
+    for (const 片段 of 片段列表) {
+      if (当前值 === null || 当前值 === undefined) return 回退值;
+      当前值 = 当前值[片段];
+    }
+    return 当前值 === undefined ? 回退值 : 当前值;
+  }
+
+  function 读取当前StatData() {
+    if (本轮StatData && typeof 本轮StatData === 'object') return 本轮StatData;
+    const mvu = 读取窗口字段('Mvu');
+    if (mvu && typeof mvu.getMvuData === 'function') {
+      try {
+        const 数据 = mvu.getMvuData({ type: 'message', message_id: 'latest' });
+        if (数据 && 数据.stat_data && typeof 数据.stat_data === 'object') return 数据.stat_data;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function 取魂灵塔大关信息(层数 = 1) {
+    const 安全层数 = Math.max(1, Math.min(魂灵塔总层数, Math.floor(Number(层数) || 1)));
+    const 规则 = 魂灵塔层规则.find(item => 安全层数 >= item.gateStart && 安全层数 <= item.gateEnd) || 魂灵塔层规则[魂灵塔层规则.length - 1];
+    const 大关序号 = 魂灵塔层规则.findIndex(item => item === 规则) + 1;
+    const 进度 = 规则.gateEnd > 规则.gateStart ? (安全层数 - 规则.gateStart) / (规则.gateEnd - 规则.gateStart) : 1;
+    const 品质档 = 规则.qualitySteps[Math.min(规则.qualitySteps.length - 1, Math.floor(Math.max(0, Math.min(1, 进度)) * 规则.qualitySteps.length))] || 规则.qualitySteps[0] || 'C';
+    const 年限 = 安全层数 === 规则.gateEnd
+      ? 规则.maxAge
+      : Math.max(规则.minAge, Math.min(规则.maxAge, Math.round(规则.minAge + (规则.maxAge - 规则.minAge) * 进度)));
+    const 物种 = 魂灵塔标准物种[(安全层数 - 1) % 魂灵塔标准物种.length] || '龙类';
+    return {
+      层数: 安全层数,
+      大关: 大关序号,
+      标签: 规则.label,
+      区间: `${规则.gateStart}-${规则.gateEnd}层`,
+      最小年限: 规则.minAge,
+      最大年限: 规则.maxAge,
+      年限,
+      品质: 品质档,
+      标准物种: 物种,
+      关底战: 安全层数 === 规则.gateEnd,
+    };
+  }
+
+  function 构建魂灵塔待战系统消息(statData = null) {
+    const 数据 = statData && typeof statData === 'object' ? statData : 读取当前StatData();
+    if (!数据 || typeof 数据 !== 'object') return '';
+    const 战斗 = 深读对象(数据, ['world', '战斗'], {});
+    if (!战斗 || typeof 战斗 !== 'object') return '';
+    if (战斗.进行中 === true) return '';
+    const 试炼状态 = String(战斗.试炼状态 || '');
+    const 匹配 = 试炼状态.match(/魂灵塔-第(\d+)层/);
+    if (!匹配) return '';
+    const 层数 = Math.max(1, Math.min(魂灵塔总层数, Math.floor(Number(战斗.floor || 匹配[1]) || 1)));
+    const 信息 = 取魂灵塔大关信息(层数);
+    return [
+      '【魂灵塔待战信息】',
+      `当前试炼：魂灵塔第${信息.层数}层（${信息.标签}，${信息.区间}）`,
+      `守塔约束：标准物种=${信息.标准物种}；年限=${信息.年限}；品质=${信息.品质}；年限范围=${信息.最小年限}-${信息.最大年限}；${信息.关底战 ? '本层为关底战' : '本层为普通层'}。`,
+      '推进2若判定进入战斗，必须在 battle 模块路由的参战者.team_enemy 中给出正式敌方名称；脚本只提供约束，不会用占位名当正式敌方。',
+      '当前未进入战斗；战斗模块进行中时不要重复注入或重复触发 battle 路由。',
+    ].join('\n');
   }
 
   function 构建MVU前置记录键(最新角色消息, 最新用户消息, 捕获文本) {
@@ -626,12 +700,16 @@
 
   function 构建剧情推进临时系统消息(options = {}) {
     const 注入列表 = Array.isArray(options?.injects) ? options.injects : [];
+    const 输出 = [];
     const 命中项 = [...注入列表].reverse().find((item) => {
       const role = String(item?.role || '').trim().toLowerCase();
       const content = String(item?.content || '');
       return role === 'system' && (content.includes('<moduleSettlement>') || content.includes('[battle_arbitration]'));
     });
-    return 命中项 ? [{ role: 'system', content: String(命中项.content || '').trim() }] : [];
+    if (命中项) 输出.push({ role: 'system', content: String(命中项.content || '').trim() });
+    const 魂灵塔待战消息 = 构建魂灵塔待战系统消息(options?.statData);
+    if (魂灵塔待战消息) 输出.push({ role: 'system', content: 魂灵塔待战消息 });
+    return 输出;
   }
 
   function 检测剧情获得技能(规划文本) {
@@ -652,6 +730,30 @@
     return 匹配 ? String(匹配[1] || '').trim() : '';
   }
 
+  function 清理模块路由事件文本(文本 = '') {
+    return String(文本 || '')
+      .replace(/<\s*模块路由\s*>[\s\S]*?<\s*\/\s*模块路由\s*>/gi, '[模块路由已执行]')
+      .replace(/<\s*JSONPatch\b[\s\S]*?<\s*\/\s*JSONPatch\s*>/gi, '[结构化写入已省略]')
+      .replace(/<\s*UpdateVariable\b[\s\S]*?<\s*\/\s*UpdateVariable\s*>/gi, '[变量写入已省略]')
+      .trim();
+  }
+
+  function 构建模块路由运行事件(结果 = {}) {
+    const 直接事件 = 清理模块路由事件文本(结果?.runtimeEvent || '');
+    if (直接事件) return 直接事件;
+    const 模块 = String(结果?.kind || '').trim() || 'unknown';
+    if (模块 === '未命中') return '';
+    const 模式 = String(结果?.dispatchMode || '').trim() || (结果?.handled === true ? 'settled_summary' : 'failed_summary');
+    const 状态 =
+      模式 === 'pending_confirmation' || /opened_.*panel/.test(模式) ? '待确认'
+        : 模式 === 'failed_summary' || 结果?.handled === false ? '执行失败'
+          : /battle_takeover|battle_continuation/.test(模式) ? '实时接管'
+            : '已处理';
+    const 原因 = String(结果?.reason || '').trim();
+    const 事实 = 原因 ? `模块路由${状态}，原因：${原因}。` : `模块路由${状态}。`;
+    return `<模块路由结果>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：后续剧情只承接该结果，不要重复触发相同模块或重复结算。\n</模块路由结果>`;
+  }
+
   function 限制模块路由接管表大小() {
     while (本轮模块路由接管表.size > 20) {
       const 首个键 = 本轮模块路由接管表.keys().next().value;
@@ -665,6 +767,8 @@
     const 模式 = String(结果?.dispatchMode || '').trim();
     const 原因 = String(结果?.reason || '').trim();
     if (模块 === '未命中' || 原因 === 'no_special_module_hit') return true;
+    if (模式 === 'failed_summary' || 模式 === 'pending_confirmation' || 模式 === 'patch' || 模式 === 'inline' || 模式 === 'settled_summary') return true;
+    if (/opened_.*panel/.test(模式)) return true;
     if (模块 !== 'battle') return true;
     if (原因 === 'battle_free_narrative' || 模式 === 'battle_auto_arbitration') return true;
     return false;
@@ -676,7 +780,7 @@
     if (!路由块) return { action: 'continue', reason: 'module_route_missing' };
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
     if (typeof 路由函数 !== 'function') return { action: 'continue', reason: 'module_route_bridge_unavailable' };
-    const 接管键 = 取哈希(文本);
+    const 接管键 = 取哈希(路由块);
     if (本轮模块路由接管表.has(接管键)) return await 本轮模块路由接管表.get(接管键);
     const 接管承诺 = (async () => {
       let 结果 = null;
@@ -688,9 +792,23 @@
       }
       if (!结果 || 结果.handled !== true) {
         if (结果 && 结果.reason) console.warn('[LWCS适配器] 模块路由未接管，放行正文生成:', 结果.reason);
+        const runtimeEvent = 构建模块路由运行事件(结果 || {});
+        if (runtimeEvent) {
+          return {
+            action: 'continueWithRuntimeEvent',
+            reason: String(结果?.reason || 'module_route_not_handled'),
+            result: 结果,
+            runtimeEvent,
+          };
+        }
         return { action: 'continue', reason: String(结果?.reason || 'module_route_not_handled') };
       }
-      if (模块路由结果应放行(结果)) return { action: 'continue', reason: String(结果.reason || 'module_route_skipped') };
+      if (模块路由结果应放行(结果)) {
+        const runtimeEvent = 构建模块路由运行事件(结果);
+        return runtimeEvent
+          ? { action: 'continueWithRuntimeEvent', reason: String(结果.reason || 'module_route_settled'), result: 结果, runtimeEvent }
+          : { action: 'continue', reason: String(结果.reason || 'module_route_skipped') };
+      }
       return { action: 'blocked', reason: 'module_route_handled', result: 结果 };
     })();
     本轮模块路由接管表.set(接管键, 接管承诺);
@@ -701,6 +819,8 @@
   async function 正文生成前确认(context = {}) {
     const 模块路由决定 = await 尝试接管模块路由(context.planningText || '');
     if (模块路由决定.action === 'blocked') return 模块路由决定;
+    if (模块路由决定.action === 'continueWithRuntimeEvent') return 模块路由决定;
+    if (context.skipSkillDesign === true) return 模块路由决定;
     const 检测结果 = 检测剧情获得技能(context.planningText || '');
     if (!检测结果) return { action: 'continue' };
     const 打开技能设计 = 读取窗口函数('__LWCS_PROMPT_SKILL_DESIGN__');

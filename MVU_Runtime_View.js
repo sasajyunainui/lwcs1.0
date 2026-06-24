@@ -76,6 +76,8 @@ var MAP_TRAVEL_SCALE_BY_LEVEL = {
   city: 0.07,
   facility: 0.02,
 };
+var 独立魂环来源待补全文案_V1 = '待补全(请填写该独立魂环的来源实体或出处，如具体魂兽名/神赐魂环/传承来源)';
+var 角色性别待补全文案_V1 = '待补全(请填写角色性别)';
 
 function cloneJsonValue(值, 回退值 = {}) {
   if (值 === null || typeof 值 !== 'object') {
@@ -510,8 +512,8 @@ function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
   const 字段名 = String(路径[路径.length - 1] || '');
   if (字段名 === '生理期偏移') return undefined;
   if (字段名 === '受孕tick') return 格式化运行时受孕tick显示_V1(值) || undefined;
-  if (正文模式 && 字段名 === '死亡tick' && Number(值) < 0) return undefined;
-  if (正文模式 && 字段名 === '死亡类型' && (!String(值 || '').trim() || String(值 || '').trim() === '无')) return undefined;
+  if (字段名 === '死亡tick') return undefined;
+  if (字段名 === '死亡类型' && (!String(值 || '').trim() || String(值 || '').trim() === '无')) return undefined;
   const 排除状态 = MVU视图路径排除状态_V1(路径, 排除路径列表);
   if (排除状态.子树排除) return undefined;
   if (排除状态.精确排除 && (值 === undefined || 值 === null || typeof 值 !== 'object')) return undefined;
@@ -2280,6 +2282,9 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
     格式化运行时占位统计_V1(可见占位统计),
     ...格式化运行时魂技待补全路径提示_V1(魂技待补全路径),
     '',
+    '[Death State Rule]',
+    'If a character dies, write 状态.存活=false and choose 状态.死亡类型 as 自然 or 意外. Do NOT write 死亡tick; the script records the current tick automatically.',
+    '',
   '[Scene Presence & New Entity Check]',
   'You MUST audit and register newly introduced, durable entities before patching:',
   '1. 【Important Entity Diff】: Compare characters/places in this reply with "Existing MVU Entity Hits". First check if the entity already exists in the hits; if it exists, you are strictly PROHIBITED from adding it again! Only register when a completely NEW character/place with a proper name enters the long-term plot.',
@@ -3156,7 +3161,7 @@ function 构建更新视图技能薄片_V1(技能 = {}) {
   if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能)) return undefined;
   if (更新视图技能节点已补全_V1(技能)) return undefined;
   const 输出 = {};
-  ['_简易效果描述', '画面描述', '效果描述', '产物描述'].forEach(字段 => {
+  ['魂技名', '_简易效果描述', '画面描述', '效果描述', '产物描述'].forEach(字段 => {
     if (更新视图字段有运行值_V1(技能[字段], { 允许待补全: true })) 输出[字段] = cloneJsonValue(技能[字段], 技能[字段]);
   });
   return Object.keys(输出).length ? 输出 : undefined;
@@ -3225,6 +3230,107 @@ function 收口更新视图角色技能_V1(角色 = {}) {
     const 附带技能 = 构建更新视图技能表薄片_V1(魂骨.附带技能);
     if (附带技能) 魂骨.附带技能 = 附带技能;
     else delete 魂骨.附带技能;
+  });
+}
+
+function 更新视图值等于默认值_V1(值, 默认值) {
+  if (Array.isArray(默认值)) {
+    if (!Array.isArray(值) || 值.length !== 默认值.length) return false;
+    return 默认值.every((项, index) => 更新视图值等于默认值_V1(值[index], 项));
+  }
+  return String(值 ?? '').trim() === String(默认值 ?? '').trim();
+}
+
+function 更新视图待补字段_V1(节点 = {}, 字段 = '', 默认值) {
+  if (!节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
+  if (!更新视图值等于默认值_V1(节点[字段], 默认值)) delete 节点[字段];
+}
+
+function 更新视图对象有内容_V1(节点 = {}) {
+  return !!节点 && typeof 节点 === 'object' && !Array.isArray(节点) && Object.keys(节点).length > 0;
+}
+
+function 裁剪更新视图魂技默认字段_V1(魂技 = {}) {
+  if (!魂技 || typeof 魂技 !== 'object' || Array.isArray(魂技)) return false;
+  ['魂技名', '画面描述', '效果描述', '产物描述', '_简易效果描述'].forEach(字段 => {
+    if (!运行时文本需要补全_V1(魂技[字段])) delete 魂技[字段];
+  });
+  Object.keys(魂技).forEach(字段 => {
+    if (!['魂技名', '画面描述', '效果描述', '产物描述', '_简易效果描述'].includes(字段)) delete 魂技[字段];
+  });
+  return 更新视图对象有内容_V1(魂技);
+}
+
+function 裁剪更新视图魂环默认字段_V1(魂环 = {}, 选项 = {}) {
+  if (!魂环 || typeof 魂环 !== 'object' || Array.isArray(魂环)) return false;
+  const 保留来源 = 选项.保留来源 === true;
+  更新视图待补字段_V1(魂环, '颜色', '无');
+  if (保留来源) {
+    const 来源文本 = String(魂环.来源 ?? '').trim();
+    if (!来源文本 || 来源文本 === '无') 魂环.来源 = 独立魂环来源待补全文案_V1;
+    更新视图待补字段_V1(魂环, '来源', 独立魂环来源待补全文案_V1);
+  } else delete 魂环.来源;
+  取魂环魂技条目_V1(魂环).forEach(([魂技键, 魂技]) => {
+    if (!裁剪更新视图魂技默认字段_V1(魂技)) delete 魂环[魂技键];
+  });
+  Object.keys(魂环).forEach(字段 => {
+    if (字段 !== '颜色' && 字段 !== '来源' && !是魂技槽位键_V1(字段)) delete 魂环[字段];
+  });
+  return 更新视图对象有内容_V1(魂环);
+}
+
+function 裁剪更新视图魂灵默认字段_V1(魂灵 = {}) {
+  if (!魂灵 || typeof 魂灵 !== 'object' || Array.isArray(魂灵)) return false;
+  更新视图待补字段_V1(魂灵, '表象名称', AI_TODO_SOUL_SPIRIT_NAME);
+  if (!运行时文本需要补全_V1(魂灵.描述)) delete 魂灵.描述;
+  更新视图待补字段_V1(魂灵, '品质', AI_TODO_SOUL_SPIRIT_QUALITY);
+  取魂灵魂环条目_V1(魂灵).forEach(([魂环键, 魂环]) => {
+    if (!裁剪更新视图魂环默认字段_V1(魂环, { 保留来源: false })) delete 魂灵[魂环键];
+  });
+  Object.keys(魂灵).forEach(字段 => {
+    if (!['表象名称', '描述', '品质'].includes(字段) && !是魂环槽位键_V1(字段)) delete 魂灵[字段];
+  });
+  return 更新视图对象有内容_V1(魂灵);
+}
+
+function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '') {
+  if (!武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return false;
+  const 是第二武魂 = String(武魂槽位 || '').trim() === '第2武魂';
+  更新视图待补字段_V1(武魂, '表象名称', 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME);
+  更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
+  更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
+  更新视图待补字段_V1(武魂, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
+  if (!更新视图值等于默认值_V1(武魂.可调用元素, [AI_TODO_CALLABLE_ELEMENTS])) delete 武魂.可调用元素;
+  取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
+    if (!裁剪更新视图魂灵默认字段_V1(魂灵)) delete 武魂[魂灵键];
+  });
+  取武魂直接魂环条目_V1(武魂).forEach(([魂环键, 魂环]) => {
+    if (!裁剪更新视图魂环默认字段_V1(魂环, { 保留来源: true })) delete 武魂[魂环键];
+  });
+  Object.keys(武魂).forEach(字段 => {
+    if (
+      !['表象名称', '描述', '系别', '属性体系', '可调用元素'].includes(字段) &&
+      !是魂灵槽位键_V1(字段) &&
+      !是魂环槽位键_V1(字段)
+    ) delete 武魂[字段];
+  });
+  return 更新视图对象有内容_V1(武魂);
+}
+
+function 裁剪更新视图角色默认字段_V1(角色 = {}, 角色名 = '', 数据根 = {}) {
+  if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+  const 玩家名 = 取运行时玩家名_V1(数据根);
+  if (String(角色名 || '').trim() !== 玩家名) delete 角色.临时突破;
+  else 更新视图待补字段_V1(角色, '临时突破', 临时突破默认提示词_V1);
+  if (角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性)) {
+    更新视图待补字段_V1(角色.属性, '年龄', 0);
+    更新视图待补字段_V1(角色.属性, '生日', '待生成');
+    if (String(角色.属性.性别 ?? '').trim() === '') 角色.属性.性别 = 角色性别待补全文案_V1;
+    更新视图待补字段_V1(角色.属性, '性别', 角色性别待补全文案_V1);
+    if (!Object.keys(角色.属性).length) delete 角色.属性;
+  }
+  取角色武魂条目_V1(角色).forEach(([武魂槽位, 武魂]) => {
+    if (!裁剪更新视图武魂默认字段_V1(武魂, 武魂槽位)) delete 角色[武魂槽位];
   });
 }
 
@@ -3556,6 +3662,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     注入运行时简易效果描述_V1(角色, { 当前tick });
     收口更新视图角色技能_V1(角色);
     清理运行时已补全技能效果数组_V1(角色);
+    裁剪更新视图角色默认字段_V1(角色, 角色名, 数据根);
     const 过滤后角色 = 过滤MVU更新视图值_V1(角色, ['char', '示例角色']) || {};
     const 装备薄片 = 构建更新视图装备薄片_V1(角色.装备);
     if (装备薄片) 过滤后角色.装备 = 装备薄片;
@@ -3999,7 +4106,7 @@ function 构建MVU正文普通行_V1(名称 = '', 内容 = '', 最大深度 = 2)
 function 构建MVU正文状态摘要_V1(角色 = {}) {
   const 状态 = 角色?.状态 && typeof 角色.状态 === 'object' ? cloneJsonValue(角色.状态, {}) : {};
   if (状态.存活 === true) delete 状态.存活;
-  if (Number(状态.死亡tick || -1) < 0) delete 状态.死亡tick;
+  delete 状态.死亡tick;
   if (!String(状态.死亡类型 || '').trim() || String(状态.死亡类型 || '').trim() === '无') delete 状态.死亡类型;
   const 剩余资源 = 构建MVU剩余资源摘要_V1(角色);
   if (剩余资源) 状态.剩余资源 = 剩余资源;
@@ -4881,7 +4988,7 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     });
     取武魂直接魂环条目_V1(spiritData).forEach(([, ringData]) => {
       注入运行时文本默认值_V1(ringData, '颜色', '无');
-      注入运行时文本默认值_V1(ringData, '来源', '无');
+      注入运行时文本默认值_V1(ringData, '来源', 独立魂环来源待补全文案_V1);
       注入运行时技能图默认提示_V1(Object.fromEntries(取魂环魂技条目_V1(ringData)), skillName => ({
         type: 武魂系别,
         允许机制决策临时,
