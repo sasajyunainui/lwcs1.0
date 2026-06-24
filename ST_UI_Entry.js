@@ -49,7 +49,7 @@
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
-    数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' }
+    数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'background' }
   };
 
   const 变量运行时接口模块顺序 = Object.freeze([
@@ -66,7 +66,7 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
-  const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '数据库模块']);
+  const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
   const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '战斗模块', '数据库模块']);
 
   const 预览依赖映射 = {
@@ -97,6 +97,9 @@
     启动时间: Date.now(),
     首屏可交互时间: 0,
     结束时间: 0,
+    数据库模块开始时间: 0,
+    数据库模块完成时间: 0,
+    数据库模块错误: '',
     错误数: 0,
     最近错误: ''
   };
@@ -106,6 +109,7 @@
   const 文本资源缓存表 = new Map();
   let 引导承诺 = null;
   let 空闲预取已安排 = false;
+  let 数据库模块后台加载已安排 = false;
 
   Object.keys(模块注册表).forEach(模块名 => {
     模块状态表[模块名] = {
@@ -145,6 +149,7 @@
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
     const 强制切换 = 选项 && 选项.强制切换 === true;
     const 预设文件名 = '缝合怪東方花映塚版本二改_专用剧情推进.plot-preset.json';
+    await 等待数据库模块就绪('plot_preset_inject', true);
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
@@ -421,6 +426,37 @@
     return 结果;
   }
 
+  async function 等待数据库模块就绪(来源 = 'database_required', 抛错 = true) {
+    if (!加载状态.数据库模块开始时间) 加载状态.数据库模块开始时间 = Date.now();
+    加载状态.数据库模块错误 = '';
+    const 结果 = await 确保模块已加载('数据库模块', { 来源, 允许失败降级: false, 抛错: false });
+    if (结果 && 结果.ok) {
+      加载状态.数据库模块完成时间 = Date.now();
+      加载状态.数据库模块错误 = '';
+      return 结果;
+    }
+    const 错误文本 =
+      结果 && 结果.error && 结果.error.message
+        ? 结果.error.message
+        : 结果 && 结果.reason
+          ? 结果.reason
+          : '数据库模块加载失败';
+    加载状态.数据库模块错误 = 错误文本;
+    if (抛错) throw (结果 && 结果.error) || new Error(错误文本);
+    return 结果;
+  }
+
+  function 启动数据库模块后台加载(来源 = 'bootstrap_database') {
+    if (数据库模块后台加载已安排) return;
+    数据库模块后台加载已安排 = true;
+    if (!加载状态.数据库模块开始时间) 加载状态.数据库模块开始时间 = Date.now();
+    setTimeout(() => {
+      等待数据库模块就绪(来源, false).then(结果 => {
+        if (!结果 || !结果.ok) console.error('[LWCS] 数据库模块后台加载失败:', 加载状态.数据库模块错误);
+      });
+    }, 0);
+  }
+
   async function 确保预览依赖已加载(预览键, 选项 = {}) {
     const 键 = String(预览键 || '').trim();
     const 依赖列表 = Array.isArray(预览依赖映射[键]) ? 预览依赖映射[键] : [];
@@ -456,8 +492,12 @@
   }
 
   宿主窗口.__LWCS_确保模块已加载__ = 确保模块已加载;
+  宿主窗口.__LWCS_等待数据库模块就绪__ = 等待数据库模块就绪;
   宿主窗口.__LWCS_确保预览依赖已加载__ = 确保预览依赖已加载;
   宿主窗口.__LWCS_获取加载诊断__ = 获取加载诊断;
+  try {
+    if (window !== 宿主窗口) window.__LWCS_等待数据库模块就绪__ = 等待数据库模块就绪;
+  } catch (错误) {}
 
   function ensureHostNodes() {
     if (!宿主文档.body) return;
@@ -663,6 +703,7 @@
       eventOn(getButtonEvent('MVU冷归档'), async () => {
         try {
           await 引导加载();
+          await 等待数据库模块就绪('cold_archive_button', true);
           await 等待全局函数('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__', 12000);
           const 打开冷归档面板 =
             typeof 宿主窗口.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ === 'function'
@@ -706,6 +747,7 @@
       eventOn(getButtonEvent('防截断流入'), async () => {
         try {
           await 引导加载();
+          await 等待数据库模块就绪('truncation_guard_button', true);
           await 等待全局函数('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__', 12000);
           const 打开防截断流入面板 =
             typeof 宿主窗口.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ === 'function'
@@ -766,6 +808,7 @@
         for (const 模块名 of 核心模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }
+        启动数据库模块后台加载('bootstrap_database');
         确保模块已加载('战斗模块', { 来源: 'bootstrap_battle', 允许失败降级: true, 抛错: false });
 
         if (!宿主窗口.Vue || typeof 宿主窗口.Vue.compile !== 'function') {
