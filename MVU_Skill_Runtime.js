@@ -665,7 +665,7 @@ function syncSoulTowerRecordEligibility(char = {}) {
 function createDefaultRingSkillShell() {
   return {
     ['\u9b42\u6280\u540d']: AI_TODO_SKILL_NAME,
-    ['\u753b\u9762\u63cf\u8ff0']: AI_TODO_SKILL_VISUAL_STAGE1,
+    ['\u753b\u9762\u63cf\u8ff0']: AI_TODO_SKILL_VISUAL,
     ['\u6548\u679c\u63cf\u8ff0']: AI_TODO_SKILL_EFFECT,
     _\u6548\u679c\u6570\u7ec4: [],
   };
@@ -19306,9 +19306,7 @@ var SKILL_TEXT_UNKNOWN = '未知';
 var AI_TODO_SKILL_NAME =
   '待补全（填写魂技名；命名必须与所属武魂/魂灵同源，禁止无关命名；若为造物承载类技能，此名称同时作为生成物名称）';
 var AI_TODO_SKILL_VISUAL = '待补全（依据魂技名与_简易效果描述补全发动画面，文字须有小说分镜感与视觉张力，严禁新增未提及的机制）';
-var AI_TODO_SKILL_VISUAL_STAGE1 =
-  '待补全（高阶视觉。结合武魂/魂兽生态与剧情氛围补全分镜，文字优美且禁止新增机制）';
-var AI_TODO_SKILL_EFFECT = '待补全（效果描述。须逻辑严密，按“触发条件-数值消耗-判定结果”的TRPG规则书体例编写';
+var AI_TODO_SKILL_EFFECT = '待补全（效果描述。将_简易效果描述转化为自然语言。 须逻辑严密，明确消耗与效果等具体数值';
 var AI_TODO_SPIRIT_NAME = '待补全(填写具体武魂名，如蓝银草/蓝银皇)';
 var AI_TODO_SPIRIT_DESC = '待补全(描述武魂外形、核心能力与战斗特征)';
 var 武魂系别待补全文案_V1 = '待补全(填写武魂系别：强攻系/敏攻系/防御系/控制系/辅助系/食物系/治疗系/精神系/元素系/召唤系)';
@@ -21323,14 +21321,13 @@ function 技能生成失败软落地_V1(skill = {}, context = {}, 错误 = null,
   if (typeof 下个技能.魂技名 !== 'string' || !下个技能.魂技名.trim() || isSkillTodoText(下个技能.魂技名)) {
     下个技能.魂技名 = buildSkillNameTodoText(context?.textContext || context);
   }
-  const 有效果数组 = Array.isArray(下个技能._效果数组) && 下个技能._效果数组.length > 0;
   if (typeof 下个技能.画面描述 !== 'string' || !下个技能.画面描述.trim() || 下个技能.画面描述 === SKILL_TEXT_UNKNOWN) {
-    下个技能.画面描述 = 有效果数组 ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1;
+    下个技能.画面描述 = AI_TODO_SKILL_VISUAL;
   }
   if (typeof 下个技能.效果描述 !== 'string' || !下个技能.效果描述.trim() || 下个技能.效果描述 === SKILL_TEXT_UNKNOWN) {
     下个技能.效果描述 = AI_TODO_SKILL_EFFECT;
   }
-  if (有效果数组) 清理技能效果数组AI文本字段_V1(下个技能._效果数组);
+  if (Array.isArray(下个技能._效果数组) && 下个技能._效果数组.length > 0) 清理技能效果数组AI文本字段_V1(下个技能._效果数组);
   Object.keys(skill).forEach(键 => delete skill[键]);
   Object.assign(skill, 下个技能);
   记录技能生成事件_V1(context, {
@@ -21749,7 +21746,7 @@ function ensureSkillStructGenerated(skill, context = {}) {
 
   if (!hasPackedEffects) {
     if (typeof skill.画面描述 !== 'string' || !skill.画面描述.trim() || isSkillTodoText(skill.画面描述))
-      skill.画面描述 = AI_TODO_SKILL_VISUAL_STAGE1;
+      skill.画面描述 = AI_TODO_SKILL_VISUAL;
     if (typeof skill.效果描述 !== 'string' || !skill.效果描述.trim() || isSkillTodoText(skill.效果描述))
       skill.效果描述 = AI_TODO_SKILL_EFFECT;
   } else {

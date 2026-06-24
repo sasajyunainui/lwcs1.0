@@ -503,7 +503,55 @@ function 格式化运行时受孕tick显示_V1(值 = 0) {
   const 数值 = Number(值);
   if (!Number.isFinite(数值) || 数值 < 0) return '未受孕';
   if (数值 === 0) return '';
-  return formatTickToCalendarDateText(数值);
+  return 格式化运行时绝对tick时间_V1(数值);
+}
+
+function 格式化运行时绝对tick时间_V1(tick值 = 0) {
+  if (typeof formatTickToCalendarDateText === 'function') return formatTickToCalendarDateText(tick值);
+  const 安全tick = Math.max(0, Number(tick值 || 0));
+  const 总分钟 = 安全tick * 10;
+  const 总天数 = Math.floor(总分钟 / 1440);
+  const 年 = Math.floor(总天数 / 360);
+  const 月 = Math.floor((总天数 % 360) / 30) + 1;
+  const 日 = (总天数 % 30) + 1;
+  const 分钟余量 = 总分钟 % 1440;
+  const 小时 = Math.floor(分钟余量 / 60);
+  const 分钟 = 分钟余量 % 60;
+  return `斗罗历${20000 + 年}年${月}月${日}日 ${String(小时).padStart(2, '0')}:${String(分钟).padStart(2, '0')}`;
+}
+
+function 格式化运行时tick持续时间_V1(tick值 = 0) {
+  if (typeof formatTickDurationAsDayText === 'function') return formatTickDurationAsDayText(tick值);
+  const 总分钟 = Math.max(0, Math.round(Number(tick值 || 0) * 10));
+  if (!Number.isFinite(总分钟) || 总分钟 <= 0) return '';
+  const 天 = Math.floor(总分钟 / 1440);
+  const 小时 = Math.floor((总分钟 % 1440) / 60);
+  const 分钟 = 总分钟 % 60;
+  if (天 > 0) return 小时 > 0 ? `${天}天${小时}小时` : `${天}天`;
+  if (小时 > 0) return 分钟 > 0 ? `${小时}小时${分钟}分钟` : `${小时}小时`;
+  return `${分钟}分钟`;
+}
+
+function 转换运行时文本tick显示_V1(文本 = '') {
+  return String(文本 || '').replace(/(\d+(?:\.\d+)?)\s*tick\b/gi, (原文, 数值文本) => {
+    const 时长 = 格式化运行时tick持续时间_V1(Number(数值文本));
+    return 时长 || 原文;
+  });
+}
+
+function 格式化运行时tick字段显示_V1(字段名 = '', 值 = '') {
+  const 数值 = Number(值);
+  if (!Number.isFinite(数值) || 数值 <= 0) return '';
+  if (/持续|时长|保留|冷却|间隔|偏移|用时|耗时/.test(String(字段名 || ''))) return 格式化运行时tick持续时间_V1(数值);
+  return 格式化运行时绝对tick时间_V1(数值);
+}
+
+function 格式化运行时显示字段名_V1(字段名 = '') {
+  const 文本 = String(字段名 || '').trim();
+  if (!/tick$/i.test(文本)) return 文本;
+  const 去后缀 = 文本.replace(/tick$/i, '');
+  if (/持续|时长|保留|冷却|间隔|偏移|用时|耗时/.test(去后缀)) return 去后缀 || '时长';
+  return `${去后缀 || '发生'}时间`;
 }
 
 function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
@@ -514,6 +562,7 @@ function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
   if (字段名 === '受孕tick') return 格式化运行时受孕tick显示_V1(值) || undefined;
   if (字段名 === '死亡tick') return undefined;
   if (字段名 === '死亡类型' && (!String(值 || '').trim() || String(值 || '').trim() === '无')) return undefined;
+  if (正文模式 && /tick$/i.test(字段名) && typeof 值 !== 'object') return 格式化运行时tick字段显示_V1(字段名, 值) || undefined;
   const 排除状态 = MVU视图路径排除状态_V1(路径, 排除路径列表);
   if (排除状态.子树排除) return undefined;
   if (排除状态.精确排除 && (值 === undefined || 值 === null || typeof 值 !== 'object')) return undefined;
@@ -532,7 +581,7 @@ function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
     });
     return Object.keys(输出).length ? 输出 : undefined;
   }
-  if (正文模式) return 正文视图值已初始化_V1(值) ? (typeof 值 === 'string' ? 值.trim() : 值) : undefined;
+  if (正文模式) return 正文视图值已初始化_V1(值) ? (typeof 值 === 'string' ? 转换运行时文本tick显示_V1(值.trim()) : 值) : undefined;
   return 值;
 }
 
@@ -3876,14 +3925,14 @@ function 过滤MVU剧情视图值_V1(剧情视图 = {}) {
 }
 
 function 格式化MVU剧情提示单元_V1(值 = '') {
-  return String(值 ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
+  return 转换运行时文本tick显示_V1(String(值 ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/').trim());
 }
 
 function 格式化MVU剧情提示原子值_V1(值, 选项 = {}) {
   if (值 === undefined || 值 === null) return '';
   if (typeof 值 === 'string') {
     const 文本 = 值.trim();
-    return 正文视图值已初始化_V1(文本) ? 文本 : '';
+    return 正文视图值已初始化_V1(文本) ? 转换运行时文本tick显示_V1(文本) : '';
   }
   if (typeof 值 === 'number') {
     const 数值 = Number(值);
@@ -3912,7 +3961,7 @@ function 格式化MVU剧情提示对象片段_V1(对象 = {}, 最大字段数 = 
     if (片段列表.length >= 最大字段数) return;
     if (字段 === '生理期偏移') return;
     const 文本 = 格式化MVU剧情提示值_V1(值);
-    if (文本) 片段列表.push(`${字段}:${文本}`);
+    if (文本) 片段列表.push(`${格式化运行时显示字段名_V1(字段)}:${文本}`);
   });
   return 片段列表.join('，');
 }
@@ -4044,37 +4093,16 @@ var MVU剧情当前段字段表_V1 = Object.freeze([
   Object.freeze({ 标签: '世界线日志', 取值: 当前 => 当前?.世界线日志 }),
 ]);
 
-var MVU剧情角色简表字段表_V1 = Object.freeze([
-  Object.freeze({ 标签: '角色', 取值: (角色, 上下文) => 上下文.角色名 }),
-  Object.freeze({ 标签: '性别', 取值: 角色 => 角色?.属性?.性别 }),
-  Object.freeze({ 标签: '生日', 取值: 角色 => 角色?.属性?.生日 }),
-  Object.freeze({ 标签: '位置', 取值: 角色 => 角色?.状态?.位置 }),
-  Object.freeze({ 标签: '行动', 取值: 角色 => 角色?.状态?.行动 }),
-  Object.freeze({ 标签: '长相', 取值: 角色 => 角色?.外貌?.长相描述 }),
-  Object.freeze({ 标签: '特征', 取值: 角色 => 角色?.外貌?.特殊特征 }),
-  Object.freeze({ 标签: '穿搭', 取值: 角色 => 角色?.穿搭?.描述 }),
-  Object.freeze({ 标签: '性格', 取值: 角色 => 角色?.性格 }),
-  Object.freeze({ 标签: '财富', 取值: 角色 => 构建MVU剧情提示财富_V1(角色) }),
-  Object.freeze({ 标签: '身份关系', 取值: (角色, 上下文) => 构建MVU剧情提示身份关系_V1(角色, 上下文.角色名, 上下文.角色名列表) }),
-  Object.freeze({ 标签: '剩余资源', 取值: 角色 => 构建MVU剩余资源摘要_V1(角色) }),
-  Object.freeze({ 标签: '私密档案', 取值: 角色 => 角色?.私密档案, 选项: { 最大字段数: 20 } }),
-]);
-
 function 构建MVU剧情角色简表_V1(数据根 = {}, userInput = '', 最后剧情文本 = '') {
   const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本);
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
+  const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 角色简表 = [];
   角色名列表.forEach(角色名 => {
     const 角色 = 数据根?.char?.[角色名];
     if (!角色 || typeof 角色 !== 'object') return;
-    const 上下文 = { 角色名, 角色名列表 };
-    const 条目 = {};
-    MVU剧情角色简表字段表_V1.forEach(字段 => {
-      const 值 = typeof 字段.取值 === 'function' ? 字段.取值(角色, 上下文) : '';
-      const 文本 = 格式化MVU剧情提示值_V1(值, 字段.选项 || {});
-      if (文本) 条目[字段.标签] = 文本;
-    });
-    if (条目.角色) 角色简表.push(条目);
+    const 主体段 = 构建MVU正文角色卡主体行列表_V1(角色名, 角色, 数据根?.char || {}, 当前tick).join('\n');
+    if (主体段) 角色简表.push({ 角色: 角色名, 主体段 });
   });
   return 角色简表;
 }
@@ -4092,19 +4120,9 @@ function 构建MVU剧情提示当前段_V1(剧情视图 = {}) {
 function 构建MVU剧情提示角色段_V1(剧情视图 = {}) {
   const 角色简表 = Array.isArray(剧情视图?.角色简表) ? 剧情视图.角色简表 : [];
   if (!角色简表.length) return '【角色简表】\n无';
-  const 角色块列表 = [];
-  角色简表.forEach(条目 => {
-    if (!条目 || typeof 条目 !== 'object') return;
-    const 角色名 = 格式化MVU剧情提示单元_V1(条目.角色);
-    if (!角色名) return;
-    const 行列表 = [`【角色：${角色名}】`];
-    MVU剧情角色简表字段表_V1.forEach(字段 => {
-      if (字段.标签 === '角色') return;
-      const 内容 = 格式化MVU剧情提示单元_V1(条目[字段.标签]);
-      if (内容) 行列表.push(`- ${字段.标签}: ${内容}`);
-    });
-    if (行列表.length > 1) 角色块列表.push(行列表.join('\n'));
-  });
+  const 角色块列表 = 角色简表
+    .map(条目 => String(条目?.主体段 || '').trim())
+    .filter(Boolean);
   return 角色块列表.length ? `【角色简表】\n\n${角色块列表.join('\n\n---\n\n')}` : '【角色简表】\n无';
 }
 
@@ -4149,7 +4167,7 @@ function 格式化MVU正文提示原子值_V1(值) {
   if (typeof 值 === 'boolean') return 值 ? '是' : '';
   if (typeof 值 === 'number') return Number.isFinite(值) ? String(值) : '';
   const 文本 = String(值).trim();
-  return 正文视图值已初始化_V1(文本) ? 文本 : '';
+  return 正文视图值已初始化_V1(文本) ? 转换运行时文本tick显示_V1(文本) : '';
 }
 
 function 格式化MVU正文提示值_V1(值, 最大深度 = 2) {
@@ -4165,7 +4183,7 @@ function 格式化MVU正文提示值_V1(值, 最大深度 = 2) {
     return Object.entries(值)
       .map(([键, 子值]) => {
         const 文本 = 格式化MVU正文提示值_V1(子值, 最大深度 - 1);
-        return 文本 ? `${键}:${文本}` : '';
+        return 文本 ? `${格式化运行时显示字段名_V1(键)}:${文本}` : '';
       })
       .filter(Boolean)
       .join('；');
@@ -4182,13 +4200,13 @@ function 添加MVU正文块_V1(行列表 = [], 标题 = '', 子行列表 = []) {
 }
 
 function 添加MVU正文键值片段_V1(片段列表 = [], 标签 = '', 值 = '', 最大深度 = 2) {
-  const 标签文本 = String(标签 || '').trim();
+  const 标签文本 = 格式化运行时显示字段名_V1(标签);
   const 内容文本 = 格式化MVU正文提示值_V1(值, 最大深度);
   if (标签文本 && 内容文本) 片段列表.push(`${标签文本}=${内容文本}`);
 }
 
 function 构建MVU正文普通行_V1(名称 = '', 内容 = '', 最大深度 = 2) {
-  const 名称文本 = String(名称 || '').trim();
+  const 名称文本 = 格式化运行时显示字段名_V1(名称);
   const 内容文本 = 格式化MVU正文提示值_V1(内容, 最大深度);
   return 名称文本 && 内容文本 ? `- ${名称文本}：${内容文本}` : '';
 }
@@ -4517,9 +4535,20 @@ function 构建MVU正文情报可见度行列表_V1(情报可见度 = {}) {
 }
 
 function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
+  const 行列表 = 构建MVU正文角色卡主体行列表_V1(角色名, 角色, 正文角色表, 当前tick);
+  const 已展示字段 = new Set(['状态', '基础六维对标', '外貌', '穿搭', '性格', '财富', '社交', '副职业', '武魂融合技', '装备', '背包', '我的任务', '任务', '属性']);
+  const 其他行 = Object.entries(角色 || {}).flatMap(([字段, 值]) => {
+    if (已展示字段.has(字段) || 是武魂槽位键_V1(字段)) return [];
+    const 行 = 构建MVU正文普通行_V1(字段, 值, 2);
+    return 行 ? [行] : [];
+  });
+  添加MVU正文块_V1(行列表, '其他', 其他行);
+  return 行列表.length > 1 ? 行列表.join('\n') : `━━━━━━━━ ${角色名} ━━━━━━━━\n无`;
+}
+
+function 构建MVU正文角色卡主体行列表_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
   const 行列表 = [`━━━━━━━━ ${角色名} ━━━━━━━━`];
   添加MVU正文块_V1(行列表, '基础信息', 构建MVU正文对象行列表_V1({
-    年龄: 格式化年龄岁月文本_V1(角色?.属性?.年龄, 角色?.属性?.生日, 当前tick),
     生日: 角色?.属性?.生日,
     性别: 角色?.属性?.性别,
   }, 6, 1));
@@ -4533,14 +4562,7 @@ function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色�
   添加MVU正文块_V1(行列表, '任务', 构建MVU正文任务行列表_V1(角色));
   添加MVU正文块_V1(行列表, '副职业', 构建MVU正文对象行列表_V1(构建MVU正文副职业摘要_V1(角色), 6, 2));
   添加MVU正文块_V1(行列表, '武魂融合技', 构建MVU正文武魂融合技行列表_V1(构建MVU正文武魂融合技摘要_V1(角色名, 角色, 正文角色表)));
-  const 已展示字段 = new Set(['状态', '基础六维对标', '外貌', '穿搭', '性格', '财富', '社交', '副职业', '武魂融合技', '装备', '背包', '我的任务', '任务', '属性']);
-  const 其他行 = Object.entries(角色 || {}).flatMap(([字段, 值]) => {
-    if (已展示字段.has(字段) || 是武魂槽位键_V1(字段)) return [];
-    const 行 = 构建MVU正文普通行_V1(字段, 值, 2);
-    return 行 ? [行] : [];
-  });
-  添加MVU正文块_V1(行列表, '其他', 其他行);
-  return 行列表.length > 1 ? 行列表.join('\n') : `━━━━━━━━ ${角色名} ━━━━━━━━\n无`;
+  return 行列表;
 }
 
 function 构建MVU正文其他信息卡_V1(正文视图 = {}) {
@@ -4987,7 +5009,7 @@ function 注入运行时技能默认提示_V1(skill = {}, context = {}) {
   const 限流提示 = (类型, 完整提示) => (取提示 ? 取提示(类型, 完整提示) : 完整提示);
   if (String(skill.魂技名 ?? '').trim() === '') skill.魂技名 = 限流提示('技能名', buildSkillNameTodoText(textContext));
   if (String(skill.画面描述 ?? '').trim() === '')
-    skill.画面描述 = 限流提示('技能画面描述', hasPackedEffects ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1);
+    skill.画面描述 = 限流提示('技能画面描述', AI_TODO_SKILL_VISUAL);
   if (String(skill.效果描述 ?? '').trim() === '' || String(skill.效果描述 ?? '').trim() === SKILL_TEXT_UNKNOWN || isSkillTodoText(skill.效果描述))
     skill.效果描述 = 限流提示('技能效果描述', AI_TODO_SKILL_EFFECT);
   const 是造物承载技能 = String(skill.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill._效果数组);

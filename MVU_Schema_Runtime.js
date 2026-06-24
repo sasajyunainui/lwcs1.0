@@ -5986,7 +5986,7 @@ function 规范化Schema根转换_V1(data = {}) {
         if (!hasPackedEffects && Array.isArray(skill._效果数组)) delete skill._效果数组;
         if (isEmptyDisplayText(skill.魂技名)) skill.魂技名 = buildSkillNameTodoText(textContext);
         if (isEmptyDisplayText(skill.画面描述))
-          skill.画面描述 = hasPackedEffects ? AI_TODO_SKILL_VISUAL : AI_TODO_SKILL_VISUAL_STAGE1;
+          skill.画面描述 = AI_TODO_SKILL_VISUAL;
         if (isEmptyDisplayText(skill.效果描述) || String(skill.效果描述 || '').trim() === SKILL_TEXT_UNKNOWN || isSkillTodoText(skill.效果描述)) {
           skill.效果描述 = AI_TODO_SKILL_EFFECT;
         }

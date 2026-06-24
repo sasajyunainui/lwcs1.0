@@ -73,6 +73,20 @@
   --投影雾光:
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 38%, transparent), transparent 22%),
     radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
+  --投影屏边线宽: 1px;
+  --投影屏边线: var(--边线颜色);
+  --投影屏背景: var(--投影背景);
+  --投影屏阴影:
+    var(--主题发光),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  --投影屏前景: var(--投影雾光);
+  --投影屏前景混合: normal;
+  --投影屏前景透明: 0.52;
+  --投影屏前景动画: none;
+  --投影屏后景显示: block;
+  --投影屏后景: var(--投影暗扫线);
+  --投影屏后景混合: multiply;
+  --投影屏后景透明: 0.38;
   --虚线: rgba(118, 226, 255, 0.18);
   --强线: rgba(118, 226, 255, 0.38);
   --文字主色: rgba(240, 250, 252, 0.96);
@@ -115,31 +129,25 @@
   --原型文字辉光: var(--全息标题字影);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息材质底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,0.042), rgba(255,255,255,0.012)),
-    color-mix(in srgb, var(--实体背景) 82%, transparent);
-  --全息材质悬停底:
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,0.052), rgba(255,255,255,0.018)),
-    color-mix(in srgb, var(--实体背景) 92%, transparent);
-  --全息材质线: color-mix(in srgb, var(--边线颜色) 38%, rgba(255, 255, 255, 0.12));
-  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 24%, rgba(255, 255, 255, 0.085));
+    var(--实体背景);
+  --全息材质悬停底:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 30%),
+    var(--实体背景);
+  --全息材质线: color-mix(in srgb, var(--边线颜色) 50%, transparent);
+  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 30%, transparent);
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
   --全息材质侧线: color-mix(in srgb, var(--主题主色) 34%, transparent);
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
-  --全息材质雾光: var(--投影雾光);
-  --全息材质雾光透明: 0.28;
+  --全息材质雾光: none;
+  --全息材质雾光透明: 0;
   --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    inset 0 0 16px color-mix(in srgb, var(--主题主色) 7%, transparent),
-    0 0 12px color-mix(in srgb, var(--主题主色) 16%, transparent);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px color-mix(in srgb, var(--主题主色) 28%, transparent);
   --全息材质悬停阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.055),
-    inset 0 0 20px color-mix(in srgb, var(--主题主色) 9%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 24%, transparent);
+    2px 4px 12px rgba(0, 0, 0, 0.32),
+    0 0 16px color-mix(in srgb, var(--主题主色) 34%, transparent);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
   --cyan-line: rgba(77, 240, 255, 0.35);
@@ -17017,31 +17025,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     0 0 5px color-mix(in srgb, var(--主题高光) 20%, transparent),
     0 0 9px color-mix(in srgb, var(--主题主色) 14%, transparent);
   --全息材质底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,0.042), rgba(255,255,255,0.012)),
-    color-mix(in srgb, var(--实体背景) 82%, transparent);
-  --全息材质悬停底:
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,0.052), rgba(255,255,255,0.018)),
-    color-mix(in srgb, var(--实体背景) 92%, transparent);
-  --全息材质线: color-mix(in srgb, var(--边线颜色) 38%, rgba(255, 255, 255, 0.12));
-  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 24%, rgba(255, 255, 255, 0.085));
+    var(--实体背景);
+  --全息材质悬停底:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 30%),
+    var(--实体背景);
+  --全息材质线: color-mix(in srgb, var(--边线颜色) 50%, transparent);
+  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 30%, transparent);
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
   --全息材质侧线: color-mix(in srgb, var(--主题主色) 34%, transparent);
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
-  --全息材质雾光: var(--投影雾光);
-  --全息材质雾光透明: 0.28;
+  --全息材质雾光: none;
+  --全息材质雾光透明: 0;
   --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    inset 0 0 16px color-mix(in srgb, var(--主题主色) 7%, transparent),
-    0 0 12px color-mix(in srgb, var(--主题主色) 16%, transparent);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px color-mix(in srgb, var(--主题主色) 28%, transparent);
   --全息材质悬停阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.055),
-    inset 0 0 20px color-mix(in srgb, var(--主题主色) 9%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 24%, transparent);
+    2px 4px 12px rgba(0, 0, 0, 0.32),
+    0 0 16px color-mix(in srgb, var(--主题主色) 34%, transparent);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -17099,6 +17101,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   backdrop-filter: var(--玻璃滤镜) !important;
   -webkit-backdrop-filter: var(--玻璃滤镜) !important;
   perspective: 1200px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 body[data-mvu-holo-theme='炫世唐门'],
