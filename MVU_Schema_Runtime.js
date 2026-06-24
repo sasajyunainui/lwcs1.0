@@ -237,6 +237,16 @@ function 按精神力同步内置角色紫极魔瞳_V1(角色 = {}) {
   功法.lv = 紫极魔瞳境界等级表_V1[境界];
 }
 
+function 角色拥有唐门身份_V1(角色 = {}) {
+  const 势力 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力) ? 角色.社交.势力 : {};
+  const 身份文本 = [角色?.社交?.主身份, ...Object.entries(势力).flatMap(([势力名, 势力数据]) => [势力名, 势力数据?.身份])].join(' ');
+  return 身份文本.includes('唐门');
+}
+
+function 判断初始唐门紫极魔瞳_V1(角色 = {}, 功法 = {}) {
+  return 角色拥有唐门身份_V1(角色) && !Object.prototype.hasOwnProperty.call(功法 || {}, '获得tick');
+}
+
 function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
   const 名称 = String(功法名 || '').trim();
   const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
@@ -255,6 +265,10 @@ function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
 function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
   const 功法 = 角色?.功法?.['紫极魔瞳'];
   if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return null;
+  if (判断初始唐门紫极魔瞳_V1(角色, 功法)) {
+    按精神力同步内置角色紫极魔瞳_V1(角色);
+    return 功法;
+  }
   const 有获得tick = Object.prototype.hasOwnProperty.call(功法, '获得tick');
   const 已获得tick = Math.max(0, Math.floor(Number(有获得tick ? 功法.获得tick : 当前tick || 0)));
   if (!有获得tick) 功法.获得tick = 已获得tick;
@@ -264,6 +278,13 @@ function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
   if (持有tick >= 紫极魔瞳十年tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵域境')) 境界 = '浩瀚';
   else if (持有tick >= 紫极魔瞳三年tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵渊境')) 境界 = '芥子';
   else if (持有tick >= 紫极魔瞳三月tick_V1 && 精神阶位 >= 读取紫极魔瞳精神境界阶位_V1('灵通境')) 境界 = '入微';
+  const 当前境界 = String(功法.境界 || '').trim();
+  const 当前等级 = Math.max(0, Number(功法.lv || 0), 紫极魔瞳境界等级表_V1[当前境界] || 0);
+  const 结算等级 = 紫极魔瞳境界等级表_V1[境界] || 1;
+  if (当前等级 > 结算等级) {
+    const 保留境界 = Object.entries(紫极魔瞳境界等级表_V1).find(([, 等级]) => 等级 === Math.min(4, 当前等级))?.[0];
+    if (保留境界) 境界 = 保留境界;
+  }
   功法.境界 = 境界;
   功法.lv = 紫极魔瞳境界等级表_V1[境界];
   return 功法;
