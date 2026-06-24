@@ -60,17 +60,17 @@
   --原型文字辉光: 0 0 12px rgba(103, 247, 239, 0.48), 0 0 2px rgba(255, 255, 255, 0.82);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息材质底:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
-    var(--原型暗玻卡片);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
+    rgba(9, 17, 24, 0.49);
   --全息材质悬停底:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.022)),
-    color-mix(in srgb, var(--原型暗玻卡片) 78%, rgba(103, 247, 239, 0.075));
-  --全息材质线: rgba(103, 247, 239, 0.18);
-  --全息材质弱线: rgba(255, 255, 255, 0.075);
-  --全息材质角光: rgba(103, 247, 239, 0.12);
-  --全息材质侧线: rgba(103, 247, 239, 0.3);
-  --全息材质辉光: rgba(103, 247, 239, 0.06);
-  --全息材质强辉光: rgba(103, 247, 239, 0.2);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.068), rgba(255, 255, 255, 0.018)),
+    rgba(9, 17, 24, 0.56);
+  --全息材质线: rgba(103, 247, 239, 0.16);
+  --全息材质弱线: rgba(255, 255, 255, 0.068);
+  --全息材质角光: rgba(103, 247, 239, 0.08);
+  --全息材质侧线: rgba(103, 247, 239, 0.24);
+  --全息材质辉光: rgba(103, 247, 239, 0.052);
+  --全息材质强辉光: rgba(103, 247, 239, 0.18);
   --全息材质阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px var(--全息材质弱线),
@@ -3200,7 +3200,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   position: relative;
   overflow: hidden;
   border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid var(--原型光刻线);
+  border: 0;
   background: var(--全息材质底);
   min-height: 0;
   padding: 16px;
@@ -3226,11 +3226,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(0, 243, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.018) 1px, transparent 1px),
-    radial-gradient(circle at 100% 0%, rgba(0, 243, 255, 0.055), transparent 34%);
+    linear-gradient(rgba(103, 247, 239, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 247, 239, 0.014) 1px, transparent 1px),
+    radial-gradient(circle at 100% 0%, rgba(103, 247, 239, 0.04), transparent 34%);
   background-size: 16px 16px, 16px 16px, auto;
-  opacity: 0.82;
+  opacity: 0.58;
 }
 
 .archive-card.full {
@@ -3380,8 +3380,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .archive-tile-grid .archive-tile {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid rgba(103, 247, 239, 0.08);
   border-radius: var(--mvu-radius-sm, 8px);
   padding: 6px 8px;
   min-height: 44px;
@@ -3392,7 +3392,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .archive-tile-grid .archive-tile b {
   font-size: var(--mvu-font-xs, 10px);
-  color: var(--text-dim);
+  color: rgba(183, 211, 222, 0.78);
   margin-bottom: 3px;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -3402,6 +3402,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   font-size: var(--mvu-font-sm, 12px);
   color: var(--white);
+  text-shadow: 0 0 8px rgba(103, 247, 239, 0.22);
   line-height: 1.2;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -3470,10 +3471,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .figure-slot.clickable:hover,
 .figure-core.clickable:hover {
-  background: rgba(255, 215, 0, 0.15);
-  border-color: rgba(255, 215, 0, 0.4);
-  color: var(--gold);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+  background: rgba(103, 247, 239, 0.08);
+  border-color: rgba(103, 247, 239, 0.28);
+  color: var(--mvu-color-accent-strong, #67f7ef);
+  box-shadow: 0 0 12px rgba(103, 247, 239, 0.18);
   cursor: pointer;
 }
 
@@ -3511,24 +3512,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   font-weight: 700;
   letter-spacing: 0.55px;
   color: var(--mvu-color-text-ice, #edf9fd);
-  text-shadow:
-    0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05)),
-    0 0 6px rgba(77, 240, 255, 0.08);
+  text-shadow: var(--原型文字辉光);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
   white-space: normal;
   margin-bottom: 16px;
 }
 .archive-card-title::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border: 1px solid currentColor;
-  border-radius: var(--mvu-radius-xs, 4px);
-  transform: rotate(45deg);
-  flex: 0 0 auto;
-  color: var(--cyan);
-  opacity: 0.9;
+  content: none;
+  display: none;
 }
 
 .modal-title::after,
@@ -3537,8 +3529,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex: 1;
   min-width: 28px;
   height: 1px;
-  background: linear-gradient(90deg, rgba(103, 247, 239, 0.38), rgba(255, 226, 89, 0.16), transparent);
-  opacity: 0.78;
+  background: linear-gradient(90deg, rgba(103, 247, 239, 0.28), rgba(240, 250, 252, 0.1), transparent);
+  opacity: 0.62;
 }
 
 .topology-board {
@@ -7625,16 +7617,18 @@ button.tag-chip:active,
   font-weight: 700 !important;
   letter-spacing: 0.55px !important;
   color: var(--mvu-color-text-ice, #edf9fd) !important;
-  text-shadow:
-    0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05)),
-    0 0 6px rgba(77, 240, 255, 0.08) !important;
+  text-shadow: var(--原型文字辉光) !important;
 }
 
-.modal-title::before,
-.archive-card-title::before,
 .modal-title::after,
 .archive-card-title::after {
   display: block !important;
+}
+
+.modal-title::before,
+.archive-card-title::before {
+  content: none;
+  display: none !important;
 }
 
 /* Inventory hover panel action buttons */
@@ -16651,7 +16645,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫�
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] {
   --mvu-holo-main: #ff3300;
   --mvu-holo-sub: #1a0505;
-  --mvu-holo-high: #ffd700;
+  --mvu-holo-high: #fff8f0;
   --mvu-holo-line: rgba(255, 215, 0, 0.42);
   --mvu-holo-line-soft: rgba(255, 51, 0, 0.18);
   --mvu-holo-glow: rgba(255, 51, 0, 0.25);
@@ -16680,7 +16674,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] {
   --mvu-holo-main: #00d2ff;
   --mvu-holo-sub: #ff7eb3;
-  --mvu-holo-high: #ffd700;
+  --mvu-holo-high: #f4fdff;
   --mvu-holo-line: rgba(255, 255, 255, 0.22);
   --mvu-holo-line-soft: rgba(0, 210, 255, 0.14);
   --mvu-holo-glow: rgba(0, 210, 255, 0.24);
@@ -16713,7 +16707,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
   background:
     linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.2), rgba(255, 126, 179, 0.12), transparent),
-    radial-gradient(circle at right bottom, rgba(255, 215, 0, 0.07), transparent 28%);
+    radial-gradient(circle at right bottom, rgba(244, 253, 255, 0.06), transparent 28%);
   opacity: 0.68;
 }
 
@@ -17517,14 +17511,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 1px solid var(--全息材质线);
-  border-radius: 4px;
+  border: 0;
+  border-radius: var(--mvu-holo-card-radius, 14px);
   background: var(--全息材质底);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.048),
-    inset 0 0 24px var(--全息材质辉光),
-    inset 0 -24px 42px rgba(0, 0, 0, 0.22),
-    0 14px 34px rgba(0, 0, 0, 0.42);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--全息材质弱线),
+    inset 0 0 18px var(--全息材质辉光);
   background-clip: padding-box;
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
@@ -17542,57 +17535,38 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻�
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-map-stage {
   background: var(--全息材质底);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 0 20px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
-    0 12px 30px rgba(0, 0, 0, 0.32),
-    0 0 20px rgba(255, 126, 179, 0.08);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 6%, transparent),
+    0 0 18px rgba(0, 210, 255, 0.08);
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
-  content: "";
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  pointer-events: none;
-  opacity: 0.86;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before {
-  left: 7px;
-  top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--mvu-holo-main) 58%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--mvu-holo-main) 58%, transparent);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::after {
-  right: 7px;
-  bottom: 7px;
-  border-right: 1px solid color-mix(in srgb, var(--mvu-holo-main) 58%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--mvu-holo-main) 58%, transparent);
+  content: none;
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
   box-shadow:
-    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 58%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 26%, transparent),
-    inset 0 0 30px color-mix(in srgb, var(--mvu-holo-main) 9%, transparent),
-    0 14px 34px rgba(0, 0, 0, 0.42),
-    0 0 24px color-mix(in srgb, var(--mvu-holo-main) 22%, transparent);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    inset 2px 0 0 color-mix(in srgb, var(--mvu-holo-main) 48%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 24%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
+    0 0 18px color-mix(in srgb, var(--mvu-holo-main) 20%, transparent);
   transform: translateY(-1px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border-radius: 4px;
+  border-radius: var(--mvu-holo-card-radius, 14px);
   background: var(--全息材质底);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.044),
-    inset 0 0 24px var(--全息材质辉光),
-    inset 0 -26px 48px rgba(0, 0, 0, 0.26),
-    0 14px 34px rgba(0, 0, 0, 0.44);
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    inset 0 0 18px var(--全息材质辉光);
   backdrop-filter: var(--原型玻璃虚化) !important;
   -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
 }
@@ -17725,10 +17699,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head span {
-  color: var(--mvu-holo-high);
+  color: var(--mvu-holo-text);
   font-size: 13px;
   font-weight: 850;
-  text-shadow: 0 0 12px var(--mvu-holo-glow);
+  text-shadow: var(--原型文字辉光);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
@@ -18092,11 +18066,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  color: var(--mvu-holo-high);
+  color: var(--mvu-holo-text);
   font-size: 18px;
   font-weight: 850;
   line-height: 1.1;
-  text-shadow: 0 0 14px var(--mvu-holo-glow);
+  text-shadow: var(--原型文字辉光);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b i {
@@ -18433,7 +18407,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout .mvu-arc
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-live {
-  color: var(--mvu-holo-high);
+  color: var(--mvu-holo-text);
   box-shadow:
     inset 0 -1px 0 color-mix(in srgb, var(--mvu-holo-main) 24%, transparent),
     0 0 8px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
@@ -22988,19 +22962,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode {
   --archive-shell-bg: #0b1520;
   --archive-shell-surface: rgba(8, 14, 25, 0.46);
-  --archive-shell-edge: var(--原型光刻线);
-  --archive-shell-edge-strong: var(--原型光刻强线);
-  --archive-card-bg: var(--全息材质底);
+  --archive-shell-edge: rgba(103, 247, 239, 0.22);
+  --archive-shell-edge-strong: rgba(103, 247, 239, 0.34);
+  --archive-card-bg:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.012)),
+    rgba(9, 17, 24, 0.48);
   --archive-card-muted:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
-    rgba(8, 14, 25, 0.28);
-  --archive-text-strong: #eef8ff;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.006)),
+    rgba(9, 17, 24, 0.16);
+  --archive-text-strong: rgba(240, 250, 252, 0.96);
   --archive-text: #d8e7f2;
   --archive-text-muted: #adc3d4;
   --archive-text-faint: #86a2b8;
-  --archive-accent: #69cde4;
-  --archive-accent-strong: #4df0ff;
-  --archive-gold: #f3c969;
+  --archive-accent: #67f7ef;
+  --archive-accent-strong: #67f7ef;
+  --archive-gold: #dbeff4;
   --archive-danger: #fb7185;
   --archive-success: #4ade80;
   --archive-radius: 20px;
@@ -23041,7 +23017,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   border-bottom: 1px solid var(--原型弱分隔线);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.048), transparent),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.065), transparent 42%, rgba(243, 201, 105, 0.04)),
+    linear-gradient(90deg, rgba(103, 247, 239, 0.06), transparent 44%, rgba(240, 250, 252, 0.03)),
     rgba(5, 12, 18, 0.48);
   backdrop-filter: blur(14px) saturate(112%);
   -webkit-backdrop-filter: blur(14px) saturate(112%);
@@ -23125,7 +23101,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   gap: 10px;
   padding: 14px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid var(--原型光刻线) !important;
+  border: 0 !important;
   background: var(--archive-card-bg) !important;
   box-shadow: var(--全息材质阴影) !important;
   backdrop-filter: var(--原型玻璃虚化) !important;
@@ -23144,7 +23120,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   gap: 6px;
   padding: 10px 12px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid var(--原型弱分隔线) !important;
+  border: 1px solid rgba(103, 247, 239, 0.09) !important;
   background: var(--archive-card-muted) !important;
   box-shadow:
     inset 0 1px 0 var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)),
@@ -24652,28 +24628,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-shell-width: min(1040px, calc(100vw - 30px));
   --dossier-shell-top-gap: 11px;
   --dossier-shell-radius: 16px;
-  --dossier-shell-clip: polygon(
-    14px 0,
-    calc(100% - 14px) 0,
-    100% 14px,
-    100% calc(100% - 14px),
-    calc(100% - 14px) 100%,
-    14px 100%,
-    0 calc(100% - 14px),
-    0 14px
-  );
-  --dossier-title: #eefcff;
+  --dossier-shell-clip: inset(0 round var(--dossier-shell-radius));
+  --dossier-title: rgba(240, 250, 252, 0.96);
   --dossier-underlay:
-    radial-gradient(circle at 15% 8%, rgba(103, 247, 239, 0.13), rgba(103, 247, 239, 0) 30%),
-    radial-gradient(circle at 82% 92%, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 26%),
+    radial-gradient(circle at 15% 8%, rgba(103, 247, 239, 0.1), rgba(103, 247, 239, 0) 30%),
+    radial-gradient(circle at 82% 92%, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 26%),
     var(--全息材质底);
   --dossier-film: linear-gradient(180deg, rgba(9, 29, 43, 0.18), rgba(5, 16, 25, 0.36));
   --dossier-panel-bg: var(--全息材质底);
-  --dossier-card-bg: var(--全息材质底);
+  --dossier-card-bg:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.012)),
+    rgba(9, 17, 24, 0.48);
   --dossier-card-bg-strong: var(--全息材质悬停底);
   --dossier-section-bg: transparent;
-  --dossier-line: var(--原型弱分隔线);
-  --dossier-line-strong: var(--原型光刻线);
+  --dossier-line: rgba(118, 226, 255, 0.14);
+  --dossier-line-strong: rgba(103, 247, 239, 0.2);
   --dossier-line-soft: rgba(118, 226, 255, 0.14);
   --dossier-text-strong: var(--white);
   --dossier-text: #e0eef3;
@@ -24718,7 +24687,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   z-index: 1;
   overflow: hidden;
   border-radius: var(--dossier-shell-radius);
-  border: 1px solid var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
+  border: 0;
   background: var(--dossier-panel-bg);
   clip-path: var(--dossier-shell-clip);
   box-shadow:
@@ -24753,7 +24722,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   pointer-events: none;
   background:
     radial-gradient(circle at left top, rgba(255, 255, 255, 0.07), transparent 22%),
-    radial-gradient(circle at right bottom, var(--mvu-color-gold-fill, rgba(255, 215, 0, 0.08)), transparent 24%), var(--dossier-film);
+    radial-gradient(circle at right bottom, rgba(103, 247, 239, 0.045), transparent 24%),
+    var(--dossier-film);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split.relation-preview-mode {
@@ -24773,7 +24743,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
       rgba(143, 233, 255, 0.1),
       rgba(223, 246, 255, 0.04) 38%,
       rgba(121, 207, 238, 0.08) 72%,
-      rgba(255, 226, 89, 0.08) 100%
+      rgba(240, 250, 252, 0.025) 100%
     );
 }
 
@@ -24783,7 +24753,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--dossier-title) !important;
-  text-shadow: none;
+  text-shadow: var(--原型文字辉光);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-close {
@@ -24899,8 +24869,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   align-content: start;
   overflow: hidden;
-  border-radius: 4px !important;
-  border: 1px solid var(--dossier-line-strong) !important;
+  border-radius: var(--mvu-radius-md, 12px) !important;
+  border: 0 !important;
   background: var(--dossier-card-bg) !important;
   backdrop-filter: var(--原型玻璃虚化);
   -webkit-backdrop-filter: var(--原型玻璃虚化);
@@ -24917,9 +24887,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(0, 229, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.022) 1px, transparent 1px);
+    linear-gradient(rgba(103, 247, 239, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 247, 239, 0.012) 1px, transparent 1px);
   background-size: 16px 16px;
+  opacity: 0.72;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -25335,12 +25306,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: max-content;
   padding: 12px;
-  border: 1px solid var(--dossier-line);
+  border: 1px solid rgba(118, 226, 255, 0.1);
   border-radius: var(--mvu-radius-md, 12px);
-  background: var(--dossier-section-bg), rgba(7, 24, 36, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.004)),
+    rgba(7, 24, 36, 0.12);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    inset 0 0 18px rgba(77, 240, 255, 0.025);
+    inset 0 1px 0 rgba(255, 255, 255, 0.028),
+    inset 0 0 14px rgba(103, 247, 239, 0.02);
   overflow: visible;
   container-type: inline-size;
 }
@@ -25364,11 +25337,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 0;
   padding: 0;
   border-radius: var(--mvu-radius-lg, 16px);
-  border: 1px solid var(--dossier-line);
+  border: 1px solid rgba(118, 226, 255, 0.12);
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(24, 60, 84, 0.34), rgba(16, 40, 58, 0.44)),
-    linear-gradient(90deg, rgba(77, 240, 255, 0.04), transparent 48%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.004)),
+    linear-gradient(90deg, rgba(103, 247, 239, 0.035), transparent 48%),
+    rgba(7, 24, 36, 0.12);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-section-title {
