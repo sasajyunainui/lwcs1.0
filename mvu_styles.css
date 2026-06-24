@@ -18087,6 +18087,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   padding: 0;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--投影雾光);
+  opacity: 0.42;
+}
+
+body[data-mvu-holo-theme='幻海蝶舞']
+  #mvu-unified-mount
+  .mvu-unified-dashboard
+  > .mvu-unified-card::before {
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
+    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
+    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
+  background-size: 160% 160%;
+  opacity: 0.64;
+  animation: 水幕焦散 8s ease-in-out infinite;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card > * {
   position: relative;
   z-index: 1;
