@@ -5810,8 +5810,6 @@ function 规范化Schema根转换_V1(data = {}) {
         if (locData.y === undefined) locData.y = FLAT_LOCATIONS[locData.归属父节点]?.y ?? -1;
       });
 
-      // 先删除存储态占位文本；AI 维护提示只在运行时更新视图中按需注入。
-      clearStorageTodoPlaceholders(data.char);
       const PLAYER_NAME = data.sys?.玩家名;
 
       // travel_request 已弃用：统一移除。
@@ -6690,7 +6688,6 @@ function 规范化Schema根转换_V1(data = {}) {
     注册角色应用物品定义_V1(data);
     压缩角色应用物品引用_V1(data);
     记录数据根非魂师角色_V1(data);
-    clearStorageTodoPlaceholders(data.char);
     return data;
 }
 

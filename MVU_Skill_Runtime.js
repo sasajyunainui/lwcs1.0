@@ -19333,40 +19333,6 @@ function isAiTodoText(value) {
   return text.startsWith(AI_TODO_TEXT_PREFIX);
 }
 
-function isStorageTodoPlaceholderText(value) {
-  const text = String(value || '').trim();
-  if (!text) return false;
-  return /待补全|待生成|未知|未详|不详/.test(text);
-}
-
-function clearStorageTodoPlaceholders(node, path = []) {
-  if (!node || typeof node !== 'object') return node;
-
-  if (Array.isArray(node)) {
-    for (let i = node.length - 1; i >= 0; i--) {
-      const item = node[i];
-      if (typeof item === 'string') {
-        if (isStorageTodoPlaceholderText(item)) node.splice(i, 1);
-      } else {
-        clearStorageTodoPlaceholders(item, path.concat(String(i)));
-      }
-    }
-    return node;
-  }
-
-  Object.keys(node).forEach(key => {
-    const value = node[key];
-    const nextPath = path.concat(key);
-    if (typeof value === 'string') {
-      if (nextPath.length >= 3 && nextPath[nextPath.length - 2] === '社交' && nextPath[nextPath.length - 1] === '家世描述') return;
-      if (isStorageTodoPlaceholderText(value)) delete node[key];
-      return;
-    }
-    clearStorageTodoPlaceholders(value, nextPath);
-  });
-  return node;
-}
-
 function buildSkillNameTodoText(context = {}) {
   const rawSpiritName = String(context?.spiritName || '').trim();
   const spiritName =
