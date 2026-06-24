@@ -26976,12 +26976,33 @@
     return `<div class="mvu-soul-ring-slot ${颜色令牌}" tabindex="0" data-ring-index="${位置 + 1}" style="${样式}">${渲染魂环SVG(颜色令牌, 是否虹彩)}${buildRingHoverMarkup(安全魂环)}</div>`;
   }
 
+  function 构建魂环扫描锚点(魂环, 序号, 总数, 选项 = {}) {
+    const 安全魂环 = 魂环 && typeof 魂环 === 'object' ? 魂环 : {};
+    const 数量 = Math.max(1, Number(总数) || 1);
+    const 位置 = Math.max(0, Number(序号) || 0);
+    const 比例 = 数量 > 1 ? 位置 / (数量 - 1) : 0.5;
+    const 颜色令牌 = 映射魂环颜色令牌(安全魂环, 选项.fallbackClass || 'ring-white');
+    const 标题 = toText(安全魂环.title, `第${位置 + 1}魂环`).split('·')[0].trim() || `第${位置 + 1}魂环`;
+    const 样式 = [
+      `--anchor-index:${位置 + 1}`,
+      `--anchor-total:${数量}`,
+      `--anchor-ratio:${比例.toFixed(3)}`,
+      `--anchor-y:${(8 + 比例 * 84).toFixed(2)}%`,
+    ].join(';');
+    return `<button type="button" class="mvu-soul-ring-anchor ${颜色令牌}" data-ring-anchor="${位置 + 1}" aria-label="${escapeHtmlAttr(标题)}扫描锚点" style="${样式}"><span class="mvu-soul-ring-leader" aria-hidden="true"><i></i><b></b></span><span class="mvu-soul-ring-anchor-node" aria-hidden="true">◈</span></button>`;
+  }
+
   function 构建魂环阵列(魂环列表, 展示尺寸 = 'standard', 选项 = {}) {
     const 有效魂环 = (Array.isArray(魂环列表) ? 魂环列表 : []).filter(魂环 => 魂环 && !魂环.empty);
     if (!有效魂环.length) return 构建魂环空阵列(展示尺寸);
-    return `<div class="mvu-soul-ring-stage" data-ring-count="${有效魂环.length}">${有效魂环
+    const 魂环舞台 = `<div class="mvu-soul-ring-stage" data-ring-count="${有效魂环.length}">${有效魂环
       .map((魂环, 序号) => 构建魂环节点(魂环, 序号, 有效魂环.length, 选项))
       .join('')}</div>`;
+    if (展示尺寸 !== 'standard' || 选项.禁用扫描锚点) return 魂环舞台;
+    const 锚点轨道 = `<div class="mvu-soul-ring-anchor-rail" data-ring-anchor-count="${有效魂环.length}">${有效魂环
+      .map((魂环, 序号) => 构建魂环扫描锚点(魂环, 序号, 有效魂环.length, 选项))
+      .join('')}</div>`;
+    return `<div class="mvu-soul-ring-scanfield" data-ring-count="${有效魂环.length}">${魂环舞台}${锚点轨道}</div>`;
   }
 
   function 构建魂环空阵列(展示尺寸 = 'standard') {
@@ -48441,6 +48462,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   function 读取指针魂环触发节点(eventTarget, event) {
     if (!(event instanceof PointerEvent) && !(event instanceof MouseEvent)) return null;
     const 原节点 = eventTarget instanceof Element ? eventTarget : null;
+    if (原节点 && 原节点.closest('.mvu-soul-ring-anchor')) return null;
     const 命中节点 = document.elementFromPoint(event.clientX, event.clientY);
     const 舞台 =
       (原节点 && 原节点.closest('.mvu-soul-ring-showcase')) ||
@@ -48468,7 +48490,39 @@ ${toText(combatData.战斗意图, '点到为止')}
     return 最佳分数 <= 0.48 ? 最佳节点 : null;
   }
 
+  const 魂环锚点定位表 = new WeakMap();
+
+  function 读取魂环锚点触发节点(eventTarget) {
+    if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
+    const 锚点 = eventTarget.closest('.mvu-soul-ring-anchor[data-ring-anchor]');
+    if (!(锚点 instanceof HTMLElement)) return null;
+    const 扫描场 = 锚点.closest('.mvu-soul-ring-scanfield');
+    if (!(扫描场 instanceof Element)) return null;
+    const 序号 = toText(锚点.getAttribute('data-ring-anchor'), '').trim();
+    if (!序号) return null;
+    const 槽位 = 扫描场.querySelector(`.mvu-soul-ring-slot[data-ring-index="${CSS.escape(序号)}"]`);
+    if (!(槽位 instanceof HTMLElement) || !槽位.querySelector('.ring-hover-card')) return null;
+    魂环锚点定位表.set(槽位, 锚点);
+    return 槽位;
+  }
+
+  function 同步魂环锚点激活(触发节点, 激活) {
+    if (!(触发节点 instanceof Element)) return;
+    const 扫描场 = 触发节点.closest('.mvu-soul-ring-scanfield');
+    const 序号 = toText(触发节点.getAttribute('data-ring-index'), '').trim();
+    if (!(扫描场 instanceof Element) || !序号) return;
+    const 锚点 = 扫描场.querySelector(`.mvu-soul-ring-anchor[data-ring-anchor="${CSS.escape(序号)}"]`);
+    if (!(锚点 instanceof HTMLElement)) return;
+    锚点.classList.toggle('mvu-soul-ring-anchor-active', !!激活);
+  }
+
+  function 读取浮窗定位节点(触发节点) {
+    return 魂环锚点定位表.get(触发节点) || 触发节点;
+  }
+
   function getFloatingHoverTrigger(eventTarget, event = null) {
+    const 锚点魂环 = 读取魂环锚点触发节点(eventTarget);
+    if (锚点魂环) return 锚点魂环;
     const 指针魂环 = event && event.type !== 'pointerout' ? 读取指针魂环触发节点(eventTarget, event) : null;
     if (指针魂环) return 指针魂环;
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
@@ -48480,12 +48534,14 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   let activeFloatingHoverTrigger = null;
   let 顶层浮窗卡片 = null;
+  let 当前浮窗定位节点 = null;
 
   function 移除顶层浮窗卡片() {
     if (顶层浮窗卡片 && 顶层浮窗卡片.parentNode) {
       顶层浮窗卡片.parentNode.removeChild(顶层浮窗卡片);
     }
     顶层浮窗卡片 = null;
+    当前浮窗定位节点 = null;
   }
 
   function 重置原浮窗卡片(card) {
@@ -48514,10 +48570,13 @@ ${toText(combatData.战斗意图, '点到为止')}
   function clearFloatingHoverCard(trigger) {
     if (!trigger || !trigger.classList) return;
     trigger.classList.remove('mvu-hover-floating-active');
+    同步魂环锚点激活(trigger, false);
+    魂环锚点定位表.delete(trigger);
     const card = trigger.querySelector('.ring-hover-card, .relation-hover-card');
     if (card) 重置原浮窗卡片(card);
     移除顶层浮窗卡片();
     if (activeFloatingHoverTrigger === trigger) activeFloatingHoverTrigger = null;
+    if (当前浮窗定位节点 === trigger) 当前浮窗定位节点 = null;
   }
 
   function clearAllFloatingHoverCards() {
@@ -48526,6 +48585,9 @@ ${toText(combatData.战斗意图, '点到为止')}
     document
       .querySelectorAll('.interactive-ring.mvu-hover-floating-active, .mvu-soul-ring-slot.mvu-hover-floating-active')
       .forEach(clearFloatingHoverCard);
+    document.querySelectorAll('.mvu-soul-ring-anchor-active').forEach(节点 => {
+      if (节点 instanceof HTMLElement) 节点.classList.remove('mvu-soul-ring-anchor-active');
+    });
     移除顶层浮窗卡片();
     activeFloatingHoverTrigger = null;
   }
@@ -48607,7 +48669,8 @@ ${toText(combatData.战斗意图, '点到为止')}
   function 指针在浮窗通道坐标(x, y, 余量 = 读取浮窗通道余量(activeFloatingHoverTrigger)) {
     const 触发节点 = activeFloatingHoverTrigger;
     if (!(触发节点 instanceof Element) || !(顶层浮窗卡片 instanceof HTMLElement)) return false;
-    const 触发矩形 = 触发节点.getBoundingClientRect();
+    const 定位节点 = 读取浮窗定位节点(触发节点);
+    const 触发矩形 = 定位节点.getBoundingClientRect();
     const 浮窗矩形 = 顶层浮窗卡片.getBoundingClientRect();
     if (坐标在矩形内(x, y, 触发矩形, 余量) || 坐标在矩形内(x, y, 浮窗矩形, 余量)) return true;
     const 通道矩形 = {
@@ -48623,7 +48686,8 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (!(event instanceof PointerEvent)) return false;
     const 触发节点 = activeFloatingHoverTrigger;
     if (!(触发节点 instanceof Element)) return false;
-    const 触发矩形 = 触发节点.getBoundingClientRect();
+    const 定位节点 = 读取浮窗定位节点(触发节点);
+    const 触发矩形 = 定位节点.getBoundingClientRect();
     const 浮窗矩形 = 顶层浮窗卡片 instanceof HTMLElement ? 顶层浮窗卡片.getBoundingClientRect() : null;
     return (
       坐标在矩形内(event.clientX, event.clientY, 触发矩形, 2) ||
@@ -48640,7 +48704,9 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function positionFloatingHoverCard(trigger) {
     if (!(trigger instanceof Element)) return;
-    if (activeFloatingHoverTrigger === trigger && 顶层浮窗卡片 instanceof HTMLElement) return;
+    const 定位节点 = 读取浮窗定位节点(trigger);
+    if (activeFloatingHoverTrigger === trigger && 顶层浮窗卡片 instanceof HTMLElement && 当前浮窗定位节点 === 定位节点)
+      return;
     if (activeFloatingHoverTrigger && activeFloatingHoverTrigger !== trigger) {
       clearFloatingHoverCard(activeFloatingHoverTrigger);
     }
@@ -48650,7 +48716,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       原卡片.classList.contains('ring-hover-card') ||
       (原卡片.classList.contains('relation-hover-card') &&
         (trigger.classList.contains('hover-left') || trigger.classList.contains('hover-right')));
-    const triggerRect = trigger.getBoundingClientRect();
+    const triggerRect = 定位节点.getBoundingClientRect();
     const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
     const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     if (!viewportWidth || !viewportHeight) return;
@@ -48661,6 +48727,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     const maxHeight = Math.max(260, Math.min(Math.floor(viewportHeight * 0.78), viewportHeight - 屏幕边距 * 2));
 
     trigger.classList.add('mvu-hover-floating-active');
+    同步魂环锚点激活(trigger, true);
     activeFloatingHoverTrigger = trigger;
     原卡片.setAttribute('aria-hidden', 'true');
     原卡片.style.opacity = '0';
@@ -48733,6 +48800,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     });
     document.body.appendChild(顶层卡片);
     顶层浮窗卡片 = 顶层卡片;
+    当前浮窗定位节点 = 定位节点;
 
     const cardRect = 顶层卡片.getBoundingClientRect();
     let width = Math.min(Math.ceil(cardRect.width || maxWidth), maxWidth);

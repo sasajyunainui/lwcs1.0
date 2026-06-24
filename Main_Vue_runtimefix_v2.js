@@ -599,6 +599,11 @@ const DesktopUnifiedLayout = {
       const 当前主题 = 全息星轨主题列表.find(主题 => 主题.名称 === 当前全息星轨状态.主题);
       return 当前主题 ? 当前主题.短名 : '主题';
     });
+    const 同步全息主题到页面 = () => {
+      const 主题 = 规范化全息星轨主题(当前全息星轨状态.主题);
+      const 页面主体 = typeof document !== 'undefined' && document.body ? document.body : null;
+      if (页面主体) 页面主体.dataset.mvuHoloTheme = 主题;
+    };
     let removeDetailWheelBridge = null;
     const 清理顶层浮窗 = () => {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
@@ -918,6 +923,13 @@ const DesktopUnifiedLayout = {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
+      if (
+        typeof document !== 'undefined'
+        && document.body
+        && document.body.dataset.mvuHoloTheme === 规范化全息星轨主题(当前全息星轨状态.主题)
+      ) {
+        delete document.body.dataset.mvuHoloTheme;
+      }
       if (typeof removeDetailWheelBridge === 'function') {
         removeDetailWheelBridge();
         removeDetailWheelBridge = null;
@@ -928,6 +940,7 @@ const DesktopUnifiedLayout = {
         delete window.__MVU_GET_UNIFIED_DETAIL_HOST__;
       }
     });
+    watch(() => 当前全息星轨状态.主题, 同步全息主题到页面, { immediate: true });
     watch(() => mvuTabState.current, () => {
       if (mvuTabState.current === 'page-map') requestMapSurfaceSync();
       请求统一概览同步('tab-watch');
