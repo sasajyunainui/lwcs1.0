@@ -16904,7 +16904,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
 
 body[data-mvu-holo-theme],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --panel: color-mix(in srgb, var(--实体背景) 58%, transparent);
   --panel-strong: color-mix(in srgb, var(--实体背景) 76%, transparent);
