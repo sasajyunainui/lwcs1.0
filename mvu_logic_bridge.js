@@ -26998,7 +26998,7 @@
     const 魂环舞台 = `<div class="mvu-soul-ring-stage" data-ring-count="${有效魂环.length}">${有效魂环
       .map((魂环, 序号) => 构建魂环节点(魂环, 序号, 有效魂环.length, 选项))
       .join('')}</div>`;
-    if (展示尺寸 !== 'standard' || 选项.禁用扫描锚点) return 魂环舞台;
+    if (展示尺寸 !== 'standard' || !选项.启用扫描锚点) return 魂环舞台;
     const 锚点轨道 = `<div class="mvu-soul-ring-anchor-rail" data-ring-anchor-count="${有效魂环.length}">${有效魂环
       .map((魂环, 序号) => 构建魂环扫描锚点(魂环, 序号, 有效魂环.length, 选项))
       .join('')}</div>`;
@@ -29692,17 +29692,21 @@
 
   function buildUnifiedSpiritCard(config, options = {}) {
     const primary = !!(options && options.primary);
+    const 启用扫描锚点 = !!(options && options.启用扫描锚点);
     if (!config) {
       return 构建档案空武魂卡(primary ? '第一武魂' : '第二武魂', primary ? '当前未加载武魂信息' : '未启用第2武魂或血脉');
     }
     const 内容 =
-      config.kind === 'bloodline' ? renderArchiveBloodlineEntry(config) : renderArchiveSpiritEntry(config, primary);
+      config.kind === 'bloodline'
+        ? renderArchiveBloodlineEntry(config, 启用扫描锚点)
+        : renderArchiveSpiritEntry(config, primary, 启用扫描锚点);
     return `<div class="mvu-archive-spirit-card">${内容}</div>`;
   }
 
-  function 构建统一副轨摘要卡(snapshot) {
+  function 构建统一副轨摘要卡(snapshot, options = {}) {
+    const 启用扫描锚点 = !!(options && options.启用扫描锚点);
     const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
-    if (第二轨) return buildUnifiedSpiritCard(第二轨, { primary: false });
+    if (第二轨) return buildUnifiedSpiritCard(第二轨, { primary: false, 启用扫描锚点 });
     return `
         <div class="mvu-archive-spirit-card mvu-archive-spirit-card--empty mvu-archive-spirit-card--dormant">
           <div class="mvu-archive-empty-orbit" aria-hidden="true"></div>
@@ -29723,13 +29727,22 @@
     const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
     const 主预览 = 主轨 ? toText(主轨.preview, '第1武魂详细页') : '';
     const 副预览 = 第二轨 ? toText(第二轨.preview, '血脉封印详细页') : '武魂融合技详细页';
+    if (!第二轨) {
+      return `
+        <div class="mvu-archive-spirit-stage mvu-archive-spirit-stage--single">
+          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
+            ${buildUnifiedSpiritCard(主轨, { primary: true, 启用扫描锚点: true })}
+          </section>
+        </div>
+      `;
+    }
     return `
         <div class="mvu-archive-spirit-stage">
           <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
-            ${buildUnifiedSpiritCard(主轨, { primary: true })}
+            ${buildUnifiedSpiritCard(主轨, { primary: true, 启用扫描锚点: true })}
           </section>
           <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--secondary clickable" data-preview="${escapeHtmlAttr(副预览)}" data-detail-mode="embed">
-            ${构建统一副轨摘要卡(snapshot)}
+            ${构建统一副轨摘要卡(snapshot, { 启用扫描锚点: true })}
           </section>
         </div>
       `;
