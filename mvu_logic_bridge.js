@@ -29255,18 +29255,15 @@
     const 等级 = formatCultivationLevelBadge(属性.等级, '0');
     const 境界 = 读取显示精神境界(属性);
     const 年龄数值 = toNumber(属性.年龄, NaN);
-    const 身份字段 = [
-      ['角色名', shortenText(名称, 14)],
-      ['性别', toText(属性.性别, '').trim() || '--'],
-      ['年龄', Number.isFinite(年龄数值) && 年龄数值 > 0 ? `${formatNumber(年龄数值)}岁` : '--'],
-      ['生日', toText(属性.生日, '').trim() || '--'],
-      ['等级', 等级],
-      ['精神境界', 境界],
-    ];
+    const 性别 = toText(属性.性别, '').trim() || '--';
+    const 年龄 = Number.isFinite(年龄数值) && 年龄数值 > 0 ? `${formatNumber(年龄数值)}岁` : '--';
+    const 生日 = toText(属性.生日, '').trim() || '--';
+    const 身份字段 = [性别, 年龄, 生日, 等级, 境界].filter(Boolean);
     return `
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
           <div class="mvu-archive-identity-grid">
-            ${身份字段.map(([标签, 文本]) => `<span><b>${htmlEscape(标签)}</b><em>${htmlEscape(文本)}</em></span>`).join('')}
+            <strong>${htmlEscape(shortenText(名称, 16))}</strong>
+            <span>${身份字段.map(文本 => `<em>${htmlEscape(文本)}</em>`).join('')}</span>
           </div>
         </div>
       `;
