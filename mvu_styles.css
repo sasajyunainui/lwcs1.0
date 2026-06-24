@@ -17784,7 +17784,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   overflow: hidden;
   border: 0;
   border-radius: var(--mvu-holo-card-radius);
-  background: var(--全息材质底);
+  background: var(--全息材质底) !important;
   box-shadow: var(--全息材质阴影);
   background-clip: padding-box;
   backdrop-filter: var(--虚化强度) !important;
@@ -17807,7 +17807,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-map-stage {
-  background: var(--全息材质底);
+  background: var(--全息材质底) !important;
   box-shadow: var(--全息材质阴影);
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
@@ -17863,7 +17863,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
   border-radius: var(--mvu-holo-card-radius);
-  background: var(--全息材质底);
+  background: var(--全息材质底) !important;
   box-shadow: var(--全息材质阴影);
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
