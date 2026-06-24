@@ -28630,7 +28630,7 @@
         const 线宽 = Math.max(34, Math.round(Math.max(0, 轨道矩形.right - 槽位矩形.right - 18)));
         锚点.style.setProperty('--anchor-y', `${中心Y.toFixed(2)}px`);
         锚点.style.setProperty('--anchor-ratio', 比例.toFixed(3));
-        锚点.style.setProperty('--anchor-line-width', `${线宽}px`);
+        锚点.style.setProperty('--ring-anchor-line-width', `${线宽}px`);
       });
     });
     更新档案魂环锚点观察器();
@@ -48952,6 +48952,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       浮窗最新指针坐标 = { x: event.clientX, y: event.clientY };
       const eventTarget = event.target instanceof Element ? event.target : null;
       const trigger = getFloatingHoverTrigger(eventTarget, event);
+      if (eventTarget && eventTarget.closest('.mvu-archive-ring-observatory')) 安排档案魂环锚点同步();
       if (!trigger) {
         if (eventTarget && 顶层浮窗卡片 && 顶层浮窗卡片.contains(eventTarget)) {
           cancelFloatingHoverClearTimer();
@@ -48992,6 +48993,7 @@ ${toText(combatData.战斗意图, '点到为止')}
       浮窗最新指针坐标 = { x: event.clientX, y: event.clientY };
       const eventTarget = event.target instanceof Element ? event.target : null;
       const trigger = getFloatingHoverTrigger(eventTarget, event);
+      if (eventTarget && eventTarget.closest('.mvu-archive-ring-observatory')) 安排档案魂环锚点同步();
       if (trigger) {
         cancelFloatingHoverClearTimer();
         positionFloatingHoverCard(trigger);
@@ -49017,6 +49019,7 @@ ${toText(combatData.战斗意图, '点到为止')}
         positionFloatingHoverCard(trigger);
         scheduleFloatingHoverAutoHide(trigger);
       }
+      安排档案魂环锚点同步();
     },
     true,
   );
@@ -49038,7 +49041,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     true,
   );
 
-  window.addEventListener('resize', clearAllFloatingHoverCards);
+  window.addEventListener('resize', () => {
+    clearAllFloatingHoverCards();
+    安排档案魂环锚点同步();
+  });
   window.addEventListener('blur', clearAllFloatingHoverCards);
   window.addEventListener('pagehide', clearAllFloatingHoverCards);
   document.addEventListener('visibilitychange', () => {
