@@ -61,7 +61,7 @@
   --实体背景: rgba(103, 247, 239, 0.075);
   --虚幻背景: rgba(103, 247, 239, 0.04);
   --边线颜色: rgba(103, 247, 239, 0.32);
-  --虚化强度: blur(24px) saturate(150%);
+  --虚化强度: blur(8px);
   --虚线: rgba(118, 226, 255, 0.18);
   --强线: rgba(118, 226, 255, 0.38);
   --文字主色: rgba(240, 250, 252, 0.96);
@@ -77,10 +77,7 @@
   --主题光束: linear-gradient(90deg, var(--主题主色), color-mix(in srgb, var(--主题主色) 45%, transparent), transparent);
   --主题发光: 0 0 24px rgba(118, 226, 255, 0.2);
   --全息噪点纹理: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .03'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --全息噪点透明度: 0.03;
   --全息噪点层: var(--全息噪点纹理);
-  --机甲切角: 10px;
-  --机甲切角路径: polygon(var(--机甲切角) 0, 100% 0, 100% calc(100% - var(--机甲切角)), calc(100% - var(--机甲切角)) 100%, 0 100%, 0 var(--机甲切角));
   --视差浮出深度: 15px;
   --光学混合模式: screen;
   --原型暗玻底: var(--暗场底板);
@@ -97,19 +94,6 @@
   --全息数值字影: 0 1px 1px rgba(0, 0, 0, 0.92), 0 0 2px color-mix(in srgb, var(--主题主色) 18%, transparent);
   --原型文字辉光: var(--全息标题字影);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --全息投影遮罩:
-    var(--全息噪点层),
-    linear-gradient(145deg, rgba(5, 12, 18, 0.86), rgba(9, 17, 24, 0.58)),
-    radial-gradient(circle at 16% 18%, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 34%),
-    radial-gradient(circle at 88% 22%, rgba(255, 255, 255, 0.08), transparent 26%);
-  --全息数据区底:
-    var(--全息噪点层),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-    rgba(5, 12, 18, 0.34);
-  --全息数据区阴影:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 16%, transparent),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 8%, transparent),
-    0 12px 28px rgba(0, 0, 0, 0.24);
   --全息材质底:
     var(--全息噪点层),
     linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
@@ -130,8 +114,8 @@
     inset 0 0 18px var(--全息材质辉光);
   --全息材质悬停阴影:
     2px 4px 10px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(103, 247, 239, 0.24),
-    inset 0 0 20px rgba(103, 247, 239, 0.08),
+    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--主题主色) 8%, transparent),
     0 0 18px var(--全息材质强辉光);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
@@ -3257,7 +3241,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .archive-card {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: var(--卡片圆角);
   border: 0;
   background: var(--全息材质底);
   min-height: 0;
@@ -3268,7 +3252,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
@@ -3276,7 +3259,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .archive-card:has(.ring-hover-card),
 .archive-card:has(.relation-hover-card) {
   overflow: visible;
-  clip-path: none;
 }
 
 .archive-card:has(.interactive-ring:hover),
@@ -10706,18 +10688,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gea
   align-items: center !important;
   gap: 8px !important;
   padding: 7px 9px !important;
-  border-radius: 0 !important;
-  border: 1px solid rgba(143, 233, 255, 0.12) !important;
+  border-radius: var(--卡片圆角) !important;
+  border: 1px solid var(--原型弱分隔线) !important;
   border-left: 2px solid transparent !important;
   background:
     var(--全息噪点层),
-    linear-gradient(135deg, rgba(143, 233, 255, 0.07), rgba(0, 0, 0, 0.2)),
-    rgba(3, 13, 20, 0.48) !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 rgba(143, 233, 255, 0.22) !important;
+    var(--全息材质底) !important;
+  box-shadow: var(--全息材质阴影) !important;
   overflow: hidden !important;
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
@@ -10726,18 +10704,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gea
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-slot.clickable:hover {
-  border-color: rgba(143, 233, 255, 0.38) !important;
+  border-color: var(--边线颜色) !important;
   border-left-color: var(--mvu-holo-main) !important;
   background:
     var(--全息噪点层),
     linear-gradient(100deg, color-mix(in srgb, var(--mvu-holo-high) 10%, transparent), transparent 36%),
-    radial-gradient(circle at 72% 0%, rgba(143, 233, 255, 0.18), transparent 56%),
-    linear-gradient(135deg, rgba(143, 233, 255, 0.12), rgba(0, 0, 0, 0.2)),
-    rgba(6, 24, 34, 0.62) !important;
+    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 72%),
+    var(--全息材质底) !important;
   box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.32),
-    inset 4px 0 0 rgba(143, 233, 255, 0.64),
-    0 0 18px rgba(143, 233, 255, 0.12) !important;
+    inset 10px 0 20px -10px color-mix(in srgb, var(--mvu-holo-main) 36%, transparent),
+    var(--全息材质阴影) !important;
   transform: translateX(4px);
 }
 
@@ -16722,14 +16698,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   isolation: isolate;
   border: 1px solid var(--边线颜色);
   border-radius: var(--mvu-holo-radius);
-  background:
-    var(--全息投影遮罩),
-    var(--投影背景);
+  background: var(--投影背景);
   box-shadow:
     var(--主题发光),
-    inset 0 0 36px color-mix(in srgb, var(--主题主色) 14%, transparent),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
-    0 18px 42px rgba(0, 0, 0, 0.42);
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   backdrop-filter: var(--虚化强度) !important;
@@ -16820,7 +16792,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
   --实体背景: rgba(255, 255, 255, 0.11);
   --虚幻背景: rgba(255, 255, 255, 0.055);
   --边线颜色: rgba(255, 255, 255, 0.3);
-  --虚化强度: blur(24px) saturate(150%);
+  --虚化强度: blur(16px);
   --主题光束: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), rgba(224,234,255,0.4), transparent);
   --主题发光: inset 0 0 20px rgba(255,255,255,0.13), 0 0 24px rgba(224,234,255,0.28);
   --mvu-holo-main: var(--主题主色);
@@ -16837,31 +16809,36 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] {
-  --主题主色: #67f7ef;
-  --主题辅色: #88b8ff;
-  --主题高光: rgba(240, 250, 252, 0.98);
-  --主题底色: #06111e;
-  --投影圆角: 2px;
-  --卡片圆角: 4px;
-  --自发光颜色: rgba(103, 247, 239, 0.62);
-  --自发光微光: rgba(103, 247, 239, 0.18);
-  --资源亮色: #67f7ef;
-  --资源暗格: rgba(103, 247, 239, 0.14);
-  --资源游标: #f0fafc;
+  --主题主色: #00d2ff;
+  --主题辅色: #ff7eb3;
+  --主题高光: #ffd700;
+  --主题底色: #062333;
+  --蝶翼金: #ffd700;
+  --投影圆角: 30px 40px 20px 40px;
+  --卡片圆角: 22px 28px 18px 26px;
+  --自发光颜色: rgba(255, 126, 179, 0.72);
+  --自发光微光: rgba(0, 210, 255, 0.2);
+  --魂核主色: #00d2ff;
+  --魂核边缘: #063248;
+  --魂核文字: rgba(2, 17, 25, 0.96);
+  --魂核辉光: rgba(0, 210, 255, 0.45);
+  --资源亮色: #00d2ff;
+  --资源暗格: rgba(0, 210, 255, 0.13);
+  --资源游标: #ff7eb3;
   --介质纹理:
-    linear-gradient(135deg, rgba(103, 247, 239, 0.055), rgba(136, 184, 255, 0.04), rgba(255, 255, 255, 0.018));
+    linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
   --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(103, 247, 239, 0.12), transparent 20%),
-    linear-gradient(135deg, rgba(103, 247, 239, 0.058), rgba(136, 184, 255, 0.04), rgba(255, 255, 255, 0.016));
-  --实体背景: rgba(9, 17, 24, 0.7);
-  --虚幻背景: rgba(103, 247, 239, 0.04);
-  --边线颜色: rgba(103, 247, 239, 0.3);
-  --虚化强度: blur(24px) saturate(150%);
-  --主题光束: linear-gradient(90deg, transparent, rgba(103, 247, 239, 0.86), rgba(136, 184, 255, 0.34), transparent);
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
+    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
+  --实体背景: rgba(255, 255, 255, 0.11);
+  --虚幻背景: rgba(0, 210, 255, 0.045);
+  --边线颜色: rgba(255, 255, 255, 0.18);
+  --虚化强度: blur(12px) saturate(110%);
+  --主题光束: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
   --主题发光:
-    0 0 24px rgba(103, 247, 239, 0.24),
-    0 0 40px rgba(136, 184, 255, 0.1),
-    inset 0 0 28px rgba(103, 247, 239, 0.1);
+    0 0 22px rgba(0, 210, 255, 0.38),
+    0 0 42px rgba(255, 126, 179, 0.18),
+    inset 0 0 28px rgba(0, 210, 255, 0.13);
   --mvu-holo-main: var(--主题主色);
   --mvu-holo-sub: var(--主题辅色);
   --mvu-holo-high: var(--主题高光);
@@ -16893,12 +16870,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(240, 250, 252, 0.1), transparent 18%),
-    radial-gradient(ellipse at 70% 60%, rgba(103, 247, 239, 0.16), transparent 24%),
-    linear-gradient(115deg, transparent 0 22%, rgba(240, 250, 252, 0.07) 24%, transparent 31%, rgba(136, 184, 255, 0.055) 45%, transparent 52%);
+    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%),
+    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%),
+    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%);
   background-size: 160% 160%;
   mix-blend-mode: screen;
-  opacity: 0.62;
+  opacity: 0.86;
   animation: 水幕焦散 8s ease-in-out infinite;
 }
 
@@ -16961,9 +16938,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='幻海蝶舞'] {
-  --主题主色: #67f7ef;
-  --主题高光: rgba(240, 250, 252, 0.98);
-  --边线颜色: rgba(103, 247, 239, 0.3);
+  --主题主色: #00d2ff;
+  --主题高光: #ffd700;
+  --边线颜色: rgba(255, 255, 255, 0.18);
 }
 
 @keyframes mvu-unified-frame-scan {
@@ -17799,10 +17776,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 13%, transparent);
-  border-radius: 6px;
-  background: var(--全息数据区底);
-  box-shadow: var(--全息数据区阴影);
+  border: 0;
+  border-radius: var(--mvu-holo-card-radius);
+  background: var(--全息材质底);
+  box-shadow: var(--全息材质阴影);
   background-clip: padding-box;
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
@@ -17810,9 +17787,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   padding: 12px;
-  border-radius: 0;
   border-left: 2px solid transparent;
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
@@ -17826,8 +17801,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .mvu-unified-dashboard > .mvu-unified-map-stage {
-  background: var(--全息数据区底);
-  box-shadow: var(--全息数据区阴影);
+  background: var(--全息材质底);
+  box-shadow: var(--全息材质阴影);
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
 }
@@ -17857,7 +17832,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
-  box-shadow: var(--全息数据区阴影);
+  box-shadow: var(--全息材质阴影);
   transform: none;
 }
 
@@ -17867,10 +17842,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
   background:
     var(--全息噪点层),
     linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 72%),
-    var(--全息数据区底);
+    var(--全息材质底);
   box-shadow:
     inset 10px 0 20px -10px color-mix(in srgb, var(--mvu-holo-main) 36%, transparent),
-    var(--全息数据区阴影);
+    var(--全息材质阴影);
   transform: translateX(4px);
 }
 
@@ -17881,15 +17856,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border-radius: 0;
-  background: var(--全息数据区底);
-  box-shadow: var(--全息数据区阴影);
+  border-radius: var(--mvu-holo-card-radius);
+  background: var(--全息材质底);
+  box-shadow: var(--全息材质阴影);
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-  clip-path: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -23484,7 +23455,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 10px;
   padding: 14px !important;
-  border-radius: 0 !important;
+  border-radius: var(--archive-card-radius) !important;
   border: 0 !important;
   background: var(--全息材质底) !important;
   box-shadow:
@@ -23494,7 +23465,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
   overflow: hidden;
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
@@ -23508,7 +23478,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 6px;
   padding: 10px 12px !important;
-  border-radius: 0 !important;
+  border-radius: var(--archive-card-radius) !important;
   border: 1px solid var(--原型弱分隔线) !important;
   background:
     var(--全息噪点层),
@@ -23517,7 +23487,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
     inset 0 1px 0 var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03)),
     inset 0 0 12px rgba(0, 243, 255, 0.025) !important;
   overflow: hidden;
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
@@ -25299,7 +25268,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   align-content: start;
   overflow: hidden;
-  border-radius: 0 !important;
+  border-radius: var(--archive-card-radius) !important;
   border: 0 !important;
   background: var(--全息材质底) !important;
   backdrop-filter: var(--虚化强度);
@@ -25308,7 +25277,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
     2px 4px 10px rgba(0,0,0,0.3),
     inset 0 0 0 1px rgba(255,255,255,0.075),
     inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
-  clip-path: var(--机甲切角路径);
   transform-style: preserve-3d;
 }
 
