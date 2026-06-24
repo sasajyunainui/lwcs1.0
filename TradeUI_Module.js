@@ -943,6 +943,13 @@ class TradeUIComponent {
     }
     if (Number(来源.魂导等级 || 0) > 0) 定义.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(来源.魂导等级 || 0))));
     if (Number(来源.基础使用次数 || 0) > 0) 定义.基础使用次数 = Math.max(1, Math.floor(Number(来源.基础使用次数 || 1)));
+    if (分类 === '魂灵') {
+      if (String(来源.表象名称 || '').trim()) 定义.表象名称 = String(来源.表象名称 || '').trim();
+      if (String(来源.标准物种 || '').trim()) 定义.标准物种 = String(来源.标准物种 || '').trim();
+      if (Number(来源.年限 || 0) > 0) 定义.年限 = Math.max(1, Math.floor(Number(来源.年限 || 0)));
+      if (String(来源.魂灵品质 || '').trim()) 定义.魂灵品质 = String(来源.魂灵品质 || '').trim().toUpperCase().replace('＋', '+');
+      if (Number(来源.来源层数 || 0) > 0) 定义.来源层数 = Math.max(1, Math.floor(Number(来源.来源层数 || 0)));
+    }
     if (交易装备物品分类集合.has(分类)) {
       if (来源.装备槽位) 定义.装备槽位 = 来源.装备槽位;
       if (Number(来源.基础耐久 || 0) > 0) 定义.基础耐久 = Math.max(0, Math.floor(Number(来源.基础耐久 || 0)));
@@ -1524,6 +1531,7 @@ class TradeUIComponent {
             表象名称: record.名称,
             标准物种: record.标准物种,
             年限: record.年限,
+            来源层数: record.层数,
             描述: `魂灵塔第${record.层数}层守塔魂灵特许兑换，当前为五折价格。标准物种：${record.标准物种}；年限：${record.年限}年。`,
             基础价格: fullPrice,
             默认货币: '联邦币',

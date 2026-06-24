@@ -249,13 +249,12 @@
 
 .mvu-soul-ring-showcase:hover .mvu-soul-ring-stage,
 .mvu-soul-ring-showcase:focus-within .mvu-soul-ring-stage {
-  animation: float-spin 20s ease-in-out infinite alternate;
   transform: rotateX(65deg) rotateZ(-15deg);
 }
 
 .mvu-soul-ring-showcase:hover .mvu-soul-ring-slot,
 .mvu-soul-ring-showcase:focus-within .mvu-soul-ring-slot {
-  pointer-events: auto;
+  pointer-events: none;
   opacity: var(--ring-depth-opacity, 0.92);
   transform:
     translate(-50%, -50%)
@@ -267,7 +266,7 @@
 .mvu-soul-ring-slot:hover,
 .mvu-soul-ring-slot:focus-visible,
 .mvu-soul-ring-slot.mvu-hover-floating-active {
-  --ring-hover-y: -5px;
+  --ring-hover-y: 0px;
   opacity: 1;
   filter:
     brightness(1.5)
@@ -283,13 +282,23 @@
   overflow: visible;
 }
 
+.mvu-soul-ring-svg .spin-cw,
+.mvu-soul-ring-svg .spin-ccw {
+  pointer-events: none;
+}
+
+.mvu-soul-ring-hit {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
 .mvu-soul-ring-svg .spin-cw {
-  animation: spin-cw 20s linear infinite;
+  animation: spin-cw 42s linear infinite;
   transform-origin: 100px 100px;
 }
 
 .mvu-soul-ring-svg .spin-ccw {
-  animation: spin-ccw 15s linear infinite;
+  animation: spin-ccw 56s linear infinite;
   transform-origin: 100px 100px;
 }
 

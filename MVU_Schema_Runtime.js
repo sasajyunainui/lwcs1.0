@@ -2072,9 +2072,26 @@ function 清理内置角色未觉醒战斗能力_V1(角色 = {}) {
   }
 }
 
+function 读取时间线事件源_V1() {
+  try {
+    return typeof TimelineEvents === 'undefined' ? {} : TimelineEvents;
+  } catch (错误) {
+    return {};
+  }
+}
+
+function 读取情报事件源_V1() {
+  try {
+    return typeof IntelEvents === 'undefined' ? {} : IntelEvents;
+  } catch (错误) {
+    return {};
+  }
+}
+
 function 读取成长模板附近事件文本_V1(当前tick = 0) {
   const 当前tick数值 = Number(当前tick || 0);
-  const 时间线事件列表 = Array.isArray(TimelineEvents) ? TimelineEvents : Object.values(TimelineEvents || {}).flat();
+  const 时间线事件源 = 读取时间线事件源_V1();
+  const 时间线事件列表 = Array.isArray(时间线事件源) ? 时间线事件源 : Object.values(时间线事件源 || {}).flat();
   return 时间线事件列表
     .filter(事件 => Number.isFinite(Number(事件?.触发tick)) && Math.abs(Number(事件.触发tick) - 当前tick数值) <= 内置角色预备出场窗口tick_V1)
     .map(事件 => [事件?.标识, 事件?.章节, 事件?.描述, 事件?.简述].join('\n'))
@@ -4914,11 +4931,12 @@ function 规范化Schema根转换_V1(data = {}) {
 
     const isIntelRequestKey = requestKey => String(requestKey || '').trim().startsWith('intel_');
     const pendingSecretIntelReasonEntries = [];
+    const 情报事件源 = 读取情报事件源_V1();
 
-    if (typeof IntelEvents !== 'undefined' && IntelEvents) {
+    if (情报事件源 && typeof 情报事件源 === 'object') {
       let dev = data.world.偏差值 || 0;
 
-      let allIntels = Array.isArray(IntelEvents) ? IntelEvents : Object.values(IntelEvents).flat();
+      let allIntels = Array.isArray(情报事件源) ? 情报事件源 : Object.values(情报事件源).flat();
 
       allIntels.map(lowerCaseKeys).forEach((intel, index) => {
         const 情报内容 = String(intel.content || '').trim();
@@ -6905,9 +6923,33 @@ function 规范化复制效果Schema_V1(data) {
 }
 
 function 规范化魂灵塔记录Schema_V1(record) {
-        delete record.当前五折魂灵;
-        return record;
-      
+        const 源记录 = record && typeof record === 'object' && !Array.isArray(record) ? record : {};
+        源记录.最高层 = Math.max(0, Math.floor(Number(源记录.最高层 || 0)));
+        const 源魂灵 = 源记录.当前五折魂灵 && typeof 源记录.当前五折魂灵 === 'object' && !Array.isArray(源记录.当前五折魂灵)
+          ? 源记录.当前五折魂灵
+          : {};
+        const 当前五折魂灵 = {
+          层数: Math.max(0, Math.floor(Number(源魂灵.层数 || 0))),
+          名称: String(源魂灵.名称 || '').trim(),
+          标准物种: String(源魂灵.标准物种 || '').trim(),
+          年限: Math.max(0, Math.floor(Number(源魂灵.年限 || 0))),
+          品质: String(源魂灵.品质 || '').trim().toUpperCase().replace('＋', '+').replace(/\s+/g, ''),
+          已使用: 源魂灵.已使用 === true,
+        };
+        if (!(当前五折魂灵.层数 > 0 && 当前五折魂灵.标准物种 && 当前五折魂灵.年限 > 0 && 当前五折魂灵.品质 && 当前五折魂灵.已使用 === false)) {
+          源记录.当前五折魂灵 = {
+            层数: 0,
+            名称: '',
+            标准物种: '',
+            年限: 0,
+            品质: '',
+            已使用: false,
+          };
+          return 源记录;
+        }
+        if (!当前五折魂灵.名称) 当前五折魂灵.名称 = `${当前五折魂灵.标准物种}魂灵`;
+        源记录.当前五折魂灵 = 当前五折魂灵;
+        return 源记录;
 }
 
 function 规范化战斗历史Schema_V1(data) {

@@ -655,11 +655,11 @@ function syncSoulTowerRecordEligibility(char = {}) {
     return;
   }
   if (!char.魂灵塔记录 || typeof char.魂灵塔记录 !== 'object' || Array.isArray(char.魂灵塔记录)) {
-    char.魂灵塔记录 = { 最高层: 0 };
+    char.魂灵塔记录 = { 最高层: 0, 当前五折魂灵: createEmptySoulTowerDiscountSpiritRecord() };
     return;
   }
   char.魂灵塔记录.最高层 = Math.max(0, Math.floor(Number(char.魂灵塔记录.最高层 || 0)));
-  delete char.魂灵塔记录.当前五折魂灵;
+  char.魂灵塔记录.当前五折魂灵 = normalizeSoulTowerDiscountSpiritRecord(char.魂灵塔记录.当前五折魂灵 || {});
 }
 
 function createDefaultRingSkillShell() {

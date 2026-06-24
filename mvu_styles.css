@@ -18317,7 +18317,6 @@ body.mvu-layout-holo
   .mvu-archive-spirit-card:focus-within
   .mvu-soul-ring-showcase--overview
   .mvu-soul-ring-stage {
-  animation: float-spin 20s ease-in-out infinite alternate;
   transform: rotateX(65deg) rotateZ(-15deg);
 }
 
@@ -18331,7 +18330,7 @@ body.mvu-layout-holo
   .mvu-archive-spirit-card:focus-within
   .mvu-soul-ring-showcase--overview
   .mvu-soul-ring-slot {
-  pointer-events: auto;
+  pointer-events: none;
   opacity: var(--ring-depth-opacity, 0.92);
   transform:
     translate(-50%, -50%)

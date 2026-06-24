@@ -66,8 +66,20 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
+  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
   const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '战斗模块', '数据库模块']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '数据库模块', '战斗模块']);
+  const 启动预取资源列表 = Object.freeze([
+    'MVU_ZOD_Entry.js',
+    'MVU_Skill_Runtime.js',
+    'MVU_Schema_Runtime.js',
+    'MVU_Runtime_View.js',
+    'MVU.js',
+    'MVU_Hooks.js',
+    'timeline.js',
+    'IntelEvents.js',
+  ]);
 
   const 预览依赖映射 = {
     交易网络: ['交易模块'],
@@ -335,9 +347,7 @@
       });
       await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      for (const 模块名 of 变量运行时接口模块顺序) {
-        await 确保模块已加载(模块名, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      }
+      await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
       await 确保模块已加载('数据库模块', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
@@ -424,6 +434,15 @@
       throw 结果.error || new Error(结果.reason || `${模块名}_load_failed`);
     }
     return 结果;
+  }
+
+  async function 确保模块组已加载(模块名列表, 选项 = {}) {
+    const 加载结果列表 = await Promise.all(模块名列表.map(模块名 => 确保模块已加载(模块名, { ...选项, 抛错: false })));
+    const 失败结果 = 加载结果列表.find(结果 => !结果 || !结果.ok);
+    if (失败结果 && 选项 && 选项.抛错) {
+      throw 失败结果.error || new Error(失败结果.reason || `${失败结果.模块名 || 'module'}_load_failed`);
+    }
+    return 加载结果列表;
   }
 
   async function 等待数据库模块就绪(来源 = 'database_required', 抛错 = true) {
@@ -804,10 +823,16 @@
         ensureGetAllVariablesShim();
 
         记录阶段(加载阶段.核心加载中);
-        ['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '数据库模块', '战斗模块'].forEach(预取模块文本);
-        for (const 模块名 of 核心模块顺序) {
+        启动预取模块顺序.forEach(预取模块文本);
+        启动预取资源列表.forEach(文件名 => {
+          读取文本资源(资源基础地址 + 文件名 + 资源版本后缀, 'Resource prefetch failed').catch(() => {});
+        });
+        for (const 模块名 of 核心前置模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
         }
+        await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
+        await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false });
+        await 确保模块已加载('数据库适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
         启动数据库模块后台加载('bootstrap_database');
         确保模块已加载('战斗模块', { 来源: 'bootstrap_battle', 允许失败降级: true, 抛错: false });
 

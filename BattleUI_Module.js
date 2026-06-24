@@ -465,10 +465,11 @@ class BattleUIComponent {
       const species = String(unit?.标准物种 || '').trim();
       const age = Math.max(0, Math.floor(Number(unit?.年限 || 0)));
       const quality = normalizeSoulSpiritQuality(unit?.品质 || '');
+      const 名称 = String(unit?.name || unit?.名称 || '').trim();
       if (!(species && age > 0 && quality)) return createEmptySoulTowerDiscountSpiritRecord();
       return {
         层数: Math.max(1, Math.floor(Number(floor) || 1)),
-        名称: `${species}魂灵`,
+        名称: 名称 || `${species}魂灵`,
         标准物种: species,
         年限: age,
         品质: quality,

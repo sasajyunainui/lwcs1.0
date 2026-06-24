@@ -1,18 +1,10 @@
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
-import { TimelineEvents } from './timeline.js';
-
-import { IntelEvents } from './IntelEvents.js';
-
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
-globalThis.TimelineEvents = TimelineEvents;
+try { if (globalThis.parent && globalThis.parent !== globalThis) { globalThis.parent.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
 
-globalThis.IntelEvents = IntelEvents;
-
-try { if (globalThis.parent && globalThis.parent !== globalThis) { globalThis.parent.TimelineEvents = TimelineEvents; globalThis.parent.IntelEvents = IntelEvents; globalThis.parent.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
-
-try { if (globalThis.top && globalThis.top !== globalThis) { globalThis.top.TimelineEvents = TimelineEvents; globalThis.top.IntelEvents = IntelEvents; globalThis.top.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) { globalThis.top.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
 
 const WealthSchema = z
   .object({
@@ -547,7 +539,17 @@ const CharacterSchema = z
 
     魂灵塔记录: z
       .object({
-        最高层: z.coerce.number().prefault(0).describe('历史最高通关层数'),
+        最高层: z.coerce.number().prefault(0).describe('魂灵塔最高通关/自动推进层数'),
+        当前五折魂灵: z
+          .object({
+            层数: z.coerce.number().prefault(0).describe('五折资格来源层数'),
+            名称: z.string().prefault('').describe('击败守塔魂灵名称'),
+            标准物种: z.string().prefault('').describe('魂灵标准物种'),
+            年限: z.coerce.number().prefault(0).describe('魂灵年限'),
+            品质: z.string().prefault('').describe('魂灵品质'),
+            已使用: z.boolean().prefault(false).describe('五折资格是否已使用'),
+          })
+          .prefault({}),
       })
       .catchall(z.any())
       .transform(规范化魂灵塔记录Schema_V1)

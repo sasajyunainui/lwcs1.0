@@ -2615,7 +2615,7 @@ function 解析运行时tick日历片段_V1(tick值 = 0) {
   };
 }
 
-function 收集后续原著时间线预览项_V1(当前tick = 0, 最大数量 = 20, 时间线事件源 = TimelineEvents) {
+function 收集后续原著时间线预览项_V1(当前tick = 0, 最大数量 = 20, 时间线事件源 = 读取原著时间线事件源_V1()) {
   const 当前tick数值 = Number(当前tick || 0);
   const 事件列表 = Array.isArray(时间线事件源) ? 时间线事件源 : Object.values(时间线事件源 || {}).flat();
   return 事件列表

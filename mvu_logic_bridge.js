@@ -9068,6 +9068,23 @@
     const loserName = settlement.败方;
     const loserKey = resolveSnapshotCharKey(snapshot, loserName);
     const loserParticipant = getBattleParticipantByName(combatData, loserName);
+    const 是魂灵塔战斗 = toText(combatData.战斗类型, '') === '魂灵塔冲塔';
+    const 玩家队伍 = Array.isArray(deepGet(combatData, '参战者.team_player', []))
+      ? deepGet(combatData, '参战者.team_player', [])
+      : [];
+    const 敌方队伍 = Array.isArray(deepGet(combatData, '参战者.team_enemy', []))
+      ? deepGet(combatData, '参战者.team_enemy', [])
+      : [];
+    const 胜方是玩家 = 是魂灵塔战斗 && 玩家队伍.some(unit => toText(unit && (unit.name || unit.名称), '') === settlement.胜方);
+    const 败方是敌方 = 是魂灵塔战斗 && 敌方队伍.some(unit => toText(unit && (unit.name || unit.名称), '') === settlement.败方);
+    const 魂灵塔玩家胜利 = 是魂灵塔战斗 && 胜方是玩家 && 败方是敌方;
+    const 魂灵塔待结算 = 魂灵塔玩家胜利
+      ? 构建魂灵塔待结算记录(combatData, loserParticipant || 敌方队伍[0] || {})
+      : null;
+    if (魂灵塔玩家胜利 && !魂灵塔待结算) {
+      showUiToast('魂灵塔结算失败：守塔魂灵缺少标准物种、年限或品质。', 'error', 4200);
+      return;
+    }
 
     // 状态冲突检测 + swipe 幂等化:
     // - 若 _前置快照 存在且对应当前败方,说明先前已经裁断过,本次为 swipe 重新落地 ⇒ restore 后再写新裁断
@@ -9185,6 +9202,39 @@
           { op: 'replace', path: `${participantPath}/状态/死亡类型`, value: alive ? '无' : '意外' },
           { op: 'replace', path: `${participantPath}/存活`, value: alive },
         );
+      }
+    }
+    if (是魂灵塔战斗) {
+      if (魂灵塔玩家胜利) {
+        patches.push(
+          { op: 'replace', path: '/world/战斗/进行中', value: true },
+          { op: 'replace', path: '/world/战斗/裁断结果', value: '' },
+          { op: 'replace', path: '/world/战斗/魂灵塔待结算', value: 魂灵塔待结算 },
+          {
+            op: 'replace',
+            path: '/sys/系统播报',
+            value: `[魂灵塔] ${settlement.胜方}已击败第${魂灵塔待结算.层数}层守塔魂灵，等待选择结束并保留资格或继续冲塔。`,
+          },
+        );
+      } else {
+        const 玩家名 = toText(deepGet(combatData, '参战者.team_player.0.name', ''), '');
+        const 玩家键 = resolveSnapshotCharKey(snapshot, 玩家名 || toText(snapshot.activeName, ''));
+        patches.push(
+          { op: 'replace', path: '/world/战斗/试炼状态', value: '' },
+          {
+            op: 'replace',
+            path: '/sys/系统播报',
+            value: `[魂灵塔] ${settlement.胜方}战胜${settlement.败方}，本次冲塔结束，未获得五折兑换资格。`,
+          },
+        );
+        if (combatData.魂灵塔待结算 !== undefined) patches.push({ op: 'remove', path: '/world/战斗/魂灵塔待结算' });
+        if (玩家键) {
+          patches.push({
+            op: 'replace',
+            path: `/char/${escapeJsonPointerValue(玩家键)}/状态/位置`,
+            value: 魂灵塔退出地点,
+          });
+        }
       }
     }
     try {
@@ -26883,6 +26933,7 @@
         <g class="spin-ccw">
           <circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-acc)" stroke-width="2" stroke-dasharray="2 4 8 4 3 10" opacity="1"/>
         </g>
+        <circle class="mvu-soul-ring-hit" cx="100" cy="100" r="66" fill="none" stroke="transparent" stroke-width="34"/>
       </svg>`;
   }
 
@@ -26903,9 +26954,10 @@
     const 数量 = Math.max(1, Number(总数) || 1);
     const 位置 = Math.max(0, Number(序号) || 0);
     const 比例 = 数量 > 1 ? 位置 / (数量 - 1) : 0.5;
+    const 视觉深度比例 = 数量 > 1 ? 1 - 比例 : 0.5;
     const 平面缩放 = 0.58 + 比例 * 1.22;
-    const 深度缩放 = 1.34 - 比例 * 0.74;
-    const 深度 = -80 + 比例 * 200;
+    const 深度缩放 = 1.34 - 视觉深度比例 * 0.74;
+    const 深度 = -80 + 视觉深度比例 * 200;
     const 透明度 = 0.78 + 比例 * 0.22;
     const 样式 = [
       `--ring-scale:${平面缩放.toFixed(3)}`,
@@ -28914,14 +28966,32 @@
     const species = toText(seed.标准物种, '');
     const age = Math.max(0, Math.floor(toNumber(seed.年限, 0)));
     const quality = normalizeSoulSpiritQuality(seed.品质 || '');
+    const 名称 = toText(seed.name || seed.名称, '');
     if (!(species && age > 0 && quality)) return createEmptySoulTowerDiscountSpiritRecord();
     return {
       层数: safeFloor,
-      名称: `${species}魂灵`,
+      名称: 名称 || `${species}魂灵`,
       标准物种: species,
       年限: age,
       品质: quality,
       已使用: false,
+    };
+  }
+
+  function 构建魂灵塔待结算记录(combatData = {}, 守塔单位 = {}) {
+    const 层数 = Math.min(SOUL_TOWER_TOTAL_FLOORS, Math.max(1, Math.floor(toNumber(combatData.floor, 1))));
+    const 大关信息 = getSoulTowerGateMeta(层数);
+    const 五折魂灵 = buildSoulTowerDiscountSpiritRecordFromSeed(层数, 守塔单位 || {});
+    if (!(五折魂灵.层数 > 0)) return null;
+    return {
+      状态: '待选择',
+      层数,
+      区域标签: 大关信息.gateLabel,
+      区间标签: 大关信息.gateRangeLabel,
+      守塔名称: toText((守塔单位 || {}).name || (守塔单位 || {}).名称, 五折魂灵.名称),
+      五折魂灵,
+      下一层: Math.min(SOUL_TOWER_TOTAL_FLOORS, 层数 + 1),
+      可继续: 层数 < SOUL_TOWER_TOTAL_FLOORS,
     };
   }
 
@@ -48515,6 +48585,7 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function positionFloatingHoverCard(trigger) {
     if (!(trigger instanceof Element)) return;
+    if (activeFloatingHoverTrigger === trigger && 顶层浮窗卡片 instanceof HTMLElement) return;
     if (activeFloatingHoverTrigger && activeFloatingHoverTrigger !== trigger) {
       clearFloatingHoverCard(activeFloatingHoverTrigger);
     }

@@ -5,6 +5,25 @@
   const 分支名 = 'master';
   const CDN地址 = 'https://testingcf.jsdelivr.net';
   const 入口文件名 = 'ST_UI_Entry.js';
+  const 启动预取资源列表 = Object.freeze([
+    'mvu_styles.css',
+    'soul_ring_engine.css',
+    'Main_Vue_runtimefix_v2.js',
+    'CharacterLibrary.js',
+    'ItemLibrary.js',
+    'mvu_logic_bridge.js',
+    'LWCS_Database_Adapter.js',
+    'Database_Module.js',
+    'BattleUI_Module.js',
+    'MVU_ZOD_Entry.js',
+    'MVU_Skill_Runtime.js',
+    'MVU_Schema_Runtime.js',
+    'MVU_Runtime_View.js',
+    'MVU.js',
+    'MVU_Hooks.js',
+    'timeline.js',
+    'IntelEvents.js',
+  ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
   const 宿主窗口 = (() => {
     try {
@@ -19,6 +38,12 @@
 
   function 构建资源基础地址(提交哈希) {
     return `${CDN地址}/gh/${仓库名}@${提交哈希}/`;
+  }
+
+  function 预取关键资源(资源基础地址) {
+    启动预取资源列表.forEach(文件名 => {
+      fetch(`${资源基础地址}${文件名}`, { cache: 'force-cache' }).catch(() => {});
+    });
   }
 
   async function 取最新提交哈希() {
@@ -50,6 +75,7 @@
       }
     } catch (错误) {}
 
+    预取关键资源(资源基础地址);
     const 执行入口 = new Function(`${入口代码}\n//# sourceURL=${入口地址}`);
     执行入口();
   }
