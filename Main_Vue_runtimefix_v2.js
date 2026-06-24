@@ -484,26 +484,6 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
 
-        <div class="mvu-unified-theme-dock" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
-          <button
-            type="button"
-            class="mvu-unified-theme-toggle"
-            :aria-expanded="全息星轨状态.主题面板展开 ? 'true' : 'false'"
-            aria-label="主题"
-            @click="切换全息主题面板"
-          ><span>{{ 当前主题短名 }}</span></button>
-          <div class="mvu-unified-theme-panel" aria-label="主题切换">
-            <button
-              v-for="主题 in 全息星轨主题"
-              :key="'holo-theme-' + 主题.名称"
-              type="button"
-              class="mvu-holo-theme-btn"
-              :aria-pressed="全息星轨状态.主题 === 主题.名称 ? 'true' : 'false'"
-              @click="设置全息星轨主题(主题.名称)"
-            >{{ 主题.短名 }}</button>
-          </div>
-        </div>
-
         <div class="mvu-unified-page-stack" :aria-hidden="detailState.isOpen ? 'true' : 'false'">
           <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
             <section class="mvu-unified-section mvu-unified-section--dashboard">
@@ -563,6 +543,25 @@ const DesktopUnifiedLayout = {
           <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
         </section>
       </section>
+      <div class="mvu-unified-theme-dock" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
+        <button
+          type="button"
+          class="mvu-unified-theme-toggle"
+          :aria-expanded="全息星轨状态.主题面板展开 ? 'true' : 'false'"
+          aria-label="主题"
+          @click="切换全息主题面板"
+        ><span>{{ 当前主题短名 }}</span></button>
+        <div class="mvu-unified-theme-panel" aria-label="主题切换">
+          <button
+            v-for="主题 in 全息星轨主题"
+            :key="'holo-theme-' + 主题.名称"
+            type="button"
+            class="mvu-holo-theme-btn"
+            :aria-pressed="全息星轨状态.主题 === 主题.名称 ? 'true' : 'false'"
+            @click="设置全息星轨主题(主题.名称)"
+          >{{ 主题.短名 }}</button>
+        </div>
+      </div>
     </div>
   `,
   setup() {
