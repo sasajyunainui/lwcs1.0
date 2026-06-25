@@ -17036,7 +17036,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --shadow-cyan: 0 4px 15px color-mix(in srgb, var(--主题主色) 15%, transparent);
 }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   position: relative;
   box-sizing: border-box;
   display: grid;
@@ -17048,13 +17048,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   max-height: var(--mvu-hud-frame-height, clamp(480px, calc(100svh - 220px), 660px));
   overflow: visible;
   isolation: isolate;
-  border: 1px solid var(--边线颜色);
-  border-radius: var(--mvu-holo-radius);
-  background:
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
-    repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px),
-    linear-gradient(145deg, color-mix(in srgb, var(--主题底色) 92%, transparent), color-mix(in srgb, #000 44%, var(--主题辅色)));
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36), var(--主题发光);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   perspective: 1200px;
@@ -17107,17 +17104,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #8ba9b7;
   --主题光束: linear-gradient(90deg, #00ffcc, rgba(0, 255, 204, 0.52), transparent);
   --主题发光: 0 0 18px rgba(0, 255, 204, 0.46);
-  --投影屏边线: transparent;
-  --投影屏前景:
-    linear-gradient(90deg, var(--主题主色) 0 2px, transparent 2px) left top / 46px 2px no-repeat,
-    linear-gradient(180deg, var(--主题主色) 0 2px, transparent 2px) left top / 2px 46px no-repeat,
-    linear-gradient(270deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 46px 2px no-repeat,
-    linear-gradient(0deg, var(--主题主色) 0 2px, transparent 2px) right bottom / 2px 46px no-repeat,
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 30%, transparent), transparent 28%) left top / auto no-repeat;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫世唐门'] {
-  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
 }
 
 body[data-mvu-holo-theme='金龙王'],
@@ -17150,8 +17136,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #c9966c;
   --主题光束: radial-gradient(circle, #ffd700, #ff3300 48%, transparent 70%);
   --主题发光: 0 0 22px rgba(255, 51, 0, 0.42);
-  --投影屏边线宽: 2px;
-  --投影屏背景: var(--投影背景);
 }
 
 body[data-mvu-holo-theme='银龙王'],
@@ -17184,9 +17168,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #b8c7da;
   --主题光束: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), rgba(224,234,255,0.4), transparent);
   --主题发光: inset 0 0 18px rgba(255,255,255,0.12), 0 0 20px rgba(224, 234, 255, 0.28);
-  --投影屏阴影:
-    inset 0 0 15px rgba(255,255,255,0.1),
-    var(--主题发光);
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'],
@@ -17214,9 +17195,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源游标: #ff7eb3;
   --介质纹理:
     linear-gradient(135deg, rgba(0, 210, 255, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 215, 0, 0.032));
-  --投影背景:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.16), transparent 18%),
-    linear-gradient(135deg, rgba(0, 210, 255, 0.045), rgba(255, 126, 179, 0.06), rgba(255, 215, 0, 0.035));
+  --投影背景: linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
   --实体背景: rgba(255, 255, 255, 0.11);
   --虚幻背景: rgba(0, 210, 255, 0.045);
   --边线颜色: rgba(255, 255, 255, 0.2);
@@ -17227,53 +17206,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #8ec9d7;
   --主题光束: linear-gradient(90deg, #00d2ff, #ff7eb3 46%, rgba(255, 215, 0, 0.62), transparent);
   --主题发光:
-    0 0 18px rgba(255, 126, 179, 0.22),
-    0 0 24px rgba(0, 210, 255, 0.16),
-    inset 0 0 20px rgba(255, 255, 255, 0.06);
-  --投影屏边线: rgba(255, 255, 255, 0.16);
-  --投影屏背景:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.006)),
-    var(--投影背景);
-  --投影屏阴影:
-    var(--主题发光),
-    0 0 30px rgba(255, 126, 179, 0.22);
-  --投影屏前景:
-    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.16), transparent 18%) center / 160% 160%,
-    radial-gradient(ellipse at 70% 60%, rgba(0,210,255,0.18), transparent 22%) center / 160% 160%,
-    linear-gradient(115deg, transparent 0 22%, rgba(255,255,255,0.09) 24%, transparent 30%, rgba(255,215,0,0.06) 45%, transparent 52%) center / 160% 160%;
-  --投影屏前景透明: 0.58;
-  --投影屏前景动画: 水幕焦散 8s ease-in-out infinite;
-  --投影屏后景显示: none;
-  --投影屏后景: none;
-  --投影屏后景透明: 0;
+    0 0 15px rgba(0, 210, 255, 0.4),
+    inset 0 0 20px rgba(255, 126, 179, 0.2);
   --mvu-holo-medium: var(--投影背景);
-}
-
-@keyframes 水幕焦散 {
-  0%,
-  100% {
-    background-position: 0% 45%;
-  }
-  50% {
-    background-position: 100% 55%;
-  }
-}
-
-@keyframes mvu-unified-frame-scan {
-  0% {
-    transform: translateY(-170%);
-    opacity: 0;
-  }
-  14% {
-    opacity: 0.18;
-  }
-  58% {
-    opacity: 0.1;
-  }
-  100% {
-    transform: translateY(120%);
-    opacity: 0;
-  }
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
@@ -17314,11 +17249,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn:focus-visible {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
+  --主题抽屉折叠宽度: 32px;
+  --主题抽屉展开宽度: 240px;
   position: relative;
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
-  padding-left: 34px;
+  padding-left: var(--主题抽屉展开宽度);
   overflow: visible;
 }
 
@@ -17556,15 +17493,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   position: absolute;
   z-index: var(--mvu-z-popover, 10060);
   top: 10px;
-  right: calc(100% - 34px);
+  right: calc(100% - var(--主题抽屉展开宽度));
   left: auto;
   transform: translateX(0);
   display: flex;
-  flex-direction: row;
+  flex-direction: row-reverse;
   align-items: center;
   gap: 0;
-  width: 32px;
-  min-width: 32px;
+  width: var(--主题抽屉折叠宽度);
+  min-width: var(--主题抽屉折叠宽度);
   height: 34px;
   min-height: 34px;
   padding: 0;
@@ -17588,7 +17525,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open {
-  width: 240px;
+  width: var(--主题抽屉展开宽度);
   border-color: var(--边线颜色);
   background: color-mix(in srgb, var(--主题主色) 12%, transparent);
   box-shadow: var(--主题发光), -10px 0 20px rgba(0, 0, 0, 0.28);
@@ -17605,7 +17542,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   height: 34px;
   padding: 0;
   border: 0;
-  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 54%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--边线颜色) 54%, transparent);
   border-radius: 0;
   background: transparent;
   color: var(--mvu-holo-main);
@@ -17648,10 +17585,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
   max-width: 202px;
   max-height: 34px;
   order: 0;
-  padding: 0 8px 0 0;
+  padding: 0 0 0 8px;
   overflow: hidden;
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-8px);
   transition:
     opacity 0.18s ease,
     transform 0.22s ease;
@@ -17665,7 +17602,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-uni
   max-width: 202px;
   max-height: 34px;
   grid-template-columns: repeat(5, 34px);
-  padding: 0 8px 0 0;
+  padding: 0 0 0 8px;
   opacity: 1;
   transform: translateX(0);
   transition-delay: 0.08s;
