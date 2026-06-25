@@ -265,7 +265,7 @@
 </label>
 </div>
 </div>
-<button class="submit-btn" id="startup-main-button" onclick="处理开场主按钮()">[ 注入数据库剧情推进预设 ]</button>
+<button class="submit-btn" id="startup-main-button" onclick="处理开场主按钮()">[ 初始化世界线 ]</button>
 </div>
 </div>
 </div>
@@ -273,7 +273,9 @@
 
 var FORM_TEMPLATE_STORAGE_KEY = 'CHAR_FORM_TEMPLATES_V1';
 var FORM_LAST_SNAPSHOT_KEY = 'CHAR_FORM_LAST_SNAPSHOT_V1';
-var 剧情推进预设已注入 = false;
+var 开场世界线已初始化 = false;
+var 开场待发送文本 = '';
+var 开场初始化结果 = null;
 var 开场主按钮处理中 = false;
 var 当前原著角色选择 = '';
 
@@ -979,7 +981,7 @@ window.注入数据库剧情推进预设 = async function() {
 function 切换开场主按钮为同步() {
     var 主按钮 = document.getElementById('startup-main-button');
     if (!主按钮) return;
-    主按钮.textContent = '[ 确认同步至世界线 ]';
+    主按钮.textContent = '[ 发送开场白 ]';
 }
 
 function 设置开场主按钮忙碌(忙碌, 文本) {
@@ -989,22 +991,34 @@ function 设置开场主按钮忙碌(忙碌, 文本) {
     if (文本) 主按钮.textContent = 文本;
 }
 
-function 打开数据库设置界面() {
+function 通过输入框发送开场文本(文本) {
     var 宿主窗口 = window.parent || window.top || window;
-    var 宿主文档 = 宿主窗口 && 宿主窗口.document ? 宿主窗口.document : document;
-    var 数据库按钮 = 宿主文档.getElementById('acu-v2-menu-item');
-    if (!数据库按钮) {
-        showTemplateMessage('请从扩展菜单打开 SP·数据库 III 设置 API。');
-        return false;
-    }
-    数据库按钮.click();
-    return true;
+    var 输入框 = 宿主窗口.document.querySelector('#send_textarea');
+    var 发送按钮 = 宿主窗口.document.querySelector('#send_but');
+    if (!输入框 || !发送按钮) throw new Error("酒馆发送控件未就绪");
+    输入框.value = 文本;
+    输入框.dispatchEvent(new Event('input', { bubbles: true }));
+    输入框.dispatchEvent(new Event('change', { bubbles: true }));
+    发送按钮.click();
 }
+
+window.发送开场白 = function() {
+    if (!开场世界线已初始化 || !开场待发送文本) {
+        showTemplateMessage('请先初始化世界线。', true);
+        return;
+    }
+    try {
+        通过输入框发送开场文本(开场待发送文本);
+    } catch (错误) {
+        console.error('[开场白] 发送开场白失败:', 错误);
+        showTemplateMessage('发送开场白失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);
+    }
+};
 
 window.处理开场主按钮 = async function() {
     if (开场主按钮处理中) return;
-    if (剧情推进预设已注入) {
-        window.submitForm();
+    if (开场世界线已初始化) {
+        window.发送开场白();
         return;
     }
 
@@ -1013,19 +1027,25 @@ window.处理开场主按钮 = async function() {
     try {
         var 注入结果 = await window.注入数据库剧情推进预设();
         if (!注入结果 || !注入结果.success) {
-            设置开场主按钮忙碌(false, '[ 注入数据库剧情推进预设 ]');
+            设置开场主按钮忙碌(false, '[ 初始化世界线 ]');
             return;
         }
 
-        剧情推进预设已注入 = true;
-        设置开场主按钮忙碌(false);
+        设置开场主按钮忙碌(true, '[ 正在写入MVU初始化 ]');
+        showTemplateMessage('已注入并切换到' + (注入结果.presetName || '数据库剧情推进预设') + '，正在初始化世界线...');
+        开场初始化结果 = await window.submitForm();
+        if (!开场初始化结果 || !开场初始化结果.开场发送文本) {
+            throw new Error('MVU初始化未返回开场白文本');
+        }
+        开场待发送文本 = 开场初始化结果.开场发送文本;
+        开场世界线已初始化 = true;
         切换开场主按钮为同步();
-        var 是否设置API = confirm('数据库剧情推进预设已注入并切换。是否现在设置 API？');
-        if (是否设置API) 打开数据库设置界面();
+        设置开场主按钮忙碌(false);
+        showTemplateMessage('数据库剧情推进预设已注入，世界线初始化完成，可以发送开场白。');
     } catch (错误) {
         console.error('[开场白] 开场主按钮执行失败:', 错误);
-        showTemplateMessage('数据库剧情推进预设注入失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);
-        设置开场主按钮忙碌(false, '[ 注入数据库剧情推进预设 ]');
+        showTemplateMessage('世界线初始化失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);
+        设置开场主按钮忙碌(false, '[ 初始化世界线 ]');
     } finally {
         开场主按钮处理中 = false;
     }
@@ -1109,7 +1129,7 @@ window.selectRadio = function(element) {
     if (input) input.checked = true;
 };
 
-window.submitForm = function() {
+window.submitForm = async function() {
     var 开局模式 = 读取开局模式();
     var 原著角色名 = '';
     var name = document.getElementById('char-name').value.trim().replace(/[\r\n]+/g, " ") || '无名氏';
@@ -1155,13 +1175,11 @@ window.submitForm = function() {
         if (开局模式 === '原著角色') {
             原著角色名 = String((document.getElementById('original-character-select') || {}).value || 当前原著角色选择 || '').trim();
             if (!原著角色名) {
-                alert('请先选择原著角色。');
-                return;
+                throw new Error('请先选择原著角色。');
             }
             原著投影 = 构建原著角色开场投影(原著角色名, selectedTimeline);
             if (!原著投影) {
-                alert('原著角色投影失败，请检查角色库。');
-                return;
+                throw new Error('原著角色投影失败，请检查角色库。');
             }
             name = 原著投影.角色名;
             var 原著属性 = 原著投影.角色数据 && 原著投影.角色数据.属性 ? 原著投影.角色数据.属性 : {};
@@ -1188,7 +1206,7 @@ window.submitForm = function() {
         if (age >= 6 && Number(calculatedLv) <= 0) throw new Error('MVU初始化修为计算返回0级，请刷新脚本后重试');
     } catch (错误) {
         alert((错误 && 错误.message) || 'MVU初始化修为计算失败');
-        return;
+        throw 错误;
     }
 
     var multiplier = 0.1;
@@ -1511,52 +1529,41 @@ window.submitForm = function() {
         return verifyRoot;
     }
 
-    document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 100px 20px; color: #2dd4bf; font-size: 18px; font-weight:600; letter-spacing: 1px;">❖ 档案及时间线底包已提交，正在同步世界线... ❖</div>';
+    showTemplateMessage('档案及时间线底包已提交，正在同步世界线...');
 
-    function 通过输入框发送开场白(文本) {
-        var 宿主窗口 = getStartupRuntimeWindow();
-        var 输入框 = 宿主窗口.document.querySelector('#send_textarea');
-        var 发送按钮 = 宿主窗口.document.querySelector('#send_but');
-        if (!输入框 || !发送按钮) throw new Error("酒馆发送控件未就绪");
-        输入框.value = 文本;
-        输入框.dispatchEvent(new Event('input', { bubbles: true }));
-        输入框.dispatchEvent(new Event('change', { bubbles: true }));
-        发送按钮.click();
-    }
-
-    Promise.resolve().then(async function() {
-        var safeDisplayMessage = displayMessage.replace(/\r/g, "").replace(/\n/g, " ");
-        var 开场事务 = {
-            状态: "pending",
-            chatId: 读取开场聊天编号(),
-            目标消息编号: "",
-            目标消息索引: -1,
-            开场输入: safeDisplayMessage,
-            statData: null,
-            error: null,
-            创建时间: Date.now()
-        };
-        开场事务.promise = (async function() {
-            try {
-                var statData = await applyInitPatchByMvuParser(initPatch, 开场事务);
-                开场事务.状态 = "ready";
-                开场事务.statData = statData;
-                写入开场MVU初始化事务(开场事务);
-                return statData;
-            } catch (错误) {
-                开场事务.状态 = "error";
-                开场事务.error = 错误 && 错误.message ? 错误.message : String(错误 || "未知错误");
-                写入开场MVU初始化事务(开场事务);
-                throw 错误;
-            }
-        })();
-        写入开场MVU初始化事务(开场事务);
-        await 开场事务.promise;
-        通过输入框发送开场白(safeDisplayMessage);
-    }).catch(function(error) {
-        console.error('[开场白] MVU初始化写入失败:', error);
-        document.getElementById('panel-container').innerHTML = '<div style="text-align:center; padding: 100px 20px; color: #f87171; font-size: 18px; font-weight:600; letter-spacing: 1px;">⚠ MVU 初始化写入失败，请刷新后重试 ⚠</div>';
-    });
+    var 开场发送文本 = displayMessage.replace(/\r/g, "").replace(/\n/g, " ");
+    var 开场事务 = {
+        状态: "pending",
+        chatId: 读取开场聊天编号(),
+        目标消息编号: "",
+        目标消息索引: -1,
+        开场输入: 开场发送文本,
+        statData: null,
+        error: null,
+        创建时间: Date.now()
+    };
+    开场事务.promise = (async function() {
+        try {
+            var 变量数据 = await applyInitPatchByMvuParser(initPatch, 开场事务);
+            开场事务.状态 = "ready";
+            开场事务.statData = 变量数据;
+            写入开场MVU初始化事务(开场事务);
+            return 变量数据;
+        } catch (错误) {
+            开场事务.状态 = "error";
+            开场事务.error = 错误 && 错误.message ? 错误.message : String(错误 || "未知错误");
+            写入开场MVU初始化事务(开场事务);
+            throw 错误;
+        }
+    })();
+    写入开场MVU初始化事务(开场事务);
+    var 初始化数据 = await 开场事务.promise;
+    showTemplateMessage('世界线初始化完成，可以发送开场白。');
+    return {
+        开场发送文本: 开场发送文本,
+        初始化数据: 初始化数据,
+        事务: 开场事务
+    };
 };
 $(function() {
     初始化开场生日选项();

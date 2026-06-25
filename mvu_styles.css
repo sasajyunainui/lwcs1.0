@@ -75,7 +75,9 @@
     radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
   --投影屏边线宽: 1px;
   --投影屏边线: var(--边线颜色);
-  --投影屏背景: var(--投影背景);
+  --投影屏背景:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.006)),
+    var(--投影背景);
   --投影屏阴影:
     var(--主题发光),
     inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
@@ -129,25 +131,29 @@
   --原型文字辉光: var(--全息标题字影);
   --原型悬浮曲线: cubic-bezier(0.2, 0.8, 0.2, 1);
   --全息材质底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
-    var(--实体背景);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, var(--暗场卡片) 72%, transparent);
   --全息材质悬停底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 30%),
-    var(--实体背景);
-  --全息材质线: color-mix(in srgb, var(--边线颜色) 50%, transparent);
-  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 30%, transparent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.026)),
+    color-mix(in srgb, var(--暗场卡片) 78%, transparent);
+  --全息材质线: color-mix(in srgb, var(--边线颜色) 32%, rgba(255, 255, 255, 0.18));
+  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 18%, rgba(255, 255, 255, 0.12));
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
   --全息材质侧线: color-mix(in srgb, var(--主题主色) 34%, transparent);
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
-  --全息材质雾光: none;
-  --全息材质雾光透明: 0;
+  --全息材质雾光:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.13), transparent 36%),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 28%);
+  --全息材质雾光透明: 0.62;
   --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px color-mix(in srgb, var(--主题主色) 28%, transparent);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent),
+    0 10px 22px rgba(0, 0, 0, 0.18);
   --全息材质悬停阴影:
-    2px 4px 12px rgba(0, 0, 0, 0.32),
-    0 0 16px color-mix(in srgb, var(--主题主色) 34%, transparent);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 9%, transparent),
+    0 12px 26px rgba(0, 0, 0, 0.2);
   --cyan: #4df0ff;
   --cyan-soft: rgba(77, 240, 255, 0.15);
   --cyan-line: rgba(77, 240, 255, 0.35);
@@ -162,11 +168,11 @@
   --mvu-color-line-muted: rgba(255, 255, 255, 0.1);
   --mvu-color-panel-soft: rgba(255, 255, 255, 0.03);
   --mvu-color-panel-muted: rgba(255, 255, 255, 0.05);
-  --mvu-color-cyan-fill: rgba(0, 229, 255, 0.08);
-  --mvu-color-cyan-line: rgba(0, 229, 255, 0.18);
+  --mvu-color-cyan-fill: color-mix(in srgb, var(--主题主色) 8%, transparent);
+  --mvu-color-cyan-line: color-mix(in srgb, var(--边线颜色) 64%, transparent);
   --mvu-color-gold-fill: rgba(103, 247, 239, 0.08);
   --mvu-color-gold-line: rgba(103, 247, 239, 0.22);
-  --mvu-color-tech-cyan: #00f3ff;
+  --mvu-color-tech-cyan: var(--主题主色);
   --mvu-color-danger-strong: #ff4757;
   --mvu-color-danger-soft: #ff758c;
   --mvu-color-magenta-soft: #f093fb;
@@ -1575,8 +1581,8 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.075),
     inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
   color: var(--map-panel-text);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 .mvu-holo-map-card-head {
@@ -1873,8 +1879,8 @@
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.42),
     inset 0 0 18px color-mix(in srgb, var(--主题主色) 4.5%, transparent);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 .map-action-menu.is-hidden {
@@ -2498,8 +2504,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-c
   padding: 6px;
   background: var(--全息材质底);
   box-shadow: var(--全息材质阴影);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .mvu-holo-map-card-head {
@@ -2773,8 +2779,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     rgba(103, 247, 239, 0.08) 30%,
     rgba(5, 12, 18, 0) 62%
   );
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 .mvu-modal-mask.show .mvu-modal-panel {
@@ -2987,8 +2993,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     color-mix(in srgb, var(--主题主色) 8%, transparent) 30%,
     transparent 62%
   );
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 #detailModal .mvu-modal-panel {
@@ -3341,19 +3347,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .archive-card::after {
-  content: "";
+  content: none;
   display: none;
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-  border: 0;
-  border-radius: inherit;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
-  z-index: 0;
 }
 
 .archive-card > * {
@@ -4780,16 +4775,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 @keyframes skill-designer-breath {
   0% {
-    box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.05);
-    border-color: rgba(92, 230, 255, 0.15);
+    box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
+    border-color: color-mix(in srgb, var(--边线颜色) 18%, transparent);
   }
   50% {
-    box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.15);
-    border-color: rgba(92, 230, 255, 0.3);
+    box-shadow: inset 0 0 20px color-mix(in srgb, var(--主题主色) 12%, transparent);
+    border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
   }
   100% {
-    box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.05);
-    border-color: rgba(92, 230, 255, 0.15);
+    box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
+    border-color: color-mix(in srgb, var(--边线颜色) 18%, transparent);
   }
 }
 
@@ -4797,11 +4792,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   gap: 14px;
   padding: 14px;
   border-radius: var(--mvu-radius-xs, 4px);
-  border: 1px solid rgba(92, 230, 255, 0.15);
+  border: 1px solid var(--全息材质弱线);
   background: linear-gradient(180deg, rgba(4, 16, 25, 0.85), rgba(2, 10, 16, 0.9));
   background-image:
-    linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--主题主色) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 3%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
   position: relative;
   animation: skill-designer-breath 4s infinite ease-in-out;
@@ -4839,9 +4834,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-shell .mvu-editor-section-title {
   font-size: var(--mvu-font-md, 14px);
-  color: var(--mvu-color-tech-cyan, #00f3ff);
+  color: var(--全息标题文字);
   letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.4);
+  text-shadow: var(--全息标题字影);
 }
 
 .skill-designer-shell .mvu-editor-label {
@@ -4916,9 +4911,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-height: 20px;
   box-sizing: border-box;
   margin: 0;
-  border: 1px solid rgba(0, 229, 255, 0.24);
+  border: 1px solid var(--全息材质弱线);
   border-radius: var(--mvu-radius-pill, 999px);
-  background: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
+  background: var(--全息材质底);
   color: rgba(199, 248, 255, 0.92);
   padding: 2px 9px;
   font-size: var(--mvu-font-sm, 12px);
@@ -5061,10 +5056,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-shell .mvu-editor-input:focus,
 .skill-designer-shell .mvu-editor-select:focus,
 .skill-designer-shell .mvu-editor-textarea:focus {
-  border-color: var(--mvu-color-tech-cyan, #00f3ff);
+  border-color: color-mix(in srgb, var(--边线颜色) 40%, transparent);
   box-shadow:
-    0 0 10px rgba(0, 243, 255, 0.2),
-    inset 0 0 5px rgba(0, 243, 255, 0.1);
+    0 0 10px color-mix(in srgb, var(--主题主色) 18%, transparent),
+    inset 0 0 5px color-mix(in srgb, var(--主题主色) 8%, transparent);
   outline: none;
 }
 
@@ -5114,7 +5109,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border-color: rgba(123, 220, 239, 0.34);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 2px rgba(0, 229, 255, 0.1);
+    0 0 0 2px color-mix(in srgb, var(--主题主色) 10%, transparent);
 }
 
 .skill-designer-filter-select-box[open] summary::after {
@@ -5141,7 +5136,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   background: rgba(4, 14, 22, 0.92);
   box-shadow:
     0 18px 34px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(0, 243, 255, 0.08);
+    0 0 0 1px color-mix(in srgb, var(--边线颜色) 10%, transparent);
 }
 
 .skill-designer-filter-option {
@@ -5304,8 +5299,8 @@ button.tag-chip:active,
   padding: 10px 14px;
   border-radius: 0;
   border: none;
-  border-left: 2px solid rgba(0, 243, 255, 0.4);
-  background: linear-gradient(90deg, rgba(0, 243, 255, 0.1), transparent);
+  border-left: 2px solid color-mix(in srgb, var(--边线颜色) 46%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent);
   position: relative;
 }
 
@@ -5315,7 +5310,7 @@ button.tag-chip:active,
   font-family: monospace;
   text-transform: uppercase;
   line-height: 1.35;
-  color: rgba(0, 243, 255, 0.6);
+  color: var(--全息标签文字);
   letter-spacing: 0.1em;
 }
 
@@ -5324,7 +5319,7 @@ button.tag-chip:active,
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.55;
   color: #fff;
-  text-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+  text-shadow: var(--全息数值字影);
   white-space: normal;
   word-break: break-word;
 }
@@ -5343,13 +5338,13 @@ button.tag-chip:active,
   min-width: 0;
   padding: 0;
   color: #fff;
-  text-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+  text-shadow: var(--全息数值字影);
 }
 
 .skill-designer-attribute-cell b {
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 500;
-  color: rgba(0, 243, 255, 0.72);
+  color: var(--全息标签文字);
 }
 
 .skill-designer-attribute-cell strong {
@@ -5383,14 +5378,14 @@ button.tag-chip:active,
   min-height: 32px;
   padding: 4px 0;
   border: none;
-  border-bottom: 1px dashed rgba(0, 243, 255, 0.2);
+  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 24%, transparent);
   background: transparent;
 }
 
 .skill-designer-trial-row em {
   position: relative;
   min-width: 0;
-  color: rgba(0, 243, 255, 0.8);
+  color: var(--全息标签文字);
   overflow-wrap: anywhere;
   white-space: normal;
   line-height: 1.35;
@@ -5398,9 +5393,9 @@ button.tag-chip:active,
 
 .skill-designer-trial-row span {
   min-width: 64px;
-  color: var(--mvu-color-tech-cyan, #00f3ff);
+  color: var(--全息数值文字);
   font-weight: bold;
-  text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+  text-shadow: var(--全息数值字影);
   text-align: right;
   white-space: nowrap;
 }
@@ -5413,10 +5408,10 @@ button.tag-chip:active,
   height: 14px;
   margin-left: 4px;
   padding: 0;
-  border: 1px solid rgba(0, 243, 255, 0.38);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 40%, transparent);
   border-radius: 50%;
-  background: rgba(0, 243, 255, 0.08);
-  color: rgba(0, 243, 255, 0.86);
+  background: color-mix(in srgb, var(--主题主色) 8%, transparent);
+  color: var(--全息标签文字);
   font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   vertical-align: 1px;
   cursor: help;
@@ -5430,7 +5425,7 @@ button.tag-chip:active,
   bottom: calc(100% + 8px);
   width: min(220px, 62vw);
   padding: 7px 9px;
-  border: 1px solid rgba(0, 243, 255, 0.24);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 24%, transparent);
   background: rgba(8, 18, 20, 0.96);
   color: rgba(226, 252, 255, 0.92);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
@@ -5455,7 +5450,7 @@ button.tag-chip:active,
   gap: 6px;
   min-width: 0;
   padding: 0 0 6px;
-  border-bottom: 1px dashed rgba(0, 243, 255, 0.2);
+  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 24%, transparent);
 }
 
 .skill-designer-cost-block > summary {
@@ -5485,7 +5480,7 @@ button.tag-chip:active,
 
 .skill-designer-cost-block > summary.skill-designer-trial-row em::before {
   content: "▾";
-  color: rgba(0, 243, 255, 0.7);
+  color: var(--全息标签文字);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
 }
@@ -5500,7 +5495,7 @@ button.tag-chip:active,
   min-width: 0;
   margin-left: 10px;
   padding-left: 10px;
-  border-left: 1px solid rgba(0, 243, 255, 0.18);
+  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 20%, transparent);
 }
 
 .skill-designer-cost-detail-row {
@@ -5529,11 +5524,11 @@ button.tag-chip:active,
 
 .skill-designer-cost-detail-row span {
   min-width: 56px;
-  color: rgba(0, 243, 255, 0.92);
+  color: var(--全息数值文字);
   font-size: var(--mvu-font-base, 13px);
   font-weight: 700;
   text-align: right;
-  text-shadow: 0 0 5px rgba(0, 243, 255, 0.38);
+  text-shadow: var(--全息数值字影);
   white-space: nowrap;
 }
 
@@ -5589,15 +5584,15 @@ button.tag-chip:active,
   justify-content: center;
   padding: 30px 20px;
   text-align: center;
-  border: 1px dashed rgba(0, 243, 255, 0.3);
-  background: rgba(0, 243, 255, 0.05);
+  border: 1px dashed color-mix(in srgb, var(--边线颜色) 34%, transparent);
+  background: color-mix(in srgb, var(--主题主色) 5%, transparent);
   margin-bottom: 15px;
 }
 .skill-designer-empty-guide .guide-icon {
   font-size: var(--mvu-font-2xl, 22px);
-  color: var(--mvu-color-tech-cyan, #00f3ff);
+  color: var(--全息标题文字);
   margin-bottom: 10px;
-  text-shadow: 0 0 10px var(--mvu-color-tech-cyan, #00f3ff);
+  text-shadow: var(--全息标题字影);
 }
 .skill-designer-empty-guide .guide-title {
   font-size: var(--mvu-font-md, 14px);
@@ -5608,7 +5603,7 @@ button.tag-chip:active,
 }
 .skill-designer-empty-guide .guide-desc {
   font-size: var(--mvu-font-sm, 12px);
-  color: rgba(0, 243, 255, 0.7);
+  color: var(--全息标签文字);
   line-height: 1.5;
   max-width: 80%;
 }
@@ -5968,17 +5963,11 @@ button.tag-chip:active,
 
 .inventory-instance-panel,
 .inventory-definition-panel {
-  border-color: rgba(118, 226, 255, 0.08);
-  background:
-    linear-gradient(rgba(4, 15, 24, 0.86), rgba(4, 15, 24, 0.86)),
-    linear-gradient(90deg, rgba(77, 240, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(77, 240, 255, 0.025) 1px, transparent 1px);
-  background-size: auto, 30px 30px, 30px 30px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    inset 0 0 20px rgba(0, 229, 255, 0.025);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border-color: var(--全息材质弱线);
+  background: var(--全息材质底);
+  box-shadow: var(--全息材质阴影);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 .mvu-inventory-registry,
@@ -6021,15 +6010,10 @@ button.tag-chip:active,
   isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--原型光刻线);
-  background:
-    linear-gradient(90deg, rgba(0, 243, 255, 0.044) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(0, 243, 255, 0.032) 1px, transparent 1px),
-    radial-gradient(circle at top right, rgba(0, 243, 255, 0.075), transparent 42%),
-    var(--全息材质底);
-  background-size: 28px 28px, 28px 28px, auto, auto;
+  background: var(--全息材质底);
   box-shadow: var(--全息材质阴影);
-  backdrop-filter: var(--原型玻璃虚化);
-  -webkit-backdrop-filter: var(--原型玻璃虚化);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 .inventory-detail-terminal::before {
@@ -6037,12 +6021,9 @@ button.tag-chip:active,
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(0, 243, 255, 0.58), transparent) left top / 30px 1px no-repeat,
-    linear-gradient(180deg, rgba(0, 243, 255, 0.58), transparent) left top / 1px 30px no-repeat,
-    linear-gradient(270deg, rgba(0, 243, 255, 0.42), transparent) right bottom / 30px 1px no-repeat,
-    linear-gradient(0deg, rgba(0, 243, 255, 0.42), transparent) right bottom / 1px 30px no-repeat;
-  opacity: 0.72;
+  background: var(--全息材质雾光);
+  mix-blend-mode: screen;
+  opacity: var(--全息材质雾光透明);
 }
 
 .inventory-detail-terminal::after {
@@ -6055,7 +6036,14 @@ button.tag-chip:active,
 
 .inventory-detail-terminal.is-holo-enter::after {
   opacity: 1;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 243, 255, 0.04) 49%, rgba(0, 243, 255, 0.32) 50%, rgba(0, 243, 255, 0.04) 51%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--主题主色) 5%, transparent) 49%,
+    color-mix(in srgb, var(--主题主色) 26%, transparent) 50%,
+    color-mix(in srgb, var(--主题主色) 5%, transparent) 51%,
+    transparent 100%
+  );
   animation: 仓库详情扫描线 0.42s ease-out;
 }
 
@@ -6237,9 +6225,9 @@ button.tag-chip:active,
 .inventory-detail-quote {
   margin: 0;
   padding: 10px 12px 10px 14px;
-  border-left: 3px solid rgba(0, 229, 255, 0.36);
+  border-left: 3px solid color-mix(in srgb, var(--边线颜色) 44%, transparent);
   border-radius: 8px;
-  background: rgba(0, 229, 255, 0.05);
+  background: color-mix(in srgb, var(--主题主色) 5%, transparent);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.6;
   color: rgba(223, 247, 255, 0.86);
@@ -6278,8 +6266,8 @@ button.tag-chip:active,
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid rgba(0, 243, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--全息材质弱线);
+  background: var(--全息材质底);
   padding: 10px;
 }
 
@@ -6507,13 +6495,14 @@ button.tag-chip:active,
 .archive-tile.clickable:hover {
   transform: translateX(4px);
   border-left-color: var(--主题主色);
-  border-color: rgba(0, 229, 255, 0.22);
+  border-color: var(--全息材质线);
   box-shadow:
     inset 10px 0 20px -10px color-mix(in srgb, var(--主题主色) 36%, transparent),
-    var(--shadow-cyan);
+    var(--全息材质悬停阴影);
   background:
     linear-gradient(100deg, color-mix(in srgb, var(--主题高光) 10%, transparent), transparent 36%),
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 72%);
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 72%),
+    var(--全息材质悬停底);
 }
 
 .archive-tile.clickable > * {
@@ -6824,13 +6813,13 @@ button.tag-chip:active,
   overflow-y: auto;
   padding: 9px 10px;
   border-radius: var(--mvu-radius-lg, 16px);
-  border: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
-  background: rgba(8, 16, 32, 0.96);
+  border: 1px solid var(--全息材质线);
+  background: var(--全息材质底);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.34),
-    inset 0 0 16px rgba(0, 229, 255, 0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    var(--全息材质阴影);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
   pointer-events: auto;
   opacity: 0;
   visibility: hidden;
@@ -6850,9 +6839,9 @@ button.tag-chip:active,
   left: 16px;
   top: -5px;
   transform: rotate(45deg);
-  background: rgba(8, 16, 32, 0.96);
-  border-left: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
-  border-top: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
+  background: var(--暗场卡片);
+  border-left: 1px solid var(--全息材质线);
+  border-top: 1px solid var(--全息材质线);
 }
 
 .inventory-hover-panel.flip-y::before {
@@ -6860,8 +6849,8 @@ button.tag-chip:active,
   bottom: -5px;
   border-left: none;
   border-top: none;
-  border-right: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
-  border-bottom: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
+  border-right: 1px solid var(--全息材质线);
+  border-bottom: 1px solid var(--全息材质线);
 }
 
 .inventory-hover-title {
@@ -7777,7 +7766,7 @@ button.tag-chip:active,
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 229, 255, 0.4) var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
+  scrollbar-color: color-mix(in srgb, var(--边线颜色) 48%, transparent) var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
 }
 .history-timeline-track {
   display: flex;
@@ -7793,7 +7782,13 @@ button.tag-chip:active,
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.3) 10%, rgba(0, 229, 255, 0.3) 90%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--边线颜色) 44%, transparent) 10%,
+    color-mix(in srgb, var(--边线颜色) 44%, transparent) 90%,
+    transparent
+  );
   z-index: 0;
 }
 .history-node {
@@ -7812,7 +7807,7 @@ button.tag-chip:active,
   border-radius: 50%;
   background: rgba(7, 16, 30, 0.9);
   border: 2px solid var(--cyan);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 30%, transparent);
   transition: 0.2s;
 }
 .history-node.major .history-node-dot {
@@ -7840,9 +7835,9 @@ button.tag-chip:active,
   margin-top: 12px;
   border-radius: var(--mvu-radius-md, 12px);
   padding: 12px;
-  background: linear-gradient(180deg, var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08)), rgba(0, 0, 0, 0.4));
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+  background: var(--全息材质底);
+  border: 1px solid var(--全息材质弱线);
+  box-shadow: var(--全息材质阴影);
 }
 .history-floating-title {
   font-family: var(--font-title);
@@ -7861,7 +7856,7 @@ button.tag-chip:active,
   height: 240px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
-  background: radial-gradient(circle at center, rgba(0, 229, 255, 0.05) 0%, transparent 70%);
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--主题主色) 6%, transparent) 0%, transparent 70%);
   overflow: hidden;
 }
 .intel-progress-slots {
@@ -7974,9 +7969,9 @@ button.tag-chip:active,
   margin-top: 10px;
   padding: 6px 0;
   border-radius: var(--mvu-radius-xs, 4px);
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  color: var(--cyan);
+  background: var(--全息材质底);
+  border: 1px solid var(--全息材质线);
+  color: var(--全息标题文字);
   font-family: var(--font-tech);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -7984,8 +7979,8 @@ button.tag-chip:active,
   transition: all 0.2s;
 }
 .inventory-hover-action-btn:hover {
-  background: rgba(0, 229, 255, 0.3);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+  background: var(--全息材质悬停底);
+  box-shadow: var(--全息材质悬停阴影);
   color: #fff;
 }
 
@@ -8020,7 +8015,7 @@ button.tag-chip:active,
   border-radius: var(--mvu-radius-xl, 20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
-    radial-gradient(circle at center, var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08)) 0%, transparent 72%),
+    radial-gradient(circle at center, color-mix(in srgb, var(--主题主色) 8%, transparent) 0%, transparent 72%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   overflow: visible;
 }
@@ -8125,9 +8120,9 @@ button.tag-chip:active,
   min-height: 28px;
   padding: 5px 10px;
   border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
-  background: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
-  color: var(--cyan);
+  border: 1px solid var(--全息材质弱线);
+  background: var(--全息材质底);
+  color: var(--全息标签文字);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
   line-height: 1;
@@ -8497,10 +8492,10 @@ button.tag-chip:active,
 }
 
 .request-console-primary-action:hover:not(:disabled) {
-  border-color: rgba(0, 229, 255, 0.3);
+  border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
   box-shadow:
-    0 0 0 1px var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18)),
-    inset 0 0 10px var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
+    0 0 0 1px var(--全息材质弱线),
+    inset 0 0 10px color-mix(in srgb, var(--主题主色) 8%, transparent);
   filter: brightness(1.05);
   transform: translateY(-1px);
 }
@@ -8519,8 +8514,8 @@ button.tag-chip:active,
 .request-console-input:focus,
 .request-console-textarea:focus {
   outline: none;
-  border-color: rgba(0, 229, 255, 0.35);
-  box-shadow: 0 0 0 1px var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
+  border-color: color-mix(in srgb, var(--边线颜色) 40%, transparent);
+  box-shadow: 0 0 0 1px var(--全息材质弱线);
 }
 
 .request-console-input::placeholder,
@@ -8530,7 +8525,7 @@ button.tag-chip:active,
 
 .request-console-input::selection,
 .request-console-textarea::selection {
-  background: rgba(0, 229, 255, 0.25);
+  background: color-mix(in srgb, var(--主题主色) 22%, transparent);
   color: #ecfbff;
 }
 
@@ -9396,16 +9391,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-resea
   overflow: hidden !important;
 }
 
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-shell::before,
 #detailModal.mvu-modal-display-unified .bestiary-research-shell::before,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-research-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: var(--投影暗扫线);
-  opacity: 0.38;
-  mix-blend-mode: multiply;
+  content: none;
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-research-shell > *,
@@ -10574,8 +10565,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
     linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2%, transparent) 1px, transparent 1px),
     var(--全息材质底) !important;
   background-size: 18px 18px, 18px 18px, auto !important;
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
   box-shadow: var(--全息材质阴影) !important;
 }
 
@@ -14926,7 +14917,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   padding: 14px;
   border-radius: var(--mvu-radius-sm, 8px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 18%, transparent);
+  background: var(--全息材质底);
 }
 
 .mvu-quest-create-panel {
@@ -15609,7 +15600,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   padding: 18px;
   border-radius: var(--mvu-radius-sm, 8px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 18%, transparent);
+  background: var(--全息材质底);
   color: color-mix(in srgb, var(--文字弱色) 76%, transparent);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.5;
@@ -16964,8 +16955,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
 body[data-mvu-holo-theme],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-  --panel: color-mix(in srgb, var(--实体背景) 58%, transparent);
-  --panel-strong: color-mix(in srgb, var(--实体背景) 76%, transparent);
+  --panel: color-mix(in srgb, var(--暗场卡片) 48%, transparent);
+  --panel-strong: color-mix(in srgb, var(--暗场底板强) 62%, transparent);
   --mvu-holo-main: var(--主题主色);
   --mvu-holo-sub: var(--主题辅色);
   --mvu-holo-high: var(--主题高光);
@@ -16998,7 +16989,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     radial-gradient(circle at 95% 12%, color-mix(in srgb, var(--主题高光) 18%, transparent), transparent 22%);
   --投影屏边线宽: 1px;
   --投影屏边线: var(--边线颜色);
-  --投影屏背景: var(--投影背景);
+  --投影屏背景:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.006)),
+    var(--投影背景);
   --投影屏阴影:
     var(--主题发光),
     inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
@@ -17025,25 +17018,29 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     0 0 5px color-mix(in srgb, var(--主题高光) 20%, transparent),
     0 0 9px color-mix(in srgb, var(--主题主色) 14%, transparent);
   --全息材质底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 28%),
-    var(--实体背景);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, var(--暗场卡片) 72%, transparent);
   --全息材质悬停底:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 16%, transparent), transparent 30%),
-    var(--实体背景);
-  --全息材质线: color-mix(in srgb, var(--边线颜色) 50%, transparent);
-  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 30%, transparent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.026)),
+    color-mix(in srgb, var(--暗场卡片) 78%, transparent);
+  --全息材质线: color-mix(in srgb, var(--边线颜色) 32%, rgba(255, 255, 255, 0.18));
+  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 18%, rgba(255, 255, 255, 0.12));
   --全息材质角光: color-mix(in srgb, var(--主题主色) 45%, transparent);
   --全息材质侧线: color-mix(in srgb, var(--主题主色) 34%, transparent);
   --全息材质辉光: color-mix(in srgb, var(--主题主色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--主题主色) 20%, transparent);
-  --全息材质雾光: none;
-  --全息材质雾光透明: 0;
+  --全息材质雾光:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.13), transparent 36%),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--主题高光) 12%, transparent), transparent 28%);
+  --全息材质雾光透明: 0.62;
   --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px color-mix(in srgb, var(--主题主色) 28%, transparent);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent),
+    0 10px 22px rgba(0, 0, 0, 0.18);
   --全息材质悬停阴影:
-    2px 4px 12px rgba(0, 0, 0, 0.32),
-    0 0 16px color-mix(in srgb, var(--主题主色) 34%, transparent);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    inset 0 0 22px color-mix(in srgb, var(--主题主色) 9%, transparent),
+    0 12px 26px rgba(0, 0, 0, 0.2);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -17063,8 +17060,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --text-dim: color-mix(in srgb, var(--文字弱色) 66%, transparent);
   --mvu-color-line-soft: color-mix(in srgb, var(--边线颜色) 34%, transparent);
   --mvu-color-line-muted: color-mix(in srgb, var(--边线颜色) 42%, transparent);
-  --mvu-color-panel-soft: color-mix(in srgb, var(--实体背景) 42%, transparent);
-  --mvu-color-panel-muted: color-mix(in srgb, var(--实体背景) 56%, transparent);
+  --mvu-color-panel-soft: color-mix(in srgb, var(--暗场卡片) 34%, transparent);
+  --mvu-color-panel-muted: color-mix(in srgb, var(--暗场卡片) 46%, transparent);
   --mvu-color-cyan-fill: color-mix(in srgb, var(--主题主色) 8%, transparent);
   --mvu-color-cyan-line: color-mix(in srgb, var(--边线颜色) 64%, transparent);
   --mvu-color-gold-fill: color-mix(in srgb, var(--主题高光) 8%, transparent);
@@ -17289,7 +17286,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --mvu-holo-medium:
     var(--介质纹理),
     var(--投影背景),
-    color-mix(in srgb, var(--实体背景) 72%, transparent);
+    color-mix(in srgb, var(--暗场卡片) 52%, transparent);
   --mvu-holo-frame-texture:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 28%),
     repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--主题主色) 7%, transparent) 18px 19px);
@@ -17341,8 +17338,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   box-shadow:
     inset 0 0 12px var(--全息材质辉光),
     0 0 16px color-mix(in srgb, var(--mvu-holo-main) 14%, transparent);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
@@ -17412,8 +17409,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-status-strip {
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 0 18px var(--全息材质辉光),
     0 8px 22px rgba(0, 0, 0, 0.34);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch {
@@ -17517,8 +17514,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.025),
     inset 0 0 14px color-mix(in srgb, var(--mvu-holo-main) 4%, transparent);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::before,
@@ -17625,7 +17622,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   border-radius: 0 6px 6px 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-    color-mix(in srgb, var(--实体背景) 90%, transparent);
+    var(--全息材质底);
   box-shadow:
     10px 0 24px rgba(0, 0, 0, 0.34),
     inset 0 0 14px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
@@ -17646,7 +17643,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open {
   border-color: var(--全息材质线);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 8%, transparent), transparent 72%),
-    color-mix(in srgb, var(--实体背景) 94%, transparent);
+    var(--全息材质悬停底);
   box-shadow:
     14px 0 28px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.045),
@@ -17676,8 +17673,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
     inset 0 0 18px color-mix(in srgb, var(--mvu-holo-main) 10%, transparent),
     0 0 22px color-mix(in srgb, var(--mvu-holo-main) 18%, transparent);
   cursor: pointer;
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
   opacity: 0.88;
 }
 
@@ -17743,6 +17740,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
   height: 100%;
   padding: 8px;
   overflow: hidden;
+  isolation: isolate;
+  border: var(--投影屏边线宽) solid var(--投影屏边线);
+  border-radius: var(--投影圆角);
+  background: var(--投影屏背景);
+  box-shadow: var(--投影屏阴影);
+  backdrop-filter: var(--玻璃滤镜);
+  -webkit-backdrop-filter: var(--玻璃滤镜);
   container-name: mvu-dashboard-area;
   container-type: inline-size;
   transform-origin: center;
@@ -17753,10 +17757,40 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
   transform-style: preserve-3d;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack::before,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack::before {
+  background: var(--投影屏前景);
+  mix-blend-mode: var(--投影屏前景混合);
+  opacity: var(--投影屏前景透明);
+  animation: var(--投影屏前景动画);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack::after {
+  display: var(--投影屏后景显示);
+  background: var(--投影屏后景);
+  mix-blend-mode: var(--投影屏后景混合);
+  opacity: var(--投影屏后景透明);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack > * {
+  position: relative;
+  z-index: 1;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-detail .mvu-unified-page-stack {
-  opacity: 0.42;
-  filter: blur(4px) saturate(0.72) brightness(0.68);
-  transform: scale(0.95) translateZ(-50px);
+  opacity: 0;
+  visibility: hidden;
+  filter: none;
+  transform: none;
   pointer-events: none;
   user-select: none;
 }
@@ -17964,15 +17998,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::after,
 #detailModal .mvu-holo-slab-root::after {
-  content: "";
+  content: none;
   display: none;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.18;
 }
 
 @keyframes 全息晶板扫描 {
@@ -18195,8 +18222,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   background: var(--全息材质底) !important;
   box-shadow: var(--全息材质阴影);
   background-clip: padding-box;
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  backdrop-filter: var(--玻璃滤镜) !important;
+  -webkit-backdrop-filter: var(--玻璃滤镜) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -18254,11 +18281,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border-radius: var(--mvu-holo-card-radius);
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影);
-  backdrop-filter: var(--原型玻璃虚化) !important;
-  -webkit-backdrop-filter: var(--原型玻璃虚化) !important;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::before {
+  content: none;
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within {
+  border-left-color: transparent;
+  background: transparent !important;
+  box-shadow: none;
+  transform: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover > *,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within > * {
+  transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -19249,7 +19296,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell em {
   font-size: 10px;
   font-style: normal;
   font-weight: 600;
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  text-shadow: var(--全息标题字影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack {
@@ -22166,7 +22213,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
-  background: var(--mvu-color-cyan-line, rgba(0, 229, 255, 0.18));
+  background: var(--全息材质悬停底);
   box-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 12%, transparent);
   color: #fff;
 }
@@ -22403,11 +22450,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
   color: var(--white, #fff);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--全息材质底);
   padding: 12px;
   border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--全息材质弱线);
+  box-shadow: var(--全息材质阴影);
 }
 
 .intel-pending-meta-row {
@@ -22426,7 +22473,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-lg, 16px) !important;
   color: var(--cyan) !important;
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  text-shadow: var(--全息标题字影);
 }
 
 .intel-pending-latest {
@@ -22480,8 +22527,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 .intel-combat-row {
   border-radius: var(--mvu-radius-md, 12px);
   padding: 10px 12px;
-  border: 1px solid rgba(0, 229, 255, 0.14);
-  background: linear-gradient(90deg, var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08)), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--全息材质弱线);
+  background: var(--全息材质底);
 }
 
 .intel-combat-row b {
@@ -23577,11 +23624,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-intel-
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.7;
   color: var(--white);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--全息材质底);
   padding: 14px;
   border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(0, 229, 255, 0.15);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--全息材质弱线);
+  box-shadow: var(--全息材质阴影);
 }
 
 #detailModal .intel-pending-impact {
@@ -23901,7 +23948,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   padding: 0 12px;
   border-radius: var(--mvu-radius-md, 12px);
   border-color: color-mix(in srgb, var(--边线颜色) 60%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 80%, transparent);
+  background: var(--全息材质底);
   color: var(--archive-text);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -23915,7 +23962,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .modal-close:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--边线颜色) 30%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 14%, var(--实体背景));
+  background: var(--全息材质悬停底);
   color: #fff;
 }
 
@@ -24011,19 +24058,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card::after,
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-card::after,
 #detailModal.archive-redesign-mode .archive-redesign-root .timeline-card::after {
-  content: "";
+  content: none;
   display: none !important;
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-  border: 0;
-  border-radius: inherit;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
-  z-index: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card > *,
@@ -24170,7 +24206,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-items: start;
   column-gap: 10px;
   row-gap: 4px;
-  background: color-mix(in srgb, var(--实体背景) 44%, transparent) !important;
+  background: var(--全息材质底) !important;
   border-color: color-mix(in srgb, var(--边线颜色) 28%, transparent) !important;
 }
 
@@ -24193,7 +24229,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   padding: 4px 10px;
   border-radius: var(--mvu-radius-pill, 999px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 44%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 54%, transparent);
+  background: var(--全息材质底);
   color: var(--archive-text);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
@@ -24794,7 +24830,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 6px 9px;
   border-radius: var(--mvu-radius-sm, 8px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 40%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 48%, transparent);
+  background: var(--全息材质底);
   box-shadow: var(--mvu-shadow-md);
 }
 
@@ -24880,7 +24916,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 9px 10px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 36%, transparent);
+  background: var(--全息材质底);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-stat-pill em,
@@ -24931,7 +24967,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-detail-tiles .archive-tile {
-  background: var(--虚幻背景) !important;
+  background: var(--全息材质底) !important;
   border-color: color-mix(in srgb, var(--边线颜色) 6%, transparent) !important;
 }
 
@@ -25023,7 +25059,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 12px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 32%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 42%, transparent);
+  background: var(--全息材质底);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
   color: var(--archive-text-strong);
@@ -25037,7 +25073,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 10px 12px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 38%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 44%, transparent);
+  background: var(--全息材质底);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-pending-impact b {
@@ -25083,7 +25119,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 10px 12px;
   border-radius: var(--mvu-radius-md, 12px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent);
-  background: var(--虚幻背景);
+  background: var(--全息材质底);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-unlocked-card {
@@ -25185,7 +25221,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   padding: 7px 10px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
   border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: var(--虚幻背景) !important;
+  background: var(--全息材质底) !important;
   color: var(--archive-text-strong) !important;
   box-shadow: none !important;
 }
@@ -25202,7 +25238,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
   background:
     linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    var(--虚幻背景) !important;
+    var(--全息材质底) !important;
   color: var(--archive-text-strong) !important;
   box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
@@ -25664,7 +25700,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-close {
   border: 1px solid color-mix(in srgb, var(--边线颜色) 64%, transparent);
-  background: color-mix(in srgb, var(--实体背景) 52%, transparent);
+  background: var(--全息材质底);
   color: var(--主题主色);
   border-radius: var(--mvu-radius-md, 12px);
   padding: 6px 12px;
@@ -25802,19 +25838,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   .archive-redesign-root
   .dossier-shell
   .archive-card.dossier-card::after {
-  content: "";
+  content: none;
   display: none;
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-  border: 0;
-  border-radius: inherit;
-  background: var(--投影暗扫线);
-  mix-blend-mode: multiply;
-  opacity: 0.38;
-  z-index: 0;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26828,7 +26853,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   padding: 7px 12px !important;
   border-radius: var(--mvu-radius-md, 12px) !important;
   border: 1px solid color-mix(in srgb, var(--主题主色) 14%, transparent) !important;
-  background: var(--虚幻背景) !important;
+  background: var(--全息材质底) !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.2 !important;
@@ -26844,7 +26869,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
   background:
     linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    var(--虚幻背景) !important;
+    var(--全息材质底) !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
@@ -27214,7 +27239,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .skill-designer-shell
   .mvu-editor-textarea {
   border-color: rgba(214, 236, 243, 0.18) !important;
-  background: var(--虚幻背景) !important;
+  background: var(--全息材质底) !important;
   color: var(--dossier-text-strong) !important;
   font-family: var(--font-ui) !important;
   font-size: var(--mvu-font-base, 13px) !important;
@@ -27226,7 +27251,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .skill-designer-fusion-participant-row {
   grid-template-columns: minmax(170px, 0.94fr) minmax(170px, 1fr) minmax(64px, auto);
   border-color: rgba(214, 236, 243, 0.14);
-  background: var(--虚幻背景);
+  background: var(--全息材质底);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span {
@@ -27249,7 +27274,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row {
   grid-template-columns: minmax(104px, 0.32fr) minmax(0, 1fr);
   border-color: rgba(214, 236, 243, 0.12);
-  background: var(--虚幻背景);
+  background: var(--全息材质底);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row em {

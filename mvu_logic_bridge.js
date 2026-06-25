@@ -11446,10 +11446,8 @@
   }
 
   function 构建AI维护标题按钮(previewKey = '') {
-    const key = toText(previewKey, '').trim();
-    if (!key || key === BATTLE_INLINE_PREVIEW_KEY) return '';
-    if (isSkillDesignerPreviewKey(key)) return '';
-    return `<button type="button" class="tag-chip mvu-ai-maintenance-toggle mvu-ai-maintenance-title-button" data-ai-maintenance-toggle data-ai-maintenance-preview="${escapeHtmlAttr(key)}">AI维护</button>`;
+    void previewKey;
+    return '';
   }
 
   function 同步AI维护标题按钮状态() {
@@ -11495,31 +11493,6 @@
     document.querySelectorAll('[data-ai-maintenance-title-slot]').forEach(node => {
       if (node && node.parentNode) node.parentNode.removeChild(node);
     });
-    if (!key || key === BATTLE_INLINE_PREVIEW_KEY) {
-      同步AI维护标题按钮状态();
-      return;
-    }
-    const buttonHtml = 构建AI维护标题按钮(key);
-    if (!buttonHtml) {
-      同步AI维护标题按钮状态();
-      return;
-    }
-    const 统一标题目标 = document.querySelector(
-      '#mvu-unified-mount .mvu-unified-detail-title',
-    );
-    if (统一标题目标) {
-      统一标题目标.insertAdjacentHTML(
-        'afterbegin',
-        `<div class="mvu-ai-maintenance-title-slot" data-ai-maintenance-title-slot>${buttonHtml}</div>`,
-      );
-    }
-    const modalTitleWrap = document.querySelector('#detailModal.show .modal-title-wrap');
-    if (modalTitleWrap) {
-      modalTitleWrap.insertAdjacentHTML(
-        'beforeend',
-        `<div class="mvu-ai-maintenance-title-slot mvu-ai-maintenance-title-slot--modal" data-ai-maintenance-title-slot>${buttonHtml}</div>`,
-      );
-    }
     同步AI维护首页配置入口();
     同步AI维护标题按钮状态();
   }
