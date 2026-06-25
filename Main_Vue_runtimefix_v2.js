@@ -902,7 +902,12 @@ const DesktopUnifiedLayout = {
     const handleDesktopUnifiedFocusRestore = () => {
       if (!document.hidden) 请求统一概览同步('focus-restore');
     };
+    const 清理旧全局皮肤节点 = () => {
+      if (typeof document === 'undefined') return;
+      document.getElementById('th-orb-v6-prismfox-style')?.remove();
+    };
     onMounted(() => {
+      清理旧全局皮肤节点();
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
