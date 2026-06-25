@@ -17577,8 +17577,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   position: absolute;
   z-index: var(--mvu-z-popover, 10060);
-  top: 40px;
-  left: 100%;
+  top: 46px;
+  left: 6px;
   right: auto;
   transform: translateX(0);
   display: flex;
@@ -17593,8 +17593,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   overflow: hidden;
   white-space: nowrap;
   border: 1px solid var(--边线颜色);
-  border-left: 0;
-  border-radius: 0 6px 6px 0;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--暗场浮层) 90%, transparent);
   box-shadow:
     10px 0 20px rgba(0, 0, 0, 0.5),
@@ -18253,49 +18252,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border: var(--投影屏边线宽) solid var(--投影屏边线);
-  border-left: var(--投影屏边线宽) solid var(--投影屏边线);
-  border-radius: var(--投影圆角);
-  background: var(--投影屏背景);
-  box-shadow: var(--投影屏阴影);
-  backdrop-filter: var(--玻璃滤镜);
-  -webkit-backdrop-filter: var(--玻璃滤镜);
-  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::before {
-  content: "";
-  display: block;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border: 0;
-  background: var(--投影屏前景);
-  mix-blend-mode: var(--投影屏前景混合);
-  opacity: var(--投影屏前景透明);
-  animation: var(--投影屏前景动画);
+  content: none;
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::after {
-  content: "";
-  display: var(--投影屏后景显示);
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--投影屏后景);
-  mix-blend-mode: var(--投影屏后景混合);
-  opacity: var(--投影屏后景透明);
+  content: none;
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within {
-  border-left-color: var(--mvu-holo-main);
-  background: var(--投影屏背景);
-  box-shadow:
-    var(--投影屏阴影),
-    0 0 16px color-mix(in srgb, var(--主题主色) 24%, transparent);
+  border-left-color: transparent;
+  background: transparent;
+  box-shadow: none;
   transform: translateX(4px);
 }
 
