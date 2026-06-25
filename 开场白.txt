@@ -991,6 +991,18 @@ function 设置开场主按钮忙碌(忙碌, 文本) {
     if (文本) 主按钮.textContent = 文本;
 }
 
+function 打开数据库设置界面() {
+    var 宿主窗口 = window.parent || window.top || window;
+    var 宿主文档 = 宿主窗口 && 宿主窗口.document ? 宿主窗口.document : document;
+    var 数据库按钮 = 宿主文档.getElementById('acu-v2-menu-item');
+    if (!数据库按钮) {
+        showTemplateMessage('请从扩展菜单打开 SP·数据库 III 设置 API。');
+        return false;
+    }
+    数据库按钮.click();
+    return true;
+}
+
 function 通过输入框发送开场文本(文本) {
     var 宿主窗口 = window.parent || window.top || window;
     var 输入框 = 宿主窗口.document.querySelector('#send_textarea');
@@ -1042,6 +1054,9 @@ window.处理开场主按钮 = async function() {
         切换开场主按钮为同步();
         设置开场主按钮忙碌(false);
         showTemplateMessage('数据库剧情推进预设已注入，世界线初始化完成，可以发送开场白。');
+        if (confirm('数据库剧情推进预设已注入并切换。是否现在设置 API？')) {
+            打开数据库设置界面();
+        }
     } catch (错误) {
         console.error('[开场白] 开场主按钮执行失败:', 错误);
         showTemplateMessage('世界线初始化失败：' + (错误 && 错误.message ? 错误.message : String(错误 || '未知错误')), true);

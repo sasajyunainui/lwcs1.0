@@ -21339,7 +21339,7 @@ function 技能生成失败软落地_V1(skill = {}, context = {}, 错误 = null,
     path: String(context?.path || context?.路径 || ''),
     技能键: String(context?.技能键 || context?.skillName || ''),
   });
-  return 有效果数组 ? hydrateSkillTextByPackedEffects(skill) : skill;
+  return hydrateSkillTextByPackedEffects(skill);
 }
 
 function 构建副作用条目_V1(副作用类型 = '', context = {}) {
