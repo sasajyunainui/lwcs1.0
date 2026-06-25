@@ -4371,6 +4371,108 @@ function 规范化Schema根转换_V1(data = {}) {
     };
 
     const 自动生成魂灵最低年限_V1 = 10;
+    const 初始化独立魂环吸收极限表_V1 = Object.freeze([423, 764, 1760, 5000, 12000, 20000]);
+    const 自动生成魂灵低级上限表_V1 = Object.freeze([423, 1760]);
+    const 自动生成魂灵天才及以下上限表_V1 = Object.freeze([1000, 10000]);
+    const 自动生成魂灵跨度上限表_V1 = Object.freeze([1760 - 423, 10000]);
+    const 天才及以下魂灵上限梯队_V1 = new Set(['天才', '优秀', '正常', '劣等', '天赋极差']);
+
+    function 读取初始化独立魂环吸收极限_V1(魂环位 = 1) {
+      const 序号 = Math.max(1, Math.floor(Number(魂环位 || 1)));
+      const 上限 = 初始化独立魂环吸收极限表_V1[序号 - 1];
+      return Number.isFinite(Number(上限)) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
+    }
+
+    function 是否天才及以下魂灵上限梯队_V1(天赋梯队 = '') {
+      return 天才及以下魂灵上限梯队_V1.has(String(天赋梯队 || '').trim());
+    }
+
+    function 是否低级魂灵初始化_V1(等级 = 1) {
+      return Math.max(1, Number(等级 || 1)) < 30;
+    }
+
+    function 读取自动生成魂灵序位年限上限_V1(魂灵序号 = 0, 上下文 = {}) {
+      const 序号 = Math.max(0, Math.floor(Number(魂灵序号 || 0)));
+      let 上限 = Number.POSITIVE_INFINITY;
+      if (是否天才及以下魂灵上限梯队_V1(上下文?.天赋梯队) && 序号 < 自动生成魂灵天才及以下上限表_V1.length) {
+        上限 = Math.min(上限, 自动生成魂灵天才及以下上限表_V1[序号]);
+      }
+      if (是否低级魂灵初始化_V1(上下文?.等级) && 序号 < 自动生成魂灵低级上限表_V1.length) {
+        上限 = Math.min(上限, 自动生成魂灵低级上限表_V1[序号]);
+      }
+      return Number.isFinite(上限) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(上限)) : Number.POSITIVE_INFINITY;
+    }
+
+    function 收口自动生成魂灵单项年限_V1(年限 = 自动生成魂灵最低年限_V1, 魂灵序号 = 0, 上下文 = {}) {
+      const 上限 = 读取自动生成魂灵序位年限上限_V1(魂灵序号, 上下文);
+      const 安全年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(年限 || 自动生成魂灵最低年限_V1)));
+      return Number.isFinite(上限) ? Math.min(安全年限, 上限) : 安全年限;
+    }
+
+    function 收口自动生成魂灵增长年限_V1(年限 = 自动生成魂灵最低年限_V1, 魂灵序号 = 0, 上下文 = {}, 前置年限 = null) {
+      const 序号 = Math.max(0, Math.floor(Number(魂灵序号 || 0)));
+      let 收口年限 = 收口自动生成魂灵单项年限_V1(年限, 序号, 上下文);
+      const 安全前置年限 = Math.max(0, Math.floor(Number(前置年限 || 0)));
+      if (序号 > 0 && 安全前置年限 >= 自动生成魂灵最低年限_V1) {
+        const 跨度上限 = 读取自动生成魂灵跨度上限_V1(序号 - 1);
+        if (Number.isFinite(跨度上限)) 收口年限 = Math.min(收口年限, 安全前置年限 + 跨度上限);
+        if (收口年限 <= 安全前置年限) 收口年限 = 安全前置年限 + 1;
+      }
+      return Math.max(自动生成魂灵最低年限_V1, Math.floor(收口年限));
+    }
+
+    function 读取自动生成魂灵跨度上限_V1(前魂灵序号 = 0) {
+      const 序号 = Math.max(0, Math.floor(Number(前魂灵序号 || 0)));
+      const 上限 = 自动生成魂灵跨度上限表_V1[序号];
+      return Number.isFinite(Number(上限)) ? Math.max(1, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
+    }
+
+    function 收口自动生成魂灵计划年限_V1(魂灵计划 = [], 上下文 = {}) {
+      const 计划 = (Array.isArray(魂灵计划) ? 魂灵计划 : [])
+        .filter(规划项 => 规划项 && 规划项.spData && typeof 规划项.spData === 'object')
+        .sort((a, b) => Math.max(0, Number(a.魂灵序号 || 0)) - Math.max(0, Number(b.魂灵序号 || 0)));
+      if (!计划.length) return;
+      计划.forEach(规划项 => {
+        const 魂灵序号 = Math.max(0, Math.floor(Number(规划项.魂灵序号 || 0)));
+        规划项.spData.age = 收口自动生成魂灵单项年限_V1(规划项.spData.age, 魂灵序号, 上下文);
+      });
+      for (let 索引 = 1; 索引 < 计划.length; 索引++) {
+        const 前项 = 计划[索引 - 1];
+        const 当前项 = 计划[索引];
+        const 前序号 = Math.max(0, Math.floor(Number(前项.魂灵序号 || 0)));
+        const 当前序号 = Math.max(0, Math.floor(Number(当前项.魂灵序号 || 0)));
+        let 前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
+        let 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(当前项.spData.age || 自动生成魂灵最低年限_V1)));
+        const 跨度上限 = 当前序号 === 前序号 + 1 ? 读取自动生成魂灵跨度上限_V1(前序号) : Number.POSITIVE_INFINITY;
+        if (Number.isFinite(跨度上限) && 当前年限 - 前年限 > 跨度上限) 当前年限 = 前年限 + 跨度上限;
+        const 当前上限 = 读取自动生成魂灵序位年限上限_V1(当前序号, 上下文);
+        if (Number.isFinite(当前上限)) 当前年限 = Math.min(当前年限, 当前上限);
+        if (当前年限 <= 前年限) {
+          const 前项上限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 1);
+          前项.spData.age = Math.min(前年限, 前项上限);
+          前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
+          当前年限 = Math.max(当前年限, 前年限 + 1);
+          if (Number.isFinite(跨度上限)) 当前年限 = Math.min(当前年限, 前年限 + 跨度上限);
+        }
+        当前项.spData.age = Math.max(自动生成魂灵最低年限_V1, Math.floor(当前年限));
+      }
+      for (let 索引 = 计划.length - 1; 索引 > 0; 索引--) {
+        const 前项 = 计划[索引 - 1];
+        const 当前项 = 计划[索引];
+        const 前序号 = Math.max(0, Math.floor(Number(前项.魂灵序号 || 0)));
+        const 当前序号 = Math.max(0, Math.floor(Number(当前项.魂灵序号 || 0)));
+        const 跨度上限 = 当前序号 === 前序号 + 1 ? 读取自动生成魂灵跨度上限_V1(前序号) : Number.POSITIVE_INFINITY;
+        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(当前项.spData.age || 自动生成魂灵最低年限_V1)));
+        let 前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
+        if (前年限 >= 当前年限) 前年限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 1);
+        if (Number.isFinite(跨度上限) && 当前年限 - 前年限 > 跨度上限) 前年限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 跨度上限);
+        前项.spData.age = 前年限;
+      }
+      计划.forEach(规划项 => {
+        规划项.spData.age = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(规划项.spData.age || 自动生成魂灵最低年限_V1)));
+        规划项.spData.color = getRingColorByAge(规划项.spData.age);
+      });
+    }
 
     function rollSpirit(talentTier, lv, spiritIndex, realm) {
       const roll = Math.floor(Math.random() * 100) + 1;
@@ -4484,7 +4586,7 @@ function 规范化Schema根转换_V1(data = {}) {
         ['绝世妖孽', '顶级天才'].includes(String(天赋梯队 || '').trim()) &&
         等级值 >= 99 &&
         Math.random() < (String(天赋梯队 || '').trim() === '绝世妖孽' ? 0.025 : 0.012);
-      const 年限上限 = 可出橙 ? 上限 : Math.min(上限, 199000);
+      const 年限上限 = Math.min(可出橙 ? 上限 : Math.min(上限, 199000), 是否独立魂环 ? 读取初始化独立魂环吸收极限_V1(安全魂环位) : Number.POSITIVE_INFINITY);
       return 扰动初始化魂环年限_V1(目标, 年限上限, { 禁止常规橙环: !可出橙 });
     }
 
@@ -4497,7 +4599,11 @@ function 规范化Schema根转换_V1(data = {}) {
         .map(魂环位 => 计算初始化魂环位目标年限_V1(魂环位, 等级, 天赋梯队, 精神境界, false))
         .filter(年限 => Number.isFinite(Number(年限)));
       if (!年限列表.length) return null;
-      return Math.max(自动生成魂灵最低年限_V1, Math.floor(年限列表.reduce((总和, 年限) => 总和 + 年限, 0) / 年限列表.length));
+      const 最高魂环位上限 = 读取初始化独立魂环吸收极限_V1(Math.max(...有效魂环位));
+      return Math.max(
+        自动生成魂灵最低年限_V1,
+        Math.min(最高魂环位上限, Math.floor(年限列表.reduce((总和, 年限) => 总和 + 年限, 0) / 年限列表.length)),
+      );
     }
 
     function 规划初始化魂环承载结构_V1(
@@ -4621,16 +4727,16 @@ function 规范化Schema根转换_V1(data = {}) {
       };
     }
 
-    function 同步初始化魂灵年限到魂环_V1(魂灵数据 = {}, 年限 = 0) {
+    function 同步初始化魂灵年限到魂环_V1(魂灵数据 = {}, 年限 = 0, 强制同步 = false) {
       if (!魂灵数据 || typeof 魂灵数据 !== 'object') return;
       const 安全年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(年限 || 自动生成魂灵最低年限_V1)));
       const 既有魂灵年限 = Math.max(0, Math.floor(Number(魂灵数据.年限 || 0)));
-      const 应用年限 = 既有魂灵年限 > 0 ? 既有魂灵年限 : 安全年限;
-      if (!(既有魂灵年限 > 0)) 魂灵数据.年限 = 应用年限;
+      const 应用年限 = 强制同步 || !(既有魂灵年限 > 0) ? 安全年限 : 既有魂灵年限;
+      if (强制同步 || !(既有魂灵年限 > 0)) 魂灵数据.年限 = 应用年限;
       取魂灵魂环条目_V1(魂灵数据).forEach(([, 魂环]) => {
         if (!魂环 || typeof 魂环 !== 'object') return;
         const 既有年限 = Math.max(0, Math.floor(Number(魂环.年限 || 0)));
-        if (既有年限 > 0) {
+        if (既有年限 > 0 && !强制同步) {
           if (!String(魂环.颜色 || '').trim() || 魂环.颜色 === '无') 魂环.颜色 = getRingColorByAge(既有年限);
           return;
         }
@@ -4644,7 +4750,7 @@ function 规范化Schema根转换_V1(data = {}) {
       return Math.min(Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(总预算 || 0))), 最低线);
     }
 
-    function 分配初始化魂灵年限预算_V1(魂灵计划 = [], 魂灵年限预算 = 0) {
+    function 分配初始化魂灵年限预算_V1(魂灵计划 = [], 魂灵年限预算 = 0, 上下文 = {}) {
       const 计划 = Array.isArray(魂灵计划) ? 魂灵计划 : [];
       if (!计划.length) return;
       const 最低年限列表 = [];
@@ -4674,6 +4780,7 @@ function 规范化Schema根转换_V1(data = {}) {
         规划项.spData.age = 分配年限;
         规划项.spData.color = getRingColorByAge(分配年限);
       });
+      收口自动生成魂灵计划年限_V1(计划, 上下文);
     }
 
     function 读取角色初始化魂灵可分配年限_V1(角色数据 = {}, 待补武魂数 = 1) {
@@ -4693,6 +4800,7 @@ function 规范化Schema根转换_V1(data = {}) {
       });
       if (!魂灵条目.length) return false;
       const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(角色数据) ?? 1));
+      const 收口上下文 = { 等级: 角色数据?.属性?.等级, 天赋梯队: 角色数据?.属性?.天赋梯队 };
       const 目标总年限 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(角色数据)) * 魂灵预算倍率);
       let 当前总年限 = 魂灵条目.reduce(
         (总和, 魂灵) => 总和 + Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1))),
@@ -4704,9 +4812,11 @@ function 规范化Schema根转换_V1(data = {}) {
         if (剩余可增年限 <= 0) return;
         const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1)));
         const 最低年限 = 读取初始化魂灵最低年限_V1(魂灵索引, 当前年限 + 剩余可增年限);
-        const 增量 = Math.min(剩余可增年限, Math.max(0, 最低年限 - 当前年限));
+        const 前置年限 = 魂灵索引 > 0 ? 魂灵条目[魂灵索引 - 1]?.年限 : null;
+        const 收口年限 = 收口自动生成魂灵增长年限_V1(最低年限, 魂灵索引, 收口上下文, 前置年限);
+        const 增量 = Math.min(剩余可增年限, Math.max(0, 收口年限 - 当前年限));
         if (增量 <= 0) return;
-        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量);
+        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量, true);
         剩余可增年限 -= 增量;
         当前总年限 += 增量;
         已更新 = true;
@@ -4715,9 +4825,11 @@ function 规范化Schema根转换_V1(data = {}) {
         if (剩余可增年限 <= 0) return;
         const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1)));
         const 剩余条目数 = Math.max(1, 魂灵条目.length - 魂灵索引);
-        const 增量 = Math.floor(剩余可增年限 / 剩余条目数);
+        const 前置年限 = 魂灵索引 > 0 ? 魂灵条目[魂灵索引 - 1]?.年限 : null;
+        const 收口年限 = 收口自动生成魂灵增长年限_V1(当前年限 + Math.floor(剩余可增年限 / 剩余条目数), 魂灵索引, 收口上下文, 前置年限);
+        const 增量 = Math.max(0, 收口年限 - 当前年限);
         if (增量 <= 0) return;
-        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量);
+        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量, true);
         剩余可增年限 -= 增量;
         已更新 = true;
       });
@@ -4754,7 +4866,11 @@ function 规范化Schema根转换_V1(data = {}) {
             读取初始化魂灵最低年限_V1(魂灵索引, 当前年限 + 已有魂灵增长预算),
             当前年限 + 已有魂灵增长预算,
           );
-          同步初始化魂灵年限到魂环_V1(魂灵数据, 目标年限);
+          const 收口年限 = 收口自动生成魂灵增长年限_V1(目标年限, 魂灵索引, {
+            等级: char?.属性?.等级,
+            天赋梯队: char?.属性?.天赋梯队,
+          }, 魂灵索引 > 0 ? 已有魂灵条目[魂灵索引 - 1]?.[1]?.年限 : null);
+          if (收口年限 > 当前年限) 同步初始化魂灵年限到魂环_V1(魂灵数据, 收口年限, true);
         }
         const 当前魂环数 = 取魂灵魂环条目_V1(魂灵数据).length;
         const 可补数量 = Math.max(0, 读取魂灵自动初始化承载上限_V1(魂灵数据, 武魂槽位, 魂灵索引) - 当前魂环数);
@@ -4793,7 +4909,10 @@ function 规范化Schema根转换_V1(data = {}) {
           let 独立年限 =
             计算初始化魂环位目标年限_V1(魂环位, char.属性.等级, char.属性.天赋梯队, char.属性.精神境界, true) ||
             rollSpirit(char.属性.天赋梯队, char.属性.等级, 魂环位 - 1, char.属性.精神境界).age;
-          独立年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(独立年限));
+          独立年限 = Math.max(
+            自动生成魂灵最低年限_V1,
+            Math.min(读取初始化独立魂环吸收极限_V1(魂环位), Math.floor(独立年限)),
+          );
           生成计划.push({ 类型: '独立魂环', 魂环位, 年限: 独立年限 });
           return;
         }
@@ -4816,7 +4935,11 @@ function 规范化Schema根转换_V1(data = {}) {
           char.属性.精神境界,
         );
         if (承载年限 !== null) spData.age = Math.max(spData.age, 承载年限);
-        spData.age = Math.max(自动生成魂灵最低年限_V1, Math.floor(spData.age));
+        spData.age = 收口自动生成魂灵单项年限_V1(
+          Math.min(读取初始化独立魂环吸收极限_V1(Math.max(...魂环位列表)), Math.max(自动生成魂灵最低年限_V1, Math.floor(spData.age))),
+          魂灵序号,
+          { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 },
+        );
         spData.color = getRingColorByAge(spData.age);
         生成计划.push({
           类型: '魂灵',
@@ -4840,7 +4963,24 @@ function 规范化Schema根转换_V1(data = {}) {
           .forEach((规划项, 索引) => {
             规划项.最低年限 = Math.max(规划项.最低年限 || 自动生成魂灵最低年限_V1, 索引 === 0 ? 前置魂灵年限底线 : 自动生成魂灵最低年限_V1);
           });
-        分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算);
+        分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算, { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 });
+        const 魂灵年限表 = new Map(
+          已有魂灵条目.map(([, 魂灵数据], 魂灵序号) => [
+            魂灵序号,
+            Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵数据?.年限 || 自动生成魂灵最低年限_V1))),
+          ]),
+        );
+        魂灵计划.forEach(规划项 => {
+          const 魂灵序号 = Math.max(0, Math.floor(Number(规划项.魂灵序号 || 0)));
+          规划项.spData.age = 收口自动生成魂灵增长年限_V1(
+            规划项.spData?.age,
+            魂灵序号,
+            { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 },
+            魂灵年限表.get(魂灵序号 - 1),
+          );
+          规划项.spData.color = getRingColorByAge(规划项.spData.age);
+          魂灵年限表.set(魂灵序号, 规划项.spData.age);
+        });
         魂灵计划 = 魂灵计划.filter(规划项 => Math.max(0, Number(规划项.spData?.age || 0)) >= 自动生成魂灵最低年限_V1);
         const 待重新分配魂环位 = 魂灵计划
           .flatMap(规划项 => (Array.isArray(规划项.魂环位列表) ? 规划项.魂环位列表 : []))
