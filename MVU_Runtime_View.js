@@ -2389,7 +2389,7 @@ function 读取运行时最后角色消息文本_V1() {
   return '';
 }
 
-function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最后角色消息输入 = '', plotText = '') {
+function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最后角色消息输入 = '', plotText = '', 选项 = {}) {
   const 原始数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 最后角色消息文本 = String(最后角色消息输入 || '').trim() || 读取运行时最后角色消息文本_V1();
   const 命中文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
@@ -2406,7 +2406,13 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
     if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
   });
   const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 命中文本, { 角色名集合 });
-  const 更新视图选项 = { 运行时命中名称: 草稿命中, 角色名集合, ...物品候选上下文, 跳过提示前实例化: true };
+  const 更新视图选项 = {
+    运行时命中名称: 草稿命中,
+    角色名集合,
+    ...物品候选上下文,
+    跳过提示前实例化: true,
+    运行时提示已使用类型: 选项.运行时提示已使用类型,
+  };
   const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息文本, plotText, 更新视图选项);
   const 可见占位统计 = 收集运行时可见占位统计_V1(更新视图);
   const 魂技待补全路径 = 收集运行时魂技待补全路径_V1(更新视图);
@@ -3286,8 +3292,14 @@ function 更新视图字段有运行值_V1(值, 选项 = {}) {
   return false;
 }
 
+function 更新视图技能存在待补字段_V1(技能 = {}) {
+  if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能)) return false;
+  return ['魂技名', '画面描述', '效果描述', '产物描述'].some(字段 => 运行时文本需要补全_V1(技能[字段]));
+}
+
 function 更新视图技能节点已补全_V1(技能 = {}) {
   if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能)) return false;
+  if (更新视图技能存在待补字段_V1(技能)) return false;
   const 效果已补全 = 正文视图值已初始化_V1(技能.效果描述 || 技能.描述);
   const 画面已补全 = 正文视图值已初始化_V1(技能.画面描述);
   if (!效果已补全 || !画面已补全) return false;
@@ -3380,9 +3392,15 @@ function 更新视图值等于默认值_V1(值, 默认值) {
   return String(值 ?? '').trim() === String(默认值 ?? '').trim();
 }
 
+function 更新视图值包含待补文本_V1(值) {
+  if (Array.isArray(值)) return 值.some(项 => 更新视图值包含待补文本_V1(项));
+  if (值 && typeof 值 === 'object') return Object.values(值).some(项 => 更新视图值包含待补文本_V1(项));
+  return 运行时文本需要补全_V1(值);
+}
+
 function 更新视图待补字段_V1(节点 = {}, 字段 = '', 默认值) {
   if (!节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
-  if (!更新视图值等于默认值_V1(节点[字段], 默认值)) delete 节点[字段];
+  if (!更新视图值等于默认值_V1(节点[字段], 默认值) && !更新视图值包含待补文本_V1(节点[字段])) delete 节点[字段];
 }
 
 function 更新视图对象有内容_V1(节点 = {}) {
@@ -3391,7 +3409,9 @@ function 更新视图对象有内容_V1(节点 = {}) {
 
 function 裁剪更新视图魂技默认字段_V1(魂技 = {}) {
   if (!魂技 || typeof 魂技 !== 'object' || Array.isArray(魂技)) return false;
+  const 存在待补字段 = 更新视图技能存在待补字段_V1(魂技);
   ['魂技名', '画面描述', '效果描述', '产物描述', '_简易效果描述'].forEach(字段 => {
+    if (字段 === '_简易效果描述' && 存在待补字段 && 更新视图字段有运行值_V1(魂技[字段], { 允许待补全: true })) return;
     if (!运行时文本需要补全_V1(魂技[字段])) delete 魂技[字段];
   });
   Object.keys(魂技).forEach(字段 => {
@@ -3439,7 +3459,7 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
   更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
   更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
   更新视图待补字段_V1(武魂, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
-  if (!更新视图值等于默认值_V1(武魂.可调用元素, [AI_TODO_CALLABLE_ELEMENTS])) delete 武魂.可调用元素;
+  if (!更新视图值等于默认值_V1(武魂.可调用元素, [AI_TODO_CALLABLE_ELEMENTS]) && !更新视图值包含待补文本_V1(武魂.可调用元素)) delete 武魂.可调用元素;
   取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
     if (!裁剪更新视图魂灵默认字段_V1(魂灵)) delete 武魂[魂灵键];
   });
@@ -3736,7 +3756,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 数据根 = 草稿上下文.数据根;
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本, 选项);
-  const 运行时提示限流 = 创建运行时提示限流器_V1();
+  const 运行时提示限流 = 创建运行时提示限流器_V1(选项.运行时提示已使用类型);
   const 注入数据根 = { ...数据根, __运行时提示限流__: 运行时提示限流 };
   const 角色名集合 = 选项.角色名集合 instanceof Set
     ? new Set([取运行时当前范围_V1(数据根).玩家名].filter(Boolean).concat(Array.from(选项.角色名集合)))
@@ -4957,7 +4977,9 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     return 正文视图;
   };
   const 读取更新视图 = () => {
-    if (!更新视图) 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息输入, plotText);
+    if (!更新视图) 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息输入, plotText, {
+      运行时提示已使用类型: 上下文?.运行时提示已使用类型,
+    });
     return 更新视图;
   };
   let 主视图文本 = '';
@@ -4972,7 +4994,9 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     }
   }
   const 更新视图文本 = 需要更新视图 ? 序列化MVU运行时视图_V1(读取更新视图()) : '';
-  const 结构提示 = 需要结构提示 ? 生成MVU更新结构提示_V1(数据根, userInput, 最后角色消息输入, plotText) : '';
+  const 结构提示 = 需要结构提示 ? 生成MVU更新结构提示_V1(数据根, userInput, 最后角色消息输入, plotText, {
+    运行时提示已使用类型: 上下文?.运行时提示已使用类型,
+  }) : '';
   const 相互可见性文本 = 需要相互可见性 ? 生成MVU相互可见性视图_V1(数据根, userInput, 最后角色消息输入) : '';
   const 替换后 = 源文本
     .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_V1, 主视图文本)
@@ -4982,8 +5006,8 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   return 替换后.replace(/<status_current_variables>\s*(?:\{\}|\[\]|\s*)\s*<\/status_current_variables>/gi, '').trim();
 }
 
-function 创建运行时提示限流器_V1() {
-  const 已使用类型 = new Set();
+function 创建运行时提示限流器_V1(共享已使用类型 = null) {
+  const 已使用类型 = 共享已使用类型 instanceof Set ? 共享已使用类型 : new Set();
   return (类型 = '', 完整提示 = '') => {
     const 提示类型 = String(类型 || '').trim();
     if (!提示类型) return 完整提示 || '待生成';
@@ -5039,6 +5063,13 @@ function 注入运行时限流文本默认值_V1(obj = {}, key = '', fallbackTex
   obj[key] = typeof 取提示 === 'function' ? 取提示(类型 || key, fallbackText) : fallbackText;
 }
 
+function 注入运行时限流数组默认值_V1(obj = {}, key = '', fallbackList = [], 类型 = '', 取提示 = null) {
+  if (!obj || typeof obj !== 'object') return;
+  if (Array.isArray(obj[key]) && obj[key].some(item => String(item ?? '').trim())) return;
+  const 默认列表 = Array.isArray(fallbackList) ? fallbackList : [fallbackList];
+  obj[key] = 默认列表.map(项 => (typeof 取提示 === 'function' ? 取提示(类型 || key, 项) : 项));
+}
+
 function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sourceChar = null, rootData = {}) {
   if (!charData || typeof charData !== 'object') return charData;
   const 玩家名 = 取运行时玩家名_V1(rootData);
@@ -5072,11 +5103,12 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     if (!spiritData || typeof spiritData !== 'object') return;
     const 武魂系别 = 取角色主武魂系别_V1(charData);
     const isSecondarySpirit = spiritKey === '第2武魂';
-    注入运行时文本默认值_V1(spiritData, '表象名称', isSecondarySpirit ? '未展露' : AI_TODO_SPIRIT_NAME);
-    注入运行时文本默认值_V1(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC);
-    注入运行时文本默认值_V1(spiritData, '系别', 武魂系别待补全文案_V1);
-    注入运行时文本默认值_V1(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
-    if (!Array.isArray(spiritData.可调用元素) || !spiritData.可调用元素.some(item => String(item ?? '').trim())) spiritData.可调用元素 = [AI_TODO_CALLABLE_ELEMENTS];
+    if (isSecondarySpirit) 注入运行时文本默认值_V1(spiritData, '表象名称', '未展露');
+    else 注入运行时限流文本默认值_V1(spiritData, '表象名称', AI_TODO_SPIRIT_NAME, '武魂名', 取提示);
+    注入运行时限流文本默认值_V1(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC, '武魂描述', isSecondarySpirit ? null : 取提示);
+    注入运行时限流文本默认值_V1(spiritData, '系别', 武魂系别待补全文案_V1, '武魂系别', 取提示);
+    注入运行时限流文本默认值_V1(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM, '武魂属性体系', 取提示);
+    注入运行时限流数组默认值_V1(spiritData, '可调用元素', [AI_TODO_CALLABLE_ELEMENTS], '武魂可调用元素', 取提示);
     取武魂魂灵条目_V1(spiritData).forEach(([soulSpiritKey, soulSpirit]) => {
       if (!soulSpirit || typeof soulSpirit !== 'object') return;
       注入运行时限流文本默认值_V1(soulSpirit, '表象名称', AI_TODO_SOUL_SPIRIT_NAME, '魂灵名', 取提示);
@@ -5100,7 +5132,7 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     });
     取武魂直接魂环条目_V1(spiritData).forEach(([, ringData]) => {
       注入运行时文本默认值_V1(ringData, '颜色', '无');
-      注入运行时文本默认值_V1(ringData, '来源', 独立魂环来源待补全文案_V1);
+      注入运行时限流文本默认值_V1(ringData, '来源', 独立魂环来源待补全文案_V1, '独立魂环来源', 取提示);
       注入运行时技能图默认提示_V1(Object.fromEntries(取魂环魂技条目_V1(ringData)), skillName => ({
         type: 武魂系别,
         允许机制决策临时,

@@ -14,6 +14,7 @@
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
+  const 本轮提示限流表 = new Map();
   const 正则引擎缓存 = { 模块: null, 承诺: null };
   const 正则近场缓存表 = new Map();
   let 最近MVU前置记录键 = '';
@@ -357,6 +358,27 @@
     ].join('|');
   }
 
+  function 取本轮提示限流集合(选项 = {}) {
+    if (选项.运行时提示已使用类型 instanceof Set) return 选项.运行时提示已使用类型;
+    const 最新角色消息 = 选项?.latestCharMessageInfo && typeof 选项.latestCharMessageInfo === 'object' ? 选项.latestCharMessageInfo : 读取最新角色消息元信息();
+    const 最新用户消息 = 读取最新用户消息元信息();
+    const 捕获文本 = String(选项?.captureText ?? '').trim()
+      ? 清理近场文本片段(选项.captureText)
+      : 构建近场文本(选项.userInput || '', 选项.lastCharMessage || '');
+    const 限流键 = 构建前置键(最新角色消息, 最新用户消息, 捕获文本);
+    let 已使用类型 = 本轮提示限流表.get(限流键);
+    if (!(已使用类型 instanceof Set)) {
+      已使用类型 = new Set();
+      本轮提示限流表.set(限流键, 已使用类型);
+      while (本轮提示限流表.size > 20) {
+        const 首个键 = 本轮提示限流表.keys().next().value;
+        if (首个键 === undefined) break;
+        本轮提示限流表.delete(首个键);
+      }
+    }
+    return 已使用类型;
+  }
+
   function 清理近场文本片段(文本 = '') {
     return 清理世界书扫描文本(文本)
       .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, ' ')
@@ -527,6 +549,10 @@
           userInput: context.userInput || '',
           lastCharMessage: context.lastCharMessage || '',
           plotText: context.plotText || '',
+          运行时提示已使用类型: 取本轮提示限流集合({
+            ...context,
+            viewType,
+          }),
         });
       } catch (错误) {
         console.warn('[LWCS适配器] MVU运行时占位符替换失败:', 错误);
@@ -616,6 +642,15 @@
       userInput: 用户输入文本,
       lastCharMessage: 最后角色消息文本,
       plotText: 上下文.plotText || '',
+      captureText: 近场上下文.captureText || '',
+      latestCharMessageInfo: 上下文.latestCharMessageInfo,
+      运行时提示已使用类型: 取本轮提示限流集合({
+        ...上下文,
+        userInput: 用户输入文本,
+        lastCharMessage: 最后角色消息文本,
+        captureText: 近场上下文.captureText || '',
+        viewType: 视图类型,
+      }),
     });
     return 替换专属占位符(替换后内容, {
       userInput: 用户输入文本,
