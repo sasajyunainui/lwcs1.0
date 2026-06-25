@@ -17255,7 +17255,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
-  padding-left: var(--主题抽屉展开宽度);
+  padding-left: 0;
   overflow: visible;
 }
 
@@ -17493,7 +17493,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   position: absolute;
   z-index: var(--mvu-z-popover, 10060);
   top: 10px;
-  right: calc(100% - var(--主题抽屉展开宽度));
+  right: 100%;
   left: auto;
   transform: translateX(0);
   display: flex;
