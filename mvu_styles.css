@@ -2782,21 +2782,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 12px 14px;
 }
 
-.modal-head::after {
-  content: '';
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 0;
-  height: 1px;
-  opacity: 0;
-  background: linear-gradient(90deg, transparent, rgba(103, 247, 239, 0.28), rgba(255, 226, 89, 0.24), transparent);
-}
-
-.mvu-modal-mask.show .modal-head::after {
-  animation: modalLineSweep 0.56s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 .modal-head-main {
   min-width: 0;
   display: grid;
@@ -6840,7 +6825,6 @@ button.tag-chip:active,
   display: grid;
   gap: 8px;
   padding: 2px 1px 0;
-  border-bottom: 0;
   background: transparent;
 }
 
@@ -6905,7 +6889,6 @@ button.tag-chip:active,
 
 .mvu-spirit-archive-shell button.mvu-spirit-terminal-tag:hover {
   color: rgba(255, 219, 120, 0.95);
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.22);
 }
 
 .mvu-spirit-archive-shell .mvu-spirit-terminal-grid {
@@ -6922,12 +6905,10 @@ button.tag-chip:active,
   align-content: start;
   gap: 4px;
   padding-top: 7px;
-  border-top: 1px dashed rgba(143, 233, 255, 0.12);
 }
 
 .mvu-spirit-archive-shell .mvu-spirit-desc-lines {
   padding-left: 10px;
-  border-left: 1px solid rgba(143, 233, 255, 0.08);
 }
 
 .mvu-spirit-archive-shell .mvu-spirit-section-label {
@@ -6945,7 +6926,6 @@ button.tag-chip:active,
   padding: 2px 0;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.35;
-  border-bottom: 1px solid rgba(143, 233, 255, 0.055);
 }
 
 .mvu-spirit-archive-shell .mvu-spirit-param-lines b,
@@ -7680,9 +7660,6 @@ button.tag-chip:active,
 .intel-network-board {
   position: relative;
   height: 240px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05));
-  background: radial-gradient(circle at center, color-mix(in srgb, var(--主题主色) 6%, transparent) 0%, transparent 70%);
   overflow: hidden;
 }
 .intel-progress-slots {
@@ -7702,9 +7679,6 @@ button.tag-chip:active,
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  background: var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
 }
 
 .intel-slot.mvu-intel-slot {
@@ -8065,16 +8039,8 @@ button.tag-chip:active,
 }
 
 .relation-gift-row::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  border: 1px solid rgba(143, 233, 255, 0.38);
-  background: rgba(77, 240, 255, 0.08);
-  transform: translateY(-50%) rotate(45deg);
-  pointer-events: none;
+  content: none;
+  display: none;
 }
 
 .relation-gift-select {
@@ -12945,13 +12911,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section-title::before {
-  content: '' !important;
-  flex: 0 0 auto !important;
-  width: 6px !important;
-  height: 6px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 22%, transparent) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row-grid,
@@ -13412,13 +13373,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossi
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossier-intel-column::after {
-  content: '' !important;
-  position: absolute !important;
-  top: 4px !important;
-  right: 0 !important;
-  bottom: 4px !important;
-  width: 1px !important;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--边线颜色) 18%, transparent), transparent) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossier-flow {
@@ -13438,15 +13394,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossi
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossier-flow-title::before {
-  content: '' !important;
-  position: absolute !important;
-  left: 2px !important;
-  top: 50% !important;
-  width: 6px !important;
-  height: 6px !important;
-  border-radius: 1px !important;
-  background: color-mix(in srgb, var(--边线颜色) 56%, transparent) !important;
-  transform: translateY(-50%) rotate(45deg) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossier-line-list {
@@ -13635,16 +13584,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-row::before {
-  content: '' !important;
-  position: absolute !important;
-  left: 15px !important;
-  top: 50% !important;
-  width: 9px !important;
-  height: 9px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 38%, transparent) !important;
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent) !important;
-  transform: translateY(-50%) rotate(45deg) !important;
-  pointer-events: none !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo
@@ -15619,30 +15560,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip::before,
 #detailModal.mvu-modal-display-unified .dossier-status-chip::before,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip::before {
-  content: '' !important;
-  position: absolute !important;
-  left: 10px !important;
-  top: 50% !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--边线颜色) 72%, transparent) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--边线颜色) 22%, transparent) !important;
-  transform: translateY(-50%) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip.is-safe::before,
 #detailModal.mvu-modal-display-unified .dossier-status-chip.is-safe::before,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip.is-safe::before {
-  background: rgba(96, 231, 174, 0.82) !important;
-  box-shadow: 0 0 10px rgba(96, 231, 174, 0.24) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip.is-warn::before,
 #detailModal.mvu-modal-display-unified .dossier-status-chip.is-warn::before,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip.is-warn::before {
-  background: rgba(255, 128, 128, 0.86) !important;
-  box-shadow: 0 0 10px rgba(255, 128, 128, 0.28) !important;
+  content: none !important;
+  display: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip b,
@@ -19773,13 +19706,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 #detailModal.mvu-modal-display-unified .dossier-section-title::before {
-  content: '' !important;
-  flex: 0 0 auto !important;
-  width: 6px !important;
-  height: 6px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 22%, transparent) !important;
+  content: none !important;
+  display: none !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-columns,
@@ -20389,13 +20317,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .relation-dossier-intel-column::after,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-dossier-intel-column::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  right: 0;
-  bottom: 4px;
-  width: 1px;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--边线颜色) 18%, transparent), transparent);
+  content: none;
+  display: none;
 }
 
 #detailModal.mvu-modal-display-unified .relation-dossier-flow,
@@ -20418,15 +20341,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .relation-dossier-flow-title::before,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-dossier-flow-title::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--边线颜色) 56%, transparent);
-  transform: translateY(-50%) rotate(45deg);
+  content: none;
+  display: none;
 }
 
 #detailModal.mvu-modal-display-unified .relation-dossier-line-list,
@@ -20693,16 +20609,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .relation-gift-row::before,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-gift-row::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 38%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent);
-  transform: translateY(-50%) rotate(45deg);
-  pointer-events: none;
+  content: none;
+  display: none;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-shell--relation .relation-action-btn[data-relation-action],
@@ -20984,7 +20892,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-lg, 16px) !important;
   color: var(--cyan) !important;
   font-weight: 700;
-  text-shadow: var(--全息标题字影);
 }
 
 .intel-pending-latest {
@@ -21005,9 +20912,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   z-index: 1;
   margin-top: 8px;
   padding: 10px 10px 6px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(138, 224, 237, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
 }
 
 .intel-combat-summary-hint {
@@ -21021,9 +20925,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-family: var(--font-tech);
   font-size: var(--mvu-font-sm, 12px);
   color: #9eefff;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(95, 214, 231, 0.2);
-  border-radius: var(--mvu-radius-sm, 8px);
   padding: 1px 5px;
 }
 
@@ -21036,10 +20937,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 .intel-combat-row {
-  border-radius: var(--mvu-radius-md, 12px);
   padding: 10px 12px;
-  border: 1px solid var(--全息材质弱线);
-  background: var(--全息材质底);
 }
 
 .intel-combat-row b {
@@ -22817,24 +22715,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card::before,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--org-diplomacy-color, rgba(183, 232, 242, 0.42));
-  box-shadow: 0 0 14px var(--org-diplomacy-glow, color-mix(in srgb, var(--主题主色) 10%, transparent));
+  content: none;
+  display: none;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--hostile,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--hostile {
   --org-diplomacy-color: #ff4f62;
-  --org-diplomacy-glow: rgba(255, 79, 98, 0.35);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--conflict,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--conflict {
   --org-diplomacy-color: #f59e0b;
-  --org-diplomacy-glow: rgba(245, 158, 11, 0.28);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--allied,
@@ -24282,13 +24174,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-section-title::before {
-  content: '';
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  background: color-mix(in srgb, var(--主题主色) 72%, transparent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 22%, transparent);
+  content: none;
+  display: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-columns,
