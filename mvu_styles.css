@@ -839,9 +839,6 @@
   font-weight: 700;
   letter-spacing: 0.4px;
   color: var(--mvu-color-text-ice, #edf9fd);
-  text-shadow:
-    0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05)),
-    0 0 5px rgba(77, 240, 255, 0.06);
 }
 
 .interactive-ring {
@@ -2508,10 +2505,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-c
   width: min(360px, calc(100% - 16px));
   max-width: calc(100% - 16px);
   padding: 6px;
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
-  backdrop-filter: var(--玻璃滤镜);
-  -webkit-backdrop-filter: var(--玻璃滤镜);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .mvu-holo-map-card-head {
@@ -2686,7 +2679,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   justify-content: center;
   padding: 14px;
   pointer-events: auto;
-  background: rgba(3, 6, 9, 0.12);
 }
 
 .mvu-modal-mask.show {
@@ -2705,14 +2697,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   opacity: 0;
   transform: translateY(10px) scale(0.985);
-  box-shadow: none;
 }
 
 @keyframes modalMaskFade {
@@ -2774,7 +2760,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   align-items: stretch;
   justify-content: flex-start;
   padding: 10px 0 10px 10px;
-  background: transparent;
 }
 
 .mvu-modal-mask.show .mvu-modal-panel {
@@ -2795,14 +2780,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   gap: 12px;
   min-height: 62px;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(143, 233, 255, 0.22);
-  background: linear-gradient(
-    90deg,
-    rgba(143, 233, 255, 0.14),
-    rgba(223, 246, 255, 0.06) 38%,
-    rgba(121, 207, 238, 0.1) 72%,
-    rgba(255, 226, 89, 0.1) 100%
-  );
 }
 
 .modal-head::after {
@@ -2835,19 +2812,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .modal-level-chip,
 .modal-path-chip {
-  border-radius: var(--mvu-radius-pill, 999px);
   padding: 4px 8px;
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
-  border: 1px solid rgba(210, 245, 255, 0.14);
-  background: rgba(223, 246, 255, 0.08);
   color: var(--text-sub);
   white-space: nowrap;
 }
 
 .modal-level-chip {
-  border-color: rgba(103, 247, 239, 0.24);
-  background: rgba(103, 247, 239, 0.1);
   color: var(--mvu-color-accent-strong, #67f7ef);
   letter-spacing: 1px;
 }
@@ -2864,7 +2836,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   font-family: var(--font-title);
   font-size: var(--mvu-font-lg, 16px);
   color: var(--white);
-  text-shadow: 0 0 10px rgba(255, 226, 89, 0.1);
 }
 
 .modal-subtitle {
@@ -2884,7 +2855,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   max-width: min(460px, calc(100vw - 20px));
   height: calc(100svh - 20px);
   max-height: calc(100svh - 20px);
-  border-radius: var(--mvu-radius-xl, 20px);
   transform: translateX(-18px);
 }
 
@@ -2894,10 +2864,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   margin-left: auto;
   pointer-events: auto;
   appearance: none;
-  border: 1px solid rgba(103, 247, 239, 0.26);
-  background: rgba(223, 246, 255, 0.1);
   color: var(--mvu-color-accent-strong, #67f7ef);
-  border-radius: var(--mvu-radius-md, 12px);
   padding: 6px 12px;
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
@@ -2965,7 +2932,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   justify-content: center;
   padding: 14px;
   pointer-events: auto;
-  background: rgba(3, 6, 9, 0.12);
 }
 
 #detailModal.show {
@@ -2977,7 +2943,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   align-items: stretch;
   justify-content: flex-start;
   padding: 10px 0 10px 10px;
-  background: transparent;
 }
 
 #detailModal .mvu-modal-panel {
@@ -2992,12 +2957,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
   opacity: 1;
   transform: none;
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
@@ -3035,7 +2994,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   max-width: min(460px, calc(100vw - 20px));
   height: calc(100svh - 20px);
   max-height: calc(100svh - 20px);
-  border-radius: var(--mvu-radius-xl, 20px);
 }
 
 #detailModal.show.drawer-left .mvu-modal-panel {
@@ -3068,15 +3026,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   gap: 12px;
   min-height: 62px;
   padding: 12px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 54%, transparent);
-  background: transparent;
 }
 
 #detailModal .modal-title {
   font-family: "Consolas", "Microsoft YaHei", monospace;
   font-size: var(--mvu-font-lg, 16px);
   color: var(--white);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--主题主色) 42%, transparent);
 }
 
 #detailModal .modal-close {
@@ -3089,7 +3044,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex: 1 1 auto;
   overflow-y: auto !important;
   min-height: 0;
-  background: transparent;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -3260,11 +3214,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: none !important;
 }
 
-.modal-body.archive-body::-webkit-scrollbar-track,
-.modal-body.archive-body::-webkit-scrollbar-thumb {
-  background: transparent !important;
-}
-
 .archive-modal-grid {
   display: grid;
   grid-template-columns: 1.06fr 0.94fr;
@@ -3275,14 +3224,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .archive-card {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
   min-height: 0;
   padding: 16px;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   transform-style: preserve-3d;
 }
 
@@ -3443,7 +3386,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   letter-spacing: 0.55px;
   color: var(--全息标题文字);
   white-space: normal;
-  text-shadow: var(--全息标题字影);
 }
 
 .archive-card-head::after {
@@ -3460,17 +3402,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .archive-tile-grid .archive-tile {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
   padding: 6px 8px;
   min-height: 44px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .archive-tile-grid .archive-tile b {
@@ -3485,7 +3421,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   font-size: var(--mvu-font-sm, 12px);
   color: var(--全息数值文字);
-  text-shadow: var(--全息数值字影);
   line-height: 1.2;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -3597,7 +3532,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   font-weight: 700;
   letter-spacing: 0.55px;
   color: var(--文字主色);
-  text-shadow: var(--原型文字辉光);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
   white-space: normal;
@@ -3610,7 +3544,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .archive-card-title {
   color: var(--全息材质侧线);
-  text-shadow: 0 0 8px var(--全息材质魂影);
 }
 
 .modal-title::after,
@@ -3976,13 +3909,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .timeline-card {
-  border-radius: 0;
-  border: 0;
-  background: transparent;
   padding: 8px;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .identity-card h3,
@@ -4051,7 +3978,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
-  text-shadow: var(--全息数值字影);
 }
 
 .battle-radar-wrap {
@@ -5329,9 +5255,6 @@ button.tag-chip:active,
   align-items: center;
   min-height: 32px;
   padding: 4px 0;
-  border: none;
-  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 24%, transparent);
-  background: transparent;
 }
 
 .skill-designer-trial-row em {
@@ -5347,7 +5270,6 @@ button.tag-chip:active,
   min-width: 64px;
   color: var(--全息数值文字);
   font-weight: bold;
-  text-shadow: var(--全息数值字影);
   text-align: right;
   white-space: nowrap;
 }
@@ -5415,12 +5337,10 @@ button.tag-chip:active,
 }
 
 .skill-designer-cost-block > .skill-designer-trial-row {
-  border-bottom: none;
   padding-bottom: 0;
 }
 
 .skill-designer-cost-block > summary.skill-designer-trial-row {
-  border-bottom: none;
   padding-bottom: 0;
 }
 
@@ -6432,13 +6352,7 @@ button.tag-chip:active,
   position: relative;
   z-index: 1;
   min-width: 0;
-  border-radius: 0 !important;
   padding: 7px 8px !important;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   transition: 0.18s ease;
 }
 
@@ -6449,8 +6363,6 @@ button.tag-chip:active,
 
 .archive-tile.clickable:hover {
   transform: translateX(4px);
-  box-shadow: none;
-  background: transparent;
 }
 
 .archive-tile.clickable > * {
@@ -6896,11 +6808,6 @@ button.tag-chip:active,
 
 .mvu-spirit-archive-shell .archive-card {
   padding: 10px 11px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
   overflow: visible;
 }
 
@@ -6922,7 +6829,6 @@ button.tag-chip:active,
   min-height: 20px;
   margin-bottom: 7px;
   padding-bottom: 5px;
-  border-bottom: 1px dashed rgba(143, 233, 255, 0.12);
 }
 
 .mvu-spirit-archive-shell .archive-card-title {
@@ -7644,13 +7550,7 @@ button.tag-chip:active,
 
 .relation-card,
 .intel-card {
-  border-radius: 0;
   padding: 8px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .relation-card b,
@@ -7668,13 +7568,9 @@ button.tag-chip:active,
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.4;
   color: var(--全息数值文字);
-  text-shadow: var(--全息数值字影);
 }
 
 .modal-block {
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(210, 245, 255, 0.12);
-  background: rgba(223, 246, 255, 0.08);
   padding: 10px;
 }
 
@@ -7881,9 +7777,6 @@ button.tag-chip:active,
   font-weight: 700 !important;
   letter-spacing: 0.55px !important;
   color: var(--mvu-color-text-ice, #edf9fd) !important;
-  text-shadow:
-    0 1px 0 var(--mvu-color-panel-muted, rgba(255, 255, 255, 0.05)),
-    0 0 6px rgba(77, 240, 255, 0.08) !important;
 }
 
 .archive-card-title::before,
@@ -7893,7 +7786,6 @@ button.tag-chip:active,
 
 .archive-card-title {
   color: var(--全息材质侧线) !important;
-  text-shadow: 0 0 8px var(--全息材质魂影) !important;
 }
 
 /* Inventory hover panel action buttons */
@@ -7945,11 +7837,6 @@ button.tag-chip:active,
 
 .relation-topology-board {
   min-height: 212px;
-  border-radius: var(--mvu-radius-xl, 20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background:
-    radial-gradient(circle at center, color-mix(in srgb, var(--主题主色) 8%, transparent) 0%, transparent 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   overflow: visible;
 }
 
@@ -7961,7 +7848,6 @@ button.tag-chip:active,
 .relation-directory-item {
   gap: 10px;
   padding: 14px 16px;
-  border-radius: var(--mvu-radius-lg, 16px);
 }
 
 .relation-directory-head {
@@ -7998,9 +7884,6 @@ button.tag-chip:active,
   display: inline-flex;
   align-items: center;
   padding: 5px 9px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid rgba(143, 233, 255, 0.14);
-  background: rgba(8, 25, 36, 0.72);
   color: #d8f8ff;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1;
@@ -8052,9 +7935,6 @@ button.tag-chip:active,
   align-self: flex-start;
   min-height: 28px;
   padding: 5px 10px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid var(--全息材质弱线);
-  background: var(--全息材质底);
   color: var(--全息标签文字);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -8073,9 +7953,6 @@ button.tag-chip:active,
   gap: 4px;
   min-width: 0;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(143, 233, 255, 0.1);
-  background: rgba(6, 18, 28, 0.72);
 }
 
 .relation-stat-pill em {
@@ -8113,16 +7990,10 @@ button.tag-chip:active,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--mvu-radius-sm, 8px);
   padding: 0 10px;
   height: 32px;
   min-width: 70px;
-  border: 0;
-  background: var(--全息材质底);
   color: var(--主题主色);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
   font-weight: 700;
@@ -8137,37 +8008,25 @@ button.tag-chip:active,
 }
 
 .relation-action-btn.action-primary {
-  background: var(--全息材质悬停底);
   color: var(--文字主色);
 }
 
 .relation-action-btn.action-warn {
-  border-color: rgba(255, 206, 99, 0.22);
   color: #ffd775;
-  background: linear-gradient(180deg, rgba(255, 206, 99, 0.14), rgba(255, 206, 99, 0.04));
 }
 
 .relation-action-btn.action-accent {
-  border-color: rgba(255, 120, 176, 0.22);
   color: #ff9cc7;
-  background: linear-gradient(180deg, rgba(255, 120, 176, 0.14), rgba(255, 120, 176, 0.04));
 }
 
 .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: var(--全息材质悬停底);
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent);
   color: #fff;
 }
 
 .relation-action-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-  filter: grayscale(0.15);
-  box-shadow: none;
   transform: none;
 }
 
@@ -8203,12 +8062,6 @@ button.tag-chip:active,
   align-items: center;
   margin-top: 0;
   padding: 4px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid rgba(77, 240, 255, 0.12);
-  background:
-    linear-gradient(90deg, rgba(77, 240, 255, 0.055), transparent 58%),
-    rgba(3, 10, 22, 0.68);
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.28);
 }
 
 .relation-gift-row::before {
@@ -8224,31 +8077,18 @@ button.tag-chip:active,
   pointer-events: none;
 }
 
-.relation-gift-row:focus-within {
-  border-color: rgba(77, 240, 255, 0.28);
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.28),
-    0 0 0 3px rgba(77, 240, 255, 0.08);
-}
-
 .relation-gift-select {
   appearance: none;
   -webkit-appearance: none;
   min-width: 0;
   width: 100%;
-  border-radius: var(--mvu-radius-sm, 8px);
   padding: 0 30px 0 34px;
   height: 32px;
-  border: 1px solid rgba(143, 233, 255, 0.08);
-  background:
-    linear-gradient(45deg, transparent 50%, rgba(143, 233, 255, 0.7) 50%) right 15px center / 6px 6px no-repeat,
-    linear-gradient(135deg, rgba(10, 28, 42, 0.92), rgba(4, 12, 20, 0.92));
   color: #dffaff;
   font-family: var(--font-tech);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1;
   outline: none;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26);
 }
 
 .relation-observer-stack {
@@ -8305,9 +8145,6 @@ button.tag-chip:active,
 .relation-detail-tiles .archive-tile {
   min-height: 58px;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  background: var(--mvu-color-panel-soft, rgba(255, 255, 255, 0.03));
-  border-color: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
 }
 
 .relation-detail-tiles .archive-tile b {
@@ -8678,13 +8515,7 @@ button.tag-chip:active,
    ========================================================================= */
 
 /* 1. Parent modal theme override */
-.mvu-modal-panel.nsfw-theme-active {
-  background: radial-gradient(circle at top right, #240b1e 0%, #0d0411 100%) !important;
-  border: 1px solid rgba(224, 86, 253, 0.3) !important;
-  box-shadow:
-    0 0 50px rgba(224, 86, 253, 0.15),
-    inset 0 0 60px rgba(255, 117, 143, 0.05) !important;
-}
+
 
 .mvu-modal-panel.nsfw-theme-active::before,
 .mvu-modal-panel.nsfw-theme-active::after {
@@ -8698,10 +8529,6 @@ button.tag-chip:active,
   color: var(--mvu-color-magenta-soft, #f093fb) !important;
   font-family: 'STXingkai', 'Xingkai SC', 'FZXingKai-Z04S', 'LiSu', 'STKaiti', serif !important;
   font-weight: normal !important;
-  text-shadow:
-    0 0 15px rgba(240, 147, 251, 0.7),
-    0 0 5px rgba(240, 147, 251, 0.4) !important;
-  border-bottom: none !important;
   font-size: var(--mvu-font-xl, 18px) !important;
   letter-spacing: 2px !important;
 }
@@ -8715,14 +8542,9 @@ button.tag-chip:active,
 
 .mvu-modal-panel.nsfw-theme-active .modal-close {
   color: var(--mvu-color-magenta-soft, #f093fb) !important;
-  border-color: rgba(240, 147, 251, 0.3) !important;
-  background: rgba(240, 147, 251, 0.05) !important;
-  border-radius: 50% !important;
 }
 .mvu-modal-panel.nsfw-theme-active .modal-close:hover {
-  background: rgba(240, 147, 251, 0.2) !important;
   color: #fff !important;
-  box-shadow: 0 0 15px rgba(240, 147, 251, 0.5) !important;
 }
 
 /* 2. Inner layout typography override */
@@ -9091,9 +8913,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-ai-maintenance-home-api--top .mvu-a
   min-width: 0;
   min-height: 30px;
   padding: 6px;
-  border: 1px solid rgba(77, 240, 255, 0.14);
-  border-radius: var(--mvu-radius-md, 12px);
-  background: rgba(255, 255, 255, 0.04);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-ai-maintenance-home-api--top {
@@ -9113,9 +8932,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-ai-maintenance-home-api--top select
   min-width: 0;
   height: 24px;
   padding: 0 18px 0 4px;
-  border: 1px solid rgba(77, 240, 255, 0.1);
-  border-radius: var(--mvu-radius-sm, 8px);
-  background: rgba(3, 12, 20, 0.34);
   color: rgba(236, 251, 253, 0.94);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -9322,10 +9138,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-resea
   gap: 12px !important;
   min-width: 0 !important;
   padding: 12px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
   overflow: hidden !important;
 }
 
@@ -9351,9 +9163,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-resea
   gap: 10px !important;
   min-width: 0 !important;
   padding: 11px 12px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  border-radius: 4px !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--边线颜色) 5.5%, transparent), rgba(255, 255, 255, 0.018)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head,
@@ -9436,11 +9245,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-progr
   position: relative !important;
   height: 10px !important;
   min-width: 0 !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 14%, transparent) !important;
-  border-radius: 2px !important;
-  background:
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--边线颜色) 12%, transparent) 0 1px, transparent 1px 22px),
-    rgba(1, 8, 14, 0.78) !important;
   overflow: hidden !important;
 }
 
@@ -9470,8 +9274,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overv
   gap: 3px !important;
   min-width: 0 !important;
   padding: 7px 8px !important;
-  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 16%, transparent) !important;
-  background: rgba(255, 255, 255, 0.026) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics b,
@@ -9515,9 +9317,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.bestiar
   min-width: 0 !important;
   min-height: 360px !important;
   padding: 10px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  border-radius: 4px !important;
-  background: rgba(1, 9, 15, 0.58) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-directory,
@@ -9530,9 +9329,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detai
 #detailModal.mvu-modal-display-unified .bestiary-detail-console,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-console {
   grid-template-rows: auto minmax(0, 1fr) !important;
-  background:
-    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--边线颜色) 8%, transparent), transparent 42%),
-    color-mix(in srgb, var(--暗场底板强) 72%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head,
@@ -9544,7 +9340,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel
   gap: 10px !important;
   min-width: 0 !important;
   padding-bottom: 8px !important;
-  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 16%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head div,
@@ -9579,9 +9374,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-direc
   min-width: 0 !important;
   height: 30px !important;
   padding: 0 9px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 15%, transparent) !important;
-  border-radius: 3px !important;
-  background: rgba(0, 8, 13, 0.76) !important;
   color: rgba(230, 248, 252, 0.9) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   outline: none !important;
@@ -9610,12 +9402,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-speci
   width: 4px !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-grid::-webkit-scrollbar-thumb,
-#detailModal.mvu-modal-display-unified .bestiary-species-grid::-webkit-scrollbar-thumb,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-grid::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--边线颜色) 22%, transparent) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot,
 #detailModal.mvu-modal-display-unified .bestiary-species-slot,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot {
@@ -9626,9 +9412,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-speci
   min-width: 0 !important;
   height: 82px !important;
   padding: 8px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  border-radius: 4px !important;
-  background: rgba(255, 255, 255, 0.026) !important;
   color: inherit !important;
   text-align: left !important;
   overflow: hidden !important;
@@ -9649,31 +9432,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host button.bestiary
   cursor: pointer !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host button.bestiary-species-slot:hover,
-#detailModal.mvu-modal-display-unified button.bestiary-species-slot:hover,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root button.bestiary-species-slot:hover {
-  border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent) !important;
-  background: color-mix(in srgb, var(--边线颜色) 6%, transparent) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot.is-active,
-#detailModal.mvu-modal-display-unified .bestiary-species-slot.is-active,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-active {
-  border-color: rgba(104, 239, 255, 0.72) !important;
-  background: rgba(86, 220, 255, 0.09) !important;
-  box-shadow: 0 0 18px rgba(71, 220, 255, 0.16), inset 0 0 0 1px rgba(180, 255, 255, 0.08) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot.is-locked,
 #detailModal.mvu-modal-display-unified .bestiary-species-slot.is-locked,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-locked {
   place-items: center !important;
   text-align: center !important;
   opacity: 0.52 !important;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.025) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.02) 50% 75%, transparent 75%),
-    rgba(255, 255, 255, 0.012) !important;
-  background-size: 12px 12px, auto !important;
   animation: bestiary-slot-pulse 2.8s ease-in-out infinite !important;
 }
 
@@ -9794,7 +9558,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-signa
   color: color-mix(in srgb, var(--边线颜色) 70%, transparent) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   letter-spacing: 0.08em !important;
-  border-top: 1px dashed color-mix(in srgb, var(--边线颜色) 14%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-signal-row span,
@@ -9802,9 +9565,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-signa
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-signal-row span {
   width: 8px !important;
   height: 8px !important;
-  border-radius: 50% !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 68%, transparent) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--边线颜色) 30%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-stage,
@@ -9845,7 +9605,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detai
   gap: 14px !important;
   min-width: 0 !important;
   padding: 4px 0 10px !important;
-  border-bottom: 1px dashed color-mix(in srgb, var(--边线颜色) 17%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-head div,
@@ -9880,7 +9639,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detai
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-head em {
   flex: 0 0 auto !important;
   padding: 4px 7px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent) !important;
   color: rgba(211, 242, 248, 0.88) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
@@ -9903,8 +9661,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detai
   gap: 4px !important;
   min-width: 0 !important;
   padding: 8px 0 8px 9px !important;
-  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 15%, transparent) !important;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--边线颜色) 3.6%, transparent), transparent 78%) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-line--wide,
@@ -9946,9 +9702,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-skill
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-skill-strip span {
   flex: 0 1 auto !important;
   padding: 3px 7px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 14%, transparent) !important;
   color: rgba(228, 247, 250, 0.9) !important;
-  background: color-mix(in srgb, var(--边线颜色) 4.5%, transparent) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.2 !important;
 }
@@ -10158,11 +9912,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-overview
   gap: 6px !important;
   min-height: 118px !important;
   padding: 16px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 13%, transparent) !important;
-  background:
-    radial-gradient(circle at 24px 24px, color-mix(in srgb, var(--主题主色) 13%, transparent), transparent 34px),
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 6%, transparent), rgba(255, 255, 255, 0.02)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core span {
@@ -10180,7 +9929,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-overview
   line-height: 1.14 !important;
   font-weight: 760 !important;
   letter-spacing: 0 !important;
-  text-shadow: 0 0 16px color-mix(in srgb, var(--主题主色) 22%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-overview-core em {
@@ -10206,8 +9954,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row
   gap: 8px !important;
   min-width: 0 !important;
   padding: 5px 7px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  background: rgba(255, 255, 255, 0.032) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row i {
@@ -10215,8 +9961,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-stat-row
   place-items: center !important;
   width: 20px !important;
   height: 20px !important;
-  border-radius: var(--mvu-radius-xs, 6px) !important;
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent) !important;
   color: color-mix(in srgb, var(--主题主色) 86%, transparent) !important;
   font-size: 9px !important;
   line-height: 1 !important;
@@ -10273,8 +10017,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-r
   gap: 3px 8px !important;
   min-width: 0 !important;
   padding: 8px 9px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  background: rgba(255, 255, 255, 0.035) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-ticket-row b,
@@ -10326,8 +10068,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-access-e
   display: block !important;
   width: 48px !important;
   height: 48px !important;
-  border-radius: 14px !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 16%, transparent) !important;
   opacity: 0.28 !important;
 }
 
@@ -10347,7 +10087,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-access-e
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-access-empty[data-empty-kind='intel'] i {
-  border-radius: var(--mvu-radius-pill, 999px) !important;
   animation: trial-intel-empty-pulse 2.2s ease-in-out infinite !important;
 }
 
@@ -10412,7 +10151,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-intel-lo
   gap: 12px !important;
   min-width: 0 !important;
   padding: 8px 0 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.055) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .trial-intel-log b {
@@ -10496,24 +10234,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
   flex-direction: column !important;
   gap: 12px !important;
   padding: 15px 16px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive-profile,
-#detailModal.mvu-modal-display-unified .social-archive-profile,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-archive-profile {
-  border-top: 0 !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive-data,
-#detailModal.mvu-modal-display-unified .social-archive-data,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-archive-data {
-  border-top: 0 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list .dossier-list--factions {
@@ -10525,12 +10245,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--
   align-items: center !important;
   min-height: 56px !important;
   cursor: pointer !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list .faction-row:hover,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--faction-list .faction-row.active {
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent) !important;
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
 }
 
 body.mvu-layout-holo
@@ -10548,9 +10262,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter 
   gap: 8px !important;
   min-width: 0 !important;
   padding: 10px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 7.5%, transparent), rgba(255, 255, 255, 0.025)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter--green {
@@ -10590,8 +10301,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter-track {
   height: 6px !important;
   overflow: hidden !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter-fill {
@@ -10605,9 +10314,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-empty-
   display: grid !important;
   align-items: center !important;
   padding: 10px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 9%, transparent) !important;
-  background: color-mix(in srgb, var(--暗场底板强) 16%, transparent) !important;
   color: var(--mvu-dossier-muted) !important;
 }
 
@@ -10785,9 +10491,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   justify-content: space-between !important;
   gap: 8px !important;
   padding: 7px 8px !important;
-  border-radius: 7px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 11%, transparent) !important;
-  background: rgba(0, 0, 0, 0.16) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-drawer-meta b),
@@ -10822,9 +10525,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   place-items: center !important;
   align-self: stretch !important;
   padding: 10px 12px !important;
-  border-radius: 7px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: rgba(0, 0, 0, 0.18) !important;
   color: rgba(113, 255, 207, 0.9) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
@@ -10866,13 +10566,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gea
   align-items: center !important;
   gap: 8px !important;
   padding: 7px 9px !important;
-  border-radius: var(--卡片圆角) !important;
-  border: 1px solid var(--原型弱分隔线) !important;
-  border-left: 2px solid transparent !important;
-  background:
-    var(--全息噪点层),
-    var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
   overflow: hidden !important;
   transform-style: preserve-3d;
 }
@@ -10882,16 +10575,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gea
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-gear-slot.clickable:hover {
-  border-color: var(--边线颜色) !important;
-  border-left-color: var(--mvu-holo-main) !important;
-  background:
-    var(--全息噪点层),
-    linear-gradient(100deg, color-mix(in srgb, var(--mvu-holo-high) 10%, transparent), transparent 36%),
-    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 10%, transparent), transparent 72%),
-    var(--全息材质底) !important;
-  box-shadow:
-    inset 10px 0 20px -10px color-mix(in srgb, var(--mvu-holo-main) 36%, transparent),
-    var(--全息材质阴影) !important;
   transform: translateX(4px);
 }
 
@@ -10911,9 +10594,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   height: 30px !important;
   display: grid !important;
   place-items: center !important;
-  border-radius: 6px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 16%, transparent) !important;
-  background: rgba(0, 0, 0, 0.22) !important;
   color: color-mix(in srgb, var(--边线颜色) 66%, transparent) !important;
   font-size: 9px !important;
   line-height: 1 !important;
@@ -10961,37 +10641,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   display: none !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-active),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-active),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-active) {
-  border-color: color-mix(in srgb, var(--边线颜色) 28%, transparent) !important;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(113, 255, 207, 0.12), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 10%, transparent), rgba(0, 0, 0, 0.18)),
-    rgba(3, 16, 24, 0.58) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-standby),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-standby),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-standby) {
-  border-color: rgba(246, 199, 107, 0.24) !important;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(246, 199, 107, 0.12), transparent 58%),
-    linear-gradient(135deg, rgba(246, 199, 107, 0.08), rgba(0, 0, 0, 0.2)),
-    rgba(18, 15, 9, 0.54) !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 rgba(246, 199, 107, 0.28) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-slot.is-empty),
 #detailModal.mvu-modal-display-unified :where(.mvu-armory-gear-slot.is-empty),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-gear-slot.is-empty) {
   opacity: 0.48 !important;
-  border-style: dashed !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.48),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-gear-head),
@@ -11060,12 +10713,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   grid-template-rows: auto minmax(0, 1fr) !important;
   gap: 8px !important;
   padding: 10px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(113, 242, 255, 0.12), transparent 58%),
-    rgba(3, 13, 20, 0.42) !important;
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.34) !important;
   overflow: hidden !important;
 }
 
@@ -11113,9 +10760,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   justify-content: space-between !important;
   gap: 8px !important;
   padding: 7px 8px !important;
-  border-radius: 7px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 11%, transparent) !important;
-  background: rgba(0, 0, 0, 0.16) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-resonance-grid b),
@@ -11154,15 +10798,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   gap: 12px !important;
   padding: 12px !important;
   overflow: hidden !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
-  background:
-    linear-gradient(color-mix(in srgb, var(--边线颜色) 3.5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--边线颜色) 3.5%, transparent) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--边线颜色) 12%, transparent), transparent 54%),
-    rgba(0, 0, 0, 0.16) !important;
-  background-size: 28px 28px, 28px 28px, auto, auto !important;
-  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.42) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-topology)::after,
@@ -11212,17 +10847,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   pointer-events: none !important;
   cursor: default !important;
   opacity: 0.92 !important;
-  border-style: dashed !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node.is-selected),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node.is-selected),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node.is-selected) {
-  border-color: rgba(113, 242, 255, 0.82) !important;
-  box-shadow:
-    inset 0 0 22px rgba(113, 242, 255, 0.12),
-    0 0 0 1px rgba(113, 242, 255, 0.22),
-    0 0 18px rgba(113, 242, 255, 0.18) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-line),
@@ -11361,32 +10985,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   font: inherit !important;
   text-align: left !important;
   cursor: pointer !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  background: rgba(2, 11, 17, 0.72) !important;
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.44),
-    0 6px 18px rgba(0, 0, 0, 0.18) !important;
   overflow: hidden !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node.is-active),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node.is-active),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node.is-active) {
-  border-color: rgba(113, 242, 255, 0.48) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(113, 242, 255, 0.16), transparent 58%),
-    rgba(3, 18, 26, 0.78) !important;
-  box-shadow:
-    inset 0 0 22px rgba(113, 242, 255, 0.08),
-    0 0 16px rgba(113, 242, 255, 0.14) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bone-node.is-empty),
 #detailModal.mvu-modal-display-unified :where(.mvu-armory-bone-node.is-empty),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bone-node.is-empty) {
   opacity: 0.58 !important;
-  border-style: dashed !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.slot-head),
@@ -11583,8 +11188,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-head-tag) {
   margin-left: auto !important;
   padding: 4px 9px !important;
-  border: 1px solid rgba(113, 242, 255, 0.22) !important;
-  background: rgba(113, 242, 255, 0.06) !important;
   color: rgba(216, 251, 255, 0.86) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
@@ -11598,18 +11201,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   min-height: 480px !important;
   height: 100% !important;
   overflow: hidden !important;
-  border-radius: 8px !important;
-  border: 1px solid rgba(113, 242, 255, 0.08) !important;
-  background:
-    linear-gradient(rgba(113, 242, 255, 0.034) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(113, 242, 255, 0.034) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% 46%, rgba(113, 242, 255, 0.12), transparent 58%),
-    radial-gradient(ellipse at 50% 78%, rgba(243, 201, 105, 0.06), transparent 42%),
-    rgba(1, 9, 15, 0.2) !important;
-  background-size: 28px 28px, 28px 28px, auto, auto, auto !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(113, 242, 255, 0.03),
-    inset 0 0 42px rgba(0, 0, 0, 0.46) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-topology)::after,
@@ -11684,17 +11275,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   align-content: center !important;
   gap: 4px !important;
   padding: 8px 9px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 14%, transparent) !important;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--边线颜色) 5%, transparent), rgba(2, 11, 17, 0.18)),
-    rgba(2, 11, 17, 0.42) !important;
   color: rgba(234, 250, 254, 0.94) !important;
   text-align: left !important;
   transform: translate(-50%, -50%) skewX(-6deg) !important;
   clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%) !important;
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.44),
-    0 6px 16px rgba(0, 0, 0, 0.18) !important;
   transition:
     border-color 0.16s ease,
     background 0.16s ease,
@@ -11734,57 +11318,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(button.m
   cursor: pointer !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(button.mvu-armor-node:hover),
-#detailModal.mvu-modal-display-unified :where(button.mvu-armor-node:hover),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(button.mvu-armor-node:hover) {
-  border-color: rgba(113, 242, 255, 0.48) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(113, 242, 255, 0.18), transparent 62%),
-    rgba(3, 18, 26, 0.78) !important;
-  box-shadow:
-    inset 0 0 20px rgba(113, 242, 255, 0.08),
-    0 0 18px rgba(113, 242, 255, 0.16) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-node.is-live),
-#detailModal.mvu-modal-display-unified :where(.mvu-armor-node.is-live),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-node.is-live) {
-  border-style: solid !important;
-  border-color: rgba(113, 242, 255, 0.52) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(113, 242, 255, 0.18), transparent 60%),
-    rgba(3, 18, 26, 0.78) !important;
-  box-shadow:
-    inset 0 0 20px rgba(113, 242, 255, 0.09),
-    0 0 16px rgba(113, 242, 255, 0.14) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-node.is-warn),
-#detailModal.mvu-modal-display-unified :where(.mvu-armor-node.is-warn),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-node.is-warn) {
-  border-style: solid !important;
-  border-color: rgba(255, 193, 97, 0.5) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 193, 97, 0.16), transparent 60%),
-    rgba(38, 24, 8, 0.72) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-node.is-empty),
 #detailModal.mvu-modal-display-unified :where(.mvu-armor-node.is-empty),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-node.is-empty) {
   opacity: 0.58 !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-node.is-selected),
-#detailModal.mvu-modal-display-unified :where(.mvu-armor-node.is-selected),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-node.is-selected) {
-  border-color: rgba(113, 242, 255, 0.88) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(113, 242, 255, 0.24), transparent 64%),
-    rgba(4, 28, 36, 0.9) !important;
-  box-shadow:
-    inset 0 0 18px rgba(113, 242, 255, 0.16),
-    0 0 18px rgba(113, 242, 255, 0.22) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-node.is-live)::before,
@@ -11905,8 +11442,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   display: grid !important;
   gap: 5px !important;
   padding: 9px !important;
-  border: 1px solid rgba(113, 242, 255, 0.08) !important;
-  background: rgba(2, 11, 17, 0.16) !important;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease !important;
 }
 
@@ -11940,8 +11475,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-bonus-item:hover),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-part-item:hover) {
   transform: translateX(2px) !important;
-  border-color: rgba(113, 242, 255, 0.2) !important;
-  box-shadow: inset 3px 0 0 rgba(113, 242, 255, 0.56) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-section),
@@ -11988,16 +11521,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   gap: 7px !important;
   min-height: 38px !important;
   padding: 7px 8px !important;
-  border: 1px solid rgba(113, 242, 255, 0.08) !important;
-  background: rgba(2, 11, 17, 0.16) !important;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-bonus-item.is-live),
-#detailModal.mvu-modal-display-unified :where(.mvu-armor-bonus-item.is-live),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-bonus-item.is-live) {
-  border-color: rgba(113, 242, 255, 0.28) !important;
-  background: rgba(3, 18, 26, 0.58) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armor-bonus-item.is-zero),
@@ -12013,7 +11537,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   place-items: center !important;
   width: 22px !important;
   height: 22px !important;
-  border: 1px solid rgba(113, 242, 255, 0.16) !important;
   color: rgba(113, 242, 255, 0.82) !important;
   font-size: 12px !important;
   line-height: 1 !important;
@@ -12063,9 +11586,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   gap: 3px !important;
   min-width: 0 !important;
   padding: 8px 10px !important;
-  border: 1px solid rgba(113, 242, 255, 0.08) !important;
-  background: rgba(5, 19, 27, 0.16) !important;
-  border-radius: 10px !important;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease !important;
 }
 
@@ -12113,8 +11633,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-eject-btn) {
   min-height: 38px !important;
   width: 100% !important;
-  border: 1px solid rgba(255, 107, 107, 0.38) !important;
-  background: rgba(65, 13, 18, 0.42) !important;
   color: rgba(255, 212, 212, 0.96) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 800 !important;
@@ -12125,8 +11643,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armor-eject-btn:disabled) {
   cursor: not-allowed !important;
   opacity: 0.45 !important;
-  border-color: color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: rgba(2, 11, 17, 0.38) !important;
   color: rgba(183, 210, 217, 0.58) !important;
 }
 
@@ -12209,18 +11725,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-meter span),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-meter span) {
   height: 8px !important;
-  border-radius: 3px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 11%, transparent) !important;
-  background: rgba(0, 0, 0, 0.22) !important;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.34) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-meter span.is-active),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-meter span.is-active),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-meter span.is-active) {
-  border-color: rgba(113, 242, 255, 0.48) !important;
-  background: linear-gradient(90deg, rgba(113, 242, 255, 0.42), rgba(114, 255, 209, 0.3)) !important;
-  box-shadow: 0 0 10px rgba(113, 242, 255, 0.18) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-card),
@@ -12248,11 +11752,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   grid-template-rows: auto auto auto minmax(0, auto) !important;
   gap: 5px !important;
   padding: 9px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 5.5%, transparent), rgba(0, 0, 0, 0.19)),
-    rgba(2, 11, 17, 0.62) !important;
   overflow: hidden !important;
 }
 
@@ -12283,15 +11782,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-empty)::after {
   width: 1px !important;
   height: 22px !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot.is-active),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-tool-slot.is-active),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-tool-slot.is-active) {
-  border-color: rgba(113, 242, 255, 0.34) !important;
-  background:
-    radial-gradient(circle at 70% 0%, rgba(113, 242, 255, 0.16), transparent 58%),
-    rgba(3, 18, 26, 0.72) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-tool-slot-head),
@@ -12404,15 +11894,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   display: grid !important;
   place-items: center !important;
   overflow: hidden !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background:
-    linear-gradient(color-mix(in srgb, var(--边线颜色) 4.5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--边线颜色) 4.5%, transparent) 1px, transparent 1px),
-    radial-gradient(circle at 50% 48%, rgba(113, 242, 255, 0.14), transparent 52%),
-    rgba(0, 0, 0, 0.18) !important;
-  background-size: 24px 24px, 24px 24px, auto, auto !important;
-  box-shadow: inset 0 0 38px rgba(0, 0, 0, 0.48) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-stage)::before,
@@ -12440,9 +11921,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-holo-scan) {
   position: absolute !important;
   inset: 14px !important;
-  border: 1px solid rgba(113, 242, 255, 0.08) !important;
-  border-radius: 50% !important;
-  box-shadow: inset 0 0 20px rgba(113, 242, 255, 0.06) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-holo-sigil),
@@ -12451,7 +11929,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   position: absolute !important;
   width: 150px !important;
   height: 150px !important;
-  border: 1px solid rgba(113, 242, 255, 0.12) !important;
   transform: rotate(45deg) !important;
 }
 
@@ -12496,8 +11973,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-eject-btn) {
   min-height: 24px !important;
   padding: 4px 10px !important;
-  border-color: rgba(255, 107, 107, 0.36) !important;
-  background: rgba(65, 13, 18, 0.36) !important;
   color: rgba(255, 198, 198, 0.92) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
@@ -12514,9 +11989,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
 #detailModal.mvu-modal-display-unified :where(.mvu-armory-data-grid .archive-tile),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-data-grid .archive-tile) {
   min-height: 58px !important;
-  border-color: color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
-  background: rgba(0, 0, 0, 0.18) !important;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.24) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pills),
@@ -12536,9 +12008,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   justify-content: space-between !important;
   gap: 8px !important;
   padding: 6px 9px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: rgba(0, 0, 0, 0.2) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill b),
@@ -12564,14 +12033,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   opacity: 0.42 !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-bonus-pill.is-live),
-#detailModal.mvu-modal-display-unified :where(.mvu-armory-bonus-pill.is-live),
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-bonus-pill.is-live) {
-  border-color: rgba(113, 242, 255, 0.38) !important;
-  background: rgba(113, 242, 255, 0.065) !important;
-  box-shadow: 0 0 12px rgba(113, 242, 255, 0.08) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-empty),
 #detailModal.mvu-modal-display-unified :where(.mvu-armory-trait-empty),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.mvu-armory-trait-empty) {
@@ -12580,9 +12041,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-arm
   align-content: center !important;
   gap: 5px !important;
   padding: 10px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px dashed color-mix(in srgb, var(--边线颜色) 16%, transparent) !important;
-  background: rgba(0, 0, 0, 0.16) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.mvu-armory-trait-empty b),
@@ -12737,9 +12195,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-netwo
   max-height: 360px !important;
   padding: 12px !important;
   overflow: hidden !important;
-  background:
-    radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 56%),
-    linear-gradient(180deg, rgba(5, 18, 28, 0.82), rgba(3, 11, 18, 0.92)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-network-head {
@@ -12768,9 +12223,6 @@ body.mvu-layout-holo
   min-width: 0 !important;
   min-height: 30px !important;
   padding: 4px 6px 4px 10px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 20%, transparent) !important;
-  background: rgba(3, 13, 22, 0.72) !important;
 }
 
 body.mvu-layout-holo
@@ -12794,11 +12246,6 @@ body.mvu-layout-holo
   width: 100% !important;
   height: 26px !important;
   padding: 0 28px 0 10px !important;
-  border: 0 !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--主题主色) 16%, transparent), rgba(255, 255, 255, 0.03)),
-    color-mix(in srgb, var(--暗场底板强) 82%, transparent) !important;
   color: rgba(241, 253, 255, 0.96) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1 !important;
@@ -12824,7 +12271,6 @@ body.mvu-layout-holo
   min-width: 0 !important;
   min-height: 0 !important;
   height: 100% !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
   overflow: hidden !important;
   cursor: default !important;
   touch-action: pan-y !important;
@@ -12862,9 +12308,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossi
   height: auto !important;
   max-height: none !important;
   padding: 10px 12px 12px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.024)),
-    color-mix(in srgb, var(--暗场底板强) 86%, transparent) !important;
   animation: relation-dossier-refresh 0.16s ease-out;
   overflow: visible !important;
 }
@@ -12952,7 +12395,6 @@ body.mvu-layout-holo
   gap: 14px !important;
   min-width: 0 !important;
   padding-right: 18px !important;
-  border-right: 1px solid color-mix(in srgb, var(--主题主色) 18%, transparent) !important;
 }
 
 body.mvu-layout-holo
@@ -13004,7 +12446,6 @@ body.mvu-layout-holo
   gap: 12px !important;
   min-width: 0 !important;
   padding: 0 !important;
-  border-left: 0 !important;
   color: rgba(226, 245, 250, 0.84) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.62 !important;
@@ -13279,9 +12720,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facil
   align-items: center !important;
   gap: 9px !important;
   padding: 9px 12px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 18%, transparent) !important;
-  background: rgba(4, 18, 27, 0.38) !important;
   color: #f4fcff !important;
   text-align: left !important;
   overflow: hidden !important;
@@ -13332,9 +12770,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-c
   align-items: center !important;
   min-width: 0 !important;
   padding: 10px 11px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent) !important;
-  background: rgba(4, 16, 25, 0.4) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-main {
@@ -13354,19 +12789,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-s
   flex: 0 0 auto !important;
   width: 8px !important;
   height: 8px !important;
-  border-radius: 999px !important;
-  background: #54f0b2 !important;
-  box-shadow: 0 0 10px rgba(84, 240, 178, 0.52) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-status.is-warn {
-  background: #f3c969 !important;
-  box-shadow: 0 0 10px rgba(243, 201, 105, 0.5) !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-status.is-danger {
-  background: #ff637d !important;
-  box-shadow: 0 0 10px rgba(255, 99, 125, 0.55) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-title b {
@@ -13400,8 +12822,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-t
   max-width: 100% !important;
   min-width: 0 !important;
   padding: 4px 7px !important;
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
   color: rgba(203, 226, 233, 0.78) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
@@ -13424,7 +12844,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   min-width: 52px !important;
   min-height: 34px !important;
   padding: 7px 9px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
 }
@@ -13510,10 +12929,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   min-width: 0 !important;
   min-height: max-content !important;
   padding: 12px !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: visible !important;
 }
 
@@ -13527,7 +12942,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   line-height: 1.25 !important;
   font-weight: 700 !important;
   letter-spacing: 0.03em !important;
-  text-shadow: var(--全息标题字影) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section-title::before {
@@ -13545,10 +12959,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list {
   display: grid !important;
   gap: 0 !important;
   min-width: 0 !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: hidden !important;
 }
 
@@ -13588,27 +12998,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-r
   min-width: 0 !important;
   min-height: 36px !important;
   padding: 9px 11px !important;
-  border: 0 !important;
-  border-top: 1px solid var(--全息材质弱线) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
   overflow: hidden !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row-grid--single .dossier-row:first-child,
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-detail-host
-  .dossier-row-grid--two
-  .dossier-row:nth-child(-n + 2),
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-detail-host
-  .dossier-row-grid--three
-  .dossier-row:nth-child(-n + 3),
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row:first-child {
-  border-top: 0 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide {
@@ -13639,7 +13029,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-r
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.46 !important;
   font-weight: 600 !important;
-  text-shadow: var(--全息数值字影) !important;
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
@@ -13688,17 +13077,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
   position: relative !important;
   min-width: 0 !important;
   padding: 13px 14px 13px 16px !important;
-  border-left: 4px solid color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 11%, transparent), color-mix(in srgb, var(--主题主色) 2%, transparent)),
-    color-mix(in srgb, var(--暗场底板强) 24%, transparent) !important;
   color: rgba(229, 248, 253, 0.9) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.68 !important;
   font-style: italic !important;
   overflow-wrap: anywhere !important;
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--主题主色) 3.5%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive-note .mvu-inline-editable,
@@ -13716,7 +13099,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-identit
   display: grid !important;
   gap: 0 !important;
   min-width: 0 !important;
-  border-top: 1px solid color-mix(in srgb, var(--边线颜色) 11%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-identity-item,
@@ -13727,7 +13109,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-identit
   gap: 12px !important;
   min-width: 0 !important;
   padding: 11px 0 !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 7.5%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-identity-item b,
@@ -13750,15 +13131,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-identit
   overflow-wrap: anywhere !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputation-meter,
-#detailModal.mvu-modal-display-unified .social-reputation-meter,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-reputation-meter {
-  border-color: rgba(255, 214, 122, 0.18) !important;
-  background:
-    linear-gradient(180deg, rgba(255, 214, 122, 0.08), color-mix(in srgb, var(--主题主色) 2.5%, transparent)),
-    color-mix(in srgb, var(--暗场底板强) 20%, transparent) !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputation-meter .dossier-meter-head b,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputation-meter .dossier-meter-head span,
 #detailModal.mvu-modal-display-unified .social-reputation-meter .dossier-meter-head b,
@@ -13773,9 +13145,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputat
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-reputation-track {
   position: relative !important;
   height: 8px !important;
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 20%),
-    rgba(255, 255, 255, 0.07) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputation-track .dossier-meter-fill,
@@ -13809,12 +13178,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-reputat
 #detailModal.mvu-modal-display-unified .social-reputation-track i:nth-of-type(4),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-reputation-track i:nth-of-type(4) { left: 80% !important; }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-data-grid,
-#detailModal.mvu-modal-display-unified .social-data-grid,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-data-grid {
-  background: transparent !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > span em,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row > span small {
   color: var(--mvu-dossier-muted) !important;
@@ -13838,10 +13201,6 @@ body.mvu-layout-holo
   .dossier-section {
   align-content: start !important;
   padding: 10px 11px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  background: color-mix(in srgb, var(--暗场底板强) 20%, transparent) !important;
-  box-shadow: inset 0 0 16px color-mix(in srgb, var(--主题主色) 1.8%, transparent) !important;
   overflow: hidden !important;
 }
 
@@ -13919,13 +13278,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-topol
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-topology-board {
   min-height: 0 !important;
-  border-color: color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background:
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 58%),
-    linear-gradient(color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)) !important;
-  background-size: auto, 22px 22px, 22px 22px, auto !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-topology-board .topology-svg {
@@ -14140,8 +13492,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-analy
   gap: 7px !important;
   min-width: 0 !important;
   padding: 8px 10px !important;
-  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent) !important;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 4.5%, transparent), rgba(255, 255, 255, 0)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-analysis-line {
@@ -14151,12 +13501,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-analy
   min-width: 0 !important;
   align-items: start !important;
   padding-bottom: 7px !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 7%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-analysis-line:last-child {
   padding-bottom: 0 !important;
-  border-bottom: 0 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-analysis-line b {
@@ -14179,9 +13527,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-favor
   gap: 8px !important;
   min-width: 0 !important;
   padding: 10px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
-  background: rgba(3, 14, 22, 0.34) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-favor-head {
@@ -14207,9 +13552,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-favor
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-favor-track {
   height: 8px !important;
-  border-radius: 999px !important;
   overflow: hidden !important;
-  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-favor-track i {
@@ -14261,9 +13604,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-statu
   align-items: center !important;
   min-height: 18px !important;
   padding: 2px 7px !important;
-  border-radius: 999px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  background: color-mix(in srgb, var(--暗场底板强) 18%, transparent) !important;
   color: rgba(242, 250, 252, 0.9) !important;
   font-size: 9px !important;
   line-height: 1 !important;
@@ -14271,15 +13611,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-statu
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-status-capsules span.is-live {
-  border-color: rgba(104, 255, 186, 0.18) !important;
   color: #d7ffe9 !important;
-  background: rgba(104, 255, 186, 0.08) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-status-capsules span.is-warn {
-  border-color: rgba(255, 94, 115, 0.18) !important;
   color: #ffd5db !important;
-  background: rgba(255, 94, 115, 0.08) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-action-toolbar {
@@ -14296,12 +13632,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-
   gap: 6px !important;
   align-items: center !important;
   padding: 4px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent) !important;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 5.5%, transparent), transparent 58%),
-    color-mix(in srgb, var(--暗场底板强) 68%, transparent) !important;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.28) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-row::before {
@@ -14317,13 +13647,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-
   pointer-events: none !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-row:focus-within {
-  border-color: color-mix(in srgb, var(--主题主色) 28%, transparent) !important;
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.28),
-    0 0 0 3px color-mix(in srgb, var(--主题主色) 8%, transparent) !important;
-}
-
 body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-unified-detail-host
@@ -14333,7 +13656,6 @@ body.mvu-layout-holo
   min-height: 26px !important;
   height: 26px !important;
   padding: 3px 8px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   letter-spacing: 0 !important;
 }
@@ -14356,17 +13678,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-gift-
   height: 32px !important;
   min-height: 32px !important;
   padding: 4px 30px 4px 34px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  background:
-    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    linear-gradient(135deg, color-mix(in srgb, var(--暗场底板强) 92%, transparent), color-mix(in srgb, var(--暗场底板强) 92%, transparent)) !important;
   color: #dffaff !important;
   font-family: var(--font-tech) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
   outline: none !important;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-dossier-body {
@@ -14439,9 +13755,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill,
   justify-content: center !important;
   min-height: 28px !important;
   padding: 5px 11px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 18%, transparent), color-mix(in srgb, var(--暗场底板强) 78%, transparent)) !important;
   color: #f2fdff !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.1 !important;
@@ -14451,15 +13764,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill,
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill.live,
 #detailModal.mvu-modal-display-unified .dossier-pill.live {
-  border-color: color-mix(in srgb, var(--主题主色) 42%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 26%, transparent), color-mix(in srgb, var(--暗场底板强) 88%, transparent)) !important;
   color: #f6feff !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill.warn,
 #detailModal.mvu-modal-display-unified .dossier-pill.warn {
-  border-color: rgba(255, 211, 105, 0.38) !important;
-  background: linear-gradient(180deg, rgba(255, 211, 105, 0.2), rgba(46, 34, 12, 0.78)) !important;
   color: #fff0bd !important;
 }
 
@@ -14877,13 +14186,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-width: 28px;
   max-width: 28px;
   padding: 0;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 34%, transparent);
-  background: color-mix(in srgb, var(--暗场底板强) 86%, var(--主题主色) 7%);
   color: var(--文字主色);
-  box-shadow:
-    0 0 14px color-mix(in srgb, var(--主题主色) 10%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
   font-size: 0;
   line-height: 1;
@@ -14923,14 +14226,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   max-height: min(54svh, 440px);
   overflow: auto;
   padding: 10px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 42%, transparent);
-  background:
-    var(--介质纹理),
-    color-mix(in srgb, var(--暗场浮层) 96%, transparent);
-  box-shadow:
-    0 14px 32px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .mvu-quest-form-grid {
@@ -15855,20 +15150,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-pro
   gap: 6px !important;
   margin-top: 12px !important;
   padding-top: 12px !important;
-  border-top: 1px dashed var(--mvu-color-line-muted, rgba(255, 255, 255, 0.1)) !important;
 }
 #detailModal.mvu-modal-display-unified .mvu-detail-progress {
   display: grid !important;
   gap: 6px !important;
   margin-top: 12px !important;
   padding-top: 12px !important;
-  border-top: 1px dashed var(--mvu-color-line-muted, rgba(255, 255, 255, 0.1)) !important;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress--inline,
 #detailModal.mvu-modal-display-unified .mvu-detail-progress--inline {
   margin: 2px 0 0 !important;
   padding: 0 !important;
-  border-top: 0 !important;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-head,
 #detailModal.mvu-modal-display-unified .mvu-detail-progress-head {
@@ -15881,10 +15173,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-pro
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-track,
 #detailModal.mvu-modal-display-unified .mvu-detail-progress-track {
   height: 7px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
   overflow: hidden !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 13%, transparent) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-progress-fill,
 #detailModal.mvu-modal-display-unified .mvu-detail-progress-fill {
@@ -16031,12 +15320,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell-
 #detailModal.mvu-modal-display-unified .dossier-shell--life .archive-card,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .archive-card {
   padding: 16px 18px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .archive-card-head,
@@ -16048,7 +15331,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell-
   flex-wrap: nowrap !important;
   margin-bottom: 14px !important;
   padding-bottom: 0 !important;
-  border-bottom: 0 !important;
 }
 
 body.mvu-layout-holo
@@ -16115,18 +15397,8 @@ body.mvu-layout-holo
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .dossier-pill,
 #detailModal.mvu-modal-display-unified .dossier-shell--life .dossier-pill,
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-shell--life .dossier-pill {
-  border-color: color-mix(in srgb, var(--主题主色) 26%, transparent) !important;
-  background: color-mix(in srgb, var(--主题主色) 10%, transparent) !important;
   color: rgba(228, 250, 255, 0.96) !important;
   font-weight: 650 !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .dossier-pill.clickable:hover,
-#detailModal.mvu-modal-display-unified .dossier-shell--life .dossier-pill.clickable:hover,
-#detailModal.archive-redesign-mode .archive-redesign-root .dossier-shell--life .dossier-pill.clickable:hover {
-  border-color: color-mix(in srgb, var(--主题主色) 52%, transparent) !important;
-  background: color-mix(in srgb, var(--主题主色) 18%, transparent) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 12%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .dossier-section,
@@ -16134,10 +15406,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .dossier-section {
   padding: 6px 0 2px !important;
   gap: 8px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow,
@@ -16149,9 +15417,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-profile-flow,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-bonus-flow {
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
   gap: 8px !important;
   font-family:
     -apple-system,
@@ -16197,10 +15462,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profil
   gap: 5px !important;
   min-height: 58px !important;
   padding: 9px 10px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  background: rgba(255, 255, 255, 0.022) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.026) !important;
   overflow: visible !important;
 }
 
@@ -16213,10 +15474,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth
   gap: 6px !important;
   min-height: 64px !important;
   padding: 10px 12px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent) !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  background: color-mix(in srgb, var(--主题主色) 3.5%, transparent) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
   overflow: visible !important;
 }
 
@@ -16242,15 +15499,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profil
   width: 100% !important;
   max-width: 100% !important;
   padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
   color: color-mix(in srgb, var(--文字主色) 92%, transparent) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.5 !important;
   letter-spacing: 0 !important;
   font-weight: 520 !important;
-  box-shadow: none !important;
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
@@ -16359,9 +15612,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
   min-width: 0 !important;
   min-height: 28px !important;
   padding: 5px 10px 5px 26px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: rgba(255, 255, 255, 0.032) !important;
   color: color-mix(in srgb, var(--文字主色) 88%, transparent) !important;
   overflow: hidden !important;
 }
@@ -16426,8 +15676,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
   min-width: 0 !important;
   max-width: 100% !important;
   padding: 0 !important;
-  border-radius: 4px !important;
-  background: transparent !important;
   color: inherit !important;
   font: inherit !important;
   line-height: inherit !important;
@@ -16446,10 +15694,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
   min-width: 0 !important;
   min-height: 30px !important;
   padding: 5px 10px !important;
-  border: 1px solid color-mix(in srgb, var(--dossier-bonus-color) 22%, transparent) !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--dossier-bonus-color) 7.5%, transparent) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   gap: 6px !important;
   grid-template-columns: none !important;
   overflow: visible !important;
@@ -16497,10 +15741,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
   max-width: 100% !important;
   min-width: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
   color: color-mix(in srgb, var(--dossier-bonus-color) 96%, transparent) !important;
   font-size: 13px !important;
   line-height: 1.2 !important;
@@ -16545,8 +15785,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-
   display: inline !important;
   max-width: 100% !important;
   padding: 0 !important;
-  border-radius: 4px !important;
-  background: transparent !important;
   color: inherit !important;
   font-family: inherit !important;
   font-size: inherit !important;
@@ -16584,11 +15822,9 @@ body.mvu-layout-holo
   .dossier-row
   > span
   > .mvu-inline-editable:focus-visible {
-  background: transparent !important;
   padding: 0 !important;
   margin: 0 !important;
   outline: none !important;
-  box-shadow: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-wrap,
@@ -16687,10 +15923,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-empty-
   font-size: 12px !important;
   line-height: 1.35 !important;
   font-weight: 400 !important;
-  border: 1px dashed color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--暗场浮层) 96%, transparent) !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-card-head--profile,
@@ -16797,9 +16029,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   align-items: center !important;
   max-width: 100% !important;
   padding: 3px 7px !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  border: 1px solid rgba(77, 240, 255, 0.18) !important;
-  background: rgba(77, 240, 255, 0.08) !important;
   color: var(--cyan) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.25 !important;
@@ -16812,12 +16041,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   max-height: none !important;
   overflow: visible !important;
   padding: 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid rgba(143, 233, 255, 0.16) !important;
-  background: rgba(6, 16, 30, 0.97) !important;
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.24),
-    inset 0 0 12px rgba(143, 233, 255, 0.05) !important;
   text-align: left !important;
   -webkit-font-smoothing: antialiased;
 }
@@ -16832,9 +16055,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   display: block !important;
   margin: 0 !important;
   padding: 5px 7px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid rgba(77, 240, 255, 0.1) !important;
-  background: rgba(77, 240, 255, 0.05) !important;
   color: var(--white) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.3 !important;
@@ -16992,10 +16212,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   max-height: var(--mvu-hud-frame-height, clamp(480px, calc(100svh - 220px), 660px));
   overflow: visible;
   isolation: isolate;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
   color: var(--mvu-holo-text);
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   perspective: 1200px;
@@ -17163,20 +16379,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   height: 28px;
   min-width: 0;
   padding: 0 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   color: var(--mvu-holo-text);
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
   color: var(--mvu-holo-main);
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn:hover,
@@ -17206,9 +16417,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
   gap: 6px;
   min-width: 0;
   padding: 5px 7px;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 42%, transparent);
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar-main {
@@ -17232,21 +16440,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-status-strip {
   min-width: 0;
   min-height: 30px;
   padding: 3px 6px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch {
   min-height: 24px;
   padding: 2px 7px;
-  border-color: transparent;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch .char-emblem {
@@ -17264,15 +16462,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-character-switch .char-name
   font-size: 12px;
   font-weight: 780;
   line-height: 1;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc {
   align-items: center;
   min-width: 0;
   padding-left: 9px;
-  border-left: 0;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc span {
@@ -17298,7 +16493,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-title {
   font-size: 13px;
   font-weight: 850;
   line-height: 1.2;
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -17327,17 +16521,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn {
   min-width: 0;
   min-height: 30px;
   padding: 0 8px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   color: var(--mvu-holo-muted);
   font-family: inherit;
   font-size: 12px;
   font-weight: 760;
   letter-spacing: 0;
   line-height: 1;
-  text-shadow: none;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::before,
@@ -17349,17 +16538,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn::after {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn:focus-visible {
   color: var(--mvu-holo-text);
-  background: transparent;
-  box-shadow: none;
   outline: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn.active,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-btn[aria-pressed='true'] {
   color: var(--mvu-holo-high);
-  background: transparent;
-  box-shadow: none;
-  text-shadow: none;
 }
 
 body.noShadows.mvu-layout-holo #mvu-unified-mount
@@ -17432,14 +16616,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   padding: 0;
   overflow: hidden;
   white-space: nowrap;
-  border: 0;
-  border-right: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
   pointer-events: auto;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   transition:
     width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.12),
     background 0.24s ease,
@@ -17451,8 +16628,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open {
   width: var(--主题抽屉展开宽度);
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
@@ -17465,16 +16640,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   min-width: 32px;
   height: 38px;
   padding: 0;
-  border: 0;
-  border-right: 0;
-  border-radius: 0;
-  background: transparent;
   color: var(--全息材质侧线);
   font-size: 10px;
   font-weight: 780;
   line-height: 1;
-  text-shadow: none;
-  box-shadow: none;
   cursor: pointer;
   opacity: 0.88;
 }
@@ -17548,12 +16717,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
   padding: 8px;
   overflow: hidden;
   isolation: auto;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   container-name: mvu-dashboard-area;
   container-type: inline-size;
   transform-origin: center;
@@ -17590,7 +16753,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack > * {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-detail .mvu-unified-page-stack {
   opacity: 0;
   visibility: hidden;
-  filter: none;
   transform: none;
   pointer-events: none;
   user-select: none;
@@ -17645,9 +16807,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-back {
   flex: 0 0 auto;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mvu-holo-main) 8%, transparent);
   color: var(--mvu-holo-high);
   font-size: 18px;
   line-height: 1;
@@ -17656,7 +16815,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-back {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-back:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-back:focus-visible {
-  border-color: var(--mvu-holo-line);
   color: var(--mvu-holo-main);
   outline: none;
 }
@@ -17710,16 +16868,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   padding: 6px;
   overflow-x: hidden;
   overflow-y: auto;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
   color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   scrollbar-width: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::before,
@@ -17772,12 +16924,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root,
   gap: 12px;
   padding: 12px;
   overflow: hidden;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-slab-root::before,
@@ -18013,13 +17159,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  background-clip: border-box;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -18076,14 +17215,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
-  box-shadow: none;
   transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:focus-within {
-  background: transparent;
-  box-shadow: none;
   transform: translateX(4px);
 }
 
@@ -18094,12 +17230,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   overflow: hidden;
 }
 
@@ -18115,8 +17245,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within {
-  background: transparent;
-  box-shadow: none;
   transform: translateX(4px);
 }
 
@@ -18147,7 +17275,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
   min-width: 0;
   height: auto;
   padding: 4px 0 12px;
-  border-bottom: 0;
   color: var(--mvu-holo-text);
   overflow: hidden;
 }
@@ -18159,9 +17286,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-core-section {
   gap: 9px;
   min-width: 0;
   padding: 10px 0 12px;
-  border-bottom: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-core-section--radar {
@@ -18191,7 +17315,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid strong {
   font-size: 17px;
   font-weight: 860;
   line-height: 1.08;
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18204,9 +17327,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack span {
   min-width: 0;
   gap: 4px;
   padding: 6px 0;
-  border-bottom: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid span {
@@ -18215,7 +17335,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid span {
   align-items: center;
   gap: 0;
   padding: 0;
-  border-bottom: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid b,
@@ -18243,7 +17362,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack em {
   font-style: normal;
   font-weight: 600;
   line-height: 1.18;
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18252,12 +17370,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em {
   flex: 0 1 auto;
   color: var(--全息标签文字);
   font-size: 12px;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em:first-child {
   color: var(--全息数值文字);
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-identity-grid em + em::before {
@@ -18289,16 +17405,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head span {
   color: var(--全息标题文字);
   font-size: 13px;
   font-weight: 850;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-panel-head b {
   flex: 0 0 auto;
   max-width: 46%;
   padding: 3px 7px;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
   color: var(--mvu-holo-main);
   font-size: 10px;
   font-weight: 800;
@@ -18357,7 +17469,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led label span {
   flex: 0 0 auto;
   color: var(--全息数值文字);
   font: 850 12px var(--font-mono, "Cascadia Code", Consolas, monospace);
-  text-shadow: none;
   white-space: nowrap;
 }
 
@@ -18370,7 +17481,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough label {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough label span {
   color: var(--mvu-holo-high);
   font-size: 11px;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track {
@@ -18378,9 +17488,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track {
   height: 12px;
   padding: 2px 0;
   overflow: hidden;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i {
@@ -18400,7 +17507,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led--breakthrough .mvu-archive-led-track {
   height: 9px;
   padding: 2px 0;
-  background: transparent;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-led-track i::after {
@@ -18596,8 +17702,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card {
   min-height: 0;
   height: 100%;
   overflow: visible;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-card--empty {
@@ -18631,7 +17735,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.1;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b i {
@@ -18639,15 +17742,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name b i {
   max-width: 76px;
   overflow: hidden;
   padding: 2px 6px;
-  border: 0;
-  border-radius: 0;
   color: var(--mvu-holo-main);
   font-size: 10px;
   font-style: normal;
   font-weight: 760;
   line-height: 1;
   text-overflow: ellipsis;
-  text-shadow: none;
   white-space: nowrap;
 }
 
@@ -18782,10 +17882,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-empty-orbit {
   width: min(178px, 70%);
   aspect-ratio: 1;
   margin: auto;
-  border-radius: 0;
   opacity: 0.9;
-  background: transparent;
-  filter: none;
   animation: mvu-archive-deep-breath 4s ease-in-out infinite;
 }
 
@@ -18837,9 +17934,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot span {
   min-width: 0;
   gap: 4px;
   padding: 7px 0 7px 6px;
-  border-bottom: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link b,
@@ -18863,7 +17957,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot em {
   font-style: normal;
   font-weight: 600;
   line-height: 1.12;
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -18891,11 +17984,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell {
   min-width: 0;
   gap: 4px;
   padding: 3px 0 3px 6px;
-  border-left: 0;
-  border-bottom: 0;
-  background: transparent;
   color: rgba(255, 255, 255, 0.65);
-  box-shadow: none;
   transition:
     background 0.18s ease,
     transform 0.18s ease,
@@ -18916,7 +18005,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact .mvu-arc
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact .mvu-archive-gear-cell b {
   width: auto;
   aspect-ratio: auto;
-  border-radius: 999px;
   padding: 4px 8px;
   font-size: 12px;
 }
@@ -18948,21 +18036,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--loadout .mvu-arc
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-live {
   color: var(--mvu-holo-high);
-  box-shadow: none;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-epic {
-  box-shadow: none;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell.is-rare {
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell:hover {
-  background: transparent;
   transform: translateX(4px);
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell b,
@@ -18985,12 +18062,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell b {
   display: grid;
   place-items: center;
   width: 14px;
-  border-radius: 0;
-  background: transparent;
   font-size: 12px;
   font-weight: 900;
-  box-shadow: none;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell em {
@@ -18999,7 +18072,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-cell em {
   font-size: 10px;
   font-style: normal;
   font-weight: 600;
-  text-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack {
@@ -19012,7 +18084,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-stack {
   flex: 1 1 auto;
   align-content: start;
   overflow: visible;
-  background: transparent;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack {
@@ -19025,7 +18096,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-intel-stack {
   align-content: start;
   overflow-y: auto;
   scrollbar-width: thin;
-  background: transparent;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window {
@@ -19033,10 +18103,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window {
   gap: 6px;
   min-width: 0;
   padding: 8px 0 10px;
-  border-left: 0;
-  border-bottom: 0;
-  background: transparent;
-  box-shadow: none;
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -19047,14 +18113,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:last-child {
-  border-bottom: 0;
   padding-bottom: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window:focus-visible {
-  background: transparent;
-  box-shadow: none;
   outline: none;
   transform: translateX(4px);
 }
@@ -19081,14 +18144,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head span {
   min-width: 0;
   overflow: hidden;
   padding: 0;
-  border-bottom: 0;
-  background: transparent;
-  box-shadow: none;
   color: var(--mvu-holo-high);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.12;
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -19097,9 +18156,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-head b {
   flex: 0 0 auto;
   max-width: 46%;
   padding: 3px 7px;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
   color: var(--mvu-holo-main);
   font-size: 10px;
   font-weight: 800;
@@ -19123,7 +18179,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link {
-  border-left: 0;
   color: inherit;
   text-decoration: none;
   cursor: pointer;
@@ -19132,9 +18187,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link:focus-visible {
-  background: transparent;
   outline: none;
-  box-shadow: none;
   transform: translateX(4px);
 }
 
@@ -19168,10 +18221,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log {
   min-width: 0;
   padding: 9px 0;
   overflow: hidden;
-  border: 0;
-  border-bottom: 0;
-  border-radius: 0;
-  background: transparent;
   flex-shrink: 0;
 }
 
@@ -19186,7 +18235,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log span {
   overflow: hidden;
   color: #ffffff;
   font: 600 12px/1.25 var(--font-mono, "Cascadia Code", Consolas, monospace);
-  text-shadow: none;
   text-overflow: ellipsis;
   white-space: nowrap;
   animation: mvu-archive-log-reveal 0.55s steps(14, end) both;
@@ -19275,7 +18323,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-card-title {
   letter-spacing: 0.04em;
   line-height: 1.2;
   text-overflow: ellipsis;
-  text-shadow: 0 0 10px var(--mvu-holo-glow);
   white-space: nowrap;
 }
 
@@ -19284,8 +18331,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-card-badge {
   max-width: 42%;
   overflow: hidden;
   padding: 3px 7px;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: 999px;
   color: var(--mvu-holo-main);
   font-size: 10px;
   line-height: 1.1;
@@ -19312,13 +18357,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric {
   min-width: 0;
   min-height: 30px;
   padding: 7px 9px;
-  border-radius: 6px 10px 10px 6px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--mvu-holo-main) 4%, transparent), transparent 72%),
-    rgba(255, 255, 255, 0.018);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--mvu-holo-main) 8%, transparent),
-    inset 0 0 12px color-mix(in srgb, var(--mvu-holo-main) 3%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-row {
@@ -19354,7 +18392,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric span {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.35;
-  text-shadow: var(--原型文字辉光);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -19376,12 +18413,10 @@ body.mvu-layout-holo #mvu-unified-mount .world-hud-clock {
   min-width: 0;
   gap: 4px;
   padding: 6px 0 8px;
-  border-bottom: 1px solid var(--mvu-holo-line-soft);
   color: var(--mvu-holo-text);
   font-size: 22px;
   font-weight: 760;
   line-height: 1.12;
-  text-shadow: 0 0 18px var(--mvu-holo-glow);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .world-hud-date,
@@ -19410,9 +18445,6 @@ body.mvu-layout-holo #mvu-unified-mount .world-hud-meta-grid span {
   min-width: 0;
   gap: 4px;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.045);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .world-hud-meta-grid b,
@@ -19456,35 +18488,12 @@ body.mvu-layout-holo #mvu-unified-mount .world-alert-bar > span {
   display: block;
   height: 12px;
   overflow: hidden;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: 999px;
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 11px),
-    rgba(255, 255, 255, 0.045);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .world-alert-bar > span b {
   display: block;
   height: 100%;
   max-width: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(92, 235, 187, 0.94), rgba(118, 245, 214, 0.76));
-  box-shadow: 0 0 14px rgba(92, 235, 187, 0.28);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .world-alert-bar.is-gold > span b {
-  background: linear-gradient(90deg, rgba(255, 199, 103, 0.96), rgba(255, 232, 142, 0.74));
-  box-shadow: 0 0 14px rgba(255, 199, 103, 0.25);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .world-alert-bar.is-warn > span b {
-  background: linear-gradient(90deg, rgba(255, 112, 112, 0.96), rgba(255, 181, 133, 0.74));
-  box-shadow: 0 0 14px rgba(255, 112, 112, 0.28);
-}
-
-body.mvu-layout-holo #mvu-unified-mount .world-alert-bar.is-muted > span b {
-  background: rgba(183, 211, 222, 0.32);
-  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .world-hud-context-grid {
@@ -19540,9 +18549,6 @@ body.mvu-layout-holo #mvu-unified-mount .terminal-quest-item {
   min-width: 0;
   min-height: 46px;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .terminal-quest-item--wide {
@@ -19645,9 +18651,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-head > b {
   place-items: center;
   min-width: 38px;
   padding: 4px 7px;
-  border: 1px solid var(--mvu-holo-line-soft);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--mvu-holo-main) 10%, transparent);
   color: var(--mvu-holo-main);
   font-size: 10px;
   line-height: 1;
@@ -19655,8 +18658,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-head > b {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-head > b.is-gold {
-  border-color: rgba(255, 211, 105, 0.24);
-  background: rgba(255, 211, 105, 0.08);
   color: var(--mvu-holo-high);
 }
 
@@ -19664,7 +18665,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-summary {
   display: grid;
   gap: 4px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--mvu-holo-line-soft);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-line {
@@ -19770,7 +18770,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-spirit-name {
   letter-spacing: 0.03em;
   line-height: 1.12;
   text-overflow: ellipsis;
-  text-shadow: 0 0 14px var(--mvu-holo-glow);
   white-space: nowrap;
 }
 
@@ -19796,7 +18795,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard .terminal-home-me
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard .org-mini-metrics strong,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard .world-mini-metrics strong {
   color: var(--mvu-holo-high) !important;
-  text-shadow: 0 0 10px var(--mvu-holo-glow);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard .map-side-badge,
@@ -20453,7 +19451,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center;
   justify-content: center;
   padding: 18px 24px calc(18px + env(safe-area-inset-bottom, 0px));
-  background: rgba(3, 6, 9, 0.12);
   --mvu-dossier-panel: transparent;
   --mvu-dossier-panel-soft: transparent;
   --mvu-dossier-line: var(--全息材质弱线);
@@ -20469,13 +19466,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   max-width: min(1120px, calc(100vw - 48px)) !important;
   min-height: 0 !important;
   max-height: min(86svh, 920px) !important;
-  border: 0;
-  border-radius: 0;
   overflow: hidden;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-modal-panel::before {
@@ -20504,8 +19495,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   z-index: 4;
   min-height: 84px;
   padding: 14px 18px 12px;
-  background: transparent;
-  border-bottom: 1px solid var(--原型弱分隔线);
 }
 
 #detailModal.mvu-modal-display-unified .modal-title {
@@ -20518,7 +19507,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   padding: 12px 14px 16px !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  background: transparent !important;
 }
 
 #detailModal.mvu-modal-display-unified .archive-modal-grid,
@@ -20596,12 +19584,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   cursor: pointer !important;
 }
 
-#detailModal.mvu-modal-display-unified .dossier-card--faction-list .faction-row:hover,
-#detailModal.mvu-modal-display-unified .dossier-card--faction-list .faction-row.active {
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent) !important;
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
-}
-
 #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card .dossier-form-row--donate {
   grid-template-columns: minmax(130px, 0.32fr) minmax(0, 1fr) 96px 120px !important;
 }
@@ -20612,9 +19594,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 8px !important;
   min-width: 0 !important;
   padding: 10px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 7.5%, transparent), rgba(255, 255, 255, 0.025)) !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-meter--green {
@@ -20654,8 +19633,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .dossier-meter-track {
   height: 6px !important;
   overflow: hidden !important;
-  border-radius: var(--mvu-radius-pill, 999px) !important;
-  background: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08)) !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-meter-fill {
@@ -20669,11 +19646,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   display: grid !important;
   align-items: center !important;
   padding: 10px 12px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--mvu-dossier-muted) !important;
-  box-shadow: none !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-card--life-profile {
@@ -20727,12 +19700,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .nsfw-theme-card {
   min-height: 0 !important;
   padding: 14px !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 #detailModal.mvu-modal-display-unified .archive-card.full {
@@ -20771,14 +19738,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 10px !important;
   margin-bottom: 14px !important;
   padding-bottom: 0 !important;
-  border-bottom: 0 !important;
 }
 
 #detailModal.mvu-modal-display-unified .archive-card-title {
   font-size: var(--mvu-font-md, 14px) !important;
   line-height: 1.3 !important;
   color: var(--全息材质侧线) !important;
-  text-shadow: 0 0 8px var(--全息材质魂影) !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-section {
@@ -20787,20 +19752,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0 !important;
   min-height: max-content !important;
   padding: 12px !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: visible !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-shell--life .dossier-section {
   padding: 6px 0 2px !important;
   gap: 8px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-section-title {
@@ -20813,7 +19770,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   line-height: 1.25 !important;
   font-weight: 700 !important;
   letter-spacing: 0.03em !important;
-  text-shadow: var(--全息标题字影) !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-section-title::before {
@@ -20842,10 +19798,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   display: grid !important;
   gap: 0 !important;
   min-width: 0 !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: hidden !important;
 }
 
@@ -20859,8 +19811,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center !important;
   grid-template-columns: none !important;
   gap: 8px !important;
-  border: 0 !important;
-  background: transparent !important;
   overflow: visible !important;
 }
 
@@ -20999,14 +19949,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center !important;
   gap: 8px !important;
   padding: 7px 9px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 7%, transparent), rgba(0, 0, 0, 0.2)),
-    rgba(3, 13, 20, 0.48) !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 22%, transparent) !important;
   overflow: hidden !important;
 }
 
@@ -21014,43 +19956,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   cursor: pointer !important;
 }
 
-#detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.clickable:hover {
-  border-color: color-mix(in srgb, var(--边线颜色) 38%, transparent) !important;
-  background:
-    radial-gradient(circle at 72% 0%, color-mix(in srgb, var(--边线颜色) 18%, transparent), transparent 56%),
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 12%, transparent), rgba(0, 0, 0, 0.2)),
-    color-mix(in srgb, var(--暗场底板强) 62%, transparent) !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.32),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 64%, transparent),
-    0 0 18px color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.is-active {
-  border-color: color-mix(in srgb, var(--边线颜色) 28%, transparent) !important;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(113, 255, 207, 0.12), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 10%, transparent), rgba(0, 0, 0, 0.18)),
-    rgba(3, 16, 24, 0.58) !important;
-}
-
-#detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.is-standby {
-  border-color: rgba(246, 199, 107, 0.24) !important;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(246, 199, 107, 0.12), transparent 58%),
-    linear-gradient(135deg, rgba(246, 199, 107, 0.08), rgba(0, 0, 0, 0.2)),
-    rgba(18, 15, 9, 0.54) !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 rgba(246, 199, 107, 0.28) !important;
-}
-
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.is-empty {
   opacity: 0.48 !important;
-  border-style: dashed !important;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.48),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
 }
 
 #detailModal.mvu-modal-display-unified .mvu-armory-gear-slot.is-standby .mvu-armory-gear-head i {
@@ -21134,7 +20041,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   position: relative !important;
   height: 100% !important;
   min-height: 0 !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
   overflow: hidden !important;
   cursor: default !important;
   touch-action: pan-y !important;
@@ -21166,9 +20072,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   height: auto !important;
   max-height: none !important;
   padding: 10px 12px 12px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.024)),
-    color-mix(in srgb, var(--暗场底板强) 86%, transparent) !important;
   animation: relation-dossier-refresh 0.16s ease-out;
   overflow: visible !important;
 }
@@ -21229,19 +20132,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0 !important;
   min-height: 36px !important;
   padding: 9px 11px !important;
-  border: 0 !important;
-  border-top: 1px solid color-mix(in srgb, var(--边线颜色) 7.5%, transparent) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
   overflow: hidden !important;
-}
-
-#detailModal.mvu-modal-display-unified .dossier-row-grid--single .dossier-row:first-child,
-#detailModal.mvu-modal-display-unified .dossier-row-grid--two .dossier-row:nth-child(-n + 2),
-#detailModal.mvu-modal-display-unified .dossier-row-grid--three .dossier-row:nth-child(-n + 3),
-#detailModal.mvu-modal-display-unified .dossier-list-row:first-child {
-  border-top: 0 !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-row--wide {
@@ -21272,7 +20163,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.46 !important;
   font-weight: 600 !important;
-  text-shadow: var(--全息数值字影) !important;
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
@@ -21335,13 +20225,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .relation-topology-board,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-topology-board {
   min-height: 0 !important;
-  border-color: color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background:
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 58%),
-    linear-gradient(color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2.8%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)) !important;
-  background-size: auto, 22px 22px, 22px 22px, auto !important;
 }
 
 #detailModal.mvu-modal-display-unified .relation-topology-board .topology-svg,
@@ -21596,8 +20479,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 7px;
   min-width: 0;
   padding: 8px 10px;
-  border-left: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 4.5%, transparent), rgba(255, 255, 255, 0));
 }
 
 #detailModal.mvu-modal-display-unified .relation-analysis-line,
@@ -21608,13 +20489,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0;
   align-items: start;
   padding-bottom: 7px;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 7%, transparent);
 }
 
 #detailModal.mvu-modal-display-unified .relation-analysis-line:last-child,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-analysis-line:last-child {
   padding-bottom: 0;
-  border-bottom: 0;
 }
 
 #detailModal.mvu-modal-display-unified .relation-analysis-line b,
@@ -21640,9 +20519,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 8px;
   min-width: 0;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent);
-  background: rgba(3, 14, 22, 0.34);
 }
 
 #detailModal.mvu-modal-display-unified .relation-favor-head,
@@ -21672,9 +20548,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .relation-favor-track,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-favor-track {
   height: 8px;
-  border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
 }
 
 #detailModal.mvu-modal-display-unified .relation-favor-track i,
@@ -21721,9 +20595,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 8px;
   min-height: 30px;
   padding: 4px 6px 4px 10px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 20%, transparent);
-  background: rgba(3, 13, 22, 0.72);
 }
 
 #detailModal.mvu-modal-display-unified .relation-search-shell span,
@@ -21742,11 +20613,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   width: 100%;
   height: 26px;
   padding: 0 28px 0 10px;
-  border: 0;
-  border-radius: var(--mvu-radius-pill, 999px);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--主题主色) 16%, transparent), rgba(255, 255, 255, 0.03)),
-    color-mix(in srgb, var(--暗场底板强) 82%, transparent);
   color: rgba(241, 253, 255, 0.96);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 750;
@@ -21792,9 +20658,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   align-items: center;
   min-height: 18px;
   padding: 2px 7px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent);
-  background: color-mix(in srgb, var(--暗场底板强) 18%, transparent);
   color: rgba(242, 250, 252, 0.9);
   font-size: 9px;
   line-height: 1;
@@ -21803,16 +20666,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .relation-status-capsules span.is-live,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-status-capsules span.is-live {
-  border-color: rgba(104, 255, 186, 0.18);
   color: #d7ffe9;
-  background: rgba(104, 255, 186, 0.08);
 }
 
 #detailModal.mvu-modal-display-unified .relation-status-capsules span.is-warn,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-status-capsules span.is-warn {
-  border-color: rgba(255, 94, 115, 0.18);
   color: #ffd5db;
-  background: rgba(255, 94, 115, 0.08);
 }
 
 #detailModal.mvu-modal-display-unified .relation-action-toolbar,
@@ -21830,12 +20689,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 6px;
   align-items: center;
   padding: 4px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 5.5%, transparent), transparent 58%),
-    color-mix(in srgb, var(--暗场底板强) 68%, transparent);
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.28);
 }
 
 #detailModal.mvu-modal-display-unified .relation-gift-row::before,
@@ -21852,14 +20705,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   pointer-events: none;
 }
 
-#detailModal.mvu-modal-display-unified .relation-gift-row:focus-within,
-#detailModal.archive-redesign-mode .archive-redesign-root .relation-gift-row:focus-within {
-  border-color: color-mix(in srgb, var(--主题主色) 28%, transparent);
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.28),
-    0 0 0 3px color-mix(in srgb, var(--主题主色) 8%, transparent);
-}
-
 #detailModal.mvu-modal-display-unified .dossier-shell--relation .relation-action-btn[data-relation-action],
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-shell--relation .relation-action-btn[data-relation-action] {
   position: relative;
@@ -21867,9 +20712,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-height: 26px;
   height: 26px;
   padding: 3px 8px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 58%, transparent);
-  background: color-mix(in srgb, var(--暗场底板强) 84%, transparent);
   color: var(--cyan);
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
@@ -21894,9 +20736,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .relation-action-btn:hover:not(:disabled),
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
   color: #fff;
 }
 
@@ -21905,9 +20744,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   position: relative;
   opacity: 0.4;
   cursor: not-allowed;
-  box-shadow: none;
   transform: none;
-  filter: grayscale(0.2);
 }
 
 #detailModal.mvu-modal-display-unified .relation-gift-select,
@@ -21919,17 +20756,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   height: 32px;
   min-height: 32px;
   padding: 4px 30px 4px 34px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent);
-  background:
-    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    linear-gradient(135deg, color-mix(in srgb, var(--暗场底板强) 92%, transparent), color-mix(in srgb, var(--暗场底板强) 92%, transparent));
   color: #dffaff;
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
   outline: none;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26);
 }
 
 #detailModal.mvu-modal-display-unified .dossier-list-row > span strong,
@@ -21989,7 +20820,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   #detailModal.mvu-modal-display-unified {
     align-items: flex-end;
     padding: 0 4px calc(8px + env(safe-area-inset-bottom, 0px));
-    background: rgba(3, 6, 9, 0.1);
   }
 
   #detailModal.mvu-modal-display-unified .mvu-modal-panel,
@@ -21998,7 +20828,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     max-width: calc(100vw - 8px) !important;
     min-height: min(320px, 60svh) !important;
     max-height: min(90svh, calc(var(--mvu-unified-frame-max-height, 640px) - 20px)) !important;
-    border-radius: var(--mvu-radius-xl, 20px) var(--mvu-radius-xl, 20px) 0 0;
   }
 
   #detailModal.mvu-modal-display-unified .modal-head {
@@ -22288,7 +21117,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-md, 14px);
   letter-spacing: 0.06em;
   color: var(--全息材质侧线);
-  text-shadow: 0 0 8px var(--全息材质魂影);
 }
 
 #detailModal .archive-tile-grid {
@@ -22315,10 +21143,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0;
   min-height: 82px;
   padding: 12px 14px !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal .mvu-detail-intel-card {
@@ -22330,10 +21154,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 6px;
   min-width: 0;
   padding: 12px 14px !important;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal .archive-tile b,
@@ -22359,7 +21179,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-md, 14px) !important;
   line-height: 1.55 !important;
   color: var(--全息数值文字) !important;
-  text-shadow: var(--全息数值字影) !important;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -22406,10 +21225,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-detail-grid--refined > .archive-card {
   padding: 14px 20px 16px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal .location-detail-grid--refined .archive-card-head {
@@ -22419,7 +21234,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 0;
-  border-bottom: 0;
 }
 
 #detailModal .location-detail-grid--refined .archive-card-head::after {
@@ -22452,7 +21266,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   gap: 14px;
   min-width: 0;
   padding-right: 18px;
-  border-right: 1px solid color-mix(in srgb, var(--主题主色) 18%, transparent);
 }
 
 #detailModal .location-intel-title {
@@ -22486,7 +21299,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   gap: 12px;
   min-width: 0;
   padding: 0;
-  border-left: 0;
   color: rgba(226, 245, 250, 0.84);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.55;
@@ -22659,9 +21471,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   align-items: center;
   gap: 9px;
   padding: 9px 12px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 18%, transparent);
-  background: rgba(4, 18, 27, 0.38);
   color: #f4fcff;
   text-align: left;
   overflow: hidden;
@@ -22716,9 +21525,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   align-items: center;
   min-width: 0;
   padding: 10px 11px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  background: rgba(4, 16, 25, 0.4);
 }
 
 #detailModal .location-npc-main {
@@ -22738,19 +21544,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   flex: 0 0 auto;
   width: 8px;
   height: 8px;
-  border-radius: 999px;
-  background: #54f0b2;
-  box-shadow: 0 0 10px rgba(84, 240, 178, 0.52);
-}
-
-#detailModal .location-npc-status.is-warn {
-  background: #f3c969;
-  box-shadow: 0 0 10px rgba(243, 201, 105, 0.5);
-}
-
-#detailModal .location-npc-status.is-danger {
-  background: #ff637d;
-  box-shadow: 0 0 10px rgba(255, 99, 125, 0.55);
 }
 
 #detailModal .location-npc-title b {
@@ -22784,8 +21577,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   max-width: 100%;
   min-width: 0;
   padding: 4px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
   color: rgba(203, 226, 233, 0.78);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.1;
@@ -22808,7 +21599,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   min-width: 52px;
   min-height: 34px;
   padding: 7px 9px;
-  border-radius: var(--mvu-radius-sm, 8px);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.1;
 }
@@ -22829,7 +21619,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 #detailModal .location-empty-note {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.12);
   color: rgba(225, 243, 248, 0.72);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
@@ -22888,13 +21677,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   gap: 8px;
   min-width: 0;
   padding: 8px 10px;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 72%),
-    rgba(255, 255, 255, 0.018);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 5.5%, transparent),
-    inset 0 0 12px color-mix(in srgb, var(--主题主色) 3.5%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-stats b,
@@ -22913,7 +21695,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   color: #ffffff;
   font: 850 13px/1 "Consolas", "Microsoft YaHei", monospace;
   font-style: normal;
-  text-shadow: var(--原型文字辉光);
   white-space: nowrap;
 }
 
@@ -22934,13 +21715,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-trac
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid color-mix(in srgb, var(--主题主色) 16%, transparent);
-  background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 52%),
-    rgba(255, 255, 255, 0.014);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 5.5%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 2.4%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-track-head,
@@ -22951,8 +21725,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-trac
   gap: 10px;
   min-width: 0;
   padding: 9px 11px;
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 10%, transparent);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 7%, transparent), transparent 68%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-track-head b,
@@ -22961,7 +21733,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-trac
   font-size: 11px;
   font-weight: 850;
   line-height: 1;
-  text-shadow: 0 0 8px color-mix(in srgb, var(--主题主色) 34%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-track-head span,
@@ -22992,12 +21763,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   gap: 5px;
   min-width: 0;
   padding: 10px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 72%),
-    rgba(255, 255, 255, 0.018);
-  box-shadow:
-    inset 2px 0 0 color-mix(in srgb, var(--主题主色) 22%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 8%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-latest b,
@@ -23036,18 +21801,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-term
   gap: 5px;
   min-width: 0;
   padding: 9px 10px 9px 13px;
-  background: rgba(255, 255, 255, 0.014);
-  box-shadow:
-    inset 2px 0 0 color-mix(in srgb, var(--主题主色) 22%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 4.5%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-terminal-record:hover,
 #detailModal .mvu-intel-terminal-record:hover {
   transform: translateX(2px);
-  box-shadow:
-    inset 2px 0 0 color-mix(in srgb, var(--主题主色) 70%, transparent),
-    inset 0 0 16px color-mix(in srgb, var(--主题主色) 6%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-record-head,
@@ -23083,8 +21841,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-writ
 #detailModal .mvu-intel-write-btn {
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 18%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 6.5%, transparent);
   color: rgba(226, 252, 255, 0.92);
   font-size: 10px;
   font-weight: 800;
@@ -23107,10 +21863,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
   min-width: 0;
   flex-shrink: 0;
   padding: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 16%, transparent);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 3.5%, transparent), transparent 72%),
-    rgba(255, 255, 255, 0.014);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draft-head,
@@ -23146,9 +21898,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
   max-height: 150px;
   padding: 10px 12px;
   resize: none;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  border-radius: 0;
-  background: rgba(2, 8, 15, 0.36);
   color: rgba(240, 252, 255, 0.96);
   font: 800 12px/1.35 "Consolas", "Microsoft YaHei", monospace;
   transition: height 0.22s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -23158,8 +21907,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
 #detailModal .mvu-intel-draft-console:focus-within .mvu-intel-draft-input {
   height: 150px;
   overflow-y: auto;
-  border-color: color-mix(in srgb, var(--主题主色) 34%, transparent);
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--主题主色) 5.5%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-write-btn,
@@ -23174,16 +21921,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draf
   z-index: 10090;
   inset: 48px;
   grid-template-rows: auto minmax(0, 1fr);
-  background:
-    linear-gradient(color-mix(in srgb, var(--主题主色) 2.2%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 2%, transparent) 1px, transparent 1px),
-    color-mix(in srgb, var(--暗场底板强) 90%, transparent);
-  background-size: 24px 24px, 24px 24px, auto;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 18%, transparent),
-    0 18px 52px rgba(0, 0, 0, 0.56);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-draft-console.is-fullscreen .mvu-intel-draft-row,
@@ -23214,11 +21951,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-intel-empt
 #detailModal .mvu-intel-empty-scan i {
   width: 48px;
   aspect-ratio: 1;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 16%, transparent);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 48%),
-    repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--主题主色) 6%, transparent) 6px 7px);
   opacity: 0.62;
 }
 
@@ -23296,11 +22028,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-intel-
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.7;
   color: var(--white);
-  background: transparent;
   padding: 14px;
-  border-radius: 0;
-  border: 0;
-  box-shadow: none;
 }
 
 #detailModal .intel-pending-impact {
@@ -23322,7 +22050,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-intel-
   font-size: var(--mvu-font-xl, 18px);
   color: var(--文字主色);
   font-weight: 700;
-  text-shadow: var(--原型文字辉光);
 }
 
 #detailModal .intel-empty-state {
@@ -23356,7 +22083,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-intel-
 
 #detailModal .legend-chip {
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
 }
 
 #detailModal .legend-chip b {
@@ -23381,13 +22107,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   min-width: 0;
   min-height: 46px;
   padding: 10px 14px;
-  border-radius: var(--卡片圆角);
-  border: 0;
-  background: var(--全息材质底);
   color: var(--文字主色);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
   font-family: var(--font-title);
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.35;
@@ -23405,31 +22125,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal .map-dispatch-action-btn:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:hover {
   transform: translateY(-1px);
-  background: var(--全息材质悬停底);
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent);
 }
 #detailModal .map-dispatch-action-btn.live,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.live {
-  border-color: color-mix(in srgb, var(--主题主色) 26%, transparent);
   color: var(--文字主色);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
 }
 #detailModal .map-dispatch-action-btn.warn,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.warn {
   color: var(--文字弱色);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 16%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 4%, transparent);
 }
 #detailModal .map-dispatch-action-btn:disabled,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:disabled {
   opacity: 0.52;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 #detailModal .request-console-row {
@@ -23540,20 +22249,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   --archive-gap: 14px;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-mask {
-  background: rgba(3, 6, 9, 0.12);
-}
-
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel {
   max-width: min(920px, calc(100vw - 34px));
   min-height: min(580px, calc(100svh - 32px));
   max-height: calc(100svh - 24px);
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 #detailModal.archive-redesign-mode .mvu-modal-panel.archive-redesign-panel::before,
@@ -23586,8 +22285,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .modal-head {
   min-height: 68px;
   padding: 16px 20px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 54%, transparent);
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .modal-head::after {
@@ -23600,15 +22297,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--archive-text-strong);
-  text-shadow: var(--全息标题字影);
 }
 
 #detailModal.archive-redesign-mode .modal-close {
   min-height: 34px;
   padding: 0 12px;
-  border-radius: 0;
-  border-color: transparent;
-  background: transparent;
   color: var(--archive-text);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -23621,14 +22314,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 
 #detailModal.archive-redesign-mode .modal-close:hover {
   transform: translateY(-1px);
-  border-color: transparent;
-  background: transparent;
   color: #fff;
 }
 
 #detailModal.archive-redesign-mode .modal-body.archive-redesign-body {
   padding-bottom: 0;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root,
@@ -23666,12 +22356,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 10px;
   padding: 14px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   overflow: hidden;
   transform-style: preserve-3d;
 }
@@ -23686,12 +22370,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   overflow: hidden;
   transform-style: preserve-3d;
 }
@@ -23737,7 +22415,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   flex-wrap: wrap;
   margin-bottom: 2px;
   padding-bottom: 4px;
-  border-bottom: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card-head::after {
@@ -23751,7 +22428,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   gap: 10px;
   margin-bottom: 14px;
   padding-bottom: 0;
-  border-bottom: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-shell--life .archive-card-head:not(.archive-card-head--profile)::after {
@@ -23778,7 +22454,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   letter-spacing: 0.03em;
   font-weight: 700;
   color: var(--全息材质侧线);
-  text-shadow: 0 0 8px var(--全息材质魂影);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card b,
@@ -23806,7 +22481,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.58 !important;
   color: var(--全息数值文字) !important;
-  text-shadow: var(--全息数值字影);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -23848,9 +22522,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-items: start;
   column-gap: 10px;
   row-gap: 4px;
-  background: transparent !important;
-  border-color: transparent !important;
-  border-left-color: transparent !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-tile b {
@@ -23870,9 +22541,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   justify-content: center;
   min-height: 24px;
   padding: 4px 10px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
   color: var(--archive-text);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
@@ -23882,21 +22550,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 
 #detailModal.archive-redesign-mode .archive-redesign-root .state-tag.live,
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip.live {
-  border-color: color-mix(in srgb, var(--主题主色) 24%, transparent);
-  background: rgba(20, 76, 92, 0.28);
   color: #d9f3ff;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .state-tag.warn,
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip.warn {
-  border-color: rgba(243, 201, 105, 0.28);
-  background: rgba(84, 65, 20, 0.26);
   color: #ffe7a8;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip.alert {
-  border-color: rgba(251, 113, 133, 0.24);
-  background: rgba(84, 22, 36, 0.24);
   color: #ffc7d1;
 }
 
@@ -23912,13 +22574,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-content: start;
   text-align: left;
   padding: 10px 12px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .role-switch-tile:hover,
@@ -23930,20 +22586,6 @@ body.mvu-layout-holo
   .archive-redesign-root
   .relation-directory-item:hover {
   transform: translateY(-1px);
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-#detailModal.archive-redesign-mode .archive-redesign-root .role-switch-tile.active,
-#detailModal.archive-redesign-mode .archive-redesign-root .relation-directory-item.active,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .role-switch-tile.active,
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-detail-host
-  .archive-redesign-root
-  .relation-directory-item.active {
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-modal-grid.org-detail-shell,
@@ -23959,14 +22601,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 14%, transparent);
-  border-radius: var(--mvu-radius-lg, 16px);
-  background:
-    linear-gradient(135deg, rgba(17, 42, 58, 0.42), rgba(8, 19, 30, 0.22)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    inset 0 0 28px color-mix(in srgb, var(--主题主色) 3.5%, transparent);
   overflow: hidden;
 }
 
@@ -24075,10 +22709,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   width: 100%;
   height: 12px;
   padding: 2px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 20%, transparent);
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 10px),
-    rgba(4, 14, 22, 0.72);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-influence-track > span,
@@ -24104,7 +22734,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 4px;
   padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 10%, transparent);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-meta-row b,
@@ -24137,8 +22766,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-content: center;
   gap: 8px;
   padding: 12px;
-  border-left: 1px solid rgba(243, 201, 105, 0.16);
-  background: linear-gradient(180deg, rgba(243, 201, 105, 0.055), color-mix(in srgb, var(--主题主色) 2.5%, transparent));
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-power-row,
@@ -24148,12 +22775,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 10px;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 8%, transparent);
-}
-
-#detailModal.archive-redesign-mode .archive-redesign-root .org-power-row:last-child,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-power-row:last-child {
-  border-bottom: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-detail-section-head,
@@ -24163,7 +22784,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid color-mix(in srgb, var(--主题主色) 10%, transparent);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-detail-section-head > span,
@@ -24172,8 +22792,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 30px;
   justify-content: center;
   padding: 3px 8px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 16%, transparent);
-  border-radius: var(--mvu-radius-pill, 999px);
   color: rgba(220, 248, 255, 0.9);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
@@ -24194,8 +22812,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 6px;
   padding: 12px 12px 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  background: rgba(9, 21, 32, 0.38);
   overflow: hidden;
 }
 
@@ -24213,31 +22829,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--hostile {
   --org-diplomacy-color: #ff4f62;
   --org-diplomacy-glow: rgba(255, 79, 98, 0.35);
-  border-color: rgba(255, 79, 98, 0.24);
-  background: rgba(70, 12, 24, 0.22);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--conflict,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--conflict {
   --org-diplomacy-color: #f59e0b;
   --org-diplomacy-glow: rgba(245, 158, 11, 0.28);
-  border-color: rgba(245, 158, 11, 0.22);
-  background: rgba(79, 45, 7, 0.2);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--allied,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--allied {
   --org-diplomacy-color: #35e6b6;
   --org-diplomacy-glow: rgba(53, 230, 182, 0.28);
-  border-color: rgba(53, 230, 182, 0.2);
-  background: rgba(8, 61, 51, 0.2);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-card--neutral,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-diplomacy-card--neutral {
   --org-diplomacy-color: #b8c7c9;
   --org-diplomacy-glow: rgba(184, 199, 201, 0.16);
-  border-color: rgba(184, 199, 201, 0.14);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-diplomacy-name,
@@ -24255,8 +22864,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   justify-self: start;
   max-width: 100%;
   padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, var(--org-diplomacy-color, #b8c7c9) 44%, transparent);
-  background: color-mix(in srgb, var(--org-diplomacy-color, #b8c7c9) 12%, transparent);
   color: #f4fbff;
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
@@ -24296,8 +22903,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 12%, transparent);
-  background: linear-gradient(135deg, rgba(20, 47, 65, 0.42), rgba(8, 20, 31, 0.28));
   color: var(--archive-text);
   text-align: left;
   cursor: pointer;
@@ -24311,9 +22916,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .org-member-id-card:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-member-id-card:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--主题主色) 34%, transparent);
-  background: linear-gradient(135deg, rgba(26, 65, 88, 0.48), rgba(11, 27, 41, 0.34));
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .org-member-avatar,
@@ -24361,8 +22963,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-member-tags > span {
   max-width: 100%;
   padding: 3px 7px;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 14%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 5.5%, transparent);
   color: rgba(222, 248, 255, 0.86);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.2;
@@ -24377,7 +22977,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 6px;
   padding: 12px;
-  border: 1px dashed color-mix(in srgb, var(--主题主色) 16%, transparent);
   color: var(--archive-text-muted);
 }
 
@@ -24399,12 +22998,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   #detailModal.archive-redesign-mode .archive-redesign-root .org-intel-shell,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-intel-shell {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  #detailModal.archive-redesign-mode .archive-redesign-root .org-power-reserve,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root .org-power-reserve {
-    border-left: 0;
-    border-top: 1px solid rgba(243, 201, 105, 0.16);
   }
 
   #detailModal.archive-redesign-mode .archive-redesign-root .org-meta-grid,
@@ -24450,11 +23043,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-topology-board {
   min-height: 252px;
   padding: 14px;
-  border-radius: var(--mvu-radius-lg, 16px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 40%, transparent);
-  background:
-    radial-gradient(circle at center, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 58%),
-    color-mix(in srgb, var(--暗场卡片) 54%, transparent);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .topology-svg {
@@ -24551,9 +23139,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 8px;
   min-width: 0;
   padding: 9px 10px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-stat-pill em,
@@ -24603,11 +23188,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   grid-template-columns: 1fr;
 }
 
-#detailModal.archive-redesign-mode .archive-redesign-root .relation-detail-tiles .archive-tile {
-  background: transparent !important;
-  border-color: transparent !important;
-}
-
 #detailModal.archive-redesign-mode .archive-redesign-root .faction-layout-shell {
   display: grid;
   grid-template-columns: minmax(280px, 0.96fr) minmax(0, 1.04fr);
@@ -24645,14 +23225,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-#detailModal.archive-redesign-mode .archive-redesign-root .faction-row.highlight {
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .request-console-card > span {
@@ -24692,9 +23264,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-pending-editor {
   min-height: 108px;
   padding: 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
   color: var(--archive-text-strong);
@@ -24706,9 +23275,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 4px;
   align-content: start;
   padding: 10px 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-pending-impact b {
@@ -24736,9 +23302,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 36px;
   display: grid;
   place-items: center;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent);
-  background: color-mix(in srgb, var(--暗场底板强) 24%, transparent);
   font-size: var(--mvu-font-lg, 16px);
 }
 
@@ -24752,9 +23315,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-unlocked-card {
@@ -24781,10 +23341,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-detail-grid--refined > .archive-card {
   padding: 14px 20px 16px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-detail-grid--refined .archive-card-head {
@@ -24794,7 +23350,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 0;
-  border-bottom: 0;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-detail-grid--refined .archive-card-head::after {
@@ -24816,10 +23371,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   background: transparent;
 }
 
-#detailModal.archive-redesign-mode .archive-redesign-root .location-intel-brief {
-  border-left-color: color-mix(in srgb, var(--主题主色) 24%, transparent);
-}
-
 #detailModal.archive-redesign-mode .archive-redesign-root .location-summary-card--highlight span {
   font-size: var(--mvu-font-xl, 18px) !important;
   line-height: 1.2 !important;
@@ -24835,7 +23386,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .location-empty-note {
   margin-top: 0;
   padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--边线颜色) 10%, transparent);
   text-align: left;
 }
 
@@ -24850,11 +23400,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: 36px;
   padding: 7px 10px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--archive-text-strong) !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-gift-select {
@@ -24865,19 +23411,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 32px !important;
   min-height: 32px;
   padding: 4px 30px 4px 34px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--archive-text-strong) !important;
-  box-shadow: none !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .request-console-input:focus,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-gift-select:focus {
-  border-color: color-mix(in srgb, var(--主题主色) 28%, transparent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--主题主色) 10%, transparent) !important;
   outline: none;
 }
 
@@ -24886,11 +23426,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 36px !important;
   height: auto !important;
   padding: 7px 10px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow: none !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 700 !important;
 }
@@ -24900,11 +23436,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 26px !important;
   height: 26px !important;
   padding: 3px 8px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow: none !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   font-weight: 700 !important;
   line-height: 1 !important;
@@ -24921,20 +23453,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-primary,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn.live {
-  background: transparent !important;
   color: var(--文字主色) !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-warn,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn.warn {
-  border-color: rgba(243, 201, 105, 0.28) !important;
-  background: linear-gradient(180deg, rgba(94, 73, 22, 0.22), rgba(58, 42, 12, 0.18)) !important;
   color: #ffe7a8 !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-accent {
-  border-color: rgba(244, 114, 182, 0.26) !important;
-  background: linear-gradient(180deg, rgba(93, 34, 67, 0.22), rgba(55, 20, 40, 0.18)) !important;
   color: #ffd2ea !important;
 }
 
@@ -24942,8 +23469,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn:hover:not(:disabled),
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: transparent !important;
-  box-shadow: none !important;
   color: #fff !important;
 }
 
@@ -25230,10 +23755,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   color-scheme: dark;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split.mvu-modal-mask {
-  background: rgba(3, 6, 9, 0.12);
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split.mvu-modal-mask::before {
   content: none;
   display: none;
@@ -25246,16 +23767,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   position: relative;
   z-index: 1;
   overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .modal-body.archive-redesign-body {
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .mvu-modal-panel.archive-redesign-panel::before {
@@ -25282,8 +23793,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   z-index: 1;
   min-height: 64px;
   padding: 12px 14px 10px;
-  border-bottom-color: var(--dossier-line);
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-title {
@@ -25292,14 +23801,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--dossier-title) !important;
-  text-shadow: var(--全息标题字影);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-close {
-  border: 0;
-  background: transparent;
   color: var(--主题主色);
-  border-radius: 0;
   padding: 6px 12px;
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
@@ -25308,7 +23813,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-body.archive-redesign-body {
   position: relative;
   z-index: 1;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -25396,12 +23900,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   align-content: start;
   overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
   transform-style: preserve-3d;
 }
 
@@ -25476,18 +23974,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-items: center;
   min-height: 56px;
   cursor: pointer;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--faction-list
-  .faction-row:hover,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-card--faction-list
-  .faction-row.active {
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--life-profile,
@@ -25574,14 +24060,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-items: center;
   gap: 8px;
   padding: 7px 9px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 7%, transparent), rgba(0, 0, 0, 0.2)),
-    rgba(3, 13, 20, 0.48);
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 22%, transparent);
   overflow: hidden;
 }
 
@@ -25589,43 +24067,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   cursor: pointer;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.clickable:hover {
-  border-color: color-mix(in srgb, var(--边线颜色) 38%, transparent);
-  background:
-    radial-gradient(circle at 72% 0%, color-mix(in srgb, var(--边线颜色) 18%, transparent), transparent 56%),
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 12%, transparent), rgba(0, 0, 0, 0.2)),
-    color-mix(in srgb, var(--暗场底板强) 62%, transparent);
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.32),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 64%, transparent),
-    0 0 18px color-mix(in srgb, var(--边线颜色) 12%, transparent);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.is-active {
-  border-color: color-mix(in srgb, var(--边线颜色) 28%, transparent);
-  background:
-    radial-gradient(circle at 85% 0%, rgba(113, 255, 207, 0.12), transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--边线颜色) 10%, transparent), rgba(0, 0, 0, 0.18)),
-    rgba(3, 16, 24, 0.58);
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.is-standby {
-  border-color: rgba(246, 199, 107, 0.24);
-  background:
-    radial-gradient(circle at 85% 0%, rgba(246, 199, 107, 0.12), transparent 58%),
-    linear-gradient(135deg, rgba(246, 199, 107, 0.08), rgba(0, 0, 0, 0.2)),
-    rgba(18, 15, 9, 0.54);
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.38),
-    inset 4px 0 0 rgba(246, 199, 107, 0.28);
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.is-empty {
   opacity: 0.48;
-  border-style: dashed;
-  box-shadow:
-    inset 0 0 22px rgba(0, 0, 0, 0.48),
-    inset 4px 0 0 color-mix(in srgb, var(--边线颜色) 8%, transparent);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-gear-slot.is-standby .mvu-armory-gear-head i {
@@ -25739,7 +24182,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: auto !important;
   max-height: none !important;
   padding: 10px 12px 12px !important;
-  background: transparent !important;
   animation: relation-dossier-refresh 0.16s ease-out !important;
   overflow: visible !important;
   scrollbar-width: none !important;
@@ -25770,7 +24212,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 12px;
   align-items: flex-start;
   padding-bottom: 8px;
-  border-bottom-color: var(--dossier-line);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .archive-card-head {
@@ -25778,7 +24219,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   flex-wrap: nowrap;
   gap: 10px;
   padding-bottom: 0;
-  border-bottom-color: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-head-actions {
@@ -25792,7 +24232,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--dossier-title) !important;
-  text-shadow: var(--全息标题字影);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-head-name {
@@ -25809,12 +24248,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: max-content;
   padding: 12px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   overflow: visible;
   container-type: inline-size;
 }
@@ -25822,10 +24255,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .dossier-section {
   padding: 6px 0 2px;
   gap: 8px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -25837,11 +24266,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   min-height: 0;
   padding: 0;
-  border-radius: 0;
-  border: 0;
   overflow: hidden;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-section-title {
@@ -25854,7 +24279,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   letter-spacing: 0.03em;
   font-weight: 700;
   color: var(--dossier-title);
-  text-shadow: var(--全息标题字影);
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-section-title::before {
@@ -25886,10 +24310,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   grid-auto-flow: row dense;
   gap: 0;
   min-width: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: hidden;
 }
 
@@ -25903,8 +24323,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-items: center;
   grid-template-columns: none;
   gap: 8px;
-  border: 0;
-  background: transparent;
   overflow: visible;
 }
 
@@ -25938,27 +24356,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border: 0;
-  border-top: 1px solid var(--全息材质弱线);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: hidden;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-row-grid--single
-  .dossier-row:first-child,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-row-grid--two
-  .dossier-row:nth-child(-n + 2),
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-row-grid--three
-  .dossier-row:nth-child(-n + 3) {
-  border-top: 0;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row--wide {
@@ -25988,7 +24386,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   font-weight: 600 !important;
   line-height: 1.46 !important;
   color: var(--全息数值文字) !important;
-  text-shadow: var(--全息数值字影);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -26101,9 +24498,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   justify-content: center;
   min-height: 24px;
   padding: 4px 10px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
-  background: rgba(255, 255, 255, 0.04);
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.1 !important;
@@ -26112,14 +24506,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-pill.live {
-  border-color: color-mix(in srgb, var(--主题主色) 24%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent);
   color: var(--dossier-accent-strong) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-pill.warn {
-  border-color: rgba(214, 223, 232, 0.18);
-  background: rgba(214, 223, 232, 0.07);
   color: var(--dossier-warn) !important;
 }
 
@@ -26127,9 +24517,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 0;
   min-width: 0;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--主题主色) 7.5%, transparent);
-  background: color-mix(in srgb, var(--暗场底板强) 18%, transparent);
   overflow: hidden;
 }
 
@@ -26147,16 +24534,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--主题主色) 7.5%, transparent);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
   overflow: hidden;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list-row:first-child {
-  border-top: 0;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root button.dossier-list-row {
@@ -26229,13 +24607,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-content: start;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-directory-item.active,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list-row--button:hover {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--主题主色) 8%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 16%, transparent);
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-note,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-empty-note {
   font-size: var(--mvu-font-sm, 12px);
@@ -26264,9 +24635,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-entry {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid rgba(150, 217, 228, 0.12);
-  border-radius: var(--mvu-radius-md, 12px);
-  background: rgba(255, 255, 255, 0.035);
 }
 #detailModal.archive-redesign-mode .archive-redesign-root .injury-entry-head,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-entry-head {
@@ -26292,9 +24660,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-entry-n
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-entry-degree {
   min-height: 22px;
   padding: 0 8px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid rgba(255, 206, 150, 0.24);
-  background: rgba(255, 206, 150, 0.08);
   color: #ffd9a8;
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -26335,9 +24700,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   display: grid;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid var(--dossier-line);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-meter--green {
@@ -26371,9 +24733,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-meter-track {
   height: 6px;
-  border-radius: var(--mvu-radius-pill, 999px);
   overflow: hidden;
-  background: var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-meter-fill {
@@ -26420,9 +24780,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 36px !important;
   min-height: 36px;
   padding: 7px 12px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.2 !important;
@@ -26434,19 +24791,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 32px !important;
   min-height: 32px;
   padding: 4px 30px 4px 34px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
-  box-shadow: none !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .request-console-input:focus,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-gift-select:focus {
-  border-color: color-mix(in srgb, var(--主题主色) 28%, transparent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--主题主色) 10%, transparent) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-toolbar {
@@ -26469,14 +24816,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 36px !important;
   min-height: 36px !important;
   padding: 7px 12px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26490,14 +24833,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 26px !important;
   min-height: 26px !important;
   padding: 3px 8px !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   font-weight: 600 !important;
   line-height: 1 !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26510,19 +24849,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-btn.action-primary {
-  background: transparent !important;
   color: var(--dossier-accent-strong) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-btn.action-warn {
-  border-color: rgba(214, 223, 232, 0.18) !important;
-  background: linear-gradient(180deg, rgba(37, 66, 82, 0.34), rgba(18, 37, 49, 0.28)) !important;
   color: var(--dossier-text) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-btn.action-accent {
-  border-color: rgba(255, 139, 170, 0.26) !important;
-  background: linear-gradient(180deg, rgba(93, 34, 67, 0.3), rgba(55, 20, 40, 0.24)) !important;
   color: #ffd3e6 !important;
 }
 
@@ -26530,8 +24864,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview {
@@ -26555,7 +24887,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   min-height: 0;
   padding: 0;
   overflow: hidden;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26727,14 +25058,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .skill-designer-shell
-  .mvu-editor-section {
-  border-color: transparent;
-  background: transparent;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
   .mvu-editor-section-title,
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
@@ -26743,7 +25066,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   color: var(--dossier-text-soft) !important;
   font-family: var(--font-ui) !important;
   letter-spacing: 0 !important;
-  text-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26776,8 +25098,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-shell
   .mvu-editor-textarea {
-  border-color: transparent !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-family: var(--font-ui) !important;
   font-size: var(--mvu-font-base, 13px) !important;
@@ -26788,13 +25108,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-fusion-participant-row {
   grid-template-columns: minmax(170px, 0.94fr) minmax(170px, 1fr) minmax(64px, auto);
-  border-color: transparent;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span {
-  border-color: rgba(214, 236, 243, 0.16);
-  background: rgba(214, 236, 243, 0.055);
   color: var(--dossier-text) !important;
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 520;
@@ -26804,15 +25120,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-check-chip.active
   span {
-  border-color: color-mix(in srgb, var(--主题主色) 30%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 12%, transparent);
   color: var(--dossier-text-strong) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row {
   grid-template-columns: minmax(104px, 0.32fr) minmax(0, 1fr);
-  border-color: transparent;
-  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row em {
@@ -26833,10 +25145,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   padding: 11px 12px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26869,21 +25177,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   line-height: 1.5;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-shell .archive-card,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-section,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-list--fusion
-  .dossier-list-row {
-  border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .skill-designer-shell
@@ -26913,16 +25206,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-shell
   .mvu-editor-textarea {
-  border-color: transparent !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-shell .tag-chip,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list--fusion .dossier-pill {
-  border-color: transparent !important;
-  background: transparent !important;
   color: var(--dossier-text-strong) !important;
 }
 
@@ -27166,7 +25455,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .mvu-modal-panel.archive-redesign-panel {
     max-width: calc(100vw - 12px);
-    border-radius: 4px;
   }
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-head {
