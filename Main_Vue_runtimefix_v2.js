@@ -699,10 +699,12 @@ const DesktopUnifiedLayout = {
       const 状态栏矩形 = 状态栏.getBoundingClientRect();
       const 视口宽度 = Number(window.innerWidth) || Number(document.documentElement.clientWidth) || 1024;
       const 外侧间距 = 2;
-      const 右侧可用 = Math.max(0, 视口宽度 - 状态栏矩形.right - 外侧间距 - 8);
+      const 折叠宽度 = 32;
+      const 抽屉左侧 = Math.min(状态栏矩形.right + 外侧间距, Math.max(0, 视口宽度 - 折叠宽度 - 4));
+      const 右侧可用 = Math.max(0, 视口宽度 - 抽屉左侧 - 8);
       const 展开宽度 = Math.max(74, Math.min(112, Math.floor(右侧可用 || 112)));
       主题抽屉.style.setProperty('--主题抽屉顶', `${Math.round(状态栏矩形.top + 40)}px`);
-      主题抽屉.style.setProperty('--主题抽屉左', `${Math.round(状态栏矩形.right + 外侧间距)}px`);
+      主题抽屉.style.setProperty('--主题抽屉左', `${Math.round(抽屉左侧)}px`);
       主题抽屉.style.setProperty('--主题抽屉展开宽度', `${展开宽度}px`);
     };
     const scheduleFrameTask = task => {
