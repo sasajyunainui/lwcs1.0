@@ -625,6 +625,45 @@
     });
   }
 
+  const 空状态文本集合 = new Set([
+    '',
+    '-',
+    '--',
+    '—',
+    '无',
+    '空',
+    '空槽',
+    '暂无',
+    '未知',
+    '未加入',
+    '未收录',
+    '未装载',
+    '未装备',
+    '未部署',
+    '未记录',
+    '未激活',
+    '待接入',
+    '待装配',
+    '锁定',
+    '暂无推进建议',
+  ]);
+
+  function 读取空状态判定文本(值) {
+    return toText(值, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/\s+/g, '')
+      .trim();
+  }
+
+  function 是空状态值(值) {
+    const 文本 = 读取空状态判定文本(值);
+    if (空状态文本集合.has(文本)) return true;
+    const 片段列表 = 文本.split(/[\/／|｜、,，]+/).filter(Boolean);
+    return 片段列表.length > 0 && 片段列表.every(片段 => 空状态文本集合.has(片段));
+  }
+
   function makeTileGrid(items, className = '') {
     const tileItems = Array.isArray(items) ? items : [];
     const compactIntelGrid =
@@ -1208,14 +1247,15 @@
     return `
         <div class="dossier-row-grid ${className}">
           ${paddedItems
-            .map(
-              item => `
-            <div class="dossier-row ${item && item.className ? item.className : ''}">
+            .map(item => {
+              const 空状态类 = 是空状态值(item && (item.displayText !== undefined ? item.displayText : item.value)) ? ' is-empty-state' : '';
+              return `
+            <div class="dossier-row${item && item.className ? ` ${item.className}` : ''}${空状态类}">
               <b class="dossier-field-label">${htmlEscape(toText(item && item.label, ''))}</b>
-              <span class="dossier-field-value"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${构建详情项值HTML(item)}</span>
+              <span class="dossier-field-value${空状态类}"${item && item.提示文本 ? ` title="${escapeHtmlAttr(item.提示文本)}"` : ''}>${构建详情项值HTML(item)}</span>
             </div>
-          `,
-            )
+          `;
+            })
             .join('')}
         </div>
       `;
@@ -35386,24 +35426,30 @@
         if (/朋友|友善|亲密|信任/.test(合并文本)) return 'relation-route-friendly';
         return 'relation-route-neutral';
       };
-      const 构建关系情报行 = (标签, 值HTML, 附加类 = '') => `
-        <div class="relation-dossier-line ${附加类}">
+      const 构建关系情报行 = (标签, 值HTML, 附加类 = '') => {
+        const 空状态类 = 是空状态值(值HTML) ? ' is-empty-state' : '';
+        return `
+        <div class="relation-dossier-line ${附加类}${空状态类}">
           <b>${htmlEscape(标签)}</b>
-          <span>${值HTML}</span>
+          <span class="${空状态类.trim()}">${值HTML}</span>
         </div>
       `;
+      };
       const 构建关系情报组 = (标题, 内容HTML, 附加类 = '') => `
         <section class="relation-dossier-flow ${附加类}">
           <div class="relation-dossier-flow-title">${htmlEscape(标题)}</div>
           ${内容HTML}
         </section>
       `;
-      const 构建关系分析行 = (标签, 文本) => `
-        <div class="relation-analysis-line">
+      const 构建关系分析行 = (标签, 文本) => {
+        const 空状态类 = 是空状态值(文本) ? ' is-empty-state' : '';
+        return `
+        <div class="relation-analysis-line${空状态类}">
           <b>${htmlEscape(标签)}</b>
-          <span>${htmlEscape(toText(文本, '暂无'))}</span>
+          <span class="${空状态类.trim()}">${htmlEscape(toText(文本, '暂无'))}</span>
         </div>
       `;
+      };
       const relationFocusStateKey = `${previewKey}::relation-focus`;
       const 默认重点对象名 = toText(
         deepGet(relationFocusTargets, '0.对象', deepGet(relationFocusTargets, '0.target', '')),
@@ -36099,7 +36145,7 @@
                 : 'active');
         const 是否待装配 = 状态 === 'standby';
         const 是否空槽 = 状态 === 'empty';
-        const 状态类名 = 是否空槽 ? 'is-empty' : 是否待装配 ? 'is-standby' : 'is-active';
+        const 状态类名 = 是否空槽 ? 'is-empty is-empty-state' : 是否待装配 ? 'is-standby' : 'is-active';
         const 状态文本 = 是否空槽 ? 'EMPTY' : 是否待装配 ? 'STANDBY' : 'ACTIVE';
         const 标识 = 读取武装模块标识(条目 && 条目.label);
         const 预览属性 = 条目 && 条目.preview ? ` data-preview="${escapeHtmlAttr(条目.preview)}"` : '';
@@ -36111,7 +36157,7 @@
                   <span>${htmlEscape(条目 && 条目.label)}</span>
                   <i>${状态文本}</i>
                 </div>
-                <strong>${构建详情项值HTML(条目)}</strong>
+                <strong class="${是否空槽 ? 'is-empty-state' : ''}">${构建详情项值HTML(条目)}</strong>
               </div>
             </div>
           `;

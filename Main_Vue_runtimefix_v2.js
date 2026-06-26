@@ -558,7 +558,13 @@ const DesktopUnifiedLayout = {
               </nav>
             </div>
           </div>
-          <div class="mvu-unified-theme-dock" :data-holo-theme="全息星轨状态.主题" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
+          <div
+            class="mvu-unified-theme-dock"
+            :data-holo-theme="全息星轨状态.主题"
+            :class="{ 'is-open': 全息星轨状态.主题面板展开 }"
+            @focusout="处理全息主题面板失焦"
+            @keydown.esc="关闭全息主题面板"
+          >
             <button
               type="button"
               class="mvu-unified-theme-toggle"
@@ -978,6 +984,16 @@ const DesktopUnifiedLayout = {
       标记全息动画临停();
       当前全息星轨状态.主题面板展开 = !当前全息星轨状态.主题面板展开;
     };
+    const 关闭全息主题面板 = () => {
+      if (!当前全息星轨状态.主题面板展开) return;
+      标记全息动画临停();
+      当前全息星轨状态.主题面板展开 = false;
+    };
+    const 处理全息主题面板失焦 = event => {
+      const 下个焦点 = event && event.relatedTarget;
+      if (下个焦点 instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(下个焦点)) return;
+      关闭全息主题面板();
+    };
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
     };
@@ -1052,6 +1068,8 @@ const DesktopUnifiedLayout = {
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,
       切换全息主题面板,
+      关闭全息主题面板,
+      处理全息主题面板失焦,
       详情路径标题,
       处理整页退场结束,
       tabState: mvuTabState,

@@ -808,39 +808,44 @@
             sendLatestRows: -1
         },
         exportConfig: {
-            enabled: false,
-            splitByRow: false,
+            enabled: true,
+            splitByRow: true,
             entryName: "偏差表",
-            entryType: "constant",
-            keywords: "",
+            entryType: "keyword",
+            keywords: "编码",
             preventRecursion: true,
             injectionTemplate: "",
-            extraIndexEnabled: false,
-            extraIndexEntryName: "偏差表-索引",
-            extraIndexColumns: [],
-            extraIndexColumnModes: {},
-            extraIndexInjectionTemplate: "",
+            extraIndexEnabled: true,
+            extraIndexEntryName: "纪要索引",
+            extraIndexColumns: [
+                "概览",
+                "编码索引"
+            ],
+            extraIndexColumnModes: {
+                "概览": "index_only",
+                "编码索引": "both"
+            },
+            extraIndexInjectionTemplate: "<已发生的事件概览>\n$1\n</已发生的事件概览>",
             entryPlacement: {
                 position: "at_depth_as_system",
-                depth: 2,
-                order: 10000
+                depth: 999,
+                order: 10020
             },
             extraIndexPlacement: {
                 position: "at_depth_as_system",
-                depth: 2,
-                order: 10010
+                depth: 1000,
+                order: 10030
             },
             fixedEntryPlacement: {
                 position: "at_depth_as_system",
-                depth: 2,
-                order: 99990
+                depth: 9999,
+                order: 99989
             },
             fixedIndexPlacement: {
                 position: "at_depth_as_system",
-                depth: 2,
-                order: 99991
-            },
-            injectIntoWorldbook: false
+                depth: 9999,
+                order: 99990
+            }
         },
         orderNo: 7
     };

@@ -1175,6 +1175,24 @@ class TradeUIComponent {
     return current.segments.some(seg => target.segments.includes(seg));
   }
 
+  当前地点可参与本期拍卖() {
+    const 拍卖 = this.currentAuction && typeof this.currentAuction === 'object' ? this.currentAuction : {};
+    const 拍品表 = 拍卖.拍品 && typeof 拍卖.拍品 === 'object' && !Array.isArray(拍卖.拍品) ? 拍卖.拍品 : {};
+    if (String(拍卖.状态 || '休市') === '休市' || !Object.keys(拍品表).length) return false;
+    const 拍卖地点 = String(拍卖.地点 || '').trim();
+    const 当前位置 = String(this.charData?.状态?.位置 || '').trim();
+    if (!拍卖地点 || 拍卖地点 === '无' || !当前位置) return false;
+    const 当前地点 = this.normalizeLocForMatch(当前位置);
+    const 目标地点 = this.normalizeLocForMatch(拍卖地点);
+    if (当前地点.raw === 目标地点.raw) return true;
+    if (目标地点.segments.length <= 1 && 当前地点.leaf === 目标地点.leaf) return true;
+    if (当前地点.leaf === 目标地点.leaf && 当前地点.segments[0] && 当前地点.segments[0] === 目标地点.segments[0]) return true;
+    if (当前地点.raw.includes(目标地点.raw)) return true;
+    if (当前地点.segments[0] && 当前地点.segments[0] === 目标地点.segments[0] && /拍卖|交易中心/.test(当前地点.raw)) return true;
+    return 当前地点.segments[0] === 目标地点.segments[0]
+      && 当前地点.segments.some(片段 => 片段 && 目标地点.segments.includes(片段) && /拍卖|交易中心/.test(当前地点.raw));
+  }
+
   resolveTradeLocationNode(location) {
     const worldLocations = this.worldData?.地点 || {};
     const raw = String(location || '').trim();
@@ -1921,6 +1939,11 @@ class TradeUIComponent {
       this.updateAucPreview();
       return;
     }
+    if (!this.当前地点可参与本期拍卖()) {
+      sel.innerHTML = '<option value="">[当前地点无可参与拍品]</option>';
+      this.updateAucPreview();
+      return;
+    }
     for (const iName in this.currentAuction.拍品) {
       const opt = document.createElement('option');
       opt.value = iName;
@@ -1934,6 +1957,13 @@ class TradeUIComponent {
     const itemName = this.$('#auc-item-sel').value;
     const bid = parseInt(this.$('#auc-bid').value) || 0;
     const btn = this.$('#btn-auc');
+
+    if (!this.当前地点可参与本期拍卖()) {
+      this.$('#auc-current-price').textContent = '-';
+      this.$('#auc-desc').textContent = '-';
+      btn.disabled = true;
+      return;
+    }
 
     if (!itemName || !this.currentAuction.拍品?.[itemName]) {
       this.$('#auc-current-price').textContent = '-';
@@ -1958,6 +1988,7 @@ class TradeUIComponent {
   }
 
   executeAuction() {
+    if (!this.当前地点可参与本期拍卖()) return this.显示提示('当前地点没有可参与的拍卖。');
     const itemName = this.$('#auc-item-sel').value;
     const bid = parseInt(this.$('#auc-bid').value) || 0;
     const item = this.currentAuction.拍品[itemName];
