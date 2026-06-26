@@ -810,22 +810,12 @@
         exportConfig: {
             enabled: true,
             splitByRow: true,
-            entryName: "偏差表",
+            entryName: "偏差记录",
             entryType: "keyword",
             keywords: "编码",
             preventRecursion: true,
-            injectionTemplate: "",
-            extraIndexEnabled: true,
-            extraIndexEntryName: "纪要索引",
-            extraIndexColumns: [
-                "概览",
-                "编码索引"
-            ],
-            extraIndexColumnModes: {
-                "概览": "index_only",
-                "编码索引": "both"
-            },
-            extraIndexInjectionTemplate: "<已发生的事件概览>\n$1\n</已发生的事件概览>",
+            injectionTemplate: "<偏差账本>\n$1\n</偏差账本>",
+            extraIndexEnabled: false,
             entryPlacement: {
                 position: "at_depth_as_system",
                 depth: 999,
@@ -17105,7 +17095,7 @@ $CONTENT
             const 内容 = [
                 '## 偏差账本候选',
                 ...选中列表.map(格式化偏差账本候选记录_ACU),
-                '阶段1只需从以上候选中输出真实存在的 DV 编码；完整偏差行会由脚本展开给阶段2。',
+                '阶段1只需从以上候选中输出真实存在的 DV 编码；DV 编码会作为世界书触发词，实际偏差记录由世界书注入给后续阶段。',
             ].join('\n');
             return { success: true, content: 内容 };
         }
@@ -19784,23 +19774,6 @@ $CONTENT
                 };
             }
             const { tagNames, extractedTags, injectedFragments, injectOnlyTags, injectOnlyFragments, injectOnlyTagNames } = extractPlotTagsFromResponse_ACU(rawResponse, normalizedTask.extractTags, normalizedTask.extractInjectTags);
-            if (Object.prototype.hasOwnProperty.call(extractedTags, '偏差账本召回')) {
-                const 展开内容 = 展开偏差账本召回_ACU(extractedTags.偏差账本召回, currentJsonTableData_ACU);
-                extractedTags.偏差账本召回 = 展开内容;
-                if (Object.prototype.hasOwnProperty.call(injectOnlyTags, '偏差账本召回')) {
-                    injectOnlyTags.偏差账本召回 = 展开内容;
-                }
-                const 替换偏差召回片段 = (片段列表) => {
-                    if (!Array.isArray(片段列表)) return;
-                    for (let 序号 = 0; 序号 < 片段列表.length; 序号++) {
-                        if (/^<偏差账本召回>/i.test(String(片段列表[序号] || '').trim())) {
-                            片段列表[序号] = `<偏差账本召回>${展开内容}</偏差账本召回>`;
-                        }
-                    }
-                };
-                替换偏差召回片段(injectedFragments);
-                替换偏差召回片段(injectOnlyFragments);
-            }
             if (tagNames.length > 0 && Object.keys(extractedTags).length > 0) {
                 logDebug_ACU(`[剧情推进] [阶段:${taskStage}] [任务:${taskLabel}] 成功摘取标签: ${Object.keys(extractedTags).join(', ')}`);
             }

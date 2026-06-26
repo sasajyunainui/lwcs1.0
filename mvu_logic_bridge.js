@@ -31023,11 +31023,6 @@
           <div class="org-kv-row"><b>战力焦点</b><span>${htmlEscape(`${toText(factionStats.name, '未知')} / 极限${formatNumber(factionStats.limit)} / 超级${formatNumber(factionStats.super)} / 封号${formatNumber(factionStats.title)}`)}</span></div>
           <div class="org-kv-row"><b>关系摘要</b><span>${htmlEscape(关系摘要)}</span></div>
         </div>
-        <div class="org-mini-metrics">
-          <span><b>势力</b><strong>${htmlEscape(String((snapshot.orgEntries || []).length || 0))}</strong></span>
-          <span><b>极限</b><strong>${htmlEscape(String(factionStats.limit || 0))}</strong></span>
-          <span><b>封号</b><strong>${htmlEscape(String(factionStats.title || 0))}</strong></span>
-        </div>
       </div>
     `;
   }
@@ -31953,7 +31948,6 @@
   function buildShellOrgMatrixView(snapshot) {
     const entries = Array.isArray(snapshot && snapshot.orgEntries) ? snapshot.orgEntries : [];
     const primaryFactionEntry = getPrimaryFactionEntry(snapshot || {});
-    const factionStats = getPrimaryFactionPowerStats(snapshot || {});
     const rows = entries.slice(0, 5).map(([name, item]) => ({
       title: name,
       meta: `${toText(item && item.状态, '正常')} · ${formatNumber((item && item.规模) || 0)}`,
@@ -31968,11 +31962,6 @@
                 <span>${htmlEscape(toText(primaryFactionEntry.name, '本地势力'))}</span>
                 <strong>${htmlEscape(`${entries.length || 0} 个势力`)}</strong>
               </div>
-              ${buildShellLiteStats([
-                { label: '极限', value: String(factionStats.limit || 0) },
-                { label: '超级', value: String(factionStats.super || 0) },
-                { label: '封号', value: String(factionStats.title || 0) },
-              ])}
             </section>
             <section class="mvu-shell-lite-card">
               <div class="mvu-shell-lite-section-title">梯阵</div>
@@ -32513,11 +32502,6 @@
             { label: '本地掌控', value: 本地掌控势力 },
             { label: '战力焦点', value: 战力摘要 },
             { label: '关系摘要', value: relationSummary },
-          ])}
-          ${构建全息指标网格([
-            { label: '势力', value: String(snapshot.orgEntries.length || 0) },
-            { label: '极限', value: formatNumber(战力焦点.limit) },
-            { label: '封号', value: formatNumber(战力焦点.title) },
           ])}
         </div>
       `;

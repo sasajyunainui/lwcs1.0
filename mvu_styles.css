@@ -9185,19 +9185,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overv
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head span,
 #detailModal.mvu-modal-display-unified .bestiary-panel-head span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head span {
-  color: rgba(147, 180, 190, 0.72) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.15 !important;
   letter-spacing: 0.1em !important;
+  font-weight: 760 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head b,
 #detailModal.mvu-modal-display-unified .bestiary-overview-head b,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-head b {
-  color: rgba(239, 253, 255, 0.96) !important;
+  color: var(--文字主色) !important;
   font-size: 16px !important;
   line-height: 1.1 !important;
-  font-weight: 780 !important;
+  font-weight: 850 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-head em,
@@ -9207,11 +9208,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel
 #detailModal.mvu-modal-display-unified .bestiary-panel-head em,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head em {
   flex: 0 0 auto !important;
-  color: rgba(116, 231, 255, 0.88) !important;
+  color: var(--状态强调色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
   font-style: normal !important;
-  font-weight: 760 !important;
+  font-weight: 850 !important;
   letter-spacing: 0.12em !important;
   font-family: var(--font-mono, monospace) !important;
 }
@@ -9229,9 +9230,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-progr
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-progress-row > span,
 #detailModal.mvu-modal-display-unified .bestiary-progress-row > span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-progress-row > span {
-  color: rgba(205, 230, 236, 0.86) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.2 !important;
+  font-weight: 800 !important;
   white-space: nowrap !important;
 }
 
@@ -9275,25 +9277,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overv
   gap: 3px !important;
   min-width: 0 !important;
   padding: 7px 8px !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 76%),
+    var(--卡片底板) !important;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics b,
 #detailModal.mvu-modal-display-unified .bestiary-overview-metrics b,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics b {
-  color: rgba(140, 170, 180, 0.72) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
-  font-weight: 620 !important;
+  font-weight: 720 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-overview-metrics em,
 #detailModal.mvu-modal-display-unified .bestiary-overview-metrics em,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-overview-metrics em {
-  color: rgba(236, 249, 252, 0.94) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.2 !important;
   font-style: normal !important;
-  font-weight: 750 !important;
+  font-weight: 850 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -9354,10 +9361,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-panel-head b,
 #detailModal.mvu-modal-display-unified .bestiary-panel-head b,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-panel-head b {
-  color: rgba(235, 251, 254, 0.94) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.1 !important;
-  font-weight: 760 !important;
+  font-weight: 850 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-directory-tools,
@@ -9372,11 +9379,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-direc
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-directory-tools :where(select, input),
 #detailModal.mvu-modal-display-unified .bestiary-directory-tools :where(select, input),
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-directory-tools :where(select, input) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
   min-width: 0 !important;
   height: 30px !important;
   padding: 0 9px !important;
-  color: rgba(230, 248, 252, 0.9) !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background: var(--卡片底板) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
+  font-weight: 760 !important;
   outline: none !important;
 }
 
@@ -9413,6 +9425,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-speci
   min-width: 0 !important;
   height: 82px !important;
   padding: 8px !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--主题主色) 9%, transparent), transparent 62%),
+    var(--卡片底板) !important;
   color: inherit !important;
   text-align: left !important;
   overflow: hidden !important;
@@ -9438,18 +9454,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-speci
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-species-slot.is-locked {
   place-items: center !important;
   text-align: center !important;
-  opacity: 0.52 !important;
+  border-color: color-mix(in srgb, var(--状态危险色) 24%, var(--卡片底板线)) !important;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--状态危险色) 12%, transparent) 0 6px, transparent 6px 12px),
+    var(--卡片底板) !important;
+  opacity: 1 !important;
   animation: bestiary-slot-pulse 2.8s ease-in-out infinite var(--mvu-holo-loop-play-state, running) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-slot-no,
 #detailModal.mvu-modal-display-unified .bestiary-slot-no,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-slot-no {
-  color: var(--文字弱色) !important;
+  color: var(--状态强调色) !important;
   font-family: var(--font-mono, monospace) !important;
   font-size: 9px !important;
   line-height: 1 !important;
   letter-spacing: 0.08em !important;
+  font-weight: 850 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-species-slot b,
@@ -9468,9 +9489,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-speci
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-slot-meta,
 #detailModal.mvu-modal-display-unified .bestiary-slot-meta,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-slot-meta {
-  color: rgba(166, 195, 204, 0.72) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
+  font-weight: 760 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-danger-bars,
@@ -9518,7 +9540,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-lock-
   display: block !important;
   width: 26px !important;
   height: 28px !important;
-  opacity: 0.72 !important;
+  opacity: 1 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-lock-mark::before,
@@ -9556,8 +9578,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-signa
   justify-content: center !important;
   gap: 8px !important;
   min-height: 30px !important;
-  color: color-mix(in srgb, var(--边线颜色) 70%, transparent) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
+  font-weight: 800 !important;
   letter-spacing: 0.08em !important;
 }
 
@@ -12464,7 +12487,7 @@ body.mvu-layout-holo
   .location-intel-title
   b {
   min-width: 0 !important;
-  color: #f4fcff !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xl, 18px) !important;
   line-height: 1.2 !important;
   font-weight: 850 !important;
@@ -12478,7 +12501,7 @@ body.mvu-layout-holo
   .location-intel-title
   span {
   flex: 0 0 auto !important;
-  color: color-mix(in srgb, var(--边线颜色) 78%, transparent) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
   font-weight: 800 !important;
@@ -12680,7 +12703,7 @@ body.mvu-layout-holo
   .mvu-unified-detail-host
   .location-detail-grid--refined
   .location-radar-label {
-  fill: rgba(229, 248, 252, 0.86) !important;
+  fill: var(--文字主色) !important;
   font-size: 10px !important;
   font-weight: 800 !important;
 }
@@ -12707,9 +12730,13 @@ body.mvu-layout-holo
   align-items: baseline !important;
   gap: 6px !important;
   min-width: 0 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  padding: 6px 8px !important;
+  border: 1px solid var(--卡片底板线) !important;
+  border-radius: calc(var(--卡片圆角) * 0.42) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 9%, transparent), transparent 72%),
+    var(--卡片底板) !important;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 64%, transparent) !important;
 }
 
 body.mvu-layout-holo
@@ -12736,9 +12763,10 @@ body.mvu-layout-holo
   .location-detail-grid--refined
   .location-radar-metrics
   b {
-  color: color-mix(in srgb, var(--边线颜色) 74%, transparent) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
+  font-weight: 760 !important;
 }
 
 body.mvu-layout-holo
@@ -12747,10 +12775,11 @@ body.mvu-layout-holo
   .location-detail-grid--refined
   .location-radar-metrics
   em {
-  color: rgba(238, 250, 252, 0.88) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.15 !important;
   font-style: normal !important;
+  font-weight: 850 !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid {
@@ -12768,9 +12797,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facil
   align-items: center !important;
   gap: 9px !important;
   padding: 9px 12px !important;
-  color: #f4fcff !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 74%),
+    var(--卡片底板) !important;
+  color: var(--文字主色) !important;
   text-align: left !important;
   overflow: hidden !important;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid button.location-facility-card {
@@ -12781,13 +12815,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facil
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid .location-facility-card:disabled,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid .location-facility-card.is-disabled {
-  opacity: 0.52 !important;
+  border-color: color-mix(in srgb, var(--状态危险色) 22%, var(--卡片底板线)) !important;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--状态危险色) 10%, transparent) 0 7px, transparent 7px 14px),
+    var(--卡片底板) !important;
+  opacity: 1 !important;
   cursor: not-allowed !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid .location-facility-card b {
   min-width: 0 !important;
-  color: rgba(244, 252, 253, 0.98) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.2 !important;
   font-weight: 850 !important;
@@ -12798,7 +12836,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facil
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-facility-grid .location-facility-card span {
   min-width: 0 !important;
-  color: rgba(184, 213, 224, 0.84) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.35 !important;
   white-space: normal !important;
@@ -12818,6 +12856,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-c
   align-items: center !important;
   min-width: 0 !important;
   padding: 10px 11px !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 78%),
+    var(--卡片底板) !important;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 58%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-main {
@@ -12841,7 +12884,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-s
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-title b {
   min-width: 0 !important;
-  color: rgba(245, 252, 253, 0.98) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-base, 13px) !important;
   line-height: 1.2 !important;
   font-weight: 850 !important;
@@ -12852,7 +12895,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-t
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-title em {
   flex: 0 0 auto !important;
-  color: rgba(184, 213, 224, 0.76) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
   font-style: normal !important;
@@ -12870,7 +12913,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-t
   max-width: 100% !important;
   min-width: 0 !important;
   padding: 4px 7px !important;
-  color: rgba(203, 226, 233, 0.78) !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background: color-mix(in srgb, var(--卡片底板) 72%, transparent) !important;
+  color: var(--文字弱色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
   font-weight: 700 !important;
@@ -12894,6 +12939,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   padding: 7px 9px !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1.1 !important;
+  color: var(--文字主色) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-layout {
@@ -16562,12 +16608,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   position: relative;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   gap: 0;
   width: 100%;
-  height: var(--mvu-hud-frame-height, clamp(480px, calc(100svh - 220px), 660px));
-  min-height: var(--mvu-hud-frame-height, clamp(480px, calc(100svh - 220px), 660px));
-  max-height: var(--mvu-hud-frame-height, clamp(480px, calc(100svh - 220px), 660px));
+  height: auto;
+  min-height: 0;
+  max-height: none;
   overflow: visible;
   isolation: isolate;
   border: 1px solid var(--边线颜色);
@@ -17260,12 +17306,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
   grid-row: 2;
   grid-column: 1;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: none;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
   padding: 8px;
-  overflow: clip;
+  overflow: visible;
   isolation: auto;
   container-name: mvu-dashboard-area;
   container-type: inline-size;
@@ -17302,13 +17348,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section {
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 
@@ -17316,8 +17361,7 @@ body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-unified-page[data-target='page-archive']
   .mvu-unified-section--dashboard {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit-scrollbar {
@@ -17380,22 +17424,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page {
   position: relative;
   z-index: 1;
   display: none;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: none;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
   display: grid;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page[data-target='page-archive'].active {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active::-webkit-scrollbar {
@@ -17845,23 +17887,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
   gap: 7px;
-  align-items: stretch;
+  align-items: start;
   align-content: start;
-  overflow: hidden auto;
+  overflow: visible;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.24fr) minmax(220px, 0.9fr);
-  grid-template-rows: minmax(144px, 0.96fr) minmax(150px, 1.08fr) minmax(132px, 0.9fr);
+  grid-template-columns: minmax(230px, 1fr) minmax(236px, 0.82fr) minmax(230px, 1fr);
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     'core spirit armory'
     'core spirit social'
     'core spirit vault';
-  height: 100%;
-  min-height: min(620px, calc(var(--mvu-hud-frame-height) - 130px));
-  align-content: stretch;
+  height: auto;
+  min-height: 0;
+  align-content: start;
   gap: 9px;
 }
 
@@ -17915,14 +17957,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
   position: relative;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 33%, 340px);
-  grid-template-rows: minmax(164px, 0.32fr) minmax(0, 1fr);
+  grid-template-rows: minmax(180px, auto) auto;
   grid-template-areas:
     'stage current'
     'stage locals';
-  height: 100%;
+  height: auto;
   min-height: 0;
-  align-items: stretch;
-  align-content: stretch;
+  align-items: start;
+  align-content: start;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
@@ -17954,7 +17996,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
   grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
-  grid-template-rows: minmax(0, 1fr) minmax(128px, 0.55fr);
+  grid-template-rows: auto auto;
   grid-template-areas:
     'world timeline'
     'bestiary timeline';
@@ -17990,7 +18032,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unif
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: minmax(130px, 0.8fr) minmax(126px, 0.72fr) minmax(126px, 0.72fr);
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     'broadcast broadcast'
     'intel profession'
@@ -18008,6 +18050,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-quest'] {
   grid-area: quest;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-hero'] {
+  min-height: 178px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-intel'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-profession'] {
+  min-height: 184px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-quest'] {
+  min-height: 128px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card,
@@ -18177,7 +18232,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   overflow: visible;
-  padding-inline: 16px;
+  padding-inline: 12px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
@@ -18686,8 +18741,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
-  --archive-ring-field-width: min(300px, 100%);
-  --archive-ring-field-height: min(100%, clamp(164px, 24vh, 224px));
+  --archive-ring-field-width: min(236px, 100%);
+  --archive-ring-field-height: clamp(138px, 20cqw, 188px);
   --archive-ring-center-x: 50%;
   --archive-ring-center-y: 50%;
   position: relative;
@@ -18695,8 +18750,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   display: grid;
   place-items: center;
   min-width: 0;
-  min-height: 0;
-  height: 100%;
+  min-height: var(--archive-ring-field-height);
+  height: auto;
   overflow: visible;
 }
 
@@ -19860,46 +19915,46 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(210px, 0.9fr) minmax(290px, 1.22fr) minmax(210px, 0.88fr);
-    grid-template-rows: minmax(104px, auto) minmax(110px, auto) minmax(92px, auto);
+    grid-template-columns: minmax(210px, 1fr) minmax(224px, 0.84fr) minmax(210px, 1fr);
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       'core spirit armory'
       'core spirit social'
       'core spirit vault';
-    height: 100%;
-    min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
+    height: auto;
+    min-height: 0;
     align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-    height: 100%;
-    min-height: min(520px, calc(var(--mvu-hud-frame-height) - 148px));
-    align-content: stretch;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 0;
+    align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
     grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 310px);
-    grid-template-rows: minmax(186px, 0.36fr) minmax(0, 1fr);
+    grid-template-rows: minmax(180px, auto) auto;
     grid-template-areas:
       'stage current'
       'stage locals';
-    height: 100%;
+    height: auto;
     min-height: 0;
-    align-content: stretch;
+    align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
     grid-template-columns: minmax(360px, 1.12fr) minmax(300px, 0.88fr);
-    grid-template-rows: minmax(0, 1fr) minmax(126px, auto);
+    grid-template-rows: auto auto;
     grid-template-areas:
       'world timeline'
       'bestiary timeline';
-    height: 100%;
+    height: auto;
     min-height: 0;
-    align-content: stretch;
+    align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
@@ -19927,7 +19982,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
-    grid-template-rows: minmax(164px, 0.9fr) minmax(164px, 0.9fr) minmax(150px, 0.72fr);
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       'broadcast broadcast'
       'intel profession'
@@ -19941,31 +19996,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @container mvu-dashboard-area (max-width: 840px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(210px, 0.88fr) minmax(0, 1.12fr);
-    grid-template-rows: minmax(140px, 0.9fr) minmax(148px, 1fr) minmax(132px, 0.86fr);
+    grid-template-columns: minmax(210px, 1fr) minmax(220px, 0.84fr);
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       'core spirit'
       'armory spirit'
       'social vault';
-    height: 100%;
-    min-height: min(560px, calc(var(--mvu-hud-frame-height) - 140px));
-    align-items: stretch;
-    align-content: stretch;
+    height: auto;
+    min-height: 0;
+    align-items: start;
+    align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='armory'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='vault'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='social'] {
-    height: 100%;
+    height: auto;
     min-height: 132px;
-    align-self: stretch;
-    overflow: hidden;
+    align-self: start;
+    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-    min-height: 100%;
-    align-self: stretch;
+    min-height: 232px;
+    align-self: start;
   }
 }
 
@@ -19976,10 +20031,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     grid-template-rows: none !important;
     grid-auto-rows: minmax(148px, auto) !important;
     grid-template-areas: none !important;
-    height: 100% !important;
-    min-height: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     align-content: start !important;
-    overflow: hidden auto !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
@@ -19997,11 +20052,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 @container mvu-dashboard-area (max-width: 840px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
     grid-template-columns: minmax(0, 1fr) clamp(270px, 38%, 300px);
-    grid-template-rows: minmax(166px, 0.34fr) minmax(0, 1fr);
+    grid-template-rows: minmax(166px, auto) auto;
     grid-template-areas:
       'stage current'
       'stage locals';
-    height: 100%;
+    height: auto;
     min-height: 0;
   }
 
@@ -20029,15 +20084,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @media (max-width: 760px) {
   body.mvu-layout-holo #mvu-unified-mount {
-    --mvu-hud-frame-height: clamp(520px, 82svh, 720px);
     --mvu-hud-gap: 5px;
     --mvu-hud-card-pad: 8px;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
-    height: var(--mvu-hud-frame-height);
-    min-height: var(--mvu-hud-frame-height);
-    max-height: var(--mvu-hud-frame-height);
+    height: auto;
+    min-height: 0;
+    max-height: none;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
@@ -20095,26 +20149,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-    height: 100%;
+    height: auto;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation) {
-    height: 100%;
-    max-height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page {
-    overflow: hidden;
+    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard,
@@ -20127,10 +20179,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     grid-template-rows: none !important;
     grid-auto-rows: minmax(132px, auto) !important;
     grid-template-areas: none !important;
-    height: 100% !important;
-    min-height: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     align-content: start !important;
-    overflow: hidden auto !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card,
@@ -20140,7 +20192,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     grid-row: auto !important;
     height: auto !important;
     min-height: 132px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
@@ -20157,8 +20209,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     display: grid !important;
     grid-auto-rows: minmax(148px, auto) !important;
     align-content: start !important;
-    height: 100% !important;
-    overflow: hidden auto !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
@@ -20170,10 +20222,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'current'
       'locals' !important;
     align-content: start !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
@@ -20185,10 +20237,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'timeline'
       'bestiary' !important;
     align-content: start !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
@@ -20200,10 +20252,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'faction'
       'node' !important;
     align-content: start !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
@@ -20216,10 +20268,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'profession'
       'quest' !important;
     align-content: start !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card],
@@ -20241,7 +20293,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     grid-template-rows: auto auto auto !important;
     height: auto !important;
     min-height: 144px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card],
@@ -20253,7 +20305,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     height: auto !important;
     min-height: 132px !important;
     max-height: none !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card='map-current'] {
@@ -22314,7 +22366,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-intel-title b {
   min-width: 0;
-  color: #f4fcff;
+  color: var(--文字主色);
   font-size: var(--mvu-font-xl, 18px);
   line-height: 1.2;
   font-weight: 850;
@@ -22323,7 +22375,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-intel-title span {
   flex: 0 0 auto;
-  color: color-mix(in srgb, var(--边线颜色) 78%, transparent);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
   font-weight: 800;
@@ -22480,16 +22532,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 }
 
 #detailModal .location-radar-metrics b {
-  color: color-mix(in srgb, var(--边线颜色) 74%, transparent);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
+  font-weight: 760;
 }
 
 #detailModal .location-radar-metrics em {
-  color: rgba(238, 250, 252, 0.88);
+  color: var(--文字主色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.15;
   font-style: normal;
+  font-weight: 850;
 }
 
 #detailModal .location-facility-grid {
@@ -22507,9 +22561,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   align-items: center;
   gap: 9px;
   padding: 9px 12px;
-  color: #f4fcff;
+  border: 1px solid var(--卡片底板线);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 74%),
+    var(--卡片底板);
+  color: var(--文字主色);
   text-align: left;
   overflow: hidden;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 72%, transparent);
 }
 
 #detailModal .location-facility-grid button.location-facility-card {
@@ -22526,7 +22585,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 }
 
 #detailModal .location-facility-grid .location-facility-card b {
-  color: rgba(244, 252, 253, 0.98);
+  color: var(--文字主色);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.2;
   font-weight: 850;
@@ -22535,7 +22594,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-facility-grid .location-facility-card span {
   flex: 1 1 auto;
-  color: rgba(184, 213, 224, 0.84);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.35;
   white-space: normal;
@@ -22544,7 +22603,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-facility-grid .location-facility-card:disabled,
 #detailModal .location-facility-grid .location-facility-card.is-disabled {
-  opacity: 0.52;
+  border-color: color-mix(in srgb, var(--状态危险色) 22%, var(--卡片底板线));
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--状态危险色) 10%, transparent) 0 7px, transparent 7px 14px),
+    var(--卡片底板);
+  opacity: 1;
   cursor: not-allowed;
 }
 
@@ -22561,6 +22624,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   align-items: center;
   min-width: 0;
   padding: 10px 11px;
+  border: 1px solid var(--卡片底板线);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 8%, transparent), transparent 78%),
+    var(--卡片底板);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--主题主色) 58%, transparent);
 }
 
 #detailModal .location-npc-main {
@@ -22584,7 +22652,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-npc-title b {
   min-width: 0;
-  color: rgba(245, 252, 253, 0.98);
+  color: var(--文字主色);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.2;
   font-weight: 850;
@@ -22595,7 +22663,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-npc-title em {
   flex: 0 0 auto;
-  color: rgba(184, 213, 224, 0.76);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
   font-style: normal;
@@ -22613,7 +22681,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
   max-width: 100%;
   min-width: 0;
   padding: 4px 7px;
-  color: rgba(203, 226, 233, 0.78);
+  border: 1px solid var(--卡片底板线);
+  background: color-mix(in srgb, var(--卡片底板) 72%, transparent);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.1;
   font-weight: 700;
@@ -22655,9 +22725,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 #detailModal .location-empty-note {
   margin-top: 16px;
   padding-top: 16px;
-  color: rgba(225, 243, 248, 0.72);
+  color: var(--文字弱色);
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
+  font-weight: 760;
   text-align: center;
 }
 
@@ -23148,6 +23219,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   min-width: 0;
   min-height: 46px;
   padding: 10px 14px;
+  border: 1px solid var(--卡片底板线);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 66%),
+    var(--卡片底板);
   color: var(--文字主色);
   font-family: var(--font-title);
   font-size: var(--mvu-font-md, 14px);
@@ -23162,6 +23237,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
     background 0.16s ease,
     color 0.16s ease;
   overflow-wrap: anywhere;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--文字主色) 7%, transparent),
+    0 0 10px color-mix(in srgb, var(--主题主色) 10%, transparent);
 }
 #detailModal .map-dispatch-action-btn:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:hover {
@@ -23169,15 +23247,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 }
 #detailModal .map-dispatch-action-btn.live,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.live {
-  color: var(--文字主色);
+  border-color: color-mix(in srgb, var(--状态强调色) 42%, var(--卡片底板线));
+  color: var(--状态强调色);
 }
 #detailModal .map-dispatch-action-btn.warn,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn.warn {
-  color: var(--文字弱色);
+  border-color: color-mix(in srgb, var(--状态危险色) 36%, var(--卡片底板线));
+  color: var(--状态危险色);
 }
 #detailModal .map-dispatch-action-btn:disabled,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-action-btn:disabled {
-  opacity: 0.52;
+  color: var(--文字弱色);
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--状态危险色) 9%, transparent) 0 7px, transparent 7px 14px),
+    var(--卡片底板);
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
 }
@@ -24408,8 +24492,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .location-facility-grid .location-facility-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .location-npc-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .location-radar-metrics span {
-  border-color: color-mix(in srgb, var(--边线颜色) 12%, transparent);
-  background: transparent;
+  border-color: var(--卡片底板线);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 9%, transparent), transparent 76%),
+    var(--卡片底板);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-summary-card--highlight span {
@@ -24441,7 +24527,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: 36px;
   padding: 7px 10px !important;
-  color: var(--archive-text-strong) !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background: var(--卡片底板) !important;
+  color: var(--文字主色) !important;
+  font-weight: 760 !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-gift-select {
@@ -24452,8 +24541,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 32px !important;
   min-height: 32px;
   padding: 4px 30px 4px 34px !important;
-  color: var(--archive-text-strong) !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background: var(--卡片底板) !important;
+  color: var(--文字主色) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
+  font-weight: 760 !important;
   line-height: 1 !important;
 }
 
@@ -24467,6 +24559,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 36px !important;
   height: auto !important;
   padding: 7px 10px !important;
+  border: 1px solid var(--卡片底板线) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--主题主色) 12%, transparent), transparent 66%),
+    var(--卡片底板) !important;
   color: var(--文字主色) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 700 !important;
@@ -24494,12 +24590,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-primary,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn.live {
-  color: var(--文字主色) !important;
+  border-color: color-mix(in srgb, var(--状态强调色) 42%, var(--卡片底板线)) !important;
+  color: var(--状态强调色) !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-warn,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn.warn {
-  color: #ffe7a8 !important;
+  border-color: color-mix(in srgb, var(--状态危险色) 36%, var(--卡片底板线)) !important;
+  color: var(--状态危险色) !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-accent {
@@ -24510,13 +24608,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn:hover:not(:disabled),
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip:hover:not(:disabled) {
   transform: translateY(-1px);
-  color: #fff !important;
+  color: var(--文字主色) !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn:disabled,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn:disabled,
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip:disabled {
-  opacity: 0.44;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--状态危险色) 9%, transparent) 0 7px, transparent 7px 14px),
+    var(--卡片底板) !important;
+  color: var(--文字弱色) !important;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
 }
