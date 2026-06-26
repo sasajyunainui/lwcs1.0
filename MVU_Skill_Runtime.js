@@ -19315,8 +19315,7 @@ var AI_TODO_ATTRIBUTE_SYSTEM = '待补全（填写属性体系：无/元素/五�
 var AI_TODO_CALLABLE_ELEMENTS = '待补全（填写可调用元素列表：金 / 木 / 水 / 火 / 土 / 风 / 雷 / 冰 / 光 / 暗 / 精神 / 空间 / 时间 / 创造 / 毁灭，无属性体系请填“无”）';
 var AI_TODO_SOUL_SPIRIT_NAME = '待补全（魂兽名）';
 var AI_TODO_SOUL_SPIRIT_DESC = '待补全（魂灵设定。结合物种、年限与品质，生动补全其形体细节、血脉威压与战斗风格）';
-var AI_TODO_SOUL_SPIRIT_QUALITY =
-  '待补全（可选f/d/c/b/a/s/s+；f为劣质魂灵，如草蛇等杂血弱种；d为低劣魂灵，如普通凶性野兽型魂灵；c为普通魂灵，具备基础血脉与战斗价值；b为良品魂灵，常见强势魂兽；a为精英魂灵，稀有异种或强族后裔；s为顶尖魂灵，王族血脉或顶级龙种；s+为神话级魂灵，真龙、神兽后裔或极端变异个体）';
+var AI_TODO_SOUL_SPIRIT_QUALITY ='待补全（可选f/d/c/b/a/s/s+；f为劣质魂灵，如草蛇等杂血弱种；d为低劣魂灵，如普通凶性野兽型魂灵；c为普通魂灵，具备基础血脉与战斗价值；b为良品魂灵，常见强势魂兽；a为精英魂灵，稀有异种或强族后裔；s为顶尖魂灵，王族血脉或顶级龙种；s+为神话级魂灵，真龙、神兽后裔或极端变异个体）';
 var AI_TODO_SOUL_BONE_SOURCE = '待补全(请填写魂骨来源的魂兽名)';
 var AI_TODO_MAIN_IDENTITY = '待补全(填写当前主要公开身份)';
 var AI_TODO_PERSONALITY = '待补全(根据角色设定补全性格特征)';
