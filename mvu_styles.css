@@ -16982,7 +16982,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
   min-height: 0;
   height: 100%;
   padding: 8px;
-  overflow: hidden;
+  overflow: clip;
   isolation: auto;
   container-name: mvu-dashboard-area;
   container-type: inline-size;

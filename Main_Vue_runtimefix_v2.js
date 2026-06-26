@@ -305,6 +305,72 @@ function applyUnifiedMountHostStyle(mountEl) {
   mountEl.style.zIndex = '';
 }
 
+function 贴合酒馆底部菜单到按钮(按钮, 菜单) {
+  if (!(按钮 instanceof HTMLElement) || !(菜单 instanceof HTMLElement)) return;
+  if (window.getComputedStyle(菜单).display === 'none') return;
+  const 按钮矩形 = 按钮.getBoundingClientRect();
+  const 菜单矩形 = 菜单.getBoundingClientRect();
+  const 安全间距 = 8;
+  const 菜单宽度 = Math.max(菜单矩形.width || 菜单.offsetWidth || 0, 1);
+  const 菜单高度 = Math.max(菜单矩形.height || 菜单.offsetHeight || 0, 1);
+  const 左侧 = Math.min(
+    Math.max(安全间距, 按钮矩形.left),
+    Math.max(安全间距, window.innerWidth - 菜单宽度 - 安全间距)
+  );
+  const 上方 = Math.max(安全间距, 按钮矩形.top - 菜单高度 - 安全间距);
+  菜单.style.position = 'fixed';
+  菜单.style.inset = 'auto';
+  菜单.style.left = `${Math.round(左侧)}px`;
+  菜单.style.top = `${Math.round(上方)}px`;
+  菜单.style.right = 'auto';
+  菜单.style.bottom = 'auto';
+  菜单.style.transform = 'none';
+  菜单.style.maxHeight = `${Math.max(120, Math.floor(按钮矩形.top - 安全间距 * 2))}px`;
+  if (菜单.id === 'extensionsMenu') 菜单.style.overflowY = 'auto';
+}
+
+function 修正酒馆底部原生菜单位置() {
+  if (!document.body || !document.body.classList.contains('mvu-layout-holo')) return;
+  const 选项按钮 = document.getElementById('options_button');
+  const 扩展按钮 = document.getElementById('extensionsMenuButton');
+  贴合酒馆底部菜单到按钮(选项按钮, document.getElementById('options'));
+  贴合酒馆底部菜单到按钮(扩展按钮, document.getElementById('extensionsMenu'));
+}
+
+function 启动酒馆底部菜单位置修正() {
+  if (window.__MVU_HOLO_NATIVE_MENU_FIX_CLEANUP__) {
+    try { window.__MVU_HOLO_NATIVE_MENU_FIX_CLEANUP__(); } catch (错误) {}
+  }
+  let 动画帧 = 0;
+  const 安排修正 = () => {
+    if (动画帧) return;
+    动画帧 = requestAnimationFrame(() => {
+      动画帧 = 0;
+      修正酒馆底部原生菜单位置();
+    });
+  };
+  const 点击监听 = event => {
+    const 目标 = event.target instanceof Element ? event.target : null;
+    if (!目标 || !目标.closest('#options_button, #extensionsMenuButton')) return;
+    requestAnimationFrame(安排修正);
+  };
+  const 滚动监听 = () => 安排修正();
+  document.addEventListener('click', 点击监听, false);
+  window.addEventListener('resize', 安排修正);
+  const 聊天容器 = document.getElementById('chat');
+  if (聊天容器) 聊天容器.addEventListener('scroll', 滚动监听, { passive: true });
+  window.__MVU_HOLO_NATIVE_MENU_FIX_CLEANUP__ = () => {
+    if (动画帧) {
+      cancelAnimationFrame(动画帧);
+      动画帧 = 0;
+    }
+    document.removeEventListener('click', 点击监听, false);
+    window.removeEventListener('resize', 安排修正);
+    if (聊天容器) 聊天容器.removeEventListener('scroll', 滚动监听, { passive: true });
+    delete window.__MVU_HOLO_NATIVE_MENU_FIX_CLEANUP__;
+  };
+}
+
 function createUnifiedAnchorManager(options = {}) {
   const mountId = options.mountId || 'mvu-unified-mount';
   const onReadyChange = typeof options.onReadyChange === 'function' ? options.onReadyChange : () => {};
@@ -750,31 +816,9 @@ const DesktopUnifiedLayout = {
         const 详情最大高度 = Math.max(420, 详情页高度 || (状态栏最大高度 - toolbarHeight - 18));
         detailHost.style.setProperty('--mvu-unified-detail-max-height', `${Math.floor(详情最大高度)}px`);
       }
-
-      const scrollTarget = getDetailScrollTarget();
-      const scrollByAmount = amount => {
-        if (!Number.isFinite(amount) || Math.abs(amount) < 1) return;
-        if (scrollTarget === document.scrollingElement || scrollTarget === document.documentElement || scrollTarget === document.body) {
-          window.scrollBy({ top: amount, behavior: 'auto' });
-        } else if (scrollTarget) {
-          scrollTarget.scrollTop += amount;
-        }
-      };
-
-      let frameRect = frame.getBoundingClientRect();
-      const bottomOverflow = frameRect.bottom - 底部边界;
-      if (bottomOverflow > 1) {
-        scrollByAmount(bottomOverflow);
-        frameRect = frame.getBoundingClientRect();
-      }
-      const topOverflow = 顶部边界 - frameRect.top;
-      if (topOverflow > 1) {
-        scrollByAmount(-topOverflow);
-      }
     };
     const scheduleUnifiedFrameViewportSync = () => {
       scheduleFrameTask(syncUnifiedFrameViewport);
-      window.setTimeout(syncUnifiedFrameViewport, 80);
     };
     const rememberReturnScroll = () => {
       const target = getDetailScrollTarget();
@@ -908,6 +952,7 @@ const DesktopUnifiedLayout = {
     const 设置全息星轨主题 = 主题 => {
       当前全息星轨状态.主题 = 规范化全息星轨主题(主题);
       写入全息星轨主题(当前全息星轨状态.主题);
+      当前全息星轨状态.主题面板展开 = false;
     };
     const 切换全息主题面板 = () => {
       当前全息星轨状态.主题面板展开 = !当前全息星轨状态.主题面板展开;
@@ -1050,6 +1095,7 @@ function mountMvuVue() {
 
   refreshViewportState();
   syncLayoutMode();
+  启动酒馆底部菜单位置修正();
   const finishUnifiedBootstrap = () => {
     if (unifiedMount && unifiedMount.hasAttribute('data-mvu-booting')) {
       unifiedMount.removeAttribute('data-mvu-booting');
