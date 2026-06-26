@@ -16859,12 +16859,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-  position: fixed;
+  position: absolute;
   z-index: var(--mvu-z-popover, 10060);
-  top: var(--主题抽屉顶, 40px);
-  left: var(--主题抽屉左, 100vw);
+  top: 40px;
+  left: 100%;
   right: auto;
-  transform: translateX(0);
+  transform: translateX(2px);
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -16890,6 +16890,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     width 0.42s cubic-bezier(0.18, 0.92, 0.24, 1.18),
     opacity 0.22s ease,
     box-shadow 0.22s ease;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock::before,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock::after {
+  content: none;
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover,
@@ -19825,6 +19831,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
     --主题抽屉展开宽度: 96px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
+    top: 30px;
+    transform: translateX(1px);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
