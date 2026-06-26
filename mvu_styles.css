@@ -8815,7 +8815,7 @@ body.mvu-layout-holo {
   max-width: 100%;
   align-self: stretch;
   margin: 12px 0 16px;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 24;
   overflow: visible;
 }
@@ -16328,6 +16328,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   font-family: var(--主题字体);
   font-weight: var(--主题字重);
   perspective: 1200px;
+  pointer-events: auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
@@ -16858,14 +16859,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-  position: absolute;
+  position: fixed;
   z-index: var(--mvu-z-popover, 10060);
-  top: 40px;
-  right: 0;
-  left: auto;
+  top: var(--主题抽屉顶, 40px);
+  left: var(--主题抽屉左, 100vw);
+  right: auto;
   transform: translateX(0);
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: stretch;
   gap: 0;
   width: var(--主题抽屉折叠宽度);
@@ -16873,8 +16874,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   min-height: 86px;
   padding: 0;
   border: 1px solid var(--边线颜色);
-  border-right: 0;
-  border-radius: var(--卡片圆角) 0 0 var(--卡片圆角);
+  border-left: 0;
+  border-radius: 0 var(--卡片圆角) var(--卡片圆角) 0;
   background: color-mix(in srgb, var(--暗场浮层) 88%, transparent);
   box-shadow:
     0 0 18px color-mix(in srgb, var(--主题主色) 13%, transparent),
@@ -16948,11 +16949,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
   flex: 0 0 76px;
   flex-direction: column;
   gap: 7px;
-  order: 1;
-  padding: 10px 10px 10px 4px;
+  padding: 10px 8px 10px 6px;
   overflow: hidden;
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(8px);
   transition:
     opacity 0.24s ease,
     transform 0.24s ease;
@@ -19825,10 +19825,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
     --主题抽屉展开宽度: 96px;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-    top: 30px;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {

@@ -534,8 +534,8 @@
     }
     unified.style.position = 'relative';
     unified.style.width = '100%';
-    unified.style.pointerEvents = 'auto';
-    unified.style.zIndex = '1000';
+    unified.style.pointerEvents = 'none';
+    unified.style.zIndex = '';
 
     const battleOverlay = 宿主文档.getElementById('battle-overlay');
     if (battleOverlay) battleOverlay.remove();

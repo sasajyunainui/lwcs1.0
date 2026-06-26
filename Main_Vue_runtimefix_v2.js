@@ -301,8 +301,8 @@ function applyUnifiedMountHostStyle(mountEl) {
   mountEl.style.inset = '';
   mountEl.style.width = '100%';
   mountEl.style.height = '';
-  mountEl.style.pointerEvents = 'auto';
-  mountEl.style.zIndex = '1000';
+  mountEl.style.pointerEvents = 'none';
+  mountEl.style.zIndex = '';
 }
 
 function createUnifiedAnchorManager(options = {}) {
@@ -558,7 +558,7 @@ const DesktopUnifiedLayout = {
           </section>
         </Transition>
       </section>
-      <div class="mvu-unified-theme-dock" :data-holo-theme="全息星轨状态.主题" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
+      <div ref="主题抽屉Ref" class="mvu-unified-theme-dock" :data-holo-theme="全息星轨状态.主题" :class="{ 'is-open': 全息星轨状态.主题面板展开 }">
         <button
           type="button"
           class="mvu-unified-theme-toggle"
@@ -582,6 +582,7 @@ const DesktopUnifiedLayout = {
   setup() {
     const activeMeta = computed(() => resolveUnifiedTabMeta(mvuTabState.current));
     const detailHostRef = ref(null);
+    const 主题抽屉Ref = ref(null);
     const detailState = mvuUnifiedDetailState;
     const 当前全息星轨状态 = 全息星轨状态;
     const 当前主题键 = computed(() => 全息星轨主题键映射[当前全息星轨状态.主题] || 'classic');
@@ -691,6 +692,19 @@ const DesktopUnifiedLayout = {
       }
       return document.scrollingElement || document.documentElement || document.body;
     };
+    const 同步主题抽屉位置 = frame => {
+      const 主题抽屉 = 主题抽屉Ref.value;
+      const 状态栏 = frame || document.querySelector('#mvu-unified-mount .mvu-unified-frame');
+      if (!(主题抽屉 instanceof HTMLElement) || !(状态栏 instanceof HTMLElement) || !状态栏.isConnected) return;
+      const 状态栏矩形 = 状态栏.getBoundingClientRect();
+      const 视口宽度 = Number(window.innerWidth) || Number(document.documentElement.clientWidth) || 1024;
+      const 外侧间距 = 2;
+      const 右侧可用 = Math.max(0, 视口宽度 - 状态栏矩形.right - 外侧间距 - 8);
+      const 展开宽度 = Math.max(74, Math.min(112, Math.floor(右侧可用 || 112)));
+      主题抽屉.style.setProperty('--主题抽屉顶', `${Math.round(状态栏矩形.top + 40)}px`);
+      主题抽屉.style.setProperty('--主题抽屉左', `${Math.round(状态栏矩形.right + 外侧间距)}px`);
+      主题抽屉.style.setProperty('--主题抽屉展开宽度', `${展开宽度}px`);
+    };
     const scheduleFrameTask = task => {
       const run = () => {
         if (typeof task === 'function') task();
@@ -771,6 +785,7 @@ const DesktopUnifiedLayout = {
       if (topOverflow > 1) {
         scrollByAmount(-topOverflow);
       }
+      同步主题抽屉位置(frame);
     };
     const scheduleUnifiedFrameViewportSync = () => {
       scheduleFrameTask(syncUnifiedFrameViewport);
@@ -908,12 +923,17 @@ const DesktopUnifiedLayout = {
     const 设置全息星轨主题 = 主题 => {
       当前全息星轨状态.主题 = 规范化全息星轨主题(主题);
       写入全息星轨主题(当前全息星轨状态.主题);
+      scheduleUnifiedFrameViewportSync();
     };
     const 切换全息主题面板 = () => {
       当前全息星轨状态.主题面板展开 = !当前全息星轨状态.主题面板展开;
+      scheduleUnifiedFrameViewportSync();
     };
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
+    };
+    const 处理统一布局滚动 = () => {
+      scheduleFrameTask(() => 同步主题抽屉位置());
     };
     const handleDesktopUnifiedFocusRestore = () => {
       if (!document.hidden) 请求统一概览同步('focus-restore');
@@ -928,6 +948,7 @@ const DesktopUnifiedLayout = {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
       window.addEventListener('resize', handleDesktopUnifiedResize);
+      document.addEventListener('scroll', 处理统一布局滚动, true);
       window.addEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.addEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       bindDetailWheelBridge();
@@ -942,6 +963,7 @@ const DesktopUnifiedLayout = {
     });
     onUnmounted(() => {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
+      document.removeEventListener('scroll', 处理统一布局滚动, true);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
       if (
@@ -972,6 +994,7 @@ const DesktopUnifiedLayout = {
       activeMeta,
       closeUnifiedDetail,
       detailHostRef,
+      主题抽屉Ref,
       detailState,
       统一路径标题,
       当前主题键,
