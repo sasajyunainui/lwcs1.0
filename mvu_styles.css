@@ -3138,12 +3138,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-height: 94px;
   width: 100%;
   padding: 12px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: var(--文字主色);
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   display: grid;
@@ -3161,18 +3160,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .role-switch-tile:hover {
   transform: translateY(-1px);
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent);
+  box-shadow: none;
 }
 
 .role-switch-tile.active {
-  background: var(--全息材质悬停底);
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .role-switch-head {
@@ -3282,13 +3275,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .archive-card {
   position: relative;
   overflow: hidden;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   min-height: 0;
   padding: 16px;
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   transform-style: preserve-3d;
@@ -3410,12 +3402,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .legend-chip {
-  border-radius: var(--正文卡片圆角);
+  border-radius: 0;
   padding: 7px 8px;
-  background: var(--全息材质底);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  box-shadow: var(--全息材质阴影);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -3469,16 +3460,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .archive-tile-grid .archive-tile {
-  background: var(--全息材质底);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  border-radius: var(--正文卡片圆角);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   padding: 6px 8px;
   min-height: 44px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -3986,12 +3976,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .timeline-card {
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   padding: 8px;
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -6443,12 +6432,11 @@ button.tag-chip:active,
   position: relative;
   z-index: 1;
   min-width: 0;
-  border-radius: var(--正文卡片圆角) !important;
+  border-radius: 0 !important;
   padding: 7px 8px !important;
-  background: var(--全息材质底);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  box-shadow: var(--全息材质阴影);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   transition: 0.18s ease;
@@ -6461,10 +6449,8 @@ button.tag-chip:active,
 
 .archive-tile.clickable:hover {
   transform: translateX(4px);
-  border-color: var(--全息材质线);
-  border-left-color: var(--全息材质侧线);
-  box-shadow: var(--全息材质悬停阴影);
-  background: var(--全息材质悬停底);
+  box-shadow: none;
+  background: transparent;
 }
 
 .archive-tile.clickable > * {
@@ -7658,12 +7644,11 @@ button.tag-chip:active,
 
 .relation-card,
 .intel-card {
-  border-radius: var(--正文卡片圆角);
+  border-radius: 0;
   padding: 8px;
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -9337,10 +9322,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-resea
   gap: 12px !important;
   min-width: 0 !important;
   padding: 12px !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 16%, transparent) !important;
-  border-radius: 6px !important;
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   overflow: hidden !important;
 }
 
@@ -10511,13 +10496,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
   flex-direction: column !important;
   gap: 12px !important;
   padding: 15px 16px !important;
-  border: 1px solid var(--全息材质线) !important;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线) !important;
-  border-radius: var(--正文卡片圆角) !important;
-  background: var(--全息材质底) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: var(--全息材质阴影) !important;
+  box-shadow: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive-profile,
@@ -13476,8 +13460,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --archive-shell-surface: transparent;
   --archive-shell-edge: transparent;
   --archive-shell-edge-strong: transparent;
-  --archive-card-bg: var(--全息材质底);
-  --archive-card-muted: var(--全息材质底);
+  --archive-card-bg: transparent;
+  --archive-card-muted: transparent;
   --archive-text-strong: var(--全息标题文字);
   --archive-text: var(--文字主色);
   --archive-text-muted: var(--全息标签文字);
@@ -13495,9 +13479,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-underlay: transparent;
   --dossier-film: transparent;
   --dossier-panel-bg: transparent;
-  --dossier-card-bg: var(--全息材质底);
-  --dossier-card-bg-strong: var(--全息材质悬停底);
-  --dossier-section-bg: var(--全息材质底);
+  --dossier-card-bg: transparent;
+  --dossier-card-bg-strong: transparent;
+  --dossier-section-bg: transparent;
   --dossier-line: var(--全息材质弱线);
   --dossier-line-strong: var(--全息材质线);
   --dossier-line-soft: var(--全息材质弱线);
@@ -13510,9 +13494,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-green: #78ddc2;
   --dossier-red: #ff8baa;
   --dossier-warn: var(--全息数值文字);
-  --dossier-shadow: var(--全息材质阴影);
-  --mvu-dossier-panel: var(--全息材质底);
-  --mvu-dossier-panel-soft: var(--全息材质底);
+  --dossier-shadow: none;
+  --mvu-dossier-panel: transparent;
+  --mvu-dossier-panel-soft: transparent;
   --mvu-dossier-line: var(--全息材质弱线);
   --mvu-dossier-line-strong: var(--全息材质线);
   --mvu-dossier-label: var(--全息标签文字);
@@ -13526,11 +13510,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   min-width: 0 !important;
   min-height: max-content !important;
   padding: 12px !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: visible !important;
 }
 
@@ -13562,11 +13545,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list {
   display: grid !important;
   gap: 0 !important;
   min-width: 0 !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: hidden !important;
 }
 
@@ -14003,14 +13985,9 @@ body.mvu-layout-holo
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-topology-board .topology-node.is-active {
-  border-color: color-mix(in srgb, var(--主题主色) 76%, transparent) !important;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 18%, transparent), transparent),
-    var(--全息材质底) !important;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--主题主色) 16%, transparent),
-    0 0 22px color-mix(in srgb, var(--主题主色) 34%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 10%, transparent) !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
   transform: translate(-50%, calc(-50% - 2px)) !important;
   z-index: 5 !important;
 }
@@ -16054,11 +16031,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell-
 #detailModal.mvu-modal-display-unified .dossier-shell--life .archive-card,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .archive-card {
   padding: 16px 18px !important;
-  border: 1px solid var(--全息材质线) !important;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线) !important;
-  border-radius: var(--正文卡片圆角) !important;
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -16648,11 +16624,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-
   min-width: 0 !important;
   min-height: 56px !important;
   padding: 8px 6px !important;
-  border-radius: var(--正文卡片圆角) !important;
-  border: 1px solid var(--全息材质线) !important;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线) !important;
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-radar-wrap .legend-chip + .legend-chip,
@@ -18055,18 +18030,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-height: 112px;
   height: auto;
   overflow: hidden;
-  border: 1px solid var(--全息材质线);
-  border-radius: var(--正文卡片圆角);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
-  background-clip: padding-box;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  background-clip: border-box;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   padding: 12px;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
   transform-style: preserve-3d;
 }
 
@@ -18119,15 +18093,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card:hover {
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:focus-within {
-  border-left-color: var(--全息材质侧线);
-  background: var(--全息材质悬停底);
-  box-shadow: var(--全息材质悬停阴影);
+  background: transparent;
+  box-shadow: none;
   transform: translateX(4px);
 }
 
@@ -18138,11 +18111,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
   gap: 10px;
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  border-radius: var(--正文卡片圆角);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   overflow: hidden;
@@ -18160,9 +18132,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within {
-  border-left-color: var(--全息材质侧线);
-  background: var(--全息材质悬停底);
-  box-shadow: var(--全息材质悬停阴影);
+  background: transparent;
+  box-shadow: none;
   transform: translateX(4px);
 }
 
@@ -20623,8 +20594,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   justify-content: center;
   padding: 18px 24px calc(18px + env(safe-area-inset-bottom, 0px));
   background: rgba(3, 6, 9, 0.12);
-  --mvu-dossier-panel: var(--全息材质底);
-  --mvu-dossier-panel-soft: var(--全息材质底);
+  --mvu-dossier-panel: transparent;
+  --mvu-dossier-panel-soft: transparent;
   --mvu-dossier-line: var(--全息材质弱线);
   --mvu-dossier-line-strong: var(--全息材质线);
   --mvu-dossier-label: var(--全息标签文字);
@@ -20838,11 +20809,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   display: grid !important;
   align-items: center !important;
   padding: 10px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid var(--全息材质弱线) !important;
-  background: var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--mvu-dossier-muted) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  box-shadow: none !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-card--life-profile {
@@ -20896,11 +20867,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .nsfw-theme-card {
   min-height: 0 !important;
   padding: 14px !important;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -20957,11 +20927,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0 !important;
   min-height: max-content !important;
   padding: 12px !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: visible !important;
 }
 
@@ -21013,11 +20982,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   display: grid !important;
   gap: 0 !important;
   min-width: 0 !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: hidden !important;
 }
 
@@ -21577,14 +21545,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .relation-topology-board .topology-node.is-active,
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-topology-board .topology-node.is-active {
-  border-color: color-mix(in srgb, var(--主题主色) 76%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 18%, transparent), transparent),
-    var(--全息材质底);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--主题主色) 16%, transparent),
-    0 0 22px color-mix(in srgb, var(--主题主色) 34%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
   transform: translate(-50%, calc(-50% - 2px));
   z-index: 5;
 }
@@ -22071,9 +22034,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .relation-action-btn:hover:not(:disabled),
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
-  background: var(--全息材质悬停底);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 12%, transparent);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
   color: #fff;
 }
 
@@ -22309,11 +22272,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
   color: var(--white, #fff);
-  background: var(--全息材质底);
+  background: transparent;
   padding: 12px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid var(--全息材质弱线);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
 }
 
 .intel-pending-meta-row {
@@ -22492,11 +22455,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0;
   min-height: 82px;
   padding: 12px 14px !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal .mvu-detail-intel-card {
@@ -22508,11 +22470,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   gap: 6px;
   min-width: 0;
   padding: 12px 14px !important;
-  border-radius: 0 8px 8px 0;
-  border: 1px solid var(--全息材质线);
-  border-left: 4px solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal .archive-tile b,
@@ -22585,11 +22546,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card.int
 
 #detailModal .location-detail-grid--refined > .archive-card {
   padding: 14px 20px 16px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal .location-detail-grid--refined .archive-card-head {
@@ -23476,11 +23436,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-intel-
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.7;
   color: var(--white);
-  background: var(--全息材质底);
+  background: transparent;
   padding: 14px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid var(--全息材质弱线);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
 }
 
 #detailModal .intel-pending-impact {
@@ -23704,8 +23664,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   --archive-shell-surface: transparent;
   --archive-shell-edge: transparent;
   --archive-shell-edge-strong: transparent;
-  --archive-card-bg: var(--全息材质底);
-  --archive-card-muted: var(--全息材质底);
+  --archive-card-bg: transparent;
+  --archive-card-muted: transparent;
   --archive-text-strong: var(--全息标题文字);
   --archive-text: var(--文字主色);
   --archive-text-muted: var(--全息标签文字);
@@ -23786,9 +23746,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .modal-close {
   min-height: 34px;
   padding: 0 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border-color: color-mix(in srgb, var(--边线颜色) 60%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border-color: transparent;
+  background: transparent;
   color: var(--archive-text);
   font-size: var(--mvu-font-sm, 12px);
   font-weight: 700;
@@ -23801,8 +23761,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 
 #detailModal.archive-redesign-mode .modal-close:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--边线颜色) 30%, transparent);
-  background: var(--全息材质悬停底);
+  border-color: transparent;
+  background: transparent;
   color: #fff;
 }
 
@@ -23846,11 +23806,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 10px;
   padding: 14px;
-  border-radius: var(--archive-card-radius);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   overflow: hidden;
@@ -23867,11 +23826,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-content: start;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: var(--archive-card-radius);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   overflow: hidden;
@@ -24030,9 +23988,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   align-items: start;
   column-gap: 10px;
   row-gap: 4px;
-  background: var(--全息材质底) !important;
-  border-color: var(--全息材质线) !important;
-  border-left-color: var(--全息材质侧线) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  border-left-color: transparent !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-tile b {
@@ -24052,9 +24010,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   justify-content: center;
   min-height: 24px;
   padding: 4px 10px;
-  border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 44%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: var(--archive-text);
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
@@ -24094,12 +24052,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   align-content: start;
   text-align: left;
   padding: 10px 12px !important;
-  border-radius: var(--正文卡片圆角) !important;
-  border: 1px solid var(--全息材质线) !important;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线) !important;
-  background: var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -24113,11 +24070,8 @@ body.mvu-layout-holo
   .archive-redesign-root
   .relation-directory-item:hover {
   transform: translateY(-1px);
-  background: var(--全息材质悬停底) !important;
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--全息材质魂色) 24%, transparent),
-    0 0 18px var(--全息材质魂影) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .role-switch-tile.active,
@@ -24128,11 +24082,8 @@ body.mvu-layout-holo
   .mvu-unified-detail-host
   .archive-redesign-root
   .relation-directory-item.active {
-  background: var(--全息材质悬停底) !important;
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--全息材质魂色) 24%, transparent),
-    0 0 18px var(--全息材质魂影) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-modal-grid.org-detail-shell,
@@ -24654,10 +24605,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   width: clamp(78px, 8vw, 112px);
   min-height: 38px;
   padding: 6px 9px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 40%, transparent);
-  background: var(--全息材质底);
-  box-shadow: var(--mvu-shadow-md);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .topology-node > b,
@@ -24740,9 +24691,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 8px;
   min-width: 0;
   padding: 9px 10px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-stat-pill em,
@@ -24793,8 +24744,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-detail-tiles .archive-tile {
-  background: var(--全息材质底) !important;
-  border-color: color-mix(in srgb, var(--边线颜色) 6%, transparent) !important;
+  background: transparent !important;
+  border-color: transparent !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .faction-layout-shell {
@@ -24834,16 +24785,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: var(--卡片圆角);
+  border-radius: 0;
   border: 0;
-  background: var(--全息材质底);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .faction-row.highlight {
-  background: var(--全息材质悬停底);
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .request-console-card > span {
@@ -24883,9 +24832,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-pending-editor {
   min-height: 108px;
   padding: 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 32%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   font-size: var(--mvu-font-base, 13px);
   line-height: 1.6;
   color: var(--archive-text-strong);
@@ -24897,9 +24846,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 4px;
   align-content: start;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 38%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-pending-impact b {
@@ -24943,9 +24892,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: var(--mvu-radius-md, 12px);
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .intel-unlocked-card {
@@ -24972,11 +24921,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-detail-grid--refined > .archive-card {
   padding: 14px 20px 16px !important;
-  border-radius: var(--正文卡片圆角) !important;
-  border: 1px solid var(--全息材质线) !important;
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线) !important;
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .location-detail-grid--refined .archive-card-head {
@@ -25042,9 +24990,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: 36px;
   padding: 7px 10px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 12%, transparent) !important;
-  background: var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--archive-text-strong) !important;
   box-shadow: none !important;
 }
@@ -25057,13 +25005,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 32px !important;
   min-height: 32px;
   padding: 4px 30px 4px 34px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  background:
-    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--archive-text-strong) !important;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26) !important;
+  box-shadow: none !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
 }
@@ -25080,13 +25026,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 36px !important;
   height: auto !important;
   padding: 7px 10px !important;
-  border-radius: var(--卡片圆角) !important;
+  border-radius: 0 !important;
   border: 0 !important;
-  background: var(--全息材质底) !important;
+  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: none !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 700 !important;
 }
@@ -25096,13 +25040,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-height: 26px !important;
   height: 26px !important;
   padding: 3px 8px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
+  border-radius: 0 !important;
   border: 0 !important;
-  background: var(--全息材质底) !important;
+  background: transparent !important;
   color: var(--文字主色) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: none !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   font-weight: 700 !important;
   line-height: 1 !important;
@@ -25119,7 +25061,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 
 #detailModal.archive-redesign-mode .archive-redesign-root .relation-action-btn.action-primary,
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn.live {
-  background: var(--全息材质悬停底) !important;
+  background: transparent !important;
   color: var(--文字主色) !important;
 }
 
@@ -25140,11 +25082,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode .archive-redesign-root .map-dispatch-action-btn:hover:not(:disabled),
 #detailModal.archive-redesign-mode .archive-redesign-root .tag-chip:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: var(--全息材质悬停底) !important;
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent) !important;
+  background: transparent !important;
+  box-shadow: none !important;
   color: #fff !important;
 }
 
@@ -25412,9 +25351,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-underlay: transparent;
   --dossier-film: transparent;
   --dossier-panel-bg: transparent;
-  --dossier-card-bg: var(--全息材质底);
-  --dossier-card-bg-strong: var(--全息材质悬停底);
-  --dossier-section-bg: var(--全息材质底);
+  --dossier-card-bg: transparent;
+  --dossier-card-bg-strong: transparent;
+  --dossier-section-bg: transparent;
   --dossier-line: var(--全息材质弱线);
   --dossier-line-strong: var(--全息材质线);
   --dossier-line-soft: var(--全息材质弱线);
@@ -25427,7 +25366,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-green: #78ddc2;
   --dossier-red: #ff8baa;
   --dossier-warn: var(--全息数值文字);
-  --dossier-shadow: var(--全息材质阴影);
+  --dossier-shadow: none;
   color-scheme: dark;
 }
 
@@ -25497,10 +25436,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .modal-close {
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 64%, transparent);
-  background: var(--全息材质底);
+  border: 0;
+  background: transparent;
   color: var(--主题主色);
-  border-radius: var(--mvu-radius-md, 12px);
+  border-radius: 0;
   padding: 6px 12px;
   font-family: var(--font-tech);
   font-size: var(--mvu-font-xs, 10px);
@@ -25597,13 +25536,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   align-content: start;
   overflow: hidden;
-  border-radius: var(--archive-card-radius);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: var(--全息材质阴影);
+  box-shadow: none;
   transform-style: preserve-3d;
 }
 
@@ -25941,7 +25879,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: auto !important;
   max-height: none !important;
   padding: 10px 12px 12px !important;
-  background: var(--全息材质底) !important;
+  background: transparent !important;
   animation: relation-dossier-refresh 0.16s ease-out !important;
   overflow: visible !important;
   scrollbar-width: none !important;
@@ -26011,11 +25949,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   min-width: 0;
   min-height: max-content;
   padding: 12px;
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  border-radius: var(--正文卡片圆角);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   overflow: visible;
@@ -26040,12 +25977,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   height: 100%;
   min-height: 0;
   padding: 0;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
+  border-radius: 0;
+  border: 0;
   overflow: hidden;
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-section-title {
@@ -26090,11 +26026,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   grid-auto-flow: row dense;
   gap: 0;
   min-width: 0;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -26625,9 +26560,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 36px !important;
   min-height: 36px;
   padding: 7px 12px !important;
-  border-radius: var(--mvu-radius-md, 12px) !important;
-  border: 1px solid color-mix(in srgb, var(--主题主色) 14%, transparent) !important;
-  background: var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.2 !important;
@@ -26639,15 +26574,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 32px !important;
   min-height: 32px;
   padding: 4px 30px 4px 34px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 8%, transparent) !important;
-  background:
-    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--边线颜色) 70%, transparent) 50%) right 15px center / 6px 6px no-repeat,
-    var(--全息材质底) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   line-height: 1 !important;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.26) !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .request-console-input:focus,
@@ -26676,16 +26609,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 36px !important;
   min-height: 36px !important;
   padding: 7px 12px !important;
-  border-radius: var(--卡片圆角) !important;
+  border-radius: 0 !important;
   border: 0 !important;
-  background: var(--全息材质底) !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26699,16 +26630,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   height: 26px !important;
   min-height: 26px !important;
   padding: 3px 8px !important;
-  border-radius: var(--mvu-radius-sm, 8px) !important;
+  border-radius: 0 !important;
   border: 0 !important;
-  background: var(--全息材质底) !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-size: var(--mvu-font-xs, 10px) !important;
   font-weight: 600 !important;
   line-height: 1 !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.075),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 6%, transparent) !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26721,7 +26650,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-btn.action-primary {
-  background: var(--全息材质悬停底) !important;
+  background: transparent !important;
   color: var(--dossier-accent-strong) !important;
 }
 
@@ -26741,11 +26670,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .relation-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: var(--全息材质悬停底) !important;
-  box-shadow:
-    2px 4px 10px rgba(0,0,0,0.3),
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 24%, transparent),
-    0 0 18px color-mix(in srgb, var(--主题主色) 20%, transparent) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-card--relation-overview {
@@ -26779,11 +26705,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   width: clamp(78px, 8vw, 112px);
   min-height: 38px;
   padding: 6px 9px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26817,10 +26742,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .relation-topology-board
   .topology-node.center {
-  border-color: var(--全息材质线);
-  border-left-color: var(--全息材质侧线);
-  background: var(--全息材质悬停底);
-  box-shadow: var(--全息材质悬停阴影);
+  border-color: transparent;
+  border-left-color: transparent;
+  background: transparent;
+  box-shadow: none;
   animation: relation-self-pulse 3.4s ease-in-out infinite;
 }
 
@@ -26858,11 +26783,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   min-width: 0;
   min-height: 56px;
   padding: 8px 6px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26944,8 +26868,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-shell
   .mvu-editor-section {
-  border-color: var(--全息材质线);
-  background: var(--全息材质底);
+  border-color: transparent;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -26992,8 +26916,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-shell
   .mvu-editor-textarea {
-  border-color: rgba(214, 236, 243, 0.18) !important;
-  background: var(--全息材质底) !important;
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
   font-family: var(--font-ui) !important;
   font-size: var(--mvu-font-base, 13px) !important;
@@ -27004,8 +26928,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-fusion-participant-row {
   grid-template-columns: minmax(170px, 0.94fr) minmax(170px, 1fr) minmax(64px, auto);
-  border-color: rgba(214, 236, 243, 0.14);
-  background: var(--全息材质底);
+  border-color: transparent;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span {
@@ -27027,8 +26951,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row {
   grid-template-columns: minmax(104px, 0.32fr) minmax(0, 1fr);
-  border-color: rgba(214, 236, 243, 0.12);
-  background: var(--全息材质底);
+  border-color: transparent;
+  background: transparent;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row em {
@@ -27049,11 +26973,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   padding: 11px 12px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -27096,9 +27019,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .dossier-list--fusion
   .dossier-list-row {
-  border-color: var(--全息材质线) !important;
-  background: var(--全息材质底) !important;
-  box-shadow: var(--全息材质阴影) !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split
@@ -27130,16 +27053,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   .archive-redesign-root
   .skill-designer-shell
   .mvu-editor-textarea {
-  border-color: var(--全息材质线) !important;
-  background: var(--全息材质底) !important;
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
 }
 
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-shell .tag-chip,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list--fusion .dossier-pill {
-  border-color: var(--全息材质线) !important;
-  background: var(--全息材质底) !important;
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--dossier-text-strong) !important;
 }
 
@@ -27378,7 +27301,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   #detailModal.archive-redesign-mode.mvu-modal-display-split {
     --dossier-shell-width: calc(100vw - 12px);
     --dossier-panel-bg: transparent;
-    --dossier-card-bg: var(--全息材质底);
+    --dossier-card-bg: transparent;
   }
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .mvu-modal-panel.archive-redesign-panel {
