@@ -44542,6 +44542,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     const rootData = deepGet(snapshot, 'rootData', {});
     const 父级名 = 规范地点键名(父节点);
     const 目标名 = 规范地点键名(目标名称) || 取地点叶名(目标名称);
+    const 目标叶名 = 取地点叶名(目标名);
     if (!目标名) return { name: '', data: null, source: '' };
     const 完整路径命中 = 查找世界地点数据(snapshot, 目标名);
     if (完整路径命中.data && (目标名.includes('-') || !父级名)) return 完整路径命中;
@@ -44552,7 +44553,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     const 接口 = 获取运行时实体命中接口_桥接();
     if (接口 && typeof 接口.收集运行时地点命中 === 'function') {
       try {
-        const 命中 = 接口.收集运行时地点命中(rootData, 目标名, {
+        const 命中 = 接口.收集运行时地点命中(rootData, 目标叶名 || 目标名, {
           归属父节点: 父级名,
           父节点: 父级名,
           当前地点: toText(deepGet(snapshot, 'activeChar.状态.位置', ''), ''),
@@ -44561,7 +44562,8 @@ ${toText(combatData.战斗意图, '点到为止')}
         })?.[0];
         if (命中?.名称) {
           const 命中数据 = 查找世界地点数据(snapshot, 命中.名称);
-          if (命中数据.data) return 命中数据;
+          const 命中叶名 = 取地点叶名(命中数据.name || 命中.名称);
+          if (命中数据.data && (!目标名.includes('-') || 命中叶名 === 目标叶名)) return 命中数据;
         }
       } catch (错误) {}
     }
@@ -44957,6 +44959,16 @@ ${toText(combatData.战斗意图, '点到为止')}
       const result = mapBridge.describeTravelToNode(已有目标.name || request.目标地点);
       if (!result?.ok)
         return 构建模块路由失败结果('travel', request, result?.reason || 'map_travel_failed', { result });
+      if (result.alreadyThere) {
+        return 构建模块路由成功结果('travel', request, {
+          dispatchMode: 'settled_summary',
+          alreadyThere: true,
+          patchOps: [],
+          startLoc: 当前所在,
+          finalLocName: 当前所在 || 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, 已有目标父级),
+          result,
+        });
+      }
       const 补丁结果 = 构建已有地点移动补丁(snapshot, request, 已有目标, result);
       if (!补丁结果.ok || !补丁结果.patchOps.length) {
         return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable', { result });
