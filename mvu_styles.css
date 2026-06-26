@@ -16658,8 +16658,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn:focus-visible {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
-  --主题抽屉折叠宽度: 32px;
-  --主题抽屉展开宽度: 108px;
   position: relative;
   box-sizing: border-box;
   min-width: 0;
@@ -16672,7 +16670,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 34px;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -16859,37 +16857,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
-  position: absolute;
-  z-index: var(--mvu-z-popover, 10060);
-  top: 40px;
-  left: 100%;
-  right: auto;
-  transform: translateX(2px);
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0;
-  width: var(--主题抽屉折叠宽度);
-  min-width: var(--主题抽屉折叠宽度);
-  min-height: 86px;
+  position: relative;
+  z-index: 6;
+  justify-self: end;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  min-height: 30px;
   padding: 0;
-  border: 1px solid var(--边线颜色);
-  border-left: 0;
-  border-radius: 0 var(--卡片圆角) var(--卡片圆角) 0;
-  background: color-mix(in srgb, var(--暗场浮层) 88%, transparent);
-  box-shadow:
-    0 0 18px color-mix(in srgb, var(--主题主色) 13%, transparent),
-    inset 0 0 14px rgba(255, 255, 255, 0.04);
-  backdrop-filter: var(--虚化强度);
-  -webkit-backdrop-filter: var(--虚化强度);
-  overflow: hidden;
-  white-space: nowrap;
+  overflow: visible;
   pointer-events: auto;
-  opacity: 0.92;
-  transition:
-    width 0.42s cubic-bezier(0.18, 0.92, 0.24, 1.18),
-    opacity 0.22s ease,
-    box-shadow 0.22s ease;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock::before,
@@ -16901,12 +16880,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock::after {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open {
-  width: var(--主题抽屉展开宽度);
   opacity: 1;
-  box-shadow:
-    14px 0 30px rgba(0, 0, 0, 0.48),
-    0 0 24px color-mix(in srgb, var(--主题主色) 22%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 14%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
@@ -16915,30 +16889,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   pointer-events: auto;
   display: inline-grid;
   place-items: center;
-  flex: 0 0 32px;
   width: 32px;
   min-width: 32px;
-  min-height: 86px;
+  height: 30px;
+  min-height: 30px;
   padding: 0;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--边线颜色);
+  border-radius: 999px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 13%, transparent), transparent),
-    rgba(255, 255, 255, 0.018);
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--主题主色) 22%, transparent), transparent 68%),
+    var(--卡片材质);
   color: var(--主题主色);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--主题主色) 13%, transparent),
+    inset 0 0 10px rgba(255, 255, 255, 0.04);
   text-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 76%, transparent);
+  backdrop-filter: var(--虚化强度);
+  -webkit-backdrop-filter: var(--虚化强度);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle span {
-  writing-mode: horizontal-tb;
-  letter-spacing: 0;
-  max-width: 28px;
-  overflow: hidden;
-  text-overflow: clip;
+  display: block;
+  transform: translateY(-0.5px);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle:hover,
@@ -16947,21 +16923,38 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-uni
   color: var(--mvu-holo-high);
   opacity: 1;
   outline: none;
+  border-color: var(--主题主色);
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--主题主色) 28%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--主题主色) 10%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 7;
   pointer-events: none;
-  display: flex;
-  flex: 0 0 76px;
-  flex-direction: column;
-  gap: 7px;
-  padding: 10px 8px 10px 6px;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 64px);
+  gap: 6px;
+  width: 80px;
+  padding: 8px;
+  border: 1px solid var(--边线颜色);
+  border-radius: var(--卡片圆角);
+  background: color-mix(in srgb, var(--暗场浮层) 92%, transparent);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.42),
+    0 0 20px color-mix(in srgb, var(--主题主色) 16%, transparent),
+    inset 0 0 16px rgba(255, 255, 255, 0.04);
+  backdrop-filter: var(--虚化强度);
+  -webkit-backdrop-filter: var(--虚化强度);
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top right;
   transition:
-    opacity 0.24s ease,
-    transform 0.24s ease;
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover .mvu-unified-theme-panel,
@@ -16969,8 +16962,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within .mv
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-unified-theme-panel {
   pointer-events: auto;
   opacity: 1;
-  transform: translateX(0);
-  transition-delay: 0.08s;
+  transform: translateY(0) scale(1);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel .mvu-holo-theme-btn {
