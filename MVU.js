@@ -418,8 +418,8 @@ const CharacterSchema = z
         敏感度: z.coerce.number().prefault(10).describe('身体整体敏感度基础值'),
         开发度: z.coerce.number().prefault(0).describe('身体整体开发度/调教进度(0-100)'),
 
-        癖好: z.array(z.string()).prefault(['待补全(请根据角色经历，填写已觉醒的特殊癖好标签)']),
-        幻想: z.array(z.string()).prefault(['待补全(请根据角色隐藏的性格，描写其内心深处渴望被对待的私密方式)']),
+        性癖: z.array(z.string()).prefault(['待补全(请根据角色经历，填写已觉醒的特殊性癖好标签)']),
+        性幻想: z.array(z.string()).prefault(['待补全(请根据角色隐藏的性格，描写其内心深处渴望被对待的私密方式)']),
 
         受孕tick: z.coerce.number().prefault(-1).describe('受孕时的tick，-1表示未怀孕'),
         受孕对象: z.string().prefault('无').describe('孩子父亲'),

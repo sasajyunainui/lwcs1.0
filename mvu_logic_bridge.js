@@ -34812,24 +34812,24 @@
                 </div>
                 <div class="nsfw-theme-body">
                   <div class="nsfw-tag-section">
-                    <b class="nsfw-tag-label">癖好</b>
+                    <b class="nsfw-tag-label">性癖</b>
                     <div class="nsfw-tag-list">
-                      ${(Array.isArray(nsfw.癖好) ? nsfw.癖好 : [])
+                      ${(Array.isArray(nsfw.性癖) ? nsfw.性癖 : [])
                         .map(
                           (f, i) => `
-                        <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '癖好', i], kind: 'string' })}</span>
+                        <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性癖', i], kind: 'string' })}</span>
                       `,
                         )
                         .join('')}
                     </div>
                   </div>
                   <div>
-                    <b class="nsfw-tag-label">幻想</b>
+                    <b class="nsfw-tag-label">性幻想</b>
                     <div class="nsfw-tag-list">
-                      ${(Array.isArray(nsfw.幻想) ? nsfw.幻想 : [])
+                      ${(Array.isArray(nsfw.性幻想) ? nsfw.性幻想 : [])
                         .map(
                           (f, i) => `
-                        <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '幻想', i], kind: 'string' })}</span>
+                        <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性幻想', i], kind: 'string' })}</span>
                       `,
                         )
                         .join('')}

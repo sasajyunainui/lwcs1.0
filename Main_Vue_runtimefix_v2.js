@@ -517,9 +517,12 @@ const DesktopUnifiedLayout = {
     <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
       <section
         class="mvu-unified-frame"
-        :class="{ 'is-detail': detailState.isOpen }"
+        :class="{ 'is-detail': detailState.isOpen, 'is-holo-animation-paused': 全息动画暂停 }"
         :data-holo-theme="全息星轨状态.主题"
         :data-unified-tab="tabState.current"
+        @pointerdown.passive="标记全息动画临停"
+        @wheel.passive="标记全息动画临停"
+        @keydown="标记全息动画临停"
       >
         <header class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen }">
           <div class="mvu-unified-toolbar-main">
@@ -651,6 +654,9 @@ const DesktopUnifiedLayout = {
     const detailState = mvuUnifiedDetailState;
     const 当前全息星轨状态 = 全息星轨状态;
     const 当前主题键 = computed(() => 全息星轨主题键映射[当前全息星轨状态.主题] || 'classic');
+    const 页面可见 = ref(typeof document === 'undefined' || document.visibilityState === 'visible');
+    const 全息动画临停 = ref(false);
+    const 全息动画暂停 = computed(() => !页面可见.value || 全息动画临停.value);
     const 上次详情标题 = ref('详情');
     const 读取当前详情标题 = () => {
       const 预览键 = String(detailState.previewKey || '').trim();
@@ -683,6 +689,16 @@ const DesktopUnifiedLayout = {
       if (页面主体) 页面主体.dataset.mvuHoloTheme = 主题;
     };
     let removeDetailWheelBridge = null;
+    let 全息动画恢复计时器 = 0;
+    const 标记全息动画临停 = () => {
+      if (typeof window === 'undefined') return;
+      全息动画临停.value = true;
+      if (全息动画恢复计时器) window.clearTimeout(全息动画恢复计时器);
+      全息动画恢复计时器 = window.setTimeout(() => {
+        全息动画恢复计时器 = 0;
+        全息动画临停.value = false;
+      }, 360);
+    };
     const 清理顶层浮窗 = () => {
       if (typeof window.__MVU_CLEAR_FLOATING_HOVER__ === 'function') {
         try { window.__MVU_CLEAR_FLOATING_HOVER__(); } catch (err) {}
@@ -888,6 +904,7 @@ const DesktopUnifiedLayout = {
     const openUnifiedPreview = (previewKey, options = {}) => {
       const nextPreviewKey = String(previewKey || '').trim();
       if (!nextPreviewKey) return false;
+      标记全息动画临停();
       const 下一个详情标题 = String(resolveShellPreviewTitle(nextPreviewKey, activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '详情') || '').trim();
       if (下一个详情标题) 上次详情标题.value = 下一个详情标题;
       清理顶层浮窗();
@@ -906,6 +923,7 @@ const DesktopUnifiedLayout = {
       return true;
     };
     const closeUnifiedDetail = (options = {}) => {
+      标记全息动画临停();
       清理顶层浮窗();
       if (!options.force && detailState.stack.length) {
         detailState.previewKey = detailState.stack.pop() || '';
@@ -940,6 +958,7 @@ const DesktopUnifiedLayout = {
       }, 40);
     };
     const setUnifiedTab = tabId => {
+      标记全息动画临停();
       清理顶层浮窗();
       if (detailState.isOpen) {
         detailState.isOpen = false;
@@ -950,18 +969,21 @@ const DesktopUnifiedLayout = {
       scheduleUnifiedFrameViewportSync();
     };
     const 设置全息星轨主题 = 主题 => {
+      标记全息动画临停();
       当前全息星轨状态.主题 = 规范化全息星轨主题(主题);
       写入全息星轨主题(当前全息星轨状态.主题);
       当前全息星轨状态.主题面板展开 = false;
     };
     const 切换全息主题面板 = () => {
+      标记全息动画临停();
       当前全息星轨状态.主题面板展开 = !当前全息星轨状态.主题面板展开;
     };
     const handleDesktopUnifiedResize = () => {
       scheduleUnifiedFrameViewportSync();
     };
     const handleDesktopUnifiedFocusRestore = () => {
-      if (!document.hidden) 请求统一概览同步('focus-restore');
+      页面可见.value = typeof document === 'undefined' || document.visibilityState === 'visible';
+      if (页面可见.value) 请求统一概览同步('focus-restore');
     };
     const 清理旧全局皮肤节点 = () => {
       if (typeof document === 'undefined') return;
@@ -989,6 +1011,10 @@ const DesktopUnifiedLayout = {
       window.removeEventListener('resize', handleDesktopUnifiedResize);
       window.removeEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.removeEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
+      if (全息动画恢复计时器) {
+        window.clearTimeout(全息动画恢复计时器);
+        全息动画恢复计时器 = 0;
+      }
       if (
         typeof document !== 'undefined'
         && document.body
@@ -1020,6 +1046,8 @@ const DesktopUnifiedLayout = {
       detailState,
       统一路径标题,
       当前主题键,
+      全息动画暂停,
+      标记全息动画临停,
       全息星轨状态: 当前全息星轨状态,
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,

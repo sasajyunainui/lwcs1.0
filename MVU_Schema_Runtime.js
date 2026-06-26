@@ -6183,10 +6183,10 @@ function 规范化Schema根转换_V1(data = {}) {
         ensureDisplayText(charData.穿搭, '鞋子', 角色穿搭鞋子待补全文案_V1);
         ensureDisplayText(charData.穿搭, '描述', 角色穿搭描述待补全文案_V1);
         if (charData.私密档案 && typeof charData.私密档案 === 'object') {
-          ensureDisplayStringArray(charData.私密档案, '癖好', '待补全(请根据角色经历，填写已觉醒的特殊癖好标签)');
+          ensureDisplayStringArray(charData.私密档案, '性癖', '待补全(请根据角色经历，填写已觉醒的特殊性癖好标签)');
           ensureDisplayStringArray(
             charData.私密档案,
-            '幻想',
+            '性幻想',
             '待补全(请根据角色隐藏的性格，描写其内心深处渴望被对待的私密方式)',
           );
           if (charData.私密档案.身材数据 && typeof charData.私密档案.身材数据 === 'object') {
