@@ -19001,19 +19001,23 @@ $CONTENT
             .replace(/<\s*UpdateVariable\b[\s\S]*?<\s*\/\s*UpdateVariable\s*>/gi, '[变量写入已省略]')
             .trim();
     }
+    function 去除模块路由结果外层标签_ACU(text = '') {
+        return String(text || '')
+            .replace(/<\s*\/?\s*模块路由结果\s*>/gi, '')
+            .trim();
+    }
     function 规范化模块路由运行事件文本_ACU(模块路由决定 = {}) {
         const 原始事件列表 = Array.isArray(模块路由决定?.runtimeEvents)
             ? 模块路由决定.runtimeEvents
             : [模块路由决定?.runtimeEvent || 模块路由决定?.result?.runtimeEvent || ''];
         const 事件正文 = 原始事件列表
             .map(item => 清理模块路由运行事件文本_ACU(item))
+            .map(item => 去除模块路由结果外层标签_ACU(item))
             .filter(Boolean)
             .join('\n\n');
         if (!事件正文)
             return '';
-        if (/^<模块路由结果>[\s\S]*<\/模块路由结果>$/i.test(事件正文.trim()))
-            return 事件正文.trim();
-        return `<模块路由结果>\n${事件正文}\n</模块路由结果>`;
+        return 事件正文.trim();
     }
     function 合并模块路由事件到标签_ACU(aggregatedTags, 事件列表 = []) {
         const nextTags = new Map(aggregatedTags instanceof Map ? aggregatedTags : []);

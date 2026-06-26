@@ -29660,7 +29660,6 @@
     return `
         <div class="mvu-archive-panel-head">
           <span>装备与仓储</span>
-          <b>${htmlEscape(`${装备格.length}槽`)}</b>
         </div>
         <div class="mvu-archive-gear-grid mvu-archive-gear-grid--loadout">
           ${装备格
@@ -29694,7 +29693,6 @@
     return `
         <div class="mvu-archive-panel-head">
           <span>交战与情报</span>
-          <b>双轨</b>
         </div>
         <div class="mvu-archive-terminal-log" title="${escapeHtmlAttr(主文本)}"><b>[LOG]</b><span>${htmlEscape(shortenText(主文本, 42))}</span></div>
         <div class="mvu-archive-vault-foot">
@@ -29711,18 +29709,12 @@
       ? `${shortenText(snapshot.topRelation[0], 10)} · ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')}`
       : '暂无核心羁绊';
     const 羁绊路线 = snapshot.topRelation ? toText(deepGet(snapshot.topRelation[1], '关系路线', '朋友线'), '朋友线') : '未建立';
-    const 名望 = toText(社交.名望等级, '籍籍无名');
     const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 16 }) || toText(社交.主身份, '未记录');
     return `
-        <div class="mvu-archive-panel-head">
-          <span>社会与羁绊</span>
-          <b>2窗</b>
-        </div>
         <div class="mvu-archive-social-stack">
           <div class="mvu-archive-social-window clickable" data-preview="社会档案详细页" data-detail-mode="embed">
-            <div class="mvu-archive-social-window-head"><span>社会档案</span><b>${htmlEscape(shortenText(名望, 10))}</b></div>
+            <div class="mvu-archive-social-window-head"><span>社会档案</span></div>
             <div class="mvu-archive-social-window-body">
-              <span><b>名望</b><em>${htmlEscape(shortenText(名望, 18))}</em></span>
               <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
             </div>
           </div>
@@ -45372,7 +45364,24 @@ ${toText(combatData.战斗意图, '点到为止')}
       moduleKind = '';
     }
 
-    if (!request || !moduleKind) return { handled: false, reason: 'no_module_intent' };
+    if (!moduleKind) return { handled: false, reason: 'no_module_intent' };
+    if (!request) {
+      const 请求缺失原因 =
+        {
+          battle: 'battle_request_invalid',
+          trade: 'trade_request_invalid',
+          profession: 'profession_request_invalid',
+          teaching: 'teaching_request_invalid',
+          travel: 'travel_request_invalid',
+          routine: 'routine_request_invalid',
+          trial_entry: 'trial_entry_request_invalid',
+        }[moduleKind] || 'module_request_invalid';
+      return 构建模块路由失败结果(
+        moduleKind,
+        payload && typeof payload === 'object' ? payload : {},
+        请求缺失原因,
+      );
+    }
     const 战斗提交模式 =
       moduleKind === 'battle'
         ? request && request.自动模式 === true
