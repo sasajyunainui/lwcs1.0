@@ -243,9 +243,9 @@
     },
     社会档案详细页: {
       title: '社会档案',
-      summary: '由“名望等级”芯片进入，聚焦声望、身份与称号。',
-      fields: ['activeChar.社交.声望', 'activeChar.社交.名望等级', 'activeChar.社交.主身份', 'activeChar.社交.称号'],
-      duties: ['展示公开身份', '显示称号来源', '整理名望等级与可见度状态'],
+      summary: '聚焦声望、身份与称号。',
+      fields: ['activeChar.社交.声望', 'activeChar.社交.主身份', 'activeChar.社交.称号'],
+      duties: ['展示公开身份', '显示称号来源', '整理声望与可见度状态'],
       actions: ['切换到关系/阵营/情报子页', '保留声望来源说明'],
     },
     所属势力详细页: {
@@ -1316,7 +1316,7 @@
                       <div class="dossier-row"><b>等级</b><span></span></div>
                       <div class="dossier-row"><b>精神境界</b><span></span></div>
                       <div class="dossier-row"><b>天赋梯队</b><span></span></div>
-                      <div class="dossier-row"><b>名望</b><span></span></div>
+                      <div class="dossier-row"><b>声望</b><span></span></div>
                     </div>
                   </section>
                   <section class="dossier-section dossier-section--radar">
@@ -1383,7 +1383,7 @@
                 <div class="profile-snapshot"><div class="identity-card"><h3>当前角色</h3>${makeTileGrid(
                   [
                     { label: '当前身份', value: '' },
-                    { label: '名望层级', value: '' },
+                    { label: '声望量级', value: '' },
                     { label: '公开情报', value: '' },
                     { label: '主要圈层', value: '' },
                   ],
@@ -1398,7 +1398,7 @@
                 <div class="archive-card-head"><div class="archive-card-title">当前社会位置</div></div>
                 ${makeTileGrid([
                   { label: '主公开身份', value: '' },
-                  { label: '名望等级', value: '' },
+                  { label: '声望', value: '' },
                   { label: '主要圈层', value: '' },
                   { label: '公开度', value: '' },
                   { label: '阵营关联', value: '' },
@@ -11555,7 +11555,7 @@
         add('属性', ['char', activeCharKey, '属性'], ['属性', '生命体征']);
         add('外貌', ['char', activeCharKey, '外貌'], ['外貌', '外观']);
       }
-      if (key === '社会档案详细页') add('社会档案', ['char', activeCharKey, '社交'], ['社会', '名望', '称号']);
+      if (key === '社会档案详细页') add('社会档案', ['char', activeCharKey, '社交'], ['社会', '声望', '称号']);
       if (key === '第1武魂详细页' || key === '第2武魂详细页' || key === '武魂融合技详细页') {
         add('武魂', ['char', activeCharKey], ['第1武魂', '第2武魂', '第1魂灵', '第1魂灵.第1魂环', '第1魂灵.第1魂环.第1魂技']);
         add('融合技', ['char', activeCharKey, '武魂融合技'], ['融合']);
@@ -30395,7 +30395,6 @@
     const factionSummary = factionJoined
       ? `${shortenText(primaryFactionName, 8)} / ${shortenText(primaryFactionRole, 8)}`
       : identitySummary || '独行';
-    const fameLevelText = shortenText(toText(social.名望等级, toText(social.名望等级, '籍籍无名')), 8);
     const allowPrivateArchiveLongPress = canOpenPrivateArchive(snapshot);
     return buildShellSummaryCard({
       kicker: '角色首页',
@@ -30405,7 +30404,6 @@
       badges: [
         titleText ? { text: shortenText(titleText, 10), tone: 'gold' } : '',
         factionJoined ? { text: shortenText(primaryFactionName, 10), tone: 'live' } : '',
-        fameLevelText && fameLevelText !== '籍籍无名' ? { text: fameLevelText, tone: 'gold' } : '',
       ],
       metrics: [
         hpPair.hpMax > 0
@@ -30424,7 +30422,6 @@
       rows: [
         { label: '身体', value: 体征摘要 || '--' },
         { label: factionJoined ? '阵营' : '身份', value: factionSummary },
-        { label: '名望', value: social.声望 ? `${fameLevelText} · ${formatNumber(social.声望)}` : fameLevelText },
         { label: '年龄 / 生日 / 性别', value: `${ageMetric > 0 ? ageMetric : '--'}岁 / ${toText(stat.生日, '--')} / ${性别文本}` },
       ],
       tone: 'hero',
@@ -30559,7 +30556,6 @@
     if (!snapshot) {
       return `
           <div class="mvu-social-entry-grid">
-            ${构建社交入口块('名望', '待同步', '社会档案', '社会档案详细页')}
             ${构建社交入口块('势力', '待同步', '所属势力', '所属势力详细页')}
             ${构建社交入口块('关系', '待同步', '人物关系', '人物关系详细页', 'cyan')}
             ${构建社交入口块('情报', '待同步', '情报库', '情报库详细页', 'white')}
@@ -30575,14 +30571,11 @@
       ? `${shortenText(snapshot.topRelation[0], 8)} / ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')} / ${toNumber(deepGet(snapshot.topRelation[1], '好感度', 0), 0)}`
       : '暂无高亮关系';
     const latestIntelText = getLatestUnlockedIntelText(snapshot, 12, '暂无');
-    const fameLevel = toText(social.名望等级, toText(social.名望等级, '籍籍无名'));
-    const reputationText = formatNumber(social.声望);
     const mainIdentity = toText(social.主身份, '') || summarizeShellIdentityText(social.主身份, { limit: 12 });
     const factionSummary = primaryFactionName === '未加入' ? mainIdentity || '未结盟' : primaryFactionName;
     const intelCount = (snapshot.unlockedKnowledges || []).length || 0;
     return `
         <div class="mvu-social-entry-grid">
-          ${构建社交入口块('名望', fameLevel, mainIdentity || '社会档案', '社会档案详细页', 'gold', `声望 ${reputationText}`)}
           ${构建社交入口块('势力', factionSummary, primaryFactionRole, '所属势力详细页', 'live', `${(snapshot.势力 || []).length || 0} 项`)}
           ${构建社交入口块('关系', topRelationText, '人物关系', '人物关系详细页', 'cyan', `${(snapshot.relations || []).length || 0} 条`)}
           ${构建社交入口块('情报', latestIntelText, snapshot.publicIntel ? '公开情报' : '情报库', '情报库详细页', 'white', `${intelCount} 条`)}
@@ -31378,10 +31371,7 @@
                       ? `${snapshot.primaryFaction[0]} / ${toText(deepGet(snapshot.primaryFaction[1], '身份', '成员'), '成员')}`
                       : '未加入',
                   },
-                  {
-                    title: '名望',
-                    meta: `${toText(social.名望等级, toText(social.名望等级, '籍籍无名'))} · ${formatNumber(social.声望)}`,
-                  },
+                  { title: '声望', meta: formatNumber(social.声望) },
                 ],
                 '暂无摘要',
               )}</div>
@@ -31856,7 +31846,6 @@
       ? toText(deepGet(snapshot.primaryFaction[1], '身份', ''), '')
       : '';
     const mainIdentity = summarizeShellIdentityText(social.主身份, { limit: 18 }) || toText(social.主身份, '无');
-    const fame = toText(social.名望等级, toText(social.名望等级, '籍籍无名'));
     const titleText =
       Array.isArray(snapshot.recentTitles) && snapshot.recentTitles.length ? snapshot.recentTitles[0] : '';
     const longPressAttrs = canOpenPrivateArchive(snapshot)
@@ -31868,12 +31857,11 @@
           <div class="mvu-shell-lite-root" data-shell-light-view="social">
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero nsfw-trigger-title"${longPressAttrs}>
               <div class="mvu-shell-lite-head">
-                <span>${htmlEscape(fame)}</span>
+                <span>${htmlEscape(mainIdentity)}</span>
                 <strong>${htmlEscape(toText(snapshot.activeName, '当前角色'))}</strong>
               </div>
               ${buildShellLiteStats([
                 { label: '身份', value: shortenText(mainIdentity, 18) },
-                { label: '名望', value: formatNumber(social.声望) },
               ])}
               ${buildShellLiteTags([titleText, primaryFactionName ? `${primaryFactionName} / ${primaryFactionRole || '成员'}` : '', snapshot.publicIntel ? '公开情报' : '未公开'])}
             </section>
@@ -32034,7 +32022,7 @@
           { label: '当前职务', value: 当前阵营身份 },
           {
             label: '阵营声望',
-            value: `${toText(deepGet(snapshot, 'activeChar.社交.名望等级', '无'), '无')} / ${formatNumber(deepGet(snapshot, 'activeChar.社交.声望', 0))}`,
+            value: formatNumber(deepGet(snapshot, 'activeChar.社交.声望', 0)),
           },
           { label: '晋升状态', value: 晋升状态 },
           { label: '阵营影响', value: 当前阵营名 ? formatNumber(deepGet(当前阵营条目, 'data.影响力', 0)) : '0' },
@@ -34999,12 +34987,7 @@
                           kind: 'string',
                           rawValue: 读取属性天赋梯队(stat),
                         },
-                        {
-                          label: '名望',
-                          value: htmlEscape(
-                            `${toText(social.名望等级, toText(social.名望等级, '籍籍无名'))} / ${formatNumber(social.声望)}`,
-                          ),
-                        },
+                        { label: '声望', value: htmlEscape(formatNumber(social.声望)) },
                       ],
                       'dossier-row-grid--two dossier-growth-flow',
                     )}
@@ -35267,7 +35250,6 @@
     if (previewKey === '社会档案详细页') {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
-      const 名望等级 = toText(social.名望等级, toText(social.名望等级, '籍籍无名'));
       const 主身份文本 = toText(social.主身份, '无');
       const 家世描述文本 = toText(social.家世描述, '无');
       const 主圈层文本 = snapshot.势力.map(([name]) => name).join(' / ') || '无圈层';
@@ -35288,7 +35270,7 @@
       });
       return {
         title: '社会档案',
-        summary: '当前角色的公开身份、名望、头衔与社会可见度摘要。',
+        summary: '当前角色的公开身份、声望、头衔与社会可见度摘要。',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--social social-archive-terminal">
               <div class="archive-card dossier-card dossier-card--social-main social-archive-profile">
@@ -35298,7 +35280,6 @@
                     <div class="dossier-head-name">${htmlEscape(snapshot.activeName)}</div>
                   </div>
                   ${makeDossierTags([
-                    { text: 名望等级, className: 'warn' },
                     { text: snapshot.publicIntel ? '公开情报' : '未公开' },
                     { text: `称号 ${snapshot.recentTitles.length}` },
                   ])}
@@ -35350,7 +35331,7 @@
                   <div class="dossier-section-title">声望量级</div>
                   <div class="dossier-meter social-reputation-meter">
                     <div class="dossier-meter-head">
-                      <b>${htmlEscape(名望等级)}</b>
+                      <b>声望</b>
                       <span>${声望数值HTML}</span>
                     </div>
                     <div class="dossier-meter-track social-reputation-track">
@@ -35871,7 +35852,7 @@
         : '<div class="mvu-intel-empty-scan"><i></i><b>暂无情报数据流</b></div>';
       return {
         title: '情报库',
-        summary: '双轨情报终端。',
+        summary: '情报终端。',
         body: `
             <div class="mvu-intel-terminal">
               <div class="mvu-intel-terminal-stats">
@@ -37998,7 +37979,7 @@
                           : '未收录',
                     },
                     {
-                      label: '名望',
+                      label: '声望',
                       value: targetCharPath.length
                         ? makeInlineEditableValue(formatNumber(targetSocial.声望), {
                             path: [...targetCharPath, '社交', '声望'],
@@ -43751,8 +43732,9 @@ ${toText(combatData.战斗意图, '点到为止')}
     const req = source && typeof source === 'object' ? source : {};
     const mode = normalizeProfessionMode(req.模式 || req.动作 || req.副职业 || req.类型);
     if (!mode) return null;
-    const npc = toText(req.对象 || req.执行者 || req.执行者名称, '');
+    const npc = toText(req.对象, '');
     const 目标 = toText(req.目标 || req.产物 || req.物品, '');
+    if (!目标) return null;
     const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(目标);
     const 显式阶级 = toNumber(req.阶级 || req.等级, 0);
     const 阶级文本 = [
@@ -44152,10 +44134,6 @@ ${toText(combatData.战斗意图, '点到为止')}
       return;
     }
     const 字段值 = 解析模块路由字段值(字段, value);
-    if (字段 === '执行者') {
-      payload.执行者类型 = 字段值;
-      return;
-    }
     payload[字段] = 字段值;
     if (字段 === '模块') {
       payload.module = 字段值;

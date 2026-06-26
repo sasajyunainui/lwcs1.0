@@ -10230,6 +10230,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .social-archive
   display: flex !important;
   flex-direction: column !important;
   gap: 12px !important;
+}
+
+#detailModal.mvu-modal-display-unified .social-archive-terminal > .dossier-card,
+#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .social-archive-terminal > .dossier-card {
   padding: 15px 16px !important;
 }
 
@@ -10258,7 +10262,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter 
   display: grid !important;
   gap: 8px !important;
   min-width: 0 !important;
-  padding: 10px 12px !important;
+  padding: 8px 0 10px !important;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 38%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-meter--green {
@@ -12869,13 +12879,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section {
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .timeline-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-summary-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .role-switch-tile {
   min-width: 0 !important;
   overflow: visible !important;
@@ -12890,13 +12911,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .role-switch-ti
   -webkit-backdrop-filter: var(--虚化强度);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile {
+  min-width: 0 !important;
+  padding: 8px 0 !important;
+  overflow: visible !important;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 36%, transparent);
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root {
   --archive-shell-bg: transparent;
   --archive-shell-surface: transparent;
   --archive-shell-edge: transparent;
   --archive-shell-edge-strong: transparent;
-  --archive-card-bg: var(--卡片材质);
-  --archive-card-muted: color-mix(in srgb, var(--主题主色) 5%, transparent);
+  --archive-card-bg: transparent;
+  --archive-card-muted: transparent;
   --archive-text-strong: var(--全息标题文字);
   --archive-text: var(--文字主色);
   --archive-text-muted: var(--全息标签文字);
@@ -12914,9 +12949,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   --dossier-underlay: transparent;
   --dossier-film: transparent;
   --dossier-panel-bg: transparent;
-  --dossier-card-bg: var(--卡片材质);
-  --dossier-card-bg-strong: var(--卡片材质);
-  --dossier-section-bg: color-mix(in srgb, var(--主题主色) 5%, transparent);
+  --dossier-card-bg: transparent;
+  --dossier-card-bg-strong: transparent;
+  --dossier-section-bg: transparent;
   --dossier-line: var(--全息材质弱线);
   --dossier-line-strong: var(--全息材质线);
   --dossier-line-soft: var(--全息材质弱线);
@@ -12944,7 +12979,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
   gap: 10px !important;
   min-width: 0 !important;
   min-height: max-content !important;
-  padding: 12px !important;
+  padding: 8px 0 !important;
   overflow: visible !important;
 }
 
@@ -13010,6 +13045,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-r
   min-height: 36px !important;
   padding: 9px 11px !important;
   overflow: hidden !important;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--边线颜色) 42%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row:hover {
+  background: color-mix(in srgb, var(--主题主色) 4%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide {
@@ -13211,7 +13257,7 @@ body.mvu-layout-holo
   .dossier-card--relation-focus
   .dossier-section {
   align-content: start !important;
-  padding: 10px 11px !important;
+  padding: 8px 0 !important;
   overflow: hidden !important;
 }
 
@@ -13746,11 +13792,28 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill,
   justify-content: center !important;
   min-height: 28px !important;
   padding: 5px 11px !important;
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 46%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--主题主色) 5%, transparent) !important;
+  box-shadow: none !important;
   color: #f2fdff !important;
   font-size: var(--mvu-font-sm, 12px) !important;
   line-height: 1.1 !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host button.dossier-pill.clickable,
+#detailModal.mvu-modal-display-unified button.dossier-pill.clickable {
+  cursor: pointer !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host button.dossier-pill.clickable:hover,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host button.dossier-pill.clickable:focus-visible,
+#detailModal.mvu-modal-display-unified button.dossier-pill.clickable:hover,
+#detailModal.mvu-modal-display-unified button.dossier-pill.clickable:focus-visible {
+  border-color: color-mix(in srgb, var(--主题主色) 62%, transparent) !important;
+  background: color-mix(in srgb, var(--主题主色) 11%, transparent) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill.live,
@@ -15319,7 +15382,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--
   grid-template-areas: none !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-shell--life .archive-card,
 #detailModal.mvu-modal-display-unified .dossier-shell--life .archive-card,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--life .archive-card {
   padding: 16px 18px !important;
@@ -15617,6 +15679,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status
   padding: 5px 10px 5px 26px !important;
   color: color-mix(in srgb, var(--文字主色) 88%, transparent) !important;
   overflow: hidden !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip {
+  padding: 4px 0 !important;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-status-chip::before,
@@ -16318,6 +16389,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --主题发光: 0 0 18px rgba(0, 255, 204, 0.46);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫世唐门'] {
+  text-shadow: 0 1px 2px #000;
+}
+
 body[data-mvu-holo-theme='金龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='金龙王'] {
@@ -16376,6 +16451,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --主题发光: 0 0 22px rgba(255, 51, 0, 0.42);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] {
+  border-width: 2px;
+  border-color: rgba(255, 215, 0, 0.48);
+  box-shadow:
+    0 20px 44px rgba(0, 0, 0, 0.5),
+    0 0 34px rgba(255, 51, 0, 0.32),
+    inset 0 0 28px rgba(255, 51, 0, 0.12);
+  letter-spacing: 1px;
+}
+
 body[data-mvu-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='银龙王'] {
@@ -16429,6 +16514,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --文字弱色: #b8c7da;
   --主题光束: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), rgba(224,234,255,0.4), transparent);
   --主题发光: inset 0 0 18px rgba(255,255,255,0.12), 0 0 20px rgba(224, 234, 255, 0.28);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'] {
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    inset 0 0 28px rgba(255, 255, 255, 0.16),
+    0 0 30px rgba(224, 234, 255, 0.2);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
+  opacity: 0.78;
+  clip-path: polygon(0 0, 100% 0, 92% 28%, 100% 100%, 0 100%, 8% 66%);
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'],
@@ -16497,23 +16595,39 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --mvu-holo-medium: var(--投影背景);
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
+  background-size: 160% 160%;
+  mix-blend-mode: screen;
+  opacity: 0.86;
+  animation: 幻海焦散漂移 8s ease-in-out infinite;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   appearance: none;
   -webkit-appearance: none;
   display: inline-grid;
   place-items: center;
-  height: 28px;
-  min-width: 0;
-  padding: 0 10px;
+  width: 64px;
+  min-width: 64px;
+  min-height: 25px;
+  padding: 2px 7px;
+  border: 1px solid var(--边线颜色);
+  border-radius: 999px;
+  background: var(--卡片材质);
   color: var(--mvu-holo-text);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 12%, transparent);
+  backdrop-filter: var(--虚化强度);
+  -webkit-backdrop-filter: var(--虚化强度);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
+  border-color: var(--主题主色);
   color: var(--mvu-holo-main);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--主题主色) 34%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn:hover,
@@ -16525,7 +16639,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn:focus-visible {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
   --主题抽屉折叠宽度: 32px;
-  --主题抽屉展开宽度: 240px;
+  --主题抽屉展开宽度: 108px;
   position: relative;
   box-sizing: border-box;
   min-width: 0;
@@ -16727,33 +16841,46 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-icon {
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   position: absolute;
   z-index: var(--mvu-z-popover, 10060);
-  top: 10px;
-  right: calc(100% - 1px);
-  left: auto;
+  top: 40px;
+  right: auto;
+  left: 100%;
   transform: translateX(0);
   display: flex;
-  flex-direction: row-reverse;
-  align-items: center;
+  flex-direction: row;
+  align-items: stretch;
   gap: 0;
   width: var(--主题抽屉折叠宽度);
   min-width: var(--主题抽屉折叠宽度);
-  height: 38px;
-  min-height: 38px;
+  min-height: 86px;
   padding: 0;
+  border: 1px solid var(--边线颜色);
+  border-left: 0;
+  border-radius: 0 var(--卡片圆角) var(--卡片圆角) 0;
+  background: color-mix(in srgb, var(--暗场浮层) 88%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--主题主色) 13%, transparent),
+    inset 0 0 14px rgba(255, 255, 255, 0.04);
+  backdrop-filter: var(--虚化强度);
+  -webkit-backdrop-filter: var(--虚化强度);
   overflow: hidden;
   white-space: nowrap;
   pointer-events: auto;
+  opacity: 0.72;
   transition:
-    width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.12),
-    background 0.24s ease,
-    border-color 0.24s ease,
-    box-shadow 0.24s ease;
+    width 0.42s cubic-bezier(0.18, 0.92, 0.24, 1.18),
+    opacity 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open {
   width: var(--主题抽屉展开宽度);
+  opacity: 1;
+  box-shadow:
+    14px 0 30px rgba(0, 0, 0, 0.48),
+    0 0 24px color-mix(in srgb, var(--主题主色) 22%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 14%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
@@ -16762,20 +16889,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle {
   pointer-events: auto;
   display: inline-grid;
   place-items: center;
+  flex: 0 0 32px;
   width: 32px;
   min-width: 32px;
-  height: 38px;
+  min-height: 86px;
   padding: 0;
-  color: var(--全息材质侧线);
-  font-size: 10px;
-  font-weight: 780;
+  border: 0;
+  border-radius: 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--主题主色) 13%, transparent), transparent),
+    rgba(255, 255, 255, 0.018);
+  color: var(--主题主色);
+  font-size: 17px;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.88;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--主题主色) 76%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-toggle span {
-  writing-mode: initial;
+  writing-mode: horizontal-tb;
   letter-spacing: 0;
   max-width: 28px;
   overflow: hidden;
@@ -16791,43 +16924,34 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-uni
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
-  pointer-events: auto;
-  display: grid;
-  grid-template-columns: repeat(5, 34px);
-  gap: 6px;
-  width: 202px;
-  min-width: 202px;
-  max-width: 202px;
-  max-height: 38px;
-  order: 0;
-  padding: 0 0 0 8px;
+  pointer-events: none;
+  display: flex;
+  flex: 0 0 76px;
+  flex-direction: column;
+  gap: 7px;
+  order: 1;
+  padding: 10px 10px 10px 4px;
   overflow: hidden;
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-8px);
   transition:
-    opacity 0.18s ease,
-    transform 0.22s ease;
+    opacity 0.24s ease,
+    transform 0.24s ease;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:hover .mvu-unified-theme-panel,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock:focus-within .mvu-unified-theme-panel,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock.is-open .mvu-unified-theme-panel {
-  width: 202px;
-  min-width: 202px;
-  max-width: 202px;
-  max-height: 34px;
-  grid-template-columns: repeat(5, 34px);
-  padding: 0 0 0 8px;
+  pointer-events: auto;
   opacity: 1;
   transform: translateX(0);
   transition-delay: 0.08s;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel .mvu-holo-theme-btn {
-  width: 34px;
-  min-width: 34px;
-  height: 30px;
-  padding: 0;
+  width: 64px;
+  min-width: 64px;
+  min-height: 25px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
@@ -17399,6 +17523,16 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-act
   }
 }
 
+@keyframes 幻海焦散漂移 {
+  0%,
+  100% {
+    background-position: 0% 45%;
+  }
+  50% {
+    background-position: 100% 55%;
+  }
+}
+
 @keyframes mvu-holo-slot-slide-in {
   from {
     opacity: 0;
@@ -17699,7 +17833,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
 }
 
 body.mvu-layout-holo #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .archive-card, .mvu-unified-detail-host .dossier-section, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .archive-tile, .mvu-unified-detail-host .role-switch-tile)::before {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
   content: "";
   position: absolute;
   inset: 7px;
@@ -17709,7 +17843,7 @@ body.mvu-layout-holo #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .archive-card, .mvu-unified-detail-host .dossier-section, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .archive-tile, .mvu-unified-detail-host .role-switch-tile)::before {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
   background:
     linear-gradient(var(--主题主色), var(--主题主色)) left top / 15px 1px no-repeat,
     linear-gradient(var(--主题主色), var(--主题主色)) left top / 1px 15px no-repeat,
@@ -17723,7 +17857,7 @@ body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .archive-card, .mvu-unified-detail-host .dossier-section, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .archive-tile, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
   box-shadow:
     inset 0 0 0 1px rgba(255, 215, 0, 0.16),
     0 14px 28px rgba(0, 0, 0, 0.36),
@@ -17731,7 +17865,7 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .archive-card, .mvu-unified-detail-host .dossier-section, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .archive-tile, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.18),
     inset 0 0 18px rgba(255, 255, 255, 0.1),
@@ -19645,11 +19779,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
-    flex: 0 0 28px;
-    width: 28px;
-    height: 26px;
-    padding: 0;
+    flex: 0 0 auto;
+    width: 54px;
+    min-width: 54px;
+    min-height: 25px;
+    padding: 2px 5px;
     font-size: 9px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-shell,
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-panel-host {
+    --主题抽屉展开宽度: 96px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
+    top: 30px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel {
+    flex-basis: 64px;
+    padding-right: 8px;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {

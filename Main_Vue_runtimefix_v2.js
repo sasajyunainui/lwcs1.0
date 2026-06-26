@@ -565,7 +565,7 @@ const DesktopUnifiedLayout = {
           :aria-expanded="全息星轨状态.主题面板展开 ? 'true' : 'false'"
           aria-label="主题"
           @click="切换全息主题面板"
-        ><span>{{ 当前主题短名 }}</span></button>
+        ><span>◈</span></button>
         <div class="mvu-unified-theme-panel" aria-label="主题切换">
           <button
             v-for="主题 in 全息星轨主题"
@@ -610,10 +610,6 @@ const DesktopUnifiedLayout = {
     const 统一路径标题 = computed(() => {
       const 标题 = String(activeMeta.value && activeMeta.value.title ? activeMeta.value.title : '档案').trim();
       return `${标题} / 概览`;
-    });
-    const 当前主题短名 = computed(() => {
-      const 当前主题 = 全息星轨主题列表.find(主题 => 主题.名称 === 当前全息星轨状态.主题);
-      return 当前主题 ? 当前主题.短名 : '主题';
     });
     const 同步全息主题到页面 = () => {
       const 主题 = 规范化全息星轨主题(当前全息星轨状态.主题);
@@ -979,7 +975,6 @@ const DesktopUnifiedLayout = {
       detailState,
       统一路径标题,
       当前主题键,
-      当前主题短名,
       全息星轨状态: 当前全息星轨状态,
       全息星轨主题: 全息星轨主题列表,
       设置全息星轨主题,
