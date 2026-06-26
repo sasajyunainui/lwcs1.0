@@ -349,8 +349,8 @@ function 启动酒馆底部菜单位置修正() {
       修正酒馆底部原生菜单位置();
     });
   };
-  const 点击监听 = event => {
-    const 目标 = event.target instanceof Element ? event.target : null;
+  const 点击监听 = 事件 => {
+    const 目标 = 事件.target instanceof Element ? 事件.target : null;
     if (!目标 || !目标.closest('#options_button, #extensionsMenuButton')) return;
     requestAnimationFrame(安排修正);
   };
