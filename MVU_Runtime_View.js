@@ -571,7 +571,12 @@ function 过滤MVU运行时视图值_V1(值, 路径 = [], 选项 = {}) {
     if (路径[0] === 'char' && 路径[2] === '血脉之力' && 字段名 === '核心') return undefined;
   }
   if (正文模式 && /tick$/i.test(字段名) && typeof 值 !== 'object') return 格式化运行时tick字段显示_V1(字段名, 值) || undefined;
-  const 排除状态 = MVU视图路径排除状态_V1(路径, 排除路径列表);
+  const 排除状态 = 更新模式
+    && 路径[0] === 'char'
+    && /^第\d+武魂$/.test(String(路径[2] || ''))
+    && 路径[3] === '可调用元素'
+    ? { 精确排除: false, 子树排除: false }
+    : MVU视图路径排除状态_V1(路径, 排除路径列表);
   if (排除状态.子树排除) return undefined;
   if (排除状态.精确排除 && (值 === undefined || 值 === null || typeof 值 !== 'object')) return undefined;
   if (值 === undefined || 值 === null) return undefined;
@@ -3463,6 +3468,12 @@ function 裁剪更新视图魂灵默认字段_V1(魂灵 = {}) {
 function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '') {
   if (!武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return false;
   const 是第二武魂 = String(武魂槽位 || '').trim() === '第2武魂';
+  const 武魂参考字段 = {};
+  ['表象名称', '描述', '系别', '属性体系', '可调用元素'].forEach(字段 => {
+    if (Object.prototype.hasOwnProperty.call(武魂, 字段)) 武魂参考字段[字段] = cloneJsonValue(武魂[字段], 武魂[字段]);
+  });
+  const 原属性体系文本 = String(武魂.属性体系 ?? '').trim();
+  if (!是第二武魂 && (!原属性体系文本 || 原属性体系文本 === '无' || 原属性体系文本 === '未知')) 武魂.属性体系 = AI_TODO_ATTRIBUTE_SYSTEM;
   更新视图待补字段_V1(武魂, '表象名称', 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME);
   更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
   更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
@@ -3474,6 +3485,22 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
   取武魂直接魂环条目_V1(武魂).forEach(([魂环键, 魂环]) => {
     if (!裁剪更新视图魂环默认字段_V1(魂环, { 保留来源: true })) delete 武魂[魂环键];
   });
+  const 存在待补子级 = Object.keys(武魂).some(字段 => 是魂灵槽位键_V1(字段) || 是魂环槽位键_V1(字段));
+  if (存在待补子级) {
+    ['表象名称', '描述', '系别'].forEach(字段 => {
+      const 值 = 武魂参考字段[字段];
+      if (运行时文本需要补全_V1(值) || 正文视图值已初始化_V1(值) || (是第二武魂 && 字段 === '表象名称' && String(值 ?? '').trim() === '未展露')) {
+        武魂[字段] = cloneJsonValue(值, 值);
+      }
+    });
+    const 属性体系文本 = String(武魂参考字段.属性体系 ?? '').trim();
+    武魂.属性体系 = (!属性体系文本 || 属性体系文本 === '无' || 属性体系文本 === '未知' || 运行时文本需要补全_V1(属性体系文本))
+      ? AI_TODO_ATTRIBUTE_SYSTEM
+      : cloneJsonValue(武魂参考字段.属性体系, 武魂参考字段.属性体系);
+    const 可调用元素 = 武魂参考字段.可调用元素;
+    if (Array.isArray(可调用元素) && 可调用元素.some(项 => String(项 ?? '').trim())) 武魂.可调用元素 = cloneJsonValue(可调用元素, []);
+    else 武魂.可调用元素 = [AI_TODO_CALLABLE_ELEMENTS];
+  }
   Object.keys(武魂).forEach(字段 => {
     if (
       !['表象名称', '描述', '系别', '属性体系', '可调用元素'].includes(字段) &&

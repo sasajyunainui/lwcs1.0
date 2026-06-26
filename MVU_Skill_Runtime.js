@@ -19335,8 +19335,8 @@ function buildSkillNameTodoText(context = {}) {
   const spiritName =
     rawSpiritName && !isAiTodoText(rawSpiritName) && rawSpiritName !== '未展露' ? rawSpiritName : '所属武魂';
   const typeText = String(context?.type || '').trim();
-  const foodHint = typeText === '食物系' ? '食物系命名必须围绕该武魂主材，不得替换为无关食材。' : '';
-  return `待补全（填写魂技名；必须围绕【${spiritName}】同源命名并体现该武魂能力特征，禁止无关命名；需与机制选择（主机制/副机制1/副机制2）保持一致。若为造物承载类技能，此名称同时作为生成物名称。${foodHint}）`;
+  const foodHint = typeText === '食物系' ? '食物系命名必须围绕该武魂名，不得替换为无关食材。' : '';
+  return `待补全（填写魂技名；必须围绕【${spiritName}】同源命名并体现该武魂能力特征，禁止无关命名；若为造物承载类技能，此名称同时作为生成物名称。${foodHint}）`;
 }
 
 function 构建魂骨名称待生成提示词_V1(骨部位 = '魂骨') {
