@@ -619,9 +619,13 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-world' }" data-target="page-world">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
                 <div class="mvu-unified-dashboard mvu-unified-dashboard--world">
-                  <div class="mvu-unified-card mvu-unified-card--featured" data-unified-card="world-hero" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="全息编年史" data-detail-mode="embed" data-unified-card="world-timeline" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="world-bestiary" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="world-main" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section" data-unified-card="world-hero" data-unified-surface="panel"></section>
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="怪物图鉴" data-detail-mode="embed" data-unified-card="world-bestiary" data-unified-surface="panel"></section>
+                  </div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="world-side" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section" data-unified-card="world-timeline" data-unified-surface="panel"></section>
+                  </div>
                 </div>
               </section>
             </section>
@@ -629,9 +633,13 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-org' }" data-target="page-org">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
                 <div class="mvu-unified-dashboard mvu-unified-dashboard--org">
-                  <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-unified-card="org-hero" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-unified-card="org-faction" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="本地据点详情" data-detail-mode="embed" data-unified-card="org-node" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="org-main" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="势力矩阵总览" data-detail-mode="embed" data-unified-card="org-hero" data-unified-surface="panel"></section>
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="本地据点详情" data-detail-mode="embed" data-unified-card="org-node" data-unified-surface="panel"></section>
+                  </div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="org-side" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="我的阵营详情" data-detail-mode="embed" data-unified-card="org-faction" data-unified-surface="panel"></section>
+                  </div>
                 </div>
               </section>
             </section>
@@ -639,10 +647,14 @@ const DesktopUnifiedLayout = {
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
                 <div class="mvu-unified-dashboard mvu-unified-dashboard--terminal">
-                  <div class="mvu-unified-card mvu-unified-card--featured clickable" data-preview="系统播报与日志" data-detail-mode="embed" data-unified-card="terminal-hero" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="副职业工坊" data-detail-mode="embed" data-unified-card="terminal-profession" data-unified-surface="panel"></div>
-                  <div class="mvu-unified-card clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="panel"></div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="terminal-main" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section" data-unified-card="terminal-hero" data-unified-surface="panel"></section>
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="试炼与情报" data-detail-mode="embed" data-unified-card="terminal-intel" data-unified-surface="panel"></section>
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="任务界面" data-detail-mode="embed" data-unified-card="terminal-quest" data-unified-surface="panel"></section>
+                  </div>
+                  <div class="mvu-unified-card mvu-unified-card--dashboard-stack" data-dashboard-panel="terminal-side" data-unified-surface="panel">
+                    <section class="mvu-dashboard-panel-section clickable" data-preview="副职业工坊" data-detail-mode="embed" data-unified-card="terminal-profession" data-unified-surface="panel"></section>
+                  </div>
                 </div>
               </section>
             </section>

@@ -18022,72 +18022,44 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
   grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    'world timeline'
-    'bestiary timeline';
+  grid-template-rows: auto;
+  grid-template-areas: 'main side';
   height: auto;
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
   align-content: start;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card='world-hero'] {
-  grid-area: world;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card='world-timeline'] {
-  grid-area: timeline;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card='world-bestiary'] {
-  grid-area: bestiary;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    'matrix faction'
-    'node faction';
+  grid-template-rows: auto;
+  grid-template-areas: 'main side';
   height: auto;
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
   align-content: start;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card='org-hero'] {
-  grid-area: matrix;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card='org-faction'] {
-  grid-area: faction;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card='org-node'] {
-  grid-area: node;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto auto;
-  grid-template-areas:
-    'broadcast broadcast'
-    'intel profession'
-    'quest profession';
+  grid-template-rows: auto;
+  grid-template-areas: 'main side';
   height: auto;
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
   align-content: start;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-hero'] {
-  grid-area: broadcast;
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-main'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-dashboard-panel='org-main'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-dashboard-panel='terminal-main'] {
+  grid-area: main;
 }
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-intel'] {
-  grid-area: intel;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-profession'] {
-  grid-area: profession;
-}
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card='terminal-quest'] {
-  grid-area: quest;
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-side'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-dashboard-panel='org-side'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-dashboard-panel='terminal-side'] {
+  grid-area: side;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -18122,6 +18094,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
   align-self: start;
   min-block-size: 52px;
   transform-style: preserve-3d;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card--dashboard-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 0;
+  align-self: stretch;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'] {
@@ -18239,11 +18221,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-dashboard-panel-section {
   border-bottom: 1px solid var(--卡片底板线);
   color: inherit;
   text-decoration: none;
-  cursor: pointer;
+  cursor: default;
   overflow: visible;
   transition:
     border-color 0.18s var(--原型悬浮曲线),
     color 0.18s var(--原型悬浮曲线);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-dashboard-panel-section.clickable {
+  cursor: pointer;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-dashboard-panel-section:not([hidden]) ~ .mvu-dashboard-panel-section:not([hidden]) {
@@ -20099,25 +20085,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
-    grid-template-columns: minmax(360px, 1.12fr) minmax(300px, 0.88fr);
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      'world timeline'
-      'bestiary timeline';
+    grid-template-columns: minmax(330px, 1.08fr) minmax(270px, 0.92fr);
+    grid-template-rows: auto;
+    grid-template-areas: 'main side';
     height: auto;
     min-height: 0;
-    align-items: start;
+    align-items: stretch;
     align-content: start;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto auto;
+    grid-template-rows: auto;
     grid-auto-rows: auto;
-    grid-template-areas:
-      'matrix faction'
-      'node faction';
-    align-items: start;
+    grid-template-areas: 'main side';
+    align-items: stretch;
     height: auto;
     min-height: 0;
     max-height: none;
@@ -20125,22 +20107,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     overflow: visible;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card] {
-    align-self: start;
-    grid-template-rows: none;
-    align-content: start;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      'broadcast broadcast'
-      'intel profession'
-      'quest profession';
-    align-items: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+    grid-template-areas: 'main side';
+    align-items: stretch;
     align-content: start;
   }
 
@@ -20151,11 +20122,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @container mvu-archive-dashboard (max-width: 840px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(210px, 1fr) minmax(220px, 1fr);
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      'core spirit'
-      'side side';
+    grid-template-columns: minmax(170px, 1fr) minmax(176px, 0.82fr) minmax(190px, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: 'core spirit side';
     height: auto;
     min-height: 0;
     align-items: stretch;
@@ -20341,22 +20310,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     word-break: keep-all !important;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    --mvu-kv-label-width: clamp(48px, 24%, 78px);
-    --mvu-kv-gap: 8px;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
-    grid-auto-rows: auto;
-    grid-template-areas:
-      'core'
-      'spirit'
-      'side';
-    align-content: start;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto auto auto !important;
@@ -20374,12 +20327,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto !important;
+    grid-template-rows: auto auto !important;
     grid-auto-rows: auto;
     grid-template-areas:
-      'world'
-      'timeline'
-      'bestiary' !important;
+      'main'
+      'side' !important;
+    align-items: stretch !important;
     align-content: start !important;
     height: auto !important;
     min-height: 0 !important;
@@ -20389,12 +20342,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto !important;
+    grid-template-rows: auto auto !important;
     grid-auto-rows: auto;
     grid-template-areas:
-      'matrix'
-      'faction'
-      'node' !important;
+      'main'
+      'side' !important;
+    align-items: stretch !important;
     align-content: start !important;
     height: auto !important;
     min-height: 0 !important;
@@ -20404,13 +20357,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto auto !important;
+    grid-template-rows: auto auto !important;
     grid-auto-rows: auto;
     grid-template-areas:
-      'broadcast'
-      'intel'
-      'profession'
-      'quest' !important;
+      'main'
+      'side' !important;
+    align-items: stretch !important;
     align-content: start !important;
     height: auto !important;
     min-height: 0 !important;
@@ -20418,27 +20370,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     overflow: visible !important;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card] {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card] {
     min-width: 0 !important;
     min-height: 52px;
     align-self: start;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card] {
-    align-self: start;
-    align-content: start;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
-    align-self: start;
-    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive .mvu-archive-gear-grid {
@@ -20457,10 +20392,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     min-height: 44px;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card] {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card] {
     align-self: start;
     align-content: start !important;
     height: auto !important;
