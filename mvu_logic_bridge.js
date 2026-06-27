@@ -43140,7 +43140,7 @@ ${播报文本}
     const canUseBattle = isCombatActive && isSnapshotPlayerControlled(snapshot);
     const battleUiSnapshot = canUseBattle ? buildBattleUiSnapshot(snapshot, liveCombatData) : snapshot;
     syncBattleReturnEntries(snapshot, canUseBattle && battleInlineDismissed);
-    if (canUseBattle && (跳过战斗终端自动挂载 || 读取战斗提交模式() !== 'manual') && !options.reopenBattle) {
+    if (canUseBattle && 跳过战斗终端自动挂载 && !options.reopenBattle) {
       battleInlineDismissed = false;
       removeBattleReturnEntries();
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
