@@ -78,6 +78,7 @@ var MAP_TRAVEL_SCALE_BY_LEVEL = {
 };
 var 独立魂环来源待补全文案_V1 = '待补全(请填写该独立魂环的来源实体或出处，如具体魂兽名/神赐魂环/传承来源)';
 var 角色性别待补全文案_V1 = '待补全(请填写角色性别)';
+var 场景候选角色资料占位符_V1 = '{{场景候选角色资料}}';
 
 function cloneJsonValue(值, 回退值 = {}) {
   if (值 === null || typeof 值 !== 'object') {
@@ -4466,6 +4467,138 @@ function 构建MVU剧情角色简表_V1(数据根 = {}, userInput = '', 最后�
   return 角色简表;
 }
 
+function 提取场景线索种子正文_V1(场景线索种子 = '') {
+  const 文本 = String(场景线索种子 || '').trim();
+  if (!文本) return '';
+  const 匹配 = 文本.match(/<\s*场景线索种子\s*>([\s\S]*?)<\s*\/\s*场景线索种子\s*>/i);
+  return String(匹配 ? 匹配[1] : 文本).trim();
+}
+
+function 解析场景线索候选人物列表_V1(场景线索种子 = '') {
+  const 正文 = 提取场景线索种子正文_V1(场景线索种子);
+  if (!正文) return [];
+  const 候选文本列表 = [];
+  const 行正则 = /(?:候选人物|候选角色|地缘常驻人物)\s*[:：]\s*([^\n\r]+)/g;
+  let 匹配 = null;
+  while ((匹配 = 行正则.exec(正文)) !== null) {
+    const 内容 = String(匹配[1] || '').trim();
+    if (内容) 候选文本列表.push(内容);
+  }
+  return 候选文本列表
+    .join('、')
+    .split(/[、，,；;\n\r]/)
+    .map(候选 => String(候选 || '')
+      .replace(/[“”"'`]/g, '')
+      .replace(/[（(][^（）()]*[）)]/g, '')
+      .trim())
+    .filter(候选 => 候选 && !/^(无|暂无|未知|无相关|无候选|没有)$/.test(候选))
+    .filter((候选, 序号, 列表) => 列表.indexOf(候选) === 序号);
+}
+
+function 取候选角色武魂条目_V1(角色 = {}) {
+  if (!角色 || typeof 角色 !== 'object') return [];
+  return Object.entries(角色)
+    .filter(([键, 值]) => /^第\d+武魂$/.test(String(键 || '').trim()) && 值 && typeof 值 === 'object')
+    .sort(([左], [右]) => Number(String(左).match(/\d+/)?.[0] || 0) - Number(String(右).match(/\d+/)?.[0] || 0));
+}
+
+function 裁剪候选角色资料片段_V1(文本 = '', 最大长度 = 80) {
+  const 内容 = 格式化MVU正文提示原子值_V1(文本);
+  if (!内容) return '';
+  const 上限 = Math.max(8, Math.floor(Number(最大长度 || 80)));
+  return 内容.length > 上限 ? `${内容.slice(0, 上限)}...` : 内容;
+}
+
+function 读取候选角色真实属性体系_V1(武魂 = {}) {
+  const 文本 = 格式化MVU正文提示原子值_V1(武魂?.属性体系);
+  if (!文本 || /^(无|未知|待生成|待补全)$/i.test(文本) || /AI_TODO|请填写|补全/.test(文本)) return '';
+  return 文本;
+}
+
+function 构建候选角色武魂摘要_V1(角色 = {}) {
+  return 取候选角色武魂条目_V1(角色)
+    .slice(0, 2)
+    .map(([武魂键, 武魂]) => {
+      const 片段列表 = [];
+      const 名称 = 格式化MVU正文提示原子值_V1(武魂?.表象名称 || 武魂?.名称);
+      if (名称) 片段列表.push(名称);
+      const 系别 = 格式化MVU正文提示原子值_V1(武魂?.系别);
+      if (系别) 片段列表.push(`系别=${系别}`);
+      const 属性体系 = 读取候选角色真实属性体系_V1(武魂);
+      if (属性体系) 片段列表.push(`属性体系=${属性体系}`);
+      const 形态描述 = 裁剪候选角色资料片段_V1(武魂?.形态描述 || 武魂?.描述, 64);
+      if (形态描述) 片段列表.push(`形态=${形态描述}`);
+      return 片段列表.length ? `${武魂键}(${片段列表.join('；')})` : '';
+    })
+    .filter(Boolean)
+    .join('；');
+}
+
+function 构建场景候选角色资料行_V1(角色名 = '', 角色 = {}, 角色记录 = {}, 当前tick = 0) {
+  const 片段列表 = [];
+  const 性别 = 格式化MVU正文提示原子值_V1(角色?.属性?.性别);
+  if (性别) 片段列表.push(`性别=${性别}`);
+  const 年龄 = Number(角色?.属性?.年龄);
+  const 生日 = 角色?.属性?.生日;
+  if (Number.isFinite(年龄)) 片段列表.push(`年龄=${格式化年龄岁月文本_V1(年龄, 生日, 当前tick)}`);
+  const 等级 = Number(角色?.属性?.等级);
+  if (Number.isFinite(等级)) 片段列表.push(`等级=Lv${等级}`);
+  const 主身份 = 格式化MVU正文提示原子值_V1(角色?.社交?.主身份);
+  if (主身份) 片段列表.push(`当前身份=${主身份}`);
+  const 位置 = 格式化MVU正文提示原子值_V1(角色?.状态?.位置);
+  if (位置) 片段列表.push(`当前位置=${位置}`);
+  const 武魂摘要 = 构建候选角色武魂摘要_V1(角色);
+  if (武魂摘要) 片段列表.push(`武魂=${武魂摘要}`);
+  const 性格 = 裁剪候选角色资料片段_V1(角色?.性格 || 角色记录?.摘要, 80);
+  if (性格) 片段列表.push(`定位/性格=${性格}`);
+  const 快照 = 取内置角色最近快照_V1(角色记录, 当前tick);
+  const 节点 = 格式化MVU正文提示原子值_V1(快照?.节点);
+  if (节点) 片段列表.push(`投影节点=${节点}`);
+  return 片段列表.length ? `- ${角色名}：${片段列表.join('；')}` : '';
+}
+
+function 生成场景候选角色资料_V1(数据输入 = null, userInput = '', 最后剧情文本 = '', 场景线索种子 = '', 最大数量 = 10) {
+  const 原数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
+  const 当前tick = Number(原数据根?.world?.时间?.tick || 0);
+  const 已发送角色集合 = 取运行时剧情提示角色名集合_V1(原数据根, userInput, 最后剧情文本);
+  const 候选名称列表 = 解析场景线索候选人物列表_V1(场景线索种子);
+  if (!候选名称列表.length) return '无';
+  const 待展开角色名 = [];
+  const 未展开候选 = [];
+  候选名称列表.forEach(候选名 => {
+    const 规范名 = 解析内置角色规范名_V1(候选名, 当前tick, 原数据根);
+    if (!规范名) {
+      未展开候选.push(`${候选名}（内置角色库无匹配）`);
+      return;
+    }
+    if (已发送角色集合.has(规范名) || 待展开角色名.includes(规范名)) return;
+    待展开角色名.push(规范名);
+  });
+  if (!待展开角色名.length && !未展开候选.length) return '无';
+  const 展开上限 = Math.max(1, Math.floor(Number(最大数量 || 10)));
+  const 展开角色名 = 待展开角色名.slice(0, 展开上限);
+  const 超出角色名 = 待展开角色名.slice(展开上限);
+  const 草稿数据根 = cloneJsonValue(原数据根, {});
+  if (展开角色名.length) {
+    const 结果 = 应用内置角色实例化_V1(草稿数据根, {
+      用户输入: 展开角色名.join('、'),
+      命中角色: 展开角色名,
+      使用统一命中: true,
+    });
+    if (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0 && globalThis.__LWCS_MVU_SCHEMA__?.parse) {
+      try {
+        Object.assign(草稿数据根, globalThis.__LWCS_MVU_SCHEMA__.parse(草稿数据根));
+      } catch (错误) {}
+    }
+  }
+  const 行列表 = 展开角色名
+    .map(角色名 => 构建场景候选角色资料行_V1(角色名, 草稿数据根?.char?.[角色名] || {}, 读取内置角色记录_V1(角色名, 当前tick, 原数据根) || {}, 当前tick))
+    .filter(Boolean);
+  const 剩余候选 = [...超出角色名, ...未展开候选].filter(Boolean);
+  if (剩余候选.length) 行列表.push(`未展开候选：${剩余候选.join('、')}`);
+  return 行列表.length ? 行列表.join('\n') : '无';
+}
+
 function 构建MVU剧情提示当前段_V1(剧情视图 = {}) {
   const 当前 = 剧情视图?.当前 && typeof 剧情视图.当前 === 'object' ? 剧情视图.当前 : {};
   const 片段列表 = [];
@@ -5302,7 +5435,8 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   const 需要更新视图 = 源文本.includes(MVU_RUNTIME_UPDATE_PLACEHOLDER_V1);
   const 需要结构提示 = 源文本.includes(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_V1);
   const 需要相互可见性 = 源文本.includes(MVU相互可见性视图占位符_V1);
-  if (!需要主视图 && !需要更新视图 && !需要结构提示 && !需要相互可见性) return 源文本;
+  const 需要场景候选角色资料 = 源文本.includes(场景候选角色资料占位符_V1);
+  if (!需要主视图 && !需要更新视图 && !需要结构提示 && !需要相互可见性 && !需要场景候选角色资料) return 源文本;
   const 数据根 = 上下文?.statData || 获取最新运行时Mvu数据根_V1();
   const userInput = 上下文?.userInput || '';
   const 最后角色消息输入 = String(上下文?.lastCharMessage || 上下文?.aiText || '').trim() || 读取运行时最后角色消息文本_V1();
@@ -5336,11 +5470,15 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     运行时提示已使用类型: 上下文?.运行时提示已使用类型,
   }) : '';
   const 相互可见性文本 = 需要相互可见性 ? 生成MVU相互可见性视图_V1(数据根, userInput, 最后角色消息输入) : '';
+  const 场景候选角色资料文本 = 需要场景候选角色资料
+    ? 生成场景候选角色资料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '')
+    : '';
   const 替换后 = 源文本
     .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_V1, 主视图文本)
     .replaceAll(MVU_RUNTIME_UPDATE_PLACEHOLDER_V1, 更新视图文本)
     .replaceAll(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_V1, 结构提示)
-    .replaceAll(MVU相互可见性视图占位符_V1, 相互可见性文本);
+    .replaceAll(MVU相互可见性视图占位符_V1, 相互可见性文本)
+    .replaceAll(场景候选角色资料占位符_V1, 场景候选角色资料文本);
   return 替换后.replace(/<status_current_variables>\s*(?:\{\}|\[\]|\s*)\s*<\/status_current_variables>/gi, '').trim();
 }
 
@@ -5561,6 +5699,7 @@ try {
     生成MVU更新视图: 生成MVU更新视图_V1,
     生成MVU剧情视图: 生成MVU剧情视图_V1,
     生成MVU剧情提示文本: 生成MVU剧情提示文本_V1,
+    生成场景候选角色资料: 生成场景候选角色资料_V1,
     生成角色基础六维对标摘要: 生成角色基础六维对标摘要_V1,
     生成MVU更新结构提示: 生成MVU更新结构提示_V1,
     读取内置角色库: 读取内置角色库_V1,

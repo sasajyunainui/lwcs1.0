@@ -19632,6 +19632,10 @@ $CONTENT
         const relayTagMap = runtimeOptions.relayTagMap instanceof Map ? runtimeOptions.relayTagMap : new Map();
         const fallbackTagMap = new Map(historyTagMap);
         fallbackTagMap.set('偏差账本候选', [sharedContext.deviationLedgerCandidateText || '无相关偏差记录。']);
+        const 场景线索种子值 = resolvePlotTagValueWithFallback_ACU(relayTagMap, fallbackTagMap, '场景线索种子');
+        const 场景线索种子文本 = 场景线索种子值.found
+            ? (Array.isArray(场景线索种子值.value) ? 场景线索种子值.value : [场景线索种子值.value]).map(值 => String(值 || '').trim()).filter(Boolean).join('\n\n')
+            : '';
         // 构建 $1 的任务级覆盖值（任务级世界书内容）
         const replacementOverrides = {};
         if (sharedContext.taskWorldbookContent !== undefined) {
@@ -19650,6 +19654,7 @@ $CONTENT
                 lastCharMessage: getLatestAIMessageContent_ACU(),
                 plotText: sharedContext.lastPlotContent || "",
                 captureText: [sharedContext.userMessage, await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai')].filter(Boolean).join('\n'),
+                场景线索种子文本,
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;

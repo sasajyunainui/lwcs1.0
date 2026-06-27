@@ -13,6 +13,7 @@
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
   const 剧情当前地点占位符 = '{{剧情当前地点}}';
   const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
+  const 场景候选角色资料占位符 = '{{场景候选角色资料}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
@@ -557,7 +558,8 @@
       !源文本.includes(MVU运行时视图占位符) &&
       !源文本.includes(MVU运行时更新占位符) &&
       !源文本.includes(MVU更新结构提示占位符) &&
-      !源文本.includes(MVU相互可见性视图占位符)
+      !源文本.includes(MVU相互可见性视图占位符) &&
+      !源文本.includes(场景候选角色资料占位符)
     ) {
       return 源文本;
     }
@@ -570,6 +572,7 @@
           userInput: context.userInput || '',
           lastCharMessage: context.lastCharMessage || '',
           plotText: context.plotText || '',
+          场景线索种子文本: context.场景线索种子文本 || '',
           运行时提示已使用类型: 取本轮提示限流集合({
             ...context,
             viewType,
@@ -584,6 +587,7 @@
       .replaceAll(MVU运行时更新占位符, '')
       .replaceAll(MVU更新结构提示占位符, '')
       .replaceAll(MVU相互可见性视图占位符, '')
+      .replaceAll(场景候选角色资料占位符, '')
       .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
       .trim();
   }
@@ -675,6 +679,7 @@
       plotText: 上下文.plotText || '',
       captureText: 近场上下文.captureText || '',
       latestCharMessageInfo: 上下文.latestCharMessageInfo,
+      场景线索种子文本: 上下文.场景线索种子文本 || '',
       运行时提示已使用类型: 取本轮提示限流集合({
         ...上下文,
         userInput: 用户输入文本,
@@ -912,6 +917,7 @@
       '角色基础六维对标',
       '剧情当前地点',
       '剧情当前主身份',
+      '场景候选角色资料',
     ].includes(String(tagName || '').trim());
   }
 
@@ -925,7 +931,8 @@
       || 文本.includes(远端原著时间线候选占位符)
       || 文本.includes(角色基础六维对标占位符)
       || 文本.includes(剧情当前地点占位符)
-      || 文本.includes(剧情当前主身份占位符);
+      || 文本.includes(剧情当前主身份占位符)
+      || 文本.includes(场景候选角色资料占位符);
   }
 
   function 清理世界书扫描文本(value) {
@@ -941,7 +948,8 @@
       .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ')
       .replace(/\{\{MVU_MUTUAL_VISIBILITY_VIEW\}\}/g, ' ')
       .replace(/\{\{剧情当前地点\}\}/g, ' ')
-      .replace(/\{\{剧情当前主身份\}\}/g, ' ');
+      .replace(/\{\{剧情当前主身份\}\}/g, ' ')
+      .replace(/\{\{场景候选角色资料\}\}/g, ' ');
   }
 
   const 适配器 = {
