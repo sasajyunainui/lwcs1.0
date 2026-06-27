@@ -1890,6 +1890,7 @@
   let currentModalPreviewKey = '';
   let currentUnifiedPreviewKey = '';
   let lastRenderedUnifiedPreviewKey = '';
+  let 统一详情渲染序号 = 0;
   let mapDispatchContext = null;
   let activeSubUI = null;
   let lastAutoOpenedPendingSoulRingSignature = '';
@@ -41690,6 +41691,20 @@ ${播报文本}
     );
   }
 
+  function 读取战斗复入快照(候选快照 = null) {
+    const 快照列表 = [候选快照, liveSnapshot, lastRenderableSnapshot].filter(
+      快照 => 快照 && typeof 快照 === 'object' && 快照.rootData,
+    );
+    const 有效快照 = 快照列表.find(快照 => isCombatActiveForBattleInline(快照));
+    if (有效快照) return 有效快照;
+    const 战斗数据 = window.BattleUI?.state?.combatData || window.BattleUIBridge?.getMVU?.('world.战斗') || null;
+    if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) return 快照列表[0] || null;
+    const 根数据 = readLatestMvuDataByEditor() || {};
+    if (!根数据.world || typeof 根数据.world !== 'object') 根数据.world = {};
+    根数据.world.战斗 = 战斗数据;
+    return buildSnapshot(根数据);
+  }
+
   function getBattleInlineSummary(snapshot) {
     const combatData = deepGet(snapshot, 'rootData.world.战斗', {});
     const player = toText(
@@ -41706,6 +41721,15 @@ ${播报文本}
       meta: `${player} / ${enemy}`,
       roundText: `回合 ${round}`,
     };
+  }
+
+  function 构建战斗复入入口HTML(snapshot) {
+    const 摘要 = getBattleInlineSummary(snapshot);
+    return `
+      <span class="mvu-battle-return-kicker">${htmlEscape(摘要.title || '战斗终端')}</span>
+      <b>${htmlEscape(摘要.roundText || '回合 0')}</b>
+      <span>${htmlEscape(摘要.meta || '己方 / 对手')}</span>
+    `;
   }
 
   function openBattleInlineFromReturnEntry() {
@@ -41741,13 +41765,26 @@ ${播报文本}
       removeBattleReturnEntries();
       return;
     }
+    const 入口HTML = 构建战斗复入入口HTML(snapshot);
+    const 入口类名 = 'mvu-battle-return-entry';
+    const 档案侧栏 = document.querySelector(
+      '#mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card="archive-side"]',
+    );
+    const 终端主面板 = document.querySelector(
+      '#mvu-unified-mount .mvu-unified-dashboard--terminal > [data-dashboard-panel="terminal-main"]',
+    );
+    ensureBattleReturnEntry(档案侧栏, `${入口类名} mvu-battle-return-entry--archive`, 入口HTML);
+    ensureBattleReturnEntry(终端主面板, `${入口类名} mvu-battle-return-entry--terminal`, 入口HTML);
   }
 
   function scheduleBattleReturnEntrySync(snapshot, isActive) {
     const token = ++battleReturnEntrySyncToken;
+    const 初始快照 = snapshot && typeof snapshot === 'object' && snapshot.rootData ? snapshot : null;
     const run = () => {
       if (token !== battleReturnEntrySyncToken) return;
-      const latestSnapshot = liveSnapshot || lastRenderableSnapshot || snapshot;
+      const latestSnapshot = isActive
+        ? 读取战斗复入快照(初始快照)
+        : liveSnapshot || lastRenderableSnapshot || 初始快照;
       syncBattleReturnEntries(latestSnapshot, isActive && isCombatActiveForBattleInline(latestSnapshot));
     };
     if (typeof window.requestAnimationFrame === 'function') {
@@ -43104,6 +43141,8 @@ ${播报文本}
     const battleUiSnapshot = canUseBattle ? buildBattleUiSnapshot(snapshot, liveCombatData) : snapshot;
     syncBattleReturnEntries(snapshot, canUseBattle && battleInlineDismissed);
     if (canUseBattle && (跳过战斗终端自动挂载 || 读取战斗提交模式() !== 'manual') && !options.reopenBattle) {
+      battleInlineDismissed = false;
+      removeBattleReturnEntries();
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
       activeBattleUI = null;
       return;
@@ -45962,9 +46001,10 @@ ${toText(combatData.战斗意图, '点到为止')}
   function handleBattleUiCloseRequest(event) {
     const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
     detail.handled = true;
-    if (isCombatActiveForBattleInline(liveSnapshot || lastRenderableSnapshot)) {
+    const battleSnapshot = 读取战斗复入快照();
+    if (isCombatActiveForBattleInline(battleSnapshot)) {
       battleInlineDismissed = true;
-      scheduleBattleReturnEntrySync(liveSnapshot || lastRenderableSnapshot, true);
+      scheduleBattleReturnEntrySync(battleSnapshot, true);
     }
     if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
     activeBattleUI = null;
@@ -46335,6 +46375,7 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function clearUnifiedInlinePreview() {
+    统一详情渲染序号 += 1;
     const host = getUnifiedInlineHost();
     const effectivePreviewKey = getEffectiveUnifiedPreviewKey();
     if (
@@ -46342,9 +46383,10 @@ ${toText(combatData.战斗意图, '点到为止')}
       activeBattleUI &&
       typeof activeBattleUI.destroy === 'function'
     ) {
-      if (isCombatActiveForBattleInline(liveSnapshot || lastRenderableSnapshot)) {
+      const battleSnapshot = 读取战斗复入快照();
+      if (isCombatActiveForBattleInline(battleSnapshot)) {
         battleInlineDismissed = true;
-        scheduleBattleReturnEntrySync(liveSnapshot || lastRenderableSnapshot, true);
+        scheduleBattleReturnEntrySync(battleSnapshot, true);
       }
       activeBattleUI.destroy();
       activeBattleUI = null;
@@ -46362,7 +46404,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     delete host.dataset.holoPreview;
   }
 
-  function wrapUnifiedInlineBody(html, options = {}) {
+  function wrapUnifiedInlineBody(html = '', options = {}) {
     const previewKey = toText(options.previewKey, '');
     return `<div class="mvu-holo-detail-root archive-redesign-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
         <div class="mvu-holo-detail-scroll">
@@ -46371,6 +46413,124 @@ ${toText(combatData.战斗意图, '点到为止')}
           </div>
         </div>
       </div>`;
+  }
+
+  function 创建统一详情空壳(预览键) {
+    return wrapUnifiedInlineBody('', { previewKey: 预览键 });
+  }
+
+  function 读取统一详情内容槽(宿主节点, 预览键) {
+    if (!(宿主节点 instanceof Element)) return null;
+    const 内容槽 = 宿主节点.querySelector('.mvu-holo-slab-root');
+    return 内容槽 && toText(内容槽.getAttribute('data-slab-preview'), '') === toText(预览键, '') ? 内容槽 : null;
+  }
+
+  function 节点包含选择器(节点, 选择器) {
+    if (!(节点 instanceof Element)) return false;
+    return 节点.matches(选择器) || !!节点.querySelector(选择器);
+  }
+
+  function 判断统一详情重节点(节点) {
+    return 节点包含选择器(
+      节点,
+      [
+        '.mvu-armory-main-grid',
+        '.mvu-armory-gear-grid',
+        '.mvu-armory-gear-slot',
+        '.mvu-armory-bone-topology',
+        '.bestiary-research-shell',
+        '.bestiary-archive-layout',
+        '.bestiary-species-grid',
+        '.mvu-intel-terminal',
+        '.mvu-intel-terminal-list',
+        '.mvu-intel-terminal-record',
+        '.mvu-inventory-workbench',
+        '.mvu-inventory-grid',
+        '.inventory-grid',
+        '.mvu-detail-embed',
+        '.mvu-profession-workshop-detail',
+        '.skill-designer-layout',
+        '.map-action-grid',
+        '.map-dispatch-action-btn',
+        '#mvu-battle-inline-host',
+        '.battle-shell',
+      ].join(','),
+    );
+  }
+
+  function 统一详情渲染仍有效(宿主节点, 预览键, 渲染序号) {
+    return !!(
+      宿主节点 &&
+      宿主节点.isConnected &&
+      统一详情渲染序号 === 渲染序号 &&
+      toText(宿主节点.dataset.holoPreview, '') === 预览键
+    );
+  }
+
+  function 等待统一详情帧(帧数, 回调) {
+    const 剩余帧数 = Math.max(1, Number(帧数) || 1);
+    const 执行帧 = 剩余 => {
+      window.requestAnimationFrame(() => {
+        if (剩余 <= 1) 回调();
+        else 执行帧(剩余 - 1);
+      });
+    };
+    执行帧(剩余帧数);
+  }
+
+  function 完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号) {
+    if (!统一详情渲染仍有效(宿主节点, 目标键, 渲染序号)) return;
+    if (需要重置滚动) 宿主节点.scrollTop = 0;
+    syncUnifiedTitleLongPress(目标键);
+    同步AI维护标题入口(目标键);
+    if (typeof 挂载回调 === 'function') {
+      activeSubUI = 挂载回调(宿主节点);
+    }
+    scheduleUnifiedMapCanvasClamp(宿主节点);
+    if (目标键 === '储物仓库详细页') {
+      同步仓库页动效(宿主节点, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+    }
+    if (typeof window.__MVU_同步统一详情视口__ === 'function') {
+      window.__MVU_同步统一详情视口__();
+    }
+  }
+
+  function 分帧填充统一详情(宿主节点, 内容槽, 详情HTML, 目标键, 挂载回调, 需要重置滚动, 渲染序号) {
+    const 详情模板 = document.createElement('template');
+    详情模板.innerHTML = 详情HTML || '';
+    const 全部节点 = Array.from(详情模板.content.childNodes).filter(节点 => {
+      return 节点.nodeType !== Node.TEXT_NODE || toText(节点.textContent, '').trim();
+    });
+    const 轻节点列表 = [];
+    const 重节点列表 = [];
+    全部节点.forEach(节点 => {
+      if (判断统一详情重节点(节点)) 重节点列表.push(节点);
+      else 轻节点列表.push(节点);
+    });
+    const 节点批次列表 = [];
+    for (let i = 0; i < 轻节点列表.length; i += 2) {
+      节点批次列表.push({ 节点列表: 轻节点列表.slice(i, i + 2), 延后帧数: i === 0 ? 1 : 1 });
+    }
+    重节点列表.forEach(节点 => {
+      节点批次列表.push({ 节点列表: [节点], 延后帧数: 2 });
+    });
+
+    const 写入批次 = 批次索引 => {
+      if (!统一详情渲染仍有效(宿主节点, 目标键, 渲染序号)) return;
+      if (批次索引 >= 节点批次列表.length) {
+        完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号);
+        return;
+      }
+      const 当前批次 = 节点批次列表[批次索引];
+      当前批次.节点列表.forEach(节点 => 内容槽.appendChild(节点));
+      等待统一详情帧(当前批次.延后帧数, () => 写入批次(批次索引 + 1));
+    };
+
+    if (!节点批次列表.length) {
+      完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号);
+      return;
+    }
+    写入批次(0);
   }
 
   function isLiveRequiredPreviewKey(previewKey) {
@@ -46478,52 +46638,69 @@ ${toText(combatData.战斗意图, '点到为止')}
     host.dataset.holoPreview = targetKey;
     bindUnifiedDetailDelegation(host);
 
+    const 本次渲染序号 = ++统一详情渲染序号;
+    host.innerHTML = 创建统一详情空壳(targetKey);
+    if (shouldResetScroll) host.scrollTop = 0;
+    syncUnifiedTitleLongPress(targetKey);
+    同步AI维护标题入口(targetKey);
+    if (typeof window.__MVU_同步统一详情视口__ === 'function') {
+      window.__MVU_同步统一详情视口__();
+    }
+
     const setHostMarkup = (html, onMount = null) => {
-      const 执行写入 = () => {
-        if (!host.isConnected || toText(host.dataset.holoPreview, '') !== targetKey) return;
-        host.innerHTML = wrapUnifiedInlineBody(html, { previewKey: targetKey });
-        if (shouldResetScroll) host.scrollTop = 0;
-        syncUnifiedTitleLongPress(targetKey);
-        同步AI维护标题入口(targetKey);
-        if (typeof onMount === 'function') {
-          activeSubUI = onMount(host);
-        }
-        scheduleUnifiedMapCanvasClamp(host);
-        if (targetKey === '储物仓库详细页') {
-          同步仓库页动效(host, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
-        }
-        if (typeof window.__MVU_同步统一详情视口__ === 'function') {
-          window.__MVU_同步统一详情视口__();
-        }
-      };
-      window.requestAnimationFrame(执行写入);
+      const slab = 读取统一详情内容槽(host, targetKey);
+      if (!slab || !统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
+      slab.replaceChildren();
+      分帧填充统一详情(host, slab, html, targetKey, onMount, shouldResetScroll, 本次渲染序号);
+    };
+
+    const setHostMarkupImmediately = html => {
+      const slab = 读取统一详情内容槽(host, targetKey);
+      if (!slab || !统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
+      const 详情模板 = document.createElement('template');
+      详情模板.innerHTML = html || '';
+      slab.replaceChildren(...Array.from(详情模板.content.childNodes));
+      if (shouldResetScroll) host.scrollTop = 0;
+      syncUnifiedTitleLongPress(targetKey);
+      同步AI维护标题入口(targetKey);
+      if (typeof window.__MVU_同步统一详情视口__ === 'function') {
+        window.__MVU_同步统一详情视口__();
+      }
     };
 
     if (targetKey === BATTLE_INLINE_PREVIEW_KEY) {
-      setHostMarkup(buildBattleInlineHostMarkup());
+      setHostMarkupImmediately(buildBattleInlineHostMarkup());
       return true;
     }
 
-    const liveArchive = buildLiveArchiveModal(targetKey);
-    const skeletonArchive = !liveArchive && !liveSnapshot ? buildArchiveSkeletonModal(targetKey) : null;
-    if (liveArchive) {
-      setHostMarkup(liveArchive.body, liveArchive.onMount);
-      return true;
-    }
-    if (!liveSnapshot && isLiveRequiredPreviewKey(targetKey)) {
-      setHostMarkup(skeletonArchive ? skeletonArchive.body : '');
-      return true;
-    }
+    const 构建并填充详情 = () => {
+      if (!统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
 
-    const archiveBuilder = archiveModalBuilders[targetKey];
-    if (archiveBuilder) {
-      const view = archiveBuilder();
-      setHostMarkup(view.body);
-      return true;
-    }
+      const liveArchive = buildLiveArchiveModal(targetKey);
+      const skeletonArchive = !liveArchive && !liveSnapshot ? buildArchiveSkeletonModal(targetKey) : null;
+      if (liveArchive) {
+        setHostMarkup(liveArchive.body, liveArchive.onMount);
+        return;
+      }
+      if (!liveSnapshot && isLiveRequiredPreviewKey(targetKey)) {
+        setHostMarkup(skeletonArchive ? skeletonArchive.body : '');
+        return;
+      }
 
-    const config = previewMap[targetKey] || buildDynamicPreview(targetKey || '详细信息');
-    setHostMarkup(renderGenericModalBody(config));
+      const archiveBuilder = archiveModalBuilders[targetKey];
+      if (archiveBuilder) {
+        const view = archiveBuilder();
+        setHostMarkup(view.body);
+        return;
+      }
+
+      const config = previewMap[targetKey] || buildDynamicPreview(targetKey || '详细信息');
+      setHostMarkup(renderGenericModalBody(config));
+    };
+
+    window.setTimeout(() => {
+      等待统一详情帧(1, 构建并填充详情);
+    }, 120);
     return true;
   }
   window.__MVU_RENDER_UNIFIED_PREVIEW__ = renderUnifiedInlinePreview;

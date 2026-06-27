@@ -877,8 +877,12 @@ const DesktopUnifiedLayout = {
       const 当前预览键 = String(详情宿主.dataset.holoPreview || '').trim();
       const 目标预览键 = String(预览键 || '').trim();
       if (!目标预览键 || 当前预览键 === 目标预览键) return;
-      详情宿主.innerHTML = '';
-      delete 详情宿主.dataset.holoPreview;
+      if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+      } else {
+        详情宿主.innerHTML = '';
+        delete 详情宿主.dataset.holoPreview;
+      }
     };
     const requestUnifiedDetailRender = (options = {}) => {
       const nextPreviewKey = String(detailState.previewKey || '').trim();
@@ -952,6 +956,9 @@ const DesktopUnifiedLayout = {
       }
       detailState.isOpen = false;
       detailState.stack.splice(0);
+      if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+      }
       requestTabChange(normalizeTabId(detailState.returnTab));
       请求统一概览同步('detail-close');
       scheduleUnifiedFrameViewportSync();
@@ -983,6 +990,9 @@ const DesktopUnifiedLayout = {
       if (detailState.isOpen) {
         detailState.isOpen = false;
         detailState.stack.splice(0);
+        if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+        }
       }
       requestTabChange(tabId);
       请求统一概览同步('tab-change');
