@@ -14,6 +14,7 @@
   const 剧情当前地点占位符 = '{{剧情当前地点}}';
   const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
   const 场景候选角色资料占位符 = '{{场景候选角色资料}}';
+  const 场景背景角色补充占位符 = '{{场景背景角色补充}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
@@ -559,7 +560,8 @@
       !源文本.includes(MVU运行时更新占位符) &&
       !源文本.includes(MVU更新结构提示占位符) &&
       !源文本.includes(MVU相互可见性视图占位符) &&
-      !源文本.includes(场景候选角色资料占位符)
+      !源文本.includes(场景候选角色资料占位符) &&
+      !源文本.includes(场景背景角色补充占位符)
     ) {
       return 源文本;
     }
@@ -587,6 +589,7 @@
       .replaceAll(MVU运行时更新占位符, '')
       .replaceAll(MVU更新结构提示占位符, '')
       .replaceAll(MVU相互可见性视图占位符, '')
+      .replaceAll(场景背景角色补充占位符, '')
       .replaceAll(场景候选角色资料占位符, '')
       .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
       .trim();
@@ -917,6 +920,7 @@
       '角色基础六维对标',
       '剧情当前地点',
       '剧情当前主身份',
+      '场景背景角色补充',
       '场景候选角色资料',
     ].includes(String(tagName || '').trim());
   }
@@ -932,6 +936,7 @@
       || 文本.includes(角色基础六维对标占位符)
       || 文本.includes(剧情当前地点占位符)
       || 文本.includes(剧情当前主身份占位符)
+      || 文本.includes(场景背景角色补充占位符)
       || 文本.includes(场景候选角色资料占位符);
   }
 
@@ -949,6 +954,7 @@
       .replace(/\{\{MVU_MUTUAL_VISIBILITY_VIEW\}\}/g, ' ')
       .replace(/\{\{剧情当前地点\}\}/g, ' ')
       .replace(/\{\{剧情当前主身份\}\}/g, ' ')
+      .replace(/\{\{场景背景角色补充\}\}/g, ' ')
       .replace(/\{\{场景候选角色资料\}\}/g, ' ');
   }
 
