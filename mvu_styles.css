@@ -16519,6 +16519,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --mvu-holo-frame-clip: var(--面板裁切);
   --mvu-holo-card-clip: var(--卡片裁切);
   --装甲内影: inset 0 0 0 0 transparent;
+  --面板约束辉光: 0 0 0 1px var(--边线颜色);
+  --面板近距辉光: 0 0 16px color-mix(in srgb, var(--主题主色) 26%, transparent);
+  --面板远距辉光: 0 0 42px color-mix(in srgb, var(--主题主色) 12%, transparent);
+  --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.12);
+  --玻璃暗侧阴影: inset -1px -1px 0 rgba(0, 0, 0, 0.34);
   --全息入场延迟: 48ms;
   --档案核心魂色: #f4f7fb;
   --武魂舞台魂色: #ffe77a;
@@ -16627,7 +16632,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   max-height: none;
   overflow: visible;
   isolation: isolate;
-  border: 1px solid var(--边线颜色);
+  border: 1px solid transparent;
   border-radius: var(--投影圆角);
   clip-path: var(--面板裁切);
   background:
@@ -16640,7 +16645,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
     );
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.36),
-    var(--主题发光),
+    var(--面板约束辉光),
+    var(--面板近距辉光),
+    var(--面板远距辉光),
     inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
@@ -16746,27 +16753,27 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --主题底色: #0a0101;
   --主题字体: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --主题字重: 900;
-  --暗场底板: rgba(12, 3, 1, 0.48);
-  --暗场底板强: rgba(18, 4, 1, 0.62);
-  --暗场卡片: rgba(18, 5, 2, 0.44);
-  --暗场浮层: rgba(14, 3, 1, 0.82);
+  --暗场底板: rgba(10, 2, 1, 0.38);
+  --暗场底板强: rgba(16, 4, 1, 0.54);
+  --暗场卡片: rgba(22, 5, 2, 0.42);
+  --暗场浮层: rgba(10, 2, 1, 0.78);
   --投影圆角: 0;
   --卡片圆角: 0;
   --卡片裁切: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
   --面板裁切: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
   --主面板材质:
-    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.11), transparent 18%),
-    radial-gradient(circle at 78% 16%, rgba(255, 89, 24, 0.18), transparent 30%),
-    radial-gradient(circle at 18% 92%, rgba(214, 168, 66, 0.13), transparent 34%),
-    linear-gradient(145deg, rgba(28, 8, 2, 0.48), rgba(8, 1, 1, 0.34) 62%, rgba(3, 0, 0, 0.42));
+    radial-gradient(circle at 18% 9%, rgba(255, 246, 222, 0.12), transparent 16%),
+    radial-gradient(ellipse at 74% 18%, rgba(255, 69, 0, 0.17), transparent 34%),
+    radial-gradient(ellipse at 14% 96%, rgba(214, 168, 66, 0.13), transparent 38%),
+    linear-gradient(145deg, rgba(24, 7, 2, 0.4), rgba(7, 1, 1, 0.3) 64%, rgba(1, 0, 0, 0.46));
   --面板光层:
     linear-gradient(90deg, rgba(255, 230, 190, 0.16), transparent 28%),
     linear-gradient(180deg, rgba(255, 110, 38, 0.2), transparent 26%);
   --背景细纹: linear-gradient(0deg, transparent, transparent);
   --卡片材质:
-    radial-gradient(circle at 16% 8%, rgba(255, 255, 255, 0.095), transparent 24%),
-    radial-gradient(circle at 92% 20%, rgba(255, 69, 0, 0.12), transparent 32%),
-    linear-gradient(145deg, rgba(39, 10, 3, 0.42), rgba(12, 2, 1, 0.36) 64%, rgba(4, 0, 0, 0.42));
+    radial-gradient(circle at 14% 9%, rgba(255, 255, 255, 0.1), transparent 22%),
+    radial-gradient(ellipse at 94% 18%, rgba(255, 69, 0, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(36, 9, 3, 0.4), rgba(10, 1, 1, 0.34) 64%, rgba(3, 0, 0, 0.44));
   --悬浮材质:
     radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.13), transparent 28%),
     radial-gradient(circle at 82% 18%, rgba(255, 69, 0, 0.18), transparent 34%),
@@ -16804,33 +16811,36 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 0 54px rgba(255, 122, 32, 0.28),
     0 0 86px rgba(214, 168, 66, 0.14);
   --装甲内影: inset 1px 1px 0 rgba(255, 246, 222, 0.16), inset -1px -1px 0 rgba(39, 4, 1, 0.72), inset 0 0 0 1px rgba(255, 116, 38, 0.22), inset 0 0 34px rgba(255, 69, 0, 0.14);
+  --面板约束辉光: 0 0 0 1px rgba(255, 69, 0, 0.52);
+  --面板近距辉光: 0 0 12px rgba(255, 69, 0, 0.42);
+  --面板远距辉光: 0 0 34px rgba(255, 69, 0, 0.18);
+  --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.15);
+  --玻璃暗侧阴影: inset -1px -1px 0 rgba(30, 3, 1, 0.82);
   --玻璃外辉光:
-    0 20px 44px rgba(0, 0, 0, 0.46),
-    0 0 30px rgba(255, 69, 0, 0.42),
-    0 0 68px rgba(255, 104, 24, 0.22);
-  --玻璃内折射: inset 1px 1px 0 rgba(255, 255, 255, 0.15), inset -1px -1px 0 rgba(30, 3, 1, 0.78);
+    var(--面板约束辉光),
+    var(--面板近距辉光),
+    var(--面板远距辉光),
+    0 20px 44px rgba(0, 0, 0, 0.46);
+  --玻璃内折射: var(--玻璃微切角), var(--玻璃暗侧阴影);
   --档案核心魂色: #fdf6e3;
   --武魂舞台魂色: #ff6a2f;
   --档案武装魂色: #b89947;
   --档案关系魂色: #ff6a2f;
   --档案情报魂色: #ff4500;
-  --魂环舱底色:
-    radial-gradient(ellipse at 50% 94%, rgba(255, 245, 210, 0.18), transparent 16%),
-    linear-gradient(0deg, rgba(255, 69, 0, 0.18), rgba(255, 69, 0, 0.035) 42%, transparent 82%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 18px),
-    linear-gradient(145deg, rgba(10, 5, 0, 0.58), rgba(5, 0, 0, 0.38));
+  --魂环舱底色: none;
   --魂环舱底座材质:
-    radial-gradient(circle, rgba(255, 255, 236, 0.72) 0 8%, rgba(255, 170, 36, 0.52) 9% 18%, rgba(255, 69, 0, 0.2) 34%, transparent 62%),
-    repeating-radial-gradient(ellipse, transparent 0 8px, rgba(214, 168, 66, 0.2) 9px, transparent 12px),
-    linear-gradient(90deg, transparent, rgba(255, 245, 190, 0.16), transparent);
+    radial-gradient(circle, rgba(255, 255, 255, 0.92) 0 7%, rgba(255, 226, 98, 0.62) 8% 18%, rgba(255, 69, 0, 0.26) 34%, transparent 66%),
+    repeating-radial-gradient(ellipse, transparent 0 8px, rgba(214, 168, 66, 0.24) 9px, transparent 12px),
+    linear-gradient(90deg, transparent, rgba(255, 245, 190, 0.18), transparent);
   --魂环舱底座边线: rgba(255, 199, 82, 0.42);
   --魂环舱底座辉光:
-    0 0 32px rgba(255, 69, 0, 0.28),
-    inset 0 0 18px rgba(255, 235, 190, 0.16);
+    0 0 12px rgba(255, 245, 210, 0.34),
+    0 0 34px rgba(255, 69, 0, 0.32),
+    0 0 72px rgba(255, 69, 0, 0.16);
   --魂环舱导轨材质:
-    linear-gradient(180deg, transparent, rgba(255, 245, 210, 0.48) 18%, rgba(255, 69, 0, 0.46) 56%, rgba(255, 199, 82, 0.32), transparent),
-    repeating-linear-gradient(0deg, transparent 0 9px, rgba(255, 226, 98, 0.72) 10px, transparent 13px);
-  --魂环舱导轨宽度: clamp(8px, 1.4cqw, 13px);
+    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.54) 16%, rgba(255, 69, 0, 0.5) 54%, rgba(255, 199, 82, 0.3) 78%, transparent 100%),
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(255, 226, 98, 0.78) 10px, transparent 13px);
+  --魂环舱导轨宽度: clamp(9px, 1.5cqw, 14px);
   --魂环舱导轨辉光:
     0 0 14px rgba(255, 69, 0, 0.36),
     0 0 26px rgba(255, 199, 82, 0.2);
@@ -16842,11 +16852,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] {
-  border-width: 2px;
-  border-color: rgba(255, 119, 38, 0.58);
+  border-color: transparent;
   box-shadow:
-    var(--装甲内影),
-    var(--玻璃外辉光);
+    var(--面板约束辉光),
+    var(--面板近距辉光),
+    var(--面板远距辉光),
+    inset 0 0 28px rgba(255, 69, 0, 0.14),
+    0 20px 44px rgba(0, 0, 0, 0.48);
   letter-spacing: 1px;
 }
 
@@ -16932,28 +16944,28 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --蝶翼金: #ff7eb3;
   --主题字体: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --主题字重: 500;
-  --暗场底板: rgba(5, 15, 26, 0.76);
-  --暗场底板强: rgba(5, 18, 31, 0.88);
-  --暗场卡片: rgba(6, 22, 36, 0.7);
-  --暗场浮层: rgba(5, 14, 24, 0.94);
+  --暗场底板: rgba(4, 10, 22, 0.52);
+  --暗场底板强: rgba(5, 14, 28, 0.68);
+  --暗场卡片: rgba(6, 18, 34, 0.52);
+  --暗场浮层: rgba(5, 12, 24, 0.88);
   --投影圆角: 32px 42px 24px 42px;
   --卡片圆角: 28px;
   --卡片裁切: none;
   --面板裁切: none;
   --主面板材质:
-    radial-gradient(circle at 18% 24%, rgba(125, 249, 255, 0.19), transparent 20%),
-    radial-gradient(ellipse at 72% 62%, rgba(255, 126, 179, 0.17), transparent 26%),
-    radial-gradient(circle at 48% 12%, rgba(255, 255, 255, 0.12), transparent 18%),
-    linear-gradient(135deg, rgba(0, 242, 254, 0.095), rgba(255, 126, 179, 0.078), rgba(5, 11, 20, 0.74));
+    radial-gradient(circle at 18% 24%, rgba(125, 249, 255, 0.18), transparent 22%),
+    radial-gradient(ellipse at 76% 64%, rgba(255, 126, 179, 0.16), transparent 30%),
+    radial-gradient(circle at 48% 12%, rgba(255, 255, 255, 0.1), transparent 18%),
+    linear-gradient(135deg, rgba(0, 242, 254, 0.078), rgba(255, 126, 179, 0.06), rgba(3, 8, 18, 0.68));
   --面板光层:
     radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.18), transparent 19%),
     radial-gradient(ellipse at 70% 60%, rgba(0, 242, 254, 0.22), transparent 24%),
     linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.115) 23%, transparent 31%, rgba(255, 126, 179, 0.082) 46%, transparent 54%);
   --背景细纹: linear-gradient(0deg, transparent, transparent);
   --卡片材质:
-    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.18), transparent 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 30%),
-    linear-gradient(135deg, rgba(0, 242, 254, 0.11), rgba(255, 126, 179, 0.085), rgba(5, 11, 20, 0.5));
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.16), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.062), transparent 30%),
+    linear-gradient(135deg, rgba(0, 242, 254, 0.09), rgba(255, 126, 179, 0.07), rgba(4, 10, 22, 0.46));
   --悬浮材质:
     radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.22), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 35%),
@@ -16995,30 +17007,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 0 18px rgba(0, 242, 254, 0.48),
     0 0 30px rgba(255, 126, 179, 0.22),
     inset 0 0 24px rgba(255, 255, 255, 0.12);
+  --面板约束辉光: 0 0 0 1px rgba(125, 249, 255, 0.4);
+  --面板近距辉光: 0 0 14px rgba(0, 242, 254, 0.32);
+  --面板远距辉光: 0 0 46px rgba(255, 126, 179, 0.18);
+  --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.14);
+  --玻璃暗侧阴影: inset -1px -1px 0 rgba(0, 242, 254, 0.18);
   --档案核心魂色: #a8d5ff;
   --武魂舞台魂色: #00f2fe;
   --档案武装魂色: #ff7eb3;
   --档案关系魂色: #ff7eb3;
   --档案情报魂色: #00f2fe;
-  --魂环舱底色:
-    radial-gradient(ellipse at 50% 96%, rgba(125, 249, 255, 0.22), transparent 18%),
-    radial-gradient(ellipse at 50% 42%, rgba(255, 126, 179, 0.12), transparent 46%),
-    linear-gradient(0deg, rgba(0, 242, 254, 0.16), rgba(255, 126, 179, 0.065) 48%, transparent 86%),
-    linear-gradient(135deg, rgba(5, 10, 25, 0.34), rgba(20, 8, 34, 0.2));
+  --魂环舱底色: none;
   --魂环舱底座材质:
-    radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 9%, rgba(0, 242, 254, 0.32) 10% 22%, rgba(255, 126, 179, 0.16) 38%, transparent 66%),
-    repeating-radial-gradient(ellipse, transparent 0 9px, rgba(125, 249, 255, 0.13) 10px, transparent 13px),
-    linear-gradient(90deg, transparent, rgba(125, 249, 255, 0.12), rgba(255, 126, 179, 0.09), transparent);
+    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0 8%, rgba(0, 242, 254, 0.34) 9% 22%, rgba(255, 126, 179, 0.16) 38%, transparent 68%),
+    repeating-radial-gradient(ellipse, transparent 0 9px, rgba(125, 249, 255, 0.12) 10px, transparent 13px),
+    linear-gradient(90deg, transparent, rgba(125, 249, 255, 0.12), rgba(255, 126, 179, 0.08), transparent);
   --魂环舱底座边线: rgba(125, 249, 255, 0.34);
   --魂环舱底座辉光:
     0 0 38px rgba(0, 242, 254, 0.22),
     0 0 58px rgba(255, 126, 179, 0.14),
     inset 0 0 20px rgba(255, 255, 255, 0.12);
   --魂环舱导轨材质:
-    radial-gradient(ellipse at 50% 100%, rgba(0, 242, 254, 0.28), transparent 44%),
-    linear-gradient(180deg, transparent, rgba(0, 242, 254, 0.18) 20%, rgba(255, 126, 179, 0.16) 58%, rgba(125, 249, 255, 0.1), transparent);
+    radial-gradient(ellipse at 50% 100%, rgba(0, 242, 254, 0.24), transparent 48%),
+    linear-gradient(180deg, transparent 0%, rgba(0, 242, 254, 0.14) 20%, rgba(255, 126, 179, 0.13) 58%, rgba(125, 249, 255, 0.08) 78%, transparent 100%);
   --魂环舱导轨宽度: clamp(58px, 16cqw, 126px);
-  --魂环舱中轴导轨材质: linear-gradient(180deg, transparent, rgba(0, 242, 254, 0.18) 24%, rgba(255, 126, 179, 0.12) 62%, transparent);
+  --魂环舱中轴导轨材质: linear-gradient(180deg, transparent, rgba(0, 242, 254, 0.12) 24%, rgba(255, 126, 179, 0.1) 62%, transparent);
   --魂环舱中轴导轨宽度: clamp(1px, 0.35cqw, 2px);
   --魂环舱中轴导轨重复: no-repeat;
   --魂环舱中轴导轨背景尺寸: 100% 100%;
@@ -18191,6 +18204,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   --模块魂色: var(--武魂舞台魂色);
   --正文卡片魂影: color-mix(in srgb, var(--模块魂色) 28%, transparent);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  clip-path: none;
 }
 
 body.mvu-layout-holo
@@ -18359,23 +18378,25 @@ body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card:not([data-unified-card='spirit-stage']), .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  border-color: transparent;
   box-shadow:
-    var(--装甲内影),
     var(--玻璃内折射),
+    inset 0 0 0 1px rgba(255, 116, 38, 0.18),
     0 16px 30px rgba(0, 0, 0, 0.34),
-    0 0 24px rgba(255, 69, 0, 0.28),
-    0 0 42px rgba(255, 122, 32, 0.12);
+    var(--面板近距辉光),
+    var(--面板远距辉光);
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card:not([data-unified-card='spirit-stage']), .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  border-color: transparent;
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0 rgba(0, 242, 254, 0.22),
+    var(--玻璃微切角),
+    var(--玻璃暗侧阴影),
     0 16px 30px rgba(0, 0, 0, 0.22),
-    0 0 20px rgba(0, 242, 254, 0.18),
-    0 0 28px rgba(255, 126, 179, 0.1);
+    var(--面板近距辉光),
+    var(--面板远距辉光);
 }
 
 body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount
@@ -18783,9 +18804,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   --魂环视觉中心-x: 50%;
   --魂环视觉中心-y: 50%;
   --魂环环境中心偏移-x: 0px;
-  --魂环舱默认底色:
-    linear-gradient(0deg, color-mix(in srgb, var(--武魂舞台光色) 14%, transparent), transparent 72%),
-    linear-gradient(145deg, color-mix(in srgb, var(--武魂舞台光色) 6%, transparent), transparent);
+  --魂环舱默认底色: none;
   --魂环舱默认底座材质:
     radial-gradient(circle, color-mix(in srgb, var(--武魂舞台光色) 28%, transparent) 0 18%, transparent 62%),
     repeating-radial-gradient(ellipse, transparent 0 8px, color-mix(in srgb, var(--武魂舞台光色) 13%, transparent) 9px, transparent 12px),
@@ -18812,12 +18831,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   min-width: 0;
   min-height: 0;
   padding: 0;
-  background-image:
-    var(--魂环舱底色, var(--魂环舱默认底色)),
-    linear-gradient(color-mix(in srgb, var(--武魂舞台光色) 5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--武魂舞台光色) 5%, transparent) 1px, transparent 1px);
-  background-position: center, center, center;
-  background-size: auto, 20px 20px, 20px 20px;
+  border: 0;
+  background: transparent;
   overflow: visible;
   perspective: 1100px;
   transform-style: preserve-3d;
@@ -18871,13 +18886,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage--single::after
   display: block;
   width: var(--武魂投影底座尺寸);
   aspect-ratio: 1;
-  border: 1px dashed var(--魂环舱底座边线, var(--魂环舱默认底座边线));
+  border: 1px solid var(--魂环舱底座边线, var(--魂环舱默认底座边线));
   border-radius: 50%;
   background: var(--魂环舱底座材质, var(--魂环舱默认底座材质));
   background-position: center, center, 0 50%;
   background-size: auto, auto, 180% 100%;
   box-shadow: var(--魂环舱底座辉光, var(--魂环舱默认底座辉光));
-  opacity: 0.72;
+  opacity: 0.7;
   pointer-events: none;
   transform: translateX(-50%) rotateX(72deg);
   transform-origin: center;
@@ -19078,7 +19093,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-sou
   background: var(--魂环舱导轨材质, var(--魂环舱默认导轨材质));
   background-size: 100% 100%, 100% 38px;
   box-shadow: var(--魂环舱导轨辉光, var(--魂环舱默认导轨辉光));
-  opacity: 0.42;
+  opacity: var(--魂环舱导轨流低透明度, 0.42);
   pointer-events: none;
   transform: translate(-50%, -50%);
   animation: 魂环舱导轨流 var(--魂环舱导轨流周期, 1.12s) linear infinite var(--mvu-holo-loop-play-state, running);
@@ -19197,7 +19212,7 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-spirit-sta
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-soul-ring-showcase--overview::before {
-  opacity: 0.66;
+  opacity: 0.72;
   animation-duration: 0.82s;
 }
 
@@ -19222,36 +19237,29 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-cri
   animation: 金龙危险警报 1s steps(2, end) infinite var(--mvu-holo-loop-play-state, running);
 }
 
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card:not([data-unified-card='spirit-stage']) {
   box-shadow:
-    var(--装甲内影),
     var(--玻璃内折射),
-    inset 0 1px 0 rgba(255, 244, 214, 0.13),
+    inset 0 0 0 1px rgba(255, 116, 38, 0.18),
     0 16px 30px rgba(0, 0, 0, 0.34),
-    0 0 26px rgba(255, 69, 0, 0.32),
-    0 0 46px rgba(255, 122, 32, 0.13);
+    var(--面板近距辉光),
+    var(--面板远距辉光);
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-spirit-stage {
   --魂环环境中心偏移-x: 0px;
-  background-image:
-    radial-gradient(circle, color-mix(in srgb, var(--武魂舞台光色) 2.8%, transparent) 0 1px, transparent 1.2px),
-    radial-gradient(ellipse at 50% 58%, rgba(0, 242, 254, 0.07), transparent 46%),
-    linear-gradient(180deg, rgba(2, 6, 12, 0.34) 0%, rgba(2, 6, 12, 0.78) 100%);
-  background-position: center;
-  background-size: 16px 16px, 100% 100%, 100% 100%;
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-soul-ring-showcase--overview::before {
   background-repeat: no-repeat;
   background-size: 100% 100%, 100% 100%;
-  opacity: 0.26;
+  opacity: 0.3;
   transform: translate(-50%, -50%) skewX(-7deg);
   animation-duration: 4.8s;
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-spirit-stage .mvu-archive-spirit-card {
-  background: radial-gradient(circle at center, color-mix(in srgb, var(--武魂舞台光色) 8%, transparent) 0%, transparent 62%);
+  background: transparent;
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-spirit-stage--single::after {
@@ -19273,13 +19281,13 @@ body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-led lab
     0 0 30px rgba(0, 242, 254, 0.14);
 }
 
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
+body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card:not([data-unified-card='spirit-stage']) {
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0 var(--魂环舱边缘高光),
+    var(--玻璃微切角),
+    var(--玻璃暗侧阴影),
     0 16px 30px rgba(0, 0, 0, 0.22),
-    0 0 20px rgba(0, 242, 254, 0.18),
-    0 0 28px rgba(255, 126, 179, 0.1);
+    var(--面板近距辉光),
+    var(--面板远距辉光);
 }
 
 body.mvu-layout-holo

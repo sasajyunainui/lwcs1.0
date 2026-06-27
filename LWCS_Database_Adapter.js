@@ -15,6 +15,7 @@
   const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
   const 场景候选角色资料占位符 = '{{场景候选角色资料}}';
   const 场景背景角色补充占位符 = '{{场景背景角色补充}}';
+  const 场景审计材料占位符 = '{{场景审计材料}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
@@ -561,7 +562,8 @@
       !源文本.includes(MVU更新结构提示占位符) &&
       !源文本.includes(MVU相互可见性视图占位符) &&
       !源文本.includes(场景候选角色资料占位符) &&
-      !源文本.includes(场景背景角色补充占位符)
+      !源文本.includes(场景背景角色补充占位符) &&
+      !源文本.includes(场景审计材料占位符)
     ) {
       return 源文本;
     }
@@ -591,6 +593,7 @@
       .replaceAll(MVU相互可见性视图占位符, '')
       .replaceAll(场景背景角色补充占位符, '')
       .replaceAll(场景候选角色资料占位符, '')
+      .replaceAll(场景审计材料占位符, '')
       .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
       .trim();
   }
@@ -922,6 +925,7 @@
       '剧情当前主身份',
       '场景背景角色补充',
       '场景候选角色资料',
+      '场景审计材料',
     ].includes(String(tagName || '').trim());
   }
 
@@ -937,7 +941,8 @@
       || 文本.includes(剧情当前地点占位符)
       || 文本.includes(剧情当前主身份占位符)
       || 文本.includes(场景背景角色补充占位符)
-      || 文本.includes(场景候选角色资料占位符);
+      || 文本.includes(场景候选角色资料占位符)
+      || 文本.includes(场景审计材料占位符);
   }
 
   function 清理世界书扫描文本(value) {
@@ -955,7 +960,8 @@
       .replace(/\{\{剧情当前地点\}\}/g, ' ')
       .replace(/\{\{剧情当前主身份\}\}/g, ' ')
       .replace(/\{\{场景背景角色补充\}\}/g, ' ')
-      .replace(/\{\{场景候选角色资料\}\}/g, ' ');
+      .replace(/\{\{场景候选角色资料\}\}/g, ' ')
+      .replace(/\{\{场景审计材料\}\}/g, ' ');
   }
 
   const 适配器 = {
