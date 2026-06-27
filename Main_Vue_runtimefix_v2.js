@@ -1024,6 +1024,7 @@ const DesktopUnifiedLayout = {
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
+      window.__MVU_同步统一详情视口__ = scheduleUnifiedFrameViewportSync;
       window.addEventListener('resize', handleDesktopUnifiedResize);
       window.addEventListener('focus', handleDesktopUnifiedFocusRestore);
       document.addEventListener('visibilitychange', handleDesktopUnifiedFocusRestore);
@@ -1061,6 +1062,7 @@ const DesktopUnifiedLayout = {
       if (typeof window.__MVU_GET_UNIFIED_DETAIL_HOST__ === 'function' && window.__MVU_GET_UNIFIED_DETAIL_HOST__() === detailHostRef.value) {
         delete window.__MVU_GET_UNIFIED_DETAIL_HOST__;
       }
+      if (window.__MVU_同步统一详情视口__ === scheduleUnifiedFrameViewportSync) delete window.__MVU_同步统一详情视口__;
     });
     watch(() => 当前全息星轨状态.主题, 同步全息主题到页面, { immediate: true });
     watch(() => mvuTabState.current, () => {

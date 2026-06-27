@@ -46479,17 +46479,24 @@ ${toText(combatData.战斗意图, '点到为止')}
     bindUnifiedDetailDelegation(host);
 
     const setHostMarkup = (html, onMount = null) => {
-      host.innerHTML = wrapUnifiedInlineBody(html, { previewKey: targetKey });
-      if (shouldResetScroll) host.scrollTop = 0;
-      syncUnifiedTitleLongPress(targetKey);
-      同步AI维护标题入口(targetKey);
-      if (typeof onMount === 'function') {
-        activeSubUI = onMount(host);
-      }
-      scheduleUnifiedMapCanvasClamp(host);
-      if (targetKey === '储物仓库详细页') {
-        同步仓库页动效(host, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
-      }
+      const 执行写入 = () => {
+        if (!host.isConnected || toText(host.dataset.holoPreview, '') !== targetKey) return;
+        host.innerHTML = wrapUnifiedInlineBody(html, { previewKey: targetKey });
+        if (shouldResetScroll) host.scrollTop = 0;
+        syncUnifiedTitleLongPress(targetKey);
+        同步AI维护标题入口(targetKey);
+        if (typeof onMount === 'function') {
+          activeSubUI = onMount(host);
+        }
+        scheduleUnifiedMapCanvasClamp(host);
+        if (targetKey === '储物仓库详细页') {
+          同步仓库页动效(host, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
+        }
+        if (typeof window.__MVU_同步统一详情视口__ === 'function') {
+          window.__MVU_同步统一详情视口__();
+        }
+      };
+      window.requestAnimationFrame(执行写入);
     };
 
     if (targetKey === BATTLE_INLINE_PREVIEW_KEY) {
