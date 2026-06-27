@@ -1385,7 +1385,28 @@ window.submitForm = async function() {
     summary += "【绝对红线】：禁止在正文中像念说明书一样列举上述设定（如“我叫xx，武魂是xx，性格xx”）！禁止出现“标签”、“设定”等元词汇！\n";
     summary += "【创作要求】：请直接从主角（" + name + "）的第一视角切入具体的环境与事件，通过角色的行为、对话和周围人的反应，自然地展现出其性格与武魂特点。请立刻开始第一幕的剧情描写！]*";
 
-    var displayMessage = "开始剧情：" + name;
+    var 开场武魂行列表 = [];
+    for (var 武魂序号 = 0; 武魂序号 < spiritsArray.length; 武魂序号++) {
+        var 武魂名 = spiritsArray[武魂序号];
+        if (!武魂名) continue;
+        var 武魂系别 = types[武魂序号] || '强攻系';
+        var 武魂描述字段 = descFields[武魂序号] || buildGuidedField('', spiritDescGuide);
+        开场武魂行列表.push("武魂：" + 武魂名 + "（系别：" + 武魂系别 + "；形态描述：" + 武魂描述字段.prompt + "）");
+    }
+    var 开场发送行列表 = [
+        "开始剧情：" + name,
+        "当前地点：" + loc,
+        "基础信息：" + gender + "，" + age + "岁，生日" + 生日 + "，" + calculatedLv + "级",
+        "家世描述：" + 家世字段.value,
+        "性格：" + personalityField.prompt,
+        "外貌：" + appearanceField.prompt
+    ];
+    开场发送行列表 = 开场发送行列表.concat(开场武魂行列表);
+    if (jobType !== '无') {
+        开场发送行列表.push("副职业：" + jobLv + "级" + jobType);
+    }
+    开场发送行列表.push("请从上述开场锚点自然进入第一幕剧情。");
+    var displayMessage = 开场发送行列表.join("\n");
 
     function getStartupRuntimeWindow() {
         return window.parent || window.top || window;
