@@ -17971,7 +17971,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
   position: relative;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 33%, 340px);
-  grid-template-rows: minmax(180px, auto) auto;
+  grid-template-rows: auto auto;
   grid-template-areas:
     'stage current'
     'stage locals';
@@ -17983,6 +17983,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
   grid-area: stage;
+  align-self: stretch;
+  min-height: clamp(420px, 58vw, 680px);
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card='map-current'] {
   grid-area: current;
@@ -18091,8 +18093,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
   min-height: 128px;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-map-stage {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   --模块魂色: color-mix(in srgb, var(--文字主色) 74%, #1b1b22);
   position: relative;
   isolation: isolate;
@@ -18108,6 +18109,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
     0 12px 24px rgba(0, 0, 0, 0.18);
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
+  overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-map-stage {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  height: auto;
   overflow: hidden;
 }
 
@@ -20007,7 +20016,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
     grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 310px);
-    grid-template-rows: minmax(180px, auto) auto;
+    grid-template-rows: auto auto;
     grid-template-areas:
       'stage current'
       'stage locals';
@@ -20064,7 +20073,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
-    min-height: 0;
+    min-height: clamp(390px, 56vw, 620px);
   }
 }
 
@@ -20267,8 +20276,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     overflow: visible;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-map-stage {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard:not(.mvu-unified-dashboard--archive) > .mvu-unified-card {
     grid-area: auto !important;
     grid-column: auto !important;
     grid-row: auto !important;
@@ -20279,7 +20287,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
-    min-height: 300px !important;
+    grid-area: stage !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    align-self: stretch;
+    height: auto;
+    min-height: 300px;
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard .map-side-badge,
@@ -20368,7 +20382,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-unified-card],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-unified-card],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-unified-card] {
@@ -20426,7 +20439,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
-    min-height: 300px !important;
+    min-height: 300px;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-social-entry-grid,

@@ -11,6 +11,8 @@
   const 时间线预览占位符 = '{{剧情钩子._引导.时间线预览}}';
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
+  const 剧情当前地点占位符 = '{{剧情当前地点}}';
+  const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
@@ -175,6 +177,25 @@
       } catch (_) {}
     }
     return null;
+  }
+
+  function 取玩家角色数据(statData = null) {
+    const 数据 = statData && typeof statData === 'object' ? statData : 读取当前StatData();
+    if (!数据 || typeof 数据 !== 'object') return null;
+    const 玩家名 = String(数据?.sys?.玩家名 || '').trim();
+    if (玩家名 && 数据?.char?.[玩家名] && typeof 数据.char[玩家名] === 'object') return 数据.char[玩家名];
+    const 角色表 = 数据?.char && typeof 数据.char === 'object' ? 数据.char : {};
+    return Object.values(角色表).find(角色 => 角色 && typeof 角色 === 'object' && 角色.__mvu_isPlayer === true) || null;
+  }
+
+  function 读取剧情当前地点(statData = null) {
+    const 玩家 = 取玩家角色数据(statData);
+    return String(玩家?.状态?.位置 || '未知').trim() || '未知';
+  }
+
+  function 读取剧情当前主身份(statData = null) {
+    const 玩家 = 取玩家角色数据(statData);
+    return String(玩家?.社交?.主身份 || '未知').trim() || '未知';
   }
 
   function 取魂灵塔大关信息(层数 = 1) {
@@ -604,12 +625,22 @@
 
   function 替换专属占位符(content, context = {}) {
     const 文本 = String(content || '');
-    if (!文本.includes(时间线预览占位符) && !文本.includes(远端原著时间线候选占位符) && !文本.includes(角色基础六维对标占位符)) return 文本;
+    if (!文本.includes(时间线预览占位符)
+      && !文本.includes(远端原著时间线候选占位符)
+      && !文本.includes(角色基础六维对标占位符)
+      && !文本.includes(剧情当前地点占位符)
+      && !文本.includes(剧情当前主身份占位符)) return 文本;
     let 结果 = 文本;
     const userInput = String(context.userInput || '');
     const lastCharMessage = String(context.lastCharMessage || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
     const 近场文本 = String(context.captureText || '').trim() || 构建近场文本(userInput, lastCharMessage);
+    if (结果.includes(剧情当前地点占位符)) {
+      结果 = 结果.replaceAll(剧情当前地点占位符, 读取剧情当前地点(statData));
+    }
+    if (结果.includes(剧情当前主身份占位符)) {
+      结果 = 结果.replaceAll(剧情当前主身份占位符, 读取剧情当前主身份(statData));
+    }
     if (结果.includes(时间线预览占位符)) {
       结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData) || '无');
     }
@@ -879,6 +910,8 @@
       '剧情钩子._引导.时间线预览',
       '剧情钩子._引导.远端原著时间线候选',
       '角色基础六维对标',
+      '剧情当前地点',
+      '剧情当前主身份',
     ].includes(String(tagName || '').trim());
   }
 
@@ -890,7 +923,9 @@
       || 文本.includes(MVU相互可见性视图占位符)
       || 文本.includes(时间线预览占位符)
       || 文本.includes(远端原著时间线候选占位符)
-      || 文本.includes(角色基础六维对标占位符);
+      || 文本.includes(角色基础六维对标占位符)
+      || 文本.includes(剧情当前地点占位符)
+      || 文本.includes(剧情当前主身份占位符);
   }
 
   function 清理世界书扫描文本(value) {
@@ -904,7 +939,9 @@
       .replace(/\{\{MVU_RUNTIME_VIEW\}\}/g, ' ')
       .replace(/\{\{MVU_RUNTIME_UPDATE\}\}/g, ' ')
       .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ')
-      .replace(/\{\{MVU_MUTUAL_VISIBILITY_VIEW\}\}/g, ' ');
+      .replace(/\{\{MVU_MUTUAL_VISIBILITY_VIEW\}\}/g, ' ')
+      .replace(/\{\{剧情当前地点\}\}/g, ' ')
+      .replace(/\{\{剧情当前主身份\}\}/g, ' ');
   }
 
   const 适配器 = {
