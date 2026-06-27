@@ -160,7 +160,7 @@
   宿主窗口.__LWCS_注入数据库剧情推进预设__ = async function 注入数据库剧情推进预设(选项 = {}) {
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
     const 强制切换 = 选项 && 选项.强制切换 === true;
-    const 预设文件名 = '缝合怪二改_专用推进预设.json';
+    const 预设文件名 = '缝合怪二改_专用推进预设.plot-preset.json';
     await 等待数据库模块就绪('plot_preset_inject', true);
     const 数据库接口 = await 等待剧情推进预设接口();
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();

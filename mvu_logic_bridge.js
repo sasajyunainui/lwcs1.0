@@ -31998,6 +31998,7 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
+        preview: '人物关系详细页',
         surface: normalizedSurface,
       });
       渲染统一武魂中轴舞台(snapshot, normalizedSurface);
