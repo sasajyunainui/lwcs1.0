@@ -72,9 +72,11 @@ class BattleUIComponent {
       const 当前模式 = 读取战斗提交模式();
       const 标签节点 = byId('ui-battle-submit-mode-label');
       if (标签节点) 标签节点.textContent = 战斗提交模式标签[当前模式] || '手动';
-      document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(button => {
+      document.querySelectorAll('#ui-battle-submit-mode-group [data-submit-mode]').forEach(button => {
         button.classList.toggle('active', button.dataset.submitMode === 当前模式);
+        button.setAttribute('aria-selected', button.dataset.submitMode === 当前模式 ? 'true' : 'false');
       });
+      if (typeof 同步战斗下拉文本 === 'function') 同步战斗下拉文本(byId('ui-battle-submit-mode-group'), 当前模式, 'submit-mode');
       return 当前模式;
     }
     const resolveSharedSkillMechanismRegistry = () => {
@@ -4219,18 +4221,18 @@ class BattleUIComponent {
         arbitrateBtn.__fallbackBattleBound = true;
         arbitrateBtn.__battleSubmitBound = true;
       }
-      document.querySelectorAll('#ui-mode-group .mode-btn').forEach(btn => {
+      document.querySelectorAll('#ui-mode-group [data-mode]').forEach(btn => {
         if (btn.__battleModeBound) return;
         btn.addEventListener('click', () => {
           const normalized = btn.dataset.mode === 'multi_round' ? 'multi_round' : 'single_round';
           if (root.BattleUI && root.BattleUI.state) root.BattleUI.state.currentMode = normalized;
-          document.querySelectorAll('#ui-mode-group .mode-btn').forEach(item => {
+          document.querySelectorAll('#ui-mode-group [data-mode]').forEach(item => {
             item.classList.toggle('active', item.dataset.mode === normalized);
           });
         });
         btn.__battleModeBound = true;
       });
-      document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(btn => {
+      document.querySelectorAll('#ui-battle-submit-mode-group [data-submit-mode]').forEach(btn => {
         if (btn.__battleSubmitModeBound) return;
         btn.addEventListener('click', () => {
           root.BattleUIBridge?.setBattleSubmitMode?.(btn.dataset.submitMode || 'manual');
@@ -31437,15 +31439,10 @@ class BattleUIComponent {
         function renderUiStats(containerId, unit, options = {}) {
           const node = byId(containerId);
           if (!node) return;
-          const 等级类比 = (属性, 数值) => {
-            const 等级 = 估算炸环属性等效等级_V1(属性, 数值);
-            return 等级 ? `${Math.round(Number(数值 || 0))}≈${等级}级` : Math.round(Number(数值 || 0));
-          };
           const stats = [
-            ...(options.showType === false ? [] : [['系别', unit.type || '未知']]),
-            ['力', 等级类比('str', unit.str || 0)],
-            ['防', 等级类比('def', unit.def || 0)],
-            ['速', 等级类比('agi', unit.agi || 0)],
+            ['力', Math.round(Number(unit.str || 0))],
+            ['防', Math.round(Number(unit.def || 0))],
+            ['速', Math.round(Number(unit.agi || 0))],
           ];
           node.innerHTML = stats
             .map(([label, value]) => `<div class="stat-item"><div class="stat-label">${htmlEscapeText(label)}</div><div class="stat-value">${htmlEscapeText(value)}</div></div>`)
@@ -31484,7 +31481,7 @@ class BattleUIComponent {
           setUiBar(`ui-${prefix}-sta-bar`, safeUnit.sta, safeUnit.sta_max);
           setUiBar(`ui-${prefix}-sp-bar`, safeUnit.sp, safeUnit.sp_max);
           setUiBar(`ui-${prefix}-men-bar`, safeUnit.men, safeUnit.men_max);
-          renderUiStats(`ui-${prefix}-stats`, safeUnit, { showType: prefix !== 'enemy' });
+          renderUiStats(`ui-${prefix}-stats`, safeUnit);
           renderUiBuffs(`ui-${prefix}-buffs`, safeUnit);
           return safeUnit;
         }
@@ -31795,30 +31792,56 @@ class BattleUIComponent {
             .join('');
         }
 
+        function 构建战斗下拉控件(配置 = {}) {
+          const 控件类 = String(配置.类名 || '').trim();
+          const 标签 = String(配置.标签 || '').trim();
+          const 当前值 = String(配置.当前值 || '').trim();
+          const 占位 = String(配置.占位 || '未定').trim();
+          const 属性名 = String(配置.属性名 || 'value').trim();
+          const 选项列表 = Array.isArray(配置.选项列表) ? 配置.选项列表 : [];
+          const 当前项 = 选项列表.find(项 => String(项?.值 ?? 项 ?? '').trim() === 当前值) || null;
+          const 当前文本 = String((当前项?.文本 ?? 当前值) || 占位).trim();
+          const 选项HTML = 选项列表.length
+            ? 选项列表
+                .map(项 => {
+                  const 值 = String(项?.值 ?? 项 ?? '').trim();
+                  const 文本 = String(项?.文本 ?? 值).trim();
+                  const 激活 = 值 === 当前值 ? ' active' : '';
+                  return `<button class="battle-holo-option${激活}" type="button" data-${属性名}="${htmlEscapeText(值)}" role="option" aria-selected="${激活 ? 'true' : 'false'}">${htmlEscapeText(文本)}</button>`;
+                })
+                .join('')
+            : `<span class="battle-holo-empty">无可选项</span>`;
+          return `
+            <div class="battle-terminal-row${控件类 ? ` ${htmlEscapeText(控件类)}` : ''}">
+              <span class="battle-terminal-label">${htmlEscapeText(标签)}</span>
+              <div class="battle-holo-select" data-battle-select="${htmlEscapeText(属性名)}">
+                <button class="battle-holo-trigger" type="button" data-dropdown-trigger aria-haspopup="listbox" aria-expanded="false">
+                  <span data-dropdown-value>${htmlEscapeText(当前文本)}</span><i aria-hidden="true">▾</i>
+                </button>
+                <div class="battle-holo-menu" role="listbox">${选项HTML}</div>
+              </div>
+            </div>
+          `;
+        }
+
         function 渲染动作摘要(action = null) {
           const node = byId('ui-action-summary');
           if (!node) return;
           const state = window.BattleUI?.state || {};
           const 当前动作 = action || state.selectedAction || null;
           if (!当前动作) {
-            node.innerHTML = '<div class="battle-action-summary-state">待选择</div>';
+            node.innerHTML = '<div class="battle-terminal-current"><span>当前动作</span><b>待选择</b></div>';
             return;
           }
           const 动作名 = String(当前动作.name || 当前动作.action_type || '行动').trim();
           const 目标名 = String(当前动作.target_name || 当前动作.物品接收者 || resolveIntentTargetNameFromAction(当前动作, state.combatData) || '自身').trim();
           const 消耗文本 = String(当前动作.cost_text || '').trim() || '无耗';
           const 前摇文本 = Number(当前动作.cast_time || 0) ? `${Number(当前动作.cast_time || 0)}前摇` : '即时';
-          const 模式文本 = `${state.currentMode === 'multi_round' ? '连续' : '单回合'} · ${state.currentIntentMode || '点到为止'}`;
           node.innerHTML = `
-            <div class="battle-action-summary-head">
-              <span>动作</span>
-              <b>${htmlEscapeText(动作名)}</b>
-            </div>
-            <div class="battle-action-summary-grid">
-              <span><em>目标</em><b>${htmlEscapeText(目标名)}</b></span>
-              <span><em>消耗</em><b>${htmlEscapeText(消耗文本)}</b></span>
-              <span><em>时序</em><b>${htmlEscapeText(前摇文本)}</b></span>
-              <span><em>模式</em><b>${htmlEscapeText(模式文本)}</b></span>
+            <div class="battle-terminal-current">
+              <span>当前动作</span>
+              <b>[ ${htmlEscapeText(动作名)} ]</b>
+              <em>消耗: ${htmlEscapeText(消耗文本)} | ${htmlEscapeText(前摇文本)}</em>
             </div>
           `;
         }
@@ -31960,31 +31983,64 @@ class BattleUIComponent {
           return 描述行;
         }
 
-        function 构建动作悬浮效果Html(动作 = {}) {
+        function 构建战斗魂技展示数据(动作 = {}) {
           const 技能 = 动作?.raw_skill || 动作?.skill || {};
           const 名称 = String(动作.name || 技能.name || 技能.魂技名 || 动作.action_type || '行动').trim();
-          const 前摇 = Number(动作.cast_time ?? 技能.前摇 ?? 0) || 0;
-          const 标签列表 = [
-            动作.category,
-            动作.source_detail && 动作.source_detail !== 动作.category ? 动作.source_detail : '',
-            ...(Array.isArray(动作.tags) ? 动作.tags : []),
-          ]
+          const 分类文本 = String(动作.category || 技能.技能分类 || '战术').trim() || '战术';
+          const 类型文案 = 动作.action_type === '释放魂技' ? '魂技' : 分类文本;
+          const 来源明细 = String(动作.source_detail || '').trim();
+          const 标签集合 = new Set();
+          [类型文案, 来源明细 && 来源明细 !== 类型文案 && 来源明细 !== 分类文本 ? 来源明细 : '', ...(Array.isArray(动作.tags) ? 动作.tags : [])]
             .map(值 => String(值 || '').trim())
             .filter(Boolean)
-            .slice(0, 5);
-          const 标签Html = 标签列表.length
-            ? `<div class="tt-tags">${标签列表.map(标签 => `<span class="tt-tag">${htmlEscapeText(标签)}</span>`).join('')}</div>`
+            .forEach(值 => 标签集合.add(值));
+          const 消耗原文 = String(动作.cost_text || findUiSkillCost(技能) || '').trim();
+          const 消耗文本 = 消耗原文 && 消耗原文 !== '无' ? 消耗原文 : '无耗';
+          const 前摇数值 = Number(动作.cast_time ?? findUiSkillCastTime(技能) ?? 0) || 0;
+          const 前摇文本 = 前摇数值 ? `${前摇数值}` : '即时';
+          const 动作类型 = String(动作.action_type || '').trim();
+          const 目标文本 = 动作是造物承载(动作)
+            ? '造物'
+            : 动作类型 === '撤离'
+              ? '撤离'
+              : ['防御', '闪避', '穿戴装备', '收回召唤'].includes(动作类型)
+                ? '自身'
+                : inferSkillPrimaryTargetKind(技能 || {});
+          const 描述行 = 读取动作技能描述文本(动作);
+          const 短效果摘要 = String(描述行[0]?.内容 || 动作.reason || 动作.action_type || 类型文案 || '待解析').trim();
+          return {
+            名称,
+            类型文案,
+            标签列表: Array.from(标签集合).slice(0, 5),
+            消耗文本,
+            前摇文本,
+            目标文本,
+            短效果摘要,
+            描述行,
+          };
+        }
+
+        function 构建动作悬浮效果Html(动作 = {}) {
+          const 展示 = 构建战斗魂技展示数据(动作);
+          const 标签Html = 展示.标签列表.length
+            ? `<div class="battle-ring-tooltip-tags">${展示.标签列表.map(标签 => `<span class="battle-ring-tooltip-chip">${htmlEscapeText(标签)}</span>`).join('')}</div>`
             : '';
-          const 描述Html = 读取动作技能描述文本(动作)
-            .map(行 => `<span class="tt-effect-row"><span class="tt-effect-type">${htmlEscapeText(行.标签)}</span>${htmlEscapeText(行.内容)}</span>`)
+          const 描述Html = 展示.描述行
+            .map(行 => `<div class="battle-ring-tooltip-copy"><em>${htmlEscapeText(行.标签)}</em><span>${htmlEscapeText(行.内容)}</span></div>`)
             .join('');
           return `
-            <div class="tt-header">
-              <span class="tt-name">${htmlEscapeText(名称)}</span>
-              <span class="tt-cast">${htmlEscapeText(动作.cost_text || '无')} / ${htmlEscapeText(String(前摇 || '-'))}</span>
+            <div class="battle-ring-tooltip-title">
+              <b>${htmlEscapeText(展示.名称)}</b>
+              <span>${htmlEscapeText(展示.类型文案)}</span>
             </div>
+            <div class="battle-ring-tooltip-desc">${htmlEscapeText(展示.短效果摘要)}</div>
+            <div class="battle-ring-tooltip-meta">
+              <span class="battle-ring-tooltip-meta-row"><em>消耗</em><strong>${htmlEscapeText(展示.消耗文本)}</strong></span>
+              <span class="battle-ring-tooltip-meta-row"><em>前摇</em><strong>${htmlEscapeText(展示.前摇文本)}</strong></span>
+              <span class="battle-ring-tooltip-meta-row"><em>目标</em><strong>${htmlEscapeText(展示.目标文本)}</strong></span>
+            </div>
+            ${描述Html}
             ${标签Html}
-            <div class="tt-effects">${描述Html}</div>
           `;
         }
 
@@ -32137,18 +32193,27 @@ class BattleUIComponent {
             const mode = String(action.造物处理 || '生成到自己背包');
             const modes = ['生成到自己背包', '生成给友方', '立即自用', '立即给目标使用'];
             const candidates = 读取动作目标候选(action, state);
-            const modeHtml = modes
-              .map(item => `<button class="target-chip${item === mode ? ' active' : ''}" type="button" data-construct-mode="${htmlEscapeText(item)}">${htmlEscapeText(item)}</button>`)
-              .join('');
             const 当前目标 = String(action.target_name || action.物品接收者 || '').trim();
-            const 可切换目标列表 = candidates
-              .map(unit => 读取战斗单位名(unit))
-              .filter(name => name && name !== 当前目标);
-            const targetHtml = 可切换目标列表.length
-              ? `<div class="target-chip-row">${可切换目标列表.map(目标名 => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(目标名)}">${htmlEscapeText(目标名)}</button>`).join('')}</div>`
+            const 目标选项 = candidates.map(unit => 读取战斗单位名(unit)).filter(Boolean).map(name => ({ 值: name, 文本: name }));
+            const targetHtml = 目标选项.length
+              ? 构建战斗下拉控件({
+                  标签: '施放目标',
+                  当前值: 当前目标,
+                  占位: '自身',
+                  属性名: 'target-name',
+                  选项列表: 目标选项,
+                })
               : '';
             node.hidden = false;
-            node.innerHTML = `<div class="target-stack"><div class="target-chip-row">${modeHtml}</div>${targetHtml}</div>`;
+            node.innerHTML = `
+              ${targetHtml}
+              ${构建战斗下拉控件({
+                标签: '施放方式',
+                当前值: mode,
+                属性名: 'construct-mode',
+                选项列表: modes.map(item => ({ 值: item, 文本: item })),
+              })}
+            `;
             node.querySelectorAll('[data-construct-mode]').forEach(button => {
               button.addEventListener('click', () => {
                 action.造物处理 = button.getAttribute('data-construct-mode') || '生成到自己背包';
@@ -32171,19 +32236,69 @@ class BattleUIComponent {
             return;
           }
           const 当前目标 = String(action.target_name || '').trim();
-          const 可切换目标列表 = candidates
-            .map(unit => 读取战斗单位名(unit))
-            .filter(name => name && name !== 当前目标);
-          const 切换目标Html = 可切换目标列表.length
-            ? `<div class="target-stack"><div class="target-chip-row">${可切换目标列表.map(name => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`).join('')}</div></div>`
-            : '';
-          node.hidden = !切换目标Html;
-          node.innerHTML = 切换目标Html;
+          const 目标选项 = candidates.map(unit => 读取战斗单位名(unit)).filter(Boolean).map(name => ({ 值: name, 文本: name }));
+          node.hidden = false;
+          node.innerHTML = 构建战斗下拉控件({
+            标签: '施放目标',
+            当前值: 当前目标,
+            属性名: 'target-name',
+            选项列表: 目标选项,
+          });
           node.querySelectorAll('[data-target-name]').forEach(button => {
             button.addEventListener('click', () => {
               选择战斗动作目标(button.getAttribute('data-target-name') || '', action);
             });
           });
+        }
+
+        function 关闭战斗下拉控件(例外节点 = null) {
+          wrapperElement.querySelectorAll('.battle-holo-select.is-open').forEach(节点 => {
+            if (例外节点 && 节点 === 例外节点) return;
+            节点.classList.remove('is-open');
+            节点.querySelector('[data-dropdown-trigger]')?.setAttribute('aria-expanded', 'false');
+          });
+        }
+
+        function 同步战斗下拉文本(根节点, 当前值 = '', 属性名 = 'value') {
+          if (!根节点) return;
+          const 安全当前值 = String(当前值 || '').trim();
+          const 选项列表 = Array.from(根节点.querySelectorAll(`[data-${属性名}]`));
+          const 命中选项 = 选项列表.find(选项 => String(选项.getAttribute(`data-${属性名}`) || '').trim() === 安全当前值) || 选项列表[0] || null;
+          选项列表.forEach(选项 => {
+            const 命中 = 选项 === 命中选项;
+            选项.classList.toggle('active', 命中);
+            选项.setAttribute('aria-selected', 命中 ? 'true' : 'false');
+          });
+          const 文本节点 = 根节点.querySelector('[data-dropdown-value]');
+          if (文本节点 && 命中选项) 文本节点.textContent = 命中选项.textContent || 安全当前值;
+        }
+
+        function 初始化战斗下拉控件() {
+          if (wrapperElement.__battleDropdownBound) return;
+          wrapperElement.addEventListener('click', event => {
+            const 触发器 = event.target?.closest?.('[data-dropdown-trigger]');
+            if (触发器 && wrapperElement.contains(触发器)) {
+              const 下拉根 = 触发器.closest('.battle-holo-select');
+              if (!下拉根) return;
+              const 将展开 = !下拉根.classList.contains('is-open');
+              关闭战斗下拉控件(下拉根);
+              下拉根.classList.toggle('is-open', 将展开);
+              触发器.setAttribute('aria-expanded', 将展开 ? 'true' : 'false');
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            const 选项 = event.target?.closest?.('.battle-holo-option');
+            if (选项 && wrapperElement.contains(选项)) {
+              关闭战斗下拉控件();
+              return;
+            }
+            if (!event.target?.closest?.('.battle-holo-select')) 关闭战斗下拉控件();
+          });
+          wrapperElement.addEventListener('keydown', event => {
+            if (event.key === 'Escape') 关闭战斗下拉控件();
+          });
+          wrapperElement.__battleDropdownBound = true;
         }
 
         function renderUiActionGrid(actions, activeCategory = '全部') {
@@ -32198,12 +32313,22 @@ class BattleUIComponent {
             .map(action => {
               const selected = action.id === selectedId ? ' is-selected' : '';
               const disabled = action.enabled === false ? ' disabled' : '';
-              const 分类文本 = String(action.category || '战术').trim() || '战术';
-              const 类型文案 = action.action_type === '释放魂技' ? '魂技' : 分类文本;
-              const 消耗文本 = String(action.cost_text || '').trim();
-              const 前摇数值 = Number(action.cast_time || 0);
-              const 消耗文案 = `${消耗文本 && 消耗文本 !== '无' ? 消耗文本 : '无耗'}${前摇数值 ? ` · 前摇${前摇数值}` : ''}`;
-              return `<button class="action-btn${selected}" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}><span class="action-head"><span class="action-name">${htmlEscapeText(action.name)}</span></span><span class="action-foot"><span class="action-kind">${htmlEscapeText(类型文案)}</span><span class="action-cost">${htmlEscapeText(消耗文案)}</span></span></button>`;
+              const 展示 = 构建战斗魂技展示数据(action);
+              const 卡片标签 = 展示.标签列表[0] || 展示.类型文案;
+              return `
+                <button class="action-btn${selected} battle-skill-card" type="button" data-action-id="${htmlEscapeText(action.id)}"${disabled}>
+                  <span class="battle-skill-head">
+                    <span class="battle-skill-name">${htmlEscapeText(展示.名称)}</span>
+                    <span class="battle-skill-tag">${htmlEscapeText(卡片标签)}</span>
+                  </span>
+                  <span class="battle-skill-meta">
+                    <span><em>消耗</em><b>${htmlEscapeText(展示.消耗文本)}</b></span>
+                    <span><em>前摇</em><b>${htmlEscapeText(展示.前摇文本)}</b></span>
+                    <span><em>目标</em><b>${htmlEscapeText(展示.目标文本)}</b></span>
+                  </span>
+                  <span class="battle-skill-copy">${htmlEscapeText(展示.短效果摘要)}</span>
+                </button>
+              `;
             })
             .join('');
           if (!node.__battleTooltipScrollBound) {
@@ -32251,17 +32376,20 @@ class BattleUIComponent {
           if (window.BattleUI && window.BattleUI.state) {
             window.BattleUI.state.currentMode = normalized;
           }
-          document.querySelectorAll('#ui-mode-group .mode-btn').forEach(btn => {
+          document.querySelectorAll('#ui-mode-group [data-mode]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === normalized);
+            btn.setAttribute('aria-selected', btn.dataset.mode === normalized ? 'true' : 'false');
           });
+          同步战斗下拉文本(byId('ui-mode-group'), normalized, 'mode');
           渲染动作摘要(window.BattleUI?.state?.selectedAction || null);
         }
 
         function setUiIntentMode(mode) {
           const normalized = String(mode || '点到为止').trim() || '点到为止';
           if (window.BattleUI && window.BattleUI.state) window.BattleUI.state.currentIntentMode = normalized;
-          const select = byId('ui-intent-mode');
-          if (select && select.value !== normalized) select.value = normalized;
+          const input = byId('ui-intent-mode');
+          if (input && input.value !== normalized) input.value = normalized;
+          同步战斗下拉文本(byId('ui-intent-mode-select'), normalized, 'intent-mode');
           渲染动作摘要(window.BattleUI?.state?.selectedAction || null);
         }
 
@@ -32420,14 +32548,14 @@ class BattleUIComponent {
           const node = byId('ui-tower-settlement');
           const arbitrateBtn = byId('ui-arbitrate');
           const intentModeInput = byId('ui-intent-mode');
-          const modeButtons = Array.from(document.querySelectorAll('#ui-mode-group .mode-btn'));
+          const modeControls = Array.from(document.querySelectorAll('#ui-mode-group [data-mode], #ui-mode-group [data-dropdown-trigger]'));
           if (!node) return;
           if (!pendingSettlement) {
             node.hidden = true;
             node.innerHTML = '';
             if (arbitrateBtn) arbitrateBtn.disabled = false;
             if (intentModeInput) intentModeInput.disabled = false;
-            modeButtons.forEach(btn => {
+            modeControls.forEach(btn => {
               btn.disabled = false;
             });
             return;
@@ -32435,7 +32563,7 @@ class BattleUIComponent {
           node.hidden = false;
           if (arbitrateBtn) arbitrateBtn.disabled = true;
           if (intentModeInput) intentModeInput.disabled = true;
-          modeButtons.forEach(btn => {
+          modeControls.forEach(btn => {
             btn.disabled = true;
           });
           const spiritText = buildSoulTowerDiscountSpiritDisplay(pendingSettlement.五折魂灵);
@@ -32611,19 +32739,27 @@ class BattleUIComponent {
         }
 
         function bindUIEvents() {
-          document.querySelectorAll('#ui-mode-group .mode-btn').forEach(btn => {
+          初始化战斗下拉控件();
+          document.querySelectorAll('#ui-mode-group [data-mode]').forEach(btn => {
             if (btn.__battleModeBound) return;
             btn.addEventListener('click', () => {
               setUiBattleMode(btn.dataset.mode);
             });
             btn.__battleModeBound = true;
           });
-          document.querySelectorAll('#ui-battle-submit-mode-group .mode-btn').forEach(btn => {
+          document.querySelectorAll('#ui-battle-submit-mode-group [data-submit-mode]').forEach(btn => {
             if (btn.__battleSubmitModeBound) return;
             btn.addEventListener('click', () => {
               window.BattleUIBridge?.setBattleSubmitMode?.(btn.dataset.submitMode || 'manual');
             });
             btn.__battleSubmitModeBound = true;
+          });
+          document.querySelectorAll('#ui-intent-mode-select [data-intent-mode]').forEach(btn => {
+            if (btn.__battleIntentOptionBound) return;
+            btn.addEventListener('click', () => {
+              setUiIntentMode(btn.getAttribute('data-intent-mode') || '点到为止');
+            });
+            btn.__battleIntentOptionBound = true;
           });
           同步战斗提交模式控件();
 

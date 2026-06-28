@@ -41416,32 +41416,56 @@ ${播报文本}
                   <div class="action-grid" id="ui-action-grid"></div>
                 </div>
                 <div class="battle-target-deck">
-                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="battle-action-summary" id="ui-action-summary"></div>
+                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
                   <input id="ui-intent-output" type="hidden" value="">
                   <div class="battle-exec-bar">
                     <div class="battle-settings-strip">
-                      <div class="mode-group" id="ui-mode-group">
-                        <button class="mode-btn active" type="button" data-mode="single_round">单回合</button>
-                        <button class="mode-btn" type="button" data-mode="multi_round">连续</button>
+                      <div class="battle-terminal-row">
+                        <span class="battle-terminal-label">执行轮次</span>
+                        <div class="battle-holo-select" id="ui-mode-group" data-battle-select="round">
+                          <button class="battle-holo-trigger" type="button" data-dropdown-trigger aria-haspopup="listbox">
+                            <span data-dropdown-value>单回合</span><i aria-hidden="true">▾</i>
+                          </button>
+                          <div class="battle-holo-menu" role="listbox">
+                            <button class="battle-holo-option active" type="button" data-mode="single_round">单回合</button>
+                            <button class="battle-holo-option" type="button" data-mode="multi_round">连续</button>
+                          </div>
+                        </div>
                       </div>
-                      <div class="mode-group battle-submit-mode-group" id="ui-battle-submit-mode-group">
-                        <span class="battle-submit-mode-label" id="ui-battle-submit-mode-label">手动</span>
-                        <button class="mode-btn" type="button" data-submit-mode="auto" title="自动">自动</button>
-                        <button class="mode-btn active" type="button" data-submit-mode="manual" title="手动">手动</button>
-                        <button class="mode-btn" type="button" data-submit-mode="free_narrative" title="剧情自由">自由</button>
+                      <div class="battle-terminal-row">
+                        <span class="battle-terminal-label">战斗意图</span>
+                        <div class="battle-holo-select" id="ui-intent-mode-select" data-battle-select="intent">
+                          <button class="battle-holo-trigger" type="button" data-dropdown-trigger aria-haspopup="listbox">
+                            <span data-dropdown-value>点到为止</span><i aria-hidden="true">▾</i>
+                          </button>
+                          <div class="battle-holo-menu" role="listbox">
+                            <button class="battle-holo-option active" type="button" data-intent-mode="点到为止">点到为止</button>
+                            <button class="battle-holo-option" type="button" data-intent-mode="尽量生擒">生擒</button>
+                            <button class="battle-holo-option" type="button" data-intent-mode="重伤压制">压制</button>
+                            <button class="battle-holo-option" type="button" data-intent-mode="必杀">必杀</button>
+                          </div>
+                        </div>
                       </div>
-                      <select class="request-console-input battle-intent-select" id="ui-intent-mode">
-                        <option value="点到为止" selected>点到为止</option>
-                        <option value="尽量生擒">生擒</option>
-                        <option value="重伤压制">压制</option>
-                        <option value="必杀">必杀</option>
-                      </select>
+                      <div class="battle-terminal-row battle-terminal-row--wide">
+                        <span class="battle-terminal-label">代理模式</span>
+                        <div class="battle-holo-select battle-submit-mode-group" id="ui-battle-submit-mode-group" data-battle-select="submit">
+                          <button class="battle-holo-trigger" type="button" data-dropdown-trigger aria-haspopup="listbox">
+                            <span class="battle-submit-mode-label" id="ui-battle-submit-mode-label" data-dropdown-value>手动</span><i aria-hidden="true">▾</i>
+                          </button>
+                          <div class="battle-holo-menu" role="listbox">
+                            <button class="battle-holo-option" type="button" data-submit-mode="auto" title="自动">自动</button>
+                            <button class="battle-holo-option active" type="button" data-submit-mode="manual" title="手动">手动</button>
+                            <button class="battle-holo-option" type="button" data-submit-mode="free_narrative" title="剧情自由">自由</button>
+                          </div>
+                        </div>
+                      </div>
+                      <input id="ui-intent-mode" type="hidden" value="点到为止">
                     </div>
                     <div class="battle-exec-actions">
-                      <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">结算</button>
-                      <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">退出</button>
+                      <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">&lt; 退出</button>
+                      <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">⚡ 结算 EXECUTE</button>
                     </div>
                   </div>
                 </div>
@@ -41465,7 +41489,7 @@ ${播报文本}
       <div id="ui-target-controls" hidden></div>
       <div id="ui-tower-settlement" hidden></div>
       <input id="ui-intent-output" type="hidden" value="">
-      <select id="ui-intent-mode"><option value="点到为止" selected>点到为止</option></select>
+      <input id="ui-intent-mode" type="hidden" value="点到为止">
     </div>`;
   }
 
