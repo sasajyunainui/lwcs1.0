@@ -17714,6 +17714,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-slab-
   display: none;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-detail-root:has(#mvu-battle-inline-host),
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-detail-scroll:has(#mvu-battle-inline-host),
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-slab-root[data-slab-preview='战斗终端'] {
+  height: 100%;
+  min-height: 0;
+  align-content: stretch;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
   :where(
     .dossier-list-row,
@@ -27462,9 +27470,11 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host,
   --战斗下拉选项底: rgba(2, 9, 16, 0.7);
   --战斗下拉选项光: color-mix(in srgb, var(--战斗强调色) 16%, transparent);
   --战斗下拉边条: var(--战斗强调色);
-  display: block;
+  display: grid;
   width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host *,
@@ -27483,7 +27493,10 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host select,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-module-scope,
 #detailModal #mvu-battle-inline-host .battle-module-scope {
   position: relative;
+  display: grid;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   color: var(--文字主色);
   font-family: var(--font-tech, var(--font-mono, Consolas, monospace));
 }
@@ -27497,6 +27510,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-shell,
   gap: 9px;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   padding: 10px;
   overflow: hidden;
   border: 0;
@@ -28076,6 +28090,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-dashboar
   grid-template-columns: minmax(0, 1.35fr) minmax(230px, 0.65fr);
   gap: 9px;
   min-width: 0;
+  min-height: 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-dashboard-layer > .summon-queue,
@@ -28090,6 +28105,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-target-d
   display: grid;
   align-content: start;
   gap: 7px;
+  min-height: 0;
   padding: 8px;
 }
 
