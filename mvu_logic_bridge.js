@@ -41368,46 +41368,46 @@ ${播报文本}
           <div class="battle-module-scope">
             <section class="battle-shell" aria-label="战斗">
               <div class="battle-smart-alert-layer" id="ui-smart-alert-layer" aria-live="polite"></div>
-              <div class="battle-monitor-layer">
-                <div class="battle-roster-wing battle-roster-wing--player" id="ui-team-player"></div>
-                <div class="battle-duel-stage">
-                  <div class="combatant-card player" id="ui-player-panel">
-                    <div class="name-row">
-                      <div class="name-block">
-                        <span class="lv-badge" id="ui-player-lv">Lv.0</span>
-                        <span class="combatant-name" id="ui-player-name">己方</span>
-                      </div>
+              <div class="battle-control-bar" id="ui-combat-chips"></div>
+              <div class="battle-hud-layer">
+                <div class="combatant-card player" id="ui-player-panel">
+                  <div class="name-row">
+                    <div class="name-block">
+                      <span class="lv-badge" id="ui-player-lv">Lv.0</span>
+                      <span class="combatant-name" id="ui-player-name">己方</span>
+                      <span class="combatant-switch" aria-hidden="true">▾</span>
                     </div>
-                    <div class="bar-stack">
-                      <div class="resource-bar" title="生命"><span class="resource-label">生命</span><div class="resource-fill hp" id="ui-player-hp-bar"></div><div class="resource-text" id="ui-player-hp-text">0 / 0</div></div>
-                      <div class="resource-bar" title="体力"><span class="resource-label">体力</span><div class="resource-fill vit" id="ui-player-sta-bar"></div><div class="resource-text" id="ui-player-sta-text">0 / 0</div></div>
-                      <div class="resource-bar" title="魂力"><span class="resource-label">魂力</span><div class="resource-fill sp" id="ui-player-sp-bar"></div><div class="resource-text" id="ui-player-sp-text">0 / 0</div></div>
-                      <div class="resource-bar" title="精神"><span class="resource-label">精神</span><div class="resource-fill men" id="ui-player-men-bar"></div><div class="resource-text" id="ui-player-men-text">0 / 0</div></div>
-                    </div>
-                    <div class="stats-grid" id="ui-player-stats"></div>
-                    <div class="buff-row" id="ui-player-buffs"></div>
+                    <span class="combatant-type" id="ui-player-type">未知系</span>
                   </div>
-                  <div class="battle-situation-spine">
-                    <div class="intent-chip-row" id="ui-combat-chips"></div>
+                  <div class="bar-stack">
+                    <div class="resource-bar" title="生命"><span class="resource-label">生命</span><div class="resource-track"><div class="resource-fill hp" id="ui-player-hp-bar"></div></div><div class="resource-text" id="ui-player-hp-text">0 / 0</div></div>
+                    <div class="resource-bar" title="魂力"><span class="resource-label">魂力</span><div class="resource-track"><div class="resource-fill sp" id="ui-player-sp-bar"></div></div><div class="resource-text" id="ui-player-sp-text">0 / 0</div></div>
+                    <div class="resource-bar" title="体力"><span class="resource-label">体力</span><div class="resource-track"><div class="resource-fill vit" id="ui-player-sta-bar"></div></div><div class="resource-text" id="ui-player-sta-text">0 / 0</div></div>
+                    <div class="resource-bar" title="精神"><span class="resource-label">精神</span><div class="resource-track"><div class="resource-fill men" id="ui-player-men-bar"></div></div><div class="resource-text" id="ui-player-men-text">0 / 0</div></div>
                   </div>
-                  <div class="combatant-card enemy" id="ui-enemy-panel">
-                    <div class="name-row">
-                      <div class="name-block">
-                        <span class="lv-badge" id="ui-enemy-lv">Lv.0</span>
-                        <span class="combatant-name" id="ui-enemy-name">对手</span>
-                      </div>
-                    </div>
-                    <div class="bar-stack">
-                      <div class="resource-bar" title="生命"><span class="resource-label">生命</span><div class="resource-fill hp" id="ui-enemy-hp-bar"></div><div class="resource-text" id="ui-enemy-hp-text">0 / 0</div></div>
-                      <div class="resource-bar" title="体力"><span class="resource-label">体力</span><div class="resource-fill vit" id="ui-enemy-sta-bar"></div><div class="resource-text" id="ui-enemy-sta-text">0 / 0</div></div>
-                      <div class="resource-bar" title="魂力"><span class="resource-label">魂力</span><div class="resource-fill sp" id="ui-enemy-sp-bar"></div><div class="resource-text" id="ui-enemy-sp-text">0 / 0</div></div>
-                      <div class="resource-bar" title="精神"><span class="resource-label">精神</span><div class="resource-fill men" id="ui-enemy-men-bar"></div><div class="resource-text" id="ui-enemy-men-text">0 / 0</div></div>
-                    </div>
-                    <div class="stats-grid" id="ui-enemy-stats"></div>
-                    <div class="buff-row" id="ui-enemy-buffs"></div>
-                  </div>
+                  <div class="stats-grid" id="ui-player-stats"></div>
+                  <div class="buff-row" id="ui-player-buffs"></div>
+                  <div class="battle-team-strip" id="ui-team-player"></div>
                 </div>
-                <div class="battle-roster-wing battle-roster-wing--enemy" id="ui-team-enemy"></div>
+                <div class="combatant-card enemy" id="ui-enemy-panel">
+                  <div class="name-row">
+                    <div class="name-block">
+                      <span class="lv-badge" id="ui-enemy-lv">Lv.0</span>
+                      <span class="combatant-name" id="ui-enemy-name">对手</span>
+                      <span class="combatant-switch" aria-hidden="true">▾</span>
+                    </div>
+                    <span class="combatant-type" id="ui-enemy-type">未知系</span>
+                  </div>
+                  <div class="bar-stack">
+                    <div class="resource-bar" title="生命"><span class="resource-label">生命</span><div class="resource-track"><div class="resource-fill hp" id="ui-enemy-hp-bar"></div></div><div class="resource-text" id="ui-enemy-hp-text">0 / 0</div></div>
+                    <div class="resource-bar" title="魂力"><span class="resource-label">魂力</span><div class="resource-track"><div class="resource-fill sp" id="ui-enemy-sp-bar"></div></div><div class="resource-text" id="ui-enemy-sp-text">0 / 0</div></div>
+                    <div class="resource-bar" title="体力"><span class="resource-label">体力</span><div class="resource-track"><div class="resource-fill vit" id="ui-enemy-sta-bar"></div></div><div class="resource-text" id="ui-enemy-sta-text">0 / 0</div></div>
+                    <div class="resource-bar" title="精神"><span class="resource-label">精神</span><div class="resource-track"><div class="resource-fill men" id="ui-enemy-men-bar"></div></div><div class="resource-text" id="ui-enemy-men-text">0 / 0</div></div>
+                  </div>
+                  <div class="stats-grid" id="ui-enemy-stats"></div>
+                  <div class="buff-row" id="ui-enemy-buffs"></div>
+                  <div class="battle-team-strip" id="ui-team-enemy"></div>
+                </div>
               </div>
               <div class="battle-dashboard-layer">
                 <div class="summon-queue" id="ui-summon-queue" hidden></div>
@@ -41417,6 +41417,7 @@ ${播报文本}
                 </div>
                 <div class="battle-target-deck">
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
+                  <div class="battle-action-summary" id="ui-action-summary"></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
                   <textarea id="ui-intent-output" hidden></textarea>
                   <div class="battle-exec-bar">

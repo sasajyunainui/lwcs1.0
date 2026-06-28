@@ -31475,6 +31475,7 @@ class BattleUIComponent {
           const 徽标文本 = 读取战斗单位徽标文本(safeUnit);
           设置界面文本显隐(`ui-${prefix}-lv`, 徽标文本, !!徽标文本);
           setUiText(`ui-${prefix}-name`, safeUnit.name || (prefix === 'player' ? '玩家' : '对手'));
+          setUiText(`ui-${prefix}-type`, safeUnit.type || '未知系');
           setUiText(`ui-${prefix}-hp-text`, `${Math.round(safeUnit.hp)} / ${Math.round(safeUnit.hp_max)}`);
           setUiText(`ui-${prefix}-sta-text`, `${Math.round(safeUnit.sta)} / ${Math.round(safeUnit.sta_max)}`);
           setUiText(`ui-${prefix}-sp-text`, `${Math.round(safeUnit.sp)} / ${Math.round(safeUnit.sp_max)}`);
@@ -31546,6 +31547,7 @@ class BattleUIComponent {
           const 目标名称集合 = new Set((Array.isArray(选项.targetNames) ? 选项.targetNames : []).map(name => String(name || '').trim()).filter(Boolean));
           const 当前目标名 = String(选项.currentTargetName || '').trim();
           const 单位列表 = (Array.isArray(单位来源列表) ? 单位来源列表 : []).map(flattenUiCombatant);
+          node.hidden = 单位列表.length <= 1;
           node.innerHTML = 单位列表
             .map(单位 => {
               const 激活类 = 单位.name === 激活名称 ? ' active' : '';
@@ -31782,17 +31784,43 @@ class BattleUIComponent {
         function renderUiChips(combatData, player, enemy) {
           const node = byId('ui-combat-chips');
           if (!node) return;
-          确保召唤单位表(combatData);
           const chips = [
-            `回合 ${Number(combatData.回合 || 0)}`,
-            combatData.战斗类型 || '战斗',
-            combatData.阶段 || 战斗阶段枚举_V1.宣告,
-            `${player.name || '玩家'} → ${enemy.name || '对手'}`,
-            ...读取召唤单位列表(combatData).filter(单位 => !召唤单位是分身(单位)).slice(0, 4).map(单位 =>
-              `召唤:${单位.name || '召唤物'} ${Math.round(getCombatHpValue(单位))}/${Math.round(getCombatHpMaxValue(单位))} ${单位.行动模式 || ''} ${单位.__禁用召唤技能 ? '受限' : '稳定'}`,
-            ),
+            ['回合', Number(combatData.回合 || 0)],
+            ['战斗', combatData.战斗类型 || '战斗'],
+            ['阶段', combatData.阶段 || 战斗阶段枚举_V1.宣告],
+            ['指向', `${player.name || '玩家'} -> ${enemy.name || '对手'}`],
           ];
-          node.innerHTML = chips.map(item => `<span class="intent-pill">${htmlEscapeText(item)}</span>`).join('');
+          node.innerHTML = chips
+            .map(([标签, 内容]) => `<span class="intent-pill"><span>${htmlEscapeText(标签)}</span><b>${htmlEscapeText(内容)}</b></span>`)
+            .join('');
+        }
+
+        function 渲染动作摘要(action = null) {
+          const node = byId('ui-action-summary');
+          if (!node) return;
+          const state = window.BattleUI?.state || {};
+          const 当前动作 = action || state.selectedAction || null;
+          if (!当前动作) {
+            node.innerHTML = '<div class="battle-action-summary-state">待选择</div>';
+            return;
+          }
+          const 动作名 = String(当前动作.name || 当前动作.action_type || '行动').trim();
+          const 目标名 = String(当前动作.target_name || 当前动作.物品接收者 || resolveIntentTargetNameFromAction(当前动作, state.combatData) || '自身').trim();
+          const 消耗文本 = String(当前动作.cost_text || '').trim() || '无耗';
+          const 前摇文本 = Number(当前动作.cast_time || 0) ? `${Number(当前动作.cast_time || 0)}前摇` : '即时';
+          const 模式文本 = `${state.currentMode === 'multi_round' ? '连续' : '单回合'} · ${state.currentIntentMode || '点到为止'}`;
+          node.innerHTML = `
+            <div class="battle-action-summary-head">
+              <span>动作</span>
+              <b>${htmlEscapeText(动作名)}</b>
+            </div>
+            <div class="battle-action-summary-grid">
+              <span><em>目标</em><b>${htmlEscapeText(目标名)}</b></span>
+              <span><em>消耗</em><b>${htmlEscapeText(消耗文本)}</b></span>
+              <span><em>时序</em><b>${htmlEscapeText(前摇文本)}</b></span>
+              <span><em>模式</em><b>${htmlEscapeText(模式文本)}</b></span>
+            </div>
+          `;
         }
 
         function renderUiActionFilters(actions, activeCategory) {
@@ -32091,6 +32119,7 @@ class BattleUIComponent {
           const state = window.BattleUI?.state || {};
           const output = byId('ui-intent-output');
           if (output) output.value = buildIntentText(action ? [action] : undefined);
+          渲染动作摘要(action || state.selectedAction || null);
           同步战斗目标显示(action || state.selectedAction || null);
         }
 
@@ -32225,6 +32254,7 @@ class BattleUIComponent {
           document.querySelectorAll('#ui-mode-group .mode-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === normalized);
           });
+          渲染动作摘要(window.BattleUI?.state?.selectedAction || null);
         }
 
         function setUiIntentMode(mode) {
@@ -32232,6 +32262,7 @@ class BattleUIComponent {
           if (window.BattleUI && window.BattleUI.state) window.BattleUI.state.currentIntentMode = normalized;
           const select = byId('ui-intent-mode');
           if (select && select.value !== normalized) select.value = normalized;
+          渲染动作摘要(window.BattleUI?.state?.selectedAction || null);
         }
 
         async function initBattleUiFromMvu() {
@@ -32290,6 +32321,7 @@ class BattleUIComponent {
             if (output) output.value = buildIntentText([selectedAction]);
             同步战斗目标显示(selectedAction);
           }
+          渲染动作摘要(selectedAction);
           renderSoulTowerSettlementPanel(pendingTowerSettlement);
           const 智能警报列表 = 计算战斗智能警报(combatData, previousState.智能警报列表 || []);
           window.BattleUI.state.智能警报列表 = 智能警报列表;
