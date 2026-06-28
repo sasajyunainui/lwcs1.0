@@ -104,16 +104,6 @@ class BattleUIComponent {
       SHARED_SKILL_MECHANISM_REGISTRY?.机制定义 && typeof SHARED_SKILL_MECHANISM_REGISTRY.机制定义 === 'object'
         ? Object.keys(SHARED_SKILL_MECHANISM_REGISTRY.机制定义).length
         : 0;
-    const 读取共享直接结算收益预算函数 = () => {
-      if (typeof root.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function') return root.__LWCS_CALC_DIRECT_SETTLE_BUDGET__;
-      try {
-        if (window.parent && window.parent !== window && typeof window.parent.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function') return window.parent.__LWCS_CALC_DIRECT_SETTLE_BUDGET__;
-      } catch (error) {}
-      try {
-        if (window.top && window.top !== window && typeof window.top.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function') return window.top.__LWCS_CALC_DIRECT_SETTLE_BUDGET__;
-      } catch (error) {}
-      return null;
-    };
     const 战斗来源类别上下文表 = new WeakMap();
     const 写入战斗来源类别上下文 = (skill, 上下文 = {}) => {
       if (!skill || typeof skill !== 'object') return skill;
@@ -144,22 +134,6 @@ class BattleUIComponent {
       const 来源类别 = String(动作?.category || 动作?.来源类别 || 读取战斗来源类别上下文(skill, 回退类别).来源类别 || 回退类别 || '魂技').trim() || '魂技';
       const 来源明细 = String(动作?.source_detail || 动作?.来源明细 || 读取战斗来源类别上下文(skill, 来源类别).来源明细 || 来源类别).trim() || 来源类别;
       return { 来源类别, 来源明细 };
-    };
-    const 计算战斗直接结算收益预算 = (skill = {}, caster = {}, 来源上下文 = {}) => {
-      const 计算预算 = 读取共享直接结算收益预算函数();
-      if (typeof 计算预算 !== 'function') return { 有收益预算: false, 预算系数: 1 };
-      try {
-        const { 来源类别 } = 读取战斗动作来源上下文(来源上下文, skill, '魂技');
-        return 计算预算(skill, {
-          角色: caster,
-          施术者: caster,
-          caster,
-          actor: caster,
-          来源类别,
-        });
-      } catch (error) {
-        return { 有收益预算: false, 预算系数: 1 };
-      }
     };
     const BATTLE_PROTOTYPE_REGISTRY = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.原型定义 || {});
     const 战斗延迟回合原型集合 = new Set(['伤害结算', '护盾变化', '属性修正', '状态施加']);
@@ -5936,9 +5910,9 @@ class BattleUIComponent {
       const 体力比例 = Math.max(0, Number(消耗.reqVit || 0)) / Math.max(1, 读取战斗资源上限值(攻击方, 攻击方.final || {}, 'vit'));
       const 精神比例 = Math.max(0, Number(消耗.reqMen || 0)) / Math.max(1, 读取战斗资源上限值(攻击方, 攻击方.final || {}, 'men'));
       const 承载比例 = 魂力比例 + 体力比例 + 精神比例;
-      if (!(承载比例 > 0)) return 1;
       const 固定比例 = 读取战斗伤害固定百分比消耗(skill, 攻击方);
-      return Math.max(0, (承载比例 + 固定比例) / 承载比例);
+      if (!(固定比例 > 0) || 承载比例 <= 固定比例) return 1;
+      return Number((承载比例 / 固定比例).toFixed(4));
     }
 
     const BATTLE_MECHANISM_CONSUMERS = Object.freeze({
@@ -6270,7 +6244,6 @@ class BattleUIComponent {
 
     function applyRuntimeMechanismEffects(skill, attacker, attackerFinalStat, defender, defenderFinalStat, pState, context = {}) {
       const effects = getSkillEffects(skill, context);
-      const 直接结算收益预算系数 = Math.max(0, Math.min(1, Number(context?.直接结算收益预算系数 ?? 1)));
       effects.forEach(effect => {
         const 运行效果 = effect;
         const 原型名 = String(运行效果?.原型 || '').trim();
@@ -6391,29 +6364,6 @@ class BattleUIComponent {
               ensureStateShell(`${判定名}判定修正`, [是削弱 ? '判定削弱' : '判定增益']);
             }
             if (原型名 === '状态施加') ensureStateShell(String(运行效果?.状态 || '').trim() || mechanism, [mechanism]);
-          }
-          if (直接结算收益预算系数 < 0.995 && 原型名 === '结算修正') {
-            const 结算 = String(运行效果?.结算 || effect?.结算 || '').trim();
-            const 缩放倍率字段 = 字段名 => {
-              if (directPayload[字段名] === undefined) return;
-              const 原值 = Number(directPayload[字段名] || 1);
-              if (原值 > 1) directPayload[字段名] = Number((1 + (原值 - 1) * 直接结算收益预算系数).toFixed(4));
-            };
-            const 缩放比例字段 = 字段名 => {
-              if (directPayload[字段名] !== undefined) directPayload[字段名] = Number((Number(directPayload[字段名] || 0) * 直接结算收益预算系数).toFixed(4));
-            };
-            if (['造成伤害', '受到伤害', '治疗'].includes(结算)) {
-              缩放倍率字段(结算 === '治疗' ? 'final_heal_mult' : 结算 === '受到伤害' ? 'received_damage_mult' : 'final_damage_mult');
-            } else if (结算 === '防御穿透') 缩放比例字段('armor_pen');
-            else if (结算 === '反伤') 缩放比例字段('damage_reflect_ratio');
-            else if (结算 === '伤害转移') 缩放比例字段('damage_transfer_ratio');
-            else if (结算 === '伤害吸收') 缩放比例字段('damage_absorb_ratio');
-            else if (结算 === '伤害转治疗') 缩放比例字段('damage_to_heal_ratio');
-            else if (结算 === '治疗转伤害') 缩放比例字段('heal_to_damage_ratio');
-            else if (结算 === '伤害分摊') 缩放比例字段('damage_share_ratio');
-            else if (结算 === '消耗分摊') 缩放比例字段('cost_share_ratio');
-            else if (结算 === '反击') 缩放比例字段('counter_attack_ratio');
-            else if (结算 === '持续伤害引爆') 缩放比例字段('dot_detonate_ratio');
           }
           if (Object.keys(directPayload).length > 0) {
             mergeRuntimePayloadToState(directPayload, pState);
@@ -14328,15 +14278,13 @@ class BattleUIComponent {
     function 估算结算修正选项规划权重(effect = {}, actor = {}, target = {}, behaviorState = {}, skill = null) {
       const 结算 = String(effect?.结算 || '').trim();
       const 数值 = Math.abs(读取战斗数值正负(effect?.数值 || '20%')) || 0.2;
-      const 预算 = 计算战斗直接结算收益预算(skill || {}, actor || {}, { action_type: '行为规划', skill: skill || {} });
-      const 预算系数 = Math.max(0, Math.min(1, Number(预算?.预算系数 || 1)));
       const 快照 = buildConditionTacticalSnapshot(target || {});
       const 来袭 = behaviorState?.threatProfile || {};
       if (结算 === '持续伤害引爆') return 快照.hasDotPressure || 快照.debuffCount > 0 ? 62 + 快照.debuffCount * 8 : 0;
       if (结算 === '防御穿透' ||结算 === '防御剥夺' || 结算 === '精神抗性剥夺') return 快照.hasShielded || 快照.hasDefenseBuffed || 快照.hasReactiveDefense ? 54 : 12;
       if (结算 === '反击') return 来袭.incomingAttackIntent || 来袭.targetHitsDefender ? 48 + Math.round(数值 * 40) : 10;
       if (结算 === '治疗') return getCombatHpRatio(target || actor) < 0.62 ? 42 + Math.round(数值 * 56) : 8;
-      if (['造成伤害', '受到伤害', '伤害吸收', '伤害转治疗', '治疗转伤害', '反伤', '伤害转移', '伤害分摊', '消耗分摊'].includes(结算)) return Math.round(Math.max(12, Math.min(95, 数值 * 110 * 预算系数)));
+      if (['造成伤害', '受到伤害', '伤害吸收', '伤害转治疗', '治疗转伤害', '反伤', '伤害转移', '伤害分摊', '消耗分摊'].includes(结算)) return Math.round(Math.max(12, Math.min(95, 数值 * 110)));
       if (结算 === '消耗' || 结算 === '前摇' || 结算 === '技能效果') return Math.round(Math.max(10, Math.min(72, 数值 * 90)));
       return 0;
     }
@@ -14647,9 +14595,7 @@ class BattleUIComponent {
       if (原型 === '伤害结算') {
         const 威力倍率 = Math.max(1, Number(effect?.威力倍率 || 100));
         const 生命比例 = getCombatHpValue(target) / Math.max(1, getCombatHpMaxValue(target));
-        const 预算 = 计算战斗直接结算收益预算(skill || {}, actor || {}, { action_type: '行为规划', skill: skill || {} });
-        const 预算系数 = Math.max(0, Math.min(1, Number(预算?.预算系数 || 1)));
-        原始收益 = Math.min(160, (威力倍率 * 0.35 + (生命比例 < 0.35 ? 42 : 0)) * 预算系数);
+        原始收益 = Math.min(160, 威力倍率 * 0.35 + (生命比例 < 0.35 ? 42 : 0));
         if (String(effect?.伤害类型 || '').trim() === '真实伤害') 原始收益 *= 1.18;
         return 友方 ? -原始收益 : 原始收益;
       }
@@ -14658,10 +14604,8 @@ class BattleUIComponent {
         const 当前 = 读取行为规划资源当前值(target, 资源键);
         const 上限 = 读取行为规划资源上限(target, 资源键);
         const 变动 = 计算行为规划数值变动(effect?.数值, 上限);
-        const 预算 = 计算战斗直接结算收益预算(skill || {}, actor || {}, { action_type: '行为规划', skill: skill || {} });
-        const 预算系数 = Math.max(0, Math.min(1, Number(预算?.预算系数 || 1)));
         const 缺口系数 = 资源键 === 'hp' ? 1 + (1 - 当前 / 上限) * 1.2 : 0.75 + (1 - 当前 / 上限) * 0.85;
-        原始收益 = Math.min(150, Math.abs(变动) / 上限 * 110 * 缺口系数 * 预算系数);
+        原始收益 = Math.min(150, Math.abs(变动) / 上限 * 110 * 缺口系数);
         const 对目标有益 = 变动 >= 0;
         return (友方 === 对目标有益) ? 原始收益 : -原始收益;
       }
@@ -19132,6 +19076,11 @@ class BattleUIComponent {
             intentText: visiblePlayerInput || String(playerInput || '战斗行动'),
             mode: 'tower_pending_choice',
             battleMode: mode,
+            modeLabel,
+            logs: [...battleLog],
+            roundsExecuted: roundCount,
+            publicReport: buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount }),
+            decisionTrace: collectBattleDecisionTrace(combatData),
             pendingSettlement: towerPendingSettlement,
             mvuUpdate: pendingUpdate,
           };
@@ -19255,8 +19204,11 @@ class BattleUIComponent {
           intentText: userBattleMessage,
           mode: 'engine_arbitrated',
           battleMode: mode,
+          modeLabel,
           logs: [...battleLog],
           roundsExecuted: roundCount,
+          publicReport: 公开战报,
+          decisionTrace: collectBattleDecisionTrace(combatData),
           battleSettlementContext: 战斗上下文登记,
           aiRequest: root.__lastBattleAIRequest || null,
         };
@@ -21114,8 +21066,6 @@ class BattleUIComponent {
         const logParts = [];
         const 当前结算技能 = attackAction?.skill || {};
         const 当前结算效果列表 = getSkillEffects(当前结算技能);
-        const 当前结算收益预算 = 计算战斗直接结算收益预算(当前结算技能, attacker, { ...(attackAction || {}), skill: 当前结算技能 });
-        const 当前结算收益预算系数 = Math.max(0, Math.min(1, Number(当前结算收益预算?.预算系数 || 1)));
         const 结算防守参考 = options?.primaryTarget || targetResults[0]?.target || null;
         const 结算修正命中单位 = (effect, unit) => {
           if (!effect || !unit) return false;
@@ -21129,7 +21079,7 @@ class BattleUIComponent {
             if (String(effect?.结算 || '').trim() !== 结算名) return 最大值;
             if (!当前技能元素匹配结算修正(当前结算技能, effect)) return 最大值;
             if (!结算修正命中单位(effect, unit)) return 最大值;
-            const 比例 = (Math.max(0, Math.abs(读取战斗数值正负(effect?.数值 || '100%')) || 1)) * 当前结算收益预算系数;
+            const 比例 = Math.max(0, Math.abs(读取战斗数值正负(effect?.数值 || '100%')) || 1);
             return Math.max(最大值, Math.min(1, 比例));
           }, 0);
         };
@@ -22318,8 +22268,6 @@ class BattleUIComponent {
         };
         if (!attacker || !defender || !skill) return defaultThreat;
         if (!装备技能跳过掌控缩放(skill)) skill = 按技能掌控度缩放技能(skill, attacker);
-        const 威胁直接结算收益预算 = 计算战斗直接结算收益预算(skill || {}, attacker || {}, playerAction || {});
-        const 直接结算收益预算系数 = Math.max(0, Math.min(1, Number(威胁直接结算收益预算?.预算系数 || 1)));
 
         const 伤害规划上下文 = {
           行为规划: true,
@@ -22385,9 +22333,9 @@ class BattleUIComponent {
           if (String(effect?.结算 || '').trim() !== '防御穿透') return 总和;
           const 原始值 = Number(读取战斗数值正负(effect?.数值));
           if (!Number.isFinite(原始值) || 原始值 === 0) return 总和;
-          return 总和 + (Math.abs(原始值) <= 1 ? 原始值 * 100 : 原始值) * 直接结算收益预算系数;
+          return 总和 + (Math.abs(原始值) <= 1 ? 原始值 * 100 : 原始值);
         }, 0);
-        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0)) * (使用对应等级 ? 1 : 直接结算收益预算系数);
+        const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0));
         const dmgType = String(pClash?.伤害类型 || '物理伤害');
         const conditionArmorPen = 使用对应等级 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const 目标防御剥夺 = Math.min(
@@ -23169,7 +23117,7 @@ class BattleUIComponent {
             消耗: '无',
             前摇: 10,
             _效果数组: [
-              { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+              { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
             ],
           },
           playerAction.skill?.name || '普通攻击',
@@ -23314,8 +23262,6 @@ class BattleUIComponent {
         if (!pState.计算层效果 || typeof pState.计算层效果 !== 'object')
           pState.计算层效果 = createEmptyCombatEffectMap();
         if (typeof pState.持续回合 !== 'number') pState.持续回合 = Number(pState.持续回合 || 0);
-        const 本次直接结算收益预算 = 计算战斗直接结算收益预算(playerAction.skill || {}, attacker || {}, playerAction || {});
-        const 直接结算收益预算系数 = Math.max(0, Math.min(1, Number(本次直接结算收益预算?.预算系数 || 1)));
         const 读取源动作抹消规则 = (effect, options = {}) => 战斗机制抹消命中(attacker, '源动作', effect, { 用途: '封锁', ...options });
         const 描述源动作抹消 = 源动作抹消规则 => {
           if (!源动作抹消规则) return false;
@@ -23341,7 +23287,7 @@ class BattleUIComponent {
           defender,
           defenderFinalStat,
           pState,
-          { ...当前技能条件上下文, 直接结算收益预算系数 },
+          当前技能条件上下文,
         );
         const 主动时光回溯日志 = 本次为维持释放 ? '' : 执行主动时光回溯效果(playerAction.skill, attacker, defender, combatData, 当前技能条件上下文);
         if (主动时光回溯日志) result.desc += ` ${主动时光回溯日志}`;
@@ -23540,7 +23486,7 @@ class BattleUIComponent {
             if (String(effect?.结算 || '').trim() !== 结算名) return 最大值;
             if (!当前技能元素匹配结算修正(playerAction.skill || {}, effect)) return 最大值;
             if (!直接结算修正命中单位(effect, unit)) return 最大值;
-            const 比例 = Math.max(0, Math.abs(读取战斗数值正负(effect?.数值 || '100%')) || 1) * 直接结算收益预算系数;
+            const 比例 = Math.max(0, Math.abs(读取战斗数值正负(effect?.数值 || '100%')) || 1);
             return Math.max(最大值, Math.min(1, 比例));
           }, 0);
         };
@@ -23805,7 +23751,7 @@ class BattleUIComponent {
           const 比例 = Math.max(0, 读取战斗数值正负(effect?.数值));
           if (比例 <= 0) return;
           const 资源 = ['生命', '体力', '魂力', '精神力'].includes(String(effect?.吸收资源 || '').trim()) ? String(effect?.吸收资源 || '').trim() : '生命';
-          造成伤害吸收汇总[资源] += 比例 * 直接结算收益预算系数;
+          造成伤害吸收汇总[资源] += 比例;
         });
         attackerConditionEffects.forEach(ce => {
           const 比例 = Math.max(0, Number(ce.damage_absorb_ratio || 0));
@@ -23987,11 +23933,6 @@ class BattleUIComponent {
           if (!使用对应等级 && fusionProfile && projectedDamage > 0) {
             projectedDamage *= Number(fusionProfile.damageMult || 1);
           }
-          if (!使用对应等级 && projectedDamage > 0 && 直接结算收益预算系数 < 0.995) {
-            projectedDamage *= 直接结算收益预算系数;
-            localLogParts.push(`[收益预算] 直接伤害按消耗与前摇承载调整为${Math.round(直接结算收益预算系数 * 100)}%。`);
-          }
-
           if (targetUsesReactionAction && !isAOE && npcAction.type === '肉体兜底' && projectedDamage > 0) {
             const 允许绝境换伤 = 判定行为绝境换伤窗口(targetObj, attacker, combatData, projectedDamage);
             const 结算后生命 = getCombatHpValue(targetObj) - projectedDamage;
@@ -24282,11 +24223,8 @@ class BattleUIComponent {
             const baseAmount = /%$/.test(String(rawValue ?? '').trim()) || Math.abs(value) <= 1
               ? maxResource * value
               : value;
-            const 预算后基础量 = baseAmount > 0 && 直接结算收益预算系数 < 0.995
-              ? baseAmount * 直接结算收益预算系数
-              : baseAmount;
             let amount = Math.floor(
-              预算后基础量 *
+              baseAmount *
                 supportScale *
                 (resourceKey === 'hp' ? totalFinalHealMult * (1 - Math.max(totalHealBlockRatio, totalResourceBlockRatio)) : 1 - totalResourceBlockRatio),
             );
@@ -24713,7 +24651,7 @@ class BattleUIComponent {
                 ? 数值
                 : 数值 / Math.max(1, maxValue);
               if (!Number.isFinite(ratio) || ratio === 0) return false;
-              战斗效果[字段名] = ratio > 0 ? ratio * 直接结算收益预算系数 : ratio;
+              战斗效果[字段名] = ratio;
               return true;
             };
             let labelText = 资源文本 || '资源';
@@ -24732,7 +24670,7 @@ class BattleUIComponent {
                 ok = true;
               } else if (Number.isFinite(ratio) && ratio !== 0) {
                 if (ratio < 0) 战斗效果.dot_damage_ratio = Math.abs(ratio);
-                else 战斗效果.hot_heal_ratio = ratio * 直接结算收益预算系数;
+                else 战斗效果.hot_heal_ratio = ratio;
                 ok = true;
               }
             }
@@ -24912,10 +24850,10 @@ class BattleUIComponent {
               }
             });
             if (!(consumedDot > 0)) return;
-            const bonusDamage = Math.max(1, Math.floor(consumedDot * ratio * 直接结算收益预算系数));
+            const bonusDamage = Math.max(1, Math.floor(consumedDot * ratio));
             appendProjectedDamageToSettleResult(result, targetObj, bonusDamage, 'dot_detonate');
             totalAddedDamage += bonusDamage;
-            result.desc += ` [持续引爆] ${targetObj === attacker ? '自身' : targetObj.name}身上的持续伤害被引爆，追加 ${bonusDamage} 点伤害${直接结算收益预算系数 < 0.995 ? '（受收益预算调整）' : ''}。`;
+            result.desc += ` [持续引爆] ${targetObj === attacker ? '自身' : targetObj.name}身上的持续伤害被引爆，追加 ${bonusDamage} 点伤害。`;
           });
           return totalAddedDamage;
         };
@@ -25157,8 +25095,7 @@ class BattleUIComponent {
                 const 当前值 = 读取转移资源当前值(targetObj, resourceKey);
                 const 上限值 = 读取转移资源上限值(targetObj, resourceKey);
                 const 原始变化 = (平均值 - 当前值) * 均分强度;
-                const 预算变化 = 原始变化 > 0 ? 原始变化 * 直接结算收益预算系数 : 原始变化;
-                const 新值 = Math.max(0, Math.min(上限值, Math.round(当前值 + 预算变化)));
+                const 新值 = Math.max(0, Math.min(上限值, Math.round(当前值 + 原始变化)));
                 const 变动量 = Math.abs(新值 - 当前值);
                 if (!(变动量 > 0)) return;
                 if (资源变化落地被抹消(targetObj, resourceKey, '资源均分')) return;
@@ -25232,7 +25169,7 @@ class BattleUIComponent {
           if (!effect) return false;
           const targetUnits = resolveDirectMechanismTargetList(effect);
           const prototypeRatio = Math.abs(读取战斗数值正负(effect?.数值));
-          const shareRatio = Math.max(0, Math.min(1, Number(effect?.分摊比例 || effect?.share_ratio || prototypeRatio || 0.35) * 直接结算收益预算系数));
+          const shareRatio = Math.max(0, Math.min(1, Number(effect?.分摊比例 || effect?.share_ratio || prototypeRatio || 0.35)));
           const 分摊人数 = Math.max(1, Math.round(Number(effect?.分摊人数 || effect?.数量 || effect?.damage_share_count || 1)));
           let linked = false;
           targetUnits.forEach(targetObj => {
@@ -25260,7 +25197,7 @@ class BattleUIComponent {
           if (!效果) return false;
           const 目标单位列表 = resolveDirectMechanismTargetList(效果);
           const 原型比例 = Math.abs(读取战斗数值正负(效果?.数值));
-          const 分摊比例 = Math.max(0, Math.min(1, Number(效果?.分摊比例 || 效果?.cost_share_ratio || 原型比例 || 0.35) * 直接结算收益预算系数));
+          const 分摊比例 = Math.max(0, Math.min(1, Number(效果?.分摊比例 || 效果?.cost_share_ratio || 原型比例 || 0.35)));
           const 分摊人数 = Math.max(1, Math.round(Number(效果?.分摊人数 || 效果?.数量 || 效果?.cost_share_count || 1)));
           let applied = false;
           目标单位列表.forEach(targetObj => {
@@ -27186,14 +27123,7 @@ class BattleUIComponent {
                 };
               }
               const 结算修正效果列表 = 技能效果列表.filter(effect => String(effect?.原型 || '').trim() === '结算修正');
-              const 规划直接结算收益预算 = 计算战斗直接结算收益预算(规划技能 || skill || {}, defender || {}, {
-                action_type: '技能',
-                type: '技能',
-                skill: 规划技能 || skill || {},
-                category: getBattleSkillSourceCategory(规划技能 || skill || {}),
-              });
-              const 规划直接结算收益预算系数 = Math.max(0, Math.min(1, Number(规划直接结算收益预算?.预算系数 || 1)));
-              const skillPower = 原始技能威力 * 规划直接结算收益预算系数;
+              const skillPower = 原始技能威力;
               const 当前技能元素集合 = new Set(normalizeBattleSkillAttributeTokens([
                 ...(Array.isArray(规划技能?.附带属性) ? 规划技能.附带属性 : [规划技能?.附带属性]),
                 getBattleSkillAttributeSummary(规划技能 || {}).显示元素,
@@ -27221,22 +27151,7 @@ class BattleUIComponent {
                   }
                   if (方向 === '正向' && 数值 <= 0) return 总和;
                   if (方向 === '负向' && 数值 >= 0) return 总和;
-                  const 预算纳入 = [
-                    '造成伤害',
-                    '受到伤害',
-                    '防御穿透',
-                    '反伤',
-                    '反击',
-                    '持续伤害引爆',
-                    '伤害转移',
-                    '伤害分摊',
-                    '伤害吸收',
-                    '伤害转治疗',
-                    '治疗转伤害',
-                    '治疗',
-                    '消耗分摊',
-                  ].includes(结算名);
-                  return 总和 + Math.max(0, Math.abs(数值)) * (预算纳入 ? 规划直接结算收益预算系数 : 1);
+                  return 总和 + Math.max(0, Math.abs(数值));
                 }, 0);
               const 有未匹配限定结算修正 = 结算修正效果列表.some(effect => effect?.限定元素 !== undefined && !结算修正元素匹配(effect));
               const 有结算修正 = 结算名 => 结算修正效果列表.some(effect => String(effect?.结算 || '').trim() === 结算名);
@@ -29116,7 +29031,7 @@ class BattleUIComponent {
                 消耗: '无',
                 前摇: 10,
                 _效果数组: [
-                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
                 ],
               },
               '普通攻击',
@@ -29994,7 +29909,7 @@ class BattleUIComponent {
                 消耗: '无',
                 前摇: 10,
                 _效果数组: [
-                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
                 ],
               },
               '普通攻击',
@@ -30219,7 +30134,7 @@ class BattleUIComponent {
                   消耗: '无',
                   前摇: 10,
                   _效果数组: [
-                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
                   ],
                 }, '普通攻击'),
               ),
@@ -31120,7 +31035,7 @@ class BattleUIComponent {
                   消耗: '无',
                   前摇: 10,
                   _效果数组: [
-                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
                   ],
                 },
                 '普通攻击',
@@ -32693,6 +32608,7 @@ class BattleUIComponent {
               currentMode: previousState.currentMode || 'single_round',
               currentIntentMode,
               pendingTowerSettlement,
+              activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
             },
           });
           setUiBattleMode(window.BattleUI.state.currentMode);
@@ -32700,7 +32616,7 @@ class BattleUIComponent {
           renderUiActionFilters(availableActions, activeCategory);
           renderUiActionGrid(availableActions, activeCategory);
           renderUiSummonQueue(combatData);
-          渲染战斗预演面板(previousState.previewResult || null);
+          渲染战斗记录面板();
           const output = byId('ui-intent-output');
           if (selectedAction) {
             if (动作是造物承载(selectedAction)) 写入造物动作选择(selectedAction, window.BattleUI.state);
@@ -32803,16 +32719,29 @@ class BattleUIComponent {
           return parts.join('\n');
         }
 
-        function 读取预演面板节点() {
+        function 读取战斗记录面板节点() {
           return byId('ui-battle-preview-panel');
         }
 
+        function 读取战斗记录页签() {
+          const state = window.BattleUI?.state || {};
+          return state.activeBattleRecordTab === 'preview' ? 'preview' : 'actual';
+        }
+
+        function 设置战斗记录页签(tab = 'actual') {
+          const activeTab = tab === 'preview' ? 'preview' : 'actual';
+          if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordTab = activeTab;
+          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+            const active = button.getAttribute('data-battle-record-tab') === activeTab;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          渲染战斗记录面板();
+        }
+
         function 清空战斗预演面板() {
-          const node = 读取预演面板节点();
           if (window.BattleUI?.state) window.BattleUI.state.previewResult = null;
-          if (!node) return;
-          node.hidden = true;
-          node.innerHTML = '';
+          渲染战斗记录面板();
         }
 
         function 格式化预演候选行(候选 = {}) {
@@ -32869,18 +32798,46 @@ class BattleUIComponent {
           `;
         }
 
-        function 渲染战斗预演面板(result = null) {
-          const node = 读取预演面板节点();
+        function 提取战斗结果战报行(result = null) {
+          const logs = Array.isArray(result?.logs) ? result.logs : [];
+          const fromLogs = logs
+            .map(cleanBattleReportLineForStory)
+            .filter(Boolean);
+          if (fromLogs.length) return fromLogs.slice(-10);
+          const reportText = String(result?.publicReport || result?.intentText || result?.aiRequest?.channels?.userInput || '').trim();
+          if (!reportText) return [];
+          return reportText
+            .replace(/<\/?战斗公开战报>/g, '')
+            .split(/\n+/)
+            .map(line => cleanBattleReportLineForStory(line.replace(/^\s*\d+[.、]\s*/, '')))
+            .filter(line => line && !/^本轮战斗已由战斗模块完成结算/.test(line))
+            .slice(-10);
+        }
+
+        function 渲染战斗记录面板() {
+          const node = 读取战斗记录面板节点();
           if (!node) return;
-          if (!result?.preview) {
-            node.hidden = true;
-            node.innerHTML = '';
+          const state = window.BattleUI?.state || {};
+          const activeTab = 读取战斗记录页签();
+          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+            const active = button.getAttribute('data-battle-record-tab') === activeTab;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          const result = activeTab === 'preview' ? state.previewResult : state.actualBattleResult;
+          if (!result) {
+            node.hidden = false;
+            node.innerHTML = `
+              <div class="battle-preview-head">
+                <span>${activeTab === 'preview' ? '预演记录' : '实战记录'}</span>
+                <b>暂无记录</b>
+                <em>${activeTab === 'preview' ? '点击预演生成' : '点击结算生成'}</em>
+              </div>
+              <div class="battle-preview-empty">${activeTab === 'preview' ? '预演不会提交战斗，只用于查看预期战报和判定流程。' : '实战结算后会在这里保留本次战报。'}</div>
+            `;
             return;
           }
-          const 战报 = (Array.isArray(result.logs) ? result.logs : [])
-            .map(cleanBattleReportLineForStory)
-            .filter(Boolean)
-            .slice(-10);
+          const 战报 = 提取战斗结果战报行(result);
           const 提取防反判定 = line => {
             const match = String(line || '').match(/\[(?:行为防反|防反错失)\][^。！？\n]*(?:[。！？]|$)/);
             return match ? match[0].trim() : '';
@@ -32894,8 +32851,8 @@ class BattleUIComponent {
           node.hidden = false;
           node.innerHTML = `
             <div class="battle-preview-head">
-              <span>预演结果</span>
-              <b>${htmlEscapeText(result.modeLabel || result.battleMode || '战斗')}</b>
+              <span>${activeTab === 'preview' ? '预演结果' : '实战结果'}</span>
+              <b>${htmlEscapeText(result.modeLabel || result.battleMode || result.mode || '战斗')}</b>
               <em>${htmlEscapeText(`推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`)}</em>
             </div>
             <div class="battle-preview-report">
@@ -32906,6 +32863,12 @@ class BattleUIComponent {
               ${流程HTML}
             </details>
           `;
+        }
+
+        function 渲染战斗预演面板(result = null) {
+          if (result && window.BattleUI?.state) window.BattleUI.state.previewResult = result;
+          if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordTab = 'preview';
+          渲染战斗记录面板();
         }
 
         function renderSoulTowerSettlementPanel(pendingSettlement = null) {
@@ -33071,7 +33034,6 @@ class BattleUIComponent {
           const output = byId('ui-intent-output');
           if (output) output.value = intentText;
           window.__battleLastIntentText = intentText;
-          清空战斗预演面板();
 
           let result = { intentText, mode: 'intent_only', battleMode };
           try {
@@ -33082,13 +33044,14 @@ class BattleUIComponent {
 
           if (typeof onPlayerAttack === 'function') {
             try {
-              onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止' });
+              const engineResult = onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止' }) || {};
               if (typeof syncFromBattleEngine === 'function') syncFromBattleEngine();
               result = {
+                ...engineResult,
                 intentText,
-                mode: 'engine_arbitrated',
+                mode: engineResult.mode || 'engine_arbitrated',
                 battleMode,
-                aiRequest: window.__lastBattleAIRequest || null,
+                aiRequest: engineResult.aiRequest || window.__lastBattleAIRequest || null,
               };
             } catch (error) {
               console.error('battle arbitration failed', error);
@@ -33099,6 +33062,11 @@ class BattleUIComponent {
           }
 
           try {
+            if (window.BattleUI?.state) {
+              window.BattleUI.state.actualBattleResult = result;
+              window.BattleUI.state.activeBattleRecordTab = 'actual';
+            }
+            渲染战斗记录面板();
             window.dispatchEvent(new CustomEvent('battle-ui-submit-finished', { detail: result }));
           } catch (error) {
             console.warn('battle-ui-submit-finished dispatch failed', error);
@@ -33186,6 +33154,13 @@ class BattleUIComponent {
             previewBtn.addEventListener('click', previewBattleIntent);
             previewBtn.__battlePreviewBound = true;
           }
+          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+            if (button.__battleRecordTabBound) return;
+            button.addEventListener('click', () => {
+              设置战斗记录页签(button.getAttribute('data-battle-record-tab') || 'actual');
+            });
+            button.__battleRecordTabBound = true;
+          });
 
           const closeBtn = byId('ui-battle-close');
           if (closeBtn && !closeBtn.__battleCloseBound) {

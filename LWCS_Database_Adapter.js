@@ -892,6 +892,10 @@
     return 匹配 ? String(匹配[1] || '').trim() : '';
   }
 
+  function 模块路由块命中战斗(路由块 = '') {
+    return /(?:^|\n)\s*模块\s*[：:]\s*battle\s*(?:\n|$)/i.test(String(路由块 || ''));
+  }
+
   function 提取战斗裁断块(规划文本) {
     const 匹配 = String(规划文本 || '').match(/<战斗裁断>\s*([\s\S]*?)\s*<\/战斗裁断>/i);
     return 匹配 ? String(匹配[1] || '').trim() : '';
@@ -954,6 +958,19 @@
     const 文本 = String(规划文本 || '');
     const 路由块 = 提取模块路由块(文本);
     if (!路由块) return { action: 'continue', reason: 'module_route_missing' };
+    if (模块路由块命中战斗(路由块) && 取本轮有效战斗结算上下文(本轮输入文本)) {
+      return {
+        action: 'continueWithRuntimeEvent',
+        reason: 'battle_report_route_skipped',
+        result: {
+          handled: true,
+          kind: 'battle',
+          dispatchMode: 'settled_summary',
+          reason: 'battle_report_route_skipped',
+        },
+        runtimeEvent: '<模块路由结果>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n约束：继续完成战斗裁断与正文承接，不要重复触发 battle 模块。\n</模块路由结果>',
+      };
+    }
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
     if (typeof 路由函数 !== 'function') return { action: 'continue', reason: 'module_route_bridge_unavailable' };
     const 接管键 = 取哈希(路由块);

@@ -41456,7 +41456,6 @@ ${播报文本}
                 </div>
                 <div class="battle-target-deck">
                   <div class="battle-action-summary" id="ui-action-summary"></div>
-                  <div class="battle-preview-panel" id="ui-battle-preview-panel" hidden></div>
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
                   <input id="ui-intent-output" type="hidden" value="">
@@ -41510,6 +41509,13 @@ ${播报文本}
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="battle-record-terminal" id="ui-battle-record-terminal">
+                <div class="battle-record-tabs" role="tablist" aria-label="战斗记录">
+                  <button class="battle-record-tab active" type="button" data-battle-record-tab="actual">实战记录</button>
+                  <button class="battle-record-tab" type="button" data-battle-record-tab="preview">预演记录</button>
+                </div>
+                <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
               </div>
               <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
             </section>

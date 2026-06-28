@@ -27506,7 +27506,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-shell,
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(132px, 0.34fr);
   gap: 9px;
   min-width: 0;
   min-height: 0;
@@ -28417,22 +28417,62 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
     inset 0 0 0 1px color-mix(in srgb, var(--战斗强调色) 18%, transparent);
 }
 
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal,
+#detailModal #mvu-battle-inline-host .battle-record-terminal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+  min-height: 132px;
+  overflow: hidden;
+  padding: 7px;
+  border-radius: calc(var(--战斗圆角) * 0.34);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 10%, transparent), transparent 72%),
+    rgba(2, 8, 16, 0.86);
+  box-shadow:
+    inset 1px 1px 0 var(--战斗边缘高光),
+    inset -1px -1px 0 var(--战斗暗侧阴影),
+    inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 22%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-tabs,
+#detailModal #mvu-battle-inline-host .battle-record-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-tab,
+#detailModal #mvu-battle-inline-host .battle-record-tab {
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--战斗主色) 22%, transparent);
+  border-radius: calc(var(--战斗圆角) * 0.22);
+  color: var(--文字弱色);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-tab.active,
+#detailModal #mvu-battle-inline-host .battle-record-tab.active {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--战斗强调色) 44%, transparent);
+  background: color-mix(in srgb, var(--战斗强调色) 14%, rgba(255, 255, 255, 0.04));
+}
+
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-panel,
 #detailModal #mvu-battle-inline-host .battle-preview-panel {
   display: grid;
   gap: 6px;
   min-width: 0;
-  max-height: 310px;
+  min-height: 0;
   overflow: hidden auto;
-  padding: 7px 8px;
-  border-radius: calc(var(--战斗圆角) * 0.34);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--战斗主色) 10%, transparent), transparent 66%),
-    rgba(2, 9, 18, 0.72);
-  box-shadow:
-    inset 1px 1px 0 var(--战斗边缘高光),
-    inset -1px -1px 0 var(--战斗暗侧阴影),
-    inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 22%, transparent);
+  padding: 1px 2px 2px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--战斗强调色) 30%, transparent) transparent;
 }
@@ -28927,13 +28967,13 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-to
   border-radius: 0;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   background:
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--战斗主色) 5%, transparent) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, color-mix(in srgb, var(--战斗玻璃底) 96%, transparent), color-mix(in srgb, #000 62%, var(--战斗玻璃底)));
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--战斗主色) 4%, transparent) 0 1px, transparent 1px 16px),
+    linear-gradient(180deg, color-mix(in srgb, var(--战斗玻璃底) 98%, #020611), color-mix(in srgb, #000 78%, var(--战斗玻璃底)));
   box-shadow:
     inset 1px 1px 0 var(--战斗边缘高光),
     inset -1px -1px 0 var(--战斗暗侧阴影),
     inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 16%, transparent),
-    0 14px 28px rgba(0, 0, 0, 0.42),
+    0 16px 30px rgba(0, 0, 0, 0.62),
     0 0 22px color-mix(in srgb, var(--战斗主色) 16%, transparent);
   pointer-events: none;
   scrollbar-width: thin;
@@ -29229,6 +29269,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.
 @media (max-width: 760px) {
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-shell,
   #detailModal #mvu-battle-inline-host .battle-shell {
+    grid-template-rows: auto auto minmax(0, 1fr) minmax(140px, auto);
     padding: 10px;
   }
 
