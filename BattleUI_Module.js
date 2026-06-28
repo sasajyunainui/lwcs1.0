@@ -23,6 +23,13 @@ class BattleUIComponent {
   }
 
   destroy() {
+    try {
+      const 状态 = window.BattleUI?.state;
+      if (状态?.智能警报弱化计时器) {
+        clearTimeout(状态.智能警报弱化计时器);
+        状态.智能警报弱化计时器 = null;
+      }
+    } catch (错误) {}
     this.container.innerHTML = '';
   }
 
@@ -31298,6 +31305,133 @@ class BattleUIComponent {
           if (!node) return;
           const ratio = Math.max(0, Math.min(100, (toUiNumber(value, 0) / Math.max(1, toUiNumber(max, 1))) * 100));
           node.style.width = `${ratio}%`;
+          node.classList.toggle('is-critical', ratio <= 30 && /hp/.test(node.className));
+        }
+
+        function 读取战斗资源比例(单位 = {}, 当前键 = '', 上限键 = '') {
+          const 当前值 = Math.max(0, toUiNumber(单位?.[当前键], 0));
+          const 上限值 = Math.max(1, toUiNumber(单位?.[上限键], 1));
+          return Math.max(0, Math.min(1, 当前值 / 上限值));
+        }
+
+        function 推入战斗资源警报(警报列表, 单位, 配置) {
+          const 单位名 = String(单位?.name || '').trim();
+          if (!单位名) return;
+          const 比例 = 读取战斗资源比例(单位, 配置.当前键, 配置.上限键);
+          if (比例 > 配置.阈值) return;
+          const 百分比 = Math.max(0, Math.min(100, Math.floor(比例 * 100)));
+          警报列表.push({
+            id: `${配置.名称}:${单位名}`,
+            类型: 配置.类型,
+            优先级: 配置.优先级,
+            签名: `${配置.名称}:${单位名}`,
+            百分比,
+            文本: `${配置.前缀} ${单位名} ${配置.短名} ${百分比}%`,
+          });
+        }
+
+        function 读取敌方高危状态列表(单位 = {}) {
+          const 状态效果 = 单位?.状态效果 && typeof 单位.状态效果 === 'object' ? 单位.状态效果 : {};
+          const 状态名列表 = Object.entries(状态效果)
+            .filter(([名称, 状态]) => {
+              const 文本 = `${名称} ${状态?.类型 || ''} ${状态?.状态名称 || ''} ${状态?.描述 || ''} ${状态?.战斗效果?.标签 || ''}`;
+              return /狂暴|蓄力|爆发|高危|危险|处决|必杀/.test(文本);
+            })
+            .map(([名称]) => String(名称 || '').trim())
+            .filter(Boolean);
+          if (单位?.蓄力技能 || Number(单位?.蓄力剩余 ?? 单位?.cast_time_left ?? 0) > 0) 状态名列表.unshift('蓄力');
+          return Array.from(new Set(状态名列表)).slice(0, 2);
+        }
+
+        function 计算战斗智能警报(combatData, 上次警报列表 = []) {
+          const 上次警报表 = new Map((Array.isArray(上次警报列表) ? 上次警报列表 : []).map(警报 => [警报.id, 警报]));
+          const 当前时间 = Date.now();
+          const 警报列表 = [];
+          const 我方单位列表 = [
+            ...(combatData?.参战者?.team_player || []),
+            ...读取召唤单位列表(combatData, { 阵营: '玩家' }),
+          ].map(flattenUiCombatant);
+          我方单位列表.forEach(单位 => {
+            推入战斗资源警报(警报列表, 单位, { 名称: '生命危险', 短名: '生命', 当前键: 'hp', 上限键: 'hp_max', 阈值: 0.3, 类型: 'danger', 优先级: 10, 前缀: '[战术警报]' });
+            推入战斗资源警报(警报列表, 单位, { 名称: '魂力警戒', 短名: '魂力', 当前键: 'sp', 上限键: 'sp_max', 阈值: 0.3, 类型: 'warning', 优先级: 7, 前缀: '[资源警戒]' });
+            推入战斗资源警报(警报列表, 单位, { 名称: '精神警戒', 短名: '精神', 当前键: 'men', 上限键: 'men_max', 阈值: 0.25, 类型: 'warning', 优先级: 6, 前缀: '[资源警戒]' });
+            推入战斗资源警报(警报列表, 单位, { 名称: '体力警戒', 短名: '体力', 当前键: 'sta', 上限键: 'sta_max', 阈值: 0.2, 类型: 'warning', 优先级: 5, 前缀: '[资源警戒]' });
+          });
+
+          const 目标敌方名称 = String(window.BattleUI?.state?.selectedAction?.target_name || '').trim();
+          const 当前敌方 = (combatData?.参战者?.team_enemy || []).map(flattenUiCombatant).find(单位 => !目标敌方名称 || 单位.name === 目标敌方名称);
+          读取敌方高危状态列表(当前敌方 || {}).forEach(状态名 => {
+            const 单位名 = String(当前敌方?.name || '敌方').trim();
+            警报列表.push({
+              id: `敌方高危:${单位名}:${状态名}`,
+              类型: 'danger',
+              优先级: 8,
+              签名: `敌方高危:${单位名}:${状态名}`,
+              文本: `[高危目标] ${单位名} ${状态名}`,
+            });
+          });
+
+          return 警报列表
+            .sort((左, 右) => 右.优先级 - 左.优先级)
+            .map(警报 => {
+              const 上次 = 上次警报表.get(警报.id);
+              const 低值恶化 = Number.isFinite(Number(警报.百分比)) && Number(警报.百分比) < Number(上次?.百分比 ?? 警报.百分比);
+              const 延续旧警报 = 上次 && 上次.签名 === 警报.签名 && !低值恶化;
+              const 首次时间 = 延续旧警报 ? Number(上次.首次时间 || 当前时间) : 当前时间;
+              return {
+                ...警报,
+                首次时间,
+                已确认: 当前时间 - 首次时间 >= 3000,
+              };
+            });
+        }
+
+        function 渲染战斗智能警报(警报列表 = []) {
+          const node = byId('ui-smart-alert-layer');
+          if (!node) return;
+          const 状态 = window.BattleUI?.state || {};
+          if (状态.智能警报弱化计时器) {
+            clearTimeout(状态.智能警报弱化计时器);
+            状态.智能警报弱化计时器 = null;
+          }
+          if (!Array.isArray(警报列表) || !警报列表.length) {
+            node.innerHTML = '';
+            return;
+          }
+          const 当前时间 = Date.now();
+          const 需要折叠 = 警报列表.length > 3;
+          const 显示列表 = 警报列表.slice(0, 需要折叠 ? 2 : 3);
+          const 剩余数量 = Math.max(0, 警报列表.length - 显示列表.length);
+          const 卡片列表 = [
+            ...显示列表.map(警报 => {
+              const 类型类 = 警报.类型 === 'danger' ? 'battle-alert-card--danger' : 'battle-alert-card--warning';
+              const 状态类 = 警报.已确认 ? ' is-acknowledged' : ' is-new';
+              return `<div class="battle-alert-card ${类型类}${状态类}"><span class="battle-alert-text">${htmlEscapeText(警报.文本)}</span></div>`;
+            }),
+            剩余数量 > 0
+              ? `<div class="battle-alert-card battle-alert-card--system ${警报列表.slice(显示列表.length).every(警报 => 警报.已确认) ? 'is-acknowledged' : 'is-new'}"><span class="battle-alert-text">另有 ${剩余数量} 项异常</span></div>`
+              : '',
+          ].filter(Boolean);
+          node.innerHTML = 卡片列表.join('');
+          const 下次弱化延迟 = Math.min(
+            ...警报列表
+              .filter(警报 => !警报.已确认)
+              .map(警报 => Math.max(0, 3000 - (当前时间 - Number(警报.首次时间 || 当前时间)))),
+          );
+          if (Number.isFinite(下次弱化延迟)) {
+            状态.智能警报弱化计时器 = setTimeout(() => {
+              const 下次时间 = Date.now();
+              const 当前警报列表 = Array.isArray(window.BattleUI?.state?.智能警报列表) ? window.BattleUI.state.智能警报列表 : [];
+              当前警报列表.forEach(警报 => {
+                if (下次时间 - Number(警报.首次时间 || 下次时间) >= 3000) 警报.已确认 = true;
+              });
+              window.BattleUI.state.警报确认表 = 当前警报列表.reduce((表, 警报) => {
+                if (警报.已确认) 表[警报.id] = 警报.首次时间;
+                return 表;
+              }, {});
+              渲染战斗智能警报(当前警报列表);
+            }, 下次弱化延迟 + 32);
+          }
         }
 
         function renderUiStats(containerId, unit, options = {}) {
@@ -32157,6 +32291,13 @@ class BattleUIComponent {
             同步战斗目标显示(selectedAction);
           }
           renderSoulTowerSettlementPanel(pendingTowerSettlement);
+          const 智能警报列表 = 计算战斗智能警报(combatData, previousState.智能警报列表 || []);
+          window.BattleUI.state.智能警报列表 = 智能警报列表;
+          window.BattleUI.state.警报确认表 = 智能警报列表.reduce((表, 警报) => {
+            if (警报.已确认) 表[警报.id] = 警报.首次时间;
+            return 表;
+          }, {});
+          渲染战斗智能警报(智能警报列表);
         }
 
         component.syncFromBattleEngine = syncFromBattleEngine;
