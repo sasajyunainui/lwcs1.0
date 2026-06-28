@@ -46400,10 +46400,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
   }
 
-  function clearUnifiedInlinePreview() {
+  function clearUnifiedInlinePreview(选项 = {}) {
     统一详情渲染序号 += 1;
     const host = getUnifiedInlineHost();
     const effectivePreviewKey = getEffectiveUnifiedPreviewKey();
+    const 保留宿主内容 = !!(选项 && 选项.保留宿主内容);
     if (
       effectivePreviewKey === BATTLE_INLINE_PREVIEW_KEY &&
       activeBattleUI &&
@@ -46426,6 +46427,7 @@ ${toText(combatData.战斗意图, '点到为止')}
     syncUnifiedTitleLongPress('');
     同步AI维护标题入口('');
     if (!host) return;
+    if (保留宿主内容) return;
     host.innerHTML = '';
     delete host.dataset.holoPreview;
   }
@@ -46443,6 +46445,42 @@ ${toText(combatData.战斗意图, '点到为止')}
 
   function 创建统一详情空壳(预览键) {
     return wrapUnifiedInlineBody('', { previewKey: 预览键 });
+  }
+
+  function 读取详情性能时间() {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+  }
+
+  function 详情性能探针启用() {
+    try {
+      return window.__LWCS_DETAIL_PERF_PROBE__ === true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function 创建详情性能探针(预览键, 阶段 = '') {
+    if (!详情性能探针启用()) return null;
+    const 起点 = 读取详情性能时间();
+    let 上次 = 起点;
+    return {
+      标记(名称, 详情 = {}) {
+        if (!详情性能探针启用()) return;
+        const 当前 = 读取详情性能时间();
+        const 记录 = {
+          预览键,
+          阶段,
+          标记: 名称,
+          间隔毫秒: Math.round((当前 - 上次) * 10) / 10,
+          总毫秒: Math.round((当前 - 起点) * 10) / 10,
+          ...详情,
+        };
+        上次 = 当前;
+        try {
+          console.debug('[LWCS详情性能]', 记录);
+        } catch (err) {}
+      },
+    };
   }
 
   function 读取统一详情内容槽(宿主节点, 预览键) {
@@ -46504,13 +46542,15 @@ ${toText(combatData.战斗意图, '点到为止')}
     执行帧(剩余帧数);
   }
 
-  function 完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号) {
+  function 完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号, 性能探针 = null) {
     if (!统一详情渲染仍有效(宿主节点, 目标键, 渲染序号)) return;
     if (需要重置滚动) 宿主节点.scrollTop = 0;
     syncUnifiedTitleLongPress(目标键);
     同步AI维护标题入口(目标键);
     if (typeof 挂载回调 === 'function') {
+      性能探针?.标记('onMount开始');
       activeSubUI = 挂载回调(宿主节点);
+      性能探针?.标记('onMount完成');
     }
     scheduleUnifiedMapCanvasClamp(宿主节点);
     if (目标键 === '储物仓库详细页') {
@@ -46519,11 +46559,14 @@ ${toText(combatData.战斗意图, '点到为止')}
     if (typeof window.__MVU_同步统一详情视口__ === 'function') {
       window.__MVU_同步统一详情视口__();
     }
+    性能探针?.标记('详情渲染完成');
   }
 
-  function 分帧填充统一详情(宿主节点, 内容槽, 详情HTML, 目标键, 挂载回调, 需要重置滚动, 渲染序号) {
+  function 分帧填充统一详情(宿主节点, 内容槽, 详情HTML, 目标键, 挂载回调, 需要重置滚动, 渲染序号, 性能探针 = null) {
+    性能探针?.标记('template解析开始', { 字符数: String(详情HTML || '').length });
     const 详情模板 = document.createElement('template');
     详情模板.innerHTML = 详情HTML || '';
+    性能探针?.标记('template解析完成');
     const 全部节点 = Array.from(详情模板.content.childNodes).filter(节点 => {
       return 节点.nodeType !== Node.TEXT_NODE || toText(节点.textContent, '').trim();
     });
@@ -46544,16 +46587,17 @@ ${toText(combatData.战斗意图, '点到为止')}
     const 写入批次 = 批次索引 => {
       if (!统一详情渲染仍有效(宿主节点, 目标键, 渲染序号)) return;
       if (批次索引 >= 节点批次列表.length) {
-        完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号);
+        完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号, 性能探针);
         return;
       }
       const 当前批次 = 节点批次列表[批次索引];
       当前批次.节点列表.forEach(节点 => 内容槽.appendChild(节点));
+      性能探针?.标记('append批次完成', { 批次索引, 节点数: 当前批次.节点列表.length });
       等待统一详情帧(当前批次.延后帧数, () => 写入批次(批次索引 + 1));
     };
 
     if (!节点批次列表.length) {
-      完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号);
+      完成统一详情渲染(宿主节点, 目标键, 挂载回调, 需要重置滚动, 渲染序号, 性能探针);
       return;
     }
     写入批次(0);
@@ -46640,6 +46684,8 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function renderUnifiedInlinePreview(previewKey, options = {}) {
+    const 总探针 = 创建详情性能探针(previewKey, 'renderUnifiedInlinePreview');
+    总探针?.标记('入口');
     const host = getUnifiedInlineHost(options);
     const targetKey = 归一化详情预览键(previewKey);
     if (!host || !targetKey) return false;
@@ -46665,7 +46711,9 @@ ${toText(combatData.战斗意图, '点到为止')}
     bindUnifiedDetailDelegation(host);
 
     const 本次渲染序号 = ++统一详情渲染序号;
+    总探针?.标记('空壳写入开始');
     host.innerHTML = 创建统一详情空壳(targetKey);
+    总探针?.标记('空壳写入完成');
     if (shouldResetScroll) host.scrollTop = 0;
     syncUnifiedTitleLongPress(targetKey);
     同步AI维护标题入口(targetKey);
@@ -46677,15 +46725,18 @@ ${toText(combatData.战斗意图, '点到为止')}
       const slab = 读取统一详情内容槽(host, targetKey);
       if (!slab || !统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
       slab.replaceChildren();
-      分帧填充统一详情(host, slab, html, targetKey, onMount, shouldResetScroll, 本次渲染序号);
+      分帧填充统一详情(host, slab, html, targetKey, onMount, shouldResetScroll, 本次渲染序号, 总探针);
     };
 
     const setHostMarkupImmediately = html => {
       const slab = 读取统一详情内容槽(host, targetKey);
       if (!slab || !统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
+      总探针?.标记('即时template解析开始', { 字符数: String(html || '').length });
       const 详情模板 = document.createElement('template');
       详情模板.innerHTML = html || '';
+      总探针?.标记('即时template解析完成');
       slab.replaceChildren(...Array.from(详情模板.content.childNodes));
+      总探针?.标记('即时内容写入完成');
       if (shouldResetScroll) host.scrollTop = 0;
       syncUnifiedTitleLongPress(targetKey);
       同步AI维护标题入口(targetKey);
@@ -46702,8 +46753,11 @@ ${toText(combatData.战斗意图, '点到为止')}
     const 构建并填充详情 = () => {
       if (!统一详情渲染仍有效(host, targetKey, 本次渲染序号)) return;
 
+      总探针?.标记('详情HTML构建开始');
       const liveArchive = buildLiveArchiveModal(targetKey);
+      总探针?.标记('liveArchive构建完成', { 命中: !!liveArchive });
       const skeletonArchive = !liveArchive && !liveSnapshot ? buildArchiveSkeletonModal(targetKey) : null;
+      if (skeletonArchive) 总探针?.标记('skeleton构建完成');
       if (liveArchive) {
         setHostMarkup(liveArchive.body, liveArchive.onMount);
         return;
@@ -46715,17 +46769,20 @@ ${toText(combatData.战斗意图, '点到为止')}
 
       const archiveBuilder = archiveModalBuilders[targetKey];
       if (archiveBuilder) {
+        总探针?.标记('archiveBuilder开始');
         const view = archiveBuilder();
+        总探针?.标记('archiveBuilder完成');
         setHostMarkup(view.body);
         return;
       }
 
       const config = previewMap[targetKey] || buildDynamicPreview(targetKey || '详细信息');
+      总探针?.标记('genericConfig完成');
       setHostMarkup(renderGenericModalBody(config));
     };
 
     window.setTimeout(() => {
-      等待统一详情帧(1, 构建并填充详情);
+      等待统一详情帧(2, 构建并填充详情);
     }, 120);
     return true;
   }
