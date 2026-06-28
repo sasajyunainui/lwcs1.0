@@ -31569,6 +31569,7 @@ class BattleUIComponent {
           const 有手动展开状态 = 阵营 && typeof 展开状态表[阵营] === 'boolean';
           const 已展开 = 单位列表.length > 0 && (有手动展开状态 ? 展开状态表[阵营] : 单位列表.length > 1);
           node.hidden = !已展开;
+          node.parentElement?.classList?.toggle('has-team-open', 已展开);
           if (阵营) 同步战斗队伍展开按钮(阵营, 单位列表.length, 已展开);
           node.innerHTML = 单位列表
             .map(单位 => {
@@ -32057,6 +32058,7 @@ class BattleUIComponent {
           const 标签Html = 展示.标签列表.length
             ? `<div class="battle-ring-tooltip-tags">${展示.标签列表.map(标签 => `<span class="battle-ring-tooltip-chip">${htmlEscapeText(标签)}</span>`).join('')}</div>`
             : '';
+          const 显示摘要 = 展示.短效果摘要 && !展示.描述行.some(行 => 行.内容 === 展示.短效果摘要);
           const 描述Html = 展示.描述行
             .map(行 => `<div class="battle-ring-tooltip-copy"><em>${htmlEscapeText(行.标签)}</em><span>${htmlEscapeText(行.内容)}</span></div>`)
             .join('');
@@ -32065,7 +32067,7 @@ class BattleUIComponent {
               <b>${htmlEscapeText(展示.名称)}</b>
               <span>${htmlEscapeText(展示.类型文案)}</span>
             </div>
-            <div class="battle-ring-tooltip-desc">${htmlEscapeText(展示.短效果摘要)}</div>
+            ${显示摘要 ? `<div class="battle-ring-tooltip-desc">${htmlEscapeText(展示.短效果摘要)}</div>` : ''}
             <div class="battle-ring-tooltip-meta">
               <span class="battle-ring-tooltip-meta-row"><em>消耗</em><strong>${htmlEscapeText(展示.消耗文本)}</strong></span>
               <span class="battle-ring-tooltip-meta-row"><em>前摇</em><strong>${htmlEscapeText(展示.前摇文本)}</strong></span>
@@ -32369,7 +32371,6 @@ class BattleUIComponent {
                     <span><em>前摇</em><b>${htmlEscapeText(展示.前摇文本)}</b></span>
                     <span><em>目标</em><b>${htmlEscapeText(展示.目标文本)}</b></span>
                   </span>
-                  <span class="battle-skill-copy">${htmlEscapeText(展示.短效果摘要)}</span>
                 </button>
               `;
             })

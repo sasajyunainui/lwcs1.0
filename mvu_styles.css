@@ -27411,7 +27411,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host,
   --战斗资源填充: linear-gradient(90deg, var(--战斗资源色), color-mix(in srgb, var(--战斗资源色) 58%, #ffffff));
   --战斗执行辉光: 0 0 22px color-mix(in srgb, var(--战斗强调色) 28%, transparent);
   --战斗下拉圆角: calc(var(--战斗圆角) * 0.34);
-  --战斗下拉菜单背景: color-mix(in srgb, var(--战斗玻璃浮层) 92%, rgba(0, 0, 0, 0.38));
+  --战斗下拉菜单背景: color-mix(in srgb, var(--战斗玻璃底) 88%, #02070d);
+  --战斗下拉选项底: rgba(2, 9, 16, 0.7);
   --战斗下拉选项光: color-mix(in srgb, var(--战斗强调色) 16%, transparent);
   --战斗下拉边条: var(--战斗强调色);
   display: block;
@@ -27617,6 +27618,21 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card,
     inset -1px -1px 0 var(--战斗暗侧阴影),
     inset 0 0 0 1px color-mix(in srgb, var(--战斗阵营色, var(--战斗主色)) 20%, transparent),
     0 0 18px color-mix(in srgb, var(--战斗阵营色, var(--战斗主色)) 11%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.has-team-open,
+#detailModal #mvu-battle-inline-host .combatant-card.has-team-open {
+  --战斗队列侧栏宽度: clamp(104px, 24%, 138px);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.player.has-team-open,
+#detailModal #mvu-battle-inline-host .combatant-card.player.has-team-open {
+  padding-left: calc(12px + var(--战斗队列侧栏宽度));
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.enemy.has-team-open,
+#detailModal #mvu-battle-inline-host .combatant-card.enemy.has-team-open {
+  padding-right: calc(12px + var(--战斗队列侧栏宽度));
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.player,
@@ -27906,17 +27922,17 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .buff-row,
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-team-strip,
 #detailModal #mvu-battle-inline-host .battle-team-strip {
-  position: relative;
+  position: absolute;
+  top: 47px;
+  bottom: 10px;
   z-index: 2;
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(118px, 1fr);
-  align-items: stretch;
-  gap: 6px;
-  width: 100%;
+  align-content: start;
+  gap: 5px;
+  width: var(--战斗队列侧栏宽度, 118px);
   min-width: 0;
-  overflow: auto hidden;
-  padding: 5px;
+  overflow: hidden auto;
+  padding: 4px;
   border-radius: calc(var(--战斗圆角) * 0.32);
   background: color-mix(in srgb, var(--战斗玻璃底) 68%, transparent);
   box-shadow:
@@ -27925,6 +27941,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-team-str
     inset 0 0 0 1px color-mix(in srgb, var(--战斗阵营色) 16%, transparent);
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--战斗阵营色) 24%, transparent) transparent;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.player .battle-team-strip,
+#detailModal #mvu-battle-inline-host .combatant-card.player .battle-team-strip {
+  left: 10px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.enemy .battle-team-strip,
+#detailModal #mvu-battle-inline-host .combatant-card.enemy .battle-team-strip {
+  right: 10px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-team-strip[hidden],
@@ -28078,7 +28104,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .action-btn,
   display: grid;
   gap: 5px;
   align-content: space-between;
-  min-height: 96px;
+  min-height: 74px;
   padding: 8px 9px;
   text-align: left;
   overflow: hidden;
@@ -28284,21 +28310,6 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-me
   white-space: nowrap;
 }
 
-body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-copy,
-#detailModal #mvu-battle-inline-host .battle-skill-copy {
-  min-width: 0;
-  padding-top: 5px;
-  border-top: 1px dashed color-mix(in srgb, var(--战斗主色) 18%, transparent);
-  color: var(--文字弱色);
-  font-size: 10px;
-  font-weight: 620;
-  line-height: 1.36;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-target-deck,
 #detailModal #mvu-battle-inline-host .battle-target-deck {
   position: relative;
@@ -28446,9 +28457,10 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-holo-men
   max-height: 168px;
   overflow: hidden auto;
   padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--战斗主色) 30%, transparent);
   border-radius: var(--战斗下拉圆角);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--战斗主色) 8%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--战斗主色) 6%, transparent), transparent 58%),
     var(--战斗下拉菜单背景);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.72),
@@ -28484,7 +28496,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-holo-opt
   border-radius: max(2px, calc(var(--战斗圆角) * 0.18));
   padding: 4px 8px 4px 11px;
   color: var(--文字弱色);
-  background: transparent;
+  background: var(--战斗下拉选项底);
   font: inherit;
   font-size: 10px;
   font-weight: 720;
@@ -28516,7 +28528,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-holo-opt
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-holo-option.active,
 #detailModal #mvu-battle-inline-host .battle-holo-option.active {
   color: color-mix(in srgb, var(--战斗强调色) 72%, #ffffff);
-  background: linear-gradient(90deg, var(--战斗下拉选项光) 0%, transparent 100%);
+  background:
+    linear-gradient(90deg, var(--战斗下拉选项光) 0%, transparent 100%),
+    color-mix(in srgb, var(--战斗下拉选项底) 78%, #061b22);
   text-shadow: 0 0 10px color-mix(in srgb, var(--战斗强调色) 34%, transparent);
 }
 
@@ -28932,7 +28946,8 @@ body[data-mvu-holo-theme='银龙王'] #detailModal #mvu-battle-inline-host {
   --战斗环境光: radial-gradient(circle at 50% -8%, rgba(247, 253, 255, 0.18), transparent 52%);
   --战斗圆角: 20px;
   --战斗下拉圆角: 18px;
-  --战斗下拉菜单背景: rgba(20, 34, 50, 0.72);
+  --战斗下拉菜单背景: rgba(11, 22, 34, 0.94);
+  --战斗下拉选项底: rgba(12, 25, 38, 0.78);
   --战斗下拉选项光: rgba(219, 234, 254, 0.16);
   --战斗下拉边条: #f8fdff;
 }
@@ -28955,8 +28970,9 @@ body[data-mvu-holo-theme='幻海蝶舞'] #detailModal #mvu-battle-inline-host {
   --战斗圆角: 24px;
   --战斗下拉圆角: 18px 24px 14px 22px;
   --战斗下拉菜单背景:
-    linear-gradient(135deg, rgba(0, 242, 254, 0.1), rgba(255, 126, 179, 0.08), rgba(255, 209, 102, 0.045)),
-    rgba(5, 14, 30, 0.82);
+    linear-gradient(135deg, rgba(0, 242, 254, 0.07), rgba(255, 126, 179, 0.055), rgba(255, 209, 102, 0.035)),
+    rgba(3, 10, 22, 0.94);
+  --战斗下拉选项底: rgba(4, 14, 26, 0.8);
   --战斗下拉选项光: linear-gradient(90deg, rgba(0, 242, 254, 0.18), rgba(255, 126, 179, 0.16), transparent);
   --战斗下拉边条: #ff7eb3;
   --战斗资源填充: linear-gradient(90deg, #00f2fe, #ff7eb3, #ffd166, #00f2fe);
