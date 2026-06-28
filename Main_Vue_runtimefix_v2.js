@@ -585,12 +585,12 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
 
-        <div class="mvu-unified-view-stack" :data-unified-view-mode="detailState.isOpen ? 'detail' : 'overview'">
+        <Transition :name="'holo-' + 当前主题键" mode="out-in" @after-leave="处理整页退场结束">
           <div
+            v-if="!detailState.isOpen"
+            key="overview"
             class="mvu-unified-page-stack"
-            :class="{ 'is-active': !detailState.isOpen }"
             :data-unified-overview-tab="tabState.current"
-            :aria-hidden="detailState.isOpen ? 'true' : 'false'"
           >
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
@@ -661,15 +661,10 @@ const DesktopUnifiedLayout = {
 
           </div>
 
-          <section
-            class="mvu-unified-detail-page"
-            :class="{ 'is-active': detailState.isOpen }"
-            :data-unified-detail-preview="detailState.previewKey"
-            :aria-hidden="detailState.isOpen ? 'false' : 'true'"
-          >
+          <section v-else key="detail" class="mvu-unified-detail-page" :data-unified-detail-preview="detailState.previewKey">
             <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
           </section>
-        </div>
+        </Transition>
       </section>
     </div>
   `,
@@ -716,7 +711,6 @@ const DesktopUnifiedLayout = {
     let removeDetailWheelBridge = null;
     let 全息动画恢复计时器 = 0;
     let 详情切换避让截止时间 = 0;
-    let 详情退场清理计时器 = 0;
     const 读取详情性能时间 = () => {
       return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
     };
@@ -974,26 +968,9 @@ const DesktopUnifiedLayout = {
         }
       });
     };
-    const 取消详情退场清理 = () => {
-      if (!详情退场清理计时器 || typeof window === 'undefined') return;
-      window.clearTimeout(详情退场清理计时器);
-      详情退场清理计时器 = 0;
-    };
-    const 安排详情退场清理 = () => {
-      取消详情退场清理();
-      if (typeof window === 'undefined') return;
-      详情退场清理计时器 = window.setTimeout(() => {
-        详情退场清理计时器 = 0;
-        if (detailState.isOpen) return;
-        if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
-          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
-        }
-      }, 280);
-    };
     const openUnifiedPreview = (previewKey, options = {}) => {
       const nextPreviewKey = String(previewKey || '').trim();
       if (!nextPreviewKey) return false;
-      取消详情退场清理();
       记录详情切换性能('打开详情入口', { 预览键: nextPreviewKey });
       标记全息动画临停();
       标记详情切换避让(520);
@@ -1029,15 +1006,20 @@ const DesktopUnifiedLayout = {
       记录详情切换性能('详情壳已关闭', { 预览键: detailState.previewKey || '' });
       detailState.stack.splice(0);
       if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
-        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__({ 保留宿主内容: true }); } catch (err) {}
+        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
       }
-      安排详情退场清理();
       requestTabChange(normalizeTabId(detailState.returnTab));
       请求统一概览同步('detail-close');
       scheduleUnifiedFrameViewportSync();
       scheduleFrameTask(restoreReturnScroll);
+    };
+    const 处理整页退场结束 = () => {
+      if (detailState.isOpen || !detailState.previewKey) return;
       detailState.previewKey = '';
       detailState.stack.splice(0);
+      if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+      }
     };
     const requestMapSurfaceSync = () => {
       if (typeof window.__sheepMapResync !== 'function') return;
@@ -1058,9 +1040,8 @@ const DesktopUnifiedLayout = {
         detailState.isOpen = false;
         detailState.stack.splice(0);
         if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
-          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__({ 保留宿主内容: true }); } catch (err) {}
+          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
         }
-        安排详情退场清理();
         detailState.previewKey = '';
       }
       requestTabChange(tabId);
@@ -1125,7 +1106,6 @@ const DesktopUnifiedLayout = {
         window.clearTimeout(全息动画恢复计时器);
         全息动画恢复计时器 = 0;
       }
-      取消详情退场清理();
       if (
         typeof document !== 'undefined'
         && document.body
@@ -1167,6 +1147,7 @@ const DesktopUnifiedLayout = {
       关闭全息主题面板,
       处理全息主题面板失焦,
       详情路径标题,
+      处理整页退场结束,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
       setTab: setUnifiedTab,

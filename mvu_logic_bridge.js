@@ -46400,11 +46400,10 @@ ${toText(combatData.战斗意图, '点到为止')}
     }
   }
 
-  function clearUnifiedInlinePreview(选项 = {}) {
+  function clearUnifiedInlinePreview() {
     统一详情渲染序号 += 1;
     const host = getUnifiedInlineHost();
     const effectivePreviewKey = getEffectiveUnifiedPreviewKey();
-    const 保留宿主内容 = !!(选项 && 选项.保留宿主内容);
     if (
       effectivePreviewKey === BATTLE_INLINE_PREVIEW_KEY &&
       activeBattleUI &&
@@ -46427,7 +46426,6 @@ ${toText(combatData.战斗意图, '点到为止')}
     syncUnifiedTitleLongPress('');
     同步AI维护标题入口('');
     if (!host) return;
-    if (保留宿主内容) return;
     host.innerHTML = '';
     delete host.dataset.holoPreview;
   }
