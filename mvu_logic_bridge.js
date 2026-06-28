@@ -28604,8 +28604,26 @@
     });
   }
 
+  function 档案魂环锚点可测量() {
+    const 当前时间 = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    const 详情切换避让截止时间 = Number(window.__MVU_详情切换避让截止时间__ || 0);
+    if (详情切换避让截止时间 && 当前时间 < 详情切换避让截止时间) return false;
+    const 挂载点 = document.querySelector('#mvu-unified-mount');
+    if (!(挂载点 instanceof HTMLElement)) return false;
+    const 框架 = 挂载点.querySelector('.mvu-unified-frame');
+    if (框架 instanceof HTMLElement && 框架.classList.contains('is-detail')) return false;
+    const 概览层 = 挂载点.querySelector('.mvu-unified-page-stack');
+    if (!(概览层 instanceof HTMLElement)) return false;
+    if (概览层.getAttribute('aria-hidden') === 'true') return false;
+    const 档案页 = 挂载点.querySelector(".mvu-unified-page[data-target='page-archive'].active");
+    if (!(档案页 instanceof HTMLElement)) return false;
+    if (!档案页.offsetParent && getComputedStyle(档案页).display === 'none') return false;
+    return true;
+  }
+
   function 同步档案魂环锚点布局() {
     档案魂环锚点同步状态.计时器 = 0;
+    if (!档案魂环锚点可测量()) return;
     const 观测塔列表 = getLiveUiElements('#mvu-unified-mount .mvu-archive-ring-observatory');
     if (!观测塔列表.length) return;
     观测塔列表.forEach(观测塔 => {
@@ -28652,6 +28670,7 @@
 
   function 安排档案魂环锚点同步() {
     if (档案魂环锚点同步状态.计时器) return;
+    if (!档案魂环锚点可测量()) return;
     const 执行同步 = () => {
       同步档案魂环锚点布局();
     };

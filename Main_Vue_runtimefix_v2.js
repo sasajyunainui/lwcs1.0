@@ -585,12 +585,12 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
 
-        <Transition :name="'holo-' + 当前主题键" mode="out-in" @after-leave="处理整页退场结束">
+        <div class="mvu-unified-stage-switch" :data-holo-theme-key="当前主题键">
           <div
-            v-if="!detailState.isOpen"
-            key="overview"
             class="mvu-unified-page-stack"
+            :class="detailState.isOpen ? 'is-stage-inactive is-stage-exit' : 'is-stage-active is-stage-enter'"
             :data-unified-overview-tab="tabState.current"
+            :aria-hidden="detailState.isOpen ? 'true' : 'false'"
           >
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
@@ -661,10 +661,15 @@ const DesktopUnifiedLayout = {
 
           </div>
 
-          <section v-else key="detail" class="mvu-unified-detail-page" :data-unified-detail-preview="detailState.previewKey">
+          <section
+            class="mvu-unified-detail-page"
+            :class="detailState.isOpen ? 'is-stage-active is-stage-enter' : 'is-stage-inactive is-stage-exit'"
+            :data-unified-detail-preview="detailState.previewKey"
+            :aria-hidden="detailState.isOpen ? 'false' : 'true'"
+          >
             <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
           </section>
-        </Transition>
+        </div>
       </section>
     </div>
   `,
@@ -711,6 +716,7 @@ const DesktopUnifiedLayout = {
     let removeDetailWheelBridge = null;
     let 全息动画恢复计时器 = 0;
     let 详情切换避让截止时间 = 0;
+    let 详情关闭清理计时器 = 0;
     const 读取详情性能时间 = () => {
       return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
     };
@@ -749,6 +755,7 @@ const DesktopUnifiedLayout = {
       } else {
         详情切换避让截止时间 = Math.max(详情切换避让截止时间, Date.now() + Math.max(0, Number(毫秒) || 0));
       }
+      try { window.__MVU_详情切换避让截止时间__ = 详情切换避让截止时间; } catch (err) {}
     };
     const 仍在详情切换避让期 = () => {
       const 当前时间 = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
@@ -886,9 +893,7 @@ const DesktopUnifiedLayout = {
       if (detailHost && detailHost.isConnected) {
         const toolbar = frame.querySelector('.mvu-unified-toolbar');
         const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 64;
-        const 详情页 = frame.querySelector('.mvu-unified-detail-page');
-        const 详情页高度 = 详情页 ? 详情页.getBoundingClientRect().height : 0;
-        const 详情最大高度 = Math.max(420, 详情页高度 || (状态栏最大高度 - toolbarHeight - 18));
+        const 详情最大高度 = Math.max(420, 状态栏最大高度 - toolbarHeight - 18);
         detailHost.style.setProperty('--mvu-unified-detail-max-height', `${Math.floor(详情最大高度)}px`);
       }
     };
@@ -1005,21 +1010,19 @@ const DesktopUnifiedLayout = {
       detailState.isOpen = false;
       记录详情切换性能('详情壳已关闭', { 预览键: detailState.previewKey || '' });
       detailState.stack.splice(0);
-      if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
-        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
-      }
+      if (详情关闭清理计时器) window.clearTimeout(详情关闭清理计时器);
+      详情关闭清理计时器 = window.setTimeout(() => {
+        详情关闭清理计时器 = 0;
+        if (detailState.isOpen) return;
+        detailState.previewKey = '';
+        if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
+          try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
+        }
+      }, 360);
       requestTabChange(normalizeTabId(detailState.returnTab));
       请求统一概览同步('detail-close');
       scheduleUnifiedFrameViewportSync();
       scheduleFrameTask(restoreReturnScroll);
-    };
-    const 处理整页退场结束 = () => {
-      if (detailState.isOpen || !detailState.previewKey) return;
-      detailState.previewKey = '';
-      detailState.stack.splice(0);
-      if (typeof window.__MVU_CLEAR_UNIFIED_PREVIEW__ === 'function') {
-        try { window.__MVU_CLEAR_UNIFIED_PREVIEW__(); } catch (err) {}
-      }
     };
     const requestMapSurfaceSync = () => {
       if (typeof window.__sheepMapResync !== 'function') return;
@@ -1106,6 +1109,10 @@ const DesktopUnifiedLayout = {
         window.clearTimeout(全息动画恢复计时器);
         全息动画恢复计时器 = 0;
       }
+      if (详情关闭清理计时器) {
+        window.clearTimeout(详情关闭清理计时器);
+        详情关闭清理计时器 = 0;
+      }
       if (
         typeof document !== 'undefined'
         && document.body
@@ -1147,7 +1154,6 @@ const DesktopUnifiedLayout = {
       关闭全息主题面板,
       处理全息主题面板失焦,
       详情路径标题,
-      处理整页退场结束,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
       setTab: setUnifiedTab,

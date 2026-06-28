@@ -16629,13 +16629,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   position: relative;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
   width: 100%;
-  height: auto;
+  height: var(--mvu-hud-frame-height, 620px);
   min-height: 0;
-  max-height: none;
-  overflow: visible;
+  max-height: var(--mvu-hud-frame-height, 620px);
+  overflow: hidden;
   isolation: isolate;
   border: 1px solid transparent;
   border-radius: var(--投影圆角);
@@ -17439,17 +17439,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-panel .mvu-holo-theme
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  grid-row: 2;
-  grid-column: 1;
   display: grid;
   grid-template-rows: none;
   min-width: 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
   padding: 8px;
-  overflow: visible;
+  overflow: hidden;
   isolation: auto;
   container-name: mvu-dashboard-area;
   container-type: inline-size;
@@ -17485,12 +17484,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section {
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: auto;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard {
-  overflow: visible;
+  overflow: hidden;
   scrollbar-width: none;
 }
 
@@ -17500,7 +17499,7 @@ body.mvu-layout-holo
   .mvu-unified-section--dashboard {
   container-name: mvu-archive-dashboard;
   container-type: inline-size;
-  overflow: visible;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit-scrollbar {
@@ -17510,8 +17509,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-  grid-row: 2;
-  grid-column: 1;
+  position: absolute;
+  inset: 0;
   z-index: 4;
   padding: 8px;
 }
@@ -17566,19 +17565,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page {
   grid-template-rows: none;
   min-width: 0;
   min-height: 0;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
   --mvu-holo-loop-play-state: paused;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
   display: grid;
-  overflow: visible;
+  overflow: hidden;
   scrollbar-width: none;
   --mvu-holo-loop-play-state: inherit;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page[data-target='page-archive'].active {
-  overflow: visible;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active::-webkit-scrollbar {
@@ -17588,17 +17588,51 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active::-webkit-scroll
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-  position: relative;
   z-index: 4;
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: auto;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
   contain: layout paint;
   transform-origin: center 48%;
   transform-style: preserve-3d;
   transform: translateZ(0);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch {
+  position: relative;
+  z-index: 1;
+  grid-row: 2;
+  grid-column: 1;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch > .is-stage-active {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1) translateZ(0);
+  transition:
+    opacity 0.24s ease,
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mvu-holo-loop-play-state: running;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch > .is-stage-inactive {
+  pointer-events: none;
+  opacity: 0;
+  visibility: visible;
+  transform: translateY(12px) scale(0.985) translateZ(0);
+  transition:
+    opacity 0.2s ease,
+    transform 0.24s cubic-bezier(0.5, 0, 0.2, 1);
+  --mvu-holo-loop-play-state: paused;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
@@ -17607,12 +17641,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   --mvu-kv-row-min: 36px;
   position: relative;
   isolation: auto;
-  height: auto;
+  height: 100%;
   min-height: 0;
-  max-height: none;
+  max-height: var(--mvu-unified-detail-max-height, 100%);
   padding: 0;
   overflow-x: hidden;
-  overflow-y: visible;
+  overflow-y: auto;
   contain: layout paint;
   color: var(--文字主色);
   font-size: var(--mvu-font-sm, 12px);
@@ -17770,52 +17804,63 @@ body.mvu-layout-holo #mvu-unified-mount .holo-jinlong-leave-active,
 body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-enter-active,
 body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-leave-active,
 body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-enter-active,
-body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch > :where(.is-stage-enter, .is-stage-exit) {
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-classic-enter-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-classic-enter-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='classic'] > .is-stage-enter {
   animation: 经典快门部署 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.1) var(--全息入场延迟, 48ms) both;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-classic-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-classic-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='classic'] > .is-stage-exit {
   animation: 经典快门收缩 0.3s cubic-bezier(0.5, 0, 0.2, 1) forwards;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-tangmen-enter-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-tangmen-enter-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='tangmen'] > .is-stage-enter {
   animation: 唐门故障切片 0.5s steps(10, end) var(--全息入场延迟, 48ms) both;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-tangmen-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-tangmen-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='tangmen'] > .is-stage-exit {
   animation: 唐门断电粉碎 0.25s steps(5, end) forwards;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-jinlong-enter-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-jinlong-enter-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='jinlong'] > .is-stage-enter {
   animation: 金龙重砸部署 0.4s linear var(--全息入场延迟, 48ms) both;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-jinlong-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-jinlong-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='jinlong'] > .is-stage-exit {
   animation: 金龙机甲退场 0.2s ease-in forwards;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-enter-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-enter-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='yinlong'] > .is-stage-enter {
   animation: 银龙冰霜凝结 0.35s ease-out var(--全息入场延迟, 48ms) both;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-yinlong-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='yinlong'] > .is-stage-exit {
   animation: 银龙冰碎消散 0.2s ease-in forwards;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-enter-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-enter-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='huanhai'] > .is-stage-enter {
   animation: 幻海扩散部署 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) var(--全息入场延迟, 48ms) both;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-leave-active {
+body.mvu-layout-holo #mvu-unified-mount .holo-huanhai-leave-active,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='huanhai'] > .is-stage-exit {
   animation: 幻海退潮 0.25s cubic-bezier(0.5, 0, 0.2, 1) forwards;
 }
 
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .holo-huanhai-enter-active::after {
+body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .holo-huanhai-enter-active::after,
+body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='huanhai'] > .is-stage-enter::after {
   content: "";
   position: absolute;
   z-index: 10;
@@ -17834,7 +17879,8 @@ body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .holo-huanhai-enter-
   animation: 真实水波荡漾 0.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
 }
 
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-active::after {
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-active::after,
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-stage-switch[data-holo-theme-key='jinlong'] > .is-stage-enter::after {
   content: "";
   position: absolute;
   left: 5%;
@@ -17905,15 +17951,15 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-act
 @keyframes 唐门断电粉碎 {
   0% {
     opacity: 1;
-    transform: scaleY(1) translateZ(0);
+    transform: translateX(0) translateZ(0);
   }
   55% {
     opacity: 0.55;
-    transform: scaleY(0.08) translateZ(0);
+    transform: translateX(-8px) translateZ(0);
   }
   100% {
     opacity: 0;
-    transform: scaleY(0) scaleX(0.92) translateZ(0);
+    transform: translateX(12px) translateZ(0);
   }
 }
 
@@ -18048,10 +18094,10 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-act
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation),
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-detail-root:has(.dossier-shell--relation),
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-detail-scroll:has(.dossier-shell--relation) {
-  height: auto;
+  height: 100%;
   max-height: none;
   overflow-x: hidden;
-  overflow-y: visible;
+  overflow-y: auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
@@ -18061,18 +18107,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
   display: grid;
   min-width: 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
   gap: 7px;
   align-items: start;
   align-content: start;
-  overflow: visible;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: minmax(230px, 1fr) minmax(236px, 0.82fr) minmax(250px, 1fr);
   grid-template-rows: auto;
   grid-template-areas: 'core spirit side';
-  height: auto;
+  height: 100%;
   min-height: 0;
   align-items: stretch;
   align-content: start;
@@ -20750,9 +20796,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
-    height: auto;
+    height: var(--mvu-hud-frame-height, 620px);
     min-height: 0;
-    max-height: none;
+    max-height: var(--mvu-hud-frame-height, 620px);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
@@ -20805,31 +20851,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
-    height: auto;
+    height: 100%;
     min-height: 0;
-    overflow: visible;
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation) {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    height: 100%;
+    max-height: var(--mvu-unified-detail-max-height, 100%);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page {
-    overflow: visible;
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active {
-    overflow: visible;
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
-    height: auto;
+    height: 100%;
     min-height: 0;
     align-content: start;
-    overflow: visible;
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {
