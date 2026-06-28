@@ -16,10 +16,14 @@
   const 场景候选角色资料占位符 = '{{场景候选角色资料}}';
   const 场景背景角色补充占位符 = '{{场景背景角色补充}}';
   const 场景审计材料占位符 = '{{场景审计材料}}';
+  const 战斗裁断任务占位符 = '{{战斗裁断任务}}';
+  const 战斗裁断输出格式占位符 = '{{战斗裁断输出格式}}';
   const 本轮前置承诺表 = new Map();
   const 本轮模块路由接管表 = new Map();
+  const 本轮战斗裁断接管表 = new Map();
   const 本轮MVU前置记录表 = new Map();
   const 本轮提示限流表 = new Map();
+  let 本轮战斗结算上下文 = null;
   const 正则引擎缓存 = { 模块: null, 承诺: null };
   const 正则近场缓存表 = new Map();
   let 最近MVU前置记录键 = '';
@@ -158,6 +162,92 @@
       return JSON.parse(JSON.stringify(值));
     } catch (_) {}
     return 回退值;
+  }
+
+  function 规范化战斗结算上下文(payload = {}) {
+    const 输入 = payload && typeof payload === 'object' ? payload : {};
+    const 公开战报 = String(输入.公开战报 || 输入.battleReport || 输入.report || '').trim();
+    const 裁断卷宗 = String(输入.裁断卷宗 || 输入.settlementDossier || 输入.dossier || '').trim();
+    if (!公开战报 && !裁断卷宗) return null;
+    return {
+      id: String(输入.id || 输入.批次ID || `battle-settlement-${Date.now()}`).trim(),
+      公开战报,
+      裁断卷宗,
+      来源: String(输入.来源 || 输入.source || 'battle_ui').trim(),
+      时间戳: Number(输入.时间戳 || 输入.timestamp || Date.now()) || Date.now(),
+    };
+  }
+
+  function 登记战斗结算上下文(payload = {}) {
+    const 上下文 = 规范化战斗结算上下文(payload);
+    if (!上下文) return { ok: false, reason: 'battle_settlement_context_empty' };
+    本轮战斗结算上下文 = 上下文;
+    return { ok: true, id: 上下文.id, context: 克隆JSON值(上下文, 上下文) };
+  }
+
+  function 读取战斗结算上下文() {
+    return 本轮战斗结算上下文 && typeof 本轮战斗结算上下文 === 'object' ? 本轮战斗结算上下文 : null;
+  }
+
+  function 本轮输入包含战斗公开战报(text = '') {
+    return /<战斗公开战报>[\s\S]*?<\/战斗公开战报>/i.test(String(text || ''));
+  }
+
+  function 取本轮有效战斗结算上下文(userInput = '') {
+    if (!本轮输入包含战斗公开战报(userInput)) {
+      本轮战斗结算上下文 = null;
+      return null;
+    }
+    return 读取战斗结算上下文();
+  }
+
+  function 构建战斗裁断任务文本() {
+    const 上下文 = 取本轮有效战斗结算上下文(本轮输入文本);
+    if (!上下文) return '无任务';
+    return [
+      '【战斗裁断任务】',
+      '当前存在前端战斗模块提交的战斗结算卷宗。公开战报已在本轮用户输入的 <战斗公开战报> 中提供，你必须以那份公开战报为事实基准，在完成模块路由审查后继续判断本轮战斗是否应结束，并为后续正文准备自然承接。',
+      '',
+      '<战斗裁断卷宗>',
+      上下文.裁断卷宗 || '无',
+      '</战斗裁断卷宗>',
+    ].join('\n');
+  }
+
+  function 构建战斗裁断输出格式文本() {
+    if (!取本轮有效战斗结算上下文(本轮输入文本)) return '';
+    return [
+      '若存在【战斗裁断任务】，必须在 <模块路由> 后追加：',   
+      '<战斗裁断>',
+      '{',
+      '  "模块结算": {',
+      '    "是否结束": false',
+      '  },',
+      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
+      '}',
+      '</战斗裁断>',
+      '',
+      '若战斗结束，<战斗裁断> 必须改为：',
+      '<战斗裁断>',
+      '{',
+      '  "模块结算": {',
+      '    "是否结束": true,',
+      '    "胜方": "参战者名称",',
+      '    "败方": "参战者名称",',
+      '    "败方剩余HP比例": 5',
+      '  },',
+      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
+      '}',
+      '</战斗裁断>',
+      '',
+      '模块结算规则：胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。',
+    ].join('\n');
+  }
+
+  function 替换战斗裁断占位符(text = '') {
+    return String(text || '')
+      .replaceAll(战斗裁断任务占位符, 构建战斗裁断任务文本())
+      .replaceAll(战斗裁断输出格式占位符, 构建战斗裁断输出格式文本());
   }
 
   function 深读对象(对象, 路径, 回退值 = undefined) {
@@ -563,7 +653,9 @@
       !源文本.includes(MVU相互可见性视图占位符) &&
       !源文本.includes(场景候选角色资料占位符) &&
       !源文本.includes(场景背景角色补充占位符) &&
-      !源文本.includes(场景审计材料占位符)
+      !源文本.includes(场景审计材料占位符) &&
+      !源文本.includes(战斗裁断任务占位符) &&
+      !源文本.includes(战斗裁断输出格式占位符)
     ) {
       return 源文本;
     }
@@ -571,7 +663,7 @@
     if (接口 && typeof 接口.替换MVU运行时视图占位符 === 'function') {
       try {
         const statData = 取StatData(context.statData, context.userInput || '');
-        return 接口.替换MVU运行时视图占位符(源文本, viewType, {
+        return 替换战斗裁断占位符(接口.替换MVU运行时视图占位符(源文本, viewType, {
           statData,
           userInput: context.userInput || '',
           lastCharMessage: context.lastCharMessage || '',
@@ -581,12 +673,12 @@
             ...context,
             viewType,
           }),
-        });
+        }));
       } catch (错误) {
         console.warn('[LWCS适配器] MVU运行时占位符替换失败:', 错误);
       }
     }
-    return 源文本
+    return 替换战斗裁断占位符(源文本
       .replaceAll(MVU运行时视图占位符, '')
       .replaceAll(MVU运行时更新占位符, '')
       .replaceAll(MVU更新结构提示占位符, '')
@@ -595,7 +687,7 @@
       .replaceAll(场景候选角色资料占位符, '')
       .replaceAll(场景审计材料占位符, '')
       .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
-      .trim();
+      .trim());
   }
 
   function 读取剧情钩子时间线预览(userInput = '', statData = null) {
@@ -776,14 +868,7 @@
   }
 
   function 构建剧情推进临时系统消息(options = {}) {
-    const 注入列表 = Array.isArray(options?.injects) ? options.injects : [];
     const 输出 = [];
-    const 命中项 = [...注入列表].reverse().find((item) => {
-      const role = String(item?.role || '').trim().toLowerCase();
-      const content = String(item?.content || '');
-      return role === 'system' && (content.includes('<moduleSettlement>') || content.includes('[battle_arbitration]'));
-    });
-    if (命中项) 输出.push({ role: 'system', content: String(命中项.content || '').trim() });
     const 魂灵塔待战消息 = 构建魂灵塔待战系统消息(options?.statData);
     if (魂灵塔待战消息) 输出.push({ role: 'system', content: 魂灵塔待战消息 });
     return 输出;
@@ -804,6 +889,11 @@
 
   function 提取模块路由块(规划文本) {
     const 匹配 = String(规划文本 || '').match(/<模块路由>\s*([\s\S]*?)\s*<\/模块路由>/i);
+    return 匹配 ? String(匹配[1] || '').trim() : '';
+  }
+
+  function 提取战斗裁断块(规划文本) {
+    const 匹配 = String(规划文本 || '').match(/<战斗裁断>\s*([\s\S]*?)\s*<\/战斗裁断>/i);
     return 匹配 ? String(匹配[1] || '').trim() : '';
   }
 
@@ -829,6 +919,15 @@
     const 原因 = String(结果?.reason || '').trim();
     const 事实 = 原因 ? `模块路由${状态}，原因：${原因}。` : `模块路由${状态}。`;
     return `<模块路由结果>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：后续剧情只承接该结果，不要重复触发相同模块或重复结算。\n</模块路由结果>`;
+  }
+
+  function 构建战斗裁断运行事件(结果 = {}) {
+    const 直接事件 = String(结果?.runtimeEvent || '').trim();
+    if (直接事件) return 直接事件;
+    if (结果?.handled !== true) return '';
+    const 状态 = 结果?.finished === true ? '已结束' : '未结束';
+    const 摘要 = String(结果?.summary || '').trim() || `战斗裁断${状态}。`;
+    return `<战斗裁断结果>\n状态：${状态}\n事实：${摘要}\n约束：后续剧情只承接该裁断结果，不要重复输出 <战斗裁断>，不要重复结算同一场战斗。\n</战斗裁断结果>`;
   }
 
   function 限制模块路由接管表大小() {
@@ -893,7 +992,34 @@
     return await 接管承诺;
   }
 
+  async function 尝试接管战斗裁断(规划文本) {
+    const 文本 = String(规划文本 || '');
+    const 裁断块 = 提取战斗裁断块(文本);
+    if (!裁断块) return { action: 'continue', reason: 'battle_adjudication_missing' };
+    const 裁断函数 = 读取窗口函数('__LWCS_APPLY_BATTLE_ADJUDICATION__');
+    if (typeof 裁断函数 !== 'function') return { action: 'continue', reason: 'battle_adjudication_bridge_unavailable' };
+    const 接管键 = 取哈希(裁断块);
+    if (本轮战斗裁断接管表.has(接管键)) return await 本轮战斗裁断接管表.get(接管键);
+    const 接管承诺 = (async () => {
+      let 结果 = null;
+      try {
+        结果 = await Promise.resolve(裁断函数(`<战斗裁断>${裁断块}</战斗裁断>`, { source: 'plot_stage_battle_adjudication' }));
+      } catch (错误) {
+        console.warn('[LWCS适配器] 战斗裁断接管失败，放行正文生成:', 错误);
+        return { action: 'continue', reason: 'battle_adjudication_failed' };
+      }
+      const runtimeEvent = 构建战斗裁断运行事件(结果 || {});
+      return runtimeEvent
+        ? { action: 'continueWithRuntimeEvent', reason: String(结果?.reason || 'battle_adjudication_settled'), result: 结果, runtimeEvent }
+        : { action: 'continue', reason: String(结果?.reason || 'battle_adjudication_skipped'), result: 结果 };
+    })();
+    本轮战斗裁断接管表.set(接管键, 接管承诺);
+    return await 接管承诺;
+  }
+
   async function 正文生成前确认(context = {}) {
+    const 战斗裁断决定 = await 尝试接管战斗裁断(context.planningText || '');
+    if (战斗裁断决定.action === 'continueWithRuntimeEvent') return 战斗裁断决定;
     const 模块路由决定 = await 尝试接管模块路由(context.planningText || '');
     if (模块路由决定.action === 'blocked') return 模块路由决定;
     if (模块路由决定.action === 'continueWithRuntimeEvent') return 模块路由决定;
@@ -926,6 +1052,8 @@
       '场景背景角色补充',
       '场景候选角色资料',
       '场景审计材料',
+      '战斗裁断任务',
+      '战斗裁断输出格式',
     ].includes(String(tagName || '').trim());
   }
 
@@ -942,7 +1070,9 @@
       || 文本.includes(剧情当前主身份占位符)
       || 文本.includes(场景背景角色补充占位符)
       || 文本.includes(场景候选角色资料占位符)
-      || 文本.includes(场景审计材料占位符);
+      || 文本.includes(场景审计材料占位符)
+      || 文本.includes(战斗裁断任务占位符)
+      || 文本.includes(战斗裁断输出格式占位符);
   }
 
   function 清理世界书扫描文本(value) {
@@ -953,6 +1083,7 @@
       .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, ' ')
       .replace(/<JSONPatch>[\s\S]*?<\/JSONPatch>/gi, ' ')
       .replace(/<Analysis>[\s\S]*?<\/Analysis>/gi, ' ')
+      .replace(/<战斗裁断>[\s\S]*?<\/战斗裁断>/gi, ' ')
       .replace(/\{\{MVU_RUNTIME_VIEW\}\}/g, ' ')
       .replace(/\{\{MVU_RUNTIME_UPDATE\}\}/g, ' ')
       .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ')
@@ -961,7 +1092,9 @@
       .replace(/\{\{剧情当前主身份\}\}/g, ' ')
       .replace(/\{\{场景背景角色补充\}\}/g, ' ')
       .replace(/\{\{场景候选角色资料\}\}/g, ' ')
-      .replace(/\{\{场景审计材料\}\}/g, ' ');
+      .replace(/\{\{场景审计材料\}\}/g, ' ')
+      .replace(/\{\{战斗裁断任务\}\}/g, ' ')
+      .replace(/\{\{战斗裁断输出格式\}\}/g, ' ');
   }
 
   const 适配器 = {
@@ -978,6 +1111,7 @@
     registerStoryRuntimeInjects: 注册正文一次性注入,
     buildPlanningRuntimeSystemMessages: 构建剧情推进临时系统消息,
     confirmBeforeStoryGeneration: 正文生成前确认,
+    registerBattleSettlementContext: 登记战斗结算上下文,
     stripRuntimeBlocksForWorldbookScan: 清理世界书扫描文本,
   };
 
@@ -985,6 +1119,7 @@
     try {
       当前窗口[通用适配器键] = 适配器;
       当前窗口[专属适配器键] = 适配器;
+      当前窗口.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__ = 登记战斗结算上下文;
     } catch (_) {}
   }
 })();

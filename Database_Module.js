@@ -19250,7 +19250,7 @@ $CONTENT
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
         const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
-        const shouldSkipFinalTag = (tagName) => String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase();
+        const shouldSkipFinalTag = (tagName) => ['模块路由', '战斗裁断'].includes(String(tagName || '').trim());
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
@@ -19915,7 +19915,44 @@ $CONTENT
                     return 模块路由内容 ? `<模块路由>${模块路由内容}</模块路由>` : '';
                 })
                 .filter(Boolean);
+            const 阶段战斗裁断块列表 = stageSuccessfulResults
+                .map((result) => {
+                    const 战斗裁断内容 = result?.extractedTags && typeof result.extractedTags === 'object'
+                        ? String(result.extractedTags.战斗裁断 || '').trim()
+                        : '';
+                    return 战斗裁断内容 ? `<战斗裁断>${战斗裁断内容}</战斗裁断>` : '';
+                })
+                .filter(Boolean);
+            const 阶段已有战斗裁断 = 阶段战斗裁断块列表.length > 0;
+            for (const 阶段战斗裁断文本 of 阶段战斗裁断块列表) {
+                const 战斗裁断执行键 = hashUserInput_ACU(阶段战斗裁断文本);
+                if (本轮模块路由执行键集合.has(战斗裁断执行键))
+                    continue;
+                本轮模块路由执行键集合.add(战斗裁断执行键);
+                const 战斗裁断决定 = await 确认剧情推进运行时生成前置_ACU(阶段战斗裁断文本, {
+                    skipSkillDesign: true,
+                    source: 'plot_stage_battle_adjudication',
+                });
+                const 事件文本 = 规范化模块路由运行事件文本_ACU(战斗裁断决定);
+                if (事件文本) {
+                    本轮模块路由事件列表.push(事件文本);
+                    aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
+                    if (typeof reloadStorageProvider === 'function') {
+                        try {
+                            await reloadStorageProvider();
+                            sharedContext.allTablesJson = currentJsonTableData_ACU;
+                        }
+                        catch (错误) {
+                            logWarn_ACU('[剧情推进] 战斗裁断执行后刷新运行时数据失败:', 错误);
+                        }
+                    }
+                }
+            }
             for (const 阶段模块路由文本 of 阶段模块路由块列表) {
+                if (阶段已有战斗裁断 && /<模块路由>\s*模块：\s*battle\b/i.test(阶段模块路由文本)) {
+                    logDebug_ACU('[剧情推进] 本阶段已应用战斗裁断，跳过 battle 模块路由重入。');
+                    continue;
+                }
                 const 模块路由执行键 = hashUserInput_ACU(阶段模块路由文本);
                 if (本轮模块路由执行键集合.has(模块路由执行键))
                     continue;

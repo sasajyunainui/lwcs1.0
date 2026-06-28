@@ -3446,7 +3446,7 @@ class BattleUIComponent {
 
     if (typeof root.sendToAI !== 'function') {
       root.sendToAI = function (playerInput, systemPrompt, meta = {}) {
-        const requestKind = String(meta?.requestKind || 'battle_arbitration');
+        const requestKind = String(meta?.requestKind || 'battle_settlement_plot');
         const detail = {
           requestSource: 'Battle_UI',
           requestKind,
@@ -3469,6 +3469,70 @@ class BattleUIComponent {
         }
         return detail;
       };
+    }
+
+    function cleanBattleReportLineForStory(line = '') {
+      return String(line || '')
+        .replace(/\[[^\]]*(?:行为预演|规划|候选|权重|Roll|续推判定|单回合仲裁|前端|暗箱)[^\]]*\][^。！？\n]*(?:[。！？]|$)/g, '')
+        .replace(/\(Roll:[^)]+\)/g, '')
+        .replace(/Roll[:：][0-9.]+/gi, '')
+        .replace(/权重[:：]?\s*-?\d+(?:\.\d+)?/g, '')
+        .replace(/候选(?:来源|池)?[:：][^。！？\n]+/g, '')
+        .replace(/JSONPatch|UpdateVariable|moduleSettlement|battle_arbitration/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0 } = {}) {
+      const lines = (Array.isArray(battleLog) ? battleLog : [])
+        .map(cleanBattleReportLineForStory)
+        .filter(Boolean)
+        .slice(-8);
+      const header = `本轮战斗已由战斗模块完成结算：${modeLabel || '战斗'}，共推进 ${Math.max(0, Number(roundCount || 0))} 回合。`;
+      const outcome = `当前结果：${battleOutcome?.label || battleOutcome?.type || combatData?.裁断结果 || '未分胜负'}。`;
+      const intent = combatData?.战斗意图 ? `战斗意图：${combatData.战斗意图}。` : '';
+      return [
+        '<战斗公开战报>',
+        header,
+        ...lines.map((line, index) => `${index + 1}. ${line}`),
+        outcome,
+        intent,
+        '</战斗公开战报>',
+      ].filter(Boolean).join('\n');
+    }
+
+    function buildBattleAdjudicationDossier({ combatData = {}, battleOutcome = {}, 压制战规则文本 = '', 虚拟战规则文本 = '', 裁断约束文本 = '' } = {}) {
+      const participants = combatData?.参战者 && typeof combatData.参战者 === 'object' ? combatData.参战者 : {};
+      const formatNames = list => (Array.isArray(list) ? list : [])
+        .map(unit => String(unit?.name || unit?.名称 || '').trim())
+        .filter(Boolean)
+        .join('、') || '无';
+      return [
+        `[前端战果类型]\n${battleOutcome?.type || 'unknown'}`,
+        `[前端战果说明]\n${battleOutcome?.label || ''}`,
+        `[战斗类型]\n${combatData?.战斗类型 || ''}`,
+        `[战斗意图]\n${combatData?.战斗意图 || ''}`,
+        `[参战者]\n我方：${formatNames(participants.team_player)}\n敌方：${formatNames(participants.team_enemy)}`,
+        `[前端建议结果]\n${combatData?.前端建议结果 || ''}`,
+        `[建议终点HP区间]\n${combatData?.建议终点HP区间 || ''}`,
+        `[前端推荐终点HP]\n${combatData?.前端推荐终点HP ?? ''}`,
+        `[预计HP伤害]\n${combatData?.预计HP伤害 ?? ''}`,
+        `[裁断约束]\n${裁断约束文本 || '无'}${压制战规则文本 || ''}${虚拟战规则文本 || ''}`,
+      ].join('\n');
+    }
+
+    function registerBattleSettlementContext(payload = {}) {
+      let api = null;
+      try { api = root.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__; } catch (_) {}
+      try { if (typeof api !== 'function') api = root.parent?.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__; } catch (_) {}
+      try { if (typeof api !== 'function') api = root.top?.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__; } catch (_) {}
+      if (typeof api !== 'function') return { ok: false, reason: 'battle_settlement_context_api_missing' };
+      try {
+        return api(payload);
+      } catch (error) {
+        console.warn('[battle] register battle settlement context failed', error);
+        return { ok: false, reason: error && error.message ? error.message : 'battle_settlement_context_register_failed' };
+      }
     }
 
     root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
@@ -19084,18 +19148,29 @@ class BattleUIComponent {
           ? `\n[虚拟战规则]\n本场为虚拟战斗，永远允许被击杀，败方剩余HP比例可以为0。若现实建档角色在虚拟战中死亡，模块会让其退出虚拟世界并恢复全部HP，同时按最后一击伤害占总生命比例削减精神力；最后一击比例=${Math.round(本次最大单击HP比例 * 100)}%，精神力消耗最低40%、被秒杀或超过100%时消耗90%。`
           : '';
         const 裁断约束文本 = `可致死：${combatData.裁断约束?.可致死 ? '是' : '否'}；可外界介入：${combatData.裁断约束?.可外界介入 ? '是' : '否'}；关系收手系数：${combatData.裁断约束?.关系收手系数}；场地安全系数：${combatData.裁断约束?.场地安全系数}；实力差距系数：${combatData.裁断约束?.实力差距系数}；绝境失手系数：${combatData.裁断约束?.绝境失手系数}；失手等级：${combatData.裁断约束?.失手等级}`;
-        let systemPrompt = `<moduleSettlement>\n[battle_arbitration] 前端战斗模块已经完成本轮暗箱演算。剧情推进和正文只承接本次战报与结算结果，不要重新开启战斗模块，不要输出 <moduleIntent>、<UpdateVariable>、最小战斗种子或任何模块接管说明。\n[前端暗箱演算完毕]\n${modeLabel}，共进行 ${roundCount} 回合。\n[前端战报]\n${battleLog.join('\n') || '无'}\n[前端战果类型]\n${battleOutcome.type}\n[前端战果说明]\n${battleOutcome.label}\n[战斗意图]\n${combatData.战斗意图}\n[前端建议结果]\n${combatData.前端建议结果}\n[建议终点HP区间]\n${combatData.建议终点HP区间}\n[前端推荐终点HP]\n${combatData.前端推荐终点HP}\n[预计HP伤害]\n${combatData.预计HP伤害}\n[裁断约束]\n${裁断约束文本}${压制战规则文本}${虚拟战规则文本}\n</moduleSettlement>\n\n请严格根据[前端战报]描写画面。你只判断剧情裁断，不直接输出 MVU 更新。若战斗未结束，模块会维持战斗；若战斗结束，战斗模块会读取你的 <战斗裁断> 并按胜败方与败方剩余HP比例完成最终数值写回。`;
-        systemPrompt += `\n\n【战斗裁断固定输出】\n最终回复末尾必须额外追加一个 <战斗裁断>{...}</战斗裁断>。模块只强解析“模块结算”，“正文承接”只用于后续正文衔接。\n未结束时必须严格输出：\n<战斗裁断>\n{\n  "模块结算": {\n    "是否结束": false\n  },\n  "正文承接": "自然语言承接说明"\n}\n</战斗裁断>\n结束时必须严格输出：\n<战斗裁断>\n{\n  "模块结算": {\n    "是否结束": true,\n    "胜方": "参战者名称",\n    "败方": "参战者名称",\n    "败方剩余HP比例": 5\n  },\n  "正文承接": "自然语言承接说明"\n}\n</战斗裁断>\n模块结算规则：是否结束必须是 true 或 false；false 时模块结算只能包含 是否结束；true 时必须包含 是否结束、胜方、败方、败方剩余HP比例；胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。`;
-        sendToAI(visiblePlayerInput || String(playerInput || '战斗行动').split('\n')[0] || '战斗行动', systemPrompt, {
+        const 公开战报 = buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount });
+        const 裁断卷宗 = buildBattleAdjudicationDossier({ combatData, battleOutcome, 压制战规则文本, 虚拟战规则文本, 裁断约束文本 });
+        const 战斗上下文登记 = registerBattleSettlementContext({
+          id: combatData.本次操作?.批次ID,
+          公开战报,
+          裁断卷宗,
+          来源: 'BattleUI_Module',
+        });
+        const userBattleMessage = [
+          String(visiblePlayerInput || playerInput || '战斗行动').split('\n')[0] || '战斗行动',
+          公开战报,
+        ].filter(Boolean).join('\n\n');
+        sendToAI(userBattleMessage, '', {
           mvuUpdate,
-          requestKind: 'battle_arbitration',
+          requestKind: 'battle_settlement_plot',
         });
         return {
-          intentText: visiblePlayerInput || String(playerInput || '战斗行动'),
+          intentText: userBattleMessage,
           mode: 'engine_arbitrated',
           battleMode: mode,
           logs: [...battleLog],
           roundsExecuted: roundCount,
+          battleSettlementContext: 战斗上下文登记,
           aiRequest: root.__lastBattleAIRequest || null,
         };
       }
@@ -29935,9 +30010,37 @@ class BattleUIComponent {
               return false;
             });
           };
+          const 技能具备伤害原型 = 技能 => getSkillEffects(技能, { 行为规划: true })
+            .some(effect => String(effect?.原型 || '').trim() === '伤害结算' && (
+              Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0 ||
+              Number(effect?.段数 || 0) > 0 ||
+              /伤害/.test(String(effect?.伤害类型 || effect?.结算 || ''))
+            ));
+          const 支援技能有新收益 = 技能 => {
+            if (!技能) return false;
+            const 效果列表 = getSkillEffects(技能, { 行为规划: true });
+            const 技能名 = String(技能.name || 技能.魂技名 || 技能.技能名称 || '').trim();
+            const 近期次数 = Number(ensureActorDecisionMemory(actor).recent_actions?.[技能名] || 0);
+            const 目标 = allyTarget || actor;
+            const 目标血量 = getCombatHpRatio(目标);
+            const 自身资源 = 读取规划综合资源比例_V1(actor);
+            const 来袭 = strategicContext.behaviorState?.threatProfile || {};
+            const 有急救 = 目标血量 < 0.72 && 效果列表.some(effect => isBattleRecoverEffect(effect) || String(effect?.原型 || '').trim() === '资源变化');
+            const 有保护 = (来袭.lethalRisk === true || 来袭.severeDamage === true || getCombatHpRatio(actor) < 0.45) &&
+              效果列表.some(effect => ['护盾变化', '规则防御'].includes(String(effect?.原型 || '').trim()) || String(effect?.结算 || '').trim() === '伤害分摊');
+            const 有异常处理 = 效果列表.some(effect => ['状态移除', '机制授予'].includes(String(effect?.原型 || '').trim()));
+            const 有资源窗口 = 自身资源 < 0.62 && 效果列表.some(effect => String(effect?.原型 || '').trim() === '资源变化' && 读取战斗数值正负(effect?.数值) > 0);
+            if (单位已有同名维持技能(actor, 技能) && !有急救 && !有保护 && !有异常处理) return false;
+            if (近期次数 >= 1 && !有急救 && !有保护 && !有资源窗口) return false;
+            return 有急救 || 有保护 || 有异常处理 || 有资源窗口;
+          };
+          const 存在有效伤害魂技 = (availableSkills || []).some(技能 => 技能具备伤害原型(newSkillData(技能)));
+          const 支援无伤害战术窗口 =
+            ['辅助系', '治疗系', '食物系'].includes(行动者系别) &&
+            !存在有效伤害魂技;
           const 主动职责候选 = ['辅助系', '治疗系', '食物系'].includes(行动者系别)
             ? (skillContext.评分技能列表 || [])
-                .filter(项目 => 项目?.skill && 是职责支援技能(项目.规划技能 || 项目.skill))
+                .filter(项目 => 项目?.skill && 是职责支援技能(项目.规划技能 || 项目.skill) && 支援技能有新收益(项目.规划技能 || 项目.skill))
                 .map(项目 => {
                   const 技能名 = String(项目.skill.name || 项目.skill.技能名称 || '').trim();
                   const 近期次数 = Number(ensureActorDecisionMemory(actor).recent_actions?.[技能名] || 0);
@@ -29954,8 +30057,9 @@ class BattleUIComponent {
           const 支援职责可承压触发 =
             ['辅助系', '治疗系', '食物系'].includes(行动者系别) &&
             是职责支援技能(主动职责技能) &&
+            支援技能有新收益(主动职责技能) &&
             strategicContext.behaviorState?.threatProfile?.lethalRisk !== true;
-          if (主动职责技能 && (!必要战略窗口 || 支援职责可承压触发)) {
+          if (主动职责技能 && 支援技能有新收益(主动职责技能) && (!必要战略窗口 || 支援职责可承压触发)) {
             recordActorActionMemory(actor, 主动职责技能.name || 主动职责技能.技能名称 || '支援补位');
             return convertDecisionToTurnAction(
               makeActorAction(
@@ -30006,6 +30110,31 @@ class BattleUIComponent {
             isSupport,
             isLowHealth,
           );
+          if (支援无伤害战术窗口) {
+            const 来袭 = strategicContext.behaviorState?.threatProfile || {};
+            tacticalBranches.push({
+              name: '普通攻击',
+              weight: 来袭.lethalRisk === true || 来袭.severeDamage === true ? 18 : 44,
+              build: () => makeActorAction(
+                '常规攻击',
+                '[无伤害魂技] 当前没有有效伤害魂技，改用普通攻击试探并争取空间。',
+                normalizeSkillData({
+                  name: '普通攻击',
+                  技能分类: '输出',
+                  消耗: '无',
+                  前摇: 10,
+                  _效果数组: [
+                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '物理伤害', 防御穿透: 0 },
+                  ],
+                }, '普通攻击'),
+              ),
+            });
+            tacticalBranches.forEach(候选 => {
+              if (!候选) return;
+              if (候选.name === '伺机闪避') 候选.weight = Number(候选.weight || 0) + (来袭.lethalRisk === true || 来袭.severeDamage === true ? 54 : 18);
+              if (候选.name === '肉体兜底') 候选.weight = Number(候选.weight || 0) + (来袭.lethalRisk === true || 来袭.severeDamage === true ? 42 : 14);
+            });
+          }
           const tacticalAction = chooseAndBuildActorAction(
             actor,
             enemyTarget,
@@ -30086,7 +30215,7 @@ class BattleUIComponent {
           const 支援轮换技能 = isSupport
             ? (availableSkills || [])
                 .map(skill => newSkillData(skill))
-                .filter(skill => skill && 是职责支援技能(skill) && !单位已有同名维持技能(actor, skill))
+                .filter(skill => skill && 是职责支援技能(skill) && 支援技能有新收益(skill))
                 .filter(skill => parseSkillCostForChar(skill, actor, {
                   actor,
                   caster: actor,
@@ -30106,7 +30235,7 @@ class BattleUIComponent {
           const 任意轮换技能 = isSupport && !支援轮换技能
             ? (availableSkills || [])
                 .map(skill => newSkillData(skill))
-                .filter(skill => skill && !单位已有同名维持技能(actor, skill))
+                .filter(skill => skill && (技能具备伤害原型(skill) || 支援技能有新收益(skill)))
                 .filter(skill => parseSkillCostForChar(skill, actor, {
                   actor,
                   caster: actor,
@@ -32429,10 +32558,13 @@ class BattleUIComponent {
           const enemy = renderUiCombatant('enemy', combatData.参战者.team_enemy?.[0]);
           renderUiChips(combatData, player, enemy);
 
-          const charData =
+          const rawCharData =
             window.BattleUIBridge?.getMVU(`char.${player.name}`) ||
             window.BattleUIBridge?.getMVU(`char.${window.BattleUIBridge?.getMVU('sys.玩家名') || ''}`) ||
             combatData.参战者.team_player?.[0];
+          const charData = rawCharData && typeof rawCharData === 'object' && !Array.isArray(rawCharData)
+            ? { ...rawCharData, name: String(rawCharData.name || rawCharData.名称 || player.name || '').trim() || player.name }
+            : rawCharData;
           const availableActions = ui_getAvailableActions(charData, combatData);
           const previousState = window.BattleUI?.state || {};
           const activeCategory = previousState.activeCategory || '全部';

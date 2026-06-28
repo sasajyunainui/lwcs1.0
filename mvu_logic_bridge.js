@@ -9092,25 +9092,35 @@
     return { ok: true, settlement: { 是否结束: true, 胜方: winnerName, 败方: loserName, 败方剩余HP比例: hpRatio } };
   }
 
-  async function applyBattleAdjudicationFromText(rawText = '', requestKind = '') {
-    if (toText(requestKind, '') !== 'battle_arbitration') return;
-    const payload = extractBattleAdjudicationPayload(rawText);
-    if (!payload) return;
+  async function applyBattleAdjudicationFromText(rawText = '', options = {}) {
+    const payload =
+      rawText && typeof rawText === 'object' && !Array.isArray(rawText)
+        ? rawText
+        : extractBattleAdjudicationPayload(rawText);
+    if (!payload) return { handled: false, reason: 'battle_adjudication_payload_missing' };
     await refreshLiveSnapshot({ force: true });
     const snapshot = liveSnapshot || lastRenderableSnapshot || {};
     const combatData = deepGet(snapshot, 'rootData.world.战斗', {});
     if (!combatData || typeof combatData !== 'object' || !combatData.进行中) {
       console.warn('[battle] 收到战斗裁断,但当前 world.战斗.进行中 = false,跳过应用', { 战斗类型: combatData && combatData.战斗类型 });
-      return;
+      return { handled: false, reason: 'battle_not_running' };
     }
     const validation = validateBattleAdjudicationPayload(payload, combatData);
     if (!validation.ok) {
       console.warn('[battle] 战斗裁断校验失败', { reason: validation.reason, payload });
       showUiToast(`战斗裁断无效：${validation.reason}`, 'error', 4200);
-      return;
+      return { handled: false, reason: validation.reason };
     }
     const settlement = validation.settlement;
-    if (settlement.是否结束 === false) return;
+    if (settlement.是否结束 === false) {
+      return {
+        handled: true,
+        finished: false,
+        reason: 'battle_continues',
+        summary: '战斗裁断为未结束，战斗模块维持进行中。',
+        runtimeEvent: '<战斗裁断结果>\n状态：未结束\n事实：战斗裁断为未结束，战斗模块维持进行中。\n约束：后续剧情承接当前战局，不要重复结算同一轮战斗。\n</战斗裁断结果>',
+      };
+    }
     const loserName = settlement.败方;
     const loserKey = resolveSnapshotCharKey(snapshot, loserName);
     const loserParticipant = getBattleParticipantByName(combatData, loserName);
@@ -9129,7 +9139,7 @@
       : null;
     if (魂灵塔玩家胜利 && !魂灵塔待结算) {
       showUiToast('魂灵塔结算失败：守塔魂灵缺少标准物种、年限或品质。', 'error', 4200);
-      return;
+      return { handled: false, reason: 'soul_tower_pending_settlement_invalid' };
     }
 
     // 状态冲突检测 + swipe 幂等化:
@@ -9144,7 +9154,7 @@
         : (loserParticipant && loserParticipant.状态 ? loserParticipant.状态.存活 : true);
     if (!是swipe重落 && loserAliveSnapshot === false) {
       console.warn('[battle] 败方已经标记死亡且无前置快照,忽略重复裁断', { 败方: loserName });
-      return;
+      return { handled: false, reason: 'battle_loser_already_dead' };
     }
 
     const hpMax = Math.max(
@@ -9286,9 +9296,20 @@
     try {
       await applyJsonPatchOpsByEditor(patches, { force: true });
       await refreshLiveSnapshot({ force: true });
+      const summary = `${settlement.胜方}战胜${settlement.败方}，${settlement.败方}剩余HP ${settlement.败方剩余HP比例}%`;
+      return {
+        handled: true,
+        finished: true,
+        reason: 'battle_adjudication_applied',
+        settlement,
+        summary,
+        patchOps: patches,
+        runtimeEvent: `<战斗裁断结果>\n状态：已结束\n事实：${summary}。\n约束：后续剧情只承接该裁断结果，不要重复输出 <战斗裁断>，不要重复结算同一场战斗。\n</战斗裁断结果>`,
+      };
     } catch (error) {
       console.warn('[battle] 战斗裁断 patch 写入失败', { 胜方: settlement.胜方, 败方: settlement.败方, error });
       showUiToast(`战斗裁断写入失败：${error && error.message ? error.message : error}`, 'error', 4200);
+      return { handled: false, reason: error && error.message ? error.message : 'battle_adjudication_patch_failed', error };
     }
   }
 
@@ -9377,7 +9398,6 @@
     const assistantMessage = await waitForUiContinuationAssistantMessage(userIndex, 2);
     if (!assistantMessage) return;
     const rawText = String(assistantMessage.mes || '');
-    await applyBattleAdjudicationFromText(rawText, requestKind);
     await 应用复刻裁定结果(rawText, requestKind);
     const visibleText = sanitizeUiContinuationVisibleText(rawText);
     if (visibleText && visibleText !== rawText && typeof helper?.setChatMessages === 'function') {
@@ -9540,7 +9560,7 @@
     const sendFromBattleUi = async (detail = {}) => {
       const requestKind = toText(
         detail.requestKind || detail.channels?.requestKind || detail.options?.requestKind,
-        'battle_arbitration',
+        'battle_settlement_plot',
       );
       const patchOps = Array.isArray(detail.mvuUpdate?.patchOps) ? detail.mvuUpdate.patchOps : [];
       return dispatchUiAiRequest(detail.playerInput, detail.systemPrompt, { requestKind, patchOps });
@@ -43370,7 +43390,18 @@ ${播报文本}
     return { ok: true, combatData };
   }
 
-  function 构建自动战斗裁断提示(combatData = {}, 执行结果 = {}) {
+  function 清理自动战斗公开战报行(line = '') {
+    return toText(line, '')
+      .replace(/\[[^\]]*(?:行为预演|规划|候选|权重|Roll|续推判定|单回合仲裁|前端|暗箱)[^\]]*\][^。！？\n]*(?:[。！？]|$)/g, '')
+      .replace(/\(Roll:[^)]+\)/g, '')
+      .replace(/Roll[:：][0-9.]+/gi, '')
+      .replace(/权重[:：]?\s*-?\d+(?:\.\d+)?/g, '')
+      .replace(/JSONPatch|UpdateVariable|moduleSettlement|battle_arbitration/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function 构建自动战斗公开战报(combatData = {}, 执行结果 = {}) {
     const 战报列表 = Array.isArray(执行结果.logs) ? 执行结果.logs : [];
     const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
     const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
@@ -43386,48 +43417,39 @@ ${播报文本}
         : 战果类型 === 'enemy_win'
           ? '敌方取得阶段胜势'
           : '战斗仍在持续';
-    return `<moduleSettlement>
-[battle_arbitration] 前端战斗模块已经按自动模式完成暗箱推演。剧情推进和正文只承接本次战报与结算结果，不要重新开启战斗模块，不要输出 <moduleIntent>、<UpdateVariable>、最小战斗种子或任何模块接管说明。
-[前端暗箱演算完毕]
-自动模式，实际推演 ${toNumber(执行结果.roundsExecuted, 0)} 回合。
-[前端战报]
-${战报列表.join('\n') || '无'}
-[前端战果类型]
-${战果类型}
-[前端战果说明]
-${战果说明}
-[存活统计]
-我方存活:${玩家存活}；敌方存活:${敌方存活}
-[战斗意图]
-${toText(combatData.战斗意图, '点到为止')}
-</moduleSettlement>
+    return [
+      '<战斗公开战报>',
+      `自动战斗已由战斗模块完成结算：实际推演 ${toNumber(执行结果.roundsExecuted, 0)} 回合。`,
+      ...战报列表.map(清理自动战斗公开战报行).filter(Boolean).slice(-8).map((line, index) => `${index + 1}. ${line}`),
+      `当前结果：${战果说明}。`,
+      `存活统计：我方存活 ${玩家存活}；敌方存活 ${敌方存活}。`,
+      `战斗意图：${toText(combatData.战斗意图, '点到为止')}。`,
+      '</战斗公开战报>',
+    ].join('\n');
+  }
 
-请严格根据[前端战报]描写画面。你只判断剧情裁断，不直接输出 MVU 更新。若战斗未结束，模块会维持战斗；若战斗结束，战斗模块会读取你的 <战斗裁断> 并按胜败方与败方剩余HP比例完成最终数值写回。
-
-【战斗裁断固定输出】
-最终回复末尾必须额外追加一个 <战斗裁断>{...}</战斗裁断>。模块只强解析“模块结算”，“正文承接”只用于后续正文衔接。
-未结束时必须严格输出：
-<战斗裁断>
-{
-  "模块结算": {
-    "是否结束": false
-  },
-  "正文承接": "自然语言承接说明"
-}
-</战斗裁断>
-结束时必须严格输出：
-<战斗裁断>
-{
-  "模块结算": {
-    "是否结束": true,
-    "胜方": "参战者名称",
-    "败方": "参战者名称",
-    "败方剩余HP比例": 5
-  },
-  "正文承接": "自然语言承接说明"
-}
-</战斗裁断>
-模块结算规则：是否结束必须是 true 或 false；false 时模块结算只能包含 是否结束；true 时必须包含 是否结束、胜方、败方、败方剩余HP比例；胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。`;
+  function 构建自动战斗裁断卷宗(combatData = {}, 执行结果 = {}) {
+    const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
+    const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
+    const 战果类型 =
+      执行结果.winner === 'player'
+        ? 'player_win'
+        : 执行结果.winner === 'enemy'
+          ? 'enemy_win'
+          : 'unfinished';
+    const 战果说明 =
+      战果类型 === 'player_win'
+        ? '玩家方取得阶段胜势'
+        : 战果类型 === 'enemy_win'
+          ? '敌方取得阶段胜势'
+          : '战斗仍在持续';
+    return [
+      `[前端战果类型]\n${战果类型}`,
+      `[前端战果说明]\n${战果说明}`,
+      `[战斗类型]\n${toText(combatData.战斗类型, '')}`,
+      `[存活统计]\n我方存活:${玩家存活}；敌方存活:${敌方存活}`,
+      `[战斗意图]\n${toText(combatData.战斗意图, '点到为止')}`,
+    ].join('\n');
   }
 
   async function 自动执行战斗模块路由(snapshot, request = {}) {
@@ -43471,8 +43493,14 @@ ${toText(combatData.战斗意图, '点到为止')}
     const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
     let 提交结果 = null;
     try {
-      提交结果 = await dispatchUiAiRequest('自动战斗推进', 构建自动战斗裁断提示(战斗数据, 执行结果), {
-        requestKind: 'battle_arbitration',
+      const 公开战报 = 构建自动战斗公开战报(战斗数据, 执行结果);
+      const 裁断卷宗 = 构建自动战斗裁断卷宗(战斗数据, 执行结果);
+      const 登记接口 = typeof window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__ === 'function'
+        ? window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__
+        : null;
+      if (登记接口) 登记接口({ 公开战报, 裁断卷宗, 来源: 'auto_battle_route' });
+      提交结果 = await dispatchUiAiRequest(['自动战斗推进', 公开战报].filter(Boolean).join('\n\n'), '', {
+        requestKind: 'battle_settlement_plot',
         patchOps,
         skipActionLock: true,
       });
@@ -45593,6 +45621,8 @@ ${toText(combatData.战斗意图, '点到为止')}
   }
 
   function installDirectModuleIntentGuard() {
+    window.__LWCS_APPLY_BATTLE_ADJUDICATION__ = (textOrPayload, options = {}) =>
+      applyBattleAdjudicationFromText(textOrPayload, options);
     window.__MVU_ROUTE_MODULE_INTENT__ = (input, options = {}) => routeModuleIntentPayload(input, options);
     if (!window.__MVU_MODULE_INTENT_ROUTER_EVENT_BOUND__) {
       window.addEventListener('mvu-module-intent', event => {
