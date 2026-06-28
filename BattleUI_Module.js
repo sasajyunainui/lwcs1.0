@@ -2999,16 +2999,6 @@ class BattleUIComponent {
       '虚拟裁断数据',
     ];
 
-    const COMBAT_WORLD_TRANSIENT_KEYS = [
-      '阶段',
-      '裁断约束',
-      '前端建议结果',
-      '建议终点HP区间',
-      '前端推荐终点HP',
-      '预计HP伤害',
-      '本次操作',
-    ];
-
     function compactCombatParticipantForPersistence(participant) {
       if (participant === null || participant === undefined) return undefined;
       if (typeof participant === 'string' || typeof participant === 'number') {
@@ -3076,12 +3066,6 @@ class BattleUIComponent {
       const previousRawCombatData = sanitizeCombatPersistenceData(getMvuValue('world.战斗', undefined));
       const previousCombatData = compactCombatDataForPersistence(previousRawCombatData);
       appendJsonPatchDiff(ops, '/world/战斗', previousCombatData, safeCombatData);
-      if (previousRawCombatData && typeof previousRawCombatData === 'object') {
-        COMBAT_WORLD_TRANSIENT_KEYS.forEach(key => {
-          if (!Object.prototype.hasOwnProperty.call(previousRawCombatData, key)) return;
-          ops.push({ op: 'remove', path: `/world/战斗/${escapeJsonPointerSegment(key)}` });
-        });
-      }
 
       const participants = fullCombatData?.参战者;
       if (!participants) return ops;
@@ -30987,7 +30971,6 @@ class BattleUIComponent {
               reason: costParsed.canCast ? '' : (costParsed.failureReason || '状态不足'),
               raw_skill: skill,
             };
-            套用动作实际前摇(charData, 技能动作, 读取UI经验目标(skill), combatData);
             actions.push(技能动作);
           });
 
@@ -31014,7 +30997,6 @@ class BattleUIComponent {
               raw_skill: 物品技能,
               物品名,
             };
-            套用动作实际前摇(charData, 技能动作, 读取UI经验目标(物品技能), combatData);
             actions.push(技能动作);
           });
 
@@ -31049,7 +31031,6 @@ class BattleUIComponent {
                 前摇: 斗铠前摇,
               }),
             };
-            套用动作实际前摇(charData, 斗铠动作);
             actions.push(斗铠动作);
           }
 
@@ -31073,7 +31054,6 @@ class BattleUIComponent {
               equip_target: 'mech',
               raw_skill: normalizeSkillData({ name: '召唤机甲', 技能分类: '辅助', 消耗: '无', 前摇: 机甲前摇 }),
             };
-            套用动作实际前摇(charData, 机甲动作);
             actions.push(机甲动作);
           }
 
@@ -31092,7 +31072,6 @@ class BattleUIComponent {
               reason: 生命之火消耗.canCast ? '' : (生命之火消耗.failureReason || '状态不足'),
               raw_skill: 生命之火技能,
             };
-            套用动作实际前摇(charData, 生命之火动作);
             actions.push(生命之火动作);
           }
 
@@ -32538,7 +32517,7 @@ class BattleUIComponent {
             type,
             action_type: type,
             skill: buildIntentSerializedSkill(skill),
-            前摇: Number(skill.前摇 ?? 0) || 0,
+            前摇: Number(action.cast_time ?? skill.前摇 ?? 0) || 0,
             target_name: resolvedTargetName,
             前摇已结算: action.前摇已结算 === true,
           };
