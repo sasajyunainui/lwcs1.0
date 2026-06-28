@@ -27702,12 +27702,12 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-bar,
 #detailModal #mvu-battle-inline-host .resource-bar {
   position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(64px, 1fr) minmax(88px, auto);
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   min-width: 0;
   min-height: 26px;
-  padding: 4px 8px;
+  padding: 4px 8px 4px 8px;
   overflow: hidden;
   border-radius: calc(var(--战斗圆角) * 0.32);
   background:
@@ -27733,6 +27733,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-track,
   position: relative;
   min-width: 0;
   height: 8px;
+  margin-right: -1px;
   overflow: hidden;
   border-radius: calc(var(--战斗圆角) * 0.24);
   background: rgba(0, 0, 0, 0.38);
@@ -27796,7 +27797,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-fill.m
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-text,
 #detailModal #mvu-battle-inline-host .resource-text {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  right: 8px;
   z-index: 2;
   min-width: 88px;
   overflow: visible;
@@ -27807,7 +27810,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-text,
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  transform: translateY(-50%);
   text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.92),
     0 0 2px rgba(255, 255, 255, 0.86),
     0 0 10px color-mix(in srgb, var(--战斗资源色, var(--战斗主色)) 46%, transparent);
 }
@@ -28201,6 +28206,11 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-target-c
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-target-controls[hidden],
 #detailModal #mvu-battle-inline-host .battle-target-controls[hidden] {
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host #ui-intent-output,
+#detailModal #mvu-battle-inline-host #ui-intent-output {
   display: none;
 }
 
@@ -28733,7 +28743,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .resource-bar,
   #detailModal #mvu-battle-inline-host .resource-bar {
-    grid-template-columns: 38px minmax(54px, 1fr) minmax(82px, auto);
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .stats-grid,

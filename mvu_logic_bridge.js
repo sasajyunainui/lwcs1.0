@@ -41419,7 +41419,7 @@ ${播报文本}
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="battle-action-summary" id="ui-action-summary"></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
-                  <textarea id="ui-intent-output" hidden></textarea>
+                  <input id="ui-intent-output" type="hidden" value="">
                   <div class="battle-exec-bar">
                     <div class="battle-settings-strip">
                       <div class="mode-group" id="ui-mode-group">
@@ -41464,7 +41464,7 @@ ${播报文本}
       <div id="ui-action-grid"></div>
       <div id="ui-target-controls" hidden></div>
       <div id="ui-tower-settlement" hidden></div>
-      <textarea id="ui-intent-output" hidden></textarea>
+      <input id="ui-intent-output" type="hidden" value="">
       <select id="ui-intent-mode"><option value="点到为止" selected>点到为止</option></select>
     </div>`;
   }
