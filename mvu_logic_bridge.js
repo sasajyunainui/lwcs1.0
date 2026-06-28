@@ -41456,6 +41456,7 @@ ${播报文本}
                 </div>
                 <div class="battle-target-deck">
                   <div class="battle-action-summary" id="ui-action-summary"></div>
+                  <div class="battle-preview-panel" id="ui-battle-preview-panel" hidden></div>
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
                   <input id="ui-intent-output" type="hidden" value="">
@@ -41504,6 +41505,7 @@ ${播报文本}
                     </div>
                     <div class="battle-exec-actions">
                       <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">&lt; 退出</button>
+                      <button class="ghost-btn battle-preview-btn" id="ui-battle-preview" type="button">预演</button>
                       <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">⚡ 结算 EXECUTE</button>
                     </div>
                   </div>
@@ -41525,6 +41527,7 @@ ${播报文本}
       <div id="ui-summon-queue" hidden></div>
       <div id="ui-action-filters"></div>
       <div id="ui-action-grid"></div>
+      <div id="ui-battle-preview-panel" hidden></div>
       <div id="ui-target-controls" hidden></div>
       <div id="ui-tower-settlement" hidden></div>
       <input id="ui-intent-output" type="hidden" value="">

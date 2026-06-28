@@ -28417,6 +28417,133 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
     inset 0 0 0 1px color-mix(in srgb, var(--战斗强调色) 18%, transparent);
 }
 
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-panel,
+#detailModal #mvu-battle-inline-host .battle-preview-panel {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-height: 310px;
+  overflow: hidden auto;
+  padding: 7px 8px;
+  border-radius: calc(var(--战斗圆角) * 0.34);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--战斗主色) 10%, transparent), transparent 66%),
+    rgba(2, 9, 18, 0.72);
+  box-shadow:
+    inset 1px 1px 0 var(--战斗边缘高光),
+    inset -1px -1px 0 var(--战斗暗侧阴影),
+    inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 22%, transparent);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--战斗强调色) 30%, transparent) transparent;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-panel[hidden],
+#detailModal #mvu-battle-inline-host .battle-preview-panel[hidden] {
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-head,
+#detailModal #mvu-battle-inline-host .battle-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-head span,
+#detailModal #mvu-battle-inline-host .battle-preview-head span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-head em,
+#detailModal #mvu-battle-inline-host .battle-preview-head em,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-report p span,
+#detailModal #mvu-battle-inline-host .battle-preview-report p span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-empty,
+#detailModal #mvu-battle-inline-host .battle-preview-empty {
+  color: var(--文字弱色);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 680;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-head b,
+#detailModal #mvu-battle-inline-host .battle-preview-head b {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-report,
+#detailModal #mvu-battle-inline-host .battle-preview-report,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace,
+#detailModal #mvu-battle-inline-host .battle-preview-trace {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-report p,
+#detailModal #mvu-battle-inline-host .battle-preview-report p {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  margin: 0;
+  color: var(--文字主色);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace summary,
+#detailModal #mvu-battle-inline-host .battle-preview-trace summary {
+  color: var(--战斗强调色);
+  font-size: 11px;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: calc(var(--战斗圆角) * 0.22);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row b,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row span,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row em,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row em,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row code,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row b,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row b {
+  color: #ffffff;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row span,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row span {
+  color: var(--文字主色);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row em,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row em,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-trace-row code,
+#detailModal #mvu-battle-inline-host .battle-preview-trace-row code {
+  color: var(--文字弱色);
+  font-style: normal;
+  font-family: inherit;
+}
+
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-terminal-current,
 #detailModal #mvu-battle-inline-host .battle-terminal-current {
   display: flex;
@@ -28663,6 +28790,12 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-submit-b
     var(--战斗执行辉光);
 }
 
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-preview-btn,
+#detailModal #mvu-battle-inline-host .battle-preview-btn {
+  justify-self: stretch;
+  color: var(--战斗强调色);
+}
+
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-close-btn,
 #detailModal #mvu-battle-inline-host .battle-close-btn {
   justify-self: stretch;
@@ -28671,7 +28804,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-close-bt
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-exec-actions,
 #detailModal #mvu-battle-inline-host .battle-exec-actions {
-  grid-template-columns: minmax(74px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(58px, 0.7fr) minmax(52px, 0.62fr) minmax(0, 1.48fr);
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .summon-queue,

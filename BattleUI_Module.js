@@ -3483,6 +3483,19 @@ class BattleUIComponent {
         .trim();
     }
 
+    function getCombatReportUnitName(unit = null, fallback = '') {
+      return String(unit?.name || unit?.名称 || unit?.charKey || unit?.char_key || unit?.key || fallback || '').trim();
+    }
+
+    function replaceBattleReportGenericNames(line = '', context = {}) {
+      const playerName = getCombatReportUnitName(context.player || context.attacker, '我方角色');
+      const enemyName = getCombatReportUnitName(context.enemy || context.defender || context.target, '敌方角色');
+      return String(line || '')
+        .replace(/玩家方/g, '我方')
+        .replace(/玩家/g, playerName)
+        .replace(/NPC/g, enemyName);
+    }
+
     function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0 } = {}) {
       const lines = (Array.isArray(battleLog) ? battleLog : [])
         .map(cleanBattleReportLineForStory)
@@ -3519,6 +3532,42 @@ class BattleUIComponent {
         `[预计HP伤害]\n${combatData?.预计HP伤害 ?? ''}`,
         `[裁断约束]\n${裁断约束文本 || '无'}${压制战规则文本 || ''}${虚拟战规则文本 || ''}`,
       ].join('\n');
+    }
+
+    function collectBattleDecisionTrace(combatData = {}) {
+      const trace = combatData?.__行动闭环诊断?.审计轨迹;
+      if (!Array.isArray(trace)) return [];
+      return deepClonePlain(trace.slice(-18));
+    }
+
+    function buildBattlePreviewResult({
+      intentText = '',
+      mode = 'single_round',
+      modeLabel = '',
+      battleLog = [],
+      combatData = {},
+      battleOutcome = {},
+      publicReport = '',
+      dossier = '',
+      roundCount = 0,
+      pendingSettlement = null,
+    } = {}) {
+      const result = {
+        preview: true,
+        intentText: String(intentText || ''),
+        mode: pendingSettlement ? 'tower_pending_preview' : 'battle_preview',
+        battleMode: mode,
+        modeLabel,
+        logs: Array.isArray(battleLog) ? [...battleLog] : [],
+        roundsExecuted: Math.max(0, Number(roundCount || 0)),
+        battleOutcome: deepClonePlain(battleOutcome || {}),
+        publicReport: String(publicReport || ''),
+        dossier: String(dossier || ''),
+        decisionTrace: collectBattleDecisionTrace(combatData),
+        snapshot: ui_getBattleSnapshot(combatData),
+      };
+      if (pendingSettlement) result.pendingSettlement = deepClonePlain(pendingSettlement);
+      return result;
     }
 
     function registerBattleSettlementContext(payload = {}) {
@@ -18078,10 +18127,13 @@ class BattleUIComponent {
         const 名称 = String(动作名 || '').trim();
         if (!名称 || 威胁分层.高威胁 || 威胁分层.致命) return 0;
         const 记忆 = ensureActorDecisionMemory(单位);
-        const 近期次数 = Number(记忆.recent_actions?.[名称] || 0);
+        const 近期次数 = 读取归一行为记忆值_V1(记忆.recent_actions || {}, [名称], 0);
         const 是支援系 = ['辅助系', '治疗系', '食物系', '召唤系'].includes(读取规划单位系别(单位));
         let 惩罚 = 近期次数 * 12;
         if (['肉体兜底', '伺机闪避', '防御', '危机自保', '收招转防'].includes(名称)) 惩罚 += 威胁分层.低威胁 ? 24 : 10;
+        if (近期次数 >= 2 && ['肉体兜底', '伺机闪避', '防御', '危机自保', '收招转防'].includes(名称)) {
+          惩罚 += (近期次数 - 1) * (威胁分层.低威胁 ? 24 : 14);
+        }
         if (名称 === '肉体兜底') 惩罚 += 威胁分层.低威胁 ? 18 : 6;
         if (名称 === '伺机闪避' && 读取规划单位系别(单位) !== '敏攻系') 惩罚 += 威胁分层.低威胁 ? 12 : 4;
         if (是支援系 && 选项.有职责技能) 惩罚 += 16;
@@ -18523,9 +18575,11 @@ class BattleUIComponent {
         return Math.max(0, 状态分 * 立场倍率 + 闪避修正 + 反应修正 - 锁定压力 - 硬控惩罚);
       }
 
-      function 结算撤离判定(玩家单位, NPC单位) {
-        const 撤离分 = 计算撤离压制分数(玩家单位, NPC单位, '撤离');
-        const 追击分 = 计算撤离压制分数(NPC单位, 玩家单位, '追击');
+      function 结算撤离判定(撤离单位, 追击单位) {
+        const 撤离者名 = getCombatReportUnitName(撤离单位, '我方角色');
+        const 追击者名 = getCombatReportUnitName(追击单位, '敌方角色');
+        const 撤离分 = 计算撤离压制分数(撤离单位, 追击单位, '撤离');
+        const 追击分 = 计算撤离压制分数(追击单位, 撤离单位, '追击');
         const 比值 = 撤离分 / Math.max(1, 追击分);
         const 投点 = Math.random();
         const 成功率 = Math.max(0.03, Math.min(0.92, (比值 - 0.72) * 0.55));
@@ -18533,33 +18587,35 @@ class BattleUIComponent {
         if (比值 >= 1.18 || 投点 < 成功率) {
           return {
             dmg: 0,
-            desc: `[脱离成功] 玩家以更严格的闪避节奏强行拉开战圈，成功撤离本场战斗。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
+            desc: `[脱离成功] ${撤离者名}以更严格的闪避节奏强行拉开战圈，成功摆脱${追击者名}的追击。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
             extraPatchOps: [],
             撤离结果: '成功',
             targetResults: [],
           };
         }
         if (比值 >= 0.9 || 投点 < 半成功率) {
-          const 追击伤害 = Math.max(1, Math.floor(getCombatHpMaxValue(玩家单位) * 0.04));
+          const 追击伤害 = Math.max(1, Math.floor(getCombatHpMaxValue(撤离单位) * 0.04));
           return {
             dmg: 追击伤害,
-            desc: `[脱离半成] 玩家拉开距离但未能完全甩脱追击，撤离窗口尚未稳定，承受一次追击压迫。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
+            desc: `[脱离半成] ${撤离者名}拉开距离但未能完全甩脱${追击者名}，撤离窗口尚未稳定，承受一次追击压迫。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
             extraPatchOps: [],
             撤离结果: '半成',
-            targetResults: [{ target: 玩家单位, targetName: 玩家单位?.name || '玩家', damage: 追击伤害, kind: '撤离追击' }],
+            targetResults: [{ target: 撤离单位, targetName: 撤离者名, damage: 追击伤害, kind: '撤离追击' }],
           };
         }
-        const 追击伤害 = Math.max(1, Math.floor(getCombatHpMaxValue(玩家单位) * 0.08));
+        const 追击伤害 = Math.max(1, Math.floor(getCombatHpMaxValue(撤离单位) * 0.08));
         return {
           dmg: 追击伤害,
-          desc: `[脱离失败] 玩家试图撤离，但步点与精神判断都被对手咬住，撤离失败并遭到追击惩罚。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
+          desc: `[脱离失败] ${撤离者名}试图撤离，但步点与精神判断都被${追击者名}咬住，撤离失败并遭到追击惩罚。(撤离:${Math.round(撤离分)} 追击:${Math.round(追击分)} Roll:${投点.toFixed(2)})`,
           extraPatchOps: [],
           撤离结果: '失败',
-          targetResults: [{ target: 玩家单位, targetName: 玩家单位?.name || '玩家', damage: 追击伤害, kind: '撤离追击' }],
+          targetResults: [{ target: 撤离单位, targetName: 撤离者名, damage: 追击伤害, kind: '撤离追击' }],
         };
       }
 
       function resolvePassivePlayerStance(playerAction, npcAction, 玩家单位 = null, NPC单位 = null) {
+        const 玩家名 = getCombatReportUnitName(玩家单位, '我方角色');
+        const 对手名 = getCombatReportUnitName(NPC单位, '敌方角色');
         const actionName = String(
           playerAction?.action_type || playerAction?.skill?.name || playerAction?.skill?.魂技名 || '防御',
         );
@@ -18576,8 +18632,8 @@ class BattleUIComponent {
           return {
             dmg: 0,
             desc: npcIsHostile
-              ? '[守势成立] 玩家没有主动出手，而是稳住架势硬接试探，成功守住了这一轮攻势。'
-              : '[守势对峙] 玩家摆出防御姿态，双方短暂拉扯，谁都没有真正打出有效战果。',
+              ? `[守势成立] ${玩家名}没有主动出手，而是稳住架势硬接${对手名}的试探，成功守住了这一轮攻势。`
+              : `[守势对峙] ${玩家名}摆出防御姿态，和${对手名}短暂拉扯，谁都没有真正打出有效战果。`,
             extraPatchOps: [],
           };
         }
@@ -18586,8 +18642,8 @@ class BattleUIComponent {
           return {
             dmg: 0,
             desc: npcIsHostile
-              ? '[闪避成立] 玩家没有主动出手，而是借身法拉开步点，避开了这次试探性压迫。'
-              : '[游走观察] 玩家保持闪避姿态，双方都在试探彼此的节奏。',
+              ? `[闪避成立] ${玩家名}没有主动出手，而是借身法拉开步点，避开了${对手名}的试探性压迫。`
+              : `[游走观察] ${玩家名}保持闪避姿态，和${对手名}都在试探彼此的节奏。`,
             extraPatchOps: [],
           };
         }
@@ -18599,20 +18655,22 @@ class BattleUIComponent {
         if (/撤离/.test(actionName)) {
           return {
             dmg: 0,
-            desc: '[脱离尝试] 玩家没有继续交锋，而是主动寻找脱离战圈的机会，本回合未形成正面碰撞。',
+            desc: `[脱离尝试] ${玩家名}没有继续交锋，而是主动寻找脱离战圈的机会，本回合未形成正面碰撞。`,
             extraPatchOps: [],
           };
         }
 
         return {
           dmg: 0,
-          desc: '[守势维持] 玩家本回合没有主动出手，战局进入短暂对峙。',
+          desc: `[守势维持] ${玩家名}本回合没有主动出手，和${对手名}进入短暂对峙。`,
           extraPatchOps: [],
         };
       }
 
       function onPlayerAttack(playerInput, options = {}) {
-        let combatData = window.BattleUIBridge?.getMVU('world.战斗');
+        const dryRun = options.dryRun === true;
+        const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
+        let combatData = dryRun ? deepClonePlain(sourceCombatData || {}) : sourceCombatData;
         确保召唤单位表(combatData);
         hydrateCombatData(combatData);
         let defender = combatData.参战者.team_enemy?.[0];
@@ -18715,7 +18773,7 @@ class BattleUIComponent {
               playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null };
             }
           } else {
-            playerAction = parsePlayerIntent(playerInput);
+            playerAction = parsePlayerIntent(playerInput, combatData);
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
             const 指定敌方目标 = findCombatUnitByName(combatData, playerAction.target_name || '');
             if (
@@ -18873,7 +18931,7 @@ class BattleUIComponent {
                   syncCombatActionState(defender);
                   if (!isCombatUnitAbleToFight(attacker) || !isCombatUnitAbleToFight(defender))
                     continueSimulation = false;
-                  battleLog.push(roundLog);
+                  battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
                   continue;
                 }
               }
@@ -19011,7 +19069,7 @@ class BattleUIComponent {
             }
           }
 
-          battleLog.push(roundLog);
+          battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
         }
 
         const startingRound = Number(combatData.回合 || 0);
@@ -19038,7 +19096,7 @@ class BattleUIComponent {
           combatData,
         });
         if (clashExtraPatchOps.length) extraPatchOps.push(...clashExtraPatchOps);
-        if (settleResult.log) battleLog.push(settleResult.log);
+        if (settleResult.log) battleLog.push(replaceBattleReportGenericNames(settleResult.log, { player: attacker, enemy: defender }));
         if (settleResult.extraPatchOps) extraPatchOps.push(...settleResult.extraPatchOps);
         const towerPendingSettlement =
           isSoulTowerCombatTypeValue(combatData?.战斗类型 || '') && battleOutcome.isVictory === true
@@ -19049,6 +19107,20 @@ class BattleUIComponent {
           combatData.进行中 = true;
           combatData.裁断结果 = '';
           clearCombatAdjudicationHints(combatData);
+          if (dryRun) {
+            const 公开战报 = buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount });
+            return buildBattlePreviewResult({
+              intentText: visiblePlayerInput || String(playerInput || '战斗行动'),
+              mode,
+              modeLabel,
+              battleLog,
+              combatData,
+              battleOutcome,
+              publicReport: 公开战报,
+              roundCount,
+              pendingSettlement: towerPendingSettlement,
+            });
+          }
           const pendingUpdate =
             window.BattleUIBridge?.persistCombatData?.(combatData, {
               analysis:
@@ -19107,20 +19179,33 @@ class BattleUIComponent {
           结算状态: `${battleOutcome.type}/pending_ai_confirm`,
           AI确认结果: '',
         };
+        const 压制战规则文本 = 压制战裁断
+          ? 压制战裁断.必须结束
+            ? `\n[压制等级裁断]\n本场存在刻意压制等级：${压制战裁断.压制摘要.join('；')}。${压制战裁断.败方} 已损失 ${压制战裁断.HP损失比例}% HP，超过 10% 截断线；必须判定战斗结束，胜方=${压制战裁断.胜方}，败方=${压制战裁断.败方}，败方剩余HP比例=${压制战裁断.败方剩余HP比例}。`
+            : `\n[压制等级裁断]\n本场存在刻意压制等级：${压制战裁断.压制摘要.join('；')}。仅在任意一方本次战斗累计HP损失达到或超过10%时，才必须立刻结束并判负；当前尚未触发强制截断。`
+          : '';
+        const 虚拟战规则文本 = 判断虚拟战斗类型(combatData.战斗类型)
+          ? `\n[虚拟战规则]\n本场为虚拟战斗，永远允许被击杀，败方剩余HP比例可以为0。若现实建档角色在虚拟战中死亡，模块会让其退出虚拟世界并恢复全部HP，同时按最后一击伤害占总生命比例削减精神力；最后一击比例=${Math.round(本次最大单击HP比例 * 100)}%，精神力消耗最低40%、被秒杀或超过100%时消耗90%。`
+          : '';
+        const 裁断约束文本 = `可致死：${combatData.裁断约束?.可致死 ? '是' : '否'}；可外界介入：${combatData.裁断约束?.可外界介入 ? '是' : '否'}；关系收手系数：${combatData.裁断约束?.关系收手系数}；场地安全系数：${combatData.裁断约束?.场地安全系数}；实力差距系数：${combatData.裁断约束?.实力差距系数}；绝境失手系数：${combatData.裁断约束?.绝境失手系数}；失手等级：${combatData.裁断约束?.失手等级}`;
+        const 公开战报 = buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount });
+        const 裁断卷宗 = buildBattleAdjudicationDossier({ combatData, battleOutcome, 压制战规则文本, 虚拟战规则文本, 裁断约束文本 });
         const mvuUpdate =
-          window.BattleUIBridge?.persistCombatData?.(combatData, {
-            analysis:
-              'Frontend battle arbitration updates deterministic battle state changes (resource consumption, equipment/domain toggles, ongoing status effects, sustain effects, charging state and battle context), but does not directly settle final HP, survival or the final裁断结果. Let the plot continuation decide the terminal landing.',
-            extraPatchOps,
-            syncHpRecoveryOnly: false,
-          }) || null;
+          dryRun
+            ? null
+            : window.BattleUIBridge?.persistCombatData?.(combatData, {
+                analysis:
+                  'Frontend battle arbitration updates deterministic battle state changes (resource consumption, equipment/domain toggles, ongoing status effects, sustain effects, charging state and battle context), but does not directly settle final HP, survival or the final裁断结果. Let the plot continuation decide the terminal landing.',
+                extraPatchOps,
+                syncHpRecoveryOnly: false,
+              }) || null;
 
         try {
           const safeClone = value => {
             try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
             catch (_) { try { return JSON.parse(JSON.stringify(value)); } catch (__) { return null; } }
           };
-          root.__LWCS_LAST_BATTLE_SNAPSHOT__ = {
+          root[dryRun ? '__LWCS_LAST_BATTLE_PREVIEW_SNAPSHOT__' : '__LWCS_LAST_BATTLE_SNAPSHOT__'] = {
             时间戳: Date.now(),
             模式: mode,
             模式标签: modeLabel,
@@ -19139,17 +19224,19 @@ class BattleUIComponent {
           console.warn('[battle] 缓存战斗快照失败', error);
         }
 
-        const 压制战规则文本 = 压制战裁断
-          ? 压制战裁断.必须结束
-            ? `\n[压制等级裁断]\n本场存在刻意压制等级：${压制战裁断.压制摘要.join('；')}。${压制战裁断.败方} 已损失 ${压制战裁断.HP损失比例}% HP，超过 10% 截断线；必须判定战斗结束，胜方=${压制战裁断.胜方}，败方=${压制战裁断.败方}，败方剩余HP比例=${压制战裁断.败方剩余HP比例}。`
-            : `\n[压制等级裁断]\n本场存在刻意压制等级：${压制战裁断.压制摘要.join('；')}。仅在任意一方本次战斗累计HP损失达到或超过10%时，才必须立刻结束并判负；当前尚未触发强制截断。`
-          : '';
-        const 虚拟战规则文本 = 判断虚拟战斗类型(combatData.战斗类型)
-          ? `\n[虚拟战规则]\n本场为虚拟战斗，永远允许被击杀，败方剩余HP比例可以为0。若现实建档角色在虚拟战中死亡，模块会让其退出虚拟世界并恢复全部HP，同时按最后一击伤害占总生命比例削减精神力；最后一击比例=${Math.round(本次最大单击HP比例 * 100)}%，精神力消耗最低40%、被秒杀或超过100%时消耗90%。`
-          : '';
-        const 裁断约束文本 = `可致死：${combatData.裁断约束?.可致死 ? '是' : '否'}；可外界介入：${combatData.裁断约束?.可外界介入 ? '是' : '否'}；关系收手系数：${combatData.裁断约束?.关系收手系数}；场地安全系数：${combatData.裁断约束?.场地安全系数}；实力差距系数：${combatData.裁断约束?.实力差距系数}；绝境失手系数：${combatData.裁断约束?.绝境失手系数}；失手等级：${combatData.裁断约束?.失手等级}`;
-        const 公开战报 = buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount });
-        const 裁断卷宗 = buildBattleAdjudicationDossier({ combatData, battleOutcome, 压制战规则文本, 虚拟战规则文本, 裁断约束文本 });
+        if (dryRun) {
+          return buildBattlePreviewResult({
+            intentText: visiblePlayerInput || String(playerInput || '战斗行动'),
+            mode,
+            modeLabel,
+            battleLog,
+            combatData,
+            battleOutcome,
+            publicReport: 公开战报,
+            dossier: 裁断卷宗,
+            roundCount,
+          });
+        }
         const 战斗上下文登记 = registerBattleSettlementContext({
           id: combatData.本次操作?.批次ID,
           公开战报,
@@ -19181,6 +19268,8 @@ class BattleUIComponent {
           const result = onPlayerAttack(String(playerInput || ''), {
             mode: battleMode,
             intentMode: options.intentMode,
+            dryRun: options.dryRun === true,
+            combatData: options.combatData,
           });
           return result || {
             intentText: String(playerInput || ''),
@@ -28683,7 +28772,7 @@ class BattleUIComponent {
             return Object.assign(
               {
                 type,
-                log,
+                log: replaceBattleReportGenericNames(log, { player: attacker, enemy: defender }),
                 skill: normalizedSkill,
                 def_mult: 1.0,
               },
@@ -29003,14 +29092,17 @@ class BattleUIComponent {
           return 主动作;
         }
 
-        function parsePlayerIntent(playerInput) {
-          let combatData = window.BattleUIBridge?.getMVU('world.战斗');
+        function parsePlayerIntent(playerInput, combatDataOverride = null) {
+          let combatData = combatDataOverride || window.BattleUIBridge?.getMVU('world.战斗');
           hydrateCombatData(combatData);
           let attacker = combatData.参战者.team_player?.[0];
           const preferredPlayerName = String(window.BattleUIBridge?.getMVU('sys.玩家名') || attacker?.name || '').trim();
-          let charData =
+          const mvuCharData =
             (attacker?.name ? window.BattleUIBridge?.getMVU('char.' + attacker.name) : null) ||
             (preferredPlayerName ? window.BattleUIBridge?.getMVU('char.' + preferredPlayerName) : null);
+          let charData = combatDataOverride
+            ? deepClonePlain(mvuCharData || attacker)
+            : mvuCharData;
           bindCombatParticipant(charData);
 
           let action = {
@@ -29983,7 +30075,10 @@ class BattleUIComponent {
               cast_time: getSkillCastTime(decisionAction.skill || neutralSkill) || 10,
               skill: decisionAction.skill || neutralSkill,
               source: 'auto_actor',
-              decision_log: `[规划] ${strategicContext.behaviorState?.战略意图?.主意图 || strategicContext.behaviorState?.规划上下文?.战略意图?.主意图 || '战术行动'}。 ${decisionAction.log || ''}`.trim(),
+              decision_log: replaceBattleReportGenericNames(
+                `[规划] ${strategicContext.behaviorState?.战略意图?.主意图 || strategicContext.behaviorState?.规划上下文?.战略意图?.主意图 || '战术行动'}。 ${decisionAction.log || ''}`.trim(),
+                { player: enemyTarget, enemy: actor },
+              ),
               def_mult: decisionAction.def_mult || 1.0,
             };
             回合动作.__行动规划审计 = {
@@ -30407,7 +30502,7 @@ class BattleUIComponent {
                 actionLog += `[连招生效] ${actor.name}趁隙穿戴了${preAct.equip_target === 'armor' ? '斗铠' : '机甲'}！`;
               } else {
                 const 前置结算 = 执行连放前置动作结算(actor, targets.enemyTarget, preAct, createActorTurnCombatData(actorEntry, targets.enemyTarget, battleState));
-                if (前置结算.log) actionLog += `${前置结算.log} `;
+                if (前置结算.log) actionLog += `${replaceBattleReportGenericNames(前置结算.log, { player: actor, enemy: targets.enemyTarget })} `;
                 if (Array.isArray(前置结算.extraPatchOps) && 前置结算.extraPatchOps.length)
                   turnExtraPatchOps.push(...前置结算.extraPatchOps);
               }
@@ -30423,7 +30518,10 @@ class BattleUIComponent {
                 target: targets.enemyTarget.name,
                 charging: true,
                 action: actor.蓄力技能,
-                log: `[团战执行/转蓄力] 连招耗时过长，${actor.name}进入蓄力状态准备[${carryOverAction.skill?.name || carryOverAction.action_type}]，剩余前摇:${carryOverAction.cast_time}。`,
+                log: replaceBattleReportGenericNames(`[团战执行/转蓄力] 连招耗时过长，${actor.name}进入蓄力状态准备[${carryOverAction.skill?.name || carryOverAction.action_type}]，剩余前摇:${carryOverAction.cast_time}。`, {
+                  player: actor,
+                  enemy: targets.enemyTarget,
+                }),
               };
             }
 
@@ -30492,8 +30590,12 @@ class BattleUIComponent {
 
           const 行为链结果 = finalTarget === actor || targetsFriendlyTeam ? null : 自动行为链再判定(actor, finalTarget, action, reactionAction, actorTurnCombatData);
           const settleResult = executeClash(action, reactionAction, actorTurnCombatData);
+          const 目标反应日志 = replaceBattleReportGenericNames(
+            `${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${reactionAction.log} ${settleResult.desc}`,
+            { player: actor, enemy: finalTarget },
+          );
           let turnLog =
-            `${actionLog}[团战执行] ${actor.name}以[${action?.skill?.name || action?.action_type || '未知动作'}]指向[${finalTarget.name}]。 ${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${reactionAction.log} ${settleResult.desc}`.trim();
+            `${actionLog}[团战执行] ${actor.name}以[${action?.skill?.name || action?.action_type || '未知动作'}]指向[${finalTarget.name}]。 ${目标反应日志}`.trim();
 
           const damagePackage = applyResolvedDamagePackage(actor, action, settleResult, {
             primaryTarget: finalTarget,
@@ -32498,6 +32600,7 @@ class BattleUIComponent {
               state.selectedSkillActions = [action];
               if (动作是造物承载(action)) 写入造物动作选择(action, state);
               else 写入普通动作目标(action, state);
+              清空战斗预演面板();
               刷新战斗意图输出(action);
               renderUiActionGrid(state.availableActions || [], state.activeCategory || '全部');
             });
@@ -32597,6 +32700,7 @@ class BattleUIComponent {
           renderUiActionFilters(availableActions, activeCategory);
           renderUiActionGrid(availableActions, activeCategory);
           renderUiSummonQueue(combatData);
+          渲染战斗预演面板(previousState.previewResult || null);
           const output = byId('ui-intent-output');
           if (selectedAction) {
             if (动作是造物承载(selectedAction)) 写入造物动作选择(selectedAction, window.BattleUI.state);
@@ -32699,9 +32803,110 @@ class BattleUIComponent {
           return parts.join('\n');
         }
 
+        function 读取预演面板节点() {
+          return byId('ui-battle-preview-panel');
+        }
+
+        function 清空战斗预演面板() {
+          const node = 读取预演面板节点();
+          if (window.BattleUI?.state) window.BattleUI.state.previewResult = null;
+          if (!node) return;
+          node.hidden = true;
+          node.innerHTML = '';
+        }
+
+        function 格式化预演候选行(候选 = {}) {
+          const 名称 = String(候选?.名称 || 候选?.name || '候选').trim();
+          const 权重 = Math.round(Number(候选?.权重 || 候选?.weight || 0));
+          const 目标 = String(候选?.目标 || 候选?.target || '').trim();
+          const 审计 = 候选?.审计 || {};
+          const 记忆 = Number(审计?.记忆惩罚 || 0);
+          const 资源 = Number(审计?.资源修正 || 0);
+          const 职责 = Number(审计?.职责修正 || 0);
+          const 后缀 = [
+            目标 ? `->${目标}` : '',
+            记忆 ? `记忆${记忆 > 0 ? '-' : '+'}${Math.abs(Math.round(记忆))}` : '',
+            资源 ? `资源${资源 > 0 ? '+' : ''}${Math.round(资源)}` : '',
+            职责 ? `职责${职责 > 0 ? '+' : ''}${Math.round(职责)}` : '',
+          ].filter(Boolean).join(' ');
+          return `${名称}:${权重}${后缀 ? ` ${后缀}` : ''}`;
+        }
+
+        function 格式化预演审计行(轨迹 = {}) {
+          const 标题 = [
+            轨迹.类型 || '判定',
+            轨迹.行动者 || '',
+            轨迹.目标 ? `-> ${轨迹.目标}` : '',
+            轨迹.技能 ? `[${轨迹.技能}]` : '',
+          ].filter(Boolean).join(' ');
+          const 修正 = [
+            `最终${Math.round(Number(轨迹.最终权重 || 0))}`,
+            `原始${Math.round(Number(轨迹.原始权重 || 0))}`,
+            Number(轨迹.战术修正 || 0) ? `战术${Number(轨迹.战术修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.战术修正 || 0))}` : '',
+            Number(轨迹.记忆惩罚 || 0) ? `记忆-${Math.round(Number(轨迹.记忆惩罚 || 0))}` : '',
+            Number(轨迹.团队意图修正 || 0) ? `团队${Number(轨迹.团队意图修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.团队意图修正 || 0))}` : '',
+            Number(轨迹.干扰强度 || 0) ? `干扰${Math.round(Number(轨迹.干扰强度 || 0) * 100)}%` : '',
+          ].filter(Boolean).join(' / ');
+          const 理由 = [
+            轨迹.战略意图,
+            轨迹.选择原因,
+            ...(Array.isArray(轨迹.目标理由) ? 轨迹.目标理由.slice(0, 2) : []),
+            ...(Array.isArray(轨迹.前瞻理由) ? 轨迹.前瞻理由.slice(0, 2) : []),
+            ...(Array.isArray(轨迹.职责理由) ? 轨迹.职责理由.slice(0, 2) : []),
+          ].map(项 => String(项 || '').trim()).filter(Boolean).slice(0, 5);
+          const 候选 = (Array.isArray(轨迹.候选排序结果) ? 轨迹.候选排序结果 : [])
+            .slice()
+            .sort((左, 右) => Number(右?.权重 || 0) - Number(左?.权重 || 0))
+            .slice(0, 6)
+            .map(格式化预演候选行);
+          return `
+            <div class="battle-preview-trace-row">
+              <b>${htmlEscapeText(标题 || '判定')}</b>
+              <span>${htmlEscapeText(修正 || '无权重数据')}</span>
+              ${理由.length ? `<em>${htmlEscapeText(理由.join('；'))}</em>` : ''}
+              ${候选.length ? `<code>${htmlEscapeText(候选.join(' | '))}</code>` : ''}
+            </div>
+          `;
+        }
+
+        function 渲染战斗预演面板(result = null) {
+          const node = 读取预演面板节点();
+          if (!node) return;
+          if (!result?.preview) {
+            node.hidden = true;
+            node.innerHTML = '';
+            return;
+          }
+          const 战报 = (Array.isArray(result.logs) ? result.logs : [])
+            .map(cleanBattleReportLineForStory)
+            .filter(Boolean)
+            .slice(-10);
+          const 防反流程 = (Array.isArray(result.logs) ? result.logs : [])
+            .filter(line => /行为防反|防反错失/.test(String(line || '')))
+            .map(line => `<div class="battle-preview-trace-row battle-preview-counter-row"><b>防反判定</b><span>${htmlEscapeText(String(line || '').trim())}</span></div>`);
+          const 审计流程 = (Array.isArray(result.decisionTrace) ? result.decisionTrace : []).map(格式化预演审计行);
+          const 流程HTML = [...审计流程, ...防反流程].join('') || '<div class="battle-preview-empty">无判定轨迹</div>';
+          node.hidden = false;
+          node.innerHTML = `
+            <div class="battle-preview-head">
+              <span>预演结果</span>
+              <b>${htmlEscapeText(result.modeLabel || result.battleMode || '战斗')}</b>
+              <em>${htmlEscapeText(`推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`)}</em>
+            </div>
+            <div class="battle-preview-report">
+              ${战报.length ? 战报.map((line, index) => `<p><span>${index + 1}</span>${htmlEscapeText(line)}</p>`).join('') : '<p><span>0</span>暂无战报</p>'}
+            </div>
+            <details class="battle-preview-trace">
+              <summary>判定流程</summary>
+              ${流程HTML}
+            </details>
+          `;
+        }
+
         function renderSoulTowerSettlementPanel(pendingSettlement = null) {
           const node = byId('ui-tower-settlement');
           const arbitrateBtn = byId('ui-arbitrate');
+          const previewBtn = byId('ui-battle-preview');
           const intentModeInput = byId('ui-intent-mode');
           const modeControls = Array.from(document.querySelectorAll('#ui-mode-group [data-mode], #ui-mode-group [data-dropdown-trigger]'));
           if (!node) return;
@@ -32709,6 +32914,7 @@ class BattleUIComponent {
             node.hidden = true;
             node.innerHTML = '';
             if (arbitrateBtn) arbitrateBtn.disabled = false;
+            if (previewBtn) previewBtn.disabled = false;
             if (intentModeInput) intentModeInput.disabled = false;
             modeControls.forEach(btn => {
               btn.disabled = false;
@@ -32717,6 +32923,7 @@ class BattleUIComponent {
           }
           node.hidden = false;
           if (arbitrateBtn) arbitrateBtn.disabled = true;
+          if (previewBtn) previewBtn.disabled = true;
           if (intentModeInput) intentModeInput.disabled = true;
           modeControls.forEach(btn => {
             btn.disabled = true;
@@ -32859,6 +33066,7 @@ class BattleUIComponent {
           const output = byId('ui-intent-output');
           if (output) output.value = intentText;
           window.__battleLastIntentText = intentText;
+          清空战斗预演面板();
 
           let result = { intentText, mode: 'intent_only', battleMode };
           try {
@@ -32891,6 +33099,43 @@ class BattleUIComponent {
             console.warn('battle-ui-submit-finished dispatch failed', error);
           }
           return result;
+        }
+
+        function previewBattleIntent() {
+          const state = window.BattleUI?.state || {};
+          if (state.pendingTowerSettlement) return { ok: false, mode: 'tower_pending_choice' };
+          const previewBtn = byId('ui-battle-preview');
+          const battleMode = state.currentMode === 'multi_round' ? 'multi_round' : 'single_round';
+          state.combatData.战斗意图 = state.currentIntentMode || '点到为止';
+          const queue = [
+            ...(state.selectedPreActions || []),
+            state.selectedSkillActions?.[state.selectedSkillActions.length - 1],
+          ].filter(Boolean);
+          const intentText = buildIntentText(queue);
+          const output = byId('ui-intent-output');
+          if (output) output.value = intentText;
+          window.__battleLastIntentText = intentText;
+          if (previewBtn) previewBtn.disabled = true;
+          try {
+            const result = onPlayerAttack(intentText, {
+              mode: battleMode,
+              intentMode: state.currentIntentMode || '点到为止',
+              dryRun: true,
+              combatData: state.combatData,
+            });
+            window.BattleUI.state.previewResult = result;
+            window.__LWCS_LAST_BATTLE_PREVIEW__ = result;
+            渲染战斗预演面板(result);
+            return result;
+          } catch (error) {
+            console.error('battle preview failed', error);
+            const result = { preview: true, mode: 'engine_error', battleMode, error, logs: [`[预演失败] ${error?.message || error}`], decisionTrace: [] };
+            window.BattleUI.state.previewResult = result;
+            渲染战斗预演面板(result);
+            return result;
+          } finally {
+            if (previewBtn) previewBtn.disabled = false;
+          }
         }
 
         function bindUIEvents() {
@@ -32931,6 +33176,11 @@ class BattleUIComponent {
             arbitrateBtn.addEventListener('click', submitBattleIntent);
             arbitrateBtn.__battleSubmitBound = true;
           }
+          const previewBtn = byId('ui-battle-preview');
+          if (previewBtn && !previewBtn.__battlePreviewBound) {
+            previewBtn.addEventListener('click', previewBattleIntent);
+            previewBtn.__battlePreviewBound = true;
+          }
 
           const closeBtn = byId('ui-battle-close');
           if (closeBtn && !closeBtn.__battleCloseBound) {
@@ -32949,6 +33199,7 @@ class BattleUIComponent {
           window.BattleUI = Object.assign(window.BattleUI || {}, {
               buildIntentText,
               submitBattleIntent,
+              previewBattleIntent,
               resolveSoulTowerSettlement,
             });
           };
