@@ -32148,7 +32148,7 @@ class BattleUIComponent {
               ? `<div class="target-chip-row">${可切换目标列表.map(目标名 => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(目标名)}">${htmlEscapeText(目标名)}</button>`).join('')}</div>`
               : '';
             node.hidden = false;
-            node.innerHTML = `<div class="target-current"><span>目标</span><b>${htmlEscapeText(当前目标 || '自身')}</b></div><div class="target-stack"><div class="target-chip-row">${modeHtml}</div>${targetHtml}</div>`;
+            node.innerHTML = `<div class="target-stack"><div class="target-chip-row">${modeHtml}</div>${targetHtml}</div>`;
             node.querySelectorAll('[data-construct-mode]').forEach(button => {
               button.addEventListener('click', () => {
                 action.造物处理 = button.getAttribute('data-construct-mode') || '生成到自己背包';
@@ -32177,8 +32177,8 @@ class BattleUIComponent {
           const 切换目标Html = 可切换目标列表.length
             ? `<div class="target-stack"><div class="target-chip-row">${可切换目标列表.map(name => `<button class="target-chip" type="button" data-target-name="${htmlEscapeText(name)}">${htmlEscapeText(name)}</button>`).join('')}</div></div>`
             : '';
-          node.hidden = false;
-          node.innerHTML = `<div class="target-current"><span>目标</span><b>${htmlEscapeText(当前目标 || '未锁定')}</b></div>${切换目标Html}`;
+          node.hidden = !切换目标Html;
+          node.innerHTML = 切换目标Html;
           node.querySelectorAll('[data-target-name]').forEach(button => {
             button.addEventListener('click', () => {
               选择战斗动作目标(button.getAttribute('data-target-name') || '', action);
