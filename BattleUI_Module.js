@@ -32881,9 +32881,14 @@ class BattleUIComponent {
             .map(cleanBattleReportLineForStory)
             .filter(Boolean)
             .slice(-10);
+          const 提取防反判定 = line => {
+            const match = String(line || '').match(/\[(?:行为防反|防反错失)\][^。！？\n]*(?:[。！？]|$)/);
+            return match ? match[0].trim() : '';
+          };
           const 防反流程 = (Array.isArray(result.logs) ? result.logs : [])
-            .filter(line => /行为防反|防反错失/.test(String(line || '')))
-            .map(line => `<div class="battle-preview-trace-row battle-preview-counter-row"><b>防反判定</b><span>${htmlEscapeText(String(line || '').trim())}</span></div>`);
+            .map(提取防反判定)
+            .filter(Boolean)
+            .map(line => `<div class="battle-preview-trace-row battle-preview-counter-row"><b>防反判定</b><span>${htmlEscapeText(line)}</span></div>`);
           const 审计流程 = (Array.isArray(result.decisionTrace) ? result.decisionTrace : []).map(格式化预演审计行);
           const 流程HTML = [...审计流程, ...防反流程].join('') || '<div class="battle-preview-empty">无判定轨迹</div>';
           node.hidden = false;
