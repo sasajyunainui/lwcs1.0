@@ -31538,13 +31538,38 @@ class BattleUIComponent {
           }
         }
 
+        function 同步战斗队伍展开按钮(阵营, 单位数量, 已展开) {
+          const 按钮 = byId(`ui-${阵营}-team-toggle`);
+          if (!按钮) return;
+          按钮.hidden = 单位数量 <= 0;
+          按钮.disabled = 单位数量 <= 0;
+          按钮.textContent = 已展开 ? '▴' : '▾';
+          按钮.setAttribute('aria-expanded', 已展开 ? 'true' : 'false');
+          按钮.setAttribute('title', 已展开 ? '收起队列' : '展开队列');
+          if (按钮.__battleTeamToggleBound) return;
+          按钮.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const 状态 = window.BattleUI?.state || {};
+            if (!状态.队伍展开状态 || typeof 状态.队伍展开状态 !== 'object') 状态.队伍展开状态 = {};
+            状态.队伍展开状态[阵营] = 按钮.getAttribute('aria-expanded') !== 'true';
+            同步战斗目标显示(状态.selectedAction || null);
+          });
+          按钮.__battleTeamToggleBound = true;
+        }
+
         function renderUiTeam(容器ID, 单位来源列表, 激活名称 = '', 选项 = {}) {
           const node = byId(容器ID);
           if (!node) return;
+          const 阵营 = String(选项.阵营 || '').trim();
           const 目标名称集合 = new Set((Array.isArray(选项.targetNames) ? 选项.targetNames : []).map(name => String(name || '').trim()).filter(Boolean));
           const 当前目标名 = String(选项.currentTargetName || '').trim();
           const 单位列表 = (Array.isArray(单位来源列表) ? 单位来源列表 : []).map(flattenUiCombatant);
-          node.hidden = 单位列表.length <= 1;
+          const 展开状态表 = window.BattleUI?.state?.队伍展开状态 || {};
+          const 有手动展开状态 = 阵营 && typeof 展开状态表[阵营] === 'boolean';
+          const 已展开 = 单位列表.length > 0 && (有手动展开状态 ? 展开状态表[阵营] : 单位列表.length > 1);
+          node.hidden = !已展开;
+          if (阵营) 同步战斗队伍展开按钮(阵营, 单位列表.length, 已展开);
           node.innerHTML = 单位列表
             .map(单位 => {
               const 激活类 = 单位.name === 激活名称 ? ' active' : '';
@@ -31566,12 +31591,17 @@ class BattleUIComponent {
             .join('');
           node.querySelectorAll('[data-target-name]').forEach(button => {
             if (button.__battleTargetBound) return;
-            button.addEventListener('click', () => {
+            button.addEventListener('click', event => {
+              event.stopPropagation();
               const 状态 = window.BattleUI?.state || {};
               const 动作 = 状态.selectedAction || null;
               if (!动作) return;
               const 目标名 = String(button.getAttribute('data-target-name') || '').trim();
               选择战斗动作目标(目标名, 动作);
+            });
+            button.addEventListener('keydown', event => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.stopPropagation();
             });
             button.__battleTargetBound = true;
           });
@@ -31600,10 +31630,12 @@ class BattleUIComponent {
             ...读取召唤单位列表(combatData, { 阵营: '敌方' }),
           ];
           renderUiTeam('ui-team-player', playerTeam, state.player?.name || '', {
+            阵营: 'player',
             currentTargetName: 当前目标名,
             targetNames: 目标候选名称,
           });
           renderUiTeam('ui-team-enemy', enemyTeam, state.enemy?.name || '', {
+            阵营: 'enemy',
             currentTargetName: 当前目标名,
             targetNames: 目标候选名称,
           });
@@ -32073,6 +32105,9 @@ class BattleUIComponent {
           节点.innerHTML = '';
           节点.style.left = '';
           节点.style.top = '';
+          节点.style.width = '';
+          节点.style.maxHeight = '';
+          节点.style.overflow = '';
         }
 
         function 定位技能悬浮(触发节点) {
@@ -32082,14 +32117,22 @@ class BattleUIComponent {
           const 触发矩形 = 触发节点.getBoundingClientRect();
           悬浮节点.hidden = false;
           悬浮节点.classList.add('show');
-          const 宽度 = Math.min(300, Math.max(220, 容器矩形.width - 28));
+          const 宽度 = Math.min(420, Math.max(220, 容器矩形.width - 24));
           悬浮节点.style.width = `${宽度}px`;
-          const 估算高度 = Math.min(Math.max(悬浮节点.offsetHeight || 160, 120), Math.max(160, 容器矩形.height - 24));
+          悬浮节点.style.maxHeight = '';
+          悬浮节点.style.overflow = 'visible';
+          const 可用高度 = Math.max(160, 容器矩形.height - 24);
+          let 实际高度 = Math.max(悬浮节点.offsetHeight || 160, 120);
+          if (实际高度 > 可用高度) {
+            实际高度 = 可用高度;
+            悬浮节点.style.maxHeight = `${Math.round(可用高度)}px`;
+            悬浮节点.style.overflow = 'hidden auto';
+          }
           let 左 = 触发矩形.left - 容器矩形.left;
           let 上 = 触发矩形.bottom - 容器矩形.top + 8;
           if (左 + 宽度 > 容器矩形.width - 12) 左 = 容器矩形.width - 宽度 - 12;
           if (左 < 12) 左 = 12;
-          if (上 + 估算高度 > 容器矩形.height - 12) 上 = 触发矩形.top - 容器矩形.top - 估算高度 - 8;
+          if (上 + 实际高度 > 容器矩形.height - 12) 上 = 触发矩形.top - 容器矩形.top - 实际高度 - 8;
           if (上 < 12) 上 = 12;
           悬浮节点.style.left = `${Math.round(左)}px`;
           悬浮节点.style.top = `${Math.round(上)}px`;

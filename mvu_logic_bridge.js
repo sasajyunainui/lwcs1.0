@@ -41375,7 +41375,7 @@ ${播报文本}
                     <div class="name-block">
                       <span class="lv-badge" id="ui-player-lv">Lv.0</span>
                       <span class="combatant-name" id="ui-player-name">己方</span>
-                      <span class="combatant-switch" aria-hidden="true">▾</span>
+                      <button class="combatant-switch" id="ui-player-team-toggle" type="button" aria-label="己方队列" aria-expanded="false">▾</button>
                     </div>
                     <span class="combatant-type" id="ui-player-type">未知系</span>
                   </div>
@@ -41394,7 +41394,7 @@ ${播报文本}
                     <div class="name-block">
                       <span class="lv-badge" id="ui-enemy-lv">Lv.0</span>
                       <span class="combatant-name" id="ui-enemy-name">对手</span>
-                      <span class="combatant-switch" aria-hidden="true">▾</span>
+                      <button class="combatant-switch" id="ui-enemy-team-toggle" type="button" aria-label="敌方队列" aria-expanded="false">▾</button>
                     </div>
                     <span class="combatant-type" id="ui-enemy-type">未知系</span>
                   </div>
