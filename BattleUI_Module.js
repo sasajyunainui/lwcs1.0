@@ -3672,6 +3672,9 @@ class BattleUIComponent {
       const raw = String(rawLine || '').replace(/\s+/g, ' ').trim();
       const round = 读取战报日志回合号(raw, currentRound);
       const actionDeclarations = collectBattleExecutionActionDeclarations(raw);
+      const counterActors = Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭/g))
+        .map(match => String(match[1] || '').trim())
+        .filter(Boolean);
       const openings = Array.from(raw.matchAll(/\[起招\]\s*([^，。！？\[\]]{1,32}?)以\[([^\]]+)\]起招/g))
         .map(match => ({ actor: String(match[1] || '').trim(), action: normalizeBattleActionDisplayName(match[2] || '') }))
         .filter(item => item.actor && item.action);
@@ -3695,10 +3698,11 @@ class BattleUIComponent {
             action: normalizeBattleActionDisplayName(declaration?.action || openings.find(item => isSameBattleReportName(item.actor, actor))?.action || ''),
             damage: Math.max(0, Number(match[3] || 0)),
             segment,
+            counterDamage: counterActors.some(name => isSameBattleReportName(name, actor)),
           };
         })
         .filter(item => item.actor && item.target && item.damage > 0);
-      const counters = Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭([^抓，。！？]+)抓住([^出，。！？\s]+)出手后的空门，造成(\d+)点反击伤害/g))
+      const counters = Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭([^抓，。！？]+)抓住([^出，。！？\s]+)出手后的空门[^。！？\d]*(?:造成了?|打出)\s*(\d+)\s*点(?:反击)?伤害/g))
         .map(match => ({
           actor: String(match[1] || '').trim(),
           action: String(match[2] || '防反').trim(),
@@ -3740,7 +3744,7 @@ class BattleUIComponent {
       const reaction = chain.reaction || null;
       const hits = Array.isArray(chain.hits) ? chain.hits : [];
       const counters = Array.isArray(chain.counters) ? chain.counters : [];
-      const mainTarget = String(hits[0]?.target || reaction?.actor || counters[0]?.target || '对手').trim();
+      const mainTarget = String(reaction?.actor || hits[0]?.target || '对手').trim();
       let sentence = '';
       if (opening) {
         sentence = `${opening.actor}以【${normalizeBattleActionDisplayName(opening.action)}】压向${mainTarget}`;
@@ -3748,7 +3752,7 @@ class BattleUIComponent {
           const reactionAction = normalizeBattleActionDisplayName(reaction.action);
           sentence += `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
           if (/伺机闪避|闪避/.test(reactionAction)) sentence += hits.length ? '，仍被余波命中' : '，避开了攻势';
-          else if (/承伤硬抗/.test(reactionAction)) sentence += '，硬吃攻势寻找反打窗口';
+          else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势寻找反打窗口' : '，硬抗住攻势';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
         }
         const damageText = 合并回合伤害文本(hits);
@@ -3792,10 +3796,13 @@ class BattleUIComponent {
             (bucket.reactions || []).find(item => !isSameBattleReportName(item.actor, opening.actor)) ||
             null;
           let hits = (bucket.hits || []).filter(item =>
-            isSameBattleReportName(item.actor, opening.actor) ||
-            (reaction?.actor && isSameBattleReportName(item.target, reaction.actor))
+            !item.counterDamage &&
+            (
+              isSameBattleReportName(item.actor, opening.actor) ||
+              (reaction?.actor && isSameBattleReportName(item.target, reaction.actor))
+            )
           );
-          if (!hits.length && openings.length === 1) hits = bucket.hits || [];
+          if (!hits.length && openings.length === 1) hits = (bucket.hits || []).filter(item => !item.counterDamage && !isSameBattleReportName(item.actor, reaction?.actor || ''));
           const counters = (bucket.counters || []).filter(item =>
             isSameBattleReportName(item.target, opening.actor) ||
             (reaction?.actor && isSameBattleReportName(item.actor, reaction.actor))
@@ -33768,6 +33775,24 @@ class BattleUIComponent {
           return !!轨迹.目标 && !支援动作;
         }
 
+        function 判定侧写是自我应对动作(轨迹 = {}) {
+          const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
+          const actor = String(轨迹.行动者 || '').trim();
+          const target = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
+          return /伺机闪避|闪避|承伤硬抗|肉体兜底|硬抗|防御|危机自保|坚壁反制|收招转防|借力守势|撤离/.test(技能) ||
+            (!!actor && !!target && isSameBattleReportName(actor, target));
+        }
+
+        function 构建侧写目标文本(轨迹 = {}) {
+          if (判定侧写是自我应对动作(轨迹)) {
+            const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
+            if (/伺机闪避|闪避/.test(技能)) return '不锁定敌方目标，优先处理当前攻势并重排身位。';
+            if (/撤离/.test(技能)) return '不继续锁定目标，优先寻找脱离战场的窗口。';
+            return '不锁定敌方目标，优先稳住自身防线。';
+          }
+          return 轨迹.目标 ? `当前指向【${轨迹.目标}】。` : '当前没有明确目标。';
+        }
+
         function 清洗判定侧写理由(raw = '', 轨迹 = {}) {
           let text = String(raw || '').trim();
           if (!text) return '';
@@ -33832,6 +33857,12 @@ class BattleUIComponent {
         }
 
         function 构建战略侧写文本(轨迹 = {}) {
+          if (判定侧写是自我应对动作(轨迹)) {
+            const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
+            if (/伺机闪避|闪避/.test(技能)) return '承受来袭压力，优先拉开身位寻找反击窗口。';
+            if (/撤离/.test(技能)) return '继续缠斗风险上升，优先寻找脱离窗口。';
+            return '承受来袭压力，优先稳住自身防线。';
+          }
           const 目标 = String(轨迹.目标 || '').trim();
           const 战略 = 读取侧写战略标签(轨迹);
           if (战略 && 目标) return `确认【${战略}】意图，当前目标【${目标}】。`;
@@ -33873,9 +33904,16 @@ class BattleUIComponent {
         function 构建动作决断文本(轨迹 = {}) {
           const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
           const 行动者 = String(轨迹.行动者 || '行动者').trim();
-          const 目标 = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
-          if (轨迹.动作校正?.发生校正) return `${行动者}最终改以${包裹判定动作名称(轨迹.动作校正.实际技能)}${目标 ? `应对${目标}` : '应对战局'}。`;
-          if (/伺机闪避|闪避/.test(技能)) return `${行动者}最终以${包裹判定动作名称(技能)}${目标 ? `应对${目标}的攻势` : '重排身位'}。`;
+          const 原始目标 = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
+          const 目标 = 原始目标 && !isSameBattleReportName(行动者, 原始目标) ? 原始目标 : '';
+          if (轨迹.动作校正?.发生校正) {
+            const 实际技能 = normalizeBattleActionDisplayName(轨迹.动作校正.实际技能 || '');
+            if (/伺机闪避|闪避/.test(实际技能)) return `${行动者}最终改以${包裹判定动作名称(实际技能)}处理当前攻势。`;
+            if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(实际技能)) return `${行动者}最终改以${包裹判定动作名称(实际技能)}稳住自身防线。`;
+            if (/撤离/.test(实际技能)) return `${行动者}最终改以${包裹判定动作名称(实际技能)}寻找脱离窗口。`;
+            return `${行动者}最终改以${包裹判定动作名称(实际技能)}${目标 ? `应对${目标}` : '应对战局'}。`;
+          }
+          if (/伺机闪避|闪避/.test(技能)) return `${行动者}最终以${包裹判定动作名称(技能)}处理当前攻势，重排身位。`;
           if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}稳住防线。`;
           if (/撤离/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}寻找脱离战场的机会。`;
           if (/控制|封技|打断|限制|中毒|削弱|青影叠/.test(`${技能} ${轨迹.选择原因 || ''}`)) return `${行动者}最终以${包裹判定动作名称(技能)}${目标 ? `限制${目标}的行动` : '施加持续压制'}。`;
@@ -33899,7 +33937,7 @@ class BattleUIComponent {
           }
           return [
             `├─ 👁️ 局势：${/应招|再判定|换招/.test(读取轨迹类型(轨迹)) ? 读取判定流程输入文本(轨迹) : 构建战略侧写文本(轨迹)}`,
-            `├─ 🎯 目标：${轨迹.目标 ? `当前指向【${轨迹.目标}】。` : '当前没有明确目标。'}`,
+            `├─ 🎯 目标：${构建侧写目标文本(轨迹)}`,
             `├─ 🌊 推演：${读取判定流程过滤文本(轨迹)}。`,
             `├─ ⚖️ 权衡：${构建动作权衡文本(轨迹)}`,
             `└─ 🏁 决断：${构建动作决断文本(轨迹)}`,
