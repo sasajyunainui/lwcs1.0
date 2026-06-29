@@ -3961,7 +3961,7 @@ class BattleUIComponent {
         if (!effects.some(text => /移动/.test(text)) && /\[位移执行\]|位移限制|限制位移|限制移动|移动受限/.test(raw)) effects.push(`限制${targetName}的移动`);
         if (/打断|截断/.test(raw)) effects.push(`打断${targetName}的施法节奏`);
         if (/封技|沉默|断流/.test(raw) && !effects.some(text => /技能释放/.test(text))) effects.push(`压制${targetName}的技能释放`);
-        if (effects.length) push(`${actorName || '行动者'}释放【${skillName}】，${effects.slice(0, 3).join('，并')}。`);
+        if (actorName && effects.length) push(`${actorName}释放【${skillName}】，${effects.slice(0, 3).join('，并')}。`);
       }
       hitMatches.forEach(match => {
         const rawActor = String(match[1] || '').trim();
@@ -4011,8 +4011,8 @@ class BattleUIComponent {
         .forEach(match => push(`${String(match[1] || '').trim()}。`));
       if (!lines.length && /\[(?:主动进攻|节奏封锁|破绽捕捉|游击切入|职责优先|支援判断|稳态调整|行为预演\/主动战术阶段)\]/.test(raw)) {
         const actor = String(raw.match(/\]\s*([^，。！？\s]+)(?:抓住|判断|优先|察觉|选择|改用|直接|试图|以|释放)/)?.[1] || '').trim();
-        const skill = String(raw.match(/\[([^\]]+)\]/g)?.map(part => part.slice(1, -1)).find(part => !/主动进攻|节奏封锁|破绽捕捉|游击切入|职责优先|支援判断|稳态调整|行为预演/.test(part)) || '').trim();
-        if (skill) push(`${actor || '行动者'}释放【${skill}】调整战局。`);
+        const skill = String(raw.match(/\[([^\]]+)\]/g)?.map(part => part.slice(1, -1)).find(part => !/第\d+回合|主动进攻|节奏封锁|破绽捕捉|游击切入|职责优先|支援判断|稳态调整|行为预演/.test(part)) || '').trim();
+        if (actor && skill) push(`${actor}释放【${skill}】调整战局。`);
       }
       if (!lines.length && actionDeclarations.length) {
         actionDeclarations
@@ -4040,6 +4040,7 @@ class BattleUIComponent {
         .replace(/\s+/g, ' ')
         .replace(/[；，]\s*。/g, '。')
         .trim();
+      if (/^【?第\d+回合】?\s*行动者释放【第\d+回合】调整战局。?$/.test(text)) return '';
       return normalizeBattleSkillNameMarks(text)
         .replace(/\[(?!第\d+回合\])[^\]]+\]\s*/g, '')
         .replace(/\s+/g, ' ')
@@ -5520,21 +5521,11 @@ class BattleUIComponent {
       if (原型 === '伤害结算') {
         hydrated.运行机制 = '伤害结算';
         const 攻击段数 = Math.max(1, Math.round(Number(effect?.攻击段数 || 1)));
-        const 伤害类型 = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(String(effect?.伤害类型 || '').trim())
-          ? String(effect?.伤害类型 || '').trim()
-          : '物理伤害';
-        const 结算标签 = 伤害类型 === '真实伤害' ? '真实伤害' : '标准伤害';
-        const 抗性类型 = 伤害类型 === '真实伤害'
-          ? '真实无视'
-          : 伤害类型 === '精神伤害'
-            ? '精神抗性'
-            : 伤害类型 === '能量伤害'
-              ? '元素抗性'
-              : '物理抗性';
-        hydrated.伤害类型 = 伤害类型;
+        const 伤害绑定 = 读取战斗伤害类型绑定(effect?.伤害类型, context?.skill || context?.技能 || {});
+        hydrated.伤害类型 = 伤害绑定.伤害类型;
         hydrated.攻击段数 = 攻击段数;
-        hydrated.结算标签 = 结算标签;
-        hydrated.抗性类型 = 抗性类型;
+        hydrated.结算标签 = 伤害绑定.结算标签;
+        hydrated.抗性类型 = 伤害绑定.抗性类型;
         if (Number(effect?.防御穿透 || 0) > 0) {
           hydrated.防御穿透 = Math.max(0, Number(effect.防御穿透 || 0));
           写字段('armor_pen', '增量', hydrated.防御穿透);
@@ -6342,6 +6333,32 @@ class BattleUIComponent {
       return Math.max(当前精神力, 精神上限 * 0.25);
     }
 
+    const 战斗伤害类型列表 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+
+    function 规范化战斗伤害类型(伤害类型 = '', 技能 = {}) {
+      const 文本 = String(伤害类型 || '').trim();
+      if (战斗伤害类型列表.includes(文本)) return 文本;
+      const 技能文本 = `${文本} ${技能?.name || ''} ${技能?.魂技名 || ''} ${技能?.技能名称 || ''} ${技能?.效果描述 || ''}`;
+      if (/真实|规则|法则|无视|穿透本源|毁灭|时光/.test(技能文本)) return '真实攻击';
+      if (/精神|识海|幻境|灵魂|眩晕|混乱|封技|恐惧/.test(技能文本)) return '精神攻击';
+      if (/远程|射线|光束|飞刃|投掷|炮|波|箭|弹|雷|电|冰|火|光|暗|星|空间|元素|爆炸/.test(技能文本)) return '远程攻击';
+      return '近身攻击';
+    }
+
+    function 读取战斗伤害类型绑定(伤害类型 = '', 技能 = {}) {
+      const 类型 = 规范化战斗伤害类型(伤害类型, 技能);
+      return {
+        伤害类型: 类型,
+        结算标签: 类型 === '真实攻击' ? '真实伤害' : '标准伤害',
+        抗性类型: 类型 === '真实攻击' ? '真实无视' : 类型 === '精神攻击' ? '精神抗性' : 类型 === '远程攻击' ? '元素抗性' : '物理抗性',
+      };
+    }
+
+    const 战斗伤害是近身攻击 = 伤害类型 => 规范化战斗伤害类型(伤害类型) === '近身攻击';
+    const 战斗伤害是远程攻击 = 伤害类型 => 规范化战斗伤害类型(伤害类型) === '远程攻击';
+    const 战斗伤害是精神攻击 = 伤害类型 => 规范化战斗伤害类型(伤害类型) === '精神攻击';
+    const 战斗伤害是真实攻击 = 伤害类型 => 规范化战斗伤害类型(伤害类型) === '真实攻击';
+
     const 紫极魔瞳防守境界集合_战斗 = new Set(['芥子', '浩瀚']);
 
     function 读取战斗单位功法表_战斗(单位 = {}) {
@@ -6375,7 +6392,7 @@ class BattleUIComponent {
         技能?.name,
         技能?.效果描述,
       ].map(值 => String(值 || '').trim()).join('|');
-      return /精神伤害|精神力|精神控制|精神压制|识海|幻境|眩晕|混乱|封技|恐惧/.test(文本);
+      return /精神攻击|精神力|精神控制|精神压制|识海|幻境|眩晕|混乱|封技|恐惧/.test(文本);
     }
 
     function 计算紫极魔瞳防守精神攻势值_战斗(单位 = {}, 最终属性 = {}, 效果 = {}, 技能 = {}) {
@@ -7162,9 +7179,9 @@ class BattleUIComponent {
     function 计算定位伤害倍率(攻击方 = {}, 防御方 = {}, 伤害类型 = '') {
       const 攻方系别列表 = 读取角色系别列表(攻击方);
       const 守方系别列表 = 读取角色系别列表(防御方);
-      const 类型 = String(伤害类型 || '').trim();
+      const 类型 = 规范化战斗伤害类型(伤害类型);
       if (攻方系别列表.includes('强攻系') && 守方系别列表.some(系别 => ['辅助系', '治疗系', '食物系', '召唤系'].includes(系别))) {
-        return /物理|近战|能量|AOE/.test(类型) ? 1.9 : 1.45;
+        return 类型 === '近身攻击' || 类型 === '远程攻击' ? 1.9 : 1.45;
       }
       if (攻方系别列表.includes('强攻系') && 守方系别列表.includes('防御系')) return 0.92;
       return 1;
@@ -13057,7 +13074,7 @@ class BattleUIComponent {
         _效果数组: [{
           原型: '伤害结算',
           目标: '敌方单体',
-          伤害类型: '物理伤害',
+          伤害类型: '近身攻击',
           威力倍率: Math.max(60, Math.round(Math.max(Number(召唤单位?.str || 0), Number(召唤单位?.sp_max || 0)) * 0.08)),
         }],
       }, '普通攻击');
@@ -13088,7 +13105,7 @@ class BattleUIComponent {
         _效果数组: [{
           原型: '伤害结算',
           目标: '敌方单体',
-          伤害类型: index % 2 === 0 ? '物理伤害' : '能量伤害',
+          伤害类型: index % 2 === 0 ? '近身攻击' : '远程攻击',
           威力倍率: 90 + index * 15,
         }],
       }, 名称));
@@ -13332,10 +13349,10 @@ class BattleUIComponent {
       if (!伤害效果) return -1;
       const 倾向 = 读取召唤类型倾向(召唤单位.类型);
       const 威力 = Math.max(1, Number(伤害效果.威力倍率 || 90));
-      const 伤害类型 = String(伤害效果.伤害类型 || '').trim();
+      const 伤害类型 = 规范化战斗伤害类型(伤害效果.伤害类型, 技能);
       const 目标防御 = Math.max(1, Number((目标.final || buildCombatFinalStats(目标)).def || 目标.def || 1));
       let 分数 = 威力 * Number(倾向.技能 || 1);
-      if (/能量|精神|魂力/.test(伤害类型) && 目标防御 > Number(召唤单位.final?.str || 召唤单位.str || 1)) 分数 += 18;
+      if ((战斗伤害是远程攻击(伤害类型) || 战斗伤害是精神攻击(伤害类型)) && 目标防御 > Number(召唤单位.final?.str || 召唤单位.str || 1)) 分数 += 18;
       if (getCombatHpRatio(目标) < 0.35) 分数 += 12 * Number(倾向.收割 || 1);
       if (召唤单位是继承型(召唤单位) && String(技能.name || 技能.魂技名 || '') !== '普通攻击') 分数 *= Number(倾向.继承 || 1);
       return 分数;
@@ -15237,7 +15254,7 @@ class BattleUIComponent {
         const 威力倍率 = Math.max(1, Number(effect?.威力倍率 || 100));
         const 生命比例 = getCombatHpValue(target) / Math.max(1, getCombatHpMaxValue(target));
         原始收益 = Math.min(160, 威力倍率 * 0.35 + (生命比例 < 0.35 ? 42 : 0));
-        if (String(effect?.伤害类型 || '').trim() === '真实伤害') 原始收益 *= 1.18;
+        if (战斗伤害是真实攻击(effect?.伤害类型)) 原始收益 *= 1.18;
         return 友方 ? -原始收益 : 原始收益;
       }
       if (原型 === '资源变化') {
@@ -16200,12 +16217,10 @@ class BattleUIComponent {
       const 数值文本 = String(effect?.数值 ?? '').trim();
       const 数值 = 读取战斗数值正负(数值文本 || effect?.威力倍率 || 0);
       if (原型 === '伤害结算') {
-        const 伤害类型 = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(String(effect?.伤害类型 || '').trim())
-          ? String(effect?.伤害类型 || '').trim()
-          : '物理伤害';
+        const 伤害类型 = 规范化战斗伤害类型(effect?.伤害类型);
         const 倍率 = Math.max(1, Number(effect?.威力倍率 || 100));
         const 最大生命 = getCombatHpMaxValue(char);
-        const 伤害 = 伤害类型 === '真实伤害'
+        const 伤害 = 伤害类型 === '真实攻击'
           ? Math.max(1, Math.floor(最大生命 * Math.min(1, 倍率 / 1000)))
           : Math.max(1, Math.floor(最大生命 * Math.min(1, 倍率 / 1800)));
         设置战斗血量值(char, getCombatHpValue(char) - 伤害);
@@ -18091,7 +18106,7 @@ class BattleUIComponent {
               团队意图修正: 命中审计.团队意图修正 || 0,
               干扰强度,
               最终权重: Number(选择结果.option?.weight || 0),
-              选择原因: 选择结果.trace || (选择结果.option ? '规划候选命中' : '无可用候选'),
+              选择原因: 选择结果.trace || (选择结果.option ? '规划候选命中' : '当前未形成有效出手机会'),
               压力档位: 命中审计.压力档位 || '',
               目标修正理由: 命中审计.目标修正理由 || [],
               候选排序审计: 命中审计.候选排序审计 || {},
@@ -18733,6 +18748,43 @@ class BattleUIComponent {
         return 0;
       }
 
+      function 评估反高速应对窗口(防守方 = {}, 攻击方 = {}, 攻击动作 = {}, combatData = {}) {
+        const 攻击者系别 = 读取规划单位系别(攻击方);
+        const 防守敏捷 = Number(防守方?.final?.agi ?? 防守方?.agi ?? 防守方?.属性?.敏捷 ?? 0);
+        const 攻击敏捷 = Number(攻击方?.final?.agi ?? 攻击方?.agi ?? 攻击方?.属性?.敏捷 ?? 0);
+        const 敏捷倍率 = 攻击敏捷 / Math.max(1, 防守敏捷);
+        const 伤害效果 = getPrimaryDamageEffect(攻击动作?.skill || {});
+        const 近身高速攻击 =
+          攻击者系别 === '敏攻系' &&
+          战斗伤害是近身攻击(伤害效果?.伤害类型) &&
+          (getSkillCastTime(攻击动作?.skill) <= 16 || 获取行动前摇(攻击动作) <= 16);
+        const 闪避记忆 = Math.max(0, Number(攻击方?.__本回合闪避成功次数 || 0), Number(防守方?.决策记忆?.opponent_dodge_count || 0));
+        const 久攻不下 = Number(combatData?.回合 || combatData?.round || 0) >= 3 && getCombatHpRatio(攻击方) > 0.55;
+        const 距离拉扯 = /闪避|游击|拉开|脱离|瞬移/.test(String(ensureActorDecisionMemory(攻击方).last_action || ''));
+        const 成立 = 敏捷倍率 >= 1.22 || 近身高速攻击 || 闪避记忆 >= 1 || 久攻不下 || 距离拉扯;
+        const 强度 = 限制行为概率(
+          (敏捷倍率 - 1) * 0.5 +
+            (近身高速攻击 ? 0.35 : 0) +
+            Math.min(0.25, 闪避记忆 * 0.12) +
+            (久攻不下 ? 0.16 : 0) +
+            (距离拉扯 ? 0.12 : 0),
+          0,
+          1,
+        );
+        return { 成立, 强度, 敏捷倍率, 近身高速攻击, 闪避记忆, 久攻不下, 距离拉扯 };
+      }
+
+      function 选取范围压制技能(技能列表 = []) {
+        return (技能列表 || [])
+          .map(skill => newSkillData(skill))
+          .filter(skill => skill && getPrimaryDamageEffect(skill))
+          .filter(skill => {
+            const 目标 = String(getSkillTarget(skill) || '').trim();
+            return /群体|全场/.test(目标);
+          })
+          .sort((a, b) => Number(getPrimaryDamageEffect(b)?.威力倍率 || 0) - Number(getPrimaryDamageEffect(a)?.威力倍率 || 0))[0] || null;
+      }
+
       function 构建应招候选池(后手 = {}, 先手 = {}, 先手动作 = {}, combatData = {}, 预设应招 = null) {
         const 双方 = 读取战斗双方队伍(combatData, 后手);
         const 先手威胁 = estimateIncomingActionThreat(先手, 后手, 先手动作, combatData);
@@ -18744,16 +18796,27 @@ class BattleUIComponent {
         });
         const 威胁分层 = 计算行为威胁分层(先手威胁);
         const 威胁系数 = 威胁分层.分数;
+        const 反高速窗口 = 评估反高速应对窗口(后手, 先手, 先手动作, combatData);
         const 防御意图 = Number(规划上下文.战略意图?.权重表?.保核 || 0) + Number(规划上下文.战略意图?.权重表?.拖回合 || 0);
         const 反制意图 = Number(规划上下文.战略意图?.权重表?.控制 || 0) + Number(规划上下文.战略意图?.权重表?.击杀 || 0);
         const 防御基础 = 威胁分层.低威胁 ? 12 : 威胁分层.高威胁 ? 34 : 23;
         const 闪避基础 = 威胁分层.低威胁 ? 8 : 威胁分层.高威胁 ? 27 : 18;
         const 硬抗基础 = 威胁分层.低威胁 ? 52 : 威胁分层.高威胁 ? 16 : 32;
+        const 反高速加权 = 反高速窗口.成立 ? Math.round(反高速窗口.强度 * 34) : 0;
         const 候选 = [
-          { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 - 计算保守动作惩罚(后手, '防御', 威胁分层)), 分类: '防御' },
-          { name: '闪避', action: { type: '闪避', action_type: '闪避', skill: null, cast_time: 6 }, weight: Math.round(闪避基础 + 威胁系数 * 34 + (读取规划单位系别(后手) === '敏攻系' ? 14 : 0) - 计算保守动作惩罚(后手, '伺机闪避', 威胁分层)), 分类: '闪避' },
-          { name: '承伤硬抗', action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 }, weight: Math.round(硬抗基础 + (1 - 威胁系数) * 26 + 计算战术切换奖励(后手, '承伤硬抗', 威胁分层)), 分类: '承伤硬抗' },
+          { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 + Math.round(反高速加权 * 0.45) - 计算保守动作惩罚(后手, '防御', 威胁分层)), 分类: '防御' },
+          { name: '闪避', action: { type: '闪避', action_type: '闪避', skill: null, cast_time: 6 }, weight: Math.round(闪避基础 + 威胁系数 * 34 + (读取规划单位系别(后手) === '敏攻系' ? 14 : 0) - Math.round(反高速加权 * 0.25) - 计算保守动作惩罚(后手, '伺机闪避', 威胁分层)), 分类: '闪避' },
+          { name: '承伤硬抗', action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 }, weight: Math.round(硬抗基础 + (1 - 威胁系数) * 26 + Math.round(反高速加权 * 0.7) + 计算战术切换奖励(后手, '承伤硬抗', 威胁分层)), 分类: '承伤硬抗' },
         ];
+        if (反高速窗口.成立) {
+          候选.push({
+            name: '防守反击',
+            action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0, __反高速应对: true },
+            weight: Math.round(24 + 反高速窗口.强度 * 58 + (读取规划单位系别(后手) === '防御系' ? 12 : 0) + (读取规划单位系别(后手) === '强攻系' ? 9 : 0) - 计算保守动作惩罚(后手, '承伤硬抗', 威胁分层)),
+            分类: '承伤硬抗',
+            __规划轨迹: ['对手高速近身或持续拉扯，转入防守反击窗口'],
+          });
+        }
         if (预设应招 && (预设应招.skill || !/待机/.test(String(预设应招.type || 预设应招.action_type || '')))) {
           候选.push({
             name: 预设应招.skill?.name || 预设应招.skill?.魂技名 || 预设应招.type || '预设应招',
@@ -18769,6 +18832,9 @@ class BattleUIComponent {
             const 分类 = 推断行为链技能倾向(skill);
             const 前摇压力 = 限制行为概率(getSkillCastTime(skill) / 40, 0, 1);
             const 威力 = 限制行为概率(Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0) / 300, 0, 1);
+            const 目标规模 = String(getSkillTarget(skill) || '').trim();
+            const 范围压制价值 = 反高速窗口.成立 && /群体|全场/.test(目标规模) ? 0.42 + 反高速窗口.强度 * 0.36 : 0;
+            const 短前摇价值 = 反高速窗口.成立 && 分类 === '短前摇对轰' ? 0.26 + 反高速窗口.强度 * 0.32 : 0;
             const 防御价值 = ['防御', '位移规避'].includes(分类) ? (威胁分层.低威胁 ? 0.08 : 0.35) : 分类 === '反制技能' ? 0.26 : 0;
             const 截断价值 = ['控制截断', '短前摇对轰'].includes(分类) ? (威胁分层.低威胁 ? 0.34 : 0.25) : 0;
             const 低威胁推进奖励 = 威胁分层.低威胁 && ['控制截断', '短前摇对轰', '反制技能'].includes(分类) ? 18 : 0;
@@ -18780,10 +18846,10 @@ class BattleUIComponent {
             });
             候选.push({
               name: skill.name || skill.魂技名 || 分类,
-              action: { type: 分类, action_type: 分类, skill, cast_time: getSkillCastTime(skill) || 10 },
-              weight: Math.max(1, Math.round(18 + 威胁系数 * 42 + 防御价值 * 60 + 截断价值 * 50 + 威力 * 35 + 低威胁推进奖励 + Math.max(-28, Math.min(42, Number(规划收益.净收益 || 0) * 0.12)) + 反制意图 * 截断价值 * 0.18 + 计算战术切换奖励(后手, 分类, 威胁分层) - 前摇压力 * 28 - 计算保守动作惩罚(后手, 分类, 威胁分层))),
-              分类,
-              __规划轨迹: 规划收益.目标理由,
+              action: { type: 范围压制价值 > 0 ? '强势对轰' : 分类, action_type: 范围压制价值 > 0 ? '强势对轰' : 分类, skill, cast_time: getSkillCastTime(skill) || 10 },
+              weight: Math.max(1, Math.round(18 + 威胁系数 * 42 + 防御价值 * 60 + 截断价值 * 50 + 范围压制价值 * 62 + 短前摇价值 * 52 + 威力 * 35 + 低威胁推进奖励 + Math.max(-28, Math.min(42, Number(规划收益.净收益 || 0) * 0.12)) + 反制意图 * Math.max(截断价值, 范围压制价值, 短前摇价值) * 0.18 + 计算战术切换奖励(后手, 范围压制价值 > 0 ? '强势对轰' : 分类, 威胁分层) - 前摇压力 * (范围压制价值 > 0 ? 18 : 28) - 计算保守动作惩罚(后手, 分类, 威胁分层))),
+              分类: 范围压制价值 > 0 ? '范围压制' : 分类,
+              __规划轨迹: 范围压制价值 > 0 ? [...(规划收益.目标理由 || []), '范围攻击用于压缩高速目标闪避空间'] : 规划收益.目标理由,
             });
           });
         return 候选.filter(候选项 => Number(候选项.weight || 0) > 0);
@@ -19471,9 +19537,6 @@ class BattleUIComponent {
         let visiblePlayerInput = '';
         let 撤离结算结果 = '';
         let 本次最大单击HP比例 = 0;
-        const 初始玩家动作 = parsePlayerIntent(playerInput, combatData);
-        const 初始玩家被动姿态 = ['防御', '闪避', '撤离'].includes(String(初始玩家动作?.action_type || ''));
-
         const buildAutoPlayerContinuationAction = () => {
           const actorEntry = { char: attacker, side: 'player' };
           const targets = chooseTargetForActor(actorEntry, { combatData });
@@ -19533,12 +19596,15 @@ class BattleUIComponent {
               playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null };
             }
           } else {
-            playerAction = mode === 'multi_round' && roundCount > 1 && 初始玩家被动姿态
+            playerAction = mode === 'multi_round' && roundCount > 1
               ? (buildAutoPlayerContinuationAction() || parsePlayerIntent('普通攻击', combatData))
               : parsePlayerIntent(playerInput, combatData);
             if (playerAction?.player_auto_continuation && playerAction.decision_log) roundLog += `${playerAction.decision_log} `;
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
             const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
+            const 玩家主动作延后扣费 =
+              !单挑动作是防守反应(playerAction) &&
+              !判定单挑动作敌对(playerAction, attacker, 玩家动作目标, combatData);
             const 指定敌方目标 = 玩家动作目标 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 玩家动作目标.name || 玩家动作目标))
               ? 玩家动作目标
               : null;
@@ -19613,8 +19679,9 @@ class BattleUIComponent {
               // 主动作被没收，变成了“蓄力挨打”态，用来触发后续的防御与闪避博弈
               playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null };
             } else {
-              if (playerAction.action_type !== '施法失败') {
+              if (playerAction.action_type !== '施法失败' && !玩家主动作延后扣费) {
                 let costLog = applyActionCost(attacker, playerAction, 玩家动作目标, combatData);
+                playerAction.__主动成本已结算 = true;
                 if (costLog) roundLog += costLog + ' ';
               }
             }
@@ -19655,16 +19722,26 @@ class BattleUIComponent {
           let 反应结算动作 = null;
           let 主动结算战斗数据 = combatData;
           let 本轮NPC先手 = false;
+          let 玩家非敌对动作已执行 = false;
           let 行为链结果 = null;
           let settleResult = null;
 
           const 执行非敌对玩家动作 = () => {
+            if (玩家非敌对动作已执行) return { dmg: 0, desc: '', extraPatchOps: [] };
+            玩家非敌对动作已执行 = true;
             const target = 玩家动作目标 || attacker;
+            if (playerAction.action_type !== '施法失败' && playerAction.__主动成本已结算 !== true) {
+              const costLog = applyActionCost(attacker, playerAction, target, combatData);
+              playerAction.__主动成本已结算 = true;
+              if (costLog) roundLog += `${costLog} `;
+              if (playerAction.action_type === '施法失败') return { dmg: 0, desc: '', extraPatchOps: [] };
+            }
             const supportCombatData = 构建单挑临时战斗数据(attacker, target, 'player', combatData);
             const supportReaction = 构建单挑配合动作(attacker, target, playerAction);
             const supportResult = executeClash(playerAction, supportReaction, supportCombatData);
             if (Array.isArray(supportResult.extraPatchOps) && supportResult.extraPatchOps.length) {
               clashExtraPatchOps.push(...supportResult.extraPatchOps);
+              supportResult.__extraPatchOps已收集 = true;
             }
             roundLog += `${supportReaction.log} ${supportResult.desc} `;
             return supportResult;
@@ -19724,7 +19801,7 @@ class BattleUIComponent {
               roundLog += ` ${npcDeclaredAction.decision_log}`;
             }
           }
-          if (Array.isArray(settleResult.extraPatchOps) && settleResult.extraPatchOps.length)
+          if (Array.isArray(settleResult.extraPatchOps) && settleResult.extraPatchOps.length && settleResult.__extraPatchOps已收集 !== true)
             clashExtraPatchOps.push(...settleResult.extraPatchOps);
 
           if (attacker.蓄力技能 != null) {
@@ -19846,6 +19923,19 @@ class BattleUIComponent {
           );
           if (行为防反日志) roundLog += ` ${行为防反日志}`;
           isPassiveInterrupted = isPassiveInterrupted || appliedDamage / getCombatHpMaxValue(被动结算目标) >= 0.15;
+          if (
+            本轮NPC先手 &&
+            !玩家动作敌对 &&
+            !isPassivePlayerTurn &&
+            !isPassiveInterrupted &&
+            isCombatUnitAbleToFight(attacker)
+          ) {
+            const 后续非敌对结果 = 执行非敌对玩家动作();
+            if (Array.isArray(后续非敌对结果.extraPatchOps) && 后续非敌对结果.extraPatchOps.length && 后续非敌对结果.__extraPatchOps已收集 !== true)
+              clashExtraPatchOps.push(...后续非敌对结果.extraPatchOps);
+          } else if (本轮NPC先手 && !玩家动作敌对 && !isPassivePlayerTurn && isPassiveInterrupted) {
+            roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.action_type || '行动'}】被对手攻势打断，未能完成。`;
+          }
           if (反应结算动作?.type === '穿戴装备') {
             if (!isPassiveInterrupted) {
               const 装备目标 = 反应结算动作.equip_target || 反应结算动作.skill?.equip_target;
@@ -20702,13 +20792,17 @@ class BattleUIComponent {
         const status = attackerChar.状态 || {};
         let log = '';
         let supportCostContext = { 目标: null, 目标数量: 1, 目标列表: [], 批量模式: '' };
+        if (!playerAction || typeof playerAction !== 'object') return '';
+        if (playerAction.__主动成本已结算 === true) return '';
 
         const 释放限制 = 检查技能释放限制(attackerChar, playerAction, defenderChar);
         if (!释放限制.可释放) {
           playerAction.action_type = '施法失败';
+          playerAction.__主动成本已结算 = true;
           return `[释放受限] ${释放限制.原因}，无法释放[${playerAction.skill?.name || playerAction.skill?.魂技名 || playerAction.action_type || '技能'}]。`;
         }
         if (释放限制.日志) log += 释放限制.日志;
+        playerAction.__主动成本已结算 = true;
 
         const 动作条件上下文 = {
           actor: attackerChar,
@@ -22347,10 +22441,14 @@ class BattleUIComponent {
         const 原锁定强度 = 目标.temp_lock_level;
         try {
           const 出手承诺 = Number(候选.出手承诺 || 0);
-          目标.temp_dodge_penalty = Number(目标.temp_dodge_penalty || 0) + 出手承诺 * 0.45;
-          目标.temp_lock_level = Number(目标.temp_lock_level || 0) + Math.round(出手承诺 * 4);
+          const 原攻击类型 = 规范化战斗伤害类型(getPrimaryDamageEffect(原动作?.skill || {})?.伤害类型, 原动作?.skill || {});
+          const 是闪避反击 = 候选.防反类型 === '完美闪避';
+          const 反应削弱倍率 = 是闪避反击 ? 0.52 : 0.82 + (原攻击类型 === '近身攻击' ? 0.18 : 0);
+          const 闪避削弱倍率 = 是闪避反击 ? 0.28 : 0.52 + (原攻击类型 === '近身攻击' ? 0.16 : 0);
+          目标.temp_dodge_penalty = Number(目标.temp_dodge_penalty || 0) + 出手承诺 * 闪避削弱倍率;
+          目标.temp_lock_level = Number(目标.temp_lock_level || 0) + Math.round(出手承诺 * (是闪避反击 ? 3 : 5));
           const 基础反应余量 = calculateReactionRatio(防反者, 目标, 防反动作, 防反战斗数据);
-          const 出手反应折损 = 限制行为概率(1 - 出手承诺 * 0.72, 0.36, 0.92);
+          const 出手反应折损 = 限制行为概率(1 - 出手承诺 * 反应削弱倍率, 是闪避反击 ? 0.46 : 0.28, 是闪避反击 ? 0.96 : 0.88);
           const 二次反应余量 = 基础反应余量 * 出手反应折损;
           const 二次反应动作 = 目标.temp_cannot_react
             ? { type: '无法反应', log: `${目标.name || '攻击方'}出手已满，二次反应受限。`, skill: null, def_mult: 1.0 }
@@ -23044,9 +23142,10 @@ class BattleUIComponent {
         if (技能分类 === '控制') 承诺 += 0.08;
         if (战斗目标类型 === '敌方单体') 承诺 += 0.04;
         if (战斗目标类型 === '敌方群体' || 战斗目标类型 === '全场') 承诺 += 0.02;
-        if (/物理伤害/.test(伤害类型)) 承诺 += 0.14;
-        else if (/能量/.test(伤害类型)) 承诺 += 0.08;
-        else if (/精神/.test(伤害类型)) 承诺 += 0.04;
+        if (战斗伤害是近身攻击(伤害类型)) 承诺 += 0.16;
+        else if (战斗伤害是远程攻击(伤害类型)) 承诺 += 0.07;
+        else if (战斗伤害是精神攻击(伤害类型)) 承诺 += 0.05;
+        else if (战斗伤害是真实攻击(伤害类型)) 承诺 += 0.1;
         承诺 += Math.min(0.22, Math.max(0, 威力倍率 - 80) / 500);
         if (效果列表.some(effect => ['多段伤害', '追击', '追击位移', '强制位移', '位移交换'].includes(读取战斗效果标签(effect))))
           承诺 += 0.08;
@@ -23147,7 +23246,7 @@ class BattleUIComponent {
               ? 1.15
               : 1;
         const 威力倍率 = Math.max(35, Math.floor(基础威力 * 系别倍率 * (1 + 出手承诺 * 0.65 + Math.max(0, 触发概率 - 0.25))));
-        const 伤害类型 = 系别 === '精神系' ? '精神伤害' : 系别 === '元素系' ? '能量伤害' : '物理伤害';
+        const 伤害类型 = 系别 === '精神系' ? '精神攻击' : 系别 === '元素系' ? '远程攻击' : '近身攻击';
         return {
           action_type: '行为防反',
           type: '行为防反',
@@ -23257,7 +23356,7 @@ class BattleUIComponent {
           return 总和 + (Math.abs(原始值) <= 1 ? 原始值 * 100 : 原始值);
         }, 0);
         const skillPower = Math.max(0, Number(pClash?.威力倍率 || 0));
-        const dmgType = String(pClash?.伤害类型 || '物理伤害');
+        const dmgType = 规范化战斗伤害类型(pClash?.伤害类型, skill);
         const conditionArmorPen = 使用对应等级 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const 目标防御剥夺 = Math.min(
           0.9,
@@ -23273,29 +23372,29 @@ class BattleUIComponent {
           Number(pClash?.防御穿透 || 0) + 预结算附加穿透,
           conditionArmorPen,
         );
-        if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
+        if (!战斗伤害是精神攻击(dmgType) && !战斗伤害是真实攻击(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
         const soulDriveScale = 使用对应等级 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, defender);
         const spiritDriveScale = 使用对应等级 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, defender);
         const 定位伤害倍率 = 使用对应等级 ? 1 : 计算定位伤害倍率(attacker, defender, dmgType);
         const 消耗加成系数 = 使用对应等级 ? 1 : 计算伤害消耗加成系数(skill, attacker);
-        if (/真实/.test(dmgType)) {
+        if (战斗伤害是真实攻击(dmgType)) {
           const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
           projectedDamage = skillPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
-        } else if (/物理/.test(dmgType)) {
+        } else if (战斗伤害是近身攻击(dmgType)) {
           projectedDamage =
             skillPower *
             (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
             soulDriveScale *
             定位伤害倍率 *
             消耗加成系数;
-        } else if (/能量/.test(dmgType)) {
+        } else if (战斗伤害是远程攻击(dmgType)) {
           projectedDamage =
             skillPower *
-            (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
-            spiritDriveScale *
+            (Math.max(Number(攻势最终属性.sp_max || 攻势单位.sp_max || 0), Number(攻势最终属性.str || 攻势单位.str || 0) * 0.75) / actualDef) *
+            soulDriveScale *
             定位伤害倍率 *
             消耗加成系数;
-        } else if (/精神/.test(dmgType)) {
+        } else if (战斗伤害是精神攻击(dmgType)) {
           projectedDamage =
             skillPower *
             (计算精神伤害攻势值(攻势单位, 攻势最终属性) /
@@ -24038,7 +24137,7 @@ class BattleUIComponent {
             消耗: '无',
             前摇: 10,
             _效果数组: [
-              { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
+              { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
             ],
           },
           playerAction.skill?.name || '普通攻击',
@@ -24524,7 +24623,7 @@ class BattleUIComponent {
         const 攻势最终属性 = 使用对应等级 ? 本次对应等级.最终属性 : attackerFinalStat;
         const 攻势敏捷 = Math.max(1, Number(攻势最终属性.agi || 攻势单位.agi || aAgi || 1));
         const 攻势精神上限 = Math.max(1, Number(攻势最终属性.men_max || 攻势单位.men_max || attackerFinalStat.men_max || 1));
-        const isPhysicalMeleeAction = !使用对应等级 && String(pClash.伤害类型 || '') === '物理伤害';
+        const 是近身接战动作 = !使用对应等级 && 战斗伤害是近身攻击(pClash.伤害类型);
         const 登记行为防反候选 = (防反类型, 防反方, 参数 = {}) => {
           if (!防反方 || playerAction?.__行为防反 === true || result.__行为防反候选) return;
           const 反应余量 = Number(
@@ -24576,13 +24675,13 @@ class BattleUIComponent {
           result.interrupt_bonus = attackerInterruptBonus;
           return result;
         }
-        if (attackerIsDisarmed && (isBasicAttack || isPhysicalMeleeAction)) {
+        if (attackerIsDisarmed && (isBasicAttack || 是近身接战动作)) {
           result.desc = `[缴械压制] ${attacker.name || '攻击方'}被缴械，无法完成${isBasicAttack ? '普通攻击' : '近战技'}！`;
           result.interrupt_bonus = attackerInterruptBonus;
           return result;
         }
         const 缴械规则 = 读取规则改写规则(combatData, attacker, '缴械');
-        if (缴械规则 && (isBasicAttack || isPhysicalMeleeAction)) {
+        if (缴械规则 && (isBasicAttack || 是近身接战动作)) {
           const 缴械强度 = 读取规则改写强度(缴械规则);
           if (缴械强度 >= 1 || Math.random() < 缴械强度) {
             result.desc = `[规则改写] ${attacker.name || '攻击方'}的武器/近战收益被临时缴械规则阻断。`;
@@ -24646,12 +24745,14 @@ class BattleUIComponent {
           }
         }
 
-        let dmgType = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(String(pClash.伤害类型 || '').trim())
-          ? String(pClash.伤害类型 || '').trim()
-          : '物理伤害';
+        let dmgType = 规范化战斗伤害类型(pClash.伤害类型, playerAction.skill);
 
         const conditionArmorPen = 使用对应等级 ? 0 : 读取状态穿透比例(attackerConditionEffects);
         const isAOE = resolvedDamageTargets.length > 1 || damageTargetContext.targetKind === '全场';
+        const 是近身攻击 = 战斗伤害是近身攻击(dmgType);
+        const 是远程攻击 = 战斗伤害是远程攻击(dmgType);
+        const 是精神攻击 = 战斗伤害是精神攻击(dmgType);
+        const 是真实攻击 = 战斗伤害是真实攻击(dmgType);
         let fluctuation = 0.9 + Math.random() * 0.2;
         const 原始最终伤害倍率 = 使用对应等级 ? 1 : attackerConditionEffects.reduce(
           (mult, ce) => mult * Number(ce.final_damage_mult || 1.0),
@@ -24723,12 +24824,20 @@ class BattleUIComponent {
                 };
               }
             }
-            const dodgeScale = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避' ? 26 : 10;
-            const grazeWindow = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避' ? 16 : 6;
+            const 范围压制削弱 = isAOE ? (damageTargetContext.targetKind === '全场' ? 10 : 7) : 0;
+            const 近身闪避削弱 = 是近身攻击 ? 6 : 0;
+            const 远程闪避修正 = 是远程攻击 ? 2 : 0;
+            const dodgeScale = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避'
+              ? (是近身攻击 ? 21 : 是远程攻击 ? 28 : 26)
+              : (是近身攻击 ? 8 : 是远程攻击 ? 11 : 10);
+            const grazeWindow = targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避'
+              ? (是近身攻击 ? 11 : 16)
+              : (是近身攻击 ? 4 : 6);
             let dodgeRate = (targetEffectiveAgi / Math.max(1, 攻势敏捷 + 攻势精神上限)) * dodgeScale;
             dodgeRate += targetDodgeBonus * 100 - targetDodgePenalty * 100;
             dodgeRate -= hitDelta * 100;
             dodgeRate -= targetLockLevel * 8;
+            dodgeRate -= 范围压制削弱 + 近身闪避削弱 - 远程闪避修正;
             dodgeRate -= Math.max(0, Number(targetObj.__本回合闪避成功次数 || 0)) * 15;
             dodgeRate = Math.max(0, Math.min(targetUsesReactionAction ? 48 : 24, dodgeRate));
             const dodgeRoll = Math.random() * 100;
@@ -24781,25 +24890,25 @@ class BattleUIComponent {
             0.9,
             targetConditionEffects.reduce((maxVal, ce) => Math.max(maxVal, Number(ce.spirit_resist_strip || 0)), 0),
           );
-          if (!/精神|真实/.test(dmgType)) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
+          if (!是精神攻击 && !是真实攻击) actualDef = Math.max(1, actualDef * (1 - 目标防御剥夺));
           const soulDriveScale = 使用对应等级 ? 1 : getSoulDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
           const spiritDriveScale = 使用对应等级 ? 1 : getSpiritDriveScale({ ...attacker, final: attackerFinalStat }, targetObj);
           const 定位伤害倍率 = 使用对应等级 ? 1 : 计算定位伤害倍率(attacker, targetObj, dmgType);
           let projectedDamage = 0;
           const 消耗加成系数 = 使用对应等级 ? 1 : 计算伤害消耗加成系数(playerAction.skill, attacker);
-          if (/真实/.test(dmgType)) {
+          if (是真实攻击) {
             const 真实驱动 = Math.max(1, 计算精神伤害攻势值(攻势单位, 攻势最终属性));
             projectedDamage = remainPower * Math.max(1, Math.sqrt(真实驱动)) * 0.12 * 消耗加成系数;
-          } else if (/物理/.test(dmgType)) {
-            projectedDamage = remainPower * (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) * soulDriveScale * 定位伤害倍率 * 消耗加成系数;
-          } else if (/能量/.test(dmgType)) {
+          } else if (是近身攻击) {
+            projectedDamage = remainPower * (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) * soulDriveScale * 定位伤害倍率 * 1.04 * 消耗加成系数;
+          } else if (是远程攻击) {
             projectedDamage =
               remainPower *
-              (Number(攻势最终属性.str || 攻势单位.str || 0) / actualDef) *
-              spiritDriveScale *
+              (Math.max(Number(攻势最终属性.sp_max || 攻势单位.sp_max || 0), Number(攻势最终属性.str || 攻势单位.str || 0) * 0.75) / actualDef) *
+              soulDriveScale *
               定位伤害倍率 *
               消耗加成系数;
-          } else if (/精神/.test(dmgType)) {
+          } else if (是精神攻击) {
             projectedDamage =
               remainPower *
               (计算精神伤害攻势值(攻势单位, 攻势最终属性) / Math.max(1, 计算紫极魔瞳防守精神攻势值_战斗(targetObj, targetFinalStat, pClash, playerAction.skill) * (1 - 目标精神抗性剥夺))) *
@@ -28809,6 +28918,14 @@ class BattleUIComponent {
             const summary = deriveBattleSummaryFromEffects(规划技能);
             return isBattleSkillOffensiveProfile(规划技能, { skillType, mainType, summary });
           });
+          const rangePressureSkill = 选取范围压制技能(
+            评分技能列表
+              .filter(项目 => 项目?.skill && Number(项目.weight || 0) > 0)
+              .map(项目 => 项目.skill),
+          );
+          const quickClashSkill = 评分技能列表
+            .filter(项目 => 项目?.skill && Number(项目.weight || 0) > 0 && getSkillCastTime(项目.skill) <= 12 && getPrimaryDamageEffect(项目.skill))
+            .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0]?.skill || null;
           const hardControlSkill = 按画像取技能(
             规划技能 => {
               const mainType = inferMainTypeFromEffects(规划技能);
@@ -28892,6 +29009,8 @@ class BattleUIComponent {
           return {
             defSkill,
             atkSkill,
+            rangePressureSkill,
+            quickClashSkill,
             hardControlSkill,
             antiHealSkill,
             pierceSkill,
@@ -28927,6 +29046,8 @@ class BattleUIComponent {
           const {
             defSkill,
             atkSkill,
+            rangePressureSkill,
+            quickClashSkill,
             hardControlSkill,
             antiHealSkill,
             pierceSkill,
@@ -28995,6 +29116,8 @@ class BattleUIComponent {
               连段爆发: atkSkill,
               压血收束: executeSkill,
               强攻压制: atkSkill,
+              范围压制: rangePressureSkill,
+              短前摇对轰: quickClashSkill,
               游击收割: executeSkill && executeCastTime <= 18 ? executeSkill : atkSkill,
               坚壁反制: reactiveDefenseSkill,
               连锁控制: hardControlSkill,
@@ -29043,6 +29166,34 @@ class BattleUIComponent {
             : createEmptyBattleSummary();
           const atkCastTime = getSkillCastTime(atkSkill);
           const executeCastTime = getSkillCastTime(executeSkill);
+          const 反高速窗口 = 评估反高速应对窗口(defender, attacker, playerAction, behaviorState?.combatData || {});
+
+          if (反高速窗口.成立 && rangePressureSkill) {
+            tacticalBranches.push({
+              name: '范围压制',
+              weight: adjustBehaviorWeight('强势对轰', 68 + Math.round(反高速窗口.强度 * 52), defender, attacker, behaviorState),
+              build() {
+                return makeNpcAction(
+                  '强势对轰',
+                  `[范围压制] NPC判断对手速度优势明显，改用[${rangePressureSkill.name}]压缩其闪避空间。`,
+                  rangePressureSkill,
+                );
+              },
+            });
+          }
+          if (反高速窗口.成立 && quickClashSkill && quickClashSkill !== rangePressureSkill) {
+            tacticalBranches.push({
+              name: '短前摇对轰',
+              weight: adjustBehaviorWeight('强势对轰', 58 + Math.round(反高速窗口.强度 * 44), defender, attacker, behaviorState),
+              build() {
+                return makeNpcAction(
+                  '强势对轰',
+                  `[短前摇对轰] NPC放弃追逐身位，改以[${quickClashSkill.name}]抢在高速切入窗口正面截击。`,
+                  quickClashSkill,
+                );
+              },
+            });
+          }
 
           if (enemySnapshot.hasHealingTrend && antiHealSkill && !enemySnapshot.hasAntiHeal) {
             tacticalBranches.push({
@@ -29952,7 +30103,7 @@ class BattleUIComponent {
                 消耗: '无',
                 前摇: 10,
                 _效果数组: [
-                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
+                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
                 ],
               },
               '普通攻击',
@@ -30830,7 +30981,7 @@ class BattleUIComponent {
                 消耗: '无',
                 前摇: 10,
                 _效果数组: [
-                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
+                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
                 ],
               },
               '普通攻击',
@@ -31062,7 +31213,7 @@ class BattleUIComponent {
                   消耗: '无',
                   前摇: 10,
                   _效果数组: [
-                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
+                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
                   ],
                 }, '普通攻击'),
               ),
@@ -31963,7 +32114,7 @@ class BattleUIComponent {
                   消耗: '无',
                   前摇: 10,
                   _效果数组: [
-                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '物理伤害', 防御穿透: 0 },
+                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
                   ],
                 },
                 '普通攻击',

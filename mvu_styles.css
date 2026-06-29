@@ -27572,7 +27572,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-smart-al
   z-index: 20;
   display: grid;
   gap: 8px;
-  width: min(520px, calc(100% - 32px));
+  width: min(680px, calc(100% - 32px));
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -27580,25 +27580,25 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-smart-al
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-alert-card,
 #detailModal #mvu-battle-inline-host .battle-alert-card {
   min-width: 0;
-  padding: 8px 14px;
+  padding: 9px 16px;
   overflow: hidden;
   border-left: 3px solid var(--战斗警报色, var(--战斗警戒色));
   border-radius: calc(var(--战斗圆角) * 0.42);
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--战斗警报色, var(--战斗警戒色)) 18%, transparent), transparent 70%),
-    color-mix(in srgb, var(--战斗玻璃底) 82%, rgba(0, 0, 0, 0.7));
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗警报色, var(--战斗警戒色)) 22%, transparent), transparent 72%),
+    color-mix(in srgb, var(--战斗玻璃底) 46%, rgba(0, 0, 0, 0.92));
   box-shadow:
     inset 1px 1px 0 color-mix(in srgb, #ffffff 12%, transparent),
     inset -1px -1px 0 rgba(0, 0, 0, 0.45),
     0 0 18px color-mix(in srgb, var(--战斗警报色, var(--战斗警戒色)) 22%, transparent);
-  color: color-mix(in srgb, var(--战斗警报色, var(--战斗警戒色)) 72%, #ffffff);
-  font-size: 12px;
+  color: color-mix(in srgb, #ffffff 90%, var(--战斗警报色, var(--战斗警戒色)));
+  font-size: 13px;
   font-weight: 840;
-  line-height: 1.2;
+  line-height: 1.35;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 0 10px color-mix(in srgb, var(--战斗警报色, var(--战斗警戒色)) 62%, transparent);
+  text-overflow: clip;
+  white-space: normal;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-alert-card--danger,

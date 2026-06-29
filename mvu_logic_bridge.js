@@ -15002,6 +15002,27 @@
 
   const SKILL_DESIGNER_BATCH_EFFECT_FIELD_KEYS = Object.freeze(['原型', '属性', '资源', '状态', '类型']);
   const 技能设计台嵌套效果数组字段集合 = new Set(技能设计台嵌套效果数组字段表);
+  const 技能设计台伤害类型选项 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+
+  function 规范化技能设计台伤害类型(value = '', draft = {}) {
+    const text = normalizeSkillUiText(value, '');
+    if (技能设计台伤害类型选项.includes(text)) return text;
+    const merged = `${text} ${normalizeSkillUiText(draft?.type, '')} ${normalizeSkillUiText(draft?.deliveryForm, '')} ${normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '')} ${normalizeSkillUiText(draft?.description || draft?.效果描述, '')}`;
+    if (/真实|规则|法则|无视|穿透本源|毁灭|时光/.test(merged)) return '真实攻击';
+    if (/精神|识海|幻境|灵魂|眩晕|混乱|封技|恐惧/.test(merged)) return '精神攻击';
+    if (/远程|射线|光束|飞刃|投掷|炮|波|箭|弹|雷|电|冰|火|光|暗|星|空间|元素|爆炸/.test(merged)) return '远程攻击';
+    return '近身攻击';
+  }
+
+  function 读取技能设计台伤害绑定(伤害类型 = '', draft = {}) {
+    const type = 规范化技能设计台伤害类型(伤害类型, draft);
+    return {
+      伤害类型: type,
+      结算标签: type === '真实攻击' ? '真实伤害' : '标准伤害',
+      抗性类型: type === '真实攻击' ? '真实无视' : type === '精神攻击' ? '精神抗性' : type === '远程攻击' ? '元素抗性' : '物理抗性',
+    };
+  }
+
   const SKILL_DESIGNER_PROTOTYPE_FORBIDDEN_FIELDS = new Set([
     '对象',
     '结算策略',
@@ -15078,7 +15099,7 @@
           字段['威力倍率'] = Math.max(1, Math.round(powerNumber));
       }
       if (字段['伤害类型'] === undefined)
-        字段['伤害类型'] = normalizeSkillUiText(source['伤害类型'] || source.damageType, '物理伤害');
+        字段['伤害类型'] = 规范化技能设计台伤害类型(source['伤害类型'] || source.damageType, source);
       if (字段['攻击段数'] === undefined) {
         const rawHitCount = pick(['攻击段数', '段数', 'hitCount', 'segmentCount']);
         if (rawHitCount !== undefined)
@@ -15587,7 +15608,7 @@
       霸体: '身形稳固如山，行动不易被打断。',
       标记: `目标被精神标记，闪避率${数值}。`,
       防御剥夺: `防御参与伤害结算时，目标防御按${String(数值).replace(/^\+/, '')}剥夺。`,
-      精神抗性剥夺: `防守精神参与精神伤害结算时，目标精神抗性按${String(数值).replace(/^\+/, '')}剥夺。`,
+      精神抗性剥夺: `防守精神参与精神攻击结算时，目标精神抗性按${String(数值).replace(/^\+/, '')}剥夺。`,
       护卫: `施术者护卫目标，替其拦截攻击，护卫者承伤降低${String(数值).replace(/^\+/, '')}。`,
       嘲讽: '目标会优先攻击施术者。',
       封技: '技能回路被封锁，暂时无法施展技能。',
@@ -16198,15 +16219,10 @@
         else delete 字段['对应等级'];
       } else delete 字段['对应等级'];
       if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(字段['目标'], ''))) delete 字段['目标'];
-      const 伤害类型 = normalizeSkillUiText(字段['伤害类型'], '物理伤害');
-      字段['伤害类型'] = ['物理伤害', '能量伤害', '精神伤害', '真实伤害'].includes(伤害类型) ? 伤害类型 : '物理伤害';
-      if (字段['伤害类型'] === '真实伤害') {
-        字段['结算标签'] = '真实伤害';
-        字段['抗性类型'] = '真实无视';
-      } else {
-        字段['结算标签'] = '标准伤害';
-        字段['抗性类型'] = 字段['伤害类型'] === '精神伤害' ? '精神抗性' : 字段['伤害类型'] === '能量伤害' ? '元素抗性' : '物理抗性';
-      }
+      const 伤害绑定 = 读取技能设计台伤害绑定(字段['伤害类型'], context?.draft || context?.skill || {});
+      字段['伤害类型'] = 伤害绑定.伤害类型;
+      字段['结算标签'] = 伤害绑定.结算标签;
+      字段['抗性类型'] = 伤害绑定.抗性类型;
     }
     const 原型定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型];
     const 允许延迟回合 = ['伤害结算', '护盾变化', '属性修正', '状态施加'].includes(原型);
@@ -17170,16 +17186,11 @@
           throw new Error(`技能执行结构错误:${path}[${index}]伤害结算标签无效`);
         if (!['物理抗性', '精神抗性', '元素抗性', '毒素抗性', '真实无视'].includes(抗性类型))
           throw new Error(`技能执行结构错误:${path}[${index}]抗性类型无效`);
-        const 预期结算标签 = 伤害类型 === '真实伤害'
-          ? '真实伤害'
-          : '标准伤害';
-        const 预期抗性类型 = 伤害类型 === '真实伤害'
-          ? '真实无视'
-          : 伤害类型 === '精神伤害'
-            ? '精神抗性'
-            : 伤害类型 === '能量伤害'
-              ? '元素抗性'
-              : '物理抗性';
+        if (!技能设计台伤害类型选项.includes(伤害类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害类型无效`);
+        const 伤害绑定 = 读取技能设计台伤害绑定(伤害类型);
+        const 预期结算标签 = 伤害绑定.结算标签;
+        const 预期抗性类型 = 伤害绑定.抗性类型;
         if (结算标签 !== 预期结算标签 || 抗性类型 !== 预期抗性类型)
           throw new Error(`技能执行结构错误:${path}[${index}]伤害类型自动绑定字段不一致`);
         if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(effect['目标'], '')))
@@ -18979,7 +18990,7 @@
     const 临时技能 = {
       魂技名: normalizeSkillUiText(规范化草稿.name, ''),
       承载方式: 启用被动 ? '直接生效' : normalizeSkillUiText(规范化草稿.deliveryForm, '直接生效'),
-      消耗: formatSkillDesignerFullCostText(规范化草稿.costType, 规范化草稿.costValues, 规范化草稿.sustainCostText),
+      消耗: 格式化技能设计台正式消耗文本(规范化草稿.costType, 规范化草稿.costValues, 规范化草稿.sustainCostText, 预览元数据, 规范化草稿, liveSnapshot?.rootData || lastRenderableSnapshot?.rootData || {}),
       前摇: Math.max(0, toNumber(规范化草稿['前摇'], 0)),
       附带属性: normalizeSkillDesignerArray(规范化草稿.attachedAttributes),
       _效果数组: buildSkillDesignerRuntimeEffects(规范化草稿, {}, 预览元数据),
@@ -19677,16 +19688,23 @@
     const penetration = Math.max(0, Number(effect['防御穿透'] || 0));
     const effectivePenetration = penetration >= 100 ? 100 : Math.min(92, penetration);
     const defense = Math.max(1, Number(defender.def || 1) * (1 - effectivePenetration / 100));
-    const damageType = normalizeSkillUiText(effect['伤害类型'], '物理伤害');
-    const mentalDamage = /精神/.test(damageType);
+    const damageType = 规范化技能设计台伤害类型(effect['伤害类型'], draft);
+    const mentalDamage = damageType === '精神攻击';
+    const rangedDamage = damageType === '远程攻击';
+    const trueDamage = damageType === '真实攻击';
     const driveScale = mentalDamage
       ? 计算技能设计台资源压制倍率(attacker, defender, 'men')
       : 计算技能设计台资源压制倍率(attacker, defender, 'sp');
-    const attackValue = mentalDamage
+    const attackValue = trueDamage
+      ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1))
+      : mentalDamage
       ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1) * 0.7)
+      : rangedDamage
+      ? Math.max(Number(attacker.sp_max || 1), Number(attacker.str || 1) * 0.75)
       : Number(attacker.str || 1);
     const costScale = 计算技能设计台消耗加成系数(draft, attacker);
-    return Math.max(0, power * (attackValue / defense) * driveScale * costScale * finalDamageMult + finalDamageBonus);
+    const defenseScale = trueDamage ? Math.max(1, Math.sqrt(attackValue)) * 0.12 : attackValue / defense;
+    return Math.max(0, power * defenseScale * driveScale * costScale * finalDamageMult + finalDamageBonus);
   }
 
   function 获取技能设计台标准攻击威力倍率(等级 = 1) {
@@ -19713,7 +19731,7 @@
     const defender = 防御者属性 || 构建技能设计台标准战斗属性(施术等级, normalizeSkillUiText(draft.type, '防御系'));
     const attacker = 构建技能设计台标准战斗属性(攻击等级, '强攻系');
     const 无防御伤害 = 计算技能设计台单段伤害(
-      { 原型: '伤害结算', 威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 伤害类型: '物理伤害' },
+      { 原型: '伤害结算', 威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 伤害类型: '近身攻击' },
       attacker,
       defender,
       1,
@@ -20767,6 +20785,52 @@
     if (!持续文本) return 启动文本 || '无';
     if (!启动文本 || 启动文本 === '无') return `维持:${持续文本}`;
     return `${启动文本} 维持:${持续文本}`;
+  }
+
+  function 格式化技能设计台正式消耗文本(resourceType = '', resourceValues = {}, sustainText = '', previewMeta = {}, draft = {}, rootData = {}) {
+    const scope = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    const nameText = normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '');
+    const keepPercent =
+      scope === '武魂融合技' ||
+      /武魂真身|真身/.test(nameText);
+    if (keepPercent) return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+    if (!['魂技', 'independent_ring_skill', '自创魂技'].includes(scope)) return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+
+    const budget = 构建技能设计台预算上下文(previewMeta, rootData, draft);
+    const actor = budget?.角色 || {};
+    const maxByResource = {
+      魂力: Math.max(1, Number(actor.sp_max || actor.魂力上限 || 1)),
+      体力: Math.max(1, Number(actor.vit_max || actor.体力上限 || actor.HP上限 || 1)),
+      精神力: Math.max(1, Number(actor.men_max || actor.精神力上限 || 1)),
+    };
+    const 转换消耗值 = values => {
+      const converted = {};
+      safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
+        const text = normalizeSkillUiText(value, '');
+        if (/%$/.test(text)) {
+          const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
+          converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
+        } else {
+          converted[resource] = value;
+        }
+      });
+      return converted;
+    };
+    const cost = normalizeSkillDesignerCostValues(resourceValues);
+    const upfrontHasPercent = safeEntries(cost).some(([, value]) => /%$/.test(normalizeSkillUiText(value, '')));
+    const converted = 转换消耗值(cost);
+    let convertedSustain = normalizeSkillUiText(sustainText, '');
+    const sustainHasPercent = /%/.test(convertedSustain);
+    if (convertedSustain) {
+      const sustainConfig = 解析技能设计台消耗文本配置(convertedSustain);
+      if (safeEntries(sustainConfig.resourceValues).length) {
+        convertedSustain = formatSkillDesignerCostText(sustainConfig.resourceType, 转换消耗值(sustainConfig.resourceValues));
+      }
+    }
+    if (!upfrontHasPercent && !sustainHasPercent) {
+      return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+    }
+    return formatSkillDesignerFullCostText(resourceType, converted, convertedSustain);
   }
 
   function buildSkillDesignerCostObject(resourceType = '', resourceValues = {}, strict = false) {
@@ -21969,7 +22033,7 @@
       伤害结算: {
         威力倍率: '技能基础伤害倍率；直伤主效果才填，持续 DOT 不用它伪装。',
         攻击段数: '多段攻击的段数；每段都能参与命中/护盾/触发时才提高。',
-        伤害类型: '决定抗性和描述口径；真实伤害会绕开常规抗性。',
+        伤害类型: '选择攻击口径：近身攻击、远程攻击、精神攻击或真实攻击；目标范围仍由目标字段决定。',
         防御穿透: '内联穿透百分比；只在本次伤害自身带破防时填写。',
       },
       资源变化: {
@@ -22137,7 +22201,7 @@
       const 选项 = 读取技能设计台原型字段选项(prototype, key);
       if (字段定义['默认值'] !== undefined) effect[key] = cloneJsonValue(字段定义['默认值']);
       else if (key === '威力倍率') effect[key] = 100;
-      else if (key === '伤害类型') effect[key] = '物理伤害';
+      else if (key === '伤害类型') effect[key] = '近身攻击';
       else if (key === '数值') effect[key] = '+10%';
       else if (key === '数量' || key === '次数') effect[key] = 1;
       else if (类型 === '原型列表') effect[key] = [创建技能设计台默认原型效果('判定修正', effect['目标'])];
@@ -24201,9 +24265,12 @@
   function inferSkillDesignerDamageType(draft = {}) {
     const type = normalizeSkillUiText(draft && draft.type, '');
     const deliveryForm = normalizeSkillUiText(draft && draft.deliveryForm, '');
-    if (/精神/.test(type)) return '精神伤害';
-    if (/元素|控制|治疗|辅助/.test(type)) return '能量伤害';
-    return '物理伤害';
+    const text = `${type} ${deliveryForm} ${normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '')} ${normalizeSkillUiText(draft?.description || draft?.效果描述, '')}`;
+    if (/真实|规则|法则|无视|穿透本源/.test(text)) return '真实攻击';
+    if (/精神/.test(type) || /精神|识海|幻境|灵魂/.test(text)) return '精神攻击';
+    if (/元素/.test(type) || /远程|射线|光束|飞刃|投掷|炮|波|箭|弹|雷|电|冰|火|光|暗|星|空间|爆炸/.test(text)) return '远程攻击';
+    if (/敏攻|强攻/.test(type)) return '近身攻击';
+    return '近身攻击';
   }
 
   function estimateSkillDesignerDotDamage(baseEffect = null, ratioHint = 0.2) {
@@ -26314,7 +26381,7 @@
     const 有效触发限制 = 读取技能设计台有效触发限制(normalized, previewMeta);
     safeSkill['魂技名'] = 规范第七魂环真身名称_桥接(normalized.name, previewMeta);
     safeSkill['承载方式'] = 启用被动 ? '直接生效' : normalized.deliveryForm || '直接生效';
-    safeSkill['消耗'] = formatSkillDesignerFullCostText(normalized.costType, normalized.costValues, normalized.sustainCostText);
+    safeSkill['消耗'] = 格式化技能设计台正式消耗文本(normalized.costType, normalized.costValues, normalized.sustainCostText, previewMeta, normalized, 根数据);
     safeSkill['前摇'] = Math.max(0, toNumber(normalized['前摇'], 0));
     if (有效触发限制) safeSkill['触发限制'] = cloneJsonValue(有效触发限制);
     else delete safeSkill['触发限制'];
@@ -26649,7 +26716,12 @@
             : effectSummaryCore;
       const type = normalizeSkillUiText(draft && draft.type, 推断技能设计台技能分类(effectArray, '输出'));
       const target = normalizeSkillUiText(draft && draft.target, '未知');
-      const cost = 构建技能设计台运行态消耗展示(skill && skill['消耗'], effectArray, 技能预览元数据, skill);
+      const cost = 构建技能设计台运行态消耗展示(
+        格式化技能设计台正式消耗文本(draft.costType || draft.resourceType, draft.costValues || draft.resourceValues, draft.sustainCostText, 技能预览元数据, draft, 渲染根数据) || (skill && skill['消耗']),
+        effectArray,
+        技能预览元数据,
+        skill,
+      );
       const 前摇 = Math.max(0, toNumber(skill && skill['前摇'], 0));
       const 机制推断 = inferSkillDesignerMechanicsFromEffectArray(effectArray, type, target);
       const mainRole = normalizeSkillUiText(
