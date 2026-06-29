@@ -3642,6 +3642,7 @@ class BattleUIComponent {
     function formatBattleReactionPhrase(actor = '', action = '') {
       const actorName = String(actor || '防守方').trim();
       const actionName = normalizeBattleActionDisplayName(action);
+      if (!actionName || /无法反应|无/.test(actionName)) return `${actorName}来不及完整应对`;
       if (/伺机闪避|闪避/.test(actionName)) return `${actorName}以【${actionName}】闪身避让`;
       if (/承伤硬抗|肉体兜底|硬抗/.test(actionName)) return `${actorName}以【承伤硬抗】顶住攻势`;
       if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(actionName)) return `${actorName}转入【${actionName}】稳住防线`;
@@ -3664,6 +3665,10 @@ class BattleUIComponent {
         counters: [],
         dodges: [],
         defenses: [],
+        movements: [],
+        creations: [],
+        counterMisses: [],
+        pressureNotes: [],
         stateApplies: [],
         stateSettles: [],
       };
@@ -3711,6 +3716,21 @@ class BattleUIComponent {
           damage: Math.max(0, Number(match[4] || 0)),
         }))
         .filter(item => item.actor && item.target);
+      const counterMisses = Array.from(raw.matchAll(/\[防反错失\]\s*([^抓，。！？\s]+)抓到([^窗，。！？\s]+)窗口，但未能完成反打/g))
+        .map(match => ({
+          actor: String(match[1] || '').trim(),
+          type: String(match[2] || '防反').trim(),
+        }))
+        .filter(item => item.actor);
+      const movements = Array.from(raw.matchAll(/\[位移执行\]\s*([^。！？\n]+)(?:[。！？]|$)/g))
+        .map(match => ({ text: String(match[1] || '').trim() }))
+        .filter(item => item.text);
+      const creations = Array.from(raw.matchAll(/\[造物承载\]\s*([^。！？\n]+)(?:[。！？]|$)/g))
+        .map(match => ({ text: String(match[1] || '').trim() }))
+        .filter(item => item.text);
+      const pressureNotes = Array.from(raw.matchAll(/\[先手压制\]\s*([^。！？\n]+)(?:[。！？]|$)/g))
+        .map(match => ({ text: String(match[1] || '').trim() }))
+        .filter(item => item.text);
       const dodges = Array.from(raw.matchAll(/\[主动闪避\]\s*([^。！？\n]+?)(?:凭借|惊险|灵巧|成功|闪身|侧身)[^。！？\n]*(?:躲过|避开|闪过)[^。！？\n]*(?:[。！？]|$)/g))
         .map(match => ({ actor: String(match[1] || '').trim() }))
         .filter(item => item.actor);
@@ -3721,14 +3741,14 @@ class BattleUIComponent {
         .map(match => ({ target: String(match[1] || '').trim(), state: String(match[2] || '').trim() }))
         .filter(item => item.target && item.state);
       const stateSettles = [
-        ...Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，额外损失\s*(\d+)\s*点HP/g))
+        ...Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，额外损失\s*(\d+)\s*点\s*HP/g))
           .map(match => ({ target: String(match[1] || '').trim(), state: String(match[2] || '').trim(), verb: '损失', amount: String(match[3] || '').trim(), resource: '生命值' })),
-        ...Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(?:额外)?恢复\s*(\d+)\s*点HP/g))
+        ...Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(?:额外)?恢复\s*(\d+)\s*点\s*HP/g))
           .map(match => ({ target: String(match[1] || '').trim(), state: String(match[2] || '').trim(), verb: '恢复', amount: String(match[3] || '').trim(), resource: '生命值' })),
         ...Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(恢复|流失)\s*(\d+)\s*点(体力|魂力|精神力)/g))
           .map(match => ({ target: String(match[1] || '').trim(), state: String(match[2] || '').trim(), verb: String(match[3] || '').trim(), amount: String(match[4] || '').trim(), resource: String(match[5] || '').trim() })),
       ].filter(item => item.target && item.state && item.amount);
-      return { round, raw, openings, reactions, hits, counters, dodges, defenses, stateApplies, stateSettles };
+      return { round, raw, openings, reactions, hits, counters, dodges, defenses, movements, creations, counterMisses, pressureNotes, stateApplies, stateSettles };
     }
 
     function 合并回合伤害文本(hits = []) {
@@ -3752,8 +3772,27 @@ class BattleUIComponent {
       if (/防御|危机自保|承伤硬抗|硬抗|肉体兜底/.test(action)) return `${actor}转入【${action}】，收缩自身防线`;
       if (/闪避|伺机闪避/.test(action)) return `${actor}以【${action}】拉开身位，避开正面碰撞`;
       if (/撤离/.test(action)) return `${actor}尝试【${action}】，寻找脱离战场的窗口`;
-      if (/控制|封技|打断|限制|中毒|削弱/.test(action)) return `${actor}以【${action}】限制${targetName}的行动`;
-      return `${actor}以【${action || '行动'}】压向${targetName}`;
+      if (/控制|封技|打断|限制|中毒|削弱|位移|换位|交换/.test(action)) return `${actor}以【${action}】限制${targetName}的行动`;
+      return `${actor}施展【${action || '行动'}】指向${targetName}`;
+    }
+
+    function 格式化位移战报文本(items = []) {
+      const list = (Array.isArray(items) ? items : []).map(item => String(item?.text || '').trim()).filter(Boolean);
+      if (!list.length) return '';
+      return list
+        .slice(0, 2)
+        .map(text => {
+          if (/换位/.test(text)) return `位置变化生效，${text.replace(/^换位/, '换位')}`;
+          if (/未生效|未成立|缺少/.test(text)) return `位移尝试未能完全成立，${text}`;
+          return `身位变化生效，${text}`;
+        })
+        .join('；');
+    }
+
+    function 格式化造物战报文本(items = []) {
+      const list = (Array.isArray(items) ? items : []).map(item => String(item?.text || '').trim()).filter(Boolean);
+      if (!list.length) return '';
+      return list.slice(0, 2).map(text => `造物凝成：${text}`).join('；');
     }
 
     function 构建攻防链战报文本(chain = {}, round = 0) {
@@ -3761,6 +3800,14 @@ class BattleUIComponent {
       const reaction = chain.reaction || null;
       const hits = Array.isArray(chain.hits) ? chain.hits : [];
       const counters = Array.isArray(chain.counters) ? chain.counters : [];
+      const states = chain.stateApplies || [];
+      const movementText = 格式化位移战报文本(chain.movements || []);
+      const creationText = 格式化造物战报文本(chain.creations || []);
+      const pressureText = (Array.isArray(chain.pressureNotes) ? chain.pressureNotes : [])
+        .map(item => String(item?.text || '').trim())
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('；');
       const mainTarget = String(reaction?.actor || hits[0]?.target || '对手').trim();
       let sentence = '';
       if (opening) {
@@ -3769,12 +3816,14 @@ class BattleUIComponent {
         if (reaction) {
           const reactionAction = normalizeBattleActionDisplayName(reaction.action);
           sentence += openingIsGuard ? `；${formatBattleReactionPhrase(reaction.actor, reactionAction)}` : `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
-          if (/伺机闪避|闪避/.test(reactionAction)) sentence += hits.length ? '，仍被余波命中' : '，避开了攻势';
-          else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势寻找反打窗口' : '，稳住了身形';
+          if (/伺机闪避|闪避/.test(reactionAction)) sentence += hits.length ? '，仍被余波擦中' : (states.length ? '，避开了正面伤害，但仍受后续效果牵制' : '，避开了正面伤害');
+          else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势承受冲击' : '，稳住了身形';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
         }
         const damageText = 合并回合伤害文本(hits);
         if (damageText) sentence += `；${damageText}`;
+        if (movementText) sentence += `；${movementText}`;
+        if (creationText) sentence += `；${creationText}`;
       } else if (hits.length) {
         const first = hits[0];
         const damageText = 合并回合伤害文本(hits);
@@ -3788,6 +3837,15 @@ class BattleUIComponent {
       } else if (chain.defenses?.length) {
         const defense = chain.defenses[0];
         sentence = `${defense.actor || '防守方'}转入防御，抵挡了部分冲击`;
+      } else if (movementText) {
+        sentence = movementText;
+      } else if (creationText) {
+        sentence = creationText;
+      } else if (pressureText) {
+        sentence = pressureText;
+      } else if (chain.counterMisses?.length) {
+        const miss = chain.counterMisses[0];
+        sentence = `${miss.actor}捕捉到${miss.type || '防反'}窗口，但未能完成反打`;
       }
       if (sentence) {
         if (counters.length) {
@@ -3796,7 +3854,13 @@ class BattleUIComponent {
             .join('；');
           sentence += `；随后${counterText}`;
         }
-        const states = chain.stateApplies || [];
+        if (!counters.length && chain.counterMisses?.length && !/未能完成反打/.test(sentence)) {
+          const missText = chain.counterMisses
+            .slice(0, 2)
+            .map(item => `${item.actor}捕捉到${item.type || '防反'}窗口，但未能完成反打`)
+            .join('；');
+          if (missText) sentence += `；${missText}`;
+        }
         if (states.length) {
           const stateText = states.slice(0, 3).map(item => `${item.target}陷入【${item.state}】`).join('，');
           sentence += `，并使${stateText}`;
@@ -3829,18 +3893,21 @@ class BattleUIComponent {
               stateApplies: [],
               dodges: [],
               defenses: [],
+              movements: [],
+              creations: [],
+              counterMisses: [],
             };
             chains.push(chain);
           }
           chain.hits.push(hit);
         });
         if (!chains.length && openings.length === 1 && reactions.length <= 1) {
-          chains.push({ opening: openings[0], reaction: reactions[0] || null, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [] });
+          chains.push({ opening: openings[0], reaction: reactions[0] || null, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [], movements: [], creations: [], counterMisses: [], pressureNotes: [] });
         }
         openings.forEach(opening => {
           if (!chains.some(chain => chain.opening && isSameBattleReportName(chain.opening.actor, opening.actor))) {
             const reaction = reactions.length === 1 && openings.length === 1 ? reactions[0] : null;
-            chains.push({ opening, reaction, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [] });
+            chains.push({ opening, reaction, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [], movements: [], creations: [], counterMisses: [], pressureNotes: [] });
           }
         });
         return chains.map(chain => {
@@ -3854,7 +3921,16 @@ class BattleUIComponent {
           const participants = [openingActor, reactionActor, ...chain.hits.flatMap(item => [item.actor, item.target]), ...matchedCounters.flatMap(item => [item.actor, item.target])]
             .filter(Boolean);
           const stateApplies = (bucket.stateApplies || []).filter(item => participants.some(name => isSameBattleReportName(name, item.target)));
-          return { ...chain, counters: matchedCounters, stateApplies };
+          const chainGetsGlobalEvents = chains.length === 1 || !participants.length;
+          return {
+            ...chain,
+            counters: matchedCounters,
+            stateApplies,
+            movements: chainGetsGlobalEvents ? bucket.movements || [] : [],
+            creations: chainGetsGlobalEvents ? bucket.creations || [] : [],
+            counterMisses: (bucket.counterMisses || []).filter(item => participants.some(name => isSameBattleReportName(name, item.actor))),
+            pressureNotes: chainGetsGlobalEvents ? bucket.pressureNotes || [] : [],
+          };
         });
       }
       const hitGroups = [];
@@ -3862,14 +3938,14 @@ class BattleUIComponent {
         const key = `${normalizeBattleReportNameForMatch(hit.actor)}|${normalizeBattleReportNameForMatch(hit.target)}|${normalizeBattleActionDisplayName(hit.action)}`;
         let group = hitGroups.find(item => item.key === key);
         if (!group) {
-          group = { key, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [] };
+          group = { key, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [], movements: [], creations: [], counterMisses: [], pressureNotes: [] };
           hitGroups.push(group);
         }
         group.hits.push(hit);
       });
       if (hitGroups.length) return hitGroups;
-      if ((bucket.dodges || []).length || (bucket.defenses || []).length || (bucket.counters || []).length) {
-        return [{ hits: [], counters: bucket.counters || [], stateApplies: [], dodges: bucket.dodges || [], defenses: bucket.defenses || [] }];
+      if ((bucket.dodges || []).length || (bucket.defenses || []).length || (bucket.counters || []).length || (bucket.movements || []).length || (bucket.creations || []).length || (bucket.counterMisses || []).length || (bucket.pressureNotes || []).length) {
+        return [{ hits: [], counters: bucket.counters || [], stateApplies: [], dodges: bucket.dodges || [], defenses: bucket.defenses || [], movements: bucket.movements || [], creations: bucket.creations || [], counterMisses: bucket.counterMisses || [], pressureNotes: bucket.pressureNotes || [] }];
       }
       return [];
     }
@@ -3910,7 +3986,7 @@ class BattleUIComponent {
           groups.push(bucket);
         }
         bucket.raws.push(event.raw);
-        ['openings', 'reactions', 'hits', 'counters', 'dodges', 'defenses', 'stateApplies', 'stateSettles'].forEach(field => {
+        ['openings', 'reactions', 'hits', 'counters', 'dodges', 'defenses', 'movements', 'creations', 'counterMisses', 'pressureNotes', 'stateApplies', 'stateSettles'].forEach(field => {
           bucket[field].push(...(event[field] || []));
         });
       });
@@ -4020,9 +4096,9 @@ class BattleUIComponent {
         .forEach(match => push(`${String(match[1] || '').trim()}被附加了【${String(match[2] || '').trim()}】状态。`));
       Array.from(raw.matchAll(/\[状态施加\]\s*([^。！？\n]+?)抵住了\[([^\]]+)\]附着/g))
         .forEach(match => push(`${String(match[1] || '').trim()}抵住了【${String(match[2] || '').trim()}】状态。`));
-      Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，额外损失\s*(\d+)\s*点HP/g))
+      Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，额外损失\s*(\d+)\s*点\s*HP/g))
         .forEach(match => push(`${String(match[1] || '').trim()}因【${String(match[2] || '').trim()}】损失了 ${String(match[3] || '').trim()} 点生命值。`));
-      Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(?:额外)?恢复\s*(\d+)\s*点HP/g))
+      Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(?:额外)?恢复\s*(\d+)\s*点\s*HP/g))
         .forEach(match => push(`${String(match[1] || '').trim()}因【${String(match[2] || '').trim()}】恢复了 ${String(match[3] || '').trim()} 点生命值。`));
       Array.from(raw.matchAll(/\[状态结算\]\s*([^。！？\n]+?)受\[([^\]]+)\]影响，(?:恢复|流失)\s*(\d+)\s*点(体力|魂力|精神力)/g))
         .forEach(match => push(`${String(match[1] || '').trim()}因【${String(match[2] || '').trim()}】${match[0].includes('流失') ? '流失' : '恢复'}了 ${String(match[3] || '').trim()} 点${String(match[4] || '').trim()}。`));
@@ -5029,6 +5105,7 @@ class BattleUIComponent {
       if (BATTLE_SKILL_TARGET_KINDS.has(text)) return text;
       const derived = (() => {
         if (/分身/.test(text)) return '分身';
+        if (/造物/.test(text)) return '召唤物';
         if (/召唤物|召唤/.test(text)) return '召唤物';
         if (/全场敌方|敌方全场|全体敌|所有敌|全部敌/.test(text)) return '敌方群体';
         if (/友方群体|己方\/群体|全员/.test(text)) return '友方群体';
@@ -5264,6 +5341,7 @@ class BattleUIComponent {
         '己方/群体': '友方群体',
         '敌方/单体': '敌方单体',
         '敌方/群体': '敌方群体',
+        造物: '召唤物',
         召唤物: '召唤物',
         分身: '分身',
       };
@@ -19058,7 +19136,9 @@ class BattleUIComponent {
           动作: 后手动作.type || 后手动作.action_type || '应招',
           技能: 后手动作.skill || null,
           前摇: 获取行动前摇(后手动作),
-          战报: `[应招] ${后手.name || '后手'}以[${后手动作.skill?.name || 后手动作.type || '应招'}]应对。`,
+          战报: String(后手动作.type || 后手动作.action_type || '').trim() === '无法反应'
+            ? `[先手压制] ${后手.name || '后手'}来不及完整应对${先手.name || '先手'}的起招。`
+            : `[应招] ${后手.name || '后手'}以[${后手动作.skill?.name || 后手动作.type || '应招'}]应对。`,
         });
         const 应招规划上下文 = 构建规划上下文(后手, 先手, combatData, {
           combatData,
@@ -34402,7 +34482,7 @@ class BattleUIComponent {
           if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}稳住防线。`;
           if (/撤离/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}寻找脱离战场的机会。`;
           if (/控制|封技|打断|限制|中毒|削弱|青影叠/.test(`${技能} ${轨迹.选择原因 || ''}`)) return `${行动者}最终以${包裹判定动作名称(技能)}${目标 ? `限制${目标}的行动` : '施加持续压制'}。`;
-          if (/普通攻击|常规攻击/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}${目标 ? `压向${目标}` : '推进攻势'}。`;
+          if (/普通攻击|常规攻击/.test(技能)) return `${行动者}最终选择${包裹判定动作名称(技能)}${目标 ? `攻击${目标}` : '推进攻势'}。`;
           if (技能) return `${行动者}最终执行${包裹判定动作名称(技能)}${目标 ? `指向${目标}` : ''}。`;
           return `${行动者}本轮未形成有效出手机会，暂时转入守势观察。`;
         }
@@ -34550,16 +34630,17 @@ class BattleUIComponent {
 
         function 渲染防反侧写卡片(轨迹 = {}) {
           const normalized = 归一判定轨迹(轨迹);
-          const 标题 = `[防反机制] ⚡ ${normalized.行动者 || '系统'} 捕捉反击窗口`;
           const 动作 = String(normalized.result || '').trim() || '防反记录';
+          const 错失 = /错失/.test(动作);
+          const 标题 = `[防反机制] ⚡ ${normalized.行动者 || '系统'} ${错失 ? '反击未成' : '完成反击'}`;
           return `
             <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--counter">
               <div class="battle-preview-trace-title">
                 <b>${htmlEscapeText(标题)}</b>
               </div>
               <div class="battle-preview-trace-tree">
-                <span>${渲染判定侧写HTML('├─ 👁️ 起因：攻防交换中出现反击窗口。', normalized)}</span>
-                <span>${渲染判定侧写HTML(`└─ 🏁 决断：${/错失/.test(动作) ? '捕捉到破绽但未能完成反打。' : `执行【${动作}】。`}`, normalized)}</span>
+                <span>${渲染判定侧写HTML(`├─ 👁️ 起因：${错失 ? '攻防交换中短暂出现反打机会。' : '攻防交换中出现明确反击窗口。'}`, normalized)}</span>
+                <span>${渲染判定侧写HTML(`└─ 🏁 决断：${错失 ? '尝试反打但未能完成。' : `执行【${动作}】。`}`, normalized)}</span>
               </div>
               <details class="battle-preview-debug">
                 <summary>展开底层调试明细 (开发模式)</summary>
