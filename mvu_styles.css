@@ -28638,19 +28638,38 @@ body > .battle-record-terminal--portal .battle-preview-trace-row code {
   font-family: inherit;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-steps {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0 0 0 12px;
-  color: var(--战斗记录文字主色);
+body > .battle-record-terminal--portal .battle-preview-trace-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-steps li {
+body > .battle-record-terminal--portal .battle-preview-trace-title b {
   min-width: 0;
-  padding-left: 2px;
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-title em {
+  color: var(--战斗记录文字弱色);
   font-size: 10px;
-  line-height: 1.32;
+  font-style: normal;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-tree {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-tree span {
+  color: var(--战斗记录文字主色);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.34;
   overflow-wrap: anywhere;
 }
 
