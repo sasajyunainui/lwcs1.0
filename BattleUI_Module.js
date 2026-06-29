@@ -54,9 +54,34 @@ class BattleUIComponent {
     const globalDocument = root.document && typeof root.document.querySelector === 'function' ? root.document : null;
     const document = wrapperElement;
     const byId = id => wrapperElement.querySelector(`#${id}`);
+    function 同步战斗记录终端主题(node = component.recordPortalNode) {
+      if (!node || !component.container || typeof root.getComputedStyle !== 'function') return;
+      const 样式 = root.getComputedStyle(component.container);
+      [
+        '--主题主色',
+        '--资源亮色',
+        '--文字主色',
+        '--文字弱色',
+        '--战斗主色',
+        '--战斗强调色',
+        '--战斗危险色',
+        '--战斗警戒色',
+        '--战斗玻璃底',
+        '--战斗玻璃浮层',
+        '--战斗边缘高光',
+        '--战斗暗侧阴影',
+        '--战斗扫描线',
+        '--战斗环境光',
+        '--战斗圆角',
+      ].forEach(变量名 => {
+        const 值 = 样式.getPropertyValue(变量名).trim();
+        if (值) node.style.setProperty(变量名, 值);
+      });
+    }
     function 同步战斗记录终端位置() {
       const node = component.recordPortalNode;
       if (!node?.isConnected || !component.container?.getBoundingClientRect) return;
+      同步战斗记录终端主题(node);
       const rect = component.container.getBoundingClientRect();
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
@@ -89,6 +114,7 @@ class BattleUIComponent {
         本地节点.setAttribute('aria-label', '战斗记录');
         globalDocument.body.appendChild(本地节点);
         component.recordPortalNode = 本地节点;
+        同步战斗记录终端主题(本地节点);
         同步战斗记录终端位置();
         if (!component.cleanupRecordPortalPosition) {
           const 处理位置变化 = () => 同步战斗记录终端位置();
@@ -32674,6 +32700,7 @@ class BattleUIComponent {
               currentIntentMode,
               pendingTowerSettlement,
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
+              battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
             },
           });
           setUiBattleMode(window.BattleUI.state.currentMode);
@@ -32788,6 +32815,27 @@ class BattleUIComponent {
           return 读取战斗记录终端节点()?.querySelector('#ui-battle-preview-panel') || null;
         }
 
+        function 设置战斗记录展开状态(展开) {
+          const state = window.BattleUI?.state || {};
+          state.battleRecordCollapsed = 展开 === true ? false : true;
+          const terminal = 读取战斗记录终端节点();
+          if (!terminal) return;
+          const collapsed = state.battleRecordCollapsed !== false;
+          terminal.classList.toggle('battle-record-terminal--collapsed', collapsed);
+          terminal.querySelector('.battle-record-body')?.toggleAttribute('hidden', collapsed);
+          const toggle = terminal.querySelector('#ui-battle-record-toggle');
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggle.textContent = collapsed ? '记录' : '隐藏';
+          }
+          if (component.syncRecordPortalPosition) component.syncRecordPortalPosition();
+        }
+
+        function 同步战斗记录展开状态() {
+          const state = window.BattleUI?.state || {};
+          设置战斗记录展开状态(state.battleRecordCollapsed === false);
+        }
+
         function 读取战斗记录页签() {
           const state = window.BattleUI?.state || {};
           return state.activeBattleRecordTab === 'preview' ? 'preview' : 'actual';
@@ -32801,6 +32849,7 @@ class BattleUIComponent {
             button.classList.toggle('active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
           });
+          设置战斗记录展开状态(true);
           渲染战斗记录面板();
         }
 
@@ -32883,6 +32932,7 @@ class BattleUIComponent {
           const node = 读取战斗记录面板节点();
           if (!node) return;
           const state = window.BattleUI?.state || {};
+          同步战斗记录展开状态();
           const activeTab = 读取战斗记录页签();
           读取战斗记录终端节点()?.querySelectorAll('[data-battle-record-tab]').forEach(button => {
             const active = button.getAttribute('data-battle-record-tab') === activeTab;
@@ -32933,6 +32983,7 @@ class BattleUIComponent {
         function 渲染战斗预演面板(result = null) {
           if (result && window.BattleUI?.state) window.BattleUI.state.previewResult = result;
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordTab = 'preview';
+          设置战斗记录展开状态(true);
           渲染战斗记录面板();
         }
 
@@ -33131,6 +33182,7 @@ class BattleUIComponent {
               window.BattleUI.state.actualBattleResult = result;
               window.BattleUI.state.activeBattleRecordTab = 'actual';
             }
+            设置战斗记录展开状态(true);
             渲染战斗记录面板();
             window.dispatchEvent(new CustomEvent('battle-ui-submit-finished', { detail: result }));
           } catch (error) {
@@ -33226,6 +33278,14 @@ class BattleUIComponent {
             });
             button.__battleRecordTabBound = true;
           });
+          const recordToggle = 读取战斗记录终端节点()?.querySelector('#ui-battle-record-toggle');
+          if (recordToggle && !recordToggle.__battleRecordToggleBound) {
+            recordToggle.addEventListener('click', () => {
+              const collapsed = window.BattleUI?.state?.battleRecordCollapsed !== false;
+              设置战斗记录展开状态(collapsed);
+            });
+            recordToggle.__battleRecordToggleBound = true;
+          }
 
           const closeBtn = byId('ui-battle-close');
           if (closeBtn && !closeBtn.__battleCloseBound) {
