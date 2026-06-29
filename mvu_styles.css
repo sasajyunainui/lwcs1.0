@@ -28606,17 +28606,21 @@ body > .battle-record-terminal--portal .battle-preview-trace summary {
 
 body > .battle-record-terminal--portal .battle-preview-trace-row {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
-  padding: 5px 6px;
+  padding: 6px 7px;
+  border-left: 2px solid color-mix(in srgb, var(--战斗强调色) 54%, transparent);
   border-radius: calc(var(--战斗圆角) * 0.22);
-  background: rgba(255, 255, 255, 0.035);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 7%, transparent), transparent 78%),
+    rgba(255, 255, 255, 0.035);
 }
 
 body > .battle-record-terminal--portal .battle-preview-trace-row b,
 body > .battle-record-terminal--portal .battle-preview-trace-row span,
 body > .battle-record-terminal--portal .battle-preview-trace-row em,
-body > .battle-record-terminal--portal .battle-preview-trace-row code {
+body > .battle-record-terminal--portal .battle-preview-trace-row code,
+body > .battle-record-terminal--portal .battle-preview-trace-row pre {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 10px;
@@ -28632,10 +28636,40 @@ body > .battle-record-terminal--portal .battle-preview-trace-row span {
 }
 
 body > .battle-record-terminal--portal .battle-preview-trace-row em,
-body > .battle-record-terminal--portal .battle-preview-trace-row code {
+body > .battle-record-terminal--portal .battle-preview-trace-row code,
+body > .battle-record-terminal--portal .battle-preview-trace-row pre {
   color: var(--战斗记录文字弱色);
   font-style: normal;
   font-family: inherit;
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-card--target {
+  border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 46%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗记录文字弱色) 7%, transparent), transparent 76%),
+    rgba(255, 255, 255, 0.03);
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-card--action {
+  border-left-color: color-mix(in srgb, var(--战斗强调色) 64%, transparent);
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-card--handoff {
+  border-left-style: dashed;
+  border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 34%, transparent);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-card--counter {
+  border-left-color: color-mix(in srgb, var(--战斗警戒色) 76%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗警戒色) 10%, transparent), transparent 78%),
+    rgba(255, 255, 255, 0.035);
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-card--corrected {
+  border-left-color: color-mix(in srgb, var(--战斗警戒色) 82%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--战斗警戒色) 14%, transparent);
 }
 
 body > .battle-record-terminal--portal .battle-preview-trace-title {
@@ -28667,10 +28701,28 @@ body > .battle-record-terminal--portal .battle-preview-trace-tree {
 
 body > .battle-record-terminal--portal .battle-preview-trace-tree span {
   color: var(--战斗记录文字主色);
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-family: inherit;
   font-size: 10px;
   line-height: 1.34;
   overflow-wrap: anywhere;
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-correction {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: calc(var(--战斗圆角) * 0.18);
+  background: color-mix(in srgb, var(--战斗警戒色) 11%, rgba(0, 0, 0, 0.12));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--战斗警戒色) 22%, transparent);
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-correction span {
+  color: color-mix(in srgb, var(--战斗记录文字主色) 86%, var(--战斗警戒色));
+}
+
+body > .battle-record-terminal--portal .battle-preview-trace-correction b {
+  color: color-mix(in srgb, #ffffff 74%, var(--战斗警戒色));
 }
 
 body > .battle-record-terminal--portal .battle-preview-debug {
@@ -28682,7 +28734,12 @@ body > .battle-record-terminal--portal .battle-preview-debug summary {
   color: var(--战斗记录文字弱色);
   font-size: 10px;
   font-weight: 720;
+  opacity: 0.62;
   cursor: pointer;
+}
+
+body > .battle-record-terminal--portal .battle-preview-debug pre {
+  margin: 0;
 }
 
 body > .battle-record-terminal--portal .battle-preview-debug code {
@@ -28692,6 +28749,7 @@ body > .battle-record-terminal--portal .battle-preview-debug code {
   padding: 5px 6px;
   border-radius: calc(var(--战斗圆角) * 0.18);
   background: rgba(0, 0, 0, 0.18);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   white-space: pre-wrap;
 }
 

@@ -3545,6 +3545,92 @@ class BattleUIComponent {
         });
     }
 
+    function normalizeBattleReportNameForMatch(text = '') {
+      return String(text || '')
+        .replace(/[【】\[\]\s]/g, '')
+        .replace(/^(我方|敌方|玩家|NPC|同窗|目标)/, '')
+        .trim();
+    }
+
+    function isSameBattleReportName(left = '', right = '') {
+      const a = normalizeBattleReportNameForMatch(left);
+      const b = normalizeBattleReportNameForMatch(right);
+      return !!a && !!b && a === b;
+    }
+
+    function normalizeBattleActionDisplayName(name = '') {
+      const text = String(name || '').replace(/^【|】$/g, '').trim();
+      if (!text) return '';
+      if (text === '常规攻击') return '普通攻击';
+      if (text === '肉体兜底') return '承伤硬抗';
+      if (text === '硬抗') return '承伤硬抗';
+      return text;
+    }
+
+    function collectBattleExecutionActionDeclarations(rawLine = '') {
+      const raw = String(rawLine || '').replace(/\s+/g, ' ').trim();
+      if (!raw) return [];
+      const roundMatch = raw.match(/\[第(\d+)回合\]|\[团战第(\d+)回合开始\]/);
+      const round = Number(roundMatch?.[1] || roundMatch?.[2] || 0);
+      const actions = [];
+      const add = (actor, action, target = '', kind = 'execute') => {
+        const actorName = String(actor || '').trim();
+        const actionName = normalizeBattleActionDisplayName(action);
+        const targetName = String(target || '').trim();
+        if (!actorName || !actionName) return;
+        actions.push({ actor: actorName, action: actionName, target: targetName, round, kind, rawText: raw });
+      };
+      Array.from(raw.matchAll(/\[团战执行\]\s*([^，。！？\[\]]{1,32}?)以\[([^\]]+)\]指向\[([^\]]+)\]/g))
+        .forEach(match => add(match[1], match[2], match[3], 'execute'));
+      Array.from(raw.matchAll(/\[连放结算\]\s*([^，。！？\[\]]{1,32}?)追加\[([^\]]+)\]指向\[([^\]]+)\]/g))
+        .forEach(match => add(match[1], match[2], match[3], 'combo'));
+      Array.from(raw.matchAll(/\[起招\]\s*([^，。！？\[\]]{1,32}?)以\[([^\]]+)\]起招/g))
+        .forEach(match => add(match[1], match[2], '', 'opening'));
+      Array.from(raw.matchAll(/\[应招\]\s*([^，。！？\[\]]{1,32}?)以\[([^\]]+)\]应对/g))
+        .forEach(match => add(match[1], match[2], '', 'reaction'));
+      Array.from(raw.matchAll(/\[团战执行\]\s*([^，。！？\[\]]{1,32}?)完成蓄力，释放\[([^\]]+)\]/g))
+        .forEach(match => add(match[1], match[2], '', 'charged'));
+      Array.from(raw.matchAll(/\[[^\]]+\]\s*([^，。！？\[\]]{1,32}?)以\[([^\]]+)\]命中([^，。！？\s]+)/g))
+        .forEach(match => add(match[1], match[2], match[3], 'summon'));
+      Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭[^抓，。！？]+抓住([^出，。！？\s]+)出手后的空门/g))
+        .forEach(match => add(match[1], '行为防反', match[2], 'counter'));
+      return actions;
+    }
+
+    function findBattleExecutionActionDeclaration(declarations = [], actor = '', target = '') {
+      return declarations.find(item =>
+        isSameBattleReportName(item.actor, actor) &&
+        (!target || !item.target || isSameBattleReportName(item.target, target))
+      ) || declarations.find(item =>
+        target && isSameBattleReportName(item.target, target)
+      ) || declarations.find(item =>
+        isSameBattleReportName(item.actor, actor)
+      ) || null;
+    }
+
+    function formatBattleActionDamageSentence(actor = '', action = '', target = '', damage = '', segmentLabel = '') {
+      const actorName = String(actor || '攻击方').trim();
+      const targetName = String(target || '目标').trim();
+      const actionName = normalizeBattleActionDisplayName(action);
+      const segmentText = segmentLabel ? `的${segmentLabel}` : '';
+      if (/行为防反|反击/.test(actionName)) return `${actorName}抓住${targetName}出手后的空门反击，造成了 ${damage} 点伤害。`;
+      if (/普通攻击|常规攻击/.test(actionName)) return `${actorName}${segmentText}以【普通攻击】攻击${targetName}，造成了 ${damage} 点伤害。`;
+      if (actionName) return `${actorName}${segmentText}释放【${actionName}】指向${targetName}，造成了 ${damage} 点伤害。`;
+      return `${actorName}${segmentText}对${targetName}造成了 ${damage} 点伤害。`;
+    }
+
+    function formatBattleActionOnlySentence(declaration = {}) {
+      const actor = String(declaration?.actor || '行动者').trim();
+      const action = normalizeBattleActionDisplayName(declaration?.action);
+      const target = String(declaration?.target || '').trim();
+      if (!action) return '';
+      if (/普通攻击|常规攻击/.test(action) && target) return `${actor}以【普通攻击】攻击${target}。`;
+      if (/伺机闪避|闪避/.test(action)) return `${actor}选择【${action}】，拉开步点重排节奏。`;
+      if (/承伤硬抗|防御|危机自保/.test(action)) return `${actor}选择【${action}】，收缩防线承受压力。`;
+      if (/撤离/.test(action)) return `${actor}尝试【${action}】，寻找脱离战场的机会。`;
+      return target ? `${actor}释放【${action}】指向${target}。` : `${actor}释放【${action}】。`;
+    }
+
     function formatNaturalLanguageLog(rawLine = '') {
       const raw = String(rawLine || '').replace(/\s+/g, ' ').trim();
       if (!raw) return '';
@@ -3555,7 +3641,13 @@ class BattleUIComponent {
         if (roundLabel && line && !line.startsWith(roundLabel)) line = `${roundLabel} ${line}`;
         if (line && !lines.includes(line)) lines.push(line);
       };
-      const skillName = String(raw.match(/释放\[([^\]]+)\]/)?.[1] || raw.match(/为\[([^\]]+)\]/)?.[1] || '').trim();
+      const actionDeclarations = collectBattleExecutionActionDeclarations(raw);
+      const skillName = String(
+        raw.match(/释放\[([^\]]+)\]/)?.[1] ||
+        raw.match(/为\[([^\]]+)\]/)?.[1] ||
+        actionDeclarations.find(item => item.kind !== 'counter')?.action ||
+        '',
+      ).trim();
       const releaseIndex = skillName ? raw.indexOf(`释放[${skillName}]`) : -1;
       const releasePrefix = releaseIndex >= 0 ? raw.slice(Math.max(0, releaseIndex - 36), releaseIndex) : '';
       const actorName = String(
@@ -3564,6 +3656,7 @@ class BattleUIComponent {
           '',
       ).replace(/^(?:控制系|防御系|敏攻系|强攻系|辅助型|支援型|治疗系|食物系|召唤系)/, '').trim();
       const fallbackActorName = actorName ||
+        String(actionDeclarations.find(item => item.kind !== 'counter')?.actor || '').trim() ||
         String(raw.match(/\[团战执行\]\s*([^以，。！？\s]+)以/)?.[1] || '').trim() ||
         String(raw.match(/\[主动进攻\]\s*([^抓住，。！？\s]+)抓住/)?.[1] || '').trim() ||
         String(raw.match(/\[强势对轰\]\s*([^不，。！？\s]+)不甘/)?.[1] || '').trim() ||
@@ -3588,12 +3681,23 @@ class BattleUIComponent {
       }
       hitMatches.forEach(match => {
         const rawActor = String(match[1] || '').trim();
-        const segmentLabel = /^第\d+段$/.test(rawActor) ? rawActor : '';
-        const actor = segmentLabel ? fallbackActorName : (rawActor || fallbackActorName);
+        const actorSegmentMatch = rawActor.match(/^(.+?)的(第\d+段)$/);
+        const segmentLabel = actorSegmentMatch ? actorSegmentMatch[2] : /^第\d+段$/.test(rawActor) ? rawActor : '';
+        const actor = actorSegmentMatch ? actorSegmentMatch[1] : segmentLabel ? fallbackActorName : (rawActor || fallbackActorName);
         const target = String(match[2] || '').trim();
         const damage = String(match[3] || '').trim();
-        push(`${actor || '攻击方'}${segmentLabel ? `的${segmentLabel}` : ''}${skillName ? `释放了【${skillName}】，` : ''}对${target}造成了 ${damage} 点伤害。`);
+        const declaration = findBattleExecutionActionDeclaration(actionDeclarations, actor, target);
+        push(formatBattleActionDamageSentence(actor || declaration?.actor || '攻击方', declaration?.action || skillName, target, damage, segmentLabel));
       });
+      Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭[^抓，。！？]+抓住([^出，。！？\s]+)出手后的空门，造成(\d+)点反击伤害/g))
+        .forEach(match => {
+          const actor = String(match[1] || '').trim();
+          const target = String(match[2] || '').trim();
+          const damage = String(match[3] || '').trim();
+          if (!hitMatches.some(hit => isSameBattleReportName(hit[1], actor) && isSameBattleReportName(hit[2], target))) {
+            push(formatBattleActionDamageSentence(actor, '行为防反', target, damage));
+          }
+        });
       Array.from(raw.matchAll(/\[主动闪避\]\s*([^。！？\n]+?)(?:凭借|惊险|灵巧|成功|闪身|侧身)[^。！？\n]*(?:躲过|避开|闪过)[^。！？\n]*(?:[。！？]|$)/g))
         .forEach(match => push(`${String(match[1] || '').trim()}灵巧地闪避了这次攻击。`));
       if (/\[危机自保\]|\[防御承压\]|防御技能完美挡下|转为防御|保护自身|稳住阵脚/.test(raw)) {
@@ -3625,7 +3729,12 @@ class BattleUIComponent {
         const skill = String(raw.match(/\[([^\]]+)\]/g)?.map(part => part.slice(1, -1)).find(part => !/主动进攻|节奏封锁|破绽捕捉|游击切入|职责优先|支援判断|稳态调整|行为预演/.test(part)) || '').trim();
         if (skill) push(`${actor || '行动者'}释放【${skill}】调整战局。`);
       }
-      return lines.length ? lines.join(' ') : raw;
+      if (!lines.length && actionDeclarations.length) {
+        actionDeclarations
+          .filter(item => item.kind !== 'counter')
+          .forEach(item => push(formatBattleActionOnlySentence(item)));
+      }
+      return lines.length ? lines.join('\n') : raw;
     }
 
     function cleanBattleReportLineForStory(line = '') {
@@ -32993,95 +33102,262 @@ class BattleUIComponent {
           渲染战斗记录面板();
         }
 
-        function 格式化预演候选行(候选 = {}) {
-          const 名称 = String(候选?.名称 || 候选?.name || '候选').trim();
-          const 权重 = Math.round(Number(候选?.权重 || 候选?.weight || 0));
-          const 目标 = String(候选?.目标 || 候选?.target || '').trim();
-          const 审计 = 候选?.审计 || {};
-          const 记忆 = Number(审计?.记忆惩罚 || 0);
-          const 资源 = Number(审计?.资源修正 || 0);
-          const 职责 = Number(审计?.职责修正 || 0);
-          const 后缀 = [
-            目标 ? `->${目标}` : '',
-            记忆 ? `记忆${记忆 > 0 ? '-' : '+'}${Math.abs(Math.round(记忆))}` : '',
-            资源 ? `资源${资源 > 0 ? '+' : ''}${Math.round(资源)}` : '',
-            职责 ? `职责${职责 > 0 ? '+' : ''}${Math.round(职责)}` : '',
-          ].filter(Boolean).join(' ');
-          return `${名称}:${权重}${后缀 ? ` ${后缀}` : ''}`;
+        function 读取轨迹类型(trace = {}) {
+          return String(trace?.type || trace?.类型 || '').trim();
         }
 
-        function 读取判定流程候选列表(轨迹 = {}, limit = 5) {
-          return (Array.isArray(轨迹.候选排序结果) ? 轨迹.候选排序结果 : [])
-            .slice()
-            .sort((左, 右) => Number(右?.权重 || 0) - Number(左?.权重 || 0))
-            .filter(候选 => String(候选?.名称 || 候选?.name || '').trim())
-            .slice(0, Math.max(1, Number(limit || 5)));
+        function 判定轨迹是目标规划(轨迹 = {}) {
+          return /索敌规划|辅助目标规划/.test(读取轨迹类型(轨迹));
+        }
+
+        function 判定轨迹是战术动作(轨迹 = {}) {
+          return /主动规划|应招审计|再判定审计|换招审计/.test(读取轨迹类型(轨迹));
+        }
+
+        function 归一判定轨迹(trace = {}) {
+          const 类型 = 读取轨迹类型(trace);
+          return {
+            ...trace,
+            类型,
+            行动者: String(trace?.actor || trace?.行动者 || '').trim(),
+            目标: String(trace?.target || trace?.目标 || '').trim(),
+            技能: normalizeBattleActionDisplayName(trace?.skill || trace?.技能 || ''),
+            回合: Number(trace?.round || trace?.回合 || 0),
+            最终权重: Number(trace?.最终权重 || trace?.weight || 0),
+            选择原因: String(trace?.选择原因 || trace?.reason || '').trim(),
+            候选来源: String(trace?.候选来源 || trace?.source || '').trim(),
+          };
+        }
+
+        function 读取候选名称(候选 = {}) {
+          return normalizeBattleActionDisplayName(候选?.名称 || 候选?.name || '');
+        }
+
+        function 读取候选权重(候选 = {}) {
+          return Number(候选?.权重 ?? 候选?.weight ?? 0);
+        }
+
+        function 包裹判定动作名称(名称 = '') {
+          const text = normalizeBattleActionDisplayName(名称);
+          return text ? `【${text.replace(/^【|】$/g, '')}】` : '';
         }
 
         function 格式化判定候选名称(名称 = '') {
-          const text = String(名称 || '').trim();
-          if (!text) return '';
-          if (/普通攻击|防御|闪避|撤离|肉体兜底|伺机闪避|危机自保|控制截断/.test(text)) return text;
-          return `【${text.replace(/^【|】$/g, '')}】`;
+          return 包裹判定动作名称(名称);
         }
 
-        function 构建判定流程展示数据(traceList = []) {
+        function 读取判定流程候选列表(轨迹 = {}, limit = 5) {
+          const sorted = (Array.isArray(轨迹.候选排序结果) ? 轨迹.候选排序结果 : [])
+            .slice()
+            .filter(候选 => 读取候选名称(候选))
+            .sort((左, 右) => 读取候选权重(右) - 读取候选权重(左));
+          if (Number(limit) === 0) return sorted;
+          return sorted.slice(0, Math.max(1, Number(limit || 5)));
+        }
+
+        function 格式化审计证据值(value) {
+          if (value == null || value === '') return '';
+          if (typeof value === 'string') return value;
+          try { return JSON.stringify(value, null, 2); }
+          catch (_) { return String(value); }
+        }
+
+        function 读取战斗结果执行声明(logs = []) {
+          const 当前回合 = { value: 0 };
+          const 声明列表 = [];
+          (Array.isArray(logs) ? logs : []).forEach(raw => {
+            const text = String(raw || '');
+            const roundMatch = text.match(/\[第(\d+)回合\]|\[团战第(\d+)回合开始\]/);
+            if (roundMatch) 当前回合.value = Number(roundMatch[1] || roundMatch[2] || 当前回合.value || 0);
+            collectBattleExecutionActionDeclarations(text).forEach(item => {
+              声明列表.push({
+                ...item,
+                round: Number(item.round || 当前回合.value || 0),
+                rawText: item.rawText || text,
+              });
+            });
+          });
+          return 声明列表.filter(item => item.actor && item.action);
+        }
+
+        function 查找轨迹实际执行声明(轨迹 = {}, 执行声明列表 = []) {
+          const actor = String(轨迹?.行动者 || '').trim();
+          const target = String(轨迹?.目标 || '').trim();
+          const round = Number(轨迹?.回合 || 0);
+          const 同回合同人 = 执行声明列表.filter(item =>
+            !/行为防反/.test(String(item.action || '')) &&
+            isSameBattleReportName(item.actor, actor) &&
+            (!round || !item.round || Number(item.round || 0) === round)
+          );
+          if (!同回合同人.length) return null;
+          return 同回合同人.find(item => target && item.target && isSameBattleReportName(item.target, target)) ||
+            同回合同人[0] ||
+            null;
+        }
+
+        function 应用实际执行声明到轨迹(轨迹 = {}, 执行声明列表 = []) {
+          const 声明 = 查找轨迹实际执行声明(轨迹, 执行声明列表);
+          if (!声明) return 轨迹;
+          const 技能 = normalizeBattleActionDisplayName(声明.action);
+          const 当前技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          if (!技能 || 当前技能 === 技能) {
+            return {
+              ...轨迹,
+              技能: 当前技能 || 技能,
+              审计技能: 当前技能 || 技能,
+              实际技能: 技能,
+              实际目标: 声明.target || 轨迹.目标 || '',
+              实际回合: Number(声明.round || 轨迹.回合 || 0),
+              实战证据文本: 声明.rawText || '',
+            };
+          }
+          const 实际候选 = 读取判定流程候选列表(轨迹, 0)
+            .find(item => 读取候选名称(item) === 技能) || null;
+          return {
+            ...轨迹,
+            技能,
+            目标: 声明.target || 轨迹.目标 || '',
+            审计技能: 当前技能,
+            审计最终权重: Number(轨迹.最终权重 || 0),
+            最终权重: 实际候选 ? 读取候选权重(实际候选) : Number(轨迹.最终权重 || 0),
+            实际执行动作: 技能,
+            实际技能: 技能,
+            实际目标: 声明.target || '',
+            实际回合: Number(声明.round || 轨迹.回合 || 0),
+            实战证据文本: 声明.rawText || '',
+            实际执行候选: 实际候选,
+            动作校正: 当前技能 ? {
+              发生校正: true,
+              审计技能: 当前技能,
+              实际技能: 技能,
+              实际目标: 声明.target || '',
+              实际回合: Number(声明.round || 轨迹.回合 || 0),
+              实战证据文本: 声明.rawText || '',
+              审计最终权重: Number(轨迹.最终权重 || 0),
+              实际最终权重: 实际候选 ? 读取候选权重(实际候选) : Number(轨迹.最终权重 || 0),
+            } : null,
+          };
+        }
+
+        function 构建判定流程展示数据(traceList = [], logs = []) {
           const rawList = Array.isArray(traceList) ? traceList : [];
+          const 执行声明列表 = 读取战斗结果执行声明(logs);
           const rows = [];
-          const consumed = new Set();
           for (let index = 0; index < rawList.length; index += 1) {
-            if (consumed.has(index)) continue;
-            const current = rawList[index] || {};
+            const current = 归一判定轨迹(rawList[index] || {});
             const currentNoCandidate =
               /无可用候选/.test(String(current.选择原因 || '')) &&
               !String(current.技能 || '').trim() &&
               读取判定流程候选列表(current, 1).length === 0;
             const handoffIndex = currentNoCandidate
-              ? rawList.findIndex((item, itemIndex) =>
-                  itemIndex > index &&
-                  itemIndex <= index + 8 &&
-                  !consumed.has(itemIndex) &&
-                  String(item?.行动者 || '') === String(current.行动者 || '') &&
-                  Number(item?.回合 || 0) === Number(current.回合 || 0) &&
-                  (String(item?.技能 || '').trim() || 读取判定流程候选列表(item, 1).length > 0))
+              ? rawList.findIndex((item, itemIndex) => {
+                  const next = 归一判定轨迹(item || {});
+                  return itemIndex > index &&
+                    itemIndex <= index + 8 &&
+                    next.行动者 === current.行动者 &&
+                    Number(next.回合 || 0) === Number(current.回合 || 0) &&
+                    (String(next.技能 || '').trim() || 读取判定流程候选列表(next, 1).length > 0);
+                })
               : -1;
             if (handoffIndex > index) {
-              consumed.add(handoffIndex);
-              rows.push({ type: 'handoff', from: current, to: rawList[handoffIndex] || {} });
+              rows.push({ type: 'handoff', from: current, to: 归一判定轨迹(rawList[handoffIndex] || {}) });
               continue;
             }
-            rows.push({ type: 'trace', trace: current });
+            rows.push({
+              type: 'trace',
+              trace: 判定轨迹是战术动作(current) ? 应用实际执行声明到轨迹(current, 执行声明列表) : current,
+            });
           }
           return rows.slice(-18);
         }
 
+        function 构建防反侧写条目(logs = []) {
+          return (Array.isArray(logs) ? logs : [])
+            .map(raw => {
+              const text = String(raw || '');
+              const match = text.match(/\[(行为防反|防反错失)\][^。！？\n]*(?:[。！？]|$)/);
+              if (!match) return null;
+              const rawText = match[0].trim();
+              const actor = String(
+                rawText.match(/\]\s*([^凭因，。！？\s]{1,32})/)?.[1] ||
+                rawText.match(/\]\s*([^，。！？\s]{1,32})/)?.[1] ||
+                '',
+              ).trim();
+              const target = String(rawText.match(/抓住([^出，。！？\s]{1,32})出手/)?.[1] || '').trim();
+              return {
+                type: '防反机制',
+                类型: '防反机制',
+                rawText,
+                actor,
+                行动者: actor,
+                target,
+                目标: target,
+                result: match[1],
+              };
+            })
+            .filter(Boolean);
+        }
+
         function 读取判定流程输入文本(轨迹 = {}) {
           const 来源 = String(轨迹.候选来源 || '').trim();
-          if (/主动战术|主动战略|主动/.test(来源) || 轨迹.类型 === '主动规划') return '自动续推/主动规划';
-          if (/应招/.test(来源) || 轨迹.类型 === '应招审计') return '应招判定';
-          if (/再判定/.test(来源) || 轨迹.类型 === '再判定审计') return '行为链再判定';
-          if (/换招/.test(来源) || 轨迹.类型 === '换招审计') return '换招判定';
-          return 来源 || 轨迹.类型 || '系统判定';
+          const 类型 = 读取轨迹类型(轨迹);
+          if (/主动战术|主动战略|主动/.test(来源) || 类型 === '主动规划') return '自动续推/主动规划';
+          if (/应招/.test(来源) || 类型 === '应招审计') return '遭遇攻击，触发应招判定';
+          if (/再判定/.test(来源) || 类型 === '再判定审计') return '行为链再判定';
+          if (/换招/.test(来源) || 类型 === '换招审计') return '动作受阻，触发换招审计';
+          return 来源 || 类型 || '系统判定';
+        }
+
+        function 读取过滤证据字段(轨迹 = {}) {
+          const 候选 = 读取判定流程候选列表(轨迹, 0);
+          const 文本 = 格式化审计证据值({
+            选择原因: 轨迹.选择原因,
+            候选来源: 轨迹.候选来源,
+            资源修正: 轨迹.资源修正,
+            候选排序结果: 候选,
+          });
+          const 有资源阻断 = Number(轨迹.资源修正 || 0) <= -30 ||
+            /"资源可行"\s*:\s*false|资源不可释放|"可释放"\s*:\s*false/.test(文本) ||
+            候选.some(item =>
+              item?.资源可行 === false ||
+              item?.审计?.资源可行 === false ||
+              Number(item?.资源修正 ?? item?.审计?.资源修正 ?? 0) <= -30 ||
+              /资源不可释放/.test(String(item?.选择原因 || item?.审计?.选择原因 || ''))
+            );
+          return {
+            候选数: 候选.length,
+            资源或释放条件不足: 有资源阻断,
+            冷却证据: /冷却剩余|冷却回合|冷却中|冷却未结束|使用限制[^，。；\n]{0,40}冷却|限制原因[^，。；\n]{0,40}冷却/.test(文本),
+            状态限制证据: /状态限制|无法行动|受控|沉默中|被沉默|封技中|被封技|缴械中|被缴械|硬控中|被硬控/.test(文本),
+            目标条件不成立: !String(轨迹.目标 || '').trim() && !判定轨迹是目标规划(轨迹),
+            无候选命中: 候选.length > 0 && !String(轨迹.技能 || '').trim(),
+            原始选择原因: String(轨迹.选择原因 || '').trim(),
+          };
         }
 
         function 读取判定流程过滤文本(轨迹 = {}) {
-          const 候选 = 读取判定流程候选列表(轨迹, 8);
+          const 证据 = 读取过滤证据字段(轨迹);
           const 失败 = [];
-          if (候选.some(item => item?.审计?.资源修正 < 0 || item?.审计?.资源可行 === false)) 失败.push('存在资源压力候选');
-          if (候选.some(item => /危机自保|防御|坚壁|借力/.test(String(item?.名称 || '')))) 失败.push('防御候选仅保留护盾/减伤/保命类');
-          if (候选.some(item => /控制|封技|断流|青影叠/.test(String(item?.名称 || '')))) 失败.push('控制/削弱技能不进入防御候选');
-          if (!失败.length && /无可用候选/.test(String(轨迹.选择原因 || ''))) return 读取判定流程无动作原因(轨迹);
-          return 失败.join('；') || '无资源失败';
+          if (证据.资源或释放条件不足) 失败.push('资源或释放条件不足');
+          if (证据.冷却证据) 失败.push('技能仍在冷却中');
+          if (证据.状态限制证据) 失败.push('状态限制导致动作不可用');
+          if (证据.目标条件不成立) 失败.push('目标条件不成立');
+          if (失败.length) return 失败.join('；');
+          if (证据.候选数 <= 0) return '当前层未生成有效动作候选';
+          if (证据.无候选命中 || /无可用候选/.test(证据.原始选择原因)) return '候选因权重过低或条件不符未被采用';
+          return '候选池生成完毕，未检出资源或释放条件阻断';
         }
 
         function 读取判定流程无动作原因(轨迹 = {}) {
-          const 原始候选 = Array.isArray(轨迹.候选排序结果) ? 轨迹.候选排序结果 : [];
+          const 证据 = 读取过滤证据字段(轨迹);
           const 原因 = [];
-          if (!String(轨迹.目标 || '').trim()) 原因.push('目标不存在');
-          if (原始候选.some(item => item?.审计?.资源可行 === false || Number(item?.审计?.资源修正 || 0) <= -30)) 原因.push('资源不足');
-          if (!原始候选.length) 原因.push('当前层没有生成直接动作');
-          else 原因.push('候选全部被过滤');
-          return `无可用动作：${[...new Set(原因)].join(' / ')}`;
+          if (证据.目标条件不成立) 原因.push('目标条件不成立');
+          if (证据.资源或释放条件不足) 原因.push('资源或释放条件不足');
+          if (证据.冷却证据) 原因.push('技能仍在冷却中');
+          if (证据.状态限制证据) 原因.push('状态限制导致动作不可用');
+          if (证据.候选数 <= 0) 原因.push('当前层未生成有效动作候选');
+          if (!原因.length) 原因.push('候选因权重过低或条件不符未被采用');
+          return 原因.join(' / ');
         }
 
         function 读取判定流程局势文本(轨迹 = {}) {
@@ -33103,96 +33379,200 @@ class BattleUIComponent {
           return '按当前威胁、资源与目标优先级评估';
         }
 
-        function 读取判定流程权重文本(轨迹 = {}) {
-          const parts = [
-            `基础${Math.round(Number(轨迹.原始权重 || 0))}`,
-            Number(轨迹.战术修正 || 0) ? `战术${Number(轨迹.战术修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.战术修正 || 0))}` : '',
-            Number(轨迹.记忆惩罚 || 0) ? `记忆-${Math.round(Number(轨迹.记忆惩罚 || 0))}` : '',
-            Number(轨迹.团队意图修正 || 0) ? `团队${Number(轨迹.团队意图修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.团队意图修正 || 0))}` : '',
-            Number(轨迹.资源修正 || 0) ? `资源${Number(轨迹.资源修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.资源修正 || 0))}` : '',
-          ].filter(Boolean);
-          return `${parts.join(' | ')} -> 最终${Math.round(Number(轨迹.最终权重 || 0))}`;
+        function 构建战略侧写文本(轨迹 = {}) {
+          const 目标 = String(轨迹.目标 || '').trim();
+          if (轨迹.战略意图 && 目标) return `确认【${轨迹.战略意图}】意图，当前目标【${目标}】。`;
+          if (轨迹.战略意图) return `确认【${轨迹.战略意图}】意图。`;
+          return `${读取判定流程局势文本(轨迹)}。`;
         }
 
-        function 读取判定流程权重核算文本(轨迹 = {}) {
+        function 构建动作权衡文本(轨迹 = {}) {
+          const 校正 = 轨迹.动作校正?.发生校正 ? 轨迹.动作校正 : null;
+          if (校正) return '审计抽样与实战日志不一致，已进入动作校正。';
+          const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          const 候选 = 读取判定流程候选列表(轨迹, 0);
+          const 命中候选 = 候选.find(item => 读取候选名称(item) === 技能) || null;
+          const 最高候选 = 候选[0] || null;
+          const 次优 = 候选.find(item => 读取候选名称(item) !== (技能 || 读取候选名称(最高候选 || {}))) || null;
+          if (技能 && 最高候选 && 读取候选名称(最高候选) !== 技能) {
+            return `${包裹判定动作名称(技能)}为本次命中动作(${Math.round(Number(轨迹.最终权重 || 0))})；最高候选为${包裹判定动作名称(读取候选名称(最高候选))}(${Math.round(读取候选权重(最高候选))})。`;
+          }
+          const 主动作 = 技能 || 读取候选名称(最高候选 || '');
+          const 主分 = Math.round(Number(命中候选 ? 读取候选权重(命中候选) : (最高候选 ? 读取候选权重(最高候选) : 轨迹.最终权重 || 0)));
+          if (主动作 && 次优) return `${包裹判定动作名称(主动作)}获最高评分(${主分})，次优方案${包裹判定动作名称(读取候选名称(次优))}(${Math.round(读取候选权重(次优))})被淘汰。`;
+          if (主动作) return `${包裹判定动作名称(主动作)}获最高评分(${主分})。`;
+          return '无可对比候选。';
+        }
+
+        function 构建动作决断文本(轨迹 = {}) {
+          const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          if (轨迹.动作校正?.发生校正) return '以实战日志为准。';
+          if (技能) return `最终执行${包裹判定动作名称(技能)}。`;
+          return `本轮无动作可用：${读取判定流程无动作原因(轨迹)}。`;
+        }
+
+        function 构建轨迹侧写行(轨迹 = {}) {
+          if (判定轨迹是目标规划(轨迹)) {
+            return [
+              `├─ 👁️ 战略：${读取判定流程局势文本(轨迹)}。`,
+              `├─ 🎯 检索：${轨迹.候选来源 || '目标优先表'}。`,
+              `└─ 🏁 决断：${轨迹.目标 ? `锁定目标【${轨迹.目标}】。` : '未找到符合特征的目标。'}`,
+            ];
+          }
           return [
-            `基础 ${Math.round(Number(轨迹.原始权重 || 0))}`,
-            Number(轨迹.战术修正 || 0) ? `战术修正 ${Number(轨迹.战术修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.战术修正 || 0))}` : '',
-            Number(轨迹.记忆惩罚 || 0) ? `重复惩罚 -${Math.round(Number(轨迹.记忆惩罚 || 0))}` : '重复惩罚 -0',
-            Number(轨迹.团队意图修正 || 0) ? `团队 ${Number(轨迹.团队意图修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.团队意图修正 || 0))}` : '',
-            Number(轨迹.资源修正 || 0) ? `资源 ${Number(轨迹.资源修正 || 0) > 0 ? '+' : ''}${Math.round(Number(轨迹.资源修正 || 0))}` : '',
-          ].filter(Boolean).join(' | ');
+            `├─ 👁️ 战略：${/应招|再判定|换招/.test(读取轨迹类型(轨迹)) ? 读取判定流程输入文本(轨迹) : 构建战略侧写文本(轨迹)}`,
+            `├─ 🌊 推演：${读取判定流程过滤文本(轨迹)}。`,
+            `├─ ⚖️ 权衡：${构建动作权衡文本(轨迹)}`,
+            `└─ 🏁 决断：${构建动作决断文本(轨迹)}`,
+          ];
         }
 
-        function 读取判定流程决策逻辑文本(轨迹 = {}, 前置 = null) {
-          const 片段 = [];
-          if (前置 && /无可用候选/.test(String(前置.选择原因 || ''))) 片段.push('战略层无直接动作');
-          if (轨迹.战略意图) 片段.push(`[${轨迹.战略意图}]`);
-          const 理由 = [
-            ...(Array.isArray(轨迹.目标理由) ? 轨迹.目标理由.slice(0, 1) : []),
-            ...(Array.isArray(轨迹.前瞻理由) ? 轨迹.前瞻理由.slice(0, 1) : []),
-            ...(Array.isArray(轨迹.职责理由) ? 轨迹.职责理由.slice(0, 1) : []),
-          ].map(item => String(item || '').replace(/\s+/g, '').trim()).filter(Boolean);
-          if (理由.length) 片段.push(...理由);
-          if (!片段.length) 片段.push(读取判定流程输入文本(轨迹));
-          return 片段.join(' -> ');
+        function 构建轨迹标题(轨迹 = {}) {
+          const 类型 = 读取轨迹类型(轨迹) || '判定';
+          const 行动者 = 轨迹.行动者 || '行动者';
+          if (判定轨迹是目标规划(轨迹)) return `[${类型}] 🎯 ${行动者} 锁定目标`;
+          const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          if (技能) return `[${类型}] ⚔️ ${行动者} 最终执行${包裹判定动作名称(技能)}`;
+          return `[${类型}] ⚔️ ${行动者} 未执行动作`;
         }
 
-        function 读取判定流程落选方案文本(轨迹 = {}) {
-          const 技能文本 = String(轨迹.技能 || '').trim();
-          const 候选 = 读取判定流程候选列表(轨迹, 5)
-            .filter(item => String(item?.名称 || item?.name || '') !== 技能文本)
-            .slice(0, 4)
-            .map(item => `${格式化判定候选名称(item.名称 || item.name)}(${Math.round(Number(item.权重 || item.weight || 0))})`);
-          return 候选.join('、') || '无';
+        function 构建候选证据列表(轨迹 = {}) {
+          return 读取判定流程候选列表(轨迹, 0).map(item => ({
+            候选名: 读取候选名称(item),
+            权重: 读取候选权重(item),
+            目标: String(item?.目标 || item?.target || '').trim(),
+            资源可行: item?.资源可行 ?? item?.审计?.资源可行 ?? null,
+            资源修正: Number(item?.资源修正 ?? item?.审计?.资源修正 ?? 0),
+            审计: item?.审计 || {},
+          }));
+        }
+
+        function 格式化预演审计明细(轨迹 = {}, 前置 = null) {
+          if (读取轨迹类型(轨迹) === '防反机制') {
+            return [
+              '原始类型：防反机制',
+              `行动者：${轨迹.行动者 || ''}`,
+              `目标：${轨迹.目标 || ''}`,
+              `结果：${轨迹.result || ''}`,
+              `防反原始日志：${轨迹.rawText || ''}`,
+            ].join('\n');
+          }
+          const 权重字段 = {
+            原始权重: Number(轨迹.原始权重 || 0),
+            战术修正: Number(轨迹.战术修正 || 0),
+            团队意图修正: Number(轨迹.团队意图修正 || 0),
+            记忆惩罚: Number(轨迹.记忆惩罚 || 0),
+            资源修正: Number(轨迹.资源修正 || 0),
+            最终权重: Number(轨迹.最终权重 || 0),
+          };
+          return [
+            `原始类型：${读取轨迹类型(轨迹)}`,
+            `行动者：${轨迹.行动者 || ''}`,
+            `目标：${轨迹.目标 || ''}`,
+            `回合：${Number(轨迹.回合 || 0)}`,
+            `候选来源：${轨迹.候选来源 || ''}`,
+            `原始选择原因：${轨迹.选择原因 || ''}`,
+            前置 ? `流转前置类型：${读取轨迹类型(前置)}` : '',
+            前置 ? `流转前置选择原因：${前置.选择原因 || ''}` : '',
+            `原始权重字段：\n${格式化审计证据值(权重字段)}`,
+            `完整候选池：\n${格式化审计证据值(构建候选证据列表(轨迹))}`,
+            `过滤证据字段：\n${格式化审计证据值(读取过滤证据字段(轨迹))}`,
+            轨迹.动作校正?.发生校正 ? `实战日志校正证据：\n${格式化审计证据值(轨迹.动作校正)}` : '',
+            轨迹.实战证据文本 ? `实战日志文本：${轨迹.实战证据文本}` : '',
+          ].filter(Boolean).join('\n');
         }
 
         function 渲染判定流程卡片(轨迹 = {}, 前置 = null) {
-          const 技能文本 = String(轨迹.技能 || '').trim();
-          const 无动作 = /无可用候选/.test(String(轨迹.选择原因 || ''));
-          const 主行 = `[${轨迹.类型 || '判定'}] ${轨迹.行动者 || '行动者'}${轨迹.目标 ? ` 👉 ${轨迹.目标}` : ''} ${技能文本 ? `选择了【${技能文本}】` : (无动作 ? 读取判定流程无动作原因(轨迹) : '完成判定')}`;
-          const 最终权重 = Math.round(Number(轨迹.最终权重 || 0));
+          const normalized = 归一判定轨迹(轨迹);
+          const 校正 = normalized.动作校正?.发生校正 ? normalized.动作校正 : null;
+          const cardClass = [
+            'battle-preview-trace-row',
+            'battle-preview-trace-card',
+            判定轨迹是目标规划(normalized) ? 'battle-preview-trace-card--target' : 'battle-preview-trace-card--action',
+            校正 ? 'battle-preview-trace-card--corrected' : '',
+          ].filter(Boolean).join(' ');
+          const 最终权重 = Math.round(Number(normalized.最终权重 || 0));
+          const 显示评分 = Number.isFinite(最终权重) && (最终权重 !== 0 || normalized.技能 || 读取判定流程候选列表(normalized, 1).length);
+          const 校正HTML = 校正 ? `
+              <div class="battle-preview-trace-correction">
+                <span>${htmlEscapeText(`[审计层] 抽样候选记录为${包裹判定动作名称(校正.审计技能)}(${Math.round(Number(校正.审计最终权重 || 0))})`)}</span>
+                <span>${htmlEscapeText(`[执行层] 实战日志最终执行为${包裹判定动作名称(校正.实际技能)}`)}</span>
+                <b>${htmlEscapeText(`⚠️ 动作校正：审计抽样记录为${包裹判定动作名称(校正.审计技能)}，实战日志最终执行为${包裹判定动作名称(校正.实际技能)}。`)}</b>
+              </div>
+            ` : '';
           return `
-            <div class="battle-preview-trace-row">
+            <div class="${cardClass}">
               <div class="battle-preview-trace-title">
-                <b>${htmlEscapeText(主行)}</b>
-                <em>⭐ 最终权重: ${htmlEscapeText(String(最终权重))}</em>
+                <b>${htmlEscapeText(构建轨迹标题(normalized))}</b>
+                ${显示评分 ? `<em>${htmlEscapeText(`⭐ 最终评分: ${最终权重}`)}</em>` : ''}
               </div>
               <div class="battle-preview-trace-tree">
-                <span>${htmlEscapeText(`├── 📊 权重核算：${读取判定流程权重核算文本(轨迹)}`)}</span>
-                <span>${htmlEscapeText(`├── 🧠 决策逻辑：${读取判定流程决策逻辑文本(轨迹, 前置)}`)}</span>
-                <span>${htmlEscapeText(`└── ⚖️ 落选方案：${读取判定流程落选方案文本(轨迹)}`)}</span>
+                ${构建轨迹侧写行(normalized).map(line => `<span>${htmlEscapeText(line)}</span>`).join('')}
               </div>
-              <details class="battle-preview-debug"><summary>调试明细</summary><code>${htmlEscapeText(格式化预演审计明细(轨迹, 前置))}</code></details>
+              ${校正HTML}
+              <details class="battle-preview-debug">
+                <summary>展开底层调试明细 (开发模式)</summary>
+                <pre><code>${htmlEscapeText(格式化预演审计明细(normalized, 前置))}</code></pre>
+              </details>
             </div>
           `;
         }
 
-        function 格式化预演审计明细(轨迹 = {}, 前置 = null) {
-          const 技能文本 = String(轨迹.技能 || '').trim();
-          const 无动作 = /无可用候选/.test(String(轨迹.选择原因 || ''));
-          const 主行 = `[${轨迹.类型 || '判定'}] ${轨迹.行动者 || '行动者'}${轨迹.目标 ? ` -> ${轨迹.目标}` : ''} ${技能文本 ? `选择了【${技能文本}】` : (无动作 ? 读取判定流程无动作原因(轨迹) : '完成判定')}`;
-          const 候选 = 读取判定流程候选列表(轨迹, 8)
-            .map(item => `${格式化判定候选名称(item.名称 || item.name)}(${Math.round(Number(item.权重 || item.weight || 0))})${item?.目标 ? ` -> ${item.目标}` : ''}`);
-          const 过滤 = 前置 && /无可用候选/.test(String(前置.选择原因 || ''))
-            ? `战略层无直接动作，转入${轨迹.候选来源 || 轨迹.类型 || '战术规划'}；${读取判定流程过滤文本(轨迹)}`
-            : 读取判定流程过滤文本(轨迹);
-          return [
-            主行,
-            `├── 📊 权重核算：${读取判定流程权重核算文本(轨迹)}`,
-            `├── 🧠 决策逻辑：${读取判定流程决策逻辑文本(轨迹, 前置)}`,
-            `├── 🔎 过滤说明：${过滤}`,
-            `├── 🌊 局势判断：${读取判定流程局势文本(轨迹)}`,
-            `├── 📋 候选池：${候选.join('、') || '无'}`,
-            `└── ⚖️ 落选方案：${读取判定流程落选方案文本(轨迹)}`,
+        function 渲染流转侧写卡片(条目 = {}) {
+          const from = 归一判定轨迹(条目.from || {});
+          const to = 归一判定轨迹(条目.to || {});
+          const 标题 = `[${读取轨迹类型(from) || '判定'}] 🔄 ${from.行动者 || '行动者'} 权限流转`;
+          const 明细 = [
+            `流转前类型：${读取轨迹类型(from)}`,
+            `流转前行动者：${from.行动者 || ''}`,
+            `流转前回合：${Number(from.回合 || 0)}`,
+            `流转前选择原因：${from.选择原因 || ''}`,
+            `移交目标类型：${读取轨迹类型(to)}`,
+            `移交目标候选来源：${to.候选来源 || ''}`,
+            `移交目标技能：${to.技能 || ''}`,
           ].join('\n');
+          return `
+            <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--handoff">
+              <div class="battle-preview-trace-title">
+                <b>${htmlEscapeText(标题)}</b>
+              </div>
+              <div class="battle-preview-trace-tree">
+                <span>${htmlEscapeText(`└─ 🏁 决断：本层未触发直接动作，移交【${to.候选来源 || 读取轨迹类型(to) || '战术/应激层'}】继续筛选。`)}</span>
+              </div>
+              <details class="battle-preview-debug">
+                <summary>展开底层调试明细 (开发模式)</summary>
+                <pre><code>${htmlEscapeText(明细)}</code></pre>
+              </details>
+            </div>
+          `;
+        }
+
+        function 渲染防反侧写卡片(轨迹 = {}) {
+          const normalized = 归一判定轨迹(轨迹);
+          const 标题 = `[防反机制] ⚡ ${normalized.行动者 || '系统'} 触发日志拦截`;
+          const 动作 = String(normalized.result || '').trim() || '防反记录';
+          return `
+            <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--counter">
+              <div class="battle-preview-trace-title">
+                <b>${htmlEscapeText(标题)}</b>
+              </div>
+              <div class="battle-preview-trace-tree">
+                <span>${htmlEscapeText('├─ 👁️ 起因：实战日志捕获到防反相关记录。')}</span>
+                <span>${htmlEscapeText(`└─ 🏁 决断：系统记录【${动作}】。`)}</span>
+              </div>
+              <details class="battle-preview-debug">
+                <summary>展开底层调试明细 (开发模式)</summary>
+                <pre><code>${htmlEscapeText(格式化预演审计明细(normalized))}</code></pre>
+              </details>
+            </div>
+          `;
         }
 
         function 格式化预演审计行(条目 = {}) {
-          if (条目?.type === 'handoff') {
-            return 渲染判定流程卡片(条目.to || {}, 条目.from || null);
-          }
-          return 渲染判定流程卡片(条目?.trace || 条目 || {});
+          if (条目?.type === 'handoff') return 渲染流转侧写卡片(条目);
+          const trace = 归一判定轨迹(条目?.trace || 条目 || {});
+          if (读取轨迹类型(trace) === '防反机制') return 渲染防反侧写卡片(trace);
+          return 渲染判定流程卡片(trace);
         }
 
         function 提取战斗结果战报行(result = null) {
@@ -33233,17 +33613,13 @@ class BattleUIComponent {
             `;
             return;
           }
+          const logs = Array.isArray(result.logs) ? result.logs : [];
           const 战报 = 提取战斗结果战报行(result);
-          const 提取防反判定 = line => {
-            const match = String(line || '').match(/\[(?:行为防反|防反错失)\][^。！？\n]*(?:[。！？]|$)/);
-            return match ? match[0].trim() : '';
-          };
-          const 防反流程 = (Array.isArray(result.logs) ? result.logs : [])
-            .map(提取防反判定)
-            .filter(Boolean)
-            .map(line => `<div class="battle-preview-trace-row battle-preview-counter-row"><b>防反判定</b><span>${htmlEscapeText(line)}</span></div>`);
-          const 审计流程 = 构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : []).map(格式化预演审计行);
-          const 流程HTML = [...审计流程, ...防反流程].join('') || '<div class="battle-preview-empty">无判定轨迹</div>';
+          const 审计流程 = [
+            ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs),
+            ...构建防反侧写条目(logs),
+          ].map(格式化预演审计行);
+          const 流程HTML = 审计流程.join('') || '<div class="battle-preview-empty">无判定轨迹</div>';
           node.hidden = false;
           node.innerHTML = `
             <div class="battle-preview-head">
