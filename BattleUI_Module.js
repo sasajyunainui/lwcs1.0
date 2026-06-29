@@ -8,6 +8,8 @@ class BattleUIComponent {
     this.snapshot = snapshot;
     this.options = options;
     this.recordPortalNode = null;
+    this.syncRecordPortalPosition = null;
+    this.cleanupRecordPortalPosition = null;
     this.initDOM();
     this.initEngine();
   }
@@ -21,6 +23,7 @@ class BattleUIComponent {
   updateData(newSnapshot) {
     this.snapshot = newSnapshot;
     if (this.syncFromBattleEngine) this.syncFromBattleEngine();
+    if (this.syncRecordPortalPosition) this.syncRecordPortalPosition();
   }
 
   destroy() {
@@ -32,8 +35,11 @@ class BattleUIComponent {
       }
     } catch (错误) {}
     try {
+      if (typeof this.cleanupRecordPortalPosition === 'function') this.cleanupRecordPortalPosition();
       if (this.recordPortalNode?.remove) this.recordPortalNode.remove();
       this.recordPortalNode = null;
+      this.syncRecordPortalPosition = null;
+      this.cleanupRecordPortalPosition = null;
     } catch (错误) {}
     this.container.innerHTML = '';
   }
@@ -48,6 +54,28 @@ class BattleUIComponent {
     const globalDocument = root.document && typeof root.document.querySelector === 'function' ? root.document : null;
     const document = wrapperElement;
     const byId = id => wrapperElement.querySelector(`#${id}`);
+    function 同步战斗记录终端位置() {
+      const node = component.recordPortalNode;
+      if (!node?.isConnected || !component.container?.getBoundingClientRect) return;
+      const rect = component.container.getBoundingClientRect();
+      const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
+      const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
+      if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
+      const gap = 12;
+      const margin = 10;
+      const top = Math.max(margin, rect.top);
+      const maxHeight = Math.max(120, viewportHeight - top - margin);
+      const height = Math.min(rect.height, maxHeight);
+      const sideSpace = viewportWidth - rect.right - gap - margin;
+      const viewportSafeWidth = Math.max(300, viewportWidth - margin * 2);
+      const width = Math.min(860, viewportSafeWidth, Math.max(380, sideSpace));
+      const left = sideSpace >= 340 ? rect.right + gap : Math.max(margin, viewportWidth - margin - width);
+      node.style.setProperty('--战斗记录外置-top', `${Math.round(top)}px`);
+      node.style.setProperty('--战斗记录外置-left', `${Math.round(left)}px`);
+      node.style.setProperty('--战斗记录外置-width', `${Math.round(width)}px`);
+      node.style.setProperty('--战斗记录外置-height', `${Math.round(height)}px`);
+    }
+    component.syncRecordPortalPosition = 同步战斗记录终端位置;
     function 读取战斗记录终端节点() {
       if (component.recordPortalNode?.isConnected) return component.recordPortalNode;
       const 本地节点 = wrapperElement.querySelector('#ui-battle-record-terminal');
@@ -61,6 +89,22 @@ class BattleUIComponent {
         本地节点.setAttribute('aria-label', '战斗记录');
         globalDocument.body.appendChild(本地节点);
         component.recordPortalNode = 本地节点;
+        同步战斗记录终端位置();
+        if (!component.cleanupRecordPortalPosition) {
+          const 处理位置变化 = () => 同步战斗记录终端位置();
+          let 尺寸观察器 = null;
+          root.addEventListener?.('resize', 处理位置变化);
+          globalDocument.addEventListener?.('scroll', 处理位置变化, true);
+          if (typeof root.ResizeObserver === 'function') {
+            尺寸观察器 = new root.ResizeObserver(处理位置变化);
+            尺寸观察器.observe(component.container);
+          }
+          component.cleanupRecordPortalPosition = () => {
+            root.removeEventListener?.('resize', 处理位置变化);
+            globalDocument.removeEventListener?.('scroll', 处理位置变化, true);
+            尺寸观察器?.disconnect();
+          };
+        }
       }
       return 本地节点;
     }

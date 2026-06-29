@@ -28427,15 +28427,15 @@ body > .battle-record-terminal--portal {
   --战斗记录文字弱色: var(--文字弱色, rgba(215, 232, 245, 0.72));
   box-sizing: border-box;
   position: fixed;
-  top: clamp(76px, 10vh, 124px);
-  right: 0;
+  top: var(--战斗记录外置-top, 72px);
+  left: var(--战斗记录外置-left, 360px);
   z-index: 10050;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 9px;
-  width: min(520px, calc(100vw - 20px));
-  max-height: min(620px, calc(100vh - 122px));
-  min-height: 180px;
+  width: var(--战斗记录外置-width, min(760px, calc(100vw - 380px)));
+  height: var(--战斗记录外置-height, min(720px, calc(100vh - 92px)));
+  min-height: 240px;
   overflow: hidden;
   padding: 10px;
   border-radius: calc(var(--战斗圆角) * 0.34);
@@ -28449,8 +28449,6 @@ body > .battle-record-terminal--portal {
     inset -1px -1px 0 var(--战斗暗侧阴影),
     inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 22%, transparent),
     0 14px 26px rgba(0, 0, 0, 0.42);
-  transform: translateX(calc(100% - 68px));
-  transition: transform 160ms ease, opacity 160ms ease;
 }
 
 body > .battle-record-terminal--portal *,
@@ -28462,12 +28460,6 @@ body > .battle-record-terminal--portal *::after {
 body > .battle-record-terminal--portal button {
   appearance: none;
   font: inherit;
-}
-
-body > .battle-record-terminal--portal:hover,
-body > .battle-record-terminal--portal:focus,
-body > .battle-record-terminal--portal:focus-within {
-  transform: translateX(0);
 }
 
 body > .battle-record-terminal--portal .battle-record-tabs {
@@ -29281,21 +29273,6 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.
   #detailModal #mvu-battle-inline-host .battle-shell {
     grid-template-rows: auto auto minmax(0, 1fr);
     padding: 10px;
-  }
-
-  body > .battle-record-terminal--portal {
-    top: auto;
-    right: 8px;
-    bottom: 8px;
-    width: min(440px, calc(100vw - 16px));
-    max-height: min(320px, 48vh);
-    transform: translateY(calc(100% - 34px));
-  }
-
-  body > .battle-record-terminal--portal:hover,
-  body > .battle-record-terminal--portal:focus,
-  body > .battle-record-terminal--portal:focus-within {
-    transform: translateY(0);
   }
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-control-bar,
