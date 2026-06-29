@@ -27625,8 +27625,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-alert-ca
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-alert-card.is-acknowledged,
 #detailModal #mvu-battle-inline-host .battle-alert-card.is-acknowledged {
-  opacity: 0.3;
-  text-shadow: none;
+  opacity: 0.68;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.68);
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-control-bar,

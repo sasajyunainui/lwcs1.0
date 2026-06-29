@@ -3562,6 +3562,7 @@ class BattleUIComponent {
       const text = String(name || '').replace(/^【|】$/g, '').trim();
       if (!text) return '';
       if (text === '常规攻击') return '普通攻击';
+      if (text === '主动压迫') return '普通攻击';
       if (text === '肉体兜底') return '承伤硬抗';
       if (text === '硬抗') return '承伤硬抗';
       return text;
@@ -3807,31 +3808,57 @@ class BattleUIComponent {
 
     function 构建回合战报链列表(bucket = {}) {
       const openings = Array.isArray(bucket.openings) ? bucket.openings : [];
-      if (openings.length) {
-        return openings.map((opening, index) => {
-          const reaction = (bucket.reactions || [])[index] ||
-            (bucket.reactions || []).find(item => !isSameBattleReportName(item.actor, opening.actor)) ||
-            null;
-          let hits = (bucket.hits || []).filter(item =>
-            !item.counterDamage &&
-            (
-              isSameBattleReportName(item.actor, opening.actor) ||
-              (reaction?.actor && isSameBattleReportName(item.target, reaction.actor))
-            )
+      const reactions = Array.isArray(bucket.reactions) ? bucket.reactions : [];
+      const normalHits = (Array.isArray(bucket.hits) ? bucket.hits : []).filter(item => !item.counterDamage);
+      const counters = Array.isArray(bucket.counters) ? bucket.counters : [];
+      if (openings.length || normalHits.length) {
+        const chains = [];
+        normalHits.forEach(hit => {
+          const hitAction = normalizeBattleActionDisplayName(hit.action || '');
+          let chain = chains.find(item => item.hits.some(已有 =>
+            isSameBattleReportName(已有.actor, hit.actor) &&
+            isSameBattleReportName(已有.target, hit.target) &&
+            (!hitAction || !已有.action || normalizeBattleActionDisplayName(已有.action) === hitAction)
+          ));
+          if (!chain) {
+            chain = {
+              opening: openings.find(item => isSameBattleReportName(item.actor, hit.actor)) || null,
+              reaction: reactions.find(item => isSameBattleReportName(item.actor, hit.target)) || null,
+              hits: [],
+              counters: [],
+              stateApplies: [],
+              dodges: [],
+              defenses: [],
+            };
+            chains.push(chain);
+          }
+          chain.hits.push(hit);
+        });
+        if (!chains.length && openings.length === 1 && reactions.length <= 1) {
+          chains.push({ opening: openings[0], reaction: reactions[0] || null, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [] });
+        }
+        openings.forEach(opening => {
+          if (!chains.some(chain => chain.opening && isSameBattleReportName(chain.opening.actor, opening.actor))) {
+            const reaction = reactions.length === 1 && openings.length === 1 ? reactions[0] : null;
+            chains.push({ opening, reaction, hits: [], counters: [], stateApplies: [], dodges: [], defenses: [] });
+          }
+        });
+        return chains.map(chain => {
+          const openingActor = chain.opening?.actor || chain.hits[0]?.actor || '';
+          const reactionActor = chain.reaction?.actor || chain.hits[0]?.target || '';
+          const hitTargets = chain.hits.map(item => item.target).filter(Boolean);
+          const matchedCounters = counters.filter(item =>
+            (reactionActor && isSameBattleReportName(item.actor, reactionActor) && (!openingActor || !item.target || isSameBattleReportName(item.target, openingActor))) ||
+            (!reactionActor && openingActor && isSameBattleReportName(item.target, openingActor) && (hitTargets.some(name => isSameBattleReportName(name, item.actor)) || chains.length === 1))
           );
-          if (!hits.length && openings.length === 1) hits = (bucket.hits || []).filter(item => !item.counterDamage && !isSameBattleReportName(item.actor, reaction?.actor || ''));
-          const counters = (bucket.counters || []).filter(item =>
-            isSameBattleReportName(item.target, opening.actor) ||
-            (reaction?.actor && isSameBattleReportName(item.actor, reaction.actor))
-          );
-          const participants = [opening.actor, reaction?.actor, ...hits.flatMap(item => [item.actor, item.target]), ...counters.flatMap(item => [item.actor, item.target])]
+          const participants = [openingActor, reactionActor, ...chain.hits.flatMap(item => [item.actor, item.target]), ...matchedCounters.flatMap(item => [item.actor, item.target])]
             .filter(Boolean);
           const stateApplies = (bucket.stateApplies || []).filter(item => participants.some(name => isSameBattleReportName(name, item.target)));
-          return { opening, reaction, hits, counters, stateApplies, dodges: [], defenses: [] };
+          return { ...chain, counters: matchedCounters, stateApplies };
         });
       }
       const hitGroups = [];
-      (bucket.hits || []).forEach(hit => {
+      normalHits.forEach(hit => {
         const key = `${normalizeBattleReportNameForMatch(hit.actor)}|${normalizeBattleReportNameForMatch(hit.target)}|${normalizeBattleActionDisplayName(hit.action)}`;
         let group = hitGroups.find(item => item.key === key);
         if (!group) {
@@ -19344,22 +19371,25 @@ class BattleUIComponent {
         if (['自身', '友方单体', '友方群体', '召唤物', '分身'].includes(targetKind)) return false;
         if (target && actor && isCombatUnitIdentityMatch(target, actor?.name || actor)) return false;
         const skillType = getSkillType(skill);
-        if (['输出', '控制', '削弱'].includes(skillType) || ['常规攻击', '普通攻击', '强势对轰', '控制截断'].includes(actionType)) return true;
         const effects = getSkillEffects(skill, { 行为规划: true });
-        if (!effects.length) return false;
-        return effects.some(effect => {
+        if (!effects.length) return ['常规攻击', '普通攻击', '强势对轰', '控制截断'].includes(actionType) || ['输出', '控制', '削弱'].includes(skillType);
+        const 效果具备敌对证据 = effect => {
           const 原型 = String(effect?.原型 || '').trim();
           const 目标类型 = 推断战斗效果目标类型(effect, targetKind);
           if (['自身', '友方单体', '友方群体', '召唤物', '分身'].includes(目标类型)) return false;
-          if (原型 === '伤害结算' && Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0) return true;
-          if (['资源锁定', '机制抹消', '决策干扰'].includes(原型)) return true;
-          if (原型 === '状态施加') return true;
+          if (原型 === '伤害结算') return Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0;
+          const 默认方向 = 推断战斗机制默认方向(effect);
+          if (['资源锁定', '机制抹消', '决策干扰'].includes(原型)) return 默认方向 !== '友方';
+          if (原型 === '状态施加') return 默认方向 === '敌方';
           if (['资源变化', '护盾变化', '属性修正', '判定修正'].includes(原型)) return 读取战斗数值正负(effect?.数值) < 0;
           if (原型 === '结算修正') {
             const 结算 = String(effect?.结算 || '').trim();
-            return ['防御穿透', '防御剥夺', '精神抗性剥夺', '持续伤害引爆', '消耗', '前摇', '反击', '治疗转伤害'].includes(结算);
+            return ['防御穿透', '防御剥夺', '精神抗性剥夺', '持续伤害引爆', '消耗', '前摇', '反击', '治疗转伤害'].includes(结算) && 默认方向 !== '友方';
           }
-          return 推断战斗机制默认方向(effect) === '敌方';
+          return 默认方向 === '敌方';
+        };
+        return effects.some(effect => {
+          return 效果具备敌对证据(effect);
         });
       }
 
@@ -19723,6 +19753,7 @@ class BattleUIComponent {
           let 主动结算战斗数据 = combatData;
           let 本轮NPC先手 = false;
           let 玩家非敌对动作已执行 = false;
+          let 玩家非敌对动作已完成 = false;
           let 行为链结果 = null;
           let settleResult = null;
 
@@ -19736,6 +19767,7 @@ class BattleUIComponent {
               if (costLog) roundLog += `${costLog} `;
               if (playerAction.action_type === '施法失败') return { dmg: 0, desc: '', extraPatchOps: [] };
             }
+            if (playerAction.action_type === '施法失败') return { dmg: 0, desc: '', extraPatchOps: [] };
             const supportCombatData = 构建单挑临时战斗数据(attacker, target, 'player', combatData);
             const supportReaction = 构建单挑配合动作(attacker, target, playerAction);
             const supportResult = executeClash(playerAction, supportReaction, supportCombatData);
@@ -19744,11 +19776,11 @@ class BattleUIComponent {
               supportResult.__extraPatchOps已收集 = true;
             }
             roundLog += `${supportReaction.log} ${supportResult.desc} `;
+            玩家非敌对动作已完成 = true;
             return supportResult;
           };
           const 扣除NPC主动动作成本 = () => {
             if (npcDeclaredAction.__主动成本已结算 === true) return;
-            npcDeclaredAction.__主动成本已结算 = true;
             const costLog = applyActionCost(defender, npcDeclaredAction, attacker, combatData);
             if (costLog) roundLog += `${costLog} `;
           };
@@ -19933,7 +19965,7 @@ class BattleUIComponent {
             const 后续非敌对结果 = 执行非敌对玩家动作();
             if (Array.isArray(后续非敌对结果.extraPatchOps) && 后续非敌对结果.extraPatchOps.length && 后续非敌对结果.__extraPatchOps已收集 !== true)
               clashExtraPatchOps.push(...后续非敌对结果.extraPatchOps);
-          } else if (本轮NPC先手 && !玩家动作敌对 && !isPassivePlayerTurn && isPassiveInterrupted) {
+          } else if (本轮NPC先手 && !玩家动作敌对 && !isPassivePlayerTurn && isPassiveInterrupted && !玩家非敌对动作已完成) {
             roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.action_type || '行动'}】被对手攻势打断，未能完成。`;
           }
           if (反应结算动作?.type === '穿戴装备') {
@@ -20649,7 +20681,10 @@ class BattleUIComponent {
           if (/群体/.test(targetText)) {
             return 建立辅助消耗上下文(敌方队伍, '原生群体', null);
           }
-          const 敌方目标 = findCombatUnitByName(battleContext, preferredName) || battleContext?.参战者?.team_enemy?.[0] || null;
+          const 指定目标 = findCombatUnitByName(battleContext, preferredName);
+          const 敌方目标 = 指定目标 && 敌方队伍.some(unit => isCombatUnitIdentityMatch(unit, 指定目标.name || 指定目标.名称 || 指定目标))
+            ? 指定目标
+            : 敌方队伍[0] || null;
           return 建立辅助消耗上下文([敌方目标].filter(Boolean), '', 敌方目标);
         }
         return 建立辅助消耗上下文([attackerChar].filter(Boolean), '', attackerChar || null);
@@ -29834,7 +29869,7 @@ class BattleUIComponent {
             attacker,
             behaviorState,
             tacticalBranches,
-            '行为预演/战术阶段',
+            '常规战术阶段',
             `${skillContext.skillTraceLog ? skillContext.skillTraceLog + ' | ' : ''}`,
           );
           if (tacticalAction) return tacticalAction;
@@ -29843,7 +29878,7 @@ class BattleUIComponent {
             attacker,
             behaviorState,
             tacticalBranches,
-            '行为预演/战术阶段',
+            '常规战术阶段',
           );
           return makeNpcAction(
             '肉体兜底',
@@ -31229,7 +31264,7 @@ class BattleUIComponent {
             enemyTarget,
             strategicContext.behaviorState,
             tacticalBranches,
-            '行为预演/主动战术阶段',
+            '主动战术阶段',
             `${skillContext.skillTraceLog ? skillContext.skillTraceLog + ' | ' : ''}`,
           );
           const 非必要兜底动作 =
@@ -31296,7 +31331,7 @@ class BattleUIComponent {
             return convertDecisionToTurnAction(
               makeActorAction(
                 '稳态调整',
-                `[行为预演/主动战术阶段] 无明确优势动作，转为低风险的[${回落技能.name || '战术技能'}]调整节奏。`,
+                `[稳态调整] 无明确优势动作，转为低风险的[${回落技能.name || '战术技能'}]调整节奏。`,
                 回落技能,
               ),
             );
@@ -31347,8 +31382,33 @@ class BattleUIComponent {
             return convertDecisionToTurnAction(
               makeActorAction(
                 '支援轮换',
-                `[行为预演/主动战术阶段] 暂无急救窗口，改用[${实际轮换技能.name || '支援技能'}]轮换维持团队收益。`,
+                `[支援轮换] 暂无急救窗口，改用[${实际轮换技能.name || '支援技能'}]轮换维持团队收益。`,
                 实际轮换技能,
+              ),
+            );
+          }
+          const 目标动作非敌对 =
+            enemyTarget &&
+            !判定单挑动作敌对(observedTargetAction, enemyTarget, actor, battleState.combatData);
+          if (目标动作非敌对 && strategicContext.behaviorState?.threatProfile?.lethalRisk !== true) {
+            const 压迫技能 = skillContext.lowCostAtkSkill || skillContext.atkSkill || normalizeSkillData(
+              {
+                name: '普通攻击',
+                技能分类: '输出',
+                消耗: '无',
+                前摇: 10,
+                _效果数组: [
+                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
+                ],
+              },
+              '普通攻击',
+            );
+            recordActorActionMemory(actor, 压迫技能.name || 压迫技能.技能名称 || '主动压迫');
+            return convertDecisionToTurnAction(
+              makeActorAction(
+                '主动压迫',
+                `[主动压迫] ${actor.name || '行动者'}判断对手没有主动进攻，改以[${压迫技能.name || '普通攻击'}]前压争夺节奏。`,
+                压迫技能,
               ),
             );
           }
@@ -31357,13 +31417,13 @@ class BattleUIComponent {
             return convertDecisionToTurnAction(
               makeActorAction(
                 '战术待机',
-                `[行为预演/主动战术阶段] 暂无新的有效支援窗口，维持既有节奏并观察战局。`,
+                `[战术待机] 暂无新的有效支援窗口，维持既有节奏并观察战局。`,
                 null,
               ),
             );
           }
           return convertDecisionToTurnAction(
-            makeActorAction('肉体兜底', '[行为预演/主动战术阶段] 无合适魂技，收缩防御，准备肉体硬抗。', null, {
+            makeActorAction('肉体兜底', '[承压守势] 无合适魂技，收缩防御，准备承伤硬抗。', null, {
               def_mult: 1.2,
             }),
           );
