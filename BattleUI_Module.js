@@ -3739,6 +3739,22 @@ class BattleUIComponent {
       return `对${target}造成了 ${total} 点伤害`;
     }
 
+    function 判定战报动作是待机守势(action = '') {
+      return /战术待机|待机|观察|守势维持|守势对峙|防御|危机自保|承伤硬抗|硬抗|肉体兜底|闪避|伺机闪避|撤离/.test(normalizeBattleActionDisplayName(action));
+    }
+
+    function 构建起招战报开头(opening = {}, target = '') {
+      const actor = String(opening?.actor || '行动者').trim();
+      const action = normalizeBattleActionDisplayName(opening?.action || '');
+      const targetName = String(target || '对手').trim();
+      if (/战术待机|待机|观察|守势维持|守势对峙/.test(action)) return `${actor}以【${action}】稳住阵脚，观察${targetName}的动向`;
+      if (/防御|危机自保|承伤硬抗|硬抗|肉体兜底/.test(action)) return `${actor}转入【${action}】，收缩自身防线`;
+      if (/闪避|伺机闪避/.test(action)) return `${actor}以【${action}】拉开身位，避开正面碰撞`;
+      if (/撤离/.test(action)) return `${actor}尝试【${action}】，寻找脱离战场的窗口`;
+      if (/控制|封技|打断|限制|中毒|削弱/.test(action)) return `${actor}以【${action}】限制${targetName}的行动`;
+      return `${actor}以【${action || '行动'}】压向${targetName}`;
+    }
+
     function 构建攻防链战报文本(chain = {}, round = 0) {
       const opening = chain.opening || null;
       const reaction = chain.reaction || null;
@@ -3747,12 +3763,13 @@ class BattleUIComponent {
       const mainTarget = String(reaction?.actor || hits[0]?.target || '对手').trim();
       let sentence = '';
       if (opening) {
-        sentence = `${opening.actor}以【${normalizeBattleActionDisplayName(opening.action)}】压向${mainTarget}`;
+        const openingIsGuard = 判定战报动作是待机守势(opening.action);
+        sentence = 构建起招战报开头(opening, mainTarget);
         if (reaction) {
           const reactionAction = normalizeBattleActionDisplayName(reaction.action);
-          sentence += `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
+          sentence += openingIsGuard ? `；${formatBattleReactionPhrase(reaction.actor, reactionAction)}` : `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
           if (/伺机闪避|闪避/.test(reactionAction)) sentence += hits.length ? '，仍被余波命中' : '，避开了攻势';
-          else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势寻找反打窗口' : '，硬抗住攻势';
+          else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势寻找反打窗口' : '，稳住了身形';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
         }
         const damageText = 合并回合伤害文本(hits);
@@ -19235,6 +19252,165 @@ class BattleUIComponent {
         };
       }
 
+      function 读取单挑动作前摇(action = {}) {
+        const raw = Number(action?.cast_time ?? action?.前摇 ?? action?.skill?.前摇 ?? getSkillCastTime(action?.skill) ?? 10);
+        return Math.max(0, Number.isFinite(raw) ? raw : 10);
+      }
+
+      function 单挑动作是造物承载(action = {}) {
+        const skill = action?.skill || action?.raw_skill || {};
+        return String(skill?.承载方式 || '').trim() === '造物承载';
+      }
+
+      function 单挑动作是防守反应(action = {}) {
+        return ['防御', '闪避', '撤离'].includes(String(action?.action_type || action?.type || '').trim());
+      }
+
+      function 判定单挑动作敌对(action = {}, actor = null, target = null, combatData = null) {
+        const actionType = String(action?.action_type || action?.type || '').trim();
+        if (!action || ['防御', '闪避', '撤离', '观察', '战术待机', '收回召唤', '穿戴装备', '被控挨打', '蓄力挨打'].includes(actionType)) return false;
+        const skill = action?.skill || {};
+        if (单挑动作是造物承载(action)) {
+          const mode = String(action?.造物处理 || '生成到自己背包').trim() || '生成到自己背包';
+          if (['生成到自己背包', '生成给友方', '立即自用'].includes(mode)) return false;
+        }
+        const targetKind = inferSkillPrimaryTargetKind(skill);
+        if (['自身', '友方单体', '友方群体', '召唤物', '分身'].includes(targetKind)) return false;
+        if (target && actor && isCombatUnitIdentityMatch(target, actor?.name || actor)) return false;
+        const skillType = getSkillType(skill);
+        if (['输出', '控制', '削弱'].includes(skillType) || ['常规攻击', '普通攻击', '强势对轰', '控制截断'].includes(actionType)) return true;
+        const effects = getSkillEffects(skill, { 行为规划: true });
+        if (!effects.length) return false;
+        return effects.some(effect => {
+          const 原型 = String(effect?.原型 || '').trim();
+          const 目标类型 = 推断战斗效果目标类型(effect, targetKind);
+          if (['自身', '友方单体', '友方群体', '召唤物', '分身'].includes(目标类型)) return false;
+          if (原型 === '伤害结算' && Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0) return true;
+          if (['资源锁定', '机制抹消', '决策干扰'].includes(原型)) return true;
+          if (原型 === '状态施加') return true;
+          if (['资源变化', '护盾变化', '属性修正', '判定修正'].includes(原型)) return 读取战斗数值正负(effect?.数值) < 0;
+          if (原型 === '结算修正') {
+            const 结算 = String(effect?.结算 || '').trim();
+            return ['防御穿透', '防御剥夺', '精神抗性剥夺', '持续伤害引爆', '消耗', '前摇', '反击', '治疗转伤害'].includes(结算);
+          }
+          return 推断战斗机制默认方向(effect) === '敌方';
+        });
+      }
+
+      function 解析单挑动作目标(action = {}, actor = null, opponent = null, combatData = null) {
+        if (!action || !actor) return opponent || null;
+        const actorName = String(actor?.name || actor?.名称 || '').trim();
+        const targetName = String(action?.target_name || action?.食用目标 || action?.物品接收者 || '').trim();
+        const namedTarget = targetName ? findCombatUnitByName(combatData, targetName) : null;
+        if (单挑动作是造物承载(action)) {
+          const mode = String(action?.造物处理 || '生成到自己背包').trim() || '生成到自己背包';
+          action.造物处理 = mode;
+          if (mode === '生成到自己背包' || mode === '立即自用') {
+            action.物品接收者 = actorName;
+            if (mode === '立即自用') {
+              action.target_name = actorName;
+              action.食用目标 = actorName;
+            } else {
+              delete action.target_name;
+              delete action.食用目标;
+            }
+            return actor;
+          }
+          if (mode === '生成给友方') {
+            const friend = namedTarget && !isCombatUnitIdentityMatch(namedTarget, opponent?.name || opponent) ? namedTarget : actor;
+            action.物品接收者 = String(friend?.name || friend?.名称 || actorName).trim() || actorName;
+            action.target_name = action.物品接收者;
+            delete action.食用目标;
+            return friend;
+          }
+          if (mode === '立即给目标使用') {
+            const target = namedTarget || actor;
+            const safeName = String(target?.name || target?.名称 || actorName).trim() || actorName;
+            action.target_name = safeName;
+            action.物品接收者 = safeName;
+            action.食用目标 = safeName;
+            return target;
+          }
+        }
+        const targetKind = inferSkillPrimaryTargetKind(action?.skill || {});
+        if (targetKind === '自身') {
+          action.target_name = actorName;
+          return actor;
+        }
+        if (['友方单体', '友方群体', '召唤物', '分身'].includes(targetKind)) {
+          const target = namedTarget && !isCombatUnitIdentityMatch(namedTarget, opponent?.name || opponent) ? namedTarget : actor;
+          action.target_name = String(target?.name || target?.名称 || actorName).trim() || actorName;
+          return target;
+        }
+        if (namedTarget && opponent && isCombatUnitIdentityMatch(namedTarget, opponent?.name || opponent)) return namedTarget;
+        return opponent || namedTarget || actor;
+      }
+
+      function 构建单挑临时战斗数据(actor, target, side, combatData = {}) {
+        const playerTeam = 读取战斗主队单位列表(combatData, '玩家');
+        const enemyTeam = 读取战斗主队单位列表(combatData, '敌方');
+        const actorAllies = (side === 'enemy' ? enemyTeam : playerTeam).filter(unit => unit && unit !== actor && !isCombatUnitIdentityMatch(unit, actor?.name || actor));
+        const targetAllies = (side === 'enemy' ? playerTeam : enemyTeam).filter(unit => unit && unit !== target && !isCombatUnitIdentityMatch(unit, target?.name || target));
+        return {
+          ...combatData,
+          __父级战斗数据: combatData,
+          __规则改写运行态: combatData.__规则改写运行态,
+          回合: combatData.回合,
+          战斗意图: combatData.战斗意图,
+          参战者: {
+            team_player: [actor, ...actorAllies].filter(Boolean),
+            team_enemy: [target || actor, ...targetAllies].filter(Boolean),
+          },
+        };
+      }
+
+      function 构建单挑反应动作(action = {}, reactor = null, attackerUnit = null) {
+        const reactorName = getCombatReportUnitName(reactor, '防守方');
+        const attackerName = getCombatReportUnitName(attackerUnit, '攻击方');
+        const type = String(action?.action_type || action?.type || '').trim();
+        if (type === '闪避') {
+          return {
+            type: '伺机闪避',
+            log: `[应招] ${reactorName}按原定动作拉开身位，试图避开${attackerName}的攻势。`,
+            skill: normalizeSkillData({ name: '伺机闪避', 技能分类: '防御', 消耗: '体力:5%', 前摇: 12 }, '伺机闪避'),
+            def_mult: 1,
+          };
+        }
+        if (type === '防御') {
+          return {
+            type: '肉体兜底',
+            log: `[应招] ${reactorName}按原定动作收缩防线，准备承受${attackerName}的攻势。`,
+            skill: normalizeSkillData({ name: '承伤硬抗', 技能分类: '防御', 消耗: '无', 前摇: 10 }, '承伤硬抗'),
+            def_mult: 1.2,
+          };
+        }
+        if (判定单挑动作敌对(action, reactor, attackerUnit)) {
+          return {
+            type: '强势对轰',
+            log: `[抢招对轰] ${reactorName}原定出手尚未完全落地，只能以【${action?.skill?.name || action?.action_type || '反击'}】抢招对冲。`,
+            skill: action.skill,
+            def_mult: 1,
+          };
+        }
+        return {
+          type: '无法反应',
+          log: `[先手压制] ${reactorName}正在执行【${action?.skill?.name || action?.action_type || '行动'}】，来不及完整应对${attackerName}的先手。`,
+          skill: null,
+          def_mult: 1,
+        };
+      }
+
+      function 构建单挑配合动作(actor, target, action = {}) {
+        const actorName = getCombatReportUnitName(actor, '施术者');
+        const targetName = getCombatReportUnitName(target, actorName);
+        return {
+          type: '配合',
+          log: `[配合] ${targetName}接受${actorName}的【${action?.skill?.name || action?.action_type || '行动'}】。`,
+          skill: null,
+          def_mult: 1,
+        };
+      }
+
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
@@ -19362,7 +19538,10 @@ class BattleUIComponent {
               : parsePlayerIntent(playerInput, combatData);
             if (playerAction?.player_auto_continuation && playerAction.decision_log) roundLog += `${playerAction.decision_log} `;
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
-            const 指定敌方目标 = findCombatUnitByName(combatData, playerAction.target_name || '');
+            const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
+            const 指定敌方目标 = 玩家动作目标 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 玩家动作目标.name || 玩家动作目标))
+              ? 玩家动作目标
+              : null;
             if (
               指定敌方目标 &&
               (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 指定敌方目标.name || 指定敌方目标))
@@ -19370,7 +19549,7 @@ class BattleUIComponent {
               defender = 指定敌方目标;
               syncCombatActionState(defender);
             }
-            套用动作队列实际前摇(attacker, playerAction, defender, combatData);
+            套用动作队列实际前摇(attacker, playerAction, 玩家动作目标, combatData);
             if (!visiblePlayerInput) visiblePlayerInput = buildVisibleBattlePlayerInput(playerInput, playerAction, combatData);
 
             // 💥【终极动作序列时间片机制】一回合能做出的总行动上限为 cast_time = 40！
@@ -19408,7 +19587,7 @@ class BattleUIComponent {
 
             // 执行成功挤入本回合时间片的副动作
             validPreActions.forEach(preAct => {
-              let preCostLog = applyActionCost(attacker, preAct, defender, combatData);
+              let preCostLog = applyActionCost(attacker, preAct, 玩家动作目标, combatData);
               if (preCostLog) roundLog += preCostLog + ' ';
               if (preAct.action_type === '穿戴装备') {
                 应用战斗装备变化(attacker, () => {
@@ -19417,7 +19596,7 @@ class BattleUIComponent {
                 });
                 roundLog += `[连招生效] 玩家在电光火石间成功穿戴了${preAct.equip_target === 'armor' ? '斗铠' : '机甲'}！ `;
               } else {
-                const 前置结算 = 执行连放前置动作结算(attacker, defender, preAct, combatData);
+                const 前置结算 = 执行连放前置动作结算(attacker, 玩家动作目标, preAct, combatData);
                 if (前置结算.log) roundLog += `${前置结算.log} `;
                 if (Array.isArray(前置结算.extraPatchOps) && 前置结算.extraPatchOps.length)
                   clashExtraPatchOps.push(...前置结算.extraPatchOps);
@@ -19435,7 +19614,7 @@ class BattleUIComponent {
               playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null };
             } else {
               if (playerAction.action_type !== '施法失败') {
-                let costLog = applyActionCost(attacker, playerAction, defender, combatData);
+                let costLog = applyActionCost(attacker, playerAction, 玩家动作目标, combatData);
                 if (costLog) roundLog += costLog + ' ';
               }
             }
@@ -19446,14 +19625,105 @@ class BattleUIComponent {
             playerAction = { action_type: '防御', cast_time: 10, skill: normalizeSkillData({ name: '收回召唤', 技能分类: '辅助', 消耗: '无', 前摇: 10 }, '收回召唤') };
           }
 
-          const reactionRatio = calculateReactionRatio(attacker, defender, playerAction, combatData);
-          const npcAction = determineNpcAction(combatData, playerAction, reactionRatio);
-          const isPassivePlayerTurn = ['防御', '闪避', '撤离'].includes(String(playerAction?.action_type || ''));
-          const 行为链结果 = isPassivePlayerTurn ? null : 自动行为链再判定(attacker, defender, playerAction, npcAction, combatData);
-          let settleResult = isPassivePlayerTurn
-            ? resolvePassivePlayerStance(playerAction, npcAction, attacker, defender)
-            : executeClash(playerAction, npcAction, combatData);
-          roundLog += `${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${npcAction.log} ${settleResult.desc}`;
+          const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
+          const 玩家动作敌对 = 判定单挑动作敌对(playerAction, attacker, 玩家动作目标, combatData);
+          const isPassivePlayerTurn = 单挑动作是防守反应(playerAction);
+          const npcActorEntry = { char: defender, side: 'enemy' };
+          const npcTargets = chooseTargetForActor(npcActorEntry, { combatData }) || { enemyTarget: attacker, allyTarget: defender };
+          let npcDeclaredAction = buildAutoActionForActor(npcActorEntry, npcTargets, { combatData, observedTargetAction: playerAction }) || {
+            action_type: '战术待机',
+            type: '战术待机',
+            cast_time: 10,
+            skill: normalizeSkillData({ name: '战术待机', 技能分类: '辅助', 消耗: '无', 前摇: 10 }, '战术待机'),
+            decision_log: `[战术待机] ${defender.name || '对手'}暂未形成明确攻势。`,
+          };
+          npcDeclaredAction = 去重动作队列友方辅助(defender, npcDeclaredAction);
+          const npcDeclaredTarget = 解析单挑动作目标(npcDeclaredAction, defender, attacker, combatData) || attacker;
+          套用动作队列实际前摇(defender, npcDeclaredAction, npcDeclaredTarget, combatData);
+          const npcDeclaredHostile = 判定单挑动作敌对(npcDeclaredAction, defender, npcDeclaredTarget, combatData);
+          const 玩家前摇 = 读取单挑动作前摇(playerAction);
+          const npc前摇 = 读取单挑动作前摇(npcDeclaredAction);
+          const npcShouldActFirst =
+            npcDeclaredHostile &&
+            (isPassivePlayerTurn ||
+              !玩家动作敌对 ||
+              npc前摇 < 玩家前摇 ||
+              (npc前摇 === 玩家前摇 && Number(defender.agi || 0) > Number(attacker.agi || 0)));
+          let 主动结算方 = attacker;
+          let 被动结算目标 = 玩家动作目标 || defender;
+          let 主动结算动作 = playerAction;
+          let 反应结算动作 = null;
+          let 主动结算战斗数据 = combatData;
+          let 本轮NPC先手 = false;
+          let 行为链结果 = null;
+          let settleResult = null;
+
+          const 执行非敌对玩家动作 = () => {
+            const target = 玩家动作目标 || attacker;
+            const supportCombatData = 构建单挑临时战斗数据(attacker, target, 'player', combatData);
+            const supportReaction = 构建单挑配合动作(attacker, target, playerAction);
+            const supportResult = executeClash(playerAction, supportReaction, supportCombatData);
+            if (Array.isArray(supportResult.extraPatchOps) && supportResult.extraPatchOps.length) {
+              clashExtraPatchOps.push(...supportResult.extraPatchOps);
+            }
+            roundLog += `${supportReaction.log} ${supportResult.desc} `;
+            return supportResult;
+          };
+          const 扣除NPC主动动作成本 = () => {
+            if (npcDeclaredAction.__主动成本已结算 === true) return;
+            npcDeclaredAction.__主动成本已结算 = true;
+            const costLog = applyActionCost(defender, npcDeclaredAction, attacker, combatData);
+            if (costLog) roundLog += `${costLog} `;
+          };
+
+          if (npcShouldActFirst) {
+            if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
+            主动结算方 = defender;
+            被动结算目标 = attacker;
+            主动结算动作 = npcDeclaredAction;
+            反应结算动作 = 构建单挑反应动作(playerAction, attacker, defender);
+            主动结算战斗数据 = 构建单挑临时战斗数据(defender, attacker, 'enemy', combatData);
+            主动结算动作.target_name = attacker.name || attacker.名称 || '';
+            本轮NPC先手 = true;
+            扣除NPC主动动作成本();
+            行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
+            settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+            roundLog += replaceBattleReportGenericNames(
+              `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
+              { player: defender, enemy: attacker },
+            );
+          } else if (玩家动作敌对) {
+            const reactionRatio = calculateReactionRatio(attacker, defender, playerAction, combatData);
+            const npcAction = determineNpcAction(combatData, playerAction, reactionRatio);
+            反应结算动作 = npcAction;
+            行为链结果 = 自动行为链再判定(attacker, defender, playerAction, npcAction, combatData);
+            settleResult = executeClash(playerAction, npcAction, combatData);
+            roundLog += `${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${npcAction.log} ${settleResult.desc}`;
+          } else if (isPassivePlayerTurn) {
+            反应结算动作 = npcDeclaredAction;
+            settleResult = resolvePassivePlayerStance(playerAction, npcDeclaredAction, attacker, defender);
+            roundLog += `${npcDeclaredAction.decision_log ? npcDeclaredAction.decision_log + ' ' : ''}${settleResult.desc}`;
+          } else {
+            settleResult = 执行非敌对玩家动作();
+            if (npcDeclaredHostile) {
+              主动结算方 = defender;
+              被动结算目标 = attacker;
+              主动结算动作 = npcDeclaredAction;
+              反应结算动作 = 构建单挑反应动作(playerAction, attacker, defender);
+              主动结算战斗数据 = 构建单挑临时战斗数据(defender, attacker, 'enemy', combatData);
+              主动结算动作.target_name = attacker.name || attacker.名称 || '';
+              本轮NPC先手 = true;
+              扣除NPC主动动作成本();
+              行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
+              settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+              roundLog += replaceBattleReportGenericNames(
+                `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
+                { player: defender, enemy: attacker },
+              );
+            } else if (npcDeclaredAction.decision_log) {
+              roundLog += ` ${npcDeclaredAction.decision_log}`;
+            }
+          }
           if (Array.isArray(settleResult.extraPatchOps) && settleResult.extraPatchOps.length)
             clashExtraPatchOps.push(...settleResult.extraPatchOps);
 
@@ -19473,8 +19743,9 @@ class BattleUIComponent {
               }
             }
 
-            const npcSkillType = getSkillType(npcAction.skill);
-            if (npcAction.type === '控制截断' && npcSkillType === '控制' && getSkillCastTime(npcAction.skill) < 10) {
+            const 压制动作 = 本轮NPC先手 ? 主动结算动作 : 反应结算动作;
+            const npcSkillType = getSkillType(压制动作?.skill);
+            if (压制动作?.type === '控制截断' && npcSkillType === '控制' && getSkillCastTime(压制动作.skill) < 10) {
               const npc精神压制 = 计算当前资源压制倍率(defender, defender.final || {}, attacker, attacker.final || {}, 'men', {
                 下限: 0,
                 上限: 2,
@@ -19482,7 +19753,7 @@ class BattleUIComponent {
               });
               if (npc精神压制 >= 1 || defender.agi > attacker.agi) {
                 if (hasSuperArmor) {
-                  roundLog += ` NPC释放[${npcAction.skill.name}]试图打断，但玩家处于霸体状态，强行免疫了控制！`;
+                  roundLog += ` NPC释放[${压制动作.skill.name}]试图打断，但玩家处于霸体状态，强行免疫了控制！`;
                 } else {
                   let backlashDmg = Math.floor(getCombatHpMaxValue(attacker) * 0.05);
                   设置战斗血量值(attacker, getCombatHpValue(attacker) - backlashDmg);
@@ -19498,10 +19769,10 @@ class BattleUIComponent {
                     战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
                   };
                   const 持续移除命中 = 持续状态移除阻断状态附着(attacker, '僵直', 打断反噬状态, defender);
-                  if (持续移除命中) roundLog += ` NPC释放[${npcAction.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`;
+                  if (持续移除命中) roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`;
                   else {
                     attacker.状态效果['僵直'] = 打断反噬状态;
-                    roundLog += ` NPC释放[${npcAction.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤并陷入[僵直]！`;
+                    roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤并陷入[僵直]！`;
                   }
                   attacker.蓄力技能 = null;
                   let attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
@@ -19533,27 +19804,29 @@ class BattleUIComponent {
             }
           }
 
-          // 简单判断 NPC 是否被打断 (如果玩家伤害极高或带有硬控，视为打断)
-          const playerStateCalc = getPrimaryStateCalc(playerAction.skill);
-          const playerInterruptChance = 计算行动打断概率(playerAction.skill, defender, settleResult);
-          let isNpcInterrupted =
-            playerStateCalc.skip_turn === true ||
-            getPrimaryStateFlags(playerAction.skill).includes('硬控') ||
-            (playerInterruptChance > 0 && Math.random() <= playerInterruptChance);
+          // 简单判断被动方是否被打断 (如果主动方伤害极高或带有硬控，视为打断)
+          const activeStateCalc = getPrimaryStateCalc(主动结算动作?.skill);
+          const activeInterruptChance = 计算行动打断概率(主动结算动作?.skill, 被动结算目标, settleResult);
+          let isPassiveInterrupted =
+            activeStateCalc.skip_turn === true ||
+            getPrimaryStateFlags(主动结算动作?.skill).includes('硬控') ||
+            (activeInterruptChance > 0 && Math.random() <= activeInterruptChance);
 
           // --- 第四步：打击烈度与破防标尺 ---
-          const damagePackage = applyResolvedDamagePackage(attacker, playerAction, settleResult, {
-            primaryTarget: defender,
-            combatData,
+          const damagePackage = applyResolvedDamagePackage(主动结算方, 主动结算动作, settleResult, {
+            primaryTarget: 被动结算目标,
+            combatData: 主动结算战斗数据,
           });
           let appliedDamage = damagePackage.primaryAppliedDamage;
           本次最大单击HP比例 = Math.max(
             本次最大单击HP比例,
-            Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(defender),
-            Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(attacker),
+            Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
+            Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(主动结算方),
           );
           if (damagePackage.log) roundLog += ` ${damagePackage.log}`;
-          const 召唤协同日志 = 执行协同召唤追击(attacker, defender, damagePackage.primaryAppliedDamage, combatData);
+          const 召唤协同日志 = 主动结算方?.召唤键
+            ? ''
+            : 执行协同召唤追击(主动结算方, 被动结算目标, damagePackage.primaryAppliedDamage, combatData);
           if (召唤协同日志) roundLog += ` ${召唤协同日志}`;
           if (settleResult?.撤离结果 === '成功') {
             撤离结算结果 = '成功';
@@ -19563,29 +19836,29 @@ class BattleUIComponent {
             continueSimulation = false;
           }
           const 行为防反日志 = 执行行为防反结算(
-            attacker,
-            defender,
-            playerAction,
-            npcAction,
+            主动结算方,
+            被动结算目标,
+            主动结算动作,
+            反应结算动作 || { type: '无法反应', log: '', skill: null, def_mult: 1 },
             settleResult,
             damagePackage,
-            combatData,
+            主动结算战斗数据,
           );
           if (行为防反日志) roundLog += ` ${行为防反日志}`;
-          isNpcInterrupted = isNpcInterrupted || appliedDamage / getCombatHpMaxValue(defender) >= 0.15;
-          if (npcAction.type === '穿戴装备') {
-            if (!isNpcInterrupted) {
-              const 装备目标 = npcAction.equip_target || npcAction.skill?.equip_target;
-              应用战斗装备变化(defender, () => {
-                const 装备槽 = ensureBattleEquipmentSlot(defender, 装备目标);
+          isPassiveInterrupted = isPassiveInterrupted || appliedDamage / getCombatHpMaxValue(被动结算目标) >= 0.15;
+          if (反应结算动作?.type === '穿戴装备') {
+            if (!isPassiveInterrupted) {
+              const 装备目标 = 反应结算动作.equip_target || 反应结算动作.skill?.equip_target;
+              应用战斗装备变化(被动结算目标, () => {
+                const 装备槽 = ensureBattleEquipmentSlot(被动结算目标, 装备目标);
                 if (装备槽) 装备槽.装备状态 = '已装备';
               });
-              roundLog += ` [装备生效] NPC成功穿戴了${装备目标 === 'armor' ? '斗铠' : '机甲'}，防御力大增！`;
+              roundLog += ` [装备生效] ${getCombatReportUnitName(被动结算目标, '防守方')}成功穿戴了${装备目标 === 'armor' ? '斗铠' : '机甲'}，防御力大增！`;
             } else {
-              roundLog += ` [穿戴失败] 玩家的猛烈攻击强行打断了NPC的装备穿戴过程！`;
+              roundLog += ` [穿戴失败] ${getCombatReportUnitName(主动结算方, '攻击方')}的猛烈攻击强行打断了${getCombatReportUnitName(被动结算目标, '防守方')}的装备穿戴过程！`;
             }
           }
-          const fusionAftermathLog = applyFusionActionAftermath(attacker, playerAction, combatData);
+          const fusionAftermathLog = applyFusionActionAftermath(主动结算方, 主动结算动作, 主动结算战斗数据);
           if (fusionAftermathLog) roundLog += ` ${fusionAftermathLog}`;
           const 召唤自主日志 = 执行自主召唤行动(combatData);
           if (召唤自主日志) roundLog += ` ${召唤自主日志}`;
@@ -22036,6 +22309,7 @@ class BattleUIComponent {
       function 执行行为防反结算(攻击方, 防反方, 原动作, 反应动作, 交锋结果, 伤害包, 战斗数据) {
         const 候选 = 交锋结果?.__行为防反候选;
         if (!候选 || 原动作?.__行为防反 === true) return '';
+        if (!判定单挑动作敌对(原动作, 攻击方, 防反方, 战斗数据)) return '';
         const 防反者 = 候选.防反方 || 防反方;
         const 目标 = 候选.攻击方 || 攻击方;
         const 允许以命换伤 = 候选.以命换伤 === true && getCombatStaminaValue(防反者) > 0;
@@ -30546,7 +30820,7 @@ class BattleUIComponent {
               );
             };
 
-          const observedTargetAction = enemyTarget?.蓄力技能 || {
+          const observedTargetAction = battleState?.observedTargetAction || enemyTarget?.蓄力技能 || {
             action_type: '常规攻击',
             cast_time: 10,
             skill: normalizeSkillData(
