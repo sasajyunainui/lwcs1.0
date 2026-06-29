@@ -7,6 +7,7 @@ class BattleUIComponent {
     this.container = container;
     this.snapshot = snapshot;
     this.options = options;
+    this.recordPortalNode = null;
     this.initDOM();
     this.initEngine();
   }
@@ -30,6 +31,10 @@ class BattleUIComponent {
         状态.智能警报弱化计时器 = null;
       }
     } catch (错误) {}
+    try {
+      if (this.recordPortalNode?.remove) this.recordPortalNode.remove();
+      this.recordPortalNode = null;
+    } catch (错误) {}
     this.container.innerHTML = '';
   }
 
@@ -39,10 +44,26 @@ class BattleUIComponent {
     const _options = this.options;
     const wrapperElement = this.container.querySelector('.battle-module-scope');
     if (!wrapperElement) throw new Error('battle_ui_markup_missing');
+    const root = typeof globalThis !== 'undefined' ? globalThis : window;
+    const globalDocument = root.document && typeof root.document.querySelector === 'function' ? root.document : null;
     const document = wrapperElement;
     const byId = id => wrapperElement.querySelector(`#${id}`);
-
-    const root = typeof globalThis !== 'undefined' ? globalThis : window;
+    function 读取战斗记录终端节点() {
+      if (component.recordPortalNode?.isConnected) return component.recordPortalNode;
+      const 本地节点 = wrapperElement.querySelector('#ui-battle-record-terminal');
+      if (!本地节点) return null;
+      if (globalDocument?.body) {
+        globalDocument.querySelectorAll('#ui-battle-record-terminal.battle-record-terminal--portal').forEach(node => {
+          if (node !== 本地节点) node.remove();
+        });
+        本地节点.classList.add('battle-record-terminal--portal');
+        本地节点.setAttribute('tabindex', '0');
+        本地节点.setAttribute('aria-label', '战斗记录');
+        globalDocument.body.appendChild(本地节点);
+        component.recordPortalNode = 本地节点;
+      }
+      return 本地节点;
+    }
     const 战斗提交模式存储键 = 'lwcs_battle_submit_mode';
     const 战斗提交模式列表 = ['auto', 'manual', 'free_narrative'];
     const 战斗提交模式标签 = {
@@ -32720,7 +32741,7 @@ class BattleUIComponent {
         }
 
         function 读取战斗记录面板节点() {
-          return byId('ui-battle-preview-panel');
+          return 读取战斗记录终端节点()?.querySelector('#ui-battle-preview-panel') || null;
         }
 
         function 读取战斗记录页签() {
@@ -32731,7 +32752,7 @@ class BattleUIComponent {
         function 设置战斗记录页签(tab = 'actual') {
           const activeTab = tab === 'preview' ? 'preview' : 'actual';
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordTab = activeTab;
-          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+          读取战斗记录终端节点()?.querySelectorAll('[data-battle-record-tab]').forEach(button => {
             const active = button.getAttribute('data-battle-record-tab') === activeTab;
             button.classList.toggle('active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
@@ -32819,7 +32840,7 @@ class BattleUIComponent {
           if (!node) return;
           const state = window.BattleUI?.state || {};
           const activeTab = 读取战斗记录页签();
-          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+          读取战斗记录终端节点()?.querySelectorAll('[data-battle-record-tab]').forEach(button => {
             const active = button.getAttribute('data-battle-record-tab') === activeTab;
             button.classList.toggle('active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
@@ -33154,7 +33175,7 @@ class BattleUIComponent {
             previewBtn.addEventListener('click', previewBattleIntent);
             previewBtn.__battlePreviewBound = true;
           }
-          document.querySelectorAll('[data-battle-record-tab]').forEach(button => {
+          读取战斗记录终端节点()?.querySelectorAll('[data-battle-record-tab]').forEach(button => {
             if (button.__battleRecordTabBound) return;
             button.addEventListener('click', () => {
               设置战斗记录页签(button.getAttribute('data-battle-record-tab') || 'actual');
