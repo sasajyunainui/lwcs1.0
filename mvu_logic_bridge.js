@@ -41510,15 +41510,15 @@ ${播报文本}
                   </div>
                 </div>
               </div>
-              <div class="battle-record-terminal" id="ui-battle-record-terminal">
-                <div class="battle-record-tabs" role="tablist" aria-label="战斗记录">
-                  <button class="battle-record-tab active" type="button" data-battle-record-tab="actual">实战记录</button>
-                  <button class="battle-record-tab" type="button" data-battle-record-tab="preview">预演记录</button>
-                </div>
-                <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
-              </div>
               <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
             </section>
+            <div class="battle-record-terminal" id="ui-battle-record-terminal">
+              <div class="battle-record-tabs" role="tablist" aria-label="战斗记录">
+                <button class="battle-record-tab active" type="button" data-battle-record-tab="actual">实战记录</button>
+                <button class="battle-record-tab" type="button" data-battle-record-tab="preview">预演记录</button>
+              </div>
+              <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
+            </div>
           </div>
         </div>`;
   }
