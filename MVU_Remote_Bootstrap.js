@@ -6,7 +6,7 @@ const CDN地址列表 = Object.freeze([
   'https://gcore.jsdelivr.net',
   'https://fastly.jsdelivr.net',
 ]);
-const 请求超时毫秒 = 6000;
+const 请求超时毫秒 = 15000;
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const 启动预取资源列表 = Object.freeze([
   'MVU_Skill_Runtime.js',
@@ -17,7 +17,6 @@ const 启动预取资源列表 = Object.freeze([
   'timeline.js',
   'IntelEvents.js',
 ]);
-const 核心探测资源列表 = Object.freeze([入口文件名, ...启动预取资源列表]);
 
 async function 取最新提交哈希() {
   const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;
@@ -38,11 +37,20 @@ function 预取关键资源(资源基础地址) {
   });
 }
 
-function fetchWithTimeout(地址, 选项) {
-  if (typeof AbortController === 'undefined') return fetch(地址, 选项);
-  const 控制器 = new AbortController();
-  const 超时器 = setTimeout(() => 控制器.abort(), 请求超时毫秒);
-  return fetch(地址, { ...选项, signal: 控制器.signal }).finally(() => clearTimeout(超时器));
+function withTimeout(承诺, 标签) {
+  return new Promise((resolve, reject) => {
+    const 超时器 = setTimeout(() => reject(new Error(`${标签} 超时:${请求超时毫秒}ms`)), 请求超时毫秒);
+    Promise.resolve(承诺).then(
+      值 => {
+        clearTimeout(超时器);
+        resolve(值);
+      },
+      错误 => {
+        clearTimeout(超时器);
+        reject(错误);
+      },
+    );
+  });
 }
 
 const 最新提交哈希 = await 取最新提交哈希();
@@ -52,10 +60,7 @@ let 已加载 = false;
 for (const CDN地址 of CDN地址列表) {
   const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
   try {
-    await Promise.all(核心探测资源列表.map(async 文件名 => {
-      const 响应 = await fetchWithTimeout(`${资源基础地址}${文件名}`, { cache: 'force-cache' });
-      if (!响应.ok) throw new Error(`${文件名}:${响应.status}`);
-    }));
+    await withTimeout(import(`${资源基础地址}${入口文件名}`), `导入 ${资源基础地址}${入口文件名}`);
 
     globalThis.__LWCS_MVU_资源基础地址__ = 资源基础地址;
     globalThis.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
@@ -73,7 +78,6 @@ for (const CDN地址 of CDN地址列表) {
     } catch (错误) {}
 
     预取关键资源(资源基础地址);
-    await import(`${资源基础地址}${入口文件名}`);
     已加载 = true;
     break;
   } catch (错误) {

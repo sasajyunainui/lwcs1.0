@@ -15107,8 +15107,8 @@ class BattleUIComponent {
         combatData.战斗类型 = '团战';
         combatData.参战者.team_player = [玩家, 友方];
         combatData.参战者.team_enemy = [甲敌, 乙敌];
-        玩家.__战斗焦点目标 = { 目标名: '甲敌', 剩余回合: 2, 原因: '夹具锁定' };
-        友方.__战斗焦点目标 = { 目标名: '乙敌', 剩余回合: 2, 原因: '夹具锁定' };
+        setActorFocusTarget(玩家, 甲敌, 'shared_vision_focus', 2);
+        setActorFocusTarget(友方, 乙敌, 'shared_vision_focus', 2);
         玩家.第1武魂.第1魂环.第1魂技 = 战斗回归输出魂技('甲方压制', '敌方单体', 8, 80, '近身攻击');
         友方.第1武魂 = {
           表象名称: '乙方武魂',

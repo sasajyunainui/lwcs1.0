@@ -9,7 +9,7 @@
     'https://gcore.jsdelivr.net',
     'https://fastly.jsdelivr.net',
   ]);
-  const 请求超时毫秒 = 6000;
+  const 请求超时毫秒 = 15000;
   const 入口文件名 = 'ST_UI_Entry.js';
   const 启动预取资源列表 = Object.freeze([
     'mvu_styles.css',
@@ -31,11 +31,6 @@
     'IntelEvents.js',
   ]);
   const 核心探测资源列表 = Object.freeze([
-    入口文件名,
-    'mvu_styles.css',
-    'soul_ring_engine.css',
-    'Main_Vue_runtimefix_v2.js',
-    'CharacterLibrary.js',
     'ItemLibrary.js',
   ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
@@ -60,11 +55,24 @@
     });
   }
 
+  function withTimeout(承诺, 标签) {
+    return new Promise((resolve, reject) => {
+      const 超时器 = setTimeout(() => reject(new Error(`${标签} 超时:${请求超时毫秒}ms`)), 请求超时毫秒);
+      Promise.resolve(承诺).then(
+        值 => {
+          clearTimeout(超时器);
+          resolve(值);
+        },
+        错误 => {
+          clearTimeout(超时器);
+          reject(错误);
+        },
+      );
+    });
+  }
+
   function fetchWithTimeout(地址, 选项) {
-    if (typeof AbortController === 'undefined') return fetch(地址, 选项);
-    const 控制器 = new AbortController();
-    const 超时器 = setTimeout(() => 控制器.abort(), 请求超时毫秒);
-    return fetch(地址, { ...选项, signal: 控制器.signal }).finally(() => clearTimeout(超时器));
+    return withTimeout(fetch(地址, 选项), `读取 ${地址}`);
   }
 
   async function 取最新提交哈希() {
@@ -89,10 +97,10 @@
         const 响应 = await fetchWithTimeout(入口地址, { cache: 'force-cache' });
         if (!响应.ok) throw new Error(`入口读取失败:${响应.status}`);
         const 入口代码 = await 响应.text();
-        await Promise.all(核心探测资源列表.filter(文件名 => 文件名 !== 入口文件名).map(async 文件名 => {
+        for (const 文件名 of 核心探测资源列表) {
           const 探测响应 = await fetchWithTimeout(`${资源基础地址}${文件名}`, { cache: 'force-cache' });
           if (!探测响应.ok) throw new Error(`${文件名}:${探测响应.status}`);
-        }));
+        }
 
         宿主窗口.__LWCS_资源基础地址__ = 资源基础地址;
         宿主窗口.__LWCS_当前远程提交__ = 提交哈希;
