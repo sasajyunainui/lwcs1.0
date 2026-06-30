@@ -15045,10 +15045,105 @@ class BattleUIComponent {
         断言战斗回归夹具(/护盾吸收/.test(applied.log || ''), `护盾吸收日志缺失:${applied.log || ''}`);
         日志.push(`护盾吸收顺序成立:${applied.log || ''}`);
       });
+      注册('UI动作声明契约不丢字段', 日志 => {
+        const { combatData, 玩家, 友方, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.自创魂技 = {
+          夹具援护: {
+            魂技名: '夹具援护',
+            name: '夹具援护',
+            技能分类: '辅助',
+            目标: '友方单体',
+            消耗: '魂力:30',
+            前摇: 6,
+            使用条件: { 最低等级: 1 },
+            _效果数组: [
+              { 原型: '护盾变化', 目标: '友方单体', 数值: '+80' },
+            ],
+          },
+        };
+        玩家.背包.夹具药剂 = {
+          名称: '夹具药剂',
+          数量: 1,
+          使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '魂力', 数值: '+10' }],
+        };
+        const actions = ui_getAvailableActions(玩家, combatData);
+        const firstAction = actions.find(action => action.name === '夹具第一魂技');
+        const supportAction = actions.find(action => action.name === '夹具援护');
+        const itemAction = actions.find(action => action.name === '夹具药剂');
+        断言战斗回归夹具(!!firstAction && !!supportAction && !!itemAction, `UI动作缺失:${actions.map(action => action.name).join('、')}`);
+        supportAction.target_name = 友方.name;
+        const 序列化 = action => buildSerializedEntryFromAction(action);
+        const firstEntry = 序列化(firstAction);
+        const supportEntry = 序列化(supportAction);
+        const itemEntry = 序列化(itemAction);
+        断言战斗回归夹具(firstEntry.actor_name === 玩家.name, '第一魂技UI声明缺行动者');
+        断言战斗回归夹具(firstEntry.__魂环路径?.join('/') === '第1武魂/第1魂环' && firstEntry.__魂技槽位 === '第1魂技', '第一魂技UI声明缺魂环槽位');
+        断言战斗回归夹具(firstEntry.skill?.目标 === '敌方单体' && firstEntry.skill?.技能分类 === '输出', '第一魂技UI声明缺目标/分类');
+        断言战斗回归夹具(supportEntry.target_name === 友方.name, `友方辅助UI声明目标错误:${supportEntry.target_name}`);
+        断言战斗回归夹具(supportEntry.skill?.目标 === '友方单体' && supportEntry.skill?.技能分类 === '辅助', '友方辅助UI声明缺目标/分类');
+        断言战斗回归夹具(supportEntry.skill?.使用条件?.最低等级 === 1, '友方辅助UI声明缺使用条件');
+        断言战斗回归夹具(itemEntry.action_type === '使用物品' && itemEntry.物品名 === '夹具药剂', '物品UI声明缺使用物品契约');
+        断言战斗回归夹具(itemEntry.skill?.__物品名 === '夹具药剂' && itemEntry.skill?.承载方式 === '物品使用', '物品UI声明缺物品技能标记');
+        const parsedSupport = buildPlayerActionFromSerializedEntry(supportEntry, 玩家.name, 玩家);
+        断言战斗回归夹具(parsedSupport?.target_name === 友方.name, `友方辅助解析目标丢失:${parsedSupport?.target_name || '无'}`);
+        断言战斗回归夹具(resolveSkillTargetContext(parsedSupport.skill, 玩家, 友方, combatData, null, parsedSupport).primaryTarget === 友方, '友方辅助解析后目标未落友方');
+        断言战斗回归夹具(!判定单挑动作敌对(parsedSupport, 玩家, 敌人, combatData), '友方辅助UI声明被误判敌对');
+        日志.push('UI动作声明保留来源、目标、物品契约字段');
+      });
+      注册('团战多窗口应招不串链', 日志 => {
+        const { combatData, 玩家, 友方 } = 构建战斗回归夹具战斗态();
+        玩家.name = '甲方攻手';
+        友方.name = '乙方攻手';
+        玩家.agi = 900;
+        友方.agi = 850;
+        玩家.final = buildCombatFinalStats(玩家);
+        友方.final = buildCombatFinalStats(友方);
+        const 甲敌 = 构建战斗回归夹具单位('甲敌', '防御系');
+        const 乙敌 = 构建战斗回归夹具单位('乙敌', '防御系');
+        甲敌.agi = 80;
+        乙敌.agi = 70;
+        甲敌.final = buildCombatFinalStats(甲敌);
+        乙敌.final = buildCombatFinalStats(乙敌);
+        combatData.战斗类型 = '团战';
+        combatData.参战者.team_player = [玩家, 友方];
+        combatData.参战者.team_enemy = [甲敌, 乙敌];
+        玩家.__战斗焦点目标 = { 目标名: '甲敌', 剩余回合: 2, 原因: '夹具锁定' };
+        友方.__战斗焦点目标 = { 目标名: '乙敌', 剩余回合: 2, 原因: '夹具锁定' };
+        玩家.第1武魂.第1魂环.第1魂技 = 战斗回归输出魂技('甲方压制', '敌方单体', 8, 80, '近身攻击');
+        友方.第1武魂 = {
+          表象名称: '乙方武魂',
+          第1魂环: {
+            第1魂技: 战斗回归输出魂技('乙方刺击', '敌方单体', 8, 80, '近身攻击'),
+          },
+        };
+        const 原随机 = Math.random;
+        const 回合日志 = [];
+        let 甲结果 = null;
+        let 乙结果 = null;
+        try {
+          Math.random = () => 0.98;
+          甲结果 = runActorTurn({ char: 玩家, side: 'player' }, { combatData, round: 1, logs: 回合日志 });
+          乙结果 = runActorTurn({ char: 友方, side: 'player' }, { combatData, round: 1, logs: 回合日志 });
+        } finally {
+          Math.random = 原随机;
+        }
+        断言战斗回归夹具(甲结果?.target === '甲敌', `甲方目标串线:${甲结果?.target || '无'};${甲结果?.log || ''}`);
+        断言战斗回归夹具(乙结果?.target === '乙敌', `乙方目标串线:${乙结果?.target || '无'};${乙结果?.log || ''}`);
+        断言战斗回归夹具(!/乙敌/.test(String(甲结果?.log || '')), `甲方日志串入乙敌:${甲结果?.log || ''}`);
+        断言战斗回归夹具(!/甲敌/.test(String(乙结果?.log || '')), `乙方日志串入甲敌:${乙结果?.log || ''}`);
+        断言战斗回归夹具(!/抓住乙方攻手出手后的空门/.test(String(甲结果?.log || '')), `甲方防反串乙方:${甲结果?.log || ''}`);
+        断言战斗回归夹具(!/抓住甲方攻手出手后的空门/.test(String(乙结果?.log || '')), `乙方防反串甲方:${乙结果?.log || ''}`);
+        const report = buildReadableBattleReportLines(['[团战第1回合开始]', 甲结果.log, 乙结果.log], 8).join('\n');
+        const 甲行 = report.split('\n').find(line => /甲方攻手/.test(line)) || '';
+        const 乙行 = report.split('\n').find(line => /乙方攻手/.test(line)) || '';
+        断言战斗回归夹具(/甲敌/.test(甲行) && !/乙敌/.test(甲行), `公开战报甲链串线:${report}`);
+        断言战斗回归夹具(/乙敌/.test(乙行) && !/甲敌/.test(乙行), `公开战报乙链串线:${report}`);
+        日志.push(`团战多窗口应招隔离成立:${report}`);
+      });
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
-    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血'];
+    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
 
     function 读取事件链状态(container = null) {
@@ -34227,6 +34322,11 @@ class BattleUIComponent {
           });
 
           actions.forEach(动作 => 套用动作实际前摇(charData, 动作, 读取UI经验目标(动作.raw_skill || 动作.skill || {}), combatData));
+          if (当前角色名) actions.forEach(action => {
+            if (action && typeof action === 'object' && !String(action.actor_name || action.__行动者名 || '').trim()) {
+              action.actor_name = 当前角色名;
+            }
+          });
           return actions;
         }
 
@@ -35572,10 +35672,15 @@ class BattleUIComponent {
             '魂技名',
             '画面描述',
             '效果描述',
+            '技能分类',
+            '目标',
             '承载方式',
             '消耗',
             '前摇',
             '附带属性',
+            '使用条件',
+            '战斗摘要',
+            '战斗语义',
             '技能掌控度',
             '_效果数组',
             '副作用列表',
