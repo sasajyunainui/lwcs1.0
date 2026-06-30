@@ -105,14 +105,15 @@ class BattleUIComponent {
       if (component.recordPortalNode?.isConnected) return component.recordPortalNode;
       const 本地节点 = wrapperElement.querySelector('#ui-battle-record-terminal');
       if (!本地节点) return null;
-      if (globalDocument?.body) {
+      const 挂载根 = component.container?.closest?.('#mvu-unified-mount, #detailModal') || globalDocument?.body || null;
+      if (挂载根) {
         globalDocument.querySelectorAll('#ui-battle-record-terminal.battle-record-terminal--portal').forEach(node => {
           if (node !== 本地节点) node.remove();
         });
         本地节点.classList.add('battle-record-terminal--portal');
         本地节点.setAttribute('tabindex', '0');
         本地节点.setAttribute('aria-label', '战斗记录');
-        globalDocument.body.appendChild(本地节点);
+        挂载根.appendChild(本地节点);
         component.recordPortalNode = 本地节点;
         同步战斗记录终端主题(本地节点);
         同步战斗记录终端位置();
@@ -19719,6 +19720,9 @@ class BattleUIComponent {
               : 读取战斗主队单位列表(battleState.combatData, '敌方');
           team.forEach(member => {
             if (!member || member.name === actorEntry.char.name) return;
+            const memory = ensureActorDecisionMemory(member);
+            const hasActiveFocus = memory && memory.关注对象 && Number(memory.focus_ttl || 0) > 0;
+            if (hasActiveFocus && memory.关注对象 !== (target.name || '')) return;
             setActorFocusTarget(member, target, reason, Math.max(1, Number(ttl || 0) - 1));
           });
         }
@@ -32564,13 +32568,17 @@ class BattleUIComponent {
             记录技能索敌(fallbackTarget, '无可锁定目标兜底', ['目标不可锁定']);
             return fallbackTarget || null;
           }
+          const memory = ensureActorDecisionMemory(attackerChar);
           const effectiveFocusTarget =
             focusTarget && effectiveTargets.some(target => target.name === focusTarget.name) ? focusTarget : null;
+          if (effectiveFocusTarget && memory.focus_reason === 'shared_vision_focus' && summary.目标规模 === '单体') {
+            记录技能索敌(effectiveFocusTarget, '共享视野锁定', ['延续共享视野焦点']);
+            return effectiveFocusTarget;
+          }
           if (effectiveTargets.length === 1) {
             记录技能索敌(effectiveTargets[0], '技能单目标闭环', ['唯一有效技能目标']);
             return effectiveTargets[0];
           }
-          const memory = ensureActorDecisionMemory(attackerChar);
           const 目标候选 = effectiveTargets.map(target => {
               let weight = scoreEnemyTargetForSkill(attackerChar, target, skill, combatData);
               if (focusTarget && target.name === focusTarget.name) {

@@ -19,6 +19,16 @@
     if (!覆盖地址) return 默认资源基础地址;
     return 覆盖地址.endsWith('/') ? 覆盖地址 : `${覆盖地址}/`;
   })();
+  const 资源基础地址候选列表 = (() => {
+    const 候选原值 = 宿主窗口.__LWCS_资源基础地址候选列表__ || window.__LWCS_资源基础地址候选列表__;
+    const 候选列表 = Array.isArray(候选原值) ? 候选原值 : [];
+    const 清理地址 = 地址 => {
+      const 文本 = String(地址 || '').trim();
+      if (!文本) return '';
+      return 文本.endsWith('/') ? 文本 : `${文本}/`;
+    };
+    return [资源基础地址, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
+  })();
   const 资源版本后缀 = '';
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
   const 首次重试延迟毫秒 = 260;
@@ -216,13 +226,27 @@
     return { cache: 是提交哈希资源地址(地址) ? 'force-cache' : 'no-store' };
   }
 
+  function 取候选资源地址列表(地址) {
+    if (!地址 || !资源基础地址候选列表.length || !String(地址).startsWith(资源基础地址)) return [地址];
+    const 文件路径 = String(地址).slice(资源基础地址.length);
+    return 资源基础地址候选列表.map(候选基础地址 => 候选基础地址 + 文件路径);
+  }
+
   async function 读取文本资源(地址, 错误前缀) {
     if (!文本资源缓存表.has(地址)) {
-      const 读取承诺 = fetch(地址, 取资源请求选项(地址))
-        .then(响应 => {
-          if (!响应.ok) throw new Error(`${错误前缀}: ${地址} [${响应.status}]`);
-          return 响应.text();
-        })
+      const 读取承诺 = (async () => {
+        const 错误列表 = [];
+        for (const 候选地址 of 取候选资源地址列表(地址)) {
+          try {
+            const 响应 = await fetch(候选地址, 取资源请求选项(候选地址));
+            if (!响应.ok) throw new Error(`[${响应.status}]`);
+            return await 响应.text();
+          } catch (错误) {
+            错误列表.push(`${候选地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+          }
+        }
+        throw new Error(`${错误前缀}: ${错误列表.join(' | ')}`);
+      })()
         .catch(错误 => {
           文本资源缓存表.delete(地址);
           throw 错误;

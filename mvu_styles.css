@@ -28417,7 +28417,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
     inset 0 0 0 1px color-mix(in srgb, var(--战斗强调色) 18%, transparent);
 }
 
-body > .battle-record-terminal--portal {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal {
   --战斗主色: var(--主题主色, #5ee8ff);
   --战斗强调色: var(--资源亮色, var(--主题主色, #5ee8ff));
   --战斗边缘高光: rgba(255, 255, 255, 0.12);
@@ -28433,6 +28433,7 @@ body > .battle-record-terminal--portal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 9px;
+  pointer-events: auto;
   width: var(--战斗记录外置-width, min(760px, calc(100vw - 380px)));
   height: var(--战斗记录外置-height, min(720px, calc(100vh - 92px)));
   min-height: 0;
@@ -28453,7 +28454,7 @@ body > .battle-record-terminal--portal {
     0 14px 26px rgba(0, 0, 0, 0.42);
 }
 
-body > .battle-record-terminal--portal.battle-record-terminal--collapsed {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal.battle-record-terminal--collapsed {
   grid-template-rows: auto;
   width: auto;
   height: auto;
@@ -28464,18 +28465,18 @@ body > .battle-record-terminal--portal.battle-record-terminal--collapsed {
   box-shadow: none;
 }
 
-body > .battle-record-terminal--portal *,
-body > .battle-record-terminal--portal *::before,
-body > .battle-record-terminal--portal *::after {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal *,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal *::before,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal *::after {
   box-sizing: border-box;
 }
 
-body > .battle-record-terminal--portal button {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal button {
   appearance: none;
   font: inherit;
 }
 
-body > .battle-record-terminal--portal .battle-record-toggle {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle {
   min-width: 52px;
   min-height: 34px;
   padding: 7px 11px;
@@ -28495,7 +28496,7 @@ body > .battle-record-terminal--portal .battle-record-toggle {
   cursor: pointer;
 }
 
-body > .battle-record-terminal--portal .battle-record-toggle:focus-visible {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle:focus-visible {
   outline: none;
   box-shadow:
     inset 1px 1px 0 var(--战斗边缘高光),
@@ -28504,7 +28505,7 @@ body > .battle-record-terminal--portal .battle-record-toggle:focus-visible {
     0 0 18px color-mix(in srgb, var(--战斗强调色) 32%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-record-body {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-body {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 9px;
@@ -28513,18 +28514,18 @@ body > .battle-record-terminal--portal .battle-record-body {
   overflow: hidden;
 }
 
-body > .battle-record-terminal--portal .battle-record-body[hidden] {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-body[hidden] {
   display: none;
 }
 
-body > .battle-record-terminal--portal .battle-record-tabs {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-tabs {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-record-tab {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-tab {
   min-width: 0;
   padding: 5px 10px;
   border: 1px solid color-mix(in srgb, var(--战斗主色) 22%, transparent);
@@ -28537,13 +28538,13 @@ body > .battle-record-terminal--portal .battle-record-tab {
   cursor: pointer;
 }
 
-body > .battle-record-terminal--portal .battle-record-tab.active {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-tab.active {
   color: #ffffff;
   border-color: color-mix(in srgb, var(--战斗强调色) 44%, transparent);
   background: color-mix(in srgb, var(--战斗强调色) 14%, rgba(255, 255, 255, 0.04));
 }
 
-body > .battle-record-terminal--portal .battle-preview-panel {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -28554,11 +28555,11 @@ body > .battle-record-terminal--portal .battle-preview-panel {
   scrollbar-color: color-mix(in srgb, var(--战斗强调色) 30%, transparent) transparent;
 }
 
-body > .battle-record-terminal--portal .battle-preview-panel[hidden] {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel[hidden] {
   display: none;
 }
 
-body > .battle-record-terminal--portal .battle-preview-head {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -28566,29 +28567,29 @@ body > .battle-record-terminal--portal .battle-preview-head {
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-head span,
-body > .battle-record-terminal--portal .battle-preview-head em,
-body > .battle-record-terminal--portal .battle-preview-empty {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head span,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head em,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-empty {
   color: var(--战斗记录文字弱色);
   font-size: 10px;
   font-style: normal;
   font-weight: 680;
 }
 
-body > .battle-record-terminal--portal .battle-preview-head b {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head b {
   color: #ffffff;
   font-size: 12px;
   font-weight: 820;
 }
 
-body > .battle-record-terminal--portal .battle-preview-report,
-body > .battle-record-terminal--portal .battle-preview-trace {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace {
   display: grid;
   gap: 5px;
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-report p {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report p {
   margin: 0;
   color: var(--战斗记录文字主色);
   font-size: 11px;
@@ -28597,27 +28598,27 @@ body > .battle-record-terminal--portal .battle-preview-report p {
   overflow-wrap: anywhere;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace summary {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace summary {
   color: var(--战斗强调色);
   font-size: 11px;
   font-weight: 820;
   cursor: pointer;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-round {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-round {
   display: grid;
   gap: 5px;
   min-width: 0;
   padding-top: 3px;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-round + .battle-preview-trace-round {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-round + .battle-preview-trace-round {
   margin-top: 7px;
   padding-top: 8px;
   border-top: 1px solid color-mix(in srgb, var(--战斗记录边框色) 72%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-round-title {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-round-title {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -28627,7 +28628,7 @@ body > .battle-record-terminal--portal .battle-preview-trace-round-title {
   letter-spacing: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-round-title::after {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-round-title::after {
   content: "";
   flex: 1 1 auto;
   min-width: 24px;
@@ -28636,7 +28637,7 @@ body > .battle-record-terminal--portal .battle-preview-trace-round-title::after 
   background: color-mix(in srgb, var(--战斗记录边框色) 68%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row {
   display: grid;
   gap: 5px;
   min-width: 0;
@@ -28648,46 +28649,46 @@ body > .battle-record-terminal--portal .battle-preview-trace-row {
     rgba(255, 255, 255, 0.035);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row b,
-body > .battle-record-terminal--portal .battle-preview-trace-row span,
-body > .battle-record-terminal--portal .battle-preview-trace-row em,
-body > .battle-record-terminal--portal .battle-preview-trace-row code,
-body > .battle-record-terminal--portal .battle-preview-trace-row pre {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row b,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row span,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row em,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row code,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row pre {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 10px;
   line-height: 1.3;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row b {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row b {
   color: #ffffff;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row span {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row span {
   color: var(--战斗记录文字主色);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-actor {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-actor {
   color: color-mix(in srgb, var(--战斗强调色) 76%, #ffffff);
   font-weight: 820;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-target {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-target {
   color: color-mix(in srgb, var(--战斗危险色) 72%, #ffffff);
   font-weight: 820;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-skill {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-skill {
   color: color-mix(in srgb, var(--战斗警戒色) 72%, #ffffff);
   font-weight: 820;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-muted {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-muted {
   color: color-mix(in srgb, var(--战斗记录文字弱色) 58%, transparent);
   font-weight: 680;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-decision {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview-trace-decision {
   display: block;
   padding: 4px 6px;
   border-radius: calc(var(--战斗圆角) * 0.16);
@@ -28697,44 +28698,44 @@ body > .battle-record-terminal--portal .battle-preview-trace-row .battle-preview
   font-weight: 820;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-row em,
-body > .battle-record-terminal--portal .battle-preview-trace-row code,
-body > .battle-record-terminal--portal .battle-preview-trace-row pre {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row em,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row code,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-row pre {
   color: var(--战斗记录文字弱色);
   font-style: normal;
   font-family: inherit;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-card--target {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--target {
   border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 46%, transparent);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--战斗记录文字弱色) 7%, transparent), transparent 76%),
     rgba(255, 255, 255, 0.03);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-card--action {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--action {
   border-left-color: color-mix(in srgb, var(--战斗强调色) 64%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-card--handoff {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--handoff {
   border-left-style: dashed;
   border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 34%, transparent);
   background: rgba(255, 255, 255, 0.025);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-card--counter {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--counter {
   border-left-color: color-mix(in srgb, var(--战斗警戒色) 76%, transparent);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--战斗警戒色) 10%, transparent), transparent 78%),
     rgba(255, 255, 255, 0.035);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-card--corrected {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--corrected {
   border-left-color: color-mix(in srgb, var(--战斗警戒色) 82%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--战斗警戒色) 14%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-title {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -28743,11 +28744,11 @@ body > .battle-record-terminal--portal .battle-preview-trace-title {
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-title b {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-title b {
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-title em {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-title em {
   color: var(--战斗记录文字弱色);
   font-size: 10px;
   font-style: normal;
@@ -28755,18 +28756,18 @@ body > .battle-record-terminal--portal .battle-preview-trace-title em {
   white-space: nowrap;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-score {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-score {
   color: var(--战斗记录文字弱色);
   font-weight: 760;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-tree {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-tree {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-tree span {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-tree span {
   color: var(--战斗记录文字主色);
   font-family: inherit;
   font-size: 10px;
@@ -28774,7 +28775,7 @@ body > .battle-record-terminal--portal .battle-preview-trace-tree span {
   overflow-wrap: anywhere;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-correction {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-correction {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -28784,33 +28785,33 @@ body > .battle-record-terminal--portal .battle-preview-trace-correction {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--战斗警戒色) 22%, transparent);
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-correction span {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-correction span {
   color: color-mix(in srgb, var(--战斗记录文字主色) 86%, var(--战斗警戒色));
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-correction b {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-correction b {
   color: color-mix(in srgb, #ffffff 74%, var(--战斗警戒色));
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-candidate {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-candidate {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-trace-candidate-bar {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-candidate-bar {
   color: color-mix(in srgb, var(--战斗强调色) 64%, var(--战斗记录文字弱色));
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   letter-spacing: 0;
   line-height: 1;
 }
 
-body > .battle-record-terminal--portal .battle-preview-debug {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-debug {
   display: grid;
   gap: 3px;
 }
 
-body > .battle-record-terminal--portal .battle-preview-debug summary {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-debug summary {
   color: var(--战斗记录文字弱色);
   font-size: 10px;
   font-weight: 720;
@@ -28818,11 +28819,11 @@ body > .battle-record-terminal--portal .battle-preview-debug summary {
   cursor: pointer;
 }
 
-body > .battle-record-terminal--portal .battle-preview-debug pre {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-debug pre {
   margin: 0;
 }
 
-body > .battle-record-terminal--portal .battle-preview-debug code {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-debug code {
   display: block;
   max-height: 120px;
   overflow: auto;

@@ -60,23 +60,25 @@ let 已加载 = false;
 for (const CDN地址 of CDN地址列表) {
   const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
   try {
-    await withTimeout(import(`${资源基础地址}${入口文件名}`), `导入 ${资源基础地址}${入口文件名}`);
-
     globalThis.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+    globalThis.__LWCS_MVU_资源基础地址候选列表__ = CDN地址列表.map(候选CDN地址 => `${候选CDN地址}/gh/${仓库名}@${最新提交哈希}/`);
     globalThis.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
     try {
       if (globalThis.parent && globalThis.parent !== globalThis) {
         globalThis.parent.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+        globalThis.parent.__LWCS_MVU_资源基础地址候选列表__ = globalThis.__LWCS_MVU_资源基础地址候选列表__;
         globalThis.parent.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
       }
     } catch (错误) {}
     try {
       if (globalThis.top && globalThis.top !== globalThis) {
         globalThis.top.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+        globalThis.top.__LWCS_MVU_资源基础地址候选列表__ = globalThis.__LWCS_MVU_资源基础地址候选列表__;
         globalThis.top.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
       }
     } catch (错误) {}
 
+    await withTimeout(import(`${资源基础地址}${入口文件名}`), `导入 ${资源基础地址}${入口文件名}`);
     预取关键资源(资源基础地址);
     已加载 = true;
     break;

@@ -31,7 +31,10 @@
     'IntelEvents.js',
   ]);
   const 核心探测资源列表 = Object.freeze([
+    'mvu_styles.css',
     'ItemLibrary.js',
+    'mvu_logic_bridge.js',
+    'MVU_ZOD_Entry.js',
   ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
   const 宿主窗口 = (() => {
@@ -47,6 +50,11 @@
 
   function 构建资源基础地址(CDN地址, 提交哈希) {
     return `${CDN地址}/gh/${仓库名}@${提交哈希}/`;
+  }
+
+  function 构建资源基础地址候选列表(首选地址, 提交哈希) {
+    const 候选列表 = [首选地址, ...CDN地址列表.map(CDN地址 => 构建资源基础地址(CDN地址, 提交哈希))];
+    return 候选列表.filter((地址, 序号) => 地址 && 候选列表.indexOf(地址) === 序号);
   }
 
   function 预取关键资源(资源基础地址) {
@@ -102,11 +110,14 @@
           if (!探测响应.ok) throw new Error(`${文件名}:${探测响应.status}`);
         }
 
+        const 资源基础地址候选列表 = 构建资源基础地址候选列表(资源基础地址, 提交哈希);
         宿主窗口.__LWCS_资源基础地址__ = 资源基础地址;
+        宿主窗口.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
         宿主窗口.__LWCS_当前远程提交__ = 提交哈希;
         try {
           if (window !== 宿主窗口) {
             window.__LWCS_资源基础地址__ = 资源基础地址;
+            window.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
             window.__LWCS_当前远程提交__ = 提交哈希;
           }
         } catch (错误) {}
