@@ -1,4 +1,5 @@
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
+const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
   const 候选原值 = globalThis.__LWCS_MVU_资源基础地址候选列表__;
   const 候选列表 = Array.isArray(候选原值) ? 候选原值 : [];
@@ -18,9 +19,39 @@ function 取MVU资源请求选项_V1(地址) {
   return { cache: 是MVU提交哈希资源地址_V1(地址) ? 'force-cache' : 'no-store' };
 }
 
-function 构建MVU模块导入地址_V1(文件名) {
-  const 地址 = new URL(文件名, MVU_ZOD_ENTRY_BASE_V1).href;
-  return 是MVU提交哈希资源地址_V1(地址) ? 地址 : `${地址}?t=${Date.now()}`;
+function MVU请求超时_V1(承诺, 标签, 超时毫秒 = MVU_ZOD_RESOURCE_TIMEOUT_MS_V1, 超时回调 = null) {
+  return new Promise((resolve, reject) => {
+    let 已结束 = false;
+    const 结束 = (成功, 结果) => {
+      if (已结束) return;
+      已结束 = true;
+      clearTimeout(超时器);
+      if (成功) resolve(结果);
+      else reject(结果);
+    };
+    const 超时器 = setTimeout(() => {
+      try {
+        if (typeof 超时回调 === 'function') 超时回调();
+      } catch (错误) {}
+      结束(false, new Error(`${标签} 超时:${超时毫秒}ms`));
+    }, 超时毫秒);
+    Promise.resolve(承诺).then(
+      结果 => 结束(true, 结果),
+      错误 => 结束(false, 错误),
+    );
+  });
+}
+
+function MVU_FETCH_V1(地址) {
+  const 请求选项 = 取MVU资源请求选项_V1(地址);
+  let 控制器 = null;
+  if (typeof AbortController === 'function') {
+    控制器 = new AbortController();
+    请求选项.signal = 控制器.signal;
+  }
+  return MVU请求超时_V1(fetch(地址, 请求选项), `读取 ${地址}`, MVU_ZOD_RESOURCE_TIMEOUT_MS_V1, () => {
+    if (控制器) 控制器.abort();
+  });
 }
 
 function 构建MVU候选资源地址列表_V1(文件名) {
@@ -34,7 +65,7 @@ async function 导入MVU候选模块_V1(文件名) {
   const 错误列表 = [];
   for (const 地址 of 构建MVU候选资源地址列表_V1(文件名)) {
     try {
-      return await import(地址);
+      return await MVU请求超时_V1(import(地址), `导入 ${地址}`);
     } catch (错误) {
       错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
     }
@@ -87,7 +118,7 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   let 代码文本 = '';
   for (const 候选地址 of 构建MVU候选资源地址列表_V1(文件名)) {
     try {
-      const 响应 = await fetch(候选地址, 取MVU资源请求选项_V1(候选地址));
+      const 响应 = await MVU_FETCH_V1(候选地址);
       if (!响应.ok) throw new Error(`[${响应.status}]`);
       地址 = 候选地址;
       代码文本 = await 响应.text();

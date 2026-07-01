@@ -31,6 +31,8 @@
   })();
   const 资源版本后缀 = '';
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
+  const 资源请求超时毫秒 = 6500;
+  const 远程脚本超时毫秒 = 8000;
   const 首次重试延迟毫秒 = 260;
   const 二次重试延迟毫秒 = 560;
 
@@ -176,7 +178,7 @@
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
     const 预设地址 = 资源基础地址 + 预设文件名 + 资源版本后缀;
-    const 响应 = await fetch(预设地址, 取资源请求选项(预设地址));
+    const 响应 = await fetchWithTimeout(预设地址, 取资源请求选项(预设地址));
     if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
     const 预设数组 = await 响应.json();
     const 预设名 = String(预设数组 && 预设数组[0] && 预设数组[0].name ? 预设数组[0].name : '').trim();
@@ -226,6 +228,35 @@
     return { cache: 是提交哈希资源地址(地址) ? 'force-cache' : 'no-store' };
   }
 
+  function fetchWithTimeout(地址, 选项 = {}, 超时毫秒 = 资源请求超时毫秒) {
+    const 请求选项 = { ...选项 };
+    let 控制器 = null;
+    if (typeof AbortController === 'function') {
+      控制器 = new AbortController();
+      请求选项.signal = 控制器.signal;
+    }
+    return new Promise((resolve, reject) => {
+      let 已结束 = false;
+      const 结束 = (成功, 结果) => {
+        if (已结束) return;
+        已结束 = true;
+        clearTimeout(超时器);
+        if (成功) resolve(结果);
+        else reject(结果);
+      };
+      const 超时器 = setTimeout(() => {
+        try {
+          if (控制器) 控制器.abort();
+        } catch (错误) {}
+        结束(false, new Error(`读取 ${地址} 超时:${超时毫秒}ms`));
+      }, 超时毫秒);
+      fetch(地址, 请求选项).then(
+        响应 => 结束(true, 响应),
+        错误 => 结束(false, 错误),
+      );
+    });
+  }
+
   function 取候选资源地址列表(地址) {
     if (!地址 || !资源基础地址候选列表.length || !String(地址).startsWith(资源基础地址)) return [地址];
     const 文件路径 = String(地址).slice(资源基础地址.length);
@@ -238,7 +269,7 @@
         const 错误列表 = [];
         for (const 候选地址 of 取候选资源地址列表(地址)) {
           try {
-            const 响应 = await fetch(候选地址, 取资源请求选项(候选地址));
+            const 响应 = await fetchWithTimeout(候选地址, 取资源请求选项(候选地址));
             if (!响应.ok) throw new Error(`[${响应.status}]`);
             return await 响应.text();
           } catch (错误) {
@@ -263,10 +294,23 @@
     return 'JS load failed';
   }
 
+  function 预取资源(地址) {
+    if (!地址 || !宿主文档 || !宿主文档.createElement) return;
+    const 标记 = 'mvu-prefetch-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
+    if (宿主文档.getElementById(标记)) return;
+    const 节点 = 宿主文档.createElement('link');
+    节点.id = 标记;
+    节点.rel = 'prefetch';
+    节点.href = 地址;
+    节点.as = /\.css(?:[?#]|$)/i.test(地址) ? 'style' : 'script';
+    节点.crossOrigin = 'anonymous';
+    (宿主文档.head || 宿主文档.documentElement).appendChild(节点);
+  }
+
   function 预取模块文本(模块名) {
     const 模块 = 模块注册表[模块名];
     if (!模块 || (模块.类型 !== 'css' && 模块.类型 !== 'inline-js' && 模块.类型 !== 'module-js')) return;
-    读取文本资源(模块.地址, 取文本资源错误前缀(模块)).catch(() => {});
+    预取资源(模块.地址);
   }
 
   function 取样式标记(地址) {
@@ -303,11 +347,25 @@
         return;
       }
       const 脚本节点 = 宿主文档.createElement('script');
+      let 已完成 = false;
+      const 完成 = (成功, 结果) => {
+        if (已完成) return;
+        已完成 = true;
+        clearTimeout(超时器);
+        if (成功) resolve(结果);
+        else reject(结果);
+      };
+      const 超时器 = setTimeout(() => {
+        try {
+          脚本节点.remove();
+        } catch (错误) {}
+        完成(false, new Error(`Remote script load timeout:${远程脚本超时毫秒}ms ${地址}`));
+      }, 远程脚本超时毫秒);
       脚本节点.id = 脚本标记;
       脚本节点.src = 地址;
       脚本节点.async = false;
-      脚本节点.onload = () => resolve(地址);
-      脚本节点.onerror = () => reject(new Error(`Remote script load failed: ${地址}`));
+      脚本节点.onload = () => 完成(true, 地址);
+      脚本节点.onerror = () => 完成(false, new Error(`Remote script load failed: ${地址}`));
       宿主文档.head.appendChild(脚本节点);
     });
   }
@@ -849,7 +907,7 @@
         记录阶段(加载阶段.核心加载中);
         启动预取模块顺序.forEach(预取模块文本);
         启动预取资源列表.forEach(文件名 => {
-          读取文本资源(资源基础地址 + 文件名 + 资源版本后缀, 'Resource prefetch failed').catch(() => {});
+          预取资源(资源基础地址 + 文件名 + 资源版本后缀);
         });
         for (const 模块名 of 核心前置模块顺序) {
           await 确保模块已加载(模块名, { 来源: 'bootstrap_core', 允许失败降级: false });
