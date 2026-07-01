@@ -3763,6 +3763,25 @@ class BattleUIComponent {
           };
         })
         .filter(item => item.actor && item.target && item.damage > 0);
+      const breakHits = [
+        ...Array.from(raw.matchAll(/\[未完全破防\]\s*([^。！？\n]+?)对([^。！？\n]+?)造成\s*(\d+)\s*点韧性削伤/g))
+          .map(match => ({ actor: String(match[1] || '').trim(), target: String(match[2] || '').trim(), damage: Math.max(0, Number(match[3] || 0)), breakType: '韧性削伤' })),
+        ...Array.from(raw.matchAll(/\[未破防\]\s*([^。！？\n]+?)对([^。！？\n]+?)仅造成\s*(\d+)\s*点强制伤害/g))
+          .map(match => ({ actor: String(match[1] || '').trim(), target: String(match[2] || '').trim(), damage: Math.max(0, Number(match[3] || 0)), breakType: '强制伤害' })),
+        ...Array.from(raw.matchAll(/\[群体擦伤\]\s*([^。！？\n]+?)(?:第\d+段)?(?:承受|仅承受)\s*(\d+)\s*点擦伤伤害/g))
+          .map(match => {
+            const target = String(match[1] || '').trim();
+            const declaration = actionDeclarations.find(item => item.kind !== 'counter' && item.target && isSameBattleReportName(item.target, target));
+            const actor = String(declaration?.actor || fallbackActor || '').trim();
+            return { actor, target, action: normalizeBattleActionDisplayName(declaration?.action || openings.find(item => isSameBattleReportName(item.actor, actor))?.action || ''), damage: Math.max(0, Number(match[2] || 0)), breakType: '擦伤伤害' };
+          }),
+      ]
+        .map(item => ({
+          ...item,
+          action: normalizeBattleActionDisplayName(item.action || findBattleExecutionActionDeclaration(actionDeclarations, item.actor, item.target)?.action || openings.find(opening => isSameBattleReportName(opening.actor, item.actor))?.action || ''),
+        }))
+        .filter(item => item.actor && item.target && item.damage > 0);
+      if (breakHits.length) hits.push(...breakHits);
       const counters = Array.from(raw.matchAll(/\[行为防反\]\s*([^凭，。！？\s]+)凭([^抓，。！？]+)抓住([^出，。！？\s]+)出手后的空门[^。！？\d]*(?:造成了?|打出)\s*(\d+)\s*点(?:反击)?伤害/g))
         .map(match => ({
           actor: String(match[1] || '').trim(),
@@ -3951,7 +3970,7 @@ class BattleUIComponent {
           sentence += openingIsGuard ? `；${formatBattleReactionPhrase(reaction.actor, reactionAction)}` : `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
           if (/伺机闪避|闪避/.test(reactionAction)) {
             if (hits.length) sentence += hits.some(item => item.graze) ? '，未能完全脱离，被攻势擦中' : '，试图脱身但未能摆脱，被攻势命中';
-            else sentence += states.length ? '，闪避成功，这一击没有命中；后续状态效果另行结算' : '，闪避成功，这一击没有命中';
+            else sentence += '，闪避成功，这一击没有命中';
           }
           else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '' : '，稳住了身形';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
@@ -3961,9 +3980,6 @@ class BattleUIComponent {
         if (targetFailureText) sentence += `；${targetFailureText}`;
         if (movementText) sentence += `；${movementText}`;
         if (creationText) sentence += `；${creationText}`;
-        if (!reaction && !damageText && !targetFailureText && !movementText && !creationText && !pressureText && !blockedText && !failedText) {
-          sentence += '；仅记录起手动作，缺少命中、闪避或失败等后续结算';
-        }
       } else if (hits.length) {
         const first = hits[0];
         const damageText = 合并回合伤害文本(hits, context);
@@ -4142,7 +4158,7 @@ class BattleUIComponent {
         if (line && !lines.includes(line)) lines.push(line);
       });
       (bucket.stateSettles || []).slice(0, 4).forEach(item => {
-        lines.push(`${item.target}随后因既有状态【${item.state}】${item.verb}了 ${item.amount} 点${item.resource}。`);
+        lines.push(`${item.target}随后受【${item.state}】影响，${item.verb}了 ${item.amount} 点${item.resource}。`);
       });
       if (!lines.length) {
         bucket.raws.forEach(raw => {
@@ -14560,9 +14576,49 @@ class BattleUIComponent {
           '[第1回合] [起招] 夹具玩家以[高速切入]起招。 [应招] 夹具敌人以[伺机闪避]应对。 [主动闪避] 夹具敌人凭借敏捷优势惊险躲过了攻击。',
         ], 3);
         const text = lines.join(' ');
-        断言战斗回归夹具(/避开攻势，未承受有效伤害|灵巧地避开/.test(text), `完全闪避未说明无伤:${text}`);
-        断言战斗回归夹具(!/造成了\s*\d+\s*点伤害|擦中|命中/.test(text), `完全闪避误带伤害:${text}`);
+        断言战斗回归夹具(/闪避成功，这一击没有命中|灵巧地闪避/.test(text), `完全闪避未说明未命中:${text}`);
+        断言战斗回归夹具(!/造成了\s*\d+\s*点伤害|擦中|被攻势命中|\[命中结算\]/.test(text), `完全闪避误带伤害:${text}`);
         日志.push(`完全闪避战报成立:${text}`);
+      });
+      注册('完全闪避不落本次攻击负面状态', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.agi = 20;
+        玩家.men_max = 20;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.agi = 9999;
+        敌人.final = buildCombatFinalStats(敌人);
+        const 闪避可躲控制 = normalizeSkillData({
+          name: '夹具毒刃牵制',
+          魂技名: '夹具毒刃牵制',
+          技能分类: '输出',
+          目标: '敌方单体',
+          消耗: '无',
+          前摇: 8,
+          _效果数组: [
+            { 原型: '伤害结算', 目标: '敌方单体', 生效方式: '独立生效', 威力倍率: 120, 伤害类型: '近身攻击' },
+            { 原型: '状态施加', 目标: '敌方单体', 生效方式: '独立生效', 状态: '位移限制', 状态名称: '位移限制', 持续回合: 1, 计算层效果: { cast_speed_penalty: 0.1 } },
+            { 原型: '状态施加', 目标: '敌方单体', 生效方式: '独立生效', 状态: '中毒', 状态名称: '中毒', 持续回合: 1, 计算层效果: { dot_damage: 30 } },
+          ],
+        }, '夹具毒刃牵制');
+        const action = { action_type: '释放魂技', type: '释放魂技', skill: 闪避可躲控制, target_name: 敌人.name, cast_time: 8 };
+        const 原随机 = Math.random;
+        let result = null;
+        try {
+          Math.random = () => 0;
+          result = executeClash(
+            action,
+            { type: '伺机闪避', action_type: '伺机闪避', skill: normalizeSkillData({ name: '伺机闪避', 技能分类: '防御', 消耗: '无', 前摇: 1 }, '伺机闪避'), def_mult: 1, log: '[应招] 夹具敌人以[伺机闪避]应对。' },
+            构建单挑临时战斗数据(玩家, 敌人, 'player', combatData),
+          );
+        } finally {
+          Math.random = 原随机;
+        }
+        断言战斗回归夹具(/\[(?:主动闪避|绝对闪避)\]/.test(String(result?.desc || '')), `未触发完全闪避:${result?.desc || ''}`);
+        断言战斗回归夹具(!/\[状态施加\].*(位移限制|中毒)|施加了\[(?:位移限制|中毒)\]/.test(String(result?.desc || '')), `完全闪避后仍记录本次负面状态:${result?.desc || ''}`);
+        断言战斗回归夹具(!敌人.状态效果?.位移限制 && !敌人.状态效果?.中毒, `完全闪避后负面状态仍落表:${Object.keys(敌人.状态效果 || {}).join('、')}`);
+        const settleLog = settleConditionsAtRoundEnd([敌人], combatData);
+        断言战斗回归夹具(!/\[状态结算\].*(位移限制|中毒)/.test(settleLog), `完全闪避后本回合状态跳伤仍触发:${settleLog}`);
+        日志.push(`完全闪避不落负面状态成立:${result?.desc || ''}`);
       });
       注册('群体攻击逐目标独立命中', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -14612,6 +14668,15 @@ class BattleUIComponent {
         断言战斗回归夹具(/没有可被命中的有效目标|未找到可被命中的有效目标/.test(text), `索敌失败未进公开战报:${text}`);
         断言战斗回归夹具(!/\[索敌失败\]/.test(text), `公开战报残留底层标签:${text}`);
         日志.push(`索敌失败战报成立:${text}`);
+      });
+      注册('未破防终态进入公开战报', 日志 => {
+        const lines = buildReadableBattleReportLines([
+          '[第2回合] [团战执行] 夹具玩家以[第一魂技]指向[夹具敌人]。 [起招] 夹具玩家以[第一魂技]起招。 [应招] 夹具敌人以[承伤硬抗]应对。 [未破防] 夹具玩家对夹具敌人仅造成 1 点强制伤害。',
+        ], 3);
+        const text = lines.join(' ');
+        断言战斗回归夹具(/夹具玩家对夹具敌人造成了 1 点伤害/.test(text), `未破防终态未被聚合:${text}`);
+        断言战斗回归夹具(!/仅记录起手动作|缺少命中|无法判断/.test(text), `未破防被误写成缺结算:${text}`);
+        日志.push(`未破防终态战报成立:${text}`);
       });
       注册('第一魂技正常释放链路', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -29057,6 +29122,20 @@ class BattleUIComponent {
           ].filter(Boolean));
           const 主要状态施加效果列表 = 独立状态施加效果列表().filter(effect => !直接消费状态施加集合.has(effect));
           const 附带状态施加效果列表 = 跟随状态施加效果列表().filter(effect => !直接消费状态施加集合.has(effect));
+          const 状态施加是友方或增益 = (状态施加效果 = {}) => {
+            const 状态目标 = String(状态施加效果?.目标 || '').trim();
+            return (
+              状态目标 === '自身' ||
+              状态目标 === '友方单体' ||
+              状态目标 === '友方群体' ||
+              String(状态施加效果?.特殊机制标识 || '无').includes('增益') ||
+              状态施加效果?.计算层效果?.无视异常 === true ||
+              状态施加效果?.计算层效果?.super_armor === true ||
+              状态施加效果?.计算层效果?.探查屏蔽 === true ||
+              Number(状态施加效果?.计算层效果?.min_hp_floor || 0) > 0 ||
+              Number(状态施加效果?.计算层效果?.hot_heal_ratio || 0) > 0
+            );
+          };
           if (
             pState.状态名称 &&
             pState.状态名称 !== '无' &&
@@ -29068,7 +29147,13 @@ class BattleUIComponent {
             const stateTargetContext = getEffectTargetContext(pState);
             const stateTargets = stateTargetContext.targetSet;
             const stateTargetsFriendly = ['自身', '友方单体', '友方群体'].includes(stateTargetContext.targetKind);
+            const 主状态需要命中成立 = hasDirectDamageEffect && !状态施加是友方或增益(pState);
             stateTargets.forEach(targetObj => {
+              const 目标标记名 = String(targetObj?.name || (targetObj === attacker ? '自身' : '') || '').trim();
+              if (
+                主状态需要命中成立 &&
+                (!目标标记名 || (!主原型成立目标集合.has(目标标记名) && !主原型命中目标集合.has(目标标记名)))
+              ) return;
               const 被时光回溯规避 = Array.isArray(result.targetResults) && result.targetResults.some(entry =>
                 entry?.target &&
                 targetObj &&
@@ -29080,7 +29165,6 @@ class BattleUIComponent {
                 return;
               }
               const 状态名 = String(pState.状态名称 || '').trim();
-              const 目标标记名 = String(targetObj?.name || (targetObj === attacker ? '自身' : '') || '').trim();
               if (
                 directDotDetonateEffect &&
                 状态名 &&
@@ -29318,11 +29402,13 @@ class BattleUIComponent {
             const 状态名 = String(状态施加效果?.状态 || '').trim();
             if (!状态名 || 状态名 === '无') return false;
             const 状态目标上下文 = getEffectTargetContext(状态施加效果);
+            const 需要命中成立 = hasDirectDamageEffect && !状态施加是友方或增益(状态施加效果);
             const 状态目标列表 = 过滤被时光回溯规避目标列表(状态目标上下文.targetSet).filter(目标对象 => {
               if (!目标对象) return false;
-              if (!选项.需要主原型成立) return true;
               const 目标名 = String(目标对象?.name || 目标对象?.名称 || '').trim();
-              return 目标名 && (主原型成立目标集合.has(目标名) || 主原型命中目标集合.has(目标名));
+              if (!目标名) return false;
+              if (选项.需要主原型成立 || 需要命中成立) return 主原型成立目标集合.has(目标名) || 主原型命中目标集合.has(目标名);
+              return true;
             });
             if (!状态目标列表.length) return false;
             const 状态目标友方 = ['自身', '友方单体', '友方群体'].includes(状态目标上下文.targetKind);

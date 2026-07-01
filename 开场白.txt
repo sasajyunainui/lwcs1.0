@@ -45,6 +45,30 @@
 #character-creation-root .background-textarea { min-height: 80px; resize: vertical; line-height: 1.55; }
 #character-creation-root .mode-hidden { display: none; }
 #character-creation-root .form-control[readonly] { color: #94a3b8; border-color: rgba(45, 212, 191, 0.25); }
+@media (max-width: 640px) {
+  #character-creation-root { line-height: 1.5; }
+  #character-creation-root .archive-panel { max-width: 100%; margin: 0; padding: 18px 14px; border-radius: 10px; }
+  #character-creation-root .panel-title { flex-wrap: wrap; gap: 6px; margin-bottom: 20px; padding-bottom: 14px; font-size: 17px; line-height: 1.35; letter-spacing: 0; }
+  #character-creation-root .panel-title::before,
+  #character-creation-root .panel-title::after { display: none; }
+  #character-creation-root .form-group { margin-bottom: 18px; }
+  #character-creation-root .form-group label { align-items: flex-start; line-height: 1.35; }
+  #character-creation-root .form-control { min-width: 0; max-width: 100%; padding: 10px 11px; font-size: 16px; }
+  #character-creation-root .row { flex-direction: column; gap: 12px; }
+  #character-creation-root .row .row { flex-direction: row; gap: 10px; }
+  #character-creation-root .row .row .col { flex: 1 1 0; }
+  #character-creation-root .spirit-type-container { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #character-creation-root .spirit-type-item { padding: 13px; }
+  #character-creation-root .radio-card { padding: 13px; }
+  #character-creation-root .template-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #character-creation-root .template-btn { min-width: 0; padding: 10px 8px; }
+  #character-creation-root .submit-btn { margin-top: 22px; padding: 14px 12px; font-size: 16px; line-height: 1.35; white-space: normal; }
+}
+@media (max-width: 380px) {
+  #character-creation-root .archive-panel { padding: 14px 10px; }
+  #character-creation-root .panel-title { font-size: 16px; }
+  #character-creation-root .template-actions { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
 </head>
 <body>
