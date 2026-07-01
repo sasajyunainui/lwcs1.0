@@ -19565,12 +19565,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-gear-grid--compact {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link,
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot span {
   display: grid;
-  grid-template-columns: var(--mvu-kv-label-width) minmax(0, 1fr);
   align-items: center;
   min-width: 0;
   column-gap: var(--mvu-kv-gap);
   min-height: var(--mvu-kv-row-min);
   padding: 7px 8px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-vault-foot span {
+  grid-template-columns: var(--mvu-kv-label-width) minmax(0, 1fr);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-link b,
@@ -19857,7 +19864,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 6px;
   min-width: 0;
   margin-top: 4px;
