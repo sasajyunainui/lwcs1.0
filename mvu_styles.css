@@ -18179,7 +18179,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
   min-width: 0;
   min-height: 0;
   height: auto;
-  min-height: 100%;
+  align-self: start;
   gap: 7px;
   align-items: start;
   align-content: start;
@@ -18187,11 +18187,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-  grid-template-columns: minmax(230px, 1fr) minmax(236px, 0.82fr) minmax(250px, 1fr);
+  grid-template-columns: minmax(210px, 1fr) minmax(224px, 0.82fr) minmax(230px, 1fr);
   grid-template-rows: auto;
   grid-template-areas: 'core spirit side';
-  height: 100%;
+  height: auto;
   min-height: 0;
+  align-self: start;
   align-items: stretch;
   align-content: start;
   gap: 9px;
@@ -20776,40 +20777,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
-@container mvu-archive-dashboard (max-width: 840px) {
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
-    grid-template-rows: auto auto;
-    grid-auto-rows: auto;
-    grid-template-areas:
-      'core side'
-      'spirit spirit';
-    height: auto;
-    min-height: 0;
-    align-items: stretch;
-    align-content: start;
-    overflow: visible;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
-    height: auto;
-    min-height: 0;
-    align-self: stretch;
-    overflow: visible;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
-    overflow: hidden;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-    min-height: clamp(300px, 46cqw, 420px);
-    align-self: start;
-  }
-}
-
-@container mvu-archive-dashboard (max-width: 560px) {
+@container mvu-archive-dashboard (max-width: 690px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
@@ -20819,7 +20787,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'spirit'
       'side';
     height: auto;
-    min-height: 100%;
+    min-height: 0;
     align-self: start;
     align-items: start;
     align-content: start;
@@ -20829,13 +20797,28 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
+    height: auto;
     min-height: 0;
     align-self: start;
-    height: auto;
+    overflow: visible;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
+    overflow: hidden;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
     min-height: clamp(280px, 62cqw, 380px);
+  }
+}
+
+@container mvu-archive-dashboard (max-width: 560px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
+    gap: 8px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
+    min-height: clamp(260px, 68cqw, 360px);
   }
 }
 
@@ -21126,7 +21109,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
     height: auto;
-    min-height: 100%;
+    min-height: 0;
     align-items: start;
     align-content: start;
     overflow: visible;
@@ -21134,7 +21117,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard.mvu-unified-dashboard--archive {
     height: auto;
-    min-height: 100%;
+    min-height: 0;
     align-items: start;
     overflow: visible;
   }

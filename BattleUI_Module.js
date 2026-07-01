@@ -3951,7 +3951,7 @@ class BattleUIComponent {
           sentence += openingIsGuard ? `；${formatBattleReactionPhrase(reaction.actor, reactionAction)}` : `，${formatBattleReactionPhrase(reaction.actor, reactionAction)}`;
           if (/伺机闪避|闪避/.test(reactionAction)) {
             if (hits.length) sentence += hits.some(item => item.graze) ? '，未能完全脱离，被攻势擦中' : '，试图脱身但未能摆脱，被攻势命中';
-            else sentence += states.length ? '，避开直接伤害，但仍受后续效果牵制' : '，避开攻势，未承受有效伤害';
+            else sentence += states.length ? '，闪避成功，这一击没有命中；后续状态效果另行结算' : '，闪避成功，这一击没有命中';
           }
           else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '' : '，稳住了身形';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
@@ -3961,6 +3961,9 @@ class BattleUIComponent {
         if (targetFailureText) sentence += `；${targetFailureText}`;
         if (movementText) sentence += `；${movementText}`;
         if (creationText) sentence += `；${creationText}`;
+        if (!reaction && !damageText && !targetFailureText && !movementText && !creationText && !pressureText && !blockedText && !failedText) {
+          sentence += '；仅记录起手动作，缺少命中、闪避或失败等后续结算';
+        }
       } else if (hits.length) {
         const first = hits[0];
         const damageText = 合并回合伤害文本(hits, context);
@@ -4139,7 +4142,7 @@ class BattleUIComponent {
         if (line && !lines.includes(line)) lines.push(line);
       });
       (bucket.stateSettles || []).slice(0, 4).forEach(item => {
-        lines.push(`${item.target}随后因【${item.state}】${item.verb}了 ${item.amount} 点${item.resource}。`);
+        lines.push(`${item.target}随后因既有状态【${item.state}】${item.verb}了 ${item.amount} 点${item.resource}。`);
       });
       if (!lines.length) {
         bucket.raws.forEach(raw => {
