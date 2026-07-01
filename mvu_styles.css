@@ -8854,9 +8854,6 @@ body.mvu-surface-panel.mvu-layout-holo #mvu-right-mount {
 body.mvu-surface-panel.mvu-layout-holo #mvu-unified-mount {
   display: block !important;
 }
-body.mvu-surface-panel.mvu-layout-holo #chat {
-  overflow-x: visible;
-}
 
 body.mvu-layout-holo {
   overflow-x: clip;
