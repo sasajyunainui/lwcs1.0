@@ -20767,9 +20767,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @container mvu-archive-dashboard (max-width: 840px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(170px, 1fr) minmax(176px, 0.82fr) minmax(190px, 1fr);
-    grid-template-rows: auto;
-    grid-template-areas: 'core spirit side';
+    grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+    grid-template-rows: auto auto;
+    grid-auto-rows: auto;
+    grid-template-areas:
+      'core side'
+      'spirit spirit';
     height: auto;
     min-height: 0;
     align-items: stretch;
@@ -20790,11 +20793,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
     min-height: 0;
-    align-self: stretch;
+    align-self: start;
   }
 }
 
 @container mvu-archive-dashboard (max-width: 560px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page[data-target='page-archive'],
+  body.mvu-layout-holo
+    #mvu-unified-mount
+    .mvu-unified-page[data-target='page-archive']
+    .mvu-unified-section--dashboard {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
@@ -20804,7 +20816,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
       'spirit'
       'side';
     height: auto;
-    min-height: 0;
+    min-height: 100%;
+    align-items: start;
     align-content: start;
     overflow: visible;
   }
@@ -20813,6 +20826,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'],
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
     min-height: 0;
+    align-self: start;
+    height: auto;
   }
 }
 

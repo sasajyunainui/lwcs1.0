@@ -3677,9 +3677,13 @@ class BattleUIComponent {
     function formatBattleReactionPhrase(actor = '', action = '') {
       const actorName = String(actor || '防守方').trim();
       const actionName = normalizeBattleActionDisplayName(action);
-      if (!actionName || /无法反应|无/.test(actionName)) return `${actorName}动作被先手压住，来不及转入防守`;
+      if (
+        !actionName ||
+        actionName === '无' ||
+        /无暇反应|无法反应|无反应|来不及反应/.test(actionName)
+      ) return `${actorName}未能及时反应，来不及规避`;
       if (/伺机闪避|闪避/.test(actionName)) return `${actorName}以【${actionName}】闪身避让`;
-      if (/承伤硬抗|肉体兜底|硬抗/.test(actionName)) return `${actorName}以【承伤硬抗】顶住攻势`;
+      if (/承伤硬抗|肉体兜底|硬抗/.test(actionName)) return `${actorName}避让空间不足，只能硬吃这轮攻势`;
       if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(actionName)) return `${actorName}转入【${actionName}】稳住防线`;
       if (actionName) return `${actorName}以【${actionName}】应对`;
       return `${actorName}作出应对`;
@@ -3830,13 +3834,45 @@ class BattleUIComponent {
       return { round, raw, openings, reactions, hits, counters, dodges, defenses, movements, creations, counterMisses, pressureNotes, targetFailures, blockedActions, failedActions, stateApplies, stateSettles };
     }
 
-    function 合并回合伤害文本(hits = []) {
+    function 查找战报上下文单位(context = {}, name = '') {
+      const targetName = String(name || '').trim();
+      if (!targetName) return null;
+      const combatData = context?.combatData && typeof context.combatData === 'object' ? context.combatData : context;
+      const participants = combatData?.参战者 && typeof combatData.参战者 === 'object' ? combatData.参战者 : {};
+      const pools = [
+        ...(Array.isArray(participants.team_player) ? participants.team_player : []),
+        ...(Array.isArray(participants.team_enemy) ? participants.team_enemy : []),
+        ...(Array.isArray(participants.player_team) ? participants.player_team : []),
+        ...(Array.isArray(participants.enemy_team) ? participants.enemy_team : []),
+        ...(Array.isArray(combatData?.units) ? combatData.units : []),
+        ...(Array.isArray(context?.units) ? context.units : []),
+      ];
+      return pools.find(unit => isSameBattleReportName(getCombatReportUnitName(unit), targetName)) || null;
+    }
+
+    function 读取战报伤害烈度文本(hit = {}, totalDamage = 0, context = {}) {
+      const targetName = String(hit?.target || '').trim();
+      const target = 查找战报上下文单位(context, targetName);
+      if (!target) return '';
+      const maxHp = Math.max(1, Number(getCombatHpMaxValue(target) || 0));
+      if (!(maxHp > 1)) return '';
+      const ratio = Math.max(0, Number(totalDamage || 0)) / maxHp;
+      if (ratio >= 0.6) return '，几乎将其逼入濒危';
+      if (ratio >= 0.3) return '，令其遭到重创';
+      if (ratio >= 0.12) return '，令其明显受创';
+      if (ratio > 0 && ratio < 0.05) return '，只留下轻微擦伤';
+      return '';
+    }
+
+    function 合并回合伤害文本(hits = [], context = {}) {
       const list = (Array.isArray(hits) ? hits : []).filter(item => item?.damage > 0);
       if (!list.length) return '';
       const total = list.reduce((sum, item) => sum + Math.max(0, Number(item.damage || 0)), 0);
+      const actor = String(list[0]?.actor || '攻击方').trim();
       const target = String(list[0]?.target || '目标').trim();
-      if (list.length > 1) return `连续${list.length}次命中${target}，共造成 ${total} 点伤害`;
-      return `对${target}造成了 ${total} 点伤害`;
+      const severity = 读取战报伤害烈度文本(list[0], total, context);
+      if (list.length > 1) return `${actor}连续${list.length}次命中${target}，共造成 ${total} 点伤害${severity}`;
+      return `${actor}对${target}造成了 ${total} 点伤害${severity}`;
     }
 
     function 判定战报动作是待机守势(action = '') {
@@ -3874,7 +3910,7 @@ class BattleUIComponent {
       return list.slice(0, 2).map(text => (/^[^，。！？\s]+以【[^】]+】/.test(text) ? text : `造物凝成：${text}`)).join('；');
     }
 
-    function 构建攻防链战报文本(chain = {}, round = 0) {
+    function 构建攻防链战报文本(chain = {}, round = 0, context = {}) {
       const opening = chain.opening || null;
       const reaction = chain.reaction || null;
       const hits = Array.isArray(chain.hits) ? chain.hits : [];
@@ -3920,14 +3956,14 @@ class BattleUIComponent {
           else if (/承伤硬抗/.test(reactionAction)) sentence += hits.length ? '，硬吃攻势承受冲击' : '，稳住了身形';
           else if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(reactionAction)) sentence += hits.length ? '，抵挡了部分冲击' : '，稳住了防线';
         }
-        const damageText = 合并回合伤害文本(hits);
+        const damageText = 合并回合伤害文本(hits, context);
         if (damageText) sentence += `；${damageText}`;
         if (targetFailureText) sentence += `；${targetFailureText}`;
         if (movementText) sentence += `；${movementText}`;
         if (creationText) sentence += `；${creationText}`;
       } else if (hits.length) {
         const first = hits[0];
-        const damageText = 合并回合伤害文本(hits);
+        const damageText = 合并回合伤害文本(hits, context);
         const action = normalizeBattleActionDisplayName(first.action || '');
         sentence = action
           ? `${first.actor}以【${action}】撕开防线，${damageText}`
@@ -4096,10 +4132,10 @@ class BattleUIComponent {
       return [];
     }
 
-    function 构建回合战报文本(bucket = {}) {
+    function 构建回合战报文本(bucket = {}, context = {}) {
       const lines = [];
       构建回合战报链列表(bucket).forEach(chain => {
-        const line = 构建攻防链战报文本(chain, bucket.round);
+        const line = 构建攻防链战报文本(chain, bucket.round, context);
         if (line && !lines.includes(line)) lines.push(line);
       });
       (bucket.stateSettles || []).slice(0, 4).forEach(item => {
@@ -4119,7 +4155,7 @@ class BattleUIComponent {
       return lines.map(line => normalizeBattleSkillNameMarks(line).replace(/\s+/g, ' ').trim()).filter(Boolean);
     }
 
-    function 构建回合战报片段(battleLog = [], limit = 10) {
+    function 构建回合战报片段(battleLog = [], limit = 10, context = {}) {
       const groups = [];
       let currentRound = 0;
       (Array.isArray(battleLog) ? battleLog : []).forEach(rawLine => {
@@ -4138,7 +4174,7 @@ class BattleUIComponent {
       });
       const lines = [];
       groups.forEach(bucket => {
-        构建回合战报文本(bucket).forEach(line => {
+        构建回合战报文本(bucket, context).forEach(line => {
           if (line && !lines.includes(line)) lines.push(line);
         });
       });
@@ -4298,9 +4334,9 @@ class BattleUIComponent {
         .trim();
     }
 
-    function buildReadableBattleReportLines(battleLog = [], limit = 10) {
+    function buildReadableBattleReportLines(battleLog = [], limit = 10, context = {}) {
       const lines = [];
-      构建回合战报片段(battleLog, limit).forEach(line => {
+      构建回合战报片段(battleLog, limit, context).forEach(line => {
         const cleaned = cleanBattleReportLineForStory(line);
         if (cleaned && !lines.includes(cleaned)) lines.push(cleaned);
       });
@@ -4332,7 +4368,7 @@ class BattleUIComponent {
     }
 
     function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0 } = {}) {
-      const lines = buildReadableBattleReportLines(battleLog, 8);
+      const lines = buildReadableBattleReportLines(battleLog, 8, { combatData });
       const header = `本轮战斗已由战斗模块完成结算：${modeLabel || '战斗'}，共推进 ${Math.max(0, Number(roundCount || 0))} 回合。`;
       const outcome = `当前结果：${battleOutcome?.label || battleOutcome?.type || combatData?.裁断结果 || '未分胜负'}。`;
       const intent = combatData?.战斗意图 ? `战斗意图：${combatData.战斗意图}。` : '';
@@ -14787,6 +14823,70 @@ class BattleUIComponent {
         断言战斗回归夹具(/原始选择原因|执行校对证据/.test(html), 'Debug 明细没有保留原始证据');
         日志.push(`判定主卡禁词成立:${visible}`);
       });
+      注册('表现层语义纠偏', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        敌人.HP上限 = 300;
+        敌人.hp_max = 300;
+        敌人.HP = 300;
+        敌人.hp = 300;
+        敌人.final = buildCombatFinalStats(敌人);
+        const 无暇战报 = buildReadableBattleReportLines([
+          '[第1回合]',
+          '[团战执行] 夹具玩家以[精神震荡]指向[夹具敌人]。 [起招] 夹具玩家以[精神震荡]起招。 [应招] 夹具敌人以[无暇反应]应对。 [命中结算] 夹具玩家对夹具敌人造成 120 点最终伤害。 [状态施加] 夹具敌人获得[迟缓]。',
+        ], 8, { combatData }).join('\n');
+        断言战斗回归夹具(/夹具敌人未能及时反应/.test(无暇战报), `无暇反应被主动化:${无暇战报}`);
+        断言战斗回归夹具(!/以【无暇反应】应对/.test(无暇战报), `无暇反应仍按技能展示:${无暇战报}`);
+        断言战斗回归夹具(/夹具玩家对夹具敌人造成了 120 点伤害/.test(无暇战报), `伤害主语不明确:${无暇战报}`);
+        断言战斗回归夹具(/重创/.test(无暇战报), `战损烈度缺失:${无暇战报}`);
+        断言战斗回归夹具(/夹具敌人陷入【迟缓】/.test(无暇战报), `状态未并入攻防链:${无暇战报}`);
+
+        const 硬抗战报 = buildReadableBattleReportLines([
+          '[第1回合]',
+          '[团战执行] 夹具玩家以[裂地冲拳]指向[夹具敌人]。 [起招] 夹具玩家以[裂地冲拳]起招。 [应招] 夹具敌人以[承伤硬抗]应对。 [命中结算] 夹具玩家对夹具敌人造成 40 点最终伤害。',
+        ], 8, { combatData }).join('\n');
+        断言战斗回归夹具(/避让空间不足，只能硬吃/.test(硬抗战报), `承伤硬抗仍像主动技能:${硬抗战报}`);
+        断言战斗回归夹具(!/以【承伤硬抗】应对/.test(硬抗战报), `承伤硬抗仍保留主动化句式:${硬抗战报}`);
+
+        const 支援Rows = 构建判定流程展示数据([{
+          type: '主动规划',
+          行动者: '夹具玩家',
+          目标: '夹具玩家',
+          技能: '星辉护壁',
+          回合: 1,
+          目标语义: '自身',
+          选择原因: '压制敌方续航点',
+          目标理由: ['范围压制窗口打开', '安全距离仍可维持'],
+          战术修正: 29,
+          团队意图修正: 17,
+          记忆惩罚: -3,
+          最终权重: 62,
+          候选排序结果: [{ 名称: '星辉护壁', 权重: 62 }, { 名称: '防御', 权重: 52 }],
+        }]);
+        const 支援可见 = 渲染分回合判定流程(支援Rows)
+          .replace(/<details class="battle-preview-debug">[\s\S]*?<\/details>/g, '')
+          .replace(/<[^>]+>/g, '');
+        断言战斗回归夹具(!/压制敌方|范围压制|收割|击杀/.test(支援可见), `友方支援仍泄漏攻击理由:${支援可见}`);
+        断言战斗回归夹具(/巩固防线|规避后续伤害/.test(支援可见), `友方支援缺防御语义:${支援可见}`);
+        断言战斗回归夹具(/战术收益\(\+29\).*团队意图\(\+17\)/.test(支援可见), `权衡未展示修正项:${支援可见}`);
+
+        const 压制Rows = 构建判定流程展示数据([{
+          type: '主动规划',
+          行动者: '夹具玩家',
+          目标: '敌方治疗',
+          技能: '普通攻击',
+          回合: 1,
+          目标语义: '敌方单体',
+          选择原因: '集火',
+          目标理由: ['治疗救场价值'],
+          最终权重: 50,
+          候选排序结果: [{ 名称: '普通攻击', 权重: 50 }, { 名称: '撤离', 权重: 12 }],
+        }]);
+        const 压制可见 = 渲染分回合判定流程(压制Rows)
+          .replace(/<details class="battle-preview-debug">[\s\S]*?<\/details>/g, '')
+          .replace(/<[^>]+>/g, '');
+        断言战斗回归夹具(/压制敌方续航/.test(压制可见), `敌方续航压制被误删:${压制可见}`);
+        日志.push(`表现层语义纠偏成立:${无暇战报} / ${支援可见}`);
+      });
       注册('全场纯增益不触发敌对', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         const 全场增益 = normalizeSkillData({
@@ -15143,7 +15243,7 @@ class BattleUIComponent {
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
-    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
+    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '表现层语义纠偏', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
 
     function 读取事件链状态(container = null) {
@@ -36107,20 +36207,22 @@ class BattleUIComponent {
 
         function 读取过滤证据字段(轨迹 = {}) {
           const 候选 = 读取判定流程候选列表(轨迹, 0);
+          const 技能名 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
+          const 命中候选 = 技能名 ? 候选.find(item => 读取候选名称(item) === 技能名) : null;
+          const 候选资源阻断 = item =>
+            item?.资源可行 === false ||
+            item?.审计?.资源可行 === false ||
+            Number(item?.资源修正 ?? item?.审计?.资源修正 ?? 0) <= -30 ||
+            /资源不可释放|"可释放"\s*:\s*false/.test(格式化审计证据值(item));
           const 文本 = 格式化审计证据值({
             选择原因: 轨迹.选择原因,
             候选来源: 轨迹.候选来源,
             资源修正: 轨迹.资源修正,
-            候选排序结果: 候选,
+            命中候选,
           });
           const 有资源阻断 = Number(轨迹.资源修正 || 0) <= -30 ||
-            /"资源可行"\s*:\s*false|资源不可释放|"可释放"\s*:\s*false/.test(文本) ||
-            候选.some(item =>
-              item?.资源可行 === false ||
-              item?.审计?.资源可行 === false ||
-              Number(item?.资源修正 ?? item?.审计?.资源修正 ?? 0) <= -30 ||
-              /资源不可释放/.test(String(item?.选择原因 || item?.审计?.选择原因 || ''))
-            );
+            /资源不可释放|"可释放"\s*:\s*false/.test(文本) ||
+            (命中候选 ? 候选资源阻断(命中候选) : (候选.length > 0 && 候选.every(候选资源阻断)));
           return {
             候选数: 候选.length,
             资源或释放条件不足: 有资源阻断,
@@ -36177,6 +36279,10 @@ class BattleUIComponent {
           const 来源 = String(轨迹.候选来源 || '').trim();
           if (/辅助目标规划|友方目标|辅助目标/.test(`${类型} ${来源}`)) return false;
           const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          const 目标语义 = 读取轨迹目标语义(轨迹);
+          const actor = String(轨迹.行动者 || '').trim();
+          const target = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
+          if ((actor && target && isSameBattleReportName(actor, target)) || /自身|友方单体|友方群体/.test(目标语义)) return false;
           const 支援动作 = /治疗|防护|保核|友方|自身|资源恢复|回复|恢复|护援|护盾|庇护/.test(技能)
             && !/攻击|普通攻击|伤害|控制|封技|打断|限制|中毒|削弱|破防|收割|压制/.test(技能);
           return !!轨迹.目标 && !支援动作;
@@ -36200,13 +36306,53 @@ class BattleUIComponent {
           return 轨迹.目标 ? `当前指向【${轨迹.目标}】。` : '当前没有明确目标。';
         }
 
+        function 读取轨迹目标语义(轨迹 = {}) {
+          return String(
+            轨迹.目标语义 ||
+            轨迹.目标类型 ||
+            轨迹.目标范围 ||
+            轨迹.skill?.目标 ||
+            轨迹.skill?.target ||
+            轨迹.技能数据?.目标 ||
+            '',
+          ).trim();
+        }
+
+        function 判定侧写是友方支援动作(轨迹 = {}) {
+          const 类型 = 读取轨迹类型(轨迹);
+          const 来源 = String(轨迹.候选来源 || '').trim();
+          const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
+          const actor = String(轨迹.行动者 || '').trim();
+          const target = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
+          const 目标语义 = 读取轨迹目标语义(轨迹);
+          const 文本 = `${类型} ${来源} ${技能} ${目标语义} ${String(轨迹.选择原因 || '')}`;
+          if (actor && target && isSameBattleReportName(actor, target) && !isBattleTacticalFallbackAction(技能)) return true;
+          if (/自身|友方单体|友方群体/.test(目标语义)) return true;
+          if (/辅助目标规划|友方目标|辅助目标/.test(`${类型} ${来源}`)) return true;
+          if (/治疗|防护|保核|友方|自身|资源恢复|回复|恢复|护援|护盾|庇护|造物|药剂|物品/.test(文本) &&
+              !/攻击|普通攻击|伤害|控制|封技|打断|限制|中毒|削弱|破防|收割/.test(技能)) return true;
+          return false;
+        }
+
+        function 转换友方侧写理由(text = '') {
+          const raw = String(text || '').trim();
+          if (!raw) return '';
+          if (/魂力|体力|精神力|资源|保留|药剂|物品/.test(raw)) return '调整资源节奏';
+          if (/治疗|续航|保核|核心|护援|护盾|防护|防御|稳态/.test(raw)) return '巩固防线';
+          if (/安全距离|规避|闪避|身位|移动路线|范围压制窗口/.test(raw)) return '规避后续伤害';
+          if (/压制|收割|击杀|斩杀|破防|集火|控制收益|终局压制/.test(raw)) return '巩固防线';
+          return raw;
+        }
+
         function 清洗判定侧写理由(raw = '', 轨迹 = {}) {
           let text = String(raw || '').trim();
           if (!text) return '';
           const 敌方动作 = 判定侧写是敌方动作(轨迹);
+          const 友方支援 = 判定侧写是友方支援动作(轨迹);
           text = text.replace(/\s*[+-]\d+(?:\.\d+)?\s*$/, '').trim();
           text = text.replace(/^目标:([^()]+)\(([^)]*)\)$/u, '目标$1：$2');
           text = text.replace(/^意图:/, '');
+          if (友方支援) return 转换友方侧写理由(text);
           if (/治疗救场价值|压治疗核心|阻止治疗救场|治疗核心|治疗节奏/.test(text)) return '压制敌方续航';
           if (/击杀|斩杀|收割窗口|可斩杀/.test(text)) return '压制收束窗口';
           if (/终局爆发/.test(text)) return '终局压制窗口';
@@ -36217,15 +36363,32 @@ class BattleUIComponent {
           return text;
         }
 
+        function 组合侧写局势文本(pieces = [], 轨迹 = {}) {
+          const list = (Array.isArray(pieces) ? pieces : [])
+            .map(item => String(item || '').trim())
+            .filter(Boolean)
+            .filter((item, index, arr) => arr.indexOf(item) === index)
+            .slice(0, 4);
+          if (!list.length) return '';
+          const 主意图 = list[0];
+          const 理由 = list.slice(1);
+          if (!理由.length) return 主意图;
+          const 连接 = 理由.slice(0, 2).join('，且');
+          if (判定侧写是友方支援动作(轨迹)) return `${连接}，因此${主意图 || '优先巩固防线'}`;
+          return `${连接}，因此${主意图}`;
+        }
+
         function 读取判定流程局势文本(轨迹 = {}) {
           const 规范战略 = 读取侧写战略标签(轨迹);
+          const 选择原因 = 清洗判定侧写理由(轨迹.选择原因 || '', 轨迹);
           const pieces = [
-            规范战略 || '',
+            规范战略 || 选择原因 || '',
+            规范战略 && 选择原因 && 规范战略 !== 选择原因 ? 选择原因 : '',
             ...(Array.isArray(轨迹.目标理由) ? 轨迹.目标理由.slice(0, 2) : []),
             ...(Array.isArray(轨迹.前瞻理由) ? 轨迹.前瞻理由.slice(0, 2) : []),
             ...(Array.isArray(轨迹.职责理由) ? 轨迹.职责理由.slice(0, 2) : []),
           ].map(item => 清洗判定侧写理由(item, 轨迹)).filter(Boolean);
-          if (pieces.length) return pieces.slice(0, 4).join('；');
+          if (pieces.length) return 组合侧写局势文本(pieces, 轨迹);
           const 分类 = 轨迹.效果原型分类 || {};
           if (分类 && typeof 分类 === 'object') {
             const tags = Object.entries(分类)
@@ -36248,6 +36411,11 @@ class BattleUIComponent {
             ...(Array.isArray(轨迹.职责理由) ? 轨迹.职责理由 : []),
           ].join('；');
           const 候选文本 = `${技能} ${目标理由文本}`;
+          if (判定侧写是友方支援动作(轨迹)) {
+            if (/资源|保留|药剂|物品/.test(`${原始} ${候选文本}`)) return '调整资源节奏';
+            if (/闪避|身位|撤离|规避/.test(`${原始} ${候选文本}`)) return '规避后续伤害';
+            return 转换友方侧写理由(原始) || '巩固防线';
+          }
           if (/辅助目标规划|友方目标|辅助目标/.test(`${类型} ${来源}`)) {
             if (/治疗|保核|驱散|保留资源/.test(原始)) return '支援检索';
             return 原始 || '支援检索';
@@ -36264,6 +36432,7 @@ class BattleUIComponent {
         }
 
         function 构建战略侧写文本(轨迹 = {}) {
+          if (判定侧写是友方支援动作(轨迹)) return `${读取判定流程局势文本(轨迹)}。`;
           if (判定侧写是自我应对动作(轨迹)) {
             const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
             if (/伺机闪避|闪避/.test(技能)) return '承受来袭压力，优先拉开身位寻找反击窗口。';
@@ -36275,6 +36444,20 @@ class BattleUIComponent {
           if (战略 && 目标) return `确认【${战略}】意图，当前目标【${目标}】。`;
           if (战略) return `确认【${战略}】意图。`;
           return `${读取判定流程局势文本(轨迹)}。`;
+        }
+
+        function 构建权重修正说明(轨迹 = {}) {
+          const 项 = [
+            { label: '战术收益', value: Number(轨迹.战术修正 || 0) },
+            { label: '团队意图', value: Number(轨迹.团队意图修正 || 0) },
+            { label: '资源压力', value: Number(轨迹.资源修正 || 0) },
+            { label: '重复使用惩罚', value: Number(轨迹.记忆惩罚 || 0) },
+          ]
+            .filter(item => Number.isFinite(item.value) && Math.abs(item.value) >= 1)
+            .slice(0, 2)
+            .map(item => `${item.label}(${item.value > 0 ? '+' : ''}${Math.round(item.value)})`);
+          if (!项.length) return '';
+          return `评分变化主要来自${项.join('与')}。`;
         }
 
         function 构建动作权衡文本(轨迹 = {}) {
@@ -36289,22 +36472,33 @@ class BattleUIComponent {
           const 主分 = Math.round(Number(命中候选 ? 读取候选权重(命中候选) : (最高候选 ? 读取候选权重(最高候选) : 轨迹.最终权重 || 0)));
           const 次优名 = 读取候选名称(次优 || {});
           const 次优分 = Math.round(读取候选权重(次优 || {}));
+          const 修正说明 = 构建权重修正说明(轨迹);
+          const 加说明 = text => {
+            const base = String(text || '').trim();
+            if (!修正说明) return base;
+            return `${base}${/[。！？]$/.test(base) ? '' : '。'}${修正说明}`;
+          };
           if (技能 && 最高候选 && 读取候选名称(最高候选) !== 技能) {
-            return `最终执行${包裹判定动作名称(技能)}(${Math.round(Number(轨迹.最终权重 || 0))}分)，原本更高的${包裹判定动作名称(读取候选名称(最高候选))}(${Math.round(读取候选权重(最高候选))}分)仅作为战术倾向保留。`;
+            return 加说明(`最终执行${包裹判定动作名称(技能)}(${Math.round(Number(轨迹.最终权重 || 0))}分)，原本更高的${包裹判定动作名称(读取候选名称(最高候选))}(${Math.round(读取候选权重(最高候选))}分)仅作为战术倾向保留。`);
           }
           if (/伺机闪避|闪避/.test(主动作)) {
-            return 次优名
+            return 加说明(次优名
               ? `相比继续选择${包裹判定动作名称(次优名)}(${次优分}分)，更倾向用${包裹判定动作名称(主动作)}(${主分}分)争取身位与反击窗口。`
-              : `更倾向用${包裹判定动作名称(主动作)}(${主分}分)争取身位与反击窗口。`;
+              : `更倾向用${包裹判定动作名称(主动作)}(${主分}分)争取身位与反击窗口。`);
           }
           if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(主动作)) {
-            return 次优名
+            return 加说明(次优名
               ? `强攻收益不足，防线压力更高，因此放弃${包裹判定动作名称(次优名)}(${次优分}分)，选择${包裹判定动作名称(主动作)}(${主分}分)稳住局面。`
-              : `防线压力更高，因此选择${包裹判定动作名称(主动作)}(${主分}分)稳住局面。`;
+              : `防线压力更高，因此选择${包裹判定动作名称(主动作)}(${主分}分)稳住局面。`);
           }
-          if (/撤离/.test(主动作)) return `继续缠斗风险过高，${包裹判定动作名称(主动作)}(${主分}分)成为更稳妥的选择。`;
-          if (主动作 && 次优名) return `放弃了${包裹判定动作名称(次优名)}(${次优分}分)，转而选择${包裹判定动作名称(主动作)}(${主分}分)推进当前战术。`;
-          if (主动作) return `当前可比较方案较少，系统直接采用${包裹判定动作名称(主动作)}(${主分}分)。`;
+          if (/撤离/.test(主动作)) return 加说明(`继续缠斗风险过高，${包裹判定动作名称(主动作)}(${主分}分)成为更稳妥的选择。`);
+          if (判定侧写是友方支援动作(轨迹)) {
+            return 加说明(次优名
+              ? `放弃了${包裹判定动作名称(次优名)}(${次优分}分)，转而选择${包裹判定动作名称(主动作)}(${主分}分)巩固防线。`
+              : `选择${包裹判定动作名称(主动作)}(${主分}分)巩固防线。`);
+          }
+          if (主动作 && 次优名) return 加说明(`放弃了${包裹判定动作名称(次优名)}(${次优分}分)，转而选择${包裹判定动作名称(主动作)}(${主分}分)推进当前战术。`);
+          if (主动作) return 加说明(`当前可比较方案较少，系统直接采用${包裹判定动作名称(主动作)}(${主分}分)。`);
           return '当前可比较方案较少，暂未形成明确动作。';
         }
 
