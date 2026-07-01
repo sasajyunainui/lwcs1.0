@@ -214,7 +214,62 @@
   --shadow-cyan: 0 4px 15px rgba(77, 240, 255, 0.15);
 }
 
-* {
+:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+),
+:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *,
+:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *::before,
+:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *::after {
   box-sizing: border-box;
 }
 
@@ -390,7 +445,7 @@
   line-height: 1.2;
 }
 
-.modal-title {
+#detailModal .modal-title {
   text-rendering: geometricPrecision;
 }
 
@@ -643,23 +698,24 @@
 .ring-purple-gold,
 .ring-scarlet-gold,
 .ring-rose-gold,
-.ring-chip.gold,
-.ring-chip.orangegold,
-.ring-chip.whitegold,
-.ring-chip.amber-gold,
-.ring-chip.obsidian-gold,
-.ring-chip.green-gold,
-.ring-chip.blue-gold,
-.ring-chip.purple-gold,
-.ring-chip.scarlet-gold,
-.ring-chip.rose-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) :is(
+  .ring-chip.gold,
+  .ring-chip.orangegold,
+  .ring-chip.whitegold,
+  .ring-chip.amber-gold,
+  .ring-chip.obsidian-gold,
+  .ring-chip.green-gold,
+  .ring-chip.blue-gold,
+  .ring-chip.purple-gold,
+  .ring-chip.scarlet-gold,
+  .ring-chip.rose-gold
+) {
   --ring-edge: rgba(255, 226, 89, 0.75);
 }
 
 .ring-rainbow,
 .ring-aurora,
-.ring-chip.rainbow,
-.ring-chip.aurora {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) :is(.ring-chip.rainbow, .ring-chip.aurora) {
   --ring-edge: rgba(244, 114, 182, 0.55);
 }
 
@@ -715,105 +771,107 @@
   color: #ffb347;
 }
 .ring-whitegold,
-.ring-chip.whitegold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.whitegold {
   color: #fff3cd;
 }
 .ring-silver,
-.ring-chip.silver {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.silver {
   color: #cbd5e1;
 }
 .ring-frostsilver,
-.ring-chip.frostsilver {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.frostsilver {
   color: #a5d8f5;
 }
 .ring-moonwhite,
-.ring-chip.moonwhite {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.moonwhite {
   color: #e2e8ff;
 }
 .ring-iceblue,
-.ring-chip.iceblue {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.iceblue {
   color: #38bdf8;
 }
 .ring-starblue,
-.ring-chip.starblue {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.starblue {
   color: #3b82f6;
 }
 .ring-cyan,
-.ring-chip.cyan {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.cyan {
   color: #06b6d4;
 }
 .ring-teal,
-.ring-chip.teal {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.teal {
   color: #14b8a6;
 }
 .ring-jade,
-.ring-chip.jade {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.jade {
   color: #2dd4bf;
 }
 .ring-emerald,
-.ring-chip.emerald {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.emerald {
   color: #10b981;
 }
 .ring-green-gold,
-.ring-chip.green-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.green-gold {
   color: #a3e635;
 }
 .ring-blue-gold,
-.ring-chip.blue-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.blue-gold {
   color: #60a5fa;
 }
 .ring-purple-gold,
-.ring-chip.purple-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.purple-gold {
   color: #c084fc;
 }
 .ring-scarlet-gold,
-.ring-chip.scarlet-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.scarlet-gold {
   color: #f97316;
 }
 .ring-rose-gold,
-.ring-chip.rose-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.rose-gold {
   color: #fb7185;
 }
 .ring-amber-gold,
-.ring-chip.amber-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.amber-gold {
   color: #f59e0b;
 }
 .ring-obsidian-gold,
-.ring-chip.obsidian-gold {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.obsidian-gold {
   color: #ca8a04;
 }
 .ring-aurora,
-.ring-chip.aurora {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.aurora {
   color: #22d3ee;
 }
 .ring-rainbow,
-.ring-chip.rainbow {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.rainbow {
   color: #e879f9;
 }
 .ring-crimson,
-.ring-chip.crimson {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .ring-chip.crimson {
   color: #ef4444;
 }
-.ring-chip.whitegold,
-.ring-chip.silver,
-.ring-chip.frostsilver,
-.ring-chip.moonwhite,
-.ring-chip.iceblue,
-.ring-chip.starblue,
-.ring-chip.cyan,
-.ring-chip.teal,
-.ring-chip.jade,
-.ring-chip.emerald,
-.ring-chip.green-gold,
-.ring-chip.blue-gold,
-.ring-chip.purple-gold,
-.ring-chip.scarlet-gold,
-.ring-chip.rose-gold,
-.ring-chip.amber-gold,
-.ring-chip.obsidian-gold,
-.ring-chip.aurora,
-.ring-chip.rainbow,
-.ring-chip.crimson {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) :is(
+  .ring-chip.whitegold,
+  .ring-chip.silver,
+  .ring-chip.frostsilver,
+  .ring-chip.moonwhite,
+  .ring-chip.iceblue,
+  .ring-chip.starblue,
+  .ring-chip.cyan,
+  .ring-chip.teal,
+  .ring-chip.jade,
+  .ring-chip.emerald,
+  .ring-chip.green-gold,
+  .ring-chip.blue-gold,
+  .ring-chip.purple-gold,
+  .ring-chip.scarlet-gold,
+  .ring-chip.rose-gold,
+  .ring-chip.amber-gold,
+  .ring-chip.obsidian-gold,
+  .ring-chip.aurora,
+  .ring-chip.rainbow,
+  .ring-chip.crimson
+) {
   border-color: color-mix(in srgb, currentColor 28%, transparent);
   background: color-mix(in srgb, currentColor 10%, transparent);
 }
@@ -852,13 +910,13 @@
   pointer-events: none;
 }
 
-.archive-card-title {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title {
   position: relative;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
 
-.archive-card-title {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title {
   font-family: var(--font-title);
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.18;
@@ -2800,7 +2858,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   animation: drawerLeftBoot 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.modal-head {
+#detailModal .modal-head {
   position: relative;
   z-index: 2;
   overflow: hidden;
@@ -2812,21 +2870,21 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 12px 14px;
 }
 
-.modal-head-main {
+#detailModal .modal-head-main {
   min-width: 0;
   display: grid;
   gap: 6px;
 }
 
-.modal-meta-row {
+#detailModal .modal-meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
 
-.modal-level-chip,
-.modal-path-chip {
+#detailModal .modal-level-chip,
+#detailModal .modal-path-chip {
   padding: 4px 8px;
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1;
@@ -2834,18 +2892,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   white-space: nowrap;
 }
 
-.modal-level-chip {
+#detailModal .modal-level-chip {
   color: var(--mvu-color-accent-strong, #67f7ef);
   letter-spacing: 1px;
 }
 
-.modal-title-wrap {
+#detailModal .modal-title-wrap {
   min-width: 0;
   display: grid;
   gap: 4px;
 }
 
-.modal-title {
+#detailModal .modal-title {
   position: relative;
   z-index: 2;
   font-family: var(--font-title);
@@ -2853,15 +2911,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   color: var(--white);
 }
 
-.modal-subtitle {
+#detailModal .modal-subtitle {
   font-size: var(--mvu-font-xs, 10px);
   line-height: 1.45;
   color: var(--text-sub);
 }
 
-.modal-meta-row,
-.modal-subtitle,
-.modal-summary {
+#detailModal .modal-meta-row,
+#detailModal .modal-subtitle,
+#detailModal .modal-summary {
   display: none !important;
 }
 
@@ -2873,7 +2931,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   transform: translateX(-18px);
 }
 
-.modal-close {
+#detailModal .modal-close {
   position: relative;
   z-index: 3;
   margin-left: auto;
@@ -2886,7 +2944,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   cursor: pointer;
 }
 
-.modal-summary {
+#detailModal .modal-summary {
   padding: 10px 12px 0;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.55;
@@ -2904,7 +2962,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   max-width: min(780px, calc(100vw - 36px));
 }
 
-.modal-body.archive-body.vault-body {
+#detailModal .modal-body.archive-body.vault-body {
   padding-right: 0;
 }
 
@@ -2925,11 +2983,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 10px 10px 8px;
 }
 
-.mvu-modal-panel.drawer-left .modal-title {
+#detailModal .mvu-modal-panel.drawer-left .modal-title {
   font-size: var(--mvu-font-md, 14px);
 }
 
-.modal-body {
+#detailModal .modal-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto !important;
@@ -3196,13 +3254,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   text-align: center;
 }
 
-.modal-body::-webkit-scrollbar {
+#detailModal .modal-body::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
 }
 
-.modal-body.archive-body {
+#detailModal .modal-body.archive-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: scroll;
@@ -3210,7 +3268,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding-bottom: 18px;
 }
 
-.modal-body.archive-body::-webkit-scrollbar {
+#detailModal .modal-body.archive-body::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
@@ -3221,7 +3279,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   overflow: hidden;
 }
 
-.modal-body.archive-body::-webkit-scrollbar,
+#detailModal .modal-body.archive-body::-webkit-scrollbar,
 .trade-module-scope .trade-body::-webkit-scrollbar,
 .prof-module-scope .metal-list-container::-webkit-scrollbar {
   width: 0 !important;
@@ -3394,7 +3452,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   margin-bottom: 10px;
 }
 
-.archive-card-title {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title {
   font-family: var(--font-title);
   font-size: var(--mvu-font-md, 14px);
   line-height: 1.2;
@@ -3535,8 +3593,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 /* Unified title system */
-.modal-title,
-.archive-card-title {
+#detailModal .modal-title,
+:where(#mvu-unified-mount, #detailModal) .archive-card-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3553,17 +3611,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   white-space: normal;
   margin-bottom: 16px;
 }
-.archive-card-title::before {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title::before {
   content: none;
   display: none;
 }
 
-.archive-card-title {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title {
   color: var(--全息材质侧线);
 }
 
-.modal-title::after,
-.archive-card-title::after {
+#detailModal .modal-title::after,
+:where(#mvu-unified-mount, #detailModal) .archive-card-title::after {
   content: none;
   display: none;
 }
@@ -4088,9 +4146,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   gap: 6px;
 }
 
-.status-pill,
-.tag-chip,
-.ring-chip {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .status-pill,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip {
   border-radius: var(--mvu-radius-pill, 999px);
   padding: 7px 10px;
   border: 1px solid var(--mvu-color-line-soft, rgba(255, 255, 255, 0.08));
@@ -4101,42 +4159,42 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   white-space: nowrap;
 }
 
-.ring-chip {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip {
   box-shadow: inset 0 0 0 1px var(--ring-edge, transparent);
   transition: box-shadow 160ms ease;
 }
 
-.status-pill.live,
-.tag-chip.live,
-.ring-chip.white {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .status-pill.live,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.live,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.white {
   border-color: color-mix(in srgb, var(--边线颜色) 64%, transparent);
   background: var(--mvu-color-cyan-fill, rgba(0, 229, 255, 0.08));
   color: var(--cyan);
 }
 
-.status-pill.warn,
-.tag-chip.warn,
-.ring-chip.gold {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .status-pill.warn,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.warn,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.gold {
   border-color: var(--mvu-color-gold-line, rgba(255, 215, 0, 0.22));
   background: var(--mvu-color-gold-fill, rgba(255, 215, 0, 0.08));
   color: var(--gold);
 }
 
-.ring-chip.orangegold {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.orangegold {
   border-color: rgba(255, 179, 71, 0.3);
   background: rgba(255, 179, 71, 0.1);
   color: #ffb347;
 }
 
-.status-pill.alert,
-.tag-chip.alert,
-.ring-chip.red {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .status-pill.alert,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.alert,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.red {
   border-color: rgba(255, 77, 122, 0.22);
   background: rgba(255, 77, 122, 0.08);
   color: var(--red);
 }
 
-.ring-chip.yellow {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.yellow {
   border-color: rgba(255, 231, 122, 0.22);
   background: rgba(255, 231, 122, 0.08);
   color: #ffe77a;
@@ -4208,12 +4266,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   justify-content: flex-end;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
-.ring-chip.purple {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.purple {
   border-color: rgba(217, 70, 239, 0.22);
   background: rgba(217, 70, 239, 0.08);
   color: #d946ef;
 }
-.ring-chip.black {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .ring-chip.black {
   border-color: rgba(148, 163, 184, 0.22);
   background: rgba(148, 163, 184, 0.08);
   color: #94a3b8;
@@ -5095,9 +5153,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   white-space: nowrap;
 }
 
-button.tag-chip,
-.tag-chip.clickable,
-.clickable {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) button.tag-chip,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.clickable,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .clickable {
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -5107,21 +5165,21 @@ button.tag-chip,
     opacity 180ms ease;
 }
 
-button.tag-chip:hover,
-.tag-chip.clickable:hover,
-.clickable:hover {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) button.tag-chip:hover,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.clickable:hover,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .clickable:hover {
   border-color: rgba(77, 240, 255, 0.24);
   background: rgba(77, 240, 255, 0.09);
 }
 
-button.tag-chip:active,
-.tag-chip.clickable:active,
-.clickable:active {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) button.tag-chip:active,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.clickable:active,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .clickable:active {
   transform: translateY(1px);
 }
 
-.tag-chip.is-busy,
-.tag-chip.is-short-lock {
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.is-busy,
+:where(#mvu-unified-mount, #detailModal, #page-map, .mvu-hover-card-floating--portal, .mvu-cultivation-target-mask) .tag-chip.is-short-lock {
   opacity: 0.58;
   pointer-events: none;
 }
@@ -7581,15 +7639,15 @@ button.tag-chip:active,
   color: var(--全息数值文字);
 }
 
-.modal-block {
+#detailModal .modal-block {
   padding: 10px;
 }
 
-.modal-block.full {
+#detailModal .modal-block.full {
   grid-column: 1 / -1;
 }
 
-.modal-block-title {
+#detailModal .modal-block-title {
   margin-bottom: 8px;
   font-size: var(--mvu-font-sm, 12px);
   letter-spacing: 1px;
@@ -7773,9 +7831,9 @@ button.tag-chip:active,
 /* Real screen-edge hot zone */
 
 /* Final title normalization */
-.modal-title,
-.mvu-modal-panel.drawer-left .modal-title,
-.archive-card-title {
+#detailModal .modal-title,
+#detailModal .mvu-modal-panel.drawer-left .modal-title,
+:where(#mvu-unified-mount, #detailModal) .archive-card-title {
   font-family: var(--font-title) !important;
   font-size: var(--mvu-font-md, 14px) !important;
   line-height: 1.2 !important;
@@ -7784,12 +7842,12 @@ button.tag-chip:active,
   color: var(--mvu-color-text-ice, #edf9fd) !important;
 }
 
-.archive-card-title::before,
-.archive-card-title::after {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title::before,
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title::after {
   display: none !important;
 }
 
-.archive-card-title {
+:where(#mvu-unified-mount, #detailModal, .mvu-hover-card-floating--portal) .archive-card-title {
   color: var(--全息材质侧线) !important;
 }
 

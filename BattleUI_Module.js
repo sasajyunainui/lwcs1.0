@@ -105,15 +105,14 @@ class BattleUIComponent {
       if (component.recordPortalNode?.isConnected) return component.recordPortalNode;
       const 本地节点 = wrapperElement.querySelector('#ui-battle-record-terminal');
       if (!本地节点) return null;
-      const 挂载根 = component.container?.closest?.('#mvu-unified-mount, #detailModal') || globalDocument?.body || null;
-      if (挂载根) {
+      if (globalDocument?.body) {
         globalDocument.querySelectorAll('#ui-battle-record-terminal.battle-record-terminal--portal').forEach(node => {
           if (node !== 本地节点) node.remove();
         });
         本地节点.classList.add('battle-record-terminal--portal');
         本地节点.setAttribute('tabindex', '0');
         本地节点.setAttribute('aria-label', '战斗记录');
-        挂载根.appendChild(本地节点);
+        globalDocument.body.appendChild(本地节点);
         component.recordPortalNode = 本地节点;
         同步战斗记录终端主题(本地节点);
         同步战斗记录终端位置();
