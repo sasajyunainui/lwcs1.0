@@ -18233,6 +18233,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
   justify-content: start;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] > .mvu-archive-spirit-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -19002,6 +19007,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   align-content: stretch;
   align-items: stretch;
+  flex: 1 1 auto;
   gap: clamp(12px, 2.2cqw, 22px);
   width: 100%;
   height: 100%;
@@ -19080,7 +19086,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage-node {
   position: relative;
   z-index: 1;
   display: grid;
-  align-items: center;
+  align-items: stretch;
   min-width: 0;
   min-height: 0;
   width: 100%;
@@ -19214,9 +19220,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   isolation: isolate;
   display: grid;
   place-items: center;
+  align-self: stretch;
   min-width: 0;
   min-height: var(--archive-ring-field-height);
-  height: auto;
+  height: 100%;
   overflow: visible;
 }
 
@@ -19297,7 +19304,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-sou
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview {
   --ring-size: var(--武魂魂环尺寸);
   --ring-stage-width: var(--archive-ring-field-width);
-  --ring-stage-height: var(--archive-ring-field-height);
+  --ring-stage-height: 100%;
   --ring-anchor-rail-width: var(--武魂锚点轨宽);
   --ring-anchor-line-width: 42px;
   position: absolute;
@@ -19305,8 +19312,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   left: calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x));
   top: var(--archive-ring-center-y);
   width: var(--archive-ring-field-width);
-  height: var(--archive-ring-field-height);
-  min-height: var(--archive-ring-field-height);
+  height: 100%;
+  min-height: 100%;
   isolation: isolate;
   overflow: visible;
   transform: translate(-50%, -50%);
@@ -19316,16 +19323,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   position: relative;
   z-index: 2;
   width: var(--archive-ring-field-width);
-  height: var(--archive-ring-field-height);
-  min-height: var(--archive-ring-field-height);
+  height: 100%;
+  min-height: 100%;
   min-width: var(--archive-ring-field-width);
   transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-stage {
   width: var(--archive-ring-field-width);
-  height: var(--archive-ring-field-height);
-  min-height: var(--archive-ring-field-height);
+  height: 100%;
+  min-height: 100%;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-rail {
