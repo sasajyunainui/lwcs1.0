@@ -18187,7 +18187,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-  grid-template-columns: minmax(210px, 1fr) minmax(224px, 0.82fr) minmax(230px, 1fr);
+  grid-template-columns: minmax(210px, 0.78fr) minmax(260px, 1.22fr) minmax(230px, 1fr);
   grid-template-rows: auto;
   grid-template-areas: 'core spirit side';
   height: auto;
@@ -18976,7 +18976,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-radar .legend-chip span {
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-stage {
   --武魂舞台光色: var(--武魂舞台魂色, var(--模块魂色, var(--mvu-holo-main)));
   --武魂魂环尺寸: 108px;
-  --武魂锚点轨宽: 52px;
+  --武魂锚点轨宽: 34px;
   --武魂拘束环尺寸: clamp(132px, 17cqw, 184px);
   --魂环视觉中心-x: 50%;
   --魂环视觉中心-y: 50%;
@@ -19206,7 +19206,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
-  --archive-ring-field-width: min(236px, 100%);
+  --archive-ring-field-width: min(244px, 100%);
   --archive-ring-field-height: clamp(138px, 20cqw, 188px);
   --archive-ring-center-x: var(--魂环视觉中心-x);
   --archive-ring-center-y: var(--魂环视觉中心-y);
@@ -19299,7 +19299,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   --ring-stage-width: var(--archive-ring-field-width);
   --ring-stage-height: var(--archive-ring-field-height);
   --ring-anchor-rail-width: var(--武魂锚点轨宽);
-  --ring-anchor-line-width: 88px;
+  --ring-anchor-line-width: 42px;
   position: absolute;
   z-index: 2;
   left: calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x));
@@ -19329,12 +19329,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-rail {
-  right: calc(var(--ring-anchor-rail-width) * -0.92);
+  right: 2px;
   width: var(--ring-anchor-rail-width);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor {
-  --ring-anchor-line-width: 74px;
+  --ring-anchor-line-width: 40px;
   --ring-anchor-node-size: 16px;
   right: 0;
   left: auto;
@@ -20716,7 +20716,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
-    grid-template-columns: minmax(210px, 1fr) minmax(224px, 0.84fr) minmax(230px, 1fr);
+    grid-template-columns: minmax(210px, 0.78fr) minmax(260px, 1.22fr) minmax(230px, 1fr);
     grid-template-rows: auto;
     grid-template-areas: 'core spirit side';
     height: auto;
@@ -29120,6 +29120,64 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-terminal
   align-items: center;
   gap: 7px;
   min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings,
+#detailModal #mvu-battle-inline-host .battle-auto-continue-settings {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings.is-single-round,
+#detailModal #mvu-battle-inline-host .battle-auto-continue-settings.is-single-round {
+  opacity: 0.72;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field,
+#detailModal #mvu-battle-inline-host .battle-number-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--战斗强调色) 24%, transparent);
+  border-radius: var(--战斗下拉圆角);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--战斗强调色) 10%, transparent), transparent 54%),
+    rgba(5, 16, 28, 0.78);
+  box-shadow:
+    inset 1px 1px 0 color-mix(in srgb, #ffffff 10%, transparent),
+    inset -1px -1px 0 var(--战斗暗侧阴影);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field input,
+#detailModal #mvu-battle-inline-host .battle-number-field input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #ffffff;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 780;
+  line-height: 1.2;
+  text-align: right;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field input:focus-visible,
+#detailModal #mvu-battle-inline-host .battle-number-field input:focus-visible {
+  text-shadow: 0 0 10px color-mix(in srgb, var(--战斗强调色) 45%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field em,
+#detailModal #mvu-battle-inline-host .battle-number-field em {
+  color: var(--文字弱色);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 720;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-holo-select,

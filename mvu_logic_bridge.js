@@ -41545,6 +41545,29 @@ ${播报文本}
                           </div>
                         </div>
                       </div>
+                      <div class="battle-auto-continue-settings" id="ui-auto-continue-settings" aria-label="连续推进设置">
+                        <div class="battle-terminal-row">
+                          <span class="battle-terminal-label">续推上限</span>
+                          <label class="battle-number-field">
+                            <input id="ui-auto-round-max" type="number" min="1" max="20" step="1" inputmode="numeric" value="4">
+                            <em>回合</em>
+                          </label>
+                        </div>
+                        <div class="battle-terminal-row">
+                          <span class="battle-terminal-label">停推阈值</span>
+                          <label class="battle-number-field">
+                            <input id="ui-auto-stop-threshold" type="number" min="0" max="100" step="1" inputmode="numeric" value="25">
+                            <em>%</em>
+                          </label>
+                        </div>
+                        <div class="battle-terminal-row">
+                          <span class="battle-terminal-label">续推概率</span>
+                          <label class="battle-number-field">
+                            <input id="ui-auto-continue-chance" type="number" min="0" max="100" step="1" inputmode="numeric" value="100">
+                            <em>%</em>
+                          </label>
+                        </div>
+                      </div>
                       <div class="battle-terminal-row">
                         <span class="battle-terminal-label">战斗意图</span>
                         <div class="battle-holo-select" id="ui-intent-mode-select" data-battle-select="intent">
@@ -48955,7 +48978,9 @@ ${播报文本}
     if (!(event instanceof PointerEvent) && !(event instanceof MouseEvent)) return null;
     const 原节点 = eventTarget instanceof Element ? eventTarget : null;
     if (原节点 && 原节点.closest('.mvu-soul-ring-anchor')) return null;
+    if (原节点 && 原节点.closest('.mvu-archive-ring-observatory')) return null;
     const 命中节点 = document.elementFromPoint(event.clientX, event.clientY);
+    if (命中节点 instanceof Element && 命中节点.closest('.mvu-archive-ring-observatory')) return null;
     const 舞台 =
       (原节点 && 原节点.closest('.mvu-soul-ring-showcase')) ||
       (命中节点 instanceof Element ? 命中节点.closest('.mvu-soul-ring-showcase') : null);
@@ -49018,6 +49043,7 @@ ${播报文本}
     const 指针魂环 = event && event.type !== 'pointerout' ? 读取指针魂环触发节点(eventTarget, event) : null;
     if (指针魂环) return 指针魂环;
     if (!eventTarget || typeof eventTarget.closest !== 'function') return null;
+    if (eventTarget.closest('.mvu-archive-ring-observatory')) return null;
     const trigger = eventTarget.closest('.mvu-soul-ring-slot, .interactive-ring');
     if (!trigger) return null;
     if (!trigger.querySelector('.ring-hover-card, .relation-hover-card')) return null;

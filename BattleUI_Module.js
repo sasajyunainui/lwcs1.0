@@ -141,6 +141,46 @@ class BattleUIComponent {
       manual: '手动',
       free_narrative: '自由',
     };
+    const 自动续推默认设置 = Object.freeze({
+      maxRounds: 4,
+      stopDamagePercent: 25,
+      continueChancePercent: 100,
+    });
+    function 夹取自动续推数值(值, 回退, 下限, 上限) {
+      const 数值 = Number(值);
+      if (!Number.isFinite(数值)) return 回退;
+      return Math.min(上限, Math.max(下限, 数值));
+    }
+    function 规范化自动续推设置(配置 = {}, mode = 'multi_round') {
+      const 来源 = 配置 && typeof 配置 === 'object' ? 配置 : {};
+      const 阈值原始值 =
+        来源.stopDamagePercent ??
+        来源.autoContinueStopDamagePercent ??
+        来源.停推阈值百分比 ??
+        (Number.isFinite(Number(来源.stopDamageRatio)) ? Number(来源.stopDamageRatio) * 100 : undefined);
+      const 概率原始值 =
+        来源.continueChancePercent ??
+        来源.autoContinueChancePercent ??
+        来源.低烈度续推概率百分比 ??
+        (Number.isFinite(Number(来源.continueChance)) ? Number(来源.continueChance) * 100 : undefined);
+      const 最大回合 = mode === 'multi_round'
+        ? Math.round(夹取自动续推数值(
+            来源.maxRounds ?? 来源.autoContinueMaxRounds ?? 来源.最大回合,
+            自动续推默认设置.maxRounds,
+            1,
+            20,
+          ))
+        : 1;
+      const 停推阈值百分比 = 夹取自动续推数值(阈值原始值, 自动续推默认设置.stopDamagePercent, 0, 100);
+      const 低烈度续推概率百分比 = 夹取自动续推数值(概率原始值, 自动续推默认设置.continueChancePercent, 0, 100);
+      return {
+        maxRounds: 最大回合,
+        stopDamagePercent: 停推阈值百分比,
+        stopDamageRatio: 停推阈值百分比 / 100,
+        continueChancePercent: 低烈度续推概率百分比,
+        continueChance: 低烈度续推概率百分比 / 100,
+      };
+    }
     function 规范化战斗提交模式(值) {
       const 文本 = String(值 || '').trim();
       return 战斗提交模式列表.includes(文本) ? 文本 : 'manual';
@@ -4382,8 +4422,8 @@ class BattleUIComponent {
       const enemyName = getCombatReportUnitName(context.enemy || context.defender || context.target, '敌方角色');
       return String(line || '')
         .replace(/玩家方/g, '我方')
-        .replace(/玩家/g, playerName)
-        .replace(/NPC/g, enemyName);
+        .replace(/(?<![\p{Script=Han}\p{L}\p{N}_])玩家(?![\p{Script=Han}\p{L}\p{N}_])/gu, playerName)
+        .replace(/(?<![\p{Script=Han}\p{L}\p{N}_])NPC(?![\p{Script=Han}\p{L}\p{N}_])/gu, enemyName);
     }
 
     function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0 } = {}) {
@@ -4424,7 +4464,7 @@ class BattleUIComponent {
     function collectBattleDecisionTrace(combatData = {}) {
       const trace = combatData?.__行动闭环诊断?.审计轨迹;
       if (!Array.isArray(trace)) return [];
-      return deepClonePlain(trace.slice(-18));
+      return deepClonePlain(trace.slice(-80));
     }
 
     function buildBattlePreviewResult({
@@ -4453,6 +4493,7 @@ class BattleUIComponent {
         publicReport: String(publicReport || ''),
         dossier: String(dossier || ''),
         decisionTrace: collectBattleDecisionTrace(combatData),
+        closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
         snapshot: ui_getBattleSnapshot(combatData),
       };
       if (pendingSettlement) result.pendingSettlement = deepClonePlain(pendingSettlement);
@@ -5175,6 +5216,7 @@ class BattleUIComponent {
       const availableActions = fallbackCollectActions(charData);
       const previousState = root.BattleUI?.state || {};
       const currentIntentMode = previousState.currentIntentMode || combatData.战斗意图 || '点到为止';
+      const autoContinueConfig = 规范化自动续推设置(previousState.autoContinueConfig || {}, 'multi_round');
       const matchedPreviousAction = previousState.selectedAction
         ? availableActions.find(action => action.id === previousState.selectedAction.id)
         : null;
@@ -5191,6 +5233,7 @@ class BattleUIComponent {
           selectedPreActions: [],
           currentMode: previousState.currentMode || 'single_round',
           currentIntentMode,
+          autoContinueConfig,
         },
         buildIntentText(actions = []) {
           return fallbackBuildIntent(actions[0] || root.BattleUI?.state?.selectedAction, root.BattleUI?.state?.combatData);
@@ -5209,6 +5252,7 @@ class BattleUIComponent {
             const result = root.BattleUIBridge?.executePlayerBattleIntent?.(intentText, {
               mode: battleMode,
               intentMode: state.currentIntentMode || '点到为止',
+              autoContinueConfig: 规范化自动续推设置(state.autoContinueConfig || {}, battleMode),
             });
             if (typeof component.syncFromBattleEngine === 'function') component.syncFromBattleEngine();
             root.dispatchEvent(new CustomEvent('battle-ui-submit-finished', { detail: result || { intentText } }));
@@ -5221,6 +5265,7 @@ class BattleUIComponent {
         },
       });
       fallbackRenderActions(availableActions, selectedAction?.id || '');
+      渲染自动续推设置控件();
       const output = byId('ui-intent-output');
       if (output && selectedAction) output.value = fallbackBuildIntent(selectedAction, combatData);
       const intentModeInput = byId('ui-intent-mode');
@@ -14616,7 +14661,7 @@ class BattleUIComponent {
         断言战斗回归夹具(/\[(?:主动闪避|绝对闪避)\]/.test(String(result?.desc || '')), `未触发完全闪避:${result?.desc || ''}`);
         断言战斗回归夹具(!/\[状态施加\].*(位移限制|中毒)|施加了\[(?:位移限制|中毒)\]/.test(String(result?.desc || '')), `完全闪避后仍记录本次负面状态:${result?.desc || ''}`);
         断言战斗回归夹具(!敌人.状态效果?.位移限制 && !敌人.状态效果?.中毒, `完全闪避后负面状态仍落表:${Object.keys(敌人.状态效果 || {}).join('、')}`);
-        const settleLog = settleConditionsAtRoundEnd([敌人], combatData);
+        const settleLog = settleConditionsAtRoundEnd(敌人, 敌人.name, combatData).log || '';
         断言战斗回归夹具(!/\[状态结算\].*(位移限制|中毒)/.test(settleLog), `完全闪避后本回合状态跳伤仍触发:${settleLog}`);
         日志.push(`完全闪避不落负面状态成立:${result?.desc || ''}`);
       });
@@ -14708,12 +14753,161 @@ class BattleUIComponent {
           Math.random = 原随机;
         }
         const report = String(result?.publicReport || result?.logs?.join(' ') || '');
+        const rawLogText = String(result?.logs?.join(' ') || '');
         const playerSnapshot = result?.snapshot?.team_player?.find(unit => unit.name === '夹具玩家') || {};
         断言战斗回归夹具(/夹具第一魂技/.test(report), `正常释放战报缺第一魂技:${report}`);
         断言战斗回归夹具(/夹具敌人/.test(report), `正常释放战报缺目标:${report}`);
         断言战斗回归夹具(Number(playerSnapshot.sp) > 1800 && Number(playerSnapshot.sp) < 2000, `正常释放扣费异常:${playerSnapshot.sp}`);
+        断言战斗回归夹具(Number(playerSnapshot.sp) === Number(playerSnapshot.魂力), `正常释放后魂力镜像不同步:${playerSnapshot.sp}/${playerSnapshot.魂力}`);
+        断言战斗回归夹具(Number(playerSnapshot.sta ?? playerSnapshot.vit) === Number(playerSnapshot.体力), `正常释放后体力镜像不同步:${playerSnapshot.sta}/${playerSnapshot.vit}/${playerSnapshot.体力}`);
+        断言战斗回归夹具((rawLogText.match(/\[战前消耗\]\s*释放\[夹具第一魂技\]/g) || []).length === 1, `第一魂技实际扣费次数异常:${rawLogText}`);
+        断言战斗回归夹具((rawLogText.match(/\[起招\]\s*夹具玩家以\[夹具第一魂技\]起招/g) || []).length === 1, `第一魂技实际起招次数异常:${rawLogText}`);
+        const 事实账本 = result?.closedLoopLedger || {};
+        断言战斗回归夹具((事实账本.消耗 || []).filter(item => item.技能 === '夹具第一魂技').length === 1, `账本扣费次数异常:${JSON.stringify(事实账本)}`);
+        断言战斗回归夹具((事实账本.起招 || []).filter(item => item.行动者 === '夹具玩家' && item.技能 === '夹具第一魂技').length === 1, `账本起招次数异常:${JSON.stringify(事实账本)}`);
+        断言战斗回归夹具(!(事实账本.未闭合起招 || []).length, `正常释放存在未闭合起招:${JSON.stringify(事实账本.未闭合起招 || [])}`);
         断言战斗回归夹具(!/错误缓存第一魂技|9999/.test(report), `正常释放串用缓存技能:${report}`);
         日志.push(`第一魂技正常释放成立:${report}`);
+      });
+      注册('闭环账本标记未闭合起招', 日志 => {
+        const broken = 提取战斗日志事实账本(['[第1回合] [起招] 甲以[裂空斩]起招。 [应招] 乙以[伺机闪避]应对。']);
+        const dodged = 提取战斗日志事实账本(['[第1回合] [起招] 甲以[裂空斩]起招。 [应招] 乙以[伺机闪避]应对。 [主动闪避] 乙凭借敏捷优势惊险躲过了攻击。']);
+        const hit = 提取战斗日志事实账本(['[第1回合] [起招] 甲以[裂空斩]起招。 [应招] 乙以[承伤硬抗]应对。 [命中结算] 甲对乙造成 80 点最终伤害。 [状态施加] 乙获得[迟缓]。']);
+        断言战斗回归夹具(broken.未闭合起招.length === 1, `未闭合起招未被账本捕捉:${JSON.stringify(broken)}`);
+        断言战斗回归夹具(dodged.未闭合起招.length === 0 && dodged.闪避.length === 1, `完整闪避链被误判:${JSON.stringify(dodged)}`);
+        断言战斗回归夹具(hit.未闭合起招.length === 0 && hit.命中.length === 1 && hit.状态施加.length === 1, `命中状态链账本异常:${JSON.stringify(hit)}`);
+        日志.push('闭环账本可区分断链、闪避闭合、命中状态闭合');
+      });
+      注册('自动续推不复用首轮手选魂技', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.HP = 99999;
+        玩家.hp = 99999;
+        玩家.HP上限 = 99999;
+        玩家.hp_max = 99999;
+        玩家.sp = 2000;
+        玩家.魂力 = 2000;
+        玩家.第1武魂.第1魂环.第1魂技 = {
+          ...构建战斗回归第一魂技('夹具第一魂技', '魂力:120'),
+          前摇: 4,
+          _效果数组: [{ 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: 1, 伤害类型: '近身攻击', 防御穿透: 0 }],
+        };
+        敌人.HP = 99999;
+        敌人.hp = 99999;
+        敌人.HP上限 = 99999;
+        敌人.hp_max = 99999;
+        敌人.agi = 1;
+        敌人.def = 9999;
+        敌人.final = buildCombatFinalStats(敌人);
+        const entry = {
+          actor_name: '夹具玩家',
+          action_type: '释放魂技',
+          skill: { 魂技名: '错误缓存第一魂技', name: '错误缓存第一魂技', 消耗: '魂力:9999' },
+          __魂环路径: ['第1武魂', '第1魂环'],
+          __魂技槽位: '第1魂技',
+        };
+        const 原随机 = Math.random;
+        let result = null;
+        try {
+          Math.random = () => 0.01;
+          使用战斗回归桥接(combatData, { 夹具玩家: 玩家, 夹具敌人: 敌人 }, () => {
+            result = onPlayerAttack(`夹具第一魂技\n[动作队列]${JSON.stringify([entry])}[/动作队列]`, {
+              dryRun: true,
+              mode: 'multi_round',
+              combatData,
+              intentMode: '点到为止',
+            });
+          });
+        } finally {
+          Math.random = 原随机;
+        }
+        const 账本 = result?.closedLoopLedger || {};
+        const 首轮魂技扣费 = (账本.消耗 || []).filter(item => item.技能 === '夹具第一魂技').length;
+        const 首轮魂技起招 = (账本.起招 || []).filter(item => item.行动者 === '夹具玩家' && item.技能 === '夹具第一魂技').length;
+        断言战斗回归夹具(Number(result?.roundsExecuted || 0) > 1, `自动续推未进入第二回合:${result?.logs?.join(' ') || ''}`);
+        断言战斗回归夹具(首轮魂技扣费 === 1, `自动续推重复扣首轮魂技:${JSON.stringify(账本)}`);
+        断言战斗回归夹具(首轮魂技起招 === 1, `自动续推重复释放首轮魂技:${JSON.stringify(账本)}`);
+        断言战斗回归夹具(!/错误缓存第一魂技|9999/.test(String(result?.logs?.join(' ') || result?.publicReport || '')), '自动续推串用首轮缓存技能');
+        日志.push(`自动续推未复用首轮手选魂技，推进${result?.roundsExecuted || 0}回合`);
+      });
+      注册('自动续推设置控制最大回合与阈值', 日志 => {
+        const 构建低烈度战斗 = () => {
+          const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+          玩家.HP = 99999;
+          玩家.hp = 99999;
+          玩家.HP上限 = 99999;
+          玩家.hp_max = 99999;
+          玩家.sp = 2000;
+          玩家.魂力 = 2000;
+          玩家.第1武魂.第1魂环.第1魂技 = {
+            ...构建战斗回归第一魂技('夹具第一魂技', '魂力:120'),
+            前摇: 4,
+            _效果数组: [{ 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: 1, 伤害类型: '近身攻击', 防御穿透: 0 }],
+          };
+          敌人.HP = 99999;
+          敌人.hp = 99999;
+          敌人.HP上限 = 99999;
+          敌人.hp_max = 99999;
+          敌人.agi = 1;
+          敌人.def = 9999;
+          敌人.final = buildCombatFinalStats(敌人);
+          return { combatData, 玩家, 敌人 };
+        };
+        const entry = {
+          actor_name: '夹具玩家',
+          action_type: '释放魂技',
+          skill: { 魂技名: '错误缓存第一魂技', name: '错误缓存第一魂技', 消耗: '魂力:9999' },
+          __魂环路径: ['第1武魂', '第1魂环'],
+          __魂技槽位: '第1魂技',
+        };
+        const intent = `夹具第一魂技\n[动作队列]${JSON.stringify([entry])}[/动作队列]`;
+        const 原随机 = Math.random;
+        let maxRoundResult = null;
+        let thresholdResult = null;
+        try {
+          Math.random = () => 0.99;
+          const 第一场 = 构建低烈度战斗();
+          使用战斗回归桥接(第一场.combatData, { 夹具玩家: 第一场.玩家, 夹具敌人: 第一场.敌人 }, () => {
+            maxRoundResult = onPlayerAttack(intent, {
+              dryRun: true,
+              mode: 'multi_round',
+              combatData: 第一场.combatData,
+              intentMode: '点到为止',
+              autoContinueConfig: { maxRounds: 2, stopDamagePercent: 100, continueChancePercent: 100 },
+            });
+          });
+          const 第二场 = 构建低烈度战斗();
+          使用战斗回归桥接(第二场.combatData, { 夹具玩家: 第二场.玩家, 夹具敌人: 第二场.敌人 }, () => {
+            thresholdResult = onPlayerAttack(intent, {
+              dryRun: true,
+              mode: 'multi_round',
+              combatData: 第二场.combatData,
+              intentMode: '点到为止',
+              autoContinueConfig: { maxRounds: 4, stopDamagePercent: 0, continueChancePercent: 100 },
+            });
+          });
+        } finally {
+          Math.random = 原随机;
+        }
+        断言战斗回归夹具(Number(maxRoundResult?.roundsExecuted || 0) === 2, `自定义最大回合未生效:${maxRoundResult?.logs?.join(' ') || ''}`);
+        断言战斗回归夹具(Number(thresholdResult?.roundsExecuted || 0) === 1, `自定义停推阈值未生效:${thresholdResult?.logs?.join(' ') || ''}`);
+        断言战斗回归夹具(/已达0%阈值/.test(String(thresholdResult?.logs?.join(' ') || '')), `停推阈值日志缺失:${thresholdResult?.logs?.join(' ') || ''}`);
+        日志.push('自动续推最大回合、停推阈值与续推概率均可由运行时设置控制');
+      });
+      注册('资源镜像回合尾同步', 日志 => {
+        const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
+        玩家.sp = 1880;
+        玩家.魂力 = 1880;
+        玩家.men = 860;
+        玩家.精神力 = 860;
+        玩家.sta = 1100;
+        玩家.vit = 1100;
+        玩家.体力 = 1100;
+        const result = settleConditionsAtRoundEnd(玩家, 玩家.name, combatData);
+        syncCombatActionState(玩家);
+        断言战斗回归夹具(Number(玩家.sp) === Number(玩家.魂力), `自然恢复后魂力镜像不同步:${玩家.sp}/${玩家.魂力};${result.log}`);
+        断言战斗回归夹具(Number(玩家.men) === Number(玩家.精神力), `自然恢复后精神力镜像不同步:${玩家.men}/${玩家.精神力};${result.log}`);
+        断言战斗回归夹具(Number(玩家.sta) === Number(玩家.vit) && Number(玩家.sta) === Number(玩家.体力), `回合尾体力镜像不同步:${玩家.sta}/${玩家.vit}/${玩家.体力}`);
+        日志.push(`资源镜像回合尾同步成立:${result.log}`);
       });
       注册('第一魂技被先制打断不提前扣费', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -14890,6 +15084,38 @@ class BattleUIComponent {
         断言战斗回归夹具(!/审计层|抽样候选|实战日志|权限流转|无可用候选|无资源失败|候选池生成完毕|行为预演\/战术阶段/.test(visible), `主卡泄漏内部术语:${visible}`);
         断言战斗回归夹具(/原始选择原因|执行校对证据/.test(html), 'Debug 明细没有保留原始证据');
         日志.push(`判定主卡禁词成立:${visible}`);
+      });
+      注册('判定流程压缩重复并展示结算链', 日志 => {
+        const traceList = [
+          { type: '主动规划', round: 1, actor: '夹具玩家', target: '夹具敌人', skill: '夹具第一魂技', 最终权重: 0, 选择原因: '当前未形成有效出手机会' },
+          { type: '主动规划', round: 1, actor: '夹具玩家', target: '夹具敌人', skill: '夹具第一魂技', 最终权重: 109, 选择原因: '压制收束' },
+          { type: '再判定审计', round: 1, actor: '夹具玩家', target: '夹具敌人', skill: '夹具第一魂技', 最终权重: 42, 选择原因: '行为链再判定' },
+          { type: '主动规划', round: 1, actor: '夹具玩家', target: '夹具敌人', skill: '夹具第一魂技', 最终权重: 105, 选择原因: '压制收束' },
+          { type: '应招审计', round: 1, actor: '夹具敌人', target: '夹具玩家', skill: '伺机闪避', 最终权重: 20, 选择原因: '正式应招动作进入行为链' },
+        ];
+        const logs = ['[第1回合] [战前消耗] 释放[夹具第一魂技]，自身扣除 魂力:120。 [起招] 夹具玩家以[夹具第一魂技]起招。 [应招] 夹具敌人以[伺机闪避]应对。 [主动闪避] 夹具敌人凭借敏捷优势惊险躲过了攻击。'];
+        const rows = [
+          ...构建判定流程展示数据(traceList, logs),
+          ...构建结算链侧写条目(logs),
+        ];
+        const html = 渲染分回合判定流程(rows);
+        const visible = html.replace(/<[^>]+>/g, ' ');
+        const firstSkillCount = (visible.match(/最终执行【夹具第一魂技】/g) || []).length;
+        断言战斗回归夹具(firstSkillCount <= 2, `第一魂技主卡重复刷屏:${firstSkillCount};${visible}`);
+        断言战斗回归夹具(/结算链/.test(visible) && /闪避成功|没有命中|灵巧地闪避/.test(visible), `判定流程缺结算链:${visible}`);
+        日志.push(`判定流程去重与结算链成立:${visible.slice(0, 180)}`);
+      });
+      注册('行为链审计不被起招校正', 日志 => {
+        const logs = ['[第1回合] [团战执行] 夹具玩家以[夹具第一魂技]指向[夹具敌人]。 [起招] 夹具玩家以[夹具第一魂技]起招。 [应招] 夹具敌人以[伺机闪避]应对。'];
+        const rows = 构建判定流程展示数据([
+          { type: '应招审计', round: 1, actor: '夹具敌人', target: '夹具玩家', skill: '承伤硬抗', 最终权重: 40, 选择原因: '正式应招动作进入行为链' },
+          { type: '再判定审计', round: 1, actor: '夹具敌人', target: '夹具玩家', skill: '伺机闪避', 最终权重: 20, 选择原因: '行为链再判定' },
+        ], logs);
+        const html = 渲染分回合判定流程(rows);
+        const visible = html.replace(/<details class="battle-preview-debug">[\s\S]*?<\/details>/g, '').replace(/<[^>]+>/g, ' ');
+        断言战斗回归夹具(!/临场变招[\s\S]*第一魂技|最终执行【夹具第一魂技】/.test(visible), `行为链审计被起招误校正:${visible}`);
+        断言战斗回归夹具(/应招校验【承伤硬抗】|落点校验【伺机闪避】/.test(visible), `行为链校验未保留原动作:${visible}`);
+        日志.push(`行为链审计不被起招校正成立:${visible.slice(0, 160)}`);
       });
       注册('表现层语义纠偏', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -15315,7 +15541,7 @@ class BattleUIComponent {
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
-    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '表现层语义纠偏', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
+    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '闭环账本标记未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与阈值', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
 
     function 读取事件链状态(container = null) {
@@ -17886,6 +18112,7 @@ class BattleUIComponent {
         if (资源键 === 'sp') 属性.魂力 = 下值;
         if (资源键 === 'men') 属性.精神力 = 下值;
       }
+      同步战斗资源镜像字段(char);
       return 下值;
     }
 
@@ -18114,8 +18341,7 @@ class BattleUIComponent {
               if (读取资源变化抹消规则(char, '魂力')) {
                 parts.push(`[机制抹消] ${label}的魂力变化被封锁，[${key}]未能提供恢复。`);
               } else {
-                char.sp = nextSp;
-                if (char?.属性 && typeof char.属性 === 'object') char.属性.魂力 = char.sp;
+                设置战斗延迟效果资源值(char, 'sp', nextSp);
                 parts.push(`[状态结算] ${label}受[${key}]影响，恢复 ${actualRecoverSp} 点魂力`);
               }
             }
@@ -18131,8 +18357,7 @@ class BattleUIComponent {
               if (读取资源变化抹消规则(char, '精神力')) {
                 parts.push(`[机制抹消] ${label}的精神力变化被封锁，[${key}]未能提供恢复。`);
               } else {
-                char.men = nextMen;
-                if (char?.属性 && typeof char.属性 === 'object') char.属性.精神力 = char.men;
+                设置战斗延迟效果资源值(char, 'men', nextMen);
                 parts.push(`[状态结算] ${label}受[${key}]影响，恢复 ${actualRecoverMen} 点精神力`);
               }
             }
@@ -18160,8 +18385,7 @@ class BattleUIComponent {
               if (读取资源变化抹消规则(char, '魂力')) {
                 parts.push(`[机制抹消] ${label}的魂力变化被封锁，[${key}]未能造成流失。`);
               } else {
-                char.sp = Math.max(0, beforeSp - drainSp);
-                if (char?.属性 && typeof char.属性 === 'object') char.属性.魂力 = char.sp;
+                设置战斗延迟效果资源值(char, 'sp', Math.max(0, beforeSp - drainSp));
                 parts.push(`[状态结算] ${label}受[${key}]影响，流失 ${drainSp} 点魂力`);
               }
             }
@@ -18175,8 +18399,7 @@ class BattleUIComponent {
               if (读取资源变化抹消规则(char, '精神力')) {
                 parts.push(`[机制抹消] ${label}的精神力变化被封锁，[${key}]未能造成流失。`);
               } else {
-                char.men = Math.max(0, beforeMen - drainMen);
-                if (char?.属性 && typeof char.属性 === 'object') char.属性.精神力 = char.men;
+                设置战斗延迟效果资源值(char, 'men', Math.max(0, beforeMen - drainMen));
                 parts.push(`[状态结算] ${label}受[${key}]影响，流失 ${drainMen} 点精神力`);
               }
             }
@@ -18270,14 +18493,14 @@ class BattleUIComponent {
         if (!禁用本回合自然恢复 && maxSp > 0 && naturalSpRatio > 0 && 魂力回复锁定比例 < 1) {
           const beforeSp = Math.max(0, Number(char.sp || 0));
           const recoverSp = Math.max(0, Math.floor(maxSp * naturalSpRatio * (1 - 魂力回复锁定比例)));
-          char.sp = Math.min(maxSp, beforeSp + recoverSp);
+          设置战斗延迟效果资源值(char, 'sp', Math.min(maxSp, beforeSp + recoverSp));
           const actualRecoverSp = Math.max(0, Number(char.sp || 0) - beforeSp);
           if (actualRecoverSp > 0) parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverSp} 点魂力`);
         }
         if (!禁用本回合自然恢复 && maxMen > 0 && naturalMenRatio > 0 && 精神回复锁定比例 < 1) {
           const beforeMen = Math.max(0, Number(char.men || 0));
           const recoverMen = Math.max(0, Math.floor(maxMen * naturalMenRatio * (1 - 精神回复锁定比例)));
-          char.men = Math.min(maxMen, beforeMen + recoverMen);
+          设置战斗延迟效果资源值(char, 'men', Math.min(maxMen, beforeMen + recoverMen));
           const actualRecoverMen = Math.max(0, Number(char.men || 0) - beforeMen);
           if (actualRecoverMen > 0) parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverMen} 点精神力`);
         }
@@ -18872,12 +19095,68 @@ class BattleUIComponent {
               规划旁路残留: 0,
               审计轨迹: [],
               真实样本轨迹: [],
+              事实账本: null,
             },
           });
         }
         combatData.__行动闭环诊断.审计轨迹 ||= [];
         combatData.__行动闭环诊断.真实样本轨迹 ||= [];
         return combatData.__行动闭环诊断;
+      }
+
+      function 提取战斗日志事实账本(battleLog = []) {
+        const 日志列表 = (Array.isArray(battleLog) ? battleLog : [battleLog]).map(line => String(line || ''));
+        const 账本 = {
+          消耗: [],
+          起招: [],
+          应招: [],
+          命中: [],
+          状态施加: [],
+          状态结算: [],
+          闪避: [],
+          擦伤: [],
+          索敌失败: [],
+          未闭合起招: [],
+        };
+        const 推入匹配 = (line, round, regex, type, mapper) => {
+          let match = null;
+          regex.lastIndex = 0;
+          while ((match = regex.exec(line))) {
+            账本[type].push({ round, ...mapper(match) });
+          }
+        };
+        日志列表.forEach(line => {
+          if (!line) return;
+          const round = Number((line.match(/\[(?:团战)?第(\d+)回合/) || [])[1] || 0);
+          推入匹配(line, round, /\[战前消耗\]\s*释放\[([^\]]+)\]([^。]*)/g, '消耗', m => ({ 技能: m[1], 明细: String(m[2] || '').trim() }));
+          推入匹配(line, round, /\[起招\]\s*([^。\[]+?)以\[([^\]]+)\]起招/g, '起招', m => ({ 行动者: m[1].trim(), 技能: m[2].trim() }));
+          推入匹配(line, round, /\[应招\]\s*([^。\[]+?)以\[([^\]]+)\]应对/g, '应招', m => ({ 行动者: m[1].trim(), 技能: m[2].trim() }));
+          推入匹配(line, round, /\[命中结算\]\s*([^。]*?)对([^。]*?)造成\s*([0-9.]+)\s*点(?:最终)?伤害/g, '命中', m => ({
+            攻击者: m[1].trim(),
+            目标: m[2].trim(),
+            伤害: Number(m[3] || 0),
+          }));
+          推入匹配(line, round, /\[状态施加\]\s*([^。\[]+?)(获得|抵住了)\[([^\]]+)\]/g, '状态施加', m => ({ 目标: m[1].trim(), 结果: m[2], 状态: m[3].trim() }));
+          推入匹配(line, round, /\[状态结算\]\s*([^。]+)/g, '状态结算', m => ({ 文本: m[1].trim() }));
+          推入匹配(line, round, /\[(主动闪避|绝对闪避)\]\s*([^。]+)/g, '闪避', m => ({ 类型: m[1], 文本: m[2].trim() }));
+          推入匹配(line, round, /\[擦伤命中\]\s*([^。]+)/g, '擦伤', m => ({ 文本: m[1].trim() }));
+          推入匹配(line, round, /\[索敌失败\]\s*([^。]+)/g, '索敌失败', m => ({ 文本: m[1].trim() }));
+          if (
+            /\[起招\]/.test(line) &&
+            !/\[(?:命中结算|主动闪避|绝对闪避|擦伤命中|未破防|状态施加|护盾变化|索敌失败|行动受阻|施法失败|撤离|造物|装备生效|物品)\]/.test(line)
+          ) {
+            账本.未闭合起招.push({ round, 文本: line.trim() });
+          }
+        });
+        账本.计数 = Object.fromEntries(Object.keys(账本).map(key => [key, Array.isArray(账本[key]) ? 账本[key].length : 0]));
+        return 账本;
+      }
+
+      function 写入行动闭环事实账本(combatData = {}, battleLog = []) {
+        const 诊断 = 确保行动闭环诊断(combatData);
+        if (!诊断) return null;
+        诊断.事实账本 = 提取战斗日志事实账本(battleLog);
+        return 诊断.事实账本;
       }
 
       function 记录行动闭环审计(combatData = {}, 类型 = '', 详情 = {}) {
@@ -20714,11 +20993,10 @@ class BattleUIComponent {
       function 结算换招反噬消耗(单位 = {}, 原动作 = {}) {
         if (!原动作?.skill) return { 成功: true, 日志: '' };
         const 解析消耗 = parseSkillCostForChar({ ...原动作.skill, 消耗: splitSkillCostModes(getSkillCostText(原动作.skill)).upfront || '无' }, 单位);
-        const stats = 单位.属性 || 单位;
         const 不足 = !解析消耗.canCast;
-        stats.sp = Math.max(0, Number(stats.sp ?? stats.魂力 ?? 0) - Number(解析消耗.reqSp || 0));
-        stats.sta = Math.max(0, Number(stats.sta ?? stats.体力 ?? stats.vit ?? 0) - Number(解析消耗.reqVit || 0));
-        stats.men = Math.max(0, Number(stats.men ?? stats.精神力 ?? 0) - Number(解析消耗.reqMen || 0));
+        设置战斗延迟效果资源值(单位, 'sp', 读取单位资源当前值(单位, 'sp') - Number(解析消耗.reqSp || 0));
+        设置战斗体力值(单位, 读取单位资源当前值(单位, 'vit') - Number(解析消耗.reqVit || 0));
+        设置战斗延迟效果资源值(单位, 'men', 读取单位资源当前值(单位, 'men') - Number(解析消耗.reqMen || 0));
         return {
           成功: !不足,
           日志: `[反噬] ${单位.name || '行动者'}上一魂技脉络回冲，额外消耗${formatParsedCost(解析消耗)}${不足 ? '，资源不足，经脉紊乱，新招中断' : ''}。`,
@@ -21238,8 +21516,25 @@ class BattleUIComponent {
         };
         const mode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
         const modeLabel = mode === 'multi_round' ? '自动续推' : '单回合';
-        const maxRounds = mode === 'multi_round' ? 4 : 1;
+        const 自动续推设置 = 规范化自动续推设置(options.autoContinueConfig || {}, mode);
+        const maxRounds = 自动续推设置.maxRounds;
         combatData.战斗意图 = normalizeBattleIntentMode(options.intentMode || combatData.战斗意图 || '点到为止');
+        const 本次诊断 = 确保行动闭环诊断(combatData);
+        if (本次诊断) {
+          本次诊断.__本次会话序号 = Number(本次诊断.__本次会话序号 || 0) + 1;
+          本次诊断.审计轨迹 = [];
+          本次诊断.真实样本轨迹 = [];
+          本次诊断.主动规划次数 = 0;
+          本次诊断.索敌规划次数 = 0;
+          本次诊断.辅助目标规划次数 = 0;
+          本次诊断.应招审计次数 = 0;
+          本次诊断.再判定审计次数 = 0;
+          本次诊断.换招审计次数 = 0;
+          本次诊断.目标闭环缺失 = 0;
+          本次诊断.团队意图未消费 = 0;
+          本次诊断.规划旁路残留 = 0;
+          本次诊断.事实账本 = null;
+        }
 
         // --- 第一步：环境定调与状态快照 ---
         // 1. 状态快照与控制拦截 (完全基于 Schema 属性驱动)
@@ -21279,11 +21574,27 @@ class BattleUIComponent {
         let visiblePlayerInput = '';
         let 撤离结算结果 = '';
         let 本次最大单击HP比例 = 0;
+        let 首轮手选动作签名 = '';
+        const 读取本次动作签名 = 动作 => {
+          const 技能 = 动作?.skill || {};
+          const 技能名 = String(技能.name || 技能.魂技名 || 动作?.action_type || 动作?.type || '').trim();
+          const 魂环路径 = Array.isArray(技能.__魂环路径) ? 技能.__魂环路径.join('/') : '';
+          const 魂技槽位 = String(技能.__魂技槽位 || '').trim();
+          if (!技能名) return '';
+          return [动作?.action_type || 动作?.type || '', 技能名, 魂环路径, 魂技槽位].join('|');
+        };
         const buildAutoPlayerContinuationAction = () => {
           const actorEntry = { char: attacker, side: 'player' };
           const targets = chooseTargetForActor(actorEntry, { combatData });
           const autoAction = buildAutoActionForActor(actorEntry, targets || { enemyTarget: defender, allyTarget: attacker }, { combatData });
           if (!autoAction) return null;
+          if (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) {
+            const fallback = parsePlayerIntent('普通攻击', combatData);
+            fallback.player_auto_continuation = true;
+            fallback.target_name = targets?.enemyTarget?.name || defender?.name || '';
+            fallback.decision_log = `[自动续推] 首轮手选魂技已经完成，本回合重新规划为普通攻击。`;
+            return fallback;
+          }
           return {
             ...autoAction,
             action_type: autoAction.action_type || autoAction.type || '常规攻击',
@@ -21350,6 +21661,13 @@ class BattleUIComponent {
             }
             if (playerAction?.player_auto_continuation && playerAction.decision_log) roundLog += `${playerAction.decision_log} `;
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
+            if (
+              roundCount === 1 &&
+              !playerAction?.player_auto_continuation &&
+              (playerAction?.action_type === '释放魂技' || Array.isArray(playerAction?.skill?.__魂环路径))
+            ) {
+              首轮手选动作签名 = 读取本次动作签名(playerAction);
+            }
             const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
             const 指定敌方目标 = 玩家动作目标 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 玩家动作目标.name || 玩家动作目标))
               ? 玩家动作目标
@@ -21778,16 +22096,19 @@ class BattleUIComponent {
               continueSimulation = false;
               roundLog += ` [单回合仲裁] 当前模式为单回合，本次暗箱演算到此结束。`;
             } else {
-              const continueThresholdReached =
-                Number(settleResult.totalProjectedDamage || settleResult.dmg || 0) / getCombatHpMaxValue(attacker) >= 0.05;
+              const 本轮攻防烈度 = Math.max(
+                Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
+                Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(主动结算方),
+              );
+              const continueThresholdReached = 本轮攻防烈度 >= 自动续推设置.stopDamageRatio;
               if (continueThresholdReached) {
                 continueSimulation = false;
-                roundLog += ` [续推终止] 本回合攻防烈度已达阈值，暗箱续推停止。`;
+                roundLog += ` [续推终止] 本回合攻防烈度${Math.round(本轮攻防烈度 * 100)}%已达${Math.round(自动续推设置.stopDamagePercent)}%阈值，暗箱续推停止。`;
               } else {
                 const continueRoll = Math.random();
-                const continueHit = continueRoll < 0.7;
+                const continueHit = continueRoll < 自动续推设置.continueChance;
                 continueSimulation = continueHit;
-                roundLog += ` [续推判定] 本回合伤害未达阈值，触发70%概率续推。Roll:${continueRoll.toFixed(2)} 判定:${continueHit ? '继续' : '停止'}。`;
+                roundLog += ` [续推判定] 本回合攻防烈度${Math.round(本轮攻防烈度 * 100)}%未达${Math.round(自动续推设置.stopDamagePercent)}%阈值，按${Math.round(自动续推设置.continueChancePercent)}%概率续推。Roll:${continueRoll.toFixed(2)} 判定:${continueHit ? '继续' : '停止'}。`;
               }
             }
           }
@@ -21821,6 +22142,7 @@ class BattleUIComponent {
         if (clashExtraPatchOps.length) extraPatchOps.push(...clashExtraPatchOps);
         if (settleResult.log) battleLog.push(replaceBattleReportGenericNames(settleResult.log, { player: attacker, enemy: defender }));
         if (settleResult.extraPatchOps) extraPatchOps.push(...settleResult.extraPatchOps);
+        写入行动闭环事实账本(combatData, battleLog);
         const towerPendingSettlement =
           isSoulTowerCombatTypeValue(combatData?.战斗类型 || '') && battleOutcome.isVictory === true
             ? buildSoulTowerPendingSettlement(combatData, defender)
@@ -21862,6 +22184,7 @@ class BattleUIComponent {
             roundsExecuted: roundCount,
             publicReport: buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount }),
             decisionTrace: collectBattleDecisionTrace(combatData),
+            closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
             pendingSettlement: towerPendingSettlement,
             mvuUpdate: pendingUpdate,
           };
@@ -21992,6 +22315,7 @@ class BattleUIComponent {
           roundsExecuted: roundCount,
           publicReport: 公开战报,
           decisionTrace: collectBattleDecisionTrace(combatData),
+          closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
           battleSettlementContext: 战斗上下文登记,
           aiRequest: root.__lastBattleAIRequest || null,
         };
@@ -22000,11 +22324,13 @@ class BattleUIComponent {
         root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
         __executePlayerBattleIntentImpl(playerInput, options = {}) {
           const battleMode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
+          const autoContinueConfig = 规范化自动续推设置(options.autoContinueConfig || root.BattleUI?.state?.autoContinueConfig || {}, battleMode);
           const result = onPlayerAttack(String(playerInput || ''), {
             mode: battleMode,
             intentMode: options.intentMode,
             dryRun: options.dryRun === true,
             combatData: options.combatData,
+            autoContinueConfig,
           });
           return result || {
             intentText: String(playerInput || ''),
@@ -22709,8 +23035,8 @@ class BattleUIComponent {
           let ratio = playerAction.heal_ratio > 0 ? playerAction.heal_ratio : 0.3;
           let spGain = Math.floor(stats.sp_max * ratio);
           let vitGain = Math.floor((stats.sta_max || stats.vit_max || 1) * ratio);
-          stats.sp = Math.min(stats.sp_max, stats.sp + spGain);
-          stats.sta = Math.min(stats.sta_max || stats.vit_max || 1, (stats.sta || 0) + vitGain);
+          设置战斗延迟效果资源值(attackerChar, 'sp', Number(stats.sp ?? stats.魂力 ?? 0) + spGain);
+          设置战斗体力值(attackerChar, Number(stats.sta ?? stats.体力 ?? stats.vit ?? 0) + vitGain);
           log = `[机制反哺] 触发吸血/减耗机制，强制恢复状态！`;
         } else if (playerAction.action_type === '五行剥离') {
           if (!hasBattleUnlockedAttributeSet(attackerChar, ['金', '木', '水', '火', '土'])) {
@@ -24171,6 +24497,43 @@ class BattleUIComponent {
         return Math.max(1, Number(char?.体力上限 ?? stats.体力上限 ?? char?.sta_max ?? stats.sta_max ?? char?.vit_max ?? stats.vit_max ?? 1));
       }
 
+      function 同步战斗资源镜像字段(char) {
+        if (!char || typeof char !== 'object') return;
+        const stats = char?.属性 && typeof char.属性 === 'object' ? char.属性 : char;
+        const syncValue = (runtimeKeys, chineseKey, maxRuntimeKeys, maxChineseKey) => {
+          const runtimeKey = runtimeKeys.find(key => Object.prototype.hasOwnProperty.call(char, key) && char[key] !== undefined) || runtimeKeys[0];
+          const rawValue =
+            char[runtimeKey] ??
+            char[chineseKey] ??
+            stats[runtimeKey] ??
+            stats[chineseKey] ??
+            0;
+          const rawMax =
+            maxRuntimeKeys.map(key => char[key] ?? stats[key]).find(value => value !== undefined) ??
+            char[maxChineseKey] ??
+            stats[maxChineseKey] ??
+            rawValue ??
+            1;
+          const maxValue = Math.max(1, Number(rawMax || 1));
+          const nextValue = Math.max(0, Math.min(maxValue, Number(rawValue || 0)));
+          runtimeKeys.forEach(key => {
+            char[key] = nextValue;
+          });
+          char[chineseKey] = nextValue;
+          maxRuntimeKeys.forEach(key => {
+            char[key] = maxValue;
+          });
+          char[maxChineseKey] = maxValue;
+          if (stats && stats !== char) {
+            stats[chineseKey] = nextValue;
+            stats[maxChineseKey] = maxValue;
+          }
+        };
+        syncValue(['sp'], '魂力', ['sp_max'], '魂力上限');
+        syncValue(['men'], '精神力', ['men_max'], '精神力上限');
+        syncValue(['sta', 'vit'], '体力', ['sta_max', 'vit_max'], '体力上限');
+      }
+
       function 设置战斗血量值(char, value) {
         if (!char || typeof char !== 'object') return 0;
         const stats = char?.属性 && typeof char.属性 === 'object' ? char.属性 : char;
@@ -24341,6 +24704,7 @@ class BattleUIComponent {
 
       function syncCombatActionState(char) {
         if (!char || typeof char !== 'object') return;
+        同步战斗资源镜像字段(char);
         if (char.召唤键) 同步召唤单位镜像(char);
       }
 
@@ -27270,15 +27634,11 @@ class BattleUIComponent {
               if (/魂力/.test(资源文本)) {
                 const maxValue = Math.max(1, Number((授予目标?.final || {}).sp_max || 授予目标?.sp_max || 授予目标?.属性?.魂力上限 || 0));
                 const amount = 读取授予资源量(effect?.数值, maxValue);
-                授予目标.sp = Math.min(maxValue, Math.max(0, Number(授予目标.sp || 授予目标?.属性?.魂力 || 0)) + amount);
-                if (授予目标.属性 && typeof 授予目标.属性 === 'object') 授予目标.属性.魂力 = 授予目标.sp;
-                if (授予目标.召唤键) 同步召唤单位镜像(授予目标);
+                设置战斗延迟效果资源值(授予目标, 'sp', Math.min(maxValue, Math.max(0, Number(授予目标.sp || 授予目标?.属性?.魂力 || 0)) + amount));
               } else if (/精神/.test(资源文本)) {
                 const maxValue = Math.max(1, Number((授予目标?.final || {}).men_max || 授予目标?.men_max || 授予目标?.属性?.精神力上限 || 0));
                 const amount = 读取授予资源量(effect?.数值, maxValue);
-                授予目标.men = Math.min(maxValue, Math.max(0, Number(授予目标.men || 授予目标?.属性?.精神力 || 0)) + amount);
-                if (授予目标.属性 && typeof 授予目标.属性 === 'object') 授予目标.属性.精神力 = 授予目标.men;
-                if (授予目标.召唤键) 同步召唤单位镜像(授予目标);
+                设置战斗延迟效果资源值(授予目标, 'men', Math.min(maxValue, Math.max(0, Number(授予目标.men || 授予目标?.属性?.精神力 || 0)) + amount));
               } else {
                 applyImmediateRecoveryEffect(effect, /体力/.test(资源文本) ? 'vit' : 'hp', /体力/.test(资源文本) ? '体力' : '生命');
               }
@@ -27941,8 +28301,7 @@ class BattleUIComponent {
           const nextValue = Math.max(0, Number(value) || 0);
           if (resourceKey === 'hp') return 设置战斗血量值(targetObj, nextValue);
           if (resourceKey === 'vit') return 设置战斗体力值(targetObj, nextValue);
-          targetObj[resourceKey] = nextValue;
-          if (targetObj?.属性 && typeof targetObj.属性 === 'object') targetObj.属性[resourceKey === 'sp' ? '魂力' : '精神力'] = nextValue;
+          return 设置战斗延迟效果资源值(targetObj, resourceKey, nextValue);
         };
 
         const 资源变化落地被抹消 = (targetObj, resourceKey, 动作文本 = '资源变化', options = {}) => {
@@ -28912,7 +29271,7 @@ class BattleUIComponent {
             applyImmediateRecoveryEffect(mirrorEffectToSelf(directSpEffect), 'sp', '魂力');
         } else if ((pState.计算层效果?.sp_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
           const selfResourceBlockRatio = 读取资源锁定比例(attacker, 'sp', '转化锁定');
-          attacker.sp = Math.min(
+          设置战斗延迟效果资源值(attacker, 'sp', Math.min(
             attackerFinalStat.sp_max || attacker.sp_max || 0,
             attacker.sp +
               Math.floor(
@@ -28920,7 +29279,7 @@ class BattleUIComponent {
                   pState.计算层效果.sp_gain_ratio *
                   (1 - selfResourceBlockRatio),
               ),
-          );
+          ));
         }
         if (directMenEffect) {
           applyImmediateRecoveryEffect(directMenEffect, 'men', '精神力');
@@ -28928,7 +29287,7 @@ class BattleUIComponent {
             applyImmediateRecoveryEffect(mirrorEffectToSelf(directMenEffect), 'men', '精神力');
         } else if ((pState.计算层效果?.men_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
           const selfResourceBlockRatio = 读取资源锁定比例(attacker, 'men', '转化锁定');
-          attacker.men = Math.min(
+          设置战斗延迟效果资源值(attacker, 'men', Math.min(
             attackerFinalStat.men_max || attacker.men_max || 0,
             attacker.men +
               Math.floor(
@@ -28936,7 +29295,7 @@ class BattleUIComponent {
                   pState.计算层效果.men_gain_ratio *
                   (1 - selfResourceBlockRatio),
               ),
-          );
+          ));
         }
 
           if (directCleanseEffect && !源动作被机制抹消(directCleanseEffect)) {
@@ -34084,6 +34443,7 @@ class BattleUIComponent {
 
           const buildUnitSnapshot = char => {
             if (!char) return null;
+            syncCombatActionState(char);
             return {
               name: char.name || '未知',
               lv: char.lv || 1,
@@ -34091,14 +34451,22 @@ class BattleUIComponent {
               type: char.type || '未知系',
               hp: getCombatHpValue(char),
               hp_max: getCombatHpMaxValue(char),
+              HP: getCombatHpValue(char),
+              HP上限: getCombatHpMaxValue(char),
               vit: getCombatStaminaValue(char),
               vit_max: getCombatStaminaMaxValue(char),
               sta: getCombatStaminaValue(char),
               sta_max: getCombatStaminaMaxValue(char),
+              体力: getCombatStaminaValue(char),
+              体力上限: getCombatStaminaMaxValue(char),
               sp: char.sp || 0,
               sp_max: char.sp_max || 1,
+              魂力: char.sp || 0,
+              魂力上限: char.sp_max || 1,
               men: char.men || 0,
               men_max: char.men_max || 1,
+              精神力: char.men || 0,
+              精神力上限: char.men_max || 1,
               召唤键: char.召唤键 || '',
               单位性质: char.单位性质 || '',
               类型: char.类型 || char.type || '',
@@ -35768,6 +36136,52 @@ class BattleUIComponent {
           同步战斗目标显示(state.selectedAction || null);
         }
 
+        function 读取界面自动续推设置(state = window.BattleUI?.state || {}) {
+          const 设置 = 规范化自动续推设置(state.autoContinueConfig || {}, 'multi_round');
+          return state.currentMode === 'multi_round' ? 设置 : { ...设置, maxRounds: 1 };
+        }
+
+        function 写入界面自动续推设置(补丁 = {}) {
+          const state = window.BattleUI?.state;
+          if (!state) return;
+          state.autoContinueConfig = 规范化自动续推设置({ ...(state.autoContinueConfig || {}), ...补丁 }, 'multi_round');
+          渲染自动续推设置控件();
+        }
+
+        function 渲染自动续推设置控件() {
+          const state = window.BattleUI?.state;
+          if (!state) return;
+          const panel = byId('ui-auto-continue-settings');
+          const maxInput = byId('ui-auto-round-max');
+          const thresholdInput = byId('ui-auto-stop-threshold');
+          const chanceInput = byId('ui-auto-continue-chance');
+          if (!panel && !maxInput && !thresholdInput && !chanceInput) return;
+          const 设置 = 规范化自动续推设置(state.autoContinueConfig || {}, 'multi_round');
+          state.autoContinueConfig = 设置;
+          const 同步输入 = (input, key, patchKey) => {
+            if (!input) return;
+            if (!input.__battleAutoContinueBound) {
+              const 提交 = () => {
+                const 原文 = String(input.value || '').trim();
+                if (!原文) {
+                  渲染自动续推设置控件();
+                  return;
+                }
+                写入界面自动续推设置({ [patchKey]: 原文 });
+              };
+              input.addEventListener('input', 提交);
+              input.addEventListener('change', 提交);
+              input.__battleAutoContinueBound = true;
+            }
+            const 显示值 = String(Math.round(设置[key]));
+            if (root.document?.activeElement !== input && input.value !== 显示值) input.value = 显示值;
+          };
+          同步输入(maxInput, 'maxRounds', 'maxRounds');
+          同步输入(thresholdInput, 'stopDamagePercent', 'stopDamagePercent');
+          同步输入(chanceInput, 'continueChancePercent', 'continueChancePercent');
+          if (panel) panel.classList.toggle('is-single-round', state.currentMode !== 'multi_round');
+        }
+
         function setUiBattleMode(mode) {
           const normalized = mode === 'multi_round' ? 'multi_round' : 'single_round';
           if (window.BattleUI && window.BattleUI.state) {
@@ -35779,6 +36193,7 @@ class BattleUIComponent {
           });
           同步战斗下拉文本(byId('ui-mode-group'), normalized, 'mode');
           渲染动作摘要(window.BattleUI?.state?.selectedAction || null);
+          渲染自动续推设置控件();
         }
 
         function setUiIntentMode(mode) {
@@ -35813,6 +36228,7 @@ class BattleUIComponent {
           const previousState = window.BattleUI?.state || {};
           const activeCategory = previousState.activeCategory || '全部';
           const currentIntentMode = previousState.currentIntentMode || combatData.战斗意图 || '点到为止';
+          const autoContinueConfig = 规范化自动续推设置(previousState.autoContinueConfig || {}, 'multi_round');
           const pendingTowerSettlement = normalizeSoulTowerPendingSettlement(combatData.魂灵塔待结算);
           const selectedAction =
             (previousState.selectedAction &&
@@ -35834,6 +36250,7 @@ class BattleUIComponent {
               selectedPreActions: [],
               currentMode: previousState.currentMode || 'single_round',
               currentIntentMode,
+              autoContinueConfig,
               pendingTowerSettlement,
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
               battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
@@ -35841,6 +36258,7 @@ class BattleUIComponent {
           });
           setUiBattleMode(window.BattleUI.state.currentMode);
           setUiIntentMode(window.BattleUI.state.currentIntentMode);
+          渲染自动续推设置控件();
           renderUiActionFilters(availableActions, activeCategory);
           renderUiActionGrid(availableActions, activeCategory);
           renderUiSummonQueue(combatData);
@@ -36033,6 +36451,10 @@ class BattleUIComponent {
           return /主动规划|应招审计|再判定审计|换招审计/.test(读取轨迹类型(轨迹));
         }
 
+        function 判定轨迹是行为链校验(轨迹 = {}) {
+          return /应招审计|再判定审计|换招审计/.test(读取轨迹类型(轨迹));
+        }
+
         function 归一判定轨迹(trace = {}) {
           const 类型 = 读取轨迹类型(trace);
           return {
@@ -36143,10 +36565,12 @@ class BattleUIComponent {
         }
 
         function 查找轨迹实际执行声明(轨迹 = {}, 执行声明列表 = []) {
+          if (读取轨迹类型(轨迹) !== '主动规划') return null;
           const actor = String(轨迹?.行动者 || '').trim();
           const target = String(轨迹?.目标 || '').trim();
           const round = Number(轨迹?.回合 || 0);
           const 同回合同人 = 执行声明列表.filter(item =>
+            /^(execute|combo|charged|creation|summon)$/.test(String(item.kind || '')) &&
             !/行为防反/.test(String(item.action || '')) &&
             isSameBattleReportName(item.actor, actor) &&
             (!round || !item.round || Number(item.round || 0) === round)
@@ -36207,6 +36631,50 @@ class BattleUIComponent {
           const rawList = Array.isArray(traceList) ? traceList : [];
           const 执行声明列表 = 读取战斗结果执行声明(logs);
           const rows = [];
+          const 取条目轨迹 = item => item?.type === 'handoff' ? (item.to || item.from || {}) : item?.trace;
+          const 轨迹展示优先级 = 轨迹 => {
+            const 类型 = 读取轨迹类型(轨迹);
+            let score = 0;
+            if (判定轨迹是目标规划(轨迹)) score += 10;
+            if (类型 === '主动规划') score += 30;
+            if (类型 === '应招审计') score += 36;
+            if (类型 === '换招审计') score += 38;
+            if (类型 === '再判定审计') score += 34;
+            if (轨迹?.动作校正?.发生校正) score += 8;
+            if (String(轨迹?.技能 || '').trim()) score += 8;
+            if (Number(轨迹?.最终权重 || 0) > 0) score += 4;
+            return score;
+          };
+          const 压缩判定流程主卡 = items => {
+            const best = new Map();
+            (Array.isArray(items) ? items : []).forEach((item, index) => {
+              if (item?.type !== 'trace') return;
+              const trace = item.trace || {};
+              const 类型 = 读取轨迹类型(trace);
+              const actor = String(trace.行动者 || '').trim();
+              const skill = normalizeBattleActionDisplayName(trace.技能 || trace.实际技能 || trace.动作校正?.实际技能 || '');
+              const target = String(trace.目标 || trace.实际目标 || '').trim();
+              const round = Number(trace.回合 || 0);
+              if (!actor || !类型) return;
+              const family = 判定轨迹是目标规划(trace)
+                ? (/辅助目标规划/.test(类型) ? 'ally-target' : 'enemy-target')
+                : /应招|再判定|换招/.test(类型)
+                  ? `reaction:${skill || 类型}:${target || 'none'}`
+                  : `action:${skill || 类型}:${target || 'none'}`;
+              const key = `${round || 0}::${actor}::${family}`;
+              const prev = best.get(key);
+              const currentRank = 轨迹展示优先级(trace) * 1000 + index;
+              if (!prev || currentRank >= prev.rank) best.set(key, { item, rank: currentRank, index });
+            });
+            const keep = new Set([...best.values()].map(entry => entry.item));
+            return (Array.isArray(items) ? items : [])
+              .filter(item => item?.type !== 'trace' || keep.has(item))
+              .sort((左, 右) => {
+                const 左迹 = 取条目轨迹(左) || {};
+                const 右迹 = 取条目轨迹(右) || {};
+                return Number(左迹.回合 || 0) - Number(右迹.回合 || 0);
+              });
+          };
           for (let index = 0; index < rawList.length; index += 1) {
             const current = 归一判定轨迹(rawList[index] || {});
             const currentNoCandidate =
@@ -36253,7 +36721,20 @@ class BattleUIComponent {
               }
             }
           }
-          return rows.slice(-18);
+          return 压缩判定流程主卡(rows).slice(-12);
+        }
+
+        function 构建结算链侧写条目(logs = []) {
+          const lines = buildReadableBattleReportLines(Array.isArray(logs) ? logs : [], 12);
+          return lines.map(line => {
+            const match = String(line || '').match(/^第(\d+)回合[：:]\s*(.+)$/);
+            return {
+              type: 'settlement',
+              round: Number(match?.[1] || 0),
+              回合: Number(match?.[1] || 0),
+              text: String(match?.[2] || line || '').trim(),
+            };
+          }).filter(item => item.text);
         }
 
         function 构建防反侧写条目(logs = []) {
@@ -36617,6 +37098,17 @@ class BattleUIComponent {
           const 行动者 = String(轨迹.行动者 || '行动者').trim();
           const 原始目标 = String(轨迹.目标 || 轨迹.实际目标 || '').trim();
           const 目标 = 原始目标 && !isSameBattleReportName(行动者, 原始目标) ? 原始目标 : '';
+          const 类型 = 读取轨迹类型(轨迹);
+          if (判定轨迹是行为链校验(轨迹)) {
+            const 动作名 = 包裹判定动作名称(技能);
+            if (/应招审计/.test(类型)) {
+              if (/伺机闪避|闪避/.test(技能)) return `${行动者}校验当前攻势，确认以${动作名}尝试规避。`;
+              if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}校验当前攻势，确认以${动作名}承压。`;
+              return `${行动者}校验当前攻势${动作名 ? `，应对动作指向${动作名}` : ''}。`;
+            }
+            if (/再判定审计/.test(类型)) return `${行动者}复核${动作名 || '当前动作'}的落点与后续窗口。`;
+            if (/换招审计/.test(类型)) return `${行动者}复核受阻后的动作调整${动作名 ? `，转向${动作名}` : ''}。`;
+          }
           if (轨迹.动作校正?.发生校正) {
             const 实际技能 = normalizeBattleActionDisplayName(轨迹.动作校正.实际技能 || '');
             if (/伺机闪避|闪避/.test(实际技能)) return `${行动者}最终改以${包裹判定动作名称(实际技能)}处理当前攻势。`;
@@ -36660,6 +37152,14 @@ class BattleUIComponent {
           const 行动者 = 轨迹.行动者 || '行动者';
           if (判定轨迹是目标规划(轨迹)) return `[${类型}] 🎯 ${行动者} 锁定目标`;
           const 技能 = normalizeBattleActionDisplayName(轨迹.技能 || '');
+          if (判定轨迹是行为链校验(轨迹)) {
+            const 标签 = /应招审计/.test(类型)
+              ? '应招校验'
+              : /再判定审计/.test(类型)
+                ? '落点校验'
+                : '变招校验';
+            return `[${类型}] 🧭 ${行动者} ${标签}${技能 ? 包裹判定动作名称(技能) : ''}`;
+          }
           if (技能) return `[${类型}] ⚔️ ${行动者} 最终执行${包裹判定动作名称(技能)}`;
           return `[${类型}] ⚔️ ${行动者} 守势观察`;
         }
@@ -36796,14 +37296,31 @@ class BattleUIComponent {
           `;
         }
 
+        function 渲染结算链侧写卡片(条目 = {}) {
+          const text = String(条目?.text || '').trim();
+          if (!text) return '';
+          return `
+            <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--settlement">
+              <div class="battle-preview-trace-title">
+                <b>${htmlEscapeText('[结算链] 🧾 本回合结果')}</b>
+              </div>
+              <div class="battle-preview-trace-tree">
+                <span>${渲染判定侧写HTML(`└─ 🏁 结果：${text}`)}</span>
+              </div>
+            </div>
+          `;
+        }
+
         function 格式化预演审计行(条目 = {}) {
           if (条目?.type === 'handoff') return 渲染流转侧写卡片(条目);
+          if (条目?.type === 'settlement') return 渲染结算链侧写卡片(条目);
           const trace = 归一判定轨迹(条目?.trace || 条目 || {});
           if (读取轨迹类型(trace) === '防反机制') return 渲染防反侧写卡片(trace);
           return 渲染判定流程卡片(trace);
         }
 
         function 读取判定条目回合(条目 = {}, fallbackRound = 0) {
+          if (条目?.type === 'settlement') return Number(条目.round || 条目.回合 || fallbackRound || 0);
           const trace = 条目?.type === 'handoff' ? (条目.to || 条目.from || {}) : (条目.trace || 条目 || {});
           const round = Number(trace?.回合 || trace?.round || 0);
           return round > 0 ? round : Math.max(0, Number(fallbackRound || 0));
@@ -36812,9 +37329,13 @@ class BattleUIComponent {
         function 渲染分回合判定流程(条目列表 = []) {
           const list = Array.isArray(条目列表) ? 条目列表 : [];
           if (!list.length) return '<div class="battle-preview-empty">无判定轨迹</div>';
+          const 排序后列表 = list.slice().sort((左, 右) =>
+            读取判定条目回合(左, 0) - 读取判定条目回合(右, 0) ||
+            (左?.type === 'settlement' ? 1 : 0) - (右?.type === 'settlement' ? 1 : 0),
+          );
           const groups = [];
           let currentRound = 0;
-          list.forEach(条目 => {
+          排序后列表.forEach(条目 => {
             const round = 读取判定条目回合(条目, currentRound);
             if (round > 0) currentRound = round;
             const key = round > 0 ? `round:${round}` : 'unassigned';
@@ -36876,6 +37397,7 @@ class BattleUIComponent {
           const 审计条目 = [
             ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs),
             ...构建防反侧写条目(logs),
+            ...构建结算链侧写条目(logs),
           ];
           const 流程HTML = 渲染分回合判定流程(审计条目);
           node.hidden = false;
@@ -37056,6 +37578,7 @@ class BattleUIComponent {
             };
           }
           const battleMode = state.currentMode === 'multi_round' ? 'multi_round' : 'single_round';
+          const autoContinueConfig = 读取界面自动续推设置(state);
           state.combatData.战斗意图 = state.currentIntentMode || '点到为止';
           const queue = 读取可提交战斗动作队列(state);
           if (!queue.length) {
@@ -37079,14 +37602,14 @@ class BattleUIComponent {
 
           let result = { intentText, mode: 'intent_only', battleMode };
           try {
-              window.dispatchEvent(new CustomEvent('battle-ui-intent-submit', { detail: { intentText, battleMode, intentMode: state.currentIntentMode || '点到为止' } }));
+              window.dispatchEvent(new CustomEvent('battle-ui-intent-submit', { detail: { intentText, battleMode, intentMode: state.currentIntentMode || '点到为止', autoContinueConfig } }));
           } catch (error) {
             console.warn('battle-ui-intent-submit dispatch failed', error);
           }
 
           if (typeof onPlayerAttack === 'function') {
             try {
-              const engineResult = onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止' }) || {};
+              const engineResult = onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止', autoContinueConfig }) || {};
               if (typeof syncFromBattleEngine === 'function') syncFromBattleEngine();
               result = {
                 ...engineResult,
@@ -37122,6 +37645,7 @@ class BattleUIComponent {
           if (state.pendingTowerSettlement) return { ok: false, mode: 'tower_pending_choice' };
           const previewBtn = byId('ui-battle-preview');
           const battleMode = state.currentMode === 'multi_round' ? 'multi_round' : 'single_round';
+          const autoContinueConfig = 读取界面自动续推设置(state);
           state.combatData.战斗意图 = state.currentIntentMode || '点到为止';
           const queue = 读取可提交战斗动作队列(state);
           if (!queue.length) {
@@ -37145,6 +37669,7 @@ class BattleUIComponent {
               intentMode: state.currentIntentMode || '点到为止',
               dryRun: true,
               combatData: state.combatData,
+              autoContinueConfig,
             });
             window.BattleUI.state.previewResult = result;
             window.__LWCS_LAST_BATTLE_PREVIEW__ = result;
