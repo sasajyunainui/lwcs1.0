@@ -18190,8 +18190,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: minmax(210px, 0.78fr) minmax(260px, 1.22fr) minmax(230px, 1fr);
   grid-template-rows: auto;
   grid-template-areas: 'core spirit side';
-  height: auto;
-  min-height: 0;
+  height: 100%;
+  min-height: 100%;
   align-self: start;
   align-items: stretch;
   align-content: start;
@@ -18222,7 +18222,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
   flex-direction: column;
   align-self: stretch;
   min-height: 52px;
-  height: auto;
+  height: 100%;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'] {
@@ -19213,9 +19213,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-spirit-name span {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   --archive-ring-field-width: min(244px, 100%);
-  --archive-ring-field-height: clamp(138px, 20cqw, 188px);
+  --archive-ring-field-height: clamp(188px, 32cqw, 276px);
+  --archive-ring-stage-height: clamp(168px, 74%, 244px);
+  --archive-ring-top-gap: clamp(18px, 6%, 28px);
+  --archive-ring-bottom-gap: clamp(18px, 7%, 30px);
   --archive-ring-center-x: var(--魂环视觉中心-x);
-  --archive-ring-center-y: var(--魂环视觉中心-y);
+  --archive-ring-center-y: 50%;
   position: relative;
   isolation: isolate;
   display: grid;
@@ -19224,6 +19227,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory {
   min-width: 0;
   min-height: var(--archive-ring-field-height);
   height: 100%;
+  padding-block: var(--archive-ring-top-gap) var(--archive-ring-bottom-gap);
   overflow: visible;
 }
 
@@ -19304,7 +19308,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-sou
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview {
   --ring-size: var(--武魂魂环尺寸);
   --ring-stage-width: var(--archive-ring-field-width);
-  --ring-stage-height: 100%;
+  --ring-stage-height: var(--archive-ring-stage-height);
   --ring-anchor-rail-width: var(--武魂锚点轨宽);
   --ring-anchor-line-width: 42px;
   position: absolute;
@@ -19312,8 +19316,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   left: calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x));
   top: var(--archive-ring-center-y);
   width: var(--archive-ring-field-width);
-  height: 100%;
-  min-height: 100%;
+  height: var(--archive-ring-stage-height);
+  min-height: var(--archive-ring-stage-height);
   isolation: isolate;
   overflow: visible;
   transform: translate(-50%, -50%);
@@ -19323,16 +19327,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-
   position: relative;
   z-index: 2;
   width: var(--archive-ring-field-width);
-  height: 100%;
-  min-height: 100%;
+  height: var(--archive-ring-stage-height);
+  min-height: var(--archive-ring-stage-height);
   min-width: var(--archive-ring-field-width);
   transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-stage {
   width: var(--archive-ring-field-width);
-  height: 100%;
-  min-height: 100%;
+  height: var(--archive-ring-stage-height);
+  min-height: var(--archive-ring-stage-height);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory .mvu-soul-ring-showcase--overview .mvu-soul-ring-anchor-rail {
@@ -19356,7 +19360,10 @@ body.mvu-layout-holo
   .mvu-archive-spirit-stage--single
   .mvu-archive-ring-observatory {
   --archive-ring-field-width: min(286px, 100%);
-  --archive-ring-field-height: clamp(178px, 30cqw, 252px);
+  --archive-ring-field-height: clamp(260px, 52cqw, 388px);
+  --archive-ring-stage-height: clamp(228px, 78%, 344px);
+  --archive-ring-top-gap: clamp(20px, 7%, 32px);
+  --archive-ring-bottom-gap: clamp(24px, 9%, 38px);
 }
 
 body.mvu-layout-holo
@@ -20822,7 +20829,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-    min-height: clamp(280px, 62cqw, 380px);
+    min-height: clamp(360px, 78cqw, 520px);
   }
 }
 
@@ -20832,7 +20839,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-    min-height: clamp(260px, 68cqw, 360px);
+    min-height: clamp(400px, 96cqw, 620px);
   }
 }
 
