@@ -9853,10 +9853,12 @@ class BattleUIComponent {
       const stateName = String(effect?.副作用状态 || BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP[副作用类型] || 副作用类型 || '反噬').trim();
       if (!targetChar.状态效果) targetChar.状态效果 = {};
       const nextCalc = mergeCombatEffectMaps(createEmptyCombatEffectMap(), 战斗效果);
+      清理非生命流失状态伤害字段(stateName, nextCalc);
       const 副作用状态条目 = {
         类型: 'debuff',
         状态: stateName,
         状态名称: stateName,
+        __本回合新附加: true,
         层数: 1,
         描述: `由[${sourceName || '技能'}]触发`,
         duration,
@@ -10098,6 +10100,37 @@ class BattleUIComponent {
         读取战斗数值是否百分比(effect?.数值)
       ) return Math.max(0, -读取战斗数值正负(effect?.数值));
       return Math.max(0, Number(effect?.计算层效果?.dot_damage_ratio || 0));
+    }
+
+    const 非生命流失状态名集合 = new Set([
+      '位移限制',
+      '迟缓',
+      '眩晕',
+      '沉默',
+      '致盲',
+      '封技',
+      '禁疗',
+      '防御剥夺',
+      '精神抗性剥夺',
+      '标记',
+      '嘲讽',
+      '护卫',
+      '僵直',
+      '失控',
+      '精神紊乱',
+      '虚弱',
+    ]);
+
+    function 状态名禁止生命流失(状态名 = '') {
+      const 名称 = String(状态名 || '').trim();
+      return 非生命流失状态名集合.has(名称);
+    }
+
+    function 清理非生命流失状态伤害字段(状态名 = '', 战斗效果 = {}) {
+      if (!战斗效果 || typeof 战斗效果 !== 'object' || !状态名禁止生命流失(状态名)) return 战斗效果;
+      战斗效果.dot_damage = 0;
+      战斗效果.dot_damage_ratio = 0;
+      return 战斗效果;
     }
 
     function 估算单位持续伤害数值(单位 = {}, effect = {}) {
@@ -14665,6 +14698,82 @@ class BattleUIComponent {
         断言战斗回归夹具(!/\[状态结算\].*(位移限制|中毒)/.test(settleLog), `完全闪避后本回合状态跳伤仍触发:${settleLog}`);
         日志.push(`完全闪避不落负面状态成立:${result?.desc || ''}`);
       });
+      注册('位移限制不结算生命流失', 日志 => {
+        const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
+        玩家.HP = 1000;
+        玩家.hp = 1000;
+        玩家.HP上限 = 1000;
+        玩家.hp_max = 1000;
+        玩家.状态效果 = {
+          位移限制: {
+            类型: 'debuff',
+            状态名称: '位移限制',
+            duration: 1,
+            战斗效果: { ...createEmptyCombatEffectMap(), dot_damage: 16, dot_damage_ratio: 0.2, cast_speed_penalty: 0.2 },
+          },
+          中毒: {
+            类型: 'debuff',
+            状态名称: '中毒',
+            duration: 1,
+            战斗效果: { ...createEmptyCombatEffectMap(), dot_damage: 16 },
+          },
+        };
+        const result = settleConditionsAtRoundEnd(玩家, '玩家', combatData);
+        断言战斗回归夹具(!/位移限制.*损失/.test(result.log || ''), `位移限制误触发生命流失:${result.log}`);
+        断言战斗回归夹具(/中毒.*损失\s*16/.test(result.log || ''), `中毒持续伤害未正常结算:${result.log}`);
+        断言战斗回归夹具(Number(玩家.hp) === 984, `位移限制和中毒疑似重复扣血:${玩家.hp};${result.log}`);
+        日志.push(`位移限制不再复用中毒跳伤:${result.log}`);
+      });
+      注册('完整闪避链不触发本次状态结算', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.agi = 20;
+        玩家.men_max = 20;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.agi = 9999;
+        敌人.final = buildCombatFinalStats(敌人);
+        const 闪避可躲控制 = normalizeSkillData({
+          name: '夹具毒刃牵制',
+          魂技名: '夹具毒刃牵制',
+          技能分类: '输出',
+          目标: '敌方单体',
+          消耗: '无',
+          前摇: 1,
+          _效果数组: [
+            { 原型: '伤害结算', 目标: '敌方单体', 生效方式: '独立生效', 威力倍率: 120, 伤害类型: '近身攻击' },
+            { 原型: '状态施加', 目标: '敌方单体', 生效方式: '独立生效', 状态: '位移限制', 状态名称: '位移限制', 持续回合: 1, 计算层效果: { cast_speed_penalty: 0.1, dot_damage: 16 } },
+            { 原型: '状态施加', 目标: '敌方单体', 生效方式: '独立生效', 状态: '中毒', 状态名称: '中毒', 持续回合: 1, 计算层效果: { dot_damage: 16 } },
+          ],
+        }, '夹具毒刃牵制');
+        玩家.第1武魂.第1魂环.第1魂技 = 闪避可躲控制;
+        const entry = {
+          actor_name: '夹具玩家',
+          action_type: '释放魂技',
+          skill: { 魂技名: '夹具毒刃牵制', name: '夹具毒刃牵制', 消耗: '无' },
+          __魂环路径: ['第1武魂', '第1魂环'],
+          __魂技槽位: '第1魂技',
+          target_name: '夹具敌人',
+        };
+        const 原随机 = Math.random;
+        let result = null;
+        try {
+          Math.random = () => 0;
+          使用战斗回归桥接(combatData, { 夹具玩家: 玩家, 夹具敌人: 敌人 }, () => {
+            result = onPlayerAttack(`夹具毒刃牵制\n[动作队列]${JSON.stringify([entry])}[/动作队列]`, {
+              dryRun: true,
+              mode: 'single_round',
+              combatData,
+              intentMode: '点到为止',
+            });
+          });
+        } finally {
+          Math.random = 原随机;
+        }
+        const logText = String(result?.logs?.join(' ') || result?.publicReport || '');
+        断言战斗回归夹具(/主动闪避|绝对闪避|没有命中|规避了本次攻击/.test(logText), `完整链未形成完全闪避:${logText}`);
+        断言战斗回归夹具(!/\[状态施加\].*(位移限制|中毒)|施加了\[(?:位移限制|中毒)\]/.test(logText), `完全闪避后仍施加本次状态:${logText}`);
+        断言战斗回归夹具(!/\[状态结算\].*(位移限制|中毒)|受【(?:位移限制|中毒)】影响/.test(logText), `完全闪避后仍触发本次状态结算:${logText}`);
+        日志.push(`完整闪避链未触发本次状态结算:${logText}`);
+      });
       注册('群体攻击逐目标独立命中', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         敌人.name = '高速敌';
@@ -14778,6 +14887,37 @@ class BattleUIComponent {
         断言战斗回归夹具(hit.未闭合起招.length === 0 && hit.命中.length === 1 && hit.状态施加.length === 1, `命中状态链账本异常:${JSON.stringify(hit)}`);
         日志.push('闭环账本可区分断链、闪避闭合、命中状态闭合');
       });
+      注册('空效果技能不留下未闭合起招', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.第1武魂.第1魂环.第1魂技 = normalizeSkillData({
+          name: '空壳第一魂技',
+          魂技名: '空壳第一魂技',
+          技能分类: '输出',
+          目标: '敌方单体',
+          消耗: '无',
+          前摇: 1,
+          _效果数组: [],
+        }, '空壳第一魂技');
+        const entry = {
+          actor_name: '夹具玩家',
+          action_type: '释放魂技',
+          skill: { 魂技名: '空壳第一魂技', name: '空壳第一魂技', 消耗: '无' },
+          __魂环路径: ['第1武魂', '第1魂环'],
+          __魂技槽位: '第1魂技',
+          target_name: 敌人.name,
+        };
+        const result = onPlayerAttack(`空壳第一魂技\n[动作队列]${JSON.stringify([entry])}[/动作队列]`, {
+          dryRun: true,
+          mode: 'single_round',
+          combatData,
+          intentMode: '点到为止',
+        });
+        const logText = String(result?.logs?.join(' ') || '');
+        const ledger = result?.closedLoopLedger || {};
+        断言战斗回归夹具(/施法失败.*缺少可结算效果/.test(logText), `空效果技能未显式失败:${logText}`);
+        断言战斗回归夹具(!(ledger.未闭合起招 || []).length, `空效果技能留下未闭合起招:${JSON.stringify(ledger.未闭合起招 || [])}`);
+        日志.push(`空效果技能闭合为施法失败:${logText}`);
+      });
       注册('自动续推不复用首轮手选魂技', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.HP = 99999;
@@ -14829,7 +14969,7 @@ class BattleUIComponent {
         断言战斗回归夹具(!/错误缓存第一魂技|9999/.test(String(result?.logs?.join(' ') || result?.publicReport || '')), '自动续推串用首轮缓存技能');
         日志.push(`自动续推未复用首轮手选魂技，推进${result?.roundsExecuted || 0}回合`);
       });
-      注册('自动续推设置控制最大回合与阈值', 日志 => {
+      注册('自动续推设置控制最大回合与伤害停推', 日志 => {
         const 构建低烈度战斗 = () => {
           const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
           玩家.HP = 99999;
@@ -14889,9 +15029,9 @@ class BattleUIComponent {
           Math.random = 原随机;
         }
         断言战斗回归夹具(Number(maxRoundResult?.roundsExecuted || 0) === 2, `自定义最大回合未生效:${maxRoundResult?.logs?.join(' ') || ''}`);
-        断言战斗回归夹具(Number(thresholdResult?.roundsExecuted || 0) === 1, `自定义停推阈值未生效:${thresholdResult?.logs?.join(' ') || ''}`);
-        断言战斗回归夹具(/已达0%阈值/.test(String(thresholdResult?.logs?.join(' ') || '')), `停推阈值日志缺失:${thresholdResult?.logs?.join(' ') || ''}`);
-        日志.push('自动续推最大回合、停推阈值与续推概率均可由运行时设置控制');
+        断言战斗回归夹具(Number(thresholdResult?.roundsExecuted || 0) === 1, `自定义伤害停推未生效:${thresholdResult?.logs?.join(' ') || ''}`);
+        断言战斗回归夹具(/伤害已达生命占比0%/.test(String(thresholdResult?.logs?.join(' ') || '')), `伤害停推日志缺失:${thresholdResult?.logs?.join(' ') || ''}`);
+        日志.push('自动续推最大回合、伤害停推与续推概率均可由运行时设置控制');
       });
       注册('资源镜像回合尾同步', 日志 => {
         const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
@@ -15541,7 +15681,7 @@ class BattleUIComponent {
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
-    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '闭环账本标记未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与阈值', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
+    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '完全闪避不落本次攻击负面状态', '位移限制不结算生命流失', '完整闪避链不触发本次状态结算', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '闭环账本标记未闭合起招', '空效果技能不留下未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与伤害停推', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
 
     function 读取事件链状态(container = null) {
@@ -18280,10 +18420,15 @@ class BattleUIComponent {
         Object.keys(conditionMap).forEach(key => {
           let cond = conditionMap[key];
           if (!cond) return;
+          if (cond.__本回合新附加 === true) {
+            delete cond.__本回合新附加;
+            return;
+          }
 
           let combatEffects = cond.战斗效果 || {};
           const sideEffects = normalizeBattleSkillSideEffectList(cond.副作用列表 || []);
-          let dot = 估算单位持续伤害数值(char, cond);
+          const 状态结算名 = String(cond?.状态名称 || cond?.状态 || key || '').trim();
+          let dot = 状态名禁止生命流失(状态结算名) ? 0 : 估算单位持续伤害数值(char, cond);
           let hotHealRatio = Math.max(0, Number(combatEffects.hot_heal_ratio || 0));
           if (dot > 0) {
             if (读取资源变化抹消规则(char, '生命')) {
@@ -22103,12 +22248,12 @@ class BattleUIComponent {
               const continueThresholdReached = 本轮攻防烈度 >= 自动续推设置.stopDamageRatio;
               if (continueThresholdReached) {
                 continueSimulation = false;
-                roundLog += ` [续推终止] 本回合攻防烈度${Math.round(本轮攻防烈度 * 100)}%已达${Math.round(自动续推设置.stopDamagePercent)}%阈值，暗箱续推停止。`;
+                roundLog += ` [续推终止] 本回合伤害已达生命占比${Math.round(自动续推设置.stopDamagePercent)}%，暗箱续推停止。`;
               } else {
                 const continueRoll = Math.random();
                 const continueHit = continueRoll < 自动续推设置.continueChance;
                 continueSimulation = continueHit;
-                roundLog += ` [续推判定] 本回合攻防烈度${Math.round(本轮攻防烈度 * 100)}%未达${Math.round(自动续推设置.stopDamagePercent)}%阈值，按${Math.round(自动续推设置.continueChancePercent)}%概率续推。Roll:${continueRoll.toFixed(2)} 判定:${continueHit ? '继续' : '停止'}。`;
+                roundLog += ` [续推判定] 本回合伤害约为生命占比${Math.round(本轮攻防烈度 * 100)}%，未达到${Math.round(自动续推设置.stopDamagePercent)}%，按${Math.round(自动续推设置.continueChancePercent)}%概率续推。Roll:${continueRoll.toFixed(2)} 判定:${continueHit ? '继续' : '停止'}。`;
               }
             }
           }
@@ -26948,6 +27093,43 @@ class BattleUIComponent {
               (attackerIsBlinded ? 0.35 : 0);
 
         let remainPower = pClash.威力倍率 || 0;
+        const 有可结算战斗效果 =
+          Number(remainPower || 0) > 0 ||
+          (pState.状态名称 && pState.状态名称 !== '无') ||
+          授予前置效果列表.length > 0 ||
+          [
+            directHealEffect,
+            directSpEffect,
+            directMenEffect,
+            directCleanseEffect,
+            directDispelEffect,
+            directStealBuffEffect,
+            directTauntEffect,
+            directGuardEffect,
+            directShieldBreakEffect,
+            directResourceBurnEffect,
+            directResourceLockEffect,
+            directLifeLinkEffect,
+            directDotExtendEffect,
+            directDotCompressEffect,
+            directDotDetonateEffect,
+            directStatusTransferEffect,
+            directExecuteEffect,
+            directShieldEffect,
+            directSummonEffect,
+            directCopyEffect,
+            directGrantEffect,
+            directMechanismSuppressEffect,
+          ].some(Boolean) ||
+          directStatusRemoveEffects.length > 0 ||
+          directRuleRewriteEffects.length > 0 ||
+          directStateExchangeEffects.length > 0 ||
+          directPrototypeEffects.length > 0;
+        if (!有可结算战斗效果 && !本次为物品动作 && !本次为维持释放 && !本次原始造物技能) {
+          playerAction.action_type = '施法失败';
+          result.desc = `[施法失败] ${attacker.name || '施术者'}的【${skillName || playerAction?.skill?.name || '技能'}】缺少可结算效果，本次动作未落地。`;
+          return result;
+        }
         const 当前来袭窗口 = 读取来袭窗口状态(defender, playerAction);
         const 当前窗口威胁数 = Math.max(1, Math.floor(Number(当前来袭窗口.数量 || 1)));
         if (remainPower > 0 && !targetsFriendlySkill && 消耗来袭窗口对轰覆盖(defender, playerAction)) {
@@ -29633,8 +29815,11 @@ class BattleUIComponent {
                   : Math.floor(状态护盾数值))
                 : 0;
               if (状态护盾值 > 0) scaledCalc.shield_gain_bonus = 0;
+              清理非生命流失状态伤害字段(pState.状态名称, scaledCalc);
               const 新状态条目 = {
                 类型: isBuff ? 'buff' : 'debuff',
+                状态名称: pState.状态名称,
+                __本回合新附加: true,
                 层数: 1,
                 来源技能: playerAction.skill.name || playerAction.skill.魂技名 || '',
                 来源角色: attacker.name || attacker.名称 || '',
@@ -29848,6 +30033,7 @@ class BattleUIComponent {
                 : null;
               const 下一持续 = Math.max(Number(状态施加效果.持续回合 || 0), Number(原状态?.duration || 0));
               const 状态战斗效果 = mergeCombatEffectMaps(createEmptyCombatEffectMap(), 状态施加效果.计算层效果 || {});
+              清理非生命流失状态伤害字段(状态名, 状态战斗效果);
               const 状态护盾数值 = Number(状态战斗效果.shield_gain_bonus || 0);
               const 状态护盾值 = 状态护盾数值 > 0
                 ? (/^[-+]?\d+(?:\.\d+)?%$/.test(String(状态施加效果?.数值 ?? 状态施加效果?.护盾值 ?? '').trim()) || 状态护盾数值 <= 1
@@ -29857,6 +30043,8 @@ class BattleUIComponent {
               if (状态护盾值 > 0) 状态战斗效果.shield_gain_bonus = 0;
               const 新状态条目 = {
                 类型: 是增益 ? 'buff' : 'debuff',
+                状态名称: 状态名,
+                __本回合新附加: true,
                 层数: 1,
                 来源技能: playerAction.skill.name || playerAction.skill.魂技名 || '',
                 来源角色: attacker.name || attacker.名称 || '',
@@ -29894,9 +30082,10 @@ class BattleUIComponent {
             Number(result.totalProjectedDamage || result.dmg || 0) > 0 ||
             (Array.isArray(result.targetResults) && result.targetResults.some(entry => Number(entry?.damage || 0) > 0)) ||
             (pState.状态名称 && pState.状态名称 !== '无' && String(result.desc || '').includes(`施加了[${pState.状态名称}]`));
+          const 本次效果生效成立 = 本次命中成立 || !hasDirectDamageEffect || targetsFriendlySkill;
           const immediateSideEffects = getBattleSkillSideEffectList(playerAction.skill).filter(item => {
             const 触发时机 = String(item?.触发时机 || '').trim();
-            if (触发时机 === '效果生效后') return true;
+            if (触发时机 === '效果生效后') return 本次效果生效成立;
             if (触发时机 === '命中后') return 本次命中成立;
             return false;
           });
@@ -36179,7 +36368,11 @@ class BattleUIComponent {
           同步输入(maxInput, 'maxRounds', 'maxRounds');
           同步输入(thresholdInput, 'stopDamagePercent', 'stopDamagePercent');
           同步输入(chanceInput, 'continueChancePercent', 'continueChancePercent');
-          if (panel) panel.classList.toggle('is-single-round', state.currentMode !== 'multi_round');
+          if (panel) {
+            const 连续模式 = state.currentMode === 'multi_round';
+            panel.hidden = !连续模式;
+            panel.classList.toggle('is-single-round', !连续模式);
+          }
         }
 
         function setUiBattleMode(mode) {

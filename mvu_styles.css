@@ -28753,7 +28753,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
   gap: 9px;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-body[hidden] {
@@ -28791,10 +28792,21 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
   gap: 6px;
   min-width: 0;
   min-height: 0;
+  max-height: 100%;
   overflow: hidden auto;
   padding: 1px 2px 2px;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--战斗强调色) 30%, transparent) transparent;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--战斗强调色) 36%, transparent);
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel[hidden] {
@@ -29125,13 +29137,26 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-terminal
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings,
 #detailModal #mvu-battle-inline-host .battle-auto-continue-settings {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   min-width: 0;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings[hidden],
+#detailModal #mvu-battle-inline-host .battle-auto-continue-settings[hidden] {
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings.is-single-round,
 #detailModal #mvu-battle-inline-host .battle-auto-continue-settings.is-single-round {
   opacity: 0.72;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-auto-continue-settings .battle-terminal-row,
+#detailModal #mvu-battle-inline-host .battle-auto-continue-settings .battle-terminal-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  align-items: stretch;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field,
@@ -29164,7 +29189,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-f
   font-size: 11px;
   font-weight: 780;
   line-height: 1.2;
-  text-align: right;
+  text-align: center;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-number-field input:focus-visible,

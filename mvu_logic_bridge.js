@@ -41545,7 +41545,7 @@ ${播报文本}
                           </div>
                         </div>
                       </div>
-                      <div class="battle-auto-continue-settings" id="ui-auto-continue-settings" aria-label="连续推进设置">
+                      <div class="battle-auto-continue-settings" id="ui-auto-continue-settings" aria-label="连续推进设置" hidden>
                         <div class="battle-terminal-row">
                           <span class="battle-terminal-label">续推上限</span>
                           <label class="battle-number-field">
@@ -41553,9 +41553,9 @@ ${播报文本}
                             <em>回合</em>
                           </label>
                         </div>
-                        <div class="battle-terminal-row">
-                          <span class="battle-terminal-label">停推阈值</span>
-                          <label class="battle-number-field">
+                        <div class="battle-terminal-row" title="单回合伤害达到这个生命百分比，就停止连续推进。">
+                          <span class="battle-terminal-label">停止阈值</span>
+                          <label class="battle-number-field" title="单回合伤害达到这个生命百分比，就停止连续推进。">
                             <input id="ui-auto-stop-threshold" type="number" min="0" max="100" step="1" inputmode="numeric" value="25">
                             <em>%</em>
                           </label>
