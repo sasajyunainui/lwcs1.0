@@ -17556,8 +17556,6 @@ body.mvu-layout-holo
   .mvu-unified-section--dashboard {
   container-name: mvu-archive-dashboard;
   container-type: inline-size;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit-scrollbar {
@@ -18203,7 +18201,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   grid-area: spirit;
-  overflow: visible;
   z-index: 4;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
@@ -18220,7 +18217,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
   display: flex;
   flex-direction: column;
-  align-self: stretch;
   min-height: 52px;
   height: auto;
 }
@@ -18382,12 +18378,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
   --模块魂色: var(--武魂舞台魂色);
   --正文卡片魂影: color-mix(in srgb, var(--模块魂色) 28%, transparent);
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  clip-path: none;
 }
 
 body.mvu-layout-holo
@@ -18460,8 +18450,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card {
+  align-self: stretch;
   gap: 10px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card::before {
@@ -18556,7 +18547,7 @@ body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card:not([data-unified-card='spirit-stage']), .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
   border-color: transparent;
   box-shadow:
     var(--玻璃内折射),
@@ -18567,7 +18558,7 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
-  :where(.mvu-unified-card:not([data-unified-card='spirit-stage']), .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
+  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
   border-color: transparent;
   box-shadow:
     var(--玻璃微切角),
@@ -18597,17 +18588,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-u
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover > *,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:focus-within > * {
   transform: translateZ(var(--视差浮出深度));
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'],
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'],
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
-  padding: 12px;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='spirit-stage'] {
-  overflow: visible;
-  padding-inline: 12px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-skyband {
@@ -19428,15 +19408,6 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-cri
   animation: 金龙危险警报 1s steps(2, end) infinite var(--mvu-holo-loop-play-state, running);
 }
 
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card:not([data-unified-card='spirit-stage']) {
-  box-shadow:
-    var(--玻璃内折射),
-    inset 0 0 0 1px rgba(255, 116, 38, 0.18),
-    0 16px 30px rgba(0, 0, 0, 0.34),
-    var(--面板近距辉光),
-    var(--面板远距辉光);
-}
-
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-spirit-stage {
   --魂环环境中心偏移-x: 0px;
 }
@@ -19470,15 +19441,6 @@ body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-archive-led lab
     0 0 8px rgba(0, 242, 254, 0.58),
     0 0 18px rgba(255, 126, 179, 0.24),
     0 0 30px rgba(0, 242, 254, 0.14);
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card:not([data-unified-card='spirit-stage']) {
-  box-shadow:
-    var(--玻璃微切角),
-    var(--玻璃暗侧阴影),
-    0 16px 30px rgba(0, 0, 0, 0.22),
-    var(--面板近距辉光),
-    var(--面板远距辉光);
 }
 
 body.mvu-layout-holo
@@ -20821,7 +20783,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     height: auto;
     min-height: 0;
     align-self: start;
-    overflow: visible;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-side'] {
@@ -20844,14 +20805,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 @container mvu-dashboard-area (max-width: 740px) {
-  body.mvu-layout-holo
-    #mvu-unified-mount
-    .mvu-unified-page[data-target='page-archive']
-    .mvu-unified-section--dashboard {
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org,
