@@ -18190,8 +18190,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
   grid-template-columns: minmax(210px, 0.78fr) minmax(260px, 1.22fr) minmax(230px, 1fr);
   grid-template-rows: auto;
   grid-template-areas: 'core spirit side';
-  height: 100%;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
   align-self: start;
   align-items: stretch;
   align-content: start;
@@ -18222,7 +18222,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
   flex-direction: column;
   align-self: stretch;
   min-height: 52px;
-  height: 100%;
+  height: auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card='archive-core'] {

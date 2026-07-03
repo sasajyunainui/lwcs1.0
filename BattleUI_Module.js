@@ -25555,7 +25555,8 @@ class BattleUIComponent {
         const 概率文本 = `${Math.round(触发概率 * 100)}%`;
         if (投点 >= 触发概率) {
           const 失败原因 = String(候选.failReason || '').trim();
-          return `[防反错失] ${防反者.name || '防守方'}抓到${候选.防反类型}窗口，但${失败原因 || '未能完成反打'}${失败原因 ? '' : `(概率:${概率文本})`}。`;
+          const 来源动作名 = String(候选.sourceActionName || 候选.sourceActionType || '系统反击').trim() || '系统反击';
+          return `[防反错失] ${防反者.name || '防守方'}尝试以[${来源动作名}]反打，但${失败原因 || '未能完成反打'}${失败原因 ? '' : `(概率:${概率文本})`}。`;
         }
 
         const 防反动作 = 建立行为防反动作(防反者, { ...候选, 触发概率 });
@@ -37832,7 +37833,7 @@ class BattleUIComponent {
             const filled = score <= 0 ? 0 : Math.max(1, Math.min(10, Math.round((Math.max(0, score) / maxScore) * 10)));
             const meter = `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)}`;
             const isChosen = 命中技能 && name === 命中技能;
-            return `<div class="battle-preview-trace-candidate-line"><span class="battle-preview-trace-candidate-label">${渲染判定侧写HTML(`${包裹判定动作名称(name)} ${score}分`, 轨迹)}</span>${isChosen && 命中标签 ? `<span class="battle-preview-trace-hit-tag">${htmlEscapeText(命中标签)}</span>` : ''}</div><div class="battle-preview-trace-candidate-bar">${htmlEscapeText(meter)}</div>`;
+            return `<div class="battle-preview-trace-candidate-line"><span class="battle-preview-trace-candidate-label">${渲染判定侧写HTML(`${包裹判定动作名称(name)} ${score}分`, 轨迹)}</span>${isChosen && 命中标签 ? ` <span class="battle-preview-trace-hit-tag">${htmlEscapeText(命中标签)}</span>` : ''}</div><div class="battle-preview-trace-candidate-bar">${htmlEscapeText(meter)}</div>`;
           }).join('')}</div>`;
         }
 
@@ -38216,6 +38217,26 @@ class BattleUIComponent {
                   sourceActionType: 'counter',
                   damage: Math.max(0, Number(success[4] || 0)),
                   result: 'success',
+                };
+              }
+              const failByAction = text.match(/\[防反错失\]\s*([^尝，。！？\s]+)尝试以(?:\[|【)?([^\]】。，！？]+)(?:\]|】)?反打，但([^。！？\n]+?)(?:[。！？]|$)/);
+              if (failByAction) {
+                return {
+                  type: '防反机制',
+                  类型: '防反机制',
+                  rawText: String(failByAction[0] || '').trim(),
+                  actor: String(failByAction[1] || '').trim(),
+                  行动者: String(failByAction[1] || '').trim(),
+                  target: '',
+                  目标: '',
+                  round: currentRound,
+                  回合: currentRound,
+                  roundPhase: 'action_result',
+                  phaseBucket: 'action_result',
+                  sourceActionName: normalizeBattleActionDisplayName(failByAction[2] || ''),
+                  sourceActionType: 'counter',
+                  failReason: String(failByAction[3] || '').trim(),
+                  result: 'fail',
                 };
               }
               const fail = text.match(/\[防反错失\]\s*([^抓，。！？\s]+)抓到([^窗，。！？\s]+)窗口，但([^。！？\n]+?)(?:[。！？]|$)/);
