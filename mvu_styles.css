@@ -28892,6 +28892,53 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   overflow-wrap: anywhere;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-skill {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: color-mix(in srgb, var(--战斗警戒色) 76%, #ffffff);
+  background: transparent;
+  font: inherit;
+  font-weight: 780;
+  line-height: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-skill:hover,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-skill:focus-visible {
+  color: color-mix(in srgb, #ffffff 82%, var(--战斗强调色));
+  outline: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: color-mix(in srgb, var(--战斗警戒色) 76%, #ffffff);
+  background: transparent;
+  font: inherit;
+  font-weight: 780;
+  line-height: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill:hover,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill:focus-visible,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill:hover,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-skill:focus-visible {
+  color: color-mix(in srgb, #ffffff 82%, var(--战斗强调色));
+  outline: none;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace summary {
   color: var(--战斗强调色);
   font-size: var(--战斗记录正文字号);
