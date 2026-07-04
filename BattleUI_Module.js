@@ -16703,6 +16703,29 @@ class BattleUIComponent {
         断言战斗回归夹具(/缚影压制|收招转防|反敏攻/.test(`${动作名} ${action?.decision_log || ''}`), `敏攻压制态势下未切反敏攻动作:${动作名};${action?.decision_log || ''}`);
         日志.push(`敏攻压制态势已避开直伤硬追:${动作名}`);
       });
+      注册('行为链换招不泄漏占位技能名', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.type = '强攻系';
+        玩家.agi = 80;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.type = '敏攻系';
+        敌人.agi = 999;
+        敌人.final = buildCombatFinalStats(敌人);
+        玩家.第1武魂 = {
+          表象名称: '夹具武魂',
+          第1魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('贴身冲拳', '敌方单体', 8, 88, '近身攻击'), '贴身冲拳'),
+          },
+        };
+        const logs = buildReadableBattleReportLines([
+          '[团战第1回合开始]',
+          '[第1回合] [起招] 唐凌雪以[贴身冲拳]起招。 [应招] 韦小枫以[伺机闪避]应对。 [主动闪避] 韦小枫凭借敏捷优势惊险躲过了攻击。',
+          '[团战第2回合开始]',
+          '[第2回合] [起招] 韦小枫以[第1魂技]起招。 [应招] 唐凌雪以[收招转防]应对。'
+        ], 8, { combatData }).join('\n');
+        断言战斗回归夹具(!/换招技能|未命名技能/.test(logs), `公开战报泄漏内部占位技能名:${logs}`);
+        日志.push('行为链换招未再泄漏占位技能名');
+      });
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
@@ -22048,7 +22071,11 @@ class BattleUIComponent {
       }
 
       function newSkillData(skill = {}) {
-        return skill && typeof skill === 'object' ? normalizeSkillData(skill, skill.name || skill.技能名称 || '换招技能') : {};
+        if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
+        const 技能名 = String(skill.name || skill.魂技名 || skill.技能名称 || '').trim();
+        const 效果数组 = Array.isArray(skill._效果数组) ? skill._效果数组.filter(Boolean) : [];
+        if (!技能名 && !效果数组.length) return null;
+        return normalizeSkillData(skill, 技能名 || '未命名技能');
       }
 
       function 计算换招成功率(先手 = {}, 后手 = {}, 原动作 = {}, 新技能 = {}, 窗口 = 0) {
@@ -22338,7 +22365,12 @@ class BattleUIComponent {
         const 当前资源压力 = 1 - 限制行为概率((Number(单位.sp || 0) + Number(单位.men || 0) + Number(单位.sta ?? 单位.vit ?? 0)) / Math.max(1, Number(单位.sp_max || 0) + Number(单位.men_max || 0) + Number(单位.sta_max ?? 单位.vit_max ?? 0)), 0, 1);
         const 候选 = collectCombatSkills(单位, 队伍)
           .map(skill => newSkillData(skill))
-          .filter(skill => skill && String(skill.name || skill.魂技名 || '').trim() && String(skill.name || skill.魂技名 || '').trim() !== 原技能名)
+          .filter(skill =>
+            skill &&
+            String(skill.name || skill.魂技名 || '').trim() &&
+            String(skill.name || skill.魂技名 || '').trim() !== 原技能名 &&
+            !/^换招技能|未命名技能$/.test(String(skill.name || skill.魂技名 || '').trim())
+          )
           .filter(skill => 技能可进入换招候选池(单位, skill))
           .map(skill => {
             const 克制评分 = 限制行为概率((Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0) / 320) + (isBattleSkillDefensiveProfile(skill) ? 0.25 : 0) + (isBattleSkillControlProfile(skill) ? 0.25 : 0), 0, 1);
@@ -22392,6 +22424,7 @@ class BattleUIComponent {
             skill &&
             String(skill.name || skill.魂技名 || '').trim() &&
             String(skill.name || skill.魂技名 || '').trim() !== 原技能名 &&
+            !/^换招技能|未命名技能$/.test(String(skill.name || skill.魂技名 || '').trim()) &&
             技能可进入换招候选池(单位, skill)
           );
       }
@@ -22995,6 +23028,7 @@ class BattleUIComponent {
         let 撤离结算结果 = '';
         let 本次最大单击HP比例 = 0;
         let 首轮手选动作签名 = '';
+        let 首轮手选技能名 = '';
         const 读取本次动作签名 = 动作 => {
           const 技能 = 动作?.skill || {};
           const 技能名 = String(技能.name || 技能.魂技名 || 动作?.action_type || 动作?.type || '').trim();
@@ -23008,12 +23042,29 @@ class BattleUIComponent {
           const targets = chooseTargetForActor(actorEntry, { combatData });
           const autoAction = buildAutoActionForActor(actorEntry, targets || { enemyTarget: defender, allyTarget: attacker }, { combatData });
           if (!autoAction) return null;
-          if (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) {
-            const fallback = parsePlayerIntent('普通攻击', combatData);
-            fallback.player_auto_continuation = true;
-            fallback.target_name = targets?.enemyTarget?.name || defender?.name || '';
-            fallback.decision_log = `[自动续推] 首轮手选魂技已经完成，本回合重新规划为普通攻击。`;
-            return fallback;
+          const 自动技能名 = String(autoAction?.skill?.name || autoAction?.skill?.魂技名 || autoAction?.type || autoAction?.action_type || '').trim();
+          if (
+            (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) ||
+            (首轮手选技能名 && 自动技能名 && 自动技能名 === 首轮手选技能名)
+          ) {
+            return {
+              action_type: '收招转防',
+              type: '收招转防',
+              skill: normalizeSkillData({
+                name: '收招转防',
+                魂技名: '收招转防',
+                技能分类: '防御',
+                目标: '自身',
+                消耗: '无',
+                前摇: 4,
+                _效果数组: [],
+              }, '收招转防'),
+              cast_time: 4,
+              target_name: attacker?.name || '',
+              player_auto_continuation: true,
+              decision_log: `[自动续推] 首轮手选魂技已经完成，本回合不再重复沿用【${首轮手选技能名 || 自动技能名 || '首轮魂技'}】，改为收招转防。`,
+              def_mult: 1,
+            };
           }
           return {
             ...autoAction,
@@ -23087,6 +23138,7 @@ class BattleUIComponent {
               (playerAction?.action_type === '释放魂技' || Array.isArray(playerAction?.skill?.__魂环路径))
             ) {
               首轮手选动作签名 = 读取本次动作签名(playerAction);
+              首轮手选技能名 = String(playerAction?.skill?.name || playerAction?.skill?.魂技名 || '').trim();
             }
             const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
             const 指定敌方目标 = 玩家动作目标 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 玩家动作目标.name || 玩家动作目标))
@@ -35408,6 +35460,13 @@ class BattleUIComponent {
               return false;
             });
           };
+          const 技能属于明确反敏攻技能 = 技能 => {
+            if (!技能) return false;
+            if (isBattleSkillControlProfile(技能)) return true;
+            if (isBattleSkillReactiveDefenseProfile(技能) || isBattleSkillDefensiveProfile(技能)) return true;
+            if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return true;
+            return /群体|全场/.test(String(getSkillTarget(技能) || '').trim());
+          };
           const 技能属于敏攻陷阱动作 = 技能 => {
             if (!技能) return /普通攻击|常规攻击/.test(String(技能 || ''));
             if (!技能具备伤害原型(技能)) return false;
@@ -35418,6 +35477,19 @@ class BattleUIComponent {
           };
           const 动作属于敏攻陷阱动作 = 动作 => {
             const 动作名 = normalizeBattleActionDisplayName(动作?.skill?.name || 动作?.skill?.魂技名 || 动作?.type || 动作?.action_type || '');
+            const 动作类型 = String(动作?.type || 动作?.action_type || '').trim();
+            if (/短前摇对轰|强势对轰|主动压迫/.test(动作类型)) {
+              const 目标文本 = String(getSkillTarget(动作?.skill || {}) || '').trim();
+              const 技能分类 = String(动作?.skill?.技能分类 || '').trim();
+              if (
+                !技能属于明确反敏攻技能(动作?.skill || null) ||
+                (
+                  /输出|强攻|敏攻|破防/.test(技能分类) &&
+                  !/群体|全场/.test(目标文本) &&
+                  技能具备伤害原型(动作?.skill || null)
+                )
+              ) return true;
+            }
             if (/普通攻击|常规攻击|主动压迫|低风险/.test(动作名)) return true;
             return 技能属于敏攻陷阱动作(动作?.skill || null);
           };
@@ -35436,7 +35508,7 @@ class BattleUIComponent {
                 return 名称 && 列表.findIndex(候选 => String(候选?.name || 候选?.魂技名 || 候选?.技能名称 || '').trim() === 名称) === index;
               })
               .filter(技能 => !技能属于敏攻陷阱动作(技能))
-              .filter(技能 => 技能具备反敏攻价值(技能) || isBattleSkillReactiveDefenseProfile(技能) || isBattleSkillDefensiveProfile(技能))
+              .filter(技能 => 技能属于明确反敏攻技能(技能))
               .filter(技能 => parseSkillCostForChar(技能, actor, {
                 actor,
                 caster: actor,
@@ -35452,49 +35524,11 @@ class BattleUIComponent {
                 return Number(技能评分查找.get(右名) || 0) - Number(技能评分查找.get(左名) || 0);
               })[0] || null;
             if (明确反敏攻首选) return 明确反敏攻首选;
-            const 备选技能 = [
-              skillContext.controlSkill,
-              skillContext.interruptSkill,
-              选取范围压制技能(availableSkills),
-              skillContext.reactiveDefenseSkill,
-              skillContext.defSkill,
-              skillContext.pierceSkill,
-              ...(skillContext.评分技能列表 || []).map(项目 => 项目?.skill),
-              ...(availableSkills || []),
-            ]
-              .map(skill => newSkillData(skill))
-              .filter(Boolean)
-              .filter((技能, index, 列表) => {
-                const 名称 = String(技能.name || 技能.魂技名 || 技能.技能名称 || '').trim();
-                return 名称 && 列表.findIndex(候选 => String(候选?.name || 候选?.魂技名 || 候选?.技能名称 || '').trim() === 名称) === index;
-              })
-              .filter(技能 => parseSkillCostForChar(技能, actor, {
-                actor,
-                caster: actor,
-                target: enemyTarget,
-                defender: enemyTarget,
-                skill: 技能,
-                combatData: battleState.combatData,
-                当前行动: '反敏攻调整',
-              }).canCast !== false)
-              .map(技能 => {
-                const 名称 = String(技能.name || 技能.魂技名 || 技能.技能名称 || '').trim();
-                const 目标文本 = String(getSkillTarget(技能) || '').trim();
-                const 分值 =
-                  Number(技能评分查找.get(名称) || 0) +
-                  (技能具备反敏攻价值(技能) ? 80 : 0) +
-                  (/群体|全场/.test(目标文本) ? 40 : 0) +
-                  (isBattleSkillReactiveDefenseProfile(技能) || isBattleSkillDefensiveProfile(技能) ? 18 : 0) -
-                  (技能属于敏攻陷阱动作(技能) ? 90 : 0);
-                return { 技能, 分值 };
-              })
-              .sort((左, 右) => Number(右.分值 || 0) - Number(左.分值 || 0));
-            const 命中 = 备选技能.find(item => !技能属于敏攻陷阱动作(item.技能));
-            return 命中?.技能 || null;
+            return null;
           };
           if (稳定反敏攻牵制) {
             const 入口反敏攻技能 = 选择反敏攻技能();
-            if (入口反敏攻技能 && (技能具备反敏攻价值(入口反敏攻技能) || isBattleSkillReactiveDefenseProfile(入口反敏攻技能) || isBattleSkillDefensiveProfile(入口反敏攻技能))) {
+            if (入口反敏攻技能 && !技能属于敏攻陷阱动作(入口反敏攻技能) && 技能属于明确反敏攻技能(入口反敏攻技能)) {
               recordActorActionMemory(actor, 入口反敏攻技能.name || 入口反敏攻技能.技能名称 || '反敏攻压制');
               return convertDecisionToTurnAction(
                 makeActorAction(
