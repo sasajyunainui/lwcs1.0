@@ -5258,7 +5258,9 @@ class BattleUIComponent {
 
     function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0, eventLedger = null } = {}) {
       const ledgerLines = 构建事件账本公开战报行(eventLedger || combatData?.__battleEventLedger || [], 8, { combatData });
-      const lines = ledgerLines.length ? ledgerLines : buildReadableBattleReportLines(battleLog, 8, { combatData });
+      const lines = ledgerLines.length
+        ? ledgerLines
+        : ['[公开战报生成失败] 本次结算缺少事件账本，已阻断旧 battleLog 回退链路。'];
       const header = `本轮战斗已由战斗模块完成结算：${modeLabel || '战斗'}，共推进 ${Math.max(0, Number(roundCount || 0))} 回合。`;
       const outcome = `当前结果：${battleOutcome?.label || battleOutcome?.type || combatData?.裁断结果 || '未分胜负'}。`;
       const intent = combatData?.战斗意图 ? `战斗意图：${combatData.战斗意图}。` : '';
@@ -16577,7 +16579,11 @@ class BattleUIComponent {
         let result = null;
         使用战斗回归桥接(combatData, { 夹具玩家: 玩家, 夹具敌人: 敌人 }, () => {
           costLog = applyActionCost(玩家, action, 敌人, combatData);
-          result = executeClash(action, 构建单挑配合动作(玩家, 敌人, action), 构建单挑临时战斗数据(玩家, 敌人, 'player', combatData));
+          result = executeClash(
+            action,
+            构建单挑反应动作({ action_type: '无法反应', type: '无法反应' }, 敌人, 玩家),
+            构建单挑临时战斗数据(玩家, 敌人, 'player', combatData),
+          );
         });
         断言战斗回归夹具(/战前消耗/.test(costLog), `控制完成未扣费:${costLog}`);
         断言战斗回归夹具(Number(玩家.sp) === 1880 && Number(玩家.魂力) === 1880, `控制扣费异常:${玩家.sp}/${玩家.魂力}`);
@@ -16883,6 +16889,19 @@ class BattleUIComponent {
         断言战斗回归夹具(/夹具敌人施展【普通攻击】指向夹具玩家/.test(text), `普攻目标未指向玩家:${text}`);
         断言战斗回归夹具(!/夹具敌人施展【普通攻击】指向夹具敌人/.test(text), `公开战报仍自指普攻:${text}`);
         日志.push(`公开战报普攻目标正确:${text}`);
+      });
+      注册('缺事件账本不再回退旧战报解析', 日志 => {
+        const text = buildPublicBattleReportBlock({
+          battleLog: ['[第1回合] [起招] 夹具玩家以[裂地冲拳]起招。 [命中结算] 夹具玩家对夹具敌人造成 120 点最终伤害。'],
+          combatData: { 战斗意图: '点到为止', 裁断结果: '未分胜负' },
+          battleOutcome: { type: 'single_round_probe', label: '单回合试探' },
+          modeLabel: '单回合',
+          roundCount: 1,
+          eventLedger: [],
+        });
+        断言战斗回归夹具(/\[公开战报生成失败\]/.test(text), `缺事件账本时仍回退旧战报解析:${text}`);
+        断言战斗回归夹具(!/裂地冲拳/.test(text), `缺事件账本时仍泄漏旧battleLog文本:${text}`);
+        日志.push(`缺事件账本已阻断旧解析:${text}`);
       });
       注册('状态结算可追溯附着来源', 日志 => {
         const { combatData } = 构建战斗回归夹具战斗态();
@@ -40442,14 +40461,14 @@ class BattleUIComponent {
         function 提取战斗结果战报行(result = null) {
           const logs = Array.isArray(result?.logs) ? result.logs : [];
           const context = 构建战斗结果展示上下文(result);
-          const fromLogs = buildReadableBattleReportLines(logs, 10, context);
-          if (fromLogs.length) return fromLogs.slice(-10);
+          const fromLedger = 构建事件账本公开战报行(result?.eventLedger || result?.combatData?.__battleEventLedger || [], 10, context);
+          if (fromLedger.length) return fromLedger.slice(-10);
           const reportText = String(result?.publicReport || result?.intentText || result?.aiRequest?.channels?.userInput || '').trim();
           if (!reportText) return [];
           return reportText
             .replace(/<\/?战斗公开战报>/g, '')
             .split(/\n+/)
-            .map(line => 规范化公开战报文本(cleanBattleReportLineForStory(formatNaturalLanguageLog(line)), context))
+            .map(line => 规范化公开战报文本(cleanBattleReportLineForStory(line), context))
             .filter(line => line && !/^本轮战斗已由战斗模块完成结算/.test(line))
             .slice(-10);
         }
