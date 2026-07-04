@@ -1882,8 +1882,23 @@ class BattleUIComponent {
       const 友方 = (目标表.友方 || []).filter(项 => !当前友方.size || 当前友方.has(String(项?.单位?.name || 项?.单位?.名称 || 项?.名称 || '').trim()));
       const 技能类别 = 推断技能规划类别_V1(skill, {}, { actor, target: 默认目标 });
       const 类型 = skill?.__规划主类别 || 技能类别.主类别;
+      const 锁定敌对目标 = 规划上下文?.锁定敌对目标 && typeof 规划上下文.锁定敌对目标 === 'object'
+        ? 规划上下文.锁定敌对目标
+        : null;
+      const 锁定目标有效 =
+        !!锁定敌对目标 &&
+        (typeof isCombatUnitAlive !== 'function' || isCombatUnitAlive(锁定敌对目标)) &&
+        (!当前敌方.size || 当前敌方.has(String(锁定敌对目标?.name || 锁定敌对目标?.名称 || '').trim()));
       if (判定候选固定自身目标_V1(skill, { name: skill?.__规划候选名 || skill?.name || skill?.魂技名 || skill?.技能名称 || '' })) {
         return actor || 默认目标;
+      }
+      if (
+        锁定目标有效 &&
+        !['治疗', '防护'].includes(类型) &&
+        !技能偏向友方目标(skill || {}) &&
+        inferSkillPrimaryTargetKind(skill || {}) !== '自身'
+      ) {
+        return 锁定敌对目标;
       }
       if (['治疗', '防护'].includes(类型)) {
         return 友方.slice().sort((左, 右) => {
@@ -2566,6 +2581,7 @@ class BattleUIComponent {
         );
         const 闪避未中惩罚 = getActorSkillDodgeWhiffPenalty(actor, 技能名, 目标);
         const 技能目标文本 = String(getSkillTarget(skill || {}) || '').trim();
+        const 效果列表 = 读取技能规划效果数组_V1(skill || {}, { actor, target: 目标 });
         const 是单体前压 =
           !固定自身目标 &&
           !技能偏向友方目标(skill || {}, 候选) &&
@@ -2575,7 +2591,35 @@ class BattleUIComponent {
             技能类别.主类别 === '控制' ||
             技能类别.主类别 === '削弱'
           );
-        const 敏攻硬追惩罚 = 目标敏攻拉扯 && 是单体前压 ? 24 + 闪避克制次数 * 12 : 0;
+        const 技能具备反敏攻价值 =
+          !!skill && (
+            (typeof isBattleSkillControlProfile === 'function' && isBattleSkillControlProfile(skill)) ||
+            (typeof hasBattleSkillRuntimeConsumer === 'function' && hasBattleSkillRuntimeConsumer(skill, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) ||
+            /群体|全场/.test(技能目标文本) ||
+            效果列表.some(effect => {
+              const 原型 = String(effect?.原型 || '').trim();
+              const 战斗效果 = effect?.计算层效果 || {};
+              if (['资源锁定', '规则改写', '决策干扰', '判定修正', '时窗修正'].includes(原型)) return true;
+              if (原型 !== '状态施加') return false;
+              return Number(战斗效果.hit_bonus || 0) > 0 ||
+                Number(战斗效果.lock_level || 0) > 0 ||
+                Number(战斗效果.dodge_penalty || 0) > 0 ||
+                Number(战斗效果.cast_speed_penalty || 0) > 0 ||
+                战斗效果.skip_turn === true ||
+                战斗效果.cannot_react === true ||
+                战斗效果.silence === true ||
+                战斗效果.skill_seal === true ||
+                战斗效果.blind === true;
+            })
+          );
+        const 敏攻硬追惩罚 = 目标敏攻拉扯 && 是单体前压
+          ? (
+              技能具备反敏攻价值
+                ? Math.max(0, 8 + 闪避克制次数 * 4)
+                : 36 + 闪避克制次数 * 16 + Math.max(0, 重复 - 1) * 18 + (闪避未中惩罚 > 0 ? 12 : 0)
+            )
+          : 0;
+        const 反敏攻价值得分 = 目标敏攻拉扯 && 技能具备反敏攻价值 ? 12 + 闪避克制次数 * 6 : 0;
         const 资源判定 = 计算资源断档排序修正_V1(候选, 行动类别, 上下文);
         const 资源修正 = 资源判定.修正;
         const 斩杀修正 = 候选.可斩杀 ? 36 : 0;
@@ -2608,7 +2652,7 @@ class BattleUIComponent {
           + 防御质量.修正 + 对手意图响应.修正 + 类别预算.修正 + 友方保护.修正 + 距离可达.修正
           + 阶段节奏.修正 + 危机恢复.修正 + 空间收益.阵型修正 + 空间收益.范围收益修正 + 空间收益.群体收益修正 + 短期记忆.修正
           + 支援职责.修正 + 资源节奏.修正 + 对手适应.修正 + 目标价值.修正 + 职责画像.修正 + 二回合前瞻.二回合前瞻修正
-          + 连招.修正 - 记忆惩罚 - 闪避未中惩罚 - 敏攻硬追惩罚 + 资源修正 + 斩杀修正,
+          + 连招.修正 - 记忆惩罚 - 闪避未中惩罚 - 敏攻硬追惩罚 + 反敏攻价值得分 + 资源修正 + 斩杀修正,
         );
         return {
           ...候选,
@@ -2645,6 +2689,7 @@ class BattleUIComponent {
             记忆惩罚,
             闪避未中惩罚,
             敏攻硬追惩罚,
+            反敏攻价值得分,
             斩杀修正,
             最终权重: Math.max(0, 分数),
             行动类别,
@@ -5508,10 +5553,7 @@ class BattleUIComponent {
 
     function buildPublicBattleReportBlock({ battleLog = [], combatData = {}, battleOutcome = {}, modeLabel = '', roundCount = 0, eventLedger = null } = {}) {
       const ledger = eventLedger || combatData?.__battleEventLedger || [];
-      const mergedLines = 构建合并后的事件账本公开战报行(ledger, 8, { combatData });
-      const lines = mergedLines.length
-        ? mergedLines
-        : ['本回合未形成可展示结果。'];
+      const lines = 构建合并后的事件账本公开战报行(ledger, 8, { combatData });
       const header = `本轮战斗已由战斗模块完成结算：${格式化战斗模式显示文本(modeLabel)}，共推进 ${Math.max(0, Number(roundCount || 0))} 回合。`;
       const outcome = `当前结果：${battleOutcome?.label || battleOutcome?.type || combatData?.裁断结果 || '未分胜负'}。`;
       const intent = combatData?.战斗意图 ? `战斗意图：${combatData.战斗意图}。` : '';
@@ -12176,7 +12218,6 @@ class BattleUIComponent {
         技能具有规则压制倾向(skill, { summary, mainType }) ||
         summary.控制强度 === '硬控' ||
         summary.控制强度 === '软控' ||
-        (skillTargetsEnemySide(skill) && 技能包含运行语义(skill, '敌对')) ||
         Number(calc.lock_level || 0) > 0 ||
         Number(calc.reaction_penalty || 0) > 0 ||
         Number(calc.cast_speed_penalty || 0) > 0 ||
@@ -12260,6 +12301,24 @@ class BattleUIComponent {
     function isBattleSkillHealInvertProfile(skill, context = {}) {
       const calc = context.calc || getPrimaryStateCalc(skill);
       return hasBattleSkillRuntimeConsumer(skill, ['heal_inversion']) || Number(calc.heal_inversion_ratio || 0) > 0;
+    }
+
+    function 判定技能具备真实截断资格_V1(skill = {}) {
+      if (!skill || typeof skill !== 'object') return false;
+      if (isBattleSkillSealProfile(skill)) return true;
+      if (hasBattleSkillRuntimeConsumer(skill, ['interrupt', 'hard_control', 'skill_seal'])) return true;
+      return getSkillEffects(skill, { 行为规划: true }).some(effect => {
+        const 原型 = String(effect?.原型 || '').trim();
+        if (原型 !== '状态施加') return false;
+        const 战斗效果 = effect?.计算层效果 || {};
+        return 战斗效果.skip_turn === true ||
+          战斗效果.cannot_react === true ||
+          战斗效果.silence === true ||
+          战斗效果.skill_seal === true ||
+          Number(战斗效果.lock_level || 0) > 0 ||
+          Number(战斗效果.cast_speed_penalty || 0) > 0 ||
+          Number(战斗效果.reaction_penalty || 0) > 0;
+      });
     }
 
     function isBattleSkillDotPressureProfile(skill) {
@@ -15874,6 +15933,43 @@ class BattleUIComponent {
         断言战斗回归夹具(!玩家.状态效果?.中毒, `持续1回合中毒次回合后未结束:${JSON.stringify(玩家.状态效果?.中毒 || null)}`);
         日志.push(`新附加持续状态延后到下一回合结算:${first.log || '首回合无跳伤'} / ${second.log}`);
       });
+      注册('重创流血首回合不立即跳伤', 日志 => {
+        const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
+        玩家.HP = 1000;
+        玩家.hp = 1000;
+        玩家.HP上限 = 1000;
+        玩家.hp_max = 1000;
+        玩家.状态效果 = {
+          重度流血: {
+            类型: 'debuff',
+            状态: '重度流血',
+            状态名称: '重度流血',
+            __本回合新附加: true,
+            duration: 3,
+            驱动属性: '魂力上限',
+            效果摘要: '每回合损失80点生命',
+            战斗效果: { ...createEmptyCombatEffectMap(), dot_damage: 80 },
+          },
+        };
+        玩家.状态效果.重度流血.__状态来源键 = 记录状态来源登记(combatData, {
+          stateName: '重度流血',
+          targetName: 玩家.name,
+          sourceActorName: '夹具敌人',
+          sourceActionName: '重创打击',
+          sourceActionType: 'attack',
+          sourceRound: Number(combatData?.回合 || 0),
+          duration: 3,
+          effectSummary: '每回合损失80点生命',
+          driverAttr: '魂力上限',
+        });
+        const first = settleConditionsAtRoundEnd(玩家, '玩家', combatData);
+        断言战斗回归夹具(!/重度流血.*损失/.test(first.log || ''), `新附加重度流血同回合误跳伤:${first.log}`);
+        断言战斗回归夹具(Number(玩家.hp) === 1000, `新附加重度流血同回合误扣血:${玩家.hp};${first.log}`);
+        const second = settleConditionsAtRoundEnd(玩家, '玩家', combatData);
+        断言战斗回归夹具(/重度流血.*损失\s*80/.test(second.log || ''), `重度流血次回合未跳伤:${second.log}`);
+        断言战斗回归夹具(Number(玩家.hp) === 920, `重度流血次回合扣血异常:${玩家.hp};${second.log}`);
+        日志.push(`重创流血延后到下一回合结算:${first.log || '首回合无跳伤'} / ${second.log}`);
+      });
       注册('完整闪避链不触发本次状态结算', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 20;
@@ -17183,9 +17279,26 @@ class BattleUIComponent {
           roundCount: 1,
           eventLedger: [],
         });
-        断言战斗回归夹具(/本回合未形成可展示结果/.test(text), `缺事件账本时未使用新兜底文案:${text}`);
+        断言战斗回归夹具(!/本回合未形成可展示结果/.test(text), `缺事件账本时仍向玩家补假结果:${text}`);
         断言战斗回归夹具(!/裂地冲拳/.test(text), `缺事件账本时仍泄漏旧battleLog文本:${text}`);
-        日志.push(`缺事件账本已改用玩家兜底文案:${text}`);
+        日志.push(`缺事件账本时公开战报不再回退旧文本:${text}`);
+      });
+      注册('缺事件账本时战报面板不回退publicReport字符串', 日志 => {
+        const rows = 提取战斗结果战报行({
+          logs: ['[第1回合] [起招] 夹具玩家以[裂地冲拳]起招。 [命中结算] 夹具玩家对夹具敌人造成 120 点最终伤害。'],
+          combatData: {
+            战斗意图: '点到为止',
+            裁断结果: '未分胜负',
+            参战者: {
+              team_player: [{ name: '夹具玩家' }],
+              team_enemy: [{ name: '夹具敌人' }],
+            },
+          },
+          publicReport: '<战斗公开战报>\n第1回合：夹具玩家施展【裂地冲拳】指向夹具敌人，造成了 120 点伤害。\n</战斗公开战报>',
+          eventLedger: [],
+        });
+        断言战斗回归夹具(Array.isArray(rows) && rows.length === 0, `缺事件账本时仍从publicReport字符串回退:${JSON.stringify(rows)}`);
+        日志.push('缺事件账本时战报面板不再从publicReport字符串反解析');
       });
       注册('状态结算可追溯附着来源', 日志 => {
         const { combatData } = 构建战斗回归夹具战斗态();
@@ -17198,6 +17311,23 @@ class BattleUIComponent {
         断言战斗回归夹具(/并使夹具敌人陷入【中毒】/.test(text), `状态附着未并回原动作:${text}`);
         断言战斗回归夹具(/该状态由第1回合夹具玩家施展【毒牙牵制】附加/.test(text), `状态结算仍无法追溯来源:${text}`);
         日志.push(`状态结算来源可追溯:${text}`);
+      });
+      注册('敌方抢先压制时玩家动作闭合为行动受阻', 日志 => {
+        const { result } = 生成战斗判定样本结果(7);
+        const ledger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
+        const 玩家闭合事件 = ledger.find(item =>
+          isSameBattleReportName(item?.actorName || '', '夹具玩家') &&
+          normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === '第二魂技·青影蛇群' &&
+          ['hit_result', 'state_apply', 'blocked_action', 'failed_action', 'target_fail'].includes(String(item?.eventKind || '').trim())
+        );
+        const text = 导出战斗记录可见文本(result, 'preview');
+        断言战斗回归夹具(!!玩家闭合事件, `敌方抢先压制时玩家动作仍未闭合:${JSON.stringify(ledger)}`);
+        断言战斗回归夹具(
+          /夹具玩家的【第二魂技·青影蛇群】本回合对抗结束，未能形成有效出手|夹具玩家的【第二魂技·青影蛇群】被对手抢先压制|夹具玩家的【第二魂技·青影蛇群】被对手先手压制|夹具玩家施展【第二魂技·青影蛇群】|并使夹具敌人陷入【迟缓】/.test(text),
+          `玩家动作闭合结果未进入可见战报:${text}`,
+        );
+        断言战斗回归夹具(/夹具敌人最终执行【敌方压迫】指向夹具玩家|夹具敌人施展【敌方压迫】指向夹具玩家|夹具敌人施展【敌方截击】指向夹具玩家/.test(text), `敌方先手结果丢失:${text}`);
+        日志.push(`敌方抢先压制时玩家动作已闭合:${玩家闭合事件?.eventKind || 'unknown'} ${玩家闭合事件?.failReason || ''} | ${text.split('\n').slice(0, 8).join(' | ')}`);
       });
       注册('反击后状态施加不串到防反链', 日志 => {
         const { combatData } = 构建战斗回归夹具战斗态();
@@ -17358,6 +17488,145 @@ class BattleUIComponent {
         断言战斗回归夹具((防反动作?.sourceActionName || '') === '敌方截击', `防反动作未透传真实来源:${JSON.stringify(防反动作)}`);
         日志.push(`防反来源已切到真实动作:${来源?.sourceActionName || '无'}`);
       });
+      注册('防反失败真实原因优先于概率文案', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 原随机 = Math.random;
+        Math.random = () => 0.99;
+        try {
+          const 失败日志 = 执行行为防反结算(玩家, 敌人, {
+            action_type: '常规攻击',
+            type: '常规攻击',
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 80, '近身攻击'), '裂地冲拳'),
+          }, { type: '伺机闪避', action_type: '伺机闪避', log: '', skill: null, def_mult: 1 }, {
+            __行为防反候选: {
+              防反类型: '完美闪避',
+              防反方: 敌人,
+              攻击方: 玩家,
+              触发概率: 0.4,
+              出手承诺: 0.2,
+              战斗数据: combatData,
+              sourceActionName: '短刀',
+              failReason: '距离不够',
+            },
+          }, { primaryAppliedDamage: 16 }, combatData);
+          const 账本 = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const 失败事件 = [...账本].reverse().find(item => item?.eventKind === 'counter' && item?.result === 'fail');
+          断言战斗回归夹具(/尝试以\[短刀\]反打，但距离不够/.test(失败日志), `防反失败真实原因未优先展示:${失败日志}`);
+          断言战斗回归夹具(!/概率:/.test(失败日志), `存在真实失败原因时仍拼接概率:${失败日志}`);
+          断言战斗回归夹具(String(失败事件?.failReason || '') === '距离不够', `失败账本未保留真实原因:${JSON.stringify(失败事件)}`);
+          日志.push(`防反失败优先原因:${失败日志}`);
+        } finally {
+          Math.random = 原随机;
+        }
+      });
+      注册('防反失败自动提取来不及反应原因', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 原随机 = Math.random;
+        Math.random = () => 0.99;
+        try {
+          const 失败日志 = 执行行为防反结算(玩家, 敌人, {
+            action_type: '常规攻击',
+            type: '常规攻击',
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 80, '近身攻击'), '裂地冲拳'),
+          }, { type: '无法反应', action_type: '无法反应', log: '[先手压制] 夹具敌人刚完成【前序动作】，来不及追加防守。', skill: null, def_mult: 1 }, {
+            __行为防反候选: {
+              防反类型: '完美闪避',
+              防反方: 敌人,
+              攻击方: 玩家,
+              触发概率: 0.4,
+              出手承诺: 0.2,
+              战斗数据: combatData,
+              sourceActionName: '短刀',
+            },
+          }, { primaryAppliedDamage: 16 }, combatData);
+          断言战斗回归夹具(/来不及反应|来不及追加防守/.test(失败日志), `防反失败未自动提取来不及反应:${失败日志}`);
+          断言战斗回归夹具(!/概率:/.test(失败日志), `来不及反应仍被概率文案覆盖:${失败日志}`);
+          日志.push(`防反失败自动提取来不及反应:${失败日志}`);
+        } finally {
+          Math.random = 原随机;
+        }
+      });
+      注册('防反失败自动提取资源不足原因', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 原随机 = Math.random;
+        Math.random = () => 0.99;
+        try {
+          const 失败日志 = 执行行为防反结算(玩家, 敌人, {
+            action_type: '常规攻击',
+            type: '常规攻击',
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 80, '近身攻击'), '裂地冲拳'),
+          }, { type: '伺机闪避', action_type: '伺机闪避', log: '[状态枯竭] 自身状态不足，无法支撑反打。', skill: null, def_mult: 1 }, {
+            __行为防反候选: {
+              防反类型: '完美闪避',
+              防反方: 敌人,
+              攻击方: 玩家,
+              触发概率: 0.4,
+              出手承诺: 0.2,
+              战斗数据: combatData,
+              sourceActionName: '短刀',
+            },
+          }, { primaryAppliedDamage: 16 }, combatData);
+          断言战斗回归夹具(/资源不足/.test(失败日志), `防反失败未自动提取资源不足:${失败日志}`);
+          断言战斗回归夹具(!/概率:/.test(失败日志), `资源不足仍被概率文案覆盖:${失败日志}`);
+          日志.push(`防反失败自动提取资源不足:${失败日志}`);
+        } finally {
+          Math.random = 原随机;
+        }
+      });
+      注册('防反失败自动提取动作被拒原因', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 原随机 = Math.random;
+        Math.random = () => 0.99;
+        try {
+          const 失败日志 = 执行行为防反结算(玩家, 敌人, {
+            action_type: '常规攻击',
+            type: '常规攻击',
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 80, '近身攻击'), '裂地冲拳'),
+          }, { type: '伺机闪避', action_type: '伺机闪避', log: '[门禁拒绝] 本次反打动作被拒绝执行。', skill: null, def_mult: 1 }, {
+            __行为防反候选: {
+              防反类型: '完美闪避',
+              防反方: 敌人,
+              攻击方: 玩家,
+              触发概率: 0.4,
+              出手承诺: 0.2,
+              战斗数据: combatData,
+              sourceActionName: '短刀',
+            },
+          }, { primaryAppliedDamage: 16 }, combatData);
+          断言战斗回归夹具(/动作被拒/.test(失败日志), `防反失败未自动提取动作被拒:${失败日志}`);
+          断言战斗回归夹具(!/概率:/.test(失败日志), `动作被拒仍被概率文案覆盖:${失败日志}`);
+          日志.push(`防反失败自动提取动作被拒:${失败日志}`);
+        } finally {
+          Math.random = 原随机;
+        }
+      });
+      注册('防反失败自动提取被打断原因', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 原随机 = Math.random;
+        Math.random = () => 0.99;
+        try {
+          const 失败日志 = 执行行为防反结算(玩家, 敌人, {
+            action_type: '常规攻击',
+            type: '常规攻击',
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 80, '近身攻击'), '裂地冲拳'),
+          }, { type: '伺机闪避', action_type: '伺机闪避', log: '[抢招失败] 反打动作被对手攻势打断，未能成形。', skill: null, def_mult: 1 }, {
+            __行为防反候选: {
+              防反类型: '完美闪避',
+              防反方: 敌人,
+              攻击方: 玩家,
+              触发概率: 0.4,
+              出手承诺: 0.2,
+              战斗数据: combatData,
+              sourceActionName: '短刀',
+            },
+          }, { primaryAppliedDamage: 16 }, combatData);
+          断言战斗回归夹具(/被打断/.test(失败日志), `防反失败未自动提取被打断:${失败日志}`);
+          断言战斗回归夹具(!/概率:/.test(失败日志), `被打断仍被概率文案覆盖:${失败日志}`);
+          日志.push(`防反失败自动提取被打断:${失败日志}`);
+        } finally {
+          Math.random = 原随机;
+        }
+      });
       注册('系统型防反按窗口归一显示名', 日志 => {
         const { 敌人 } = 构建战斗回归夹具战斗态();
         const 防守反击 = 建立行为防反动作(敌人, { 防反类型: '硬抗换伤', 触发概率: 0.4, 出手承诺: 0.2 });
@@ -17412,6 +17681,37 @@ class BattleUIComponent {
         const 探针 = combatData?.__行动闭环诊断?.目标权重探针 || [];
         断言战斗回归夹具(探针.some(item => item?.targetPoolSide === 'hostile'), `目标权重探针未写入敌对池:${JSON.stringify(探针)}`);
         日志.push(`敌对动作目标阵营正确:${目标?.name || '无'}`);
+      });
+      注册('玩家主动入口敌方规划不再转火友方', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 友方 = 构建战斗回归夹具单位('夹具友方', '辅助系');
+        combatData.参战者.team_player = [玩家, 友方];
+        敌人.type = '敏攻系';
+        敌人.agi = 420;
+        敌人.final = buildCombatFinalStats(敌人);
+        敌人.第1武魂 = {
+          表象名称: '锁敌武魂',
+          第1魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+          },
+          第2魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+          },
+        };
+        const actorEntry = { char: 敌人, side: 'enemy' };
+        const action = buildAutoActionForActor(actorEntry, { enemyTarget: 玩家, allyTarget: 敌人 }, {
+          combatData,
+          observedTargetAction: {
+            action_type: '释放魂技',
+            type: '技能',
+            cast_time: 10,
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 10, 88, '近身攻击'), '裂地冲拳'),
+          },
+        });
+        const 解析目标 = 解析单挑动作目标(action, 敌人, 玩家, combatData);
+        const 目标名 = String(解析目标?.name || 解析目标?.名称 || action?.target_name || '').trim();
+        断言战斗回归夹具(isSameBattleReportName(目标名, 玩家.name), `玩家主动入口时敌方规划仍转火友方:${目标名};${action?.decision_log || ''}`);
+        日志.push(`玩家主动入口敌方规划保持锁定当前玩家:${目标名}`);
       });
       注册('反敏攻闪避后不继续普攻前压', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -17536,6 +17836,135 @@ class BattleUIComponent {
         断言战斗回归夹具(!/毒牙牵制/.test(动作名), `敏攻闪避后仍重复同一单体压制技能:${动作名};${action?.decision_log || ''}`);
         断言战斗回归夹具(/青影蛇群|收招转防|反敏攻/.test(`${动作名} ${action?.decision_log || ''}`), `敏攻闪避后未切到范围压制或收招:${动作名};${action?.decision_log || ''}`);
         日志.push(`敏攻闪避后改用:${动作名}`);
+      });
+      注册('敏攻系主动规划可选控制型第二魂技', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.type = '强攻系';
+        玩家.agi = 180;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.type = '敏攻系';
+        敌人.agi = 420;
+        敌人.final = buildCombatFinalStats(敌人);
+        敌人.第1武魂 = {
+          表象名称: '蛇影武魂',
+          第1魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+          },
+          第2魂环: {
+            第2魂技: normalizeSkillData({
+              name: '第二魂技·青影蛇群',
+              魂技名: '第二魂技·青影蛇群',
+              技能分类: '控制',
+              目标: '敌方群体',
+              消耗: '无',
+              前摇: 10,
+              _效果数组: [
+                { 原型: '伤害结算', 目标: '敌方群体', 威力倍率: 72, 伤害类型: '远程攻击', 命中修正: 0.12 },
+                { 原型: '状态施加', 目标: '敌方群体', 状态: '迟缓', 状态名称: '迟缓', 持续回合: 2, 计算层效果: { cast_speed_penalty: 0.18, dodge_penalty: 0.08 } },
+              ],
+            }, '第二魂技·青影蛇群'),
+          },
+        };
+        const actorEntry = { char: 敌人, side: 'enemy' };
+        const action = buildAutoActionForActor(actorEntry, { enemyTarget: 玩家, allyTarget: 敌人 }, {
+          combatData,
+          observedTargetAction: {
+            action_type: '释放魂技',
+            type: '技能',
+            cast_time: 12,
+            skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 12, 96, '近身攻击'), '裂地冲拳'),
+          },
+        });
+        const 动作名 = String(action?.skill?.name || action?.skill?.魂技名 || action?.type || action?.action_type || '');
+        断言战斗回归夹具(/第二魂技·青影蛇群|敏攻截断|连锁控制|范围压制/.test(`${动作名} ${action?.decision_log || ''}`), `敏攻系主动规划未抬起控制型第二魂技:${动作名};${action?.decision_log || ''}`);
+        日志.push(`敏攻系主动规划可抬起控制型第二魂技:${动作名}`);
+      });
+      注册('范围控制来袭且无真截断时不再强势对轰', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.type = '强攻系';
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.type = '敏攻系';
+        敌人.agi = 360;
+        敌人.final = buildCombatFinalStats(敌人);
+        敌人.第1武魂 = {
+          表象名称: '快攻武魂',
+          第1魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+            第2魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+          },
+        };
+        const playerAction = {
+          action_type: '释放魂技',
+          type: '释放魂技',
+          cast_time: 12,
+          skill: normalizeSkillData({
+            name: '第二魂技·青影蛇群',
+            魂技名: '第二魂技·青影蛇群',
+            技能分类: '控制',
+            目标: '敌方群体',
+            消耗: '魂力:140',
+            前摇: 12,
+            _效果数组: [
+              { 原型: '伤害结算', 目标: '敌方群体', 威力倍率: 72, 伤害类型: '远程攻击', 命中修正: 0.12 },
+              { 原型: '状态施加', 目标: '敌方群体', 状态: '迟缓', 状态名称: '迟缓', 持续回合: 2, 计算层效果: { cast_speed_penalty: 0.18, dodge_penalty: 0.08 } },
+            ],
+          }, '第二魂技·青影蛇群'),
+        };
+        const ratio = calculateReactionRatio(玩家, 敌人, playerAction, combatData);
+        const reaction = determineNpcAction(combatData, playerAction, ratio);
+        const 动作名 = String(reaction?.skill?.name || reaction?.skill?.魂技名 || reaction?.type || reaction?.action_type || '');
+        断言战斗回归夹具(!/强势对轰/.test(String(reaction?.type || '')), `范围控制来袭时仍走强势对轰:${reaction?.type || '无'};${reaction?.log || ''}`);
+        断言战斗回归夹具(/伺机闪避|危机自保|防御|闪避/.test(`${动作名} ${reaction?.type || ''}`), `范围控制来袭时未转入防守应对:${动作名};${reaction?.log || ''}`);
+        日志.push(`范围控制来袭改为防守应对:${reaction?.type || 动作名}`);
+      });
+      注册('范围控制主动技在无真截断时不再默认被先手压制', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.type = '强攻系';
+        玩家.final = buildCombatFinalStats(玩家);
+        玩家.第1武魂.第2魂环 ||= {};
+        玩家.第1武魂.第2魂环.第2魂技 = normalizeSkillData({
+          name: '第二魂技·青影蛇群',
+          魂技名: '第二魂技·青影蛇群',
+          技能分类: '控制',
+          目标: '敌方群体',
+          消耗: '魂力:140',
+          前摇: 12,
+          _效果数组: [
+            { 原型: '伤害结算', 目标: '敌方群体', 威力倍率: 72, 伤害类型: '远程攻击', 命中修正: 0.12 },
+            { 原型: '状态施加', 目标: '敌方群体', 状态: '迟缓', 状态名称: '迟缓', 持续回合: 2, 计算层效果: { cast_speed_penalty: 0.18, dodge_penalty: 0.08 } },
+          ],
+        }, '第二魂技·青影蛇群');
+        敌人.type = '敏攻系';
+        敌人.agi = 280;
+        敌人.final = buildCombatFinalStats(敌人);
+        敌人.第1武魂 = {
+          表象名称: '快攻武魂',
+          第1魂环: {
+            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+            第2魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+          },
+        };
+        const entry = {
+          actor_name: 玩家.name,
+          action_type: '释放魂技',
+          skill: { 魂技名: '第二魂技·青影蛇群', name: '第二魂技·青影蛇群', 消耗: '魂力:140' },
+          __魂环路径: ['第1武魂', '第2魂环'],
+          __魂技槽位: '第2魂技',
+          target_name: 敌人.name,
+        };
+        let result = null;
+        使用战斗回归桥接(combatData, { [玩家.name]: 玩家, [敌人.name]: 敌人 }, () => {
+          result = onPlayerAttack(`第二魂技·青影蛇群\n[动作队列]${JSON.stringify([entry])}[/动作队列]`, {
+            dryRun: true,
+            mode: 'single_round',
+            combatData,
+            intentMode: '点到为止',
+          });
+        });
+        const text = 导出战斗记录可见文本(result, 'preview');
+        断言战斗回归夹具(!/第二魂技·青影蛇群】被对手抢先压制/.test(text), `无真截断时范围控制仍被默认先手压制:${text}`);
+        断言战斗回归夹具(/施展【第二魂技·青影蛇群】指向夹具敌人|陷入【迟缓】|陷入【减速】/.test(text), `范围控制主动技未形成可见落地结果:${text}`);
+        日志.push(`范围控制主动技在无真截断时成功落地:${text.split('\n').slice(0, 6).join(' | ')}`);
       });
       注册('未触发闪避克制时仍允许继续压制', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
@@ -21755,6 +22184,49 @@ class BattleUIComponent {
         return merged;
       }
 
+      function 补齐事件账本未闭合敌对动作(eventLedger = []) {
+        const events = (Array.isArray(eventLedger) ? eventLedger : [])
+          .map(item => item && typeof item === 'object' ? 归一战斗事件记录(item) : null)
+          .filter(Boolean);
+        const 闭合事件类型 = new Set(['hit_result', 'state_apply', 'create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'blocked_action', 'failed_action', 'target_fail']);
+        const 闭合键集合 = new Set();
+        const 构建闭合键 = event => [
+          Number(event?.round || event?.sourceRound || 0),
+          String(event?.actorName || '').trim(),
+          normalizeBattleActionDisplayName(event?.actionName || event?.sourceActionName || ''),
+        ].join('|');
+        events.forEach(event => {
+          if (!event || typeof event !== 'object') return;
+          if (!闭合事件类型.has(String(event.eventKind || '').trim())) return;
+          const 动作名 = normalizeBattleActionDisplayName(event.actionName || event.sourceActionName || '');
+          if (动作名) 闭合键集合.add([Number(event.round || event.sourceRound || 0), String(event.actorName || '').trim(), 动作名].join('|'));
+          const 来源动作名 = normalizeBattleActionDisplayName(event.sourceActionName || event.actionName || '');
+          if (来源动作名) 闭合键集合.add([Number(event.sourceRound || event.round || 0), String(event.actorName || '').trim(), 来源动作名].join('|'));
+        });
+        events
+          .filter(event => String(event?.eventKind || '').trim() === 'action_start')
+          .forEach(event => {
+            const 动作名 = normalizeBattleActionDisplayName(event.actionName || '');
+            const 闭合键 = [Number(event.round || 0), String(event.actorName || '').trim(), 动作名].join('|');
+            if (!动作名 || 闭合键集合.has(闭合键)) return;
+            const targetPoolSide = String(event.targetPoolSide || '').trim();
+            const actionType = String(event.actionType || '').trim();
+            if (targetPoolSide !== 'hostile' && !/攻击|魂技|普攻|常规攻击|释放/.test(actionType)) return;
+            const 补写事件 = 归一战斗事件记录({
+              ...event,
+              eventKind: 'blocked_action',
+              actionType: actionType || 'blocked_action',
+              sourceActionName: 动作名,
+              sourceRound: Number(event.round || 0),
+              result: 'blocked',
+              failReason: String(event.failReason || '本回合对抗结束，未能形成有效出手').trim(),
+            });
+            events.push(补写事件);
+            闭合键集合.add(闭合键);
+          });
+        return events;
+      }
+
       function 写入行动闭环事实账本(combatData = {}, eventLedger = []) {
         const 诊断 = 确保行动闭环诊断(combatData);
         if (!诊断) return null;
@@ -23644,8 +24116,22 @@ class BattleUIComponent {
         const 威胁系数 = 威胁分层.分数;
         const 可换招 = 窗口 >= 行为链换招窗口门槛 && 存在可换招技能(先手, 先手动作, combatData, 行为链);
         const 意图 = 规划上下文.战略意图?.权重表 || {};
+        const 行动记忆 = ensureActorDecisionMemory(先手);
+        const 当前动作名 = String(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '').trim();
+        const 同技重复次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [当前动作名], 0);
+        const 连续压制次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, ['主动压迫', '反敏攻压制'], 0);
+        const 当前动作技能 = 先手动作?.skill || null;
+        const 当前动作具备真截断资格 = !!当前动作技能 && 判定技能具备真实截断资格_V1(当前动作技能);
+        const 当前动作属于群体压制 = /群体|全场/.test(String(getSkillTarget(当前动作技能 || {}) || '').trim());
+        const 连续前压应转守 =
+          !威胁分层.高威胁 &&
+          !威胁分层.致命 &&
+          (
+            连续压制次数 >= 2 ||
+            (同技重复次数 >= 1 && !当前动作具备真截断资格 && !当前动作属于群体压制)
+          );
         const 可收招转防 = 窗口 >= 0.18 && (威胁分层.中威胁 || Number(意图.保核 || 0) >= 58 || getCombatHpRatio(先手) < 0.45);
-        return [
+        const 候选池 = [
           { name: '抢落点', weight: Math.round(30 + (1 - 窗口) * 20 + 获取行动威力倍率(先手动作) / 20 + Number(意图.击杀 || 0) * 0.12 + (威胁分层.低威胁 ? 10 : 0)), action: '抢落点' },
           { name: '压招', weight: 窗口 >= 0.15 ? Math.round(20 + 窗口 * 35 + 威胁系数 * 25 + Number(意图.控制 || 0) * 0.16 + (威胁分层.低威胁 ? 8 : 0)) : 4, action: '压招' },
           { name: '偏转', weight: 窗口 >= 0.15 ? Math.round(16 + 窗口 * 28 + 威胁系数 * 30) : 0, action: '偏转' },
@@ -23653,6 +24139,15 @@ class BattleUIComponent {
           { name: '换招', weight: 可换招 ? Math.round(20 + 窗口 * 70 + 威胁系数 * 35 + Math.max(Number(意图.破防 || 0), Number(意图.驱散 || 0), Number(意图.维持压制 || 0)) * 0.16) : 0, action: '换招' },
           { name: '放弃再判定', weight: 威胁分层.低威胁 ? 20 : 威胁系数 > 0.35 ? 6 : 12, action: '放弃再判定' },
         ];
+        if (连续前压应转守) {
+          候选池.forEach(候选 => {
+            if (!候选) return;
+            if (['抢落点', '压招', '换招'].includes(候选.name)) 候选.weight = Math.max(0, Number(候选.weight || 0) - 28);
+            if (候选.name === '收招转防') 候选.weight = Math.max(Number(候选.weight || 0), 52 + 连续压制次数 * 10 + 同技重复次数 * 8);
+            if (候选.name === '放弃再判定') 候选.weight = Math.max(Number(候选.weight || 0), 28 + 连续压制次数 * 8);
+          });
+        }
+        return 候选池;
       }
 
       function 应用再判定动作效果(再判定动作 = '', 先手动作 = {}, 后手动作 = {}, 窗口 = 0) {
@@ -23689,6 +24184,14 @@ class BattleUIComponent {
         const 队伍 = 读取战斗双方队伍(combatData, 单位).友方 || [];
         const 后手威胁 = estimateIncomingActionThreat(对手, 单位, 后手动作, combatData);
         const 后手威胁评分 = 限制行为概率(Number(后手威胁.projectedDamageRatio || 0) + (后手威胁.severeControl ? 0.35 : 0) + (后手威胁.lethalRisk ? 0.45 : 0), 0, 1);
+        const 威胁分层 = 计算行为威胁分层(后手威胁);
+        const 行动记忆 = ensureActorDecisionMemory(单位);
+        const 原动作重复次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [原技能名], 0);
+        const 连续压制次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, ['主动压迫', '反敏攻压制'], 0);
+        const 连续前压应收招 =
+          !威胁分层.高威胁 &&
+          !威胁分层.致命 &&
+          (连续压制次数 >= 2 || 原动作重复次数 >= 1);
         const 规划上下文 = 构建规划上下文(单位, 对手, combatData, {
           combatData,
           threatProfile: 后手威胁,
@@ -23727,6 +24230,12 @@ class BattleUIComponent {
                 ? Math.max(Number(规划上下文.战略意图?.权重表?.破防 || 0), Number(规划上下文.战略意图?.权重表?.治疗 || 0), Number(规划上下文.战略意图?.权重表?.控制 || 0)) * 0.18
                 : -10;
             const 特殊原型惩罚 = 计算换招特殊原型惩罚(skill, 单位, 对手, { combatData, threatProfile: 后手威胁 }, 后手威胁);
+            const 新技能具备真截断资格 = 判定技能具备真实截断资格_V1(skill);
+            const 新技能属于群体压制 = /群体|全场/.test(String(getSkillTarget(skill || {}) || '').trim());
+            const 连续前压换招惩罚 =
+              连续前压应收招 && !新技能具备真截断资格 && !新技能属于群体压制
+                ? 42 + 连续压制次数 * 10 + 原动作重复次数 * 8
+                : 0;
             return {
               skill,
               name: skill.name || skill.魂技名 || '换招技能',
@@ -23740,7 +24249,8 @@ class BattleUIComponent {
                   原技能剩余价值 * 30 -
                   当前资源压力 * 45 -
                   反噬预估 * 60 -
-                  特殊原型惩罚,
+                  特殊原型惩罚 -
+                  连续前压换招惩罚,
               )),
             };
           });
@@ -23819,7 +24329,11 @@ class BattleUIComponent {
         const 再判定候选 = 构建再判定候选池(窗口, 先手, 后手, 先手动作, 后手动作, combatData, 行为链);
         const 再判定 = rollBranchByPriority(扰动候选权重列表(再判定候选, 读取行动判断干扰强度(先手)), '行为链/再判定');
         const 再判定动作 = 再判定.option?.action || '放弃再判定';
-        记录行动闭环审计(combatData, '再判定审计', {
+        const 再判定候选排序结果 = 再判定候选.map(候选 => ({
+          名称: String(候选?.name || '').trim(),
+          权重: Number(候选?.weight || 0),
+        }));
+        const 再判定审计详情 = {
           行动者: 先手?.name || 先手?.名称 || '',
           目标: 后手?.name || 后手?.名称 || '',
           技能: 先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '',
@@ -23829,8 +24343,12 @@ class BattleUIComponent {
           干扰强度: 读取行动判断干扰强度(先手),
           最终权重: Number(再判定.option?.weight || 0),
           选择原因: 再判定.trace || 再判定动作,
+          hitCandidateName: 再判定动作,
+          finalResolvedActionName: normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || ''),
+          actionOverrideSource: '',
+          候选排序结果: 再判定候选排序结果,
           旁路: false,
-        });
+        };
         追加行为链节点(行为链, {
           阶段: '再判定',
           行动者: 先手,
@@ -23848,10 +24366,46 @@ class BattleUIComponent {
             战报: `[${再判定动作}] ${先手.name || '先手'}${再判定效果日志}`,
           });
         }
+        if (再判定动作 === '收招转防') {
+          const 原动作名 = String(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '行动').trim() || '行动';
+          const 收招防御技能 = normalizeSkillData({
+            name: '收招转防',
+            魂技名: '收招转防',
+            技能分类: '防御',
+            目标: '自身',
+            消耗: '无',
+            前摇: 8,
+            _效果数组: [],
+          }, '收招转防');
+          先手动作.__原定动作名 ||= 原动作名;
+          先手动作.__原定技能名 ||= 原动作名;
+          先手动作.action_type = '收招转防';
+          先手动作.type = '收招转防';
+          先手动作.skill = 收招防御技能;
+          先手动作.cast_time = Math.min(Number(先手动作.cast_time || 8) || 8, 8);
+          先手动作.target_name = String(先手?.name || 先手?.名称 || '').trim();
+          先手动作.decision_log = `[收招转防] ${先手.name || '先手'}确认继续前压收益不足，收住攻势，转入守势稳住防线。`;
+          再判定审计详情.finalResolvedActionName = '收招转防';
+          再判定审计详情.actionOverrideSource = '再判定';
+        }
+        记录行动闭环审计(combatData, '再判定审计', 再判定审计详情);
         if (再判定动作 === '换招') {
           const 换招 = 选择换招技能(先手, 后手, 先手动作, 后手动作, combatData, 窗口, 行为链);
           if (换招?.skill) {
-            记录行动闭环审计(combatData, '换招审计', {
+            const 换招候选排序结果 = collectCombatSkills(先手, 读取战斗双方队伍(combatData, 先手).友方 || [])
+              .map(skill => newSkillData(skill))
+              .filter(skill =>
+                skill &&
+                String(skill.name || skill.魂技名 || '').trim() &&
+                String(skill.name || skill.魂技名 || '').trim() !== String(先手动作?.__原定技能名 || 先手动作?.skill?.name || 先手动作?.skill?.魂技名 || '').trim() &&
+                !/^换招技能|未命名技能$/.test(String(skill.name || skill.魂技名 || '').trim()) &&
+                技能可进入换招候选池(先手, skill)
+              )
+              .map(skill => ({
+                名称: String(skill?.name || skill?.魂技名 || '').trim(),
+                权重: String(skill?.name || skill?.魂技名 || '').trim() === String(换招.skill?.name || 换招.skill?.魂技名 || '').trim() ? 100 : 0,
+              }));
+            const 换招审计详情 = {
               行动者: 先手?.name || 先手?.名称 || '',
               目标: 后手?.name || 后手?.名称 || '',
               技能: 换招.skill?.name || 换招.skill?.魂技名 || '',
@@ -23859,7 +24413,11 @@ class BattleUIComponent {
               候选来源: '行为链换招技能池',
               干扰强度: 读取行动判断干扰强度(先手),
               选择原因: 换招.trace || '换招候选命中',
-            });
+              hitCandidateName: normalizeBattleActionDisplayName(换招.skill?.name || 换招.skill?.魂技名 || ''),
+              finalResolvedActionName: normalizeBattleActionDisplayName(换招.skill?.name || 换招.skill?.魂技名 || ''),
+              actionOverrideSource: '换招',
+              候选排序结果: 换招候选排序结果,
+            };
             const 成功率 = 计算换招成功率(先手, 后手, 先手动作, 换招.skill, 窗口);
             const 投点 = Math.random();
             const 成功 = 投点 <= 成功率;
@@ -23895,7 +24453,11 @@ class BattleUIComponent {
               if (新招消耗日志) 追加行为链节点(行为链, { 阶段: '换招', 行动者: 先手, 技能: 换招.skill, 战报: 新招消耗日志 });
               Object.assign(先手动作, 新动作);
               行为链.已换招角色.add(先手.name || 先手.名称 || '');
+            } else {
+              换招审计详情.finalResolvedActionName = normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '');
+              if (先手动作.action_type === '换招失败') 换招审计详情.actionOverrideSource = '换招失败';
             }
+            记录行动闭环审计(combatData, '换招审计', 换招审计详情);
           }
         }
         追加行为链节点(行为链, {
@@ -24456,6 +25018,50 @@ class BattleUIComponent {
             failReason: '',
           });
         };
+        const 动作已在新增账本中落地 = (ledgerStartIndex = 0, actor = null, action = null) => {
+          const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const actorName = String(actor?.name || actor?.名称 || '').trim();
+          const actionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '');
+          if (!actorName || !actionName) return false;
+          return ledger.slice(Math.max(0, Number(ledgerStartIndex || 0))).some(item => {
+            if (!item || typeof item !== 'object') return false;
+            if (!isSameBattleReportName(String(item.actorName || '').trim(), actorName)) return false;
+            const itemActionName = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
+            if (!itemActionName || itemActionName !== actionName) return false;
+            return ['hit_result', 'state_apply', 'create', 'shield_create', 'support', 'defend', 'dodge', 'pass'].includes(String(item.eventKind || '').trim());
+          });
+        };
+        const 动作已在新增账本中闭合 = (ledgerStartIndex = 0, actor = null, action = null) => {
+          const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const actorName = String(actor?.name || actor?.名称 || '').trim();
+          const actionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.__原定技能名 || action?.__原定动作名 || action?.action_type || action?.type || '');
+          if (!actorName || !actionName) return false;
+          return ledger.slice(Math.max(0, Number(ledgerStartIndex || 0))).some(item => {
+            if (!item || typeof item !== 'object') return false;
+            if (!isSameBattleReportName(String(item.actorName || '').trim(), actorName)) return false;
+            const itemActionName = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
+            if (!itemActionName || itemActionName !== actionName) return false;
+            return ['hit_result', 'state_apply', 'create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'blocked_action', 'failed_action', 'target_fail'].includes(String(item.eventKind || '').trim());
+          });
+        };
+        const 记账动作受阻 = (action = null, actor = null, target = null, failReason = '', extra = {}) => {
+          if (!action || !actor) return null;
+          const 动作名 = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.__原定技能名 || action?.__原定动作名 || action?.action_type || action?.type || '');
+          if (!动作名) return null;
+          return 写入战斗事件账本(combatData, {
+            eventKind: 'blocked_action',
+            round: Number(combatData?.回合 || 0),
+            actorName: actor?.name || actor?.名称 || '',
+            targetName: target?.name || target?.名称 || '',
+            actionName: 动作名,
+            actionType: String(extra.actionType || action?.action_type || action?.type || 'blocked_action').trim(),
+            sourceActionName: 动作名,
+            sourceRound: Number(combatData?.回合 || 0),
+            result: 'blocked',
+            failReason: String(failReason || '被对手抢先压制，未能形成有效出手').trim(),
+            targetPoolSide: String(extra.targetPoolSide || 'hostile').trim(),
+          });
+        };
 
         while (
           roundCount < maxRounds &&
@@ -24639,8 +25245,28 @@ class BattleUIComponent {
           const npcDeclaredNonAttack = 单挑动作是非攻击落地(npcDeclaredAction);
           const 玩家前摇 = 读取单挑动作前摇(playerAction);
           const npc前摇 = 读取单挑动作前摇(npcDeclaredAction);
+          const 玩家技能 = playerAction?.skill || null;
+          const 玩家技能名 = normalizeBattleActionDisplayName(玩家技能?.name || 玩家技能?.魂技名 || playerAction?.action_type || playerAction?.type || '');
+          const 玩家目标文本 = String(getSkillTarget(玩家技能 || {}) || '').trim();
+          const 玩家疑似范围控制命名 = /群|散射|风暴|领域|锁|印|牵制/.test(玩家技能名);
+          const 玩家技能偏友方 = 技能偏向友方目标(玩家技能 || {}, playerAction);
+          const 玩家技能自用 = inferSkillPrimaryTargetKind(玩家技能 || {}) === '自身' || /自身/.test(玩家目标文本);
+          const 玩家范围控制敌对 =
+            !!玩家技能 &&
+            !玩家技能偏友方 &&
+            !玩家技能自用 &&
+            (
+              isBattleSkillControlProfile(玩家技能) ||
+              /群体|全场/.test(玩家目标文本) ||
+              玩家疑似范围控制命名 ||
+              hasBattleSkillRuntimeConsumer(玩家技能, ['interrupt', 'hard_control', 'skill_seal'])
+            );
+          const npcDeclaredSkill = npcDeclaredAction?.skill || null;
+          const npc真截断资格 = !!npcDeclaredSkill && 判定技能具备真实截断资格_V1(npcDeclaredSkill);
+          const 玩家范围控制可延后落地 = 玩家范围控制敌对 && !npc真截断资格;
           const npcShouldActFirst =
             npcDeclaredHostile && !npcDeclaredNonAttack &&
+            (!玩家范围控制敌对 || npc真截断资格) &&
             (isPassivePlayerTurn ||
               !玩家动作敌对 ||
               npc前摇 < 玩家前摇 ||
@@ -24656,6 +25282,7 @@ class BattleUIComponent {
           let 玩家非敌对动作释放失败 = false;
           let 行为链结果 = null;
           let settleResult = null;
+          const 本回合玩家动作账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
           const 扣除玩家动作成本 = (动作 = playerAction, 目标 = 玩家动作目标) => {
             if (!动作 || 动作.action_type === '施法失败' || 动作.__主动成本已结算 === true) return 动作?.action_type !== '施法失败';
             const costLog = applyActionCost(attacker, 动作, 目标, combatData);
@@ -24690,6 +25317,7 @@ class BattleUIComponent {
 
           if (npcShouldActFirst) {
             记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile' });
+            if (玩家动作敌对) 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, { targetPoolSide: 'hostile' });
             if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
             主动结算方 = defender;
             被动结算目标 = attacker;
@@ -24704,8 +25332,41 @@ class BattleUIComponent {
             if (反应结算动作?.skill && 反应结算动作.skill === playerAction?.skill && !扣除玩家动作成本(playerAction, defender)) {
               反应结算动作 = { type: '无法反应', log: `[抢招失败] ${getCombatReportUnitName(attacker, '我方')}未能支撑【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】的启动消耗，抢招未成。`, skill: null, def_mult: 1 };
             }
+            const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
             行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
             settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+            const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
+            const 玩家仍可行动 =
+              isCombatUnitAbleToFight(attacker) &&
+              !Object.values(attacker?.状态效果 || {}).some(状态 => {
+                const 效果 = 状态?.战斗效果 || {};
+                return 效果.skip_turn === true || 效果.cannot_react === true;
+              });
+            if (玩家动作尚未落地 && 玩家范围控制可延后落地 && 玩家仍可行动) {
+              const 玩家延后战斗数据 = 构建单挑临时战斗数据(attacker, defender, 'player', combatData);
+              const 玩家延后反应 = {
+                type: '无法反应',
+                log: `[后续出手] ${getCombatReportUnitName(attacker, '我方')}顶住先手压制，继续完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】。`,
+                skill: null,
+                def_mult: 1,
+              };
+              const 玩家延后结算 = executeClash(playerAction, 玩家延后反应, 玩家延后战斗数据);
+              if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
+                clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
+              }
+              roundLog += ` ${玩家延后反应.log} ${玩家延后结算.desc}`;
+            }
+            if (
+              玩家动作敌对 &&
+              !(玩家范围控制可延后落地 && 玩家仍可行动 && 动作已在新增账本中落地(结算前账本长度, attacker, playerAction)) &&
+              !动作已在新增账本中落地(结算前账本长度, attacker, playerAction)
+            ) {
+              const 受阻原因 =
+                反应结算动作?.type === '强势对轰'
+                  ? '被对手抢先压制，未能形成有效出手'
+                  : '被对手先手压制，未能形成有效出手';
+              记账动作受阻(playerAction, attacker, defender, 受阻原因, { targetPoolSide: 'hostile' });
+            }
             roundLog += replaceBattleReportGenericNames(
               `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
               { player: defender, enemy: attacker },
@@ -24753,8 +25414,41 @@ class BattleUIComponent {
               if (反应结算动作?.skill && 反应结算动作.skill === playerAction?.skill && !扣除玩家动作成本(playerAction, defender)) {
                 反应结算动作 = { type: '无法反应', log: `[抢招失败] ${getCombatReportUnitName(attacker, '我方')}未能支撑【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】的启动消耗，抢招未成。`, skill: null, def_mult: 1 };
               }
+              const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
               行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
               settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+              const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
+              const 玩家仍可行动 =
+                isCombatUnitAbleToFight(attacker) &&
+                !Object.values(attacker?.状态效果 || {}).some(状态 => {
+                  const 效果 = 状态?.战斗效果 || {};
+                  return 效果.skip_turn === true || 效果.cannot_react === true;
+                });
+              if (玩家动作尚未落地 && 玩家范围控制可延后落地 && 玩家仍可行动) {
+                const 玩家延后战斗数据 = 构建单挑临时战斗数据(attacker, defender, 'player', combatData);
+                const 玩家延后反应 = {
+                  type: '无法反应',
+                  log: `[后续出手] ${getCombatReportUnitName(attacker, '我方')}顶住先手压制，继续完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】。`,
+                  skill: null,
+                  def_mult: 1,
+                };
+                const 玩家延后结算 = executeClash(playerAction, 玩家延后反应, 玩家延后战斗数据);
+                if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
+                  clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
+                }
+                roundLog += ` ${玩家延后反应.log} ${玩家延后结算.desc}`;
+              }
+              if (
+                玩家动作敌对 &&
+                !(玩家范围控制可延后落地 && 玩家仍可行动 && 动作已在新增账本中落地(结算前账本长度, attacker, playerAction)) &&
+                !动作已在新增账本中落地(结算前账本长度, attacker, playerAction)
+              ) {
+                const 受阻原因 =
+                  反应结算动作?.type === '强势对轰'
+                    ? '被对手抢先压制，未能形成有效出手'
+                    : '被对手先手压制，未能形成有效出手';
+                记账动作受阻(playerAction, attacker, defender, 受阻原因, { targetPoolSide: 'hostile' });
+              }
               roundLog += replaceBattleReportGenericNames(
                 `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
                 { player: defender, enemy: attacker },
@@ -24937,6 +25631,18 @@ class BattleUIComponent {
           if (fusionAftermathLog) roundLog += ` ${fusionAftermathLog}`;
           const 召唤自主日志 = 执行自主召唤行动(combatData);
           if (召唤自主日志) roundLog += ` ${召唤自主日志}`;
+          if (
+            本轮NPC先手 &&
+            玩家动作敌对 &&
+            !动作已在新增账本中闭合(本回合玩家动作账本起点, attacker, playerAction)
+          ) {
+            const 兜底受阻原因 =
+              玩家范围控制可延后落地 && isCombatUnitAbleToFight(attacker)
+                ? '先手压制后的对抗收束中未能形成有效出手'
+                : '被对手先手压制，未能形成有效出手';
+            记账动作受阻(playerAction, attacker, defender, 兜底受阻原因, { targetPoolSide: 'hostile' });
+            roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】${兜底受阻原因}。`;
+          }
           清理动作运行态字段(playerAction);
 
           // --- 第五步：装备护主与战损结算 ---
@@ -25036,7 +25742,7 @@ class BattleUIComponent {
         if (settleResult.log) battleLog.push(replaceBattleReportGenericNames(settleResult.log, { player: attacker, enemy: defender }));
         if (settleResult.extraPatchOps) extraPatchOps.push(...settleResult.extraPatchOps);
         const runtimeLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger.slice() : [];
-        const eventLedger = 合并战斗事件账本(runtimeLedger, []);
+        const eventLedger = 补齐事件账本未闭合敌对动作(合并战斗事件账本(runtimeLedger, []));
         combatData.__battleEventLedger = eventLedger;
         写入行动闭环事实账本(combatData, eventLedger);
         const towerPendingSettlement =
@@ -27287,6 +27993,7 @@ class BattleUIComponent {
                   类型: 'debuff',
                   状态: '重度流血',
                   状态名称: '重度流血',
+                  __本回合新附加: true,
                   层数: 1,
                   描述: '重创导致的流血',
                   duration: 3,
@@ -27557,6 +28264,22 @@ class BattleUIComponent {
         return getCombatStaminaValue(char) / getCombatStaminaMaxValue(char);
       }
 
+      function 提取行为防反失败原因(候选 = {}, 反应动作 = null, 防反方 = null, 攻击方 = null) {
+        const 显式原因 = String(候选?.failReason || '').trim();
+        if (显式原因) return 显式原因;
+        const 反应类型 = String(反应动作?.type || 反应动作?.action_type || '').trim();
+        const 反应日志 = String(反应动作?.log || '').trim();
+        if (/距离不够|距离不足/.test(反应日志)) return '距离不够';
+        if (/状态枯竭|资源不足|无法支撑/.test(反应日志)) return '资源不足';
+        if (/来不及追加防守|来不及反应/.test(反应日志)) return '来不及反应';
+        if (/被控状态|无法反应|无暇反应|无反应/.test(`${反应类型} ${反应日志}`)) return '无法反应';
+        if (/被打断|中断|打断/.test(反应日志)) return '被打断';
+        if (/动作被拒|被拒绝|拒绝执行|拒绝/.test(反应日志)) return '动作被拒';
+        if (防反方?.temp_cannot_react === true) return '无法反应';
+        if (!isCombatUnitAbleToFight(防反方) && isCombatUnitAbleToFight(攻击方)) return '失去反打能力';
+        return '';
+      }
+
       function 执行行为防反结算(攻击方, 防反方, 原动作, 反应动作, 交锋结果, 伤害包, 战斗数据) {
         const 候选 = 交锋结果?.__行为防反候选;
         if (!候选 || 原动作?.__行为防反 === true) return '';
@@ -27587,7 +28310,7 @@ class BattleUIComponent {
         const 投点 = Math.random();
         const 概率文本 = `${Math.round(触发概率 * 100)}%`;
         if (投点 >= 触发概率) {
-          const 失败原因 = String(候选.failReason || '').trim();
+          const 失败原因 = 提取行为防反失败原因(候选, 反应动作, 防反者, 目标);
           const 来源动作名 = String(候选.sourceActionName || 候选.sourceActionType || '系统反击').trim() || '系统反击';
           const 展示失败原因 = 失败原因 || '未形成稳定反打条件';
           写入战斗事件账本(战斗数据, {
@@ -34758,6 +35481,7 @@ class BattleUIComponent {
               连段爆发: atkSkill,
               压血收束: executeSkill,
               强攻压制: atkSkill,
+              敏攻截断: hardControlSkill || skillSealSkill || rangePressureSkill,
               范围压制: rangePressureSkill,
               短前摇对轰: quickClashSkill,
               游击收割: executeSkill && executeCastTime <= 18 ? executeSkill : atkSkill,
@@ -35121,6 +35845,58 @@ class BattleUIComponent {
             });
           }
 
+          if (防御者系别 === '敏攻系') {
+            const 敏攻截断候选技能 =
+              (反高速窗口.成立 && (hardControlSkill || skillSealSkill || rangePressureSkill)) ||
+              ((threatProfile.incomingAttackIntent === true || isChargingHighThreat) && (hardControlSkill || skillSealSkill || rangePressureSkill)) ||
+              null;
+            const 敏攻截断技能 = 敏攻截断候选技能 && (() => {
+              const 技能 = 敏攻截断候选技能;
+              const 目标文本 = String(getSkillTarget(技能) || '').trim();
+              if (/群体|全场/.test(目标文本)) return true;
+              if (isBattleSkillSealProfile(技能)) return true;
+              if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal'])) return true;
+              return getSkillEffects(技能, { 行为规划: true }).some(effect => {
+                const 原型 = String(effect?.原型 || '').trim();
+                if (原型 === '资源锁定' || 原型 === '规则改写' || 原型 === '决策干扰' || 原型 === '判定修正' || 原型 === '时窗修正') return true;
+                if (原型 !== '状态施加') return false;
+                const 战斗效果 = effect?.计算层效果 || {};
+                return 战斗效果.skip_turn === true ||
+                  战斗效果.cannot_react === true ||
+                  战斗效果.silence === true ||
+                  战斗效果.skill_seal === true ||
+                  Number(战斗效果.lock_level || 0) > 0 ||
+                  Number(战斗效果.dodge_penalty || 0) > 0 ||
+                  Number(战斗效果.cast_speed_penalty || 0) > 0;
+              });
+            })()
+              ? 敏攻截断候选技能
+              : null;
+            if (敏攻截断技能) {
+              tacticalBranches.push({
+                name: '敏攻截断',
+                weight: adjustBehaviorWeight(
+                  '连锁控制',
+                  反高速窗口.成立
+                    ? 84 + Math.round(反高速窗口.强度 * 34)
+                    : threatProfile.incomingAttackIntent === true
+                      ? 76
+                      : 62,
+                  defender,
+                  attacker,
+                  behaviorState,
+                ),
+                build() {
+                  return makeNpcAction(
+                    '敏攻截断',
+                    `[敏攻截断] 敏攻系NPC优先以[${敏攻截断技能.name}]截断对手节奏，再寻找下一次切入窗口。`,
+                    敏攻截断技能,
+                  );
+                },
+              });
+            }
+          }
+
           if (防御者系别 === '敏攻系' && (executeSkill || atkSkill)) {
             const agileStrike = executeSkill && executeCastTime <= 18 ? executeSkill : atkSkill;
             if (agileStrike) {
@@ -35443,6 +36219,9 @@ class BattleUIComponent {
             makeNpcAction,
           );
           const behaviorState = strategicContext.behaviorState;
+          behaviorState.规划上下文 = 构建规划上下文(defender, attacker, combatData, behaviorState);
+          behaviorState.规划上下文.锁定敌对目标 = attacker;
+          behaviorState.锁定敌对目标 = attacker;
           const strategicAction = chooseAndBuildActorAction(
             defender,
             attacker,
@@ -35470,6 +36249,26 @@ class BattleUIComponent {
             isSupport,
             isLowHealth,
           );
+          const 玩家技能 = playerAction?.skill || null;
+          const 玩家目标文本 = String(getSkillTarget(玩家技能 || {}) || '').trim();
+          const 玩家范围控制来袭 =
+            !!玩家技能 &&
+            (
+              isBattleSkillControlProfile(玩家技能) ||
+              /群体|全场/.test(玩家目标文本) ||
+              hasBattleSkillRuntimeConsumer(玩家技能, ['interrupt', 'hard_control', 'skill_seal'])
+            );
+          const 敌方具备真截断 =
+            !!(skillContext.hardControlSkill || skillContext.skillSealSkill) &&
+            判定技能具备真实截断资格_V1(skillContext.hardControlSkill || skillContext.skillSealSkill);
+          if (玩家范围控制来袭 && !敌方具备真截断) {
+            tacticalBranches.forEach(候选 => {
+              if (!候选) return;
+              if (候选.name === '强势对轰') 候选.weight = Math.max(0, Number(候选.weight || 0) - 58);
+              if (候选.name === '伺机闪避') 候选.weight = Number(候选.weight || 0) + 36;
+              if (候选.name === '危机自保') 候选.weight = Number(候选.weight || 0) + 22;
+            });
+          }
 
           const tacticalAction = chooseAndBuildActorAction(
             defender,
@@ -36854,6 +37653,10 @@ class BattleUIComponent {
             makeActorAction,
           );
           strategicContext.behaviorState.规划上下文 = 构建规划上下文(actor, enemyTarget, battleState.combatData, strategicContext.behaviorState);
+          if (battleState?.observedTargetAction && enemyTarget) {
+            strategicContext.behaviorState.规划上下文.锁定敌对目标 = enemyTarget;
+            strategicContext.behaviorState.锁定敌对目标 = enemyTarget;
+          }
           strategicContext.behaviorState.战局画像 = strategicContext.behaviorState.规划上下文.战局画像;
           strategicContext.behaviorState.目标优先表 = strategicContext.behaviorState.规划上下文.目标优先表;
           strategicContext.behaviorState.战略意图 = strategicContext.behaviorState.规划上下文.战略意图;
@@ -37385,6 +38188,7 @@ class BattleUIComponent {
           const 反敏攻技能 = 稳定反敏攻牵制 ? 选择反敏攻技能() : null;
           if (稳定反敏攻牵制 && 反敏攻技能) {
             recordActorActionMemory(actor, 反敏攻技能.name || 反敏攻技能.技能名称 || '反敏攻压制');
+            recordActorActionMemory(actor, '反敏攻压制');
             return convertDecisionToTurnAction(
               makeActorAction(
                 '反敏攻压制',
@@ -37468,6 +38272,7 @@ class BattleUIComponent {
             enemyTarget &&
             !判定单挑动作敌对(observedTargetAction, enemyTarget, actor, battleState.combatData);
           if (目标动作非敌对 && strategicContext.behaviorState?.threatProfile?.lethalRisk !== true) {
+            const 行动记忆 = ensureActorDecisionMemory(actor);
             const 可用敌对技能 = (availableSkills || [])
               .map(skill => newSkillData(skill))
               .filter(skill => skill && (技能具备伤害原型(skill) || getSkillEffects(skill, { 行为规划: true }).some(effect => {
@@ -37514,6 +38319,20 @@ class BattleUIComponent {
               },
               '普通攻击',
             );
+            const 压迫技能名 = String(压迫技能?.name || 压迫技能?.魂技名 || 压迫技能?.技能名称 || '').trim();
+            const 同技压迫次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [压迫技能名], 0);
+            const 主动压迫次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, ['主动压迫', '反敏攻压制'], 0);
+            const 压迫属于真实反敏攻 = !!压迫技能 && (
+              hasBattleSkillRuntimeConsumer(压迫技能, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift']) ||
+              /群体|全场/.test(String(getSkillTarget(压迫技能) || '').trim()) ||
+              判定技能具备真实截断资格_V1(压迫技能)
+            );
+            const 连续前压应转守 =
+              !目标敏攻拉扯 &&
+              (
+                (同技压迫次数 >= 1 && !压迫属于真实反敏攻) ||
+                主动压迫次数 >= 2
+              );
             if (
               目标敏攻拉扯 &&
               (
@@ -37530,7 +38349,18 @@ class BattleUIComponent {
                 ),
               );
             }
+            if (连续前压应转守) {
+              recordActorActionMemory(actor, '收招转防');
+              return convertDecisionToTurnAction(
+                makeActorAction(
+                  '收招转防',
+                  `[稳态调整] 连续前压未能换到明确收益，本回合先收招稳住身位，避免继续无效硬压。`,
+                  null,
+                ),
+              );
+            }
             recordActorActionMemory(actor, 压迫技能.name || 压迫技能.技能名称 || (目标敏攻拉扯 ? '反敏攻压制' : '主动压迫'));
+            recordActorActionMemory(actor, 目标敏攻拉扯 ? '反敏攻压制' : '主动压迫');
             return convertDecisionToTurnAction(
               makeActorAction(
                 目标敏攻拉扯 ? '反敏攻压制' : '主动压迫',
@@ -37747,6 +38577,8 @@ class BattleUIComponent {
             finalTarget = chooseAllyTargetForSkill(actor, allyTeam, action?.skill, targets.allyTarget || actor, battleState.combatData);
           } else if (skillTargetKind === '自身') {
             finalTarget = actor;
+          } else if (battleState?.observedTargetAction && targets?.enemyTarget) {
+            finalTarget = targets.enemyTarget;
           } else {
             finalTarget = chooseEnemyTargetForSkill(actor, enemyTeam, action?.skill, targets.enemyTarget, battleState.combatData);
           }
@@ -41342,7 +42174,18 @@ class BattleUIComponent {
           const 次优名 = 读取候选名称(次优 || {});
           const 修正说明 = 构建权重修正说明(轨迹);
           const 决断类型 = 读取判定决断类型(轨迹);
-          const 再判定候选 = 解析再判定候选列表(轨迹);
+          const 结构化候选 = 读取判定流程候选列表(轨迹, 0);
+          const 再判定候选 = 结构化候选.length
+            ? 结构化候选.map(item => ({
+                candidate: 读取候选名称(item),
+                scoreRaw: Math.round(读取候选权重(item)),
+                scoreWeight: Math.round(读取候选权重(item)),
+                status: 读取候选名称(item) === 命中候选名
+                  ? 'hit'
+                  : (读取候选名称(item) === 最终落地动作 && 覆写来源 ? 'resolved' : 'candidate'),
+                raw: '',
+              }))
+            : 解析再判定候选列表(轨迹);
           const 依据列表 = [
             轨迹.选择原因 || '',
             ...(Array.isArray(轨迹.目标理由) ? 轨迹.目标理由.slice(0, 2) : []),
@@ -41389,8 +42232,23 @@ class BattleUIComponent {
           if (非敌对承载动作) {
             return 加说明(`结合当前资源与行动窗口，最终确认${包裹判定动作名称(最终落地动作 || 技能 || 主动作)}用于${是造物承载动作 ? '完成造物承载' : '巩固自身节奏'}。`);
           }
+          const 读取原定倾向动作 = () => {
+            const 审计技能 = normalizeBattleActionDisplayName(轨迹.审计技能 || 轨迹.动作校正?.审计技能 || '');
+            const 候选首位 = 读取候选名称(最高候选 || {});
+            const 命中动作 = 命中候选名 || '';
+            const 原定 = 审计技能 || 候选首位 || 命中动作 || 技能;
+            if (原定 && 最终落地动作 && 原定 === 最终落地动作) {
+              return 候选首位 && 候选首位 !== 最终落地动作
+                ? 候选首位
+                : (命中动作 && 命中动作 !== 最终落地动作 ? 命中动作 : 原定);
+            }
+            return 原定;
+          };
           if (!再判定候选.length && 最终落地动作 && 最终为守势动作 && !候选包含最终动作) {
-            const 倾向动作 = 命中候选名 || 读取候选名称(最高候选 || {}) || 技能;
+            const 倾向动作 = 读取原定倾向动作();
+            const 原定前压动作 = 倾向动作 && 倾向动作 !== 最终落地动作
+              ? 倾向动作
+              : (候选.find(item => 读取候选名称(item) && 读取候选名称(item) !== 最终落地动作) ? 读取候选名称(候选.find(item => 读取候选名称(item) && 读取候选名称(item) !== 最终落地动作)) : '');
             if (/战术观察|待机|守势维持|守势对峙/.test(最终落地动作)) {
               return 加说明(
                 倾向动作 && 倾向动作 !== 最终落地动作
@@ -41399,13 +42257,13 @@ class BattleUIComponent {
               );
             }
             return 加说明(
-              倾向动作 && 倾向动作 !== 最终落地动作
-                ? `原定倾向${包裹判定动作名称(倾向动作)}，但当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
+              原定前压动作
+                ? `原定倾向${包裹判定动作名称(原定前压动作)}，但当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
                 : `当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
             );
           }
           if (!再判定候选.length && 覆写来源 && 最终落地动作) {
-            const 倾向动作 = 命中候选名 || 读取候选名称(最高候选 || {}) || 技能;
+            const 倾向动作 = 读取原定倾向动作();
             const 候选行 = 候选
               .slice(0, 4)
               .map((item, index, arr) => `${index === arr.length - 1 ? '└' : '├'} ${包裹判定动作名称(读取候选名称(item))}(原始:${Math.round(读取候选权重(item))}) -> [${读取候选名称(item) === (命中候选名 || 倾向动作) ? '最终命中' : '候选'}]`)
@@ -41413,26 +42271,77 @@ class BattleUIComponent {
             const 结论 = 倾向动作 && 倾向动作 !== 最终落地动作
               ? (
                 最终为守势动作
-                  ? `基于上述推演，放弃继续执行${包裹判定动作名称(倾向动作)}，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
+                  ? `基于上述推演，原定倾向${包裹判定动作名称(倾向动作)}，但当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
                   : `基于上述推演，先命中${包裹判定动作名称(倾向动作)}的战术窗口，随后落地为${包裹判定动作名称(最终落地动作)}。`
               )
-              : `基于上述推演，确认执行${包裹判定动作名称(最终落地动作)}。`;
+              : (
+                最终为守势动作
+                  ? `基于上述推演，当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
+                  : `基于上述推演，确认执行${包裹判定动作名称(最终落地动作)}。`
+              );
             return 加说明(`战术推演池：\n${候选行}\n${结论}`);
           }
           if (再判定候选.length) {
-            const 命中项 = 再判定候选.find(item => item.status === 'hit') || null;
+            const 实际落地项 = 最终落地动作
+              ? 再判定候选.find(item => item.candidate === 最终落地动作) || null
+              : null;
+            const 命中项 =
+              实际落地项 ||
+              再判定候选.find(item => item.status === 'hit') ||
+              再判定候选.find(item => item.candidate === 命中候选名) ||
+              null;
             const 候选行 = 再判定候选
               .slice(0, 4)
-              .map((item, index, arr) => `${index === arr.length - 1 ? '└' : '├'} ${包裹判定动作名称(item.candidate)}(原始:${Math.round(item.scoreRaw)}) -> [${item.status === 'hit' ? '最终命中' : item.status === 'candidate' ? '候选' : '否决'}]`)
+              .map((item, index, arr) => {
+                const 状态文本 =
+                  item.status === 'hit'
+                    ? '最终命中'
+                    : item.status === 'resolved'
+                      ? '实际落地'
+                      : item.status === 'candidate'
+                        ? '候选'
+                        : '否决';
+                return `${index === arr.length - 1 ? '└' : '├'} ${包裹判定动作名称(item.candidate)}(原始:${Math.round(item.scoreRaw)}) -> [${状态文本}]`;
+              })
               .join('\n');
             const 主动作名 = 主动作 || 技能 || '';
             let 结论 = '基于上述推演，维持原案。';
             if (命中项) {
-              if (命中项.candidate === '放弃再判定') 结论 = `基于上述推演，维持原案，继续使用${包裹判定动作名称(主动作名 || 命中项.candidate)}。`;
-              else if (命中项.candidate === 主动作名 || 命中项.candidate === 技能) 结论 = `基于上述推演，确认执行${包裹判定动作名称(主动作名 || 命中项.candidate)}。`;
+              if (最终落地动作 && 覆写来源) {
+                const 原定动作 = 主动作名 && 主动作名 !== 最终落地动作
+                  ? 主动作名
+                  : (
+                    命中项.candidate && 命中项.candidate !== 最终落地动作
+                      ? 命中项.candidate
+                      : (再判定候选.find(item => item.candidate && item.candidate !== 最终落地动作) || {}).candidate || ''
+                  );
+                if (/战术观察|待机|守势维持|守势对峙/.test(最终落地动作)) {
+                  结论 = 原定动作
+                    ? `基于上述推演，放弃继续执行${包裹判定动作名称(原定动作)}，改为先观察战局。`
+                    : '基于上述推演，当前没有合适敌对窗口，改为先观察战局。';
+                } else if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(最终落地动作)) {
+                  结论 = 原定动作
+                    ? `基于上述推演，原定倾向${包裹判定动作名称(原定动作)}，但当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`
+                    : `基于上述推演，当前不宜继续前压，改以${包裹判定动作名称(最终落地动作)}稳住局势。`;
+                } else if (最终落地动作 !== 主动作名) {
+                  结论 = 原定动作
+                    ? `基于上述推演，放弃继续执行${包裹判定动作名称(原定动作)}，最终改以${包裹判定动作名称(最终落地动作)}落地。`
+                    : `基于上述推演，最终改以${包裹判定动作名称(最终落地动作)}落地。`;
+                } else {
+                  结论 = `基于上述推演，复核后仍确认执行${包裹判定动作名称(最终落地动作)}。`;
+                }
+              } else if (命中项.candidate === '放弃再判定') {
+                结论 = `基于上述推演，维持原案，继续使用${包裹判定动作名称(主动作名 || 命中项.candidate)}。`;
+              } else if (命中项.candidate === '收招转防') {
+                结论 = `基于上述推演，确认转入${包裹判定动作名称('收招转防')}，放弃继续前压。`;
+              } else if (命中项.candidate === 主动作名 || 命中项.candidate === 技能) 结论 = `基于上述推演，确认执行${包裹判定动作名称(主动作名 || 命中项.candidate)}。`;
               else if (/抢落点|压招|偏转|换招|收招转防/.test(命中项.candidate)) {
-                const 落点动作 = 包裹判定动作名称(主动作名 || 技能 || 命中项.candidate);
-                结论 = `基于上述推演，决定以${包裹判定动作名称(命中项.candidate)}重校${落点动作}的落点与节奏。`;
+                const 落点动作 = 包裹判定动作名称(最终落地动作 || 主动作名 || 技能 || 命中项.candidate);
+                if (最终落地动作 && (最终落地动作 === 主动作名 || 最终落地动作 === 技能)) {
+                  结论 = `基于上述推演，复核后仍确认执行${落点动作}。`;
+                } else {
+                  结论 = `基于上述推演，决定以${包裹判定动作名称(命中项.candidate)}重校${落点动作}的落点与节奏。`;
+                }
               } else if (/短前摇对轰|强势对轰|控制截断|压制试探|控制压制/.test(命中项.candidate)) {
                 const 执行动作 = 包裹判定动作名称(主动作名 || 技能 || 命中项.candidate);
                 const 策略说明 = 再判定策略说明(命中项.candidate);
@@ -41496,8 +42405,16 @@ class BattleUIComponent {
               if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}校验当前攻势，确认以${动作名}承压。`;
               return `${行动者}校验当前攻势${动作名 ? `，应对动作指向${动作名}` : ''}。`;
             }
-            if (/再判定审计/.test(类型)) return `${行动者}复核${动作名 || '当前动作'}的落点与后续窗口。`;
-            if (/换招审计/.test(类型)) return `${行动者}复核受阻后的动作调整${动作名 ? `，转向${动作名}` : ''}。`;
+            if (/再判定审计/.test(类型)) {
+              if (/战术观察|待机|守势维持|守势对峙/.test(技能)) return `${行动者}复核后暂不继续前压，先观察战局。`;
+              if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}复核后确认转入${动作名}，稳住自身节奏。`;
+              return `${行动者}复核后确认${动作名 || '当前动作'}作为实际落点。`;
+            }
+            if (/换招审计/.test(类型)) {
+              if (/战术观察|待机|守势维持|守势对峙/.test(技能)) return `${行动者}受阻后没有继续出手，先观察战局。`;
+              if (/防御|危机自保|承伤硬抗|坚壁反制|收招转防|借力守势/.test(技能)) return `${行动者}受阻后改以${动作名}稳住局面。`;
+              return `${行动者}复核受阻后的动作调整，最终改为${动作名 || '当前动作'}。`;
+            }
           }
           if (轨迹.动作校正?.发生校正) {
             const 实际技能 = normalizeBattleActionDisplayName(轨迹.动作校正.实际技能 || '');
@@ -41883,17 +42800,6 @@ class BattleUIComponent {
           const ledger = result?.eventLedger || result?.combatData?.__battleEventLedger || [];
           const mergedLedger = 构建合并后的事件账本公开战报行(ledger, 10, context);
           if (mergedLedger.length) return mergedLedger;
-          const fromPublicReport = String(result?.publicReport || '').trim();
-          if (fromPublicReport) {
-            return fromPublicReport
-              .replace(/<\/?战斗公开战报>/g, '')
-              .split(/\n+/)
-              .map(line => 规范化公开战报文本(cleanBattleReportLineForStory(line), context))
-              .filter(line => line && !/^本轮战斗已由战斗模块完成结算/.test(line))
-              .filter(line => !/^当前结果：/.test(line))
-              .filter(line => !/^战斗意图：/.test(line))
-              .filter((line, index, list) => list.indexOf(line) === index);
-          }
           return [];
         }
 
