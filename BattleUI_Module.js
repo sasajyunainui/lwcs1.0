@@ -16440,6 +16440,50 @@ class BattleUIComponent {
         断言战斗回归夹具(/伤害已达生命占比0%/.test(String(thresholdResult?.logs?.join(' ') || '')), `伤害停推日志缺失:${thresholdResult?.logs?.join(' ') || ''}`);
         日志.push('自动续推最大回合、伤害停推与续推概率均可由运行时设置控制');
       });
+      注册('自动续推同构攻防重复后及时终止', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        玩家.HP = 99999;
+        玩家.hp = 99999;
+        玩家.HP上限 = 99999;
+        玩家.hp_max = 99999;
+        玩家.sp = 2000;
+        玩家.魂力 = 2000;
+        玩家.第1武魂.第1魂环.第1魂技 = {
+          ...构建战斗回归第一魂技('锁魄印', '魂力:80'),
+          前摇: 4,
+          _效果数组: [
+            { 原型: '状态施加', 目标: '单体', 状态名: '位移限制', 持续回合: 1, 计算层效果: { dodge_penalty: 0.12 } },
+          ],
+        };
+        敌人.HP = 99999;
+        敌人.hp = 99999;
+        敌人.HP上限 = 99999;
+        敌人.hp_max = 99999;
+        敌人.第1武魂.第1魂环.第1魂技 = normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击');
+        敌人.第1武魂.第2魂环 = { 第1魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫') };
+        敌人.agi = Math.max(玩家.agi * 1.25, 280);
+        敌人.final = buildCombatFinalStats(敌人);
+        let result = null;
+        const 原随机 = Math.random;
+        try {
+          Math.random = () => 0.01;
+          使用战斗回归桥接(combatData, { 夹具玩家: 玩家, 夹具敌人: 敌人 }, () => {
+            result = onPlayerAttack('锁魄印', {
+              dryRun: true,
+              mode: 'multi_round',
+              combatData,
+              intentMode: '点到为止',
+              autoContinueConfig: { maxRounds: 6, stopDamagePercent: 100, continueChancePercent: 100 },
+            });
+          });
+        } finally {
+          Math.random = 原随机;
+        }
+        const logText = String(result?.logs?.join(' ') || '');
+        断言战斗回归夹具(/续推终止.*攻防形态未出现实质变化/.test(logText), `重复攻防终止日志缺失:${logText}`);
+        断言战斗回归夹具(Number(result?.roundsExecuted || 0) < 6, `重复攻防未提前终止:${result?.roundsExecuted || 0};${logText}`);
+        日志.push(`自动续推重复攻防终止于第${result?.roundsExecuted || 0}回合`);
+      });
       注册('资源镜像回合尾同步', 日志 => {
         const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
         玩家.sp = 1880;
@@ -25084,6 +25128,10 @@ class BattleUIComponent {
         let 本次最大单击HP比例 = 0;
         let 首轮手选动作签名 = '';
         let 首轮手选技能名 = '';
+        const 自动续推重复记忆 = {
+          lastSignature: '',
+          repeatCount: 0,
+        };
         const 读取本次动作签名 = 动作 => {
           const 技能 = 动作?.skill || {};
           const 技能名 = String(技能.name || 技能.魂技名 || 动作?.action_type || 动作?.type || '').trim();
@@ -25092,15 +25140,72 @@ class BattleUIComponent {
           if (!技能名) return '';
           return [动作?.action_type || 动作?.type || '', 技能名, 魂环路径, 魂技槽位].join('|');
         };
+        const 构建自动续推回合同构签名 = (主动方 = null, 被动方 = null, 主动动作 = null, 反应动作 = null, 结算结果 = null, ledgerStartIndex = 0) => {
+          const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const 当前回合 = Number(combatData?.回合 || 0);
+          const roundEntries = ledger
+            .slice(Math.max(0, Number(ledgerStartIndex || 0)))
+            .filter(item => Number(item?.round || item?.回合 || 0) === 当前回合);
+          const 主动动作名 = normalizeBattleActionDisplayName(
+            主动动作?.skill?.name ||
+            主动动作?.skill?.魂技名 ||
+            主动动作?.__原定技能名 ||
+            主动动作?.__原定动作名 ||
+            主动动作?.action_type ||
+            主动动作?.type ||
+            '',
+          );
+          const 反应动作名 = normalizeBattleActionDisplayName(
+            反应动作?.skill?.name ||
+            反应动作?.skill?.魂技名 ||
+            反应动作?.__原定技能名 ||
+            反应动作?.__原定动作名 ||
+            反应动作?.action_type ||
+            反应动作?.type ||
+            '',
+          );
+          const 命中结果串 = roundEntries
+            .filter(item => String(item?.eventKind || '').trim() === 'hit_result')
+            .map(item => `${String(item?.actorName || '').trim()}:${String(item?.targetName || '').trim()}:${String(item?.result || '').trim()}`)
+            .sort()
+            .join('|');
+          const 状态结果串 = roundEntries
+            .filter(item => String(item?.eventKind || '').trim() === 'state_apply')
+            .map(item => `${String(item?.targetName || '').trim()}:${String(item?.stateName || '').trim()}:${String(item?.duration || '').trim()}`)
+            .sort()
+            .join('|');
+          const 受阻结果串 = roundEntries
+            .filter(item => /blocked_action|failed_action|target_fail/.test(String(item?.eventKind || '').trim()))
+            .map(item => `${String(item?.actorName || '').trim()}:${String(item?.actionName || '').trim()}:${String(item?.failReason || '').trim()}`)
+            .sort()
+            .join('|');
+          const 伤害值 = Math.max(
+            0,
+            Number(结算结果?.dmg || 0),
+            Number(结算结果?.totalProjectedDamage || 0),
+          );
+          return [
+            String(主动方?.name || 主动方?.名称 || '').trim(),
+            主动动作名,
+            String(被动方?.name || 被动方?.名称 || '').trim(),
+            反应动作名,
+            Math.round(伤害值),
+            命中结果串,
+            状态结果串,
+            受阻结果串,
+          ].join('||');
+        };
         const buildAutoPlayerContinuationAction = () => {
           const actorEntry = { char: attacker, side: 'player' };
           const targets = chooseTargetForActor(actorEntry, { combatData });
           const autoAction = buildAutoActionForActor(actorEntry, targets || { enemyTarget: defender, allyTarget: attacker }, { combatData });
           if (!autoAction) return null;
           const 自动技能名 = String(autoAction?.skill?.name || autoAction?.skill?.魂技名 || autoAction?.type || autoAction?.action_type || '').trim();
+          const 自动动作重复次数 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(attacker).recent_actions || {}, [自动技能名], 0);
           if (
             (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) ||
-            (首轮手选技能名 && 自动技能名 && 自动技能名 === 首轮手选技能名)
+            (首轮手选技能名 && 自动技能名 && 自动技能名 === 首轮手选技能名) ||
+            (自动技能名 && 自动动作重复次数 >= 2 && !/收招转防|战术观察|防御|危机自保|承伤硬抗|伺机闪避|闪避|借力守势|坚壁反制/.test(自动技能名))
           ) {
             return {
               action_type: '收招转防',
@@ -25117,7 +25222,7 @@ class BattleUIComponent {
               cast_time: 4,
               target_name: attacker?.name || '',
               player_auto_continuation: true,
-              decision_log: `[自动续推] 首轮手选魂技已经完成，本回合不再重复沿用【${首轮手选技能名 || 自动技能名 || '首轮魂技'}】，改为收招转防。`,
+              decision_log: `[自动续推] ${自动动作重复次数 >= 2 ? `连续沿用【${自动技能名 || '同一动作'}】未能拉开新局面` : `首轮手选魂技已经完成`}，本回合改为收招转防。`,
               def_mult: 1,
             };
           }
@@ -25441,6 +25546,7 @@ class BattleUIComponent {
           let 行为链结果 = null;
           let settleResult = null;
           const 本回合玩家动作账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
+          const 本回合账本起点 = 本回合玩家动作账本起点;
           const 扣除玩家动作成本 = (动作 = playerAction, 目标 = 玩家动作目标) => {
             if (!动作 || 动作.action_type === '施法失败' || 动作.__主动成本已结算 === true) return 动作?.action_type !== '施法失败';
             const costLog = applyActionCost(attacker, 动作, 目标, combatData);
@@ -25858,10 +25964,30 @@ class BattleUIComponent {
                 Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
                 Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(主动结算方),
               );
+              const 本回合同构签名 = 构建自动续推回合同构签名(
+                主动结算方,
+                被动结算目标,
+                主动结算动作,
+                反应结算动作,
+                settleResult,
+                本回合账本起点,
+              );
+              if (本回合同构签名 && 本回合同构签名 === 自动续推重复记忆.lastSignature) 自动续推重复记忆.repeatCount += 1;
+              else {
+                自动续推重复记忆.lastSignature = 本回合同构签名;
+                自动续推重复记忆.repeatCount = 1;
+              }
               const continueThresholdReached = 本轮攻防烈度 >= 自动续推设置.stopDamageRatio;
+              const 连续同构攻防应终止 =
+                自动续推重复记忆.repeatCount >= 2 &&
+                !!本回合同构签名 &&
+                !attacker.蓄力技能;
               if (continueThresholdReached) {
                 continueSimulation = false;
                 roundLog += ` [续推终止] 本回合伤害已达生命占比${Math.round(自动续推设置.stopDamagePercent)}%，暗箱续推停止。`;
+              } else if (连续同构攻防应终止) {
+                continueSimulation = false;
+                roundLog += ` [续推终止] 连续${自动续推重复记忆.repeatCount}回合攻防形态未出现实质变化，暗箱续推停止。`;
               } else {
                 const continueRoll = Math.random();
                 const continueHit = continueRoll < 自动续推设置.continueChance;
