@@ -28634,6 +28634,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
   --战斗边缘高光: rgba(255, 255, 255, 0.12);
   --战斗暗侧阴影: rgba(0, 0, 0, 0.48);
   --战斗圆角: 12px;
+  --战斗记录基准字号: var(--mvu-font-sm, 12px);
   --战斗记录文字主色: var(--文字主色, #edf7ff);
   --战斗记录文字弱色: var(--文字弱色, rgba(215, 232, 245, 0.72));
   box-sizing: border-box;
@@ -28656,7 +28657,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
     linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 10%, transparent), transparent 72%),
     color-mix(in srgb, var(--战斗玻璃底, rgba(2, 8, 16, 0.94)) 92%, #02070d);
   color: var(--战斗记录文字主色);
+  font-size: var(--战斗记录基准字号);
   font-family: var(--font-tech, var(--font-mono, Consolas, monospace));
+  line-height: 1.35;
   outline: none;
   box-shadow:
     inset 1px 1px 0 var(--战斗边缘高光),
@@ -28672,10 +28675,13 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   --战斗边缘高光: rgba(255, 255, 255, 0.12);
   --战斗暗侧阴影: rgba(0, 0, 0, 0.48);
   --战斗圆角: 12px;
+  --战斗记录基准字号: var(--mvu-font-sm, 12px);
   --战斗记录文字主色: var(--文字主色, #edf7ff);
   --战斗记录文字弱色: var(--文字弱色, rgba(215, 232, 245, 0.72));
   color: var(--战斗记录文字主色);
+  font-size: var(--战斗记录基准字号);
   font-family: var(--font-tech, var(--font-mono, Consolas, monospace));
+  line-height: 1.35;
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal.battle-record-terminal--collapsed {
@@ -28812,6 +28818,15 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   min-width: 0;
 }
 
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-head,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head span,
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head em,
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-empty {
@@ -28821,7 +28836,26 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   font-weight: 680;
 }
 
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-head span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-head em,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-empty,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-head span,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-head em,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-empty {
+  color: var(--战斗记录文字弱色);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 680;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-head b {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-head b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-head b {
   color: #ffffff;
   font-size: 12px;
   font-weight: 820;
