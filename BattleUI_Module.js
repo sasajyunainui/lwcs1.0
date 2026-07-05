@@ -6117,19 +6117,8 @@ class BattleUIComponent {
     }
     function 规范化公开战报文本(line = '', context = {}) {
       const normalized = 替换公开战报魂技槽位占位(replaceBattleReportGenericNames(String(line || ''), context), context);
-      const actorName = String(normalized.match(/^(?:第\d+回合[:：])?([^；，。]+?)(?:施展|释放|以【|转入|尝试|选择|抓住|完成|对|灵巧地|未找到|因【|被附加)/)?.[1] || '').trim();
-      const opponentName = 读取战报默认敌对名(context, actorName);
       return normalized
-        .replace(/抓住([^，。！？\s]+)露出的破绽，以【([^】]+)】进行反击，造成了 0 点伤害/g, '抓住$1露出的破绽，以【$2】进行反击，但未能造成实质伤害')
-        .replace(/未能及时反应，来不及规避/g, '一时难以规避')
-        .replace(/在压迫中勉强稳住了阵脚/g, '在无形压迫下陷入被动')
-        .replace(/闪身避让，闪避成功，这一击没有命中，(这一击(?:同时)?令)/g, '试图闪身避让，未能摆脱这轮压制。$1')
-        .replace(/闪身避让，([^，。]+对[^，。]+造成了\s*\d+\s*点伤害，(这一击(?:同时)?令))/g, '试图闪身避让，但仍被攻势命中，$1')
-        .replace(/闪身避让，([^，。]+对[^，。]+造成了\s*\d+\s*点伤害)/g, '试图闪身避让，但仍被攻势命中，$1')
         .replace(/，(这一击(?:同时)?令)/g, '。$1')
-        .replace(/(?<![\p{Script=Han}\p{L}\p{N}_])对手(?![\p{Script=Han}\p{L}\p{N}_])/gu, opponentName || '敌方目标')
-        .replace(/指向敌方目标/g, `指向${opponentName || '敌方目标'}`)
-        .replace(/攻击敌方目标/g, `攻击${opponentName || '敌方目标'}`)
         .replace(/([。！？])\1+/g, '$1')
         .trim();
     }
@@ -15551,6 +15540,41 @@ class BattleUIComponent {
       return 当前回合 > 0 && 生成回合 > 0 && 当前回合 <= 生成回合;
     }
 
+    function 写入召唤精神控制事件(combatData = {}, 宿主 = {}, 召唤单位 = {}, 结果 = '', 附加 = {}) {
+      const 召唤名 = String(召唤单位?.name || 召唤单位?.名称 || '召唤物').trim();
+      if (!combatData || !召唤名) return null;
+      const 宿主名 = String(宿主?.name || 宿主?.名称 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '').trim();
+      const failReason = String(附加.failReason || 附加.failureReason || '召唤控制链受限').trim();
+      return 写入战斗事件账本(combatData, {
+        eventKind: 'blocked_action',
+        round: Number(combatData?.回合 || 0),
+        actorName: 召唤名,
+        targetName: 宿主名,
+        actionName: '召唤控制',
+        actionType: 'summon_control',
+        result: String(结果 || 'limited').trim(),
+        failReason,
+        targetPoolSide: 'ally',
+        meta: {
+          source: 'summon',
+          primaryOutcome: 'interrupted',
+          reasonCode: 'SUMMON_CONTROL_OVERLOAD',
+          reasonText: String(附加.reasonText || '宿主精神负载不足以稳定控制召唤物').trim(),
+          summonName: 召唤名,
+          summonType: String(召唤单位?.类型 || '').trim(),
+          summonMode: String(召唤单位?.行动模式 || '').trim(),
+          summonHostName: 宿主名,
+          summonKey: String(召唤单位?.召唤键 || '').trim(),
+          mentalLoad: Math.max(0, Number(召唤单位?.精神负载 || 0)),
+          totalMentalLoad: Math.max(0, Number(附加.totalMentalLoad || 0)),
+          mentalLimit: Math.max(0, Number(附加.mentalLimit || 0)),
+          maintainRatio: Math.max(0, Number(附加.maintainRatio || 0)),
+          compression: Math.max(0, Number(附加.compression || 0)),
+          restriction: String(附加.restriction || 结果 || '').trim(),
+        },
+      });
+    }
+
     function 移除召唤运行态单位(combatData = {}, 召唤单位 = {}, 原因 = '消散') {
       if (!召唤单位 || 召唤单位.已消散 === true) return '';
       召唤单位.已消散 = true;
@@ -15626,6 +15650,15 @@ class BattleUIComponent {
             单位.final[key] = Math.max(1, Math.round(Number(单位.final[key] || 单位[key] || 1) * 压缩));
           });
           单位.__精神压缩 = 压缩;
+          写入召唤精神控制事件(combatData, 宿主, 单位, 'overload_compressed', {
+            failReason: '宿主精神负载过高，召唤物属性被压缩',
+            reasonText: '宿主精神负载过高，召唤物属性被压缩',
+            restriction: 'compressed',
+            totalMentalLoad: 总负载,
+            mentalLimit: 操控上限,
+            maintainRatio: 当前精神 / 精神上限,
+            compression: 压缩,
+          });
         });
         日志.push(`[召唤超载] ${宿主.name || '宿主'}召唤负载过高，召唤物属性压缩至${Math.round(压缩 * 100)}%。`);
       }
@@ -15633,11 +15666,35 @@ class BattleUIComponent {
       单位列表.forEach(单位 => {
         单位.__精神维持率 = 维持率;
         if (维持率 <= 0) {
+          写入召唤精神控制事件(combatData, 宿主, 单位, 'dissipated', {
+            failReason: '宿主精神力枯竭，召唤物被强制消散',
+            reasonText: '宿主精神力枯竭，召唤物被强制消散',
+            restriction: 'dissipated',
+            totalMentalLoad: 总负载,
+            mentalLimit: 操控上限,
+            maintainRatio: 维持率,
+          });
           日志.push(移除召唤运行态单位(combatData, 单位, '精神力枯竭'));
         } else if (单位.类型 === '深渊生物' && 维持率 < 0.25) {
+          写入召唤精神控制事件(combatData, 宿主, 单位, 'recalled', {
+            failReason: '宿主精神维持不足，召唤物被强制离场',
+            reasonText: '宿主精神维持不足，召唤物被强制离场',
+            restriction: 'recalled',
+            totalMentalLoad: 总负载,
+            mentalLimit: 操控上限,
+            maintainRatio: 维持率,
+          });
           日志.push(移除召唤运行态单位(combatData, 单位, '精神维持不足'));
         } else if (维持率 < 0.25) {
           单位.__禁用召唤技能 = true;
+          写入召唤精神控制事件(combatData, 宿主, 单位, 'skill_limited', {
+            failReason: '宿主精神不足，召唤物技能被禁用',
+            reasonText: '宿主精神不足，召唤物只能进行基础行动',
+            restriction: 'skill_disabled',
+            totalMentalLoad: 总负载,
+            mentalLimit: 操控上限,
+            maintainRatio: 维持率,
+          });
           日志.push(`[召唤受限] ${单位.name || '召唤物'}受宿主精神不足影响，只能进行基础行动。`);
         } else {
           单位.__禁用召唤技能 = false;
@@ -16024,7 +16081,27 @@ class BattleUIComponent {
         const 精神 = 构建召唤夹具战斗态({ 名称: '精神召唤', 行动模式: '自主行动' });
         精神.宿主.men = 0;
         断言召唤夹具(刷新召唤精神负载(精神.combatData, 精神.宿主).includes('精神'), '精神枯竭未消散');
-        日志.push('收回锁、死亡反噬、精神消散成立');
+        const 消散事件 = (精神.combatData.__battleEventLedger || []).find(event =>
+          event?.eventKind === 'blocked_action' &&
+          event?.actionType === 'summon_control' &&
+          event?.meta?.restriction === 'dissipated' &&
+          event?.meta?.reasonCode === 'SUMMON_CONTROL_OVERLOAD'
+        );
+        断言召唤夹具(!!消散事件?.chainNodeId, '精神消散未写入召唤控制账本');
+        断言召唤夹具((精神.combatData.__battleResolutionTrace || []).some(node => node.nodeId === 消散事件.chainNodeId), '精神消散未进入因果链');
+        const 受限 = 构建召唤夹具战斗态({ 名称: '受限召唤', 行动模式: '自主行动' });
+        受限.宿主.men_max = 100;
+        受限.宿主.men = 10;
+        断言召唤夹具(刷新召唤精神负载(受限.combatData, 受限.宿主).includes('受限'), '精神不足未限制召唤技能');
+        const 受限事件 = (受限.combatData.__battleEventLedger || []).find(event =>
+          event?.eventKind === 'blocked_action' &&
+          event?.actionType === 'summon_control' &&
+          event?.meta?.restriction === 'skill_disabled' &&
+          event?.meta?.reasonCode === 'SUMMON_CONTROL_OVERLOAD'
+        );
+        断言召唤夹具(!!受限事件?.chainNodeId, '精神受限未写入召唤控制账本');
+        断言召唤夹具((受限.combatData.__battleResolutionTrace || []).some(node => node.nodeId === 受限事件.chainNodeId), '精神受限未进入因果链');
+        日志.push('收回锁、死亡反噬、精神消散与受限结构化成立');
       });
       注册('目标池与单体收回', 日志 => {
         const 第一 = 构建召唤夹具战斗态({ 名称: '一号召唤', 行动模式: '协同攻击' });
@@ -19187,10 +19264,62 @@ class BattleUIComponent {
       }
     }
 
+    function 生成战斗AOE链路调试结果() {
+      const 原随机 = Math.random;
+      try {
+        Math.random = () => 0.01;
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        敌人.name = '高速敌';
+        敌人.agi = 10000;
+        敌人.final = buildCombatFinalStats(敌人);
+        const 低速敌 = 构建战斗回归夹具单位('低速敌', '防御系');
+        低速敌.agi = 1;
+        低速敌.def = 20;
+        低速敌.final = buildCombatFinalStats(低速敌);
+        combatData.参战者.team_enemy = [敌人, 低速敌];
+        const 群体技能 = normalizeSkillData({
+          name: '群体压制',
+          魂技名: '群体压制',
+          技能分类: '输出',
+          目标: '敌方群体',
+          消耗: '无',
+          前摇: 10,
+          _效果数组: [{ 原型: '伤害结算', 目标: '群体', 生效方式: '独立生效', 威力倍率: 90, 伤害类型: '远程攻击' }],
+        }, '群体压制');
+        玩家.第1武魂.第1魂环.第1魂技 = 群体技能;
+        const entry = {
+          actor_name: 玩家.name,
+          action_type: '释放魂技',
+          skill: { 魂技名: '群体压制', name: '群体压制', 消耗: '无' },
+          __魂环路径: ['第1武魂', '第1魂环'],
+          __魂技槽位: '第1魂技',
+          target_name: 敌人.name,
+        };
+        let result = null;
+        使用战斗回归桥接(combatData, {
+          [玩家.name]: 玩家,
+          [敌人.name]: 敌人,
+          [低速敌.name]: 低速敌,
+          夹具友方: 构建战斗回归夹具单位('夹具友方', '辅助系'),
+        }, () => {
+          result = onPlayerAttack(`群体压制\n[动作队列]${JSON.stringify([entry])}[/动作队列]`, {
+            dryRun: true,
+            mode: 'single_round',
+            combatData,
+            intentMode: '点到为止',
+          });
+        });
+        return { result, combatData, 玩家, 敌人, 低速敌 };
+      } finally {
+        Math.random = 原随机;
+      }
+    }
+
     root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '完全闪避不落本次攻击负面状态', '位移限制不结算生命流失', '新附加持续状态下回合才跳伤', '完整闪避链不触发本次状态结算', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '闭环账本标记未闭合起招', '空效果技能不留下未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与伤害停推', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '判定流程展示细化', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链', '预演结果导出与UI可见文本一致', '公开战报不再自指普攻', '状态结算可追溯附着来源', '自身增益动作队列不误取消', '自保候选不串旧敌方目标', '非攻击动作不触发防反链', '防反来源优先使用真实动作', '状态来源登记写入运行时账本', '敌对动作目标不得落友方或自身', '反敏攻闪避后不继续普攻前压', '敏攻闪避后不重复同一单体压制技能'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
     root.__LWCS_GENERATE_BATTLE_DECISION_SAMPLES__ = (数量 = 100) => 生成战斗判定样本文本(数量);
     root.__LWCS_DEBUG_BATTLE_SAMPLE_RESULT__ = (索引 = 1) => 生成战斗判定样本结果(索引);
+    root.__LWCS_DEBUG_BATTLE_AOE_TRACE_RESULT__ = () => 生成战斗AOE链路调试结果();
 
     function 读取事件链状态(container = null) {
       const 状态 = container && typeof container === 'object' ? container : {};
@@ -22999,6 +23128,26 @@ class BattleUIComponent {
         return allowed.has(value) ? value : fallback;
       }
 
+      function 推断战斗默认ReasonCode(event = {}, primaryOutcome = '') {
+        const kind = String(event?.eventKind || '').trim();
+        const result = String(event?.result || '').trim();
+        const outcome = String(primaryOutcome || event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
+        if (kind === 'counter') return result === 'fail' ? 'COUNTER_WINDOW_MISSED' : 'COUNTER_WINDOW_OPENED';
+        if (['dodge', 'defend', 'pass'].includes(kind)) {
+          return /failed|fail|失败|未能/.test(result) || outcome === 'reaction_failed' ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED';
+        }
+        if (['blocked_action', 'failed_action', 'target_fail'].includes(kind)) {
+          if (/资源|魂力|精神力|体力|resource/i.test(String(event?.failReason || event?.failureReason || event?.result || ''))) return 'RESOURCE_INSUFFICIENT';
+          if (/目标|target/i.test(String(event?.failReason || event?.failureReason || event?.result || ''))) return 'NO_VALID_TARGET';
+          return 'ACTION_COMMITTED';
+        }
+        if (outcome === 'no_valid_window') return 'NO_EFFECTIVE_OPENING';
+        if (outcome === 'miss' || outcome === 'dodged' || /miss|evade|dodge|未命中|闪避/.test(result)) return 'REACTION_SUCCEEDED';
+        if (outcome === 'reaction_failed') return 'REACTION_FAILED';
+        if (outcome === 'interrupted') return 'INTERRUPTED_BY_SPEED';
+        return 'ACTION_COMMITTED';
+      }
+
       function 推断战斗目标范围标记(targetKind = '') {
         const kind = String(targetKind || '').trim();
         if (kind === '敌方群体') return 'enemy_group';
@@ -23138,7 +23287,7 @@ class BattleUIComponent {
           result: String(event.result || '').trim(),
           primaryOutcome: String(event.primaryOutcome || event.meta?.primaryOutcome || config.primaryOutcome || '').trim(),
           failureReason: String(event.failureReason || event.failReason || event.meta?.failureReason || '').trim(),
-          reasonCode: 标准化战斗ReasonCode(event.reasonCode || event.meta?.reasonCode || (event.failReason ? 'LEGACY_CUSTOM_REASON' : '')),
+          reasonCode: 标准化战斗ReasonCode(event.reasonCode || event.meta?.reasonCode || (event.failReason ? 'LEGACY_CUSTOM_REASON' : ''), 推断战斗默认ReasonCode(event, event.primaryOutcome || event.meta?.primaryOutcome || config.primaryOutcome || '')),
           reasonText: String(event.reasonText || event.meta?.reasonText || '').trim(),
           replanReasonCode: 标准化战斗ReasonCode(event.replanReasonCode || event.meta?.replanReasonCode || '', ''),
           replanReasonText: String(event.replanReasonText || event.meta?.replanReasonText || '').trim(),
@@ -29454,6 +29603,29 @@ class BattleUIComponent {
           const targetConditionEffects = targetChar.状态效果
             ? Object.values(targetChar.状态效果).map(c => c?.战斗效果 || {})
             : [];
+          if (targetEntry?.evaded === true) {
+            写入战斗事件账本(options?.combatData || {}, {
+              eventKind: 'hit_result',
+              round: Number(options?.combatData?.回合 || 0),
+              actorName: attacker?.name || attacker?.名称 || '',
+              targetName: targetChar?.name || targetChar?.名称 || targetEntry?.targetName || '',
+              actionName: attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '',
+              actionType: ledgerActionType,
+              result: 'miss',
+              failureReason: 'dodged',
+              meta: {
+                ...ledgerSourceMeta,
+                damage: 0,
+                incomingDamage: 0,
+                reactiveDamage: 0,
+                defenseThreshold: 0,
+                shieldAbsorb: 0,
+                failureReason: 'dodged',
+              },
+            });
+            if (targetEntry?.kind === 'primary' || (index === 0 && !primaryAppliedDamage)) primaryAppliedDamage = 0;
+            return;
+          }
           if (targetEntry?.被时光回溯规避 === true) {
             if (targetEntry?.kind === 'primary' || (index === 0 && !primaryAppliedDamage)) primaryAppliedDamage = 0;
             return;
