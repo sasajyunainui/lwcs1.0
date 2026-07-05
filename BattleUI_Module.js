@@ -4639,6 +4639,7 @@ class BattleUIComponent {
         const round = Number(String(line || '').match(/^第(\d+)回合/)?.[1] || 0);
         const roundEvents = byRound.get(round) || [];
         const blocks = [构建公开战报文本块(line, roundEvents[0] || {})].filter(Boolean);
+        const lineText = String(line || '');
         roundEvents.forEach(event => {
           const kind = String(event?.eventKind || '').trim();
           const targetName = String(event?.targetName || '').trim();
@@ -4647,13 +4648,44 @@ class BattleUIComponent {
           const sourceNodeId = String(event?.chainNodeId || '').trim();
           if (kind === 'hit_result') {
             const damage = Math.max(0, 读取事件账本数值(event, 'damage'));
-            if (damage > 0) blocks.push(构建公开战报Badge块('damage', { value: -damage, unit: 'HP', targetName, targetId, sourceEventId, sourceNodeId }));
+            const actionName = normalizeBattleActionDisplayName(event?.finalActionName || event?.actionName || '');
+            const belongsToLine = damage > 0 &&
+              (!targetName || lineText.includes(targetName)) &&
+              (!actionName || lineText.includes(`【${actionName}】`)) &&
+              lineText.includes(String(damage));
+            if (belongsToLine) blocks.push(构建公开战报Badge块('damage', { value: -damage, unit: 'HP', targetName, targetId, sourceEventId, sourceNodeId }));
+          } else if (kind === 'state_tick') {
+            const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
+            const resource = String(event?.meta?.resource || '生命值').trim();
+            const stateName = 读取事件账本状态名(event);
+            const isHeal = String(event?.result || '').includes('恢复');
+            const belongsToLine = amount > 0 &&
+              (!stateName || lineText.includes(`【${stateName}】`)) &&
+              (!targetName || lineText.includes(targetName)) &&
+              lineText.includes(String(amount)) &&
+              lineText.includes(resource);
+            if (belongsToLine && /生命值|HP|气血|血量/.test(resource)) {
+              blocks.push(构建公开战报Badge块(isHeal ? 'heal' : 'damage', {
+                value: isHeal ? amount : -amount,
+                unit: 'HP',
+                targetName,
+                targetId,
+                sourceEventId,
+                sourceNodeId,
+              }));
+            }
           } else if (kind === 'state_apply' && 事件账本状态已附着(event)) {
             const stateName = 读取事件账本状态名(event);
-            if (stateName) blocks.push(构建公开战报Badge块('state', { name: stateName, targetName, targetId, sourceEventId, sourceNodeId }));
+            const belongsToLine = stateName &&
+              lineText.includes(`【${stateName}】`) &&
+              (!targetName || lineText.includes(targetName));
+            if (belongsToLine) blocks.push(构建公开战报Badge块('state', { name: stateName, targetName, targetId, sourceEventId, sourceNodeId }));
           } else if (kind === 'shield_create') {
             const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
-            blocks.push(构建公开战报Badge块('shield', { value: amount, targetName: targetName || event.actorName, targetId, sourceEventId, sourceNodeId }));
+            const shieldTarget = targetName || event.actorName;
+            if (amount > 0 && (!shieldTarget || lineText.includes(shieldTarget)) && lineText.includes(String(amount))) {
+              blocks.push(构建公开战报Badge块('shield', { value: amount, targetName: shieldTarget, targetId, sourceEventId, sourceNodeId }));
+            }
           }
         });
         return { round, blocks, text: 序列化公开战报Blocks(blocks) || String(line || '').trim() };
@@ -5124,23 +5156,40 @@ class BattleUIComponent {
             if (roundTexts.length) lines.push(`${prefix}${roundTexts.join('；')}。`);
           }
 
-          ticks.forEach(item => {
-            used.add(item);
-            const target = String(item.targetName || '目标').trim();
-            const state = 读取事件账本状态名(item);
-            const amount = Math.max(0, 读取事件账本数值(item, 'amount'));
+          const unusedTicks = ticks.filter(item => !used.has(item));
+          const tickGroups = new Map();
+          unusedTicks.forEach(item => {
+            const state = 读取事件账本状态名(item) || '持续状态';
             const resource = String(item.meta?.resource || '生命值').trim();
-            const sourceText = 构建公开战报状态来源短句(item, { plainText: true });
             const isHeal = String(item.result || '').includes('恢复');
-            const text = 选择战报润色模板(isHeal ? 'stateTickHeal' : 'stateTickDamage', {
+            const sourceText = 构建公开战报状态来源短句(item, { plainText: true });
+            const key = `${state}|${resource}|${isHeal ? 'heal' : 'damage'}|${sourceText}`;
+            if (!tickGroups.has(key)) tickGroups.set(key, { state, resource, isHeal, sourceText, items: [] });
+            tickGroups.get(key).items.push(item);
+          });
+          tickGroups.forEach(grouped => {
+            grouped.items.forEach(item => used.add(item));
+            if (grouped.items.length >= 2) {
+              const total = grouped.items.reduce((sum, item) => sum + Math.max(0, 读取事件账本数值(item, 'amount')), 0);
+              const details = grouped.items
+                .map(item => `${String(item.targetName || '目标').trim()}${grouped.isHeal ? '恢复' : '损失'} ${Math.max(0, 读取事件账本数值(item, 'amount'))} 点${grouped.resource}`)
+                .filter(Boolean)
+                .join('，');
+              lines.push(`${prefix}回合收束，【${grouped.state}】持续结算，${grouped.items.length} 个目标共${grouped.isHeal ? '恢复' : '损失'} ${total} 点${grouped.resource}${grouped.sourceText}；${details}。`);
+              return;
+            }
+            const item = grouped.items[0];
+            const target = String(item.targetName || '目标').trim();
+            const amount = Math.max(0, 读取事件账本数值(item, 'amount'));
+            const text = 选择战报润色模板(grouped.isHeal ? 'stateTickHeal' : 'stateTickDamage', {
               target,
-              state,
+              state: grouped.state,
               amount,
-              resource,
-              sourceText,
+              resource: grouped.resource,
+              sourceText: grouped.sourceText,
               __required: ['target', 'state', 'amount', 'resource'],
-            }, `${group.round}|stateTick|${target}|${state}|${amount}|${resource}|${isHeal ? 'heal' : 'damage'}`);
-            lines.push(`${prefix}${text || `${target}随后受【${state}】影响，${isHeal ? '恢复' : '损失'}了 ${amount} 点${resource}${sourceText}`}。`);
+            }, `${group.round}|stateTick|${target}|${grouped.state}|${amount}|${grouped.resource}|${grouped.isHeal ? 'heal' : 'damage'}`);
+            lines.push(`${prefix}${text || `${target}随后受【${grouped.state}】影响，${grouped.isHeal ? '恢复' : '损失'}了 ${amount} 点${grouped.resource}${grouped.sourceText}`}。`);
           });
         });
       const 压缩连续公开战报受阻行 = (sourceLines = []) => {
@@ -45319,6 +45368,8 @@ class BattleUIComponent {
           渲染公开战报HTML(line, context);
         root.__LWCS_RENDER_BATTLE_REPORT_BLOCKS_HTML_IMPL__ = (blocks = [], context = {}) =>
           渲染公开战报BlocksHTML(blocks, context);
+        root.__LWCS_BUILD_PUBLIC_REPORT_BLOCKS_IMPL__ = (eventLedger = [], limit = 8, context = {}) =>
+          构建事件账本公开战报Blocks(eventLedger, limit, context);
         root.__LWCS_BUILD_BATTLE_ROUND_DASHBOARD_IMPL__ = (result = null, context = {}) =>
           构建回合速览数据(result, context);
         root.__LWCS_RENDER_BATTLE_ROUND_DASHBOARD_IMPL__ = (rows = []) =>
@@ -45802,6 +45853,15 @@ window.__LWCS_RENDER_BATTLE_REPORT_BLOCKS_HTML__ = function (blocks = [], contex
     return typeof impl === 'function' ? impl(blocks, context) : { html: '', changed: false };
   } catch (_) {
     return { html: '', changed: false };
+  }
+};
+
+window.__LWCS_BUILD_PUBLIC_REPORT_BLOCKS__ = function (eventLedger = [], limit = 8, context = {}) {
+  try {
+    const impl = window.__LWCS_BUILD_PUBLIC_REPORT_BLOCKS_IMPL__;
+    return typeof impl === 'function' ? impl(eventLedger, limit, context) : [];
+  } catch (_) {
+    return [];
   }
 };
 
