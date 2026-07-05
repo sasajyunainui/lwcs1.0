@@ -29138,6 +29138,13 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   border-left-color: color-mix(in srgb, var(--战斗强调色) 64%, transparent);
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--action-chain {
+  border-left-color: color-mix(in srgb, var(--战斗强调色) 74%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 10%, transparent), transparent 82%),
+    rgba(255, 255, 255, 0.035);
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--handoff {
   border-left-style: dashed;
   border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 34%, transparent);

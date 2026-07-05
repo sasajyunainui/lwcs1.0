@@ -9005,15 +9005,15 @@
   }
 
   function extractBattleAdjudicationPayload(text = '') {
-    const match = String(text || '').match(/<战斗裁断>\s*([\s\S]*?)\s*<\/战斗裁断>/i);
+    const match = String(text || '').match(/<battle_adjudication>\s*([\s\S]*?)\s*<\/battle_adjudication>/i);
     if (!match) return null;
     try {
       const parsed = JSON.parse(String(match[1] || '').trim());
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-      console.warn('[battle] <战斗裁断> JSON 不是对象,被拒收', { 类型: Array.isArray(parsed) ? 'array' : typeof parsed });
+      console.warn('[battle] <battle_adjudication> JSON 不是对象,被拒收', { 类型: Array.isArray(parsed) ? 'array' : typeof parsed });
       return null;
     } catch (error) {
-      console.warn('[battle] <战斗裁断> JSON.parse 失败', { 原文片段: String(match[1] || '').slice(0, 200), error: error && error.message });
+      console.warn('[battle] <battle_adjudication> JSON.parse 失败', { 原文片段: String(match[1] || '').slice(0, 200), error: error && error.message });
       return null;
     }
   }
@@ -9118,7 +9118,7 @@
         finished: false,
         reason: 'battle_continues',
         summary: '战斗裁断为未结束，战斗模块维持进行中。',
-        runtimeEvent: '<战斗裁断结果>\n状态：未结束\n事实：战斗裁断为未结束，战斗模块维持进行中。\n约束：后续剧情承接当前战局，不要重复结算同一轮战斗。\n</战斗裁断结果>',
+        runtimeEvent: '<battle_adjudication_result>\n状态：未结束\n事实：战斗裁断为未结束，战斗模块维持进行中。\n约束：后续剧情承接当前战局，不要重复结算同一轮战斗。\n</battle_adjudication_result>',
       };
     }
     const loserName = settlement.败方;
@@ -9304,7 +9304,7 @@
         settlement,
         summary,
         patchOps: patches,
-        runtimeEvent: `<战斗裁断结果>\n状态：已结束\n事实：${summary}。\n约束：后续剧情只承接该裁断结果，不要重复输出 <战斗裁断>，不要重复结算同一场战斗。\n</战斗裁断结果>`,
+        runtimeEvent: `<battle_adjudication_result>\n状态：已结束\n事实：${summary}。\n约束：后续剧情只承接该裁断结果，不要重复输出 <battle_adjudication>，不要重复结算同一场战斗。\n</battle_adjudication_result>`,
       };
     } catch (error) {
       console.warn('[battle] 战斗裁断 patch 写入失败', { 胜方: settlement.胜方, 败方: settlement.败方, error });
@@ -43525,13 +43525,13 @@ ${播报文本}
           ? '敌方取得阶段胜势'
           : '战斗仍在持续';
     return [
-      '<战斗公开战报>',
+      '<battle_public_report>',
       `自动战斗已由战斗模块完成结算：实际推演 ${toNumber(执行结果.roundsExecuted, 0)} 回合。`,
       ...战报列表.map(清理自动战斗公开战报行).filter(Boolean).slice(-8).map((line, index) => `${index + 1}. ${line}`),
       `当前结果：${战果说明}。`,
       `存活统计：我方存活 ${玩家存活}；敌方存活 ${敌方存活}。`,
       `战斗意图：${toText(combatData.战斗意图, '点到为止')}。`,
-      '</战斗公开战报>',
+      '</battle_public_report>',
     ].join('\n');
   }
 
@@ -44412,7 +44412,7 @@ ${播报文本}
   function resolveModuleIntentPayload(input) {
     let parsedInput = input;
     if (typeof input === 'string') {
-      const routeMatch = input.match(/<模块路由>\s*([\s\S]*?)\s*<\/模块路由>/i);
+      const routeMatch = input.match(/<module_routing>\s*([\s\S]*?)\s*<\/module_routing>/i);
       if (routeMatch) {
         try {
           parsedInput = JSON.parse(routeMatch[1]);
@@ -44636,7 +44636,7 @@ ${播报文本}
     } else {
       事实 = 状态 === '执行失败' ? `模块执行失败${原因 ? `，原因：${原因}` : ''}。` : `模块已处理，模式：${模式}。`;
     }
-    return `<模块路由结果>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：${约束}\n</模块路由结果>`;
+    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：${约束}\n</module_routing_result>`;
   }
 
   function 读取快照当前位置(snapshot) {

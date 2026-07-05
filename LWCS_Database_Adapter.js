@@ -190,7 +190,7 @@
   }
 
   function 本轮输入包含战斗公开战报(text = '') {
-    return /<战斗公开战报>[\s\S]*?<\/战斗公开战报>/i.test(String(text || ''));
+    return /<battle_public_report>[\s\S]*?<\/battle_public_report>/i.test(String(text || ''));
   }
 
   function 取本轮有效战斗结算上下文(userInput = '') {
@@ -206,29 +206,29 @@
     if (!上下文) return '无任务';
     return [
       '【战斗裁断任务】',
-      '当前存在前端战斗模块提交的战斗结算卷宗。公开战报已在本轮用户输入的 <战斗公开战报> 中提供，你必须以那份公开战报为事实基准，在完成模块路由审查后继续判断本轮战斗是否应结束，并为后续正文准备自然承接。',
+      '当前存在前端战斗模块提交的战斗结算卷宗。公开战报已在本轮用户输入的 <battle_public_report> 中提供，你必须以那份公开战报为事实基准，在完成模块路由审查后继续判断本轮战斗是否应结束，并为后续正文准备自然承接。',
       '',
-      '<战斗裁断卷宗>',
+      '<battle_adjudication_dossier>',
       上下文.裁断卷宗 || '无',
-      '</战斗裁断卷宗>',
+      '</battle_adjudication_dossier>',
     ].join('\n');
   }
 
   function 构建战斗裁断输出格式文本() {
     if (!取本轮有效战斗结算上下文(本轮输入文本)) return '';
     return [
-      '若存在【战斗裁断任务】，必须在 <模块路由> 后追加：',   
-      '<战斗裁断>',
+      '若存在【战斗裁断任务】，必须在 <module_routing> 后追加：',
+      '<battle_adjudication>',
       '{',
       '  "模块结算": {',
       '    "是否结束": false',
       '  },',
       '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
       '}',
-      '</战斗裁断>',
+      '</battle_adjudication>',
       '',
-      '若战斗结束，<战斗裁断> 必须改为：',
-      '<战斗裁断>',
+      '若战斗结束，<battle_adjudication> 必须改为：',
+      '<battle_adjudication>',
       '{',
       '  "模块结算": {',
       '    "是否结束": true,',
@@ -238,7 +238,7 @@
       '  },',
       '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
       '}',
-      '</战斗裁断>',
+      '</battle_adjudication>',
       '',
       '模块结算规则：胜方和败方必须是当前参战者名称且不能相同；败方剩余HP比例必须是 0-100 的数字，0 表示死亡，大于 0 表示存活。',
     ].join('\n');
@@ -496,7 +496,7 @@
   function 清理近场文本片段(文本 = '') {
     return 清理世界书扫描文本(文本)
       .replace(/<剧情审查>[\s\S]*?<\/剧情审查>/gi, ' ')
-      .replace(/<模块路由>[\s\S]*?<\/模块路由>/gi, ' ')
+      .replace(/<module_routing>[\s\S]*?<\/module_routing>/gi, ' ')
       .replace(/<tabletop>[\s\S]*?<\/tabletop>/gi, ' ')
       .replace(/<\/?content>/gi, ' ')
       .trim();
@@ -888,7 +888,7 @@
   }
 
   function 提取模块路由块(规划文本) {
-    const 匹配 = String(规划文本 || '').match(/<模块路由>\s*([\s\S]*?)\s*<\/模块路由>/i);
+    const 匹配 = String(规划文本 || '').match(/<module_routing>\s*([\s\S]*?)\s*<\/module_routing>/i);
     return 匹配 ? String(匹配[1] || '').trim() : '';
   }
 
@@ -897,13 +897,13 @@
   }
 
   function 提取战斗裁断块(规划文本) {
-    const 匹配 = String(规划文本 || '').match(/<战斗裁断>\s*([\s\S]*?)\s*<\/战斗裁断>/i);
+    const 匹配 = String(规划文本 || '').match(/<battle_adjudication>\s*([\s\S]*?)\s*<\/battle_adjudication>/i);
     return 匹配 ? String(匹配[1] || '').trim() : '';
   }
 
   function 清理模块路由事件文本(文本 = '') {
     return String(文本 || '')
-      .replace(/<\s*模块路由\s*>[\s\S]*?<\s*\/\s*模块路由\s*>/gi, '[模块路由已执行]')
+      .replace(/<\s*module_routing\s*>[\s\S]*?<\s*\/\s*module_routing\s*>/gi, '[模块路由已执行]')
       .replace(/<\s*JSONPatch\b[\s\S]*?<\s*\/\s*JSONPatch\s*>/gi, '[结构化写入已省略]')
       .replace(/<\s*UpdateVariable\b[\s\S]*?<\s*\/\s*UpdateVariable\s*>/gi, '[变量写入已省略]')
       .trim();
@@ -922,7 +922,7 @@
             : '已处理';
     const 原因 = String(结果?.reason || '').trim();
     const 事实 = 原因 ? `模块路由${状态}，原因：${原因}。` : `模块路由${状态}。`;
-    return `<模块路由结果>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：后续剧情只承接该结果，不要重复触发相同模块或重复结算。\n</模块路由结果>`;
+    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：后续剧情只承接该结果，不要重复触发相同模块或重复结算。\n</module_routing_result>`;
   }
 
   function 构建战斗裁断运行事件(结果 = {}) {
@@ -931,7 +931,7 @@
     if (结果?.handled !== true) return '';
     const 状态 = 结果?.finished === true ? '已结束' : '未结束';
     const 摘要 = String(结果?.summary || '').trim() || `战斗裁断${状态}。`;
-    return `<战斗裁断结果>\n状态：${状态}\n事实：${摘要}\n约束：后续剧情只承接该裁断结果，不要重复输出 <战斗裁断>，不要重复结算同一场战斗。\n</战斗裁断结果>`;
+    return `<battle_adjudication_result>\n状态：${状态}\n事实：${摘要}\n约束：后续剧情只承接该裁断结果，不要重复输出 <battle_adjudication>，不要重复结算同一场战斗。\n</battle_adjudication_result>`;
   }
 
   function 限制模块路由接管表大小() {
@@ -968,7 +968,7 @@
           dispatchMode: 'settled_summary',
           reason: 'battle_report_route_skipped',
         },
-        runtimeEvent: '<模块路由结果>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n约束：继续完成战斗裁断与正文承接，不要重复触发 battle 模块。\n</模块路由结果>',
+        runtimeEvent: '<module_routing_result>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n约束：继续完成战斗裁断与正文承接，不要重复触发 battle 模块。\n</module_routing_result>',
       };
     }
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
@@ -1020,7 +1020,7 @@
     const 接管承诺 = (async () => {
       let 结果 = null;
       try {
-        结果 = await Promise.resolve(裁断函数(`<战斗裁断>${裁断块}</战斗裁断>`, { source: 'plot_stage_battle_adjudication' }));
+        结果 = await Promise.resolve(裁断函数(`<battle_adjudication>${裁断块}</battle_adjudication>`, { source: 'plot_stage_battle_adjudication' }));
       } catch (错误) {
         console.warn('[LWCS适配器] 战斗裁断接管失败，放行正文生成:', 错误);
         return { action: 'continue', reason: 'battle_adjudication_failed' };
@@ -1100,7 +1100,7 @@
       .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, ' ')
       .replace(/<JSONPatch>[\s\S]*?<\/JSONPatch>/gi, ' ')
       .replace(/<Analysis>[\s\S]*?<\/Analysis>/gi, ' ')
-      .replace(/<战斗裁断>[\s\S]*?<\/战斗裁断>/gi, ' ')
+      .replace(/<battle_adjudication>[\s\S]*?<\/battle_adjudication>/gi, ' ')
       .replace(/\{\{MVU_RUNTIME_VIEW\}\}/g, ' ')
       .replace(/\{\{MVU_RUNTIME_UPDATE\}\}/g, ' ')
       .replace(/\{\{MVU_UPDATE_STRUCTURE_HINTS\}\}/g, ' ')

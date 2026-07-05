@@ -18988,17 +18988,17 @@ $CONTENT
             return '';
         return `<${normalizedTagName}>${normalizedContents.join('\n\n')}</${normalizedTagName}>`;
     }
-    const 模块路由结果标签_ACU = '模块路由结果';
+    const 模块路由结果标签_ACU = 'module_routing_result';
     function 清理模块路由运行事件文本_ACU(text = '') {
         return String(text || '')
-            .replace(/<\s*模块路由\s*>[\s\S]*?<\s*\/\s*模块路由\s*>/gi, '[模块路由已执行]')
+            .replace(/<\s*module_routing\s*>[\s\S]*?<\s*\/\s*module_routing\s*>/gi, '[模块路由已执行]')
             .replace(/<\s*JSONPatch\b[\s\S]*?<\s*\/\s*JSONPatch\s*>/gi, '[结构化写入已省略]')
             .replace(/<\s*UpdateVariable\b[\s\S]*?<\s*\/\s*UpdateVariable\s*>/gi, '[变量写入已省略]')
             .trim();
     }
     function 去除模块路由结果外层标签_ACU(text = '') {
         return String(text || '')
-            .replace(/<\s*\/?\s*模块路由结果\s*>/gi, '')
+            .replace(/<\s*\/?\s*module_routing_result\s*>/gi, '')
             .trim();
     }
     function 规范化模块路由运行事件文本_ACU(模块路由决定 = {}) {
@@ -19026,7 +19026,7 @@ $CONTENT
     function 过滤阶段传递标签_ACU(aggregatedTags) {
         const nextTags = new Map(aggregatedTags instanceof Map ? aggregatedTags : []);
         for (const tagName of [...nextTags.keys()]) {
-            if (String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase())
+            if (String(tagName || '').trim().toLowerCase() === 'module_routing')
                 nextTags.delete(tagName);
         }
         return nextTags;
@@ -19098,7 +19098,7 @@ $CONTENT
         return sourceText.replace(placeholderPattern, (placeholder, tagName) => {
             if (是剧情推进运行时占位符名_ACU(tagName))
                 return placeholder;
-            if (String(tagName || '').trim().toLowerCase() === '模块路由'.toLowerCase())
+            if (String(tagName || '').trim().toLowerCase() === 'module_routing')
                 return '';
             const resolvedValue = resolvePlotTagValueWithFallback_ACU(tagSourceMap, fallbackTagSourceMap, tagName);
             return buildPlotTagBlock_ACU(tagName, resolvedValue.value);
@@ -19250,7 +19250,7 @@ $CONTENT
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
         const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
-        const shouldSkipFinalTag = (tagName) => ['模块路由', '战斗裁断'].includes(String(tagName || '').trim());
+        const shouldSkipFinalTag = (tagName) => ['module_routing', 'battle_adjudication'].includes(String(tagName || '').trim());
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
@@ -19910,17 +19910,17 @@ $CONTENT
             const 阶段模块路由块列表 = stageSuccessfulResults
                 .map((result) => {
                     const 模块路由内容 = result?.extractedTags && typeof result.extractedTags === 'object'
-                        ? String(result.extractedTags.模块路由 || '').trim()
+                        ? String(result.extractedTags.module_routing || '').trim()
                         : '';
-                    return 模块路由内容 ? `<模块路由>${模块路由内容}</模块路由>` : '';
+                    return 模块路由内容 ? `<module_routing>${模块路由内容}</module_routing>` : '';
                 })
                 .filter(Boolean);
             const 阶段战斗裁断块列表 = stageSuccessfulResults
                 .map((result) => {
                     const 战斗裁断内容 = result?.extractedTags && typeof result.extractedTags === 'object'
-                        ? String(result.extractedTags.战斗裁断 || '').trim()
+                        ? String(result.extractedTags.battle_adjudication || '').trim()
                         : '';
-                    return 战斗裁断内容 ? `<战斗裁断>${战斗裁断内容}</战斗裁断>` : '';
+                    return 战斗裁断内容 ? `<battle_adjudication>${战斗裁断内容}</battle_adjudication>` : '';
                 })
                 .filter(Boolean);
             const 阶段已有战斗裁断 = 阶段战斗裁断块列表.length > 0;
@@ -19949,7 +19949,7 @@ $CONTENT
                 }
             }
             for (const 阶段模块路由文本 of 阶段模块路由块列表) {
-                if (阶段已有战斗裁断 && /<模块路由>\s*模块：\s*battle\b/i.test(阶段模块路由文本)) {
+                if (阶段已有战斗裁断 && /<module_routing>\s*模块：\s*battle\b/i.test(阶段模块路由文本)) {
                     logDebug_ACU('[剧情推进] 本阶段已应用战斗裁断，跳过 battle 模块路由重入。');
                     continue;
                 }
