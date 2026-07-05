@@ -4023,6 +4023,16 @@ class BattleUIComponent {
       return 填充战报润色模板(选择稳定战报短语(templates, seedText), data);
     }
 
+    function 构建公开战报状态抵抗短句(event = {}, seedText = '') {
+      const target = String(event?.targetName || '目标').trim();
+      const state = 读取事件账本状态名(event);
+      return 选择战报润色模板('stateResisted', {
+        target,
+        state,
+        __required: ['target', 'state'],
+      }, seedText || `${event?.round || event?.sourceRound || 0}|stateResisted|${event?.actionId || event?.sourceActionId || ''}|${target}|${state}`);
+    }
+
     function 事件账本状态已附着(event = {}) {
       const result = String(event?.result || event?.meta?.result || '').trim();
       return !result || /applied|success|生效|附着|施加/.test(result);
@@ -4674,6 +4684,16 @@ class BattleUIComponent {
               effectSummary: item.effectSummary,
               driverAttr: item.driverAttr,
             })), { plainText: true });
+            const resistedStateText = resistedStates.filter(item =>
+              (同一动作事实(item, start || hit) || (
+                isSameBattleReportName(item.targetName, target) &&
+                (!item.actorName || !actor || isSameBattleReportName(item.actorName, actor)) &&
+                (!item.sourceActionName || !action || normalizeBattleActionDisplayName(item.sourceActionName) === action)
+              ))
+            ).map(item => {
+              used.add(item);
+              return 构建公开战报状态抵抗短句(item, `${group.round}|stateResisted|${item.actionId || item.sourceActionId || ''}|${target}|${读取事件账本状态名(item)}`);
+            }).filter(Boolean).filter((text, index, list) => list.indexOf(text) === index).join('；');
             appliedStates.filter(item =>
               同一动作事实(item, start || hit) ||
               (isSameBattleReportName(item.targetName, target) &&
@@ -4729,6 +4749,7 @@ class BattleUIComponent {
             if (damage > 0 && !flavoredHit) pieces.push(`${actor}对${target}造成了 ${damage} 点伤害`);
             else if (!(damage > 0) && !pieces.some(text => /没有命中|未能造成/.test(text))) pieces.push('这次交锋未造成实质伤害');
             if (stateText) pieces.push(stateText);
+            if (resistedStateText) pieces.push(resistedStateText);
             if (counterText) pieces.push(`随后${counterText}`);
             lines.push(规范化状态附着断句(`${prefix}${pieces.join('，').replace(/，随后/g, '；随后')}。`));
           });
@@ -4739,6 +4760,7 @@ class BattleUIComponent {
             const inferredTarget = String(
               start.targetName ||
               appliedStates.find(item => (!item.actorName || isSameBattleReportName(item.actorName, actor)) && item.targetName)?.targetName ||
+              resistedStates.find(item => (!item.actorName || isSameBattleReportName(item.actorName, actor)) && item.targetName)?.targetName ||
               ''
             ).trim();
             const 已有同源命中结果 = hits.some(hit =>
@@ -4752,6 +4774,13 @@ class BattleUIComponent {
             const failList = failures.filter(item => isSameBattleReportName(item.actorName, actor) && (!item.actionName || !action || normalizeBattleActionDisplayName(item.actionName) === action));
             const completeList = completes.filter(item => isSameBattleReportName(item.actorName, actor) && (!item.actionName || !action || normalizeBattleActionDisplayName(item.actionName) === action));
             const stateList = appliedStates.filter(item =>
+              同一动作事实(item, start) ||
+              (inferredTarget &&
+                isSameBattleReportName(item.targetName, inferredTarget) &&
+                (!item.actorName || !actor || isSameBattleReportName(item.actorName, actor)) &&
+                (!action || !item.sourceActionName || normalizeBattleActionDisplayName(item.sourceActionName) === action))
+            );
+            const resistedStateList = resistedStates.filter(item =>
               同一动作事实(item, start) ||
               (inferredTarget &&
                 isSameBattleReportName(item.targetName, inferredTarget) &&
@@ -4782,9 +4811,10 @@ class BattleUIComponent {
               lines.push(`${prefix}${flavoredCreate || `${actor}完成【${action || '造物'}】${detail}`}。`);
               return;
             }
-            if (stateList.length || defense) {
+            if (stateList.length || resistedStateList.length || defense) {
               if (defense) used.add(defense);
               stateList.forEach(item => used.add(item));
+              resistedStateList.forEach(item => used.add(item));
               const stateItems = stateList.map(item => ({
                 target: item.targetName,
                 state: 读取事件账本状态名(item),
@@ -4793,21 +4823,27 @@ class BattleUIComponent {
                 driverAttr: item.driverAttr,
               }));
               const stateText = 构建公开战报状态附加短句(stateItems, { plainText: true });
+              const resistedStateText = resistedStateList
+                .map(item => 构建公开战报状态抵抗短句(item, `${group.round}|stateResisted|${item.actionId || item.sourceActionId || ''}|${item.targetName}|${读取事件账本状态名(item)}`))
+                .filter(Boolean)
+                .filter((text, index, list) => list.indexOf(text) === index)
+                .join('；');
               const parts = [`${actor}施展【${action || '行动'}】指向${String(inferredTarget || 读取战报默认敌对名(context, actor)).trim()}`];
               if (defense) {
                 const phrase = 格式化事件账本防御短语(defense);
                 if (phrase) parts.push(phrase);
                 if (/闪避/.test(String(defense.actionName || ''))) {
                   if (/evaded|miss|dodge_success|闪避成功|未命中/.test(String(defense.result || '').trim())) parts.push('闪避成功，这一击没有命中');
-                  else if (stateText) parts.push('未能摆脱这轮压制');
+                  else if (stateText || resistedStateText) parts.push('未能摆脱这轮压制');
                 }
                 else if (/承伤硬抗|肉体兜底|硬抗/.test(String(defense.actionName || ''))) {
-                  parts.push(stateText ? '强运魂力冲撞压制却未能完全豁免' : '收缩防线，勉强扛住了这轮压制');
+                  parts.push((stateText || resistedStateText) ? '强运魂力冲撞压制' : '收缩防线，勉强扛住了这轮压制');
                 } else {
-                  parts.push(stateText ? '在无形压迫下陷入被动' : '稳住身位，暂未被压垮');
+                  parts.push((stateText || resistedStateText) ? '在无形压迫下调整身位' : '稳住身位，暂未被压垮');
                 }
               }
               if (stateText) parts.push(stateText);
+              if (resistedStateText) parts.push(resistedStateText);
               lines.push(规范化状态附着断句(`${prefix}${parts.join('，')}。`));
               return;
             }
@@ -4844,13 +4880,7 @@ class BattleUIComponent {
 
           resistedStates.filter(item => !used.has(item)).forEach(item => {
             used.add(item);
-            const target = String(item.targetName || '目标').trim();
-            const state = 读取事件账本状态名(item);
-            const text = 选择战报润色模板('stateResisted', {
-              target,
-              state,
-              __required: ['target', 'state'],
-            }, `${group.round}|stateResisted|${item.actionId || item.sourceActionId || ''}|${target}|${state}`);
+            const text = 构建公开战报状态抵抗短句(item, `${group.round}|stateResisted|${item.actionId || item.sourceActionId || ''}|${item.targetName}|${读取事件账本状态名(item)}`);
             if (text) lines.push(`${prefix}${text}。`);
           });
 
@@ -33574,7 +33604,8 @@ class BattleUIComponent {
                 return;
               }
               const 驱动成功率 = 读取状态施加驱动成功率(stateEffect, attacker, targetObj);
-              if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
+              const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
+              if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${状态名}]附着。`;
                 写入战斗事件账本(combatData, {
                   eventKind: 'state_apply',
@@ -33591,6 +33622,7 @@ class BattleUIComponent {
                   meta: {
                     stateName: 状态名,
                     successRate: Number(驱动成功率 || 0),
+                    roll: Number(状态附着检定 || 0),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -33678,7 +33710,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
-                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1) },
+                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
               });
               if (是主原型效果(stateEffect)) 登记主原型成立目标(targetObj);
               result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}获得[${状态名}]。`;
@@ -34322,7 +34354,8 @@ class BattleUIComponent {
                 return;
               }
               const 驱动成功率 = 读取状态施加驱动成功率(pState, attacker, targetObj);
-              if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
+              const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
+              if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${pState.状态名称}]附着。`;
                 写入战斗事件账本(combatData, {
                   eventKind: 'state_apply',
@@ -34339,6 +34372,7 @@ class BattleUIComponent {
                   meta: {
                     stateName: pState.状态名称,
                     successRate: Number(驱动成功率 || 0),
+                    roll: Number(状态附着检定 || 0),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -34549,7 +34583,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(pState) || '').trim(),
-                meta: { stateName: pState.状态名称, successRate: Number(驱动成功率 || 1) },
+                meta: { stateName: pState.状态名称, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
               });
               if (是主原型效果(pState)) 登记主原型成立目标(targetObj);
               if (directTauntEffect && targetObj !== attacker) {
@@ -34625,7 +34659,8 @@ class BattleUIComponent {
                 return;
               }
               const 驱动成功率 = 读取状态施加驱动成功率(状态施加效果, attacker, 目标对象);
-              if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
+              const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
+              if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${目标名}抵住了[${状态名}]附着。`;
                 写入战斗事件账本(combatData, {
                   eventKind: 'state_apply',
@@ -34642,6 +34677,7 @@ class BattleUIComponent {
                   meta: {
                     stateName: 状态名,
                     successRate: Number(驱动成功率 || 0),
+                    roll: Number(状态附着检定 || 0),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -34757,7 +34793,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
-                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1) },
+                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
               });
               result.desc += ` 并对${目标对象 === attacker ? '自身' : 目标名}施加了[${状态名}]状态！`;
               已落地 = true;
@@ -42754,6 +42790,29 @@ class BattleUIComponent {
             if (amount > 0) parts.push(`最终 ${Math.round(amount)}`);
             return parts.length >= 2 ? `（计算：${parts.join(' → ')}）` : '';
           };
+          const stateDetailText = () => {
+            const successRate = Number(event?.meta?.successRate);
+            const roll = Number(event?.meta?.roll);
+            const driverAttr = String(event?.driverAttr || event?.meta?.driverAttr || '').trim();
+            const resisted = /resist|resisted|抵抗|豁免/.test(result);
+            const parts = [];
+            if (Number.isFinite(successRate) && successRate > 0 && successRate < 1) {
+              const ratePct = Math.round(successRate * 100);
+              parts.push(`附着成功率 ${ratePct}%`);
+              if (driverAttr) parts.push(`驱动属性 ${driverAttr}`);
+              if (Number.isFinite(roll) && roll > 0) {
+                const rollPct = Math.round(roll * 100);
+                parts.push(resisted ? `检定 ${rollPct} > ${ratePct}` : `检定 ${rollPct} <= ${ratePct}`);
+              } else {
+                parts.push(resisted ? '抗性判定阻断' : '抗性判定通过');
+              }
+            } else {
+              parts.push('必定附着');
+              if (driverAttr) parts.push(`驱动属性 ${driverAttr}`);
+            }
+            parts.push(resisted ? '附着失败' : '状态生效');
+            return `（计算：${parts.join(' → ')}）`;
+          };
            if (kind === 'hit_result') {
              if (/miss|evade|dodge|未命中|闪避/.test(result)) return `${actor}的【${action}】未能命中${target}。`;
              if (/graze|chip|擦伤/.test(result)) return `${actor}的【${action}】擦过${target}，造成 ${amount} 点擦伤${damageDetailText()}。`;
@@ -42770,14 +42829,10 @@ class BattleUIComponent {
            }
            if (kind === 'state_apply') {
             const duration = Math.max(0, Number(event?.duration || 0));
-            const successRate = Number(event?.meta?.successRate);
-            const rateText = Number.isFinite(successRate) && successRate > 0 && successRate < 1
-              ? `（附着成功率${Math.round(successRate * 100)}%）`
-              : '';
             if (/resist|resisted|抵抗|豁免/.test(result)) {
-              return `${target}抵住了${actor}的【${action}】附带的【${stateName || '状态'}】${rateText}。`;
+              return `${target}抵住了${actor}的【${action}】附带的【${stateName || '状态'}】${stateDetailText()}。`;
             }
-            return `${actor}的【${action}】令${target}陷入【${stateName || '状态'}】${duration > 0 ? `（持续${duration}回合）` : ''}。`;
+            return `${actor}的【${action}】令${target}陷入【${stateName || '状态'}】${duration > 0 ? `（持续${duration}回合）` : ''}${stateDetailText()}。`;
           }
           if (kind === 'counter') {
             const failReason = String(event?.failReason || '').trim();
