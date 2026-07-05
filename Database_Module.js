@@ -17561,18 +17561,18 @@ $CONTENT
         const 远端时间线 = String(extractLastTagContent_ACU(剧情文本, '远端原著时间线命中')
             ?? extractLastTagContent_ACU(剧情文本, 'timeline_recall')
             ?? '').trim();
-        const 偏差召回原文 = String(extractLastTagContent_ACU(剧情文本, '偏差账本召回') ?? '').trim();
+        const 偏差召回原文 = String(extractLastTagContent_ACU(剧情文本, 'deviation_ledger_recall') ?? '').trim();
         const 偏差召回 = 偏差召回原文 ? 展开偏差账本召回_ACU(偏差召回原文, 全部表格数据) : '';
-        const 偏差审查 = String(extractLastTagContent_ACU(剧情文本, '剧情审查_check_偏差') ?? '').trim();
+        const 偏差审查 = String(extractLastTagContent_ACU(剧情文本, 'plot_adjudication') ?? '').trim();
         const 片段列表 = [];
         if (远端时间线 && 远端时间线 !== '无') {
             片段列表.push(`<远端原著时间线命中>\n${远端时间线}\n</远端原著时间线命中>`);
         }
         if (偏差召回 && 偏差召回 !== '无相关偏差记录。') {
-            片段列表.push(`<偏差账本召回>\n${偏差召回}\n</偏差账本召回>`);
+            片段列表.push(`<deviation_ledger_recall>\n${偏差召回}\n</deviation_ledger_recall>`);
         }
         if (偏差审查) {
-            片段列表.push(`<剧情审查_check_偏差>\n${偏差审查}\n</剧情审查_check_偏差>`);
+            片段列表.push(`<plot_adjudication>\n${偏差审查}\n</plot_adjudication>`);
         }
         return 片段列表.length
             ? 片段列表.join('\n\n')
@@ -19632,7 +19632,7 @@ $CONTENT
         const relayTagMap = runtimeOptions.relayTagMap instanceof Map ? runtimeOptions.relayTagMap : new Map();
         const fallbackTagMap = new Map(historyTagMap);
         fallbackTagMap.set('偏差账本候选', [sharedContext.deviationLedgerCandidateText || '无相关偏差记录。']);
-        const 场景线索种子值 = resolvePlotTagValueWithFallback_ACU(relayTagMap, fallbackTagMap, '场景线索种子');
+        const 场景线索种子值 = resolvePlotTagValueWithFallback_ACU(relayTagMap, fallbackTagMap, 'scene_clue_seed');
         const 场景线索种子文本 = 场景线索种子值.found
             ? (Array.isArray(场景线索种子值.value) ? 场景线索种子值.value : [场景线索种子值.value]).map(值 => String(值 || '').trim()).filter(Boolean).join('\n\n')
             : '';

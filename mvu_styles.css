@@ -28939,6 +28939,46 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   outline: none;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35em;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--战斗记录文字弱色) 22%, transparent);
+  color: var(--战斗记录文字主色);
+  background: color-mix(in srgb, var(--战斗记录文字弱色) 9%, transparent);
+  font-size: 0.92em;
+  font-weight: 780;
+  line-height: 1.25;
+  vertical-align: baseline;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge--damage,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--damage,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--damage {
+  color: color-mix(in srgb, #ffffff 72%, var(--战斗危险色));
+  border-color: color-mix(in srgb, var(--战斗危险色) 34%, transparent);
+  background: color-mix(in srgb, var(--战斗危险色) 13%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge--heal,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--heal,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--heal {
+  color: color-mix(in srgb, #ffffff 72%, var(--战斗治疗色, #74f0b2));
+  border-color: color-mix(in srgb, var(--战斗治疗色, #74f0b2) 34%, transparent);
+  background: color-mix(in srgb, var(--战斗治疗色, #74f0b2) 13%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge--shield,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--shield,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--shield {
+  color: color-mix(in srgb, #ffffff 72%, var(--战斗强调色));
+  border-color: color-mix(in srgb, var(--战斗强调色) 34%, transparent);
+  background: color-mix(in srgb, var(--战斗强调色) 13%, transparent);
+}
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .combat-state-tag,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .combat-state-tag,
 #detailModal #mvu-battle-inline-host .battle-record-terminal .combat-state-tag {

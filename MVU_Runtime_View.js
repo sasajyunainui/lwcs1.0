@@ -4628,7 +4628,7 @@ function 构建MVU剧情角色简表_V1(数据根 = {}, userInput = '', 最后�
 function 提取场景线索种子正文_V1(场景线索种子 = '') {
   const 文本 = String(场景线索种子 || '').trim();
   if (!文本) return '';
-  const 匹配 = 文本.match(/<\s*场景线索种子\s*>([\s\S]*?)<\s*\/\s*场景线索种子\s*>/i);
+  const 匹配 = 文本.match(/<\s*scene_clue_seed\s*>([\s\S]*?)<\s*\/\s*scene_clue_seed\s*>/i);
   return String(匹配 ? 匹配[1] : 文本).trim();
 }
 
