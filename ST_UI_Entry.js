@@ -766,6 +766,71 @@
     throw new Error(`Global function not ready: ${安全函数名}`);
   }
 
+  function 读取已就绪全局值(键名, 值类型 = 'function') {
+    const 安全键名 = String(键名 || '').trim();
+    if (!安全键名) return null;
+    const 窗口列表 = [宿主窗口];
+    try {
+      if (window && !窗口列表.includes(window)) 窗口列表.push(window);
+    } catch (错误) {}
+    for (const 当前窗口 of [...窗口列表]) {
+      try {
+        Array.from(当前窗口.frames || []).forEach(子窗口 => {
+          if (子窗口 && !窗口列表.includes(子窗口)) 窗口列表.push(子窗口);
+        });
+      } catch (错误) {}
+    }
+    for (const 当前窗口 of 窗口列表) {
+      try {
+        const 全局值 = 当前窗口[安全键名];
+        if (值类型 === 'function' && typeof 全局值 === 'function') return 全局值;
+        if (值类型 === 'object' && 全局值 && typeof 全局值 === 'object') return 全局值;
+        if (值类型 !== 'function' && 值类型 !== 'object' && 全局值 !== undefined && 全局值 !== null) return 全局值;
+      } catch (错误) {}
+    }
+    return null;
+  }
+
+  function 显示入口按钮提示(消息, 类型 = 'info', 时长 = 4200) {
+    const 文本 = String(消息 || '').trim();
+    if (!文本) return;
+    try {
+      const toastBridge =
+        (宿主窗口 && 宿主窗口.MVU_Toast && typeof 宿主窗口.MVU_Toast.show === 'function' ? 宿主窗口.MVU_Toast : null)
+        || (window && window.MVU_Toast && typeof window.MVU_Toast.show === 'function' ? window.MVU_Toast : null);
+      if (toastBridge) {
+        toastBridge.show(文本, 类型, 时长);
+        return;
+      }
+    } catch (错误) {}
+    try {
+      const toastrApi =
+        (宿主窗口 && 宿主窗口.toastr ? 宿主窗口.toastr : null)
+        || (window && window.toastr ? window.toastr : null);
+      if (toastrApi && typeof toastrApi[类型] === 'function') {
+        toastrApi[类型](文本);
+        return;
+      }
+      if (toastrApi && typeof toastrApi.error === 'function') {
+        toastrApi.error(文本);
+        return;
+      }
+    } catch (错误) {}
+    try {
+      console[类型 === 'error' ? 'error' : 'warn'](`[LWCS] ${文本}`);
+    } catch (错误) {}
+  }
+
+  function 构建入口按钮错误文本(入口名, 错误) {
+    const 名称 = String(入口名 || '入口').trim();
+    const 主错误 = 错误 && 错误.message ? 错误.message : String(错误 || '未知错误');
+    const 数据库错误 = String(加载状态.数据库模块错误 || '').trim();
+    if (数据库错误 && 数据库错误 !== 主错误) {
+      return `${名称}打开失败：${主错误}（数据库模块：${数据库错误}）`;
+    }
+    return `${名称}打开失败：${主错误}`;
+  }
+
   async function waitForVueMounted(timeout) {
     const start = Date.now();
     const limit = timeout || 10000;
@@ -804,17 +869,14 @@
       eventOn(getButtonEvent('MVU冷归档'), async () => {
         try {
           await 引导加载();
-          await 等待数据库模块就绪('cold_archive_button', true);
+          await 确保模块已加载('逻辑桥接', { 来源: 'cold_archive_button', 允许失败降级: false, 抛错: true });
           await 等待全局函数('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__', 12000);
-          const 打开冷归档面板 =
-            typeof 宿主窗口.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ === 'function'
-              ? 宿主窗口.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__
-              : typeof window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ === 'function'
-                ? window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__
-                : null;
-          if (打开冷归档面板) 打开冷归档面板();
+          const 打开冷归档面板 = 读取已就绪全局值('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__');
+          if (typeof 打开冷归档面板 !== 'function') throw new Error('冷归档面板未就绪');
+          打开冷归档面板();
         } catch (错误) {
           console.error('[MVU] MVU冷归档按钮执行失败:', 错误);
+          显示入口按钮提示(构建入口按钮错误文本('MVU冷归档', 错误), 'error');
         }
       });
       宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__ = true;
@@ -848,17 +910,17 @@
       eventOn(getButtonEvent('防截断流入'), async () => {
         try {
           await 引导加载();
-          await 等待数据库模块就绪('truncation_guard_button', true);
-          await 等待全局函数('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__', 12000);
-          const 打开防截断流入面板 =
-            typeof 宿主窗口.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ === 'function'
-              ? 宿主窗口.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__
-              : typeof window.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__ === 'function'
-                ? window.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__
-                : null;
-          if (打开防截断流入面板) 打开防截断流入面板();
+          let 打开防截断流入面板 = 读取已就绪全局值('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__');
+          if (typeof 打开防截断流入面板 !== 'function') {
+            await 等待数据库模块就绪('truncation_guard_button', true);
+            await 等待全局函数('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__', 12000);
+            打开防截断流入面板 = 读取已就绪全局值('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__');
+          }
+          if (typeof 打开防截断流入面板 !== 'function') throw new Error('防截断流入面板未就绪');
+          打开防截断流入面板();
         } catch (错误) {
           console.error('[MVU] 防截断流入按钮执行失败:', 错误);
+          显示入口按钮提示(构建入口按钮错误文本('防截断流入', 错误), 'error');
         }
       });
       宿主窗口.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__ = true;
