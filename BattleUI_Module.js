@@ -3973,6 +3973,65 @@ class BattleUIComponent {
       return list[Math.abs(hash) % list.length] || list[0];
     }
 
+    const BATTLE_PUBLIC_FLAVOR_TEMPLATES = {
+      blockedAction: [
+        '{actor}刚欲催动【{skill}】，便被对手压住节奏，未能完成出手',
+        '{actor}的【{skill}】尚未铺开，便被这轮交锋截断',
+      ],
+      hitDodgeFailed: [
+        '{attacker}施展【{skill}】压向{target}，{target}试图闪身避让却未能摆脱攻势，承受了 {damage} 点伤害',
+        '{attacker}以【{skill}】逼近{target}，{target}仓促闪避未果，仍受了 {damage} 点伤害',
+      ],
+      hitPlain: [
+        '{attacker}施展【{skill}】指向{target}，造成了 {damage} 点伤害',
+        '{attacker}以【{skill}】压出攻势，令{target}承受了 {damage} 点伤害',
+      ],
+      counterHit: [
+        '{counterActor}抓住{target}露出的破绽，以【{counterSkill}】进行反击，造成了 {damage} 点伤害',
+        '{counterActor}趁{target}攻势露隙，以【{counterSkill}】反击，造成了 {damage} 点伤害',
+      ],
+      counterZero: [
+        '{counterActor}抓住{target}露出的破绽，以【{counterSkill}】进行反击，但未能造成实质伤害',
+        '{counterActor}尝试以【{counterSkill}】反打{target}，但这次没有打出实质伤害',
+      ],
+      stateResisted: [
+        '{target}抵住了【{state}】的附着，这次负面效果未能生效',
+        '【{state}】试图附着在{target}身上，但被其抵住',
+      ],
+      stateTickDamage: [
+        '{target}随后受【{state}】影响，损失了 {amount} 点{resource}{sourceText}',
+        '回合流转间，【{state}】在{target}身上发作，令其损失 {amount} 点{resource}{sourceText}',
+      ],
+      stateTickHeal: [
+        '{target}随后受【{state}】影响，恢复了 {amount} 点{resource}{sourceText}',
+        '回合流转间，【{state}】为{target}带来恢复，使其回复 {amount} 点{resource}{sourceText}',
+      ],
+      create: [
+        '{actor}趁隙完成【{skill}】{detail}',
+        '{actor}催动【{skill}】完成造物{detail}',
+      ],
+    };
+
+    function 填充战报润色模板(template = '', data = {}) {
+      return String(template || '').replace(/\{([a-zA-Z]+)\}/g, (_, key) => String(data?.[key] ?? '').trim()).replace(/\s+/g, ' ').trim();
+    }
+
+    function 选择战报润色模板(scene = '', data = {}, seedText = '') {
+      const templates = BATTLE_PUBLIC_FLAVOR_TEMPLATES[scene] || [];
+      const required = Array.isArray(data?.__required) ? data.__required : [];
+      if (!templates.length || required.some(key => !String(data?.[key] ?? '').trim())) return '';
+      return 填充战报润色模板(选择稳定战报短语(templates, seedText), data);
+    }
+
+    function 事件账本状态已附着(event = {}) {
+      const result = String(event?.result || event?.meta?.result || '').trim();
+      return !result || /applied|success|生效|附着|施加/.test(result);
+    }
+
+    function 事件账本状态被抵抗(event = {}) {
+      return /resist|resisted|抵抗|豁免|未附着/.test(String(event?.result || event?.meta?.result || '').trim());
+    }
+
     function formatBattleReactionPhrase(actor = '', action = '') {
       const actorName = String(actor || '防守方').trim();
       const actionName = normalizeBattleActionDisplayName(action);
@@ -4544,6 +4603,8 @@ class BattleUIComponent {
           const defenses = roundEvents.filter(item => ['dodge', 'defend', 'pass'].includes(item.eventKind));
           const counters = roundEvents.filter(item => item.eventKind === 'counter');
           const states = roundEvents.filter(item => item.eventKind === 'state_apply');
+          const appliedStates = states.filter(item => 事件账本状态已附着(item));
+          const resistedStates = states.filter(item => 事件账本状态被抵抗(item));
           const ticks = roundEvents.filter(item => item.eventKind === 'state_tick');
           const creations = roundEvents.filter(item => item.eventKind === 'create');
           const shields = roundEvents.filter(item => item.eventKind === 'shield_create');
@@ -4558,7 +4619,11 @@ class BattleUIComponent {
             const action = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
             const reason = String(item.failReason || '').trim();
             if (/本回合对抗结束，未能形成有效出手|未能形成有效出手/.test(reason)) {
-              return `${actor}${action ? `的【${action}】` : ''}被对手压住节奏，未能完成出手`;
+              return 选择战报润色模板('blockedAction', {
+                actor,
+                skill: action,
+                __required: ['actor', 'skill'],
+              }, `${group.round}|blocked|${item.actionId || item.sourceActionId || ''}|${actor}|${action}`) || `${actor}${action ? `的【${action}】` : ''}被对手压住节奏，未能完成出手`;
             }
             if (/抢先压制|先手压制|行动受阻|被打断/.test(reason)) {
               return `${actor}${action ? `的【${action}】` : ''}${reason}`;
@@ -4596,7 +4661,7 @@ class BattleUIComponent {
             ) || defenses.find(item => target && isSameBattleReportName(item.actorName, target));
             if (defense) used.add(defense);
             const damage = Math.max(0, 读取事件账本数值(hit, 'damage'));
-            const stateText = 构建公开战报状态附加短句(states.filter(item =>
+            const stateText = 构建公开战报状态附加短句(appliedStates.filter(item =>
               (同一动作事实(item, start || hit) || (
                 isSameBattleReportName(item.targetName, target) &&
                 (!item.actorName || !actor || isSameBattleReportName(item.actorName, actor)) &&
@@ -4609,7 +4674,7 @@ class BattleUIComponent {
               effectSummary: item.effectSummary,
               driverAttr: item.driverAttr,
             })), { plainText: true });
-            states.filter(item =>
+            appliedStates.filter(item =>
               同一动作事实(item, start || hit) ||
               (isSameBattleReportName(item.targetName, target) &&
                 (!item.actorName || !actor || isSameBattleReportName(item.actorName, actor)))
@@ -4624,25 +4689,45 @@ class BattleUIComponent {
                 used.add(item);
                 const counterAction = normalizeBattleActionDisplayName(item.actionName || '反击');
                 const counterDamage = Math.max(0, 读取事件账本数值(item, 'damage'));
-                return 构建公开战报反击短句(item.actorName, counterAction, item.targetName, counterDamage);
+                return 选择战报润色模板(counterDamage > 0 ? 'counterHit' : 'counterZero', {
+                  counterActor: String(item.actorName || '').trim(),
+                  counterSkill: counterAction,
+                  target: String(item.targetName || '').trim(),
+                  damage: counterDamage,
+                  __required: ['counterActor', 'counterSkill', 'target'],
+                }, `${group.round}|counter|${item.actionId || item.sourceActionId || ''}|${item.actorName}|${item.targetName}|${counterAction}|${counterDamage}`) || 构建公开战报反击短句(item.actorName, counterAction, item.targetName, counterDamage);
               })
               .filter((text, index, list) => list.indexOf(text) === index)
               .join('；');
             const pieces = [];
-            pieces.push(`${actor}施展【${action || '行动'}】指向${target}`);
+            const seed = `${group.round}|hit|${hit.actionId || hit.sourceActionId || ''}|${actor}|${target}|${action}|${damage}`;
+            const dodgeFullySucceeded = defense?.eventKind === 'dodge' &&
+              (/evaded|miss|dodge_success|闪避成功|未命中/.test(String(defense.result || '').trim()) || /miss|evade|dodge|闪避|未命中/.test(String(hit.result || '')));
+            const dodgeTriedAndFailed = defense?.eventKind === 'dodge' && !dodgeFullySucceeded && damage > 0;
+            const flavoredHit = damage > 0
+              ? 选择战报润色模板(dodgeTriedAndFailed ? 'hitDodgeFailed' : 'hitPlain', {
+                attacker: actor,
+                target,
+                skill: action || '行动',
+                damage,
+                __required: ['attacker', 'target', 'skill', 'damage'],
+              }, seed)
+              : '';
+            if (flavoredHit) pieces.push(flavoredHit);
+            else pieces.push(`${actor}施展【${action || '行动'}】指向${target}`);
             if (defense) {
               const phrase = 格式化事件账本防御短语(defense);
-              if (phrase) pieces.push(phrase);
+              if (phrase && !flavoredHit) pieces.push(phrase);
               if (defense.eventKind === 'dodge') {
-                if (/evaded|miss|dodge_success|闪避成功|未命中/.test(String(defense.result || '').trim()) || /miss|evade|dodge|闪避|未命中/.test(String(hit.result || ''))) {
+                if (dodgeFullySucceeded) {
                   pieces.push('闪避成功，这一击没有命中');
-                } else if (damage > 0 || stateText) {
+                } else if ((damage > 0 || stateText) && !flavoredHit) {
                   pieces.push('未能摆脱这轮压制');
                 }
               }
             }
-            if (damage > 0) pieces.push(`${actor}对${target}造成了 ${damage} 点伤害`);
-            else if (!pieces.some(text => /没有命中|未能造成/.test(text))) pieces.push('这次交锋未造成实质伤害');
+            if (damage > 0 && !flavoredHit) pieces.push(`${actor}对${target}造成了 ${damage} 点伤害`);
+            else if (!(damage > 0) && !pieces.some(text => /没有命中|未能造成/.test(text))) pieces.push('这次交锋未造成实质伤害');
             if (stateText) pieces.push(stateText);
             if (counterText) pieces.push(`随后${counterText}`);
             lines.push(规范化状态附着断句(`${prefix}${pieces.join('，').replace(/，随后/g, '；随后')}。`));
@@ -4653,7 +4738,7 @@ class BattleUIComponent {
             const action = normalizeBattleActionDisplayName(start.actionName || '');
             const inferredTarget = String(
               start.targetName ||
-              states.find(item => (!item.actorName || isSameBattleReportName(item.actorName, actor)) && item.targetName)?.targetName ||
+              appliedStates.find(item => (!item.actorName || isSameBattleReportName(item.actorName, actor)) && item.targetName)?.targetName ||
               ''
             ).trim();
             const 已有同源命中结果 = hits.some(hit =>
@@ -4666,7 +4751,7 @@ class BattleUIComponent {
             const shieldList = shields.filter(item => isSameBattleReportName(item.actorName, actor) && (!item.actionName || !action || normalizeBattleActionDisplayName(item.actionName) === action));
             const failList = failures.filter(item => isSameBattleReportName(item.actorName, actor) && (!item.actionName || !action || normalizeBattleActionDisplayName(item.actionName) === action));
             const completeList = completes.filter(item => isSameBattleReportName(item.actorName, actor) && (!item.actionName || !action || normalizeBattleActionDisplayName(item.actionName) === action));
-            const stateList = states.filter(item =>
+            const stateList = appliedStates.filter(item =>
               同一动作事实(item, start) ||
               (inferredTarget &&
                 isSameBattleReportName(item.targetName, inferredTarget) &&
@@ -4684,9 +4769,17 @@ class BattleUIComponent {
                 .map(item => String(item.meta?.text || '').trim())
                 .filter(Boolean)
                 .map(text => text.replace(/^\[造物承载\]\s*/, '').replace(new RegExp(`^${actor}(?:以【[^】]+】)?`), '').replace(/^，?/, '').trim())
+                .map(text => text.replace(/^完成造物[:：]\s*/, '').replace(/^生成了造物/, '生成造物').trim())
                 .filter(Boolean)
                 .join('；');
-              lines.push(`${prefix}${actor}完成【${action || '造物'}】${text ? `，${text}` : ''}。`);
+              const detail = text ? `，${text}` : '';
+              const flavoredCreate = 选择战报润色模板('create', {
+                actor,
+                skill: action || '造物',
+                detail,
+                __required: ['actor', 'skill'],
+              }, `${group.round}|create|${actor}|${action}|${text}`);
+              lines.push(`${prefix}${flavoredCreate || `${actor}完成【${action || '造物'}】${detail}`}。`);
               return;
             }
             if (stateList.length || defense) {
@@ -4749,6 +4842,18 @@ class BattleUIComponent {
             if (actor) lines.push(`${prefix}${formatPublicFailureText(item).replace(/[。！？\s]+$/g, '')}。`);
           });
 
+          resistedStates.filter(item => !used.has(item)).forEach(item => {
+            used.add(item);
+            const target = String(item.targetName || '目标').trim();
+            const state = 读取事件账本状态名(item);
+            const text = 选择战报润色模板('stateResisted', {
+              target,
+              state,
+              __required: ['target', 'state'],
+            }, `${group.round}|stateResisted|${item.actionId || item.sourceActionId || ''}|${target}|${state}`);
+            if (text) lines.push(`${prefix}${text}。`);
+          });
+
           if (!hits.length && creations.length && !failures.length) {
             const groupedCreations = new Map();
             creations.filter(item => !used.has(item)).forEach(item => {
@@ -4769,6 +4874,8 @@ class BattleUIComponent {
                   .replace(/^\[造物承载\]\s*/, '')
                   .replace(new RegExp(`^${actor}(?:以【[^】]+】)?`), '')
                   .replace(/^，?/, '')
+                  .replace(/^完成造物[:：]\s*/, '')
+                  .replace(/^生成了造物/, '生成造物')
                   .replace(/\s+/g, ' ')
                   .trim())
                 .filter(Boolean)
@@ -4776,7 +4883,16 @@ class BattleUIComponent {
                   list.findIndex(item => item.replace(/[。；\s]+$/g, '') === text.replace(/[。；\s]+$/g, '')) === index
                 )
                 .join('；');
-              if (actor) lines.push(`${prefix}${actor}完成【${action || '造物'}】${text ? `，${text.replace(/[。！？\s]+$/g, '')}` : ''}。`);
+              if (actor) {
+                const detail = text ? `，${text.replace(/[。！？\s]+$/g, '')}` : '';
+                const flavoredCreate = 选择战报润色模板('create', {
+                  actor,
+                  skill: action || '造物',
+                  detail,
+                  __required: ['actor', 'skill'],
+                }, `${group.round}|create|${actor}|${action}|${text}`);
+                lines.push(`${prefix}${flavoredCreate || `${actor}完成【${action || '造物'}】${detail}`}。`);
+              }
             });
           }
 
@@ -4873,7 +4989,16 @@ class BattleUIComponent {
             const amount = Math.max(0, 读取事件账本数值(item, 'amount'));
             const resource = String(item.meta?.resource || '生命值').trim();
             const sourceText = 构建公开战报状态来源短句(item, { plainText: true });
-            lines.push(`${prefix}${target}随后受【${state}】影响，${String(item.result || '').includes('恢复') ? '恢复' : '损失'}了 ${amount} 点${resource}${sourceText}。`);
+            const isHeal = String(item.result || '').includes('恢复');
+            const text = 选择战报润色模板(isHeal ? 'stateTickHeal' : 'stateTickDamage', {
+              target,
+              state,
+              amount,
+              resource,
+              sourceText,
+              __required: ['target', 'state', 'amount', 'resource'],
+            }, `${group.round}|stateTick|${target}|${state}|${amount}|${resource}|${isHeal ? 'heal' : 'damage'}`);
+            lines.push(`${prefix}${text || `${target}随后受【${state}】影响，${isHeal ? '恢复' : '损失'}了 ${amount} 点${resource}${sourceText}`}。`);
           });
         });
       return lines
@@ -17682,7 +17807,7 @@ class BattleUIComponent {
         const text = 导出战斗记录可见文本(result, 'preview');
         断言战斗回归夹具(!!玩家闭合事件, `敌方抢先压制时玩家动作仍未闭合:${JSON.stringify(ledger)}`);
         断言战斗回归夹具(
-          /夹具玩家的【第二魂技·青影蛇群】(?:被对手压住节奏，未能完成出手|本回合对抗结束，未能形成有效出手|被对手抢先压制|被对手先手压制)|夹具玩家施展【第二魂技·青影蛇群】|并使夹具敌人陷入【迟缓】/.test(text),
+          /夹具玩家(?:的)?【第二魂技·青影蛇群】(?:尚未铺开，便被这轮交锋截断|被对手压住节奏，未能完成出手|本回合对抗结束，未能形成有效出手|被对手抢先压制|被对手先手压制)|夹具玩家刚欲催动【第二魂技·青影蛇群】|夹具玩家施展【第二魂技·青影蛇群】|并使夹具敌人陷入【迟缓】/.test(text),
           `玩家动作闭合结果未进入可见战报:${text}`,
         );
         日志.push(`敌方抢先压制时玩家动作已闭合:${玩家闭合事件?.eventKind || 'unknown'} ${玩家闭合事件?.failReason || ''} | ${text.split('\n').slice(0, 8).join(' | ')}`);

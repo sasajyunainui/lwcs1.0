@@ -1,0 +1,52 @@
+{
+    "hit_result_dodge_failed": [
+        "{attacker}对{target}发动【{skill}】，{target}试图闪身避让却未能摆脱攻势，硬生生承受了 {damage} 点伤害。",
+        "{attacker}祭出【{skill}】轰向对手，{target}躲闪不及，吃下了 {damage} 点伤害。",
+        "{attacker}以【{skill}】发难，{target}闪躲受制，不仅承受了 {damage} 点伤害，更被打断了身法。",
+        "{attacker}果断甩出【{skill}】精准命中，{target}虽极力闪避仍难逃锁定，硬扛下了 {damage} 点伤害。",
+        "{attacker}的【{skill}】如暴风骤雨般袭来，躲避不及的{target}承受了高达 {damage} 点的沉重打击！"
+    ],
+    "blocked_action": [
+        "{attacker}刚欲催动【{skill}】，便被{target}死死压住节奏，技能还未成型便宣告流产。",
+        "{attacker}试图以【{skill}】发动突袭，却被对手抢占先机压制了动作空间，攻势胎死腹中。",
+        "{attacker}企图释放【{skill}】，但在对手的严密防守下节奏尽失，未能形成有效攻势。",
+        "{attacker}架起【{skill}】正欲爆发，却遭对手迎头压制，气势还未吐出便被迫中断。",
+        "{attacker}欲凭【{skill}】抢攻，不料反被对方更为凌厉的气势反压一头，出招被迫中断。"
+    ],
+    "counter": [
+        "借着抗伤的间隙，{attacker}果断抓住破绽，以一记【{skill}】凶悍反击，造成了 {damage} 点伤害。",
+        "{attacker}敏锐捕捉战机，一记【{skill}】呼啸而出，令猝不及防的{target}承受了 {damage} 点伤害。",
+        "{attacker}迅速重整旗鼓，反手一记【{skill}】如毒蛇吐信，打得{target}措手不及，回敬了 {damage} 点颜色。",
+        "见招拆招间，{attacker}果断变招为【{skill}】展开反打，{target}应对不及，损失了 {damage} 点生命。"
+    ],
+    "state_apply": [
+        "这一击令{target}陷入【{state}】（持续{duration}回合）。",
+        "不仅承受了这轮压制，{target}还因此陷入了【{state}】（持续{duration}回合）的窘境。",
+        "随后效果发作，令{target}瞬间陷入【{state}】（持续{duration}回合）。",
+        "伤口惨遭撕裂，{target}当即陷入【{state}】状态（持续{duration}回合）。"
+    ],
+    "multi_state_apply": [
+        "与此同时，{target}更遭到多重负面效果侵蚀，同时陷入了【{state1}】（{duration1}回合）、【{state2}】（{duration2}回合）与【{state3}】（{duration3}回合）的险境。",
+        "这沉重的打击更令{target}不堪重负，接连陷入【{state1}】（{duration1}回合）与【{state2}】（{duration2}回合）的泥沼。"
+    ],
+    "state_tick": [
+        "回合末，{target}受【{state}】影响，自身损失了 {damage} 点生命值。",
+        "随后{target}体内【{state}】发作，再次扣除 {damage} 点生命值。",
+        "{target}强忍不适，但【{state}】的余波依旧令其损失了 {damage} 点生命值。"
+    ],
+    "create": [
+        "{creator}趁此空档游刃有余地行动，从容制作出 {amount} 份【{item}】并收入囊中。",
+        "借着战局间隙，{creator}完成了【{item}】的构建，生成造物 {amount} 件。"
+    ],
+    "multi_round_pressure": [
+        "{attacker}乘胜追击，紧跟着以【{skill}】强压上前，再次对{target}造成 {damage} 点伤害。",
+        "{attacker}攻势不减，再次以【{skill}】强行欺身突破，又打出 {damage} 点伤害。",
+        "{attacker}越战越勇，又是一记刁钻的【{skill}】刺穿防线，令防备不及的{target}再损 {damage} 点生命。",
+        "{attacker}得势不饶人，立刻接上一招【{skill}】强压防线，再次打出 {damage} 点的沉重打击。"
+    ],
+    "guard_stalemate": [
+        "双方不约而同地收缩防线，各自拉开身位稳住阵脚，战局陷入短暂僵持。",
+        "两人依然保持警惕互相试探，都不肯轻易露出破绽，战况陷入胶着。",
+        "战局延续了上一轮的态势，双方均未觅得良机，没有形成新的有效突破。"
+    ]
+}
