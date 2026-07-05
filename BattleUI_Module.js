@@ -5615,6 +5615,16 @@ class BattleUIComponent {
       return normalizeSkillData(命中, 命中?.name || 命中?.魂技名 || refName);
     }
 
+    function 从战报技能名推断魂技槽位(name = '') {
+      const match = String(name || '').trim().match(/^第\s*([一二三四五六七八九十\d]+)\s*魂技/);
+      if (!match) return '';
+      const raw = String(match[1] || '').trim();
+      const number = /^\d+$/.test(raw)
+        ? Number(raw)
+        : ({ 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 })[raw] || 0;
+      return number > 0 ? `第${number}魂技` : '';
+    }
+
     function 解析战报魂技引用(actionText = '', 引用名 = '', 引用位置 = 0, context = {}) {
       const actorName = 推断战报魂技引用行动者(actionText, 引用位置, context);
       const actorUnit = actorName ? 查找战报上下文单位(context, actorName) : null;
@@ -5624,7 +5634,7 @@ class BattleUIComponent {
       if (!displayName) return null;
       return {
         actorName: actorName || '',
-        skillSlot: String(resolvedSkill?.__魂技槽位 || '').trim(),
+        skillSlot: 从战报技能名推断魂技槽位(引用名) || 从战报技能名推断魂技槽位(displayName) || String(resolvedSkill?.__魂技槽位 || '').trim(),
         displayName,
         action: {
           id: `report_skill_${String(actorName || 'unknown').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${String(displayName).replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}`,
@@ -28735,21 +28745,22 @@ class BattleUIComponent {
         const 概率文本 = `${Math.round(触发概率 * 100)}%`;
         if (投点 >= 触发概率) {
           const 失败原因 = 提取行为防反失败原因(候选, 反应动作, 防反者, 目标);
-          const 来源动作名 = String(候选.sourceActionName || 候选.sourceActionType || '系统反击').trim() || '系统反击';
+          const 反击动作名 = String(候选.sourceActionName || 候选.sourceActionType || '系统反击').trim() || '系统反击';
+          const 被反制动作名 = String(候选.原动作?.skill?.name || 候选.原动作?.skill?.魂技名 || 原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || 原动作?.type || '').trim();
           const 展示失败原因 = 失败原因 || '未形成稳定反打条件';
           写入战斗事件账本(战斗数据, {
             eventKind: 'counter',
             round: Number(战斗数据?.回合 || 0),
             actorName: 防反者?.name || 防反者?.名称 || '',
             targetName: 目标?.name || 目标?.名称 || '',
-            actionName: 来源动作名,
+            actionName: 反击动作名,
             actionType: 'counter',
-            sourceActionName: 来源动作名,
+            sourceActionName: 被反制动作名,
             result: 'fail',
             failReason: 展示失败原因,
             meta: { probability: 概率文本 },
           });
-          return `[防反错失] ${防反者.name || '防守方'}尝试以[${来源动作名}]反打，但${展示失败原因}${失败原因 ? '' : `（概率:${概率文本}）`}。`;
+          return `[防反错失] ${防反者.name || '防守方'}尝试以[${反击动作名}]反打，但${展示失败原因}${失败原因 ? '' : `（概率:${概率文本}）`}。`;
         }
 
         const 防反动作 = 建立行为防反动作(防反者, { ...候选, 触发概率 });
@@ -28790,6 +28801,7 @@ class BattleUIComponent {
           const 伤害文本 = 防反伤害包.primaryAppliedDamage > 0 ? `，造成${防反伤害包.primaryAppliedDamage}点反击伤害` : '';
           const 反应文本 = 二次反应动作?.log ? ` ${二次反应动作.log}` : '';
           const 防反名 = String(防反动作?.skill?.name || 防反动作?.skill?.魂技名 || 候选.sourceActionName || (允许以命换伤 ? '以命换伤' : 候选.防反类型)).trim();
+          const 被反制动作名 = String(候选.原动作?.skill?.name || 候选.原动作?.skill?.魂技名 || 原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || 原动作?.type || '').trim();
           写入战斗事件账本(战斗数据, {
             eventKind: 'counter',
             round: Number(战斗数据?.回合 || 0),
@@ -28797,7 +28809,7 @@ class BattleUIComponent {
             targetName: 目标?.name || 目标?.名称 || '',
             actionName: 防反名,
             actionType: 'counter',
-            sourceActionName: 防反名,
+            sourceActionName: 被反制动作名,
             result: 'success',
             meta: { damage: Number(防反伤害包.primaryAppliedDamage || 0), probability: 概率文本 },
           });
@@ -30038,12 +30050,40 @@ class BattleUIComponent {
       }
 
       function 选择行为防反动作来源(防反方 = {}, 战斗数据 = null, 防反类型 = '') {
+        const 技能可作为行为防反动作 = skill => {
+          const 名称 = String(skill?.name || skill?.魂技名 || '').trim();
+          if (!名称 || /^普通攻击$/.test(名称)) return false;
+          const 分类 = String(skill?.技能分类 || skill?.类型 || skill?.category || '').trim();
+          const 目标 = String(skill?.目标 || skill?.作用目标 || '').trim();
+          const 承载方式 = String(skill?.承载方式 || '').trim();
+          if (/自身|友方|己方/.test(目标) || /造物承载|物品使用/.test(承载方式)) return false;
+          if (/辅助|治疗|防护|资源|食物|药剂|造物/.test(`${分类} ${名称} ${承载方式}`) && !/攻击|输出|控制|压制|截击|伤害|封技|打断/.test(`${分类} ${名称}`)) return false;
+          const effects = [];
+          const 扫描效果 = value => {
+            if (!value || typeof value !== 'object') return;
+            if (Array.isArray(value)) {
+              value.forEach(扫描效果);
+              return;
+            }
+            if (value.原型 || value.type) effects.push(value);
+            ['使用效果', '授予效果', '结算效果', '追加效果', '替换效果', '条件分支'].forEach(key => 扫描效果(value[key]));
+          };
+          扫描效果(skill?._效果数组);
+          const hasHostileEffect = effects.some(effect => {
+            const 原型 = String(effect?.原型 || effect?.type || '').trim();
+            const effectTarget = String(effect?.目标 || '').trim();
+            if (/自身|友方|己方/.test(effectTarget)) return false;
+            return ['伤害结算', '状态施加', '判定修正', '决策干扰', '资源锁定', '机制抹消', '位移执行'].includes(原型);
+          });
+          if (hasHostileEffect) return true;
+          return /攻击|输出|控制|压制|截击|冲拳|斩|击|刺|咬|炮|锁|牵制/.test(`${分类} ${名称}`);
+        };
         const 同阵营队友 = getCombatAlliesForUnit(战斗数据 || getCurrentBattleContextSnapshot(), 防反方)
           .filter(unit => unit && !isCombatUnitIdentityMatch(unit, 防反方?.name || 防反方?.名称 || 防反方));
         const 可用技能 = collectCombatSkills(防反方, 同阵营队友)
           .filter(skill => {
             const 名称 = String(skill?.name || skill?.魂技名 || '').trim();
-            if (!名称) return false;
+            if (!技能可作为行为防反动作(skill)) return false;
             if (inferSkillPrimaryTargetKind(skill) === '自身') return false;
             const mainType = inferMainTypeFromEffects(skill);
             const summary = deriveBattleSummaryFromEffects(skill);
@@ -42278,11 +42318,69 @@ class BattleUIComponent {
             });
         }
 
+        function 格式化结算链事件文本(event = {}) {
+          const kind = String(event?.eventKind || '').trim();
+          const actor = String(event?.actorName || '行动者').trim();
+          const target = String(event?.targetName || '目标').trim();
+          const action = normalizeBattleActionDisplayName(event?.actionName || event?.sourceActionName || '') || '行动';
+          const stateName = 读取事件账本状态名(event);
+          const amount = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
+          const result = String(event?.result || '').trim();
+          if (kind === 'hit_result') {
+            if (/miss|evade|dodge|未命中|闪避/.test(result)) return `${actor}的【${action}】未能命中${target}。`;
+            if (/graze|chip|擦伤/.test(result)) return `${actor}的【${action}】擦过${target}，造成 ${amount} 点擦伤。`;
+            return amount > 0
+              ? `${actor}的【${action}】命中${target}，造成 ${amount} 点伤害。`
+              : `${actor}的【${action}】落到${target}身上，但未造成实质伤害。`;
+          }
+          if (kind === 'state_apply') {
+            const duration = Math.max(0, Number(event?.duration || 0));
+            return `${actor}的【${action}】令${target}陷入【${stateName || '状态'}】${duration > 0 ? `（持续${duration}回合）` : ''}。`;
+          }
+          if (kind === 'counter') {
+            const failReason = String(event?.failReason || '').trim();
+            if (result === 'fail') return `${actor}尝试以【${action}】反击${target}，但${failReason || '未能完成反打'}。`;
+            return amount > 0
+              ? `${actor}以【${action}】反击${target}，造成 ${amount} 点伤害。`
+              : `${actor}以【${action}】反击${target}，但未造成实质伤害。`;
+          }
+          if (kind === 'blocked_action' || kind === 'failed_action' || kind === 'target_fail') {
+            return `${actor}的【${action}】未能落地：${String(event?.failReason || '未形成有效出手').trim()}。`;
+          }
+          if (kind === 'create') return `${actor}完成【${action}】，生成造物。`;
+          if (kind === 'summon_create') return `${actor}完成【${action}】，召唤物加入战场。`;
+          if (kind === 'shield_create') return `${actor}完成【${action}】，生成护盾${amount > 0 ? ` ${amount} 点` : ''}。`;
+          return '';
+        }
+
+        function 构建事件账本结算链侧写条目(eventLedger = []) {
+          return (Array.isArray(eventLedger) ? eventLedger : [])
+            .map(event => {
+              const kind = String(event?.eventKind || '').trim();
+              if (!['hit_result', 'state_apply', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return null;
+              const text = 格式化结算链事件文本(event);
+              if (!text) return null;
+              const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
+              return {
+                type: 'settlement',
+                round,
+                回合: round,
+                text,
+                roundPhase: kind === 'state_tick' ? 'turn_end' : 'action_result',
+                kind,
+                fromEventLedger: true,
+              };
+            })
+            .filter(Boolean);
+        }
+
         function 构建结算链侧写条目(logs = [], context = {}) {
-          const eventLines = 构建合并后的事件账本公开战报行(context?.eventLedger || context?.combatData?.__battleEventLedger || [], 24, context);
-          const rawLines = eventLines;
+          const ledger = context?.eventLedger || context?.combatData?.__battleEventLedger || [];
+          const eventItems = 构建事件账本结算链侧写条目(ledger);
+          const eventLines = 构建合并后的事件账本公开战报行(ledger, 24, context);
+          const rawLines = eventLines.filter(line => /随后受【/.test(String(line || '')));
           const lines = (typeof Formatter !== 'undefined' && Formatter.filterMechanicalDuplicates) ? Formatter.filterMechanicalDuplicates(rawLines) : rawLines.filter(line => !/^第\d+回合：结果判定：/.test(String(line || '').trim()));
-          return lines.map(line => {
+          const tickItems = lines.map(line => {
             const match = String(line || '').match(/^(?:第(\d+)回合[：:]|[【\[]第(\d+)回合[】\]])\s*(.+)$/);
             const round = Number(match?.[1] || match?.[2] || 0);
             const text = String(match?.[3] || line || '').trim();
@@ -42295,6 +42393,7 @@ class BattleUIComponent {
               kind: /随后受【/.test(text) ? 'status_tick' : 'settlement',
             };
           }).filter(item => item.text);
+          return [...eventItems, ...tickItems];
         }
 
         function 构建防反侧写条目(logs = []) {
@@ -43497,6 +43596,7 @@ class BattleUIComponent {
             const round = Number(item.round || item.回合 || 0);
             const text = String(item.text || '').trim();
             if (!text) return false;
+            if (item.fromEventLedger === true) return true;
             if (String(item.kind || '') !== 'status_tick' && round > 0) {
               const roundPrefix = `第${round}回合：`;
               if (summaryLines.some(line => line.startsWith(roundPrefix))) return false;
