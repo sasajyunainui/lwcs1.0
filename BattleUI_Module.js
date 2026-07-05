@@ -4450,7 +4450,11 @@ class BattleUIComponent {
         if (key && key === previousKey) repeatCount += 1;
         else repeatCount = 1;
         previousKey = key || '';
-        if (match && repeatCount >= 2) {
+        const 可压缩为对峙 =
+          key &&
+          /收招转防|稳住自身防线|保持距离观察|收住攻势|没有形成新的有效突破/.test(key) &&
+          !/施展|造成|陷入|随后受|反击|命中|未能命中|生成|召唤|护盾/.test(key);
+        if (match && repeatCount >= 2 && 可压缩为对峙) {
           result.push(`第${match[1]}回合：战局连续第${repeatCount}轮延续上一轮态势，双方没有形成新的有效突破。`);
           return;
         }
@@ -4549,6 +4553,22 @@ class BattleUIComponent {
           const recovers = roundEvents.filter(item => item.eventKind === 'round_recover');
           const roundStops = roundEvents.filter(item => item.eventKind === 'round_stop');
           const roundContinues = roundEvents.filter(item => item.eventKind === 'round_continue');
+          const formatPublicFailureText = (item = {}) => {
+            const actor = String(item.actorName || '行动者').trim();
+            const action = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
+            const reason = String(item.failReason || '').trim();
+            if (/本回合对抗结束，未能形成有效出手|未能形成有效出手/.test(reason)) {
+              return `${actor}${action ? `的【${action}】` : ''}被对手压住节奏，未能完成出手`;
+            }
+            if (/抢先压制|先手压制|行动受阻|被打断/.test(reason)) {
+              return `${actor}${action ? `的【${action}】` : ''}${reason}`;
+            }
+            if (reason) {
+              if (/^(?:[^，。！？\s]+的【[^】]+】|[^，。！？\s]+没有|[^，。！？\s]+未能|当前|没有)/.test(reason)) return reason;
+              return `${actor}${action ? `的【${action}】` : ''}${reason}`;
+            }
+            return `${actor}${action ? `的【${action}】` : ''}未能完成出手`;
+          };
 
           const used = new Set();
           const 同一动作事实 = (event = {}, actionEvent = {}) => {
@@ -4718,8 +4738,7 @@ class BattleUIComponent {
             }
             if (failList.length) {
               failList.forEach(item => used.add(item));
-              const reason = String(failList[0].failReason || '本次没有形成有效出手').trim();
-              lines.push(`${prefix}${actor}${action ? `的【${action}】` : ''}${reason}。`);
+              lines.push(`${prefix}${formatPublicFailureText(failList[0])}。`);
               return;
             }
           });
@@ -4727,14 +4746,7 @@ class BattleUIComponent {
           failures.filter(item => !used.has(item)).forEach(item => {
             used.add(item);
             const actor = String(item.actorName || '').trim();
-            const action = normalizeBattleActionDisplayName(item.actionName || '');
-            const reason = String(item.failReason || '').trim();
-            if (reason) {
-              const text = /^(?:[^，。！？\s]+的【[^】]+】|[^，。！？\s]+没有|[^，。！？\s]+未能|当前|没有)/.test(reason)
-                ? reason
-                : `${actor || '行动者'}${action ? `的【${action}】` : ''}${reason}`;
-              lines.push(`${prefix}${text.replace(/[。！？\s]+$/g, '')}。`);
-            }
+            if (actor) lines.push(`${prefix}${formatPublicFailureText(item).replace(/[。！？\s]+$/g, '')}。`);
           });
 
           if (!hits.length && creations.length && !failures.length) {
@@ -5701,7 +5713,7 @@ class BattleUIComponent {
         cursor = index + raw.length;
       });
       html += htmlEscapeText(text.slice(cursor));
-      html = html.replace(/（该状态由[^）]+）/g, match => `<span class="combat-subtext">${htmlEscapeText(match)}</span>`);
+      html = html.replace(/（该状态由[^）]+）/g, match => `<span class="combat-subtext">${match}</span>`);
       return { html, changed };
     }
 
@@ -5736,7 +5748,7 @@ class BattleUIComponent {
       });
       const result = new Map();
       groups.forEach((roundEvents, round) => {
-        const hasHostileResult = roundEvents.some(item => ['hit_result', 'counter', 'state_apply', 'state_tick', 'create', 'shield_create', 'failed_action', 'blocked_action', 'target_fail'].includes(String(item.eventKind || '').trim()));
+        const hasHostileResult = roundEvents.some(item => ['hit_result', 'counter', 'state_apply', 'state_tick', 'create', 'shield_create', 'failed_action', 'target_fail'].includes(String(item.eventKind || '').trim()));
         if (hasHostileResult) return;
         const actorTexts = new Map();
         const pushActorText = (actorName = '', text = '') => {
@@ -17670,7 +17682,7 @@ class BattleUIComponent {
         const text = 导出战斗记录可见文本(result, 'preview');
         断言战斗回归夹具(!!玩家闭合事件, `敌方抢先压制时玩家动作仍未闭合:${JSON.stringify(ledger)}`);
         断言战斗回归夹具(
-          /夹具玩家的【第二魂技·青影蛇群】本回合对抗结束，未能形成有效出手|夹具玩家的【第二魂技·青影蛇群】被对手抢先压制|夹具玩家的【第二魂技·青影蛇群】被对手先手压制|夹具玩家施展【第二魂技·青影蛇群】|并使夹具敌人陷入【迟缓】/.test(text),
+          /夹具玩家的【第二魂技·青影蛇群】(?:被对手压住节奏，未能完成出手|本回合对抗结束，未能形成有效出手|被对手抢先压制|被对手先手压制)|夹具玩家施展【第二魂技·青影蛇群】|并使夹具敌人陷入【迟缓】/.test(text),
           `玩家动作闭合结果未进入可见战报:${text}`,
         );
         日志.push(`敌方抢先压制时玩家动作已闭合:${玩家闭合事件?.eventKind || 'unknown'} ${玩家闭合事件?.failReason || ''} | ${text.split('\n').slice(0, 8).join(' | ')}`);
@@ -20580,9 +20592,7 @@ class BattleUIComponent {
 
     function 读取状态施加驱动成功率(effect = {}, attacker = {}, targetChar = {}) {
       const 驱动属性 = String(effect?.驱动属性 || '').trim();
-      if (!驱动属性 || 驱动属性 === '无') return 1;
       if (!attacker || !targetChar || attacker === targetChar) return 1;
-      if (String(effect?.影响方向 || '').trim() !== '成功率') return 1;
       const 目标最终属性 = targetChar?.final || buildCombatFinalStats(targetChar);
       const 状态目标 = String(effect?.目标 || '').trim();
       const 状态文本 = [
@@ -20598,9 +20608,39 @@ class BattleUIComponent {
       ].map(值 => String(值 || '').trim()).join('|');
       const 是负面状态 = !['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(状态目标) &&
         (/debuff|眩晕|麻痹|僵直|混乱|沉默|封技|失控|精神紊乱|恐惧|无法反应|致盲|锁定|位移限制|资源燃烧|虚弱|防御剥夺|精神抗性剥夺/.test(状态文本));
+      if (!是负面状态) return 1;
+      const 计算层效果 = effect?.计算层效果 || {};
+      if (
+        effect?.必中 === true ||
+        effect?.必定命中 === true ||
+        /必定|必中|无法抵抗/.test(String(effect?.生效方式 || '') + String(effect?.触发限制 || '')) ||
+        计算层效果.status_guaranteed === true ||
+        计算层效果.ignore_status_resist === true
+      ) return 1;
       const 防守最终属性 = 是负面状态 && 判断精神力驱动攻击_战斗(effect, effect?.__skill || {})
         ? { ...目标最终属性, men_max: 计算紫极魔瞳防守精神攻势值_战斗(targetChar, 目标最终属性, effect, effect?.__skill || {}) }
         : 目标最终属性;
+      if (!驱动属性 || 驱动属性 === '无' || String(effect?.影响方向 || '').trim() !== '成功率') {
+        const 是硬控 = /眩晕|麻痹|僵直|混乱|沉默|封技|失控|无法反应|锁定|位移限制/.test(状态文本) ||
+          计算层效果.skip_turn === true ||
+          计算层效果.cannot_react === true ||
+          计算层效果.silence === true ||
+          计算层效果.skill_seal === true ||
+          Number(计算层效果.lock_level || 0) > 0;
+        const 攻方压制 = Math.max(
+          Number(attacker?.final?.men_max || attacker?.men_max || attacker?.sp_max || attacker?.sp || 0),
+          Number(attacker?.final?.sp_max || attacker?.sp_max || attacker?.sp || 0),
+        );
+        const 守方抗性 = Math.max(
+          Number(防守最终属性?.men_max || targetChar?.men_max || 0),
+          Number(防守最终属性?.sp_max || targetChar?.sp_max || 0),
+          Number(防守最终属性?.def || targetChar?.def || 0) * 8,
+        );
+        const 属性差 = 攻方压制 > 0 && 守方抗性 > 0
+          ? Math.max(-0.18, Math.min(0.16, (攻方压制 - 守方抗性) / Math.max(攻方压制, 守方抗性, 1) * 0.18))
+          : 0;
+        return Math.max(0.55, Math.min(0.95, (是硬控 ? 0.78 : 0.88) + 属性差));
+      }
       const 缩放系数 = 计算原型驱动缩放系数(
         effect,
         attacker,
@@ -23596,6 +23636,27 @@ class BattleUIComponent {
               });
             }
           }
+          if (/行为预演|应招|战术阶段/.test(String(phaseLabel || ''))) {
+            const 最优规避 = scoredCandidates
+              .filter(候选 => /伺机闪避|闪避|位移规避/.test(`${候选?.name || ''} ${候选?.__主动规划审计?.技能 || ''}`))
+              .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0];
+            if (最优规避) {
+              scoredCandidates = scoredCandidates.map(候选 => {
+                const 名称文本 = `${候选?.name || ''} ${候选?.__主动规划审计?.技能 || ''}`;
+                if (!/肉体兜底|承伤硬抗|硬抗/.test(名称文本)) return 候选;
+                const 优势 = Number(最优规避.weight || 0) - Number(候选.weight || 0);
+                if (优势 < 24) return 候选;
+                return {
+                  ...候选,
+                  weight: 0,
+                  __主动规划审计: {
+                    ...(候选.__主动规划审计 || {}),
+                    选择原因: '规避候选显著优于通用硬抗，硬抗退出本次行为预演抽样',
+                  },
+                };
+              });
+            }
+          }
           const 扰动后候选 = 扰动候选权重列表(scoredCandidates, 干扰强度);
           const 选择结果 = rollBranchByPriority(扰动后候选, phaseLabel);
           const 命中审计 = 选择结果.option?.__主动规划审计 || {};
@@ -24434,9 +24495,13 @@ class BattleUIComponent {
         const 反高速窗口 = 评估反高速应对窗口(后手, 先手, 先手动作, combatData);
         const 防御意图 = Number(规划上下文.战略意图?.权重表?.保核 || 0) + Number(规划上下文.战略意图?.权重表?.拖回合 || 0);
         const 反制意图 = Number(规划上下文.战略意图?.权重表?.控制 || 0) + Number(规划上下文.战略意图?.权重表?.击杀 || 0);
-        const 防御基础 = 威胁分层.低威胁 ? 12 : 威胁分层.高威胁 ? 34 : 23;
-        const 闪避基础 = 威胁分层.低威胁 ? 8 : 威胁分层.高威胁 ? 27 : 18;
-        const 硬抗基础 = 威胁分层.低威胁 ? 52 : 威胁分层.高威胁 ? 16 : 32;
+        const 来袭技能文本 = JSON.stringify(先手动作?.skill || {});
+        const 来袭含控制减益 = 先手威胁.severeControl === true ||
+          /状态施加|debuff|控制|眩晕|麻痹|僵直|混乱|沉默|封技|失控|无法反应|致盲|锁定|位移限制|迟缓|中毒|流血|防御剥夺|精神抗性剥夺|cast_speed_penalty|dodge_penalty|reaction_penalty/.test(来袭技能文本);
+        const 试探阶段 = Number(combatData?.回合 || combatData?.round || 1) <= 1 && !先手威胁.lethalRisk && !先手威胁.severeDamage;
+        const 防御基础 = (威胁分层.低威胁 ? 12 : 威胁分层.高威胁 ? 34 : 23) - (来袭含控制减益 ? 10 : 0);
+        const 闪避基础 = (威胁分层.低威胁 ? 8 : 威胁分层.高威胁 ? 27 : 18) + (试探阶段 ? 18 : 0) + (来袭含控制减益 ? 20 : 0);
+        const 硬抗基础 = (威胁分层.低威胁 ? 52 : 威胁分层.高威胁 ? 16 : 32) - (试探阶段 ? 24 : 0) - (来袭含控制减益 ? 28 : 0);
         const 反高速加权 = 反高速窗口.成立 ? Math.round(反高速窗口.强度 * 34) : 0;
         const 候选 = [
           { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 + Math.round(反高速加权 * 0.45) - 计算保守动作惩罚(后手, '防御', 威胁分层)), 分类: '防御' },
@@ -24470,8 +24535,8 @@ class BattleUIComponent {
             const 目标规模 = String(getSkillTarget(skill) || '').trim();
             const 范围压制价值 = 反高速窗口.成立 && /群体|全场/.test(目标规模) ? 0.42 + 反高速窗口.强度 * 0.36 : 0;
             const 短前摇价值 = 反高速窗口.成立 && 分类 === '短前摇对轰' ? 0.26 + 反高速窗口.强度 * 0.32 : 0;
-            const 防御价值 = ['防御', '位移规避'].includes(分类) ? (威胁分层.低威胁 ? 0.08 : 0.35) : 分类 === '反制技能' ? 0.26 : 0;
-            const 截断价值 = ['控制截断', '短前摇对轰'].includes(分类) ? (威胁分层.低威胁 ? 0.34 : 0.25) : 0;
+            const 防御价值 = ['防御', '位移规避'].includes(分类) ? (威胁分层.低威胁 ? 0.08 : 0.35) + (来袭含控制减益 && 分类 === '位移规避' ? 0.28 : 0) : 分类 === '反制技能' ? 0.26 : 0;
+            const 截断价值 = ['控制截断', '短前摇对轰'].includes(分类) ? (威胁分层.低威胁 ? 0.34 : 0.25) + (来袭含控制减益 ? 0.22 : 0) : 0;
             const 低威胁推进奖励 = 威胁分层.低威胁 && ['控制截断', '短前摇对轰', '反制技能'].includes(分类) ? 18 : 0;
             const 规划收益 = 评估技能规划净收益(skill, {
               actor: 后手,
@@ -24488,6 +24553,25 @@ class BattleUIComponent {
               __规划轨迹: 范围压制价值 > 0 ? [...(规划收益.目标理由 || []), '范围攻击用于压缩高速目标闪避空间'] : 规划收益.目标理由,
             });
           });
+        const 最优规避或截断 = 候选
+          .filter(候选项 => /闪避|位移规避|控制截断|短前摇对轰/.test(`${候选项.name || ''} ${候选项.分类 || ''}`))
+          .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0];
+        if (最优规避或截断 && (试探阶段 || 来袭含控制减益)) {
+          候选.forEach(候选项 => {
+            const 是通用防守 = !候选项.action?.skill && /防御|承伤硬抗/.test(`${候选项.name || ''} ${候选项.分类 || ''}`);
+            if (!是通用防守) return;
+            const 优势 = Number(最优规避或截断.weight || 0) - Number(候选项.weight || 0);
+            if (来袭含控制减益 || 优势 >= 24) {
+              候选项.weight = 0;
+              候选项.__规划轨迹 = [
+                ...(候选项.__规划轨迹 || []),
+                来袭含控制减益
+                  ? '来袭包含控制或减益，通用防御不能替代规避/截断判定'
+                  : '试探阶段规避收益显著更高，通用硬抗退出应招池',
+              ];
+            }
+          });
+        }
         return 候选.filter(候选项 => Number(候选项.weight || 0) > 0);
       }
 
@@ -28441,7 +28525,13 @@ class BattleUIComponent {
                 actionName: attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '',
                 actionType: 'attack',
                 result: 韧性削伤 > 1 ? 'graze' : 'chip',
-                meta: { damage: 韧性削伤, breakType: 韧性削伤 > 1 ? 'partial_break' : 'forced_chip' },
+                meta: {
+                  damage: 韧性削伤,
+                  incomingDamage: 段伤害,
+                  reactiveDamage: finalDamage,
+                  defenseThreshold: Math.round(defThreshold),
+                  breakType: 韧性削伤 > 1 ? 'partial_break' : 'forced_chip',
+                },
               });
               if (韧性削伤 > 1) {
                 logParts.push(
@@ -28468,7 +28558,13 @@ class BattleUIComponent {
                 actionName: attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '',
                 actionType: 'attack',
                 result: 'hit',
-                meta: { damage: finalDamage, breakType: '' },
+                meta: {
+                  damage: finalDamage,
+                  incomingDamage: 段伤害,
+                  reactiveDamage: finalDamage,
+                  defenseThreshold: Math.round(defThreshold),
+                  breakType: '',
+                },
               });
               logParts.push(
                 targetEntry?.kind === 'primary'
@@ -33355,6 +33451,24 @@ class BattleUIComponent {
               const 驱动成功率 = 读取状态施加驱动成功率(stateEffect, attacker, targetObj);
               if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${状态名}]附着。`;
+                写入战斗事件账本(combatData, {
+                  eventKind: 'state_apply',
+                  round: Number(combatData?.回合 || 0),
+                  actorName: attacker?.name || attacker?.名称 || '',
+                  targetName: targetObj?.name || targetObj?.名称 || '',
+                  actionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  actionType: playerAction?.action_type || playerAction?.type || '',
+                  sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  sourceRound: Number(combatData?.回合 || 0),
+                  result: 'resisted',
+                  duration: Math.max(0, Number(stateEffect?.持续回合 || 0)),
+                  driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
+                  meta: {
+                    stateName: 状态名,
+                    successRate: Number(驱动成功率 || 0),
+                    reason: '状态附着抗性判定失败',
+                  },
+                });
                 return;
               }
               const targetMaxHp = getCombatHpMaxValue(targetObj);
@@ -33439,7 +33553,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
-                meta: { stateName: 状态名 },
+                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1) },
               });
               if (是主原型效果(stateEffect)) 登记主原型成立目标(targetObj);
               result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}获得[${状态名}]。`;
@@ -34085,6 +34199,24 @@ class BattleUIComponent {
               const 驱动成功率 = 读取状态施加驱动成功率(pState, attacker, targetObj);
               if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${pState.状态名称}]附着。`;
+                写入战斗事件账本(combatData, {
+                  eventKind: 'state_apply',
+                  round: Number(combatData?.回合 || 0),
+                  actorName: attacker?.name || attacker?.名称 || '',
+                  targetName: targetObj?.name || targetObj?.名称 || '',
+                  actionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  actionType: playerAction?.action_type || playerAction?.type || '',
+                  sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  sourceRound: Number(combatData?.回合 || 0),
+                  result: 'resisted',
+                  duration: Math.max(0, Number(pState?.持续回合 || 0)),
+                  driverAttr: String(读取状态施加默认驱动属性_战斗(pState) || '').trim(),
+                  meta: {
+                    stateName: pState.状态名称,
+                    successRate: Number(驱动成功率 || 0),
+                    reason: '状态附着抗性判定失败',
+                  },
+                });
                 return;
               }
               const supportScale = isBuff ? getSupportEffectScale(attacker, targetObj) : 1;
@@ -34292,7 +34424,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(pState) || '').trim(),
-                meta: { stateName: pState.状态名称 },
+                meta: { stateName: pState.状态名称, successRate: Number(驱动成功率 || 1) },
               });
               if (是主原型效果(pState)) 登记主原型成立目标(targetObj);
               if (directTauntEffect && targetObj !== attacker) {
@@ -34370,6 +34502,24 @@ class BattleUIComponent {
               const 驱动成功率 = 读取状态施加驱动成功率(状态施加效果, attacker, 目标对象);
               if (驱动成功率 < 1 && Math.random() > 驱动成功率) {
                 result.desc += ` [状态施加] ${目标名}抵住了[${状态名}]附着。`;
+                写入战斗事件账本(combatData, {
+                  eventKind: 'state_apply',
+                  round: Number(combatData?.回合 || 0),
+                  actorName: attacker?.name || attacker?.名称 || '',
+                  targetName: 目标对象?.name || 目标对象?.名称 || '',
+                  actionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  actionType: playerAction?.action_type || playerAction?.type || '',
+                  sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
+                  sourceRound: Number(combatData?.回合 || 0),
+                  result: 'resisted',
+                  duration: Math.max(0, Number(状态施加效果?.持续回合 || 0)),
+                  driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
+                  meta: {
+                    stateName: 状态名,
+                    successRate: Number(驱动成功率 || 0),
+                    reason: '状态附着抗性判定失败',
+                  },
+                });
                 return;
               }
               const 目标终值 = 目标对象?.final || buildCombatFinalStats(目标对象);
@@ -34482,7 +34632,7 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
-                meta: { stateName: 状态名 },
+                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1) },
               });
               result.desc += ` 并对${目标对象 === attacker ? '自身' : 目标名}施加了[${状态名}]状态！`;
               已落地 = true;
@@ -34985,7 +35135,11 @@ class BattleUIComponent {
               当前行动: '释放魂技',
             });
             const 反高速可应对 = 反高速窗口.成立 && (castTime <= 12 || /群体|全场/.test(String(getSkillTarget(skill) || '')));
-            return cost.canCast && 状态依赖技能当前可执行(skill) && (主动回合 || npcSpeed > Math.max(1, attackerSpeed) * 0.8 || 反高速可应对);
+            return cost.canCast && 状态依赖技能当前可执行(skill) && (
+              主动回合 ||
+              npcSpeed > Math.max(1, attackerSpeed) * 0.8 ||
+              反高速可应对
+            );
           });
 
           function pickSkillWithWeight(skills) {
@@ -35965,6 +36119,12 @@ class BattleUIComponent {
           const severeThreat = !!threatProfile?.severeDamage;
           const severeControlThreat = !!threatProfile?.severeControl;
           const 主动威胁分层 = 计算行为威胁分层(threatProfile || {});
+          const 来袭技能文本 = JSON.stringify(playerAction?.skill || {});
+          const 来袭含控制减益 = severeControlThreat ||
+            /状态施加|debuff|控制|眩晕|麻痹|僵直|混乱|沉默|封技|失控|无法反应|致盲|锁定|位移限制|迟缓|中毒|流血|防御剥夺|精神抗性剥夺|cast_speed_penalty|dodge_penalty|reaction_penalty/.test(来袭技能文本);
+          const 试探阶段 = Number(behaviorState?.combatData?.回合 || behaviorState?.combatData?.round || 1) <= 1 &&
+            !lethalThreat &&
+            !severeThreat;
           const reactiveThreat =
             lethalThreat || severeThreat || severeControlThreat || (!!threatProfile?.moderateDamage && selfHpRatio < 0.65);
 
@@ -36678,6 +36838,25 @@ class BattleUIComponent {
                 if (名称 === '伺机闪避') 候选.weight = Math.min(Number(候选.weight || 0), 8);
               });
             }
+          }
+          const 最优规避或截断 = 去重战术列表
+            .filter(候选 => /伺机闪避|闪避|位移规避|敏攻截断|控制截断|短前摇对轰/.test(`${候选?.name || ''}`))
+            .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0];
+          if (最优规避或截断 && (试探阶段 || 来袭含控制减益)) {
+            去重战术列表.forEach(候选 => {
+              const 名称 = String(候选?.name || '').trim();
+              if (!/肉体兜底|承伤硬抗/.test(名称)) return;
+              const 优势 = Number(最优规避或截断.weight || 0) - Number(候选.weight || 0);
+              if (来袭含控制减益 || 优势 >= 24) {
+                候选.weight = 0;
+                候选.__主动规划审计 = {
+                  ...(候选.__主动规划审计 || {}),
+                  选择原因: 来袭含控制减益
+                    ? '来袭包含控制或减益，通用硬抗不能替代规避/截断判定'
+                    : '试探阶段规避收益显著更高，通用硬抗退出战术池',
+                };
+              }
+            });
           }
           return 去重战术列表;
         }
@@ -42439,11 +42618,22 @@ class BattleUIComponent {
           const stateName = 读取事件账本状态名(event);
           const amount = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
           const result = String(event?.result || '').trim();
+          const damageDetailText = () => {
+            const incoming = Math.max(0, Number(event?.meta?.incomingDamage || 0));
+            const reactive = Math.max(0, Number(event?.meta?.reactiveDamage || 0));
+            const threshold = Math.max(0, Number(event?.meta?.defenseThreshold || 0));
+            const parts = [];
+            if (incoming > 0) parts.push(`预估段伤害 ${Math.round(incoming)}`);
+            if (reactive > 0 && Math.round(reactive) !== Math.round(incoming)) parts.push(`反应/抗性后 ${Math.round(reactive)}`);
+            if (threshold > 0) parts.push(`破防阈值 ${Math.round(threshold)}`);
+            if (amount > 0) parts.push(`最终 ${Math.round(amount)}`);
+            return parts.length >= 2 ? `（计算：${parts.join(' → ')}）` : '';
+          };
            if (kind === 'hit_result') {
              if (/miss|evade|dodge|未命中|闪避/.test(result)) return `${actor}的【${action}】未能命中${target}。`;
-             if (/graze|chip|擦伤/.test(result)) return `${actor}的【${action}】擦过${target}，造成 ${amount} 点擦伤。`;
+             if (/graze|chip|擦伤/.test(result)) return `${actor}的【${action}】擦过${target}，造成 ${amount} 点擦伤${damageDetailText()}。`;
              return amount > 0
-               ? `${actor}的【${action}】命中${target}，造成 ${amount} 点伤害。`
+               ? `${actor}的【${action}】命中${target}，造成 ${amount} 点伤害${damageDetailText()}。`
                : `${actor}的【${action}】落到${target}身上，但未造成实质伤害。`;
            }
            if (kind === 'dodge') {
@@ -42455,6 +42645,13 @@ class BattleUIComponent {
            }
            if (kind === 'state_apply') {
             const duration = Math.max(0, Number(event?.duration || 0));
+            const successRate = Number(event?.meta?.successRate);
+            const rateText = Number.isFinite(successRate) && successRate > 0 && successRate < 1
+              ? `（附着成功率${Math.round(successRate * 100)}%）`
+              : '';
+            if (/resist|resisted|抵抗|豁免/.test(result)) {
+              return `${target}抵住了${actor}的【${action}】附带的【${stateName || '状态'}】${rateText}。`;
+            }
             return `${actor}的【${action}】令${target}陷入【${stateName || '状态'}】${duration > 0 ? `（持续${duration}回合）` : ''}。`;
           }
           if (kind === 'counter') {
