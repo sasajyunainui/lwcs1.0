@@ -24693,18 +24693,18 @@ class BattleUIComponent {
           .map(effect => String(effect?.状态名称 || effect?.状态 || '').trim())
           .filter(Boolean);
         if (!状态列表.length) return { 惩罚: 0, 状态列表: [] };
+        const 伤害威力 = Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0);
+        const 伤害比例 = Number(options?.projectedDamageRatio || 0);
+        const 低伤状态技 = 伤害威力 <= 80 && 伤害比例 < 0.03;
+        const 已重复同技 = Math.max(0, Number(options?.recentSameActionCount || 0));
         const 已有状态 = Object.entries(target.状态效果 || {}).filter(([, cond]) => Math.max(0, Number(cond?.duration ?? cond?.持续回合 ?? 0)) > 0);
         const 命中状态 = 状态列表.filter(状态名 => 已有状态.some(([key, cond]) => {
           const 文本 = `${key} ${cond?.状态名称 || ''} ${cond?.名称 || ''}`;
           return 文本.includes(状态名) || 状态名.includes(String(key || ''));
         }));
-        if (!命中状态.length) return { 惩罚: 0, 状态列表: [] };
-        const 伤害威力 = Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0);
-        const 伤害比例 = Number(options?.projectedDamageRatio || 0);
-        const 低伤状态技 = 伤害威力 <= 80 && 伤害比例 < 0.03;
-        const 已重复同技 = Math.max(0, Number(options?.recentSameActionCount || 0));
+        if (!命中状态.length && !(低伤状态技 && 已重复同技 > 0)) return { 惩罚: 0, 状态列表: [] };
         const 惩罚 = (低伤状态技 ? 62 : 24) + 命中状态.length * (低伤状态技 ? 22 : 10) + 已重复同技 * (低伤状态技 ? 18 : 8);
-        return { 惩罚: Math.round(惩罚), 状态列表: 命中状态 };
+        return { 惩罚: Math.round(惩罚), 状态列表: 命中状态.length ? 命中状态 : 状态列表 };
       }
 
       function 计算换招成功率(先手 = {}, 后手 = {}, 原动作 = {}, 新技能 = {}, 窗口 = 0) {
@@ -25814,11 +25814,85 @@ class BattleUIComponent {
           if (!autoAction) return null;
           const 自动技能名 = String(autoAction?.skill?.name || autoAction?.skill?.魂技名 || autoAction?.type || autoAction?.action_type || '').trim();
           const 自动动作重复次数 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(attacker).recent_actions || {}, [自动技能名], 0);
-          if (
+          const 需要避开重复动作 =
             (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) ||
             (首轮手选技能名 && 自动技能名 && 自动技能名 === 首轮手选技能名) ||
-            (自动技能名 && 自动动作重复次数 >= 2 && !/收招转防|战术观察|防御|危机自保|承伤硬抗|伺机闪避|闪避|借力守势|坚壁反制/.test(自动技能名))
-          ) {
+            (自动技能名 && 自动动作重复次数 >= 2 && !/收招转防|战术观察|防御|危机自保|承伤硬抗|伺机闪避|闪避|借力守势|坚壁反制/.test(自动技能名));
+          if (需要避开重复动作) {
+            const 备选技能 = collectCombatSkills(attacker, [])
+              .map(skill => newSkillData(skill))
+              .filter(skill => {
+                const 名称 = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '').trim();
+                if (!名称 || 名称 === 自动技能名 || 名称 === 首轮手选技能名) return false;
+                if (!skillTargetsEnemySide(skill)) return false;
+                if (!getSkillEffects(skill, { 行为规划: true }).some(effect => ['伤害结算', '状态施加', '资源锁定', '决策干扰', '判定修正'].includes(String(effect?.原型 || '').trim()))) return false;
+                return parseSkillCostForChar(skill, attacker, {
+                  actor: attacker,
+                  caster: attacker,
+                  target: targets?.enemyTarget || defender,
+                  defender: targets?.enemyTarget || defender,
+                  skill,
+                  combatData,
+                  当前行动: '自动续推轮换',
+                }).canCast !== false;
+              })
+              .sort((左, 右) => {
+                const 左重复 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(attacker).recent_actions || {}, [左.name || 左.魂技名 || 左.技能名称 || ''], 0);
+                const 右重复 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(attacker).recent_actions || {}, [右.name || 右.魂技名 || 右.技能名称 || ''], 0);
+                return 左重复 - 右重复 || getSkillCastTime(左) - getSkillCastTime(右);
+              })[0] || null;
+            if (备选技能) {
+              const 轮换动作名 = normalizeBattleActionDisplayName(备选技能.name || 备选技能.魂技名 || '轮换魂技');
+              回填行动闭环审计最终动作(combatData, attacker, {
+                round: Number(combatData?.回合 || roundCount || 0),
+                finalResolvedActionName: 轮换动作名,
+                hitCandidateName: 自动技能名 || 首轮手选技能名 || '',
+                actionOverrideSource: '续推轮换',
+                目标: targets?.enemyTarget?.name || defender?.name || '',
+                目标语义: String(备选技能?.目标 || '').trim(),
+                承载方式: String(备选技能?.承载方式 || '').trim(),
+              });
+              return {
+                action_type: '释放魂技',
+                type: '释放魂技',
+                skill: normalizeSkillData(备选技能, 备选技能.name || 备选技能.魂技名 || '轮换魂技'),
+                cast_time: getSkillCastTime(备选技能),
+                target_name: targets?.enemyTarget?.name || defender?.name || '',
+                player_auto_continuation: true,
+                decision_log: `[自动续推] 避开已完成的【${自动技能名 || 首轮手选技能名 || '首轮动作'}】，轮换为【${备选技能.name || 备选技能.魂技名 || '战术动作'}】继续试探。`,
+              };
+            }
+            const 试探技能 = normalizeSkillData({
+              name: '普通攻击',
+              魂技名: '普通攻击',
+              技能分类: '输出',
+              目标: '敌方单体',
+              消耗: '无',
+              前摇: 10,
+              _效果数组: [
+                { 原型: '伤害结算', 目标: '敌方单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
+              ],
+            }, '普通攻击');
+            if (targets?.enemyTarget || defender) {
+              回填行动闭环审计最终动作(combatData, attacker, {
+                round: Number(combatData?.回合 || roundCount || 0),
+                finalResolvedActionName: '普通攻击',
+                hitCandidateName: 自动技能名 || 首轮手选技能名 || '',
+                actionOverrideSource: '续推轮换',
+                目标: targets?.enemyTarget?.name || defender?.name || '',
+                目标语义: '敌方单体',
+                承载方式: '',
+              });
+              return {
+                action_type: '常规攻击',
+                type: '常规攻击',
+                skill: 试探技能,
+                cast_time: 10,
+                target_name: targets?.enemyTarget?.name || defender?.name || '',
+                player_auto_continuation: true,
+                decision_log: `[自动续推] 已完成【${自动技能名 || 首轮手选技能名 || '首轮动作'}】，本回合改用【普通攻击】重新试探。`,
+              };
+            }
             return {
               action_type: '收招转防',
               type: '收招转防',
@@ -36546,6 +36620,28 @@ class BattleUIComponent {
           const atkCastTime = getSkillCastTime(atkSkill);
           const executeCastTime = getSkillCastTime(executeSkill);
           const 反高速窗口 = 评估反高速应对窗口(defender, attacker, playerAction, behaviorState?.combatData || {});
+          if (防御者系别 === '敏攻系' && rangePressureSkill && Number(playerAction?.cast_time || 0) >= 8) {
+            const 技能名 = String(rangePressureSkill.name || rangePressureSkill.魂技名 || rangePressureSkill.技能名称 || '').trim();
+            const 近期次数 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(defender).recent_actions || {}, [技能名], 0);
+            const 重复状态衰减 = 评估敌对重复状态收益衰减(rangePressureSkill, attacker, {
+              projectedDamageRatio: Number(threatProfile?.projectedDamageRatio || 0),
+              recentSameActionCount: 近期次数,
+            });
+            if (Number(重复状态衰减.惩罚 || 0) < 80) {
+              tacticalBranches.push({
+                name: '范围压制',
+                weight: adjustBehaviorWeight('范围压制', 128 - Math.floor(Number(重复状态衰减.惩罚 || 0) * 0.6), defender, attacker, behaviorState),
+                __预览技能: rangePressureSkill,
+                build() {
+                  return makeNpcAction(
+                    '范围压制',
+                    `[范围压制] 敏攻系判断对手前摇窗口已经暴露，改用[${rangePressureSkill.name}]压缩其身位。`,
+                    rangePressureSkill,
+                  );
+                },
+              });
+            }
+          }
 
           if (反高速窗口.成立 && rangePressureSkill) {
             tacticalBranches.push({
@@ -39236,13 +39332,13 @@ class BattleUIComponent {
               ),
             );
           }
-          if (稳定反敏攻牵制) {
-            recordActorActionMemory(actor, '收招转防');
+          if (稳定反敏攻牵制 && 回落技能) {
+            recordActorActionMemory(actor, 回落技能.name || 回落技能.技能名称 || '主动轮换');
             return convertDecisionToTurnAction(
               makeActorAction(
-                '收招转防',
-                `[反敏攻调整] ${actor.name || '行动者'}确认当前没有合格压制技能，停止继续硬追，先收招稳住身位。`,
-                null,
+                '主动轮换',
+                `[反敏攻调整] ${actor.name || '行动者'}没有专用反制动作，改以[${回落技能.name || '战术技能'}]继续试探，不再空转收招。`,
+                回落技能,
               ),
             );
           }
@@ -39346,7 +39442,31 @@ class BattleUIComponent {
                 ),
               );
             }
-            const 压迫技能 = 反敏攻技能 || skillContext.hardControlSkill || skillContext.rangePressureSkill || skillContext.controlSkill || skillContext.interruptSkill || 可用敌对技能[0] || normalizeSkillData(
+            const 压迫候选列表 = [
+              反敏攻技能,
+              skillContext.hardControlSkill,
+              skillContext.rangePressureSkill,
+              skillContext.controlSkill,
+              skillContext.interruptSkill,
+              ...可用敌对技能,
+            ]
+              .filter(Boolean)
+              .filter((技能, index, 列表) => {
+                const 名称 = String(技能?.name || 技能?.魂技名 || 技能?.技能名称 || '').trim();
+                return 名称 && 列表.findIndex(候选 => String(候选?.name || 候选?.魂技名 || 候选?.技能名称 || '').trim() === 名称) === index;
+              })
+              .map(技能 => {
+                const 名称 = String(技能?.name || 技能?.魂技名 || 技能?.技能名称 || '').trim();
+                const 近期次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [名称], 0);
+                const 衰减 = 评估敌对重复状态收益衰减(技能, enemyTarget, {
+                  projectedDamageRatio: 0,
+                  recentSameActionCount: 近期次数,
+                });
+                return { 技能, 名称, 近期次数, 衰减 };
+              });
+            const 可替代压迫候选 = 压迫候选列表.filter(项目 => Number(项目?.衰减?.惩罚 || 0) < 80);
+            const 压迫候选命中 = (可替代压迫候选[0] || 压迫候选列表[0]) || null;
+            const 压迫技能 = 压迫候选命中?.技能 || normalizeSkillData(
               {
                 name: '普通攻击',
                 技能分类: '输出',
@@ -39358,6 +39478,7 @@ class BattleUIComponent {
               },
               '普通攻击',
             );
+            const 压迫重复状态衰减 = 压迫候选命中?.衰减 || { 惩罚: 0, 状态列表: [] };
             const 压迫技能名 = String(压迫技能?.name || 压迫技能?.魂技名 || 压迫技能?.技能名称 || '').trim();
             const 同技压迫次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [压迫技能名], 0);
             const 主动压迫次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, ['主动压迫', '反敏攻压制'], 0);
@@ -39369,44 +39490,62 @@ class BattleUIComponent {
             const 连续前压应转守 =
               !目标敏攻拉扯 &&
               (
-                (同技压迫次数 >= 1 && !压迫属于真实反敏攻) ||
+                (同技压迫次数 >= 1 && (!压迫属于真实反敏攻 || Number(压迫重复状态衰减.惩罚 || 0) >= 80)) ||
                 主动压迫次数 >= 2
               );
-            if (
-              目标敏攻拉扯 &&
+            const 需要轮换压迫 =
               (
-                !反敏攻技能 ||
-                动作属于敏攻陷阱动作({ type: '主动压迫', action_type: '主动压迫', skill: 压迫技能 })
-              )
-            ) {
-              recordActorActionMemory(actor, '收招转防');
-              return convertDecisionToTurnAction(
-                makeActorAction(
-                  '收招转防',
-                  `[反敏攻调整] 连续前压被闪避牵制，暂缓普攻，收招稳住身位。`,
-                  null,
-                ),
-              );
-            }
-            if (连续前压应转守) {
-              recordActorActionMemory(actor, '收招转防');
-              return convertDecisionToTurnAction(
-                makeActorAction(
-                  '收招转防',
-                  `[稳态调整] 连续前压未能换到明确收益，本回合先收招稳住身位，避免继续无效硬压。`,
-                  null,
-                ),
-              );
-            }
-            recordActorActionMemory(actor, 压迫技能.name || 压迫技能.技能名称 || (目标敏攻拉扯 ? '反敏攻压制' : '主动压迫'));
-            recordActorActionMemory(actor, 目标敏攻拉扯 ? '反敏攻压制' : '主动压迫');
+                目标敏攻拉扯 &&
+                (
+                  !反敏攻技能 ||
+                  动作属于敏攻陷阱动作({ type: '主动压迫', action_type: '主动压迫', skill: 压迫技能 })
+                )
+              ) || 连续前压应转守;
+            const 轮换反敏攻技能 = 目标敏攻拉扯
+              ? (availableSkills || [])
+                  .map(skill => newSkillData(skill))
+                  .filter(skill => skill && skill !== 压迫技能 && 技能具备反敏攻价值(skill) && !技能属于敏攻陷阱动作(skill))
+                  .filter(skill => parseSkillCostForChar(skill, actor, {
+                    actor,
+                    caster: actor,
+                    target: enemyTarget,
+                    defender: enemyTarget,
+                    skill,
+                    combatData: battleState.combatData,
+                    当前行动: '反敏攻轮换',
+                  }).canCast !== false)
+                  .sort((左, 右) => Number(技能评分查找.get(String(右.name || 右.魂技名 || 右.技能名称 || '').trim()) || 0) - Number(技能评分查找.get(String(左.name || 左.魂技名 || 左.技能名称 || '').trim()) || 0))[0]
+              : null;
+            const 轮换压迫技能 = 需要轮换压迫
+              ? (
+                  轮换反敏攻技能 ||
+                  压迫候选列表.find(项目 => 项目?.技能 && 项目?.技能 !== 压迫技能 && Number(项目?.衰减?.惩罚 || 0) < 80)?.技能 ||
+                  (目标敏攻拉扯 ? 压迫技能 : normalizeSkillData(
+                    {
+                      name: '普通攻击',
+                      技能分类: '输出',
+                      消耗: '无',
+                      前摇: 10,
+                      _效果数组: [
+                        { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
+                      ],
+                    },
+                    '普通攻击',
+                  ))
+                )
+              : 压迫技能;
+            const 实际压迫技能 = 轮换压迫技能 || 压迫技能;
+            recordActorActionMemory(actor, 实际压迫技能.name || 实际压迫技能.技能名称 || (目标敏攻拉扯 ? '反敏攻压制' : '主动压迫'), { target: enemyTarget });
+            recordActorActionMemory(actor, 目标敏攻拉扯 ? '反敏攻压制' : '主动压迫', { target: enemyTarget });
             return convertDecisionToTurnAction(
               makeActorAction(
                 目标敏攻拉扯 ? '反敏攻压制' : '主动压迫',
-                目标敏攻拉扯
-                  ? `[反敏攻调整] ${actor.name || '行动者'}识别到前压被闪避牵制，改以[${压迫技能.name || '战术动作'}]处理拉扯窗口。`
-                  : `[主动压迫] ${actor.name || '行动者'}判断对手没有主动进攻，改以[${压迫技能.name || '普通攻击'}]前压争夺节奏。`,
-                压迫技能,
+                需要轮换压迫
+                  ? `[主动轮换] ${actor.name || '行动者'}不再空转收招，改以[${实际压迫技能.name || '普通攻击'}]重新试探对手反应。`
+                  : 目标敏攻拉扯
+                    ? `[反敏攻调整] ${actor.name || '行动者'}识别到前压被闪避牵制，改以[${实际压迫技能.name || '战术动作'}]处理拉扯窗口。`
+                    : `[主动压迫] ${actor.name || '行动者'}判断对手没有主动进攻，改以[${实际压迫技能.name || '普通攻击'}]前压争夺节奏。`,
+                实际压迫技能,
               ),
             );
           }
