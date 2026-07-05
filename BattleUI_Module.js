@@ -5143,7 +5143,46 @@ class BattleUIComponent {
             lines.push(`${prefix}${text || `${target}随后受【${state}】影响，${isHeal ? '恢复' : '损失'}了 ${amount} 点${resource}${sourceText}`}。`);
           });
         });
-      return lines
+      const 压缩连续公开战报受阻行 = (sourceLines = []) => {
+        const result = [];
+        const parseBlocked = line => {
+          const text = String(line || '').trim();
+          const match = text.match(/^第(\d+)回合：(.+?)(?:刚欲催动【([^】]+)】|的【([^】]+)】)(?:，便被对手压住节奏，未能完成出手|被对手压住节奏，未能完成出手|未能完成出手)。?$/);
+          if (!match) return null;
+          return {
+            round: Number(match[1] || 0),
+            actor: String(match[2] || '').trim(),
+            action: normalizeBattleActionDisplayName(match[3] || match[4] || ''),
+          };
+        };
+        for (let index = 0; index < sourceLines.length;) {
+          const first = parseBlocked(sourceLines[index]);
+          if (!first) {
+            result.push(sourceLines[index]);
+            index += 1;
+            continue;
+          }
+          let end = index + 1;
+          while (end < sourceLines.length) {
+            const current = parseBlocked(sourceLines[end]);
+            if (!current ||
+              current.actor !== first.actor ||
+              current.action !== first.action ||
+              current.round !== first.round + (end - index)) break;
+            end += 1;
+          }
+          const count = end - index;
+          if (count >= 3) {
+            const last = parseBlocked(sourceLines[end - 1]);
+            result.push(`第${first.round}至${last.round}回合：${first.actor}连续尝试催动【${first.action || '行动'}】，但始终被对手压住节奏，未能完成有效出手。`);
+          } else {
+            result.push(...sourceLines.slice(index, end));
+          }
+          index = end;
+        }
+        return result;
+      };
+      return 压缩连续公开战报受阻行(lines)
         .map(line => normalizeBattleSkillNameMarks(line).replace(/\s+/g, ' ').trim())
         .filter(Boolean)
         .filter((line, index, list) => list.indexOf(line) === index);
@@ -43475,6 +43514,71 @@ class BattleUIComponent {
           }).filter(item => item.root);
         }
 
+        function 读取因果链全量子节点(条目 = {}) {
+          const result = [];
+          const byParent = 条目?.byParent instanceof Map ? 条目.byParent : new Map();
+          const visit = node => {
+            if (!node || typeof node !== 'object') return;
+            result.push(node);
+            (byParent.get(String(node.nodeId || '').trim()) || []).forEach(visit);
+          };
+          (Array.isArray(条目?.children) ? 条目.children : []).forEach(visit);
+          return result;
+        }
+
+        function 计算因果链展示权重(条目 = {}) {
+          const root = 条目?.root || {};
+          const finalAction = normalizeBattleActionDisplayName(root.finalActionName || root.actionName || '');
+          const initialAction = normalizeBattleActionDisplayName(root.initialActionName || '');
+          const discardedAction = normalizeBattleActionDisplayName(root.discardedActionName || (initialAction && initialAction !== finalAction ? initialAction : ''));
+          const nodes = 读取因果链全量子节点(条目);
+          let score = /普通攻击/.test(finalAction) ? 1 : /魂技|真身|融合|爆发/.test(finalAction) ? 6 : 3;
+          let childEscalated = false;
+          const reasons = [];
+          if (discardedAction && discardedAction !== finalAction) {
+            score += 7;
+            childEscalated = true;
+            reasons.push('变招');
+          }
+          nodes.forEach(node => {
+            const kind = String(node?.nodeKind || '').trim();
+            const outcome = String(node?.primaryOutcome || '').trim();
+            const stateName = String(读取结算轨迹值(node?.calculationTrace, 'stateName') || node?.stateName || '').trim();
+            const damage = Number(读取结算轨迹值(node?.calculationTrace, 'finalDamage') || 读取结算轨迹值(node?.calculationTrace, 'damage') || 0);
+            if (kind === 'counter_action') {
+              score += 9;
+              childEscalated = true;
+              reasons.push('防反');
+            } else if (kind === 'state_settlement') {
+              const control = /控制|眩晕|禁锢|束缚|位移限制|减速|迟缓|沉默|封锁/.test(stateName);
+              score += control ? 7 : 4;
+              if (control) childEscalated = true;
+              reasons.push(stateName ? `状态:${stateName}` : '状态');
+            } else if (kind === 'damage_settlement') {
+              if (damage >= 100) {
+                score += 6;
+                childEscalated = true;
+                reasons.push('重创');
+              } else if (damage > 0) score += 2;
+              if (/kill|fatal|濒危|击杀|免死/.test(outcome)) {
+                score += 10;
+                childEscalated = true;
+                reasons.push('致命');
+              }
+            } else if (kind === 'counter_window' && /missed|错失|失败/.test(String(node?.reasonCode || node?.result || ''))) {
+              score += 4;
+              reasons.push('窗口错失');
+            }
+          });
+          const eventWeight = score >= 16 ? 'critical' : score >= 9 ? 'high' : score >= 4 ? 'medium' : 'low';
+          return {
+            score,
+            eventWeight,
+            childEscalated,
+            collapse: eventWeight === 'low' && !childEscalated,
+            reasons: [...new Set(reasons)].slice(0, 3),
+          };
+        }
         function 渲染因果链行动区块(条目 = {}) {
           const root = 条目?.root || {};
           const children = Array.isArray(条目?.children) ? 条目.children : [];
@@ -43526,13 +43630,14 @@ class BattleUIComponent {
           });
           if (lines.length) lines[lines.length - 1] = lines[lines.length - 1].replace(/^├─/, '└─');
           const title = `[行动链] ${actor} 执行【${finalAction}】${target ? ` -> ${target}` : ''}`;
+          const 展示权重 = 计算因果链展示权重(条目);
+          const summary = 展示权重.reasons.length ? `${title}｜${展示权重.reasons.join('、')}` : title;
+          const treeHtml = `<div class="battle-preview-trace-tree">${lines.map(line => `<span>${渲染判定侧写HTML(line)}</span>`).join('\n')}</div>`;
           return `
-            <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--action-chain">
-              <div class="battle-preview-trace-title"><b>${htmlEscapeText(title)}</b></div>
-              <div class="battle-preview-trace-tree">
-                ${lines.map(line => `<span>${渲染判定侧写HTML(line)}</span>`).join('\n')}
-              </div>
-            </div>
+            <details class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--action-chain battle-preview-action-chain-fold" data-smart-collapse="1" data-event-weight="${htmlEscapeText(展示权重.eventWeight)}"${展示权重.childEscalated ? ' data-child-escalated="1"' : ''}${展示权重.collapse ? '' : ' open'}>
+              <summary class="battle-preview-trace-title"><b>${htmlEscapeText(summary)}</b><em>${htmlEscapeText(展示权重.eventWeight)}</em></summary>
+              ${treeHtml}
+            </details>
           `;
         }
         function 格式化结算链事件文本(event = {}) {
@@ -44834,6 +44939,77 @@ class BattleUIComponent {
         function 提取战斗结果战报行(result = null) {
           return 提取战斗结果战报Blocks(result).map(item => String(item?.text || '').trim()).filter(Boolean);
         }
+
+        function 构建回合速览数据(result = null, context = {}) {
+          const ledger = Array.isArray(result?.eventLedger) ? result.eventLedger : (Array.isArray(result?.combatData?.__battleEventLedger) ? result.combatData.__battleEventLedger : []);
+          const rounds = new Map();
+          const pushRound = round => {
+            const key = Math.max(0, Number(round || 0));
+            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, highlights: [] });
+            return rounds.get(key);
+          };
+          const pushHighlight = (round, text, weight = 1) => {
+            const clean = String(text || '').trim();
+            if (!clean) return;
+            const item = pushRound(round);
+            if (!item.highlights.some(entry => entry.text === clean)) item.highlights.push({ text: clean, weight: Number(weight || 1) });
+          };
+          ledger.forEach(event => {
+            const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
+            const kind = String(event?.eventKind || '').trim();
+            const actor = String(event?.actorName || '').trim();
+            const target = String(event?.targetName || '').trim();
+            const action = normalizeBattleActionDisplayName(event?.finalActionName || event?.actionName || '');
+            const targetSide = 读取战报单位阵营(context, target);
+            const row = pushRound(round);
+            const damage = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
+            if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
+              if (targetSide === 'player') row.playerHpDelta -= damage;
+              else if (targetSide === 'enemy') row.enemyHpDelta -= damage;
+              if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8);
+              else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, 6);
+            }
+            if (kind === 'state_apply' && 事件账本状态已附着(event)) {
+              const stateName = 读取事件账本状态名(event);
+              if (stateName) pushHighlight(round, `${target || actor}陷入【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 7 : 4);
+            } else if (kind === 'summon_create') {
+              const summonName = String(event?.summonName || event?.createdName || '').trim();
+              pushHighlight(round, `${actor}召出${summonName ? `【${summonName}】` : '召唤物'}`, 7);
+            } else if (kind === 'blocked_action' || kind === 'failed_action') {
+              pushHighlight(round, `${actor}的【${action || '行动'}】未能落地`, 5);
+            }
+          });
+          return [...rounds.values()]
+            .filter(item => item.round > 0 && (item.playerHpDelta || item.enemyHpDelta || item.highlights.length))
+            .sort((a, b) => a.round - b.round)
+            .map(item => ({
+              ...item,
+              highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 3).map(entry => entry.text),
+            }));
+        }
+
+        function 序列化回合速览行(rows = []) {
+          const result = [];
+          const formatDelta = value => value < 0 ? `${value} HP` : value > 0 ? `+${value} HP` : '0';
+          (Array.isArray(rows) ? rows : []).forEach(item => {
+            const parts = [`我方${formatDelta(Number(item?.playerHpDelta || 0))}`, `敌方${formatDelta(Number(item?.enemyHpDelta || 0))}`];
+            const highlights = (Array.isArray(item?.highlights) ? item.highlights : []).filter(Boolean);
+            result.push(`第${Number(item?.round || 0)}回合速览：${parts.join('，')}${highlights.length ? `；高光：${highlights.join('；')}` : ''}`);
+          });
+          return result;
+        }
+
+        function 渲染回合速览HTML(rows = []) {
+          const list = Array.isArray(rows) ? rows : [];
+          if (!list.length) return '';
+          const formatDelta = value => value < 0 ? `${value} HP` : value > 0 ? `+${value} HP` : '0';
+          return `<section class="battle-round-dashboard" aria-label="回合速览">${list.map(item => {
+            const playerDelta = Number(item?.playerHpDelta || 0);
+            const enemyDelta = Number(item?.enemyHpDelta || 0);
+            const highlights = (Array.isArray(item?.highlights) ? item.highlights : []).filter(Boolean);
+            return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${highlights[0] ? htmlEscapeText(highlights[0]) : '战果收束'}</b></div><div class="battle-round-dashboard-bars"><span class="battle-round-dashboard-delta${playerDelta < 0 ? ' is-loss' : playerDelta > 0 ? ' is-gain' : ''}">我方 ${htmlEscapeText(formatDelta(playerDelta))}</span><span class="battle-round-dashboard-delta${enemyDelta < 0 ? ' is-loss' : enemyDelta > 0 ? ' is-gain' : ''}">敌方 ${htmlEscapeText(formatDelta(enemyDelta))}</span></div>${highlights.length > 1 ? `<div class="battle-round-dashboard-highlights">${highlights.slice(1).map(text => `<span>${htmlEscapeText(text)}</span>`).join('')}</div>` : ''}</div>`;
+          }).join('')}</section>`;
+        }
         function 解码战斗预演HTML实体(text = '') {
           return String(text || '')
             .replace(/&nbsp;/g, ' ')
@@ -44914,13 +45090,14 @@ class BattleUIComponent {
           const 战报Blocks = 原始战报Blocks.filter(item => !状态结算文本.includes(String(item?.text || '').trim()));
           const 战报 = 战报Blocks.map(item => String(item?.text || '').trim()).filter(Boolean);
           const 流程HTML = 渲染分回合判定流程(审计条目);
+          const 回合速览 = 构建回合速览数据(result, context);
           const 头部行 = [
             activeTab === 'preview' ? '预演结果' : '实战结果',
             格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode),
             `推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`,
           ].filter(Boolean);
           const 判定流程行 = ['判定流程', ...提取战斗预演HTML可见文本(流程HTML)];
-          return [...头部行, ...战报, ...判定流程行].join('\n').trim();
+          return [...头部行, ...序列化回合速览行(回合速览), ...战报, ...判定流程行].join('\n').trim();
         }
         root.__LWCS_BATTLE_EXPORT_VISIBLE_TEXT_IMPL__ = (result = null, activeTab = 'preview') =>
           导出战斗记录可见文本(result, activeTab);
@@ -44928,6 +45105,12 @@ class BattleUIComponent {
           渲染公开战报HTML(line, context);
         root.__LWCS_RENDER_BATTLE_REPORT_BLOCKS_HTML_IMPL__ = (blocks = [], context = {}) =>
           渲染公开战报BlocksHTML(blocks, context);
+        root.__LWCS_BUILD_BATTLE_ROUND_DASHBOARD_IMPL__ = (result = null, context = {}) =>
+          构建回合速览数据(result, context);
+        root.__LWCS_RENDER_BATTLE_ROUND_DASHBOARD_IMPL__ = (rows = []) =>
+          渲染回合速览HTML(rows);
+        root.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML_IMPL__ = (trace = []) =>
+          渲染分回合判定流程(构建因果链行动区块条目(trace));
 
         function 渲染战斗记录面板() {
           const node = 读取战斗记录面板节点();
@@ -44978,6 +45161,7 @@ class BattleUIComponent {
               <b>${htmlEscapeText(格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode))}</b>
               <em>${htmlEscapeText(`推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`)}</em>
             </div>
+            ${渲染回合速览HTML(回合速览)}
             <div class="battle-preview-report">
               ${战报Blocks.length ? 战报Blocks.map(item => `<p>${(Array.isArray(item?.blocks) && item.blocks.length ? 渲染公开战报BlocksHTML(item.blocks, { ...context, combatData: context?.combatData || result?.combatData || {}, units: 收集战报上下文单位列表({ ...context, combatData: context?.combatData || result?.combatData || {} }) }) : 渲染公开战报HTML(item?.text || '', { ...context, combatData: context?.combatData || result?.combatData || {}, units: 收集战报上下文单位列表({ ...context, combatData: context?.combatData || result?.combatData || {} }) })).html}</p>`).join('') : '<p>暂无战报</p>'}
             </div>
@@ -45407,6 +45591,33 @@ window.__LWCS_RENDER_BATTLE_REPORT_BLOCKS_HTML__ = function (blocks = [], contex
   }
 };
 
+window.__LWCS_BUILD_BATTLE_ROUND_DASHBOARD__ = function (result = null, context = {}) {
+  try {
+    const impl = window.__LWCS_BUILD_BATTLE_ROUND_DASHBOARD_IMPL__;
+    return typeof impl === 'function' ? impl(result, context) : [];
+  } catch (_) {
+    return [];
+  }
+};
+
+window.__LWCS_RENDER_BATTLE_ROUND_DASHBOARD__ = function (rows = []) {
+  try {
+    const impl = window.__LWCS_RENDER_BATTLE_ROUND_DASHBOARD_IMPL__;
+    return typeof impl === 'function' ? impl(rows) : '';
+  } catch (_) {
+    return '';
+  }
+};
+
+window.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML__ = function (trace = []) {
+  try {
+    const impl = window.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML_IMPL__;
+    return typeof impl === 'function' ? impl(trace) : '';
+  } catch (_) {
+    return '';
+  }
+};
+
 if (typeof 运行战斗回归夹具 === 'function') {
   window.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = function (名称 = '') {
     return 运行战斗回归夹具(名称);
@@ -45426,3 +45637,5 @@ if (typeof 生成战斗判定样本结果 === 'function') {
 }
 
 })();
+
+

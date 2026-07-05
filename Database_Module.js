@@ -17414,8 +17414,11 @@ $CONTENT
                             target.qrf_plot_tasks = {};
                         }
                         for (const result of taskResults) {
-                            if (result && result.success && result.taskId && typeof result.rawResponse === 'string' && result.rawResponse.trim()) {
-                                target.qrf_plot_tasks[result.taskId] = result.rawResponse.trim();
+                            if (result && result.success && result.taskId) {
+                                const taskSaveContent = buildPlotTaskExtractedSaveContent_ACU(result);
+                                if (taskSaveContent) {
+                                    target.qrf_plot_tasks[result.taskId] = taskSaveContent;
+                                }
                             }
                         }
                     }
@@ -19208,6 +19211,17 @@ $CONTENT
             .map(result => `【剧情任务：${result.taskName || result.taskId || '未命名任务'}】\n${result.rawResponse.trim()}`)
             .join('\n\n');
     }
+    function buildPlotTaskExtractedSaveContent_ACU(taskResult) {
+        if (!taskResult?.success || !taskResult.extractedTags || typeof taskResult.extractedTags !== 'object')
+            return '';
+        const blocks = [];
+        Object.entries(taskResult.extractedTags).forEach(([tagName, content]) => {
+            const block = buildPlotTagBlock_ACU(tagName, content);
+            if (block)
+                blocks.push(block);
+        });
+        return blocks.join('\n\n');
+    }
     function 合并剧情终稿片段_ACU(片段列表) {
         const 有效片段 = (Array.isArray(片段列表) ? 片段列表 : [片段列表])
             .map(片段 => String(片段 || '').trim())
@@ -19243,7 +19257,10 @@ $CONTENT
         }
     }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
-        return buildPlotRawFallbackText_ACU(taskResults);
+        return sortPlotTaskResults_ACU(taskResults)
+            .map(result => buildPlotTaskExtractedSaveContent_ACU(result))
+            .filter(Boolean)
+            .join('\n\n');
     }
     function buildFinalPlotInjectionMessage_ACU(finalSystemDirectiveContent, taskResults, aggregatedTags, injectOnlyTagNames = new Set()) {
         const defaultDirective = '[SYSTEM_DIRECTIVE: You are a storyteller. The following <plot> block is your absolute script for this turn. You MUST follow the <directive> within it to generate the story.]';

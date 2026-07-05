@@ -28866,6 +28866,102 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   font-weight: 820;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-row,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-row,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-row {
+  display: grid;
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--战斗强调色) 24%, transparent);
+  background: color-mix(in srgb, var(--战斗强调色) 7%, rgba(255, 255, 255, 0.03));
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-head,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-head span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head span,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head span {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录小字号);
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-head b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-head b {
+  min-width: 0;
+  color: var(--战斗记录文字主色);
+  font-size: var(--战斗记录正文字号);
+  font-weight: 820;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-bars,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-bars,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-bars,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-highlights,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-highlights,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-delta,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-highlights span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-highlights span,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-highlights span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35em;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--战斗记录文字弱色) 18%, transparent);
+  color: var(--战斗记录文字弱色);
+  background: color-mix(in srgb, var(--战斗记录文字弱色) 7%, transparent);
+  font-size: var(--战斗记录小字号);
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-delta.is-loss,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta.is-loss,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta.is-loss {
+  color: color-mix(in srgb, #ffffff 72%, var(--战斗危险色));
+  border-color: color-mix(in srgb, var(--战斗危险色) 34%, transparent);
+  background: color-mix(in srgb, var(--战斗危险色) 12%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-round-dashboard-delta.is-gain,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta.is-gain,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-round-dashboard-delta.is-gain {
+  color: color-mix(in srgb, #ffffff 72%, #74f0b2);
+  border-color: color-mix(in srgb, #74f0b2 34%, transparent);
+  background: color-mix(in srgb, #74f0b2 12%, transparent);
+}
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report,
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace {
   display: grid;
@@ -29185,6 +29281,37 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
     rgba(255, 255, 255, 0.035);
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold {
+  cursor: default;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold > summary::before {
+  content: '▶';
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录小字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold[open] > summary::before {
+  content: '▼';
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold[data-event-weight="high"],
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-action-chain-fold[data-event-weight="critical"] {
+  border-left-color: color-mix(in srgb, var(--战斗警戒色) 74%, transparent);
+}
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-card--handoff {
   border-left-style: dashed;
   border-left-color: color-mix(in srgb, var(--战斗记录文字弱色) 34%, transparent);
