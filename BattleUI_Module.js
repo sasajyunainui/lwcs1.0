@@ -22855,6 +22855,7 @@ class BattleUIComponent {
         if (kind === 'hit_result') return { nodeKind: 'damage_settlement', nodeLayer: 'settlement', primaryOutcome: /miss|evade|dodge|未命中|闪避/.test(result) ? 'miss' : (Number(event?.meta?.damage || event?.damage || 0) > 0 ? 'damage' : 'no_effect') };
         if (kind === 'state_apply') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: /resist|resisted|抵抗|豁免/.test(result) ? 'state_resisted' : 'state_applied' };
         if (kind === 'state_tick') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: 'state_tick' };
+        if (kind === 'resource_change') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'resource_change' };
         if (kind === 'counter') return { nodeKind: result === 'fail' ? 'counter_window' : 'counter_action', nodeLayer: result === 'fail' ? 'system_check' : 'settlement', primaryOutcome: result === 'fail' ? 'no_valid_window' : 'damage' };
         if (kind === 'summon_create') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'summon_created' };
         if (kind === 'create' || kind === 'shield_create') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: kind };
@@ -22970,6 +22971,16 @@ class BattleUIComponent {
             { key: 'duration', label: '持续回合', value: Math.max(0, Number(event.duration || 0)) },
           ];
         }
+        if (kind === 'state_tick') {
+          return [
+            { key: 'sourceAction', label: '来源动作', value: normalizeBattleActionDisplayName(event.actionName || event.sourceActionName || '') },
+            { key: 'target', label: '目标', value: String(event.targetName || '').trim() },
+            { key: 'stateName', label: '状态', value: 读取事件账本状态名(event) },
+            { key: 'result', label: '结算结果', value: String(event.result || '').trim() || 'tick' },
+            { key: 'amount', label: '结算数值', value: Math.max(0, Number(event?.meta?.amount ?? event?.amount ?? 0)) },
+            { key: 'resource', label: '结算资源', value: String(event?.meta?.resource || '生命值').trim() },
+          ];
+        }
         return [];
       }
 
@@ -23017,6 +23028,72 @@ class BattleUIComponent {
         return node;
       }
 
+      function 读取状态Tick聚合种类(event = {}) {
+        const result = String(event?.result || '').trim();
+        const resource = String(event?.meta?.resource || '生命值').trim();
+        if (/恢复|heal|hot/i.test(result)) return 'heal_tick';
+        if (/魂力|精神力|体力|资源/.test(resource)) return 'resource_tick';
+        return 'state_tick';
+      }
+
+      function 同步回合末状态聚合节点(combatData = {}, event = {}, traceNode = null) {
+        const kind = String(event?.eventKind || '').trim();
+        if (kind !== 'state_tick') return null;
+        const trace = 确保战斗判定因果链(combatData?.__父级战斗数据 || combatData);
+        if (!Array.isArray(trace) || !traceNode?.nodeId) return null;
+        const round = Number(event.round || event.sourceRound || 0);
+        const stateName = 读取事件账本状态名(event);
+        const aggregateKind = 读取状态Tick聚合种类(event);
+        if (!(round > 0) || !stateName) return null;
+        const tickNodes = trace.filter(node =>
+          node &&
+          String(node.nodeKind || '').trim() === 'state_settlement' &&
+          String(node.primaryOutcome || '').trim() === 'state_tick' &&
+          Number(node.round || 0) === round &&
+          String(读取结算轨迹值(node.calculationTrace, 'stateName') || '').trim() === stateName &&
+          读取状态Tick聚合种类({ result: node.result, meta: { resource: 读取结算轨迹值(node.calculationTrace, 'resource') || '生命值' } }) === aggregateKind
+        );
+        if (tickNodes.length < 2) return null;
+        const nodeId = `battle-trace-aggregation-${round}-${aggregateKind}-${stateName}`.replace(/\s+/g, '-');
+        const childNodeIds = tickNodes.map(node => String(node.nodeId || '').trim()).filter(Boolean);
+        const ledgerEventIds = tickNodes.flatMap(node => Array.isArray(node.ledgerEventIds) ? node.ledgerEventIds : []).filter(Boolean);
+        const totalAmount = tickNodes.reduce((sum, node) => sum + Math.max(0, Number(读取结算轨迹值(node.calculationTrace, 'amount') || 0)), 0);
+        const existing = trace.find(node => String(node?.nodeId || '').trim() === nodeId);
+        const payload = {
+          nodeId,
+          parentNodeId: '',
+          round,
+          phase: 'round_end',
+          nodeKind: 'aggregation',
+          nodeLayer: 'presentation',
+          actorName: '',
+          targetName: '',
+          targetId: '',
+          targetScope: 'all_units',
+          initialActionName: '',
+          finalActionName: '',
+          discardedActionName: '',
+          source: 'trace_projection',
+          result: 'aggregated',
+          primaryOutcome: aggregateKind,
+          aggregateKind,
+          stateName,
+          childNodeIds,
+          ledgerEventIds,
+          calculationTrace: [
+            { key: 'aggregateKind', label: '聚合类型', value: aggregateKind },
+            { key: 'stateName', label: '状态', value: stateName },
+            { key: 'childCount', label: '子结算数', value: childNodeIds.length },
+            { key: 'totalAmount', label: '合计数值', value: Math.round(totalAmount) },
+          ],
+          counterDepth: 0,
+          counterRootNodeId: '',
+        };
+        if (existing) Object.assign(existing, payload);
+        else trace.push(payload);
+        if (trace.length > 1000) trace.splice(0, trace.length - 1000);
+        return existing || payload;
+      }
       function 查找最近账本动作事件(ledger = [], criteria = {}) {
         const round = Number(criteria.round || 0);
         const actorName = String(criteria.actorName || '').trim();
@@ -23045,7 +23122,7 @@ class BattleUIComponent {
         const matchedAction = eventKind === 'counter'
           ? null
           : 查找最近账本动作事件(ledger, { round, actorName, actionName: actionName || sourceActionName });
-        const closedActionKinds = new Set(['hit_result', 'state_apply', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
+        const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
         const sourceActorName = eventKind === 'counter'
           ? targetName
           : (['defend', 'dodge', 'pass'].includes(eventKind) ? targetName : actorName);
@@ -23099,7 +23176,7 @@ class BattleUIComponent {
           driverAttr: String(payload.driverAttr || '').trim(),
           meta: eventMeta,
         };
-        if (['hit_result', 'state_apply'].includes(event.eventKind) && !Array.isArray(event.meta.settlementTrace)) {
+        if (['hit_result', 'state_apply', 'state_tick'].includes(event.eventKind) && !Array.isArray(event.meta.settlementTrace)) {
           event.meta.settlementTrace = 构建事件最小结算轨迹(event);
         }
         if (!event.eventKind) return null;
@@ -23117,6 +23194,7 @@ class BattleUIComponent {
           event.chainNodeId = traceNode.nodeId;
           event.parentNodeId = traceNode.parentNodeId || event.parentNodeId;
           event.sourceNodeId = event.sourceNodeId || traceNode.parentNodeId || '';
+          同步回合末状态聚合节点(combatData?.__父级战斗数据 || combatData, event, traceNode);
         }
         ledger.push(event);
         if (ledger.length > 800) ledger.splice(0, ledger.length - 800);
@@ -33698,6 +33776,30 @@ class BattleUIComponent {
           const convertRatio = Math.max(0, Math.min(2, Number(effect?.转化比例 ?? 1) || 1));
           const 回收汇总 = new Map();
           let totalChanged = 0;
+          const 写入资源变化事件 = (targetObj, resourceKey, delta, reason = '') => {
+            const amount = Math.round(Number(delta || 0));
+            if (!targetObj || !amount) return null;
+            const label = getTransferResourceLabel(resourceKey);
+            return 写入战斗事件账本(combatData, {
+              eventKind: 'resource_change',
+              round: Number(combatData?.回合 || 0),
+              actorName: attackerName,
+              targetName: targetObj?.name || targetObj?.名称 || (targetObj === attacker ? attackerName : '目标'),
+              actionName: skillName || playerAction?.skill?.name || playerAction?.skill?.魂技名 || '资源转移',
+              actionType: 'resource_change',
+              sourceActionName: skillName || playerAction?.skill?.name || playerAction?.skill?.魂技名 || '资源转移',
+              sourceRound: Number(combatData?.回合 || 0),
+              result: amount > 0 ? 'gain' : 'loss',
+              meta: {
+                resourceKey,
+                resource: label,
+                amount: Math.abs(amount),
+                delta: amount,
+                transferMode: 转移方式,
+                reason,
+              },
+            });
+          };
           if (转移方式 === '均分') {
             const 均分强度 = Math.max(0, Math.min(1, Math.abs(读取战斗数值正负(effect?.数值 || '100%')) || 1));
             const 均分目标列表 = dedupeCombatTargetList(String(effect?.目标 || '').trim() === '单体' ? [attacker, ...targetUnits] : targetUnits).filter(isCombatUnitAlive);
@@ -33714,6 +33816,7 @@ class BattleUIComponent {
                 if (!(变动量 > 0)) return;
                 if (资源变化落地被抹消(targetObj, resourceKey, '资源均分')) return;
                 设置转移资源当前值(targetObj, resourceKey, 新值);
+                写入资源变化事件(targetObj, resourceKey, 新值 - 当前值, '资源均分');
                 totalChanged += 变动量;
                 result.desc += ` [均分] ${targetObj === attacker ? '自身' : targetObj.name}的${getTransferResourceLabel(resourceKey)}调整 ${新值 - 当前值 >= 0 ? '+' : ''}${新值 - 当前值}。`;
               });
@@ -33748,6 +33851,8 @@ class BattleUIComponent {
                 }
                 设置转移资源当前值(attacker, resourceKey, 自身当前值 - 自身支付量);
                 设置转移资源当前值(targetObj, resourceKey, 目标新值);
+                写入资源变化事件(attacker, resourceKey, -自身支付量, 转移方式 + '支付');
+                写入资源变化事件(targetObj, resourceKey, 实际获得量, 转移方式 + '获得');
                 totalChanged += 实际获得量 + 自身支付量;
                 result.desc += ` [${转移方式}] 自身消耗 ${自身支付量} 点${getTransferResourceLabel(resourceKey)}，${targetObj === attacker ? '自身' : targetObj.name}获得 ${实际获得量} 点。`;
                 return;
@@ -33756,6 +33861,7 @@ class BattleUIComponent {
               if (!(drainAmount > 0)) return;
               if (资源变化落地被抹消(targetObj, resourceKey, `${转移方式}资源扣除`)) return;
               设置转移资源当前值(targetObj, resourceKey, targetCurrent - drainAmount);
+              写入资源变化事件(targetObj, resourceKey, -drainAmount, 转移方式 + '资源扣除');
               totalChanged += drainAmount;
               if (转移方式 === '吞噬') 回收汇总.set(resourceKey, (回收汇总.get(resourceKey) || 0) + drainAmount);
               result.desc += ` [${转移方式}] ${targetObj === attacker ? '自身' : targetObj.name}损失 ${drainAmount} 点${getTransferResourceLabel(resourceKey)}。`;
@@ -33772,6 +33878,7 @@ class BattleUIComponent {
               if (!(actualGain > 0)) return;
               if (资源变化落地被抹消(attacker, resourceKey, '吞噬资源回补')) return;
               设置转移资源当前值(attacker, resourceKey, afterValue);
+              写入资源变化事件(attacker, resourceKey, actualGain, '吞噬资源回补');
               totalChanged += actualGain;
               result.desc += ` [吞噬] 自身回补 ${actualGain} 点${getTransferResourceLabel(resourceKey)}。`;
             });
@@ -43058,7 +43165,7 @@ class BattleUIComponent {
           const 账本动作落地键集合 = new Set();
           const 账本行动者回合集合 = new Set();
           const 公开战报动作键集合 = new Set();
-          const 账本落地事件类型 = new Set(['hit_result', 'state_apply', 'state_tick', 'defend', 'dodge', 'pass', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
+          const 账本落地事件类型 = new Set(['hit_result', 'state_apply', 'state_tick', 'resource_change', 'defend', 'dodge', 'pass', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
           (Array.isArray(事件账本) ? 事件账本 : []).forEach(event => {
             if (!event || typeof event !== 'object') return;
             if (!账本落地事件类型.has(String(event.eventKind || '').trim())) return;
@@ -43722,15 +43829,62 @@ class BattleUIComponent {
             return `${actor}完成【${action}】，召出${summonType}【${summonName}】，行动模式：${summonMode}${mentalLoad > 0 ? `，精神负载 ${mentalLoad}` : ''}，下回合起纳入行动轴。`;
           }
           if (kind === 'shield_create') return `${actor}完成【${action}】，生成护盾${amount > 0 ? ` ${amount} 点` : ''}。`;
+          if (kind === 'resource_change') {
+            const resource = String(event?.meta?.resource || '资源').trim();
+            const delta = Math.round(Number(event?.meta?.delta || 0));
+            const targetLabel = target || actor || '目标';
+            if (!delta) return '';
+            return `${targetLabel}的${resource}${delta > 0 ? '恢复' : '消耗'} ${Math.abs(delta)} 点。`;
+          }
           return '';
         }
 
+        function 构建回合末状态聚合侧写条目(eventLedger = []) {
+          const groups = new Map();
+          (Array.isArray(eventLedger) ? eventLedger : [])
+            .filter(event => event && String(event.eventKind || '').trim() === 'state_tick')
+            .forEach(event => {
+              const round = Math.max(0, Number(event.round || event.sourceRound || 0));
+              const stateName = 读取事件账本状态名(event);
+              const aggregateKind = 读取状态Tick聚合种类(event);
+              const resource = String(event?.meta?.resource || '生命值').trim();
+              if (!(round > 0) || !stateName) return;
+              const key = `${round}|${aggregateKind}|${stateName}|${resource}`;
+              if (!groups.has(key)) groups.set(key, { round, aggregateKind, stateName, resource, events: [] });
+              groups.get(key).events.push(event);
+            });
+          return [...groups.values()]
+            .filter(group => group.events.length >= 2)
+            .map(group => {
+              const isHeal = group.aggregateKind === 'heal_tick';
+              const total = group.events.reduce((sum, event) => sum + Math.max(0, 读取事件账本数值(event, 'amount')), 0);
+              const children = group.events.map(event => {
+                const target = String(event.targetName || '目标').trim();
+                const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
+                return `${target}${isHeal ? '恢复' : '损失'} ${amount} 点${group.resource}`;
+              });
+              return {
+                type: 'settlement_aggregation',
+                round: group.round,
+                回合: group.round,
+                roundPhase: 'turn_end',
+                kind: 'status_tick_aggregation',
+                aggregateKind: group.aggregateKind,
+                stateName: group.stateName,
+                childNodeIds: group.events.map(event => String(event.chainNodeId || '').trim()).filter(Boolean),
+                ledgerEventIds: group.events.map(event => String(event.eventId || '').trim()).filter(Boolean),
+                text: `【${group.stateName}】在 ${group.events.length} 个目标身上结算，合计${isHeal ? '恢复' : '造成'} ${Math.round(total)} 点${group.resource}`,
+                children,
+                fromEventLedger: true,
+              };
+            });
+        }
         function 构建事件账本结算链侧写条目(eventLedger = []) {
           const seen = new Set();
           return (Array.isArray(eventLedger) ? eventLedger : [])
             .map(event => {
               const kind = String(event?.eventKind || '').trim();
-              if (!['hit_result', 'state_apply', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'dodge'].includes(kind)) return null;
+              if (!['hit_result', 'state_apply', 'resource_change', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'dodge'].includes(kind)) return null;
               const text = 格式化结算链事件文本(event);
               if (!text) return null;
               const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
@@ -43756,9 +43910,10 @@ class BattleUIComponent {
         function 构建结算链侧写条目(logs = [], context = {}) {
           const ledger = context?.eventLedger || context?.combatData?.__battleEventLedger || [];
           const eventItems = 构建事件账本结算链侧写条目(ledger);
+          const aggregationItems = 构建回合末状态聚合侧写条目(ledger);
           const eventLines = 构建合并后的事件账本公开战报行(ledger, 24, context);
           const rawLines = eventLines.filter(line => /随后受【/.test(String(line || '')));
-          const lines = (typeof Formatter !== 'undefined' && Formatter.filterMechanicalDuplicates) ? Formatter.filterMechanicalDuplicates(rawLines) : rawLines.filter(line => !/^第\d+回合：结果判定：/.test(String(line || '').trim()));
+          const lines = aggregationItems.length ? [] : ((typeof Formatter !== 'undefined' && Formatter.filterMechanicalDuplicates) ? Formatter.filterMechanicalDuplicates(rawLines) : rawLines.filter(line => !/^第\d+回合：结果判定：/.test(String(line || '').trim())));
           const tickItems = lines.map(line => {
             const match = String(line || '').match(/^(?:第(\d+)回合[：:]|[【\[]第(\d+)回合[】\]])\s*(.+)$/);
             const round = Number(match?.[1] || match?.[2] || 0);
@@ -43772,7 +43927,7 @@ class BattleUIComponent {
               kind: /随后受【/.test(text) ? 'status_tick' : 'settlement',
             };
           }).filter(item => item.text);
-          return [...eventItems, ...tickItems];
+          return [...eventItems, ...aggregationItems, ...tickItems];
         }
 
         function 构建防反侧写条目(logs = []) {
@@ -44794,6 +44949,22 @@ class BattleUIComponent {
           `;
         }
 
+        function 渲染回合末聚合侧写卡片(条目 = {}) {
+          const text = String(条目?.text || '').trim();
+          if (!text) return '';
+          const children = Array.isArray(条目?.children) ? 条目.children.map(item => String(item || '').trim()).filter(Boolean) : [];
+          return `
+            <details class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--settlement battle-preview-trace-subcard battle-preview-trace-card--aggregation" open>
+              <summary class="battle-preview-trace-title">
+                <b>${htmlEscapeText('[回合收束] 🩸 状态结算聚合')}</b>
+              </summary>
+              <div class="battle-preview-trace-tree">
+                <span>${渲染判定侧写HTML(`├─ 🧾 摘要：${text}`)}</span>
+                ${children.map((line, index) => `<span>${渲染判定侧写HTML(`${index === children.length - 1 ? '└─' : '├─'} ${line}`)}</span>`).join('\n')}
+              </div>
+            </details>
+          `;
+        }
         function 渲染结算链侧写卡片(条目 = {}) {
           const text = String(条目?.text || '').trim();
           if (!text) return '';
@@ -44813,6 +44984,7 @@ class BattleUIComponent {
         function 格式化预演审计行(条目 = {}) {
           if (条目?.type === 'handoff') return 渲染流转侧写卡片(条目);
           if (条目?.type === 'resolution_action_block') return 渲染因果链行动区块(条目);
+          if (条目?.type === 'settlement_aggregation') return 渲染回合末聚合侧写卡片(条目);
           if (条目?.type === 'settlement') return 渲染结算链侧写卡片(条目);
           const trace = 归一判定轨迹(条目?.trace || 条目 || {});
           if (读取轨迹类型(trace) === '防反机制') return 渲染防反侧写卡片(trace);
@@ -44820,7 +44992,7 @@ class BattleUIComponent {
         }
 
         function 读取判定条目回合(条目 = {}, fallbackRound = 0) {
-          if (条目?.type === 'settlement' || 条目?.type === 'resolution_action_block') return Number(条目.round || 条目.回合 || fallbackRound || 0);
+          if (条目?.type === 'settlement_aggregation' || 条目?.type === 'settlement' || 条目?.type === 'resolution_action_block') return Number(条目.round || 条目.回合 || fallbackRound || 0);
           const trace = 条目?.type === 'handoff' ? (条目.to || 条目.from || {}) : (条目.trace || 条目 || {});
           const round = Number(trace?.回合 || trace?.round || trace?.实际回合 || 0);
           return round > 0 ? round : Math.max(0, Number(fallbackRound || 0));
@@ -44839,6 +45011,7 @@ class BattleUIComponent {
 
         function 读取判定条目分段键(条目 = {}) {
           if (条目?.type === 'resolution_action_block') return 'action_chain';
+          if (条目?.type === 'settlement_aggregation') return 'turn_end';
           if (条目?.type === 'settlement') {
             return String(条目.roundPhase || '').trim() === 'turn_end' ? 'turn_end' : 'action_result';
           }
@@ -44945,7 +45118,7 @@ class BattleUIComponent {
           const rounds = new Map();
           const pushRound = round => {
             const key = Math.max(0, Number(round || 0));
-            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, highlights: [] });
+            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, resourceDeltas: [], highlights: [] });
             return rounds.get(key);
           };
           const pushHighlight = (round, text, weight = 1) => {
@@ -44953,6 +45126,17 @@ class BattleUIComponent {
             if (!clean) return;
             const item = pushRound(round);
             if (!item.highlights.some(entry => entry.text === clean)) item.highlights.push({ text: clean, weight: Number(weight || 1) });
+          };
+          const pushResourceDelta = (round, actorName = '', resourceName = '', value = 0) => {
+            const actorText = String(actorName || '').trim();
+            const resourceText = String(resourceName || '').trim();
+            const amount = Math.round(Number(value || 0));
+            if (!actorText || !resourceText || !amount) return;
+            const item = pushRound(round);
+            const key = `${actorText}|${resourceText}`;
+            const existing = item.resourceDeltas.find(entry => entry.key === key);
+            if (existing) existing.value += amount;
+            else item.resourceDeltas.push({ key, actorName: actorText, resourceName: resourceText, value: amount });
           };
           ledger.forEach(event => {
             const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
@@ -44968,6 +45152,27 @@ class BattleUIComponent {
               else if (targetSide === 'enemy') row.enemyHpDelta -= damage;
               if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8);
               else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, 6);
+            }            if (kind === 'action_cost') {
+              const reqSp = Math.max(0, Number(event?.meta?.reqSp || 0));
+              const reqVit = Math.max(0, Number(event?.meta?.reqVit || 0));
+              const reqMen = Math.max(0, Number(event?.meta?.reqMen || 0));
+              if (reqSp) pushResourceDelta(round, actor, '魂力', -reqSp);
+              if (reqVit) pushResourceDelta(round, actor, '体力', -reqVit);
+              if (reqMen) pushResourceDelta(round, actor, '精神力', -reqMen);
+            } else if (kind === 'round_recover') {
+              const resource = String(event?.meta?.resource || '').trim();
+              const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
+              if (amount && resource) pushResourceDelta(round, actor, resource, amount);
+            } else if (kind === 'state_tick') {
+              const resource = String(event?.meta?.resource || '').trim();
+              if (damage > 0 && resource && !/生命|HP|血/i.test(resource)) {
+                const isHeal = /恢复|heal|hot/i.test(String(event?.result || ''));
+                pushResourceDelta(round, target || actor, resource, isHeal ? damage : -damage);
+              }
+            } else if (kind === 'resource_change') {
+              const resource = String(event?.meta?.resource || '').trim();
+              const delta = Number(event?.meta?.delta || 0);
+              if (resource && delta) pushResourceDelta(round, target || actor, resource, delta);
             }
             if (kind === 'state_apply' && 事件账本状态已附着(event)) {
               const stateName = 读取事件账本状态名(event);
@@ -44980,10 +45185,14 @@ class BattleUIComponent {
             }
           });
           return [...rounds.values()]
-            .filter(item => item.round > 0 && (item.playerHpDelta || item.enemyHpDelta || item.highlights.length))
+            .filter(item => item.round > 0 && (item.playerHpDelta || item.enemyHpDelta || item.resourceDeltas.length || item.highlights.length))
             .sort((a, b) => a.round - b.round)
             .map(item => ({
               ...item,
+              resourceDeltas: item.resourceDeltas
+                .filter(entry => Math.round(Number(entry.value || 0)) !== 0)
+                .slice(0, 4)
+                .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)) })),
               highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 3).map(entry => entry.text),
             }));
         }
@@ -44993,8 +45202,11 @@ class BattleUIComponent {
           const formatDelta = value => value < 0 ? `${value} HP` : value > 0 ? `+${value} HP` : '0';
           (Array.isArray(rows) ? rows : []).forEach(item => {
             const parts = [`我方${formatDelta(Number(item?.playerHpDelta || 0))}`, `敌方${formatDelta(Number(item?.enemyHpDelta || 0))}`];
+            const resourceParts = (Array.isArray(item?.resourceDeltas) ? item.resourceDeltas : [])
+              .map(entry => `${entry.actorName || '单位'}${entry.resourceName || '资源'}${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)
+              .filter(Boolean);
             const highlights = (Array.isArray(item?.highlights) ? item.highlights : []).filter(Boolean);
-            result.push(`第${Number(item?.round || 0)}回合速览：${parts.join('，')}${highlights.length ? `；高光：${highlights.join('；')}` : ''}`);
+            result.push(`第${Number(item?.round || 0)}回合速览：${parts.join('，')}${resourceParts.length ? `；资源：${resourceParts.join('，')}` : ''}${highlights.length ? `；高光：${highlights.join('；')}` : ''}`);
           });
           return result;
         }
@@ -45007,7 +45219,9 @@ class BattleUIComponent {
             const playerDelta = Number(item?.playerHpDelta || 0);
             const enemyDelta = Number(item?.enemyHpDelta || 0);
             const highlights = (Array.isArray(item?.highlights) ? item.highlights : []).filter(Boolean);
-            return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${highlights[0] ? htmlEscapeText(highlights[0]) : '战果收束'}</b></div><div class="battle-round-dashboard-bars"><span class="battle-round-dashboard-delta${playerDelta < 0 ? ' is-loss' : playerDelta > 0 ? ' is-gain' : ''}">我方 ${htmlEscapeText(formatDelta(playerDelta))}</span><span class="battle-round-dashboard-delta${enemyDelta < 0 ? ' is-loss' : enemyDelta > 0 ? ' is-gain' : ''}">敌方 ${htmlEscapeText(formatDelta(enemyDelta))}</span></div>${highlights.length > 1 ? `<div class="battle-round-dashboard-highlights">${highlights.slice(1).map(text => `<span>${htmlEscapeText(text)}</span>`).join('')}</div>` : ''}</div>`;
+            const resourceDeltas = (Array.isArray(item?.resourceDeltas) ? item.resourceDeltas : []).filter(entry => Math.round(Number(entry?.value || 0)) !== 0);
+            const resourceHtml = resourceDeltas.length ? `<div class="battle-round-dashboard-resources">${resourceDeltas.map(entry => `<span>${htmlEscapeText(`${entry.actorName || '单位'} ${entry.resourceName || '资源'} ${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)}</span>`).join('')}</div>` : '';
+            return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${highlights[0] ? htmlEscapeText(highlights[0]) : '战果收束'}</b></div><div class="battle-round-dashboard-bars"><span class="battle-round-dashboard-delta${playerDelta < 0 ? ' is-loss' : playerDelta > 0 ? ' is-gain' : ''}">我方 ${htmlEscapeText(formatDelta(playerDelta))}</span><span class="battle-round-dashboard-delta${enemyDelta < 0 ? ' is-loss' : enemyDelta > 0 ? ' is-gain' : ''}">敌方 ${htmlEscapeText(formatDelta(enemyDelta))}</span></div>${resourceHtml}${highlights.length > 1 ? `<div class="battle-round-dashboard-highlights">${highlights.slice(1).map(text => `<span>${htmlEscapeText(text)}</span>`).join('')}</div>` : ''}</div>`;
           }).join('')}</section>`;
         }
         function 解码战斗预演HTML实体(text = '') {
@@ -45637,5 +45851,9 @@ if (typeof 生成战斗判定样本结果 === 'function') {
 }
 
 })();
+
+
+
+
 
 

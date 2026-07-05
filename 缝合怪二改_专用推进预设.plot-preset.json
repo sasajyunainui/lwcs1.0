@@ -158,7 +158,7 @@
       {
         "id": "lwcs_integrated_ruling",
         "name": "剧情综合裁定（建议PRO或高级模型）",
-        "enabled": false,
+        "enabled": true,
         "promptGroup": [
           {
             "role": "SYSTEM",

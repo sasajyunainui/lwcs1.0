@@ -20024,7 +20024,15 @@ $CONTENT
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
         aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
-        const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
+        const sceneAuditBlocks = sortPlotTaskResults_ACU(successfulResults)
+            .map(result => result?.success && typeof result.rawResponse === 'string'
+            ? buildPlotTagBlock_ACU('scene_audit', extractLastTagContent_ACU(result.rawResponse, 'scene_audit'))
+            : '')
+            .filter(Boolean);
+        const finalMessageBase = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
+        const finalMessage = sceneAuditBlocks.length > 0 && !/<scene_audit\b/i.test(finalMessageBase)
+            ? 合并剧情终稿片段_ACU([finalMessageBase, sceneAuditBlocks.join('\n\n')])
+            : finalMessageBase;
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
         return {
