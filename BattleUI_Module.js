@@ -4827,10 +4827,22 @@ class BattleUIComponent {
               .join('；');
             const pieces = [];
             const seed = `${group.round}|hit|${hit.actionId || hit.sourceActionId || ''}|${actor}|${target}|${action}|${damage}`;
+            const assistEvent = String(hit.actionType || '').trim() === 'summon_assist'
+              ? roundEvents.find(item =>
+                  String(item?.eventKind || '').trim() === 'summon_assist' &&
+                  isSameBattleReportName(item.actorName || '', actor) &&
+                  isSameBattleReportName(item.targetName || '', target) &&
+                  normalizeBattleActionDisplayName(item.actionName || '') === action &&
+                  (!item.meta?.summonHitEventId || String(item.meta.summonHitEventId || '').trim() === String(hit.eventId || '').trim())
+                )
+              : null;
+            if (assistEvent) used.add(assistEvent);
             const dodgeFullySucceeded = defense?.eventKind === 'dodge' &&
               (/evaded|miss|dodge_success|闪避成功|未命中/.test(String(defense.result || '').trim()) || /miss|evade|dodge|闪避|未命中/.test(String(hit.result || '')));
             const dodgeTriedAndFailed = defense?.eventKind === 'dodge' && !dodgeFullySucceeded && damage > 0;
-            const flavoredHit = damage > 0
+            const flavoredHit = assistEvent && damage > 0
+              ? `${actor}承接${String(assistEvent.meta?.hostName || assistEvent.meta?.summonHostName || '宿主').trim()}的攻势，以【${action || '协同追击'}】协同追击${target}，造成了 ${damage} 点伤害`
+              : damage > 0
               ? 选择战报润色模板(dodgeTriedAndFailed ? 'hitDodgeFailed' : 'hitPlain', {
                 attacker: actor,
                 target,
@@ -5196,7 +5208,7 @@ class BattleUIComponent {
         const result = [];
         const parseBlocked = line => {
           const text = String(line || '').trim();
-          const match = text.match(/^第(\d+)回合：(.+?)(?:刚欲催动【([^】]+)】|的【([^】]+)】)(?:，便被对手压住节奏，未能完成出手|被对手压住节奏，未能完成出手|未能完成出手)。?$/);
+          const match = text.match(/^第(\d+)回合：(.+?)(?:刚欲催动【([^】]+)】|的【([^】]+)】)(?:，便被对手压住节奏，未能完成出手|被对手压住节奏，未能完成出手|尚未铺开，便被这轮交锋截断|未能完成出手)。?$/);
           if (!match) return null;
           return {
             round: Number(match[1] || 0),
@@ -15730,7 +15742,23 @@ class BattleUIComponent {
       });
     }
 
-    function 结算运行态召唤单位简易攻击(召唤单位 = {}, 目标 = {}, combatData = {}, 原因 = '召唤行动') {
+    function 查找最近宿主有效伤害事件(combatData = {}, 宿主 = {}, 目标 = {}) {
+      const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
+      const round = Number(combatData?.回合 || 0);
+      const hostName = String(宿主?.name || 宿主?.名称 || '').trim();
+      const targetName = String(目标?.name || 目标?.名称 || '').trim();
+      for (let index = ledger.length - 1; index >= 0; index -= 1) {
+        const event = ledger[index];
+        if (!event || String(event.eventKind || '').trim() !== 'hit_result') continue;
+        if (round > 0 && Number(event.round || 0) !== round) continue;
+        if (hostName && !isSameBattleReportName(event.actorName || '', hostName)) continue;
+        if (targetName && !isSameBattleReportName(event.targetName || '', targetName)) continue;
+        if (Math.max(0, 读取事件账本数值(event, 'damage')) > 0) return event;
+      }
+      return null;
+    }
+
+    function 结算运行态召唤单位简易攻击(召唤单位 = {}, 目标 = {}, combatData = {}, 原因 = '召唤行动', options = {}) {
       if (!召唤单位 || !目标 || !isCombatUnitAlive(召唤单位) || !isCombatUnitAlive(目标)) return '';
       const 技能 = 选择召唤攻击技能(召唤单位, 目标);
       const 技能名 = 技能?.name || 技能?.魂技名 || '普通攻击';
@@ -15755,11 +15783,53 @@ class BattleUIComponent {
       const 攻击属性 = Math.max(Number(召唤单位.final?.str || 召唤单位.str || 1), Number(召唤单位.final?.sp_max || 召唤单位.sp_max || 1));
       const 防御属性 = Math.max(1, Number((目标.final || buildCombatFinalStats(目标)).def || 目标.def || 1));
       const 伤害 = Math.max(1, Math.floor((攻击属性 * 威力) / Math.max(80, 防御属性 + 100)));
+      const 账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
       const 伤害包 = applyResolvedDamagePackage(召唤单位, { action_type: 动作类型, type: 动作类型, skill: 技能, source: 'summon' }, {
         targetResults: [{ target: 目标, targetName: 目标.name || 目标.名称 || '目标', damage: 伤害, kind: 'primary' }],
         dmg: 伤害,
         totalProjectedDamage: 伤害,
       }, { primaryTarget: 目标, combatData });
+      const 召唤伤害事件 = (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [])
+        .slice(Math.max(0, 账本起点))
+        .reverse()
+        .find(event =>
+          event &&
+          String(event.eventKind || '').trim() === 'hit_result' &&
+          isSameBattleReportName(event.actorName || '', 召唤单位?.name || 召唤单位?.名称 || '') &&
+          isSameBattleReportName(event.targetName || '', 目标?.name || 目标?.名称 || '') &&
+          normalizeBattleActionDisplayName(event.actionName || '') === normalizeBattleActionDisplayName(技能名)
+        ) || null;
+      if (原因 === '召唤协同追击') {
+        const 宿主伤害事件 = options?.hostDamageEvent || null;
+        写入战斗事件账本(combatData, {
+          eventKind: 'summon_assist',
+          round: Number(combatData?.回合 || 0),
+          actorName: 召唤单位?.name || 召唤单位?.名称 || '',
+          targetName: 目标?.name || 目标?.名称 || '',
+          actionName: 技能名,
+          actionType: 'summon_assist',
+          result: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害) > 0 ? 'success' : 'no_effect',
+          damage: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害),
+          sourceNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
+          parentNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
+          meta: {
+            source: 'summon',
+            damage: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害),
+            sourceEventId: String(召唤伤害事件?.eventId || '').trim(),
+            summonName: 召唤单位?.name || 召唤单位?.名称 || '',
+            summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
+            summonType: 召唤单位?.类型 || '',
+            summonMode: 召唤单位?.行动模式 || '',
+            hostDamageEventId: String(宿主伤害事件?.eventId || '').trim(),
+            hostDamageNodeId: String(宿主伤害事件?.chainNodeId || '').trim(),
+            hostName: String(options?.hostName || 宿主伤害事件?.actorName || '').trim(),
+            hostActionName: normalizeBattleActionDisplayName(宿主伤害事件?.actionName || ''),
+            hostDamage: Math.max(0, 读取事件账本数值(宿主伤害事件 || {}, 'damage')),
+            summonHitEventId: String(召唤伤害事件?.eventId || '').trim(),
+            summonHitNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
+          },
+        });
+      }
       const 死亡日志 = 处理召唤单位死亡(combatData, 目标);
       return `[${原因}] ${召唤单位.name || '召唤物'}以[${技能名}]命中${目标.name || '目标'}。${伤害包.log ? ` ${伤害包.log}` : ''}${死亡日志 ? ` ${死亡日志}` : ''}`;
     }
@@ -15814,12 +15884,16 @@ class BattleUIComponent {
     function 执行协同召唤追击(宿主 = {}, 默认目标 = {}, 有效伤害 = 0, combatData = {}) {
       if (!(Number(有效伤害 || 0) > 0)) return '';
       const 日志 = [];
+      const 宿主伤害事件 = 查找最近宿主有效伤害事件(combatData, 宿主, 默认目标);
       读取召唤单位列表(combatData, { 宿主, 行动模式: '协同攻击' }).forEach(单位 => {
         if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位) || !isCombatUnitAlive(默认目标)) return;
         单位.__本回合已召唤行动 = true;
         const 技能 = 选择召唤攻击技能(单位, 默认目标);
         记录召唤物规划审计(combatData, 单位, 默认目标, 技能, '宿主有效伤害后的召唤协同追击');
-        日志.push(结算运行态召唤单位简易攻击(单位, 默认目标, combatData, '召唤协同追击'));
+        日志.push(结算运行态召唤单位简易攻击(单位, 默认目标, combatData, '召唤协同追击', {
+          hostDamageEvent: 宿主伤害事件,
+          hostName: 宿主?.name || 宿主?.名称 || '',
+        }));
       });
       return 日志.filter(Boolean).join(' ');
     }
@@ -22906,6 +22980,7 @@ class BattleUIComponent {
         if (kind === 'state_tick') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: 'state_tick' };
         if (kind === 'resource_change') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'resource_change' };
         if (kind === 'counter') return { nodeKind: result === 'fail' ? 'counter_window' : 'counter_action', nodeLayer: result === 'fail' ? 'system_check' : 'settlement', primaryOutcome: result === 'fail' ? 'no_valid_window' : 'damage' };
+        if (kind === 'summon_assist') return { nodeKind: 'summon_assist', nodeLayer: 'settlement', primaryOutcome: 'summon_action' };
         if (kind === 'summon_create') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'summon_created' };
         if (kind === 'create' || kind === 'shield_create') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: kind };
         if (['blocked_action', 'failed_action', 'target_fail'].includes(kind)) return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'interrupted' };
@@ -23171,7 +23246,7 @@ class BattleUIComponent {
         const matchedAction = eventKind === 'counter'
           ? null
           : 查找最近账本动作事件(ledger, { round, actorName, actionName: actionName || sourceActionName });
-        const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
+        const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
         const sourceActorName = eventKind === 'counter'
           ? targetName
           : (['defend', 'dodge', 'pass'].includes(eventKind) ? targetName : actorName);
@@ -29815,7 +29890,7 @@ class BattleUIComponent {
             sourceActionName: 被反制动作名,
             result: 'fail',
             failReason: 展示失败原因,
-            meta: { probability: 概率文本 },
+            meta: { probability: 概率文本, counterDepth: 1 },
           });
           return `[防反错失] ${防反者.name || '防守方'}尝试以[${反击动作名}]反打，但${展示失败原因}${失败原因 ? '' : `（概率:${概率文本}）`}。`;
         }
@@ -29868,7 +29943,7 @@ class BattleUIComponent {
             actionType: 'counter',
             sourceActionName: 被反制动作名,
             result: 'success',
-            meta: { damage: Number(防反伤害包.primaryAppliedDamage || 0), probability: 概率文本 },
+            meta: { damage: Number(防反伤害包.primaryAppliedDamage || 0), probability: 概率文本, counterDepth: 1 },
           });
           return `[行为防反] ${防反者.name || '防守方'}凭${防反名}抓住${目标.name || '攻击方'}出手后的空门${伤害文本}(概率:${概率文本}，二次反应:${Math.round(二次反应余量 * 100)}%)。${反应文本} ${防反结果.desc || ''}${防反伤害包.log ? ` ${防反伤害包.log}` : ''}`;
         } finally {
@@ -39835,6 +39910,10 @@ class BattleUIComponent {
             String(项目?.skill?.name || 项目?.skill?.魂技名 || 项目?.skill?.技能名称 || '').trim(),
             Number(项目?.weight || 0),
           ]));
+          const 对手长前摇窗口 = Math.max(
+            Number(observedTargetAction?.cast_time || 0),
+            getSkillCastTime(observedTargetAction?.skill || observedTargetAction || {}),
+          ) >= 10;
           const 回落候选技能 = [...回落候选, ...(skillContext.评分技能列表 || []).map(项目 => 项目?.skill)]
             .filter(Boolean)
             .filter((技能, index, 列表) => {
@@ -39862,7 +39941,8 @@ class BattleUIComponent {
                   近期次数 * (是防护承压 && !必要战略窗口 ? 42 : 26) -
                   被闪惩罚 -
                   ((稳定反敏攻牵制 && 是单体前压) ? 18 + 闪避克制次数 * 8 : 0) +
-                  (读取规划单位系别(actor) === '敏攻系' && 是范围控制 ? 96 : 0),
+                  (读取规划单位系别(actor) === '敏攻系' && 是范围控制 ? 96 : 0) +
+                  (读取规划单位系别(actor) === '敏攻系' && 对手长前摇窗口 && 是范围控制 ? 180 : 0),
               };
             })
             .sort((左, 右) => 右.权重 - 左.权重);
@@ -43214,7 +43294,7 @@ class BattleUIComponent {
           const 账本动作落地键集合 = new Set();
           const 账本行动者回合集合 = new Set();
           const 公开战报动作键集合 = new Set();
-          const 账本落地事件类型 = new Set(['hit_result', 'state_apply', 'state_tick', 'resource_change', 'defend', 'dodge', 'pass', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
+          const 账本落地事件类型 = new Set(['hit_result', 'state_apply', 'state_tick', 'resource_change', 'defend', 'dodge', 'pass', 'counter', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
           (Array.isArray(事件账本) ? 事件账本 : []).forEach(event => {
             if (!event || typeof event !== 'object') return;
             if (!账本落地事件类型.has(String(event.eventKind || '').trim())) return;
@@ -43866,6 +43946,13 @@ class BattleUIComponent {
               ? `${actor}以【${action}】反击${target}，造成 ${amount} 点伤害。`
               : `${actor}以【${action}】反击${target}，但未造成实质伤害。`;
           }
+          if (kind === 'summon_assist') {
+            const host = String(event?.meta?.hostName || event?.meta?.summonHostName || '宿主').trim();
+            const hostAction = normalizeBattleActionDisplayName(event?.meta?.hostActionName || '有效攻势');
+            const hostDamage = Math.max(0, Number(event?.meta?.hostDamage || 0));
+            const assistDamage = Math.max(0, 读取事件账本数值(event, 'damage'));
+            return `${actor}承接${host}的【${hostAction}】协同追击${target}${assistDamage > 0 ? `，造成 ${assistDamage} 点伤害` : ''}${hostDamage > 0 ? `（触发源伤害 ${hostDamage}）` : ''}。`;
+          }
           if (kind === 'blocked_action' || kind === 'failed_action' || kind === 'target_fail') {
             return `${actor}的【${action}】未能落地：${String(event?.failReason || '未形成有效出手').trim()}。`;
           }
@@ -43933,7 +44020,7 @@ class BattleUIComponent {
           return (Array.isArray(eventLedger) ? eventLedger : [])
             .map(event => {
               const kind = String(event?.eventKind || '').trim();
-              if (!['hit_result', 'state_apply', 'resource_change', 'counter', 'create', 'summon_create', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'dodge'].includes(kind)) return null;
+              if (!['hit_result', 'state_apply', 'resource_change', 'counter', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'dodge'].includes(kind)) return null;
               const text = 格式化结算链事件文本(event);
               if (!text) return null;
               const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));

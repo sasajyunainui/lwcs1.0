@@ -19256,6 +19256,28 @@ $CONTENT
             return false;
         }
     }
+    function 追加剧情推进临时正文注入_ACU(options, 文本列表 = []) {
+        const 注入列表 = (Array.isArray(文本列表) ? 文本列表 : [文本列表])
+            .map(文本 => String(文本 || '').trim())
+            .filter(Boolean);
+        if (!注入列表.length)
+            return false;
+        if (!options || typeof options !== 'object')
+            return false;
+        const 当前注入 = Array.isArray(options.injects) ? options.injects : [];
+        options.injects = 当前注入;
+        注入列表.forEach((文本, index) => {
+            当前注入.push({
+                position: 'in_chat',
+                depth: 0,
+                role: 'system',
+                content: 文本,
+                should_scan: false,
+                id: `qrf-plot-transient-${index}`,
+            });
+        });
+        return true;
+    }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
         return sortPlotTaskResults_ACU(taskResults)
             .map(result => buildPlotTaskExtractedSaveContent_ACU(result))
@@ -19921,7 +19943,7 @@ $CONTENT
                 };
             }
             const { aggregated: stageAggregated, injectOnlyTagNames: stageInjectOnly } = aggregatePlotTaskTags_ACU(completedSuccessfulResults);
-            aggregatedTags = 合并模块路由事件到标签_ACU(stageAggregated, 本轮模块路由事件列表);
+            aggregatedTags = stageAggregated;
             stageInjectOnly.forEach((name) => aggregatedInjectOnlyTagNames.add(name));
             logDebug_ACU(`[剧情推进] 阶段 ${stageGroup.stage} 已完成，成功任务数: ${stageSuccessfulResults.length}`);
             const 阶段模块路由块列表 = stageSuccessfulResults
@@ -19953,7 +19975,6 @@ $CONTENT
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(战斗裁断决定);
                 if (事件文本) {
                     本轮模块路由事件列表.push(事件文本);
-                    aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
                     if (typeof reloadStorageProvider === 'function') {
                         try {
                             await reloadStorageProvider();
@@ -19981,7 +20002,6 @@ $CONTENT
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(模块路由决定);
                 if (事件文本) {
                     本轮模块路由事件列表.push(事件文本);
-                    aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
                     if (typeof reloadStorageProvider === 'function') {
                         try {
                             await reloadStorageProvider();
@@ -20023,21 +20043,18 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
-        aggregatedTags = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
-        const sceneAuditBlocks = sortPlotTaskResults_ACU(successfulResults)
+        const transientStoryInjects = sortPlotTaskResults_ACU(successfulResults)
             .map(result => result?.success && typeof result.rawResponse === 'string'
             ? buildPlotTagBlock_ACU('scene_audit', extractLastTagContent_ACU(result.rawResponse, 'scene_audit'))
             : '')
             .filter(Boolean);
-        const finalMessageBase = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
-        const finalMessage = sceneAuditBlocks.length > 0 && !/<scene_audit\b/i.test(finalMessageBase)
-            ? 合并剧情终稿片段_ACU([finalMessageBase, sceneAuditBlocks.join('\n\n')])
-            : finalMessageBase;
+        const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
         return {
             finalMessage,
             runtimePlotText: finalMessage,
+            transientStoryInjects,
             successfulResults,
             failedResults,
             aggregatedTags,
@@ -20235,6 +20252,7 @@ $CONTENT
                 success: true,
                 finalMessage: runtimeResult.finalMessage,
                 runtimePlotText: runtimeResult.runtimePlotText || runtimeResult.finalMessage,
+                transientStoryInjects: Array.isArray(runtimeResult.transientStoryInjects) ? runtimeResult.transientStoryInjects : [],
                 successCount: runtimeResult.successfulResults.length,
                 failCount: runtimeResult.failedResults.length,
                 enabledTaskCount: runtimeResult.enabledTaskCount,
@@ -55521,11 +55539,11 @@ $CONTENT
                     return { action: 'blocked', reason: 运行时生成决定.reason || 'runtime_generation_blocked', userMessage };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = String(正文指令文本 || '').trim();
                 const writeBack = await applyPlanningResultToOptions_ACU(options, finalMessageForGeneration, userMessage, 完整规划文本);
                 markPlotIntercept_ACU(userMessage);
                 markPlotIntercept_ACU(finalMessageForGeneration);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, writeBack, userMessage };
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, transientStoryInjects: finalMessage?.transientStoryInjects || [], writeBack, userMessage };
             }
             // 9. 规划返回 null（未启用/失败），透传
             return { action: 'passthrough' };
@@ -55613,7 +55631,7 @@ $CONTENT
                     };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = String(正文指令文本 || '').trim();
                 登记防截断流入等待检测_ACU(finalMessageForGeneration);
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(messageToProcess);
@@ -55623,6 +55641,7 @@ $CONTENT
                     finalMessage: finalMessageForGeneration,
                     visibleMessage,
                     runtimePlotText: 完整规划文本,
+                    transientStoryInjects: finalMessage?.transientStoryInjects || [],
                     statData: 运行时数据 || null,
                     originalMessage: messageToProcess,
                     lastMessageIndex,
@@ -55699,12 +55718,12 @@ $CONTENT
                     };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = sanitizePlanningVisibleOutput_ACU(正文指令文本);
+                const finalMessageForGeneration = String(正文指令文本 || '').trim();
                 登记防截断流入等待检测_ACU(finalMessageForGeneration);
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(originalInputText);
                 markPlotIntercept_ACU(finalMessageForGeneration);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, statData: 运行时数据 || null, originalMessage: originalInputText };
+                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, transientStoryInjects: finalMessage?.transientStoryInjects || [], statData: 运行时数据 || null, originalMessage: originalInputText };
             }
             return { action: 'blocked', reason: 'empty_final_message', originalMessage: originalInputText };
         }
@@ -55843,6 +55862,7 @@ $CONTENT
             planned: true,
             finalMessage: result.finalMessage,
             runtimePlotText: result.runtimePlotText || result.finalMessage,
+            transientStoryInjects: Array.isArray(result.transientStoryInjects) ? result.transientStoryInjects : [],
         };
     }
 
@@ -56558,6 +56578,7 @@ $CONTENT
                                             userInput: result.userMessage || '',
                                             statData: result.writeBack?.statData || null,
                                         });
+                                        追加剧情推进临时正文注入_ACU(options, result.transientStoryInjects || []);
                                         options._qrf_processed_by_hook = true;
                                         break;
                                     }
@@ -56759,6 +56780,7 @@ $CONTENT
                                         userInput: s1.originalMessage || '',
                                         statData: s1.statData || null,
                                     });
+                                    追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
                                     emitMessageUpdated_ACU(lastMessageIndex);
                                     if (getSendTextareaValue_ACU() === s1.originalMessage)
@@ -56809,6 +56831,7 @@ $CONTENT
                                         userInput: s2.originalMessage || '',
                                         statData: s2.statData || null,
                                     });
+                                    追加剧情推进临时正文注入_ACU(params, s2.transientStoryInjects || []);
                                 }
                                 catch (e) { }
                                 break;
