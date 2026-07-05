@@ -16101,7 +16101,19 @@ class BattleUIComponent {
         );
         断言召唤夹具(!!受限事件?.chainNodeId, '精神受限未写入召唤控制账本');
         断言召唤夹具((受限.combatData.__battleResolutionTrace || []).some(node => node.nodeId === 受限事件.chainNodeId), '精神受限未进入因果链');
-        日志.push('收回锁、死亡反噬、精神消散与受限结构化成立');
+        const 超载 = 构建召唤夹具战斗态({ 名称: '超载召唤', 行动模式: '自主行动' });
+        超载.宿主.men_max = 30;
+        超载.宿主.men = 30;
+        断言召唤夹具(刷新召唤精神负载(超载.combatData, 超载.宿主).includes('超载'), '精神负载超限未压缩召唤物');
+        const 压缩事件 = (超载.combatData.__battleEventLedger || []).find(event =>
+          event?.eventKind === 'blocked_action' &&
+          event?.actionType === 'summon_control' &&
+          event?.meta?.restriction === 'compressed' &&
+          event?.meta?.reasonCode === 'SUMMON_CONTROL_OVERLOAD'
+        );
+        断言召唤夹具(!!压缩事件?.chainNodeId, '精神超载压缩未写入召唤控制账本');
+        断言召唤夹具((超载.combatData.__battleResolutionTrace || []).some(node => node.nodeId === 压缩事件.chainNodeId), '精神超载压缩未进入因果链');
+        日志.push('收回锁、死亡反噬、精神消散、受限与超载压缩结构化成立');
       });
       注册('目标池与单体收回', 日志 => {
         const 第一 = 构建召唤夹具战斗态({ 名称: '一号召唤', 行动模式: '协同攻击' });
@@ -23103,11 +23115,13 @@ class BattleUIComponent {
         const kind = String(event?.eventKind || '').trim();
         const result = String(event?.result || '').trim();
         if (kind === 'action_start') return { nodeKind: 'action_decision', nodeLayer: 'intent', primaryOutcome: 'action_committed' };
+        if (kind === 'reaction_window') return { nodeKind: 'reaction_window', nodeLayer: 'system_check', primaryOutcome: 'reaction_window_opened' };
         if (['dodge', 'defend', 'pass'].includes(kind)) return { nodeKind: 'reaction_decision', nodeLayer: 'system_check', primaryOutcome: kind === 'dodge' ? (/evaded|miss|dodge_success|闪避成功|未命中/.test(result) ? 'dodged' : 'reaction_failed') : kind };
         if (kind === 'hit_result') return { nodeKind: 'damage_settlement', nodeLayer: 'settlement', primaryOutcome: /miss|evade|dodge|未命中|闪避/.test(result) ? 'miss' : (Number(event?.meta?.damage || event?.damage || 0) > 0 ? 'damage' : 'no_effect') };
         if (kind === 'state_apply') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: /resist|resisted|抵抗|豁免/.test(result) ? 'state_resisted' : 'state_applied' };
         if (kind === 'state_tick') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: 'state_tick' };
         if (kind === 'resource_change') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'resource_change' };
+        if (kind === 'counter_window') return { nodeKind: 'counter_window', nodeLayer: 'system_check', primaryOutcome: result === 'opened' ? 'counter_window_opened' : 'no_valid_window' };
         if (kind === 'counter') return { nodeKind: result === 'fail' ? 'counter_window' : 'counter_action', nodeLayer: result === 'fail' ? 'system_check' : 'settlement', primaryOutcome: result === 'fail' ? 'no_valid_window' : 'damage' };
         if (kind === 'summon_assist') return { nodeKind: 'summon_assist', nodeLayer: 'settlement', primaryOutcome: 'summon_action' };
         if (kind === 'summon_create') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'summon_created' };
@@ -23132,6 +23146,7 @@ class BattleUIComponent {
         const kind = String(event?.eventKind || '').trim();
         const result = String(event?.result || '').trim();
         const outcome = String(primaryOutcome || event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
+        if (kind === 'counter_window') return result === 'opened' ? 'COUNTER_WINDOW_OPENED' : 'COUNTER_WINDOW_MISSED';
         if (kind === 'counter') return result === 'fail' ? 'COUNTER_WINDOW_MISSED' : 'COUNTER_WINDOW_OPENED';
         if (['dodge', 'defend', 'pass'].includes(kind)) {
           return /failed|fail|失败|未能/.test(result) || outcome === 'reaction_failed' ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED';
@@ -23209,6 +23224,57 @@ class BattleUIComponent {
           counterDepth: 0,
           counterRootNodeId: parentNodeId,
           branchKey,
+        };
+        trace.push(node);
+        if (trace.length > 1000) trace.splice(0, trace.length - 1000);
+        return node;
+      }
+
+      function 写入战斗反应窗口节点(combatData = {}, event = {}, parentNodeId = '') {
+        const kind = String(event?.eventKind || '').trim();
+        if (!['dodge', 'defend', 'pass'].includes(kind)) return null;
+        const trace = 确保战斗判定因果链(combatData);
+        const parent = String(parentNodeId || event.parentNodeId || event.sourceNodeId || '').trim();
+        const actorName = String(event.actorName || '').trim();
+        if (!trace || !parent || !actorName) return null;
+        const actionName = normalizeBattleActionDisplayName(event.actionName || event.sourceActionName || '应招');
+        const existing = trace.find(node =>
+          String(node?.nodeKind || '').trim() === 'reaction_window' &&
+          String(node?.parentNodeId || '').trim() === parent &&
+          String(node?.actorName || '').trim() === actorName &&
+          normalizeBattleActionDisplayName(node?.finalActionName || '') === actionName
+        );
+        if (existing) return existing;
+        const node = {
+          nodeId: String(生成战斗运行时应用ID('battle-trace-reaction-window')).trim(),
+          parentNodeId: parent,
+          round: Number(event.round || event.sourceRound || 0),
+          phase: 'action',
+          nodeKind: 'reaction_window',
+          nodeLayer: 'system_check',
+          actorName,
+          targetName: String(event.targetName || '').trim(),
+          targetId: String(event.targetId || '').trim(),
+          targetScope: 'single',
+          initialActionName: actionName,
+          finalActionName: actionName,
+          discardedActionName: '',
+          source: 'reaction_window',
+          result: 'opened',
+          primaryOutcome: 'reaction_window_opened',
+          failureReason: '',
+          reasonCode: 'REACTION_SUCCEEDED',
+          reasonText: '察觉到当前攻势，获得应招窗口',
+          replanReasonCode: '',
+          replanReasonText: '',
+          ledgerEventIds: [],
+          calculationTrace: [
+            { key: 'reactor', label: '应招方', value: actorName },
+            { key: 'sourceAction', label: '来源动作', value: normalizeBattleActionDisplayName(event.sourceActionName || '') },
+            { key: 'sourceActor', label: '攻势来源', value: String(event.targetName || '').trim() },
+          ],
+          counterDepth: 0,
+          counterRootNodeId: parent,
         };
         trace.push(node);
         if (trace.length > 1000) trace.splice(0, trace.length - 1000);
@@ -23395,8 +23461,8 @@ class BattleUIComponent {
         const matchedAction = eventKind === 'counter'
           ? null
           : 查找最近账本动作事件(ledger, { round, actorName, actionName: actionName || sourceActionName });
-        const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail']);
-        const sourceActorName = eventKind === 'counter'
+        const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'counter_window']);
+        const sourceActorName = eventKind === 'counter' || eventKind === 'counter_window'
           ? targetName
           : (['defend', 'dodge', 'pass'].includes(eventKind) ? targetName : actorName);
         const matchedSourceAction = sourceActionName
@@ -23461,6 +23527,14 @@ class BattleUIComponent {
           event.parentNodeId = branchNode.nodeId;
           event.sourceNodeId = sourceRootNodeId;
           event.meta.targetBranchNodeId = branchNode.nodeId;
+        }
+        const reactionWindowNode = ['dodge', 'defend', 'pass'].includes(event.eventKind)
+          ? 写入战斗反应窗口节点(combatData?.__父级战斗数据 || combatData, event, event.parentNodeId || sourceRootNodeId)
+          : null;
+        if (reactionWindowNode) {
+          event.parentNodeId = reactionWindowNode.nodeId;
+          event.sourceNodeId = sourceRootNodeId || reactionWindowNode.parentNodeId || event.sourceNodeId;
+          event.meta.reactionWindowNodeId = reactionWindowNode.nodeId;
         }
         const traceNode = 写入战斗因果链节点(combatData?.__父级战斗数据 || combatData, event, { matchedAction, matchedSourceAction });
         if (traceNode) {
@@ -30068,6 +30142,19 @@ class BattleUIComponent {
         }
 
         const 防反动作 = 建立行为防反动作(防反者, { ...候选, 触发概率 });
+        const 被反制动作名 = String(候选.原动作?.skill?.name || 候选.原动作?.skill?.魂技名 || 原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || 原动作?.type || '').trim();
+        const 防反名预览 = String(防反动作?.skill?.name || 防反动作?.skill?.魂技名 || 候选.sourceActionName || (允许以命换伤 ? '以命换伤' : 候选.防反类型)).trim();
+        const 防反窗口事件 = 写入战斗事件账本(战斗数据, {
+          eventKind: 'counter_window',
+          round: Number(战斗数据?.回合 || 0),
+          actorName: 防反者?.name || 防反者?.名称 || '',
+          targetName: 目标?.name || 目标?.名称 || '',
+          actionName: 防反名预览,
+          actionType: 'counter_window',
+          sourceActionName: 被反制动作名,
+          result: 'opened',
+          meta: { probability: 概率文本, counterDepth: 1, reasonCode: 'COUNTER_WINDOW_OPENED' },
+        });
         const 防反战斗数据 = {
           战斗类型: 战斗数据?.战斗类型 || '突发遭遇',
           先攻: 防反者.name || '防反方',
@@ -30104,8 +30191,7 @@ class BattleUIComponent {
           });
           const 伤害文本 = 防反伤害包.primaryAppliedDamage > 0 ? `，造成${防反伤害包.primaryAppliedDamage}点反击伤害` : '';
           const 反应文本 = 二次反应动作?.log ? ` ${二次反应动作.log}` : '';
-          const 防反名 = String(防反动作?.skill?.name || 防反动作?.skill?.魂技名 || 候选.sourceActionName || (允许以命换伤 ? '以命换伤' : 候选.防反类型)).trim();
-          const 被反制动作名 = String(候选.原动作?.skill?.name || 候选.原动作?.skill?.魂技名 || 原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || 原动作?.type || '').trim();
+          const 防反名 = 防反名预览;
           写入战斗事件账本(战斗数据, {
             eventKind: 'counter',
             round: Number(战斗数据?.回合 || 0),
@@ -30114,8 +30200,10 @@ class BattleUIComponent {
             actionName: 防反名,
             actionType: 'counter',
             sourceActionName: 被反制动作名,
+            parentNodeId: 防反窗口事件?.chainNodeId || '',
+            sourceNodeId: 防反窗口事件?.chainNodeId || '',
             result: 'success',
-            meta: { damage: Number(防反伤害包.primaryAppliedDamage || 0), probability: 概率文本, counterDepth: 1 },
+            meta: { damage: Number(防反伤害包.primaryAppliedDamage || 0), probability: 概率文本, counterDepth: 1, counterWindowEventId: 防反窗口事件?.eventId || '', counterWindowNodeId: 防反窗口事件?.chainNodeId || '' },
           });
           return `[行为防反] ${防反者.name || '防守方'}凭${防反名}抓住${目标.name || '攻击方'}出手后的空门${伤害文本}(概率:${概率文本}，二次反应:${Math.round(二次反应余量 * 100)}%)。${反应文本} ${防反结果.desc || ''}${防反伤害包.log ? ` ${防反伤害包.log}` : ''}`;
         } finally {
@@ -43908,7 +43996,7 @@ class BattleUIComponent {
           const actionRoots = nodes.filter(node => String(node.nodeKind || '') === 'action_decision' && String(node.finalActionName || '').trim());
           return actionRoots.map(root => {
             const children = byParent.get(String(root.nodeId || '').trim()) || [];
-            const resultChildren = children.filter(node => ['target_branch', 'reaction_decision', 'damage_settlement', 'state_settlement', 'counter_action', 'counter_window', 'final_result'].includes(String(node.nodeKind || '')));
+            const resultChildren = children.filter(node => ['target_branch', 'reaction_window', 'reaction_decision', 'damage_settlement', 'state_settlement', 'counter_action', 'counter_window', 'final_result'].includes(String(node.nodeKind || '')));
             return {
               type: 'resolution_action_block',
               round: Number(root.round || 0),
@@ -44008,7 +44096,12 @@ class BattleUIComponent {
             const childActor = String(child.actorName || '').trim();
             const childTarget = String(child.targetName || '').trim();
             const childAction = normalizeBattleActionDisplayName(child.finalActionName || child.actionName || child.initialActionName || '行动');
-            if (kind === 'reaction_decision') {
+            if (kind === 'reaction_window') {
+              lines.push(`${prefix} 反应窗口：${childActor || childTarget || '目标'}捕捉到当前攻势`);
+              (byParent.get(String(child.nodeId || '').trim()) || [])
+                .filter(node => ['reaction_decision', 'damage_settlement', 'state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
+                .forEach((node, index, list) => pushChildLine(node, index === list.length - 1 ? '│  └─' : '│  ├─'));
+            } else if (kind === 'reaction_decision') {
               lines.push(`${prefix} 反应：${childActor || childTarget || '目标'}以【${childAction}】应对`);
             } else if (kind === 'damage_settlement') {
               const finalDamage = Number(读取结算轨迹值(child.calculationTrace, 'finalDamage') || 0);
@@ -44022,7 +44115,13 @@ class BattleUIComponent {
               const damage = Number(读取结算轨迹值(child.calculationTrace, 'finalDamage') || 读取结算轨迹值(child.calculationTrace, 'damage') || 0);
               lines.push(`${prefix} 防反分支：${childActor || '防守方'}以【${childAction}】反击${childTarget || actor}${damage > 0 ? `，造成 ${Math.round(damage)} 点伤害` : ''}`);
             } else if (kind === 'counter_window') {
-              lines.push(`${prefix} 防反窗口：${childActor || '防守方'}尝试捕捉破绽，但${child.failureReason || child.reasonText || '未形成稳定反打条件'}`);
+              const opened = String(child.result || '').trim() === 'opened' || child.reasonCode === 'COUNTER_WINDOW_OPENED';
+              lines.push(opened
+                ? `${prefix} 防反窗口：${childActor || '防守方'}捕捉到${childTarget || actor || '目标'}的破绽`
+                : `${prefix} 防反窗口：${childActor || '防守方'}尝试捕捉破绽，但${child.failureReason || child.reasonText || '未形成稳定反打条件'}`);
+              (byParent.get(String(child.nodeId || '').trim()) || [])
+                .filter(node => ['counter_action', 'damage_settlement', 'state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
+                .forEach((node, index, list) => pushChildLine(node, index === list.length - 1 ? '│  └─' : '│  ├─'));
             }
           };
           children.forEach(child => {
@@ -44031,7 +44130,7 @@ class BattleUIComponent {
               const branchTarget = String(child.targetName || '目标').trim();
               lines.push(`├─ 目标分支：${branchTarget}`);
               const branchChildren = byParent.get(String(child.nodeId || '').trim()) || [];
-              branchChildren.filter(node => ['reaction_decision', 'damage_settlement', 'state_settlement', 'counter_action', 'counter_window', 'final_result'].includes(String(node.nodeKind || ''))).forEach((node, index, list) => pushChildLine(node, index === list.length - 1 ? '│  └─' : '│  ├─'));
+              branchChildren.filter(node => ['reaction_window', 'reaction_decision', 'damage_settlement', 'state_settlement', 'counter_action', 'counter_window', 'final_result'].includes(String(node.nodeKind || ''))).forEach((node, index, list) => pushChildLine(node, index === list.length - 1 ? '│  └─' : '│  ├─'));
               return;
             }
             pushChildLine(child);
