@@ -44816,6 +44816,61 @@ ${播报文本}
     return toText(targetInfo?.data?.归属父节点, toText(request && request.归属父节点, ''));
   }
 
+  function 查找当前路径相关移动地点(snapshot, 目标名称 = '') {
+    const 目标片段 = 取地点路径片段(目标名称);
+    const 目标名 = 规范地点键名(目标名称);
+    const 目标叶名 = 取地点叶名(目标名称);
+    if (!目标名 && !目标叶名) return { name: '', data: null, source: '' };
+    const 当前片段 = 取地点路径片段(读取快照当前位置(snapshot));
+    for (let 长度 = 当前片段.length; 长度 >= 1; 长度 -= 1) {
+      const 候选片段 = 当前片段.slice(0, 长度);
+      const 候选名 = 候选片段.join('-');
+      const 候选叶名 = 候选片段[候选片段.length - 1] || '';
+      if (候选名 !== 目标名 && 候选叶名 !== 目标叶名) continue;
+      const 命中 = 查找世界地点数据(snapshot, 候选名);
+      if (命中.data) return 命中;
+    }
+    if (目标片段.length > 当前片段.length && 当前片段.length) {
+      const 当前前缀 = 当前片段.join('-');
+      if (目标名.startsWith(`${当前前缀}-`)) {
+        const 命中 = 查找世界地点数据(snapshot, 目标名);
+        if (命中.data) return 命中;
+      }
+    }
+    return { name: 目标名 || 目标叶名, data: null, source: '' };
+  }
+
+  function 解析移动已有地点目标(snapshot, request = {}) {
+    const 目标名称 = request && (request.原始目标地点 || request.目标地点);
+    const 显式父级 = 规范地点键名(request && request.归属父节点);
+    const 直接命中 = 查找世界地点数据(snapshot, 目标名称);
+    if (直接命中.data) return 直接命中;
+    if (显式父级) {
+      const 父级命中 = 查找父级限定世界地点数据(snapshot, 目标名称, 显式父级);
+      if (父级命中.data) return 父级命中;
+    }
+    const 当前路径命中 = 查找当前路径相关移动地点(snapshot, 目标名称);
+    if (当前路径命中.data) return 当前路径命中;
+    const 父级上下文 = 推导移动父级上下文(snapshot, request);
+    return 查找父级限定世界地点数据(snapshot, 目标名称, 父级上下文);
+  }
+
+  function 推导新动态地点父级(snapshot, request = {}) {
+    const 显式父级 = 规范地点键名(request && request.归属父节点);
+    if (显式父级 && 查找世界地点数据(snapshot, 显式父级).data) return 显式父级;
+    const 目标片段 = 取地点路径片段(request && (request.原始目标地点 || request.目标地点));
+    if (目标片段.length > 1) {
+      const 路径父级 = 目标片段.slice(0, -1).join('-');
+      if (查找世界地点数据(snapshot, 路径父级).data) return 路径父级;
+    }
+    const 当前片段 = 取地点路径片段(读取快照当前位置(snapshot));
+    for (let 长度 = 当前片段.length; 长度 >= 1; 长度 -= 1) {
+      const 候选父级 = 当前片段.slice(0, 长度).join('-');
+      if (查找世界地点数据(snapshot, 候选父级).data) return 候选父级;
+    }
+    return 显式父级 || 推导移动父级上下文(snapshot, request);
+  }
+
   function 推导移动动态地点坐标(snapshot, request = {}) {
     const mapBridge = window.__sheepMapBridge;
     if (mapBridge && typeof mapBridge.deriveDynamicLocationCoord === 'function') {
@@ -44953,12 +45008,12 @@ ${播报文本}
   function 构建新动态地点移动补丁(snapshot, request = {}) {
     if (!request || request.invalid)
       return { ok: false, reason: request?.reason || 'travel_request_invalid', patchOps: [] };
-    const 父级名 = 推导移动父级上下文(snapshot, request);
+    const 父级名 = 推导新动态地点父级(snapshot, request);
     const 父级 = 查找世界地点数据(snapshot, 父级名);
     if (!父级名 || !父级.data) return { ok: false, reason: 'travel_parent_missing', patchOps: [] };
     const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级.name || request.归属父节点);
     if (已有目标.data) return { ok: false, reason: 'travel_target_already_exists', patchOps: [] };
-    const 目标短名 = 取地点叶名(request.目标地点);
+    const 目标短名 = 取地点叶名(request.原始目标地点 || request.目标地点);
     const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 目标地点: 目标短名, 归属父节点: 父级.name });
     if (!坐标.ok) return { ok: false, reason: 坐标.reason || 'travel_coord_unavailable', patchOps: [] };
     const 消耗 = 计算移动基础消耗(snapshot, request);
@@ -45015,10 +45070,35 @@ ${播报文本}
   function 构建已有地点移动补丁(snapshot, request = {}, targetInfo = {}, travelPreview = {}) {
     if (!request || request.invalid)
       return { ok: false, reason: request?.reason || 'travel_request_invalid', patchOps: [] };
-    const mapRequest =
+    const 预览请求 =
       travelPreview && travelPreview.request && typeof travelPreview.request === 'object' ? travelPreview.request : {};
-    if (!mapRequest || !Object.keys(mapRequest).length)
-      return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    const 基础消耗 = Object.keys(预览请求).length ? null : 计算移动基础消耗(snapshot, request);
+    if (基础消耗 && !基础消耗.ok) return { ok: false, reason: 基础消耗.reason || 'travel_cost_unavailable', patchOps: [] };
+    const 目标坐标 = targetInfo && targetInfo.data && typeof targetInfo.data === 'object'
+      ? {
+        x: toNumber(targetInfo.data.x, NaN),
+        y: toNumber(targetInfo.data.y, NaN),
+      }
+      : { x: NaN, y: NaN };
+    const 当前坐标 = {
+      x: toNumber(deepGet(request.charData, '状态.横坐标', -1), -1),
+      y: toNumber(deepGet(request.charData, '状态.纵坐标', -1), -1),
+    };
+    const mapRequest = Object.keys(预览请求).length ? 预览请求 : {
+      method: request.移动方式,
+      est_ticks: request.耗时tick,
+      est_duration: `${request.耗时tick} tick`,
+      target_loc: targetInfo.name || request.目标地点,
+      target_x: Number.isFinite(目标坐标.x) ? 目标坐标.x : 当前坐标.x,
+      target_y: Number.isFinite(目标坐标.y) ? 目标坐标.y : 当前坐标.y,
+      costs: {
+        fedCoin: 基础消耗 ? 基础消耗.联邦币 : 0,
+        sp: 基础消耗 ? 基础消耗.魂力 : 0,
+        vit: 基础消耗 ? 基础消耗.体力 : 0,
+        canAfford: true,
+        text: 基础消耗 ? 基础消耗.消耗文本 : '无额外消耗',
+      },
+    };
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
@@ -45159,9 +45239,9 @@ ${播报文本}
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const mapBridge = window.__sheepMapBridge;
-    const 父级上下文 = 推导移动父级上下文(snapshot, request);
-    const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级上下文);
+    const 已有目标 = 解析移动已有地点目标(snapshot, request);
     const 当前所在 = 读取快照当前位置(snapshot);
+    const 父级上下文 = 推导移动父级上下文(snapshot, request);
     const 已有目标父级 = 取移动目标父节点名(已有目标, { ...request, 归属父节点: 父级上下文 });
     if (已有目标.data && 当前所在 && 移动目标是否已到达(当前所在, 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, 已有目标父级))) {
       return 构建模块路由成功结果('travel', request, {
@@ -45173,13 +45253,17 @@ ${播报文本}
       });
     }
     if (已有目标.data) {
-      if (!mapBridge || typeof mapBridge.describeTravelToNode !== 'function') {
-        return 构建模块路由失败结果('travel', request, 'map_bridge_unavailable');
+      let result = null;
+      if (mapBridge && typeof mapBridge.describeTravelToNode === 'function') {
+        const 候选节点名 = [已有目标.name, 取地点叶名(已有目标.name), request.目标地点]
+          .map(名称 => toText(名称, '').trim())
+          .filter(Boolean);
+        for (const 节点名 of 候选节点名) {
+          result = mapBridge.describeTravelToNode(节点名);
+          if (result?.ok) break;
+        }
       }
-      const result = mapBridge.describeTravelToNode(已有目标.name || request.目标地点);
-      if (!result?.ok)
-        return 构建模块路由失败结果('travel', request, result?.reason || 'map_travel_failed', { result });
-      if (result.alreadyThere) {
+      if (result?.alreadyThere) {
         return 构建模块路由成功结果('travel', request, {
           dispatchMode: 'settled_summary',
           alreadyThere: true,
@@ -45214,6 +45298,9 @@ ${播报文本}
 
     const 补丁结果 = 构建新动态地点移动补丁(snapshot, request);
     if (!补丁结果.ok || !补丁结果.patchOps.length) {
+      if (['travel_parent_missing', 'travel_coord_unavailable', 'travel_target_already_exists'].includes(toText(补丁结果.reason, ''))) {
+        return { handled: false, kind: 'travel', request, reason: 补丁结果.reason || 'travel_target_unresolved_technical' };
+      }
       return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable');
     }
     try {

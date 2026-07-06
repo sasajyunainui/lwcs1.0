@@ -7213,7 +7213,7 @@ ${logMsg}
         reason: toText(deepGet(request, 'costs.reason', ''), ''),
         request: cloneJsonValue(request),
       };
-    }) || { ok: false, reason: '目标节点当前不可达。' };
+    }) || { ok: false, reason: '地图节点未匹配到当前可选项。', reasonCode: 'map_node_unresolved' };
   }
 
   async function travelToNode(nodeName, options = {}) {

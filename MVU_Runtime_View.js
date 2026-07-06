@@ -2507,7 +2507,7 @@ function 取运行时动态地点名集合_V1(数据根 = {}, 文本 = '') {
 function 构建运行时地点候选_V1(数据根 = {}, userInput = '', 最后剧情文本 = '', 上限 = 12) {
   const 文本 = [userInput, 最后剧情文本].map(值 => String(值 || '').trim()).filter(Boolean).join('\n');
   const 索引 = 构建运行时地点索引_V1(数据根);
-  const { 当前地点信息, 当前上下文节点 } = 取运行时当前范围_V1(数据根);
+  const { 玩家, 当前地点, 当前地点信息, 当前上下文节点 } = 取运行时当前范围_V1(数据根);
   const 静态候选 = new Set();
   const 动态候选 = new Set();
   const 添加静态 = 名称 => {
@@ -2541,7 +2541,84 @@ function 构建运行时地点候选_V1(数据根 = {}, userInput = '', 最后�
   return {
     已有地点: Array.from(静态候选).slice(0, 上限),
     动态地点: Array.from(动态候选).slice(0, 上限),
+    表格行: 构建运行时地点候选表格行_V1(数据根, {
+      已有地点: Array.from(静态候选).slice(0, 上限),
+      动态地点: Array.from(动态候选).slice(0, 上限),
+      玩家,
+      当前地点,
+      当前路径: 当前路径.length ? 当前路径 : 标准化运行时地点片段_V1(当前地点).segments,
+    }),
   };
+}
+
+function 取运行时地点候选坐标_V1(地点数据 = {}) {
+  const x = Number(地点数据?.x);
+  const y = Number(地点数据?.y);
+  return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 ? { x, y } : null;
+}
+
+function 构建运行时地点候选关系_V1(候选路径 = [], 当前路径 = []) {
+  const 候选 = (Array.isArray(候选路径) ? 候选路径 : []).filter(Boolean);
+  const 当前 = (Array.isArray(当前路径) ? 当前路径 : []).filter(Boolean);
+  if (!候选.length || !当前.length) return '相关候选';
+  const 候选名 = 候选.join('-');
+  const 当前名 = 当前.join('-');
+  if (候选名 === 当前名) return '当前';
+  if (当前名.startsWith(`${候选名}-`)) return 候选.length === 当前.length - 1 ? '父级' : '祖先';
+  if (候选名.startsWith(`${当前名}-`)) return 候选.length === 当前.length + 1 ? '子级' : '后代';
+  return '相关候选';
+}
+
+function 构建运行时地点候选步行描点_V1(地点数据 = {}, 玩家 = {}, 关系 = '') {
+  if (关系 === '当前') return '当前所在';
+  const 目标坐标 = 取运行时地点候选坐标_V1(地点数据);
+  const 玩家坐标 = 取MVU角色卡有效坐标_V1(玩家);
+  if (!目标坐标 || !玩家坐标) return '';
+  const 距离 = Math.hypot(目标坐标.x - 玩家坐标.x, 目标坐标.y - 玩家坐标.y);
+  if (!Number.isFinite(距离)) return '';
+  if (距离 < 0.5) return '与主角同坐标';
+  return `距主角步行约${格式化运行时tick跨度文本_V1(Math.max(1, Math.floor(距离 * 1.5)))}`;
+}
+
+function 构建运行时地点候选表格行_V1(数据根 = {}, 候选 = {}) {
+  const 当前路径 = Array.isArray(候选.当前路径) ? 候选.当前路径 : [];
+  const 玩家 = 候选.玩家 || {};
+  const 行列表 = [];
+  (Array.isArray(候选.已有地点) ? 候选.已有地点 : []).forEach(地点名 => {
+    const 条目 = findMapNodeEntry(地点名, 数据根);
+    const 路径 = Array.isArray(条目?.path) && 条目.path.length
+      ? 条目.path
+      : 标准化运行时地点片段_V1(地点名).segments;
+    const 完整路径 = 路径.length ? 构建运行时地点路径名_V1(路径) : String(地点名 || '').trim();
+    const 父级路径 = 路径.length >= 2 ? 构建运行时地点路径名_V1(路径.slice(0, -1)) : '';
+    const 关系 = 构建运行时地点候选关系_V1(路径, 当前路径);
+    const 状态 = 中文化地图状态_V1(条目?.node?.状态);
+    行列表.push({
+      类型: '已有地点',
+      完整路径,
+      父级: 父级路径,
+      关系,
+      步行描点: 构建运行时地点候选步行描点_V1(条目?.node, 玩家, 关系),
+      状态: 状态 && 状态 !== '完好' ? 状态 : '',
+    });
+  });
+  (Array.isArray(候选.动态地点) ? 候选.动态地点 : []).forEach(地点名 => {
+    const 动态 = 数据根?.world?.动态地点?.[地点名] || {};
+    const 父级路径 = String(动态?.归属父节点 || '').trim();
+    const 完整路径 = 父级路径 ? `${父级路径}-${地点名}` : String(地点名 || '').trim();
+    const 路径 = 标准化运行时地点片段_V1(完整路径).segments;
+    const 关系 = 构建运行时地点候选关系_V1(路径, 当前路径);
+    const 状态 = 中文化地图状态_V1(动态?.状态);
+    行列表.push({
+      类型: '动态地点',
+      完整路径,
+      父级: 父级路径,
+      关系,
+      步行描点: 构建运行时地点候选步行描点_V1(动态, 玩家, 关系),
+      状态: 状态 && 状态 !== '完好' ? 状态 : '',
+    });
+  });
+  return 行列表;
 }
 
 function 清理正文运行时值_V1(值) {
@@ -5117,6 +5194,11 @@ function 构建MVU剧情提示引导段_V1(剧情视图 = {}) {
 
 function 构建MVU剧情提示地点候选段_V1(剧情视图 = {}) {
   const 候选 = 剧情视图?.剧情钩子?.地点候选;
+  const 表格行 = Array.isArray(候选?.表格行) ? 候选.表格行 : [];
+  if (表格行.length) {
+    const 表格 = 渲染MVU角色卡表格_V1('地点候选表', ['类型', '完整路径', '父级', '关系', '步行描点', '状态'], 表格行);
+    return 表格 ? ['【地点候选】', 表格].join('\n') : '';
+  }
   const 已有地点 = Array.isArray(候选?.已有地点) ? 候选.已有地点.map(格式化MVU剧情提示单元_V1).filter(Boolean) : [];
   const 动态地点 = Array.isArray(候选?.动态地点) ? 候选.动态地点.map(格式化MVU剧情提示单元_V1).filter(Boolean) : [];
   if (!已有地点.length && !动态地点.length) return '';
