@@ -2306,6 +2306,16 @@
     return new Intl.NumberFormat('zh-CN').format(toNumber(value, 0));
   }
 
+  function 格式化tick时长文本_桥接(tickValue = 0) {
+    const ticks = Math.max(0, toNumber(tickValue, 0));
+    const minutes = Math.round(ticks * 10);
+    if (minutes <= 0) return '';
+    if (minutes < 60) return `约${formatNumber(minutes)}分钟`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest ? `约${formatNumber(hours)}小时${formatNumber(rest)}分钟` : `约${formatNumber(hours)}小时`;
+  }
+
   function 格式化属性完整数字(数值源) {
     return formatNumber(Math.round(toNumber(数值源, 0)));
   }
@@ -40403,6 +40413,16 @@
     return current.raw === target.raw || current.leaf === target.leaf;
   }
 
+  function 判断移动为层级切换(currentLoc, targetLoc) {
+    const current = normalizeLocForMatch(currentLoc);
+    const target = normalizeLocForMatch(targetLoc);
+    if (!current.segments.length || !target.segments.length) return false;
+    const 当前路径 = current.segments.join('-');
+    const 目标路径 = target.segments.join('-');
+    if (当前路径 === 目标路径) return false;
+    return 当前路径.startsWith(`${目标路径}-`) || 目标路径.startsWith(`${当前路径}-`);
+  }
+
   function buildRelationInteractRequest(snapshot, actionType, rawTargetName, options = {}) {
     const currentLoc = toText(snapshot && snapshot.currentLoc, '未知地点');
     return buildMapInteractDispatchRequest(snapshot, {
@@ -44541,6 +44561,13 @@ ${播报文本}
     return parts.join('、');
   }
 
+  function 格式化模块路由耗时(extra = {}, request = {}) {
+    const 文本 = toText(extra && (extra.durationText || extra.duration), '').trim();
+    if (文本) return 文本;
+    const ticks = toNumber(extra && extra.durationTicks, toNumber(request && request.耗时tick, 0));
+    return 格式化tick时长文本_桥接(ticks);
+  }
+
   function 构建模块路由运行事件文本(moduleKind = '', request = {}, extra = {}) {
     const 模块 = toText(moduleKind, 'unknown');
     if (!模块 || 模块 === '未命中') return '';
@@ -44572,6 +44599,7 @@ ${播报文本}
       const 起点 = toText(extra && extra.startLoc, '');
       const 终点 = toText(extra && extra.finalLocName, toText(request && request.目标地点, '目标地点'));
       const 消耗 = 格式化模块路由资源消耗(extra && extra.cost);
+      const 耗时 = 格式化模块路由耗时(extra, request);
       if (状态 === '执行失败') {
         事实 = `移动失败${原因 ? `，原因：${原因}` : ''}。`;
         约束 = '后续剧情不得按已抵达目标地点描写。';
@@ -44579,8 +44607,8 @@ ${播报文本}
         事实 = `角色已经位于${终点}，无需移动。`;
         约束 = '后续剧情按已在目标地点承接，不要重复移动。';
       } else {
-        事实 = `移动完成${起点 ? `，起点：${起点}` : ''}，终点：${终点}${消耗 ? `，消耗：${消耗}` : ''}。`;
-        约束 = '后续剧情按新位置承接，不要再次结算同一次移动。';
+        事实 = `移动完成${起点 ? `，起点：${起点}` : ''}，终点：${终点}${耗时 ? `，用时：${耗时}` : ''}${消耗 ? `，消耗：${消耗}` : ''}。`;
+        约束 = '';
       }
     } else if (模块 === 'trade') {
       const 动作 = toText(request && request.动作, '交易');
@@ -44636,7 +44664,7 @@ ${播报文本}
     } else {
       事实 = 状态 === '执行失败' ? `模块执行失败${原因 ? `，原因：${原因}` : ''}。` : `模块已处理，模式：${模式}。`;
     }
-    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：${约束}\n</module_routing_result>`;
+    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}${约束 ? `\n约束：${约束}` : ''}\n</module_routing_result>`;
   }
 
   function 读取快照当前位置(snapshot) {
@@ -45070,9 +45098,14 @@ ${播报文本}
   function 构建已有地点移动补丁(snapshot, request = {}, targetInfo = {}, travelPreview = {}) {
     if (!request || request.invalid)
       return { ok: false, reason: request?.reason || 'travel_request_invalid', patchOps: [] };
+    const targetName = toText(targetInfo && targetInfo.name, toText(request.目标地点, ''));
+    const parentName = 取移动目标父节点名(targetInfo, request);
+    const finalLocName = 构建移动绝对位置(snapshot, targetName, parentName);
+    const 当前所在 = 读取快照当前位置(snapshot);
+    const 是层级切换 = 判断移动为层级切换(当前所在, finalLocName);
     const 预览请求 =
-      travelPreview && travelPreview.request && typeof travelPreview.request === 'object' ? travelPreview.request : {};
-    const 基础消耗 = Object.keys(预览请求).length ? null : 计算移动基础消耗(snapshot, request);
+      !是层级切换 && travelPreview && travelPreview.request && typeof travelPreview.request === 'object' ? travelPreview.request : {};
+    const 基础消耗 = Object.keys(预览请求).length || 是层级切换 ? null : 计算移动基础消耗(snapshot, request);
     if (基础消耗 && !基础消耗.ok) return { ok: false, reason: 基础消耗.reason || 'travel_cost_unavailable', patchOps: [] };
     const 目标坐标 = targetInfo && targetInfo.data && typeof targetInfo.data === 'object'
       ? {
@@ -45084,10 +45117,11 @@ ${播报文本}
       x: toNumber(deepGet(request.charData, '状态.横坐标', -1), -1),
       y: toNumber(deepGet(request.charData, '状态.纵坐标', -1), -1),
     };
+    const 层级切换耗时 = Math.max(0.1, Math.min(toNumber(request.耗时tick, 0.5), 0.5));
     const mapRequest = Object.keys(预览请求).length ? 预览请求 : {
       method: request.移动方式,
-      est_ticks: request.耗时tick,
-      est_duration: `${request.耗时tick} tick`,
+      est_ticks: 是层级切换 ? 层级切换耗时 : request.耗时tick,
+      est_duration: 是层级切换 ? 格式化tick时长文本_桥接(层级切换耗时) : 格式化tick时长文本_桥接(request.耗时tick),
       target_loc: targetInfo.name || request.目标地点,
       target_x: Number.isFinite(目标坐标.x) ? 目标坐标.x : 当前坐标.x,
       target_y: Number.isFinite(目标坐标.y) ? 目标坐标.y : 当前坐标.y,
@@ -45103,9 +45137,6 @@ ${播报文本}
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
     const activePath = escapeJsonPointerValue(request.charKey);
-    const targetName = toText(targetInfo && targetInfo.name, toText(mapRequest.target_loc, request.目标地点));
-    const parentName = 取移动目标父节点名(targetInfo, request);
-    const finalLocName = 构建移动绝对位置(snapshot, targetName, parentName);
     const targetX = Number.isFinite(toNumber(mapRequest.target_x, NaN))
       ? Math.round(toNumber(mapRequest.target_x, -1))
       : -1;
@@ -45148,7 +45179,7 @@ ${播报文本}
         path: `/char/${activePath}/属性/体力`,
         value: Math.max(0, toNumber(deepGet(request.charData, '属性.体力', 0), 0) - toNumber(costs.vit, 0)),
       });
-    return { ok: true, patchOps, finalLocName, mapRequest };
+    return { ok: true, patchOps, finalLocName, mapRequest, moveKind: 是层级切换 ? 'local_scope_shift' : 'travel' };
   }
 
   function 构建地图移动请求结算补丁(snapshot, request = {}, options = {}) {
@@ -45292,6 +45323,9 @@ ${播报文本}
         startLoc: 当前所在,
         finalLocName: 补丁结果.finalLocName,
         cost: 补丁结果.cost || 补丁结果.mapRequest?.costs,
+        durationTicks: 补丁结果.mapRequest?.est_ticks,
+        durationText: 补丁结果.mapRequest?.est_duration,
+        moveKind: 补丁结果.moveKind,
         result,
       });
     }
@@ -45316,6 +45350,8 @@ ${播报文本}
       startLoc: 当前所在,
       finalLocName: 补丁结果.finalLocName,
       cost: 补丁结果.cost,
+      durationTicks: request.耗时tick,
+      durationText: 格式化tick时长文本_桥接(request.耗时tick),
       coord: 补丁结果.coord,
     });
   }
