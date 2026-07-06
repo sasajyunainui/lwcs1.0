@@ -515,14 +515,14 @@ function 格式化运行时受孕tick显示_V1(值 = 0) {
 function 格式化运行时绝对tick时间_V1(tick值 = 0) {
   if (typeof formatTickToCalendarDateText === 'function') return formatTickToCalendarDateText(tick值);
   const 安全tick = Math.max(0, Number(tick值 || 0));
-  const 总分钟 = 安全tick * 10;
+  const 总分钟 = Math.round(安全tick * 10);
   const 总天数 = Math.floor(总分钟 / 1440);
   const 年 = Math.floor(总天数 / 360);
   const 月 = Math.floor((总天数 % 360) / 30) + 1;
   const 日 = (总天数 % 30) + 1;
   const 分钟余量 = 总分钟 % 1440;
   const 小时 = Math.floor(分钟余量 / 60);
-  const 分钟 = 分钟余量 % 60;
+  const 分钟 = Math.floor(分钟余量 % 60);
   return `斗罗历${20000 + 年}年${月}月${日}日 ${String(小时).padStart(2, '0')}:${String(分钟).padStart(2, '0')}`;
 }
 
@@ -2788,14 +2788,14 @@ function 构建运行时图鉴摘要条目_V1(条目 = {}) {
 
 function 格式化运行时tick日期文本_V1(tickValue = 0) {
   const safeTick = Math.max(0, Number(tickValue || 0));
-  const totalMinutes = safeTick * 10;
+  const totalMinutes = Math.round(safeTick * 10);
   const days = Math.floor(totalMinutes / (24 * 60));
   const years = Math.floor(days / 360);
   const months = Math.floor((days % 360) / 30) + 1;
   const currentDay = (days % 30) + 1;
   const remainderMinutes = totalMinutes % (24 * 60);
   const hours = Math.floor(remainderMinutes / 60);
-  const mins = remainderMinutes % 60;
+  const mins = Math.floor(remainderMinutes % 60);
   return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 

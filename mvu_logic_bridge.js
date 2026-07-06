@@ -2268,14 +2268,14 @@
 
   function formatTickToCalendarDateText(tickValue) {
     const safeTick = Math.max(0, toNumber(tickValue, 0));
-    const totalMinutes = safeTick * 10;
+    const totalMinutes = Math.round(safeTick * 10);
     const days = Math.floor(totalMinutes / (24 * 60));
     const years = Math.floor(days / 360);
     const months = Math.floor((days % 360) / 30) + 1;
     const currentDay = (days % 30) + 1;
     const remainderMinutes = totalMinutes % (24 * 60);
     const hours = Math.floor(remainderMinutes / 60);
-    const mins = remainderMinutes % 60;
+    const mins = Math.floor(remainderMinutes % 60);
     return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 

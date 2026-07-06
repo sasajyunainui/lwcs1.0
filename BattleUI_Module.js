@@ -4097,7 +4097,7 @@ class BattleUIComponent {
         return 选择稳定战报短语([
           `${actorName}以【${actionName}】闪身避让`,
           `${actorName}借【${actionName}】迅速拉开步点`,
-          `${actorName}施展【${actionName}】抢先侧身周旋`,
+          `${actorName}借【${actionName}】抢先侧身周旋`,
         ], `${actorName}|${actionName}|dodge`) || `${actorName}以【${actionName}】闪身避让`;
       }
       if (/肉体兜底/.test(actionName)) return `${actorName}兜住攻势，承压寻找反打窗口`;
@@ -4106,9 +4106,9 @@ class BattleUIComponent {
       if (actionName) {
         return 选择稳定战报短语([
           `${actorName}以一招【${actionName}】强硬应对`,
-          `${actorName}施展【${actionName}】从容周旋`,
+          `${actorName}以【${actionName}】从容周旋`,
           `${actorName}借【${actionName}】稳住局面`,
-        ], `${actorName}|${actionName}|generic-action`) || `${actorName}施展【${actionName}】从容周旋`;
+        ], `${actorName}|${actionName}|generic-action`) || `${actorName}以【${actionName}】从容周旋`;
       }
       return 选择稳定战报短语([
         `${actorName}见状迅速稳住阵脚`,
@@ -4613,7 +4613,7 @@ class BattleUIComponent {
       if (/肉体兜底/.test(action)) return `${actor}兜住攻势，承压寻找反打窗口`;
       if (/承伤硬抗|硬抗/.test(action)) return `${actor}收缩防线，顶住这轮攻势`;
       if (/防御|危机自保|收招转防|借力守势|坚壁反制/.test(action) || event?.eventKind === 'defend') return `${actor}转入防御，稳住防线`;
-      if (action) return `${actor}施展【${action}】从容周旋`;
+      if (action) return `${actor}以【${action}】从容周旋`;
       return `${actor}见状迅速稳住阵脚`;
     }
 
@@ -28272,6 +28272,13 @@ class BattleUIComponent {
           const npcDeclaredNonAttack = 单挑动作是非攻击落地(npcDeclaredAction);
           const 玩家前摇 = 读取单挑动作前摇(playerAction);
           const npc前摇 = 读取单挑动作前摇(npcDeclaredAction);
+          const 构建单挑行动窗口 = 前摇 => {
+            const value = Math.max(0, Math.min(39, Math.floor(Number(前摇 || 0))));
+            const start = Math.floor(value / 10) * 10;
+            return `${start}-${start + 9}`;
+          };
+          写入行动轴初始意图节点(combatData, { char: attacker, side: 'player' }, 玩家动作目标 || defender, playerAction, 构建单挑行动窗口(玩家前摇));
+          写入行动轴初始意图节点(combatData, { char: defender, side: 'enemy' }, npcDeclaredTarget || attacker, npcDeclaredAction, 构建单挑行动窗口(npc前摇));
           const 玩家技能 = playerAction?.skill || null;
           const 玩家技能名 = normalizeBattleActionDisplayName(玩家技能?.name || 玩家技能?.魂技名 || playerAction?.action_type || playerAction?.type || '');
           const 玩家目标文本 = String(getSkillTarget(玩家技能 || {}) || '').trim();
@@ -46066,7 +46073,11 @@ class BattleUIComponent {
             const initialReaction = normalizeBattleActionDisplayName(读取('initialReaction') || reactionNode.initialActionName || '');
             const finalReaction = normalizeBattleActionDisplayName(读取('finalReaction') || reactionNode.finalActionName || '');
             const reactionKind = String(读取('reactionKind') || '').trim();
-            const result = String(读取('result') || reactionNode.result || '').trim();
+            const rawResult = String(读取('result') || reactionNode.result || '').trim();
+            const outcome = String(reactionNode.primaryOutcome || '').trim();
+            const result = /attempted|尝试/.test(rawResult) && outcome && !/reaction_failed|reaction_window_opened/.test(outcome)
+              ? outcome
+              : rawResult;
             const parts = [];
             if (sourceAction) parts.push(`来源【${sourceAction}】`);
             if (initialReaction && finalReaction && initialReaction !== finalReaction) parts.push(`原定【${initialReaction}】 -> 改为【${finalReaction}】`);
@@ -46099,6 +46110,54 @@ class BattleUIComponent {
             else stem += '│ ';
             return `${stem}${isLast ? '└─' : '├─'}`;
           };
+          const 筛选可见因果子节点 = nodes => {
+            const visible = [];
+            const reactionIndexByKey = new Map();
+            (Array.isArray(nodes) ? nodes : []).forEach(node => {
+              if (String(node?.nodeKind || '').trim() !== 'reaction_decision') {
+                visible.push(node);
+                return;
+              }
+              const action = normalizeBattleActionDisplayName(node.finalActionName || node.actionName || node.initialActionName || '行动');
+              const sourceAction = String(读取结算轨迹值(node.calculationTrace, 'sourceAction') || node.sourceAction || '').trim();
+              const key = [
+                String(node.actorName || '').trim(),
+                String(node.targetName || '').trim(),
+                action,
+                sourceAction,
+              ].join('|');
+              const score = (读取结算轨迹值(node.calculationTrace, 'initialReaction') ? 4 : 0)
+                + (读取结算轨迹值(node.calculationTrace, 'reactionRatio') ? 2 : 0)
+                + (!/attempted|尝试/.test(String(node.result || '').trim()) ? 3 : 0)
+                + (Array.isArray(node.calculationTrace) ? Math.min(6, node.calculationTrace.length) : 0);
+              const existingIndex = reactionIndexByKey.get(key);
+              if (existingIndex === undefined) {
+                reactionIndexByKey.set(key, visible.length);
+                visible.push({ ...node, __visibleScore: score });
+              } else {
+                const existing = visible[existingIndex] || {};
+                const mergedTrace = [];
+                const seenTraceKeys = new Set();
+                [...(Array.isArray(existing.calculationTrace) ? existing.calculationTrace : []), ...(Array.isArray(node.calculationTrace) ? node.calculationTrace : [])].forEach(item => {
+                  const traceKey = `${String(item?.key || '').trim()}|${String(item?.label || '').trim()}`;
+                  if (!traceKey.trim() || seenTraceKeys.has(traceKey)) return;
+                  seenTraceKeys.add(traceKey);
+                  mergedTrace.push(item);
+                });
+                const existingResult = String(existing.result || '').trim();
+                const nextResult = String(node.result || '').trim();
+                const result = (!nextResult || /attempted|尝试/.test(nextResult)) ? existingResult : nextResult;
+                visible[existingIndex] = {
+                  ...(score > Number(existing.__visibleScore || 0) ? node : existing),
+                  result: result || existingResult || nextResult,
+                  primaryOutcome: /attempted|尝试/.test(String(node.primaryOutcome || '').trim()) ? existing.primaryOutcome : (node.primaryOutcome || existing.primaryOutcome),
+                  calculationTrace: mergedTrace,
+                  __visibleScore: Math.max(score, Number(existing.__visibleScore || 0)),
+                };
+              }
+            });
+            return visible;
+          };
           const pushChildLine = (child, prefix = '├─') => {
             const kind = String(child.nodeKind || '').trim();
             const childActor = String(child.actorName || '').trim();
@@ -46109,7 +46168,7 @@ class BattleUIComponent {
               lines.push(`${prefix} 临场变招：原计划【${discarded}】，改为【${childAction}】`);
             } else if (kind === 'reaction_window') {
               lines.push(`${prefix} 反应窗口：${childActor || childTarget || '目标'}捕捉到当前攻势`);
-              (byParent.get(String(child.nodeId || '').trim()) || [])
+              筛选可见因果子节点(byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['reaction_decision', 'hit_check', 'state_check', 'damage_settlement', 'state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
             } else if (kind === 'reaction_decision') {
@@ -46182,7 +46241,7 @@ class BattleUIComponent {
               const pathLine = 构建伤害路径行(child);
               const calcLine = 构建伤害计算明细行(child);
               const counterCalcLines = [formulaLine, pathLine, calcLine].filter(Boolean);
-              (byParent.get(String(child.nodeId || '').trim()) || [])
+              筛选可见因果子节点(byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['reaction_window', 'reaction_decision'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, !counterCalcLines.length && index === list.length - 1)));
               counterCalcLines
@@ -46215,7 +46274,7 @@ class BattleUIComponent {
             if (kind === 'target_branch') {
               const branchTarget = String(child.targetName || '目标').trim();
               lines.push(`├─ 目标分支：${branchTarget}`);
-              const branchChildren = byParent.get(String(child.nodeId || '').trim()) || [];
+              const branchChildren = 筛选可见因果子节点(byParent.get(String(child.nodeId || '').trim()) || []);
               branchChildren.filter(node => ['replan_decision', 'reaction_window', 'reaction_decision', 'hit_check', 'state_check', 'damage_settlement', 'state_settlement', 'counter_action', 'counter_window', 'summon_assist', 'final_result'].includes(String(node.nodeKind || ''))).forEach((node, index, list) => pushChildLine(node, 构建子级树前缀('├─', index === list.length - 1)));
               return;
             }
