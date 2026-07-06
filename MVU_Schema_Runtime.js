@@ -749,6 +749,83 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
   return 结果;
 }
 
+const 临时突破属性键映射_V1 = Object.freeze({
+  力量: 'str',
+  防御: 'def',
+  敏捷: 'agi',
+  体力上限: 'vit_max',
+  精神力上限: 'men_max',
+});
+const 临时突破全属性列表_V1 = Object.freeze(Object.keys(临时突破属性键映射_V1));
+
+function 追加系统播报文本(data = {}, 文本 = '') {
+  const 内容 = String(文本 || '').trim();
+  if (!内容) return;
+  if (!data.sys || typeof data.sys !== 'object' || Array.isArray(data.sys)) data.sys = {};
+  const 当前 = String(data.sys.系统播报 || '').trim();
+  data.sys.系统播报 = !当前 || 当前 === '初始化' ? 内容 : `${当前} ${内容}`;
+}
+
+function 解析临时突破请求_V1(原始值 = '') {
+  const 文本 = String(原始值 ?? '').trim();
+  if (!文本 || 文本 === '无' || /待补全|请填写/.test(文本)) return null;
+  const 类型匹配 = 文本.match(/类型\s*[:：]\s*([^；;\n]+)/);
+  const 增量匹配 = 文本.match(/等级增量\s*[:：]\s*([+-]?\d+)/);
+  if (!类型匹配 || !增量匹配) return null;
+  const 等级增量 = Math.floor(Number(增量匹配[1]));
+  if (!(等级增量 > 0)) return null;
+  const 类型列表 = String(类型匹配[1] || '')
+    .split(/[,\uFF0C\u3001/／]/)
+    .map(类型 => 类型.trim())
+    .filter(Boolean);
+  if (!类型列表.length) return null;
+  const 输出类型 = [];
+  类型列表.forEach(类型 => {
+    if (类型 === '全属性') {
+      临时突破全属性列表_V1.forEach(属性 => 输出类型.push(属性));
+    } else if (类型 === '魂力' || 类型 === '等级' || 临时突破属性键映射_V1[类型]) {
+      输出类型.push(类型);
+    }
+  });
+  const 去重类型 = Array.from(new Set(输出类型));
+  return 去重类型.length ? { 类型列表: 去重类型, 等级增量 } : null;
+}
+
+function 处理临时突破请求_V1(data = {}) {
+  const 角色表 = data?.char && typeof data.char === 'object' && !Array.isArray(data.char) ? data.char : {};
+  Object.entries(角色表).forEach(([角色名, 角色]) => {
+    if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+    const 请求 = 解析临时突破请求_V1(角色.临时突破);
+    if (!请求) return;
+    const 属性 = 角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性) ? 角色.属性 : null;
+    if (!属性) return;
+
+    const 当前等级 = Math.max(1, Math.floor(Number(属性.等级 || 1) || 1));
+    const 目标等级 = Math.max(当前等级 + 1, 当前等级 + 请求.等级增量);
+    const 播报项 = [];
+    if (请求.类型列表.includes('魂力') || 请求.类型列表.includes('等级')) {
+      if (目标等级 > 当前等级) {
+        属性.等级 = 目标等级;
+        播报项.push(`魂力提升${目标等级 - 当前等级}级`);
+      }
+    }
+
+    const 起始属性 = getBaseStats(当前等级);
+    const 目标属性 = getBaseStats(目标等级);
+    const 训练加成 = ensureNumericStatBonusMap(属性, '训练加成');
+    请求.类型列表.forEach(类型 => {
+      const 属性键 = 临时突破属性键映射_V1[类型];
+      if (!属性键) return;
+      const 增量 = Math.max(1, Math.floor(Number(目标属性?.[属性键] || 0) - Number(起始属性?.[属性键] || 0)));
+      训练加成[类型] = Math.floor(Number(训练加成[类型] || 0) + 增量);
+      播报项.push(`${类型}属性永久加成+${增量}`);
+    });
+
+    角色.临时突破 = '无';
+    if (播报项.length) 追加系统播报文本(data, `[突破结算] ${角色名} ${播报项.join('；')}。`);
+  });
+}
+
 function 查找物品定义于分类表_V1(物品表 = {}, 物品名 = '') {
   const 名称 = String(物品名 || '').trim();
   if (!名称) return null;

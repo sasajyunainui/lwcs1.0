@@ -4012,12 +4012,36 @@ function 裁剪更新视图魂灵默认字段_V1(魂灵 = {}) {
 function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '') {
   if (!武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return false;
   const 是第二武魂 = String(武魂槽位 || '').trim() === '第2武魂';
+  const 武魂主体字段 = ['表象名称', '描述', '系别', '属性体系', '可调用元素'];
   const 武魂参考字段 = {};
-  ['表象名称', '描述', '系别', '属性体系', '可调用元素'].forEach(字段 => {
+  武魂主体字段.forEach(字段 => {
     if (Object.prototype.hasOwnProperty.call(武魂, 字段)) 武魂参考字段[字段] = cloneJsonValue(武魂[字段], 武魂[字段]);
   });
+  const 读取武魂主体字段默认值 = 字段 => {
+    if (字段 === '表象名称') return 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME;
+    if (字段 === '描述') return 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC;
+    if (字段 === '系别') return 武魂系别待补全文案_V1;
+    if (字段 === '属性体系') return AI_TODO_ATTRIBUTE_SYSTEM;
+    if (字段 === '可调用元素') return [AI_TODO_CALLABLE_ELEMENTS];
+    return '';
+  };
+  const 取武魂主体上下文值 = 字段 => {
+    const 值 = 武魂参考字段[字段];
+    if (字段 === '属性体系') {
+      const 文本 = String(值 ?? '').trim();
+      return 文本 && 文本 !== '未知' && !运行时文本需要补全_V1(文本) ? cloneJsonValue(值, 值) : AI_TODO_ATTRIBUTE_SYSTEM;
+    }
+    if (字段 === '可调用元素') {
+      if (Array.isArray(值) && 值.some(项 => String(项 ?? '').trim()) && !更新视图值包含待补文本_V1(值)) return cloneJsonValue(值, []);
+      return String(武魂参考字段.属性体系 ?? '').trim() === '无' ? ['无'] : [AI_TODO_CALLABLE_ELEMENTS];
+    }
+    if (运行时文本需要补全_V1(值) || 正文视图值已初始化_V1(值) || (是第二武魂 && 字段 === '表象名称' && String(值 ?? '').trim() === '未展露')) {
+      return cloneJsonValue(值, 值);
+    }
+    return 读取武魂主体字段默认值(字段);
+  };
   const 原属性体系文本 = String(武魂.属性体系 ?? '').trim();
-  if (!是第二武魂 && (!原属性体系文本 || 原属性体系文本 === '无' || 原属性体系文本 === '未知')) 武魂.属性体系 = AI_TODO_ATTRIBUTE_SYSTEM;
+  if (!是第二武魂 && (!原属性体系文本 || 原属性体系文本 === '未知')) 武魂.属性体系 = AI_TODO_ATTRIBUTE_SYSTEM;
   更新视图待补字段_V1(武魂, '表象名称', 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME);
   更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
   更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
@@ -4030,24 +4054,15 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
     if (!裁剪更新视图魂环默认字段_V1(魂环, { 保留来源: true })) delete 武魂[魂环键];
   });
   const 存在待补子级 = Object.keys(武魂).some(字段 => 是魂灵槽位键_V1(字段) || 是魂环槽位键_V1(字段));
-  if (存在待补子级) {
-    ['表象名称', '描述', '系别'].forEach(字段 => {
-      const 值 = 武魂参考字段[字段];
-      if (运行时文本需要补全_V1(值) || 正文视图值已初始化_V1(值) || (是第二武魂 && 字段 === '表象名称' && String(值 ?? '').trim() === '未展露')) {
-        武魂[字段] = cloneJsonValue(值, 值);
-      }
+  const 存在待补主体 = 武魂主体字段.some(字段 => 更新视图值包含待补文本_V1(武魂[字段]));
+  if (存在待补子级 || 存在待补主体) {
+    武魂主体字段.forEach(字段 => {
+      武魂[字段] = 取武魂主体上下文值(字段);
     });
-    const 属性体系文本 = String(武魂参考字段.属性体系 ?? '').trim();
-    武魂.属性体系 = (!属性体系文本 || 属性体系文本 === '无' || 属性体系文本 === '未知' || 运行时文本需要补全_V1(属性体系文本))
-      ? AI_TODO_ATTRIBUTE_SYSTEM
-      : cloneJsonValue(武魂参考字段.属性体系, 武魂参考字段.属性体系);
-    const 可调用元素 = 武魂参考字段.可调用元素;
-    if (Array.isArray(可调用元素) && 可调用元素.some(项 => String(项 ?? '').trim())) 武魂.可调用元素 = cloneJsonValue(可调用元素, []);
-    else 武魂.可调用元素 = [AI_TODO_CALLABLE_ELEMENTS];
   }
   Object.keys(武魂).forEach(字段 => {
     if (
-      !['表象名称', '描述', '系别', '属性体系', '可调用元素'].includes(字段) &&
+      !武魂主体字段.includes(字段) &&
       !是魂灵槽位键_V1(字段) &&
       !是魂环槽位键_V1(字段)
     ) delete 武魂[字段];

@@ -2333,19 +2333,78 @@
     return formatNumber(数值);
   }
 
-  function 构建属性数值Html(标签源, 数值源) {
+  function 构建属性数值Html(标签源, 数值源, 提示覆盖 = '') {
     const 标签 = toText(标签源, '').trim();
     const 完整数值 = 格式化属性完整数字(数值源);
-    const 提示文本 = 标签 ? `${标签}：${完整数值}` : 完整数值;
+    const 提示文本 = toText(提示覆盖, '').trim() || (标签 ? `${标签}：${完整数值}` : 完整数值);
     return `<span title="${escapeHtmlAttr(提示文本)}">${htmlEscape(格式化属性短数字(数值源))}</span>`;
   }
 
-  function 构建属性数值对Html(标签源, 当前源, 上限源) {
+  function 构建属性数值对Html(标签源, 当前源, 上限源, 提示覆盖 = '') {
     const 标签 = toText(标签源, '').trim();
     const 当前值 = 格式化属性完整数字(当前源);
     const 上限值 = 格式化属性完整数字(上限源);
-    const 提示文本 = 标签 ? `${标签}：${当前值} / ${上限值}` : `${当前值} / ${上限值}`;
+    const 提示文本 = toText(提示覆盖, '').trim() || (标签 ? `${标签}：${当前值} / ${上限值}` : `${当前值} / ${上限值}`);
     return `<span title="${escapeHtmlAttr(提示文本)}">${htmlEscape(`${格式化属性短数字(当前源)} / ${格式化属性短数字(上限源)}`)}</span>`;
+  }
+
+  const 主属性构成字段表_桥接 = Object.freeze({
+    力量: '力量',
+    防御: '防御',
+    敏捷: '敏捷',
+    体力上限: '体力上限',
+    精神力上限: '精神力上限',
+    魂力上限: '魂力上限',
+  });
+
+  function 读取属性构成数值_桥接(来源 = {}, 字段 = '') {
+    return Math.round(toNumber(来源 && 来源[字段], 0));
+  }
+
+  function 累加魂骨固定加成_桥接(角色 = {}, 字段 = '') {
+    const 魂骨表 = 角色 && 角色.魂骨 && typeof 角色.魂骨 === 'object' && !Array.isArray(角色.魂骨) ? 角色.魂骨 : {};
+    return Object.values(魂骨表).reduce((总和, 魂骨) => {
+      if (!魂骨 || typeof 魂骨 !== 'object' || Array.isArray(魂骨)) return 总和;
+      return 总和 + 读取属性构成数值_桥接(魂骨.属性加成, 字段);
+    }, 0);
+  }
+
+  function 累加装备构成加成_桥接(角色 = {}, 字段 = '') {
+    const 装备 = 角色 && 角色.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
+    const 武器加成 = 计算装备属性加成_桥接(装备.武器, 角色);
+    const 防具加成 = 装备.防具?.装备状态 === '已装备' ? 计算装备属性加成_桥接(装备.防具, 角色) : {};
+    return (
+      读取属性构成数值_桥接(武器加成, 字段) +
+      读取属性构成数值_桥接(防具加成, 字段) +
+      读取属性构成数值_桥接(装备.斗铠?._属性加成, 字段) +
+      读取属性构成数值_桥接(装备.机甲?._属性加成, 字段)
+    );
+  }
+
+  function 构建主属性构成提示_桥接(角色 = {}, 字段 = '', 总值源 = 0) {
+    const 属性 = 角色 && 角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性) ? 角色.属性 : {};
+    const 字段名 = 主属性构成字段表_桥接[字段] || '';
+    if (!字段名) return '';
+    const 总值 = Math.round(toNumber(总值源, 0));
+    const 永久加成 = 读取属性构成数值_桥接(属性.训练加成, 字段名);
+    const 魂骨 = 累加魂骨固定加成_桥接(角色, 字段名);
+    const 装备 = 累加装备构成加成_桥接(角色, 字段名);
+    const 状态效果倍率 = Object.values(属性.状态效果 || {}).reduce((列表, 状态) => {
+      const 倍率 = 状态 && typeof 状态 === 'object' ? toNumber(状态?.面板倍率?.[字段名], 1) : 1;
+      if (Number.isFinite(倍率) && Math.abs(倍率 - 1) > 0.0001) 列表.push(`${toText(状态.类型, '状态')}×${倍率}`);
+      return 列表;
+    }, []);
+    const 已知加成 = 永久加成 + 魂骨 + 装备;
+    const 基础其他 = 总值 - 已知加成;
+    const 行 = [
+      `${字段名}：${格式化属性完整数字(总值)}`,
+      `基础/系别/底子/魂环/血脉/其他：${格式化属性完整数字(基础其他)}`,
+      `属性永久加成：${格式化属性完整数字(永久加成)}`,
+      `魂骨：${格式化属性完整数字(魂骨)}`,
+      `装备/斗铠/机甲：${格式化属性完整数字(装备)}`,
+    ];
+    if (状态效果倍率.length) 行.push(`状态效果：${状态效果倍率.join('；')}`);
+    return 行.join('\n');
   }
 
   function getBaseSpMaxForLevel(lv) {
@@ -29997,12 +30056,13 @@
     return `${格式化属性短数字(当前源)} / ${格式化属性短数字(上限源)}`;
   }
 
-  function 构建属性指标项(标签, 当前值, 上限值, 样式 = '') {
+  function 构建属性指标项(标签, 当前值, 上限值, 样式 = '', 提示覆盖 = '') {
+    const 提示文本 = toText(提示覆盖, '').trim() || `${标签}：${格式化属性完整数字(当前值)} / ${格式化属性完整数字(上限值)}`;
     return {
       label: 标签,
       value: formatShellPair(当前值, 上限值),
-      值Html: 构建属性数值对Html(标签, 当前值, 上限值),
-      提示文本: `${标签}：${格式化属性完整数字(当前值)} / ${格式化属性完整数字(上限值)}`,
+      值Html: 构建属性数值对Html(标签, 当前值, 上限值, 提示文本),
+      提示文本,
       tone: 样式,
     };
   }
@@ -31479,9 +31539,9 @@
                   { label: '年龄 / 生日 / 性别', value: `${toText(stat.年龄, '--')} / ${toText(stat.生日, '--')} / ${toText(stat.性别, '--')}` },
                   { label: '修为等级', value: formatCultivationLevelBadge(stat.等级, '0') },
                   构建属性指标项('HP', hpPair.hp, hpPair.hpMax),
-                  构建属性指标项('体力', stat.体力, stat.体力上限),
-                  构建属性指标项('魂力', stat.魂力, stat.魂力上限),
-                  构建属性指标项('精神', stat.精神力, stat.精神力上限),
+                  构建属性指标项('体力', stat.体力, stat.体力上限, '', 构建主属性构成提示_桥接(snapshot.activeChar, '体力上限', stat.体力上限)),
+                  构建属性指标项('魂力', stat.魂力, stat.魂力上限, '', 构建主属性构成提示_桥接(snapshot.activeChar, '魂力上限', stat.魂力上限)),
+                  构建属性指标项('精神', stat.精神力, stat.精神力上限, '', 构建主属性构成提示_桥接(snapshot.activeChar, '精神力上限', stat.精神力上限)),
                   { label: '伤势', value: woundLabel },
                 ],
                 { className: 'mvu-shell-lite-grid--two' },
@@ -31494,20 +31554,20 @@
                   {
                     label: '力量',
                     value: 格式化属性短数字(stat.力量),
-                    值Html: 构建属性数值Html('力量', stat.力量),
-                    提示文本: `力量：${格式化属性完整数字(stat.力量)}`,
+                    值Html: 构建属性数值Html('力量', stat.力量, 构建主属性构成提示_桥接(snapshot.activeChar, '力量', stat.力量)),
+                    提示文本: 构建主属性构成提示_桥接(snapshot.activeChar, '力量', stat.力量),
                   },
                   {
                     label: '防御',
                     value: 格式化属性短数字(stat.防御),
-                    值Html: 构建属性数值Html('防御', stat.防御),
-                    提示文本: `防御：${格式化属性完整数字(stat.防御)}`,
+                    值Html: 构建属性数值Html('防御', stat.防御, 构建主属性构成提示_桥接(snapshot.activeChar, '防御', stat.防御)),
+                    提示文本: 构建主属性构成提示_桥接(snapshot.activeChar, '防御', stat.防御),
                   },
                   {
                     label: '敏捷',
                     value: 格式化属性短数字(stat.敏捷),
-                    值Html: 构建属性数值Html('敏捷', stat.敏捷),
-                    提示文本: `敏捷：${格式化属性完整数字(stat.敏捷)}`,
+                    值Html: 构建属性数值Html('敏捷', stat.敏捷, 构建主属性构成提示_桥接(snapshot.activeChar, '敏捷', stat.敏捷)),
+                    提示文本: 构建主属性构成提示_桥接(snapshot.activeChar, '敏捷', stat.敏捷),
                   },
                   { label: '精神境界', value: 读取显示精神境界(stat) },
                 ],
