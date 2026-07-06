@@ -19042,11 +19042,7 @@ $CONTENT
             return null;
         return {
             role: 'system',
-            content: [
-                '以下内容是本轮前端脚本已经完成或拒绝的模块路由事实，优先级高于此前阶段的推测与审查。',
-                '后续剧情任务和正文只能承接这些事实，不要重复触发相同模块，不要重复扣资源、改账、移动或结算。',
-                ...有效事件列表,
-            ].join('\n\n'),
+            content: 有效事件列表.join('\n\n'),
         };
     }
     function 合并模块路由事件系统消息_ACU(systemMessages = [], 事件列表 = []) {

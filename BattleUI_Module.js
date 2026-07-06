@@ -5729,13 +5729,31 @@ class BattleUIComponent {
     function collectBattleDecisionTrace(combatData = {}) {
       const trace = combatData?.__行动闭环诊断?.审计轨迹;
       if (!Array.isArray(trace)) return [];
-      return deepClonePlain(trace.slice(-160));
+      return trace.slice(-160).map(item => cloneBattleRuntimeAuditSnapshot(item));
     }
 
     function collectBattleResolutionTrace(combatData = {}) {
       const trace = combatData?.__battleResolutionTrace;
       if (!Array.isArray(trace)) return [];
-      return deepClonePlain(trace.slice(-240));
+      return trace.slice(-240).map(item => cloneBattleRuntimeAuditSnapshot(item));
+    }
+
+    function cloneBattleRuntimeAuditSnapshot(value, depth = 0) {
+      if (value == null || typeof value !== 'object') return value;
+      if (depth >= 6) return '[snapshot-depth-truncated]';
+      if (Array.isArray(value)) return value.slice(0, 120).map(item => cloneBattleRuntimeAuditSnapshot(item, depth + 1));
+      const blockedKeys = new Set([
+        'combatData', '__父级战斗数据', '__battleEventLedger', '__battleResolutionTrace',
+        '参战者', '完整战斗数据', '完整角色', '角色对象', 'actor', 'target', 'sourceActor', 'sourceTarget',
+        'skill', '技能', 'sourceSkill', 'originalSkill', '_效果数组', '效果数组', '完整效果数组',
+      ]);
+      const result = {};
+      Object.entries(value).slice(0, 120).forEach(([key, item]) => {
+        if (blockedKeys.has(key)) return;
+        if (typeof item === 'function' || typeof item === 'undefined') return;
+        result[key] = cloneBattleRuntimeAuditSnapshot(item, depth + 1);
+      });
+      return result;
     }
 
     function buildBattlePreviewResult({
@@ -5754,8 +5772,11 @@ class BattleUIComponent {
       eventLedger = null,
     } = {}) {
       const resolvedPublicReportBlocks = Array.isArray(publicReportBlocks)
-        ? deepClonePlain(publicReportBlocks)
-        : deepClonePlain(构建事件账本公开战报Blocks(eventLedger || combatData?.__battleEventLedger || [], 8, { combatData }));
+        ? publicReportBlocks.map(item => cloneBattleRuntimeAuditSnapshot(item))
+        : 构建事件账本公开战报Blocks(eventLedger || combatData?.__battleEventLedger || [], 8, { combatData }).map(item => cloneBattleRuntimeAuditSnapshot(item));
+      const resolvedEventLedger = Array.isArray(eventLedger)
+        ? eventLedger
+        : (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : []);
       const publicReportText = 序列化公开战报条目文本行(resolvedPublicReportBlocks, { combatData }).join('\n');
       const result = {
         preview: true,
@@ -5773,8 +5794,8 @@ class BattleUIComponent {
         combatData,
         decisionTrace: collectBattleDecisionTrace(combatData),
         resolutionTrace: collectBattleResolutionTrace(combatData),
-        eventLedger: deepClonePlain(eventLedger || combatData?.__battleEventLedger || []),
-        closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
+        eventLedger: resolvedEventLedger.map(item => cloneBattleRuntimeAuditSnapshot(item)),
+        closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
         snapshot: ui_getBattleSnapshot(combatData),
       };
       if (pendingSettlement) result.pendingSettlement = deepClonePlain(pendingSettlement);
@@ -24287,6 +24308,36 @@ class BattleUIComponent {
       function 构建事件最小结算轨迹(event = {}) {
         const kind = String(event?.eventKind || '').trim();
         const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+        if (['dodge', 'defend', 'pass'].includes(kind)) {
+          const actionName = normalizeBattleActionDisplayName(event.actionName || event.finalActionName || '应招');
+          const sourceAction = normalizeBattleActionDisplayName(event.sourceActionName || meta.sourceActionName || '');
+          const trace = [
+            { key: 'reactor', label: '应招方', value: String(event.actorName || '').trim() },
+            { key: 'sourceActor', label: '攻势来源', value: String(event.targetName || '').trim() },
+            { key: 'sourceAction', label: '来源动作', value: sourceAction },
+            { key: 'initialReaction', label: '初始反应', value: normalizeBattleActionDisplayName(event.initialActionName || meta.initialActionName || actionName) },
+            { key: 'finalReaction', label: '最终反应', value: normalizeBattleActionDisplayName(event.finalActionName || meta.finalActionName || actionName) },
+            { key: 'reactionKind', label: '反应类型', value: String(meta.reactionType || event.actionType || kind).trim() },
+            { key: 'result', label: '反应结果', value: String(event.result || '').trim() || (kind === 'pass' ? 'reaction_failed' : 'attempted') },
+            { key: 'reasonCode', label: '原因枚举', value: 标准化战斗ReasonCode(event.reasonCode || meta.reasonCode || '', 推断战斗默认ReasonCode(event, kind === 'pass' ? 'reaction_failed' : '')) },
+          ];
+          [
+            ['reactionRatio', '反应比值'],
+            ['castTimeGap', '前摇差'],
+            ['attackerCastTime', '攻方前摇'],
+            ['reactorCastTime', '应招前摇'],
+            ['threatScore', '威胁评分'],
+            ['dodgeRate', '闪避率'],
+            ['dodgeRoll', '闪避投点'],
+            ['actualDefense', '有效防御'],
+            ['defenseThreshold', '破防阈值'],
+          ].forEach(([key, label]) => {
+            if (meta[key] !== undefined) trace.push({ key, label, value: Number(meta[key] || 0) });
+          });
+          if (String(meta.replanReasonCode || '').trim()) trace.push({ key: 'replanReasonCode', label: '变招原因', value: 标准化战斗ReasonCode(meta.replanReasonCode, 'TACTICAL_DISADVANTAGE') });
+          if (String(meta.reactionLog || '').trim()) trace.push({ key: 'reactionLog', label: '反应记录', value: String(meta.reactionLog || '').trim() });
+          return trace.filter(item => item.value !== undefined && item.value !== null && String(item.value).trim() !== '');
+        }
         if (kind === 'hit_result') {
           const finalDamage = Math.max(0, Number(meta.damage || event.damage || 0));
           const incomingDamage = Math.max(0, Number(meta.incomingDamage || finalDamage || 0));
@@ -27930,6 +27981,9 @@ class BattleUIComponent {
             actorName: reactor?.name || reactor?.名称 || '',
             targetName: attackerUnit?.name || attackerUnit?.名称 || '',
             actionName: reactionSkillName,
+            initialActionName: normalizeBattleActionDisplayName(extra.initialReactionName || reactionSkillName),
+            finalActionName: reactionSkillName,
+            discardedActionName: normalizeBattleActionDisplayName(extra.discardedReactionName || ''),
             actionType: 'reaction',
             sourceActionName: sourceActionEvent?.actionName || sourceAction?.skill?.name || sourceAction?.skill?.魂技名 || sourceAction?.action_type || sourceAction?.type || '',
             sourceActionId: sourceActionEvent?.actionId || '',
@@ -27940,6 +27994,18 @@ class BattleUIComponent {
               source: String(extra.source || 'reaction_action').trim(),
               reactionType,
               reactionLog: String(reactionAction.log || '').trim(),
+              sourceActionName: sourceActionEvent?.actionName || sourceAction?.skill?.name || sourceAction?.skill?.魂技名 || sourceAction?.action_type || sourceAction?.type || '',
+              initialActionName: normalizeBattleActionDisplayName(extra.initialReactionName || reactionSkillName),
+              finalActionName: reactionSkillName,
+              discardedActionName: normalizeBattleActionDisplayName(extra.discardedReactionName || ''),
+              reactionRatio: Number(extra.reactionRatio || 0),
+              attackerCastTime: Number(extra.attackerCastTime || 0),
+              reactorCastTime: Number(extra.reactorCastTime || 0),
+              castTimeGap: Number(extra.castTimeGap || 0),
+              threatScore: Number(extra.threatScore || 0),
+              reasonCode: String(extra.reasonCode || (eventKind === 'pass' ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED')).trim(),
+              reasonText: String(extra.reasonText || (eventKind === 'pass' ? '未能取得有效应招窗口' : '行为层选择该应招动作')).trim(),
+              replanReasonCode: String(extra.replanReasonCode || '').trim(),
             },
           });
         };
@@ -28296,7 +28362,17 @@ class BattleUIComponent {
             }
             const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
             行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
-            记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, { source: 'single_duel_reaction' });
+            记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, {
+              source: 'single_duel_reaction',
+              reactionRatio: calculateReactionRatio(defender, attacker, 主动结算动作, 主动结算战斗数据),
+              attackerCastTime: 读取单挑动作前摇(主动结算动作),
+              reactorCastTime: 读取单挑动作前摇(playerAction),
+              castTimeGap: 读取单挑动作前摇(playerAction) - 读取单挑动作前摇(主动结算动作),
+              threatScore: Math.max(0, Number(getPrimaryDamageEffect(主动结算动作?.skill, { 行为规划: true })?.威力倍率 || 0)),
+              initialReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || ''),
+              discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
+              replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
+            });
             settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
             const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
             const 玩家仍可行动 =
@@ -28345,7 +28421,17 @@ class BattleUIComponent {
             const npcAction = determineNpcAction(combatData, playerAction, reactionRatio);
             反应结算动作 = npcAction;
             行为链结果 = 自动行为链再判定(attacker, defender, playerAction, npcAction, combatData);
-            记账应招动作(npcAction, defender, attacker, playerActionStartEvent, playerAction, { source: 'single_duel_reaction' });
+            记账应招动作(npcAction, defender, attacker, playerActionStartEvent, playerAction, {
+              source: 'single_duel_reaction',
+              reactionRatio,
+              attackerCastTime: 读取单挑动作前摇(playerAction),
+              reactorCastTime: 读取单挑动作前摇(npcDeclaredAction),
+              castTimeGap: 读取单挑动作前摇(npcDeclaredAction) - 读取单挑动作前摇(playerAction),
+              threatScore: Math.max(0, Number(getPrimaryDamageEffect(playerAction?.skill, { 行为规划: true })?.威力倍率 || 0)),
+              initialReactionName: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || ''),
+              discardedReactionName: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') !== normalizeBattleActionDisplayName(npcAction?.skill?.name || npcAction?.skill?.魂技名 || npcAction?.type || npcAction?.action_type || '') ? normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') : '',
+              replanReasonCode: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') !== normalizeBattleActionDisplayName(npcAction?.skill?.name || npcAction?.skill?.魂技名 || npcAction?.type || npcAction?.action_type || '') ? 'TACTICAL_DISADVANTAGE' : '',
+            });
             const 玩家主动结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
             settleResult = executeClash(playerAction, npcAction, combatData);
             if (
@@ -28387,7 +28473,17 @@ class BattleUIComponent {
               }
               const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
               行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
-              记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, { source: 'single_duel_reaction' });
+              记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, {
+                source: 'single_duel_reaction',
+                reactionRatio: calculateReactionRatio(defender, attacker, 主动结算动作, 主动结算战斗数据),
+                attackerCastTime: 读取单挑动作前摇(主动结算动作),
+                reactorCastTime: 读取单挑动作前摇(playerAction),
+                castTimeGap: 读取单挑动作前摇(playerAction) - 读取单挑动作前摇(主动结算动作),
+                threatScore: Math.max(0, Number(getPrimaryDamageEffect(主动结算动作?.skill, { 行为规划: true })?.威力倍率 || 0)),
+                initialReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || ''),
+                discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
+                replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
+              });
               settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
               const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
               const 玩家仍可行动 =
@@ -28757,9 +28853,9 @@ class BattleUIComponent {
             publicReport: buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount, eventLedger }),
             decisionTrace: collectBattleDecisionTrace(combatData),
             resolutionTrace: collectBattleResolutionTrace(combatData),
-            publicReportBlocks: deepClonePlain(构建事件账本公开战报Blocks(eventLedger, 8, { combatData })),
-            closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
-            eventLedger: deepClonePlain(eventLedger),
+            publicReportBlocks: 构建事件账本公开战报Blocks(eventLedger, 8, { combatData }).map(item => cloneBattleRuntimeAuditSnapshot(item)),
+            closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
+            eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => cloneBattleRuntimeAuditSnapshot(item)),
             pendingSettlement: towerPendingSettlement,
             mvuUpdate: pendingUpdate,
           };
@@ -28890,11 +28986,11 @@ class BattleUIComponent {
           logs: [...battleLog],
           roundsExecuted: roundCount,
           publicReport: 公开战报,
-          publicReportBlocks: deepClonePlain(构建事件账本公开战报Blocks(eventLedger, 8, { combatData })),
+          publicReportBlocks: 构建事件账本公开战报Blocks(eventLedger, 8, { combatData }).map(item => cloneBattleRuntimeAuditSnapshot(item)),
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: collectBattleResolutionTrace(combatData),
-          closedLoopLedger: deepClonePlain(combatData?.__行动闭环诊断?.事实账本 || null),
-          eventLedger: deepClonePlain(eventLedger),
+          closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
+          eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => cloneBattleRuntimeAuditSnapshot(item)),
           battleSettlementContext: 战斗上下文登记,
           aiRequest: root.__lastBattleAIRequest || null,
         };
@@ -45964,6 +46060,37 @@ class BattleUIComponent {
             if (finalDamage >= 0) parts.push(`最终承伤${formatCalcNumber(finalDamage)}`);
             return parts.length >= 2 ? `防御判定：${parts.join(' -> ')}` : '';
           };
+          const 构建反应决策上下文行 = reactionNode => {
+            const 读取 = key => 读取结算轨迹值(reactionNode.calculationTrace, key);
+            const sourceAction = normalizeBattleActionDisplayName(读取('sourceAction') || '');
+            const initialReaction = normalizeBattleActionDisplayName(读取('initialReaction') || reactionNode.initialActionName || '');
+            const finalReaction = normalizeBattleActionDisplayName(读取('finalReaction') || reactionNode.finalActionName || '');
+            const reactionKind = String(读取('reactionKind') || '').trim();
+            const result = String(读取('result') || reactionNode.result || '').trim();
+            const parts = [];
+            if (sourceAction) parts.push(`来源【${sourceAction}】`);
+            if (initialReaction && finalReaction && initialReaction !== finalReaction) parts.push(`原定【${initialReaction}】 -> 改为【${finalReaction}】`);
+            else if (finalReaction) parts.push(`选择【${finalReaction}】`);
+            if (reactionKind) parts.push(`类型${reactionKind}`);
+            if (result) parts.push(`结果${result}`);
+            return parts.length >= 2 ? `反应判定：${parts.join('，')}` : '';
+          };
+          const 构建反应决策参数行 = reactionNode => {
+            const 读取 = key => 读取结算轨迹值(reactionNode.calculationTrace, key);
+            const parts = [];
+            [
+              ['reactionRatio', '反应比值'],
+              ['castTimeGap', '前摇差'],
+              ['attackerCastTime', '攻方前摇'],
+              ['reactorCastTime', '应招前摇'],
+              ['threatScore', '威胁评分'],
+            ].forEach(([key, label]) => {
+              const value = Number(读取(key));
+              if (!Number.isFinite(value) || Math.abs(value) < 0.0001) return;
+              parts.push(`${label}${formatCalcNumber(value)}`);
+            });
+            return parts.length ? `反应依据：${parts.join(' -> ')}` : '';
+          };
           const 构建子级树前缀 = (parentPrefix = '├─', isLast = false) => {
             const raw = String(parentPrefix || '├─');
             let stem = raw;
@@ -45992,6 +46119,10 @@ class BattleUIComponent {
               } else {
                 lines.push(`${prefix} 反应：${reactionSubject}以【${childAction}】应对`);
               }
+              const contextLine = 构建反应决策上下文行(child);
+              if (contextLine) lines.push(`${构建子级树前缀(prefix, false)} ${contextLine}`);
+              const reactionCalcLine = 构建反应决策参数行(child);
+              if (reactionCalcLine) lines.push(`${构建子级树前缀(prefix, false)} ${reactionCalcLine}`);
               const defenseLine = 构建防御反应参数行(child);
               if (defenseLine) lines.push(`${构建子级树前缀(prefix, false)} ${defenseLine}`);
             } else if (kind === 'hit_check') {

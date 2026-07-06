@@ -922,7 +922,7 @@
             : '已处理';
     const 原因 = String(结果?.reason || '').trim();
     const 事实 = 原因 ? `模块路由${状态}，原因：${原因}。` : `模块路由${状态}。`;
-    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n约束：后续剧情只承接该结果，不要重复触发相同模块或重复结算。\n</module_routing_result>`;
+    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n</module_routing_result>`;
   }
 
   function 构建战斗裁断运行事件(结果 = {}) {
@@ -968,7 +968,7 @@
           dispatchMode: 'settled_summary',
           reason: 'battle_report_route_skipped',
         },
-        runtimeEvent: '<module_routing_result>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n约束：继续完成战斗裁断与正文承接，不要重复触发 battle 模块。\n</module_routing_result>',
+        runtimeEvent: '<module_routing_result>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n</module_routing_result>',
       };
     }
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');

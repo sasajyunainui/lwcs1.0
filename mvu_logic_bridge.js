@@ -44628,6 +44628,18 @@ ${播报文本}
     return 格式化tick时长文本_桥接(ticks);
   }
 
+  function 拼接事实片段(片段列表 = []) {
+    return (Array.isArray(片段列表) ? 片段列表 : [])
+      .map(片段 => toText(片段, '').trim())
+      .filter(Boolean)
+      .join('，');
+  }
+
+  function 格式化模块原因文本(reason = '') {
+    const 文本 = toText(reason, '').trim();
+    return 文本 ? `原因：${文本}` : '原因未记录';
+  }
+
   function 构建模块路由运行事件文本(moduleKind = '', request = {}, extra = {}) {
     const 模块 = toText(moduleKind, 'unknown');
     if (!模块 || 模块 === '未命中') return '';
@@ -44643,88 +44655,88 @@ ${播报文本}
             : '执行成功');
     const 原因 = toText(extra && extra.reason, '');
     let 事实 = '';
-    let 约束 = '后续剧情只承接该事实，不要重复触发相同模块或重复结算。';
     if (模块 === 'trial_entry') {
       const 试炼类型 = toText(request && request.试炼类型, '试炼');
       const 层数 = Math.max(0, Math.floor(toNumber(request && request.floor, toNumber(extra?.result?.context?.当前层, 0))));
       const 地点 = toText(extra?.trialLocation || extra?.result?.context?.试炼内地点, '');
       if (状态 === '执行失败') {
-        事实 = `${试炼类型}入场失败${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = `后续剧情不得描写角色已进入${试炼类型}，不得扣门票或写入试炼状态。`;
+        事实 = `${试炼类型}入场未结算，${拼接事实片段([request?.ticketName ? `门票：${toText(request.ticketName, '')}` : '', 地点 ? `地点：${地点}` : '', 格式化模块原因文本(原因)])}。`;
       } else {
         事实 = `${试炼类型}入场成功，已消耗门票${request?.ticketName ? `【${toText(request.ticketName, '')}】` : ''}${层数 > 0 ? `，进入第${层数}层` : ''}${地点 ? `，当前位置已更新为${地点}` : ''}。`;
-        约束 = `后续剧情只能承接已进入${试炼类型}后的场景，不要再次扣票，不要重复输出 trial_entry。`;
       }
     } else if (模块 === 'travel') {
+      const 角色 = toText(request && request.角色, '');
       const 起点 = toText(extra && extra.startLoc, '');
       const 终点 = toText(extra && extra.finalLocName, toText(request && request.目标地点, '目标地点'));
       const 消耗 = 格式化模块路由资源消耗(extra && extra.cost);
       const 耗时 = 格式化模块路由耗时(extra, request);
       if (状态 === '执行失败') {
-        事实 = `移动失败${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = '后续剧情不得按已抵达目标地点描写。';
+        事实 = `移动未结算，${拼接事实片段([角色 ? `角色：${角色}` : '', 终点 ? `目标：${终点}` : '', 格式化模块原因文本(原因)])}。`;
       } else if (extra && extra.alreadyThere) {
-        事实 = `角色已经位于${终点}，无需移动。`;
-        约束 = '后续剧情按已在目标地点承接，不要重复移动。';
+        事实 = `移动无需结算，${拼接事实片段([角色 ? `角色：${角色}` : '', `当前位置：${终点}`])}。`;
       } else {
-        事实 = `移动完成${起点 ? `，起点：${起点}` : ''}，终点：${终点}${耗时 ? `，用时：${耗时}` : ''}${消耗 ? `，消耗：${消耗}` : ''}。`;
-        约束 = '';
+        事实 = `移动完成，${拼接事实片段([角色 ? `角色：${角色}` : '', 起点 ? `起点：${起点}` : '', `终点：${终点}`, 耗时 ? `用时：${耗时}` : '', 消耗 ? `消耗：${消耗}` : ''])}。`;
       }
     } else if (模块 === 'trade') {
       const 动作 = toText(request && request.动作, '交易');
       const 物品 = toText(request && request.物品, '物品');
+      const 对象 = toText(request && (request.对象 || request.目标), '');
       const 数量 = Math.max(1, Math.floor(toNumber(request && request.数量, 1)));
       if (状态 === '待确认') {
-        事实 = `交易面板已打开并预填：${动作}${物品}${数量 > 1 ? ` x${数量}` : ''}，尚未成交。`;
-        约束 = '后续剧情不得描写交易已经完成，不要改账、改库存或改背包。';
+        事实 = `交易待确认，${拼接事实片段([`动作：${动作}`, 对象 ? `对象：${对象}` : '', `物品：${物品}`, `数量：${数量}`])}，尚未成交。`;
       } else if (状态 === '执行失败') {
-        事实 = `交易流程失败${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = '后续剧情不得按交易已完成描写。';
+        事实 = `交易未结算，${拼接事实片段([`动作：${动作}`, 对象 ? `对象：${对象}` : '', `物品：${物品}`, `数量：${数量}`, 格式化模块原因文本(原因)])}。`;
       } else {
-        事实 = `交易已结算：${动作}${物品}${数量 > 1 ? ` x${数量}` : ''}。`;
-        约束 = '后续剧情只承接成交结果，不要重复改账或重复成交。';
+        事实 = `交易已结算，${拼接事实片段([`动作：${动作}`, 对象 ? `对象：${对象}` : '', `物品：${物品}`, `数量：${数量}`])}。`;
       }
     } else if (模块 === 'profession') {
       const 动作 = toText(request && (request.动作 || request.模式), '工坊');
       const 目标 = toText(request && request.目标, '');
+      const 材料 = Array.isArray(request?.材料) ? request.材料.map(item => toText(item?.名称 || item, '')).filter(Boolean).join('、') : toText(request && request.材料, '');
       if (状态 === '待确认') {
-        事实 = `工坊面板已打开并预填：${动作}${目标 ? `【${目标}】` : ''}，尚未执行。`;
-        约束 = '后续剧情不得描写制作已经完成，不要扣材料或生成成品。';
+        事实 = `工坊待确认，${拼接事实片段([`动作：${动作}`, 目标 ? `目标：${目标}` : '', 材料 ? `材料：${材料}` : ''])}，尚未执行。`;
       } else if (状态 === '执行失败') {
-        事实 = `工坊流程失败${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = '后续剧情不得按工坊已完成描写。';
+        事实 = `工坊未结算，${拼接事实片段([`动作：${动作}`, 目标 ? `目标：${目标}` : '', 材料 ? `材料：${材料}` : '', 格式化模块原因文本(原因)])}。`;
       } else {
-        事实 = `工坊已结算：${动作}${目标 ? `【${目标}】` : ''}。`;
-        约束 = '后续剧情只承接工坊结算结果，不要重复扣材料或重复生成物品。';
+        事实 = `工坊已结算，${拼接事实片段([`动作：${动作}`, 目标 ? `目标：${目标}` : '', 材料 ? `材料：${材料}` : ''])}。`;
       }
     } else if (模块 === 'battle') {
       if (/battle_takeover|battle_continuation/.test(模式) || 状态 === '实时接管') {
         事实 = `战斗模块已接管${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = '本轮停止后续剧情任务和正文生成，由战斗模块继续处理。';
       } else if (模式 === 'battle_auto_arbitration') {
         const 战报轮数 = toNumber(extra?.result?.result?.roundsExecuted, 0);
         const 战果 = toText(extra?.result?.result?.winner, '');
         const 战报列表 = Array.isArray(extra?.result?.result?.logs) ? extra.result.result.logs.slice(-6).map(item => toText(item, '')).filter(Boolean) : [];
         事实 = `自动战斗已完成前端推演${战报轮数 > 0 ? `，实际推演${战报轮数}回合` : ''}${战果 ? `，结果标记：${战果}` : ''}${战报列表.length ? `。\n战报摘要：${战报列表.join('；')}` : '。'}`;
-        约束 = '后续剧情只承接战报和裁断结果，不要重新开启战斗或重复结算。';
       } else if (状态 === '执行失败') {
-        事实 = `战斗模块启动失败${原因 ? `，原因：${原因}` : ''}。`;
-        约束 = '后续剧情不得按战斗已开启描写。';
+        const 敌方 = toText(deepGet(request, '参战者.team_enemy.0.name', ''), '');
+        事实 = `战斗未开启，${拼接事实片段([敌方 ? `敌方：${敌方}` : '', 格式化模块原因文本(原因)])}。`;
       } else {
         const 敌方 = toText(deepGet(request, '参战者.team_enemy.0.name', ''), '');
         事实 = `战斗模块已开启${敌方 ? `，敌方：${敌方}` : ''}。`;
-        约束 = '后续剧情不得继续生成普通正文，等待战斗模块处理。';
       }
     } else if (模块 === 'routine') {
-      事实 = 状态 === '执行失败' ? `日常模块失败${原因 ? `，原因：${原因}` : ''}。` : '日常模块已完成结算。';
-      约束 = '后续剧情只承接本次结算，不要重复写入相同效果。';
+      const 角色 = toText(request && request.角色, toText(extra && extra.charName, '角色'));
+      const 动作 = toText(request && request.动作, toText(extra && extra.actionMode, '日常'));
+      const 地点 = toText(request && (request.地点 || request.位置), toText(extra && extra.location, ''));
+      const 耗时 = 格式化模块路由耗时(extra, request);
+      const 摘要 = toText(extra && extra.summary, '');
+      if (状态 === '执行失败') {
+        事实 = `${角色}的${动作}未结算，${拼接事实片段([地点 ? `地点：${地点}` : '', 耗时 ? `计划用时：${耗时}` : '', 格式化模块原因文本(原因)])}。`;
+      } else {
+        事实 = `${角色}完成${动作}${地点 ? `，地点：${地点}` : ''}${耗时 ? `，用时：${耗时}` : ''}${extra?.mimicEnabled ? '，地点拟态修炼生效' : ''}${摘要 ? `，${摘要}` : '，本次结算无可见数值变化'}。`;
+      }
     } else if (模块 === 'teaching') {
-      事实 = 状态 === '执行失败' ? `传授模块失败${原因 ? `，原因：${原因}` : ''}。` : '传授模块已处理本轮请求。';
-      约束 = '后续剧情只承接本次处理结果，不要重复结算同一传授。';
+      const 老师 = toText(request && request.老师, '');
+      const 学生 = toText(request && request.学生, '');
+      const 内容 = toText(request && (request.内容名称 || request.内容 || request.技能), '');
+      事实 = 状态 === '执行失败'
+        ? `传授未结算，${拼接事实片段([老师 ? `老师：${老师}` : '', 学生 ? `学生：${学生}` : '', 内容 ? `内容：${内容}` : '', 格式化模块原因文本(原因)])}。`
+        : `传授已处理，${拼接事实片段([老师 ? `老师：${老师}` : '', 学生 ? `学生：${学生}` : '', 内容 ? `内容：${内容}` : '', extra?.reason ? `结果：${toText(extra.reason, '')}` : ''])}。`;
     } else {
       事实 = 状态 === '执行失败' ? `模块执行失败${原因 ? `，原因：${原因}` : ''}。` : `模块已处理，模式：${模式}。`;
     }
-    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}${约束 ? `\n约束：${约束}` : ''}\n</module_routing_result>`;
+    return `<module_routing_result>\n模块：${模块}\n状态：${状态}\n事实：${事实}\n</module_routing_result>`;
   }
 
   function 读取快照当前位置(snapshot) {
@@ -45416,44 +45428,69 @@ ${播报文本}
     });
   }
 
+  function 归一化日常动作模式(动作 = '', narrativeText = '') {
+    const 文本 = `${toText(动作, '')}|${toText(narrativeText, '')}`;
+    if (/肉体训练|身体训练|体能训练|锻体|炼体/.test(文本)) return '肉体训练';
+    if (/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/.test(文本)) return '精神训练';
+    if (/冥想|修炼|打坐|凝聚魂核/.test(文本)) return '冥想';
+    if (/日常训练|日常|休整|休息/.test(文本)) return '日常';
+    return '';
+  }
+
   function 解析日常模块意图请求(snapshot, payload = {}, narrativeText = '') {
-    const 动作文本 = toText(payload.动作, '');
-    const 识别文本 = `${动作文本}|${toText(narrativeText, '')}`;
-    if (!/地点拟态修炼|拟态修炼|mimic|mimetic/.test(识别文本)) return null;
-    const 启用 = payload.启用 === true;
+    const 动作文本 = toText(payload.动作 || payload.action || payload.模式 || payload.训练方式, '');
+    const 动作 = 归一化日常动作模式(动作文本, narrativeText);
+    if (!动作) return null;
+    const 识别文本 = `${动作文本}|${toText(payload.类型, '')}|${toText(payload.理由, '')}|${toText(narrativeText, '')}`;
+    const 显式拟态开关 = payload.启用地点拟态 ?? payload.拟态修炼 ?? payload.启用;
+    const 启用地点拟态 =
+      显式拟态开关 === false
+        ? false
+        : 显式拟态开关 === true || /地点拟态修炼|拟态修炼|mimic|mimetic/.test(识别文本);
+    const 角色 = toText(payload.角色 || payload.角色名 || payload.name, toText(snapshot && snapshot.activeName, ''));
+    const 耗时tick = toNumber(payload.耗时tick ?? payload.durationTicks ?? payload.ticks, 0);
     return {
-      动作: '地点拟态修炼',
-      启用,
+      动作,
+      角色,
+      耗时tick,
+      启用地点拟态,
       理由: toText(payload.理由, '当前地点与修炼状态形成拟态契合'),
       位置: toText(payload.地点, 读取快照当前位置(snapshot)),
     };
   }
 
+  function 写入地点拟态修炼状态(角色数据 = {}, request = {}, 当前tick = 0) {
+    if (!角色数据?.属性) return;
+    if (!角色数据.属性.状态效果 || typeof 角色数据.属性.状态效果 !== 'object' || Array.isArray(角色数据.属性.状态效果)) 角色数据.属性.状态效果 = {};
+    角色数据.属性.状态效果.地点拟态修炼 = {
+      类型: 'buff',
+      结算模式: '本轮冥想',
+      生效tick: Math.max(0, Math.floor(toNumber(当前tick, 0))),
+      收益倍率: 1.2,
+      收益说明: '地点拟态修炼',
+      描述: toText(request && request.理由, '当前地点与武魂修炼环境契合'),
+    };
+  }
+
   function 构建地点拟态修炼补丁(snapshot, request = {}) {
     const activeCharKey =
-      resolveSnapshotCharKey(snapshot, toText(snapshot && snapshot.activeName, '')) ||
-      toText(snapshot && snapshot.activeName, '');
+      resolveSnapshotCharKey(snapshot, toText(request && request.角色, toText(snapshot && snapshot.activeName, ''))) ||
+      toText(request && request.角色, toText(snapshot && snapshot.activeName, ''));
     if (!activeCharKey) return { ok: false, reason: 'active_character_unresolved', patchOps: [] };
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
     const 当前状态效果 = cloneJsonValue(
       deepGet(snapshot, ['rootData', 'char', activeCharKey, '属性', '状态效果'], {}),
       {},
     );
-    当前状态效果.地点拟态修炼 = {
-      类型: 'buff',
-      结算模式: '本轮冥想',
-      生效tick: 当前tick,
-      收益倍率: 1.2,
-      收益说明: '地点拟态修炼',
-      描述: toText(request && request.理由, '当前地点与武魂修炼环境契合'),
-    };
+    const 临时角色 = { 属性: { 状态效果: 当前状态效果 } };
+    写入地点拟态修炼状态(临时角色, request, 当前tick);
     return {
       ok: true,
       patchOps: [
         {
           op: 'replace',
           path: `/char/${escapeJsonPointerValue(activeCharKey)}/属性/状态效果`,
-          value: 当前状态效果,
+          value: 临时角色.属性.状态效果,
         },
         {
           op: 'replace',
@@ -45462,6 +45499,98 @@ ${播报文本}
         },
       ],
     };
+  }
+
+  function 读取日常结算接口() {
+    const 运行时接口 = 读取MVUSchema运行时接口_桥接();
+    return 运行时接口 && typeof 运行时接口.按动作模式结算变量根时间流逝 === 'function'
+      ? 运行时接口.按动作模式结算变量根时间流逝
+      : null;
+  }
+
+  function 计算日常数值变化(beforeChar = {}, afterChar = {}) {
+    const beforeAttr = beforeChar?.属性 || {};
+    const afterAttr = afterChar?.属性 || {};
+    const parts = [];
+    [
+      ['魂力', '魂力'],
+      ['魂力上限', '魂力上限'],
+      ['精神力', '精神力'],
+      ['精神力上限', '精神力上限'],
+      ['体力', '体力'],
+      ['体力上限', '体力上限'],
+      ['HP', 'HP'],
+      ['HP上限', 'HP上限'],
+    ].forEach(([label, field]) => {
+      const delta = Number(afterAttr[field] || 0) - Number(beforeAttr[field] || 0);
+      if (Math.abs(delta) >= 0.0001) parts.push(`${label}${delta > 0 ? '+' : ''}${formatNumber(Number(delta.toFixed(4)))}`);
+    });
+    ['力量', '防御', '敏捷', '体力上限', '精神力上限'].forEach(field => {
+      const delta = Number(afterAttr?.训练加成?.[field] || 0) - Number(beforeAttr?.训练加成?.[field] || 0);
+      if (Math.abs(delta) >= 0.0001) parts.push(`${field}永久加成${delta > 0 ? '+' : ''}${formatNumber(Number(delta.toFixed(4)))}`);
+    });
+    const beforeCore = Number(beforeChar?.魂核?.核心?.进度 || 0);
+    const afterCore = Number(afterChar?.魂核?.核心?.进度 || 0);
+    const beforeCoreCount = Number(beforeChar?.魂核?.核心?.数量 || 0);
+    const afterCoreCount = Number(afterChar?.魂核?.核心?.数量 || 0);
+    if (afterCoreCount !== beforeCoreCount) parts.push(`魂核数量${afterCoreCount > beforeCoreCount ? '+' : ''}${afterCoreCount - beforeCoreCount}`);
+    else if (Math.abs(afterCore - beforeCore) >= 0.0001) parts.push(`魂核进度${afterCore > beforeCore ? '+' : ''}${formatNumber(Number((afterCore - beforeCore).toFixed(4)))}`);
+    return parts.join('，');
+  }
+
+  function 构建日常结算临时根(snapshot = {}, charKey = '', charData = {}, request = {}) {
+    const rootData = cloneJsonValue(deepGet(snapshot, 'rootData', {}), {});
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0)));
+    const 耗时tick = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const 临时根 = cloneJsonValue(rootData, {});
+    临时根.char = { [charKey]: cloneJsonValue(charData, {}) };
+    if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
+    if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
+    临时根.world.时间.tick = 当前tick + 耗时tick;
+    临时根.world.时间._上次结算tick = 当前tick;
+    if (request.启用地点拟态 && request.动作 === '冥想') 写入地点拟态修炼状态(临时根.char[charKey], request, 当前tick);
+    return { 临时根, 当前tick, 结束tick: 当前tick + 耗时tick };
+  }
+
+  async function 执行日常模块真实结算(snapshot = {}, request = {}) {
+    const charKey = resolveSnapshotCharKey(snapshot, toText(request && request.角色, toText(snapshot && snapshot.activeName, '')));
+    if (!charKey) return 构建模块路由失败结果('routine', request, 'active_character_unresolved');
+    const actionMode = 归一化日常动作模式(request && request.动作, '');
+    if (!actionMode) return 构建模块路由失败结果('routine', request, 'routine_action_invalid', { charName: charKey });
+    const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    if (!(durationTicks > 0)) return 构建模块路由失败结果('routine', request, 'routine_duration_missing', { charName: charKey, actionMode });
+    const settleRuntime = 读取日常结算接口();
+    if (typeof settleRuntime !== 'function') return 构建模块路由失败结果('routine', request, 'routine_runtime_unavailable', { charName: charKey, actionMode, durationTicks });
+    const beforeChar = cloneJsonValue(deepGet(snapshot, ['rootData', 'char', charKey], {}), {});
+    if (!beforeChar || !Object.keys(beforeChar).length) return 构建模块路由失败结果('routine', request, 'routine_character_missing', { charName: charKey, actionMode, durationTicks });
+    const { 临时根, 当前tick, 结束tick } = 构建日常结算临时根(snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+    let settledRoot = null;
+    try {
+      settledRoot = settleRuntime(临时根, charKey, 当前tick, 结束tick, actionMode);
+    } catch (error) {
+      return 构建模块路由失败结果('routine', request, error && error.message ? error.message : 'routine_runtime_failed', { charName: charKey, actionMode, durationTicks });
+    }
+    const afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
+    if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
+    const patches = [
+      { op: 'replace', path: `/char/${escapeJsonPointerValue(charKey)}`, value: afterChar },
+      { op: 'replace', path: '/world/时间', value: cloneJsonValue(deepGet(settledRoot, 'world.时间', {}), {}) },
+    ];
+    const systemText = toText(deepGet(settledRoot, 'sys.系统播报', ''), '').trim();
+    if (systemText && systemText !== '初始化') patches.push({ op: 'replace', path: '/sys/系统播报', value: systemText });
+    await applyJsonPatchOpsByEditor(patches, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    return 构建模块路由成功结果('routine', { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks }, {
+      dispatchMode: 'settled_summary',
+      patchOps: patches,
+      charName: charKey,
+      actionMode,
+      durationTicks,
+      durationText: 格式化tick时长文本_桥接(durationTicks),
+      location: toText(request && request.位置, toText(beforeChar?.状态?.位置, '')),
+      mimicEnabled: request.启用地点拟态 === true && actionMode === '冥想',
+      summary: 计算日常数值变化(beforeChar, afterChar),
+    });
   }
 
   function 解析试炼入场意图请求(snapshot, payload = {}, kind = '', narrativeText = '') {
@@ -45880,31 +46009,7 @@ ${播报文本}
     }
 
     if (moduleKind === 'routine') {
-      if (request.启用 !== true) {
-        return 构建模块路由成功结果(moduleKind, request, {
-          dispatchMode: 'patch',
-          skipped: true,
-          reason: 'routine_mimic_disabled',
-        });
-      }
-      const 补丁结果 = 构建地点拟态修炼补丁(snapshot, request);
-      if (!补丁结果.ok || !补丁结果.patchOps.length) {
-        return 构建模块路由失败结果(moduleKind, request, 补丁结果.reason || 'routine_patch_unavailable');
-      }
-      try {
-        await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
-        await refreshLiveSnapshot({ force: true });
-        return 构建模块路由成功结果(moduleKind, request, {
-          dispatchMode: 'patch',
-          patchOps: 补丁结果.patchOps,
-        });
-      } catch (error) {
-        return 构建模块路由失败结果(
-          moduleKind,
-          request,
-          error && error.message ? error.message : 'routine_patch_failed',
-        );
-      }
+      return await 执行日常模块真实结算(snapshot, request);
     }
 
     return 执行副职业工坊打开路由(snapshot, request);
