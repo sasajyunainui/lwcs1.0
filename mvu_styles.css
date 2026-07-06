@@ -29075,6 +29075,14 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   border-color: color-mix(in srgb, var(--战斗强调色) 34%, transparent);
   background: color-mix(in srgb, var(--战斗强调色) 13%, transparent);
 }
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge--resource,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--resource,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge--resource {
+  color: color-mix(in srgb, #ffffff 72%, var(--资源亮色));
+  border-color: color-mix(in srgb, var(--资源亮色) 34%, transparent);
+  background: color-mix(in srgb, var(--资源亮色) 13%, transparent);
+}
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .combat-state-tag,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .combat-state-tag,
 #detailModal #mvu-battle-inline-host .battle-record-terminal .combat-state-tag {
