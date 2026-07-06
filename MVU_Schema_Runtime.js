@@ -4573,11 +4573,7 @@ function 规范化Schema根转换_V1(data = {}) {
     };
 
     const 自动生成魂灵最低年限_V1 = 10;
-    const 初始化独立魂环吸收极限表_V1 = Object.freeze([423, 764, 1760, 5000, 12000, 20000]);
-    const 自动生成魂灵低级上限表_V1 = Object.freeze([423, 1760]);
-    const 自动生成魂灵天才及以下上限表_V1 = Object.freeze([1000, 10000]);
-    const 自动生成魂灵跨度上限表_V1 = Object.freeze([1760 - 423, 10000]);
-    const 天才及以下魂灵上限梯队_V1 = new Set(['天才', '优秀', '正常', '劣等', '天赋极差']);
+    const 初始化独立魂环吸收极限表_V1 = Object.freeze([423, 764, 1760, 5000, 12000, 20000, 50000, 100000, 200000]);
 
     function 读取初始化独立魂环吸收极限_V1(魂环位 = 1) {
       const 序号 = Math.max(1, Math.floor(Number(魂环位 || 1)));
@@ -4585,48 +4581,95 @@ function 规范化Schema根转换_V1(data = {}) {
       return Number.isFinite(Number(上限)) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     }
 
-    function 是否天才及以下魂灵上限梯队_V1(天赋梯队 = '') {
-      return 天才及以下魂灵上限梯队_V1.has(String(天赋梯队 || '').trim());
+    function 估算初始化魂环承载体力上限_V1(角色数据 = {}) {
+      if (!角色数据 || typeof 角色数据 !== 'object' || Array.isArray(角色数据)) return 0;
+      const 属性 = 角色数据.属性 && typeof 角色数据.属性 === 'object' ? 角色数据.属性 : {};
+      const 等级 = Math.max(1, Number(属性.等级 || 1) || 1);
+      const 基础属性 = getBaseStats(等级);
+      let 系别倍率 = 0;
+      const 武魂条目 = 取角色武魂条目_V1(角色数据);
+      if (武魂条目.length > 0) {
+        武魂条目.forEach(([, 武魂]) => {
+          const 倍率 = TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'];
+          系别倍率 = Math.max(系别倍率, Number(倍率?.vit_max || 1));
+        });
+      } else {
+        const 倍率 = TypeMultipliers[取角色主武魂系别_V1(角色数据)] || TypeMultipliers['强攻系'];
+        系别倍率 = Number(倍率?.vit_max || 1);
+      }
+      const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
+      let 体力上限 =
+        Math.floor(Number(基础属性.vit_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
+        Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0)));
+      const 血脉名 = String(角色数据?.血脉之力?.血脉 || '').trim();
+      if (血脉名.includes('金龙王')) {
+        const 解封层数 = Math.max(0, Math.floor(Number(角色数据?.血脉之力?.解封层数 || 0)));
+        const 倍率 = 解封层数 <= 0 ? 1.5 : 2 + 解封层数;
+        if (体力上限 * 倍率 <= 100000) 体力上限 = Math.floor(体力上限 * 倍率);
+        else if (体力上限 * 5 <= 200000) 体力上限 = Math.max(100000, Math.floor(体力上限 * 5));
+        else 体力上限 = Math.max(200000, Math.floor(体力上限 * 2));
+      } else if (血脉名.includes('银龙王')) {
+        体力上限 += Math.min(体力上限, 20000);
+      }
+      if (角色数据.社交?.势力?.['本体宗']) 体力上限 += Math.min(体力上限 * 2, 40000);
+      _(角色数据.魂骨).forEach((魂骨, 部位) => {
+        if (!魂骨 || typeof 魂骨 !== 'object') return;
+        if (是外附魂骨记录_V1(魂骨, 部位)) {
+          const 倍率 = 按品质派生外附魂骨属性倍率_V1(魂骨?.品质);
+          体力上限 += Math.floor(体力上限 * Math.max(0, Number(倍率?.体力上限 || 0)));
+          return;
+        }
+        体力上限 += getRingBonus(Number(魂骨.年限 || 0)).vit_max;
+      });
+      取角色武魂条目_V1(角色数据).forEach(([, 武魂]) => {
+        取武魂全部魂环条目_V1(武魂).forEach(({ 魂环数据: 魂环, 魂灵数据: 魂灵 }) => {
+          const 年限 = Math.max(0, Number(魂环?.年限 || 0));
+          if (!(年限 > 0)) return;
+          const 契合倍率 = 魂灵 ? Math.max(0.1, Number(魂灵.契合度 !== undefined ? 魂灵.契合度 : 100) / 100) : 1;
+          体力上限 += Math.floor(getRingBonus(年限).vit_max * 契合倍率);
+        });
+      });
+      return Math.max(Math.floor(Number(属性.体力上限 || 0)), Math.floor(体力上限));
     }
 
-    function 是否低级魂灵初始化_V1(等级 = 1) {
-      return Math.max(1, Number(等级 || 1)) < 30;
+    function 读取精神力动态魂环吸收上限_V1(精神力上限 = 0) {
+      const 精神 = Math.max(0, Math.floor(Number(精神力上限 || 0)));
+      if (精神 < 500) return 9999;
+      if (精神 < 5000) return 10000 + Math.floor(((精神 - 500) / 4500) * 90000);
+      if (精神 < 15000) return 100000 + Math.floor(((精神 - 5000) / 10000) * 100000);
+      if (精神 < 20000) return 200000 + Math.floor(((精神 - 15000) / 5000) * 300000);
+      if (精神 < 50000) return 500000 + Math.floor(((精神 - 20000) / 30000) * 499999);
+      return 999999;
     }
 
-    function 读取自动生成魂灵序位年限上限_V1(魂灵序号 = 0, 上下文 = {}) {
-      const 序号 = Math.max(0, Math.floor(Number(魂灵序号 || 0)));
-      let 上限 = Number.POSITIVE_INFINITY;
-      if (是否天才及以下魂灵上限梯队_V1(上下文?.天赋梯队) && 序号 < 自动生成魂灵天才及以下上限表_V1.length) {
-        上限 = Math.min(上限, 自动生成魂灵天才及以下上限表_V1[序号]);
-      }
-      if (是否低级魂灵初始化_V1(上下文?.等级) && 序号 < 自动生成魂灵低级上限表_V1.length) {
-        上限 = Math.min(上限, 自动生成魂灵低级上限表_V1[序号]);
-      }
-      return Number.isFinite(上限) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(上限)) : Number.POSITIVE_INFINITY;
+    function 读取初始化动态魂环吸收极限_V1(魂环位 = 1, 角色数据 = {}, 目标年限 = 0) {
+      const 安全魂环位 = Math.max(1, Math.min(9, Math.floor(Number(魂环位 || 1))));
+      const 基准上限 = 读取初始化独立魂环吸收极限_V1(安全魂环位);
+      const 基准等级 = Math.max(1, Math.min(99, 安全魂环位 * 10 + 1));
+      const 基准属性 = getBaseStats(基准等级);
+      const 基准体力 = Math.max(1, Math.floor(Number(基准属性?.vit_max || 1) * Number(TypeMultipliers['强攻系']?.vit_max || 1)));
+      const 当前体力 = Math.max(1, 估算初始化魂环承载体力上限_V1(角色数据));
+      const 体力倍率 = Math.max(0.25, Math.min(8, 当前体力 / 基准体力));
+      const 体力上限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(基准上限 * Math.pow(体力倍率, 1.15)));
+      if (Math.max(体力上限, Number(目标年限 || 0)) < 10000) return 体力上限;
+      return Math.max(
+        自动生成魂灵最低年限_V1,
+        Math.min(体力上限, 读取精神力动态魂环吸收上限_V1(估算初始化魂灵预算精神力上限_V1(角色数据))),
+      );
+    }
+
+    function 读取初始化魂灵承载年限上限_V1(魂环位列表 = [], 角色数据 = {}) {
+      const 有效魂环位 = (Array.isArray(魂环位列表) ? 魂环位列表 : [])
+        .map(魂环位 => Math.max(1, Math.min(9, Math.floor(Number(魂环位 || 1)))))
+        .filter(Boolean);
+      if (!有效魂环位.length) return 自动生成魂灵最低年限_V1;
+      return 读取初始化动态魂环吸收极限_V1(Math.max(...有效魂环位), 角色数据);
     }
 
     function 收口自动生成魂灵单项年限_V1(年限 = 自动生成魂灵最低年限_V1, 魂灵序号 = 0, 上下文 = {}) {
-      const 上限 = 读取自动生成魂灵序位年限上限_V1(魂灵序号, 上下文);
+      const 上限 = Number.isFinite(Number(上下文?.年限上限)) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(上下文.年限上限))) : Number.POSITIVE_INFINITY;
       const 安全年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(年限 || 自动生成魂灵最低年限_V1)));
       return Number.isFinite(上限) ? Math.min(安全年限, 上限) : 安全年限;
-    }
-
-    function 收口自动生成魂灵增长年限_V1(年限 = 自动生成魂灵最低年限_V1, 魂灵序号 = 0, 上下文 = {}, 前置年限 = null) {
-      const 序号 = Math.max(0, Math.floor(Number(魂灵序号 || 0)));
-      let 收口年限 = 收口自动生成魂灵单项年限_V1(年限, 序号, 上下文);
-      const 安全前置年限 = Math.max(0, Math.floor(Number(前置年限 || 0)));
-      if (序号 > 0 && 安全前置年限 >= 自动生成魂灵最低年限_V1) {
-        const 跨度上限 = 读取自动生成魂灵跨度上限_V1(序号 - 1);
-        if (Number.isFinite(跨度上限)) 收口年限 = Math.min(收口年限, 安全前置年限 + 跨度上限);
-        if (收口年限 <= 安全前置年限) 收口年限 = 安全前置年限 + 1;
-      }
-      return Math.max(自动生成魂灵最低年限_V1, Math.floor(收口年限));
-    }
-
-    function 读取自动生成魂灵跨度上限_V1(前魂灵序号 = 0) {
-      const 序号 = Math.max(0, Math.floor(Number(前魂灵序号 || 0)));
-      const 上限 = 自动生成魂灵跨度上限表_V1[序号];
-      return Number.isFinite(Number(上限)) ? Math.max(1, Math.floor(Number(上限))) : Number.POSITIVE_INFINITY;
     }
 
     function 收口自动生成魂灵计划年限_V1(魂灵计划 = [], 上下文 = {}) {
@@ -4636,109 +4679,96 @@ function 规范化Schema根转换_V1(data = {}) {
       if (!计划.length) return;
       计划.forEach(规划项 => {
         const 魂灵序号 = Math.max(0, Math.floor(Number(规划项.魂灵序号 || 0)));
-        规划项.spData.age = 收口自动生成魂灵单项年限_V1(规划项.spData.age, 魂灵序号, 上下文);
+        const 年限上限 = Number.isFinite(Number(规划项.年限上限)) ? 规划项.年限上限 : 上下文?.年限上限;
+        规划项.spData.age = 收口自动生成魂灵单项年限_V1(规划项.spData.age, 魂灵序号, { ...上下文, 年限上限 });
       });
-      for (let 索引 = 1; 索引 < 计划.length; 索引++) {
-        const 前项 = 计划[索引 - 1];
-        const 当前项 = 计划[索引];
-        const 前序号 = Math.max(0, Math.floor(Number(前项.魂灵序号 || 0)));
-        const 当前序号 = Math.max(0, Math.floor(Number(当前项.魂灵序号 || 0)));
-        let 前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
-        let 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(当前项.spData.age || 自动生成魂灵最低年限_V1)));
-        const 跨度上限 = 当前序号 === 前序号 + 1 ? 读取自动生成魂灵跨度上限_V1(前序号) : Number.POSITIVE_INFINITY;
-        if (Number.isFinite(跨度上限) && 当前年限 - 前年限 > 跨度上限) 当前年限 = 前年限 + 跨度上限;
-        const 当前上限 = 读取自动生成魂灵序位年限上限_V1(当前序号, 上下文);
-        if (Number.isFinite(当前上限)) 当前年限 = Math.min(当前年限, 当前上限);
-        if (当前年限 <= 前年限) {
-          const 前项上限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 1);
-          前项.spData.age = Math.min(前年限, 前项上限);
-          前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
-          当前年限 = Math.max(当前年限, 前年限 + 1);
-          if (Number.isFinite(跨度上限)) 当前年限 = Math.min(当前年限, 前年限 + 跨度上限);
-        }
-        当前项.spData.age = Math.max(自动生成魂灵最低年限_V1, Math.floor(当前年限));
-      }
-      for (let 索引 = 计划.length - 1; 索引 > 0; 索引--) {
-        const 前项 = 计划[索引 - 1];
-        const 当前项 = 计划[索引];
-        const 前序号 = Math.max(0, Math.floor(Number(前项.魂灵序号 || 0)));
-        const 当前序号 = Math.max(0, Math.floor(Number(当前项.魂灵序号 || 0)));
-        const 跨度上限 = 当前序号 === 前序号 + 1 ? 读取自动生成魂灵跨度上限_V1(前序号) : Number.POSITIVE_INFINITY;
-        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(当前项.spData.age || 自动生成魂灵最低年限_V1)));
-        let 前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(前项.spData.age || 自动生成魂灵最低年限_V1)));
-        if (前年限 >= 当前年限) 前年限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 1);
-        if (Number.isFinite(跨度上限) && 当前年限 - 前年限 > 跨度上限) 前年限 = Math.max(自动生成魂灵最低年限_V1, 当前年限 - 跨度上限);
-        前项.spData.age = 前年限;
-      }
       计划.forEach(规划项 => {
         规划项.spData.age = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(规划项.spData.age || 自动生成魂灵最低年限_V1)));
         规划项.spData.color = getRingColorByAge(规划项.spData.age);
       });
     }
 
-    function rollSpirit(talentTier, lv, spiritIndex, realm) {
-      const roll = Math.floor(Math.random() * 100) + 1;
-      const talentScore = { 绝世妖孽: 100, 顶级天才: 80, 天才: 60, 优秀: 40, 正常: 20, 劣等: 0, 天赋极差: -100 }[talentTier] || 20;
-      const sequenceScore = [0, 40, 90, 150, 220, 300, 400, 500, 600][spiritIndex] || spiritIndex * 80;
-      let extraLvScore = lv > 95 ? Math.floor(lv - 95) * 50 : 0;
-      const totalScore = roll + talentScore + lv * 2 + sequenceScore + extraLvScore;
-      let age = 自动生成魂灵最低年限_V1,
-        cap = 1;
-      if (totalScore >= 600) {
-        age = 100000 + (totalScore - 600) * 1000 + Math.floor(Math.random() * 5000);
-        cap = 4;
-      } else if (totalScore >= 300) {
-        age = 10000 + (totalScore - 300) * 200 + Math.floor(Math.random() * 2000);
-        cap = 4;
-      } else if (totalScore >= 240) {
-        age = 1000 + (totalScore - 240) * 100 + Math.floor(Math.random() * 500);
-        cap = 3;
-      } else if (totalScore >= 180) {
-        age = 100 + (totalScore - 180) * 10 + Math.floor(Math.random() * 50);
-        cap = 2;
-      }
-
-      const realmCaps = { 灵元境: 400, 灵通境: 3000, 灵海境: 15000, 灵渊境: 100000, 灵域境: 999999, 神元境: 999999 };
-      let maxAge = realmCaps[realm] || 400;
-      if (age > maxAge) {
-        if (maxAge >= 100000) {
-          age = 100000;
-          cap = 3;
-        } else if (maxAge >= 15000) {
-          age = 15000;
+    function rollSpirit(talentTier, lv, spiritIndex, realm, previousAge = null) {
+      const 生成一次 = () => {
+        const roll = Math.floor(Math.random() * 100) + 1;
+        const talentScore = { 绝世妖孽: 100, 顶级天才: 80, 天才: 60, 优秀: 40, 正常: 20, 劣等: 0, 天赋极差: -100 }[talentTier] || 20;
+        const sequenceScore = [0, 40, 90, 150, 220, 300, 400, 500, 600][spiritIndex] || spiritIndex * 80;
+        let extraLvScore = lv > 95 ? Math.floor(lv - 95) * 50 : 0;
+        const totalScore = roll + talentScore + lv * 2 + sequenceScore + extraLvScore;
+        let age = 自动生成魂灵最低年限_V1,
+          cap = 1;
+        if (totalScore >= 600) {
+          age = 100000 + (totalScore - 600) * 1000 + Math.floor(Math.random() * 5000);
           cap = 4;
-        } else if (maxAge >= 3000) {
-          age = 3000;
+        } else if (totalScore >= 300) {
+          age = 10000 + (totalScore - 300) * 200 + Math.floor(Math.random() * 2000);
+          cap = 4;
+        } else if (totalScore >= 240) {
+          age = 1000 + (totalScore - 240) * 100 + Math.floor(Math.random() * 500);
           cap = 3;
-        } else if (maxAge >= 400) {
-          age = 400;
+        } else if (totalScore >= 140) {
+          age = 100 + Math.floor((totalScore - 140) * 9) + Math.floor(Math.random() * 10);
           cap = 2;
         } else {
-          age = 自动生成魂灵最低年限_V1;
-          cap = 1;
+          age = 10 + Math.floor(Math.max(0, totalScore) / 140 * 80) + Math.floor(Math.random() * 10);
+          age = Math.min(99, age);
         }
-      }
 
-      const highTalent = ['绝世妖孽', '顶级天才', '天才'].includes(String(talentTier || ''));
-      const shouldApplyFirstSpiritLowLevelCap = spiritIndex === 0 && lv < 30;
-      if (spiritIndex === 0) {
-        if (shouldApplyFirstSpiritLowLevelCap && highTalent) {
-          const firstSpiritScore = Math.max(0, totalScore - 80);
-          age = 100 + Math.min(300, Math.floor(firstSpiritScore * 2) + Math.floor(Math.random() * 21));
-          age = Math.min(400, age);
-          cap = age >= 100 ? 2 : 1;
-        } else if (shouldApplyFirstSpiritLowLevelCap) {
-          age = Math.min(100, Math.max(自动生成魂灵最低年限_V1, age));
-          cap = age >= 100 ? 2 : 1;
+        const realmCaps = { 灵元境: 400, 灵通境: 3000, 灵海境: 15000, 灵渊境: 100000, 灵域境: 999999, 神元境: 999999 };
+        let maxAge = realmCaps[realm] || 400;
+        if (age > maxAge) {
+          if (maxAge >= 100000) {
+            age = 100000;
+            cap = 3;
+          } else if (maxAge >= 15000) {
+            age = 15000;
+            cap = 4;
+          } else if (maxAge >= 3000) {
+            age = 3000;
+            cap = 3;
+          } else if (maxAge >= 400) {
+            age = 400;
+            cap = 2;
+          } else {
+            age = 自动生成魂灵最低年限_V1;
+            cap = 1;
+          }
         }
-        if (cap > 2) cap = 2;
-      } else if (spiritIndex <= 1 && cap > 2) {
-        cap = 2;
+
+        const highTalent = ['绝世妖孽', '顶级天才', '天才'].includes(String(talentTier || ''));
+        const shouldApplyFirstSpiritLowLevelCap = spiritIndex === 0 && lv < 30;
+        if (spiritIndex === 0) {
+          if (shouldApplyFirstSpiritLowLevelCap && highTalent) {
+            const firstSpiritScore = Math.max(0, totalScore - 80);
+            age = 100 + Math.min(300, Math.floor(firstSpiritScore * 2) + Math.floor(Math.random() * 21));
+            age = Math.min(400, age);
+            cap = age >= 100 ? 2 : 1;
+          } else if (shouldApplyFirstSpiritLowLevelCap) {
+            age = Math.min(100, Math.max(自动生成魂灵最低年限_V1, age));
+            cap = age >= 100 ? 2 : 1;
+          }
+          if (cap > 2) cap = 2;
+        } else if (spiritIndex <= 1 && cap > 2) {
+          cap = 2;
+        }
+        age = Math.max(自动生成魂灵最低年限_V1, Math.floor(age));
+        const color = getRingColorByAge(age);
+        const initProvideCap = cap;
+        return { age, color, cap, initProvideCap };
+      };
+      let 结果 = 生成一次();
+      const 前置年限 = Math.max(0, Math.floor(Number(previousAge || 0)));
+      if (spiritIndex > 0 && 前置年限 >= 自动生成魂灵最低年限_V1 && 结果.age <= 前置年限) {
+        for (let 次数 = 0; 次数 < 3; 次数++) {
+          const 候选 = 生成一次();
+          if (候选.age > 结果.age) 结果 = 候选;
+          if (候选.age > 前置年限) {
+            结果 = 候选;
+            break;
+          }
+        }
       }
-      age = Math.max(自动生成魂灵最低年限_V1, Math.floor(age));
-      const color = getRingColorByAge(age);
-      const initProvideCap = cap;
-      return { age, color, cap, initProvideCap };
+      return 结果;
     }
 
     const 初始化九十九级魂环目标年限_V1 = Object.freeze([82000, 86000, 91000, 96000, 102000, 108000, 115000, 124000, 138000]);
@@ -4769,7 +4799,7 @@ function 规范化Schema根转换_V1(data = {}) {
       return Math.max(自动生成魂灵最低年限_V1, Math.min(安全上限, Math.floor(结果)));
     }
 
-    function 计算初始化魂环位目标年限_V1(魂环位 = 1, 等级 = 1, 天赋梯队 = '正常', 精神境界 = '', 是否独立魂环 = false) {
+    function 计算初始化魂环位目标年限_V1(魂环位 = 1, 等级 = 1, 天赋梯队 = '正常', 精神境界 = '', 是否独立魂环 = false, 角色数据 = {}) {
       const 安全魂环位 = Math.max(1, Math.min(9, Math.floor(Number(魂环位 || 1))));
       const 等级值 = Math.max(1, Number(等级 || 1));
       if (等级值 < 98) return null;
@@ -4788,20 +4818,20 @@ function 规范化Schema根转换_V1(data = {}) {
         ['绝世妖孽', '顶级天才'].includes(String(天赋梯队 || '').trim()) &&
         等级值 >= 99 &&
         Math.random() < (String(天赋梯队 || '').trim() === '绝世妖孽' ? 0.025 : 0.012);
-      const 年限上限 = Math.min(可出橙 ? 上限 : Math.min(上限, 199000), 是否独立魂环 ? 读取初始化独立魂环吸收极限_V1(安全魂环位) : Number.POSITIVE_INFINITY);
+      const 年限上限 = Math.min(可出橙 ? 上限 : Math.min(上限, 199000), 是否独立魂环 ? 读取初始化动态魂环吸收极限_V1(安全魂环位, 角色数据, 目标) : Number.POSITIVE_INFINITY);
       return 扰动初始化魂环年限_V1(目标, 年限上限, { 禁止常规橙环: !可出橙 });
     }
 
-    function 计算初始化承载魂灵年限_V1(魂环位列表 = [], 等级 = 1, 天赋梯队 = '正常', 精神境界 = '') {
+    function 计算初始化承载魂灵年限_V1(魂环位列表 = [], 等级 = 1, 天赋梯队 = '正常', 精神境界 = '', 角色数据 = {}) {
       const 有效魂环位 = (Array.isArray(魂环位列表) ? 魂环位列表 : [])
         .map(魂环位 => Math.max(1, Math.floor(Number(魂环位 || 1))))
         .filter(Boolean);
       if (!有效魂环位.length) return null;
       const 年限列表 = 有效魂环位
-        .map(魂环位 => 计算初始化魂环位目标年限_V1(魂环位, 等级, 天赋梯队, 精神境界, false))
+        .map(魂环位 => 计算初始化魂环位目标年限_V1(魂环位, 等级, 天赋梯队, 精神境界, false, 角色数据))
         .filter(年限 => Number.isFinite(Number(年限)));
       if (!年限列表.length) return null;
-      const 最高魂环位上限 = 读取初始化独立魂环吸收极限_V1(Math.max(...有效魂环位));
+      const 最高魂环位上限 = 读取初始化魂灵承载年限上限_V1(有效魂环位, 角色数据);
       return Math.max(
         自动生成魂灵最低年限_V1,
         Math.min(最高魂环位上限, Math.floor(年限列表.reduce((总和, 年限) => 总和 + 年限, 0) / 年限列表.length)),
@@ -4947,26 +4977,21 @@ function 规范化Schema根转换_V1(data = {}) {
       });
     }
 
-    function 读取初始化魂灵最低年限_V1(魂灵序号 = 0, 总预算 = 0) {
-      const 最低线 = [400, 1000, 10000][Math.max(0, Math.floor(Number(魂灵序号 || 0)))] || 自动生成魂灵最低年限_V1;
-      return Math.min(Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(总预算 || 0))), 最低线);
-    }
-
     function 分配初始化魂灵年限预算_V1(魂灵计划 = [], 魂灵年限预算 = 0, 上下文 = {}) {
       const 计划 = Array.isArray(魂灵计划) ? 魂灵计划 : [];
       if (!计划.length) return;
-      const 最低年限列表 = [];
-      const 目标年限列表 = [];
-      计划.forEach((规划项, 索引) => {
-        const 上一最低 = 索引 > 0 ? 最低年限列表[索引 - 1] : 自动生成魂灵最低年限_V1;
+      const 最低年限列表 = 计划.map(规划项 => {
         const 原始最低 = Math.max(
           自动生成魂灵最低年限_V1,
           Math.floor(Number(规划项.最低年限 || 自动生成魂灵最低年限_V1)),
         );
-        const 最低年限 = Math.max(上一最低, 原始最低);
-        最低年限列表.push(最低年限);
-        const 上一目标 = 索引 > 0 ? 目标年限列表[索引 - 1] : 最低年限;
-        目标年限列表.push(Math.max(上一目标, 最低年限, Math.floor(Number(规划项.spData?.age || 最低年限))));
+        const 年限上限 = Number.isFinite(Number(规划项.年限上限)) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(规划项.年限上限))) : Number.POSITIVE_INFINITY;
+        return Number.isFinite(年限上限) ? Math.min(原始最低, 年限上限) : 原始最低;
+      });
+      const 目标年限列表 = 计划.map((规划项, 索引) => {
+        const 年限上限 = Number.isFinite(Number(规划项.年限上限)) ? Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(规划项.年限上限))) : Number.POSITIVE_INFINITY;
+        const 目标年限 = Math.max(最低年限列表[索引], Math.floor(Number(规划项.spData?.age || 最低年限列表[索引])));
+        return Number.isFinite(年限上限) ? Math.min(目标年限, 年限上限) : 目标年限;
       });
       const 最低总额 = 最低年限列表.reduce((总和, 年限) => 总和 + 年限, 0);
       const 目标总额 = 目标年限列表.reduce((总和, 年限) => 总和 + 年限, 0);
@@ -4985,11 +5010,97 @@ function 规范化Schema根转换_V1(data = {}) {
       收口自动生成魂灵计划年限_V1(计划, 上下文);
     }
 
+    function 估算初始化魂灵预算精神力上限_V1(角色数据 = {}) {
+      if (!角色数据 || typeof 角色数据 !== 'object' || Array.isArray(角色数据)) return 0;
+      const 属性 = 角色数据.属性 && typeof 角色数据.属性 === 'object' ? 角色数据.属性 : {};
+      const 等级 = Math.max(1, Number(属性.等级 || 1) || 1);
+      const 基础属性 = getBaseStats(等级);
+      let 系别倍率 = 0;
+      const 武魂条目 = 取角色武魂条目_V1(角色数据);
+      if (武魂条目.length > 0) {
+        武魂条目.forEach(([, 武魂]) => {
+          const 倍率 = TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'];
+          系别倍率 = Math.max(系别倍率, Number(倍率?.men_max || 1));
+        });
+      } else {
+        const 倍率 = TypeMultipliers[取角色主武魂系别_V1(角色数据)] || TypeMultipliers['强攻系'];
+        系别倍率 = Number(倍率?.men_max || 1);
+      }
+      const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
+      let 精神力上限 = Math.floor(
+        (Math.floor(Number(基础属性.men_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
+          Math.max(0, Math.floor(Number(属性.训练加成?.精神力上限 || 0)))) *
+          读取高天赋精神倍率_V1(属性),
+      );
+      精神力上限 = 应用龙王血脉精神力加成_V1(精神力上限, 角色数据);
+      _(角色数据.魂骨).forEach((魂骨, 部位) => {
+        if (!魂骨 || typeof 魂骨 !== 'object') return;
+        if (是外附魂骨记录_V1(魂骨, 部位)) {
+          const 倍率 = 按品质派生外附魂骨属性倍率_V1(魂骨?.品质);
+          精神力上限 += Math.floor(精神力上限 * Math.max(0, Number(倍率?.精神力上限 || 0)));
+          return;
+        }
+        const 加成 = getRingBonus(Number(魂骨.年限 || 0)).men_max;
+        if (部位 === '头部魂骨') 精神力上限 += 加成 * 2;
+        else 精神力上限 += 加成;
+      });
+      取角色武魂条目_V1(角色数据).forEach(([, 武魂]) => {
+        取武魂全部魂环条目_V1(武魂).forEach(({ 魂环数据: 魂环, 魂灵数据: 魂灵 }) => {
+          const 年限 = Math.max(0, Number(魂环?.年限 || 0));
+          if (!(年限 > 0)) return;
+          const 契合倍率 = 魂灵 ? Math.max(0.1, Number(魂灵.契合度 !== undefined ? 魂灵.契合度 : 100) / 100) : 1;
+          精神力上限 += Math.floor(getRingBonus(年限).men_max * 契合倍率);
+        });
+      });
+      return Math.max(读取角色精神力上限_V1(角色数据), Math.floor(精神力上限));
+    }
+
     function 读取角色初始化魂灵可分配年限_V1(角色数据 = {}, 待补武魂数 = 1) {
       const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(角色数据) ?? 1));
-      const 总预算 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(角色数据)) * 魂灵预算倍率);
+      const 总预算 = Math.floor(读取精神力魂灵总年限上限_V1(估算初始化魂灵预算精神力上限_V1(角色数据)) * 魂灵预算倍率);
       const 剩余预算 = Math.max(0, 总预算 - 读取角色魂灵年限总和_V1(角色数据));
       return Math.floor(剩余预算 / Math.max(1, Math.floor(Number(待补武魂数 || 1))));
+    }
+
+    function 读取魂灵已承载魂环位列表_V1(魂灵数据 = {}) {
+      return 取魂灵魂环条目_V1(魂灵数据)
+        .map(([魂环键]) => 读取槽位序号_V1(魂环键, 0))
+        .filter(魂环位 => 魂环位 > 0)
+        .sort((a, b) => a - b);
+    }
+
+    function 按空间比例提升魂灵年限_V1(魂灵条目 = [], 可增年限 = 0) {
+      const 条目 = Array.isArray(魂灵条目) ? 魂灵条目.filter(项 => 项 && 项.魂灵 && typeof 项.魂灵 === 'object') : [];
+      let 剩余 = Math.max(0, Math.floor(Number(可增年限 || 0)));
+      if (!条目.length || 剩余 <= 0) return false;
+      const 可增长 = 条目.map(项 => {
+        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(项.魂灵.年限 || 自动生成魂灵最低年限_V1)));
+        const 年限上限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(项.年限上限 || 当前年限)));
+        return { ...项, 当前年限, 年限上限, 空间: Math.max(0, 年限上限 - 当前年限) };
+      }).filter(项 => 项.空间 > 0);
+      if (!可增长.length) return false;
+      const 空间总和 = 可增长.reduce((总和, 项) => 总和 + 项.空间, 0);
+      const 本轮可分配 = Math.min(剩余, 空间总和);
+      let 已更新 = false;
+      可增长.forEach((项, 索引) => {
+        if (剩余 <= 0) return;
+        const 理论增量 = 索引 === 可增长.length - 1 ? 剩余 : Math.floor(本轮可分配 * 项.空间 / Math.max(1, 空间总和));
+        const 增量 = Math.min(项.空间, Math.max(0, 理论增量));
+        if (增量 <= 0) return;
+        同步初始化魂灵年限到魂环_V1(项.魂灵, 项.当前年限 + 增量, true);
+        剩余 -= 增量;
+        已更新 = true;
+      });
+      for (const 项 of 可增长) {
+        if (剩余 <= 0) break;
+        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(项.魂灵.年限 || 自动生成魂灵最低年限_V1)));
+        const 增量 = Math.min(剩余, Math.max(0, 项.年限上限 - 当前年限));
+        if (增量 <= 0) continue;
+        同步初始化魂灵年限到魂环_V1(项.魂灵, 当前年限 + 增量, true);
+        剩余 -= 增量;
+        已更新 = true;
+      }
+      return 已更新;
     }
 
     function 提升已有初始化魂灵年限预算_V1(角色数据 = {}) {
@@ -4997,45 +5108,20 @@ function 规范化Schema根转换_V1(data = {}) {
       const 魂灵条目 = [];
       取角色武魂条目_V1(角色数据).forEach(([, 武魂]) => {
         取武魂魂灵条目_V1(武魂).forEach(([, 魂灵]) => {
-          if (魂灵 && typeof 魂灵 === 'object') 魂灵条目.push(魂灵);
+          if (!魂灵 || typeof 魂灵 !== 'object') return;
+          const 魂环位列表 = 读取魂灵已承载魂环位列表_V1(魂灵);
+          const 年限上限 = 魂环位列表.length ? 读取初始化魂灵承载年限上限_V1(魂环位列表, 角色数据) : Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1)));
+          魂灵条目.push({ 魂灵, 年限上限 });
         });
       });
       if (!魂灵条目.length) return false;
       const 魂灵预算倍率 = Math.max(0, Number(初始化魂灵预算倍率记录_V1.get(角色数据) ?? 1));
-      const 收口上下文 = { 等级: 角色数据?.属性?.等级, 天赋梯队: 角色数据?.属性?.天赋梯队 };
-      const 目标总年限 = Math.floor(读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(角色数据)) * 魂灵预算倍率);
-      let 当前总年限 = 魂灵条目.reduce(
-        (总和, 魂灵) => 总和 + Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1))),
+      const 目标总年限 = Math.floor(读取精神力魂灵总年限上限_V1(估算初始化魂灵预算精神力上限_V1(角色数据)) * 魂灵预算倍率);
+      const 当前总年限 = 魂灵条目.reduce(
+        (总和, 项) => 总和 + Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(项.魂灵.年限 || 自动生成魂灵最低年限_V1))),
         0,
       );
-      let 剩余可增年限 = Math.max(0, 目标总年限 - 当前总年限);
-      let 已更新 = false;
-      魂灵条目.forEach((魂灵, 魂灵索引) => {
-        if (剩余可增年限 <= 0) return;
-        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1)));
-        const 最低年限 = 读取初始化魂灵最低年限_V1(魂灵索引, 当前年限 + 剩余可增年限);
-        const 前置年限 = 魂灵索引 > 0 ? 魂灵条目[魂灵索引 - 1]?.年限 : null;
-        const 收口年限 = 收口自动生成魂灵增长年限_V1(最低年限, 魂灵索引, 收口上下文, 前置年限);
-        const 增量 = Math.min(剩余可增年限, Math.max(0, 收口年限 - 当前年限));
-        if (增量 <= 0) return;
-        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量, true);
-        剩余可增年限 -= 增量;
-        当前总年限 += 增量;
-        已更新 = true;
-      });
-      魂灵条目.forEach((魂灵, 魂灵索引) => {
-        if (剩余可增年限 <= 0) return;
-        const 当前年限 = Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵.年限 || 自动生成魂灵最低年限_V1)));
-        const 剩余条目数 = Math.max(1, 魂灵条目.length - 魂灵索引);
-        const 前置年限 = 魂灵索引 > 0 ? 魂灵条目[魂灵索引 - 1]?.年限 : null;
-        const 收口年限 = 收口自动生成魂灵增长年限_V1(当前年限 + Math.floor(剩余可增年限 / 剩余条目数), 魂灵索引, 收口上下文, 前置年限);
-        const 增量 = Math.max(0, 收口年限 - 当前年限);
-        if (增量 <= 0) return;
-        同步初始化魂灵年限到魂环_V1(魂灵, 当前年限 + 增量, true);
-        剩余可增年限 -= 增量;
-        已更新 = true;
-      });
-      return 已更新;
+      return 按空间比例提升魂灵年限_V1(魂灵条目, Math.max(0, 目标总年限 - 当前总年限));
     }
 
     function 补齐武魂缺失魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
@@ -5052,28 +5138,9 @@ function 规范化Schema根转换_V1(data = {}) {
       let 已补齐 = false;
       if (!String(武魂数据.表象名称 || '').trim()) 武魂数据.表象名称 = '未展露';
       const 已有魂灵条目 = 取武魂魂灵条目_V1(武魂数据);
-      const 已有魂灵增长预算 = 是否新档初始化
-        ? Math.floor(读取角色初始化魂灵可分配年限_V1(char, 待补武魂数) / Math.max(1, 已有魂灵条目.length))
-        : 0;
 
       已有魂灵条目.forEach(([, 魂灵数据], 魂灵索引) => {
         if (!缺失魂环位列表.length || !魂灵数据 || typeof 魂灵数据 !== 'object') return;
-        if (已有魂灵增长预算 > 0) {
-          const 当前年限 = Math.max(
-            自动生成魂灵最低年限_V1,
-            Math.floor(Number(魂灵数据.年限 || 自动生成魂灵最低年限_V1)),
-          );
-          const 目标年限 = Math.max(
-            当前年限,
-            读取初始化魂灵最低年限_V1(魂灵索引, 当前年限 + 已有魂灵增长预算),
-            当前年限 + 已有魂灵增长预算,
-          );
-          const 收口年限 = 收口自动生成魂灵增长年限_V1(目标年限, 魂灵索引, {
-            等级: char?.属性?.等级,
-            天赋梯队: char?.属性?.天赋梯队,
-          }, 魂灵索引 > 0 ? 已有魂灵条目[魂灵索引 - 1]?.[1]?.年限 : null);
-          if (收口年限 > 当前年限) 同步初始化魂灵年限到魂环_V1(魂灵数据, 收口年限, true);
-        }
         const 当前魂环数 = 取魂灵魂环条目_V1(魂灵数据).length;
         const 可补数量 = Math.max(0, 读取魂灵自动初始化承载上限_V1(魂灵数据, 武魂槽位, 魂灵索引) - 当前魂环数);
         if (可补数量 <= 0) return;
@@ -5103,17 +5170,24 @@ function 规范化Schema根转换_V1(data = {}) {
         已有魂灵条目.length,
       );
       const 生成计划 = [];
+      const 生成中魂灵年限表 = new Map(
+        已有魂灵条目.map(([, 魂灵数据], 魂灵序号) => [
+          魂灵序号,
+          Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵数据?.年限 || 自动生成魂灵最低年限_V1))),
+        ]),
+      );
       承载规划.forEach(规划项 => {
         if (!规划项) return;
         if (规划项.类型 === '独立魂环') {
           const 魂环位 = Math.max(1, Math.floor(Number(规划项.魂环位 || 1)));
           if (!缺失魂环位列表.includes(魂环位) || 已有魂环位集合.has(魂环位)) return;
           let 独立年限 =
-            计算初始化魂环位目标年限_V1(魂环位, char.属性.等级, char.属性.天赋梯队, char.属性.精神境界, true) ||
+            计算初始化魂环位目标年限_V1(魂环位, char.属性.等级, char.属性.天赋梯队, char.属性.精神境界, true, char) ||
             rollSpirit(char.属性.天赋梯队, char.属性.等级, 魂环位 - 1, char.属性.精神境界).age;
+          const 独立上限 = 读取初始化动态魂环吸收极限_V1(魂环位, char, 独立年限);
           独立年限 = Math.max(
             自动生成魂灵最低年限_V1,
-            Math.min(读取初始化独立魂环吸收极限_V1(魂环位), Math.floor(独立年限)),
+            Math.min(独立上限, Math.floor(独立年限)),
           );
           生成计划.push({ 类型: '独立魂环', 魂环位, 年限: 独立年限 });
           return;
@@ -5129,25 +5203,30 @@ function 规范化Schema根转换_V1(data = {}) {
           char.属性.等级,
           魂灵序号,
           char.属性.精神境界,
+          生成中魂灵年限表.get(魂灵序号 - 1),
         );
         const 承载年限 = 计算初始化承载魂灵年限_V1(
           魂环位列表,
           char.属性.等级,
           char.属性.天赋梯队,
           char.属性.精神境界,
+          char,
         );
         if (承载年限 !== null) spData.age = Math.max(spData.age, 承载年限);
+        const 年限上限 = 读取初始化魂灵承载年限上限_V1(魂环位列表, char);
         spData.age = 收口自动生成魂灵单项年限_V1(
-          Math.min(读取初始化独立魂环吸收极限_V1(Math.max(...魂环位列表)), Math.max(自动生成魂灵最低年限_V1, Math.floor(spData.age))),
+          Math.min(年限上限, Math.max(自动生成魂灵最低年限_V1, Math.floor(spData.age))),
           魂灵序号,
-          { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 },
+          { 年限上限 },
         );
         spData.color = getRingColorByAge(spData.age);
+        生成中魂灵年限表.set(魂灵序号, spData.age);
         生成计划.push({
           类型: '魂灵',
           魂灵序号,
           魂环位列表,
           最低年限: 读取承载魂环数最低年限_V1(魂环位列表.length),
+          年限上限,
           spData,
         });
       });
@@ -5155,33 +5234,19 @@ function 规范化Schema根转换_V1(data = {}) {
       let 魂灵计划 = 生成计划.filter(规划项 => 规划项.类型 === '魂灵');
       const 魂灵年限预算 = 读取角色初始化魂灵可分配年限_V1(char, 待补武魂数);
       if (魂灵计划.length > 0) {
-        const 前置魂灵年限底线 = 已有魂灵条目.reduce(
-          (底线, [, 魂灵数据]) =>
-            Math.max(底线, Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵数据?.年限 || 自动生成魂灵最低年限_V1)))),
-          自动生成魂灵最低年限_V1,
-        );
         魂灵计划
           .sort((a, b) => Math.max(0, Number(a.魂灵序号 || 0)) - Math.max(0, Number(b.魂灵序号 || 0)))
           .forEach((规划项, 索引) => {
-            规划项.最低年限 = Math.max(规划项.最低年限 || 自动生成魂灵最低年限_V1, 索引 === 0 ? 前置魂灵年限底线 : 自动生成魂灵最低年限_V1);
+            规划项.最低年限 = Math.max(规划项.最低年限 || 自动生成魂灵最低年限_V1, 自动生成魂灵最低年限_V1);
           });
-        分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算, { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 });
-        const 魂灵年限表 = new Map(
-          已有魂灵条目.map(([, 魂灵数据], 魂灵序号) => [
-            魂灵序号,
-            Math.max(自动生成魂灵最低年限_V1, Math.floor(Number(魂灵数据?.年限 || 自动生成魂灵最低年限_V1))),
-          ]),
-        );
+        分配初始化魂灵年限预算_V1(魂灵计划, 魂灵年限预算, {});
         魂灵计划.forEach(规划项 => {
-          const 魂灵序号 = Math.max(0, Math.floor(Number(规划项.魂灵序号 || 0)));
-          规划项.spData.age = 收口自动生成魂灵增长年限_V1(
+          规划项.spData.age = 收口自动生成魂灵单项年限_V1(
             规划项.spData?.age,
-            魂灵序号,
-            { 等级: char.属性.等级, 天赋梯队: char.属性.天赋梯队 },
-            魂灵年限表.get(魂灵序号 - 1),
+            Math.max(0, Math.floor(Number(规划项.魂灵序号 || 0))),
+            { 年限上限: 规划项.年限上限 },
           );
           规划项.spData.color = getRingColorByAge(规划项.spData.age);
-          魂灵年限表.set(魂灵序号, 规划项.spData.age);
         });
         魂灵计划 = 魂灵计划.filter(规划项 => Math.max(0, Number(规划项.spData?.age || 0)) >= 自动生成魂灵最低年限_V1);
         const 待重新分配魂环位 = 魂灵计划
@@ -7219,14 +7284,42 @@ function 填充默认训练加成_V1(属性 = {}, 强制重算 = false) {
 }
 
 function 读取高天赋精神倍率_V1(属性 = {}) {
-    const 固定倍率 = { 优秀: 1.25, 天才: 2, 顶级天才: 3.5, 绝世妖孽: 4 }[String(属性?.天赋梯队 || '').trim()] || 1;
-    if (固定倍率 <= 1) return 1;
-    const 等级 = Math.max(1, Number(属性?.等级 || 1) || 1);
-    let 解锁系数 = 0;
-    if (等级 <= 20) 解锁系数 = 0;
-    else if (等级 <= 45) 解锁系数 = (等级 - 20) / 25;
-    else 解锁系数 = 1;
-    return 1 + (固定倍率 - 1) * Math.max(0, Math.min(1, 解锁系数));
+  const 固定倍率 = { 优秀: 1.25, 天才: 2, 顶级天才: 3.5, 绝世妖孽: 4 }[String(属性?.天赋梯队 || '').trim()] || 1;
+  if (固定倍率 <= 1) return 1;
+  const 等级 = Math.max(1, Number(属性?.等级 || 1) || 1);
+  let 解锁系数 = 0;
+  if (等级 <= 20) 解锁系数 = 0;
+  else if (等级 <= 45) 解锁系数 = (等级 - 20) / 25;
+  else 解锁系数 = 1;
+  return 1 + (固定倍率 - 1) * Math.max(0, Math.min(1, 解锁系数));
+}
+
+function 读取龙王血脉精神力增幅率_V1(角色 = {}) {
+  const 血脉名 = String(角色?.血脉之力?.血脉 || '').trim();
+  const 等级 = Math.max(1, Number(角色?.属性?.等级 || 1) || 1);
+  if (血脉名.includes('银龙王')) {
+    if (血脉名.includes('龙神') || 等级 >= 100) return 6;
+    if (等级 <= 15) return Math.max(0, 2.58);
+    if (等级 <= 40) return 2.58 + ((0.43 - 2.58) / 25) * (等级 - 15);
+    return Math.max(0, Math.min(1.6, 0.43 + ((1.6 - 0.43) / 58) * (等级 - 40)));
+  }
+  if (血脉名.includes('金龙王')) {
+    const 解封层数 = Math.max(0, Math.floor(Number(角色?.血脉之力?.解封层数 || 0)));
+    if (等级 <= 20) return Math.max(0, 0.56);
+    if (等级 <= 40) return Math.max(0, 0.56 * (40 - 等级) / 20);
+    const 后期解锁 = Math.max(0, Math.min(1, (等级 - 40) / 58)) * Math.min(2.5, 0.35 + 解封层数 * 0.25);
+    return 后期解锁;
+  }
+  return 0;
+}
+
+function 应用龙王血脉精神力加成_V1(精神力上限 = 0, 角色 = {}) {
+  const 基础值 = Math.max(0, Math.floor(Number(精神力上限 || 0)));
+  const 血脉名 = String(角色?.血脉之力?.血脉 || '').trim();
+  const 增幅率 = 读取龙王血脉精神力增幅率_V1(角色);
+  if (!(增幅率 > 0)) return 基础值;
+  const 增幅上限 = 血脉名.includes('银龙王') ? 40000 : 20000;
+  return Math.floor(基础值 + Math.min(基础值 * 增幅率, 增幅上限));
 }
 
 function 规范化属性Schema_V1(data) {
@@ -7777,15 +7870,13 @@ function 规范化角色Schema_V1(char) {
       };
       final_vit_max = 金龙王力量体力最终值(final_vit_max);
       final_str = 金龙王力量体力最终值(final_str);
-      let menInc = final_men_max * (金龙王解封层数 <= 0 ? 2 : 4);
-      final_men_max += Math.min(menInc, 20000);
+      final_men_max = 应用龙王血脉精神力加成_V1(final_men_max, char);
     } else if (bName.includes('银龙王')) {
       let vitInc = final_vit_max * 1;
       final_vit_max += Math.min(vitInc, 20000);
       let strInc = final_str * 1;
       final_str += Math.min(strInc, 20000);
-      let menInc = final_men_max * 6;
-      final_men_max += Math.min(menInc, 40000);
+      final_men_max = 应用龙王血脉精神力加成_V1(final_men_max, char);
     }
     if (char.社交?.势力?.['本体宗']) {
       let vitInc = final_vit_max * 2;
@@ -8178,13 +8269,6 @@ function 规范化角色Schema_V1(char) {
       ensureFusionSkillMentalCost(fusionData?.技能数据, 0.5);
     });
 
-    const 魂灵年限总和 = 读取角色魂灵年限总和_V1(char);
-    const 魂灵年限上限 = 读取精神力魂灵总年限上限_V1(读取角色精神力上限_V1(char));
-    if (魂灵年限总和 > 魂灵年限上限) {
-      if (!char.属性.状态效果 || typeof char.属性.状态效果 !== 'object') char.属性.状态效果 = {};
-      char.属性.状态效果['精神超载'] = { 类型: 'debuff', 层数: 1, 描述: '魂灵年限总和超出精神力承载极限，面临崩溃风险' };
-    }
-
     const 斗铠计算 = 计算斗铠属性加成_V1(char.装备.斗铠);
     char.装备.斗铠._属性加成 = 斗铠计算.属性加成;
     char.装备.斗铠._已排异 = 斗铠计算.已排异;
@@ -8358,6 +8442,35 @@ function 规范化角色Schema_V1(char) {
       char.属性.体力 = char.属性.体力上限;
       char.属性.HP = char.属性.HP上限;
     }
+    if (!char.属性.状态效果 || typeof char.属性.状态效果 !== 'object') char.属性.状态效果 = {};
+    const 魂灵年限总和 = 读取角色魂灵年限总和_V1(char);
+    const 魂灵年限上限 = 读取精神力魂灵总年限上限_V1(char.属性.精神力上限);
+    if (魂灵年限总和 > 魂灵年限上限) {
+      const 超载比例 = Math.max(0, (魂灵年限总和 - 魂灵年限上限) / Math.max(1, 魂灵年限上限));
+      const 反噬层数 = Math.max(1, Math.min(10, Math.ceil(超载比例 * 10)));
+      const 旧超载层数 = Math.max(0, Math.floor(Number(char.属性.状态效果?.['精神超载']?.层数 || 0)));
+      const HP保留比例 = Math.max(0.03, 1 - Math.min(0.97, 0.45 + 超载比例 * 1.4));
+      const 精神保留比例 = Math.max(0, 1 - Math.min(1, 0.7 + 超载比例 * 1.8));
+      char.属性.HP = Math.min(Math.max(0, Number(char.属性.HP || 0)), Math.max(1, Math.floor(char.属性.HP上限 * HP保留比例)));
+      char.属性.体力 = Math.min(Math.max(0, Number(char.属性.体力 || 0)), Math.max(1, Math.floor(char.属性.体力上限 * HP保留比例)));
+      char.属性.精神力 = Math.min(Math.max(0, Number(char.属性.精神力 || 0)), Math.floor(char.属性.精神力上限 * 精神保留比例));
+      char.属性.状态效果['精神超载'] = {
+        类型: 'debuff',
+        层数: 反噬层数,
+        描述: `魂灵年限总和${魂灵年限总和}超过精神力承载上限${魂灵年限上限}，魂灵反噬压制生命、体力与精神力。`,
+        持续回合: 99,
+        战斗效果: { 持续伤害: 0, 跳过回合: 反噬层数 >= 8, 破防比例: Math.min(0.5, 0.08 * 反噬层数) },
+      };
+      if (旧超载层数 !== 反噬层数) {
+        const 反噬结果 = 反噬层数 >= 8 ? '当场昏迷，生命体征跌至濒危线' : 反噬层数 >= 5 ? '精神识海重创，陷入昏迷' : 反噬层数 >= 3 ? '精神识海撕裂，身体重创' : '精神震荡，气血逆冲';
+        追加系统播报文本(
+          data,
+          `[精神超载反噬] ${charName} 魂灵年限总和${魂灵年限总和}超过精神力承载上限${魂灵年限上限}，${反噬结果}！`,
+        );
+      }
+    } else {
+      delete char.属性.状态效果['精神超载'];
+    }
 
     let rep = char.社交.声望 || 0;
     if (rep >= 10000) char.社交.名望等级 = '举世无双';
@@ -8366,7 +8479,6 @@ function 规范化角色Schema_V1(char) {
     else if (rep >= 500) char.社交.名望等级 = '声名鹊起';
     else if (rep >= 100) char.社交.名望等级 = '初露锋芒';
     else char.社交.名望等级 = '籍籍无名';
-    if (!char.属性.状态效果 || typeof char.属性.状态效果 !== 'object') char.属性.状态效果 = {};
     if (char.装备.斗铠?._已排异) {
       if (!char.属性.状态效果['回路冲突']) {
         char.属性.状态效果['回路冲突'] = {
