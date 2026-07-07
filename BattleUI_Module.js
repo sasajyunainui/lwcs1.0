@@ -4400,6 +4400,25 @@ class BattleUIComponent {
       return pools.find(unit => isSameBattleReportName(getCombatReportUnitName(unit), targetName)) || null;
     }
 
+    function 按名称解析角色战斗魂技_战报(unit = {}, name = '') {
+      const query = normalizeBattleActionDisplayName(name || '');
+      if (!unit || typeof unit !== 'object' || !query) return null;
+      const actions = fallbackCollectActions(unit);
+      const matched = actions.find(action => {
+        const names = [
+          action?.name,
+          action?.skill?.name,
+          action?.skill?.魂技名,
+          action?.raw_skill?.name,
+          action?.raw_skill?.魂技名,
+          action?.skill?.__魂技槽位,
+          action?.raw_skill?.__魂技槽位,
+        ].map(item => normalizeBattleActionDisplayName(item || '')).filter(Boolean);
+        return names.some(item => item === query || isSameBattleReportName(item, query));
+      });
+      return matched?.raw_skill || matched?.skill || null;
+    }
+
     function 读取战报伤害烈度文本(hit = {}, totalDamage = 0, context = {}) {
       const targetName = String(hit?.target || '').trim();
       const target = 查找战报上下文单位(context, targetName);
