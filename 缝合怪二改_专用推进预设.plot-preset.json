@@ -342,7 +342,7 @@
       }
     ],
     "globalRevision": 0,
-    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
     "prompts": [
       {
         "id": "mainPrompt",
@@ -362,7 +362,7 @@
         "id": "finalSystemDirective",
         "name": "最终注入指令 (Storyteller Directive)",
         "role": "system",
-        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{stage}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
+        "content": "$8\n\n以上是用户的本轮输入，以下<act>包含角色行动和台词：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
         "deletable": false
       }
     ],

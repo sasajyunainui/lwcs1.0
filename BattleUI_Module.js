@@ -5584,6 +5584,9 @@ class BattleUIComponent {
       构建无伤害回合公开战报Block条目(events).forEach(entry => {
         registerAstEntry(entry);
       });
+      构建玩家起手反馈公开战报Block条目(events, astFirstEntries).forEach(entry => {
+        registerAstEntry(entry);
+      });
       const entryOrder = (entry = {}) => {
         const sourceIds = [];
         const blocks = Array.isArray(entry?.blocks) ? entry.blocks : [];
@@ -5604,6 +5607,56 @@ class BattleUIComponent {
           return entryOrder(left) - entryOrder(right);
         })
         .slice(0, Math.max(0, Number(limit || 8)));
+    }
+
+    function 构建玩家起手反馈公开战报Block条目(eventLedger = [], existingEntries = []) {
+      const entries = [];
+      const usedEventIds = new Set();
+      const usedNodeIds = new Set();
+      const visibleTexts = [];
+      (Array.isArray(existingEntries) ? existingEntries : []).forEach(entry => {
+        const blocks = Array.isArray(entry?.blocks) ? entry.blocks : [];
+        const text = String(entry?.text || 序列化公开战报Blocks(blocks) || '').trim();
+        if (text) visibleTexts.push(text);
+        blocks.forEach(block => {
+          const eventId = String(block?.sourceEventId || '').trim();
+          const nodeId = String(block?.sourceNodeId || '').trim();
+          if (eventId) usedEventIds.add(eventId);
+          if (nodeId) usedNodeIds.add(nodeId);
+          if (Array.isArray(block?.sourceEventIds)) block.sourceEventIds.forEach(id => {
+            const value = String(id || '').trim();
+            if (value) usedEventIds.add(value);
+          });
+          if (Array.isArray(block?.sourceNodeIds)) block.sourceNodeIds.forEach(id => {
+            const value = String(id || '').trim();
+            if (value) usedNodeIds.add(value);
+          });
+        });
+      });
+      (Array.isArray(eventLedger) ? eventLedger : [])
+        .filter(event => event && typeof event === 'object')
+        .filter(event => String(event?.eventKind || '').trim() === 'action_start')
+        .filter(event => String(event?.actorSide || '').trim() === 'player')
+        .filter(event => event?.meta?.source !== 'summon' && event?.source !== 'summon' && !/召唤自主/.test(String(event?.actionType || '')))
+        .filter(event => !判定公开战报事件是内部兜底(event))
+        .forEach(event => {
+          const eventId = String(event?.eventId || '').trim();
+          const nodeId = String(event?.chainNodeId || '').trim();
+          const actor = String(event?.actorName || '玩家').trim();
+          const action = normalizeBattleActionDisplayName(event?.finalActionName || event?.actionName || '行动');
+          if ((eventId && usedEventIds.has(eventId)) || (nodeId && usedNodeIds.has(nodeId))) return;
+          if (visibleTexts.some(text => actor && action && text.includes(actor) && text.includes(`【${action}】`))) return;
+          const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
+          const prefix = round > 0 ? `第${round}回合：` : '';
+          const text = `${prefix}${actor}亮出【${action}】的起手，稳住战斗节奏。`;
+          const textBlock = 构建公开战报文本块(text, event);
+          if (!textBlock) return;
+          textBlock.projectionSource = 'player_action_start_ast';
+          if (eventId) textBlock.sourceEventIds = [...new Set([...(Array.isArray(textBlock.sourceEventIds) ? textBlock.sourceEventIds : []), eventId])];
+          if (nodeId) textBlock.sourceNodeIds = [...new Set([...(Array.isArray(textBlock.sourceNodeIds) ? textBlock.sourceNodeIds : []), nodeId])];
+          entries.push({ round, blocks: [textBlock], text: 序列化公开战报Blocks([textBlock]) || text, projectionSource: 'player_action_start_ast' });
+        });
+      return entries;
     }
 
     function 读取战报上下文单位(context = {}) {
@@ -19821,6 +19874,123 @@ class BattleUIComponent {
       };
     }
 
+    function 生成状态生命周期规则调试结果() {
+      const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+      combatData.回合 = 1;
+      combatData.战斗类型 = '状态生命周期规则夹具';
+      玩家.状态效果 ||= {};
+      玩家.状态效果.专注 = {
+        类型: 'buff',
+        状态名称: '专注',
+        duration: 1,
+        战斗效果: { ...createEmptyCombatEffectMap(), cast_speed_bonus: 0.05 },
+      };
+      玩家.状态效果.凝滞 = {
+        类型: 'debuff',
+        状态名称: '凝滞',
+        duration: 2,
+        战斗效果: { ...createEmptyCombatEffectMap(), cast_speed_penalty: 0.08 },
+      };
+      const 起手 = 写入战斗事件账本(combatData, {
+        eventKind: 'action_start',
+        round: 1,
+        actorName: 玩家.name,
+        actorSide: 'player',
+        targetName: 玩家.name,
+        actionName: '状态调律',
+        actionType: '辅助',
+        result: 'declared',
+        primaryOutcome: 'action_committed',
+      });
+      写入战斗事件账本(combatData, {
+        eventKind: 'state_replace',
+        round: 1,
+        actorName: 玩家.name,
+        actorSide: 'player',
+        targetName: 玩家.name,
+        actionName: '状态调律',
+        actionType: 'state_replace',
+        sourceActionName: '状态调律',
+        sourceActionId: 起手?.actionId || '',
+        result: 'refresh',
+        primaryOutcome: 'state_refresh',
+        duration: 3,
+        calculationTrace: [
+          ['stateName', '专注'],
+          ['stackMode', 'refresh_duration'],
+          ['previousDuration', 1],
+          ['nextDuration', 3],
+        ],
+        meta: {
+          stateName: '专注',
+          previousDuration: 1,
+          nextDuration: 3,
+          calculationTrace: [
+            ['stateName', '专注'],
+            ['stackMode', 'refresh_duration'],
+            ['previousDuration', 1],
+            ['nextDuration', 3],
+          ],
+          stackMode: 'refresh_duration',
+          replaceReason: 'same_state_refresh_duration',
+        },
+      });
+      写入战斗事件账本(combatData, {
+        eventKind: 'state_remove',
+        round: 1,
+        actorName: 玩家.name,
+        actorSide: 'player',
+        targetName: 玩家.name,
+        actionName: '状态调律',
+        actionType: 'state_remove',
+        sourceActionName: '状态调律',
+        sourceActionId: 起手?.actionId || '',
+        result: 'removed',
+        primaryOutcome: 'state_remove',
+        calculationTrace: [
+          ['stateName', '凝滞'],
+          ['stackMode', 'cleanse_or_dispel'],
+          ['previousDuration', 2],
+          ['nextDuration', 0],
+        ],
+        meta: {
+          stateName: '凝滞',
+          removedStates: ['凝滞'],
+          calculationTrace: [
+            ['stateName', '凝滞'],
+            ['stackMode', 'cleanse_or_dispel'],
+            ['previousDuration', 2],
+            ['nextDuration', 0],
+          ],
+          stackMode: 'cleanse_or_dispel',
+          replaceReason: 'state_remove_effect',
+          previousDuration: 2,
+          nextDuration: 0,
+        },
+      });
+      const eventLedger = combatData.__battleEventLedger || [];
+      const publicReportBlocks = 构建事件账本公开战报Blocks(eventLedger, 8, { combatData });
+      return {
+        result: {
+          preview: true,
+          mode: 'battle_preview',
+          battleMode: 'state_lifecycle_rules',
+          modeLabel: '状态生命周期规则',
+          roundsExecuted: 1,
+          battleOutcome: { type: '未分胜负', label: '状态生命周期规则' },
+          publicReportBlocks,
+          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          combatData,
+          resolutionTrace: combatData.__battleResolutionTrace || [],
+          eventLedger,
+          turnResult: null,
+        },
+        combatData,
+        玩家,
+        敌人,
+      };
+    }
+
     function 生成预声明目标丢失调试结果() {
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
@@ -20635,6 +20805,7 @@ class BattleUIComponent {
     root.__LWCS_DEBUG_BATTLE_NON_HOSTILE_REACTION_FILTER_RESULT__ = () => 生成非敌对动作不触发反应调试结果();
     root.__LWCS_DEBUG_BATTLE_TARGET_POOL_HARD_RULES_RESULT__ = () => 生成目标池硬规则调试结果();
     root.__LWCS_DEBUG_BATTLE_CAP_REACHED_RESULT__ = () => 生成上限拦截调试结果();
+    root.__LWCS_DEBUG_BATTLE_STATE_LIFECYCLE_RESULT__ = () => 生成状态生命周期规则调试结果();
     root.__LWCS_DEBUG_BATTLE_DECLARED_TARGET_LOST_RESULT__ = () => 生成预声明目标丢失调试结果();
     root.__LWCS_DEBUG_BATTLE_MULTI_HOST_SUMMON_ASSIST_RESULT__ = () => 生成多宿主召唤协同调试结果();
     root.__LWCS_DEBUG_BATTLE_OPPOSING_SIDE_SUMMON_ASSIST_RESULT__ = () => 生成敌我双方召唤协同调试结果();
@@ -24441,6 +24612,7 @@ class BattleUIComponent {
           };
         }
         if (kind === 'state_tick') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: 'state_tick' };
+        if (kind === 'state_replace' || kind === 'state_remove') return { nodeKind: 'state_settlement', nodeLayer: 'settlement', primaryOutcome: kind };
         if (kind === 'blocked_settlement') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'interrupted' };
         if (kind === 'resource_change') return { nodeKind: 'final_result', nodeLayer: 'settlement', primaryOutcome: 'resource_recovered' };
         if (kind === 'counter_window') return { nodeKind: 'counter_window', nodeLayer: 'system_check', primaryOutcome: result === 'opened' ? 'counter_window_opened' : 'no_valid_window' };
@@ -25049,6 +25221,20 @@ class BattleUIComponent {
             { key: 'amount', label: '结算数值', value: Math.max(0, Number(event?.meta?.amount ?? event?.amount ?? 0)) },
             { key: 'resource', label: '结算资源', value: String(event?.meta?.resource || '生命值').trim() },
           ];
+        }
+        if (kind === 'state_replace' || kind === 'state_remove') {
+          const trace = [
+            { key: 'sourceAction', label: '来源动作', value: normalizeBattleActionDisplayName(event.actionName || event.sourceActionName || meta.sourceActionName || '') },
+            { key: 'actor', label: '来源方', value: String(event.actorName || '').trim() },
+            { key: 'target', label: '目标', value: String(event.targetName || '').trim() },
+            { key: 'stateName', label: '状态', value: String(meta.stateName || event.stateName || 读取事件账本状态名(event) || '').trim() },
+            { key: 'stackMode', label: '叠加规则', value: String(meta.stackMode || '').trim() },
+            { key: 'previousDuration', label: '原持续', value: Math.max(0, Number(meta.previousDuration || 0)) },
+            { key: 'nextDuration', label: '新持续', value: Math.max(0, Number(meta.nextDuration ?? event.duration ?? 0)) },
+            { key: 'result', label: '结算结果', value: String(event.result || '').trim() || kind },
+          ];
+          if (String(meta.replaceReason || '').trim()) trace.push({ key: 'replaceReason', label: '变更原因', value: String(meta.replaceReason || '').trim() });
+          return trace.filter(item => item.value !== undefined && item.value !== null && String(item.value).trim() !== '');
         }
         if (kind === 'counter') {
           const damage = Math.max(0, Math.round(读取事件账本数值(event, 'damage')));
@@ -37285,6 +37471,43 @@ class BattleUIComponent {
           已直接消费效果集合.add(effect);
           const 正向资源变化 = effect?.原型 === '资源变化' && 读取战斗数值正负(effect?.数值) > 0;
           if (!正向资源变化 && 源动作被机制抹消(effect)) return false;
+          const 写入状态生命周期事实 = (eventKind, targetObj, payload = {}) => {
+            const stateName = String(payload.stateName || payload.状态名 || '').trim();
+            if (!stateName) return null;
+            return 写入战斗事件账本(combatData, {
+              eventKind,
+              round: Number(combatData?.回合 || 0),
+              actorName: attacker?.name || attacker?.名称 || '',
+              targetName: targetObj?.name || targetObj?.名称 || '',
+              actionName: playerAction.skill?.name || playerAction.skill?.魂技名 || skillName || '',
+              actionType: eventKind,
+              sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || skillName || '',
+              sourceRound: Number(combatData?.回合 || 0),
+              result: String(payload.result || eventKind).trim(),
+              primaryOutcome: String(payload.primaryOutcome || eventKind).trim(),
+              duration: Math.max(0, Number(payload.duration || 0)),
+              calculationTrace: [
+                ['stateName', stateName],
+                ['stackMode', String(payload.stackMode || '').trim()],
+                ['previousDuration', Math.max(0, Number(payload.previousDuration || 0))],
+                ['nextDuration', Math.max(0, Number(payload.nextDuration || payload.duration || 0))],
+              ],
+              meta: {
+                stateName,
+                previousDuration: Math.max(0, Number(payload.previousDuration || 0)),
+                nextDuration: Math.max(0, Number(payload.nextDuration || payload.duration || 0)),
+                calculationTrace: [
+                  ['stateName', stateName],
+                  ['stackMode', String(payload.stackMode || '').trim()],
+                  ['previousDuration', Math.max(0, Number(payload.previousDuration || 0))],
+                  ['nextDuration', Math.max(0, Number(payload.nextDuration || payload.duration || 0))],
+                ],
+                stackMode: String(payload.stackMode || '').trim(),
+                replaceReason: String(payload.replaceReason || '').trim(),
+                removedStates: Array.isArray(payload.removedStates) ? payload.removedStates.map(item => String(item || '').trim()).filter(Boolean) : undefined,
+              },
+            });
+          };
           const applyStandaloneStateEffect = stateEffect => {
             const 状态名 = String(stateEffect?.状态 || '').trim();
             if (!状态名) return false;
@@ -37429,6 +37652,23 @@ class BattleUIComponent {
                 result.desc += ` [持续状态移除] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}的[${状态名}]被[${持续移除命中.key}]拦截。`;
                 return;
               }
+              if (oldState) {
+                const 旧持续 = Math.max(0, Number(oldState.duration || oldState.持续回合 || 0));
+                const 新持续 = Math.max(0, Number(下一持续 || 0));
+                const 旧强度 = Number(oldState.状态位阶 ?? oldState.位阶 ?? oldState.强度 ?? oldState.层数 ?? 0);
+                const 新强度 = Number(stateEffect.状态位阶 ?? stateEffect.位阶 ?? stateEffect.强度 ?? 0);
+                const 是高阶覆盖 = Number.isFinite(新强度) && Number.isFinite(旧强度) && 新强度 > 旧强度;
+                写入状态生命周期事实('state_replace', targetObj, {
+                  stateName: 状态名,
+                  result: 是高阶覆盖 ? 'replace' : 'refresh',
+                  primaryOutcome: 是高阶覆盖 ? 'state_replace' : 'state_refresh',
+                  previousDuration: 旧持续,
+                  nextDuration: 新持续,
+                  duration: 新持续,
+                  stackMode: 是高阶覆盖 ? 'replace' : 'refresh_duration',
+                  replaceReason: 是高阶覆盖 ? 'higher_tier_replaced_lower_tier' : 'same_state_refresh_duration',
+                });
+              }
               targetObj.状态效果[状态名] = 新状态条目;
               targetObj.final = buildCombatFinalStats(targetObj);
               if (targetObj.召唤键) 同步召唤单位镜像(targetObj);
@@ -37479,6 +37719,14 @@ class BattleUIComponent {
               const removed = removeConditionsByPrototypeFilter(targetObj, removeEffect, attacker);
               if (removed.length > 0) {
                 removedAny = true;
+                removed.forEach(stateName => 写入状态生命周期事实('state_remove', targetObj, {
+                  stateName,
+                  result: 'removed',
+                  primaryOutcome: 'state_remove',
+                  removedStates: removed,
+                  stackMode: 'cleanse_or_dispel',
+                  replaceReason: 'state_remove_effect',
+                }));
                 if (是主原型效果(removeEffect)) 登记主原型成立目标(targetObj);
                 result.desc += ` [状态移除] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}移除了[${removed.join('/')}].`;
               } else if (removed.__概率失败数 > 0) {
@@ -37842,6 +38090,35 @@ class BattleUIComponent {
           ));
         }
 
+          const 写入直接状态移除事实 = (targetObj, removed = [], reason = 'state_remove') => {
+            (Array.isArray(removed) ? removed : []).map(item => String(item || '').trim()).filter(Boolean).forEach(stateName => {
+              写入战斗事件账本(combatData, {
+                eventKind: 'state_remove',
+                round: Number(combatData?.回合 || 0),
+                actorName: attacker?.name || attacker?.名称 || '',
+                targetName: targetObj?.name || targetObj?.名称 || '',
+                actionName: playerAction.skill?.name || playerAction.skill?.魂技名 || skillName || '',
+                actionType: 'state_remove',
+                sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || skillName || '',
+                sourceRound: Number(combatData?.回合 || 0),
+                result: 'removed',
+                primaryOutcome: 'state_remove',
+                meta: {
+                  stateName,
+                  removedStates: removed,
+                  calculationTrace: [
+                    ['stateName', stateName],
+                    ['stackMode', 'cleanse_or_dispel'],
+                    ['previousDuration', 0],
+                    ['nextDuration', 0],
+                  ],
+                  stackMode: 'cleanse_or_dispel',
+                  replaceReason: reason,
+                },
+              });
+            });
+          };
+
           if (directCleanseEffect && !源动作被机制抹消(directCleanseEffect)) {
             const cleanseTargets = 过滤被时光回溯规避目标列表(resolveSkillEffectTargetCharacters(
               playerAction.skill,
@@ -37853,6 +38130,7 @@ class BattleUIComponent {
             cleanseTargets.forEach(cleanseTarget => {
               const removed = removeNegativeConditionsByCleanse(cleanseTarget, 读取状态移除数量(directCleanseEffect.数量 ?? 1));
               if (removed.length > 0) {
+                写入直接状态移除事实(cleanseTarget, removed, 'direct_cleanse');
                 if (是主原型效果(directCleanseEffect)) 登记主原型成立目标(cleanseTarget);
                 result.desc += ` [净化生效] ${cleanseTarget === attacker ? '自身' : cleanseTarget.name}清除了[${removed.join('/')}]。`;
               } else
@@ -37863,7 +38141,10 @@ class BattleUIComponent {
                 attacker,
                 读取状态移除数量(directCleanseEffect.数量 ?? 1),
               );
-              if (removedSelf.length > 0) result.desc += ` [自身反馈] 自身同步清除了[${removedSelf.join('/')}]。`;
+              if (removedSelf.length > 0) {
+                写入直接状态移除事实(attacker, removedSelf, 'direct_cleanse_self_mirror');
+                result.desc += ` [自身反馈] 自身同步清除了[${removedSelf.join('/')}]。`;
+              }
             }
           }
           if (directDispelEffect && !源动作被机制抹消(directDispelEffect)) {
@@ -37877,6 +38158,7 @@ class BattleUIComponent {
             dispelTargets.forEach(dispelTarget => {
               const removed = removePositiveConditionsByDispel(dispelTarget, Number(directDispelEffect.驱散数量 || 1));
               if (removed.length > 0) {
+                写入直接状态移除事实(dispelTarget, removed, 'direct_dispel');
                 if (是主原型效果(directDispelEffect)) 登记主原型成立目标(dispelTarget);
                 result.desc += ` [驱散生效] ${dispelTarget === attacker ? '自身' : dispelTarget.name}失去了[${removed.join('/')}]。`;
               } else
@@ -37887,7 +38169,10 @@ class BattleUIComponent {
                 attacker,
                 Number(directDispelEffect.驱散数量 || 1),
               );
-              if (removedSelf.length > 0) result.desc += ` [自身反馈] 自身同步失去了[${removedSelf.join('/')}]。`;
+              if (removedSelf.length > 0) {
+                写入直接状态移除事实(attacker, removedSelf, 'direct_dispel_self_mirror');
+                result.desc += ` [自身反馈] 自身同步失去了[${removedSelf.join('/')}]。`;
+              }
             }
           }
           if (directStatusRemoveEffects.length) {
@@ -37903,6 +38188,7 @@ class BattleUIComponent {
               statusTargets.forEach(statusTarget => {
                 const removed = removeConditionsByPrototypeFilter(statusTarget, effect, attacker);
                 if (removed.length > 0) {
+                  写入直接状态移除事实(statusTarget, removed, 'direct_status_remove');
                   if (是主原型效果(effect)) 登记主原型成立目标(statusTarget);
                   result.desc += ` [状态移除] ${statusTarget === attacker ? '自身' : statusTarget.name}移除了[${removed.join('/')}]。`;
                 } else if (removed.__概率失败数 > 0)
@@ -42193,6 +42479,22 @@ class BattleUIComponent {
           return action;
         }
 
+        function 读取召唤物继承敌对目标(actorEntry = {}, enemyTeam = [], combatData = {}) {
+          const actor = actorEntry?.char;
+          if (!actor?.召唤键) return null;
+          const validEnemies = (enemyTeam || []).filter(unit => unit && isCombatUnitAbleToFight(unit));
+          if (!validEnemies.length) return null;
+          const hostName = String(actor?.宿主名 || actor?.__宿主?.name || actor?.__宿主?.名称 || '').trim();
+          const allySide = actorEntry.side === 'enemy' ? '敌方' : '玩家';
+          const host = actor.__宿主 || 读取战斗主队单位列表(combatData, allySide).find(unit => isCombatUnitIdentityMatch(unit, hostName));
+          const hostFocus = getActorFocusedTarget(host, validEnemies);
+          if (hostFocus) return hostFocus;
+          const teamIntent = 确保队伍临时意图(combatData)[allySide] || {};
+          const focusName = String(teamIntent.集火目标 || '').trim();
+          if (!focusName) return null;
+          return validEnemies.find(unit => isCombatUnitIdentityMatch(unit, focusName)) || null;
+        }
+
         function chooseTargetForActor(actorEntry, battleState) {
           if (!actorEntry || !battleState?.combatData) return null;
           const enemyTeam =
@@ -42203,7 +42505,9 @@ class BattleUIComponent {
             actorEntry.side === 'player'
               ? 读取战斗阵营单位列表(battleState.combatData, '玩家')
               : 读取战斗阵营单位列表(battleState.combatData, '敌方');
-          const focusEnemy = getActorFocusedTarget(actorEntry.char, enemyTeam);
+          const inheritedSummonTarget = 读取召唤物继承敌对目标(actorEntry, enemyTeam, battleState.combatData);
+          if (inheritedSummonTarget) setActorFocusTarget(actorEntry.char, inheritedSummonTarget, 'shared_vision_focus', 1);
+          const focusEnemy = inheritedSummonTarget || getActorFocusedTarget(actorEntry.char, enemyTeam);
           return {
             enemyTarget: focusEnemy || findTarget(actorEntry.char, enemyTeam, battleState.combatData),
             allyTarget: findAllyTarget(actorEntry.char, allyTeam, battleState.combatData),
