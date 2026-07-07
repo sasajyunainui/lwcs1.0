@@ -24510,6 +24510,20 @@ class BattleUIComponent {
             ['attackerCastTime', '攻方前摇'],
             ['reactorCastTime', '应招前摇'],
             ['threatScore', '威胁评分'],
+            ['attackerSpeed', '攻方出手速度'],
+            ['defenderReaction', '防守反应值'],
+            ['castPenalty', '前摇速度惩罚'],
+            ['attackerAgility', '攻方敏捷'],
+            ['defenderAgility', '防守方敏捷'],
+            ['defenderMentalMax', '防守方精神上限'],
+            ['attackerSpeedBonus', '攻方速度加值'],
+            ['castSpeedBonus', '前摇加速'],
+            ['castSpeedPenalty', '前摇减速'],
+            ['defenderReactionBonus', '防守反应加值'],
+            ['defenderReactionPenalty', '防守反应惩罚'],
+            ['defenderAgilityMult', '敏捷倍率'],
+            ['maintainReactionPenalty', '维持惩罚'],
+            ['reactionBudget', '反应预算'],
             ['dodgeRate', '闪避率'],
             ['dodgeRoll', '闪避投点'],
             ['actualDefense', '有效防御'],
@@ -28038,9 +28052,9 @@ class BattleUIComponent {
           const 自动技能名 = String(autoAction?.skill?.name || autoAction?.skill?.魂技名 || autoAction?.type || autoAction?.action_type || '').trim();
           const 自动动作重复次数 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(attacker).recent_actions || {}, [自动技能名], 0);
           const 需要避开重复动作 =
-            (首轮手选动作签名 && 读取本次动作签名(autoAction) === 首轮手选动作签名) ||
-            (首轮手选技能名 && 自动技能名 && 自动技能名 === 首轮手选技能名) ||
-            (自动技能名 && 自动动作重复次数 >= 2 && !/收招转防|战术观察|防御|危机自保|承伤硬抗|伺机闪避|闪避|借力守势|坚壁反制/.test(自动技能名));
+            自动技能名 &&
+            自动动作重复次数 >= 2 &&
+            !/收招转防|战术观察|防御|危机自保|承伤硬抗|伺机闪避|闪避|借力守势|坚壁反制/.test(自动技能名);
           if (需要避开重复动作) {
             const 备选技能 = collectCombatSkills(attacker, [])
               .map(skill => newSkillData(skill))
@@ -28085,35 +28099,14 @@ class BattleUIComponent {
                 decision_log: `[自动续推] 避开已完成的【${自动技能名 || 首轮手选技能名 || '首轮动作'}】，轮换为【${备选技能.name || 备选技能.魂技名 || '战术动作'}】继续试探。`,
               };
             }
-            const 试探技能 = normalizeSkillData({
-              name: '普通攻击',
-              魂技名: '普通攻击',
-              技能分类: '输出',
-              目标: '敌方单体',
-              消耗: '无',
-              前摇: 10,
-              _效果数组: [
-                { 原型: '伤害结算', 目标: '敌方单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
-              ],
-            }, '普通攻击');
-            if (targets?.enemyTarget || defender) {
-              回填行动闭环审计最终动作(combatData, attacker, {
-                round: Number(combatData?.回合 || roundCount || 0),
-                finalResolvedActionName: '普通攻击',
-                hitCandidateName: 自动技能名 || 首轮手选技能名 || '',
-                actionOverrideSource: '续推轮换',
-                目标: targets?.enemyTarget?.name || defender?.name || '',
-                目标语义: '敌方单体',
-                承载方式: '',
-              });
+            if (autoAction && !/普通攻击|常规攻击/.test(自动技能名)) {
               return {
-                action_type: '常规攻击',
-                type: '常规攻击',
-                skill: 试探技能,
-                cast_time: 10,
-                target_name: targets?.enemyTarget?.name || defender?.name || '',
+                ...autoAction,
+                action_type: autoAction.action_type || autoAction.type || '释放魂技',
+                type: autoAction.type || autoAction.action_type || '释放魂技',
+                target_name: autoAction.target_name || targets?.enemyTarget?.name || defender?.name || '',
                 player_auto_continuation: true,
-                decision_log: `[自动续推] 已完成【${自动技能名 || 首轮手选技能名 || '首轮动作'}】，本回合改用【普通攻击】重新试探。`,
+                decision_log: `[自动续推] 未找到更优轮换动作，继续执行当前评估最优的【${自动技能名 || '战术动作'}】。`,
               };
             }
             return {
@@ -28204,6 +28197,7 @@ class BattleUIComponent {
               reactorCastTime: Number(extra.reactorCastTime || 0),
               castTimeGap: Number(extra.castTimeGap || 0),
               threatScore: Number(extra.threatScore || 0),
+              ...(combatData && typeof combatData.__lastReactionRatioTrace === 'object' ? combatData.__lastReactionRatioTrace : {}),
               reasonCode: String(extra.reasonCode || (eventKind === 'pass' ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED')).trim(),
               reasonText: String(extra.reasonText || (eventKind === 'pass' ? '未能取得有效应招窗口' : '行为层选择该应招动作')).trim(),
               replanReasonCode: String(extra.replanReasonCode || '').trim(),
@@ -32450,6 +32444,27 @@ class BattleUIComponent {
           ratio *= 0.5;
         }
 
+        if (combatData && typeof combatData === 'object') {
+          combatData.__lastReactionRatioTrace = {
+            reactionRatio: ratio,
+            attackerSpeed,
+            defenderReaction,
+            castPenalty,
+            attackerAgility: Number(attacker?.agi || 0),
+            defenderAgility: Number(defender?.agi || 0),
+            defenderMentalMax: Number(defender?.men_max || 0),
+            attackerSpeedBonus: totalAtkSpeedBonus,
+            castSpeedBonus: totalCastSpeedBonus,
+            castSpeedPenalty: totalCastSpeedPenalty,
+            defenderReactionBonus: Number(defender?.temp_reaction_bonus || 0),
+            defenderReactionPenalty: Number(defender?.temp_reaction_penalty || 0),
+            defenderAgilityMult: Number(defender?.temp_agi_mult || 1),
+            maintainReactionPenalty: Number(defender?.__维持反应惩罚 || 0),
+            reactionBudget: Number(defender?.__本回合反应预算 || 0),
+            cannotReact: defender.temp_cannot_react === true,
+            firstStrikePenalty: combatData.先攻 !== '无' && combatData.先攻 !== defender.name,
+          };
+        }
         return ratio;
       }
 
@@ -45312,12 +45327,50 @@ class BattleUIComponent {
           return 包裹判定动作名称(名称);
         }
 
+        function 格式化玩家判定结果(value = '') {
+          const raw = String(value || '').trim();
+          if (!raw) return '';
+          if (/counter_secondary_reaction/i.test(raw)) return '反防反应';
+          if (/counter_reaction/i.test(raw)) return '防反应对';
+          if (/replanned/i.test(raw)) return '临场改招';
+          if (/guarded[_\s-]+hit|hit[_\s-]+guarded/i.test(raw)) return '防守后承击';
+          if (/^(dodged|evaded|dodge_success|miss)$/i.test(raw)) return '规避成功';
+          if (/^(failed|fail|reaction_failed)$/i.test(raw)) return '应对失败';
+          if (/^(attempted)$/i.test(raw)) return '尝试应对';
+          if (/^(guarded|blocked|defended)$/i.test(raw)) return '防守成立';
+          if (/^(hit|damaged|success|applied|opened)$/i.test(raw)) return '判定成功';
+          if (/^(resisted|immune|immunity)$/i.test(raw)) return /immune/i.test(raw) ? '免疫' : '抵抗成功';
+          if (/^(critical)$/i.test(raw)) return '关键事件';
+          return raw.replace(/_/g, ' ');
+        }
+
+        function 格式化玩家反应类型(value = '') {
+          const raw = String(value || '').trim();
+          if (!raw) return '';
+          const map = {
+            counter_secondary_reaction: '反防反应',
+            counter_reaction: '防反应对',
+            agile_interrupt: '敏攻截断',
+            dodge: '闪避应对',
+            guard: '防御应对',
+            parry: '偏转应对',
+            no_reaction: '无力反应',
+          };
+          return map[raw] || raw.replace(/_/g, ' ');
+        }
+
+        function 清洗玩家可见判定文本(line = '') {
+          return String(line || '')
+            .replace(/\b(counter_secondary_reaction|counter_reaction|guarded_hit|hit_guarded|replanned|reaction_failed|failed|dodged|evaded|dodge_success|guarded|blocked|defended|critical)\b/gi, match => 格式化玩家判定结果(match));
+        }
+
         function 转义正则文本(text = '') {
           return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
         function 渲染判定侧写HTML(line = '', 轨迹 = {}) {
-          let html = htmlEscapeText(String(line || '')).replace(/\r?\n/g, '<br>');
+          const safeLine = 清洗玩家可见判定文本(line);
+          let html = htmlEscapeText(safeLine).replace(/\r?\n/g, '<br>');
           const entities = [
             { className: 'battle-preview-trace-actor', value: 轨迹.行动者 },
             { className: 'battle-preview-trace-target', value: 轨迹.目标 || 轨迹.实际目标 },
@@ -45329,7 +45382,7 @@ class BattleUIComponent {
           });
           html = html.replace(/【([^】]+)】/g, '<span class="battle-preview-trace-skill">【$1】</span>');
           html = html.replace(/^(├─|└─)/, '<span class="battle-preview-trace-muted">$1</span>');
-          if (/🏁\s*决断/.test(line)) html = `<span class="battle-preview-trace-decision">${html}</span>`;
+          if (/🏁\s*决断/.test(safeLine)) html = `<span class="battle-preview-trace-decision">${html}</span>`;
           return html;
         }
 
@@ -45998,10 +46051,20 @@ class BattleUIComponent {
           return /missed|错失|失败|fail/i.test(`${result} ${reasonCode} ${outcome} ${failureReason}`);
         }
 
-        function 构建因果链行动区块条目(resolutionTrace = []) {
+        function 构建因果链行动区块条目(resolutionTrace = [], decisionTrace = []) {
           const nodes = (Array.isArray(resolutionTrace) ? resolutionTrace : [])
             .filter(item => item && typeof item === 'object');
           if (!nodes.length) return [];
+          const behaviorTraceByActorRound = new Map();
+          (Array.isArray(decisionTrace) ? decisionTrace : [])
+            .map(item => 归一判定轨迹(item || {}))
+            .filter(item => item && /战术确立|主动规划|应招审计|再判定审计|换招审计/.test(读取轨迹类型(item)))
+            .forEach(item => {
+              const key = `${Number(item.回合 || 0)}::${String(item.行动者 || '').trim()}`;
+              if (!String(item.行动者 || '').trim() || !(Number(item.回合 || 0) > 0)) return;
+              if (!behaviorTraceByActorRound.has(key)) behaviorTraceByActorRound.set(key, []);
+              behaviorTraceByActorRound.get(key).push(item);
+            });
           const nodeById = new Map(nodes.map(node => [String(node?.nodeId || '').trim(), node]).filter(([id]) => id));
           const byParent = new Map();
           nodes.forEach(node => {
@@ -46037,6 +46100,7 @@ class BattleUIComponent {
               root,
               initialIntent,
               children: resultChildren,
+              behaviorTraces: behaviorTraceByActorRound.get(`${Number(root.round || 0)}::${String(root.actorName || '').trim()}`) || [],
               byParent,
               nodeById,
               fromResolutionTrace: true,
@@ -46063,6 +46127,7 @@ class BattleUIComponent {
                   source: 'summon_create',
                 },
                 children: [node],
+                behaviorTraces: behaviorTraceByActorRound.get(`${Number(node.round || 0)}::${String(node.actorName || 读取结算轨迹值(node.calculationTrace, 'actor') || '').trim()}`) || [],
                 byParent: new Map([[`presentation:${node.nodeId || summonName || sourceAction}`, [node]]]),
                 nodeById: new Map([[String(node?.nodeId || '').trim(), node]].filter(([id]) => id)),
                 fromResolutionTrace: true,
@@ -46204,6 +46269,7 @@ class BattleUIComponent {
           const root = 条目?.root || {};
           const initialIntentNode = 条目?.initialIntent || null;
           const children = Array.isArray(条目?.children) ? 条目.children : [];
+          const behaviorTraces = Array.isArray(条目?.behaviorTraces) ? 条目.behaviorTraces : [];
           const byParent = 条目?.byParent instanceof Map ? 条目.byParent : new Map();
           const nodeById = 条目?.nodeById instanceof Map ? 条目.nodeById : new Map([[String(root?.nodeId || '').trim(), root], ...children.map(node => [String(node?.nodeId || '').trim(), node])].filter(([id]) => id));
           const actor = String(root.actorName || '行动者').trim();
@@ -46212,11 +46278,15 @@ class BattleUIComponent {
           const finalAction = normalizeBattleActionDisplayName(root.finalActionName || root.actionName || '行动');
           const discardedAction = normalizeBattleActionDisplayName(root.discardedActionName || (initialAction && initialAction !== finalAction ? initialAction : ''));
           const lines = [];
-          const pushTimelineLine = (text, kind = 'detail') => {
+          const detailLines = [];
+          const pushTimelineLine = (text, kind = 'detail', options = {}) => {
             const lineText = String(text || '').trimEnd();
             if (!lineText) return;
-            lines.push({ text: lineText, kind: String(kind || 'detail').trim() || 'detail' });
+            const item = { text: lineText, kind: String(kind || 'detail').trim() || 'detail' };
+            if (options && options.detail === true) detailLines.push(item);
+            else lines.push(item);
           };
+          const pushDetailLine = (text, kind = 'detail') => pushTimelineLine(text, kind, { detail: true });
           const mapTimelineKindFromNode = nodeKind => {
             const kind = String(nodeKind || '').trim();
             if (kind === 'initial_intent' || kind === 'replan_decision') return 'intent';
@@ -46239,6 +46309,58 @@ class BattleUIComponent {
           } else {
             pushTimelineLine(`├─ 最终动作：【${finalAction}】${target ? ` 指向${target}` : ''}`, 'detail');
           }
+          const 构建行为演算明细行 = trace => {
+            const normalized = 归一判定轨迹(trace || {});
+            const 类型 = 读取轨迹类型(normalized);
+            const action = normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || '行动');
+            const hit = normalizeBattleActionDisplayName(normalized.hitCandidateName || '');
+            const strategy = String(normalized.战略意图 || '').trim();
+            const targetName = String(normalized.displayTargetName || normalized.目标 || '').trim();
+            const parts = [`${类型 || '行为判定'}：${normalized.行动者 || actor}`];
+            if (strategy) parts.push(`意图【${strategy}】`);
+            if (hit && hit !== action) parts.push(`先命中候选【${hit}】`);
+            if (action) parts.push(`最终落点【${action}】`);
+            if (targetName) parts.push(`目标【${targetName}】`);
+            return `行为演算：${parts.join('，')}`;
+          };
+          const 构建候选池明细行 = trace => {
+            const candidates = 读取判定流程候选列表(trace, 4);
+            if (!candidates.length) return '';
+            return `候选池：${candidates.map(item => `${包裹判定动作名称(读取候选名称(item))} ${Math.round(读取候选权重(item))}分`).join(' / ')}`;
+          };
+          const 构建权重拆分明细行 = trace => {
+            const normalized = 归一判定轨迹(trace || {});
+            const pieces = [
+              ['原始', Number(normalized.原始权重 || normalized.原始净收益 || 0)],
+              ['战术', Number(normalized.战术修正 || 0)],
+              ['目标', Number(normalized.目标修正 || 0) + Number(normalized.目标价值修正 || 0)],
+              ['资源', Number(normalized.资源修正 || 0)],
+              ['团队', Number(normalized.团队意图修正 || 0)],
+              ['前瞻', Number(normalized.二回合前瞻修正 || 0)],
+              ['职责', Number(normalized.职责修正 || 0)],
+              ['记忆', -Math.abs(Number(normalized.记忆惩罚 || 0))],
+            ].filter(([, value], index) => index === 0 ? Number.isFinite(value) && Math.abs(value) > 0 : Number.isFinite(value) && Math.abs(value) >= 1);
+            const finalWeight = Number(normalized.最终权重 || 0);
+            if (pieces.length < 2 && !(finalWeight > 0)) return '';
+            const terms = pieces.map(([label, value], index) => `${index === 0 ? '' : (value >= 0 ? '+' : '')}${Math.round(value)} ${label}`);
+            return `权重拆分：${terms.join(' ')}${Number.isFinite(finalWeight) ? ` = ${Math.round(finalWeight)}分` : ''}`;
+          };
+          const 构建取舍明细行 = trace => {
+            const reason = 清洗判定侧写理由(String(trace?.选择原因 || trace?.reason || '').trim(), trace || {});
+            return reason ? `取舍原因：${reason}` : '';
+          };
+          const usedBehaviorKeys = new Set();
+          behaviorTraces
+            .filter(trace => /战术确立|主动规划|应招审计|再判定审计|换招审计/.test(读取轨迹类型(trace)))
+            .slice(0, 4)
+            .forEach(trace => {
+              const key = `${读取轨迹类型(trace)}::${normalizeBattleActionDisplayName(trace.finalResolvedActionName || trace.技能 || '')}::${String(trace.目标 || '').trim()}`;
+              if (usedBehaviorKeys.has(key)) return;
+              usedBehaviorKeys.add(key);
+              [构建行为演算明细行(trace), 构建候选池明细行(trace), 构建权重拆分明细行(trace), 构建取舍明细行(trace)]
+                .filter(Boolean)
+                .forEach(line => pushDetailLine(`├─ ${line}`, 'intent'));
+            });
           const formatCalcNumber = value => {
             const number = Number(value);
             if (!Number.isFinite(number)) return '';
@@ -46396,21 +46518,56 @@ class BattleUIComponent {
             if (sourceAction) parts.push(`来源【${sourceAction}】`);
             if (initialReaction && finalReaction && initialReaction !== finalReaction) parts.push(`原定【${initialReaction}】 -> 改为【${finalReaction}】`);
             else if (finalReaction) parts.push(`选择【${finalReaction}】`);
-            if (reactionKind) parts.push(`类型${reactionKind}`);
-            if (result) parts.push(`结果${result}`);
+            const readableKind = 格式化玩家反应类型(reactionKind);
+            const readableResult = 格式化玩家判定结果(result);
+            if (readableKind) parts.push(`类型：${readableKind}`);
+            if (readableResult) parts.push(`结果：${readableResult}`);
             return parts.length >= 2 ? `反应判定：${parts.join('，')}` : '';
           };
           const 构建反应决策参数行 = reactionNode => {
             const 读取 = key => 读取结算轨迹值(reactionNode.calculationTrace, key);
             const parts = [];
+            const ratio = Number(读取('reactionRatio'));
+            const castTimeGap = Number(读取('castTimeGap'));
+            const attackerCastTime = Number(读取('attackerCastTime'));
+            const reactorCastTime = Number(读取('reactorCastTime'));
+            const threatScore = Number(读取('threatScore'));
+            const attackerSpeed = Number(读取('attackerSpeed'));
+            const defenderReaction = Number(读取('defenderReaction'));
+            const attackerAgility = Number(读取('attackerAgility'));
+            const defenderAgility = Number(读取('defenderAgility'));
+            const defenderMentalMax = Number(读取('defenderMentalMax'));
+            const castPenalty = Number(读取('castPenalty'));
+            const attackerSpeedBonus = Number(读取('attackerSpeedBonus'));
+            const defenderReactionBonus = Number(读取('defenderReactionBonus'));
+            const defenderReactionPenalty = Number(读取('defenderReactionPenalty'));
+            const defenderAgilityMult = Number(读取('defenderAgilityMult'));
+            const maintainReactionPenalty = Number(读取('maintainReactionPenalty'));
+            if (Number.isFinite(ratio) && ratio > 0) {
+              if (Number.isFinite(attackerSpeed) && attackerSpeed > 0 && Number.isFinite(defenderReaction) && defenderReaction > 0) {
+                parts.push(`反应比值${formatCalcNumber(ratio)}=防守反应${formatCalcNumber(defenderReaction)}/攻方速度${formatCalcNumber(attackerSpeed)}`);
+              } else {
+                parts.push(`反应比值${formatCalcNumber(ratio)}=防守反应值/攻方出手速度`);
+              }
+              const reactionParts = [];
+              if (Number.isFinite(defenderAgility) && defenderAgility > 0) reactionParts.push(`敏捷${formatCalcNumber(defenderAgility)}${Number.isFinite(defenderAgilityMult) && Math.abs(defenderAgilityMult - 1) >= 0.0001 ? `×${formatCalcNumber(defenderAgilityMult)}` : ''}`);
+              if (Number.isFinite(defenderMentalMax) && defenderMentalMax > 0) reactionParts.push(`精神${formatCalcNumber(defenderMentalMax)}`);
+              if (Number.isFinite(defenderReactionBonus) && defenderReactionBonus > 0) reactionParts.push(`反应加值${formatCalcNumber(defenderReactionBonus)}`);
+              if (Number.isFinite(defenderReactionPenalty) && defenderReactionPenalty > 0) reactionParts.push(`反应惩罚${formatCalcNumber(defenderReactionPenalty)}`);
+              if (Number.isFinite(maintainReactionPenalty) && maintainReactionPenalty > 0) reactionParts.push(`维持惩罚${formatCalcNumber(maintainReactionPenalty * 100)}%`);
+              if (reactionParts.length) parts.push(`防守反应来源：${reactionParts.join(' + ')}`);
+              const speedParts = [];
+              if (Number.isFinite(attackerAgility) && attackerAgility > 0) speedParts.push(`敏捷${formatCalcNumber(attackerAgility)}`);
+              if (Number.isFinite(castPenalty) && castPenalty > 0) speedParts.push(`前摇惩罚${formatCalcNumber(castPenalty * 100)}%`);
+              if (Number.isFinite(attackerSpeedBonus) && attackerSpeedBonus > 0) speedParts.push(`速度加值${formatCalcNumber(attackerSpeedBonus)}`);
+              if (speedParts.length) parts.push(`攻方速度来源：${speedParts.join('，')}`);
+            }
             [
-              ['reactionRatio', '反应比值'],
-              ['castTimeGap', '前摇差'],
-              ['attackerCastTime', '攻方前摇'],
-              ['reactorCastTime', '应招前摇'],
-              ['threatScore', '威胁评分'],
-            ].forEach(([key, label]) => {
-              const value = Number(读取(key));
+              [castTimeGap, '前摇差'],
+              [attackerCastTime, '攻方前摇'],
+              [reactorCastTime, '应招前摇'],
+              [threatScore, '威胁评分'],
+            ].forEach(([value, label]) => {
               if (!Number.isFinite(value) || Math.abs(value) < 0.0001) return;
               parts.push(`${label}${formatCalcNumber(value)}`);
             });
@@ -46495,11 +46652,11 @@ class BattleUIComponent {
                 pushChildTimelineLine(`${prefix} 反应：${reactionSubject}以【${childAction}】应对`);
               }
               const contextLine = 构建反应决策上下文行(child);
-              if (contextLine) pushChildTimelineLine(`${构建子级树前缀(prefix, false)} ${contextLine}`);
+              if (contextLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${contextLine}`, timelineKind);
               const reactionCalcLine = 构建反应决策参数行(child);
-              if (reactionCalcLine) pushChildTimelineLine(`${构建子级树前缀(prefix, false)} ${reactionCalcLine}`);
+              if (reactionCalcLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${reactionCalcLine}`, timelineKind);
               const defenseLine = 构建防御反应参数行(child);
-              if (defenseLine) pushChildTimelineLine(`${构建子级树前缀(prefix, false)} ${defenseLine}`);
+              if (defenseLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${defenseLine}`, timelineKind);
             } else if (kind === 'hit_check') {
               const result = String(child.result || '').trim();
               const missed = /miss|evade|dodge|未命中|闪避/.test(result) || child.primaryOutcome === 'miss';
@@ -46507,7 +46664,7 @@ class BattleUIComponent {
                 ? `${prefix} 命中检定：${actor}的【${finalAction}】未能命中${childTarget || target || '目标'}`
                 : `${prefix} 命中检定：${actor}的【${finalAction}】锁定${childTarget || target || '目标'}，进入结算`);
               const dodgeLine = 构建闪避判定行(child);
-              if (dodgeLine) pushChildTimelineLine(`${构建子级树前缀(prefix, false)} ${dodgeLine}`);
+              if (dodgeLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${dodgeLine}`, timelineKind);
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['damage_settlement', 'state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -46525,7 +46682,7 @@ class BattleUIComponent {
               if (Number.isFinite(successRateRaw) && successRateRaw > 0) {
                 const ratePct = Math.round(successRateRaw <= 1 ? successRateRaw * 100 : successRateRaw);
                 const rollPct = Number.isFinite(rollRaw) && rollRaw > 0 ? Math.round(rollRaw <= 1 ? rollRaw * 100 : rollRaw) : null;
-                pushChildTimelineLine(`${构建子级树前缀(prefix, false)} 附着判定：成功率${ratePct}%${rollPct !== null ? `，检定${rollPct}${(resisted || immune) ? ' > ' : ' <= '}${ratePct}` : ''}`);
+                pushDetailLine(`${构建子级树前缀(prefix, false)} 附着判定：成功率${ratePct}%${rollPct !== null ? `，检定${rollPct}${(resisted || immune) ? ' > ' : ' <= '}${ratePct}` : ''}`, timelineKind);
               }
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
@@ -46540,7 +46697,7 @@ class BattleUIComponent {
               const pathLine = 构建伤害路径行(child);
               [formulaLine, pathLine, calcLine]
                 .filter(Boolean)
-                .forEach((line, index, list) => pushChildTimelineLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`));
+                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`, timelineKind));
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => String(node.nodeKind || '') === 'summon_assist')
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -46561,7 +46718,7 @@ class BattleUIComponent {
                 .filter(node => ['reaction_window', 'reaction_decision'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, !counterCalcLines.length && index === list.length - 1)));
               counterCalcLines
-                .forEach((line, index, list) => pushChildTimelineLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`));
+                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`, timelineKind));
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['target_branch', 'counter_window'].includes(String(node.nodeKind || '')) && 因果链节点默认可见(node))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -46605,10 +46762,20 @@ class BattleUIComponent {
             const kind = String(line?.kind || 'detail').trim() || 'detail';
             return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)}" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '')}</span></div>`;
           }).join('\n')}</div>`;
+          const detailHtml = detailLines.length ? `
+            <details class="battle-preview-trace-detail-fold">
+              <summary>展开判定明细</summary>
+              <div class="battle-preview-trace-tree battle-preview-trace-timeline battle-preview-trace-detail-tree">${detailLines.map(line => {
+                const kind = String(line?.kind || 'detail').trim() || 'detail';
+                return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)} battle-preview-trace-node--detail" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '')}</span></div>`;
+              }).join('\n')}</div>
+            </details>
+          ` : '';
           return `
             <details class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--action-chain battle-preview-action-chain-fold" data-smart-collapse="1" data-event-weight="${htmlEscapeText(展示权重.eventWeight)}"${展示权重.childEscalated ? ' data-child-escalated="1"' : ''}${展示权重.collapse ? '' : ' open'}>
-              <summary class="battle-preview-trace-title"><b>${htmlEscapeText(summary)}</b><em>${htmlEscapeText(展示权重.eventWeight)}</em></summary>
+              <summary class="battle-preview-trace-title"><b>${htmlEscapeText(summary)}</b></summary>
               ${treeHtml}
+              ${detailHtml}
             </details>
           `;
         }
@@ -47973,6 +48140,14 @@ class BattleUIComponent {
             .map(line => String(line || '').trim())
             .filter(Boolean);
           const 标题 = String(条目?.kind || '') === 'status_tick' ? '[回合结算] 🩸 状态与环境影响' : '[结算链] 🧾 本回合结果';
+          const detailHtml = details.length ? `
+              <details class="battle-preview-trace-detail-fold">
+                <summary>展开结算明细</summary>
+                <div class="battle-preview-trace-tree battle-preview-trace-timeline battle-preview-trace-detail-tree">
+                  ${details.map((line, index) => `<div class="battle-preview-trace-node battle-preview-trace-node--settlement battle-preview-trace-node--detail" data-trace-node-kind="settlement"><span>${渲染判定侧写HTML(`${index === details.length - 1 ? '└─' : '├─'} ${line}`)}</span></div>`).join('\n')}
+                </div>
+              </details>
+          ` : '';
           return `
             <div class="battle-preview-trace-row battle-preview-trace-card battle-preview-trace-card--settlement ${String(条目?.kind || '') === 'status_tick' ? 'battle-preview-trace-subcard' : ''}">
               <div class="battle-preview-trace-title">
@@ -47980,8 +48155,8 @@ class BattleUIComponent {
               </div>
               <div class="battle-preview-trace-tree">
                 <span>${渲染判定侧写HTML(`└─ 🏁 结果：${text}`)}</span>
-                ${details.map((line, index) => `<span>${渲染判定侧写HTML(`${index === details.length - 1 ? '└─' : '├─'} 🧮 ${line}`)}</span>`).join('\n')}
               </div>
+              ${detailHtml}
             </div>
           `;
         }
@@ -48333,7 +48508,7 @@ class BattleUIComponent {
           const 原始战报 = 原始战报Blocks.map(item => String(item?.text || '').trim()).filter(Boolean);
           context.publicBattleLines = 原始战报;
           const 审计条目 = 过滤已在摘要出现的结算条目([
-            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : []),
+            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : [], Array.isArray(result.decisionTrace) ? result.decisionTrace : []),
             ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs, context),
             ...构建结算链侧写条目(logs, { ...context, eventLedger: result?.eventLedger || [] }),
           ], 原始战报);
@@ -48367,7 +48542,7 @@ class BattleUIComponent {
           渲染回合速览HTML(rows);
         root.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML_IMPL__ = (trace = []) =>
           渲染分回合判定流程([
-            ...构建因果链行动区块条目(trace),
+            ...构建因果链行动区块条目(trace, Array.isArray(result.decisionTrace) ? result.decisionTrace : []),
             ...构建因果链回合末聚合条目(trace),
           ]);
         root.__LWCS_RENDER_BATTLE_DECISION_ROWS_HTML_IMPL__ = (rows = []) =>
@@ -48404,7 +48579,7 @@ class BattleUIComponent {
           const 原始战报 = 原始战报Blocks.map(item => String(item?.text || '').trim()).filter(Boolean);
           context.publicBattleLines = 原始战报;
           const 审计条目 = 过滤已在摘要出现的结算条目([
-            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : []),
+            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : [], Array.isArray(result.decisionTrace) ? result.decisionTrace : []),
             ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs, context),
             ...构建结算链侧写条目(logs, { ...context, eventLedger: result?.eventLedger || [] }),
           ], 原始战报);
