@@ -16822,13 +16822,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片裁切: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
   --面板裁切: polygon(26px 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%, 0 26px);
   --主面板材质:
-    radial-gradient(ellipse at 52% 48%, rgba(255, 58, 18, 0.22), transparent 46%),
+    radial-gradient(ellipse at 50% 116%, rgba(255, 248, 223, 0.52), transparent 18%),
+    radial-gradient(ellipse at 50% 98%, rgba(255, 184, 72, 0.42), transparent 28%),
+    radial-gradient(ellipse at 50% 84%, rgba(255, 45, 0, 0.48), transparent 52%),
+    radial-gradient(ellipse at 52% 48%, rgba(255, 58, 18, 0.18), transparent 46%),
     radial-gradient(circle at 18% 12%, rgba(255, 248, 223, 0.13), transparent 18%),
     radial-gradient(ellipse at 86% 8%, rgba(255, 175, 54, 0.15), transparent 28%),
     radial-gradient(ellipse at 14% 100%, rgba(112, 8, 0, 0.42), transparent 44%),
     linear-gradient(145deg, rgba(20, 3, 1, 0.9), rgba(5, 0, 0, 0.96) 64%, rgba(0, 0, 0, 0.98));
   --面板光层:
-    radial-gradient(ellipse at 50% 54%, rgba(255, 72, 24, 0.28), transparent 46%),
+    radial-gradient(ellipse at 50% 118%, rgba(255, 248, 223, 0.38), transparent 20%),
+    radial-gradient(ellipse at 50% 94%, rgba(255, 106, 26, 0.36), transparent 48%),
     linear-gradient(90deg, rgba(255, 236, 174, 0.18), transparent 26%),
     linear-gradient(180deg, rgba(255, 84, 24, 0.22), transparent 30%);
   --背景细纹:
@@ -16837,10 +16841,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片材质:
     radial-gradient(circle at 12% 9%, rgba(255, 248, 223, 0.11), transparent 20%),
     radial-gradient(ellipse at 96% 14%, rgba(255, 69, 0, 0.18), transparent 34%),
+    linear-gradient(0deg, rgba(255, 199, 82, 0.22), rgba(255, 69, 0, 0.16) 18%, transparent 42%),
     linear-gradient(145deg, rgba(42, 8, 2, 0.72), rgba(10, 1, 0, 0.78) 62%, rgba(2, 0, 0, 0.92));
   --悬浮材质:
     radial-gradient(circle at 18% 10%, rgba(255, 248, 223, 0.15), transparent 26%),
     radial-gradient(circle at 82% 18%, rgba(255, 69, 0, 0.24), transparent 34%),
+    linear-gradient(0deg, rgba(255, 199, 82, 0.28), rgba(255, 69, 0, 0.2) 22%, transparent 44%),
     linear-gradient(145deg, rgba(55, 10, 2, 0.74), rgba(12, 1, 0, 0.9));
   --资源槽底:
     linear-gradient(180deg, rgba(255, 228, 142, 0.09), transparent 42%),
@@ -16874,10 +16880,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 0 24px rgba(255, 69, 0, 0.52),
     0 0 52px rgba(255, 122, 32, 0.3),
     0 0 88px rgba(255, 199, 82, 0.16);
-  --装甲内影: inset 1px 1px 0 rgba(255, 246, 222, 0.18), inset -1px -1px 0 rgba(39, 4, 1, 0.82), inset 0 0 0 1px rgba(255, 142, 38, 0.26), inset 0 0 36px rgba(255, 69, 0, 0.16);
+  --装甲内影: inset 1px 1px 0 rgba(255, 246, 222, 0.18), inset -1px -1px 0 rgba(39, 4, 1, 0.82), inset 0 -1px 0 rgba(255, 224, 132, 0.24), inset 0 -18px 30px rgba(255, 82, 20, 0.12), inset 0 0 0 1px rgba(255, 142, 38, 0.26), inset 0 0 36px rgba(255, 69, 0, 0.16);
   --面板约束辉光: 0 0 0 1px rgba(255, 96, 24, 0.58);
-  --面板近距辉光: 0 0 14px rgba(255, 69, 0, 0.36);
-  --面板远距辉光: 0 0 38px rgba(255, 69, 0, 0.16);
+  --面板近距辉光: 0 0 18px rgba(255, 69, 0, 0.48);
+  --面板远距辉光: 0 0 58px rgba(255, 69, 0, 0.26);
   --玻璃微切角: inset 1px 1px 0 rgba(255, 248, 223, 0.18);
   --玻璃暗侧阴影: inset -1px -1px 0 rgba(24, 2, 0, 0.9);
   --玻璃外辉光:
@@ -16885,7 +16891,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     var(--面板近距辉光),
     var(--面板远距辉光),
     0 20px 44px rgba(0, 0, 0, 0.46);
-  --玻璃内折射: var(--玻璃微切角), var(--玻璃暗侧阴影);
+  --玻璃内折射: var(--玻璃微切角), var(--玻璃暗侧阴影), inset 0 -2px 0 rgba(255, 238, 174, 0.3), inset 0 -30px 42px rgba(255, 69, 0, 0.18);
   --档案核心魂色: #fff8df;
   --武魂舞台魂色: #ff4a16;
   --档案武装魂色: #ffc852;
@@ -16902,9 +16908,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 0 38px rgba(255, 69, 0, 0.34),
     0 0 78px rgba(255, 69, 0, 0.18);
   --魂环舱导轨材质:
-    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.62) 15%, rgba(255, 69, 0, 0.58) 54%, rgba(255, 199, 82, 0.34) 78%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, rgba(255, 248, 223, 0.7) 12%, rgba(255, 69, 0, 0.72) 50%, rgba(255, 199, 82, 0.48) 80%, transparent 100%),
     repeating-linear-gradient(0deg, transparent 0 9px, rgba(255, 238, 138, 0.82) 10px, transparent 13px);
-  --魂环舱导轨宽度: clamp(11px, 1.8cqw, 16px);
+  --魂环舱导轨宽度: clamp(16px, 2.4cqw, 24px);
   --魂环舱导轨辉光:
     0 0 16px rgba(255, 69, 0, 0.42),
     0 0 30px rgba(255, 199, 82, 0.24);
@@ -16921,7 +16927,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
     var(--面板约束辉光),
     var(--面板近距辉光),
     var(--面板远距辉光),
-    inset 0 0 28px rgba(255, 69, 0, 0.14),
+    inset 0 -2px 0 rgba(255, 238, 174, 0.28),
+    inset 0 -46px 72px rgba(255, 69, 0, 0.2),
+    inset 0 0 34px rgba(255, 69, 0, 0.18),
+    0 0 70px rgba(255, 69, 0, 0.16),
     0 20px 44px rgba(0, 0, 0, 0.48);
   letter-spacing: 1px;
 }
@@ -16936,13 +16945,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王']::after {
   content: "";
   position: absolute;
-  inset: -16%;
+  left: -18%;
+  right: -18%;
+  bottom: -26%;
+  height: 76%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 58%, rgba(255, 69, 0, 0.24), transparent 48%),
-    radial-gradient(ellipse at 50% 50%, rgba(255, 216, 92, 0.13), transparent 28%);
-  opacity: 0.56;
+    radial-gradient(ellipse at 50% 100%, rgba(255, 248, 223, 0.4), transparent 18%),
+    radial-gradient(ellipse at 50% 82%, rgba(255, 178, 48, 0.32), transparent 32%),
+    radial-gradient(ellipse at 50% 68%, rgba(255, 45, 0, 0.36), transparent 56%);
+  opacity: 0.82;
   transform: translate3d(0, 0, 0) scale(0.96);
   transform-origin: center;
   mix-blend-mode: screen;
@@ -16954,9 +16967,9 @@ body[data-mvu-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='银龙王'] {
   --主题主色: #dbeafe;
-  --主题辅色: rgba(82, 207, 255, 0.18);
+  --主题辅色: rgba(78, 190, 255, 0.2);
   --主题高光: #9ffcff;
-  --主题底色: #07111c;
+  --主题底色: #030b14;
   --主题字体: "PingFang SC", "Microsoft YaHei Light", "Microsoft YaHei", sans-serif;
   --主题字重: 300;
   --暗场底板: rgba(7, 15, 25, 0.68);
@@ -16968,20 +16981,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片裁切: none;
   --面板裁切: none;
   --主面板材质:
+    radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.34), transparent 24%),
+    radial-gradient(ellipse at 50% 4%, rgba(159, 252, 255, 0.24), transparent 42%),
     radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.16), transparent 20%),
     radial-gradient(ellipse at 78% 18%, rgba(122, 232, 255, 0.13), transparent 30%),
-    linear-gradient(145deg, rgba(14, 27, 40, 0.8), rgba(5, 11, 19, 0.88));
+    linear-gradient(145deg, rgba(12, 28, 42, 0.82), rgba(3, 11, 20, 0.94) 68%, rgba(1, 5, 10, 0.96));
   --面板光层:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(159, 252, 255, 0.1) 24%, transparent 58%),
     linear-gradient(120deg, rgba(255, 255, 255, 0.15), transparent 30%, rgba(159, 252, 255, 0.14)),
     radial-gradient(circle at 86% 16%, rgba(159, 252, 255, 0.18), transparent 22%);
   --背景细纹:
     radial-gradient(color-mix(in srgb, var(--主题高光) 5%, transparent) 1px, transparent 1.4px),
     linear-gradient(135deg, transparent 0 54%, rgba(159, 252, 255, 0.045) 55%, transparent 56%);
   --卡片材质:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 30%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 34%),
     linear-gradient(135deg, rgba(159, 252, 255, 0.06), rgba(9, 20, 32, 0.54));
   --悬浮材质:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 38%),
     linear-gradient(135deg, rgba(159, 252, 255, 0.12), rgba(8, 18, 30, 0.74));
   --资源槽底: linear-gradient(90deg, rgba(5, 14, 24, 0.72), rgba(28, 55, 72, 0.44), rgba(8, 18, 30, 0.7));
   --资源槽填充: linear-gradient(90deg, #f7fdff, #9ffcff, #73baff, #f7fdff);
@@ -16997,25 +17014,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --投影背景: rgba(159, 252, 255, 0.075);
   --实体背景: rgba(10, 22, 34, 0.62);
   --虚幻背景: rgba(159, 252, 255, 0.045);
-  --边线颜色: rgba(183, 239, 255, 0.34);
+  --边线颜色: rgba(235, 252, 255, 0.42);
   --虚线: rgba(159, 252, 255, 0.17);
   --强线: rgba(247, 253, 255, 0.42);
   --虚化强度: blur(16px) saturate(118%);
   --文字主色: #f7fdff;
   --文字弱色: #a7c4d8;
   --卡片底板: rgba(8, 18, 30, 0.58);
-  --卡片底板线: rgba(183, 239, 255, 0.22);
+  --卡片底板线: rgba(235, 252, 255, 0.26);
   --状态强调色: #9ffcff;
   --状态危险色: #ff7f9f;
   --主题光束: linear-gradient(90deg, transparent, rgba(247,253,255,0.82), rgba(159,252,255,0.46), transparent);
   --主题发光:
-    0 0 18px rgba(159, 252, 255, 0.34),
-    0 0 42px rgba(86, 174, 255, 0.16),
+    0 0 18px rgba(159, 252, 255, 0.36),
+    0 0 46px rgba(86, 174, 255, 0.18),
+    inset 0 1px 0 rgba(255,255,255,0.2),
     inset 0 0 18px rgba(255,255,255,0.1);
-  --面板约束辉光: 0 0 0 1px rgba(183, 239, 255, 0.34);
-  --面板近距辉光: 0 0 16px rgba(159, 252, 255, 0.24);
-  --面板远距辉光: 0 0 44px rgba(86, 174, 255, 0.14);
-  --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.18);
+  --面板约束辉光: 0 0 0 1px rgba(235, 252, 255, 0.4);
+  --面板近距辉光: 0 0 16px rgba(159, 252, 255, 0.26);
+  --面板远距辉光: 0 0 48px rgba(86, 174, 255, 0.16);
+  --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.24), inset 0 18px 30px rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.36);
   --玻璃暗侧阴影: inset -1px -1px 0 rgba(2, 8, 16, 0.7);
   --轻量信息底板: color-mix(in srgb, rgba(255, 255, 255, 0.038) 60%, transparent);
   --轻量信息线: rgba(183, 239, 255, 0.18);
@@ -17026,6 +17044,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --档案武装魂色: #cfe9ff;
   --档案关系魂色: #73baff;
   --档案情报魂色: #9ffcff;
+  --魂环舱底色: none;
+  --魂环舱底座材质:
+    radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 7%, rgba(159, 252, 255, 0.34) 9% 22%, transparent 58%),
+    repeating-radial-gradient(ellipse, transparent 0 8px, rgba(235, 252, 255, 0.16) 9px, transparent 12px);
+  --魂环舱底座边线: rgba(235, 252, 255, 0.34);
+  --魂环舱底座辉光:
+    0 0 14px rgba(255, 255, 255, 0.22),
+    0 0 38px rgba(159, 252, 255, 0.22),
+    0 0 72px rgba(86, 174, 255, 0.12);
+  --魂环舱导轨材质:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(159, 252, 255, 0.5) 24%, rgba(115, 186, 255, 0.22) 62%, transparent 100%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0 1px, transparent 1px 12px);
+  --魂环舱导轨宽度: clamp(10px, 1.8cqw, 16px);
+  --魂环舱导轨流周期: 3.8s;
+  --魂环舱导轨流低透明度: 0.46;
+  --魂环舱导轨流高透明度: 0.68;
+  --魂环舱导轨辉光:
+    0 0 14px rgba(255, 255, 255, 0.24),
+    0 0 30px rgba(159, 252, 255, 0.22);
+  --魂环舱粒子材质:
+    radial-gradient(circle, rgba(255, 255, 255, 0.78) 0 1px, transparent 2px),
+    radial-gradient(circle, rgba(159, 252, 255, 0.58) 0 1px, transparent 2px);
+  --魂环舱边缘高光: rgba(235, 252, 255, 0.36);
+  --魂环舱危险辉光: #9ffcff;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'] {
@@ -17034,6 +17076,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
     var(--面板约束辉光),
     var(--面板近距辉光),
     var(--面板远距辉光),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 24px 34px rgba(255, 255, 255, 0.06),
     inset 0 0 26px rgba(159, 252, 255, 0.08),
     0 20px 44px rgba(0, 0, 0, 0.34);
 }
@@ -17041,6 +17085,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
   opacity: 0.78;
   clip-path: polygon(0 0, 100% 0, 92% 28%, 100% 100%, 0 100%, 8% 66%);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::after {
+  content: "";
+  position: absolute;
+  inset: -14% -10% auto -10%;
+  height: 54%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.28), transparent 42%),
+    radial-gradient(ellipse at 50% 8%, rgba(159, 252, 255, 0.18), transparent 58%);
+  opacity: 0.68;
+  mix-blend-mode: screen;
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'],
@@ -18581,7 +18639,10 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
     var(--玻璃内折射),
     inset 0 0 0 1px rgba(255, 142, 38, 0.24),
     inset 0 0 28px rgba(255, 58, 18, 0.12),
+    inset 0 -2px 0 rgba(255, 238, 174, 0.34),
+    inset 0 -34px 46px rgba(255, 84, 20, 0.2),
     0 16px 30px rgba(0, 0, 0, 0.34),
+    0 0 28px rgba(255, 69, 0, 0.18),
     var(--面板近距辉光),
     var(--面板远距辉光);
 }
@@ -18594,6 +18655,7 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
     linear-gradient(var(--主题高光), var(--主题高光)) left top / 1px 24px no-repeat,
     linear-gradient(var(--主题主色), var(--主题主色)) right bottom / 28px 1px no-repeat,
     linear-gradient(var(--主题主色), var(--主题主色)) right bottom / 1px 28px no-repeat,
+    linear-gradient(90deg, transparent, rgba(255, 248, 223, 0.5), rgba(255, 69, 0, 0.38), transparent) left bottom / 100% 3px no-repeat,
     radial-gradient(circle at 14px 14px, rgba(255, 248, 223, 0.2), transparent 22px),
     radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), rgba(255, 69, 0, 0.22), transparent 24px);
   opacity: 0.64;
@@ -19485,8 +19547,10 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-spirit-sta
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-ring-observatory {
   background:
-    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) var(--archive-ring-center-y), rgba(255, 69, 0, 0.22), transparent 48%),
-    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) var(--archive-ring-center-y), rgba(255, 224, 126, 0.12), transparent 30%);
+    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) 112%, rgba(255, 248, 223, 0.4), transparent 18%),
+    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) 92%, rgba(255, 121, 24, 0.38), transparent 38%),
+    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) var(--archive-ring-center-y), rgba(255, 69, 0, 0.28), transparent 48%),
+    radial-gradient(ellipse at calc(var(--archive-ring-center-x) + var(--魂环环境中心偏移-x)) var(--archive-ring-center-y), rgba(255, 224, 126, 0.16), transparent 30%);
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-spirit-stage::before {
@@ -19498,15 +19562,15 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-spirit-sta
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-soul-ring-showcase--overview::before {
-  opacity: 0.72;
+  opacity: 0.86;
   transform: translate(-50%, -50%) scaleY(1);
   animation: 金龙龙脉脉冲 3.6s ease-in-out infinite var(--mvu-holo-loop-play-state, running);
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-soul-ring-showcase--overview::after {
-  width: min(58%, 154px);
+  width: min(68%, 184px);
   height: min(96%, 248px);
-  opacity: 0.48;
+  opacity: 0.62;
   mix-blend-mode: screen;
   transform: translate(-50%, -50%) scale(0.96);
   animation: 金龙热浪脉冲 4.8s ease-in-out infinite var(--mvu-holo-loop-play-state, running);
