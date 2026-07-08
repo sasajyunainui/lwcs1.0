@@ -57,6 +57,7 @@
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     数据库适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Database_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    请求监控挂件: { 类型: 'inline-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -80,8 +81,8 @@
   ]);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
-  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '战斗模块', '数据库模块']);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '数据库模块', '战斗模块']);
+  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '战斗模块', '数据库模块']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '战斗模块']);
   const 启动预取资源列表 = Object.freeze([
     'MVU_ZOD_Entry.js',
     'MVU_Skill_Runtime.js',
@@ -431,6 +432,7 @@
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('请求监控挂件', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
       await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
       await 确保模块已加载('数据库模块', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       try {
@@ -977,6 +979,7 @@
         await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false });
         await 确保模块已加载('数据库适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
+        确保模块已加载('请求监控挂件', { 来源: 'bootstrap_request_monitor', 允许失败降级: true, 抛错: false });
         启动数据库模块后台加载('bootstrap_database');
         确保模块已加载('战斗模块', { 来源: 'bootstrap_battle', 允许失败降级: true, 抛错: false });
 

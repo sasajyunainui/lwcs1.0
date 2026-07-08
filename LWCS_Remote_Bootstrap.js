@@ -20,6 +20,7 @@
     'ItemLibrary.js',
     'mvu_logic_bridge.js',
     'LWCS_Database_Adapter.js',
+    'RequestMonitorWidget.js',
     'Database_Module.js',
     'BattleUI_Module.js',
     'MVU_ZOD_Entry.js',
