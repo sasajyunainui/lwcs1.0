@@ -65,6 +65,10 @@
   }
   __mvuBridgeRoot.__MVU_LOGIC_BRIDGE_LOADED__ = true;
 
+  function 清理提示审计扫描文本_桥接(text = '') {
+    return String(text || '').replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ');
+  }
+
   function 规范化背包绑定者记录(charPath, itemValue = {}) {
     const nextValue = itemValue && typeof itemValue === 'object' && !Array.isArray(itemValue) ? { ...itemValue } : {};
     const charKey = String(charPath || '')
@@ -6199,7 +6203,7 @@
     const 接口 = 获取运行时实体命中接口_桥接();
     if (!接口 || typeof 接口.收集运行时动态地点命中 !== 'function') return [];
     const statData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : {};
-    return 接口.收集运行时动态地点命中(statData, 文本, {
+    return 接口.收集运行时动态地点命中(statData, 清理提示审计扫描文本_桥接(文本), {
       ...选项,
       动态地点目录: 索引表,
       阈值: 5,
@@ -6211,7 +6215,7 @@
     const 接口 = 获取运行时实体命中接口_桥接();
     if (!接口 || typeof 接口.收集运行时物品命中 !== 'function') return [];
     const statData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : {};
-    return 接口.收集运行时物品命中(statData, 文本, {
+    return 接口.收集运行时物品命中(statData, 清理提示审计扫描文本_桥接(文本), {
       ...选项,
       物品目录: 索引表,
       命中物品: 收集归档物品候选名_桥接(选项),
@@ -6986,7 +6990,7 @@
   }
 
   async function 按文本恢复归档角色_桥接(文本 = '', 选项 = {}) {
-    const 捕获文本 = String(文本 || '');
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     let manifest = null;
     try {
@@ -7001,7 +7005,7 @@
   }
 
   async function 按文本恢复归档动态地点_桥接(文本 = '', 选项 = {}) {
-    const 捕获文本 = String(文本 || '');
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取动态地点归档Manifest_桥接();
     const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
@@ -7011,7 +7015,7 @@
   }
 
   async function 按文本恢复归档物品定义_桥接(文本 = '', 选项 = {}) {
-    const 捕获文本 = String(文本 || '');
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim() && !收集归档物品候选名_桥接(选项).length) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取物品归档Manifest_桥接();
     const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
@@ -8036,7 +8040,7 @@
       .filter(Boolean));
     const 过滤后角色 = 命中角色.filter(角色名 => !排除角色.has(角色名));
     if (!过滤后角色.length) return [];
-    const 文本 = toText(选项?.文本, '');
+    const 文本 = 清理提示审计扫描文本_桥接(toText(选项?.文本, ''));
     if (!文本.trim() && 选项?.允许无文本预入库 !== true) return [];
     const 结果 = 接口.应用内置角色实例化(statData, 文本.trim()
       ? { 命中角色: 过滤后角色, 用户输入: 文本, 使用统一命中: true }
@@ -8094,7 +8098,7 @@
   }
 
   async function 收集当前正文归档命中实体_桥接(选项 = {}) {
-    const 正文文本 = toText(选项.文本 ?? 读取当前最后AI正文_桥接(), '');
+    const 正文文本 = 清理提示审计扫描文本_桥接(toText(选项.文本 ?? 读取当前最后AI正文_桥接(), ''));
     const 结果 = { 角色: [], 物品: [], 动态地点: [] };
     if (!正文文本.trim()) return 结果;
     try {
@@ -8358,13 +8362,14 @@
     const 内置角色接口 = 获取内置角色实例化接口_桥接();
     const 正文内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口) : {};
     const 正文文本 = 读取当前最后AI正文_桥接();
-    const 正文内置角色 = 收集统一实体命中名称_桥接(正文内置角色候选, 正文文本, '角色');
+    const 正文扫描文本 = 清理提示审计扫描文本_桥接(正文文本);
+    const 正文内置角色 = 收集统一实体命中名称_桥接(正文内置角色候选, 正文扫描文本, '角色');
     合并实体名到集合_桥接(文本命中角色, 正文内置角色);
     const { 已恢复角色, 已实例化角色 } = await 补齐MVU命令目标角色_桥接(
       statData,
       [...明确目标角色],
       [...文本命中角色],
-      { ...定位选项, 文本: 正文文本 },
+      { ...定位选项, 文本: 正文扫描文本 },
     );
     const { 已恢复物品, 已实例化物品 } = await 补齐MVU命令目标物品_桥接(statData, [...合并目标.物品], 定位选项);
     const { 已恢复地点 } = await 补齐MVU命令目标动态地点_桥接(statData, [...合并目标.动态地点], 定位选项);
@@ -10564,11 +10569,11 @@
   }
 
   function 收集统一实体命中名称_桥接(候选 = {}, 文本 = '', 类型 = '名称') {
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     const 接口 = 获取运行时实体命中接口_桥接();
     if (接口 && typeof 接口.收集运行时命中候选名称 === 'function') {
-      return 接口.收集运行时命中候选名称(文本, 候选, 类型);
+      return 接口.收集运行时命中候选名称(捕获文本, 候选, 类型);
     }
-    const 捕获文本 = String(文本 || '');
     return Array.from(new Set(Object.entries(候选 || {})
       .filter(([名称]) => {
         const 实体名 = toText(名称, '').trim();
@@ -10647,8 +10652,9 @@
 
   async function 按文本实例化内置物品_桥接(文本 = '', 附加选项 = {}) {
     const 接口 = 获取内置物品实例化接口_桥接();
-    const 合并文本 = String(文本 || '');
-    const 文本签名 = 计算内置角色实例化文本签名_桥接(合并文本);
+    const 原始文本 = String(文本 || '');
+    const 合并文本 = 清理提示审计扫描文本_桥接(原始文本);
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(原始文本);
     if (!接口) {
       const 当前状态 = await 读取内置角色实例化当前状态_桥接();
       return {
@@ -10710,8 +10716,9 @@
 
   async function 按文本实例化内置角色_桥接(文本 = '', 附加选项 = {}) {
     const 接口 = 获取内置角色实例化接口_桥接();
-    const 合并文本 = String(文本 || '');
-    const 文本签名 = 计算内置角色实例化文本签名_桥接(合并文本);
+    const 原始文本 = String(文本 || '');
+    const 合并文本 = 清理提示审计扫描文本_桥接(原始文本);
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(原始文本);
     if (!接口) {
       const 当前状态 = await 读取内置角色实例化当前状态_桥接();
       return {
@@ -10772,8 +10779,9 @@
   }
 
   async function 准备本轮MVU上下文_桥接(文本 = '', 附加选项 = {}) {
-    const 捕获文本 = String(文本 || '');
-    const 文本签名 = 计算内置角色实例化文本签名_桥接(捕获文本);
+    const 原始文本 = String(文本 || '');
+    const 捕获文本 = 清理提示审计扫描文本_桥接(原始文本);
+    const 文本签名 = 计算内置角色实例化文本签名_桥接(原始文本);
     const 前置命中 = {
       命中角色: new Set(),
       命中物品: new Set(),

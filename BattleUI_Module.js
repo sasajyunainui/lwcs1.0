@@ -2187,22 +2187,17 @@ class BattleUIComponent {
       if (候选.资源可行 === false) return { 修正: -999, 硬否决: true, 理由: ['资源不可释放'] };
       const 断档 = Math.max(Number(候选.断档压力 || 0), Number(候选.资源压力 || 0));
       const 高耗 = 候选.高耗 === true || 断档 >= 0.34;
-      const 高价 = 高耗 || 断档 >= 0.18;
-      const 重复 = Math.max(0, Number(候选.重复 || 0));
       const 高耗关键收益 = (候选.可斩杀 ? 28 : 0)
         + (候选.可打断 ? 26 : 0)
         + (候选.阻止治疗救场 ? 22 : 0)
         + ((behaviorState?.threatProfile?.lethalRisk === true || behaviorState?.来袭窗口摘要?.lethalRisk === true) ? 24 : 0)
         + (Number(候选.终局压力 || 0) > 0.58 ? 20 : 0);
-      const 非关键高价复读 = 高价 && 重复 > 0 && 高耗关键收益 <= 0 && !候选.关键控制窗口;
-      const 复读惩罚 = 非关键高价复读 ? Math.round(Math.min(110, 48 + 重复 * 30 + 断档 * 120)) : 0;
-      if (!高耗 && !复读惩罚) return { 修正: 0, 硬否决: false, 理由: [], 高耗关键收益: 0, 资源断档惩罚: 0, 高价复读惩罚: 0 };
+      if (!高耗) return { 修正: 0, 硬否决: false, 理由: [], 高耗关键收益: 0, 资源断档惩罚: 0, 高价复读惩罚: 0 };
       if (高耗关键收益 > 0) return { 修正: 高耗关键收益, 硬否决: false, 理由: [`高耗关键收益 +${高耗关键收益}`], 高耗关键收益, 资源断档惩罚: 0 };
       const 惩罚 = 高耗 ? Math.round(Math.min(72, 34 + 断档 * 46 + (Number(候选.原始净收益 || 0) < 45 ? 16 : 0))) : 0;
       const 理由 = [];
       if (惩罚 > 0) 理由.push(`资源断档惩罚 -${惩罚}`);
-      if (复读惩罚 > 0) 理由.push(`高价复读机会成本 -${复读惩罚}`);
-      return { 修正: -(惩罚 + 复读惩罚), 硬否决: false, 理由, 高耗关键收益: 0, 资源断档惩罚: 惩罚, 高价复读惩罚: 复读惩罚 };
+      return { 修正: -惩罚, 硬否决: false, 理由, 高耗关键收益: 0, 资源断档惩罚: 惩罚, 高价复读惩罚: 0 };
     }
 
     function 计算资源节奏排序修正_V1(行动类别 = '输出', actor = {}, 战局画像 = {}, behaviorState = {}, 技能类别 = {}, skill = {}, 候选 = {}) {
@@ -2358,12 +2353,58 @@ class BattleUIComponent {
       return { 修正: Math.round(修正), 标签, 理由: 标签 };
     }
 
-    function 计算分层记忆惩罚_V1(重复 = 0, 关键理由 = false, 连招修正 = 0) {
-      const 次数 = Math.max(0, Number(重复 || 0));
-      let 惩罚 = 次数 <= 0 ? 0 : 次数 === 1 ? 12 : 次数 === 2 ? 34 : 68 + (次数 - 3) * 14;
-      if (关键理由) 惩罚 = Math.round(惩罚 * 0.55);
-      if (Number(连招修正 || 0) > 0) 惩罚 = Math.round(惩罚 * 0.70);
-      return Math.max(0, 惩罚);
+    function 计算重复效用衰减_V1(选项 = {}) {
+      const 重复次数 = Math.max(0, Number(选项.重复次数 ?? 选项.repeatCount ?? 0));
+      const 同类重复次数 = Math.max(0, Number(选项.同类重复次数 ?? 选项.sameCategoryRepeatCount ?? 0));
+      const 是高影响 = 选项.是高影响 === true || /终局爆发|控制|输出|压制/.test(String(选项.行动类别 || '')) || 选项.是高耗 === true;
+      const 豁免 = (() => {
+        if (选项.玩家锁定动作 === true) return 'PLAYER_LOCKED_ACTION';
+        if (选项.只有一个合法动作 === true) return 'ONLY_LEGAL_ACTION';
+        if (选项.可斩杀 === true) return 'LETHAL_WINDOW';
+        if (选项.紧急治疗 === true) return 'EMERGENCY_HEAL';
+        if (选项.致命截断 === true) return 'LETHAL_INTERRUPT';
+        return '';
+      })();
+      let 倍率 = 1;
+      let 原因码 = '';
+      let 类别 = 'none';
+      if (重复次数 >= 2) {
+        倍率 = 0.10;
+        原因码 = 'SAME_ACTION_REPEAT_HEAVY';
+        类别 = 'same_action';
+      } else if (重复次数 === 1) {
+        倍率 = 0.35;
+        原因码 = 'SAME_ACTION_REPEAT';
+        类别 = 'same_action';
+      } else if (是高影响 && 同类重复次数 > 0) {
+        倍率 = 0.65;
+        原因码 = 'SAME_CATEGORY_HIGH_IMPACT';
+        类别 = 'same_category';
+      }
+      return {
+        repeatCount: 重复次数,
+        sameCategoryRepeatCount: 同类重复次数,
+        repeatCategory: 类别,
+        repeatDecayMultiplier: 倍率,
+        repeatDecayReasonCode: 原因码,
+        repeatExceptionCode: 豁免,
+        repeatDecayApplied: 倍率 < 0.999,
+      };
+    }
+
+    function 格式化重复效用衰减说明_V1(衰减 = {}) {
+      const 倍率 = Number(衰减?.repeatDecayMultiplier || 1);
+      if (!Number.isFinite(倍率) || 倍率 >= 0.999) return '';
+      const 标签 = 衰减.repeatDecayReasonCode === 'SAME_CATEGORY_HIGH_IMPACT' ? '同类高影响动作复读衰减' : '重复释放衰减';
+      const 豁免映射 = {
+        LETHAL_WINDOW: '终结窗口豁免：目标濒死',
+        EMERGENCY_HEAL: '救急窗口豁免：友方濒危',
+        LETHAL_INTERRUPT: '截断窗口豁免：对方致命动作',
+        ONLY_LEGAL_ACTION: '保底豁免：无其他合法动作',
+        PLAYER_LOCKED_ACTION: '玩家锁定豁免：手动指定',
+      };
+      const 豁免 = 豁免映射[衰减.repeatExceptionCode] || '';
+      return `${标签} x${倍率.toFixed(2)}${豁免 ? `；${豁免}` : ''}`;
     }
 
     function 计算连招排序修正_V1(actor = {}, target = {}, 规划上下文 = {}, 行动类别 = '输出', 技能类别 = {}) {
@@ -2635,7 +2676,7 @@ class BattleUIComponent {
         const 目标修正 = 目标切换.修正;
         const 关键理由 = 候选.可斩杀 || 候选.可打断 || 上下文?.threatProfile?.lethalRisk === true || 上下文?.来袭窗口摘要?.lethalRisk === true
           || 关键控制窗口;
-        const 记忆惩罚 = 计算分层记忆惩罚_V1(重复, 关键理由, 连招.修正);
+        const 记忆惩罚 = 0;
         const 原始权重 = Number(候选.原始权重 ?? 候选.weight ?? 候选.基础收益 ?? 0);
         const 原始净收益 = Number(候选.原始净收益 ?? 候选.净收益 ?? 原始权重);
         const 战术修正 = Number(候选.战术修正 || 0);
@@ -2655,13 +2696,25 @@ class BattleUIComponent {
               是否资源恢复: 技能类别.效果画像?.是否资源恢复 === true,
             };
         const 审计分类来源 = 固定自身目标 ? '防御动作语义' : (技能类别.效果画像?.分类来源 || '默认输出');
-        const 分数 = 资源判定.硬否决 ? 0 : Math.round(
+        const 同类重复次数 = 读取归一行为记忆值_V1(actor?.决策记忆?.recent_actions || {}, [行动类别, 技能类别.主类别], 0);
+        const 重复衰减 = 计算重复效用衰减_V1({
+          重复次数: 重复,
+          同类重复次数: Math.max(0, 同类重复次数 - 重复),
+          行动类别,
+          是高耗: 候选.高耗 === true,
+          可斩杀: 候选.可斩杀 === true,
+          紧急治疗: 行动类别 === '治疗' && getCombatHpRatio(目标 || actor) < 0.45,
+          致命截断: 关键控制窗口 && (上下文?.threatProfile?.lethalRisk === true || 上下文?.来袭窗口摘要?.lethalRisk === true),
+        });
+        const 衰减说明 = 格式化重复效用衰减说明_V1(重复衰减);
+        const 衰减前分数 = 资源判定.硬否决 ? 0 : Math.max(0, Math.round(
           原始权重 + 原始净收益 * 0.35 + 战术修正 + 目标修正 - 风险.风险变化 * 80
           + 防御质量.修正 + 对手意图响应.修正 + 类别预算.修正 + 友方保护.修正 + 距离可达.修正
           + 阶段节奏.修正 + 危机恢复.修正 + 空间收益.阵型修正 + 空间收益.范围收益修正 + 空间收益.群体收益修正 + 短期记忆.修正
           + 支援职责.修正 + 资源节奏.修正 + 对手适应.修正 + 目标价值.修正 + 职责画像.修正 + 二回合前瞻.二回合前瞻修正
           + 连招.修正 - 记忆惩罚 - 闪避未中惩罚 - 敏攻硬追惩罚 + 反敏攻价值得分 + 资源修正 + 斩杀修正,
-        );
+        ));
+        const 分数 = Math.round(衰减前分数 * Number(重复衰减.repeatDecayMultiplier || 1));
         return {
           ...候选,
           target: 目标,
@@ -2700,6 +2753,14 @@ class BattleUIComponent {
             敏攻硬追惩罚,
             反敏攻价值得分,
             斩杀修正,
+            repeatCount: 重复衰减.repeatCount,
+            repeatCategory: 重复衰减.repeatCategory,
+            repeatDecayMultiplier: 重复衰减.repeatDecayMultiplier,
+            repeatDecayReasonCode: 重复衰减.repeatDecayReasonCode,
+            repeatExceptionCode: 重复衰减.repeatExceptionCode,
+            repeatDecayReasonText: 衰减说明,
+            scoreBeforeRepeatDecay: 衰减前分数,
+            scoreAfterRepeatDecay: Math.max(0, 分数),
             最终权重: Math.max(0, 分数),
             行动类别,
             技能类别: 技能类别.主类别,
@@ -17633,9 +17694,14 @@ class BattleUIComponent {
             回合: 1,
             选择原因: '压制收束',
             战术修正: -12,
-            记忆惩罚: 34,
+            repeatCount: 2,
+            repeatCategory: 'same_action',
+            repeatDecayMultiplier: 0.1,
+            repeatDecayReasonCode: 'SAME_ACTION_REPEAT_HEAVY',
+            scoreBeforeRepeatDecay: 660,
+            scoreAfterRepeatDecay: 66,
             候选排序结果: [
-              { 名称: '裂空斩', 权重: 66 },
+              { 名称: '裂空斩', 权重: 66, repeatCount: 2, repeatCategory: 'same_action', repeatDecayMultiplier: 0.1, repeatDecayReasonCode: 'SAME_ACTION_REPEAT_HEAVY', scoreBeforeRepeatDecay: 660, scoreAfterRepeatDecay: 66 },
               { 名称: '伺机闪避', 权重: 52 },
             ],
             最终权重: 66,
@@ -17679,8 +17745,8 @@ class BattleUIComponent {
         断言战斗回归夹具(!/试图掌住战局节奏/.test(visible), `目标规划仍泄漏泛化战略词:${visible}`);
         断言战斗回归夹具(/目标遍历详情/.test(visible), `多目标失败推演未折叠:${visible}`);
         断言战斗回归夹具(/中间推演/.test(visible), `中间推演未归并:${visible}`);
-        断言战斗回归夹具(!/重复使用惩罚\(\+/.test(visible), `记忆惩罚仍显示加分:${visible}`);
-        断言战斗回归夹具(/重复使用惩罚\(-34\)/.test(visible), `记忆惩罚未转负向口径:${visible}`);
+        断言战斗回归夹具(!/重复使用惩罚|记忆惩罚/.test(visible), `重复衰减仍显示为线性惩罚:${visible}`);
+        断言战斗回归夹具(/重复释放衰减\s*x0\.10/.test(visible), `重复衰减倍率未展示:${visible}`);
         断言战斗回归夹具(!/直接采用【裂空斩】/.test(visible), `放弃再判定仍映射为直接采用:${visible}`);
         断言战斗回归夹具(/维持原定计划|未发现更优解/.test(visible), `keep_original 未改为维持语气:${visible}`);
         断言战斗回归夹具(/抓住\s*夹具玩家\s*露出的破绽，以\s*【Action_Missing】\s*进行反击[^。]*33\s*点伤害/.test(visible), `防反成功缺动作来源:${visible}`);
@@ -21769,11 +21835,7 @@ class BattleUIComponent {
           : 是装备技能 ? 技能时机约束表_V1.装备技能重复回合
           : 技能时机约束表_V1.普通技能重复回合;
         if (间隔 < 重复阈值 && !(可斩杀 || 是控制 && 规划上下文.来袭窗口摘要?.lethalRisk)) {
-          const 惩罚 = (是融合技 || 是大招 || 是稀缺技能 || 是装备技能 || 是高耗)
-            ? 技能时机约束表_V1.高风险重复惩罚
-            : 技能时机约束表_V1.普通重复惩罚;
-          delta -= 惩罚;
-          轨迹.push(`技能冷却/重复 -${惩罚}`);
+          轨迹.push('近期重复交由效用衰减层处理');
         }
       }
       delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.机制专属层);
@@ -25994,6 +26056,14 @@ class BattleUIComponent {
           资源修正: Number(详情.资源修正 || 0),
           连招修正: Number(详情.连招修正 || 0),
           记忆惩罚: Number(详情.记忆惩罚 || 0),
+          repeatCount: Number(详情.repeatCount || 0),
+          repeatCategory: String(详情.repeatCategory || ''),
+          repeatDecayMultiplier: Number(详情.repeatDecayMultiplier || 1),
+          repeatDecayReasonCode: String(详情.repeatDecayReasonCode || ''),
+          repeatExceptionCode: String(详情.repeatExceptionCode || ''),
+          repeatDecayReasonText: String(详情.repeatDecayReasonText || ''),
+          scoreBeforeRepeatDecay: Number(详情.scoreBeforeRepeatDecay || 0),
+          scoreAfterRepeatDecay: Number(详情.scoreAfterRepeatDecay || 0),
           团队意图修正: Number(详情.团队意图修正 || 0),
           行为多样性修正: Number(详情.行为多样性修正 || 0),
           干扰强度: Number(详情.干扰强度 || 0),
@@ -26684,7 +26754,6 @@ class BattleUIComponent {
 
           const 记忆候选键 = 读取行为记忆候选键_V1(candidate?.skill || candidate?.__预览技能 || {}, candidate);
           const repeatCount = 读取归一行为记忆值_V1(memory.recent_actions || {}, 记忆候选键.length ? 记忆候选键 : [branchName], 0);
-          if (repeatCount > 0) weight -= repeatCount * 12;
           if (规范化行为记忆键_V1(memory.last_action) === 规范化行为记忆键_V1(branchName)) weight -= 8;
           weight -= 计算保守动作惩罚(actor, branchName, 威胁分层, {
             有职责技能: (battleState?.skillContext?.评分技能列表 || []).some(项目 => 项目?.skill && Number(项目.weight || 0) >= 24),
@@ -26741,6 +26810,21 @@ class BattleUIComponent {
             if (/控制截断|压招|抢落点|范围压制|命中修正|收招转防|短前摇对轰|控制压制/.test(branchName)) weight += 24 + 闪避克制次数 * 10;
           }
 
+          const 重复衰减 = 计算重复效用衰减_V1({
+            重复次数: repeatCount,
+            行动类别: branchName,
+            可斩杀: targetHpRatio > 0 && targetHpRatio < 0.18,
+            紧急治疗: /治疗|恢复|回春/.test(branchName) && getCombatHpRatio(actor) < 0.45,
+            致命截断: battleState?.threatProfile?.lethalRisk === true || battleState?.来袭窗口摘要?.lethalRisk === true,
+          });
+          const 衰减前权重 = Math.max(0, Math.floor(weight));
+          weight = Math.round(衰减前权重 * Number(重复衰减.repeatDecayMultiplier || 1));
+          candidate.__repeatDecayAudit = {
+            ...重复衰减,
+            scoreBeforeRepeatDecay: 衰减前权重,
+            scoreAfterRepeatDecay: weight,
+            repeatDecayReasonText: 格式化重复效用衰减说明_V1(重复衰减),
+          };
           return 应用行为经验误判(Math.max(0, weight), battleState);
         }
 
@@ -26841,6 +26925,14 @@ class BattleUIComponent {
                 高价复读惩罚: 排序审计.高价复读惩罚,
                 连招修正: 排序审计.连招修正,
                 记忆惩罚: 排序审计.记忆惩罚,
+                repeatCount: 排序审计.repeatCount || 0,
+                repeatCategory: 排序审计.repeatCategory || '',
+                repeatDecayMultiplier: 排序审计.repeatDecayMultiplier || 1,
+                repeatDecayReasonCode: 排序审计.repeatDecayReasonCode || '',
+                repeatExceptionCode: 排序审计.repeatExceptionCode || '',
+                repeatDecayReasonText: 排序审计.repeatDecayReasonText || '',
+                scoreBeforeRepeatDecay: 排序审计.scoreBeforeRepeatDecay || 0,
+                scoreAfterRepeatDecay: 排序审计.scoreAfterRepeatDecay || 0,
                 目标价值修正: 排序审计.目标价值修正,
                 二回合前瞻修正: 排序审计.二回合前瞻修正,
                 职责修正: 排序审计.职责修正,
@@ -26866,6 +26958,31 @@ class BattleUIComponent {
               },
             };
           });
+          const 合法候选数 = scoredCandidates.filter(候选 => Number(候选?.weight || 0) > 0).length;
+          if (合法候选数 <= 1) {
+            scoredCandidates = scoredCandidates.map(候选 => {
+              const 审计 = 候选.__主动规划审计 || {};
+              if (Number(审计.repeatDecayMultiplier || 1) >= 0.999 || 审计.repeatExceptionCode) return 候选;
+              const 更新衰减 = {
+                repeatDecayMultiplier: 审计.repeatDecayMultiplier,
+                repeatDecayReasonCode: 审计.repeatDecayReasonCode,
+                repeatExceptionCode: 'ONLY_LEGAL_ACTION',
+              };
+              return {
+                ...候选,
+                __主动规划审计: {
+                  ...审计,
+                  repeatExceptionCode: 'ONLY_LEGAL_ACTION',
+                  repeatDecayReasonText: 格式化重复效用衰减说明_V1(更新衰减),
+                  候选排序审计: {
+                    ...(审计.候选排序审计 || {}),
+                    repeatExceptionCode: 'ONLY_LEGAL_ACTION',
+                    repeatDecayReasonText: 格式化重复效用衰减说明_V1(更新衰减),
+                  },
+                },
+              };
+            });
+          }
           const 是主动阶段 = /主动/.test(String(phaseLabel || ''));
           if (是主动阶段) {
             const 紧急窗口 =
@@ -26933,6 +27050,28 @@ class BattleUIComponent {
               });
             }
           }
+          const 存在非复读合法候选 = scoredCandidates.some(候选 => {
+            const 审计 = 候选?.__主动规划审计 || {};
+            return Number(候选?.weight || 0) > 0 && !(Number(审计.repeatDecayMultiplier || 1) < 0.999 && !审计.repeatExceptionCode);
+          });
+          if (存在非复读合法候选) {
+            scoredCandidates = scoredCandidates.map(候选 => {
+              const 审计 = 候选?.__主动规划审计 || {};
+              if (Number(候选?.weight || 0) <= 0 || Number(审计.repeatDecayMultiplier || 1) >= 0.999 || 审计.repeatExceptionCode) return 候选;
+              return {
+                ...候选,
+                weight: 0,
+                __主动规划审计: {
+                  ...审计,
+                  选择原因: '重复动作缺少战术豁免，本轮交给其他合法候选',
+                  候选排序审计: {
+                    ...(审计.候选排序审计 || {}),
+                    选择原因: '重复动作缺少战术豁免，本轮交给其他合法候选',
+                  },
+                },
+              };
+            });
+          }
           const 扰动后候选 = 扰动候选权重列表(scoredCandidates, 干扰强度);
           const 选择结果 = rollBranchByPriority(扰动后候选, phaseLabel);
           const 命中审计 = 选择结果.option?.__主动规划审计 || {};
@@ -26965,6 +27104,13 @@ class BattleUIComponent {
                 权重: weight,
                 candidateStatus: 战斗候选状态转移('', selected ? 'EXECUTED' : (weight > 0 ? 'REJECTED' : 'FILTERED')),
                 rejectionCode: selected ? '' : (weight > 0 ? 'RNG_NOT_SELECTED' : 'FILTERED_BY_SCORE'),
+                repeatCount: Number(候选?.__主动规划审计?.repeatCount || 0),
+                repeatCategory: String(候选?.__主动规划审计?.repeatCategory || ''),
+                repeatDecayMultiplier: Number(候选?.__主动规划审计?.repeatDecayMultiplier || 1),
+                repeatDecayReasonCode: String(候选?.__主动规划审计?.repeatDecayReasonCode || ''),
+                repeatExceptionCode: String(候选?.__主动规划审计?.repeatExceptionCode || ''),
+                scoreBeforeRepeatDecay: Number(候选?.__主动规划审计?.scoreBeforeRepeatDecay || 0),
+                scoreAfterRepeatDecay: Number(候选?.__主动规划审计?.scoreAfterRepeatDecay || weight),
                 目标: 候选?.__主动规划审计?.目标 || 候选?.target?.name || 候选?.target?.名称 || '',
                 审计: 候选?.__主动规划审计?.候选排序审计 || {},
               };
@@ -26988,6 +27134,14 @@ class BattleUIComponent {
               高价复读惩罚: 命中审计.高价复读惩罚 || 0,
               连招修正: 命中审计.连招修正 || 0,
               记忆惩罚: 命中审计.记忆惩罚 || 0,
+              repeatCount: 命中审计.repeatCount || 0,
+              repeatCategory: 命中审计.repeatCategory || '',
+              repeatDecayMultiplier: 命中审计.repeatDecayMultiplier || 1,
+              repeatDecayReasonCode: 命中审计.repeatDecayReasonCode || '',
+              repeatExceptionCode: 命中审计.repeatExceptionCode || '',
+              repeatDecayReasonText: 命中审计.repeatDecayReasonText || '',
+              scoreBeforeRepeatDecay: 命中审计.scoreBeforeRepeatDecay || 0,
+              scoreAfterRepeatDecay: 命中审计.scoreAfterRepeatDecay || 0,
               目标价值修正: 命中审计.目标价值修正 || 0,
               二回合前瞻修正: 命中审计.二回合前瞻修正 || 0,
               职责修正: 命中审计.职责修正 || 0,
@@ -47738,6 +47892,13 @@ class BattleUIComponent {
             rejectionCode: 读取候选否决码(item, trace || {}),
             rawReason: String(item?.rejectionReason || item?.否决原因 || item?.failReason || '').trim(),
             overrideReason: String(item?.overrideReason || item?.覆盖原因 || trace?.overrideReason || '').trim(),
+            repeatCount: Number(item?.repeatCount || 0),
+            repeatCategory: String(item?.repeatCategory || ''),
+            repeatDecayMultiplier: Number(item?.repeatDecayMultiplier || 1),
+            repeatDecayReasonCode: String(item?.repeatDecayReasonCode || ''),
+            repeatExceptionCode: String(item?.repeatExceptionCode || ''),
+            scoreBeforeRepeatDecay: Number(item?.scoreBeforeRepeatDecay || 0),
+            scoreAfterRepeatDecay: Number(item?.scoreAfterRepeatDecay || 0),
           }));
           const 构建候选池明细行 = trace => {
             const candidates = 构建CandidatePoolDTO(trace);
@@ -47751,6 +47912,9 @@ class BattleUIComponent {
                 rejectionCode: '',
                 rawReason: '',
                 overrideReason: `抽样未命中；因系统最终动作回填，仍执行【${finalActionName}】`,
+                repeatDecayMultiplier: Number(trace?.repeatDecayMultiplier || 1),
+                repeatDecayReasonCode: String(trace?.repeatDecayReasonCode || ''),
+                repeatExceptionCode: String(trace?.repeatExceptionCode || ''),
               });
             }
             return `候选池：${candidates.map((item, index) => {
@@ -47760,11 +47924,12 @@ class BattleUIComponent {
               const rejected = status === 'REJECTED' || status === 'FILTERED' || status === 'SHADOWED';
               const explicitReason = /\[|主动战术阶段|候选落点已按资源|未记录结构化否决码|Object object|^\s*\{/.test(item.rawReason) ? '' : item.rawReason;
               const mappedReason = 映射候选否决原因(item.rejectionCode);
+              const repeatSuffix = 格式化重复效用衰减说明_V1(item);
               const suffix = selected
-                ? (status === 'EXECUTED' ? ` (执行${item.overrideReason ? `：${item.overrideReason}` : ''})` : ` (选中${item.overrideReason ? `：${item.overrideReason}` : ''})`)
+                ? (status === 'EXECUTED' ? ` (执行${item.overrideReason ? `：${item.overrideReason}` : ''}${repeatSuffix ? `；${repeatSuffix}` : ''})` : ` (选中${item.overrideReason ? `：${item.overrideReason}` : ''}${repeatSuffix ? `；${repeatSuffix}` : ''})`)
                 : rejected
-                  ? ` (未选：${explicitReason || mappedReason || '未知规则限制'})`
-                  : '';
+                  ? ` (未选：${[explicitReason || mappedReason || '未知规则限制', repeatSuffix].filter(Boolean).join('；')})`
+                  : (repeatSuffix ? ` (${repeatSuffix})` : '');
               return `${包裹判定动作名称(name)} ${item.score}分${suffix}`;
             }).join(' / ')}`;
           };
@@ -47789,24 +47954,23 @@ class BattleUIComponent {
               ['团队协同', Number(normalized.团队意图修正 || 0)],
               ['二回合前瞻', Number(normalized.二回合前瞻修正 || 0)],
               ['职责定位', Number(normalized.职责修正 || 0)],
-              ['重复惩罚', -Math.abs(Number(normalized.记忆惩罚 || 0))],
-              ['高耗复读惩罚', -Math.abs(Number(normalized.高价复读惩罚 || 0))],
             ].filter(([, value], index) => index === 0 ? Number.isFinite(value) && Math.abs(value) > 0 : Number.isFinite(value) && Math.abs(value) >= 1);
             const finalWeight = Number(normalized.最终权重 || 0);
             if (pieces.length < 2 && !(finalWeight > 0)) return '';
             const terms = pieces.map(([label, value], index) => `${index === 0 ? '' : (value >= 0 ? '+' : '')}${Math.round(value)} ${label}`);
             const termSum = pieces.reduce((sum, [, value]) => sum + Number(value || 0), 0);
             const diff = Number.isFinite(finalWeight) ? Math.round(finalWeight - termSum) : 0;
-            if (Number.isFinite(finalWeight) && Math.abs(diff) <= 1) return `权重拆分：${terms.join(' ')} = ${Math.round(finalWeight)}分`;
+            const repeatLine = 格式化重复效用衰减说明_V1(normalized);
+            if (Number.isFinite(finalWeight) && Math.abs(diff) <= 1) return `权重拆分：${terms.join(' ')} = ${Math.round(finalWeight)}分${repeatLine ? `；${repeatLine}` : ''}`;
             if (Number.isFinite(finalWeight) && Math.abs(diff) > 1) {
               const tags = pieces
                 .filter(([, value]) => Math.abs(Number(value || 0)) >= 1)
                 .map(([label]) => label)
                 .slice(0, 4)
                 .join('、');
-              return `评分摘要：最终 ${Math.round(finalWeight)}分；评分项未完全溯源，玩家态隐藏等式${tags ? `（已知项：${tags}）` : ''}`;
+              return `评分摘要：最终 ${Math.round(finalWeight)}分；评分项未完全溯源，玩家态隐藏等式${tags ? `（已知项：${tags}）` : ''}${repeatLine ? `；${repeatLine}` : ''}`;
             }
-            return `权重拆分：${terms.join(' ')}`;
+            return `权重拆分：${terms.join(' ')}${repeatLine ? `；${repeatLine}` : ''}`;
           };
           const 构建取舍明细行 = trace => {
             const reason = 清洗判定侧写理由(String(trace?.选择原因 || trace?.reason || '').trim(), trace || {});
@@ -49121,11 +49285,11 @@ class BattleUIComponent {
         }
 
         function 构建权重修正说明(轨迹 = {}) {
+          const repeatLine = 格式化重复效用衰减说明_V1(轨迹);
           const 项 = [
             { label: '战术收益', value: Number(轨迹.战术修正 || 0) },
             { label: '团队意图', value: Number(轨迹.团队意图修正 || 0) },
             { label: '资源压力', value: Number(轨迹.资源修正 || 0) },
-            { label: '重复使用惩罚', value: -Math.abs(Number(轨迹.记忆惩罚 || 0)) },
             { label: '闪避落空惩罚', value: -Math.abs(Number(轨迹.闪避未中惩罚 || 0)) },
             { label: '敏攻硬追惩罚', value: -Math.abs(Number(轨迹.敏攻硬追惩罚 || 0)) },
           ]
@@ -49133,8 +49297,8 @@ class BattleUIComponent {
             .sort((左, 右) => Math.abs(右.value) - Math.abs(左.value))
             .slice(0, 2)
             .map(item => `${item.label}(${item.value > 0 ? '+' : ''}${Math.round(item.value)})`);
-          if (!项.length) return '';
-          return `主要加权来自${项.join('与')}。`;
+          if (!项.length) return repeatLine ? `主要修正来自${repeatLine}。` : '';
+          return `主要加权来自${项.join('与')}${repeatLine ? `；${repeatLine}` : ''}。`;
         }
 
         function 构建动作权衡文本(轨迹 = {}) {
@@ -49521,7 +49685,12 @@ class BattleUIComponent {
             原始权重: Number(轨迹.原始权重 || 0),
             战术修正: Number(轨迹.战术修正 || 0),
             团队意图修正: Number(轨迹.团队意图修正 || 0),
-            记忆惩罚: Number(轨迹.记忆惩罚 || 0),
+            repeatCount: Number(轨迹.repeatCount || 0),
+            repeatDecayMultiplier: Number(轨迹.repeatDecayMultiplier || 1),
+            repeatDecayReasonCode: String(轨迹.repeatDecayReasonCode || ''),
+            repeatExceptionCode: String(轨迹.repeatExceptionCode || ''),
+            scoreBeforeRepeatDecay: Number(轨迹.scoreBeforeRepeatDecay || 0),
+            scoreAfterRepeatDecay: Number(轨迹.scoreAfterRepeatDecay || 0),
             资源修正: Number(轨迹.资源修正 || 0),
             最终权重: Number(轨迹.最终权重 || 0),
           };

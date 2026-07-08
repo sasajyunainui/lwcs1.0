@@ -1095,6 +1095,7 @@
   function 清理世界书扫描文本(value) {
     return String(value || '')
       .replace(/<status_current_variables>[\s\S]*?<\/status_current_variables>/gi, ' ')
+      .replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ')
       .replace(/<MVU剧情视图>[\s\S]*?<\/MVU剧情视图>/gi, ' ')
       .replace(/<相互可见性>[\s\S]*?<\/相互可见性>/gi, ' ')
       .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, ' ')

@@ -142,7 +142,7 @@
           },
           {
             "role": "assistant",
-            "content": "Edward: 收到。历史记忆、未来时间线、已发生的偏差账本，以及本轮的场景地缘线索我都已通盘掌握。我现在就开始思考并规划规划。",
+            "content": "Edward: 收到。我已掌握上述信息。现在就按照输出格式进行输出。",
             "deletable": true
           }
         ],
@@ -251,8 +251,8 @@
             "deletable": true
           }
         ],
-        "extractTags": "plot_adjudication",
-        "extractInjectTags": "module_routing,battle_adjudication,dm_set,scene_audit",
+        "extractTags": "plot_adjudication,scene_audit",
+        "extractInjectTags": "module_routing,battle_adjudication,dm_set",
         "finalDirectiveTemplate": "",
         "minLength": 200,
         "maxRetries": 3,
@@ -307,7 +307,7 @@
           },
           {
             "role": "SYSTEM",
-            "content": "玩家：爱德华，以下是跑团有关参考信息。\n═══════ 以下是主角信息 ═══════\n<主角>\n$U\n</主角>\n═══════ 主角信息结束，以下是卡片简述 ═══════\n注：<卡片简述>是角色卡的补充，角色卡的详细信息在<背景设定>（世界书）中。\n<卡片简述>\n$C\n</卡片简述>\n═══════ 卡片简述结束，以下是背景设定 ═══════\n注：背景设定是跑团核心设定，可以补足，但**不照搬设定**\n<背景设定>\n$1\n</背景设定>\n═══════ 背景设定结束，以下是已发生事件概览 ═══════\n$5\n═══════ 已发生事件概览结束，以下是前文剧情 ═══════\n注：仅供跑团历史剧情上的参考。\n<前文剧情>\n$7\n</前文剧情>\n═══════ 前文剧情结束，以下是上轮跑团记录═══════\n注：仅提供file、scene、离场角色行动和故事线持续追踪参考。\n<上轮跑团记录>\n{{file}}\n{{scene}}\n{{dm_track}}\n{{dm_story}}\n</上轮跑团记录>\n═══════ 上轮跑团记录结束，以下是MVU运行时信息 ═══════\n<MVU剧情视图>\n{{MVU_RUNTIME_VIEW}}\n</MVU剧情视图>\n<相互可见性>\n{{MVU_MUTUAL_VISIBILITY_VIEW}}\n</相互可见性>\n═══════ MVU运行时信息结束，下接玩家本轮input的内容 ═══════\n<input>\n$8\n</input>\n═══════ input信息结束，下接原著NPC行为观察证据 ═══════\n<原著NPC行为观察证据>\n{{npc_behavior_evidence}}\n</原著NPC行为观察证据>\n═══════ 原著NPC行为观察证据结束，下接本轮推进指导内容 ═══════\n{{plot_adjudication}}\n\nEdward:好，我看到玩家本轮input、原著NPC行为观察证据和本轮推进指导内容了。",
+            "content": "玩家：爱德华，以下是跑团有关参考信息。\n═══════ 以下是主角信息 ═══════\n<主角>\n$U\n</主角>\n═══════ 主角信息结束，以下是卡片简述 ═══════\n注：<卡片简述>是角色卡的补充，角色卡的详细信息在<背景设定>（世界书）中。\n<卡片简述>\n$C\n</卡片简述>\n═══════ 卡片简述结束，以下是背景设定 ═══════\n注：背景设定是跑团核心设定，可以补足，但**不照搬设定**\n<背景设定>\n$1\n</背景设定>\n═══════ 背景设定结束，以下是已发生事件概览 ═══════\n$5\n═══════ 已发生事件概览结束，以下是前文剧情 ═══════\n注：仅供跑团历史剧情上的参考。\n<前文剧情>\n$7\n</前文剧情>\n═══════ 前文剧情结束，以下是上轮跑团记录═══════\n注：仅提供file、scene、离场角色行动和故事线持续追踪参考。\n<上轮跑团记录>\n{{file}}\n{{scene}}\n{{dm_track}}\n{{dm_story}}\n</上轮跑团记录>\n═══════ 上轮跑团记录结束，以下是MVU运行时信息 ═══════\n<MVU剧情视图>\n{{MVU_RUNTIME_VIEW}}\n</MVU剧情视图>\n<相互可见性>\n{{MVU_MUTUAL_VISIBILITY_VIEW}}\n</相互可见性>\n═══════ MVU运行时信息结束，下接玩家本轮input的内容 ═══════\n<input>\n$8\n</input>\n═══════ input信息结束，下接原著NPC行为观察证据 ═══════\n<原著NPC行为观察证据>\n{{npc_behavior_evidence}}\n</原著NPC行为观察证据>\n═══════ 原著NPC行为观察证据结束，下接本轮推进指导内容 ═══════\n{{plot_adjudication}}\n{{scene_audit}}\n\nEdward:好，我看到玩家本轮input、原著NPC行为观察证据和本轮推进指导内容了。",
             "deletable": true
           },
           {
@@ -342,7 +342,7 @@
       }
     ],
     "globalRevision": 0,
-    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}\n{{scene_audit}}",
     "prompts": [
       {
         "id": "mainPrompt",
@@ -362,7 +362,7 @@
         "id": "finalSystemDirective",
         "name": "最终注入指令 (Storyteller Directive)",
         "role": "system",
-        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}",
+        "content": "$8\n\n以上是用户的本轮输入，以下是stage包含角色行动：\n{{act}}\n\n以下是scene，有时间戳和场景信息等：\n{{scene}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是剧情审查\n{{plot_adjudication}}\n{{scene_audit}}",
         "deletable": false
       }
     ],
@@ -414,7 +414,7 @@
       },
       {
         "role": "assistant",
-        "content": "Edward: 收到。历史记忆、未来时间线、已发生的偏差账本，以及本轮的场景地缘线索我都已通盘掌握。我现在就开始思考并规划规划。",
+        "content": "Edward: 收到。我已掌握上述信息。现在就按照输出格式进行输出。",
         "deletable": true
       }
     ]

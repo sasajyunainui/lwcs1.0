@@ -181,8 +181,12 @@ function 计算内置角色投影年龄_V1(快照 = {}, 当前tick = 0) {
   return Math.max(0, 快照年龄 + (Number(当前tick || 0) - 快照tick) / 每年tick);
 }
 
+function 清理提示审计扫描文本_V1(text = '') {
+  return String(text || '').replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ');
+}
+
 function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 = {}) {
-  const 内容 = String(文本 || '');
+  const 内容 = 清理提示审计扫描文本_V1(文本);
   if (!内容.trim()) return [];
   const 已占用区间 = [];
   const 命中角色 = [];
@@ -2674,7 +2678,7 @@ function 应用内置角色成长技能模板_V1(数据根 = {}, 选项 = {}) {
 function 应用内置物品实例化_V1(数据根 = {}, 选项 = {}) {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   确保物品分类表_V1(数据根);
-  const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
+  const 命中文本 = 清理提示审计扫描文本_V1([选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n'));
   const 内置物品目录 = 构建内置物品平铺表_V1();
   if (!Object.keys(内置物品目录).length || (!String(命中文本 || '').trim() && !收集运行时物品候选名_V1(数据根, 命中文本, 选项).length)) {
     return { changed: false, changedNames: [], names: [] };
@@ -2792,7 +2796,7 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   const tick数值 = Number(数据根?.world?.时间?.tick || 0);
   const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
   const 待写入 = new Set();
-  const 命中文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
+  const 命中文本 = 清理提示审计扫描文本_V1([选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n'));
   const 使用统一命中 = 选项.使用统一命中 === true || Array.isArray(选项.命中角色) || Array.isArray(选项.候选角色) || Array.isArray(选项.相关角色);
   const 文本自动命中 = 选项.使用统一命中 === true && String(命中文本 || '').trim();
   const 添加命中角色 = 名称列表 => {

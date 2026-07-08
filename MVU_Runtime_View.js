@@ -82,6 +82,10 @@ var 场景候选角色资料占位符_V1 = '{{场景候选角色资料}}';
 var 场景背景角色补充占位符_V1 = '{{场景背景角色补充}}';
 var 场景审计材料占位符_V1 = '{{场景审计材料}}';
 
+function 清理提示审计扫描文本_V1(text = '') {
+  return String(text || '').replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ');
+}
+
 function cloneJsonValue(值, 回退值 = {}) {
   if (值 === null || typeof 值 !== 'object') {
     if (typeof 值 === 'function' || typeof 值 === 'symbol') return 回退值;
@@ -348,7 +352,7 @@ function 格式化年龄岁月文本_V1(年龄 = 0, 生日 = '', 当前tick = nu
 }
 
 function 匹配文本内置角色名_V1(文本 = '', 当前tick = 0, 数据根 = {}) {
-  const 内容 = String(文本 || '');
+  const 内容 = 清理提示审计扫描文本_V1(文本);
   if (!内容.trim()) return [];
   const 已占用区间 = [];
   const 命中角色 = [];
@@ -949,12 +953,13 @@ function 计算运行时地点命中_V1(条目 = {}, 文本 = '', 父级集合 =
 
 function 收集运行时地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   const 索引 = 选项.地点索引 || 构建运行时地点索引_V1(数据根);
-  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 文本, { ...选项, 地点索引: 索引 });
+  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 源文本, { ...选项, 地点索引: 索引 });
   const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 1)));
   const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 16)));
   return 索引.静态地点
-    .map(条目 => 计算运行时地点命中_V1(条目, 文本, 父级集合))
+    .map(条目 => 计算运行时地点命中_V1(条目, 源文本, 父级集合))
     .filter(命中 => 命中 && 命中.分数 >= 阈值)
     .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     .slice(0, 上限);
@@ -962,12 +967,13 @@ function 收集运行时地点命中_V1(数据输入 = {}, 文本 = '', 选项 =
 
 function 收集运行时父级限定动态地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   const 索引 = 选项.地点索引 || 构建运行时地点索引_V1(数据根);
-  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 文本, { ...选项, 地点索引: 索引 });
+  const 父级集合 = 收集运行时地点父级上下文_V1(数据根, 源文本, { ...选项, 地点索引: 索引 });
   const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 1)));
   const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 12)));
   return 索引.动态地点
-    .map(条目 => 计算运行时地点命中_V1(条目, 文本, 父级集合))
+    .map(条目 => 计算运行时地点命中_V1(条目, 源文本, 父级集合))
     .filter(命中 => 命中 && 命中.分数 >= 阈值)
     .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     .slice(0, 上限);
@@ -1255,17 +1261,18 @@ function 计算运行时物品命中_V1(物品名 = '', 索引 = {}, 文本 = ''
 
 function 收集运行时动态地点命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   if (选项.动态地点目录 && typeof 选项.动态地点目录 === 'object') {
     const 目录 = 构建运行时动态地点目录_V1(数据根, 选项.动态地点目录);
     const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 5)));
     const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 8)));
     return Object.entries(目录)
-      .map(([名称, 索引]) => 计算运行时动态地点命中_V1(名称, 索引, 文本, 数据根, 选项))
+      .map(([名称, 索引]) => 计算运行时动态地点命中_V1(名称, 索引, 源文本, 数据根, 选项))
       .filter(命中 => 命中 && 命中.分数 >= 阈值)
       .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
       .slice(0, 上限);
   }
-  return 收集运行时父级限定动态地点命中_V1(数据根, 文本, {
+  return 收集运行时父级限定动态地点命中_V1(数据根, 源文本, {
     ...选项,
     阈值: Math.max(1, Math.floor(Number(选项.阈值 ?? 1))),
     上限: Math.max(1, Math.floor(Number(选项.上限 ?? 8))),
@@ -1274,13 +1281,14 @@ function 收集运行时动态地点命中_V1(数据输入 = {}, 文本 = '', �
 
 function 收集运行时物品命中_V1(数据输入 = {}, 文本 = '', 选项 = {}) {
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || {};
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   const 目录 = 构建运行时物品目录_V1(数据根, 选项.物品目录);
-  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, 选项);
+  const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 源文本, 选项);
   const 命中选项 = { ...选项, ...物品候选上下文 };
   const 阈值 = Math.max(1, Math.floor(Number(选项.阈值 ?? 5)));
   const 上限 = Math.max(1, Math.floor(Number(选项.上限 ?? 12)));
   return Object.entries(目录)
-    .map(([名称, 索引]) => 计算运行时物品命中_V1(名称, 索引, 文本, 数据根, 命中选项))
+    .map(([名称, 索引]) => 计算运行时物品命中_V1(名称, 索引, 源文本, 数据根, 命中选项))
     .filter(命中 => 命中 && 命中.分数 >= 阈值)
     .sort((左, 右) => 右.分数 - 左.分数 || 左.名称.localeCompare(右.名称, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     .slice(0, 上限);
@@ -1552,7 +1560,7 @@ function 构建运行时情报可见度索引_V1(数据根 = {}, 角色名集合
 }
 
 function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
-  const 源文本 = String(文本 || '');
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set() };
   收集运行时命中键列表_V1(源文本, 数据根?.char || {}).forEach(名称 => 结果.角色.add(名称));
   收集运行时地图命中键列表_V1(数据根, 源文本).forEach(名称 => 结果.地点.add(名称));
@@ -1564,7 +1572,7 @@ function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
 
 function 收集运行时命中候选名称_V1(文本 = '', 候选 = {}, 类型 = '名称') {
   const 命中函数 = 类型 === '物品' ? 运行时文本命中商品名_V1 : 运行时文本命中名称_V1;
-  const 捕获文本 = String(文本 || '');
+  const 捕获文本 = 清理提示审计扫描文本_V1(文本);
   const 结果 = new Set();
   Object.entries(候选 || {}).forEach(([名称, 映射]) => {
     const 实体名 = String(名称 || '').trim();
@@ -1577,7 +1585,7 @@ function 收集运行时命中候选名称_V1(文本 = '', 候选 = {}, 类型 =
 }
 
 function 构建运行时统一实体命中_V1(数据根 = {}, 文本 = '', 选项 = {}) {
-  const 源文本 = String(文本 || '');
+  const 源文本 = 清理提示审计扫描文本_V1(文本);
   const 当前MVU = 收集运行时命中名称_V1(数据根, 源文本);
   const 内置角色 = 收集运行时命中候选名称_V1(源文本, 选项.内置角色 || {}, '角色');
   const 冷归档角色 = 收集运行时命中候选名称_V1(源文本, 选项.冷归档角色 || {}, '角色');
@@ -2505,7 +2513,7 @@ function 取运行时动态地点名集合_V1(数据根 = {}, 文本 = '') {
 }
 
 function 构建运行时地点候选_V1(数据根 = {}, userInput = '', 最后剧情文本 = '', 上限 = 12) {
-  const 文本 = [userInput, 最后剧情文本].map(值 => String(值 || '').trim()).filter(Boolean).join('\n');
+  const 文本 = 清理提示审计扫描文本_V1([userInput, 最后剧情文本].map(值 => String(值 || '').trim()).filter(Boolean).join('\n'));
   const 索引 = 构建运行时地点索引_V1(数据根);
   const { 玩家, 当前地点, 当前地点信息, 当前上下文节点 } = 取运行时当前范围_V1(数据根);
   const 静态候选 = new Set();
