@@ -47537,6 +47537,9 @@ class BattleUIComponent {
         function 构建NarrativeDecisionDTO(trace = {}, options = {}) {
           const sourceTrace = trace && typeof trace === 'object' ? trace : {};
           补写NarrativeDecisionSidecar(sourceTrace);
+          const sidecar = sourceTrace.__narrativeDecisionSidecar && typeof sourceTrace.__narrativeDecisionSidecar === 'object'
+            ? sourceTrace.__narrativeDecisionSidecar
+            : {};
           const normalized = 归一判定轨迹(sourceTrace);
           const candidates = 构建CandidatePoolDTO(normalized);
           const finalActionName = normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || '');
@@ -47553,10 +47556,10 @@ class BattleUIComponent {
               effectTags: item.effectTags,
               rejectedByEffectGap: item.rejectedByEffectGap,
             }));
-          const narrationTrustLevel = String(normalized.narrativeTrustLevel || '').trim() || 'FACT_ONLY';
-          const formulaTrustLevel = String(normalized.formulaTrustLevel || '').trim() || 'MISSING_OPERAND';
-          const fatalCodes = Array.isArray(normalized.narrativeFatalCodes) ? normalized.narrativeFatalCodes.slice() : [];
-          const dominantReason = String(normalized.dominantReason || '').trim();
+          const narrationTrustLevel = String(sidecar.narrationTrustLevel || '').trim() || 'FACT_ONLY';
+          const formulaTrustLevel = String(sidecar.formulaTrustLevel || '').trim() || 'MISSING_OPERAND';
+          const fatalCodes = Array.isArray(sidecar.fatalCodes) ? sidecar.fatalCodes.slice() : [];
+          const dominantReason = String(sidecar.dominantReason || '').trim();
           return {
             actorName: String(normalized.行动者 || options.actorName || '行动者').trim(),
             targetName: String(normalized.displayTargetName || normalized.目标 || options.targetName || '目标').trim(),
@@ -47777,10 +47780,17 @@ class BattleUIComponent {
             : (fatalCodes.length || formulaTrustLevel !== 'TRUSTED')
               ? 'FACT_ONLY'
               : 'TRUSTED';
-          轨迹.narrativeTrustLevel = finalTrustLevel;
-          轨迹.formulaTrustLevel = formulaTrustLevel;
-          轨迹.narrativeFatalCodes = fatalCodes.filter((code, index, arr) => arr.indexOf(code) === index);
-          轨迹.dominantReason = finalTrustLevel === 'TRUSTED' ? dominantReason : '';
+          const uniqueFatalCodes = fatalCodes.filter((code, index, arr) => arr.indexOf(code) === index);
+          轨迹.__narrativeDecisionSidecar = {
+            narrationTrustLevel: finalTrustLevel,
+            formulaTrustLevel,
+            fatalCodes: uniqueFatalCodes,
+            dominantReason: finalTrustLevel === 'TRUSTED' ? dominantReason : '',
+          };
+          轨迹.narrativeTrustLevel = 轨迹.__narrativeDecisionSidecar.narrationTrustLevel;
+          轨迹.formulaTrustLevel = 轨迹.__narrativeDecisionSidecar.formulaTrustLevel;
+          轨迹.narrativeFatalCodes = 轨迹.__narrativeDecisionSidecar.fatalCodes.slice();
+          轨迹.dominantReason = 轨迹.__narrativeDecisionSidecar.dominantReason;
         }
 
         function 构建判定流程展示数据(traceList = [], logs = [], context = {}) {
@@ -48417,11 +48427,22 @@ class BattleUIComponent {
           const reasons = [];
           const actorSide = 标准化战斗阵营侧(root.actorSide || '');
           const targetSide = 标准化战斗阵营侧(root.targetSide || '');
+          const 节点是否玩家受击事实 = node => {
+            const kind = String(node?.nodeKind || '').trim();
+            if (标准化战斗阵营侧(node?.targetSide || '') !== 'player') return false;
+            const damage = Number(读取结算轨迹值(node?.calculationTrace, 'finalDamage') || 读取结算轨迹值(node?.calculationTrace, 'damage') || 0);
+            if (['damage_settlement', 'counter_action'].includes(kind)) return damage > 0;
+            if (kind === 'state_settlement') {
+              const stateName = String(读取结算轨迹值(node?.calculationTrace, 'stateName') || node?.stateName || '').trim();
+              return !!stateName && !/immune|resist|免疫|抵抗|豁免/.test(String(node?.result || node?.primaryOutcome || ''));
+            }
+            return false;
+          };
           if (actorSide === 'player' || root.isPlayerAction === true) {
             score += 4;
             reasons.push('玩家行动');
           }
-          if (targetSide === 'player' || root.playerInvolved === true) {
+          if (actorSide !== 'player' && targetSide === 'player') {
             score += 8;
             childEscalated = true;
             reasons.push('玩家受击');
@@ -48436,7 +48457,7 @@ class BattleUIComponent {
             const outcome = String(node?.primaryOutcome || '').trim();
             const stateName = String(读取结算轨迹值(node?.calculationTrace, 'stateName') || node?.stateName || '').trim();
             const damage = Number(读取结算轨迹值(node?.calculationTrace, 'finalDamage') || 读取结算轨迹值(node?.calculationTrace, 'damage') || 0);
-            if (标准化战斗阵营侧(node?.targetSide || '') === 'player' || node?.playerInvolved === true) {
+            if (节点是否玩家受击事实(node)) {
               score += 8;
               childEscalated = true;
               reasons.push('玩家受击');
@@ -49856,7 +49877,6 @@ class BattleUIComponent {
           if (/^控制$/.test(text)) return '控制收益';
           if (/^集火$/.test(text)) return '集火压制';
           if (/^保留资源$/.test(text)) return '资源保留';
-          if (/原始[:：].*权重[:：].*判定[:：]/.test(text)) return '';
           return 转译判定理由标签(text);
         }
 
@@ -50402,10 +50422,13 @@ class BattleUIComponent {
           const normalized = 归一判定轨迹(轨迹);
           if (/主动规划|战术确立/.test(读取轨迹类型(normalized))) {
             构建NarrativeDecisionDTO(轨迹);
-            normalized.narrativeTrustLevel = String(轨迹?.narrativeTrustLevel || '').trim();
-            normalized.formulaTrustLevel = String(轨迹?.formulaTrustLevel || '').trim();
-            normalized.narrativeFatalCodes = Array.isArray(轨迹?.narrativeFatalCodes) ? 轨迹.narrativeFatalCodes.slice() : [];
-            normalized.dominantReason = String(轨迹?.dominantReason || '').trim();
+            const sidecar = 轨迹?.__narrativeDecisionSidecar && typeof 轨迹.__narrativeDecisionSidecar === 'object'
+              ? 轨迹.__narrativeDecisionSidecar
+              : {};
+            normalized.narrativeTrustLevel = String(sidecar.narrationTrustLevel || '').trim();
+            normalized.formulaTrustLevel = String(sidecar.formulaTrustLevel || '').trim();
+            normalized.narrativeFatalCodes = Array.isArray(sidecar.fatalCodes) ? sidecar.fatalCodes.slice() : [];
+            normalized.dominantReason = String(sidecar.dominantReason || '').trim();
           }
           const 校正 = normalized.动作校正?.发生校正 ? normalized.动作校正 : null;
           const 中间推演列表 = Array.isArray(normalized.中间推演列表) ? normalized.中间推演列表 : [];
