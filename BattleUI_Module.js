@@ -32683,6 +32683,19 @@ class BattleUIComponent {
         const logParts = [];
         const 当前结算技能 = attackAction?.skill || {};
         const 当前结算效果列表 = getSkillEffects(当前结算技能);
+        const 当前结算效果能力 = (() => {
+          const kinds = [...new Set((Array.isArray(当前结算效果列表) ? 当前结算效果列表 : [])
+            .map(effect => String(effect?.原型 || '').trim())
+            .filter(Boolean))];
+          const hasDamageEffect = (Array.isArray(当前结算效果列表) ? 当前结算效果列表 : []).some(effect =>
+            String(effect?.原型 || '').trim() === '伤害结算' &&
+            Math.max(0, Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0)) > 0
+          );
+          return {
+            hasDamageEffect,
+            effectKinds: kinds,
+          };
+        })();
         const 结算防守参考 = options?.primaryTarget || targetResults[0]?.target || null;
         const 结算修正命中单位 = (effect, unit) => {
           if (!effect || !unit) return false;
@@ -32885,11 +32898,12 @@ class BattleUIComponent {
               actionType: ledgerActionType,
               result: 'miss',
               failureReason: 'dodged',
-              meta: {
-                ...ledgerSourceMeta,
-                damage: 0,
-                incomingDamage: 0,
-                reactiveDamage: 0,
+                meta: {
+                  ...ledgerSourceMeta,
+                  effectCapability: 当前结算效果能力,
+                  damage: 0,
+                  incomingDamage: 0,
+                  reactiveDamage: 0,
                 defenseThreshold: 0,
                 shieldAbsorb: 0,
                 failureReason: 'dodged',
@@ -32989,6 +33003,7 @@ class BattleUIComponent {
                 result: 韧性削伤 > 1 ? 'graze' : 'chip',
                 meta: {
                   ...ledgerSourceMeta,
+                  effectCapability: 当前结算效果能力,
                   damage: 韧性削伤,
                   incomingDamage: 段伤害,
                   reactiveDamage: finalDamage,
@@ -33045,6 +33060,7 @@ class BattleUIComponent {
                 result: 'hit',
                 meta: {
                   ...ledgerSourceMeta,
+                  effectCapability: 当前结算效果能力,
                   damage: finalDamage,
                   incomingDamage: 段伤害,
                   reactiveDamage: finalDamage,
@@ -47612,23 +47628,53 @@ class BattleUIComponent {
           const targetName = dto.targetName || '目标';
           const finalActionName = dto.finalActionName || '当前动作';
           const altText = alt?.actionName ? `【${alt.actionName}】` : '另一套方案';
+          const altReasonCode = String(alt?.reasonCode || '').trim().toUpperCase();
+          const 取舍句 = (() => {
+            if (!alt?.actionName) return '';
+            if (dto.dominantReason === 'CONTROL') {
+              return altReasonCode === 'CONTROL_GAP' || alt?.rejectedByEffectGap === 'CONTROL_RESTRICTION_GAP'
+                ? `${altText}的直接收益接近，却无法限制${targetName}后续反扑；`
+                : `${altText}难以真正压住${targetName}的后续行动；`;
+            }
+            if (dto.dominantReason === 'RESOURCE_PRESSURE') {
+              return altReasonCode === 'RESOURCE_PRESSURE'
+                ? `${altText}压制更重，却会拖空后续魂力；`
+                : `${altText}虽然可行，却不利于维持后续节奏；`;
+            }
+            if (dto.dominantReason === 'PROTECT_ALLY') {
+              return altReasonCode === 'PROTECT_ALLY_GAP'
+                ? `${altText}难以及时补上己方防线缺口；`
+                : `${altText}无法兼顾眼前战线的危机；`;
+            }
+            if (dto.dominantReason === 'LETHAL') {
+              return altReasonCode === 'LETHAL_GAP'
+                ? `${altText}仍留余地，难以把握眼前终结窗口；`
+                : `${altText}不如当前动作更能逼近终局；`;
+            }
+            if (dto.dominantReason === 'DIRECT_PRESSURE') {
+              return altReasonCode === 'DIRECT_PRESSURE_GAP'
+                ? `${altText}只能牵制一时，正面推进力度不足；`
+                : `${altText}难以把压力继续压到${targetName}身上；`;
+            }
+            return '';
+          })();
           if (dto.dominantReason === 'TIE_BREAK') {
             return `战术侧写：局势焦灼之下，${altText}与【${finalActionName}】收益相近，${actorName}最终按战术重心抢出【${finalActionName}】，把压力压向${targetName}。`;
           }
           if (dto.dominantReason === 'RESOURCE_PRESSURE') {
-            return `战术侧写：${altText}虽有压制空间，却会牵动后续魂力节奏；${actorName}转以【${finalActionName}】稳住局面，避免下一轮断档。`;
+            return `战术侧写：${取舍句 || `${altText}虽有压制空间，却会牵动后续魂力节奏；`}${actorName}转以【${finalActionName}】稳住局面，避免下一轮断档。`;
           }
           if (dto.dominantReason === 'PROTECT_ALLY') {
-            return `战术侧写：${actorName}捕捉到战线缺口，放弃继续推进${altText}，改以【${finalActionName}】介入局面，为己方争回喘息空间。`;
+            return `战术侧写：${actorName}捕捉到战线缺口，${取舍句 || `放弃继续推进${altText}，` }改以【${finalActionName}】介入局面，为己方争回喘息空间。`;
           }
           if (dto.dominantReason === 'LETHAL') {
-            return `战术侧写：察觉${targetName}已露颓势，${actorName}没有转向${altText}，而是顺势施展【${finalActionName}】逼向终结。`;
+            return `战术侧写：察觉${targetName}已露颓势，${取舍句 || `${actorName}没有转向${altText}，`}${actorName}顺势施展【${finalActionName}】逼向终结。`;
           }
           if (dto.dominantReason === 'CONTROL') {
-            return `战术侧写：${altText}的直接收益并不足以限制${targetName}后续反扑；${actorName}因此改以【${finalActionName}】封锁退路，试图接管节奏。`;
+            return `战术侧写：${取舍句 || `${altText}的直接收益并不足以限制${targetName}后续反扑；`}${actorName}因此改以【${finalActionName}】封锁退路，试图接管节奏。`;
           }
           if (dto.dominantReason === 'DIRECT_PRESSURE') {
-            return `战术侧写：${altText}虽能牵制一时，却缺少正面推进的力度；${actorName}改以【${finalActionName}】压住${targetName}的身位，稳稳推进战线。`;
+            return `战术侧写：${取舍句 || `${altText}虽能牵制一时，却缺少正面推进的力度；`}${actorName}改以【${finalActionName}】压住${targetName}的身位，稳稳推进战线。`;
           }
           return '';
         }
@@ -47762,6 +47808,8 @@ class BattleUIComponent {
             candidateSource: String(item?.candidateSource || item?.候选来源 || '').trim(),
           }));
           const selected = candidateDtos.find(item => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(item.status)) || null;
+          if (!selected && candidates.length) fatalCodes.push('CANDIDATE_SELECTED_MISSING');
+          if (selected?.name && finalActionName && selected.name !== finalActionName) fatalCodes.push('CANDIDATE_SELECTED_FINAL_MISMATCH');
           const rejectedAlternatives = candidateDtos
             .filter(item => item.name && item.name !== finalActionName)
             .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))

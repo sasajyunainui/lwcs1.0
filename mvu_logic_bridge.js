@@ -40453,6 +40453,39 @@
     return { key, displayName, char: charInfo };
   }
 
+  function 解析移动角色列表(snapshot, rawName = '') {
+    const 原文 = toText(rawName, toText(snapshot && snapshot.activeName, '')).trim();
+    const 名称列表 = (原文 ? 原文 : toText(snapshot && snapshot.activeName, ''))
+      .split(/[、,，;；]/u)
+      .map(名称 => 名称.trim())
+      .filter(Boolean);
+    const 已见 = new Set();
+    const 角色列表 = [];
+    const 未解析角色 = [];
+    (名称列表.length ? 名称列表 : [toText(snapshot && snapshot.activeName, '')]).forEach(名称 => {
+      const 角色 = resolveSnapshotCharacter(snapshot, 名称);
+      if (!角色.key || !角色.char) {
+        if (名称) 未解析角色.push(名称);
+        return;
+      }
+      if (已见.has(角色.key)) return;
+      已见.add(角色.key);
+      角色列表.push(角色);
+    });
+    return { 原文, 角色列表, 未解析角色 };
+  }
+
+  function 构建移动角色位置补丁(角色列表 = [], finalLocName = '', x = -1, y = -1) {
+    return (Array.isArray(角色列表) ? 角色列表 : []).flatMap(角色 => {
+      const activePath = escapeJsonPointerValue(角色.key);
+      return [
+        { op: 'replace', path: `/char/${activePath}/状态/位置`, value: finalLocName },
+        { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: x },
+        { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: y },
+      ];
+    });
+  }
+
   function normalizeLocForMatch(location) {
     const raw = toText(location, '')
       .replace(/^斗罗大陆-/, '')
@@ -44678,12 +44711,18 @@ ${播报文本}
       const 终点 = toText(extra && extra.finalLocName, toText(request && request.目标地点, '目标地点'));
       const 消耗 = 格式化模块路由资源消耗(extra && extra.cost);
       const 耗时 = 格式化模块路由耗时(extra, request);
+      const 未解析 = Array.isArray(request?.未解析角色)
+        ? request.未解析角色
+        : Array.isArray(extra?.unresolvedCharacters)
+          ? extra.unresolvedCharacters
+          : [];
+      const 未解析文本 = 未解析.length ? `未解析同行角色：${未解析.join('、')}` : '';
       if (状态 === '执行失败') {
-        事实 = `移动未结算，${拼接事实片段([角色 ? `角色：${角色}` : '', 终点 ? `目标：${终点}` : '', 格式化模块原因文本(原因)])}。`;
+        事实 = `移动未结算，${拼接事实片段([角色 ? `角色：${角色}` : '', 终点 ? `目标：${终点}` : '', 未解析文本, 格式化模块原因文本(原因)])}。`;
       } else if (extra && extra.alreadyThere) {
-        事实 = `移动无需结算，${拼接事实片段([角色 ? `角色：${角色}` : '', `当前位置：${终点}`])}。`;
+        事实 = `移动无需结算，${拼接事实片段([角色 ? `角色：${角色}` : '', `当前位置：${终点}`, 未解析文本])}。`;
       } else {
-        事实 = `移动完成，${拼接事实片段([角色 ? `角色：${角色}` : '', 起点 ? `起点：${起点}` : '', `终点：${终点}`, 耗时 ? `用时：${耗时}` : '', 消耗 ? `消耗：${消耗}` : ''])}。`;
+        事实 = `移动完成，${拼接事实片段([角色 ? `角色：${角色}` : '', 起点 ? `起点：${起点}` : '', `终点：${终点}`, 耗时 ? `用时：${耗时}` : '', 消耗 ? `消耗：${消耗}` : '', 未解析文本])}。`;
       }
     } else if (模块 === 'trade') {
       const 动作 = toText(request && request.动作, '交易');
@@ -45091,13 +45130,17 @@ ${播报文本}
       '',
     );
     if (!目标地点) return null;
-    const 角色 = resolveSnapshotCharacter(snapshot, 角色名);
-    if (!角色.key || !角色.char)
-      return { invalid: true, reason: 'travel_character_unresolved', 角色: 角色名, 目标地点 };
+    const 角色解析 = 解析移动角色列表(snapshot, 角色名);
+    const 主角色 = 角色解析.角色列表[0];
+    if (!主角色)
+      return { invalid: true, reason: 'travel_character_unresolved', 角色: 角色解析.原文 || 角色名, 目标地点, 未解析角色: 角色解析.未解析角色 };
     return {
-      角色: 角色.displayName || 角色.key,
-      charKey: 角色.key,
-      charData: 角色.char,
+      角色: 角色解析.角色列表.map(角色 => 角色.displayName || 角色.key).join('、'),
+      原始角色: 角色解析.原文 || 角色名,
+      角色列表: 角色解析.角色列表,
+      未解析角色: 角色解析.未解析角色,
+      charKey: 主角色.key,
+      charData: 主角色.char,
       目标地点: 规范地点键名(目标地点) || 取地点叶名(目标地点),
       原始目标地点: 目标地点,
       归属父节点: 读取移动请求文本(payload, ['归属父节点', '父节点', 'parent', 'parentNode'], ''),
@@ -45131,6 +45174,7 @@ ${播报文本}
     const finalLocName = 构建移动绝对位置(snapshot, 目标短名, 父级.name);
     const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
     const 下一tick = Number((当前tick + request.耗时tick).toFixed(2));
+    const 未解析文本 = Array.isArray(request.未解析角色) && request.未解析角色.length ? `；未解析同行角色：${request.未解析角色.join('、')}` : '';
     const patchOps = [
       {
         op: 'insert',
@@ -45143,15 +45187,13 @@ ${播报文本}
           状态: 'intact',
         },
       },
-      { op: 'replace', path: `/char/${activePath}/状态/位置`, value: finalLocName },
-      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: 坐标.x },
-      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: 坐标.y },
+      ...构建移动角色位置补丁(request.角色列表, finalLocName, 坐标.x, 坐标.y),
       { op: 'replace', path: '/world/时间/tick', value: 下一tick },
       { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[移动完成] ${request.角色} 经${request.移动方式}抵达 ${finalLocName}，耗时 ${request.耗时tick} tick。`,
+        value: `[移动完成] ${request.角色} 经${request.移动方式}抵达 ${finalLocName}，耗时 ${request.耗时tick} tick${未解析文本}。`,
       },
     ];
     if (消耗.联邦币 > 0)
@@ -45228,16 +45270,15 @@ ${播报文本}
     const 下一tick = Number((当前tick + 耗时tick).toFixed(2));
     const 出行方式 = toText(mapRequest.method, '步行');
     const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
+    const 未解析文本 = Array.isArray(request.未解析角色) && request.未解析角色.length ? `；未解析同行角色：${request.未解析角色.join('、')}` : '';
     const patchOps = [
-      { op: 'replace', path: `/char/${activePath}/状态/位置`, value: finalLocName },
-      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: targetX },
-      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: targetY },
+      ...构建移动角色位置补丁(request.角色列表, finalLocName, targetX, targetY),
       { op: 'replace', path: '/world/时间/tick', value: 下一tick },
       { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[地图移动完成] ${request.角色} 经${出行方式}抵达 ${finalLocName}，历时 ${耗时文本}。`,
+        value: `[地图移动完成] ${request.角色} 经${出行方式}抵达 ${finalLocName}，历时 ${耗时文本}${未解析文本}。`,
       },
     ];
     const costs = mapRequest.costs && typeof mapRequest.costs === 'object' ? mapRequest.costs : {};
@@ -45264,8 +45305,9 @@ ${播报文本}
 
   function 构建地图移动请求结算补丁(snapshot, request = {}, options = {}) {
     const 角色名 = toText(options.角色, toText(snapshot && snapshot.activeName, ''));
-    const 角色 = resolveSnapshotCharacter(snapshot, 角色名);
-    if (!角色.key || !角色.char) return { ok: false, reason: 'travel_character_unresolved', patchOps: [] };
+    const 角色解析 = 解析移动角色列表(snapshot, 角色名);
+    const 角色 = 角色解析.角色列表[0];
+    if (!角色 || !角色.key || !角色.char) return { ok: false, reason: 'travel_character_unresolved', patchOps: [], unresolvedCharacters: 角色解析.未解析角色 };
     const mapRequest = request && typeof request === 'object' ? request : {};
     if (!Object.keys(mapRequest).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
@@ -45279,6 +45321,8 @@ ${播报文本}
     const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
     const 最终位置 = toText(options.finalLocName, toText(mapRequest.target_loc, '未知地点'));
     const 目标显示名 = toText(options.移动显示目标, 最终位置);
+    const 角色显示 = 角色解析.角色列表.map(项 => 项.displayName || 项.key).join('、');
+    const 未解析文本 = 角色解析.未解析角色.length ? `；未解析同行角色：${角色解析.未解析角色.join('、')}` : '';
     const targetX = Number.isFinite(toNumber(mapRequest.target_x, NaN))
       ? Math.round(toNumber(mapRequest.target_x, -1))
       : -1;
@@ -45287,15 +45331,13 @@ ${播报文本}
       : -1;
     const 地形名 = toText(options.terrainName, '');
     const patchOps = [
-      { op: 'replace', path: `/char/${activePath}/状态/位置`, value: 最终位置 },
-      { op: 'replace', path: `/char/${activePath}/状态/横坐标`, value: targetX },
-      { op: 'replace', path: `/char/${activePath}/状态/纵坐标`, value: targetY },
+      ...构建移动角色位置补丁(角色解析.角色列表, 最终位置, targetX, targetY),
       { op: 'replace', path: '/world/时间/tick', value: 下一tick },
       { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[地图移动完成] ${角色.displayName || 角色.key} 经${出行方式}抵达 ${目标显示名}${地形名 ? `（${地形名}）` : ''}，历时 ${耗时文本}。`,
+        value: `[地图移动完成] ${角色显示} 经${出行方式}抵达 ${目标显示名}${地形名 ? `（${地形名}）` : ''}，历时 ${耗时文本}${未解析文本}。`,
       },
     ];
     const costs = mapRequest.costs && typeof mapRequest.costs === 'object' ? mapRequest.costs : {};
