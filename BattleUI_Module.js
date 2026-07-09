@@ -15520,12 +15520,31 @@ class BattleUIComponent {
       const hostName = String(宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '').trim();
       const actionName = normalizeBattleActionDisplayName(动作名 || 选项?.动作名 || '召唤');
       const round = Number(combatData?.回合 || 0);
-      const sourceAction = [...确保战斗事件账本(combatData)].reverse().find(event =>
+      let sourceAction = [...确保战斗事件账本(combatData)].reverse().find(event =>
         String(event?.eventKind || '').trim() === 'action_start' &&
         Number(event?.round || 0) === round &&
         isSameBattleReportName(event?.actorName || '', hostName) &&
         normalizeBattleActionDisplayName(event?.actionName || event?.finalActionName || '') === actionName
       ) || null;
+      if (!sourceAction && hostName && actionName) {
+        sourceAction = 写入战斗事件账本(combatData, {
+          eventKind: 'action_start',
+          round,
+          actorName: hostName,
+          targetName: summonName,
+          actionName,
+          actionType: '召唤生成',
+          targetScope: 'self',
+          result: 'declared',
+          actionStatus: 'DECLARED',
+          meta: {
+            source: 'summon_create_action_root',
+            summonName,
+            summonType,
+            summonMode,
+          },
+        });
+      }
       const sourceNodeId = String(选项?.sourceNodeId || sourceAction?.chainNodeId || '').trim();
       return 写入战斗事件账本(combatData, {
         eventKind: 'summon_create',
@@ -47649,7 +47668,7 @@ class BattleUIComponent {
           const normalized = 归一判定轨迹(sourceTrace);
           const candidates = 构建CandidatePoolDTO(normalized);
           const finalActionName = normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || '');
-          const selected = candidates.find(item => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(item.explicitStatus || item.status || '')) || null;
+          const selected = candidates.find(item => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(item.explicitStatus || '')) || null;
           const rejectedAlternatives = candidates
             .filter(item => item.name && item.name !== finalActionName)
             .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
@@ -47657,8 +47676,8 @@ class BattleUIComponent {
             .map(item => ({
               actionName: item.name,
               score: Number(item.score || 0),
-              reasonCode: item.rejectionCode || (item.status === 'FILTERED' ? 'FILTERED_BY_SCORE' : item.status === 'REJECTED' ? 'LOWER_PRIORITY' : ''),
-              reasonText: 映射候选否决原因(item.rejectionCode) || (item.status === 'FILTERED' ? '评分未达有效阈值' : item.status === 'REJECTED' ? '战术优先级不足' : ''),
+              reasonCode: item.rejectionCode || '',
+              reasonText: 映射候选否决原因(item.rejectionCode) || '',
               effectTags: item.effectTags,
               rejectedByEffectGap: item.rejectedByEffectGap,
             }));

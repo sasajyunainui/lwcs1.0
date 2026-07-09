@@ -679,6 +679,122 @@ function 构建运行时地点路径名_V1(路径 = []) {
     .join('-');
 }
 
+function 取运行时地点片段列表_V1(地点 = '') {
+  return 规范化运行时地点名_V1(地点)
+    .split('-')
+    .map(片段 => String(片段 || '').trim())
+    .filter(Boolean);
+}
+
+function 收口运行时连续重复地点片段_V1(路径 = []) {
+  const 结果 = [];
+  (Array.isArray(路径) ? 路径 : []).forEach(片段 => {
+    const 文本 = String(片段 || '').trim();
+    if (文本 && 结果[结果.length - 1] !== 文本) 结果.push(文本);
+  });
+  return 结果;
+}
+
+function 收集运行时静态地点路径候选_V1(数据根 = {}, 地点名 = '') {
+  const 目标片段 = 取运行时地点片段列表_V1(地点名);
+  const 目标名 = 构建运行时地点路径名_V1(目标片段);
+  const 目标叶名 = 目标片段[目标片段.length - 1] || 目标名;
+  const 结果 = [];
+  const 遍历 = (节点 = null, 名称 = '', 路径 = []) => {
+    const 地点名文本 = String(名称 || '').trim();
+    if (!地点名文本 || !节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
+    if (typeof 节点.condition === 'function' && !节点.condition(数据根)) return;
+    const 当前路径 = [...路径, 地点名文本];
+    const 当前路径名 = 构建运行时地点路径名_V1(当前路径);
+    if (地点名文本 === 目标名 || 地点名文本 === 目标叶名 || 当前路径名 === 目标名) 结果.push(当前路径);
+    Object.entries(节点.子节点 || {}).forEach(([子名, 子节点]) => 遍历(子节点, 子名, 当前路径));
+  };
+  Object.entries(数据根?.world?.地点 || {}).forEach(([名称, 节点]) => 遍历(节点, 名称, []));
+  return 结果;
+}
+
+function 选择运行时静态地点路径_V1(数据根 = {}, 地点名 = '', 当前路径 = []) {
+  const 候选 = 收集运行时静态地点路径候选_V1(数据根, 地点名);
+  if (!候选.length) return [];
+  const 当前 = Array.isArray(当前路径) ? 当前路径.filter(Boolean) : [];
+  const 评分 = 路径 => {
+    let 分数 = 0;
+    const 路径名 = 构建运行时地点路径名_V1(路径);
+    const 当前名 = 构建运行时地点路径名_V1(当前);
+    if (当前名 && (当前名.startsWith(`${路径名}-`) || 路径名.startsWith(`${当前名}-`) || 当前名 === 路径名)) 分数 += 20;
+    路径.forEach((片段, 序号) => {
+      if (当前[序号] === 片段) 分数 += 3;
+      else if (当前.includes(片段)) 分数 += 1;
+    });
+    return 分数;
+  };
+  return [...候选].sort((左, 右) => 评分(右) - 评分(左) || 左.length - 右.length)[0] || [];
+}
+
+function 运行时路径前缀匹配长度_V1(完整路径 = [], 前缀 = []) {
+  const 路径 = Array.isArray(完整路径) ? 完整路径 : [];
+  const 片段 = Array.isArray(前缀) ? 前缀 : [];
+  if (!路径.length || !片段.length || 片段.length > 路径.length) return 0;
+  for (let 序号 = 0; 序号 < 片段.length; 序号 += 1) {
+    if (路径[序号] !== 片段[序号]) return 0;
+  }
+  return 片段.length;
+}
+
+function 运行时路径首尾重叠长度_V1(前段 = [], 后段 = []) {
+  const 左 = Array.isArray(前段) ? 前段 : [];
+  const 右 = Array.isArray(后段) ? 后段 : [];
+  const 最大 = Math.min(左.length, 右.length);
+  for (let 长度 = 最大; 长度 >= 1; 长度 -= 1) {
+    let 匹配 = true;
+    for (let 序号 = 0; 序号 < 长度; 序号 += 1) {
+      if (左[左.length - 长度 + 序号] !== 右[序号]) {
+        匹配 = false;
+        break;
+      }
+    }
+    if (匹配) return 长度;
+  }
+  return 0;
+}
+
+function 解析运行时动态地点显示模型_V1(数据根 = {}, 动态地点名 = '', 动态地点数据 = {}, 当前路径 = []) {
+  const keySegments = 取运行时地点片段列表_V1(动态地点名);
+  const parentRaw = String(动态地点数据?.归属父节点 || '').trim();
+  const parentSegmentsRaw = 取运行时地点片段列表_V1(parentRaw);
+  let parentPath = [];
+  if (parentSegmentsRaw.length > 1) {
+    parentPath = parentSegmentsRaw;
+  } else if (parentSegmentsRaw.length === 1) {
+    parentPath = 选择运行时静态地点路径_V1(数据根, parentSegmentsRaw[0], 当前路径);
+    if (!parentPath.length) parentPath = parentSegmentsRaw;
+  }
+  if (!parentPath.length && keySegments.length > 1) parentPath = keySegments.slice(0, -1);
+  parentPath = 收口运行时连续重复地点片段_V1(parentPath);
+
+  let leafSegments = keySegments.length ? [...keySegments] : [];
+  const parentPrefixLength = 运行时路径前缀匹配长度_V1(leafSegments, parentPath);
+  if (parentPrefixLength) leafSegments = leafSegments.slice(parentPrefixLength);
+  else {
+    const rawPrefixLength = 运行时路径前缀匹配长度_V1(leafSegments, parentSegmentsRaw);
+    if (rawPrefixLength) leafSegments = leafSegments.slice(rawPrefixLength);
+    else {
+      const overlapLength = 运行时路径首尾重叠长度_V1(parentPath, leafSegments);
+      if (overlapLength) leafSegments = leafSegments.slice(overlapLength);
+    }
+  }
+  const displayLeaf = leafSegments[leafSegments.length - 1] || keySegments[keySegments.length - 1] || String(动态地点名 || '').trim();
+  const fillSegments = 收口运行时连续重复地点片段_V1([...parentPath, displayLeaf]);
+  const fillTarget = 构建运行时地点路径名_V1(fillSegments) || displayLeaf;
+  return {
+    key: String(动态地点名 || '').trim(),
+    displayLeaf,
+    parentPath: 构建运行时地点路径名_V1(parentPath),
+    fillTarget,
+    pathSegments: fillSegments,
+  };
+}
+
 function 添加运行时地点匹配词_V1(集合 = new Set(), 值 = '') {
   const 文本 = String(值 || '').trim();
   if (!文本 || 文本 === '无' || 文本 === '未知') return;
@@ -811,21 +927,29 @@ function 构建运行时地点索引_V1(数据根 = {}) {
     Object.entries(节点.子节点 || {}).forEach(([子名, 子节点]) => 遍历静态(子节点, 子名, 当前路径));
   };
   Object.entries(数据根?.world?.地点 || {}).forEach(([名称, 节点]) => 遍历静态(节点, 名称, []));
+  const 当前范围 = 取运行时当前范围_V1(数据根);
+  const 当前路径 = Array.isArray(当前范围?.当前地点信息?.path) ? 当前范围.当前地点信息.path : [];
   Object.entries(数据根?.world?.动态地点 || {}).forEach(([名称, 地点数据]) => {
     const 地点名 = String(名称 || '').trim();
     if (!地点名 || !地点数据 || typeof 地点数据 !== 'object' || Array.isArray(地点数据)) return;
     const 父节点 = String(地点数据.归属父节点 || '').trim();
+    const 显示模型 = 解析运行时动态地点显示模型_V1(数据根, 地点名, 地点数据, 当前路径);
     const 地点词 = new Set();
     const 势力词 = new Set();
     添加运行时地点匹配词_V1(地点词, 地点名);
+    添加运行时地点匹配词_V1(地点词, 显示模型.displayLeaf);
+    添加运行时地点匹配词_V1(地点词, 显示模型.fillTarget);
+    添加运行时地点匹配词_V1(地点词, 显示模型.parentPath);
     添加运行时地点匹配词_V1(势力词, 地点数据.势力);
-    收口运行时地点父级前缀污染_V1(地点词, 父节点.split('-').map(片段 => 片段.trim()).filter(Boolean));
+    收口运行时地点父级前缀污染_V1(地点词, [...取运行时地点片段列表_V1(父节点), ...取运行时地点片段列表_V1(显示模型.parentPath)]);
     const 匹配词 = new Set([...地点词, ...势力词]);
     动态地点.push({
       类型: '动态地点',
       名称: 地点名,
-      输出名: 父节点 ? `${父节点}-${地点名}` : 地点名,
+      输出名: 显示模型.fillTarget || 地点名,
       父节点,
+      显示叶名: 显示模型.displayLeaf,
+      父级路径: 显示模型.parentPath,
       地点词: Array.from(地点词).filter(词 => 词.length >= 2),
       势力词: Array.from(势力词).filter(词 => 词.length >= 2),
       商店词: [],
@@ -2637,21 +2761,9 @@ function 构建运行时地点候选表格行_V1(数据根 = {}, 候选 = {}) {
   });
   (Array.isArray(候选.动态地点) ? 候选.动态地点 : []).forEach(地点名 => {
     const 动态 = 数据根?.world?.动态地点?.[地点名] || {};
-    const 名称片段 = 标准化运行时地点片段_V1(地点名).segments;
-    const 显式父级路径 = String(动态?.归属父节点 || '').trim();
-    const 父级片段 = 标准化运行时地点片段_V1(显式父级路径).segments;
-    const 父级路径 = 显式父级路径 || (名称片段.length >= 2 ? 构建运行时地点路径名_V1(名称片段.slice(0, -1)) : '');
-    const 完整路径 = (() => {
-      if (!显式父级路径) return 名称片段.length ? 构建运行时地点路径名_V1(名称片段) : String(地点名 || '').trim();
-      const 父级名 = 构建运行时地点路径名_V1(父级片段);
-      const 已含父级 = 父级片段.length && 父级片段.every((片段, 序号) => 名称片段[序号] === 片段);
-      if (已含父级) return 构建运行时地点路径名_V1(名称片段);
-      const 父级叶名 = 父级片段[父级片段.length - 1] || '';
-      const 去重片段 = 父级叶名 && 名称片段[0] === 父级叶名 ? 名称片段.slice(1) : 名称片段;
-      const 叶路径 = 去重片段.length ? 构建运行时地点路径名_V1(去重片段) : 名称片段[名称片段.length - 1] || String(地点名 || '').trim();
-      return 父级名 && 叶路径 ? `${父级名}-${叶路径}` : '';
-    })();
-    if (!父级路径 || !完整路径) return;
+    const 显示模型 = 解析运行时动态地点显示模型_V1(数据根, 地点名, 动态, 当前路径);
+    const 完整路径 = 显示模型.fillTarget || String(地点名 || '').trim();
+    if (!完整路径) return;
     const 路径 = 标准化运行时地点片段_V1(完整路径).segments;
     const 关系 = 构建运行时地点候选关系_V1(路径, 当前路径);
     if (关系 === '祖先') return;
