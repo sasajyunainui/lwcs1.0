@@ -15809,7 +15809,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profil
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow,
 #detailModal.mvu-modal-display-unified .dossier-growth-flow,
 #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-bonus-flow,
@@ -21112,8 +21112,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-intel-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-card-grid--two,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-detail-grid,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow {
     grid-template-columns: minmax(0, 1fr) !important;
     height: auto !important;
     min-height: 0 !important;
@@ -21228,6 +21227,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+}
+
+@container mvu-detail-area (max-width: 520px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@container mvu-detail-area (max-width: 360px) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
@@ -21519,7 +21530,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-detail-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-detail-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-growth-flow,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card--life-profile,
   body.mvu-layout-holo
     #mvu-unified-mount
@@ -23159,11 +23169,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     grid-template-areas: none !important;
   }
 
-  #detailModal.mvu-modal-display-unified .dossier-row-grid--two,
+  #detailModal.mvu-modal-display-unified .dossier-row-grid--two:not(.dossier-growth-flow),
   #detailModal.mvu-modal-display-unified .dossier-row-grid--three,
-  #detailModal.mvu-modal-display-unified .dossier-profile-flow,
-  #detailModal.mvu-modal-display-unified .dossier-growth-flow {
+  #detailModal.mvu-modal-display-unified .dossier-profile-flow {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #detailModal.mvu-modal-display-unified .dossier-growth-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   #detailModal.mvu-modal-display-unified .dossier-card--life-profile,
@@ -27539,10 +27552,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 }
 
 @container (max-width: 520px) {
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--two,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--two:not(.dossier-growth-flow),
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--three,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list-row {
     grid-template-columns: 1fr;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -27578,10 +27595,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
     gap: 12px;
   }
 
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--two,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--two:not(.dossier-growth-flow),
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row-grid--three,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-profile-flow,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-form-row,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-form-row--donate,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .relation-action-toolbar,
@@ -27601,6 +27617,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-status-chip {
     flex: 1 1 100% !important;
+  }
+
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-shell--faction,
@@ -27814,6 +27834,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-row > span,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list-row > span {
     font-size: var(--mvu-font-sm, 12px) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #detailModal.mvu-modal-display-unified .dossier-growth-flow,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-growth-flow {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 

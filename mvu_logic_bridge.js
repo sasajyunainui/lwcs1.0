@@ -44534,6 +44534,27 @@ ${播报文本}
     return Object.keys(payload).length ? payload : null;
   }
 
+  function 解析模块路由字段块列表(文本) {
+    const blocks = [];
+    let current = [];
+    String(文本 || '')
+      .split(/\r?\n/u)
+      .forEach(行文本 => {
+        if (/^\s*模块\s*[:：]/u.test(行文本) && current.length) {
+          blocks.push(current.join('\n'));
+          current = [];
+        }
+        if (行文本.trim() || current.length) current.push(行文本);
+      });
+    if (current.length) blocks.push(current.join('\n'));
+    return blocks
+      .map(blockText => {
+        const payload = 解析模块路由字段块(blockText);
+        return payload ? { ...payload, raw: blockText } : null;
+      })
+      .filter(Boolean);
+  }
+
   function resolveModuleIntentPayload(input) {
     let parsedInput = input;
     if (typeof input === 'string') {
@@ -44543,8 +44564,16 @@ ${播报文本}
           parsedInput = JSON.parse(routeMatch[1]);
         } catch (error) {}
         if (typeof parsedInput === 'string') {
-          const 字段块 = 解析模块路由字段块(routeMatch[1]);
-          if (字段块) parsedInput = { ...字段块, text: input, raw: routeMatch[1] };
+          const 字段块列表 = 解析模块路由字段块列表(routeMatch[1]);
+          if (字段块列表.length > 1) {
+            parsedInput = {
+              moduleQueue: 字段块列表.map(item => ({ ...item, text: input })),
+              text: input,
+              raw: routeMatch[1],
+            };
+          } else if (字段块列表.length === 1) {
+            parsedInput = { ...字段块列表[0], text: input, raw: routeMatch[1] };
+          }
         }
       }
     }
@@ -45796,10 +45825,32 @@ ${播报文本}
     });
   }
 
+  async function 执行模块路由队列(moduleQueue = [], options = {}) {
+    const 队列 = (Array.isArray(moduleQueue) ? moduleQueue : []).filter(item => item && typeof item === 'object');
+    const 结果列表 = [];
+    for (const item of 队列) {
+      const result = await routeModuleIntentPayload(item, options);
+      结果列表.push(result);
+      const 失败 = !result?.handled || result.dispatchMode === 'failed_summary' || /状态：执行失败/.test(toText(result.runtimeEvent, ''));
+      if (失败) break;
+      if (!(result?.dryRun === true || result?.dispatchMode === 'settled_summary')) break;
+      if (!(options && options.dryRun === true)) await refreshLiveSnapshot({ force: true });
+    }
+    const runtimeEvent = 结果列表.map(result => toText(result && result.runtimeEvent, '').trim()).filter(Boolean).join('\n');
+    return {
+      handled: 结果列表.some(result => result && result.handled),
+      kind: 'module_queue',
+      results: 结果列表,
+      runtimeEvent,
+      dispatchMode: 结果列表.some(result => result?.dispatchMode === 'failed_summary') ? 'failed_summary' : 'settled_summary',
+    };
+  }
+
   async function routeModuleIntentPayload(input, options = {}) {
     const snapshot = liveSnapshot || lastRenderableSnapshot;
     const { payload, text, kind } = resolveModuleIntentPayload(input);
     if (!snapshot || !snapshot.rootData) return { handled: false, reason: 'snapshot_unavailable' };
+    if (Array.isArray(payload.moduleQueue) && payload.moduleQueue.length) return 执行模块路由队列(payload.moduleQueue, options);
 
     const dryRun = options.dryRun === true || payload.dryRun === true;
     let moduleKind = '';
