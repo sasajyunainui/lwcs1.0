@@ -5390,8 +5390,8 @@ function 规范化Schema根转换_V1(data = {}) {
 
     const resourceStateBeforeRecalc = new Map();
     const 本轮补齐魂环角色 = new Set();
-
-    _(data.char).forEach((char, charName) => {
+    const 记录当前资源比例基准 = (charName, char) => {
+      if (!charName || !char?.属性) return;
       resourceStateBeforeRecalc.set(charName, {
         魂力: Math.max(0, Number(char.属性?.魂力 || 0)),
         魂力上限: Math.max(1, Number(char.属性?.魂力上限 || 1)),
@@ -5402,6 +5402,10 @@ function 规范化Schema根转换_V1(data = {}) {
         HP: Math.max(0, Number(char.属性?.HP || 0)),
         HP上限: Math.max(1, Number(char.属性?.HP上限 || char.属性?.体力上限 || 1)),
       });
+    };
+
+    _(data.char).forEach((char, charName) => {
+      记录当前资源比例基准(charName, char);
       delete char.持续效果;
       delete char.蓄力技能;
       let isBeast = isSoulBeastCharacter(char);
@@ -5621,6 +5625,7 @@ function 规范化Schema根转换_V1(data = {}) {
           const 临时结算模式 = String(临时角色结算模式表[charName] || '').trim();
           if (临时结算模式) {
             applyCharacterActionSegment_ACU(c, 临时结算模式, delta, trainedBonus, charName);
+            记录当前资源比例基准(charName, c);
           } else {
             let segmentTickCursor = lastTick;
             while (segmentTickCursor < currentTick) {
@@ -5631,6 +5636,7 @@ function 规范化Schema根转换_V1(data = {}) {
                 ? (shouldDailyAutoSleep_ACU(c) ? '睡眠' : '冥想')
                 : '日常';
               applyCharacterActionSegment_ACU(c, segmentAction, segmentDelta, trainedBonus, charName);
+              记录当前资源比例基准(charName, c);
               segmentTickCursor = nextBoundaryTick;
             }
           }

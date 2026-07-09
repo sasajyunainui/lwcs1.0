@@ -20867,6 +20867,261 @@ class BattleUIComponent {
       };
     }
 
+    function 生成主导原因战术侧写调试结果(配置 = {}) {
+      const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+      combatData.回合 = 1;
+      combatData.战斗类型 = `${配置.label || '主导原因'}战术侧写夹具`;
+      玩家.name = '唐凌雪';
+      玩家.名称 = '唐凌雪';
+      敌人.name = '韦小枫';
+      敌人.名称 = '韦小枫';
+      const finalAction = String(配置.finalAction || '定势一击').trim();
+      const altAction = String(配置.altAction || '普通攻击').trim();
+      const actionEvent = 写入战斗事件账本(combatData, {
+        eventKind: 'action_start',
+        round: 1,
+        actorName: 玩家.name,
+        targetName: 敌人.name,
+        actionName: finalAction,
+        actionType: '释放魂技',
+        targetScope: 'single',
+        targetPoolSide: 'enemy',
+        result: 'declared',
+      });
+      if (配置.ledgerKind === 'shield') {
+        写入战斗事件账本(combatData, {
+          eventKind: 'shield_create',
+          round: 1,
+          actorName: 玩家.name,
+          targetName: '夹具友方',
+          actionName: finalAction,
+          sourceActionName: finalAction,
+          sourceActionId: actionEvent?.actionId || '',
+          sourceNodeId: actionEvent?.chainNodeId || '',
+          result: 'shielded',
+          meta: { amount: 120, shield: 120, sourceAction: finalAction },
+        });
+      } else {
+        写入战斗事件账本(combatData, {
+          eventKind: 'defend',
+          round: 1,
+          actorName: 敌人.name,
+          targetName: 玩家.name,
+          actionName: '承伤硬抗',
+          sourceActionName: finalAction,
+          sourceRound: 1,
+          sourceActionId: actionEvent?.actionId || '',
+          sourceNodeId: actionEvent?.chainNodeId || '',
+          result: 'guarded',
+          primaryOutcome: 'guarded',
+          meta: {
+            sourceActorName: 玩家.name,
+            sourceActionName: finalAction,
+            reactionType: 'defend',
+            reactionOutcome: 'guarded',
+          },
+        });
+        写入战斗事件账本(combatData, {
+          eventKind: 'hit_result',
+          round: 1,
+          actorName: 玩家.name,
+          targetName: 敌人.name,
+          actionName: finalAction,
+          sourceActionName: finalAction,
+          sourceActionId: actionEvent?.actionId || '',
+          sourceNodeId: actionEvent?.chainNodeId || '',
+          appliedDamage: Number(配置.damage || 88),
+          damage: Number(配置.damage || 88),
+          result: 'full_hit',
+          primaryOutcome: 'full_hit',
+          effectCapability: { hasDamageEffect: true, effectKinds: ['伤害结算'] },
+          meta: {
+            appliedDamage: Number(配置.damage || 88),
+            damage: Number(配置.damage || 88),
+            finalDamage: Number(配置.damage || 88),
+            damageFormulaText: `伤害 = 威力${Number(配置.power || 80)} × 攻势150 / 防守140 = ${Number(配置.damage || 88)}`,
+            formulaTrace: {
+              damageType: '魂技冲击',
+              skillPower: Number(配置.power || 80),
+              attackValue: 150,
+              defenseValue: 140,
+              baseDamage: Number(配置.damage || 88),
+              formulaText: `威力${Number(配置.power || 80)} × 攻势150 / 防守140`,
+            },
+            settlementTrace: [
+              { key: 'sourceAction', label: '来源动作', value: finalAction },
+              { key: 'attacker', label: '攻方', value: 玩家.name },
+              { key: 'target', label: '目标', value: 敌人.name },
+              { key: 'result', label: '结果', value: 'full_hit' },
+              { key: 'incomingDamage', label: '入参伤害', value: Number(配置.damage || 88) },
+              { key: 'actualDefense', label: '有效防御', value: 140 },
+              { key: 'defenseThreshold', label: '破防阈值', value: 0 },
+              { key: 'shieldAbsorb', label: '护盾吸收', value: 0 },
+              { key: 'finalDamage', label: '最终伤害', value: Number(配置.damage || 88) },
+            ],
+          },
+        });
+      }
+      记录行动闭环审计(combatData, '主动规划', {
+        actionId: actionEvent?.actionId || '',
+        回合: 1,
+        行动者: 玩家.name,
+        目标: 配置.ledgerKind === 'shield' ? '夹具友方' : 敌人.name,
+        displayTargetName: 配置.ledgerKind === 'shield' ? '夹具友方' : 敌人.name,
+        技能: finalAction,
+        战略意图: 配置.dominantReason,
+        目标理由: Array.isArray(配置.targetReasons) ? 配置.targetReasons : [],
+        候选来源: '主动候选结构化评分',
+        原始权重: Number(配置.base || 70),
+        战术修正: Number(配置.tactical || 16),
+        目标修正: Number(配置.target || 14),
+        资源修正: Number(配置.resource || 0),
+        职责修正: Number(配置.role || 0),
+        最终权重: Number(配置.finalScore || 100),
+        选择原因: '结构化候选链锁定',
+        hitCandidateName: finalAction,
+        selectedCandidateName: finalAction,
+        finalResolvedActionName: finalAction,
+        目标语义: 配置.ledgerKind === 'shield' ? '友方单体' : '敌方单体',
+        承载方式: '释放魂技',
+        目标价值分解: 配置.targetBreakdown || {},
+        候选排序结果: [
+          {
+            candidateId: `trusted_${配置.dominantReason || 'reason'}_final`,
+            candidateName: finalAction,
+            名称: finalAction,
+            score: Number(配置.finalScore || 100),
+            权重: Number(配置.finalScore || 100),
+            candidateStatus: 'EXECUTED',
+            rejectionCode: '',
+            effectTags: Array.isArray(配置.selectedTags) ? 配置.selectedTags : [],
+            candidateSource: 'ACTIVE_SCORER',
+          },
+          {
+            candidateId: `trusted_${配置.dominantReason || 'reason'}_alt`,
+            candidateName: altAction,
+            名称: altAction,
+            score: Number(配置.altScore || 88),
+            权重: Number(配置.altScore || 88),
+            candidateStatus: 'REJECTED',
+            rejectionCode: String(配置.altRejectionCode || 'DIRECT_PRESSURE_GAP'),
+            effectTags: Array.isArray(配置.altTags) ? 配置.altTags : [],
+            rejectedByEffectGap: String(配置.rejectedByEffectGap || ''),
+            candidateSource: 'ACTIVE_SCORER',
+          },
+        ],
+      });
+      const eventLedger = combatData.__battleEventLedger || [];
+      const publicReportBlocks = 构建事件账本公开战报Blocks(eventLedger, 8, { combatData });
+      return {
+        result: {
+          preview: true,
+          intentText: `可信${配置.label || '主导原因'}候选链生成 DM 战术侧写。`,
+          mode: 'battle_preview',
+          battleMode: `trusted_${String(配置.dominantReason || 'reason').toLowerCase()}_tactical_narration`,
+          modeLabel: `可信${配置.label || '主导原因'}侧写闭环`,
+          intentMode: '点到为止',
+          logs: [],
+          roundsExecuted: 1,
+          battleOutcome: { type: '未分胜负', label: `可信${配置.label || '主导原因'}侧写闭环` },
+          publicReportBlocks,
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          combatData,
+          decisionTrace: collectBattleDecisionTrace(combatData),
+          resolutionTrace: combatData.__battleResolutionTrace || [],
+          eventLedger,
+        },
+        combatData,
+        玩家,
+        敌人,
+      };
+    }
+
+    function 生成斩杀战术侧写调试结果() {
+      return 生成主导原因战术侧写调试结果({
+        label: '斩杀',
+        dominantReason: 'LETHAL',
+        finalAction: '追魂断击',
+        altAction: '普通攻击',
+        base: 74,
+        tactical: 20,
+        target: 18,
+        finalScore: 112,
+        altScore: 97,
+        selectedTags: ['DIRECT_DAMAGE', 'LETHAL'],
+        altTags: ['DIRECT_DAMAGE'],
+        altRejectionCode: 'LETHAL_GAP',
+        rejectedByEffectGap: 'LETHAL_GAP',
+        targetBreakdown: { lethalWindow: 24 },
+        targetReasons: ['终结窗口:目标已露颓势'],
+        damage: 132,
+        power: 116,
+      });
+    }
+
+    function 生成资源压力战术侧写调试结果() {
+      return 生成主导原因战术侧写调试结果({
+        label: '资源压力',
+        dominantReason: 'RESOURCE_PRESSURE',
+        finalAction: '凝息掌',
+        altAction: '第二魂技',
+        base: 76,
+        tactical: 22,
+        target: 20,
+        resource: -18,
+        finalScore: 100,
+        altScore: 96,
+        selectedTags: ['DIRECT_DAMAGE', 'RESOURCE_STABLE'],
+        altTags: ['DIRECT_DAMAGE'],
+        altRejectionCode: 'RESOURCE_PRESSURE',
+        rejectedByEffectGap: 'RESOURCE_PRESSURE',
+        targetReasons: ['资源后果:当前动作更利于维持后续魂力节奏'],
+        damage: 74,
+        power: 68,
+      });
+    }
+
+    function 生成保护协同战术侧写调试结果() {
+      return 生成主导原因战术侧写调试结果({
+        label: '保护协同',
+        dominantReason: 'PROTECT_ALLY',
+        finalAction: '护心屏障',
+        altAction: '普通攻击',
+        ledgerKind: 'shield',
+        base: 58,
+        tactical: 18,
+        target: 10,
+        role: 16,
+        finalScore: 102,
+        altScore: 90,
+        selectedTags: ['PROTECT_ALLY'],
+        altTags: ['DIRECT_DAMAGE'],
+        altRejectionCode: 'PROTECT_ALLY_GAP',
+        rejectedByEffectGap: 'PROTECT_ALLY_GAP',
+        targetReasons: ['保护收益:己方防线需要支援'],
+      });
+    }
+
+    function 生成同分破平战术侧写调试结果() {
+      return 生成主导原因战术侧写调试结果({
+        label: '同分破平',
+        dominantReason: 'TIE_BREAK',
+        finalAction: '锁魄印',
+        altAction: '缠身掌',
+        base: 70,
+        tactical: 18,
+        target: 12,
+        finalScore: 100,
+        altScore: 100,
+        selectedTags: ['CONTROL_RESTRICTION'],
+        altTags: ['DIRECT_DAMAGE'],
+        altRejectionCode: 'DIRECT_PRESSURE_GAP',
+        targetReasons: ['战术重心:收益相近时优先锁定当前意图'],
+        damage: 66,
+        power: 62,
+      });
+    }
+
     function 生成战斗AOE链路调试结果() {
       const 原随机 = Math.random;
       try {
@@ -21107,6 +21362,10 @@ class BattleUIComponent {
     root.__LWCS_DEBUG_BATTLE_SAMPLE_RESULT__ = (索引 = 1) => 生成战斗判定样本结果(索引);
     root.__LWCS_DEBUG_BATTLE_TRUSTED_TACTICAL_NARRATION_RESULT__ = () => 生成可信战术侧写调试结果();
     root.__LWCS_DEBUG_BATTLE_DIRECT_PRESSURE_TACTICAL_NARRATION_RESULT__ = () => 生成直攻压制战术侧写调试结果();
+    root.__LWCS_DEBUG_BATTLE_LETHAL_TACTICAL_NARRATION_RESULT__ = () => 生成斩杀战术侧写调试结果();
+    root.__LWCS_DEBUG_BATTLE_RESOURCE_PRESSURE_TACTICAL_NARRATION_RESULT__ = () => 生成资源压力战术侧写调试结果();
+    root.__LWCS_DEBUG_BATTLE_PROTECT_ALLY_TACTICAL_NARRATION_RESULT__ = () => 生成保护协同战术侧写调试结果();
+    root.__LWCS_DEBUG_BATTLE_TIE_BREAK_TACTICAL_NARRATION_RESULT__ = () => 生成同分破平战术侧写调试结果();
     root.__LWCS_HYDRATE_BATTLE_RUNTIME_IMPL__ = (combatData = {}, eventLedger = null, options = {}) => 补水战斗运行态(combatData, eventLedger, options);
     root.__LWCS_DEBUG_BATTLE_AOE_TRACE_RESULT__ = () => 生成战斗AOE链路调试结果();
     root.__LWCS_DEBUG_BATTLE_NON_DAMAGE_AOE_TRACE_RESULT__ = () => 生成非伤害AOE链路调试结果();
@@ -51669,6 +51928,30 @@ if (typeof 生成可信战术侧写调试结果 === 'function') {
 if (typeof 生成直攻压制战术侧写调试结果 === 'function') {
   window.__LWCS_DEBUG_BATTLE_DIRECT_PRESSURE_TACTICAL_NARRATION_RESULT__ = function () {
     return 生成直攻压制战术侧写调试结果();
+  };
+}
+
+if (typeof 生成斩杀战术侧写调试结果 === 'function') {
+  window.__LWCS_DEBUG_BATTLE_LETHAL_TACTICAL_NARRATION_RESULT__ = function () {
+    return 生成斩杀战术侧写调试结果();
+  };
+}
+
+if (typeof 生成资源压力战术侧写调试结果 === 'function') {
+  window.__LWCS_DEBUG_BATTLE_RESOURCE_PRESSURE_TACTICAL_NARRATION_RESULT__ = function () {
+    return 生成资源压力战术侧写调试结果();
+  };
+}
+
+if (typeof 生成保护协同战术侧写调试结果 === 'function') {
+  window.__LWCS_DEBUG_BATTLE_PROTECT_ALLY_TACTICAL_NARRATION_RESULT__ = function () {
+    return 生成保护协同战术侧写调试结果();
+  };
+}
+
+if (typeof 生成同分破平战术侧写调试结果 === 'function') {
+  window.__LWCS_DEBUG_BATTLE_TIE_BREAK_TACTICAL_NARRATION_RESULT__ = function () {
+    return 生成同分破平战术侧写调试结果();
   };
 }
 
