@@ -2606,7 +2606,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   '3. 【Location Granularity Lock (FATAL)】: ABSOLUTELY FORBIDDEN to register micro-locations (e.g., specific rooms like "104号宿舍", floors, seats, corridors) as new locations! You MUST snap them to the parent 【Major Building/Functional Area】 (e.g., "宿舍区", "教学楼"). If a character enters "104号宿舍" and "宿舍区" is already in Hits, the location is deemed ALREADY EXISTING. DO NOT register it in the table!',
   '',
 'New Entity Table:',
-'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new important plot items (generic keys/clothes write 无).',
+'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new mechanically relevant items only (important items/equipment/usable props/special materials/lasting access credentials; generic keys/clothes/routine documents/daily supplies write 无).',
 '',
   ].join('\n');
 }

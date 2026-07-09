@@ -50879,7 +50879,7 @@ class BattleUIComponent {
           const rounds = new Map();
           const pushRound = round => {
             const key = Math.max(0, Number(round || 0));
-            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, resourceDeltas: [], highlights: [] });
+            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, playerHpSourceEventIds: [], enemyHpSourceEventIds: [], resourceDeltas: [], highlights: [] });
             return rounds.get(key);
           };
           const pushHighlight = (round, text, weight = 1, source = {}) => {
@@ -50892,7 +50892,22 @@ class BattleUIComponent {
               item.highlights.push({ text: clean, weight: Number(weight || 1), sourceEventId, sourceNodeId });
             }
           };
-          const pushResourceDelta = (round, actorName = '', resourceName = '', value = 0) => {
+          const pushSourceId = (list = [], source = {}) => {
+            const sourceEventId = String(source?.eventId || source?.sourceEventId || '').trim();
+            if (sourceEventId && !list.includes(sourceEventId)) list.push(sourceEventId);
+          };
+          const pushHpDelta = (row, side = '', value = 0, source = {}) => {
+            const amount = Math.round(Number(value || 0));
+            if (!row || !amount) return;
+            if (side === 'player') {
+              row.playerHpDelta += amount;
+              pushSourceId(row.playerHpSourceEventIds, source);
+            } else if (side === 'enemy') {
+              row.enemyHpDelta += amount;
+              pushSourceId(row.enemyHpSourceEventIds, source);
+            }
+          };
+          const pushResourceDelta = (round, actorName = '', resourceName = '', value = 0, source = {}) => {
             const actorText = String(actorName || '').trim();
             const resourceText = String(resourceName || '').trim();
             const amount = Math.round(Number(value || 0));
@@ -50900,8 +50915,14 @@ class BattleUIComponent {
             const item = pushRound(round);
             const key = `${actorText}|${resourceText}`;
             const existing = item.resourceDeltas.find(entry => entry.key === key);
-            if (existing) existing.value += amount;
-            else item.resourceDeltas.push({ key, actorName: actorText, resourceName: resourceText, value: amount });
+            if (existing) {
+              existing.value += amount;
+              pushSourceId(existing.sourceEventIds, source);
+            } else {
+              const sourceEventIds = [];
+              pushSourceId(sourceEventIds, source);
+              item.resourceDeltas.push({ key, actorName: actorText, resourceName: resourceText, value: amount, sourceEventIds });
+            }
           };
           ledger.forEach(event => {
             const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
@@ -50916,31 +50937,31 @@ class BattleUIComponent {
             const row = pushRound(round);
             const damage = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
             if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
-              if (targetSide === 'player') row.playerHpDelta -= damage;
-              else if (targetSide === 'enemy') row.enemyHpDelta -= damage;
+              if (targetSide === 'player') pushHpDelta(row, 'player', -damage, event);
+              else if (targetSide === 'enemy') pushHpDelta(row, 'enemy', -damage, event);
               if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8, event);
               else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, /魂技|真身|融合|爆发/.test(action) || damage >= 160 ? 9 : 8, event);
             }            if (kind === 'action_cost') {
               const reqSp = Math.max(0, Number(event?.meta?.reqSp || 0));
               const reqVit = Math.max(0, Number(event?.meta?.reqVit || 0));
               const reqMen = Math.max(0, Number(event?.meta?.reqMen || 0));
-              if (reqSp) pushResourceDelta(round, actor, '魂力', -reqSp);
-              if (reqVit) pushResourceDelta(round, actor, '体力', -reqVit);
-              if (reqMen) pushResourceDelta(round, actor, '精神力', -reqMen);
+              if (reqSp) pushResourceDelta(round, actor, '魂力', -reqSp, event);
+              if (reqVit) pushResourceDelta(round, actor, '体力', -reqVit, event);
+              if (reqMen) pushResourceDelta(round, actor, '精神力', -reqMen, event);
             } else if (kind === 'round_recover') {
               const resource = String(event?.meta?.resource || '').trim();
               const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
-              if (amount && resource) pushResourceDelta(round, actor, resource, amount);
+              if (amount && resource) pushResourceDelta(round, actor, resource, amount, event);
             } else if (kind === 'state_tick') {
               const resource = String(event?.meta?.resource || '').trim();
               if (damage > 0 && resource && !/生命|HP|血/i.test(resource)) {
                 const isHeal = /恢复|heal|hot/i.test(String(event?.result || ''));
-                pushResourceDelta(round, target || actor, resource, isHeal ? damage : -damage);
+                pushResourceDelta(round, target || actor, resource, isHeal ? damage : -damage, event);
               }
             } else if (kind === 'resource_change') {
               const resource = String(event?.meta?.resource || '').trim();
               const delta = Number(event?.meta?.delta || 0);
-              if (resource && delta) pushResourceDelta(round, target || actor, resource, delta);
+              if (resource && delta) pushResourceDelta(round, target || actor, resource, delta, event);
             }
           if (kind === 'state_apply' && 事件账本状态已附着(event)) {
               const stateName = 读取事件账本状态名(event);
@@ -50984,7 +51005,9 @@ class BattleUIComponent {
               resourceDeltas: item.resourceDeltas
                 .filter(entry => Math.round(Number(entry.value || 0)) !== 0)
                 .slice(0, 4)
-                .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)) })),
+                .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)), sourceEventIds: Array.isArray(entry.sourceEventIds) ? entry.sourceEventIds.slice(0, 8) : [] })),
+              playerHpSourceEventIds: Array.isArray(item.playerHpSourceEventIds) ? item.playerHpSourceEventIds.slice(0, 12) : [],
+              enemyHpSourceEventIds: Array.isArray(item.enemyHpSourceEventIds) ? item.enemyHpSourceEventIds.slice(0, 12) : [],
               highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 3),
             }));
         }
@@ -51007,11 +51030,12 @@ class BattleUIComponent {
           const list = Array.isArray(rows) ? rows : [];
           if (!list.length) return '';
           const formatDelta = value => value < 0 ? `${value} HP` : value > 0 ? `+${value} HP` : '0';
-          const renderHpDelta = (label, value, ratioValue = 0) => {
+          const renderHpDelta = (label, value, ratioValue = 0, sourceEventIds = []) => {
             const delta = Number(value || 0);
             const className = `battle-round-dashboard-delta${delta < 0 ? ' is-loss' : delta > 0 ? ' is-gain' : ''}`;
             const ratio = Math.max(0, Math.min(100, Math.round(Number(ratioValue || 0))));
-            return `<span class="${className}" data-hp-delta="${htmlEscapeText(String(delta))}" data-delta-ratio="${ratio}"><span class="battle-round-dashboard-delta-fill" style="width:${ratio}%"></span><span class="battle-round-dashboard-delta-text">${htmlEscapeText(`${label} ${formatDelta(delta)}`)}</span></span>`;
+            const sourceAttr = (Array.isArray(sourceEventIds) ? sourceEventIds : []).map(id => String(id || '').trim()).filter(Boolean).slice(0, 12).join(',');
+            return `<span class="${className}" data-hp-delta="${htmlEscapeText(String(delta))}" data-delta-ratio="${ratio}"${sourceAttr ? ` data-source-event-ids="${htmlEscapeText(sourceAttr)}"` : ''}><span class="battle-round-dashboard-delta-fill" style="width:${ratio}%"></span><span class="battle-round-dashboard-delta-text">${htmlEscapeText(`${label} ${formatDelta(delta)}`)}</span></span>`;
           };
           return `<section class="battle-round-dashboard" aria-label="回合速览">${list.map(item => {
             const playerDelta = Number(item?.playerHpDelta || 0);
@@ -51023,7 +51047,10 @@ class BattleUIComponent {
               .map(entry => typeof entry === 'string' ? { text: entry } : entry)
               .filter(entry => String(entry?.text || '').trim());
             const resourceDeltas = (Array.isArray(item?.resourceDeltas) ? item.resourceDeltas : []).filter(entry => Math.round(Number(entry?.value || 0)) !== 0);
-            const resourceHtml = resourceDeltas.length ? `<div class="battle-round-dashboard-resources">${resourceDeltas.map(entry => `<span>${htmlEscapeText(`${entry.actorName || '单位'} ${entry.resourceName || '资源'} ${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)}</span>`).join('')}</div>` : '';
+            const resourceHtml = resourceDeltas.length ? `<div class="battle-round-dashboard-resources">${resourceDeltas.map(entry => {
+              const sourceAttr = (Array.isArray(entry?.sourceEventIds) ? entry.sourceEventIds : []).map(id => String(id || '').trim()).filter(Boolean).slice(0, 8).join(',');
+              return `<span${sourceAttr ? ` data-source-event-ids="${htmlEscapeText(sourceAttr)}"` : ''}>${htmlEscapeText(`${entry.actorName || '单位'} ${entry.resourceName || '资源'} ${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)}</span>`;
+            }).join('')}</div>` : '';
             const statusLabel = (() => {
               const head = String(highlights[0]?.text || '').trim();
               if (/召出|召唤/.test(head)) return '召唤入场';
@@ -51042,7 +51069,7 @@ class BattleUIComponent {
               ].filter(Boolean).join(' ');
               return `<span${attrs ? ` ${attrs}` : ''}>${htmlEscapeText(entry.text)}</span>`;
             }).join('')}</div>` : '';
-            return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${htmlEscapeText(statusLabel)}</b></div><div class="battle-round-dashboard-bars">${renderHpDelta('我方', playerDelta, playerRatio)}${renderHpDelta('敌方', enemyDelta, enemyRatio)}</div>${resourceHtml}${highlightHtml}</div>`;
+            return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${htmlEscapeText(statusLabel)}</b></div><div class="battle-round-dashboard-bars">${renderHpDelta('我方', playerDelta, playerRatio, item?.playerHpSourceEventIds)}${renderHpDelta('敌方', enemyDelta, enemyRatio, item?.enemyHpSourceEventIds)}</div>${resourceHtml}${highlightHtml}</div>`;
           }).join('')}</section>`;
         }
         function 解码战斗预演HTML实体(text = '') {
