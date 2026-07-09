@@ -2797,7 +2797,7 @@ function 正文需要商店库存_V1(文本 = '') {
 function 构建运行时商店摘要_V1(商店数据 = {}, 数据根 = {}, 文本 = '', 命中商店 = false, 选项 = {}) {
   if (!商店数据 || typeof 商店数据 !== 'object') return undefined;
   const 输出 = {};
-  const 刷新tick = Number(商店数据.下次刷新tick || 0);
+  const 刷新tick = Number(商店数据._下次刷新tick || 0);
   if (命中商店 && 刷新tick > 0) 输出.下次进货时间 = formatTickToCalendarDateText(刷新tick);
   const 商品输出 = {};
   const 物品候选上下文 = 构建运行时物品候选上下文_V1(数据根, 文本, 选项);

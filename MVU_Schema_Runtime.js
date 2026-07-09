@@ -6023,17 +6023,36 @@ function 规范化Schema根转换_V1(data = {}) {
     });
     const REFRESH_INTERVAL = 1008;
     const 市场耗散基础触发率 = 0.22;
+    const 商店刷新基准tick = Math.max(0, Math.floor(Number(currentTick || 0)));
+    const 归一商店记录 = 商店数据 => {
+      if (!商店数据 || typeof 商店数据 !== 'object' || Array.isArray(商店数据)) return { 库存: {}, _下次刷新tick: 0 };
+      if (!商店数据.库存 || typeof 商店数据.库存 !== 'object' || Array.isArray(商店数据.库存)) 商店数据.库存 = {};
+      const 旧刷新tick = Number(商店数据.下次刷新tick);
+      const 当前刷新tick = Number(商店数据._下次刷新tick);
+      商店数据._下次刷新tick = Math.max(0, Math.floor(Number.isFinite(当前刷新tick) ? 当前刷新tick : Number.isFinite(旧刷新tick) ? 旧刷新tick : 0));
+      delete 商店数据.下次刷新tick;
+      return 商店数据;
+    };
+    const 归一地点商店容器 = cityData => {
+      if (!cityData || typeof cityData !== 'object' || Array.isArray(cityData)) return {};
+      if (!cityData.商店 || typeof cityData.商店 !== 'object' || Array.isArray(cityData.商店)) cityData.商店 = {};
+      Object.entries(cityData.商店).forEach(([商店名, 商店数据]) => {
+        cityData.商店[商店名] = 归一商店记录(商店数据);
+      });
+      return cityData.商店;
+    };
 
     _(data.world.地点).forEach((cityData, cityName) => {
-      if (!cityData.商店) cityData.商店 = {};
+      const 城市商店 = 归一地点商店容器(cityData);
 
       const groceryStoreName = '城市杂货店';
-      if (!cityData.商店[groceryStoreName]) {
-        cityData.商店[groceryStoreName] = { 库存: {}, 下次刷新tick: 0 };
+      if (!城市商店[groceryStoreName]) {
+        城市商店[groceryStoreName] = { 库存: {}, _下次刷新tick: 0 };
       }
-      const groceryStore = cityData.商店[groceryStoreName];
+      const groceryStore = 归一商店记录(城市商店[groceryStoreName]);
+      城市商店[groceryStoreName] = groceryStore;
 
-      if (currentTick >= (groceryStore.下次刷新tick || 0)) {
+      if (商店刷新基准tick >= (groceryStore._下次刷新tick || 0)) {
         let newInventory = {};
         const economy = cityData.经济状况 || '普通';
         let stockMultiplier = 1.0;
@@ -6044,7 +6063,7 @@ function 规范化Schema根转换_V1(data = {}) {
           newInventory[itemName] = 写入物品定义并生成库存状态_V1(data, itemName, item, Math.floor((Math.random() * 10 + 5) * stockMultiplier));
         });
         groceryStore.库存 = newInventory;
-        groceryStore.下次刷新tick = currentTick + REFRESH_INTERVAL;
+        groceryStore._下次刷新tick = 商店刷新基准tick + REFRESH_INTERVAL;
       }
     });
 
@@ -6056,14 +6075,16 @@ function 规范化Schema根转换_V1(data = {}) {
       storeCityNames.forEach(cityName => {
         if (data.world.地点[cityName]) {
           const cityData = data.world.地点[cityName];
+          const 城市商店 = 归一地点商店容器(cityData);
           const isHeadquartersStore = factionName === '传灵塔' && String(cityName || '').trim() === String(dist?.hq || '').trim();
           const storeName = isHeadquartersStore ? `${factionName}总部` : `${factionName}分店`;
-          if (!cityData.商店[storeName]) {
-            cityData.商店[storeName] = { 库存: {}, 下次刷新tick: 0 };
+          if (!城市商店[storeName]) {
+            城市商店[storeName] = { 库存: {}, _下次刷新tick: 0 };
           }
-          const store = cityData.商店[storeName];
+          const store = 归一商店记录(城市商店[storeName]);
+          城市商店[storeName] = store;
 
-          if (currentTick >= (store.下次刷新tick || 0)) {
+          if (商店刷新基准tick >= (store._下次刷新tick || 0)) {
             store.库存 = {};
 
             if (factionName === '唐门') 合并商品模板到库存_V1(data, store.库存, TangmenShopProducts);
@@ -6181,7 +6202,7 @@ function 规范化Schema根转换_V1(data = {}) {
               tryGenerateDynamicItem(store.库存, '四字斗铠设计图', 150000000, 5, 0.5 * probMultiplier);
             }
 
-            store.下次刷新tick = currentTick + REFRESH_INTERVAL;
+            store._下次刷新tick = 商店刷新基准tick + REFRESH_INTERVAL;
           }
       }
     });
@@ -6201,10 +6222,7 @@ function 规范化Schema根转换_V1(data = {}) {
       const 城市列表 = Object.entries(data.world?.地点 || {}).filter(([, 城市数据]) =>
         城市数据 &&
         typeof 城市数据 === 'object' &&
-        城市数据.商店 &&
-        typeof 城市数据.商店 === 'object' &&
-        !Array.isArray(城市数据.商店) &&
-        Object.keys(城市数据.商店).length > 0
+        Object.keys(归一地点商店容器(城市数据)).length > 0
       );
       if (!城市列表.length) return;
       const 波动次数 = Math.random() < 0.75 ? 1 : 2;
@@ -6215,7 +6233,7 @@ function 规范化Schema根转换_V1(data = {}) {
         const [城市名, 城市数据] = 城市项;
         const 商店列表 = Object.entries(城市数据.商店 || {}).filter(([, 商店数据]) => {
           if (!商店数据 || typeof 商店数据 !== 'object') return false;
-          const 距刷新剩余tick = Math.max(0, Number(商店数据.下次刷新tick || 0) - currentTick);
+          const 距刷新剩余tick = Math.max(0, Number(商店数据._下次刷新tick || 0) - 商店刷新基准tick);
           if (距刷新剩余tick >= Math.floor(REFRESH_INTERVAL * 0.9)) return false;
           const 可售条目数 = Object.values(商店数据.库存 || {}).filter(
             条目 => 条目 && typeof 条目 === 'object' && Math.max(0, Number(条目.库存 || 0)) > 0,

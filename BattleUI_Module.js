@@ -16884,11 +16884,17 @@ class BattleUIComponent {
         const 事件账本 = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
         断言战斗回归夹具(事件账本.some(item => item?.eventKind === 'action_start' && item?.actionName === 战斗回归第一魂技默认名), `事件账本缺动作起手:${JSON.stringify(事件账本)}`);
         const 第一魂技伤害事件 = 事件账本.filter(item => item?.eventKind === 'hit_result' && item?.actorName === '夹具玩家' && item?.targetName === '夹具敌人' && normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 战斗回归第一魂技默认名 && Number(item?.appliedDamage || item?.meta?.appliedDamage || item?.damage || item?.meta?.damage || 0) > 0);
+        const 第一魂技反击伤害事件 = 事件账本.filter(item =>
+          item?.eventKind === 'counter' &&
+          normalizeBattleActionDisplayName(item?.sourceActionName || item?.meta?.sourceActionName || '') === 战斗回归第一魂技默认名 &&
+          Number(item?.appliedDamage || item?.meta?.appliedDamage || item?.damage || item?.meta?.damage || 0) > 0
+        );
         const 第一魂技状态集合 = new Set(事件账本
           .filter(item => item?.eventKind === 'state_apply' && item?.actorName === '夹具玩家' && item?.targetName === '夹具敌人' && normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 战斗回归第一魂技默认名)
           .map(item => String(item?.stateName || item?.meta?.stateName || '').trim())
           .filter(Boolean));
         断言战斗回归夹具(!第一魂技伤害事件.length, `第一魂技不应生成直接伤害:${JSON.stringify(第一魂技伤害事件)}`);
+        断言战斗回归夹具(!第一魂技反击伤害事件.length, `第一魂技不应触发常规防反伤害:${JSON.stringify(第一魂技反击伤害事件)}`);
         断言战斗回归夹具(第一魂技状态集合.has('位移限制') && 第一魂技状态集合.has('中毒'), `第一魂技缺控制/中毒状态:${JSON.stringify(事件账本)}`);
         断言战斗回归夹具(!/错误缓存第一魂技|9999/.test(report), `正常释放串用缓存技能:${report}`);
         日志.push(`第一魂技正常释放成立:${report}`);
@@ -19481,6 +19487,8 @@ class BattleUIComponent {
           stateName: '位移限制',
           successRate: 0.42,
           roll: 0.67,
+          successRateReason: '硬控基础78% - 属性差36%（夹具抵抗）',
+          successRateBreakdown: '附着成功率：42%，硬控基础78% - 属性差36%（夹具抵抗），检定67 > 42，未通过',
           driverAttr: '精神力',
           failureReason: 'state_resisted',
         },
@@ -19537,6 +19545,8 @@ class BattleUIComponent {
           stateName: '位移限制',
           successRate: 0.42,
           roll: 0.99,
+          successRateReason: '硬控基础78% - 属性差36%（夹具免疫）',
+          successRateBreakdown: '附着成功率：42%，硬控基础78% - 属性差36%（夹具免疫），检定99 > 42，未通过',
           driverAttr: '精神力',
           failureReason: 'state_immune',
         },
@@ -20730,7 +20740,8 @@ class BattleUIComponent {
         meta: {
           stateName: '位移限制',
           successRate: 100,
-          stateCheckBreakdown: '附着成功率：100%，必中/无法抵抗/非负面默认生效',
+          successRateReason: '必中/无法抵抗',
+          successRateBreakdown: '附着成功率：100%，必中/无法抵抗',
         },
       });
       记录行动闭环审计(combatData, '主动规划', {
@@ -23270,9 +23281,15 @@ class BattleUIComponent {
       return Math.max(0.05, Math.min(1, Number.isFinite(缩放系数) ? 缩放系数 : 1));
     }
 
-    function 读取状态施加驱动成功率(effect = {}, attacker = {}, targetChar = {}) {
+    function 计算状态施加成功率审计(effect = {}, attacker = {}, targetChar = {}) {
       const 驱动属性 = String(effect?.驱动属性 || '').trim();
-      if (!attacker || !targetChar || attacker === targetChar) return 1;
+      const 构建审计 = (成功率, 来源, 扩展 = {}) => ({
+        successRate: Math.max(0, Math.min(1, Number.isFinite(Number(成功率)) ? Number(成功率) : 1)),
+        reason: String(来源 || '').trim(),
+        ...扩展,
+      });
+      if (!attacker || !targetChar) return 构建审计(1, '来源字段不足');
+      if (attacker === targetChar) return 构建审计(1, '自身默认生效');
       const 目标最终属性 = targetChar?.final || buildCombatFinalStats(targetChar);
       const 状态目标 = String(effect?.目标 || '').trim();
       const 状态文本 = [
@@ -23288,7 +23305,7 @@ class BattleUIComponent {
       ].map(值 => String(值 || '').trim()).join('|');
       const 是负面状态 = !['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(状态目标) &&
         (/debuff|眩晕|麻痹|僵直|混乱|沉默|封技|失控|精神紊乱|恐惧|无法反应|致盲|锁定|位移限制|资源燃烧|虚弱|防御剥夺|精神抗性剥夺/.test(状态文本));
-      if (!是负面状态) return 1;
+      if (!是负面状态) return 构建审计(1, '非负面默认生效');
       const 计算层效果 = effect?.计算层效果 || {};
       if (
         effect?.必中 === true ||
@@ -23296,7 +23313,7 @@ class BattleUIComponent {
         /必定|必中|无法抵抗/.test(String(effect?.生效方式 || '') + String(effect?.触发限制 || '')) ||
         计算层效果.status_guaranteed === true ||
         计算层效果.ignore_status_resist === true
-      ) return 1;
+      ) return 构建审计(1, '必中/无法抵抗');
       const 防守最终属性 = 是负面状态 && 判断精神力驱动攻击_战斗(effect, effect?.__skill || {})
         ? { ...目标最终属性, men_max: 计算紫极魔瞳防守精神攻势值_战斗(targetChar, 目标最终属性, effect, effect?.__skill || {}) }
         : 目标最终属性;
@@ -23319,7 +23336,14 @@ class BattleUIComponent {
         const 属性差 = 攻方压制 > 0 && 守方抗性 > 0
           ? Math.max(-0.18, Math.min(0.16, (攻方压制 - 守方抗性) / Math.max(攻方压制, 守方抗性, 1) * 0.18))
           : 0;
-        return Math.max(0.55, Math.min(0.95, (是硬控 ? 0.78 : 0.88) + 属性差));
+        const 基础率 = 是硬控 ? 0.78 : 0.88;
+        const 成功率 = Math.max(0.55, Math.min(0.95, 基础率 + 属性差));
+        const 属性差百分比 = Math.round(属性差 * 100);
+        return 构建审计(
+          成功率,
+          `${是硬控 ? '硬控' : '负面状态'}基础${Math.round(基础率 * 100)}%${属性差百分比 >= 0 ? ' + ' : ' - '}属性差${Math.abs(属性差百分比)}%（攻方压制${Math.round(攻方压制)} / 守方抗性${Math.round(守方抗性)}）`,
+          { baseRate: 基础率, attributeDelta: 属性差, attackerPressure: 攻方压制, defenderResistance: 守方抗性 },
+        );
       }
       const 缩放系数 = 计算原型驱动缩放系数(
         effect,
@@ -23328,7 +23352,27 @@ class BattleUIComponent {
         targetChar,
         防守最终属性,
       );
-      return Math.max(0.05, Math.min(1, Number.isFinite(缩放系数) ? 缩放系数 : 1));
+      return 构建审计(
+        Math.max(0.05, Math.min(1, Number.isFinite(缩放系数) ? 缩放系数 : 1)),
+        `驱动属性${驱动属性}缩放${Number.isFinite(缩放系数) ? 缩放系数.toFixed(2) : '1.00'}`,
+        { driverAttr: 驱动属性, driverScale: Number.isFinite(缩放系数) ? 缩放系数 : 1 },
+      );
+    }
+
+    function 读取状态施加驱动成功率(effect = {}, attacker = {}, targetChar = {}) {
+      return 计算状态施加成功率审计(effect, attacker, targetChar).successRate;
+    }
+
+    function 格式化状态附着成功率拆分(状态成功率审计 = {}, 状态附着检定 = null, 附着通过 = true) {
+      const successRate = Number(状态成功率审计?.successRate);
+      if (!Number.isFinite(successRate)) return '附着成功率：来源字段不足，已隐藏计算式';
+      const ratePct = Math.round(successRate <= 1 ? successRate * 100 : successRate);
+      const source = String(状态成功率审计?.reason || '').trim() || '来源字段不足';
+      const roll = Number(状态附着检定);
+      const rollPart = Number.isFinite(roll) && roll > 0
+        ? `，检定${Math.round(roll <= 1 ? roll * 100 : roll)} ${附着通过 ? '<=' : '>'} ${ratePct}${附着通过 ? '，通过' : '，未通过'}`
+        : '';
+      return `附着成功率：${ratePct}%，${source}${rollPart}`;
     }
 
     function 读取状态移除候选状态(targetChar, effect = {}) {
@@ -26596,29 +26640,42 @@ class BattleUIComponent {
           轨迹.finalResolvedActionName = 最终动作;
           轨迹.技能 = 最终动作;
           let 匹配候选 = false;
+          const 已执行候选 = Array.isArray(轨迹.候选排序结果)
+            ? 轨迹.候选排序结果.find(候选 => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(候选?.candidateStatus || '').trim().toUpperCase()))
+            : null;
+          const 已执行候选名 = normalizeBattleActionDisplayName(已执行候选?.candidateName || 已执行候选?.名称 || 已执行候选?.name || '');
+          const 候选执行冲突 = !!(已执行候选名 && 已执行候选名 !== 最终动作);
           if (Array.isArray(轨迹.候选排序结果)) {
             轨迹.候选排序结果 = 轨迹.候选排序结果.map(候选 => {
               const 候选名 = normalizeBattleActionDisplayName(候选?.candidateName || 候选?.名称 || 候选?.name || '');
+              if (候选执行冲突) {
+                if (候选名 === 最终动作) 匹配候选 = true;
+                return 候选;
+              }
               if (候选名 !== 最终动作) {
-                if (['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(候选?.candidateStatus || '').trim().toUpperCase())) {
+                const 当前候选状态 = String(候选?.candidateStatus || '').trim().toUpperCase();
+                if (['EXECUTED', 'LOCKED', 'SELECTED'].includes(当前候选状态)) {
                   const filtered = Number(候选?.权重 ?? 候选?.score ?? 0) <= 0;
                   return {
                     ...候选,
-                    candidateStatus: filtered ? 'FILTERED' : 'REJECTED',
+                    candidateStatus: 战斗候选状态转移(当前候选状态, filtered ? 'FILTERED' : 'REJECTED'),
                     rejectionCode: filtered ? 'FILTERED_BY_SCORE' : 'LOWER_PRIORITY',
                   };
                 }
                 return 候选;
               }
               匹配候选 = true;
+              const 当前候选状态 = String(候选?.candidateStatus || '').trim().toUpperCase();
               return {
                 ...候选,
-                candidateStatus: 'EXECUTED',
+                candidateStatus: 战斗候选状态转移(当前候选状态, 'EXECUTED'),
                 rejectionCode: '',
               };
             });
           }
-          轨迹.actionOverrideSource = 匹配候选
+          轨迹.actionOverrideSource = 候选执行冲突
+            ? String(patch?.actionOverrideSource || 轨迹.actionOverrideSource || '候选最终动作冲突').trim()
+            : 匹配候选
             ? ''
             : String(
                 patch?.actionOverrideSource ||
@@ -28256,6 +28313,7 @@ class BattleUIComponent {
         if (!allowed.includes(to)) throw new Error(`candidate_invalid_status:${to}`);
         if (
           (from === 'EXECUTED' && to === 'REJECTED') ||
+          (from === 'EXECUTED' && to === 'FILTERED') ||
           (from === 'LOCKED' && to === 'FILTERED') ||
           (from === 'ABORTED' && to === 'REJECTED')
         ) {
@@ -29664,7 +29722,7 @@ class BattleUIComponent {
             名称: actionName,
             score: baseScore,
             权重: baseScore,
-            candidateStatus: 'EXECUTED',
+            candidateStatus: 战斗候选状态转移('', 'EXECUTED'),
             rejectionCode: '',
             effectTags: finalEffectTags,
             candidateSource: 'EXECUTED_ACTION_FACT',
@@ -29676,7 +29734,7 @@ class BattleUIComponent {
               名称: alternativeName,
               score: Math.max(1, baseScore - (dominantReason === 'CONTROL' ? 8 : 12)),
               权重: Math.max(1, baseScore - (dominantReason === 'CONTROL' ? 8 : 12)),
-              candidateStatus: 'REJECTED',
+              candidateStatus: 战斗候选状态转移('', 'REJECTED'),
               rejectionCode: dominantReason === 'CONTROL' && !controlGapVerified ? 'LOWER_PRIORITY' : rejectionCode,
               effectTags: alternativeEffectTags,
               rejectedByEffectGap: dominantReason === 'CONTROL' ? (controlGapVerified ? 'CONTROL_RESTRICTION_GAP' : '') : '',
@@ -36265,8 +36323,13 @@ class BattleUIComponent {
         const 攻势敏捷 = Math.max(1, Number(攻势最终属性.agi || 攻势单位.agi || aAgi || 1));
         const 攻势精神上限 = Math.max(1, Number(攻势最终属性.men_max || 攻势单位.men_max || attackerFinalStat.men_max || 1));
         const 是近身接战动作 = !使用对应等级 && 战斗伤害是近身攻击(pClash.伤害类型);
+        const 原动作具备即时伤害分支 = actionEffects.some(effect =>
+          String(effect?.原型 || '').trim() === '伤害结算' &&
+          Math.max(0, Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0)) > 0
+        );
         const 登记行为防反候选 = (防反类型, 防反方, 参数 = {}) => {
           if (!防反方 || 读取行为防反深度(playerAction) >= 2 || result.__行为防反候选) return;
+          if (原动作具备即时伤害分支 !== true) return;
           const 反应余量 = Number(
             参数.反应余量 ?? calculateReactionRatio(attacker, 防反方, playerAction, combatData),
           );
@@ -38640,7 +38703,8 @@ class BattleUIComponent {
                 result.desc += ` [机制抹消] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}对【${读取战斗机制抹消对象摘要(最终结果抹消规则.抹消对象)}】存在封锁，[${状态名}]未能落地。`;
                 return;
               }
-              const 驱动成功率 = 读取状态施加驱动成功率(stateEffect, attacker, targetObj);
+              const 状态成功率审计 = 计算状态施加成功率审计(stateEffect, attacker, targetObj);
+              const 驱动成功率 = 状态成功率审计.successRate;
               const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
               if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${状态名}]附着。`;
@@ -38660,6 +38724,8 @@ class BattleUIComponent {
                     stateName: 状态名,
                     successRate: Number(驱动成功率 || 0),
                     roll: Number(状态附着检定 || 0),
+                    successRateReason: 状态成功率审计.reason,
+                    successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, false),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -38764,7 +38830,13 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
-                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
+                meta: {
+                  stateName: 状态名,
+                  successRate: Number(驱动成功率 || 1),
+                  roll: Number(状态附着检定 || 0),
+                  successRateReason: 状态成功率审计.reason,
+                  successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, true),
+                },
               });
               if (是主原型效果(stateEffect)) 登记主原型成立目标(targetObj);
               result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}获得[${状态名}]。`;
@@ -39453,7 +39525,8 @@ class BattleUIComponent {
                 result.desc += ` [机制抹消] ${targetObj === attacker ? '自身' : targetObj.name}对【${读取战斗机制抹消对象摘要(最终结果抹消规则.抹消对象)}】存在封锁，本次状态未能附着。`;
                 return;
               }
-              const 驱动成功率 = 读取状态施加驱动成功率(pState, attacker, targetObj);
+              const 状态成功率审计 = 计算状态施加成功率审计(pState, attacker, targetObj);
+              const 驱动成功率 = 状态成功率审计.successRate;
               const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
               if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}抵住了[${pState.状态名称}]附着。`;
@@ -39473,6 +39546,8 @@ class BattleUIComponent {
                     stateName: pState.状态名称,
                     successRate: Number(驱动成功率 || 0),
                     roll: Number(状态附着检定 || 0),
+                    successRateReason: 状态成功率审计.reason,
+                    successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, false),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -39683,7 +39758,13 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(pState) || '').trim(),
-                meta: { stateName: pState.状态名称, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
+                meta: {
+                  stateName: pState.状态名称,
+                  successRate: Number(驱动成功率 || 1),
+                  roll: Number(状态附着检定 || 0),
+                  successRateReason: 状态成功率审计.reason,
+                  successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, true),
+                },
               });
               if (是主原型效果(pState)) 登记主原型成立目标(targetObj);
               if (directTauntEffect && targetObj !== attacker) {
@@ -39758,7 +39839,8 @@ class BattleUIComponent {
                 result.desc += ` [机制抹消] ${目标名}对【${读取战斗机制抹消对象摘要(最终结果抹消规则.抹消对象)}】存在封锁，本次状态未能附着。`;
                 return;
               }
-              const 驱动成功率 = 读取状态施加驱动成功率(状态施加效果, attacker, 目标对象);
+              const 状态成功率审计 = 计算状态施加成功率审计(状态施加效果, attacker, 目标对象);
+              const 驱动成功率 = 状态成功率审计.successRate;
               const 状态附着检定 = 驱动成功率 < 1 ? Math.random() : null;
               if (驱动成功率 < 1 && 状态附着检定 > 驱动成功率) {
                 result.desc += ` [状态施加] ${目标名}抵住了[${状态名}]附着。`;
@@ -39778,6 +39860,8 @@ class BattleUIComponent {
                     stateName: 状态名,
                     successRate: Number(驱动成功率 || 0),
                     roll: Number(状态附着检定 || 0),
+                    successRateReason: 状态成功率审计.reason,
+                    successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, false),
                     reason: '状态附着抗性判定失败',
                   },
                 });
@@ -39893,7 +39977,13 @@ class BattleUIComponent {
                 duration: 下一持续,
                 effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
-                meta: { stateName: 状态名, successRate: Number(驱动成功率 || 1), roll: Number(状态附着检定 || 0) },
+                meta: {
+                  stateName: 状态名,
+                  successRate: Number(驱动成功率 || 1),
+                  roll: Number(状态附着检定 || 0),
+                  successRateReason: 状态成功率审计.reason,
+                  successRateBreakdown: 格式化状态附着成功率拆分(状态成功率审计, 状态附着检定, true),
+                },
               });
               result.desc += ` 并对${目标对象 === attacker ? '自身' : 目标名}施加了[${状态名}]状态！`;
               已落地 = true;
@@ -47702,6 +47792,7 @@ class BattleUIComponent {
         function formatTacticalNarration(dto = {}) {
           if (!dto || dto.narrationTrustLevel !== 'TRUSTED') return '';
           const alt = dto.rejectedAlternatives?.[0] || null;
+          if (!alt?.actionName || !String(alt?.reasonCode || alt?.rejectedByEffectGap || '').trim()) return '';
           const actorName = dto.actorName || '行动者';
           const targetName = dto.targetName || '目标';
           const finalActionName = dto.finalActionName || '当前动作';
@@ -47712,47 +47803,48 @@ class BattleUIComponent {
             if (dto.dominantReason === 'CONTROL') {
               return altReasonCode === 'CONTROL_GAP' || alt?.rejectedByEffectGap === 'CONTROL_RESTRICTION_GAP'
                 ? `${altText}的直接收益接近，却无法限制${targetName}后续反扑；`
-                : `${altText}难以真正压住${targetName}的后续行动；`;
+                : '';
             }
             if (dto.dominantReason === 'RESOURCE_PRESSURE') {
               return altReasonCode === 'RESOURCE_PRESSURE'
                 ? `${altText}压制更重，却会拖空后续魂力；`
-                : `${altText}虽然可行，却不利于维持后续节奏；`;
+                : '';
             }
             if (dto.dominantReason === 'PROTECT_ALLY') {
               return altReasonCode === 'PROTECT_ALLY_GAP'
                 ? `${altText}难以及时补上己方防线缺口；`
-                : `${altText}无法兼顾眼前战线的危机；`;
+                : '';
             }
             if (dto.dominantReason === 'LETHAL') {
               return altReasonCode === 'LETHAL_GAP'
                 ? `${altText}仍留余地，难以把握眼前终结窗口；`
-                : `${altText}不如当前动作更能逼近终局；`;
+                : '';
             }
             if (dto.dominantReason === 'DIRECT_PRESSURE') {
               return altReasonCode === 'DIRECT_PRESSURE_GAP'
                 ? `${altText}只能牵制一时，正面推进力度不足；`
-                : `${altText}难以把压力继续压到${targetName}身上；`;
+                : '';
             }
             return '';
           })();
           if (dto.dominantReason === 'TIE_BREAK') {
             return `战术侧写：局势焦灼之下，${altText}与【${finalActionName}】收益相近，${actorName}最终按战术重心抢出【${finalActionName}】，把压力压向${targetName}。`;
           }
+          if (!取舍句) return '';
           if (dto.dominantReason === 'RESOURCE_PRESSURE') {
-            return `战术侧写：${取舍句 || `${altText}虽有压制空间，却会牵动后续魂力节奏；`}${actorName}转以【${finalActionName}】稳住局面，避免下一轮断档。`;
+            return `战术侧写：${取舍句}${actorName}转以【${finalActionName}】稳住局面，避免下一轮断档。`;
           }
           if (dto.dominantReason === 'PROTECT_ALLY') {
-            return `战术侧写：${actorName}捕捉到战线缺口，${取舍句 || `放弃继续推进${altText}，` }改以【${finalActionName}】介入局面，为己方争回喘息空间。`;
+            return `战术侧写：${actorName}捕捉到战线缺口，${取舍句}改以【${finalActionName}】介入局面，为己方争回喘息空间。`;
           }
           if (dto.dominantReason === 'LETHAL') {
-            return `战术侧写：察觉${targetName}已露颓势，${取舍句 || `${actorName}没有转向${altText}，`}${actorName}顺势施展【${finalActionName}】逼向终结。`;
+            return `战术侧写：察觉${targetName}已露颓势，${取舍句}${actorName}顺势施展【${finalActionName}】逼向终结。`;
           }
           if (dto.dominantReason === 'CONTROL') {
-            return `战术侧写：${取舍句 || `${altText}的直接收益并不足以限制${targetName}后续反扑；`}${actorName}因此改以【${finalActionName}】封锁退路，试图接管节奏。`;
+            return `战术侧写：${取舍句}${actorName}因此改以【${finalActionName}】封锁退路，试图接管节奏。`;
           }
           if (dto.dominantReason === 'DIRECT_PRESSURE') {
-            return `战术侧写：${取舍句 || `${altText}虽能牵制一时，却缺少正面推进的力度；`}${actorName}改以【${finalActionName}】压住${targetName}的身位，稳稳推进战线。`;
+            return `战术侧写：${取舍句}${actorName}改以【${finalActionName}】压住${targetName}的身位，稳稳推进战线。`;
           }
           return '';
         }
@@ -49118,15 +49210,9 @@ class BattleUIComponent {
             const successRate = Number(rateRaw);
             const roll = Number(rollRaw);
             const result = String(stateNode.result || '').trim();
-            const passed = !/resist|immune|fail|未|抵|免疫/i.test(`${result} ${stateNode.primaryOutcome || ''}`);
-            const ratePct = Number.isFinite(successRate) ? Math.round(successRate <= 1 ? successRate * 100 : successRate) : null;
-            const rollPct = Number.isFinite(roll) ? Math.round(roll <= 1 ? roll * 100 : roll) : null;
-            const derivedBreakdown = ratePct !== null && rollPct !== null
-              ? `附着判定：成功率${ratePct}%，检定${rollPct} ${passed ? '<=' : '>'} ${ratePct}${passed ? '，通过' : '，未通过'}`
-              : '';
             return {
               stateName: String(读取结算轨迹值(stateNode.calculationTrace, 'stateName') || stateNode.stateName || '').trim(),
-              successRateBreakdown: String(读取结算轨迹值(stateNode.calculationTrace, 'successRateBreakdown') || stateNode.successRateBreakdown || meta.successRateBreakdown || meta.stateSuccessRateBreakdown || derivedBreakdown).trim(),
+              successRateBreakdown: String(读取结算轨迹值(stateNode.calculationTrace, 'successRateBreakdown') || stateNode.successRateBreakdown || meta.successRateBreakdown || meta.stateSuccessRateBreakdown || '附着成功率：来源字段不足，已隐藏计算式').trim(),
               successRate,
               roll,
               result,
@@ -49631,30 +49717,9 @@ class BattleUIComponent {
             return firstDetail ? `（计算：${firstDetail.replace(/^伤害路径：/, '')}）` : '';
           };
           const stateDetailText = () => {
-            const successRate = Number(event?.meta?.successRate);
-            const roll = Number(event?.meta?.roll);
-            const driverAttr = String(event?.driverAttr || event?.meta?.driverAttr || '').trim();
             const explicitBreakdown = String(event?.meta?.successRateBreakdown || event?.meta?.stateSuccessRateBreakdown || '').trim();
-            const immune = /immune|immunity|免疫|无视异常/.test(result);
-            const resisted = /resist|resisted|抵抗|豁免/.test(result);
-            const parts = [];
             if (explicitBreakdown) return `（计算：${explicitBreakdown}）`;
-            if (Number.isFinite(successRate) && successRate > 0 && successRate < 1) {
-              const ratePct = Math.round(successRate * 100);
-              parts.push(`附着成功率 ${ratePct}%`);
-              if (driverAttr) parts.push(`驱动属性 ${driverAttr}`);
-              if (Number.isFinite(roll) && roll > 0) {
-                const rollPct = Math.round(roll * 100);
-                parts.push((resisted || immune) ? `检定 ${rollPct} > ${ratePct}` : `检定 ${rollPct} <= ${ratePct}`);
-              } else {
-                parts.push(immune ? '免疫阻断' : (resisted ? '抗性判定阻断' : '抗性判定通过'));
-              }
-            } else {
-              parts.push(immune ? '免疫阻断' : '必定附着');
-              if (driverAttr) parts.push(`驱动属性 ${driverAttr}`);
-            }
-            parts.push(immune ? '免疫生效' : (resisted ? '附着失败' : '状态生效'));
-            return `（计算：${parts.join(' → ')}）`;
+            return '（计算：附着成功率来源字段不足，已隐藏计算式）';
           };
            if (kind === 'hit_result') {
              if (/miss|evade|dodge|未命中|闪避/.test(result)) return `${actor}的【${action}】未能命中${target}。`;
@@ -50499,8 +50564,9 @@ class BattleUIComponent {
               ].map(清洗主卡战术文本).filter(Boolean);
             }
             if (dto.narrationTrustLevel === 'TRUSTED') {
+              const narration = formatTacticalNarration(dto);
               return [
-                `├─ ${formatTacticalNarration(dto)}`,
+                narration ? `├─ ${narration}` : '',
                 `├─ ${targetName ? `当前指向：【${targetName}】。` : '当前没有明确目标。'}`,
                 `└─ ${actorName}最终确认${actionText}${targetName ? `压向${targetName}` : ''}。`,
               ].map(清洗主卡战术文本).filter(Boolean);
