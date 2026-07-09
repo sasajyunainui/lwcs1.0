@@ -3858,6 +3858,35 @@ class BattleUIComponent {
       return `${actor}暂缓出手，观察战局变化`;
     }
 
+    function 映射玩家可见失败原因(reasonCode = '', rawReason = '') {
+      const code = String(reasonCode || '').trim().toUpperCase();
+      const reason = String(rawReason || '').trim();
+      const byCode = {
+        CAP_REACHED: '场面已满，造物已达上限',
+        TARGET_LOST: '目标已失去有效落点',
+        OUT_OF_MANA: '魂力不足',
+        RESOURCE_NOT_ENOUGH: '魂力不足',
+        RANGE_INVALID: '距离不满足',
+        TARGET_INVALID: '目标非法',
+        CONTROLLED: '行动被控制限制',
+        SILENCED: '魂技被封锁',
+        DISARMED: '出手条件受限',
+        INTERRUPTED: '被对手截断',
+        BLOCKED: '被对手压住节奏',
+        NO_EFFECTIVE_OPENING: '战机已经消散',
+      };
+      if (byCode[code]) return byCode[code];
+      if (/CAP_REACHED|达到上限|造物已达上限|场面已满/.test(reason)) return byCode.CAP_REACHED;
+      if (/target_lost|TARGET_LOST|目标丢失|失去有效落点/i.test(reason)) return byCode.TARGET_LOST;
+      if (/魂力不足|资源不足|OUT_OF_MANA|RESOURCE_NOT_ENOUGH/i.test(reason)) return byCode.OUT_OF_MANA;
+      if (/距离不够|距离不足|RANGE_INVALID/i.test(reason)) return byCode.RANGE_INVALID;
+      if (/目标非法|TARGET_INVALID/i.test(reason)) return byCode.TARGET_INVALID;
+      if (/抢先压制|先手压制|行动受阻|被打断|interrupted|INTERRUPTED/i.test(reason)) return byCode.INTERRUPTED;
+      if (/本回合对抗结束，未能形成有效出手|未能形成有效出手|被对手压住节奏|BLOCKED/i.test(reason)) return byCode.BLOCKED;
+      if (/缺少可结算效果|未形成主动结算效果|没有形成主动结算效果|NO_EFFECTIVE_OPENING|no_effective_opening/i.test(reason)) return byCode.NO_EFFECTIVE_OPENING;
+      return code ? `未知规则限制(CODE: ${code})` : '';
+    }
+
     function classifyBattleActionNarrativeKind(action = '', skill = null) {
       const actionName = normalizeBattleActionDisplayName(action);
       const targetKind = inferSkillPrimaryTargetKind(skill || {});
@@ -4138,8 +4167,9 @@ class BattleUIComponent {
       ) {
         return 构建守势待机短句(actor, actionText);
       }
-      if (outcome === 'cap_reached' || reasonCode === 'CAP_REACHED' || /CAP_REACHED|达到上限|造物已达上限|场面已满/.test(reason)) {
-        return `${actor}${action ? `的【${action}】` : ''}未能展开：场面已满，造物已达上限`;
+      const mappedReason = 映射玩家可见失败原因(reasonCode, reason);
+      if (outcome === 'cap_reached' || reasonCode === 'CAP_REACHED' || mappedReason === '场面已满，造物已达上限') {
+        return `${actor}${action ? `的【${action}】` : ''}未能展开：${mappedReason || '场面已满，造物已达上限'}`;
       }
       if (String(event?.actionType || '').trim() === 'summon_control') {
         const summonName = String(event?.meta?.summonName || event?.actorName || '召唤物').trim();
@@ -4152,26 +4182,25 @@ class BattleUIComponent {
         if (/skill_limited|limited|受限/.test(restriction)) return `${prefix}${summonName}的行动受限，只能维持最低限度响应`;
         return `${prefix}${summonName}的控制链受限，未能稳定响应指令`;
       }
-      if (/target_lost|目标丢失/i.test(reason) || String(event?.meta?.reasonCode || '').trim() === 'TARGET_LOST') {
+      if (mappedReason === '目标已失去有效落点') {
         const target = String(event?.targetName || event?.meta?.declaredTargetName || '原目标').trim();
         return `${actor}${action ? `的【${action}】` : ''}原本锁定${target}，但目标已失去有效落点，本次行动取消`;
       }
-      if (/本回合对抗结束，未能形成有效出手|未能形成有效出手/.test(reason)) {
+      if (mappedReason === '被对手压住节奏') {
         return 选择战报润色模板('blockedAction', {
           actor,
           skill: action,
           __required: ['actor', 'skill'],
         }, `${round || event?.round || event?.sourceRound || 0}|blocked|${event?.actionId || event?.sourceActionId || ''}|${actor}|${action}`) || `${actor}${action ? `的【${action}】` : ''}被对手压住节奏，未能完成出手`;
       }
-      if (/抢先压制|先手压制|行动受阻|被打断/.test(reason)) {
-        return `${actor}${action ? `的【${action}】` : ''}${reason}`;
+      if (mappedReason === '被对手截断') {
+        return `${actor}${action ? `的【${action}】` : ''}被对手截断，未能完成出手`;
       }
-      if (/缺少可结算效果/.test(reason)) {
-        return `${actor}${action ? `的【${action}】` : ''}未进入有效结算，动作收束`;
+      if (mappedReason === '战机已经消散') {
+        return `${actor}${action ? `的【${action}】` : ''}战机已经消散，动作收束`;
       }
-      if (reason) {
-        if (/^(?:[^，。！？\s]+的【[^】]+】|[^，。！？\s]+没有|[^，。！？\s]+未能|当前|没有)/.test(reason)) return reason;
-        return `${actor}${action ? `的【${action}】` : ''}${reason}`;
+      if (mappedReason) {
+        return `${actor}${action ? `的【${action}】` : ''}未能完成出手：${mappedReason}`;
       }
       return `${actor}${action ? `的【${action}】` : ''}未能完成出手`;
     }
@@ -33533,13 +33562,14 @@ class BattleUIComponent {
               counterWindowNodeId: 防反窗口事件?.chainNodeId || '',
               settlementTrace: [
                 { key: 'sourceAction', label: '来源动作', value: 防反名 },
+                { key: 'counteredAction', label: '被反制动作', value: 被反制动作名 },
                 { key: 'attacker', label: '反击方', value: 防反者?.name || 防反者?.名称 || '' },
                 { key: 'target', label: '目标', value: 目标?.name || 目标?.名称 || '' },
                 { key: 'result', label: '反击结果', value: 'success' },
                 { key: 'counterDepth', label: '防反层级', value: 当前防反深度 },
                 { key: 'counterProbability', label: '防反概率', value: 概率文本 },
                 { key: 'secondaryReactionMargin', label: '二次反应余量', value: Number(Number(二次反应余量 || 0).toFixed(3)) },
-                ...防反结算轨迹.filter(item => !['sourceAction', 'attacker', 'target', 'result', 'failureReason', 'counterDepth'].includes(item.key)),
+                ...防反结算轨迹.filter(item => !['sourceAction', 'counteredAction', 'attacker', 'target', 'result', 'failureReason', 'counterDepth'].includes(item.key)),
               ],
             },
           });
@@ -49272,9 +49302,8 @@ class BattleUIComponent {
             } else if (kind === 'final_result') {
               const outcome = String(child.primaryOutcome || '').trim();
               const rawReason = String(child.failureReason || child.failReason || child.reasonText || 读取结算轨迹值(child.calculationTrace, 'failureReason') || 读取结算轨迹值(child.calculationTrace, 'failReason') || '').trim();
-              let reason = /缺少可结算效果/.test(rawReason)
-                ? '技能没有形成实际战斗影响'
-                : (rawReason || (outcome === 'interrupted' ? '被对手截断' : '未能展开'));
+              let reason = 映射玩家可见失败原因(child.reasonCode || child.meta?.reasonCode || 读取结算轨迹值(child.calculationTrace, 'reasonCode') || '', rawReason) ||
+                (outcome === 'interrupted' ? '被对手截断' : '战机已经消散');
               reason = String(reason || '')
                 .replace(/，?未能形成有效出手/g, '')
                 .replace(/，?未能完成出手/g, '')
@@ -49526,7 +49555,7 @@ class BattleUIComponent {
             return `${actor}的【${action}】令${target}陷入【${stateName || '状态'}】${duration > 0 ? `（持续${duration}回合）` : ''}${stateDetailText()}。`;
           }
           if (kind === 'counter') {
-            const failReason = String(event?.failReason || '').trim();
+            const failReason = 映射玩家可见失败原因(event?.reasonCode || event?.meta?.reasonCode || '', event?.failReason || event?.failureReason || event?.meta?.failureReason || '');
             if (result === 'fail') return `${actor}尝试以【${action}】反击${target}，但${failReason || '未能完成反打'}。`;
             return amount > 0
               ? `${actor}以【${action}】反击${target}，造成 ${amount} 点伤害。`
@@ -49540,11 +49569,8 @@ class BattleUIComponent {
             return `${actor}承接${host}的【${hostAction}】协同追击${target}${assistDamage > 0 ? `，造成 ${assistDamage} 点伤害` : ''}${hostDamage > 0 ? `（触发源伤害 ${hostDamage}）` : ''}。`;
           }
           if (kind === 'blocked_action' || kind === 'failed_action' || kind === 'target_fail') {
-            const rawReason = String(event?.failReason || event?.meta?.reasonText || '未形成有效出手').trim();
-            const reason = /缺少可结算效果/.test(rawReason)
-              ? '技能没有可落地的伤害、状态、资源或召唤效果'
-              : rawReason;
-            return `${actor}的【${action}】未能落地：${reason}。`;
+            const reason = 映射玩家可见失败原因(event?.reasonCode || event?.meta?.reasonCode || '', event?.failReason || event?.failureReason || event?.meta?.reasonText || event?.meta?.failureReason || '') || '被对手压住节奏';
+            return `${actor}的【${action}】动作受阻：${reason}。`;
           }
           if (kind === 'create') return `${actor}完成【${action}】，生成造物。`;
           if (kind === 'summon_create') {
