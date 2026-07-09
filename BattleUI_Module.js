@@ -5746,14 +5746,14 @@ class BattleUIComponent {
 
     function 构建事件账本公开战报Block文本行(eventLedger = [], limit = 8, context = {}) {
       return 构建事件账本公开战报Blocks(eventLedger, limit, context)
-        .map(entry => 序列化公开战报Blocks(entry?.blocks) || String(entry?.text || '').trim())
+        .map(entry => 序列化公开战报Blocks(entry?.blocks))
         .map(line => 规范化公开战报文本(line, context))
         .filter(Boolean);
     }
 
     function 序列化公开战报条目文本行(publicReportBlocks = [], context = {}) {
       return (Array.isArray(publicReportBlocks) ? publicReportBlocks : [])
-        .map(entry => 序列化公开战报Blocks(entry?.blocks) || String(entry?.text || '').trim())
+        .map(entry => 序列化公开战报Blocks(entry?.blocks))
         .map(line => 规范化公开战报文本(line, context))
         .filter(Boolean);
     }
@@ -18961,7 +18961,7 @@ class BattleUIComponent {
         roundsExecuted: 2,
         battleOutcome: { type: '未分胜负', label: String(配置.modeLabel || '召唤闭环').trim() },
         publicReportBlocks,
-        publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+        publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
         combatData: 自然战斗数据,
         decisionTrace: collectBattleDecisionTrace(自然战斗数据),
         resolutionTrace: 自然战斗数据.__battleResolutionTrace || [],
@@ -19020,7 +19020,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '召唤默认模式' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData: 自然战斗数据,
           resolutionTrace: 自然战斗数据.__battleResolutionTrace || [],
           eventLedger,
@@ -19211,7 +19211,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '二层防反闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19265,7 +19265,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '回合末状态聚合' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19337,7 +19337,7 @@ class BattleUIComponent {
           roundsExecuted: 3,
           battleOutcome: { type: '未分胜负', label: '回合末恢复与资源聚合' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19392,7 +19392,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '状态抵抗闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19448,7 +19448,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '状态免疫闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19498,7 +19498,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '普通召唤物协同攻击闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -19566,7 +19566,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '多召唤物协同攻击闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -19610,7 +19610,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '团战召唤物行动轴闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -19660,7 +19660,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '自动行动起手闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -19726,7 +19726,7 @@ class BattleUIComponent {
           roundsExecuted: 5,
           battleOutcome: { type: '未分胜负', label: '保底资源回稳' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19789,7 +19789,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '非敌对反应过滤' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19840,7 +19840,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '目标池硬规则' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -19893,7 +19893,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '上限拦截' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -20008,7 +20008,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '状态生命周期规则' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           eventLedger,
@@ -20055,7 +20055,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '预声明目标丢失闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20157,7 +20157,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '多宿主召唤协同闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20277,7 +20277,7 @@ class BattleUIComponent {
           roundsExecuted: 2,
           battleOutcome: { type: '未分胜负', label: '敌我双方召唤协同闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20363,7 +20363,7 @@ class BattleUIComponent {
             roundsExecuted: 2,
             battleOutcome: { type: '未分胜负', label: '敌我双方自主召唤行动轴闭环' },
             publicReportBlocks,
-            publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+            publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
             combatData,
             decisionTrace: collectBattleDecisionTrace(combatData),
             resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20688,7 +20688,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '可信战术侧写闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20848,7 +20848,7 @@ class BattleUIComponent {
           roundsExecuted: 1,
           battleOutcome: { type: '未分胜负', label: '可信直攻压制侧写闭环' },
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
           combatData,
           decisionTrace: collectBattleDecisionTrace(combatData),
           resolutionTrace: combatData.__battleResolutionTrace || [],
@@ -20957,7 +20957,7 @@ class BattleUIComponent {
           eventLedger,
           resolutionTrace: combatData.__battleResolutionTrace || [],
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
         },
         combatData,
         玩家,
@@ -21041,7 +21041,7 @@ class BattleUIComponent {
           eventLedger: combatData.__battleEventLedger || [],
           resolutionTrace: combatData.__battleResolutionTrace || [],
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
         },
         combatData,
         宿主,
@@ -21086,7 +21086,7 @@ class BattleUIComponent {
           eventLedger: combatData.__battleEventLedger || [],
           resolutionTrace: combatData.__battleResolutionTrace || [],
           publicReportBlocks,
-          publicReport: publicReportBlocks.map(item => item?.text || 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
+          publicReport: publicReportBlocks.map(item => 序列化公开战报Blocks(item?.blocks || [])).filter(Boolean).join('\n'),
         },
         combatData,
         宿主,
@@ -51122,7 +51122,7 @@ class BattleUIComponent {
 
         function 构建行动链补缺公开战报Blocks(审计条目 = [], 战报Blocks = []) {
           const existingRounds = new Set((Array.isArray(战报Blocks) ? 战报Blocks : [])
-            .map(item => Number(String(item?.text || 序列化公开战报Blocks(item?.blocks || []) || '').match(/^第(\d+)回合：/)?.[1] || 0))
+            .map(item => Number(String(序列化公开战报Blocks(item?.blocks || []) || '').match(/^第(\d+)回合：/)?.[1] || 0))
             .filter(round => round > 0));
           const supplemental = [];
           (Array.isArray(审计条目) ? 审计条目 : [])
@@ -51801,9 +51801,3 @@ if (typeof 生成直攻压制战术侧写调试结果 === 'function') {
 }
 
 })();
-
-
-
-
-
-
