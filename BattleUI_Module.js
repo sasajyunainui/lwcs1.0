@@ -44001,11 +44001,12 @@ class BattleUIComponent {
               decisionAction.type ||
               '',
             );
+            const 动作确有覆写 = !!(回填动作名 && 回填候选名 && 回填动作名 !== 回填候选名);
             回填行动闭环审计最终动作(battleState.combatData, actor, {
               round: Number(battleState?.combatData?.回合 || 0),
               finalResolvedActionName: 回填动作名,
               hitCandidateName: 回填候选名,
-              actionOverrideSource: '主动规划终态回填',
+              actionOverrideSource: 动作确有覆写 ? '主动规划终态回填' : '',
               目标语义: String(最终动作?.skill?.目标 || 最终动作?.skill?.target || '').trim(),
               承载方式: String(最终动作?.skill?.承载方式 || '').trim(),
               目标: String(最终动作?.target_name || enemyTarget?.name || '').trim(),
@@ -47924,6 +47925,7 @@ class BattleUIComponent {
           const fatalCodes = Array.isArray(sidecar.fatalCodes) ? sidecar.fatalCodes.slice() : [];
           const dominantReason = String(sidecar.dominantReason || '').trim();
           return {
+            __dtoKind: 'NarrativeDecisionDTO',
             actorName: String(normalized.行动者 || options.actorName || '行动者').trim(),
             targetName: String(normalized.displayTargetName || normalized.目标 || options.targetName || '目标').trim(),
             finalActionName,
@@ -47938,6 +47940,7 @@ class BattleUIComponent {
         }
 
         function formatTacticalNarration(dto = {}) {
+          if (!dto || dto.__dtoKind !== 'NarrativeDecisionDTO') return '';
           if (!dto || dto.narrationTrustLevel !== 'TRUSTED') return '';
           const alt = dto.rejectedAlternatives?.[0] || null;
           if (!alt?.actionName || !String(alt?.reasonCode || alt?.rejectedByEffectGap || '').trim()) return '';
