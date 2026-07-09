@@ -20998,7 +20998,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
-@container mvu-archive-dashboard (max-width: 690px) {
+@container mvu-archive-dashboard (max-width: 560px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
@@ -21032,7 +21032,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
-@container mvu-archive-dashboard (max-width: 560px) {
+@container mvu-archive-dashboard (max-width: 460px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive {
     gap: 8px;
   }
@@ -21042,7 +21042,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
-@container mvu-dashboard-area (max-width: 740px) {
+@container mvu-dashboard-area (max-width: 620px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org,
@@ -21106,7 +21106,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 }
 
-@container mvu-detail-area (max-width: 840px) {
+@container mvu-detail-area (max-width: 640px) {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--two,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--trial,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-intel-grid,
