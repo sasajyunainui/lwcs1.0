@@ -44373,7 +44373,7 @@ ${播报文本}
 
   function 解析模块路由字段值(字段名, value) {
     const 字段 = toText(字段名, '').trim();
-    if (/^(允许撤离|自动模式|自动执行|启用)$/u.test(字段)) return 解析模块路由布尔值(value);
+    if (/^(允许撤离|自动模式|自动执行|启用|启用地点拟态|拟态修炼)$/u.test(字段)) return 解析模块路由布尔值(value);
     if (/^(数量|阶级|层数|耗时tick|等级|年限)$/u.test(字段)) return 解析模块路由数值(value);
     return toText(value, '').trim();
   }
@@ -45493,10 +45493,11 @@ ${播报文本}
     if (!动作) return null;
     const 识别文本 = `${动作文本}|${toText(payload.类型, '')}|${toText(payload.理由, '')}|${toText(narrativeText, '')}`;
     const 显式拟态开关 = payload.启用地点拟态 ?? payload.拟态修炼 ?? payload.启用;
+    const 解析拟态开关 = 解析模块路由布尔值(显式拟态开关);
     const 启用地点拟态 =
-      显式拟态开关 === false
+      解析拟态开关 === false
         ? false
-        : 显式拟态开关 === true || /地点拟态修炼|拟态修炼|mimic|mimetic/.test(识别文本);
+        : 解析拟态开关 === true || /地点拟态修炼|拟态修炼|mimic|mimetic/.test(识别文本);
     const 角色 = toText(payload.角色 || payload.角色名 || payload.name, toText(snapshot && snapshot.activeName, ''));
     const 耗时tick = toNumber(payload.耗时tick ?? payload.durationTicks ?? payload.ticks, 0);
     return {
@@ -45588,6 +45589,36 @@ ${播报文本}
     return parts.join('，');
   }
 
+  const 日常动作允许写回角色字段 = Object.freeze(['属性', '魂核', '状态', '财富', '我的任务']);
+
+  function 构建日常动作字段级写回补丁(charKey = '', settledRoot = {}, options = {}) {
+    const 角色名 = toText(charKey, '').trim();
+    if (!角色名) throw new Error('routine_character_missing');
+    const afterChar = deepGet(settledRoot, ['char', 角色名], null);
+    if (!afterChar || typeof afterChar !== 'object' || Array.isArray(afterChar)) throw new Error('routine_result_missing');
+    const activePath = escapeJsonPointerValue(角色名);
+    const patches = [];
+    日常动作允许写回角色字段.forEach(字段 => {
+      if (afterChar[字段] !== undefined) {
+        patches.push({
+          op: 'replace',
+          path: `/char/${activePath}/${escapeJsonPointerValue(字段)}`,
+          value: cloneJsonValue(afterChar[字段], {}),
+        });
+      }
+    });
+    const 时间 = deepGet(settledRoot, 'world.时间', null);
+    if (时间 && typeof 时间 === 'object' && !Array.isArray(时间)) {
+      patches.push({ op: 'replace', path: '/world/时间', value: cloneJsonValue(时间, {}) });
+    }
+    const systemText = toText(
+      options.systemText !== undefined ? options.systemText : deepGet(settledRoot, 'sys.系统播报', ''),
+      '',
+    ).trim();
+    if (systemText && systemText !== '初始化') patches.push({ op: 'replace', path: '/sys/系统播报', value: systemText });
+    return patches;
+  }
+
   function 构建日常结算临时根(snapshot = {}, charKey = '', charData = {}, request = {}) {
     const rootData = cloneJsonValue(deepGet(snapshot, 'rootData', {}), {});
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0)));
@@ -45635,12 +45666,8 @@ ${播报文本}
     }
     const afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
     if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
-    const patches = [
-      { op: 'replace', path: `/char/${escapeJsonPointerValue(charKey)}`, value: afterChar },
-      { op: 'replace', path: '/world/时间', value: cloneJsonValue(deepGet(settledRoot, 'world.时间', {}), {}) },
-    ];
     const systemText = toText(deepGet(settledRoot, 'sys.系统播报', ''), '').trim();
-    if (systemText && systemText !== '初始化') patches.push({ op: 'replace', path: '/sys/系统播报', value: systemText });
+    const patches = 构建日常动作字段级写回补丁(charKey, settledRoot, { systemText });
     await applyJsonPatchOpsByEditor(patches, { force: true });
     await refreshLiveSnapshot({ force: true });
     return 构建模块路由成功结果('routine', { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks }, {
@@ -46081,6 +46108,14 @@ ${播报文本}
   function installDirectModuleIntentGuard() {
     window.__LWCS_APPLY_BATTLE_ADJUDICATION__ = (textOrPayload, options = {}) =>
       applyBattleAdjudicationFromText(textOrPayload, options);
+    window.__LWCS_BUILD_ROUTINE_SETTLEMENT_PATCHES__ = detail => {
+      const 输入 = detail && typeof detail === 'object' ? detail : {};
+      return 构建日常动作字段级写回补丁(
+        输入.charKey || 输入.角色名 || 输入.actorName,
+        输入.settledRoot || 输入.已结算根数据 || {},
+        { systemText: 输入.systemText || 输入.系统播报 },
+      );
+    };
     window.__MVU_ROUTE_MODULE_INTENT__ = (input, options = {}) => routeModuleIntentPayload(input, options);
     if (!window.__MVU_MODULE_INTENT_ROUTER_EVENT_BOUND__) {
       window.addEventListener('mvu-module-intent', event => {

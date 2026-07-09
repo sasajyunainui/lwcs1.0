@@ -7099,11 +7099,21 @@
         const 地图动作播报 = `[地图节点动作] ${角色名} 在【${item.name}】执行【${actionLabel}】，耗时约 ${Math.max(1, baseTicks) * 10} 分钟。`;
         const 结算播报 = toText(deepGet(已结算根数据, 'sys.系统播报', ''), '').trim();
         const 写回播报 = 结算播报 && 结算播报 !== '初始化' ? `${结算播报} ${地图动作播报}` : 地图动作播报;
-        const patchOps = [
-          { op: 'replace', path: '/char', value: 已结算根数据.char || {} },
-          { op: 'replace', path: '/world', value: 已结算根数据.world || {} },
-          { op: 'replace', path: '/sys/系统播报', value: 写回播报 }
-        ];
+        const 构建字段级补丁 = [window, window.parent, window.top]
+          .map(窗口 => {
+            try {
+              return 窗口 && 窗口.__LWCS_BUILD_ROUTINE_SETTLEMENT_PATCHES__;
+            } catch (错误) {
+              return null;
+            }
+          })
+          .find(函数 => typeof 函数 === 'function');
+        if (!构建字段级补丁) throw new Error('MVU日常动作字段级写回接口未就绪。');
+        const patchOps = 构建字段级补丁({
+          charKey: 角色名,
+          settledRoot: 已结算根数据,
+          systemText: 写回播报,
+        });
 
         const sysPrompt = `${HIDDEN_RULES}
 
