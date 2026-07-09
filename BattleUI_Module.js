@@ -4494,8 +4494,10 @@ class BattleUIComponent {
     }
 
     function 归一战斗事件记录(item = {}, patch = {}) {
-      return {
-        eventKind: String(patch.eventKind || item.eventKind || '').trim(),
+      const eventKind = String(patch.eventKind || item.eventKind || '').trim();
+      const normalized = {
+        eventId: String(patch.eventId || item.eventId || '').trim(),
+        eventKind,
         round: Number(patch.round || item.round || 0),
         actorName: String(patch.actorName || item.actorName || item.actor || '').trim(),
         actorSide: String(patch.actorSide || item.actorSide || item.side || item.meta?.actorSide || item.meta?.side || '').trim(),
@@ -4530,6 +4532,33 @@ class BattleUIComponent {
         driverAttr: String(patch.driverAttr || item.driverAttr || '').trim(),
         meta: patch.meta && typeof patch.meta === 'object' ? patch.meta : (item.meta && typeof item.meta === 'object' ? item.meta : {}),
       };
+      const actionStatus = String(patch.actionStatus || item.actionStatus || item.meta?.actionStatus || '').trim();
+      if (actionStatus && /action|hit_result|state_apply|resource_change|create|summon|shield|blocked|failed|target_fail/.test(eventKind)) {
+        normalized.actionStatus = actionStatus;
+      }
+      if (['hit_result', 'counter', 'state_tick'].includes(eventKind)) {
+        normalized.appliedDamage = Math.max(0, Number(patch.appliedDamage ?? item.appliedDamage ?? patch.damage ?? item.damage ?? patch.meta?.appliedDamage ?? item.meta?.appliedDamage ?? patch.meta?.damage ?? item.meta?.damage ?? 0) || 0);
+        normalized.damage = Math.max(0, Number(patch.damage ?? item.damage ?? patch.appliedDamage ?? item.appliedDamage ?? patch.meta?.damage ?? item.meta?.damage ?? patch.meta?.appliedDamage ?? item.meta?.appliedDamage ?? 0) || 0);
+      }
+      if (eventKind === 'hit_result') {
+        normalized.effectCapability = (() => {
+          const capability = patch.effectCapability && typeof patch.effectCapability === 'object'
+            ? patch.effectCapability
+            : (item.effectCapability && typeof item.effectCapability === 'object'
+              ? item.effectCapability
+              : (patch.meta?.effectCapability && typeof patch.meta.effectCapability === 'object'
+                ? patch.meta.effectCapability
+                : (item.meta?.effectCapability && typeof item.meta.effectCapability === 'object' ? item.meta.effectCapability : null)));
+          if (!capability) return null;
+          return {
+            hasDamageEffect: capability.hasDamageEffect === true,
+            effectKinds: Array.isArray(capability.effectKinds)
+              ? capability.effectKinds.map(kind => String(kind || '').trim()).filter(Boolean).slice(0, 12)
+              : [],
+          };
+        })();
+      }
+      return normalized;
     }
 
     function 读取事件账本状态名(event = {}) {
@@ -19108,6 +19137,7 @@ class BattleUIComponent {
         sourceActionName: '裂地冲拳',
         sourceActionId: 主动作?.actionId || '',
         result: 'hit',
+        effectCapability: { hasDamageEffect: true, effectKinds: ['伤害结算'] },
         meta: {
           damage: 96,
           rawDamage: 120,
@@ -20786,6 +20816,7 @@ class BattleUIComponent {
         damage: 96,
         result: 'full_hit',
         primaryOutcome: 'full_hit',
+        effectCapability: { hasDamageEffect: true, effectKinds: ['伤害结算'] },
         meta: {
           appliedDamage: 96,
           damage: 96,
@@ -25998,6 +26029,14 @@ class BattleUIComponent {
           failReason: String(payload.failReason || '').trim(),
           primaryOutcome: inferredPrimaryOutcome,
           appliedDamage: inferredAppliedDamage,
+          effectCapability: payload.effectCapability && typeof payload.effectCapability === 'object'
+            ? {
+                hasDamageEffect: payload.effectCapability.hasDamageEffect === true,
+                effectKinds: Array.isArray(payload.effectCapability.effectKinds)
+                  ? payload.effectCapability.effectKinds.map(kind => String(kind || '').trim()).filter(Boolean).slice(0, 12)
+                  : [],
+              }
+            : null,
           targetPoolSide: String(payload.targetPoolSide || '').trim(),
           applicationId: String(payload.applicationId || '').trim(),
           duration: Math.max(0, Number(payload.duration || 0)),
@@ -32898,12 +32937,12 @@ class BattleUIComponent {
               actionType: ledgerActionType,
               result: 'miss',
               failureReason: 'dodged',
-                meta: {
-                  ...ledgerSourceMeta,
-                  effectCapability: 当前结算效果能力,
-                  damage: 0,
-                  incomingDamage: 0,
-                  reactiveDamage: 0,
+              effectCapability: 当前结算效果能力,
+              meta: {
+                ...ledgerSourceMeta,
+                damage: 0,
+                incomingDamage: 0,
+                reactiveDamage: 0,
                 defenseThreshold: 0,
                 shieldAbsorb: 0,
                 failureReason: 'dodged',
@@ -33003,7 +33042,6 @@ class BattleUIComponent {
                 result: 韧性削伤 > 1 ? 'graze' : 'chip',
                 meta: {
                   ...ledgerSourceMeta,
-                  effectCapability: 当前结算效果能力,
                   damage: 韧性削伤,
                   incomingDamage: 段伤害,
                   reactiveDamage: finalDamage,
@@ -33031,6 +33069,7 @@ class BattleUIComponent {
                   activeReactionShield: Math.max(0, Number(targetEntry?.activeReactionShield || 0)),
                   formulaTrace: ledgerFormulaTrace,
                 },
+                effectCapability: 当前结算效果能力,
               });
               if (韧性削伤 > 1) {
                 logParts.push(
@@ -33060,7 +33099,6 @@ class BattleUIComponent {
                 result: 'hit',
                 meta: {
                   ...ledgerSourceMeta,
-                  effectCapability: 当前结算效果能力,
                   damage: finalDamage,
                   incomingDamage: 段伤害,
                   reactiveDamage: finalDamage,
@@ -33088,6 +33126,7 @@ class BattleUIComponent {
                   activeReactionShield: Math.max(0, Number(targetEntry?.activeReactionShield || 0)),
                   formulaTrace: ledgerFormulaTrace,
                 },
+                effectCapability: 当前结算效果能力,
               });
               logParts.push(
                 targetEntry?.kind === 'primary'

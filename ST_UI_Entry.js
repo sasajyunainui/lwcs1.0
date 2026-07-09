@@ -160,7 +160,7 @@
       if (
         数据库接口 &&
         typeof 数据库接口.importPlotPresetsFromData === 'function' &&
-        typeof 数据库接口.injectPlotPresetToCurrentChat === 'function' &&
+        typeof 数据库接口.switchGlobalPlotPreset === 'function' &&
         typeof 数据库接口.getCurrentPlotPreset === 'function'
       ) {
         return 数据库接口;
@@ -172,11 +172,9 @@
 
   宿主窗口.__LWCS_注入数据库剧情推进预设__ = async function 注入数据库剧情推进预设(选项 = {}) {
     const 来源 = String(选项 && 选项.来源 ? 选项.来源 : 'manual');
-    const 强制切换 = 选项 && 选项.强制切换 === true;
     const 预设文件名 = '缝合怪二改_专用推进预设.plot-preset.json';
     await 等待数据库模块就绪('plot_preset_inject', true);
     const 数据库接口 = await 等待剧情推进预设接口();
-    const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
     const 预设地址 = 资源基础地址 + 预设文件名 + 资源版本后缀;
     const 响应 = await fetchWithTimeout(预设地址, 取资源请求选项(预设地址));
@@ -189,14 +187,9 @@
       throw new Error(`LWCS 剧情推进预设导入失败: ${导入结果 && 导入结果.message ? 导入结果.message : 'unknown_error'}`);
     }
 
-    if (当前预设名 && 当前预设名 !== 预设名 && !强制切换) {
-      console.info(`[LWCS] 当前聊天已使用剧情推进预设"${当前预设名}"，跳过专用剧情推进预设绑定。来源=${来源}`);
-      return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
-    }
-
-    const 已绑定 = 数据库接口.injectPlotPresetToCurrentChat(预设名) === true;
-    if (!已绑定) throw new Error(`LWCS 剧情推进预设绑定失败: ${预设名}`);
-    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}`);
+    const 已切换 = 数据库接口.switchGlobalPlotPreset(预设名) === true;
+    if (!已切换) throw new Error(`LWCS 剧情推进预设切换失败: ${预设名}`);
+    console.info(`[LWCS] 已导入并切换全局剧情推进预设：${预设名}。来源=${来源}`);
     return { success: true, skipped: false, presetName: 预设名 };
   };
   try {
