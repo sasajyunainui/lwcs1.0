@@ -5909,10 +5909,30 @@
         if (!事件名) return;
         try {
           eventSource.on(事件名, (...事件参数) => {
+            if (事件键 === 'MESSAGE_SENT') {
+              调度剧情模块预结算用户楼落地读取_桥接(事件键, 事件参数, { 最大尝试: 20 });
+            }
             if (事件键 === 'MESSAGE_SWIPED') {
               处理前端模块重Roll恢复_桥接(事件键, 事件参数).catch(错误 => {
                 console.warn('[DragonUI] 前端模块重ROLL恢复调度失败', 错误);
               });
+            }
+            if (事件键 === 'GENERATION_STOPPED') {
+              window.setTimeout(() => {
+                回滚全部待定剧情模块预结算事务_桥接(事件键).catch(错误 => {
+                  console.warn('[DragonUI] 剧情模块预结算停止回滚调度失败', 错误);
+                });
+              }, 120);
+            }
+            if (事件键 === 'GENERATION_ENDED') {
+              调度剧情模块预结算用户楼落地读取_桥接(事件键, 事件参数, { 最大尝试: 8, 失败后回滚: true });
+            }
+            if (事件键 === 'MESSAGE_DELETED' || 事件键 === 'CHAT_CHANGED') {
+              window.setTimeout(() => {
+                回滚全部待定剧情模块预结算事务_桥接(事件键).catch(错误 => {
+                  console.warn('[DragonUI] 剧情模块预结算楼层变更回滚调度失败', 错误);
+                });
+              }, 80);
             }
             if (事件键 === 'GENERATION_ENDED' || 事件键 === 'GENERATION_STOPPED') {
               window.setTimeout(() => {
@@ -8506,23 +8526,27 @@
   async function applyJsonPatchOpsByEditor(patches, options = {}) {
     const safePatches = Array.isArray(patches) ? patches.filter(item => item && item.op && item.path) : [];
     if (!safePatches.length) throw new Error('没有可应用的变量改动。');
-    const 需要在AI写回后清理结算锁 = 获取本轮模块结算路径键集合().size > 0 && !(options && options.force === true);
+    const 写入选项 = 合并剧情模块预结算写入选项({
+      ...(options && typeof options === 'object' ? options : {}),
+      __模块预结算patchOps: safePatches,
+    });
+    const 需要在AI写回后清理结算锁 = 获取本轮模块结算路径键集合().size > 0 && !(写入选项 && 写入选项.force === true);
     try {
       return await mutateStatDataByEditor(async statData => {
-        const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, options);
-        if (!(options && options.force === true)) 校验本轮模块结算补丁边界(normalizedPatches);
+        const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, 写入选项);
+        if (!(写入选项 && 写入选项.force === true)) 校验本轮模块结算补丁边界(normalizedPatches);
         const JsonPatch目标角色 = 收集JsonPatch目标角色名_桥接(normalizedPatches);
-        const 可用冷档角色 = await 收集可用归档角色名_桥接(JsonPatch目标角色, options);
-        await 预恢复角色名归档角色_桥接(statData, JsonPatch目标角色, options);
+        const 可用冷档角色 = await 收集可用归档角色名_桥接(JsonPatch目标角色, 写入选项);
+        await 预恢复角色名归档角色_桥接(statData, JsonPatch目标角色, 写入选项);
         预入库角色名内置角色_桥接(
           statData,
           JsonPatch目标角色.filter(角色名 => !可用冷档角色.has(角色名)),
           { 允许无文本预入库: true },
         );
-        await 校验JsonPatch深路径角色目标已补齐_桥接(statData, normalizedPatches, options);
+        await 校验JsonPatch深路径角色目标已补齐_桥接(statData, normalizedPatches, 写入选项);
         登记本轮模块结算路径(
           normalizedPatches.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length),
-          options,
+          写入选项,
         );
         const readMutableValue = pathValue => {
           const path = normalizeEditorPath(pathValue);
@@ -8579,7 +8603,7 @@
           }
         });
         结算JSONPatch任务奖励(statData, 任务奖励结算上下文, readMutableValue);
-      }, options);
+      }, 写入选项);
     } finally {
       if (需要在AI写回后清理结算锁) 清除本轮模块结算路径();
     }
@@ -8949,6 +8973,9 @@
   const 前端模块重Roll恢复表 = new Map();
   const 前端模块预写待确认表 = new Map();
   const 前端模块重Roll恢复保留毫秒 = 10 * 60 * 1000;
+  const 剧情模块预结算事务表 = new Map();
+  const 剧情模块预结算事务超时毫秒 = 60 * 1000;
+  let 当前剧情模块路由事务上下文 = null;
   const 异步动作锁表 = new Map();
   const 异步动作锁超时毫秒 = 120000;
 
@@ -9853,6 +9880,13 @@
     for (const [键, 记录] of 前端模块预写待确认表.entries()) {
       if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) 前端模块预写待确认表.delete(键);
     }
+    for (const [键, 记录] of 剧情模块预结算事务表.entries()) {
+      if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) {
+        回滚剧情模块预结算事务并清理_桥接(键, 记录, 'story_generation_guard_timeout').catch(错误 => {
+          console.warn('[DragonUI] 剧情模块预结算过期回滚失败', 错误);
+        });
+      }
+    }
   }
 
   function 读取路径当前值_桥接(来源 = {}, 路径输入 = []) {
@@ -9959,6 +9993,272 @@
       正在恢复: false,
     });
     return 键;
+  }
+
+  function 是剧情模块预结算写入(options = {}) {
+    const 来源 = toText(options && (options.source || options.来源), '');
+    return 来源 === 'story_generation_guard' || !!当前剧情模块路由事务上下文;
+  }
+
+  function 合并剧情模块预结算写入选项(options = {}) {
+    if (!当前剧情模块路由事务上下文 || options?.source === 'story_generation_guard') return options || {};
+    return {
+      ...当前剧情模块路由事务上下文,
+      ...(options && typeof options === 'object' ? options : {}),
+      source: 'story_generation_guard',
+    };
+  }
+
+  function 构建剧情模块用户输入签名(text = '') {
+    return 计算内置角色实例化文本签名_桥接(toText(text, '').trim());
+  }
+
+  function 构建路径回滚记录自路径列表_桥接(变量根 = {}, 路径列表 = []) {
+    const 路径表 = new Map();
+    (Array.isArray(路径列表) ? 路径列表 : []).forEach(原始路径 => {
+      const 路径 = normalizeEditorPath(原始路径);
+      if (!路径.length) return;
+      const 路径键 = JSON.stringify(路径);
+      if (路径表.has(路径键)) return;
+      const 当前值 = 读取路径当前值_桥接(变量根, 路径);
+      路径表.set(路径键, {
+        path: `/${路径.map(escapeJsonPointerValue).join('/')}`,
+        路径,
+        存在: 当前值.存在,
+        值: 当前值.值,
+      });
+    });
+    return Array.from(路径表.values());
+  }
+
+  function 读取用户楼层元信息_桥接(消息索引 = -1) {
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 索引 = Math.floor(Number(消息索引));
+    const 消息 = Number.isInteger(索引) && 索引 >= 0 && 索引 < 聊天.length ? 聊天[索引] : null;
+    if (!消息 || !消息.is_user) return null;
+    return {
+      chatKey: 取当前聊天归档标识_桥接(),
+      消息索引: 索引,
+      消息编号: 读取聊天消息编号_桥接(消息, 索引),
+      滑动编号: 读取聊天消息当前滑动编号_桥接(消息),
+      文本签名: 构建聊天消息文本签名_桥接(消息),
+      文本: 读取聊天消息正文_桥接(消息),
+    };
+  }
+
+  function 查找剧情模块事务目标用户楼_桥接(记录 = {}, 事件消息编号 = '') {
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 事件索引 = 定位聊天消息索引_桥接(聊天, 事件消息编号);
+    const 候选索引 = [];
+    if (事件索引 >= 0) 候选索引.push(事件索引);
+    const 旧索引 = Math.floor(Number(记录.旧AI消息索引));
+    if (Number.isInteger(旧索引)) {
+      for (let 索引 = 旧索引 + 1; 索引 < 聊天.length; 索引 += 1) {
+        if (聊天[索引] && 聊天[索引].is_user) {
+          候选索引.push(索引);
+          break;
+        }
+      }
+    }
+    for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
+      if (聊天[索引] && 聊天[索引].is_user) {
+        候选索引.push(索引);
+        break;
+      }
+    }
+    const 去重索引 = Array.from(new Set(候选索引.filter(索引 => Number.isInteger(索引) && 索引 >= 0)));
+    let 旧AI后首个用户楼 = null;
+    for (const 索引 of 去重索引) {
+      const 元信息 = 读取用户楼层元信息_桥接(索引);
+      if (!元信息) continue;
+      if (Number.isInteger(旧索引) && 索引 <= 旧索引) continue;
+      if (!旧AI后首个用户楼 && Number.isInteger(旧索引) && 索引 > 旧索引) 旧AI后首个用户楼 = 元信息;
+      const 期望签名 = toText(记录.用户输入签名, '');
+      if (期望签名 && 元信息.文本签名 !== 期望签名) continue;
+      return 元信息;
+    }
+    if (剧情模块预结算事务表.size === 1 && 旧AI后首个用户楼) {
+      console.warn('[DragonUI] 剧情模块预结算用户楼文本签名未命中，已按旧AI楼后的首个用户楼兜底固化。');
+      return 旧AI后首个用户楼;
+    }
+    return null;
+  }
+
+  function 登记剧情模块预结算事务_桥接(记录 = {}) {
+    const 旧AI消息编号 = toText(记录.旧AI消息编号, '').trim();
+    const 回滚记录 = Array.isArray(记录.回滚记录) ? 记录.回滚记录 : [];
+    const 写后记录 = Array.isArray(记录.写后记录) ? 记录.写后记录 : [];
+    if (!旧AI消息编号 || !回滚记录.length || !写后记录.length) return '';
+    清理过期前端模块重Roll恢复记录();
+    const 键 = `${旧AI消息编号}:story:${toText(记录.路由块哈希 || 记录.规划文本哈希, '')}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+    const 事务记录 = {
+      ...记录,
+      旧AI消息编号,
+      回滚记录: cloneJsonValue(回滚记录, []),
+      写后记录: cloneJsonValue(写后记录, []),
+      写后MVU数据: cloneJsonValue(记录.写后MVU数据 || {}, {}),
+      patchOps: cloneJsonValue(Array.isArray(记录.patchOps) ? 记录.patchOps : [], []),
+      状态: 'waiting_user_message',
+      createdAt: Date.now(),
+      正在处理: false,
+      timeoutId: 0,
+    };
+    if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+      事务记录.timeoutId = window.setTimeout(() => {
+        const 当前记录 = 剧情模块预结算事务表.get(键);
+        if (!当前记录 || 当前记录.正在处理) return;
+        回滚剧情模块预结算事务并清理_桥接(键, 当前记录, 'story_generation_guard_timeout').catch(错误 => {
+          console.warn('[DragonUI] 剧情模块预结算超时回滚失败', 错误);
+        });
+      }, 剧情模块预结算事务超时毫秒);
+    }
+    剧情模块预结算事务表.set(键, 事务记录);
+    return 键;
+  }
+
+  function 登记剧情模块预结算事务自写入_桥接(options = {}, beforeStatData = {}, afterStatData = {}, writeAfterMvuData = {}) {
+    if (!是剧情模块预结算写入(options)) return '';
+    const 旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
+    if (!旧AI元信息) return '';
+    const 差异路径 = 收集AI维护差异路径(beforeStatData || {}, afterStatData || {}, [])
+      .map(normalizeEditorPath)
+      .filter(path => path.length);
+    if (!差异路径.length) return '';
+    const 回滚记录 = 构建路径回滚记录自路径列表_桥接(beforeStatData, 差异路径);
+    const 写后记录 = 构建路径回滚记录自路径列表_桥接(afterStatData, 差异路径);
+    return 登记剧情模块预结算事务_桥接({
+      requestKind: 'story_generation_guard',
+      旧AI消息编号: 旧AI元信息.消息编号,
+      旧AI消息索引: 旧AI元信息.消息索引,
+      旧AI滑动编号: 旧AI元信息.滑动编号,
+      旧AI文本签名: 旧AI元信息.文本签名,
+      回滚记录,
+      写后记录,
+      写后MVU数据: writeAfterMvuData,
+      patchOps: options.__模块预结算patchOps,
+      用户输入文本: toText(options.userInput || options.用户输入文本, ''),
+      用户输入签名: toText(options.userInputSignature || options.用户输入签名, '') || 构建剧情模块用户输入签名(options.userInput || options.用户输入文本),
+      路由块哈希: toText(options.routeHash || options.路由块哈希, ''),
+      规划文本哈希: toText(options.planningHash || options.规划文本哈希, ''),
+    });
+  }
+
+  async function 固化剧情模块预结算到用户楼_桥接(记录 = {}, 用户楼元信息 = null) {
+    if (!用户楼元信息 || !用户楼元信息.消息编号) return false;
+    const 主机 = getMvuHost();
+    if (!主机 || typeof 主机.replaceMvuData !== 'function') return false;
+    const 写入数据 = cloneJsonValue(记录.写后MVU数据 || {}, {});
+    if (!写入数据 || typeof 写入数据 !== 'object' || !resolveRootData(写入数据)) return false;
+    await 写回MVU数据并记录耗时_桥接(
+      主机,
+      写入数据,
+      { type: 'message', message_id: 用户楼元信息.消息编号 },
+      'MVU写回:剧情模块预结算固化到用户楼',
+    );
+    const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 用户楼元信息.消息编号 });
+    const 写后根 = resolveRootData(写后包);
+    if (!写后根) return false;
+    const 当前记录 = 构建前端模块路径当前记录_桥接(写后根, 记录.写后记录);
+    return 路径记录值一致_桥接(当前记录, 记录.写后记录);
+  }
+
+  async function 回滚剧情模块预结算旧AI楼_桥接(记录 = {}, 事件键 = '') {
+    return await 执行前端模块路径回滚_桥接(记录, 事件键 || 'story_generation_guard');
+  }
+
+  function 删除剧情模块预结算事务_桥接(记录键 = '') {
+    const 记录 = 剧情模块预结算事务表.get(记录键);
+    if (记录 && 记录.timeoutId && typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
+      try {
+        window.clearTimeout(记录.timeoutId);
+      } catch (_) {}
+    }
+    剧情模块预结算事务表.delete(记录键);
+  }
+
+  async function 回滚剧情模块预结算事务并清理_桥接(记录键 = '', 记录 = {}, 事件键 = '') {
+    if (!记录 || 记录.正在处理) return false;
+    记录.正在处理 = true;
+    try {
+      return await 回滚剧情模块预结算旧AI楼_桥接(记录, 事件键 || 'story_generation_guard_abort');
+    } finally {
+      删除剧情模块预结算事务_桥接(记录键);
+      记录.正在处理 = false;
+      await refreshLiveSnapshot({ force: true });
+    }
+  }
+
+  async function 尝试提交剧情模块预结算事务_桥接(记录键 = '', 记录 = {}, 事件键 = '', 事件消息编号 = '') {
+    if (!记录 || 记录.正在处理) return false;
+    const 用户楼元信息 = 查找剧情模块事务目标用户楼_桥接(记录, 事件消息编号);
+    if (!用户楼元信息) return false;
+    记录.正在处理 = true;
+    try {
+      const 已固化 = await 固化剧情模块预结算到用户楼_桥接(记录, 用户楼元信息);
+      if (!已固化) throw new Error('user_message_settlement_verify_failed');
+      await 回滚剧情模块预结算旧AI楼_桥接(记录, `${事件键}:commit`);
+      删除剧情模块预结算事务_桥接(记录键);
+      await refreshLiveSnapshot({ force: true });
+      return true;
+    } catch (错误) {
+      console.warn('[DragonUI] 剧情模块预结算固化失败，尝试回滚旧AI楼', 错误);
+      await 回滚剧情模块预结算旧AI楼_桥接(记录, `${事件键}:failed`);
+      删除剧情模块预结算事务_桥接(记录键);
+      await refreshLiveSnapshot({ force: true });
+      return false;
+    } finally {
+      记录.正在处理 = false;
+    }
+  }
+
+  async function 处理剧情模块预结算用户楼落地_桥接(事件键 = '', 事件参数 = []) {
+    if (!剧情模块预结算事务表.size) return true;
+    const 事件消息编号 = 读取事件消息编号_桥接(事件参数);
+    let 已处理 = false;
+    for (const [记录键, 记录] of Array.from(剧情模块预结算事务表.entries())) {
+      const 已提交 = await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 事件键, 事件消息编号);
+      if (已提交) {
+        已处理 = true;
+      }
+    }
+    return 已处理 || !剧情模块预结算事务表.size;
+  }
+
+  function 调度剧情模块预结算用户楼落地读取_桥接(事件键 = '', 事件参数 = [], 选项 = {}) {
+    const 最大尝试 = Math.max(1, Math.floor(Number(选项.最大尝试) || 1));
+    const 失败后回滚 = 选项.失败后回滚 === true;
+    let 尝试次数 = 0;
+    const 尝试读取 = () => {
+      if (!剧情模块预结算事务表.size) return;
+      处理剧情模块预结算用户楼落地_桥接(事件键, 事件参数).then(已处理 => {
+        if (已处理 || !剧情模块预结算事务表.size) return;
+        尝试次数 += 1;
+        if (尝试次数 < 最大尝试) {
+          window.setTimeout(尝试读取, 50);
+          return;
+        }
+        if (失败后回滚) {
+          回滚全部待定剧情模块预结算事务_桥接(`${事件键}:user_message_missing`).catch(错误 => {
+            console.warn('[DragonUI] 剧情模块预结算用户楼读取失败回滚调度失败', 错误);
+          });
+        }
+      }).catch(错误 => {
+        console.warn('[DragonUI] 剧情模块预结算用户楼读取失败', 错误);
+      });
+    };
+    尝试读取();
+  }
+
+  async function 回滚全部待定剧情模块预结算事务_桥接(事件键 = '') {
+    if (!剧情模块预结算事务表.size) return;
+    for (const [记录键, 记录] of Array.from(剧情模块预结算事务表.entries())) {
+      try {
+        await 回滚剧情模块预结算事务并清理_桥接(记录键, 记录, 事件键 || 'story_generation_guard_abort');
+      } catch (错误) {
+        console.warn('[DragonUI] 剧情模块预结算回滚失败', 错误);
+      }
+    }
+    await refreshLiveSnapshot({ force: true });
   }
 
   function syncMvuEditorStoreFromRoot(statData, options = {}) {
@@ -11054,17 +11354,29 @@
 
   async function mutateStatDataByEditor(mutator, options = {}) {
     if (typeof mutator !== 'function') throw new Error('变量更新器必须是函数。');
-    await ensureMvuEditorStoreReady({ force: !!options.force });
+    const 写入选项 = 合并剧情模块预结算写入选项(options);
+    await ensureMvuEditorStoreReady({ force: !!写入选项.force });
+    const 需要登记剧情事务 = 是剧情模块预结算写入(写入选项);
+    const 写前变量数据 = 需要登记剧情事务 ? cloneJsonValue(mvuEditorStore.statData, {}) : null;
     const nextStatData = cloneJsonValue(mvuEditorStore.statData, {});
     await Promise.resolve(mutator(nextStatData));
     mvuEditorStore.statData = nextStatData;
     mvuEditorStore.signature = serializeMvuEditorStoreStatData(nextStatData);
     mvuEditorStore.dirty = true;
     mvuEditorStore.version += 1;
-    if (options.immediate === false) {
-      return scheduleMvuEditorStoreFlush(options.delay);
+    let 写回结果 = null;
+    if (写入选项.immediate === false) {
+      写回结果 = await scheduleMvuEditorStoreFlush(写入选项.delay);
+    } else {
+      写回结果 = await flushMvuEditorStore(写入选项);
     }
-    return flushMvuEditorStore(options);
+    if (需要登记剧情事务) {
+      const 写后MVU数据 = 写回结果 && typeof 写回结果 === 'object' && resolveRootData(写回结果)
+        ? cloneJsonValue(写回结果, {})
+        : { stat_data: cloneJsonValue(nextStatData, {}) };
+      登记剧情模块预结算事务自写入_桥接(写入选项, 写前变量数据, nextStatData, 写后MVU数据);
+    }
+    return 写回结果;
   }
 
   async function replaceStatDataByEditor(updates, options = {}) {
@@ -46363,8 +46675,20 @@ ${播报文本}
   }
 
   function installDirectModuleIntentGuard() {
-    window.__LWCS_APPLY_BATTLE_ADJUDICATION__ = (textOrPayload, options = {}) =>
-      applyBattleAdjudicationFromText(textOrPayload, options);
+    window.__LWCS_APPLY_BATTLE_ADJUDICATION__ = async (textOrPayload, options = {}) => {
+      const 上一上下文 = 当前剧情模块路由事务上下文;
+      if (toText(options && options.source, '') === 'story_generation_guard') {
+        当前剧情模块路由事务上下文 = {
+          ...(options && typeof options === 'object' ? options : {}),
+          source: 'story_generation_guard',
+        };
+      }
+      try {
+        return await applyBattleAdjudicationFromText(textOrPayload, options);
+      } finally {
+        当前剧情模块路由事务上下文 = 上一上下文;
+      }
+    };
     window.__LWCS_BUILD_ROUTINE_SETTLEMENT_PATCHES__ = detail => {
       const 输入 = detail && typeof detail === 'object' ? detail : {};
       return 构建日常动作字段级写回补丁(
@@ -46373,7 +46697,20 @@ ${播报文本}
         { systemText: 输入.systemText || 输入.系统播报 },
       );
     };
-    window.__MVU_ROUTE_MODULE_INTENT__ = (input, options = {}) => routeModuleIntentPayload(input, options);
+    window.__MVU_ROUTE_MODULE_INTENT__ = async (input, options = {}) => {
+      const 上一上下文 = 当前剧情模块路由事务上下文;
+      if (toText(options && options.source, '') === 'story_generation_guard') {
+        当前剧情模块路由事务上下文 = {
+          ...(options && typeof options === 'object' ? options : {}),
+          source: 'story_generation_guard',
+        };
+      }
+      try {
+        return await routeModuleIntentPayload(input, options);
+      } finally {
+        当前剧情模块路由事务上下文 = 上一上下文;
+      }
+    };
     if (!window.__MVU_MODULE_INTENT_ROUTER_EVENT_BOUND__) {
       window.addEventListener('mvu-module-intent', event => {
         const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};

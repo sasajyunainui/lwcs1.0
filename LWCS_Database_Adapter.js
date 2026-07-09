@@ -941,7 +941,24 @@
     return false;
   }
 
-  async function 尝试接管模块路由(规划文本) {
+  function 构建剧情模块路由事务上下文(context = {}, 路由块 = '') {
+    const 最新角色消息 = 读取最新角色消息元信息();
+    const 最新用户消息 = 读取最新用户消息元信息();
+    const 用户输入文本 = String(context.originalUserInput || context.userInput || 最新用户消息.文本 || '').trim();
+    return {
+      source: 'story_generation_guard',
+      userInput: 用户输入文本,
+      用户输入文本,
+      routeHash: 取哈希(路由块),
+      路由块哈希: 取哈希(路由块),
+      planningHash: 取哈希(context.planningText || ''),
+      规划文本哈希: 取哈希(context.planningText || ''),
+      latestUserMessageInfo: 最新用户消息,
+      latestAiMessageInfo: 最新角色消息,
+    };
+  }
+
+  async function 尝试接管模块路由(规划文本, context = {}) {
     const 文本 = String(规划文本 || '');
     const 路由块 = 提取模块路由块(文本);
     if (!路由块) return { action: 'continue', reason: 'module_route_missing' };
@@ -965,7 +982,7 @@
     const 接管承诺 = (async () => {
       let 结果 = null;
       try {
-        结果 = await Promise.resolve(路由函数(文本, { source: 'story_generation_guard' }));
+        结果 = await Promise.resolve(路由函数(文本, 构建剧情模块路由事务上下文({ ...context, planningText: 文本 }, 路由块)));
       } catch (错误) {
         console.warn('[LWCS适配器] 模块路由接管失败，放行正文生成:', 错误);
         return { action: 'continue', reason: 'module_route_failed' };
@@ -996,7 +1013,7 @@
     return await 接管承诺;
   }
 
-  async function 尝试接管战斗裁断(规划文本) {
+  async function 尝试接管战斗裁断(规划文本, context = {}) {
     const 文本 = String(规划文本 || '');
     const 裁断块 = 提取战斗裁断块(文本);
     if (!裁断块) return { action: 'continue', reason: 'battle_adjudication_missing' };
@@ -1007,7 +1024,10 @@
     const 接管承诺 = (async () => {
       let 结果 = null;
       try {
-        结果 = await Promise.resolve(裁断函数(`<battle_adjudication>${裁断块}</battle_adjudication>`, { source: 'plot_stage_battle_adjudication' }));
+        结果 = await Promise.resolve(裁断函数(
+          `<battle_adjudication>${裁断块}</battle_adjudication>`,
+          构建剧情模块路由事务上下文({ ...context, planningText: 文本 }, 裁断块),
+        ));
       } catch (错误) {
         console.warn('[LWCS适配器] 战斗裁断接管失败，放行正文生成:', 错误);
         return { action: 'continue', reason: 'battle_adjudication_failed' };
@@ -1022,9 +1042,9 @@
   }
 
   async function 正文生成前确认(context = {}) {
-    const 战斗裁断决定 = await 尝试接管战斗裁断(context.planningText || '');
+    const 战斗裁断决定 = await 尝试接管战斗裁断(context.planningText || '', context);
     if (战斗裁断决定.action === 'continueWithRuntimeEvent') return 战斗裁断决定;
-    const 模块路由决定 = await 尝试接管模块路由(context.planningText || '');
+    const 模块路由决定 = await 尝试接管模块路由(context.planningText || '', context);
     if (模块路由决定.action === 'blocked') return 模块路由决定;
     if (模块路由决定.action === 'continueWithRuntimeEvent') return 模块路由决定;
     return 模块路由决定;

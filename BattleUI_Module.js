@@ -15922,6 +15922,8 @@ class BattleUIComponent {
     }
 
     const 战斗回归第一魂技默认名 = '锁魄毒印';
+    const 战斗回归敌方快攻技能名 = '疾影突刺';
+    const 战斗回归敌方压制技能名 = '裂势冲拳';
 
     function 构建战斗回归第一魂技(名称 = 战斗回归第一魂技默认名, 消耗 = '魂力:120') {
       return {
@@ -16978,8 +16980,8 @@ class BattleUIComponent {
         敌人.hp_max = 99999;
         敌人.第1武魂 = 敌人.第1武魂 || { 表象名称: '敌方夹具武魂' };
         敌人.第1武魂.第1魂环 = 敌人.第1武魂.第1魂环 || {};
-        敌人.第1武魂.第1魂环.第1魂技 = normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击');
-        敌人.第1武魂.第2魂环 = { 第1魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫') };
+        敌人.第1武魂.第1魂环.第1魂技 = normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名);
+        敌人.第1武魂.第2魂环 = { 第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名) };
         敌人.agi = Math.max(玩家.agi * 1.25, 280);
         敌人.final = buildCombatFinalStats(敌人);
         let result = null;
@@ -18242,13 +18244,13 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '敌方武魂',
           第1魂环: {
-            第1魂技: 战斗回归输出魂技('敌方截击', '敌方单体', 6, 90, '近身攻击'),
+            第1魂技: 战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 90, '近身攻击'),
           },
         };
         const 来源 = 选择行为防反动作来源(敌人, combatData, '硬抗换伤');
-        断言战斗回归夹具(来源?.sourceActionName === '敌方截击', `防反来源未优先取真实动作:${JSON.stringify(来源)}`);
+        断言战斗回归夹具(来源?.sourceActionName === 战斗回归敌方快攻技能名, `防反来源未优先取真实动作:${JSON.stringify(来源)}`);
         const 防反动作 = 建立行为防反动作(敌人, { ...来源, 防反类型: '硬抗换伤', 触发概率: 0.4, 出手承诺: 0.2, 战斗数据: combatData });
-        断言战斗回归夹具((防反动作?.sourceActionName || '') === '敌方截击', `防反动作未透传真实来源:${JSON.stringify(防反动作)}`);
+        断言战斗回归夹具((防反动作?.sourceActionName || '') === 战斗回归敌方快攻技能名, `防反动作未透传真实来源:${JSON.stringify(防反动作)}`);
         日志.push(`防反来源已切到真实动作:${来源?.sourceActionName || '无'}`);
       });
       注册('控制第一魂技防反伤害不污染来源', 日志 => {
@@ -18256,7 +18258,7 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '敌方武魂',
           第1魂环: {
-            第1魂技: 战斗回归输出魂技('敌方截击', '敌方单体', 6, 90, '近身攻击'),
+            第1魂技: 战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 90, '近身攻击'),
           },
         };
         const 第一魂技动作 = {
@@ -18283,7 +18285,7 @@ class BattleUIComponent {
               触发概率: 1,
               出手承诺: 0.35,
               战斗数据: combatData,
-              sourceActionName: '敌方截击',
+              sourceActionName: 战斗回归敌方快攻技能名,
               sourceActionType: 'skill_counter',
             },
           }, { primaryAppliedDamage: 0 }, combatData);
@@ -18296,7 +18298,7 @@ class BattleUIComponent {
           const 防反事件 = [...账本].reverse().find(event =>
             String(event?.eventKind || '').trim() === 'counter' &&
             String(event?.result || '').trim() === 'success' &&
-            normalizeBattleActionDisplayName(event?.actionName || '') === '敌方截击'
+            normalizeBattleActionDisplayName(event?.actionName || '') === 战斗回归敌方快攻技能名
           );
           断言战斗回归夹具(!日志文本, `纯控制第一魂技不应触发伤害型防反:${日志文本}`);
           断言战斗回归夹具(!第一魂技伤害事件.length, `控制第一魂技被污染成伤害来源:${JSON.stringify(第一魂技伤害事件)}`);
@@ -18570,10 +18572,10 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '锁敌武魂',
           第1魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名),
           },
           第2魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名),
           },
         };
         const actorEntry = { char: 敌人, side: 'enemy' };
@@ -18726,7 +18728,7 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '蛇影武魂',
           第1魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名),
           },
           第2魂环: {
             第2魂技: normalizeSkillData({
@@ -18767,8 +18769,8 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '快攻武魂',
           第1魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
-            第2魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名),
+            第2魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名),
           },
         };
         const playerAction = {
@@ -18818,8 +18820,8 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '快攻武魂',
           第1魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
-            第2魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名),
+            第2魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名),
           },
         };
         const entry = {
@@ -18855,10 +18857,10 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '压制武魂',
           第1魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'), '敌方截击'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名),
           },
           第2魂环: {
-            第1魂技: normalizeSkillData(战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'), '敌方压迫'),
+            第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名),
           },
         };
         const actorEntry = { char: 敌人, side: 'enemy' };
@@ -18867,7 +18869,7 @@ class BattleUIComponent {
           observedTargetAction: { action_type: '常规攻击', type: '常规攻击', skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 72, '近身攻击'), '裂地冲拳') },
         });
         const 动作名 = String(action?.skill?.name || action?.skill?.魂技名 || action?.type || action?.action_type || '');
-        断言战斗回归夹具(/敌方截击|敌方压迫/.test(动作名), `未触发闪避克制时仍被过度压成守势:${动作名};${action?.decision_log || ''}`);
+        断言战斗回归夹具(new RegExp(`${战斗回归敌方快攻技能名}|${战斗回归敌方压制技能名}`).test(动作名), `未触发闪避克制时仍被过度压成守势:${动作名};${action?.decision_log || ''}`);
         断言战斗回归夹具(!/收招转防|当前不宜继续前压/.test(`${动作名} ${action?.decision_log || ''}`), `未触发闪避克制时误判为必须转守:${动作名};${action?.decision_log || ''}`);
         日志.push(`未触发闪避克制时继续压制:${动作名}`);
       });
@@ -18917,8 +18919,8 @@ class BattleUIComponent {
       敌人.第1武魂 = {
         表象名称: '敌方夹具武魂',
         第1魂环: {
-          第1魂技: 战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'),
-          第2魂技: 战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'),
+          第1魂技: 战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'),
+          第2魂技: 战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'),
         },
       };
       敌人.type = String(配置.敌人系别 || '敏攻系').trim() || '敏攻系';
@@ -19133,7 +19135,7 @@ class BattleUIComponent {
         targetName: 敌人.name,
         actionName: '伺机闪避',
         actionType: 'counter_secondary_reaction',
-        sourceActionName: '敌方截击',
+        sourceActionName: 战斗回归敌方快攻技能名,
         sourceActionId: 防反动作?.actionId || '',
         parentNodeId: 防反动作?.chainNodeId || '',
         sourceNodeId: 防反动作?.chainNodeId || '',
@@ -19154,7 +19156,7 @@ class BattleUIComponent {
         targetName: 敌人.name,
         actionName: '收招反压',
         actionType: 'counter_window',
-        sourceActionName: '敌方截击',
+        sourceActionName: 战斗回归敌方快攻技能名,
         sourceActionId: 防反动作?.actionId || '',
         sourceNodeId: 防反动作?.chainNodeId || '',
         parentNodeId: 防反动作?.chainNodeId || '',
@@ -19168,7 +19170,7 @@ class BattleUIComponent {
         targetName: 敌人.name,
         actionName: '收招反压',
         actionType: 'counter',
-        sourceActionName: '敌方截击',
+        sourceActionName: 战斗回归敌方快攻技能名,
         sourceActionId: 防反动作?.actionId || '',
         sourceNodeId: 防反动作?.chainNodeId || '',
         parentNodeId: 防反动作?.chainNodeId || '',
@@ -20453,8 +20455,8 @@ class BattleUIComponent {
           敌人.第1武魂 = {
             表象名称: '敌方夹具武魂',
             第1魂环: {
-              第1魂技: 战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'),
-              第2魂技: 战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'),
+              第1魂技: 战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'),
+              第2魂技: 战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'),
             },
           };
           if (/第二魂技|青影蛇群/.test(String(技能.name || 技能.魂技名 || ''))) {
@@ -20559,8 +20561,8 @@ class BattleUIComponent {
         敌人.第1武魂 = {
           表象名称: '敌方夹具武魂',
           第1魂环: {
-            第1魂技: 战斗回归输出魂技('敌方截击', '敌方单体', 6, 88, '近身攻击'),
-            第2魂技: 战斗回归输出魂技('敌方压迫', '敌方单体', 10, 96, '近身攻击'),
+            第1魂技: 战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'),
+            第2魂技: 战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'),
           },
         };
         if (/第二魂技|青影蛇群/.test(String(技能.name || 技能.魂技名 || ''))) {
@@ -27697,6 +27699,19 @@ class BattleUIComponent {
           const 规划语境 = String(battleState?.规划语境 || battleState?.decisionContext || '').trim().toUpperCase();
           const 是应招语境 = 规划语境 === 'REACTION' || /应招/.test(String(phaseLabel || ''));
           const 是主动阶段 = !是应招语境 && (/主动/.test(String(phaseLabel || '')) || /^ACTIVE_/i.test(String(phaseLabel || '')));
+          const 判定候选为应招专属动作 = 候选 => {
+            const name = normalizeBattleActionDisplayName(候选?.name || '');
+            const skillName = normalizeBattleActionDisplayName(
+              候选?.skill?.name ||
+              候选?.skill?.魂技名 ||
+              候选?.__预览技能?.name ||
+              候选?.__预览技能?.魂技名 ||
+              候选?.__主动规划审计?.技能 ||
+              '',
+            );
+            return /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(name) ||
+              /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(skillName);
+          };
           if (是主动阶段) {
             const 紧急窗口 =
               battleState?.isChargingHighThreat ||
@@ -27865,7 +27880,13 @@ class BattleUIComponent {
               }
               return { rejectionCode: 'DIRECT_PRESSURE_GAP', rejectedByEffectGap: 'DIRECT_PRESSURE_GAP' };
             };
-            const 候选排序结果 = scoredCandidates.map((候选, index) => {
+            const 审计类型 = !选择结果.option
+              ? '内部规划空转'
+              : (是应招语境 ? '应招审计' : '主动规划');
+            const 审计候选池 = 审计类型 === '主动规划'
+              ? scoredCandidates.filter(候选 => 候选 === 选择结果.option || !判定候选为应招专属动作(候选))
+              : scoredCandidates;
+            const 候选排序结果 = 审计候选池.map((候选, index) => {
               const 名称 = 候选?.skill?.name || 候选?.skill?.魂技名 || 候选?.__预览技能?.name || 候选?.__预览技能?.魂技名 || 候选?.name || '';
               const selected = 选择结果.option && 候选 === 选择结果.option;
               const weight = Number(候选?.weight || 0);
@@ -27904,9 +27925,6 @@ class BattleUIComponent {
                 审计: 审计.候选排序审计 || {},
               };
             });
-            const 审计类型 = !选择结果.option
-              ? '内部规划空转'
-              : (是应招语境 ? '应招审计' : '主动规划');
             记录行动闭环审计(battleState.combatData, 审计类型, {
               行动者: actor?.name || actor?.名称 || '',
               目标: 命中审计.目标 || target?.name || target?.名称 || '',
@@ -30005,6 +30023,11 @@ class BattleUIComponent {
           if (!action || !actor) return null;
           const actorSide = 读取规划单位阵营(actor, combatData) === '敌方' ? 'enemy' : 'player';
           const narrativeFact = 构建动作叙事审计事实(actor, action, target, extra);
+          const actionTypeText = String(action?.action_type || action?.type || extra.actionType || '').trim();
+          const actionNameText = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || actionTypeText || '');
+          const 是反应类起手事实 =
+            /应招|反应|防反|counter|reaction|dodge|guard|defend/i.test(`${actionTypeText} ${extra.source || ''}`) ||
+            /敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰/.test(actionNameText);
           const event = 写入战斗事件账本(combatData, {
             eventKind: 'action_start',
             round: roundCount,
@@ -30018,7 +30041,7 @@ class BattleUIComponent {
             targetPoolSide: String(extra.targetPoolSide || '').trim(),
             result: 'declared',
           });
-          if (narrativeFact) {
+          if (narrativeFact && !是反应类起手事实) {
             记录行动闭环审计(combatData, '战术确立', {
               actionId: event?.actionId || '',
               行动者: actor?.name || actor?.名称 || '',

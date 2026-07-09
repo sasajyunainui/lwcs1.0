@@ -55525,7 +55525,10 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
+                    originalUserInput: userMessage,
+                    userInput: userMessage
+                });
                 if (运行时生成决定.action === 'blocked') {
                     return { action: 'blocked', reason: 运行时生成决定.reason || 'runtime_generation_blocked', userMessage };
                 }
@@ -55612,7 +55615,11 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
+                    originalUserInput: messageToProcess,
+                    userInput: messageToProcess,
+                    userMessageIndex: lastMessageIndex
+                });
                 if (运行时生成决定.action === 'blocked') {
                     return {
                         action: 'blocked',
@@ -55700,7 +55707,10 @@ $CONTENT
             const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
             const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
             if (正文指令文本) {
-                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本);
+                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
+                    originalUserInput: originalInputText,
+                    userInput: originalInputText
+                });
                 if (运行时生成决定.action === 'blocked') {
                     return {
                         action: 'blocked',
