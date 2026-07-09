@@ -20661,6 +20661,11 @@ class BattleUIComponent {
             名称: '锁魄印',
             score: 110,
             权重: 110,
+            原始权重: 70,
+            战术修正: 22,
+            目标修正: 18,
+            目标价值修正: 0,
+            资源修正: 0,
             candidateStatus: 'EXECUTED',
             rejectionCode: '',
             effectTags: ['CONTROL_RESTRICTION'],
@@ -20672,6 +20677,11 @@ class BattleUIComponent {
             名称: '普通攻击',
             score: 96,
             权重: 96,
+            原始权重: 70,
+            战术修正: 8,
+            目标修正: 18,
+            目标价值修正: 0,
+            资源修正: 0,
             candidateStatus: 'REJECTED',
             rejectionCode: 'CONTROL_GAP',
             effectTags: ['DIRECT_DAMAGE'],
@@ -20822,6 +20832,11 @@ class BattleUIComponent {
             名称: '裂地冲拳',
             score: 106,
             权重: 106,
+            原始权重: 72,
+            战术修正: 18,
+            目标修正: 16,
+            目标价值修正: 0,
+            资源修正: 0,
             candidateStatus: 'EXECUTED',
             rejectionCode: '',
             effectTags: ['DIRECT_DAMAGE'],
@@ -20833,6 +20848,11 @@ class BattleUIComponent {
             名称: '试探掌',
             score: 92,
             权重: 92,
+            原始权重: 68,
+            战术修正: 10,
+            目标修正: 14,
+            目标价值修正: 0,
+            资源修正: 0,
             candidateStatus: 'REJECTED',
             rejectionCode: 'DIRECT_PRESSURE_GAP',
             effectTags: ['DIRECT_DAMAGE'],
@@ -27674,7 +27694,9 @@ class BattleUIComponent {
               };
             });
           }
-          const 是主动阶段 = /主动/.test(String(phaseLabel || '')) || /^ACTIVE_/i.test(String(phaseLabel || ''));
+          const 规划语境 = String(battleState?.规划语境 || battleState?.decisionContext || '').trim().toUpperCase();
+          const 是应招语境 = 规划语境 === 'REACTION' || /应招/.test(String(phaseLabel || ''));
+          const 是主动阶段 = !是应招语境 && (/主动/.test(String(phaseLabel || '')) || /^ACTIVE_/i.test(String(phaseLabel || '')));
           if (是主动阶段) {
             const 紧急窗口 =
               battleState?.isChargingHighThreat ||
@@ -27800,10 +27822,57 @@ class BattleUIComponent {
               蓄力剩余: Number(单位?.蓄力剩余 ?? 单位?.cast_time_left ?? 0),
               是否核心: 判定规划核心单位_V1(单位 || {}),
             });
+            const 读取候选审计标签 = 审计 => {
+              const 分类 = 审计?.效果原型分类 && typeof 审计.效果原型分类 === 'object' ? 审计.效果原型分类 : {};
+              const 目标价值分解 = 审计?.目标价值分解 && typeof 审计.目标价值分解 === 'object' ? 审计.目标价值分解 : {};
+              const 文本 = [
+                审计?.行动类别,
+                审计?.技能类别,
+                分类.主要效果类型,
+                ...(Array.isArray(分类.次要效果类型列表) ? 分类.次要效果类型列表 : []),
+                ...(Array.isArray(审计?.目标理由) ? 审计.目标理由 : []),
+                ...(Array.isArray(审计?.目标修正理由) ? 审计.目标修正理由 : []),
+                ...(Array.isArray(审计?.资源后果) ? 审计.资源后果 : []),
+                ...(Array.isArray(审计?.资源理由) ? 审计.资源理由 : []),
+                ...(Array.isArray(审计?.保护链理由) ? 审计.保护链理由 : []),
+                ...(Array.isArray(审计?.职责理由) ? 审计.职责理由 : []),
+              ].map(item => String(item || '')).join(' ');
+              const tags = new Set();
+              if (/控制|位移限制|锁定|压制|限制|束缚|麻痹|眩晕|封锁|迟缓|沉默|减速|缴械|封技/.test(文本)) tags.add('CONTROL_RESTRICTION');
+              if (/输出|伤害|爆发|终局|斩击|打击|压制/.test(文本)) tags.add('DIRECT_DAMAGE');
+              if (/治疗|恢复|护盾|防护|掩护|支援|保护|保核/.test(文本)) tags.add('PROTECT_ALLY');
+              if (Number(审计?.斩杀修正 || 0) > 0 || Number(目标价值分解.lethalWindow || 目标价值分解.killWindow || 目标价值分解.finishWindow || 0) > 0 || /斩杀|终结|收割|濒死|强弩之末/.test(文本)) tags.add('LETHAL');
+              if (Number(审计?.资源修正 || 0) >= 0 && /资源|魂力|精神力|断档|高耗|消耗/.test(文本)) tags.add('RESOURCE_STABLE');
+              return [...tags];
+            };
+            const 读取候选结构化否决 = (选中审计 = {}, 当前审计 = {}) => {
+              const 选中标签 = new Set(读取候选审计标签(选中审计));
+              const 当前标签 = new Set(读取候选审计标签(当前审计));
+              if (选中标签.has('CONTROL_RESTRICTION') && !当前标签.has('CONTROL_RESTRICTION')) {
+                return { rejectionCode: 'CONTROL_GAP', rejectedByEffectGap: 'CONTROL_RESTRICTION_GAP' };
+              }
+              if (选中标签.has('LETHAL') && !当前标签.has('LETHAL')) {
+                return { rejectionCode: 'LETHAL_GAP', rejectedByEffectGap: 'LETHAL_GAP' };
+              }
+              if (选中标签.has('PROTECT_ALLY') && !当前标签.has('PROTECT_ALLY')) {
+                return { rejectionCode: 'PROTECT_ALLY_GAP', rejectedByEffectGap: 'PROTECT_ALLY_GAP' };
+              }
+              if (
+                (选中标签.has('RESOURCE_STABLE') && Number(当前审计?.资源修正 || 0) < Number(选中审计?.资源修正 || 0)) ||
+                Number(当前审计?.资源断档惩罚 || 0) > Number(选中审计?.资源断档惩罚 || 0)
+              ) {
+                return { rejectionCode: 'RESOURCE_PRESSURE', rejectedByEffectGap: 'RESOURCE_PRESSURE' };
+              }
+              return { rejectionCode: 'DIRECT_PRESSURE_GAP', rejectedByEffectGap: 'DIRECT_PRESSURE_GAP' };
+            };
             const 候选排序结果 = scoredCandidates.map((候选, index) => {
               const 名称 = 候选?.skill?.name || 候选?.skill?.魂技名 || 候选?.__预览技能?.name || 候选?.__预览技能?.魂技名 || 候选?.name || '';
               const selected = 选择结果.option && 候选 === 选择结果.option;
               const weight = Number(候选?.weight || 0);
+              const 审计 = 候选?.__主动规划审计 || {};
+              const 否决 = selected || weight <= 0
+                ? { rejectionCode: selected ? '' : 'FILTERED_BY_SCORE', rejectedByEffectGap: '' }
+                : 读取候选结构化否决(命中审计, 审计);
               return {
                 candidateId: `candidate_${index + 1}_${normalizeBattleActionDisplayName(名称) || 'action'}`,
                 candidateName: 名称,
@@ -27811,23 +27880,37 @@ class BattleUIComponent {
                 战术名称: 候选?.name || '',
                 score: weight,
                 权重: weight,
+                原始权重: Number(审计.原始权重 || 0),
+                原始净收益: Number(审计.原始净收益 || 0),
+                战术修正: Number(审计.战术修正 || 0) + Number(审计.团队意图修正 || 0),
+                目标修正: Number(审计.目标修正 || 0),
+                目标价值修正: Number(审计.目标价值修正 || 0),
+                资源修正: Number(审计.资源修正 || 0),
+                职责修正: Number(审计.职责修正 || 0),
+                二回合前瞻修正: Number(审计.二回合前瞻修正 || 0),
                 candidateStatus: 战斗候选状态转移('', selected ? 'EXECUTED' : (weight > 0 ? 'REJECTED' : 'FILTERED')),
-                rejectionCode: selected ? '' : (weight > 0 ? 'LOWER_PRIORITY' : 'FILTERED_BY_SCORE'),
-                repeatCount: Number(候选?.__主动规划审计?.repeatCount || 0),
-                repeatCategory: String(候选?.__主动规划审计?.repeatCategory || ''),
-                repeatDecayMultiplier: Number(候选?.__主动规划审计?.repeatDecayMultiplier || 1),
-                repeatDecayReasonCode: String(候选?.__主动规划审计?.repeatDecayReasonCode || ''),
-                repeatExceptionCode: String(候选?.__主动规划审计?.repeatExceptionCode || ''),
-                scoreBeforeRepeatDecay: Number(候选?.__主动规划审计?.scoreBeforeRepeatDecay || 0),
-                scoreAfterRepeatDecay: Number(候选?.__主动规划审计?.scoreAfterRepeatDecay || weight),
-                目标: 候选?.__主动规划审计?.目标 || 候选?.target?.name || 候选?.target?.名称 || '',
-                审计: 候选?.__主动规划审计?.候选排序审计 || {},
+                rejectionCode: 否决.rejectionCode,
+                effectTags: 读取候选审计标签(审计),
+                rejectedByEffectGap: 否决.rejectedByEffectGap,
+                candidateSource: 'ACTIVE_SCORER',
+                repeatCount: Number(审计.repeatCount || 0),
+                repeatCategory: String(审计.repeatCategory || ''),
+                repeatDecayMultiplier: Number(审计.repeatDecayMultiplier || 1),
+                repeatDecayReasonCode: String(审计.repeatDecayReasonCode || ''),
+                repeatExceptionCode: String(审计.repeatExceptionCode || ''),
+                scoreBeforeRepeatDecay: Number(审计.scoreBeforeRepeatDecay || 0),
+                scoreAfterRepeatDecay: Number(审计.scoreAfterRepeatDecay || weight),
+                目标: 审计.目标 || 候选?.target?.name || 候选?.target?.名称 || '',
+                审计: 审计.候选排序审计 || {},
               };
             });
-            记录行动闭环审计(battleState.combatData, /应招/.test(String(phaseLabel || '')) ? '应招审计' : '主动规划', {
+            const 审计类型 = !选择结果.option
+              ? '内部规划空转'
+              : (是应招语境 ? '应招审计' : '主动规划');
+            记录行动闭环审计(battleState.combatData, 审计类型, {
               行动者: actor?.name || actor?.名称 || '',
               目标: 命中审计.目标 || target?.name || target?.名称 || '',
-              技能: 命中审计.技能 || 选择结果.option?.name || '',
+              技能: 命中审计.技能 || 选择结果.option?.name || (!选择结果.option ? '无可执行动作' : ''),
               回合: Number(battleState?.round ?? battleState?.combatData?.回合 ?? 0),
               战略意图: 命中审计.战略意图 || '',
               目标理由: 命中审计.目标理由 || [],
@@ -27860,7 +27943,7 @@ class BattleUIComponent {
               选择原因: 选择结果.trace || (选择结果.option ? '规划候选命中' : '当前未形成有效出手机会'),
               hitCandidateName: normalizeBattleActionDisplayName(选择结果.option?.skill?.name || 选择结果.option?.skill?.魂技名 || 选择结果.option?.__预览技能?.name || 选择结果.option?.__预览技能?.魂技名 || 选择结果.option?.name || 命中审计.技能 || ''),
               selectedCandidateName: normalizeBattleActionDisplayName(选择结果.option?.skill?.name || 选择结果.option?.skill?.魂技名 || 选择结果.option?.__预览技能?.name || 选择结果.option?.__预览技能?.魂技名 || 选择结果.option?.name || 命中审计.技能 || ''),
-              finalResolvedActionName: normalizeBattleActionDisplayName(命中审计.finalResolvedActionName || ''),
+              finalResolvedActionName: normalizeBattleActionDisplayName(命中审计.finalResolvedActionName || (!选择结果.option ? '无可执行动作' : '')),
               actionOverrideSource: String(命中审计.actionOverrideSource || '').trim(),
               承载方式: String(命中审计.承载方式 || 选择结果.option?.skill?.承载方式 || 选择结果.option?.__预览技能?.承载方式 || '').trim(),
               压力档位: 命中审计.压力档位 || '',
@@ -42458,6 +42541,7 @@ class BattleUIComponent {
             makeNpcAction,
           );
           const behaviorState = strategicContext.behaviorState;
+          behaviorState.规划语境 = 'REACTION';
           behaviorState.规划上下文 = 构建规划上下文(defender, attacker, combatData, behaviorState);
           behaviorState.规划上下文.锁定敌对目标 = attacker;
           behaviorState.锁定敌对目标 = attacker;
