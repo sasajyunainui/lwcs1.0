@@ -86,6 +86,11 @@ function 清理提示审计扫描文本_V1(text = '') {
   return String(text || '').replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ');
 }
 
+function 读取运行时正数属性_V1(角色 = {}, 字段 = '') {
+  const 数值 = Number(角色?.属性?.[字段]);
+  return Number.isFinite(数值) && 数值 > 0 ? 数值 : 0;
+}
+
 function cloneJsonValue(值, 回退值 = {}) {
   if (值 === null || typeof 值 !== 'object') {
     if (typeof 值 === 'function' || typeof 值 === 'symbol') return 回退值;
@@ -1437,13 +1442,24 @@ function 判断运行时角色间情报可见度_V1(观察者 = {}, 观察者名
   const 观察名 = String(观察者名 || '').trim();
   const 目标名称 = String(目标名 || '').trim();
   if (观察名 && 目标名称 && 观察名 === 目标名称) return null;
+  const 目标等级 = Number(目标?.属性?.等级);
+  const 魂力水平感知依据 =
+    读取运行时正数属性_V1(观察者, '精神力上限') > 3000 &&
+    读取运行时正数属性_V1(观察者, '精神力上限') >= 读取运行时正数属性_V1(目标, '精神力上限') * 1.3 &&
+    读取运行时正数属性_V1(观察者, '魂力上限') >= 读取运行时正数属性_V1(目标, '魂力上限') * 1.3 &&
+    Number.isFinite(目标等级) && 目标等级 > 0
+      ? `因远高于对方的精神力/魂力，可感知魂力水平Lv${目标等级}`
+      : '';
   const 战斗记录 = 目标名称 ? 观察者?.战斗历史?.[目标名称] : null;
-  const 生成可见度 = (状态, 依据) => ({
-    观察者: 观察名,
-    目标: 目标名称,
-    状态,
-    依据,
-  });
+  const 生成可见度 = (状态, 依据) => {
+    const 依据列表 = [依据, 魂力水平感知依据].map(文本 => String(文本 || '').trim()).filter(Boolean);
+    return {
+      观察者: 观察名,
+      目标: 目标名称,
+      状态,
+      依据: 依据列表.join('；'),
+    };
+  };
   if (战斗记录 && Number(战斗记录.次数 || 0) > 0) return 生成可见度('战斗信息可见', `交手${Number(战斗记录.次数 || 0)}次`);
   const 观察者声望 = Number(观察者?.社交?.声望 || 0);
   const 目标声望 = Number(目标?.社交?.声望 || 0);
