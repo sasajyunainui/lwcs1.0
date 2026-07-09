@@ -1899,6 +1899,7 @@
   let activeSubUI = null;
   let lastAutoOpenedPendingSoulRingSignature = '';
   let 待处理技能设计确认 = null;
+  const 已跳过成长技能确认签名 = new Set();
   let activeInlineEditState = null;
   let inlineEditSessionToken = 0;
   let inlineEditGuardUntil = 0;
@@ -10920,6 +10921,23 @@
       changed = changed || 写入角色.length > 0;
     } catch (错误) {
       console.warn('[LWCS] 本轮MVU上下文内置角色入库失败:', 错误);
+    }
+
+    try {
+      const runtime = 读取MVUSchema运行时接口_桥接();
+      if (runtime && typeof runtime.收集内置角色成长技能模板触发 === 'function') {
+        const 待确认成长技能 = runtime.收集内置角色成长技能模板触发(当前StatData, {
+          用户输入: 捕获文本,
+          剧情文本: '',
+          最后剧情文本: '',
+        });
+        const 待打开 = (Array.isArray(待确认成长技能) ? 待确认成长技能 : []).find(记录 =>
+          !已跳过成长技能确认签名.has(构建成长技能确认签名(记录))
+        );
+        if (待打开) 打开成长技能模板确认(待打开);
+      }
+    } catch (错误) {
+      console.warn('[LWCS] 成长技能模板确认检测失败:', 错误);
     }
 
     记录命中('命中角色', [...归档角色命中, ...已恢复角色, ...已实例化角色], 角色名 =>
@@ -37508,22 +37526,7 @@
 
     if (previewKey === PENDING_SKILL_DESIGN_PREVIEW_KEY) {
       const pendingSkillDesign = buildSkillDesignConfirmState(snapshot);
-      if (!pendingSkillDesign) {
-        return {
-          title: '技能设计',
-          summary: '',
-          body: `
-              <div class="archive-modal-grid mvu-detail-grid--single">
-                <div class="archive-card full">
-                  <div class="archive-card-head"><div class="archive-card-title">暂无待设计技能</div></div>
-                  <div class="ring-hover-actions mvu-detail-action-row">
-                    <button type="button" class="tag-chip" data-skill-design-confirm-action="continue">返回</button>
-                  </div>
-                </div>
-              </div>
-            `,
-        };
-      }
+      if (!pendingSkillDesign) return null;
       return {
         title: '技能设计',
         summary: '',
@@ -37538,7 +37541,7 @@
                     {
                       label: '技能',
                       value: htmlEscape(
-                        pendingSkillDesign.skillName || pendingSkillDesign.previewMeta.label || '新技能',
+                        pendingSkillDesign.skillName || pendingSkillDesign.previewMeta?.label || '新技能',
                       ),
                     },
                   ],
@@ -42364,6 +42367,15 @@ ${播报文本}
   function buildSkillDesignConfirmState(snapshot) {
     const state = 待处理技能设计确认 && typeof 待处理技能设计确认 === 'object' ? 待处理技能设计确认 : null;
     if (!state) return null;
+    if (state.growthRecord && typeof state.growthRecord === 'object') {
+      return {
+        ...state,
+        charName: toText(state.charName || state.growthRecord.角色名, ''),
+        sourceLabel: toText(state.sourceLabel, '成长技能模板'),
+        skillName: normalizeSkillUiText(state.growthRecord.魂技名 || state.growthRecord.技能名称, '成长技能'),
+        signature: toText(state.signature, ''),
+      };
+    }
     const previewKey = toText(state.previewKey, '').trim();
     const previewMeta = parseSkillDesignerPreviewKey(previewKey);
     if (!previewKey || !previewMeta || !Array.isArray(previewMeta.path) || !previewMeta.path.length) return null;
@@ -42385,14 +42397,27 @@ ${播报文本}
   function 打开技能设计确认(确认数据 = {}) {
     const previewKey = toText(确认数据.previewKey, '').trim();
     if (!previewKey || !isSkillDesignerPreviewKey(previewKey)) return false;
+    const signature = toText(确认数据.signature || previewKey, previewKey);
+    const currentState = buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot);
+    if (currentState && (currentState.previewKey === previewKey || currentState.signature === signature)) {
+      openDetailPreview(PENDING_SKILL_DESIGN_PREVIEW_KEY, {
+        preserveMapDispatchContext: true,
+        replace: true,
+      });
+      return true;
+    }
     待处理技能设计确认 = {
       previewKey,
       charName: toText(确认数据.charName, ''),
       sourceLabel: toText(确认数据.sourceLabel, '技能'),
       returnPreviewKey: toText(确认数据.returnPreviewKey, ''),
       submitAfterSave: 确认数据.submitAfterSave !== false,
-      signature: `${previewKey}::${Date.now()}`,
+      signature,
     };
+    if (!buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot)) {
+      待处理技能设计确认 = null;
+      return false;
+    }
     openDetailPreview(PENDING_SKILL_DESIGN_PREVIEW_KEY, {
       preserveMapDispatchContext: true,
       replace: true,
@@ -42401,35 +42426,104 @@ ${播报文本}
   }
 
   function 继续现有技能获得流程() {
+    const state = buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot);
+    if (state?.growthRecord && state.signature) 已跳过成长技能确认签名.add(state.signature);
     待处理技能设计确认 = null;
     if ((currentModalPreviewKey || currentUnifiedPreviewKey) === PENDING_SKILL_DESIGN_PREVIEW_KEY) closeModal();
+  }
+
+  function 构建成长技能模板预览键(记录 = {}) {
+    const 角色名 = toText(记录 && 记录.角色名, '').trim();
+    const 写入路径 = toText(记录 && 记录.写入路径, '').trim();
+    const 写入类型 = toText(记录 && 记录.写入类型, '').trim();
+    if (!角色名 || !写入路径) return '';
+    const path = ['char', 角色名, ...写入路径.split('.').map(片段 => toText(片段, '').trim()).filter(Boolean)];
+    if (写入类型 === '武魂融合技' && path[path.length - 1] !== '技能数据') path.push('技能数据');
+    return buildSkillDesignerPreviewKey({
+      path,
+      label: toText(记录.魂技名 || 记录.技能名称, path[path.length - 1] || '成长技能'),
+      category: 写入类型 || '成长技能',
+      scope: 写入类型 === '自创魂技' ? '自创魂技' : 写入类型 === '武魂融合技' ? '武魂融合技' : '魂技',
+    });
+  }
+
+  async function 应用成长技能模板并打开设计台(记录 = {}) {
+    const runtime = 读取MVUSchema运行时接口_桥接();
+    if (!runtime || typeof runtime.应用内置角色成长技能模板记录 !== 'function') {
+      showUiToast('成长技能模板接口不可用。', 'error', 4200);
+      return false;
+    }
+    let previewKey = 构建成长技能模板预览键(记录);
+    let result = null;
+    try {
+      await mutateStatDataByEditor(
+        statData => {
+          result = runtime.应用内置角色成长技能模板记录(statData, 记录);
+          if (!result || result.changed !== true) throw new Error(result?.reason || 'growth_skill_not_written');
+        },
+        { force: true },
+      );
+      await refreshLiveSnapshot({ force: true });
+    } catch (error) {
+      showUiToast(error && error.message ? error.message : '成长技能写入失败。', 'error', 4200);
+      return false;
+    }
+    待处理技能设计确认 = null;
+    if (previewKey && isSkillDesignerPreviewKey(previewKey)) {
+      openDetailPreview(previewKey, { preserveMapDispatchContext: true, replace: true });
+    } else {
+      closeModal();
+      showUiToast('成长技能已采用。', 'info', 2200);
+    }
+    return true;
   }
 
   function 打开待处理技能设计台(snapshot) {
     const state = buildSkillDesignConfirmState(snapshot);
     if (!state) throw new Error('当前没有可设计的技能。');
+    if (state.growthRecord) {
+      void 应用成长技能模板并打开设计台(state.growthRecord);
+      return;
+    }
     openDetailPreview(state.previewKey, { preserveMapDispatchContext: true, replace: true });
   }
 
   async function 准备剧情技能自行设计(选项 = {}) {
     const snapshot = liveSnapshot || lastRenderableSnapshot || (await getLiveSnapshot());
     const activeName = toText(snapshot && snapshot.activeName, '');
-    const charKey = resolveSnapshotCharKey(snapshot, activeName) || activeName;
+    const 输入角色名 = toText(选项.角色 || 选项.charName || 选项.character || activeName, activeName);
+    const charKey = resolveSnapshotCharKey(snapshot, 输入角色名) || resolveSnapshotCharKey(snapshot, activeName) || activeName;
     if (!charKey) throw new Error('未找到当前角色，无法新建技能设计。');
+    const skillType = /武魂融合技/.test(toText(选项.技能类型 || 选项.type || '', '')) ? '武魂融合技' : '自创魂技';
     const skillKey = `剧情技能_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const skillLabel = toText(选项.label, '剧情新技能');
+    const skillLabel = toText(选项.label || 选项.技能名称 || 选项.name, '剧情新技能');
+    const path = skillType === '武魂融合技'
+      ? ['char', charKey, '武魂融合技', skillLabel, '技能数据']
+      : ['char', charKey, '自创魂技', skillKey];
     const previewKey = buildSkillDesignerPreviewKey({
-      path: ['char', charKey, '自创魂技', skillKey],
+      path,
       label: skillLabel,
-      category: '自创魂技',
-      scope: '自创魂技',
+      category: skillType,
+      scope: skillType,
     });
     await mutateStatDataByEditor(
       statData => {
         const charData = deepGet(statData, ['char', charKey], null);
         if (!charData || typeof charData !== 'object') throw new Error('未找到当前角色。');
-        if (!charData.自创魂技 || typeof charData.自创魂技 !== 'object' || Array.isArray(charData.自创魂技))
-          charData.自创魂技 = {};
+        if (skillType === '武魂融合技') {
+          if (!charData.武魂融合技 || typeof charData.武魂融合技 !== 'object' || Array.isArray(charData.武魂融合技)) charData.武魂融合技 = {};
+          if (!charData.武魂融合技[skillLabel] || typeof charData.武魂融合技[skillLabel] !== 'object' || Array.isArray(charData.武魂融合技[skillLabel])) charData.武魂融合技[skillLabel] = {};
+          if (!charData.武魂融合技[skillLabel].技能数据) {
+            charData.武魂融合技[skillLabel].技能数据 = {
+              魂技名: skillLabel,
+              画面描述: '未知',
+              效果描述: '未知',
+              _效果数组: [],
+            };
+          }
+          return;
+        }
+        if (!charData.自创魂技 || typeof charData.自创魂技 !== 'object' || Array.isArray(charData.自创魂技)) charData.自创魂技 = {};
         if (!charData.自创魂技[skillKey]) {
           charData.自创魂技[skillKey] = {
             魂技名: skillLabel,
@@ -42442,12 +42536,14 @@ ${播报文本}
       { force: true },
     );
     await refreshLiveSnapshot({ force: true });
-    打开技能设计确认({
+    const opened = 打开技能设计确认({
       previewKey,
-      charName: activeName || charKey,
+      charName: 输入角色名 || activeName || charKey,
       sourceLabel: toText(选项.sourceLabel, '剧情获得技能'),
       submitAfterSave: true,
+      signature: `story_skill::${charKey}::${skillType}::${skillLabel}`,
     });
+    if (!opened) throw new Error('技能记录创建后无法打开确认页。');
     return { ok: true, previewKey, skillKey };
   }
 
@@ -42560,6 +42656,20 @@ ${播报文本}
     const result = await 打开传授技能设计台({ ...request, 内容类型 });
     return 构建模块路由成功结果('teaching', request, {
       dispatchMode: 'settled_summary',
+      result,
+    });
+  }
+
+  async function 执行新技能获得模块意图路由(snapshot, request = {}) {
+    if (request.invalid) return 构建模块路由失败结果('skill_gain', request, request.reason || 'skill_gain_request_invalid');
+    const result = await 准备剧情技能自行设计({
+      角色: request.charKey || request.角色,
+      技能名称: request.技能名称,
+      技能类型: request.技能类型,
+      sourceLabel: request.来源 ? `剧情新技能：${request.来源}` : '剧情新技能',
+    });
+    return 构建模块路由成功结果('skill_gain', request, {
+      dispatchMode: 'pending_confirmation',
       result,
     });
   }
@@ -44665,6 +44775,21 @@ ${播报文本}
     };
   }
 
+  function 解析新技能获得模块意图请求(snapshot, payload = {}) {
+    const 角色名 = toText(payload.角色 || payload.char || payload.character || snapshot?.activeName, '').trim();
+    const 技能名称 = toText(payload.技能名称 || payload.名称 || payload.name || payload.label, '待命名技能').trim() || '待命名技能';
+    const 技能类型 = /武魂融合技/.test(toText(payload.技能类型 || payload.type || payload.category, '')) ? '武魂融合技' : '自创魂技';
+    const 角色 = resolveSnapshotCharacter(snapshot, 角色名 || snapshot?.activeName);
+    if (!角色.key || !角色.char) return { invalid: true, reason: 'skill_gain_character_unresolved', 角色: 角色名, 技能名称, 技能类型 };
+    return {
+      角色: 角色.displayName || 角色.key,
+      charKey: 角色.key,
+      技能名称,
+      技能类型,
+      来源: toText(payload.来源 || payload.source, '非传授来源'),
+    };
+  }
+
   function 构建模块路由成功结果(moduleKind = '', request = null, extra = {}) {
     const kind = moduleKind || '';
     return {
@@ -44813,6 +44938,13 @@ ${播报文本}
       事实 = 状态 === '执行失败'
         ? `传授未结算，${拼接事实片段([老师 ? `老师：${老师}` : '', 学生 ? `学生：${学生}` : '', 内容 ? `内容：${内容}` : '', 格式化模块原因文本(原因)])}。`
         : `传授已处理，${拼接事实片段([老师 ? `老师：${老师}` : '', 学生 ? `学生：${学生}` : '', 内容 ? `内容：${内容}` : '', extra?.reason ? `结果：${toText(extra.reason, '')}` : ''])}。`;
+    } else if (模块 === 'skill_gain') {
+      const 角色 = toText(request && request.角色, '');
+      const 技能名称 = toText(request && request.技能名称, '待命名技能');
+      const 技能类型 = toText(request && request.技能类型, '自创魂技');
+      事实 = 状态 === '执行失败'
+        ? `新技能确认未开启，${拼接事实片段([角色 ? `角色：${角色}` : '', `技能：${技能名称}`, 格式化模块原因文本(原因)])}。`
+        : `新技能待确认，${拼接事实片段([角色 ? `角色：${角色}` : '', `类型：${技能类型}`, `技能：${技能名称}`])}。`;
     } else {
       事实 = 状态 === '执行失败' ? `模块执行失败${原因 ? `，原因：${原因}` : ''}。` : `模块已处理，模式：${模式}。`;
     }
@@ -44832,6 +44964,7 @@ ${播报文本}
     if (/trade|交易|购买|出售|竞拍|拍卖/.test(文本)) return 'trade';
     if (/craft|profession|job|副职业|工坊|锻造|制造|设计|修理|维修/.test(文本)) return 'profession';
     if (/teaching|teach|传授|授课|教学|指点/.test(文本)) return 'teaching';
+    if (/skill_gain|技能获得|新技能/.test(文本)) return 'skill_gain';
     if (/travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(文本)) return 'travel';
     if (/routine|daily|修炼|冥想|拟态/.test(文本)) return 'routine';
     if (/trial_entry|trial|升灵台|魂灵塔|试炼/.test(文本)) return 'trial_entry';
@@ -45684,6 +45817,47 @@ ${播报文本}
     return { 临时根, 当前tick, 结束tick: 当前tick + 耗时tick };
   }
 
+  function 日常动作资源足够(charData = {}, actionMode = '') {
+    const 属性 = charData && typeof charData === 'object' ? charData.属性 || {} : {};
+    if (actionMode === '肉体训练') return Number(属性.体力 || 0) >= Math.max(1, Number(属性.体力上限 || 1)) * 0.3;
+    if (actionMode === '精神训练') return Number(属性.精神力 || 0) > Math.max(1, Number(属性.精神力上限 || 1)) * 0.1;
+    return true;
+  }
+
+  function 读取日常动作恢复模式(actionMode = '') {
+    if (actionMode === '肉体训练') return '睡眠';
+    if (actionMode === '精神训练') return '冥想';
+    return actionMode || '冥想';
+  }
+
+  function 分段执行日常结算(settleRuntime, snapshot = {}, charKey = '', beforeChar = {}, request = {}) {
+    const actionMode = toText(request && request.动作, '');
+    const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const { 临时根, 当前tick } = 构建日常结算临时根(snapshot, charKey, beforeChar, { ...request, 耗时tick: 0 });
+    let cursor = 当前tick;
+    let remaining = durationTicks;
+    let actionTicks = 0;
+    let recoveryTicks = 0;
+    while (remaining > 0) {
+      const currentChar = deepGet(临时根, ['char', charKey], {});
+      const shouldRecover = actionMode !== '冥想' && !日常动作资源足够(currentChar, actionMode);
+      const mode = shouldRecover ? 读取日常动作恢复模式(actionMode) : actionMode;
+      const segment = actionMode === '冥想' ? remaining : Math.min(remaining, 6);
+      const settled = settleRuntime(临时根, charKey, cursor, cursor + segment, mode);
+      Object.keys(临时根).forEach(key => delete 临时根[key]);
+      Object.assign(临时根, settled);
+      cursor += segment;
+      remaining -= segment;
+      if (shouldRecover) recoveryTicks += segment;
+      else actionTicks += segment;
+    }
+    if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
+    if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
+    临时根.world.时间.tick = 当前tick + durationTicks;
+    临时根.world.时间._上次结算tick = 当前tick;
+    return { settledRoot: 临时根, 当前tick, 结束tick: 当前tick + durationTicks, actionTicks, recoveryTicks };
+  }
+
   async function 执行日常模块真实结算(snapshot = {}, request = {}) {
     if (request && request.invalid) return 构建模块路由失败结果('routine', request, request.reason || 'routine_request_invalid');
     const charKey = resolveSnapshotCharKey(snapshot, toText(request && request.角色, toText(snapshot && snapshot.activeName, '')));
@@ -45696,17 +45870,16 @@ ${播报文本}
     if (typeof settleRuntime !== 'function') return 构建模块路由失败结果('routine', request, 'routine_runtime_unavailable', { charName: charKey, actionMode, durationTicks });
     const beforeChar = cloneJsonValue(deepGet(snapshot, ['rootData', 'char', charKey], {}), {});
     if (!beforeChar || !Object.keys(beforeChar).length) return 构建模块路由失败结果('routine', request, 'routine_character_missing', { charName: charKey, actionMode, durationTicks });
-    const { 临时根, 当前tick, 结束tick } = 构建日常结算临时根(snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+    let segmentStats = null;
     let settledRoot = null;
     try {
-      settledRoot = settleRuntime(临时根, charKey, 当前tick, 结束tick, actionMode);
+      segmentStats = 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+      settledRoot = segmentStats.settledRoot;
     } catch (error) {
       console.error('[LWCS routine settle failed]', {
         charName: charKey,
         actionMode,
         durationTicks,
-        startTick: 当前tick,
-        endTick: 结束tick,
         error,
       });
       return 构建模块路由失败结果('routine', request, error && error.message ? error.message : 'routine_runtime_failed', {
@@ -45731,7 +45904,10 @@ ${播报文本}
       durationText: 格式化tick时长文本_桥接(durationTicks),
       location: toText(request && request.位置, toText(beforeChar?.状态?.位置, '')),
       mimicEnabled: request.启用地点拟态 === true && actionMode === '冥想',
-      summary: 计算日常数值变化(beforeChar, afterChar),
+      summary: [
+        计算日常数值变化(beforeChar, afterChar),
+        segmentStats?.recoveryTicks > 0 ? `其中恢复${格式化tick时长文本_桥接(segmentStats.recoveryTicks)}` : '',
+      ].filter(Boolean).join('，'),
     });
   }
 
@@ -46057,6 +46233,8 @@ ${播报文本}
       request = buildDirectProfessionRequest(snapshot, payload);
     } else if (moduleKind === 'teaching') {
       request = 解析传授模块意图请求(snapshot, payload);
+    } else if (moduleKind === 'skill_gain') {
+      request = 解析新技能获得模块意图请求(snapshot, payload);
     } else if (moduleKind === 'travel') {
       request = 解析移动模块意图请求(snapshot, payload, text);
     } else if (moduleKind === 'routine') {
@@ -46076,6 +46254,7 @@ ${播报文本}
           trade: 'trade_request_invalid',
           profession: 'profession_request_invalid',
           teaching: 'teaching_request_invalid',
+          skill_gain: 'skill_gain_request_invalid',
           travel: 'travel_request_invalid',
           routine: 'routine_request_invalid',
           trial_entry: 'trial_entry_request_invalid',
@@ -46170,6 +46349,10 @@ ${播报文本}
 
     if (moduleKind === 'teaching') {
       return await 执行传授模块意图路由(snapshot, request);
+    }
+
+    if (moduleKind === 'skill_gain') {
+      return await 执行新技能获得模块意图路由(snapshot, request);
     }
 
     if (moduleKind === 'routine') {
@@ -47376,6 +47559,11 @@ ${播报文本}
         setHostMarkup(liveArchive.body, liveArchive.onMount);
         return;
       }
+      if (targetKey === PENDING_SKILL_DESIGN_PREVIEW_KEY) {
+        showUiToast('当前没有可确认的技能。', 'warning', 2200);
+        clearUnifiedInlinePreview();
+        return;
+      }
       if (!liveSnapshot && isLiveRequiredPreviewKey(targetKey)) {
         setHostMarkup(skeletonArchive ? skeletonArchive.body : '');
         return;
@@ -47398,6 +47586,38 @@ ${播报文本}
     window.setTimeout(() => {
       等待统一详情帧(2, 构建并填充详情);
     }, 120);
+    return true;
+  }
+
+  function 构建成长技能确认签名(记录 = {}) {
+    const 角色名 = toText(记录 && 记录.角色名, '').trim();
+    const 技能名 = normalizeSkillUiText(记录 && (记录.魂技名 || 记录.技能名称), '');
+    return `growth_skill::${角色名}::${记录?.写入类型 || ''}::${记录?.写入路径 || ''}::${技能名}`;
+  }
+
+  function 打开成长技能模板确认(记录 = {}) {
+    const 角色名 = toText(记录 && 记录.角色名, '').trim();
+    const 技能名 = normalizeSkillUiText(记录 && (记录.魂技名 || 记录.技能名称), '');
+    if (!角色名 || !技能名 || !记录?.模板) return false;
+    const signature = 构建成长技能确认签名(记录);
+    if (已跳过成长技能确认签名.has(signature)) return false;
+    const currentState = buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot);
+    if (currentState && currentState.signature === signature) {
+      openDetailPreview(PENDING_SKILL_DESIGN_PREVIEW_KEY, { preserveMapDispatchContext: true, replace: true });
+      return true;
+    }
+    待处理技能设计确认 = {
+      charName: 角色名,
+      sourceLabel: '角色库成长技能',
+      submitAfterSave: true,
+      signature,
+      growthRecord: cloneJsonValue(记录, {}),
+    };
+    if (!buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot)) {
+      待处理技能设计确认 = null;
+      return false;
+    }
+    openDetailPreview(PENDING_SKILL_DESIGN_PREVIEW_KEY, { preserveMapDispatchContext: true, replace: true });
     return true;
   }
   window.__MVU_RENDER_UNIFIED_PREVIEW__ = renderUnifiedInlinePreview;
@@ -47458,6 +47678,11 @@ ${播报文本}
       if (previewKey === '储物仓库详细页') {
         同步仓库页动效(modalBody, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
       }
+      return;
+    }
+    if (previewKey === PENDING_SKILL_DESIGN_PREVIEW_KEY) {
+      showUiToast('当前没有可确认的技能。', 'warning', 2200);
+      closeModal();
       return;
     }
     const liveRequiredKeys = new Set([

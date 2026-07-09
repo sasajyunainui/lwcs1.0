@@ -874,19 +874,6 @@
     return 输出;
   }
 
-  function 检测剧情获得技能(规划文本) {
-    const 文本 = String(规划文本 || '').trim();
-    if (!文本 || /<module_intent\b/i.test(文本)) return null;
-    const 获得技能模式 = /(获得|领悟|习得|学会|掌握|觉醒|创出|自创|解锁|凝聚|生成|衍生|得到|参悟出).{0,24}(魂技|技能|绝学|功法|秘技|血脉技|融合技|被动)/;
-    const 技能名词模式 = /(新魂技|新技能|自创魂技|魂环技能|血脉技能|功法绝学|武魂融合技)/;
-    if (!获得技能模式.test(文本) && !技能名词模式.test(文本)) return null;
-    const 名称匹配 = 文本.match(/[【「《]([^】」》]{2,24})(?:】|」|》)/);
-    return {
-      label: 名称匹配 ? 名称匹配[1] : '剧情新技能',
-      sourceLabel: '剧情获得技能',
-    };
-  }
-
   function 提取模块路由块(规划文本) {
     const 匹配 = String(规划文本 || '').match(/<module_routing>\s*([\s\S]*?)\s*<\/module_routing>/i);
     return 匹配 ? String(匹配[1] || '').trim() : '';
@@ -1040,19 +1027,7 @@
     const 模块路由决定 = await 尝试接管模块路由(context.planningText || '');
     if (模块路由决定.action === 'blocked') return 模块路由决定;
     if (模块路由决定.action === 'continueWithRuntimeEvent') return 模块路由决定;
-    if (context.skipSkillDesign === true) return 模块路由决定;
-    const 检测结果 = 检测剧情获得技能(context.planningText || '');
-    if (!检测结果) return { action: 'continue' };
-    const 打开技能设计 = 读取窗口函数('__LWCS_PROMPT_SKILL_DESIGN__');
-    if (typeof 打开技能设计 !== 'function') return { action: 'continue', reason: 'skill_design_bridge_unavailable' };
-    const 需要自行设计 = typeof window.confirm === 'function'
-      ? window.confirm(`本轮剧情预计会获得【${检测结果.label}】。是否自行设计？`)
-      : false;
-    if (!需要自行设计) return { action: 'continue' };
-    const 结果 = await 打开技能设计(检测结果);
-    return 结果 && 结果.ok
-      ? { action: 'blocked', reason: 'skill_design_requested' }
-      : { action: 'continue', reason: 'skill_design_open_failed' };
+    return 模块路由决定;
   }
 
   function 是否运行时占位符名(tagName) {

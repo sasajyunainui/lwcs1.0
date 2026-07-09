@@ -20992,6 +20992,10 @@ class BattleUIComponent {
             名称: finalAction,
             score: Number(配置.finalScore || 100),
             权重: Number(配置.finalScore || 100),
+            原始权重: Number(配置.finalBase ?? 配置.base ?? 70),
+            战术修正: Number(配置.finalTactical ?? 配置.tactical ?? 16),
+            目标修正: Number(配置.finalTarget ?? 配置.target ?? 14),
+            资源修正: Number(配置.finalResource ?? 配置.resource ?? 0),
             candidateStatus: 'EXECUTED',
             rejectionCode: '',
             effectTags: Array.isArray(配置.selectedTags) ? 配置.selectedTags : [],
@@ -21003,6 +21007,10 @@ class BattleUIComponent {
             名称: altAction,
             score: Number(配置.altScore || 88),
             权重: Number(配置.altScore || 88),
+            原始权重: Number(配置.altBase ?? 配置.base ?? 70),
+            战术修正: Number(配置.altTactical ?? 配置.tactical ?? 16),
+            目标修正: Number(配置.altTarget ?? 配置.target ?? 14),
+            资源修正: Number(配置.altResource ?? 配置.resource ?? 0),
             candidateStatus: 'REJECTED',
             rejectionCode: String(配置.altRejectionCode || 'DIRECT_PRESSURE_GAP'),
             effectTags: Array.isArray(配置.altTags) ? 配置.altTags : [],
@@ -21111,6 +21119,8 @@ class BattleUIComponent {
         base: 70,
         tactical: 18,
         target: 12,
+        altTactical: 14,
+        altTarget: 12,
         finalScore: 100,
         altScore: 100,
         selectedTags: ['CONTROL_RESTRICTION'],
@@ -47768,6 +47778,22 @@ class BattleUIComponent {
           return /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|防御|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(actionName);
         }
 
+        function 判定主动叙事Trace错路由为反应(轨迹 = {}, candidateDtos = []) {
+          const normalized = 归一判定轨迹(轨迹);
+          if (!/主动规划|战术确立/.test(读取轨迹类型(normalized))) return false;
+          const reactionOnlyActions = name => /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(normalizeBattleActionDisplayName(name || ''));
+          const directActionNames = [
+            normalized.finalResolvedActionName,
+            normalized.最终落地动作,
+            normalized.技能,
+            normalized.skill,
+            normalized.hitCandidateName,
+            normalized.命中候选名,
+          ];
+          if (directActionNames.some(reactionOnlyActions)) return true;
+          return (Array.isArray(candidateDtos) ? candidateDtos : []).some(item => reactionOnlyActions(item?.name));
+        }
+
         function 格式化判定候选名称(名称 = '') {
           return 包裹判定动作名称(名称);
         }
@@ -48128,6 +48154,7 @@ class BattleUIComponent {
             rejectedByEffectGap: String(item?.rejectedByEffectGap || '').trim(),
             candidateSource: String(item?.candidateSource || item?.候选来源 || '').trim(),
           }));
+          if (判定主动叙事Trace错路由为反应(normalized, candidateDtos)) fatalCodes.push('NARRATION_REACTION_TRACE_MISROUTED');
           const selected = candidateDtos.find(item => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(item.status)) || null;
           if (!selected && candidates.length) fatalCodes.push('CANDIDATE_SELECTED_MISSING');
           if (selected?.name && finalActionName && selected.name !== finalActionName) fatalCodes.push('CANDIDATE_SELECTED_FINAL_MISMATCH');
@@ -48175,7 +48202,13 @@ class BattleUIComponent {
           if (genericAlternativeReason) fatalCodes.push('NARRATION_GENERIC_ALTERNATIVE_REASON');
           if (dominantReason === 'DIRECT_PRESSURE' && !directPressureDominates) fatalCodes.push('NARRATION_DIRECT_PRESSURE_UNEXPLAINED');
           if (dominantReason === 'CONTROL' && !controlDominates) fatalCodes.push('NARRATION_UNVERIFIED_CONTROL_GAP');
-          const finalTrustLevel = fatalCodes.includes('INVALID_ACTION_FACT')
+          const invalidFatalCodes = new Set([
+            'INVALID_ACTION_FACT',
+            'CANDIDATE_FINAL_MISMATCH',
+            'CANDIDATE_SELECTED_FINAL_MISMATCH',
+            'NARRATION_REACTION_TRACE_MISROUTED',
+          ]);
+          const finalTrustLevel = fatalCodes.some(code => invalidFatalCodes.has(code))
             ? 'INVALID'
             : (fatalCodes.length || formulaTrustLevel !== 'TRUSTED')
               ? 'FACT_ONLY'
