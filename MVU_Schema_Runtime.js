@@ -3383,6 +3383,21 @@ function 规范化Schema根转换_V1(data = {}) {
       return { 档位索引: -1, 名称: '无城市环境' };
     };
 
+    const 判断学院基础食宿保障_ACU = 角色 => {
+      const 地点文本 = 读取地点信息_ACU(角色).文本;
+      if (!/(学院|校区|宿舍|宿舍区|食堂)/.test(地点文本)) return false;
+      const 势力 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力) ? 角色.社交.势力 : {};
+      const 身份文本 = [
+        角色?.社交?.主身份,
+        ...Object.entries(势力).flatMap(([势力名, 势力数据]) => [势力名, 势力数据?.身份]),
+      ]
+        .map(项 => String(项 || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      if (/(工读生|自费|需缴费|欠费|临时工|旁听|访客|外来|借宿)/.test(身份文本)) return false;
+      return /(学生|学员|新生|弟子|正式生)/.test(身份文本);
+    };
+
     const 收集角色武魂属性词_ACU = 角色 => {
       const 词集合 = new Set();
       取角色武魂条目_V1(角色).forEach(([槽位名, 武魂数据]) => {
@@ -5530,6 +5545,10 @@ function 规范化Schema根转换_V1(data = {}) {
       */
 
       _(data.char).forEach((c, charName) => {
+        if (!c || typeof c !== 'object' || Array.isArray(c)) return;
+        if (!c.状态 || typeof c.状态 !== 'object' || Array.isArray(c.状态)) c.状态 = {};
+        if (!c.属性 || typeof c.属性 !== 'object' || Array.isArray(c.属性)) c.属性 = {};
+        if (!c.属性.状态效果 || typeof c.属性.状态效果 !== 'object' || Array.isArray(c.属性.状态效果)) c.属性.状态效果 = {};
         const trainedBonus = ensureNumericStatBonusMap(c.属性, '训练加成');
         if (daysPassed > 0 && Math.random() < 0.05) {
           const locName = _.get(c, '状态.位置', '');
@@ -5565,31 +5584,35 @@ function 规范化Schema根转换_V1(data = {}) {
 
             if (城市档位索引 >= 0) {
               if (!c.财富 || typeof c.财富 !== 'object' || Array.isArray(c.财富)) c.财富 = {};
-              const 消费货币字段 = 判定角色所在地货币_ACU(c);
-              const 当前存款 = Math.max(0, Number(c.财富?.[消费货币字段] || 0));
-              const 基础日消费 = BASE_DAILY_LIVING_COST_ACU;
-              const 可负担档位索引 = 计算可负担消费档位_ACU(当前存款, 基础日消费, 城市档位索引);
-              const 消费倍率 = Number(城市消费倍率表_ACU[可负担档位索引] || 1);
-              const 实际消费 = Math.max(0, Math.floor(基础日消费 * daysPassed * 消费倍率));
-              const 实际可扣 = 当前存款 >= 实际消费;
-              if (可负担档位索引 < 城市档位索引) {
-                appendSystemReasonText(
-                  `[城市消费降档] ${charName} 所在地区档位由${城市档位名称表_ACU[城市档位索引]}(${城市消费倍率表_ACU[城市档位索引]}x)自动降为${城市档位名称表_ACU[可负担档位索引]}(${消费倍率}x)。`,
-                );
-              }
-              if (实际可扣) {
-                c.财富[消费货币字段] = Math.max(0, 当前存款 - 实际消费);
+              if (判断学院基础食宿保障_ACU(c)) {
                 delete c.属性.状态效果['饥饿'];
               } else {
-                c.财富[消费货币字段] = 0;
-                const starvationLoss = Math.max(1, Math.floor(Math.max(1, Number(c.属性.体力上限 || 1)) * 0.05 * daysPassed));
-                c.属性.体力 = Math.max(0, Number(c.属性.体力 || 0) - starvationLoss);
-                c.属性.状态效果['饥饿'] = {
-                  类型: 'debuff',
-                  层数: Math.max(1, daysPassed),
-                  描述: `缺乏资金购买食物，体力额外流失 ${starvationLoss} 点，力量/防御/敏捷与魂力上限下降。`,
-                  面板倍率: { 力量: 0.92, 防御: 0.92, 敏捷: 0.9, 魂力上限: 0.95 },
-                };
+                const 消费货币字段 = 判定角色所在地货币_ACU(c);
+                const 当前存款 = Math.max(0, Number(c.财富?.[消费货币字段] || 0));
+                const 基础日消费 = BASE_DAILY_LIVING_COST_ACU;
+                const 可负担档位索引 = 计算可负担消费档位_ACU(当前存款, 基础日消费, 城市档位索引);
+                const 消费倍率 = Number(城市消费倍率表_ACU[可负担档位索引] || 1);
+                const 实际消费 = Math.max(0, Math.floor(基础日消费 * daysPassed * 消费倍率));
+                const 实际可扣 = 当前存款 >= 实际消费;
+                if (可负担档位索引 < 城市档位索引) {
+                  appendSystemReasonText(
+                    `[城市消费降档] ${charName} 所在地区档位由${城市档位名称表_ACU[城市档位索引]}(${城市消费倍率表_ACU[城市档位索引]}x)自动降为${城市档位名称表_ACU[可负担档位索引]}(${消费倍率}x)。`,
+                  );
+                }
+                if (实际可扣) {
+                  c.财富[消费货币字段] = Math.max(0, 当前存款 - 实际消费);
+                  delete c.属性.状态效果['饥饿'];
+                } else {
+                  c.财富[消费货币字段] = 0;
+                  const starvationLoss = Math.max(1, Math.floor(Math.max(1, Number(c.属性.体力上限 || 1)) * 0.05 * daysPassed));
+                  c.属性.体力 = Math.max(0, Number(c.属性.体力 || 0) - starvationLoss);
+                  c.属性.状态效果['饥饿'] = {
+                    类型: 'debuff',
+                    层数: Math.max(1, daysPassed),
+                    描述: `缺乏资金购买食物，体力额外流失 ${starvationLoss} 点，力量/防御/敏捷与魂力上限下降。`,
+                    面板倍率: { 力量: 0.92, 防御: 0.92, 敏捷: 0.9, 魂力上限: 0.95 },
+                  };
+                }
               }
             }
           }
@@ -6003,19 +6026,25 @@ function 规范化Schema根转换_V1(data = {}) {
     });
 
     _(data.char).forEach((c, charName) => {
+      if (!c || typeof c !== 'object' || Array.isArray(c)) return;
+      if (!c.状态 || typeof c.状态 !== 'object' || Array.isArray(c.状态)) c.状态 = {};
+      if (!c.属性 || typeof c.属性 !== 'object' || Array.isArray(c.属性)) c.属性 = {};
       if (c.状态.位置) {
         if (c.状态.位置.includes('生命之湖') && c.属性.等级 < 90) {
+          if (!c.属性.状态效果 || typeof c.属性.状态效果 !== 'object' || Array.isArray(c.属性.状态效果)) c.属性.状态效果 = {};
           c.属性.状态效果['极致凶威压制'] = {
             类型: 'debuff',
             层数: 1,
             描述: '擅闯生命之湖，被多股凶兽级精神力锁定，随时陨落！',
           };
         } else if (c.状态.位置.includes('星斗大森林核心区') && c.属性.等级 < 50) {
+          if (!c.属性.状态效果 || typeof c.属性.状态效果 !== 'object' || Array.isArray(c.属性.状态效果)) c.属性.状态效果 = {};
           c.属性.状态效果['跨阶恐惧'] = { 类型: 'debuff', 层数: 1, 描述: '实力不足以踏足核心区，深陷高阶魂兽包围' };
           if (getComputedWoundLevelFromStat(c.属性) === '无') {
             c.属性.HP = Math.min(Number(c.属性.HP || c.属性.HP上限 || 0), Math.max(1, Math.floor(Number(c.属性.HP上限 || 1) * 0.2)));
           }
         } else if (c.状态.位置.includes('深海') && c.属性.等级 < 50) {
+          if (!c.属性.状态效果 || typeof c.属性.状态效果 !== 'object' || Array.isArray(c.属性.状态效果)) c.属性.状态效果 = {};
           c.属性.状态效果['深海压迫'] = { 类型: 'debuff', 层数: 1, 描述: '修为不足以抵御深海重压' };
         }
       }

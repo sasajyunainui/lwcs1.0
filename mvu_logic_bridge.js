@@ -45618,7 +45618,20 @@ ${播报文本}
     try {
       settledRoot = settleRuntime(临时根, charKey, 当前tick, 结束tick, actionMode);
     } catch (error) {
-      return 构建模块路由失败结果('routine', request, error && error.message ? error.message : 'routine_runtime_failed', { charName: charKey, actionMode, durationTicks });
+      console.error('[LWCS routine settle failed]', {
+        charName: charKey,
+        actionMode,
+        durationTicks,
+        startTick: 当前tick,
+        endTick: 结束tick,
+        error,
+      });
+      return 构建模块路由失败结果('routine', request, error && error.message ? error.message : 'routine_runtime_failed', {
+        charName: charKey,
+        actionMode,
+        durationTicks,
+        errorStack: error && error.stack ? String(error.stack) : '',
+      });
     }
     const afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
     if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
