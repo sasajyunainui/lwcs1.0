@@ -50577,7 +50577,15 @@ class BattleUIComponent {
           const sidecar = 轨迹?.__narrativeDecisionSidecar && typeof 轨迹.__narrativeDecisionSidecar === 'object'
             ? 轨迹.__narrativeDecisionSidecar
             : null;
+          const narrativeDto = sidecar ? 构建NarrativeDecisionDTO(轨迹) : null;
           const narrativeAudit = sidecar ? {
+            actorName: String(narrativeDto?.actorName || ''),
+            targetName: String(narrativeDto?.targetName || ''),
+            finalActionName: String(narrativeDto?.finalActionName || ''),
+            selectedCandidateName: String(narrativeDto?.selectedCandidateName || ''),
+            declaredActionName: normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.skill || ''),
+            hitCandidateName: normalizeBattleActionDisplayName(轨迹.hitCandidateName || 轨迹.命中候选名 || ''),
+            rawFinalActionName: normalizeBattleActionDisplayName(轨迹.finalResolvedActionName || 轨迹.最终落地动作 || ''),
             narrationTrustLevel: String(sidecar.narrationTrustLevel || ''),
             formulaTrustLevel: String(sidecar.formulaTrustLevel || ''),
             dominantReason: String(sidecar.dominantReason || ''),
@@ -50638,10 +50646,15 @@ class BattleUIComponent {
                 ? trace.__narrativeDecisionSidecar
                 : null;
               if (!sidecar) return '';
+              const dto = 构建NarrativeDecisionDTO(trace);
               return `NarrativeDecisionDTO审计：\n${格式化审计证据值({
-                actorName: normalized.行动者 || '',
-                targetName: normalized.displayTargetName || normalized.目标 || '',
-                finalActionName: normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || ''),
+                actorName: String(dto.actorName || ''),
+                targetName: String(dto.targetName || ''),
+                finalActionName: String(dto.finalActionName || ''),
+                selectedCandidateName: String(dto.selectedCandidateName || ''),
+                declaredActionName: normalizeBattleActionDisplayName(trace?.技能 || trace?.skill || ''),
+                hitCandidateName: normalizeBattleActionDisplayName(trace?.hitCandidateName || trace?.命中候选名 || ''),
+                rawFinalActionName: normalizeBattleActionDisplayName(trace?.finalResolvedActionName || trace?.最终落地动作 || ''),
                 narrationTrustLevel: String(sidecar.narrationTrustLevel || ''),
                 formulaTrustLevel: String(sidecar.formulaTrustLevel || ''),
                 dominantReason: String(sidecar.dominantReason || ''),

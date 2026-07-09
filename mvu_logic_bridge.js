@@ -44833,7 +44833,7 @@ ${播报文本}
     if (/craft|profession|job|副职业|工坊|锻造|制造|设计|修理|维修/.test(文本)) return 'profession';
     if (/teaching|teach|传授|授课|教学|指点/.test(文本)) return 'teaching';
     if (/travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(文本)) return 'travel';
-    if (/routine|daily|日常|修炼|冥想|拟态/.test(文本)) return 'routine';
+    if (/routine|daily|修炼|冥想|拟态/.test(文本)) return 'routine';
     if (/trial_entry|trial|升灵台|魂灵塔|试炼/.test(文本)) return 'trial_entry';
     if (/未命中|none|no_module|no module/.test(文本)) return '未命中';
     return '';
@@ -45512,16 +45512,34 @@ ${播报文本}
   }
 
   function 归一化日常动作模式(动作 = '', narrativeText = '') {
-    const 文本 = `${toText(动作, '')}|${toText(narrativeText, '')}`;
-    if (/肉体训练|身体训练|体能训练|锻体|炼体/.test(文本)) return '肉体训练';
-    if (/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/.test(文本)) return '精神训练';
-    if (/冥想|修炼|打坐|凝聚魂核/.test(文本)) return '冥想';
-    if (/日常训练|日常|休整|休息/.test(文本)) return '日常';
-    return '';
+    const 匹配动作 = 文本 => {
+      const 内容 = toText(文本, '');
+      if (/肉体训练|身体训练|体能训练|锻体|炼体/.test(内容)) return '肉体训练';
+      if (/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/.test(内容)) return '精神训练';
+      if (/冥想|修炼|打坐|凝聚魂核/.test(内容)) return '冥想';
+      return '';
+    };
+    const 显式动作 = 匹配动作(动作);
+    if (显式动作) return 显式动作;
+    return 匹配动作(narrativeText);
+  }
+
+  function 读取日常动作候选列表(文本 = '') {
+    const 内容 = toText(文本, '');
+    return [
+      [/肉体训练|身体训练|体能训练|锻体|炼体/, '肉体训练'],
+      [/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/, '精神训练'],
+      [/冥想|修炼|打坐|凝聚魂核/, '冥想'],
+    ]
+      .filter(([规则]) => 规则.test(内容))
+      .map(([, 动作]) => 动作);
   }
 
   function 解析日常模块意图请求(snapshot, payload = {}, narrativeText = '') {
     const 动作文本 = toText(payload.动作 || payload.action || payload.模式 || payload.训练方式, '');
+    if (读取日常动作候选列表(动作文本).length > 1) {
+      return { ...payload, invalid: true, reason: 'routine_action_ambiguous', 动作: 动作文本 };
+    }
     const 动作 = 归一化日常动作模式(动作文本, narrativeText);
     if (!动作) return null;
     const 识别文本 = `${动作文本}|${toText(payload.类型, '')}|${toText(payload.理由, '')}|${toText(narrativeText, '')}`;
@@ -45667,6 +45685,7 @@ ${播报文本}
   }
 
   async function 执行日常模块真实结算(snapshot = {}, request = {}) {
+    if (request && request.invalid) return 构建模块路由失败结果('routine', request, request.reason || 'routine_request_invalid');
     const charKey = resolveSnapshotCharKey(snapshot, toText(request && request.角色, toText(snapshot && snapshot.activeName, '')));
     if (!charKey) return 构建模块路由失败结果('routine', request, 'active_character_unresolved');
     const actionMode = 归一化日常动作模式(request && request.动作, '');
