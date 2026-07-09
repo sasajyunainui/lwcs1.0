@@ -134,11 +134,6 @@
             "role": "USER",
             "content": "User：现在请按照答题卡要求，开始寻找相关记忆、筛选未来原著节点、核对偏差记录，并提取本轮的scene_clue_seed。",
             "deletable": true
-          },
-          {
-            "role": "assistant",
-            "content": "Edward: 收到。我已掌握上述信息。现在就按照输出格式进行输出。",
-            "deletable": true
           }
         ],
         "extractTags": "recall,deviation_ledger_recall",
@@ -400,11 +395,6 @@
       {
         "role": "USER",
         "content": "User：现在请按照答题卡要求，开始寻找相关记忆、筛选未来原著节点、核对偏差记录，并提取本轮的scene_clue_seed。",
-        "deletable": true
-      },
-      {
-        "role": "assistant",
-        "content": "Edward: 收到。我已掌握上述信息。现在就按照输出格式进行输出。",
         "deletable": true
       }
     ]
