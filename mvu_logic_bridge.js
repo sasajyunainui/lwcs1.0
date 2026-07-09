@@ -9523,7 +9523,11 @@
       // Always persist MVU patches first, so generation reads newest state.
       if (patchOps.length) {
         重Roll恢复基底 = 读取当前最后AI消息回滚基底_桥接(patchOps);
-        await applyJsonPatchOpsByEditor(patchOps, { force: true });
+        const 预结算写入选项 =
+          meta && (meta.settlementKind === 'routine' || meta.结算类型 === 'routine' || requestKind.startsWith('map_action_'))
+            ? { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' }
+            : { force: true };
+        await applyJsonPatchOpsByEditor(patchOps, 预结算写入选项);
         if (重Roll恢复基底) {
           const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 重Roll恢复基底.目标消息元信息.消息编号 });
           const 写后根 = resolveRootData(写后包);
@@ -45668,7 +45672,7 @@ ${播报文本}
     if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
     const systemText = toText(deepGet(settledRoot, 'sys.系统播报', ''), '').trim();
     const patches = 构建日常动作字段级写回补丁(charKey, settledRoot, { systemText });
-    await applyJsonPatchOpsByEditor(patches, { force: true });
+    await applyJsonPatchOpsByEditor(patches, { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' });
     await refreshLiveSnapshot({ force: true });
     return 构建模块路由成功结果('routine', { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks }, {
       dispatchMode: 'settled_summary',

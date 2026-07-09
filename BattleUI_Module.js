@@ -49788,28 +49788,39 @@ class BattleUIComponent {
           const 候选 = 读取判定流程候选列表(轨迹, 0);
           const 技能名 = normalizeBattleActionDisplayName(轨迹.技能 || 轨迹.实际技能 || 轨迹.动作校正?.实际技能 || '');
           const 命中候选 = 技能名 ? 候选.find(item => 读取候选名称(item) === 技能名) : null;
+          const 读取候选码 = item => [
+            item?.reasonCode,
+            item?.rejectionCode,
+            item?.filterCode,
+            item?.statusCode,
+            item?.审计?.reasonCode,
+            item?.审计?.rejectionCode,
+            item?.审计?.filterCode,
+            item?.审计?.statusCode,
+          ].map(code => String(code || '').trim()).filter(Boolean);
           const 候选资源阻断 = item =>
             item?.资源可行 === false ||
             item?.审计?.资源可行 === false ||
+            item?.可释放 === false ||
+            item?.审计?.可释放 === false ||
             Number(item?.资源修正 ?? item?.审计?.资源修正 ?? 0) <= -30 ||
-            /资源不可释放|"可释放"\s*:\s*false/.test(格式化审计证据值(item));
-          const 文本 = 格式化审计证据值({
-            选择原因: 轨迹.选择原因,
-            候选来源: 轨迹.候选来源,
-            资源修正: 轨迹.资源修正,
-            命中候选,
-          });
+            读取候选码(item).some(code => /OUT_OF_MANA|RESOURCE|COST|CAST_RESOURCE|资源不可释放|资源不足/.test(code));
+          const 候选冷却阻断 = item =>
+            Number(item?.cooldownRemaining ?? item?.冷却剩余 ?? item?.审计?.cooldownRemaining ?? item?.审计?.冷却剩余 ?? 0) > 0 ||
+            读取候选码(item).some(code => /COOLDOWN|CD|冷却/.test(code));
+          const 候选状态阻断 = item =>
+            item?.状态限制 === true ||
+            item?.审计?.状态限制 === true ||
+            读取候选码(item).some(code => /STATE_LOCK|CONTROLLED|SILENCED|DISARMED|STUNNED|HARD_CC|状态限制|无法行动|沉默|封技|缴械|硬控/.test(code));
           const 有资源阻断 = Number(轨迹.资源修正 || 0) <= -30 ||
-            /资源不可释放|"可释放"\s*:\s*false/.test(文本) ||
             (命中候选 ? 候选资源阻断(命中候选) : (候选.length > 0 && 候选.every(候选资源阻断)));
           return {
             候选数: 候选.length,
             资源或释放条件不足: 有资源阻断,
-            冷却证据: /冷却剩余|冷却回合|冷却中|冷却未结束|使用限制[^，。；\n]{0,40}冷却|限制原因[^，。；\n]{0,40}冷却/.test(文本),
-            状态限制证据: /状态限制|无法行动|受控|沉默中|被沉默|封技中|被封技|缴械中|被缴械|硬控中|被硬控/.test(文本),
+            冷却证据: 命中候选 ? 候选冷却阻断(命中候选) : (候选.length > 0 && 候选.every(候选冷却阻断)),
+            状态限制证据: 命中候选 ? 候选状态阻断(命中候选) : (候选.length > 0 && 候选.every(候选状态阻断)),
             目标条件不成立: !String(轨迹.目标 || '').trim() && !判定轨迹是目标规划(轨迹),
             无候选命中: 候选.length > 0 && !String(轨迹.技能 || '').trim(),
-            原始选择原因: String(轨迹.选择原因 || '').trim(),
           };
         }
 
@@ -49825,11 +49836,11 @@ class BattleUIComponent {
           if (失败.length) return 失败.join('；');
           if (/应招审计/.test(类型)) {
             if (证据.候选数 <= 0) return '当前未能捕捉到有效的规避或招架窗口';
-            if (证据.无候选命中 || /无可用候选/.test(证据.原始选择原因)) return '当前未能形成有效的规避或招架方案';
+            if (证据.无候选命中) return '当前未能形成有效的规避或招架方案';
             return '当前仍有规避或招架余地';
           }
           if (证据.候选数 <= 0) return '当前没有形成明确的出手机会';
-          if (证据.无候选命中 || /无可用候选/.test(证据.原始选择原因)) return '常规方案收益过低，被暂时否决';
+          if (证据.无候选命中) return '常规方案收益过低，被暂时否决';
           return '当前仍具备出手条件';
         }
 
@@ -49887,10 +49898,10 @@ class BattleUIComponent {
           const 技能 = normalizeBattleActionDisplayName(轨迹.finalResolvedActionName || 轨迹.实际技能 || 轨迹.技能 || '');
           const 文本 = [
             技能,
-            String(轨迹.选择原因 || ''),
-            String(轨迹.actionOverrideSource || ''),
             String(轨迹.hitCandidateName || ''),
             String(轨迹.承载方式 || ''),
+            String(轨迹.resolutionType || ''),
+            String(轨迹.skipReason || ''),
           ].join(' ');
           const 候选文本 = 读取判定流程候选列表(轨迹, 0)
             .map(item => `${读取候选名称(item)}:${Math.round(读取候选权重(item))}`)
@@ -50053,10 +50064,8 @@ class BattleUIComponent {
         function 读取判定流程局势文本(轨迹 = {}) {
           if (判定轨迹是目标规划(轨迹)) return 构建目标规划局势文本(轨迹);
           const 规范战略 = 读取侧写战略标签(轨迹);
-          const 选择原因 = 清洗判定侧写理由(轨迹.选择原因 || '', 轨迹);
           const pieces = [
-            规范战略 || 选择原因 || '',
-            规范战略 && 选择原因 && 规范战略 !== 选择原因 ? 选择原因 : '',
+            规范战略 || '',
             ...(Array.isArray(轨迹.目标理由) ? 轨迹.目标理由.slice(0, 2) : []),
             ...(Array.isArray(轨迹.前瞻理由) ? 轨迹.前瞻理由.slice(0, 2) : []),
             ...(Array.isArray(轨迹.职责理由) ? 轨迹.职责理由.slice(0, 2) : []),

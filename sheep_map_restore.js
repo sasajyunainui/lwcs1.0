@@ -7130,7 +7130,7 @@ ${logMsg}
 
 本次行动收益、时间推进与系统播报已由前端结算写回。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
 
-        dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}`, patchOps });
+        dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}`, patchOps, settlementKind: 'routine' });
       } catch (e) {
         console.error('Send map action to AI failed:', e);
       }
