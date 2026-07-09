@@ -13,7 +13,7 @@
   const 调试热更新模式 = !!宿主窗口[加载器键];
   宿主窗口[加载器键] = true;
 
-  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@e2f4d0b881d7fa70e784dde6786d7682be28eae1/';
+  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@f56a93718b188411c4e37c35e13a6cfc574f7458/';
   const 资源基础地址 = (() => {
     const 覆盖地址 = String(宿主窗口.__LWCS_资源基础地址__ || window.__LWCS_资源基础地址__ || '').trim();
     if (!覆盖地址) return 默认资源基础地址;
