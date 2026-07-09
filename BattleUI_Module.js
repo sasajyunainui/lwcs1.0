@@ -27800,10 +27800,13 @@ class BattleUIComponent {
               };
             });
           }
-          const 扰动后候选 = 是主动阶段 ? scoredCandidates : 扰动候选权重列表(scoredCandidates, 干扰强度);
+          const 主动阶段候选池 = 是主动阶段
+            ? scoredCandidates.filter(候选 => !判定候选为应招专属动作(候选))
+            : scoredCandidates;
+          const 扰动后候选 = 是主动阶段 ? 主动阶段候选池 : 扰动候选权重列表(scoredCandidates, 干扰强度);
           const 选择结果 = 是主动阶段
             ? (() => {
-                const option = [...scoredCandidates]
+                const option = [...主动阶段候选池]
                   .filter(候选 => 候选 && Number(候选.weight || 0) > 0)
                   .sort((左, 右) => {
                     const 左审计 = 左?.__主动规划审计 || {};
@@ -27883,9 +27886,7 @@ class BattleUIComponent {
             const 审计类型 = !选择结果.option
               ? '内部规划空转'
               : (是应招语境 ? '应招审计' : '主动规划');
-            const 审计候选池 = 审计类型 === '主动规划'
-              ? scoredCandidates.filter(候选 => 候选 === 选择结果.option || !判定候选为应招专属动作(候选))
-              : scoredCandidates;
+            const 审计候选池 = 审计类型 === '主动规划' ? 主动阶段候选池 : scoredCandidates;
             const 候选排序结果 = 审计候选池.map((候选, index) => {
               const 名称 = 候选?.skill?.name || 候选?.skill?.魂技名 || 候选?.__预览技能?.name || 候选?.__预览技能?.魂技名 || 候选?.name || '';
               const selected = 选择结果.option && 候选 === 选择结果.option;
@@ -48228,7 +48229,14 @@ class BattleUIComponent {
           if (!/主动规划|战术确立/.test(读取轨迹类型(normalized))) return;
           const candidates = 读取判定流程候选列表(normalized, 0);
           const finalActionName = normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || '');
-          const fatalCodes = [];
+          const existingSidecar = 轨迹.__narrativeDecisionSidecar && typeof 轨迹.__narrativeDecisionSidecar === 'object'
+            ? 轨迹.__narrativeDecisionSidecar
+            : {};
+          const fatalCodes = Array.isArray(existingSidecar.fatalCodes)
+            ? existingSidecar.fatalCodes
+                .map(code => String(code || '').trim())
+                .filter(code => code === 'INVALID_ACTION_FACT')
+            : [];
           if (!finalActionName || !String(normalized.行动者 || '').trim()) fatalCodes.push('INVALID_ACTION_FACT');
           if (finalActionName && candidates.length && !candidates.some(item => 读取候选名称(item) === finalActionName)) fatalCodes.push('CANDIDATE_FINAL_MISMATCH');
           if (candidates.some(item => !String(item?.candidateStatus || item?.状态 || item?.status || '').trim())) fatalCodes.push('NARRATION_CANDIDATE_STATUS_MISSING');
@@ -48340,6 +48348,15 @@ class BattleUIComponent {
           const 事件账本 = Array.isArray(context?.eventLedger)
             ? context.eventLedger
             : (Array.isArray(context?.combatData?.__battleEventLedger) ? context.combatData.__battleEventLedger : []);
+          const 行动链动作事实键集合 = new Set();
+          (Array.isArray(context?.resolutionTrace) ? context.resolutionTrace : [])
+            .filter(node => node && typeof node === 'object' && String(node.nodeKind || '').trim() === 'action_decision')
+            .forEach(node => {
+              const round = Number(node.round || node.sourceRound || 0);
+              const actor = String(node.actorName || '').trim();
+              const action = normalizeBattleActionDisplayName(node.finalActionName || node.actionName || '');
+              if (round > 0 && actor && action) 行动链动作事实键集合.add(`${round}::${actor}::${action}`);
+            });
           const 账本动作落地键集合 = new Set();
           const 账本行动者回合集合 = new Set();
           const 公开战报动作键集合 = new Set();
@@ -48397,11 +48414,27 @@ class BattleUIComponent {
                 String(event?.sourceActionId || '') === normalized.actionId
               );
             }
+            if (action && 行动链动作事实键集合.size) return 行动链动作事实键集合.has(`${round}::${actor}::${action}`);
             if (action && 公开战报动作键集合.size && 公开战报动作键集合.has(`${round}::${actor}::${action}`)) return true;
             if (action && 公开战报动作键集合.size && !公开战报动作键集合.has(`${round}::${actor}::${action}`)) return false;
             if (action && 账本动作落地键集合.has(`${round}::${actor}::${action}`)) return true;
             if (!action && 账本行动者回合集合.has(`${round}::${actor}`)) return true;
             return false;
+          };
+          const 标记主动叙事缺少行动事实 = trace => {
+            if (!trace || typeof trace !== 'object') return;
+            补写NarrativeDecisionSidecar(trace);
+            const sidecar = trace.__narrativeDecisionSidecar && typeof trace.__narrativeDecisionSidecar === 'object'
+              ? trace.__narrativeDecisionSidecar
+              : {};
+            const fatalCodes = Array.isArray(sidecar.fatalCodes) ? sidecar.fatalCodes.slice() : [];
+            if (!fatalCodes.includes('INVALID_ACTION_FACT')) fatalCodes.push('INVALID_ACTION_FACT');
+            trace.__narrativeDecisionSidecar = {
+              ...sidecar,
+              narrationTrustLevel: 'INVALID',
+              fatalCodes,
+              dominantReason: '',
+            };
           };
           const 绑定判定轨迹到账本动作 = trace => {
             const normalized = 归一判定轨迹(trace || {});
@@ -48533,6 +48566,7 @@ class BattleUIComponent {
             rows.push({
               type: 'trace',
               trace: 展示轨迹,
+              rawTrace: rawList[index],
             });
           }
           for (let index = rows.length - 1; index >= 0; index -= 1) {
@@ -48567,7 +48601,10 @@ class BattleUIComponent {
             }
             const trace = 归一判定轨迹(item.trace || {});
             if (判定轨迹是静默辅助规划(trace)) return;
-            if (事件账本.length && 判定轨迹是战术动作(trace) && !判定轨迹有账本落地(trace)) return;
+            if (事件账本.length && 判定轨迹是战术动作(trace) && !判定轨迹有账本落地(trace)) {
+              标记主动叙事缺少行动事实(item.rawTrace || item.trace || trace);
+              return;
+            }
             const key = 构建判定流程归并键(trace);
             const rank = 轨迹展示优先级(trace) * 1000 + index;
             const store = extras.get(key) || { 中间推演列表: [], 目标遍历详情: [] };
@@ -50775,12 +50812,42 @@ class BattleUIComponent {
             `;
         }
 
-        function 渲染NarrativeDecision开发态摘要(decisionTrace = []) {
+        function 渲染NarrativeDecision开发态摘要(decisionTrace = [], resolutionTrace = []) {
           if (!判定显示战斗开发态明细()) return '';
+          const 行动链动作事实键集合 = new Set();
+          (Array.isArray(resolutionTrace) ? resolutionTrace : [])
+            .filter(node => node && typeof node === 'object' && String(node.nodeKind || '').trim() === 'action_decision')
+            .forEach(node => {
+              const round = Number(node.round || node.sourceRound || 0);
+              const actor = String(node.actorName || '').trim();
+              const action = normalizeBattleActionDisplayName(node.finalActionName || node.actionName || '');
+              if (round > 0 && actor && action) 行动链动作事实键集合.add(`${round}::${actor}::${action}`);
+            });
+          const 标记摘要缺少行动事实 = trace => {
+            if (!trace || typeof trace !== 'object') return;
+            const normalized = 归一判定轨迹(trace || {});
+            const round = Number(normalized.回合 || normalized.round || 0);
+            const actor = String(normalized.行动者 || '').trim();
+            const action = normalizeBattleActionDisplayName(normalized.finalResolvedActionName || normalized.技能 || normalized.hitCandidateName || '');
+            if (!(round > 0) || !actor || !action || !行动链动作事实键集合.size) return;
+            if (行动链动作事实键集合.has(`${round}::${actor}::${action}`)) return;
+            const sidecar = trace.__narrativeDecisionSidecar && typeof trace.__narrativeDecisionSidecar === 'object'
+              ? trace.__narrativeDecisionSidecar
+              : {};
+            const fatalCodes = Array.isArray(sidecar.fatalCodes) ? sidecar.fatalCodes.slice() : [];
+            if (!fatalCodes.includes('INVALID_ACTION_FACT')) fatalCodes.push('INVALID_ACTION_FACT');
+            trace.__narrativeDecisionSidecar = {
+              ...sidecar,
+              narrationTrustLevel: 'INVALID',
+              fatalCodes,
+              dominantReason: '',
+            };
+          };
           const lines = (Array.isArray(decisionTrace) ? decisionTrace : [])
             .filter(trace => /主动规划|战术确立/.test(读取轨迹类型(归一判定轨迹(trace || {}))))
             .map(trace => {
               补写NarrativeDecisionSidecar(trace);
+              标记摘要缺少行动事实(trace);
               const normalized = 归一判定轨迹(trace || {});
               const sidecar = trace?.__narrativeDecisionSidecar && typeof trace.__narrativeDecisionSidecar === 'object'
                 ? trace.__narrativeDecisionSidecar
@@ -51490,9 +51557,9 @@ class BattleUIComponent {
         root.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML_IMPL__ = (trace = [], decisionTrace = []) =>
           `${渲染分回合判定流程([
             ...构建因果链行动区块条目(trace, Array.isArray(decisionTrace) ? decisionTrace : []),
-            ...构建判定流程展示数据(Array.isArray(decisionTrace) ? decisionTrace : [], [], {}),
+            ...构建判定流程展示数据(Array.isArray(decisionTrace) ? decisionTrace : [], [], { resolutionTrace: Array.isArray(trace) ? trace : [] }),
             ...构建因果链回合末聚合条目(trace),
-          ])}${渲染NarrativeDecision开发态摘要(decisionTrace)}`;
+          ])}${渲染NarrativeDecision开发态摘要(decisionTrace, trace)}`;
         root.__LWCS_RENDER_BATTLE_DECISION_ROWS_HTML_IMPL__ = (rows = []) =>
           渲染分回合判定流程(Array.isArray(rows) ? rows : []);
 

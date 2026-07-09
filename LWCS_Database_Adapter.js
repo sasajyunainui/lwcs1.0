@@ -70,6 +70,20 @@
     return typeof 函数 === 'function' ? 函数 : null;
   }
 
+  function 读取剧情模块StagingStatData(context = {}) {
+    const 读取函数 = 读取窗口函数('__LWCS_GET_STORY_MODULE_STAGING_STAT__');
+    if (typeof 读取函数 !== 'function') return null;
+    try {
+      const 结果 = 读取函数({
+        userInput: context.originalUserInput || context.userInput || '',
+        用户输入文本: context.originalUserInput || context.userInput || '',
+      });
+      return 结果 && typeof 结果 === 'object' ? 结果 : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function 读取酒馆上下文() {
     try {
       if (window.SillyTavern && typeof window.SillyTavern.getContext === 'function') return window.SillyTavern.getContext();
@@ -799,12 +813,13 @@
     const 最后角色消息文本 = String(context.lastCharMessage || 读取最新角色消息元信息().文本 || '');
     const 近场上下文 = await 生成过滤后近场上下文(原始输入, 最后角色消息文本);
     const 开场StatData = await 等待开场MVU初始化事务(原始输入);
+    const 模块StagingStatData = 读取剧情模块StagingStatData(context);
     return await 准备MVU前置数据({
       userInput: 原始输入,
       lastCharMessage: 最后角色消息文本,
       captureText: 近场上下文.captureText || '',
       plotText: '',
-      statData: 取StatData(context.statData, 原始输入) || 开场StatData || undefined,
+      statData: 模块StagingStatData || 取StatData(context.statData, 原始输入) || 开场StatData || undefined,
     });
   }
 
@@ -977,7 +992,7 @@
     }
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
     if (typeof 路由函数 !== 'function') return { action: 'continue', reason: 'module_route_bridge_unavailable' };
-    const 接管键 = 取哈希(路由块);
+    const 接管键 = 取哈希(`${context.originalUserInput || context.userInput || ''}\n${路由块}`);
     if (本轮模块路由接管表.has(接管键)) return await 本轮模块路由接管表.get(接管键);
     const 接管承诺 = (async () => {
       let 结果 = null;
@@ -1019,7 +1034,7 @@
     if (!裁断块) return { action: 'continue', reason: 'battle_adjudication_missing' };
     const 裁断函数 = 读取窗口函数('__LWCS_APPLY_BATTLE_ADJUDICATION__');
     if (typeof 裁断函数 !== 'function') return { action: 'continue', reason: 'battle_adjudication_bridge_unavailable' };
-    const 接管键 = 取哈希(裁断块);
+    const 接管键 = 取哈希(`${context.originalUserInput || context.userInput || ''}\n${裁断块}`);
     if (本轮战斗裁断接管表.has(接管键)) return await 本轮战斗裁断接管表.get(接管键);
     const 接管承诺 = (async () => {
       let 结果 = null;

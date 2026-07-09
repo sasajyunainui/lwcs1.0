@@ -16698,13 +16698,14 @@ $CONTENT
             return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
         }
     }
-    async function 准备正文生成运行时数据_ACU(userInput = '', runtimePlotText = '', finalMessage = '') {
+    async function 准备正文生成运行时数据_ACU(userInput = '', runtimePlotText = '', finalMessage = '', originalUserInput = '') {
         const 适配器 = 获取剧情推进运行时适配器_ACU();
         if (!适配器 || typeof 适配器.prepareStoryRuntimeData !== 'function')
             return null;
         try {
             return await Promise.resolve(适配器.prepareStoryRuntimeData({
                 userInput: String(userInput || ''),
+                originalUserInput: String(originalUserInput || userInput || ''),
                 runtimePlotText: String(runtimePlotText || ''),
                 finalMessage: String(finalMessage || ''),
                 lastCharMessage: getLatestAIMessageContent_ACU(),
@@ -19967,6 +19968,8 @@ $CONTENT
                 const 战斗裁断决定 = await 确认剧情推进运行时生成前置_ACU(阶段战斗裁断文本, {
                     skipSkillDesign: true,
                     source: 'plot_stage_battle_adjudication',
+                    originalUserInput: historyAnchorText,
+                    userInput: historyAnchorText,
                 });
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(战斗裁断决定);
                 if (事件文本) {
@@ -19994,6 +19997,8 @@ $CONTENT
                 const 模块路由决定 = await 确认剧情推进运行时生成前置_ACU(阶段模块路由文本, {
                     skipSkillDesign: true,
                     source: 'plot_stage_runtime',
+                    originalUserInput: historyAnchorText,
+                    userInput: historyAnchorText,
                 });
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(模块路由决定);
                 if (事件文本) {
@@ -55424,7 +55429,7 @@ $CONTENT
         const 用户输入文本 = String(userMessage || '');
         const 过滤后用户输入文本 = await 套用酒馆Prompt正则_ACU(用户输入文本, 'user');
         const 过滤后最后角色消息文本 = await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai');
-        const 运行时数据 = await 准备正文生成运行时数据_ACU(过滤后用户输入文本, runtimePlotText || '', 正文生成指导);
+        const 运行时数据 = await 准备正文生成运行时数据_ACU(过滤后用户输入文本, runtimePlotText || '', 正文生成指导, 用户输入文本);
         const 替换后正文生成指导 = await 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
             viewType: 'story',
             statData: 运行时数据 || undefined,
