@@ -4558,6 +4558,12 @@ class BattleUIComponent {
           };
         })();
       }
+      Object.keys(normalized).forEach(key => {
+        if (normalized[key] === '' || normalized[key] === null) delete normalized[key];
+      });
+      if (normalized.meta && typeof normalized.meta === 'object' && !Object.keys(normalized.meta).length) {
+        delete normalized.meta;
+      }
       return normalized;
     }
 
@@ -15511,12 +15517,26 @@ class BattleUIComponent {
       if (!summonName) return null;
       const summonType = String(召唤单位?.类型 || 召唤单位?.召唤单位类型 || 选项?.召唤单位类型 || '').trim() || '魂兽';
       const summonMode = String(召唤单位?.行动模式 || 选项?.行动模式 || 读取召唤类型配置(summonType).默认行动模式 || '协同攻击').trim();
+      const hostName = String(宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '').trim();
+      const actionName = normalizeBattleActionDisplayName(动作名 || 选项?.动作名 || '召唤');
+      const round = Number(combatData?.回合 || 0);
+      const sourceAction = [...确保战斗事件账本(combatData)].reverse().find(event =>
+        String(event?.eventKind || '').trim() === 'action_start' &&
+        Number(event?.round || 0) === round &&
+        isSameBattleReportName(event?.actorName || '', hostName) &&
+        normalizeBattleActionDisplayName(event?.actionName || event?.finalActionName || '') === actionName
+      ) || null;
+      const sourceNodeId = String(选项?.sourceNodeId || sourceAction?.chainNodeId || '').trim();
       return 写入战斗事件账本(combatData, {
         eventKind: 'summon_create',
-        round: Number(combatData?.回合 || 0),
-        actorName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
-        actionName: 动作名 || 选项?.动作名 || '召唤',
+        round,
+        actorName: hostName,
+        actionName,
         actionType: '召唤生成',
+        sourceActionName: actionName,
+        sourceActionId: String(选项?.sourceActionId || sourceAction?.actionId || '').trim(),
+        parentNodeId: String(选项?.parentNodeId || sourceNodeId).trim(),
+        sourceNodeId,
         result: 'created',
         meta: {
           summonName,

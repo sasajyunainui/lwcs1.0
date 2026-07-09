@@ -27544,12 +27544,7 @@ $CONTENT
             delete container.plot;
         }
         const hasPayload = Object.keys(container).some(key => key !== 'version');
-        if (hasPayload) {
-            first[CHAT_SCOPED_CONFIG_FIELD_ACU] = container;
-        }
-        else {
-            delete first[CHAT_SCOPED_CONFIG_FIELD_ACU];
-        }
+        setChatScopedConfigContainer_ACU(chat, hasPayload ? container : null);
         return getCurrentChatPlotScopeState_ACU(chat);
     }
     function clearCurrentChatPlotScopeState_ACU() {
@@ -58415,29 +58410,6 @@ $CONTENT
                     return false;
                 }
             },
-            switchGlobalPlotPreset: function (presetName) {
-                try {
-                    if (presetName === undefined || presetName === null) {
-                        logError_ACU('switchGlobalPlotPreset: Invalid preset name provided.');
-                        return false;
-                    }
-                    const result = applyGlobalPlotPresetSelectionForEditor_ACU(presetName, {
-                        source: 'api_global',
-                        save: true,
-                    });
-                    if (!result) {
-                        logError_ACU(`switchGlobalPlotPreset: Preset "${presetName}" not found.`);
-                        return false;
-                    }
-                    logDebug_ACU(`Switched global plot preset to: "${result.presetName || '默认预设'}"`);
-                    refreshPresetUIAfterSwitch_ACU();
-                    return true;
-                }
-                catch (e) {
-                    logError_ACU('switchGlobalPlotPreset failed:', e);
-                    return false;
-                }
-            },
             injectPlotPresetToCurrentChat: function (presetName) {
                 try {
                     if (presetName === undefined || presetName === null) {
@@ -58534,9 +58506,9 @@ $CONTENT
                     }
                     settings_ACU.plotSettings.promptPresets = presets;
                     saveSettingsAndNotify_ACU();
-                    let switchedGlobalPreset = false;
+                    let switchedCurrentChat = false;
                     if (switchTo) {
-                        switchedGlobalPreset = ctx.getApi().switchGlobalPlotPreset(finalName) === true;
+                        switchedCurrentChat = ctx.getApi().injectPlotPresetToCurrentChat(finalName) === true;
                     }
                     else {
                         // 导入预设后刷新 UI 下拉框与状态显示
@@ -58544,8 +58516,8 @@ $CONTENT
                     }
                     return {
                         success: true,
-                        message: switchedGlobalPreset
-                            ? `预设 "${finalName}" 已成功导入到全局预设库，并已切换为全局剧情推进预设。`
+                        message: switchedCurrentChat
+                            ? `预设 "${finalName}" 已成功导入到全局预设库，并已切换当前聊天使用该预设。`
                             : `预设 "${finalName}" 已成功导入到全局预设库！`,
                         presetName: finalName,
                     };
