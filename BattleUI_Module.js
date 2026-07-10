@@ -4715,7 +4715,12 @@ class BattleUIComponent {
           const summonMode = String(item?.meta?.summonMode || item?.summonMode || '协同攻击').trim();
           const mentalLoad = Math.max(0, Math.round(Number(item?.meta?.mentalLoad ?? item?.mentalLoad ?? 0)));
           const loadText = mentalLoad > 0 ? `，精神负载 ${mentalLoad}` : '';
-          return `召出${summonType}【${summonName}】。行动模式：${summonMode}${loadText}，将从下一回合开始参战`;
+          const timingText = summonMode === '协同攻击'
+            ? '，本动作结束时即可协同攻击'
+            : summonMode === '护卫'
+              ? '，生成后立即可以护卫拦截'
+              : '，从下一次自身行动轴开始行动';
+          return `召出${summonType}【${summonName}】。行动模式：${summonMode}${loadText}${timingText}`;
         }).filter(Boolean).join('；');
         const text = `${prefix}${group.actor}施展【${group.action || '召唤'}】，${summonText}。`;
         const sourceEventIds = group.items.map(item => String(item?.eventId || '').trim()).filter(Boolean);
@@ -15275,6 +15280,40 @@ class BattleUIComponent {
       return 当前回合 > 0 && 生成回合 > 0 && 当前回合 <= 生成回合;
     }
 
+    function 读取召唤剩余有效窗口(召唤单位 = {}) {
+      return Math.max(0, Number(召唤单位?.__来源状态?.duration || 0));
+    }
+
+    function 消费召唤有效窗口(combatData = {}, 召唤单位 = {}, 原因 = '完成行动窗口') {
+      const 来源状态 = 召唤单位?.__来源状态;
+      if (!来源状态 || typeof 来源状态.duration !== 'number' || 召唤单位.已消散 === true) return '';
+      来源状态.duration = Math.max(0, Number(来源状态.duration || 0) - 1);
+      if (来源状态.duration > 0) return '';
+      return 移除召唤运行态单位(combatData, 召唤单位, 原因);
+    }
+
+    function 记录召唤无目标结果(combatData = {}, 召唤单位 = {}, 原因 = 'NO_VALID_TARGET') {
+      return 写入战斗事件账本(combatData, {
+        eventKind: 'failed_action',
+        round: Number(combatData?.回合 || 0),
+        actorName: 召唤单位?.name || 召唤单位?.名称 || '',
+        targetName: '',
+        actionName: 召唤单位?.行动模式 === '协同攻击' ? '召唤协同攻击' : '召唤行动',
+        actionType: 召唤单位?.行动模式 === '协同攻击' ? 'summon_assist' : 'summon_action',
+        actionRole: 召唤单位?.行动模式 === '协同攻击' ? 'ASSIST' : 'ACTIVE',
+        result: 'fail',
+        failReason: '当前没有合法攻击目标',
+        reasonCode: 原因,
+        meta: {
+          source: 'summon',
+          reasonCode: 原因,
+          summonName: 召唤单位?.name || 召唤单位?.名称 || '',
+          summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
+          summonMode: 召唤单位?.行动模式 || '',
+        },
+      });
+    }
+
     function 写入召唤精神控制事件(combatData = {}, 宿主 = {}, 召唤单位 = {}, 结果 = '', 附加 = {}) {
       const 召唤名 = String(召唤单位?.name || 召唤单位?.名称 || '召唤物').trim();
       if (!combatData || !召唤名) return null;
@@ -15312,10 +15351,28 @@ class BattleUIComponent {
 
     function 移除召唤运行态单位(combatData = {}, 召唤单位 = {}, 原因 = '消散') {
       if (!召唤单位 || 召唤单位.已消散 === true) return '';
+      const 宿主 = 召唤单位.__宿主;
+      写入战斗事件账本(combatData, {
+        eventKind: 'summon_end',
+        round: Number(combatData?.回合 || 0),
+        actorName: 召唤单位?.name || 召唤单位?.名称 || '',
+        targetName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
+        actionName: '召唤离场',
+        actionType: 'summon_end',
+        actionRole: 召唤单位?.行动模式 === '协同攻击' || 召唤单位?.行动模式 === '护卫' ? 'ASSIST' : 'ACTIVE',
+        result: 'ended',
+        reasonCode: /窗口|持续|结束/.test(String(原因 || '')) ? 'SUMMON_WINDOW_EXHAUSTED' : 'SUMMON_REMOVED',
+        meta: {
+          source: 'summon',
+          reasonText: String(原因 || '消散'),
+          summonName: 召唤单位?.name || 召唤单位?.名称 || '',
+          summonHostName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
+          summonMode: 召唤单位?.行动模式 || '',
+        },
+      });
       召唤单位.已消散 = true;
       同步召唤单位镜像(召唤单位);
       if (combatData?.召唤单位表 && 召唤单位.召唤键) delete combatData.召唤单位表[召唤单位.召唤键];
-      const 宿主 = 召唤单位.__宿主;
       if (宿主?.状态效果 && 召唤单位.来源状态键 && 宿主.状态效果[召唤单位.来源状态键]) delete 宿主.状态效果[召唤单位.来源状态键];
       return `[召唤消散] ${召唤单位.name || '召唤物'}因${原因}离场。`;
     }
@@ -15489,6 +15546,39 @@ class BattleUIComponent {
         .sort((左, 右) => 评分召唤攻击技能(召唤单位, 右, 目标) - 评分召唤攻击技能(召唤单位, 左, 目标))[0] || 普攻;
     }
 
+    function 估算召唤单次攻击结算(召唤单位 = {}, 目标 = {}, 技能 = {}) {
+      if (!召唤单位 || !目标 || !技能) return { damage: 0, dodgeRate: 0, hitProbability: 0, expectedDamage: 0 };
+      const 伤害效果 = getSkillEffects(技能, { 行为规划: true, actor: 召唤单位, target: 目标, defender: 目标 })
+        .find(effect => String(effect?.原型 || '').trim() === '伤害结算') || {};
+      const 威力 = Math.max(0, Number(伤害效果.威力倍率 || 0));
+      if (!(威力 > 0)) return { damage: 0, dodgeRate: 0, hitProbability: 0, expectedDamage: 0 };
+      const 召唤最终 = 召唤单位.final || buildCombatFinalStats(召唤单位);
+      const 目标最终 = 目标.final || buildCombatFinalStats(目标);
+      const 伤害类型 = 规范化战斗伤害类型(伤害效果.伤害类型, 技能);
+      const 攻击属性 = 战斗伤害是精神攻击(伤害类型)
+        ? Math.max(1, Number(召唤最终.men_max || 召唤单位.men_max || 1))
+        : Math.max(1, Number(召唤最终.str || 召唤单位.str || 1), Number(召唤最终.sp_max || 召唤单位.sp_max || 1));
+      const 防御属性 = 战斗伤害是精神攻击(伤害类型)
+        ? Math.max(1, 计算紫极魔瞳防守精神攻势值_战斗(目标, 目标最终, 伤害效果, 技能))
+        : Math.max(1, Number(目标最终.def || 目标.def || 1));
+      const damage = Math.max(1, Math.floor((攻击属性 * 威力) / Math.max(80, 防御属性 + 100)));
+      const 攻势敏捷 = Math.max(1, Number(召唤最终.agi || 召唤单位.agi || 1));
+      const 攻势精神上限 = Math.max(1, Number(召唤最终.men_max || 召唤单位.men_max || 1));
+      const 目标有效敏捷 = Math.max(0, Number(目标最终.agi || 目标.agi || 0)) * Math.max(0.1, Number(目标.temp_agi_mult || 1));
+      const 闪避尺度 = 战斗伤害是远程攻击(伤害类型) ? 11 : 战斗伤害是精神攻击(伤害类型) ? 10 : 8;
+      let dodgeRate = (目标有效敏捷 / Math.max(1, 攻势敏捷 + 攻势精神上限)) * 闪避尺度;
+      dodgeRate += (Number(目标.temp_dodge_bonus || 0) - Number(目标.temp_dodge_penalty || 0)) * 100;
+      dodgeRate -= Math.max(0, Number(目标.temp_lock_level || 0)) * 8;
+      dodgeRate = Math.max(0, Math.min(24, dodgeRate));
+      const hitProbability = Math.max(0, Math.min(1, 1 - dodgeRate / 100));
+      return {
+        damage,
+        dodgeRate: Number(dodgeRate.toFixed(2)),
+        hitProbability: Number(hitProbability.toFixed(4)),
+        expectedDamage: Math.max(0, Math.round(damage * hitProbability)),
+      };
+    }
+
     function 记录召唤物规划审计(combatData = {}, 召唤单位 = {}, 目标 = {}, 技能 = {}, 来源 = '召唤物基础动作候选') {
       const 规划上下文 = 构建规划上下文(召唤单位, 目标, combatData, { combatData });
       const 优先项 = 目标 ? 读取规划目标优先项(规划上下文, 目标, '敌方') : { 理由: [], 优先级: 0 };
@@ -15562,7 +15652,9 @@ class BattleUIComponent {
           createdRound: Math.max(0, Number(召唤单位?.生成回合 || combatData?.回合 || 0)),
           hostName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
           hostSide: 召唤单位?.阵营 || 读取召唤宿主阵营(combatData, 宿主),
-          startsNextRound: true,
+          windowCount: 读取召唤剩余有效窗口(召唤单位),
+          firstWindow: summonMode === '协同攻击' ? 'host_action_end' : summonMode === '护卫' ? 'immediate_guard' : 'next_action_axis',
+          startsNextRound: summonMode === '自主行动',
         },
       });
     }
@@ -15587,7 +15679,8 @@ class BattleUIComponent {
       if (!召唤单位 || !目标 || !isCombatUnitAlive(召唤单位) || !isCombatUnitAlive(目标)) return '';
       const 技能 = 选择召唤攻击技能(召唤单位, 目标);
       const 技能名 = 技能?.name || 技能?.魂技名 || '普通攻击';
-      const 动作类型 = 原因 === '召唤协同追击' ? 'summon_assist' : '召唤自主行动';
+      const 是协同行动 = /召唤协同/.test(String(原因 || ''));
+      const 动作类型 = 是协同行动 ? 'summon_assist' : '召唤自主行动';
       const 召唤动作事件 = 写入战斗事件账本(combatData, {
         eventKind: 'action_start',
         round: Number(combatData?.回合 || 0),
@@ -15595,9 +15688,11 @@ class BattleUIComponent {
         targetName: 目标?.name || 目标?.名称 || '',
         actionName: 技能名,
         actionType: 动作类型,
+        actionRole: 是协同行动 ? 'ASSIST' : 'ACTIVE',
         result: 'declared',
         meta: {
           source: 'summon',
+          triggerMode: String(options?.triggerMode || '').trim(),
           summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
           summonType: 召唤单位?.类型 || '',
           summonMode: 召唤单位?.行动模式 || '',
@@ -15616,23 +15711,29 @@ class BattleUIComponent {
         sourceNodeId: 召唤动作事件?.chainNodeId || '',
         result: 'reaction_failed',
         meta: {
-          source: 原因 === '召唤协同追击' ? 'summon_assist_target_reaction' : 'summon_simple_attack_target_reaction',
+          source: 是协同行动 ? 'summon_assist_target_reaction' : 'summon_simple_attack_target_reaction',
           reasonCode: 'REACTION_FAILED',
           reasonText: '未形成有效应招动作',
           summonName: 召唤单位?.name || 召唤单位?.名称 || '',
           summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
         },
       });
-      const 伤害效果 = getSkillEffects(技能).find(effect => String(effect?.原型 || '').trim() === '伤害结算') || {};
-      const 威力 = Math.max(60, Number(伤害效果.威力倍率 || 90));
-      const 攻击属性 = Math.max(Number(召唤单位.final?.str || 召唤单位.str || 1), Number(召唤单位.final?.sp_max || 召唤单位.sp_max || 1));
-      const 防御属性 = Math.max(1, Number((目标.final || buildCombatFinalStats(目标)).def || 目标.def || 1));
-      const 伤害 = Math.max(1, Math.floor((攻击属性 * 威力) / Math.max(80, 防御属性 + 100)));
+      const 预估 = 估算召唤单次攻击结算(召唤单位, 目标, 技能);
+      const dodgeRoll = rollD100();
+      const evaded = 预估.dodgeRate > 0 && dodgeRoll <= 预估.dodgeRate;
       const 账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
       const 伤害包 = applyResolvedDamagePackage(召唤单位, { action_type: 动作类型, type: 动作类型, skill: 技能, source: 'summon' }, {
-        targetResults: [{ target: 目标, targetName: 目标.name || 目标.名称 || '目标', damage: 伤害, kind: 'primary' }],
-        dmg: 伤害,
-        totalProjectedDamage: 伤害,
+        targetResults: [{
+          target: 目标,
+          targetName: 目标.name || 目标.名称 || '目标',
+          damage: 预估.damage,
+          kind: 'primary',
+          evaded,
+          dodgeRate: 预估.dodgeRate,
+          dodgeRoll,
+        }],
+        dmg: evaded ? 0 : 预估.damage,
+        totalProjectedDamage: 预估.damage,
       }, { primaryTarget: 目标, combatData });
       const 召唤伤害事件 = (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [])
         .slice(Math.max(0, 账本起点))
@@ -15644,7 +15745,8 @@ class BattleUIComponent {
           isSameBattleReportName(event.targetName || '', 目标?.name || 目标?.名称 || '') &&
           normalizeBattleActionDisplayName(event.actionName || '') === normalizeBattleActionDisplayName(技能名)
         ) || null;
-      if (原因 === '召唤协同追击') {
+      const 实际伤害 = Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage'));
+      if (是协同行动) {
         const 宿主伤害事件 = options?.hostDamageEvent || null;
         写入战斗事件账本(combatData, {
           eventKind: 'summon_assist',
@@ -15653,13 +15755,17 @@ class BattleUIComponent {
           targetName: 目标?.name || 目标?.名称 || '',
           actionName: 技能名,
           actionType: 'summon_assist',
-          result: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害) > 0 ? 'success' : 'no_effect',
-          damage: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害),
+          actionRole: 'ASSIST',
+          result: 实际伤害 > 0 ? 'success' : evaded ? 'miss' : 'no_effect',
+          damage: 实际伤害,
           sourceNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
           parentNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
           meta: {
             source: 'summon',
-            damage: Math.max(0, 读取事件账本数值(召唤伤害事件 || {}, 'damage') || 伤害),
+            triggerMode: String(options?.triggerMode || '').trim(),
+            damage: 实际伤害,
+            dodgeRate: 预估.dodgeRate,
+            dodgeRoll,
             sourceEventId: String(召唤伤害事件?.eventId || '').trim(),
             summonName: 召唤单位?.name || 召唤单位?.名称 || '',
             summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
@@ -15676,7 +15782,8 @@ class BattleUIComponent {
         });
       }
       const 死亡日志 = 处理召唤单位死亡(combatData, 目标);
-      return `[${原因}] ${召唤单位.name || '召唤物'}以[${技能名}]命中${目标.name || '目标'}。${伤害包.log ? ` ${伤害包.log}` : ''}${死亡日志 ? ` ${死亡日志}` : ''}`;
+      const 命中描述 = evaded ? `未能命中${目标.name || '目标'}` : `命中${目标.name || '目标'}`;
+      return `[${原因}] ${召唤单位.name || '召唤物'}以[${技能名}]${命中描述}。${伤害包.log ? ` ${伤害包.log}` : ''}${死亡日志 ? ` ${死亡日志}` : ''}`;
     }
 
     function 执行自主召唤行动(combatData = {}) {
@@ -15684,12 +15791,18 @@ class BattleUIComponent {
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '自主行动' }).forEach(单位 => {
         if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
-        const 目标 = 选择召唤攻击目标(单位, combatData);
-        if (!目标) return;
         单位.__本回合已召唤行动 = true;
-        const 技能 = 选择召唤攻击技能(单位, 目标);
-        记录召唤物规划审计(combatData, 单位, 目标, 技能, '回合尾召唤物自主行动');
-        日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+        const 目标 = 选择召唤攻击目标(单位, combatData);
+        if (!目标) {
+          记录召唤无目标结果(combatData, 单位);
+          日志.push(`[召唤行动取消] ${单位.name || '召唤物'}当前没有合法目标。`);
+        } else {
+          const 技能 = 选择召唤攻击技能(单位, 目标);
+          记录召唤物规划审计(combatData, 单位, 目标, 技能, '回合尾召唤物自主行动');
+          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+        }
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽');
+        if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
     }
@@ -15699,64 +15812,73 @@ class BattleUIComponent {
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '自主行动' }).forEach(单位 => {
         if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
-        const 目标 = 选择召唤攻击目标(单位, combatData);
-        if (!目标) return;
-        const 技能 = 选择召唤攻击技能(单位, 目标);
-        const 技能名 = 技能?.name || 技能?.魂技名 || '普通攻击';
-        写入战斗事件账本(combatData, {
-          eventKind: 'action_start',
-          round: Number(combatData?.回合 || 0),
-          actorName: 单位?.name || 单位?.名称 || '',
-          targetName: 目标?.name || 目标?.名称 || '',
-          actionName: 技能名,
-          actionType: '召唤自主行动',
-          targetScope: 'single',
-          result: 'declared',
-          meta: {
-            source: 'summon',
-            summonHostName: 单位?.宿主名 || 单位?.__宿主?.name || 单位?.__宿主?.名称 || '',
-            summonType: 单位?.类型 || '',
-            summonMode: 单位?.行动模式 || '',
-          },
-        });
-        记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物自主行动');
-        const 账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-        const 结果 = runActorTurn({ char: 单位, side: 单位.阵营 === '敌方' ? 'enemy' : 'player' }, {
-          combatData,
-          round: Number(combatData?.回合 || 0),
-          logs: [],
-        });
         单位.__本回合已召唤行动 = true;
-        const 当前回合 = Number(combatData?.回合 || 0);
-        const 召唤动作已落地 = (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [])
-          .slice(Math.max(0, 账本起点))
-          .some(event =>
-            Number(event?.round || 0) === 当前回合 &&
-            isSameBattleReportName(event?.actorName || '', 单位?.name || 单位?.名称 || '') &&
-            ['hit_result', 'state_apply', 'blocked_action', 'failed_action'].includes(String(event?.eventKind || '').trim())
-          );
-        if (结果?.log) 日志.push(结果.log);
-        if (!召唤动作已落地) {
-          记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物兜底结算');
-          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+        const 目标 = 选择召唤攻击目标(单位, combatData);
+        if (!目标) {
+          记录召唤无目标结果(combatData, 单位);
+          日志.push(`[召唤行动取消] ${单位.name || '召唤物'}当前没有合法目标。`);
+        } else {
+          const 技能 = 选择召唤攻击技能(单位, 目标);
+          记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物自主行动');
+          const 账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
+          const 结果 = runActorTurn({ char: 单位, side: 单位.阵营 === '敌方' ? 'enemy' : 'player' }, {
+            combatData,
+            round: Number(combatData?.回合 || 0),
+            logs: [],
+          });
+          const 当前回合 = Number(combatData?.回合 || 0);
+          const 召唤动作已落地 = (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [])
+            .slice(Math.max(0, 账本起点))
+            .some(event =>
+              Number(event?.round || 0) === 当前回合 &&
+              isSameBattleReportName(event?.actorName || '', 单位?.name || 单位?.名称 || '') &&
+              ['hit_result', 'state_apply', 'blocked_action', 'failed_action'].includes(String(event?.eventKind || '').trim())
+            );
+          if (结果?.log) 日志.push(结果.log);
+          if (!召唤动作已落地) {
+            记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物兜底结算');
+            日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+          }
         }
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽');
+        if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
     }
 
     function 执行协同召唤追击(宿主 = {}, 默认目标 = {}, 有效伤害 = 0, combatData = {}) {
-      if (!(Number(有效伤害 || 0) > 0)) return '';
       const 日志 = [];
-      const 宿主伤害事件 = 查找最近宿主有效伤害事件(combatData, 宿主, 默认目标);
-      读取召唤单位列表(combatData, { 宿主, 行动模式: '协同攻击' }).forEach(单位 => {
-        if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位) || !isCombatUnitAlive(默认目标)) return;
+      const 协同列表 = 读取召唤单位列表(combatData, { 宿主, 行动模式: '协同攻击' });
+      if (!协同列表.length) return '';
+      if (!isCombatUnitAbleToFight(宿主)) {
+        协同列表.forEach(单位 => {
+          const 消散日志 = 移除召唤运行态单位(combatData, 单位, '宿主失去战斗能力');
+          if (消散日志) 日志.push(消散日志);
+        });
+        return 日志.join(' ');
+      }
+      const 宿主造成有效伤害 = Number(有效伤害 || 0) > 0;
+      const 宿主伤害事件 = 宿主造成有效伤害 ? 查找最近宿主有效伤害事件(combatData, 宿主, 默认目标) : null;
+      协同列表.forEach(单位 => {
+        if (单位.__本回合已召唤行动 || !isCombatUnitAlive(单位)) return;
         单位.__本回合已召唤行动 = true;
-        const 技能 = 选择召唤攻击技能(单位, 默认目标);
-        记录召唤物规划审计(combatData, 单位, 默认目标, 技能, '宿主有效伤害后的召唤协同追击');
-        日志.push(结算运行态召唤单位简易攻击(单位, 默认目标, combatData, '召唤协同追击', {
-          hostDamageEvent: 宿主伤害事件,
-          hostName: 宿主?.name || 宿主?.名称 || '',
-        }));
+        const 目标 = 宿主造成有效伤害 && isCombatUnitAlive(默认目标) ? 默认目标 : 选择召唤攻击目标(单位, combatData);
+        if (!目标) {
+          记录召唤无目标结果(combatData, 单位);
+          日志.push(`[召唤协同取消] ${单位.name || '召唤物'}当前没有合法集火目标。`);
+        } else {
+          const 技能 = 选择召唤攻击技能(单位, 目标);
+          const 来源 = 宿主造成有效伤害 ? '宿主有效伤害后的召唤协同追击' : '宿主动作结束后的召唤协同兜底';
+          const 原因 = 宿主造成有效伤害 ? '召唤协同追击' : '召唤协同兜底';
+          记录召唤物规划审计(combatData, 单位, 目标, 技能, 来源);
+          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, 原因, {
+            hostDamageEvent: 宿主伤害事件,
+            hostName: 宿主?.name || 宿主?.名称 || '',
+            triggerMode: 宿主造成有效伤害 ? 'host_damage' : 'host_action_end',
+          }));
+        }
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '协同行动窗口耗尽');
+        if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
     }
@@ -15765,6 +15887,16 @@ class BattleUIComponent {
       const 阵营 = 读取召唤宿主阵营(combatData, 受击者);
       return 读取召唤单位列表(combatData, { 阵营, 行动模式: '护卫' })
         .find(单位 => isCombatUnitAlive(单位) && !单位.__本回合已召唤行动 && !isCombatUnitIdentityMatch(单位, 受击者?.name || 受击者?.名称 || 受击者)) || null;
+    }
+
+    function 结算护卫召唤回合窗口(combatData = {}) {
+      const 日志 = [];
+      读取召唤单位列表(combatData, { 行动模式: '护卫' }).forEach(单位 => {
+        if (召唤单位本回合刚生成(单位, combatData)) return;
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '护卫保护窗口耗尽');
+        if (到期日志) 日志.push(到期日志);
+      });
+      return 日志.join(' ');
     }
 
     function 构建召唤夹具单位(名称, 阵营 = '玩家') {
@@ -15803,7 +15935,7 @@ class BattleUIComponent {
       const 召唤状态 = {
         类型: 'buff',
         层数: 1,
-        duration: 3,
+        duration: Math.max(1, Number(配置.持续回合 || 3)),
         状态效果: {},
         战斗效果: createEmptyCombatEffectMap(),
           召唤物: {
@@ -15873,7 +16005,9 @@ class BattleUIComponent {
         断言召唤夹具(getCombatHpValue(自主.召唤单位) < getCombatHpMaxValue(自主.召唤单位), '群体未命中召唤物');
         断言召唤夹具(!!读取护卫召唤单位(护卫.combatData, 护卫.宿主), '护卫召唤不可读');
         断言召唤夹具(执行协同召唤追击(协同.宿主, 协同.敌人, 20, 协同.combatData).includes('召唤协同追击'), '协同追击未触发');
-        断言召唤夹具(执行自主召唤行动(自主.combatData).includes('召唤自主行动'), '自主行动未触发');
+        自主.combatData.回合 = 2;
+        执行召唤回合开始(自主.combatData);
+        断言召唤夹具(执行自主召唤行动(自主.combatData).includes('召唤自主行动'), '自主行动未在下一行动轴触发');
         日志.push('群体、护卫、协同、自主路径成立');
       });
       注册('收回死亡精神', 日志 => {
@@ -15988,10 +16122,78 @@ class BattleUIComponent {
         断言召唤夹具(剩余名称.join('|') === '比蒙巨兽#1|比蒙巨兽#3|比蒙巨兽#4', '编号召唤未保持独立单位');
         日志.push('其他召唤生物批量编号、单体收回、重复追加成立');
       });
+      注册('协同生成当回合行动一次', 日志 => {
+        const 夹具 = 构建召唤夹具战斗态({ 名称: '一回合协同兽', 行动模式: '协同攻击', 持续回合: 1 });
+        const 协同日志 = 执行协同召唤追击(夹具.宿主, 夹具.敌人, 0, 夹具.combatData);
+        const 协同事件 = (夹具.combatData.__battleEventLedger || []).filter(event => event?.eventKind === 'summon_assist');
+        断言召唤夹具(/召唤协同兜底/.test(协同日志), `生成当回合未获得协同兜底窗口:${协同日志}`);
+        断言召唤夹具(协同事件.length === 1 && 协同事件[0]?.meta?.triggerMode === 'host_action_end', '协同兜底未按宿主动作结束记账');
+        断言召唤夹具(!读取召唤单位列表(夹具.combatData, { 宿主: 夹具.宿主 }).length, '持续1回合协同兽行动后未到期');
+        执行协同召唤追击(夹具.宿主, 夹具.敌人, 20, 夹具.combatData);
+        断言召唤夹具((夹具.combatData.__battleEventLedger || []).filter(event => event?.eventKind === 'summon_assist').length === 1, '协同召唤同回合重复行动');
+        日志.push('协同召唤生成当回合获得窗口，宿主无伤时兜底攻击，且只行动一次');
+      });
+      注册('自主持续1回合下一行动轴一次', 日志 => {
+        const 夹具 = 构建召唤夹具战斗态({ 名称: '一回合自主兽', 行动模式: '自主行动', 持续回合: 1 });
+        断言召唤夹具(!执行自主召唤行动轴回合(夹具.combatData), '自主召唤生成当回合错误行动');
+        断言召唤夹具(读取召唤剩余有效窗口(夹具.召唤单位) === 1, '自主召唤未行动却消耗窗口');
+        夹具.combatData.回合 = 2;
+        执行召唤回合开始(夹具.combatData);
+        const 行动日志 = 执行自主召唤行动轴回合(夹具.combatData);
+        断言召唤夹具(/召唤|攻击|命中|未能命中/.test(行动日志), `自主召唤下一行动轴未行动:${行动日志}`);
+        断言召唤夹具(!读取召唤单位列表(夹具.combatData, { 宿主: 夹具.宿主 }).length, '自主召唤完成一次行动后未到期');
+        日志.push('自主召唤从下一行动轴开始，持续1回合只完成一次行动');
+      });
+      注册('护卫完整保护窗口', 日志 => {
+        const 夹具 = 构建召唤夹具战斗态({ 名称: '一回合护卫兽', 行动模式: '护卫', 持续回合: 1 });
+        断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤生成后不能立即拦截');
+        断言召唤夹具(!结算护卫召唤回合窗口(夹具.combatData), '护卫召唤生成回合错误消耗完整窗口');
+        夹具.combatData.回合 = 2;
+        执行召唤回合开始(夹具.combatData);
+        断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤完整保护回合开始时不可用');
+        const 到期日志 = 结算护卫召唤回合窗口(夹具.combatData);
+        断言召唤夹具(/护卫保护窗口耗尽/.test(到期日志), `护卫完整窗口结束后未到期:${到期日志}`);
+        日志.push('护卫召唤生成后立即可拦截，并在完整保护回合结束后消费窗口');
+      });
+      注册('召唤无目标明确失败', 日志 => {
+        const 夹具 = 构建召唤夹具战斗态({ 名称: '无目标协同兽', 行动模式: '协同攻击', 持续回合: 1 });
+        设置战斗血量值(夹具.敌人, 0);
+        夹具.敌人.状态 = { ...(夹具.敌人.状态 || {}), 存活: false };
+        夹具.combatData.参战者.team_enemy = [];
+        const 结果日志 = 执行协同召唤追击(夹具.宿主, null, 0, 夹具.combatData);
+        const 失败事件 = (夹具.combatData.__battleEventLedger || []).find(event => event?.eventKind === 'failed_action' && String(event?.reasonCode || event?.meta?.reasonCode || '').trim() === 'NO_VALID_TARGET');
+        断言召唤夹具(/没有合法集火目标/.test(结果日志) && !!失败事件, '召唤无目标未记录明确失败');
+        断言召唤夹具(!(夹具.combatData.__battleEventLedger || []).some(event => event?.eventKind === 'hit_result' && event?.actorName === 夹具.召唤单位.name), '召唤无目标制造了虚假攻击');
+        日志.push('召唤无合法目标时记录失败并消费窗口，不制造攻击事实');
+      });
+      注册('协同宿主受控与失能', 日志 => {
+        const 受控 = 构建召唤夹具战斗态({ 名称: '受控协同兽', 行动模式: '协同攻击', 持续回合: 1 });
+        受控.宿主.状态效果.夹具硬控 = { 类型: 'debuff', duration: 1, 战斗效果: { ...createEmptyCombatEffectMap(), skip_turn: true } };
+        const 受控日志 = 执行协同召唤追击(受控.宿主, 受控.敌人, 0, 受控.combatData);
+        断言召唤夹具(/召唤协同兜底/.test(受控日志), '宿主受控后协同召唤没有在动作结束兜底');
+        const 失能 = 构建召唤夹具战斗态({ 名称: '失能协同兽', 行动模式: '协同攻击', 持续回合: 2 });
+        设置战斗血量值(失能.宿主, 0);
+        const 失能日志 = 执行协同召唤追击(失能.宿主, 失能.敌人, 0, 失能.combatData);
+        断言召唤夹具(/宿主失去战斗能力/.test(失能日志), '宿主失能后召唤物未明确离场');
+        断言召唤夹具(!(失能.combatData.__battleEventLedger || []).some(event => event?.eventKind === 'hit_result' && event?.actorName === 失能.召唤单位.name), '宿主失能后召唤物制造虚假攻击');
+        日志.push('宿主受控时协同兜底，宿主失能时召唤物明确离场');
+      });
+      注册('召唤评分纯计算', 日志 => {
+        const 夹具 = 构建召唤夹具战斗态({ 名称: '评分基准兽', 行动模式: '协同攻击', 持续回合: 2 });
+        移除召唤运行态单位(夹具.combatData, 夹具.召唤单位, '评分夹具重置');
+        夹具.宿主.men = 10000;
+        夹具.宿主.men_max = 10000;
+        const before = JSON.stringify(夹具.combatData);
+        const mutationBefore = 战斗评分预估写入次数;
+        const ev = 估算召唤生成释放权重({ 原型: '召唤生成', 召唤单位类型: '其他召唤生物', 召唤物名称: '评分兽', 召唤数量: 1, 行动模式: '协同攻击', 强度: 1, 持续回合: 2 }, 夹具.宿主, 夹具.敌人, { combatData: 夹具.combatData });
+        断言召唤夹具(Number.isFinite(ev) && ev > 0, `召唤EV未计算实际收益:${ev}`);
+        断言召唤夹具(before === JSON.stringify(夹具.combatData) && mutationBefore === 战斗评分预估写入次数, '召唤评分预估写入了真实战斗态');
+        日志.push(`召唤EV=${ev}，预估阶段无战斗态写入`);
+      });
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
-    root.__LWCS_LIST_SUMMON_FIXTURES__ = () => ['生成入表', '受击治疗护盾状态', '群体护卫协同自主', '收回死亡精神', '目标池与单体收回', '分身目标隔离', '批量编号重复召唤'];
+    root.__LWCS_LIST_SUMMON_FIXTURES__ = () => ['生成入表', '受击治疗护盾状态', '群体护卫协同自主', '收回死亡精神', '目标池与单体收回', '分身目标隔离', '批量编号重复召唤', '协同生成当回合行动一次', '自主持续1回合下一行动轴一次', '护卫完整保护窗口', '召唤无目标明确失败', '协同宿主受控与失能', '召唤评分纯计算'];
     root.__LWCS_RUN_SUMMON_FIXTURE_BATCH__ = (名称 = '') => 运行召唤夹具(名称);
 
     function 构建战斗回归夹具单位(名称, 系别 = '强攻系') {
@@ -21741,6 +21943,41 @@ class BattleUIComponent {
         }
       });
 
+      const summonActionGroups = new Map();
+      eventLedger.filter(event => {
+        const kind = String(event?.eventKind || '').trim();
+        const actionType = String(event?.actionType || '').trim();
+        return kind === 'action_start' && /summon_assist|召唤自主行动/.test(actionType);
+      }).forEach(event => {
+        const key = [Number(event?.round || 0), String(event?.actorName || '').trim()].join('|');
+        if (!summonActionGroups.has(key)) summonActionGroups.set(key, []);
+        summonActionGroups.get(key).push(String(event?.eventId || '').trim());
+      });
+      summonActionGroups.forEach((eventIds, key) => {
+        if (eventIds.length > 1) pushFatal('SUMMON_DUPLICATE_ACTION', { key, eventIds });
+      });
+      eventLedger.filter(event => String(event?.eventKind || '').trim() === 'summon_end' && String(event?.ruleCode || event?.reasonCode || '').trim() === 'SUMMON_WINDOW_EXHAUSTED').forEach(endEvent => {
+        const summonName = String(endEvent?.actorName || endEvent?.meta?.summonName || '').trim();
+        const endRound = Number(endEvent?.round || 0);
+        const createEvent = [...eventLedger].reverse().find(event =>
+          String(event?.eventKind || '').trim() === 'summon_create' &&
+          String(event?.meta?.summonName || '').trim() === summonName &&
+          Number(event?.round || 0) <= endRound
+        );
+        const createRound = Number(createEvent?.round || 0);
+        const actionEvent = eventLedger.find(event => {
+          if (String(event?.actorName || event?.meta?.summonName || '').trim() !== summonName) return false;
+          const round = Number(event?.round || 0);
+          if (round < createRound || round > endRound) return false;
+          const kind = String(event?.eventKind || '').trim();
+          const actionType = String(event?.actionType || '').trim();
+          return (kind === 'action_start' && /summon_assist|召唤自主行动/.test(actionType)) ||
+            kind === 'summon_guard' ||
+            (kind === 'failed_action' && /summon/.test(actionType));
+        });
+        if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
+      });
+
       const terminalByAction = new Map();
       eventLedger.forEach(event => {
         const actionId = String(event?.sourceActionId || event?.actionId || '').trim();
@@ -21835,6 +22072,7 @@ class BattleUIComponent {
       const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
       const sourceSnapshot = JSON.stringify(sourceCombatData);
       const combatData = deepClonePlain(sourceCombatData);
+      const scoringMutationCountBefore = Number(战斗评分预估写入次数 || 0);
       const originalRandom = Math.random;
       let randomState = seed % 2147483647;
       if (randomState <= 0) randomState += 2147483646;
@@ -21910,7 +22148,8 @@ class BattleUIComponent {
           }))
           .filter(item => item.candidates.length)
           .slice(-Math.max(3, rounds * 6));
-        const audit = 审计战斗运行事实({ eventLedger, resolutionTrace, publicReportBlocks, scoringAudit, combatData: result?.combatData || combatData });
+        const scoringMutationDetected = Number(战斗评分预估写入次数 || 0) > scoringMutationCountBefore;
+        const audit = 审计战斗运行事实({ eventLedger, resolutionTrace, publicReportBlocks, scoringAudit, scoringMutationDetected, combatData: result?.combatData || combatData });
         return {
           caseId,
           seed,
@@ -21918,6 +22157,7 @@ class BattleUIComponent {
           roundsRequested: rounds,
           roundsExecuted: Number(result?.roundsExecuted || 0),
           inputUnchanged: sourceSnapshot === JSON.stringify(sourceCombatData),
+          scoringMutationDetected,
           eventLedger,
           ledger: eventLedger,
           resolutionTrace,
@@ -23191,63 +23431,110 @@ class BattleUIComponent {
       return Math.round(Math.max(0, Math.min(160, 收益 * 时间系数)));
     }
 
+    let 战斗评分预估写入次数 = 0;
+
     function 估算召唤生成释放权重(effect = {}, actor = {}, target = {}, behaviorState = {}) {
       if (!actor) return 0;
       const combatData = behaviorState?.combatData || {};
-      const 召唤单位类型 = String(effect?.召唤单位类型 || '魂兽').trim() || '魂兽';
-      const 召唤物名称 = String(effect?.召唤物名称 || effect?.名称 || '召唤物').trim() || '召唤物';
-      const 原始数量 = Math.max(1, Math.floor(Number(effect?.召唤数量 || effect?.数量 || 1)));
-      const 召唤数量 = 召唤单位类型 === '其他召唤生物' || 召唤单位类型 === '分身' ? Math.min(12, 原始数量) : 1;
-      const 已有召唤列表 = 读取召唤单位列表(combatData, { 宿主: actor }).filter(isCombatUnitAlive);
-      const 已有同类数量 = 已有召唤列表.filter(单位 => {
-        const 单位类型 = String(单位?.类型 || 单位?.召唤单位类型 || '').trim();
-        const 单位名称 = String(单位?.基础名称 || 单位?.name || 单位?.名称 || '').replace(/#\d+$/, '').trim();
-        return 单位类型 === 召唤单位类型 && (
-          召唤单位类型 === '本命召唤兽' ||
-          单位名称 === 读取召唤编号基名(召唤物名称)
-        );
-      }).length;
-      if (召唤单位类型 !== '其他召唤生物' && 已有同类数量 > 0) return -28;
-      const 默认继承比例 = 召唤单位类型 === '分身' || 召唤单位类型 === '本命召唤兽' ? 0.45 : 0;
-      const 属性继承比例 = 读取召唤属性继承对象(effect, 默认继承比例);
-      const 平均继承比例 = [
-        属性继承比例.力量,
-        属性继承比例.防御,
-        属性继承比例.敏捷,
-        属性继承比例.体力上限,
-        属性继承比例.魂力上限,
-        属性继承比例.精神力上限,
-      ].reduce((总和, 比例) => 总和 + Number(比例 || 0), 0) / 6;
-      const 固定强度 = Math.max(0.01, Number(effect?.强度 || effect?.召唤强度 || 1));
-      const 召唤强度 = 平均继承比例 > 0 ? 平均继承比例 * 1.25 : 固定强度;
-      const 行动模式 = String(effect?.行动模式 || 读取召唤类型配置(召唤单位类型).默认行动模式 || '协同攻击').trim();
-      const 承伤规则 = String(effect?.承伤规则 || '').trim();
-      const 模式系数 = 行动模式 === '自主行动' ? 1.28 : 行动模式 === '护卫' ? 1.08 : 0.9;
-      const 承伤系数 = /护卫|承伤|分摊/.test(`${行动模式}${承伤规则}`) ? 1.16 : 1;
-      const 类型系数 = {
-        本命召唤兽: 1.35,
-        分身: 0.86,
-        魂师: 1.15,
-        魂兽: 1,
-        深渊生物: 1.08,
-        其他召唤生物: 0.74,
-      }[召唤单位类型] || 0.95;
-      const 数量系数 = 1 + Math.min(召唤数量 - 1, 11) * (召唤单位类型 === '其他召唤生物' ? 0.42 : 0.26);
-      const 现有压力折损 = 召唤单位类型 === '其他召唤生物'
-        ? Math.max(0.42, 1 - Math.min(0.5, 已有同类数量 * 0.08))
-        : 1;
-      const 自身血量压力 = Math.max(0, 1 - getCombatHpRatio(actor));
-      const 目标威胁 = Math.min(36, 计算目标威胁分(target || behaviorState?.primaryTarget || behaviorState?.target) / 75);
-      const 资源压力 =
-        1 - 限制行为概率(
-          (Number(actor.sp || actor?.属性?.魂力 || 0) + Number(actor.men || actor?.属性?.精神力 || 0) + Number(actor.sta ?? actor?.体力 ?? actor?.属性?.体力 ?? 0)) /
-          Math.max(1, Number(actor.sp_max || actor?.属性?.魂力上限 || 0) + Number(actor.men_max || actor?.属性?.精神力上限 || 0) + Number(actor.sta_max ?? actor?.体力上限 ?? actor?.属性?.体力上限 ?? 0)),
-          0,
-          1,
-        );
-      const 基础收益 = 28 + 召唤强度 * 46 + 目标威胁 + 自身血量压力 * 28;
-      const 资源折损 = Math.max(0.42, 1 - 资源压力 * 0.55);
-      return Math.round(Math.max(-40, Math.min(190, 基础收益 * 类型系数 * 模式系数 * 承伤系数 * 数量系数 * 现有压力折损 * 资源折损)));
+      const puritySnapshot = JSON.stringify({
+        round: Number(combatData?.回合 || 0),
+        participants: deepClonePlain(combatData?.参战者 || {}),
+        ledgerCount: Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0,
+        traceCount: Array.isArray(combatData?.__battleResolutionTrace) ? combatData.__battleResolutionTrace.length : 0,
+        summonKeys: Object.keys(combatData?.召唤单位表 || {}).sort(),
+      });
+      let finalEV = 0;
+      try {
+        const 召唤单位类型 = String(effect?.召唤单位类型 || '魂兽').trim() || '魂兽';
+        const 召唤物名称 = String(effect?.召唤物名称 || effect?.名称 || '召唤物').trim() || '召唤物';
+        const 原始数量 = Math.max(1, Math.floor(Number(effect?.召唤数量 || effect?.数量 || 1)));
+        const 召唤数量 = 召唤单位类型 === '其他召唤生物' || 召唤单位类型 === '分身' ? Math.min(12, 原始数量) : 1;
+        const 行动模式 = String(effect?.行动模式 || 读取召唤类型配置(召唤单位类型).默认行动模式 || '协同攻击').trim();
+        const 持续窗口 = Math.max(1, Math.round(Number(effect?.持续回合 || 1)));
+        const previewCombatData = deepClonePlain(combatData);
+        if (!previewCombatData.参战者 || typeof previewCombatData.参战者 !== 'object') previewCombatData.参战者 = { team_player: [], team_enemy: [] };
+        const allPreviewUnits = [
+          ...((previewCombatData.参战者.team_player || []).filter(Boolean)),
+          ...((previewCombatData.参战者.team_enemy || []).filter(Boolean)),
+        ];
+        let previewActor = allPreviewUnits.find(unit => isCombatUnitIdentityMatch(unit, actor?.name || actor?.名称 || actor)) || deepClonePlain(actor);
+        if (!allPreviewUnits.includes(previewActor)) previewCombatData.参战者.team_player = [...(previewCombatData.参战者.team_player || []), previewActor];
+        bindCombatParticipant(previewActor);
+        if (!previewActor.状态效果 || typeof previewActor.状态效果 !== 'object') previewActor.状态效果 = {};
+        const 已有召唤列表 = 读取召唤单位列表(previewCombatData, { 宿主: previewActor }).filter(isCombatUnitAlive);
+        const 已有同类数量 = 已有召唤列表.filter(单位 => {
+          const 单位类型 = String(单位?.类型 || 单位?.召唤单位类型 || '').trim();
+          const 单位名称 = String(单位?.基础名称 || 单位?.name || 单位?.名称 || '').replace(/#\d+$/, '').trim();
+          return 单位类型 === 召唤单位类型 && (召唤单位类型 === '本命召唤兽' || 单位名称 === 读取召唤编号基名(召唤物名称));
+        }).length;
+        if (召唤单位类型 !== '其他召唤生物' && 已有同类数量 > 0) return -28;
+        const 来源状态键 = `__summon_preview__:${召唤物名称}`;
+        const 召唤记录 = {
+          召唤单位类型,
+          召唤物名称,
+          基础名称: 读取召唤编号基名(召唤物名称),
+          召唤数量: 召唤数量,
+          行动模式,
+          强度: Math.max(0.01, Number(effect?.强度 || effect?.召唤强度 || 1)),
+        };
+        if (effect?.属性继承比例 && typeof effect.属性继承比例 === 'object') 召唤记录.属性继承比例 = deepClonePlain(effect.属性继承比例);
+        if (Number(effect?.继承属性比例 || 0) > 0) 召唤记录.继承属性比例 = Number(effect.继承属性比例);
+        const 来源状态 = {
+          类型: 'buff',
+          层数: 召唤数量,
+          duration: 持续窗口,
+          面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
+          战斗效果: createEmptyCombatEffectMap(),
+          召唤物: 召唤记录,
+        };
+        previewActor.状态效果[来源状态键] = 来源状态;
+        const previewSummon = 注册召唤运行态单位(previewCombatData, previewActor, 来源状态键, 来源状态, { 静默: true });
+        if (!previewSummon) return 0;
+        const targetName = String(target?.name || target?.名称 || '').trim();
+        const previewTarget = allPreviewUnits.find(unit => targetName && isCombatUnitIdentityMatch(unit, targetName)) || (target ? deepClonePlain(target) : 选择召唤攻击目标(previewSummon, previewCombatData));
+        if (previewTarget) bindCombatParticipant(previewTarget);
+        const previewSkill = previewTarget ? 选择召唤攻击技能(previewSummon, previewTarget) : 构建召唤普通攻击技能(previewSummon);
+        const attackPreview = previewTarget ? 估算召唤单次攻击结算(previewSummon, previewTarget, previewSkill) : { damage: 0, hitProbability: 0, expectedDamage: 0 };
+        const 敌方阵营 = previewSummon.阵营 === '敌方' ? '玩家' : '敌方';
+        const enemyUnits = 读取战斗阵营单位列表(previewCombatData, 敌方阵营).filter(isCombatUnitAlive);
+        const enemyPeakDamage = enemyUnits.reduce((peak, enemy) => {
+          const skills = collectCombatSkills(enemy, []).filter(skill => getSkillEffects(skill, { 行为规划: true }).some(item => String(item?.原型 || '').trim() === '伤害结算'));
+          const localPeak = skills.reduce((value, skill) => Math.max(value, 估算召唤单次攻击结算(enemy, previewSummon, skill).damage), 0);
+          return Math.max(peak, localPeak);
+        }, 0);
+        const summonHp = Math.max(1, getCombatHpMaxValue(previewSummon));
+        const survivalRate = enemyPeakDamage > 0
+          ? Math.max(0.18, Math.min(1, summonHp / Math.max(summonHp, enemyPeakDamage * Math.min(持续窗口, 3))))
+          : 1;
+        const targetHp = previewTarget ? Math.max(1, getCombatHpMaxValue(previewTarget)) : 1;
+        const attackEV = 行动模式 === '护卫'
+          ? 0
+          : (attackPreview.expectedDamage / targetHp) * 120 * 持续窗口 * survivalRate * 召唤数量;
+        const guardAbsorb = 行动模式 === '护卫' ? Math.min(summonHp, Math.max(enemyPeakDamage, summonHp * 0.15)) : 0;
+        const guardEV = 行动模式 === '护卫'
+          ? (guardAbsorb / Math.max(1, getCombatHpMaxValue(previewActor))) * 135 * 持续窗口 * survivalRate
+          : 0;
+        const mentalLoadRatio = Math.max(0, Number(previewSummon.精神负载 || 0)) / Math.max(1, Number(previewActor.men_max || previewActor?.属性?.精神力上限 || 1));
+        const deathProbability = Math.max(0, 1 - survivalRate);
+        const backlashRatio = previewSummon.死亡反噬
+          ? Math.min(0.34, Math.max(0.07, Number(previewSummon.继承属性比例 || 0) * 0.4))
+          : 0;
+        const loadPenalty = mentalLoadRatio * 42;
+        const backlashPenalty = deathProbability * backlashRatio * 100;
+        const firstWindowFactor = 行动模式 === '自主行动' ? 0.92 : 1;
+        const existingPressure = 召唤单位类型 === '其他召唤生物' ? Math.max(0.45, 1 - 已有同类数量 * 0.08) : 1;
+        finalEV = Math.round(Math.max(-40, Math.min(220, (attackEV + guardEV + 18 * survivalRate) * firstWindowFactor * existingPressure - loadPenalty - backlashPenalty)));
+        return finalEV;
+      } finally {
+        const afterSnapshot = JSON.stringify({
+          round: Number(combatData?.回合 || 0),
+          participants: deepClonePlain(combatData?.参战者 || {}),
+          ledgerCount: Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0,
+          traceCount: Array.isArray(combatData?.__battleResolutionTrace) ? combatData.__battleResolutionTrace.length : 0,
+          summonKeys: Object.keys(combatData?.召唤单位表 || {}).sort(),
+        });
+        if (afterSnapshot !== puritySnapshot) 战斗评分预估写入次数 += 1;
+      }
     }
 
     function 估算炸环释放权重(effect = {}, actor = {}, target = {}, behaviorState = {}, skill = null) {
@@ -24792,6 +25079,7 @@ class BattleUIComponent {
             delete cond.__本回合新附加;
             return;
           }
+          if (cond?.召唤物) return;
 
           let combatEffects = cond.战斗效果 || {};
           const sideEffects = normalizeBattleSkillSideEffectList(cond.副作用列表 || []);
@@ -31104,15 +31392,25 @@ class BattleUIComponent {
                     roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤并陷入[僵直]！`;
                   }
                   attacker.蓄力技能 = null;
+                  const 玩家协同结束日志 = 执行协同召唤追击(attacker, null, 0, combatData);
+
+                  const 敌方协同结束日志 = 执行协同召唤追击(defender, null, 0, combatData);
+
+                  if (玩家协同结束日志) roundLog += ` ${玩家协同结束日志}`;
+
+                  if (敌方协同结束日志) roundLog += ` ${敌方协同结束日志}`;
+
                   let attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
                   let defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
                   if (attackerUpkeep.log) roundLog += ` ${attackerUpkeep.log}`;
                   if (defenderUpkeep.log) roundLog += ` ${defenderUpkeep.log}`;
                   let attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
                   let defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
+                  const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
                   const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
                   if (attackerRoundEnd.log) roundLog += ` ${attackerRoundEnd.log}`;
                   if (defenderRoundEnd.log) roundLog += ` ${defenderRoundEnd.log}`;
+                  if (护卫窗口日志) roundLog += ` ${护卫窗口日志}`;
                   if (规则改写回合尾日志) roundLog += ` ${规则改写回合尾日志}`;
                   syncCombatActionState(attacker);
                   syncCombatActionState(defender);
@@ -31264,6 +31562,18 @@ class BattleUIComponent {
           }
           }
 
+          const 玩家协同结束日志 = 执行协同召唤追击(attacker, null, 0, combatData);
+
+
+          const 敌方协同结束日志 = 执行协同召唤追击(defender, null, 0, combatData);
+
+
+          if (玩家协同结束日志) roundLog += ` ${玩家协同结束日志}`;
+
+
+          if (敌方协同结束日志) roundLog += ` ${敌方协同结束日志}`;
+
+
           let attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
           let defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
           if (attackerUpkeep.log) roundLog += ` ${attackerUpkeep.log}`;
@@ -31271,9 +31581,11 @@ class BattleUIComponent {
 
           let attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
           let defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
+          const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
           const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
           if (attackerRoundEnd.log) roundLog += ` ${attackerRoundEnd.log}`;
           if (defenderRoundEnd.log) roundLog += ` ${defenderRoundEnd.log}`;
+          if (护卫窗口日志) roundLog += ` ${护卫窗口日志}`;
           if (规则改写回合尾日志) roundLog += ` ${规则改写回合尾日志}`;
 
           syncCombatActionState(attacker);
@@ -33688,6 +34000,22 @@ class BattleUIComponent {
           if (护卫召唤) {
             logParts.push(`[召唤护卫承伤] ${护卫召唤.name || '召唤物'}替${targetChar.name || '目标'}承受本次攻击。`);
             护卫召唤.__本回合已召唤行动 = true;
+            写入战斗事件账本(options?.combatData || {}, {
+              eventKind: 'summon_guard',
+              round: Number(options?.combatData?.回合 || 0),
+              actorName: 护卫召唤?.name || 护卫召唤?.名称 || '',
+              targetName: targetChar?.name || targetChar?.名称 || '',
+              actionName: '召唤护卫',
+              actionType: 'summon_guard',
+              actionRole: 'ASSIST',
+              result: 'intercepted',
+              meta: {
+                source: 'summon',
+                summonName: 护卫召唤?.name || 护卫召唤?.名称 || '',
+                summonHostName: 护卫召唤?.宿主名 || 护卫召唤?.__宿主?.name || 护卫召唤?.__宿主?.名称 || '',
+                protectedTargetName: targetChar?.name || targetChar?.名称 || '',
+              },
+            });
             targetChar = 护卫召唤;
           }
           bindCombatParticipant(targetChar);
@@ -45880,6 +46208,8 @@ class BattleUIComponent {
             if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
             if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
           });
+          const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
+          if (护卫窗口日志) logs.push(`[团战回合尾] ${护卫窗口日志}`);
           const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
           if (规则改写回合尾日志) logs.push(`[团战回合尾] ${规则改写回合尾日志}`);
         }
@@ -45928,6 +46258,15 @@ class BattleUIComponent {
               if (turnResult?.log) logs.push(turnResult.log);
               if (Array.isArray(turnResult?.extraPatchOps) && turnResult.extraPatchOps.length)
                 extraPatchOps.push(...turnResult.extraPatchOps);
+              if (actorEntry?.char?.召唤键 && actorEntry.char.行动模式 === '自主行动') {
+                actorEntry.char.__本回合已召唤行动 = true;
+                const 到期日志 = 消费召唤有效窗口(combatData, actorEntry.char, '自主行动窗口耗尽');
+                if (到期日志) logs.push(到期日志);
+              }
+              if (!actorEntry?.char?.召唤键) {
+                const 协同结束日志 = 执行协同召唤追击(actorEntry.char, null, 0, combatData);
+                if (协同结束日志) logs.push(协同结束日志);
+              }
             }
 
             settleTeamRoundEnd(combatData, logs);
@@ -46006,6 +46345,15 @@ class BattleUIComponent {
             if (turnResult?.log) logs.push(turnResult.log);
             if (Array.isArray(turnResult?.extraPatchOps) && turnResult.extraPatchOps.length)
               extraPatchOps.push(...turnResult.extraPatchOps);
+            if (actorEntry?.char?.召唤键 && actorEntry.char.行动模式 === '自主行动') {
+              actorEntry.char.__本回合已召唤行动 = true;
+              const 到期日志 = 消费召唤有效窗口(combatData, actorEntry.char, '自主行动窗口耗尽');
+              if (到期日志) logs.push(到期日志);
+            }
+            if (!actorEntry?.char?.召唤键) {
+              const 协同结束日志 = 执行协同召唤追击(actorEntry.char, null, 0, combatData);
+              if (协同结束日志) logs.push(协同结束日志);
+            }
           }
 
           settleTeamRoundEnd(combatData, logs);
