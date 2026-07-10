@@ -4382,6 +4382,8 @@ class BattleUIComponent {
         finalActionName: normalizeBattleActionDisplayName(patch.finalActionName || item.finalActionName || item.meta?.finalActionName || item.actionName || item.meta?.actionName || item.skillName || item.meta?.skillName || item.action || ''),
         discardedActionName: normalizeBattleActionDisplayName(patch.discardedActionName || item.discardedActionName || item.meta?.discardedActionName || ''),
         actionType: String(patch.actionType || item.actionType || '').trim(),
+        actorControl: 标准化战斗操控来源(patch.actorControl || item.actorControl || item.meta?.actorControl, 'AI'),
+        actionRole: 标准化战斗行动职责(patch.actionRole || item.actionRole || item.meta?.actionRole || 推断战斗行动职责({ ...item, ...patch, eventKind })),
         actionId: String(patch.actionId || item.actionId || '').trim(),
         sourceActionName: normalizeBattleActionDisplayName(patch.sourceActionName || item.sourceActionName || item.meta?.sourceActionName || ''),
         sourceActionId: String(patch.sourceActionId || item.sourceActionId || '').trim(),
@@ -4389,6 +4391,8 @@ class BattleUIComponent {
         chainNodeId: String(patch.chainNodeId || item.chainNodeId || '').trim(),
         parentNodeId: String(patch.parentNodeId || item.parentNodeId || '').trim(),
         sourceNodeId: String(patch.sourceNodeId || item.sourceNodeId || '').trim(),
+        reactionNodeId: String(patch.reactionNodeId || item.reactionNodeId || item.meta?.reactionNodeId || item.meta?.reactionWindowNodeId || '').trim(),
+        ruleCode: String(patch.ruleCode || item.ruleCode || patch.reasonCode || item.reasonCode || item.meta?.ruleCode || item.meta?.reasonCode || '').trim().toUpperCase(),
         result: String(patch.result || item.result || '').trim(),
         failReason: String(patch.failReason || item.failReason || '').trim(),
         primaryOutcome: String(patch.primaryOutcome || item.primaryOutcome || item.meta?.primaryOutcome || '').trim(),
@@ -4430,7 +4434,9 @@ class BattleUIComponent {
           };
         })();
       }
+      const requiredContractKeys = new Set(['actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode']);
       Object.keys(normalized).forEach(key => {
+        if (requiredContractKeys.has(key)) return;
         if (normalized[key] === '' || normalized[key] === null) delete normalized[key];
       });
       if (normalized.meta && typeof normalized.meta === 'object' && !Object.keys(normalized.meta).length) {
@@ -5413,13 +5419,11 @@ class BattleUIComponent {
           .reduce((min, value) => Math.min(min, value), Number.MAX_SAFE_INTEGER);
         return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
       };
-      return astFirstEntries
-        .sort((left, right) => {
-          const roundDiff = Number(left?.round || 0) - Number(right?.round || 0);
-          if (roundDiff) return roundDiff;
-          return entryOrder(left) - entryOrder(right);
-        })
-        .slice(0, Math.max(0, Number(limit || 8)));
+      return astFirstEntries.sort((left, right) => {
+        const roundDiff = Number(left?.round || 0) - Number(right?.round || 0);
+        if (roundDiff) return roundDiff;
+        return entryOrder(left) - entryOrder(right);
+      });
     }
 
     function 构建玩家起手反馈公开战报Block条目(eventLedger = [], existingEntries = []) {
@@ -5858,7 +5862,44 @@ class BattleUIComponent {
     function collectBattleResolutionTrace(combatData = {}) {
       const trace = combatData?.__battleResolutionTrace;
       if (!Array.isArray(trace)) return [];
-      return trace.slice(-240).map(item => cloneBattleRuntimeAuditSnapshot(item));
+      return trace.slice(-240).map(item => cloneBattleRuntimeAuditSnapshot(补齐战斗因果节点契约(item)));
+    }
+
+    function 标准化战斗行动职责(value = '', fallback = 'ACTIVE') {
+      const normalized = String(value || '').trim().toUpperCase();
+      return ['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK'].includes(normalized) ? normalized : fallback;
+    }
+
+    function 推断战斗行动职责(event = {}) {
+      const explicit = event?.actionRole || event?.meta?.actionRole;
+      if (explicit) return 标准化战斗行动职责(explicit);
+      const kind = String(event?.eventKind || event?.nodeKind || '').trim();
+      const actionType = String(event?.actionType || event?.source || '').trim();
+      if (kind === 'state_tick' || event?.phase === 'round_end') return 'STATE_TICK';
+      if (kind === 'summon_assist' || /summon_assist|协同追击/.test(actionType)) return 'ASSIST';
+      if (kind === 'counter' || kind === 'counter_window' || /counter|行为防反|反防反/.test(actionType)) return 'COUNTER';
+      if (['dodge', 'defend', 'pass', 'reaction_window', 'reaction_decision'].includes(kind) || /reaction|应招/.test(actionType)) return 'REACTION';
+      return 'ACTIVE';
+    }
+
+    function 标准化战斗操控来源(value = '', fallback = 'AI') {
+      const normalized = String(value || '').trim().toUpperCase();
+      return ['PLAYER_LOCKED', 'PLAYER', 'AI', 'SYSTEM'].includes(normalized) ? normalized : fallback;
+    }
+
+    function 补齐战斗因果节点契约(node = {}) {
+      if (!node || typeof node !== 'object') return node;
+      const actionRole = 推断战斗行动职责(node);
+      const defaultControl = ['STATE_TICK'].includes(actionRole) || String(node.nodeLayer || '').trim() === 'presentation' ? 'SYSTEM' : 'AI';
+      return {
+        ...node,
+        actorControl: 标准化战斗操控来源(node.actorControl || node.meta?.actorControl, defaultControl),
+        actionRole,
+        sourceActionId: String(node.sourceActionId || '').trim(),
+        parentNodeId: String(node.parentNodeId || '').trim(),
+        reactionNodeId: String(node.reactionNodeId || node.meta?.reactionNodeId || (node.nodeKind === 'reaction_window' ? node.nodeId : '') || '').trim(),
+        ruleCode: String(node.ruleCode || node.reasonCode || '').trim().toUpperCase(),
+      };
     }
 
     function cloneBattleRuntimeAuditSnapshot(value, depth = 0) {
@@ -21560,8 +21601,223 @@ class BattleUIComponent {
       };
     }
 
+    function 审计战斗运行事实(payload = {}) {
+      const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
+      const resolutionTrace = Array.isArray(payload.resolutionTrace) ? payload.resolutionTrace.filter(Boolean) : [];
+      const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
+      const fatals = [];
+      const warnings = [];
+      const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
+      const readDamage = event => Math.max(0, Math.round(Number(event?.appliedDamage ?? event?.meta?.appliedDamage ?? event?.meta?.damage ?? event?.damage ?? 0)));
+      const readProbability = value => {
+        if (typeof value === 'string' && /%/.test(value)) return Number.parseFloat(value) / 100;
+        const number = Number(value);
+        if (!Number.isFinite(number)) return null;
+        return number > 1 ? number / 100 : number;
+      };
+      const isSuccess = event => /success|succeeded|evaded|guarded|hit|成功|命中/.test(String(event?.result || event?.primaryOutcome || '').trim());
+      const sourceProjectionMap = new Map();
+      const collectBlockSources = (value, inheritedProjection = '') => {
+        if (!value || typeof value !== 'object') return;
+        if (Array.isArray(value)) {
+          value.forEach(item => collectBlockSources(item, inheritedProjection));
+          return;
+        }
+        const projection = String(value.projectionSource || inheritedProjection || '').trim();
+        const ids = [value.sourceEventId, ...(Array.isArray(value.sourceEventIds) ? value.sourceEventIds : [])]
+          .map(item => String(item || '').trim())
+          .filter(Boolean);
+        ids.forEach(id => {
+          if (!sourceProjectionMap.has(id)) sourceProjectionMap.set(id, new Set());
+          if (projection) sourceProjectionMap.get(id).add(projection);
+        });
+        Object.values(value).forEach(item => collectBlockSources(item, projection));
+      };
+      collectBlockSources(publicReportBlocks);
+
+      const settlementEvents = eventLedger.filter(event => {
+        const kind = String(event?.eventKind || '').trim();
+        if (kind === 'hit_result') return readDamage(event) > 0;
+        if (kind !== 'state_tick') return false;
+        return readDamage(event) > 0 && !/魂力|精神力|体力|资源/.test(String(event?.meta?.resource || '').trim());
+      });
+      const settlementKeys = new Map();
+      settlementEvents.forEach(event => {
+        const applicationId = String(event?.applicationId || event?.meta?.applicationId || '').trim();
+        const key = applicationId || [
+          Number(event?.round || 0),
+          String(event?.actionId || event?.sourceActionId || '').trim(),
+          String(event?.actorName || '').trim(),
+          String(event?.targetName || '').trim(),
+          normalizeBattleActionDisplayName(event?.actionName || event?.sourceActionName || ''),
+          String(event?.eventKind || '').trim(),
+          Number(event?.meta?.segmentIndex || 0),
+        ].join('|');
+        if (settlementKeys.has(key)) {
+          pushFatal('DUPLICATE_DAMAGE_SETTLEMENT', { eventId: event.eventId, duplicateOf: settlementKeys.get(key), key });
+        } else {
+          settlementKeys.set(key, String(event?.eventId || '').trim());
+        }
+        if (event?.effectCapability?.hasDamageEffect === false) {
+          pushFatal('NON_DAMAGE_SKILL_DAMAGE', { eventId: event.eventId, actionName: event.actionName, damage: readDamage(event) });
+        }
+        const eventId = String(event?.eventId || '').trim();
+        if (eventId && !sourceProjectionMap.has(eventId)) {
+          pushFatal('REPORT_NUMERIC_FACT_MISSING', { eventId, eventKind: event.eventKind, damage: readDamage(event) });
+        }
+      });
+
+      eventLedger.filter(event => String(event?.eventKind || '').trim() === 'counter' && readDamage(event) > 0).forEach(counter => {
+        const matchingHit = settlementEvents.find(event =>
+          String(event?.eventKind || '').trim() === 'hit_result' &&
+          Number(event?.round || 0) === Number(counter?.round || 0) &&
+          isSameBattleReportName(event?.actorName || '', counter?.actorName || '') &&
+          isSameBattleReportName(event?.targetName || '', counter?.targetName || '') &&
+          normalizeBattleActionDisplayName(event?.actionName || '') === normalizeBattleActionDisplayName(counter?.actionName || '') &&
+          readDamage(event) === readDamage(counter)
+        );
+        if (matchingHit && String(counter?.meta?.settlementEventId || '').trim() !== String(matchingHit?.eventId || '').trim()) {
+          pushFatal('DUPLICATE_DAMAGE_FACT', { eventId: counter.eventId, settlementEventId: matchingHit.eventId, damage: readDamage(counter) });
+        }
+      });
+
+      eventLedger.forEach(event => {
+        const kind = String(event?.eventKind || '').trim();
+        const rate = readProbability(event?.meta?.dodgeRate ?? event?.meta?.probability ?? event?.probability);
+        if (rate !== null && rate <= 0 && isSuccess(event) && ['dodge', 'counter'].includes(kind)) {
+          pushFatal('ZERO_PROBABILITY_SUCCESS', { eventId: event.eventId, eventKind: kind, probability: rate, result: event.result });
+        }
+        if (kind === 'state_tick') {
+          const eventId = String(event?.eventId || '').trim();
+          const projections = eventId ? [...(sourceProjectionMap.get(eventId) || [])] : [];
+          if (projections.some(source => !/state_tick|state_aggregation/.test(source))) {
+            pushFatal('DOT_SOURCE_MISPROJECTED', { eventId, projections });
+          }
+        }
+      });
+
+      const terminalByAction = new Map();
+      eventLedger.forEach(event => {
+        const actionId = String(event?.sourceActionId || event?.actionId || '').trim();
+        if (!actionId) return;
+        if (!terminalByAction.has(actionId)) terminalByAction.set(actionId, { dodgeSuccess: [], damage: [] });
+        const item = terminalByAction.get(actionId);
+        if (String(event?.eventKind || '').trim() === 'dodge' && isSuccess(event)) item.dodgeSuccess.push(event.eventId);
+        if (String(event?.eventKind || '').trim() === 'hit_result' && readDamage(event) > 0) item.damage.push(event.eventId);
+      });
+      terminalByAction.forEach((item, actionId) => {
+        if (item.dodgeSuccess.length && item.damage.length) pushFatal('ACTION_TERMINAL_CONFLICT', { actionId, ...item });
+      });
+
+      resolutionTrace.forEach(node => {
+        const missing = ['actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode']
+          .filter(key => node?.[key] === undefined || node?.[key] === null);
+        if (missing.length) warnings.push({ code: 'TRACE_CONTRACT_INCOMPLETE', nodeId: node?.nodeId || '', missing });
+      });
+      eventLedger.forEach(event => {
+        const missing = ['actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode']
+          .filter(key => event?.[key] === undefined || event?.[key] === null);
+        if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
+      });
+
+      return {
+        fatalCount: fatals.length,
+        warningCount: warnings.length,
+        fatals,
+        warnings,
+      };
+    }
+
+    function 运行战斗调试案例(options = {}) {
+      const input = options && typeof options === 'object' ? options : {};
+      const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
+      const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
+      const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
+      const mode = String(input.mode || 'single_preview').trim();
+      const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
+      const sourceSnapshot = JSON.stringify(sourceCombatData);
+      const combatData = deepClonePlain(sourceCombatData);
+      const originalRandom = Math.random;
+      let randomState = seed % 2147483647;
+      if (randomState <= 0) randomState += 2147483646;
+      Math.random = () => {
+        randomState = (randomState * 16807) % 2147483647;
+        return (randomState - 1) / 2147483646;
+      };
+      try {
+        const isTeam = /team|团战/i.test(mode) || (combatData?.参战者?.team_player?.length || 0) > 1 || (combatData?.参战者?.team_enemy?.length || 0) > 1;
+        let result;
+        if (isTeam) {
+          const simulation = runTeamBattleSimulation(combatData, rounds);
+          const eventLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const publicReportBlocks = 构建事件账本公开战报Blocks(eventLedger, Math.max(8, rounds * 6), { combatData });
+          result = {
+            preview: /preview/i.test(mode),
+            battleMode: rounds > 1 ? 'multi_round' : 'single_round',
+            roundsExecuted: Number(simulation?.rounds || 0),
+            logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
+            combatData,
+            eventLedger: eventLedger.map(item => cloneBattleRuntimeAuditSnapshot(item)),
+            resolutionTrace: collectBattleResolutionTrace(combatData),
+            decisionTrace: collectBattleDecisionTrace(combatData),
+            publicReportBlocks: publicReportBlocks.map(item => cloneBattleRuntimeAuditSnapshot(item)),
+            snapshot: ui_getBattleSnapshot(combatData),
+          };
+        } else {
+          const selectedAction = input.selectedAction;
+          const actionText = typeof selectedAction === 'string'
+            ? selectedAction
+            : selectedAction && typeof selectedAction === 'object'
+              ? `${String(selectedAction.label || selectedAction.skill?.name || selectedAction.skill?.魂技名 || selectedAction.action_type || '战斗行动').trim()}\n[动作队列]${JSON.stringify([selectedAction])}[/动作队列]`
+              : '普通攻击';
+          result = onPlayerAttack(actionText, {
+            dryRun: true,
+            mode: rounds > 1 ? 'multi_round' : 'single_round',
+            combatData,
+            intentMode: input.settings?.intentMode || combatData?.战斗意图 || '点到为止',
+            autoContinueConfig: {
+              ...(input.settings || {}),
+              maxRounds: rounds,
+              continueChancePercent: input.settings?.continueChancePercent ?? 100,
+              stopDamagePercent: input.settings?.stopDamagePercent ?? 100,
+            },
+          });
+        }
+        const eventLedger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
+        const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(补齐战斗因果节点契约) : [];
+        const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
+        const scoringAudit = (Array.isArray(result?.decisionTrace) ? result.decisionTrace : [])
+          .filter(item => /主动规划|应招审计|再判定审计|技能选择/.test(String(item?.type || '')))
+          .slice(-Math.max(3, rounds * 6));
+        const audit = 审计战斗运行事实({ eventLedger, resolutionTrace, publicReportBlocks, combatData: result?.combatData || combatData });
+        return {
+          caseId,
+          seed,
+          mode,
+          roundsRequested: rounds,
+          roundsExecuted: Number(result?.roundsExecuted || 0),
+          inputUnchanged: sourceSnapshot === JSON.stringify(sourceCombatData),
+          eventLedger,
+          ledger: eventLedger,
+          resolutionTrace,
+          trace: resolutionTrace,
+          scoringAudit,
+          publicReportBlocks,
+          roundOverview: 构建回合速览数据(result, { combatData: result?.combatData || combatData }),
+          finalSnapshot: result?.snapshot || ui_getBattleSnapshot(result?.combatData || combatData),
+          llmBattleSummary: String(result?.llmBattleSummary || 构建LLM战斗语义摘要(eventLedger, { combatData: result?.combatData || combatData }, { maxRounds: rounds }) || ''),
+          logs: Array.isArray(result?.logs) ? result.logs : [],
+          audit,
+        };
+      } finally {
+        Math.random = originalRandom;
+      }
+    }
+
     root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '完全闪避不落本次攻击负面状态', '位移限制不结算生命流失', '新附加持续状态下回合才跳伤', '完整闪避链不触发本次状态结算', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '无伤害能力动作阻断污染伤害包', '闭环账本标记未闭合起招', '空效果技能不留下未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与伤害停推', '自动续推不因同构攻防提前终止', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '判定流程展示细化', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链', '预演结果导出与UI可见文本一致', '公开战报不再自指普攻', '状态结算可追溯附着来源', '自身增益动作队列不误取消', '自保候选不串旧敌方目标', '非攻击动作不触发防反链', '防反来源优先使用真实动作', '控制第一魂技防反伤害不污染来源', '状态反伤必须写入防反账本', '状态来源登记写入运行时账本', '敌对动作目标不得落友方或自身', '反敏攻闪避后不继续普攻前压', '敏攻闪避后不重复同一单体压制技能'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
+    root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => 运行战斗调试案例(options);
+    root.__LWCS_DEBUG_AUDIT_BATTLE_FACTS__ = payload => 审计战斗运行事实(payload);
     root.__LWCS_GENERATE_BATTLE_DECISION_SAMPLES__ = (数量 = 100) => 生成战斗判定样本文本(数量);
     root.__LWCS_DEBUG_BATTLE_SAMPLE_RESULT__ = (索引 = 1) => 生成战斗判定样本结果(索引);
     root.__LWCS_DEBUG_BATTLE_TRUSTED_TACTICAL_NARRATION_RESULT__ = () => 生成可信战术侧写调试结果();
@@ -25444,6 +25700,8 @@ class BattleUIComponent {
       function 推断战斗因果节点配置(event = {}) {
         const kind = String(event?.eventKind || '').trim();
         const result = String(event?.result || '').trim();
+        const actionRole = 推断战斗行动职责(event);
+        if (kind === 'action_start' && actionRole === 'COUNTER') return { nodeKind: 'counter_action', nodeLayer: 'intent', primaryOutcome: 'action_committed' };
         if (kind === 'action_start') return { nodeKind: 'action_decision', nodeLayer: 'intent', primaryOutcome: 'action_committed' };
         if (kind === 'reaction_window') return { nodeKind: 'reaction_window', nodeLayer: 'system_check', primaryOutcome: 'reaction_window_opened' };
         if (['dodge', 'defend', 'pass'].includes(kind)) return { nodeKind: 'reaction_decision', nodeLayer: 'system_check', primaryOutcome: kind === 'dodge' ? (/evaded|miss|dodge_success|闪避成功|未命中/.test(result) ? 'dodged' : 'reaction_failed') : (kind === 'defend' ? 'guarded' : 'reaction_failed') };
@@ -26228,6 +26486,8 @@ class BattleUIComponent {
           nodeLayer: config.nodeLayer,
           actorName: String(event.actorName || '').trim(),
           actorSide,
+          actorControl: 标准化战斗操控来源(event.actorControl || event.meta?.actorControl, event.actionRole === 'STATE_TICK' ? 'SYSTEM' : 'AI'),
+          actionRole: 标准化战斗行动职责(event.actionRole || event.meta?.actionRole || 推断战斗行动职责(event)),
           targetName: String(event.targetName || '').trim(),
           targetSide,
           targetId: String(event.targetId || '').trim(),
@@ -26247,8 +26507,11 @@ class BattleUIComponent {
           calculationTrace,
           counterDepth: Math.max(0, Number(event.meta?.counterDepth || 0)),
           counterRootNodeId: String(event.meta?.counterRootNodeId || parentNodeId || '').trim(),
+          sourceActionId: String(event.sourceActionId || '').trim(),
+          reactionNodeId: String(event.reactionNodeId || event.meta?.reactionWindowNodeId || '').trim(),
+          ruleCode: 标准化战斗ReasonCode(event.ruleCode || event.reasonCode || event.meta?.ruleCode || event.meta?.reasonCode || '', defaultReasonCode || ''),
         };
-        trace.push(node);
+        trace.push(补齐战斗因果节点契约(node));
         if (trace.length > 1000) trace.splice(0, trace.length - 1000);
         return node;
       }
@@ -26400,6 +26663,11 @@ class BattleUIComponent {
           ''
         ).trim();
         const eventMeta = payload.meta && typeof payload.meta === 'object' ? { ...payload.meta } : {};
+        const actionRole = 推断战斗行动职责({ ...payload, eventKind, meta: eventMeta });
+        const actorControl = 标准化战斗操控来源(
+          payload.actorControl || eventMeta.actorControl,
+          actionRole === 'STATE_TICK' || ['counter_window', 'reaction_window'].includes(eventKind) ? 'SYSTEM' : 'AI',
+        );
         const inferredPrimaryOutcome = String(payload.primaryOutcome || eventMeta.primaryOutcome || 读取战报事件Outcome({ ...payload, meta: eventMeta }) || '').trim();
         const inferredAppliedDamage = (() => {
           const raw = Number(payload.appliedDamage ?? payload.damage ?? eventMeta.appliedDamage ?? eventMeta.damage ?? (eventKind === 'state_tick' ? eventMeta.amount : 0) ?? 0);
@@ -26471,6 +26739,8 @@ class BattleUIComponent {
           finalActionName: normalizeBattleActionDisplayName(payload.finalActionName || eventMeta.finalActionName || actionName),
           discardedActionName: normalizeBattleActionDisplayName(payload.discardedActionName || eventMeta.discardedActionName || ''),
           actionType: String(payload.actionType || '').trim(),
+          actorControl,
+          actionRole,
           actionId,
           sourceActionName,
           sourceActionId,
@@ -26478,6 +26748,8 @@ class BattleUIComponent {
           chainNodeId: String(payload.chainNodeId || '').trim(),
           parentNodeId: String(payload.parentNodeId || matchedInitialIntent?.nodeId || matchedSourceAction?.chainNodeId || matchedAction?.chainNodeId || matchedCounterStart?.chainNodeId || '').trim(),
           sourceNodeId: String(payload.sourceNodeId || matchedInitialIntent?.nodeId || matchedSourceAction?.chainNodeId || matchedAction?.chainNodeId || matchedCounterStart?.chainNodeId || '').trim(),
+          reactionNodeId: String(payload.reactionNodeId || eventMeta.reactionNodeId || eventMeta.reactionWindowNodeId || '').trim(),
+          ruleCode: String(payload.ruleCode || payload.reasonCode || eventMeta.ruleCode || eventMeta.reasonCode || '').trim().toUpperCase(),
           result: String(payload.result || '').trim(),
           actionStatus: inferredActionStatus,
           failReason: String(payload.failReason || '').trim(),
@@ -26549,6 +26821,7 @@ class BattleUIComponent {
         if (reactionWindowNode) {
           event.parentNodeId = reactionWindowNode.nodeId;
           event.sourceNodeId = sourceRootNodeId || reactionWindowNode.parentNodeId || event.sourceNodeId;
+          event.reactionNodeId = reactionWindowNode.nodeId;
           event.meta.reactionWindowNodeId = reactionWindowNode.nodeId;
         }
         const hitCheckNode = event.eventKind === 'hit_result'
@@ -26567,7 +26840,9 @@ class BattleUIComponent {
           event.sourceNodeId = sourceRootNodeId || stateCheckNode.parentNodeId || event.sourceNodeId;
           event.meta.stateCheckNodeId = stateCheckNode.nodeId;
         }
-        const traceNode = 写入战斗因果链节点(combatData?.__父级战斗数据 || combatData, event, { matchedAction: matchedAction || matchedCounterStart, matchedSourceAction });
+        const traceNode = eventMeta.skipResolutionTrace === true
+          ? null
+          : 写入战斗因果链节点(combatData?.__父级战斗数据 || combatData, event, { matchedAction: matchedAction || matchedCounterStart, matchedSourceAction });
         if (traceNode) {
           event.chainNodeId = traceNode.nodeId;
           event.parentNodeId = traceNode.parentNodeId || event.parentNodeId;
@@ -30236,6 +30511,8 @@ class BattleUIComponent {
             targetSide: 推断战斗目标阵营侧(actorSide, extra.targetPoolSide || ''),
             actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '',
             actionType: action?.action_type || action?.type || '',
+            actorControl: String(extra.actorControl || 'AI').trim(),
+            actionRole: extra.actionRole || (是反应类起手事实 ? 'REACTION' : 'ACTIVE'),
             targetScope: String(extra.targetScope || 推断战斗行动目标范围(action) || '').trim(),
             targetPoolSide: String(extra.targetPoolSide || '').trim(),
             result: 'declared',
@@ -30695,8 +30972,8 @@ class BattleUIComponent {
           };
 
           if (npcShouldActFirst) {
-            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile' });
-            if (玩家动作敌对) 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, { targetPoolSide: 'hostile' });
+            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
+            if (玩家动作敌对) 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, { targetPoolSide: 'hostile', actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED', actionRole: 'ACTIVE' });
             if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
             主动结算方 = defender;
             被动结算目标 = attacker;
@@ -30762,7 +31039,7 @@ class BattleUIComponent {
               { player: defender, enemy: attacker },
             );
           } else if (玩家动作敌对) {
-            const playerActionStartEvent = 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, { targetPoolSide: 'hostile' });
+            const playerActionStartEvent = 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, { targetPoolSide: 'hostile', actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED', actionRole: 'ACTIVE' });
             if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
               battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
               continueSimulation = false;
@@ -30808,7 +31085,7 @@ class BattleUIComponent {
             if (玩家非敌对动作释放失败) {
               // 释放失败已经在 roundLog 中说明，避免继续把对手行动缝进同一条失败链。
             } else if (npcDeclaredHostile && !npcDeclaredNonAttack) {
-              const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile' });
+              const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
               主动结算方 = defender;
               被动结算目标 = attacker;
               主动结算动作 = npcDeclaredAction;
@@ -34152,9 +34429,13 @@ class BattleUIComponent {
             actionName: 防反名预览,
             finalActionName: 防反名预览,
             actionType: 'counter',
+            actorControl: 'AI',
+            actionRole: 'COUNTER',
             sourceActionName: 被反制动作名,
+            sourceActionId: 防反窗口事件?.sourceActionId || '',
             parentNodeId: 防反窗口事件?.chainNodeId || '',
             sourceNodeId: 防反窗口事件?.chainNodeId || '',
+            reactionNodeId: 防反窗口事件?.chainNodeId || '',
             result: 'started',
             meta: {
               source: 'counter_action_start',
@@ -34201,12 +34482,21 @@ class BattleUIComponent {
             targetName: 目标?.name || 目标?.名称 || '',
             actionName: 防反名,
             actionType: 'counter',
+            actorControl: 'AI',
+            actionRole: 'COUNTER',
+            actionId: 防反起手事件?.actionId || '',
             sourceActionName: 被反制动作名,
+            sourceActionId: 防反窗口事件?.sourceActionId || '',
+            chainNodeId: 防反起手事件?.chainNodeId || '',
             parentNodeId: 防反窗口事件?.chainNodeId || '',
             sourceNodeId: 防反窗口事件?.chainNodeId || '',
+            reactionNodeId: 防反窗口事件?.chainNodeId || '',
             result: 'success',
             meta: {
               damage: Number(防反伤害包.primaryAppliedDamage || 0),
+              settlementEventId: 防反结算事件?.eventId || '',
+              settlementNodeId: 防反结算事件?.chainNodeId || '',
+              skipResolutionTrace: true,
               probability: 概率文本,
               counterDepth: 当前防反深度,
               counterActionStartEventId: 防反起手事件?.eventId || '',
@@ -34226,6 +34516,22 @@ class BattleUIComponent {
               ],
             },
           });
+          if (防反起手事件) {
+            防反起手事件.result = 'success';
+            防反起手事件.primaryOutcome = Number(防反伤害包.primaryAppliedDamage || 0) > 0 ? 'full_hit' : 'no_effect';
+            防反起手事件.meta = {
+              ...(防反起手事件.meta || {}),
+              settlementEventId: 防反结算事件?.eventId || '',
+              settlementNodeId: 防反结算事件?.chainNodeId || '',
+              appliedDamage: Number(防反伤害包.primaryAppliedDamage || 0),
+            };
+            const 防反起手节点 = (战斗数据?.__battleResolutionTrace || []).find(node => String(node?.nodeId || '').trim() === String(防反起手事件.chainNodeId || '').trim());
+            if (防反起手节点) {
+              防反起手节点.result = 防反起手事件.result;
+              防反起手节点.primaryOutcome = 防反起手事件.primaryOutcome;
+              防反起手节点.ledgerEventIds = [...new Set([...(防反起手节点.ledgerEventIds || []), 防反事件?.eventId, 防反结算事件?.eventId].filter(Boolean))];
+            }
+          }
           if (防反事件?.chainNodeId) {
             const 二次反应名 = normalizeBattleActionDisplayName(二次反应动作?.type || 二次反应动作?.action_type || '无法反应');
             const 二次反应事件类型 = /闪避|撤离|规避/.test(二次反应名)
@@ -35296,6 +35602,27 @@ class BattleUIComponent {
               ? '绝地反扑'
               : '借势反打';
         const 动作名 = String(防反候选.sourceActionName || '').trim() || 兜底动作名;
+        const 来源技能 = 防反候选.sourceSkill && typeof 防反候选.sourceSkill === 'object'
+          ? deepClone(防反候选.sourceSkill)
+          : null;
+        if (来源技能) {
+          来源技能.name = String(来源技能.name || 来源技能.魂技名 || 动作名).trim() || 动作名;
+          来源技能.魂技名 = String(来源技能.魂技名 || 来源技能.name || 动作名).trim() || 动作名;
+          来源技能.消耗 = '无';
+          来源技能.前摇 = 0;
+          delete 来源技能.cast_time;
+          return {
+            action_type: '行为防反',
+            type: '行为防反',
+            cast_time: 0,
+            __行为防反: true,
+            __counterDepth: 防反深度,
+            counterDepth: 防反深度,
+            sourceActionName: 来源技能.name,
+            sourceActionType: String(防反候选.sourceActionType || 'skill_counter').trim(),
+            skill: normalizeSkillData(来源技能, 来源技能.name),
+          };
+        }
         const 基础威力 = 防反类型 === '完美闪避' ? 55 : 防反类型 === '以命换伤' ? 92 : 70;
         const 系别倍率 = 防反类型 === '完美闪避'
           ? 系别 === '敏攻系'
@@ -36868,6 +37195,7 @@ class BattleUIComponent {
             闪避投点: Number(参数.闪避投点 || 0),
             sourceActionName: String(参数.sourceActionName || 来源动作.sourceActionName || '').trim(),
             sourceActionType: String(参数.sourceActionType || 来源动作.sourceActionType || '').trim(),
+            sourceSkill: 参数.sourceSkill && typeof 参数.sourceSkill === 'object' ? 参数.sourceSkill : 来源动作.sourceSkill,
             failReason: String(参数.failReason || '').trim(),
           };
         };
@@ -37136,10 +37464,11 @@ class BattleUIComponent {
             dodgeRate -= 范围压制削弱 + 近身闪避削弱 - 远程闪避修正;
             dodgeRate -= Math.max(0, Number(targetObj.__本回合闪避成功次数 || 0)) * 22;
             dodgeRate = Math.max(0, Math.min(targetUsesReactionAction ? 48 : 24, dodgeRate));
-            const dodgeRoll = Math.random() * 100;
+            const dodgeRoll = rollD100();
             localDodgeRate = dodgeRate;
             localDodgeRoll = dodgeRoll;
-            if (dodgeRoll <= dodgeRate) {
+            const dodgeSucceeded = dodgeRate >= 100 || (dodgeRate > 0 && dodgeRoll <= dodgeRate);
+            if (dodgeSucceeded) {
               localLogParts.push(
                 targetUsesReactionAction && !isAOE && npcAction.type === '伺机闪避'
                   ? `[主动闪避] ${targetName}凭借敏捷优势惊险躲过了攻击。`
@@ -49691,9 +50020,10 @@ class BattleUIComponent {
             const failureReasonCode = String(读取('reasonCode') || child.reasonCode || child.meta?.reasonCode || '').trim();
             const parts = [];
             if (Number.isFinite(dodgeRate) && Number.isFinite(dodgeRoll)) {
+              const dodgeSucceeded = child.primaryOutcome === 'dodged' || /evaded|dodge_success|成功/.test(String(child.result || '').trim());
               parts.push(`闪避率${formatCalcNumber(dodgeRate)}`);
               parts.push(`投点${formatCalcNumber(dodgeRoll)}`);
-              parts.push(dodgeRoll <= dodgeRate ? '投点≤闪避率，规避成功' : '投点>闪避率，规避失败');
+              parts.push(dodgeSucceeded ? '实际终态：规避成功' : '实际终态：规避失败');
             } else if (/dodged|evaded|miss/i.test(failureReason) || child.primaryOutcome === 'miss') parts.push('目标完成规避，落点失效');
             const mappedReason = 映射玩家可见失败原因(failureReasonCode, failureReason);
             if (mappedReason && !/dodged|evaded|miss/i.test(failureReason)) parts.push(`原因${mappedReason}`);
@@ -51294,8 +51624,9 @@ class BattleUIComponent {
             const row = pushRound(round);
             const damage = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
             if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
-              if (targetSide === 'player') pushHpDelta(row, 'player', -damage, event);
-              else if (targetSide === 'enemy') pushHpDelta(row, 'enemy', -damage, event);
+              const linkedCounterSettlement = kind === 'counter' && String(event?.meta?.settlementEventId || '').trim();
+              if (!linkedCounterSettlement && targetSide === 'player') pushHpDelta(row, 'player', -damage, event);
+              else if (!linkedCounterSettlement && targetSide === 'enemy') pushHpDelta(row, 'enemy', -damage, event);
               if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8, event);
               else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, /魂技|真身|融合|爆发/.test(action) || damage >= 160 ? 9 : 8, event);
             }            if (kind === 'action_cost') {
