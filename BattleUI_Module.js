@@ -86,18 +86,25 @@ class BattleUIComponent {
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
       if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
+      const inline = viewportWidth <= 1180;
+      node.classList.toggle('battle-record-terminal--inline', inline);
+      if (inline) {
+        if (node.parentNode !== wrapperElement) wrapperElement.appendChild(node);
+        ['--战斗记录外置-top', '--战斗记录外置-left', '--战斗记录外置-width', '--战斗记录外置-height'].forEach(name => node.style.removeProperty(name));
+        return;
+      }
+      if (globalDocument?.body && node.parentNode !== globalDocument.body) globalDocument.body.appendChild(node);
       const gap = 12;
       const margin = 10;
       const top = Math.max(margin, rect.top);
       const maxHeight = Math.max(120, viewportHeight - top - margin);
       const height = Math.min(rect.height, maxHeight);
       const sideSpace = viewportWidth - rect.right - gap - margin;
-      const viewportSafeWidth = Math.max(300, viewportWidth - margin * 2);
-      const width = Math.min(860, viewportSafeWidth, Math.max(380, sideSpace));
-      const left = sideSpace >= 340 ? rect.right + gap : Math.max(margin, viewportWidth - margin - width);
+      const width = Math.min(640, Math.max(480, viewportWidth * 0.32));
+      const left = sideSpace >= width ? rect.right + gap : Math.max(margin, viewportWidth - margin - width);
       node.style.setProperty('--战斗记录外置-top', `${Math.round(top)}px`);
       node.style.setProperty('--战斗记录外置-left', `${Math.round(left)}px`);
-      node.style.setProperty('--战斗记录外置-width', `${Math.round(width)}px`);
+      node.style.setProperty('--战斗记录外置-width', 'clamp(480px, 32vw, 640px)');
       node.style.setProperty('--战斗记录外置-height', `${Math.round(height)}px`);
     }
     component.syncRecordPortalPosition = 同步战斗记录终端位置;
@@ -48473,6 +48480,9 @@ class BattleUIComponent {
               autoContinueConfig,
               pendingTowerSettlement,
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
+              activeBattleRecordView: ['round', 'report', 'decision'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'round',
+              activeBattleDecisionRound: Math.max(0, Number(previousState.activeBattleDecisionRound || 0)),
+              activeBattleDecisionActionId: String(previousState.activeBattleDecisionActionId || '').trim(),
               battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
             },
           });
@@ -48649,9 +48659,42 @@ class BattleUIComponent {
             const active = button.getAttribute('data-battle-record-tab') === activeTab;
             button.classList.toggle('active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
+            button.setAttribute('tabindex', active ? '0' : '-1');
           });
           设置战斗记录展开状态(true);
           渲染战斗记录面板();
+        }
+
+        function 读取战斗记录视图() {
+          const view = String(window.BattleUI?.state?.activeBattleRecordView || '').trim();
+          return ['round', 'report', 'decision'].includes(view) ? view : 'round';
+        }
+
+        function 设置战斗记录视图(view = 'round') {
+          const activeView = ['round', 'report', 'decision'].includes(view) ? view : 'round';
+          if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordView = activeView;
+          渲染战斗记录面板();
+        }
+
+        function 绑定分段控件键盘导航(容器, 属性名, 激活值, 设置值) {
+          if (!容器) return;
+          const buttons = Array.from(容器.querySelectorAll(`[${属性名}]`));
+          buttons.forEach((button, index) => {
+            const active = button.getAttribute(属性名) === 激活值;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+            button.setAttribute('tabindex', active ? '0' : '-1');
+            button.addEventListener('click', () => 设置值(button.getAttribute(属性名) || ''));
+            button.addEventListener('keydown', event => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+              const next = buttons[nextIndex];
+              if (!next) return;
+              设置值(next.getAttribute(属性名) || '');
+              next.focus();
+            });
+          });
         }
 
         function 清空战斗预演面板() {
@@ -52147,23 +52190,10 @@ class BattleUIComponent {
               else pushHighlight(round, `${actor}动作受阻`, 5, event);
             } else if (kind === 'defend') {
               pushHighlight(round, `${actor}转入防御`, 3, event);
-            } else if (kind === 'pass') {
-              pushHighlight(round, `${actor}暂缓出手`, 3, event);
             } else if (kind === 'dodge' && /evaded|dodged|闪避|规避/i.test(result)) {
               pushHighlight(round, `${actor}规避成功`, 4, event);
-            } else if (kind === 'action_start' && 判定守势待机动作(action)) {
-              pushHighlight(round, `${actor}暂缓出手`, 3, event);
             }
           });
-          (Array.isArray(result?.resolutionTrace) ? result.resolutionTrace : [])
-            .filter(node => node && typeof node === 'object' && String(node.nodeKind || '').trim() === 'action_decision')
-            .forEach(node => {
-              const round = Math.max(0, Number(node.round || 0));
-              const actor = String(node.actorName || '').trim();
-              const action = normalizeBattleActionDisplayName(node.finalActionName || node.actionName || '');
-              if (!(round > 0) || !actor || !action) return;
-              pushHighlight(round, `${actor}持续施压`, 2, { sourceNodeId: node.nodeId });
-            });
           return [...rounds.values()]
             .filter(item => item.round > 0 && (item.playerHpDelta || item.enemyHpDelta || item.resourceDeltas.length || item.highlights.length))
             .sort((a, b) => a.round - b.round)
@@ -52175,7 +52205,7 @@ class BattleUIComponent {
                 .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)), sourceEventIds: Array.isArray(entry.sourceEventIds) ? entry.sourceEventIds.slice(0, 8) : [] })),
               playerHpSourceEventIds: Array.isArray(item.playerHpSourceEventIds) ? item.playerHpSourceEventIds.slice(0, 12) : [],
               enemyHpSourceEventIds: Array.isArray(item.enemyHpSourceEventIds) ? item.enemyHpSourceEventIds.slice(0, 12) : [],
-              highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 3),
+              highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 1),
             }));
         }
 
@@ -52353,6 +52383,36 @@ class BattleUIComponent {
           return supplemental;
         }
 
+        function 读取判定动作筛选项(审计条目 = []) {
+          return (Array.isArray(审计条目) ? 审计条目 : [])
+            .filter(item => item?.type === 'resolution_action_block')
+            .map(item => {
+              const root = item.root || {};
+              const round = Math.max(0, Number(item.round || item.回合 || root.round || 0));
+              const actionId = String(root.actionId || root.sourceActionId || root.nodeId || '').trim();
+              const actionName = normalizeBattleActionDisplayName(root.finalActionName || root.actionName || root.initialActionName || '');
+              const actorName = String(root.actorName || '').trim();
+              return round > 0 && actionId && actionName ? { round, actionId, actionName, actorName } : null;
+            })
+            .filter(Boolean);
+        }
+
+        function 筛选判定流程条目(审计条目 = [], round = 0, actionId = '') {
+          const activeRound = Math.max(0, Number(round || 0));
+          const activeActionId = String(actionId || '').trim();
+          const selectedAction = 读取判定动作筛选项(审计条目).find(item => item.actionId === activeActionId) || null;
+          return (Array.isArray(审计条目) ? 审计条目 : []).filter(item => {
+            const itemRound = 读取判定条目回合(item, 0);
+            if (activeRound > 0 && itemRound !== activeRound) return false;
+            if (!selectedAction) return true;
+            if (item?.type === 'resolution_action_block') {
+              const root = item.root || {};
+              return String(root.actionId || root.sourceActionId || root.nodeId || '').trim() === selectedAction.actionId;
+            }
+            return itemRound === selectedAction.round;
+          });
+        }
+
         function 导出战斗记录可见文本(result = null, activeTab = 'preview') {
           if (!result) return '';
           const logs = Array.isArray(result.logs) ? result.logs : [];
@@ -52420,6 +52480,7 @@ class BattleUIComponent {
             const active = button.getAttribute('data-battle-record-tab') === activeTab;
             button.classList.toggle('active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
+            button.setAttribute('tabindex', active ? '0' : '-1');
           });
           const result = activeTab === 'preview' ? state.previewResult : state.actualBattleResult;
           if (!result) {
@@ -52456,7 +52517,6 @@ class BattleUIComponent {
             .filter(Boolean)
             .sort((left, right) => Number(left?.round || 0) - Number(right?.round || 0));
           const 战报 = 战报Blocks.map(item => 序列化公开战报Blocks(item?.blocks)).filter(Boolean);
-          const 流程HTML = 渲染分回合判定流程(审计条目);
           const 回合速览 = 构建回合速览数据(result, context);
           const 战报展示上下文 = { ...context, combatData: context?.combatData || result?.combatData || {} };
           const 战报单位上下文 = 读取战报上下文单位(战报展示上下文);
@@ -52465,6 +52525,34 @@ class BattleUIComponent {
             ...战报单位上下文.enemyUnits,
             ...(Array.isArray(context?.units) ? context.units : []),
           ];
+          const activeView = 读取战斗记录视图();
+          const 视图标签 = { round: '回合', report: '战报', decision: '判定' };
+          let 视图内容 = '';
+          if (activeView === 'round') {
+            视图内容 = 渲染回合速览HTML(回合速览) || '<div class="battle-preview-empty">暂无回合结算</div>';
+          } else if (activeView === 'report') {
+            视图内容 = `<div class="battle-preview-report">${战报Blocks.length
+              ? 战报Blocks.map(item => `<article class="battle-preview-report-group" data-round="${Number(item?.round || 0)}"><p>${渲染公开战报BlocksHTML(item.blocks, 战报展示上下文).html}</p></article>`).join('')
+              : '<p>暂无战报</p>'}</div>`;
+          } else {
+            const 动作筛选项 = 读取判定动作筛选项(审计条目);
+            const 回合列表 = Array.from(new Set(动作筛选项.map(item => item.round))).sort((a, b) => a - b);
+            let activeRound = Math.max(0, Number(state.activeBattleDecisionRound || 0));
+            if (!回合列表.includes(activeRound)) activeRound = 回合列表[0] || 0;
+            let 当回合动作 = 动作筛选项.filter(item => item.round === activeRound);
+            let activeActionId = String(state.activeBattleDecisionActionId || '').trim();
+            if (!当回合动作.some(item => item.actionId === activeActionId)) activeActionId = String(当回合动作[0]?.actionId || '').trim();
+            state.activeBattleDecisionRound = activeRound;
+            state.activeBattleDecisionActionId = activeActionId;
+            const 筛选后条目 = 筛选判定流程条目(审计条目, activeRound, activeActionId);
+            视图内容 = `
+              <div class="battle-decision-filter" aria-label="判定筛选">
+                <label><span>回合</span><select data-battle-decision-round>${回合列表.map(round => `<option value="${round}"${round === activeRound ? ' selected' : ''}>第${round}回合</option>`).join('')}</select></label>
+                <label><span>动作</span><select data-battle-decision-action>${当回合动作.map(item => `<option value="${htmlEscapeText(item.actionId)}"${item.actionId === activeActionId ? ' selected' : ''}>${htmlEscapeText(`${item.actorName} · ${item.actionName}`)}</option>`).join('')}</select></label>
+              </div>
+              <div class="battle-preview-trace">${渲染分回合判定流程(筛选后条目)}</div>
+            `;
+          }
           node.hidden = false;
           node.innerHTML = `
             <div class="battle-preview-head">
@@ -52472,15 +52560,23 @@ class BattleUIComponent {
               <b>${htmlEscapeText(格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode))}</b>
               <em>${htmlEscapeText(`推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`)}</em>
             </div>
-            ${渲染回合速览HTML(回合速览)}
-            <div class="battle-preview-report">
-              ${战报Blocks.length ? 战报Blocks.map(item => `<p>${渲染公开战报BlocksHTML(item.blocks, 战报展示上下文).html}</p>`).join('') : '<p>暂无战报</p>'}
+            <div class="battle-record-view-tabs" role="tablist" aria-label="记录视图">
+              ${Object.entries(视图标签).map(([view, label]) => `<button class="battle-record-view-tab${view === activeView ? ' active' : ''}" type="button" role="tab" data-battle-record-view="${view}" aria-selected="${view === activeView ? 'true' : 'false'}" tabindex="${view === activeView ? '0' : '-1'}">${label}</button>`).join('')}
             </div>
-            <details class="battle-preview-trace">
-              <summary>判定流程</summary>
-              ${流程HTML}
-            </details>
+            <section class="battle-record-view" role="tabpanel" aria-label="${htmlEscapeText(视图标签[activeView])}">${视图内容}</section>
           `;
+          绑定分段控件键盘导航(node.querySelector('.battle-record-view-tabs'), 'data-battle-record-view', activeView, 设置战斗记录视图);
+          const roundSelect = node.querySelector('[data-battle-decision-round]');
+          if (roundSelect) roundSelect.addEventListener('change', () => {
+            state.activeBattleDecisionRound = Math.max(0, Number(roundSelect.value || 0));
+            state.activeBattleDecisionActionId = '';
+            渲染战斗记录面板();
+          });
+          const actionSelect = node.querySelector('[data-battle-decision-action]');
+          if (actionSelect) actionSelect.addEventListener('change', () => {
+            state.activeBattleDecisionActionId = String(actionSelect.value || '').trim();
+            渲染战斗记录面板();
+          });
           node.querySelectorAll('[data-battle-report-skill]').forEach(button => {
             const skillName = String(button.getAttribute('data-skill-name') || '').trim();
             const actorName = String(button.getAttribute('data-actor-name') || '').trim();
@@ -52852,6 +52948,18 @@ class BattleUIComponent {
             if (button.__battleRecordTabBound) return;
             button.addEventListener('click', () => {
               设置战斗记录页签(button.getAttribute('data-battle-record-tab') || 'actual');
+            });
+            button.addEventListener('keydown', event => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              const buttons = Array.from(读取战斗记录终端节点()?.querySelectorAll('[data-battle-record-tab]') || []);
+              const index = buttons.indexOf(button);
+              if (index < 0) return;
+              event.preventDefault();
+              const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+              const next = buttons[nextIndex];
+              if (!next) return;
+              设置战斗记录页签(next.getAttribute('data-battle-record-tab') || 'actual');
+              next.focus();
             });
             button.__battleRecordTabBound = true;
           });

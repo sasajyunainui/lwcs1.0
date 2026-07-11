@@ -42177,8 +42177,8 @@ ${播报文本}
               <button class="battle-record-toggle" id="ui-battle-record-toggle" type="button" aria-expanded="false">记录</button>
               <div class="battle-record-body">
                 <div class="battle-record-tabs" role="tablist" aria-label="战斗记录">
-                  <button class="battle-record-tab active" type="button" data-battle-record-tab="actual">实战记录</button>
-                  <button class="battle-record-tab" type="button" data-battle-record-tab="preview">预演记录</button>
+                  <button class="battle-record-tab active" type="button" role="tab" data-battle-record-tab="actual" aria-selected="true" tabindex="0">实战记录</button>
+                  <button class="battle-record-tab" type="button" role="tab" data-battle-record-tab="preview" aria-selected="false" tabindex="-1">预演记录</button>
                 </div>
                 <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
               </div>
