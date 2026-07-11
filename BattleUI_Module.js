@@ -1658,13 +1658,15 @@ class BattleUIComponent {
       (效果列表 || []).forEach(效果 => {
         const 原型 = String(效果?.原型 || 效果?.类型 || '').trim();
         const 文本 = JSON.stringify(效果 || {});
+        const 变化文本 = String(效果?.数值 ?? '').trim();
+        const 是正向变化 = !变化文本.startsWith('-');
         if (原型 === '伤害结算' || /伤害结算|威力倍率|damage/i.test(文本)) 命中.输出 = true;
         if (原型 === '状态施加' && /控制|眩晕|沉默|封技|定身|束缚|禁锢|skip_turn|cannot_react|silence/i.test(文本)) 命中.控制 = true;
-        if (原型 === '属性修改' && /HP|生命|治疗|回血|恢复|heal|recover/i.test(文本) && !/扣除|伤害|damage/i.test(文本)) 命中.治疗 = true;
+        if ((['属性修改', '属性修正'].includes(原型) || 原型 === '资源变化') && /HP|生命|治疗|回血|恢复|heal|recover/i.test(文本) && 是正向变化 && !/扣除|伤害|damage/i.test(文本)) 命中.治疗 = true;
         if (原型 === '规则防御' || /护盾|免伤|减伤|闪避|格挡|庇护|shield|dodge|damage_reduce/i.test(文本)) 命中.防护 = true;
         if (/驱散|净化|解除|清除异常|dispell|dispel|cleanse/i.test(原型 + 文本)) 命中.驱散 = true;
         if (/破防|破盾|防御降低|护盾削减|穿透|defense_break|shield_break/i.test(原型 + 文本)) 命中.破防 = true;
-        if (/资源修改|资源锁定|封锁资源|增耗|封魂|耗竭|恢复魂力|魂力恢复|精神力恢复|体力恢复|resource|cost_increase/i.test(原型 + 文本)) 命中.资源 = true;
+        if (/资源变化|资源修改|资源锁定|封锁资源|增耗|封魂|耗竭|恢复魂力|魂力恢复|精神力恢复|体力恢复|resource|cost_increase/i.test(原型 + 文本)) 命中.资源 = true;
         if (原型 === '召唤生成' || 原型 === '机制授予' || /召唤|维持|宿主|summon|maintain/i.test(文本)) 命中.召唤 = true;
         if (/群体|范围|全体|aoe|targets|目标数|波及/i.test(文本)) 命中.群体 = true;
       });
@@ -12702,20 +12704,7 @@ class BattleUIComponent {
 
     function 判定技能具备真实截断资格_V1(skill = {}) {
       if (!skill || typeof skill !== 'object') return false;
-      if (isBattleSkillSealProfile(skill)) return true;
-      if (hasBattleSkillRuntimeConsumer(skill, ['interrupt', 'hard_control', 'skill_seal'])) return true;
-      return getSkillEffects(skill, { 行为规划: true }).some(effect => {
-        const 原型 = String(effect?.原型 || '').trim();
-        if (原型 !== '状态施加') return false;
-        const 战斗效果 = effect?.计算层效果 || {};
-        return 战斗效果.skip_turn === true ||
-          战斗效果.cannot_react === true ||
-          战斗效果.silence === true ||
-          战斗效果.skill_seal === true ||
-          Number(战斗效果.lock_level || 0) > 0 ||
-          Number(战斗效果.cast_speed_penalty || 0) > 0 ||
-          Number(战斗效果.reaction_penalty || 0) > 0;
-      });
+      return hasBattleSkillRuntimeConsumer(skill, ['interrupt']);
     }
 
     function isBattleSkillDotPressureProfile(skill) {
@@ -19246,6 +19235,94 @@ class BattleUIComponent {
         断言战斗回归夹具(!/【第1魂技】|【第2魂技】/.test(logs), `公开战报仍残留魂技槽位占位:${logs}`);
         日志.push('行为链换招未再泄漏占位技能名');
       });
+      注册('状态边际收益按剩余窗口收敛', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 中毒效果 = {
+          原型: '状态施加',
+          类型: 'debuff',
+          目标: '敌方单体',
+          状态: '中毒',
+          状态名称: '中毒',
+          持续回合: 2,
+          计算层效果: { dot_damage: 16 },
+        };
+        const 规划状态 = { combatData, primaryTarget: 敌人, target: 敌人 };
+        const 首次收益 = 评估效果对单位规划收益(中毒效果, 玩家, 敌人, 规划状态, { name: '毒击' });
+        敌人.状态效果.中毒 = { 类型: 'debuff', 层数: 1, duration: 2, 战斗效果: { ...createEmptyCombatEffectMap(), dot_damage: 16 } };
+        const 满窗口重复收益 = 评估效果对单位规划收益(中毒效果, 玩家, 敌人, 规划状态, { name: '毒击' });
+        敌人.状态效果.中毒.duration = 1;
+        const 剩余一回合收益 = 评估效果对单位规划收益(中毒效果, 玩家, 敌人, 规划状态, { name: '毒击' });
+        const 禁止刷新收益 = 评估效果对单位规划收益({ ...中毒效果, 覆盖规则: '不可刷新' }, 玩家, 敌人, 规划状态, { name: '毒击' });
+        敌人.状态效果.中毒.duration = 2;
+        const 可叠加收益 = 评估效果对单位规划收益({ ...中毒效果, 覆盖规则: '最多3层叠加' }, 玩家, 敌人, 规划状态, { name: '毒击' });
+        const 叠加结果 = 合并状态覆盖条目_V1(敌人.状态效果.中毒, {
+          类型: 'debuff',
+          层数: 1,
+          duration: 2,
+          战斗效果: { ...createEmptyCombatEffectMap(), dot_damage: 16 },
+        }, { ...中毒效果, 覆盖规则: '最多3层叠加' });
+        断言战斗回归夹具(首次收益 > 0, `首次状态收益未成立:${首次收益}`);
+        断言战斗回归夹具(满窗口重复收益 === 0, `满窗口同状态未归零:${满窗口重复收益}`);
+        断言战斗回归夹具(剩余一回合收益 > 0 && 剩余一回合收益 < 首次收益, `剩余窗口边际收益异常:${首次收益}/${剩余一回合收益}`);
+        断言战斗回归夹具(禁止刷新收益 === 0, `不可刷新状态仍获得收益:${禁止刷新收益}`);
+        断言战斗回归夹具(可叠加收益 > 0, `可叠加状态未获得边际收益:${可叠加收益}`);
+        断言战斗回归夹具(叠加结果.applied && 叠加结果.mode === 'stack' && Number(叠加结果.state?.层数 || 0) === 2, `状态叠加落地策略异常:${JSON.stringify(叠加结果)}`);
+        日志.push(`状态边际收益成立:${首次收益}/${剩余一回合收益}/${满窗口重复收益}`);
+      });
+      注册('状态免疫与抵抗进入规划收益', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 控制效果 = {
+          原型: '状态施加',
+          类型: 'debuff',
+          目标: '敌方单体',
+          状态: '位移限制',
+          状态名称: '位移限制',
+          持续回合: 2,
+          驱动属性: '精神力',
+          影响方向: '成功率',
+          计算层效果: { cannot_react: true, lock_level: 1 },
+        };
+        const 规划状态 = { combatData, primaryTarget: 敌人, target: 敌人 };
+        玩家.men_max = 1200;
+        敌人.men_max = 120;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.final = buildCombatFinalStats(敌人);
+        const 高命中收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
+        玩家.men_max = 60;
+        敌人.men_max = 1800;
+        玩家.final = buildCombatFinalStats(玩家);
+        敌人.final = buildCombatFinalStats(敌人);
+        const 高抵抗收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
+        敌人.状态效果.异常免疫 = { 类型: 'buff', 层数: 1, duration: 2, 战斗效果: { ...createEmptyCombatEffectMap(), 无视异常: true } };
+        敌人.final = buildCombatFinalStats(敌人);
+        const 免疫收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
+        断言战斗回归夹具(高命中收益 > 高抵抗收益 && 高抵抗收益 > 0, `抵抗未压低状态收益:${高命中收益}/${高抵抗收益}`);
+        断言战斗回归夹具(免疫收益 === 0, `状态免疫未归零:${免疫收益}`);
+        日志.push(`状态抵抗/免疫收益成立:${高命中收益}/${高抵抗收益}/${免疫收益}`);
+      });
+      注册('召唤控制标签不能进入即时截断池', 日志 => {
+        const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
+        const 召唤控制技能 = normalizeSkillData({
+          name: '蛇群封场',
+          魂技名: '蛇群封场',
+          技能分类: '控制',
+          目标: '敌方群体',
+          消耗: '魂力:120',
+          前摇: 10,
+          _效果数组: [
+            { 原型: '召唤生成', 目标: '自身', 召唤物名称: '青影蛇', 召唤数量: 1, 行动模式: '协同攻击', 持续回合: 1 },
+            { 原型: '状态施加', 目标: '敌方群体', 状态: '位移限制', 状态名称: '位移限制', 持续回合: 1, 计算层效果: { dodge_penalty: 0.15, cast_speed_penalty: 0.15 } },
+          ],
+        }, '蛇群封场');
+        敌人.第1武魂 = { 表象名称: '召唤控制武魂', 第1魂环: { 第1魂技: 召唤控制技能 } };
+        敌人.type = '敏攻系';
+        敌人.final = buildCombatFinalStats(敌人);
+        const 来袭技能 = normalizeSkillData(战斗回归输出魂技('高速突进', '敌方单体', 6, 96, '近身攻击'), '高速突进');
+        const 应招候选 = 构建应招候选池(敌人, 玩家, { type: '释放魂技', action_type: '释放魂技', skill: 来袭技能 }, combatData);
+        断言战斗回归夹具(!判定技能具备真实截断资格_V1(召唤控制技能), '召唤/控制标签被误判为真实截断');
+        断言战斗回归夹具(!应招候选.some(item => String(item?.action?.skill?.name || item?.name || '') === '蛇群封场'), `召唤控制技能误入即时应招池:${JSON.stringify(应招候选)}`);
+        日志.push('召唤控制技能未进入即时截断应招池');
+      });
       return { ok: 夹具列表.every(item => item.ok), results: 夹具列表 };
     }
 
@@ -20649,6 +20726,10 @@ class BattleUIComponent {
       宿主.名称 = '玩家宿主';
       敌人.name = '敌方宿主';
       敌人.名称 = '敌方宿主';
+      宿主.agi = 0;
+      敌人.agi = 0;
+      宿主.final = buildCombatFinalStats(宿主);
+      敌人.final = buildCombatFinalStats(敌人);
       召唤单位.宿主名 = '玩家宿主';
       召唤单位.__宿主 = 宿主;
       const 敌方状态键 = '召唤:敌方影兽';
@@ -21473,6 +21554,9 @@ class BattleUIComponent {
             名称: finalAction,
             score: Number(配置.finalScore || 100),
             权重: Number(配置.finalScore || 100),
+            finalScore: Number(配置.finalScore || 100),
+            resourceCostEV: Number(配置.finalResourceCostEV || 0),
+            castTime: Number(配置.finalCastTime || 0),
             原始权重: Number(配置.finalBase ?? 配置.base ?? 70),
             战术修正: Number(配置.finalTactical ?? 配置.tactical ?? 16),
             目标修正: Number(配置.finalTarget ?? 配置.target ?? 14),
@@ -21488,6 +21572,9 @@ class BattleUIComponent {
             名称: altAction,
             score: Number(配置.altScore || 88),
             权重: Number(配置.altScore || 88),
+            finalScore: Number(配置.altScore || 88),
+            resourceCostEV: Number(配置.altResourceCostEV || 0),
+            castTime: Number(配置.altCastTime || 0),
             原始权重: Number(配置.altBase ?? 配置.base ?? 70),
             战术修正: Number(配置.altTactical ?? 配置.tactical ?? 16),
             目标修正: Number(配置.altTarget ?? 配置.target ?? 14),
@@ -21604,6 +21691,8 @@ class BattleUIComponent {
         altTarget: 12,
         finalScore: 100,
         altScore: 100,
+        finalResourceCostEV: 8,
+        altResourceCostEV: 16,
         selectedTags: ['CONTROL_RESTRICTION'],
         altTags: ['DIRECT_DAMAGE'],
         altRejectionCode: 'DIRECT_PRESSURE_GAP',
@@ -22175,7 +22264,7 @@ class BattleUIComponent {
       }
     }
 
-    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '完全闪避不落本次攻击负面状态', '位移限制不结算生命流失', '新附加持续状态下回合才跳伤', '完整闪避链不触发本次状态结算', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '无伤害能力动作阻断污染伤害包', '闭环账本标记未闭合起招', '空效果技能不留下未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与伤害停推', '自动续推不因同构攻防提前终止', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '判定流程展示细化', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链', '预演结果导出与UI可见文本一致', '公开战报不再自指普攻', '状态结算可追溯附着来源', '自身增益动作队列不误取消', '自保候选不串旧敌方目标', '非攻击动作不触发防反链', '防反来源优先使用真实动作', '控制第一魂技防反伤害不污染来源', '状态反伤必须写入防反账本', '状态来源登记写入运行时账本', '敌对动作目标不得落友方或自身', '反敏攻闪避后不继续普攻前压', '敏攻闪避后不重复同一单体压制技能'];
+    root.__LWCS_LIST_BATTLE_REGRESSION_FIXTURES__ = () => ['第一魂技槽位归属', '固定消耗只扣一次', '百分比普通魂技阻断不扣费', '目标语义不串线', '造物给友方入包补丁', '非敌对短前摇先完成', '非敌对长前摇被打断不落地', '防御时 NPC 仍主动规划', '非攻击动作集合不冻结 NPC', '敏攻近身来袭有通用应对', '反高速主动规划保留区分', '防守反击强于闪避反击', '闪避擦伤战报不写完全避开', '完全闪避战报不带伤害', '完全闪避不落本次攻击负面状态', '位移限制不结算生命流失', '新附加持续状态下回合才跳伤', '完整闪避链不触发本次状态结算', '群体攻击逐目标独立命中', '索敌失败进入公开战报', '第一魂技正常释放链路', '无伤害能力动作阻断污染伤害包', '闭环账本标记未闭合起招', '空效果技能不留下未闭合起招', '自动续推不复用首轮手选魂技', '自动续推设置控制最大回合与伤害停推', '自动续推不因同构攻防提前终止', '资源镜像回合尾同步', '第一魂技被先制打断不提前扣费', '非物品动作拒绝背包调用', '使用物品才消费背包', '自动规划不调用背包物品', '团战战报多链不串联', '多行动索敌失败不污染他人链', '判定主卡隐藏内部术语', '判定流程压缩重复并展示结算链', '行为链审计不被起招校正', '表现层语义纠偏', '判定流程展示细化', '全场纯增益不触发敌对', '全场伤害触发敌对', 'NPC敌方削弱目标取玩家侧', '控制削弱完成后扣费落状态', '控制资源不足不扣费不落地', '施法失败误入结算不落状态', '团战NPC友方辅助不串敌我', '友方群体护盾只落己方', '敌方群体伤害跟随状态逐目标', '护盾先吸收再扣血', 'UI动作声明契约不丢字段', '团战多窗口应招不串链', '预演结果导出与UI可见文本一致', '公开战报不再自指普攻', '状态结算可追溯附着来源', '自身增益动作队列不误取消', '自保候选不串旧敌方目标', '非攻击动作不触发防反链', '防反来源优先使用真实动作', '控制第一魂技防反伤害不污染来源', '状态反伤必须写入防反账本', '状态来源登记写入运行时账本', '敌对动作目标不得落友方或自身', '反敏攻闪避后不继续普攻前压', '敏攻闪避后不重复同一单体压制技能', '状态边际收益按剩余窗口收敛', '状态免疫与抵抗进入规划收益', '召唤控制标签不能进入即时截断池'];
     root.__LWCS_RUN_BATTLE_REGRESSION_FIXTURE_BATCH__ = (名称 = '') => 运行战斗回归夹具(名称);
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => 运行战斗调试案例(options);
     root.__LWCS_DEBUG_AUDIT_BATTLE_FACTS__ = payload => 审计战斗运行事实(payload);
@@ -23317,6 +23406,116 @@ class BattleUIComponent {
       return 28;
     }
 
+    function 解析状态覆盖策略_V1(effect = {}, existingState = null) {
+      const 覆盖规则 = String(effect?.覆盖规则 || '').trim();
+      const 禁止刷新 = /(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(覆盖规则);
+      const 禁止叠加 = /(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(覆盖规则);
+      const 允许叠加 = !禁止叠加 && /叠加|累加|层数/.test(覆盖规则);
+      const 层数命中 = 覆盖规则.match(/(?:上限|最多|最高)?\s*(\d+)\s*层/);
+      const 显式层数上限 = Number(effect?.叠加上限 ?? effect?.最大层数 ?? 层数命中?.[1]);
+      const 层数上限 = Number.isFinite(显式层数上限) && 显式层数上限 > 0
+        ? Math.max(1, Math.floor(显式层数上限))
+        : Number.POSITIVE_INFINITY;
+      const 旧持续 = Math.max(0, Number(existingState?.duration ?? existingState?.持续回合 ?? 0));
+      const 新持续 = Math.max(0, Number(effect?.持续回合 ?? 0));
+      const 旧层数 = Math.max(1, Number(existingState?.层数 || 1));
+      const 旧位阶 = Number(existingState?.状态位阶 ?? existingState?.位阶 ?? existingState?.强度 ?? 0);
+      const 新位阶 = Number(effect?.状态位阶 ?? effect?.位阶 ?? effect?.强度 ?? 0);
+      const 高阶覆盖 = !!existingState && Number.isFinite(新位阶) && Number.isFinite(旧位阶) && 新位阶 > 旧位阶;
+      return {
+        允许刷新: !禁止刷新,
+        允许叠加,
+        层数上限,
+        旧持续,
+        新持续,
+        旧层数,
+        高阶覆盖,
+      };
+    }
+
+    function 合并状态覆盖条目_V1(existingState = null, nextState = {}, effect = {}) {
+      if (!existingState || typeof existingState !== 'object') {
+        return { applied: true, mode: 'apply', state: nextState, previousDuration: 0, nextDuration: Math.max(0, Number(nextState?.duration || 0)) };
+      }
+      const 策略 = 解析状态覆盖策略_V1(effect, existingState);
+      if (策略.高阶覆盖) {
+        return { applied: true, mode: 'replace', state: nextState, previousDuration: 策略.旧持续, nextDuration: Math.max(策略.新持续, Number(nextState?.duration || 0)) };
+      }
+      if (策略.允许叠加 && 策略.旧层数 < 策略.层数上限) {
+        const 合并比例 = { ...(existingState?.面板修改比例 || {}) };
+        Object.entries(nextState?.面板修改比例 || {}).forEach(([key, value]) => {
+          合并比例[key] = Number(合并比例[key] ?? 1) * Number(value ?? 1);
+        });
+        const 合并固定 = { ...(existingState?.面板固定修正 || {}) };
+        Object.entries(nextState?.面板固定修正 || {}).forEach(([key, value]) => {
+          合并固定[key] = Number(合并固定[key] || 0) + Number(value || 0);
+        });
+        const 合并元素承伤 = { ...(existingState?.元素承伤修正 || {}) };
+        Object.entries(nextState?.元素承伤修正 || {}).forEach(([key, value]) => {
+          合并元素承伤[key] = Number(合并元素承伤[key] ?? 1) * Number(value ?? 1);
+        });
+        const nextDuration = 策略.允许刷新 ? Math.max(策略.旧持续, 策略.新持续) : 策略.旧持续;
+        return {
+          applied: true,
+          mode: 'stack',
+          previousDuration: 策略.旧持续,
+          nextDuration,
+          state: {
+            ...existingState,
+            ...nextState,
+            层数: 策略.旧层数 + 1,
+            duration: nextDuration,
+            shield_value: Math.max(0, Number(existingState?.shield_value || 0)) + Math.max(0, Number(nextState?.shield_value || 0)),
+            面板修改比例: 合并比例,
+            面板固定修正: 合并固定,
+            战斗效果: mergeCombatEffectMaps(existingState?.战斗效果 || createEmptyCombatEffectMap(), nextState?.战斗效果 || {}),
+            ...(Object.keys(合并元素承伤).length ? { 元素承伤修正: 合并元素承伤 } : {}),
+          },
+        };
+      }
+      const nextDuration = 策略.允许刷新 ? Math.max(策略.旧持续, 策略.新持续) : 策略.旧持续;
+      if (nextDuration <= 策略.旧持续) {
+        return { applied: false, mode: 'no_effect', state: existingState, previousDuration: 策略.旧持续, nextDuration: 策略.旧持续 };
+      }
+      return {
+        applied: true,
+        mode: 'refresh',
+        previousDuration: 策略.旧持续,
+        nextDuration,
+        state: {
+          ...existingState,
+          来源技能: nextState?.来源技能 || existingState?.来源技能 || '',
+          来源角色: nextState?.来源角色 || existingState?.来源角色 || '',
+          描述: nextState?.描述 || existingState?.描述 || '',
+          duration: nextDuration,
+          __本回合新附加: nextState?.__本回合新附加 === true,
+        },
+      };
+    }
+
+    function 计算状态施加边际系数_V1(effect = {}, target = {}) {
+      const 状态名 = String(effect?.状态 || effect?.状态名称 || '').trim();
+      const existingState = 状态名 && target?.状态效果?.[状态名] && typeof target.状态效果[状态名] === 'object'
+        ? target.状态效果[状态名]
+        : null;
+      if (!existingState) return 1;
+      const 覆盖结果 = 合并状态覆盖条目_V1(existingState, {
+        层数: 1,
+        duration: Math.max(0, Number(effect?.持续回合 || 0)),
+        状态位阶: effect?.状态位阶,
+        位阶: effect?.位阶,
+        强度: effect?.强度,
+        面板修改比例: { ...(effect?.面板修改比例 || {}) },
+        面板固定修正: { ...(effect?.面板固定修正 || {}) },
+        战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
+      }, effect);
+      if (!覆盖结果.applied) return 0;
+      if (覆盖结果.mode === 'replace' || 覆盖结果.mode === 'apply') return 1;
+      if (覆盖结果.mode === 'stack') return Math.max(0.2, 1 / Math.max(1, Number(覆盖结果.state?.层数 || 1)));
+      const 新增窗口 = Math.max(0, Number(覆盖结果.nextDuration || 0) - Number(覆盖结果.previousDuration || 0));
+      return Math.max(0, Math.min(1, 新增窗口 / Math.max(1, Number(effect?.持续回合 || 覆盖结果.nextDuration || 1))));
+    }
+
     function 计算行为规划时间系数(effect = {}) {
       const 延迟回合 = Math.max(0, Number(effect?.延迟回合 || 0));
       const 持续回合 = Math.max(0, Number(effect?.持续回合 || 0));
@@ -23515,11 +23714,12 @@ class BattleUIComponent {
           ? (guardAbsorb / Math.max(1, getCombatHpMaxValue(previewActor))) * 135 * 持续窗口 * survivalRate
           : 0;
         const mentalLoadRatio = Math.max(0, Number(previewSummon.精神负载 || 0)) / Math.max(1, Number(previewActor.men_max || previewActor?.属性?.精神力上限 || 1));
+        const currentMentalLoadRatio = Math.max(0, Number(previewSummon.精神负载 || 0)) / Math.max(1, Number(previewActor.men ?? previewActor?.属性?.精神力 ?? 0));
         const deathProbability = Math.max(0, 1 - survivalRate);
         const backlashRatio = previewSummon.死亡反噬
           ? Math.min(0.34, Math.max(0.07, Number(previewSummon.继承属性比例 || 0) * 0.4))
           : 0;
-        const loadPenalty = mentalLoadRatio * 42;
+        const loadPenalty = Math.max(mentalLoadRatio * 42, currentMentalLoadRatio * 34) + (currentMentalLoadRatio > 1 ? 36 + (currentMentalLoadRatio - 1) * 24 : 0);
         const backlashPenalty = deathProbability * backlashRatio * 100;
         const firstWindowFactor = 行动模式 === '自主行动' ? 0.92 : 1;
         const existingPressure = 召唤单位类型 === '其他召唤生物' ? Math.max(0.45, 1 - 已有同类数量 * 0.08) : 1;
@@ -24030,7 +24230,24 @@ class BattleUIComponent {
           Number(计算层效果.reaction_penalty || 0) > 0 ||
           Number(计算层效果.dodge_penalty || 0) > 0;
         const beneficial = 对目标有益 && !明确负面;
-        return (友方 === beneficial) ? 状态价值 : -状态价值;
+        const 状态条目 = {
+          类型: beneficial ? 'buff' : 'debuff',
+          原型: '状态施加',
+          状态: String(effect?.状态 || effect?.状态名称 || '').trim(),
+          计算层效果,
+          战斗效果: 计算层效果,
+        };
+        if (!beneficial && 无视异常阻断负面或削减(target, 状态条目)) return 0;
+        const 免疫等级阈值 = Math.max(
+          0,
+          ...Object.values(target?.状态效果 || {}).map(状态条目项 => Number(状态条目项?.战斗效果?.invincible_tier_threshold || 0)),
+        );
+        if (!beneficial && 免疫等级阈值 > 0 && getCombatUnitTierNumber(actor) < 免疫等级阈值) return 0;
+        const 边际系数 = 计算状态施加边际系数_V1(effect, target);
+        if (!(边际系数 > 0)) return 0;
+        const 附着成功率 = beneficial ? 1 : 计算状态施加成功率审计(effect, actor, target).successRate;
+        const 边际价值 = 状态价值 * 边际系数 * Math.max(0, Math.min(1, Number(附着成功率 || 0)));
+        return (友方 === beneficial) ? 边际价值 : -边际价值;
       }
       if (原型 === '结算修正') {
         原始收益 = 估算结算修正选项规划权重(effect, actor, target, behaviorState, skill);
@@ -25004,7 +25221,7 @@ class BattleUIComponent {
         const 旧状态 = char.状态效果[状态名] && typeof char.状态效果[状态名] === 'object'
           ? char.状态效果[状态名]
           : null;
-        const 下一持续 = Math.max(Number(effect?.持续回合 || 0), Number(旧状态?.duration || 0));
+        const 下一持续 = Math.max(0, Number(effect?.持续回合 || 0));
         const 延迟状态条目 = {
           类型: ['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(String(effect?.目标 || '').trim()) ? 'buff' : 'debuff',
           层数: 1,
@@ -25022,7 +25239,9 @@ class BattleUIComponent {
         }
         const 持续移除命中 = 持续状态移除阻断状态附着(char, 状态名, 延迟状态条目, null);
         if (持续移除命中) return `[持续状态移除] ${label}的[${状态名}]被[${持续移除命中.key}]拦截。`;
-        char.状态效果[状态名] = 延迟状态条目;
+        const 覆盖结果 = 合并状态覆盖条目_V1(旧状态, 延迟状态条目, effect);
+        if (!覆盖结果.applied) return `[延迟效果] ${label}的[${状态名}]已存在，本次未形成新的刷新或叠加。`;
+        char.状态效果[状态名] = 覆盖结果.state;
         char.final = buildCombatFinalStats(char);
         return `[延迟效果] ${label}获得[${状态名}]。`;
       }
@@ -26113,8 +26332,6 @@ class BattleUIComponent {
       function 推断战斗因果节点配置(event = {}) {
         const kind = String(event?.eventKind || '').trim();
         const result = String(event?.result || '').trim();
-        const actionRole = 推断战斗行动职责(event);
-        if (kind === 'action_start' && actionRole === 'COUNTER') return { nodeKind: 'counter_action', nodeLayer: 'intent', primaryOutcome: 'action_committed' };
         if (kind === 'action_start') return { nodeKind: 'action_decision', nodeLayer: 'intent', primaryOutcome: 'action_committed' };
         if (kind === 'reaction_window') return { nodeKind: 'reaction_window', nodeLayer: 'system_check', primaryOutcome: 'reaction_window_opened' };
         if (['dodge', 'defend', 'pass'].includes(kind)) return { nodeKind: 'reaction_decision', nodeLayer: 'system_check', primaryOutcome: kind === 'dodge' ? (/evaded|miss|dodge_success|闪避成功|未命中/.test(result) ? 'dodged' : 'reaction_failed') : (kind === 'defend' ? 'guarded' : 'reaction_failed') };
@@ -29449,7 +29666,8 @@ class BattleUIComponent {
         if (Number(getPrimaryDamageEffect(skill, { 行为规划: true })?.威力倍率 || 0) > 0) return 获取行动前摇({ skill }) <= 12 ? '短前摇对轰' : '承伤硬抗';
         if (isBattleSkillDefensiveProfile(skill) || isBattleSkillReactiveDefenseProfile(skill)) return '防御';
         if (hasBattleSkillRuntimeConsumer(skill, ['self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return '位移规避';
-        if (isBattleSkillControlProfile(skill) || hasBattleSkillRuntimeConsumer(skill, ['interrupt', 'hard_control', 'skill_seal'])) return '控制截断';
+        if (判定技能具备真实截断资格_V1(skill)) return '控制截断';
+        if (isBattleSkillControlProfile(skill)) return '状态压制';
         if (isBattleSkillCounterProfile(skill) || hasBattleSkillRuntimeConsumer(skill, ['counter', 'on_hit_counter', 'damage_reflect'])) return '反制技能';
         return '状态/装备触发';
       }
@@ -29588,6 +29806,7 @@ class BattleUIComponent {
         collectCombatSkills(后手, 双方.友方)
           .map(skill => newSkillData(skill))
           .filter(skill => 技能可进入换招候选池(后手, skill))
+          .filter(skill => 推断行为链技能倾向(skill) !== '状态压制')
           .forEach(skill => {
             const 分类 = 推断行为链技能倾向(skill);
             const 前摇压力 = 限制行为概率(getSkillCastTime(skill) / 40, 0, 1);
@@ -39820,7 +40039,7 @@ class BattleUIComponent {
               ) {
                 return;
               }
-              const 下一持续 = Math.max(Number(stateEffect?.持续回合 || 0), Number(oldState?.duration || 0));
+              const 下一持续 = Math.max(0, Number(stateEffect?.持续回合 || 0));
               const 新状态条目 = {
                 类型: friendly ? 'buff' : 'debuff',
                 层数: 1,
@@ -39842,35 +40061,45 @@ class BattleUIComponent {
                 result.desc += ` [持续状态移除] ${targetObj === attacker ? '自身' : targetObj.name || '目标'}的[${状态名}]被[${持续移除命中.key}]拦截。`;
                 return;
               }
-              if (oldState) {
-                const 旧持续 = Math.max(0, Number(oldState.duration || oldState.持续回合 || 0));
-                const 新持续 = Math.max(0, Number(下一持续 || 0));
-                const 旧强度 = Number(oldState.状态位阶 ?? oldState.位阶 ?? oldState.强度 ?? oldState.层数 ?? 0);
-                const 新强度 = Number(stateEffect.状态位阶 ?? stateEffect.位阶 ?? stateEffect.强度 ?? 0);
-                const 是高阶覆盖 = Number.isFinite(新强度) && Number.isFinite(旧强度) && 新强度 > 旧强度;
+              const 覆盖结果 = 合并状态覆盖条目_V1(oldState, 新状态条目, stateEffect);
+              if (!覆盖结果.applied) {
                 写入状态生命周期事实('state_replace', targetObj, {
                   stateName: 状态名,
-                  result: 是高阶覆盖 ? 'replace' : 'refresh',
-                  primaryOutcome: 是高阶覆盖 ? 'state_replace' : 'state_refresh',
-                  previousDuration: 旧持续,
-                  nextDuration: 新持续,
-                  duration: 新持续,
-                  stackMode: 是高阶覆盖 ? 'replace' : 'refresh_duration',
-                  replaceReason: 是高阶覆盖 ? 'higher_tier_replaced_lower_tier' : 'same_state_refresh_duration',
+                  result: 'no_effect',
+                  primaryOutcome: 'state_unchanged',
+                  previousDuration: 覆盖结果.previousDuration,
+                  nextDuration: 覆盖结果.nextDuration,
+                  duration: 覆盖结果.nextDuration,
+                  stackMode: 'no_effect',
+                  replaceReason: 'same_state_no_marginal_gain',
+                });
+                return;
+              }
+              const 落地状态条目 = 覆盖结果.state;
+              if (oldState) {
+                写入状态生命周期事实('state_replace', targetObj, {
+                  stateName: 状态名,
+                  result: 覆盖结果.mode,
+                  primaryOutcome: 覆盖结果.mode === 'replace' ? 'state_replace' : 覆盖结果.mode === 'stack' ? 'state_stack' : 'state_refresh',
+                  previousDuration: 覆盖结果.previousDuration,
+                  nextDuration: 覆盖结果.nextDuration,
+                  duration: 覆盖结果.nextDuration,
+                  stackMode: 覆盖结果.mode === 'stack' ? 'stack' : 覆盖结果.mode === 'replace' ? 'replace' : 'refresh_duration',
+                  replaceReason: 覆盖结果.mode === 'replace' ? 'higher_tier_replaced_lower_tier' : 覆盖结果.mode === 'stack' ? 'same_state_stack' : 'same_state_refresh_duration',
                 });
               }
-              targetObj.状态效果[状态名] = 新状态条目;
+              targetObj.状态效果[状态名] = 落地状态条目;
               targetObj.final = buildCombatFinalStats(targetObj);
               if (targetObj.召唤键) 同步召唤单位镜像(targetObj);
-              新状态条目.__状态来源键 = 记录状态来源登记(combatData, {
+              落地状态条目.__状态来源键 = 记录状态来源登记(combatData, {
                 stateName: 状态名,
                 targetName: targetObj?.name || targetObj?.名称 || '',
                 sourceActorName: attacker?.name || attacker?.名称 || '',
                 sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
                 sourceActionType: playerAction?.action_type || playerAction?.type || '',
                 sourceRound: Number(combatData?.回合 || 0),
-                duration: 下一持续,
-                effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
+                duration: 覆盖结果.nextDuration,
+                effectSummary: 构建状态结果效果摘要(落地状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
               });
               写入战斗事件账本(combatData, {
@@ -39883,9 +40112,9 @@ class BattleUIComponent {
                 sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
                 sourceRound: Number(combatData?.回合 || 0),
                 result: 'applied',
-                applicationId: 新状态条目.__状态来源键,
-                duration: 下一持续,
-                effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
+                applicationId: 落地状态条目.__状态来源键,
+                duration: 覆盖结果.nextDuration,
+                effectSummary: 构建状态结果效果摘要(落地状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(stateEffect) || '').trim(),
                 meta: {
                   stateName: 状态名,
@@ -40957,7 +41186,7 @@ class BattleUIComponent {
               const 原状态 = 目标对象.状态效果[状态名] && typeof 目标对象.状态效果[状态名] === 'object'
                 ? 目标对象.状态效果[状态名]
                 : null;
-              const 下一持续 = Math.max(Number(状态施加效果.持续回合 || 0), Number(原状态?.duration || 0));
+              const 下一持续 = Math.max(0, Number(状态施加效果.持续回合 || 0));
               const 状态战斗效果 = mergeCombatEffectMaps(createEmptyCombatEffectMap(), 状态施加效果.计算层效果 || {});
               清理非生命流失状态伤害字段(状态名, 状态战斗效果);
               const 状态护盾数值 = Number(状态战斗效果.shield_gain_bonus || 0);
@@ -41006,18 +41235,45 @@ class BattleUIComponent {
                 result.desc += ` [持续状态移除] ${目标对象 === attacker ? '自身' : 目标名}的[${状态名}]被[${持续移除命中.key}]拦截。`;
                 return;
               }
-              目标对象.状态效果[状态名] = 新状态条目;
+              const 覆盖结果 = 合并状态覆盖条目_V1(原状态, 新状态条目, 状态施加效果);
+              if (!覆盖结果.applied) {
+                写入状态生命周期事实('state_replace', 目标对象, {
+                  stateName: 状态名,
+                  result: 'no_effect',
+                  primaryOutcome: 'state_unchanged',
+                  previousDuration: 覆盖结果.previousDuration,
+                  nextDuration: 覆盖结果.nextDuration,
+                  duration: 覆盖结果.nextDuration,
+                  stackMode: 'no_effect',
+                  replaceReason: 'same_state_no_marginal_gain',
+                });
+                return;
+              }
+              const 落地状态条目 = 覆盖结果.state;
+              if (原状态) {
+                写入状态生命周期事实('state_replace', 目标对象, {
+                  stateName: 状态名,
+                  result: 覆盖结果.mode,
+                  primaryOutcome: 覆盖结果.mode === 'replace' ? 'state_replace' : 覆盖结果.mode === 'stack' ? 'state_stack' : 'state_refresh',
+                  previousDuration: 覆盖结果.previousDuration,
+                  nextDuration: 覆盖结果.nextDuration,
+                  duration: 覆盖结果.nextDuration,
+                  stackMode: 覆盖结果.mode === 'stack' ? 'stack' : 覆盖结果.mode === 'replace' ? 'replace' : 'refresh_duration',
+                  replaceReason: 覆盖结果.mode === 'replace' ? 'higher_tier_replaced_lower_tier' : 覆盖结果.mode === 'stack' ? 'same_state_stack' : 'same_state_refresh_duration',
+                });
+              }
+              目标对象.状态效果[状态名] = 落地状态条目;
               目标对象.final = buildCombatFinalStats(目标对象);
               if (目标对象.召唤键) 同步召唤单位镜像(目标对象);
-              新状态条目.__状态来源键 = 记录状态来源登记(combatData, {
+              落地状态条目.__状态来源键 = 记录状态来源登记(combatData, {
                 stateName: 状态名,
                 targetName: 目标对象?.name || 目标对象?.名称 || '',
                 sourceActorName: attacker?.name || attacker?.名称 || '',
                 sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
                 sourceActionType: playerAction?.action_type || playerAction?.type || '',
                 sourceRound: Number(combatData?.回合 || 0),
-                duration: 下一持续,
-                effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
+                duration: 覆盖结果.nextDuration,
+                effectSummary: 构建状态结果效果摘要(落地状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
               });
               写入战斗事件账本(combatData, {
@@ -41030,9 +41286,9 @@ class BattleUIComponent {
                 sourceActionName: playerAction.skill?.name || playerAction.skill?.魂技名 || '',
                 sourceRound: Number(combatData?.回合 || 0),
                 result: 'applied',
-                applicationId: 新状态条目.__状态来源键,
-                duration: 下一持续,
-                effectSummary: 构建状态结果效果摘要(新状态条目.战斗效果 || {}),
+                applicationId: 落地状态条目.__状态来源键,
+                duration: 覆盖结果.nextDuration,
+                effectSummary: 构建状态结果效果摘要(落地状态条目.战斗效果 || {}),
                 driverAttr: String(读取状态施加默认驱动属性_战斗(状态施加效果) || '').trim(),
                 meta: {
                   stateName: 状态名,
@@ -42963,31 +43219,8 @@ class BattleUIComponent {
           }
 
           if (防御者系别 === '敏攻系') {
-            const 敏攻截断候选技能 =
-              (反高速窗口.成立 && (hardControlSkill || skillSealSkill || rangePressureSkill)) ||
-              ((threatProfile.incomingAttackIntent === true || isChargingHighThreat) && (hardControlSkill || skillSealSkill || rangePressureSkill)) ||
-              null;
-            const 敏攻截断技能 = 敏攻截断候选技能 && (() => {
-              const 技能 = 敏攻截断候选技能;
-              const 目标文本 = String(getSkillTarget(技能) || '').trim();
-              if (/群体|全场/.test(目标文本)) return true;
-              if (isBattleSkillSealProfile(技能)) return true;
-              if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal'])) return true;
-              return getSkillEffects(技能, { 行为规划: true }).some(effect => {
-                const 原型 = String(effect?.原型 || '').trim();
-                if (原型 === '资源锁定' || 原型 === '规则改写' || 原型 === '决策干扰' || 原型 === '判定修正' || 原型 === '时窗修正') return true;
-                if (原型 !== '状态施加') return false;
-                const 战斗效果 = effect?.计算层效果 || {};
-                return 战斗效果.skip_turn === true ||
-                  战斗效果.cannot_react === true ||
-                  战斗效果.silence === true ||
-                  战斗效果.skill_seal === true ||
-                  Number(战斗效果.lock_level || 0) > 0 ||
-                  Number(战斗效果.dodge_penalty || 0) > 0 ||
-                  Number(战斗效果.cast_speed_penalty || 0) > 0;
-              });
-            })()
-              ? 敏攻截断候选技能
+            const 敏攻截断技能 = (反高速窗口.成立 || threatProfile.incomingAttackIntent === true || isChargingHighThreat)
+              ? [hardControlSkill, skillSealSkill, rangePressureSkill].find(技能 => 判定技能具备真实截断资格_V1(技能)) || null
               : null;
             if (敏攻截断技能) {
               tacticalBranches.push({
@@ -49827,9 +50060,8 @@ class BattleUIComponent {
             reasons.push(rootIsSummonAction ? '召唤行动' : '玩家行动');
           }
           if (actorSide !== 'player' && targetSide === 'player') {
-            score += 8;
-            childEscalated = true;
-            reasons.push('玩家受击');
+            score += 4;
+            reasons.push('敌方行动');
           }
           if (discardedAction && discardedAction !== finalAction) {
             score += 7;
