@@ -61,7 +61,8 @@
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
-    战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
+    战斗运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleRuntime_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
+    战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗运行时'] },
     数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'background' }
   };
 
@@ -81,8 +82,8 @@
   ]);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
-  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '战斗模块', '数据库模块']);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '战斗模块']);
+  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '战斗运行时', '战斗模块', '数据库模块']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '战斗运行时', '战斗模块']);
   const 启动预取资源列表 = Object.freeze([
     'MVU_ZOD_Entry.js',
     'MVU_Skill_Runtime.js',
@@ -462,6 +463,10 @@
   async function 执行模块加载(模块名) {
     const 模块 = 模块注册表[模块名];
     if (!模块) throw new Error(`unknown_module:${模块名}`);
+    for (const 依赖模块名 of Array.isArray(模块.依赖) ? 模块.依赖 : []) {
+      const 依赖结果 = await 尝试加载模块(依赖模块名, `dependency:${模块名}`, false);
+      if (!依赖结果?.ok) throw 依赖结果?.error || new Error(`module_dependency_failed:${模块名}:${依赖模块名}`);
+    }
     if (模块.类型 === 'css') return 加载样式(模块.地址);
     if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址);
     if (模块.类型 === 'wait-global') return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
