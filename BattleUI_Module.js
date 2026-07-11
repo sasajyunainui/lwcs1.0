@@ -4091,6 +4091,7 @@ class BattleUIComponent {
           /缺少可结算效果|未形成主动结算效果|没有形成主动结算效果|no_effective_opening|NO_EFFECTIVE_OPENING/.test(reason)
         )
       ) {
+        if (!/观察|observe|防御|收招转防|守势|defend|stance/i.test(actionText)) return '';
         return 构建守势待机短句(actor, actionText);
       }
       const mappedReason = 映射玩家可见失败原因(reasonCode, reason);
@@ -5151,7 +5152,9 @@ class BattleUIComponent {
         .forEach(event => {
           const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
           const prefix = round > 0 ? `第${round}回合：` : '';
-          const text = `${prefix}${构建公开战报失败短句(event, round).replace(/[。！？\s]+$/g, '')}。`;
+          const failureText = 构建公开战报失败短句(event, round).replace(/[。！？\s]+$/g, '');
+          if (!failureText) return;
+          const text = `${prefix}${failureText}。`;
           const textBlock = 构建公开战报文本块(text, event);
           if (textBlock) textBlock.projectionSource = 'failure_ast';
           const blocks = [textBlock].filter(Boolean);
@@ -5373,13 +5376,11 @@ class BattleUIComponent {
           if (kind === 'pass') {
             if (outcome === 'observe' || /观察/.test(action)) pushActorText(item, '保持距离观察，没有贸然追击');
             else if (outcome === 'stance_hold') pushActorText(item, '收住攻势，稳住身位');
-            else pushActorText(item, '暂缓出手，观察战局变化');
             return;
           }
           if (kind === 'action_start' && 判定守势待机动作(action)) {
             if (/观察/.test(action)) pushActorText(item, '保持距离观察，没有贸然追击');
             else if (/防御|守势|收招转防/.test(action)) pushActorText(item, '转入防御，稳住自身防线');
-            else pushActorText(item, '暂缓出手，观察战局变化');
             return;
           }
           if (kind === 'complete' && action) pushActorText(item, `完成【${action}】`);
@@ -48747,6 +48748,7 @@ class BattleUIComponent {
           const activeView = ['round', 'report', 'decision'].includes(view) ? view : 'round';
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordView = activeView;
           渲染战斗记录面板();
+          读取战斗记录面板节点()?.querySelector(`[data-battle-record-view="${activeView}"]`)?.focus();
         }
 
         function 绑定分段控件键盘导航(容器, 属性名, 激活值, 设置值) {
@@ -48765,7 +48767,6 @@ class BattleUIComponent {
               const next = buttons[nextIndex];
               if (!next) return;
               设置值(next.getAttribute(属性名) || '');
-              next.focus();
             });
           });
         }
