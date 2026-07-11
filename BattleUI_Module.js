@@ -52246,7 +52246,7 @@ class BattleUIComponent {
             const resourceDeltas = (Array.isArray(item?.resourceDeltas) ? item.resourceDeltas : []).filter(entry => Math.round(Number(entry?.value || 0)) !== 0);
             const resourceHtml = resourceDeltas.length ? `<div class="battle-round-dashboard-resources">${resourceDeltas.map(entry => {
               const sourceAttr = (Array.isArray(entry?.sourceEventIds) ? entry.sourceEventIds : []).map(id => String(id || '').trim()).filter(Boolean).slice(0, 8).join(',');
-              return `<span${sourceAttr ? ` data-source-event-ids="${htmlEscapeText(sourceAttr)}"` : ''}>${htmlEscapeText(`${entry.actorName || '单位'} ${entry.resourceName || '资源'} ${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)}</span>`;
+              return `<span class="battle-round-dashboard-badge battle-round-dashboard-badge--resource" data-resource-name="${htmlEscapeText(entry.resourceName || '资源')}"${sourceAttr ? ` data-source-event-ids="${htmlEscapeText(sourceAttr)}"` : ''}>${htmlEscapeText(`${entry.actorName || '单位'} ${entry.resourceName || '资源'} ${Number(entry.value || 0) > 0 ? '+' : ''}${Math.round(Number(entry.value || 0))}`)}</span>`;
             }).join('')}</div>` : '';
             const statusLabel = (() => {
               const head = String(highlights[0]?.text || '').trim();
@@ -52264,7 +52264,8 @@ class BattleUIComponent {
                 sourceEventId ? `data-source-event-id="${htmlEscapeText(sourceEventId)}"` : '',
                 sourceNodeId ? `data-source-node-id="${htmlEscapeText(sourceNodeId)}"` : '',
               ].filter(Boolean).join(' ');
-              return `<span${attrs ? ` ${attrs}` : ''}>${htmlEscapeText(entry.text)}</span>`;
+              const stateFact = /陷入【|免疫【|抵住【/.test(String(entry.text || ''));
+              return `<span class="battle-round-dashboard-badge${stateFact ? ' battle-round-dashboard-badge--state' : ' battle-round-dashboard-badge--event'}"${attrs ? ` ${attrs}` : ''}>${htmlEscapeText(entry.text)}</span>`;
             }).join('')}</div>` : '';
             return `<div class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Number(item?.round || 0)}回合</span><b>${htmlEscapeText(statusLabel)}</b></div><div class="battle-round-dashboard-bars">${renderHpDelta('我方', playerDelta, playerRatio, item?.playerHpSourceEventIds)}${renderHpDelta('敌方', enemyDelta, enemyRatio, item?.enemyHpSourceEventIds)}</div>${resourceHtml}${highlightHtml}</div>`;
           }).join('')}</section>`;
@@ -52346,7 +52347,6 @@ class BattleUIComponent {
             .map(item => Number(String(序列化公开战报Blocks(item?.blocks || []) || '').match(/^第(\d+)回合：/)?.[1] || 0))
             .filter(round => round > 0));
           const supplemental = [];
-          const 连续补缺动作 = new Map();
           (Array.isArray(审计条目) ? 审计条目 : [])
             .filter(item => item && item.type === 'resolution_action_block')
             .sort((left, right) => Number(left.round || left.回合 || 0) - Number(right.round || right.回合 || 0))
@@ -52358,17 +52358,7 @@ class BattleUIComponent {
               const target = String(root.targetName || '').trim();
               const action = normalizeBattleActionDisplayName(root.finalActionName || root.actionName || '');
               if (!actor || !action) return;
-              const targetText = target ? `朝${target}` : '在战场中';
-              const repeatKey = `${actor}::${target}::${action}`;
-              const previous = 连续补缺动作.get(repeatKey) || { round: 0, count: 0 };
-              const repeatCount = previous.round === round - 1 ? previous.count + 1 : 0;
-              连续补缺动作.clear();
-              连续补缺动作.set(repeatKey, { round, count: repeatCount });
-              const text = repeatCount >= 2
-                ? `第${round}回合：${actor}仍以【${action}】压住${target || '战场'}，把连续攻势维持到底。`
-                : repeatCount === 1
-                  ? `第${round}回合：${actor}再度${targetText}催动【${action}】，延续上一轮的压迫。`
-                  : `第${round}回合：${actor}${targetText}亮出【${action}】起手，交锋节奏随即被拉开。`;
+              const text = `第${round}回合：${actor}执行【${action}】${target ? `，目标为${target}` : ''}。`;
               const nodeId = String(root.nodeId || '').trim();
               const textBlock = 构建公开战报文本块(text, {
                 ...root,
