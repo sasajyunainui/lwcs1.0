@@ -29386,6 +29386,137 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   border-bottom: 0;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  color: var(--战斗记录文字主色);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-head,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--战斗强调色) 24%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-head span,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head span,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head span {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 720;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-head b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-head b {
+  min-width: 0;
+  color: #ffffff;
+  font-size: var(--战斗记录标题字号);
+  font-weight: 820;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal :is(.battle-final-summary-sides, .battle-final-summary-grid),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-sides, .battle-final-summary-grid),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-sides, .battle-final-summary-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal :is(.battle-final-summary-side, .battle-final-summary-intent, .battle-final-summary-list),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-side, .battle-final-summary-intent, .battle-final-summary-list),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-side, .battle-final-summary-intent, .battle-final-summary-list) {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--战斗主色) 14%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary h4,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary h4,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary h4 {
+  margin: 0;
+  color: color-mix(in srgb, var(--战斗强调色) 62%, #ffffff);
+  font-size: var(--战斗记录正文字号);
+  font-weight: 820;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-unit,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+  min-width: 0;
+  padding: 4px 0;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录小字号);
+  line-height: 1.35;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-unit b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit b {
+  color: var(--战斗记录文字主色);
+  font-size: var(--战斗记录正文字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-unit em,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit em,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-unit em {
+  flex-basis: 100%;
+  color: color-mix(in srgb, var(--战斗警戒色) 72%, #ffffff);
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal :is(.battle-final-summary-intent p, .battle-final-summary-list p, .battle-final-summary-list li, .battle-final-summary-empty),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-intent p, .battle-final-summary-list p, .battle-final-summary-list li, .battle-final-summary-empty),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-intent p, .battle-final-summary-list p, .battle-final-summary-list li, .battle-final-summary-empty) {
+  margin: 0;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录正文字号);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-intent p,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-intent p,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-intent p {
+  display: grid;
+  grid-template-columns: 2.6em minmax(0, 1fr);
+  gap: 7px;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-intent p b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-intent p b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-intent p b {
+  color: var(--战斗记录文字主色);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary-list ul,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-list ul,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-final-summary-list ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 17px;
+}
+
 @media (max-width: 1180px) {
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host,
   #detailModal #mvu-battle-inline-host,
@@ -29468,11 +29599,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-view-tabs,
   #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-view-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter,
   #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter {
+    grid-template-columns: 1fr;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-sides, .battle-final-summary-grid),
+  #detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-final-summary-sides, .battle-final-summary-grid) {
     grid-template-columns: 1fr;
   }
 }

@@ -180,12 +180,12 @@
 
   function 规范化战斗结算上下文(payload = {}) {
     const 输入 = payload && typeof payload === 'object' ? payload : {};
-    const 公开战报 = String(输入.公开战报 || 输入.battleReport || 输入.report || '').trim();
+    const 结构化摘要 = String(输入.结构化摘要 || 输入.battleSummary || 输入.summary || '').trim();
     const 裁断卷宗 = String(输入.裁断卷宗 || 输入.settlementDossier || 输入.dossier || '').trim();
-    if (!公开战报 && !裁断卷宗) return null;
+    if (!结构化摘要 && !裁断卷宗) return null;
     return {
       id: String(输入.id || 输入.批次ID || `battle-settlement-${Date.now()}`).trim(),
-      公开战报,
+      结构化摘要,
       裁断卷宗,
       来源: String(输入.来源 || 输入.source || 'battle_ui').trim(),
       时间戳: Number(输入.时间戳 || 输入.timestamp || Date.now()) || Date.now(),
@@ -203,12 +203,12 @@
     return 本轮战斗结算上下文 && typeof 本轮战斗结算上下文 === 'object' ? 本轮战斗结算上下文 : null;
   }
 
-  function 本轮输入包含战斗公开战报(text = '') {
-    return /<battle_public_report>[\s\S]*?<\/battle_public_report>/i.test(String(text || ''));
+  function 本轮输入包含战斗结构化摘要(text = '') {
+    return /<battle_structured_summary>[\s\S]*?<\/battle_structured_summary>/i.test(String(text || ''));
   }
 
   function 取本轮有效战斗结算上下文(userInput = '') {
-    if (!本轮输入包含战斗公开战报(userInput)) {
+    if (!本轮输入包含战斗结构化摘要(userInput)) {
       本轮战斗结算上下文 = null;
       return null;
     }
@@ -220,7 +220,7 @@
     if (!上下文) return '无任务';
     return [
       '【战斗裁断任务】',
-      '当前存在前端战斗模块提交的战斗结算卷宗。公开战报已在本轮用户输入的 <battle_public_report> 中提供，你必须以那份公开战报为事实基准，在完成模块路由审查后继续判断本轮战斗是否应结束，并为后续正文准备自然承接。',
+      '当前存在前端战斗模块提交的战斗结算卷宗。结构化战斗摘要已在本轮用户输入的 <battle_structured_summary> 中提供，你必须以其中的绝对HP、资源、状态、召唤物与近期事实为基准，在完成模块路由审查后继续判断本轮战斗是否应结束，并为后续正文准备自然承接。',
       '',
       '<battle_adjudication_dossier>',
       上下文.裁断卷宗 || '无',
@@ -980,14 +980,14 @@
     if (模块路由块命中战斗(路由块) && 取本轮有效战斗结算上下文(本轮输入文本)) {
       return {
         action: 'continueWithRuntimeEvent',
-        reason: 'battle_report_route_skipped',
+        reason: 'battle_summary_route_skipped',
         result: {
           handled: true,
           kind: 'battle',
           dispatchMode: 'settled_summary',
-          reason: 'battle_report_route_skipped',
+          reason: 'battle_summary_route_skipped',
         },
-        runtimeEvent: '<module_routing_result>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含战斗公开战报，battle 模块路由只作为战报承接上下文，不再重复接管或截断正文。\n</module_routing_result>',
+        runtimeEvent: '<module_routing_result>\n模块：battle\n状态：已跳过\n事实：本轮用户输入已经包含结构化战斗摘要，battle 模块路由只作为结算承接上下文，不再重复接管或截断正文。\n</module_routing_result>',
       };
     }
     const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');

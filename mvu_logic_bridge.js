@@ -44170,42 +44170,10 @@ ${播报文本}
     return { ok: true, combatData };
   }
 
-  function 清理自动战斗公开战报行(line = '') {
-    return toText(line, '')
-      .replace(/\[[^\]]*(?:行为预演|规划|候选|权重|Roll|续推判定|单回合仲裁|前端|暗箱)[^\]]*\][^。！？\n]*(?:[。！？]|$)/g, '')
-      .replace(/\(Roll:[^)]+\)/g, '')
-      .replace(/Roll[:：][0-9.]+/gi, '')
-      .replace(/权重[:：]?\s*-?\d+(?:\.\d+)?/g, '')
-      .replace(/JSONPatch|UpdateVariable|moduleSettlement|battle_arbitration/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function 构建自动战斗公开战报(combatData = {}, 执行结果 = {}) {
-    const 战报列表 = Array.isArray(执行结果.logs) ? 执行结果.logs : [];
-    const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
-    const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
-    const 战果类型 =
-      执行结果.winner === 'player'
-        ? 'player_win'
-        : 执行结果.winner === 'enemy'
-          ? 'enemy_win'
-          : 'unfinished';
-    const 战果说明 =
-      战果类型 === 'player_win'
-        ? '玩家方取得阶段胜势'
-        : 战果类型 === 'enemy_win'
-          ? '敌方取得阶段胜势'
-          : '战斗仍在持续';
-    return [
-      '<battle_public_report>',
-      `自动战斗已由战斗模块完成结算：实际推演 ${toNumber(执行结果.roundsExecuted, 0)} 回合。`,
-      ...战报列表.map(清理自动战斗公开战报行).filter(Boolean).slice(-8).map((line, index) => `${index + 1}. ${line}`),
-      `当前结果：${战果说明}。`,
-      `存活统计：我方存活 ${玩家存活}；敌方存活 ${敌方存活}。`,
-      `战斗意图：${toText(combatData.战斗意图, '点到为止')}。`,
-      '</battle_public_report>',
-    ].join('\n');
+  function 构建自动战斗结构化摘要(执行结果 = {}) {
+    const 摘要 = toText(执行结果.llmBattleSummary || 执行结果.finalBattleReport?.text, '').trim();
+    if (!摘要) return '';
+    return ['<battle_structured_summary>', 摘要, '</battle_structured_summary>'].join('\n');
   }
 
   function 构建自动战斗裁断卷宗(combatData = {}, 执行结果 = {}) {
@@ -44273,13 +44241,13 @@ ${播报文本}
     const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
     let 提交结果 = null;
     try {
-      const 公开战报 = 构建自动战斗公开战报(战斗数据, 执行结果);
+      const 结构化摘要 = 构建自动战斗结构化摘要(执行结果);
       const 裁断卷宗 = 构建自动战斗裁断卷宗(战斗数据, 执行结果);
       const 登记接口 = typeof window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__ === 'function'
         ? window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__
         : null;
-      if (登记接口) 登记接口({ 公开战报, 裁断卷宗, 来源: 'auto_battle_route' });
-      提交结果 = await dispatchUiAiRequest(['自动战斗推进', 公开战报].filter(Boolean).join('\n\n'), '', {
+      if (登记接口) 登记接口({ 结构化摘要, 裁断卷宗, 来源: 'auto_battle_route' });
+      提交结果 = await dispatchUiAiRequest(['自动战斗推进', 结构化摘要].filter(Boolean).join('\n\n'), '', {
         requestKind: 'battle_settlement_plot',
         patchOps,
         skipActionLock: true,
