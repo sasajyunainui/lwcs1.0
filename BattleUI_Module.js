@@ -149,7 +149,7 @@ class BattleUIComponent {
       free_narrative: '自由',
     };
     const 自动续推默认设置 = Object.freeze({
-      maxRounds: 4,
+      maxRounds: 20,
       stopDamagePercent: 25,
       continueChancePercent: 100,
     });
@@ -2728,12 +2728,17 @@ class BattleUIComponent {
         const comboEV = Math.round(
           连招.修正 + 短期记忆.修正 + 对手适应.修正 - 记忆惩罚 - 闪避未中惩罚 - 敏攻硬追惩罚 + 反敏攻价值得分,
         );
+        const effectHasConvertibleValue = !skill || effectEV > 0;
+        const convertibleTargetEV = effectHasConvertibleValue ? targetEV : Math.min(0, targetEV);
+        const convertibleTimingEV = effectHasConvertibleValue ? timingEV : Math.min(0, timingEV);
+        const convertibleRoleEV = effectHasConvertibleValue ? roleEV : Math.min(0, roleEV);
+        const convertibleComboEV = effectHasConvertibleValue ? comboEV : Math.min(0, comboEV);
         const resourceCostEV = Math.max(0, Math.round(
           Number(候选.resourceCostEV || 0) - Number(资源节奏.修正 || 0) - Number(资源修正 || 0),
         ));
         const riskEV = Math.max(0, Math.round(Number(风险.风险变化 || 0) * 80));
         const 衰减前分数 = 资源判定.硬否决 ? 0 : Math.max(0, Math.round(
-          effectEV + targetEV + timingEV + roleEV + comboEV - resourceCostEV - riskEV,
+          effectEV + convertibleTargetEV + convertibleTimingEV + convertibleRoleEV + convertibleComboEV - resourceCostEV - riskEV,
         ));
         const 分数 = Math.round(衰减前分数 * Number(重复衰减.repeatDecayMultiplier || 1));
         const candidateId = String(
@@ -2748,10 +2753,10 @@ class BattleUIComponent {
             candidateId,
             actionRole: 标准化战斗行动职责(候选.actionRole || behaviorState?.actionRole || (/应招|REACTION/i.test(String(behaviorState?.规划语境 || '')) ? 'REACTION' : 'ACTIVE')),
             effectEV,
-            targetEV,
-            timingEV,
-            roleEV,
-            comboEV,
+            targetEV: convertibleTargetEV,
+            timingEV: convertibleTimingEV,
+            roleEV: convertibleRoleEV,
+            comboEV: convertibleComboEV,
             resourceCostEV,
             riskEV,
             repeatMultiplier: Number(重复衰减.repeatDecayMultiplier || 1),
@@ -2765,10 +2770,10 @@ class BattleUIComponent {
             原始净收益,
             战术修正,
             effectEV,
-            targetEV,
-            timingEV,
-            roleEV,
-            comboEV,
+            targetEV: convertibleTargetEV,
+            timingEV: convertibleTimingEV,
+            roleEV: convertibleRoleEV,
+            comboEV: convertibleComboEV,
             resourceCostEV,
             riskEV,
             目标修正,
@@ -22051,6 +22056,33 @@ class BattleUIComponent {
       };
       collectBlockSources(publicReportBlocks);
 
+      if (payload.roundsRequested > 0 && eventLedger.length === 0) {
+        pushFatal('BATTLE_REQUEST_WITHOUT_FACTS', { roundsRequested: Number(payload.roundsRequested || 0) });
+      }
+      const creationKeys = new Map();
+      eventLedger.filter(event => String(event?.eventKind || '').trim() === 'create').forEach(event => {
+        const createdName = String(event?.createdName || event?.meta?.createdName || '').trim();
+        const ownerName = String(event?.meta?.ownerName || event?.targetName || '').trim();
+        const count = Math.max(0, Number(event?.count ?? event?.meta?.count ?? 0));
+        if (!createdName || !ownerName || !(count > 0)) {
+          pushFatal('CREATION_FACT_INCOMPLETE', { eventId: event?.eventId || '', createdName, ownerName, count });
+          return;
+        }
+        const key = [
+          Number(event?.round || 0),
+          String(event?.sourceActionId || event?.actionId || '').trim(),
+          String(event?.actorName || '').trim(),
+          ownerName,
+          normalizeBattleActionDisplayName(event?.actionName || event?.sourceActionName || ''),
+          createdName,
+        ].join('|');
+        if (creationKeys.has(key)) {
+          pushFatal('DUPLICATE_CREATION_FACT', { eventId: event.eventId, duplicateOf: creationKeys.get(key), key });
+        } else {
+          creationKeys.set(key, String(event?.eventId || '').trim());
+        }
+      });
+
       const settlementEvents = eventLedger.filter(event => {
         const kind = String(event?.eventKind || '').trim();
         if (kind === 'hit_result') return readDamage(event) > 0;
@@ -22318,7 +22350,16 @@ class BattleUIComponent {
           .filter(item => item.candidates.length)
           .slice(-Math.max(3, rounds * 6));
         const scoringMutationDetected = Number(战斗评分预估写入次数 || 0) > scoringMutationCountBefore;
-        const audit = 审计战斗运行事实({ eventLedger, resolutionTrace, publicReportBlocks, scoringAudit, scoringMutationDetected, combatData: result?.combatData || combatData });
+        const audit = 审计战斗运行事实({
+          eventLedger,
+          resolutionTrace,
+          publicReportBlocks,
+          scoringAudit,
+          scoringMutationDetected,
+          combatData: result?.combatData || combatData,
+          roundsRequested: rounds,
+          roundsExecuted: Number(result?.roundsExecuted || 0),
+        });
         return {
           caseId,
           seed,
@@ -23449,6 +23490,20 @@ class BattleUIComponent {
       return Math.floor(数值);
     }
 
+    function 读取未来资源消费需求(unit = {}, resourceKey = 'sp', currentSkill = null) {
+      if (resourceKey === 'hp') return 1;
+      const currentName = normalizeBattleActionDisplayName(currentSkill?.name || currentSkill?.魂技名 || '');
+      const costKey = { sp: 'reqSp', men: 'reqMen', vit: 'reqVit' }[resourceKey] || 'reqVit';
+      const maxValue = 读取行为规划资源上限(unit, resourceKey);
+      return Math.min(1, collectUnifiedSkillEntries(unit, [], { includePassive: false, includeActive: true })
+        .map(entry => entry?.skill || entry)
+        .filter(skill => skill && normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || '') !== currentName)
+        .reduce((total, skill) => {
+          const cost = parseSkillCostForChar(skill, unit, { actor: unit, caster: unit, skill, 当前行动: '资源用途预估' });
+          return total + Math.max(0, Number(cost?.[costKey] || 0)) / Math.max(1, maxValue);
+        }, 0));
+    }
+
     function 读取行为规划属性键列表(effect = {}) {
       const 原始列表 = Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性];
       return 原始列表
@@ -24192,8 +24247,12 @@ class BattleUIComponent {
         const 当前 = 读取行为规划资源当前值(target, 资源键);
         const 上限 = 读取行为规划资源上限(target, 资源键);
         const 变动 = 计算行为规划数值变动(effect?.数值, 上限);
+        const 可恢复缺口 = Math.max(0, 上限 - 当前);
+        const 实际正向变动 = Math.min(Math.max(0, 变动), 可恢复缺口);
+        const 未来消费需求 = 变动 > 0 ? 读取未来资源消费需求(target, 资源键, skill) : 1;
+        if (变动 > 0 && (!(实际正向变动 > 0) || !(未来消费需求 > 0))) return 0;
         const 缺口系数 = 资源键 === 'hp' ? 1 + (1 - 当前 / 上限) * 1.2 : 0.75 + (1 - 当前 / 上限) * 0.85;
-        原始收益 = Math.min(150, Math.abs(变动) / 上限 * 110 * 缺口系数);
+        原始收益 = Math.min(150, Math.abs(变动 > 0 ? 实际正向变动 : 变动) / 上限 * 110 * 缺口系数 * 未来消费需求);
         const 对目标有益 = 变动 >= 0;
         return (友方 === 对目标有益) ? 原始收益 : -原始收益;
       }
@@ -24415,6 +24474,65 @@ class BattleUIComponent {
       };
     }
 
+    function 评估造物承载规划净收益(skill = {}, context = {}, behaviorState = {}) {
+      if (String(skill?.承载方式 || '').trim() !== '造物承载') return null;
+      const actor = context.actor || context.caster || {};
+      const combatData = behaviorState?.combatData || context.combatData || {};
+      const actorSide = 读取规划单位阵营(actor, combatData);
+      const recipients = dedupeCombatTargetList([
+        actor,
+        ...读取战斗阵营单位列表(combatData, actorSide),
+      ]).filter(isCombatUnitAlive);
+      const products = (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
+        .filter(item => item && typeof item === 'object' && Array.isArray(item.使用效果));
+      if (!products.length || !recipients.length) return { 净收益: 0, 目标数量: 0, 弱参与数量: products.length };
+
+      let total = 0;
+      let targetCount = 0;
+      let weakCount = 0;
+      products.forEach(product => {
+        const quantity = Math.max(1, Math.floor(Number(product?.数量 || 1)));
+        const productName = String(product?.名称 || product?.描述 || skill?.name || skill?.魂技名 || '').trim();
+        const existingCount = Math.max(
+          0,
+          Number(actor?.背包?.[productName]?.数量 || 0),
+          (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [])
+            .filter(event => String(event?.eventKind || '').trim() === 'create' && String(event?.createdName || event?.meta?.createdName || '').trim() === productName)
+            .reduce((sum, event) => sum + Math.max(1, Number(event?.count || event?.meta?.count || 1)), 0),
+        );
+        const bestRecipientValue = recipients.reduce((best, recipient) => {
+          const usageValue = product.使用效果.reduce((sum, rawEffect) => {
+            let effects = [rawEffect];
+            for (const branch of Array.isArray(rawEffect?.条件分支) ? rawEffect.条件分支 : []) {
+              const matched = (Array.isArray(branch?.条件) ? branch.条件 : []).every(condition => {
+                if (String(condition?.类型 || '').trim() === '使用者') {
+                  const isCreator = isCombatUnitIdentityMatch(recipient, actor?.name || actor?.名称 || actor);
+                  const wantsCreator = String(condition?.值 || '').trim() === '制作者';
+                  return String(condition?.比较 || '==').trim() === '!=' ? isCreator !== wantsCreator : isCreator === wantsCreator;
+                }
+                return 条件分支命中(condition, { actor, caster: actor, target: recipient, skill });
+              });
+              if (!matched) continue;
+              const operation = String(branch?.处理 || '').trim();
+              if (operation === '禁用') effects = [];
+              if (operation === '替换效果') effects = Array.isArray(branch?.替换效果) ? branch.替换效果 : [];
+              if (operation === '追加效果' && Array.isArray(branch?.追加效果)) effects = [...effects, ...branch.追加效果];
+            }
+            return sum + effects.reduce((effectSum, effect) => effectSum +
+              评估效果对单位规划收益(effect, actor, recipient, behaviorState, skill) * 计算行为规划时间系数(effect), 0);
+          }, 0);
+          return Math.max(best, usageValue);
+        }, 0);
+        const marginalMultiplier = 1 / Math.max(1, existingCount + 1);
+        const actionOpportunityMultiplier = 0.72;
+        const productValue = Math.max(0, bestRecipientValue) * quantity * marginalMultiplier * actionOpportunityMultiplier;
+        total += productValue;
+        targetCount += productValue > 0 ? 1 : 0;
+        weakCount += productValue > 0 ? 0 : 1;
+      });
+      return { 净收益: Math.round(total), 目标数量: targetCount, 弱参与数量: weakCount };
+    }
+
     function 评估技能规划净收益(skill = {}, context = {}) {
       const 规划目标 = context.primaryTarget || context.target || null;
       const 规划行为状态 = { ...(context.behaviorState || {}), primaryTarget: 规划目标, target: 规划目标 };
@@ -24430,13 +24548,14 @@ class BattleUIComponent {
         规划行为状态.规划上下文 = 规划上下文;
       }
       const 效果列表 = getSkillEffects(skill, { 行为规划: true, actor: context.actor, caster: context.actor, target: 规划目标 });
-      const 汇总 = 效果列表.reduce((结果, effect) => {
-        const 单项 = 评估效果规划净收益(effect, { ...context, behaviorState: 规划行为状态, skill });
-        结果.净收益 += Number(单项.净收益 || 0);
-        结果.目标数量 += Number(单项.目标数量 || 0);
-        if (单项.弱参与) 结果.弱参与数量 += 1;
-        return 结果;
-      }, { 净收益: 0, 目标数量: 0, 弱参与数量: 0 });
+      const 造物收益 = 评估造物承载规划净收益(skill, context, 规划行为状态);
+      const 汇总 = 造物收益 || 效果列表.reduce((结果, effect) => {
+          const 单项 = 评估效果规划净收益(effect, { ...context, behaviorState: 规划行为状态, skill });
+          结果.净收益 += Number(单项.净收益 || 0);
+          结果.目标数量 += Number(单项.目标数量 || 0);
+          if (单项.弱参与) 结果.弱参与数量 += 1;
+          return 结果;
+        }, { 净收益: 0, 目标数量: 0, 弱参与数量: 0 });
       const 维持收益 = 估算行为规划技能维持收益(skill, context, 效果列表, 规划行为状态);
       汇总.维持收益 = 维持收益;
       汇总.净收益 += Number(维持收益.净收益 || 0);
@@ -31139,6 +31258,17 @@ class BattleUIComponent {
             eventKind = 'pass';
             result = /观察/.test(`${动作类型} ${动作名} ${结果文本}`) ? 'observe' : 'stance_hold';
           }
+          if (eventKind === 'create') {
+            const round = Number(combatData?.回合 || 0);
+            const actorName = String(actor?.name || actor?.名称 || '').trim();
+            const alreadySettled = (combatData?.__battleEventLedger || []).some(item =>
+              String(item?.eventKind || '').trim() === 'create' &&
+              Number(item?.round || 0) === round &&
+              isSameBattleReportName(String(item?.actorName || '').trim(), actorName) &&
+              normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 动作名
+            );
+            if (alreadySettled) return;
+          }
           写入战斗事件账本(combatData, {
             eventKind,
             round: Number(combatData?.回合 || 0),
@@ -36465,6 +36595,7 @@ class BattleUIComponent {
 
         const 补丁列表 = [];
         const 日志列表 = [];
+        const 造物列表 = [];
         const 默认持有者名 = String(window.BattleUIBridge?.getMVU('sys.玩家名') || '').trim();
         const 当前tick = Number(window.BattleUIBridge?.getMVU('world.时间.tick') || 0);
         const 持有者名 = String(持有者名参数 || 默认持有者名 || '').trim();
@@ -36537,11 +36668,13 @@ class BattleUIComponent {
           appendJsonPatchDiff(补丁列表, `/物品/魂技造物/${转义物品名}`, 根层魂技造物[物品名], 下一根层物品);
           if (入包数量 > 0) appendJsonPatchDiff(补丁列表, 背包物品路径, 当前背包物品, 下一背包物品值);
 
+          造物列表.push({ 名称: 物品名, 数量: 原始数量, 入包数量, 即时消耗数量: 即时消耗 });
           日志列表.push(`生成了造物【${物品名}】×${原始数量}${即时消耗 > 0 ? `，即时使用${即时消耗}件` : ''}${入包数量 > 0 ? `，入包${入包数量}件` : ''}`);
         });
 
         return {
           patchOps: 补丁列表,
+          creations: 造物列表,
           log: 日志列表.length
             ? ` [造物承载] ${产出者名 ? `${产出者名}以【${技能名}】完成造物：` : ''}${日志列表.join('，')}。`
             : '',
@@ -37405,21 +37538,30 @@ class BattleUIComponent {
         if (!本次为维持释放 && canPersistCreation && creationPatchBundle.patchOps.length > 0) {
           result.extraPatchOps = creationPatchBundle.patchOps;
           result.desc += creationPatchBundle.log;
-          写入战斗事件账本(combatData, {
-            eventKind: 'create',
-            round: Number(combatData?.回合 || 0),
-            actorName: attackerName,
-            targetName: creationOwnerName,
-            actionName: (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载',
-            actionType: 'create',
-            sourceActionName: (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载',
-            sourceRound: Number(combatData?.回合 || 0),
-            result: 'created',
-            meta: {
-              text: String(creationPatchBundle.log || '').replace(/^\s*\[造物承载\]\s*/, '').trim(),
-              ownerName: creationOwnerName,
-              patchOpsCount: Array.isArray(creationPatchBundle.patchOps) ? creationPatchBundle.patchOps.length : 0,
-            },
+          const creationActionName = (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载';
+          (creationPatchBundle.creations || []).forEach((creation, index) => {
+            写入战斗事件账本(combatData, {
+              eventKind: 'create',
+              round: Number(combatData?.回合 || 0),
+              actorName: attackerName,
+              targetName: creationOwnerName,
+              actionName: creationActionName,
+              actionType: 'create',
+              sourceActionName: creationActionName,
+              sourceRound: Number(combatData?.回合 || 0),
+              result: 'created',
+              createdName: String(creation?.名称 || creationActionName).trim(),
+              count: Math.max(1, Number(creation?.数量 || 1)),
+              meta: {
+                text: index === 0 ? String(creationPatchBundle.log || '').replace(/^\s*\[造物承载\]\s*/, '').trim() : '',
+                ownerName: creationOwnerName,
+                createdName: String(creation?.名称 || creationActionName).trim(),
+                count: Math.max(1, Number(creation?.数量 || 1)),
+                inventoryCount: Math.max(0, Number(creation?.入包数量 || 0)),
+                immediateUseCount: Math.max(0, Number(creation?.即时消耗数量 || 0)),
+                patchOpsCount: Array.isArray(creationPatchBundle.patchOps) ? creationPatchBundle.patchOps.length : 0,
+              },
+            });
           });
           const hasDirectClash = Number(pClash.威力倍率 || 0) > 0;
           const hasStateApply = String(pState?.状态名称 || '无') !== '无';
@@ -45581,10 +45723,7 @@ class BattleUIComponent {
             strategicContext.strategicBranches,
             '行为预演/主动战略阶段',
           );
-          if (
-            strategicAction &&
-            (!稳定反敏攻牵制 || (!动作属于敏攻陷阱动作(strategicAction) && !动作属于被闪后禁复读动作(strategicAction)))
-          ) return convertDecisionToTurnAction(strategicAction);
+          if (strategicAction) return convertDecisionToTurnAction(strategicAction);
 
           const tacticalBranches = buildTacticalCandidates(
             actor,
@@ -46740,11 +46879,14 @@ class BattleUIComponent {
           const buildUnitSnapshot = char => {
             if (!char) return null;
             syncCombatActionState(char);
+            const stat = char.属性 && typeof char.属性 === 'object' ? char.属性 : {};
+            const level = Math.max(1, Number(char.lv ?? char.等级 ?? stat.等级 ?? 1));
+            const type = String(char.type || char.系别 || stat.系别 || '未知系').trim() || '未知系';
             return {
               name: char.name || '未知',
-              lv: char.lv || 1,
-              lv_label: formatBattleCultivationLevelText(char.lv || 1, '1'),
-              type: char.type || '未知系',
+              lv: level,
+              lv_label: formatBattleCultivationLevelText(level, String(level)),
+              type,
               hp: getCombatHpValue(char),
               hp_max: getCombatHpMaxValue(char),
               HP: getCombatHpValue(char),
