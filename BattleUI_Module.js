@@ -5048,7 +5048,7 @@ class BattleUIComponent {
             (/evaded|miss|dodge_success|闪避成功|未命中/.test(String(defense.result || '').trim()) || /miss|evade|dodge|闪避|未命中/.test(String(hit.result || '')));
           const dodgeTriedAndFailed = defense?.eventKind === 'dodge' && !dodgeFullySucceeded && damage > 0;
           const outcome = 读取战报事件Outcome(hit);
-          const seed = `${round}|hit|${hit.actionId || hit.sourceActionId || ''}|${actor}|${target}|${action}|${damage}`;
+          const seed = `${round}|hit|${actor}|${target}|${action}|${damage}|${outcome}|${defense?.eventKind || ''}|${defense?.result || ''}`;
           const flavoredHit = assistEvent && damage > 0
             ? `${actor}承接${String(assistEvent.meta?.hostName || assistEvent.meta?.summonHostName || '宿主').trim()}的攻势，以【${action || '协同追击'}】协同追击${target}，造成了 ${damage} 点伤害`
             : outcome === 'graze' && damage > 0
