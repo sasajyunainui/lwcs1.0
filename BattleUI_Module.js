@@ -16044,6 +16044,7 @@ class BattleUIComponent {
       单位.技能列表 = 构建召唤技能列表(单位, 宿主);
       表[召唤键] = 单位;
       召唤记录.召唤键 = 召唤键;
+      确保召唤窗口运行态(单位);
       同步召唤单位镜像(单位);
       if (!选项.静默) 单位.__刚生成 = true;
       return 单位;
@@ -16073,15 +16074,57 @@ class BattleUIComponent {
       return Math.max(0, Number(召唤单位?.__来源状态?.duration || 0));
     }
 
-    function 消费召唤有效窗口(combatData = {}, 召唤单位 = {}, 原因 = '完成行动窗口') {
+    function 确保召唤窗口运行态(召唤单位 = {}) {
+      if (!召唤单位 || typeof 召唤单位 !== 'object') return null;
+      if (!Object.prototype.hasOwnProperty.call(召唤单位, '召唤窗口运行态')) {
+        Object.defineProperty(召唤单位, '召唤窗口运行态', {
+          configurable: true,
+          enumerable: false,
+          writable: true,
+          value: {
+            windowId: `summon:${String(召唤单位.召唤键 || 召唤单位.name || 'unit').trim()}:${Math.max(0, Number(召唤单位.生成回合 || 0))}`,
+            consumedActionGrantIds: new Set(),
+            consumedWindowGrantIds: new Set(),
+          },
+        });
+      }
+      return 召唤单位.召唤窗口运行态;
+    }
+
+    function 构建召唤行动授权ID(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
+      const runtime = 确保召唤窗口运行态(召唤单位);
+      if (!runtime) return '';
+      return `${runtime.windowId}:${Math.max(0, Number(combatData?.回合 || 0))}:${String(机会类型 || 'action').trim()}`;
+    }
+
+    function 召唤行动授权已消费(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
+      const runtime = 确保召唤窗口运行态(召唤单位);
+      const grantId = 构建召唤行动授权ID(召唤单位, combatData, 机会类型);
+      return !runtime || !grantId || runtime.consumedActionGrantIds.has(grantId);
+    }
+
+    function 领取召唤行动授权(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
+      const runtime = 确保召唤窗口运行态(召唤单位);
+      const grantId = 构建召唤行动授权ID(召唤单位, combatData, 机会类型);
+      if (!runtime || !grantId || runtime.consumedActionGrantIds.has(grantId)) return '';
+      runtime.consumedActionGrantIds.add(grantId);
+      return grantId;
+    }
+
+    function 消费召唤有效窗口(combatData = {}, 召唤单位 = {}, 原因 = '完成行动窗口', grantId = '') {
       const 来源状态 = 召唤单位?.__来源状态;
       if (!来源状态 || typeof 来源状态.duration !== 'number' || 召唤单位.已消散 === true) return '';
+      const runtime = 确保召唤窗口运行态(召唤单位);
+      const windowGrantId = String(grantId || `${runtime?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:window`).trim();
+      if (runtime?.consumedWindowGrantIds.has(windowGrantId)) return '';
+      runtime?.consumedWindowGrantIds.add(windowGrantId);
       来源状态.duration = Math.max(0, Number(来源状态.duration || 0) - 1);
       if (来源状态.duration > 0) return '';
       return 移除召唤运行态单位(combatData, 召唤单位, 原因);
     }
 
-    function 记录召唤无目标结果(combatData = {}, 召唤单位 = {}, 原因 = 'NO_VALID_TARGET') {
+    function 记录召唤无目标结果(combatData = {}, 召唤单位 = {}, 原因 = 'NO_VALID_TARGET', options = {}) {
+      const runtime = 确保召唤窗口运行态(召唤单位);
       return 写入战斗事件账本(combatData, {
         eventKind: 'failed_action',
         round: Number(combatData?.回合 || 0),
@@ -16099,6 +16142,8 @@ class BattleUIComponent {
           summonName: 召唤单位?.name || 召唤单位?.名称 || '',
           summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
           summonMode: 召唤单位?.行动模式 || '',
+          windowId: runtime?.windowId || '',
+          grantId: String(options?.grantId || '').trim(),
         },
       });
     }
@@ -16286,9 +16331,7 @@ class BattleUIComponent {
 
     function 执行召唤回合开始(combatData = {}) {
       确保召唤单位表(combatData);
-      读取召唤单位列表(combatData).forEach(单位 => {
-        delete 单位.__本回合已召唤行动;
-      });
+      读取召唤单位列表(combatData).forEach(确保召唤窗口运行态);
       const 宿主列表 = dedupeCombatTargetList(Object.values(combatData?.召唤单位表 || {}).map(单位 => 单位.__宿主));
       return 宿主列表.map(宿主 => 刷新召唤精神负载(combatData, 宿主)).filter(Boolean).join(' ');
     }
@@ -16423,6 +16466,7 @@ class BattleUIComponent {
           createdRound: Math.max(0, Number(召唤单位?.生成回合 || combatData?.回合 || 0)),
           hostName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
           hostSide: 召唤单位?.阵营 || 读取召唤宿主阵营(combatData, 宿主),
+          windowId: 确保召唤窗口运行态(召唤单位)?.windowId || '',
           windowCount: 读取召唤剩余有效窗口(召唤单位),
           firstWindow: summonMode === '协同攻击' ? 'host_action_end' : summonMode === '护卫' ? 'immediate_guard' : 'next_action_axis',
           startsNextRound: summonMode === '自主行动',
@@ -16448,6 +16492,7 @@ class BattleUIComponent {
 
     function 结算运行态召唤单位简易攻击(召唤单位 = {}, 目标 = {}, combatData = {}, 原因 = '召唤行动', options = {}) {
       if (!召唤单位 || !目标 || !isCombatUnitAlive(召唤单位) || !isCombatUnitAlive(目标)) return '';
+      const summonRuntime = 确保召唤窗口运行态(召唤单位);
       const 技能 = 选择召唤攻击技能(召唤单位, 目标);
       const 技能名 = 技能?.name || 技能?.魂技名 || '普通攻击';
       const 是协同行动 = /召唤协同/.test(String(原因 || ''));
@@ -16467,6 +16512,8 @@ class BattleUIComponent {
           summonHostName: 召唤单位?.宿主名 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '',
           summonType: 召唤单位?.类型 || '',
           summonMode: 召唤单位?.行动模式 || '',
+          windowId: summonRuntime?.windowId || '',
+          grantId: String(options?.grantId || '').trim(),
         },
       });
       写入战斗事件账本(combatData, {
@@ -16549,6 +16596,8 @@ class BattleUIComponent {
             hostDamage: Math.max(0, 读取事件账本数值(宿主伤害事件 || {}, 'damage')),
             summonHitEventId: String(召唤伤害事件?.eventId || '').trim(),
             summonHitNodeId: String(召唤伤害事件?.chainNodeId || '').trim(),
+            windowId: summonRuntime?.windowId || '',
+            grantId: String(options?.grantId || '').trim(),
           },
         });
       }
@@ -16561,18 +16610,19 @@ class BattleUIComponent {
       确保召唤单位表(combatData);
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '自主行动' }).forEach(单位 => {
-        if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
-        单位.__本回合已召唤行动 = true;
+        if (召唤行动授权已消费(单位, combatData, 'autonomous') || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
+        const grantId = 领取召唤行动授权(单位, combatData, 'autonomous');
+        if (!grantId) return;
         const 目标 = 选择召唤攻击目标(单位, combatData);
         if (!目标) {
-          记录召唤无目标结果(combatData, 单位);
+          记录召唤无目标结果(combatData, 单位, 'NO_VALID_TARGET', { grantId });
           日志.push(`[召唤行动取消] ${单位.name || '召唤物'}当前没有合法目标。`);
         } else {
           const 技能 = 选择召唤攻击技能(单位, 目标);
           记录召唤物规划审计(combatData, 单位, 目标, 技能, '回合尾召唤物自主行动');
-          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动', { grantId }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽');
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -16582,18 +16632,19 @@ class BattleUIComponent {
       确保召唤单位表(combatData);
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '自主行动' }).forEach(单位 => {
-        if (单位.__本回合已召唤行动 || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
-        单位.__本回合已召唤行动 = true;
+        if (召唤行动授权已消费(单位, combatData, 'autonomous') || 召唤单位本回合刚生成(单位, combatData) || !isCombatUnitAlive(单位)) return;
+        const grantId = 领取召唤行动授权(单位, combatData, 'autonomous');
+        if (!grantId) return;
         const 目标 = 选择召唤攻击目标(单位, combatData);
         if (!目标) {
-          记录召唤无目标结果(combatData, 单位);
+          记录召唤无目标结果(combatData, 单位, 'NO_VALID_TARGET', { grantId });
           日志.push(`[召唤行动取消] ${单位.name || '召唤物'}当前没有合法目标。`);
         } else {
           const 技能 = 选择召唤攻击技能(单位, 目标);
           记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物自主行动');
-          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动'));
+          日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动', { grantId }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽');
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -16613,11 +16664,12 @@ class BattleUIComponent {
       const 宿主造成有效伤害 = Number(有效伤害 || 0) > 0;
       const 宿主伤害事件 = 宿主造成有效伤害 ? 查找最近宿主有效伤害事件(combatData, 宿主, 默认目标) : null;
       协同列表.forEach(单位 => {
-        if (单位.__本回合已召唤行动 || !isCombatUnitAlive(单位)) return;
-        单位.__本回合已召唤行动 = true;
+        if (召唤行动授权已消费(单位, combatData, 'assist') || !isCombatUnitAlive(单位)) return;
+        const grantId = 领取召唤行动授权(单位, combatData, 'assist');
+        if (!grantId) return;
         const 目标 = 宿主造成有效伤害 && isCombatUnitAlive(默认目标) ? 默认目标 : 选择召唤攻击目标(单位, combatData);
         if (!目标) {
-          记录召唤无目标结果(combatData, 单位);
+          记录召唤无目标结果(combatData, 单位, 'NO_VALID_TARGET', { grantId });
           日志.push(`[召唤协同取消] ${单位.name || '召唤物'}当前没有合法集火目标。`);
         } else {
           const 技能 = 选择召唤攻击技能(单位, 目标);
@@ -16628,9 +16680,10 @@ class BattleUIComponent {
             hostDamageEvent: 宿主伤害事件,
             hostName: 宿主?.name || 宿主?.名称 || '',
             triggerMode: 宿主造成有效伤害 ? 'host_damage' : 'host_action_end',
+            grantId,
           }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '协同行动窗口耗尽');
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '协同行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -16639,14 +16692,15 @@ class BattleUIComponent {
     function 读取护卫召唤单位(combatData = {}, 受击者 = {}) {
       const 阵营 = 读取召唤宿主阵营(combatData, 受击者);
       return 读取召唤单位列表(combatData, { 阵营, 行动模式: '护卫' })
-        .find(单位 => isCombatUnitAlive(单位) && !单位.__本回合已召唤行动 && !isCombatUnitIdentityMatch(单位, 受击者?.name || 受击者?.名称 || 受击者)) || null;
+        .find(单位 => isCombatUnitAlive(单位) && !召唤行动授权已消费(单位, combatData, 'guard') && !isCombatUnitIdentityMatch(单位, 受击者?.name || 受击者?.名称 || 受击者)) || null;
     }
 
     function 结算护卫召唤回合窗口(combatData = {}) {
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '护卫' }).forEach(单位 => {
         if (召唤单位本回合刚生成(单位, combatData)) return;
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '护卫保护窗口耗尽');
+        const grantId = `${确保召唤窗口运行态(单位)?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:guard-window`;
+        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '护卫保护窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.join(' ');
@@ -17089,7 +17143,20 @@ class BattleUIComponent {
             pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', { actionIndex, selectedCandidateId: selected.candidateId, rejectionCode: selectedRejected, tags: [...selectedTags] });
           }
           const selectedReason = String(selected.selectedReason || '').trim();
-          if (selectedReason === 'SUBJECTIVE_SOFTMAX' || selectedReason === 'DECISION_INTERFERENCE_SOFTMAX' || String(actionAudit?.ruleCode || '').trim() === 'DECISION_INTERFERENCE') return;
+          if (selectedReason === 'SUBJECTIVE_SOFTMAX' || selectedReason === 'DECISION_INTERFERENCE_SOFTMAX' || String(actionAudit?.ruleCode || '').trim() === 'DECISION_INTERFERENCE') {
+            const highestObjectiveScore = Math.max(...candidates.map(candidate => Number(candidate?.rawObjectiveScore || 0)));
+            const objectiveRegret = highestObjectiveScore - Number(selected.rawObjectiveScore || 0);
+            const maxRegret = Math.max(0, Number(actionAudit?.maxRegret || 0));
+            if (objectiveRegret > maxRegret + 1e-6) {
+              pushFatal('SUBJECTIVE_REGRET_EXCEEDED', {
+                actionIndex,
+                selectedCandidateId: selected.candidateId,
+                objectiveRegret,
+                maxRegret,
+              });
+            }
+            return;
+          }
           const highestScore = Math.max(...candidates.map(candidate => Number(candidate?.finalScore || 0)));
           if (Number(selected.finalScore || 0) < highestScore) {
             pushFatal('SCORING_SELECTED_NOT_HIGHEST', {
@@ -17243,6 +17310,7 @@ class BattleUIComponent {
             selectedActionName: normalizeBattleActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.hitCandidateName || ''),
             decisionConfidence: Number(item?.decisionConfidence ?? item?.scoringSummary?.decisionConfidence ?? 1),
             temperature: Number(item?.temperature ?? item?.scoringSummary?.temperature ?? 4),
+            maxRegret: Number(item?.maxRegret ?? item?.scoringSummary?.maxRegret ?? 0),
             selectedReason: String(item?.选择原因 || item?.scoringSummary?.selectedReason || '').trim(),
             ruleCode: String(item?.ruleCode || '').trim(),
             originalBestCandidateId: String(item?.originalBestCandidateId || '').trim(),
@@ -21818,8 +21886,6 @@ class BattleUIComponent {
           return { log: logs.join(' '), broken };
         }
 
-      const 行为经验随机缓存 = new WeakMap();
-
       function 计算行为等级分(角色 = {}) {
         const 等级 = getCombatUnitTierNumber(角色);
         if (等级 >= 99) return 50;
@@ -21867,24 +21933,42 @@ class BattleUIComponent {
         return Math.max(0, Number(角色历史?.[图鉴键]?.次数 || 0), Number(角色历史?.[目标名]?.次数 || 0));
       }
 
-      function 读取行为随机经验值(角色 = {}) {
-        if (!角色 || typeof 角色 !== 'object') return Math.floor(Math.random() * 40) + 1;
-        if (!行为经验随机缓存.has(角色)) 行为经验随机缓存.set(角色, Math.floor(Math.random() * 40) + 1);
-        return 行为经验随机缓存.get(角色);
+      function 读取行为确定经验基值(角色 = {}) {
+        const 正式经验 = 角色?.战斗经验 ?? 角色?.属性?.战斗经验 ?? 角色?.经验稳定度;
+        const 正式稳定度 = Number(
+          正式经验 && typeof 正式经验 === 'object'
+            ? 正式经验.稳定度 ?? 正式经验.stability
+            : 正式经验,
+        );
+        if (Number.isFinite(正式稳定度)) {
+          return 正式稳定度 <= 1
+            ? Math.round(限制行为概率(正式稳定度, 0, 1) * 40)
+            : Math.max(0, Math.min(40, Math.round(正式稳定度)));
+        }
+        const 稳定标识 = String(
+          角色?.id || 角色?.角色ID || 角色?.uid || 角色?.name || 角色?.名称 ||
+          `${读取规划单位系别(角色)}:${getCombatUnitTierNumber(角色)}`,
+        ).trim();
+        let hash = 2166136261;
+        for (let index = 0; index < 稳定标识.length; index += 1) {
+          hash ^= 稳定标识.charCodeAt(index);
+          hash = Math.imul(hash, 16777619);
+        }
+        return 1 + ((hash >>> 0) % 40);
       }
 
       function 计算行为战斗经验(角色 = {}, 目标 = {}, 战斗数据 = {}) {
         const 记录分 = Math.min(40, 读取行为战斗记录次数(角色, 目标, 战斗数据) * 0.5);
         const 玩家操控 = 是玩家操控角色(角色, 战斗数据);
-        const 随机分 = 玩家操控 ? 0 : 读取行为随机经验值(角色);
-        const 基础经验分 = 玩家操控 ? 记录分 : Math.min(40, 随机分 + 记录分);
+        const 确定经验分 = 玩家操控 ? 0 : 读取行为确定经验基值(角色);
+        const 基础经验分 = 玩家操控 ? 记录分 : Math.min(40, 确定经验分 + 记录分);
         const 天赋分 = 计算行为天赋分(角色);
         const 等级分 = 计算行为等级分(角色);
         const 总分 = 基础经验分 + 天赋分 + 等级分;
         const 稳定度 = 限制行为概率(总分 / 140, 0, 1);
         return {
           基础经验分,
-          随机分,
+          确定经验分,
           记录分,
           天赋分,
           等级分,
@@ -21977,16 +22061,43 @@ class BattleUIComponent {
         );
         const decisionConfidence = 0.5 * experienceStability + 0.3 * spiritualPowerRatio + 0.2 * staminaRatio;
         const temperature = 4 + (1 - decisionConfidence) * 10;
-        const meanScore = pool.reduce((sum, candidate) => sum + Number(candidate.weight || 0), 0) / pool.length;
+        const objectiveSorted = [...pool].sort((left, right) => {
+          const leftSummary = left?.scoringSummary || {};
+          const rightSummary = right?.scoringSummary || {};
+          const leftCast = Math.max(0, Number(left?.skill?.前摇 ?? left?.skill?.cast_time ?? left?.cast_time ?? 0));
+          const rightCast = Math.max(0, Number(right?.skill?.前摇 ?? right?.skill?.cast_time ?? right?.cast_time ?? 0));
+          return Number(right.weight || 0) - Number(left.weight || 0) ||
+            Number(leftSummary.resourceCostEV || 0) - Number(rightSummary.resourceCostEV || 0) ||
+            leftCast - rightCast ||
+            String(leftSummary.candidateId || '').localeCompare(String(rightSummary.candidateId || ''), 'zh-Hans-CN');
+        });
+        const objectiveBest = objectiveSorted[0];
+        const bestObjectiveScore = Number(objectiveBest?.weight || 0);
+        const maxRegret = Math.max(5, Math.abs(bestObjectiveScore) * (0.05 + 0.2 * (1 - decisionConfidence)));
+        const regretPool = objectiveSorted.filter(candidate => bestObjectiveScore - Number(candidate.weight || 0) <= maxRegret + 1e-9);
+        const rawScores = regretPool.map(candidate => Number(candidate.weight || 0)).sort((left, right) => left - right);
+        const medianAt = values => {
+          if (!values.length) return 0;
+          const middle = Math.floor(values.length / 2);
+          return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+        };
+        const medianScore = medianAt(rawScores);
+        const absoluteDeviations = rawScores.map(value => Math.abs(value - medianScore)).sort((left, right) => left - right);
+        const mad = medianAt(absoluteDeviations);
+        const robustScale = Math.max(1, mad * 1.4826);
+        const normalizedScores = regretPool.map(candidate => (Number(candidate.weight || 0) - medianScore) / robustScale * 10);
+        const normalizedMean = normalizedScores.reduce((sum, score) => sum + score, 0) / Math.max(1, normalizedScores.length);
         const interferenceStrength = 限制行为概率(interference, 0, 1);
-        const scored = pool.map(candidate => {
+        const scored = regretPool.map((candidate, index) => {
           const objectiveScore = Number(candidate.weight || 0);
-          const subjectiveScore = Math.max(0, objectiveScore * (1 - interferenceStrength) + meanScore * interferenceStrength);
+          const normalizedObjectiveScore = normalizedScores[index];
+          const subjectiveScore = normalizedObjectiveScore * (1 - interferenceStrength) + normalizedMean * interferenceStrength;
           candidate.scoringSummary = {
             ...(candidate.scoringSummary || {}),
+            normalizedObjectiveScore: Number(normalizedObjectiveScore.toFixed(3)),
             subjectiveScore: Number(subjectiveScore.toFixed(3)),
           };
-          return { candidate, subjectiveScore };
+          return { candidate, objectiveScore, normalizedObjectiveScore, subjectiveScore };
         }).sort((left, right) => {
           const leftSummary = left.candidate?.scoringSummary || {};
           const rightSummary = right.candidate?.scoringSummary || {};
@@ -22023,12 +22134,16 @@ class BattleUIComponent {
         selected.candidate.scoringSummary = {
           ...(selected.candidate.scoringSummary || {}),
           selectedReason: reason,
+          decisionConfidence: Number(decisionConfidence.toFixed(3)),
+          temperature: Number(temperature.toFixed(3)),
+          maxRegret: Number(maxRegret.toFixed(3)),
         };
         selected.candidate.__subjectiveDecision = {
           decisionConfidence: Number(decisionConfidence.toFixed(3)),
           temperature: Number(temperature.toFixed(3)),
+          maxRegret: Number(maxRegret.toFixed(3)),
           reason,
-          originalBestCandidateId: top.candidate?.scoringSummary?.candidateId || '',
+          originalBestCandidateId: objectiveBest?.scoringSummary?.candidateId || '',
         };
         return {
           option: selected.candidate,
@@ -22039,7 +22154,8 @@ class BattleUIComponent {
               : '经验与当前精力共同影响临场选择',
           decisionConfidence,
           temperature,
-          originalBest: top.candidate,
+          maxRegret,
+          originalBest: objectiveBest,
         };
       }
 
@@ -24863,9 +24979,10 @@ class BattleUIComponent {
               干扰强度,
               decisionConfidence: Number(选择结果.decisionConfidence ?? 1),
               temperature: Number(选择结果.temperature ?? 4),
+              maxRegret: Number(选择结果.maxRegret ?? 0),
               ruleCode: 选择结果.option?.__decisionInterference?.ruleCode || '',
-              originalBestCandidateId: 选择结果.option?.__decisionInterference?.originalBestCandidateId || '',
-              originalBestCandidateName: 选择结果.option?.__decisionInterference?.originalBestCandidateName || '',
+              originalBestCandidateId: 选择结果.originalBest?.scoringSummary?.candidateId || 选择结果.option?.__decisionInterference?.originalBestCandidateId || '',
+              originalBestCandidateName: normalizeBattleActionDisplayName(选择结果.originalBest?.skill?.name || 选择结果.originalBest?.skill?.魂技名 || 选择结果.originalBest?.name || 选择结果.option?.__decisionInterference?.originalBestCandidateName || ''),
               scoringSummary: 选择结果.option?.scoringSummary || null,
               最终权重: Number(选择结果.option?.weight || 0),
               选择原因: 选择结果.trace || (选择结果.option ? '规划候选命中' : '当前未形成有效出手机会'),
@@ -30191,8 +30308,9 @@ class BattleUIComponent {
           }
           const 护卫召唤 = targetChar.召唤键 ? null : 读取护卫召唤单位(options?.combatData || getCurrentBattleContextSnapshot(), targetChar);
           if (护卫召唤) {
+            const guardGrantId = 领取召唤行动授权(护卫召唤, options?.combatData || {}, 'guard');
+            if (!guardGrantId) return;
             logParts.push(`[召唤护卫承伤] ${护卫召唤.name || '召唤物'}替${targetChar.name || '目标'}承受本次攻击。`);
-            护卫召唤.__本回合已召唤行动 = true;
             写入战斗事件账本(options?.combatData || {}, {
               eventKind: 'summon_guard',
               round: Number(options?.combatData?.回合 || 0),
@@ -30207,6 +30325,8 @@ class BattleUIComponent {
                 summonName: 护卫召唤?.name || 护卫召唤?.名称 || '',
                 summonHostName: 护卫召唤?.宿主名 || 护卫召唤?.__宿主?.name || 护卫召唤?.__宿主?.名称 || '',
                 protectedTargetName: targetChar?.name || targetChar?.名称 || '',
+                windowId: 确保召唤窗口运行态(护卫召唤)?.windowId || '',
+                grantId: guardGrantId,
               },
             });
             targetChar = 护卫召唤;
@@ -37240,6 +37360,36 @@ class BattleUIComponent {
           const 落地额外状态施加 = (状态施加效果, 选项 = {}) => {
             const 状态名 = String(状态施加效果?.状态 || '').trim();
             if (!状态名 || 状态名 === '无') return false;
+            const 写入状态生命周期事实 = (eventKind, 目标对象, detail = {}) => {
+              const round = Number(combatData?.回合 || 0);
+              const actorName = String(attacker?.name || attacker?.名称 || '').trim();
+              const actionName = normalizeBattleActionDisplayName(playerAction.skill?.name || playerAction.skill?.魂技名 || '');
+              const sourceAction = 查找最近账本动作事件(确保战斗事件账本(combatData), { round, actorName, actionName });
+              return 写入战斗事件账本(combatData, {
+                eventKind,
+                round,
+                actorName,
+                targetName: 目标对象?.name || 目标对象?.名称 || '',
+                actionName,
+                actionType: playerAction?.action_type || playerAction?.type || '',
+                sourceActionName: actionName,
+                sourceActionId: String(sourceAction?.actionId || '').trim(),
+                parentNodeId: String(sourceAction?.chainNodeId || '').trim(),
+                sourceNodeId: String(sourceAction?.chainNodeId || '').trim(),
+                result: String(detail.result || '').trim(),
+                effectPrototype: String(状态施加效果?.原型 || '状态施加').trim(),
+                sourceEffectId: 读取战斗效果来源ID(状态施加效果, 主要状态施加效果列表.indexOf(状态施加效果)),
+                duration: Math.max(0, Number(detail.duration || detail.nextDuration || 0)),
+                meta: {
+                  stateName: String(detail.stateName || 状态名).trim(),
+                  primaryOutcome: String(detail.primaryOutcome || '').trim(),
+                  previousDuration: Math.max(0, Number(detail.previousDuration || 0)),
+                  nextDuration: Math.max(0, Number(detail.nextDuration || 0)),
+                  stackMode: String(detail.stackMode || '').trim(),
+                  replaceReason: String(detail.replaceReason || '').trim(),
+                },
+              });
+            };
             const 状态目标上下文 = getEffectTargetContext(状态施加效果);
             const 需要命中成立 = !状态施加视为友方或增益(状态施加效果);
             const 状态目标列表 = 过滤被时光回溯规避目标列表(状态目标上下文.targetSet).filter(目标对象 => {
@@ -42006,8 +42156,8 @@ class BattleUIComponent {
             if (!['ACTIVE', 'REACTION'].includes(String(node?.nodeKind || '').trim())) return false;
             const settledActorEntry = turnResult?.settlementActorEntry || node.actorEntry;
             if (settledActorEntry?.char?.召唤键 && settledActorEntry.char.行动模式 === '自主行动') {
-              settledActorEntry.char.__本回合已召唤行动 = true;
-              const 到期日志 = 消费召唤有效窗口(combatData, settledActorEntry.char, '自主行动窗口耗尽');
+              const grantId = 领取召唤行动授权(settledActorEntry.char, combatData, 'autonomous');
+              const 到期日志 = grantId ? 消费召唤有效窗口(combatData, settledActorEntry.char, '自主行动窗口耗尽', grantId) : '';
               if (到期日志) logs.push(到期日志);
             }
             if (!settledActorEntry?.char?.召唤键) {
