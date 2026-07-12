@@ -1258,6 +1258,174 @@
       }));
   }
 
+  function buildFinalSummary(eventLedger = [], decisionTrace = [], finalSnapshot = {}, combatData = null) {
+    const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
+    const snapshot = finalSnapshot && typeof finalSnapshot === 'object' ? finalSnapshot : {};
+    const playerUnits = Array.isArray(snapshot.team_player) ? snapshot.team_player : [];
+    const enemyUnits = Array.isArray(snapshot.team_enemy) ? snapshot.team_enemy : [];
+    const summons = Array.isArray(snapshot.summons) ? snapshot.summons : [];
+    const summarizeUnit = unit => ({
+      name: String(unit?.name || '单位').trim(),
+      hp: Math.max(0, Math.round(Number(unit?.hp || 0))),
+      hpMax: Math.max(1, Math.round(Number(unit?.hp_max || 1))),
+      sp: Math.max(0, Math.round(Number(unit?.sp || 0))),
+      spMax: Math.max(1, Math.round(Number(unit?.sp_max || 1))),
+      vit: Math.max(0, Math.round(Number(unit?.vit || 0))),
+      vitMax: Math.max(1, Math.round(Number(unit?.vit_max || 1))),
+      men: Math.max(0, Math.round(Number(unit?.men || 0))),
+      menMax: Math.max(1, Math.round(Number(unit?.men_max || 1))),
+      states: (Array.isArray(unit?.状态效果) ? unit.状态效果 : [])
+        .filter(state => Number(state?.duration || 0) > 0)
+        .map(state => ({ name: String(state?.name || '状态').trim(), duration: Math.max(0, Math.round(Number(state?.duration || 0))), skipTurn: state?.skip_turn === true, dot: Math.max(0, Number(state?.dot || 0)) })),
+    });
+    const playerSummary = playerUnits.map(summarizeUnit);
+    const enemySummary = enemyUnits.map(summarizeUnit);
+    const summonSummary = summons.map(unit => ({
+      ...summarizeUnit(unit),
+      host: String(unit?.宿主名 || '').trim(),
+      mode: String(unit?.行动模式 || '').trim(),
+      remainingWindows: Math.max(0, Math.round(Number(unit?.剩余窗口 || 0))),
+      stability: String(unit?.稳定状态 || '').trim(),
+    }));
+    const teamMetric = (units, sideSummons = []) => {
+      const totalHp = units.reduce((sum, unit) => sum + unit.hp, 0);
+      const totalHpMax = units.reduce((sum, unit) => sum + unit.hpMax, 0);
+      const resourceCurrent = units.reduce((sum, unit) => sum + unit.sp + unit.vit + unit.men, 0);
+      const resourceMax = units.reduce((sum, unit) => sum + unit.spMax + unit.vitMax + unit.menMax, 0);
+      const alive = units.filter(unit => unit.hp > 0).length;
+      const controlBurden = units.reduce((sum, unit) => sum + unit.states.filter(state => state.skipTurn).length, 0);
+      const hpRatio = totalHp / Math.max(1, totalHpMax);
+      const resourceRatio = resourceCurrent / Math.max(1, resourceMax);
+      const aliveRatio = alive / Math.max(1, units.length);
+      return {
+        alive,
+        total: units.length,
+        hpRatio,
+        resourceRatio,
+        score: hpRatio * 65 + aliveRatio * 20 + resourceRatio * 10 + sideSummons.filter(unit => unit.hp > 0 && unit.remainingWindows > 0).length * 3 - controlBurden * 4,
+      };
+    };
+    const playerNames = new Set(playerSummary.map(unit => unit.name));
+    const enemyNames = new Set(enemySummary.map(unit => unit.name));
+    const playerSummons = summonSummary.filter(unit => playerNames.has(unit.host));
+    const enemySummons = summonSummary.filter(unit => enemyNames.has(unit.host));
+    const playerMetric = teamMetric(playerSummary, playerSummons);
+    const enemyMetric = teamMetric(enemySummary, enemySummons);
+    const scoreGap = Number((playerMetric.score - enemyMetric.score).toFixed(2));
+    const advantage = scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
+    const advantageText = advantage === 'PLAYER' ? '我方占优' :
+      advantage === 'PLAYER_EDGE' ? '我方略占上风' :
+        advantage === 'ENEMY' ? '敌方占优' :
+          advantage === 'ENEMY_EDGE' ? '敌方略占上风' : '战况胶着';
+    const readCurrentTargets = () => {
+      const pairs = [];
+      const actors = new Set();
+      for (let index = ledger.length - 1; index >= 0 && pairs.length < 6; index -= 1) {
+        const event = ledger[index];
+        const actor = String(event?.actorName || '').trim();
+        const target = String(event?.targetName || '').trim();
+        if (!actor || !target || actor === target || actors.has(actor)) continue;
+        if (!['action_start', 'hit_result', 'counter', 'state_apply', 'summon_assist'].includes(String(event?.eventKind || '').trim())) continue;
+        actors.add(actor);
+        pairs.push({ actor, target });
+      }
+      return pairs;
+    };
+    const { playerIntent, enemyIntent } = requireEngine().caseDomain.resolveNextIntents({
+      combatData, decisionTrace, playerSummary, enemySummary, currentTargets: readCurrentTargets(),
+    });
+    const tacticalWindows = [];
+    const risks = [];
+    [...playerSummary, ...enemySummary].forEach(unit => {
+      const hpRatio = unit.hp / Math.max(1, unit.hpMax);
+      const resourceRatio = (unit.sp + unit.vit + unit.men) / Math.max(1, unit.spMax + unit.vitMax + unit.menMax);
+      if (unit.hp > 0 && hpRatio <= 0.25) tacticalWindows.push(`${unit.name}生命低于25%，进入斩杀窗口`);
+      if (unit.hp > 0 && resourceRatio <= 0.2) risks.push(`${unit.name}可用资源接近枯竭`);
+      unit.states.forEach(state => {
+        if (state.skipTurn) tacticalWindows.push(`${unit.name}被【${state.name}】限制行动${state.duration}回合`);
+        if (state.dot > 0) risks.push(`${unit.name}仍承受【${state.name}】持续伤害${state.duration}回合`);
+      });
+    });
+    summonSummary.forEach(unit => {
+      if (unit.hp > 0 && unit.remainingWindows > 0) tacticalWindows.push(`${unit.name}尚有${unit.remainingWindows}个${unit.mode || '行动'}窗口`);
+      if (unit.hp <= 0 || unit.remainingWindows <= 0) risks.push(`${unit.name}已无可兑现行动窗口`);
+    });
+    const hpRatioGap = playerMetric.hpRatio - enemyMetric.hpRatio;
+    if (hpRatioGap <= -0.03) {
+      tacticalWindows.push('敌方尚未承受同等生命损失，我方需要先建立有效命中或控制窗口');
+      risks.push('我方换血落后，继续空耗会让敌方把轻微优势滚大');
+    } else if (hpRatioGap >= 0.03) {
+      tacticalWindows.push('我方已建立生命优势，可以围绕集火或资源压制继续扩大差距');
+      risks.push('若在优势期转入无效辅助，可能错失继续压制的窗口');
+    } else if (!tacticalWindows.length) {
+      tacticalWindows.push('双方均无硬控制，下一次有效命中或截断将重新分配主动权');
+    }
+    const currentTargets = readCurrentTargets();
+    const round = Math.max(0, Number(snapshot?.round || ledger[ledger.length - 1]?.round || 0));
+    const formatTeam = units => units.length ? units.map(unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.sp}/${unit.spMax}，体力 ${unit.vit}/${unit.vitMax}，精神力 ${unit.men}/${unit.menMax}${unit.states.length ? `，状态 ${unit.states.map(state => `${state.name}(${state.duration})`).join('、')}` : ''}`).join('；') : '无可行动单位';
+    const text = [
+      `战至第${round}回合，${advantageText}。`,
+      `我方：${formatTeam(playerSummary)}。敌方：${formatTeam(enemySummary)}。`,
+      `接下来我方${playerIntent.replace(/^我方/, '')}；敌方${enemyIntent.replace(/^敌方/, '')}。`,
+      `可利用窗口：${tacticalWindows.slice(0, 5).join('；') || '暂时没有明确窗口'}。最大风险：${risks.slice(0, 4).join('；') || '双方暂无迫近的资源或状态风险'}。`,
+    ].join('\n');
+    const finalBattleReport = {
+      blockId: `final_summary_${round}`,
+      round,
+      actionGroupId: `final_summary_${round}`,
+      actorId: 'SYSTEM',
+      targetIds: [],
+      blockType: 'FINAL_SUMMARY',
+      facts: [
+        { factType: 'BATTLE_STATE', round, advantage, scoreGap },
+        { factType: 'TEAM_STATE', side: 'PLAYER', units: playerSummary },
+        { factType: 'TEAM_STATE', side: 'ENEMY', units: enemySummary },
+        { factType: 'SUMMON_STATE', units: summonSummary },
+      ],
+      badges: [],
+      intentSummary: `我方：${playerIntent}；敌方：${enemyIntent}`,
+      outcomeSummary: advantageText,
+      nextWindow: tacticalWindows.slice(0, 5).join('；'),
+      headline: advantageText,
+      advantage,
+      scoreGap,
+      sides: { player: { units: playerSummary, metric: playerMetric }, enemy: { units: enemySummary, metric: enemyMetric } },
+      summons: summonSummary,
+      currentTargets,
+      nextIntents: { player: playerIntent, enemy: enemyIntent },
+      tacticalWindows: [...new Set(tacticalWindows)].slice(0, 8),
+      risks: [...new Set(risks)].slice(0, 8),
+      text,
+    };
+    const aiSummaryInput = {
+      round,
+      advantage,
+      sides: {
+        player: playerSummary,
+        enemy: enemySummary,
+      },
+      summons: summonSummary,
+      currentTargets,
+      nextIntents: { player: playerIntent, enemy: enemyIntent },
+      tacticalWindows: finalBattleReport.tacticalWindows,
+      risks: finalBattleReport.risks,
+      recentFacts: ledger
+        .filter(event => ['action_start', 'hit_result', 'counter', 'state_apply', 'state_tick', 'resource_change', 'summon_create', 'summon_assist', 'failed_action', 'blocked_action'].includes(String(event?.eventKind || '').trim()))
+        .slice(-24)
+        .map(event => ({
+          round: Math.max(0, Number(event?.round || event?.sourceRound || 0)),
+          factType: String(event?.eventKind || '').trim(),
+          actor: String(event?.actorName || '').trim(),
+          target: String(event?.targetName || '').trim(),
+          action: normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || ''),
+          result: String(event?.result || event?.actionStatus || '').trim(),
+          value: Math.round(Number(readLedgerNumber(event, 'damage') || event?.meta?.delta || readLedgerNumber(event, 'amount') || 0)),
+          state: ['state_apply', 'state_tick'].includes(String(event?.eventKind || '').trim()) ? readLedgerStateName(event) : '',
+        })),
+    };
+    return { finalBattleReport, aiSummaryInput };
+  }
+
   function auditFacts(payload = {}) {
     payload = payload && typeof payload === 'object' ? cloneValue(payload) : {};
     const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
@@ -1788,7 +1956,7 @@
       typeof implementation.caseDomain.executeDuel !== 'function' ||
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
-      typeof implementation.caseDomain.buildFinalSummary !== 'function' ||
+      typeof implementation.caseDomain.resolveNextIntents !== 'function' ||
       typeof implementation.caseDomain.resolveReportUnitSide !== 'function' ||
       typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
       !implementation.previewDomain ||
@@ -1885,7 +2053,7 @@
         : [];
       const actionChains = buildActionChains(eventLedger, resolutionTrace);
       const reportBlocks = buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
-      const { finalBattleReport, aiSummaryInput } = domain.buildFinalSummary(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
+      const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
       const scoringAudit = decisionTrace
         .filter(item => /主动规划|应招审计|技能选择/.test(String(item?.类型 || item?.type || '')))
         .map(item => ({
@@ -2165,6 +2333,7 @@
     buildActionChains,
     buildReportBlocks,
     buildRoundOverview,
+    buildFinalSummary,
     previewSkill,
     auditPrototypeCoverage,
   });
