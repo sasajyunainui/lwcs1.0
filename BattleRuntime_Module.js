@@ -277,6 +277,52 @@
     };
   }
 
+  function runTeamBattle(options = {}) {
+    const combatData = options?.combatData;
+    const adapters = options?.adapters;
+    if (!combatData || typeof combatData !== 'object' || !adapters) throw new TypeError('battle_team_runner_contract_invalid');
+    const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
+    const roundLimit = mode === 'multi_round' ? Math.max(1, Number(options?.maxRounds || 1)) : 1;
+    adapters.prepare?.(combatData);
+    const rejected = adapters.validate?.(combatData);
+    if (rejected) return rejected;
+    const logs = [];
+    const extraPatchOps = [];
+    const startingRound = Number(combatData.回合 || 0);
+    let rounds = 0;
+    let lastAlive = adapters.readAlive(combatData);
+    while (rounds < roundLimit) {
+      rounds += 1;
+      const currentRound = startingRound + rounds;
+      combatData.回合 = currentRound;
+      const beginLogs = adapters.beginRound?.(combatData, currentRound);
+      if (Array.isArray(beginLogs)) logs.push(...beginLogs.filter(Boolean));
+      const queue = adapters.buildQueue(combatData);
+      adapters.recordQueue?.(queue, combatData, logs);
+      const queueResult = adapters.executeQueue(queue, combatData, currentRound, logs, extraPatchOps);
+      if (queueResult?.fatal) {
+        logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
+      } else {
+        adapters.settleRoundEnd?.(combatData, logs);
+      }
+      lastAlive = adapters.readAlive(combatData);
+      logs.push(`[团战回合总结] 我方存活:${lastAlive.playerAlive} 敌方存活:${lastAlive.enemyAlive}`);
+      if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;
+    }
+    const winner = lastAlive.enemyAlive <= 0 ? 'player' : lastAlive.playerAlive <= 0 ? 'enemy' : 'unfinished';
+    adapters.finalize?.({ combatData, mode, winner, logs, alive: lastAlive });
+    return {
+      rounds,
+      roundStart: startingRound + 1,
+      roundEnd: Number(combatData.回合 || startingRound),
+      winner,
+      playerAlive: lastAlive.playerAlive,
+      enemyAlive: lastAlive.enemyAlive,
+      logs,
+      extraPatchOps,
+    };
+  }
+
   function calculateObjectiveScore(scoreParts = {}) {
     const source = scoreParts && typeof scoreParts === 'object' ? scoreParts : {};
     return Math.round(
@@ -711,6 +757,7 @@
     buildDecisionProfile,
     normalizeDecisionScores,
     createActionQueue,
+    runTeamBattle,
     calculateObjectiveScore,
     calculateBaseDamage,
     summarizeScoreContributions,

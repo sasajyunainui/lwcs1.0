@@ -42539,139 +42539,73 @@ class BattleUIComponent {
           if (规则改写回合尾日志) logs.push(`[团战回合尾] ${规则改写回合尾日志}`);
         }
 
-        function runTeamBattleSimulation(combatData, maxRounds = 3) {
-          hydrateCombatData(combatData);
-          确保召唤单位表(combatData);
-          const queueRuntime = 确保战斗运行态(combatData);
-          queueRuntime.actionQueueTrace = [];
-          delete queueRuntime.actionQueueFatal;
-          if (isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) {
-            const rosterCheck = validateSoulTowerCombatRoster(combatData);
-            if (!rosterCheck.ok) {
+        function 构建团战运行时适配器() {
+          const readAlive = combatData => ({
+            playerAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家')),
+            enemyAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方')),
+          });
+          return {
+            prepare(combatData) {
+              hydrateCombatData(combatData);
+              确保召唤单位表(combatData);
+              const queueRuntime = 确保战斗运行态(combatData);
+              queueRuntime.actionQueueTrace = [];
+              delete queueRuntime.actionQueueFatal;
+            },
+            validate(combatData) {
+              if (!isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) return null;
+              const rosterCheck = validateSoulTowerCombatRoster(combatData);
+              if (rosterCheck.ok) return null;
+              const alive = readAlive(combatData);
               return {
                 rounds: 0,
                 roundStart: Number(combatData?.回合 || 0),
                 roundEnd: Number(combatData?.回合 || 0),
                 winner: 'unfinished',
-                playerAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家')),
-                enemyAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方')),
+                ...alive,
                 logs: [`[魂灵塔资格驳回] ${rosterCheck.message}`],
                 extraPatchOps: [],
               };
-            }
-          }
-          let logs = [];
-          let extraPatchOps = [];
-          let rounds = 0;
-          const startingRound = Number(combatData.回合 || 0);
-
-          while (rounds < maxRounds) {
-            rounds++;
-            const currentRound = startingRound + rounds;
-            combatData.回合 = currentRound;
-            清理本回合多威胁运行态(combatData);
-            logs.push(`[团战第${currentRound}回合开始]`);
-            记录战斗上下文时光回溯快照(combatData);
-            const 召唤回合开始日志 = 执行召唤回合开始(combatData);
-            if (召唤回合开始日志) logs.push(召唤回合开始日志);
-
-            const queue = generateActionQueue(combatData);
-            记录团战行动轴声明(queue, combatData, logs);
-            const queueResult = 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps);
-            if (queueResult?.fatal) {
-              logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
-              break;
-            }
-
-            settleTeamRoundEnd(combatData, logs);
-
-            const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-            const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
-            logs.push(`[团战回合总结] 我方存活:${teamPlayerAlive} 敌方存活:${teamEnemyAlive}`);
-
-            if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) {
-              break;
-            }
-          }
-
-          const finalPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-          const finalEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
-          const winner = finalEnemyAlive <= 0 ? 'player' : finalPlayerAlive <= 0 ? 'enemy' : 'unfinished';
-
-          // 如果是团战模拟结束且是虚拟环境死亡，修正战利品结算与强制锁血弹出
-          const combatType = combatData.战斗类型 || '突发遭遇';
-          if (combatType === '升灵台虚拟战斗' || combatType === '魂灵塔冲塔') {
-            if (winner === 'enemy') {
-              读取战斗主队单位列表(combatData, '玩家').forEach(p => {
-                if (getCombatHpValue(p) <= 0) 设置战斗血量值(p, 1);
+            },
+            beginRound(combatData, currentRound) {
+              清理本回合多威胁运行态(combatData);
+              记录战斗上下文时光回溯快照(combatData);
+              const summonLog = 执行召唤回合开始(combatData);
+              return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
+            },
+            buildQueue: generateActionQueue,
+            recordQueue: 记录团战行动轴声明,
+            executeQueue: 执行团战扁平行动队列,
+            settleRoundEnd: settleTeamRoundEnd,
+            readAlive,
+            finalize({ combatData, mode, winner, logs }) {
+              if (mode !== 'multi_round' || winner !== 'enemy') return;
+              const combatType = combatData.战斗类型 || '突发遭遇';
+              if (!['升灵台虚拟战斗', '魂灵塔冲塔'].includes(combatType)) return;
+              读取战斗主队单位列表(combatData, '玩家').forEach(unit => {
+                if (getCombatHpValue(unit) <= 0) 设置战斗血量值(unit, 1);
               });
-              logs.push(`[虚拟战败保护] 玩家方全员战败，触发安全协议，强制弹出并锁定HP为 1！`);
-            }
-          }
-
-          return {
-            rounds,
-            roundStart: startingRound + 1,
-            roundEnd: Number(combatData.回合 || startingRound),
-            winner,
-            playerAlive: finalPlayerAlive,
-            enemyAlive: finalEnemyAlive,
-            logs,
-            extraPatchOps,
+              logs.push('[虚拟战败保护] 玩家方全员战败，触发安全协议，强制弹出并锁定HP为 1！');
+            },
           };
         }
 
+        function runTeamBattleSimulation(combatData, maxRounds = 3) {
+          return BATTLE_RUNTIME.runTeamBattle({
+            combatData,
+            mode: 'multi_round',
+            maxRounds,
+            adapters: 构建团战运行时适配器(),
+          });
+        }
+
         function runTeamBattleRound(combatData) {
-          hydrateCombatData(combatData);
-          确保召唤单位表(combatData);
-          const queueRuntime = 确保战斗运行态(combatData);
-          queueRuntime.actionQueueTrace = [];
-          delete queueRuntime.actionQueueFatal;
-          if (isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) {
-            const rosterCheck = validateSoulTowerCombatRoster(combatData);
-            if (!rosterCheck.ok) {
-              return {
-                rounds: 0,
-                roundStart: Number(combatData?.回合 || 0),
-                roundEnd: Number(combatData?.回合 || 0),
-                winner: 'unfinished',
-                playerAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家')),
-                enemyAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方')),
-                logs: [`[魂灵塔资格驳回] ${rosterCheck.message}`],
-                extraPatchOps: [],
-              };
-            }
-          }
-          const currentRound = Number(combatData.回合 || 0) + 1;
-          combatData.回合 = currentRound;
-          清理本回合多威胁运行态(combatData);
-          let logs = [`[团战第${currentRound}回合开始]`];
-          let extraPatchOps = [];
-          记录战斗上下文时光回溯快照(combatData);
-          const 召唤回合开始日志 = 执行召唤回合开始(combatData);
-          if (召唤回合开始日志) logs.push(召唤回合开始日志);
-
-          const queue = generateActionQueue(combatData);
-          记录团战行动轴声明(queue, combatData, logs);
-          const queueResult = 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps);
-          if (queueResult?.fatal) logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
-          else settleTeamRoundEnd(combatData, logs);
-
-          const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-          const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
-          const winner = teamEnemyAlive <= 0 ? 'player' : teamPlayerAlive <= 0 ? 'enemy' : 'unfinished';
-          logs.push(`[团战回合总结] 我方存活:${teamPlayerAlive} 敌方存活:${teamEnemyAlive}`);
-
-          return {
-            rounds: 1,
-            roundStart: currentRound,
-            roundEnd: currentRound,
-            winner,
-            playerAlive: teamPlayerAlive,
-            enemyAlive: teamEnemyAlive,
-            logs,
-            extraPatchOps,
-          };
+          return BATTLE_RUNTIME.runTeamBattle({
+            combatData,
+            mode: 'single_round',
+            maxRounds: 1,
+            adapters: 构建团战运行时适配器(),
+          });
         }
 
         function ui_executeBattleFlow(combatData, options = {}) {
