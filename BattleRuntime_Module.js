@@ -195,8 +195,8 @@
       : entry => String(entry?.char?.name || entry?.char?.名称 || '').trim();
     const onTrace = typeof options?.onTrace === 'function' ? options.onTrace : () => {};
     const onFatal = typeof options?.onFatal === 'function' ? options.onFatal : () => {};
-    let insertionSequence = 0;
-    let actionSequence = 0;
+    let insertionSequence = Math.max(0, Number(options?.initialInsertionSequence || 0));
+    let actionSequence = Math.max(0, Number(options?.initialActionSequence || 0));
     let fatal = null;
     const compareNodes = (left, right) =>
       Number(left.round || 0) - Number(right.round || 0) ||
@@ -321,6 +321,71 @@
       logs,
       extraPatchOps,
     };
+  }
+
+  function decideDuelContinuation(options = {}) {
+    const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
+    if (options?.actorsAble !== true) return { continueSimulation: false, intensity: 0, log: '' };
+    if (options?.isCharging === true) return { continueSimulation: true, intensity: 0, log: '' };
+    if (mode === 'single_round') {
+      return {
+        continueSimulation: false,
+        intensity: 0,
+        log: '[单回合仲裁] 当前模式为单回合，本次暗箱演算到此结束。',
+      };
+    }
+    const activeRatio = Math.max(0, Number(options?.activeDamage || 0)) / Math.max(1, Number(options?.passiveHpMax || 1));
+    const passiveRatio = Math.max(0, Number(options?.passiveDamage || 0)) / Math.max(1, Number(options?.activeHpMax || 1));
+    const intensity = Math.max(activeRatio, passiveRatio);
+    const stopDamageRatio = Math.max(0, Number(options?.settings?.stopDamageRatio || 0));
+    const stopDamagePercent = Math.max(0, Number(options?.settings?.stopDamagePercent || stopDamageRatio * 100));
+    if (intensity >= stopDamageRatio) {
+      return {
+        continueSimulation: false,
+        intensity,
+        log: `[续推终止] 本回合伤害已达生命占比${Math.round(stopDamagePercent)}%，暗箱续推停止。`,
+      };
+    }
+    const chance = Math.max(0, Math.min(1, Number(options?.settings?.continueChance || 0)));
+    const chancePercent = Math.max(0, Number(options?.settings?.continueChancePercent || chance * 100));
+    const rollValue = typeof options?.roll === 'function' ? options.roll() : options?.roll;
+    const roll = Math.max(0, Math.min(1, Number(rollValue) || 0));
+    const continueSimulation = probabilitySucceeds(chance, roll);
+    return {
+      continueSimulation,
+      intensity,
+      log: `[续推判定] 本回合伤害约为生命占比${Math.round(intensity * 100)}%，未达到${Math.round(stopDamagePercent)}%，按${Math.round(chancePercent)}%概率续推。Roll:${roll.toFixed(2)} 判定:${continueSimulation ? '继续' : '停止'}。`,
+    };
+  }
+
+  function executeActionNodes(options = {}) {
+    const nodes = Array.isArray(options?.nodes) ? options.nodes : [];
+    const queue = createActionQueue({
+      round: options?.round,
+      initialEntries: [],
+      normalizeRole: options?.normalizeRole,
+      normalizeActionName: options?.normalizeActionName,
+      describeActor: options?.describeActor,
+      onTrace: options?.onTrace,
+      onFatal: options?.onFatal,
+      initialInsertionSequence: options?.initialInsertionSequence,
+      initialActionSequence: options?.initialActionSequence,
+    });
+    nodes.forEach(node => queue.enqueue(node));
+    const results = [];
+    while (queue.pendingCount > 0 && !queue.fatal) {
+      const node = queue.dequeue();
+      if (!node) break;
+      queue.recordTrace('EXECUTING', node);
+      try {
+        const result = node.execute ? node.execute(node) : null;
+        results.push({ node, result });
+        queue.recordTrace('COMPLETED', node);
+      } catch (error) {
+        queue.fail('ACTION_QUEUE_NODE_EXECUTION_FAILED', node, { message: String(error?.message || error) });
+      }
+    }
+    return { results, fatal: queue.fatal };
   }
 
   function calculateObjectiveScore(scoreParts = {}) {
@@ -758,6 +823,8 @@
     normalizeDecisionScores,
     createActionQueue,
     runTeamBattle,
+    decideDuelContinuation,
+    executeActionNodes,
     calculateObjectiveScore,
     calculateBaseDamage,
     summarizeScoreContributions,

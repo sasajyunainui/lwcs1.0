@@ -21604,7 +21604,7 @@ class BattleUIComponent {
         };
         const 反应动作 = { type: '无法反应', log: '[维持压力] 后台持续释放并入当前战斗压力。', skill: null, def_mult: 1 };
         const 维持战斗数据 = 构建维持释放战斗数据(char, 主目标, combatData);
-        const 结算结果 = executeClash(维持行动, 反应动作, 维持战斗数据);
+        const 结算结果 = 执行单挑队列结算(维持行动, 反应动作, 维持战斗数据);
         const 伤害落地 = applyResolvedDamagePackage(char, 维持行动, 结算结果, {
           primaryTarget: 主目标,
           combatData: 维持战斗数据,
@@ -26448,6 +26448,58 @@ class BattleUIComponent {
         };
       }
 
+      function 执行单挑队列结算(playerAction, reactionAction, combatData, options = {}) {
+        const traceCombatData = options?.traceCombatData || combatData;
+        const runtime = 确保战斗运行态(traceCombatData);
+        if (!Array.isArray(runtime.actionQueueTrace)) runtime.actionQueueTrace = [];
+        const actor = combatData?.参战者?.team_player?.[0] || null;
+        const actionRole = 标准化战斗行动职责(options?.actionRole || 'ACTIVE');
+        const actionName = normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '行动');
+        const sequenceBase = Math.max(0, Number(runtime.duelActionSequence || 0));
+        const result = BATTLE_RUNTIME.executeActionNodes({
+          round: Number(traceCombatData?.回合 || combatData?.回合 || 0),
+          initialInsertionSequence: sequenceBase,
+          initialActionSequence: sequenceBase,
+          normalizeRole: 标准化战斗行动职责,
+          normalizeActionName: normalizeBattleActionDisplayName,
+          describeActor: actorEntry => String(actorEntry?.char?.name || actorEntry?.char?.名称 || '').trim(),
+          onTrace: entry => {
+            runtime.actionQueueTrace.push(entry);
+            if (runtime.actionQueueTrace.length > 512) runtime.actionQueueTrace.splice(0, runtime.actionQueueTrace.length - 512);
+          },
+          onFatal: (fatal, node) => {
+            runtime.actionQueueFatal = fatal;
+            写入战斗事件账本(traceCombatData, {
+              eventKind: 'failed_action',
+              round: Number(traceCombatData?.回合 || combatData?.回合 || 0),
+              actorName: node?.actorEntry?.char?.name || node?.actorEntry?.char?.名称 || '',
+              actionName,
+              actionType: 'action_queue',
+              actionRole,
+              result: 'queue_fatal',
+              ruleCode: fatal.code,
+              failReason: fatal.code,
+              meta: { source: 'duel_action_queue', ...fatal },
+            });
+          },
+          nodes: [{
+            actorEntry: { char: actor, side: options?.side || 'player' },
+            actorTurnSequence: Math.max(1, Number(options?.actorTurnSequence || 1)),
+            parentActionSequence: Math.max(0, Number(options?.parentActionSequence || 0)),
+            phasePriority: Math.max(0, Number(options?.phasePriority || (actionRole === 'COUNTER' ? 50 : 40))),
+            grantId: String(options?.grantId || `duel:${Number(traceCombatData?.回合 || combatData?.回合 || 0)}:${sequenceBase + 1}:${actionRole}`),
+            nodeKind: actionRole,
+            actionRole,
+            sourceActionId: String(options?.sourceActionId || '').trim(),
+            actionName,
+            execute: () => executeClash(playerAction, reactionAction, combatData),
+          }],
+        });
+        if (result.fatal) throw new Error(result.fatal.code);
+        runtime.duelActionSequence = sequenceBase + result.results.length;
+        return result.results[0]?.result;
+      }
+
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
@@ -27158,7 +27210,7 @@ class BattleUIComponent {
             }
             const supportCombatData = 构建单挑临时战斗数据(attacker, target, 'player', combatData);
             const supportReaction = 构建单挑配合动作(attacker, target, playerAction);
-            const supportResult = executeClash(playerAction, supportReaction, supportCombatData);
+            const supportResult = 执行单挑队列结算(playerAction, supportReaction, supportCombatData);
             if (Array.isArray(supportResult.extraPatchOps) && supportResult.extraPatchOps.length) {
               clashExtraPatchOps.push(...supportResult.extraPatchOps);
               supportResult.__extraPatchOps已收集 = true;
@@ -27212,7 +27264,7 @@ class BattleUIComponent {
               discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
               replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
             });
-            settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+            settleResult = 执行单挑队列结算(主动结算动作, 反应结算动作, 主动结算战斗数据);
             const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
             const 玩家仍可行动 =
               isCombatUnitAbleToFight(attacker) &&
@@ -27228,7 +27280,7 @@ class BattleUIComponent {
                 skill: null,
                 def_mult: 1,
               };
-              const 玩家延后结算 = executeClash(playerAction, 玩家延后反应, 玩家延后战斗数据);
+              const 玩家延后结算 = 执行单挑队列结算(playerAction, 玩家延后反应, 玩家延后战斗数据);
               if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
                 clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
               }
@@ -27272,7 +27324,7 @@ class BattleUIComponent {
               replanReasonCode: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') !== normalizeBattleActionDisplayName(npcAction?.skill?.name || npcAction?.skill?.魂技名 || npcAction?.type || npcAction?.action_type || '') ? 'TACTICAL_DISADVANTAGE' : '',
             });
             const 玩家主动结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-            settleResult = executeClash(playerAction, npcAction, combatData);
+            settleResult = 执行单挑队列结算(playerAction, npcAction, combatData);
             if (
               /强势对轰|主动压迫|抢先压制/.test(String(npcAction?.type || npcAction?.action_type || '')) &&
               !动作已在新增账本中落地(玩家主动结算前账本长度, attacker, playerAction)
@@ -27346,7 +27398,7 @@ class BattleUIComponent {
                 discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
                 replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
               });
-              settleResult = executeClash(主动结算动作, 反应结算动作, 主动结算战斗数据);
+              settleResult = 执行单挑队列结算(主动结算动作, 反应结算动作, 主动结算战斗数据);
               const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
               const 玩家仍可行动 =
                 isCombatUnitAbleToFight(attacker) &&
@@ -27362,7 +27414,7 @@ class BattleUIComponent {
                   skill: null,
                   def_mult: 1,
                 };
-                const 玩家延后结算 = executeClash(playerAction, 玩家延后反应, 玩家延后战斗数据);
+                const 玩家延后结算 = 执行单挑队列结算(playerAction, 玩家延后反应, 玩家延后战斗数据);
                 if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
                   clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
                 }
@@ -27637,33 +27689,26 @@ class BattleUIComponent {
 
           syncCombatActionState(attacker);
           syncCombatActionState(defender);
-          if (!isCombatUnitAbleToFight(attacker) || !isCombatUnitAbleToFight(defender)) {
+          const 双方可继续行动 = isCombatUnitAbleToFight(attacker) && isCombatUnitAbleToFight(defender);
+          if (!双方可继续行动) {
             if (isCombatUnitAlive(attacker) && !isCombatUnitAbleToFight(attacker))
               roundLog += ` [体力耗尽] 玩家体力归零，陷入昏迷，无法继续行动。`;
             if (isCombatUnitAlive(defender) && !isCombatUnitAbleToFight(defender))
               roundLog += ` [体力耗尽] NPC体力归零，陷入昏迷，无法继续行动。`;
-            continueSimulation = false;
-          } else if (attacker.蓄力技能 == null) {
-            if (mode === 'single_round') {
-              continueSimulation = false;
-              roundLog += ` [单回合仲裁] 当前模式为单回合，本次暗箱演算到此结束。`;
-            } else {
-              const 本轮攻防烈度 = Math.max(
-                Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
-                Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(主动结算方),
-              );
-              const continueThresholdReached = 本轮攻防烈度 >= 自动续推设置.stopDamageRatio;
-              if (continueThresholdReached) {
-                continueSimulation = false;
-                roundLog += ` [续推终止] 本回合伤害已达生命占比${Math.round(自动续推设置.stopDamagePercent)}%，暗箱续推停止。`;
-              } else {
-                const continueRoll = Math.random();
-                const continueHit = continueRoll < 自动续推设置.continueChance;
-                continueSimulation = continueHit;
-                roundLog += ` [续推判定] 本回合伤害约为生命占比${Math.round(本轮攻防烈度 * 100)}%，未达到${Math.round(自动续推设置.stopDamagePercent)}%，按${Math.round(自动续推设置.continueChancePercent)}%概率续推。Roll:${continueRoll.toFixed(2)} 判定:${continueHit ? '继续' : '停止'}。`;
-              }
-            }
           }
+          const continuation = BATTLE_RUNTIME.decideDuelContinuation({
+            mode,
+            actorsAble: 双方可继续行动,
+            isCharging: attacker.蓄力技能 != null,
+            activeDamage: appliedDamage,
+            passiveDamage: settleResult.totalProjectedDamage || settleResult.dmg,
+            passiveHpMax: getCombatHpMaxValue(被动结算目标),
+            activeHpMax: getCombatHpMaxValue(主动结算方),
+            settings: 自动续推设置,
+            roll: Math.random,
+          });
+          continueSimulation = continuation.continueSimulation;
+          if (continuation.log) roundLog += ` ${continuation.log}`;
 
           battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
         }
@@ -28774,7 +28819,7 @@ class BattleUIComponent {
         const reactionAction = targetsFriendly
           ? { type: '配合', log: `${primaryTarget.name || '目标'}接受了${攻击方.name || '施术者'}的连放辅助。`, skill: null, def_mult: 1.0 }
           : determineNpcAction(combatData, action, calculateReactionRatio(攻击方, primaryTarget, action, combatData));
-        const settleResult = executeClash(action, reactionAction, combatData);
+        const settleResult = 执行单挑队列结算(action, reactionAction, combatData);
         const damagePackage = applyResolvedDamagePackage(攻击方, action, settleResult, {
           primaryTarget,
           combatData,
@@ -30787,10 +30832,24 @@ class BattleUIComponent {
               reasonCode: 'COUNTER_WINDOW_OPENED',
             },
           });
-          const 防反结果 = executeClash(
+          const 根队列运行态 = 确保战斗运行态(战斗数据);
+          const 父队列节点 = [...(根队列运行态.actionQueueTrace || [])].reverse().find(item =>
+            String(item?.state || '').trim() === 'COMPLETED' &&
+            String(item?.actionRole || '').trim() === 'ACTIVE' &&
+            Number(item?.round || 0) === Number(战斗数据?.回合 || 0)
+          );
+          const 防反结果 = 执行单挑队列结算(
             防反动作,
             二次反应动作,
             防反战斗数据,
+            {
+              actionRole: 'COUNTER',
+              phasePriority: 50,
+              parentActionSequence: Number(父队列节点?.actionSequence || 0),
+              sourceActionId: 防反窗口事件?.sourceActionId || '',
+              side: 读取规划单位阵营(防反者, 战斗数据) === '敌方' ? 'enemy' : 'player',
+              traceCombatData: 战斗数据,
+            },
           );
           const 防反伤害包 = applyResolvedDamagePackage(防反者, 防反动作, 防反结果, {
             primaryTarget: 目标,
