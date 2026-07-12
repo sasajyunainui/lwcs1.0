@@ -25967,17 +25967,14 @@ class BattleUIComponent {
             const costLog = applyActionCost(defender, npcDeclaredAction, attacker, combatData);
             if (costLog) roundLog += `${costLog} `;
           };
-
-          if (npcShouldActFirst) {
-            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
-            if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
+          const 执行NPC主动压制 = (npcActionStartEvent, 记录玩家防守姿态 = false) => {
             主动结算方 = defender;
             被动结算目标 = attacker;
             主动结算动作 = npcDeclaredAction;
             反应结算动作 = 玩家非敌对动作已完成
               ? { type: '无法反应', log: `[先手压制] ${getCombatReportUnitName(attacker, '我方')}刚完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】，来不及追加防守。`, skill: null, def_mult: 1 }
               : 构建单挑反应动作(playerAction, attacker, defender);
-            if (isPassivePlayerTurn && !玩家非敌对动作已完成) {
+            if (记录玩家防守姿态 && !玩家非敌对动作已完成) {
               记账非敌对落地(playerAction, attacker, defender, {
                 desc: String(反应结算动作?.log || '').trim() || `${getCombatReportUnitName(attacker, '我方')}完成【${playerAction?.action_type || '防守'}】。`,
               }, {
@@ -26044,6 +26041,12 @@ class BattleUIComponent {
               `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
               { player: defender, enemy: attacker },
             );
+          };
+
+          if (npcShouldActFirst) {
+            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
+            if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
+            执行NPC主动压制(npcActionStartEvent, isPassivePlayerTurn);
           } else if (玩家动作敌对) {
             const playerActionStartEvent = 玩家主动起手事件 || 记账玩家主动起手();
             if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
@@ -26115,69 +26118,7 @@ class BattleUIComponent {
               // 释放失败已经在 roundLog 中说明，避免继续把对手行动缝进同一条失败链。
             } else if (npcDeclaredHostile && !npcDeclaredNonAttack) {
               const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
-              主动结算方 = defender;
-              被动结算目标 = attacker;
-              主动结算动作 = npcDeclaredAction;
-              反应结算动作 = 玩家非敌对动作已完成
-                ? { type: '无法反应', log: `[先手压制] ${getCombatReportUnitName(attacker, '我方')}刚完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】，来不及追加防守。`, skill: null, def_mult: 1 }
-                : 构建单挑反应动作(playerAction, attacker, defender);
-              主动结算战斗数据 = 构建单挑临时战斗数据(defender, attacker, 'enemy', combatData);
-              主动结算动作.target_name = attacker.name || attacker.名称 || '';
-              本轮NPC先手 = true;
-              扣除NPC主动动作成本();
-              if (反应结算动作?.skill && 反应结算动作.skill === playerAction?.skill && !扣除玩家动作成本(playerAction, defender)) {
-                反应结算动作 = { type: '无法反应', log: `[抢招失败] ${getCombatReportUnitName(attacker, '我方')}未能支撑【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】的启动消耗，抢招未成。`, skill: null, def_mult: 1 };
-              }
-              const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-              行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
-              记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, {
-                source: 'single_duel_reaction',
-                reactionRatio: calculateReactionRatio(defender, attacker, 主动结算动作, 主动结算战斗数据),
-                attackerCastTime: 读取单挑动作前摇(主动结算动作),
-                reactorCastTime: 读取单挑动作前摇(playerAction),
-                castTimeGap: 读取单挑动作前摇(playerAction) - 读取单挑动作前摇(主动结算动作),
-                threatScore: Math.max(0, Number(getPrimaryDamageEffect(主动结算动作?.skill, { 行为规划: true })?.威力倍率 || 0)),
-                initialReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || ''),
-                discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
-                replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
-              });
-              settleResult = 执行单挑队列结算(主动结算动作, 反应结算动作, 主动结算战斗数据);
-              const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
-              const 玩家仍可行动 =
-                isCombatUnitAbleToFight(attacker) &&
-                !Object.values(attacker?.状态效果 || {}).some(状态 => {
-                  const 效果 = 状态?.战斗效果 || {};
-                  return 效果.skip_turn === true || 效果.cannot_react === true;
-                });
-              if (玩家动作尚未落地 && 玩家范围控制可延后落地 && 玩家仍可行动) {
-                const 玩家延后战斗数据 = 构建单挑临时战斗数据(attacker, defender, 'player', combatData);
-                const 玩家延后反应 = {
-                  type: '无法反应',
-                  log: `[后续出手] ${getCombatReportUnitName(attacker, '我方')}顶住先手压制，继续完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】。`,
-                  skill: null,
-                  def_mult: 1,
-                };
-                const 玩家延后结算 = 执行单挑队列结算(playerAction, 玩家延后反应, 玩家延后战斗数据);
-                if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
-                  clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
-                }
-                roundLog += ` ${玩家延后反应.log} ${玩家延后结算.desc}`;
-              }
-              if (
-                玩家动作敌对 &&
-                !(玩家范围控制可延后落地 && 玩家仍可行动 && 动作已在新增账本中落地(结算前账本长度, attacker, playerAction)) &&
-                !动作已在新增账本中落地(结算前账本长度, attacker, playerAction)
-              ) {
-                const 受阻原因 =
-                  反应结算动作?.type === '强势对轰'
-                    ? '被对手抢先压制，未能形成有效出手'
-                    : '被对手先手压制，未能形成有效出手';
-                记账动作受阻(playerAction, attacker, defender, 受阻原因, { targetPoolSide: 'hostile' });
-              }
-              roundLog += replaceBattleReportGenericNames(
-                `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
-                { player: defender, enemy: attacker },
-              );
+              执行NPC主动压制(npcActionStartEvent);
             } else if (npcDeclaredAction.decision_log) {
               记账非敌对落地(npcDeclaredAction, defender, attacker, { desc: npcDeclaredAction.decision_log });
               roundLog += ` ${npcDeclaredAction.decision_log}`;
