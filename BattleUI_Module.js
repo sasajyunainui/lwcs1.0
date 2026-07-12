@@ -899,23 +899,11 @@ class BattleUIComponent {
       { 取值: ctx => Number(ctx.behaviorState?.round || 0), 方向: '大于等于', 阈值: 4, 加权: Object.freeze({ 资源消耗: 14 }) },
     ]);
 
-    // 技能战术修正阈值表 — 集中战术评分的散落系数 (Phase 2 会调动态多样性扣减)
-    const 技能战术修正阈值_V1 = Object.freeze({
-      行为多样性惩罚峰值: 72,         // 原 11127 hard-coded min(72, ...)
-      行为多样性单次重复加成: 22,     // 原 11127 重复次数*22
-      行为多样性压力倍增: 30,         // 原 11127 行为多样性压力*30
-      行为多样性同技额外: 12,         // 原 11127 上次同技 ? 12 : 0
-    });
-
-    // 时机决策阈值表 — Phase 2/3 用,先占位以稳定数据契约
+    // 时机决策阈值表
     const 时机决策阈值_V1 = Object.freeze({
       集火窗口_目标残血阈值: 0.30,    // Phase 2.A
       节奏感_领先差: 0.30,            // Phase 2.B
       节奏感_落后差: 0.30,            // Phase 2.B
-      多样性早期回合: 3,              // Phase 2.C
-      多样性中期回合: 6,              // Phase 2.C
-      多样性早期缩放: 0.50,           // Phase 2.C
-      多样性中期缩放: 0.85,           // Phase 2.C
       融合技释放_敌方残血阈值: 0.40,  // Phase 3.A
       大招释放_敌方残血阈值: 0.35,    // Phase 3.B
       大招释放_我方残血阈值: 0.40,    // Phase 3.B
@@ -931,8 +919,6 @@ class BattleUIComponent {
       装备_紧急释放_终局压力阈值: 0.50, // Phase 3.F
       真身领域_紧急释放_我方残血阈值: 0.50,  // Phase 3.H
       真身领域_决战_敌方残血阈值: 0.40,      // Phase 3.H
-      遗忘机制_重启回合阈值: 5,       // Phase 3.I (距上次使用 ≥ 5 回合)
-      遗忘机制_重启加成: 8,           // Phase 3.I
       防守优先_对方下回合威胁: 0.60,  // Phase 4
     });
 
@@ -1017,13 +1003,6 @@ class BattleUIComponent {
     });
 
     const 技能时机约束表_V1 = Object.freeze({
-      融合技重复回合: 5,
-      大招重复回合: 4,
-      稀缺技能重复回合: 4,
-      装备技能重复回合: 3,
-      普通技能重复回合: 2,
-      高风险重复惩罚: 46,
-      普通重复惩罚: 16,
       控制后输出加成: 22,
       破防后爆发加成: 26,
       治疗后拖回合加成: 26,
@@ -1273,14 +1252,6 @@ class BattleUIComponent {
       }
       if (维持压力 > 0.05) {
         预测.控制 += 8;
-        预测.资源保留 += 6;
-      }
-      const 最近行动 = 单位?.决策记忆?.recent_actions || {};
-      const 最高重复 = Math.max(0, ...Object.values(最近行动).map(v => Number(v || 0)));
-      if (最高重复 >= 2) {
-        预测.输出 -= 6;
-        预测.爆发 -= 6;
-        预测.控制 -= 4;
         预测.资源保留 += 6;
       }
       if (behaviorState?.isChargingHighThreat) 预测.爆发 += 10;
@@ -2354,60 +2325,6 @@ class BattleUIComponent {
       return { 修正: Math.round(修正), 标签, 理由: 标签 };
     }
 
-    function 计算重复效用衰减_V1(选项 = {}) {
-      const 重复次数 = Math.max(0, Number(选项.重复次数 ?? 选项.repeatCount ?? 0));
-      const 同类重复次数 = Math.max(0, Number(选项.同类重复次数 ?? 选项.sameCategoryRepeatCount ?? 0));
-      const 是高影响 = 选项.是高影响 === true || /终局爆发|控制|输出|压制/.test(String(选项.行动类别 || '')) || 选项.是高耗 === true;
-      const 豁免 = (() => {
-        if (选项.玩家锁定动作 === true) return 'PLAYER_LOCKED_ACTION';
-        if (选项.只有一个合法动作 === true) return 'ONLY_LEGAL_ACTION';
-        if (选项.可斩杀 === true) return 'LETHAL_WINDOW';
-        if (选项.紧急治疗 === true) return 'EMERGENCY_HEAL';
-        if (选项.致命截断 === true) return 'LETHAL_INTERRUPT';
-        return '';
-      })();
-      let 倍率 = 1;
-      let 原因码 = '';
-      let 类别 = 'none';
-      if (重复次数 >= 2) {
-        倍率 = 0.10;
-        原因码 = 'SAME_ACTION_REPEAT_HEAVY';
-        类别 = 'same_action';
-      } else if (重复次数 === 1) {
-        倍率 = 0.35;
-        原因码 = 'SAME_ACTION_REPEAT';
-        类别 = 'same_action';
-      } else if (是高影响 && 同类重复次数 > 0) {
-        倍率 = 0.65;
-        原因码 = 'SAME_CATEGORY_HIGH_IMPACT';
-        类别 = 'same_category';
-      }
-      return {
-        repeatCount: 重复次数,
-        sameCategoryRepeatCount: 同类重复次数,
-        repeatCategory: 类别,
-        repeatDecayMultiplier: 倍率,
-        repeatDecayReasonCode: 原因码,
-        repeatExceptionCode: 豁免,
-        repeatDecayApplied: 倍率 < 0.999,
-      };
-    }
-
-    function 格式化重复效用衰减说明_V1(衰减 = {}) {
-      const 倍率 = Number(衰减?.repeatDecayMultiplier || 1);
-      if (!Number.isFinite(倍率) || 倍率 >= 0.999) return '';
-      const 标签 = 衰减.repeatDecayReasonCode === 'SAME_CATEGORY_HIGH_IMPACT' ? '同类高影响动作复读衰减' : '重复释放衰减';
-      const 豁免映射 = {
-        LETHAL_WINDOW: '终结窗口豁免：目标濒死',
-        EMERGENCY_HEAL: '救急窗口豁免：友方濒危',
-        LETHAL_INTERRUPT: '截断窗口豁免：对方致命动作',
-        ONLY_LEGAL_ACTION: '保底豁免：无其他合法动作',
-        PLAYER_LOCKED_ACTION: '玩家锁定豁免：手动指定',
-      };
-      const 豁免 = 豁免映射[衰减.repeatExceptionCode] || '';
-      return `${标签} x${倍率.toFixed(2)}${豁免 ? `；${豁免}` : ''}`;
-    }
-
     function 计算连招排序修正_V1(actor = {}, target = {}, 规划上下文 = {}, 行动类别 = '输出', 技能类别 = {}) {
       const 标签 = 推断上回合效果标签_V1(actor, target, 规划上下文);
       let 修正 = 0;
@@ -2556,6 +2473,35 @@ class BattleUIComponent {
       };
     }
 
+    const 行为规划评分分项_V1 = Object.freeze([
+      'effectiveDeltaEV', 'futureUnlockEV', 'enemyDeniedEV', 'teamIntentEV', 'sustainEV',
+      'resourceCostEV', 'failureRiskEV', 'exposureRiskEV', 'chainConflictEV',
+    ]);
+
+    function 汇总行为规划评分贡献_V1(contributions = []) {
+      const scoreParts = Object.fromEntries(行为规划评分分项_V1.map(component => [component, 0]));
+      const factorKeys = [];
+      const seen = new Set();
+      (Array.isArray(contributions) ? contributions : []).forEach((contribution, index) => {
+        const valueKey = String(contribution?.valueKey || '').trim();
+        const component = String(contribution?.component || '').trim();
+        const expectedValue = Number(contribution?.expectedValue || 0);
+        if (!valueKey) throw new Error(`battle_scoring_value_key_missing:${index}`);
+        if (seen.has(valueKey)) throw new Error(`battle_scoring_value_key_duplicated:${valueKey}`);
+        if (!行为规划评分分项_V1.includes(component)) throw new Error(`battle_scoring_component_unsupported:${component || index}`);
+        if (!Number.isFinite(expectedValue)) throw new Error(`battle_scoring_value_invalid:${valueKey}`);
+        seen.add(valueKey);
+        factorKeys.push(valueKey);
+        scoreParts[component] += expectedValue;
+      });
+      Object.keys(scoreParts).forEach(component => { scoreParts[component] = Math.round(scoreParts[component]); });
+      const rawObjectiveScore = Math.round(
+        scoreParts.effectiveDeltaEV + scoreParts.futureUnlockEV + scoreParts.enemyDeniedEV + scoreParts.teamIntentEV + scoreParts.sustainEV -
+        scoreParts.resourceCostEV - scoreParts.failureRiskEV - scoreParts.exposureRiskEV - scoreParts.chainConflictEV,
+      );
+      return { scoreParts, rawObjectiveScore, factorKeys };
+    }
+
     function 排序行为规划候选_V1(actor = {}, 战局画像 = {}, 候选列表 = [], behaviorState = {}) {
       const 上下文 = {
         ...(behaviorState || {}),
@@ -2564,7 +2510,9 @@ class BattleUIComponent {
         来袭窗口摘要: behaviorState?.来袭窗口摘要 || behaviorState?.threatProfile || {},
       };
       const 已评分候选 = (候选列表 || []).map((候选, 候选索引) => {
-        const skill = 候选.skill || 候选;
+        const 是魂技候选 = !!候选?.skill || !!候选?.__预览技能 || Array.isArray(候选?.效果数组) || Array.isArray(候选?.effects) ||
+          !!String(候选?.魂技名 || 候选?.技能名称 || '').trim();
+        const skill = 候选.skill || 候选.__预览技能 || 候选;
         const 防御类型 = 判定防御动作类型_V1(skill, 候选);
         const 固定自身目标 = 判定候选固定自身目标_V1(skill, 候选);
         const 原始技能类别 = 推断技能规划类别_V1(skill, 候选, { actor, target: 候选.target });
@@ -2686,75 +2634,60 @@ class BattleUIComponent {
             };
         const 审计分类来源 = 固定自身目标 ? '防御动作语义' : (技能类别.效果画像?.分类来源 || '默认输出');
         const 是资源恢复动作 = 判定资源恢复规划动作_V1(技能类别, skill, 候选);
-        const 同类重复次数 = 读取归一行为记忆值_V1(actor?.决策记忆?.recent_actions || {}, [行动类别, 技能类别.主类别], 0);
-        const 重复衰减 = 计算重复效用衰减_V1({
-          重复次数: 重复,
-          同类重复次数: Math.max(0, 同类重复次数 - 重复),
-          行动类别,
-          是高耗: 候选.高耗 === true,
-          可斩杀: 候选.可斩杀 === true,
-          紧急治疗: 行动类别 === '治疗' && getCombatHpRatio(目标 || actor) < 0.45,
-          致命截断: 关键控制窗口 && (上下文?.threatProfile?.lethalRisk === true || 上下文?.来袭窗口摘要?.lethalRisk === true),
-        });
-        const 衰减说明 = 格式化重复效用衰减说明_V1(重复衰减);
         const 预估分项 = 候选.previewScoreParts && typeof 候选.previewScoreParts === 'object' ? 候选.previewScoreParts : {};
-        const effectiveDeltaEV = Math.round(
-          Number(候选.effectiveDeltaEV ?? 预估分项.effectiveDeltaEV ?? 候选.effectEV ?? 原始净收益 ?? (skill ? 0 : 原始权重)) +
-          (!skill ? Number(防御质量.修正 || 0) : 0),
-        );
         const 目标价值分解 = 目标价值.分解 && typeof 目标价值.分解 === 'object' ? 目标价值.分解 : {};
         const 否决目标价值 = Math.max(0, Number(目标价值分解.治疗救场价值 || 0)) + Math.max(0, Number(目标价值分解.蓄力打断价值 || 0));
-        const 前瞻正值 = Math.max(0, Number(二回合前瞻.二回合前瞻修正 || 0));
-        const 有己方后续窗口 = Array.isArray(二回合前瞻.己方下回合窗口) && 二回合前瞻.己方下回合窗口.length > 0;
-        const 有敌方受限风险 = Array.isArray(二回合前瞻.敌方下回合风险) && 二回合前瞻.敌方下回合风险.length > 0;
-        const 前瞻解锁份额 = 有己方后续窗口 ? (有敌方受限风险 ? Math.round(前瞻正值 / 2) : 前瞻正值) : 0;
-        const 前瞻否决份额 = 有敌方受限风险 ? Math.max(0, 前瞻正值 - 前瞻解锁份额) : 0;
-        const futureUnlockEV = Math.round(
-          Number(候选.futureUnlockEV ?? 预估分项.futureUnlockEV ?? 0) +
-          Math.max(0, Number(连招.修正 || 0)) +
-          Math.max(0, Number(短期记忆.修正 || 0)) +
-          前瞻解锁份额,
-        );
-        const 当前动作可否决敌方 = ['控制', '终局爆发'].includes(行动类别) || 候选?.可斩杀 || 候选?.可打断 || 关键控制窗口 || 有敌方受限风险;
-        const enemyDeniedEV = Math.round(
-          Number(候选.enemyDeniedEV ?? 预估分项.enemyDeniedEV ?? 0) +
-          (当前动作可否决敌方
-            ? Math.max(0, Number(对手意图响应.修正 || 0)) + Math.max(0, Number(对手适应.修正 || 0)) + 否决目标价值 + 前瞻否决份额
-            : 0),
-        );
-        const sustainEV = Math.round(
-          Number(候选.sustainEV ?? 预估分项.sustainEV ?? 0) +
-          Math.max(0, Number(资源节奏.修正 || 0)),
-        );
+        const 当前动作可否决敌方 = ['控制', '终局爆发'].includes(行动类别) || 候选?.可斩杀 || 候选?.可打断 || 关键控制窗口;
         const 目标价值非否决部分 = Number(目标价值.修正 || 0) - (当前动作可否决敌方 ? 否决目标价值 : 0);
-        const 动作基础可兑现值 = Math.max(0, effectiveDeltaEV) + Math.max(0, futureUnlockEV) + Math.max(0, enemyDeniedEV) + Math.max(0, sustainEV);
-        const teamIntentEV = Math.round(
-          Number(候选.teamIntentEV ?? 预估分项.teamIntentEV ?? 0) +
-          (动作基础可兑现值 > 0
-            ? Number(目标修正 || 0) + Number(友方保护.修正 || 0) + 目标价值非否决部分 + Number(斩杀修正 || 0) +
-              Number(类别预算.修正 || 0) + Number(支援职责.修正 || 0) + Number(职责画像.修正 || 0)
-            : 0),
-        );
         const 资源连续性惩罚 = Math.max(
           0,
           -Number(资源节奏.修正 || 0),
           -Number(资源修正 || 0),
           Number(资源判定.资源断档惩罚 || 0),
         );
-        const resourceCostEV = Math.max(0, Math.round(Number(候选.resourceCostEV || 0) + 资源连续性惩罚));
-        const failureRiskEV = Math.max(0, Math.round(Number(候选.failureRiskEV ?? 预估分项.failureRiskEV ?? 0)));
-        const exposureRiskEV = Math.max(0, Math.round(
-          Number(候选.exposureRiskEV ?? 预估分项.exposureRiskEV ?? 0) + Math.max(0, Number(风险.风险变化 || 0) * 80),
+        const 评分贡献 = [];
+        const 添加贡献 = (valueKey, component, expectedValue, evidence) => {
+          const value = Number(expectedValue || 0);
+          评分贡献.push({ valueKey, component, expectedValue: value, evidence });
+        };
+        const 预估即时边际 = Number(候选.effectiveDeltaEV ?? 预估分项.effectiveDeltaEV ?? 候选.effectEV ?? 原始净收益 ?? (是魂技候选 ? 0 : 原始权重));
+        const 预估未来解锁 = Number(候选.futureUnlockEV ?? 预估分项.futureUnlockEV ?? 0);
+        const 预估敌方否决 = Number(候选.enemyDeniedEV ?? 预估分项.enemyDeniedEV ?? 0);
+        const 预估续航收益 = Number(候选.sustainEV ?? 预估分项.sustainEV ?? 0);
+        添加贡献('preview:effective_delta', 'effectiveDeltaEV', 预估即时边际, '纯预估即时边际');
+        添加贡献('preview:future_unlock', 'futureUnlockEV', 预估未来解锁, '纯预估下一自然行动解锁');
+        添加贡献('preview:enemy_denied', 'enemyDeniedEV', 预估敌方否决, '纯预估敌方行动损失');
+        添加贡献('preview:team_intent', 'teamIntentEV', Number(候选.teamIntentEV ?? 预估分项.teamIntentEV ?? 0), '纯预估团队意图');
+        添加贡献('preview:sustain', 'sustainEV', 预估续航收益, '纯预估资源连续性收益');
+        添加贡献('preview:resource_cost', 'resourceCostEV', Math.max(0, Number(候选.resourceCostEV ?? 预估分项.resourceCostEV ?? 0)), '纯预估资源成本');
+        添加贡献('preview:failure_risk', 'failureRiskEV', Math.max(0, Number(候选.failureRiskEV ?? 预估分项.failureRiskEV ?? 0)), '纯预估失败风险');
+        添加贡献('preview:exposure_risk', 'exposureRiskEV', Math.max(0, Number(候选.exposureRiskEV ?? 预估分项.exposureRiskEV ?? 0)), '纯预估暴露风险');
+        添加贡献('preview:chain_conflict', 'chainConflictEV', Math.max(0, Number(候选.chainConflictEV ?? 预估分项.chainConflictEV ?? 0)), '纯预估行为链冲突');
+        if (!是魂技候选) 添加贡献('context:basic_defense_quality', 'effectiveDeltaEV', Number(防御质量.修正 || 0), '基础动作防御质量');
+        if (当前动作可否决敌方) 添加贡献('context:target_denial', 'enemyDeniedEV', 否决目标价值, '目标当前可取消行动价值');
+        const 团队意图原值 = [
+          { valueKey: 'context:target_intent', value: 目标价值非否决部分, evidence: '集火、保核与目标切换价值' },
+          { valueKey: 'context:ally_protection', value: ['治疗', '防护'].includes(行动类别) ? Number(友方保护.修正 || 0) : 0, evidence: '友方危急程度与来袭保护需求' },
+          { valueKey: 'context:role_intent', value: Number(职责画像.修正 || 0), evidence: '角色职责与当前战局匹配' },
+          { valueKey: 'context:evasion_counter', value: Number(反敏攻价值得分 || 0), evidence: '当前动作对已观察闪避的适配价值' },
+        ];
+        const 团队意图正值总和 = 团队意图原值.reduce((sum, item) => sum + Math.max(0, Number(item.value || 0)), 0);
+        const 团队意图兑现上限 = Math.max(0, 预估即时边际) + Math.max(0, 预估未来解锁) + Math.max(0, 预估敌方否决) + Math.max(0, 预估续航收益) +
+          (当前动作可否决敌方 ? 否决目标价值 : 0) + (!是魂技候选 ? Math.max(0, Number(防御质量.修正 || 0)) : 0);
+        const 团队意图正值倍率 = 团队意图正值总和 > 0 ? Math.min(1, 团队意图兑现上限 / 团队意图正值总和) : 1;
+        团队意图原值.forEach(item => 添加贡献(
+          item.valueKey,
+          'teamIntentEV',
+          Number(item.value || 0) > 0 ? Number(item.value || 0) * 团队意图正值倍率 : Number(item.value || 0),
+          item.evidence,
         ));
-        const chainConflictEV = Math.max(0, Math.round(
-          Number(候选.chainConflictEV ?? 预估分项.chainConflictEV ?? 0) +
-          Number(记忆惩罚 || 0) + Number(闪避未中惩罚 || 0) + Number(敏攻硬追惩罚 || 0) +
-          Math.max(0, -Number(连招.修正 || 0)) + Math.max(0, -Number(短期记忆.修正 || 0)),
-        ));
-        const rawObjectiveScore = Math.round(
-          effectiveDeltaEV + futureUnlockEV + enemyDeniedEV + teamIntentEV + sustainEV -
-          resourceCostEV - failureRiskEV - exposureRiskEV - chainConflictEV,
-        );
+        添加贡献('context:resource_continuity_cost', 'resourceCostEV', 资源连续性惩罚, '消耗后的下一行动断档');
+        添加贡献('context:exposure_change', 'exposureRiskEV', Math.max(0, Number(风险.风险变化 || 0) * 80), '动作后一阶承伤暴露');
+        添加贡献('context:dodge_whiff', 'chainConflictEV', Math.max(0, Number(闪避未中惩罚 || 0)), '重复命中无效的行为链损失');
+        添加贡献('context:agility_pursuit', 'chainConflictEV', Math.max(0, Number(敏攻硬追惩罚 || 0)), '缺少反制手段的持续前压损失');
+        const 贡献汇总 = 汇总行为规划评分贡献_V1(评分贡献);
+        const { scoreParts, rawObjectiveScore, factorKeys } = 贡献汇总;
+        const { effectiveDeltaEV, futureUnlockEV, enemyDeniedEV, teamIntentEV, sustainEV, resourceCostEV, failureRiskEV, exposureRiskEV, chainConflictEV } = scoreParts;
         const tags = [];
         const 目标已失能 = 目标 && (目标?.状态?.存活 === false || 目标?.存活 === false || getCombatHpRatio(目标) <= 0);
         const 正向可兑现收益 = Math.max(0, effectiveDeltaEV) + Math.max(0, futureUnlockEV) + Math.max(0, enemyDeniedEV) + Math.max(0, teamIntentEV) + Math.max(0, sustainEV);
@@ -2762,7 +2695,7 @@ class BattleUIComponent {
         if (行动类别 === '治疗' && getCombatHpRatio(目标 || actor) >= 0.999 && effectiveDeltaEV <= 0) tags.push('OVERHEAL_NO_VALUE');
         if (技能类别.是控制 && effectiveDeltaEV <= 0 && enemyDeniedEV <= 0) tags.push('CONTROL_IMMUNE_TARGET');
         if (是资源恢复动作 && effectiveDeltaEV <= 0 && sustainEV <= 0) tags.push('ZERO_EFFECT_COSTLY');
-        if (正向可兑现收益 <= 0 && (resourceCostEV + failureRiskEV + exposureRiskEV + chainConflictEV > 0 || !!skill)) tags.push('ZERO_EFFECT_COSTLY');
+        if (正向可兑现收益 <= 0 && (resourceCostEV + failureRiskEV + exposureRiskEV + chainConflictEV > 0 || 是魂技候选)) tags.push('ZERO_EFFECT_COSTLY');
         if (resourceCostEV >= Math.max(36, 正向可兑现收益 * 0.8) && !候选?.可斩杀 && !候选?.可打断) tags.push('RESOURCE_BANKRUPTCY');
         if (resourceCostEV > 0 && rawObjectiveScore <= Math.max(8, resourceCostEV * 0.25)) tags.push('HIGH_COST_LOW_VALUE');
         if (exposureRiskEV > 正向可兑现收益 || rawObjectiveScore < 0) tags.push('SELF_DEFEATING');
@@ -2770,8 +2703,7 @@ class BattleUIComponent {
         if (技能类别.是召唤 && effectiveDeltaEV <= 0 && futureUnlockEV <= 0) tags.push('SUMMON_NO_ACTION_WINDOW');
         const criticalRejection = tags.find(tag => ['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW'].includes(tag)) || '';
         const rejectionCode = 资源判定.硬否决 ? 'RESOURCE_INSUFFICIENT' : criticalRejection;
-        const 衰减前分数 = rejectionCode ? 0 : Math.max(0, rawObjectiveScore);
-        const 分数 = Math.round(衰减前分数 * Number(重复衰减.repeatDecayMultiplier || 1));
+        const 分数 = rejectionCode ? 0 : Math.max(0, rawObjectiveScore);
         const candidateId = String(
           候选.candidateId ||
           `candidate_${String(候选索引 + 1).padStart(3, '0')}_${normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || 候选?.name || 'action') || 'action'}`,
@@ -2782,7 +2714,7 @@ class BattleUIComponent {
           weight: Math.max(0, 分数),
           scoringSummary: {
             candidateId,
-            actionKind: skill ? 'RELEASE_SKILL' : String(候选.actionKind || 候选.action_type || 候选.type || 'BASIC_ATTACK').trim().toUpperCase(),
+            actionKind: 是魂技候选 ? 'RELEASE_SKILL' : String(候选.actionKind || 候选.action_type || 候选.type || 'BASIC_ATTACK').trim().toUpperCase(),
             actionRole: 标准化战斗行动职责(候选.actionRole || behaviorState?.actionRole || (/应招|REACTION/i.test(String(behaviorState?.规划语境 || '')) ? 'REACTION' : 'ACTIVE')),
             actorId: String(actor?.id || actor?.uid || actor?.name || actor?.名称 || '').trim(),
             targetIds: 目标 ? [String(目标?.id || 目标?.uid || 目标?.name || 目标?.名称 || '').trim()].filter(Boolean) : [],
@@ -2799,9 +2731,11 @@ class BattleUIComponent {
               exposureRiskEV,
               chainConflictEV,
             },
+            factorKeys,
+            scoreContributions: 评分贡献.map(item => ({ ...item })),
             tags: [...new Set(tags)],
             resourceCostEV,
-            repeatMultiplier: Number(重复衰减.repeatDecayMultiplier || 1),
+            repeatMultiplier: 1,
             finalScore: Math.max(0, 分数),
             rejectionCode,
             alternativeGap: 0,
@@ -2826,6 +2760,8 @@ class BattleUIComponent {
               exposureRiskEV,
               chainConflictEV,
             },
+            factorKeys,
+            scoreContributions: 评分贡献.map(item => ({ ...item })),
             tags: [...new Set(tags)],
             effectEV: effectiveDeltaEV,
             targetEV: teamIntentEV,
@@ -2862,13 +2798,13 @@ class BattleUIComponent {
             敏攻硬追惩罚,
             反敏攻价值得分,
             斩杀修正,
-            repeatCount: 重复衰减.repeatCount,
-            repeatCategory: 重复衰减.repeatCategory,
-            repeatDecayMultiplier: 重复衰减.repeatDecayMultiplier,
-            repeatDecayReasonCode: 重复衰减.repeatDecayReasonCode,
-            repeatExceptionCode: 重复衰减.repeatExceptionCode,
-            repeatDecayReasonText: 衰减说明,
-            scoreBeforeRepeatDecay: 衰减前分数,
+            repeatCount: 重复,
+            repeatCategory: '',
+            repeatDecayMultiplier: 1,
+            repeatDecayReasonCode: '',
+            repeatExceptionCode: '',
+            repeatDecayReasonText: '',
+            scoreBeforeRepeatDecay: Math.max(0, rawObjectiveScore),
             scoreAfterRepeatDecay: Math.max(0, 分数),
             最终权重: Math.max(0, 分数),
             行动类别,
@@ -17065,7 +17001,7 @@ class BattleUIComponent {
         if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
       });
 
-      const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'rawObjectiveScore', 'subjectiveScore', 'scoreParts', 'tags', 'alternativeGap', 'selectedReason', 'repeatMultiplier', 'finalScore', 'rejectionCode'];
+      const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'rawObjectiveScore', 'subjectiveScore', 'scoreParts', 'factorKeys', 'scoreContributions', 'tags', 'alternativeGap', 'selectedReason', 'repeatMultiplier', 'finalScore', 'rejectionCode'];
       const positiveScoreKeys = ['effectiveDeltaEV', 'futureUnlockEV', 'enemyDeniedEV', 'teamIntentEV', 'sustainEV'];
       const costScoreKeys = ['resourceCostEV', 'failureRiskEV', 'exposureRiskEV', 'chainConflictEV'];
       const zeroScoreTags = new Set(['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'STRICTLY_DOMINATED']);
@@ -17080,8 +17016,31 @@ class BattleUIComponent {
           }
           const scoreParts = candidate.scoreParts && typeof candidate.scoreParts === 'object' ? candidate.scoreParts : {};
           const declaredFactorKeys = Array.isArray(candidate?.factorKeys) ? candidate.factorKeys.map(item => String(item || '').trim()).filter(Boolean) : [];
-          if (new Set(declaredFactorKeys).size !== declaredFactorKeys.length) {
+          const scoreContributions = Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions : [];
+          const contributionKeys = scoreContributions.map(item => String(item?.valueKey || '').trim()).filter(Boolean);
+          if (!declaredFactorKeys.length || new Set(declaredFactorKeys).size !== declaredFactorKeys.length ||
+            contributionKeys.length !== scoreContributions.length || new Set(contributionKeys).size !== contributionKeys.length ||
+            declaredFactorKeys.length !== contributionKeys.length || declaredFactorKeys.some((key, index) => key !== contributionKeys[index])) {
             pushFatal('SCORING_COMPONENT_DUPLICATED', { actionIndex, candidateIndex, candidateId: candidate.candidateId, factorKeys: declaredFactorKeys });
+          }
+          const contributionParts = Object.fromEntries([...positiveScoreKeys, ...costScoreKeys].map(component => [component, 0]));
+          scoreContributions.forEach(contribution => {
+            const component = String(contribution?.component || '').trim();
+            if (!Object.prototype.hasOwnProperty.call(contributionParts, component)) {
+              pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate.candidateId, component });
+              return;
+            }
+            contributionParts[component] += Number(contribution?.expectedValue || 0);
+          });
+          Object.keys(contributionParts).forEach(component => { contributionParts[component] = Math.round(contributionParts[component]); });
+          if (Object.keys(contributionParts).some(component => Number(scoreParts[component] || 0) !== contributionParts[component])) {
+            pushFatal('SCORING_COMPONENT_TOTAL_MISMATCH', {
+              actionIndex,
+              candidateIndex,
+              candidateId: candidate.candidateId,
+              scoreParts,
+              contributionParts,
+            });
           }
           const rawScore = Math.round(
             positiveScoreKeys.reduce((sum, key) => sum + Number(scoreParts[key] || 0), 0) -
@@ -17321,6 +17280,8 @@ class BattleUIComponent {
                 rawObjectiveScore,
                 subjectiveScore: Number(candidate?.subjectiveScore ?? audit?.subjectiveScore ?? rawObjectiveScore),
                 scoreParts,
+                factorKeys: Array.isArray(candidate?.factorKeys) ? [...candidate.factorKeys] : (Array.isArray(audit?.factorKeys) ? [...audit.factorKeys] : []),
+                scoreContributions: Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions.map(item => ({ ...item })) : (Array.isArray(audit?.scoreContributions) ? audit.scoreContributions.map(item => ({ ...item })) : []),
                 tags,
                 alternativeGap: Number(candidate?.alternativeGap ?? audit?.alternativeGap ?? 0),
                 selectedReason: String(candidate?.selectedReason || audit?.selectedReason || '').trim(),
@@ -17792,7 +17753,6 @@ class BattleUIComponent {
         1,
       );
       const 记忆 = actor?.决策记忆 || {};
-      const 最高重复 = Math.max(0, ...Object.values(记忆.recent_actions || {}).map(次数 => Number(次数 || 0)));
       return {
         我方核心,
         敌方核心,
@@ -17804,7 +17764,6 @@ class BattleUIComponent {
         终局压力,
         召唤压力: 限制行为概率((敌方召唤.length - 我方召唤.length) * 0.12 + 敌方召唤.length * 0.08, 0, 1),
         维持压力: 限制行为概率(敌方维持者.reduce((总和, 单位) => 总和 + 读取规划维持压力(单位), 0) - 我方维持者.reduce((总和, 单位) => 总和 + 读取规划维持压力(单位), 0) * 0.45, 0, 1),
-        行为多样性压力: 限制行为概率(最高重复 / 4, 0, 1),
         己方列表: 己方,
         敌方列表: 敌方,
         全部列表: 全部,
@@ -18069,7 +18028,6 @@ class BattleUIComponent {
       const 可斩杀 = getCombatHpRatio(有效目标 || {}) < 0.36 || Number(基础收益?.净收益 || 0) >= 120;
       const 技能名 = String(skill?.name || skill?.魂技名 || skill?.技能名称 || '').trim();
       const 记忆候选键 = 读取行为记忆候选键_V1(skill, { name: 技能名 });
-      const 重复次数 = 读取归一行为记忆值_V1(规划上下文.行为历史摘要?.近期行动 || {}, 记忆候选键, 0);
       const 来源类别 = 读取战斗来源类别上下文(skill, '魂技').来源类别;
       const 是融合技 = 来源类别 === '武魂融合技';
       const 是大招 = summary.风险等级 === '高' && !是融合技;
@@ -18101,7 +18059,7 @@ class BattleUIComponent {
         skill, actor, target: 有效目标, 原始目标: target, 规划目标, 规划上下文, 基础收益,
         效果列表, 规划技能, summary, mainType, 战斗目标类型, 目标立场, 目标项, 意图, 技能文本,
         是输出, 是控制, 是治疗, 是防护, 是驱散, 是破防, 是召唤, 是维持,
-        技能消耗压力, 是高耗, 可斩杀, 技能名, 重复次数,
+        技能消耗压力, 是高耗, 可斩杀, 技能名,
         来源类别, 是融合技, 是大招, 是稀缺技能, 是装备技能,
         敌方最低血, 我方最低血, 当前回合, 终局压力,
         目标快照, 目标血量比例, 保护目标血量比例, 预估伤害, 行动类别, 一阶风险, 标准行为状态,
@@ -18142,7 +18100,7 @@ class BattleUIComponent {
 
     function 计算情境修正_V1(指标) {
       const { actor, target, 目标项, 目标立场, 是输出, 是控制, 是治疗, 是防护, 是破防, 可斩杀, 规划上下文,
-        技能名, 重复次数, 当前回合, 目标快照, 目标血量比例, 保护目标血量比例, 预估伤害, 一阶风险, 行动类别,
+        当前回合, 目标快照, 目标血量比例, 保护目标血量比例, 预估伤害, 一阶风险, 行动类别,
         防御动作质量, 上回合效果标签 } = 指标;
       const 轨迹 = []; let delta = 0;
       // Phase 3.G: 目标切换惩罚
@@ -18160,27 +18118,6 @@ class BattleUIComponent {
         } else if (上次目标存活 && 切换收益显著) {
           delta += 10;
           轨迹.push(`目标切换豁免 ${当前目标名} +10`);
-        }
-      }
-      // Phase 2.C: 行为多样性扣减(含动态阶段缩放)
-      if (重复次数 > 0 && !(可斩杀 || 是治疗 && getCombatHpRatio(规划上下文.战局画像?.治疗目标 || actor) < 0.45 || 规划上下文.来袭窗口摘要?.lethalRisk)) {
-        const 上次同技 = String(规划上下文.行为历史摘要?.上次行动 || '').trim() === 技能名;
-        const 阶段缩放 = 当前回合 < 时机决策阈值_V1.多样性早期回合 ? 时机决策阈值_V1.多样性早期缩放
-                      : 当前回合 < 时机决策阈值_V1.多样性中期回合 ? 时机决策阈值_V1.多样性中期缩放
-                      : 1.0;
-        const 扣减原始 = 重复次数 * 技能战术修正阈值_V1.行为多样性单次重复加成
-          + 规划上下文.战局画像.行为多样性压力 * 技能战术修正阈值_V1.行为多样性压力倍增
-          + (上次同技 ? 技能战术修正阈值_V1.行为多样性同技额外 : 0);
-        const 扣减 = Math.round(Math.min(技能战术修正阈值_V1.行为多样性惩罚峰值 * 阶段缩放, 扣减原始 * 阶段缩放));
-        delta -= 扣减;
-        轨迹.push(`行为多样性 -${扣减}`);
-      }
-      // Phase 3.I: 遗忘机制重启加成
-      if (重复次数 === 0) {
-        const 上次使用回合 = Number(actor?.决策记忆?.action_last_used_round?.[技能名] || 0);
-        if (上次使用回合 > 0 && 当前回合 - 上次使用回合 >= 时机决策阈值_V1.遗忘机制_重启回合阈值) {
-          delta += 时机决策阈值_V1.遗忘机制_重启加成;
-          轨迹.push(`遗忘重启 +${时机决策阈值_V1.遗忘机制_重启加成}`);
         }
       }
       // 输出类: 低伤刮痧 / 有效伤害 / 收割窗口
@@ -18340,18 +18277,6 @@ class BattleUIComponent {
         } else {
           delta += 20;
           轨迹.push('装备-标准穿戴时机 +20');
-        }
-      }
-      const 上次使用回合 = 读取归一行为记忆值_V1(actor?.决策记忆?.action_last_used_round || {}, 记忆候选键 || [技能名], 0);
-      if (上次使用回合 > 0 && 当前回合 >= 上次使用回合) {
-        const 间隔 = 当前回合 - 上次使用回合;
-        const 重复阈值 = 是融合技 ? 技能时机约束表_V1.融合技重复回合
-          : 是大招 ? 技能时机约束表_V1.大招重复回合
-          : 是稀缺技能 ? 技能时机约束表_V1.稀缺技能重复回合
-          : 是装备技能 ? 技能时机约束表_V1.装备技能重复回合
-          : 技能时机约束表_V1.普通技能重复回合;
-        if (间隔 < 重复阈值 && !(可斩杀 || 是控制 && 规划上下文.来袭窗口摘要?.lethalRisk)) {
-          轨迹.push('近期重复交由效用衰减层处理');
         }
       }
       delta = 应用层级clamp_V1(delta, 战术修正层级量级_V1.机制专属层);
@@ -19963,7 +19888,6 @@ class BattleUIComponent {
           终局压力: 规划上下文.战局画像?.终局压力,
           召唤压力: 规划上下文.战局画像?.召唤压力,
           维持压力: 规划上下文.战局画像?.维持压力,
-          行为多样性压力: 规划上下文.战局画像?.行为多样性压力,
         };
         汇总.战略意图 = 规划上下文.战略意图;
         汇总.目标理由 = 战术修正.轨迹;
@@ -19994,19 +19918,35 @@ class BattleUIComponent {
         (效果标签.hasPositiveResource ? 己方后续收益 : 0) +
         Math.max(0, Number(维持收益.净收益 || 0)),
       );
+      const 目标反伤比例 = 规划目标 && 读取行为规划单位立场(规划目标, context.actor || context.caster || {}, 规划行为状态) === '敌方'
+        ? 读取单位战斗效果列表(规划目标).reduce((最大值, effect) => Math.max(最大值, Number(effect?.damage_reflect_ratio || 0)), 0)
+        : 0;
+      const 预期反伤风险 = 目标反伤比例 > 0
+        ? 效果列表.reduce((sum, effect) => {
+            if (String(effect?.原型 || '').trim() !== '伤害结算') return sum;
+            const preview = 预估技能直接伤害(context.actor || context.caster || {}, 规划目标 || {}, skill, effect, { behaviorState: 规划行为状态, effects: 效果列表 });
+            return sum + Math.max(0, Number(preview?.expectedDamage || 0)) * 目标反伤比例;
+          }, 0)
+        : 0;
       const chainConflictEV = Math.round(
         Math.max(0, -Number(维持收益.净收益 || 0)) +
         Math.max(0, Number(既有维持负荷 || 0) * (46 + Math.min(36, Math.max(0, Number(skill?.前摇 ?? getSkillCastTime(skill) ?? 0)) * 1.2))),
       );
+      const 技能消耗压力 = 计算技能消耗压力(skill, context.actor || context.caster || {});
+      const resourceCostEV = Math.round(Math.max(
+        0,
+        Number(技能消耗压力.综合压力 || 0),
+        Number(技能消耗压力.当前压力 || 0),
+      ) * 80);
       汇总.scoreParts = {
         effectiveDeltaEV,
         futureUnlockEV,
         enemyDeniedEV: 敌方后续压制,
         teamIntentEV: Math.max(0, Number(汇总.战术修正 || 0)),
         sustainEV,
-        resourceCostEV: 0,
+        resourceCostEV,
         failureRiskEV: 0,
-        exposureRiskEV: 0,
+        exposureRiskEV: Math.round(预期反伤风险),
         chainConflictEV,
       };
       汇总.previewScoreParts = { ...汇总.scoreParts };
@@ -23800,7 +23740,6 @@ class BattleUIComponent {
           originalBestCandidateId: String(详情.originalBestCandidateId || ''),
           originalBestCandidateName: String(详情.originalBestCandidateName || ''),
           团队意图修正: Number(详情.团队意图修正 || 0),
-          行为多样性修正: Number(详情.行为多样性修正 || 0),
           干扰强度: Number(详情.干扰强度 || 0),
           最终权重: Number(详情.最终权重 || 0),
           选择原因: 详情.选择原因 || '',
@@ -24655,6 +24594,8 @@ class BattleUIComponent {
                 ...审计,
                 候选排序审计: 排序审计,
                 scoringSummary: 候选.scoringSummary || 排序审计.scoringSummary || null,
+                factorKeys: Array.isArray(候选.scoringSummary?.factorKeys) ? [...候选.scoringSummary.factorKeys] : (Array.isArray(排序审计.factorKeys) ? [...排序审计.factorKeys] : []),
+                scoreContributions: Array.isArray(候选.scoringSummary?.scoreContributions) ? 候选.scoringSummary.scoreContributions.map(item => ({ ...item })) : (Array.isArray(排序审计.scoreContributions) ? 排序审计.scoreContributions.map(item => ({ ...item })) : []),
                 effectEV: Number(候选.scoringSummary?.effectEV || 排序审计.effectEV || 0),
                 targetEV: Number(候选.scoringSummary?.targetEV || 排序审计.targetEV || 0),
                 timingEV: Number(候选.scoringSummary?.timingEV || 排序审计.timingEV || 0),
@@ -24705,40 +24646,6 @@ class BattleUIComponent {
               },
             };
           });
-          const 合法候选数 = scoredCandidates.filter(候选 => Number(候选?.weight || 0) > 0).length;
-          if (合法候选数 <= 1) {
-            scoredCandidates = scoredCandidates.map(候选 => {
-              const 审计 = 候选.__主动规划审计 || {};
-              if (Number(审计.repeatDecayMultiplier || 1) >= 0.999 || 审计.repeatExceptionCode) return 候选;
-              const 更新衰减 = {
-                repeatDecayMultiplier: 审计.repeatDecayMultiplier,
-                repeatDecayReasonCode: 审计.repeatDecayReasonCode,
-                repeatExceptionCode: 'ONLY_LEGAL_ACTION',
-              };
-              const 豁免后分数 = Math.max(0, Number(审计.scoreBeforeRepeatDecay || 候选.weight || 0));
-              return {
-                ...候选,
-                weight: 豁免后分数,
-                scoringSummary: {
-                  ...(候选.scoringSummary || {}),
-                  repeatMultiplier: 1,
-                  finalScore: 豁免后分数,
-                  rejectionCode: '',
-                },
-                __主动规划审计: {
-                  ...审计,
-                  repeatExceptionCode: 'ONLY_LEGAL_ACTION',
-                  repeatDecayReasonText: 格式化重复效用衰减说明_V1(更新衰减),
-                  scoreAfterRepeatDecay: 豁免后分数,
-                  候选排序审计: {
-                    ...(审计.候选排序审计 || {}),
-                    repeatExceptionCode: 'ONLY_LEGAL_ACTION',
-                    repeatDecayReasonText: 格式化重复效用衰减说明_V1(更新衰减),
-                  },
-                },
-              };
-            });
-          }
           const 规划语境 = String(battleState?.规划语境 || battleState?.decisionContext || '').trim().toUpperCase();
           const 是应招语境 = 规划语境 === 'REACTION' || /应招/.test(String(phaseLabel || ''));
           const 是主动阶段 = !是应招语境 && (/主动/.test(String(phaseLabel || '')) || /^ACTIVE_/i.test(String(phaseLabel || '')));
@@ -24871,6 +24778,8 @@ class BattleUIComponent {
                 rawObjectiveScore: Number(评分.rawObjectiveScore || 0),
                 subjectiveScore: Number(评分.subjectiveScore ?? 评分.rawObjectiveScore ?? 0),
                 scoreParts: 评分.scoreParts && typeof 评分.scoreParts === 'object' ? { ...评分.scoreParts } : {},
+                factorKeys: Array.isArray(评分.factorKeys) ? [...评分.factorKeys] : [],
+                scoreContributions: Array.isArray(评分.scoreContributions) ? 评分.scoreContributions.map(item => ({ ...item })) : [],
                 tags: Array.isArray(评分.tags) ? [...评分.tags] : [],
                 alternativeGap: Number(评分.alternativeGap || 0),
                 selectedReason: String(评分.selectedReason || '').trim(),
@@ -25640,17 +25549,14 @@ class BattleUIComponent {
         const 伤害威力 = Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0);
         const 伤害比例 = Number(options?.projectedDamageRatio || 0);
         const 低伤状态技 = 伤害威力 <= 80 && 伤害比例 < 0.03;
-        const 已重复同技 = Math.max(0, Number(options?.recentSameActionCount || 0));
         const 已有状态 = Object.entries(target.状态效果 || {}).filter(([, cond]) => Math.max(0, Number(cond?.duration ?? cond?.持续回合 ?? 0)) > 0);
         const 命中状态 = 状态列表.filter(状态名 => 已有状态.some(([key, cond]) => {
           const 文本 = `${key} ${cond?.状态名称 || ''} ${cond?.名称 || ''}`;
           return 文本.includes(状态名) || 状态名.includes(String(key || ''));
         }));
-        if (!命中状态.length && !(低伤状态技 && 已重复同技 > 0)) return { 惩罚: 0, 状态列表: [] };
-        const 惩罚 = 低伤状态技 && 已重复同技 > 0
-          ? 140 + 已重复同技 * 48 + 命中状态.length * 36
-          : 24 + 命中状态.length * 10 + 已重复同技 * 8;
-        return { 惩罚: Math.round(惩罚), 状态列表: 命中状态.length ? 命中状态 : 状态列表 };
+        if (!命中状态.length) return { 惩罚: 0, 状态列表: [] };
+        const 惩罚 = 低伤状态技 ? 140 + 命中状态.length * 36 : 24 + 命中状态.length * 10;
+        return { 惩罚: Math.round(惩罚), 状态列表: 命中状态 };
       }
 
       function 计算换招成功率(先手 = {}, 后手 = {}, 原动作 = {}, 新技能 = {}, 窗口 = 0) {
@@ -25724,31 +25630,6 @@ class BattleUIComponent {
         return { 分数, 致命, 高威胁, 中威胁, 低威胁 };
       }
 
-      function 计算保守动作惩罚(单位 = {}, 动作名 = '', 威胁分层 = {}, 选项 = {}) {
-        const 名称 = String(动作名 || '').trim();
-        if (!名称 || 威胁分层.高威胁 || 威胁分层.致命) return 0;
-        const 记忆 = ensureActorDecisionMemory(单位);
-        const 近期次数 = 读取归一行为记忆值_V1(记忆.recent_actions || {}, [名称], 0);
-        const 是支援系 = ['辅助系', '治疗系', '食物系', '召唤系'].includes(读取规划单位系别(单位));
-        let 惩罚 = 近期次数 * 12;
-        if (['肉体兜底', '伺机闪避', '防御', '危机自保', '收招转防'].includes(名称)) 惩罚 += 威胁分层.低威胁 ? 24 : 10;
-        if (近期次数 >= 2 && ['肉体兜底', '伺机闪避', '防御', '危机自保', '收招转防'].includes(名称)) {
-          惩罚 += (近期次数 - 1) * (威胁分层.低威胁 ? 24 : 14);
-        }
-        if (名称 === '肉体兜底') 惩罚 += 威胁分层.低威胁 ? 18 : 6;
-        if (名称 === '伺机闪避' && 读取规划单位系别(单位) !== '敏攻系') 惩罚 += 威胁分层.低威胁 ? 12 : 4;
-        if (是支援系 && 选项.有职责技能) 惩罚 += 16;
-        return Math.max(0, Math.round(惩罚));
-      }
-
-      function 计算战术切换奖励(单位 = {}, 动作名 = '', 威胁分层 = {}) {
-        const 名称 = String(动作名 || '').trim();
-        const 上次行动 = String(ensureActorDecisionMemory(单位).last_action || '').trim();
-        if (!名称 || !上次行动 || 名称 === 上次行动 || 威胁分层.致命) return 0;
-        if (['强势对轰', '控制截断', '反制技能', '短前摇对轰', '破防强攻', '断疗压制', '支援补位', '统筹增援', '换招'].includes(名称)) return 10;
-        return 0;
-      }
-
       function 评估反高速应对窗口(防守方 = {}, 攻击方 = {}, 攻击动作 = {}, combatData = {}) {
         const 攻击者系别 = 读取规划单位系别(攻击方);
         const 防守敏捷 = Number(防守方?.final?.agi ?? 防守方?.agi ?? 防守方?.属性?.敏捷 ?? 0);
@@ -25817,15 +25698,15 @@ class BattleUIComponent {
         const 硬抗基础 = (威胁分层.低威胁 ? 52 : 威胁分层.高威胁 ? 16 : 32) - (试探阶段 ? 24 : 0) - (来袭含控制减益 ? 28 : 0) - 适应硬抗惩罚;
         const 反高速加权 = 反高速窗口.成立 ? Math.round(反高速窗口.强度 * 34) : 0;
         const 候选 = [
-          { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 + Math.round(反高速加权 * 0.45) - 计算保守动作惩罚(后手, '防御', 威胁分层)), 分类: '防御' },
-          { name: '闪避', action: { type: '闪避', action_type: '闪避', skill: null, cast_time: 6 }, weight: Math.round(闪避基础 + 威胁系数 * 34 + (读取规划单位系别(后手) === '敏攻系' ? 14 : 0) - Math.round(反高速加权 * 0.25) - 计算保守动作惩罚(后手, '伺机闪避', 威胁分层)), 分类: '闪避' },
-          { name: '承伤硬抗', action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 }, weight: Math.round(硬抗基础 + (1 - 威胁系数) * 26 + Math.round(反高速加权 * 0.7) + 计算战术切换奖励(后手, '承伤硬抗', 威胁分层)), 分类: '承伤硬抗' },
+          { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 + Math.round(反高速加权 * 0.45)), 分类: '防御' },
+          { name: '闪避', action: { type: '闪避', action_type: '闪避', skill: null, cast_time: 6 }, weight: Math.round(闪避基础 + 威胁系数 * 34 + (读取规划单位系别(后手) === '敏攻系' ? 14 : 0) - Math.round(反高速加权 * 0.25)), 分类: '闪避' },
+          { name: '承伤硬抗', action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 }, weight: Math.round(硬抗基础 + (1 - 威胁系数) * 26 + Math.round(反高速加权 * 0.7)), 分类: '承伤硬抗' },
         ];
         if (反高速窗口.成立) {
           候选.push({
             name: '防守反击',
             action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0, __反高速应对: true },
-            weight: Math.round(24 + 反高速窗口.强度 * 58 + (读取规划单位系别(后手) === '防御系' ? 12 : 0) + (读取规划单位系别(后手) === '强攻系' ? 9 : 0) - 计算保守动作惩罚(后手, '承伤硬抗', 威胁分层)),
+            weight: Math.round(24 + 反高速窗口.强度 * 58 + (读取规划单位系别(后手) === '防御系' ? 12 : 0) + (读取规划单位系别(后手) === '强攻系' ? 9 : 0)),
             分类: '承伤硬抗',
             __规划轨迹: ['对手高速近身或持续拉扯，转入防守反击窗口'],
           });
@@ -25865,7 +25746,7 @@ class BattleUIComponent {
             候选.push({
               name: skill.name || skill.魂技名 || 分类,
               action: { type: 反高速动作类型, action_type: 反高速动作类型, skill, cast_time: getSkillCastTime(skill) || 10 },
-              weight: Math.max(1, Math.round(18 + 威胁系数 * 42 + 防御价值 * 60 + 截断价值 * 50 + 范围压制价值 * 62 + 短前摇价值 * 52 + 威力 * 35 + 低威胁推进奖励 + 适应技能奖励 + Math.max(-28, Math.min(42, Number(规划收益.净收益 || 0) * 0.12)) + 反制意图 * Math.max(截断价值, 范围压制价值, 短前摇价值) * 0.18 + 计算战术切换奖励(后手, 反高速动作类型, 威胁分层) - 前摇压力 * (范围压制价值 > 0 ? 18 : 28) - 计算保守动作惩罚(后手, 分类, 威胁分层))),
+              weight: Math.max(1, Math.round(18 + 威胁系数 * 42 + 防御价值 * 60 + 截断价值 * 50 + 范围压制价值 * 62 + 短前摇价值 * 52 + 威力 * 35 + 低威胁推进奖励 + 适应技能奖励 + Math.max(-28, Math.min(42, Number(规划收益.净收益 || 0) * 0.12)) + 反制意图 * Math.max(截断价值, 范围压制价值, 短前摇价值) * 0.18 - 前摇压力 * (范围压制价值 > 0 ? 18 : 28))),
               分类: 反高速动作类型,
               __规划轨迹: [
                 ...(规划收益.目标理由 || []),
@@ -25955,37 +25836,15 @@ class BattleUIComponent {
         const 威胁系数 = 威胁分层.分数;
         const 可换招 = 窗口 >= 行为链换招窗口门槛 && 存在可换招技能(先手, 先手动作, combatData, 行为链);
         const 意图 = 规划上下文.战略意图?.权重表 || {};
-        const 行动记忆 = ensureActorDecisionMemory(先手);
-        const 当前动作名 = String(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '').trim();
-        const 同技重复次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, [当前动作名], 0);
-        const 连续压制次数 = 读取归一行为记忆值_V1(行动记忆?.recent_actions || {}, ['主动压迫', '反敏攻压制'], 0);
-        const 当前动作技能 = 先手动作?.skill || null;
-        const 当前动作具备真截断资格 = !!当前动作技能 && 判定技能具备真实截断资格_V1(当前动作技能);
-        const 当前动作属于群体压制 = /群体|全场/.test(String(getSkillTarget(当前动作技能 || {}) || '').trim());
-        const 连续前压应转守 =
-          !威胁分层.高威胁 &&
-          !威胁分层.致命 &&
-          (
-            连续压制次数 >= 2 ||
-            (同技重复次数 >= 1 && !当前动作具备真截断资格 && !当前动作属于群体压制)
-          );
         const 可收招转防 = 窗口 >= 0.18 && (威胁分层.中威胁 || Number(意图.保核 || 0) >= 58 || getCombatHpRatio(先手) < 0.45);
         const 候选池 = [
           { name: '抢落点', weight: Math.round(30 + (1 - 窗口) * 20 + 获取行动威力倍率(先手动作) / 20 + Number(意图.击杀 || 0) * 0.12 + (威胁分层.低威胁 ? 10 : 0)), action: '抢落点' },
           { name: '压招', weight: 窗口 >= 0.15 ? Math.round(20 + 窗口 * 35 + 威胁系数 * 25 + Number(意图.控制 || 0) * 0.16 + (威胁分层.低威胁 ? 8 : 0)) : 4, action: '压招' },
           { name: '偏转', weight: 窗口 >= 0.15 ? Math.round(16 + 窗口 * 28 + 威胁系数 * 30) : 0, action: '偏转' },
-          { name: '收招转防', weight: 可收招转防 ? Math.round(10 + 窗口 * 22 + 威胁系数 * 38 + Number(意图.保核 || 0) * 0.14 - 计算保守动作惩罚(先手, '收招转防', 威胁分层)) : 0, action: '收招转防' },
+          { name: '收招转防', weight: 可收招转防 ? Math.round(10 + 窗口 * 22 + 威胁系数 * 38 + Number(意图.保核 || 0) * 0.14) : 0, action: '收招转防' },
           { name: '换招', weight: 可换招 ? Math.round(20 + 窗口 * 70 + 威胁系数 * 35 + Math.max(Number(意图.破防 || 0), Number(意图.驱散 || 0), Number(意图.维持压制 || 0)) * 0.16) : 0, action: '换招' },
           { name: '放弃再判定', weight: 威胁分层.低威胁 ? 20 : 威胁系数 > 0.35 ? 6 : 12, action: '放弃再判定' },
         ];
-        if (连续前压应转守) {
-          候选池.forEach(候选 => {
-            if (!候选) return;
-            if (['抢落点', '压招', '换招'].includes(候选.name)) 候选.weight = Math.max(0, Number(候选.weight || 0) - 28);
-            if (候选.name === '收招转防') 候选.weight = Math.max(Number(候选.weight || 0), 52 + 连续压制次数 * 10 + 同技重复次数 * 8);
-            if (候选.name === '放弃再判定') 候选.weight = Math.max(Number(候选.weight || 0), 28 + 连续压制次数 * 8);
-          });
-        }
         return 候选池;
       }
 
@@ -38362,11 +38221,8 @@ class BattleUIComponent {
               const 结算治疗强度 = 结算修正强度('治疗', '正向');
               const actorMemory = ensureActorDecisionMemory(defender);
               const counterPenalty = getActorSkillCounterPenalty(defender, skill.name || skill.技能名称 || '');
-              const 技能显示名 = String(skill.name || skill.魂技名 || skill.技能名称 || '').trim();
-              const 近期同技次数 = 读取归一行为记忆值_V1(actorMemory.recent_actions || {}, [技能显示名], 0);
               const 重复状态衰减 = 评估敌对重复状态收益衰减(skill, attacker, {
                 projectedDamageRatio: 预结算伤害比例,
-                recentSameActionCount: 近期同技次数,
               });
               const 状态名称 = String(getPrimaryStateName(规划技能) || skill.name || skill.技能名称 || '').trim();
               const 是否真身技能 = /真身/.test(String(skill.name || skill.技能名称 || 状态名称 || ''));
@@ -39201,11 +39057,8 @@ class BattleUIComponent {
           const executeCastTime = getSkillCastTime(executeSkill);
           const 反高速窗口 = 评估反高速应对窗口(defender, attacker, playerAction, behaviorState?.combatData || {});
           if (防御者系别 === '敏攻系' && rangePressureSkill && Number(playerAction?.cast_time || 0) >= 8) {
-            const 技能名 = String(rangePressureSkill.name || rangePressureSkill.魂技名 || rangePressureSkill.技能名称 || '').trim();
-            const 近期次数 = 读取归一行为记忆值_V1(ensureActorDecisionMemory(defender).recent_actions || {}, [技能名], 0);
             const 重复状态衰减 = 评估敌对重复状态收益衰减(rangePressureSkill, attacker, {
               projectedDamageRatio: Number(threatProfile?.projectedDamageRatio || 0),
-              recentSameActionCount: 近期次数,
             });
             if (Number(重复状态衰减.惩罚 || 0) < 80) {
               tacticalBranches.push({
@@ -41524,8 +41377,6 @@ class BattleUIComponent {
           const 支援技能有新收益 = 技能 => {
             if (!技能) return false;
             if (!技能具备可兑现主动价值(技能)) return false;
-            const 技能名 = String(技能.name || 技能.魂技名 || 技能.技能名称 || '').trim();
-            const 近期次数 = Number(ensureActorDecisionMemory(actor).recent_actions?.[技能名] || 0);
             const 友方候选 = dedupeCombatTargetList([actor, ...allyTeam]).filter(unit => unit && isCombatUnitAlive(unit));
             const 目标 = [...友方候选]
               .sort((左, 右) =>
@@ -41561,7 +41412,6 @@ class BattleUIComponent {
             const 有资源窗口 = 自身资源 < 0.62 && 效果列表.some(effect => String(effect?.原型 || '').trim() === '资源变化' && 读取战斗数值正负(effect?.数值) > 0);
             const 目标已有同名维持 = 友方候选.some(unit => 单位已有同名维持技能(unit, 技能));
             if (目标已有同名维持 && !有急救 && !有保护 && !有异常处理) return false;
-            if (近期次数 >= 2 && !有急救 && !有保护 && !有资源窗口) return false;
             return 有急救 || 有保护 || 有异常处理 || 有资源窗口;
           };
           const 存在有效伤害魂技 = (availableSkills || []).some(技能 => 技能具备伤害原型(newSkillData(技能)));
@@ -41572,13 +41422,9 @@ class BattleUIComponent {
             ? (skillContext.评分技能列表 || [])
                 .filter(项目 => 项目?.skill && 是职责支援技能(项目.规划技能 || 项目.skill) && 支援技能有新收益(项目.skill))
                 .map(项目 => {
-                  const 技能名 = String(项目.skill.name || 项目.skill.技能名称 || '').trim();
-                  const 近期次数 = Number(ensureActorDecisionMemory(actor).recent_actions?.[技能名] || 0);
-                  const 仍有承压友方 = dedupeCombatTargetList([actor, ...allyTeam])
-                    .some(unit => unit && isCombatUnitAlive(unit) && getCombatHpRatio(unit) < 0.72);
                   return {
                     skill: 项目.skill,
-                    weight: Math.max(1, Number(项目.weight || 0) + 28 - (仍有承压友方 ? 0 : 近期次数 * 26)),
+                    weight: Math.max(1, Number(项目.weight || 0) + 28),
                   };
                 })
             : [];
@@ -41646,199 +41492,6 @@ class BattleUIComponent {
             }, battleState.combatData || {});
             return Number(威胁.projectedDamageRatio || 0) < 0.015;
           };
-          const 近期被闪牵制次数 = Math.max(0, Number(ensureActorDecisionMemory(actor).dodge_whiff_count || 0));
-          const 闪避克制次数 = Math.max(读取闪避克制记忆(actor, enemyTarget), 近期被闪牵制次数);
-          const 目标敏捷压制 =
-            !!enemyTarget &&
-            (
-              读取规划单位系别(enemyTarget) === '敏攻系' ||
-              Number(enemyTarget?.final?.agi ?? enemyTarget?.agi ?? 0) > Math.max(1, Number(actor?.final?.agi ?? actor?.agi ?? 0)) * 1.18
-            );
-          const 目标近期拉扯 =
-            !!enemyTarget &&
-            (
-              Number(enemyTarget?.__本回合闪避成功次数 || 0) > 0 ||
-              /闪避|游击|拉开|脱离|瞬移/.test(String(ensureActorDecisionMemory(enemyTarget).last_action || ''))
-            );
-          const 目标敏攻拉扯 =
-            !!enemyTarget &&
-            (
-              闪避克制次数 > 0 ||
-              (目标敏捷压制 && 目标近期拉扯) ||
-              (目标敏捷压制 && Number(enemyTarget?.__本回合闪避成功次数 || 0) > 0)
-            );
-          const 反敏攻牵制成立 = 目标敏捷压制 && 闪避克制次数 > 0 || 目标敏攻拉扯;
-          const 稳定反敏攻牵制 = !!enemyTarget && (目标敏捷压制 || 闪避克制次数 >= 2 || (目标敏攻拉扯 && 闪避克制次数 > 0));
-          const 技能具备反敏攻价值 = 技能 => {
-            if (!技能) return false;
-            if (isBattleSkillControlProfile(技能)) return true;
-            if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return true;
-            const 目标文本 = String(getSkillTarget(技能) || '').trim();
-            if (/群体|全场/.test(目标文本)) return true;
-            return getSkillEffects(技能, { 行为规划: true }).some(effect => {
-              const 原型 = String(effect?.原型 || '').trim();
-              const 战斗效果 = effect?.计算层效果 || {};
-              if (['资源锁定', '规则改写', '决策干扰', '判定修正', '时窗修正'].includes(原型)) return true;
-              if (原型 === '状态施加') {
-                return Number(战斗效果.hit_bonus || 0) > 0 ||
-                  Number(战斗效果.lock_level || 0) > 0 ||
-                  Number(战斗效果.dodge_penalty || 0) > 0 ||
-                  Number(战斗效果.cast_speed_penalty || 0) > 0 ||
-                  战斗效果.skip_turn === true ||
-                  战斗效果.cannot_react === true ||
-                  战斗效果.silence === true ||
-                  战斗效果.skill_seal === true ||
-                  战斗效果.blind === true;
-              }
-              return false;
-            });
-          };
-          const 技能属于明确反敏攻技能 = 技能 => {
-            if (!技能) return false;
-            if (isBattleSkillControlProfile(技能)) return true;
-            if (技能具备反敏攻价值(技能)) return true;
-            if (isBattleSkillReactiveDefenseProfile(技能) || isBattleSkillDefensiveProfile(技能)) return true;
-            if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return true;
-            return /群体|全场/.test(String(getSkillTarget(技能) || '').trim());
-          };
-          const 技能属于敏攻陷阱动作 = 技能 => {
-            if (!技能) return /普通攻击|常规攻击/.test(String(技能 || ''));
-            if (!技能具备伤害原型(技能)) return false;
-            if (技能具备反敏攻价值(技能)) return false;
-            const 目标文本 = String(getSkillTarget(技能) || '').trim();
-            if (/群体|全场/.test(目标文本)) return false;
-            return true;
-          };
-          const 动作属于敏攻陷阱动作 = 动作 => {
-            const 动作名 = normalizeBattleActionDisplayName(动作?.skill?.name || 动作?.skill?.魂技名 || 动作?.type || 动作?.action_type || '');
-            const 动作类型 = String(动作?.type || 动作?.action_type || '').trim();
-            if (/短前摇对轰|强势对轰|主动压迫/.test(动作类型)) {
-              const 目标文本 = String(getSkillTarget(动作?.skill || {}) || '').trim();
-              const 技能分类 = String(动作?.skill?.技能分类 || '').trim();
-              if (
-                !技能属于明确反敏攻技能(动作?.skill || null) ||
-                (
-                  /输出|强攻|敏攻|破防/.test(技能分类) &&
-                  !/群体|全场/.test(目标文本) &&
-                  技能具备伤害原型(动作?.skill || null)
-                )
-              ) return true;
-            }
-            if (/普通攻击|常规攻击|主动压迫|低风险/.test(动作名)) return true;
-            return 技能属于敏攻陷阱动作(动作?.skill || null);
-          };
-          const 动作属于被闪后禁复读动作 = 动作 => {
-            if (!enemyTarget || !目标敏攻拉扯) return false;
-            const 技能 = 动作?.skill || null;
-            const 动作名 = normalizeBattleActionDisplayName(技能?.name || 技能?.魂技名 || 技能?.技能名称 || 动作?.type || 动作?.action_type || '');
-            if (!动作名) return false;
-            if (读取闪避克制记忆(actor, enemyTarget) <= 0) return false;
-            const 目标文本 = String(getSkillTarget(技能 || {}) || '').trim();
-            const 友方动作 = 技能偏向友方目标(技能 || {}, 动作);
-            if (友方动作 || /群体|全场/.test(目标文本)) return false;
-            if (isBattleSkillReactiveDefenseProfile(技能) || isBattleSkillDefensiveProfile(技能)) return false;
-            if (hasBattleSkillRuntimeConsumer(技能, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return false;
-            const 允许硬控直压 = getSkillEffects(技能, { 行为规划: true }).some(effect => {
-              if (String(effect?.原型 || '').trim() !== '状态施加') return false;
-              const 战斗效果 = effect?.计算层效果 || {};
-              return 战斗效果.skip_turn === true ||
-                战斗效果.cannot_react === true ||
-                战斗效果.silence === true ||
-                战斗效果.skill_seal === true ||
-                Number(战斗效果.lock_level || 0) >= 2;
-            });
-            if (允许硬控直压) return false;
-            return 技能具备伤害原型(技能) || isBattleSkillControlProfile(技能);
-          };
-            const 选择反敏攻技能 = () => {
-              const 明确反敏攻首选 = [
-                skillContext.controlSkill,
-                skillContext.interruptSkill,
-                选取范围压制技能(availableSkills),
-                skillContext.reactiveDefenseSkill,
-                skillContext.defSkill,
-                ...(availableSkills || []).map(skill => newSkillData(skill)),
-              ]
-              .map(skill => newSkillData(skill))
-              .filter(Boolean)
-              .filter((技能, index, 列表) => {
-                const 名称 = String(技能.name || 技能.魂技名 || 技能.技能名称 || '').trim();
-                return 名称 && 列表.findIndex(候选 => String(候选?.name || 候选?.魂技名 || 候选?.技能名称 || '').trim() === 名称) === index;
-              })
-              .filter(技能 => !技能属于敏攻陷阱动作(技能))
-              .filter(技能 => 技能属于明确反敏攻技能(技能))
-              .filter(技能 => parseSkillCostForChar(技能, actor, {
-                actor,
-                caster: actor,
-                target: enemyTarget,
-                defender: enemyTarget,
-                skill: 技能,
-                combatData: battleState.combatData,
-                当前行动: '反敏攻调整',
-              }).canCast !== false)
-              .sort((左, 右) => {
-                const 左名 = String(左.name || 左.魂技名 || 左.技能名称 || '').trim();
-                const 右名 = String(右.name || 右.魂技名 || 右.技能名称 || '').trim();
-                return Number(技能评分查找.get(右名) || 0) - Number(技能评分查找.get(左名) || 0);
-              })[0] || null;
-            if (明确反敏攻首选) return 明确反敏攻首选;
-            return null;
-          };
-          if (稳定反敏攻牵制) {
-            const 入口反敏攻技能 = 选择反敏攻技能();
-            if (入口反敏攻技能 && !技能属于敏攻陷阱动作(入口反敏攻技能) && 技能属于明确反敏攻技能(入口反敏攻技能)) {
-              统一主动候选.push({
-                name: '反敏攻压制',
-                __预览技能: 入口反敏攻技能,
-                weight: Number(技能评分查找.get(String(入口反敏攻技能.name || 入口反敏攻技能.魂技名 || '').trim()) || 0),
-                build: () => makeActorAction(
-                  '反敏攻压制',
-                  `[反敏攻判断] ${actor.name || '行动者'}将[${入口反敏攻技能.name || '反制动作'}]纳入压缩拉扯窗口的候选。`,
-                  入口反敏攻技能,
-                ),
-              });
-            }
-          }
-          const 对手长前摇主动窗口 = Math.max(
-            Number(observedTargetAction?.cast_time || 0),
-            getSkillCastTime(observedTargetAction?.skill || observedTargetAction || {}),
-          ) >= 10;
-          const 敏攻长前摇压制技能 = 读取规划单位系别(actor) === '敏攻系' && 对手长前摇主动窗口
-            ? (availableSkills || [])
-                .map(skill => newSkillData(skill))
-                .filter(Boolean)
-                .filter(技能 => {
-                  const 目标文本 = String(getSkillTarget(技能) || '').trim();
-                  return /群体|全场/.test(目标文本) && 技能具备反敏攻价值(技能);
-                })
-                .filter(技能 => parseSkillCostForChar(技能, actor, {
-                  actor,
-                  caster: actor,
-                  target: enemyTarget,
-                  defender: enemyTarget,
-                  skill: 技能,
-                  combatData: battleState.combatData,
-                  当前行动: '长前摇压制',
-                }).canCast !== false)
-                .sort((左, 右) => {
-                  const 左名 = String(左.name || 左.魂技名 || 左.技能名称 || '').trim();
-                  const 右名 = String(右.name || 右.魂技名 || 右.技能名称 || '').trim();
-                  return Number(技能评分查找.get(右名) || 0) - Number(技能评分查找.get(左名) || 0);
-                })[0]
-            : null;
-          if (敏攻长前摇压制技能) {
-            统一主动候选.push({
-              name: '范围压制',
-              __预览技能: 敏攻长前摇压制技能,
-              weight: Number(技能评分查找.get(String(敏攻长前摇压制技能.name || 敏攻长前摇压制技能.魂技名 || '').trim()) || 0),
-              build: () => makeActorAction(
-                '范围压制',
-                `[主动规划] ${actor.name || '行动者'}将[${敏攻长前摇压制技能.name || '范围压制'}]作为长前摇截断候选。`,
-                敏攻长前摇压制技能,
-              ),
-            });
-          }
-
           const tacticalBranches = buildTacticalCandidates(
             actor,
             enemyTarget,
