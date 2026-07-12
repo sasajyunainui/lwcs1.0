@@ -29379,6 +29379,44 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   border-bottom: 1px solid color-mix(in srgb, var(--战斗主色) 14%, transparent);
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-structured-report-head,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-head,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-structured-report-head b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-head b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-head b {
+  min-width: 0;
+  color: var(--战斗记录文字主色);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window) {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  margin: 2px 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window) > b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window) > b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window) > b {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-group:last-child,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group:last-child,
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group:last-child {
