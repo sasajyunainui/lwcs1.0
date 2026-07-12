@@ -695,6 +695,299 @@
     return '';
   }
 
+  function inferActionRole(event = {}) {
+    const explicit = event?.actionRole || event?.meta?.actionRole;
+    if (explicit) return normalizeActionRole(explicit);
+    const kind = String(event?.eventKind || event?.nodeKind || '').trim();
+    const actionType = String(event?.actionType || event?.source || '').trim();
+    if (kind === 'state_tick' || event?.phase === 'round_end') return 'STATE_TICK';
+    if (kind === 'summon_assist' || /summon_assist|协同追击/.test(actionType)) return 'ASSIST';
+    if (kind === 'counter' || kind === 'counter_window' || /counter|行为防反|反防反/.test(actionType)) return 'COUNTER';
+    if (['dodge', 'defend', 'pass', 'reaction_window', 'reaction_decision'].includes(kind) || /reaction|应招/.test(actionType)) return 'REACTION';
+    return 'ACTIVE';
+  }
+
+  function readLedgerStateName(event = {}) {
+    return String(event?.stateName || event?.meta?.stateName || '').trim();
+  }
+
+  function readLedgerNumber(event = {}, key = '') {
+    if (['damage', 'finalDamage', 'appliedDamage'].includes(String(key || '').trim())) {
+      const value = Number(event?.appliedDamage ?? event?.meta?.appliedDamage ?? event?.[key] ?? event?.meta?.[key] ?? 0);
+      return Number.isFinite(value) ? value : 0;
+    }
+    return Number(event?.[key] ?? event?.meta?.[key] ?? 0);
+  }
+
+  function buildActionChains(eventLedger = [], resolutionTrace = []) {
+    const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
+    const trace = (Array.isArray(resolutionTrace) ? resolutionTrace : []).filter(node => node && typeof node === 'object');
+    const starts = ledger
+      .filter(event => String(event?.eventKind || '').trim() === 'action_start')
+      .sort((left, right) => Number(left?.round || 0) - Number(right?.round || 0) || String(left?.eventId || '').localeCompare(String(right?.eventId || '')));
+    const seen = new Set();
+    return starts.map((start, index) => {
+      const rootActionId = String(start?.actionId || start?.sourceActionId || start?.eventId || `action_${index + 1}`).trim();
+      if (seen.has(rootActionId)) return null;
+      seen.add(rootActionId);
+      const actionIds = new Set([rootActionId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        ledger.forEach(event => {
+          const parentActionId = String(event?.sourceActionId || '').trim();
+          const actionId = String(event?.actionId || '').trim();
+          if (!actionId || actionIds.has(actionId) || !actionIds.has(parentActionId)) return;
+          actionIds.add(actionId);
+          changed = true;
+        });
+      }
+      const relatedEvents = ledger.filter(event => {
+        const actionId = String(event?.actionId || '').trim();
+        const sourceActionId = String(event?.sourceActionId || '').trim();
+        return actionIds.has(actionId) || actionIds.has(sourceActionId) || String(event?.eventId || '').trim() === String(start?.eventId || '').trim();
+      });
+      const nodeIds = trace
+        .filter(node => actionIds.has(String(node?.sourceActionId || '').trim()) || actionIds.has(String(node?.actionId || '').trim()))
+        .map(node => String(node?.nodeId || '').trim())
+        .filter(Boolean);
+      const terminal = [...relatedEvents].reverse().find(event => !['action_start', 'reaction_window'].includes(String(event?.eventKind || '').trim())) || start;
+      return {
+        actionGroupId: rootActionId,
+        round: Number(start?.round || 0),
+        actorId: String(start?.actorId || start?.actorName || '').trim(),
+        targetIds: [String(start?.targetId || start?.targetName || '').trim()].filter(Boolean),
+        actionName: normalizeActionDisplayName(start?.finalActionName || start?.actionName || ''),
+        actionRole: normalizeActionRole(start?.actionRole || 'ACTIVE'),
+        sourceActionId: String(start?.sourceActionId || '').trim(),
+        eventIds: relatedEvents.map(event => String(event?.eventId || '').trim()).filter(Boolean),
+        nodeIds: [...new Set(nodeIds)],
+        resultState: String(terminal?.result || terminal?.actionStatus || '').trim(),
+      };
+    }).filter(Boolean);
+  }
+
+  function buildReportBlocks(eventLedger = [], decisionTrace = [], publicEntries = []) {
+    const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
+    const eventById = new Map(ledger.map(event => [String(event?.eventId || '').trim(), event]).filter(([id]) => id));
+    const decisions = (Array.isArray(decisionTrace) ? decisionTrace : []).filter(item => item && typeof item === 'object');
+    const normalizePublicEntry = requireEngine().caseDomain.normalizePublicEntry;
+    const entries = (Array.isArray(publicEntries) ? publicEntries : []).map(normalizePublicEntry).filter(Boolean);
+    const readSourceIds = entry => [...new Set((Array.isArray(entry?.blocks) ? entry.blocks : []).flatMap(block => [
+      ...(Array.isArray(block?.sourceEventIds) ? block.sourceEventIds : []),
+      block?.sourceEventId,
+    ]).map(id => String(id || '').trim()).filter(Boolean))];
+    const readIntent = (round, actorName, actionName) => {
+      const decision = [...decisions].reverse().find(item =>
+        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
+        isSameReportName(item?.行动者 || item?.actor || '', actorName || '') &&
+        (!actionName || normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.skill || '') === actionName)
+      ) || [...decisions].reverse().find(item =>
+        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
+        isSameReportName(item?.行动者 || item?.actor || '', actorName || '')
+      );
+      if (!decision) return '';
+      const selected = (Array.isArray(decision?.候选排序结果) ? decision.候选排序结果 : []).find(candidate =>
+        ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase())
+      ) || null;
+      const parts = selected?.scoreParts || selected?.审计?.scoreParts || decision?.scoringSummary?.scoreParts || {};
+      const reasons = [
+        ['effectiveDeltaEV', '兑现当前有效战果'],
+        ['futureUnlockEV', '打开后续连招窗口'],
+        ['enemyDeniedEV', '压缩对手下一次行动'],
+        ['teamIntentEV', '延续当前集火或保护意图'],
+        ['sustainEV', '维持后续行动资源'],
+      ].sort((left, right) => Number(parts?.[right[0]] || 0) - Number(parts?.[left[0]] || 0));
+      const reason = Number(parts?.[reasons[0]?.[0]] || 0) > 0 ? reasons[0][1] : '维持当前战术节奏';
+      return `${String(actorName || '行动者').trim()}选择【${actionName || normalizeActionDisplayName(decision?.技能 || '行动')}】，主要为了${reason}`;
+    };
+    const projectFact = event => {
+      const kind = String(event?.eventKind || '').trim();
+      const damage = Math.max(0, Math.round(Number(readLedgerNumber(event, 'damage') || 0)));
+      const amount = Math.round(Number(event?.meta?.delta ?? readLedgerNumber(event, 'amount') ?? 0));
+      return {
+        factId: String(event?.eventId || '').trim(),
+        factType: kind === 'hit_result' || kind === 'counter' ? 'DAMAGE' :
+          kind === 'state_tick' ? 'STATE_TICK' :
+            ['state_apply', 'state_replace', 'state_remove'].includes(kind) ? 'STATE_CHANGE' :
+              kind === 'resource_change' || kind === 'round_recover' ? 'RESOURCE_CHANGE' :
+                kind === 'summon_create' || kind === 'summon_assist' ? 'SUMMON' : 'ACTION',
+        eventKind: kind,
+        actorId: String(event?.actorId || event?.actorName || '').trim(),
+        actorName: String(event?.actorName || '').trim(),
+        targetId: String(event?.targetId || event?.targetName || '').trim(),
+        targetName: String(event?.targetName || '').trim(),
+        actionName: normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || ''),
+        actionRole: normalizeActionRole(event?.actionRole || inferActionRole(event)),
+        resultState: String(event?.result || event?.actionStatus || '').trim(),
+        value: damage > 0 ? damage : amount,
+        resource: String(event?.meta?.resource || '').trim(),
+        stateName: ['state_apply', 'state_replace', 'state_remove', 'state_tick'].includes(kind) ? readLedgerStateName(event) : '',
+        duration: Math.max(0, Number(event?.duration || event?.meta?.duration || 0)),
+        sourceActionId: String(event?.sourceActionId || event?.actionId || '').trim(),
+        sourceNodeId: String(event?.chainNodeId || '').trim(),
+      };
+    };
+    const summarizeFacts = (facts = []) => {
+      const lines = [];
+      const push = text => {
+        const clean = String(text || '').trim();
+        if (clean && !lines.includes(clean)) lines.push(clean);
+      };
+      facts.forEach(fact => {
+        const actor = fact.actorName || '行动者';
+        const target = fact.targetName || '目标';
+        const action = fact.actionName || '行动';
+        const value = Math.abs(Math.round(Number(fact.value || 0)));
+        if (fact.factType === 'DAMAGE') {
+          if (value > 0) {
+            push(fact.actionRole === 'COUNTER'
+              ? `${actor}以【${action}】完成反击，对${target}造成 ${value} 点伤害`
+              : `${actor}以【${action}】命中${target}，造成 ${value} 点伤害`);
+          } else if (/miss|dodge|evade|未命中|闪避|规避/i.test(String(fact.resultState || ''))) {
+            push(`${actor}施展【${action}】指向${target}，但未能命中`);
+          } else {
+            push(`${actor}施展【${action}】指向${target}，但未造成实质伤害`);
+          }
+          return;
+        }
+        if (fact.factType === 'STATE_TICK') {
+          push(value > 0
+            ? `${target}受【${fact.stateName || action}】持续影响，损失 ${value} 点生命值`
+            : `${target}结算【${fact.stateName || action}】的持续效果`);
+          return;
+        }
+        if (fact.factType === 'RESOURCE_CHANGE' && value > 0) {
+          const sign = Number(fact.value || 0) > 0 ? '恢复' : '消耗';
+          push(`${target || actor}${sign} ${value} 点${fact.resource || '资源'}`);
+          return;
+        }
+        if (fact.factType === 'STATE_CHANGE') {
+          if (fact.eventKind === 'state_remove') push(`${target}的【${fact.stateName || '状态'}】被移除`);
+          else push(`${target}受到【${fact.stateName || action}】影响${fact.duration > 0 ? `，剩余 ${fact.duration} 个有效窗口` : ''}`);
+          return;
+        }
+        if (fact.factType === 'SUMMON') {
+          push(fact.eventKind === 'summon_assist'
+            ? `${actor}执行召唤协同${target ? `，目标为${target}` : ''}`
+            : `${actor}生成召唤物${target ? `【${target}】` : ''}`);
+          return;
+        }
+        if (['failed_action', 'blocked_action', 'target_fail'].includes(fact.eventKind)) {
+          push(`${actor}的【${action}】未能生效`);
+          return;
+        }
+        if (fact.eventKind === 'shield_create' && value > 0) {
+          push(`${target}获得 ${value} 点护盾`);
+          return;
+        }
+        if (fact.eventKind === 'create') {
+          push(`${actor}通过【${action}】完成造物`);
+        }
+      });
+      if (!lines.length) {
+        const declared = facts.find(fact => fact.eventKind === 'action_start' || fact.eventKind === 'pass');
+        if (declared) push(`${declared.actorName || '行动者'}执行【${declared.actionName || '行动'}】${declared.targetName ? `，目标为${declared.targetName}` : ''}`);
+      }
+      return lines.join('；');
+    };
+    const actionBlocks = entries.map((entry, index) => {
+      const sourceIds = readSourceIds(entry);
+      const events = sourceIds.map(id => eventById.get(id)).filter(Boolean);
+      const primary = events[0] || null;
+      const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));
+      const roles = new Set(events.map(event => normalizeActionRole(event?.actionRole || inferActionRole(event))));
+      const round = Number(entry?.round || primary?.round || primary?.sourceRound || 0);
+      const actorName = String(primary?.actorName || '').trim();
+      const actionName = normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || '');
+      const actionGroupId = String(primary?.actionId || primary?.sourceActionId || sourceIds[0] || `report_${round}_${index + 1}`).trim();
+      const blockType = kinds.has('state_tick') ? 'STATE_TICK' :
+        kinds.has('summon_create') || kinds.has('summon_assist') ? 'SUMMON_ACTION' :
+          kinds.size > 0 && [...kinds].every(kind => ['resource_change', 'round_recover'].includes(kind)) ? 'RESOURCE_CHANGE' :
+            roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
+              'ACTION_RESOLVED';
+      const facts = events.map(projectFact);
+      const badges = (Array.isArray(entry?.blocks) ? entry.blocks : [])
+        .filter(block => block?.type === 'badge')
+        .map(block => ({
+          kind: String(block?.kind || '').trim(),
+          name: String(block?.name || '').trim(),
+          value: Number(block?.value || 0),
+          unit: String(block?.unit || '').trim(),
+          targetId: String(block?.targetId || '').trim(),
+          targetName: String(block?.targetName || '').trim(),
+          sourceEventId: String(block?.sourceEventId || '').trim(),
+          sourceNodeId: String(block?.sourceNodeId || '').trim(),
+        }));
+      const stateWindow = facts.find(fact => fact.duration > 0);
+      const summonWindow = events.find(event => ['summon_create', 'summon_assist'].includes(String(event?.eventKind || '').trim()));
+      const nextWindow = summonWindow
+        ? String(summonWindow?.meta?.summonMode || summonWindow?.summonMode || '召唤物已进入可用行动窗口').trim()
+        : stateWindow
+          ? `【${stateWindow.stateName || '状态'}】还剩 ${stateWindow.duration} 个有效窗口`
+          : '';
+      return {
+        blockId: `report_block_${String(actionGroupId || index + 1).replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${index + 1}`,
+        round,
+        actionGroupId,
+        actorId: String(primary?.actorId || actorName || '').trim(),
+        targetIds: [...new Set(events.map(event => String(event?.targetId || event?.targetName || '').trim()).filter(Boolean))],
+        blockType,
+        facts,
+        badges,
+        intentSummary: readIntent(round, actorName, actionName),
+        outcomeSummary: summarizeFacts(facts),
+        nextWindow,
+      };
+    }).filter(block => block.facts.length > 0 && block.outcomeSummary);
+    const maxRound = Math.max(
+      0,
+      ...ledger.map(event => Number(event?.round || event?.sourceRound || 0)),
+      ...entries.map(entry => Number(entry?.round || 0)),
+      ...decisions.map(item => Number(item?.回合 || item?.round || 0)),
+    );
+    const roundSummaries = Array.from({ length: maxRound }, (_, index) => index + 1).map(round => {
+      const roundEvents = ledger.filter(event => Number(event?.round || event?.sourceRound || 0) === round);
+      const facts = roundEvents.map(projectFact);
+      const badges = actionBlocks
+        .filter(block => Number(block?.round || 0) === round)
+        .flatMap(block => Array.isArray(block?.badges) ? block.badges : [])
+        .filter((badge, index, list) => list.findIndex(item =>
+          String(item?.sourceEventId || '').trim() === String(badge?.sourceEventId || '').trim() &&
+          String(item?.kind || '').trim() === String(badge?.kind || '').trim() &&
+          String(item?.targetId || item?.targetName || '').trim() === String(badge?.targetId || badge?.targetName || '').trim()
+        ) === index);
+      const damageCount = facts.filter(fact => fact.factType === 'DAMAGE' || fact.factType === 'STATE_TICK' && fact.value > 0).length;
+      const resourceCount = facts.filter(fact => fact.factType === 'RESOURCE_CHANGE').length;
+      const stateCount = facts.filter(fact => fact.factType === 'STATE_CHANGE').length;
+      const summonCount = facts.filter(fact => fact.factType === 'SUMMON').length;
+      const roundDecisions = decisions.filter(item => Number(item?.回合 || item?.round || 0) === round);
+      const intentSummary = roundDecisions.map(item => {
+        const actor = String(item?.行动者 || item?.actor || '').trim();
+        const action = normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.skill || '');
+        return actor && action ? readIntent(round, actor, action) : '';
+      }).filter(Boolean).join('；');
+      const activeState = facts.find(fact => fact.duration > 0 && fact.stateName);
+      return {
+        blockId: `round_summary_${round}`,
+        round,
+        actionGroupId: `round_summary_${round}`,
+        actorId: 'SYSTEM',
+        targetIds: [...new Set(facts.map(fact => fact.targetId).filter(Boolean))],
+        blockType: 'ROUND_SUMMARY',
+        facts,
+        badges,
+        intentSummary,
+        outcomeSummary: `第${round}回合记录${damageCount}项伤害、${resourceCount}项资源、${stateCount}项状态、${summonCount}项召唤事实`,
+        nextWindow: activeState ? `【${activeState.stateName}】还剩 ${activeState.duration} 个有效窗口` : '',
+      };
+    });
+    return [...actionBlocks, ...roundSummaries].sort((left, right) =>
+      Number(left?.round || 0) - Number(right?.round || 0) ||
+      (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0)
+    );
+  }
+
   function auditFacts(payload = {}) {
     payload = payload && typeof payload === 'object' ? cloneValue(payload) : {};
     const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
@@ -1227,9 +1520,8 @@
       typeof implementation.caseDomain.collectResolutionTrace !== 'function' ||
       typeof implementation.caseDomain.collectDecisionTrace !== 'function' ||
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
+      typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
       typeof implementation.caseDomain.cloneAuditSnapshot !== 'function' ||
-      typeof implementation.caseDomain.buildActionChains !== 'function' ||
-      typeof implementation.caseDomain.buildReportBlocks !== 'function' ||
       typeof implementation.caseDomain.buildFinalSummary !== 'function' ||
       typeof implementation.caseDomain.buildRoundOverview !== 'function' ||
       typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
@@ -1325,8 +1617,8 @@
       const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
         ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => domain.cloneAuditSnapshot(item))
         : [];
-      const actionChains = domain.buildActionChains(eventLedger, resolutionTrace);
-      const reportBlocks = domain.buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
+      const actionChains = buildActionChains(eventLedger, resolutionTrace);
+      const reportBlocks = buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
       const { finalBattleReport, aiSummaryInput } = domain.buildFinalSummary(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
       const scoringAudit = decisionTrace
         .filter(item => /主动规划|应招审计|技能选择/.test(String(item?.类型 || item?.type || '')))
@@ -1600,6 +1892,8 @@
     bindEngine,
     runBattleCase,
     auditFacts,
+    buildActionChains,
+    buildReportBlocks,
     previewSkill,
     auditPrototypeCoverage,
   });
