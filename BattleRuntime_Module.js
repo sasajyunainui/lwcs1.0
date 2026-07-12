@@ -796,6 +796,65 @@
     return Number(event?.[key] ?? event?.meta?.[key] ?? 0);
   }
 
+  function stateWasApplied(event = {}) {
+    const result = String(event?.result || event?.meta?.result || '').trim();
+    return !result || /applied|success|生效|附着|施加/.test(result);
+  }
+
+  function stateWasResisted(event = {}) {
+    return /resist|resisted|抵抗|豁免|未附着/.test(String(event?.result || event?.meta?.result || '').trim());
+  }
+
+  function stateWasImmune(event = {}) {
+    return /immune|immunity|免疫|无视异常/.test(String(event?.result || event?.meta?.result || '').trim());
+  }
+
+  function readEventOutcome(event = {}) {
+    const explicit = String(event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
+    if (explicit) return explicit;
+    const kind = String(event?.eventKind || '').trim();
+    const result = String(event?.result || event?.meta?.result || '').trim();
+    if (kind === 'hit_result') {
+      if (/graze|chip|擦伤/.test(result)) return 'graze';
+      if (/critical|暴击/.test(result)) return 'critical';
+      if (/miss|evade|dodge|未命中|闪避/.test(result)) return 'dodged';
+      return readLedgerNumber(event, 'damage') > 0 ? 'full_hit' : 'no_effect';
+    }
+    if (kind === 'state_apply') {
+      if (stateWasImmune(event)) return 'state_immune';
+      if (stateWasResisted(event)) return 'state_resisted';
+      return 'state_applied';
+    }
+    if (kind === 'state_tick') return 'state_tick';
+    if (kind === 'summon_assist') return 'summon_action';
+    if (kind === 'create') return 'item_created';
+    if (kind === 'summon_create') return 'summon_created';
+    if (kind === 'resource_change' || kind === 'round_recover') return 'resource_recovered';
+    if (kind === 'blocked_action') return 'interrupted';
+    if (kind === 'failed_action' || kind === 'target_fail') {
+      return /CAP_REACHED|达到上限|造物已达上限|场面已满/.test(`${event?.reasonCode || ''} ${event?.failReason || ''}`) ? 'cap_reached' : 'interrupted';
+    }
+    return 'no_effect';
+  }
+
+  function isInternalFallbackEvent(event = {}) {
+    const kind = String(event?.eventKind || '').trim();
+    const action = normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || '');
+    const actionType = String(event?.actionType || event?.type || '').trim();
+    const reason = String(event?.failReason || event?.failureReason || event?.reasonText || event?.meta?.reasonText || event?.meta?.failureReason || '').trim();
+    const source = String(event?.meta?.source || event?.source || '').trim();
+    if (event?.playerAction === true || event?.meta?.playerAction === true || event?.meta?.source === 'player') return false;
+    if (String(event?.actorSide || event?.meta?.actorSide || '').trim() === 'player') return false;
+    if (kind === 'pass' && /observe|stance_hold/.test(String(event?.result || ''))) return false;
+    if (['blocked_action', 'failed_action', 'target_fail'].includes(kind)) {
+      if (/CAP_REACHED|达到上限|造物已达上限|场面已满/.test(`${reason} ${event?.reasonCode || event?.meta?.reasonCode || ''}`)) return false;
+      if (/战术待机|待机|观察|守势维持|守势对峙|收招转防|防御/.test(action) && /未形成主动结算效果|NO_EFFECTIVE_OPENING|no_effective_opening|没有形成主动结算效果|缺少可结算效果|稳住身位/.test(reason)) return false;
+      if (/auto_actor|ai_fallback|internal|system/i.test(source)) return true;
+      if (/缺少可结算效果/.test(reason) && /auto|fallback|战术待机|观察|收招转防/.test(`${source} ${actionType} ${action}`)) return true;
+    }
+    return false;
+  }
+
   function buildActionChains(eventLedger = [], resolutionTrace = []) {
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const trace = (Array.isArray(resolutionTrace) ? resolutionTrace : []).filter(node => node && typeof node === 'object');
@@ -1063,6 +1122,140 @@
       Number(left?.round || 0) - Number(right?.round || 0) ||
       (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0)
     );
+  }
+
+  function buildRoundOverview(result = null, context = {}) {
+    const resolveUnitSide = requireEngine().caseDomain.resolveReportUnitSide;
+    const ledger = Array.isArray(result?.eventLedger) ? result.eventLedger : (Array.isArray(result?.combatData?.__battleEventLedger) ? result.combatData.__battleEventLedger : []);
+    const rounds = new Map();
+    const pushRound = round => {
+      const key = Math.max(0, Number(round || 0));
+      if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, playerHpSourceEventIds: [], enemyHpSourceEventIds: [], resourceDeltas: [], highlights: [] });
+      return rounds.get(key);
+    };
+    const actualRoundCount = Math.max(
+      0,
+      Number(result?.roundsExecuted || result?.roundCount || 0),
+      ...ledger.map(event => Number(event?.round || event?.sourceRound || 0)),
+    );
+    for (let round = 1; round <= actualRoundCount; round += 1) pushRound(round);
+    const pushHighlight = (round, text, weight = 1, source = {}) => {
+      const clean = String(text || '').trim();
+      if (!clean) return;
+      const item = pushRound(round);
+      const sourceEventId = String(source?.eventId || source?.sourceEventId || '').trim();
+      const sourceNodeId = String(source?.chainNodeId || source?.nodeId || source?.sourceNodeId || '').trim();
+      if (!item.highlights.some(entry => entry.text === clean)) {
+        item.highlights.push({ text: clean, weight: Number(weight || 1), sourceEventId, sourceNodeId });
+      }
+    };
+    const pushSourceId = (list = [], source = {}) => {
+      const sourceEventId = String(source?.eventId || source?.sourceEventId || '').trim();
+      if (sourceEventId && !list.includes(sourceEventId)) list.push(sourceEventId);
+    };
+    const pushHpDelta = (row, side = '', value = 0, source = {}) => {
+      const amount = Math.round(Number(value || 0));
+      if (!row || !amount) return;
+      if (side === 'player') {
+        row.playerHpDelta += amount;
+        pushSourceId(row.playerHpSourceEventIds, source);
+      } else if (side === 'enemy') {
+        row.enemyHpDelta += amount;
+        pushSourceId(row.enemyHpSourceEventIds, source);
+      }
+    };
+    const pushResourceDelta = (round, actorName = '', resourceName = '', value = 0, source = {}) => {
+      const actorText = String(actorName || '').trim();
+      const resourceText = String(resourceName || '').trim();
+      const amount = Math.round(Number(value || 0));
+      if (!actorText || !resourceText || !amount) return;
+      const item = pushRound(round);
+      const key = `${actorText}|${resourceText}`;
+      const existing = item.resourceDeltas.find(entry => entry.key === key);
+      if (existing) {
+        existing.value += amount;
+        pushSourceId(existing.sourceEventIds, source);
+      } else {
+        const sourceEventIds = [];
+        pushSourceId(sourceEventIds, source);
+        item.resourceDeltas.push({ key, actorName: actorText, resourceName: resourceText, value: amount, sourceEventIds });
+      }
+    };
+    ledger.forEach(event => {
+      const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
+      const kind = String(event?.eventKind || '').trim();
+      const actor = String(event?.actorName || '').trim();
+      const target = String(event?.targetName || '').trim();
+      const action = normalizeActionDisplayName(event?.finalActionName || event?.actionName || '');
+      const result = String(event?.result || event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
+      const reason = String(event?.failReason || event?.failureReason || event?.meta?.failureReason || event?.reasonCode || event?.meta?.reasonCode || '').trim();
+      if (isInternalFallbackEvent(event) && !/战术待机|待机|观察|防御|收招转防|守势|pass|observe|defend|stance/i.test(`${action} ${result} ${reason}`)) return;
+      const targetSide = resolveUnitSide(context, target);
+      const row = pushRound(round);
+      const damage = Math.max(0, readLedgerNumber(event, 'damage') || readLedgerNumber(event, 'amount'));
+      if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
+        const linkedCounterSettlement = kind === 'counter' && String(event?.meta?.settlementEventId || '').trim();
+        const hpRecovery = kind === 'state_tick' && /恢复|heal|hot|recover/i.test(result) && /生命|HP|血/i.test(String(event?.meta?.resource || '生命值'));
+        if (!linkedCounterSettlement && targetSide === 'player') pushHpDelta(row, 'player', hpRecovery ? damage : -damage, event);
+        else if (!linkedCounterSettlement && targetSide === 'enemy') pushHpDelta(row, 'enemy', hpRecovery ? damage : -damage, event);
+        if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8, event);
+        else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, /魂技|真身|融合|爆发/.test(action) || damage >= 160 ? 9 : 8, event);
+      }            if (kind === 'action_cost') {
+        const reqSp = Math.max(0, Number(event?.meta?.reqSp || 0));
+        const reqVit = Math.max(0, Number(event?.meta?.reqVit || 0));
+        const reqMen = Math.max(0, Number(event?.meta?.reqMen || 0));
+        if (reqSp) pushResourceDelta(round, actor, '魂力', -reqSp, event);
+        if (reqVit) pushResourceDelta(round, actor, '体力', -reqVit, event);
+        if (reqMen) pushResourceDelta(round, actor, '精神力', -reqMen, event);
+      } else if (kind === 'round_recover') {
+        const resource = String(event?.meta?.resource || '').trim();
+        const amount = Math.max(0, readLedgerNumber(event, 'amount'));
+        if (amount && resource) pushResourceDelta(round, actor, resource, amount, event);
+      } else if (kind === 'state_tick') {
+        const resource = String(event?.meta?.resource || '').trim();
+        if (damage > 0 && resource && !/生命|HP|血/i.test(resource)) {
+          const isHeal = /恢复|heal|hot/i.test(String(event?.result || ''));
+          pushResourceDelta(round, target || actor, resource, isHeal ? damage : -damage, event);
+        }
+      } else if (kind === 'resource_change') {
+        const resource = String(event?.meta?.resource || '').trim();
+        const delta = Number(event?.meta?.delta || 0);
+        if (resource && delta) pushResourceDelta(round, target || actor, resource, delta, event);
+      }
+    if (kind === 'state_apply' && stateWasApplied(event)) {
+        const stateName = readLedgerStateName(event);
+        if (stateName) pushHighlight(round, `${target || actor}陷入【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 7 : 4, event);
+      } else if (kind === 'state_apply' && stateWasImmune(event)) {
+        const stateName = readLedgerStateName(event);
+        if (stateName) pushHighlight(round, `${target || actor}免疫【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 6 : 3, event);
+      } else if (kind === 'state_apply' && stateWasResisted(event)) {
+        const stateName = readLedgerStateName(event);
+        if (stateName) pushHighlight(round, `${target || actor}抵住【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 6 : 3, event);
+      } else if (kind === 'summon_create') {
+        const summonName = String(event?.summonName || event?.createdName || '').trim();
+        pushHighlight(round, `${actor}召出${summonName ? `【${summonName}】` : '召唤物'}`, 7, event);
+      } else if (kind === 'blocked_action' || kind === 'failed_action') {
+        if (readEventOutcome(event) === 'cap_reached') pushHighlight(round, `${actor}造物已达上限`, 5, event);
+        else pushHighlight(round, `${actor}动作受阻`, 5, event);
+      } else if (kind === 'defend') {
+        pushHighlight(round, `${actor}转入防御`, 3, event);
+      } else if (kind === 'dodge' && /evaded|dodged|闪避|规避/i.test(result)) {
+        pushHighlight(round, `${actor}规避成功`, 4, event);
+      }
+    });
+    return [...rounds.values()]
+      .filter(item => item.round > 0 && item.round <= actualRoundCount)
+      .sort((a, b) => a.round - b.round)
+      .map(item => ({
+        ...item,
+        resourceDeltas: item.resourceDeltas
+          .filter(entry => Math.round(Number(entry.value || 0)) !== 0)
+          .slice(0, 4)
+          .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)), sourceEventIds: Array.isArray(entry.sourceEventIds) ? entry.sourceEventIds.slice(0, 8) : [] })),
+        playerHpSourceEventIds: Array.isArray(item.playerHpSourceEventIds) ? item.playerHpSourceEventIds.slice(0, 12) : [],
+        enemyHpSourceEventIds: Array.isArray(item.enemyHpSourceEventIds) ? item.enemyHpSourceEventIds.slice(0, 12) : [],
+        highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 1),
+      }));
   }
 
   function auditFacts(payload = {}) {
@@ -1596,7 +1789,7 @@
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
       typeof implementation.caseDomain.buildFinalSummary !== 'function' ||
-      typeof implementation.caseDomain.buildRoundOverview !== 'function' ||
+      typeof implementation.caseDomain.resolveReportUnitSide !== 'function' ||
       typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
       !implementation.previewDomain ||
       typeof implementation.previewDomain.getEffects !== 'function' ||
@@ -1808,7 +2001,7 @@
         actionQueueTrace,
         reportBlocks,
         publicReportBlocks,
-        roundOverview: domain.buildRoundOverview(result, { combatData: result?.combatData || combatData }),
+        roundOverview: buildRoundOverview(result, { combatData: result?.combatData || combatData }),
         finalBattleReport,
         aiSummaryInput,
         finalSnapshot,
@@ -1971,6 +2164,7 @@
     collectResolutionTrace,
     buildActionChains,
     buildReportBlocks,
+    buildRoundOverview,
     previewSkill,
     auditPrototypeCoverage,
   });

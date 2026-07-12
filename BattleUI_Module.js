@@ -16430,7 +16430,7 @@ class BattleUIComponent {
         buildPublicReportBlocks: (eventLedger, limit, context) => 构建事件账本公开战报Blocks(eventLedger, limit, context),
         normalizePublicEntry: entry => 归一公开战报Block条目(entry),
         buildFinalSummary: (eventLedger, decisionTrace, finalSnapshot, combatData) => 构建战斗总结数据(eventLedger, decisionTrace, finalSnapshot, combatData),
-        buildRoundOverview: (result, context) => 构建回合速览数据(result, context),
+        resolveReportUnitSide: (context, unitName) => 读取战报单位阵营(context, unitName),
         buildLlmSummary: (eventLedger, finalSnapshot, options) => 构建LLM战斗语义摘要(eventLedger, finalSnapshot, options),
       },
       previewDomain: {
@@ -47175,131 +47175,7 @@ class BattleUIComponent {
           `;
         }
 
-        function 构建回合速览数据(result = null, context = {}) {
-          const ledger = Array.isArray(result?.eventLedger) ? result.eventLedger : (Array.isArray(result?.combatData?.__battleEventLedger) ? result.combatData.__battleEventLedger : []);
-          const rounds = new Map();
-          const pushRound = round => {
-            const key = Math.max(0, Number(round || 0));
-            if (!rounds.has(key)) rounds.set(key, { round: key, playerHpDelta: 0, enemyHpDelta: 0, playerHpSourceEventIds: [], enemyHpSourceEventIds: [], resourceDeltas: [], highlights: [] });
-            return rounds.get(key);
-          };
-          const pushHighlight = (round, text, weight = 1, source = {}) => {
-            const clean = String(text || '').trim();
-            if (!clean) return;
-            const item = pushRound(round);
-            const sourceEventId = String(source?.eventId || source?.sourceEventId || '').trim();
-            const sourceNodeId = String(source?.chainNodeId || source?.nodeId || source?.sourceNodeId || '').trim();
-            if (!item.highlights.some(entry => entry.text === clean)) {
-              item.highlights.push({ text: clean, weight: Number(weight || 1), sourceEventId, sourceNodeId });
-            }
-          };
-          const pushSourceId = (list = [], source = {}) => {
-            const sourceEventId = String(source?.eventId || source?.sourceEventId || '').trim();
-            if (sourceEventId && !list.includes(sourceEventId)) list.push(sourceEventId);
-          };
-          const pushHpDelta = (row, side = '', value = 0, source = {}) => {
-            const amount = Math.round(Number(value || 0));
-            if (!row || !amount) return;
-            if (side === 'player') {
-              row.playerHpDelta += amount;
-              pushSourceId(row.playerHpSourceEventIds, source);
-            } else if (side === 'enemy') {
-              row.enemyHpDelta += amount;
-              pushSourceId(row.enemyHpSourceEventIds, source);
-            }
-          };
-          const pushResourceDelta = (round, actorName = '', resourceName = '', value = 0, source = {}) => {
-            const actorText = String(actorName || '').trim();
-            const resourceText = String(resourceName || '').trim();
-            const amount = Math.round(Number(value || 0));
-            if (!actorText || !resourceText || !amount) return;
-            const item = pushRound(round);
-            const key = `${actorText}|${resourceText}`;
-            const existing = item.resourceDeltas.find(entry => entry.key === key);
-            if (existing) {
-              existing.value += amount;
-              pushSourceId(existing.sourceEventIds, source);
-            } else {
-              const sourceEventIds = [];
-              pushSourceId(sourceEventIds, source);
-              item.resourceDeltas.push({ key, actorName: actorText, resourceName: resourceText, value: amount, sourceEventIds });
-            }
-          };
-          ledger.forEach(event => {
-            const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
-            const kind = String(event?.eventKind || '').trim();
-            const actor = String(event?.actorName || '').trim();
-            const target = String(event?.targetName || '').trim();
-            const action = normalizeBattleActionDisplayName(event?.finalActionName || event?.actionName || '');
-            const result = String(event?.result || event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
-            const reason = String(event?.failReason || event?.failureReason || event?.meta?.failureReason || event?.reasonCode || event?.meta?.reasonCode || '').trim();
-            if (判定公开战报事件是内部兜底(event) && !/战术待机|待机|观察|防御|收招转防|守势|pass|observe|defend|stance/i.test(`${action} ${result} ${reason}`)) return;
-            const targetSide = 读取战报单位阵营(context, target);
-            const row = pushRound(round);
-            const damage = Math.max(0, 读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount'));
-            if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
-              const linkedCounterSettlement = kind === 'counter' && String(event?.meta?.settlementEventId || '').trim();
-              if (!linkedCounterSettlement && targetSide === 'player') pushHpDelta(row, 'player', -damage, event);
-              else if (!linkedCounterSettlement && targetSide === 'enemy') pushHpDelta(row, 'enemy', -damage, event);
-              if (kind === 'counter') pushHighlight(round, `${actor}防反命中${target}${damage ? `，${damage}伤害` : ''}`, 8, event);
-              else if (damage >= 100 || /魂技|真身|融合|爆发/.test(action)) pushHighlight(round, `${actor}以【${action || '行动'}】重创${target}${damage ? `，${damage}伤害` : ''}`, /魂技|真身|融合|爆发/.test(action) || damage >= 160 ? 9 : 8, event);
-            }            if (kind === 'action_cost') {
-              const reqSp = Math.max(0, Number(event?.meta?.reqSp || 0));
-              const reqVit = Math.max(0, Number(event?.meta?.reqVit || 0));
-              const reqMen = Math.max(0, Number(event?.meta?.reqMen || 0));
-              if (reqSp) pushResourceDelta(round, actor, '魂力', -reqSp, event);
-              if (reqVit) pushResourceDelta(round, actor, '体力', -reqVit, event);
-              if (reqMen) pushResourceDelta(round, actor, '精神力', -reqMen, event);
-            } else if (kind === 'round_recover') {
-              const resource = String(event?.meta?.resource || '').trim();
-              const amount = Math.max(0, 读取事件账本数值(event, 'amount'));
-              if (amount && resource) pushResourceDelta(round, actor, resource, amount, event);
-            } else if (kind === 'state_tick') {
-              const resource = String(event?.meta?.resource || '').trim();
-              if (damage > 0 && resource && !/生命|HP|血/i.test(resource)) {
-                const isHeal = /恢复|heal|hot/i.test(String(event?.result || ''));
-                pushResourceDelta(round, target || actor, resource, isHeal ? damage : -damage, event);
-              }
-            } else if (kind === 'resource_change') {
-              const resource = String(event?.meta?.resource || '').trim();
-              const delta = Number(event?.meta?.delta || 0);
-              if (resource && delta) pushResourceDelta(round, target || actor, resource, delta, event);
-            }
-          if (kind === 'state_apply' && 事件账本状态已附着(event)) {
-              const stateName = 读取事件账本状态名(event);
-              if (stateName) pushHighlight(round, `${target || actor}陷入【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 7 : 4, event);
-            } else if (kind === 'state_apply' && 事件账本状态被免疫(event)) {
-              const stateName = 读取事件账本状态名(event);
-              if (stateName) pushHighlight(round, `${target || actor}免疫【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 6 : 3, event);
-            } else if (kind === 'state_apply' && 事件账本状态被抵抗(event)) {
-              const stateName = 读取事件账本状态名(event);
-              if (stateName) pushHighlight(round, `${target || actor}抵住【${stateName}】`, /控制|眩晕|禁锢|位移限制|迟缓|减速/.test(stateName) ? 6 : 3, event);
-            } else if (kind === 'summon_create') {
-              const summonName = String(event?.summonName || event?.createdName || '').trim();
-              pushHighlight(round, `${actor}召出${summonName ? `【${summonName}】` : '召唤物'}`, 7, event);
-            } else if (kind === 'blocked_action' || kind === 'failed_action') {
-              if (读取战报事件Outcome(event) === 'cap_reached') pushHighlight(round, `${actor}造物已达上限`, 5, event);
-              else pushHighlight(round, `${actor}动作受阻`, 5, event);
-            } else if (kind === 'defend') {
-              pushHighlight(round, `${actor}转入防御`, 3, event);
-            } else if (kind === 'dodge' && /evaded|dodged|闪避|规避/i.test(result)) {
-              pushHighlight(round, `${actor}规避成功`, 4, event);
-            }
-          });
-          return [...rounds.values()]
-            .filter(item => item.round > 0 && (item.playerHpDelta || item.enemyHpDelta || item.resourceDeltas.length || item.highlights.length))
-            .sort((a, b) => a.round - b.round)
-            .map(item => ({
-              ...item,
-              resourceDeltas: item.resourceDeltas
-                .filter(entry => Math.round(Number(entry.value || 0)) !== 0)
-                .slice(0, 4)
-                .map(entry => ({ ...entry, value: Math.round(Number(entry.value || 0)), sourceEventIds: Array.isArray(entry.sourceEventIds) ? entry.sourceEventIds.slice(0, 8) : [] })),
-              playerHpSourceEventIds: Array.isArray(item.playerHpSourceEventIds) ? item.playerHpSourceEventIds.slice(0, 12) : [],
-              enemyHpSourceEventIds: Array.isArray(item.enemyHpSourceEventIds) ? item.enemyHpSourceEventIds.slice(0, 12) : [],
-              highlights: item.highlights.sort((a, b) => b.weight - a.weight).slice(0, 1),
-            }));
-        }
+
 
         function 序列化回合速览行(rows = []) {
           const result = [];
@@ -47506,7 +47382,7 @@ class BattleUIComponent {
           ], 原始战报);
           const 战报 = 战报Blocks.map(序列化结构化战报Block).filter(Boolean);
           const 流程HTML = 渲染分回合判定流程(审计条目);
-          const 回合速览 = 构建回合速览数据(result, context);
+          const 回合速览 = BATTLE_RUNTIME.buildRoundOverview(result, context);
           const finalSnapshot = result?.snapshot || ui_getBattleSnapshot(result?.combatData || context?.combatData || {});
           const finalBattleReport = result?.finalBattleReport || 构建战斗总结数据(
             result?.eventLedger || result?.combatData?.__battleEventLedger || [],
@@ -47559,7 +47435,7 @@ class BattleUIComponent {
             ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs, context),
             ...构建结算链侧写条目(logs, { ...context, eventLedger: result?.eventLedger || [] }),
           ], 原始战报);
-          const 回合速览 = 构建回合速览数据(result, context);
+          const 回合速览 = BATTLE_RUNTIME.buildRoundOverview(result, context);
           const 战报展示上下文 = { ...context, combatData: context?.combatData || result?.combatData || {} };
           const 战报单位上下文 = 读取战报上下文单位(战报展示上下文);
           战报展示上下文.units = [
