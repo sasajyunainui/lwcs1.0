@@ -28987,6 +28987,32 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   font: inherit;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal.battle-record-terminal--dragging .battle-record-header {
+  cursor: grabbing;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-drag-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  min-height: 28px;
+  color: color-mix(in srgb, var(--战斗强调色) 62%, var(--战斗记录文字弱色));
+  font-size: 14px;
+  line-height: 1;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle {
   min-width: 52px;
   min-height: 34px;
@@ -29105,6 +29131,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-panel {
   display: grid;
   gap: 6px;
+  align-content: start;
+  grid-auto-rows: max-content;
   min-width: 0;
   min-height: 0;
   max-height: 100%;
@@ -29119,6 +29147,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-panel {
   display: grid;
   gap: 7px;
+  align-content: start;
+  grid-auto-rows: max-content;
   min-width: 0;
   min-height: 0;
   overflow: hidden auto;
@@ -29131,6 +29161,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-view {
   display: grid;
   gap: 7px;
+  align-content: start;
   min-width: 0;
   min-height: 0;
 }
@@ -29579,6 +29610,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
     grid-template-rows: auto minmax(0, 1fr);
     gap: 8px;
     width: 100%;
+    max-width: 100%;
     height: min(560px, 68svh);
     min-height: 280px;
     overflow: hidden;
@@ -29589,6 +29621,17 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
       inset 1px 1px 0 var(--战斗边缘高光),
       inset -1px -1px 0 var(--战斗暗侧阴影),
       inset 0 0 0 1px color-mix(in srgb, var(--战斗主色) 22%, transparent);
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-header,
+  #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-header {
+    cursor: default;
+    touch-action: auto;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-drag-grip,
+  #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-drag-grip {
+    display: none;
   }
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline.battle-record-terminal--collapsed,
@@ -29622,8 +29665,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 @media (max-width: 520px) {
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline,
   #detailModal #mvu-battle-inline-host .battle-record-terminal--inline {
-    height: min(620px, 74svh);
-    min-height: 300px;
+    width: min(100%, calc(100vw - 16px));
+    height: min(560px, calc(100svh - 104px));
+    min-height: min(300px, calc(100svh - 104px));
     padding: 8px;
   }
 

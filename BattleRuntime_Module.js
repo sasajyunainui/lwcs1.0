@@ -217,6 +217,7 @@
         actorName: describeActor(node?.actorEntry),
         nodeKind: String(node?.nodeKind || 'ACTIVE').trim(),
         actionRole: normalizeRole(node?.actionRole || 'ACTIVE'),
+        actorControl: String(node?.actorControl || 'AI').trim() || 'AI',
         sourceActionId: String(node?.sourceActionId || '').trim(),
         ...detail,
       });
@@ -247,6 +248,7 @@
         grantId,
         nodeKind: String(input.nodeKind || 'ACTIVE').trim(),
         actionRole: normalizeRole(input.actionRole || 'ACTIVE'),
+        actorControl: String(input.actorControl || input?.actorEntry?.__actorControl || 'AI').trim() || 'AI',
         sourceActionId: String(input.sourceActionId || '').trim(),
         actionName: normalizeActionName(input.actionName || ''),
         execute: typeof input.execute === 'function' ? input.execute : null,
@@ -258,6 +260,7 @@
     (Array.isArray(options?.initialEntries) ? options.initialEntries : []).forEach((actorEntry, index) => {
       enqueue({
         actorEntry,
+        actorControl: String(actorEntry?.__actorControl || 'AI').trim() || 'AI',
         actorTurnSequence: index + 1,
         parentActionSequence: 0,
         phasePriority: 40,
@@ -308,6 +311,9 @@
       lastAlive = adapters.readAlive(combatData);
       logs.push(`[团战回合总结] 我方存活:${lastAlive.playerAlive} 敌方存活:${lastAlive.enemyAlive}`);
       if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;
+      const continuation = adapters.shouldContinue?.({ combatData, mode, currentRound, rounds, alive: lastAlive });
+      if (continuation?.log) logs.push(continuation.log);
+      if (continuation?.continueSimulation === false) break;
     }
     const winner = lastAlive.enemyAlive <= 0 ? 'player' : lastAlive.playerAlive <= 0 ? 'enemy' : 'unfinished';
     adapters.finalize?.({ combatData, mode, winner, logs, alive: lastAlive });
@@ -1327,9 +1333,15 @@
     const enemySummons = summonSummary.filter(unit => enemyNames.has(unit.host));
     const playerMetric = teamMetric(playerSummary, playerSummons);
     const enemyMetric = teamMetric(enemySummary, enemySummons);
+    const playerDefeated = playerMetric.alive <= 0 && playerMetric.total > 0;
+    const enemyDefeated = enemyMetric.alive <= 0 && enemyMetric.total > 0;
+    const battleEnded = playerDefeated || enemyDefeated;
     const scoreGap = Number((playerMetric.score - enemyMetric.score).toFixed(2));
-    const advantage = scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
-    const advantageText = advantage === 'PLAYER' ? '我方占优' :
+    const advantage = enemyDefeated ? 'PLAYER_VICTORY' : playerDefeated ? 'ENEMY_VICTORY' :
+      scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
+    const advantageText = advantage === 'PLAYER_VICTORY' ? '我方获胜' :
+      advantage === 'ENEMY_VICTORY' ? '敌方获胜' :
+      advantage === 'PLAYER' ? '我方占优' :
       advantage === 'PLAYER_EDGE' ? '我方略占上风' :
         advantage === 'ENEMY' ? '敌方占优' :
           advantage === 'ENEMY_EDGE' ? '敌方略占上风' : '战况胶着';
@@ -1367,7 +1379,12 @@
       if (unit.hp <= 0 || unit.remainingWindows <= 0) risks.push(`${unit.name}已无可兑现行动窗口`);
     });
     const hpRatioGap = playerMetric.hpRatio - enemyMetric.hpRatio;
-    if (hpRatioGap <= -0.03) {
+    if (battleEnded) {
+      tacticalWindows.push(enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
+      const survivingSide = enemyDefeated ? playerSummary : enemySummary;
+      const damagedSurvivors = survivingSide.filter(unit => unit.hp > 0 && unit.hp < unit.hpMax);
+      if (damagedSurvivors.length) risks.push(`${damagedSurvivors.map(unit => unit.name).join('、')}仍有战损，需要进行战后恢复`);
+    } else if (hpRatioGap <= -0.03) {
       tacticalWindows.push('敌方尚未承受同等生命损失，我方需要先建立有效命中或控制窗口');
       risks.push('我方换血落后，继续空耗会让敌方把轻微优势滚大');
     } else if (hpRatioGap >= 0.03) {
@@ -1719,6 +1736,27 @@
         if (!parent || parent.index >= index) {
           pushFatal('ACTION_QUEUE_PARENT_ORDER_INVALID', { index, round, actionSequence, parentActionSequence });
         }
+      }
+    });
+    const naturalGrants = new Map();
+    actionQueueTrace.forEach((entry, index) => {
+      const grantId = String(entry?.grantId || '').trim();
+      if (!grantId.startsWith('natural:')) return;
+      const key = `${Number(entry?.round || 0)}|${grantId}`;
+      if (!naturalGrants.has(key)) naturalGrants.set(key, { enqueued: [], terminal: [] });
+      const state = String(entry?.state || '').trim();
+      const item = naturalGrants.get(key);
+      if (state === 'ENQUEUED') item.enqueued.push(index);
+      if (['EXECUTED', 'CANCELLED', 'FATAL'].includes(state)) item.terminal.push({ index, state, reason: String(entry?.reason || '').trim() });
+    });
+    naturalGrants.forEach((item, key) => {
+      if (item.enqueued.length !== 1 || item.terminal.length !== 1) {
+        pushFatal('NATURAL_ACTION_OPPORTUNITY_MISSING', {
+          grantKey: key,
+          enqueuedCount: item.enqueued.length,
+          terminalCount: item.terminal.length,
+          terminals: item.terminal,
+        });
       }
     });
 

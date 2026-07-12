@@ -42174,7 +42174,10 @@ ${播报文本}
               <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
             </section>
             <div class="battle-record-terminal battle-record-terminal--collapsed" id="ui-battle-record-terminal">
-              <button class="battle-record-toggle" id="ui-battle-record-toggle" type="button" aria-expanded="false">记录</button>
+              <div class="battle-record-header" data-battle-record-drag-handle>
+                <span class="battle-record-drag-grip" aria-hidden="true">&#8942;&#8942;</span>
+                <button class="battle-record-toggle" id="ui-battle-record-toggle" type="button" aria-expanded="false">记录</button>
+              </div>
               <div class="battle-record-body">
                 <div class="battle-record-tabs" role="tablist" aria-label="战斗记录">
                   <button class="battle-record-tab active" type="button" role="tab" data-battle-record-tab="actual" aria-selected="true" tabindex="0">实战记录</button>
