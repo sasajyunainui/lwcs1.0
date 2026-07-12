@@ -127,11 +127,15 @@ class BattleUIComponent {
       const finish = event => {
         if (!dragState || (event?.pointerId != null && event.pointerId !== dragState.pointerId)) return;
         try { handle.releasePointerCapture?.(dragState.pointerId); } catch (错误) {}
+        if (dragState.moved) {
+          node.__battleRecordSuppressClick = true;
+          root.setTimeout?.(() => { node.__battleRecordSuppressClick = false; }, 0);
+        }
         dragState = null;
         node.classList.remove('battle-record-terminal--dragging');
       };
       handle.addEventListener('pointerdown', event => {
-        if (Number(root.innerWidth || 0) <= 1180 || event.button !== 0 || event.target?.closest?.('button')) return;
+        if (Number(root.innerWidth || 0) <= 1180 || event.button !== 0) return;
         const rect = node.getBoundingClientRect();
         dragState = {
           pointerId: event.pointerId,
@@ -139,18 +143,25 @@ class BattleUIComponent {
           startY: event.clientY,
           left: rect.left,
           top: rect.top,
+          moved: false,
         };
         handle.setPointerCapture?.(event.pointerId);
-        node.classList.add('battle-record-terminal--dragging');
-        event.preventDefault();
       });
       handle.addEventListener('pointermove', event => {
         if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const deltaX = event.clientX - dragState.startX;
+        const deltaY = event.clientY - dragState.startY;
+        if (!dragState.moved && Math.hypot(deltaX, deltaY) < 5) return;
+        if (!dragState.moved) {
+          dragState.moved = true;
+          node.classList.add('battle-record-terminal--dragging');
+        }
         component.recordPortalPosition = {
-          left: dragState.left + event.clientX - dragState.startX,
-          top: dragState.top + event.clientY - dragState.startY,
+          left: dragState.left + deltaX,
+          top: dragState.top + deltaY,
         };
         同步战斗记录终端位置();
+        event.preventDefault();
       });
       handle.addEventListener('pointerup', finish);
       handle.addEventListener('pointercancel', finish);
@@ -24987,18 +24998,9 @@ class BattleUIComponent {
         };
       }
 
-      function 读取单挑动作前摇(action = {}) {
-        const raw = Number(action?.cast_time ?? action?.前摇 ?? action?.skill?.前摇 ?? getSkillCastTime(action?.skill) ?? 10);
-        return Math.max(0, Number.isFinite(raw) ? raw : 10);
-      }
-
       function 单挑动作是造物承载(action = {}) {
         const skill = action?.skill || action?.raw_skill || {};
         return String(skill?.承载方式 || '').trim() === '造物承载';
-      }
-
-      function 单挑动作是防守反应(action = {}) {
-        return ['防御', '闪避', '撤离'].includes(String(action?.action_type || action?.type || '').trim());
       }
 
       function 单挑动作是非攻击落地(action = {}) {
@@ -25113,92 +25115,6 @@ class BattleUIComponent {
         return opponent || namedTarget || actor;
       }
 
-      function 构建单挑临时战斗数据(actor, target, side, combatData = {}) {
-        const playerTeam = 读取战斗主队单位列表(combatData, '玩家');
-        const enemyTeam = 读取战斗主队单位列表(combatData, '敌方');
-        const activeTeam = side === 'enemy' ? enemyTeam : playerTeam;
-        const opposingTeam = side === 'enemy' ? playerTeam : enemyTeam;
-        const actorAllies = activeTeam.filter(unit => unit && unit !== actor && !isCombatUnitIdentityMatch(unit, actor?.name || actor));
-        const targetInActiveTeam = target && activeTeam.some(unit => isCombatUnitIdentityMatch(unit, target?.name || target));
-        const targetInOpposingTeam = target && opposingTeam.some(unit => isCombatUnitIdentityMatch(unit, target?.name || target));
-        const opposingTargets = targetInOpposingTeam
-          ? [target, ...opposingTeam.filter(unit => unit && unit !== target && !isCombatUnitIdentityMatch(unit, target?.name || target))]
-          : opposingTeam;
-        const safeOpposingTargets = opposingTargets.length
-          ? opposingTargets
-          : target && !targetInActiveTeam
-            ? [target]
-            : [];
-        return {
-          ...combatData,
-          __父级战斗数据: combatData,
-          __规则改写运行态: combatData.__规则改写运行态,
-          回合: combatData.回合,
-          战斗意图: combatData.战斗意图,
-          参战者: {
-            team_player: [actor, ...actorAllies].filter(Boolean),
-            team_enemy: safeOpposingTargets.filter(Boolean),
-          },
-        };
-      }
-
-      function 构建单挑反应动作(action = {}, reactor = null, attackerUnit = null) {
-        const reactorName = getCombatReportUnitName(reactor, '防守方');
-        const attackerName = getCombatReportUnitName(attackerUnit, '攻击方');
-        const type = String(action?.action_type || action?.type || '').trim();
-        const 原定动作名 = String(action?.__原定技能名 || action?.__原定动作名 || action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动').trim() || '行动';
-        if (type === '闪避') {
-          return {
-            type: '伺机闪避',
-            log: `[应招] ${reactorName}按原定动作拉开身位，试图避开${attackerName}的攻势。`,
-            skill: normalizeSkillData({ name: '伺机闪避', 技能分类: '防御', 消耗: '体力:5%', 前摇: 12 }, '伺机闪避'),
-            def_mult: 1,
-          };
-        }
-        if (type === '防御') {
-          return {
-            type: '肉体兜底',
-            log: `[应招] ${reactorName}按原定动作收缩防线，准备承受${attackerName}的攻势。`,
-            skill: normalizeSkillData({ name: '承伤硬抗', 技能分类: '防御', 消耗: '无', 前摇: 10 }, '承伤硬抗'),
-            def_mult: 1.2,
-          };
-        }
-        if (判定单挑动作敌对(action, reactor, attackerUnit)) {
-          return {
-            type: '强势对轰',
-            log: `[抢招对轰] ${reactorName}原定出手尚未完全落地，只能以【${action?.skill?.name || action?.action_type || '反击'}】抢招对冲。`,
-            skill: action.skill,
-            def_mult: 1,
-          };
-        }
-        return {
-          type: '无法反应',
-          log: type === '蓄力挨打'
-            ? `[先手压制] ${reactorName}正在为【${原定动作名}】争取出手窗口，未能及时转入防守应对${attackerName}的先手。`
-            : `[先手压制] ${reactorName}正在执行【${原定动作名}】，未能及时转入防守应对${attackerName}的先手。`,
-          skill: null,
-          def_mult: 1,
-        };
-      }
-
-      function 构建单挑配合动作(actor, target, action = {}) {
-        const actorName = getCombatReportUnitName(actor, '施术者');
-        const targetName = getCombatReportUnitName(target, actorName);
-        const skillName = action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动';
-        const selfTarget = isCombatUnitIdentityMatch(target, actorName);
-        const isCreation = 单挑动作是造物承载(action);
-        return {
-          type: '配合',
-          log: isCreation
-            ? `[行动完成] ${actorName}完成【${skillName}】的造物凝聚。`
-            : selfTarget
-              ? `[行动完成] ${actorName}完成【${skillName}】。`
-              : `[配合] ${actorName}将【${skillName}】交给${targetName}承接。`,
-          skill: null,
-          def_mult: 1,
-        };
-      }
-
       function 执行单挑队列结算(playerAction, reactionAction, combatData, options = {}) {
         const traceCombatData = options?.traceCombatData || combatData;
         const runtime = 确保战斗运行态(traceCombatData);
@@ -25249,153 +25165,6 @@ class BattleUIComponent {
         if (result.fatal) throw new Error(result.fatal.code);
         runtime.duelActionSequence = sequenceBase + result.results.length;
         return result.results[0]?.result;
-      }
-
-      function 结算单挑回合尾阶段(attacker, defender, combatData) {
-        const logs = [
-          执行协同召唤追击(attacker, null, 0, combatData),
-          执行协同召唤追击(defender, null, 0, combatData),
-        ];
-        const attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
-        const defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
-        const attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
-        const defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
-        logs.push(
-          attackerUpkeep.log,
-          defenderUpkeep.log,
-          attackerRoundEnd.log,
-          defenderRoundEnd.log,
-          结算护卫召唤回合窗口(combatData),
-          递减战斗规则改写运行态(combatData),
-        );
-        syncCombatActionState(attacker);
-        syncCombatActionState(defender);
-        return {
-          log: logs.filter(Boolean).join(' '),
-          actorsAble: isCombatUnitAbleToFight(attacker) && isCombatUnitAbleToFight(defender),
-        };
-      }
-
-      function 结算蓄力打断反噬(attacker, defender, 压制动作, combatData) {
-        const 反噬前血量 = getCombatHpValue(attacker);
-        const damage = Math.min(反噬前血量, Math.floor(getCombatHpMaxValue(attacker) * 0.05));
-        设置战斗血量值(attacker, 反噬前血量 - damage);
-        const 压制动作名 = normalizeBattleActionDisplayName(压制动作?.skill?.name || 压制动作?.skill?.魂技名 || 压制动作?.action_type || 压制动作?.type || '截断');
-        const 压制动作事件 = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
-          round: Number(combatData?.回合 || 0),
-          actorName: defender?.name || defender?.名称 || '',
-          actionName: 压制动作名,
-        });
-        写入战斗事件账本(combatData, {
-          eventKind: 'hit_result',
-          round: Number(combatData?.回合 || 0),
-          actorName: attacker?.name || attacker?.名称 || '',
-          targetName: attacker?.name || attacker?.名称 || '',
-          actionName: '施法打断反噬',
-          actionType: 'cast_interruption_backlash',
-          sourceActionName: 压制动作名,
-          sourceActionId: 压制动作事件?.actionId || '',
-          parentNodeId: 压制动作事件?.chainNodeId || '',
-          actorControl: 'SYSTEM',
-          actionRole: 'REACTION',
-          ruleCode: 'CAST_INTERRUPTION_BACKLASH',
-          result: 'success',
-          primaryOutcome: 'hit',
-          appliedDamage: damage,
-          effectCapability: { hasDamageEffect: true, effectKinds: ['cast_interruption_backlash'] },
-          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH',
-          targetPoolSide: 'friendly',
-          meta: { damageSourceType: 'cast_interruption_backlash', damageType: '真实伤害' },
-        });
-        if (!attacker.状态效果) attacker.状态效果 = {};
-        const 打断反噬状态 = {
-          类型: 'debuff',
-          状态: '僵直',
-          状态名称: '僵直',
-          层数: 1,
-          描述: '施法被打断的反噬',
-          duration: 1,
-          面板修改比例: { str: 1.0, def: 1.0, agi: 1.0, sp_max: 1.0 },
-          战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
-        };
-        const 持续移除命中 = 持续状态移除阻断状态附着(attacker, '僵直', 打断反噬状态, defender);
-        const stateApplied = !持续移除命中;
-        if (stateApplied) attacker.状态效果['僵直'] = 打断反噬状态;
-        写入战斗事件账本(combatData, {
-          eventKind: 'state_apply',
-          round: Number(combatData?.回合 || 0),
-          actorName: attacker?.name || attacker?.名称 || '',
-          targetName: attacker?.name || attacker?.名称 || '',
-          actionName: '施法打断反噬',
-          actionType: 'cast_interruption_backlash',
-          sourceActionName: 压制动作名,
-          sourceActionId: 压制动作事件?.actionId || '',
-          parentNodeId: 压制动作事件?.chainNodeId || '',
-          actorControl: 'SYSTEM',
-          actionRole: 'REACTION',
-          ruleCode: stateApplied ? 'CAST_INTERRUPTION_STIFFNESS' : 'CAST_INTERRUPTION_STIFFNESS_BLOCKED',
-          result: stateApplied ? 'applied' : 'blocked',
-          resultState: stateApplied ? 'APPLIED' : 'BLOCKED',
-          failReason: 持续移除命中 ? `被${持续移除命中.key}拦截` : '',
-          duration: 1,
-          effectSummary: '僵直',
-          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH_STIFFNESS',
-          targetPoolSide: 'friendly',
-          meta: {
-            stateName: '僵直',
-            duration: 1,
-            applied: stateApplied,
-            blockedBy: 持续移除命中?.key || '',
-          },
-        });
-        return {
-          damage,
-          stateApplied,
-          log: stateApplied
-            ? `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤并陷入[僵直]！`
-            : `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`,
-        };
-      }
-
-      function 应用单挑系统资源终值(单位, 资源键, 目标值, 变更名称, 来源行动者, 来源动作, combatData, 只提高 = false) {
-        const 变更前 = 读取持续原型资源当前值(单位, 资源键);
-        const 上限 = 读取持续原型资源上限值(单位, 资源键);
-        const 规范目标 = Math.max(0, Math.min(上限, Math.floor(Number(目标值 || 0))));
-        const 变更后 = 只提高 ? Math.max(变更前, 规范目标) : 规范目标;
-        const 变化量 = 变更后 - 变更前;
-        if (变化量 === 0) return 0;
-        设置战斗延迟效果资源值(单位, 资源键, 变更后);
-        const 来源动作名 = normalizeBattleActionDisplayName(来源动作?.skill?.name || 来源动作?.skill?.魂技名 || 来源动作?.action_type || 来源动作?.type || '战斗伤害');
-        const 来源动作事件 = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
-          round: Number(combatData?.回合 || 0),
-          actorName: 来源行动者?.name || 来源行动者?.名称 || '',
-          actionName: 来源动作名,
-        });
-        写入战斗事件账本(combatData, {
-          eventKind: 'resource_change',
-          round: Number(combatData?.回合 || 0),
-          actorName: 单位?.name || 单位?.名称 || '',
-          targetName: 单位?.name || 单位?.名称 || '',
-          actionName: 变更名称,
-          actionType: 'system_resource_settlement',
-          sourceActionName: 来源动作名,
-          sourceActionId: 来源动作事件?.actionId || '',
-          parentNodeId: 来源动作事件?.chainNodeId || '',
-          actorControl: 'SYSTEM',
-          actionRole: 'STATE_TICK',
-          ruleCode: 'SYSTEM_RESOURCE_SETTLEMENT',
-          result: 变化量 > 0 ? 'recover' : 'cost',
-          sourceEffectId: 'SYSTEM_RESOURCE_SETTLEMENT',
-          targetPoolSide: 'friendly',
-          meta: {
-            resource: { hp: '生命值', vit: '体力', sp: '魂力', men: '精神力' }[资源键] || 资源键,
-            resourceKey: 资源键,
-            delta: 变化量,
-            amount: Math.abs(变化量),
-            settlementType: String(变更名称 || '').trim(),
-          },
-        });
-        return 变化量;
       }
 
       function onPlayerAttack(playerInput, options = {}) {
@@ -25468,1115 +25237,13 @@ class BattleUIComponent {
         }
         defender.temp_agi_mult = Math.max(0.1, defender.temp_agi_mult);
 
-        const startingRound = Math.max(0, Number(combatData.回合 || 0) - 1);
+        const naturalStartingRound = Number(combatData.回合 || 0);
         let roundCount = 0;
         const battleLog = [];
         let clashExtraPatchOps = [];
-        let continueSimulation = true;
         let visiblePlayerInput = '';
         let 撤离结算结果 = '';
-      let 本次最大单击HP比例 = 0;
-      let 首轮手选动作签名 = '';
-      let 首轮手选技能名 = '';
-      const 读取本次动作签名 = 动作 => {
-          const 技能 = 动作?.skill || {};
-          const 技能名 = String(技能.name || 技能.魂技名 || 动作?.action_type || 动作?.type || '').trim();
-          const 魂环路径 = Array.isArray(技能.__魂环路径) ? 技能.__魂环路径.join('/') : '';
-          const 魂技槽位 = String(技能.__魂技槽位 || '').trim();
-          if (!技能名) return '';
-          return [动作?.action_type || 动作?.type || '', 技能名, 魂环路径, 魂技槽位].join('|');
-        };
-        const buildAutoPlayerContinuationAction = () => {
-          const actorEntry = { char: attacker, side: 'player' };
-          const targets = chooseTargetForActor(actorEntry, { combatData });
-          const autoAction = buildAutoActionForActor(actorEntry, targets || { enemyTarget: defender, allyTarget: attacker }, { combatData });
-          if (!autoAction) return null;
-          const actionType = autoAction.action_type || autoAction.type || '常规攻击';
-          return {
-            ...autoAction,
-            action_type: actionType,
-            type: autoAction.type || actionType,
-            target_name: autoAction.target_name || targets?.enemyTarget?.name || defender?.name || '',
-            player_auto_continuation: true,
-          };
-        };
-        const 构建动作叙事审计事实 = (actor = null, action = null, target = null, extra = {}) => {
-          const skill = action?.skill || {};
-          const actionName = normalizeBattleActionDisplayName(skill.name || skill.魂技名 || action?.action_type || action?.type || '');
-          if (!actor || !actionName) return null;
-          const targetName = String(target?.name || target?.名称 || extra.targetName || '').trim();
-          const effects = [
-            ...getSkillEffects(skill, { 行为规划: true, target, defender: target }),
-            ...(Array.isArray(skill?._效果数组) ? skill._效果数组 : []),
-            ...(Array.isArray(skill?.效果数组) ? skill.效果数组 : []),
-          ];
-          const damagePower = Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0);
-          const 判定限制反扑效果 = effect => {
-            const text = `${effect?.原型 || ''} ${effect?.状态 || ''} ${effect?.状态名称 || ''} ${JSON.stringify(effect?.计算层效果 || {})}`;
-            return /状态施加|资源锁定|决策干扰|判定修正/.test(String(effect?.原型 || '')) &&
-              /控制|位移限制|锁定|限制|束缚|麻痹|眩晕|封锁|迟缓|沉默|减速|缴械|封技|cannot_react|skip_turn|silence|cast_speed|lock_level|dodge_penalty|reaction_penalty/i.test(text);
-          };
-          const 读取效果标签 = effectList => {
-            const tags = new Set();
-            (Array.isArray(effectList) ? effectList : []).forEach(effect => {
-              const text = `${effect?.原型 || ''} ${effect?.状态 || ''} ${effect?.状态名称 || ''} ${JSON.stringify(effect?.计算层效果 || {})}`;
-              if (判定限制反扑效果(effect)) tags.add('CONTROL_RESTRICTION');
-              if (/伤害结算/.test(String(effect?.原型 || '')) || Number(effect?.威力倍率 || 0) > 0) tags.add('DIRECT_DAMAGE');
-              if (/中毒|流血|灼烧|持续创伤|dot_damage|dot_damage_ratio/i.test(text)) tags.add('ATTRITION');
-              if (/治疗|恢复|护盾|防御|驱散|净化|资源变化/.test(text)) tags.add('SUPPORT');
-            });
-            return [...tags];
-          };
-          const controlEffects = effects.filter(判定限制反扑效果);
-          const healOrGuardEffects = effects.filter(effect => /治疗|恢复|护盾|防御|驱散|净化|资源变化/.test(`${effect?.原型 || ''} ${effect?.状态 || ''} ${effect?.状态名称 || ''}`));
-          const costPressure = 计算技能消耗压力(skill, actor);
-          const dominantReason = controlEffects.length
-            ? 'CONTROL'
-            : healOrGuardEffects.length
-              ? 'PROTECT_ALLY'
-              : Number(costPressure?.当前压力 || costPressure?.综合压力 || 0) >= 0.28
-                ? 'RESOURCE_PRESSURE'
-                : 'DIRECT_PRESSURE';
-          const baseScore = Math.max(40, Math.round(damagePower || 40) + controlEffects.length * 34 + healOrGuardEffects.length * 22);
-          const alternatives = collectCombatSkills(actor, [])
-            .map(item => newSkillData(item))
-            .filter(item => {
-              const name = normalizeBattleActionDisplayName(item?.name || item?.魂技名 || item?.技能名称 || '');
-              return name && name !== actionName && skillTargetsEnemySide(item) === skillTargetsEnemySide(skill);
-            });
-          if (!alternatives.some(item => /普通攻击|常规攻击/.test(normalizeBattleActionDisplayName(item?.name || item?.魂技名 || '')))) {
-            alternatives.push(normalizeSkillData({
-              name: '普通攻击',
-              魂技名: '普通攻击',
-              技能分类: '输出',
-              目标: skillTargetsEnemySide(skill) ? '敌方单体' : '自身',
-              消耗: '无',
-              前摇: 10,
-              _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }],
-            }, '普通攻击'));
-          }
-          const rejectionCode = dominantReason === 'CONTROL'
-            ? 'CONTROL_GAP'
-            : dominantReason === 'PROTECT_ALLY'
-              ? 'PROTECT_ALLY_GAP'
-              : dominantReason === 'RESOURCE_PRESSURE'
-                ? 'RESOURCE_PRESSURE'
-                : 'DIRECT_PRESSURE_GAP';
-          const alternative = alternatives[0] || null;
-          const alternativeName = normalizeBattleActionDisplayName(alternative?.name || alternative?.魂技名 || alternative?.技能名称 || '');
-          const alternativeEffects = alternative
-            ? [
-                ...getSkillEffects(alternative, { 行为规划: true, target, defender: target }),
-                ...(Array.isArray(alternative?._效果数组) ? alternative._效果数组 : []),
-                ...(Array.isArray(alternative?.效果数组) ? alternative.效果数组 : []),
-              ]
-            : [];
-          const finalEffectTags = 读取效果标签(effects);
-          const alternativeEffectTags = 读取效果标签(alternativeEffects);
-          const controlGapVerified = finalEffectTags.includes('CONTROL_RESTRICTION') && !alternativeEffectTags.includes('CONTROL_RESTRICTION');
-          const candidateRows = [{
-            candidateId: `locked_${actionName}`,
-            candidateName: actionName,
-            名称: actionName,
-            score: baseScore,
-            权重: baseScore,
-            candidateStatus: 战斗候选状态转移('', 'EXECUTED'),
-            rejectionCode: '',
-            effectTags: finalEffectTags,
-            candidateSource: 'EXECUTED_ACTION_FACT',
-          }];
-          if (alternativeName) {
-            candidateRows.push({
-              candidateId: `alternative_${alternativeName}`,
-              candidateName: alternativeName,
-              名称: alternativeName,
-              score: Math.max(1, baseScore - (dominantReason === 'CONTROL' ? 8 : 12)),
-              权重: Math.max(1, baseScore - (dominantReason === 'CONTROL' ? 8 : 12)),
-              candidateStatus: 战斗候选状态转移('', 'REJECTED'),
-              rejectionCode: dominantReason === 'CONTROL' && !controlGapVerified ? 'LOWER_PRIORITY' : rejectionCode,
-              effectTags: alternativeEffectTags,
-              rejectedByEffectGap: dominantReason === 'CONTROL' ? (controlGapVerified ? 'CONTROL_RESTRICTION_GAP' : '') : '',
-              candidateSource: 'SYNTHETIC_BASELINE',
-            });
-          }
-          const reasonText = [
-            dominantReason === 'CONTROL' ? `控制收益:${controlEffects.map(effect => effect?.状态名称 || effect?.状态 || effect?.原型 || '限制').filter(Boolean).join('、') || '限制反扑'}` : '',
-            dominantReason === 'PROTECT_ALLY' ? '保护收益:己方防线需要支援' : '',
-            dominantReason === 'RESOURCE_PRESSURE' ? '资源后果:当前动作更利于维持后续魂力节奏' : '',
-            dominantReason === 'DIRECT_PRESSURE' ? '攻势收益:当前动作能稳定推进战线' : '',
-          ].filter(Boolean);
-          return {
-            actionName,
-            targetName,
-            dominantReason,
-            baseScore,
-            candidateRows,
-            reasonText,
-            targetSemantics: String(getSkillTarget(skill) || extra.targetPoolSide || '').trim(),
-            carryMode: String(skill.承载方式 || action?.action_type || action?.type || '').trim(),
-          };
-        };
-        const 记账动作起手 = (action = null, actor = null, target = null, extra = {}) => {
-          if (!action || !actor) return null;
-          const actorSide = 读取规划单位阵营(actor, combatData) === '敌方' ? 'enemy' : 'player';
-          const narrativeFact = 构建动作叙事审计事实(actor, action, target, extra);
-          const actionTypeText = String(action?.action_type || action?.type || extra.actionType || '').trim();
-          const actionNameText = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || actionTypeText || '');
-          const 是反应类起手事实 =
-            /应招|反应|防反|counter|reaction|dodge|guard|defend/i.test(`${actionTypeText} ${extra.source || ''}`) ||
-            /敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰/.test(actionNameText);
-          const event = 写入战斗事件账本(combatData, {
-            eventKind: 'action_start',
-            round: roundCount,
-            actorName: actor?.name || actor?.名称 || '',
-            actorSide,
-            targetName: target?.name || target?.名称 || extra.targetName || '',
-            targetSide: 推断战斗目标阵营侧(actorSide, extra.targetPoolSide || ''),
-            actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '',
-            actionType: action?.action_type || action?.type || '',
-            actorControl: String(extra.actorControl || 'AI').trim(),
-            actionRole: extra.actionRole || (是反应类起手事实 ? 'REACTION' : 'ACTIVE'),
-            targetScope: String(extra.targetScope || 推断战斗行动目标范围(action) || '').trim(),
-            targetPoolSide: String(extra.targetPoolSide || '').trim(),
-            result: 'declared',
-          });
-          if (narrativeFact && !是反应类起手事实) {
-            记录行动闭环审计(combatData, '战术确立', {
-              actionId: event?.actionId || '',
-              行动者: actor?.name || actor?.名称 || '',
-              目标: narrativeFact.targetName,
-              技能: narrativeFact.actionName,
-              回合: roundCount,
-              战略意图: narrativeFact.dominantReason,
-              目标理由: narrativeFact.reasonText,
-              候选来源: '结构化动作事实',
-              原始权重: narrativeFact.baseScore,
-              最终权重: narrativeFact.baseScore,
-              选择原因: '结构化动作事实锁定',
-              hitCandidateName: narrativeFact.actionName,
-              selectedCandidateName: narrativeFact.actionName,
-              finalResolvedActionName: narrativeFact.actionName,
-              目标语义: narrativeFact.targetSemantics,
-              承载方式: narrativeFact.carryMode,
-              候选排序结果: narrativeFact.candidateRows,
-              旁路: false,
-            });
-          }
-          return event;
-        };
-        const 记账应招动作 = (reactionAction = null, reactor = null, attackerUnit = null, sourceActionEvent = null, sourceAction = null, extra = {}) => {
-          if (!reactionAction || !reactor || !attackerUnit || !sourceActionEvent) return null;
-          const reactionType = String(reactionAction.type || reactionAction.action_type || '').trim();
-          const reactionSkillName = normalizeBattleActionDisplayName(reactionAction?.skill?.name || reactionAction?.skill?.魂技名 || reactionType || '应招');
-          const sourceActionName = sourceActionEvent?.actionName || sourceAction?.skill?.name || sourceAction?.skill?.魂技名 || sourceAction?.action_type || sourceAction?.type || '';
-          const sourceActorName = String(attackerUnit?.name || attackerUnit?.名称 || '').trim();
-          const reactionActorName = String(reactor?.name || reactor?.名称 || '').trim();
-          const ratioTrace = combatData && typeof combatData.__lastReactionRatioTrace === 'object' ? combatData.__lastReactionRatioTrace : {};
-          let eventKind = 'pass';
-          let result = 'failed';
-          let reactionRole = 'defender';
-          if (/伺机闪避|闪避|dodge/i.test(reactionType + reactionSkillName)) {
-            eventKind = 'dodge';
-            result = /成功|evaded|dodge_success/i.test(String(reactionAction.log || reactionAction.result || '')) ? 'evaded' : 'attempted';
-            reactionRole = 'dodge';
-          } else if (/防御|承伤硬抗|硬抗|偏转|收招转防|借力守势|坚壁|guard|defend/i.test(reactionType + reactionSkillName)) {
-            eventKind = 'defend';
-            result = 'guarded';
-            reactionRole = /偏转|防反|counter/i.test(reactionType + reactionSkillName) ? 'counter' : 'guard';
-          } else if (/无法反应|来不及|被控|控制|抢招失败|no reaction/i.test(reactionType + String(reactionAction.log || ''))) {
-            eventKind = 'pass';
-            result = 'reaction_failed';
-          }
-          const reactionTrace = {
-            sourceActionId: String(sourceActionEvent?.actionId || '').trim(),
-            sourceActorName,
-            sourceActionName: normalizeBattleActionDisplayName(sourceActionName),
-            reactionActorName,
-            reactionActionName: reactionSkillName,
-            reactionRole,
-            reactionOutcome: result,
-            parentNodeId: String(sourceActionEvent?.chainNodeId || '').trim(),
-            reactionValue: Number(ratioTrace.defenderReaction || 0),
-            sourceActionSpeed: Number(ratioTrace.attackerSpeed || 0),
-            reactionRatio: Number(extra.reactionRatio || ratioTrace.reactionRatio || 0),
-            reactionAgility: Number(ratioTrace.defenderAgility || 0),
-            reactionMental: Number(ratioTrace.defenderMentalMax || 0),
-            sourceAgility: Number(ratioTrace.attackerAgility || 0),
-            castPenalty: Number(ratioTrace.castPenalty || 0),
-            defenderAgilityComponent: Number(ratioTrace.defenderAgilityComponent || 0),
-            defenderMentalComponent: Number(ratioTrace.defenderMentalComponent || 0),
-            defenderReactionBonus: Number(ratioTrace.defenderReactionBonus || 0),
-            defenderReactionPenalty: Number(ratioTrace.defenderReactionPenalty || 0),
-            defenderAgilityMult: Number(ratioTrace.defenderAgilityMult || 1),
-            reactionBaseBeforeMultiplier: Number(ratioTrace.reactionBaseBeforeMultiplier || 0),
-            maintainReactionPenalty: Number(ratioTrace.maintainReactionPenalty || 0),
-            maintainReactionMultiplier: Number(ratioTrace.maintainReactionMultiplier || 1),
-            reactionBudget: Number(ratioTrace.reactionBudget || 0),
-            reactionBudgetMultiplier: Number(ratioTrace.reactionBudgetMultiplier || 1),
-            experienceReactionMultiplier: Number(ratioTrace.experienceReactionMultiplier || 1),
-            ratioPostMultiplier: Number(ratioTrace.ratioPostMultiplier || 1),
-            firstStrikePenalty: ratioTrace.firstStrikePenalty === true,
-            cannotReact: ratioTrace.cannotReact === true,
-          };
-          return 写入战斗事件账本(combatData, {
-            eventKind,
-            round: Number(combatData?.回合 || roundCount || 0),
-            actorName: reactionActorName,
-            targetName: sourceActorName,
-            actionName: reactionSkillName,
-            initialActionName: normalizeBattleActionDisplayName(extra.initialReactionName || reactionSkillName),
-            finalActionName: reactionSkillName,
-            discardedActionName: normalizeBattleActionDisplayName(extra.discardedReactionName || ''),
-            actionType: 'reaction',
-            sourceActionName,
-            sourceActionId: sourceActionEvent?.actionId || '',
-            parentNodeId: sourceActionEvent?.chainNodeId || '',
-            sourceNodeId: sourceActionEvent?.chainNodeId || '',
-            result,
-            meta: {
-              reactionTrace,
-              source: String(extra.source || 'reaction_action').trim(),
-              reactionType,
-              reactionLog: String(reactionAction.log || '').trim(),
-              sourceActionName,
-              initialActionName: normalizeBattleActionDisplayName(extra.initialReactionName || reactionSkillName),
-              finalActionName: reactionSkillName,
-              discardedActionName: normalizeBattleActionDisplayName(extra.discardedReactionName || ''),
-              reactionRatio: reactionTrace.reactionRatio,
-              attackerCastTime: Number(extra.attackerCastTime || 0),
-              reactorCastTime: Number(extra.reactorCastTime || 0),
-              castTimeGap: Number(extra.castTimeGap || 0),
-              threatScore: Number(extra.threatScore || 0),
-              reasonCode: String(extra.reasonCode || (eventKind === 'pass' ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED')).trim(),
-              reasonText: String(extra.reasonText || (eventKind === 'pass' ? '未能取得有效应招窗口' : '行为层选择该应招动作')).trim(),
-              replanReasonCode: String(extra.replanReasonCode || '').trim(),
-            },
-          });
-        };
-        const 记账非敌对落地 = (action = null, actor = null, target = null, settle = null, extra = {}) => {
-          if (!action || !actor) return;
-          const 动作类型 = String(action?.action_type || action?.type || '').trim();
-          const 动作名 = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || 动作类型 || '');
-          const 结果文本 = String(settle?.desc || '').trim();
-          let eventKind = 'pass';
-          let result = 'pass';
-          if (/伺机闪避|闪避/.test(动作类型) || /闪避/.test(动作名)) {
-            eventKind = 'dodge';
-            result = /避开|闪避成功|躲过/.test(结果文本) ? 'evaded' : 'attempted';
-          } else if (/防御|危机自保|承伤硬抗|肉体兜底|收招转防|借力守势|坚壁反制/.test(动作类型) || /防御|承伤硬抗|收招转防|借力守势|坚壁反制/.test(动作名)) {
-            eventKind = 'defend';
-            result = /守住|稳住|防线|对峙/.test(结果文本) ? 'stance_hold' : 'guarded';
-          } else if (/造物/.test(String(action?.skill?.承载方式 || '').trim())) {
-            eventKind = 'create';
-            result = 'created';
-          } else if (/支援|补位|轮换/.test(动作类型)) {
-            eventKind = 'support';
-            result = 'support';
-          } else if (/观察|待机|守势维持|守势对峙/.test(`${动作类型} ${动作名} ${结果文本}`)) {
-            eventKind = 'pass';
-            result = /观察/.test(`${动作类型} ${动作名} ${结果文本}`) ? 'observe' : 'stance_hold';
-          }
-          if (eventKind === 'create') {
-            const round = Number(combatData?.回合 || 0);
-            const actorName = String(actor?.name || actor?.名称 || '').trim();
-            const alreadySettled = (combatData?.__battleEventLedger || []).some(item =>
-              String(item?.eventKind || '').trim() === 'create' &&
-              Number(item?.round || 0) === round &&
-              isSameBattleReportName(String(item?.actorName || '').trim(), actorName) &&
-              normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 动作名
-            );
-            if (alreadySettled) return;
-          }
-          写入战斗事件账本(combatData, {
-            eventKind,
-            round: Number(combatData?.回合 || 0),
-            actorName: actor?.name || actor?.名称 || '',
-            actorSide: 读取规划单位阵营(actor, combatData) === '敌方' ? 'enemy' : 'player',
-            targetName: target?.name || target?.名称 || '',
-            targetSide: 推断战斗目标阵营侧(读取规划单位阵营(actor, combatData) === '敌方' ? 'enemy' : 'player', 'hostile'),
-            actionName: 动作名 || 动作类型,
-            actionType: 动作类型,
-            actorControl: 标准化战斗操控来源(extra.actorControl || (读取规划单位阵营(actor, combatData) === '敌方' ? 'AI' : 'PLAYER_LOCKED'), 'AI'),
-            actionRole: 标准化战斗行动职责(extra.actionRole || 'ACTIVE'),
-            sourceActionId: String(extra.sourceActionId || '').trim(),
-            parentNodeId: String(extra.parentNodeId || '').trim(),
-            result,
-            failReason: '',
-          });
-        };
-        const 动作已在新增账本中落地 = (ledgerStartIndex = 0, actor = null, action = null) => {
-          const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
-          const actorName = String(actor?.name || actor?.名称 || '').trim();
-          const actionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '');
-          if (!actorName || !actionName) return false;
-          return ledger.slice(Math.max(0, Number(ledgerStartIndex || 0))).some(item => {
-            if (!item || typeof item !== 'object') return false;
-            if (!isSameBattleReportName(String(item.actorName || '').trim(), actorName)) return false;
-            const itemActionName = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
-            if (!itemActionName || itemActionName !== actionName) return false;
-            return ['hit_result', 'state_apply', 'create', 'summon_create', 'shield_create', 'support'].includes(String(item.eventKind || '').trim());
-          });
-        };
-        const 动作已在新增账本中闭合 = (ledgerStartIndex = 0, actor = null, action = null) => {
-          const ledger = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : [];
-          const actorName = String(actor?.name || actor?.名称 || '').trim();
-          const actionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.__原定技能名 || action?.__原定动作名 || action?.action_type || action?.type || '');
-          if (!actorName || !actionName) return false;
-          return ledger.slice(Math.max(0, Number(ledgerStartIndex || 0))).some(item => {
-            if (!item || typeof item !== 'object') return false;
-            if (!isSameBattleReportName(String(item.actorName || '').trim(), actorName)) return false;
-            const itemActionName = normalizeBattleActionDisplayName(item.actionName || item.sourceActionName || '');
-            if (!itemActionName || itemActionName !== actionName) return false;
-            return ['hit_result', 'state_apply', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'blocked_action', 'failed_action', 'target_fail'].includes(String(item.eventKind || '').trim());
-          });
-        };
-        const 记账动作受阻 = (action = null, actor = null, target = null, failReason = '', extra = {}) => {
-          if (!action || !actor) return null;
-          const 动作名 = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.__原定技能名 || action?.__原定动作名 || action?.action_type || action?.type || '');
-          if (!动作名) return null;
-          return 写入战斗事件账本(combatData, {
-            eventKind: 'blocked_action',
-            round: Number(combatData?.回合 || 0),
-            actorName: actor?.name || actor?.名称 || '',
-            targetName: target?.name || target?.名称 || '',
-            actionName: 动作名,
-            actionType: String(extra.actionType || action?.action_type || action?.type || 'blocked_action').trim(),
-            sourceActionName: 动作名,
-            sourceRound: Number(combatData?.回合 || 0),
-            result: 'blocked',
-            failReason: String(failReason || '被对手抢先压制，未能形成有效出手').trim(),
-            targetPoolSide: String(extra.targetPoolSide || 'hostile').trim(),
-          });
-        };
-
-        const 构建单挑回合宣告 = roundNumber => {
-          roundCount = roundNumber;
-          combatData.回合 = startingRound + roundCount;
-          let roundLog = `[第${roundCount}回合] `;
-          记录时光回溯回合快照(attacker);
-          记录时光回溯回合快照(defender);
-          const 召唤回合开始日志 = 执行召唤回合开始(combatData);
-          if (召唤回合开始日志) roundLog += `${召唤回合开始日志} `;
-          const 召唤行动轴日志 = 执行自主召唤行动轴回合(combatData);
-          if (召唤行动轴日志) roundLog += `${召唤行动轴日志} `;
-
-          let isCharging = attacker.蓄力技能 != null;
-          let playerAction = null;
-
-          // 1. 玩家硬控拦截扫描
-          let isPlayerControlled = false;
-          if (attacker.状态效果) {
-            for (let key in attacker.状态效果) {
-              if (
-                attacker.状态效果[key].战斗效果 &&
-                attacker.状态效果[key].战斗效果.skip_turn === true
-              ) {
-                isPlayerControlled = true;
-                break;
-              }
-            }
-          }
-
-          if (isPlayerControlled) {
-            roundLog += `[状态受控] 玩家处于硬控状态，本回合无法动作！ `;
-            playerAction = { action_type: '被控挨打', cast_time: 100, skill: null };
-            attacker.蓄力技能 = null;
-          } else if (isCharging) {
-            playerAction = attacker.蓄力技能;
-            const 原定蓄力名 = String(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动').trim() || '行动';
-            if (playerAction.cast_time <= 40) {
-              roundLog += `[蓄力完成] 玩家完成了蓄力，释放了[${原定蓄力名}]！ `;
-              attacker.蓄力技能 = null;
-            } else {
-              playerAction.cast_time -= 30;
-              roundLog += `[蓄力中] 玩家正在为[${原定蓄力名}]蓄力，当前剩余前摇：${playerAction.cast_time}。本回合无法完整出手！ `;
-              playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null, __原定动作名: 原定蓄力名, __原定技能名: 原定蓄力名, __蓄力剩余前摇: playerAction.cast_time };
-            }
-          } else {
-            playerAction = mode === 'multi_round' && roundCount > 1
-              ? (buildAutoPlayerContinuationAction() || parsePlayerIntent('普通攻击', combatData))
-              : parsePlayerIntent(playerInput, combatData, options.actionDeclaration);
-            if (playerAction?.__解析失败日志) {
-              roundLog += `${playerAction.__解析失败日志} `;
-              battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-              continueSimulation = false;
-              return { continueSimulation: false };
-            }
-            if (playerAction?.player_auto_continuation && playerAction.decision_log) roundLog += `${playerAction.decision_log} `;
-            playerAction = 去重动作队列友方辅助(attacker, playerAction);
-            if (
-              roundCount === 1 &&
-              !playerAction?.player_auto_continuation &&
-              (playerAction?.action_type === '释放魂技' || Array.isArray(playerAction?.skill?.__魂环路径))
-            ) {
-              首轮手选动作签名 = 读取本次动作签名(playerAction);
-              首轮手选技能名 = String(playerAction?.skill?.name || playerAction?.skill?.魂技名 || '').trim();
-            }
-            const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
-            const 指定敌方目标 = 玩家动作目标 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 玩家动作目标.name || 玩家动作目标))
-              ? 玩家动作目标
-              : null;
-            if (
-              指定敌方目标 &&
-              (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 指定敌方目标.name || 指定敌方目标))
-            ) {
-              defender = 指定敌方目标;
-              syncCombatActionState(defender);
-            }
-            套用动作队列实际前摇(attacker, playerAction, 玩家动作目标, combatData);
-            if (!visiblePlayerInput) visiblePlayerInput = buildVisibleBattlePlayerInput(playerInput, playerAction, combatData);
-
-            // 💥【终极动作序列时间片机制】一回合能做出的总行动上限为 cast_time = 40！
-            let totalTimeCost = 0;
-            let validPreActions = [];
-            let carryOverAction = null;
-
-            // 1. 先把预先声明的副动作逐个填入时间槽
-            if (playerAction.pre_actions && playerAction.pre_actions.length > 0) {
-              for (let i = 0; i < playerAction.pre_actions.length; i++) {
-                let pa = playerAction.pre_actions[i];
-                if (totalTimeCost + pa.cast_time <= 40) {
-                  totalTimeCost += pa.cast_time;
-                  validPreActions.push(pa);
-                } else {
-                  // 只要超了40，后面所有的动作（包括没放出来的副动作和主动作）全部转为蓄力拖延到下一回合
-                  carryOverAction = pa;
-                  carryOverAction.cast_time -= Math.max(0, 40 - totalTimeCost);
-                  break;
-                }
-              }
-            }
-
-            // 2. 如果副动作还没爆表，轮到尝试塞入主动作
-            if (!carryOverAction) {
-              if (totalTimeCost + playerAction.cast_time <= 40) {
-                totalTimeCost += playerAction.cast_time;
-                // 全套连招完成！顺利打出！
-              } else {
-                // 主动作超时了，转为蓄力
-                carryOverAction = playerAction;
-                carryOverAction.cast_time -= Math.max(0, 40 - totalTimeCost);
-              }
-            }
-
-            // 执行成功挤入本回合时间片的副动作
-            validPreActions.forEach(preAct => {
-              let preCostLog = applyActionCost(attacker, preAct, 玩家动作目标, combatData);
-              if (preCostLog) roundLog += preCostLog + ' ';
-              if (preAct.action_type === '穿戴装备') {
-                应用战斗装备变化(attacker, () => {
-                  const 装备槽 = ensureBattleEquipmentSlot(attacker, preAct.equip_target);
-                  if (装备槽) 装备槽.装备状态 = '已装备';
-                });
-                roundLog += `[连招生效] 玩家在电光火石间成功穿戴了${preAct.equip_target === 'armor' ? '斗铠' : '机甲'}！ `;
-              } else {
-                const 前置结算 = 执行连放前置动作结算(attacker, 玩家动作目标, preAct, combatData);
-                if (前置结算.log) roundLog += `${前置结算.log} `;
-                if (Array.isArray(前置结算.extraPatchOps) && 前置结算.extraPatchOps.length)
-                  clashExtraPatchOps.push(...前置结算.extraPatchOps);
-              }
-              清理动作运行态字段(preAct);
-            });
-            // 为了让后续流程还能认得出主动作，必须将原本的 pre_actions 覆写为实际生效的这几个
-            playerAction.pre_actions = validPreActions;
-
-            // 3. 判定本回合到底是出手，还是蓄力挨打
-            if (carryOverAction) {
-              attacker.蓄力技能 = carryOverAction;
-              const 原定动作名 = String(carryOverAction.skill?.name || carryOverAction.skill?.魂技名 || carryOverAction.__原定技能名 || carryOverAction.__原定动作名 || carryOverAction.action_type || '行动').trim() || '行动';
-              roundLog += `[连招中断/转蓄力] ${getCombatReportUnitName(attacker, '玩家')}的【${原定动作名}】前摇过长，本回合转入蓄力，当前剩余前摇：${carryOverAction.cast_time}。 `;
-              // 主动作被没收，变成了“蓄力挨打”态，用来触发后续的防御与闪避博弈
-              playerAction = { action_type: '蓄力挨打', cast_time: 100, skill: null, __原定动作名: 原定动作名, __原定技能名: 原定动作名, __蓄力剩余前摇: carryOverAction.cast_time };
-            }
-          }
-
-          if (playerAction?.action_type === '收回召唤') {
-            roundLog += `${主动收回召唤单位(combatData, attacker, playerAction.target_name || '')} `;
-            playerAction = { action_type: '防御', cast_time: 10, skill: normalizeSkillData({ name: '收回召唤', 技能分类: '辅助', 消耗: '无', 前摇: 10 }, '收回召唤') };
-          }
-
-          const 玩家动作目标 = 解析单挑动作目标(playerAction, attacker, defender, combatData) || defender;
-          const 玩家动作敌对 = 单挑动作可触发攻击反应链(playerAction, attacker, 玩家动作目标, combatData);
-          const isPassivePlayerTurn = 单挑动作是防守反应(playerAction);
-          const npcActorEntry = { char: defender, side: 'enemy' };
-          const npcTargets = {
-            // 玩家主动入口只演算围绕当前玩家的对抗链；敌方若要转火其他玩家侧单位，由团战行动轴 runActorTurn() 负责。
-            enemyTarget: attacker,
-            allyTarget: findAllyTarget(defender, 读取战斗阵营单位列表(combatData, '敌方'), combatData),
-          };
-          记录行动闭环审计(combatData, '索敌规划', {
-            行动者: defender?.name || defender?.名称 || '',
-            目标: attacker?.name || attacker?.名称 || '',
-            战略意图: '玩家主动入口对抗链',
-            目标理由: ['当前玩家行动触发对抗'],
-            候选来源: '玩家主动入口固定对抗目标',
-            原始净收益: 100,
-            最终权重: 100,
-            选择原因: '当前玩家动作触发的单链对抗目标',
-          });
-          let npcDeclaredAction = buildAutoActionForActor(npcActorEntry, npcTargets, { combatData, observedTargetAction: playerAction }) || {
-            action_type: '战术待机',
-            type: '战术待机',
-            cast_time: 10,
-            skill: normalizeSkillData({ name: '战术待机', 技能分类: '辅助', 消耗: '无', 前摇: 10 }, '战术待机'),
-            decision_log: `[战术待机] ${defender.name || '对手'}暂未形成明确攻势。`,
-          };
-          npcDeclaredAction = 去重动作队列友方辅助(defender, npcDeclaredAction);
-          const npcDeclaredTarget = 解析单挑动作目标(npcDeclaredAction, defender, attacker, combatData) || attacker;
-          套用动作队列实际前摇(defender, npcDeclaredAction, npcDeclaredTarget, combatData);
-          const npcDeclaredHostile = 单挑动作可触发攻击反应链(npcDeclaredAction, defender, npcDeclaredTarget, combatData);
-          const npcDeclaredNonAttack = 单挑动作是非攻击落地(npcDeclaredAction);
-          const 玩家前摇 = 读取单挑动作前摇(playerAction);
-          const npc前摇 = 读取单挑动作前摇(npcDeclaredAction);
-          const 构建单挑行动窗口 = 前摇 => {
-            const value = Math.max(0, Math.min(39, Math.floor(Number(前摇 || 0))));
-            const start = Math.floor(value / 10) * 10;
-            return `${start}-${start + 9}`;
-          };
-          写入行动轴初始意图节点(combatData, { char: attacker, side: 'player' }, 玩家动作目标 || defender, playerAction, 构建单挑行动窗口(玩家前摇));
-          写入行动轴初始意图节点(combatData, { char: defender, side: 'enemy' }, npcDeclaredTarget || attacker, npcDeclaredAction, 构建单挑行动窗口(npc前摇));
-          const 玩家技能 = playerAction?.skill || null;
-          const 玩家技能名 = normalizeBattleActionDisplayName(玩家技能?.name || 玩家技能?.魂技名 || playerAction?.action_type || playerAction?.type || '');
-          const 玩家目标文本 = String(getSkillTarget(玩家技能 || {}) || '').trim();
-          const 玩家疑似范围控制命名 = /群|散射|风暴|领域|锁|印|牵制/.test(玩家技能名);
-          const 玩家技能偏友方 = 技能偏向友方目标(玩家技能 || {}, playerAction);
-          const 玩家技能自用 = inferSkillPrimaryTargetKind(玩家技能 || {}) === '自身' || /自身/.test(玩家目标文本);
-          const 玩家范围控制敌对 =
-            玩家动作敌对 &&
-            !!玩家技能 &&
-            !玩家技能偏友方 &&
-            !玩家技能自用 &&
-            (
-              isBattleSkillControlProfile(玩家技能) ||
-              /群体|全场/.test(玩家目标文本) ||
-              玩家疑似范围控制命名 ||
-              hasBattleSkillRuntimeConsumer(玩家技能, ['interrupt', 'hard_control', 'skill_seal'])
-            );
-          const npcDeclaredSkill = npcDeclaredAction?.skill || null;
-          const npc真截断资格 = !!npcDeclaredSkill && 判定技能具备真实截断资格_V1(npcDeclaredSkill);
-          const 玩家范围控制可延后落地 = 玩家范围控制敌对 && !npc真截断资格;
-          const npcShouldActFirst =
-            npcDeclaredHostile && !npcDeclaredNonAttack &&
-            (!玩家范围控制敌对 || npc真截断资格) &&
-            (isPassivePlayerTurn ||
-              !玩家动作敌对 ||
-              npc前摇 < 玩家前摇 ||
-              (npc前摇 === 玩家前摇 && Number(defender.agi || 0) > Number(attacker.agi || 0)));
-          return {
-            continueSimulation: true,
-            roundLog,
-            playerAction,
-            玩家动作目标,
-            玩家动作敌对,
-            isPassivePlayerTurn,
-            npcDeclaredAction,
-            npcDeclaredTarget,
-            npcDeclaredHostile,
-            npcDeclaredNonAttack,
-            玩家前摇,
-            npc前摇,
-            玩家范围控制可延后落地,
-            npcShouldActFirst,
-          };
-        };
-
-        const 执行单挑回合交锋 = roundNumber => {
-          const 宣告结果 = 构建单挑回合宣告(roundNumber);
-          if (宣告结果?.continueSimulation === false) return 宣告结果;
-          const {
-            roundLog: 宣告日志,
-            playerAction,
-            玩家动作目标,
-            玩家动作敌对,
-            isPassivePlayerTurn,
-            npcDeclaredAction,
-            npcDeclaredTarget,
-            npcDeclaredHostile,
-            npcDeclaredNonAttack,
-            玩家前摇,
-            npc前摇,
-            玩家范围控制可延后落地,
-            npcShouldActFirst,
-          } = 宣告结果;
-          let roundLog = 宣告日志;
-          let 主动结算方 = attacker;
-          let 被动结算目标 = 玩家动作目标 || defender;
-          let 主动结算动作 = playerAction;
-          let 反应结算动作 = null;
-          let 主动结算战斗数据 = combatData;
-          let 本轮NPC先手 = false;
-          let 玩家非敌对动作已执行 = false;
-          let 玩家非敌对动作已完成 = false;
-          let 玩家非敌对动作释放失败 = false;
-          let 行为链结果 = null;
-          let settleResult = null;
-          const 本回合玩家动作账本起点 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-          const 本回合账本起点 = 本回合玩家动作账本起点;
-          let 玩家主动起手事件 = null;
-          const 记账玩家主动起手 = () => {
-            if (玩家主动起手事件) return 玩家主动起手事件;
-            玩家主动起手事件 = 记账动作起手(playerAction, attacker, 玩家动作目标 || defender, {
-              targetPoolSide: 玩家动作敌对 ? 'hostile' : 'friendly',
-              actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED',
-              actionRole: 'ACTIVE',
-            });
-            return 玩家主动起手事件;
-          };
-          记账玩家主动起手();
-          const 扣除玩家动作成本 = (动作 = playerAction, 目标 = 玩家动作目标) => {
-            if (!动作 || 动作.action_type === '施法失败' || 动作.__主动成本已结算 === true) return 动作?.action_type !== '施法失败';
-            const costLog = applyActionCost(attacker, 动作, 目标, combatData);
-            if (costLog) roundLog += `${costLog} `;
-            return 动作.action_type !== '施法失败';
-          };
-
-          const 执行非敌对玩家动作 = () => {
-            if (玩家非敌对动作已执行) return { dmg: 0, desc: '', extraPatchOps: [] };
-            玩家非敌对动作已执行 = true;
-            const target = 玩家动作目标 || attacker;
-            if (!扣除玩家动作成本(playerAction, target)) {
-              玩家非敌对动作释放失败 = true;
-              return { dmg: 0, desc: '', extraPatchOps: [] };
-            }
-            const supportCombatData = 构建单挑临时战斗数据(attacker, target, 'player', combatData);
-            const supportReaction = 构建单挑配合动作(attacker, target, playerAction);
-            const supportResult = 执行单挑队列结算(playerAction, supportReaction, supportCombatData);
-            if (Array.isArray(supportResult.extraPatchOps) && supportResult.extraPatchOps.length) {
-              clashExtraPatchOps.push(...supportResult.extraPatchOps);
-              supportResult.__extraPatchOps已收集 = true;
-            }
-            roundLog += `${supportReaction.log} ${supportResult.desc} `;
-            玩家非敌对动作已完成 = true;
-            return supportResult;
-          };
-          const 扣除NPC主动动作成本 = () => {
-            if (npcDeclaredAction.__主动成本已结算 === true) return;
-            const costLog = applyActionCost(defender, npcDeclaredAction, attacker, combatData);
-            if (costLog) roundLog += `${costLog} `;
-          };
-          const 执行NPC主动压制 = (npcActionStartEvent, 记录玩家防守姿态 = false) => {
-            主动结算方 = defender;
-            被动结算目标 = attacker;
-            主动结算动作 = npcDeclaredAction;
-            反应结算动作 = 玩家非敌对动作已完成
-              ? { type: '无法反应', log: `[先手压制] ${getCombatReportUnitName(attacker, '我方')}刚完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】，来不及追加防守。`, skill: null, def_mult: 1 }
-              : 构建单挑反应动作(playerAction, attacker, defender);
-            if (记录玩家防守姿态 && !玩家非敌对动作已完成) {
-              记账非敌对落地(playerAction, attacker, defender, {
-                desc: String(反应结算动作?.log || '').trim() || `${getCombatReportUnitName(attacker, '我方')}完成【${playerAction?.action_type || '防守'}】。`,
-              }, {
-                actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED',
-                actionRole: 'ACTIVE',
-                sourceActionId: 玩家主动起手事件?.actionId || '',
-                parentNodeId: 玩家主动起手事件?.chainNodeId || '',
-              });
-            }
-            主动结算战斗数据 = 构建单挑临时战斗数据(defender, attacker, 'enemy', combatData);
-            主动结算动作.target_name = attacker.name || attacker.名称 || '';
-            本轮NPC先手 = true;
-            扣除NPC主动动作成本();
-            if (反应结算动作?.skill && 反应结算动作.skill === playerAction?.skill && !扣除玩家动作成本(playerAction, defender)) {
-              反应结算动作 = { type: '无法反应', log: `[抢招失败] ${getCombatReportUnitName(attacker, '我方')}未能支撑【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】的启动消耗，抢招未成。`, skill: null, def_mult: 1 };
-            }
-            const 结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-            行为链结果 = 自动行为链再判定(defender, attacker, 主动结算动作, 反应结算动作, 主动结算战斗数据);
-            记账应招动作(反应结算动作, attacker, defender, npcActionStartEvent, 主动结算动作, {
-              source: 'single_duel_reaction',
-              reactionRatio: calculateReactionRatio(defender, attacker, 主动结算动作, 主动结算战斗数据),
-              attackerCastTime: 读取单挑动作前摇(主动结算动作),
-              reactorCastTime: 读取单挑动作前摇(playerAction),
-              castTimeGap: 读取单挑动作前摇(playerAction) - 读取单挑动作前摇(主动结算动作),
-              threatScore: Math.max(0, Number(getPrimaryDamageEffect(主动结算动作?.skill, { 行为规划: true })?.威力倍率 || 0)),
-              initialReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || ''),
-              discardedReactionName: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') : '',
-              replanReasonCode: normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '') !== normalizeBattleActionDisplayName(反应结算动作?.skill?.name || 反应结算动作?.skill?.魂技名 || 反应结算动作?.type || 反应结算动作?.action_type || '') ? 'INTERRUPTED_BY_SPEED' : '',
-            });
-            settleResult = 执行单挑队列结算(主动结算动作, 反应结算动作, 主动结算战斗数据);
-            const 玩家动作尚未落地 = 玩家动作敌对 && !动作已在新增账本中落地(结算前账本长度, attacker, playerAction);
-            const 玩家仍可行动 =
-              isCombatUnitAbleToFight(attacker) &&
-              !Object.values(attacker?.状态效果 || {}).some(状态 => {
-                const 效果 = 状态?.战斗效果 || {};
-                return 效果.skip_turn === true || 效果.cannot_react === true;
-              });
-            if (玩家动作尚未落地 && 玩家范围控制可延后落地 && 玩家仍可行动) {
-              const 玩家延后战斗数据 = 构建单挑临时战斗数据(attacker, defender, 'player', combatData);
-              const 玩家延后反应 = {
-                type: '无法反应',
-                log: `[后续出手] ${getCombatReportUnitName(attacker, '我方')}顶住先手压制，继续完成【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || '行动'}】。`,
-                skill: null,
-                def_mult: 1,
-              };
-              const 玩家延后结算 = 执行单挑队列结算(playerAction, 玩家延后反应, 玩家延后战斗数据);
-              if (Array.isArray(玩家延后结算.extraPatchOps) && 玩家延后结算.extraPatchOps.length && 玩家延后结算.__extraPatchOps已收集 !== true) {
-                clashExtraPatchOps.push(...玩家延后结算.extraPatchOps);
-              }
-              roundLog += ` ${玩家延后反应.log} ${玩家延后结算.desc}`;
-            }
-            if (
-              玩家动作敌对 &&
-              !(玩家范围控制可延后落地 && 玩家仍可行动 && 动作已在新增账本中落地(结算前账本长度, attacker, playerAction)) &&
-              !动作已在新增账本中落地(结算前账本长度, attacker, playerAction)
-            ) {
-              const 受阻原因 =
-                反应结算动作?.type === '强势对轰'
-                  ? '被对手抢先压制，未能形成有效出手'
-                  : '被对手先手压制，未能形成有效出手';
-              记账动作受阻(playerAction, attacker, defender, 受阻原因, { targetPoolSide: 'hostile' });
-            }
-            roundLog += replaceBattleReportGenericNames(
-              `${主动结算动作.decision_log ? 主动结算动作.decision_log + ' ' : ''}${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${反应结算动作.log} ${settleResult.desc}`,
-              { player: defender, enemy: attacker },
-            );
-          };
-
-          if (npcShouldActFirst) {
-            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
-            if (!isPassivePlayerTurn && !玩家动作敌对 && 玩家前摇 <= npc前摇) 执行非敌对玩家动作();
-            执行NPC主动压制(npcActionStartEvent, isPassivePlayerTurn);
-          } else if (玩家动作敌对) {
-            const playerActionStartEvent = 玩家主动起手事件 || 记账玩家主动起手();
-            if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
-              battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-              continueSimulation = false;
-              return { continueSimulation: false };
-            }
-            const reactionRatio = calculateReactionRatio(attacker, defender, playerAction, combatData);
-            const npcAction = determineNpcAction(combatData, playerAction, reactionRatio);
-            反应结算动作 = npcAction;
-            行为链结果 = 自动行为链再判定(attacker, defender, playerAction, npcAction, combatData);
-            记账应招动作(npcAction, defender, attacker, playerActionStartEvent, playerAction, {
-              source: 'single_duel_reaction',
-              reactionRatio,
-              attackerCastTime: 读取单挑动作前摇(playerAction),
-              reactorCastTime: 读取单挑动作前摇(npcDeclaredAction),
-              castTimeGap: 读取单挑动作前摇(npcDeclaredAction) - 读取单挑动作前摇(playerAction),
-              threatScore: Math.max(0, Number(getPrimaryDamageEffect(playerAction?.skill, { 行为规划: true })?.威力倍率 || 0)),
-              initialReactionName: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || ''),
-              discardedReactionName: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') !== normalizeBattleActionDisplayName(npcAction?.skill?.name || npcAction?.skill?.魂技名 || npcAction?.type || npcAction?.action_type || '') ? normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') : '',
-              replanReasonCode: normalizeBattleActionDisplayName(npcDeclaredAction?.skill?.name || npcDeclaredAction?.skill?.魂技名 || npcDeclaredAction?.action_type || npcDeclaredAction?.type || '') !== normalizeBattleActionDisplayName(npcAction?.skill?.name || npcAction?.skill?.魂技名 || npcAction?.type || npcAction?.action_type || '') ? 'TACTICAL_DISADVANTAGE' : '',
-            });
-            const 玩家主动结算前账本长度 = Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0;
-            settleResult = 执行单挑队列结算(playerAction, npcAction, combatData);
-            if (
-              /强势对轰|主动压迫|抢先压制/.test(String(npcAction?.type || npcAction?.action_type || '')) &&
-              !动作已在新增账本中落地(玩家主动结算前账本长度, attacker, playerAction)
-            ) {
-              记账动作受阻(playerAction, attacker, defender, '被对手抢先压制，未能形成有效出手', { targetPoolSide: 'hostile' });
-            }
-            roundLog += `${行为链结果?.日志 ? 行为链结果.日志 + ' ' : ''}${npcAction.log} ${settleResult.desc}`;
-          } else if (isPassivePlayerTurn) {
-            if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
-              battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-              continueSimulation = false;
-              return { continueSimulation: false };
-            }
-            const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, {
-              targetPoolSide: 'hostile',
-              actorControl: 'AI',
-              actionRole: 'ACTIVE',
-            });
-            反应结算动作 = npcDeclaredAction;
-            settleResult = resolvePassivePlayerStance(playerAction, npcDeclaredAction, attacker, defender);
-            记账非敌对落地(playerAction, attacker, defender, settleResult, {
-              actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED',
-              actionRole: 'ACTIVE',
-              sourceActionId: 玩家主动起手事件?.actionId || '',
-              parentNodeId: 玩家主动起手事件?.chainNodeId || '',
-            });
-            记账非敌对落地(npcDeclaredAction, defender, attacker, {
-              desc: String(npcDeclaredAction?.decision_log || '').trim() || `${defender?.name || '对手'}保持主动防线。`,
-            }, {
-              actorControl: 'AI',
-              actionRole: 'ACTIVE',
-              sourceActionId: npcActionStartEvent?.actionId || '',
-              parentNodeId: npcActionStartEvent?.chainNodeId || '',
-            });
-            roundLog += `${npcDeclaredAction.decision_log ? npcDeclaredAction.decision_log + ' ' : ''}${settleResult.desc}`;
-          } else {
-            settleResult = 执行非敌对玩家动作();
-            记账非敌对落地(playerAction, attacker, defender, settleResult, {
-              actorControl: playerAction?.player_auto_continuation ? 'AI' : 'PLAYER_LOCKED',
-              actionRole: 'ACTIVE',
-              sourceActionId: 玩家主动起手事件?.actionId || '',
-              parentNodeId: 玩家主动起手事件?.chainNodeId || '',
-            });
-            if (玩家非敌对动作释放失败) {
-              // 释放失败已经在 roundLog 中说明，避免继续把对手行动缝进同一条失败链。
-            } else if (npcDeclaredHostile && !npcDeclaredNonAttack) {
-              const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, { targetPoolSide: 'hostile', actorControl: 'AI', actionRole: 'ACTIVE' });
-              执行NPC主动压制(npcActionStartEvent);
-            } else if (npcDeclaredAction.decision_log) {
-              记账非敌对落地(npcDeclaredAction, defender, attacker, { desc: npcDeclaredAction.decision_log });
-              roundLog += ` ${npcDeclaredAction.decision_log}`;
-            }
-          }
-          if (Array.isArray(settleResult.extraPatchOps) && settleResult.extraPatchOps.length && settleResult.__extraPatchOps已收集 !== true)
-            clashExtraPatchOps.push(...settleResult.extraPatchOps);
-
-          let 蓄力反噬终止本轮 = false;
-          if (attacker.蓄力技能 != null) {
-            let damageRatio = Number(settleResult.totalProjectedDamage || settleResult.dmg || 0) / getCombatHpMaxValue(attacker);
-            let isControlled = attacker.状态效果 && attacker.状态效果['眩晕'];
-
-            let hasSuperArmor = false;
-            if (attacker.状态效果) {
-              for (let key in attacker.状态效果) {
-                if (
-                  attacker.状态效果[key].战斗效果?.super_armor === true ||
-                  key.includes('霸体') ||
-                  key.includes('真身')
-                )
-                  hasSuperArmor = true;
-              }
-            }
-
-            const 压制动作 = 本轮NPC先手 ? 主动结算动作 : 反应结算动作;
-            const npcSkillType = getSkillType(压制动作?.skill);
-            if (压制动作?.type === '控制截断' && npcSkillType === '控制' && getSkillCastTime(压制动作.skill) < 10) {
-              const npc精神压制 = 计算当前资源压制倍率(defender, defender.final || {}, attacker, attacker.final || {}, 'men', {
-                下限: 0,
-                上限: 2,
-                压制指数: 1,
-              });
-              if (npc精神压制 >= 1 || defender.agi > attacker.agi) {
-                if (hasSuperArmor) {
-                  roundLog += ` NPC释放[${压制动作.skill.name}]试图打断，但玩家处于霸体状态，强行免疫了控制！`;
-                } else {
-                  const 反噬结果 = 结算蓄力打断反噬(attacker, defender, 压制动作, combatData);
-                  roundLog += ` ${反噬结果.log}`;
-                  attacker.蓄力技能 = null;
-                  蓄力反噬终止本轮 = true;
-                }
-              }
-            }
-
-            if (!蓄力反噬终止本轮 && !hasSuperArmor && (damageRatio >= 0.3 || isControlled)) {
-              roundLog += ` [蓄力打断] 玩家受到重创或硬控，蓄力被强制打断！`;
-              attacker.蓄力技能 = null;
-            } else if (hasSuperArmor && isControlled) {
-              roundLog += ` [霸体强抗] 玩家遭遇硬控，但凭借霸体强行稳住阵脚，蓄力继续！`;
-              delete attacker.状态效果['眩晕'];
-            }
-          }
-
-          let appliedDamage = 0;
-          if (!蓄力反噬终止本轮) {
-            // 简单判断被动方是否被打断 (如果主动方伤害极高或带有硬控，视为打断)
-            const activeStateCalc = getPrimaryStateCalc(主动结算动作?.skill);
-            const activeInterruptChance = 计算行动打断概率(主动结算动作?.skill, 被动结算目标, settleResult);
-            let isPassiveInterrupted =
-              activeStateCalc.skip_turn === true ||
-              getPrimaryStateFlags(主动结算动作?.skill).includes('硬控') ||
-              BATTLE_RUNTIME.probabilitySucceeds(activeInterruptChance);
-
-            // --- 第四步：打击烈度与破防标尺 ---
-            const damagePackage = applyResolvedDamagePackage(主动结算方, 主动结算动作, settleResult, {
-              primaryTarget: 被动结算目标,
-              combatData: 主动结算战斗数据,
-            });
-            appliedDamage = damagePackage.primaryAppliedDamage;
-            本次最大单击HP比例 = Math.max(
-              本次最大单击HP比例,
-              Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
-              Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) /
-                getCombatHpMaxValue(主动结算方),
-            );
-            if (damagePackage.log) roundLog += ` ${damagePackage.log}`;
-            const 召唤协同日志 = 主动结算方?.召唤键
-              ? ''
-              : 执行协同召唤追击(主动结算方, 被动结算目标, damagePackage.primaryAppliedDamage, combatData);
-            if (召唤协同日志) roundLog += ` ${召唤协同日志}`;
-            if (settleResult?.撤离结果 === '成功') {
-              撤离结算结果 = '成功';
-              combatData.前端建议结果 = '强制撤离';
-              combatData.裁断结果 = '玩家成功撤离';
-              combatData.进行中 = false;
-              continueSimulation = false;
-            }
-            const 行为防反日志 = 执行行为防反结算(
-              主动结算方,
-              被动结算目标,
-              主动结算动作,
-              反应结算动作 || { type: '无法反应', log: '', skill: null, def_mult: 1 },
-              settleResult,
-              damagePackage,
-              主动结算战斗数据,
-            );
-            if (行为防反日志) roundLog += ` ${行为防反日志}`;
-            isPassiveInterrupted = isPassiveInterrupted || appliedDamage / getCombatHpMaxValue(被动结算目标) >= 0.15;
-            if (
-              本轮NPC先手 &&
-              !玩家动作敌对 &&
-              !isPassivePlayerTurn &&
-              !isPassiveInterrupted &&
-              isCombatUnitAbleToFight(attacker)
-            ) {
-              if (playerAction?.action_type === '蓄力挨打') {
-                写入战斗事件账本(combatData, {
-                  eventKind: 'blocked_action',
-                  round: roundCount,
-                  actorName: attacker?.name || attacker?.名称 || '',
-                  actionName: playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动',
-                  actionType: 'blocked_action',
-                  failReason: '仍在启动，未能在本回合完成',
-                  result: 'blocked',
-                });
-                roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动'}】仍在启动，未能在本回合完成。`;
-              } else {
-                const 后续非敌对结果 = 执行非敌对玩家动作();
-                if (
-                  Array.isArray(后续非敌对结果.extraPatchOps) &&
-                  后续非敌对结果.extraPatchOps.length &&
-                  后续非敌对结果.__extraPatchOps已收集 !== true
-                )
-                  clashExtraPatchOps.push(...后续非敌对结果.extraPatchOps);
-              }
-            } else if (
-              本轮NPC先手 &&
-              !玩家动作敌对 &&
-              !isPassivePlayerTurn &&
-              isPassiveInterrupted &&
-              !玩家非敌对动作已完成
-            ) {
-              写入战斗事件账本(combatData, {
-                eventKind: 'blocked_action',
-                round: roundCount,
-                actorName: attacker?.name || attacker?.名称 || '',
-                actionName:
-                  playerAction?.skill?.name ||
-                  playerAction?.skill?.魂技名 ||
-                  playerAction?.__原定技能名 ||
-                  playerAction?.__原定动作名 ||
-                  playerAction?.action_type ||
-                  '行动',
-                actionType: 'blocked_action',
-                failReason: '被对手攻势打断，未能完成',
-                result: 'blocked',
-              });
-              roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】被对手攻势打断，未能完成。`;
-            }
-            if (反应结算动作?.type === '穿戴装备') {
-              if (!isPassiveInterrupted) {
-                const 装备目标 = 反应结算动作.equip_target || 反应结算动作.skill?.equip_target;
-                应用战斗装备变化(被动结算目标, () => {
-                  const 装备槽 = ensureBattleEquipmentSlot(被动结算目标, 装备目标);
-                  if (装备槽) 装备槽.装备状态 = '已装备';
-                });
-                roundLog += ` [装备生效] ${getCombatReportUnitName(被动结算目标, '防守方')}成功穿戴了${装备目标 === 'armor' ? '斗铠' : '机甲'}，防御力大增！`;
-              } else {
-                roundLog += ` [穿戴失败] ${getCombatReportUnitName(主动结算方, '攻击方')}的猛烈攻击强行打断了${getCombatReportUnitName(被动结算目标, '防守方')}的装备穿戴过程！`;
-              }
-            }
-            const fusionAftermathLog = applyFusionActionAftermath(主动结算方, 主动结算动作, 主动结算战斗数据);
-            if (fusionAftermathLog) roundLog += ` ${fusionAftermathLog}`;
-            if (
-              本轮NPC先手 &&
-              玩家动作敌对 &&
-              !动作已在新增账本中闭合(本回合玩家动作账本起点, attacker, playerAction)
-            ) {
-              const 兜底受阻原因 =
-                玩家范围控制可延后落地 && isCombatUnitAbleToFight(attacker)
-                  ? '先手压制后的对抗收束中未能形成有效出手'
-                  : '被对手先手压制，未能形成有效出手';
-              记账动作受阻(playerAction, attacker, defender, 兜底受阻原因, { targetPoolSide: 'hostile' });
-              roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】${兜底受阻原因}。`;
-            }
-            清理动作运行态字段(playerAction);
-
-            // --- 第五步：装备护主与战损结算 ---
-            let combatType = combatData.战斗类型 || '突发遭遇';
-
-            if (getCombatHpValue(被动结算目标) < getCombatHpMaxValue(被动结算目标) * 0.1) {
-              let hasMech = 战斗机甲已装备(被动结算目标);
-              let hasArmor = 被动结算目标.装备?.斗铠?.装备状态 === '已装备';
-
-              if (combatType === '擂台切磋' && getCombatHpValue(被动结算目标) <= getCombatHpMaxValue(被动结算目标) * 0.05) {
-                应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.05, '擂台保护', 主动结算方, 主动结算动作, combatData, true);
-                roundLog += ` [擂台保护] 胜负已分！裁判强行介入，终止了致命一击！`;
-                continueSimulation = false; // 强制结束战斗
-              } else if (hasMech || hasArmor) {
-                应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.1, '装备护主', 主动结算方, 主动结算动作, combatData, true);
-                let armorLog = applyArmorDamage(被动结算目标);
-                roundLog += ` [装备护主] 致命打击触发替死锁血！${getCombatReportUnitName(被动结算目标, '承伤方')} HP强制锁定在10%！${armorLog}`;
-              } else if (判断虚拟战斗类型(combatType)) {
-                roundLog += ` [虚拟环境] 本场为虚拟战斗，允许完整承受击杀结果，现实损伤由退出结算处理。`;
-              } else {
-                const deathSave = triggerDeathSave(被动结算目标);
-                if (deathSave) {
-                  if (deathSave.staminaCost > 0) {
-                    应用单挑系统资源终值(被动结算目标, 'vit', getCombatStaminaValue(被动结算目标) - deathSave.staminaCost, '免死触发消耗', 主动结算方, 主动结算动作, combatData);
-                  }
-                  if (deathSave.fullRestore) {
-                    应用单挑系统资源终值(被动结算目标, 'sp', 0, '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
-                    应用单挑系统资源终值(被动结算目标, 'vit', getCombatStaminaMaxValue(被动结算目标), '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
-                    应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标), '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
-                  } else {
-                    应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.1, '死亡保护', 主动结算方, 主动结算动作, combatData, true);
-                  }
-                  roundLog += ` ${deathSave.log}`;
-                }
-              }
-            }
-          }
-
-          return {
-            continueSimulation: true,
-            forcedStop: continueSimulation === false,
-            roundLog,
-            appliedDamage,
-            settleResult,
-            被动结算目标,
-            主动结算方,
-            蓄力反噬终止本轮,
-          };
-        };
-
-        const executeDuelRound = roundNumber => {
-          const 交锋结果 = 执行单挑回合交锋(roundNumber);
-          if (交锋结果?.continueSimulation === false) return 交锋结果;
-          const {
-            roundLog: 交锋日志,
-            appliedDamage,
-            settleResult,
-            被动结算目标,
-            主动结算方,
-            蓄力反噬终止本轮,
-            forcedStop,
-          } = 交锋结果;
-          let roundLog = 交锋日志;
-
-          const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
-          if (roundEnd.log) roundLog += ` ${roundEnd.log}`;
-          const 双方可继续行动 = roundEnd.actorsAble;
-          if (!双方可继续行动) {
-            if (isCombatUnitAlive(attacker) && !isCombatUnitAbleToFight(attacker))
-              roundLog += ` [体力耗尽] 玩家体力归零，陷入昏迷，无法继续行动。`;
-            if (isCombatUnitAlive(defender) && !isCombatUnitAbleToFight(defender))
-              roundLog += ` [体力耗尽] NPC体力归零，陷入昏迷，无法继续行动。`;
-          }
-          if (!蓄力反噬终止本轮 && !forcedStop) {
-            const continuation = BATTLE_RUNTIME.decideDuelContinuation({
-              mode,
-              actorsAble: 双方可继续行动,
-              isCharging: attacker.蓄力技能 != null,
-              activeDamage: appliedDamage,
-              passiveDamage: settleResult.totalProjectedDamage || settleResult.dmg,
-              passiveHpMax: getCombatHpMaxValue(被动结算目标),
-              activeHpMax: getCombatHpMaxValue(主动结算方),
-              settings: 自动续推设置,
-              roll: Math.random,
-            });
-            continueSimulation = continuation.continueSimulation;
-            if (continuation.log) roundLog += ` ${continuation.log}`;
-          } else if (forcedStop) {
-            continueSimulation = false;
-          }
-
-          battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-          return { continueSimulation };
-
-        };
+        let 本次最大单击HP比例 = 0;
         const 首轮玩家动作 = parsePlayerIntent(playerInput, combatData, options.actionDeclaration);
         if (首轮玩家动作?.__解析失败日志) {
           return { ok: false, reason: 'battle_action_parse_failed', logs: [首轮玩家动作.__解析失败日志] };
@@ -26584,7 +25251,6 @@ class BattleUIComponent {
         const 首轮玩家目标 = 解析单挑动作目标(首轮玩家动作, attacker, defender, combatData) || defender;
         套用动作队列实际前摇(attacker, 首轮玩家动作, 首轮玩家目标, combatData);
         visiblePlayerInput = buildVisibleBattlePlayerInput(playerInput, 首轮玩家动作, combatData);
-        const naturalStartingRound = Number(combatData.回合 || 0);
         const naturalRuntime = 确保战斗运行态(combatData);
         naturalRuntime.playerLockedNaturalAction = {
           round: naturalStartingRound + 1,
@@ -26633,6 +25299,12 @@ class BattleUIComponent {
         const runtimeLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger.slice() : [];
         const eventLedger = 补齐事件账本未闭合敌对动作(合并战斗事件账本(runtimeLedger, []));
         combatData.__battleEventLedger = eventLedger;
+        本次最大单击HP比例 = eventLedger.reduce((maxRatio, event) => {
+          if (String(event?.eventKind || '').trim() !== 'hit_result') return maxRatio;
+          const target = findCombatUnitByName(combatData, event?.targetName || '');
+          const damage = Math.max(0, Number(event?.appliedDamage ?? event?.meta?.damage ?? 0));
+          return Math.max(maxRatio, damage / Math.max(1, getCombatHpMaxValue(target)));
+        }, 0);
         写入行动闭环事实账本(combatData, eventLedger);
         const towerPendingSettlement =
           isSoulTowerCombatTypeValue(combatData?.战斗类型 || '') && battleOutcome.isVictory === true
@@ -26757,7 +25429,7 @@ class BattleUIComponent {
             模式标签: modeLabel,
             战斗类型: combatData.战斗类型 || '未知',
             回合数: roundCount,
-            起始回合: startingRound,
+            起始回合: naturalStartingRound,
             结束回合: combatData.回合,
             阶段: combatData.阶段 || 战斗阶段枚举_V1.无,
             参战者: safeClone(combatData.参战者),
@@ -28201,6 +26873,69 @@ class BattleUIComponent {
         };
       }
 
+      function settleDeathSaveOnLethalDamage(targetChar, sourceActor, sourceAction, combatData) {
+        if (getCombatHpValue(targetChar) > 0) return '';
+        const deathSave = triggerDeathSave(targetChar);
+        if (!deathSave) return '';
+        const sourceActionName = normalizeBattleActionDisplayName(
+          sourceAction?.skill?.name || sourceAction?.skill?.魂技名 || sourceAction?.action_type || sourceAction?.type || '致命伤害',
+        );
+        const sourceActionEvent = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+          round: Number(combatData?.回合 || 0),
+          actorName: sourceActor?.name || sourceActor?.名称 || '',
+          actionName: sourceActionName,
+        });
+        const settleResource = (resourceKey, nextValue, reason) => {
+          const before = resourceKey === 'hp'
+            ? getCombatHpValue(targetChar)
+            : resourceKey === 'vit'
+              ? getCombatStaminaValue(targetChar)
+              : 读取持续原型资源当前值(targetChar, resourceKey);
+          const normalized = Math.max(0, Math.round(Number(nextValue || 0)));
+          if (resourceKey === 'hp') 设置战斗血量值(targetChar, normalized);
+          else if (resourceKey === 'vit') 设置战斗体力值(targetChar, normalized);
+          else 设置战斗延迟效果资源值(targetChar, resourceKey, normalized);
+          const after = resourceKey === 'hp'
+            ? getCombatHpValue(targetChar)
+            : resourceKey === 'vit'
+              ? getCombatStaminaValue(targetChar)
+              : 读取持续原型资源当前值(targetChar, resourceKey);
+          const delta = after - before;
+          if (!delta) return;
+          const resourceName = resourceKey === 'hp' ? '生命' : resourceKey === 'vit' ? '体力' : resourceKey === 'sp' ? '魂力' : '精神力';
+          写入战斗事件账本(combatData, {
+            eventKind: 'resource_change',
+            round: Number(combatData?.回合 || 0),
+            actorName: targetChar?.name || targetChar?.名称 || '',
+            targetName: targetChar?.name || targetChar?.名称 || '',
+            actionName: '濒死守护',
+            actionType: 'death_save',
+            sourceActionName,
+            sourceActionId: sourceActionEvent?.actionId || '',
+            parentNodeId: sourceActionEvent?.chainNodeId || '',
+            sourceNodeId: sourceActionEvent?.chainNodeId || '',
+            actorControl: 'SYSTEM',
+            actionRole: 'REACTION',
+            ruleCode: 'DEATH_SAVE_RESOURCE_SETTLEMENT',
+            result: delta > 0 ? 'gain' : 'loss',
+            resultState: delta > 0 ? 'GAIN' : 'LOSS',
+            meta: { resource: resourceName, resourceKey, delta, reason },
+          });
+        };
+        if (deathSave.staminaCost > 0) {
+          settleResource('vit', getCombatStaminaValue(targetChar) - deathSave.staminaCost, '免死触发消耗');
+        }
+        if (deathSave.fullRestore) {
+          settleResource('sp', 0, '金龙不灭真身');
+          settleResource('vit', getCombatStaminaMaxValue(targetChar), '金龙不灭真身');
+          settleResource('hp', getCombatHpMaxValue(targetChar), '金龙不灭真身');
+        } else {
+          settleResource('hp', 1, '免死保留生命');
+        }
+        if (targetChar?.__battleRuntime) delete targetChar.__battleRuntime.isDead;
+        return deathSave.log;
+      }
+
       function formatBattleDayKeyFromTick(tickValue) {
         const safeTick = Math.max(0, Number(tickValue || 0));
         const totalMinutes = safeTick * 10;
@@ -28597,11 +27332,93 @@ class BattleUIComponent {
         return { damage, counterDamage, counterEntries, log: parts.join(' '), sharedDamageEntries, 事件链 };
       }
 
+      function applyCastInterruptBacklash(targetChar, sourceActor, attackAction, combatData) {
+        const hpBefore = getCombatHpValue(targetChar);
+        const damage = Math.min(hpBefore, Math.floor(getCombatHpMaxValue(targetChar) * 0.05));
+        设置战斗血量值(targetChar, hpBefore - damage);
+        const sourceActionName = normalizeBattleActionDisplayName(
+          attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '截断',
+        );
+        const sourceActionEvent = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+          round: Number(combatData?.回合 || 0),
+          actorName: sourceActor?.name || sourceActor?.名称 || '',
+          actionName: sourceActionName,
+        });
+        写入战斗事件账本(combatData, {
+          eventKind: 'hit_result',
+          round: Number(combatData?.回合 || 0),
+          actorName: targetChar?.name || targetChar?.名称 || '',
+          targetName: targetChar?.name || targetChar?.名称 || '',
+          actionName: '施法打断反噬',
+          actionType: 'cast_interruption_backlash',
+          sourceActionName,
+          sourceActionId: sourceActionEvent?.actionId || '',
+          parentNodeId: sourceActionEvent?.chainNodeId || '',
+          sourceNodeId: sourceActionEvent?.chainNodeId || '',
+          actorControl: 'SYSTEM',
+          actionRole: 'REACTION',
+          ruleCode: 'CAST_INTERRUPTION_BACKLASH',
+          result: 'success',
+          primaryOutcome: 'hit',
+          appliedDamage: damage,
+          effectCapability: { hasDamageEffect: true, effectKinds: ['cast_interruption_backlash'] },
+          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH',
+          targetPoolSide: 'friendly',
+          meta: { damageSourceType: 'cast_interruption_backlash', damageType: '真实伤害' },
+        });
+        if (!targetChar.状态效果) targetChar.状态效果 = {};
+        const stiffness = {
+          类型: 'debuff',
+          状态: '僵直',
+          状态名称: '僵直',
+          层数: 1,
+          描述: '施法被打断的反噬',
+          duration: 1,
+          面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
+          战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
+        };
+        const blockedBy = 持续状态移除阻断状态附着(targetChar, '僵直', stiffness, sourceActor);
+        const stateApplied = !blockedBy;
+        if (stateApplied) targetChar.状态效果.僵直 = stiffness;
+        写入战斗事件账本(combatData, {
+          eventKind: 'state_apply',
+          round: Number(combatData?.回合 || 0),
+          actorName: targetChar?.name || targetChar?.名称 || '',
+          targetName: targetChar?.name || targetChar?.名称 || '',
+          actionName: '施法打断反噬',
+          actionType: 'cast_interruption_backlash',
+          sourceActionName,
+          sourceActionId: sourceActionEvent?.actionId || '',
+          parentNodeId: sourceActionEvent?.chainNodeId || '',
+          sourceNodeId: sourceActionEvent?.chainNodeId || '',
+          actorControl: 'SYSTEM',
+          actionRole: 'REACTION',
+          ruleCode: stateApplied ? 'CAST_INTERRUPTION_STIFFNESS' : 'CAST_INTERRUPTION_STIFFNESS_BLOCKED',
+          result: stateApplied ? 'applied' : 'blocked',
+          resultState: stateApplied ? 'APPLIED' : 'BLOCKED',
+          failReason: blockedBy ? `被${blockedBy.key}拦截` : '',
+          duration: 1,
+          effectSummary: '僵直',
+          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH_STIFFNESS',
+          targetPoolSide: 'friendly',
+          meta: { stateName: '僵直', duration: 1, applied: stateApplied, blockedBy: blockedBy?.key || '' },
+        });
+        return {
+          damage,
+          stateApplied,
+          log: stateApplied
+            ? `${targetChar?.name || '目标'}施法被【${sourceActionName}】打断，反噬造成 ${damage} 点真伤并陷入【僵直】。`
+            : `${targetChar?.name || '目标'}施法被【${sourceActionName}】打断，反噬造成 ${damage} 点真伤，【僵直】被【${blockedBy.key}】拦截。`,
+        };
+      }
+
       function resolveCastInterruptOnDamage(
         targetChar,
+        sourceActor,
         attackAction,
         inflictedDamage,
         settleResult = {},
+        combatData = null,
         label = '目标',
       ) {
         if (!targetChar?.蓄力技能) return '';
@@ -28623,9 +27440,8 @@ class BattleUIComponent {
           return `[霸体强抗] ${label}凭借霸体稳住阵脚，蓄力未被打断！`;
         if (!hasSuperArmor && (damageRatio >= 0.3 || hardControl || controlled || interruptTriggered)) {
           targetChar.蓄力技能 = null;
-          return interruptTriggered
-            ? `[打断生效] ${label}的蓄力被强行打断！`
-            : `[蓄力打断] ${label}受到重创或控制，蓄力被强制打断！`;
+          const backlash = applyCastInterruptBacklash(targetChar, sourceActor, attackAction, combatData || getCurrentBattleContextSnapshot());
+          return `${interruptTriggered ? `[打断生效] ${label}的蓄力被强行打断！` : `[蓄力打断] ${label}受到重创或控制，蓄力被强制打断！`} ${backlash.log}`;
         }
         return '';
       }
@@ -29339,27 +28155,37 @@ class BattleUIComponent {
                     : `[分摊结算] ${sharedTarget.name || '队友'}替${targetChar.name || '目标'}承受了 ${sharedDamage} 点伤害。`,
                 );
                 if (getCombatHpValue(sharedTarget) <= 0) {
-                  const reviveLog = triggerReviveEffect(sharedTarget, sharedTarget.name || '队友');
-                  if (reviveLog) logParts.push(reviveLog);
-                  const 召唤死亡日志 = 处理召唤单位死亡(options?.combatData || getCurrentBattleContextSnapshot(), sharedTarget);
-                  if (召唤死亡日志) logParts.push(召唤死亡日志);
+                  const deathSaveLog = settleDeathSaveOnLethalDamage(sharedTarget, attacker, attackAction, options?.combatData || getCurrentBattleContextSnapshot());
+                  if (deathSaveLog) logParts.push(deathSaveLog);
+                  if (getCombatHpValue(sharedTarget) <= 0) {
+                    const reviveLog = triggerReviveEffect(sharedTarget, sharedTarget.name || '队友');
+                    if (reviveLog) logParts.push(reviveLog);
+                    const 召唤死亡日志 = 处理召唤单位死亡(options?.combatData || getCurrentBattleContextSnapshot(), sharedTarget);
+                    if (召唤死亡日志) logParts.push(召唤死亡日志);
+                  }
                 }
               });
             }
           });
           const interruptLog = resolveCastInterruptOnDamage(
             targetChar,
+            attacker,
             attackAction,
             appliedDamage,
             settleResult,
+            options?.combatData || getCurrentBattleContextSnapshot(),
             targetChar.name || `目标${index + 1}`,
           );
           if (interruptLog) logParts.push(interruptLog);
           if (getCombatHpValue(targetChar) <= 0) {
-            const reviveLog = triggerReviveEffect(targetChar, targetChar.name || `目标${index + 1}`);
-            if (reviveLog) logParts.push(reviveLog);
-            const 召唤死亡日志 = 处理召唤单位死亡(options?.combatData || getCurrentBattleContextSnapshot(), targetChar);
-            if (召唤死亡日志) logParts.push(召唤死亡日志);
+            const deathSaveLog = settleDeathSaveOnLethalDamage(targetChar, attacker, attackAction, options?.combatData || getCurrentBattleContextSnapshot());
+            if (deathSaveLog) logParts.push(deathSaveLog);
+            if (getCombatHpValue(targetChar) <= 0) {
+              const reviveLog = triggerReviveEffect(targetChar, targetChar.name || `目标${index + 1}`);
+              if (reviveLog) logParts.push(reviveLog);
+              const 召唤死亡日志 = 处理召唤单位死亡(options?.combatData || getCurrentBattleContextSnapshot(), targetChar);
+              if (召唤死亡日志) logParts.push(召唤死亡日志);
+            }
           }
           if (targetEntry?.kind === 'primary' || (index === 0 && !primaryAppliedDamage)) {
             primaryAppliedDamage = appliedDamage;
@@ -47277,14 +46103,55 @@ class BattleUIComponent {
             ...(Array.isArray(block?.badges) ? block.badges : []).map(badge => ({ type: 'badge', ...badge })),
           ];
           const outcomeHtml = 渲染公开战报BlocksHTML(outcomeBlocks, context).html;
+          const roundLabel = context?.showRound === false ? '动作' : `第${Math.max(0, Number(block?.round || 0))}回合`;
           return `
             <article class="battle-preview-report-group" data-round="${Math.max(0, Number(block?.round || 0))}" data-action-group-id="${htmlEscapeText(block?.actionGroupId || '')}">
-              <header class="battle-structured-report-head"><span>第${Math.max(0, Number(block?.round || 0))}回合</span><b>${htmlEscapeText(actor)} · ${htmlEscapeText(action)}</b></header>
+              <header class="battle-structured-report-head"><span>${roundLabel}</span><b>${htmlEscapeText(actor)} · ${htmlEscapeText(action)}</b></header>
               ${String(block?.intentSummary || '').trim() ? `<p class="battle-structured-report-intent"><b>意图</b>${htmlEscapeText(block.intentSummary)}</p>` : ''}
               <p class="battle-structured-report-outcome"><b>结果</b>${outcomeHtml}</p>
               ${String(block?.nextWindow || '').trim() ? `<p class="battle-structured-report-window"><b>窗口</b>${htmlEscapeText(block.nextWindow)}</p>` : ''}
             </article>
           `;
+        }
+
+        function 渲染结构化回合战报HTML(blocks = [], context = {}) {
+          const grouped = new Map();
+          (Array.isArray(blocks) ? blocks : []).forEach(block => {
+            const round = Math.max(0, Number(block?.round || 0));
+            if (!grouped.has(round)) grouped.set(round, []);
+            grouped.get(round).push(block);
+          });
+          return [...grouped.entries()].sort((left, right) => left[0] - right[0]).map(([round, roundBlocks]) => {
+            const activeBlocks = roundBlocks.filter(block => !['RESOURCE_CHANGE', 'STATE_TICK'].includes(String(block?.blockType || '').trim()));
+            const passiveBlocks = roundBlocks.filter(block => ['RESOURCE_CHANGE', 'STATE_TICK'].includes(String(block?.blockType || '').trim()));
+            const declarations = activeBlocks.map(block => {
+              const facts = Array.isArray(block?.facts) ? block.facts : [];
+              const primary = facts.find(fact => fact?.eventKind === 'action_start' && fact?.actionRole !== 'STATE_TICK') || facts[0] || {};
+              const actor = String(primary?.actorName || block?.actorId || '行动者').trim();
+              const action = normalizeBattleActionDisplayName(primary?.actionName || '行动');
+              return `${actor}以【${action}】${block?.targetIds?.length ? `指向${block.targetIds.join('、')}` : '展开行动'}`;
+            });
+            const exchangeText = declarations.length > 1
+              ? `${declarations[0]}，${declarations.slice(1).map(text => `随后${text}`).join('；')}`
+              : declarations[0] || '本回合没有主动交锋';
+            const passiveFacts = passiveBlocks.flatMap(block => Array.isArray(block?.facts) ? block.facts : []);
+            const passiveBadges = passiveBlocks.flatMap(block => Array.isArray(block?.badges) ? block.badges : []);
+            const passiveText = passiveBlocks.map(block => String(block?.outcomeSummary || '').trim()).filter(Boolean).join('；');
+            const passiveHtml = passiveText
+              ? 渲染公开战报BlocksHTML([
+                  { type: 'text', content: passiveText },
+                  ...passiveBadges.map(badge => ({ type: 'badge', ...badge })),
+                ], context).html
+              : '';
+            return `
+              <section class="battle-structured-report-round" data-round="${round}" data-active-action-count="${activeBlocks.length}" data-passive-fact-count="${passiveFacts.length}">
+                <header class="battle-structured-report-round-head"><span>第${round}回合</span><b>${activeBlocks.length > 1 ? '双方交锋' : activeBlocks.length === 1 ? '单方行动' : '回合结算'}</b></header>
+                <p class="battle-structured-report-exchange"><b>交锋</b>${htmlEscapeText(exchangeText)}</p>
+                <div class="battle-structured-report-actions">${activeBlocks.map(block => 渲染结构化战报BlockHTML(block, { ...context, showRound: false })).join('')}</div>
+                ${passiveHtml ? `<p class="battle-structured-report-passive"><b>回合结算</b>${passiveHtml}</p>` : ''}
+              </section>
+            `;
+          }).join('');
         }
 
 
@@ -47569,7 +46436,7 @@ class BattleUIComponent {
             视图内容 = 渲染回合速览HTML(回合速览) || '<div class="battle-preview-empty">暂无回合结算</div>';
           } else if (activeView === 'report') {
             视图内容 = `<div class="battle-preview-report">${战报Blocks.length
-              ? 战报Blocks.map(item => 渲染结构化战报BlockHTML(item, 战报展示上下文)).join('')
+              ? 渲染结构化回合战报HTML(战报Blocks, 战报展示上下文)
               : '<p>暂无战报</p>'}</div>`;
           } else if (activeView === 'summary') {
             视图内容 = 渲染战斗总结HTML(finalBattleReport) || '<div class="battle-preview-empty">暂无总结</div>';
@@ -48007,6 +46874,8 @@ class BattleUIComponent {
           const recordToggle = 读取战斗记录终端节点()?.querySelector('#ui-battle-record-toggle');
           if (recordToggle && !recordToggle.__battleRecordToggleBound) {
             recordToggle.addEventListener('click', () => {
+              const terminal = 读取战斗记录终端节点();
+              if (terminal?.__battleRecordSuppressClick) return;
               const collapsed = window.BattleUI?.state?.battleRecordCollapsed !== false;
               设置战斗记录展开状态(collapsed);
             });

@@ -329,21 +329,6 @@
     };
   }
 
-  function runDuelRounds(options = {}) {
-    const maxRounds = Math.max(1, Number(options?.maxRounds || 1));
-    const canContinue = typeof options?.canContinue === 'function' ? options.canContinue : () => true;
-    const executeRound = typeof options?.executeRound === 'function' ? options.executeRound : null;
-    if (!executeRound) throw new TypeError('battle_duel_round_runner_contract_invalid');
-    let rounds = 0;
-    let lastResult = null;
-    while (rounds < maxRounds && canContinue()) {
-      rounds += 1;
-      lastResult = executeRound(rounds) || null;
-      if (lastResult?.continueSimulation === false) break;
-    }
-    return { rounds, lastResult };
-  }
-
   function decideDuelContinuation(options = {}) {
     const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
     if (options?.actorsAble !== true) return { continueSimulation: false, intensity: 0, log: '' };
@@ -1021,6 +1006,8 @@
         }
         if (fact.factType === 'STATE_CHANGE') {
           if (fact.eventKind === 'state_remove') push(`${target}的【${fact.stateName || '状态'}】被移除`);
+          else if (/resist|抵抗|抵住/i.test(String(fact.resultState || ''))) push(`${target}抵住了【${fact.stateName || action}】`);
+          else if (/immune|免疫/i.test(String(fact.resultState || ''))) push(`${target}免疫【${fact.stateName || action}】`);
           else push(`${target}受到【${fact.stateName || action}】影响${fact.duration > 0 ? `，剩余 ${fact.duration} 个有效窗口` : ''}`);
           return;
         }
@@ -1048,24 +1035,67 @@
       }
       return lines.join('；');
     };
-    const actionBlocks = entries.map((entry, index) => {
+    const groupedEntries = new Map();
+    entries.forEach((entry, entryIndex) => {
       const sourceIds = readSourceIds(entry);
       const events = sourceIds.map(id => eventById.get(id)).filter(Boolean);
-      const primary = events[0] || null;
+      const fallbackGroupId = `report_${Number(entry?.round || 0)}_${entryIndex + 1}`;
+      const eventsByGroup = new Map();
+      events.forEach(event => {
+        const rootActionId = String(event?.sourceActionId || event?.actionId || fallbackGroupId).trim();
+        const eventKind = String(event?.eventKind || '').trim();
+        const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
+        const factDomain = eventKind === 'state_tick'
+          ? 'state_tick'
+          : actionRole === 'STATE_TICK' || ['resource_change', 'round_recover'].includes(eventKind)
+            ? 'resource_tick'
+            : 'action';
+        const eventRound = Number(event?.round || event?.sourceRound || entry?.round || 0);
+        const groupKey = `${eventRound}::${factDomain}::${rootActionId}`;
+        if (!eventsByGroup.has(groupKey)) eventsByGroup.set(groupKey, { actionGroupId: factDomain === 'action' ? rootActionId : `${rootActionId}:${factDomain}:${eventRound}`, events: [] });
+        eventsByGroup.get(groupKey).events.push(event);
+      });
+      eventsByGroup.forEach((partition, groupKey) => {
+        const groupEvents = partition.events;
+        if (!groupedEntries.has(groupKey)) groupedEntries.set(groupKey, { actionGroupId: partition.actionGroupId, events: [], badges: [], firstIndex: entryIndex });
+        const group = groupedEntries.get(groupKey);
+        group.events.push(...groupEvents);
+        const groupEventIds = new Set(groupEvents.map(event => String(event?.eventId || '').trim()).filter(Boolean));
+        group.badges.push(...(Array.isArray(entry?.blocks) ? entry.blocks : []).filter(block =>
+          block?.type === 'badge' && (!String(block?.sourceEventId || '').trim() || groupEventIds.has(String(block.sourceEventId).trim()))
+        ));
+      });
+    });
+    ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'action_start' &&
+      normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
+    ).forEach((event, index) => {
+      const round = Number(event?.round || event?.sourceRound || 0);
+      const actionGroupId = String(event?.sourceActionId || event?.actionId || `declared_${round}_${index + 1}`).trim();
+      const groupKey = `${round}::action::${actionGroupId}`;
+      if (!groupedEntries.has(groupKey)) groupedEntries.set(groupKey, { actionGroupId, events: [], badges: [], firstIndex: entries.length + index });
+      groupedEntries.get(groupKey).events.push(event);
+    });
+    const actionBlocks = [...groupedEntries.values()].map((group, index) => {
+      const actionGroupId = group.actionGroupId;
+      const events = group.events.filter((event, eventIndex, list) => list.findIndex(item =>
+        String(item?.eventId || '').trim() === String(event?.eventId || '').trim()
+      ) === eventIndex);
+      const primary = events.find(event =>
+        String(event?.eventKind || '').trim() === 'action_start' && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
+      ) || events.find(event => String(event?.eventKind || '').trim() === 'action_start') || events[0] || null;
       const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));
       const roles = new Set(events.map(event => normalizeActionRole(event?.actionRole || inferActionRole(event))));
-      const round = Number(entry?.round || primary?.round || primary?.sourceRound || 0);
+      const round = Number(primary?.round || primary?.sourceRound || 0);
       const actorName = String(primary?.actorName || '').trim();
       const actionName = normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || '');
-      const actionGroupId = String(primary?.actionId || primary?.sourceActionId || sourceIds[0] || `report_${round}_${index + 1}`).trim();
       const blockType = kinds.has('state_tick') ? 'STATE_TICK' :
         kinds.has('summon_create') || kinds.has('summon_assist') ? 'SUMMON_ACTION' :
-          kinds.size > 0 && [...kinds].every(kind => ['resource_change', 'round_recover'].includes(kind)) ? 'RESOURCE_CHANGE' :
+          roles.size > 0 && [...roles].every(role => role === 'STATE_TICK') ? 'RESOURCE_CHANGE' :
             roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
               'ACTION_RESOLVED';
       const facts = events.map(projectFact);
-      const badges = (Array.isArray(entry?.blocks) ? entry.blocks : [])
-        .filter(block => block?.type === 'badge')
+      const badges = group.badges
         .map(block => ({
           kind: String(block?.kind || '').trim(),
           name: String(block?.name || '').trim(),
@@ -1076,7 +1106,9 @@
           sourceEventId: String(block?.sourceEventId || '').trim(),
           sourceNodeId: String(block?.sourceNodeId || '').trim(),
         }));
-      const stateWindow = facts.find(fact => fact.duration > 0);
+      const stateWindow = facts.find(fact =>
+        fact.duration > 0 && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
+      );
       const summonWindow = events.find(event => ['summon_create', 'summon_assist'].includes(String(event?.eventKind || '').trim()));
       const nextWindow = summonWindow
         ? String(summonWindow?.meta?.summonMode || summonWindow?.summonMode || '召唤物已进入可用行动窗口').trim()
@@ -1092,7 +1124,9 @@
         blockType,
         facts,
         badges,
-        intentSummary: readIntent(round, actorName, actionName),
+        intentSummary: blockType === 'RESOURCE_CHANGE' || blockType === 'STATE_TICK'
+          ? ''
+          : readIntent(round, actorName, actionName),
         outcomeSummary: summarizeFacts(facts),
         nextWindow,
       };
@@ -1118,12 +1152,11 @@
       const resourceCount = facts.filter(fact => fact.factType === 'RESOURCE_CHANGE').length;
       const stateCount = facts.filter(fact => fact.factType === 'STATE_CHANGE').length;
       const summonCount = facts.filter(fact => fact.factType === 'SUMMON').length;
-      const roundDecisions = decisions.filter(item => Number(item?.回合 || item?.round || 0) === round);
-      const intentSummary = roundDecisions.map(item => {
-        const actor = String(item?.行动者 || item?.actor || '').trim();
-        const action = normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.skill || '');
-        return actor && action ? readIntent(round, actor, action) : '';
-      }).filter(Boolean).join('；');
+      const intentSummary = actionBlocks
+        .filter(block => Number(block?.round || 0) === round && ['ACTION_RESOLVED', 'REACTION_RESOLVED', 'SUMMON_ACTION'].includes(block?.blockType))
+        .map(block => String(block?.intentSummary || '').trim())
+        .filter(Boolean)
+        .join('；');
       const activeState = facts.find(fact => fact.duration > 0 && fact.stateName);
       return {
         blockId: `round_summary_${round}`,
@@ -2444,7 +2477,6 @@
     normalizeDecisionScores,
     createActionQueue,
     runTeamBattle,
-    runDuelRounds,
     decideDuelContinuation,
     executeActionNodes,
     calculateObjectiveScore,
