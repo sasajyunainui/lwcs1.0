@@ -25662,7 +25662,7 @@ class BattleUIComponent {
           });
         };
 
-        const executeDuelRound = roundNumber => {
+        const 构建单挑回合宣告 = roundNumber => {
           roundCount = roundNumber;
           combatData.回合 = startingRound + roundCount;
           let roundLog = `[第${roundCount}回合] `;
@@ -25875,6 +25875,43 @@ class BattleUIComponent {
               !玩家动作敌对 ||
               npc前摇 < 玩家前摇 ||
               (npc前摇 === 玩家前摇 && Number(defender.agi || 0) > Number(attacker.agi || 0)));
+          return {
+            continueSimulation: true,
+            roundLog,
+            playerAction,
+            玩家动作目标,
+            玩家动作敌对,
+            isPassivePlayerTurn,
+            npcDeclaredAction,
+            npcDeclaredTarget,
+            npcDeclaredHostile,
+            npcDeclaredNonAttack,
+            玩家前摇,
+            npc前摇,
+            玩家范围控制可延后落地,
+            npcShouldActFirst,
+          };
+        };
+
+        const executeDuelRound = roundNumber => {
+          const 宣告结果 = 构建单挑回合宣告(roundNumber);
+          if (宣告结果?.continueSimulation === false) return 宣告结果;
+          const {
+            roundLog: 宣告日志,
+            playerAction,
+            玩家动作目标,
+            玩家动作敌对,
+            isPassivePlayerTurn,
+            npcDeclaredAction,
+            npcDeclaredTarget,
+            npcDeclaredHostile,
+            npcDeclaredNonAttack,
+            玩家前摇,
+            npc前摇,
+            玩家范围控制可延后落地,
+            npcShouldActFirst,
+          } = 宣告结果;
+          let roundLog = 宣告日志;
           let 主动结算方 = attacker;
           let 被动结算目标 = 玩家动作目标 || defender;
           let 主动结算动作 = playerAction;
