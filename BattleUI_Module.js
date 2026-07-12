@@ -25186,6 +25186,31 @@ class BattleUIComponent {
         return result.results[0]?.result;
       }
 
+      function 结算单挑回合尾阶段(attacker, defender, combatData) {
+        const logs = [
+          执行协同召唤追击(attacker, null, 0, combatData),
+          执行协同召唤追击(defender, null, 0, combatData),
+        ];
+        const attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
+        const defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
+        const attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
+        const defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
+        logs.push(
+          attackerUpkeep.log,
+          defenderUpkeep.log,
+          attackerRoundEnd.log,
+          defenderRoundEnd.log,
+          结算护卫召唤回合窗口(combatData),
+          递减战斗规则改写运行态(combatData),
+        );
+        syncCombatActionState(attacker);
+        syncCombatActionState(defender);
+        return {
+          log: logs.filter(Boolean).join(' '),
+          actorsAble: isCombatUnitAbleToFight(attacker) && isCombatUnitAbleToFight(defender),
+        };
+      }
+
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
@@ -26172,30 +26197,9 @@ class BattleUIComponent {
                     roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤并陷入[僵直]！`;
                   }
                   attacker.蓄力技能 = null;
-                  const 玩家协同结束日志 = 执行协同召唤追击(attacker, null, 0, combatData);
-
-                  const 敌方协同结束日志 = 执行协同召唤追击(defender, null, 0, combatData);
-
-                  if (玩家协同结束日志) roundLog += ` ${玩家协同结束日志}`;
-
-                  if (敌方协同结束日志) roundLog += ` ${敌方协同结束日志}`;
-
-                  let attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
-                  let defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
-                  if (attackerUpkeep.log) roundLog += ` ${attackerUpkeep.log}`;
-                  if (defenderUpkeep.log) roundLog += ` ${defenderUpkeep.log}`;
-                  let attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
-                  let defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
-                  const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
-                  const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
-                  if (attackerRoundEnd.log) roundLog += ` ${attackerRoundEnd.log}`;
-                  if (defenderRoundEnd.log) roundLog += ` ${defenderRoundEnd.log}`;
-                  if (护卫窗口日志) roundLog += ` ${护卫窗口日志}`;
-                  if (规则改写回合尾日志) roundLog += ` ${规则改写回合尾日志}`;
-                  syncCombatActionState(attacker);
-                  syncCombatActionState(defender);
-                  if (!isCombatUnitAbleToFight(attacker) || !isCombatUnitAbleToFight(defender))
-                    continueSimulation = false;
+                  const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
+                  if (roundEnd.log) roundLog += ` ${roundEnd.log}`;
+                  if (!roundEnd.actorsAble) continueSimulation = false;
                   battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
                   return { continueSimulation };
                 }
@@ -26342,35 +26346,9 @@ class BattleUIComponent {
           }
           }
 
-          const 玩家协同结束日志 = 执行协同召唤追击(attacker, null, 0, combatData);
-
-
-          const 敌方协同结束日志 = 执行协同召唤追击(defender, null, 0, combatData);
-
-
-          if (玩家协同结束日志) roundLog += ` ${玩家协同结束日志}`;
-
-
-          if (敌方协同结束日志) roundLog += ` ${敌方协同结束日志}`;
-
-
-          let attackerUpkeep = settleSustainEffectsAtRoundEnd(attacker, '玩家', combatData);
-          let defenderUpkeep = settleSustainEffectsAtRoundEnd(defender, 'NPC', combatData);
-          if (attackerUpkeep.log) roundLog += ` ${attackerUpkeep.log}`;
-          if (defenderUpkeep.log) roundLog += ` ${defenderUpkeep.log}`;
-
-          let attackerRoundEnd = settleConditionsAtRoundEnd(attacker, '玩家', combatData);
-          let defenderRoundEnd = settleConditionsAtRoundEnd(defender, 'NPC', combatData);
-          const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
-          const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
-          if (attackerRoundEnd.log) roundLog += ` ${attackerRoundEnd.log}`;
-          if (defenderRoundEnd.log) roundLog += ` ${defenderRoundEnd.log}`;
-          if (护卫窗口日志) roundLog += ` ${护卫窗口日志}`;
-          if (规则改写回合尾日志) roundLog += ` ${规则改写回合尾日志}`;
-
-          syncCombatActionState(attacker);
-          syncCombatActionState(defender);
-          const 双方可继续行动 = isCombatUnitAbleToFight(attacker) && isCombatUnitAbleToFight(defender);
+          const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
+          if (roundEnd.log) roundLog += ` ${roundEnd.log}`;
+          const 双方可继续行动 = roundEnd.actorsAble;
           if (!双方可继续行动) {
             if (isCombatUnitAlive(attacker) && !isCombatUnitAbleToFight(attacker))
               roundLog += ` [体力耗尽] 玩家体力归零，陷入昏迷，无法继续行动。`;
