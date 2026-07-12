@@ -25637,13 +25637,8 @@ class BattleUIComponent {
           });
         };
 
-        while (
-          roundCount < maxRounds &&
-          continueSimulation &&
-          isCombatUnitAbleToFight(attacker) &&
-          isCombatUnitAbleToFight(defender)
-        ) {
-          roundCount++;
+        const executeDuelRound = roundNumber => {
+          roundCount = roundNumber;
           combatData.回合 = startingRound + roundCount;
           let roundLog = `[第${roundCount}回合] `;
           记录时光回溯回合快照(attacker);
@@ -25693,7 +25688,7 @@ class BattleUIComponent {
               roundLog += `${playerAction.__解析失败日志} `;
               battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
               continueSimulation = false;
-              break;
+              return { continueSimulation: false };
             }
             if (playerAction?.player_auto_continuation && playerAction.decision_log) roundLog += `${playerAction.decision_log} `;
             playerAction = 去重动作队列友方辅助(attacker, playerAction);
@@ -25992,7 +25987,7 @@ class BattleUIComponent {
             if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
               battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
               continueSimulation = false;
-              break;
+              return { continueSimulation: false };
             }
             const reactionRatio = calculateReactionRatio(attacker, defender, playerAction, combatData);
             const npcAction = determineNpcAction(combatData, playerAction, reactionRatio);
@@ -26022,7 +26017,7 @@ class BattleUIComponent {
             if (!扣除玩家动作成本(playerAction, 玩家动作目标)) {
               battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
               continueSimulation = false;
-              break;
+              return { continueSimulation: false };
             }
             const npcActionStartEvent = 记账动作起手(npcDeclaredAction, defender, attacker, {
               targetPoolSide: 'hostile',
@@ -26202,7 +26197,7 @@ class BattleUIComponent {
                   if (!isCombatUnitAbleToFight(attacker) || !isCombatUnitAbleToFight(defender))
                     continueSimulation = false;
                   battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-                  continue;
+                  return { continueSimulation };
                 }
               }
             }
@@ -26397,7 +26392,15 @@ class BattleUIComponent {
           if (continuation.log) roundLog += ` ${continuation.log}`;
 
           battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-        }
+          return { continueSimulation };
+
+        };
+        const duelRun = BATTLE_RUNTIME.runDuelRounds({
+          maxRounds,
+          canContinue: () => continueSimulation && isCombatUnitAbleToFight(attacker) && isCombatUnitAbleToFight(defender),
+          executeRound: executeDuelRound,
+        });
+        roundCount = duelRun.rounds;
 
         combatData.回合 = startingRound + roundCount;
         syncCombatActionState(attacker);

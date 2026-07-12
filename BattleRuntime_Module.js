@@ -323,6 +323,21 @@
     };
   }
 
+  function runDuelRounds(options = {}) {
+    const maxRounds = Math.max(1, Number(options?.maxRounds || 1));
+    const canContinue = typeof options?.canContinue === 'function' ? options.canContinue : () => true;
+    const executeRound = typeof options?.executeRound === 'function' ? options.executeRound : null;
+    if (!executeRound) throw new TypeError('battle_duel_round_runner_contract_invalid');
+    let rounds = 0;
+    let lastResult = null;
+    while (rounds < maxRounds && canContinue()) {
+      rounds += 1;
+      lastResult = executeRound(rounds) || null;
+      if (lastResult?.continueSimulation === false) break;
+    }
+    return { rounds, lastResult };
+  }
+
   function decideDuelContinuation(options = {}) {
     const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
     if (options?.actorsAble !== true) return { continueSimulation: false, intensity: 0, log: '' };
@@ -2390,6 +2405,7 @@
     normalizeDecisionScores,
     createActionQueue,
     runTeamBattle,
+    runDuelRounds,
     decideDuelContinuation,
     executeActionNodes,
     calculateObjectiveScore,
