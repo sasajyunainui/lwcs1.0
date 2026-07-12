@@ -26385,6 +26385,7 @@ class BattleUIComponent {
 
           return {
             continueSimulation: true,
+            forcedStop: continueSimulation === false,
             roundLog,
             appliedDamage,
             settleResult,
@@ -26404,6 +26405,7 @@ class BattleUIComponent {
             被动结算目标,
             主动结算方,
             蓄力反噬终止本轮,
+            forcedStop,
           } = 交锋结果;
           let roundLog = 交锋日志;
 
@@ -26416,7 +26418,7 @@ class BattleUIComponent {
             if (isCombatUnitAlive(defender) && !isCombatUnitAbleToFight(defender))
               roundLog += ` [体力耗尽] NPC体力归零，陷入昏迷，无法继续行动。`;
           }
-          if (!蓄力反噬终止本轮) {
+          if (!蓄力反噬终止本轮 && !forcedStop) {
             const continuation = BATTLE_RUNTIME.decideDuelContinuation({
               mode,
               actorsAble: 双方可继续行动,
@@ -26430,6 +26432,8 @@ class BattleUIComponent {
             });
             continueSimulation = continuation.continueSimulation;
             if (continuation.log) roundLog += ` ${continuation.log}`;
+          } else if (forcedStop) {
+            continueSimulation = false;
           }
 
           battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
