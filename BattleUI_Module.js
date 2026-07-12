@@ -6432,7 +6432,7 @@ class BattleUIComponent {
           const target = 技能偏向友方目标(skill) ? allyTarget : hostileTarget;
           const cost = parseSkillCostForChar(skill, actor, { actor, caster: actor, target, defender: target, skill, combatData: summaryCombat, 当前行动: '总结下一行动预览' });
           if (cost.canCast === false) return null;
-          const preview = 构建战斗技能纯预估({ skill, actor, target, combatData: summaryCombat });
+          const preview = BATTLE_RUNTIME.previewSkill({ skill, actor, target, combatData: summaryCombat });
           const effects = Array.isArray(preview?.effects) ? preview.effects : [];
           return {
             actionName,
@@ -17454,7 +17454,24 @@ class BattleUIComponent {
     BATTLE_RUNTIME.bindEngine({
       runBattleCase: options => 运行战斗调试案例(options),
       auditFacts: payload => 审计战斗运行事实(payload),
-      previewSkill: payload => 构建战斗技能纯预估(payload),
+      previewDomain: {
+        getEffects: ({ skill, actor, target }) => getSkillEffects(skill, {
+          行为规划: true, actor, caster: actor, attacker: actor, target, defender: target,
+        }),
+        estimateMainProbability: ({ skill, actor, target, behaviorState, effects }) =>
+          估算技能主原型成立概率(skill, actor, target, behaviorState, effects),
+        resolveTargets: ({ effect, skill, actor, target, behaviorState }) =>
+          解析效果规划目标列表(effect, actor, target, behaviorState, skill),
+        evaluateEffect: ({ effect, skill, actor, target, combatData, behaviorState }) => 评估效果规划净收益(effect, {
+          actor, caster: actor, primaryTarget: target, target, combatData, behaviorState, skill,
+        }),
+        evaluateSkill: ({ skill, actor, target, combatData, behaviorState }) => 评估技能规划净收益(skill, {
+          actor, caster: actor, primaryTarget: target, target, combatData, behaviorState,
+        }),
+        resolveComponent: effect => 读取战斗原型唯一评分分项(effect),
+        resolveEffectId: (effect, effectIndex) => 读取战斗效果来源ID(effect, effectIndex),
+        resolveRuntimeConsumer: effect => effect?.运行时消费器 || 读取战斗原型运行消费器(effect),
+      },
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -17992,8 +18009,7 @@ class BattleUIComponent {
         const 当前HP = Number(actor?.HP || actor?.属性?.HP || 0);
         const HP上限 = Math.max(1, Number(actor?.HP上限 || actor?.属性?.HP上限 || 1));
         if (actor && typeof actor === 'object') {
-          if (!actor.决策记忆) actor.决策记忆 = {};
-          const 上次推断 = actor.决策记忆.last_inference || null;
+          const 上次推断 = actor?.决策记忆?.last_inference || null;
           if (上次推断 && 当前回合_phase3d > 上次推断.round) {
             const 受击差 = Math.max(0, 上次推断.hp - 当前HP);
             const 受击比例 = 受击差 / HP上限;
@@ -18001,10 +18017,6 @@ class BattleUIComponent {
               加权('反击', 28);
               加权('击杀', 12);
             }
-          }
-          // 仅当跨回合时刷新快照,避免同回合多次推断时连锁覆盖
-          if (!上次推断 || 当前回合_phase3d > 上次推断.round) {
-            actor.决策记忆.last_inference = { round: 当前回合_phase3d, hp: 当前HP };
           }
         }
       } catch (error) {
@@ -20055,88 +20067,6 @@ class BattleUIComponent {
       if (原型 === '状态施加' && ['眩晕', '封技', '位移限制', '麻痹', '僵直'].includes(String(effect?.状态 || '').trim())) return 'enemyDeniedEV';
       if (原型 === '时窗修正' && String(effect?.调整方式 || '').trim() === '压缩') return 'enemyDeniedEV';
       return String(BATTLE_PROTOTYPE_RUNTIME_CONTRACT[原型]?.component || '').trim();
-    }
-
-    function 构建战斗技能纯预估(payload = {}) {
-      const previewPayload = deepClonePlain(payload && typeof payload === 'object' ? payload : {});
-      const skill = previewPayload?.skill && typeof previewPayload.skill === 'object' ? previewPayload.skill : {};
-      const actor = previewPayload?.actor && typeof previewPayload.actor === 'object' ? previewPayload.actor : {};
-      const target = previewPayload?.target && typeof previewPayload.target === 'object' ? previewPayload.target : null;
-      const combatData = previewPayload?.combatData && typeof previewPayload.combatData === 'object' ? previewPayload.combatData : {};
-      const behaviorState = {
-        ...(previewPayload?.behaviorState || {}),
-        combatData,
-        primaryTarget: target,
-        target,
-      };
-      const effects = getSkillEffects(skill, {
-        行为规划: true,
-        actor,
-        caster: actor,
-        attacker: actor,
-        target,
-        defender: target,
-      });
-      const mainTriggerProbability = 估算技能主原型成立概率(skill, actor, target, behaviorState, effects);
-      const contributions = effects.map((effect, effectIndex) => {
-        const prototype = String(effect?.原型 || '').trim();
-        const contract = BATTLE_PROTOTYPE_RUNTIME_CONTRACT[prototype];
-        if (!contract) throw new Error(`battle_preview_prototype_unsupported:${prototype || effectIndex}`);
-        const targets = 解析效果规划目标列表(effect, actor, target, behaviorState, skill);
-        const targetIds = targets
-          .map(unit => String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim())
-          .filter(Boolean);
-        const evaluation = 评估效果规划净收益(effect, {
-          actor,
-          caster: actor,
-          primaryTarget: target,
-          target,
-          combatData,
-          behaviorState,
-          skill,
-        });
-        const component = 读取战斗原型唯一评分分项(effect);
-        if (!component) throw new Error(`battle_preview_component_missing:${prototype}`);
-        const sourceEffectId = 读取战斗效果来源ID(effect, effectIndex);
-        const window = Math.max(1, Number(effect?.持续回合 || effect?.调整回合 || 1));
-        const conditionalOnMain = String(effect?.生效方式 || '').trim() === '跟随主原型';
-        const triggerProbability = conditionalOnMain ? mainTriggerProbability : 1;
-        return {
-          valueKey: `${sourceEffectId}:${targetIds.join(',') || 'NO_TARGET'}:${window}`,
-          component,
-          sourceEffectId,
-          targetIds,
-          window,
-          expectedValue: Number((Number(evaluation?.净收益 || 0) * triggerProbability).toFixed(4)),
-          evidence: {
-            prototype,
-            runtimeConsumer: String(effect?.运行时消费器 || 读取战斗原型运行消费器(effect)).trim(),
-            targetCount: Number(evaluation?.目标数量 || 0),
-            marginal: evaluation?.弱参与 !== true,
-            conditionalOnMain,
-            triggerProbability,
-          },
-        };
-      });
-      const score = 评估技能规划净收益(skill, {
-        actor,
-        caster: actor,
-        primaryTarget: target,
-        target,
-        combatData,
-        behaviorState,
-      });
-      const scoreParts = score?.scoreParts && typeof score.scoreParts === 'object' ? { ...score.scoreParts } : {};
-      const rawObjectiveScore = BATTLE_RUNTIME.calculateObjectiveScore(scoreParts);
-      return {
-        skillId: String(skill?.id || skill?.技能ID || skill?.name || skill?.魂技名 || '').trim(),
-        actorId: String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim(),
-        targetId: String(target?.id || target?.角色ID || target?.name || target?.名称 || '').trim(),
-        effects: effects.map(effect => deepClonePlain(effect)),
-        contributions,
-        scoreParts,
-        rawObjectiveScore,
-      };
     }
 
     function removeNegativeConditionsByCleanse(targetChar, maxCount = 1) {
@@ -24897,6 +24827,12 @@ class BattleUIComponent {
           写入归一行为记忆值_V1(memory.recent_actions, actionName, 原计数 + 2);
           memory.last_action = actionName;
           if (当前回合_record > 0) 写入归一行为记忆值_V1(memory.action_last_used_round, actionName, 当前回合_record);
+          if (当前回合_record > 0) {
+            memory.last_inference = {
+              round: 当前回合_record,
+              hp: Number(actor?.HP ?? actor?.hp ?? actor?.属性?.HP ?? actor?.属性?.生命 ?? 0),
+            };
+          }
           // Phase 3.G: 记录上次行动目标
           const 目标名_record = options?.target
             ? String(options.target?.name || options.target?.名称 || options.target || '').trim()

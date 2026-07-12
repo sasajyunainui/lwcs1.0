@@ -555,7 +555,12 @@
       !implementation ||
       typeof implementation.runBattleCase !== 'function' ||
       typeof implementation.auditFacts !== 'function' ||
-      typeof implementation.previewSkill !== 'function'
+      !implementation.previewDomain ||
+      typeof implementation.previewDomain.getEffects !== 'function' ||
+      typeof implementation.previewDomain.evaluateEffect !== 'function' ||
+      typeof implementation.previewDomain.evaluateSkill !== 'function' ||
+      typeof implementation.previewDomain.resolveTargets !== 'function' ||
+      typeof implementation.previewDomain.resolveComponent !== 'function'
     ) {
       throw new TypeError('battle_runtime_engine_contract_invalid');
     }
@@ -582,12 +587,58 @@
     if (!input.skill || typeof input.skill !== 'object') throw new TypeError('battle_preview_skill_missing');
     assertSkillEffects(input.skill);
     const before = cloneValue(input);
-    const result = requireEngine().previewSkill(input);
+    const domain = requireEngine().previewDomain;
+    const skill = input.skill;
+    const actor = input?.actor && typeof input.actor === 'object' ? input.actor : {};
+    const target = input?.target && typeof input.target === 'object' ? input.target : null;
+    const combatData = input?.combatData && typeof input.combatData === 'object' ? input.combatData : {};
+    const behaviorState = { ...(input?.behaviorState || {}), combatData, primaryTarget: target, target };
+    const effects = domain.getEffects({ skill, actor, target, combatData, behaviorState });
+    const mainTriggerProbability = Number(domain.estimateMainProbability?.({ skill, actor, target, combatData, behaviorState, effects }) ?? 1);
+    const contributions = effects.map((effect, effectIndex) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (!prototypeRuntimeContract[prototype]) throw new Error(`battle_preview_prototype_unsupported:${prototype || effectIndex}`);
+      const targets = domain.resolveTargets({ effect, skill, actor, target, combatData, behaviorState });
+      const targetIds = (Array.isArray(targets) ? targets : [])
+        .map(unit => String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim())
+        .filter(Boolean);
+      const evaluation = domain.evaluateEffect({ effect, skill, actor, target, combatData, behaviorState });
+      const component = String(domain.resolveComponent(effect) || '').trim();
+      if (!component) throw new Error(`battle_preview_component_missing:${prototype}`);
+      const sourceEffectId = String(domain.resolveEffectId?.(effect, effectIndex) || `effect-${effectIndex}`).trim();
+      const window = Math.max(1, Number(effect?.持续回合 || effect?.调整回合 || 1));
+      const conditionalOnMain = String(effect?.生效方式 || '').trim() === '跟随主原型';
+      const triggerProbability = conditionalOnMain ? mainTriggerProbability : 1;
+      return {
+        valueKey: `${sourceEffectId}:${targetIds.join(',') || 'NO_TARGET'}:${window}`,
+        component,
+        sourceEffectId,
+        targetIds,
+        window,
+        expectedValue: Number((Number(evaluation?.净收益 || 0) * triggerProbability).toFixed(4)),
+        evidence: {
+          prototype,
+          runtimeConsumer: String(domain.resolveRuntimeConsumer?.(effect) || effect?.运行时消费器 || '').trim(),
+          targetCount: Number(evaluation?.目标数量 || 0),
+          marginal: evaluation?.弱参与 !== true,
+          conditionalOnMain,
+          triggerProbability,
+        },
+      };
+    });
+    const score = domain.evaluateSkill({ skill, actor, target, combatData, behaviorState });
+    const scoreParts = score?.scoreParts && typeof score.scoreParts === 'object' ? { ...score.scoreParts } : {};
+    const result = {
+      skillId: String(skill?.id || skill?.技能ID || skill?.name || skill?.魂技名 || '').trim(),
+      actorId: String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim(),
+      targetId: String(target?.id || target?.角色ID || target?.name || target?.名称 || '').trim(),
+      effects: effects.map(effect => cloneValue(effect)),
+      contributions,
+      scoreParts,
+      rawObjectiveScore: calculateObjectiveScore(scoreParts),
+    };
     if (JSON.stringify(input) !== JSON.stringify(before)) {
       throw new Error(`battle_preview_mutated_input:${findFirstDifference(before, input)}`);
-    }
-    if (!result || typeof result !== 'object' || !Array.isArray(result.contributions)) {
-      throw new TypeError('battle_preview_result_invalid');
     }
     const valueKeys = result.contributions.map(item => String(item?.valueKey || '').trim()).filter(Boolean);
     if (valueKeys.length !== result.contributions.length || new Set(valueKeys).size !== valueKeys.length) {
