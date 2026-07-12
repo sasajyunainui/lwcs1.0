@@ -25951,7 +25951,7 @@ class BattleUIComponent {
           };
         };
 
-        const executeDuelRound = roundNumber => {
+        const 执行单挑回合交锋 = roundNumber => {
           const 宣告结果 = 构建单挑回合宣告(roundNumber);
           if (宣告结果?.continueSimulation === false) return 宣告结果;
           const {
@@ -26382,6 +26382,30 @@ class BattleUIComponent {
               }
             }
           }
+
+          return {
+            continueSimulation: true,
+            roundLog,
+            appliedDamage,
+            settleResult,
+            被动结算目标,
+            主动结算方,
+            蓄力反噬终止本轮,
+          };
+        };
+
+        const executeDuelRound = roundNumber => {
+          const 交锋结果 = 执行单挑回合交锋(roundNumber);
+          if (交锋结果?.continueSimulation === false) return 交锋结果;
+          const {
+            roundLog: 交锋日志,
+            appliedDamage,
+            settleResult,
+            被动结算目标,
+            主动结算方,
+            蓄力反噬终止本轮,
+          } = 交锋结果;
+          let roundLog = 交锋日志;
 
           const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
           if (roundEnd.log) roundLog += ` ${roundEnd.log}`;
