@@ -854,6 +854,17 @@
     const rootActionId = String(declaration?.actionId || declaration?.candidateId || `preview:${cacheKey}`).trim();
     const overlay = new PreviewOverlay(worldSnapshot, input?.worldRevision);
     const ledger = new ContributionLedger();
+    if (declaration?.irreversibleAsset && typeof declaration.irreversibleAsset === 'object') {
+      ledger.addOutcome({
+        rootActionId,
+        effectInstanceId: `${rootActionId}:asset`,
+        targetId: unitId(actor),
+        windowId: 'ACTION_COST',
+        outcomeKind: 'IRREVERSIBLE_ASSET_LOST',
+        threatValue: Math.max(0, Number(declaration.irreversibleAsset.cost || 0)),
+        evidence: cloneValue(declaration.irreversibleAsset),
+      });
+    }
     Object.entries(declaration?.resourceCosts || {}).forEach(([resource, rawCost], index) => {
       const currentActor = overlay.readUnit(unitId(actor));
       const maximum = readResourceMax(currentActor, resource);

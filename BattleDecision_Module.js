@@ -187,6 +187,79 @@
     return output;
   }
 
+  function collectInventory(unit = {}) {
+    const output = [];
+    const seen = new Set();
+    const visit = (value, key = '') => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => visit(item, `${key}:${index}`));
+        return;
+      }
+      if (Array.isArray(value._效果数组) || value.装备属性 || value.属性加成 || /装备|消耗品|药|食物/.test(String(value?.类型 || value?.分类 || ''))) {
+        const id = String(value?.id || value?.物品ID || value?.名称 || value?.name || key).trim();
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          output.push({ id, item: value, quantity: Math.max(0, Number(value?.数量 ?? value?.quantity ?? 1)) });
+        }
+        return;
+      }
+      Object.entries(value).forEach(([childKey, child]) => visit(child, childKey));
+    };
+    ['背包', '库存', '物品', '战斗物品', '可用装备'].forEach(key => visit(unit?.[key], key));
+    return output;
+  }
+
+  function isEquipment(item = {}) {
+    return !!(item?.装备属性 || item?.属性加成 || /装备|武器|护甲|饰品/.test(String(item?.类型 || item?.分类 || '')));
+  }
+
+  function equipmentEffects(item = {}) {
+    const modifiers = item?.装备属性 || item?.属性加成 || {};
+    const effects = Object.entries(modifiers).map(([attribute, value]) => ({ 原型: '属性修正', 目标: '自身', 属性: attribute, 数值: value, 持续回合: 99 }));
+    return effects.length ? effects : Array.isArray(item?._效果数组) ? item._效果数组 : [];
+  }
+
+  function creationProfile(skill = {}, actor = {}, worldSnapshot = {}) {
+    const product = skill?.生成物 || skill?.产物 || skill?.制作产物;
+    if (!product) return null;
+    const productId = String(product?.id || product?.物品ID || product?.名称 || product?.name || product).trim();
+    const stock = collectInventory(actor).filter(entry => entry.id === productId).reduce((sum, entry) => sum + entry.quantity, 0);
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const consumers = aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide && preview.readHp(entry.unit) < preview.readHpMax(entry.unit));
+    const productionWindow = Math.max(0, Number(skill?.生产窗口 ?? skill?.生效回合 ?? 1));
+    return {
+      productId,
+      stock,
+      consumerIds: consumers.map(entry => preview.unitId(entry.unit)),
+      productionWindow,
+      useful: !!productId && stock < Math.max(1, consumers.length) && consumers.length > 0 && productionWindow <= Math.max(1, Number(worldSnapshot?.剩余回合 || 20)),
+    };
+  }
+
+  function strategicSignature(worldSnapshot = {}, beliefState = {}) {
+    const hpBand = unit => Math.max(0, Math.min(4, Math.floor(preview.readHp(unit) / preview.readHpMax(unit) * 5)));
+    return preview.stableHash({
+      alive: preview.listUnits(worldSnapshot).filter(entry => preview.isAlive(entry.unit)).map(entry => preview.unitId(entry.unit)).sort(),
+      units: preview.listUnits(worldSnapshot).map(entry => ({
+        id: preview.unitId(entry.unit),
+        hpBand: hpBand(entry.unit),
+        shieldBand: Math.max(0, Math.min(4, Math.floor(preview.readShield(entry.unit) / preview.readHpMax(entry.unit) * 5))),
+        canPayEffectiveAction: preview.readResource(entry.unit, '魂力') > 0,
+        controlled: hasActionCancellation(entry.unit),
+        visibleStates: beliefState?.units?.[preview.unitId(entry.unit)]?.visibleStates?.map(state => [state.name, state.duration]) || [],
+      })),
+      intentProgress: worldSnapshot?.战斗意图进度 || null,
+    });
+  }
+
+  function detectStalemate(history = [], currentSignature = '') {
+    const rows = Array.isArray(history) ? history : [];
+    if (rows.length < 2 || !currentSignature) return false;
+    const latest = rows.slice(-2);
+    return latest.every(row => String(row?.signature || row) === currentSignature && Number(row?.capacityChangePercent ?? 0) < 1 && row?.newInformation !== true && row?.pendingEffect !== true);
+  }
+
   function parseSkillCosts(skill = {}) {
     const costs = {};
     const add = (resource, value) => {
@@ -279,6 +352,7 @@
     if (input.battleIntent?.withdrawAllowed === true) candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
     collectSkills(actor).forEach((skill, index) => {
       if (!costAffordable(actor, skill)) return;
+      const creation = creationProfile(skill, actor, worldSnapshot);
       enumerateTargetSets(worldSnapshot, actor, targetProfile(skill), input.beliefState).forEach((targetIds, targetIndex) => {
         const id = `${actorId}:skill:${skillId(skill, index)}:${targetIndex}`;
         candidates.push({
@@ -286,6 +360,49 @@
           declaration: { actionId: id, actorId, actionKind: 'RELEASE_SKILL', targetIds, skill, resourceCosts: parseSkillCosts(skill) },
           skill,
           costs: parseSkillCosts(skill),
+          creation,
+        });
+      });
+    });
+    const currentEquipmentIds = new Set(Object.values(actor?.装备 || {}).map(item => String(item?.id || item?.物品ID || item?.名称 || item?.name || '')).filter(Boolean));
+    const equipmentHistory = new Set(Array.isArray(input?.strategyMemory?.equipmentSignatures) ? input.strategyMemory.equipmentSignatures.map(String) : []);
+    collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
+      const item = entry.item;
+      if (isEquipment(item)) {
+        const signature = preview.stableHash({ itemId: entry.id, effects: equipmentEffects(item) });
+        if (currentEquipmentIds.has(entry.id) || equipmentHistory.has(signature)) return;
+        const id = `${actorId}:equip:${entry.id}:${index}`;
+        candidates.push({
+          candidateId: id,
+          declaration: {
+            actionId: id,
+            actorId,
+            actionKind: 'EQUIP',
+            targetIds: [actorId],
+            equipmentSignature: signature,
+            skill: { id: entry.id, name: skillName(item, index), _效果数组: equipmentEffects(item) },
+          },
+          equipment: item,
+          equipmentSignature: signature,
+        });
+        return;
+      }
+      if (!Array.isArray(item?._效果数组) || !item._效果数组.length) return;
+      enumerateTargetSets(worldSnapshot, actor, targetProfile(item), input.beliefState).forEach((targetIds, targetIndex) => {
+        const id = `${actorId}:item:${entry.id}:${targetIndex}`;
+        const scarcity = 1 + 1 / Math.max(1, entry.quantity);
+        candidates.push({
+          candidateId: id,
+          declaration: {
+            actionId: id,
+            actorId,
+            actionKind: 'USE_ITEM',
+            targetIds,
+            skill: item,
+            irreversibleAsset: { assetId: entry.id, quantityBefore: entry.quantity, cost: 6 * scarcity },
+          },
+          item,
+          assetCost: 6 * scarcity,
         });
       });
     });
@@ -339,7 +456,8 @@
     return { own, enemy, total: own + enemy, utility: own - enemy };
   }
 
-  function directDefensiveUtility(actionKind) {
+  function directDefensiveUtility(actionKind, context = {}) {
+    if (context.stalemate && context.actionOpportunity?.imminentThreat !== true && context.actionOpportunity?.counterWindow !== true) return 0;
     if (actionKind === 'DEFEND') return 1.5;
     if (actionKind === 'EVADE') return 1.25;
     if (actionKind === 'COUNTER') return 1.75;
@@ -451,7 +569,7 @@
     const actorSide = preview.sideOf(context.worldSnapshot, actor);
     const before = context.beforeUtility;
     let result;
-    if (candidate.declaration.actionKind === 'RELEASE_SKILL' || candidate.declaration.actionKind === 'BASIC_ATTACK') {
+    if (['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate.declaration.actionKind)) {
       result = preview.previewAction({
         worldSnapshot: context.worldSnapshot,
         beliefSnapshot: context.beliefState,
@@ -464,7 +582,7 @@
     const after = result ? stateUtility(result.afterSnapshot, actorSide, context.beliefState) : before;
     let expectedStateGain = result
       ? 100 * (after.utility - before.utility) / Math.max(1, before.total)
-      : directDefensiveUtility(candidate.declaration.actionKind);
+      : directDefensiveUtility(candidate.declaration.actionKind, context);
     const actionCancelled = (result?.contributions || []).some(entry => entry.outcomeKind === 'ACTION_CANCELLED');
     let mechanicProbability = 1;
     if (actionCancelled) {
@@ -478,15 +596,27 @@
       const direction = target && preview.sideOf(context.worldSnapshot, target) === actorSide ? -1 : 1;
       expectedStateGain += direction * 100 * cancelledCapacity / Math.max(1, before.total) * mechanicProbability;
     }
+    const summonEvents = (result?.scheduledEvents || []).filter(event => event.type === 'SUMMON_CREATE');
+    summonEvents.forEach(event => {
+      const modeFactor = event.actionMode === '护卫' ? 0.8 : event.actionMode === '协同攻击' ? 0.9 : event.actionMode === '自主行动' ? 1 : 0;
+      const actionWindows = Math.max(0, Number(event.duration || 0));
+      expectedStateGain += 100 * bestBaseActionValue(context.worldSnapshot, actor) * modeFactor * actionWindows * Math.max(1, Number(event.count || 1)) / Math.max(1, before.total);
+    });
+    if (candidate.creation?.useful) {
+      expectedStateGain += 100 * Math.min(20, candidate.creation.consumerIds.length * 6) / Math.max(1, before.total);
+    }
     const informationValue = candidate.declaration.actionKind === 'OBSERVE' ? clamp(1 - Number(context.beliefState?.confidence || 0), 0, 1) * 8 : 0;
-    const irreversibleCost = (result?.contributions || []).filter(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST').length * 20;
+    const irreversibleContributions = (result?.contributions || []).filter(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
+    const irreversibleCost = irreversibleContributions.reduce((sum, entry) => sum + (Number(entry.threatValue) > 0 ? Number(entry.threatValue) : 20), 0);
     const deepRequired = result ? needsDeepPreview(candidate, result, context.worldSnapshot, result.afterSnapshot, context.beliefState) : false;
     const branches = deepRequired ? responseBranches(candidate, context, after) : [];
     const responseRisk = branches.reduce((sum, branch) => sum + (branch.utility < 0 ? Math.abs(branch.utility) * branch.probability : 0), 0);
     const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0) + responseRisk;
     const objectiveUtility = clamp(expectedStateGain + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
-    const hasProgress = Math.abs(expectedStateGain) > 0.0001 || informationValue > 0 || directDefensiveUtility(candidate.declaration.actionKind) > 0;
-    const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0;
+    const hasProgress = Math.abs(expectedStateGain) > 0.0001 || informationValue > 0 || directDefensiveUtility(candidate.declaration.actionKind, context) > 0;
+    const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0 || ['EQUIP', 'USE_ITEM'].includes(candidate.declaration.actionKind);
+    const summonWindowMissing = summonEvents.some(event => !event.actionMode || Number(event.duration || 0) <= 0);
+    const lifecycleReject = candidate.creation && !candidate.creation.useful ? 'ZERO_EFFECT_COSTLY' : summonWindowMissing ? 'SUMMON_NO_ACTION_WINDOW' : '';
     return {
       ...candidate,
       preview: result || null,
@@ -500,7 +630,7 @@
         irreversibleCost,
         catastrophicRisk,
       },
-      rejectionCode: !hasProgress && hasCost ? 'ZERO_EFFECT_COSTLY' : !hasProgress ? 'ZERO_PROGRESS' : '',
+      rejectionCode: lifecycleReject || (!hasProgress && hasCost ? 'ZERO_EFFECT_COSTLY' : !hasProgress ? 'ZERO_PROGRESS' : ''),
     };
   }
 
@@ -569,12 +699,16 @@
     const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
     const teamIntent = buildTeamIntent(worldSnapshot, preview.unitId(actor), beliefState);
     const problems = identifyProblems(worldSnapshot, preview.unitId(actor), beliefState);
+    const signature = strategicSignature(worldSnapshot, beliefState);
+    const stalemate = detectStalemate(input.strategicHistory, signature);
     const context = {
       ...input,
       actorId: preview.unitId(actor),
       beliefState,
       teamIntent,
       problems,
+      strategicSignature: signature,
+      stalemate,
       beforeUtility: stateUtility(worldSnapshot, actorSide, beliefState),
     };
     const generated = enumerateCandidates(context);
@@ -595,12 +729,15 @@
       beliefState: Object.freeze(beliefState),
       teamIntent: Object.freeze(teamIntent),
       problems: Object.freeze(problems),
+      strategicSignature: signature,
+      stalemate,
       strategyMemory: Object.freeze({
         problemId: problems[0]?.problemId || 'NEUTRAL_PROGRESS',
         targetIds: Object.freeze([...(selected.declaration.targetIds || [])]),
         expectedOutcomeKinds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.outcomeKind)),
         expectedWindowIds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.windowId).filter(Boolean)),
         expiresAtOpportunity: Math.max(1, Number(input.actionOpportunity?.sequence || 0) + 1),
+        equipmentSignatures: Object.freeze(selected.equipmentSignature ? [...new Set([...(input.strategyMemory?.equipmentSignatures || []), selected.equipmentSignature])] : [...(input.strategyMemory?.equipmentSignatures || [])]),
       }),
       scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
         candidateId: candidate.candidateId,
@@ -635,6 +772,10 @@
     buildTeamIntent,
     identifyProblems,
     activeStrategyMemory,
+    collectInventory,
+    creationProfile,
+    strategicSignature,
+    detectStalemate,
     stateUtility,
     dominates,
     paretoFilter,
