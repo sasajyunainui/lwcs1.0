@@ -156,6 +156,15 @@ const shieldResult = preview.previewAction({
 });
 assert.equal(preview.findUnit(shieldResult.afterSnapshot, 'actor').shield, 25, '护盾变化预估错误');
 
+const stateShieldResult = preview.previewAction({
+  worldSnapshot: frozenWorld,
+  actorId: 'actor',
+  worldRevision: 'world:state-shield',
+  declaration: declaration('state-shield', [{ effectId: 'state-shield:1', 原型: '状态施加', 目标: '自身', 状态: '护盾', 数值: '+25%', 持续回合: 1 }], ['actor']),
+});
+const previewShieldState = Object.values(preview.findUnit(stateShieldResult.afterSnapshot, 'actor').状态效果 || {})[0];
+assert.equal(previewShieldState?.数值, '+25%', '状态护盾预估丢失效果强度');
+
 assert.throws(() => preview.previewAction({
   worldSnapshot: frozenWorld,
   actorId: 'actor',
@@ -214,10 +223,48 @@ const controlledCapacity = preview.calculateUnitCapacity({ unit: actor, survival
 assert.ok(healthyCapacity > woundedCapacity, '存活概率下降未降低战力容量');
 assert.equal(controlledCapacity, 0, '行动取消后战力容量未归零');
 
+const staggerResult = preview.previewAction({
+  worldSnapshot: frozenWorld,
+  actorId: 'actor',
+  worldRevision: 'world:stagger-control',
+  declaration: declaration('stagger-control', [{ effectId: 'stagger:1', 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 1 }]),
+});
+assert.ok(!staggerResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '僵直被错误预估为取消自然行动');
+const stunResult = preview.previewAction({
+  worldSnapshot: frozenWorld,
+  actorId: 'actor',
+  worldRevision: 'world:stun-control',
+  declaration: declaration('stun-control', [{ effectId: 'stun:1', 原型: '状态施加', 目标: '单体', 状态: '眩晕', 持续回合: 1 }]),
+});
+assert.ok(stunResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '眩晕没有预估为取消自然行动');
+
+const repeatedStateWorld = createWorld();
+repeatedStateWorld.参战者.enemy[0].状态效果 = {
+  existingSlow: { 状态: '迟缓', 状态名称: '迟缓', duration: 2, 战斗效果: { dodge_penalty: 0.2 } },
+};
+const repeatedStateResult = preview.previewAction({
+  worldSnapshot: repeatedStateWorld,
+  actorId: 'actor',
+  worldRevision: 'world:repeated-state',
+  declaration: declaration('repeated-state', [{ effectId: 'slow:1', 原型: '状态施加', 目标: '单体', 状态: '迟缓', 持续回合: 1 }]),
+});
+assert.equal(Object.keys(preview.findUnit(repeatedStateResult.afterSnapshot, 'target').状态效果).length, 1, '不可叠同名状态在预估中重复写入');
+assert.equal(repeatedStateResult.contributions[0]?.evidence?.marginal, false, '不可叠同名状态仍被记录为有效边际');
+
+const weakWithdrawal = preview.estimateWithdrawal(
+  { ...preview.findUnit(createWorld(), 'actor'), agi: 20, men: 10, men_max: 100 },
+  { ...preview.findUnit(createWorld(), 'target'), agi: 200, men: 100, men_max: 100 },
+);
+const strongWithdrawal = preview.estimateWithdrawal(
+  { ...preview.findUnit(createWorld(), 'actor'), agi: 200, men: 100, men_max: 100 },
+  { ...preview.findUnit(createWorld(), 'target'), agi: 20, men: 10, men_max: 100 },
+);
+assert.ok(weakWithdrawal.successProbability < strongWithdrawal.successProbability, '撤离成功率没有随双方追逃能力单调变化');
+
 const output = {
   summary: {
     version: preview.version,
-    assertions: 22,
+    assertions: 28,
     passed: true,
   },
   cache: {
@@ -225,6 +272,6 @@ const output = {
     cacheHits: metricsAfterCache.cacheHits - metricsBefore.cacheHits,
     fullCloneCalls: metricsAfterCache.fullCloneCalls - metricsBefore.fullCloneCalls,
   },
-  coverage: ['damage', 'healing', 'resource', 'shield', 'overkill-cap', 'non-battle-rejection', 'contribution-exclusivity', 'preview-budget', 'unit-capacity'],
+  coverage: ['damage', 'healing', 'resource', 'shield', 'overkill-cap', 'non-battle-rejection', 'contribution-exclusivity', 'preview-budget', 'unit-capacity', 'control-semantics', 'state-marginal', 'withdrawal-probability'],
 };
 console.log(JSON.stringify(output, null, 2));

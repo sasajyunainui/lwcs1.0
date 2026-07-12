@@ -163,7 +163,8 @@
   }
 
   function isAlive(unit = {}) {
-    return unit?.状态?.存活 !== false && readHp(unit) > 0;
+    const actionState = String(unit?.状态?.行动 || '').trim();
+    return unit?.状态?.存活 !== false && readHp(unit) > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
   }
 
   function parseSignedValue(value, base = 0) {
@@ -183,18 +184,26 @@
     return 'MELEE';
   }
 
+  function resourceDriveScale(actor = {}, target = {}, resource = '魂力') {
+    const actorCurrent = readResource(actor, resource);
+    const targetCurrent = readResource(target, resource);
+    const actorMax = readResourceMax(actor, resource);
+    const pressure = actorCurrent / Math.max(1, targetCurrent);
+    const ratio = clamp(actorCurrent / Math.max(1, actorMax), 0, 1);
+    return clamp(Math.pow(Math.max(0.01, pressure), 0.45) * (0.45 + 0.55 * ratio), 0.35, 1.85);
+  }
+
   function calculateBaseDamage(effect = {}, actor = {}, target = {}) {
     const damageClass = classifyDamageType(effect?.伤害类型);
     const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
-    const penetration = clamp(Number(effect?.防御穿透 || 0) / 100, 0, 0.95);
     const attack = damageClass === 'MENTAL' ? readCombatStat(actor, 'men') : readCombatStat(actor, 'str');
     const defense = damageClass === 'MENTAL'
-      ? Math.max(1, readCombatStat(target, 'men') * (1 - penetration))
-      : Math.max(1, readCombatStat(target, 'def') * (1 - penetration));
+      ? Math.max(1, readCombatStat(target, 'men'))
+      : Math.max(1, readCombatStat(target, 'def'));
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
     let perSegment = 0;
     if (damageClass === 'TRUE') perSegment = power * Math.max(1, Math.sqrt(attack)) * 0.12;
-    else perSegment = power * (attack / defense) * (damageClass === 'MELEE' ? 1.04 : 1);
+    else perSegment = power * (attack / defense) * (damageClass === 'MELEE' ? 1.04 : 1) * resourceDriveScale(actor, target, damageClass === 'MENTAL' ? '精神力' : '魂力');
     return Math.max(0, perSegment * segments);
   }
 
@@ -318,12 +327,12 @@
       const participants = this.baseWorld?.参战者 || {};
       const nextParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
         if (Array.isArray(value)) {
-          return [side, value.map(unit => this.changedUnits.get(unitId(unit)) || unit)];
+          return [side, value.map(unit => cloneValue(this.changedUnits.get(unitId(unit)) || unit))];
         }
         if (value && typeof value === 'object') {
-          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, this.changedUnits.get(unitId(unit)) || unit]))];
+          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, cloneValue(this.changedUnits.get(unitId(unit)) || unit)]))];
         }
-        return [side, value];
+        return [side, cloneValue(value)];
       }));
       return { ...this.baseWorld, 参战者: nextParticipants };
     }
@@ -424,19 +433,66 @@
     else setResource(unit, resource, value);
   }
 
+  function deriveStateCombatEffect(effect = {}) {
+    const state = String(effect?.状态 || effect?.状态名称 || '').trim();
+    const combatEffect = cloneValue(effect?.计算层效果 || effect?.战斗效果 || {});
+    const magnitude = clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1);
+    if (/眩晕/.test(state)) {
+      combatEffect.skip_turn = true;
+      combatEffect.cannot_act = true;
+    }
+    if (/僵直/.test(state)) {
+      combatEffect.cannot_react = true;
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+      combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), 0.35);
+    }
+    if (/迟缓|减速/.test(state)) {
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.15);
+      combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), magnitude || 0.15);
+    }
+    if (/位移限制|定身|束缚|禁锢/.test(state)) {
+      combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), magnitude || 0.2);
+      combatEffect.lock_level = Math.max(Number(combatEffect.lock_level || 0), magnitude || 0.2);
+    }
+    if (/沉默|封技/.test(state)) combatEffect.silence = true;
+    if (/缴械/.test(state)) combatEffect.disarm = true;
+    if (/致盲/.test(state)) combatEffect.blind = true;
+    return combatEffect;
+  }
+
   function addState(unit, effect, effectId) {
     const stateName = String(effect?.状态 || effect?.状态名称 || effect?.判定 || effect?.原型 || '').trim();
-    if (!stateName) return;
+    if (!stateName) return false;
     unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+    const existingEntry = stateEntries(unit).find(([, state]) => String(state?.状态 || state?.状态名称 || state?.名称 || '').trim() === stateName);
+    const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
+    const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
+    if (existingEntry && !stackable) {
+      const [key, existing] = existingEntry;
+      const existingDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+      const refreshable = effect?.刷新 === true || effect?.可刷新 === true || requestedDuration > existingDuration;
+      if (!refreshable) return false;
+      unit.状态效果[key] = {
+        ...existing,
+        duration: Math.max(existingDuration, requestedDuration),
+        数值: effect?.数值 ?? existing?.数值,
+        强度: effect?.强度 ?? existing?.强度,
+        战斗效果: { ...(existing?.战斗效果 || {}), ...deriveStateCombatEffect(effect) },
+      };
+      return true;
+    }
     unit.状态效果[`preview:${effectId}:${stateName}`] = {
       状态: stateName,
       状态名称: stateName,
       类型: effect?.类型 || '',
-      duration: Math.max(1, Number(effect?.持续回合 || 1)),
-      战斗效果: cloneValue(effect?.计算层效果 || effect?.战斗效果 || {}),
+      duration: requestedDuration,
+      数值: effect?.数值 ?? '',
+      强度: effect?.强度 ?? '',
+      战斗效果: deriveStateCombatEffect(effect),
       面板修改比例: cloneValue(effect?.面板修改比例 || {}),
       面板固定修正: cloneValue(effect?.面板固定修正 || {}),
     };
+    return true;
   }
 
   function stateEntries(unit = {}) {
@@ -534,7 +590,9 @@
           const currentTarget = overlay.readUnit(unitId(target));
           const rawDamage = calculateBaseDamage(effect, actor, currentTarget);
           const hitProbability = estimateHitProbability(actor, currentTarget, effect);
-          const expectedDamage = Math.min(readHp(currentTarget), rawDamage * hitProbability);
+          const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
+          const damageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
+          const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability);
           overlay.changeUnit(unitId(target), unit => setHp(unit, readHp(unit) - expectedDamage));
           ledger.addOutcome({
             ...context,
@@ -650,17 +708,20 @@
             ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_SCHEDULED', threatValue: 0, evidence: { state: effect?.状态 || '', delay } });
             return;
           }
-          overlay.changeUnit(unitId(target), unit => addState(unit, effect, context.effectInstanceId));
+          let marginal = false;
+          overlay.changeUnit(unitId(target), unit => {
+            marginal = addState(unit, effect, context.effectInstanceId);
+          });
           const state = String(effect?.状态 || '').trim();
           const combatEffect = effect?.计算层效果 || effect?.战斗效果 || {};
-          const cancelsAction = combatEffect?.skip_turn === true || combatEffect?.cannot_act === true || /眩晕|睡眠|冻结|石化/.test(state);
+          const cancelsAction = marginal && (combatEffect?.skip_turn === true || combatEffect?.cannot_act === true || /眩晕/.test(state));
           const outcomeKind = cancelsAction ? 'ACTION_CANCELLED' : prototype === '状态施加' ? 'STATE_CHANGED' : 'NEXT_ACTION_QUALITY_CHANGED';
           ledger.addOutcome({
             ...context,
             targetId: unitId(target),
             outcomeKind,
             threatValue: 0,
-            evidence: { prototype, state, duration: Math.max(1, Number(effect?.持续回合 || 1)), cancelsAction },
+            evidence: { prototype, state, duration: Math.max(1, Number(effect?.持续回合 || 1)), cancelsAction, marginal },
           });
         });
         return;
@@ -779,9 +840,12 @@
           actorId: unitId(actor),
           effectInstanceId: context.effectInstanceId,
           summonName,
+          summonType: String(effect?.召唤单位类型 || effect?.召唤类型 || '').trim(),
           count: Math.max(1, Number(effect?.数量 || 1)),
           actionMode: effect?.行动模式 || '',
           duration: Math.max(1, Number(effect?.持续回合 || 1)),
+          strength: Math.max(0.01, Number(effect?.强度 || effect?.召唤强度 || 1)),
+          inheritRatio: Math.max(0, Number(effect?.继承属性比例 || 0)),
         });
         ledger.addOutcome({ ...context, targetId: unitId(actor), outcomeKind: 'SUMMON_WINDOW', threatValue: 0, evidence: { summonName, duration: Math.max(1, Number(effect?.持续回合 || 1)) } });
       }
@@ -801,7 +865,8 @@
     return effects.reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
         const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(actor, target, effect);
-        return sum + Math.min(readHp(target), expectedDamage) / readHpMax(target) * 100;
+        const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
+        return sum + Math.min(availableHp, expectedDamage) / readHpMax(target) * 100;
       }
       if (String(effect?.原型 || '').trim() === '资源变化' && /生命|HP/i.test(String(effect?.资源 || ''))) {
         const base = readHpMax(target || actor);
@@ -868,8 +933,9 @@
     Object.entries(declaration?.resourceCosts || {}).forEach(([resource, rawCost], index) => {
       const currentActor = overlay.readUnit(unitId(actor));
       const maximum = readResourceMax(currentActor, resource);
-      const numericCost = Math.max(0, Number(rawCost || 0));
-      const cost = numericCost <= 1 ? maximum * numericCost : numericCost;
+      const costText = String(rawCost ?? '').trim();
+      const numericCost = Math.max(0, Number.parseFloat(costText) || 0);
+      const cost = costText.includes('%') ? maximum * numericCost / 100 : numericCost;
       const before = readResource(currentActor, resource);
       if (before + 1e-9 < cost) throw new Error(`battle_preview_resource_insufficient:${resource}`);
       overlay.changeUnit(unitId(actor), unit => setResourceValue(unit, resource, before - cost));
@@ -902,6 +968,7 @@
         rootActionId,
         effectInstanceId: String(effect?.effectId || effect?.效果ID || `${rootActionId}:effect:${index}`).trim(),
         windowId: `round:${Number(worldSnapshot?.回合 || 0)}:effect:${index}`,
+        battleIntent: input?.battleIntent || {},
       };
       applyEffect(effect, targets, overlay, ledger, context, 0);
     });
@@ -922,6 +989,50 @@
     });
     previewCache.set(cacheKey, result);
     return result;
+  }
+
+  function calculateWithdrawalPressure(unit = {}, opponent = {}, stance = 'WITHDRAW') {
+    const agility = readCombatStat(unit, 'agi');
+    const spirit = readResource(unit, '精神力');
+    const spiritMax = readResourceMax(unit, '精神力');
+    const stamina = readResource(unit, '体力');
+    const staminaMax = readResourceMax(unit, '体力');
+    const spiritRatio = clamp(spirit / Math.max(1, spiritMax), 0, 1);
+    const staminaRatio = clamp(stamina / Math.max(1, staminaMax), 0, 1);
+    const effects = stateEntries(unit).map(([, state]) => state?.战斗效果 || {});
+    const lockPressure = effects.reduce((sum, effect) => sum + Number(effect?.lock_level || 0) * 18, 0);
+    const dodgeModifier = effects.reduce((sum, effect) => sum + Number(effect?.dodge_bonus || 0) * 100 - Number(effect?.dodge_penalty || 0) * 100, 0);
+    const reactionModifier = effects.reduce((sum, effect) => sum + Number(effect?.reaction_bonus || 0) * 80 - Number(effect?.reaction_penalty || 0) * 80, 0);
+    const hardControlPenalty = effects.some(effect => effect?.skip_turn === true || effect?.cannot_react === true) ? 999999 : 0;
+    const opposingSpirit = readResource(opponent, '精神力');
+    const resourcePressure = clamp(
+      Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), 0.35) * (0.45 + 0.55 * spiritRatio),
+      0.35,
+      1.65,
+    );
+    const base = agility * 0.72 + spirit * 0.012 + spiritMax * 0.025;
+    const stanceMultiplier = stance === 'PURSUIT' ? 1.08 : 1;
+    return Math.max(0, base * (0.35 + spiritRatio * 0.4 + staminaRatio * 0.25) * resourcePressure * stanceMultiplier + dodgeModifier + reactionModifier - lockPressure - hardControlPenalty);
+  }
+
+  function estimateWithdrawal(actor = {}, pursuer = {}) {
+    const withdrawalScore = calculateWithdrawalPressure(actor, pursuer, 'WITHDRAW');
+    const pursuitScore = calculateWithdrawalPressure(pursuer, actor, 'PURSUIT');
+    const ratio = withdrawalScore / Math.max(1, pursuitScore);
+    const successProbability = ratio >= 1.18 ? 1 : clamp((ratio - 0.72) * 0.55, 0.03, 0.92);
+    const partialThreshold = ratio >= 0.9 ? 1 : Math.max(successProbability, Math.min(0.96, successProbability + 0.24));
+    const partialProbability = Math.max(0, partialThreshold - successProbability);
+    const failureProbability = Math.max(0, 1 - successProbability - partialProbability);
+    const hpMax = readHpMax(actor);
+    return Object.freeze({
+      withdrawalScore,
+      pursuitScore,
+      ratio,
+      successProbability,
+      partialProbability,
+      failureProbability,
+      expectedPursuitDamage: partialProbability * hpMax * 0.04 + failureProbability * hpMax * 0.08,
+    });
   }
 
   function clearCache() {
@@ -958,6 +1069,8 @@
     estimateHitProbability,
     calculateBaseActionValue,
     calculateUnitCapacity,
+    calculateWithdrawalPressure,
+    estimateWithdrawal,
     previewAction,
     clearCache,
     readMetrics,

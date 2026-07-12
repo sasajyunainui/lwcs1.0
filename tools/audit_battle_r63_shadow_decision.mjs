@@ -43,6 +43,8 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
 assert.ok(decision && runtime, '影子决策或战斗运行时未加载');
+assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: 1 } }).魂力, 1, '绝对消耗1被误解为100%');
+assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: '50%' } }).魂力, '50%', '比例消耗丢失百分号语义');
 
 const attackSkill = {
   id: 'attack-skill', name: '测试攻击', 消耗: '魂力:10',
@@ -135,9 +137,118 @@ const costly = decision.decide({ worldSnapshot: costlyWorld, actorId: 'ally-1', 
 const bankrupt = costly.candidates.find(candidate => candidate.skill?.id === 'bankrupt-skill');
 assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readResource(sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(bankrupt.preview.afterSnapshot, 'ally-1'), '魂力'), 5, '技能成本未进入覆盖层资源终态');
 
+const survivalWorld = world(1);
+survivalWorld.参战者.ally[0].hp = 5;
+survivalWorld.参战者.ally[0].技能列表 = [attackSkill];
+survivalWorld.参战者.enemy[0].hp = 1000;
+survivalWorld.参战者.enemy[0].hp_max = 1000;
+survivalWorld.参战者.enemy[0].str = 500;
+survivalWorld.参战者.enemy[0].def = 500;
+const survivalDecision = decision.decide({
+  worldSnapshot: survivalWorld,
+  actorId: 'ally-1',
+  battleIntent: { mode: '求生' },
+  beliefState: { confidence: 1 },
+  seed: 103,
+});
+assert.equal(survivalDecision.selected.declaration.actionKind, 'WITHDRAW', '濒死求生场景仍选择主动攻击');
+assert.ok(survivalDecision.candidates.find(candidate => candidate.declaration.actionKind === 'WITHDRAW' && candidate.objectiveUtility > 30), '撤退没有获得保命窗口价值');
+
+const chargedThreatWorld = world(1);
+chargedThreatWorld.参战者.ally[0].hp = 25;
+chargedThreatWorld.参战者.ally[0].sp = 0;
+chargedThreatWorld.参战者.ally[0].技能列表 = [];
+chargedThreatWorld.参战者.enemy[0].str = 500;
+chargedThreatWorld.参战者.enemy[0].蓄力技能 = {
+  id: 'visible-lethal-charge',
+  cast_time: 20,
+  skill: {
+    id: 'visible-lethal-charge-skill', name: '已显露致命蓄力',
+    _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 500, 伤害类型: '近身攻击' }],
+  },
+};
+const chargedThreatDecision = decision.decide({
+  worldSnapshot: chargedThreatWorld,
+  actorId: 'ally-1',
+  battleIntent: { mode: '切磋' },
+  beliefState: { confidence: 1 },
+  seed: 106,
+});
+assert.ok(['DEFEND', 'EVADE'].includes(chargedThreatDecision.selected.declaration.actionKind), '低血量面对公开致命蓄力仍用无效攻击换取1点伤害');
+assert.ok(chargedThreatDecision.selected.objectiveUtility >= 18, '避免公开致命终态没有进入防守效用');
+chargedThreatWorld.参战者.ally[0].__battleRuntime = {
+  activeDefenseStance: { type: chargedThreatDecision.selected.declaration.actionKind, stateName: '已准备防守窗口' },
+};
+const preparedThreatDecision = decision.decide({
+  worldSnapshot: chargedThreatWorld,
+  actorId: 'ally-1',
+  battleIntent: { mode: '切磋' },
+  beliefState: { confidence: 1 },
+  seed: 107,
+});
+assert.ok(!['DEFEND', 'EVADE'].includes(preparedThreatDecision.selected.declaration.actionKind), '未消费的基础防守窗口被重复刷新');
+assert.ok(preparedThreatDecision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate.declaration.actionKind)).every(candidate => candidate.rejectionCode === 'ZERO_PROGRESS'), '已有防守窗口时重复防守没有归零边际');
+delete chargedThreatWorld.参战者.ally[0].__battleRuntime;
+chargedThreatWorld.参战者.enemy[0].蓄力技能.cast_time = 50;
+const delayedThreatDecision = decision.decide({
+  worldSnapshot: chargedThreatWorld,
+  actorId: 'ally-1',
+  battleIntent: { mode: '切磋' },
+  beliefState: { confidence: 1 },
+  seed: 108,
+});
+assert.ok(!['DEFEND', 'EVADE'].includes(delayedThreatDecision.selected.declaration.actionKind), '防守窗口会在蓄力兑现前过期却仍提前防守');
+assert.ok(delayedThreatDecision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate.declaration.actionKind)).every(candidate => candidate.rejectionCode === 'ZERO_PROGRESS'), '过早防守没有按真实窗口归零');
+
+const terminalPareto = decision.paretoFilter([
+  { candidateId: 'withdraw', rejectionCode: '', vector: { expectedStateGain: 0, terminalUtility: 35, informationValue: 0, resourcePreservation: 0, survivalLowerBound: 1, irreversibleCost: 0, catastrophicRisk: 0 } },
+  { candidateId: 'attack', rejectionCode: '', vector: { expectedStateGain: 1, terminalUtility: 0, informationValue: 0, resourcePreservation: 0, survivalLowerBound: 1, irreversibleCost: 0, catastrophicRisk: 0 } },
+]);
+assert.equal(terminalPareto.find(candidate => candidate.candidateId === 'withdraw')?.rejectionCode, '', '战斗意图终态在Pareto支配中被忽略');
+
+const falseReactionWorld = world(1);
+falseReactionWorld.参战者.ally[0].技能列表 = [{
+  id: 'false-reaction', name: '死角突袭', 前摇: 1, 消耗: '魂力:1',
+  _效果数组: [
+    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' },
+    { 原型: '判定修正', 目标: '单体', 判定: '闪避', 数值: '-5%' },
+  ],
+}];
+const falseReactionDecision = decision.decide({
+  worldSnapshot: falseReactionWorld,
+  actorId: 'ally-1',
+  actionOpportunity: { role: 'REACTION', sourceActorId: 'enemy-1', immediateBudget: 40 },
+  beliefState: { confidence: 1 },
+  seed: 105,
+});
+assert.ok(!falseReactionDecision.candidates.some(candidate => candidate.skill?.id === 'false-reaction'), '敌方闪避减益被误认成即时防御魂技');
+
+let publicBelief = { confidence: 0.2 };
+publicBelief = decision.updatePublicObservation(publicBelief, {
+  sourceActorId: 'enemy-1', responseId: 'basic', actionName: '普通攻击', baseActionValue: 12, result: 'hit',
+});
+const firstPublicConfidence = publicBelief.confidence;
+for (let index = 0; index < 50; index += 1) {
+  publicBelief = decision.updatePublicObservation(publicBelief, {
+    sourceActorId: 'enemy-1', responseId: 'basic', actionName: '普通攻击', baseActionValue: 12, result: 'hit',
+  });
+}
+assert.ok(firstPublicConfidence > 0.2, '首次公开动作没有提高认知置信度');
+assert.ok(publicBelief.confidence < 0.7, '重复公开动作线性灌满了全局认知置信度');
+assert.equal(publicBelief.publicResponses['enemy-1'][0].observations, 51, '重复公开动作没有聚合到同一回应记录');
+
+const negativeActionWorld = world(1);
+negativeActionWorld.参战者.ally[0].技能列表 = [{
+  id: 'negative-action', name: '低收益高代价动作', 消耗: '魂力:95',
+  _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 1, 伤害类型: '近身攻击' }],
+}, attackSkill];
+const negativeActionDecision = decision.decide({ worldSnapshot: negativeActionWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 104 });
+const negativeAction = negativeActionDecision.candidates.find(candidate => candidate.skill?.id === 'negative-action');
+assert.equal(negativeAction?.rejectionCode, 'SELF_DEFEATING', '负效用且有成本动作仍可进入主观候选池');
+
 const shadowWorld = world(3);
 const shadowBefore = JSON.stringify(shadowWorld);
-const shadow = runtime.runBattleCase({ caseId: 'shadow-3v3', seed: 123, combatData: shadowWorld, settings: { decisionEngine: 'next-shadow' } });
+const shadow = runtime.runBattleCase({ caseId: 'shadow-3v3', seed: 123, combatData: shadowWorld, settings: { decisionEngine: 'next-shadow', shadowDecisionOnly: true } });
 assert.equal(shadow.shadow, true, '唯一调试入口未进入next-shadow');
 assert.equal(shadow.shadowDecisions.length, 6, 'next-shadow未覆盖全部存活单位');
 assert.equal(JSON.stringify(shadowWorld), shadowBefore, 'next-shadow修改了调用方输入');

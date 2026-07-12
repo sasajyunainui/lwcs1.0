@@ -83,6 +83,7 @@
   const conditionalEffectFields = Object.freeze([...(sharedRegistry?.条件分支效果数组字段 || [])]);
   const engineState = { implementation: null };
   let runtimeIdSequence = 0;
+  let runtimeIdContext = 'runtime';
 
   function cloneValue(value) {
     if (typeof structuredClone === 'function') return structuredClone(value);
@@ -91,7 +92,7 @@
 
   function nextRuntimeId(prefix = 'battle-event') {
     runtimeIdSequence = (runtimeIdSequence + 1) % 1000000;
-    return `${String(prefix || 'battle-event')}-${Date.now().toString(36)}-${runtimeIdSequence.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${String(prefix || 'battle-event')}-${runtimeIdContext}-${runtimeIdSequence.toString(36)}`;
   }
 
   function ensureLedger(combatData = {}) {
@@ -309,7 +310,7 @@
         adapters.settleRoundEnd?.(combatData, logs);
       }
       lastAlive = adapters.readAlive(combatData);
-      logs.push(`[团战回合总结] 我方存活:${lastAlive.playerAlive} 敌方存活:${lastAlive.enemyAlive}`);
+      logs.push(`[团战回合总结] 我方可行动单位:${lastAlive.playerAlive} 敌方可行动单位:${lastAlive.enemyAlive}`);
       if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;
       const continuation = adapters.shouldContinue?.({ combatData, mode, currentRound, rounds, alive: lastAlive });
       if (continuation?.log) logs.push(continuation.log);
@@ -915,6 +916,32 @@
     const decisions = (Array.isArray(decisionTrace) ? decisionTrace : []).filter(item => item && typeof item === 'object');
     const normalizePublicEntry = requireEngine().caseDomain.normalizePublicEntry;
     const entries = (Array.isArray(publicEntries) ? publicEntries : []).map(normalizePublicEntry).filter(Boolean);
+    const parentActionByActionId = new Map();
+    ledger.forEach(event => {
+      if (String(event?.eventKind || '').trim() !== 'action_start') return;
+      if (normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'ACTIVE') return;
+      const actionId = String(event?.actionId || '').trim();
+      const sourceActionId = String(event?.sourceActionId || '').trim();
+      if (actionId && sourceActionId && actionId !== sourceActionId && !parentActionByActionId.has(actionId)) {
+        parentActionByActionId.set(actionId, sourceActionId);
+      }
+    });
+    const resolveRootActionId = (event, fallback = '') => {
+      let actionId = String(event?.sourceActionId || event?.actionId || fallback || '').trim();
+      const visited = new Set();
+      while (actionId && parentActionByActionId.has(actionId) && !visited.has(actionId)) {
+        visited.add(actionId);
+        actionId = parentActionByActionId.get(actionId);
+      }
+      return actionId || fallback;
+    };
+    const factDomainOf = event => {
+      const eventKind = String(event?.eventKind || '').trim();
+      const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
+      if (eventKind === 'state_tick') return 'state_tick';
+      if (actionRole === 'STATE_TICK' || ['resource_change', 'round_recover'].includes(eventKind)) return 'resource_tick';
+      return 'action';
+    };
     const readSourceIds = entry => [...new Set((Array.isArray(entry?.blocks) ? entry.blocks : []).flatMap(block => [
       ...(Array.isArray(block?.sourceEventIds) ? block.sourceEventIds : []),
       block?.sourceEventId,
@@ -949,7 +976,7 @@
       const amount = Math.round(Number(event?.meta?.delta ?? readLedgerNumber(event, 'amount') ?? 0));
       return {
         factId: String(event?.eventId || '').trim(),
-        factType: kind === 'hit_result' || kind === 'counter' ? 'DAMAGE' :
+        factType: kind === 'hit_result' || (kind === 'counter' && damage > 0) ? 'DAMAGE' :
           kind === 'state_tick' ? 'STATE_TICK' :
             ['state_apply', 'state_replace', 'state_remove'].includes(kind) ? 'STATE_CHANGE' :
               kind === 'resource_change' || kind === 'round_recover' ? 'RESOURCE_CHANGE' :
@@ -968,7 +995,30 @@
         duration: Math.max(0, Number(event?.duration || event?.meta?.duration || 0)),
         sourceActionId: String(event?.sourceActionId || event?.actionId || '').trim(),
         sourceNodeId: String(event?.chainNodeId || '').trim(),
+        segmentIndex: Number(event?.meta?.segmentIndex ?? event?.segmentIndex ?? 0),
       };
+    };
+    const dedupeFacts = facts => {
+      const seen = new Set();
+      return (Array.isArray(facts) ? facts : []).filter(fact => {
+        const key = [
+          fact?.factType,
+          fact?.eventKind,
+          fact?.actionRole,
+          fact?.actorId,
+          fact?.targetId,
+          fact?.actionName,
+          fact?.stateName,
+          fact?.resultState,
+          fact?.value,
+          fact?.resource,
+          fact?.duration,
+          fact?.segmentIndex,
+        ].map(value => String(value ?? '')).join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     };
     const summarizeFacts = (facts = []) => {
       const lines = [];
@@ -1042,14 +1092,8 @@
       const fallbackGroupId = `report_${Number(entry?.round || 0)}_${entryIndex + 1}`;
       const eventsByGroup = new Map();
       events.forEach(event => {
-        const rootActionId = String(event?.sourceActionId || event?.actionId || fallbackGroupId).trim();
-        const eventKind = String(event?.eventKind || '').trim();
-        const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
-        const factDomain = eventKind === 'state_tick'
-          ? 'state_tick'
-          : actionRole === 'STATE_TICK' || ['resource_change', 'round_recover'].includes(eventKind)
-            ? 'resource_tick'
-            : 'action';
+        const rootActionId = resolveRootActionId(event, fallbackGroupId);
+        const factDomain = factDomainOf(event);
         const eventRound = Number(event?.round || event?.sourceRound || entry?.round || 0);
         const groupKey = `${eventRound}::${factDomain}::${rootActionId}`;
         if (!eventsByGroup.has(groupKey)) eventsByGroup.set(groupKey, { actionGroupId: factDomain === 'action' ? rootActionId : `${rootActionId}:${factDomain}:${eventRound}`, events: [] });
@@ -1066,13 +1110,13 @@
         ));
       });
     });
-    ledger.filter(event =>
-      String(event?.eventKind || '').trim() === 'action_start' &&
-      normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
-    ).forEach((event, index) => {
+    ledger.forEach((event, index) => {
+      if (!String(event?.eventKind || '').trim()) return;
       const round = Number(event?.round || event?.sourceRound || 0);
-      const actionGroupId = String(event?.sourceActionId || event?.actionId || `declared_${round}_${index + 1}`).trim();
-      const groupKey = `${round}::action::${actionGroupId}`;
+      const factDomain = factDomainOf(event);
+      const rootActionId = resolveRootActionId(event, `ledger_${round}_${index + 1}`);
+      const actionGroupId = factDomain === 'action' ? rootActionId : `${rootActionId}:${factDomain}:${round}`;
+      const groupKey = `${round}::${factDomain}::${rootActionId}`;
       if (!groupedEntries.has(groupKey)) groupedEntries.set(groupKey, { actionGroupId, events: [], badges: [], firstIndex: entries.length + index });
       groupedEntries.get(groupKey).events.push(event);
     });
@@ -1094,7 +1138,7 @@
           roles.size > 0 && [...roles].every(role => role === 'STATE_TICK') ? 'RESOURCE_CHANGE' :
             roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
               'ACTION_RESOLVED';
-      const facts = events.map(projectFact);
+      const facts = dedupeFacts(events.map(projectFact));
       const badges = group.badges
         .map(block => ({
           kind: String(block?.kind || '').trim(),
@@ -1105,7 +1149,20 @@
           targetName: String(block?.targetName || '').trim(),
           sourceEventId: String(block?.sourceEventId || '').trim(),
           sourceNodeId: String(block?.sourceNodeId || '').trim(),
-        }));
+        }))
+        .filter((badge, badgeIndex, list) => list.findIndex(item => [
+          item?.kind,
+          item?.name,
+          item?.value,
+          item?.unit,
+          item?.targetId || item?.targetName,
+        ].map(value => String(value ?? '')).join('|') === [
+          badge?.kind,
+          badge?.name,
+          badge?.value,
+          badge?.unit,
+          badge?.targetId || badge?.targetName,
+        ].map(value => String(value ?? '')).join('|')) === badgeIndex);
       const stateWindow = facts.find(fact =>
         fact.duration > 0 && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
       );
@@ -1139,7 +1196,7 @@
     );
     const roundSummaries = Array.from({ length: maxRound }, (_, index) => index + 1).map(round => {
       const roundEvents = ledger.filter(event => Number(event?.round || event?.sourceRound || 0) === round);
-      const facts = roundEvents.map(projectFact);
+      const facts = dedupeFacts(roundEvents.map(projectFact));
       const badges = actionBlocks
         .filter(block => Number(block?.round || 0) === round)
         .flatMap(block => Array.isArray(block?.badges) ? block.badges : [])
@@ -1329,6 +1386,7 @@
       vitMax: Math.max(1, Math.round(Number(unit?.vit_max || 1))),
       men: Math.max(0, Math.round(Number(unit?.men || 0))),
       menMax: Math.max(1, Math.round(Number(unit?.men_max || 1))),
+      actionState: String(unit?.actionState || unit?.行动状态 || '').trim(),
       states: (Array.isArray(unit?.状态效果) ? unit.状态效果 : [])
         .filter(state => Number(state?.duration || 0) > 0)
         .map(state => ({ name: String(state?.name || '状态').trim(), duration: Math.max(0, Math.round(Number(state?.duration || 0))), skipTurn: state?.skip_turn === true, dot: Math.max(0, Number(state?.dot || 0)) })),
@@ -1347,7 +1405,7 @@
       const totalHpMax = units.reduce((sum, unit) => sum + unit.hpMax, 0);
       const resourceCurrent = units.reduce((sum, unit) => sum + unit.sp + unit.vit + unit.men, 0);
       const resourceMax = units.reduce((sum, unit) => sum + unit.spMax + unit.vitMax + unit.menMax, 0);
-      const alive = units.filter(unit => unit.hp > 0).length;
+      const alive = units.filter(unit => unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离/.test(unit.actionState)).length;
       const controlBurden = units.reduce((sum, unit) => sum + unit.states.filter(state => state.skipTurn).length, 0);
       const hpRatio = totalHp / Math.max(1, totalHpMax);
       const resourceRatio = resourceCurrent / Math.max(1, resourceMax);
@@ -1392,16 +1450,23 @@
       }
       return pairs;
     };
-    const { playerIntent, enemyIntent } = requireEngine().caseDomain.resolveNextIntents({
-      combatData, decisionTrace, playerSummary, enemySummary, currentTargets: readCurrentTargets(),
-    });
+    const resolvedIntents = battleEnded
+      ? {
+          playerIntent: playerDefeated ? '我方已失去战斗能力，无法继续行动' : '我方已结束交锋，转入收势与战后确认',
+          enemyIntent: enemyDefeated ? '敌方已失去战斗能力，无法继续行动' : '敌方已结束交锋，转入收势与战后确认',
+        }
+      : requireEngine().caseDomain.resolveNextIntents({
+          combatData, decisionTrace, playerSummary, enemySummary, currentTargets: readCurrentTargets(),
+        });
+    const { playerIntent, enemyIntent } = resolvedIntents;
     const tacticalWindows = [];
     const risks = [];
     [...playerSummary, ...enemySummary].forEach(unit => {
       const hpRatio = unit.hp / Math.max(1, unit.hpMax);
       const resourceRatio = (unit.sp + unit.vit + unit.men) / Math.max(1, unit.spMax + unit.vitMax + unit.menMax);
-      if (unit.hp > 0 && hpRatio <= 0.25) tacticalWindows.push(`${unit.name}生命低于25%，进入斩杀窗口`);
-      if (unit.hp > 0 && resourceRatio <= 0.2) risks.push(`${unit.name}可用资源接近枯竭`);
+      const canAct = unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离/.test(unit.actionState);
+      if (canAct && hpRatio <= 0.25) tacticalWindows.push(`${unit.name}生命低于25%，进入斩杀窗口`);
+      if (canAct && resourceRatio <= 0.2) risks.push(`${unit.name}可用资源接近枯竭`);
       unit.states.forEach(state => {
         if (state.skipTurn) tacticalWindows.push(`${unit.name}被【${state.name}】限制行动${state.duration}回合`);
         if (state.dot > 0) risks.push(`${unit.name}仍承受【${state.name}】持续伤害${state.duration}回合`);
@@ -1428,7 +1493,7 @@
     }
     const currentTargets = readCurrentTargets();
     const round = Math.max(0, Number(snapshot?.round || ledger[ledger.length - 1]?.round || 0));
-    const formatTeam = units => units.length ? units.map(unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.sp}/${unit.spMax}，体力 ${unit.vit}/${unit.vitMax}，精神力 ${unit.men}/${unit.menMax}${unit.states.length ? `，状态 ${unit.states.map(state => `${state.name}(${state.duration})`).join('、')}` : ''}`).join('；') : '无可行动单位';
+    const formatTeam = units => units.length ? units.map(unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.sp}/${unit.spMax}，体力 ${unit.vit}/${unit.vitMax}，精神力 ${unit.men}/${unit.menMax}${unit.actionState && unit.actionState !== '战斗' ? `，行动状态 ${unit.actionState}` : ''}${unit.states.length ? `，状态 ${unit.states.map(state => `${state.name}(${state.duration})`).join('、')}` : ''}`).join('；') : '无可行动单位';
     const text = [
       `战至第${round}回合，${advantageText}。`,
       `我方：${formatTeam(playerSummary)}。敌方：${formatTeam(enemySummary)}。`,
@@ -1574,6 +1639,7 @@
     const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
     const resolutionTrace = Array.isArray(payload.resolutionTrace) ? payload.resolutionTrace.filter(Boolean) : [];
     const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
+    const reportBlocks = Array.isArray(payload.reportBlocks) ? payload.reportBlocks.filter(Boolean) : [];
     const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
     const initialSnapshot = payload.initialSnapshot && typeof payload.initialSnapshot === 'object' ? payload.initialSnapshot : null;
     const finalSnapshot = payload.finalSnapshot && typeof payload.finalSnapshot === 'object' ? payload.finalSnapshot : null;
@@ -1596,7 +1662,7 @@
         return;
       }
       const projection = String(value.projectionSource || inheritedProjection || '').trim();
-      const ids = [value.sourceEventId, ...(Array.isArray(value.sourceEventIds) ? value.sourceEventIds : [])]
+      const ids = [value.factId, value.sourceEventId, ...(Array.isArray(value.sourceEventIds) ? value.sourceEventIds : [])]
         .map(item => String(item || '').trim())
         .filter(Boolean);
       ids.forEach(id => {
@@ -1606,6 +1672,7 @@
       Object.values(value).forEach(item => collectBlockSources(item, projection));
     };
     collectBlockSources(publicReportBlocks);
+    collectBlockSources(reportBlocks);
 
     const normalizeBalanceResourceKey = value => {
       const text = String(value || '').trim();
@@ -1916,17 +1983,19 @@
       if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
     });
 
-    const terminalByAction = new Map();
+    const terminalByActionTarget = new Map();
     eventLedger.forEach(event => {
       const actionId = String(event?.sourceActionId || event?.actionId || '').trim();
       if (!actionId) return;
-      if (!terminalByAction.has(actionId)) terminalByAction.set(actionId, { dodgeSuccess: [], damage: [] });
-      const item = terminalByAction.get(actionId);
+      const targetId = String(event?.targetId || event?.targetName || '').trim();
+      const branchKey = `${actionId}|${targetId || 'NO_TARGET'}`;
+      if (!terminalByActionTarget.has(branchKey)) terminalByActionTarget.set(branchKey, { actionId, targetId, dodgeSuccess: [], damage: [] });
+      const item = terminalByActionTarget.get(branchKey);
       if (String(event?.eventKind || '').trim() === 'dodge' && isSuccess(event)) item.dodgeSuccess.push(event.eventId);
       if (String(event?.eventKind || '').trim() === 'hit_result' && readDamage(event) > 0) item.damage.push(event.eventId);
     });
-    terminalByAction.forEach((item, actionId) => {
-      if (item.dodgeSuccess.length && item.damage.length) pushFatal('ACTION_TERMINAL_CONFLICT', { actionId, ...item });
+    terminalByActionTarget.forEach(item => {
+      if (item.dodgeSuccess.length && item.damage.length) pushFatal('ACTION_TERMINAL_CONFLICT', item);
     });
 
     resolutionTrace.forEach(node => {
@@ -2149,33 +2218,127 @@
     const sourceSnapshot = JSON.stringify(sourceCombatData);
     const worldSnapshot = cloneValue(sourceCombatData);
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
-    const shadowDecisions = preview.listUnits(worldSnapshot)
-      .filter(entry => preview.isAlive(entry.unit))
-      .map((entry, index) => decision.decide({
-        worldSnapshot,
-        actorId: preview.unitId(entry.unit),
-        actionOpportunity: input.actionOpportunity || {},
-        battleIntent: input.battleIntent || {},
-        beliefState: input.initialBelief?.[preview.unitId(entry.unit)] || input.initialBelief || {},
-        teamIntent: input.teamIntent || {},
-        strategyMemory: input.strategyMemory || {},
-        seed: `${seed}:${index}`,
-      }));
-    if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
-    return {
-      shadow: true,
-      decisionEngine: 'next-shadow',
-      ledger: [],
-      trace: [],
-      scoreAudit: shadowDecisions.flatMap(item => item.scoreAudit),
-      actionChains: [],
-      reportBlocks: [],
-      roundOverview: [],
-      finalBattleReport: null,
-      aiSummaryInput: null,
-      finalSnapshot: worldSnapshot,
-      shadowDecisions,
+    const decideOnce = (payload, index = 0) => decision.decide({
+      ...payload,
+      battleIntent: input.battleIntent || payload?.battleIntent || {},
+      beliefState: payload?.beliefState && Object.keys(payload.beliefState).length
+        ? payload.beliefState
+        : input.initialBelief?.[payload?.actorId] || input.initialBelief || {},
+      seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${index}:${payload?.seedOffset || 0}`,
+    });
+    if (input.settings?.shadowDecisionOnly === true) {
+      const shadowDecisions = preview.listUnits(worldSnapshot)
+        .filter(entry => preview.isAlive(entry.unit))
+        .map((entry, index) => decideOnce({
+          worldSnapshot,
+          actorId: preview.unitId(entry.unit),
+          actionOpportunity: input.actionOpportunity || {},
+          strategyMemory: input.strategyMemory || {},
+        }, index));
+      if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
+      return {
+        shadow: true,
+        decisionEngine: 'next-shadow',
+        ledger: [],
+        trace: [],
+        scoreAudit: shadowDecisions.flatMap(item => item.scoreAudit),
+        actionChains: [],
+        reportBlocks: [],
+        roundOverview: [],
+        finalBattleReport: null,
+        aiSummaryInput: null,
+        finalSnapshot: worldSnapshot,
+        shadowDecisions,
+      };
+    }
+    const domain = requireEngine().caseDomain;
+    if (typeof domain.executeShadowTeam !== 'function') throw new Error('battle_runtime_shadow_settler_missing');
+    const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
+    const debugRuntime = domain.ensureRuntime(worldSnapshot);
+    debugRuntime.decisionSeed = seed;
+    const initialSnapshot = domain.getSnapshot(worldSnapshot);
+    const originalRandom = Math.random;
+    const previousIdContext = runtimeIdContext;
+    const previousIdSequence = runtimeIdSequence;
+    runtimeIdContext = `shadow-${seed.toString(36)}`;
+    runtimeIdSequence = 0;
+    let randomState = seed % 2147483647;
+    if (randomState <= 0) randomState += 2147483646;
+    Math.random = () => {
+      randomState = (randomState * 16807) % 2147483647;
+      return (randomState - 1) / 2147483646;
     };
+    try {
+      const simulation = domain.executeShadowTeam(worldSnapshot, rounds, decideOnce, decision.updateMechanicBelief, decision.updatePublicObservation);
+      const eventLedger = Array.isArray(worldSnapshot.__battleEventLedger) ? worldSnapshot.__battleEventLedger.map(item => cloneAuditSnapshot(item)) : [];
+      const resolutionTrace = collectResolutionTrace(worldSnapshot).map(normalizeCausalNode);
+      const actionQueueTrace = Array.isArray(worldSnapshot?.__battleRuntime?.actionQueueTrace) ? worldSnapshot.__battleRuntime.actionQueueTrace.map(item => cloneAuditSnapshot(item)) : [];
+      const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 8), { combatData: worldSnapshot }).map(item => cloneAuditSnapshot(item));
+      const result = {
+        preview: true,
+        battleMode: rounds > 1 ? 'multi_round' : 'single_round',
+        roundsExecuted: Number(simulation?.rounds || 0),
+        logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
+        combatData: worldSnapshot,
+        eventLedger,
+        resolutionTrace,
+        decisionTrace: [],
+        publicReportBlocks,
+        snapshot: domain.getSnapshot(worldSnapshot),
+      };
+      const finalSnapshot = result.snapshot;
+      const shadowDecisions = Array.isArray(simulation?.shadowDecisions) ? simulation.shadowDecisions : [];
+      const beliefObservations = Array.isArray(simulation?.beliefObservations) ? simulation.beliefObservations.map(item => cloneAuditSnapshot(item)) : [];
+      const scoringAudit = shadowDecisions.flatMap(item => item.scoreAudit || []);
+      const actionChains = buildActionChains(eventLedger, resolutionTrace);
+      const reportBlocks = buildReportBlocks(eventLedger, [], publicReportBlocks);
+      const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, [], finalSnapshot, worldSnapshot);
+      const audit = auditFacts({
+        eventLedger,
+        resolutionTrace,
+        publicReportBlocks,
+        reportBlocks,
+        scoringAudit: [],
+        scoringMutationDetected: false,
+        combatData: worldSnapshot,
+        initialSnapshot,
+        finalSnapshot,
+        actionQueueTrace,
+        roundsRequested: rounds,
+        roundsExecuted: result.roundsExecuted,
+      });
+      if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
+      return {
+        shadow: true,
+        decisionEngine: 'next-shadow',
+        roundsRequested: rounds,
+        roundsExecuted: result.roundsExecuted,
+        inputUnchanged: true,
+        ledger: eventLedger,
+        eventLedger,
+        trace: resolutionTrace,
+        resolutionTrace,
+        scoreAudit: scoringAudit,
+        scoringAudit,
+        actionChains,
+        actionQueueTrace,
+        reportBlocks,
+        publicReportBlocks,
+        roundOverview: buildRoundOverview(result, { combatData: worldSnapshot }),
+        finalBattleReport,
+        aiSummaryInput,
+        finalSnapshot,
+        logs: result.logs,
+        initialSnapshot,
+        audit,
+        shadowDecisions,
+        beliefObservations,
+      };
+    } finally {
+      Math.random = originalRandom;
+      runtimeIdContext = previousIdContext;
+      runtimeIdSequence = previousIdSequence;
+    }
   }
 
   function runBattleCase(options = {}) {
@@ -2194,6 +2357,10 @@
     const initialSnapshot = domain.getSnapshot(combatData);
     const scoringMutationCountBefore = Number(domain.getScoringMutationCount() || 0);
     const originalRandom = Math.random;
+    const previousIdContext = runtimeIdContext;
+    const previousIdSequence = runtimeIdSequence;
+    runtimeIdContext = `case-${caseId}-${seed.toString(36)}`;
+    runtimeIdSequence = 0;
     let randomState = seed % 2147483647;
     if (randomState <= 0) randomState += 2147483646;
     Math.random = () => {
@@ -2345,6 +2512,7 @@
         eventLedger,
         resolutionTrace,
         publicReportBlocks,
+        reportBlocks,
         scoringAudit,
         scoringMutationDetected,
         combatData: runtimeCombatData,
@@ -2383,6 +2551,8 @@
       };
     } finally {
       Math.random = originalRandom;
+      runtimeIdContext = previousIdContext;
+      runtimeIdSequence = previousIdSequence;
     }
   }
 

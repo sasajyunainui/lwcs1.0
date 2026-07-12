@@ -1,0 +1,128 @@
+import crypto from 'node:crypto';
+
+const clone = value => structuredClone(value);
+const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+function sourceSnapshot(library, name) {
+  const snapshot = library?.角色?.[name]?.快照?.[0]?.角色;
+  if (!snapshot) throw new Error(`r63_manual_character_missing:${name}`);
+  return clone(snapshot);
+}
+
+function readSystem(snapshot = {}) {
+  return String(snapshot?.第1武魂?.系别 || snapshot?.第1武魂?.类型 || snapshot?.属性?.系别 || '强攻系').trim() || '强攻系';
+}
+
+function participant(library, getBaseStats, name, options = {}) {
+  const snapshot = sourceSnapshot(library, name);
+  const level = Math.max(1, Number(options.level || snapshot?.属性?.等级 || 1));
+  const system = readSystem(snapshot);
+  if (typeof getBaseStats !== 'function') throw new Error('r63_manual_base_stats_missing');
+  const stats = getBaseStats(level);
+  const hpMax = Math.max(1, Math.floor(Number(stats?.vit_max || 1)));
+  const soulMax = Math.max(1, Math.floor(Number(stats?.sp_max || 1)));
+  const spiritMax = Math.max(1, Math.floor(Number(stats?.men_max || 1)));
+  const staminaMax = hpMax;
+  const strength = Math.max(1, Math.floor(Number(stats?.str || 1)));
+  const defense = Math.max(1, Math.floor(Number(stats?.def || 1)));
+  const agility = Math.max(1, Math.floor(Number(stats?.agi || 1)));
+  const hp = Math.max(1, Math.round(hpMax * Number(options.hpRatio ?? 1)));
+  const stamina = Math.max(1, Math.round(staminaMax * Number(options.staminaRatio ?? 1)));
+  const soul = Math.max(0, Math.round(soulMax * Number(options.soulRatio ?? 1)));
+  const spirit = Math.max(0, Math.round(spiritMax * Number(options.spiritRatio ?? 1)));
+  snapshot.id = name;
+  snapshot.name = name;
+  snapshot.名称 = name;
+  snapshot.type = system;
+  snapshot.系别 = system;
+  delete snapshot.final;
+  Object.assign(snapshot, {
+    hp,
+    HP: hp,
+    hp_max: hpMax,
+    sp: soul,
+    men: spirit,
+    vit: stamina,
+    sta: stamina,
+    sp_max: soulMax,
+    men_max: spiritMax,
+    vit_max: hpMax,
+    str: strength,
+    def: defense,
+    agi: agility,
+  });
+  snapshot.属性 = {
+    ...(snapshot.属性 || {}),
+    等级: level,
+    系别: system,
+    HP: hp,
+    HP上限: hpMax,
+    体力: stamina,
+    体力上限: staminaMax,
+    魂力: soul,
+    魂力上限: soulMax,
+    精神力: spirit,
+    精神力上限: spiritMax,
+    力量: strength,
+    防御: defense,
+    敏捷: agility,
+    状态效果: {},
+  };
+  snapshot.状态 = { ...(snapshot.状态 || {}), 存活: true, 位置: 'R6.3本地审阅场', 行动: '战斗' };
+  snapshot.状态效果 = {};
+  snapshot.持续效果 = {};
+  snapshot.背包 = snapshot.背包 && typeof snapshot.背包 === 'object' ? snapshot.背包 : {};
+  if (options.charging) snapshot.蓄力技能 = clone(options.charging);
+  return { unit: snapshot, sourceHash: hash(sourceSnapshot(library, name)) };
+}
+
+function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
+  return {
+    caseId,
+    seed: 630000 + [...caseId].reduce((sum, char) => sum + char.charCodeAt(0), 0),
+    rounds,
+    intent,
+    initialBelief,
+    sourceCharacterIds: [...players, ...enemies].map(entry => entry.unit.name),
+    sourceDataHashes: Object.fromEntries([...players, ...enemies].map(entry => [entry.unit.name, entry.sourceHash])),
+    combatData: {
+      回合: 0,
+      战斗类型: '普通战斗',
+      战斗意图: intent,
+      进行中: true,
+      参战者: { team_player: players.map(entry => entry.unit), team_enemy: enemies.map(entry => entry.unit) },
+    },
+  };
+}
+
+export function buildShadowManualCases(library, getBaseStats) {
+  const make = (name, options) => participant(library, getBaseStats, name, options);
+  const charge = {
+    id: 'visible-charge', type: 'skill', action_type: '释放魂技', cast_time: 30,
+    skill: {
+      id: 'visible-charge-skill', name: '已显露蓄力重击', 魂技名: '已显露蓄力重击', 前摇: 30, 消耗: { 魂力: 100 },
+      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 500, 伤害类型: '近身攻击', 生效方式: '独立生效' }],
+    },
+  };
+  const longCharge = {
+    ...clone(charge),
+    cast_time: 80,
+    skill: { ...clone(charge.skill), 前摇: 80 },
+  };
+  const cases = [
+    battle('duel_overmatch_lethal', 4, '死斗', [make('云冥')], [make('韦小枫')]),
+    battle('duel_overmatch_nonlethal', 4, '点到为止', [make('舞长空')], [make('韦小枫')]),
+    battle('duel_underdog_survival', 5, '求生', [make('韦小枫')], [make('舞长空', { charging: longCharge })]),
+    battle('duel_peer_unknown_probe', 5, '点到为止', [make('谢邂')], [make('韦小枫')], { confidence: 0.2 }),
+    battle('duel_agile_single_target_failure', 5, '求生', [make('谢邂', { level: 45, hpRatio: 0.05 })], [make('王金玺', { level: 50 })]),
+    battle('duel_agile_counter_options', 5, '切磋', [make('谢邂', { level: 50 })], [make('王金玺', { level: 50 })]),
+    battle('duel_charge_interrupt_safer', 4, '切磋', [make('舞长空')], [make('古月', { charging: charge })]),
+    battle('duel_charge_defense_safer', 4, '切磋', [make('韦小枫', { hpRatio: 0.25, soulRatio: 0 })], [make('舞长空', { charging: longCharge })]),
+    battle('team_focus_without_overkill', 4, '击败', [make('唐舞麟'), make('古月'), make('谢邂')], [make('张扬子', { hpRatio: 0.25 }), make('王金玺'), make('韦小枫')]),
+    battle('team_protect_critical_ally', 4, '守护', [make('舞长空', { level: 70, hpRatio: 0.05 }), make('雅莉'), make('唐舞麟', { level: 70 })], [make('龙跃', { level: 70 }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 })]),
+    battle('team_heal_crisis', 4, '守护', [make('雅莉'), make('舞长空', { level: 70, hpRatio: 0.12 }), make('古月', { level: 70, hpRatio: 0.3 })], [make('龙跃', { level: 60, charging: charge }), make('戴月炎', { level: 60 }), make('苏沐', { level: 60 })]),
+    battle('team_control_overlap', 4, '击败', [make('古月', { level: 80 }), make('许小言', { level: 90 }), make('舞长空', { level: 80 })], [make('龙跃', { level: 55, charging: charge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })]),
+  ];
+  cases.find(item => item.caseId === 'duel_agile_counter_options').seed = 630071;
+  return cases;
+}

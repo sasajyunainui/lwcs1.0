@@ -149,7 +149,8 @@ addCheck(
 addCheck(
   'finalSummaryFactsOwnedByRuntime',
   /function buildFinalSummary\(eventLedger = \[\], decisionTrace = \[\], finalSnapshot = \{\}, combatData = null\)/.test(battleRuntimeSource) &&
-    /const \{ playerIntent, enemyIntent \} = requireEngine\(\)\.caseDomain\.resolveNextIntents/.test(battleRuntimeSource) &&
+    /const resolvedIntents = battleEnded[\s\S]*?requireEngine\(\)\.caseDomain\.resolveNextIntents\(/.test(battleRuntimeSource) &&
+    /const \{ playerIntent, enemyIntent \} = resolvedIntents/.test(battleRuntimeSource) &&
     /resolveNextIntents:\s*input\s*=>/.test(battleUiSource) &&
     /BATTLE_RUNTIME\.buildFinalSummary\(/.test(battleUiSource) &&
     !/function 构建战斗总结数据\(/.test(battleUiSource) &&
