@@ -2139,9 +2139,49 @@
     return engineState.implementation;
   }
 
+  function runShadowDecisionCase(input = {}) {
+    const decision = root.__LWCS_BATTLE_DECISION__;
+    const preview = root.__LWCS_BATTLE_PREVIEW__;
+    if (!decision || typeof decision.decide !== 'function' || !preview || typeof preview.listUnits !== 'function') {
+      throw new Error('battle_runtime_shadow_decision_runtime_missing');
+    }
+    const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
+    const sourceSnapshot = JSON.stringify(sourceCombatData);
+    const worldSnapshot = cloneValue(sourceCombatData);
+    const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
+    const shadowDecisions = preview.listUnits(worldSnapshot)
+      .filter(entry => preview.isAlive(entry.unit))
+      .map((entry, index) => decision.decide({
+        worldSnapshot,
+        actorId: preview.unitId(entry.unit),
+        actionOpportunity: input.actionOpportunity || {},
+        battleIntent: input.battleIntent || {},
+        beliefState: input.initialBelief?.[preview.unitId(entry.unit)] || input.initialBelief || {},
+        teamIntent: input.teamIntent || {},
+        strategyMemory: input.strategyMemory || {},
+        seed: `${seed}:${index}`,
+      }));
+    if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
+    return {
+      shadow: true,
+      decisionEngine: 'next-shadow',
+      ledger: [],
+      trace: [],
+      scoreAudit: shadowDecisions.flatMap(item => item.scoreAudit),
+      actionChains: [],
+      reportBlocks: [],
+      roundOverview: [],
+      finalBattleReport: null,
+      aiSummaryInput: null,
+      finalSnapshot: worldSnapshot,
+      shadowDecisions,
+    };
+  }
+
   function runBattleCase(options = {}) {
-    const domain = requireEngine().caseDomain;
     const input = options && typeof options === 'object' ? options : {};
+    if (String(input.settings?.decisionEngine || '').trim() === 'next-shadow') return runShadowDecisionCase(input);
+    const domain = requireEngine().caseDomain;
     const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
     const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
@@ -2487,6 +2527,7 @@
     assertEffectList,
     assertSkillEffects,
     bindEngine,
+    runShadowDecisionCase,
     runBattleCase,
     auditFacts,
     normalizeCausalNode,

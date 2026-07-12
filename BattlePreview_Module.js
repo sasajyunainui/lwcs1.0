@@ -390,8 +390,8 @@
     const actorSide = sideOf(worldSnapshot, actor);
     const targetText = String(effect?.目标 || declaration?.targetKind || '').trim();
     const declaredIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
-    if (declaredIds.length) return declaredIds.map(id => findUnit(worldSnapshot, id)).filter(Boolean);
     if (/自身/.test(targetText)) return [actor];
+    if (declaredIds.length) return declaredIds.map(id => findUnit(worldSnapshot, id)).filter(Boolean);
     const friendly = all.filter(entry => entry.side === actorSide && isAlive(entry.unit)).map(entry => entry.unit);
     const hostile = all.filter(entry => entry.side !== actorSide && isAlive(entry.unit)).map(entry => entry.unit);
     if (/友方.*群体|己方.*群体/.test(targetText)) return friendly;
@@ -854,6 +854,24 @@
     const rootActionId = String(declaration?.actionId || declaration?.candidateId || `preview:${cacheKey}`).trim();
     const overlay = new PreviewOverlay(worldSnapshot, input?.worldRevision);
     const ledger = new ContributionLedger();
+    Object.entries(declaration?.resourceCosts || {}).forEach(([resource, rawCost], index) => {
+      const currentActor = overlay.readUnit(unitId(actor));
+      const maximum = readResourceMax(currentActor, resource);
+      const numericCost = Math.max(0, Number(rawCost || 0));
+      const cost = numericCost <= 1 ? maximum * numericCost : numericCost;
+      const before = readResource(currentActor, resource);
+      if (before + 1e-9 < cost) throw new Error(`battle_preview_resource_insufficient:${resource}`);
+      overlay.changeUnit(unitId(actor), unit => setResourceValue(unit, resource, before - cost));
+      ledger.addOutcome({
+        rootActionId,
+        effectInstanceId: `${rootActionId}:cost:${index}`,
+        targetId: unitId(actor),
+        windowId: 'ACTION_COST',
+        outcomeKind: 'RESOURCE_OPTION_CHANGED',
+        threatValue: 0,
+        evidence: { resource, before, next: before - cost, delta: -cost },
+      });
+    });
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
