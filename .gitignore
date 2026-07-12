@@ -1,0 +1,17 @@
+.tmp_*
+*.tmp.*
+tmp_*
+*.mjs
+*.md
+!tools/
+!tools/*.mjs
+!tools/*.md
+.gitignore
+LICENSE
+index.js
+manifest.json
+切换资源来源.js
+*.yml
+花映塚剧情推进正则
+battle_report_decision_samples_100.txt
+
