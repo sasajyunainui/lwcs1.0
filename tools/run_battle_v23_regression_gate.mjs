@@ -23,12 +23,14 @@ const maxOutputBytes = 1024 * 1024 * 128;
 const utf8ScanTargets = [
   'lwcs/BattleUI_Module.js',
   'lwcs/BattleRuntime_Module.js',
+  'lwcs/BattlePreview_Module.js',
   'lwcs/LWCS_Database_Adapter.js',
   'lwcs/mvu_logic_bridge.js',
   'lwcs/mvu_styles.css',
   'lwcs/battle_report_decision_samples_100.txt',
   'lwcs/tools/audit_battle_r63_baseline.mjs',
   'lwcs/tools/audit_battle_r63_queue_probability.mjs',
+  'lwcs/tools/audit_battle_r63_preview_foundation.mjs',
   'lwcs/tools/battle_r63_manual_manifest.mjs',
   'lwcs/tools/battle_r63_manual_review_template.md',
   'tools/audit_battle_v73_formal_cases.mjs',
@@ -48,6 +50,8 @@ const utf8ScanTargets = [
 const commandDefinitions = [
   { name: 'auditBattleR63Baseline', command: [process.execPath, ['lwcs/tools/audit_battle_r63_baseline.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'auditBattleR63QueueProbability', command: [process.execPath, ['lwcs/tools/audit_battle_r63_queue_probability.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
+  { name: 'auditBattleR63PreviewFoundation', command: [process.execPath, ['lwcs/tools/audit_battle_r63_preview_foundation.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
+  { name: 'syntaxBattlePreview', command: [process.execPath, ['--check', 'lwcs/BattlePreview_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'syntaxBattleRuntime', command: [process.execPath, ['--check', 'lwcs/BattleRuntime_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'syntaxBattleUi', command: [process.execPath, ['--check', 'lwcs/BattleUI_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'syntaxDatabaseAdapter', command: [process.execPath, ['--check', 'lwcs/LWCS_Database_Adapter.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
