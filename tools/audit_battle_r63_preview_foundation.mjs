@@ -114,7 +114,7 @@ const damageInput = {
   declaration: declaration('damage', [{
     effectId: 'damage:1',
     原型: '伤害结算',
-    目标: '敌方单体',
+    目标: '单体',
     威力倍率: 50,
     伤害类型: '近身攻击',
     命中概率: 100,
@@ -152,24 +152,24 @@ const shieldResult = preview.previewAction({
   worldSnapshot: frozenWorld,
   actorId: 'actor',
   worldRevision: 'world:shield',
-  declaration: declaration('shield', [{ effectId: 'shield:1', 原型: '护盾变化', 目标: '自身', 数值: '+25' }], ['actor']),
+  declaration: declaration('shield', [{ effectId: 'shield:1', 原型: '护盾变化', 目标: '自身', 护盾模式: '正向护盾', 数值: '+25' }], ['actor']),
 });
 assert.equal(preview.findUnit(shieldResult.afterSnapshot, 'actor').shield, 25, '护盾变化预估错误');
 
 assert.throws(() => preview.previewAction({
   worldSnapshot: frozenWorld,
   actorId: 'actor',
-  worldRevision: 'world:complex-not-ready',
-  declaration: declaration('complex-not-ready', [{ effectId: 'state:1', 原型: '状态施加', 目标: '敌方单体', 状态: '眩晕' }]),
-}), /battle_preview_prototype_not_implemented:状态施加/, '未实现复杂原型被静默套用通用预估');
+  worldRevision: 'world:non-battle',
+  declaration: declaration('non-battle', [{ effectId: 'training:1', 原型: '修炼增益', 目标: '自身', 收益类型: '修炼速度', 数值: '+10%' }], ['actor']),
+}), /battle_preview_non_battle_prototype:修炼增益/, '战斗外原型进入战斗预估');
 
 const overkillResult = preview.previewAction({
   worldSnapshot: frozenWorld,
   actorId: 'actor',
   worldRevision: 'world:overkill',
   declaration: declaration('overkill', [
-    { effectId: 'overkill:1', 原型: '伤害结算', 目标: '敌方单体', 威力倍率: 10000, 伤害类型: '真实伤害', 命中概率: 100 },
-    { effectId: 'overkill:2', 原型: '伤害结算', 目标: '敌方单体', 威力倍率: 10000, 伤害类型: '真实伤害', 命中概率: 100 },
+    { effectId: 'overkill:1', 原型: '伤害结算', 目标: '单体', 威力倍率: 10000, 伤害类型: '真实攻击', 命中概率: 100 },
+    { effectId: 'overkill:2', 原型: '伤害结算', 目标: '单体', 威力倍率: 10000, 伤害类型: '真实攻击', 命中概率: 100 },
   ]),
 });
 const overkillValue = overkillResult.contributions.reduce((sum, entry) => sum + entry.threatValue, 0);
@@ -225,6 +225,6 @@ const output = {
     cacheHits: metricsAfterCache.cacheHits - metricsBefore.cacheHits,
     fullCloneCalls: metricsAfterCache.fullCloneCalls - metricsBefore.fullCloneCalls,
   },
-  coverage: ['damage', 'healing', 'resource', 'shield', 'overkill-cap', 'unsupported-complex-prototype', 'contribution-exclusivity', 'preview-budget', 'unit-capacity'],
+  coverage: ['damage', 'healing', 'resource', 'shield', 'overkill-cap', 'non-battle-rejection', 'contribution-exclusivity', 'preview-budget', 'unit-capacity'],
 };
 console.log(JSON.stringify(output, null, 2));
