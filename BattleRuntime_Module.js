@@ -56,6 +56,14 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function probabilitySucceeds(probability, roll = Math.random()) {
+    const normalizedProbability = Math.max(0, Math.min(1, Number(probability) || 0));
+    if (normalizedProbability <= 0) return false;
+    if (normalizedProbability >= 1) return true;
+    const normalizedRoll = Math.max(0, Math.min(1, Number(roll) || 0));
+    return normalizedRoll < normalizedProbability;
+  }
+
   function findFirstDifference(before, after, path = '$') {
     if (Object.is(before, after)) return '';
     if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return path;
@@ -199,6 +207,7 @@
     prototypeManifest,
     prototypeOptionMatrix,
     cloneValue,
+    probabilitySucceeds,
     assertEffectList,
     assertSkillEffects,
     bindEngine,

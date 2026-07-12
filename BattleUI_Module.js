@@ -5767,6 +5767,7 @@ class BattleUIComponent {
       (Array.isArray(eventLedger) ? eventLedger : [])
         .filter(event => event && typeof event === 'object')
         .filter(event => String(event?.eventKind || '').trim() === 'action_start')
+        .filter(event => 标准化战斗行动职责(event?.actionRole || '') !== 'STATE_TICK')
         .filter(event => String(event?.actorSide || '').trim() === 'player')
         .filter(event => event?.meta?.source !== 'summon' && event?.source !== 'summon' && !/召唤自主/.test(String(event?.actionType || '')))
         .filter(event => !判定公开战报事件是内部兜底(event))
@@ -12272,7 +12273,7 @@ class BattleUIComponent {
     function applyBattleSideEffectState(targetChar, effect = {}, sourceName = '', logs = [], combatData = null, options = {}) {
       if (!targetChar) return;
       const chance = Number(effect?.触发概率 ?? 1);
-      if (chance < 1 && Math.random() > chance) return;
+      if (!BATTLE_RUNTIME.probabilitySucceeds(chance)) return;
       const { 面板修改比例, 战斗效果 } = buildBattleSideEffectRuntimePayload(effect);
       const 是否致死副作用 = 战斗效果?.致死 === true;
       if (是否致死副作用) {
@@ -14057,7 +14058,7 @@ class BattleUIComponent {
       if (!目标快照.hasStealthed) return true;
       if (canBypassStealth(观察者, skill, 目标)) return true;
       const 识破率 = 读取隐匿识破率(观察者, 目标);
-      return 识破率 > 0 && Math.random() < 识破率;
+      return BATTLE_RUNTIME.probabilitySucceeds(识破率);
     }
 
     function 探查屏蔽阻断敌对锁定状态(目标 = {}, 状态模块 = {}) {
@@ -14275,7 +14276,11 @@ class BattleUIComponent {
     }
 
     function bindCombatParticipant(char) {
-      if (!char || char.__combatMirrorBound) return char;
+      if (!char) return char;
+      const spDescriptor = Object.getOwnPropertyDescriptor(char, 'sp');
+      const hpDescriptor = Object.getOwnPropertyDescriptor(char, 'hp');
+      if (char.__combatMirrorBound && typeof spDescriptor?.get === 'function' && typeof hpDescriptor?.get === 'function') return char;
+      if (char.__combatMirrorBound) delete char.__combatMirrorBound;
 
       if (char.属性) {
         COMBAT_STAT_KEYS.forEach(key => bindCombatMirrorField(char, char.属性, key, { preferSource: true }));
@@ -16716,6 +16721,8 @@ class BattleUIComponent {
       const resolutionTrace = Array.isArray(payload.resolutionTrace) ? payload.resolutionTrace.filter(Boolean) : [];
       const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
       const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
+      const initialSnapshot = payload.initialSnapshot && typeof payload.initialSnapshot === 'object' ? payload.initialSnapshot : null;
+      const finalSnapshot = payload.finalSnapshot && typeof payload.finalSnapshot === 'object' ? payload.finalSnapshot : null;
       const fatals = [];
       const warnings = [];
       const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
@@ -16745,6 +16752,171 @@ class BattleUIComponent {
         Object.values(value).forEach(item => collectBlockSources(item, projection));
       };
       collectBlockSources(publicReportBlocks);
+
+      const normalizeBalanceResourceKey = value => {
+        const text = String(value || '').trim();
+        if (/护盾|shield/i.test(text)) return 'shield';
+        if (/生命|HP|hp/i.test(text)) return 'hp';
+        if (/体力|vit|sta/i.test(text)) return 'vit';
+        if (/精神|men/i.test(text)) return 'men';
+        if (/魂力|sp/i.test(text)) return 'sp';
+        return '';
+      };
+      const collectSnapshotUnits = snapshot => {
+        const units = [];
+        const append = (items, side) => (Array.isArray(items) ? items : []).forEach(unit => {
+          const name = String(unit?.name || unit?.名称 || '').trim();
+          if (!name) return;
+          units.push({
+            key: `${side}|${name}`,
+            side,
+            name,
+            values: {
+              hp: Math.round(Number(unit?.hp ?? unit?.HP ?? 0)),
+              vit: Math.round(Number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? 0)),
+              sp: Math.round(Number(unit?.sp ?? unit?.魂力 ?? 0)),
+              men: Math.round(Number(unit?.men ?? unit?.精神力 ?? 0)),
+              shield: Math.round(Number(unit?.shield ?? unit?.护盾 ?? 0)),
+            },
+          });
+        });
+        append(snapshot?.team_player, 'player');
+        append(snapshot?.team_enemy, 'enemy');
+        append(snapshot?.summons, 'summon');
+        return units;
+      };
+      const initialUnits = collectSnapshotUnits(initialSnapshot);
+      const finalUnits = collectSnapshotUnits(finalSnapshot);
+      const findBalanceUnit = (name = '', side = '') => {
+        const normalizedName = String(name || '').trim();
+        const normalizedSide = 标准化战斗阵营侧(side);
+        const allUnits = [...initialUnits, ...finalUnits];
+        const bySide = normalizedSide
+          ? allUnits.find(unit => unit.side === normalizedSide && isSameBattleReportName(unit.name, normalizedName))
+          : null;
+        if (bySide) return bySide;
+        const matches = allUnits.filter(unit => isSameBattleReportName(unit.name, normalizedName));
+        return matches.length === 1 ? matches[0] : null;
+      };
+      const balanceDeltas = new Map();
+      const addBalanceDelta = (name, side, resource, delta, eventId) => {
+        const normalizedResource = normalizeBalanceResourceKey(resource);
+        const amount = Math.round(Number(delta || 0));
+        const unit = findBalanceUnit(name, side);
+        if (!unit || !normalizedResource || !amount) return;
+        const key = `${unit.key}|${normalizedResource}`;
+        const entry = balanceDeltas.get(key) || { delta: 0, eventIds: [] };
+        entry.delta += amount;
+        if (eventId) entry.eventIds.push(String(eventId));
+        balanceDeltas.set(key, entry);
+      };
+      eventLedger.forEach(event => {
+        const kind = String(event?.eventKind || '').trim();
+        const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+        const eventId = String(event?.eventId || '').trim();
+        const targetName = String(event?.targetName || event?.actorName || '').trim();
+        const targetSide = String(event?.targetSide || event?.actorSide || '').trim();
+        if (kind === 'action_cost') {
+          addBalanceDelta(event?.actorName, event?.actorSide, 'sp', -Math.max(0, Number(meta.reqSp || 0)), eventId);
+          addBalanceDelta(event?.actorName, event?.actorSide, 'vit', -Math.max(0, Number(meta.reqVit || 0)), eventId);
+          addBalanceDelta(event?.actorName, event?.actorSide, 'men', -Math.max(0, Number(meta.reqMen || 0)), eventId);
+          return;
+        }
+        if (kind === 'resource_change') {
+          const rawDelta = Number(meta.delta ?? event?.delta ?? 0);
+          const amount = Math.max(0, Number(meta.amount ?? event?.amount ?? Math.abs(rawDelta) ?? 0));
+          const result = String(event?.result || '').trim();
+          const delta = Number.isFinite(rawDelta) && rawDelta !== 0
+            ? rawDelta
+            : (/loss|cost|drain|损失|消耗|扣除/.test(result) ? -amount : amount);
+          addBalanceDelta(targetName, targetSide, meta.resourceKey || meta.resource || event?.resource, delta, eventId);
+          return;
+        }
+        if (kind === 'state_tick') {
+          const resource = normalizeBalanceResourceKey(meta.resource || event?.resource);
+          const amount = Math.max(0, Number(meta.amount ?? event?.amount ?? event?.appliedDamage ?? 0));
+          const result = String(event?.result || '').trim();
+          const delta = /恢复|gain|heal|recover/.test(result) ? amount : -amount;
+          addBalanceDelta(targetName, targetSide, resource, delta, eventId);
+          return;
+        }
+        if (kind === 'hit_result') {
+          addBalanceDelta(targetName, targetSide, 'hp', -readDamage(event), eventId);
+          return;
+        }
+        if (kind === 'counter') {
+          const settlementEventId = String(meta.settlementEventId || '').trim();
+          if (!settlementEventId) addBalanceDelta(targetName, targetSide, 'hp', -readDamage(event), eventId);
+          return;
+        }
+        if (kind === 'shield_create' || kind === 'shield_break') {
+          const amount = Math.max(0, Number(meta.amount ?? meta.shieldAmount ?? meta.shieldValue ?? event?.amount ?? 0));
+          addBalanceDelta(targetName, targetSide, 'shield', kind === 'shield_break' ? -amount : amount, eventId);
+        }
+      });
+      if (initialUnits.length && finalUnits.length) {
+        initialUnits.forEach(initialUnit => {
+          const finalUnit = finalUnits.find(unit => unit.key === initialUnit.key);
+          if (!finalUnit) return;
+          Object.keys(initialUnit.values).forEach(resource => {
+            const initialValue = initialUnit.values[resource];
+            const finalValue = finalUnit.values[resource];
+            const balance = balanceDeltas.get(`${initialUnit.key}|${resource}`) || { delta: 0, eventIds: [] };
+            const expectedFinalValue = initialValue + balance.delta;
+            if (finalValue !== expectedFinalValue) {
+              pushFatal('LEDGER_CONSERVATION_MISMATCH', {
+                unit: initialUnit.name,
+                side: initialUnit.side,
+                resource,
+                initialValue,
+                finalValue,
+                ledgerDelta: balance.delta,
+                expectedFinalValue,
+                eventIds: balance.eventIds,
+              });
+            }
+          });
+        });
+      }
+
+      const actionQueueTrace = Array.isArray(payload.actionQueueTrace)
+        ? payload.actionQueueTrace.filter(Boolean)
+        : Array.isArray(payload?.combatData?.__battleRuntime?.actionQueueTrace)
+          ? payload.combatData.__battleRuntime.actionQueueTrace.filter(Boolean)
+          : [];
+      const actionQueueFatal = payload?.combatData?.__battleRuntime?.actionQueueFatal;
+      if (actionQueueFatal?.code) pushFatal('ACTION_QUEUE_FATAL', { ...actionQueueFatal });
+      const consumedGrants = new Map();
+      const executedNodes = new Map();
+      actionQueueTrace.forEach((entry, index) => {
+        if (String(entry?.state || '').trim() !== 'EXECUTED') return;
+        const round = Number(entry?.round || 0);
+        const actionSequence = Number(entry?.actionSequence || 0);
+        const parentActionSequence = Number(entry?.parentActionSequence || 0);
+        const grantId = String(entry?.grantId || '').trim();
+        const grantKey = `${round}|${grantId}`;
+        if (!grantId) {
+          pushFatal('ACTION_GRANT_MISSING', { index, round, actionSequence });
+          return;
+        }
+        if (consumedGrants.has(grantKey)) {
+          pushFatal('ACTION_GRANT_CONSUMED_TWICE', { index, round, grantId, duplicateOf: consumedGrants.get(grantKey) });
+        } else {
+          consumedGrants.set(grantKey, index);
+        }
+        const nodeKey = `${round}|${actionSequence}`;
+        if (executedNodes.has(nodeKey)) {
+          pushFatal('ACTION_QUEUE_SEQUENCE_DUPLICATED', { index, round, actionSequence, duplicateOf: executedNodes.get(nodeKey).index });
+        } else {
+          executedNodes.set(nodeKey, { index, parentActionSequence });
+        }
+        if (parentActionSequence > 0) {
+          const parent = executedNodes.get(`${round}|${parentActionSequence}`);
+          if (!parent || parent.index >= index) {
+            pushFatal('ACTION_QUEUE_PARENT_ORDER_INVALID', { index, round, actionSequence, parentActionSequence });
+          }
+        }
+      });
 
       if (payload.roundsRequested > 0 && eventLedger.length === 0) {
         pushFatal('BATTLE_REQUEST_WITHOUT_FACTS', { roundsRequested: Number(payload.roundsRequested || 0) });
@@ -17043,6 +17215,7 @@ class BattleUIComponent {
       const combatData = deepClonePlain(sourceCombatData);
       const debugRuntime = 确保战斗运行态(combatData);
       debugRuntime.decisionSeed = seed;
+      const initialSnapshot = ui_getBattleSnapshot(combatData);
       const scoringMutationCountBefore = Number(战斗评分预估写入次数 || 0);
       const originalRandom = Math.random;
       let randomState = seed % 2147483647;
@@ -17094,7 +17267,11 @@ class BattleUIComponent {
         const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(补齐战斗因果节点契约) : [];
         const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => cloneBattleRuntimeAuditSnapshot(item)) : [];
         const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
-        const finalSnapshot = result?.snapshot || ui_getBattleSnapshot(result?.combatData || combatData);
+        const runtimeCombatData = result?.combatData || combatData;
+        const finalSnapshot = result?.snapshot || ui_getBattleSnapshot(runtimeCombatData);
+        const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
+          ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => cloneBattleRuntimeAuditSnapshot(item))
+          : [];
         const actionChains = 构建战斗行动链摘要(eventLedger, resolutionTrace);
         const reportBlocks = 构建结构化战报Blocks(eventLedger, decisionTrace, publicReportBlocks);
         const { finalBattleReport, aiSummaryInput } = 构建战斗总结数据(eventLedger, decisionTrace, finalSnapshot);
@@ -17187,7 +17364,10 @@ class BattleUIComponent {
           publicReportBlocks,
           scoringAudit,
           scoringMutationDetected,
-          combatData: result?.combatData || combatData,
+          combatData: runtimeCombatData,
+          initialSnapshot,
+          finalSnapshot,
+          actionQueueTrace,
           roundsRequested: rounds,
           roundsExecuted: Number(result?.roundsExecuted || 0),
         });
@@ -17206,6 +17386,7 @@ class BattleUIComponent {
           decisionTrace,
           scoringAudit,
           actionChains,
+          actionQueueTrace,
           reportBlocks,
           publicReportBlocks,
           roundOverview: 构建回合速览数据(result, { combatData: result?.combatData || combatData }),
@@ -17214,6 +17395,7 @@ class BattleUIComponent {
           finalSnapshot,
           llmBattleSummary: String(result?.llmBattleSummary || 构建LLM战斗语义摘要(eventLedger, finalSnapshot, { maxRounds: rounds }) || ''),
           logs: Array.isArray(result?.logs) ? result.logs : [],
+          initialSnapshot,
           audit,
         };
       } finally {
@@ -20333,7 +20515,7 @@ class BattleUIComponent {
       for (const [key] of candidates) {
         if (排除状态键集合.has(String(key || '').trim())) continue;
         if (removed.length >= maxCount) break;
-        if (chance < 1 && Math.random() > chance) {
+        if (!BATTLE_RUNTIME.probabilitySucceeds(chance)) {
           驱动失败数 += 1;
           continue;
         }
@@ -20635,7 +20817,8 @@ class BattleUIComponent {
           const effect = cond?.持续原型效果;
           if (!effect || String(effect?.原型 || '').trim() !== '状态移除') return false;
           const 候选 = 读取状态移除候选状态(targetChar, effect);
-          return 候选.some(([候选键]) => 候选键 === 临时状态键) && 读取状态移除驱动成功率(effect, attacker, targetChar) >= Math.random();
+          return 候选.some(([候选键]) => 候选键 === 临时状态键) &&
+            BATTLE_RUNTIME.probabilitySucceeds(读取状态移除驱动成功率(effect, attacker, targetChar));
         });
         return 命中条目 ? { key: 命中条目[0], cond: 命中条目[1] } : null;
       } finally {
@@ -20798,6 +20981,78 @@ class BattleUIComponent {
       return Math.max(0, Math.floor(Number(char?.魂核?.核心?.数量 || 0)));
     }
 
+      function 获取回合末状态结算锚点(combatData, char, label, meta = {}) {
+        if (!combatData || !char) return null;
+        const runtime = 确保战斗运行态(combatData);
+        if (!runtime.roundTickActionAnchors || typeof runtime.roundTickActionAnchors !== 'object') runtime.roundTickActionAnchors = {};
+        const round = Number(combatData?.回合 || 0);
+        const actorName = String(char?.name || char?.名称 || label || '').trim();
+        const actionName = String(meta.sourceActionName || meta.stateName || '回合末结算').trim();
+        const key = [round, actorName, actionName, String(meta.applicationId || '').trim()].join('|');
+        if (runtime.roundTickActionAnchors[key]) return runtime.roundTickActionAnchors[key];
+        const anchor = 写入战斗事件账本(combatData, {
+          eventKind: 'action_start',
+          round,
+          actorName,
+          targetName: actorName,
+          actionName,
+          actionType: 'round_tick',
+          actorControl: 'SYSTEM',
+          actionRole: 'STATE_TICK',
+          actionId: 生成战斗动作事实ID('battle-round-tick'),
+          sourceActionName: String(meta.sourceActionName || '').trim(),
+          sourceActionId: String(meta.sourceActionId || '').trim(),
+          parentNodeId: String(meta.parentNodeId || '').trim(),
+          sourceNodeId: String(meta.sourceNodeId || '').trim(),
+          result: 'anchored',
+          ruleCode: String(meta.reasonCode || 'ROUND_END_STATE_TICK').trim(),
+          meta: {
+            source: 'round_end_state_tick',
+            stateName: String(meta.stateName || '').trim(),
+            applicationId: String(meta.applicationId || '').trim(),
+            reasonText: String(meta.reasonText || '回合末状态结算').trim(),
+          },
+        });
+        if (anchor?.chainNodeId && !anchor.sourceNodeId) anchor.sourceNodeId = anchor.chainNodeId;
+        runtime.roundTickActionAnchors[key] = anchor;
+        return anchor;
+      }
+
+      function 写入回合末资源变化事实(combatData, char, label, resourceKey, delta, meta = {}) {
+        const amount = Math.round(Number(delta || 0));
+        if (!combatData || !char || !amount) return null;
+        const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
+        if (!resource) return null;
+        const anchor = 获取回合末状态结算锚点(combatData, char, label, meta);
+        return 写入战斗事件账本(combatData, {
+          eventKind: 'resource_change',
+          round: Number(combatData?.回合 || 0),
+          actorName: String(meta.sourceActorName || char?.name || char?.名称 || label || '').trim(),
+          targetName: char?.name || char?.名称 || label || '',
+          actionName: String(meta.sourceActionName || meta.stateName || '回合末资源变化').trim(),
+          actionType: 'state_tick',
+          actionRole: 'STATE_TICK',
+          sourceActionName: String(meta.sourceActionName || anchor?.actionName || '').trim(),
+          sourceActionId: String(meta.sourceActionId || anchor?.actionId || '').trim(),
+          sourceRound: Number(meta.sourceRound || anchor?.round || 0),
+          parentNodeId: String(meta.parentNodeId || anchor?.chainNodeId || '').trim(),
+          sourceNodeId: String(meta.sourceNodeId || anchor?.chainNodeId || '').trim(),
+          result: amount > 0 ? 'gain' : 'loss',
+          primaryOutcome: amount > 0 ? 'resource_recovered' : 'resource_lost',
+          applicationId: String(meta.applicationId || '').trim(),
+          duration: Math.max(0, Number(meta.duration || 0)),
+          effectSummary: String(meta.effectSummary || '').trim(),
+          driverAttr: String(meta.driverAttr || '').trim(),
+          meta: {
+            ...meta,
+            resourceKey,
+            resource,
+            amount: Math.abs(amount),
+            delta: amount,
+          },
+        });
+      }
+
       function settleConditionsAtRoundEnd(char, label, combatData = null) {
       if (!char) return { log: '', totalDot: 0, expired: [] };
 
@@ -20858,6 +21113,17 @@ class BattleUIComponent {
           const 状态来源文本 = 状态来源?.sourceActorName && 状态来源?.sourceActionName
             ? `（该状态由第${Number(状态来源.sourceRound || 状态来源.round || 0)}回合${状态来源.sourceActorName}施展【${状态来源.sourceActionName}】附加）`
             : '';
+          const 状态资源账本元数据 = {
+            source: 'state_tick',
+            stateName: 状态结算名,
+            sourceActorName: String(状态来源?.sourceActorName || '').trim(),
+            sourceActionName: String(状态来源?.sourceActionName || '').trim(),
+            sourceRound: Number(状态来源?.sourceRound || 状态来源?.round || 0),
+            applicationId: String(状态来源?.applicationId || cond?.__状态来源键 || '').trim(),
+            duration: Math.max(0, Number(cond?.duration || 状态来源?.duration || 0)),
+            effectSummary: String(cond?.效果摘要 || 状态来源?.effectSummary || '').trim(),
+            driverAttr: String(cond?.驱动属性 || 状态来源?.driverAttr || '').trim(),
+          };
           let dot = 状态名禁止生命流失(状态结算名) ? 0 : 估算单位持续伤害数值(char, cond);
           let hotHealRatio = Math.max(0, Number(combatEffects.hot_heal_ratio || 0));
           if (dot > 0) {
@@ -20977,6 +21243,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的体力变化被封锁，[${key}]未能提供恢复。`);
               } else {
                 设置战斗体力值(char, nextVit);
+                写入回合末资源变化事实(combatData, char, label, 'vit', actualRecoverVit, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，恢复 ${actualRecoverVit} 点体力${状态来源文本}`);
               }
             }
@@ -20993,6 +21260,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的魂力变化被封锁，[${key}]未能提供恢复。`);
               } else {
                 设置战斗延迟效果资源值(char, 'sp', nextSp);
+                写入回合末资源变化事实(combatData, char, label, 'sp', actualRecoverSp, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，恢复 ${actualRecoverSp} 点魂力${状态来源文本}`);
               }
             }
@@ -21009,6 +21277,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的精神力变化被封锁，[${key}]未能提供恢复。`);
               } else {
                 设置战斗延迟效果资源值(char, 'men', nextMen);
+                写入回合末资源变化事实(combatData, char, label, 'men', actualRecoverMen, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，恢复 ${actualRecoverMen} 点精神力${状态来源文本}`);
               }
             }
@@ -21023,6 +21292,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的体力变化被封锁，[${key}]未能造成流失。`);
               } else {
                 设置战斗体力值(char, Math.max(0, beforeVit - drainVit));
+                写入回合末资源变化事实(combatData, char, label, 'vit', -drainVit, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，流失 ${drainVit} 点体力${状态来源文本}`);
               }
             }
@@ -21037,6 +21307,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的魂力变化被封锁，[${key}]未能造成流失。`);
               } else {
                 设置战斗延迟效果资源值(char, 'sp', Math.max(0, beforeSp - drainSp));
+                写入回合末资源变化事实(combatData, char, label, 'sp', -drainSp, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，流失 ${drainSp} 点魂力${状态来源文本}`);
               }
             }
@@ -21051,6 +21322,7 @@ class BattleUIComponent {
                 parts.push(`[机制抹消] ${label}的精神力变化被封锁，[${key}]未能造成流失。`);
               } else {
                 设置战斗延迟效果资源值(char, 'men', Math.max(0, beforeMen - drainMen));
+                写入回合末资源变化事实(combatData, char, label, 'men', -drainMen, 状态资源账本元数据);
                 parts.push(`[状态结算] ${label}受[${key}]影响，流失 ${drainMen} 点精神力${状态来源文本}`);
               }
             }
@@ -21146,14 +21418,30 @@ class BattleUIComponent {
           const recoverSp = Math.max(0, Math.floor(maxSp * naturalSpRatio * (1 - 魂力回复锁定比例)));
           设置战斗延迟效果资源值(char, 'sp', Math.min(maxSp, beforeSp + recoverSp));
           const actualRecoverSp = Math.max(0, Number(char.sp || 0) - beforeSp);
-          if (actualRecoverSp > 0) parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverSp} 点魂力`);
+          if (actualRecoverSp > 0) {
+            写入回合末资源变化事实(combatData, char, label, 'sp', actualRecoverSp, {
+              source: 'natural_recovery',
+              stateName: '自然恢复',
+              reasonCode: 'ROUND_END_NATURAL_RECOVERY',
+              reasonText: '回合末自然恢复魂力',
+            });
+            parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverSp} 点魂力`);
+          }
         }
         if (!禁用本回合自然恢复 && maxMen > 0 && naturalMenRatio > 0 && 精神回复锁定比例 < 1) {
           const beforeMen = Math.max(0, Number(char.men || 0));
           const recoverMen = Math.max(0, Math.floor(maxMen * naturalMenRatio * (1 - 精神回复锁定比例)));
           设置战斗延迟效果资源值(char, 'men', Math.min(maxMen, beforeMen + recoverMen));
           const actualRecoverMen = Math.max(0, Number(char.men || 0) - beforeMen);
-          if (actualRecoverMen > 0) parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverMen} 点精神力`);
+          if (actualRecoverMen > 0) {
+            写入回合末资源变化事实(combatData, char, label, 'men', actualRecoverMen, {
+              source: 'natural_recovery',
+              stateName: '自然恢复',
+              reasonCode: 'ROUND_END_NATURAL_RECOVERY',
+              reasonText: '回合末自然恢复精神力',
+            });
+            parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverMen} 点精神力`);
+          }
         }
 
         if (char.召唤键) 同步召唤单位镜像(char);
@@ -23286,6 +23574,19 @@ class BattleUIComponent {
                 来源角色: actor,
                 目标: target,
                 技能: sourceActionName,
+                结算动作: actionName,
+                状态: stateName,
+                数值: amount,
+                资源: resource,
+              });
+              break;
+            case 'resource_change':
+              标记闭合(event);
+              账本.状态结算.push({
+                round,
+                来源角色: actor,
+                目标: target,
+                技能: sourceActionName || actionName,
                 结算动作: actionName,
                 状态: stateName,
                 数值: amount,
@@ -25996,7 +26297,7 @@ class BattleUIComponent {
             };
             const 成功率 = 计算换招成功率(先手, 后手, 先手动作, 换招.skill, 窗口);
             const 投点 = Math.random();
-            const 成功 = 投点 <= 成功率;
+            const 成功 = BATTLE_RUNTIME.probabilitySucceeds(成功率, 投点);
             追加行为链节点(行为链, {
               阶段: '换招',
               行动者: 先手,
@@ -26008,7 +26309,7 @@ class BattleUIComponent {
             });
             const 反噬概率 = 成功 ? 估算反噬概率(先手, 后手, 先手动作, 换招.skill, 窗口) : 1;
             const 反噬投点 = Math.random();
-            const 触发反噬 = !成功 || 反噬投点 <= 反噬概率;
+            const 触发反噬 = !成功 || BATTLE_RUNTIME.probabilitySucceeds(反噬概率, 反噬投点);
             if (触发反噬) {
               const 反噬 = 结算换招反噬消耗(先手, 先手动作);
               追加行为链节点(行为链, {
@@ -27469,7 +27770,7 @@ class BattleUIComponent {
           let isPassiveInterrupted =
             activeStateCalc.skip_turn === true ||
             getPrimaryStateFlags(主动结算动作?.skill).includes('硬控') ||
-            (activeInterruptChance > 0 && Math.random() <= activeInterruptChance);
+            BATTLE_RUNTIME.probabilitySucceeds(activeInterruptChance);
 
           // --- 第四步：打击烈度与破防标尺 ---
           const damagePackage = applyResolvedDamagePackage(主动结算方, 主动结算动作, settleResult, {
@@ -29660,7 +29961,7 @@ class BattleUIComponent {
         const hardControl =
           stateCalc.skip_turn === true || stateCalc.cannot_react === true || specialFlags.includes('硬控');
         const controlled = targetEffects.some(ce => ce?.skip_turn === true || ce?.cannot_react === true);
-        const interruptTriggered = interruptChance > 0 && Math.random() <= Math.min(1, interruptChance);
+        const interruptTriggered = BATTLE_RUNTIME.probabilitySucceeds(interruptChance);
         if (hasSuperArmor && (hardControl || interruptTriggered))
           return `[霸体强抗] ${label}凭借霸体稳住阵脚，蓄力未被打断！`;
         if (!hasSuperArmor && (damageRatio >= 0.3 || hardControl || controlled || interruptTriggered)) {
@@ -30569,7 +30870,51 @@ class BattleUIComponent {
         return 动作.__行为防反 === true ? 1 : 0;
       }
 
-      function 执行行为防反结算(攻击方, 防反方, 原动作, 反应动作, 交锋结果, 伤害包, 战斗数据) {
+      function 执行行为防反结算(攻击方, 防反方, 原动作, 反应动作, 交锋结果, 伤害包, 战斗数据, options = {}) {
+        const 队列登记防反 = typeof options?.enqueueCounter === 'function' ? options.enqueueCounter : null;
+        const 父动作事件 = options?.parentActionEvent && typeof options.parentActionEvent === 'object'
+          ? options.parentActionEvent
+          : null;
+        const 父动作ID = String(父动作事件?.actionId || '').trim();
+        const 父动作节点 = String(父动作事件?.chainNodeId || '').trim();
+        const 排队候选 = 交锋结果?.__行为防反候选;
+        const 排队前防反深度 = 读取行为防反深度(原动作);
+        const 排队原动作具备伤害 = getSkillEffects(原动作?.skill || {}, { 行为规划: true })
+          .some(effect => String(effect?.原型 || '').trim() === '伤害结算' && Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0);
+        const 排队实际承伤 = Math.max(0, Number(伤害包?.primaryAppliedDamage || 0));
+        if (
+          队列登记防反 &&
+          options?.__queueExecuting !== true &&
+          排队候选 &&
+          排队前防反深度 < 2 &&
+          单挑动作可触发攻击反应链(原动作, 攻击方, 防反方, 战斗数据) &&
+          (排队原动作具备伤害 || 排队实际承伤 > 0)
+        ) {
+          const 排队防反方 = 排队候选.防反方 || 防反方;
+          const 排队目标 = 排队候选.攻击方 || 攻击方;
+          const 排队允许以命换伤 = 排队候选.以命换伤 === true && getCombatStaminaValue(排队防反方) > 0;
+          if (排队防反方 && 排队目标 && (isCombatUnitAbleToFight(排队防反方) || 排队允许以命换伤) && isCombatUnitAbleToFight(排队目标)) {
+            const 排队深度 = 排队前防反深度 + 1;
+            const 排队动作名 = String(排队候选.sourceActionName || 排队候选.sourceActionType || 排队候选.防反类型 || '防反').trim();
+            return 队列登记防反({
+              actor: 排队防反方,
+              target: 排队目标,
+              actionName: 排队动作名,
+              counterDepth: 排队深度,
+              parentActionEvent: 父动作事件,
+              execute: () => 执行行为防反结算(
+                攻击方,
+                防反方,
+                原动作,
+                反应动作,
+                交锋结果,
+                伤害包,
+                战斗数据,
+                { ...options, enqueueCounter: null, __queueExecuting: true },
+              ),
+            }) || '';
+          }
+        }
         const 候选 = 交锋结果?.__行为防反候选;
         const 原防反深度 = 读取行为防反深度(原动作);
         if (!候选 || 原防反深度 >= 2) return '';
@@ -30616,6 +30961,10 @@ class BattleUIComponent {
             actionName: 反击动作名,
             actionType: 'counter',
             sourceActionName: 被反制动作名,
+            sourceActionId: 父动作ID,
+            parentNodeId: 父动作节点,
+            sourceNodeId: 父动作节点,
+            reactionNodeId: 父动作节点,
             result: 'fail',
             failReason: 展示失败原因,
             meta: { probability: 概率文本, counterDepth: 当前防反深度 },
@@ -30634,6 +30983,10 @@ class BattleUIComponent {
             actionName: 候选.sourceActionName || 候选.防反类型 || '防反',
             actionType: 'counter',
             sourceActionName: 被反制动作名,
+            sourceActionId: 父动作ID,
+            parentNodeId: 父动作节点,
+            sourceNodeId: 父动作节点,
+            reactionNodeId: 父动作节点,
             result: 'fail',
             failReason: 反应槽校验.reason === 'FACTION_REACTION_LIMIT' ? '本阵营反应池已耗尽' : '本回合已经完成过反应',
             meta: {
@@ -30657,6 +31010,10 @@ class BattleUIComponent {
           actionName: 防反名预览,
           actionType: 'counter_window',
           sourceActionName: 被反制动作名,
+          sourceActionId: 父动作ID,
+          parentNodeId: 父动作节点,
+          sourceNodeId: 父动作节点,
+          reactionNodeId: 父动作节点,
           result: 'opened',
           meta: { probability: 概率文本, counterDepth: 当前防反深度, reasonCode: 'COUNTER_WINDOW_OPENED' },
         });
@@ -31348,7 +31705,7 @@ class BattleUIComponent {
         const 运行效果 = deepClonePlain(effect);
         原型驱动缩放(运行效果, {}, 运行效果, attacker, attacker?.final || {}, defender, defender?.final || {});
         const 概率 = Math.max(0, Math.min(1, Number(运行效果?.时光回溯成功率 ?? 1)));
-        if (Math.random() > 概率) {
+        if (!BATTLE_RUNTIME.probabilitySucceeds(概率)) {
           日志.push(`[时光回溯] 主动时序压制未能成形。`);
           return;
         }
@@ -31403,7 +31760,7 @@ class BattleUIComponent {
       const 条目 = 查找时光回溯状态条目(目标);
       if (!条目) return null;
       const 概率 = Math.max(0, Math.min(1, Number(条目.状态?.时光回溯成功率 ?? 1)));
-      if (Math.random() > 概率) {
+      if (!BATTLE_RUNTIME.probabilitySucceeds(概率)) {
         delete 目标.状态效果[条目.键名];
         return `[时光回溯] ${entry.targetName || 目标.name || '目标'}的回溯判定失败，本次结算继续。`;
       }
@@ -33533,7 +33890,7 @@ class BattleUIComponent {
         const 缴械规则 = 读取规则改写规则(combatData, attacker, '缴械');
         if (缴械规则 && (isBasicAttack || 是近身接战动作)) {
           const 缴械强度 = 读取规则改写强度(缴械规则);
-          if (缴械强度 >= 1 || Math.random() < 缴械强度) {
+          if (BATTLE_RUNTIME.probabilitySucceeds(缴械强度)) {
             result.desc = `[规则改写] ${attacker.name || '攻击方'}的武器/近战收益被临时缴械规则阻断。`;
             result.interrupt_bonus = attackerInterruptBonus;
             return result;
@@ -35695,7 +36052,7 @@ class BattleUIComponent {
               result.desc += ` [位移执行] 换位缺少自身以外目标，未生效。`;
               return false;
             }
-            if (String(effect?.影响方向 || '').trim() === '成功率' && 位移成功率 < 1 && Math.random() > 位移成功率) {
+            if (String(effect?.影响方向 || '').trim() === '成功率' && !BATTLE_RUNTIME.probabilitySucceeds(位移成功率)) {
               result.desc += ` [位移执行] 换位扰动未成立。`;
               return false;
             }
@@ -35722,7 +36079,7 @@ class BattleUIComponent {
           }
           目标列表.forEach(目标对象 => {
             if (!目标对象) return;
-            if (位移对象 === '目标' && String(effect?.影响方向 || '').trim() === '成功率' && 位移成功率 < 1 && Math.random() > 位移成功率) return;
+            if (位移对象 === '目标' && String(effect?.影响方向 || '').trim() === '成功率' && !BATTLE_RUNTIME.probabilitySucceeds(位移成功率)) return;
             const 友方目标 = 是友方承载目标(目标对象);
             const 战斗效果 = 友方目标 || ['瞬移', '脱离'].includes(位移类型)
               ? 构建友方位移效果(有效位移强度)
@@ -36234,7 +36591,7 @@ class BattleUIComponent {
           const 强行判定失败概率 = Math.max(0.08, Math.min(0.8, 0.24 + 等级差 * 0.08 + 判定修正));
           let 已复制 = false;
           if (是否敌方复制 && 复制模式 === '即时镜像') {
-            if (Math.random() < 强行判定失败概率) {
+            if (BATTLE_RUNTIME.probabilitySucceeds(强行判定失败概率)) {
               result.desc += ` [复制失败] 即时镜像未过，损失动作。`;
               return false;
             }
@@ -41792,15 +42149,279 @@ class BattleUIComponent {
           return selected.action;
         }
 
+        function 创建扁平战斗行动队列(combatData, round, initialEntries = []) {
+          const pending = [];
+          const granted = new Set();
+          const runtime = 确保战斗运行态(combatData);
+          if (!Array.isArray(runtime.actionQueueTrace)) runtime.actionQueueTrace = [];
+          let insertionSequence = 0;
+          let actionSequence = 0;
+          let fatal = null;
+          const compareNodes = (left, right) =>
+            Number(left.round || 0) - Number(right.round || 0) ||
+            Number(left.actorTurnSequence || 0) - Number(right.actorTurnSequence || 0) ||
+            Number(left.parentActionSequence || 0) - Number(right.parentActionSequence || 0) ||
+            Number(left.phasePriority || 0) - Number(right.phasePriority || 0) ||
+            Number(left.insertionSequence || 0) - Number(right.insertionSequence || 0);
+          const recordTrace = (state, node, detail = {}) => {
+            runtime.actionQueueTrace.push({
+              state,
+              round: Number(node?.round || round || 0),
+              actionSequence: Number(node?.actionSequence || 0),
+              parentActionSequence: Number(node?.parentActionSequence || 0),
+              actorTurnSequence: Number(node?.actorTurnSequence || 0),
+              phasePriority: Number(node?.phasePriority || 0),
+              insertionSequence: Number(node?.insertionSequence || 0),
+              grantId: String(node?.grantId || '').trim(),
+              actorName: String(node?.actorEntry?.char?.name || node?.actorEntry?.char?.名称 || '').trim(),
+              nodeKind: String(node?.nodeKind || 'ACTIVE').trim(),
+              actionRole: 标准化战斗行动职责(node?.actionRole || 'ACTIVE'),
+              sourceActionId: String(node?.sourceActionId || '').trim(),
+              ...detail,
+            });
+            if (runtime.actionQueueTrace.length > 512) runtime.actionQueueTrace.splice(0, runtime.actionQueueTrace.length - 512);
+          };
+          const fail = (code, node = null, detail = {}) => {
+            if (fatal) return false;
+            fatal = { code, ...detail };
+            runtime.actionQueueFatal = fatal;
+            recordTrace('FATAL', node, { code, ...detail });
+            写入战斗事件账本(combatData, {
+              eventKind: 'failed_action',
+              round: Number(round || combatData?.回合 || 0),
+              actorName: node?.actorEntry?.char?.name || node?.actorEntry?.char?.名称 || '',
+              actionName: 'ActionQueue',
+              actionType: 'action_queue',
+              actionRole: 'STATE_TICK',
+              result: 'queue_fatal',
+              ruleCode: code,
+              failReason: code,
+              meta: { source: 'flat_action_queue', ...detail },
+            });
+            return false;
+          };
+          const enqueue = (input = {}) => {
+            if (fatal) return false;
+            const actorName = String(input?.actorEntry?.char?.name || input?.actorEntry?.char?.名称 || '').trim();
+            const grantId = String(input.grantId || `natural:${round}:${actorName}:${insertionSequence + 1}`).trim();
+            if (granted.has(grantId)) return fail('ACTION_GRANT_DUPLICATE', input, { grantId });
+            if (actionSequence >= 64) return fail('ACTION_QUEUE_NODE_LIMIT_EXCEEDED', input, { maxNodes: 64 });
+            granted.add(grantId);
+            const node = {
+              round: Number(input.round || round || 0),
+              actorEntry: input.actorEntry,
+              state: input.state && typeof input.state === 'object' ? input.state : {},
+              actorTurnSequence: Math.max(0, Number(input.actorTurnSequence || 0)),
+              parentActionSequence: Math.max(0, Number(input.parentActionSequence || 0)),
+              phasePriority: Math.max(0, Number(input.phasePriority || 40)),
+              insertionSequence: ++insertionSequence,
+              actionSequence: ++actionSequence,
+              grantId,
+              nodeKind: String(input.nodeKind || 'ACTIVE').trim(),
+              actionRole: 标准化战斗行动职责(input.actionRole || 'ACTIVE'),
+              sourceActionId: String(input.sourceActionId || '').trim(),
+              actionName: normalizeBattleActionDisplayName(input.actionName || ''),
+              execute: typeof input.execute === 'function' ? input.execute : null,
+            };
+            pending.push(node);
+            recordTrace('ENQUEUED', node);
+            return true;
+          };
+          (Array.isArray(initialEntries) ? initialEntries : []).forEach((actorEntry, index) => {
+            enqueue({
+              actorEntry,
+              actorTurnSequence: index + 1,
+              parentActionSequence: 0,
+              phasePriority: 40,
+              grantId: `natural:${round}:${actorEntry?.side || ''}:${actorEntry?.char?.name || actorEntry?.char?.名称 || 'unit'}:${index + 1}`,
+            });
+          });
+          return {
+            enqueue,
+            dequeue() {
+              pending.sort(compareNodes);
+              return pending.shift() || null;
+            },
+            recordTrace,
+            fail,
+            get fatal() {
+              return fatal;
+            },
+            get pendingCount() {
+              return pending.length;
+            },
+          };
+        }
+
+        function 执行团战扁平行动队列(initialEntries, combatData, round, logs, extraPatchOps) {
+          const actionQueue = 创建扁平战斗行动队列(combatData, round, initialEntries);
+          const 处理动作结算后继 = (node, turnResult = {}) => {
+            const pendingResolution = turnResult?.pendingResolution && typeof turnResult.pendingResolution === 'object'
+              ? turnResult.pendingResolution
+              : null;
+            if (pendingResolution) {
+              const parentActionId = String(pendingResolution?.parentActionEvent?.actionId || '').trim();
+              actionQueue.enqueue({
+                actorEntry: {
+                  char: pendingResolution.reactionActor,
+                  side: 读取战斗单位阵营名(combatData, pendingResolution.reactionActor),
+                },
+                actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence: node.actionSequence,
+                phasePriority: 45,
+                nodeKind: 'REACTION',
+                actionRole: 'REACTION',
+                actionName: pendingResolution.actionName,
+                sourceActionId: parentActionId,
+                grantId: `reaction:${round}:${parentActionId || node.actionSequence}`,
+                execute: () => {
+                  const resolved = pendingResolution.execute() || {};
+                  return {
+                    ...resolved,
+                    actionName: pendingResolution.actionName,
+                  };
+                },
+              });
+              return true;
+            }
+            const parentActionSequence = String(node?.nodeKind || '').trim() === 'REACTION' && Number(node?.parentActionSequence || 0) > 0
+              ? Number(node.parentActionSequence)
+              : Number(node?.actionSequence || 0);
+            (Array.isArray(turnResult?.queuedCounterRequests) ? turnResult.queuedCounterRequests : []).forEach(request => {
+              const counterActor = request?.actor;
+              const counterTarget = request?.target;
+              const counterDepth = Math.max(1, Number(request?.counterDepth || 1));
+              const parentActionId = String(request?.parentActionEvent?.actionId || '').trim();
+              const counterKey = 读取战斗单位运行态键(counterActor, String(counterActor?.name || counterActor?.名称 || 'counter').trim());
+              actionQueue.enqueue({
+                actorEntry: { char: counterActor, side: 读取战斗单位阵营名(combatData, counterActor) },
+                actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence,
+                phasePriority: 50,
+                nodeKind: 'COUNTER',
+                actionRole: 'COUNTER',
+                actionName: request?.actionName || '防反',
+                sourceActionId: parentActionId,
+                grantId: `counter:${round}:${parentActionId || parentActionSequence}:${counterDepth}:${counterKey}`,
+                execute: () => {
+                  if (!isCombatUnitAbleToFight(counterActor) || !isCombatUnitAbleToFight(counterTarget)) {
+                    写入战斗事件账本(combatData, {
+                      eventKind: 'counter',
+                      round: Number(round || combatData?.回合 || 0),
+                      actorName: counterActor?.name || counterActor?.名称 || '',
+                      targetName: counterTarget?.name || counterTarget?.名称 || '',
+                      actionName: request?.actionName || '防反',
+                      actionType: 'counter',
+                      actorControl: 'AI',
+                      actionRole: 'COUNTER',
+                      sourceActionId: parentActionId,
+                      parentNodeId: String(request?.parentActionEvent?.chainNodeId || '').trim(),
+                      sourceNodeId: String(request?.parentActionEvent?.chainNodeId || '').trim(),
+                      reactionNodeId: String(request?.parentActionEvent?.chainNodeId || '').trim(),
+                      ruleCode: 'COUNTER_ACTOR_OR_TARGET_UNAVAILABLE',
+                      result: 'fail',
+                      failReason: '防反窗口已失效',
+                      meta: { counterDepth, source: 'flat_action_queue' },
+                    });
+                    return {
+                      skipped: true,
+                      reason: 'COUNTER_ACTOR_OR_TARGET_UNAVAILABLE',
+                      actionName: request?.actionName || '防反',
+                      log: `[防反取消] ${counterActor?.name || '防反方'}的反击窗口已失效。`,
+                    };
+                  }
+                  const log = request.execute();
+                  return {
+                    reason: log ? 'COUNTER_RESOLVED' : 'COUNTER_NO_EFFECT',
+                    actionName: request?.actionName || '防反',
+                    log,
+                  };
+                },
+              });
+            });
+            if (turnResult?.continuation) {
+              actionQueue.enqueue({
+                actorEntry: turnResult.continuation.actorEntry,
+                state: turnResult.continuation.battleState,
+                actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence,
+                phasePriority: 60,
+                grantId: turnResult.continuation.grantId,
+              });
+              return true;
+            }
+            if (!['ACTIVE', 'REACTION'].includes(String(node?.nodeKind || '').trim())) return false;
+            const settledActorEntry = turnResult?.settlementActorEntry || node.actorEntry;
+            if (settledActorEntry?.char?.召唤键 && settledActorEntry.char.行动模式 === '自主行动') {
+              settledActorEntry.char.__本回合已召唤行动 = true;
+              const 到期日志 = 消费召唤有效窗口(combatData, settledActorEntry.char, '自主行动窗口耗尽');
+              if (到期日志) logs.push(到期日志);
+            }
+            if (!settledActorEntry?.char?.召唤键) {
+              const 协同结束日志 = 执行协同召唤追击(settledActorEntry.char, null, 0, combatData);
+              if (协同结束日志) logs.push(协同结束日志);
+            }
+            return false;
+          };
+          while (!actionQueue.fatal) {
+            const node = actionQueue.dequeue();
+            if (!node) break;
+            const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
+            const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
+            if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) {
+              actionQueue.recordTrace('CANCELLED', node, { reason: 'BATTLE_TERMINATED' });
+              break;
+            }
+            if (typeof node.execute === 'function') {
+              let nodeResult;
+              try {
+                nodeResult = node.execute() || {};
+              } catch (error) {
+                actionQueue.fail('ACTION_QUEUE_NODE_EXECUTION_FAILED', node, {
+                  message: String(error?.message || error || 'unknown'),
+                  nodeKind: String(node.nodeKind || '').trim(),
+                });
+                break;
+              }
+              actionQueue.recordTrace(nodeResult?.skipped ? 'CANCELLED' : 'EXECUTED', node, {
+                reason: String(nodeResult?.reason || '').trim(),
+                actionName: normalizeBattleActionDisplayName(nodeResult?.actionName || node?.actionName || ''),
+              });
+              if (nodeResult?.log) logs.push(nodeResult.log);
+              if (Array.isArray(nodeResult?.extraPatchOps) && nodeResult.extraPatchOps.length) extraPatchOps.push(...nodeResult.extraPatchOps);
+              处理动作结算后继(node, nodeResult);
+              continue;
+            }
+            const turnResult = runActorTurn(node.actorEntry, {
+              ...node.state,
+              combatData,
+              round,
+              logs,
+              queueNode: node,
+              deferResolution: true,
+            });
+            actionQueue.recordTrace(turnResult?.skipped ? 'CANCELLED' : 'EXECUTED', node, {
+              reason: String(turnResult?.reason || '').trim(),
+              actionName: normalizeBattleActionDisplayName(turnResult?.action?.skill?.name || turnResult?.action?.skill?.魂技名 || turnResult?.action?.action_type || ''),
+            });
+            if (turnResult?.log) logs.push(turnResult.log);
+            if (Array.isArray(turnResult?.extraPatchOps) && turnResult.extraPatchOps.length) extraPatchOps.push(...turnResult.extraPatchOps);
+            处理动作结算后继(node, turnResult);
+          }
+          return { fatal: actionQueue.fatal };
+        }
+
         function runActorTurn(actorEntry, battleState) {
           if (!actorEntry || !battleState?.combatData) return null;
           const actor = actorEntry.char;
           const actionBudget = Math.max(0, Math.min(40, Math.floor(Number(battleState?.actionWindow ?? 40))));
-          const followUpDepth = Math.max(0, Math.floor(Number(battleState?.followUpDepth || 0)));
+          const queueNode = battleState?.queueNode && typeof battleState.queueNode === 'object' ? battleState.queueNode : null;
+          const followUpDepth = Math.max(0, Math.floor(Number(battleState?.followUpDepth ?? queueNode?.state?.followUpDepth ?? 0)));
           const forcedAction = battleState?.forcedAction && typeof battleState.forcedAction === 'object'
             ? battleState.forcedAction
             : null;
           let actionTimeSpent = 0;
+          const queuedCounterRequests = [];
           bindCombatParticipant(actor);
           syncCombatActionState(actor);
           if (!isCombatUnitAlive(actor)) {
@@ -42059,8 +42680,8 @@ class BattleUIComponent {
             initialActionName: normalizeBattleActionDisplayName(actorEntry.__declaredActionName || action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动'),
             finalActionName: normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动'),
             actionType: actor.召唤键 ? (action?.action_type || '召唤自主行动') : (action?.action_type || action?.type || '自动行动'),
-            actorControl: 'AI',
-            actionRole: 'ACTIVE',
+            actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
+            actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
             sourceActionName: parentActionEvent?.actionName || '',
             sourceActionId: parentActionEvent?.actionId || '',
             parentNodeId: parentActionEvent?.chainNodeId || '',
@@ -42073,6 +42694,9 @@ class BattleUIComponent {
               actionRole: 'ACTIVE',
               chainType: parentActionEvent ? 'FOLLOW_UP' : '',
               followUpParentActionId: parentActionEvent?.actionId || '',
+              grantId: String(queueNode?.grantId || '').trim(),
+              actionSequence: Number(queueNode?.actionSequence || 0),
+              parentActionSequence: Number(queueNode?.parentActionSequence || 0),
               summonHostName: actor.召唤键 ? (actor?.宿主名 || actor?.__宿主?.name || actor?.__宿主?.名称 || '') : '',
               summonType: actor.召唤键 ? (actor?.类型 || '') : '',
               summonMode: actor.召唤键 ? (actor?.行动模式 || '') : '',
@@ -42080,6 +42704,7 @@ class BattleUIComponent {
           });
           const settlementLedgerStart = 确保战斗事件账本(battleState.combatData).length;
 
+          const 结算已宣告动作 = () => {
           const actorTurnCombatData = createActorTurnCombatData(actorEntry, finalTarget, battleState);
           const ratio = calculateReactionRatio(actor, finalTarget, action, actorTurnCombatData);
           let reactionAction = { type: '无法反应', log: '无', skill: null, def_mult: 1.0 };
@@ -42155,6 +42780,13 @@ class BattleUIComponent {
             settleResult,
             damagePackage,
             actorTurnCombatData,
+            {
+              parentActionEvent: actionStartEvent,
+              enqueueCounter: request => {
+                queuedCounterRequests.push(request);
+                return `[防反入队] ${request?.actor?.name || request?.actor?.名称 || '防反方'}将在当前动作结算后执行【${request?.actionName || '防反'}】。`;
+              },
+            },
           );
           if (行为防反日志) turnLog += ` ${行为防反日志}`;
           const fusionAftermathLog = applyFusionActionAftermath(actor, action, actorTurnCombatData);
@@ -42232,7 +42864,7 @@ class BattleUIComponent {
               appliedDamage / getCombatHpMaxValue(finalTarget) >= 0.15 ||
               actorStateCalc.skip_turn === true ||
               getPrimaryStateFlags(action.skill).includes('硬控') ||
-              (actorInterruptChance > 0 && Math.random() <= actorInterruptChance);
+              BATTLE_RUNTIME.probabilitySucceeds(actorInterruptChance);
             if (!isTargetInterrupted) {
               应用战斗装备变化(finalTarget, () => {
                 const 装备槽 = ensureBattleEquipmentSlot(finalTarget, reactionAction.equip_target || reactionAction.skill?.equip_target);
@@ -42279,7 +42911,7 @@ class BattleUIComponent {
             turnLog += ` [战术复盘] ${actor.name}意识到[${action?.skill?.name || action?.action_type || '该招式'}]再次被有效克制，短期内会降低其使用倾向。`;
           }
 
-          let followUpResult = null;
+          let continuation = null;
           if (followUpAction && isCombatUnitAlive(finalTarget)) {
             const followUpEntry = {
               ...actorEntry,
@@ -42289,22 +42921,24 @@ class BattleUIComponent {
               __declaredTargetName: finalTarget?.name || finalTarget?.名称 || '',
             };
             followUpAction.__followUpParentActionId = String(actionStartEvent?.actionId || '').trim();
-            followUpResult = runActorTurn(followUpEntry, {
-              ...battleState,
-              forcedAction: followUpAction,
-              forcedTargetName: finalTarget?.name || finalTarget?.名称 || '',
-              actionWindow: remainingActionTime,
-              followUpDepth: followUpDepth + 1,
-              followUpParentEvent: actionStartEvent,
-            });
-            if (followUpResult?.log) {
-              turnLog += ` [同回合衔接] ${followUpResult.log}`;
-            }
+            continuation = {
+              actorEntry: followUpEntry,
+              grantId: `follow_up:${String(actionStartEvent?.actionId || '').trim()}:1`,
+              battleState: {
+                forcedAction: followUpAction,
+                forcedTargetName: finalTarget?.name || finalTarget?.名称 || '',
+                actionWindow: remainingActionTime,
+                followUpDepth: followUpDepth + 1,
+                followUpParentEvent: actionStartEvent,
+              },
+            };
+            turnLog += ` [同回合衔接] ${actor.name}获得一次显式追击窗口，等待即时反应闭合后继续行动。`;
           }
 
           return {
             actor: actor.name,
             side: actorEntry.side,
+            settlementActorEntry: actorEntry,
             target: finalTarget.name,
             action,
             reactionAction,
@@ -42319,18 +42953,36 @@ class BattleUIComponent {
               triggered: continuationTriggered,
               maxActions: continuationGrant.maxActions,
             } : null,
-            followUp: followUpResult,
+            continuation,
+            queuedCounterRequests,
             actionTimeSpent,
             remainingActionTime,
             log: turnLog,
             extraPatchOps: [
               ...turnExtraPatchOps,
               ...(Array.isArray(settleResult?.extraPatchOps) ? settleResult.extraPatchOps : []),
-              ...(Array.isArray(followUpResult?.extraPatchOps) ? followUpResult.extraPatchOps : []),
             ],
             actorVit: getCombatHpValue(actor),
             targetVit: getCombatHpValue(finalTarget),
           };
+          };
+          if (battleState?.deferResolution === true && finalTarget !== actor && !targetsFriendlyTeam) {
+            return {
+              actor: actor.name,
+              side: actorEntry.side,
+              target: finalTarget.name,
+              action,
+              actionTimeSpent,
+              log: actionLog.trim(),
+              pendingResolution: {
+                actionName: normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动'),
+                parentActionEvent: actionStartEvent,
+                reactionActor: finalTarget,
+                execute: 结算已宣告动作,
+              },
+            };
+          }
+          return 结算已宣告动作();
         }
 
         function getTeamLivingCount(team) {
@@ -42430,6 +43082,9 @@ class BattleUIComponent {
         function runTeamBattleSimulation(combatData, maxRounds = 3) {
           hydrateCombatData(combatData);
           确保召唤单位表(combatData);
+          const queueRuntime = 确保战斗运行态(combatData);
+          queueRuntime.actionQueueTrace = [];
+          delete queueRuntime.actionQueueFatal;
           if (isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) {
             const rosterCheck = validateSoulTowerCombatRoster(combatData);
             if (!rosterCheck.ok) {
@@ -42462,24 +43117,10 @@ class BattleUIComponent {
 
             const queue = generateActionQueue(combatData);
             记录团战行动轴声明(queue, combatData, logs);
-            for (const actorEntry of queue) {
-              const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-              const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
-              if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) break;
-
-              const turnResult = runActorTurn(actorEntry, { combatData, round: currentRound, logs });
-              if (turnResult?.log) logs.push(turnResult.log);
-              if (Array.isArray(turnResult?.extraPatchOps) && turnResult.extraPatchOps.length)
-                extraPatchOps.push(...turnResult.extraPatchOps);
-              if (actorEntry?.char?.召唤键 && actorEntry.char.行动模式 === '自主行动') {
-                actorEntry.char.__本回合已召唤行动 = true;
-                const 到期日志 = 消费召唤有效窗口(combatData, actorEntry.char, '自主行动窗口耗尽');
-                if (到期日志) logs.push(到期日志);
-              }
-              if (!actorEntry?.char?.召唤键) {
-                const 协同结束日志 = 执行协同召唤追击(actorEntry.char, null, 0, combatData);
-                if (协同结束日志) logs.push(协同结束日志);
-              }
+            const queueResult = 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps);
+            if (queueResult?.fatal) {
+              logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
+              break;
             }
 
             settleTeamRoundEnd(combatData, logs);
@@ -42523,6 +43164,9 @@ class BattleUIComponent {
         function runTeamBattleRound(combatData) {
           hydrateCombatData(combatData);
           确保召唤单位表(combatData);
+          const queueRuntime = 确保战斗运行态(combatData);
+          queueRuntime.actionQueueTrace = [];
+          delete queueRuntime.actionQueueFatal;
           if (isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) {
             const rosterCheck = validateSoulTowerCombatRoster(combatData);
             if (!rosterCheck.ok) {
@@ -42549,27 +43193,9 @@ class BattleUIComponent {
 
           const queue = generateActionQueue(combatData);
           记录团战行动轴声明(queue, combatData, logs);
-          for (const actorEntry of queue) {
-            const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-            const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
-            if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) break;
-
-            const turnResult = runActorTurn(actorEntry, { combatData, round: currentRound, logs });
-            if (turnResult?.log) logs.push(turnResult.log);
-            if (Array.isArray(turnResult?.extraPatchOps) && turnResult.extraPatchOps.length)
-              extraPatchOps.push(...turnResult.extraPatchOps);
-            if (actorEntry?.char?.召唤键 && actorEntry.char.行动模式 === '自主行动') {
-              actorEntry.char.__本回合已召唤行动 = true;
-              const 到期日志 = 消费召唤有效窗口(combatData, actorEntry.char, '自主行动窗口耗尽');
-              if (到期日志) logs.push(到期日志);
-            }
-            if (!actorEntry?.char?.召唤键) {
-              const 协同结束日志 = 执行协同召唤追击(actorEntry.char, null, 0, combatData);
-              if (协同结束日志) logs.push(协同结束日志);
-            }
-          }
-
-          settleTeamRoundEnd(combatData, logs);
+          const queueResult = 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps);
+          if (queueResult?.fatal) logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
+          else settleTeamRoundEnd(combatData, logs);
 
           const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
           const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
@@ -42666,6 +43292,8 @@ class BattleUIComponent {
               men_max: char.men_max || 1,
               精神力: char.men || 0,
               精神力上限: char.men_max || 1,
+              shield: 读取当前护盾总量(char),
+              护盾: 读取当前护盾总量(char),
               召唤键: char.召唤键 || '',
               单位性质: char.单位性质 || '',
               类型: char.类型 || char.type || '',
