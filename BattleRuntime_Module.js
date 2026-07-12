@@ -1217,7 +1217,22 @@
   function bindEngine(implementation) {
     if (
       !implementation ||
-      typeof implementation.runBattleCase !== 'function' ||
+      !implementation.caseDomain ||
+      typeof implementation.caseDomain.ensureRuntime !== 'function' ||
+      typeof implementation.caseDomain.getSnapshot !== 'function' ||
+      typeof implementation.caseDomain.getScoringMutationCount !== 'function' ||
+      typeof implementation.caseDomain.normalizeCausalNode !== 'function' ||
+      typeof implementation.caseDomain.executeTeam !== 'function' ||
+      typeof implementation.caseDomain.executeDuel !== 'function' ||
+      typeof implementation.caseDomain.collectResolutionTrace !== 'function' ||
+      typeof implementation.caseDomain.collectDecisionTrace !== 'function' ||
+      typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
+      typeof implementation.caseDomain.cloneAuditSnapshot !== 'function' ||
+      typeof implementation.caseDomain.buildActionChains !== 'function' ||
+      typeof implementation.caseDomain.buildReportBlocks !== 'function' ||
+      typeof implementation.caseDomain.buildFinalSummary !== 'function' ||
+      typeof implementation.caseDomain.buildRoundOverview !== 'function' ||
+      typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
       !implementation.previewDomain ||
       typeof implementation.previewDomain.getEffects !== 'function' ||
       typeof implementation.previewDomain.evaluateEffect !== 'function' ||
@@ -1236,8 +1251,210 @@
   }
 
   function runBattleCase(options = {}) {
-    const input = options && typeof options === 'object' ? cloneValue(options) : {};
-    return requireEngine().runBattleCase(input);
+    const domain = requireEngine().caseDomain;
+    const input = options && typeof options === 'object' ? options : {};
+    const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
+    const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
+    const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
+    const mode = String(input.mode || 'single_preview').trim();
+    const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
+    const sourceSnapshot = JSON.stringify(sourceCombatData);
+    const combatData = cloneValue(sourceCombatData);
+    const debugRuntime = domain.ensureRuntime(combatData);
+    debugRuntime.decisionSeed = seed;
+    const initialSnapshot = domain.getSnapshot(combatData);
+    const scoringMutationCountBefore = Number(domain.getScoringMutationCount() || 0);
+    const originalRandom = Math.random;
+    let randomState = seed % 2147483647;
+    if (randomState <= 0) randomState += 2147483646;
+    Math.random = () => {
+      randomState = (randomState * 16807) % 2147483647;
+      return (randomState - 1) / 2147483646;
+    };
+    try {
+      const isTeam = /team|团战/i.test(mode) || (combatData?.参战者?.team_player?.length || 0) > 1 || (combatData?.参战者?.team_enemy?.length || 0) > 1;
+      let result;
+      if (isTeam) {
+        const simulation = domain.executeTeam(combatData, rounds);
+        const eventLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
+        const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 6), { combatData });
+        result = {
+          preview: /preview/i.test(mode),
+          battleMode: rounds > 1 ? 'multi_round' : 'single_round',
+          roundsExecuted: Number(simulation?.rounds || 0),
+          logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
+          combatData,
+          eventLedger: eventLedger.map(item => domain.cloneAuditSnapshot(item)),
+          resolutionTrace: domain.collectResolutionTrace(combatData),
+          decisionTrace: domain.collectDecisionTrace(combatData),
+          publicReportBlocks: publicReportBlocks.map(item => domain.cloneAuditSnapshot(item)),
+          snapshot: domain.getSnapshot(combatData),
+        };
+      } else {
+        const selectedAction = input.selectedAction;
+        const actionText = typeof selectedAction === 'string'
+          ? selectedAction
+          : String(selectedAction?.label || selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.action_type || '普通攻击').trim();
+        const actionDeclaration = selectedAction && typeof selectedAction === 'object'
+          ? {
+              actorName: String(selectedAction.actor_name || combatData?.参战者?.team_player?.[0]?.name || '').trim(),
+              actions: [cloneValue(selectedAction)],
+              primaryTargetName: String(selectedAction.target_name || '').trim(),
+            }
+          : null;
+        result = domain.executeDuel(actionText, {
+          dryRun: true,
+          mode: rounds > 1 ? 'multi_round' : 'single_round',
+          combatData,
+          actionDeclaration,
+          intentMode: input.settings?.intentMode || combatData?.战斗意图 || '点到为止',
+          autoContinueConfig: {
+            ...(input.settings || {}),
+            maxRounds: rounds,
+            continueChancePercent: input.settings?.continueChancePercent ?? 100,
+            stopDamagePercent: input.settings?.stopDamagePercent ?? 100,
+          },
+        });
+      }
+      const eventLedger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
+      const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(domain.normalizeCausalNode) : [];
+      const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => domain.cloneAuditSnapshot(item)) : [];
+      const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
+      const runtimeCombatData = result?.combatData || combatData;
+      const finalSnapshot = result?.snapshot || domain.getSnapshot(runtimeCombatData);
+      const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
+        ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => domain.cloneAuditSnapshot(item))
+        : [];
+      const actionChains = domain.buildActionChains(eventLedger, resolutionTrace);
+      const reportBlocks = domain.buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
+      const { finalBattleReport, aiSummaryInput } = domain.buildFinalSummary(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
+      const scoringAudit = decisionTrace
+        .filter(item => /主动规划|应招审计|技能选择/.test(String(item?.类型 || item?.type || '')))
+        .map(item => ({
+          round: Number(item?.回合 || item?.round || 0),
+          actor: String(item?.行动者 || item?.actor || '').trim(),
+          selectedCandidateId: String(item?.scoringSummary?.candidateId || '').trim(),
+          selectedActionName: normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.hitCandidateName || ''),
+          decisionConfidence: Number(item?.decisionConfidence ?? item?.scoringSummary?.decisionConfidence ?? 1),
+          temperature: Number(item?.temperature ?? item?.scoringSummary?.temperature ?? 4),
+          maxRegret: Number(item?.maxRegret ?? item?.scoringSummary?.maxRegret ?? 0),
+          selectedReason: String(item?.选择原因 || item?.scoringSummary?.selectedReason || '').trim(),
+          ruleCode: String(item?.ruleCode || '').trim(),
+          originalBestCandidateId: String(item?.originalBestCandidateId || '').trim(),
+          candidates: (Array.isArray(item?.候选排序结果) ? item.候选排序结果 : []).slice(0, 3).map(candidate => {
+            const audit = candidate?.审计 && typeof candidate.审计 === 'object' ? candidate.审计 : {};
+            const scoreParts = candidate?.scoreParts && typeof candidate.scoreParts === 'object'
+              ? candidate.scoreParts
+              : audit?.scoreParts && typeof audit.scoreParts === 'object'
+                ? audit.scoreParts
+                : {
+                    effectiveDeltaEV: Number(candidate?.effectEV || 0),
+                    futureUnlockEV: Number(candidate?.comboEV || 0),
+                    enemyDeniedEV: Number(candidate?.timingEV || 0),
+                    teamIntentEV: Number(candidate?.targetEV || 0),
+                    sustainEV: Number(candidate?.roleEV || 0),
+                    resourceCostEV: Number(candidate?.resourceCostEV || 0),
+                    failureRiskEV: Number(candidate?.riskEV || 0),
+                    exposureRiskEV: 0,
+                    chainConflictEV: 0,
+                  };
+            const tags = [...new Set([
+              ...(Array.isArray(candidate?.tags) ? candidate.tags : []),
+              ...(Array.isArray(candidate?.effectTags) ? candidate.effectTags : []),
+              ...(Array.isArray(audit?.tags) ? audit.tags : []),
+            ])];
+            const candidateName = normalizeActionDisplayName(candidate?.candidateName || candidate?.名称 || candidate?.技能 || '');
+            const rawObjectiveScore = Number(candidate?.rawObjectiveScore ?? audit?.rawObjectiveScore ?? candidate?.score ?? candidate?.权重 ?? 0);
+            return {
+              candidateId: String(candidate?.candidateId || '').trim(),
+              actionKind: String(candidate?.actionKind || audit?.actionKind || (candidate?.技能 ? 'RELEASE_SKILL' : 'BASIC_ATTACK')).trim(),
+              candidateName,
+              actionRole: normalizeActionRole(candidate?.actionRole || audit?.actionRole || item?.scoringSummary?.actionRole || 'ACTIVE'),
+              actorId: String(candidate?.actorId || audit?.actorId || item?.行动者 || item?.actor || '').trim(),
+              targetIds: Array.isArray(candidate?.targetIds) ? candidate.targetIds : (candidate?.目标 ? [String(candidate.目标).trim()].filter(Boolean) : []),
+              rawObjectiveScore,
+              subjectiveScore: Number(candidate?.subjectiveScore ?? audit?.subjectiveScore ?? rawObjectiveScore),
+              scoreParts,
+              factorKeys: Array.isArray(candidate?.factorKeys) ? [...candidate.factorKeys] : (Array.isArray(audit?.factorKeys) ? [...audit.factorKeys] : []),
+              scoreContributions: Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions.map(item => ({ ...item })) : (Array.isArray(audit?.scoreContributions) ? audit.scoreContributions.map(item => ({ ...item })) : []),
+              tags,
+              alternativeGap: Number(candidate?.alternativeGap ?? audit?.alternativeGap ?? 0),
+              selectedReason: String(candidate?.selectedReason || audit?.selectedReason || '').trim(),
+              effectEV: Number(scoreParts.effectiveDeltaEV || 0),
+              targetEV: Number(scoreParts.teamIntentEV || 0),
+              timingEV: Number(scoreParts.enemyDeniedEV || 0),
+              roleEV: Number(scoreParts.sustainEV || 0),
+              comboEV: Number(scoreParts.futureUnlockEV || 0),
+              resourceCostEV: Number(scoreParts.resourceCostEV || 0),
+              riskEV: Number(scoreParts.failureRiskEV || 0) + Number(scoreParts.exposureRiskEV || 0) + Number(scoreParts.chainConflictEV || 0),
+              finalScore: Number(candidate?.finalScore ?? candidate?.权重 ?? candidate?.score ?? 0),
+              rejectionCode: String(candidate?.rejectionCode || '').trim(),
+              candidateStatus: String(candidate?.candidateStatus || '').trim(),
+            };
+          }),
+        }))
+        .filter(item => item.candidates.length)
+        .filter(item => {
+          const selected = item.candidates.find(candidate =>
+            ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase()) ||
+            String(candidate?.candidateId || '').trim() === String(item.selectedCandidateId || '').trim()
+          );
+          const selectedRole = normalizeActionRole(selected?.actionRole || 'ACTIVE');
+          if (selectedRole !== 'ACTIVE') return true;
+          const actionName = normalizeActionDisplayName(item.selectedActionName || selected?.candidateName || '');
+          return eventLedger.some(event =>
+            String(event?.eventKind || '').trim() === 'action_start' &&
+            normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE' &&
+            Number(event?.round || 0) === Number(item.round || 0) &&
+            isSameReportName(event?.actorName || '', item.actor || '') &&
+            (!actionName || normalizeActionDisplayName(event?.finalActionName || event?.actionName || '') === actionName)
+          );
+        })
+        .slice(-Math.max(3, rounds * 6));
+      const scoringMutationDetected = Number(domain.getScoringMutationCount() || 0) > scoringMutationCountBefore;
+      const audit = auditFacts({
+        eventLedger,
+        resolutionTrace,
+        publicReportBlocks,
+        scoringAudit,
+        scoringMutationDetected,
+        combatData: runtimeCombatData,
+        initialSnapshot,
+        finalSnapshot,
+        actionQueueTrace,
+        roundsRequested: rounds,
+        roundsExecuted: Number(result?.roundsExecuted || 0),
+      });
+      return {
+        caseId,
+        seed,
+        mode,
+        roundsRequested: rounds,
+        roundsExecuted: Number(result?.roundsExecuted || 0),
+        inputUnchanged: sourceSnapshot === JSON.stringify(sourceCombatData),
+        scoringMutationDetected,
+        eventLedger,
+        ledger: eventLedger,
+        resolutionTrace,
+        trace: resolutionTrace,
+        decisionTrace,
+        scoringAudit,
+        actionChains,
+        actionQueueTrace,
+        reportBlocks,
+        publicReportBlocks,
+        roundOverview: domain.buildRoundOverview(result, { combatData: result?.combatData || combatData }),
+        finalBattleReport,
+        aiSummaryInput,
+        finalSnapshot,
+        llmBattleSummary: String(result?.llmBattleSummary || domain.buildLlmSummary(eventLedger, finalSnapshot, { maxRounds: rounds }) || ''),
+        logs: Array.isArray(result?.logs) ? result.logs : [],
+        initialSnapshot,
+        audit,
+      };
+    } finally {
+      Math.random = originalRandom;
+    }
   }
 
 

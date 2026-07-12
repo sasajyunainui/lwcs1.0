@@ -16727,214 +16727,24 @@ class BattleUIComponent {
       return 日志.join(' ');
     }
 
-    function 运行战斗调试案例(options = {}) {
-      const input = options && typeof options === 'object' ? options : {};
-      const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
-      const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
-      const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
-      const mode = String(input.mode || 'single_preview').trim();
-      const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
-      const sourceSnapshot = JSON.stringify(sourceCombatData);
-      const combatData = deepClonePlain(sourceCombatData);
-      const debugRuntime = 确保战斗运行态(combatData);
-      debugRuntime.decisionSeed = seed;
-      const initialSnapshot = ui_getBattleSnapshot(combatData);
-      const scoringMutationCountBefore = Number(战斗评分预估写入次数 || 0);
-      const originalRandom = Math.random;
-      let randomState = seed % 2147483647;
-      if (randomState <= 0) randomState += 2147483646;
-      Math.random = () => {
-        randomState = (randomState * 16807) % 2147483647;
-        return (randomState - 1) / 2147483646;
-      };
-      try {
-        const isTeam = /team|团战/i.test(mode) || (combatData?.参战者?.team_player?.length || 0) > 1 || (combatData?.参战者?.team_enemy?.length || 0) > 1;
-        let result;
-        if (isTeam) {
-          const simulation = runTeamBattleSimulation(combatData, rounds);
-          const eventLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
-          const publicReportBlocks = 构建事件账本公开战报Blocks(eventLedger, Math.max(8, rounds * 6), { combatData });
-          result = {
-            preview: /preview/i.test(mode),
-            battleMode: rounds > 1 ? 'multi_round' : 'single_round',
-            roundsExecuted: Number(simulation?.rounds || 0),
-            logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
-            combatData,
-            eventLedger: eventLedger.map(item => cloneBattleRuntimeAuditSnapshot(item)),
-            resolutionTrace: collectBattleResolutionTrace(combatData),
-            decisionTrace: collectBattleDecisionTrace(combatData),
-            publicReportBlocks: publicReportBlocks.map(item => cloneBattleRuntimeAuditSnapshot(item)),
-            snapshot: ui_getBattleSnapshot(combatData),
-          };
-        } else {
-          const selectedAction = input.selectedAction;
-          const actionText = typeof selectedAction === 'string'
-            ? selectedAction
-            : String(selectedAction?.label || selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.action_type || '普通攻击').trim();
-          const actionDeclaration = selectedAction && typeof selectedAction === 'object'
-            ? {
-                actorName: String(selectedAction.actor_name || combatData?.参战者?.team_player?.[0]?.name || '').trim(),
-                actions: [deepClonePlain(selectedAction)],
-                primaryTargetName: String(selectedAction.target_name || '').trim(),
-              }
-            : null;
-          result = onPlayerAttack(actionText, {
-            dryRun: true,
-            mode: rounds > 1 ? 'multi_round' : 'single_round',
-            combatData,
-            actionDeclaration,
-            intentMode: input.settings?.intentMode || combatData?.战斗意图 || '点到为止',
-            autoContinueConfig: {
-              ...(input.settings || {}),
-              maxRounds: rounds,
-              continueChancePercent: input.settings?.continueChancePercent ?? 100,
-              stopDamagePercent: input.settings?.stopDamagePercent ?? 100,
-            },
-          });
-        }
-        const eventLedger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
-        const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(补齐战斗因果节点契约) : [];
-        const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => cloneBattleRuntimeAuditSnapshot(item)) : [];
-        const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
-        const runtimeCombatData = result?.combatData || combatData;
-        const finalSnapshot = result?.snapshot || ui_getBattleSnapshot(runtimeCombatData);
-        const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
-          ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => cloneBattleRuntimeAuditSnapshot(item))
-          : [];
-        const actionChains = 构建战斗行动链摘要(eventLedger, resolutionTrace);
-        const reportBlocks = 构建结构化战报Blocks(eventLedger, decisionTrace, publicReportBlocks);
-        const { finalBattleReport, aiSummaryInput } = 构建战斗总结数据(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
-        const scoringAudit = decisionTrace
-          .filter(item => /主动规划|应招审计|技能选择/.test(String(item?.类型 || item?.type || '')))
-          .map(item => ({
-            round: Number(item?.回合 || item?.round || 0),
-            actor: String(item?.行动者 || item?.actor || '').trim(),
-            selectedCandidateId: String(item?.scoringSummary?.candidateId || '').trim(),
-            selectedActionName: normalizeBattleActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.hitCandidateName || ''),
-            decisionConfidence: Number(item?.decisionConfidence ?? item?.scoringSummary?.decisionConfidence ?? 1),
-            temperature: Number(item?.temperature ?? item?.scoringSummary?.temperature ?? 4),
-            maxRegret: Number(item?.maxRegret ?? item?.scoringSummary?.maxRegret ?? 0),
-            selectedReason: String(item?.选择原因 || item?.scoringSummary?.selectedReason || '').trim(),
-            ruleCode: String(item?.ruleCode || '').trim(),
-            originalBestCandidateId: String(item?.originalBestCandidateId || '').trim(),
-            candidates: (Array.isArray(item?.候选排序结果) ? item.候选排序结果 : []).slice(0, 3).map(candidate => {
-              const audit = candidate?.审计 && typeof candidate.审计 === 'object' ? candidate.审计 : {};
-              const scoreParts = candidate?.scoreParts && typeof candidate.scoreParts === 'object'
-                ? candidate.scoreParts
-                : audit?.scoreParts && typeof audit.scoreParts === 'object'
-                  ? audit.scoreParts
-                  : {
-                      effectiveDeltaEV: Number(candidate?.effectEV || 0),
-                      futureUnlockEV: Number(candidate?.comboEV || 0),
-                      enemyDeniedEV: Number(candidate?.timingEV || 0),
-                      teamIntentEV: Number(candidate?.targetEV || 0),
-                      sustainEV: Number(candidate?.roleEV || 0),
-                      resourceCostEV: Number(candidate?.resourceCostEV || 0),
-                      failureRiskEV: Number(candidate?.riskEV || 0),
-                      exposureRiskEV: 0,
-                      chainConflictEV: 0,
-                    };
-              const tags = [...new Set([
-                ...(Array.isArray(candidate?.tags) ? candidate.tags : []),
-                ...(Array.isArray(candidate?.effectTags) ? candidate.effectTags : []),
-                ...(Array.isArray(audit?.tags) ? audit.tags : []),
-              ])];
-              const candidateName = normalizeBattleActionDisplayName(candidate?.candidateName || candidate?.名称 || candidate?.技能 || '');
-              const rawObjectiveScore = Number(candidate?.rawObjectiveScore ?? audit?.rawObjectiveScore ?? candidate?.score ?? candidate?.权重 ?? 0);
-              return {
-                candidateId: String(candidate?.candidateId || '').trim(),
-                actionKind: String(candidate?.actionKind || audit?.actionKind || (candidate?.技能 ? 'RELEASE_SKILL' : 'BASIC_ATTACK')).trim(),
-                candidateName,
-                actionRole: 标准化战斗行动职责(candidate?.actionRole || audit?.actionRole || item?.scoringSummary?.actionRole || 'ACTIVE'),
-                actorId: String(candidate?.actorId || audit?.actorId || item?.行动者 || item?.actor || '').trim(),
-                targetIds: Array.isArray(candidate?.targetIds) ? candidate.targetIds : (candidate?.目标 ? [String(candidate.目标).trim()].filter(Boolean) : []),
-                rawObjectiveScore,
-                subjectiveScore: Number(candidate?.subjectiveScore ?? audit?.subjectiveScore ?? rawObjectiveScore),
-                scoreParts,
-                factorKeys: Array.isArray(candidate?.factorKeys) ? [...candidate.factorKeys] : (Array.isArray(audit?.factorKeys) ? [...audit.factorKeys] : []),
-                scoreContributions: Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions.map(item => ({ ...item })) : (Array.isArray(audit?.scoreContributions) ? audit.scoreContributions.map(item => ({ ...item })) : []),
-                tags,
-                alternativeGap: Number(candidate?.alternativeGap ?? audit?.alternativeGap ?? 0),
-                selectedReason: String(candidate?.selectedReason || audit?.selectedReason || '').trim(),
-                effectEV: Number(scoreParts.effectiveDeltaEV || 0),
-                targetEV: Number(scoreParts.teamIntentEV || 0),
-                timingEV: Number(scoreParts.enemyDeniedEV || 0),
-                roleEV: Number(scoreParts.sustainEV || 0),
-                comboEV: Number(scoreParts.futureUnlockEV || 0),
-                resourceCostEV: Number(scoreParts.resourceCostEV || 0),
-                riskEV: Number(scoreParts.failureRiskEV || 0) + Number(scoreParts.exposureRiskEV || 0) + Number(scoreParts.chainConflictEV || 0),
-                finalScore: Number(candidate?.finalScore ?? candidate?.权重 ?? candidate?.score ?? 0),
-                rejectionCode: String(candidate?.rejectionCode || '').trim(),
-                candidateStatus: String(candidate?.candidateStatus || '').trim(),
-              };
-            }),
-          }))
-          .filter(item => item.candidates.length)
-          .filter(item => {
-            const selected = item.candidates.find(candidate =>
-              ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase()) ||
-              String(candidate?.candidateId || '').trim() === String(item.selectedCandidateId || '').trim()
-            );
-            const selectedRole = 标准化战斗行动职责(selected?.actionRole || 'ACTIVE');
-            if (selectedRole !== 'ACTIVE') return true;
-            const actionName = normalizeBattleActionDisplayName(item.selectedActionName || selected?.candidateName || '');
-            return eventLedger.some(event =>
-              String(event?.eventKind || '').trim() === 'action_start' &&
-              标准化战斗行动职责(event?.actionRole || 'ACTIVE') === 'ACTIVE' &&
-              Number(event?.round || 0) === Number(item.round || 0) &&
-              isSameBattleReportName(event?.actorName || '', item.actor || '') &&
-              (!actionName || normalizeBattleActionDisplayName(event?.finalActionName || event?.actionName || '') === actionName)
-            );
-          })
-          .slice(-Math.max(3, rounds * 6));
-        const scoringMutationDetected = Number(战斗评分预估写入次数 || 0) > scoringMutationCountBefore;
-        const audit = BATTLE_RUNTIME.auditFacts({
-          eventLedger,
-          resolutionTrace,
-          publicReportBlocks,
-          scoringAudit,
-          scoringMutationDetected,
-          combatData: runtimeCombatData,
-          initialSnapshot,
-          finalSnapshot,
-          actionQueueTrace,
-          roundsRequested: rounds,
-          roundsExecuted: Number(result?.roundsExecuted || 0),
-        });
-        return {
-          caseId,
-          seed,
-          mode,
-          roundsRequested: rounds,
-          roundsExecuted: Number(result?.roundsExecuted || 0),
-          inputUnchanged: sourceSnapshot === JSON.stringify(sourceCombatData),
-          scoringMutationDetected,
-          eventLedger,
-          ledger: eventLedger,
-          resolutionTrace,
-          trace: resolutionTrace,
-          decisionTrace,
-          scoringAudit,
-          actionChains,
-          actionQueueTrace,
-          reportBlocks,
-          publicReportBlocks,
-          roundOverview: 构建回合速览数据(result, { combatData: result?.combatData || combatData }),
-          finalBattleReport,
-          aiSummaryInput,
-          finalSnapshot,
-          llmBattleSummary: String(result?.llmBattleSummary || 构建LLM战斗语义摘要(eventLedger, finalSnapshot, { maxRounds: rounds }) || ''),
-          logs: Array.isArray(result?.logs) ? result.logs : [],
-          initialSnapshot,
-          audit,
-        };
-      } finally {
-        Math.random = originalRandom;
-      }
-    }
-
     BATTLE_RUNTIME.bindEngine({
-      runBattleCase: options => 运行战斗调试案例(options),
+      caseDomain: {
+        ensureRuntime: combatData => 确保战斗运行态(combatData),
+        getSnapshot: combatData => ui_getBattleSnapshot(combatData),
+        getScoringMutationCount: () => Number(战斗评分预估写入次数 || 0),
+        normalizeCausalNode: node => 补齐战斗因果节点契约(node),
+        executeTeam: (combatData, rounds) => runTeamBattleSimulation(combatData, rounds),
+        executeDuel: (actionText, options) => onPlayerAttack(actionText, options),
+        collectResolutionTrace: combatData => collectBattleResolutionTrace(combatData),
+        collectDecisionTrace: combatData => collectBattleDecisionTrace(combatData),
+        buildPublicReportBlocks: (eventLedger, limit, context) => 构建事件账本公开战报Blocks(eventLedger, limit, context),
+        cloneAuditSnapshot: value => cloneBattleRuntimeAuditSnapshot(value),
+        buildActionChains: (eventLedger, resolutionTrace) => 构建战斗行动链摘要(eventLedger, resolutionTrace),
+        buildReportBlocks: (eventLedger, decisionTrace, publicEntries) => 构建结构化战报Blocks(eventLedger, decisionTrace, publicEntries),
+        buildFinalSummary: (eventLedger, decisionTrace, finalSnapshot, combatData) => 构建战斗总结数据(eventLedger, decisionTrace, finalSnapshot, combatData),
+        buildRoundOverview: (result, context) => 构建回合速览数据(result, context),
+        buildLlmSummary: (eventLedger, finalSnapshot, options) => 构建LLM战斗语义摘要(eventLedger, finalSnapshot, options),
+      },
       previewDomain: {
         getEffects: ({ skill, actor, target }) => getSkillEffects(skill, {
           行为规划: true, actor, caster: actor, attacker: actor, target, defender: target,
