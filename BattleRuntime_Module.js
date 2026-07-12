@@ -1426,6 +1426,83 @@
     return { finalBattleReport, aiSummaryInput };
   }
 
+  function buildAiNarrativeSummary(aiSummaryInput = {}, options = {}) {
+    const input = aiSummaryInput && typeof aiSummaryInput === 'object' ? aiSummaryInput : {};
+    const tokenBudget = Math.max(240, Number(options?.tokenBudget || 1400));
+    const maxRounds = Math.max(1, Number(options?.maxRounds || 3));
+    const playerUnits = Array.isArray(input?.sides?.player) ? input.sides.player : [];
+    const enemyUnits = Array.isArray(input?.sides?.enemy) ? input.sides.enemy : [];
+    const summons = Array.isArray(input?.summons) ? input.summons : [];
+    const formatUnit = unit => {
+      const states = (Array.isArray(unit?.states) ? unit.states : [])
+        .filter(state => Number(state?.duration || 0) > 0)
+        .slice(0, 5)
+        .map(state => `${String(state?.name || '状态').trim()}(${Math.max(0, Math.round(Number(state?.duration || 0)))}回合)`);
+      return [
+        `${String(unit?.name || '单位').trim()} HP${Math.max(0, Math.round(Number(unit?.hp || 0)))}`,
+        `魂力${Math.max(0, Math.round(Number(unit?.sp || 0)))}`,
+        `体力${Math.max(0, Math.round(Number(unit?.vit || 0)))}`,
+        `精神力${Math.max(0, Math.round(Number(unit?.men || 0)))}`,
+        states.length ? `状态:${states.join('、')}` : '状态:无',
+      ].join('；');
+    };
+    const lines = [`[战斗终态][回合${Math.max(0, Number(input?.round || 0))}]`];
+    if (playerUnits.length) lines.push(`[我方] ${playerUnits.map(formatUnit).join(' | ')}`);
+    if (enemyUnits.length) lines.push(`[敌方] ${enemyUnits.map(formatUnit).join(' | ')}`);
+    if (summons.length) {
+      lines.push(`[召唤物] ${summons.slice(0, 8).map(unit => [
+        formatUnit(unit),
+        unit?.host ? `宿主:${unit.host}` : '',
+        unit?.mode ? `模式:${unit.mode}` : '',
+        `剩余窗口:${Math.max(0, Math.round(Number(unit?.remainingWindows || 0)))}`,
+        unit?.stability ? `稳定:${unit.stability}` : '',
+      ].filter(Boolean).join('；')).join(' | ')}`);
+    }
+    const currentTargets = (Array.isArray(input?.currentTargets) ? input.currentTargets : [])
+      .map(pair => `${String(pair?.actor || '').trim()}->${String(pair?.target || '').trim()}`)
+      .filter(pair => !/^->|->$/.test(pair));
+    lines.push(`[当前目标] ${currentTargets.join('；') || '无明确目标'}`);
+    lines.push(`[下一步意图] 我方:${String(input?.nextIntents?.player || '无明确行动').trim()}；敌方:${String(input?.nextIntents?.enemy || '无明确行动').trim()}`);
+    lines.push(`[战术窗口] ${(Array.isArray(input?.tacticalWindows) ? input.tacticalWindows : []).slice(0, 8).join('；') || '暂无明确窗口'}`);
+    lines.push(`[风险] ${(Array.isArray(input?.risks) ? input.risks : []).slice(0, 8).join('；') || '暂无迫近风险'}`);
+    const terminalLineCount = lines.length;
+    lines.push('[近期事实]');
+    const recentFacts = Array.isArray(input?.recentFacts) ? input.recentFacts : [];
+    const latestRound = Math.max(0, ...recentFacts.map(fact => Number(fact?.round || 0)));
+    recentFacts
+      .filter(fact => Number(fact?.round || 0) >= Math.max(1, latestRound - maxRounds + 1))
+      .forEach(fact => {
+        const round = Math.max(0, Number(fact?.round || 0));
+        const actor = String(fact?.actor || '行动者').trim();
+        const target = String(fact?.target || actor || '目标').trim();
+        const action = normalizeActionDisplayName(fact?.action || '行动');
+        const value = Math.round(Number(fact?.value || 0));
+        const state = String(fact?.state || '').trim();
+        const factType = String(fact?.factType || '').trim();
+        const detail = value
+          ? `数值${value > 0 ? '+' : ''}${value}`
+          : state
+            ? `状态:${state}`
+            : factType === 'action_start'
+              ? '动作已宣告'
+              : ['failed_action', 'blocked_action'].includes(factType)
+                ? '动作未完成'
+                : '事实已结算';
+        lines.push(`[回合${round}][${actor}] 使用【${action}】 -> [${target}]。[${detail}]`);
+      });
+    let text = lines.join('\n');
+    if (text.length > tokenBudget) {
+      const terminalLines = lines.slice(0, terminalLineCount);
+      const retained = [];
+      for (let index = lines.length - 1; index > terminalLineCount; index -= 1) {
+        const next = [...terminalLines, '[近期事实]', '[更早事实已折叠]', lines[index], ...retained].join('\n');
+        if (next.length <= tokenBudget) retained.unshift(lines[index]);
+      }
+      text = [...terminalLines, '[近期事实]', '[更早事实已折叠]', ...retained].join('\n');
+    }
+    return text;
+  }
+
   function auditFacts(payload = {}) {
     payload = payload && typeof payload === 'object' ? cloneValue(payload) : {};
     const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
@@ -1958,7 +2035,6 @@
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
       typeof implementation.caseDomain.resolveNextIntents !== 'function' ||
       typeof implementation.caseDomain.resolveReportUnitSide !== 'function' ||
-      typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
       !implementation.previewDomain ||
       typeof implementation.previewDomain.getEffects !== 'function' ||
       typeof implementation.previewDomain.evaluateEffect !== 'function' ||
@@ -2173,7 +2249,7 @@
         finalBattleReport,
         aiSummaryInput,
         finalSnapshot,
-        llmBattleSummary: String(result?.llmBattleSummary || domain.buildLlmSummary(eventLedger, finalSnapshot, { maxRounds: rounds }) || ''),
+        llmBattleSummary: String(result?.llmBattleSummary || buildAiNarrativeSummary(aiSummaryInput, { maxRounds: rounds }) || ''),
         logs: Array.isArray(result?.logs) ? result.logs : [],
         initialSnapshot,
         audit,
@@ -2334,6 +2410,7 @@
     buildReportBlocks,
     buildRoundOverview,
     buildFinalSummary,
+    buildAiNarrativeSummary,
     previewSkill,
     auditPrototypeCoverage,
   });

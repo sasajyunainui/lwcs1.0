@@ -5916,148 +5916,7 @@ class BattleUIComponent {
       ].filter(Boolean).join('\n');
     }
 
-    function 构建LLM战斗语义摘要(eventLedger = [], finalSnapshot = {}, options = {}) {
-      const ledger = (Array.isArray(eventLedger) ? eventLedger : [])
-        .filter(event => event && typeof event === 'object')
-        .filter(event => !判定公开战报事件是内部兜底(event));
-      const maxRounds = Math.max(1, Number(options.maxRounds || 3));
-      const tokenBudget = Math.max(240, Number(options.tokenBudget || 1400));
-      const rounds = [...new Set(ledger.map(event => Math.max(0, Number(event.round || event.sourceRound || 0))).filter(round => round > 0))]
-        .sort((a, b) => a - b);
-      const visibleRounds = new Set(rounds.slice(-maxRounds));
-      const lines = [];
-      const pushLine = line => {
-        const clean = String(line || '')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (clean) lines.push(clean);
-      };
-      const snapshot = finalSnapshot && typeof finalSnapshot === 'object' ? finalSnapshot : {};
-      const playerUnits = Array.isArray(snapshot.team_player) ? snapshot.team_player : [];
-      const enemyUnits = Array.isArray(snapshot.team_enemy) ? snapshot.team_enemy : [];
-      const summons = Array.isArray(snapshot.summons) ? snapshot.summons : [];
-      const allUnits = [...playerUnits, ...enemyUnits, ...summons];
-      const findSnapshotUnit = name => allUnits.find(unit => isSameBattleReportName(unit?.name || '', name || '')) || null;
-      const formatResource = (unit, label, valueKey, maxKey) => {
-        const value = Math.max(0, Math.round(Number(unit?.[valueKey] || 0)));
-        const max = Math.max(0, Math.round(Number(unit?.[maxKey] || 0)));
-        return max > 0 ? `${label}${value}` : '';
-      };
-      const formatUnit = unit => {
-        const states = (Array.isArray(unit?.状态效果) ? unit.状态效果 : [])
-          .filter(state => Math.max(0, Number(state?.duration || 0)) > 0)
-          .slice(0, 5)
-          .map(state => `${String(state?.name || '状态').trim()}(${Math.max(0, Math.round(Number(state?.duration || 0)))}回合)`);
-        return [
-          `${String(unit?.name || '单位').trim()} HP${Math.max(0, Math.round(Number(unit?.hp || 0)))}`,
-          formatResource(unit, '魂力', 'sp', 'sp_max'),
-          formatResource(unit, '体力', 'vit', 'vit_max'),
-          formatResource(unit, '精神力', 'men', 'men_max'),
-          states.length ? `状态:${states.join('、')}` : '状态:无',
-        ].filter(Boolean).join('；');
-      };
-      pushLine(`[战斗终态][回合${Math.max(0, Number(snapshot.round || rounds[rounds.length - 1] || 0))}]`);
-      if (playerUnits.length) pushLine(`[我方] ${playerUnits.map(formatUnit).join(' | ')}`);
-      if (enemyUnits.length) pushLine(`[敌方] ${enemyUnits.map(formatUnit).join(' | ')}`);
-      if (summons.length) {
-        pushLine(`[召唤物] ${summons.slice(0, 8).map(unit => [
-          formatUnit(unit),
-          unit?.宿主名 ? `宿主:${unit.宿主名}` : '',
-          unit?.行动模式 ? `模式:${unit.行动模式}` : '',
-          `剩余窗口:${Math.max(0, Math.round(Number(unit?.剩余窗口 || 0)))}`,
-          unit?.稳定状态 ? `稳定:${unit.稳定状态}` : '',
-        ].filter(Boolean).join('；')).join(' | ')}`);
-      }
-      const currentTargets = [];
-      const targetedActors = new Set();
-      for (let index = ledger.length - 1; index >= 0 && currentTargets.length < 6; index -= 1) {
-        const event = ledger[index];
-        const actor = String(event?.actorName || '').trim();
-        const target = String(event?.targetName || '').trim();
-        if (!actor || !target || isSameBattleReportName(actor, target) || targetedActors.has(actor)) continue;
-        if (!['action_start', 'hit_result', 'counter', 'state_apply', 'summon_assist'].includes(String(event?.eventKind || '').trim())) continue;
-        targetedActors.add(actor);
-        currentTargets.push(`${actor}->${target}`);
-      }
-      pushLine(`[当前目标] ${currentTargets.length ? currentTargets.join('；') : '无明确目标'}`);
-      const tacticalWindows = [];
-      allUnits.forEach(unit => {
-        const name = String(unit?.name || '单位').trim();
-        const hp = Math.max(0, Number(unit?.hp || 0));
-        const hpMax = Math.max(1, Number(unit?.hp_max || 1));
-        if (hp > 0 && hp / hpMax <= 0.25) tacticalWindows.push(`${name}生命低于25%`);
-        if (unit?.isCharging) tacticalWindows.push(`${name}正在蓄力，可尝试打断`);
-        (Array.isArray(unit?.状态效果) ? unit.状态效果 : []).forEach(state => {
-          const duration = Math.max(0, Math.round(Number(state?.duration || 0)));
-          if (!(duration > 0)) return;
-          const stateName = String(state?.name || '状态').trim();
-          if (state?.skip_turn) tacticalWindows.push(`${name}受${stateName}限制行动(${duration}回合)`);
-          else if (Number(state?.dot || 0) > 0) tacticalWindows.push(`${name}承受${stateName}持续伤害(${duration}回合)`);
-        });
-      });
-      summons.forEach(unit => {
-        const remaining = Math.max(0, Math.round(Number(unit?.剩余窗口 || 0)));
-        if (remaining > 0) tacticalWindows.push(`${unit?.name || '召唤物'}尚有${remaining}个${unit?.行动模式 || '行动'}窗口`);
-      });
-      pushLine(`[战术窗口] ${[...new Set(tacticalWindows)].slice(0, 8).join('；') || '暂无明确窗口'}`);
-      const terminalLineCount = lines.length;
-      pushLine('[近期事实]');
-      ledger.filter(event => visibleRounds.has(Math.max(0, Number(event.round || event.sourceRound || 0)))).forEach(event => {
-        const round = Math.max(0, Number(event.round || event.sourceRound || 0));
-        const actor = String(event.actorName || '行动者').trim();
-        const target = String(event.targetName || actor || '目标').trim();
-        const skill = normalizeBattleActionDisplayName(event.finalActionName || event.actionName || (event.eventKind === 'state_tick' ? event.sourceActionName : '') || '行动');
-        const outcome = 读取战报事件Outcome(event);
-        const outcomeText = 映射玩家态Outcome文本(outcome) || 格式化玩家判定结果(outcome) || '结果未明';
-        const damage = Math.max(0, Math.round(读取事件账本数值(event, 'damage') || 读取事件账本数值(event, 'amount')));
-        const severity = (() => {
-          const targetUnit = findSnapshotUnit(target);
-          const maxHp = Math.max(1, Number(targetUnit?.hp_max || 0));
-          const ratio = maxHp > 1 ? damage / maxHp : 0;
-          if (outcome === 'dodged') return '规避成功';
-          if (outcome === 'graze') return `擦伤(${damage}点)`;
-          if (ratio >= 0.45) return `致命重创(${damage}点)`;
-          if (ratio >= 0.18) return `重伤(${damage}点)`;
-          if (damage > 0) return `轻伤(${damage}点)`;
-          return '无伤害';
-        })();
-        if (event.eventKind === 'hit_result' || event.eventKind === 'counter') {
-          const desc = outcome === 'graze'
-            ? `${target}避开要害，但仍被余波擦伤。`
-            : outcome === 'dodged'
-              ? `${target}完成规避，未被命中。`
-              : damage > 0
-                ? `${target}承受了本次攻势。`
-                : `${target}没有受到实质伤害。`;
-          pushLine(`[回合${round}][${actor}] 使用【${skill}】 -> [${target}]。[结果: ${outcomeText}] [烈度: ${severity}] ${desc}`);
-        } else if (event.eventKind === 'state_apply') {
-          const stateName = 读取事件账本状态名(event) || '状态';
-          const desc = outcome === 'state_resisted' || outcome === 'state_immune'
-            ? `${target}化解了【${stateName}】。`
-            : `${target}陷入【${stateName}】。`;
-          pushLine(`[回合${round}][${actor}] 使用【${skill}】 -> [${target}]。[结果: ${outcomeText}] [烈度: 状态] ${desc}`);
-        } else if (event.eventKind === 'create' || event.eventKind === 'summon_create') {
-          const name = String(event.createdName || event.summonName || event.meta?.createdName || event.meta?.summonName || target || '造物').trim();
-          pushLine(`[回合${round}][${actor}] 使用【${skill}】 -> [${name}]。[结果: ${outcomeText}] [烈度: 战术资源] ${actor}完成了${event.eventKind === 'summon_create' ? '召唤' : '造物'}。`);
-        } else if (event.eventKind === 'resource_change' || event.eventKind === 'round_recover') {
-          const resource = String(event.meta?.resource || event.resource || '资源').trim();
-          const amount = Math.round(Number(event.meta?.delta ?? event.amount ?? event.meta?.amount ?? 0));
-          pushLine(`[回合${round}][${actor}] 使用【${skill}】 -> [${target}]。[结果: 资源回稳] [烈度: 资源${amount >= 0 ? '+' : ''}${amount}] ${target}的${resource}发生变化。`);
-        }
-      });
-      let text = lines.join('\n');
-      if (text.length > tokenBudget) {
-        const terminalLines = lines.slice(0, terminalLineCount);
-        const recentFacts = [];
-        for (let index = lines.length - 1; index > terminalLineCount; index -= 1) {
-          const next = [...terminalLines, '[近期事实]', '[更早事实已折叠]', lines[index], ...recentFacts].join('\n');
-          if (next.length > tokenBudget) continue;
-          recentFacts.unshift(lines[index]);
-        }
-        text = [...terminalLines, '[近期事实]', '[更早事实已折叠]', ...recentFacts].join('\n');
-      }
-      return text;
-    }
+
 
 
 
@@ -6156,7 +6015,7 @@ class BattleUIComponent {
         finalBattleReport,
         aiSummaryInput,
         snapshot,
-        llmBattleSummary: 构建LLM战斗语义摘要(ledger, snapshot, { maxRounds: 3 }),
+        llmBattleSummary: BATTLE_RUNTIME.buildAiNarrativeSummary(aiSummaryInput, { maxRounds: 3 }),
       };
     }
 
@@ -6239,7 +6098,7 @@ class BattleUIComponent {
       const actionChains = BATTLE_RUNTIME.buildActionChains(resolvedEventLedger, resolutionTrace);
       const reportBlocks = BATTLE_RUNTIME.buildReportBlocks(resolvedEventLedger, decisionTrace, resolvedPublicReportBlocks);
       const { finalBattleReport, aiSummaryInput } = BATTLE_RUNTIME.buildFinalSummary(resolvedEventLedger, decisionTrace, snapshot, combatData);
-      const llmBattleSummary = 构建LLM战斗语义摘要(resolvedEventLedger, snapshot, { maxRounds: 3 });
+      const llmBattleSummary = BATTLE_RUNTIME.buildAiNarrativeSummary(aiSummaryInput, { maxRounds: 3 });
       const result = {
         preview: true,
         intentText: String(intentText || ''),
@@ -16280,7 +16139,6 @@ class BattleUIComponent {
         normalizePublicEntry: entry => 归一公开战报Block条目(entry),
         resolveNextIntents: input => 构建战斗总结下一行动意图(input),
         resolveReportUnitSide: (context, unitName) => 读取战报单位阵营(context, unitName),
-        buildLlmSummary: (eventLedger, finalSnapshot, options) => 构建LLM战斗语义摘要(eventLedger, finalSnapshot, options),
       },
       previewDomain: {
         getEffects: ({ skill, actor, target }) => getSkillEffects(skill, {
@@ -29972,7 +29830,14 @@ class BattleUIComponent {
           bucket[createdName] = Number(bucket[createdName] || 0) + Math.max(1, Number(event.meta?.count || event.count || 1));
         }
       });
-      runtime.llmBattleSummary = 构建LLM战斗语义摘要(ledger, ui_getBattleSnapshot(rootData), { maxRounds: 3 });
+      const hydrationSnapshot = ui_getBattleSnapshot(rootData);
+      const hydrationAiSummaryInput = BATTLE_RUNTIME.buildFinalSummary(
+        ledger,
+        BATTLE_RUNTIME.collectDecisionTrace(rootData),
+        hydrationSnapshot,
+        rootData,
+      ).aiSummaryInput;
+      runtime.llmBattleSummary = BATTLE_RUNTIME.buildAiNarrativeSummary(hydrationAiSummaryInput, { maxRounds: 3 });
       runtime.hydratedFromLedger = true;
       runtime.hydratedAtRound = currentRound;
       runtime.hydratedEventCount = ledger.length;
