@@ -25211,6 +25211,64 @@ class BattleUIComponent {
         };
       }
 
+      function 结算蓄力打断反噬(attacker, defender, 压制动作, combatData) {
+        const 反噬前血量 = getCombatHpValue(attacker);
+        const damage = Math.min(反噬前血量, Math.floor(getCombatHpMaxValue(attacker) * 0.05));
+        设置战斗血量值(attacker, 反噬前血量 - damage);
+        const 压制动作名 = normalizeBattleActionDisplayName(压制动作?.skill?.name || 压制动作?.skill?.魂技名 || 压制动作?.action_type || 压制动作?.type || '截断');
+        const 压制动作事件 = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+          round: Number(combatData?.回合 || 0),
+          actorName: defender?.name || defender?.名称 || '',
+          actionName: 压制动作名,
+        });
+        写入战斗事件账本(combatData, {
+          eventKind: 'hit_result',
+          round: Number(combatData?.回合 || 0),
+          actorName: attacker?.name || attacker?.名称 || '',
+          targetName: attacker?.name || attacker?.名称 || '',
+          actionName: '施法打断反噬',
+          actionType: 'cast_interruption_backlash',
+          sourceActionName: 压制动作名,
+          sourceActionId: 压制动作事件?.actionId || '',
+          parentNodeId: 压制动作事件?.chainNodeId || '',
+          actorControl: 'SYSTEM',
+          actionRole: 'REACTION',
+          ruleCode: 'CAST_INTERRUPTION_BACKLASH',
+          result: 'success',
+          primaryOutcome: 'hit',
+          appliedDamage: damage,
+          effectCapability: { hasDamageEffect: true, effectKinds: ['cast_interruption_backlash'] },
+          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH',
+          targetPoolSide: 'friendly',
+          meta: { damageSourceType: 'cast_interruption_backlash', damageType: '真实伤害' },
+        });
+        if (!attacker.状态效果) attacker.状态效果 = {};
+        const 打断反噬状态 = {
+          类型: 'debuff',
+          状态: '僵直',
+          状态名称: '僵直',
+          层数: 1,
+          描述: '施法被打断的反噬',
+          duration: 1,
+          面板修改比例: { str: 1.0, def: 1.0, agi: 1.0, sp_max: 1.0 },
+          战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
+        };
+        const 持续移除命中 = 持续状态移除阻断状态附着(attacker, '僵直', 打断反噬状态, defender);
+        if (持续移除命中) {
+          return {
+            damage,
+            stateApplied: false,
+            log: `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`,
+          };
+        }
+        attacker.状态效果['僵直'] = 打断反噬状态;
+        return {
+          damage,
+          stateApplied: true,
+          log: `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤并陷入[僵直]！`,
+        };
+      }
+
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
@@ -26127,6 +26185,7 @@ class BattleUIComponent {
           if (Array.isArray(settleResult.extraPatchOps) && settleResult.extraPatchOps.length && settleResult.__extraPatchOps已收集 !== true)
             clashExtraPatchOps.push(...settleResult.extraPatchOps);
 
+          let 蓄力反噬终止本轮 = false;
           if (attacker.蓄力技能 != null) {
             let damageRatio = Number(settleResult.totalProjectedDamage || settleResult.dmg || 0) / getCombatHpMaxValue(attacker);
             let isControlled = attacker.状态效果 && attacker.状态效果['眩晕'];
@@ -26155,36 +26214,15 @@ class BattleUIComponent {
                 if (hasSuperArmor) {
                   roundLog += ` NPC释放[${压制动作.skill.name}]试图打断，但玩家处于霸体状态，强行免疫了控制！`;
                 } else {
-                  let backlashDmg = Math.floor(getCombatHpMaxValue(attacker) * 0.05);
-                  设置战斗血量值(attacker, getCombatHpValue(attacker) - backlashDmg);
-                  if (!attacker.状态效果) attacker.状态效果 = {};
-                  const 打断反噬状态 = {
-                    类型: 'debuff',
-                    状态: '僵直',
-                    状态名称: '僵直',
-                    层数: 1,
-                    描述: '施法被打断的反噬',
-                    duration: 1,
-                    面板修改比例: { str: 1.0, def: 1.0, agi: 1.0, sp_max: 1.0 },
-                    战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
-                  };
-                  const 持续移除命中 = 持续状态移除阻断状态附着(attacker, '僵直', 打断反噬状态, defender);
-                  if (持续移除命中) roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`;
-                  else {
-                    attacker.状态效果['僵直'] = 打断反噬状态;
-                    roundLog += ` NPC释放[${压制动作.skill.name}]成功打断玩家施法！玩家遭到反噬，承受 ${backlashDmg} 点真伤并陷入[僵直]！`;
-                  }
+                  const 反噬结果 = 结算蓄力打断反噬(attacker, defender, 压制动作, combatData);
+                  roundLog += ` ${反噬结果.log}`;
                   attacker.蓄力技能 = null;
-                  const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
-                  if (roundEnd.log) roundLog += ` ${roundEnd.log}`;
-                  if (!roundEnd.actorsAble) continueSimulation = false;
-                  battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
-                  return { continueSimulation };
+                  蓄力反噬终止本轮 = true;
                 }
               }
             }
 
-            if (!hasSuperArmor && (damageRatio >= 0.3 || isControlled)) {
+            if (!蓄力反噬终止本轮 && !hasSuperArmor && (damageRatio >= 0.3 || isControlled)) {
               roundLog += ` [蓄力打断] 玩家受到重创或硬控，蓄力被强制打断！`;
               attacker.蓄力技能 = null;
             } else if (hasSuperArmor && isControlled) {
@@ -26193,135 +26231,156 @@ class BattleUIComponent {
             }
           }
 
-          // 简单判断被动方是否被打断 (如果主动方伤害极高或带有硬控，视为打断)
-          const activeStateCalc = getPrimaryStateCalc(主动结算动作?.skill);
-          const activeInterruptChance = 计算行动打断概率(主动结算动作?.skill, 被动结算目标, settleResult);
-          let isPassiveInterrupted =
-            activeStateCalc.skip_turn === true ||
-            getPrimaryStateFlags(主动结算动作?.skill).includes('硬控') ||
-            BATTLE_RUNTIME.probabilitySucceeds(activeInterruptChance);
+          let appliedDamage = 0;
+          if (!蓄力反噬终止本轮) {
+            // 简单判断被动方是否被打断 (如果主动方伤害极高或带有硬控，视为打断)
+            const activeStateCalc = getPrimaryStateCalc(主动结算动作?.skill);
+            const activeInterruptChance = 计算行动打断概率(主动结算动作?.skill, 被动结算目标, settleResult);
+            let isPassiveInterrupted =
+              activeStateCalc.skip_turn === true ||
+              getPrimaryStateFlags(主动结算动作?.skill).includes('硬控') ||
+              BATTLE_RUNTIME.probabilitySucceeds(activeInterruptChance);
 
-          // --- 第四步：打击烈度与破防标尺 ---
-          const damagePackage = applyResolvedDamagePackage(主动结算方, 主动结算动作, settleResult, {
-            primaryTarget: 被动结算目标,
-            combatData: 主动结算战斗数据,
-          });
-          let appliedDamage = damagePackage.primaryAppliedDamage;
-          本次最大单击HP比例 = Math.max(
-            本次最大单击HP比例,
-            Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
-            Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) / getCombatHpMaxValue(主动结算方),
-          );
-          if (damagePackage.log) roundLog += ` ${damagePackage.log}`;
-          const 召唤协同日志 = 主动结算方?.召唤键
-            ? ''
-            : 执行协同召唤追击(主动结算方, 被动结算目标, damagePackage.primaryAppliedDamage, combatData);
-          if (召唤协同日志) roundLog += ` ${召唤协同日志}`;
-          if (settleResult?.撤离结果 === '成功') {
-            撤离结算结果 = '成功';
-            combatData.前端建议结果 = '强制撤离';
-            combatData.裁断结果 = '玩家成功撤离';
-            combatData.进行中 = false;
-            continueSimulation = false;
-          }
-          const 行为防反日志 = 执行行为防反结算(
-            主动结算方,
-            被动结算目标,
-            主动结算动作,
-            反应结算动作 || { type: '无法反应', log: '', skill: null, def_mult: 1 },
-            settleResult,
-            damagePackage,
-            主动结算战斗数据,
-          );
-          if (行为防反日志) roundLog += ` ${行为防反日志}`;
-          isPassiveInterrupted = isPassiveInterrupted || appliedDamage / getCombatHpMaxValue(被动结算目标) >= 0.15;
-          if (
-            本轮NPC先手 &&
-            !玩家动作敌对 &&
-            !isPassivePlayerTurn &&
-            !isPassiveInterrupted &&
-            isCombatUnitAbleToFight(attacker)
-          ) {
-            if (playerAction?.action_type === '蓄力挨打') {
+            // --- 第四步：打击烈度与破防标尺 ---
+            const damagePackage = applyResolvedDamagePackage(主动结算方, 主动结算动作, settleResult, {
+              primaryTarget: 被动结算目标,
+              combatData: 主动结算战斗数据,
+            });
+            appliedDamage = damagePackage.primaryAppliedDamage;
+            本次最大单击HP比例 = Math.max(
+              本次最大单击HP比例,
+              Math.max(0, Number(appliedDamage || 0)) / getCombatHpMaxValue(被动结算目标),
+              Math.max(0, Number(settleResult.totalProjectedDamage || settleResult.dmg || 0)) /
+                getCombatHpMaxValue(主动结算方),
+            );
+            if (damagePackage.log) roundLog += ` ${damagePackage.log}`;
+            const 召唤协同日志 = 主动结算方?.召唤键
+              ? ''
+              : 执行协同召唤追击(主动结算方, 被动结算目标, damagePackage.primaryAppliedDamage, combatData);
+            if (召唤协同日志) roundLog += ` ${召唤协同日志}`;
+            if (settleResult?.撤离结果 === '成功') {
+              撤离结算结果 = '成功';
+              combatData.前端建议结果 = '强制撤离';
+              combatData.裁断结果 = '玩家成功撤离';
+              combatData.进行中 = false;
+              continueSimulation = false;
+            }
+            const 行为防反日志 = 执行行为防反结算(
+              主动结算方,
+              被动结算目标,
+              主动结算动作,
+              反应结算动作 || { type: '无法反应', log: '', skill: null, def_mult: 1 },
+              settleResult,
+              damagePackage,
+              主动结算战斗数据,
+            );
+            if (行为防反日志) roundLog += ` ${行为防反日志}`;
+            isPassiveInterrupted = isPassiveInterrupted || appliedDamage / getCombatHpMaxValue(被动结算目标) >= 0.15;
+            if (
+              本轮NPC先手 &&
+              !玩家动作敌对 &&
+              !isPassivePlayerTurn &&
+              !isPassiveInterrupted &&
+              isCombatUnitAbleToFight(attacker)
+            ) {
+              if (playerAction?.action_type === '蓄力挨打') {
+                写入战斗事件账本(combatData, {
+                  eventKind: 'blocked_action',
+                  round: roundCount,
+                  actorName: attacker?.name || attacker?.名称 || '',
+                  actionName: playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动',
+                  actionType: 'blocked_action',
+                  failReason: '仍在启动，未能在本回合完成',
+                  result: 'blocked',
+                });
+                roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动'}】仍在启动，未能在本回合完成。`;
+              } else {
+                const 后续非敌对结果 = 执行非敌对玩家动作();
+                if (
+                  Array.isArray(后续非敌对结果.extraPatchOps) &&
+                  后续非敌对结果.extraPatchOps.length &&
+                  后续非敌对结果.__extraPatchOps已收集 !== true
+                )
+                  clashExtraPatchOps.push(...后续非敌对结果.extraPatchOps);
+              }
+            } else if (
+              本轮NPC先手 &&
+              !玩家动作敌对 &&
+              !isPassivePlayerTurn &&
+              isPassiveInterrupted &&
+              !玩家非敌对动作已完成
+            ) {
               写入战斗事件账本(combatData, {
                 eventKind: 'blocked_action',
                 round: roundCount,
                 actorName: attacker?.name || attacker?.名称 || '',
-                actionName: playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动',
+                actionName:
+                  playerAction?.skill?.name ||
+                  playerAction?.skill?.魂技名 ||
+                  playerAction?.__原定技能名 ||
+                  playerAction?.__原定动作名 ||
+                  playerAction?.action_type ||
+                  '行动',
                 actionType: 'blocked_action',
-                failReason: '仍在启动，未能在本回合完成',
+                failReason: '被对手攻势打断，未能完成',
                 result: 'blocked',
               });
-              roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.__原定技能名 || playerAction?.__原定动作名 || '行动'}】仍在启动，未能在本回合完成。`;
-            } else {
-              const 后续非敌对结果 = 执行非敌对玩家动作();
-              if (Array.isArray(后续非敌对结果.extraPatchOps) && 后续非敌对结果.extraPatchOps.length && 后续非敌对结果.__extraPatchOps已收集 !== true)
-                clashExtraPatchOps.push(...后续非敌对结果.extraPatchOps);
+              roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】被对手攻势打断，未能完成。`;
             }
-          } else if (本轮NPC先手 && !玩家动作敌对 && !isPassivePlayerTurn && isPassiveInterrupted && !玩家非敌对动作已完成) {
-            写入战斗事件账本(combatData, {
-              eventKind: 'blocked_action',
-              round: roundCount,
-              actorName: attacker?.name || attacker?.名称 || '',
-              actionName: playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动',
-              actionType: 'blocked_action',
-              failReason: '被对手攻势打断，未能完成',
-              result: 'blocked',
-            });
-            roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】被对手攻势打断，未能完成。`;
-          }
-          if (反应结算动作?.type === '穿戴装备') {
-            if (!isPassiveInterrupted) {
-              const 装备目标 = 反应结算动作.equip_target || 反应结算动作.skill?.equip_target;
-              应用战斗装备变化(被动结算目标, () => {
-                const 装备槽 = ensureBattleEquipmentSlot(被动结算目标, 装备目标);
-                if (装备槽) 装备槽.装备状态 = '已装备';
-              });
-              roundLog += ` [装备生效] ${getCombatReportUnitName(被动结算目标, '防守方')}成功穿戴了${装备目标 === 'armor' ? '斗铠' : '机甲'}，防御力大增！`;
-            } else {
-              roundLog += ` [穿戴失败] ${getCombatReportUnitName(主动结算方, '攻击方')}的猛烈攻击强行打断了${getCombatReportUnitName(被动结算目标, '防守方')}的装备穿戴过程！`;
+            if (反应结算动作?.type === '穿戴装备') {
+              if (!isPassiveInterrupted) {
+                const 装备目标 = 反应结算动作.equip_target || 反应结算动作.skill?.equip_target;
+                应用战斗装备变化(被动结算目标, () => {
+                  const 装备槽 = ensureBattleEquipmentSlot(被动结算目标, 装备目标);
+                  if (装备槽) 装备槽.装备状态 = '已装备';
+                });
+                roundLog += ` [装备生效] ${getCombatReportUnitName(被动结算目标, '防守方')}成功穿戴了${装备目标 === 'armor' ? '斗铠' : '机甲'}，防御力大增！`;
+              } else {
+                roundLog += ` [穿戴失败] ${getCombatReportUnitName(主动结算方, '攻击方')}的猛烈攻击强行打断了${getCombatReportUnitName(被动结算目标, '防守方')}的装备穿戴过程！`;
+              }
             }
-          }
-          const fusionAftermathLog = applyFusionActionAftermath(主动结算方, 主动结算动作, 主动结算战斗数据);
-          if (fusionAftermathLog) roundLog += ` ${fusionAftermathLog}`;
-          if (
-            本轮NPC先手 &&
-            玩家动作敌对 &&
-            !动作已在新增账本中闭合(本回合玩家动作账本起点, attacker, playerAction)
-          ) {
-            const 兜底受阻原因 =
-              玩家范围控制可延后落地 && isCombatUnitAbleToFight(attacker)
-                ? '先手压制后的对抗收束中未能形成有效出手'
-                : '被对手先手压制，未能形成有效出手';
-            记账动作受阻(playerAction, attacker, defender, 兜底受阻原因, { targetPoolSide: 'hostile' });
-            roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】${兜底受阻原因}。`;
-          }
-          清理动作运行态字段(playerAction);
-
-          // --- 第五步：装备护主与战损结算 ---
-          let combatType = combatData.战斗类型 || '突发遭遇';
-
-          if (getCombatHpValue(defender) < getCombatHpMaxValue(defender) * 0.1) {
-            let hasMech = 战斗机甲已装备(defender);
-            let hasArmor = defender.装备?.斗铠?.装备状态 === '已装备';
-
-            if (combatType === '擂台切磋' && getCombatHpValue(defender) <= getCombatHpMaxValue(defender) * 0.05) {
-              设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.05)); // 强制锁血 5%
-              roundLog += ` [擂台保护] 胜负已分！裁判强行介入，终止了致命一击！`;
-              continueSimulation = false; // 强制结束战斗
-            } else if (hasMech || hasArmor) {
-              设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
-              let armorLog = applyArmorDamage(defender);
-              roundLog += ` [装备护主] 致命打击触发替死锁血！NPC HP强制锁定在10%！${armorLog}`;
-            } else if (判断虚拟战斗类型(combatType)) {
-              roundLog += ` [虚拟环境] 本场为虚拟战斗，允许完整承受击杀结果，现实损伤由退出结算处理。`;
-            } else {
-            let saveLog = triggerDeathSave(defender);
-            if (saveLog) {
-              if (!/金龙不灭真身/.test(saveLog)) 设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
-              roundLog += ` ${saveLog}`;
+            const fusionAftermathLog = applyFusionActionAftermath(主动结算方, 主动结算动作, 主动结算战斗数据);
+            if (fusionAftermathLog) roundLog += ` ${fusionAftermathLog}`;
+            if (
+              本轮NPC先手 &&
+              玩家动作敌对 &&
+              !动作已在新增账本中闭合(本回合玩家动作账本起点, attacker, playerAction)
+            ) {
+              const 兜底受阻原因 =
+                玩家范围控制可延后落地 && isCombatUnitAbleToFight(attacker)
+                  ? '先手压制后的对抗收束中未能形成有效出手'
+                  : '被对手先手压制，未能形成有效出手';
+              记账动作受阻(playerAction, attacker, defender, 兜底受阻原因, { targetPoolSide: 'hostile' });
+              roundLog += ` [行动受阻] ${getCombatReportUnitName(attacker, '我方')}的【${playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.__原定技能名 || playerAction?.__原定动作名 || playerAction?.action_type || '行动'}】${兜底受阻原因}。`;
             }
-          }
+            清理动作运行态字段(playerAction);
+
+            // --- 第五步：装备护主与战损结算 ---
+            let combatType = combatData.战斗类型 || '突发遭遇';
+
+            if (getCombatHpValue(defender) < getCombatHpMaxValue(defender) * 0.1) {
+              let hasMech = 战斗机甲已装备(defender);
+              let hasArmor = defender.装备?.斗铠?.装备状态 === '已装备';
+
+              if (combatType === '擂台切磋' && getCombatHpValue(defender) <= getCombatHpMaxValue(defender) * 0.05) {
+                设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.05)); // 强制锁血 5%
+                roundLog += ` [擂台保护] 胜负已分！裁判强行介入，终止了致命一击！`;
+                continueSimulation = false; // 强制结束战斗
+              } else if (hasMech || hasArmor) {
+                设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
+                let armorLog = applyArmorDamage(defender);
+                roundLog += ` [装备护主] 致命打击触发替死锁血！NPC HP强制锁定在10%！${armorLog}`;
+              } else if (判断虚拟战斗类型(combatType)) {
+                roundLog += ` [虚拟环境] 本场为虚拟战斗，允许完整承受击杀结果，现实损伤由退出结算处理。`;
+              } else {
+                let saveLog = triggerDeathSave(defender);
+                if (saveLog) {
+                  if (!/金龙不灭真身/.test(saveLog))
+                    设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
+                  roundLog += ` ${saveLog}`;
+                }
+              }
+            }
           }
 
           const roundEnd = 结算单挑回合尾阶段(attacker, defender, combatData);
@@ -26333,19 +26392,21 @@ class BattleUIComponent {
             if (isCombatUnitAlive(defender) && !isCombatUnitAbleToFight(defender))
               roundLog += ` [体力耗尽] NPC体力归零，陷入昏迷，无法继续行动。`;
           }
-          const continuation = BATTLE_RUNTIME.decideDuelContinuation({
-            mode,
-            actorsAble: 双方可继续行动,
-            isCharging: attacker.蓄力技能 != null,
-            activeDamage: appliedDamage,
-            passiveDamage: settleResult.totalProjectedDamage || settleResult.dmg,
-            passiveHpMax: getCombatHpMaxValue(被动结算目标),
-            activeHpMax: getCombatHpMaxValue(主动结算方),
-            settings: 自动续推设置,
-            roll: Math.random,
-          });
-          continueSimulation = continuation.continueSimulation;
-          if (continuation.log) roundLog += ` ${continuation.log}`;
+          if (!蓄力反噬终止本轮) {
+            const continuation = BATTLE_RUNTIME.decideDuelContinuation({
+              mode,
+              actorsAble: 双方可继续行动,
+              isCharging: attacker.蓄力技能 != null,
+              activeDamage: appliedDamage,
+              passiveDamage: settleResult.totalProjectedDamage || settleResult.dmg,
+              passiveHpMax: getCombatHpMaxValue(被动结算目标),
+              activeHpMax: getCombatHpMaxValue(主动结算方),
+              settings: 自动续推设置,
+              roll: Math.random,
+            });
+            continueSimulation = continuation.continueSimulation;
+            if (continuation.log) roundLog += ` ${continuation.log}`;
+          }
 
           battleLog.push(replaceBattleReportGenericNames(roundLog, { player: attacker, enemy: defender }));
           return { continueSimulation };
