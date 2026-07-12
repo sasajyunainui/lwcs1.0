@@ -6292,14 +6292,14 @@ class BattleUIComponent {
       const publicEntries = Array.isArray(publicReportBlocks)
         ? publicReportBlocks
         : 构建事件账本公开战报Blocks(ledger, 8, { combatData });
-      const decisionTrace = collectBattleDecisionTrace(combatData);
-      const resolutionTrace = collectBattleResolutionTrace(combatData);
+      const decisionTrace = BATTLE_RUNTIME.collectDecisionTrace(combatData);
+      const resolutionTrace = BATTLE_RUNTIME.collectResolutionTrace(combatData);
       const snapshot = ui_getBattleSnapshot(combatData);
       const actionChains = BATTLE_RUNTIME.buildActionChains(ledger, resolutionTrace);
       const reportBlocks = BATTLE_RUNTIME.buildReportBlocks(ledger, decisionTrace, publicEntries);
       const { finalBattleReport, aiSummaryInput } = 构建战斗总结数据(ledger, decisionTrace, snapshot, combatData);
       return {
-        publicReportBlocks: publicEntries.map(item => cloneBattleRuntimeAuditSnapshot(item)),
+        publicReportBlocks: publicEntries.map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item)),
         decisionTrace,
         resolutionTrace,
         actionChains,
@@ -6331,17 +6331,9 @@ class BattleUIComponent {
       ].join('\n');
     }
 
-    function collectBattleDecisionTrace(combatData = {}) {
-      const trace = combatData?.__行动闭环诊断?.审计轨迹;
-      if (!Array.isArray(trace)) return [];
-      return trace.slice(-160).map(item => cloneBattleRuntimeAuditSnapshot(item));
-    }
 
-    function collectBattleResolutionTrace(combatData = {}) {
-      const trace = combatData?.__battleResolutionTrace;
-      if (!Array.isArray(trace)) return [];
-      return trace.slice(-240).map(item => cloneBattleRuntimeAuditSnapshot(补齐战斗因果节点契约(item)));
-    }
+
+
 
     function 标准化战斗行动职责(value = '', fallback = 'ACTIVE') {
       const normalized = String(value || '').trim().toUpperCase();
@@ -6365,44 +6357,9 @@ class BattleUIComponent {
       return ['PLAYER_LOCKED', 'PLAYER', 'AI', 'SYSTEM'].includes(normalized) ? normalized : fallback;
     }
 
-    function 补齐战斗因果节点契约(node = {}) {
-      if (!node || typeof node !== 'object') return node;
-      const actionRole = 推断战斗行动职责(node);
-      const defaultControl = ['STATE_TICK'].includes(actionRole) || String(node.nodeLayer || '').trim() === 'presentation' ? 'SYSTEM' : 'AI';
-      return {
-        ...node,
-        actorControl: 标准化战斗操控来源(node.actorControl || node.meta?.actorControl, defaultControl),
-        actionRole,
-        sourceActionId: String(node.sourceActionId || '').trim(),
-        parentNodeId: String(node.parentNodeId || '').trim(),
-        reactionNodeId: String(node.reactionNodeId || node.meta?.reactionNodeId || (node.nodeKind === 'reaction_window' ? node.nodeId : '') || '').trim(),
-        ruleCode: String(node.ruleCode || node.reasonCode || '').trim().toUpperCase(),
-        resultState: String(node.resultState || node.result || node.primaryOutcome || node.nodeKind || '').trim(),
-        factType: String(node.factType || 推断战斗事实类型(node.eventKind || node.nodeKind, node)).trim(),
-        effectPrototype: String(node.effectPrototype || node.meta?.effectPrototype || '').trim(),
-        sourceEffectId: String(node.sourceEffectId || node.meta?.sourceEffectId || '').trim(),
-        targetIds: 归一战斗目标ID列表(node.targetIds, node.targetId, node.targetName),
-      };
-    }
 
-    function cloneBattleRuntimeAuditSnapshot(value, depth = 0) {
-      if (value == null || typeof value !== 'object') return value;
-      if (depth >= 6) return '[snapshot-depth-truncated]';
-      if (Array.isArray(value)) return value.slice(0, 120).map(item => cloneBattleRuntimeAuditSnapshot(item, depth + 1));
-      const blockedKeys = new Set([
-        'combatData', '__父级战斗数据', '__battleEventLedger', '__battleResolutionTrace',
-        '参战者', '完整战斗数据', '完整角色', '角色对象', 'actor', 'target', 'sourceActor', 'sourceTarget',
-        'sourceSkill', 'originalSkill', '_效果数组', '效果数组', '完整效果数组',
-      ]);
-      const result = {};
-      Object.entries(value).slice(0, 120).forEach(([key, item]) => {
-        if (blockedKeys.has(key)) return;
-        if ((key === 'skill' || key === '技能') && item && typeof item === 'object') return;
-        if (typeof item === 'function' || typeof item === 'undefined') return;
-        result[key] = cloneBattleRuntimeAuditSnapshot(item, depth + 1);
-      });
-      return result;
-    }
+
+
 
     function buildBattlePreviewResult({
       intentText = '',
@@ -6420,16 +6377,16 @@ class BattleUIComponent {
       eventLedger = null,
     } = {}) {
       const resolvedPublicReportBlocks = Array.isArray(publicReportBlocks)
-        ? publicReportBlocks.map(item => cloneBattleRuntimeAuditSnapshot(item))
-        : 构建事件账本公开战报Blocks(eventLedger || combatData?.__battleEventLedger || [], 8, { combatData }).map(item => cloneBattleRuntimeAuditSnapshot(item));
+        ? publicReportBlocks.map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item))
+        : 构建事件账本公开战报Blocks(eventLedger || combatData?.__battleEventLedger || [], 8, { combatData }).map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item));
       const resolvedEventLedger = Array.isArray(eventLedger)
         ? eventLedger
         : (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : []);
       补水战斗运行态(combatData, resolvedEventLedger, { source: 'battle_preview' });
       const publicReportText = 序列化公开战报条目文本行(resolvedPublicReportBlocks, { combatData }).join('\n');
       const snapshot = ui_getBattleSnapshot(combatData);
-      const decisionTrace = collectBattleDecisionTrace(combatData);
-      const resolutionTrace = collectBattleResolutionTrace(combatData);
+      const decisionTrace = BATTLE_RUNTIME.collectDecisionTrace(combatData);
+      const resolutionTrace = BATTLE_RUNTIME.collectResolutionTrace(combatData);
       const actionChains = BATTLE_RUNTIME.buildActionChains(resolvedEventLedger, resolutionTrace);
       const reportBlocks = BATTLE_RUNTIME.buildReportBlocks(resolvedEventLedger, decisionTrace, resolvedPublicReportBlocks);
       const { finalBattleReport, aiSummaryInput } = 构建战斗总结数据(resolvedEventLedger, decisionTrace, snapshot, combatData);
@@ -6455,8 +6412,8 @@ class BattleUIComponent {
         combatData,
         decisionTrace,
         resolutionTrace,
-        eventLedger: resolvedEventLedger.map(item => cloneBattleRuntimeAuditSnapshot(item)),
-        closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
+        eventLedger: resolvedEventLedger.map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item)),
+        closedLoopLedger: BATTLE_RUNTIME.cloneAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
         snapshot,
       };
       if (pendingSettlement) result.pendingSettlement = deepClonePlain(pendingSettlement);
@@ -16468,14 +16425,10 @@ class BattleUIComponent {
         ensureRuntime: combatData => 确保战斗运行态(combatData),
         getSnapshot: combatData => ui_getBattleSnapshot(combatData),
         getScoringMutationCount: () => Number(战斗评分预估写入次数 || 0),
-        normalizeCausalNode: node => 补齐战斗因果节点契约(node),
         executeTeam: (combatData, rounds) => runTeamBattleSimulation(combatData, rounds),
         executeDuel: (actionText, options) => onPlayerAttack(actionText, options),
-        collectResolutionTrace: combatData => collectBattleResolutionTrace(combatData),
-        collectDecisionTrace: combatData => collectBattleDecisionTrace(combatData),
         buildPublicReportBlocks: (eventLedger, limit, context) => 构建事件账本公开战报Blocks(eventLedger, limit, context),
         normalizePublicEntry: entry => 归一公开战报Block条目(entry),
-        cloneAuditSnapshot: value => cloneBattleRuntimeAuditSnapshot(value),
         buildFinalSummary: (eventLedger, decisionTrace, finalSnapshot, combatData) => 构建战斗总结数据(eventLedger, decisionTrace, finalSnapshot, combatData),
         buildRoundOverview: (result, context) => 构建回合速览数据(result, context),
         buildLlmSummary: (eventLedger, finalSnapshot, options) => 构建LLM战斗语义摘要(eventLedger, finalSnapshot, options),
@@ -21935,7 +21888,7 @@ class BattleUIComponent {
           effectPrototype: String(event.effectPrototype || event.meta?.effectPrototype || '').trim(),
           sourceEffectId: String(event.sourceEffectId || event.meta?.sourceEffectId || '').trim(),
         };
-        trace.push(补齐战斗因果节点契约(node));
+        trace.push(BATTLE_RUNTIME.normalizeCausalNode(node));
         if (trace.length > 1000) trace.splice(0, trace.length - 1000);
         return node;
       }
@@ -26810,8 +26763,8 @@ class BattleUIComponent {
             roundsExecuted: roundCount,
             publicReport: buildPublicBattleReportBlock({ battleLog, combatData, battleOutcome, modeLabel, roundCount, eventLedger }),
             ...structuredResult,
-            closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
-            eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => cloneBattleRuntimeAuditSnapshot(item)),
+            closedLoopLedger: BATTLE_RUNTIME.cloneAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
+            eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item)),
             pendingSettlement: towerPendingSettlement,
             mvuUpdate: pendingUpdate,
           };
@@ -26944,8 +26897,8 @@ class BattleUIComponent {
           roundsExecuted: roundCount,
           publicReport: 公开战报,
           ...structuredResult,
-          closedLoopLedger: cloneBattleRuntimeAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
-          eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => cloneBattleRuntimeAuditSnapshot(item)),
+          closedLoopLedger: BATTLE_RUNTIME.cloneAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
+          eventLedger: (Array.isArray(eventLedger) ? eventLedger : []).map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item)),
           battleSettlementContext: 战斗上下文登记,
           aiRequest: root.__lastBattleAIRequest || null,
         };

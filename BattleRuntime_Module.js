@@ -707,6 +707,83 @@
     return 'ACTIVE';
   }
 
+  function inferFactType(eventKind = '', event = {}) {
+    const kind = String(eventKind || event?.eventKind || '').trim();
+    if (kind === 'action_start') return 'ACTION_DECLARED';
+    if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';
+    if (kind === 'state_tick') return 'STATE_TICK';
+    if (['state_apply', 'state_replace', 'state_remove'].includes(kind)) return 'STATE_CHANGE';
+    if (kind === 'resource_change' || kind === 'round_recover') return 'RESOURCE_CHANGE';
+    if (kind === 'shield_create' || kind === 'shield_break') return 'SHIELD_CHANGE';
+    if (/^summon_/.test(kind)) return 'SUMMON';
+    if (kind === 'create') return 'CREATION';
+    if (['dodge', 'defend', 'pass', 'reaction_window', 'counter_window'].includes(kind)) return 'REACTION';
+    if (kind === 'effect_resolved') return String(event?.factType || event?.meta?.factType || 'EFFECT').trim() || 'EFFECT';
+    if (/round/.test(kind)) return 'ROUND';
+    if (['blocked_action', 'blocked_settlement', 'failed_action', 'target_fail'].includes(kind)) return 'ACTION_RESULT';
+    return 'EVENT';
+  }
+
+  function normalizeTargetIds(...values) {
+    return [...new Set(values
+      .flatMap(value => Array.isArray(value) ? value : [value])
+      .map(value => String(value || '').trim())
+      .filter(Boolean))];
+  }
+
+  function normalizeActorControl(value = '', fallback = 'AI') {
+    const normalized = String(value || '').trim().toUpperCase();
+    return ['PLAYER_LOCKED', 'PLAYER', 'AI', 'SYSTEM'].includes(normalized) ? normalized : fallback;
+  }
+
+  function normalizeCausalNode(node = {}) {
+    if (!node || typeof node !== 'object') return node;
+    const actionRole = inferActionRole(node);
+    const defaultControl = actionRole === 'STATE_TICK' || String(node.nodeLayer || '').trim() === 'presentation' ? 'SYSTEM' : 'AI';
+    return {
+      ...node,
+      actorControl: normalizeActorControl(node.actorControl || node.meta?.actorControl, defaultControl),
+      actionRole,
+      sourceActionId: String(node.sourceActionId || '').trim(),
+      parentNodeId: String(node.parentNodeId || '').trim(),
+      reactionNodeId: String(node.reactionNodeId || node.meta?.reactionNodeId || (node.nodeKind === 'reaction_window' ? node.nodeId : '') || '').trim(),
+      ruleCode: String(node.ruleCode || node.reasonCode || '').trim().toUpperCase(),
+      resultState: String(node.resultState || node.result || node.primaryOutcome || node.nodeKind || '').trim(),
+      factType: String(node.factType || inferFactType(node.eventKind || node.nodeKind, node)).trim(),
+      effectPrototype: String(node.effectPrototype || node.meta?.effectPrototype || '').trim(),
+      sourceEffectId: String(node.sourceEffectId || node.meta?.sourceEffectId || '').trim(),
+      targetIds: normalizeTargetIds(node.targetIds, node.targetId, node.targetName),
+    };
+  }
+
+  function cloneAuditSnapshot(value, depth = 0) {
+    if (value == null || typeof value !== 'object') return value;
+    if (depth >= 6) return '[snapshot-depth-truncated]';
+    if (Array.isArray(value)) return value.slice(0, 120).map(item => cloneAuditSnapshot(item, depth + 1));
+    const blockedKeys = new Set([
+      'combatData', '__父级战斗数据', '__battleEventLedger', '__battleResolutionTrace',
+      '参战者', '完整战斗数据', '完整角色', '角色对象', 'actor', 'target', 'sourceActor', 'sourceTarget',
+      'sourceSkill', 'originalSkill', '_效果数组', '效果数组', '完整效果数组',
+    ]);
+    const result = {};
+    Object.entries(value).slice(0, 120).forEach(([key, item]) => {
+      if (blockedKeys.has(key) || typeof item === 'function' || typeof item === 'undefined') return;
+      if ((key === 'skill' || key === '技能') && item && typeof item === 'object') return;
+      result[key] = cloneAuditSnapshot(item, depth + 1);
+    });
+    return result;
+  }
+
+  function collectDecisionTrace(combatData = {}) {
+    const trace = combatData?.__行动闭环诊断?.审计轨迹;
+    return Array.isArray(trace) ? trace.slice(-160).map(item => cloneAuditSnapshot(item)) : [];
+  }
+
+  function collectResolutionTrace(combatData = {}) {
+    const trace = combatData?.__battleResolutionTrace;
+    return Array.isArray(trace) ? trace.slice(-240).map(item => cloneAuditSnapshot(normalizeCausalNode(item))) : [];
+  }
+
   function readLedgerStateName(event = {}) {
     return String(event?.stateName || event?.meta?.stateName || '').trim();
   }
@@ -1514,14 +1591,10 @@
       typeof implementation.caseDomain.ensureRuntime !== 'function' ||
       typeof implementation.caseDomain.getSnapshot !== 'function' ||
       typeof implementation.caseDomain.getScoringMutationCount !== 'function' ||
-      typeof implementation.caseDomain.normalizeCausalNode !== 'function' ||
       typeof implementation.caseDomain.executeTeam !== 'function' ||
       typeof implementation.caseDomain.executeDuel !== 'function' ||
-      typeof implementation.caseDomain.collectResolutionTrace !== 'function' ||
-      typeof implementation.caseDomain.collectDecisionTrace !== 'function' ||
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
-      typeof implementation.caseDomain.cloneAuditSnapshot !== 'function' ||
       typeof implementation.caseDomain.buildFinalSummary !== 'function' ||
       typeof implementation.caseDomain.buildRoundOverview !== 'function' ||
       typeof implementation.caseDomain.buildLlmSummary !== 'function' ||
@@ -1569,17 +1642,17 @@
       if (isTeam) {
         const simulation = domain.executeTeam(combatData, rounds);
         const eventLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
-        const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 6), { combatData });
+          const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 6), { combatData });
         result = {
           preview: /preview/i.test(mode),
           battleMode: rounds > 1 ? 'multi_round' : 'single_round',
           roundsExecuted: Number(simulation?.rounds || 0),
           logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
           combatData,
-          eventLedger: eventLedger.map(item => domain.cloneAuditSnapshot(item)),
-          resolutionTrace: domain.collectResolutionTrace(combatData),
-          decisionTrace: domain.collectDecisionTrace(combatData),
-          publicReportBlocks: publicReportBlocks.map(item => domain.cloneAuditSnapshot(item)),
+            eventLedger: eventLedger.map(item => cloneAuditSnapshot(item)),
+            resolutionTrace: collectResolutionTrace(combatData),
+            decisionTrace: collectDecisionTrace(combatData),
+            publicReportBlocks: publicReportBlocks.map(item => cloneAuditSnapshot(item)),
           snapshot: domain.getSnapshot(combatData),
         };
       } else {
@@ -1609,13 +1682,13 @@
         });
       }
       const eventLedger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
-      const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(domain.normalizeCausalNode) : [];
-      const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => domain.cloneAuditSnapshot(item)) : [];
+      const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(normalizeCausalNode) : [];
+      const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => cloneAuditSnapshot(item)) : [];
       const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
       const runtimeCombatData = result?.combatData || combatData;
       const finalSnapshot = result?.snapshot || domain.getSnapshot(runtimeCombatData);
-      const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
-        ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => domain.cloneAuditSnapshot(item))
+        const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
+          ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => cloneAuditSnapshot(item))
         : [];
       const actionChains = buildActionChains(eventLedger, resolutionTrace);
       const reportBlocks = buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
@@ -1892,6 +1965,10 @@
     bindEngine,
     runBattleCase,
     auditFacts,
+    normalizeCausalNode,
+    cloneAuditSnapshot,
+    collectDecisionTrace,
+    collectResolutionTrace,
     buildActionChains,
     buildReportBlocks,
     previewSkill,
