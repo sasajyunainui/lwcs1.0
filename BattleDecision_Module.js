@@ -7,7 +7,7 @@
   const preview = root.__LWCS_BATTLE_PREVIEW__;
   if (!preview || typeof preview.previewAction !== 'function') throw new Error('battle_decision_preview_runtime_missing');
 
-  const VERSION = '7.3-R6.3-decision-1';
+  const VERSION = '7.3-R6.3-decision-2';
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
     'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
@@ -46,6 +46,104 @@
     const identity = preview.unitId(unit) || preview.unitName(unit);
     const stableOffset = stableRoll(`experience:${identity}`) * 0.12 - 0.06;
     return clamp(0.25 + unitLevel(unit) / 120 * 0.7 + stableOffset, 0.2, 0.96);
+  }
+
+  function visibleStates(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).filter(state => state && typeof state === 'object' && state?.隐藏 !== true && state?.hidden !== true).map(state => ({
+      name: String(state?.状态 || state?.状态名称 || '').trim(),
+      duration: Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0)),
+      type: String(state?.类型 || state?.正负面 || '').trim(),
+    }));
+  }
+
+  function buildInitialBelief(worldSnapshot = {}, actorId = '', existing = {}) {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    if (!actor) throw new Error('battle_decision_belief_actor_missing');
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const experience = experienceOf(actor);
+    const strengthHalfWidth = Math.ceil(2 + 8 * (1 - experience));
+    const existingUnits = existing?.units && typeof existing.units === 'object' ? existing.units : {};
+    const units = Object.fromEntries(preview.listUnits(worldSnapshot).map(entry => {
+      const unit = entry.unit;
+      const id = preview.unitId(unit);
+      const allied = entry.side === actorSide;
+      const level = unitLevel(unit);
+      const prior = existingUnits[id] && typeof existingUnits[id] === 'object' ? existingUnits[id] : {};
+      return [id, {
+        ...prior,
+        id,
+        side: entry.side,
+        allied,
+        alive: preview.isAlive(unit),
+        hpRatio: preview.readHp(unit) / preview.readHpMax(unit),
+        strengthRange: allied ? [level, level] : prior.strengthRange || [Math.max(1, level - strengthHalfWidth), level + strengthHalfWidth],
+        visibleStates: visibleStates(unit),
+        resources: allied ? {
+          soul: ratio(unit, 'sp'),
+          spirit: ratio(unit, 'men'),
+          stamina: ratio(unit, 'vit'),
+        } : undefined,
+      }];
+    }));
+    return {
+      ...existing,
+      revision: String(existing?.revision || preview.stableHash({ actorId, units })),
+      confidence: clamp(existing?.confidence ?? experience, 0, 1),
+      units,
+      mechanics: existing?.mechanics && typeof existing.mechanics === 'object' ? existing.mechanics : {},
+      publicResponses: existing?.publicResponses && typeof existing.publicResponses === 'object' ? existing.publicResponses : {},
+    };
+  }
+
+  function relevantStateFingerprint(beliefState = {}, targetId = '') {
+    const states = beliefState?.units?.[targetId]?.visibleStates || [];
+    return preview.stableHash(states.map(state => [state.name, state.duration, state.type]));
+  }
+
+  function mechanicKey(input = {}) {
+    return [
+      input.sourceActionId || '',
+      input.effectPrototype || '',
+      input.targetId || '',
+      input.relevantStateFingerprint || relevantStateFingerprint(input.beliefState, input.targetId),
+    ].join('|');
+  }
+
+  function betaPrior(estimatedProbability = 0.65, experience = 0.5) {
+    const priorStrength = 2 + 6 * clamp(experience, 0, 1);
+    const probability = clamp(estimatedProbability, 0, 1);
+    return { alpha: probability * priorStrength, beta: (1 - probability) * priorStrength };
+  }
+
+  function mechanicPosterior(beliefState = {}, key = '', estimatedProbability = 0.65, experience = 0.5) {
+    const record = beliefState?.mechanics?.[key];
+    const prior = record && Number(record.alpha) >= 0 && Number(record.beta) >= 0 ? record : betaPrior(estimatedProbability, experience);
+    return Number(prior.alpha) / Math.max(0.0001, Number(prior.alpha) + Number(prior.beta));
+  }
+
+  function updateMechanicBelief(beliefState = {}, observation = {}) {
+    const next = structuredClone(beliefState || {});
+    next.mechanics = next.mechanics && typeof next.mechanics === 'object' ? next.mechanics : {};
+    const key = mechanicKey({ ...observation, beliefState: next });
+    const prior = next.mechanics[key] || betaPrior(observation.estimatedProbability, observation.experience);
+    next.mechanics[key] = {
+      alpha: Number(prior.alpha) + (observation.success === true ? 1 : 0),
+      beta: Number(prior.beta) + (observation.success === true ? 0 : 1),
+      observations: Math.max(0, Number(prior.observations || 0)) + 1,
+    };
+    next.revision = preview.stableHash({ units: next.units, mechanics: next.mechanics, publicResponses: next.publicResponses });
+    return next;
+  }
+
+  function unknownResponseMass(beliefConfidence = 0) {
+    return clamp(0.35 * (1 - clamp(beliefConfidence, 0, 1)), 0, 0.35);
+  }
+
+  function probabilityValue(value, fallback = 0.65) {
+    const text = String(value ?? '').trim();
+    const numeric = Number.parseFloat(text);
+    if (!Number.isFinite(numeric)) return clamp(fallback, 0, 1);
+    return clamp(text.includes('%') || numeric > 1 ? numeric / 100 : numeric, 0, 1);
   }
 
   function skillId(skill = {}, index = 0) {
@@ -212,22 +310,32 @@
     return best;
   }
 
-  function teamCapacity(worldSnapshot, side) {
+  function perceivedEnemyBaseValue(beliefUnit = {}) {
+    const range = Array.isArray(beliefUnit?.strengthRange) ? beliefUnit.strengthRange.map(Number) : [1, 1];
+    const upper = Math.max(1, Number(range[1] || range[0] || 1));
+    const knownResponses = Array.isArray(beliefUnit?.knownResponses) ? beliefUnit.knownResponses : [];
+    return Math.max(8, Math.min(100, 12 + upper * 0.65), ...knownResponses.map(response => Math.max(0, Number(response?.baseActionValue || 0))));
+  }
+
+  function teamCapacity(worldSnapshot, side, perspectiveSide, beliefState = {}) {
     return aliveEntries(worldSnapshot).filter(entry => entry.side === side).reduce((sum, entry) => {
       const unit = entry.unit;
+      const allied = side === perspectiveSide;
+      const beliefUnit = beliefState?.units?.[preview.unitId(unit)] || {};
+      const actionUnavailable = allied ? hasActionCancellation(unit) : (beliefUnit.visibleStates || []).some(state => /眩晕|睡眠|冻结|石化/.test(String(state?.name || '')));
       return sum + preview.calculateUnitCapacity({
         unit,
         survivalProbability: preview.readHp(unit) / preview.readHpMax(unit),
-        actionAvailability: hasActionCancellation(unit) ? 0 : 1,
-        bestLegalBaseActionValue: bestBaseActionValue(worldSnapshot, unit),
+        actionAvailability: actionUnavailable ? 0 : 1,
+        bestLegalBaseActionValue: allied ? bestBaseActionValue(worldSnapshot, unit) : perceivedEnemyBaseValue(beliefUnit),
       });
     }, 0);
   }
 
-  function stateUtility(worldSnapshot, actorSide) {
+  function stateUtility(worldSnapshot, actorSide, beliefState = {}) {
     const sides = [...new Set(preview.listUnits(worldSnapshot).map(entry => entry.side))];
-    const own = teamCapacity(worldSnapshot, actorSide);
-    const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) => sum + teamCapacity(worldSnapshot, side), 0);
+    const own = teamCapacity(worldSnapshot, actorSide, actorSide, beliefState);
+    const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) => sum + teamCapacity(worldSnapshot, side, actorSide, beliefState), 0);
     return { own, enemy, total: own + enemy, utility: own - enemy };
   }
 
@@ -239,6 +347,103 @@
     if (actionKind === 'OBSERVE') return 1;
     if (actionKind === 'WITHDRAW') return 0.5;
     return 0;
+  }
+
+  function buildTeamIntent(worldSnapshot, actorId, beliefState = {}) {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const entries = aliveEntries(worldSnapshot);
+    const enemies = entries.filter(entry => entry.side !== actorSide).map(entry => entry.unit);
+    const allies = entries.filter(entry => entry.side === actorSide).map(entry => entry.unit);
+    const focus = [...enemies].sort((left, right) => {
+      const leftBelief = beliefState?.units?.[preview.unitId(left)] || {};
+      const rightBelief = beliefState?.units?.[preview.unitId(right)] || {};
+      const leftRemaining = Number(leftBelief.hpRatio ?? preview.readHp(left) / preview.readHpMax(left)) * perceivedEnemyBaseValue(leftBelief);
+      const rightRemaining = Number(rightBelief.hpRatio ?? preview.readHp(right) / preview.readHpMax(right)) * perceivedEnemyBaseValue(rightBelief);
+      return leftRemaining - rightRemaining || preview.unitId(left).localeCompare(preview.unitId(right));
+    })[0];
+    const protect = [...allies].sort((left, right) => preview.readHp(left) / preview.readHpMax(left) - preview.readHp(right) / preview.readHpMax(right) || preview.unitId(left).localeCompare(preview.unitId(right)))[0];
+    return {
+      focusTarget: focus ? preview.unitId(focus) : '',
+      protectTarget: protect && preview.readHp(protect) < preview.readHpMax(protect) * 0.5 ? preview.unitId(protect) : '',
+      exploitableWindow: '',
+      evidenceEventIds: [],
+    };
+  }
+
+  function identifyProblems(worldSnapshot, actorId, beliefState = {}) {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const problems = [];
+    const hpRatio = preview.readHp(actor) / preview.readHpMax(actor);
+    if (hpRatio <= 0.3) problems.push({ problemId: 'SURVIVAL_CRISIS', severity: (0.3 - hpRatio) * 100 + 20 });
+    const criticalAlly = aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide && preview.unitId(entry.unit) !== actorId).find(entry => preview.readHp(entry.unit) / preview.readHpMax(entry.unit) <= 0.3);
+    if (criticalAlly) problems.push({ problemId: 'ALLY_CRISIS', targetIds: [preview.unitId(criticalAlly.unit)], severity: 30 - preview.readHp(criticalAlly.unit) / preview.readHpMax(criticalAlly.unit) * 30 });
+    const terminalEnemy = aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide).find(entry => Number(beliefState?.units?.[preview.unitId(entry.unit)]?.hpRatio ?? 1) <= 0.2);
+    if (terminalEnemy) problems.push({ problemId: 'TERMINAL_OPPORTUNITY', targetIds: [preview.unitId(terminalEnemy.unit)], severity: 20 });
+    if (Number(beliefState?.confidence || 0) < 0.45) problems.push({ problemId: 'INFORMATION_DEFICIT', severity: (0.45 - Number(beliefState?.confidence || 0)) * 40 });
+    if (!problems.length) problems.push({ problemId: 'NEUTRAL_PROGRESS', severity: 1 });
+    return problems.sort((left, right) => right.severity - left.severity);
+  }
+
+  function responseBranches(candidate, context, afterUtility) {
+    const targetId = candidate.declaration.targetIds?.[0] || '';
+    const known = Array.isArray(context.beliefState?.publicResponses?.[targetId]) ? context.beliefState.publicResponses[targetId] : [];
+    const unknownMass = unknownResponseMass(context.beliefState?.confidence);
+    const knownMass = 1 - unknownMass;
+    const utilities = known.map(response => Number(response?.utility || 0));
+    const center = median(utilities);
+    const mad = Math.max(1, median(utilities.map(value => Math.abs(value - center))));
+    const temperature = 1 + 3 * (1 - clamp(context.beliefState?.confidence || 0, 0, 1));
+    const weighted = known.map(response => ({
+      ...response,
+      weight: Math.exp(((Number(response?.utility || 0) - center) / mad) / temperature),
+    })).sort((left, right) => right.weight - left.weight);
+    const totalWeight = weighted.reduce((sum, response) => sum + response.weight, 0) || 1;
+    const normalizedKnown = weighted.map(response => ({
+      responseId: String(response.responseId || ''),
+      probability: knownMass * response.weight / totalWeight,
+      utility: Number(response.utility || 0),
+      unknown: false,
+    }));
+    const branches = normalizedKnown.length <= 3 ? normalizedKnown : normalizedKnown.slice(0, 2);
+    if (normalizedKnown.length > 3) {
+      const remainder = normalizedKnown.slice(2);
+      const probability = remainder.reduce((sum, response) => sum + response.probability, 0);
+      branches.push({
+        responseId: 'KNOWN_RESPONSE_ENVELOPE',
+        probability,
+        utility: remainder.reduce((sum, response) => sum + response.utility * response.probability, 0) / Math.max(0.0001, probability),
+        unknown: false,
+        mergedCount: remainder.length,
+      });
+    }
+    if (unknownMass > 0) {
+      const targetBelief = context.beliefState?.units?.[targetId] || {};
+      const threatEnvelope = Math.max(0, perceivedEnemyBaseValue(targetBelief), Math.abs(afterUtility.enemy || 0));
+      branches.unshift({ responseId: 'UNKNOWN_RESPONSE_ENVELOPE', probability: unknownMass, utility: -threatEnvelope, unknown: true });
+    }
+    return branches.slice(0, 4);
+  }
+
+  function activeStrategyMemory(memory = {}, worldSnapshot = {}, opportunity = {}, candidates = []) {
+    if (!memory || typeof memory !== 'object') return {};
+    const sequence = Math.max(0, Number(opportunity?.sequence || 0));
+    if (Number(memory?.expiresAtOpportunity || 0) < sequence) return {};
+    const targets = Array.isArray(memory?.targetIds) ? memory.targetIds.map(String).filter(Boolean) : [];
+    if (targets.some(targetId => !preview.isAlive(preview.findUnit(worldSnapshot, targetId) || {}))) return {};
+    const stillNonDominated = candidates.some(candidate => !candidate.rejectionCode && (candidate.declaration.targetIds || []).some(targetId => targets.includes(String(targetId))));
+    return stillNonDominated ? memory : {};
+  }
+
+  function needsDeepPreview(candidate, result, before, after, beliefState = {}) {
+    const outcomes = new Set((result?.contributions || []).map(entry => entry.outcomeKind));
+    const beforeAlive = preview.listUnits(before).filter(entry => preview.isAlive(entry.unit)).length;
+    const afterAlive = preview.listUnits(after).filter(entry => preview.isAlive(entry.unit)).length;
+    return beforeAlive !== afterAlive ||
+      ['ACTION_CANCELLED', 'ACTION_GRANTED', 'IRREVERSIBLE_ASSET_LOST', 'SUMMON_WINDOW', 'STATE_SCHEDULED'].some(kind => outcomes.has(kind)) ||
+      (result?.scheduledEvents || []).length > 0 ||
+      Array.isArray(beliefState?.publicResponses?.[candidate.declaration.targetIds?.[0]]);
   }
 
   function scoreCandidate(candidate, context) {
@@ -256,13 +461,29 @@
         previewBudget: { maxNodes: 12 },
       });
     }
-    const after = result ? stateUtility(result.afterSnapshot, actorSide) : before;
-    const expectedStateGain = result
+    const after = result ? stateUtility(result.afterSnapshot, actorSide, context.beliefState) : before;
+    let expectedStateGain = result
       ? 100 * (after.utility - before.utility) / Math.max(1, before.total)
       : directDefensiveUtility(candidate.declaration.actionKind);
+    const actionCancelled = (result?.contributions || []).some(entry => entry.outcomeKind === 'ACTION_CANCELLED');
+    let mechanicProbability = 1;
+    if (actionCancelled) {
+      const controlEffect = (candidate.skill?._效果数组 || []).find(effect => String(effect?.原型 || '') === '状态施加');
+      const targetId = candidate.declaration.targetIds?.[0] || '';
+      const key = mechanicKey({ sourceActionId: candidate.candidateId, effectPrototype: controlEffect?.原型 || '状态施加', targetId, beliefState: context.beliefState });
+      mechanicProbability = mechanicPosterior(context.beliefState, key, probabilityValue(controlEffect?.成功率, 0.65), experienceOf(actor));
+      const target = preview.findUnit(context.worldSnapshot, targetId);
+      const targetBelief = context.beliefState?.units?.[targetId] || {};
+      const cancelledCapacity = Number(targetBelief.hpRatio ?? (target ? preview.readHp(target) / preview.readHpMax(target) : 0)) * perceivedEnemyBaseValue(targetBelief);
+      const direction = target && preview.sideOf(context.worldSnapshot, target) === actorSide ? -1 : 1;
+      expectedStateGain += direction * 100 * cancelledCapacity / Math.max(1, before.total) * mechanicProbability;
+    }
     const informationValue = candidate.declaration.actionKind === 'OBSERVE' ? clamp(1 - Number(context.beliefState?.confidence || 0), 0, 1) * 8 : 0;
     const irreversibleCost = (result?.contributions || []).filter(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST').length * 20;
-    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0);
+    const deepRequired = result ? needsDeepPreview(candidate, result, context.worldSnapshot, result.afterSnapshot, context.beliefState) : false;
+    const branches = deepRequired ? responseBranches(candidate, context, after) : [];
+    const responseRisk = branches.reduce((sum, branch) => sum + (branch.utility < 0 ? Math.abs(branch.utility) * branch.probability : 0), 0);
+    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0) + responseRisk;
     const objectiveUtility = clamp(expectedStateGain + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
     const hasProgress = Math.abs(expectedStateGain) > 0.0001 || informationValue > 0 || directDefensiveUtility(candidate.declaration.actionKind) > 0;
     const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0;
@@ -270,6 +491,7 @@
       ...candidate,
       preview: result || null,
       objectiveUtility,
+      deepAnalysis: Object.freeze({ required: deepRequired, nodeCount: deepRequired ? 1 + branches.length : 1, responseBranches: Object.freeze(branches), mechanicProbability }),
       vector: {
         expectedStateGain,
         informationValue,
@@ -305,8 +527,18 @@
     return candidates.map(candidate => ({ ...candidate, normalizedUtility: (candidate.objectiveUtility - center) / mad }));
   }
 
-  function selectCandidate(candidates, actor, seed) {
-    const eligible = candidates.filter(candidate => !candidate.rejectionCode).sort((left, right) => right.normalizedUtility - left.normalizedUtility || left.candidateId.localeCompare(right.candidateId));
+  function selectCandidate(candidates, actor, seed, context = {}) {
+    const preferredTargets = new Set([
+      ...(Array.isArray(context.strategyMemory?.targetIds) ? context.strategyMemory.targetIds : []),
+      context.teamIntent?.focusTarget,
+      context.teamIntent?.protectTarget,
+    ].map(String).filter(Boolean));
+    const tiePreference = candidate => (candidate.declaration.targetIds || []).some(targetId => preferredTargets.has(String(targetId))) ? 1 : 0;
+    const eligible = candidates.filter(candidate => !candidate.rejectionCode).sort((left, right) => {
+      const utilityGap = right.normalizedUtility - left.normalizedUtility;
+      if (Math.abs(utilityGap) > 0.05) return utilityGap;
+      return tiePreference(right) - tiePreference(left) || left.candidateId.localeCompare(right.candidateId);
+    });
     if (!eligible.length) {
       const defend = candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
       if (!defend) throw new Error('battle_decision_no_legal_fallback');
@@ -334,17 +566,23 @@
     const actor = preview.findUnit(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
     const actorSide = preview.sideOf(worldSnapshot, actor);
+    const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
+    const teamIntent = buildTeamIntent(worldSnapshot, preview.unitId(actor), beliefState);
+    const problems = identifyProblems(worldSnapshot, preview.unitId(actor), beliefState);
     const context = {
       ...input,
       actorId: preview.unitId(actor),
-      beliefState: input.beliefState && typeof input.beliefState === 'object' ? input.beliefState : {},
-      beforeUtility: stateUtility(worldSnapshot, actorSide),
+      beliefState,
+      teamIntent,
+      problems,
+      beforeUtility: stateUtility(worldSnapshot, actorSide, beliefState),
     };
     const generated = enumerateCandidates(context);
     if (!generated.length) throw new Error('battle_decision_candidate_pool_empty');
     const scored = generated.map(candidate => scoreCandidate(candidate, context));
     const normalized = normalizeUtilities(paretoFilter(scored));
-    const choice = selectCandidate(normalized, actor, input.seed || 1);
+    const strategyMemory = activeStrategyMemory(input.strategyMemory, worldSnapshot, input.actionOpportunity, normalized);
+    const choice = selectCandidate(normalized, actor, input.seed || 1, { ...context, strategyMemory });
     const selected = { ...choice.selected, selected: true };
     const alternatives = normalized.filter(candidate => candidate.candidateId !== selected.candidateId).sort((a, b) => b.objectiveUtility - a.objectiveUtility).slice(0, 2);
     return Object.freeze({
@@ -354,6 +592,16 @@
       paretoCount: normalized.filter(candidate => !candidate.rejectionCode).length,
       candidates: Object.freeze(normalized),
       selected: Object.freeze(selected),
+      beliefState: Object.freeze(beliefState),
+      teamIntent: Object.freeze(teamIntent),
+      problems: Object.freeze(problems),
+      strategyMemory: Object.freeze({
+        problemId: problems[0]?.problemId || 'NEUTRAL_PROGRESS',
+        targetIds: Object.freeze([...(selected.declaration.targetIds || [])]),
+        expectedOutcomeKinds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.outcomeKind)),
+        expectedWindowIds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.windowId).filter(Boolean)),
+        expiresAtOpportunity: Math.max(1, Number(input.actionOpportunity?.sequence || 0) + 1),
+      }),
       scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
         candidateId: candidate.candidateId,
         actionKind: candidate.declaration.actionKind,
@@ -362,6 +610,7 @@
         objectiveUtility: candidate.objectiveUtility,
         normalizedUtility: candidate.normalizedUtility,
         vector: Object.freeze({ ...candidate.vector }),
+        deepAnalysis: candidate.deepAnalysis,
         rejectionCode: candidate.rejectionCode || '',
         selected: candidate.candidateId === selected.candidateId,
       }))),
@@ -376,6 +625,16 @@
     parseSkillCosts,
     costAffordable,
     enumerateCandidates,
+    buildInitialBelief,
+    mechanicKey,
+    relevantStateFingerprint,
+    betaPrior,
+    mechanicPosterior,
+    updateMechanicBelief,
+    unknownResponseMass,
+    buildTeamIntent,
+    identifyProblems,
+    activeStrategyMemory,
     stateUtility,
     dominates,
     paretoFilter,
