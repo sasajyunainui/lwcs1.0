@@ -661,11 +661,563 @@
     return assertEffectList(effects, '_效果数组');
   }
 
+  function normalizeReportNameForMatch(value = '') {
+    return String(value || '')
+      .replace(/[【】\[\]\s]/g, '')
+      .replace(/^(我方|敌方|玩家|NPC|同窗|目标)/, '')
+      .trim();
+  }
+
+  function isSameReportName(left = '', right = '') {
+    const normalizedLeft = normalizeReportNameForMatch(left);
+    const normalizedRight = normalizeReportNameForMatch(right);
+    return !!normalizedLeft && !!normalizedRight && normalizedLeft === normalizedRight;
+  }
+
+  function normalizeActionDisplayName(value = '') {
+    const text = String(value || '').replace(/^【|】$/g, '').trim();
+    if (!text) return '';
+    if (text === '常规攻击' || text === '主动压迫') return '普通攻击';
+    if (text === '肉体兜底' || text === '硬抗') return '承伤硬抗';
+    if (text === '系统反击') return '借势反打';
+    return /系统反击$/.test(text) ? text.replace(/系统反击$/, '借势反打') : text;
+  }
+
+  function normalizeActionRole(value = '', fallback = 'ACTIVE') {
+    const normalized = String(value || '').trim().toUpperCase();
+    return actionRoles.includes(normalized) ? normalized : fallback;
+  }
+
+  function normalizeBattleSide(value = '') {
+    const side = String(value || '').trim();
+    if (/^(player|玩家|我方)$/i.test(side)) return 'player';
+    if (/^(enemy|敌方|对方)$/i.test(side)) return 'enemy';
+    return '';
+  }
+
+  function auditFacts(payload = {}) {
+    payload = payload && typeof payload === 'object' ? cloneValue(payload) : {};
+    const eventLedger = Array.isArray(payload.eventLedger) ? payload.eventLedger.filter(Boolean) : [];
+    const resolutionTrace = Array.isArray(payload.resolutionTrace) ? payload.resolutionTrace.filter(Boolean) : [];
+    const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
+    const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
+    const initialSnapshot = payload.initialSnapshot && typeof payload.initialSnapshot === 'object' ? payload.initialSnapshot : null;
+    const finalSnapshot = payload.finalSnapshot && typeof payload.finalSnapshot === 'object' ? payload.finalSnapshot : null;
+    const fatals = [];
+    const warnings = [];
+    const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
+    const readDamage = event => Math.max(0, Math.round(Number(event?.appliedDamage ?? event?.meta?.appliedDamage ?? event?.meta?.damage ?? event?.damage ?? 0)));
+    const readProbability = value => {
+      if (typeof value === 'string' && /%/.test(value)) return Number.parseFloat(value) / 100;
+      const number = Number(value);
+      if (!Number.isFinite(number)) return null;
+      return number > 1 ? number / 100 : number;
+    };
+    const isSuccess = event => /success|succeeded|evaded|guarded|hit|成功|命中/.test(String(event?.result || event?.primaryOutcome || '').trim());
+    const sourceProjectionMap = new Map();
+    const collectBlockSources = (value, inheritedProjection = '') => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) {
+        value.forEach(item => collectBlockSources(item, inheritedProjection));
+        return;
+      }
+      const projection = String(value.projectionSource || inheritedProjection || '').trim();
+      const ids = [value.sourceEventId, ...(Array.isArray(value.sourceEventIds) ? value.sourceEventIds : [])]
+        .map(item => String(item || '').trim())
+        .filter(Boolean);
+      ids.forEach(id => {
+        if (!sourceProjectionMap.has(id)) sourceProjectionMap.set(id, new Set());
+        if (projection) sourceProjectionMap.get(id).add(projection);
+      });
+      Object.values(value).forEach(item => collectBlockSources(item, projection));
+    };
+    collectBlockSources(publicReportBlocks);
+
+    const normalizeBalanceResourceKey = value => {
+      const text = String(value || '').trim();
+      if (/护盾|shield/i.test(text)) return 'shield';
+      if (/生命|HP|hp/i.test(text)) return 'hp';
+      if (/体力|vit|sta/i.test(text)) return 'vit';
+      if (/精神|men/i.test(text)) return 'men';
+      if (/魂力|sp/i.test(text)) return 'sp';
+      return '';
+    };
+    const collectSnapshotUnits = snapshot => {
+      const units = [];
+      const append = (items, side) => (Array.isArray(items) ? items : []).forEach(unit => {
+        const name = String(unit?.name || unit?.名称 || '').trim();
+        if (!name) return;
+        units.push({
+          key: `${side}|${name}`,
+          side,
+          name,
+          values: {
+            hp: Math.round(Number(unit?.hp ?? unit?.HP ?? 0)),
+            vit: Math.round(Number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? 0)),
+            sp: Math.round(Number(unit?.sp ?? unit?.魂力 ?? 0)),
+            men: Math.round(Number(unit?.men ?? unit?.精神力 ?? 0)),
+            shield: Math.round(Number(unit?.shield ?? unit?.护盾 ?? 0)),
+          },
+        });
+      });
+      append(snapshot?.team_player, 'player');
+      append(snapshot?.team_enemy, 'enemy');
+      append(snapshot?.summons, 'summon');
+      return units;
+    };
+    const initialUnits = collectSnapshotUnits(initialSnapshot);
+    const finalUnits = collectSnapshotUnits(finalSnapshot);
+    const findBalanceUnit = (name = '', side = '') => {
+      const normalizedName = String(name || '').trim();
+      const normalizedSide = normalizeBattleSide(side);
+      const allUnits = [...initialUnits, ...finalUnits];
+      const bySide = normalizedSide
+        ? allUnits.find(unit => unit.side === normalizedSide && isSameReportName(unit.name, normalizedName))
+        : null;
+      if (bySide) return bySide;
+      const matches = allUnits.filter(unit => isSameReportName(unit.name, normalizedName));
+      return matches.length === 1 ? matches[0] : null;
+    };
+    const balanceDeltas = new Map();
+    const addBalanceDelta = (name, side, resource, delta, eventId) => {
+      const normalizedResource = normalizeBalanceResourceKey(resource);
+      const amount = Math.round(Number(delta || 0));
+      const unit = findBalanceUnit(name, side);
+      if (!unit || !normalizedResource || !amount) return;
+      const key = `${unit.key}|${normalizedResource}`;
+      const entry = balanceDeltas.get(key) || { delta: 0, eventIds: [] };
+      entry.delta += amount;
+      if (eventId) entry.eventIds.push(String(eventId));
+      balanceDeltas.set(key, entry);
+    };
+    eventLedger.forEach(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+      const eventId = String(event?.eventId || '').trim();
+      const targetName = String(event?.targetName || event?.actorName || '').trim();
+      const targetSide = String(event?.targetSide || event?.actorSide || '').trim();
+      if (kind === 'action_cost') {
+        addBalanceDelta(event?.actorName, event?.actorSide, 'sp', -Math.max(0, Number(meta.reqSp || 0)), eventId);
+        addBalanceDelta(event?.actorName, event?.actorSide, 'vit', -Math.max(0, Number(meta.reqVit || 0)), eventId);
+        addBalanceDelta(event?.actorName, event?.actorSide, 'men', -Math.max(0, Number(meta.reqMen || 0)), eventId);
+        return;
+      }
+      if (kind === 'resource_change') {
+        const rawDelta = Number(meta.delta ?? event?.delta ?? 0);
+        const amount = Math.max(0, Number(meta.amount ?? event?.amount ?? Math.abs(rawDelta) ?? 0));
+        const result = String(event?.result || '').trim();
+        const delta = Number.isFinite(rawDelta) && rawDelta !== 0
+          ? rawDelta
+          : (/loss|cost|drain|损失|消耗|扣除/.test(result) ? -amount : amount);
+        addBalanceDelta(targetName, targetSide, meta.resourceKey || meta.resource || event?.resource, delta, eventId);
+        return;
+      }
+      if (kind === 'state_tick') {
+        const resource = normalizeBalanceResourceKey(meta.resource || event?.resource);
+        const amount = Math.max(0, Number(meta.amount ?? event?.amount ?? event?.appliedDamage ?? 0));
+        const result = String(event?.result || '').trim();
+        const delta = /恢复|gain|heal|recover/.test(result) ? amount : -amount;
+        addBalanceDelta(targetName, targetSide, resource, delta, eventId);
+        return;
+      }
+      if (kind === 'hit_result') {
+        addBalanceDelta(targetName, targetSide, 'hp', -readDamage(event), eventId);
+        return;
+      }
+      if (kind === 'counter') {
+        const settlementEventId = String(meta.settlementEventId || '').trim();
+        if (!settlementEventId) addBalanceDelta(targetName, targetSide, 'hp', -readDamage(event), eventId);
+        return;
+      }
+      if (kind === 'shield_create' || kind === 'shield_break') {
+        const amount = Math.max(0, Number(meta.amount ?? meta.shieldAmount ?? meta.shieldValue ?? event?.amount ?? 0));
+        addBalanceDelta(targetName, targetSide, 'shield', kind === 'shield_break' ? -amount : amount, eventId);
+      }
+    });
+    if (initialUnits.length && finalUnits.length) {
+      initialUnits.forEach(initialUnit => {
+        const finalUnit = finalUnits.find(unit => unit.key === initialUnit.key);
+        if (!finalUnit) return;
+        Object.keys(initialUnit.values).forEach(resource => {
+          const initialValue = initialUnit.values[resource];
+          const finalValue = finalUnit.values[resource];
+          const balance = balanceDeltas.get(`${initialUnit.key}|${resource}`) || { delta: 0, eventIds: [] };
+          const expectedFinalValue = initialValue + balance.delta;
+          if (finalValue !== expectedFinalValue) {
+            pushFatal('LEDGER_CONSERVATION_MISMATCH', {
+              unit: initialUnit.name,
+              side: initialUnit.side,
+              resource,
+              initialValue,
+              finalValue,
+              ledgerDelta: balance.delta,
+              expectedFinalValue,
+              eventIds: balance.eventIds,
+            });
+          }
+        });
+      });
+    }
+
+    const actionQueueTrace = Array.isArray(payload.actionQueueTrace)
+      ? payload.actionQueueTrace.filter(Boolean)
+      : Array.isArray(payload?.combatData?.__battleRuntime?.actionQueueTrace)
+        ? payload.combatData.__battleRuntime.actionQueueTrace.filter(Boolean)
+        : [];
+    const actionQueueFatal = payload?.combatData?.__battleRuntime?.actionQueueFatal;
+    if (actionQueueFatal?.code) pushFatal('ACTION_QUEUE_FATAL', { ...actionQueueFatal });
+    const consumedGrants = new Map();
+    const executedNodes = new Map();
+    actionQueueTrace.forEach((entry, index) => {
+      if (String(entry?.state || '').trim() !== 'EXECUTED') return;
+      const round = Number(entry?.round || 0);
+      const actionSequence = Number(entry?.actionSequence || 0);
+      const parentActionSequence = Number(entry?.parentActionSequence || 0);
+      const grantId = String(entry?.grantId || '').trim();
+      const grantKey = `${round}|${grantId}`;
+      if (!grantId) {
+        pushFatal('ACTION_GRANT_MISSING', { index, round, actionSequence });
+        return;
+      }
+      if (consumedGrants.has(grantKey)) {
+        pushFatal('ACTION_GRANT_CONSUMED_TWICE', { index, round, grantId, duplicateOf: consumedGrants.get(grantKey) });
+      } else {
+        consumedGrants.set(grantKey, index);
+      }
+      const nodeKey = `${round}|${actionSequence}`;
+      if (executedNodes.has(nodeKey)) {
+        pushFatal('ACTION_QUEUE_SEQUENCE_DUPLICATED', { index, round, actionSequence, duplicateOf: executedNodes.get(nodeKey).index });
+      } else {
+        executedNodes.set(nodeKey, { index, parentActionSequence });
+      }
+      if (parentActionSequence > 0) {
+        const parent = executedNodes.get(`${round}|${parentActionSequence}`);
+        if (!parent || parent.index >= index) {
+          pushFatal('ACTION_QUEUE_PARENT_ORDER_INVALID', { index, round, actionSequence, parentActionSequence });
+        }
+      }
+    });
+
+    if (payload.roundsRequested > 0 && eventLedger.length === 0) {
+      pushFatal('BATTLE_REQUEST_WITHOUT_FACTS', { roundsRequested: Number(payload.roundsRequested || 0) });
+    }
+    const creationKeys = new Map();
+    eventLedger.filter(event => String(event?.eventKind || '').trim() === 'create').forEach(event => {
+      const createdName = String(event?.createdName || event?.meta?.createdName || '').trim();
+      const ownerName = String(event?.meta?.ownerName || event?.targetName || '').trim();
+      const count = Math.max(0, Number(event?.count ?? event?.meta?.count ?? 0));
+      if (!createdName || !ownerName || !(count > 0)) {
+        pushFatal('CREATION_FACT_INCOMPLETE', { eventId: event?.eventId || '', createdName, ownerName, count });
+        return;
+      }
+      const key = [
+        Number(event?.round || 0),
+        String(event?.sourceActionId || event?.actionId || '').trim(),
+        String(event?.actorName || '').trim(),
+        ownerName,
+        normalizeActionDisplayName(event?.actionName || event?.sourceActionName || ''),
+        createdName,
+      ].join('|');
+      if (creationKeys.has(key)) {
+        pushFatal('DUPLICATE_CREATION_FACT', { eventId: event.eventId, duplicateOf: creationKeys.get(key), key });
+      } else {
+        creationKeys.set(key, String(event?.eventId || '').trim());
+      }
+    });
+
+    const settlementEvents = eventLedger.filter(event => {
+      const kind = String(event?.eventKind || '').trim();
+      if (kind === 'hit_result') return readDamage(event) > 0;
+      if (kind !== 'state_tick') return false;
+      return readDamage(event) > 0 && !/魂力|精神力|体力|资源/.test(String(event?.meta?.resource || '').trim());
+    });
+    const settlementKeys = new Map();
+    settlementEvents.forEach(event => {
+      const applicationId = String(event?.applicationId || event?.meta?.applicationId || '').trim();
+      const key = applicationId || [
+        Number(event?.round || 0),
+        String(event?.actionId || event?.sourceActionId || '').trim(),
+        String(event?.actorName || '').trim(),
+        String(event?.targetName || '').trim(),
+        normalizeActionDisplayName(event?.actionName || event?.sourceActionName || ''),
+        String(event?.eventKind || '').trim(),
+        Number(event?.meta?.segmentIndex || 0),
+      ].join('|');
+      if (settlementKeys.has(key)) {
+        pushFatal('DUPLICATE_DAMAGE_SETTLEMENT', { eventId: event.eventId, duplicateOf: settlementKeys.get(key), key });
+      } else {
+        settlementKeys.set(key, String(event?.eventId || '').trim());
+      }
+      if (event?.effectCapability?.hasDamageEffect === false) {
+        pushFatal('NON_DAMAGE_SKILL_DAMAGE', { eventId: event.eventId, actionName: event.actionName, damage: readDamage(event) });
+      }
+      const eventId = String(event?.eventId || '').trim();
+      if (eventId && !sourceProjectionMap.has(eventId)) {
+        pushFatal('REPORT_NUMERIC_FACT_MISSING', { eventId, eventKind: event.eventKind, damage: readDamage(event) });
+      }
+    });
+
+    eventLedger.filter(event => String(event?.eventKind || '').trim() === 'counter' && readDamage(event) > 0).forEach(counter => {
+      const matchingHit = settlementEvents.find(event =>
+        String(event?.eventKind || '').trim() === 'hit_result' &&
+        Number(event?.round || 0) === Number(counter?.round || 0) &&
+        isSameReportName(event?.actorName || '', counter?.actorName || '') &&
+        isSameReportName(event?.targetName || '', counter?.targetName || '') &&
+        normalizeActionDisplayName(event?.actionName || '') === normalizeActionDisplayName(counter?.actionName || '') &&
+        readDamage(event) === readDamage(counter)
+      );
+      if (matchingHit && String(counter?.meta?.settlementEventId || '').trim() !== String(matchingHit?.eventId || '').trim()) {
+        pushFatal('DUPLICATE_DAMAGE_FACT', { eventId: counter.eventId, settlementEventId: matchingHit.eventId, damage: readDamage(counter) });
+      }
+    });
+
+    eventLedger.forEach(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const rate = readProbability(event?.meta?.dodgeRate ?? event?.meta?.probability ?? event?.probability);
+      if (rate !== null && rate <= 0 && isSuccess(event) && ['dodge', 'counter'].includes(kind)) {
+        pushFatal('ZERO_PROBABILITY_SUCCESS', { eventId: event.eventId, eventKind: kind, probability: rate, result: event.result });
+      }
+      if (kind === 'state_tick') {
+        const eventId = String(event?.eventId || '').trim();
+        const projections = eventId ? [...(sourceProjectionMap.get(eventId) || [])] : [];
+        if (projections.some(source => !/state_tick|state_aggregation/.test(source))) {
+          pushFatal('DOT_SOURCE_MISPROJECTED', { eventId, projections });
+        }
+      }
+    });
+
+    const summonActionGroups = new Map();
+    eventLedger.filter(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const actionType = String(event?.actionType || '').trim();
+      return kind === 'action_start' && /summon_assist|召唤自主行动/.test(actionType);
+    }).forEach(event => {
+      const key = [Number(event?.round || 0), String(event?.actorName || '').trim()].join('|');
+      if (!summonActionGroups.has(key)) summonActionGroups.set(key, []);
+      summonActionGroups.get(key).push(String(event?.eventId || '').trim());
+    });
+    summonActionGroups.forEach((eventIds, key) => {
+      if (eventIds.length > 1) pushFatal('SUMMON_DUPLICATE_ACTION', { key, eventIds });
+    });
+    eventLedger.filter(event => String(event?.eventKind || '').trim() === 'summon_end' && String(event?.ruleCode || event?.reasonCode || '').trim() === 'SUMMON_WINDOW_EXHAUSTED').forEach(endEvent => {
+      const summonName = String(endEvent?.actorName || endEvent?.meta?.summonName || '').trim();
+      const endRound = Number(endEvent?.round || 0);
+      const createEvent = [...eventLedger].reverse().find(event =>
+        String(event?.eventKind || '').trim() === 'summon_create' &&
+        String(event?.meta?.summonName || '').trim() === summonName &&
+        Number(event?.round || 0) <= endRound
+      );
+      const createRound = Number(createEvent?.round || 0);
+      const actionEvent = eventLedger.find(event => {
+        if (String(event?.actorName || event?.meta?.summonName || '').trim() !== summonName) return false;
+        const round = Number(event?.round || 0);
+        if (round < createRound || round > endRound) return false;
+        const kind = String(event?.eventKind || '').trim();
+        const actionType = String(event?.actionType || '').trim();
+        return (kind === 'action_start' && /summon_assist|召唤自主行动/.test(actionType)) ||
+          kind === 'summon_guard' ||
+          (kind === 'failed_action' && /summon/.test(actionType));
+      });
+      if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
+    });
+
+    const terminalByAction = new Map();
+    eventLedger.forEach(event => {
+      const actionId = String(event?.sourceActionId || event?.actionId || '').trim();
+      if (!actionId) return;
+      if (!terminalByAction.has(actionId)) terminalByAction.set(actionId, { dodgeSuccess: [], damage: [] });
+      const item = terminalByAction.get(actionId);
+      if (String(event?.eventKind || '').trim() === 'dodge' && isSuccess(event)) item.dodgeSuccess.push(event.eventId);
+      if (String(event?.eventKind || '').trim() === 'hit_result' && readDamage(event) > 0) item.damage.push(event.eventId);
+    });
+    terminalByAction.forEach((item, actionId) => {
+      if (item.dodgeSuccess.length && item.damage.length) pushFatal('ACTION_TERMINAL_CONFLICT', { actionId, ...item });
+    });
+
+    resolutionTrace.forEach(node => {
+      const missing = ['targetIds', 'actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode', 'resultState', 'factType']
+        .filter(key => node?.[key] === undefined || node?.[key] === null);
+      if (missing.length) warnings.push({ code: 'TRACE_CONTRACT_INCOMPLETE', nodeId: node?.nodeId || '', missing });
+    });
+    eventLedger.forEach(event => {
+      const missing = ['targetIds', 'actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode', 'resultState', 'factType']
+        .filter(key => event?.[key] === undefined || event?.[key] === null);
+      if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
+    });
+
+    const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'rawObjectiveScore', 'subjectiveScore', 'scoreParts', 'factorKeys', 'scoreContributions', 'tags', 'alternativeGap', 'selectedReason', 'finalScore', 'rejectionCode'];
+    const positiveScoreKeys = positiveScoreParts;
+    const costScoreKeys = costScoreParts;
+    const zeroScoreTags = new Set(['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'STRICTLY_DOMINATED']);
+    scoringAudit.forEach((actionAudit, actionIndex) => {
+      const candidates = Array.isArray(actionAudit?.candidates) ? actionAudit.candidates.filter(Boolean) : [];
+      if (candidates.length > 3) pushFatal('SCORING_AUDIT_OVERSIZED', { actionIndex, candidateCount: candidates.length });
+      candidates.forEach((candidate, candidateIndex) => {
+        const missing = scoreFields.filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
+        if (missing.length) {
+          pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate?.candidateId || '', missing });
+          return;
+        }
+        const scoreParts = candidate.scoreParts && typeof candidate.scoreParts === 'object' ? candidate.scoreParts : {};
+        const declaredFactorKeys = Array.isArray(candidate?.factorKeys) ? candidate.factorKeys.map(item => String(item || '').trim()).filter(Boolean) : [];
+        const scoreContributions = Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions : [];
+        const contributionKeys = scoreContributions.map(item => String(item?.valueKey || '').trim()).filter(Boolean);
+        if (!declaredFactorKeys.length || new Set(declaredFactorKeys).size !== declaredFactorKeys.length ||
+          contributionKeys.length !== scoreContributions.length || new Set(contributionKeys).size !== contributionKeys.length ||
+          declaredFactorKeys.length !== contributionKeys.length || declaredFactorKeys.some((key, index) => key !== contributionKeys[index])) {
+          pushFatal('SCORING_COMPONENT_DUPLICATED', { actionIndex, candidateIndex, candidateId: candidate.candidateId, factorKeys: declaredFactorKeys });
+        }
+        const contributionParts = Object.fromEntries([...positiveScoreKeys, ...costScoreKeys].map(component => [component, 0]));
+        scoreContributions.forEach(contribution => {
+          const component = String(contribution?.component || '').trim();
+          if (!Object.prototype.hasOwnProperty.call(contributionParts, component)) {
+            pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate.candidateId, component });
+            return;
+          }
+          contributionParts[component] += Number(contribution?.expectedValue || 0);
+        });
+        Object.keys(contributionParts).forEach(component => { contributionParts[component] = Math.round(contributionParts[component]); });
+        if (Object.keys(contributionParts).some(component => Number(scoreParts[component] || 0) !== contributionParts[component])) {
+          pushFatal('SCORING_COMPONENT_TOTAL_MISMATCH', {
+            actionIndex,
+            candidateIndex,
+            candidateId: candidate.candidateId,
+            scoreParts,
+            contributionParts,
+          });
+        }
+        const rawScore = Math.round(
+          positiveScoreKeys.reduce((sum, key) => sum + Number(scoreParts[key] || 0), 0) -
+          costScoreKeys.reduce((sum, key) => sum + Number(scoreParts[key] || 0), 0),
+        );
+        if (Number(candidate.rawObjectiveScore) !== rawScore) {
+          pushFatal('SCORING_COMPONENT_TOTAL_MISMATCH', {
+            actionIndex,
+            candidateIndex,
+            candidateId: candidate.candidateId,
+            expectedRawScore: rawScore,
+            actualRawScore: Number(candidate.rawObjectiveScore),
+          });
+        }
+        const tags = new Set(Array.isArray(candidate.tags) ? candidate.tags : []);
+        const hardRejected = new Set(['RESOURCE_INSUFFICIENT', 'DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'STRICTLY_DOMINATED']).has(String(candidate.rejectionCode || '').trim()) ||
+          [...tags].some(tag => zeroScoreTags.has(tag));
+        const expectedScore = hardRejected
+          ? 0
+          : Math.max(0, Math.round(rawScore));
+        if (Number(candidate.finalScore) !== expectedScore) {
+          pushFatal('SCORING_FORMULA_MISMATCH', {
+            actionIndex,
+            candidateIndex,
+            candidateId: candidate.candidateId,
+            expectedScore,
+            actualScore: Number(candidate.finalScore),
+          });
+        }
+      });
+      const selected = candidates.find(candidate => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase())) ||
+        candidates.find(candidate => String(candidate?.candidateId || '') === String(actionAudit?.selectedCandidateId || ''));
+      if (!selected && candidates.length) {
+        pushFatal('SCORING_SELECTED_MISSING', { actionIndex, selectedCandidateId: actionAudit?.selectedCandidateId || '' });
+      } else if (selected) {
+        const selectedTags = new Set(Array.isArray(selected.tags) ? selected.tags : []);
+        const selectedRejected = String(selected.rejectionCode || '').trim();
+        const forbidden = ['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'CATASTROPHIC', 'STRICTLY_DOMINATED'];
+        if (forbidden.includes(selectedRejected) || forbidden.some(code => selectedTags.has(code))) {
+          pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', { actionIndex, selectedCandidateId: selected.candidateId, rejectionCode: selectedRejected, tags: [...selectedTags] });
+        }
+        const selectedReason = String(selected.selectedReason || '').trim();
+        if (selectedReason === 'SUBJECTIVE_SOFTMAX' || selectedReason === 'DECISION_INTERFERENCE_SOFTMAX' || String(actionAudit?.ruleCode || '').trim() === 'DECISION_INTERFERENCE') {
+          const highestObjectiveScore = Math.max(...candidates.map(candidate => Number(candidate?.rawObjectiveScore || 0)));
+          const objectiveRegret = highestObjectiveScore - Number(selected.rawObjectiveScore || 0);
+          const maxRegret = Math.max(0, Number(actionAudit?.maxRegret || 0));
+          if (objectiveRegret > maxRegret + 1e-6) {
+            pushFatal('SUBJECTIVE_REGRET_EXCEEDED', {
+              actionIndex,
+              selectedCandidateId: selected.candidateId,
+              objectiveRegret,
+              maxRegret,
+            });
+          }
+          return;
+        }
+        const highestScore = Math.max(...candidates.map(candidate => Number(candidate?.finalScore || 0)));
+        if (Number(selected.finalScore || 0) < highestScore) {
+          pushFatal('SCORING_SELECTED_NOT_HIGHEST', {
+            actionIndex,
+            selectedCandidateId: selected.candidateId,
+            selectedScore: Number(selected.finalScore || 0),
+            highestScore,
+          });
+        }
+      }
+    });
+
+    const activeStarts = eventLedger.filter(event =>
+      String(event?.eventKind || '').trim() === 'action_start' &&
+      normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE'
+    );
+    const terminalKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'blocked_action', 'failed_action', 'target_fail']);
+    activeStarts.forEach(start => {
+      const terminal = eventLedger.find(event =>
+        event !== start &&
+        terminalKinds.has(String(event?.eventKind || '').trim()) &&
+        String(event?.sourceActionId || event?.actionId || '').trim() === String(start?.actionId || '').trim()
+      );
+      if (!terminal) {
+        pushFatal('ACTIVE_ACTION_TERMINAL_MISSING', {
+          round: Number(start?.round || 0),
+          actorName: start?.actorName || '',
+          actionName: start?.actionName || '',
+          actionId: start?.actionId || '',
+        });
+      }
+    });
+
+    scoringAudit.forEach((actionAudit, actionIndex) => {
+      const selectedActionName = normalizeActionDisplayName(actionAudit?.selectedActionName || '');
+      const selectedCandidate = (Array.isArray(actionAudit?.candidates) ? actionAudit.candidates : []).find(candidate =>
+        ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase()) ||
+        String(candidate?.candidateId || '') === String(actionAudit?.selectedCandidateId || '')
+      );
+      if (
+        !selectedActionName ||
+        normalizeActionRole(selectedCandidate?.actionRole || 'ACTIVE') !== 'ACTIVE' ||
+        String(actionAudit?.ruleCode || '').trim() === 'DECISION_INTERFERENCE'
+      ) return;
+      const matchingStart = activeStarts.find(start =>
+        Number(start?.round || 0) === Number(actionAudit?.round || 0) &&
+        isSameReportName(start?.actorName || '', actionAudit?.actor || '')
+      );
+      if (!matchingStart) {
+        pushFatal('SCORING_EXECUTION_ACTION_MISSING', { actionIndex, round: actionAudit?.round || 0, actor: actionAudit?.actor || '', selectedActionName });
+        return;
+      }
+      const executedName = normalizeActionDisplayName(matchingStart?.finalActionName || matchingStart?.actionName || '');
+      if (executedName && executedName !== selectedActionName) {
+        pushFatal('SCORING_EXECUTION_MISMATCH', {
+          actionIndex,
+          round: actionAudit?.round || 0,
+          actor: actionAudit?.actor || '',
+          selectedActionName,
+          executedName,
+        });
+      }
+    });
+    if (payload.scoringMutationDetected === true) pushFatal('SCORING_PREVIEW_MUTATED_STATE');
+
+    return {
+      fatalCount: fatals.length,
+      warningCount: warnings.length,
+      fatals,
+      warnings,
+    };
+  }
+
   function bindEngine(implementation) {
     if (
       !implementation ||
       typeof implementation.runBattleCase !== 'function' ||
-      typeof implementation.auditFacts !== 'function' ||
       !implementation.previewDomain ||
       typeof implementation.previewDomain.getEffects !== 'function' ||
       typeof implementation.previewDomain.evaluateEffect !== 'function' ||
@@ -688,10 +1240,6 @@
     return requireEngine().runBattleCase(input);
   }
 
-  function auditFacts(payload = {}) {
-    const input = payload && typeof payload === 'object' ? cloneValue(payload) : {};
-    return requireEngine().auditFacts(input);
-  }
 
   function previewSkill(payload = {}) {
     const input = payload && typeof payload === 'object' ? cloneValue(payload) : {};
