@@ -25254,18 +25254,41 @@ class BattleUIComponent {
           战斗效果: { skip_turn: true, dot_damage: 0, armor_pen: 0 },
         };
         const 持续移除命中 = 持续状态移除阻断状态附着(attacker, '僵直', 打断反噬状态, defender);
-        if (持续移除命中) {
-          return {
-            damage,
-            stateApplied: false,
-            log: `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`,
-          };
-        }
-        attacker.状态效果['僵直'] = 打断反噬状态;
+        const stateApplied = !持续移除命中;
+        if (stateApplied) attacker.状态效果['僵直'] = 打断反噬状态;
+        写入战斗事件账本(combatData, {
+          eventKind: 'state_apply',
+          round: Number(combatData?.回合 || 0),
+          actorName: attacker?.name || attacker?.名称 || '',
+          targetName: attacker?.name || attacker?.名称 || '',
+          actionName: '施法打断反噬',
+          actionType: 'cast_interruption_backlash',
+          sourceActionName: 压制动作名,
+          sourceActionId: 压制动作事件?.actionId || '',
+          parentNodeId: 压制动作事件?.chainNodeId || '',
+          actorControl: 'SYSTEM',
+          actionRole: 'REACTION',
+          ruleCode: stateApplied ? 'CAST_INTERRUPTION_STIFFNESS' : 'CAST_INTERRUPTION_STIFFNESS_BLOCKED',
+          result: stateApplied ? 'applied' : 'blocked',
+          resultState: stateApplied ? 'APPLIED' : 'BLOCKED',
+          failReason: 持续移除命中 ? `被${持续移除命中.key}拦截` : '',
+          duration: 1,
+          effectSummary: '僵直',
+          sourceEffectId: 'CAST_INTERRUPTION_BACKLASH_STIFFNESS',
+          targetPoolSide: 'friendly',
+          meta: {
+            stateName: '僵直',
+            duration: 1,
+            applied: stateApplied,
+            blockedBy: 持续移除命中?.key || '',
+          },
+        });
         return {
           damage,
-          stateApplied: true,
-          log: `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤并陷入[僵直]！`,
+          stateApplied,
+          log: stateApplied
+            ? `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤并陷入[僵直]！`
+            : `NPC释放[${压制动作名}]成功打断玩家施法！玩家遭到反噬，承受 ${damage} 点真伤，[僵直]被[${持续移除命中.key}]拦截！`,
         };
       }
 
