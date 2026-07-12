@@ -1235,7 +1235,8 @@
       } else if (kind === 'resource_change') {
         const resource = String(event?.meta?.resource || '').trim();
         const delta = Number(event?.meta?.delta || 0);
-        if (resource && delta) pushResourceDelta(round, target || actor, resource, delta, event);
+        if (/生命|HP|血/i.test(resource)) pushHpDelta(row, targetSide, delta, event);
+        else if (resource && delta) pushResourceDelta(round, target || actor, resource, delta, event);
       }
     if (kind === 'state_apply' && stateWasApplied(event)) {
         const stateName = readLedgerStateName(event);

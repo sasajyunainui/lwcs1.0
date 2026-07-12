@@ -25269,6 +25269,47 @@ class BattleUIComponent {
         };
       }
 
+      function 应用单挑系统资源终值(单位, 资源键, 目标值, 变更名称, 来源行动者, 来源动作, combatData, 只提高 = false) {
+        const 变更前 = 读取持续原型资源当前值(单位, 资源键);
+        const 上限 = 读取持续原型资源上限值(单位, 资源键);
+        const 规范目标 = Math.max(0, Math.min(上限, Math.floor(Number(目标值 || 0))));
+        const 变更后 = 只提高 ? Math.max(变更前, 规范目标) : 规范目标;
+        const 变化量 = 变更后 - 变更前;
+        if (变化量 === 0) return 0;
+        设置战斗延迟效果资源值(单位, 资源键, 变更后);
+        const 来源动作名 = normalizeBattleActionDisplayName(来源动作?.skill?.name || 来源动作?.skill?.魂技名 || 来源动作?.action_type || 来源动作?.type || '战斗伤害');
+        const 来源动作事件 = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+          round: Number(combatData?.回合 || 0),
+          actorName: 来源行动者?.name || 来源行动者?.名称 || '',
+          actionName: 来源动作名,
+        });
+        写入战斗事件账本(combatData, {
+          eventKind: 'resource_change',
+          round: Number(combatData?.回合 || 0),
+          actorName: 单位?.name || 单位?.名称 || '',
+          targetName: 单位?.name || 单位?.名称 || '',
+          actionName: 变更名称,
+          actionType: 'system_resource_settlement',
+          sourceActionName: 来源动作名,
+          sourceActionId: 来源动作事件?.actionId || '',
+          parentNodeId: 来源动作事件?.chainNodeId || '',
+          actorControl: 'SYSTEM',
+          actionRole: 'STATE_TICK',
+          ruleCode: 'SYSTEM_RESOURCE_SETTLEMENT',
+          result: 变化量 > 0 ? 'recover' : 'cost',
+          sourceEffectId: 'SYSTEM_RESOURCE_SETTLEMENT',
+          targetPoolSide: 'friendly',
+          meta: {
+            resource: { hp: '生命值', vit: '体力', sp: '魂力', men: '精神力' }[资源键] || 资源键,
+            resourceKey: 资源键,
+            delta: 变化量,
+            amount: Math.abs(变化量),
+            settlementType: String(变更名称 || '').trim(),
+          },
+        });
+        return 变化量;
+      }
+
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
@@ -26358,26 +26399,34 @@ class BattleUIComponent {
             // --- 第五步：装备护主与战损结算 ---
             let combatType = combatData.战斗类型 || '突发遭遇';
 
-            if (getCombatHpValue(defender) < getCombatHpMaxValue(defender) * 0.1) {
-              let hasMech = 战斗机甲已装备(defender);
-              let hasArmor = defender.装备?.斗铠?.装备状态 === '已装备';
+            if (getCombatHpValue(被动结算目标) < getCombatHpMaxValue(被动结算目标) * 0.1) {
+              let hasMech = 战斗机甲已装备(被动结算目标);
+              let hasArmor = 被动结算目标.装备?.斗铠?.装备状态 === '已装备';
 
-              if (combatType === '擂台切磋' && getCombatHpValue(defender) <= getCombatHpMaxValue(defender) * 0.05) {
-                设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.05)); // 强制锁血 5%
+              if (combatType === '擂台切磋' && getCombatHpValue(被动结算目标) <= getCombatHpMaxValue(被动结算目标) * 0.05) {
+                应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.05, '擂台保护', 主动结算方, 主动结算动作, combatData, true);
                 roundLog += ` [擂台保护] 胜负已分！裁判强行介入，终止了致命一击！`;
                 continueSimulation = false; // 强制结束战斗
               } else if (hasMech || hasArmor) {
-                设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
-                let armorLog = applyArmorDamage(defender);
-                roundLog += ` [装备护主] 致命打击触发替死锁血！NPC HP强制锁定在10%！${armorLog}`;
+                应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.1, '装备护主', 主动结算方, 主动结算动作, combatData, true);
+                let armorLog = applyArmorDamage(被动结算目标);
+                roundLog += ` [装备护主] 致命打击触发替死锁血！${getCombatReportUnitName(被动结算目标, '承伤方')} HP强制锁定在10%！${armorLog}`;
               } else if (判断虚拟战斗类型(combatType)) {
                 roundLog += ` [虚拟环境] 本场为虚拟战斗，允许完整承受击杀结果，现实损伤由退出结算处理。`;
               } else {
-                let saveLog = triggerDeathSave(defender);
-                if (saveLog) {
-                  if (!/金龙不灭真身/.test(saveLog))
-                    设置战斗血量值(defender, Math.floor(getCombatHpMaxValue(defender) * 0.1));
-                  roundLog += ` ${saveLog}`;
+                const deathSave = triggerDeathSave(被动结算目标);
+                if (deathSave) {
+                  if (deathSave.staminaCost > 0) {
+                    应用单挑系统资源终值(被动结算目标, 'vit', getCombatStaminaValue(被动结算目标) - deathSave.staminaCost, '免死触发消耗', 主动结算方, 主动结算动作, combatData);
+                  }
+                  if (deathSave.fullRestore) {
+                    应用单挑系统资源终值(被动结算目标, 'sp', 0, '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
+                    应用单挑系统资源终值(被动结算目标, 'vit', getCombatStaminaMaxValue(被动结算目标), '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
+                    应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标), '金龙不灭真身', 主动结算方, 主动结算动作, combatData);
+                  } else {
+                    应用单挑系统资源终值(被动结算目标, 'hp', getCombatHpMaxValue(被动结算目标) * 0.1, '死亡保护', 主动结算方, 主动结算动作, combatData, true);
+                  }
+                  roundLog += ` ${deathSave.log}`;
                 }
               }
             }
@@ -27972,7 +28021,6 @@ class BattleUIComponent {
         if (!/黄金瀑布/.test(String(状态文本 || ''))) return { 可触发: true, 消耗量: 0 };
         const 消耗量 = Math.max(1, Math.floor(getCombatStaminaMaxValue(单位) * 0.1));
         if (getCombatStaminaValue(单位) < 消耗量) return { 可触发: false, 消耗量 };
-        设置战斗体力值(单位, getCombatStaminaValue(单位) - 消耗量);
         return { 可触发: true, 消耗量 };
       }
 
@@ -28031,12 +28079,17 @@ class BattleUIComponent {
         defender.__本阶段已触发免死 = true;
         const 状态文本 = 候选状态文本;
         if (/金龙不灭真身/.test(状态文本)) {
-          设置战斗延迟效果资源值(defender, 'sp', 0);
-          设置战斗体力值(defender, getCombatStaminaMaxValue(defender));
-          设置战斗血量值(defender, getCombatHpMaxValue(defender));
-          return `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，抽尽魂力并以金龙不灭真身补满体力！剩余保护次数:${nextCount}`;
+          return {
+            fullRestore: true,
+            staminaCost: 黄金瀑布扣费.消耗量,
+            log: `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，抽尽魂力并以金龙不灭真身补满体力！剩余保护次数:${nextCount}`,
+          };
         }
-        return `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，强行保住最后一口气！剩余保护次数:${nextCount}`;
+        return {
+          fullRestore: false,
+          staminaCost: 黄金瀑布扣费.消耗量,
+          log: `[濒死守护] ${defender.name || '目标'}触发[${candidate.key}]，强行保住最后一口气！剩余保护次数:${nextCount}`,
+        };
       }
 
       function formatBattleDayKeyFromTick(tickValue) {
