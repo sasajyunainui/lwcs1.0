@@ -229,7 +229,7 @@ const staggerResult = preview.previewAction({
   worldRevision: 'world:stagger-control',
   declaration: declaration('stagger-control', [{ effectId: 'stagger:1', 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 1 }]),
 });
-assert.ok(!staggerResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '僵直被错误预估为取消自然行动');
+assert.ok(staggerResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '僵直没有按正式硬控语义取消自然行动');
 const stunResult = preview.previewAction({
   worldSnapshot: frozenWorld,
   actorId: 'actor',
@@ -237,6 +237,13 @@ const stunResult = preview.previewAction({
   declaration: declaration('stun-control', [{ effectId: 'stun:1', 原型: '状态施加', 目标: '单体', 状态: '眩晕', 持续回合: 1 }]),
 });
 assert.ok(stunResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '眩晕没有预估为取消自然行动');
+const slowResult = preview.previewAction({
+  worldSnapshot: frozenWorld,
+  actorId: 'actor',
+  worldRevision: 'world:slow-control',
+  declaration: declaration('slow-control', [{ effectId: 'slow:control:1', 原型: '状态施加', 目标: '单体', 状态: '迟缓', 持续回合: 1, 计算层效果: { dodge_penalty: 0.2 } }]),
+});
+assert.ok(!slowResult.contributions.some(entry => entry.outcomeKind === 'ACTION_CANCELLED'), '迟缓被错误升级为取消自然行动的硬控');
 
 const repeatedStateWorld = createWorld();
 repeatedStateWorld.参战者.enemy[0].状态效果 = {

@@ -29654,6 +29654,7 @@ class BattleUIComponent {
         const directShieldEffect = 常规行动效果.find(effect =>
           读取战斗效果标签(effect) === '护盾' || (effect?.原型 === '护盾变化' && 读取战斗数值正负(effect?.数值) > 0),
         ) || null;
+        if (directShieldEffect && pState?.计算层效果) pState.计算层效果.shield_gain_bonus = 0;
         const directSummonEffect =
           常规行动效果.find(effect => 是指定原型(effect, '召唤生成')) ||
           null;

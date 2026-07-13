@@ -821,28 +821,51 @@
       block?.sourceEventId,
     ]).map(id => String(id || '').trim()).filter(Boolean))];
     const readIntent = (round, actorName, actionName) => {
-      const decision = [...decisions].reverse().find(item =>
-        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
-        isSameReportName(item?.行动者 || item?.actor || '', actorName || '') &&
-        (!actionName || normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.skill || '') === actionName)
-      ) || [...decisions].reverse().find(item =>
-        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
-        isSameReportName(item?.行动者 || item?.actor || '', actorName || '')
-      );
-      if (!decision) return '';
-      const selected = (Array.isArray(decision?.候选排序结果) ? decision.候选排序结果 : []).find(candidate =>
+      const readDecisionActor = item => String(item?.actorId || item?.行动者 || item?.actor || '').trim();
+      const readSelected = item => item?.selected || (Array.isArray(item?.候选排序结果) ? item.候选排序结果 : []).find(candidate =>
         ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase())
       ) || null;
-      const parts = selected?.scoreParts || selected?.审计?.scoreParts || decision?.scoringSummary?.scoreParts || {};
-      const reasons = [
-        ['effectiveDeltaEV', '兑现当前有效战果'],
-        ['futureUnlockEV', '打开后续连招窗口'],
-        ['enemyDeniedEV', '压缩对手下一次行动'],
-        ['teamIntentEV', '延续当前集火或保护意图'],
-        ['sustainEV', '维持后续行动资源'],
-      ].sort((left, right) => Number(parts?.[right[0]] || 0) - Number(parts?.[left[0]] || 0));
-      const reason = Number(parts?.[reasons[0]?.[0]] || 0) > 0 ? reasons[0][1] : '维持当前战术节奏';
-      return `${String(actorName || '行动者').trim()}选择【${actionName || normalizeActionDisplayName(decision?.技能 || '行动')}】，主要为了${reason}`;
+      const readSelectedActionName = selected => normalizeActionDisplayName(
+        selected?.skill?.name || selected?.skill?.魂技名 || selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 ||
+        ({ BASIC_ATTACK: '普通攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击', GUARD: '护卫', WITHDRAW: '撤离', USE_ITEM: '使用物品', EQUIP: '更换装备' })[selected?.declaration?.actionKind || selected?.actionKind] || ''
+      );
+      const decision = [...decisions].reverse().find(item =>
+        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
+        isSameReportName(readDecisionActor(item), actorName || '') &&
+        (!actionName || readSelectedActionName(readSelected(item)) === actionName)
+      ) || [...decisions].reverse().find(item =>
+        Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
+        isSameReportName(readDecisionActor(item), actorName || '')
+      );
+      if (!decision) return '';
+      const selected = readSelected(decision);
+      const actionKind = String(selected?.declaration?.actionKind || selected?.actionKind || '').trim();
+      const problemId = String(decision?.problems?.[0]?.problemId || '').trim();
+      const problemReason = ({
+        TERMINAL_OPPORTUNITY: '把握当前终结窗口',
+        SURVIVAL_CRISIS: '降低下一次回应造成的失能风险',
+        IMMINENT_DENIAL: '处理即将兑现的蓄力或行动威胁',
+        ALLY_CRISIS: '保护当前最危急的队友',
+        CAPABILITY_SHORTAGE: '在可用手段受限时保住行动能力',
+        ADVANTAGE_WINDOW: '继续扩大已经建立的优势',
+        INFORMATION_DEFICIT: '试探尚未确认的敌方回应',
+        DISENGAGE_PRESSURE: '避免在不利交换中继续暴露',
+        STALEMATE: '打破没有实质进展的僵局',
+      })[problemId] || '';
+      const alternatives = (Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : []).filter(candidate => candidate?.selected !== true);
+      let reason = problemReason;
+      if (actionKind === 'BASIC_ATTACK' && alternatives.some(candidate => candidate?.actionKind === 'RELEASE_SKILL' || candidate?.declaration?.actionKind === 'RELEASE_SKILL')) {
+        reason = `${problemReason ? `${problemReason}；` : ''}普通攻击当前能稳定推进，魂技替代的额外收益不足以覆盖代价`;
+      } else if (actionKind === 'DEFEND') {
+        reason = '承受迫近攻击并保留后续资源';
+      } else if (actionKind === 'EVADE') {
+        reason = '规避迫近攻击并等待更好的反击窗口';
+      } else if (actionKind === 'RELEASE_SKILL') {
+        reason = problemReason || '该技能仍能兑现有效伤害、控制或支援窗口，且替代方案更弱';
+      } else if (!reason) {
+        reason = '在当前可用方案中取得更稳定的有效进展';
+      }
+      return `${String(actorName || '行动者').trim()}选择【${actionName || readSelectedActionName(selected) || '行动'}】，因为${reason}`;
     };
     const projectFact = event => {
       const kind = String(event?.eventKind || '').trim();
@@ -994,8 +1017,11 @@
           push(`${actor}通过【${action}】完成造物`);
         }
       });
+      const declared = facts.find(fact => ['action_start', 'charge_start', 'pass'].includes(fact.eventKind));
+      if (lines.length && declared?.actionName && !lines.some(line => line.includes(`【${declared.actionName}】`))) {
+        lines.unshift(`${declared.actorName || '行动者'}施展【${declared.actionName}】`);
+      }
       if (!lines.length) {
-        const declared = facts.find(fact => ['action_start', 'charge_start', 'pass'].includes(fact.eventKind));
         const evaded = facts.find(fact => fact.eventKind === 'dodge' && /evaded|dodge|闪避成功|规避成功/i.test(String(fact.resultState || '')));
         if (declared && evaded) push(`${declared.actorName || '行动者'}的【${declared.actionName || '行动'}】被${evaded.actorName || '目标'}闪避`);
         else if (declared) push(`${declared.actorName || '行动者'}执行【${declared.actionName || '行动'}】${declared.targetName ? `，目标为${declared.targetName}` : ''}`);
@@ -1041,8 +1067,13 @@
       const actionGroupId = group.actionGroupId;
       const events = group.events.filter((event, eventIndex, list) => list.findIndex(item =>
         String(item?.eventId || '').trim() === String(event?.eventId || '').trim()
-      ) === eventIndex);
+      ) === eventIndex).sort((left, right) =>
+        Number(eventIndexById.get(String(left?.eventId || '').trim()) ?? Number.MAX_SAFE_INTEGER) -
+        Number(eventIndexById.get(String(right?.eventId || '').trim()) ?? Number.MAX_SAFE_INTEGER)
+      );
       const primary = events.find(event =>
+        ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'ACTIVE'
+      ) || events.find(event =>
         ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
       ) || events[0] || null;
       const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));
@@ -1116,6 +1147,9 @@
         fact.duration > 0 && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
       );
       const summonWindow = events.find(event => ['summon_create', 'summon_assist'].includes(String(event?.eventKind || '').trim()));
+      const hasActiveDeclaration = events.some(event =>
+        ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'ACTIVE'
+      );
       const nextWindow = summonWindow
         ? String(summonWindow?.meta?.summonMode || summonWindow?.summonMode || '召唤物已进入可用行动窗口').trim()
         : stateWindow
@@ -1131,7 +1165,7 @@
         blockType,
         facts,
         badges,
-        intentSummary: blockType === 'RESOURCE_CHANGE' || blockType === 'STATE_TICK'
+        intentSummary: blockType === 'RESOURCE_CHANGE' || blockType === 'STATE_TICK' || !hasActiveDeclaration
           ? ''
           : readIntent(round, actorName, actionName),
         outcomeSummary: summarizeFacts(facts),
@@ -1185,8 +1219,8 @@
     return [...actionBlocks, ...roundSummaries]
       .sort((left, right) =>
         Number(left?.round || 0) - Number(right?.round || 0) ||
-        Number(left?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER) - Number(right?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER) ||
-        (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0)
+        (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0) ||
+        Number(left?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER) - Number(right?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER)
       )
       .map(({ __firstEventIndex, ...block }) => block);
   }
@@ -2277,8 +2311,8 @@
         candidates: (Array.isArray(item?.scoreAudit) ? item.scoreAudit : []).map(candidate => cloneAuditSnapshot(candidate)),
       }));
       const actionChains = buildActionChains(eventLedger, resolutionTrace);
-      const reportBlocks = buildReportBlocks(eventLedger, [], publicReportBlocks);
-      const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, [], finalSnapshot, worldSnapshot);
+      const reportBlocks = buildReportBlocks(eventLedger, decisionAudits, publicReportBlocks);
+      const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, decisionAudits, finalSnapshot, worldSnapshot);
       const audit = auditFacts({
         eventLedger,
         resolutionTrace,

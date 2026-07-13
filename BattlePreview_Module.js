@@ -456,9 +456,10 @@
     const state = String(effect?.状态 || effect?.状态名称 || '').trim();
     const combatEffect = cloneValue(effect?.计算层效果 || effect?.战斗效果 || {});
     const magnitude = clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1);
-    if (/眩晕/.test(state)) {
+    if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
       combatEffect.skip_turn = true;
       combatEffect.cannot_act = true;
+      combatEffect.cannot_react = true;
     }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
@@ -771,8 +772,8 @@
             marginal = addState(unit, effect, context.effectInstanceId);
           });
           const state = String(effect?.状态 || '').trim();
-          const combatEffect = effect?.计算层效果 || effect?.战斗效果 || {};
-          const cancelsAction = marginal && (combatEffect?.skip_turn === true || combatEffect?.cannot_act === true || /眩晕/.test(state));
+          const combatEffect = deriveStateCombatEffect(effect);
+          const cancelsAction = marginal && (combatEffect?.skip_turn === true || combatEffect?.cannot_act === true);
           const outcomeKind = cancelsAction ? 'ACTION_CANCELLED' : prototype === '状态施加' ? 'STATE_CHANGED' : 'NEXT_ACTION_QUALITY_CHANGED';
           ledger.addOutcome({
             ...context,

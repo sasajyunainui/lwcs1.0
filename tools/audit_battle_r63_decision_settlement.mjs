@@ -333,6 +333,7 @@ const firstLostOpportunityBlockIndex = controlResult.reportBlocks.findIndex(bloc
   (block?.facts || []).some(fact => fact?.eventKind === 'lost_opportunity')
 );
 assert.ok(firstLostOpportunityBlockIndex >= 0, '硬控失去行动事实没有进入结构化战报');
+assert.equal(controlResult.reportBlocks[firstLostOpportunityBlockIndex]?.intentSummary, '', '失去行动机会错误借用了本轮其他决策意图');
 
 const adaptationInput = combatData();
 adaptationInput.参战者.team_player[0].str = 1;
@@ -405,6 +406,11 @@ const supportReactionFacts = supportResult.ledger.filter(event => ['pass', 'dodg
 assert.equal(supportReactionFacts.length, 0, `非攻击支援动作错误生成应招事实:${JSON.stringify({ supportStart, selected: supportResult.decisions?.find(entry => entry?.actorId === 'player-a')?.selected, supportReactionFacts })}`);
 const supportCost = supportResult.ledger.find(event => event?.eventKind === 'action_cost' && event?.actorName === 'player-a' && event?.actionName === '群体支援');
 assert.equal(Number(supportCost?.meta?.reqSp || 0), 1, '对象型绝对魂力消耗没有按1点正式结算');
+const supportActionBlock = supportResult.reportBlocks.find(block =>
+  (block?.facts || []).some(fact => fact?.eventKind === 'action_start' && fact?.actionName === '群体支援')
+);
+assert.match(String(supportActionBlock?.outcomeSummary || ''), /群体支援/, '纯支援动作的结构化战报遗漏技能名');
+assert.ok(String(supportActionBlock?.intentSummary || '').trim(), '正式Decision动作没有生成玩家可读意图');
 const supportShieldFacts = supportResult.ledger.filter(event => event?.eventKind === 'shield_create' && Number(event?.meta?.amount || 0) > 0);
 const supportActionShieldBadges = supportResult.reportBlocks
   .filter(block => block?.blockType !== 'ROUND_SUMMARY')
@@ -417,6 +423,34 @@ assert.equal(
   new Set(supportActionShieldBadges.map(badge => String(badge?.sourceEventId || '').trim())).size,
   `同一动作层护盾事实生成了重复Badge:${JSON.stringify(supportActionShieldBadges)}`,
 );
+
+const mixedShieldInput = combatData();
+const mixedShieldSkill = {
+  id: 'mixed-defense-shield', name: '壁垒强化', 魂技名: '壁垒强化', 消耗: '无', 前摇: 1,
+  _效果数组: [
+    { 原型: '属性修正', 目标: '自身', 属性: '防御', 数值: '+20%', 持续回合: 2, 生效方式: '独立生效' },
+    { 原型: '护盾变化', 目标: '自身', 护盾模式: '正向护盾', 数值: '+20%', 持续回合: 2, 生效方式: '独立生效' },
+  ],
+};
+mixedShieldInput.参战者.team_player[0].技能列表 = [structuredClone(mixedShieldSkill)];
+const mixedShieldResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'mixed-defense-shield-single-value', seed: 6333, combatData: mixedShieldInput, mode: 'team_preview', rounds: 1,
+  selectedAction: { actor_name: 'player-a', target_name: 'player-a', type: 'skill', action_type: '释放魂技', skill: structuredClone(mixedShieldSkill) },
+  settings: {},
+});
+const mixedShieldFacts = mixedShieldResult.ledger.filter(event => event?.eventKind === 'shield_create' && event?.actorName === 'player-a' && event?.actionName === '壁垒强化');
+assert.equal(mixedShieldFacts.length, 1, `属性强化与护盾原型重复生成护盾事实:${JSON.stringify(mixedShieldFacts)}`);
+assert.equal(Number(mixedShieldFacts[0]?.meta?.amount || 0), 100, '混合防御技能护盾值没有按唯一原型结算');
+
+const summonOrderDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'team_focus_without_overkill');
+const summonOrderResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'report-summary-after-summon', seed: summonOrderDefinition.seed,
+  combatData: structuredClone(summonOrderDefinition.combatData), mode: 'team_preview', rounds: 1, settings: {},
+});
+assert.ok(summonOrderResult.reportBlocks.some(block => block?.blockType === 'SUMMON_ACTION'), '召唤顺序回归没有形成召唤动作块');
+const roundOneBlocks = summonOrderResult.reportBlocks.filter(block => Number(block?.round || 0) === 1);
+assert.equal(roundOneBlocks.at(-1)?.blockType, 'ROUND_SUMMARY', `回合汇总没有位于全部召唤动作之后:${JSON.stringify(roundOneBlocks.map(block => block?.blockType))}`);
 
 const resourceSupportInput = combatData();
 resourceSupportInput.参战者.team_player.push(participant('player-b', 'player', 120));
@@ -547,6 +581,45 @@ const secondSkillCandidate = secondSkillDecision.candidates.find(candidate => ca
 assert.ok(secondSkillCandidate && !secondSkillCandidate.rejectionCode, '控制型第二魂技没有进入完整非支配候选池');
 assert.equal(secondSkillDecision.selected?.skill?.id, 'second-skill', `第二魂技收益占优时仍不可达:${secondSkillDecision.selected?.candidateId || ''}`);
 
+const controlMarginalWorld = combatData();
+controlMarginalWorld.参战者.team_enemy.push(participant('enemy-b', 'enemy', 500));
+controlMarginalWorld.参战者.team_enemy[0].状态效果 = {
+  existing_stagger: { 状态: '僵直', 状态名称: '僵直', 类型: 'debuff', duration: 2, 战斗效果: { skip_turn: true, cannot_act: true, cannot_react: true } },
+};
+const marginalControlSkill = {
+  id: 'marginal-control', name: '定点僵直', 魂技名: '定点僵直', 消耗: { 魂力: 10 }, 前摇: 1,
+  _效果数组: [{ 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 2, 生效方式: '独立生效' }],
+};
+controlMarginalWorld.参战者.team_player[0].技能列表 = [structuredClone(marginalControlSkill)];
+const controlMarginalDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: controlMarginalWorld,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  beliefState: {},
+  seed: 'control-marginal-target',
+});
+const redundantControl = controlMarginalDecision.candidates.find(candidate =>
+  candidate?.skill?.id === 'marginal-control' && candidate?.declaration?.targetIds?.[0] === 'enemy-a'
+);
+assert.ok(['ZERO_EFFECT_COSTLY', 'ZERO_PROGRESS', 'DOMINATED'].includes(String(redundantControl?.rejectionCode || redundantControl?.classification || '')), `已有同强度硬控仍被视为完整收益:${JSON.stringify(redundantControl)}`);
+assert.equal(controlMarginalDecision.selected?.declaration?.targetIds?.[0], 'enemy-b', `存在未受控目标时仍重复覆盖硬控:${JSON.stringify(controlMarginalDecision.scoreAudit)}`);
+
+const controlledFollowUpWorld = combatData();
+controlledFollowUpWorld.参战者.team_enemy[0].状态效果 = {
+  existing_freeze: { 状态: '冻结', 状态名称: '冻结', 类型: 'debuff', duration: 2, 战斗效果: { skip_turn: true, cannot_act: true, cannot_react: true } },
+};
+controlledFollowUpWorld.参战者.team_player[0].技能列表 = [];
+const controlledFollowUpDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: controlledFollowUpWorld,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  beliefState: {},
+  seed: 'controlled-target-follow-up',
+});
+assert.equal(controlledFollowUpDecision.selected?.declaration?.actionKind, 'BASIC_ATTACK', `受控敌人的自然恢复窗口价值被抹零，行动者仍选择无威胁防守:${JSON.stringify(controlledFollowUpDecision.scoreAudit)}`);
+assert.ok(Number(controlledFollowUpDecision.selected?.objectiveUtility || 0) > 0, '追击受控敌人没有形成正向容量变化');
+assert.ok(!(controlledFollowUpDecision.selected?.preview?.contributions || []).some(entry => entry?.outcomeKind === 'ACTION_GRANTED'), '受控目标追击估值错误授予了额外行动');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -563,6 +636,7 @@ console.log(JSON.stringify({
     defenseTimingActions: defenseActions.map(entry => entry.selected?.declaration?.actionKind || ''),
     followUpActionCount: followUpStarts.length,
     secondSkillSelected: secondSkillDecision.selected?.skill?.id || '',
+    controlledFollowUpAction: controlledFollowUpDecision.selected?.declaration?.actionKind || '',
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

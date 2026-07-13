@@ -318,9 +318,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   if (!(result.beliefObservations || []).length) lines.push('- None');
   lines.push('', '## Final Battle Report', '', '```json', JSON.stringify(result.finalBattleReport, null, 2), '```', '');
   lines.push('## Structured Report Blocks', '');
-  (Array.isArray(result.reportBlocks) ? result.reportBlocks : [])
-    .sort((left, right) => Number(left?.round || 0) - Number(right?.round || 0) || String(left?.blockType || '').localeCompare(String(right?.blockType || '')))
-    .forEach(block => {
+  (Array.isArray(result.reportBlocks) ? result.reportBlocks : []).forEach(block => {
       lines.push(`### Round ${Number(block?.round || 0)} / ${String(block?.blockType || 'UNKNOWN')}`);
       if (block?.intentSummary) lines.push(`- Intent: ${block.intentSummary}`);
       if (block?.outcomeSummary) lines.push(`- Outcome: ${block.outcomeSummary}`);
@@ -358,7 +356,11 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
         if (block?.intentSummary) blindLines.push(`- 意图：${block.intentSummary}`);
         if (block?.outcomeSummary) blindLines.push(`- 结果：${block.outcomeSummary}`);
         if (block?.nextWindow) blindLines.push(`- 后续：${block.nextWindow}`);
-        (block?.badges || []).forEach(badge => blindLines.push(`- 数值：${badge?.targetName || badge?.targetId || ''} ${badge?.name || badge?.kind || ''} ${Number(badge?.value || 0)}${badge?.unit || ''}`.trim()));
+        (block?.badges || []).forEach(badge => {
+          const value = Number(badge?.value || 0);
+          const numeric = value !== 0 || ['damage', 'heal', 'shield', 'resource'].includes(String(badge?.kind || '').trim());
+          blindLines.push(`- ${numeric ? '数值' : '状态'}：${badge?.targetName || badge?.targetId || ''} ${badge?.name || badge?.kind || ''}${numeric ? ` ${value}${badge?.unit || ''}` : ''}`.trim());
+        });
       });
     } else if (blindPass === 2) {
       blindLines.push('## 认知、候选与事实', '');

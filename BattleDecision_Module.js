@@ -808,8 +808,15 @@
     return candidates;
   }
 
+  function isHardControlStateName(name = '') {
+    return ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
+  }
+
   function hasActionCancellation(unit = {}) {
-    return Object.values(unit?.状态效果 || {}).some(state => /眩晕/.test(String(state?.状态 || state?.状态名称 || '')) || state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true);
+    return Object.values(unit?.状态效果 || {}).some(state =>
+      isHardControlStateName(state?.状态 || state?.状态名称) ||
+      state?.cannot_act === true || state?.skip_turn === true || state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true
+    );
   }
 
   function stateEntries(unit = {}) {
@@ -826,11 +833,12 @@
     });
   }
 
-  function actionQualityMultiplier(unit = {}) {
-    if (hasActionCancellation(unit)) return 0;
+  function actionQualityMultiplier(unit = {}, options = {}) {
+    if (!options.ignoreActionCancellation && hasActionCancellation(unit)) return 0;
     let multiplier = 1;
     stateEntries(unit).forEach(state => {
       const name = String(state?.状态 || state?.状态名称 || '').trim();
+      if (options.ignoreActionCancellation && isHardControlStateName(name)) return;
       const effects = state?.战斗效果 || {};
       const reactionPenalty = clamp(Number(effects?.reaction_penalty || 0), 0, 0.9);
       const dodgePenalty = clamp(Number(effects?.dodge_penalty || 0), 0, 0.9);
@@ -860,8 +868,8 @@
     return Math.max(preview.readShield(unit), stateShield);
   }
 
-  function bestBaseActionValue(worldSnapshot, unit) {
-    if (!preview.isAlive(unit) || hasActionCancellation(unit)) return 0;
+  function bestBaseActionValue(worldSnapshot, unit, options = {}) {
+    if (!preview.isAlive(unit) || (!options.ignoreActionCancellation && hasActionCancellation(unit))) return 0;
     const side = preview.sideOf(worldSnapshot, unit);
     const enemies = preview.listUnits(worldSnapshot).filter(entry => entry.side !== side).map(entry => entry.unit);
     if (!enemies.length) return 100;
@@ -901,7 +909,7 @@
     return Math.max(8, Math.min(100, relativeThreat), ...knownResponses.map(response => Math.max(0, Number(response?.baseActionValue || 0))));
   }
 
-  function teamCapacity(worldSnapshot, side, perspectiveSide, beliefState = {}) {
+  function teamCapacity(worldSnapshot, side, perspectiveSide, beliefState = {}, options = {}) {
     const entries = aliveEntries(worldSnapshot);
     const sideEntries = entries.filter(entry => entry.side === side);
     const opposingEntries = entries.filter(entry => entry.side !== side);
@@ -910,6 +918,7 @@
       const allied = side === perspectiveSide;
       const beliefUnit = beliefState?.units?.[preview.unitId(unit)] || {};
       const actionUnavailable = hasActionCancellation(unit);
+      const restoreActionAvailability = options.restoreActionAvailabilityFor?.has(preview.unitId(unit)) === true;
       const incomingThreatPercent = opposingEntries.reduce((threat, opposingEntry) => {
         const opposingUnit = opposingEntry.unit;
         const opposingBelief = beliefState?.units?.[preview.unitId(opposingUnit)] || {};
@@ -925,16 +934,16 @@
       return sum + preview.calculateUnitCapacity({
         unit,
         survivalProbability,
-        actionAvailability: actionUnavailable ? 0 : actionQualityMultiplier(unit),
-        bestLegalBaseActionValue: allied ? bestBaseActionValue(worldSnapshot, unit) : perceivedEnemyBaseValue(beliefUnit),
+        actionAvailability: actionUnavailable && !restoreActionAvailability ? 0 : actionQualityMultiplier(unit, { ignoreActionCancellation: restoreActionAvailability }),
+        bestLegalBaseActionValue: allied ? bestBaseActionValue(worldSnapshot, unit, { ignoreActionCancellation: restoreActionAvailability }) : perceivedEnemyBaseValue(beliefUnit),
       });
     }, 0);
   }
 
-  function stateUtility(worldSnapshot, actorSide, beliefState = {}) {
+  function stateUtility(worldSnapshot, actorSide, beliefState = {}, options = {}) {
     const sides = [...new Set(preview.listUnits(worldSnapshot).map(entry => entry.side))];
-    const own = teamCapacity(worldSnapshot, actorSide, actorSide, beliefState);
-    const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) => sum + teamCapacity(worldSnapshot, side, actorSide, beliefState), 0);
+    const own = teamCapacity(worldSnapshot, actorSide, actorSide, beliefState, options);
+    const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) => sum + teamCapacity(worldSnapshot, side, actorSide, beliefState, options), 0);
     return { own, enemy, total: own + enemy, utility: own - enemy };
   }
 
@@ -1433,6 +1442,21 @@
       : result
       ? 100 * (after.utility - before.utility) / Math.max(1, before.total)
       : directDefensiveUtility(candidate.declaration.actionKind, context);
+    if (result) {
+      const controlledDamagedTargets = new Set((candidate.declaration.targetIds || []).filter(targetId => {
+        const targetBefore = preview.findUnit(context.worldSnapshot, targetId);
+        const targetAfter = preview.findUnit(result.afterSnapshot, targetId);
+        return targetBefore && targetAfter && preview.sideOf(context.worldSnapshot, targetBefore) !== actorSide &&
+          hasActionCancellation(targetBefore) && preview.readHp(targetAfter) < preview.readHp(targetBefore);
+      }));
+      if (controlledDamagedTargets.size) {
+        const horizonOptions = { restoreActionAvailabilityFor: controlledDamagedTargets };
+        const beforeNextWindow = stateUtility(context.worldSnapshot, actorSide, context.beliefState, horizonOptions);
+        const afterNextWindow = stateUtility(result.afterSnapshot, actorSide, context.beliefState, horizonOptions);
+        const nextWindowGain = 100 * (afterNextWindow.utility - beforeNextWindow.utility) / Math.max(1, beforeNextWindow.total);
+        expectedStateGain = Math.max(expectedStateGain, nextWindowGain);
+      }
+    }
     if (candidate.creation?.useful) {
       const paidSnapshot = snapshotAfterResourceCosts(context.worldSnapshot, context.actorId, candidate.costs || {});
       const paidUtility = stateUtility(paidSnapshot, actorSide, context.beliefState);
