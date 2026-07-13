@@ -603,6 +603,164 @@
     };
   }
 
+  function fillObjectiveDamageBaselines(combatData = {}) {
+    const objectives = combatData?.胜负条件;
+    if (!objectives || typeof objectives !== 'object') return;
+    const entries = [
+      ...(Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : []).filter(Boolean).map(unit => ({ unit, side: 'PLAYER' })),
+      ...(Array.isArray(combatData?.参战者?.team_enemy) ? combatData.参战者.team_enemy : []).filter(Boolean).map(unit => ({ unit, side: 'ENEMY' })),
+    ];
+    ['victory', 'defeat'].forEach(groupKey => {
+      const conditions = objectives?.[groupKey]?.conditions;
+      if (!Array.isArray(conditions)) return;
+      conditions.forEach(condition => {
+        if (String(condition?.type || '').trim() !== 'UNIT_DAMAGED') return;
+        if (!condition.baselineHp || typeof condition.baselineHp !== 'object') condition.baselineHp = {};
+        const targetIds = new Set((Array.isArray(condition.targetIds) ? condition.targetIds : []).map(String));
+        entries.filter(entry => !condition.side || entry.side === condition.side).forEach(({ unit }) => {
+          const id = previewRuntime.unitId(unit);
+          const name = previewRuntime.unitName(unit);
+          if (targetIds.size && !targetIds.has(id) && !targetIds.has(name)) return;
+          if (!Object.prototype.hasOwnProperty.call(condition.baselineHp, id)) condition.baselineHp[id] = previewRuntime.readHp(unit);
+          if (name && !Object.prototype.hasOwnProperty.call(condition.baselineHp, name)) condition.baselineHp[name] = previewRuntime.readHp(unit);
+        });
+      });
+    });
+  }
+
+  function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
+    settlement.prepare(combatData, adapterOptions);
+    fillObjectiveDamageBaselines(combatData);
+    combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.actionQueueTrace = [];
+    delete runtime.actionQueueFatal;
+    delete runtime.withdrawalSuccess;
+  }
+
+  function evaluateBattleTerminal(context = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+    const combatData = context?.combatData || {};
+    const objectives = previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
+    combatData.胜负条件 = cloneValue(objectives);
+    const resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
+      round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
+      roundCompleted: context?.roundCompleted === true,
+    });
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.objectiveResolution = cloneValue(resolution);
+    if (resolution.terminal && !runtime.objectiveResolutionEventId) {
+      const event = settlement.writeLedgerEvent(combatData, {
+        eventKind: 'battle_objective_resolved',
+        round: Number(combatData?.回合 || 0),
+        actorName: 'SYSTEM',
+        actionName: '胜负条件',
+        actionType: 'battle_objective',
+        actorControl: 'SYSTEM',
+        actionRole: 'STATE_TICK',
+        result: resolution.winner,
+        resultState: 'COMPLETED',
+        ruleCode: `BATTLE_OBJECTIVE_${resolution.status}`,
+        meta: {
+          status: resolution.status,
+          winner: resolution.winner,
+          victoryMatches: resolution.victoryMatches,
+          defeatMatches: resolution.defeatMatches,
+          timeLimitReached: resolution.timeLimitReached,
+          objectives,
+        },
+      }, adapterOptions);
+      runtime.objectiveResolutionEventId = String(event?.eventId || '').trim();
+    }
+    return resolution;
+  }
+
+  function decideTeamContinuation(context = {}, adapterOptions = {}) {
+    const combatData = context?.combatData || {};
+    const runtime = ensureCombatRuntime(combatData);
+    if (adapterOptions.stopOnWithdrawal === true && runtime.withdrawalSuccess) return { continueSimulation: false, log: '' };
+    const settings = adapterOptions.autoContinueSettings;
+    if (!settings) return { continueSimulation: true, log: '' };
+    const currentRound = Number(context?.currentRound || 0);
+    const damageRatios = ensureLedger(combatData)
+      .filter(event => String(event?.eventKind || '').trim() === 'hit_result' && Number(event?.round || 0) === currentRound)
+      .map(event => {
+        const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetName || ''));
+        const damage = Math.max(0, Number(event?.appliedDamage ?? event?.meta?.damage ?? 0));
+        return damage / Math.max(1, previewRuntime.readHpMax(target || {}));
+      });
+    const maxDamageRatio = damageRatios.length ? Math.max(...damageRatios) : 0;
+    return decideDuelContinuation({
+      mode: context?.mode,
+      actorsAble: true,
+      activeDamage: maxDamageRatio,
+      passiveHpMax: 1,
+      passiveDamage: 0,
+      activeHpMax: 1,
+      settings,
+      roll: Math.random,
+    });
+  }
+
+  function readTeamAlive(combatData = {}) {
+    const player = Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : [];
+    const enemy = Array.isArray(combatData?.参战者?.team_enemy) ? combatData.参战者.team_enemy : [];
+    return {
+      playerAlive: player.filter(unit => unit && isUnitAbleToFight(unit)).length,
+      enemyAlive: enemy.filter(unit => unit && isUnitAbleToFight(unit)).length,
+    };
+  }
+
+  function validateBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
+    const invalid = settlement.validate(combatData, adapterOptions);
+    if (!invalid) return null;
+    const alive = readTeamAlive(combatData);
+    return {
+      rounds: 0,
+      roundStart: Number(combatData?.回合 || 0),
+      roundEnd: Number(combatData?.回合 || 0),
+      winner: 'unfinished',
+      ...alive,
+      logs: [`[魂灵塔资格驳回] ${String(invalid?.message || invalid)}`],
+      extraPatchOps: [],
+    };
+  }
+
+  function setUnitHp(unit = {}, value = 0) {
+    if (!unit || typeof unit !== 'object') return 0;
+    const stats = unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : unit;
+    const nextValue = Math.max(0, Math.min(previewRuntime.readHpMax(unit), Number(value || 0)));
+    if ('hp' in unit || Object.prototype.hasOwnProperty.call(unit, 'hp')) unit.hp = nextValue;
+    else unit.HP = nextValue;
+    if (stats && typeof stats === 'object') stats.HP = nextValue;
+    return nextValue;
+  }
+
+  function finalizeTeamBattle(context = {}) {
+    const combatData = context?.combatData || {};
+    if (context?.mode !== 'multi_round' || context?.winner !== 'enemy') return;
+    if (!['升灵台虚拟战斗', '魂灵塔冲塔'].includes(String(combatData?.战斗类型 || '突发遭遇'))) return;
+    (Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : []).filter(Boolean).forEach(unit => {
+      if (previewRuntime.readHp(unit) <= 0) setUnitHp(unit, 1);
+    });
+    if (Array.isArray(context?.logs)) context.logs.push('[虚拟战败保护] 玩家方全员战败，触发安全协议，强制弹出并锁定HP为 1！');
+  }
+
+  function createSettlementAdapters(settlement, adapterOptions = {}) {
+    return {
+      prepare: combatData => prepareBattleRuntime(combatData, settlement, adapterOptions),
+      validate: combatData => validateBattleRuntime(combatData, settlement, adapterOptions),
+      beginRound: (combatData, currentRound) => settlement.beginRound(combatData, currentRound, adapterOptions),
+      buildQueue: combatData => settlement.buildQueue(combatData, adapterOptions),
+      recordQueue() { throw new Error('battle_decision_record_queue_required'); },
+      executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => settlement.executeQueue(queue, combatData, currentRound, logs, extraPatchOps, adapterOptions),
+      settleRoundEnd: (combatData, logs) => settlement.settleRoundEnd(combatData, logs, adapterOptions),
+      readAlive: combatData => readTeamAlive(combatData),
+      evaluateTerminal: context => evaluateBattleTerminal(context, settlement, adapterOptions),
+      shouldContinue: context => decideTeamContinuation(context, adapterOptions),
+      finalize: context => finalizeTeamBattle(context),
+    };
+  }
+
   function runDecisionTeamBattle(options = {}) {
     const combatData = options?.combatData;
     const decide = options?.decide;
@@ -613,7 +771,7 @@
     if (typeof updateBelief !== 'function') throw new TypeError('battle_belief_updater_missing');
     if (typeof updatePublicBelief !== 'function') throw new TypeError('battle_public_belief_updater_missing');
     const settlement = options?.settlement || requireSettlementPrimitives();
-    const baseAdapters = settlement.createTeamAdapters(options?.adapterOptions || {});
+    const baseAdapters = createSettlementAdapters(settlement, options?.adapterOptions || {});
     const runtime = ensureCombatRuntime(combatData);
     runtime.decisionSimulation = true;
     const decisions = [];
@@ -2979,7 +3137,8 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'createTeamAdapters',
+      'prepare', 'validate', 'beginRound', 'buildQueue', 'executeQueue',
+      'settleRoundEnd', 'writeLedgerEvent',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -3289,6 +3448,8 @@
     buildFinalSummary,
     buildAiNarrativeSummary,
     auditPrototypeCoverage,
+    evaluateBattleTerminal,
+    readTeamAlive,
   });
 
   root.__LWCS_BATTLE_RUNTIME__ = api;

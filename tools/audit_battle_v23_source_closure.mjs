@@ -152,7 +152,19 @@ addCheck(
     !/function 写入行动轴初始意图节点\(/.test(battleUiSource) &&
     /function createCounterAction\(/.test(battleRuntimeSource) &&
     !/function 建立行为防反动作\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'createTeamAdapters',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /function createSettlementAdapters\(/.test(battleRuntimeSource) &&
+    /function fillObjectiveDamageBaselines\(/.test(battleRuntimeSource) &&
+    /function evaluateBattleTerminal\(/.test(battleRuntimeSource) &&
+    /function decideTeamContinuation\(/.test(battleRuntimeSource) &&
+    /function readTeamAlive\(/.test(battleRuntimeSource) &&
+    /function validateBattleRuntime\(/.test(battleRuntimeSource) &&
+    /function finalizeTeamBattle\(/.test(battleRuntimeSource) &&
+    !/function 评估并记录战斗目标\(|function 填充战斗受伤条件基准\(/.test(battleUiSource) &&
+    !/function 判定团战续推\(/.test(battleUiSource) &&
+    !/function getTeamLivingCount\(|function 读取团战存活单位数\(/.test(battleUiSource) &&
+    !/function 完成团战运行\(/.test(battleUiSource) &&
+    /const required = \[[\s\S]*?'prepare', 'validate', 'beginRound', 'buildQueue', 'executeQueue',[\s\S]*?'settleRoundEnd', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );
 addCheck(
@@ -271,7 +283,9 @@ addCheck(
 addCheck(
   'duelContinuationOwnedByRuntime',
   /function decideDuelContinuation\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.decideDuelContinuation\(/.test(battleUiSource) &&
+    /function decideTeamContinuation\(context = \{\}, adapterOptions = \{\}\)/.test(battleRuntimeSource) &&
+    /return decideDuelContinuation\(\{/.test(battleRuntimeSource) &&
+    !/BATTLE_RUNTIME\.decideDuelContinuation\(/.test(battleUiSource) &&
     !/continueThresholdReached/.test(battleUiSource),
 );
 addCheck(
@@ -286,10 +300,10 @@ addCheck(
 addCheck(
   'duelRoundDeclarationHasSinglePath',
   !/构建单挑回合宣告|执行单挑回合交锋|executeDuelRound/.test(battleUiSource) &&
-    /buildQueue:\s*generateActionQueue/.test(battleUiSource) &&
+    /buildQueue:\s*combatData\s*=>\s*generateActionQueue\(combatData\)/.test(settlementBindingSource) &&
     /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleRuntimeSource) &&
     /entry\.__decisionResolver\s*=/.test(battleRuntimeSource) &&
-    /executeQueue:\s*执行团战扁平行动队列/.test(battleUiSource),
+    /executeQueue:\s*\(queue, combatData, currentRound, logs, extraPatchOps\)\s*=>\s*执行团战扁平行动队列/.test(settlementBindingSource),
 );
 addCheck(
   'duelNpcPressureHasSingleSettlementPath',
@@ -310,9 +324,9 @@ addCheck(
 );
 addCheck(
   'duelRoundTickHasSingleDomainPath',
-  !/结算单挑回合尾阶段/.test(battleUiSource) &&
+    !/结算单挑回合尾阶段/.test(battleUiSource) &&
     [...battleUiSource.matchAll(/function settleTeamRoundEnd\(combatData, logs\)/g)].length === 1 &&
-    /settleRoundEnd:\s*settleTeamRoundEnd/.test(battleUiSource) &&
+    /settleRoundEnd:\s*\(combatData, logs\)\s*=>\s*settleTeamRoundEnd\(combatData, logs\)/.test(settlementBindingSource) &&
     /const sustainResult = settleSustainEffectsAtRoundEnd\(unit,[\s\S]*?const conditionResult = settleConditionsAtRoundEnd\(unit/.test(battleUiSource),
 );
 addCheck(
@@ -468,7 +482,8 @@ addCheck(
   'battleObjectiveEvaluatorIsShared',
   /function evaluateBattleObjectives\(/.test(battlePreviewSource) &&
     /preview\.evaluateBattleObjectives\(/.test(battleDecisionSource) &&
-    /BATTLE_PREVIEW\.evaluateBattleObjectives\(/.test(battleUiSource) &&
+    /previewRuntime\.evaluateBattleObjectives\(/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.evaluateBattleTerminal\(/.test(battleUiSource) &&
     /battle_objective_resolved/.test(`${battleUiSource}\n${battleRuntimeSource}`),
 );
 addCheck(

@@ -15826,7 +15826,13 @@ class BattleUIComponent {
     }
 
     BATTLE_RUNTIME.bindSettlementPrimitives({
-      createTeamAdapters: options => 构建团战运行时适配器(options),
+      prepare: combatData => 准备团战运行态(combatData),
+      validate: combatData => 校验团战运行态(combatData),
+      beginRound: (combatData, currentRound) => 开始团战回合(combatData, currentRound),
+      buildQueue: combatData => generateActionQueue(combatData),
+      executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
+      settleRoundEnd: (combatData, logs) => settleTeamRoundEnd(combatData, logs),
+      writeLedgerEvent: (combatData, payload) => 写入战斗事件账本(combatData, payload),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -35422,13 +35428,12 @@ class BattleUIComponent {
               取消剩余自然机会(node, 'WITHDRAW_SUCCESS', '战斗已因成功撤离结束');
               break;
             }
-            const objectiveResolution = 评估并记录战斗目标(combatData, { currentRound: round, roundCompleted: false });
+            const objectiveResolution = BATTLE_RUNTIME.evaluateBattleTerminal({ combatData, currentRound: round, roundCompleted: false });
             if (objectiveResolution.terminal) {
               取消剩余自然机会(node, 'BATTLE_OBJECTIVE_REACHED', `战斗胜负条件已成立：${objectiveResolution.status}`);
               break;
             }
-            const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
-            const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
+            const { playerAlive: teamPlayerAlive, enemyAlive: teamEnemyAlive } = BATTLE_RUNTIME.readTeamAlive(combatData);
             if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) {
               取消剩余自然机会(node, 'BATTLE_TERMINATED', '战斗终态已成立，后续自然行动取消');
               break;
@@ -36498,74 +36503,6 @@ class BattleUIComponent {
           return 结算已宣告动作();
         }
 
-        function getTeamLivingCount(team) {
-          return (team || []).filter(unit => {
-            bindCombatParticipant(unit);
-            syncCombatActionState(unit);
-            return isCombatUnitAbleToFight(unit);
-          }).length;
-        }
-
-        function 评估并记录战斗目标(combatData = {}, options = {}) {
-          const objectives = BATTLE_PREVIEW.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
-          combatData.胜负条件 = deepClonePlain(objectives);
-          const resolution = BATTLE_PREVIEW.evaluateBattleObjectives(combatData, objectives, {
-            round: Number(options.currentRound ?? combatData?.回合 ?? 0),
-            roundCompleted: options.roundCompleted === true,
-          });
-          const runtime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
-          runtime.objectiveResolution = deepClonePlain(resolution);
-          if (resolution.terminal && !runtime.objectiveResolutionEventId) {
-            const event = 写入战斗事件账本(combatData, {
-              eventKind: 'battle_objective_resolved',
-              round: Number(combatData?.回合 || 0),
-              actorName: 'SYSTEM',
-              actionName: '胜负条件',
-              actionType: 'battle_objective',
-              actorControl: 'SYSTEM',
-              actionRole: 'STATE_TICK',
-              result: resolution.winner,
-              resultState: 'COMPLETED',
-              ruleCode: `BATTLE_OBJECTIVE_${resolution.status}`,
-              meta: {
-                status: resolution.status,
-                winner: resolution.winner,
-                victoryMatches: resolution.victoryMatches,
-                defeatMatches: resolution.defeatMatches,
-                timeLimitReached: resolution.timeLimitReached,
-                objectives,
-              },
-            });
-            runtime.objectiveResolutionEventId = String(event?.eventId || '').trim();
-          }
-          return resolution;
-        }
-
-        function 填充战斗受伤条件基准(combatData = {}) {
-          const objectives = combatData?.胜负条件;
-          if (!objectives || typeof objectives !== 'object') return;
-          const entries = [
-            ...读取战斗主队单位列表(combatData, '玩家').map(unit => ({ unit, side: 'PLAYER' })),
-            ...读取战斗主队单位列表(combatData, '敌方').map(unit => ({ unit, side: 'ENEMY' })),
-          ];
-          ['victory', 'defeat'].forEach(groupKey => {
-            const conditions = objectives?.[groupKey]?.conditions;
-            if (!Array.isArray(conditions)) return;
-            conditions.forEach(condition => {
-              if (String(condition?.type || '').trim() !== 'UNIT_DAMAGED') return;
-              if (!condition.baselineHp || typeof condition.baselineHp !== 'object') condition.baselineHp = {};
-              const targetIds = new Set((Array.isArray(condition.targetIds) ? condition.targetIds : []).map(String));
-              entries.filter(entry => !condition.side || entry.side === condition.side).forEach(({ unit }) => {
-                const id = String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim();
-                const name = String(unit?.name || unit?.名称 || id).trim();
-                if (targetIds.size && !targetIds.has(id) && !targetIds.has(name)) return;
-                if (!Object.prototype.hasOwnProperty.call(condition.baselineHp, id)) condition.baselineHp[id] = getCombatHpValue(unit);
-                if (name && !Object.prototype.hasOwnProperty.call(condition.baselineHp, name)) condition.baselineHp[name] = getCombatHpValue(unit);
-              });
-            });
-          });
-        }
-
         function settleTeamRoundEnd(combatData, logs) {
           const allUnits = [
             ...读取战斗主队单位列表(combatData, '玩家'),
@@ -36590,87 +36527,23 @@ class BattleUIComponent {
           if (规则改写回合尾日志) logs.push(`[团战回合尾] ${规则改写回合尾日志}`);
         }
 
-        function 构建团战运行时适配器(options = {}) {
-          const readAlive = combatData => ({
-            playerAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家')),
-            enemyAlive: getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方')),
-          });
-          return {
-            prepare(combatData) {
-              hydrateCombatData(combatData);
-              填充战斗受伤条件基准(combatData);
-              combatData.胜负条件 = deepClonePlain(BATTLE_PREVIEW.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
-              确保召唤单位表(combatData);
-              const queueRuntime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
-              queueRuntime.actionQueueTrace = [];
-              delete queueRuntime.actionQueueFatal;
-              delete queueRuntime.withdrawalSuccess;
-            },
-            validate(combatData) {
-              if (!isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) return null;
-              const rosterCheck = validateSoulTowerCombatRoster(combatData);
-              if (rosterCheck.ok) return null;
-              const alive = readAlive(combatData);
-              return {
-                rounds: 0,
-                roundStart: Number(combatData?.回合 || 0),
-                roundEnd: Number(combatData?.回合 || 0),
-                winner: 'unfinished',
-                ...alive,
-                logs: [`[魂灵塔资格驳回] ${rosterCheck.message}`],
-                extraPatchOps: [],
-              };
-            },
-            beginRound(combatData, currentRound) {
-              清理本回合多威胁运行态(combatData);
-              记录战斗上下文时光回溯快照(combatData);
-              const summonLog = 执行召唤回合开始(combatData);
-              return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
-            },
-            buildQueue: generateActionQueue,
-            recordQueue() { throw new Error('battle_decision_record_queue_required'); },
-            executeQueue: 执行团战扁平行动队列,
-            settleRoundEnd: settleTeamRoundEnd,
-            readAlive,
-            evaluateTerminal({ combatData, currentRound, roundCompleted }) {
-              return 评估并记录战斗目标(combatData, { currentRound, roundCompleted });
-            },
-            shouldContinue({ combatData, mode, currentRound }) {
-              const runtime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
-              if (options.stopOnWithdrawal === true && runtime.withdrawalSuccess) {
-                return { continueSimulation: false, log: '' };
-              }
-              const settings = options.autoContinueSettings;
-              if (!settings) return { continueSimulation: true, log: '' };
-              const damageRatios = BATTLE_RUNTIME.ensureLedger(combatData)
-                .filter(event => String(event?.eventKind || '').trim() === 'hit_result' && Number(event?.round || 0) === Number(currentRound || 0))
-                .map(event => {
-                  const target = findCombatUnitByName(combatData, event?.targetName || '');
-                  const damage = Math.max(0, Number(event?.appliedDamage ?? event?.meta?.damage ?? 0));
-                  return damage / Math.max(1, getCombatHpMaxValue(target));
-                });
-              const maxDamageRatio = damageRatios.length ? Math.max(...damageRatios) : 0;
-              return BATTLE_RUNTIME.decideDuelContinuation({
-                mode,
-                actorsAble: true,
-                activeDamage: maxDamageRatio,
-                passiveHpMax: 1,
-                passiveDamage: 0,
-                activeHpMax: 1,
-                settings,
-                roll: Math.random,
-              });
-            },
-            finalize({ combatData, mode, winner, logs }) {
-              if (mode !== 'multi_round' || winner !== 'enemy') return;
-              const combatType = combatData.战斗类型 || '突发遭遇';
-              if (!['升灵台虚拟战斗', '魂灵塔冲塔'].includes(combatType)) return;
-              读取战斗主队单位列表(combatData, '玩家').forEach(unit => {
-                if (getCombatHpValue(unit) <= 0) 设置战斗血量值(unit, 1);
-              });
-              logs.push('[虚拟战败保护] 玩家方全员战败，触发安全协议，强制弹出并锁定HP为 1！');
-            },
-          };
+        function 准备团战运行态(combatData = {}) {
+          hydrateCombatData(combatData);
+          确保召唤单位表(combatData);
+        }
+
+        function 校验团战运行态(combatData = {}) {
+          if (!isSoulTowerCombatTypeValue(combatData?.战斗类型 || '')) return null;
+          const rosterCheck = validateSoulTowerCombatRoster(combatData);
+          if (rosterCheck.ok) return null;
+          return { message: rosterCheck.message };
+        }
+
+        function 开始团战回合(combatData = {}, currentRound = 0) {
+          清理本回合多威胁运行态(combatData);
+          记录战斗上下文时光回溯快照(combatData);
+          const summonLog = 执行召唤回合开始(combatData);
+          return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
         }
 
         function runTeamBattleSimulation(combatData, maxRounds = 3) {
