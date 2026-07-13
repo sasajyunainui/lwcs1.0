@@ -74,7 +74,7 @@ addCheck(
 );
 addCheck(
   'objectiveScoringOwnedByDecision',
-  /const objectiveUtility = clamp\(expectedStateGain \+ terminalUtility \+ informationValue - irreversibleCost - catastrophicRisk, -200, 200\)/.test(battleDecisionSource) &&
+  /const objectiveUtility = clamp\(expectedStateGain \+ terminalUtility \+ objectiveProgress \+ informationValue - irreversibleCost - catastrophicRisk, -200, 200\)/.test(battleDecisionSource) &&
     !/calculateObjectiveScore|summarizeScoreContributions|评估技能规划净收益/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(

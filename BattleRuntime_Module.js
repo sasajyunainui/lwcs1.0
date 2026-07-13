@@ -2073,7 +2073,7 @@
     });
 
     const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility', 'vector', 'rejectionCode', 'classification', 'alternativeGap', 'selected'];
-    const vectorFields = ['expectedStateGain', 'terminalUtility', 'informationValue', 'resourcePreservation', 'survivalLowerBound', 'irreversibleCost', 'catastrophicRisk'];
+    const vectorFields = ['expectedStateGain', 'terminalUtility', 'objectiveProgress', 'informationValue', 'resourcePreservation', 'survivalLowerBound', 'irreversibleCost', 'catastrophicRisk'];
     const forbiddenSelections = new Set(['ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'DOMINATED', 'ZERO_PROGRESS']);
     scoringAudit.forEach((actionAudit, actionIndex) => {
       const candidates = Array.isArray(actionAudit?.candidates) ? actionAudit.candidates.filter(Boolean) : [];
@@ -2101,6 +2101,7 @@
         const expectedUtility = Math.max(-200, Math.min(200,
           Number(vector.expectedStateGain) +
           Number(vector.terminalUtility) +
+          Number(vector.objectiveProgress) +
           Number(vector.informationValue) -
           Number(vector.irreversibleCost) -
           Number(vector.catastrophicRisk)
