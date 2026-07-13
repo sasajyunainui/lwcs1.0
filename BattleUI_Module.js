@@ -37143,6 +37143,19 @@ class BattleUIComponent {
                 return { actorId, sourceId, decision };
               };
               decisionRuntime.decisionReactionDecider = ({ reactor, sourceActor, incomingAction, ratio }) => {
+                const cannotReact = reactor?.temp_cannot_react === true || Object.values(reactor?.状态效果 || {}).some(state => {
+                  const effects = state?.战斗效果 || state?.计算层效果 || {};
+                  return effects.cannot_react === true || effects.skip_turn === true;
+                });
+                if (cannotReact) {
+                  return {
+                    type: '无法反应',
+                    action_type: '无法反应',
+                    log: `${reactor?.name || reactor?.名称 || '目标'}受控制影响，无法应对这次攻击。`,
+                    skill: null,
+                    def_mult: 1.0,
+                  };
+                }
                 const { actorId, sourceId, decision } = 运行决策机会({ reactor, sourceActor, incomingAction, ratio, actionRole: 'REACTION' });
                 const action = 构建决策声明动作({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
                 const reactionKind = String(decision.selected?.declaration?.actionKind || '').trim();

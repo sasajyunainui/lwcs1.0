@@ -1488,6 +1488,33 @@
     return actorWon ? 100 : -100;
   }
 
+  function intentProgressUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
+    const objectiveContext = objectiveActorContext(afterSnapshot, actorSide, context?.battleIntent || {});
+    if (!objectiveContext.objectives.explicit) return 0;
+    const thresholdConditions = objectiveContext.successConditions.filter(condition => condition.type === 'HP_RATIO_AT_OR_BELOW');
+    if (!thresholdConditions.length) return 0;
+    const conditionProgress = (snapshot, condition) => {
+      const targetIds = new Set((condition.targetIds || []).map(String));
+      const targets = aliveEntries(snapshot).filter(entry => {
+        const side = /player|玩家|我方|己方|友方/i.test(String(entry.side || '')) ? 'PLAYER' : 'ENEMY';
+        return (!condition.side || side === condition.side) &&
+          (!targetIds.size || targetIds.has(preview.unitId(entry.unit)) || targetIds.has(preview.unitName(entry.unit)));
+      });
+      if (!targets.length) return 0;
+      const values = targets.map(entry => clamp((1 - preview.readHp(entry.unit) / preview.readHpMax(entry.unit)) / Math.max(0.01, 1 - condition.threshold), 0, 1));
+      return condition.scope === 'ALL' ? Math.min(...values) : Math.max(...values);
+    };
+    const progressGain = thresholdConditions.reduce((best, condition) => Math.max(
+      best,
+      conditionProgress(afterSnapshot, condition) - conditionProgress(beforeSnapshot, condition),
+    ), 0);
+    if (!(progressGain > 0)) return 0;
+    const elapsedRounds = Math.max(0, Number(afterSnapshot?.回合 || 0) - objectiveContext.objectives.startRound);
+    const remainingRounds = Math.max(1, objectiveContext.objectives.maxRounds - elapsedRounds);
+    const urgency = clamp(objectiveContext.objectives.maxRounds / remainingRounds, 1, 2);
+    return Math.min(100, 100 * progressGain * urgency);
+  }
+
   function scoreCandidate(candidate, context) {
     const actor = preview.findUnit(context.worldSnapshot, context.actorId);
     const actorSide = preview.sideOf(context.worldSnapshot, actor);
@@ -1616,6 +1643,9 @@
     const terminalUtility = result
       ? intentTerminalUtility(context.worldSnapshot, result.afterSnapshot, actorSide, context)
       : withdrawalTerminalUtility;
+    const objectiveProgress = result && terminalUtility === 0
+      ? intentProgressUtility(context.worldSnapshot, result.afterSnapshot, actorSide, context)
+      : 0;
     const actionCancelled = (result?.contributions || []).some(entry => entry.outcomeKind === 'ACTION_CANCELLED');
     let controlOverlap = false;
     if (actionCancelled) {
@@ -1678,8 +1708,8 @@
         : []),
       { nodeType: 'ACTOR_NEXT_OPPORTUNITY', baseActionValue: bestBaseActionValue(result?.afterSnapshot || context.worldSnapshot, actorAfter || actor) },
     ].slice(0, 12) : [{ nodeType: 'CURRENT_ACTION', candidateId: candidate.candidateId }];
-    const objectiveUtility = clamp(expectedStateGain + terminalUtility + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
-    const hasProgress = directStateGain > 0.0001 || terminalUtility > 0 || informationValue > 0;
+    const objectiveUtility = clamp(expectedStateGain + terminalUtility + objectiveProgress + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
+    const hasProgress = directStateGain > 0.0001 || terminalUtility > 0 || objectiveProgress > 0 || informationValue > 0;
     const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0 || ['EQUIP', 'USE_ITEM'].includes(candidate.declaration.actionKind);
     const hasMeaningfulPreviewEffect = candidate.creation?.useful === true || !!result && (
       (result.scheduledEvents || []).length > 0 ||
@@ -1719,6 +1749,7 @@
       vector: {
         expectedStateGain,
         terminalUtility,
+        objectiveProgress,
         informationValue,
         resourcePreservation: -Object.entries(candidate.costs || {}).reduce((sum, [resource, value]) => {
           const text = String(value ?? '').trim();
@@ -1736,7 +1767,7 @@
   }
 
   function dominates(left, right) {
-    const gains = ['expectedStateGain', 'terminalUtility', 'informationValue', 'resourcePreservation', 'survivalLowerBound'];
+    const gains = ['expectedStateGain', 'terminalUtility', 'objectiveProgress', 'informationValue', 'resourcePreservation', 'survivalLowerBound'];
     const costs = ['irreversibleCost', 'catastrophicRisk'];
     const noWorse = gains.every(key => left.vector[key] >= right.vector[key] - 1e-9) && costs.every(key => left.vector[key] <= right.vector[key] + 1e-9);
     const better = gains.some(key => left.vector[key] > right.vector[key] + 1e-9) || costs.some(key => left.vector[key] < right.vector[key] - 1e-9);

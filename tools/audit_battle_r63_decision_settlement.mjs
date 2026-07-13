@@ -691,6 +691,27 @@ const wastedDefense = captureResult.decisions.filter(entry =>
   ['DEFEND', 'EVADE'].includes(entry?.selected?.declaration?.actionKind)
 );
 assert.equal(wastedDefense.length, 0, `敌方下一行动已取消仍浪费机会防御:${JSON.stringify(wastedDefense.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
+assert.equal(captureResult.finalBattleReport?.objectiveWinner, 'player', `显式生命阈值没有在回合上限内驱动有效收束:${captureResult.finalBattleReport?.text || ''}`);
+assert.ok(captureResult.roundsExecuted <= captureDefinition.rounds, '生命阈值目标在回合上限后才成立');
+
+const controlOverlapDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'team_control_overlap');
+assert.ok(controlOverlapDefinition, '控制重叠人工案例缺失');
+const controlOverlapResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: controlOverlapDefinition.caseId,
+  seed: controlOverlapDefinition.seed,
+  combatData: controlOverlapDefinition.combatData,
+  mode: 'team_preview',
+  rounds: controlOverlapDefinition.rounds,
+  initialBelief: controlOverlapDefinition.initialBelief,
+  battleIntent: { mode: controlOverlapDefinition.intent },
+  settings: {},
+});
+const controlledReactionFallbacks = controlOverlapResult.decisions.filter(entry =>
+  entry?.actionRole === 'REACTION' && entry?.selected?.forcedFallback === true
+);
+assert.equal(controlledReactionFallbacks.length, 0, `无法反应的受控单位仍被强塞防御兜底:${JSON.stringify(controlledReactionFallbacks.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
+assert.ok(controlOverlapResult.ledger.some(event => event?.eventKind === 'pass' && event?.result === 'reaction_failed'), '受控单位失去反应机会后缺少结构化失败事实');
 
 const hpThresholdInput = combatData();
 hpThresholdInput.战斗意图 = '压制测试';
@@ -728,6 +749,8 @@ const surviveResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
 });
 assert.equal(surviveResult.roundsExecuted, 2, '坚持回合条件没有在完成指定回合后停止');
 assert.equal(surviveResult.finalBattleReport?.objectiveWinner, 'player', '坚持指定回合没有形成我方胜利终态');
+assert.match(String(surviveResult.finalBattleReport?.headline || ''), /我方获胜/, '坚持回合在上限边界达成时被误写为时限平局');
+assert.doesNotMatch(String(surviveResult.finalBattleReport?.text || ''), /双方未分胜负|未能在回合上限前达成/, '坚持回合胜利仍被时限文案覆盖');
 assert.ok(surviveResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '坚持回合目标没有进入保命问题识别');
 
 const timeLimitInput = combatData();

@@ -916,7 +916,7 @@
         reasonText: String(event?.meta?.reasonText || '').trim(),
         remainingCastTime: Math.max(0, Number(event?.meta?.remainingCastTime || 0)),
         objectiveReason: kind === 'battle_objective_resolved'
-          ? event?.meta?.timeLimitReached === true ? 'TIME_LIMIT'
+          ? String(event?.meta?.winner || event?.result || '').trim() === 'draw' && event?.meta?.timeLimitReached === true ? 'TIME_LIMIT'
             : Array.isArray(event?.meta?.victoryMatches) && event.meta.victoryMatches.some(Boolean) &&
               Array.isArray(event?.meta?.defeatMatches) && event.meta.defeatMatches.some(Boolean) ? 'CONFLICT'
               : 'CONDITION'
@@ -1470,7 +1470,7 @@
     const enemyDefeated = enemyMetric.alive <= 0 && enemyMetric.total > 0;
     const objectiveEvent = [...ledger].reverse().find(event => String(event?.eventKind || '').trim() === 'battle_objective_resolved');
     const objectiveWinner = String(objectiveEvent?.meta?.winner || objectiveEvent?.result || '').trim();
-    const objectiveTimedOut = objectiveEvent?.meta?.timeLimitReached === true;
+    const objectiveTimedOut = objectiveWinner === 'draw' && objectiveEvent?.meta?.timeLimitReached === true;
     const objectiveConflict = !objectiveTimedOut && objectiveWinner === 'draw' &&
       Array.isArray(objectiveEvent?.meta?.victoryMatches) && objectiveEvent.meta.victoryMatches.some(Boolean) &&
       Array.isArray(objectiveEvent?.meta?.defeatMatches) && objectiveEvent.meta.defeatMatches.some(Boolean);
