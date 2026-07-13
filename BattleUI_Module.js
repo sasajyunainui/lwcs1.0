@@ -282,6 +282,10 @@ class BattleUIComponent {
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
+    const BATTLE_DECISION = root.__LWCS_BATTLE_DECISION__;
+    if (BATTLE_RUNTIME.version !== '7.3-R6.3') throw new Error(`battle_runtime_version_mismatch:${BATTLE_RUNTIME.version || 'missing'}`);
+    if (BATTLE_PREVIEW.version !== '7.3-R6.3-preview-2') throw new Error(`battle_preview_version_mismatch:${BATTLE_PREVIEW.version || 'missing'}`);
+    if (BATTLE_DECISION?.version !== '7.3-R6.3-decision-2') throw new Error(`battle_decision_version_mismatch:${BATTLE_DECISION?.version || 'missing'}`);
     const SHARED_SKILL_MECHANISM_REGISTRY = root.__LWCS_SKILL_MECHANISM_REGISTRY__;
     if (!SHARED_SKILL_MECHANISM_REGISTRY || BATTLE_RUNTIME.prototypeRegistry !== SHARED_SKILL_MECHANISM_REGISTRY.原型定义) {
       throw new Error('battle_runtime_registry_contract_mismatch');
@@ -15884,6 +15888,30 @@ class BattleUIComponent {
         getScoringMutationCount: () => Number(战斗评分预估写入次数 || 0),
         executeTeam: (combatData, rounds) => runTeamBattleSimulation(combatData, rounds),
         executeDecisionTeam: (combatData, rounds, decide, updateBelief, updatePublicBelief, mode = 'multi_round') => runDecisionTeamBattleSimulation(combatData, rounds, decide, updateBelief, updatePublicBelief, mode),
+        executeDeclaration: ({ combatData, declaration, seed }) => {
+          const actorId = String(declaration?.actorId || '').trim();
+          const actor = [
+            ...读取战斗主队单位列表(combatData, '玩家'),
+            ...读取战斗主队单位列表(combatData, '敌方'),
+            ...读取召唤单位列表(combatData),
+          ].find(unit => isCombatUnitIdentityMatch(unit, actorId));
+          if (!actor || !isCombatUnitAbleToFight(actor)) throw new Error('battle_declaration_actor_unavailable');
+          const action = 构建决策声明动作(declaration, actor, combatData);
+          const runtime = 确保战斗运行态(combatData);
+          runtime.decisionSeed = Math.max(1, Math.floor(Number(seed || 1)));
+          runtime.playerLockedNaturalAction = {
+            round: Number(combatData?.回合 || 0) + 1,
+            actorName: String(actor?.name || actor?.名称 || actorId).trim(),
+            targetName: String(action?.target_name || '').trim(),
+            action,
+            consumed: false,
+          };
+          try {
+            return 运行正式决策战斗(combatData, 1, 'single_round');
+          } finally {
+            delete runtime.playerLockedNaturalAction;
+          }
+        },
         executeDuel: (actionText, options) => onPlayerAttack(actionText, options),
         buildPublicReportBlocks: (eventLedger, limit, context) => 构建事件账本公开战报Blocks(eventLedger, limit, context),
         normalizePublicEntry: entry => 归一公开战报Block条目(entry),
@@ -24902,6 +24930,10 @@ class BattleUIComponent {
           战斗效果: createEmptyCombatEffectMap(),
         };
         runtime.equippedDecisionItem = { id: 装备ID, name: String(装备?.name || 装备?.名称 || 装备ID).trim(), stateKey: 状态键 };
+        const 装备签名 = String(动作?.__equipmentSignature || '').trim();
+        if (装备签名) {
+          runtime.equipmentDecisionSignatures = [...new Set([...(runtime.equipmentDecisionSignatures || []), 装备签名])];
+        }
         动作.skill._效果数组 = [];
         单位.final = buildCombatFinalStats(单位);
         return `[装备完成] ${单位?.name || 单位?.名称 || '行动者'}装备【${runtime.equippedDecisionItem.name}】。`;
@@ -36795,7 +36827,7 @@ class BattleUIComponent {
           }
           if (actionKind === 'EQUIP') {
             const equipment = deepClonePlain(declaration.skill || {});
-            return { id: declaration.actionId, type: 'equipment', action_type: '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '', cast_time: 10 };
+            return { id: declaration.actionId, type: 'equipment', action_type: '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '', cast_time: 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
           }
           const actionType = {
             BASIC_ATTACK: '常规攻击',

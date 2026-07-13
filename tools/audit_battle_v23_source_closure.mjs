@@ -120,6 +120,30 @@ addCheck(
     !/return requireEngine\(\)\.runBattleCase/.test(battleRuntimeSource),
 );
 addCheck(
+  'formalDeclarationExecutionOwnedByRuntime',
+  /function executeDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /executeDeclaration,/.test(battleRuntimeSource) &&
+    /domain\.executeDeclaration\(/.test(battleRuntimeSource) &&
+    /executeDeclaration:\s*\(\{ combatData, declaration, seed \}\)\s*=>/.test(battleUiSource) &&
+    /playerLockedNaturalAction/.test(battleUiSource),
+);
+addCheck(
+  'battleModuleVersionsAreExactContracts',
+  /battle_decision_preview_version_mismatch/.test(battleDecisionSource) &&
+    /battle_runtime_preview_version_mismatch/.test(battleRuntimeSource) &&
+    /battle_runtime_decision_version_mismatch/.test(battleRuntimeSource) &&
+    /battle_runtime_version_mismatch/.test(battleUiSource) &&
+    /battle_preview_version_mismatch/.test(battleUiSource) &&
+    /battle_decision_version_mismatch/.test(battleUiSource),
+);
+addCheck(
+  'candidateClassificationAndAlternativeGapOwnedByDecision',
+  /function classifyCandidateEvidence\(candidates = \[\]\)/.test(battleDecisionSource) &&
+    /classification:\s*candidate\.classification/.test(battleDecisionSource) &&
+    /alternativeGap:\s*Number\(candidate\.alternativeGap/.test(battleDecisionSource) &&
+    !/alternativeGap\s*[+\-]=|objectiveUtility\s*[+\-]=\s*alternativeGap/.test(battleDecisionSource),
+);
+addCheck(
   'structuredReportFactsOwnedByRuntime',
   /function buildActionChains\(eventLedger = \[\], resolutionTrace = \[\]\)/.test(battleRuntimeSource) &&
     /function buildReportBlocks\(eventLedger = \[\], decisionTrace = \[\], publicEntries = \[\]\)/.test(battleRuntimeSource) &&

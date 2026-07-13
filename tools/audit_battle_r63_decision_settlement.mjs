@@ -117,6 +117,34 @@ const scopeNode = Object.assign(makeNode(), { querySelector(selector) { return s
 const container = { innerHTML: '', querySelector(selector) { return selector === '.battle-module-scope' ? scopeNode : null; } };
 new sandbox.BattleUIComponent(container, {}, {});
 
+const formalInput = combatData();
+const formalResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
+  combatData: formalInput,
+  declaration: { actionKind: 'BASIC_ATTACK', actorId: 'player-a', targetIds: ['enemy-a'] },
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  seed: 6307,
+});
+const formalLedger = sandbox.__LWCS_BATTLE_RUNTIME__.ensureLedger(formalInput);
+const formalTrace = sandbox.__LWCS_BATTLE_RUNTIME__.ensureTrace(formalInput);
+const formalStarts = formalLedger.filter(event => event?.eventKind === 'action_start' && event?.actorControl === 'PLAYER_LOCKED');
+assert.equal(formalStarts.length, 1, 'executeDeclaration没有且仅有一个PLAYER_LOCKED主动声明');
+assert.equal(formalStarts[0].actorName, 'player-a', 'executeDeclaration行动者与声明不一致');
+assert.equal(formalStarts[0].targetName, 'enemy-a', 'executeDeclaration目标与声明不一致');
+assert.ok(formalLedger.length > 0 && formalTrace.length > 0 && Number(formalResult?.rounds || 0) === 1, 'executeDeclaration未进入正式Ledger/Trace结算');
+const deadTargetInput = combatData();
+deadTargetInput.参战者.team_enemy[0].状态.存活 = false;
+deadTargetInput.参战者.team_enemy[0].属性.HP = 0;
+assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
+  combatData: deadTargetInput,
+  declaration: { actionKind: 'BASIC_ATTACK', actorId: 'player-a', targetIds: ['enemy-a'] },
+  seed: 6307,
+}), /battle_declaration_mechanically_illegal/, 'executeDeclaration接受死亡目标');
+
+const matchingRuntime = sandbox.__LWCS_BATTLE_RUNTIME__;
+sandbox.__LWCS_BATTLE_RUNTIME__ = { ...matchingRuntime, version: 'wrong-runtime' };
+assert.throws(() => new sandbox.BattleUIComponent(container, {}, {}), /battle_runtime_version_mismatch/, 'BattleUI未拒绝错误Runtime版本');
+sandbox.__LWCS_BATTLE_RUNTIME__ = matchingRuntime;
+
 const input = combatData();
 const before = JSON.stringify(input);
 const result = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
@@ -152,6 +180,49 @@ const damagingActors = new Set(result.ledger
   .map(event => event?.actorName));
 assert.ok(damagingActors.has('player-a') && damagingActors.has('enemy-a'), '双方主动命中没有形成唯一伤害事实');
 assert.equal(result.audit?.fatals?.length || 0, 0, `正式决策事实审计失败:${JSON.stringify(result.audit?.fatals || [])}`);
+
+const itemDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'item_creation_consumption');
+assert.ok(itemDefinition, '造物消费人工案例缺失');
+const itemCombat = structuredClone(itemDefinition.combatData);
+const itemActor = itemCombat.参战者.team_player.find(unit => String(unit?.name || unit?.名称 || '') === '徐笠智');
+const creationSkill = sandbox.__LWCS_BATTLE_DECISION__.collectSkills(itemActor || {})
+  .find(skill => String(skill?.name || skill?.魂技名 || '').includes('恢复大肉包'));
+assert.ok(itemActor && creationSkill, '造物者或恢复大肉包技能缺失');
+sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
+  combatData: itemCombat,
+  declaration: {
+    actionKind: 'RELEASE_SKILL',
+    actorId: '徐笠智',
+    targetIds: ['徐笠智'],
+    skill: creationSkill,
+  },
+  seed: itemDefinition.seed,
+});
+sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
+  combatData: itemCombat,
+  declaration: { actionKind: 'BASIC_ATTACK', actorId: '徐笠智', targetIds: ['苏沐'] },
+  seed: itemDefinition.seed + 1,
+});
+const itemBeliefRun = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'item-belief-replay',
+  seed: itemDefinition.seed,
+  combatData: structuredClone(itemDefinition.combatData),
+  mode: 'team_preview',
+  rounds: 2,
+  settings: {},
+});
+const itemBelief = [...itemBeliefRun.decisions].reverse().find(entry => entry.actorId === '徐笠智')?.beliefState || { confidence: 0.55 };
+const postCreationDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: itemCombat,
+  actorId: '徐笠智',
+  beliefState: itemBelief,
+  seed: itemDefinition.seed + 1,
+});
+const createdItemCandidates = postCreationDecision.candidates.filter(candidate => candidate.declaration?.actionKind === 'USE_ITEM');
+assert.ok(createdItemCandidates.length > 0, `造物结算后成品未进入USE_ITEM候选:${JSON.stringify(itemActor?.背包 || {})}`);
+assert.ok(createdItemCandidates.some(candidate => !['HARD_INVALID', 'DOMINATED'].includes(candidate.classification)), `造物成品全部被错误禁止:${JSON.stringify(createdItemCandidates.map(candidate => ({ id: candidate.candidateId, targetIds: candidate.declaration.targetIds, utility: candidate.objectiveUtility, rejectionCode: candidate.rejectionCode, classification: candidate.classification, irreversibleCost: candidate.vector?.irreversibleCost })))}`);
+assert.equal(postCreationDecision.selected.declaration.actionKind, 'USE_ITEM', `队友进入危机后仍不使用已造恢复物:${JSON.stringify({ selected: { id: postCreationDecision.selected.candidateId, utility: postCreationDecision.selected.objectiveUtility, vector: postCreationDecision.selected.vector }, items: createdItemCandidates.map(candidate => ({ id: candidate.candidateId, targetIds: candidate.declaration.targetIds, utility: candidate.objectiveUtility, vector: candidate.vector, rejectionCode: candidate.rejectionCode, classification: candidate.classification })) })}`);
 
 const deterministicInput = combatData();
 const deterministicArgs = {

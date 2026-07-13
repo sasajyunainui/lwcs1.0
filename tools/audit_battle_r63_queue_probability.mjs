@@ -36,7 +36,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.self = sandbox;
 vm.createContext(sandbox);
-for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattleRuntime_Module.js']) {
+for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Module.js', 'lwcs/BattleDecision_Module.js', 'lwcs/BattleRuntime_Module.js']) {
   vm.runInContext(fs.readFileSync(path.resolve(root, relativePath), 'utf8'), sandbox, { filename: relativePath });
 }
 

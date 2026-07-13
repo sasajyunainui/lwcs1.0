@@ -90,19 +90,28 @@ function world({ injured = true, stock = 0 } = {}) {
 const active = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 201 });
 const itemCandidate = active.candidates.find(candidate => candidate.item?.id === 'potion');
 assert.ok(itemCandidate, '最后一件消耗品被硬禁');
-assert.ok(itemCandidate.vector.irreversibleCost > 0, '消耗品没有稀缺成本');
+assert.equal(itemCandidate.vector.irreversibleCost, 0, '当前已可兑现最大价值的消耗品仍被重复收取未来成本');
 assert.ok(itemCandidate.preview.contributions.some(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST'), '消耗品成本未进入贡献账本');
+const reserveItemWorld = world();
+reserveItemWorld.参战者.ally[0].hp = 80;
+const reserveItem = decision.decide({ worldSnapshot: reserveItemWorld, actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 2011 })
+  .candidates.find(candidate => candidate.item?.id === 'potion');
+assert.ok(reserveItem.vector.irreversibleCost > 0, '轻伤时消耗稀缺物品没有保留后悔成本');
+assert.equal(reserveItem.classification, 'CONTEXT_RISK', '存在真实保留成本的消耗品没有归入CONTEXT_RISK');
 
-const equipmentCandidate = active.candidates.find(candidate => candidate.equipment?.id === 'sword');
+const equipmentDecision = decision.decide({ worldSnapshot: world({ injured: false }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 202 });
+const equipmentCandidate = equipmentDecision.candidates.find(candidate => candidate.equipment?.id === 'sword');
 assert.ok(equipmentCandidate && !equipmentCandidate.rejectionCode, '有收益换装未生成有效候选');
+const equipmentHistoryWorld = world();
+equipmentHistoryWorld.参战者.ally[0].__battleRuntime = { equipmentDecisionSignatures: [equipmentCandidate.equipmentSignature] };
 const noEquipLoop = decision.decide({
-  worldSnapshot: world(),
+  worldSnapshot: equipmentHistoryWorld,
   actorId: 'actor',
   beliefState: { confidence: 0.7 },
-  strategyMemory: { equipmentSignatures: [equipmentCandidate.equipmentSignature] },
   seed: 202,
 });
 assert.ok(!noEquipLoop.candidates.some(candidate => candidate.equipmentSignature === equipmentCandidate.equipmentSignature), '相同装备签名循环换装');
+assert.deepEqual(Object.keys(active.strategyMemory).sort(), ['expectedOutcomeKinds', 'expectedWindowIds', 'expiresAtOpportunity', 'problemId', 'targetIds'].sort(), '策略记忆混入计划外字段');
 
 const usefulCreation = active.candidates.find(candidate => candidate.skill?.id === 'create-food');
 assert.equal(usefulCreation?.creation?.useful, true, '有库存缺口和消费者时造物未识别收益');

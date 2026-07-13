@@ -43,6 +43,33 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
 assert.ok(decision && runtime, '正式决策或战斗运行时未加载');
+assert.throws(() => {
+  const mismatch = { __LWCS_BATTLE_PREVIEW__: { version: 'wrong-preview', previewAction() {} } };
+  mismatch.window = mismatch;
+  mismatch.globalThis = mismatch;
+  vm.createContext(mismatch);
+  vm.runInContext(fs.readFileSync(path.resolve(root, 'lwcs/BattleDecision_Module.js'), 'utf8'), mismatch);
+}, /battle_decision_preview_version_mismatch/, 'Decision未拒绝错误Preview版本');
+assert.throws(() => {
+  const mismatch = {
+    __LWCS_BATTLE_PREVIEW__: { version: 'wrong-preview' },
+    __LWCS_BATTLE_DECISION__: { version: '7.3-R6.3-decision-2' },
+  };
+  mismatch.window = mismatch;
+  mismatch.globalThis = mismatch;
+  vm.createContext(mismatch);
+  vm.runInContext(fs.readFileSync(path.resolve(root, 'lwcs/BattleRuntime_Module.js'), 'utf8'), mismatch);
+}, /battle_runtime_preview_version_mismatch/, 'Runtime未拒绝错误Preview版本');
+assert.throws(() => {
+  const mismatch = {
+    __LWCS_BATTLE_PREVIEW__: { version: '7.3-R6.3-preview-2' },
+    __LWCS_BATTLE_DECISION__: { version: 'wrong-decision' },
+  };
+  mismatch.window = mismatch;
+  mismatch.globalThis = mismatch;
+  vm.createContext(mismatch);
+  vm.runInContext(fs.readFileSync(path.resolve(root, 'lwcs/BattleRuntime_Module.js'), 'utf8'), mismatch);
+}, /battle_runtime_decision_version_mismatch/, 'Runtime未拒绝错误Decision版本');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: 1 } }).魂力, 1, '绝对消耗1被误解为100%');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: '50%' } }).魂力, '50%', '比例消耗丢失百分号语义');
 
@@ -107,6 +134,8 @@ for (const size of [1, 3, 7]) {
   assert.equal(new Set(skillTargets).size, size, `${size}v${size}技能目标池被截断`);
   assert.ok(!result.candidates.some(candidate => candidate.skill?.id === 'expensive-skill'), `${size}v${size}资源不足技能进入候选`);
   assert.ok(result.scoreAudit.length <= 3 && result.scoreAudit.some(item => item.selected), `${size}v${size}评分审计不满足选中项加两个替代项`);
+  assert.ok(result.scoreAudit.every(item => item.classification && Number.isFinite(item.alternativeGap)), `${size}v${size}评分审计缺少分类或静态替代差距`);
+  assert.ok(!['HARD_INVALID', 'DOMINATED'].includes(result.selected.classification), `${size}v${size}选中了禁止分类候选`);
   shapeResults.push({ shape: `${size}v${size}`, candidateCount: result.candidateCount, paretoCount: result.paretoCount, selected: result.selected.candidateId });
 }
 
@@ -115,6 +144,7 @@ const first = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'all
 const second = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
 assert.equal(first.selected.candidateId, second.selected.candidateId, '同输入同种子选择不确定');
 assert.equal(JSON.stringify(first.scoreAudit), JSON.stringify(second.scoreAudit), '同输入同种子评分审计不确定');
+assert.ok(first.candidates.some(candidate => candidate.classification === 'TACTICAL_ERROR'), '合法次优候选没有归入TACTICAL_ERROR');
 
 const confused = decision.decide({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
 const confusedAttackTargets = confused.candidates.filter(candidate => candidate.skill?.id === 'attack-skill').flatMap(candidate => candidate.declaration.targetIds);
@@ -125,6 +155,7 @@ fullHealthWorld.参战者.ally[0].hp = 100;
 const fullHealth = decision.decide({ worldSnapshot: fullHealthWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 101 });
 const fullHealthHeal = fullHealth.candidates.find(candidate => candidate.skill?.id === 'heal-skill');
 assert.equal(fullHealthHeal?.rejectionCode, 'ZERO_EFFECT_COSTLY', '满血有成本治疗未被识别为零收益');
+assert.equal(fullHealthHeal?.classification, 'HARD_INVALID', '零收益有成本动作未归入HARD_INVALID');
 assert.equal(fullHealthHeal?.preview?.contributions.filter(entry => entry.outcomeKind === 'RESOURCE_OPTION_CHANGED').length, 1, '治疗技能消耗未记录独立资源事实');
 assert.equal(fullHealthHeal?.preview?.contributions.filter(entry => entry.outcomeKind === 'HP_DELTA').length, 1, '满血治疗未保留零边际生命事实');
 
@@ -266,11 +297,34 @@ negativeActionWorld.参战者.ally[0].技能列表 = [{
 const negativeActionDecision = decision.decide({ worldSnapshot: negativeActionWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 104 });
 const negativeAction = negativeActionDecision.candidates.find(candidate => candidate.skill?.id === 'negative-action');
 assert.ok(['ZERO_PROGRESS', 'DOMINATED'].includes(negativeAction?.rejectionCode), '低收益高代价动作仍进入主观抽样池');
+assert.ok(['HARD_INVALID', 'DOMINATED'].includes(negativeAction?.classification), '低收益高代价动作没有进入禁止分类');
 assert.ok(!negativeActionDecision.candidates.some(candidate => candidate.rejectionCode === 'SELF_DEFEATING' && sandbox.__LWCS_BATTLE_PREVIEW__.isAlive(candidate.preview?.afterSnapshot ? sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(candidate.preview.afterSnapshot, 'ally-1') : {})), '未导致行动者失能的负效用动作被误判为自毁');
 
 const ordinaryThreatDecision = decision.decide({ worldSnapshot: world(1), actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 109 });
 const ordinaryDefense = ordinaryThreatDecision.candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
 assert.ok(ordinaryDefense?.objectiveUtility > 0 && ordinaryDefense.rejectionCode !== 'ZERO_PROGRESS', `确定会到来的非致命回应没有形成基础防御价值:${JSON.stringify(ordinaryDefense)}`);
+
+const lethalResponseWorld = world(1);
+const lethalResponseDecision = decision.decide({
+  worldSnapshot: lethalResponseWorld,
+  actorId: 'ally-1',
+  beliefState: {
+    confidence: 0.8,
+    publicResponses: {
+      'enemy-1': [{ responseId: 'known-lethal', baseActionValue: 100, weight: 1 }],
+    },
+  },
+  seed: 10901,
+});
+const exposedAttack = lethalResponseDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+const exposedEvade = lethalResponseDecision.candidates.find(candidate => candidate.declaration.actionKind === 'EVADE');
+assert.equal(exposedAttack?.deepAnalysis?.required, true, '已知致命回应没有触发深推演');
+assert.ok(exposedAttack.deepAnalysis.expectedResponseUtility < 0, '已知致命回应没有形成负回应效用');
+assert.ok(exposedAttack.vector.catastrophicRisk > 0, `致命回应没有形成灾难尾部风险:${JSON.stringify(exposedAttack.deepAnalysis)}`);
+assert.equal(exposedEvade?.deepAnalysis?.required, true, '防御候选逃避了同一自然回应基线');
+assert.equal(exposedEvade.vector.catastrophicRisk, exposedAttack.vector.catastrophicRisk, '同一自然回应只惩罚了攻击候选');
+assert.ok(exposedAttack.deepAnalysis.timeline.some(node => node.nodeType === 'ACTOR_NEXT_OPPORTUNITY'), '深推演时间线缺少行动者下一机会');
+assert.ok(exposedAttack.deepAnalysis.nodeCount <= 12, '深推演超过12节点预算');
 
 const unfocusedTeamWorld = world(3);
 unfocusedTeamWorld.参战者.ally[0].hp = 100;

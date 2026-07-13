@@ -6,6 +6,7 @@
   const root = typeof globalThis !== 'undefined' ? globalThis : window;
   const preview = root.__LWCS_BATTLE_PREVIEW__;
   if (!preview || typeof preview.previewAction !== 'function') throw new Error('battle_decision_preview_runtime_missing');
+  if (preview.version !== '7.3-R6.3-preview-2') throw new Error(`battle_decision_preview_version_mismatch:${preview.version || 'missing'}`);
 
   const VERSION = '7.3-R6.3-decision-2';
   const skillLibraryCache = new WeakMap();
@@ -218,6 +219,25 @@
     return clamp(0.35 * (1 - clamp(beliefConfidence, 0, 1)), 0, 0.35);
   }
 
+  function estimateInformationValue(context = {}) {
+    const uncertainty = unknownResponseMass(context?.beliefState?.confidence);
+    if (!(uncertainty > 0)) return 0;
+    const actor = preview.findUnit(context.worldSnapshot || {}, context.actorId);
+    if (!actor) return 0;
+    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const threatPairs = aliveEntries(context.worldSnapshot)
+      .filter(entry => entry.side !== actorSide)
+      .map(entry => {
+        const beliefUnit = context?.beliefState?.units?.[preview.unitId(entry.unit)] || {};
+        const knownThreat = Math.max(0, ...(beliefUnit?.knownResponses || []).map(response => Number(response?.baseActionValue || 0)));
+        return { knownThreat, worstThreat: perceivedEnemyBaseValue(beliefUnit, actor) };
+      });
+    if (!threatPairs.length) return 0;
+    const worstRegretBefore = Math.max(...threatPairs.map(pair => pair.worstThreat));
+    const expectedRegretAfterReveal = Math.max(...threatPairs.map(pair => (pair.knownThreat + pair.worstThreat) / 2));
+    return clamp(uncertainty * Math.max(0, worstRegretBefore - expectedRegretAfterReveal), 0, 20);
+  }
+
   function probabilityValue(value, fallback = 0.65) {
     const text = String(value ?? '').trim();
     const numeric = Number.parseFloat(text);
@@ -329,6 +349,46 @@
     };
     ['背包', '库存', '物品', '战斗物品', '可用装备'].forEach(key => visit(unit?.[key], key));
     return output;
+  }
+
+  function irreversibleAssetOptionValue(effects, target, assumeCrisis = false) {
+    return effects.reduce((sum, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (prototype === '资源变化' && !/生命|HP/i.test(String(effect?.资源 || '')) && Number.parseFloat(String(effect?.数值 || '0')) > 0) {
+        const resource = String(effect?.资源 || '').trim();
+        return assumeCrisis || preview.readResource(target, resource) < preview.readResourceMax(target, resource) ? sum + 8 : sum;
+      }
+      if (prototype === '状态移除') {
+        const hasRemovableState = Object.keys(target?.状态效果 || {}).length > 0 || Object.keys(target?.持续效果 || {}).length > 0;
+        return assumeCrisis || hasRemovableState ? sum + 6 : sum;
+      }
+      if (['属性修正', '判定修正', '结算修正', '规则防御', '机制授予'].includes(prototype)) return sum + 6;
+      return sum;
+    }, 0);
+  }
+
+  function irreversibleAssetFutureMaximum(item, actor, worldSnapshot) {
+    const effects = Array.isArray(item?._效果数组) ? item._效果数组 : [];
+    return Math.max(0, ...aliveEntries(worldSnapshot).map(({ unit }) => {
+      const futureCrisisUnit = {
+        ...unit,
+        hp: 0,
+        HP: 0,
+        属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性, HP: 0 } : unit?.属性,
+      };
+      const directValue = preview.calculateBaseActionValue(actor, futureCrisisUnit, { actionKind: 'RELEASE_SKILL', skill: item, capacityMode: true });
+      return Math.min(100, Math.max(0, directValue + irreversibleAssetOptionValue(effects, futureCrisisUnit, true)));
+    }));
+  }
+
+  function estimateIrreversibleAssetCost(item, actor, quantity, currentTarget, futureMaximumValue) {
+    const effects = Array.isArray(item?._效果数组) ? item._效果数组 : [];
+    if (!effects.length) return 0;
+    const currentValue = currentTarget
+      ? Math.max(0, preview.calculateBaseActionValue(actor, currentTarget, { actionKind: 'RELEASE_SKILL', skill: item, capacityMode: true }) + irreversibleAssetOptionValue(effects, currentTarget))
+      : 0;
+    const scarcity = 1 + 1 / Math.max(1, Number(quantity || 1));
+    return Math.max(0, futureMaximumValue - currentValue) * scarcity * 0.35;
   }
 
   function isEquipment(item = {}) {
@@ -603,7 +663,7 @@
     const currentEquipmentIds = new Set(Object.values(actor?.装备 || {}).map(item => String(item?.id || item?.物品ID || item?.名称 || item?.name || '')).filter(Boolean));
     const runtimeEquipmentId = String(actor?.__battleRuntime?.equippedDecisionItem?.id || '').trim();
     if (runtimeEquipmentId) currentEquipmentIds.add(runtimeEquipmentId);
-    const equipmentHistory = new Set(Array.isArray(input?.strategyMemory?.equipmentSignatures) ? input.strategyMemory.equipmentSignatures.map(String) : []);
+    const equipmentHistory = new Set(Array.isArray(actor?.__battleRuntime?.equipmentDecisionSignatures) ? actor.__battleRuntime.equipmentDecisionSignatures.map(String) : []);
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {
@@ -639,11 +699,14 @@
           ? { ...effect, 目标: '单体' }
           : effect),
       };
+      const renewableCreation = !!String(item?.来源 || '').trim() && Array.isArray(item?.使用效果);
+      const futureMaximumValue = renewableCreation
+        ? 0
+        : irreversibleAssetFutureMaximum(usableItem, actor, worldSnapshot);
       enumerateTargetSets(worldSnapshot, actor, targetProfile(usableItem), input.beliefState).forEach((targetIds, targetIndex) => {
         const id = `${actorId}:item:${entry.id}:${targetIndex}`;
-        const scarcity = 1 + 1 / Math.max(1, entry.quantity);
-        const renewableCreation = !!String(item?.来源 || '').trim() && Array.isArray(item?.使用效果);
-        const assetCost = renewableCreation ? 0 : 6 * scarcity;
+        const currentTarget = preview.findUnit(worldSnapshot, targetIds[0]);
+        const assetCost = renewableCreation ? 0 : estimateIrreversibleAssetCost(usableItem, actor, entry.quantity, currentTarget, futureMaximumValue);
         candidates.push({
           candidateId: id,
           declaration: {
@@ -1017,29 +1080,43 @@
     return problems.sort((left, right) => right.severity - left.severity);
   }
 
-  function responseBranches(candidate, context, afterUtility) {
-    const targetId = candidate.declaration.targetIds?.[0] || '';
+  function responseBranches(context) {
+    const actor = preview.findUnit(context.worldSnapshot, context.actorId);
+    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const targetId = aliveEntries(context.worldSnapshot)
+      .filter(entry => entry.side !== actorSide)
+      .map(entry => {
+        const unitId = preview.unitId(entry.unit);
+        const responses = Array.isArray(context.beliefState?.publicResponses?.[unitId])
+          ? context.beliefState.publicResponses[unitId]
+          : [];
+        return {
+          targetId: unitId,
+          threat: Math.max(0, ...responses.map(response => Number(response?.baseActionValue ?? response?.utility ?? 0))),
+        };
+      })
+      .sort((left, right) => right.threat - left.threat || left.targetId.localeCompare(right.targetId))[0]?.targetId || '';
     const known = Array.isArray(context.beliefState?.publicResponses?.[targetId]) ? context.beliefState.publicResponses[targetId] : [];
     const unknownMass = unknownResponseMass(context.beliefState?.confidence);
     const knownMass = 1 - unknownMass;
-    const actor = preview.findUnit(context.worldSnapshot, context.actorId);
-    const actorSide = preview.sideOf(context.worldSnapshot, actor);
     const allyCount = Math.max(1, aliveEntries(context.worldSnapshot).filter(entry => entry.side === actorSide).length);
     const before = context.beforeUtility || stateUtility(context.worldSnapshot, actorSide, context.beliefState || {});
     const responseCapacityScale = Math.max(0, Number(before.own || 0)) / Math.max(1, allyCount * Number(before.total || 0));
-    const utilities = known.map(response => Number(response?.utility || 0));
+    const utilities = known.map(response => Number(response?.baseActionValue ?? response?.utility ?? 0));
     const center = median(utilities);
     const mad = Math.max(1, median(utilities.map(value => Math.abs(value - center))));
     const temperature = 1 + 3 * (1 - clamp(context.beliefState?.confidence || 0, 0, 1));
     const weighted = known.map(response => ({
       ...response,
-      weight: Math.exp(((Number(response?.utility || 0) - center) / mad) / temperature),
+      weight: Math.exp(((Number(response?.baseActionValue ?? response?.utility ?? 0) - center) / mad) / temperature),
     })).sort((left, right) => right.weight - left.weight);
     const totalWeight = weighted.reduce((sum, response) => sum + response.weight, 0) || 1;
     const normalizedKnown = weighted.map(response => ({
       responseId: String(response.responseId || ''),
       probability: knownMass * response.weight / totalWeight,
-      utility: -Math.max(0, Number(response.utility || 0)) * responseCapacityScale,
+      utility: -Math.max(0, Number(response.baseActionValue ?? response.utility ?? 0)) * responseCapacityScale,
+      rawThreat: Math.max(0, Number(response.baseActionValue ?? response.utility ?? 0)),
+      lethal: Math.max(0, Number(response.baseActionValue ?? response.utility ?? 0)) >= preview.readHp(actor) / preview.readHpMax(actor) * 100,
       unknown: false,
     }));
     const branches = normalizedKnown.length <= 3 ? normalizedKnown : normalizedKnown.slice(0, 2);
@@ -1057,7 +1134,15 @@
     if (unknownMass > 0) {
       const targetBelief = context.beliefState?.units?.[targetId] || {};
       const threatEnvelope = Math.max(0, perceivedEnemyBaseValue(targetBelief)) * responseCapacityScale;
-      branches.unshift({ responseId: 'UNKNOWN_RESPONSE_ENVELOPE', probability: unknownMass, utility: -threatEnvelope, unknown: true });
+      const rawThreat = Math.max(0, perceivedEnemyBaseValue(targetBelief, actor));
+      branches.unshift({
+        responseId: 'UNKNOWN_RESPONSE_ENVELOPE',
+        probability: unknownMass,
+        utility: -threatEnvelope,
+        rawThreat,
+        lethal: rawThreat >= preview.readHp(actor) / preview.readHpMax(actor) * 100,
+        unknown: true,
+      });
     }
     return branches.slice(0, 4);
   }
@@ -1227,7 +1312,8 @@
       const summonValue = estimateSummonActionValue(event, context);
       expectedStateGain += 100 * summonValue / Math.max(1, before.total);
     });
-    const informationValue = candidate.declaration.actionKind === 'OBSERVE' ? clamp(1 - Number(context.beliefState?.confidence || 0), 0, 1) * 8 : 0;
+    const directStateGain = expectedStateGain;
+    const informationValue = candidate.declaration.actionKind === 'OBSERVE' ? estimateInformationValue(context) : 0;
     const irreversibleContributions = (result?.contributions || []).filter(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
     const irreversibleCost = irreversibleContributions.reduce((sum, entry) => {
       const evidenceCost = entry?.evidence && Object.prototype.hasOwnProperty.call(entry.evidence, 'cost')
@@ -1236,11 +1322,28 @@
       if (Number.isFinite(evidenceCost)) return sum + Math.max(0, evidenceCost);
       return sum + (Number(entry.threatValue) > 0 ? Number(entry.threatValue) : 20);
     }, 0);
-    const deepRequired = result ? needsDeepPreview(candidate, result, context.worldSnapshot, result.afterSnapshot, context.beliefState) : false;
-    const branches = deepRequired ? responseBranches(candidate, context, after) : [];
-    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0);
+    const sharedLethalResponse = context.sharedResponseBranches.some(branch => branch?.lethal === true);
+    const deepRequired = sharedLethalResponse || needsDeepPreview(
+      candidate,
+      result || {},
+      context.worldSnapshot,
+      result?.afterSnapshot || context.worldSnapshot,
+      context.beliefState,
+    );
+    const branches = deepRequired && terminalUtility === 0 ? context.sharedResponseBranches : [];
+    const expectedResponseUtility = branches.reduce((sum, branch) => sum + Number(branch?.probability || 0) * Number(branch?.utility || 0), 0);
+    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0) +
+      branches.filter(branch => branch?.lethal === true).reduce((sum, branch) => sum + Number(branch?.probability || 0) * Math.abs(Number(branch?.utility || 0)), 0);
+    const deepTimeline = deepRequired ? [
+      { nodeType: 'CURRENT_ACTION', candidateId: candidate.candidateId },
+      ...branches.map(branch => ({ nodeType: branch.unknown ? 'UNKNOWN_RESPONSE' : 'KNOWN_RESPONSE', ...branch })),
+      ...((result?.contributions || []).some(entry => ['ACTION_GRANTED', 'SUMMON_WINDOW', 'STATE_CHANGED', 'STATE_SCHEDULED'].includes(entry.outcomeKind))
+        ? [{ nodeType: 'FIRST_ALLY_WINDOW' }]
+        : []),
+      { nodeType: 'ACTOR_NEXT_OPPORTUNITY' },
+    ].slice(0, 12) : [{ nodeType: 'CURRENT_ACTION', candidateId: candidate.candidateId }];
     const objectiveUtility = clamp(expectedStateGain + terminalUtility + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
-    const hasProgress = expectedStateGain > 0.0001 || terminalUtility > 0 || informationValue > 0;
+    const hasProgress = directStateGain > 0.0001 || terminalUtility > 0 || informationValue > 0;
     const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0 || ['EQUIP', 'USE_ITEM'].includes(candidate.declaration.actionKind);
     const hasMeaningfulPreviewEffect = candidate.creation?.useful === true || !!result && (
       (result.scheduledEvents || []).length > 0 ||
@@ -1294,7 +1397,7 @@
       objectiveUtility,
       withdrawalEstimate,
       mechanicObservations: Object.freeze(mechanicObservations),
-      deepAnalysis: Object.freeze({ required: deepRequired, nodeCount: deepRequired ? 1 + branches.length : 1, responseBranches: Object.freeze(branches), mechanicProbability, controlOverlap }),
+      deepAnalysis: Object.freeze({ required: deepRequired, nodeCount: deepTimeline.length, timeline: Object.freeze(deepTimeline), responseBranches: Object.freeze(branches), expectedResponseUtility, mechanicProbability, controlOverlap }),
       vector: {
         expectedStateGain,
         terminalUtility,
@@ -1337,6 +1440,21 @@
     return candidates.map(candidate => ({ ...candidate, normalizedUtility: (candidate.objectiveUtility - center) / mad }));
   }
 
+  function classifyCandidateEvidence(candidates = []) {
+    const eligible = candidates.filter(candidate => !candidate.rejectionCode);
+    const best = eligible.reduce((current, candidate) => !current || candidate.objectiveUtility > current.objectiveUtility ? candidate : current, null);
+    const hardInvalidCodes = new Set(['ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'ZERO_PROGRESS', 'INTENT_TERMINAL_CONFLICT']);
+    return candidates.map(candidate => {
+      const alternativeGap = best ? Math.max(0, Number(best.objectiveUtility || 0) - Number(candidate.objectiveUtility || 0)) : 0;
+      let classification = 'VIABLE';
+      if (candidate.rejectionCode === 'DOMINATED') classification = 'DOMINATED';
+      else if (hardInvalidCodes.has(candidate.rejectionCode)) classification = 'HARD_INVALID';
+      else if (Number(candidate.vector?.catastrophicRisk || 0) > 0 || Number(candidate.vector?.irreversibleCost || 0) > 0 || Number(candidate.objectiveUtility || 0) < 0) classification = 'CONTEXT_RISK';
+      else if (best && Number(best.normalizedUtility || 0) - Number(candidate.normalizedUtility || 0) > 0.35) classification = 'TACTICAL_ERROR';
+      return { ...candidate, classification, alternativeGap };
+    });
+  }
+
   function selectCandidate(candidates, actor, seed, context = {}) {
     const preferredTargets = new Set([
       ...(Array.isArray(context.strategyMemory?.targetIds) ? context.strategyMemory.targetIds : []),
@@ -1357,7 +1475,7 @@
       const defend = candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
       if (!defend) throw new Error('battle_decision_no_legal_fallback');
       return {
-        selected: { ...defend, rejectionCode: '', forcedFallback: true, fallbackReason: 'NO_ELIGIBLE_CANDIDATE' },
+        selected: { ...defend, rejectionCode: '', classification: 'VIABLE', alternativeGap: 0, forcedFallback: true, fallbackReason: 'NO_ELIGIBLE_CANDIDATE' },
         confidence: 1,
         temperature: 0,
         maxNormalizedRegret: 0,
@@ -1409,10 +1527,11 @@
       beliefRevision: String(beliefState.revision || preview.stableHash(beliefState)),
       beforeUtility: stateUtility(decisionWorld, actorSide, beliefState),
     };
-    const generated = enumerateCandidates(context);
+    const scoringContext = { ...context, sharedResponseBranches: Object.freeze(responseBranches(context)) };
+    const generated = enumerateCandidates(scoringContext);
     if (!generated.length) throw new Error('battle_decision_candidate_pool_empty');
-    const scored = generated.map(candidate => scoreCandidate(candidate, context));
-    const normalized = normalizeUtilities(paretoFilter(scored));
+    const scored = generated.map(candidate => scoreCandidate(candidate, scoringContext));
+    const normalized = classifyCandidateEvidence(normalizeUtilities(paretoFilter(scored)));
     const strategyMemory = activeStrategyMemory(input.strategyMemory, decisionWorld, input.actionOpportunity, normalized);
     const choice = selectCandidate(normalized, decisionActor, input.seed || 1, { ...context, strategyMemory });
     const selected = { ...choice.selected, selected: true };
@@ -1435,7 +1554,6 @@
         expectedOutcomeKinds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.outcomeKind)),
         expectedWindowIds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.windowId).filter(Boolean)),
         expiresAtOpportunity: Math.max(1, Number(input.actionOpportunity?.sequence || 0) + 1),
-        equipmentSignatures: Object.freeze(selected.equipmentSignature ? [...new Set([...(input.strategyMemory?.equipmentSignatures || []), selected.equipmentSignature])] : [...(input.strategyMemory?.equipmentSignatures || [])]),
       }),
       scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
         candidateId: candidate.candidateId,
@@ -1450,6 +1568,8 @@
         vector: Object.freeze({ ...candidate.vector }),
         deepAnalysis: candidate.deepAnalysis,
         rejectionCode: candidate.rejectionCode || '',
+        classification: candidate.classification || 'VIABLE',
+        alternativeGap: Number(candidate.alternativeGap || 0),
         counterDeclineFallback: candidate.counterDeclineFallback === true,
         forcedFallback: candidate.forcedFallback === true,
         fallbackReason: String(candidate.fallbackReason || '').trim(),

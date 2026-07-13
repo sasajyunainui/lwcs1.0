@@ -4,6 +4,14 @@
   'use strict';
 
   const root = typeof globalThis !== 'undefined' ? globalThis : window;
+  const previewRuntime = root.__LWCS_BATTLE_PREVIEW__;
+  const decisionRuntime = root.__LWCS_BATTLE_DECISION__;
+  if (!previewRuntime || previewRuntime.version !== '7.3-R6.3-preview-2') {
+    throw new Error(`battle_runtime_preview_version_mismatch:${previewRuntime?.version || 'missing'}`);
+  }
+  if (!decisionRuntime || decisionRuntime.version !== '7.3-R6.3-decision-2') {
+    throw new Error(`battle_runtime_decision_version_mismatch:${decisionRuntime?.version || 'missing'}`);
+  }
   const sharedRegistry = root.__LWCS_SKILL_MECHANISM_REGISTRY__;
   const prototypeRegistry = sharedRegistry?.原型定义;
   if (!prototypeRegistry || typeof prototypeRegistry !== 'object') {
@@ -349,6 +357,39 @@
       }
     }
     return { results, fatal: queue.fatal };
+  }
+
+  function executeDeclaration(input = {}) {
+    const combatData = input?.combatData;
+    const declaration = input?.declaration;
+    if (!combatData || typeof combatData !== 'object') throw new TypeError('battle_declaration_combat_data_missing');
+    if (!declaration || typeof declaration !== 'object') throw new TypeError('battle_declaration_missing');
+    const actorId = String(declaration?.actorId || '').trim();
+    if (!actorId) throw new TypeError('battle_declaration_actor_missing');
+    const targetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
+    const skillId = value => String(value?.id || value?.技能ID || value?.魂技ID || value?.name || value?.魂技名 || '').trim();
+    const legalCandidate = decisionRuntime.enumerateCandidates({
+      worldSnapshot: combatData,
+      actorId,
+      actionOpportunity: input?.actionOpportunity || { role: 'ACTIVE' },
+      beliefState: input?.beliefState || {},
+      battleIntent: input?.battleIntent || { mode: String(combatData?.战斗意图 || '').trim() },
+    }).find(candidate => {
+      const candidateDeclaration = candidate?.declaration || {};
+      if (String(candidateDeclaration.actionKind || '').trim() !== String(declaration.actionKind || '').trim()) return false;
+      if (skillId(candidateDeclaration.skill) !== skillId(declaration.skill)) return false;
+      const candidateTargets = Array.isArray(candidateDeclaration.targetIds) ? candidateDeclaration.targetIds.map(String) : [];
+      return candidateTargets.length === targetIds.length && candidateTargets.every((targetId, index) => targetId === targetIds[index]);
+    });
+    if (!legalCandidate) throw new Error('battle_declaration_mechanically_illegal');
+    const domain = requireEngine().caseDomain;
+    if (typeof domain.executeDeclaration !== 'function') throw new Error('battle_runtime_declaration_settler_missing');
+    return domain.executeDeclaration({
+      combatData,
+      declaration: cloneValue(legalCandidate.declaration),
+      actionOpportunity: cloneValue(input?.actionOpportunity || { role: 'ACTIVE' }),
+      seed: Math.max(1, Math.floor(Number(input?.seed || 1))),
+    });
   }
 
   function calculateBaseDamage(options = {}) {
@@ -1866,7 +1907,7 @@
       if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
     });
 
-    const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility', 'vector', 'rejectionCode', 'selected'];
+    const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility', 'vector', 'rejectionCode', 'classification', 'alternativeGap', 'selected'];
     const vectorFields = ['expectedStateGain', 'terminalUtility', 'informationValue', 'resourcePreservation', 'survivalLowerBound', 'irreversibleCost', 'catastrophicRisk'];
     const forbiddenSelections = new Set(['ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'DOMINATED', 'ZERO_PROGRESS']);
     scoringAudit.forEach((actionAudit, actionIndex) => {
@@ -1885,6 +1926,7 @@
           pushFatal('SCORING_COMPONENT_DUPLICATED', { actionIndex, candidateIndex, candidateId: candidate.candidateId, targetIds });
         }
         const finiteFields = ['utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility'];
+        finiteFields.push('alternativeGap');
         const invalidNumbers = finiteFields.filter(key => !Number.isFinite(Number(candidate[key])))
           .concat(vectorFields.filter(key => !Number.isFinite(Number(vector[key]))).map(key => `vector.${key}`));
         if (invalidNumbers.length) {
@@ -1915,7 +1957,8 @@
       const selected = selectedCandidates[0];
       if (selected) {
         const selectedRejected = String(selected.rejectionCode || '').trim();
-        if (forbiddenSelections.has(selectedRejected)) {
+        const selectedClassification = String(selected.classification || '').trim();
+        if (forbiddenSelections.has(selectedRejected) || ['HARD_INVALID', 'DOMINATED'].includes(selectedClassification)) {
           pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', { actionIndex, selectedCandidateId: selected.candidateId, rejectionCode: selectedRejected });
         }
         if (selected?.forcedFallback === true && (
@@ -2003,6 +2046,7 @@
       typeof implementation.caseDomain.executeTeam !== 'function' ||
       typeof implementation.caseDomain.executeDuel !== 'function' ||
       typeof implementation.caseDomain.executeDecisionTeam !== 'function' ||
+      typeof implementation.caseDomain.executeDeclaration !== 'function' ||
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
       typeof implementation.caseDomain.resolveNextIntents !== 'function' ||
@@ -2289,6 +2333,7 @@
     runTeamBattle,
     decideDuelContinuation,
     executeActionNodes,
+    executeDeclaration,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
