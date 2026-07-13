@@ -5,6 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { buildManualCases } from './battle_r63_manual_cases.mjs';
+import { manualBattleCases } from './battle_r63_manual_manifest.mjs';
 import { battleR63ManualReviewEvidence, battleR63ManualReviewNotes } from './battle_r63_manual_review_notes.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
@@ -24,8 +25,22 @@ const requestedSeed = Number(process.env.R63_SEED || 0);
 const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
 const refreshReviewReports = String(process.env.R63_REFRESH_REVIEW_REPORTS || '').trim() === '1';
 const verifyReviewHashes = String(process.env.R63_VERIFY_REVIEW_HASHES || '').trim() === '1' || process.argv.includes('--verify-hashes');
+const blindPass = Math.max(0, Math.min(3, Math.floor(Number(process.env.R63_BLIND_PASS || 0))));
+const codeFreezeCommit = String(process.env.R63_CODE_FREEZE_COMMIT || gitHead).trim();
+const manualDefinitionHash = hash(manualBattleCases);
+const runtimeSourceHash = hash(['BattlePreview_Module.js', 'BattleDecision_Module.js', 'BattleRuntime_Module.js', 'BattleUI_Module.js'].map(file => ({
+  file,
+  content: fs.readFileSync(path.join(gitRoot, file), 'utf8'),
+})));
+const blindCaseIds = manualBattleCases
+  .map(item => ({ caseId: item.caseId, rank: hash(`${codeFreezeCommit}:${manualDefinitionHash}:${item.caseId}`) }))
+  .sort((left, right) => left.rank.localeCompare(right.rank) || left.caseId.localeCompare(right.caseId))
+  .slice(0, 6)
+  .map(item => item.caseId);
+const blindOutputDir = path.resolve(root, 'artifacts', 'battle_r63_blind_review', codeFreezeCommit, `pass${blindPass}`);
+if (blindPass) fs.mkdirSync(blindOutputDir, { recursive: true });
 
-if (!requestedCase && !captureEvidence && !refreshReviewReports && !verifyReviewHashes) {
+if (!requestedCase && !captureEvidence && !refreshReviewReports && !verifyReviewHashes && !blindPass) {
   const manifestPath = path.join(outputDir, 'manifest.json');
   if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -197,7 +212,9 @@ function validateCaseContract(definition, result) {
   return failures;
 }
 
-for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item => !requestedCase || item.caseId === requestedCase)) {
+for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item =>
+  (!requestedCase || item.caseId === requestedCase) && (!blindPass || blindCaseIds.includes(item.caseId)),
+)) {
   process.stderr.write(`[r63-review] ${definition.caseId}\n`);
   const seed = Number.isFinite(requestedSeed) && requestedSeed > 0 ? Math.floor(requestedSeed) : definition.seed;
   const result = context.__LWCS_DEBUG_RUN_BATTLE_CASE__({
@@ -220,7 +237,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   const ledgerHash = hash(result.ledger);
   const reportHash = hash(result.reportBlocks);
   const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
-  if (!captureEvidence && !refreshReviewReports && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
+  if (!captureEvidence && !refreshReviewReports && !blindPass && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
     throw new Error(`r63_manual_review_evidence_stale:${definition.caseId}:${ledgerHash}:${reportHash}`);
   }
   const rounds = new Map();
@@ -322,7 +339,49 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     });
   lines.push('## Final Snapshot', '', '```json', JSON.stringify(result.finalSnapshot, null, 2), '```', '', '## Complete Raw Logs', '', '```text', ...result.logs, '```', '', '## Review', '', `- 行为结论：${review.behavior}`, `- 叙事结论：${review.narrative}`, `- 反常识点：${review.anomalies}`, `- 合理替代：${review.alternatives}`, `- 责任模块：${review.responsibility}`, `- 是否阻断：${review.blocking ? '是' : '否'}`, '');
   const reportPath = path.join(outputDir, `${definition.caseId}.md`);
-  if (!captureEvidence && !verifyReviewHashes) fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
+  if (blindPass) {
+    const blindLines = [
+      `# ${definition.caseId} / Blind pass ${blindPass}`,
+      '',
+      `- Code freeze: ${codeFreezeCommit}`,
+      `- Runtime source hash: ${runtimeSourceHash}`,
+      `- Input hash: ${hash(definition.combatData)}`,
+      `- Belief hash: ${hash(definition.initialBelief)}`,
+      `- Ledger hash: ${ledgerHash}`,
+      `- Report hash: ${reportHash}`,
+      '',
+    ];
+    if (blindPass === 1) {
+      blindLines.push('## 玩家可见完整战报', '', String(result.finalBattleReport?.text || ''));
+      (result.reportBlocks || []).forEach(block => {
+        blindLines.push('', `### 第${Number(block?.round || 0)}回合 / ${String(block?.blockType || '')}`);
+        if (block?.intentSummary) blindLines.push(`- 意图：${block.intentSummary}`);
+        if (block?.outcomeSummary) blindLines.push(`- 结果：${block.outcomeSummary}`);
+        if (block?.nextWindow) blindLines.push(`- 后续：${block.nextWindow}`);
+        (block?.badges || []).forEach(badge => blindLines.push(`- 数值：${badge?.targetName || badge?.targetId || ''} ${badge?.name || badge?.kind || ''} ${Number(badge?.value || 0)}${badge?.unit || ''}`.trim()));
+      });
+    } else if (blindPass === 2) {
+      blindLines.push('## 认知、候选与事实', '');
+      (result.decisions || []).forEach(entry => {
+        blindLines.push(`- 第${entry.round}回合 ${entry.actorId}：${entry.selected?.candidateId || 'NO_SELECTION'}；问题=${(entry.problems || []).map(problem => problem.problemId).join(',')}`);
+        blindLines.push(`  - 团队意图=${JSON.stringify(entry.teamIntent || {})}`);
+        (entry.scoreAudit || []).forEach(candidate => blindLines.push(`  - ${candidate.selected ? '选中' : '替代'} ${candidate.candidateId} utility=${Number(candidate.objectiveUtility || 0).toFixed(3)} ${candidate.rejectionCode || ''}`));
+      });
+      blindLines.push('', '## Ledger', '', '```json', JSON.stringify(result.ledger, null, 2), '```');
+    } else {
+      blindLines.push('## 连续策略、学习与双方互动', '');
+      const byActor = new Map();
+      (result.decisions || []).forEach(entry => {
+        if (!byActor.has(entry.actorId)) byActor.set(entry.actorId, []);
+        byActor.get(entry.actorId).push({ round: entry.round, role: entry.actionRole, selected: entry.selected?.candidateId || '', problems: (entry.problems || []).map(problem => problem.problemId), teamIntent: entry.teamIntent || {}, strategyMemory: entry.strategyMemory || {} });
+      });
+      for (const [actorId, decisions] of byActor) blindLines.push(`- ${actorId}: ${JSON.stringify(decisions)}`);
+      blindLines.push('', '## 认知更新', '', '```json', JSON.stringify(result.beliefObservations || [], null, 2), '```');
+    }
+    fs.writeFileSync(path.join(blindOutputDir, `${definition.caseId}.md`), blindLines.join('\n'), 'utf8');
+  } else if (!captureEvidence && !verifyReviewHashes) {
+    fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
+  }
   results.push({
     caseId: definition.caseId,
     reportPath,
@@ -334,6 +393,9 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     inputHash: hash(definition.combatData),
     beliefHash: hash(definition.initialBelief),
     sourceDataHashes: definition.sourceDataHashes,
+    codeFreezeCommit,
+    runtimeSourceHash,
+    manualDefinitionHash,
     candidateRelations: definition.candidateRelations,
     forbiddenSelections: definition.forbiddenSelections,
     requiredFacts: definition.requiredFacts,
@@ -344,5 +406,9 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     review,
   });
 }
-if (!captureEvidence && !verifyReviewHashes) fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
-console.log(JSON.stringify({ summary: { caseCount: results.length, fatalCount: results.reduce((sum, item) => sum + item.fatalCount, 0) }, results }, null, 2));
+if (blindPass) {
+  fs.writeFileSync(path.join(blindOutputDir, 'manifest.json'), JSON.stringify({ codeFreezeCommit, runtimeSourceHash, manualDefinitionHash, blindCaseIds, pass: blindPass, results }, null, 2), 'utf8');
+} else if (!captureEvidence && !verifyReviewHashes) {
+  fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
+}
+console.log(JSON.stringify({ summary: { caseCount: results.length, fatalCount: results.reduce((sum, item) => sum + item.fatalCount, 0), blindPass, blindCaseIds: blindPass ? blindCaseIds : [] }, results }, null, 2));

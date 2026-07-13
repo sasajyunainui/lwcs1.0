@@ -268,6 +268,10 @@ assert.ok(
 const nonlethalPrevented = nonlethalResult.ledger.filter(event => event?.eventKind === 'hit_result' && event?.meta?.intentLethalPrevented === true);
 assert.equal(nonlethalPrevented.length, 1, '非致命限伤事实数量不唯一');
 assert.equal(nonlethalResult.roundsExecuted, Number(nonlethalPrevented[0]?.round || 0), '非致命限伤后仍继续生成自然行动回合');
+assert.ok(!nonlethalResult.ledger.some(event =>
+  String(event?.eventKind || '').trim() === 'round_recover' &&
+  Number(event?.round || 0) === Number(nonlethalPrevented[0]?.round || 0)
+), '终态闭合后仍执行自然恢复');
 assert.equal(nonlethalResult.audit?.fatals?.length || 0, 0, `非致命结算审计失败:${JSON.stringify(nonlethalResult.audit?.fatals || [])}`);
 
 const adaptationInput = combatData();

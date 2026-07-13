@@ -367,6 +367,11 @@ addCheck(
     !/capacityChangePercent:\s*0\b|newInformation:\s*false\b|pendingEffect:\s*false\b/.test(battleUiSource),
 );
 addCheck(
+  'terminalCheckPrecedesRoundTick',
+  /const terminalAlive = adapters\.readAlive\(combatData\);[\s\S]*?terminalAlive\.playerAlive > 0 && terminalAlive\.enemyAlive > 0[\s\S]*?adapters\.settleRoundEnd\?\./.test(battleRuntimeSource) &&
+    !/adapters\.settleRoundEnd\?\.\(combatData, logs\);[\s\S]{0,240}?lastAlive = adapters\.readAlive\(combatData\)/.test(battleRuntimeSource),
+);
+addCheck(
   'summonAssistCannotBecomeSecondActiveRoot',
   /eventKind:\s*['"]summon_assist['"][\s\S]*?actionRole:\s*['"]ASSIST['"]/.test(battleUiSource) &&
     /const 父动作事件 = options\?\.parentActionEvent[\s\S]*?parentActionEvent:\s*父动作事件/.test(battleUiSource) &&

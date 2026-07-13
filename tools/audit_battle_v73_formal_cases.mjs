@@ -363,14 +363,24 @@ formalResult.eventLedger.filter(event =>
   const eventId = String(event?.eventId || '').trim();
   const block = actionReportBlocks.find(item => (item?.facts || []).some(fact => String(fact?.factId || '').trim() === eventId));
   const stateName = String(event?.meta?.stateName || event?.stateName || event?.状态名 || '').trim();
+  const sameStateApplied = formalResult.eventLedger.some(candidate =>
+    candidate !== event &&
+    String(candidate?.eventKind || '').trim() === 'state_apply' &&
+    String(candidate?.sourceActionId || candidate?.actionId || '').trim() === String(event?.sourceActionId || event?.actionId || '').trim() &&
+    String(candidate?.targetName || '').trim() === String(event?.targetName || '').trim() &&
+    String(candidate?.meta?.stateName || candidate?.stateName || candidate?.状态名 || '').trim() === stateName &&
+    !/resist|抵抗|抵住|immune|免疫/i.test(String(candidate?.result || candidate?.resultState || ''))
+  );
   assert.ok(
-    /抵住|抵抗|未能附着/.test(String(block?.outcomeSummary || '')) &&
-    !String(block?.outcomeSummary || '').includes(`受到【${stateName}】影响`) &&
-    !String(block?.nextWindow || '').includes(`【${stateName}】`),
+    sameStateApplied
+      ? String(block?.outcomeSummary || '').includes(`受到【${stateName}】影响`) && String(block?.nextWindow || '').includes(`【${stateName}】`)
+      : /抵住|抵抗|未能附着/.test(String(block?.outcomeSummary || '')) &&
+        !String(block?.outcomeSummary || '').includes(`受到【${stateName}】影响`) &&
+        !String(block?.nextWindow || '').includes(`【${stateName}】`),
     `被抵抗状态被写成成功附着或后续窗口:${JSON.stringify(block)}`,
   );
   const roundSummary = roundSummaryBlocks.find(item => Number(item?.round || 0) === Number(event?.round || 0));
-  assert.ok(!String(roundSummary?.nextWindow || '').includes(`【${stateName}】`), `被抵抗状态进入了回合后续窗口:${JSON.stringify(roundSummary)}`);
+  if (!sameStateApplied) assert.ok(!String(roundSummary?.nextWindow || '').includes(`【${stateName}】`), `被抵抗状态进入了回合后续窗口:${JSON.stringify(roundSummary)}`);
 });
 const projectedFactIds = new Set(actionReportBlocks.flatMap(block => block.facts || []).map(fact => String(fact?.factId || '').trim()).filter(Boolean));
 const projectedBadgeEventIds = new Set(actionReportBlocks.flatMap(block => block.badges || []).map(badge => String(badge?.sourceEventId || '').trim()).filter(Boolean));

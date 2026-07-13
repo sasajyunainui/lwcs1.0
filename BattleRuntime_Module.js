@@ -271,7 +271,10 @@
       if (queueResult?.fatal) {
         logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
       } else {
-        adapters.settleRoundEnd?.(combatData, logs);
+        const terminalAlive = adapters.readAlive(combatData);
+        if (terminalAlive.playerAlive > 0 && terminalAlive.enemyAlive > 0) {
+          adapters.settleRoundEnd?.(combatData, logs);
+        }
       }
       lastAlive = adapters.readAlive(combatData);
       logs.push(`[团战回合总结] 我方可行动单位:${lastAlive.playerAlive} 敌方可行动单位:${lastAlive.enemyAlive}`);
@@ -914,6 +917,30 @@
           push(`${actor}施展【${action}】指向${target}，但未造成实质伤害`);
         }
       });
+      const stateGroups = new Map();
+      facts.filter(fact => fact?.factType === 'STATE_CHANGE').forEach(fact => {
+        const key = [fact.actorName, fact.targetName, fact.actionName, fact.stateName, fact.sourceActionId]
+          .map(value => String(value || '').trim()).join('|');
+        if (!stateGroups.has(key)) stateGroups.set(key, []);
+        stateGroups.get(key).push(fact);
+      });
+      stateGroups.forEach(group => {
+        const first = group[0] || {};
+        const target = first.targetName || '目标';
+        const stateName = first.stateName || first.actionName || '状态';
+        if (group.some(fact => fact.eventKind === 'state_remove')) {
+          push(`${target}的【${stateName}】被移除`);
+          return;
+        }
+        const applied = group.filter(fact => !/resist|抵抗|抵住|immune|免疫/i.test(String(fact.resultState || '')));
+        if (applied.length) {
+          const duration = Math.max(0, ...applied.map(fact => Number(fact.duration || 0)));
+          push(`${target}受到【${stateName}】影响${duration > 0 ? `，剩余 ${duration} 个有效窗口` : ''}`);
+          return;
+        }
+        if (group.some(fact => /immune|免疫/i.test(String(fact.resultState || '')))) push(`${target}免疫【${stateName}】`);
+        else push(`${target}抵住了【${stateName}】`);
+      });
       facts.forEach(fact => {
         const actor = fact.actorName || '行动者';
         const target = fact.targetName || '目标';
@@ -931,13 +958,7 @@
           push(`${target || actor}${sign} ${value} 点${fact.resource || '资源'}`);
           return;
         }
-        if (fact.factType === 'STATE_CHANGE') {
-          if (fact.eventKind === 'state_remove') push(`${target}的【${fact.stateName || '状态'}】被移除`);
-          else if (/resist|抵抗|抵住/i.test(String(fact.resultState || ''))) push(`${target}抵住了【${fact.stateName || action}】`);
-          else if (/immune|免疫/i.test(String(fact.resultState || ''))) push(`${target}免疫【${fact.stateName || action}】`);
-          else push(`${target}受到【${fact.stateName || action}】影响${fact.duration > 0 ? `，剩余 ${fact.duration} 个有效窗口` : ''}`);
-          return;
-        }
+        if (fact.factType === 'STATE_CHANGE') return;
         if (fact.factType === 'SUMMON') {
           push(fact.eventKind === 'summon_assist'
             ? `${actor}执行召唤协同${target ? `，目标为${target}` : ''}`
