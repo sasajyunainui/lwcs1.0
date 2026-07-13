@@ -19271,6 +19271,7 @@ $CONTENT
                 content: 文本,
                 should_scan: false,
                 id: `qrf-plot-transient-${index}`,
+                _qrf_scope: 'story',
             });
         });
         return true;
@@ -55380,11 +55381,8 @@ $CONTENT
      * 纯业务逻辑
      */
     function extractUserMessageFromOptions_ACU(options) {
-        let userMessage = options.user_input || options.prompt;
-        if (options.injects?.[0]?.content) {
-            userMessage = options.injects[0].content;
-        }
-        return userMessage || null;
+        const userMessage = options?.user_input ?? options?.prompt;
+        return typeof userMessage === 'string' && userMessage.trim() ? userMessage : null;
     }
     function 标记AfterCommands已接管剧情推进_ACU(params) {
         if (params && typeof params === 'object') {
@@ -55439,15 +55437,10 @@ $CONTENT
             captureText: [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n'),
         });
         登记防截断流入等待检测_ACU(替换后正文生成指导);
-        if (options.injects?.[0]?.content) {
-            return { target: 'injects', value: 替换后正文生成指导, statData: 运行时数据 || null };
-        }
-        else if (options.prompt) {
+        if (typeof options?.prompt === 'string' && options.prompt.trim()) {
             return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时数据 || null };
         }
-        else {
-            return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时数据 || null };
-        }
+        return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时数据 || null };
     }
     /**
      * 处理循环模式下规划失败的情况
@@ -56548,12 +56541,12 @@ $CONTENT
                                 if (isQuietLikeGeneration_ACU('tavernhelper', { quiet_prompt: options.quiet_prompt }) || options.automatic_trigger) {
                                     return window.original_TavernHelper_generate_ACU.apply(this, args);
                                 }
-                                const userInputForInitialSeed = String(options.user_input || options.prompt || getSendTextareaValue_ACU() || '').trim();
+                                const userInputForInitialSeed = String(options.user_input || options.prompt || '').trim();
                                 if (userInputForInitialSeed) {
                                     await ensureInitialSeedCheckpointBeforeGeneration_ACU('tavernhelper_generate_before_ai', { allowPendingFirstUserMessage: true });
                                 }
-                                if (shouldProcessSummaryVectorIndexForGeneration_ACU('tavernhelper', { quiet_prompt: options.quiet_prompt, automatic_trigger: options.automatic_trigger }, false)) {
-                                    const userInput = String(options.user_input || options.prompt || getSendTextareaValue_ACU() || '').trim();
+                                if (userInputForInitialSeed && shouldProcessSummaryVectorIndexForGeneration_ACU('tavernhelper', { quiet_prompt: options.quiet_prompt, automatic_trigger: options.automatic_trigger }, false)) {
+                                    const userInput = String(options.user_input || options.prompt || '').trim();
                                     const summaryVectorResult = await processSummaryVectorIndexBeforeGenerationWithUI_ACU({ userInput, source: 'tavernhelper' });
                                     logDebug_ACU(`[交火模式纪要索引] TavernHelper.generate 发送前处理完成：success=${summaryVectorResult.success}, skipped=${summaryVectorResult.skipped === true}, reason=${summaryVectorResult.reason || 'none'}, keywords=${summaryVectorResult.keywordCount ?? 0}, injected=${summaryVectorResult.injectedCount ?? 0}`);
                                 }
@@ -56570,10 +56563,7 @@ $CONTENT
                                     case 'planned': {
                                         // UI 操作：写回 options
                                         if (result.writeBack) {
-                                            if (result.writeBack.target === 'injects') {
-                                                options.injects[0].content = result.writeBack.value;
-                                            }
-                                            else if (result.writeBack.target === 'prompt') {
+                                            if (result.writeBack.target === 'prompt') {
                                                 options.prompt = result.writeBack.value;
                                             }
                                             else {

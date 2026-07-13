@@ -860,7 +860,7 @@
     for (const 文本 of 注入片段) {
       const 标题 = '【正文时间线预览】';
       if (注入列表.some(item => String(item?.content || '').includes(标题))) continue;
-      注入列表.push({ position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false });
+      注入列表.push({ position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false, _qrf_scope: 'story' });
       是否追加 = true;
     }
     return 是否追加;
@@ -876,7 +876,7 @@
     for (const 文本 of 注入片段) {
       const 注入编号 = `lwcs-runtime-${取哈希(文本)}`;
       try { 助手.uninjectPrompts?.([注入编号]); } catch (_) {}
-      助手.injectPrompts([{ id: 注入编号, position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false }], { once: true });
+      助手.injectPrompts([{ id: 注入编号, position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false, _qrf_scope: 'story' }], { once: true });
       是否注册 = true;
     }
     return 是否注册;
