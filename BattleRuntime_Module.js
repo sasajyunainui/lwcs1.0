@@ -1654,6 +1654,19 @@
     return 'EVENT';
   }
 
+  function inferEffectPrototype(eventKind = '', event = {}) {
+    const explicit = String(event?.effectPrototype || event?.meta?.effectPrototype || '').trim();
+    if (explicit) return explicit;
+    const kind = String(eventKind || event?.eventKind || '').trim();
+    if (kind === 'hit_result') return '伤害结算';
+    if (kind === 'state_apply') return '状态施加';
+    if (kind === 'state_remove') return '状态移除';
+    if (kind === 'resource_change') return '资源变化';
+    if (kind === 'shield_create' || kind === 'shield_break') return '护盾变化';
+    if (kind === 'summon_create') return '召唤生成';
+    return '';
+  }
+
   function normalizeTargetIds(...values) {
     return [...new Set(values
       .flatMap(value => Array.isArray(value) ? value : [value])
@@ -3712,6 +3725,14 @@
     runDecisionCase,
     runBattleCase,
     auditFacts,
+    normalizeActionDisplayName,
+    normalizeActionRole,
+    normalizeBattleSide,
+    inferActionRole,
+    inferFactType,
+    inferEffectPrototype,
+    normalizeTargetIds,
+    normalizeActorControl,
     normalizeCausalNode,
     cloneAuditSnapshot,
     collectDecisionTrace,

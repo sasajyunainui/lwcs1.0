@@ -4061,47 +4061,10 @@ class BattleUIComponent {
         .filter(Boolean);
     }
 
-    function 推断战斗事实类型(eventKind = '', event = {}) {
-      const kind = String(eventKind || event?.eventKind || '').trim();
-      if (kind === 'action_start') return 'ACTION_DECLARED';
-      if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';
-      if (kind === 'state_tick') return 'STATE_TICK';
-      if (['state_apply', 'state_replace', 'state_remove'].includes(kind)) return 'STATE_CHANGE';
-      if (kind === 'resource_change' || kind === 'round_recover') return 'RESOURCE_CHANGE';
-      if (kind === 'shield_create' || kind === 'shield_break') return 'SHIELD_CHANGE';
-      if (/^summon_/.test(kind)) return 'SUMMON';
-      if (kind === 'create') return 'CREATION';
-      if (['dodge', 'defend', 'pass', 'reaction_window', 'counter_window'].includes(kind)) return 'REACTION';
-      if (kind === 'effect_resolved') return String(event?.factType || event?.meta?.factType || 'EFFECT').trim() || 'EFFECT';
-      if (/round/.test(kind)) return 'ROUND';
-      if (['blocked_action', 'blocked_settlement', 'failed_action', 'target_fail'].includes(kind)) return 'ACTION_RESULT';
-      return 'EVENT';
-    }
-
-    function 推断战斗事实原型(eventKind = '', event = {}) {
-      const explicit = String(event?.effectPrototype || event?.meta?.effectPrototype || '').trim();
-      if (explicit) return explicit;
-      const kind = String(eventKind || event?.eventKind || '').trim();
-      if (kind === 'hit_result') return '伤害结算';
-      if (kind === 'state_apply') return '状态施加';
-      if (kind === 'state_remove') return '状态移除';
-      if (kind === 'resource_change') return '资源变化';
-      if (kind === 'shield_create' || kind === 'shield_break') return '护盾变化';
-      if (kind === 'summon_create') return '召唤生成';
-      return '';
-    }
-
-    function 归一战斗目标ID列表(...values) {
-      return [...new Set(values
-        .flatMap(value => Array.isArray(value) ? value : [value])
-        .map(value => String(value || '').trim())
-        .filter(Boolean))];
-    }
-
     function 归一战斗事件记录(item = {}, patch = {}) {
       const eventKind = String(patch.eventKind || item.eventKind || '').trim();
-      const factType = 推断战斗事实类型(eventKind, { ...item, ...patch });
-      const effectPrototype = 推断战斗事实原型(eventKind, { ...item, ...patch });
+      const factType = BATTLE_RUNTIME.inferFactType(eventKind, { ...item, ...patch });
+      const effectPrototype = BATTLE_RUNTIME.inferEffectPrototype(eventKind, { ...item, ...patch });
       const normalized = {
         eventId: String(patch.eventId || item.eventId || '').trim(),
         eventKind,
@@ -4111,7 +4074,7 @@ class BattleUIComponent {
         targetName: String(patch.targetName || item.targetName || item.target || '').trim(),
         targetSide: String(patch.targetSide || item.targetSide || item.meta?.targetSide || '').trim(),
         targetId: String(patch.targetId || item.targetId || item.targetKey || item.target_id || '').trim(),
-        targetIds: 归一战斗目标ID列表(
+        targetIds: BATTLE_RUNTIME.normalizeTargetIds(
           patch.targetIds,
           item.targetIds,
           patch.targetId || item.targetId || item.targetKey || item.target_id,
@@ -4123,8 +4086,8 @@ class BattleUIComponent {
         finalActionName: normalizeBattleActionDisplayName(patch.finalActionName || item.finalActionName || item.meta?.finalActionName || item.actionName || item.meta?.actionName || item.skillName || item.meta?.skillName || item.action || ''),
         discardedActionName: normalizeBattleActionDisplayName(patch.discardedActionName || item.discardedActionName || item.meta?.discardedActionName || ''),
         actionType: String(patch.actionType || item.actionType || '').trim(),
-        actorControl: 标准化战斗操控来源(patch.actorControl || item.actorControl || item.meta?.actorControl, 'AI'),
-        actionRole: 标准化战斗行动职责(patch.actionRole || item.actionRole || item.meta?.actionRole || 推断战斗行动职责({ ...item, ...patch, eventKind })),
+        actorControl: BATTLE_RUNTIME.normalizeActorControl(patch.actorControl || item.actorControl || item.meta?.actorControl, 'AI'),
+        actionRole: BATTLE_RUNTIME.normalizeActionRole(patch.actionRole || item.actionRole || item.meta?.actionRole || BATTLE_RUNTIME.inferActionRole({ ...item, ...patch, eventKind })),
         actionId: String(patch.actionId || item.actionId || '').trim(),
         sourceActionName: normalizeBattleActionDisplayName(patch.sourceActionName || item.sourceActionName || item.meta?.sourceActionName || ''),
         sourceActionId: String(patch.sourceActionId || item.sourceActionId || '').trim(),
@@ -5160,7 +5123,7 @@ class BattleUIComponent {
             Number(other?.round || 0) === round &&
             String(other?.actorName || '').trim() === actor &&
             normalizeBattleActionDisplayName(other?.actionName || other?.sourceActionName || '') === action &&
-            String(other?.effectPrototype || 推断战斗事实原型(other?.eventKind, other) || '').trim() === prototype
+            String(other?.effectPrototype || BATTLE_RUNTIME.inferEffectPrototype(other?.eventKind, other) || '').trim() === prototype
           );
         })
         .map(event => {
@@ -5327,7 +5290,7 @@ class BattleUIComponent {
       (Array.isArray(eventLedger) ? eventLedger : [])
         .filter(event => event && typeof event === 'object')
         .filter(event => String(event?.eventKind || '').trim() === 'action_start')
-        .filter(event => 标准化战斗行动职责(event?.actionRole || '') !== 'STATE_TICK')
+        .filter(event => BATTLE_RUNTIME.normalizeActionRole(event?.actionRole || '') !== 'STATE_TICK')
         .filter(event => String(event?.actorSide || '').trim() === 'player')
         .filter(event => event?.meta?.source !== 'summon' && event?.source !== 'summon' && !/召唤自主/.test(String(event?.actionType || '')))
         .filter(event => !判定公开战报事件是内部兜底(event))
@@ -5689,28 +5652,6 @@ class BattleUIComponent {
 
 
 
-
-    function 标准化战斗行动职责(value = '', fallback = 'ACTIVE') {
-      const normalized = String(value || '').trim().toUpperCase();
-      return ['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK'].includes(normalized) ? normalized : fallback;
-    }
-
-    function 推断战斗行动职责(event = {}) {
-      const explicit = event?.actionRole || event?.meta?.actionRole;
-      if (explicit) return 标准化战斗行动职责(explicit);
-      const kind = String(event?.eventKind || event?.nodeKind || '').trim();
-      const actionType = String(event?.actionType || event?.source || '').trim();
-      if (kind === 'state_tick' || event?.phase === 'round_end') return 'STATE_TICK';
-      if (kind === 'summon_assist' || /summon_assist|协同追击/.test(actionType)) return 'ASSIST';
-      if (kind === 'counter' || kind === 'counter_window' || /counter|行为防反|反防反/.test(actionType)) return 'COUNTER';
-      if (['dodge', 'defend', 'pass', 'reaction_window', 'reaction_decision'].includes(kind) || /reaction|应招/.test(actionType)) return 'REACTION';
-      return 'ACTIVE';
-    }
-
-    function 标准化战斗操控来源(value = '', fallback = 'AI') {
-      const normalized = String(value || '').trim().toUpperCase();
-      return ['PLAYER_LOCKED', 'PLAYER', 'AI', 'SYSTEM'].includes(normalized) ? normalized : fallback;
-    }
 
 
 
@@ -20023,15 +19964,8 @@ class BattleUIComponent {
         return kind ? 'single' : '';
       }
 
-      function 标准化战斗阵营侧(value = '') {
-        const side = String(value || '').trim();
-        if (/^(player|玩家|我方)$/i.test(side)) return 'player';
-        if (/^(enemy|敌方|对方)$/i.test(side)) return 'enemy';
-        return '';
-      }
-
       function 推断战斗目标阵营侧(actorSide = '', targetPoolSide = '') {
-        const side = 标准化战斗阵营侧(actorSide);
+        const side = BATTLE_RUNTIME.normalizeBattleSide(actorSide);
         const pool = String(targetPoolSide || '').trim();
         if (!side) return '';
         if (/^(hostile|enemy|敌对|敌方)$/i.test(pool)) return side === 'player' ? 'enemy' : 'player';
@@ -20040,7 +19974,7 @@ class BattleUIComponent {
       }
 
       function 推断战斗单位阵营侧(combatData = {}, name = '', fallback = '') {
-        const normalizedFallback = 标准化战斗阵营侧(fallback);
+        const normalizedFallback = BATTLE_RUNTIME.normalizeBattleSide(fallback);
         const unitName = String(name || '').trim();
         if (!unitName) return normalizedFallback;
         if (读取战斗主队单位列表(combatData, '玩家').some(unit => isCombatUnitIdentityMatch(unit, unitName))) return 'player';
@@ -20058,9 +19992,9 @@ class BattleUIComponent {
         const actorName = String(event?.actorName || '').trim();
         const targetName = String(event?.targetName || '').trim();
         const targetScope = String(event?.targetScope || meta.targetScope || '').trim();
-        const actorSide = 标准化战斗阵营侧(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
+        const actorSide = BATTLE_RUNTIME.normalizeBattleSide(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
           || 推断战斗单位阵营侧(combatData, actorName);
-        const targetSide = 标准化战斗阵营侧(event?.targetSide || meta.targetSide || '')
+        const targetSide = BATTLE_RUNTIME.normalizeBattleSide(event?.targetSide || meta.targetSide || '')
           || 推断战斗单位阵营侧(combatData, targetName)
           || 推断战斗目标阵营侧(actorSide, event?.targetPoolSide || meta.targetPoolSide || '')
           || (['ally_group', 'self'].includes(targetScope) ? actorSide : '')
@@ -20159,7 +20093,7 @@ class BattleUIComponent {
           targetName: String(event.targetName || '').trim(),
           targetSide,
           targetId: String(event.targetId || '').trim(),
-          targetIds: 归一战斗目标ID列表(event.targetIds, event.targetId, event.targetName),
+          targetIds: BATTLE_RUNTIME.normalizeTargetIds(event.targetIds, event.targetId, event.targetName),
           targetScope: 'single',
           initialActionName: actionName,
           finalActionName: actionName,
@@ -20677,8 +20611,8 @@ class BattleUIComponent {
           nodeLayer: config.nodeLayer,
           actorName: String(event.actorName || '').trim(),
           actorSide,
-          actorControl: 标准化战斗操控来源(event.actorControl || event.meta?.actorControl, event.actionRole === 'STATE_TICK' ? 'SYSTEM' : 'AI'),
-          actionRole: 标准化战斗行动职责(event.actionRole || event.meta?.actionRole || 推断战斗行动职责(event)),
+          actorControl: BATTLE_RUNTIME.normalizeActorControl(event.actorControl || event.meta?.actorControl, event.actionRole === 'STATE_TICK' ? 'SYSTEM' : 'AI'),
+          actionRole: BATTLE_RUNTIME.normalizeActionRole(event.actionRole || event.meta?.actionRole || BATTLE_RUNTIME.inferActionRole(event)),
           targetName: String(event.targetName || '').trim(),
           targetSide,
           targetId: String(event.targetId || '').trim(),
@@ -20702,7 +20636,7 @@ class BattleUIComponent {
           reactionNodeId: String(event.reactionNodeId || event.meta?.reactionWindowNodeId || '').trim(),
           ruleCode: 标准化战斗ReasonCode(event.ruleCode || event.reasonCode || event.meta?.ruleCode || event.meta?.reasonCode || '', defaultReasonCode || ''),
           resultState: String(event.resultState || event.result || primaryOutcome || event.eventKind || '').trim(),
-          factType: String(event.factType || 推断战斗事实类型(event.eventKind, event)).trim(),
+          factType: String(event.factType || BATTLE_RUNTIME.inferFactType(event.eventKind, event)).trim(),
           effectPrototype: String(event.effectPrototype || event.meta?.effectPrototype || '').trim(),
           sourceEffectId: String(event.sourceEffectId || event.meta?.sourceEffectId || '').trim(),
         };
@@ -20824,7 +20758,7 @@ class BattleUIComponent {
         const round = Number(payload.round || combatData?.回合 || 0);
         const actorName = String(payload.actorName || '').trim();
         const targetName = String(payload.targetName || '').trim();
-        const targetIds = 归一战斗目标ID列表(
+        const targetIds = BATTLE_RUNTIME.normalizeTargetIds(
           payload.targetIds,
           payload.targetId || payload.targetKey || payload.target_id,
           targetName,
@@ -20867,8 +20801,8 @@ class BattleUIComponent {
           ''
         ).trim();
         const eventMeta = payload.meta && typeof payload.meta === 'object' ? { ...payload.meta } : {};
-        const actionRole = 推断战斗行动职责({ ...payload, eventKind, meta: eventMeta });
-        const actorControl = 标准化战斗操控来源(
+        const actionRole = BATTLE_RUNTIME.inferActionRole({ ...payload, eventKind, meta: eventMeta });
+        const actorControl = BATTLE_RUNTIME.normalizeActorControl(
           payload.actorControl || eventMeta.actorControl,
           actionRole === 'STATE_TICK' || ['counter_window', 'reaction_window'].includes(eventKind) ? 'SYSTEM' : 'AI',
         );
@@ -20921,9 +20855,9 @@ class BattleUIComponent {
           return '';
         })();
         if (inferredActionStatus) eventMeta.actionStatus = inferredActionStatus;
-        const explicitActorSide = 标准化战斗阵营侧(payload.actorSide || eventMeta.actorSide || '');
-        const explicitTargetSide = 标准化战斗阵营侧(payload.targetSide || eventMeta.targetSide || '');
-        const matchedActorSide = 标准化战斗阵营侧(
+        const explicitActorSide = BATTLE_RUNTIME.normalizeBattleSide(payload.actorSide || eventMeta.actorSide || '');
+        const explicitTargetSide = BATTLE_RUNTIME.normalizeBattleSide(payload.targetSide || eventMeta.targetSide || '');
+        const matchedActorSide = BATTLE_RUNTIME.normalizeBattleSide(
           matchedAction?.actorSide || matchedCounterStart?.actorSide || matchedSourceAction?.actorSide || '',
         );
         const matchedTargetSide = [matchedAction, matchedCounterStart, matchedSourceAction]
@@ -20937,8 +20871,8 @@ class BattleUIComponent {
           targetPoolSide: String(payload.targetPoolSide || eventMeta.targetPoolSide || '').trim(),
           meta: eventMeta,
         });
-        const factType = 推断战斗事实类型(eventKind, { ...payload, meta: eventMeta });
-        const effectPrototype = 推断战斗事实原型(eventKind, { ...payload, meta: eventMeta });
+        const factType = BATTLE_RUNTIME.inferFactType(eventKind, { ...payload, meta: eventMeta });
+        const effectPrototype = BATTLE_RUNTIME.inferEffectPrototype(eventKind, { ...payload, meta: eventMeta });
         const event = {
           eventId: String(payload.eventId || BATTLE_RUNTIME.nextRuntimeId('battle-ledger')).trim(),
           eventKind,
@@ -22917,14 +22851,14 @@ class BattleUIComponent {
         const runtime = BATTLE_RUNTIME.ensureCombatRuntime(traceCombatData);
         if (!Array.isArray(runtime.actionQueueTrace)) runtime.actionQueueTrace = [];
         const actor = combatData?.参战者?.team_player?.[0] || null;
-        const actionRole = 标准化战斗行动职责(options?.actionRole || 'ACTIVE');
+        const actionRole = BATTLE_RUNTIME.normalizeActionRole(options?.actionRole || 'ACTIVE');
         const actionName = normalizeBattleActionDisplayName(playerAction?.skill?.name || playerAction?.skill?.魂技名 || playerAction?.action_type || playerAction?.type || '行动');
         const sequenceBase = Math.max(0, Number(runtime.duelActionSequence || 0));
         const result = BATTLE_RUNTIME.executeActionNodes({
           round: Number(traceCombatData?.回合 || combatData?.回合 || 0),
           initialInsertionSequence: sequenceBase,
           initialActionSequence: sequenceBase,
-          normalizeRole: 标准化战斗行动职责,
+          normalizeRole: BATTLE_RUNTIME.normalizeActionRole,
           normalizeActionName: normalizeBattleActionDisplayName,
           describeActor: actorEntry => String(actorEntry?.char?.name || actorEntry?.char?.名称 || '').trim(),
           onTrace: entry => {
@@ -27177,7 +27111,7 @@ class BattleUIComponent {
             round: Number(combatData?.回合 || 0),
             actorName: attacker?.name || attacker?.名称 || '',
             targetName: targetNames[0] || '',
-            targetIds: 归一战斗目标ID列表(targetNames),
+            targetIds: BATTLE_RUNTIME.normalizeTargetIds(targetNames),
             actionName: skill?.name || skill?.魂技名 || '时光回溯',
             actionType: '释放魂技',
             sourceActionName: skill?.name || skill?.魂技名 || '时光回溯',
@@ -27193,7 +27127,7 @@ class BattleUIComponent {
               sourceEffectId,
               runtimeConsumer: 'time_rewind',
               targetNames,
-              targetIds: 归一战斗目标ID列表(targetNames),
+              targetIds: BATTLE_RUNTIME.normalizeTargetIds(targetNames),
               reactionPenalty: 压制值,
               skipResolutionTrace: true,
             },
@@ -28973,7 +28907,7 @@ class BattleUIComponent {
               targetName: creationOwnerName,
               actionName: creationActionName,
               actionType: 'create',
-              actorControl: 标准化战斗操控来源(playerAction?.__actorControl || creationActionStart?.actorControl, 'AI'),
+              actorControl: BATTLE_RUNTIME.normalizeActorControl(playerAction?.__actorControl || creationActionStart?.actorControl, 'AI'),
               actionRole: 'ACTIVE',
               sourceActionId: creationActionStart?.actionId || '',
               parentNodeId: creationActionStart?.chainNodeId || '',
@@ -30022,7 +29956,7 @@ class BattleUIComponent {
           const targetNames = [...new Set(resolvedTargets
             .map(target => String(target?.name || target?.名称 || '').trim())
             .filter(Boolean))];
-          const targetIds = 归一战斗目标ID列表(
+          const targetIds = BATTLE_RUNTIME.normalizeTargetIds(
             resolvedTargets.map(target => target?.id || target?.uid || target?.角色ID || target?.name || target?.名称),
             targetNames,
           );
@@ -34982,7 +34916,7 @@ class BattleUIComponent {
           return BATTLE_RUNTIME.createActionQueue({
             round,
             initialEntries,
-            normalizeRole: 标准化战斗行动职责,
+            normalizeRole: BATTLE_RUNTIME.normalizeActionRole,
             normalizeActionName: normalizeBattleActionDisplayName,
             describeActor: actorEntry => String(actorEntry?.char?.name || actorEntry?.char?.名称 || '').trim(),
             onTrace: entry => {
@@ -35479,7 +35413,7 @@ class BattleUIComponent {
                 actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '蓄力行动',
                 actionType: 'charge_progress',
                 actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
-                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
                 result: 'charging',
                 actionStatus: 'CHARGING',
                 meta: {
@@ -35570,7 +35504,7 @@ class BattleUIComponent {
                 finalActionName: normalizeBattleActionDisplayName(carryOverAction?.skill?.name || carryOverAction?.skill?.魂技名 || carryOverAction?.action_type || '蓄力行动'),
                 actionType: 'charge_start',
                 actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
-                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
                 result: 'charging',
                 actionStatus: 'CHARGING',
                 meta: {
@@ -35671,7 +35605,7 @@ class BattleUIComponent {
             finalActionName: normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动'),
             actionType: actor.召唤键 ? (action?.action_type || '召唤自主行动') : (action?.action_type || action?.type || '自动行动'),
             actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
-            actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+            actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
             sourceActionName: parentActionEvent?.actionName || '',
             sourceActionId: parentActionEvent?.actionId || '',
             parentNodeId: parentActionEvent?.chainNodeId || '',
@@ -35706,7 +35640,7 @@ class BattleUIComponent {
                 actionName: action?.skill?.name || action?.skill?.名称 || action?.name || '穿戴装备',
                 actionType: 'equipment',
                 actorControl: String(actionStartEvent?.actorControl || queueNode?.actorControl || actorEntry.__actorControl || 'AI').trim() || 'AI',
-                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
                 actionId: actionStartEvent?.actionId || '',
                 sourceActionId: actionStartEvent?.actionId || '',
                 parentNodeId: actionStartEvent?.chainNodeId || '',
@@ -35827,7 +35761,7 @@ class BattleUIComponent {
               actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '撤离',
               actionType: 'withdraw',
               actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
-              actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+              actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
               actionId: actionStartEvent?.actionId || '',
               sourceActionId: actionStartEvent?.actionId || '',
               parentNodeId: actionStartEvent?.chainNodeId || '',
@@ -35942,7 +35876,7 @@ class BattleUIComponent {
             BATTLE_RUNTIME.ensureLedger(battleState.combatData).slice(settlementLedgerStart).forEach(event => {
               if (!isSameBattleReportName(event?.actorName || '', finalTarget?.name || finalTarget?.名称 || '')) return;
               const eventKind = String(event?.eventKind || '').trim();
-              const reactionFact = 标准化战斗行动职责(event?.actionRole || '') === 'REACTION' || ['dodge', 'defend', 'pass'].includes(eventKind);
+              const reactionFact = BATTLE_RUNTIME.normalizeActionRole(event?.actionRole || '') === 'REACTION' || ['dodge', 'defend', 'pass'].includes(eventKind);
               if (!reactionFact) return;
               event.actionRole = 'REACTION';
               event.actorSide = reactionActorSide;
@@ -35974,7 +35908,7 @@ class BattleUIComponent {
               targetSide: 读取战斗单位阵营名(battleState.combatData, currentUnit) === 'enemy' ? 'enemy' : 'player',
               actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动',
               actionType: action?.action_type || action?.type || 'resource_change',
-              actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+              actionRole: BATTLE_RUNTIME.normalizeActionRole(queueNode?.actionRole || 'ACTIVE'),
               sourceActionId: actionStartEvent?.actionId || '',
               parentNodeId: actionStartEvent?.chainNodeId || '',
               sourceNodeId: actionStartEvent?.chainNodeId || '',
@@ -39680,14 +39614,14 @@ class BattleUIComponent {
           let score = /普通攻击/.test(finalAction) ? 1 : /魂技|真身|融合|爆发/.test(finalAction) ? 6 : 3;
           let childEscalated = false;
           const reasons = [];
-          const actorSide = 标准化战斗阵营侧(root.actorSide || '');
-          const targetSide = 标准化战斗阵营侧(root.targetSide || '');
+          const actorSide = BATTLE_RUNTIME.normalizeBattleSide(root.actorSide || '');
+          const targetSide = BATTLE_RUNTIME.normalizeBattleSide(root.targetSide || '');
           const rootSource = String(root.source || root.meta?.source || '').trim();
           const rootActorName = String(root.actorName || '').trim();
           const rootIsSummonAction = rootSource === 'summon' || /召唤/.test(String(root.actionType || root.sourceType || ''));
           const 节点是否玩家受击事实 = node => {
             const kind = String(node?.nodeKind || '').trim();
-            if (标准化战斗阵营侧(node?.targetSide || '') !== 'player') return false;
+            if (BATTLE_RUNTIME.normalizeBattleSide(node?.targetSide || '') !== 'player') return false;
             const nodeTargetName = String(node?.targetName || '').trim();
             if (rootIsSummonAction && rootActorName && isSameBattleReportName(nodeTargetName, rootActorName)) return false;
             const damage = Number(读取结算轨迹值(node?.calculationTrace, 'finalDamage') || 读取结算轨迹值(node?.calculationTrace, 'damage') || 0);
