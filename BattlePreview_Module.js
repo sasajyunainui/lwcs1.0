@@ -50,6 +50,8 @@
     overlayWrites: 0,
     fullCloneCalls: 0,
     maxNodesObserved: 0,
+    stableHashCalls: 0,
+    stableHashChars: 0,
   };
   const previewCache = new Map();
 
@@ -62,6 +64,20 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function cloneUnitForOverlay(unit = {}) {
+    const cloneStates = states => {
+      if (Array.isArray(states)) return states.map(state => state && typeof state === 'object' ? cloneValue(state) : state);
+      if (states && typeof states === 'object') return Object.fromEntries(Object.entries(states).map(([key, state]) => [key, cloneValue(state)]));
+      return states;
+    };
+    return {
+      ...unit,
+      属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
+      状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
+      状态效果: cloneStates(unit?.状态效果),
+    };
+  }
+
   function stableStringify(value) {
     if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
     if (value && typeof value === 'object') {
@@ -72,6 +88,8 @@
 
   function stableHash(value) {
     const text = typeof value === 'string' ? value : stableStringify(value);
+    metrics.stableHashCalls += 1;
+    metrics.stableHashChars += text.length;
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
       hash ^= text.charCodeAt(index);
@@ -285,7 +303,7 @@
     changeUnit(id, mutator) {
       const current = this.readUnit(id);
       if (!current) throw new Error(`battle_preview_overlay_unit_missing:${id}`);
-      const next = cloneValue(current);
+      const next = cloneUnitForOverlay(current);
       mutator(next);
       return this.writeUnit(next);
     }
@@ -327,12 +345,12 @@
       const participants = this.baseWorld?.参战者 || {};
       const nextParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
         if (Array.isArray(value)) {
-          return [side, value.map(unit => cloneValue(this.changedUnits.get(unitId(unit)) || unit))];
+          return [side, value.map(unit => this.changedUnits.get(unitId(unit)) || unit)];
         }
         if (value && typeof value === 'object') {
-          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, cloneValue(this.changedUnits.get(unitId(unit)) || unit)]))];
+          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, this.changedUnits.get(unitId(unit)) || unit]))];
         }
-        return [side, cloneValue(value)];
+        return [side, value];
       }));
       return { ...this.baseWorld, 参战者: nextParticipants };
     }
@@ -929,7 +947,7 @@
       input.worldRevision || stableHash(input.worldSnapshot || {}),
       input.beliefRevision || stableHash(input.beliefSnapshot || {}),
       input.actorId || '',
-      stableHash(input.declaration || {}),
+      input.actionFingerprint || stableHash(input.declaration || {}),
       (input.declaration?.targetIds || []).join(','),
       input.horizon || 'SHALLOW',
     ].join('|');

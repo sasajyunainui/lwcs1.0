@@ -23,8 +23,9 @@ const requestedCase = String(process.env.R63_CASE || '').trim();
 const requestedSeed = Number(process.env.R63_SEED || 0);
 const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
 const refreshReviewReports = String(process.env.R63_REFRESH_REVIEW_REPORTS || '').trim() === '1';
+const verifyReviewHashes = String(process.env.R63_VERIFY_REVIEW_HASHES || '').trim() === '1' || process.argv.includes('--verify-hashes');
 
-if (!requestedCase && !captureEvidence && !refreshReviewReports) {
+if (!requestedCase && !captureEvidence && !refreshReviewReports && !verifyReviewHashes) {
   const manifestPath = path.join(outputDir, 'manifest.json');
   if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -301,7 +302,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     });
   lines.push('## Final Snapshot', '', '```json', JSON.stringify(result.finalSnapshot, null, 2), '```', '', '## Complete Raw Logs', '', '```text', ...result.logs, '```', '', '## Review', '', `- 行为结论：${review.behavior}`, `- 叙事结论：${review.narrative}`, `- 反常识点：${review.anomalies}`, `- 合理替代：${review.alternatives}`, `- 责任模块：${review.responsibility}`, `- 是否阻断：${review.blocking ? '是' : '否'}`, '');
   const reportPath = path.join(outputDir, `${definition.caseId}.md`);
-  if (!captureEvidence) fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
+  if (!captureEvidence && !verifyReviewHashes) fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
   results.push({
     caseId: definition.caseId,
     reportPath,
@@ -318,5 +319,5 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     review,
   });
 }
-if (!captureEvidence) fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
+if (!captureEvidence && !verifyReviewHashes) fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
 console.log(JSON.stringify({ summary: { caseCount: results.length, fatalCount: results.reduce((sum, item) => sum + item.fatalCount, 0) }, results }, null, 2));
