@@ -284,6 +284,7 @@ class BattleUIComponent {
     const 记录状态来源登记 = BATTLE_RUNTIME.registerStateSource;
     const 查找状态来源登记 = BATTLE_RUNTIME.findStateSource;
     const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
+    const 刷新维持运行态负荷 = BATTLE_RUNTIME.refreshSustainRuntimeLoad;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -18853,24 +18854,6 @@ class BattleUIComponent {
             ? 0.06
             : 0;
         return 限制行为概率(消耗压力 * 0.35 + 范围系数 + 威力系数 + 控制系数, 0.03, 0.45);
-      }
-
-      function 刷新维持运行态负荷(char = {}) {
-        const 维持列表 = Object.values(char?.持续效果 || {}).filter(Boolean);
-        const 总负荷 = 限制行为概率(
-          维持列表.reduce((总和, effect) => 总和 + Number(effect?.维持负荷 || 0), 0),
-          0,
-          0.75,
-        );
-        if (总负荷 > 0) {
-          char.__维持负荷 = 总负荷;
-          char.__维持反应惩罚 = Math.min(0.25, 总负荷 * 0.5);
-          char.__维持前摇系数 = 1 + 总负荷 * 0.35;
-        } else {
-          delete char.__维持负荷;
-          delete char.__维持反应惩罚;
-          delete char.__维持前摇系数;
-        }
       }
 
       function 构建维持释放伤害承载消耗(skill = {}, sustainCost = '无', char = {}, targetList = []) {

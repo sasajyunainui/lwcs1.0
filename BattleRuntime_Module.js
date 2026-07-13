@@ -2231,6 +2231,23 @@
     return { log: logs.join(' '), totalDot, stopCondition: false };
   }
 
+  function refreshSustainRuntimeLoad(unit = {}) {
+    const totalLoad = Math.max(0, Math.min(0.75,
+      Object.values(unit?.持续效果 || {}).filter(Boolean)
+        .reduce((total, effect) => total + Number(effect?.维持负荷 || 0), 0),
+    ));
+    if (totalLoad > 0) {
+      unit.__维持负荷 = totalLoad;
+      unit.__维持反应惩罚 = Math.min(0.25, totalLoad * 0.5);
+      unit.__维持前摇系数 = 1 + totalLoad * 0.35;
+    } else {
+      delete unit.__维持负荷;
+      delete unit.__维持反应惩罚;
+      delete unit.__维持前摇系数;
+    }
+    return totalLoad;
+  }
+
 
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
     settlement.prepare(combatData, adapterOptions);
@@ -5467,6 +5484,7 @@
     settleNaturalRecoveryAtRoundEnd,
     settleRingRecoveryAtRoundEnd,
     settleConditionResourceTick,
+    refreshSustainRuntimeLoad,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,
