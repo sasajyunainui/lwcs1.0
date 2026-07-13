@@ -1063,8 +1063,40 @@ assert.equal(structuredDefense.terminal, 'SUCCESS', '结构化防御没有形成
 assert.equal(structuredDefense.facts.filter(event => event?.eventKind === 'defend').length, 1, '结构化防御被拆成多个终态事实');
 assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
   combatData: combatData(),
-  declaration: { actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'], skill: { name: '未知提交', _效果数组: [{ 原型: '复制执行', 目标: '单体' }] } },
+  declaration: { actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'], skill: { name: '未知提交', _效果数组: [{ 原型: '未知战斗原型', 目标: '单体' }] } },
 }), /battle_structured_prototype_unsupported/, '未迁移原型在结构化提交器中被静默跳过');
+
+const structuredPreviewCombat = combatData();
+structuredPreviewCombat.回合 = 1;
+const structuredPreviewTarget = structuredPreviewCombat.参战者.team_enemy[0];
+const defenseBefore = Number(structuredPreviewTarget.属性.防御 || 0);
+const structuredPreviewResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredPreviewCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '结构化属性削弱', _效果数组: [{ 原型: '属性修正', 目标: '单体', 属性: '防御', 数值: '-10%' }] },
+  },
+});
+assert.ok(Number(structuredPreviewTarget.属性.防御 || 0) < defenseBefore, 'Preview复杂原型差量没有原子提交到影子快照');
+assert.ok(structuredPreviewResult.facts.some(event => event?.effectPrototype === '属性修正' && event?.eventKind === 'effect_resolved'), 'Preview复杂原型缺少结构化结算事实');
+const structuredCoverage = sandbox.__LWCS_BATTLE_RUNTIME__.auditStructuredCommitCoverage();
+assert.equal(structuredCoverage.prototypeCount, 23, '结构化提交器没有覆盖全部23个战斗原型的责任归属');
+assert.equal(Array.from(structuredCoverage.pending || []).join(','), '', '结构化提交器仍存在未登记原型');
+
+const structuredSummonCombat = combatData();
+structuredSummonCombat.回合 = 1;
+const structuredSummonResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredSummonCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['player-a'],
+    skill: { name: '结构化召唤', _效果数组: [{ 原型: '召唤生成', 目标: '自身', 召唤物名称: '测试协同体', 召唤单位类型: '魂兽', 行动模式: '协同攻击', 持续回合: 1, 继承属性比例: 0.4 }] },
+  },
+});
+const structuredSummons = Object.values(structuredSummonCombat.召唤单位表 || {});
+assert.equal(structuredSummons.length, 1, '结构化召唤没有创建唯一运行态实体');
+assert.equal(structuredSummons[0].__来源状态?.duration, 1, '持续1回合召唤没有保留一个真实行动窗口');
+assert.ok(structuredSummonCombat.参战者.team_player[0].状态效果['召唤:测试协同体'], '结构化召唤没有建立宿主来源状态');
+assert.equal(structuredSummonResult.facts.filter(event => event?.eventKind === 'summon_create').length, 1, '结构化召唤缺少唯一生成事实');
 
 console.log(JSON.stringify({
   summary: {
@@ -1093,7 +1125,7 @@ console.log(JSON.stringify({
     roundEndSideEffectChecks: 4,
     delayedEffectChecks: 6,
     persistentPrototypeChecks: 5,
-    structuredCommitChecks: 5,
+    structuredCommitChecks: 12,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

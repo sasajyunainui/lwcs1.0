@@ -4003,6 +4003,177 @@
     });
   }
 
+  const previewCommittedPrototypes = new Set([
+    '资源转移', '属性修正', '判定修正', '结算修正', '炸环', '时窗修正', '状态移除',
+    '规则防御', '状态转移', '状态交换', '资源锁定', '规则改写', '机制抹消', '机制授予',
+    '复制执行', '时光回溯', '位移执行', '决策干扰',
+  ]);
+
+  function applyPreviewUnitSnapshot(target = {}, snapshot = {}) {
+    const preserved = {
+      __battleRuntime: target.__battleRuntime,
+      __父级战斗数据: target.__父级战斗数据,
+      __宿主: target.__宿主,
+      __来源状态: target.__来源状态,
+    };
+    Object.keys(target).forEach(key => {
+      if (!Object.prototype.hasOwnProperty.call(snapshot, key) && !Object.prototype.hasOwnProperty.call(preserved, key)) delete target[key];
+    });
+    Object.entries(cloneValue(snapshot)).forEach(([key, value]) => { target[key] = value; });
+    Object.entries(preserved).forEach(([key, value]) => {
+      if (value !== undefined) target[key] = value;
+    });
+    if (target.召唤键) syncSummonMirror(target);
+  }
+
+  function commitStructuredPreviewPrototype(combatData = {}, actor = {}, declaration = {}, effect = {}, action = {}, actionEvent = {}, actionRole = 'ACTIVE', effectIndex = 0) {
+    const previewDeclaration = {
+      ...cloneValue(declaration),
+      actionId: `${actionEvent.actionId}:effect:${effectIndex}`,
+      resourceCosts: {},
+      skill: { ...(cloneValue(declaration?.skill || {})), _效果数组: [cloneValue(effect)] },
+    };
+    const preview = previewRuntime.previewAction({
+      worldSnapshot: combatData,
+      actorId: previewRuntime.unitId(actor),
+      declaration: previewDeclaration,
+      horizon: 'SHALLOW',
+      previewBudget: { maxNodes: 12 },
+      battleIntent: { mode: String(combatData?.战斗意图 || '').trim(), objectives: combatData?.胜负条件 || {} },
+    });
+    preview.changedUnitIds.forEach(unitId => {
+      const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
+      const snapshot = previewRuntime.findUnit(preview.afterSnapshot, unitId);
+      if (!actual || !snapshot) throw new Error(`battle_structured_preview_commit_target_missing:${unitId}`);
+      applyPreviewUnitSnapshot(actual, snapshot);
+    });
+    Object.entries(preview.changedRules || {}).forEach(([key, value]) => {
+      combatData[key] = cloneValue(value);
+    });
+    const facts = preview.contributions.map(contribution => writeLedgerEvent(combatData, {
+      eventKind: 'effect_resolved',
+      round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor),
+      targetName: String(contribution?.targetId || '').trim(),
+      targetId: String(contribution?.targetId || '').trim(),
+      actionName: action.actionName,
+      actionType: action.actionKind,
+      actorControl: action.actorControl,
+      actionRole,
+      actionId: actionEvent.actionId,
+      sourceActionId: actionEvent.actionId,
+      parentNodeId: actionEvent.chainNodeId || '',
+      sourceNodeId: actionEvent.chainNodeId || '',
+      result: 'resolved',
+      resultState: 'SUCCESS',
+      effectPrototype: String(effect?.原型 || '').trim(),
+      factType: prototypeRuntimeContract[String(effect?.原型 || '').trim()]?.factTypes?.[0] || 'EFFECT',
+      primaryOutcome: String(contribution?.outcomeKind || 'effect_resolved').toLowerCase(),
+      meta: {
+        source: 'structured_preview_commit', effectIndex,
+        effectInstanceId: contribution?.effectInstanceId || '', windowId: contribution?.windowId || '',
+        outcomeKind: contribution?.outcomeKind || '', evidence: cloneValue(contribution?.evidence || {}),
+      },
+    }));
+    preview.scheduledEvents.forEach((scheduled, scheduledIndex) => {
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'effect_resolved', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor),
+        targetName: String(scheduled?.targetId || previewRuntime.unitId(actor)).trim(), actionName: action.actionName,
+        actionType: action.actionKind, actorControl: action.actorControl, actionRole, actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'scheduled', resultState: 'GAIN', effectPrototype: String(effect?.原型 || '').trim(),
+        factType: prototypeRuntimeContract[String(effect?.原型 || '').trim()]?.factTypes?.[0] || 'EFFECT',
+        primaryOutcome: String(scheduled?.type || 'scheduled').toLowerCase(),
+        meta: { source: 'structured_preview_commit', effectIndex, scheduledIndex, scheduled: cloneValue(scheduled) },
+      }));
+    });
+    if (!facts.length) {
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'effect_resolved', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor),
+        targetName: previewRuntime.unitName(actor), actionName: action.actionName, actionType: action.actionKind,
+        actorControl: action.actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+        parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: 'no_effect',
+        resultState: 'NO_EFFECT', effectPrototype: String(effect?.原型 || '').trim(), primaryOutcome: 'no_effect',
+        meta: { source: 'structured_preview_commit', effectIndex },
+      }));
+    }
+    return facts.filter(Boolean);
+  }
+
+  function ensureStructuredSummonTable(combatData = {}) {
+    if (!combatData.召唤单位表 || typeof combatData.召唤单位表 !== 'object' || Array.isArray(combatData.召唤单位表)) {
+      Object.defineProperty(combatData, '召唤单位表', { configurable: true, enumerable: false, writable: true, value: {} });
+    }
+    return combatData.召唤单位表;
+  }
+
+  function commitStructuredSummon(combatData = {}, actor = {}, declaration = {}, effect = {}, action = {}, actionEvent = {}, actionRole = 'ACTIVE', effectIndex = 0) {
+    const baseName = String(effect?.召唤物名称 || '').trim();
+    if (!baseName) throw new Error('battle_structured_summon_name_missing');
+    const count = Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
+    const duration = Math.max(1, Math.floor(Number(effect?.持续回合 || 1)) || 1);
+    const mode = String(effect?.行动模式 || '协同攻击').trim() || '协同攻击';
+    const summonType = String(effect?.召唤单位类型 || effect?.召唤类型 || '魂兽').trim() || '魂兽';
+    const inheritRatio = Math.max(0.05, Math.min(2, Number(effect?.继承属性比例 || effect?.强度 || effect?.召唤强度 || 0.35) || 0.35));
+    const table = ensureStructuredSummonTable(combatData);
+    const facts = [];
+    const summons = [];
+    for (let index = 0; index < count; index += 1) {
+      const displayName = count > 1 ? `${baseName}#${index + 1}` : baseName;
+      const key = `structured-summon:${previewRuntime.unitId(actor)}:${Number(combatData?.回合 || 0)}:${effectIndex}:${index + 1}`;
+      if (table[key] && table[key].已消散 !== true) throw new Error(`battle_structured_summon_key_conflict:${key}`);
+      const stateKey = `召唤:${displayName}`;
+      const hpMax = Math.max(1, Math.floor(previewRuntime.readHpMax(actor) * inheritRatio));
+      const staminaMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '体力') * inheritRatio));
+      const soulMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '魂力') * inheritRatio));
+      const mentalMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '精神力') * inheritRatio));
+      const sourceState = {
+        类型: 'buff', 状态: stateKey, 状态名称: stateKey, duration,
+        描述: `由[${action.actionName}]生成`, 来源原型摘要: '召唤生成', 来源技能: action.actionName,
+        召唤物: {
+          召唤键: key, 召唤单位类型: summonType, 召唤物名称: displayName, 行动模式: mode,
+          生命: hpMax, 生命上限: hpMax, 精神负载: Math.max(0, Number(effect?.精神负载 || 0)),
+          生成回合: Number(combatData?.回合 || 0), 已消散: false,
+        },
+      };
+      actor.状态效果 = actor.状态效果 && typeof actor.状态效果 === 'object' ? actor.状态效果 : {};
+      actor.状态效果[stateKey] = sourceState;
+      const summon = {
+        id: key, name: displayName, 名称: displayName, 召唤键: key,
+        类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
+        宿主名: previewRuntime.unitName(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
+        阵营: inferUnitSide(combatData, previewRuntime.unitName(actor)) === 'enemy' ? '敌方' : '玩家',
+        生成回合: Number(combatData?.回合 || 0), 精神负载: Math.max(0, Number(effect?.精神负载 || 0)), 已消散: false,
+        hp: hpMax, hp_max: hpMax, HP: hpMax, HP上限: hpMax,
+        vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
+        sp: soulMax, sp_max: soulMax, 魂力: soulMax, 魂力上限: soulMax,
+        men: mentalMax, men_max: mentalMax, 精神力: mentalMax, 精神力上限: mentalMax,
+        str: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'str') * inheritRatio)),
+        def: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'def') * inheritRatio)),
+        agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'agi') * inheritRatio)),
+        状态: { 存活: true, 行动: '战斗' }, 状态效果: {}, 持续效果: {},
+        技能列表: Array.isArray(effect?.技能列表) && effect.技能列表.length
+          ? cloneValue(effect.技能列表)
+          : [{ name: '普通攻击', 魂技名: '普通攻击', 消耗: '无', 前摇: 10, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: Math.max(25, Math.round(50 * inheritRatio)), 伤害类型: '近身攻击' }] }],
+      };
+      summon.final = buildCombatFinalStats(summon);
+      table[key] = summon;
+      const window = ensureSummonWindowRuntime(summon);
+      window.remainingWindows = duration;
+      syncSummonMirror(summon);
+      summons.push(summon);
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'summon_create', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: displayName,
+        targetId: key, actionName: action.actionName, actionType: action.actionKind, actorControl: action.actorControl,
+        actionRole: ['协同攻击', '护卫'].includes(mode) ? 'ASSIST' : actionRole, actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'created', resultState: 'GAIN', effectPrototype: '召唤生成', factType: 'SUMMON', primaryOutcome: 'summon_created',
+        meta: { source: 'structured_runtime', effectIndex, summonKey: key, summonName: displayName, summonType, summonMode: mode, duration, windowId: window.windowId, grantAvailable: true },
+      }));
+    }
+    return { summons, facts: facts.filter(Boolean) };
+  }
+
   function executeStructuredDeclaration(input = {}) {
     const combatData = input?.combatData;
     const declaration = input?.declaration;
@@ -4065,6 +4236,14 @@
     if (!effects.length) throw new Error('battle_structured_effects_missing');
     effects.forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
+      if (previewCommittedPrototypes.has(prototype)) {
+        facts.push(...commitStructuredPreviewPrototype(combatData, actor, declaration, effect, action, actionEvent, actionRole, effectIndex));
+        return;
+      }
+      if (prototype === '召唤生成') {
+        facts.push(...commitStructuredSummon(combatData, actor, declaration, effect, action, actionEvent, actionRole, effectIndex).facts);
+        return;
+      }
       if (!['伤害结算', '资源变化', '护盾变化', '状态施加'].includes(prototype)) {
         throw new Error(`battle_structured_prototype_unsupported:${prototype || 'missing'}`);
       }
@@ -4151,6 +4330,26 @@
       });
     });
     return { actionEvent, facts: facts.filter(Boolean), actor, target: primaryTarget, terminal: 'RESOLVED' };
+  }
+
+  function auditStructuredCommitCoverage() {
+    const sampled = new Set(['伤害结算', '资源变化', '护盾变化', '状态施加']);
+    const summoned = new Set(['召唤生成']);
+    const rows = prototypeManifest.map(entry => {
+      const memberships = [sampled.has(entry.name), previewCommittedPrototypes.has(entry.name), summoned.has(entry.name)].filter(Boolean).length;
+      if (memberships !== 1) throw new Error(`battle_structured_commit_ownership_invalid:${entry.name}:${memberships}`);
+      return {
+        prototype: entry.name,
+        mode: sampled.has(entry.name) ? 'SAMPLED_DIRECT' : previewCommittedPrototypes.has(entry.name) ? 'PREVIEW_ATOMIC_COMMIT' : 'SUMMON_FSM',
+      };
+    });
+    return cloneValue({
+      rows,
+      prototypeCount: rows.length,
+      sampledCount: rows.filter(row => row.mode === 'SAMPLED_DIRECT').length,
+      previewCommitCount: rows.filter(row => row.mode === 'PREVIEW_ATOMIC_COMMIT').length,
+      pending: [],
+    });
   }
 
   function calculateBaseDamage(options = {}) {
@@ -6440,6 +6639,7 @@
     executeActionNodes,
     executeDeclaration,
     executeStructuredDeclaration,
+    auditStructuredCommitCoverage,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
