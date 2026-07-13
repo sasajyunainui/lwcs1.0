@@ -285,6 +285,7 @@ class BattleUIComponent {
     const 查找状态来源登记 = BATTLE_RUNTIME.findStateSource;
     const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
     const 刷新维持运行态负荷 = BATTLE_RUNTIME.refreshSustainRuntimeLoad;
+    const 移除宿主状态召唤单位 = BATTLE_RUNTIME.removeHostStateSummon;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -15084,11 +15085,6 @@ class BattleUIComponent {
       const 反噬日志 = 执行召唤死亡反噬(召唤单位);
       const 消散日志 = BATTLE_RUNTIME.removeSummonUnit(combatData, 召唤单位, '死亡');
       return [反噬日志, 消散日志].filter(Boolean).join(' ');
-    }
-
-    function 移除宿主状态召唤单位(combatData = {}, 宿主 = {}, 来源状态键 = '', 原因 = '来源状态结束') {
-      const 单位 = 读取召唤单位列表(combatData, { 宿主 }).find(item => item.来源状态键 === 来源状态键);
-      return 单位 ? BATTLE_RUNTIME.removeSummonUnit(combatData, 单位, 原因) : '';
     }
 
     function 评分召唤攻击目标(召唤单位 = {}, 目标 = {}) {

@@ -535,20 +535,6 @@
     return final;
   }
 
-  function syncSummonUnitMirror(summon = {}) {
-    if (!summon?.__来源状态?.召唤物) return;
-    const mirror = summon.__来源状态.召唤物;
-    mirror.召唤键 = summon.召唤键;
-    mirror.召唤单位类型 = summon.类型;
-    mirror.召唤物名称 = summon.name || summon.名称 || '召唤物';
-    mirror.行动模式 = summon.行动模式;
-    mirror.生命 = previewRuntime.readHp(summon);
-    mirror.生命上限 = previewRuntime.readHpMax(summon);
-    mirror.精神负载 = Math.max(0, Number(summon.精神负载 || 0));
-    mirror.生成回合 = Math.max(0, Number(summon.生成回合 || 0));
-    mirror.已消散 = summon.已消散 === true;
-  }
-
   function writeCombatResource(unit = {}, resourceKey = 'sp', value = 0) {
     if (!unit || typeof unit !== 'object') return 0;
     const stats = unit.属性 && typeof unit.属性 === 'object' ? unit.属性 : unit;
@@ -572,7 +558,7 @@
     }
     if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
     if (resourceKey !== 'hp' && resourceKey !== 'vit') unit[config.statKey] = nextValue;
-    if (unit.召唤键) syncSummonUnitMirror(unit);
+    if (unit.召唤键) syncSummonMirror(unit);
     return nextValue;
   }
 
@@ -2502,6 +2488,16 @@
     if (combatData?.召唤单位表 && summon.召唤键) delete combatData.召唤单位表[summon.召唤键];
     if (host?.状态效果 && summon.来源状态键 && host.状态效果[summon.来源状态键]) delete host.状态效果[summon.来源状态键];
     return `[召唤消散] ${previewRuntime.unitName(summon) || '召唤物'}因${reason}离场。`;
+  }
+
+  function removeHostStateSummon(combatData = {}, host = {}, sourceStateKey = '', reason = '来源状态结束') {
+    const hostName = previewRuntime.unitName(host);
+    const summon = listSummonCombatUnits(combatData).find(unit => {
+      const sourceHost = unit?.__宿主;
+      const sameHost = sourceHost === host || (hostName && previewRuntime.unitName(sourceHost) === hostName);
+      return sameHost && String(unit?.来源状态键 || '').trim() === String(sourceStateKey || '').trim();
+    });
+    return summon ? removeSummonUnit(combatData, summon, reason) : '';
   }
 
   function consumeSummonWindow(combatData = {}, summon = {}, reason = '完成行动窗口', grantId = '') {
@@ -5448,7 +5444,7 @@
     createActionQueue,
     buildActionQueue,
     buildCombatFinalStats,
-    syncSummonUnitMirror,
+    syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,
     ensureActionDiagnostic,
     registerStateSource,
@@ -5501,6 +5497,7 @@
     validateSoulTowerRoster,
     ensureSummonWindowRuntime,
     removeSummonUnit,
+    removeHostStateSummon,
     consumeSummonWindow,
     refreshSummonMentalLoad,
     beginBattleRound,
