@@ -1679,6 +1679,22 @@
     return ['PLAYER_LOCKED', 'PLAYER', 'AI', 'SYSTEM'].includes(normalized) ? normalized : fallback;
   }
 
+  function findRecentLedgerAction(ledger = [], criteria = {}) {
+    const round = Number(criteria.round || 0);
+    const actorName = String(criteria.actorName || '').trim();
+    const actionName = normalizeActionDisplayName(criteria.actionName || '');
+    if (!(round > 0) || !actorName) return null;
+    for (let index = (Array.isArray(ledger) ? ledger.length : 0) - 1; index >= 0; index -= 1) {
+      const event = ledger[index];
+      if (!event || String(event.eventKind || '').trim() !== 'action_start') continue;
+      if (Number(event.round || 0) !== round) continue;
+      if (!isSameReportName(String(event.actorName || '').trim(), actorName)) continue;
+      if (actionName && normalizeActionDisplayName(event.actionName || '') !== actionName) continue;
+      return event;
+    }
+    return null;
+  }
+
   function normalizeCausalNode(node = {}) {
     if (!node || typeof node !== 'object') return node;
     const actionRole = inferActionRole(node);
@@ -3733,6 +3749,7 @@
     inferEffectPrototype,
     normalizeTargetIds,
     normalizeActorControl,
+    findRecentLedgerAction,
     normalizeCausalNode,
     cloneAuditSnapshot,
     collectDecisionTrace,

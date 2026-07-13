@@ -168,6 +168,7 @@ addCheck(
     /function settleGuardSummonWindows\(/.test(battleRuntimeSource) &&
     /function settleRuleRewrite\(/.test(battleRuntimeSource) &&
     /function inferEffectPrototype\(/.test(battleRuntimeSource) &&
+    /function findRecentLedgerAction\(/.test(battleRuntimeSource) &&
     /normalizeActionDisplayName,[\s\S]*?normalizeActionRole,[\s\S]*?normalizeBattleSide,[\s\S]*?inferActionRole,[\s\S]*?inferFactType,[\s\S]*?inferEffectPrototype,[\s\S]*?normalizeTargetIds,[\s\S]*?normalizeActorControl,/.test(battleRuntimeSource) &&
     !/function 评估并记录战斗目标\(|function 填充战斗受伤条件基准\(/.test(battleUiSource) &&
     !/function validateSoulTowerCombatRoster\(|function 校验团战运行态\(/.test(battleUiSource) &&
@@ -181,6 +182,7 @@ addCheck(
     !/function 结算护卫召唤回合窗口\(/.test(battleUiSource) &&
     !/function 递减战斗规则改写运行态\(/.test(battleUiSource) &&
     !/function 推断战斗事实类型\(|function 推断战斗事实原型\(|function 归一战斗目标ID列表\(|function 标准化战斗行动职责\(|function 推断战斗行动职责\(|function 标准化战斗操控来源\(|function 标准化战斗阵营侧\(/.test(battleUiSource) &&
+    !/function 查找最近账本动作事件\(/.test(battleUiSource) &&
     /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),

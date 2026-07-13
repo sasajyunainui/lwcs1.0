@@ -20718,22 +20718,6 @@ class BattleUIComponent {
         if (trace.length > 1000) trace.splice(0, trace.length - 1000);
         return existing || payload;
       }
-      function 查找最近账本动作事件(ledger = [], criteria = {}) {
-        const round = Number(criteria.round || 0);
-        const actorName = String(criteria.actorName || '').trim();
-        const actionName = normalizeBattleActionDisplayName(criteria.actionName || '');
-        if (!(round > 0) || !actorName) return null;
-        for (let index = (Array.isArray(ledger) ? ledger.length : 0) - 1; index >= 0; index -= 1) {
-          const event = ledger[index];
-          if (!event || String(event.eventKind || '').trim() !== 'action_start') continue;
-          if (Number(event.round || 0) !== round) continue;
-          if (!isSameBattleReportName(String(event.actorName || '').trim(), actorName)) continue;
-          if (actionName && normalizeBattleActionDisplayName(event.actionName || '') !== actionName) continue;
-          return event;
-        }
-        return null;
-      }
-
       function 写入战斗事件账本(combatData = {}, payload = {}) {
         let rootData = combatData || {};
         const visited = new Set();
@@ -20768,16 +20752,16 @@ class BattleUIComponent {
         const sourceRound = Number(payload.sourceRound || round || 0);
         const matchedAction = eventKind === 'action_start' || eventKind === 'counter' || !actionName
           ? null
-          : 查找最近账本动作事件(ledger, { round, actorName, actionName });
+          : BATTLE_RUNTIME.findRecentLedgerAction(ledger, { round, actorName, actionName });
         const matchedCounterStart = eventKind === 'hit_result' && actionName
-          ? 查找最近账本动作事件(ledger, { round, actorName, actionName })
+          ? BATTLE_RUNTIME.findRecentLedgerAction(ledger, { round, actorName, actionName })
           : null;
         const closedActionKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail', 'blocked_settlement', 'counter_window']);
         const sourceActorName = eventKind === 'counter' || eventKind === 'counter_window'
           ? targetName
           : (['defend', 'dodge', 'pass'].includes(eventKind) ? targetName : actorName);
         const matchedSourceAction = sourceActionName
-          ? 查找最近账本动作事件(ledger, {
+          ? BATTLE_RUNTIME.findRecentLedgerAction(ledger, {
               round: sourceRound,
               actorName: sourceActorName,
               actionName: sourceActionName,
@@ -24656,7 +24640,7 @@ class BattleUIComponent {
         const sourceActionName = normalizeBattleActionDisplayName(
           sourceAction?.skill?.name || sourceAction?.skill?.魂技名 || sourceAction?.action_type || sourceAction?.type || '致命伤害',
         );
-        const sourceActionEvent = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+        const sourceActionEvent = BATTLE_RUNTIME.findRecentLedgerAction(combatData?.__battleEventLedger || [], {
           round: Number(combatData?.回合 || 0),
           actorName: sourceActor?.name || sourceActor?.名称 || '',
           actionName: sourceActionName,
@@ -25180,7 +25164,7 @@ class BattleUIComponent {
         const sourceActionName = normalizeBattleActionDisplayName(
           attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '截断',
         );
-        const sourceActionEvent = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+        const sourceActionEvent = BATTLE_RUNTIME.findRecentLedgerAction(combatData?.__battleEventLedger || [], {
           round: Number(combatData?.回合 || 0),
           actorName: sourceActor?.name || sourceActor?.名称 || '',
           actionName: sourceActionName,
@@ -25474,7 +25458,7 @@ class BattleUIComponent {
           : {};
         const 写入战斗意图失能事实 = targetChar => {
           const combatData = options?.combatData || {};
-          const sourceActionEvent = 查找最近账本动作事件(combatData?.__battleEventLedger || [], {
+          const sourceActionEvent = BATTLE_RUNTIME.findRecentLedgerAction(combatData?.__battleEventLedger || [], {
             round: Number(combatData?.回合 || 0),
             actorName: attacker?.name || attacker?.名称 || '',
             actionName: ledgerActionName,
@@ -25578,7 +25562,7 @@ class BattleUIComponent {
           const counteredActionName = ledgerActionName || normalizeBattleActionDisplayName(attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '');
           if (!actorName || !targetName || !counterActionName || !counteredActionName) return null;
           const ledger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
-          const sourceAction = 查找最近账本动作事件(ledger, {
+          const sourceAction = BATTLE_RUNTIME.findRecentLedgerAction(ledger, {
             round,
             actorName: targetName,
             actionName: counteredActionName,
@@ -25642,7 +25626,7 @@ class BattleUIComponent {
           const targetName = String(targetChar?.name || targetChar?.名称 || targetEntry?.targetName || '').trim();
           const actionName = ledgerActionName || normalizeBattleActionDisplayName(targetEntry?.actionName || '');
           if (!round || !actorName || !targetName || !actionName || isSameBattleReportName(actorName, targetName)) return null;
-          const sourceAction = 查找最近账本动作事件(ledger, { round, actorName, actionName });
+          const sourceAction = BATTLE_RUNTIME.findRecentLedgerAction(ledger, { round, actorName, actionName });
           if (!sourceAction?.chainNodeId) return null;
           const existingReaction = ledger.some(event =>
             ['pass', 'dodge', 'defend'].includes(String(event?.eventKind || '').trim()) &&
@@ -28594,7 +28578,7 @@ class BattleUIComponent {
             if (runtimeItem.数量 <= 0) delete 当前背包[本次使用物品名];
           }
           const itemLedger = BATTLE_RUNTIME.ensureLedger(combatData?.__父级战斗数据 || combatData);
-          const itemActionStart = 查找最近账本动作事件(itemLedger, {
+          const itemActionStart = BATTLE_RUNTIME.findRecentLedgerAction(itemLedger, {
             round: Number(combatData?.回合 || 0),
             actorName: 使用者名,
             actionName: playerAction?.skill?.name || playerAction?.skill?.魂技名 || 本次使用物品名,
@@ -28890,11 +28874,11 @@ class BattleUIComponent {
           }
           const creationLedger = BATTLE_RUNTIME.ensureLedger(combatData?.__父级战斗数据 || combatData);
           const preferredCreationActionName = (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载';
-          const creationActionStart = 查找最近账本动作事件(creationLedger, {
+          const creationActionStart = BATTLE_RUNTIME.findRecentLedgerAction(creationLedger, {
             round: Number(combatData?.回合 || 0),
             actorName: attackerName,
             actionName: preferredCreationActionName,
-          }) || 查找最近账本动作事件(creationLedger, {
+          }) || BATTLE_RUNTIME.findRecentLedgerAction(creationLedger, {
             round: Number(combatData?.回合 || 0),
             actorName: attackerName,
           });
@@ -32832,7 +32816,7 @@ class BattleUIComponent {
               const round = Number(combatData?.回合 || 0);
               const actorName = String(attacker?.name || attacker?.名称 || '').trim();
               const actionName = normalizeBattleActionDisplayName(playerAction.skill?.name || playerAction.skill?.魂技名 || '');
-              const sourceAction = 查找最近账本动作事件(BATTLE_RUNTIME.ensureLedger(combatData), { round, actorName, actionName });
+              const sourceAction = BATTLE_RUNTIME.findRecentLedgerAction(BATTLE_RUNTIME.ensureLedger(combatData), { round, actorName, actionName });
               return 写入战斗事件账本(combatData, {
                 eventKind,
                 round,
