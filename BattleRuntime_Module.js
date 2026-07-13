@@ -26,6 +26,16 @@
     'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
+  const sideEffectTriggerSet = new Set(['效果生效后', '命中后', '回合结束时', '效果结束后']);
+  const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
+  const sideEffectStatusMap = Object.freeze({
+    全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
+    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '僵直',
+  });
+  const sideEffectTypeSet = new Set([
+    '全属性降低', '自损反噬', '致死献祭', '精神紊乱', '魂力反噬',
+    '命中下降', '动作迟缓', '目标错乱', '施法僵直',
+  ]);
   const reportBlockTypes = Object.freeze([
     'ACTION_DECLARED', 'ACTION_RESOLVED', 'REACTION_RESOLVED', 'STATE_TICK',
     'SUMMON_ACTION', 'RESOURCE_CHANGE', 'ROUND_SUMMARY', 'FINAL_SUMMARY',
@@ -92,6 +102,35 @@
   function cloneValue(value) {
     if (typeof structuredClone === 'function') return structuredClone(value);
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizeSideEffectEntry(value = {}) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const type = String(value.副作用类型 || '').trim();
+    if (!sideEffectTypeSet.has(type)) return null;
+    const rawTrigger = String(value.触发时机 || '效果生效后').trim();
+    const trigger = sideEffectTriggerSet.has(rawTrigger) ? rawTrigger : '效果生效后';
+    const rawTarget = String(value.生效对象 || '技能释放者').trim();
+    const target = sideEffectTargetSet.has(rawTarget) ? rawTarget : '技能释放者';
+    const duration = Math.max(0, Math.round(Number(value.持续回合 || 0)));
+    const rawChance = Number(value.触发概率 ?? 1);
+    const chance = Number.isFinite(rawChance) ? Math.max(0, Math.min(1, Number(rawChance.toFixed(4)))) : 1;
+    const normalized = { 副作用类型: type, 触发时机: trigger, 生效对象: target, 触发概率: chance };
+    if (type !== '致死献祭') {
+      normalized.持续回合 = duration || 1;
+      normalized.副作用状态 = String(value.副作用状态 || sideEffectStatusMap[type] || type).trim();
+      if (String(value.数值 ?? '').trim()) normalized.数值 = String(value.数值 ?? '').trim();
+      if (String(value.副数值 ?? '').trim()) normalized.副数值 = String(value.副数值 ?? '').trim();
+    }
+    if (trigger === '效果结束后') {
+      const boundState = String(value.关联状态 || '').trim();
+      if (boundState) normalized.关联状态 = boundState;
+    }
+    return normalized;
+  }
+
+  function normalizeSideEffectList(value = []) {
+    return (Array.isArray(value) ? value : []).map(normalizeSideEffectEntry).filter(Boolean);
   }
 
   function nextRuntimeId(prefix = 'battle-event') {
@@ -5591,12 +5630,14 @@
     version: '7.3-R6.3',
     actionKinds,
     actionRoles,
+    sideEffectStatusMap,
     reportBlockTypes,
     prototypeRegistry,
     prototypeRuntimeContract,
     prototypeManifest,
     prototypeOptionMatrix,
     cloneValue,
+    normalizeSideEffectList,
     nextRuntimeId,
     ensureCombatRuntime,
     getBattleSnapshot,

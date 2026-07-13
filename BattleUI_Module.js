@@ -286,6 +286,8 @@ class BattleUIComponent {
     const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
     const 刷新维持运行态负荷 = BATTLE_RUNTIME.refreshSustainRuntimeLoad;
     const triggerReviveEffect = BATTLE_RUNTIME.triggerRevive;
+    const BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP = BATTLE_RUNTIME.sideEffectStatusMap;
+    const normalizeBattleSkillSideEffectList = BATTLE_RUNTIME.normalizeSideEffectList;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -11037,62 +11039,6 @@ class BattleUIComponent {
         消耗: baseCost,
         cast_time: baseCastTime,
       };
-    }
-
-    const BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET = new Set(['效果生效后', '命中后', '回合结束时', '效果结束后']);
-    const BATTLE_SKILL_SIDE_EFFECT_TARGET_SET = new Set(['技能释放者', '效果承受者', '双方']);
-    const BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP = Object.freeze({
-      全属性降低: '虚弱',
-      自损反噬: '反噬',
-      精神紊乱: '精神紊乱',
-      魂力反噬: '魂力枯竭',
-      命中下降: '精神紊乱',
-      动作迟缓: '迟缓',
-      目标错乱: '混乱',
-      施法僵直: '僵直',
-    });
-    const BATTLE_SKILL_SIDE_EFFECT_TYPE_SET = new Set([
-      '全属性降低',
-      '自损反噬',
-      '致死献祭',
-      '精神紊乱',
-      '魂力反噬',
-      '命中下降',
-      '动作迟缓',
-      '目标错乱',
-      '施法僵直',
-    ]);
-
-    function normalizeBattleSkillSideEffectEntry(value = {}) {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-      const 副作用类型 = String(value.副作用类型 || '').trim();
-      if (!BATTLE_SKILL_SIDE_EFFECT_TYPE_SET.has(副作用类型)) return null;
-      const rawTrigger = String(value.触发时机 || '效果生效后').trim();
-      const 触发时机 = BATTLE_SKILL_SIDE_EFFECT_TRIGGER_SET.has(rawTrigger) ? rawTrigger : '效果生效后';
-      const rawTarget = String(value.生效对象 || '技能释放者').trim();
-      const 生效对象 = BATTLE_SKILL_SIDE_EFFECT_TARGET_SET.has(rawTarget) ? rawTarget : '技能释放者';
-      const 持续回合 = Math.max(0, Math.round(Number(value.持续回合 || 0)));
-      const rawChance = Number(value.触发概率 ?? 1);
-      const 触发概率 = Number.isFinite(rawChance) ? Math.max(0, Math.min(1, Number(rawChance.toFixed(4)))) : 1;
-      const normalized = { 副作用类型, 触发时机, 生效对象, 触发概率 };
-      if (副作用类型 !== '致死献祭') {
-        normalized.持续回合 = 持续回合 || 1;
-        normalized.副作用状态 = String(value.副作用状态 || BATTLE_SKILL_SIDE_EFFECT_STATUS_MAP[副作用类型] || 副作用类型).trim();
-        if (String(value.数值 ?? '').trim()) normalized.数值 = String(value.数值 ?? '').trim();
-        if (String(value.副数值 ?? '').trim()) normalized.副数值 = String(value.副数值 ?? '').trim();
-      }
-      if (触发时机 === '效果结束后') {
-        const 关联状态 = String(value.关联状态 || '').trim();
-        if (关联状态) normalized.关联状态 = 关联状态;
-      }
-      return normalized;
-    }
-
-    function normalizeBattleSkillSideEffectList(value = []) {
-      const source = Array.isArray(value) ? value : [];
-      return source
-        .map(item => normalizeBattleSkillSideEffectEntry(item))
-        .filter(Boolean);
     }
 
     function getBattleSkillSideEffectList(skill = {}) {
