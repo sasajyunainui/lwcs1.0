@@ -558,6 +558,51 @@
     return node;
   }
 
+  function createCounterAction(counterActor = {}, candidate = {}) {
+    const counterType = candidate.以命换伤 === true ? '以命换伤' : String(candidate.防反类型 || '行为防反').trim();
+    const commitment = Number(candidate.出手承诺 || 0);
+    const triggerProbability = Number(candidate.触发概率 || 0);
+    const counterDepth = Math.max(1, Math.min(2, Math.floor(Number(candidate.counterDepth || candidate.__counterDepth || 1))));
+    const archetype = String(counterActor?.type || counterActor?.系别 || '').trim();
+    const fallbackName = counterType === '完美闪避' ? '闪避反击' : counterType === '硬抗换伤' ? '防守反击' : counterType === '以命换伤' ? '绝地反扑' : '借势反打';
+    const actionName = String(candidate.sourceActionName || '').trim() || fallbackName;
+    const sourceSkill = candidate.sourceSkill && typeof candidate.sourceSkill === 'object' ? cloneValue(candidate.sourceSkill) : null;
+    if (sourceSkill) {
+      sourceSkill.name = String(sourceSkill.name || sourceSkill.魂技名 || actionName).trim() || actionName;
+      sourceSkill.魂技名 = String(sourceSkill.魂技名 || sourceSkill.name || actionName).trim() || actionName;
+      sourceSkill.消耗 = '无';
+      sourceSkill.前摇 = 0;
+      delete sourceSkill.cast_time;
+      return {
+        action_type: '行为防反', type: '行为防反', cast_time: 0,
+        __行为防反: true, __counterDepth: counterDepth, counterDepth,
+        sourceActionName: sourceSkill.name,
+        sourceActionType: String(candidate.sourceActionType || 'skill_counter').trim(),
+        skill: sourceSkill,
+      };
+    }
+    const basePower = counterType === '完美闪避' ? 55 : counterType === '以命换伤' ? 92 : 70;
+    const archetypeScale = counterType === '完美闪避'
+      ? archetype === '敏攻系' ? 1.18 : archetype === '精神系' ? 1.08 : 1
+      : archetype === '防御系' ? 1.2 : archetype === '强攻系' ? 1.15 : 1;
+    const power = Math.max(35, Math.floor(basePower * archetypeScale * (1 + commitment * 0.65 + Math.max(0, triggerProbability - 0.25))));
+    const damageType = archetype === '精神系' ? '精神攻击' : archetype === '元素系' ? '远程攻击' : '近身攻击';
+    return {
+      action_type: '行为防反', type: '行为防反', cast_time: 0,
+      __行为防反: true, __counterDepth: counterDepth, counterDepth,
+      sourceActionName: actionName,
+      sourceActionType: String(candidate.sourceActionType || 'counter').trim(),
+      skill: {
+        name: actionName,
+        魂技名: actionName,
+        技能分类: '输出',
+        消耗: '无',
+        前摇: 0,
+        _效果数组: [{ 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: power, 伤害类型: damageType, 防御穿透: 0 }],
+      },
+    };
+  }
+
   function runDecisionTeamBattle(options = {}) {
     const combatData = options?.combatData;
     const decide = options?.decide;
@@ -761,7 +806,7 @@
           };
           if (declaration.targetIds?.length === 1) declaration.targetIds = [sourceId];
           const selectedAction = buildDeclarationAction(declaration, reactor, currentCombatData);
-          const counterAction = settlement.createCounterAction(reactor, {
+          const counterAction = createCounterAction(reactor, {
             防反类型: counterType,
             sourceActionName: String(selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.name || selectedAction?.action_type || '反击').trim(),
             sourceActionType: String(declaration.actionKind || 'COUNTER').trim(),
@@ -2934,7 +2979,7 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'createTeamAdapters', 'createCounterAction',
+      'createTeamAdapters',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');

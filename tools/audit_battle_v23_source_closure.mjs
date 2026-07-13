@@ -150,7 +150,9 @@ addCheck(
     !/function 构建决策声明动作\(/.test(battleUiSource) &&
     /function writeInitialIntent\(/.test(battleRuntimeSource) &&
     !/function 写入行动轴初始意图节点\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'createTeamAdapters', 'createCounterAction',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /function createCounterAction\(/.test(battleRuntimeSource) &&
+    !/function 建立行为防反动作\(/.test(battleUiSource) &&
+    /const required = \[[\s\S]*?'createTeamAdapters',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );
 addCheck(

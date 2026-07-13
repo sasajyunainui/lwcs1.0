@@ -15827,7 +15827,6 @@ class BattleUIComponent {
 
     BATTLE_RUNTIME.bindSettlementPrimitives({
       createTeamAdapters: options => 构建团战运行时适配器(options),
-      createCounterAction: (actor, candidate) => 建立行为防反动作(actor, candidate),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -27962,81 +27961,6 @@ class BattleUIComponent {
         }
 
         return 0;
-      }
-
-      function 建立行为防反动作(防反方, 防反候选 = {}) {
-        const 防反类型 = 防反候选.以命换伤 === true
-          ? '以命换伤'
-          : String(防反候选.防反类型 || '行为防反').trim();
-        const 出手承诺 = Number(防反候选.出手承诺 || 0);
-        const 触发概率 = Number(防反候选.触发概率 || 0);
-        const 防反深度 = Math.max(1, Math.min(2, Math.floor(Number(防反候选.counterDepth || 防反候选.__counterDepth || 1))));
-        const 系别 = String(防反方?.type || 防反方?.系别 || '').trim();
-        const 兜底动作名 = 防反类型 === '完美闪避'
-          ? '闪避反击'
-          : 防反类型 === '硬抗换伤'
-            ? '防守反击'
-            : 防反类型 === '以命换伤'
-              ? '绝地反扑'
-              : '借势反打';
-        const 动作名 = String(防反候选.sourceActionName || '').trim() || 兜底动作名;
-        const 来源技能 = 防反候选.sourceSkill && typeof 防反候选.sourceSkill === 'object'
-          ? deepClone(防反候选.sourceSkill)
-          : null;
-        if (来源技能) {
-          来源技能.name = String(来源技能.name || 来源技能.魂技名 || 动作名).trim() || 动作名;
-          来源技能.魂技名 = String(来源技能.魂技名 || 来源技能.name || 动作名).trim() || 动作名;
-          来源技能.消耗 = '无';
-          来源技能.前摇 = 0;
-          delete 来源技能.cast_time;
-          return {
-            action_type: '行为防反',
-            type: '行为防反',
-            cast_time: 0,
-            __行为防反: true,
-            __counterDepth: 防反深度,
-            counterDepth: 防反深度,
-            sourceActionName: 来源技能.name,
-            sourceActionType: String(防反候选.sourceActionType || 'skill_counter').trim(),
-            skill: normalizeSkillData(来源技能, 来源技能.name),
-          };
-        }
-        const 基础威力 = 防反类型 === '完美闪避' ? 55 : 防反类型 === '以命换伤' ? 92 : 70;
-        const 系别倍率 = 防反类型 === '完美闪避'
-          ? 系别 === '敏攻系'
-            ? 1.18
-            : 系别 === '精神系'
-              ? 1.08
-              : 1
-          : 系别 === '防御系'
-            ? 1.2
-            : 系别 === '强攻系'
-              ? 1.15
-              : 1;
-        const 威力倍率 = Math.max(35, Math.floor(基础威力 * 系别倍率 * (1 + 出手承诺 * 0.65 + Math.max(0, 触发概率 - 0.25))));
-        const 伤害类型 = 系别 === '精神系' ? '精神攻击' : 系别 === '元素系' ? '远程攻击' : '近身攻击';
-        return {
-          action_type: '行为防反',
-          type: '行为防反',
-          cast_time: 0,
-          __行为防反: true,
-          __counterDepth: 防反深度,
-          counterDepth: 防反深度,
-          sourceActionName: 动作名,
-          sourceActionType: String(防反候选.sourceActionType || 'counter').trim(),
-          skill: normalizeSkillData(
-            {
-              name: 动作名,
-              技能分类: '输出',
-              消耗: '无',
-              前摇: 0,
-              _效果数组: [
-                { 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率, 伤害类型, 防御穿透: 0 },
-              ],
-            },
-            `${防反类型}防反`,
-          ),
-        };
       }
 
       function estimateIncomingActionThreat(attacker, defender, playerAction, combatData) {
