@@ -2077,6 +2077,160 @@
     return logs.join(' ');
   }
 
+  const nonDamageConditionNames = new Set([
+    '位移限制', '迟缓', '眩晕', '沉默', '致盲', '封技', '禁疗', '防御剥夺',
+    '精神抗性剥夺', '标记', '嘲讽', '护卫', '僵直', '失控', '精神紊乱', '虚弱',
+  ]);
+
+  function readSignedBattleValue(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return 0;
+    if (/%$/.test(text)) {
+      const percent = Number(text.replace('%', ''));
+      return Number.isFinite(percent) ? percent / 100 : 0;
+    }
+    const number = Number(text);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function findResourceSuppression(unit = {}, resource = '') {
+    const allValues = new Set(['全部', '抹消全部', '全部资源']);
+    for (const condition of Object.values(unit?.状态效果 || {})) {
+      const rules = Array.isArray(condition?.抹消规则) ? condition.抹消规则 : [];
+      for (let index = 0; index < rules.length; index += 1) {
+        const object = rules[index]?.抹消对象;
+        const matcher = object && typeof object === 'object' && !Array.isArray(object) ? object : { 原型: String(object || '').trim() };
+        if (String(matcher?.原型 || '机制授予').trim() !== '资源变化') continue;
+        const values = (Array.isArray(matcher?.资源) ? matcher.资源 : String(matcher?.资源 ?? '').split(/[、,，|/]/))
+          .map(value => String(value || '').trim())
+          .filter(Boolean);
+        if (values.length && !values.some(value => allValues.has(value) || value === resource)) continue;
+        const hit = { 状态: condition, 规则索引: index, 抹消对象: matcher };
+        if (String(rules[index]?.抹消方式 || '').trim() === '阻断本次') rules.splice(index, 1);
+        return hit;
+      }
+    }
+    return null;
+  }
+
+  function writeStateHpTick(combatData = {}, unit = {}, label = '', source = {}, condition = {}, stateName = '', amount = 0, result = '') {
+    if (!(amount > 0)) return null;
+    return writeLedgerEvent(combatData, {
+      eventKind: 'state_tick',
+      round: Number(combatData?.回合 || 0),
+      actorName: String(source?.sourceActorName || '').trim(),
+      targetName: unit?.name || unit?.名称 || label,
+      actionName: String(source?.sourceActionName || '').trim(),
+      actionType: 'state_tick',
+      sourceActionName: String(source?.sourceActionName || '').trim(),
+      sourceRound: Number(source?.sourceRound || source?.round || 0),
+      result,
+      applicationId: String(source?.applicationId || condition?.__状态来源键 || '').trim(),
+      duration: Math.max(0, Number(condition?.duration || source?.duration || 0)),
+      effectSummary: String(condition?.效果摘要 || source?.effectSummary || '').trim(),
+      driverAttr: String(condition?.驱动属性 || source?.driverAttr || '').trim(),
+      meta: {
+        stateName,
+        amount,
+        resource: '生命值',
+        sourceActorName: String(source?.sourceActorName || '').trim(),
+        sourceActionName: String(source?.sourceActionName || '').trim(),
+        sourceRound: Number(source?.sourceRound || source?.round || 0),
+        applicationId: String(source?.applicationId || condition?.__状态来源键 || '').trim(),
+      },
+    });
+  }
+
+  function settleConditionResourceTick(unit = {}, key = '', condition = {}, label = '', combatData = {}) {
+    const effects = condition?.战斗效果 || {};
+    const stateName = String(condition?.状态名称 || condition?.状态 || key || '').trim();
+    const source = findStateSource(combatData, {
+      applicationId: String(condition?.__状态来源键 || '').trim(),
+      stateName,
+      targetName: unit?.name || unit?.名称 || label,
+      maxRound: Number(combatData?.回合 || 0),
+    });
+    const sourceText = source?.sourceActorName && source?.sourceActionName
+      ? `（该状态由第${Number(source.sourceRound || source.round || 0)}回合${source.sourceActorName}施展【${source.sourceActionName}】附加）`
+      : '';
+    const resourceMeta = {
+      source: 'state_tick', stateName,
+      sourceActorName: String(source?.sourceActorName || '').trim(),
+      sourceActionName: String(source?.sourceActionName || '').trim(),
+      sourceRound: Number(source?.sourceRound || source?.round || 0),
+      applicationId: String(source?.applicationId || condition?.__状态来源键 || '').trim(),
+      duration: Math.max(0, Number(condition?.duration || source?.duration || 0)),
+      effectSummary: String(condition?.效果摘要 || source?.effectSummary || '').trim(),
+      driverAttr: String(condition?.驱动属性 || source?.driverAttr || '').trim(),
+    };
+    const logs = [];
+    let totalDot = 0;
+    let fixedDot = Math.max(0, Number(effects?.dot_damage || condition?.dot_damage || 0));
+    let ratioDot = Math.max(0, Number(effects?.dot_damage_ratio || condition?.dot_damage_ratio || condition?.计算层效果?.dot_damage_ratio || 0));
+    if (String(condition?.原型 || '').trim() === '资源变化' && String(condition?.资源 || '').trim() === '生命' && Number(condition?.持续回合 || condition?.duration || 0) > 0) {
+      const value = readSignedBattleValue(condition?.数值);
+      if (/%$/.test(String(condition?.数值 ?? '').trim())) ratioDot = Math.max(ratioDot, -value);
+      else fixedDot = Math.max(fixedDot, -value);
+    }
+    const dot = nonDamageConditionNames.has(stateName) ? 0 : Math.max(0, fixedDot + (ratioDot > 0 ? Math.floor(previewRuntime.readHpMax(unit) * ratioDot) : 0));
+    if (dot > 0) {
+      if (findResourceSuppression(unit, '生命')) logs.push(`[机制抹消] ${label}的生命变化被封锁，[${key}]未能造成持续损失。`);
+      else {
+        writeCombatResource(unit, 'hp', previewRuntime.readHp(unit) - dot);
+        totalDot += dot;
+        writeStateHpTick(combatData, unit, label, source, condition, stateName, dot, '损失');
+        logs.push(`[状态结算] ${label}受[${key}]影响，额外损失 ${dot} 点HP${sourceText}`);
+      }
+    }
+    const hotRatio = Math.max(0, Number(effects.hot_heal_ratio || 0));
+    if (hotRatio > 0) {
+      const maxHp = previewRuntime.readHpMax(unit);
+      const hot = Math.floor(maxHp * hotRatio);
+      const inversion = Math.max(0, Number(effects.heal_inversion_ratio || 0));
+      if (inversion > 0) {
+        const damage = Math.max(1, Math.floor(hot * Math.max(1, inversion)));
+        writeCombatResource(unit, 'hp', previewRuntime.readHp(unit) - damage);
+        writeStateHpTick(combatData, unit, label, source, condition, stateName, damage, '损失');
+        logs.push(`[状态结算] ${label}的[${key}]治疗被反转，反而损失 ${damage} 点HP${sourceText}`);
+      } else {
+        const before = previewRuntime.readHp(unit);
+        const next = Math.min(maxHp, before + hot);
+        const actual = Math.max(0, next - before);
+        if (actual > 0 && findResourceSuppression(unit, '生命')) {
+          logs.push(`[机制抹消] ${label}的回复回路被封锁，[${key}]未能提供恢复。`);
+          return { log: logs.join(' '), totalDot, stopCondition: true };
+        }
+        writeCombatResource(unit, 'hp', next);
+        writeStateHpTick(combatData, unit, label, source, condition, stateName, actual, '恢复');
+        if (actual > 0) logs.push(`[状态结算] ${label}受[${key}]影响，额外恢复 ${actual} 点HP${sourceText}`);
+      }
+    }
+    const resources = [
+      { key: 'vit', label: '体力', ratio: Number(effects.vit_gain_ratio || 0) },
+      { key: 'sp', label: '魂力', ratio: Number(effects.sp_gain_ratio || 0) },
+      { key: 'men', label: '精神力', ratio: Number(effects.men_gain_ratio || 0) },
+    ];
+    resources.forEach(resource => {
+      if (!resource.ratio) return;
+      const max = previewRuntime.readResourceMax(unit, resource.label);
+      const before = previewRuntime.readResource(unit, resource.label);
+      const amount = resource.ratio > 0
+        ? Math.max(1, Math.floor(max * resource.ratio))
+        : Math.min(before, Math.max(1, Math.floor(max * Math.min(0.03, Math.abs(resource.ratio)))));
+      const next = resource.ratio > 0 ? Math.min(max, before + amount) : Math.max(0, before - amount);
+      const actual = resource.ratio > 0 ? Math.max(0, next - before) : Math.max(0, before - next);
+      if (!(actual > 0)) return;
+      if (findResourceSuppression(unit, resource.label)) {
+        logs.push(`[机制抹消] ${label}的${resource.label}变化被封锁，[${key}]未能${resource.ratio > 0 ? '提供恢复' : '造成流失'}。`);
+        return;
+      }
+      writeCombatResource(unit, resource.key, next);
+      writeRoundEndResourceEvent(combatData, unit, label, resource.key, resource.ratio > 0 ? actual : -actual, resourceMeta);
+      logs.push(`[状态结算] ${label}受[${key}]影响，${resource.ratio > 0 ? '恢复' : '流失'} ${actual} 点${resource.label}${sourceText}`);
+    });
+    return { log: logs.join(' '), totalDot, stopCondition: false };
+  }
+
 
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
     settlement.prepare(combatData, adapterOptions);
@@ -5312,6 +5466,7 @@
     writeRoundEndResourceEvent,
     settleNaturalRecoveryAtRoundEnd,
     settleRingRecoveryAtRoundEnd,
+    settleConditionResourceTick,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,
