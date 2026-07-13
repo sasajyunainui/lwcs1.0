@@ -450,6 +450,28 @@
     return normalizedFallback;
   }
 
+  function inferEventSides(combatData = {}, event = {}) {
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const actorName = String(event?.actorName || '').trim();
+    const targetName = String(event?.targetName || '').trim();
+    const targetScope = String(event?.targetScope || meta.targetScope || '').trim();
+    const actorSide = normalizeBattleSide(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
+      || inferUnitSide(combatData, actorName);
+    const targetPoolSide = String(event?.targetPoolSide || meta.targetPoolSide || '').trim();
+    const relativeTargetSide = actorSide && /^(hostile|enemy|敌对|敌方)$/i.test(targetPoolSide)
+      ? actorSide === 'player' ? 'enemy' : 'player'
+      : actorSide && /^(allied|ally|self|友方|己方)$/i.test(targetPoolSide)
+        ? actorSide
+        : '';
+    const targetSide = normalizeBattleSide(event?.targetSide || meta.targetSide || '')
+      || inferUnitSide(combatData, targetName)
+      || relativeTargetSide
+      || (['ally_group', 'self'].includes(targetScope) ? actorSide : '')
+      || (['enemy_group', 'area'].includes(targetScope) && actorSide ? actorSide === 'player' ? 'enemy' : 'player' : '')
+      || (targetName && actorName && isSameReportName(targetName, actorName) ? actorSide : '');
+    return { actorSide, targetSide };
+  }
+
   function isUnitAbleToFight(unit = {}) {
     const actionState = String(unit?.状态?.行动 || '').trim();
     return previewRuntime.isAlive(unit) && previewRuntime.readResource(unit, '体力') > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
@@ -3744,6 +3766,8 @@
     normalizeActionDisplayName,
     normalizeActionRole,
     normalizeBattleSide,
+    inferUnitSide,
+    inferEventSides,
     inferActionRole,
     inferFactType,
     inferEffectPrototype,

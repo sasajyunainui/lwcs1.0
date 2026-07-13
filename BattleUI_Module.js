@@ -19964,45 +19964,6 @@ class BattleUIComponent {
         return kind ? 'single' : '';
       }
 
-      function 推断战斗目标阵营侧(actorSide = '', targetPoolSide = '') {
-        const side = BATTLE_RUNTIME.normalizeBattleSide(actorSide);
-        const pool = String(targetPoolSide || '').trim();
-        if (!side) return '';
-        if (/^(hostile|enemy|敌对|敌方)$/i.test(pool)) return side === 'player' ? 'enemy' : 'player';
-        if (/^(allied|ally|self|友方|己方)$/i.test(pool)) return side;
-        return '';
-      }
-
-      function 推断战斗单位阵营侧(combatData = {}, name = '', fallback = '') {
-        const normalizedFallback = BATTLE_RUNTIME.normalizeBattleSide(fallback);
-        const unitName = String(name || '').trim();
-        if (!unitName) return normalizedFallback;
-        if (读取战斗主队单位列表(combatData, '玩家').some(unit => isCombatUnitIdentityMatch(unit, unitName))) return 'player';
-        if (读取战斗主队单位列表(combatData, '敌方').some(unit => isCombatUnitIdentityMatch(unit, unitName))) return 'enemy';
-        const summon = Object.values(确保召唤单位表(combatData)).find(unit => isCombatUnitIdentityMatch(unit, unitName));
-        if (summon?.阵营 === '玩家') return 'player';
-        if (summon?.阵营 === '敌方') return 'enemy';
-        if (读取战斗阵营单位列表(combatData, '玩家').some(unit => isCombatUnitIdentityMatch(unit, unitName))) return 'player';
-        if (读取战斗阵营单位列表(combatData, '敌方').some(unit => isCombatUnitIdentityMatch(unit, unitName))) return 'enemy';
-        return normalizedFallback;
-      }
-
-      function 推断战斗事件阵营侧(combatData = {}, event = {}) {
-        const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
-        const actorName = String(event?.actorName || '').trim();
-        const targetName = String(event?.targetName || '').trim();
-        const targetScope = String(event?.targetScope || meta.targetScope || '').trim();
-        const actorSide = BATTLE_RUNTIME.normalizeBattleSide(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
-          || 推断战斗单位阵营侧(combatData, actorName);
-        const targetSide = BATTLE_RUNTIME.normalizeBattleSide(event?.targetSide || meta.targetSide || '')
-          || 推断战斗单位阵营侧(combatData, targetName)
-          || 推断战斗目标阵营侧(actorSide, event?.targetPoolSide || meta.targetPoolSide || '')
-          || (['ally_group', 'self'].includes(targetScope) ? actorSide : '')
-          || (['enemy_group', 'area'].includes(targetScope) ? 推断战斗目标阵营侧(actorSide, 'hostile') : '')
-          || (targetName && actorName && isSameBattleReportName(targetName, actorName) ? actorSide : '');
-        return { actorSide, targetSide };
-      }
-
       function 推断战斗行动目标范围(action = null) {
         const skill = action?.skill || action?.技能 || null;
         return skill ? 推断战斗目标范围标记(inferSkillPrimaryTargetKind(skill)) : '';
@@ -20027,9 +19988,9 @@ class BattleUIComponent {
         const branchKey = [parentNodeId, targetName].join('|');
         const existing = trace.find(node => node?.nodeKind === 'target_branch' && String(node?.parentNodeId || '').trim() === parentNodeId && String(node?.targetName || '').trim() === targetName);
         if (existing) return existing;
-        const eventSides = 推断战斗事件阵营侧(combatData, event);
-        const branchActorSide = 推断战斗单位阵营侧(combatData, String(event.actorName || '').trim()) || eventSides.actorSide;
-        const branchTargetSide = 推断战斗单位阵营侧(combatData, targetName) || eventSides.targetSide;
+        const eventSides = BATTLE_RUNTIME.inferEventSides(combatData, event);
+        const branchActorSide = BATTLE_RUNTIME.inferUnitSide(combatData, String(event.actorName || '').trim()) || eventSides.actorSide;
+        const branchTargetSide = BATTLE_RUNTIME.inferUnitSide(combatData, targetName) || eventSides.targetSide;
         const node = {
           nodeId: String(BATTLE_RUNTIME.nextRuntimeId('battle-trace-target-branch')).trim(),
           parentNodeId,
@@ -20080,7 +20041,7 @@ class BattleUIComponent {
           normalizeBattleActionDisplayName(node?.finalActionName || '') === actionName
         );
         if (existing) return existing;
-        const { actorSide, targetSide } = 推断战斗事件阵营侧(combatData, event);
+        const { actorSide, targetSide } = BATTLE_RUNTIME.inferEventSides(combatData, event);
         const node = {
           nodeId: String(BATTLE_RUNTIME.nextRuntimeId('battle-trace-reaction-window')).trim(),
           parentNodeId: parent,
@@ -20138,7 +20099,7 @@ class BattleUIComponent {
         if (existing) return existing;
         const reasonCode = 标准化战斗ReasonCode(event.replanReasonCode || event.meta?.replanReasonCode || 'TACTICAL_DISADVANTAGE', 'TACTICAL_DISADVANTAGE');
         const replanReasonText = String(event.replanReasonText || event.meta?.replanReasonText || event.reasonText || event.meta?.reasonText || '').trim();
-        const { actorSide, targetSide } = 推断战斗事件阵营侧(combatData, event);
+        const { actorSide, targetSide } = BATTLE_RUNTIME.inferEventSides(combatData, event);
         const node = {
           nodeId: String(BATTLE_RUNTIME.nextRuntimeId('battle-trace-replan-decision')).trim(),
           parentNodeId,
@@ -20196,7 +20157,7 @@ class BattleUIComponent {
         if (existing) return existing;
         const missed = /miss|evade|dodge|未命中|闪避/.test(result);
         const meta = event.meta && typeof event.meta === 'object' ? event.meta : {};
-        const { actorSide, targetSide } = 推断战斗事件阵营侧(combatData, event);
+        const { actorSide, targetSide } = BATTLE_RUNTIME.inferEventSides(combatData, event);
         const node = {
           nodeId: String(BATTLE_RUNTIME.nextRuntimeId('battle-trace-hit-check')).trim(),
           parentNodeId: parent,
@@ -20263,7 +20224,7 @@ class BattleUIComponent {
         const resisted = /resist|resisted|抵抗|豁免|未附着/.test(result);
         const isControl = /控制|眩晕|沉默|封技|定身|束缚|禁锢|僵直|击退|减速|迟缓|位移限制|skip_turn|cannot_react|silence/i.test(stateName);
         const failed = immune || resisted;
-        const { actorSide, targetSide } = 推断战斗事件阵营侧(combatData, event);
+        const { actorSide, targetSide } = BATTLE_RUNTIME.inferEventSides(combatData, event);
         const successRateValue = Number(meta.successRate);
         const rollValue = Number(meta.roll);
         const driverAttrText = String(event.driverAttr || meta.driverAttr || '').trim();
@@ -20601,7 +20562,7 @@ class BattleUIComponent {
           : 构建事件最小结算轨迹(event);
         const primaryOutcome = String(event.primaryOutcome || event.meta?.primaryOutcome || config.primaryOutcome || '').trim();
         const defaultReasonCode = 推断战斗默认ReasonCode(event, primaryOutcome);
-        const { actorSide, targetSide } = 推断战斗事件阵营侧(combatData, event);
+        const { actorSide, targetSide } = BATTLE_RUNTIME.inferEventSides(combatData, event);
         const node = {
           nodeId,
           parentNodeId,
@@ -20846,7 +20807,7 @@ class BattleUIComponent {
         );
         const matchedTargetSide = [matchedAction, matchedCounterStart, matchedSourceAction]
           .find(action => action && targetName && isSameBattleReportName(action?.targetName || '', targetName))?.targetSide || '';
-        const eventSides = 推断战斗事件阵营侧(rootData, {
+        const eventSides = BATTLE_RUNTIME.inferEventSides(rootData, {
           ...payload,
           actorName,
           actorSide: explicitActorSide || matchedActorSide,
