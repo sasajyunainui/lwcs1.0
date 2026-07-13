@@ -15228,41 +15228,6 @@ class BattleUIComponent {
       });
     }
 
-    function 写入召唤精神控制事件(combatData = {}, 宿主 = {}, 召唤单位 = {}, 结果 = '', 附加 = {}) {
-      const 召唤名 = String(召唤单位?.name || 召唤单位?.名称 || '召唤物').trim();
-      if (!combatData || !召唤名) return null;
-      const 宿主名 = String(宿主?.name || 宿主?.名称 || 召唤单位?.__宿主?.name || 召唤单位?.__宿主?.名称 || '').trim();
-      const failReason = String(附加.failReason || 附加.failureReason || '召唤控制链受限').trim();
-      return 写入战斗事件账本(combatData, {
-        eventKind: 'blocked_action',
-        round: Number(combatData?.回合 || 0),
-        actorName: 召唤名,
-        targetName: 宿主名,
-        actionName: '召唤控制',
-        actionType: 'summon_control',
-        result: String(结果 || 'limited').trim(),
-        failReason,
-        targetPoolSide: 'ally',
-        meta: {
-          source: 'summon',
-          primaryOutcome: 'blocked',
-          reasonCode: 'SUMMON_CONTROL_OVERLOAD',
-          reasonText: String(附加.reasonText || '宿主精神负载不足以稳定控制召唤物').trim(),
-          summonName: 召唤名,
-          summonType: String(召唤单位?.类型 || '').trim(),
-          summonMode: String(召唤单位?.行动模式 || '').trim(),
-          summonHostName: 宿主名,
-          summonKey: String(召唤单位?.召唤键 || '').trim(),
-          mentalLoad: Math.max(0, Number(召唤单位?.精神负载 || 0)),
-          totalMentalLoad: Math.max(0, Number(附加.totalMentalLoad || 0)),
-          mentalLimit: Math.max(0, Number(附加.mentalLimit || 0)),
-          maintainRatio: Math.max(0, Number(附加.maintainRatio || 0)),
-          compression: Math.max(0, Number(附加.compression || 0)),
-          restriction: String(附加.restriction || 结果 || '').trim(),
-        },
-      });
-    }
-
     function 移除召唤运行态单位(combatData = {}, 召唤单位 = {}, 原因 = '消散') {
       if (!召唤单位 || 召唤单位.已消散 === true) return '';
       const 宿主 = 召唤单位.__宿主;
@@ -15335,78 +15300,6 @@ class BattleUIComponent {
     function 移除宿主状态召唤单位(combatData = {}, 宿主 = {}, 来源状态键 = '', 原因 = '来源状态结束') {
       const 单位 = 读取召唤单位列表(combatData, { 宿主 }).find(item => item.来源状态键 === 来源状态键);
       return 单位 ? 移除召唤运行态单位(combatData, 单位, 原因) : '';
-    }
-
-    function 刷新召唤精神负载(combatData = {}, 宿主 = {}) {
-      const 单位列表 = 读取召唤单位列表(combatData, { 宿主 });
-      if (!单位列表.length) return '';
-      if (!isCombatUnitAbleToFight(宿主)) {
-        return 单位列表.map(单位 => 移除召唤运行态单位(combatData, 单位, '宿主失去战斗能力')).filter(Boolean).join(' ');
-      }
-      const 精神上限 = Math.max(1, Number(宿主.men_max || 宿主?.属性?.精神力上限 || 1));
-      const 当前精神 = Math.max(0, Number(宿主.men ?? 宿主?.属性?.精神力 ?? 精神上限));
-      const 总负载 = 单位列表.reduce((sum, 单位) => sum + Math.max(0, Number(单位.精神负载 || 0)), 0);
-      const 操控上限 = Math.max(20, 精神上限 * 0.75);
-      const 日志 = [];
-      if (总负载 > 操控上限) {
-        const 压缩 = Math.max(0.35, 操控上限 / Math.max(1, 总负载));
-        单位列表.forEach(单位 => {
-          单位.final = buildCombatFinalStats(单位);
-          ['str', 'def', 'agi', 'sp_max', 'men_max'].forEach(key => {
-            单位.final[key] = Math.max(1, Math.round(Number(单位.final[key] || 单位[key] || 1) * 压缩));
-          });
-          单位.__精神压缩 = 压缩;
-          写入召唤精神控制事件(combatData, 宿主, 单位, 'overload_compressed', {
-            failReason: '宿主精神负载过高，召唤物属性被压缩',
-            reasonText: '宿主精神负载过高，召唤物属性被压缩',
-            restriction: 'compressed',
-            totalMentalLoad: 总负载,
-            mentalLimit: 操控上限,
-            maintainRatio: 当前精神 / 精神上限,
-            compression: 压缩,
-          });
-        });
-        日志.push(`[召唤超载] ${宿主.name || '宿主'}召唤负载过高，召唤物属性压缩至${Math.round(压缩 * 100)}%。`);
-      }
-      const 维持率 = 当前精神 / 精神上限;
-      单位列表.forEach(单位 => {
-        单位.__精神维持率 = 维持率;
-        if (维持率 <= 0) {
-          写入召唤精神控制事件(combatData, 宿主, 单位, 'dissipated', {
-            failReason: '宿主精神力枯竭，召唤物被强制消散',
-            reasonText: '宿主精神力枯竭，召唤物被强制消散',
-            restriction: 'dissipated',
-            totalMentalLoad: 总负载,
-            mentalLimit: 操控上限,
-            maintainRatio: 维持率,
-          });
-          日志.push(移除召唤运行态单位(combatData, 单位, '精神力枯竭'));
-        } else if (单位.类型 === '深渊生物' && 维持率 < 0.25) {
-          写入召唤精神控制事件(combatData, 宿主, 单位, 'recalled', {
-            failReason: '宿主精神维持不足，召唤物被强制离场',
-            reasonText: '宿主精神维持不足，召唤物被强制离场',
-            restriction: 'recalled',
-            totalMentalLoad: 总负载,
-            mentalLimit: 操控上限,
-            maintainRatio: 维持率,
-          });
-          日志.push(移除召唤运行态单位(combatData, 单位, '精神维持不足'));
-        } else if (维持率 < 0.25) {
-          单位.__禁用召唤技能 = true;
-          写入召唤精神控制事件(combatData, 宿主, 单位, 'skill_limited', {
-            failReason: '宿主精神不足，召唤物技能被禁用',
-            reasonText: '宿主精神不足，召唤物只能进行基础行动',
-            restriction: 'skill_disabled',
-            totalMentalLoad: 总负载,
-            mentalLimit: 操控上限,
-            maintainRatio: 维持率,
-          });
-          日志.push(`[召唤受限] ${单位.name || '召唤物'}受宿主精神不足影响，只能进行基础行动。`);
-        } else {
-          单位.__禁用召唤技能 = false;
-        }
-      });
-      return 日志.filter(Boolean).join(' ');
     }
 
     function 评分召唤攻击目标(召唤单位 = {}, 目标 = {}) {
@@ -15773,12 +15666,13 @@ class BattleUIComponent {
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
       validate: combatData => 校验团战运行态(combatData),
-      refreshSummonMentalLoad: (combatData, host) => 刷新召唤精神负载(combatData, host),
       buildQueue: combatData => generateActionQueue(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
       syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
       settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
+      buildSummonFinalStats: unit => buildCombatFinalStats(unit),
+      removeSummonUnit: (combatData, unit, reason) => 移除召唤运行态单位(combatData, unit, reason),
       consumeSummonWindow: (combatData, unit, reason, grantId) => 消费召唤有效窗口(combatData, unit, reason, grantId),
       writeLedgerEvent: (combatData, payload) => 写入战斗事件账本(combatData, payload),
     });

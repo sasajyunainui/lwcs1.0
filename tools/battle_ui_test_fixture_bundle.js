@@ -120,7 +120,7 @@
         断言召唤夹具(处理召唤单位死亡(死亡.combatData, 死亡.召唤单位).includes('死亡反噬'), '继承型死亡未反噬');
         const 精神 = 构建召唤夹具战斗态({ 名称: '精神召唤', 行动模式: '自主行动' });
         精神.宿主.men = 0;
-        断言召唤夹具(刷新召唤精神负载(精神.combatData, 精神.宿主).includes('精神'), '精神枯竭未消散');
+        断言召唤夹具(BATTLE_RUNTIME.refreshSummonMentalLoad(精神.combatData, 精神.宿主).includes('精神'), '精神枯竭未消散');
         const 消散事件 = (精神.combatData.__battleEventLedger || []).find(event =>
           event?.eventKind === 'blocked_action' &&
           event?.actionType === 'summon_control' &&
@@ -132,7 +132,7 @@
         const 受限 = 构建召唤夹具战斗态({ 名称: '受限召唤', 行动模式: '自主行动' });
         受限.宿主.men_max = 100;
         受限.宿主.men = 10;
-        断言召唤夹具(刷新召唤精神负载(受限.combatData, 受限.宿主).includes('受限'), '精神不足未限制召唤技能');
+        断言召唤夹具(BATTLE_RUNTIME.refreshSummonMentalLoad(受限.combatData, 受限.宿主).includes('受限'), '精神不足未限制召唤技能');
         const 受限事件 = (受限.combatData.__battleEventLedger || []).find(event =>
           event?.eventKind === 'blocked_action' &&
           event?.actionType === 'summon_control' &&
@@ -144,7 +144,7 @@
         const 超载 = 构建召唤夹具战斗态({ 名称: '超载召唤', 行动模式: '自主行动' });
         超载.宿主.men_max = 30;
         超载.宿主.men = 30;
-        断言召唤夹具(刷新召唤精神负载(超载.combatData, 超载.宿主).includes('超载'), '精神负载超限未压缩召唤物');
+        断言召唤夹具(BATTLE_RUNTIME.refreshSummonMentalLoad(超载.combatData, 超载.宿主).includes('超载'), '精神负载超限未压缩召唤物');
         const 压缩事件 = (超载.combatData.__battleEventLedger || []).find(event =>
           event?.eventKind === 'blocked_action' &&
           event?.actionType === 'summon_control' &&
@@ -6561,7 +6561,7 @@
       宿主.men_max = 1000;
       宿主.精神力上限 = 1000;
       宿主.属性 = { ...(宿主.属性 || {}), 精神力: 100, 精神力上限: 1000 };
-      const log = 刷新召唤精神负载(combatData, 宿主);
+      const log = BATTLE_RUNTIME.refreshSummonMentalLoad(combatData, 宿主);
       const publicReportBlocks = 构建事件账本公开战报Blocks(combatData.__battleEventLedger || [], 8, { combatData });
       return {
         result: {
@@ -6606,7 +6606,7 @@
       宿主.men_max = 200;
       宿主.精神力上限 = 200;
       宿主.属性 = { ...(宿主.属性 || {}), 精神力: 900, 精神力上限: 200 };
-      const log = 刷新召唤精神负载(combatData, 宿主);
+      const log = BATTLE_RUNTIME.refreshSummonMentalLoad(combatData, 宿主);
       const publicReportBlocks = 构建事件账本公开战报Blocks(combatData.__battleEventLedger || [], 8, { combatData });
       return {
         result: {

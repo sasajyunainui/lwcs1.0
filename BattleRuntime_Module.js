@@ -780,6 +780,113 @@
     return summon.召唤窗口运行态;
   }
 
+  function writeSummonMentalControlEvent(combatData = {}, host = {}, summon = {}, result = '', detail = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+    const summonName = previewRuntime.unitName(summon) || '召唤物';
+    if (!combatData || !summonName) return null;
+    const hostName = previewRuntime.unitName(host) || previewRuntime.unitName(summon?.__宿主);
+    const failReason = String(detail.failReason || detail.failureReason || '召唤控制链受限').trim();
+    return settlement.writeLedgerEvent(combatData, {
+      eventKind: 'blocked_action',
+      round: Number(combatData?.回合 || 0),
+      actorName: summonName,
+      targetName: hostName,
+      actionName: '召唤控制',
+      actionType: 'summon_control',
+      result: String(result || 'limited').trim(),
+      failReason,
+      targetPoolSide: 'ally',
+      meta: {
+        source: 'summon',
+        primaryOutcome: 'blocked',
+        reasonCode: 'SUMMON_CONTROL_OVERLOAD',
+        reasonText: String(detail.reasonText || '宿主精神负载不足以稳定控制召唤物').trim(),
+        summonName,
+        summonType: String(summon?.类型 || '').trim(),
+        summonMode: String(summon?.行动模式 || '').trim(),
+        summonHostName: hostName,
+        summonKey: String(summon?.召唤键 || '').trim(),
+        mentalLoad: Math.max(0, Number(summon?.精神负载 || 0)),
+        totalMentalLoad: Math.max(0, Number(detail.totalMentalLoad || 0)),
+        mentalLimit: Math.max(0, Number(detail.mentalLimit || 0)),
+        maintainRatio: Math.max(0, Number(detail.maintainRatio || 0)),
+        compression: Math.max(0, Number(detail.compression || 0)),
+        restriction: String(detail.restriction || result || '').trim(),
+      },
+    }, adapterOptions);
+  }
+
+  function refreshSummonMentalLoad(combatData = {}, host = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+    const summons = listSummonCombatUnits(combatData).filter(unit => isUnitIdentityMatch(unit?.__宿主, host));
+    if (!summons.length) return '';
+    if (!isUnitAbleToFight(host)) {
+      return summons.map(unit => settlement.removeSummonUnit(combatData, unit, '宿主失去战斗能力', adapterOptions)).filter(Boolean).join(' ');
+    }
+    const mentalMax = Math.max(1, Number(host.men_max || host?.属性?.精神力上限 || 1));
+    const mental = Math.max(0, Number(host.men ?? host?.属性?.精神力 ?? mentalMax));
+    const totalLoad = summons.reduce((sum, unit) => sum + Math.max(0, Number(unit.精神负载 || 0)), 0);
+    const mentalLimit = Math.max(20, mentalMax * 0.75);
+    const logs = [];
+    if (totalLoad > mentalLimit) {
+      const compression = Math.max(0.35, mentalLimit / Math.max(1, totalLoad));
+      summons.forEach(unit => {
+        unit.final = settlement.buildSummonFinalStats(unit, adapterOptions);
+        ['str', 'def', 'agi', 'sp_max', 'men_max'].forEach(key => {
+          unit.final[key] = Math.max(1, Math.round(Number(unit.final[key] || unit[key] || 1) * compression));
+        });
+        unit.__精神压缩 = compression;
+        writeSummonMentalControlEvent(combatData, host, unit, 'overload_compressed', {
+          failReason: '宿主精神负载过高，召唤物属性被压缩',
+          reasonText: '宿主精神负载过高，召唤物属性被压缩',
+          restriction: 'compressed',
+          totalMentalLoad: totalLoad,
+          mentalLimit,
+          maintainRatio: mental / mentalMax,
+          compression,
+        }, settlement, adapterOptions);
+      });
+      logs.push(`[召唤超载] ${previewRuntime.unitName(host) || '宿主'}召唤负载过高，召唤物属性压缩至${Math.round(compression * 100)}%。`);
+    }
+    const maintainRatio = mental / mentalMax;
+    summons.forEach(unit => {
+      unit.__精神维持率 = maintainRatio;
+      if (maintainRatio <= 0) {
+        writeSummonMentalControlEvent(combatData, host, unit, 'dissipated', {
+          failReason: '宿主精神力枯竭，召唤物被强制消散',
+          reasonText: '宿主精神力枯竭，召唤物被强制消散',
+          restriction: 'dissipated',
+          totalMentalLoad: totalLoad,
+          mentalLimit,
+          maintainRatio,
+        }, settlement, adapterOptions);
+        logs.push(settlement.removeSummonUnit(combatData, unit, '精神力枯竭', adapterOptions));
+      } else if (unit.类型 === '深渊生物' && maintainRatio < 0.25) {
+        writeSummonMentalControlEvent(combatData, host, unit, 'recalled', {
+          failReason: '宿主精神维持不足，召唤物被强制离场',
+          reasonText: '宿主精神维持不足，召唤物被强制离场',
+          restriction: 'recalled',
+          totalMentalLoad: totalLoad,
+          mentalLimit,
+          maintainRatio,
+        }, settlement, adapterOptions);
+        logs.push(settlement.removeSummonUnit(combatData, unit, '精神维持不足', adapterOptions));
+      } else if (maintainRatio < 0.25) {
+        unit.__禁用召唤技能 = true;
+        writeSummonMentalControlEvent(combatData, host, unit, 'skill_limited', {
+          failReason: '宿主精神不足，召唤物技能被禁用',
+          reasonText: '宿主精神不足，召唤物只能进行基础行动',
+          restriction: 'skill_disabled',
+          totalMentalLoad: totalLoad,
+          mentalLimit,
+          maintainRatio,
+        }, settlement, adapterOptions);
+        logs.push(`[召唤受限] ${previewRuntime.unitName(unit) || '召唤物'}受宿主精神不足影响，只能进行基础行动。`);
+      } else {
+        unit.__禁用召唤技能 = false;
+      }
+    });
+    return logs.filter(Boolean).join(' ');
+  }
+
   function beginBattleRound(combatData = {}, currentRound = 0, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
     const runtime = ensureCombatRuntime(combatData);
     runtime.unitReactionCount = {};
@@ -817,7 +924,7 @@
     const summons = listSummonCombatUnits(combatData);
     summons.forEach(ensureSummonWindowRuntime);
     const hosts = [...new Set(summons.map(unit => unit.__宿主).filter(Boolean))];
-    const summonLog = hosts.map(host => settlement.refreshSummonMentalLoad(combatData, host, adapterOptions)).filter(Boolean).join(' ');
+    const summonLog = hosts.map(host => refreshSummonMentalLoad(combatData, host, settlement, adapterOptions)).filter(Boolean).join(' ');
     return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
   }
 
@@ -3265,9 +3372,9 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'prepare', 'validate', 'refreshSummonMentalLoad', 'buildQueue', 'executeQueue',
+      'prepare', 'validate', 'buildQueue', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
-      'consumeSummonWindow', 'writeLedgerEvent',
+      'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -3580,6 +3687,7 @@
     evaluateBattleTerminal,
     readTeamAlive,
     ensureSummonWindowRuntime,
+    refreshSummonMentalLoad,
     beginBattleRound,
     settleGuardSummonWindows,
   });
