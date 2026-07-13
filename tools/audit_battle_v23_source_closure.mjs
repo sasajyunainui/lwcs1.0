@@ -5,9 +5,13 @@ import { execFileSync } from 'child_process';
 const root = process.cwd();
 const battleUiPath = path.resolve(root, 'lwcs/BattleUI_Module.js');
 const battleRuntimePath = path.resolve(root, 'lwcs/BattleRuntime_Module.js');
+const battleDecisionPath = path.resolve(root, 'lwcs/BattleDecision_Module.js');
+const battlePreviewPath = path.resolve(root, 'lwcs/BattlePreview_Module.js');
 const mvuPath = path.resolve(root, 'lwcs/MVU.js');
 const battleUiSource = fs.readFileSync(battleUiPath, 'utf8');
 const battleRuntimeSource = fs.readFileSync(battleRuntimePath, 'utf8');
+const battleDecisionSource = fs.readFileSync(battleDecisionPath, 'utf8');
+const battlePreviewSource = fs.readFileSync(battlePreviewPath, 'utf8');
 const mvuSource = fs.readFileSync(mvuPath, 'utf8');
 const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23_regression_gate.mjs'), 'utf8');
 
@@ -65,10 +69,9 @@ addCheck(
     !/const BATTLE_PROTOTYPE_RUNTIME_CONTRACT\s*=\s*Object\.freeze/.test(battleUiSource),
 );
 addCheck(
-  'objectiveScoringOwnedByRuntime',
-  /function calculateObjectiveScore\(/.test(battleRuntimeSource) &&
-    /function summarizeScoreContributions\(/.test(battleRuntimeSource) &&
-    !/function 汇总行为规划评分贡献_V1\(/.test(battleUiSource),
+  'objectiveScoringOwnedByDecision',
+  /const objectiveUtility = clamp\(expectedStateGain \+ terminalUtility \+ informationValue - irreversibleCost - catastrophicRisk, -200, 200\)/.test(battleDecisionSource) &&
+    !/calculateObjectiveScore|summarizeScoreContributions|评估技能规划净收益/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
   'baseDamageMathOwnedByRuntime',
@@ -77,11 +80,11 @@ addCheck(
     !/damage\s*=\s*威力倍率\s*\*/.test(battleUiSource),
 );
 addCheck(
-  'subjectiveDecisionMathOwnedByRuntime',
-  /function buildDecisionProfile\(/.test(battleRuntimeSource) &&
-    /function normalizeDecisionScores\(/.test(battleRuntimeSource) &&
-    /function stableUnitRoll\(/.test(battleRuntimeSource) &&
-    !/function 生成稳定决策投点\(/.test(battleUiSource),
+  'subjectiveDecisionMathOwnedByDecision',
+  /function normalizeUtilities\(/.test(battleDecisionSource) &&
+    /function selectCandidate\(/.test(battleDecisionSource) &&
+    /maxNormalizedRegret/.test(battleDecisionSource) &&
+    !/buildDecisionProfile|normalizeDecisionScores|BATTLE_RUNTIME\.selectCandidate/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
   'flatActionQueueCoreOwnedByRuntime',
@@ -167,17 +170,16 @@ addCheck(
     ),
 );
 addCheck(
-  'candidateFinalizationOwnedByRuntime',
-  /function finalizeCandidates\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.finalizeCandidates\(/.test(battleUiSource) &&
-    !/const strictlyDominated\s*=/.test(battleUiSource),
+  'candidateFinalizationOwnedByDecision',
+  /function paretoFilter\(candidates = \[\]\)/.test(battleDecisionSource) &&
+    /function dominates\(left, right\)/.test(battleDecisionSource) &&
+    !/finalizeCandidates|strictlyDominated/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
-  'subjectiveCandidateSelectionOwnedByRuntime',
-  /function selectCandidate\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.selectCandidate\(/.test(battleUiSource) &&
-    !/const bannedTags\s*=/.test(battleUiSource) &&
-    !/probabilityWeight:\s*Math\.exp/.test(battleUiSource),
+  'subjectiveCandidateSelectionOwnedByDecision',
+  /function selectCandidate\(candidates, actor, seed, context = \{\}\)/.test(battleDecisionSource) &&
+    /Math\.exp\(\(candidate\.normalizedUtility - eligible\[0\]\.normalizedUtility\)/.test(battleDecisionSource) &&
+    !/chooseActorActionByCandidates|选择主观行为候选/.test(battleUiSource),
 );
 addCheck(
   'prototypeCoverageAuditOwnedByRuntime',
@@ -186,11 +188,10 @@ addCheck(
     !/auditPrototypeCoverage:\s*payload\s*=>/.test(battleUiSource),
 );
 addCheck(
-  'previewPipelineOwnedByRuntime',
-  /function previewSkill\(payload = \{\}\)/.test(battleRuntimeSource) &&
-    /previewDomain:\s*\{/.test(battleUiSource) &&
-    !/function 构建战斗技能纯预估\(/.test(battleUiSource) &&
-    !/previewSkill:\s*payload\s*=>/.test(battleUiSource),
+  'previewPipelineOwnedByPreviewModule',
+  /function previewAction\(input = \{\}\)/.test(battlePreviewSource) &&
+    /PreviewOverlay/.test(battlePreviewSource) &&
+    !/function previewSkill\(payload = \{\}\)|previewDomain:\s*\{/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
   'teamRoundRunnerOwnedByRuntime',
@@ -206,8 +207,9 @@ addCheck(
 );
 addCheck(
   'duelRoundLoopOwnedByRuntime',
-  /BATTLE_RUNTIME\.runTeamBattle\(\{[\s\S]*?mode:\s*maxRounds > 1 \? 'multi_round' : 'single_round'[\s\S]*?maxRounds,[\s\S]*?adapters:\s*构建团战运行时适配器\(\)/.test(battleUiSource) &&
-    /playerLockedNaturalAction\s*=\s*\{[\s\S]*?round:\s*naturalStartingRound \+ 1/.test(battleUiSource) &&
+  /function 运行正式决策战斗\(/.test(battleUiSource) &&
+    /runDecisionTeamBattleSimulation\(/.test(battleUiSource) &&
+    /executeDecisionTeam/.test(battleRuntimeSource) &&
     !/BATTLE_RUNTIME\.runDuelRounds\(/.test(battleUiSource) &&
     !/while\s*\(\s*roundCount < maxRounds/.test(battleUiSource),
 );
@@ -215,7 +217,8 @@ addCheck(
   'duelRoundDeclarationHasSinglePath',
   !/构建单挑回合宣告|执行单挑回合交锋|executeDuelRound/.test(battleUiSource) &&
     /buildQueue:\s*generateActionQueue/.test(battleUiSource) &&
-    /recordQueue:\s*记录团战行动轴声明/.test(battleUiSource) &&
+    /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleUiSource) &&
+    /entry\.__decisionResolver\s*=/.test(battleUiSource) &&
     /executeQueue:\s*执行团战扁平行动队列/.test(battleUiSource),
 );
 addCheck(
@@ -299,9 +302,45 @@ addCheck(
   !/__战斗真实行为审计样本|__LWCS_LAST_BATTLE_PREVIEW__/.test(battleUiSource),
 );
 addCheck(
-  'swapAuditKeepsSelectedAndTwoAlternatives',
-  /const 审计候选\s*=\s*\[\s*选中,[\s\S]*?\.slice\(0, 2\)/.test(battleUiSource) &&
+  'decisionAuditKeepsSelectedAndTwoAlternatives',
+  /const alternatives = normalized\.filter\([\s\S]*?\.slice\(0, 2\)/.test(battleDecisionSource) &&
+    /scoreAudit:\s*Object\.freeze\(\[selected, \.\.\.alternatives\]/.test(battleDecisionSource) &&
     !/换招候选排序结果\s*=\s*collectCombatSkills/.test(battleUiSource),
+);
+addCheck(
+  'publicDecisionAuditDropsFullCandidatesAndPreviews',
+  /function buildDecisionAuditRecord\(decision = \{\}\)/.test(battleRuntimeSource) &&
+    !/function buildDecisionAuditRecord\(decision = \{\}\)[\s\S]*?candidates:\s*decision\?\.candidates/.test(battleRuntimeSource) &&
+    !/selected:\s*\{[\s\S]*?preview:\s*selected\?\.preview/.test(battleRuntimeSource) &&
+    /!Object\.hasOwn\(item, 'candidates'\)/.test(fs.readFileSync(path.resolve(root, 'lwcs/tools/audit_battle_v73_formal_cases.mjs'), 'utf8')),
+);
+addCheck(
+  'authoritativeGateUsesTrackedFormalTools',
+  [
+    'lwcs/tools/audit_battle_v73_formal_cases.mjs',
+    'lwcs/tools/audit_battle_report_render_html.mjs',
+    'lwcs/tools/audit_battle_ledger_strictness.mjs',
+    'lwcs/tools/audit_battle_v73_performance.mjs',
+  ].every(toolPath => gateSource.includes(toolPath)) &&
+    !/['"]tools\/(?:audit_battle_v73_formal_cases|audit_battle_report_render_html|audit_battle_ledger_strictness|audit_battle_v73_performance)\.mjs['"]/.test(gateSource),
+);
+addCheck(
+  'legacyFixtureExecutorsRetiredFromAuthoritativeGate',
+  !/name:\s*['"]auditBattleReportSamples['"]/.test(gateSource) &&
+    !/name:\s*['"]runBattleClosureAudit['"]/.test(gateSource) &&
+    !/run_battle_closure_audit\.mjs/.test(gateSource) &&
+    [
+      'auditBattleR63PrototypeMatrix',
+      'auditBattleR63DecisionSettlement',
+      'auditBattleBehaviorLogicMatrix',
+      'auditBattleDeterminism',
+      'auditBattleR63ManualReview',
+      'auditBattleLedgerStrictness',
+    ].every(checkName => gateSource.includes(`name: '${checkName}'`)),
+);
+addCheck(
+  'legacyDecisionPathsRemoved',
+  !/runLegacyBattleCase|next-shadow|shadowDecisions|SHADOWED|评估技能规划净收益|评估技能行为库衔接收益|估算效果行为库衔接收益|chooseActorActionByCandidates|buildAutoActionForActor|determineNpcAction/.test(`${battleRuntimeSource}\n${battleDecisionSource}\n${battleUiSource}`),
 );
 addCheck(
   'productionHasNoRepeatDecayScoringPath',

@@ -66,9 +66,9 @@ export const battleR63ManualReviewNotes = Object.freeze({
   team_focus_without_overkill: {
     behavior: '唐舞麟在首轮遭先手击倒后不再产生行动；谢邂与古月共同压低张扬子，张扬子第三回合建立闪避仍被谢邂终结，古月随后转向韦小枫，第四回合双方再按剩余容量转火王金玺/古月，没有鞭尸。',
     narrative: '主动攻击、召唤生成、召唤追击和目标变化均有独立事实。',
-    anomalies: '首轮唐舞麟未行动来自真实死亡终态而非漏行动；部分召唤兜底改打合法集火目标后未命中，属于结算结果。',
+    anomalies: '首轮唐舞麟未行动来自真实死亡终态而非漏行动；王金玺在第2、3回合因全部进攻候选无正收益而进入无成本防御fallback，该现象需要在Phase 11用“低输出但可安全推进”变体复核，防止风险包络把合理进攻全部压死。',
     alternatives: '目标进入斩杀线后可转火，不能为了保持集火文案继续攻击同一目标。',
-    responsibility: '无',
+    responsibility: 'BattleDecision正向推进保护集（Phase 11）',
     blocking: false,
   },
   team_protect_critical_ally: {
@@ -82,9 +82,9 @@ export const battleR63ManualReviewNotes = Object.freeze({
   team_heal_crisis: {
     behavior: '雅莉首轮对两名受伤队友完成群体治疗并为三人加盾，护盾实际吸收随后群攻；边际下降后雅莉凭等级优势改用普通攻击压低苏沐/龙跃，未在满血与完整护盾上机械重复治疗。',
     narrative: '护盾、状态、资源和后续攻击均被保留，治疗不是一句无数值描述。',
-    anomalies: '雅莉普通攻击伤害显著高于队友来自真实等级差；这不否定首轮危机支援，但后续仍需用同等级治疗者变体保护职责边界。',
+    anomalies: '雅莉普通攻击伤害显著高于队友来自真实等级差；戴月炎在部分回合因低置信抽样选择了低于最高客观效用的普通攻击，差距仍在允许后悔界内，但需要在Phase 11检查同类次优选择是否重复形成系统性降智。',
     alternatives: '若敌方有即将完成的蓄力终结，打断可能优于治疗。',
-    responsibility: '无',
+    responsibility: 'BattleDecision主观后悔边界复核（Phase 11）',
     blocking: false,
   },
   team_control_overlap: {
@@ -95,4 +95,19 @@ export const battleR63ManualReviewNotes = Object.freeze({
     responsibility: 'BattleRuntime report projection（后续Phase 10）',
     blocking: false,
   },
+});
+
+export const battleR63ManualReviewEvidence = Object.freeze({
+  duel_overmatch_lethal: { ledgerHash: '83ef5084ef32fdf5177eb0c5dc3599caec77991ea175dc1839e4355802483639', reportHash: '1e8973322dd976fece2b10ea6417ed8cea2d2296d878200ad55b1809db8fe675' },
+  duel_overmatch_nonlethal: { ledgerHash: 'c855a3cbb09e2e10ca8f334bdfc35261f9f2511f233b8f9d2c57dc6cf9545323', reportHash: 'bef5792557d43f68b1c42898900b837904e5b3e893f875aa0b0d1453540ec080' },
+  duel_underdog_survival: { ledgerHash: '9838d9adab86c0ddf6d33fa2fcaac62b4e3e0a1858cedd2394fdc31d0211431e', reportHash: 'f3e64bdea0b06f225debedc712cf2290b1be3b813756aa866a7c171970e73671' },
+  duel_peer_unknown_probe: { ledgerHash: '1b090f117058f4882c384687892d58436c8d80bae6baa6d80233a37cc53ddb90', reportHash: 'd18a67333100ad54fb457850e3bc1613d72f0caafd29dca205e2d14bfd0fea5a' },
+  duel_agile_single_target_failure: { ledgerHash: '122f7ce6cdeb18a33fa59962c37b15de91bdd91de7b6ff9ec1e42807168a54de', reportHash: 'ca2b8c41328502a2c32e73b6462484ebf70b9f6a7dffedee137a5797662ad396' },
+  duel_agile_counter_options: { ledgerHash: '42cee3c09cf031d39122f841e2105807a8aa155cf1e669afa6313a199d69eac7', reportHash: '8f6ccbce81dbabfa75989a28721f5d153860fd78e84862257dbf9a0d4a4d4c40' },
+  duel_charge_interrupt_safer: { ledgerHash: 'ec64cc6af74149ff80ec4ffc9ef045eb191e5348bcc21e4f9112ed1208e4fc87', reportHash: '7fd7dc5d2a4c82dcbb760f6aa54604ade437248646b64891f3a81fc76a50646e' },
+  duel_charge_defense_safer: { ledgerHash: '399f1cc8f7621e3a4807f47122ff7001d2ed5574d279a641aa736c510a234981', reportHash: 'dbc599b0f3bc532cea59d252746c3ee9695ebe8f069f013ce59bf8a040910d12' },
+  team_focus_without_overkill: { ledgerHash: '1cec025192b4a950b35a98f6ee228f20061db961b1e8edd67742803b0d69525d', reportHash: 'bb42ecf414b33b1931f86a4bf9794669de8e2275c26939f96d25b69c4b721a9f' },
+  team_protect_critical_ally: { ledgerHash: 'b12fc6e2a15042a5a606bd95ee6b332fcbbe140b7608309b27719733ec7e1acd', reportHash: '4e7ab86381d2e19a559271474cc1bd5f4c328f83c906d973f3a0b1b80f20bf65' },
+  team_heal_crisis: { ledgerHash: 'e032ae6ad00ca451c306511afc53f65b32309308d7365785ef6f7f0fefcd17f7', reportHash: 'f6433ca00f813f41487897c110bb11924d25b945a2b16edc22e91ef4ac3fe6cc' },
+  team_control_overlap: { ledgerHash: '8bcd421757d7cf5b1546aa719397c35c0b99adc630c6683a3b872fe93e063ca7', reportHash: '3558bea42f95568213b92b30f2faff9c9226deee19275a3a725ff4b9a3b986b5' },
 });

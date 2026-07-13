@@ -95,7 +95,7 @@ function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
   };
 }
 
-export function buildShadowManualCases(library, getBaseStats) {
+export function buildManualCases(library, getBaseStats) {
   const make = (name, options) => participant(library, getBaseStats, name, options);
   const charge = {
     id: 'visible-charge', type: 'skill', action_type: '释放魂技', cast_time: 30,

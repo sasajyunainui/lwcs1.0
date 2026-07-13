@@ -19,13 +19,6 @@
     'ACTION_DECLARED', 'ACTION_RESOLVED', 'REACTION_RESOLVED', 'STATE_TICK',
     'SUMMON_ACTION', 'RESOURCE_CHANGE', 'ROUND_SUMMARY', 'FINAL_SUMMARY',
   ]);
-  const positiveScoreParts = Object.freeze([
-    'effectiveDeltaEV', 'futureUnlockEV', 'enemyDeniedEV', 'teamIntentEV', 'sustainEV',
-  ]);
-  const costScoreParts = Object.freeze([
-    'resourceCostEV', 'failureRiskEV', 'exposureRiskEV', 'chainConflictEV',
-  ]);
-  const scorePartKeys = Object.freeze([...positiveScoreParts, ...costScoreParts]);
   const prototypeRuntimeContract = Object.freeze({
     伤害结算: Object.freeze({ component: 'effectiveDeltaEV', settlementConsumers: Object.freeze(['direct_damage', 'multi_damage', 'delay_burst']), factTypes: Object.freeze(['DAMAGE']), reportBlockTypes: Object.freeze(['ACTION_RESOLVED']) }),
     资源变化: Object.freeze({ component: 'sustainEV', settlementConsumers: Object.freeze(['recover_sp', 'recover_men', 'recover_vit', 'delay_burst']), factTypes: Object.freeze(['RESOURCE']), reportBlockTypes: Object.freeze(['RESOURCE_CHANGE']) }),
@@ -142,43 +135,6 @@
     if (normalizedProbability >= 1) return true;
     const normalizedRoll = Math.max(0, Math.min(1, Number(roll) || 0));
     return normalizedRoll < normalizedProbability;
-  }
-
-  function stableUnitRoll(seedText = '') {
-    const text = String(seedText || 'battle-decision');
-    let hash = 2166136261;
-    for (let index = 0; index < text.length; index += 1) {
-      hash ^= text.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0) / 4294967296;
-  }
-
-  function buildDecisionProfile(input = {}) {
-    const clampRatio = value => Math.max(0, Math.min(1, Number(value) || 0));
-    const experienceStability = clampRatio(input?.experienceStability);
-    const spiritualPowerRatio = clampRatio(input?.spiritualPowerRatio);
-    const staminaRatio = clampRatio(input?.staminaRatio);
-    const bestObjectiveScore = Number(input?.bestObjectiveScore || 0);
-    const decisionConfidence = 0.5 * experienceStability + 0.3 * spiritualPowerRatio + 0.2 * staminaRatio;
-    const temperature = 4 + (1 - decisionConfidence) * 10;
-    const maxRegret = Math.max(5, Math.abs(bestObjectiveScore) * (0.05 + 0.2 * (1 - decisionConfidence)));
-    return { decisionConfidence, temperature, maxRegret };
-  }
-
-  function normalizeDecisionScores(scores = []) {
-    const values = (Array.isArray(scores) ? scores : []).map(value => Number(value) || 0);
-    const sorted = [...values].sort((left, right) => left - right);
-    const medianAt = list => {
-      if (!list.length) return 0;
-      const middle = Math.floor(list.length / 2);
-      return list.length % 2 ? list[middle] : (list[middle - 1] + list[middle]) / 2;
-    };
-    const median = medianAt(sorted);
-    const deviations = values.map(value => Math.abs(value - median)).sort((left, right) => left - right);
-    const mad = medianAt(deviations);
-    const robustScale = Math.max(1, mad * 1.4826);
-    return values.map(value => (value - median) / robustScale * 10);
   }
 
   function createActionQueue(options = {}) {
@@ -395,14 +351,6 @@
     return { results, fatal: queue.fatal };
   }
 
-  function calculateObjectiveScore(scoreParts = {}) {
-    const source = scoreParts && typeof scoreParts === 'object' ? scoreParts : {};
-    return Math.round(
-      positiveScoreParts.reduce((sum, key) => sum + Number(source[key] || 0), 0) -
-      costScoreParts.reduce((sum, key) => sum + Number(source[key] || 0), 0),
-    );
-  }
-
   function calculateBaseDamage(options = {}) {
     const damageClass = String(options?.damageClass || '').trim().toUpperCase();
     const damageType = String(options?.damageType || '').trim();
@@ -435,175 +383,6 @@
       formula,
       attackValue: attack,
       defenseValue: defense,
-    };
-  }
-
-  function summarizeScoreContributions(contributions = []) {
-    const scoreParts = Object.fromEntries(scorePartKeys.map(component => [component, 0]));
-    const factorKeys = [];
-    const seen = new Set();
-    (Array.isArray(contributions) ? contributions : []).forEach((contribution, index) => {
-      const valueKey = String(contribution?.valueKey || '').trim();
-      const component = String(contribution?.component || '').trim();
-      const expectedValue = Number(contribution?.expectedValue || 0);
-      if (!valueKey) throw new Error(`battle_scoring_value_key_missing:${index}`);
-      if (seen.has(valueKey)) throw new Error(`battle_scoring_value_key_duplicated:${valueKey}`);
-      if (!scorePartKeys.includes(component)) throw new Error(`battle_scoring_component_unsupported:${component || index}`);
-      if (!Number.isFinite(expectedValue)) throw new Error(`battle_scoring_value_invalid:${valueKey}`);
-      seen.add(valueKey);
-      factorKeys.push(valueKey);
-      scoreParts[component] += expectedValue;
-    });
-    scorePartKeys.forEach(component => { scoreParts[component] = Math.round(scoreParts[component]); });
-    return { scoreParts, rawObjectiveScore: calculateObjectiveScore(scoreParts), factorKeys };
-  }
-
-  function finalizeCandidates(candidates = [], options = {}) {
-    const list = Array.isArray(candidates) ? candidates : [];
-    const castTimeOf = typeof options?.castTimeOf === 'function' ? options.castTimeOf : () => 0;
-    const finalized = list.map((candidate, index) => {
-      const currentScore = Number(candidate?.scoringSummary?.rawObjectiveScore || 0);
-      const bestOtherScore = list.reduce((best, other, otherIndex) =>
-        otherIndex === index ? best : Math.max(best, Number(other?.scoringSummary?.rawObjectiveScore || 0)), -Infinity);
-      const alternativeGap = Number.isFinite(bestOtherScore) ? Math.max(0, Math.round(bestOtherScore - currentScore)) : 0;
-      const tags = new Set(Array.isArray(candidate?.scoringSummary?.tags) ? candidate.scoringSummary.tags : []);
-      const currentParts = candidate?.scoringSummary?.scoreParts || {};
-      const strictlyDominated = list.some((other, otherIndex) => {
-        if (otherIndex === index || String(other?.scoringSummary?.rejectionCode || '').trim()) return false;
-        const otherScore = Number(other?.scoringSummary?.rawObjectiveScore || 0);
-        if (!(otherScore > currentScore) || !(Number(other?.weight || 0) > Number(candidate?.weight || 0))) return false;
-        const otherParts = other?.scoringSummary?.scoreParts || {};
-        const allBenefitsNoLower = positiveScoreParts.every(key => Number(otherParts[key] || 0) >= Number(currentParts[key] || 0));
-        const allCostsNoHigher = costScoreParts.every(key => Number(otherParts[key] || 0) <= Number(currentParts[key] || 0));
-        const atLeastOneBetter = positiveScoreParts.some(key => Number(otherParts[key] || 0) > Number(currentParts[key] || 0)) ||
-          costScoreParts.some(key => Number(otherParts[key] || 0) < Number(currentParts[key] || 0));
-        return allBenefitsNoLower && allCostsNoHigher && atLeastOneBetter;
-      });
-      if (strictlyDominated) tags.add('STRICTLY_DOMINATED');
-      const rejectionCode = String(candidate?.scoringSummary?.rejectionCode || '').trim() || (strictlyDominated ? 'STRICTLY_DOMINATED' : '');
-      const finalScore = rejectionCode ? 0 : Math.max(0, Number(candidate?.scoringSummary?.finalScore ?? candidate?.weight ?? 0));
-      return {
-        ...candidate,
-        weight: finalScore,
-        scoringSummary: {
-          ...(candidate?.scoringSummary || {}),
-          tags: [...tags],
-          alternativeGap,
-          rejectionCode,
-          finalScore,
-          selectedReason: rejectionCode || String(candidate?.scoringSummary?.selectedReason || 'OBJECTIVE_SCORE'),
-        },
-        __候选排序审计: {
-          ...(candidate?.__候选排序审计 || {}),
-          tags: [...tags],
-          alternativeGap,
-        },
-      };
-    });
-    return finalized.sort((left, right) => {
-      const leftSummary = left?.scoringSummary || {};
-      const rightSummary = right?.scoringSummary || {};
-      return Number(right.weight || 0) - Number(left.weight || 0) ||
-        Number(leftSummary.resourceCostEV || 0) - Number(rightSummary.resourceCostEV || 0) ||
-        Number(castTimeOf(left)) - Number(castTimeOf(right)) ||
-        String(leftSummary.candidateId || '').localeCompare(String(rightSummary.candidateId || ''), 'zh-Hans-CN');
-    });
-  }
-
-  function selectCandidate(options = {}) {
-    const bannedTags = new Set(['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'CATASTROPHIC', 'STRICTLY_DOMINATED']);
-    const candidates = Array.isArray(options?.candidates) ? options.candidates : [];
-    const castTimeOf = typeof options?.castTimeOf === 'function' ? options.castTimeOf : () => 0;
-    const pool = candidates.filter(candidate => {
-      if (!candidate || !(Number(candidate.weight || 0) > 0) || String(candidate?.scoringSummary?.rejectionCode || '').trim()) return false;
-      return !(Array.isArray(candidate?.scoringSummary?.tags) ? candidate.scoringSummary.tags : []).some(tag => bannedTags.has(tag));
-    });
-    if (!pool.length) return { option: null, trace: '当前未形成有效出手机会', decisionConfidence: 1, temperature: 4 };
-    const objectiveSorted = [...pool].sort((left, right) => {
-      const leftSummary = left?.scoringSummary || {};
-      const rightSummary = right?.scoringSummary || {};
-      return Number(right.weight || 0) - Number(left.weight || 0) ||
-        Number(leftSummary.resourceCostEV || 0) - Number(rightSummary.resourceCostEV || 0) ||
-        Number(castTimeOf(left)) - Number(castTimeOf(right)) ||
-        String(leftSummary.candidateId || '').localeCompare(String(rightSummary.candidateId || ''), 'zh-Hans-CN');
-    });
-    const objectiveBest = objectiveSorted[0];
-    const bestObjectiveScore = Number(objectiveBest?.weight || 0);
-    const { decisionConfidence, temperature, maxRegret } = buildDecisionProfile({
-      experienceStability: options?.experienceStability,
-      spiritualPowerRatio: options?.spiritualPowerRatio,
-      staminaRatio: options?.staminaRatio,
-      bestObjectiveScore,
-    });
-    const regretPool = objectiveSorted.filter(candidate => bestObjectiveScore - Number(candidate.weight || 0) <= maxRegret + 1e-9);
-    const normalizedScores = normalizeDecisionScores(regretPool.map(candidate => Number(candidate.weight || 0)));
-    const normalizedMean = normalizedScores.reduce((sum, score) => sum + score, 0) / Math.max(1, normalizedScores.length);
-    const interferenceStrength = Math.max(0, Math.min(1, Number(options?.interference) || 0));
-    const scored = regretPool.map((candidate, index) => {
-      const objectiveScore = Number(candidate.weight || 0);
-      const normalizedObjectiveScore = normalizedScores[index];
-      const subjectiveScore = normalizedObjectiveScore * (1 - interferenceStrength) + normalizedMean * interferenceStrength;
-      candidate.scoringSummary = {
-        ...(candidate.scoringSummary || {}),
-        normalizedObjectiveScore: Number(normalizedObjectiveScore.toFixed(3)),
-        subjectiveScore: Number(subjectiveScore.toFixed(3)),
-      };
-      return { candidate, objectiveScore, normalizedObjectiveScore, subjectiveScore };
-    }).sort((left, right) => {
-      const leftSummary = left.candidate?.scoringSummary || {};
-      const rightSummary = right.candidate?.scoringSummary || {};
-      return right.subjectiveScore - left.subjectiveScore ||
-        Number(leftSummary.resourceCostEV || 0) - Number(rightSummary.resourceCostEV || 0) ||
-        Number(castTimeOf(left.candidate)) - Number(castTimeOf(right.candidate)) ||
-        String(leftSummary.candidateId || '').localeCompare(String(rightSummary.candidateId || ''), 'zh-Hans-CN');
-    });
-    const top = scored[0];
-    const second = scored[1] || null;
-    let selected = top;
-    let reason = 'OBJECTIVE_GAP_LOCK';
-    if (second && top.subjectiveScore - second.subjectiveScore < 2 * temperature) {
-      const maxScore = top.subjectiveScore;
-      const weighted = scored.map(item => ({ ...item, probabilityWeight: Math.exp((item.subjectiveScore - maxScore) / Math.max(0.1, temperature)) }));
-      const total = weighted.reduce((sum, item) => sum + item.probabilityWeight, 0);
-      const candidateSignature = weighted.map(item =>
-        `${item.candidate?.scoringSummary?.candidateId || item.candidate?.name || ''}:${item.subjectiveScore.toFixed(3)}`
-      ).join('|');
-      let roll = stableUnitRoll(`${String(options?.seedText || 'battle-decision')}|${candidateSignature}`) * total;
-      selected = weighted[weighted.length - 1];
-      for (const item of weighted) {
-        roll -= item.probabilityWeight;
-        if (roll <= 0) {
-          selected = item;
-          break;
-        }
-      }
-      reason = interferenceStrength > 0 ? 'DECISION_INTERFERENCE_SOFTMAX' : 'SUBJECTIVE_SOFTMAX';
-    }
-    selected.candidate.scoringSummary = {
-      ...(selected.candidate.scoringSummary || {}),
-      selectedReason: reason,
-      decisionConfidence: Number(decisionConfidence.toFixed(3)),
-      temperature: Number(temperature.toFixed(3)),
-      maxRegret: Number(maxRegret.toFixed(3)),
-    };
-    selected.candidate.__subjectiveDecision = {
-      decisionConfidence: Number(decisionConfidence.toFixed(3)),
-      temperature: Number(temperature.toFixed(3)),
-      maxRegret: Number(maxRegret.toFixed(3)),
-      reason,
-      originalBestCandidateId: objectiveBest?.scoringSummary?.candidateId || '',
-    };
-    return {
-      option: selected.candidate,
-      trace: reason === 'OBJECTIVE_GAP_LOCK'
-        ? '主观置信度锁定最高合法净收益'
-        : reason === 'DECISION_INTERFERENCE_SOFTMAX'
-          ? '决策干扰改变主观判断'
-          : '经验与当前精力共同影响临场选择',
-      decisionConfidence,
-      temperature,
-      maxRegret,
-      originalBest: objectiveBest,
     };
   }
 
@@ -684,6 +463,18 @@
   function normalizeActionDisplayName(value = '') {
     const text = String(value || '').replace(/^【|】$/g, '').trim();
     if (!text) return '';
+    const actionKindNames = {
+      BASIC_ATTACK: '普通攻击',
+      DEFEND: '防御',
+      EVADE: '闪避',
+      COUNTER: '反击',
+      OBSERVE: '观察',
+      GUARD: '保护队友',
+      WITHDRAW: '撤退',
+      USE_ITEM: '使用物品',
+      EQUIP: '穿戴装备',
+    };
+    if (actionKindNames[text]) return actionKindNames[text];
     if (text === '常规攻击' || text === '主动压迫') return '普通攻击';
     if (text === '肉体兜底' || text === '硬抗') return '承伤硬抗';
     if (text === '系统反击') return '借势反打';
@@ -1001,20 +792,8 @@
     const dedupeFacts = facts => {
       const seen = new Set();
       return (Array.isArray(facts) ? facts : []).filter(fact => {
-        const key = [
-          fact?.factType,
-          fact?.eventKind,
-          fact?.actionRole,
-          fact?.actorId,
-          fact?.targetId,
-          fact?.actionName,
-          fact?.stateName,
-          fact?.resultState,
-          fact?.value,
-          fact?.resource,
-          fact?.duration,
-          fact?.segmentIndex,
-        ].map(value => String(value ?? '')).join('|');
+        const key = String(fact?.factId || '').trim();
+        if (!key) throw new Error('battle_report_fact_id_missing');
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -1139,7 +918,7 @@
             roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
               'ACTION_RESOLVED';
       const facts = dedupeFacts(events.map(projectFact));
-      const badges = group.badges
+      const projectedBadges = group.badges
         .map(block => ({
           kind: String(block?.kind || '').trim(),
           name: String(block?.name || '').trim(),
@@ -1163,6 +942,32 @@
           badge?.unit,
           badge?.targetId || badge?.targetName,
         ].map(value => String(value ?? '')).join('|')) === badgeIndex);
+      const badges = [...projectedBadges];
+      const badgeEventIds = new Set(badges.map(badge => String(badge?.sourceEventId || '').trim()).filter(Boolean));
+      facts.forEach(fact => {
+        const sourceEventId = String(fact?.factId || '').trim();
+        if (!sourceEventId || badgeEventIds.has(sourceEventId)) return;
+        const value = Number(fact?.value || 0);
+        let badge = null;
+        if (fact?.factType === 'DAMAGE' && value > 0) {
+          badge = { kind: 'damage', name: '', value: -Math.abs(value), unit: 'HP' };
+        } else if (fact?.factType === 'STATE_TICK' && value > 0) {
+          badge = { kind: 'damage', name: fact?.stateName || '', value: -Math.abs(value), unit: 'HP' };
+        } else if (fact?.factType === 'RESOURCE_CHANGE' && value !== 0) {
+          badge = { kind: 'resource', name: fact?.resource || '资源', value, unit: fact?.resource || '资源' };
+        } else if (fact?.eventKind === 'shield_create' && value > 0) {
+          badge = { kind: 'shield', name: '', value: Math.abs(value), unit: '护盾' };
+        }
+        if (!badge) return;
+        badges.push({
+          ...badge,
+          targetId: String(fact?.targetId || '').trim(),
+          targetName: String(fact?.targetName || '').trim(),
+          sourceEventId,
+          sourceNodeId: String(fact?.sourceNodeId || '').trim(),
+        });
+        badgeEventIds.add(sourceEventId);
+      });
       const stateWindow = facts.find(fact =>
         fact.duration > 0 && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
       );
@@ -2009,109 +1814,66 @@
       if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
     });
 
-    const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'rawObjectiveScore', 'subjectiveScore', 'scoreParts', 'factorKeys', 'scoreContributions', 'tags', 'alternativeGap', 'selectedReason', 'finalScore', 'rejectionCode'];
-    const positiveScoreKeys = positiveScoreParts;
-    const costScoreKeys = costScoreParts;
-    const zeroScoreTags = new Set(['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'STRICTLY_DOMINATED']);
+    const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility', 'vector', 'rejectionCode', 'selected'];
+    const vectorFields = ['expectedStateGain', 'terminalUtility', 'informationValue', 'resourcePreservation', 'survivalLowerBound', 'irreversibleCost', 'catastrophicRisk'];
+    const forbiddenSelections = new Set(['ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'DOMINATED', 'ZERO_PROGRESS']);
     scoringAudit.forEach((actionAudit, actionIndex) => {
       const candidates = Array.isArray(actionAudit?.candidates) ? actionAudit.candidates.filter(Boolean) : [];
       if (candidates.length > 3) pushFatal('SCORING_AUDIT_OVERSIZED', { actionIndex, candidateCount: candidates.length });
       candidates.forEach((candidate, candidateIndex) => {
         const missing = scoreFields.filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
+        const vector = candidate?.vector && typeof candidate.vector === 'object' ? candidate.vector : null;
+        if (vector) missing.push(...vectorFields.filter(key => vector[key] === undefined || vector[key] === null).map(key => `vector.${key}`));
         if (missing.length) {
           pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate?.candidateId || '', missing });
           return;
         }
-        const scoreParts = candidate.scoreParts && typeof candidate.scoreParts === 'object' ? candidate.scoreParts : {};
-        const declaredFactorKeys = Array.isArray(candidate?.factorKeys) ? candidate.factorKeys.map(item => String(item || '').trim()).filter(Boolean) : [];
-        const scoreContributions = Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions : [];
-        const contributionKeys = scoreContributions.map(item => String(item?.valueKey || '').trim()).filter(Boolean);
-        if (!declaredFactorKeys.length || new Set(declaredFactorKeys).size !== declaredFactorKeys.length ||
-          contributionKeys.length !== scoreContributions.length || new Set(contributionKeys).size !== contributionKeys.length ||
-          declaredFactorKeys.length !== contributionKeys.length || declaredFactorKeys.some((key, index) => key !== contributionKeys[index])) {
-          pushFatal('SCORING_COMPONENT_DUPLICATED', { actionIndex, candidateIndex, candidateId: candidate.candidateId, factorKeys: declaredFactorKeys });
+        const targetIds = Array.isArray(candidate.targetIds) ? candidate.targetIds.map(value => String(value || '').trim()).filter(Boolean) : [];
+        if (targetIds.length !== new Set(targetIds).size) {
+          pushFatal('SCORING_COMPONENT_DUPLICATED', { actionIndex, candidateIndex, candidateId: candidate.candidateId, targetIds });
         }
-        const contributionParts = Object.fromEntries([...positiveScoreKeys, ...costScoreKeys].map(component => [component, 0]));
-        scoreContributions.forEach(contribution => {
-          const component = String(contribution?.component || '').trim();
-          if (!Object.prototype.hasOwnProperty.call(contributionParts, component)) {
-            pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate.candidateId, component });
-            return;
-          }
-          contributionParts[component] += Number(contribution?.expectedValue || 0);
-        });
-        Object.keys(contributionParts).forEach(component => { contributionParts[component] = Math.round(contributionParts[component]); });
-        if (Object.keys(contributionParts).some(component => Number(scoreParts[component] || 0) !== contributionParts[component])) {
-          pushFatal('SCORING_COMPONENT_TOTAL_MISMATCH', {
-            actionIndex,
-            candidateIndex,
-            candidateId: candidate.candidateId,
-            scoreParts,
-            contributionParts,
-          });
+        const finiteFields = ['utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility'];
+        const invalidNumbers = finiteFields.filter(key => !Number.isFinite(Number(candidate[key])))
+          .concat(vectorFields.filter(key => !Number.isFinite(Number(vector[key]))).map(key => `vector.${key}`));
+        if (invalidNumbers.length) {
+          pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate.candidateId, invalidNumbers });
+          return;
         }
-        const rawScore = Math.round(
-          positiveScoreKeys.reduce((sum, key) => sum + Number(scoreParts[key] || 0), 0) -
-          costScoreKeys.reduce((sum, key) => sum + Number(scoreParts[key] || 0), 0),
-        );
-        if (Number(candidate.rawObjectiveScore) !== rawScore) {
-          pushFatal('SCORING_COMPONENT_TOTAL_MISMATCH', {
-            actionIndex,
-            candidateIndex,
-            candidateId: candidate.candidateId,
-            expectedRawScore: rawScore,
-            actualRawScore: Number(candidate.rawObjectiveScore),
-          });
-        }
-        const tags = new Set(Array.isArray(candidate.tags) ? candidate.tags : []);
-        const hardRejected = new Set(['RESOURCE_INSUFFICIENT', 'DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'STRICTLY_DOMINATED']).has(String(candidate.rejectionCode || '').trim()) ||
-          [...tags].some(tag => zeroScoreTags.has(tag));
-        const expectedScore = hardRejected
-          ? 0
-          : Math.max(0, Math.round(rawScore));
-        if (Number(candidate.finalScore) !== expectedScore) {
+        const expectedUtility = Math.max(-200, Math.min(200,
+          Number(vector.expectedStateGain) +
+          Number(vector.terminalUtility) +
+          Number(vector.informationValue) -
+          Number(vector.irreversibleCost) -
+          Number(vector.catastrophicRisk)
+        ));
+        if (Math.abs(Number(candidate.objectiveUtility) - expectedUtility) > 1e-6) {
           pushFatal('SCORING_FORMULA_MISMATCH', {
             actionIndex,
             candidateIndex,
             candidateId: candidate.candidateId,
-            expectedScore,
-            actualScore: Number(candidate.finalScore),
+            expectedUtility,
+            actualUtility: Number(candidate.objectiveUtility),
           });
         }
       });
-      const selected = candidates.find(candidate => ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase())) ||
-        candidates.find(candidate => String(candidate?.candidateId || '') === String(actionAudit?.selectedCandidateId || ''));
-      if (!selected && candidates.length) {
-        pushFatal('SCORING_SELECTED_MISSING', { actionIndex, selectedCandidateId: actionAudit?.selectedCandidateId || '' });
-      } else if (selected) {
-        const selectedTags = new Set(Array.isArray(selected.tags) ? selected.tags : []);
+      const selectedCandidates = candidates.filter(candidate => candidate?.selected === true);
+      if (selectedCandidates.length !== 1) {
+        pushFatal('SCORING_SELECTED_MISSING', { actionIndex, selectedCandidateId: actionAudit?.selectedCandidateId || '', selectedCount: selectedCandidates.length });
+      }
+      const selected = selectedCandidates[0];
+      if (selected) {
         const selectedRejected = String(selected.rejectionCode || '').trim();
-        const forbidden = ['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'CATASTROPHIC', 'STRICTLY_DOMINATED'];
-        if (forbidden.includes(selectedRejected) || forbidden.some(code => selectedTags.has(code))) {
-          pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', { actionIndex, selectedCandidateId: selected.candidateId, rejectionCode: selectedRejected, tags: [...selectedTags] });
+        if (forbiddenSelections.has(selectedRejected)) {
+          pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', { actionIndex, selectedCandidateId: selected.candidateId, rejectionCode: selectedRejected });
         }
-        const selectedReason = String(selected.selectedReason || '').trim();
-        if (selectedReason === 'SUBJECTIVE_SOFTMAX' || selectedReason === 'DECISION_INTERFERENCE_SOFTMAX' || String(actionAudit?.ruleCode || '').trim() === 'DECISION_INTERFERENCE') {
-          const highestObjectiveScore = Math.max(...candidates.map(candidate => Number(candidate?.rawObjectiveScore || 0)));
-          const objectiveRegret = highestObjectiveScore - Number(selected.rawObjectiveScore || 0);
-          const maxRegret = Math.max(0, Number(actionAudit?.maxRegret || 0));
-          if (objectiveRegret > maxRegret + 1e-6) {
-            pushFatal('SUBJECTIVE_REGRET_EXCEEDED', {
-              actionIndex,
-              selectedCandidateId: selected.candidateId,
-              objectiveRegret,
-              maxRegret,
-            });
-          }
-          return;
-        }
-        const highestScore = Math.max(...candidates.map(candidate => Number(candidate?.finalScore || 0)));
-        if (Number(selected.finalScore || 0) < highestScore) {
-          pushFatal('SCORING_SELECTED_NOT_HIGHEST', {
+        if (selected?.forcedFallback === true && (
+          String(selected?.actionKind || '').trim() !== 'DEFEND' ||
+          String(selected?.fallbackReason || '').trim() !== 'NO_ELIGIBLE_CANDIDATE'
+        )) {
+          pushFatal('BANNED_SUBJECTIVE_CANDIDATE_SELECTED', {
             actionIndex,
             selectedCandidateId: selected.candidateId,
-            selectedScore: Number(selected.finalScore || 0),
-            highestScore,
+            rejectionCode: 'INVALID_FORCED_FALLBACK',
           });
         }
       }
@@ -2140,10 +1902,7 @@
 
     scoringAudit.forEach((actionAudit, actionIndex) => {
       const selectedActionName = normalizeActionDisplayName(actionAudit?.selectedActionName || '');
-      const selectedCandidate = (Array.isArray(actionAudit?.candidates) ? actionAudit.candidates : []).find(candidate =>
-        ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase()) ||
-        String(candidate?.candidateId || '') === String(actionAudit?.selectedCandidateId || '')
-      );
+      const selectedCandidate = (Array.isArray(actionAudit?.candidates) ? actionAudit.candidates : []).find(candidate => candidate?.selected === true);
       if (
         !selectedActionName ||
         normalizeActionRole(selectedCandidate?.actionRole || 'ACTIVE') !== 'ACTIVE' ||
@@ -2151,7 +1910,10 @@
       ) return;
       const matchingStart = activeStarts.find(start =>
         Number(start?.round || 0) === Number(actionAudit?.round || 0) &&
-        isSameReportName(start?.actorName || '', actionAudit?.actor || '')
+        isSameReportName(start?.actorName || '', actionAudit?.actor || '') &&
+        (actionAudit?.continuation === true
+          ? String(start?.meta?.chainType || '').trim() === 'FOLLOW_UP'
+          : String(start?.meta?.chainType || '').trim() !== 'FOLLOW_UP')
       );
       if (!matchingStart) {
         pushFatal('SCORING_EXECUTION_ACTION_MISSING', { actionIndex, round: actionAudit?.round || 0, actor: actionAudit?.actor || '', selectedActionName });
@@ -2187,16 +1949,11 @@
       typeof implementation.caseDomain.getScoringMutationCount !== 'function' ||
       typeof implementation.caseDomain.executeTeam !== 'function' ||
       typeof implementation.caseDomain.executeDuel !== 'function' ||
+      typeof implementation.caseDomain.executeDecisionTeam !== 'function' ||
       typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
       typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
       typeof implementation.caseDomain.resolveNextIntents !== 'function' ||
-      typeof implementation.caseDomain.resolveReportUnitSide !== 'function' ||
-      !implementation.previewDomain ||
-      typeof implementation.previewDomain.getEffects !== 'function' ||
-      typeof implementation.previewDomain.evaluateEffect !== 'function' ||
-      typeof implementation.previewDomain.evaluateSkill !== 'function' ||
-      typeof implementation.previewDomain.resolveTargets !== 'function' ||
-      typeof implementation.previewDomain.resolveComponent !== 'function'
+      typeof implementation.caseDomain.resolveReportUnitSide !== 'function'
     ) {
       throw new TypeError('battle_runtime_engine_contract_invalid');
     }
@@ -2208,15 +1965,52 @@
     return engineState.implementation;
   }
 
-  function runShadowDecisionCase(input = {}) {
+  function buildDecisionAuditRecord(decision = {}) {
+    const selected = decision?.selected || {};
+    return cloneValue({
+      version: decision?.version || '',
+      round: Number(decision?.round || 0),
+      actorId: String(decision?.actorId || '').trim(),
+      actionRole: normalizeActionRole(decision?.actionRole || 'ACTIVE'),
+      sourceActorId: String(decision?.sourceActorId || '').trim(),
+      continuation: decision?.continuation === true,
+      candidateCount: Math.max(0, Number(decision?.candidateCount || 0)),
+      paretoCount: Math.max(0, Number(decision?.paretoCount || 0)),
+      selected: {
+        candidateId: String(selected?.candidateId || '').trim(),
+        declaration: selected?.declaration || null,
+        utilityBefore: Number(selected?.utilityBefore || 0),
+        utilityAfter: Number(selected?.utilityAfter || 0),
+        objectiveUtility: Number(selected?.objectiveUtility || 0),
+        normalizedUtility: Number(selected?.normalizedUtility || 0),
+        vector: selected?.vector || {},
+        rejectionCode: String(selected?.rejectionCode || '').trim(),
+        counterDeclineFallback: selected?.counterDeclineFallback === true,
+        forcedFallback: selected?.forcedFallback === true,
+        fallbackReason: String(selected?.fallbackReason || '').trim(),
+      },
+      beliefState: decision?.beliefState || {},
+      teamIntent: decision?.teamIntent || {},
+      problems: Array.isArray(decision?.problems) ? decision.problems : [],
+      strategicSignature: String(decision?.strategicSignature || '').trim(),
+      stalemate: decision?.stalemate || null,
+      strategyMemory: decision?.strategyMemory || {},
+      scoreAudit: Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [],
+      decisionProfile: decision?.decisionProfile || {},
+    });
+  }
+
+  function runDecisionCase(input = {}) {
     const decision = root.__LWCS_BATTLE_DECISION__;
     const preview = root.__LWCS_BATTLE_PREVIEW__;
     if (!decision || typeof decision.decide !== 'function' || !preview || typeof preview.listUnits !== 'function') {
-      throw new Error('battle_runtime_shadow_decision_runtime_missing');
+      throw new Error('battle_runtime_decision_runtime_missing');
     }
     const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
     const sourceSnapshot = JSON.stringify(sourceCombatData);
     const worldSnapshot = cloneValue(sourceCombatData);
+    const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
+    const mode = String(input.mode || 'single_preview').trim();
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
     const decideOnce = (payload, index = 0) => decision.decide({
       ...payload,
@@ -2226,8 +2020,8 @@
         : input.initialBelief?.[payload?.actorId] || input.initialBelief || {},
       seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${index}:${payload?.seedOffset || 0}`,
     });
-    if (input.settings?.shadowDecisionOnly === true) {
-      const shadowDecisions = preview.listUnits(worldSnapshot)
+    if (input.settings?.decisionOnly === true) {
+      const decisions = preview.listUnits(worldSnapshot)
         .filter(entry => preview.isAlive(entry.unit))
         .map((entry, index) => decideOnce({
           worldSnapshot,
@@ -2236,31 +2030,43 @@
           strategyMemory: input.strategyMemory || {},
         }, index));
       if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
+      const decisionAudits = decisions.map(buildDecisionAuditRecord);
       return {
-        shadow: true,
-        decisionEngine: 'next-shadow',
+        caseId,
+        seed,
+        mode,
         ledger: [],
         trace: [],
-        scoreAudit: shadowDecisions.flatMap(item => item.scoreAudit),
+        scoreAudit: decisionAudits.flatMap(item => item.scoreAudit),
         actionChains: [],
         reportBlocks: [],
         roundOverview: [],
         finalBattleReport: null,
         aiSummaryInput: null,
         finalSnapshot: worldSnapshot,
-        shadowDecisions,
+        decisions: decisionAudits,
       };
     }
     const domain = requireEngine().caseDomain;
-    if (typeof domain.executeShadowTeam !== 'function') throw new Error('battle_runtime_shadow_settler_missing');
+    if (typeof domain.executeDecisionTeam !== 'function') throw new Error('battle_runtime_decision_settler_missing');
     const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
     const debugRuntime = domain.ensureRuntime(worldSnapshot);
     debugRuntime.decisionSeed = seed;
+    if (input.selectedAction && typeof input.selectedAction === 'object') {
+      const selectedAction = cloneValue(input.selectedAction);
+      debugRuntime.playerLockedNaturalAction = {
+        round: Number(worldSnapshot?.回合 || 0) + 1,
+        actorName: String(selectedAction.actor_name || worldSnapshot?.参战者?.team_player?.[0]?.name || '').trim(),
+        targetName: String(selectedAction.target_name || '').trim(),
+        action: selectedAction,
+        consumed: false,
+      };
+    }
     const initialSnapshot = domain.getSnapshot(worldSnapshot);
     const originalRandom = Math.random;
     const previousIdContext = runtimeIdContext;
     const previousIdSequence = runtimeIdSequence;
-    runtimeIdContext = `shadow-${seed.toString(36)}`;
+    runtimeIdContext = `decision-${seed.toString(36)}`;
     runtimeIdSequence = 0;
     let randomState = seed % 2147483647;
     if (randomState <= 0) randomState += 2147483646;
@@ -2269,7 +2075,14 @@
       return (randomState - 1) / 2147483646;
     };
     try {
-      const simulation = domain.executeShadowTeam(worldSnapshot, rounds, decideOnce, decision.updateMechanicBelief, decision.updatePublicObservation);
+      const simulation = domain.executeDecisionTeam(
+        worldSnapshot,
+        rounds,
+        decideOnce,
+        decision.updateMechanicBelief,
+        decision.updatePublicObservation,
+        rounds > 1 ? 'multi_round' : 'single_round',
+      );
       const eventLedger = Array.isArray(worldSnapshot.__battleEventLedger) ? worldSnapshot.__battleEventLedger.map(item => cloneAuditSnapshot(item)) : [];
       const resolutionTrace = collectResolutionTrace(worldSnapshot).map(normalizeCausalNode);
       const actionQueueTrace = Array.isArray(worldSnapshot?.__battleRuntime?.actionQueueTrace) ? worldSnapshot.__battleRuntime.actionQueueTrace.map(item => cloneAuditSnapshot(item)) : [];
@@ -2287,9 +2100,23 @@
         snapshot: domain.getSnapshot(worldSnapshot),
       };
       const finalSnapshot = result.snapshot;
-      const shadowDecisions = Array.isArray(simulation?.shadowDecisions) ? simulation.shadowDecisions : [];
+      const decisions = Array.isArray(simulation?.decisions) ? simulation.decisions : [];
+      const decisionAudits = decisions.map(buildDecisionAuditRecord);
       const beliefObservations = Array.isArray(simulation?.beliefObservations) ? simulation.beliefObservations.map(item => cloneAuditSnapshot(item)) : [];
-      const scoringAudit = shadowDecisions.flatMap(item => item.scoreAudit || []);
+      const scoreAudit = decisions.flatMap(item => item.scoreAudit || []);
+      const scoringAudit = decisions.map(item => ({
+        round: Number(item?.round || 0),
+        actor: String(item?.actorId || '').trim(),
+        actionRole: normalizeActionRole(item?.actionRole || 'ACTIVE'),
+        continuation: item?.continuation === true,
+        selectedCandidateId: String(item?.selected?.candidateId || '').trim(),
+        selectedActionName: normalizeActionDisplayName(
+          item?.selected?.declaration?.skill?.name ||
+          item?.selected?.declaration?.skill?.魂技名 ||
+          item?.selected?.declaration?.actionKind || '',
+        ),
+        candidates: (Array.isArray(item?.scoreAudit) ? item.scoreAudit : []).map(candidate => cloneAuditSnapshot(candidate)),
+      }));
       const actionChains = buildActionChains(eventLedger, resolutionTrace);
       const reportBlocks = buildReportBlocks(eventLedger, [], publicReportBlocks);
       const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, [], finalSnapshot, worldSnapshot);
@@ -2298,7 +2125,7 @@
         resolutionTrace,
         publicReportBlocks,
         reportBlocks,
-        scoringAudit: [],
+        scoringAudit,
         scoringMutationDetected: false,
         combatData: worldSnapshot,
         initialSnapshot,
@@ -2309,17 +2136,21 @@
       });
       if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
       return {
-        shadow: true,
-        decisionEngine: 'next-shadow',
+        caseId,
+        seed,
+        mode,
         roundsRequested: rounds,
         roundsExecuted: result.roundsExecuted,
         inputUnchanged: true,
+        scoringMutationDetected: false,
         ledger: eventLedger,
         eventLedger,
         trace: resolutionTrace,
         resolutionTrace,
-        scoreAudit: scoringAudit,
+        scoreAudit,
         scoringAudit,
+        decisionTrace: decisionAudits,
+        decisions: decisionAudits,
         actionChains,
         actionQueueTrace,
         reportBlocks,
@@ -2331,7 +2162,6 @@
         logs: result.logs,
         initialSnapshot,
         audit,
-        shadowDecisions,
         beliefObservations,
       };
     } finally {
@@ -2342,284 +2172,7 @@
   }
 
   function runBattleCase(options = {}) {
-    const input = options && typeof options === 'object' ? options : {};
-    if (String(input.settings?.decisionEngine || '').trim() === 'next-shadow') return runShadowDecisionCase(input);
-    const domain = requireEngine().caseDomain;
-    const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
-    const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
-    const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
-    const mode = String(input.mode || 'single_preview').trim();
-    const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
-    const sourceSnapshot = JSON.stringify(sourceCombatData);
-    const combatData = cloneValue(sourceCombatData);
-    const debugRuntime = domain.ensureRuntime(combatData);
-    debugRuntime.decisionSeed = seed;
-    const initialSnapshot = domain.getSnapshot(combatData);
-    const scoringMutationCountBefore = Number(domain.getScoringMutationCount() || 0);
-    const originalRandom = Math.random;
-    const previousIdContext = runtimeIdContext;
-    const previousIdSequence = runtimeIdSequence;
-    runtimeIdContext = `case-${caseId}-${seed.toString(36)}`;
-    runtimeIdSequence = 0;
-    let randomState = seed % 2147483647;
-    if (randomState <= 0) randomState += 2147483646;
-    Math.random = () => {
-      randomState = (randomState * 16807) % 2147483647;
-      return (randomState - 1) / 2147483646;
-    };
-    try {
-      const isTeam = /team|团战/i.test(mode) || (combatData?.参战者?.team_player?.length || 0) > 1 || (combatData?.参战者?.team_enemy?.length || 0) > 1;
-      let result;
-      if (isTeam) {
-        const simulation = domain.executeTeam(combatData, rounds);
-        const eventLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
-          const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 6), { combatData });
-        result = {
-          preview: /preview/i.test(mode),
-          battleMode: rounds > 1 ? 'multi_round' : 'single_round',
-          roundsExecuted: Number(simulation?.rounds || 0),
-          logs: Array.isArray(simulation?.logs) ? simulation.logs : [],
-          combatData,
-            eventLedger: eventLedger.map(item => cloneAuditSnapshot(item)),
-            resolutionTrace: collectResolutionTrace(combatData),
-            decisionTrace: collectDecisionTrace(combatData),
-            publicReportBlocks: publicReportBlocks.map(item => cloneAuditSnapshot(item)),
-          snapshot: domain.getSnapshot(combatData),
-        };
-      } else {
-        const selectedAction = input.selectedAction;
-        const actionText = typeof selectedAction === 'string'
-          ? selectedAction
-          : String(selectedAction?.label || selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.action_type || '普通攻击').trim();
-        const actionDeclaration = selectedAction && typeof selectedAction === 'object'
-          ? {
-              actorName: String(selectedAction.actor_name || combatData?.参战者?.team_player?.[0]?.name || '').trim(),
-              actions: [cloneValue(selectedAction)],
-              primaryTargetName: String(selectedAction.target_name || '').trim(),
-            }
-          : null;
-        result = domain.executeDuel(actionText, {
-          dryRun: true,
-          mode: rounds > 1 ? 'multi_round' : 'single_round',
-          combatData,
-          actionDeclaration,
-          intentMode: input.settings?.intentMode || combatData?.战斗意图 || '点到为止',
-          autoContinueConfig: {
-            ...(input.settings || {}),
-            maxRounds: rounds,
-            continueChancePercent: input.settings?.continueChancePercent ?? 100,
-            stopDamagePercent: input.settings?.stopDamagePercent ?? 100,
-          },
-        });
-      }
-      const eventLedger = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
-      const resolutionTrace = Array.isArray(result?.resolutionTrace) ? result.resolutionTrace.map(normalizeCausalNode) : [];
-      const decisionTrace = Array.isArray(result?.decisionTrace) ? result.decisionTrace.map(item => cloneAuditSnapshot(item)) : [];
-      const publicReportBlocks = Array.isArray(result?.publicReportBlocks) ? result.publicReportBlocks : [];
-      const runtimeCombatData = result?.combatData || combatData;
-      const finalSnapshot = result?.snapshot || domain.getSnapshot(runtimeCombatData);
-        const actionQueueTrace = Array.isArray(runtimeCombatData?.__battleRuntime?.actionQueueTrace)
-          ? runtimeCombatData.__battleRuntime.actionQueueTrace.map(item => cloneAuditSnapshot(item))
-        : [];
-      const actionChains = buildActionChains(eventLedger, resolutionTrace);
-      const reportBlocks = buildReportBlocks(eventLedger, decisionTrace, publicReportBlocks);
-      const { finalBattleReport, aiSummaryInput } = buildFinalSummary(eventLedger, decisionTrace, finalSnapshot, runtimeCombatData);
-      const scoringAudit = decisionTrace
-        .filter(item => /主动规划|应招审计|技能选择/.test(String(item?.类型 || item?.type || '')))
-        .map(item => ({
-          round: Number(item?.回合 || item?.round || 0),
-          actor: String(item?.行动者 || item?.actor || '').trim(),
-          selectedCandidateId: String(item?.scoringSummary?.candidateId || '').trim(),
-          selectedActionName: normalizeActionDisplayName(item?.finalResolvedActionName || item?.技能 || item?.hitCandidateName || ''),
-          decisionConfidence: Number(item?.decisionConfidence ?? item?.scoringSummary?.decisionConfidence ?? 1),
-          temperature: Number(item?.temperature ?? item?.scoringSummary?.temperature ?? 4),
-          maxRegret: Number(item?.maxRegret ?? item?.scoringSummary?.maxRegret ?? 0),
-          selectedReason: String(item?.选择原因 || item?.scoringSummary?.selectedReason || '').trim(),
-          ruleCode: String(item?.ruleCode || '').trim(),
-          originalBestCandidateId: String(item?.originalBestCandidateId || '').trim(),
-          candidates: (Array.isArray(item?.候选排序结果) ? item.候选排序结果 : []).slice(0, 3).map(candidate => {
-            const audit = candidate?.审计 && typeof candidate.审计 === 'object' ? candidate.审计 : {};
-            const scoreParts = candidate?.scoreParts && typeof candidate.scoreParts === 'object'
-              ? candidate.scoreParts
-              : audit?.scoreParts && typeof audit.scoreParts === 'object'
-                ? audit.scoreParts
-                : {
-                    effectiveDeltaEV: Number(candidate?.effectEV || 0),
-                    futureUnlockEV: Number(candidate?.comboEV || 0),
-                    enemyDeniedEV: Number(candidate?.timingEV || 0),
-                    teamIntentEV: Number(candidate?.targetEV || 0),
-                    sustainEV: Number(candidate?.roleEV || 0),
-                    resourceCostEV: Number(candidate?.resourceCostEV || 0),
-                    failureRiskEV: Number(candidate?.riskEV || 0),
-                    exposureRiskEV: 0,
-                    chainConflictEV: 0,
-                  };
-            const tags = [...new Set([
-              ...(Array.isArray(candidate?.tags) ? candidate.tags : []),
-              ...(Array.isArray(candidate?.effectTags) ? candidate.effectTags : []),
-              ...(Array.isArray(audit?.tags) ? audit.tags : []),
-            ])];
-            const candidateName = normalizeActionDisplayName(candidate?.candidateName || candidate?.名称 || candidate?.技能 || '');
-            const rawObjectiveScore = Number(candidate?.rawObjectiveScore ?? audit?.rawObjectiveScore ?? candidate?.score ?? candidate?.权重 ?? 0);
-            return {
-              candidateId: String(candidate?.candidateId || '').trim(),
-              actionKind: String(candidate?.actionKind || audit?.actionKind || (candidate?.技能 ? 'RELEASE_SKILL' : 'BASIC_ATTACK')).trim(),
-              candidateName,
-              actionRole: normalizeActionRole(candidate?.actionRole || audit?.actionRole || item?.scoringSummary?.actionRole || 'ACTIVE'),
-              actorId: String(candidate?.actorId || audit?.actorId || item?.行动者 || item?.actor || '').trim(),
-              targetIds: Array.isArray(candidate?.targetIds) ? candidate.targetIds : (candidate?.目标 ? [String(candidate.目标).trim()].filter(Boolean) : []),
-              rawObjectiveScore,
-              subjectiveScore: Number(candidate?.subjectiveScore ?? audit?.subjectiveScore ?? rawObjectiveScore),
-              scoreParts,
-              factorKeys: Array.isArray(candidate?.factorKeys) ? [...candidate.factorKeys] : (Array.isArray(audit?.factorKeys) ? [...audit.factorKeys] : []),
-              scoreContributions: Array.isArray(candidate?.scoreContributions) ? candidate.scoreContributions.map(item => ({ ...item })) : (Array.isArray(audit?.scoreContributions) ? audit.scoreContributions.map(item => ({ ...item })) : []),
-              tags,
-              alternativeGap: Number(candidate?.alternativeGap ?? audit?.alternativeGap ?? 0),
-              selectedReason: String(candidate?.selectedReason || audit?.selectedReason || '').trim(),
-              effectEV: Number(scoreParts.effectiveDeltaEV || 0),
-              targetEV: Number(scoreParts.teamIntentEV || 0),
-              timingEV: Number(scoreParts.enemyDeniedEV || 0),
-              roleEV: Number(scoreParts.sustainEV || 0),
-              comboEV: Number(scoreParts.futureUnlockEV || 0),
-              resourceCostEV: Number(scoreParts.resourceCostEV || 0),
-              riskEV: Number(scoreParts.failureRiskEV || 0) + Number(scoreParts.exposureRiskEV || 0) + Number(scoreParts.chainConflictEV || 0),
-              finalScore: Number(candidate?.finalScore ?? candidate?.权重 ?? candidate?.score ?? 0),
-              rejectionCode: String(candidate?.rejectionCode || '').trim(),
-              candidateStatus: String(candidate?.candidateStatus || '').trim(),
-            };
-          }),
-        }))
-        .filter(item => item.candidates.length)
-        .filter(item => {
-          const selected = item.candidates.find(candidate =>
-            ['EXECUTED', 'LOCKED', 'SELECTED'].includes(String(candidate?.candidateStatus || '').trim().toUpperCase()) ||
-            String(candidate?.candidateId || '').trim() === String(item.selectedCandidateId || '').trim()
-          );
-          const selectedRole = normalizeActionRole(selected?.actionRole || 'ACTIVE');
-          if (selectedRole !== 'ACTIVE') return true;
-          const actionName = normalizeActionDisplayName(item.selectedActionName || selected?.candidateName || '');
-          return eventLedger.some(event =>
-            String(event?.eventKind || '').trim() === 'action_start' &&
-            normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE' &&
-            Number(event?.round || 0) === Number(item.round || 0) &&
-            isSameReportName(event?.actorName || '', item.actor || '') &&
-            (!actionName || normalizeActionDisplayName(event?.finalActionName || event?.actionName || '') === actionName)
-          );
-        })
-        .slice(-Math.max(3, rounds * 6));
-      const scoringMutationDetected = Number(domain.getScoringMutationCount() || 0) > scoringMutationCountBefore;
-      const audit = auditFacts({
-        eventLedger,
-        resolutionTrace,
-        publicReportBlocks,
-        reportBlocks,
-        scoringAudit,
-        scoringMutationDetected,
-        combatData: runtimeCombatData,
-        initialSnapshot,
-        finalSnapshot,
-        actionQueueTrace,
-        roundsRequested: rounds,
-        roundsExecuted: Number(result?.roundsExecuted || 0),
-      });
-      return {
-        caseId,
-        seed,
-        mode,
-        roundsRequested: rounds,
-        roundsExecuted: Number(result?.roundsExecuted || 0),
-        inputUnchanged: sourceSnapshot === JSON.stringify(sourceCombatData),
-        scoringMutationDetected,
-        eventLedger,
-        ledger: eventLedger,
-        resolutionTrace,
-        trace: resolutionTrace,
-        decisionTrace,
-        scoringAudit,
-        actionChains,
-        actionQueueTrace,
-        reportBlocks,
-        publicReportBlocks,
-        roundOverview: buildRoundOverview(result, { combatData: result?.combatData || combatData }),
-        finalBattleReport,
-        aiSummaryInput,
-        finalSnapshot,
-        llmBattleSummary: String(result?.llmBattleSummary || buildAiNarrativeSummary(aiSummaryInput, { maxRounds: rounds }) || ''),
-        logs: Array.isArray(result?.logs) ? result.logs : [],
-        initialSnapshot,
-        audit,
-      };
-    } finally {
-      Math.random = originalRandom;
-      runtimeIdContext = previousIdContext;
-      runtimeIdSequence = previousIdSequence;
-    }
-  }
-
-
-  function previewSkill(payload = {}) {
-    const input = payload && typeof payload === 'object' ? cloneValue(payload) : {};
-    if (!input.skill || typeof input.skill !== 'object') throw new TypeError('battle_preview_skill_missing');
-    assertSkillEffects(input.skill);
-    const before = cloneValue(input);
-    const domain = requireEngine().previewDomain;
-    const skill = input.skill;
-    const actor = input?.actor && typeof input.actor === 'object' ? input.actor : {};
-    const target = input?.target && typeof input.target === 'object' ? input.target : null;
-    const combatData = input?.combatData && typeof input.combatData === 'object' ? input.combatData : {};
-    const behaviorState = { ...(input?.behaviorState || {}), combatData, primaryTarget: target, target };
-    const effects = domain.getEffects({ skill, actor, target, combatData, behaviorState });
-    const mainTriggerProbability = Number(domain.estimateMainProbability?.({ skill, actor, target, combatData, behaviorState, effects }) ?? 1);
-    const contributions = effects.map((effect, effectIndex) => {
-      const prototype = String(effect?.原型 || '').trim();
-      if (!prototypeRuntimeContract[prototype]) throw new Error(`battle_preview_prototype_unsupported:${prototype || effectIndex}`);
-      const targets = domain.resolveTargets({ effect, skill, actor, target, combatData, behaviorState });
-      const targetIds = (Array.isArray(targets) ? targets : [])
-        .map(unit => String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim())
-        .filter(Boolean);
-      const evaluation = domain.evaluateEffect({ effect, skill, actor, target, combatData, behaviorState });
-      const component = String(domain.resolveComponent(effect) || '').trim();
-      if (!component) throw new Error(`battle_preview_component_missing:${prototype}`);
-      const sourceEffectId = String(domain.resolveEffectId?.(effect, effectIndex) || `effect-${effectIndex}`).trim();
-      const window = Math.max(1, Number(effect?.持续回合 || effect?.调整回合 || 1));
-      const conditionalOnMain = String(effect?.生效方式 || '').trim() === '跟随主原型';
-      const triggerProbability = conditionalOnMain ? mainTriggerProbability : 1;
-      return {
-        valueKey: `${sourceEffectId}:${targetIds.join(',') || 'NO_TARGET'}:${window}`,
-        component,
-        sourceEffectId,
-        targetIds,
-        window,
-        expectedValue: Number((Number(evaluation?.净收益 || 0) * triggerProbability).toFixed(4)),
-        evidence: {
-          prototype,
-          runtimeConsumer: String(domain.resolveRuntimeConsumer?.(effect) || effect?.运行时消费器 || '').trim(),
-          targetCount: Number(evaluation?.目标数量 || 0),
-          marginal: evaluation?.弱参与 !== true,
-          conditionalOnMain,
-          triggerProbability,
-        },
-      };
-    });
-    const score = domain.evaluateSkill({ skill, actor, target, combatData, behaviorState });
-    const scoreParts = score?.scoreParts && typeof score.scoreParts === 'object' ? { ...score.scoreParts } : {};
-    const result = {
-      skillId: String(skill?.id || skill?.技能ID || skill?.name || skill?.魂技名 || '').trim(),
-      actorId: String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim(),
-      targetId: String(target?.id || target?.角色ID || target?.name || target?.名称 || '').trim(),
-      effects: effects.map(effect => cloneValue(effect)),
-      contributions,
-      scoreParts,
-      rawObjectiveScore: calculateObjectiveScore(scoreParts),
-    };
-    if (JSON.stringify(input) !== JSON.stringify(before)) {
-      throw new Error(`battle_preview_mutated_input:${findFirstDifference(before, input)}`);
-    }
-    const valueKeys = result.contributions.map(item => String(item?.valueKey || '').trim()).filter(Boolean);
-    if (valueKeys.length !== result.contributions.length || new Set(valueKeys).size !== valueKeys.length) {
-      throw new Error('battle_preview_value_key_invalid');
-    }
-    return cloneValue(result);
+    return runDecisionCase(options && typeof options === 'object' ? options : {});
   }
 
   function auditPrototypeCoverage() {
@@ -2665,13 +2218,10 @@
   }
 
   const api = Object.freeze({
-    version: '7.3-R5',
+    version: '7.3-R6.3',
     actionKinds,
     actionRoles,
     reportBlockTypes,
-    positiveScoreParts,
-    costScoreParts,
-    scorePartKeys,
     prototypeRegistry,
     prototypeRuntimeContract,
     prototypeManifest,
@@ -2682,22 +2232,15 @@
     attachLedger,
     ensureTrace,
     probabilitySucceeds,
-    stableUnitRoll,
-    buildDecisionProfile,
-    normalizeDecisionScores,
     createActionQueue,
     runTeamBattle,
     decideDuelContinuation,
     executeActionNodes,
-    calculateObjectiveScore,
     calculateBaseDamage,
-    summarizeScoreContributions,
-    finalizeCandidates,
-    selectCandidate,
     assertEffectList,
     assertSkillEffects,
     bindEngine,
-    runShadowDecisionCase,
+    runDecisionCase,
     runBattleCase,
     auditFacts,
     normalizeCausalNode,
@@ -2709,7 +2252,6 @@
     buildRoundOverview,
     buildFinalSummary,
     buildAiNarrativeSummary,
-    previewSkill,
     auditPrototypeCoverage,
   });
 

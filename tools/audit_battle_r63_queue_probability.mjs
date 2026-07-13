@@ -50,7 +50,8 @@ assert.equal(runtime.probabilitySucceeds(1, 1), true, '100%在投点1时失败')
 function distribution(probability, sampleCount = 10000) {
   let successes = 0;
   for (let index = 0; index < sampleCount; index += 1) {
-    if (runtime.probabilitySucceeds(probability, runtime.stableUnitRoll(`r63-probability:${probability}:${index}`))) successes += 1;
+    const roll = (Math.imul(index + 1, 0x9e3779b1) >>> 0) / 4294967296;
+    if (runtime.probabilitySucceeds(probability, roll)) successes += 1;
   }
   const expected = probability * sampleCount;
   const sigma = Math.sqrt(sampleCount * probability * (1 - probability));

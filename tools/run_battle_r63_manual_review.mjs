@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { buildShadowManualCases } from './battle_r63_shadow_manual_cases.mjs';
-import { battleR63ManualReviewNotes } from './battle_r63_shadow_manual_review_notes.mjs';
+import { buildManualCases } from './battle_r63_manual_cases.mjs';
+import { battleR63ManualReviewEvidence, battleR63ManualReviewNotes } from './battle_r63_manual_review_notes.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
-const outputDir = path.resolve(root, 'artifacts', 'battle_r63_shadow_review');
+const outputDir = path.resolve(root, 'artifacts', 'battle_r63_review');
 fs.mkdirSync(outputDir, { recursive: true });
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const gitRoot = path.resolve(root, 'lwcs');
@@ -59,7 +59,8 @@ new context.BattleUIComponent({ innerHTML: '', querySelector(selector) { return 
 const results = [];
 const requestedCase = String(process.env.R63_CASE || '').trim();
 const requestedSeed = Number(process.env.R63_SEED || 0);
-for (const definition of buildShadowManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item => !requestedCase || item.caseId === requestedCase)) {
+const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
+for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item => !requestedCase || item.caseId === requestedCase)) {
   const seed = Number.isFinite(requestedSeed) && requestedSeed > 0 ? Math.floor(requestedSeed) : definition.seed;
   const result = context.__LWCS_DEBUG_RUN_BATTLE_CASE__({
     caseId: definition.caseId,
@@ -69,12 +70,18 @@ for (const definition of buildShadowManualCases(context.__LWCS_内置角色库__
     rounds: definition.rounds,
     initialBelief: definition.initialBelief,
     battleIntent: { mode: definition.intent },
-    settings: { decisionEngine: 'next-shadow' },
+    settings: {},
   });
   const review = battleR63ManualReviewNotes[definition.caseId];
   if (!review) throw new Error(`r63_manual_review_note_missing:${definition.caseId}`);
+  const ledgerHash = hash(result.ledger);
+  const reportHash = hash(result.reportBlocks);
+  const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
+  if (!captureEvidence && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
+    throw new Error(`r63_manual_review_evidence_stale:${definition.caseId}:${ledgerHash}:${reportHash}`);
+  }
   const rounds = new Map();
-  result.shadowDecisions.forEach(entry => {
+  result.decisions.forEach(entry => {
     const round = Number(entry.round || 0);
     if (!rounds.has(round)) rounds.set(round, []);
     rounds.get(round).push(entry);
@@ -101,7 +108,8 @@ for (const definition of buildShadowManualCases(context.__LWCS_内置角色库__
     entries.forEach(entry => {
       const role = entry.actionRole || 'ACTIVE';
       const selected = entry.selected;
-      lines.push(`- ${role} ${entry.actorId}: ${selected?.candidateId || 'NO_SELECTION'} -> ${(selected?.declaration?.targetIds || []).join(', ') || 'self'} | utility ${Number(selected?.objectiveUtility || 0).toFixed(3)} | problem ${entry.problems?.[0]?.problemId || ''}`);
+      const fallback = selected?.forcedFallback === true ? ` | fallback ${selected.fallbackReason || 'FORCED'}` : '';
+      lines.push(`- ${role} ${entry.actorId}: ${selected?.candidateId || 'NO_SELECTION'} -> ${(selected?.declaration?.targetIds || []).join(', ') || 'self'} | utility ${Number(selected?.objectiveUtility || 0).toFixed(3)} | problem ${entry.problems?.[0]?.problemId || ''}${fallback}`);
       lines.push(`  - selected vector ${JSON.stringify(selected?.vector || {})}`);
       entry.scoreAudit?.filter(candidate => !candidate.selected).forEach(candidate => lines.push(`  - alternative ${candidate.candidateId}: ${Number(candidate.objectiveUtility || 0).toFixed(3)} ${candidate.rejectionCode || ''} ${JSON.stringify(candidate.vector || {})}`));
       const candidateSummary = (entry.candidates || []).map(candidate => ({
@@ -171,15 +179,15 @@ for (const definition of buildShadowManualCases(context.__LWCS_内置角色库__
     });
   lines.push('## Final Snapshot', '', '```json', JSON.stringify(result.finalSnapshot, null, 2), '```', '', '## Complete Raw Logs', '', '```text', ...result.logs, '```', '', '## Review', '', `- 行为结论：${review.behavior}`, `- 叙事结论：${review.narrative}`, `- 反常识点：${review.anomalies}`, `- 合理替代：${review.alternatives}`, `- 责任模块：${review.responsibility}`, `- 是否阻断：${review.blocking ? '是' : '否'}`, '');
   const reportPath = path.join(outputDir, `${definition.caseId}.md`);
-  fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
+  if (!captureEvidence) fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
   results.push({
     caseId: definition.caseId,
     reportPath,
     roundsExecuted: result.roundsExecuted,
     fatalCount: result.audit?.fatals?.length || 0,
     fatalDetails: result.audit?.fatals || [],
-    ledgerHash: hash(result.ledger),
-    reportHash: hash(result.reportBlocks),
+    ledgerHash,
+    reportHash,
     inputHash: hash(definition.combatData),
     beliefHash: hash(definition.initialBelief),
     gitHead,
@@ -188,5 +196,5 @@ for (const definition of buildShadowManualCases(context.__LWCS_内置角色库__
     review,
   });
 }
-fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
+if (!captureEvidence) fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(results, null, 2), 'utf8');
 console.log(JSON.stringify({ summary: { caseCount: results.length, fatalCount: results.reduce((sum, item) => sum + item.fatalCount, 0) }, results }, null, 2));

@@ -2514,355 +2514,6 @@ class BattleUIComponent {
       };
     }
 
-    const 行为规划评分分项_V1 = BATTLE_RUNTIME.scorePartKeys;
-
-    function 排序行为规划候选_V1(actor = {}, 战局画像 = {}, 候选列表 = [], behaviorState = {}) {
-      const 上下文 = {
-        ...(behaviorState || {}),
-        战局画像,
-        threatProfile: behaviorState?.threatProfile || behaviorState?.来袭窗口摘要 || {},
-        来袭窗口摘要: behaviorState?.来袭窗口摘要 || behaviorState?.threatProfile || {},
-      };
-      const 已评分候选 = (候选列表 || []).map((候选, 候选索引) => {
-        const 是魂技候选 = !!候选?.skill || !!候选?.__预览技能 || Array.isArray(候选?.效果数组) || Array.isArray(候选?.effects) ||
-          !!String(候选?.魂技名 || 候选?.技能名称 || '').trim();
-        const skill = 候选.skill || 候选.__预览技能 || 候选;
-        const 防御类型 = 判定防御动作类型_V1(skill, 候选);
-        const 固定自身目标 = 判定候选固定自身目标_V1(skill, 候选);
-        const 原始技能类别 = 推断技能规划类别_V1(skill, 候选, { actor, target: 候选.target });
-        const 指定主类别 = 候选.行动类别 === '控制' ? '控制'
-          : 候选.行动类别 === '治疗' ? '治疗'
-            : 候选.行动类别 === '防护' ? '防护'
-              : 固定自身目标 ? '防护'
-              : 候选.行动类别 === '终局爆发' ? '输出'
-                : '';
-        const 技能类别 = {
-          ...原始技能类别,
-          主类别: 指定主类别 || 原始技能类别.主类别,
-          是控制: 原始技能类别.是控制 || 候选.行动类别 === '控制',
-          是治疗: 原始技能类别.是治疗 || 候选.行动类别 === '治疗',
-          是防护: 原始技能类别.是防护 || 候选.行动类别 === '防护',
-        };
-        const 目标上下文 = { ...上下文, 目标优先表: 候选.目标优先表 || behaviorState?.目标优先表 || 上下文?.目标优先表 || { 敌方: [], 友方: [] } };
-        const 目标 = 固定自身目标
-          ? actor
-          : 选择技能规划目标_V1({ ...skill, __规划主类别: 技能类别.主类别, __固定自身目标: 固定自身目标, __规划候选名: 候选?.name || '' }, actor, 目标上下文, 候选.target || null);
-        const 行动类别 = 候选.行动类别 || (技能类别.主类别 === '治疗' ? '治疗'
-          : 技能类别.主类别 === '防护' ? '防护'
-              : 技能类别.主类别 === '控制' ? '控制'
-                : 技能类别.主类别 === '资源' ? (技能类别.是资源恢复 ? '资源保留' : '控制')
-                  : /爆发|大招|终局/.test(String(候选.name || skill?.name || skill?.魂技名 || '')) ? '终局爆发'
-                    : '输出');
-        const 风险 = 评估我方行动后一阶风险_V1(行动类别, actor, 目标, 战局画像, 上下文);
-        const 防御质量 = 评分防御动作质量_V1(防御类型, actor, 目标 || actor, 上下文);
-        const 对手意图响应 = 计算对手意图排序修正_V1(行动类别, 目标, 战局画像, 上下文, 技能类别);
-        const 连招 = 计算连招排序修正_V1(actor, 目标, 上下文?.规划上下文 || 上下文, 行动类别, 技能类别);
-        const 类别预算 = 计算候选类别预算修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, 候选);
-        const 友方保护 = 计算友方保护排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 距离可达 = 计算距离可达排序修正_V1(行动类别, 目标, 技能类别);
-        const 阶段节奏 = 计算阶段节奏排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, 候选);
-        const 危机恢复 = 计算危机恢复排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别);
-        const 空间收益 = 计算空间收益排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 短期记忆 = 计算短期战术记忆排序修正_V1(actor, 目标, 行动类别, 技能类别, 候选, 上下文);
-        const 支援职责 = 计算支援职责排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 资源节奏 = 计算资源节奏排序修正_V1(行动类别, actor, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 对手适应 = 计算对手适应排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 目标价值 = 计算目标战术价值_V1(actor, 目标, 战局画像, 上下文, 技能类别, 行动类别, 候选);
-        const 职责画像 = 计算职责画像排序修正_V1(行动类别, actor, 目标, 战局画像, 上下文, 技能类别, skill, 候选);
-        const 二回合前瞻 = 评估二回合前瞻_V1(候选, actor, 目标, 候选列表, 战局画像, 对手意图响应.对手意图 || {}, 上下文, 行动类别, 技能类别);
-        const 记忆键 = 读取行为记忆候选键_V1(skill, 候选);
-        const 重复 = 读取归一行为记忆值_V1(actor?.决策记忆?.recent_actions || {}, 记忆键, 0);
-        const 技能名 = String(skill?.name || skill?.魂技名 || skill?.技能名称 || 候选?.name || '').trim();
-        const 闪避克制次数 = 读取闪避克制记忆(actor, 目标);
-        const 目标敏攻拉扯 = 闪避克制次数 > 0 && (
-          读取规划单位系别(目标) === '敏攻系' ||
-          Number(目标?.final?.agi ?? 目标?.agi ?? 0) > Number(actor?.final?.agi ?? actor?.agi ?? 0)
-        );
-        const 闪避未中惩罚 = getActorSkillDodgeWhiffPenalty(actor, 技能名, 目标);
-        const 技能目标文本 = String(getSkillTarget(skill || {}) || '').trim();
-        const 效果列表 = 读取技能规划效果数组_V1(skill || {}, { actor, target: 目标 });
-        const 是单体前压 =
-          !固定自身目标 &&
-          !技能偏向友方目标(skill || {}, 候选) &&
-          !/群体|全场/.test(技能目标文本) &&
-          (
-            技能类别.主类别 === '输出' ||
-            技能类别.主类别 === '控制' ||
-            技能类别.主类别 === '削弱'
-          );
-        const 技能具备反敏攻价值 =
-          !!skill && (
-            (typeof isBattleSkillControlProfile === 'function' && isBattleSkillControlProfile(skill)) ||
-            (typeof hasBattleSkillRuntimeConsumer === 'function' && hasBattleSkillRuntimeConsumer(skill, ['interrupt', 'hard_control', 'skill_seal', 'self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) ||
-            /群体|全场/.test(技能目标文本) ||
-            效果列表.some(effect => {
-              const 原型 = String(effect?.原型 || '').trim();
-              const 战斗效果 = effect?.计算层效果 || {};
-              if (['资源锁定', '规则改写', '决策干扰', '判定修正', '时窗修正'].includes(原型)) return true;
-              if (原型 !== '状态施加') return false;
-              return Number(战斗效果.hit_bonus || 0) > 0 ||
-                Number(战斗效果.lock_level || 0) > 0 ||
-                Number(战斗效果.dodge_penalty || 0) > 0 ||
-                Number(战斗效果.cast_speed_penalty || 0) > 0 ||
-                战斗效果.skip_turn === true ||
-                战斗效果.cannot_react === true ||
-                战斗效果.silence === true ||
-                战斗效果.skill_seal === true ||
-                战斗效果.blind === true;
-            })
-          );
-        const 敏攻硬追惩罚 = 目标敏攻拉扯 && 是单体前压
-          ? (
-              技能具备反敏攻价值
-                ? Math.max(0, 8 + 闪避克制次数 * 4)
-                : 36 + 闪避克制次数 * 16 + Math.max(0, 重复 - 1) * 18 + (闪避未中惩罚 > 0 ? 12 : 0)
-            )
-          : 0;
-        const 反敏攻价值得分 = 目标敏攻拉扯 && 技能具备反敏攻价值 ? 12 + 闪避克制次数 * 6 : 0;
-        const 关键控制窗口 = 候选?.可打断 || 候选?.阻止治疗救场 || 目标?.蓄力技能 || 对手意图响应.理由.some(理由 => /蓄力|治疗核心|致命|爆发/.test(String(理由)));
-        const 资源判定 = 计算资源断档排序修正_V1({ ...候选, 重复, 关键控制窗口 }, 行动类别, 上下文);
-        const 资源修正 = 资源判定.修正;
-        const 斩杀修正 = 候选.可斩杀 ? 36 : 0;
-        const 目标切换 = 计算目标切换排序修正_V1(候选, 目标, 行动类别, 战局画像, 上下文, 技能类别);
-        const 目标修正 = 目标切换.修正;
-        const 关键理由 = 候选.可斩杀 || 候选.可打断 || 上下文?.threatProfile?.lethalRisk === true || 上下文?.来袭窗口摘要?.lethalRisk === true
-          || 关键控制窗口;
-        const 记忆惩罚 = 0;
-        const 原始权重 = Number(候选.原始权重 ?? 候选.weight ?? 候选.基础收益 ?? 0);
-        const 原始净收益 = Number(候选.原始净收益 ?? 候选.净收益 ?? 原始权重);
-        const 战术修正 = 0;
-        const 审计效果分类 = 固定自身目标
-          ? {
-              主要效果类型: '防护',
-              次要效果类型列表: ['防护'],
-              目标阵营: '友方',
-              是否群体: false,
-              是否资源恢复: false,
-            }
-          : {
-              主要效果类型: 技能类别.效果画像?.主要效果类型 || 技能类别.主类别,
-              次要效果类型列表: 技能类别.效果画像?.次要效果类型列表 || [],
-              目标阵营: 技能类别.效果画像?.目标阵营 || (['治疗', '防护'].includes(技能类别.主类别) ? '友方' : '敌方'),
-              是否群体: 技能类别.效果画像?.是否群体 === true,
-              是否资源恢复: 技能类别.效果画像?.是否资源恢复 === true,
-            };
-        const 审计分类来源 = 固定自身目标 ? '防御动作语义' : (技能类别.效果画像?.分类来源 || '默认输出');
-        const 是资源恢复动作 = 判定资源恢复规划动作_V1(技能类别, skill, 候选);
-        const 预估分项 = 候选.previewScoreParts && typeof 候选.previewScoreParts === 'object' ? 候选.previewScoreParts : {};
-        const 目标价值分解 = 目标价值.分解 && typeof 目标价值.分解 === 'object' ? 目标价值.分解 : {};
-        const 否决目标价值 = Math.max(0, Number(目标价值分解.治疗救场价值 || 0)) + Math.max(0, Number(目标价值分解.蓄力打断价值 || 0));
-        const 当前动作可否决敌方 = ['控制', '终局爆发'].includes(行动类别) || 候选?.可斩杀 || 候选?.可打断 || 关键控制窗口;
-        const 目标价值非否决部分 = Number(目标价值.修正 || 0) - (当前动作可否决敌方 ? 否决目标价值 : 0);
-        const 资源连续性惩罚 = Math.max(
-          0,
-          -Number(资源节奏.修正 || 0),
-          -Number(资源修正 || 0),
-          Number(资源判定.资源断档惩罚 || 0),
-        );
-        const 评分贡献 = [];
-        const 添加贡献 = (valueKey, component, expectedValue, evidence) => {
-          const value = Number(expectedValue || 0);
-          评分贡献.push({ valueKey, component, expectedValue: value, evidence });
-        };
-        const 预估即时边际 = Number(候选.effectiveDeltaEV ?? 预估分项.effectiveDeltaEV ?? 候选.effectEV ?? 原始净收益 ?? (是魂技候选 ? 0 : 原始权重));
-        const 预估未来解锁 = Number(候选.futureUnlockEV ?? 预估分项.futureUnlockEV ?? 0);
-        const 预估敌方否决 = Number(候选.enemyDeniedEV ?? 预估分项.enemyDeniedEV ?? 0);
-        const 预估续航收益 = Number(候选.sustainEV ?? 预估分项.sustainEV ?? 0);
-        添加贡献('preview:effective_delta', 'effectiveDeltaEV', 预估即时边际, '纯预估即时边际');
-        添加贡献('preview:future_unlock', 'futureUnlockEV', 预估未来解锁, '纯预估下一自然行动解锁');
-        添加贡献('preview:enemy_denied', 'enemyDeniedEV', 预估敌方否决, '纯预估敌方行动损失');
-        添加贡献('preview:team_intent', 'teamIntentEV', Number(候选.teamIntentEV ?? 预估分项.teamIntentEV ?? 0), '纯预估团队意图');
-        添加贡献('preview:sustain', 'sustainEV', 预估续航收益, '纯预估资源连续性收益');
-        添加贡献('preview:resource_cost', 'resourceCostEV', Math.max(0, Number(候选.resourceCostEV ?? 预估分项.resourceCostEV ?? 0)), '纯预估资源成本');
-        添加贡献('preview:failure_risk', 'failureRiskEV', Math.max(0, Number(候选.failureRiskEV ?? 预估分项.failureRiskEV ?? 0)), '纯预估失败风险');
-        添加贡献('preview:exposure_risk', 'exposureRiskEV', Math.max(0, Number(候选.exposureRiskEV ?? 预估分项.exposureRiskEV ?? 0)), '纯预估暴露风险');
-        添加贡献('preview:chain_conflict', 'chainConflictEV', Math.max(0, Number(候选.chainConflictEV ?? 预估分项.chainConflictEV ?? 0)), '纯预估行为链冲突');
-        if (!是魂技候选) 添加贡献('context:basic_defense_quality', 'effectiveDeltaEV', Number(防御质量.修正 || 0), '基础动作防御质量');
-        if (当前动作可否决敌方) 添加贡献('context:target_denial', 'enemyDeniedEV', 否决目标价值, '目标当前可取消行动价值');
-        const 团队意图原值 = [
-          { valueKey: 'context:target_intent', value: 目标价值非否决部分, evidence: '集火、保核与目标切换价值' },
-          { valueKey: 'context:ally_protection', value: ['治疗', '防护'].includes(行动类别) ? Number(友方保护.修正 || 0) : 0, evidence: '友方危急程度与来袭保护需求' },
-          { valueKey: 'context:role_intent', value: Number(职责画像.修正 || 0), evidence: '角色职责与当前战局匹配' },
-          { valueKey: 'context:evasion_counter', value: Number(反敏攻价值得分 || 0), evidence: '当前动作对已观察闪避的适配价值' },
-        ];
-        const 团队意图正值总和 = 团队意图原值.reduce((sum, item) => sum + Math.max(0, Number(item.value || 0)), 0);
-        const 团队意图兑现上限 = Math.max(0, 预估即时边际) + Math.max(0, 预估未来解锁) + Math.max(0, 预估敌方否决) + Math.max(0, 预估续航收益) +
-          (当前动作可否决敌方 ? 否决目标价值 : 0) + (!是魂技候选 ? Math.max(0, Number(防御质量.修正 || 0)) : 0);
-        const 团队意图正值倍率 = 团队意图正值总和 > 0 ? Math.min(1, 团队意图兑现上限 / 团队意图正值总和) : 1;
-        团队意图原值.forEach(item => 添加贡献(
-          item.valueKey,
-          'teamIntentEV',
-          Number(item.value || 0) > 0 ? Number(item.value || 0) * 团队意图正值倍率 : Number(item.value || 0),
-          item.evidence,
-        ));
-        添加贡献('context:resource_continuity_cost', 'resourceCostEV', 资源连续性惩罚, '消耗后的下一行动断档');
-        添加贡献('context:exposure_change', 'exposureRiskEV', Math.max(0, Number(风险.风险变化 || 0) * 80), '动作后一阶承伤暴露');
-        添加贡献('context:dodge_whiff', 'chainConflictEV', Math.max(0, Number(闪避未中惩罚 || 0)), '重复命中无效的行为链损失');
-        添加贡献('context:agility_pursuit', 'chainConflictEV', Math.max(0, Number(敏攻硬追惩罚 || 0)), '缺少反制手段的持续前压损失');
-        const 贡献汇总 = BATTLE_RUNTIME.summarizeScoreContributions(评分贡献);
-        const { scoreParts, rawObjectiveScore, factorKeys } = 贡献汇总;
-        const { effectiveDeltaEV, futureUnlockEV, enemyDeniedEV, teamIntentEV, sustainEV, resourceCostEV, failureRiskEV, exposureRiskEV, chainConflictEV } = scoreParts;
-        const tags = [];
-        const 目标已失能 = 目标 && (目标?.状态?.存活 === false || 目标?.存活 === false || getCombatHpRatio(目标) <= 0);
-        const 正向可兑现收益 = Math.max(0, effectiveDeltaEV) + Math.max(0, futureUnlockEV) + Math.max(0, enemyDeniedEV) + Math.max(0, teamIntentEV) + Math.max(0, sustainEV);
-        if (目标已失能 && 目标 !== actor) tags.push('DEAD_TARGET_SELECTED');
-        if (行动类别 === '治疗' && getCombatHpRatio(目标 || actor) >= 0.999 && effectiveDeltaEV <= 0) tags.push('OVERHEAL_NO_VALUE');
-        if (技能类别.是控制 && effectiveDeltaEV <= 0 && enemyDeniedEV <= 0) tags.push('CONTROL_IMMUNE_TARGET');
-        if (是资源恢复动作 && effectiveDeltaEV <= 0 && sustainEV <= 0) tags.push('ZERO_EFFECT_COSTLY');
-        if (正向可兑现收益 <= 0 && (resourceCostEV + failureRiskEV + exposureRiskEV + chainConflictEV > 0 || 是魂技候选)) tags.push('ZERO_EFFECT_COSTLY');
-        if (resourceCostEV >= Math.max(36, 正向可兑现收益 * 0.8) && !候选?.可斩杀 && !候选?.可打断) tags.push('RESOURCE_BANKRUPTCY');
-        if (resourceCostEV > 0 && rawObjectiveScore <= Math.max(8, resourceCostEV * 0.25)) tags.push('HIGH_COST_LOW_VALUE');
-        if (exposureRiskEV > 正向可兑现收益 || rawObjectiveScore < 0) tags.push('SELF_DEFEATING');
-        if (chainConflictEV > 0) tags.push('CHAIN_SELF_CONFLICT');
-        if (技能类别.是召唤 && effectiveDeltaEV <= 0 && futureUnlockEV <= 0) tags.push('SUMMON_NO_ACTION_WINDOW');
-        const criticalRejection = tags.find(tag => ['DEAD_TARGET_SELECTED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW'].includes(tag)) || '';
-        const rejectionCode = 资源判定.硬否决 ? 'RESOURCE_INSUFFICIENT' : criticalRejection;
-        const 分数 = rejectionCode ? 0 : Math.max(0, rawObjectiveScore);
-        const candidateId = String(
-          候选.candidateId ||
-          `candidate_${String(候选索引 + 1).padStart(3, '0')}_${normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || 候选?.name || 'action') || 'action'}`,
-        ).trim();
-        return {
-          ...候选,
-          target: 目标,
-          weight: Math.max(0, 分数),
-          scoringSummary: {
-            candidateId,
-            actionKind: 是魂技候选 ? 'RELEASE_SKILL' : String(候选.actionKind || 候选.action_type || 候选.type || 'BASIC_ATTACK').trim().toUpperCase(),
-            actionRole: 标准化战斗行动职责(候选.actionRole || behaviorState?.actionRole || (/应招|REACTION/i.test(String(behaviorState?.规划语境 || '')) ? 'REACTION' : 'ACTIVE')),
-            actorId: String(actor?.id || actor?.uid || actor?.name || actor?.名称 || '').trim(),
-            targetIds: 目标 ? [String(目标?.id || 目标?.uid || 目标?.name || 目标?.名称 || '').trim()].filter(Boolean) : [],
-            rawObjectiveScore,
-            subjectiveScore: rawObjectiveScore,
-            scoreParts: {
-              effectiveDeltaEV,
-              futureUnlockEV,
-              enemyDeniedEV,
-              teamIntentEV,
-              sustainEV,
-              resourceCostEV,
-              failureRiskEV,
-              exposureRiskEV,
-              chainConflictEV,
-            },
-            factorKeys,
-            scoreContributions: 评分贡献.map(item => ({ ...item })),
-            tags: [...new Set(tags)],
-            resourceCostEV,
-            finalScore: Math.max(0, 分数),
-            rejectionCode,
-            alternativeGap: 0,
-            selectedReason: rejectionCode ? rejectionCode : 'OBJECTIVE_SCORE',
-          },
-          __候选排序审计: {
-            候选来源: 候选?.__候选来源 || 候选?.候选来源 || '',
-            技能: skill?.name || skill?.魂技名 || skill?.技能名称 || 候选?.name || '',
-            原始权重,
-            原始净收益,
-            战术修正,
-            rawObjectiveScore,
-            subjectiveScore: rawObjectiveScore,
-            scoreParts: {
-              effectiveDeltaEV,
-              futureUnlockEV,
-              enemyDeniedEV,
-              teamIntentEV,
-              sustainEV,
-              resourceCostEV,
-              failureRiskEV,
-              exposureRiskEV,
-              chainConflictEV,
-            },
-            factorKeys,
-            scoreContributions: 评分贡献.map(item => ({ ...item })),
-            tags: [...new Set(tags)],
-            effectEV: effectiveDeltaEV,
-            targetEV: teamIntentEV,
-            timingEV: enemyDeniedEV,
-            roleEV: sustainEV,
-            comboEV: futureUnlockEV,
-            resourceCostEV,
-            riskEV: failureRiskEV + exposureRiskEV + chainConflictEV,
-            目标修正,
-            对手意图修正: 对手意图响应.修正,
-            类别预算修正: 类别预算.修正,
-            友方保护修正: 友方保护.修正,
-            距离修正: 距离可达.修正,
-            阶段修正: 阶段节奏.修正,
-            危机恢复修正: 危机恢复.修正,
-            阵型修正: 空间收益.阵型修正,
-            范围收益修正: 空间收益.范围收益修正,
-            群体收益修正: 空间收益.群体收益修正,
-            短期记忆修正: 短期记忆.修正,
-            支援职责修正: 支援职责.修正,
-            资源节奏修正: 资源节奏.修正,
-            对手适应修正: 对手适应.修正,
-            目标价值修正: 目标价值.修正,
-            职责修正: 职责画像.修正,
-            二回合前瞻修正: 二回合前瞻.二回合前瞻修正,
-            防御质量修正: 防御质量.修正,
-            资源修正,
-            高耗关键收益: Number(资源判定.高耗关键收益 || 0),
-            资源断档惩罚: Number(资源判定.资源断档惩罚 || 0),
-            连招修正: 连招.修正,
-            记忆惩罚,
-            闪避未中惩罚,
-            敏攻硬追惩罚,
-            反敏攻价值得分,
-            斩杀修正,
-            recentActionCount: 重复,
-            最终权重: Math.max(0, 分数),
-            行动类别,
-            技能类别: 技能类别.主类别,
-            效果原型分类: 审计效果分类,
-            分类来源: 审计分类来源,
-            目标: (typeof 读取规划单位名称 === 'function' ? 读取规划单位名称(目标) : '') || 目标?.name || 目标?.名称 || '',
-            风险,
-            防御类型,
-            防御质量,
-            阶段判断: 阶段节奏.阶段,
-            阶段理由: 阶段节奏.理由,
-            危机恢复理由: 危机恢复.理由,
-            危机层级: 危机恢复.危机层级,
-            对手意图理由: 对手意图响应.理由,
-            类别预算理由: 类别预算.理由,
-            保护理由: 友方保护.理由,
-            治疗目标收益: 友方保护.治疗目标收益,
-            可达性理由: 距离可达.理由,
-            空间理由: 空间收益.理由,
-            记忆命中标签: 短期记忆.标签,
-            支援职责理由: 支援职责.理由,
-            高耗后理由: 资源节奏.理由,
-            对手适应理由: 对手适应.理由,
-            对手适应摘要: 对手适应.摘要,
-            目标价值分解: 目标价值.分解,
-            目标切换收益: 目标价值.目标切换收益,
-            切换成本: 目标价值.切换成本,
-            保护链理由: 目标价值.保护链理由,
-            仇恨压力理由: 目标价值.仇恨压力理由,
-            协同理由: 目标价值.协同理由,
-            职责画像: 职责画像.画像,
-            职责理由: 职责画像.理由,
-            前瞻理由: 二回合前瞻.前瞻理由,
-            资源后果: 二回合前瞻.资源后果,
-            敌方下回合风险: 二回合前瞻.敌方下回合风险,
-            己方下回合窗口: 二回合前瞻.己方下回合窗口,
-            连续目标理由: 目标切换.理由,
-            距离标签: 距离可达.距离标签,
-            压力档位: 类别预算.压力档位,
-            连招理由: 连招.理由,
-            资源理由: 资源判定.理由,
-            目标修正理由: 目标切换.理由,
-            重复,
-            选择原因: rejectionCode ? rejectionCode : 'R5客观评分',
-          },
-        };
-      });
-      return BATTLE_RUNTIME.finalizeCandidates(已评分候选, {
-        castTimeOf: 候选 => getSkillCastTime(候选?.skill || 候选 || {}),
-      });
-    }
-
     // ===== Phase D: 战场情境表 — 10 个独立情境,数据驱动加权 =====
     // 不再依赖"残血/压力"两条触发线,显式枚举常见战场情境。每条情境独立检查 + 加权。
     // 数据信号都来自现有 战局画像 / behaviorState / actor.属性.状态效果, 无需新加 schema。
@@ -6028,51 +5679,34 @@ class BattleUIComponent {
         const actorName = String(actor?.name || actor?.名称 || fallbackUnit?.name || preferredActorName || label).trim();
         if (!actor) return `${actorName}已失去战斗能力，无法继续行动`;
         if (!opponents.length) return `${actorName}已结束交锋，转入收势与战后确认`;
-        const before = JSON.stringify(summaryCombat);
         const focusedTarget = readCurrentTargets().find(pair => isCombatUnitIdentityMatch(pair.actor, actorName));
-        const hostileTarget = opponents.find(unit => isCombatUnitIdentityMatch(unit, focusedTarget?.target || '')) ||
-          [...opponents].sort((left, right) => getCombatHpRatio(left) - getCombatHpRatio(right))[0];
-        const allyTarget = [...team].sort((left, right) => getCombatHpRatio(left) - getCombatHpRatio(right))[0] || actor;
-        const basicAttack = normalizeSkillData({
-          name: '普通攻击', 魂技名: '普通攻击', 技能分类: '输出', 目标: '敌方单体', 消耗: '无', 前摇: 10,
-          _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }],
-        }, '普通攻击');
-        const skills = [
-          basicAttack,
-          ...collectUnifiedSkillEntries(actor, [], { includePassive: false, includeActive: true }).map(entry => entry?.skill || entry),
-        ].filter(skill => skill && typeof skill === 'object');
-        const seen = new Set();
-        const previews = skills.map(skill => {
-          const actionName = normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || skill?.技能名称 || '');
-          if (!actionName || seen.has(actionName)) return null;
-          seen.add(actionName);
-          const target = 技能偏向友方目标(skill) ? allyTarget : hostileTarget;
-          const cost = parseSkillCostForChar(skill, actor, { actor, caster: actor, target, defender: target, skill, combatData: summaryCombat, 当前行动: '总结下一行动预览' });
-          if (cost.canCast === false) return null;
-          const preview = BATTLE_RUNTIME.previewSkill({ skill, actor, target, combatData: summaryCombat });
-          const effects = Array.isArray(preview?.effects) ? preview.effects : [];
-          return {
-            actionName,
-            targetName: String(target?.name || target?.名称 || '').trim(),
-            rawObjectiveScore: Number(preview?.rawObjectiveScore || 0),
-            scoreParts: preview?.scoreParts || {},
-            hasDamage: effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算'),
-            hasControl: effects.some(effect => String(effect?.原型 || '').trim() === '状态施加' && /控制|位移限制|眩晕|沉默|封技|定身|束缚|禁锢/.test(`${effect?.状态 || ''} ${JSON.stringify(effect?.计算层效果 || {})}`)),
-            hasAttrition: effects.some(effect => String(effect?.原型 || '').trim() === '状态施加' && /中毒|流血|灼烧|dot_damage/i.test(`${effect?.状态 || ''} ${JSON.stringify(effect?.计算层效果 || {})}`)),
-            hasSummon: effects.some(effect => String(effect?.原型 || '').trim() === '召唤生成'),
-            hasSustain: effects.some(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim())),
-          };
-        }).filter(Boolean).sort((left, right) => right.rawObjectiveScore - left.rawObjectiveScore || left.actionName.localeCompare(right.actionName, 'zh-Hans-CN'));
+        const before = JSON.stringify(summaryCombat);
+        const decision = root.__LWCS_BATTLE_DECISION__?.decide({
+          worldSnapshot: summaryCombat,
+          actorId: String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim(),
+          actionOpportunity: { role: 'ACTIVE', sequence: Number(summaryCombat?.回合 || 0) + 1 },
+          strategyMemory: focusedTarget?.target ? { targetIds: [String(focusedTarget.target)] } : {},
+          beliefState: {},
+          seed: `summary:${Number(summaryCombat?.回合 || 0)}:${label}`,
+        });
         if (JSON.stringify(summaryCombat) !== before) throw new Error('battle_summary_preview_mutated_state');
-        const selected = previews[0] || null;
-        if (!selected || selected.rawObjectiveScore <= 0) return `${actorName}倾向防守并等待新的有效窗口`;
-        const targetText = selected.targetName ? `针对${selected.targetName}` : '处理当前战局';
-        if (selected.hasSummon) return `${actorName}倾向以【${selected.actionName}】${targetText}，扩大后续行动窗口`;
-        if (selected.hasControl && Number(selected.scoreParts.enemyDeniedEV || 0) > 0) return `${actorName}倾向以【${selected.actionName}】${targetText}，压缩对手下一次行动`;
-        if (selected.hasAttrition && Number(selected.scoreParts.futureUnlockEV || 0) > 0) return `${actorName}倾向以【${selected.actionName}】${targetText}，续接持续伤害窗口`;
-        if (selected.hasSustain && Number(selected.scoreParts.sustainEV || 0) > 0) return `${actorName}倾向以【${selected.actionName}】恢复后续有效行动所需资源`;
-        if (selected.hasDamage) return `${actorName}倾向以【${selected.actionName}】${targetText}，兑现当前伤害收益`;
-        return `${actorName}倾向以【${selected.actionName}】${targetText}，打开下一行动窗口`;
+        const selected = decision?.selected || null;
+        if (!selected || selected.rejectionCode) return `${actorName}倾向防守并等待新的有效窗口`;
+        const declaration = selected.declaration || {};
+        const actionName = normalizeBattleActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '行动');
+        const target = [...team, ...opponents].find(unit => isCombatUnitIdentityMatch(unit, declaration?.targetIds?.[0] || ''));
+        const targetName = String(target?.name || target?.名称 || '').trim();
+        const targetText = targetName ? `针对${targetName}` : '处理当前战局';
+        const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+        const hasDamage = declaration.actionKind === 'BASIC_ATTACK' || effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
+        const hasControl = effects.some(effect => String(effect?.原型 || '').trim() === '状态施加' && Object.values(effect?.计算层效果 || {}).some(value => value === true || Number(value || 0) !== 0));
+        const hasSummon = effects.some(effect => String(effect?.原型 || '').trim() === '召唤生成');
+        const hasSustain = effects.some(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+        if (hasSummon) return `${actorName}倾向以【${actionName}】${targetText}，扩大后续行动窗口`;
+        if (hasControl) return `${actorName}倾向以【${actionName}】${targetText}，压缩对手下一次行动`;
+        if (hasSustain) return `${actorName}倾向以【${actionName}】恢复后续有效行动所需资源`;
+        if (hasDamage) return `${actorName}倾向以【${actionName}】${targetText}，兑现当前伤害收益`;
+        return `${actorName}倾向以【${actionName}】${targetText}，打开下一行动窗口`;
       };
       const playerIntent = readSideIntent('team_player', 'team_enemy', playerNames, playerSummary, '我方');
       const enemyIntent = readSideIntent('team_enemy', 'team_player', enemyNames, enemySummary, '敌方');
@@ -16233,30 +15867,12 @@ class BattleUIComponent {
         getSnapshot: combatData => ui_getBattleSnapshot(combatData),
         getScoringMutationCount: () => Number(战斗评分预估写入次数 || 0),
         executeTeam: (combatData, rounds) => runTeamBattleSimulation(combatData, rounds),
-        executeShadowTeam: (combatData, rounds, decide, updateBelief, updatePublicBelief) => runShadowTeamBattleSimulation(combatData, rounds, decide, updateBelief, updatePublicBelief),
+        executeDecisionTeam: (combatData, rounds, decide, updateBelief, updatePublicBelief, mode = 'multi_round') => runDecisionTeamBattleSimulation(combatData, rounds, decide, updateBelief, updatePublicBelief, mode),
         executeDuel: (actionText, options) => onPlayerAttack(actionText, options),
         buildPublicReportBlocks: (eventLedger, limit, context) => 构建事件账本公开战报Blocks(eventLedger, limit, context),
         normalizePublicEntry: entry => 归一公开战报Block条目(entry),
         resolveNextIntents: input => 构建战斗总结下一行动意图(input),
         resolveReportUnitSide: (context, unitName) => 读取战报单位阵营(context, unitName),
-      },
-      previewDomain: {
-        getEffects: ({ skill, actor, target }) => getSkillEffects(skill, {
-          行为规划: true, actor, caster: actor, attacker: actor, target, defender: target,
-        }),
-        estimateMainProbability: ({ skill, actor, target, behaviorState, effects }) =>
-          估算技能主原型成立概率(skill, actor, target, behaviorState, effects),
-        resolveTargets: ({ effect, skill, actor, target, behaviorState }) =>
-          解析效果规划目标列表(effect, actor, target, behaviorState, skill),
-        evaluateEffect: ({ effect, skill, actor, target, combatData, behaviorState }) => 评估效果规划净收益(effect, {
-          actor, caster: actor, primaryTarget: target, target, combatData, behaviorState, skill,
-        }),
-        evaluateSkill: ({ skill, actor, target, combatData, behaviorState }) => 评估技能规划净收益(skill, {
-          actor, caster: actor, primaryTarget: target, target, combatData, behaviorState,
-        }),
-        resolveComponent: effect => 读取战斗原型唯一评分分项(effect),
-        resolveEffectId: (effect, effectIndex) => 读取战斗效果来源ID(effect, effectIndex),
-        resolveRuntimeConsumer: effect => effect?.运行时消费器 || 读取战斗原型运行消费器(effect),
       },
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
@@ -17467,173 +17083,6 @@ class BattleUIComponent {
       return changed;
     }
 
-    function 评估技能行为库衔接收益(skill = {}, actor = {}, primaryTarget = {}, behaviorState = {}) {
-      if (!skill || !actor || !primaryTarget) return { 净收益: 0, 自身行为提升: 0, 队友行为提升: 0, 敌方行为压制: 0, 有效衔接: false, 理由: '缺少有效对象' };
-      const profile = 读取行为规划技能效果标签(skill, actor, primaryTarget, behaviorState);
-      if (!profile.hasFutureEffect) return { 净收益: 0, 自身行为提升: 0, 队友行为提升: 0, 敌方行为压制: 0, 有效衔接: false, 理由: '技能没有改变后续行为库' };
-
-      const sourceCombat = behaviorState?.combatData && typeof behaviorState.combatData === 'object'
-        ? behaviorState.combatData
-        : { 参战者: { team_player: [actor], team_enemy: [primaryTarget] } };
-      const buildPreview = () => {
-        const preview = deepClonePlain(sourceCombat);
-        preview.参战者 ||= { team_player: [], team_enemy: [] };
-        preview.参战者.team_player ||= [];
-        preview.参战者.team_enemy ||= [];
-        const side = 读取规划单位阵营(actor, sourceCombat) === '敌方' ? 'team_enemy' : 'team_player';
-        const hostileSide = side === 'team_player' ? 'team_enemy' : 'team_player';
-        const findOrAdd = (unit, list, fallbackSide) => {
-          const name = 读取规划单位名称(unit);
-          const found = list.find(item => name && isCombatUnitIdentityMatch(item, name));
-          if (found) return found;
-          const clone = deepClonePlain(unit);
-          preview.参战者[fallbackSide].push(clone);
-          return clone;
-        };
-        const previewActor = findOrAdd(actor, preview.参战者[side], side);
-        const previewTarget = findOrAdd(primaryTarget, preview.参战者[hostileSide], hostileSide);
-        return { preview, previewActor, previewTarget, side, hostileSide };
-      };
-      const before = buildPreview();
-      const after = buildPreview();
-      const beforeState = { ...behaviorState, combatData: before.preview, primaryTarget: before.previewTarget, target: before.previewTarget };
-      const afterState = { ...behaviorState, combatData: after.preview, primaryTarget: after.previewTarget, target: after.previewTarget };
-      const beforeActor = before.previewActor;
-      const beforeTarget = before.previewTarget;
-      const afterActor = after.previewActor;
-      const afterTarget = after.previewTarget;
-      const cost = parseSkillCostForChar(skill, afterActor, {
-        actor: afterActor,
-        caster: afterActor,
-        target: afterTarget,
-        defender: afterTarget,
-        skill,
-        combatData: after.preview,
-        当前行动: '行为库衔接预估',
-      });
-      afterActor.sp = Math.max(0, Number(afterActor.sp || afterActor?.属性?.魂力 || 0) - Math.max(0, Number(cost?.reqSp || 0)));
-      afterActor.men = Math.max(0, Number(afterActor.men || afterActor?.属性?.精神力 || 0) - Math.max(0, Number(cost?.reqMen || 0)));
-      afterActor.vit = Math.max(0, Number(afterActor.vit ?? afterActor.sta ?? afterActor?.属性?.体力 ?? 0) - Math.max(0, Number(cost?.reqVit || 0)));
-      afterActor.sta = afterActor.vit;
-      const affectedBefore = new Set();
-      profile.effects.forEach(effect => {
-        const prototype = String(effect?.原型 || '').trim();
-        if (!['资源变化', '属性修正', '状态施加', '状态移除', '判定修正'].includes(prototype)) return;
-        const afterTargets = 解析效果规划目标列表(effect, afterActor, afterTarget, afterState, skill);
-        afterTargets.forEach(unit => {
-          if (prototype === '状态施加' && 计算状态施加边际系数_V1(effect, unit) <= 0) return;
-          if (应用行为规划效果快照(effect, unit)) affectedBefore.add(读取规划单位名称(unit));
-        });
-      });
-      if (typeof buildCombatFinalStats === 'function') {
-        [...after.preview.参战者.team_player, ...after.preview.参战者.team_enemy].forEach(unit => {
-          unit.final = buildCombatFinalStats(unit);
-        });
-      }
-      const findCounterpart = (preview, name) => [...preview.参战者.team_player, ...preview.参战者.team_enemy]
-        .find(unit => name && isCombatUnitIdentityMatch(unit, name)) || null;
-      const actorName = 读取规划单位名称(actor);
-      const targetName = 读取规划单位名称(primaryTarget);
-      let ownActionGain = 0;
-      let allyActionGain = 0;
-      let enemyActionDenied = 0;
-      let ownBeforeBest = null;
-      let ownAfterBest = null;
-      const evaluatePair = (beforeUnit, afterUnit, beforeOpponent, afterOpponent, factor = 1) => {
-        if (!beforeUnit || !afterUnit || !isCombatUnitAlive(afterUnit)) return 0;
-        const beforeBest = 估算行为库最佳单步价值(beforeUnit, beforeOpponent, beforeState, skill, true);
-        const afterBest = 估算行为库最佳单步价值(afterUnit, afterOpponent, afterState, skill, true);
-        if (beforeUnit === beforeActor) {
-          ownBeforeBest = beforeBest;
-          ownAfterBest = afterBest;
-        }
-        return Math.round((afterBest.value - beforeBest.value) * factor);
-      };
-      const afterActorOpponent = findCounterpart(after.preview, targetName) || afterTarget;
-      ownActionGain = Math.max(0, evaluatePair(beforeActor, afterActor, beforeTarget, afterActorOpponent, 1));
-      const actorSideListBefore = before.preview.参战者[before.side] || [];
-      actorSideListBefore.forEach(unit => {
-        const name = 读取规划单位名称(unit);
-        if (!name || name === actorName || !affectedBefore.has(name)) return;
-        const next = findCounterpart(after.preview, name);
-        const opponentBefore = beforeTarget;
-        const opponentAfter = findCounterpart(after.preview, targetName) || afterTarget;
-        allyActionGain += Math.max(0, evaluatePair(unit, next, opponentBefore, opponentAfter, 0.65));
-      });
-      const hostileBefore = before.preview.参战者[before.hostileSide] || [];
-      hostileBefore.forEach(unit => {
-        const name = 读取规划单位名称(unit);
-        if (!name || !affectedBefore.has(name)) return;
-        const next = findCounterpart(after.preview, name);
-        const attackerBefore = beforeActor;
-        const attackerAfter = afterActor;
-        enemyActionDenied += Math.max(0, -evaluatePair(unit, next, attackerBefore, attackerAfter, 0.72));
-      });
-      const duration = Math.max(1, ...profile.effects.map(effect => Number(effect?.持续回合 || 1)));
-      const remainingActionTime = Math.max(0, Number(behaviorState?.actionWindowRemaining ?? behaviorState?.可用行动时间 ?? 0));
-      const sameRoundFactor = remainingActionTime >= 10 ? 1 : 0.72;
-      const windowFactor = Math.min(1.8, 0.72 + (duration - 1) * 0.28) * sameRoundFactor;
-      const successRate = profile.effects
-        .filter(effect => String(effect?.原型 || '').trim() === '状态施加' && effect?.类型 !== 'buff')
-        .reduce((rate, effect) => Math.min(rate, Number(计算状态施加成功率审计(effect, beforeActor, beforeTarget).successRate || 0)), 1);
-      const usefulRecovery = !profile.hasPositiveResource || ownActionGain > 0 || allyActionGain > 0;
-      const raw = (ownActionGain + allyActionGain + enemyActionDenied) * windowFactor * Math.max(0, Math.min(1, successRate));
-      const net = usefulRecovery ? Math.round(Math.max(0, Math.min(180, raw))) : 0;
-      return {
-        净收益: net,
-        自身行为提升: ownActionGain,
-        队友行为提升: allyActionGain,
-        敌方行为压制: enemyActionDenied,
-        有效衔接: net > 0,
-        同回合窗口: remainingActionTime >= 10,
-        持续窗口: duration,
-        成功率: Number(successRate.toFixed(3)),
-        自身变化前最佳动作: normalizeBattleActionDisplayName(ownBeforeBest?.skill?.name || ownBeforeBest?.skill?.魂技名 || ''),
-        自身变化后最佳动作: normalizeBattleActionDisplayName(ownAfterBest?.skill?.name || ownAfterBest?.skill?.魂技名 || ''),
-        自身变化前最佳价值: Number(ownBeforeBest?.value || 0),
-        自身变化后最佳价值: Number(ownAfterBest?.value || 0),
-        理由: profile.hasPositiveResource && !usefulRecovery ? '恢复后没有解锁更有价值的后续行为' : profile.hasControl ? '控制压低对手行为库并打开追击窗口' : profile.hasAttributeBuff ? '增幅提升后续行为库最佳动作' : '状态转移改变后续行为库',
-      };
-    }
-
-    function 估算效果行为库衔接收益(effect = {}, actor = {}, target = {}, behaviorState = {}, skill = null) {
-      const targetIsFriendly = 读取行为规划单位立场(target, actor, behaviorState) === '己方';
-      const enemies = behaviorState?.战局画像?.敌方列表 || behaviorState?.规划上下文?.战局画像?.敌方列表 || [];
-      const friendlyUnit = targetIsFriendly ? target : actor;
-      const opponent = targetIsFriendly ? (enemies.find(unit => isCombatUnitAlive(unit)) || behaviorState?.primaryTarget || null) : target;
-      if (!friendlyUnit || !opponent) return { value: 0, ownDelta: 0, deniedDelta: 0 };
-
-      const unitBefore = deepClonePlain(friendlyUnit);
-      const unitAfter = deepClonePlain(friendlyUnit);
-      const opponentBefore = deepClonePlain(opponent);
-      const opponentAfter = deepClonePlain(opponent);
-      if (targetIsFriendly) {
-        if (String(skill?.承载方式 || '').trim() !== '造物承载') {
-          const cost = parseSkillCostForChar(skill || {}, unitAfter, { actor: unitAfter, caster: unitAfter, skill, 当前行动: '衔接机会成本预估' });
-          unitAfter.sp = Math.max(0, Number(unitAfter.sp || 0) - Math.max(0, Number(cost?.reqSp || 0)));
-          unitAfter.men = Math.max(0, Number(unitAfter.men || 0) - Math.max(0, Number(cost?.reqMen || 0)));
-          unitAfter.vit = Math.max(0, Number(unitAfter.vit ?? unitAfter.sta ?? 0) - Math.max(0, Number(cost?.reqVit || 0)));
-          unitAfter.sta = unitAfter.vit;
-        }
-        应用行为规划效果快照(effect, unitAfter);
-      }
-      else 应用行为规划效果快照(effect, opponentAfter);
-
-      const ownBefore = 估算行为库最佳单步价值(unitBefore, opponentBefore, behaviorState, skill);
-      const ownAfter = 估算行为库最佳单步价值(unitAfter, opponentAfter, behaviorState, skill);
-      const enemyBefore = 估算行为库最佳单步价值(opponentBefore, unitBefore, behaviorState, null);
-      const enemyAfter = 估算行为库最佳单步价值(opponentAfter, unitAfter, behaviorState, null);
-      const ownDelta = Math.max(0, ownAfter - ownBefore);
-      const deniedDelta = Math.max(0, enemyBefore - enemyAfter);
-      const windows = Math.max(1, Number(effect?.持续回合 || 1));
-      const windowFactor = Math.min(1.8, 0.72 + (windows - 1) * 0.28);
-      return {
-        value: Math.round(Math.max(0, ownDelta + deniedDelta) * windowFactor),
-        ownDelta: Math.round(ownDelta),
-        deniedDelta: Math.round(deniedDelta),
-      };
-    }
-
     function 读取行为规划属性键列表(effect = {}) {
       const 原始列表 = Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性];
       return 原始列表
@@ -18695,154 +18144,6 @@ class BattleUIComponent {
         weakCount += productValue > 0 ? 0 : 1;
       });
       return { 净收益: Math.round(total), 目标数量: targetCount, 弱参与数量: weakCount };
-    }
-
-    function 评估技能规划净收益(skill = {}, context = {}) {
-      const 规划目标 = context.primaryTarget || context.target || null;
-      const 规划行为状态 = { ...(context.behaviorState || {}), primaryTarget: 规划目标, target: 规划目标 };
-      const 规划上下文 =
-        context.规划上下文 ||
-        (context.actor
-          ? 构建规划上下文(context.actor, 规划目标, 规划行为状态.combatData || context.combatData || {}, 规划行为状态)
-          : null);
-      if (规划上下文) {
-        规划行为状态.战局画像 = 规划上下文.战局画像;
-        规划行为状态.目标优先表 = 规划上下文.目标优先表;
-        规划行为状态.战略意图 = 规划上下文.战略意图;
-        规划行为状态.规划上下文 = 规划上下文;
-      }
-      const 效果列表 = getSkillEffects(skill, { 行为规划: true, actor: context.actor, caster: context.actor, target: 规划目标 });
-      const 主原型成立概率 = 估算技能主原型成立概率(skill, context.actor || context.caster || {}, 规划目标, 规划行为状态, 效果列表);
-      const 造物收益 = 评估造物承载规划净收益(skill, context, 规划行为状态);
-      const 原型分项收益 = Object.fromEntries(行为规划评分分项_V1.map(component => [component, 0]));
-      const 汇总 = 造物收益 || 效果列表.reduce((结果, effect) => {
-          const 单项 = 评估效果规划净收益(effect, { ...context, behaviorState: 规划行为状态, skill });
-          const 成立概率 = String(effect?.生效方式 || '').trim() === '跟随主原型' ? 主原型成立概率 : 1;
-          const 期望收益 = Number(单项.净收益 || 0) * 成立概率;
-          const component = 读取战斗原型唯一评分分项(effect);
-          if (!component) throw new Error(`battle_planning_component_missing:${String(effect?.原型 || '').trim()}`);
-          原型分项收益[component] += 期望收益;
-          结果.净收益 += 期望收益;
-          结果.目标数量 += Number(单项.目标数量 || 0);
-          if (单项.弱参与 || !(成立概率 > 0)) 结果.弱参与数量 += 1;
-          return 结果;
-        }, { 净收益: 0, 目标数量: 0, 弱参与数量: 0 });
-      const 直接效果净收益 = Number(汇总.净收益 || 0);
-      const 维持收益 = 估算行为规划技能维持收益(skill, context, 效果列表, 规划行为状态);
-      汇总.维持收益 = 维持收益;
-      汇总.净收益 += Number(维持收益.净收益 || 0);
-      const 行为库衔接 = context.actor && 规划目标
-        ? 评估技能行为库衔接收益(skill, context.actor, 规划目标, 规划行为状态)
-        : { 净收益: 0, 自身行为提升: 0, 队友行为提升: 0, 敌方行为压制: 0, 有效衔接: false, 理由: '缺少规划对象' };
-      汇总.行为库衔接 = 行为库衔接;
-      汇总.净收益 += Number(行为库衔接.净收益 || 0);
-      const 既有维持负荷 = Math.max(0, Number(context.actor?.__维持负荷 || 0));
-      if (既有维持负荷 > 0) {
-        const 前摇 = Math.max(0, Number(skill?.前摇 ?? getSkillCastTime(skill) ?? 0));
-        汇总.既有维持负荷 = 既有维持负荷;
-        汇总.净收益 -= Math.round(既有维持负荷 * (46 + Math.min(36, 前摇 * 1.2)));
-      }
-      汇总.基础效果净收益 = Math.round(Number(汇总.净收益 || 0));
-      if (规划上下文 && context.skipTactical !== true) {
-        const 战术前净收益 = Number(汇总.净收益 || 0);
-        const 有基础参与 =
-          效果列表.length > 0 &&
-          (
-            Math.abs(Number(汇总.净收益 || 0) - Number(维持收益.净收益 || 0)) > 0 ||
-            Number(维持收益.净收益 || 0) !== 0 ||
-            (
-              Number(汇总.目标数量 || 0) > 0 &&
-              Number(汇总.弱参与数量 || 0) < 效果列表.length
-            )
-          );
-        let 战术修正 = 有基础参与
-          ? 计算技能战术修正(skill, context.actor || {}, 规划目标, 规划上下文, 汇总)
-          : { 修正值: 0, 轨迹: [] };
-        if (战术前净收益 <= 0 && Number(战术修正.修正值 || 0) > 0) {
-          const 原修正 = Number(战术修正.修正值 || 0);
-          const 保留修正 = Math.min(原修正, Math.max(0, Math.floor(Math.abs(战术前净收益) * 0.35)));
-          战术修正 = {
-            修正值: 保留修正,
-            轨迹: [...(战术修正.轨迹 || []), `敌我净收益门 ${原修正}->${保留修正}`],
-          };
-        }
-        汇总.战局画像 = {
-          我方核心: 读取规划单位名称(规划上下文.战局画像?.我方核心),
-          敌方核心: 读取规划单位名称(规划上下文.战局画像?.敌方核心),
-          治疗目标: 读取规划单位名称(规划上下文.战局画像?.治疗目标),
-          控制目标: 读取规划单位名称(规划上下文.战局画像?.控制目标),
-          集火目标: 读取规划单位名称(规划上下文.目标优先表?.集火目标),
-          保护目标: 读取规划单位名称(规划上下文.目标优先表?.保护目标),
-          资源压力: 规划上下文.资源压力,
-          终局压力: 规划上下文.战局画像?.终局压力,
-          召唤压力: 规划上下文.战局画像?.召唤压力,
-          维持压力: 规划上下文.战局画像?.维持压力,
-        };
-        汇总.战略意图 = 规划上下文.战略意图;
-        汇总.目标理由 = 战术修正.轨迹;
-        汇总.战术修正 = 战术修正.修正值;
-        汇总.净收益 += 战术修正.修正值;
-      } else {
-        汇总.战术修正 = 0;
-        汇总.目标理由 = [];
-      }
-      const 效果标签 = 读取行为规划技能效果标签(skill, context.actor || context.caster || {}, 规划目标 || {}, 规划行为状态);
-      const 衔接自身收益 = Math.max(0, Number(行为库衔接.自身行为提升 || 0));
-      const 衔接队友收益 = Math.max(0, Number(行为库衔接.队友行为提升 || 0));
-      const 衔接敌方压制 = Math.max(0, Number(行为库衔接.敌方行为压制 || 0));
-      const 衔接原始收益 = 衔接自身收益 + 衔接队友收益 + 衔接敌方压制;
-      const 衔接兑现比例 = 衔接原始收益 > 0
-        ? Math.max(0, Math.min(1.8, Number(行为库衔接.净收益 || 0) / 衔接原始收益))
-        : 0;
-      const 己方后续收益 = Math.round((衔接自身收益 + 衔接队友收益) * 衔接兑现比例);
-      const 敌方后续压制 = Math.round(衔接敌方压制 * 衔接兑现比例);
-      const 合并同一未来价值 = (原型价值, 反事实价值) => Number(原型价值 || 0) < 0
-        ? Number(原型价值 || 0)
-        : Math.max(Number(原型价值 || 0), Math.max(0, Number(反事实价值 || 0)));
-      const effectiveDeltaEV = Math.round(String(skill?.承载方式 || '').trim() === '造物承载'
-        ? 0
-        : Number(原型分项收益.effectiveDeltaEV || 0));
-      const futureUnlockEV = Math.round(合并同一未来价值(原型分项收益.futureUnlockEV, 己方后续收益));
-      const enemyDeniedEV = Math.round(合并同一未来价值(原型分项收益.enemyDeniedEV, 敌方后续压制));
-      const sustainEV = Math.round(
-        (String(skill?.承载方式 || '').trim() === '造物承载' ? Math.max(0, 直接效果净收益) : 0) +
-        合并同一未来价值(原型分项收益.sustainEV, 效果标签.hasPositiveResource ? 己方后续收益 : 0) +
-        Math.max(0, Number(维持收益.净收益 || 0)),
-      );
-      const 目标反伤比例 = 规划目标 && 读取行为规划单位立场(规划目标, context.actor || context.caster || {}, 规划行为状态) === '敌方'
-        ? 读取单位战斗效果列表(规划目标).reduce((最大值, effect) => Math.max(最大值, Number(effect?.damage_reflect_ratio || 0)), 0)
-        : 0;
-      const 预期反伤风险 = 目标反伤比例 > 0
-        ? 效果列表.reduce((sum, effect) => {
-            if (String(effect?.原型 || '').trim() !== '伤害结算') return sum;
-            const preview = 预估技能直接伤害(context.actor || context.caster || {}, 规划目标 || {}, skill, effect, { behaviorState: 规划行为状态, effects: 效果列表 });
-            return sum + Math.max(0, Number(preview?.expectedDamage || 0)) * 目标反伤比例;
-          }, 0)
-        : 0;
-      const chainConflictEV = Math.round(
-        Math.max(0, -Number(维持收益.净收益 || 0)) +
-        Math.max(0, Number(既有维持负荷 || 0) * (46 + Math.min(36, Math.max(0, Number(skill?.前摇 ?? getSkillCastTime(skill) ?? 0)) * 1.2))),
-      );
-      const 技能消耗压力 = 计算技能消耗压力(skill, context.actor || context.caster || {});
-      const resourceCostEV = Math.round(Math.max(
-        0,
-        Number(技能消耗压力.综合压力 || 0),
-        Number(技能消耗压力.当前压力 || 0),
-      ) * 80);
-      汇总.scoreParts = {
-        effectiveDeltaEV,
-        futureUnlockEV,
-        enemyDeniedEV,
-        teamIntentEV: Math.max(0, Number(汇总.战术修正 || 0)),
-        sustainEV,
-        resourceCostEV,
-        failureRiskEV: 0,
-        exposureRiskEV: Math.round(预期反伤风险),
-        chainConflictEV,
-      };
-      汇总.previewScoreParts = { ...汇总.scoreParts };
-      汇总.净收益 = Math.round(汇总.净收益);
-      return 汇总;
     }
 
     function 读取战斗原型唯一评分分项(effect = {}) {
@@ -20798,32 +20099,6 @@ class BattleUIComponent {
         );
       }
 
-      function 选择主观行为候选(actor = {}, target = {}, battleState = {}, candidates = [], phaseLabel = '', interference = 0) {
-        const experienceStability = 限制行为概率(Number(battleState?.战斗经验?.稳定度 ?? battleState?.经验稳定度 ?? 0.45), 0, 1);
-        const spiritualPowerRatio = 限制行为概率(
-          读取行为规划资源当前值(actor, 'men') / Math.max(1, 读取行为规划资源上限(actor, 'men')),
-          0,
-          1,
-        );
-        const staminaRatio = 限制行为概率(
-          读取行为规划资源当前值(actor, 'vit') / Math.max(1, 读取行为规划资源上限(actor, 'vit')),
-          0,
-          1,
-        );
-        const combatData = battleState?.combatData || {};
-        const runtimeSeed = combatData?.__battleRuntime?.decisionSeed ?? combatData?.__battleRuntime?.seed ?? '';
-        const battleIdentity = runtimeSeed || combatData?.战斗ID || combatData?.battleId || combatData?.战斗类型 || 'battle';
-        return BATTLE_RUNTIME.selectCandidate({
-          candidates,
-          experienceStability,
-          spiritualPowerRatio,
-          staminaRatio,
-          interference,
-          castTimeOf: candidate => Math.max(0, Number(candidate?.skill?.前摇 ?? candidate?.skill?.cast_time ?? candidate?.cast_time ?? 0)),
-          seedText: `${battleIdentity}|${Number(battleState?.round ?? combatData?.回合 ?? 0)}|${actor?.name || actor?.名称 || ''}|${target?.name || target?.名称 || ''}|${phaseLabel}|${Number(battleState?.followUpDepth || 0)}`,
-        });
-      }
-
       function 读取索敌干扰强度(actor = {}, skill = null) {
         return 限制行为概率(
           读取角色决策干扰强度(actor, '索敌干扰强度') + (skill ? 读取技能决策干扰强度(skill, '索敌干扰强度') : 0),
@@ -21840,13 +21115,13 @@ class BattleUIComponent {
         const round = Number(criteria.round || 0);
         const actorName = String(criteria.actorName || '').trim();
         const actionName = normalizeBattleActionDisplayName(criteria.actionName || '');
-        if (!(round > 0) || !actorName || !actionName) return null;
+        if (!(round > 0) || !actorName) return null;
         for (let index = (Array.isArray(ledger) ? ledger.length : 0) - 1; index >= 0; index -= 1) {
           const event = ledger[index];
           if (!event || String(event.eventKind || '').trim() !== 'action_start') continue;
           if (Number(event.round || 0) !== round) continue;
           if (!isSameBattleReportName(String(event.actorName || '').trim(), actorName)) continue;
-          if (normalizeBattleActionDisplayName(event.actionName || '') !== actionName) continue;
+          if (actionName && normalizeBattleActionDisplayName(event.actionName || '') !== actionName) continue;
           return event;
         }
         return null;
@@ -23212,442 +22487,6 @@ class BattleUIComponent {
           memory.focus_ttl = Math.max(0, Number(ttl || 0));
         }
 
-        function chooseActorActionByCandidates(actor, target, battleState, candidates, phaseLabel, auditOptions = {}) {
-          const 规划上下文 =
-            battleState?.规划上下文 ||
-            (battleState?.combatData ? 构建规划上下文(actor, target, battleState.combatData, battleState) : null);
-          const 干扰强度 = 读取行动判断干扰强度(actor);
-          let scoredCandidates = (candidates || []).map(candidate => {
-            const 预览技能 = (() => {
-              if (candidate?.skill) return candidate.skill;
-              if (candidate?.__预览技能) return candidate.__预览技能;
-              return null;
-            })();
-            const 预览目标 = candidate?.target || candidate?.__预览目标 || (
-              预览技能 && 技能偏向友方目标(预览技能, candidate) ? actor : target
-            );
-            const 预览效果标签 = 预览技能
-              ? 读取行为规划技能效果标签(预览技能, actor, 预览目标 || {}, { ...(battleState || {}), combatData: battleState?.combatData })
-              : null;
-            const 规划收益 = 预览技能 && 规划上下文
-              ? 评估技能规划净收益(预览技能, {
-                  actor,
-                  primaryTarget: 预览目标,
-                  action: candidate,
-                  behaviorState: { ...(battleState || {}), combatData: battleState?.combatData },
-                  规划上下文,
-                  skipTactical: true,
-                })
-              : { 基础效果净收益: Number(candidate?.weight || 0), 净收益: Number(candidate?.weight || 0), 目标理由: [], 战术修正: 0 };
-            const 资源结果 = !预览技能 ? { canCast: true } : parseSkillCostForChar(预览技能, actor, {
-              actor,
-              caster: actor,
-              target: 预览目标,
-              defender: 预览目标,
-              action: { action_type: '行为规划', type: candidate?.name || '', skill: 预览技能 },
-              skill: 预览技能,
-              combatData: battleState?.combatData,
-              当前行动: '行为规划',
-            });
-            const 资源可行 = 资源结果.canCast !== false;
-            const 技能消耗压力 = 预览技能 ? 计算技能消耗压力(预览技能, actor) : { 综合压力: 0, 当前压力: 0, 可释放: true };
-            const previewScoreParts = 规划收益.scoreParts && typeof 规划收益.scoreParts === 'object' ? 规划收益.scoreParts : {};
-            const effectEV = Number(previewScoreParts.effectiveDeltaEV ?? 规划收益.基础效果净收益 ?? 规划收益.净收益 ?? candidate?.weight ?? 0);
-            const futureUnlockEV = Number(previewScoreParts.futureUnlockEV || 0);
-            const enemyDeniedEV = Number(previewScoreParts.enemyDeniedEV || 0);
-            const teamIntentEV = Number(previewScoreParts.teamIntentEV || 0);
-            const sustainEV = Number(previewScoreParts.sustainEV || 0);
-            const failureRiskEV = Number(previewScoreParts.failureRiskEV || 0);
-            const exposureRiskEV = Number(previewScoreParts.exposureRiskEV || 0);
-            const chainConflictEV = Number(previewScoreParts.chainConflictEV || 0);
-            const resourceCostEV = Math.round(Math.max(0, Number(技能消耗压力.综合压力 || 0), Number(技能消耗压力.当前压力 || 0)) * 80);
-            return {
-              ...candidate,
-              skill: 预览技能 || candidate?.skill,
-              target: 预览目标,
-              原始权重: Number(candidate?.weight || 0),
-              weight: Number(candidate?.weight || 0),
-              原始净收益: effectEV,
-              净收益: effectEV,
-              effectEV,
-              previewScoreParts: {
-                effectiveDeltaEV: effectEV,
-                futureUnlockEV,
-                enemyDeniedEV,
-                teamIntentEV,
-                sustainEV,
-                resourceCostEV,
-                failureRiskEV,
-                exposureRiskEV,
-                chainConflictEV,
-              },
-              effectiveDeltaEV: effectEV,
-              futureUnlockEV,
-              enemyDeniedEV,
-              teamIntentEV,
-              sustainEV,
-              failureRiskEV,
-              exposureRiskEV,
-              chainConflictEV,
-              resourceCostEV,
-              战术修正: 0,
-              高耗: 技能消耗压力.综合压力 >= 0.34 || 技能消耗压力.可释放 === false,
-              断档压力: Math.max(Number(技能消耗压力.综合压力 || 0), Number(技能消耗压力.当前压力 || 0), Number(规划上下文?.资源压力 || 0)),
-              资源压力: Number(规划上下文?.资源压力 || 0),
-              资源可行,
-              可斩杀: 预览目标 ? getCombatHpRatio(预览目标) < 0.36 || effectEV >= 120 : false,
-              可打断: 预览目标?.蓄力技能 && /控制|打断|封技|沉默|眩晕/.test(String(candidate?.name || 预览技能?.name || 预览技能?.魂技名 || '')),
-              终局压力: Number(规划上下文?.战局画像?.终局压力 || 0),
-              __主动规划审计: {
-                候选来源: candidate?.__候选来源 || phaseLabel || '主动候选',
-                技能: 预览技能?.name || 预览技能?.魂技名 || candidate?.name || '',
-                原始净收益: effectEV,
-                 effectEV,
-                 effectiveDeltaEV: effectEV,
-                 futureUnlockEV,
-                 enemyDeniedEV,
-                 teamIntentEV,
-                 sustainEV,
-                 failureRiskEV,
-                 exposureRiskEV,
-                 chainConflictEV,
-                 scoreParts: {
-                   effectiveDeltaEV: effectEV,
-                   futureUnlockEV,
-                   enemyDeniedEV,
-                   teamIntentEV,
-                   sustainEV,
-                   resourceCostEV,
-                   failureRiskEV,
-                   exposureRiskEV,
-                   chainConflictEV,
-                 },
-                 resourceCostEV,
-                战术修正: 0,
-                团队意图修正: 0,
-                干扰强度,
-                 目标理由: 规划收益.目标理由 || [],
-                 战略意图: 规划上下文?.战略意图?.主意图 || '',
-                 技能效果标签: 预览效果标签 ? {
-                   hasDamage: 预览效果标签.hasDamage === true,
-                   hasControl: 预览效果标签.hasControl === true,
-                   hasHealing: 预览效果标签.hasHealing === true,
-                   hasPositiveResource: 预览效果标签.hasPositiveResource === true,
-                   hasAttributeBuff: 预览效果标签.hasAttributeBuff === true,
-                 } : null,
-                 资源可行,
-                硬门槛失败: !!预览技能 && effectEV < 0,
-              },
-            };
-          });
-          scoredCandidates = 排序行为规划候选_V1(actor, 规划上下文?.战局画像 || {}, scoredCandidates, {
-            ...(battleState || {}),
-            ...(规划上下文 || {}),
-            规划上下文,
-            目标优先表: 规划上下文?.目标优先表 || {},
-          }).map(候选 => {
-            const 审计 = 候选.__主动规划审计 || {};
-            const 排序审计 = 候选.__候选排序审计 || {};
-            const 净收益硬门槛失败 = !!候选.skill && Number(审计.原始净收益 || 0) < 0;
-            const 最终权重 = 候选.资源可行 === false || 净收益硬门槛失败 ? 0 : Number(候选.weight || 0);
-            return {
-              ...候选,
-              weight: Math.max(0, Math.round(最终权重)),
-              __主动规划审计: {
-                ...审计,
-                候选排序审计: 排序审计,
-                scoringSummary: 候选.scoringSummary || 排序审计.scoringSummary || null,
-                factorKeys: Array.isArray(候选.scoringSummary?.factorKeys) ? [...候选.scoringSummary.factorKeys] : (Array.isArray(排序审计.factorKeys) ? [...排序审计.factorKeys] : []),
-                scoreContributions: Array.isArray(候选.scoringSummary?.scoreContributions) ? 候选.scoringSummary.scoreContributions.map(item => ({ ...item })) : (Array.isArray(排序审计.scoreContributions) ? 排序审计.scoreContributions.map(item => ({ ...item })) : []),
-                effectEV: Number(候选.scoringSummary?.effectEV || 排序审计.effectEV || 0),
-                targetEV: Number(候选.scoringSummary?.targetEV || 排序审计.targetEV || 0),
-                timingEV: Number(候选.scoringSummary?.timingEV || 排序审计.timingEV || 0),
-                roleEV: Number(候选.scoringSummary?.roleEV || 排序审计.roleEV || 0),
-                comboEV: Number(候选.scoringSummary?.comboEV || 排序审计.comboEV || 0),
-                resourceCostEV: Number(候选.scoringSummary?.resourceCostEV || 排序审计.resourceCostEV || 0),
-                riskEV: Number(候选.scoringSummary?.riskEV || 排序审计.riskEV || 0),
-                目标: 排序审计.目标 || 读取规划单位名称(候选.target),
-                原始权重: 排序审计.原始权重,
-                目标修正: 排序审计.目标修正,
-                对手意图修正: 排序审计.对手意图修正,
-                类别预算修正: 排序审计.类别预算修正,
-                防御质量修正: 排序审计.防御质量修正,
-                资源修正: 排序审计.资源修正,
-                连招修正: 排序审计.连招修正,
-                记忆惩罚: 排序审计.记忆惩罚,
-                recentActionCount: 排序审计.recentActionCount || 0,
-                目标价值修正: 排序审计.目标价值修正,
-                二回合前瞻修正: 排序审计.二回合前瞻修正,
-                职责修正: 排序审计.职责修正,
-                效果原型分类: 排序审计.效果原型分类,
-                分类来源: 排序审计.分类来源,
-                目标价值分解: 排序审计.目标价值分解,
-                目标切换收益: 排序审计.目标切换收益,
-                切换成本: 排序审计.切换成本,
-                保护链理由: 排序审计.保护链理由 || [],
-                仇恨压力理由: 排序审计.仇恨压力理由 || [],
-                协同理由: 排序审计.协同理由 || [],
-                前瞻理由: 排序审计.前瞻理由 || [],
-                资源后果: 排序审计.资源后果 || [],
-                敌方下回合风险: 排序审计.敌方下回合风险 || [],
-                己方下回合窗口: 排序审计.己方下回合窗口 || [],
-                职责画像: 排序审计.职责画像,
-                职责理由: 排序审计.职责理由 || [],
-                最终权重,
-                选择原因: 排序审计.选择原因,
-                压力档位: 排序审计.压力档位,
-                目标修正理由: 排序审计.目标修正理由 || [],
-                硬门槛失败: 净收益硬门槛失败,
-              },
-            };
-          });
-          const 规划语境 = String(battleState?.规划语境 || battleState?.decisionContext || '').trim().toUpperCase();
-          const 是应招语境 = 规划语境 === 'REACTION' || /应招/.test(String(phaseLabel || ''));
-          const 是主动阶段 = !是应招语境 && (/主动/.test(String(phaseLabel || '')) || /^ACTIVE_/i.test(String(phaseLabel || '')));
-          const 判定候选为应招专属动作 = 候选 => {
-            const name = normalizeBattleActionDisplayName(候选?.name || '');
-            const skillName = normalizeBattleActionDisplayName(
-              候选?.skill?.name ||
-              候选?.skill?.魂技名 ||
-              候选?.__预览技能?.name ||
-              候选?.__预览技能?.魂技名 ||
-              候选?.__主动规划审计?.技能 ||
-              '',
-            );
-            return /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(name) ||
-              /^(?:敌方截击|敌方压迫|承伤硬抗|肉体兜底|伺机闪避|闪避|偏转|收招转防|借力守势|坚壁|抢落点|压招|短前摇对轰)$/.test(skillName);
-          };
-          const 主动阶段候选池 = 是主动阶段
-            ? scoredCandidates.filter(候选 => !判定候选为应招专属动作(候选))
-            : scoredCandidates;
-          const 排序合法候选 = 候选池 => [...(候选池 || [])]
-            .filter(候选 => 候选 && Number(候选.weight || 0) > 0)
-            .sort((左, 右) => {
-              const 左摘要 = 左.scoringSummary || 左.__主动规划审计?.scoringSummary || {};
-              const 右摘要 = 右.scoringSummary || 右.__主动规划审计?.scoringSummary || {};
-              const 左前摇 = Math.max(0, Number(左?.skill?.前摇 ?? 左?.skill?.cast_time ?? 左?.cast_time ?? 0));
-              const 右前摇 = Math.max(0, Number(右?.skill?.前摇 ?? 右?.skill?.cast_time ?? 右?.cast_time ?? 0));
-              const 左ID = String(左摘要.candidateId || 左?.name || 左?.skill?.name || 左?.skill?.魂技名 || '').trim();
-              const 右ID = String(右摘要.candidateId || 右?.name || 右?.skill?.name || 右?.skill?.魂技名 || '').trim();
-              return Number(右.weight || 0) - Number(左.weight || 0) ||
-                Number(左摘要.resourceCostEV || 0) - Number(右摘要.resourceCostEV || 0) ||
-                左前摇 - 右前摇 ||
-                左ID.localeCompare(右ID, 'zh-Hans-CN');
-            });
-          const 原最高候选 = 排序合法候选(主动阶段候选池)[0] || null;
-          const 干扰生效 = Number(干扰强度 || 0) > 0;
-          const 选择结果 = 选择主观行为候选(actor, target, battleState, 主动阶段候选池, phaseLabel, 干扰强度);
-          if (干扰生效 && 选择结果.option && 原最高候选 && 选择结果.option !== 原最高候选) {
-            选择结果.option.__decisionInterference = {
-              originalBestCandidateId: 原最高候选.scoringSummary?.candidateId || '',
-              originalBestCandidateName: 原最高候选.skill?.name || 原最高候选.skill?.魂技名 || 原最高候选.name || '',
-              ruleCode: 'DECISION_INTERFERENCE',
-            };
-          }
-          const 命中审计 = 选择结果.option?.__主动规划审计 || {};
-          if (battleState?.combatData) {
-            const 规划战局 = 规划上下文?.战局画像 || {};
-            const 快照单位 = 单位 => ({
-              名称: 单位?.name || 单位?.名称 || '',
-              系别: 读取规划单位系别(单位 || {}),
-              HP: Number(单位?.HP ?? 单位?.hp ?? 单位?.属性?.HP ?? 0),
-              HP上限: Number(单位?.HP上限 ?? 单位?.hp_max ?? 单位?.属性?.HP上限 ?? 0),
-              魂力: Number(单位?.sp ?? 单位?.属性?.魂力 ?? 0),
-              魂力上限: Number(单位?.sp_max ?? 单位?.属性?.魂力上限 ?? 0),
-              精神力: Number(单位?.men ?? 单位?.属性?.精神力 ?? 0),
-              精神力上限: Number(单位?.men_max ?? 单位?.属性?.精神力上限 ?? 0),
-              距离: 单位?.距离 || 单位?.站位距离 || 单位?.distance || 单位?.range_distance || '',
-              蓄力技能: 单位?.蓄力技能 === true,
-              蓄力剩余: Number(单位?.蓄力剩余 ?? 单位?.cast_time_left ?? 0),
-              是否核心: 判定规划核心单位_V1(单位 || {}),
-            });
-            const 读取候选审计标签 = 审计 => {
-              const 分类 = 审计?.效果原型分类 && typeof 审计.效果原型分类 === 'object' ? 审计.效果原型分类 : {};
-              const 目标价值分解 = 审计?.目标价值分解 && typeof 审计.目标价值分解 === 'object' ? 审计.目标价值分解 : {};
-              const 技能效果标签 = 审计?.技能效果标签 && typeof 审计.技能效果标签 === 'object' ? 审计.技能效果标签 : {};
-              const 文本 = [
-                审计?.行动类别,
-                审计?.技能类别,
-                分类.主要效果类型,
-                ...(Array.isArray(分类.次要效果类型列表) ? 分类.次要效果类型列表 : []),
-                ...(Array.isArray(审计?.目标理由) ? 审计.目标理由 : []),
-                ...(Array.isArray(审计?.目标修正理由) ? 审计.目标修正理由 : []),
-                ...(Array.isArray(审计?.资源后果) ? 审计.资源后果 : []),
-                ...(Array.isArray(审计?.资源理由) ? 审计.资源理由 : []),
-                ...(Array.isArray(审计?.保护链理由) ? 审计.保护链理由 : []),
-                ...(Array.isArray(审计?.职责理由) ? 审计.职责理由 : []),
-              ].map(item => String(item || '')).join(' ');
-              const tags = new Set();
-              if (技能效果标签.hasControl === true || /控制|位移限制|锁定|限制|束缚|麻痹|眩晕|封锁|迟缓|沉默|减速|缴械|封技/.test(文本)) tags.add('CONTROL_RESTRICTION');
-              if (技能效果标签.hasDamage === true) tags.add('DIRECT_DAMAGE');
-              if (技能效果标签.hasHealing === true || 技能效果标签.hasPositiveResource === true || /治疗|恢复|护盾|防护|掩护|支援|保护|保核/.test(文本)) tags.add('PROTECT_ALLY');
-              if (Number(审计?.斩杀修正 || 0) > 0 || Number(目标价值分解.lethalWindow || 目标价值分解.killWindow || 目标价值分解.finishWindow || 0) > 0 || /斩杀|终结|收割|濒死|强弩之末/.test(文本)) tags.add('LETHAL');
-              if (Number(审计?.资源修正 || 0) >= 0 && /资源|魂力|精神力|断档|高耗|消耗/.test(文本)) tags.add('RESOURCE_STABLE');
-              return [...tags];
-            };
-            const 读取候选结构化否决 = (选中审计 = {}, 当前审计 = {}) => {
-              const 选中标签 = new Set(读取候选审计标签(选中审计));
-              const 当前标签 = new Set(读取候选审计标签(当前审计));
-              if (选中标签.has('CONTROL_RESTRICTION') && !当前标签.has('CONTROL_RESTRICTION')) {
-                return { rejectionCode: 'CONTROL_GAP', rejectedByEffectGap: 'CONTROL_RESTRICTION_GAP' };
-              }
-              if (选中标签.has('LETHAL') && !当前标签.has('LETHAL')) {
-                return { rejectionCode: 'LETHAL_GAP', rejectedByEffectGap: 'LETHAL_GAP' };
-              }
-              if (选中标签.has('PROTECT_ALLY') && !当前标签.has('PROTECT_ALLY')) {
-                return { rejectionCode: 'PROTECT_ALLY_GAP', rejectedByEffectGap: 'PROTECT_ALLY_GAP' };
-              }
-              if (
-                (选中标签.has('RESOURCE_STABLE') && Number(当前审计?.资源修正 || 0) < Number(选中审计?.资源修正 || 0)) ||
-                Number(当前审计?.资源断档惩罚 || 0) > Number(选中审计?.资源断档惩罚 || 0)
-              ) {
-                return { rejectionCode: 'RESOURCE_PRESSURE', rejectedByEffectGap: 'RESOURCE_PRESSURE' };
-              }
-              return { rejectionCode: 'DIRECT_PRESSURE_GAP', rejectedByEffectGap: 'DIRECT_PRESSURE_GAP' };
-            };
-            const 审计类型 = String(auditOptions?.auditType || '').trim() || (
-              !选择结果.option
-                ? '内部规划空转'
-                : (是应招语境 ? '应招审计' : '主动规划')
-            );
-            const 审计候选池 = 审计类型 === '主动规划' ? 主动阶段候选池 : scoredCandidates;
-            const 全部候选排序结果 = 审计候选池.map((候选, index) => {
-              const 名称 = 候选?.skill?.name || 候选?.skill?.魂技名 || 候选?.__预览技能?.name || 候选?.__预览技能?.魂技名 || 候选?.name || '';
-              const selected = 选择结果.option && 候选 === 选择结果.option;
-              const weight = Number(候选?.weight || 0);
-              const 审计 = 候选?.__主动规划审计 || {};
-              const 评分 = 候选?.scoringSummary || 审计.scoringSummary || {};
-              const 否决 = selected || weight <= 0
-                ? { rejectionCode: selected ? '' : 'FILTERED_BY_SCORE', rejectedByEffectGap: '' }
-                : 读取候选结构化否决(命中审计, 审计);
-              return {
-                candidateId: String(评分.candidateId || `candidate_${index + 1}_${normalizeBattleActionDisplayName(名称) || 'action'}`),
-                candidateName: 名称,
-                名称,
-                战术名称: 候选?.name || '',
-                score: weight,
-                权重: weight,
-                actionKind: String(评分.actionKind || '').trim(),
-                actionRole: 标准化战斗行动职责(评分.actionRole || (是应招语境 ? 'REACTION' : 'ACTIVE')),
-                actorId: String(评分.actorId || actor?.id || actor?.uid || actor?.name || actor?.名称 || '').trim(),
-                targetIds: Array.isArray(评分.targetIds) ? 评分.targetIds : [],
-                rawObjectiveScore: Number(评分.rawObjectiveScore || 0),
-                subjectiveScore: Number(评分.subjectiveScore ?? 评分.rawObjectiveScore ?? 0),
-                scoreParts: 评分.scoreParts && typeof 评分.scoreParts === 'object' ? { ...评分.scoreParts } : {},
-                factorKeys: Array.isArray(评分.factorKeys) ? [...评分.factorKeys] : [],
-                scoreContributions: Array.isArray(评分.scoreContributions) ? 评分.scoreContributions.map(item => ({ ...item })) : [],
-                tags: Array.isArray(评分.tags) ? [...评分.tags] : [],
-                alternativeGap: Number(评分.alternativeGap || 0),
-                selectedReason: String(评分.selectedReason || '').trim(),
-                effectEV: Number(评分.effectEV || 0),
-                targetEV: Number(评分.targetEV || 0),
-                timingEV: Number(评分.timingEV || 0),
-                roleEV: Number(评分.roleEV || 0),
-                comboEV: Number(评分.comboEV || 0),
-                resourceCostEV: Number(评分.resourceCostEV || 0),
-                riskEV: Number(评分.riskEV || 0),
-                finalScore: Number(评分.finalScore ?? weight),
-                原始权重: Number(审计.原始权重 || 0),
-                原始净收益: Number(审计.原始净收益 || 0),
-                战术修正: Number(审计.战术修正 || 0) + Number(审计.团队意图修正 || 0),
-                目标修正: Number(审计.目标修正 || 0),
-                目标价值修正: Number(审计.目标价值修正 || 0),
-                资源修正: Number(审计.资源修正 || 0),
-                职责修正: Number(审计.职责修正 || 0),
-                二回合前瞻修正: Number(审计.二回合前瞻修正 || 0),
-                candidateStatus: 战斗候选状态转移('', selected ? 'EXECUTED' : (weight > 0 ? 'REJECTED' : 'FILTERED')),
-                rejectionCode: String(评分.rejectionCode || 否决.rejectionCode || '').trim(),
-                effectTags: 读取候选审计标签(审计),
-                rejectedByEffectGap: 否决.rejectedByEffectGap,
-                candidateSource: 'ACTIVE_SCORER',
-                recentActionCount: Number(审计.recentActionCount || 0),
-                目标: 审计.目标 || 候选?.target?.name || 候选?.target?.名称 || '',
-                审计: 审计.候选排序审计 || {},
-              };
-            });
-            const 选中候选摘要 = 全部候选排序结果.find(item => item.candidateStatus === 'EXECUTED') || null;
-            const 替代候选摘要 = 全部候选排序结果
-              .filter(item => item !== 选中候选摘要)
-              .sort((left, right) => Number(right.finalScore || 0) - Number(left.finalScore || 0) || String(left.candidateId || '').localeCompare(String(right.candidateId || ''), 'zh-Hans-CN'))
-              .slice(0, 2);
-            const 候选排序结果 = [选中候选摘要, ...替代候选摘要].filter(Boolean);
-            记录行动闭环审计(battleState.combatData, 审计类型, {
-              行动者: actor?.name || actor?.名称 || '',
-              目标: 命中审计.目标 || target?.name || target?.名称 || '',
-              技能: 命中审计.技能 || 选择结果.option?.name || (!选择结果.option ? '无可执行动作' : ''),
-              回合: Number(battleState?.round ?? battleState?.combatData?.回合 ?? 0),
-              战略意图: 命中审计.战略意图 || '',
-              目标理由: 命中审计.目标理由 || [],
-              候选来源: 命中审计.候选来源 || phaseLabel || '',
-              原始净收益: 命中审计.原始净收益 || 0,
-              战术修正: 命中审计.战术修正 || 0,
-              effectEV: Number(选择结果.option?.scoringSummary?.effectEV || 命中审计.effectEV || 0),
-              targetEV: Number(选择结果.option?.scoringSummary?.targetEV || 命中审计.targetEV || 0),
-              timingEV: Number(选择结果.option?.scoringSummary?.timingEV || 命中审计.timingEV || 0),
-              roleEV: Number(选择结果.option?.scoringSummary?.roleEV || 命中审计.roleEV || 0),
-              comboEV: Number(选择结果.option?.scoringSummary?.comboEV || 命中审计.comboEV || 0),
-              resourceCostEV: Number(选择结果.option?.scoringSummary?.resourceCostEV || 命中审计.resourceCostEV || 0),
-              riskEV: Number(选择结果.option?.scoringSummary?.riskEV || 命中审计.riskEV || 0),
-              原始权重: 命中审计.原始权重 || 0,
-              目标修正: 命中审计.目标修正 || 0,
-              对手意图修正: 命中审计.对手意图修正 || 0,
-              类别预算修正: 命中审计.类别预算修正 || 0,
-              防御质量修正: 命中审计.防御质量修正 || 0,
-              资源修正: 命中审计.资源修正 || 0,
-              连招修正: 命中审计.连招修正 || 0,
-              记忆惩罚: 命中审计.记忆惩罚 || 0,
-              recentActionCount: 命中审计.recentActionCount || 0,
-              目标价值修正: 命中审计.目标价值修正 || 0,
-              二回合前瞻修正: 命中审计.二回合前瞻修正 || 0,
-              职责修正: 命中审计.职责修正 || 0,
-              团队意图修正: 命中审计.团队意图修正 || 0,
-              干扰强度,
-              decisionConfidence: Number(选择结果.decisionConfidence ?? 1),
-              temperature: Number(选择结果.temperature ?? 4),
-              maxRegret: Number(选择结果.maxRegret ?? 0),
-              ruleCode: 选择结果.option?.__decisionInterference?.ruleCode || '',
-              originalBestCandidateId: 选择结果.originalBest?.scoringSummary?.candidateId || 选择结果.option?.__decisionInterference?.originalBestCandidateId || '',
-              originalBestCandidateName: normalizeBattleActionDisplayName(选择结果.originalBest?.skill?.name || 选择结果.originalBest?.skill?.魂技名 || 选择结果.originalBest?.name || 选择结果.option?.__decisionInterference?.originalBestCandidateName || ''),
-              scoringSummary: 选择结果.option?.scoringSummary || null,
-              最终权重: Number(选择结果.option?.weight || 0),
-              选择原因: 选择结果.trace || (选择结果.option ? '规划候选命中' : '当前未形成有效出手机会'),
-              hitCandidateName: normalizeBattleActionDisplayName(选择结果.option?.skill?.name || 选择结果.option?.skill?.魂技名 || 选择结果.option?.__预览技能?.name || 选择结果.option?.__预览技能?.魂技名 || 选择结果.option?.name || 命中审计.技能 || ''),
-              selectedCandidateName: normalizeBattleActionDisplayName(选择结果.option?.skill?.name || 选择结果.option?.skill?.魂技名 || 选择结果.option?.__预览技能?.name || 选择结果.option?.__预览技能?.魂技名 || 选择结果.option?.name || 命中审计.技能 || ''),
-              finalResolvedActionName: normalizeBattleActionDisplayName(命中审计.finalResolvedActionName || (!选择结果.option ? '无可执行动作' : '')),
-              actionOverrideSource: String(命中审计.actionOverrideSource || '').trim(),
-              承载方式: String(命中审计.承载方式 || 选择结果.option?.skill?.承载方式 || 选择结果.option?.__预览技能?.承载方式 || '').trim(),
-              压力档位: 命中审计.压力档位 || '',
-              目标修正理由: 命中审计.目标修正理由 || [],
-              候选排序审计: 命中审计.候选排序审计 || {},
-              候选排序结果,
-              对手意图摘要: 命中审计.候选排序审计?.对手适应摘要 || {},
-              效果原型分类: 命中审计.效果原型分类 || {},
-              分类来源: 命中审计.分类来源 || '',
-              目标价值分解: 命中审计.目标价值分解 || {},
-              目标切换收益: 命中审计.目标切换收益 || 0,
-              切换成本: 命中审计.切换成本 || 0,
-              保护链理由: 命中审计.保护链理由 || [],
-              仇恨压力理由: 命中审计.仇恨压力理由 || [],
-              协同理由: 命中审计.协同理由 || [],
-              前瞻理由: 命中审计.前瞻理由 || [],
-              资源后果: 命中审计.资源后果 || [],
-              敌方下回合风险: 命中审计.敌方下回合风险 || [],
-              己方下回合窗口: 命中审计.己方下回合窗口 || [],
-              职责画像: 命中审计.职责画像 || {},
-              职责理由: 命中审计.职责理由 || [],
-              actor快照: 快照单位(actor),
-              己方列表: (规划战局.己方列表 || []).map(快照单位),
-              敌方列表: (规划战局.敌方列表 || []).map(快照单位),
-              ...(auditOptions?.details && typeof auditOptions.details === 'object' ? auditOptions.details : {}),
-              旁路: false,
-            });
-          }
-          return {
-            ...选择结果,
-            evaluatedCandidates: 是主动阶段 ? 主动阶段候选池 : scoredCandidates,
-          };
-        }
-
         function getActorSkillCounterPenalty(actor, skillName) {
           if (!actor || !skillName) return 0;
           const memory = ensureActorDecisionMemory(actor);
@@ -24058,52 +22897,6 @@ class BattleUIComponent {
         };
       }
 
-      function chooseAndBuildActorAction(actor, target, battleState, candidates, phaseLabel, logPrefix = '') {
-        const choice = chooseActorActionByCandidates(actor, target, battleState, candidates, phaseLabel);
-        if (!choice.option) return null;
-
-        const action = choice.option.build();
-        const 候选命中名 = normalizeBattleActionDisplayName(choice?.option?.skill?.name || choice?.option?.skill?.魂技名 || choice?.option?.__预览技能?.name || choice?.option?.__预览技能?.魂技名 || choice?.option?.name || '');
-        const 最终落地动作名 = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.type || choice?.option?.name || '');
-        const 动作覆写来源 = 候选命中名 && 最终落地动作名 && 候选命中名 !== 最终落地动作名
-          ? (phaseLabel || '主动规划')
-          : '';
-        if (choice?.option?.__主动规划审计 && typeof choice.option.__主动规划审计 === 'object') {
-          choice.option.__主动规划审计.finalResolvedActionName = 最终落地动作名;
-          choice.option.__主动规划审计.actionOverrideSource = 动作覆写来源;
-          choice.option.__主动规划审计.hitCandidateName = 候选命中名;
-          choice.option.__主动规划审计.目标语义 = String(
-            action?.skill?.目标 ||
-            action?.skill?.target ||
-            choice.option.__主动规划审计.目标语义 ||
-            ''
-          ).trim();
-          choice.option.__主动规划审计.承载方式 = String(
-            action?.skill?.承载方式 ||
-            choice.option.__主动规划审计.承载方式 ||
-            ''
-          ).trim();
-        }
-        if (action && typeof action === 'object') {
-          action.__命中候选名 = 候选命中名;
-          action.__最终落地动作名 = 最终落地动作名;
-          action.__动作覆写来源 = 动作覆写来源;
-          action.__目标语义 = String(action?.skill?.目标 || action?.skill?.target || '').trim();
-          action.__承载方式 = String(action?.skill?.承载方式 || '').trim();
-        }
-        recordActorActionMemory(
-          actor,
-          action?.skill?.name || action?.skill?.技能名称 || action?.type || choice.option.name,
-          { target: action?.target || target, round: Number(battleState?.combatData?.回合 || 0) },
-        );
-        const 经验 = battleState?.战斗经验;
-        const 经验日志 = 经验
-          ? ` [行为经验] 经验:${Math.round(Number(经验.总分 || 0))}/稳定:${Math.round(Number(经验.稳定度 || 0) * 100)}%。`
-          : '';
-        action.log = `${logPrefix}${choice.trace}${经验日志} ${action.log}`.trim();
-        return action;
-      }
-
       function clearCombatAdjudicationHints(combatData) {
         if (!combatData || typeof combatData !== 'object') return;
         delete combatData.阶段;
@@ -24157,18 +22950,6 @@ class BattleUIComponent {
         return collectUnifiedSkillEntries(charData, alliedTeam, { includePassive: false, includeActive: true });
       }
 
-      function 创建行为链(先手 = {}, 后手 = {}) {
-        return {
-          链节点列表: [],
-          当前先手: 先手,
-          当前后手: 后手,
-          主动权持有者: 先手,
-          链深度: 0,
-          事件链: [],
-          已换招角色: new Set(),
-        };
-      }
-
       function 构建行为规划技能(skill = {}, target = null, actor = null, combatData = null) {
         const 施术者 = actor || {};
         const 规划上下文 = {
@@ -24189,751 +22970,6 @@ class BattleUIComponent {
         const 规划技能 = { ...skill, __规划水合效果数组: getSkillEffects(skill, 规划上下文), __条件分支规划源技能: skill };
         写入战斗来源类别上下文(规划技能, 读取战斗来源类别上下文(skill, '魂技'));
         return 规划技能;
-      }
-
-      function 追加行为链节点(行为链, 节点 = {}) {
-        if (!行为链) return false;
-        const 阶段 = String(节点.阶段 || '收束');
-        const 是终态节点 = 阶段 === '收束';
-        if (行为链.链深度 >= 5 && !是终态节点) return false;
-        const 完整节点 = {
-          阶段,
-          行动者: 节点.行动者 || null,
-          目标: 节点.目标 || null,
-          动作: 节点.动作 || '',
-          技能: 节点.技能 || null,
-          前摇: Math.max(0, Number(节点.前摇 || 0)),
-          窗口: 节点.窗口,
-          投点: 节点.投点,
-          结果: 节点.结果 || '',
-          战报: String(节点.战报 || '').trim(),
-        };
-        行为链.链节点列表.push(完整节点);
-        行为链.事件链.push(完整节点.战报);
-        if (!是终态节点) 行为链.链深度 += 1;
-        return true;
-      }
-
-      function 渲染行为链战报(行为链) {
-        const 节点列表 = 行为链?.链节点列表 || [];
-        const 文本 = 节点列表
-          .map(节点 => 节点.战报 || `[${节点.阶段}] ${节点.结果 || ''}`)
-          .filter(Boolean)
-          .join(' ');
-        if (行为链 && 行为链.链深度 >= 5 && !节点列表.some(节点 => 节点?.阶段 === '收束')) {
-          return `${文本} [收束] 双方连续变招已到极限，本回合攻防链收束。`;
-        }
-        return 文本;
-      }
-
-      function 获取行动前摇(action = {}) {
-        return Math.max(0, Number(action?.cast_time ?? action?.skill?.前摇 ?? 10) || 10);
-      }
-
-      function 获取行动威力倍率(action = {}) {
-        return Math.max(0, Number(getPrimaryDamageEffect(action?.skill || {})?.威力倍率 || 0));
-      }
-
-      function 战斗候选状态转移(当前状态 = '', 下个状态 = '') {
-        const from = String(当前状态 || '').trim().toUpperCase();
-        const to = String(下个状态 || '').trim().toUpperCase();
-        const allowed = ['SCORED', 'SAMPLED', 'LOCKED', 'EXECUTED', 'REJECTED', 'FILTERED', 'ABORTED', 'SELECTED', 'SHADOWED'];
-        if (!to) return '';
-        if (!allowed.includes(to)) throw new Error(`candidate_invalid_status:${to}`);
-        if (
-          (from === 'EXECUTED' && to === 'REJECTED') ||
-          (from === 'EXECUTED' && to === 'FILTERED') ||
-          (from === 'LOCKED' && to === 'FILTERED') ||
-          (from === 'ABORTED' && to === 'REJECTED')
-        ) {
-          throw new Error(`candidate_illegal_transition:${from}->${to}`);
-        }
-        return to;
-      }
-
-      function 估算技能消耗压力(单位 = {}, skill = {}) {
-        if (!skill || typeof skill !== 'object') return 0;
-        const 消耗 = parseSkillCostForChar(skill, 单位);
-        const 可用 = Math.max(1, Number(单位?.sp || 0) + Number(单位?.sta ?? 单位?.vit ?? 0) + Number(单位?.men || 0));
-        return 限制行为概率((Number(消耗.reqSp || 0) + Number(消耗.reqVit || 0) + Number(消耗.reqMen || 0)) / 可用, 0, 1);
-      }
-
-      function 计算再判定窗口(先手 = {}, 后手 = {}, 先手动作 = {}, 后手动作 = {}) {
-        const 先手属性 = 先手.final || buildCombatFinalStats(先手);
-        const 后手属性 = 后手.final || buildCombatFinalStats(后手);
-        const 后手前摇暴露 = 限制行为概率(获取行动前摇(后手动作) / 40, 0, 1) * 0.45;
-        const 后手威力暴露 = 限制行为概率(获取行动威力倍率(后手动作) / 300, 0, 1) * 0.25;
-        const 后手消耗暴露 = 估算技能消耗压力(后手, 后手动作?.skill || {}) * 0.20;
-        const 反应差修正 = 限制行为概率((Number(先手属性.agi || 先手.agi || 1) / Math.max(1, Number(后手属性.agi || 后手.agi || 1)) - 1) * 0.15, -0.15, 0.15);
-        const 先手投入惩罚 = 限制行为概率(获取行动前摇(先手动作) / 40, 0, 1) * 0.20;
-        return 限制行为概率(0.10 + 后手前摇暴露 + 后手威力暴露 + 后手消耗暴露 + 反应差修正 - 先手投入惩罚, 0, 1);
-      }
-
-      function 估算反噬概率(先手 = {}, 后手 = {}, 原动作 = {}, 新技能 = {}, 窗口 = 0) {
-        const 先手属性 = 先手.final || buildCombatFinalStats(先手);
-        const 后手属性 = 后手.final || buildCombatFinalStats(后手);
-        const 新招前摇压力 = 限制行为概率(getSkillCastTime(newSkillData(新技能)) / 40, 0, 1);
-        const 原招投入度 = 限制行为概率(获取行动前摇(原动作) / 40, 0, 1);
-        const 精神控制修正 = 限制行为概率((Number(先手属性.men_max || 先手.men_max || 1) / Math.max(1, Number(后手属性.men_max || 后手.men_max || 1)) - 1) * 0.10, -0.10, 0.10);
-        return 限制行为概率(0.08 + (1 - 窗口) * 0.55 + 原招投入度 * 0.20 + 新招前摇压力 * 0.12 - 精神控制修正, 0.05, 0.95);
-      }
-
-      function newSkillData(skill = {}) {
-        if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
-        const 技能名 = String(skill.name || skill.魂技名 || skill.技能名称 || '').trim();
-        const 效果数组 = Array.isArray(skill._效果数组) ? skill._效果数组.filter(Boolean) : [];
-        if (!技能名 && !效果数组.length) return null;
-        return normalizeSkillData(skill, 技能名 || '未命名技能');
-      }
-
-      function 评估敌对重复状态收益衰减(skill = {}, target = {}, options = {}) {
-        if (!skill || !target?.状态效果 || typeof target.状态效果 !== 'object') return { 惩罚: 0, 状态列表: [] };
-        const 状态列表 = getSkillEffects(skill, { 行为规划: true, target, defender: target })
-          .filter(effect => String(effect?.原型 || '').trim() === '状态施加')
-          .filter(effect => !/自身|友方/.test(String(effect?.目标 || getSkillTarget(skill) || '').trim()))
-          .map(effect => String(effect?.状态名称 || effect?.状态 || '').trim())
-          .filter(Boolean);
-        if (!状态列表.length) return { 惩罚: 0, 状态列表: [] };
-        const 伤害威力 = Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0);
-        const 伤害比例 = Number(options?.projectedDamageRatio || 0);
-        const 低伤状态技 = 伤害威力 <= 80 && 伤害比例 < 0.03;
-        const 已有状态 = Object.entries(target.状态效果 || {}).filter(([, cond]) => Math.max(0, Number(cond?.duration ?? cond?.持续回合 ?? 0)) > 0);
-        const 命中状态 = 状态列表.filter(状态名 => 已有状态.some(([key, cond]) => {
-          const 文本 = `${key} ${cond?.状态名称 || ''} ${cond?.名称 || ''}`;
-          return 文本.includes(状态名) || 状态名.includes(String(key || ''));
-        }));
-        if (!命中状态.length) return { 惩罚: 0, 状态列表: [] };
-        const 惩罚 = 低伤状态技 ? 140 + 命中状态.length * 36 : 24 + 命中状态.length * 10;
-        return { 惩罚: Math.round(惩罚), 状态列表: 命中状态 };
-      }
-
-      function 计算换招成功率(先手 = {}, 后手 = {}, 原动作 = {}, 新技能 = {}, 窗口 = 0) {
-        const 先手属性 = 先手.final || buildCombatFinalStats(先手);
-        const 后手属性 = 后手.final || buildCombatFinalStats(后手);
-        const 反应余量 = 限制行为概率(Number(先手属性.agi || 先手.agi || 1) / Math.max(1, Number(后手属性.agi || 后手.agi || 1)), 0, 2);
-        const 新招前摇压力 = 限制行为概率(getSkillCastTime(newSkillData(新技能)) / 40, 0, 1);
-        const 原招投入度 = 限制行为概率(获取行动前摇(原动作) / 40, 0, 1);
-        const 精神控制修正 = 限制行为概率((Number(先手属性.men_max || 先手.men_max || 1) / Math.max(1, Number(后手属性.men_max || 后手.men_max || 1)) - 1) * 0.10, -0.10, 0.10);
-        return 限制行为概率(0.15 + 窗口 * 0.55 + 反应余量 * 0.10 + 精神控制修正 - 原招投入度 * 0.20 - 新招前摇压力 * 0.15, 0.05, 0.90);
-      }
-
-      const 行为链换招窗口门槛 = 0.28;
-
-      function 行动可换招(单位 = {}, 原动作 = {}) {
-        if (!原动作?.skill || !['技能', '魂技', '释放技能'].some(词 => String(原动作.action_type || 原动作.type || '').includes(词)) && !原动作.skill) return false;
-        if (['防御', '闪避', '撤离', '穿戴装备'].includes(String(原动作.action_type || 原动作.type || ''))) return false;
-        return !Object.values(单位?.状态效果 || {}).some(状态 => {
-          const 效果 = 状态?.战斗效果 || {};
-          return 效果.skip_turn || 效果.cannot_react || 效果.silence || 效果.skill_seal || 效果.disarm;
-        });
-      }
-
-      function 技能可进入换招候选池(单位 = {}, skill = {}) {
-        if (!skill || typeof skill !== 'object' || skill.状态 === '未生成') return false;
-        const 技能名 = String(skill.name || skill.魂技名 || skill.技能名称 || '').trim();
-        if (!技能名) return false;
-        const 技能效果数组 = getSkillEffects(skill, { 行为规划: true });
-        if (!Array.isArray(技能效果数组) || !技能效果数组.some(effect => effect && typeof effect === 'object')) return false;
-        if (单位已有同名维持技能(单位, skill)) return false;
-        const 目标类型 = inferSkillPrimaryTargetKind(skill);
-        const 纯友方支援 =
-          ['自身', '友方单体', '友方群体'].includes(目标类型) &&
-          isSupportLikeSkill(skill) &&
-          !getPrimaryDamageEffect(skill) &&
-          !isBattleSkillDefensiveProfile(skill) &&
-          !isBattleSkillReactiveDefenseProfile(skill) &&
-          !isBattleSkillCounterProfile(skill) &&
-          !hasBattleSkillRuntimeConsumer(skill, ['self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift']);
-        if (纯友方支援) return false;
-        const 状态战斗效果 = Object.values(单位?.状态效果 || {}).map(状态 => 状态?.战斗效果 || {});
-        if (状态战斗效果.some(效果 => 效果.skip_turn === true || 效果.cannot_react === true || 效果.silence === true || 效果.skill_seal === true || 效果.disarm === true)) return false;
-        return parseSkillCostForChar(skill, 单位).canCast !== false;
-      }
-
-      function 推断行为链技能倾向(skill = {}) {
-        if (!skill || typeof skill !== 'object') return '硬抗';
-        if (Number(getPrimaryDamageEffect(skill, { 行为规划: true })?.威力倍率 || 0) > 0) return 获取行动前摇({ skill }) <= 12 ? '短前摇对轰' : '承伤硬抗';
-        if (isBattleSkillDefensiveProfile(skill) || isBattleSkillReactiveDefenseProfile(skill)) return '防御';
-        if (hasBattleSkillRuntimeConsumer(skill, ['self_shift', 'disengage_shift', 'position_exchange', 'pursuit_shift'])) return '位移规避';
-        if (判定技能具备真实截断资格_V1(skill)) return '控制截断';
-        if (isBattleSkillControlProfile(skill)) return '状态压制';
-        if (isBattleSkillCounterProfile(skill) || hasBattleSkillRuntimeConsumer(skill, ['counter', 'on_hit_counter', 'damage_reflect'])) return '反制技能';
-        return '状态/装备触发';
-      }
-
-      function 计算行为威胁分层(威胁 = {}) {
-        const 分数 = 限制行为概率(
-          Number(威胁?.projectedDamageRatio || 0) +
-            (威胁?.severeControl ? 0.26 : 0) +
-            (威胁?.lethalRisk ? 0.45 : 0) +
-            (威胁?.shieldBreakThreat ? 0.08 : 0) +
-            (威胁?.dotDetonateThreat ? 0.08 : 0),
-          0,
-          1,
-        );
-        const 致命 = 威胁?.lethalRisk === true || 分数 >= 0.58;
-        const 高威胁 = 致命 || 威胁?.severeDamage === true || 威胁?.severeControl === true || 分数 >= 0.32;
-        const 中威胁 = 高威胁 || 威胁?.moderateDamage === true || 分数 >= 0.16;
-        const 低威胁 = !中威胁 && !威胁?.antiHealThreat && !威胁?.skillSealThreat;
-        return { 分数, 致命, 高威胁, 中威胁, 低威胁 };
-      }
-
-      function 评估反高速应对窗口(防守方 = {}, 攻击方 = {}, 攻击动作 = {}, combatData = {}) {
-        const 攻击者系别 = 读取规划单位系别(攻击方);
-        const 防守敏捷 = Number(防守方?.final?.agi ?? 防守方?.agi ?? 防守方?.属性?.敏捷 ?? 0);
-        const 攻击敏捷 = Number(攻击方?.final?.agi ?? 攻击方?.agi ?? 攻击方?.属性?.敏捷 ?? 0);
-        const 敏捷倍率 = 攻击敏捷 / Math.max(1, 防守敏捷);
-        const 伤害效果 = getPrimaryDamageEffect(攻击动作?.skill || {});
-        const 近身高速攻击 =
-          攻击者系别 === '敏攻系' &&
-          战斗伤害是近身攻击(伤害效果?.伤害类型) &&
-          (getSkillCastTime(攻击动作?.skill) <= 16 || 获取行动前摇(攻击动作) <= 16);
-        const 闪避记忆 = Math.max(0, Number(攻击方?.__本回合闪避成功次数 || 0), Number(防守方?.决策记忆?.opponent_dodge_count || 0));
-        const 久攻不下 = Number(combatData?.回合 || combatData?.round || 0) >= 3 && getCombatHpRatio(攻击方) > 0.55;
-        const 距离拉扯 = /闪避|游击|拉开|脱离|瞬移/.test(String(ensureActorDecisionMemory(攻击方).last_action || ''));
-        const 成立 = 敏捷倍率 >= 1.22 || 近身高速攻击 || 闪避记忆 >= 1 || 久攻不下 || 距离拉扯;
-        const 强度 = 限制行为概率(
-          (敏捷倍率 - 1) * 0.5 +
-            (近身高速攻击 ? 0.35 : 0) +
-            Math.min(0.25, 闪避记忆 * 0.12) +
-            (久攻不下 ? 0.16 : 0) +
-            (距离拉扯 ? 0.12 : 0),
-          0,
-          1,
-        );
-        return { 成立, 强度, 敏捷倍率, 近身高速攻击, 闪避记忆, 久攻不下, 距离拉扯 };
-      }
-
-      function 选取范围压制技能(技能列表 = []) {
-        return (技能列表 || [])
-          .map(skill => newSkillData(skill))
-          .filter(skill => skill && getPrimaryDamageEffect(skill))
-          .filter(skill => {
-            const 目标 = String(getSkillTarget(skill) || '').trim();
-            return /群体|全场/.test(目标);
-          })
-          .sort((a, b) => Number(getPrimaryDamageEffect(b)?.威力倍率 || 0) - Number(getPrimaryDamageEffect(a)?.威力倍率 || 0))[0] || null;
-      }
-
-      function 构建应招候选池(后手 = {}, 先手 = {}, 先手动作 = {}, combatData = {}, 预设应招 = null) {
-        const 双方 = 读取战斗双方队伍(combatData, 后手);
-        const 先手威胁 = estimateIncomingActionThreat(先手, 后手, 先手动作, combatData);
-        const 规划上下文 = 构建规划上下文(后手, 先手, combatData, {
-          combatData,
-          threatProfile: 先手威胁,
-          observedTargetAction: 先手动作,
-          isChargingHighThreat: 先手威胁.severeDamage || 先手威胁.lethalRisk || 先手威胁.severeControl,
-        });
-        const 威胁分层 = 计算行为威胁分层(先手威胁);
-        const 威胁系数 = 威胁分层.分数;
-        const 反高速窗口 = 评估反高速应对窗口(后手, 先手, 先手动作, combatData);
-        const 防御意图 = Number(规划上下文.战略意图?.权重表?.保核 || 0) + Number(规划上下文.战略意图?.权重表?.拖回合 || 0);
-        const 反制意图 = Number(规划上下文.战略意图?.权重表?.控制 || 0) + Number(规划上下文.战略意图?.权重表?.击杀 || 0);
-        const 来袭技能文本 = JSON.stringify(先手动作?.skill || {});
-        const 来袭含控制减益 = 先手威胁.severeControl === true ||
-          /状态施加|debuff|控制|眩晕|麻痹|僵直|混乱|沉默|封技|失控|无法反应|致盲|锁定|位移限制|迟缓|中毒|流血|防御剥夺|精神抗性剥夺|cast_speed_penalty|dodge_penalty|reaction_penalty/.test(来袭技能文本);
-        const 试探阶段 = Number(combatData?.回合 || combatData?.round || 1) <= 1 && !先手威胁.lethalRisk && !先手威胁.severeDamage;
-        const 后手记忆 = ensureActorDecisionMemory(后手);
-        const 来袭动作名 = normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || 先手动作?.type || '');
-        const 来袭者名 = String(先手?.name || 先手?.名称 || '').trim();
-        const 同来袭重复次数 = 来袭动作名 && 后手记忆.last_incoming_action === 来袭动作名 && (!来袭者名 || 后手记忆.last_incoming_actor === 来袭者名)
-          ? Math.max(0, Number(后手记忆.same_incoming_action_count || 0))
-          : 0;
-        const 防御基础 = (威胁分层.低威胁 ? 12 : 威胁分层.高威胁 ? 34 : 23) - (来袭含控制减益 ? 10 : 0);
-        const 适应规避加权 = 同来袭重复次数 > 0 ? Math.min(42, 18 + 同来袭重复次数 * 12) : 0;
-        const 适应硬抗惩罚 = 同来袭重复次数 > 0 ? Math.min(56, 22 + 同来袭重复次数 * 14) : 0;
-        const 闪避基础 = (威胁分层.低威胁 ? 8 : 威胁分层.高威胁 ? 27 : 18) + (试探阶段 ? 18 : 0) + (来袭含控制减益 ? 20 : 0) + 适应规避加权;
-        const 硬抗基础 = (威胁分层.低威胁 ? 52 : 威胁分层.高威胁 ? 16 : 32) - (试探阶段 ? 24 : 0) - (来袭含控制减益 ? 28 : 0) - 适应硬抗惩罚;
-        const 反高速加权 = 反高速窗口.成立 ? Math.round(反高速窗口.强度 * 34) : 0;
-        const 候选 = [
-          { name: '防御', action: { type: '防御', action_type: '防御', skill: null, cast_time: 4 }, weight: Math.round(防御基础 + 威胁系数 * 42 + 防御意图 * 0.18 + Math.round(反高速加权 * 0.45)), 分类: '防御' },
-          { name: '闪避', action: { type: '闪避', action_type: '闪避', skill: null, cast_time: 6 }, weight: Math.round(闪避基础 + 威胁系数 * 34 + (读取规划单位系别(后手) === '敏攻系' ? 14 : 0) - Math.round(反高速加权 * 0.25)), 分类: '闪避' },
-          { name: '承伤硬抗', action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 }, weight: Math.round(硬抗基础 + (1 - 威胁系数) * 26 + Math.round(反高速加权 * 0.7)), 分类: '承伤硬抗' },
-        ];
-        if (反高速窗口.成立) {
-          候选.push({
-            name: '防守反击',
-            action: { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0, __反高速应对: true },
-            weight: Math.round(24 + 反高速窗口.强度 * 58 + (读取规划单位系别(后手) === '防御系' ? 12 : 0) + (读取规划单位系别(后手) === '强攻系' ? 9 : 0)),
-            分类: '承伤硬抗',
-            __规划轨迹: ['对手高速近身或持续拉扯，转入防守反击窗口'],
-          });
-        }
-        if (预设应招 && (预设应招.skill || !/待机/.test(String(预设应招.type || 预设应招.action_type || '')))) {
-          候选.push({
-            name: 预设应招.skill?.name || 预设应招.skill?.魂技名 || 预设应招.type || '预设应招',
-            action: 预设应招,
-            weight: Math.round(42 + 威胁系数 * 35),
-            分类: 推断行为链技能倾向(预设应招.skill || {}),
-          });
-        }
-        collectCombatSkills(后手, 双方.友方)
-          .map(skill => newSkillData(skill))
-          .filter(skill => 技能可进入换招候选池(后手, skill))
-          .filter(skill => 推断行为链技能倾向(skill) !== '状态压制')
-          .forEach(skill => {
-            const 分类 = 推断行为链技能倾向(skill);
-            const 前摇压力 = 限制行为概率(getSkillCastTime(skill) / 40, 0, 1);
-            const 威力 = 限制行为概率(Number(getPrimaryDamageEffect(skill)?.威力倍率 || 0) / 300, 0, 1);
-            const 目标规模 = String(getSkillTarget(skill) || '').trim();
-            const 范围压制价值 = 反高速窗口.成立 && /群体|全场/.test(目标规模) ? 0.42 + 反高速窗口.强度 * 0.36 : 0;
-            const 短前摇价值 = 反高速窗口.成立 && 分类 === '短前摇对轰' ? 0.26 + 反高速窗口.强度 * 0.32 : 0;
-            const 防御价值 = ['防御', '位移规避'].includes(分类) ? (威胁分层.低威胁 ? 0.08 : 0.35) + (来袭含控制减益 && 分类 === '位移规避' ? 0.28 : 0) : 分类 === '反制技能' ? 0.26 : 0;
-            const 截断价值 = ['控制截断', '短前摇对轰'].includes(分类) ? (威胁分层.低威胁 ? 0.34 : 0.25) + (来袭含控制减益 ? 0.22 : 0) : 0;
-            const 低威胁推进奖励 = 威胁分层.低威胁 && ['控制截断', '短前摇对轰', '反制技能'].includes(分类) ? 18 : 0;
-            const 适应技能奖励 = 同来袭重复次数 > 0 && /闪避|位移规避|控制截断|短前摇对轰|反制技能|范围压制/.test(分类)
-              ? Math.min(48, 16 + 同来袭重复次数 * 12)
-              : 0;
-            const 规划收益 = 评估技能规划净收益(skill, {
-              actor: 后手,
-              primaryTarget: 先手,
-              behaviorState: { combatData, threatProfile: 先手威胁, observedTargetAction: 先手动作, isChargingHighThreat: 威胁系数 >= 0.45 },
-              规划上下文,
-            });
-            const 反高速动作类型 = 范围压制价值 > 0 ? '范围压制' : 分类;
-            候选.push({
-              name: skill.name || skill.魂技名 || 分类,
-              action: { type: 反高速动作类型, action_type: 反高速动作类型, skill, cast_time: getSkillCastTime(skill) || 10 },
-              weight: Math.max(1, Math.round(18 + 威胁系数 * 42 + 防御价值 * 60 + 截断价值 * 50 + 范围压制价值 * 62 + 短前摇价值 * 52 + 威力 * 35 + 低威胁推进奖励 + 适应技能奖励 + Math.max(-28, Math.min(42, Number(规划收益.净收益 || 0) * 0.12)) + 反制意图 * Math.max(截断价值, 范围压制价值, 短前摇价值) * 0.18 - 前摇压力 * (范围压制价值 > 0 ? 18 : 28))),
-              分类: 反高速动作类型,
-              __规划轨迹: [
-                ...(规划收益.目标理由 || []),
-                ...(范围压制价值 > 0 ? ['范围攻击用于压缩高速目标闪避空间'] : []),
-                ...(适应技能奖励 > 0 ? [`已连续见过${来袭动作名}，提高规避/截断/反制权重`] : []),
-              ],
-            });
-          });
-        const 最优规避或截断 = 候选
-          .filter(候选项 => /闪避|位移规避|控制截断|短前摇对轰/.test(`${候选项.name || ''} ${候选项.分类 || ''}`))
-          .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0];
-        if (最优规避或截断 && (试探阶段 || 来袭含控制减益)) {
-          候选.forEach(候选项 => {
-            const 是通用防守 = !候选项.action?.skill && /防御|承伤硬抗/.test(`${候选项.name || ''} ${候选项.分类 || ''}`);
-            if (!是通用防守) return;
-            const 优势 = Number(最优规避或截断.weight || 0) - Number(候选项.weight || 0);
-            if (来袭含控制减益 || 优势 >= 24) {
-              候选项.weight = 0;
-              候选项.__规划轨迹 = [
-                ...(候选项.__规划轨迹 || []),
-                来袭含控制减益
-                  ? '来袭包含控制或减益，通用防御不能替代规避/截断判定'
-                  : '试探阶段规避收益显著更高，通用硬抗退出应招池',
-              ];
-            }
-          });
-        }
-        return 候选.filter(候选项 => Number(候选项.weight || 0) > 0);
-      }
-
-      function 选择行为链应招动作(后手 = {}, 先手 = {}, 先手动作 = {}, combatData = {}, 预设应招 = null) {
-        const threatProfile = estimateIncomingActionThreat(先手, 后手, 先手动作, combatData);
-        const planningContext = 构建规划上下文(后手, 先手, combatData, {
-          combatData,
-          threatProfile,
-          observedTargetAction: 先手动作,
-          isChargingHighThreat: threatProfile.severeDamage || threatProfile.lethalRisk || threatProfile.severeControl,
-        });
-        const battleState = {
-          combatData,
-          round: Number(combatData?.回合 || combatData?.round || 0),
-          规划语境: 'REACTION',
-          threatProfile,
-          observedTargetAction: 先手动作,
-          isChargingHighThreat: threatProfile.severeDamage || threatProfile.lethalRisk || threatProfile.severeControl,
-          规划上下文: planningContext,
-          战斗经验: 计算行为战斗经验(后手, 先手, combatData),
-        };
-        const 候选 = 构建应招候选池(后手, 先手, 先手动作, combatData, 预设应招)
-          .map(candidate => ({
-            ...candidate,
-            skill: candidate?.skill || candidate?.action?.skill || null,
-            target: candidate?.target || 先手,
-            __预览技能: candidate?.__预览技能 || candidate?.action?.skill || null,
-            build: candidate?.build || (() => candidate?.action || 预设应招),
-          }));
-        const 抽取 = chooseActorActionByCandidates(
-          后手,
-          先手,
-          battleState,
-          候选,
-          '行为链/应招',
-          { auditType: '应招审计' },
-        );
-        const 来袭动作名 = normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || 先手动作?.type || '');
-        if (来袭动作名) {
-          const 记忆 = ensureActorDecisionMemory(后手);
-          const 来袭者名 = String(先手?.name || 先手?.名称 || '').trim();
-          const 同来袭 = 记忆.last_incoming_action === 来袭动作名 && (!来袭者名 || 记忆.last_incoming_actor === 来袭者名);
-          记忆.same_incoming_action_count = 同来袭 ? Math.min(5, Number(记忆.same_incoming_action_count || 0) + 1) : 1;
-          记忆.last_incoming_action = 来袭动作名;
-          记忆.last_incoming_actor = 来袭者名;
-          记忆.last_reaction_action = 抽取.option?.name || 抽取.option?.action?.type || '';
-        }
-        return 抽取.option?.action || 抽取.option?.build?.() || 预设应招 || { type: '硬抗', action_type: '硬抗', skill: null, cast_time: 0 };
-      }
-
-      function 构建再判定候选池(窗口 = 0, 先手 = {}, 后手 = {}, 先手动作 = {}, 后手动作 = {}, combatData = {}, 行为链 = null) {
-        const 后手威胁 = estimateIncomingActionThreat(后手, 先手, 后手动作, combatData);
-        const 规划上下文 = 构建规划上下文(先手, 后手, combatData, {
-          combatData,
-          threatProfile: 后手威胁,
-          observedTargetAction: 后手动作,
-          isChargingHighThreat: 后手威胁.severeDamage || 后手威胁.lethalRisk || 后手威胁.severeControl,
-        });
-        const 威胁分层 = 计算行为威胁分层(后手威胁);
-        const 威胁系数 = 威胁分层.分数;
-        const 可换招 = 窗口 >= 行为链换招窗口门槛 && 存在可换招技能(先手, 先手动作, combatData, 行为链);
-        const 意图 = 规划上下文.战略意图?.权重表 || {};
-        const 可收招转防 = 窗口 >= 0.18 && (威胁分层.中威胁 || Number(意图.保核 || 0) >= 58 || getCombatHpRatio(先手) < 0.45);
-        const 候选池 = [
-          { name: '抢落点', weight: Math.round(30 + (1 - 窗口) * 20 + 获取行动威力倍率(先手动作) / 20 + Number(意图.击杀 || 0) * 0.12 + (威胁分层.低威胁 ? 10 : 0)), action: '抢落点' },
-          { name: '压招', weight: 窗口 >= 0.15 ? Math.round(20 + 窗口 * 35 + 威胁系数 * 25 + Number(意图.控制 || 0) * 0.16 + (威胁分层.低威胁 ? 8 : 0)) : 4, action: '压招' },
-          { name: '偏转', weight: 窗口 >= 0.15 ? Math.round(16 + 窗口 * 28 + 威胁系数 * 30) : 0, action: '偏转' },
-          { name: '收招转防', weight: 可收招转防 ? Math.round(10 + 窗口 * 22 + 威胁系数 * 38 + Number(意图.保核 || 0) * 0.14) : 0, action: '收招转防' },
-          { name: '换招', weight: 可换招 ? Math.round(20 + 窗口 * 70 + 威胁系数 * 35 + Math.max(Number(意图.破防 || 0), Number(意图.驱散 || 0), Number(意图.维持压制 || 0)) * 0.16) : 0, action: '换招' },
-          { name: '放弃再判定', weight: 威胁分层.低威胁 ? 20 : 威胁系数 > 0.35 ? 6 : 12, action: '放弃再判定' },
-        ];
-        return 候选池;
-      }
-
-      function 应用再判定动作效果(再判定动作 = '', 先手动作 = {}, 后手动作 = {}, 窗口 = 0) {
-        const 强度 = Number((0.04 + 限制行为概率(窗口, 0, 1) * 0.16).toFixed(4));
-        先手动作.__行为链修正 ||= {};
-        后手动作.__行为链修正 ||= {};
-        if (再判定动作 === '抢落点') {
-          先手动作.__行为链修正.hit_bonus = Math.max(Number(先手动作.__行为链修正.hit_bonus || 0), 强度);
-          先手动作.__行为链修正.landing_bonus = Math.max(Number(先手动作.__行为链修正.landing_bonus || 0), 强度);
-          return `抢落点提高当前技能落地与命中，强度${Math.round(强度 * 100)}%。`;
-        }
-        if (再判定动作 === '压招') {
-          后手动作.__行为链修正.hit_penalty = Math.max(Number(后手动作.__行为链修正.hit_penalty || 0), 强度);
-          后手动作.__行为链修正.interrupt_penalty = Math.max(Number(后手动作.__行为链修正.interrupt_penalty || 0), 强度);
-          return `压招压低后手命中与打断效率，强度${Math.round(强度 * 100)}%。`;
-        }
-        if (再判定动作 === '偏转') {
-          后手动作.__行为链修正.random_target_rate = Math.max(Number(后手动作.__行为链修正.random_target_rate || 0), 强度);
-          后手动作.__行为链修正.damage_reduction = Math.max(Number(后手动作.__行为链修正.damage_reduction || 0), 强度 * 0.5);
-          return `偏转扰乱后手落点，强度${Math.round(强度 * 100)}%。`;
-        }
-        if (再判定动作 === '收招转防') {
-          先手动作.__行为链修正.damage_reduction = Math.max(Number(先手动作.__行为链修正.damage_reduction || 0), 强度);
-          先手动作.__行为链修正.dodge_bonus = Math.max(Number(先手动作.__行为链修正.dodge_bonus || 0), 强度 * 0.75);
-          先手动作.__行为链收招 = true;
-          return `收招转防放弃部分攻势并获得防御/闪避收益，强度${Math.round(强度 * 100)}%。`;
-        }
-        return '';
-      }
-
-      function 选择换招技能(单位 = {}, 对手 = {}, 原动作 = {}, 后手动作 = {}, combatData = {}, 窗口 = 0, 行为链 = null) {
-        if (!行动可换招(单位, 原动作) || 窗口 < 行为链换招窗口门槛 || 行为链?.已换招角色?.has(单位.name || 单位.名称 || '')) return null;
-        const 原技能名 = String(原动作?.skill?.name || 原动作?.skill?.魂技名 || '').trim();
-        const 队伍 = 读取战斗双方队伍(combatData, 单位).友方 || [];
-        const 后手威胁 = estimateIncomingActionThreat(对手, 单位, 后手动作, combatData);
-        const 规划上下文 = 构建规划上下文(单位, 对手, combatData, {
-          combatData,
-          threatProfile: 后手威胁,
-          observedTargetAction: 后手动作,
-          isChargingHighThreat: 后手威胁.severeDamage || 后手威胁.lethalRisk || 后手威胁.severeControl,
-        });
-        const 决策状态 = {
-          combatData,
-          round: Number(combatData?.回合 || combatData?.round || 0),
-          规划语境: 'ACTIVE',
-          threatProfile: 后手威胁,
-          observedTargetAction: 后手动作,
-          isChargingHighThreat: 后手威胁.severeDamage || 后手威胁.lethalRisk || 后手威胁.severeControl,
-          规划上下文,
-          followUpDepth: Number(行为链?.链深度 || 0),
-          战斗经验: 计算行为战斗经验(单位, 对手, combatData),
-        };
-        const 候选 = collectCombatSkills(单位, 队伍)
-          .map(skill => newSkillData(skill))
-          .filter(skill => {
-            const name = String(skill?.name || skill?.魂技名 || '').trim();
-            return skill && name && name !== 原技能名 && !/^换招技能|未命名技能$/.test(name) && 技能可进入换招候选池(单位, skill);
-          })
-          .map(skill => ({
-            name: skill.name || skill.魂技名 || '换招技能',
-            skill,
-            __预览技能: skill,
-            target: 对手,
-            __预览目标: 对手,
-            actionKind: 'RELEASE_SKILL',
-            actionRole: 'ACTIVE',
-            action: { type: '换招', action_type: '换招', skill, cast_time: getSkillCastTime(skill) || 10 },
-            weight: Math.max(1, Math.round(20 + 窗口 * 70)),
-            __换招反噬概率: 估算反噬概率(单位, 对手, 原动作, skill, 窗口),
-            build: () => ({ type: '换招', action_type: '换招', skill, cast_time: getSkillCastTime(skill) || 10 }),
-          }));
-        const 结果 = chooseActorActionByCandidates(
-          单位,
-          对手,
-          决策状态,
-          候选,
-          '行为链/换招技能池',
-          {
-            auditType: '换招审计',
-            details: {
-              sourceActionName: normalizeBattleActionDisplayName(原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || ''),
-              sourceActorName: 单位?.name || 单位?.名称 || '',
-              reactionActorName: 对手?.name || 对手?.名称 || '',
-              replanRole: 'ACTIVE',
-              actionWindow: 窗口,
-            },
-          },
-        );
-        if (!结果.option?.skill) return null;
-        const 选中 = 结果.option;
-        const 选中候选ID = String(选中?.scoringSummary?.candidateId || '').trim();
-        const 排序候选 = [...(Array.isArray(结果.evaluatedCandidates) ? 结果.evaluatedCandidates : 候选)]
-          .filter(candidate => Number(candidate?.weight || 0) > 0)
-          .sort((left, right) => Number(right?.scoringSummary?.finalScore || right?.weight || 0) - Number(left?.scoringSummary?.finalScore || left?.weight || 0) || String(left?.name || '').localeCompare(String(right?.name || ''), 'zh-Hans-CN'));
-        const 审计候选 = [
-          选中,
-          ...排序候选.filter(candidate => candidate !== 选中 && (!选中候选ID || String(candidate?.scoringSummary?.candidateId || '').trim() !== 选中候选ID)).slice(0, 2),
-        ];
-        const candidateTraceRows = 审计候选.map(candidate => ({
-          candidateName: String(candidate?.name || '').trim() || '未命名候选',
-          rawWeight: Math.max(0, Math.round(Number(candidate?.scoringSummary?.rawObjectiveScore ?? candidate?.weight ?? 0))),
-          compressedWeight: Math.max(0, Math.round(Number(candidate?.scoringSummary?.finalScore ?? candidate?.weight ?? 0))),
-          candidateStatus: candidate === 选中 || (选中候选ID && String(candidate?.scoringSummary?.candidateId || '').trim() === 选中候选ID) ? 'EXECUTED' : 'REJECTED',
-          rejectionCode: String(candidate?.scoringSummary?.rejectionCode || '').trim(),
-        }));
-        return { skill: 选中.skill, trace: 结果.trace, candidateTraceRows };
-      }
-
-      function 存在可换招技能(单位 = {}, 原动作 = {}, combatData = {}, 行为链 = null) {
-        if (!行动可换招(单位, 原动作) || 行为链?.已换招角色?.has(单位.name || 单位.名称 || '')) return false;
-        const 原技能名 = String(原动作?.skill?.name || 原动作?.skill?.魂技名 || '').trim();
-        const 队伍 = 读取战斗双方队伍(combatData, 单位).友方 || [];
-        return collectCombatSkills(单位, 队伍)
-          .map(skill => newSkillData(skill))
-          .some(skill =>
-            skill &&
-            String(skill.name || skill.魂技名 || '').trim() &&
-            String(skill.name || skill.魂技名 || '').trim() !== 原技能名 &&
-            !/^换招技能|未命名技能$/.test(String(skill.name || skill.魂技名 || '').trim()) &&
-            技能可进入换招候选池(单位, skill)
-          );
-      }
-
-      function 结算换招反噬消耗(单位 = {}, 原动作 = {}) {
-        if (!原动作?.skill) return { 成功: true, 日志: '' };
-        const 解析消耗 = parseSkillCostForChar({ ...原动作.skill, 消耗: splitSkillCostModes(getSkillCostText(原动作.skill)).upfront || '无' }, 单位);
-        const 不足 = !解析消耗.canCast;
-        设置战斗延迟效果资源值(单位, 'sp', 读取单位资源当前值(单位, 'sp') - Number(解析消耗.reqSp || 0));
-        设置战斗体力值(单位, 读取单位资源当前值(单位, 'vit') - Number(解析消耗.reqVit || 0));
-        设置战斗延迟效果资源值(单位, 'men', 读取单位资源当前值(单位, 'men') - Number(解析消耗.reqMen || 0));
-        return {
-          成功: !不足,
-          日志: `[反噬] ${单位.name || '行动者'}上一魂技脉络回冲，额外消耗${formatParsedCost(解析消耗)}${不足 ? '，资源不足，经脉紊乱，新招中断' : ''}。`,
-        };
-      }
-
-      function 自动行为链再判定(先手 = {}, 后手 = {}, 先手动作 = {}, 后手动作 = {}, combatData = {}) {
-        const 行为链 = 创建行为链(先手, 后手);
-        追加行为链节点(行为链, {
-          阶段: '起招',
-          行动者: 先手,
-          目标: 后手,
-          动作: 先手动作.action_type || 先手动作.type || '起招',
-          技能: 先手动作.skill || null,
-          前摇: 获取行动前摇(先手动作),
-          战报: `[起招] ${先手.name || '先手'}以[${先手动作.skill?.name || 先手动作.action_type || '行动'}]起招。`,
-        });
-        追加行为链节点(行为链, {
-          阶段: '应招',
-          行动者: 后手,
-          目标: 先手,
-          动作: 后手动作.type || 后手动作.action_type || '应招',
-          技能: 后手动作.skill || null,
-          前摇: 获取行动前摇(后手动作),
-          战报: String(后手动作.type || 后手动作.action_type || '').trim() === '无法反应'
-            ? `[先手压制] ${后手.name || '后手'}来不及完整应对${先手.name || '先手'}的起招。`
-            : `[应招] ${后手.name || '后手'}以[${后手动作.skill?.name || 后手动作.type || '应招'}]应对。`,
-        });
-        const 应招规划上下文 = 构建规划上下文(后手, 先手, combatData, {
-          combatData,
-          threatProfile: estimateIncomingActionThreat(先手, 后手, 先手动作, combatData),
-        });
-        记录行动闭环审计(combatData, '应招审计', {
-          行动者: 后手?.name || 后手?.名称 || '',
-          目标: 先手?.name || 先手?.名称 || '',
-          技能: 后手动作?.skill?.name || 后手动作?.skill?.魂技名 || 后手动作?.type || 后手动作?.action_type || '',
-          战略意图: 应招规划上下文?.战略意图?.主意图 || '',
-          目标理由: 应招规划上下文?.目标优先表?.敌方?.find?.(项 => 项.单位 === 先手)?.理由 || [],
-          候选来源: '正式行为链应招动作',
-          原始净收益: 0,
-          干扰强度: 读取行动判断干扰强度(后手),
-          最终权重: 0,
-          选择原因: '正式应招动作进入行为链',
-          旁路: false,
-        });
-        const 窗口 = 计算再判定窗口(先手, 后手, 先手动作, 后手动作);
-        const 再判定候选 = 构建再判定候选池(窗口, 先手, 后手, 先手动作, 后手动作, combatData, 行为链);
-        const 后手威胁 = estimateIncomingActionThreat(后手, 先手, 后手动作, combatData);
-        const 规划上下文 = 构建规划上下文(后手, 先手, combatData, {
-          combatData,
-          threatProfile: 后手威胁,
-          observedTargetAction: 后手动作,
-          isChargingHighThreat: 后手威胁.severeDamage || 后手威胁.lethalRisk || 后手威胁.severeControl,
-        });
-        const 再判定状态 = {
-          combatData,
-          round: Number(combatData?.回合 || combatData?.round || 0),
-          规划语境: 'ACTIVE',
-          threatProfile: 后手威胁,
-          observedTargetAction: 后手动作,
-          isChargingHighThreat: 后手威胁.severeDamage || 后手威胁.lethalRisk || 后手威胁.severeControl,
-          规划上下文,
-          followUpDepth: Number(行为链?.链深度 || 0),
-          战斗经验: 计算行为战斗经验(后手, 先手, combatData),
-        };
-        const 再判定评分候选 = 再判定候选.map(候选 => {
-          const replanAction = String(候选?.action || 候选?.name || '放弃再判定').trim();
-          return {
-            ...候选,
-            replanAction,
-            action: { type: replanAction, action_type: replanAction, skill: null, cast_time: 0 },
-            actionKind: /收招转防|偏转/.test(replanAction) ? 'DEFEND' :
-              /压招|抢落点/.test(replanAction) ? 'COUNTER' :
-                /换招/.test(replanAction) ? 'RELEASE_SKILL' : 'OBSERVE',
-            actionRole: 'ACTIVE',
-            target: 先手,
-            __预览目标: 先手,
-            build: () => ({ type: replanAction, action_type: replanAction, skill: null, cast_time: 0 }),
-          };
-        });
-        const 来源动作名 = normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '');
-        const 再判定选择 = chooseActorActionByCandidates(
-          后手,
-          先手,
-          再判定状态,
-          再判定评分候选,
-          '行为链/再判定',
-          {
-            auditType: '再判定审计',
-            details: {
-              sourceActionName: 来源动作名,
-              reactionActorName: 后手?.name || 后手?.名称 || '',
-              sourceActorName: 先手?.name || 先手?.名称 || '',
-              replanRole: 'ACTIVE',
-              窗口,
-            },
-          },
-        );
-        const 再判定 = {
-          option: 再判定选择.option,
-          trace: 再判定选择.trace || (再判定选择.option ? '战术重心锁定' : '当前未形成有效触发窗口'),
-        };
-        const 再判定动作 = 再判定.option?.replanAction || 再判定.option?.name || '放弃再判定';
-        const 再判定执行者 = 后手;
-        const 再判定目标 = 先手;
-        追加行为链节点(行为链, {
-          阶段: '再判定',
-          行动者: 再判定执行者,
-          目标: 再判定目标,
-          窗口,
-          结果: 再判定动作,
-          战报: `[再判定] ${再判定执行者.name || '后手'}获得${窗口.toFixed(2)}窗口，选择${再判定动作}应对${来源动作名 || '来袭动作'}。`,
-        });
-        const 再判定效果日志 = 应用再判定动作效果(再判定动作, 先手动作, 后手动作, 窗口);
-        if (再判定效果日志) {
-          追加行为链节点(行为链, {
-            阶段: 再判定动作,
-            行动者: 再判定执行者,
-            目标: 再判定目标,
-            战报: `[${再判定动作}] ${再判定执行者.name || '后手'}${再判定效果日志}`,
-          });
-        }
-        if (再判定动作 === '收招转防') {
-          const 原动作名 = String(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '行动').trim() || '行动';
-          const 收招防御技能 = normalizeSkillData({
-            name: '收招转防',
-            魂技名: '收招转防',
-            技能分类: '防御',
-            目标: '自身',
-            消耗: '无',
-            前摇: 8,
-            _效果数组: [],
-          }, '收招转防');
-          先手动作.__原定动作名 ||= 原动作名;
-          先手动作.__原定技能名 ||= 原动作名;
-          先手动作.action_type = '收招转防';
-          先手动作.type = '收招转防';
-          先手动作.skill = 收招防御技能;
-          先手动作.cast_time = Math.min(Number(先手动作.cast_time || 8) || 8, 8);
-          先手动作.target_name = String(先手?.name || 先手?.名称 || '').trim();
-          先手动作.decision_log = `[收招转防] ${先手.name || '先手'}确认继续前压收益不足，收住攻势，转入守势稳住防线。`;
-        }
-        if (再判定动作 === '换招') {
-          const 换招 = 选择换招技能(先手, 后手, 先手动作, 后手动作, combatData, 窗口, 行为链);
-          if (换招?.skill) {
-            const 换招候选排序结果 = Array.isArray(换招.candidateTraceRows)
-              ? 换招.candidateTraceRows.map(candidate => ({ ...candidate }))
-              : [];
-            const 换招审计详情 = {
-              行动者: 先手?.name || 先手?.名称 || '',
-              目标: 后手?.name || 后手?.名称 || '',
-              技能: 换招.skill?.name || 换招.skill?.魂技名 || '',
-              战略意图: 构建规划上下文(先手, 后手, combatData, { combatData, threatProfile: estimateIncomingActionThreat(后手, 先手, 后手动作, combatData) })?.战略意图?.主意图 || '',
-              候选来源: '行为链换招技能池',
-              干扰强度: 读取行动判断干扰强度(先手),
-              选择原因: 换招.trace || '换招候选命中',
-              hitCandidateName: normalizeBattleActionDisplayName(换招.skill?.name || 换招.skill?.魂技名 || ''),
-              selectedCandidateName: normalizeBattleActionDisplayName(换招.skill?.name || 换招.skill?.魂技名 || ''),
-              finalResolvedActionName: normalizeBattleActionDisplayName(换招.skill?.name || 换招.skill?.魂技名 || ''),
-              actionOverrideSource: '换招',
-              候选排序结果: 换招候选排序结果,
-            };
-            const 成功率 = 计算换招成功率(先手, 后手, 先手动作, 换招.skill, 窗口);
-            const 投点 = Math.random();
-            const 成功 = BATTLE_RUNTIME.probabilitySucceeds(成功率, 投点);
-            追加行为链节点(行为链, {
-              阶段: '换招',
-              行动者: 先手,
-              目标: 后手,
-              技能: 换招.skill,
-              投点,
-              结果: 成功 ? '通过' : '失败',
-              战报: `[换招] ${先手.name || '先手'}尝试换出[${换招.skill.name || 换招.skill.魂技名 || '新招'}]，成功率${Math.round(成功率 * 100)}%，Roll ${Math.round(投点 * 100)}，${成功 ? '通过' : '失败'}。`,
-            });
-            const 反噬概率 = 成功 ? 估算反噬概率(先手, 后手, 先手动作, 换招.skill, 窗口) : 1;
-            const 反噬投点 = Math.random();
-            const 触发反噬 = !成功 || BATTLE_RUNTIME.probabilitySucceeds(反噬概率, 反噬投点);
-            if (触发反噬) {
-              const 反噬 = 结算换招反噬消耗(先手, 先手动作);
-              追加行为链节点(行为链, {
-                阶段: '换招反噬',
-                行动者: 先手,
-                投点: 反噬投点,
-                结果: 反噬.成功 ? '反噬后继续' : '经脉紊乱',
-                战报: `${反噬.日志} 反噬概率${Math.round(反噬概率 * 100)}%，Roll ${Math.round(反噬投点 * 100)}。`,
-              });
-              if (!反噬.成功 || !成功) {
-                先手动作.action_type = '换招失败';
-                先手动作.skill = null;
-              }
-            }
-            if (成功 && (!触发反噬 || 先手动作.action_type !== '换招失败')) {
-              const 新动作 = { ...先手动作, action_type: '换招', type: '换招', skill: 换招.skill, cast_time: getSkillCastTime(换招.skill) || 10 };
-              const 新招消耗日志 = applyActionCost(先手, 新动作, 后手, combatData);
-              if (新招消耗日志) 追加行为链节点(行为链, { 阶段: '换招', 行动者: 先手, 技能: 换招.skill, 战报: 新招消耗日志 });
-              Object.assign(先手动作, 新动作);
-              行为链.已换招角色.add(先手.name || 先手.名称 || '');
-            } else {
-              换招审计详情.finalResolvedActionName = normalizeBattleActionDisplayName(先手动作?.skill?.name || 先手动作?.skill?.魂技名 || 先手动作?.action_type || '');
-              if (先手动作.action_type === '换招失败') 换招审计详情.actionOverrideSource = '换招失败';
-            }
-            记录行动闭环审计(combatData, '换招审计', 换招审计详情);
-          }
-        }
-        追加行为链节点(行为链, {
-          阶段: '收束',
-          行动者: 行为链.主动权持有者,
-          战报: `[收束] 本回合行为链结束，${行为链.主动权持有者?.name || '先手'}保持主动权。`,
-        });
-        return { 行为链, 日志: 渲染行为链战报(行为链) };
       }
 
       function getBattleActionDisplayName(action) {
@@ -25343,12 +23379,12 @@ class BattleUIComponent {
           action: 首轮玩家动作,
           consumed: false,
         };
-        const duelRun = BATTLE_RUNTIME.runTeamBattle({
+        const duelRun = 运行正式决策战斗(
           combatData,
-          mode: maxRounds > 1 ? 'multi_round' : 'single_round',
           maxRounds,
-          adapters: 构建团战运行时适配器({ autoContinueSettings: 自动续推设置, stopOnWithdrawal: true }),
-        });
+          maxRounds > 1 ? 'multi_round' : 'single_round',
+          { autoContinueSettings: 自动续推设置, stopOnWithdrawal: true },
+        );
         delete naturalRuntime.playerLockedNaturalAction;
         撤离结算结果 = naturalRuntime.withdrawalSuccess ? '成功' : '';
         roundCount = Number(duelRun.rounds || 0);
@@ -26464,9 +24500,11 @@ class BattleUIComponent {
         const targetsFriendly = ['自身', '友方单体', '友方群体'].includes(targetContext.targetKind);
         const primaryTarget = targetContext.primaryTarget || (targetsFriendly ? 攻击方 : 默认目标);
         if (!primaryTarget) return { log: '', extraPatchOps: [] };
+        const reactionDecider = 确保战斗运行态(combatData)?.decisionReactionDecider;
+        if (!targetsFriendly && typeof reactionDecider !== 'function') throw new Error('battle_decision_reaction_decider_missing');
         const reactionAction = targetsFriendly
           ? { type: '配合', log: `${primaryTarget.name || '目标'}接受了${攻击方.name || '施术者'}的连放辅助。`, skill: null, def_mult: 1.0 }
-          : determineNpcAction(combatData, action, calculateReactionRatio(攻击方, primaryTarget, action, combatData));
+          : reactionDecider({ reactor: primaryTarget, sourceActor: 攻击方, incomingAction: action, ratio: calculateReactionRatio(攻击方, primaryTarget, action, combatData) });
         const settleResult = 执行单挑队列结算(action, reactionAction, combatData);
         const damagePackage = applyResolvedDamagePackage(攻击方, action, settleResult, {
           primaryTarget,
@@ -28702,9 +26740,9 @@ class BattleUIComponent {
           ? 'enemy'
           : 'player';
         const 防反目标阵营 = 防反者阵营 === 'enemy' ? 'player' : 'enemy';
-        const 影子防反决策器 = 确保战斗运行态(战斗数据)?.shadowCounterDecider;
-        const 防反动作 = typeof 影子防反决策器 === 'function'
-          ? 影子防反决策器({
+          const 防反决策器 = 确保战斗运行态(战斗数据)?.decisionCounterDecider;
+          if (typeof 防反决策器 !== 'function') throw new Error('battle_decision_counter_decider_missing');
+          const 防反动作 = 防反决策器({
               reactor: 防反者,
               sourceActor: 目标,
               incomingAction: 原动作,
@@ -28712,9 +26750,8 @@ class BattleUIComponent {
               counterDepth: 当前防反深度,
               counterType: 候选.防反类型,
               triggerProbability: 触发概率,
-            })
-          : 建立行为防反动作(防反者, { ...候选, 触发概率, counterDepth: 当前防反深度 });
-        if (!防反动作?.skill) throw new Error('battle_shadow_counter_declaration_missing');
+            });
+        if (!防反动作?.skill) throw new Error('battle_counter_declaration_missing');
         const 被反制动作名 = String(候选.原动作?.skill?.name || 候选.原动作?.skill?.魂技名 || 原动作?.skill?.name || 原动作?.skill?.魂技名 || 原动作?.action_type || 原动作?.type || '').trim();
         const 防反名预览 = String(防反动作?.skill?.name || 防反动作?.skill?.魂技名 || 候选.sourceActionName || (允许以命换伤 ? '以命换伤' : 候选.防反类型)).trim();
         const 防反窗口事件 = 写入战斗事件账本(战斗数据, {
@@ -28757,7 +26794,7 @@ class BattleUIComponent {
               probability: 概率文本,
               counterDepth: 当前防反深度,
               reasonCode: 'COUNTER_NO_EFFECTIVE_ACTION',
-              candidateId: String(防反动作.__shadowCandidateId || '').trim(),
+              candidateId: String(防反动作.__decisionCandidateId || '').trim(),
             },
           });
           return `[防反放弃] ${防反者.name || '防守方'}抓到反打窗口，但当前没有可兑现收益的反击动作。`;
@@ -28786,12 +26823,11 @@ class BattleUIComponent {
           const 基础反应余量 = calculateReactionRatio(防反者, 目标, 防反动作, 防反战斗数据);
           const 出手反应折损 = 限制行为概率(1 - 出手承诺 * 反应削弱倍率, 是闪避反击 ? 0.46 : 0.28, 是闪避反击 ? 0.96 : 0.88);
           const 二次反应余量 = 基础反应余量 * 出手反应折损;
-          const 影子二次反应决策器 = 确保战斗运行态(战斗数据)?.shadowReactionDecider;
+          const 二次反应决策器 = 确保战斗运行态(战斗数据)?.decisionReactionDecider;
+          if (!目标.temp_cannot_react && typeof 二次反应决策器 !== 'function') throw new Error('battle_decision_reaction_decider_missing');
           const 二次反应动作 = 目标.temp_cannot_react
             ? { type: '无法反应', log: `${目标.name || '攻击方'}出手已满，二次反应受限。`, skill: null, def_mult: 1.0 }
-            : typeof 影子二次反应决策器 === 'function'
-              ? 影子二次反应决策器({ reactor: 目标, sourceActor: 防反者, incomingAction: 防反动作, ratio: 二次反应余量 })
-              : determineNpcAction(防反战斗数据, 防反动作, 二次反应余量);
+            : 二次反应决策器({ reactor: 目标, sourceActor: 防反者, incomingAction: 防反动作, ratio: 二次反应余量 });
           const 防反起手事件 = 写入战斗事件账本(防反战斗数据, {
             eventKind: 'action_start',
             round: Number(战斗数据?.回合 || 0),
@@ -31303,12 +29339,36 @@ class BattleUIComponent {
         if (!本次为维持释放 && canPersistCreation && creationPatchBundle.patchOps.length > 0) {
           result.extraPatchOps = creationPatchBundle.patchOps;
           result.desc += creationPatchBundle.log;
-          const creationActionName = (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载';
-          const creationActionStart = 查找最近账本动作事件(BATTLE_RUNTIME.ensureLedger(combatData?.__父级战斗数据 || combatData), {
+          const creationRuntimeRoot = combatData?.__父级战斗数据 || combatData;
+          const creationRuntimeOwner = findCombatUnitByName(creationRuntimeRoot, creationOwnerName) || (creationOwnerName === attackerName ? attacker : null);
+          if (creationRuntimeOwner) {
+            if (!creationRuntimeOwner.背包 || typeof creationRuntimeOwner.背包 !== 'object' || Array.isArray(creationRuntimeOwner.背包)) creationRuntimeOwner.背包 = {};
+            (creationPatchBundle.creations || []).forEach(creation => {
+              const itemName = String(creation?.名称 || '').trim();
+              const inventoryCount = Math.max(0, Number(creation?.入包数量 || 0));
+              if (!itemName || inventoryCount <= 0) return;
+              const current = creationRuntimeOwner.背包[itemName] && typeof creationRuntimeOwner.背包[itemName] === 'object'
+                ? creationRuntimeOwner.背包[itemName]
+                : {};
+              creationRuntimeOwner.背包[itemName] = {
+                ...current,
+                数量: Math.max(0, Number(current?.数量 || 0)) + inventoryCount,
+                来源: String((本次原始造物技能 || playerAction.skill)?.魂技名 || (本次原始造物技能 || playerAction.skill)?.name || itemName).trim(),
+                持有者: creationOwnerName,
+              };
+            });
+          }
+          const creationLedger = BATTLE_RUNTIME.ensureLedger(combatData?.__父级战斗数据 || combatData);
+          const preferredCreationActionName = (本次原始造物技能 || playerAction.skill)?.name || (本次原始造物技能 || playerAction.skill)?.魂技名 || skillName || '造物承载';
+          const creationActionStart = 查找最近账本动作事件(creationLedger, {
             round: Number(combatData?.回合 || 0),
             actorName: attackerName,
-            actionName: creationActionName,
+            actionName: preferredCreationActionName,
+          }) || 查找最近账本动作事件(creationLedger, {
+            round: Number(combatData?.回合 || 0),
+            actorName: attackerName,
           });
+          const creationActionName = normalizeBattleActionDisplayName(creationActionStart?.actionName || preferredCreationActionName);
           (creationPatchBundle.creations || []).forEach((creation, index) => {
             写入战斗事件账本(combatData, {
               eventKind: 'create',
@@ -31317,7 +29377,7 @@ class BattleUIComponent {
               targetName: creationOwnerName,
               actionName: creationActionName,
               actionType: 'create',
-              actorControl: 标准化战斗操控来源(creationActionStart?.actorControl, 'AI'),
+              actorControl: 标准化战斗操控来源(playerAction?.__actorControl || creationActionStart?.actorControl, 'AI'),
               actionRole: 'ACTIVE',
               sourceActionId: creationActionStart?.actionId || '',
               parentNodeId: creationActionStart?.chainNodeId || '',
@@ -31620,7 +29680,7 @@ class BattleUIComponent {
             以命换伤: 参数.以命换伤,
           });
           if (!(触发概率 > 0)) return;
-          const 来源动作 = typeof 确保战斗运行态(combatData)?.shadowCounterDecider === 'function'
+          const 来源动作 = typeof 确保战斗运行态(combatData)?.decisionCounterDecider === 'function'
             ? {}
             : 选择行为防反动作来源(防反方, combatData, 防反类型);
           result.__行为防反候选 = {
@@ -35918,1967 +33978,6 @@ class BattleUIComponent {
           return { strategicBranches, behaviorState, combatType, activeBuffs };
         }
 
-        function buildNpcSkillCandidateContext(
-          defender,
-          attacker,
-          playerAction,
-          availableSkills,
-          behaviorState,
-          activeBuffs,
-          isLowHealth,
-          选项 = {},
-        ) {
-          const 主动回合 = 选项.主动回合 === true;
-          const 防御者系别 = 读取规划单位系别(defender);
-          const 攻击者系别 = 读取规划单位系别(attacker);
-          const attackerSpeed = attacker.agi - (playerAction.cast_time || 0) * 10;
-          const isChargingHighThreat = !!behaviorState?.isChargingHighThreat;
-          const threatProfile = estimateIncomingActionThreat(attacker, defender, playerAction, behaviorState?.combatData);
-          const 读取规划同队单位 = unit => {
-            const combatData = behaviorState?.combatData || {};
-            const 玩家侧 = dedupeCombatTargetList((combatData?.参战者?.team_player || []).filter(Boolean)).filter(isCombatUnitAlive);
-            const 敌方侧 = dedupeCombatTargetList((combatData?.参战者?.team_enemy || []).filter(Boolean)).filter(isCombatUnitAlive);
-            if (玩家侧.some(member => isCombatUnitIdentityMatch(member, unit?.name || unit))) return 玩家侧;
-            if (敌方侧.some(member => isCombatUnitIdentityMatch(member, unit?.name || unit))) return 敌方侧;
-            return [unit].filter(Boolean);
-          };
-          const 读取状态移除规划目标组 = effect => {
-            const 目标文本 = String(effect?.目标 || '').trim();
-            const 状态文本 = String(effect?.状态 || '').trim();
-            const 友方列表 = 读取规划同队单位(defender);
-            const 敌方列表 = 读取规划同队单位(attacker);
-            if (目标文本.includes('自身')) return [{ 目标立场: '友方', 目标列表: [defender] }];
-            if (目标文本.includes('群体')) {
-              if (状态文本 === '任意负面') return [{ 目标立场: '友方', 目标列表: 友方列表 }];
-              if (状态文本 === '任意增益') return [{ 目标立场: '敌方', 目标列表: 敌方列表 }];
-              return [
-                { 目标立场: '友方', 目标列表: 友方列表 },
-                { 目标立场: '敌方', 目标列表: 敌方列表 },
-              ];
-            }
-            return [{ 目标立场: '敌方', 目标列表: [attacker] }];
-          };
-          const 状态依赖技能当前可执行 = skill => {
-            const effects = getSkillEffects(skill, { 行为规划: true });
-            if (effects.some(effect => String(effect?.原型 || '').trim() === '成长修正')) return false;
-            const hasState = (unit, effect = {}) => countConditionsByPrototypeFilter(unit, effect) > 0;
-            return effects.every(effect => {
-              const 原型名 = String(effect?.原型 || '').trim();
-              if (原型名 === '状态移除') {
-                return 读取状态移除规划目标组(effect).some(group =>
-                  (group.目标列表 || []).some(target => hasState(target, effect)),
-                );
-              }
-              if (原型名 === '状态交换') {
-                return true;
-              }
-              if (原型名 === '状态转移') {
-                const 来源 = String(effect?.来源 || '自身').trim();
-                const 去向 = String(effect?.去向 || '目标').trim();
-                if (!['自身', '目标', '友方', '敌方'].includes(来源) || !['自身', '目标', '友方', '敌方'].includes(去向)) return false;
-                const 端点列表 = 端点 => {
-                  if (端点 === '自身') return [defender].filter(Boolean);
-                  if (端点 === '目标') return 来源 === 去向 ? 读取规划同队单位(attacker) : [attacker].filter(Boolean);
-                  if (端点 === '友方') return 友方列表;
-                  if (端点 === '敌方') return 敌方列表;
-                  return [];
-                };
-                const 来源列表 = 端点列表(来源);
-                const 去向列表 = 端点列表(去向);
-                return 来源列表.some(source =>
-                  hasState(source, effect) &&
-                  去向列表.some(receiver => receiver && !isCombatUnitIdentityMatch(receiver, source?.name || source)),
-                );
-              }
-              return true;
-            });
-          };
-          const 反高速窗口 = 评估反高速应对窗口(defender, attacker, playerAction, behaviorState?.combatData);
-          const validSkills = availableSkills.filter(skill => {
-            if (单位已有同名维持技能(defender, skill)) return false;
-            const castTime = getSkillCastTime(skill);
-            const npcSpeed = defender.agi - castTime * 10;
-            const cost = parseSkillCostForChar(skill, defender, {
-              actor: defender,
-              caster: defender,
-              attacker: defender,
-              target: attacker,
-              defender: attacker,
-              action: { action_type: '释放魂技', type: '技能', skill },
-              skill,
-              combatData: behaviorState?.combatData,
-              当前行动: '释放魂技',
-            });
-            const 反高速可应对 = 反高速窗口.成立 && (castTime <= 12 || /群体|全场/.test(String(getSkillTarget(skill) || '')));
-            return cost.canCast && 状态依赖技能当前可执行(skill) && (
-              主动回合 ||
-              npcSpeed > Math.max(1, attackerSpeed) * 0.8 ||
-              反高速可应对
-            );
-          });
-
-          function pickSkillWithWeight(skills) {
-            const weighted = (skills || []).map(skill => {
-              const 规划技能 = 构建行为规划技能(skill, attacker, defender, behaviorState?.combatData);
-              const stateName = getPrimaryStateName(规划技能) || '无';
-              const skillType = getSkillType(skill);
-              if (stateName !== '无' && ['辅助', '防御'].includes(skillType) && activeBuffs.includes(stateName)) {
-                return {
-                  skill,
-                  规划技能,
-                  weight: 6,
-                  name: skill.name || '未命名技能',
-                  build() {
-                    return skill;
-                  },
-                };
-              }
-
-              let weight = 10;
-              if (skill.__机制授予主动技能 === true) weight += 55;
-              const skillType2 = getSkillType(skill);
-              const skillCastTime = getSkillCastTime(skill);
-              const 原始技能威力 = Number(getPrimaryDamageEffect(规划技能)?.威力倍率 || 0) || 0;
-              const 技能效果列表 = getSkillEffects(规划技能, { 行为规划: true });
-              const 状态交换效果列表 = 技能效果列表.filter(effect => String(effect?.原型 || '').trim() === '状态交换');
-              const 状态交换规划收益 = 状态交换效果列表.reduce(
-                (总和, effect) => 总和 + Math.max(0, 估算状态交换释放权重(effect, defender, attacker, behaviorState)),
-                0,
-              );
-              if (状态交换效果列表.length && 状态交换规划收益 <= 0 && 技能效果列表.every(effect => String(effect?.原型 || '').trim() === '状态交换')) {
-                return {
-                  skill,
-                  规划技能,
-                  weight: 0,
-                  name: skill.name || '未命名技能',
-                  build() {
-                    return skill;
-                  },
-                };
-              }
-              const 结算修正效果列表 = 技能效果列表.filter(effect => String(effect?.原型 || '').trim() === '结算修正');
-              const skillPower = 原始技能威力;
-              const 当前技能元素集合 = new Set(normalizeBattleSkillAttributeTokens([
-                ...(Array.isArray(规划技能?.附带属性) ? 规划技能.附带属性 : [规划技能?.附带属性]),
-                getBattleSkillAttributeSummary(规划技能 || {}).显示元素,
-                ...((getBattleSkillElementStructure(规划技能 || {}).核心元素) || []),
-                ...((getBattleSkillElementStructure(规划技能 || {}).驱动元素) || []),
-                ...((getBattleSkillElementStructure(规划技能 || {}).触发元素) || []),
-              ]));
-              const 结算修正元素匹配 = effect => {
-                const 限定元素列表 = normalizeBattleSkillAttributeTokens(effect?.限定元素);
-                if (!限定元素列表.length) return 1;
-                return 限定元素列表.some(元素 => 当前技能元素集合.has(元素)) ? 1 : 0;
-              };
-              const 结算修正强度 = (结算名, 方向 = '任意') =>
-                结算修正效果列表.reduce((总和, effect) => {
-                  if (String(effect?.结算 || '').trim() !== 结算名) return 总和;
-                  if (!结算修正元素匹配(effect)) return 总和;
-                  let 数值 = 读取战斗数值正负(effect?.数值);
-                  if (!读取战斗数值是否百分比(effect?.数值)) {
-                    if (结算名 === '消耗') {
-                      const 总消耗 = Math.max(1, Number(cost.reqSp || 0) + Number(cost.reqVit || 0) + Number(cost.reqMen || 0));
-                      数值 = 数值 / 总消耗;
-                    } else if (结算名 === '前摇') {
-                      数值 = 数值 / Math.max(1, Number(skillCastTime || skill?.前摇 || 1));
-                    }
-                  }
-                  if (方向 === '正向' && 数值 <= 0) return 总和;
-                  if (方向 === '负向' && 数值 >= 0) return 总和;
-                  return 总和 + Math.max(0, Math.abs(数值));
-                }, 0);
-              const 有未匹配限定结算修正 = 结算修正效果列表.some(effect => effect?.限定元素 !== undefined && !结算修正元素匹配(effect));
-              const 有结算修正 = 结算名 => 结算修正效果列表.some(effect => String(effect?.结算 || '').trim() === 结算名);
-              const 伤害预结算 = estimateIncomingActionThreat(
-                defender,
-                attacker,
-                { action_type: '技能', type: '技能', cast_time: skillCastTime, skill: 规划技能 },
-                behaviorState?.combatData,
-              );
-              const 预结算伤害比例 = Number(伤害预结算.projectedDamageRatio || 0);
-              if (isSupportLikeSkill(skill)) {
-                const targetForCost = String(getSkillTarget(skill)).includes('敌方') ? attacker : defender;
-                skill.__targetForSupportCost = targetForCost;
-              }
-              const cost = parseSkillCostForChar(skill, defender, {
-                actor: defender,
-                caster: defender,
-                attacker: defender,
-                target: String(getSkillTarget(skill)).includes('敌方') ? attacker : defender,
-                defender: String(getSkillTarget(skill)).includes('敌方') ? attacker : defender,
-                action: { action_type: '释放魂技', type: '技能', skill },
-                skill,
-                combatData: behaviorState?.combatData,
-                当前行动: '释放魂技',
-              });
-              delete skill.__targetForSupportCost;
-              const spRatio = cost.reqSp > 0 ? cost.reqSp / Math.max(1, defender.sp) : 0;
-              const vitRatio = cost.reqVit > 0 ? cost.reqVit / Math.max(1, defender.sta || defender.体力 || 1) : 0;
-              const 副作用自损风险 = getBattleSkillSideEffectList(skill).reduce((总和, 条目) => {
-                return 总和 + estimateBattleSideEffectRisk(条目, defender);
-              }, 0);
-
-              if (防御者系别 === '强攻系') {
-                if (skillType2 === '输出') weight += 40 + Math.floor(skillPower / 10);
-                if (skillType2 === '防御') weight += 20;
-              } else if (防御者系别 === '敏攻系') {
-                if (skillType2 === '输出' && skillCastTime <= 15) weight += 60;
-                if (skillType2 === '输出' && skillCastTime > 20) weight -= 30;
-              } else if (防御者系别 === '防御系') {
-                if (skillType2 === '防御') weight += 80;
-                if (skillType2 === '输出') weight += 10;
-              } else if (防御者系别 === '控制系') {
-                if (skillType2 === '控制') weight += 80;
-              } else if (['辅助系', '治疗系', '食物系', '召唤系'].includes(防御者系别)) {
-                if (skillType2 === '辅助') weight += 24;
-                if (skillType2 === '防御') weight += 18;
-                if (skillType2 === '控制') weight += 12;
-                if (skillType2 === '输出') weight -= 12;
-              }
-
-              const isUltimate =
-                skillPower >= 200 || 伤害预结算.severeDamage === true || /真身|第八魂技|第九魂技|武魂融合技|生命之火/.test(skill.name || '');
-              if (isUltimate) {
-                const enemyHpRatio = getCombatHpRatio(attacker);
-                const myHpRatio = getCombatHpRatio(defender);
-                if (behaviorState.combatType === '擂台切磋') weight -= 30;
-                else {
-                  if (防御者系别 === '强攻系' && enemyHpRatio < 0.65) weight += 30;
-                  if (伤害预结算.lethalRisk === true) weight += 80;
-                  else if (enemyHpRatio < 0.4) weight += 60;
-                  if (myHpRatio < 0.3) weight += 50;
-                  if (enemyHpRatio > 0.8 && myHpRatio > 0.8) weight -= 20;
-                }
-              }
-              if (伤害预结算.targetHitsDefender) {
-                if (伤害预结算.lethalRisk === true) weight += 70;
-                else if (伤害预结算.severeDamage === true) weight += 42;
-                else if (伤害预结算.moderateDamage === true) weight += 24;
-                else if (预结算伤害比例 > 0) weight += Math.min(18, Math.floor(预结算伤害比例 * 70));
-              }
-
-              weight -= Math.floor(skillCastTime / 5);
-              if (!isLowHealth) {
-                if (spRatio > 0.5 || vitRatio > 0.5) weight = Math.floor(weight * 0.3);
-                else if (spRatio > 0.3 || vitRatio > 0.3) weight = Math.floor(weight * 0.7);
-              } else if (vitRatio > 0.5) {
-                weight = Math.floor(weight * 0.5);
-              }
-              if (副作用自损风险 > 0) {
-                weight -= 副作用自损风险 >= 3 ? 120 : Math.ceil(副作用自损风险 * (isLowHealth ? 70 : 42));
-              }
-
-              const summary = deriveBattleSummaryFromEffects(规划技能);
-              const mainType = inferMainTypeFromEffects(规划技能) || '无';
-              const 来源类别 = getBattleSkillSourceCategory(规划技能);
-              const 战斗目标类型 = inferSkillPrimaryTargetKind(规划技能);
-              const enemyHpRatio = getCombatHpRatio(attacker);
-              const selfHpRatio = getCombatHpRatio(defender);
-              const enemySpRatio = Math.max(0, Number(attacker.sp || 0)) / Math.max(1, Number(attacker.sp_max || 1));
-              const enemyMenRatio = Math.max(0, Number(attacker.men || 0)) / Math.max(1, Number(attacker.men_max || 1));
-              const fieldActive = Object.keys(defender.状态效果 || {}).some(k => /领域|场地|结界|召唤/.test(k));
-              const enemySnapshot = buildConditionTacticalSnapshot(attacker);
-              const selfSnapshot = buildConditionTacticalSnapshot(defender);
-              const allyCount = behaviorState.alliesCount || 1;
-              const selfSpRatio = Math.max(0, Number(defender.sp || 0)) / Math.max(1, Number(defender.sp_max || 1));
-              const selfMenRatio = Math.max(0, Number(defender.men || 0)) / Math.max(1, Number(defender.men_max || 1));
-              const 技能规划收益 = 评估技能规划净收益(规划技能, {
-                actor: defender,
-                primaryTarget: attacker,
-                behaviorState: { ...behaviorState, threatProfile: 伤害预结算, observedTargetAction: playerAction },
-              });
-              const 规划净收益 = Number(技能规划收益.净收益 || 0);
-              const 是全场规划 = 战斗目标类型 === '全场' || summary.目标规模 === '全场';
-              const 对手攻击压制 =
-                ['强攻系', '敏攻系'].includes(攻击者系别) &&
-                (threatProfile.incomingAttackIntent === true ||
-                  Number(behaviorState.round || 0) >= 3 ||
-                  getCombatHpRatio(defender) < 0.82);
-              const hasFriendlyGrantable = skillCanGrantFriendlyMechanism(规划技能);
-              const hasHostileSemantic = skillTargetsEnemySide(规划技能) && 技能包含运行语义(规划技能, '敌对');
-              const 是团队保护 = 是团队保护技能(规划技能, { summary });
-              const 是保命技能 = 技能具有保命倾向(规划技能, { summary });
-              const 是规则压制 = 技能具有规则压制倾向(规划技能, { summary, mainType });
-              const hasAntiHeal = isBattleSkillAntiHealProfile(规划技能, { summary });
-              const defenseNature = String(summary.防御性质 || '无');
-              const hasSharedVision = isBattleSkillSharedVisionProfile(规划技能);
-              const hasCounter = defenseNature === '反制';
-              const hasBlock = defenseNature === '免伤';
-              const hasShield = defenseNature === '护盾';
-              const hasDeathSave = defenseNature === '免死';
-              const hasRevive = summary.回复性质 === '复活机制' || hasBattleSkillRuntimeConsumer(规划技能, ['revive']);
-              const hasClone = defenseNature === '分身';
-              const hasInvincible = defenseNature === '无敌';
-              const hasReflect = defenseNature === '反射';
-              const hasDamageShare = defenseNature === '分摊';
-              const hasSkillSeal = isBattleSkillSealProfile(规划技能);
-              const hasHealInvert = isBattleSkillHealInvertProfile(规划技能);
-              const hasDotDetonate = isBattleSkillDotDetonateProfile(规划技能);
-              const hasShieldBreak = isBattleSkillShieldBreakProfile(规划技能);
-              const hasResourceDrain = isBattleSkillResourceDrainProfile(规划技能);
-              const hasResourceRefeed = isBattleSkillResourceRefeedProfile(规划技能);
-              const hasMechanismSuppress = isBattleSkillMechanismSuppressProfile(规划技能);
-              const suppressTargets = hasMechanismSuppress ? 读取战斗技能抹消战术标签(规划技能) : [];
-              const hasExecute = isBattleSkillExecuteProfile(规划技能, { summary });
-              const hasResourceRecover = getSkillEffects(规划技能, { 行为规划: true }).some(effect =>
-                isBattleRecoverEffect(effect, ['sp', 'men']),
-              ) || hasResourceRefeed;
-              const hasHeal = 技能效果列表.some(effect => isBattleRecoverEffect(effect, ['vit']));
-              const hasDotPressure = isBattleSkillDotPressureProfile(规划技能);
-              const hasDelayBurst = hasBattleSkillRuntimeConsumer(规划技能, ['delay_burst']);
-              const hasVolatile = hasBattleSkillRuntimeConsumer(规划技能, ['self_random_variance']);
-              const hasReflectiveConvert = hasBattleSkillRuntimeConsumer(规划技能, ['damage_to_heal', 'heal_to_damage']);
-              const 有复制机制 = hasBattleSkillRuntimeConsumer(规划技能, ['copy']);
-              const 有炸环 = hasBattleSkillRuntimeConsumer(规划技能, ['ring_burst_gain']);
-              const 时光回溯效果列表 = 读取技能时光回溯效果列表(规划技能, {
-                actor: defender,
-                caster: defender,
-                attacker: defender,
-                target: attacker,
-                defender: attacker,
-                action: { action_type: '释放魂技', type: '技能', skill: 规划技能 },
-                skill: 规划技能,
-                combatData: behaviorState?.combatData,
-                当前行动: '释放魂技',
-              });
-              const 有主动时光回溯 = 时光回溯效果列表.some(effect => String(effect?.发动方式 || '').trim() === '主动');
-              const 有被动时光回溯 = 时光回溯效果列表.some(effect => String(effect?.发动方式 || '被动').trim() !== '主动');
-              const 有时光回溯 = 有主动时光回溯 || 有被动时光回溯;
-              const 有气运控制 = hasBattleSkillRuntimeConsumer(规划技能, ['luck_interference', 'misfortune_backlash']);
-              const 有元素封禁 = hasBattleSkillRuntimeConsumer(规划技能, ['element_seal']);
-              const penetrationValue = Number(getPrimaryDamageEffect(规划技能)?.防御穿透 || 0);
-              const 结算增伤强度 = 结算修正强度('造成伤害', '正向');
-              const 结算易伤强度 = 结算修正强度('受到伤害', '正向');
-              const 结算承伤下调强度 = 结算修正强度('受到伤害', '负向');
-              const 结算反伤强度 = 结算修正强度('反伤');
-              const 结算转移强度 = 结算修正强度('伤害转移');
-              const 结算分摊强度 = 结算修正强度('伤害分摊');
-              const 结算消耗下调强度 = 结算修正强度('消耗', '负向');
-              const 结算消耗上调强度 = 结算修正强度('消耗', '正向');
-              const 结算前摇下调强度 = 结算修正强度('前摇', '负向');
-              const 结算前摇上调强度 = 结算修正强度('前摇', '正向');
-              const 结算防御穿透强度 = 结算修正强度('防御穿透');
-              const 结算伤害吸收强度 = 结算修正强度('伤害吸收');
-              const 结算反击强度 = 结算修正强度('反击');
-              const 结算技能效果强度 = 结算修正强度('技能效果');
-              const 结算治疗强度 = 结算修正强度('治疗', '正向');
-              const actorMemory = ensureActorDecisionMemory(defender);
-              const counterPenalty = getActorSkillCounterPenalty(defender, skill.name || skill.技能名称 || '');
-              const 重复状态衰减 = 评估敌对重复状态收益衰减(skill, attacker, {
-                projectedDamageRatio: 预结算伤害比例,
-              });
-              const 状态名称 = String(getPrimaryStateName(规划技能) || skill.name || skill.技能名称 || '').trim();
-              const 是否真身技能 = /真身/.test(String(skill.name || skill.技能名称 || 状态名称 || ''));
-              const 已有同类增益 =
-                !!状态名称 &&
-                Object.keys(defender.状态效果 || {}).some(现有状态名 =>
-                  String(现有状态名 || '').includes(状态名称) || 状态名称.includes(String(现有状态名 || '')),
-                );
-              const 是友方增益目标 = ['自身', '友方单体', '友方群体'].includes(战斗目标类型);
-              const 是核心自我增益 =
-                是友方增益目标 &&
-                !已有同类增益 &&
-                (mainType === '增益类' ||
-                  summary.防御性质 !== '无' ||
-                  hasReflect ||
-                  hasCounter ||
-                  hasBlock ||
-                  hasShield ||
-                  /真身|霸体|速度提升|威力增幅|伤害反射|增幅|强化/.test(String(skill.name || skill.技能名称 || '')));
-              const 近期受挫次数 = Object.values(actorMemory.countered_skills || {}).reduce(
-                (总数, 次数) => 总数 + Math.max(0, Number(次数 || 0)),
-                0,
-              );
-              const 久攻不下 =
-                (Number(behaviorState.round || 0) >= 3 && enemyHpRatio > 0.86) ||
-                (Number(behaviorState.round || 0) >= 2 && 近期受挫次数 >= 2) ||
-                (Number(behaviorState.round || 0) >= 5 && enemyHpRatio > 0.72);
-              const 状态移除释放权重 = 技能效果列表
-                .filter(effect => String(effect?.原型 || '').trim() === '状态移除')
-                .reduce((总和, effect) => {
-                  return 总和 + 读取状态移除规划目标组(effect).reduce((组总分, group) => 组总分 + 估算状态移除目标列表释放权重(effect, defender, group.目标列表, {
-                    目标立场: group.目标立场,
-                    高威胁窗口: isChargingHighThreat || threatProfile.severeControl === true,
-                    久攻不下,
-                  }), 0);
-                }, 0);
-              const 低耗开局增益 =
-                Number(behaviorState.round || 0) <= 2 &&
-                cost.reqSp <= Math.max(1, Number(defender.sp || 0)) * 0.18 &&
-                cost.reqVit <= Math.max(1, Number(defender.sta || defender.体力 || 1)) * 0.18;
-              const 恢复真实需求 =
-                (hasHeal && selfHpRatio < 0.68) ||
-                (hasResourceRecover && (selfSpRatio < 0.58 || selfMenRatio < 0.58)) ||
-                selfSnapshot.hasBadCondition;
-              const 反射真实需求 =
-                hasReflect &&
-                threatProfile.targetHitsDefender === true &&
-                threatProfile.incomingAttackIntent === true &&
-                (threatProfile.projectedDamageRatio >= 0.08 ||
-                  threatProfile.moderateDamage === true ||
-                  threatProfile.severeDamage === true ||
-                  threatProfile.lethalRisk === true);
-              const 防护真实需求 =
-                selfHpRatio < 0.72 ||
-                isChargingHighThreat ||
-                (threatProfile.targetHitsDefender && (!hasReflect || 反射真实需求)) ||
-                behaviorState.实力压制威胁?.是威胁 === true ||
-                Number(behaviorState.团队护援压力 || 0) >= 45;
-              const 增益真实需求 =
-                已有同类增益 !== true &&
-                (恢复真实需求 ||
-                  防护真实需求 ||
-                  反射真实需求 ||
-                  久攻不下 ||
-                  是规则压制 ||
-                  (是团队保护 && allyCount > 1 && Number(behaviorState.团队护援压力 || 0) >= 30) ||
-                  (是核心自我增益 && 低耗开局增益 && !是否真身技能));
-              const 满状态低压 =
-                selfHpRatio > 0.86 &&
-                selfSpRatio > 0.68 &&
-                selfMenRatio > 0.68 &&
-                !isChargingHighThreat &&
-                !(threatProfile.targetHitsDefender && threatProfile.incomingAttackIntent) &&
-                !久攻不下;
-              const 真身战况推力 = Math.max(
-                behaviorState.开局绝境窗口 === true ? 1 : 0,
-                threatProfile.targetHitsDefender && threatProfile.lethalRisk ? 1 : 0,
-                threatProfile.targetHitsDefender && (threatProfile.severeDamage || threatProfile.severeControl) ? 0.82 : 0,
-                selfHpRatio < 0.35 ? 0.9 : selfHpRatio < 0.55 ? 0.55 : 0,
-                久攻不下 ? 0.65 : 0,
-                Math.min(0.25, Number(behaviorState.round || 0) / 12),
-              );
-              const 终局爆发修正强度 = 结算增伤强度 + 结算易伤强度 + 结算防御穿透强度 + 结算修正强度('持续伤害引爆') + (有炸环 ? 0.6 : 0);
-              if (终局爆发修正强度 > 0) {
-                if (enemyHpRatio < 0.38 || 伤害预结算.lethalRisk || 久攻不下) weight += 18 + Math.floor(终局爆发修正强度 * 70);
-                else if (Number(behaviorState.round || 0) <= 1 && skillPower < 140) weight -= 14;
-                if (enemySnapshot.hasDefenseBuffed || enemySnapshot.hasShielded) weight += Math.floor(结算防御穿透强度 * 55);
-              }
-              if (结算消耗下调强度 > 0 || 结算前摇下调强度 > 0) {
-                const 准备窗口 = Number(behaviorState.round || 0) <= 2 || selfSpRatio < 0.55 || selfMenRatio < 0.55 || skillCastTime >= 18;
-                if (准备窗口) weight += 12 + Math.floor((结算消耗下调强度 + 结算前摇下调强度) * 52);
-                else weight += 4;
-                if (结算前摇下调强度 > 0 && (isChargingHighThreat || skillCastTime >= 18)) weight += 16;
-              }
-              if (结算消耗上调强度 > 0 || 结算前摇上调强度 > 0) {
-                if (isChargingHighThreat || enemySpRatio < 0.45 || enemyMenRatio < 0.45) weight += 16 + Math.floor((结算消耗上调强度 + 结算前摇上调强度) * 58);
-                else weight += 6;
-              }
-              if (结算承伤下调强度 > 0 || 结算反伤强度 > 0 || 结算转移强度 > 0 || 结算分摊强度 > 0 || 结算反击强度 > 0) {
-                if (防护真实需求) weight += 14 + Math.floor((结算承伤下调强度 + 结算反伤强度 + 结算转移强度 + 结算分摊强度 + 结算反击强度) * 64);
-                else weight -= 满状态低压 ? 18 : 4;
-                if (结算分摊强度 > 0 && allyCount <= 1) weight -= 28;
-                if ((结算反伤强度 > 0 || 结算转移强度 > 0 || 结算反击强度 > 0) && threatProfile.incomingAttackIntent) weight += 18;
-              }
-              if (结算治疗强度 > 0 && (hasHeal || summary.回复性质 !== '无')) {
-                weight += selfHpRatio < 0.55 ? 22 + Math.floor(结算治疗强度 * 52) : -10;
-              }
-              if (结算伤害吸收强度 > 0) {
-                const 吸收资源列表 = 结算修正效果列表
-                  .filter(effect => String(effect?.结算 || '').trim() === '伤害吸收' && 结算修正元素匹配(effect))
-                  .map(effect => String(effect?.吸收资源 || '生命').trim() || '生命');
-                const 需要吸收 =
-                  吸收资源列表.includes('生命') && selfHpRatio < 0.68 ||
-                  吸收资源列表.includes('体力') && selfHpRatio < 0.72 ||
-                  吸收资源列表.includes('魂力') && selfSpRatio < 0.62 ||
-                  吸收资源列表.includes('精神力') && selfMenRatio < 0.62;
-                weight += 需要吸收 ? 14 + Math.floor(结算伤害吸收强度 * 48) : 4;
-              }
-              if (结算技能效果强度 > 0) {
-                const 可识别增幅入口 = mainType !== '无' || skillPower > 0 || summary.控制强度 !== '无' || summary.回复性质 !== '无';
-                weight += 可识别增幅入口 ? Math.floor(结算技能效果强度 * 36) : -16;
-              }
-              if (有未匹配限定结算修正) weight -= 18;
-              if (规划净收益 > 0) {
-                weight += Math.min(120, Math.floor(规划净收益 * (是全场规划 ? 0.42 : 0.28)));
-              } else if (规划净收益 < 0) {
-                weight -= Math.min(180, Math.ceil(Math.abs(规划净收益) * (是全场规划 ? 0.7 : 0.45)));
-              } else if (是全场规划) {
-                weight -= 24;
-              }
-
-              if (['控制类', '削弱类'].includes(mainType)) weight += 15;
-              if (mainType === '增益类') {
-                if (增益真实需求) weight += Number(behaviorState.round || 0) <= 2 ? 12 : 6;
-                else weight -= 满状态低压 ? 32 : 18;
-              }
-              if (是核心自我增益) {
-                if (低耗开局增益 && 增益真实需求) weight += 16;
-                if (久攻不下) weight += 24;
-                if (!增益真实需求 && !是否真身技能) weight -= 22;
-                if (是否真身技能) weight += Math.floor(真身战况推力 * 72) - 48;
-                if (selfSnapshot.hasDefenseBuffed && summary.防御性质 !== '无') weight -= 24;
-                if (hasReflect && 满状态低压 && !久攻不下) weight -= 28;
-                if (hasReflect && !反射真实需求) weight -= 46;
-                if (hasReflect && 反射真实需求)
-                  weight += threatProfile.severeDamage || threatProfile.lethalRisk ? 34 : threatProfile.moderateDamage ? 22 : 12;
-                if (
-                  防御者系别 === '强攻系' &&
-                  summary.防御性质 !== '无' &&
-                  selfHpRatio > 0.72 &&
-                  !(threatProfile.targetHitsDefender && threatProfile.incomingAttackIntent) &&
-                  !isChargingHighThreat
-                )
-                  weight -= 80;
-              }
-              if (
-                防御者系别 === '强攻系' &&
-                selfHpRatio > 0.55 &&
-                !isChargingHighThreat &&
-                是友方增益目标 &&
-                mainType !== '伤害类' &&
-                !是否真身技能 &&
-                !(threatProfile.lethalRisk || threatProfile.severeDamage || threatProfile.severeControl)
-              )
-                weight -= summary.防御性质 !== '无' ? 120 : 60;
-              if (久攻不下 && mainType === '伤害类' && (penetrationValue >= 15 || hasShieldBreak || skillPower >= 160 || 伤害预结算.moderateDamage === true)) weight += 32;
-              if (久攻不下 && 是规则压制) weight += 18;
-              if (mainType === '特殊规则类') weight -= 5;
-              if (是保命技能 && (selfHpRatio < 0.55 || isChargingHighThreat)) weight += 12;
-              if (是团队保护 && allyCount > 1) weight += 10;
-              if (是团队保护 && allyCount > 1) {
-                const 护援压力 = Math.max(0, Number(behaviorState.团队护援压力 || 0));
-                weight += 22 + Math.floor(护援压力 * 0.65);
-                if (inferSkillPrimaryTargetKind(规划技能) !== '自身') weight += 18;
-                if (防御者系别 === '防御系') weight += 18;
-              }
-              if (是规则压制 && (isChargingHighThreat || enemySnapshot.hasShielded || enemySnapshot.hasHealingTrend))
-                weight += 10;
-              if (来源类别 === '武魂融合技') {
-                if (isChargingHighThreat || enemyHpRatio < 0.42 || selfHpRatio < 0.42) weight += 36;
-                else weight -= 18;
-              } else if (来源类别 === '自创魂技') {
-                if (是规则压制 || hasHostileSemantic) weight += 12;
-                if (hasFriendlyGrantable && allyCount > 1) weight += 8;
-              }
-
-              if (summary.控制强度 === '硬控' && isChargingHighThreat) weight += 60;
-              else if (summary.控制强度 === '软控' && isChargingHighThreat) weight += 35;
-
-              if (
-                mainType === '伤害类' &&
-                summary.目标规模 === '单体' &&
-                summary.爆发级别 === '高' &&
-                (enemyHpRatio < 0.35 || (防御者系别 === '强攻系' && enemyHpRatio < 0.65))
-              )
-                weight += 防御者系别 === '强攻系' && enemyHpRatio < 0.65 ? 38 : 50;
-              if (
-                防御者系别 === '强攻系' &&
-                mainType === '伤害类' &&
-                enemyHpRatio < 0.72 &&
-                !enemySnapshot.hasShielded &&
-                !enemySnapshot.hasDefenseBuffed
-              )
-                weight += Math.min(42, Math.floor(skillPower / 8));
-              if (mainType === '伤害类' && summary.目标规模 === '群体' && behaviorState.round <= 1) weight += 25;
-
-              if (summary.防御性质 !== '无' && selfHpRatio < 0.5) weight += 30;
-              if (summary.防御性质 === '免死' && selfHpRatio < 0.35) weight += 40;
-              if (hasClone && (behaviorState.round <= 2 || selfHpRatio < 0.65)) weight += 25;
-
-              if (summary.回复性质 !== '无' && (selfHpRatio < 0.6 || selfSnapshot.hasBadCondition)) weight += 35;
-              if (summary.回复性质 === '净化' && selfSnapshot.hasBadCondition) weight += 60;
-              if (状态移除释放权重 > 0) weight += Math.min(140, Math.round(状态移除释放权重 * 0.85));
-              if (
-                对手攻击压制 &&
-                ['辅助系', '治疗系', '食物系', '召唤系'].includes(防御者系别) &&
-                (mainType === '增益类' || hasFriendlyGrantable || hasResourceRecover) &&
-                selfHpRatio > 0.45
-              ) {
-                weight -= hasResourceRecover && (selfSpRatio < 0.28 || selfMenRatio < 0.28) ? 12 : 30;
-              }
-
-              if (summary.协同性 === '高' && (behaviorState.alliesCount || 1) > 1) weight += 20;
-              else if (summary.协同性 === '中' && (behaviorState.alliesCount || 1) > 1) weight += 10;
-              if (hasFriendlyGrantable && allyCount > 1) {
-                weight += summary.目标规模 === '单体' ? 8 : 18;
-                if (selfHpRatio < 0.55 || behaviorState.round <= 2) weight += 10;
-              }
-              if (hasHostileSemantic && summary.控制强度 !== '无' && isChargingHighThreat) weight += 10;
-
-              if (summary.生效方式 === '持续') weight += fieldActive ? -30 : 20;
-              if (summary.生效方式 === '延迟') {
-                if (behaviorState.round <= 1) weight += 15;
-                else if (enemyHpRatio < 0.3) weight -= 10;
-              }
-              if (summary.生效方式 === '触发') weight += 5;
-
-              if (summary.爆发级别 === '高' && enemyHpRatio < 0.4) weight += 20;
-              if (summary.持续性 === '长' && behaviorState.round <= 2) weight += 15;
-              if (summary.持续性 === '中' && behaviorState.combatType !== '擂台切磋') weight += 10;
-
-              if (hasAntiHeal) {
-                if (enemySnapshot.hasAntiHeal) weight -= 35;
-                else if (['辅助系', '治疗系', '食物系', '召唤系'].includes(攻击者系别) || enemySnapshot.hasHealingTrend)
-                  weight += 45;
-                else if (enemyHpRatio > 0.55) weight += 20;
-              }
-              if (hasSharedVision && allyCount > 1) {
-                if (selfSnapshot.hasSharedVision) weight -= 30;
-                else weight += 30;
-              }
-              if (hasCounter && (isChargingHighThreat || selfHpRatio < 0.55))
-                weight += selfSnapshot.hasReactiveDefense ? 8 : 22;
-              if (hasBlock && (isChargingHighThreat || selfHpRatio < 0.5))
-                weight += selfSnapshot.hasReactiveDefense ? 10 : 28;
-              if (hasShield && selfHpRatio < 0.55) weight += selfSnapshot.hasShielded ? 6 : 24;
-              if (hasDeathSave && selfHpRatio < 0.35) weight += 55;
-              if (hasInvincible && (isChargingHighThreat || selfHpRatio < 0.28)) weight += 85;
-              if (hasReflect) {
-                if (反射真实需求) weight += isChargingHighThreat ? 28 : 14;
-                else weight -= 18;
-              }
-              if (hasDamageShare && allyCount > 1 && selfHpRatio < 0.45) weight += 28;
-              if (hasClone && (selfHpRatio < 0.55 || behaviorState.round <= 2)) weight += 26;
-              if (hasRevive && selfHpRatio < 0.3) weight += 62;
-              if (hasExecute && enemyHpRatio < 0.35) weight += 40;
-              if (hasSkillSeal && isChargingHighThreat) weight += 58;
-              if (hasHealInvert && (enemySnapshot.hasHealingTrend || ['辅助系', '治疗系', '食物系', '召唤系'].includes(攻击者系别)))
-                weight += 42;
-              if (hasDotDetonate && enemySnapshot.debuffCount > 0) weight += 38 + enemySnapshot.debuffCount * 6;
-              if (hasShieldBreak && enemySnapshot.hasShielded) weight += 44;
-              if (hasResourceDrain) {
-                if (enemySpRatio > 0.45 || enemyMenRatio > 0.45) weight += 28;
-                if (selfSpRatio < 0.5 || selfMenRatio < 0.5) weight += 12;
-                if (isChargingHighThreat) weight += 10;
-              }
-              if (hasMechanismSuppress) {
-            if ((suppressTargets.includes('复活机制') || suppressTargets.includes('回复机制')) && enemySnapshot.hasHealingTrend) weight += 26;
-                if ((suppressTargets.includes('护盾') || suppressTargets.includes('防御机制')) && enemySnapshot.hasShielded) weight += 24;
-                if ((suppressTargets.includes('隐身') || suppressTargets.includes('增益')) && enemySnapshot.hasStealthed) weight += 24;
-                if ((suppressTargets.includes('增益') || suppressTargets.includes('特殊规则')) && enemySnapshot.buffCount > 0)
-                  weight += 14 + enemySnapshot.buffCount * 4;
-                if (suppressTargets.includes('防御机制') && enemySnapshot.hasReactiveDefense) weight += 20;
-              }
-              if (有复制机制) {
-                if (enemySnapshot.buffCount > 0 || enemyHpRatio < 0.72 || 久攻不下) weight += 16;
-                if (behaviorState.round <= 2 && selfHpRatio > 0.7) weight += 8;
-              }
-              if (有炸环) {
-                if (behaviorState.isDesperateNoEscape || selfHpRatio < 0.4 || enemyHpRatio < 0.38 || 久攻不下) weight += 34;
-                else weight -= 22;
-              }
-              if (有主动时光回溯) {
-                const 主动压制估值 = 时光回溯效果列表
-                  .filter(effect => String(effect?.发动方式 || '').trim() === '主动')
-                  .reduce((总和, effect) => {
-                    const 目标上下文 = resolveTimeRewindTargetContext(skill, defender, attacker, behaviorState?.combatData, effect);
-                    const 压制目标 = (目标上下文.targetSet || []).filter(targetObj =>
-                      targetObj && !isCombatUnitIdentityMatch(targetObj, defender?.name || defender),
-                    );
-                    const 敌方压制价值 = 压制目标.some(targetObj => isCombatUnitIdentityMatch(targetObj, attacker?.name || attacker)) ? 18 : 0;
-                    const 数量价值 = Math.min(24, Math.max(0, 压制目标.length - 1) * 8);
-                    const 全场误伤惩罚 = String(effect?.目标 || '').trim() === '全场' && allyCount > 1 ? Math.min(28, allyCount * 8) : 0;
-                    return 总和 + 敌方压制价值 + 数量价值 - 全场误伤惩罚;
-                  }, 0);
-                if (behaviorState.round <= 1) weight += 12;
-                if (isChargingHighThreat || dAgi > aAgi || threatProfile.incomingAttackIntent) weight += 18;
-                weight += 主动压制估值;
-                if (selfSpRatio < 0.25 || selfMenRatio < 0.25) weight -= 18;
-              }
-              if (有被动时光回溯) {
-                const 已错过预结算窗口 = threatProfile.targetHitsDefender && threatProfile.incomingAttackIntent && behaviorState?.当前阶段 === '正式落地后';
-                if (已错过预结算窗口) {
-                  weight = 0;
-                } else {
-                  const 被动保护估值 = 时光回溯效果列表
-                    .filter(effect => String(effect?.发动方式 || '被动').trim() !== '主动')
-                    .reduce((总和, effect) => {
-                      const 目标上下文 = resolveTimeRewindTargetContext(skill, defender, attacker, behaviorState?.combatData, effect);
-                      const 保护目标 = (目标上下文.targetSet || []).filter(Boolean);
-                      if (!保护目标.length) return 总和 - 12;
-                      const 目标估值 = 保护目标.reduce((目标总分, targetObj) => {
-                        const 已有未触发时光回溯壳 = !!查找时光回溯状态条目(targetObj);
-                        const 关键单位 = targetObj.type === '辅助系' || targetObj.type === '治疗系' || targetObj.type === '控制系';
-                        const 本回合态价值 =
-                          (targetObj.蓄力技能 ? 1 : 0) +
-                          (Object.values(targetObj.__技能限制运行态 || {}).some(限制态 => Number(限制态?.已用次数 || 0) > 0) ? 1 : 0);
-                        const 消耗可承受 = 计算时光回溯专属消耗(skill, targetObj, effect).canCast !== false;
-                        let 分值 = 0;
-                        if (已有未触发时光回溯壳) 分值 -= 36;
-                        if (!消耗可承受) 分值 -= 28;
-                        if (关键单位) 分值 += 14;
-                        if (本回合态价值 > 0) 分值 += 12 * 本回合态价值;
-                        return 目标总分 + 分值;
-                      }, 0);
-                      return 总和 + Math.min(60, Math.max(-54, 目标估值));
-                    }, 0);
-                  if (!threatProfile.targetHitsDefender || !threatProfile.incomingAttackIntent) weight -= 36;
-                  else if (threatProfile.lethalRisk === true) weight += 72;
-                  else if (threatProfile.severeDamage === true || threatProfile.severeControl === true) weight += 52;
-                  else if (threatProfile.moderateDamage === true) weight += 28;
-                  else weight += 12;
-                  weight += 被动保护估值;
-                }
-              }
-              if (有气运控制) {
-                if (isChargingHighThreat || enemySnapshot.hasReactiveDefense || enemySnapshot.hasShielded || 久攻不下) weight += 18;
-              }
-              if (有元素封禁) {
-                if (isChargingHighThreat || /元素/.test(攻击者系别) || enemySnapshot.buffCount > 0) weight += 24;
-              }
-              if (hasResourceRecover && (selfSpRatio < 0.4 || selfMenRatio < 0.4))
-                weight += selfSnapshot.hasHealingTrend ? 10 : 30;
-              if (hasHeal && selfHpRatio < 0.45) weight += selfSnapshot.hasHealingTrend ? 8 : 28;
-              if (enemySnapshot.hasShielded && (penetrationValue >= 20 || skillPower >= 180 || 伤害预结算.severeDamage === true)) weight += 24;
-              if (enemySnapshot.hasDefenseBuffed && penetrationValue >= 15) weight += 18;
-              if (enemySnapshot.isLockedOrControlled) {
-                if (summary.爆发级别 === '高') weight += 18;
-                if (hasDelayBurst || skillCastTime >= 18) weight += 12;
-                if (hasExecute && enemyHpRatio < 0.45) weight += 15;
-                if (summary.控制强度 === '软控') weight -= 20;
-                else if (summary.控制强度 === '硬控' && !isChargingHighThreat) weight -= 8;
-              }
-              if (enemySnapshot.debuffCount > 0 && hasDotPressure) weight += 10;
-              if (selfSnapshot.hasReactiveDefense && (hasCounter || hasBlock || hasShield || hasDeathSave))
-                weight -= 12;
-              if (hasVolatile) {
-                if (behaviorState.isDesperateNoEscape || selfHpRatio < 0.35 || enemyHpRatio < 0.35) weight += 12;
-                else weight -= 10;
-              }
-              if (hasReflectiveConvert) {
-                if (enemySnapshot.buffCount > 0 || selfHpRatio < 0.5 || enemyHpRatio < 0.5) weight += 15;
-              }
-              if (threatProfile.targetHitsDefender) {
-                if (threatProfile.severeDamage || threatProfile.lethalRisk) {
-                  if (hasInvincible) weight += threatProfile.bypassesInvincible ? 0 : 110;
-                  if (hasDeathSave) weight += threatProfile.lethalRisk ? 38 : 12;
-                  if (hasRevive) weight += 70;
-                  if (hasClone) weight += 66;
-                  if (hasDamageShare && allyCount > 1) weight += 58;
-                  if (hasShield) weight += 36;
-                  if (hasBlock) weight += threatProfile.lethalRisk ? 78 : 52;
-                } else if (threatProfile.moderateDamage) {
-                  if (hasShield || hasCounter) weight += 18;
-                  if (hasBlock) weight += 26;
-                  if (hasReflect && 反射真实需求) weight += 12;
-                }
-                if (threatProfile.severeControl) {
-                  if (hasSharedVision || hasClone || hasInvincible) weight += 12;
-                  if (skillType2 === '控制') weight -= 8;
-                }
-              }
-              if (Number(actorMemory.focus_ttl || 0) > 0) {
-                if (actorMemory.focus_reason === 'control_window') {
-                  if (summary.爆发级别 === '高' || hasExecute) weight += 16;
-                  if (summary.控制强度 !== '无') weight -= 10;
-                } else if (
-                  actorMemory.focus_reason === 'shared_vision_focus' &&
-                  summary.目标规模 === '单体' &&
-                  summary.爆发级别 !== '无'
-                )
-                  weight += 18;
-                else if (
-                  actorMemory.focus_reason === 'dot_pressure' &&
-                  (hasDotPressure || hasExecute || summary.爆发级别 === '高')
-                )
-                  weight += 14;
-                else if (
-                  actorMemory.focus_reason === 'anti_heal_window' &&
-                  (hasDotPressure || hasExecute || summary.爆发级别 !== '无')
-                )
-                  weight += 10;
-                else if (
-                  actorMemory.focus_reason === 'armor_break_window' &&
-                  (penetrationValue >= 15 || summary.爆发级别 === '高')
-                )
-                  weight += 10;
-                else if (actorMemory.focus_reason === 'finisher' && (hasExecute || summary.爆发级别 !== '无'))
-                  weight += 18;
-              }
-              if (counterPenalty > 0) weight -= counterPenalty;
-              if (重复状态衰减.惩罚 > 0) weight -= 重复状态衰减.惩罚;
-
-              if (summary.保留倾向 >= 70 && !(isChargingHighThreat || enemyHpRatio < 0.35 || selfHpRatio < 0.35))
-                weight -= 30;
-              else if (summary.保留倾向 >= 40 && !(isChargingHighThreat || enemyHpRatio < 0.45 || selfHpRatio < 0.45))
-                weight -= 15;
-
-              let 局势系数 = 1;
-              if (是否真身技能) 局势系数 *= 读取局势倾向系数(behaviorState, '真身');
-              if (mainType === '伤害类' || skillType2 === '输出') 局势系数 *= 读取局势倾向系数(behaviorState, '输出');
-              if (mainType === '增益类' || hasFriendlyGrantable) 局势系数 *= 读取局势倾向系数(behaviorState, '辅助');
-              if (summary.回复性质 !== '无' || hasHeal || hasResourceRecover) 局势系数 *= 读取局势倾向系数(behaviorState, '恢复');
-              if (summary.防御性质 !== '无' || 是保命技能) 局势系数 *= 读取局势倾向系数(behaviorState, '防御');
-              if (summary.控制强度 !== '无' || skillType2 === '控制') 局势系数 *= 读取局势倾向系数(behaviorState, '控制');
-              if (hasShieldBreak || hasMechanismSuppress || 是规则压制 || penetrationValue >= 15)
-                局势系数 *= 读取局势倾向系数(behaviorState, '破局');
-              const 技能消耗压力 = 计算技能消耗压力(skill, defender);
-              if (技能消耗压力.综合压力 >= 0.32) 局势系数 *= 读取局势倾向系数(behaviorState, '高耗');
-              weight = Math.floor(weight * 限制行为概率(局势系数, 0.18, 2.4));
-
-              if (是否真身技能) {
-                if (已有同类增益) weight -= 90;
-                weight = 按资源压力调整权重(weight, skill, defender, {
-                  是真身: true,
-                  战况推力: 真身战况推力,
-                  回合: behaviorState.round,
-                });
-                if (
-                  Number(behaviorState.round || 0) <= 4 &&
-                  Math.abs(Number((attacker?.lv || 1) - (defender?.lv || 1))) <= 4 &&
-                  !behaviorState.开局绝境窗口 &&
-                  !isChargingHighThreat &&
-                  selfHpRatio > 0.85
-                )
-                  weight = Math.min(Math.floor(weight * 0.12), 8);
-              } else {
-                const 严重威胁窗口 =
-                  threatProfile.targetHitsDefender &&
-                  (threatProfile.severeDamage || threatProfile.lethalRisk || threatProfile.severeControl);
-                const 开局绝境窗口 = behaviorState.开局绝境窗口 === true;
-                const 终结窗口 = enemyHpRatio < 0.35;
-                const 破局窗口 =
-                  久攻不下 &&
-                  (penetrationValue >= 15 || hasShieldBreak || hasMechanismSuppress || 是规则压制 || skillPower >= 180 || 伤害预结算.severeDamage === true);
-                const 自救窗口 = selfHpRatio < 0.45 || 严重威胁窗口;
-                const 高耗基础窗口 =
-                  开局绝境窗口 ||
-                  自救窗口 ||
-                  终结窗口 ||
-                  破局窗口 ||
-                  (hasResourceRecover && (selfSpRatio < 0.35 || selfMenRatio < 0.35)) ||
-                  (是团队保护 && allyCount > 1 && Number(behaviorState.团队护援压力 || 0) >= 60);
-                const 高耗战况推力 = Math.max(
-                  开局绝境窗口 ? 1 : 0,
-                  自救窗口 ? 0.82 : 0,
-                  终结窗口 ? 0.7 : 0,
-                  破局窗口 ? 0.72 : 0,
-                  hasResourceRecover && (selfSpRatio < 0.35 || selfMenRatio < 0.35) ? 0.62 : 0,
-                  是团队保护 && allyCount > 1 ? Math.min(0.8, Number(behaviorState.团队护援压力 || 0) / 100) : 0,
-                  Math.min(0.7, Number(behaviorState.round || 0) / 7),
-                  高耗基础窗口 ? 0.35 : 0,
-                );
-                weight = 按资源压力调整权重(weight, skill, defender, {
-                  战况推力: 高耗战况推力,
-                  回合: behaviorState.round,
-                });
-              }
-
-              return {
-                skill,
-                规划技能,
-                weight: Math.max(0, weight),
-                name: skill.name || '未命名技能',
-                重复状态衰减,
-                build() {
-                  return skill;
-                },
-              };
-            });
-
-            const 去重技能表 = new Map();
-            weighted.forEach(项目 => {
-              const 技能名 = String(项目?.skill?.name || 项目?.skill?.技能名称 || 项目?.name || '').trim();
-            const 键 = 技能名;
-              if (!键.trim()) return;
-              const 旧项 = 去重技能表.get(键);
-              if (!旧项 || Number(项目.weight || 0) > Number(旧项.weight || 0)) 去重技能表.set(键, 项目);
-            });
-            const 去重权重列表 = [...去重技能表.values()];
-            const 排序预览 = [...去重权重列表]
-              .filter(项目 => Number(项目?.weight || 0) > 0)
-              .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0) || String(左.name || '').localeCompare(String(右.name || ''), 'zh-Hans-CN'));
-            const 预览首项 = 排序预览[0] || null;
-            if (!预览首项) return { skill: null, trace: '技能分类预览无合法候选', weighted: 去重权重列表 };
-            return {
-              skill: 预览首项.build(),
-              trace: '技能分类预览完成，最终动作交由统一评分器决定',
-              weighted: 去重权重列表,
-            };
-          }
-
-          const defSkills = validSkills.filter(skill => {
-            const 规划技能 = 构建行为规划技能(skill, attacker);
-            const skillType = getSkillType(skill);
-            const mainType = inferMainTypeFromEffects(规划技能);
-            const summary = deriveBattleSummaryFromEffects(规划技能);
-            const 来源类别 = getBattleSkillSourceCategory(规划技能);
-            return isBattleSkillDefensiveProfile(规划技能, { skillType, mainType, summary, 来源类别 });
-          });
-          const atkSkills = validSkills.filter(skill => {
-            const 规划技能 = 构建行为规划技能(skill, attacker);
-            const skillType = getSkillType(skill);
-            const mainType = inferMainTypeFromEffects(规划技能);
-            const summary = deriveBattleSummaryFromEffects(规划技能);
-            return isBattleSkillOffensiveProfile(规划技能, { skillType, mainType, summary });
-          });
-          const controlSkills = validSkills.filter(skill => {
-            const 规划技能 = 构建行为规划技能(skill, attacker);
-            const mainType = inferMainTypeFromEffects(规划技能);
-            const calc = getPrimaryStateCalc(规划技能);
-            const flags = getPrimaryStateFlags(规划技能);
-            const summary = deriveBattleSummaryFromEffects(规划技能);
-            return isBattleSkillControlProfile(规划技能, { mainType, calc, flags, summary });
-          });
-
-          const 全技能评分 = pickSkillWithWeight(validSkills);
-          const 评分技能列表 = Array.isArray(全技能评分.weighted) ? 全技能评分.weighted : [];
-          const 按画像取技能 = (筛选函数, 兜底技能 = null) => {
-            const 候选列表 = 评分技能列表
-              .filter(项目 => 项目?.skill && Number(项目.weight || 0) > 0 && 筛选函数(项目.规划技能 || 项目.skill, 项目.skill))
-              .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0));
-            return 候选列表[0]?.skill || 兜底技能 || null;
-          };
-
-          const defSkill = 按画像取技能((规划技能, 原技能) => {
-            const skillType = getSkillType(原技能);
-            const mainType = inferMainTypeFromEffects(规划技能);
-            const summary = deriveBattleSummaryFromEffects(规划技能);
-            const 来源类别 = getBattleSkillSourceCategory(规划技能);
-            return isBattleSkillDefensiveProfile(规划技能, { skillType, mainType, summary, 来源类别 });
-          });
-          const atkSkill = 按画像取技能((规划技能, 原技能) => {
-            const skillType = getSkillType(原技能);
-            const mainType = inferMainTypeFromEffects(规划技能);
-            const summary = deriveBattleSummaryFromEffects(规划技能);
-            return isBattleSkillOffensiveProfile(规划技能, { skillType, mainType, summary });
-          });
-          const rangePressureSkill = 选取范围压制技能(
-            [
-              ...评分技能列表
-                .filter(项目 => 项目?.skill && Number(项目.weight || 0) > 0)
-                .map(项目 => 项目.skill),
-              ...(反高速窗口.成立 ? validSkills : []),
-            ],
-          );
-          const quickClashSkill = 评分技能列表
-            .filter(项目 => 项目?.skill && Number(项目.weight || 0) > 0 && getSkillCastTime(项目.skill) <= 12 && getPrimaryDamageEffect(项目.skill))
-            .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0]?.skill ||
-            (反高速窗口.成立
-              ? validSkills
-                  .filter(skill => getSkillCastTime(skill) <= 12 && getPrimaryDamageEffect(skill))
-                  .sort((左, 右) => Number(getPrimaryDamageEffect(右)?.威力倍率 || 0) - Number(getPrimaryDamageEffect(左)?.威力倍率 || 0))[0]
-              : null) ||
-            null;
-          const hardControlSkill = 按画像取技能(
-            规划技能 => {
-              const mainType = inferMainTypeFromEffects(规划技能);
-              const calc = getPrimaryStateCalc(规划技能);
-              const flags = getPrimaryStateFlags(规划技能);
-              const summary = deriveBattleSummaryFromEffects(规划技能);
-              return isBattleSkillControlProfile(规划技能, { mainType, calc, flags, summary });
-            },
-            controlSkills[0] || null,
-          );
-          const antiHealSkill = 按画像取技能(规划技能 => isBattleSkillAntiHealProfile(规划技能));
-          const pierceSkill = 按画像取技能((规划技能, 原技能) => {
-              const dmg = getPrimaryDamageEffect(规划技能);
-              return Number(dmg?.防御穿透 || 0) >= 15 || /破甲|穿透|粉碎/.test(String(原技能?.name || ''));
-          });
-          const lowCostAtkSkill = 按画像取技能(
-            (规划技能, 原技能) => {
-              const skillType = getSkillType(原技能);
-              const mainType = inferMainTypeFromEffects(规划技能);
-              const summary = deriveBattleSummaryFromEffects(规划技能);
-              if (!isBattleSkillOffensiveProfile(规划技能, { skillType, mainType, summary })) return false;
-              const cost = parseSkillCostForChar(原技能, defender, {
-                actor: defender,
-                caster: defender,
-                attacker: defender,
-                target: attacker,
-                defender: attacker,
-                action: { action_type: '释放魂技', type: '技能', skill: 原技能 },
-                skill: 原技能,
-                combatData: behaviorState?.combatData,
-                当前行动: '释放魂技',
-              });
-              const 魂力压力 = cost.reqSp > 0 ? cost.reqSp / Math.max(1, Number(defender.sp || 0)) : 0;
-              const 体力压力 = cost.reqVit > 0 ? cost.reqVit / Math.max(1, Number(defender.sta || defender.体力 || 1)) : 0;
-              const 精神压力 = cost.reqMen > 0 ? cost.reqMen / Math.max(1, Number(defender.men || 0)) : 0;
-              return cost.canCast && Math.max(魂力压力, 体力压力, 精神压力) <= 0.28;
-            },
-            atkSkill,
-          );
-          const executeSkill = 按画像取技能(规划技能 => {
-              const dmg = getPrimaryDamageEffect(规划技能);
-              return isBattleSkillExecuteProfile(规划技能, { damage: dmg, summary: deriveBattleSummaryFromEffects(规划技能) });
-          });
-          const 自身血量比 = getCombatHpRatio(defender);
-          const 自身魂力比 = Math.max(0, Number(defender.sp || 0)) / Math.max(1, Number(defender.sp_max || 1));
-          const 自身精神比 = Math.max(0, Number(defender.men || 0)) / Math.max(1, Number(defender.men_max || 1));
-          const 自身状态快照 = buildConditionTacticalSnapshot(defender);
-          const 友方规划列表 = 读取规划同队单位(defender).filter(unit => unit && isCombatUnitAlive(unit));
-          const 友方需要生命恢复 = 友方规划列表.some(unit => getCombatHpRatio(unit) < 0.72);
-          const 友方需要魂力支援 = 友方规划列表.some(unit => Math.max(0, Number(unit.sp || 0)) / Math.max(1, Number(unit.sp_max || 1)) < 0.62);
-          const 友方需要精神支援 = 友方规划列表.some(unit => Math.max(0, Number(unit.men || 0)) / Math.max(1, Number(unit.men_max || 1)) < 0.62);
-          const 友方需要净化 = 友方规划列表.some(unit => buildConditionTacticalSnapshot(unit).hasBadCondition);
-          const recoverSkill = 按画像取技能(规划技能 =>
-            getSkillEffects(规划技能).some(effect => {
-              if (isBattleRecoverEffect(effect, ['vit'])) return 友方需要生命恢复 || 自身血量比 < 0.72;
-              if (isBattleRecoverEffect(effect, ['sp'])) return 友方需要魂力支援 || 自身魂力比 < 0.62;
-              if (isBattleRecoverEffect(effect, ['men'])) return 友方需要精神支援 || 自身精神比 < 0.62;
-              return (友方需要净化 || 自身状态快照.hasBadCondition) && isBattleRecoverEffect(effect);
-            }),
-          );
-          const teamSupportSkill = 按画像取技能((规划技能, 原技能) => {
-                const skillType = getSkillType(原技能);
-                const summary = deriveBattleSummaryFromEffects(规划技能);
-                const 来源类别 = getBattleSkillSourceCategory(规划技能);
-                return isBattleSkillTeamSupportProfile(规划技能, { skillType, summary, 来源类别 });
-          });
-          const teamProtectSkill = 按画像取技能(规划技能 => 是团队保护技能(规划技能, { summary: deriveBattleSummaryFromEffects(规划技能) }));
-          const invincibleSkill = 按画像取技能(规划技能 => deriveBattleSummaryFromEffects(规划技能).防御性质 === '无敌');
-          const shieldBreakSkill = 按画像取技能(规划技能 => isBattleSkillShieldBreakProfile(规划技能));
-          const dotDetonateSkill = 按画像取技能(规划技能 => isBattleSkillDotDetonateProfile(规划技能));
-          const skillSealSkill = 按画像取技能(规划技能 => isBattleSkillSealProfile(规划技能));
-          const healInvertSkill = 按画像取技能(规划技能 => isBattleSkillHealInvertProfile(规划技能));
-          const statusTransferSkill = 按画像取技能(规划技能 => isBattleSkillTransferProfile(规划技能));
-          const reactiveDefenseSkill =
-            按画像取技能(规划技能 => isBattleSkillReactiveDefenseProfile(规划技能, { summary: deriveBattleSummaryFromEffects(规划技能) })) ||
-            defSkill ||
-            null;
-          const npcAtkPower = Number(getPrimaryDamageEffect(atkSkill)?.威力倍率 || 0);
-          const skillTraceLog = 全技能评分.trace || '';
-
-          return {
-            defSkill,
-            atkSkill,
-            rangePressureSkill,
-            quickClashSkill,
-            hardControlSkill,
-            antiHealSkill,
-            pierceSkill,
-            lowCostAtkSkill,
-            executeSkill,
-            recoverSkill,
-            teamSupportSkill,
-            teamProtectSkill,
-            invincibleSkill,
-            shieldBreakSkill,
-            dotDetonateSkill,
-            skillSealSkill,
-            healInvertSkill,
-            statusTransferSkill,
-            reactiveDefenseSkill,
-            npcAtkPower,
-            skillTraceLog,
-            threatProfile,
-            评分技能列表,
-          };
-        }
-
-        function buildTacticalCandidates(
-          defender,
-          attacker,
-          playerAction,
-          behaviorState,
-          skillContext,
-          makeNpcAction,
-          isSupport,
-          isLowHealth,
-        ) {
-          const {
-            defSkill,
-            atkSkill,
-            rangePressureSkill,
-            quickClashSkill,
-            hardControlSkill,
-            antiHealSkill,
-            pierceSkill,
-            lowCostAtkSkill,
-            executeSkill,
-            recoverSkill,
-            teamSupportSkill,
-            teamProtectSkill,
-            invincibleSkill,
-            shieldBreakSkill,
-            dotDetonateSkill,
-            skillSealSkill,
-            healInvertSkill,
-            statusTransferSkill,
-            reactiveDefenseSkill,
-            npcAtkPower,
-            threatProfile,
-          } = skillContext;
-          const playerPower = behaviorState.playerPower || 0;
-          const 防御者系别 = 读取规划单位系别(defender);
-          const 攻击者系别 = 读取规划单位系别(attacker);
-          const isChargingHighThreat = !!behaviorState.isChargingHighThreat;
-          const enemySnapshot = buildConditionTacticalSnapshot(attacker);
-          const selfSnapshot = buildConditionTacticalSnapshot(defender);
-          const enemyHpRatio = getCombatHpRatio(attacker);
-          const selfHpRatio = getCombatHpRatio(defender);
-          const selfSpRatio = Math.max(0, Number(defender.sp || 0)) / Math.max(1, Number(defender.sp_max || 1));
-          const selfMenRatio = Math.max(0, Number(defender.men || 0)) / Math.max(1, Number(defender.men_max || 1));
-          const allyCount = behaviorState.alliesCount || 1;
-          const lethalThreat = !!threatProfile?.lethalRisk;
-          const severeThreat = !!threatProfile?.severeDamage;
-          const severeControlThreat = !!threatProfile?.severeControl;
-          const 主动威胁分层 = 计算行为威胁分层(threatProfile || {});
-          const 来袭技能文本 = JSON.stringify(playerAction?.skill || {});
-          const 来袭含控制减益 = severeControlThreat ||
-            /状态施加|debuff|控制|眩晕|麻痹|僵直|混乱|沉默|封技|失控|无法反应|致盲|锁定|位移限制|迟缓|中毒|流血|防御剥夺|精神抗性剥夺|cast_speed_penalty|dodge_penalty|reaction_penalty/.test(来袭技能文本);
-          const 试探阶段 = Number(behaviorState?.combatData?.回合 || behaviorState?.combatData?.round || 1) <= 1 &&
-            !lethalThreat &&
-            !severeThreat;
-          const reactiveThreat =
-            lethalThreat || severeThreat || severeControlThreat || (!!threatProfile?.moderateDamage && selfHpRatio < 0.65);
-
-          let isLockedBySpirit = false;
-          if ((playerAction.cast_time || 0) > 0) {
-            const pState = getPrimaryStateEffect(playerAction.skill) || {};
-            const pCalc = getPrimaryStateCalc(playerAction.skill);
-            const hasStructuredLock = Number(pCalc.lock_level || 0) > 0;
-            const hasCompatFlagLock =
-              getPrimaryStateFlags(playerAction.skill).includes('锁定') ||
-              getPrimaryStateFlags(playerAction.skill).includes('威压');
-            if (hasStructuredLock || hasCompatFlagLock) {
-              if (attacker.men_max > defender.men_max) isLockedBySpirit = true;
-            }
-          }
-
-          const tacticalBranches = [];
-          const 标记候选预览技能 = 候选 => {
-            if (!候选 || 候选.__预览技能) return 候选;
-            const 技能表 = {
-              断疗压制: antiHealSkill,
-              破防强攻: pierceSkill,
-              斩盾: shieldBreakSkill,
-              持续引爆: dotDetonateSkill,
-              封技断流: skillSealSkill,
-              逆疗封锁: healInvertSkill,
-              移祸转压: statusTransferSkill,
-              乘胜追击: executeSkill,
-              稳态回气: recoverSkill,
-              战术协同: teamSupportSkill,
-              借力守势: reactiveDefenseSkill,
-              协同点杀: atkSkill,
-              连段爆发: atkSkill,
-              压血收束: executeSkill,
-              强攻压制: atkSkill,
-              敏攻截断: hardControlSkill || skillSealSkill || rangePressureSkill,
-              范围压制: rangePressureSkill,
-              短前摇对轰: quickClashSkill,
-              游击收割: executeSkill && executeCastTime <= 18 ? executeSkill : atkSkill,
-              坚壁反制: reactiveDefenseSkill,
-              连锁控制: hardControlSkill,
-              统筹增援: teamSupportSkill,
-              强势对轰: atkSkill,
-              危机自保: defSkill || reactiveDefenseSkill,
-              护援队友: teamProtectSkill || 建立普防护援技能(),
-            };
-            候选.__预览技能 = 技能表[候选.name] || null;
-            return 候选;
-          };
-
-          if (reactiveThreat) {
-            const emergencyDefenseSkill =
-              (!threatProfile?.bypassesInvincible && invincibleSkill) ||
-              reactiveDefenseSkill ||
-              defSkill ||
-              recoverSkill ||
-              null;
-            if (emergencyDefenseSkill) {
-              tacticalBranches.push({
-                name: '极限保命',
-                weight: adjustBehaviorWeight(
-                  '危机自保',
-                  lethalThreat ? 155 : severeThreat ? 132 : 108,
-                  defender,
-                  attacker,
-                  behaviorState,
-                ),
-                __预览技能: emergencyDefenseSkill,
-                build() {
-                  const severityText = lethalThreat ? '已逼近致命线' : severeControlThreat ? '可能被一举封死节奏' : '将承受重创';
-                  return makeNpcAction(
-                    '危机自保',
-                    `[反应判定成功] NPC瞬间判断自己${severityText}，立即交出[${emergencyDefenseSkill.name}]进行极限保命！`,
-                    emergencyDefenseSkill,
-                  );
-                },
-              });
-            }
-          }
-
-          const atkSummary = atkSkill ? deriveBattleSummaryFromEffects(atkSkill) : createEmptyBattleSummary();
-          const executeSummary = executeSkill
-            ? deriveBattleSummaryFromEffects(executeSkill)
-            : createEmptyBattleSummary();
-          const atkCastTime = getSkillCastTime(atkSkill);
-          const executeCastTime = getSkillCastTime(executeSkill);
-          const 反高速窗口 = 评估反高速应对窗口(defender, attacker, playerAction, behaviorState?.combatData || {});
-          if (防御者系别 === '敏攻系' && rangePressureSkill && Number(playerAction?.cast_time || 0) >= 8) {
-            const 重复状态衰减 = 评估敌对重复状态收益衰减(rangePressureSkill, attacker, {
-              projectedDamageRatio: Number(threatProfile?.projectedDamageRatio || 0),
-            });
-            if (Number(重复状态衰减.惩罚 || 0) < 80) {
-              tacticalBranches.push({
-                name: '范围压制',
-                weight: adjustBehaviorWeight('范围压制', 128 - Math.floor(Number(重复状态衰减.惩罚 || 0) * 0.6), defender, attacker, behaviorState),
-                __预览技能: rangePressureSkill,
-                build() {
-                  return makeNpcAction(
-                    '范围压制',
-                    `[范围压制] 敏攻系判断对手前摇窗口已经暴露，改用[${rangePressureSkill.name}]压缩其身位。`,
-                    rangePressureSkill,
-                  );
-                },
-              });
-            }
-          }
-
-          if (反高速窗口.成立 && rangePressureSkill) {
-            tacticalBranches.push({
-              name: '范围压制',
-              weight: adjustBehaviorWeight('范围压制', 68 + Math.round(反高速窗口.强度 * 52), defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '范围压制',
-                  `[范围压制] NPC判断对手速度优势明显，改用[${rangePressureSkill.name}]压缩其闪避空间。`,
-                  rangePressureSkill,
-                );
-              },
-            });
-          }
-          if (反高速窗口.成立 && quickClashSkill && quickClashSkill !== rangePressureSkill) {
-            tacticalBranches.push({
-              name: '短前摇对轰',
-              weight: adjustBehaviorWeight('短前摇对轰', 58 + Math.round(反高速窗口.强度 * 44), defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '短前摇对轰',
-                  `[短前摇对轰] NPC放弃追逐身位，改以[${quickClashSkill.name}]抢在高速切入窗口正面截击。`,
-                  quickClashSkill,
-                );
-              },
-            });
-          }
-
-          if (enemySnapshot.hasHealingTrend && antiHealSkill && !enemySnapshot.hasAntiHeal) {
-            tacticalBranches.push({
-              name: '断疗压制',
-              weight: adjustBehaviorWeight('断疗压制', 95, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '断疗压制',
-                  `[战术封锁] NPC敏锐察觉到对手恢复节奏已成，立刻以[${antiHealSkill.name}]强行断疗压制！`,
-                  antiHealSkill,
-                );
-              },
-            });
-          }
-          if ((enemySnapshot.hasShielded || enemySnapshot.hasDefenseBuffed) && pierceSkill) {
-            tacticalBranches.push({
-              name: '破防强攻',
-              weight: adjustBehaviorWeight(
-                '破防强攻',
-                enemySnapshot.hasShielded ? 90 : 75,
-                defender,
-                attacker,
-                behaviorState,
-              ),
-              build() {
-                return makeNpcAction(
-                  '破防强攻',
-                  `[破防识别] NPC判断常规打击难以奏效，改以[${pierceSkill.name}]强行撕开防御层！`,
-                  pierceSkill,
-                );
-              },
-            });
-          }
-          if (enemySnapshot.hasShielded && shieldBreakSkill) {
-            tacticalBranches.push({
-              name: '斩盾',
-              weight: adjustBehaviorWeight('破防强攻', 104, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '破防强攻',
-                  `[护盾识别] NPC判断常规伤害会被护盾吞掉，直接以[${shieldBreakSkill.name}]斩碎护盾层！`,
-                  shieldBreakSkill,
-                );
-              },
-            });
-          }
-          if (enemySnapshot.debuffCount > 0 && dotDetonateSkill) {
-            tacticalBranches.push({
-              name: '持续引爆',
-              weight: adjustBehaviorWeight('乘胜追击', enemyHpRatio < 0.5 ? 98 : 78, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '乘胜追击',
-                  `[引爆窗口] NPC察觉对手身上已叠起持续伤害，立刻以[${dotDetonateSkill.name}]引爆全部压血。`,
-                  dotDetonateSkill,
-                );
-              },
-            });
-          }
-          if ((attacker?.蓄力技能 || isChargingHighThreat || (playerAction.cast_time || 0) >= 15) && skillSealSkill) {
-            tacticalBranches.push({
-              name: '封技断流',
-              weight: adjustBehaviorWeight('危机自保', 112, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '危机自保',
-                  `[术路封锁] NPC判断对手技能前摇已成，立即以[${skillSealSkill.name}]封死其后续术路。`,
-                  skillSealSkill,
-                );
-              },
-            });
-          }
-          if (enemySnapshot.hasHealingTrend && healInvertSkill && !enemySnapshot.hasAntiHeal) {
-            tacticalBranches.push({
-              name: '逆疗封锁',
-              weight: adjustBehaviorWeight('断疗压制', 100, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '断疗压制',
-                  `[逆疗反制] NPC识别到对手恢复链成型，果断用[${healInvertSkill.name}]把治疗窗口反拧成伤害。`,
-                  healInvertSkill,
-                );
-              },
-            });
-          }
-          if (selfSnapshot.hasBadCondition && statusTransferSkill) {
-            tacticalBranches.push({
-              name: '移祸转压',
-              weight: adjustBehaviorWeight('危机自保', 76, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '危机自保',
-                  `[移祸脱身] NPC不愿继续背着异常状态硬拼，转而用[${statusTransferSkill.name}]把压力甩回对手。`,
-                  statusTransferSkill,
-                );
-              },
-            });
-          }
-          if ((enemySnapshot.isLockedOrControlled || enemyHpRatio < 0.4) && executeSkill) {
-            tacticalBranches.push({
-              name: '乘胜追击',
-              weight: adjustBehaviorWeight(
-                '乘胜追击',
-                enemyHpRatio < 0.35 ? 105 : 80,
-                defender,
-                attacker,
-                behaviorState,
-              ),
-              build() {
-                return makeNpcAction(
-                  '乘胜追击',
-                  `[收割窗口] NPC看准对手露出的破绽，立刻释放[${executeSkill.name}]试图完成收割！`,
-                  executeSkill,
-                );
-              },
-            });
-          }
-          if (
-            (selfSpRatio < 0.35 || selfMenRatio < 0.35 || selfHpRatio < 0.45) &&
-            recoverSkill &&
-            !(selfSnapshot.hasHealingTrend && selfHpRatio > 0.55 && selfSpRatio > 0.45 && selfMenRatio > 0.45)
-          ) {
-            const 强攻压制下续航价值 =
-              ['强攻系', '敏攻系'].includes(攻击者系别) &&
-              ['辅助系', '治疗系', '食物系', '召唤系'].includes(防御者系别) &&
-              selfHpRatio > 0.45
-                ? 0.62
-                : 1;
-            tacticalBranches.push({
-              name: '稳态回气',
-              weight: adjustBehaviorWeight('稳态回气', 72 * 强攻压制下续航价值, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '稳态回气',
-                  `[调整节奏] NPC判断硬拼将迅速透支，转而以[${recoverSkill.name}]修补状态链。`,
-                  recoverSkill,
-                );
-              },
-            });
-          }
-          const 护援目标 = 选择护援队友(defender, behaviorState.allyTeam || [], attacker, behaviorState);
-          const 护援压力 = Math.max(Number(behaviorState.团队护援压力 || 0), Number(护援目标?.压力 || 0));
-          const 自身已筑防 =
-            selfSnapshot.hasShielded ||
-            selfSnapshot.hasDefenseBuffed ||
-            selfSnapshot.hasReactiveDefense ||
-            selfHpRatio >= 0.72;
-          if (防御者系别 === '防御系' && allyCount > 1 && 护援目标 && 护援压力 >= 22) {
-            if (teamProtectSkill) {
-              tacticalBranches.push({
-                name: '护援队友',
-                weight: adjustBehaviorWeight(
-                  '护援队友',
-                  92 + Math.min(55, 护援压力),
-                  defender,
-                  attacker,
-                  behaviorState,
-                ),
-                build() {
-                  return makeNpcAction(
-                    '护援队友',
-                    `[护援判断] 防御系NPC判断${护援目标.队友.name || '队友'}承压更高，优先用[${teamProtectSkill.name}]替队友稳住阵线。`,
-                    teamProtectSkill,
-                  );
-                },
-              });
-            }
-            if (自身已筑防) {
-              tacticalBranches.push({
-                name: '护援队友',
-                weight: adjustBehaviorWeight(
-                  '护援队友',
-                  82 + Math.min(48, 护援压力),
-                  defender,
-                  attacker,
-                  behaviorState,
-                ),
-                build() {
-                  return makeNpcAction(
-                    '防御',
-                    `[护援判断] 防御系NPC已具备承伤条件，直接以普防卡位保护${护援目标.队友.name || '队友'}。`,
-                    建立普防护援技能(),
-                  );
-                },
-              });
-            }
-          }
-          if (allyCount > 1 && teamSupportSkill && !selfSnapshot.hasSharedVision) {
-            tacticalBranches.push({
-              name: '战术协同',
-              weight: adjustBehaviorWeight('战术协同', 68, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '战术协同',
-                  `[协同铺垫] NPC选择用[${teamSupportSkill.name}]为己方建立更高效的集火与联动节奏。`,
-                  teamSupportSkill,
-                );
-              },
-            });
-          }
-          if (
-            (isChargingHighThreat || playerPower >= 220 || selfHpRatio < 0.45) &&
-            reactiveDefenseSkill &&
-            !selfSnapshot.hasReactiveDefense
-          ) {
-            tacticalBranches.push({
-              name: '借力守势',
-              weight: adjustBehaviorWeight('借力守势', 88, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '借力守势',
-                  `[借势防御] NPC放弃盲目硬拼，转而用[${reactiveDefenseSkill.name}]等待对手失衡反噬。`,
-                  reactiveDefenseSkill,
-                );
-              },
-            });
-          }
-
-          if (
-            selfSnapshot.hasSharedVision &&
-            atkSkill &&
-            atkSummary.目标规模 === '单体' &&
-            atkSummary.爆发级别 !== '无'
-          ) {
-            tacticalBranches.push({
-              name: '协同点杀',
-              weight: adjustBehaviorWeight('协同点杀', enemyHpRatio < 0.5 ? 86 : 70, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '协同点杀',
-                  `[视野锁头] NPC借助共享视野完成目标校准，立刻以[${atkSkill.name}]集中打穿要害！`,
-                  atkSkill,
-                );
-              },
-            });
-          }
-
-          if (enemySnapshot.isLockedOrControlled && atkSkill && (atkSummary.爆发级别 === '高' || atkCastTime >= 18)) {
-            tacticalBranches.push({
-              name: '连段爆发',
-              weight: adjustBehaviorWeight('连段爆发', 82, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '连段爆发',
-                  `[顺势爆发] NPC看准对手已被压制，果断接上[${atkSkill.name}]扩大伤害窗口！`,
-                  atkSkill,
-                );
-              },
-            });
-          }
-
-          if (enemySnapshot.hasDotPressure && executeSkill) {
-            tacticalBranches.push({
-              name: '压血收束',
-              weight: adjustBehaviorWeight(
-                '压血收束',
-                enemyHpRatio < 0.45 ? 88 : 68,
-                defender,
-                attacker,
-                behaviorState,
-              ),
-              build() {
-                return makeNpcAction(
-                  '压血收束',
-                  `[持续压杀] NPC判断对手已被持续伤害拖入危险区，立刻以[${executeSkill.name}]完成收束。`,
-                  executeSkill,
-                );
-              },
-            });
-          }
-
-          if (防御者系别 === '强攻系' && atkSkill && selfHpRatio > 0.4 && playerPower <= npcAtkPower * 1.7) {
-            tacticalBranches.push({
-              name: '强攻压制',
-              weight: adjustBehaviorWeight('强攻压制', enemyHpRatio < 0.5 ? 84 : 72, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '强攻压制',
-                  `[正面压制] 身为强攻系，NPC更倾向以[${atkSkill.name}]持续压迫对手，不给其调整空间。`,
-                  atkSkill,
-                );
-              },
-            });
-          }
-
-          if (防御者系别 === '敏攻系') {
-            const 敏攻截断技能 = (反高速窗口.成立 || threatProfile.incomingAttackIntent === true || isChargingHighThreat)
-              ? [hardControlSkill, skillSealSkill, rangePressureSkill].find(技能 => 判定技能具备真实截断资格_V1(技能)) || null
-              : null;
-            if (敏攻截断技能) {
-              tacticalBranches.push({
-                name: '敏攻截断',
-                weight: adjustBehaviorWeight(
-                  '连锁控制',
-                  反高速窗口.成立
-                    ? 84 + Math.round(反高速窗口.强度 * 34)
-                    : threatProfile.incomingAttackIntent === true
-                      ? 76
-                      : 62,
-                  defender,
-                  attacker,
-                  behaviorState,
-                ),
-                build() {
-                  return makeNpcAction(
-                    '敏攻截断',
-                    `[敏攻截断] 敏攻系NPC优先以[${敏攻截断技能.name}]截断对手节奏，再寻找下一次切入窗口。`,
-                    敏攻截断技能,
-                  );
-                },
-              });
-            }
-          }
-
-          if (防御者系别 === '敏攻系' && (executeSkill || atkSkill)) {
-            const agileStrike = executeSkill && executeCastTime <= 18 ? executeSkill : atkSkill;
-            if (agileStrike) {
-              tacticalBranches.push({
-                name: '游击收割',
-                weight: adjustBehaviorWeight(
-                  '游击收割',
-                  enemyHpRatio < 0.5 ? 90 : 70,
-                  defender,
-                  attacker,
-                  behaviorState,
-                ),
-                build() {
-                  return makeNpcAction(
-                    '游击收割',
-                    `[游击切入] 敏攻系NPC抓住节奏缝隙，以[${agileStrike.name}]高速切入撕开战局。`,
-                    agileStrike,
-                  );
-                },
-              });
-            }
-          }
-
-          if (防御者系别 === '防御系' && reactiveDefenseSkill && !selfSnapshot.hasReactiveDefense) {
-            tacticalBranches.push({
-              name: '坚壁反制',
-              weight: adjustBehaviorWeight(
-                '坚壁反制',
-                isChargingHighThreat || playerPower >= 220 ? 92 : 74,
-                defender,
-                attacker,
-                behaviorState,
-              ),
-              build() {
-                return makeNpcAction(
-                  '坚壁反制',
-                  `[以守待攻] 防御系NPC更擅长把战局拖入自己的节奏，先用[${reactiveDefenseSkill.name}]筑起反制层。`,
-                  reactiveDefenseSkill,
-                );
-              },
-            });
-          }
-
-          if (防御者系别 === '控制系' && hardControlSkill && !enemySnapshot.isLockedOrControlled) {
-            tacticalBranches.push({
-              name: '连锁控制',
-              weight: adjustBehaviorWeight('连锁控制', 88, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '连锁控制',
-                  `[节奏封锁] 控制系NPC优先争夺节奏，试图用[${hardControlSkill.name}]建立状态链优势。`,
-                  hardControlSkill,
-                );
-              },
-            });
-          }
-
-          if (
-            ['辅助系', '治疗系', '食物系', '召唤系'].includes(防御者系别) &&
-            allyCount > 1 &&
-            teamSupportSkill &&
-            !selfSnapshot.hasSharedVision
-          ) {
-            tacticalBranches.push({
-              name: '统筹增援',
-              weight: adjustBehaviorWeight('统筹增援', 82, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '统筹增援',
-                  `[团队统筹] 辅助型NPC更重视整体节奏，优先用[${teamSupportSkill.name}]为己方建立协同优势。`,
-                  teamSupportSkill,
-                );
-              },
-            });
-          }
-          if (['辅助系', '治疗系', '食物系'].includes(防御者系别)) {
-            const 支援补位技能 = recoverSkill || teamProtectSkill || teamSupportSkill;
-            if (支援补位技能) {
-              const 支援急迫度 =
-                recoverSkill && (selfHpRatio < 0.72 || selfSnapshot.hasBadCondition)
-                  ? 120
-                  : teamProtectSkill && Number(behaviorState.团队护援压力 || 0) >= 35
-                    ? 108
-                    : 92;
-              tacticalBranches.push({
-                name: '支援补位',
-                weight: adjustBehaviorWeight('战术协同', 支援急迫度, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '支援补位',
-                    `[支援判断] ${防御者系别 || '辅助型'}NPC优先履行团队职责，释放[${支援补位技能.name}]补齐治疗/护援/增益窗口。`,
-                    支援补位技能,
-                  );
-                },
-              });
-            }
-          }
-
-          if (isLockedBySpirit && defSkill) {
-            tacticalBranches.push({
-              name: '危机自保',
-              weight: adjustBehaviorWeight('危机自保', 120, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '危机自保',
-                  `[气机锁定] NPC被玩家恐怖的精神力死死锁定，不敢轻举妄动，只能全力转为防御！`,
-                  defSkill,
-                );
-              },
-            });
-          } else if (isChargingHighThreat) {
-            if (hardControlSkill) {
-              tacticalBranches.push({
-                name: '控制截断',
-                weight: adjustBehaviorWeight('控制截断', 120, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '控制截断',
-                    `[破绽捕捉] NPC察觉到玩家正在蓄力，果断释放[${hardControlSkill.name}]试图打断！`,
-                    hardControlSkill,
-                  );
-                },
-              });
-            }
-            if (atkSkill) {
-              tacticalBranches.push({
-                name: '强势对轰',
-                weight: adjustBehaviorWeight('强势对轰', 90, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '强势对轰',
-                    `[破绽捕捉] NPC见玩家露出极大的前摇破绽，立刻释放[${atkSkill.name}]企图趁机重创玩家！`,
-                    atkSkill,
-                  );
-                },
-              });
-            }
-            tacticalBranches.push({
-              name: '伺机闪避',
-              weight: adjustBehaviorWeight('伺机闪避', 60, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction(
-                  '伺机闪避',
-                  `[致命预警] NPC察觉到毁灭性的蓄力波动，但无力打断，只能全力游走试图拉开距离。`,
-                );
-              },
-            });
-          } else if (isLowHealth || playerPower >= 250 || (isSupport && 主动威胁分层.中威胁)) {
-            if (defSkill) {
-              tacticalBranches.push({
-                name: '危机自保',
-                weight: adjustBehaviorWeight('危机自保', 主动威胁分层.低威胁 ? 22 : 60, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '危机自保',
-                    `[谨慎应对] NPC判断局势不利，选择以[${defSkill.name}]稳住阵脚。`,
-                    defSkill,
-                  );
-                },
-              });
-            }
-            if (atkSkill) {
-              let clashWeight = playerPower > npcAtkPower * 1.5 ? 20 : 55;
-              tacticalBranches.push({
-                name: '强势对轰',
-                weight: adjustBehaviorWeight('强势对轰', clashWeight, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '强势对轰',
-                    playerPower > npcAtkPower * 1.5
-                      ? `[孤注一掷] 尽管身处劣势，NPC仍狠下心正面搏杀！`
-                      : `[强势对轰] NPC不甘示弱，释放[${atkSkill.name}]正面迎击！`,
-                    atkSkill,
-                  );
-                },
-              });
-            }
-            tacticalBranches.push({
-              name: '伺机闪避',
-              weight: adjustBehaviorWeight('伺机闪避', 主动威胁分层.低威胁 ? 12 : 85, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction('伺机闪避', `[劣势拉扯] NPC判断继续硬拼代价过高，选择拉开步点重排节奏。`);
-              },
-            });
-          } else {
-            if (atkSkill) {
-              tacticalBranches.push({
-                name: '强势对轰',
-                weight: adjustBehaviorWeight('强势对轰', 75, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction(
-                    '强势对轰',
-                    `[主动进攻] NPC抓住节奏，释放[${atkSkill.name}]尝试夺回主动权！`,
-                    atkSkill,
-                  );
-                },
-              });
-            }
-            if (defSkill) {
-              tacticalBranches.push({
-                name: '危机自保',
-                weight: adjustBehaviorWeight('危机自保', 主动威胁分层.低威胁 ? 12 : 45, defender, attacker, behaviorState),
-                build() {
-                  return makeNpcAction('危机自保', `[稳扎稳打] NPC选择先用[${defSkill.name}]保护自身。`, defSkill);
-                },
-              });
-            }
-            tacticalBranches.push({
-              name: '伺机闪避',
-              weight: adjustBehaviorWeight('伺机闪避', 主动威胁分层.低威胁 ? 6 : 30, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction('伺机闪避', `[战术拉扯] NPC利用身法周旋，试图重排节奏。`);
-              },
-            });
-          }
-
-          const 有非兜底实技候选 = tacticalBranches.some(候选 => {
-            标记候选预览技能(候选);
-            return 候选?.__预览技能 || 候选?.skill;
-          });
-          if (reactiveThreat || isLowHealth || playerPower >= 250 || !有非兜底实技候选) {
-            tacticalBranches.push({
-              name: '肉体兜底',
-              weight: adjustBehaviorWeight('肉体兜底', 主动威胁分层.低威胁 ? 4 : 20, defender, attacker, behaviorState),
-              build() {
-                return makeNpcAction('肉体兜底', `[从容应对] NPC无合适魂技，收缩防御，准备肉体硬抗。`, null, {
-                  def_mult: 1.2,
-                });
-              },
-            });
-          }
-
-          const 去重战术表 = new Map();
-          tacticalBranches.forEach(候选 => {
-            if (!候选) return;
-            标记候选预览技能(候选);
-            const 预览技能 = 候选.__预览技能 || 候选.skill || null;
-            const 技能名 = String(预览技能?.name || 预览技能?.技能名称 || 候选.name || '').trim();
-            const 去重键 = 技能名 || `动作:${候选.name || ''}`;
-            const 旧候选 = 去重战术表.get(去重键);
-            if (!旧候选 || Number(候选.weight || 0) > Number(旧候选.weight || 0)) 去重战术表.set(去重键, 候选);
-          });
-
-          const 去重战术列表 = [...去重战术表.values()];
-          if (behaviorState?.主动回合 === true) {
-            const 有实技候选 = 去重战术列表.some(候选 => {
-              const 名称 = String(候选?.name || '').trim();
-              return 候选?.__预览技能 && !['伺机闪避', '肉体兜底'].includes(名称) && Number(候选.weight || 0) >= 32;
-            });
-            if (有实技候选) {
-              去重战术列表.forEach(候选 => {
-                const 名称 = String(候选?.name || '').trim();
-                if (名称 === '肉体兜底') 候选.weight = reactiveThreat ? Math.min(Number(候选.weight || 0), 12) : 0;
-                if (名称 === '伺机闪避') 候选.weight = reactiveThreat ? Math.min(Number(候选.weight || 0), 18) : 0;
-              });
-            } else if (主动威胁分层.低威胁) {
-              去重战术列表.forEach(候选 => {
-                const 名称 = String(候选?.name || '').trim();
-                if (名称 === '肉体兜底') 候选.weight = Math.min(Number(候选.weight || 0), 4);
-                if (名称 === '伺机闪避') 候选.weight = Math.min(Number(候选.weight || 0), 8);
-              });
-            }
-          }
-          const 最优规避或截断 = 去重战术列表
-            .filter(候选 => /伺机闪避|闪避|位移规避|敏攻截断|控制截断|短前摇对轰/.test(`${候选?.name || ''}`))
-            .sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0];
-          if (最优规避或截断 && (试探阶段 || 来袭含控制减益)) {
-            去重战术列表.forEach(候选 => {
-              const 名称 = String(候选?.name || '').trim();
-              if (!/肉体兜底|承伤硬抗/.test(名称)) return;
-              const 优势 = Number(最优规避或截断.weight || 0) - Number(候选.weight || 0);
-              if (来袭含控制减益 || 优势 >= 24) {
-                候选.weight = 0;
-                候选.__主动规划审计 = {
-                  ...(候选.__主动规划审计 || {}),
-                  选择原因: 来袭含控制减益
-                    ? '来袭包含控制或减益，通用硬抗不能替代规避/截断判定'
-                    : '试探阶段规避收益显著更高，通用硬抗退出战术池',
-                };
-              }
-            });
-          }
-          return 去重战术列表;
-        }
-
-      // ==========================================
-      // 📍 NPC 决策逻辑 (真实读取版)
-        // ==========================================
-        function determineNpcAction(combatData, playerAction, ratio) {
-          hydrateCombatData(combatData);
-          let defender = combatData.参战者.team_enemy?.[0];
-          let attacker = combatData.参战者.team_player?.[0];
-
-          function makeNpcAction(type, log, skill = null, extra = {}) {
-            const normalizedSkill = skill ? normalizeSkillData(skill, skill.name || skill.技能名称 || type) : null;
-            if (normalizedSkill) 写入战斗来源类别上下文(normalizedSkill, 读取战斗来源类别上下文(skill, 规范化战斗来源类别(type, '魂技')));
-            return Object.assign(
-              {
-                type,
-                log: replaceBattleReportGenericNames(log, { player: attacker, enemy: defender }),
-                skill: normalizedSkill,
-                def_mult: 1.0,
-              },
-              extra,
-            );
-          }
-
-          if (ratio < 0.5) {
-            return makeNpcAction(
-              '无法反应',
-              '[速度碾压] NPC根本无法看清攻击轨迹，来不及做出任何反应！本回合防御力减半。',
-              null,
-              { def_mult: 0.5 },
-            );
-          }
-
-          const combatType = combatData.战斗类型 || '突发遭遇';
-          const isDeadlyFight = combatType === '死战' || combatType === '突发遭遇';
-          const lvDiff = (attacker.lv || 1) - (defender.lv || 1);
-          const playerPower = Number(getPrimaryDamageEffect(playerAction.skill)?.威力倍率 || 0) || 0;
-          const isChargingHighThreat =
-            !!attacker.蓄力技能 ||
-            playerAction.action_type === '蓄力挨打' ||
-            ((playerAction.cast_time || 0) >= 20 && playerPower >= 120);
-          const 防御者系别 = 读取规划单位系别(defender);
-          const isSupport = ['辅助系', '治疗系', '食物系', '召唤系'].includes(防御者系别);
-          const isLowHealth = getCombatHpRatio(defender) < 0.3;
-          const activeBuffs = Object.keys(defender.状态效果 || {});
-          const allyTeam = 读取战斗主队单位列表(combatData, '敌方').filter(unit => unit.name !== defender.name);
-          const availableSkills = collectCombatSkills(defender, allyTeam);
-          const strategicContext = buildStrategicCandidates(
-            defender,
-            attacker,
-            combatData,
-            playerAction,
-            ratio,
-            availableSkills,
-            allyTeam,
-            makeNpcAction,
-          );
-          const behaviorState = strategicContext.behaviorState;
-          behaviorState.规划语境 = 'REACTION';
-          behaviorState.规划上下文 = 构建规划上下文(defender, attacker, combatData, behaviorState);
-          behaviorState.规划上下文.锁定敌对目标 = attacker;
-          behaviorState.锁定敌对目标 = attacker;
-          const strategicAction = chooseAndBuildActorAction(
-            defender,
-            attacker,
-            behaviorState,
-            strategicContext.strategicBranches,
-            '行为预演/战略阶段',
-          );
-          if (strategicAction) return strategicAction;
-          const skillContext = buildNpcSkillCandidateContext(
-            defender,
-            attacker,
-            playerAction,
-            availableSkills,
-            behaviorState,
-            activeBuffs,
-            isLowHealth,
-          );
-          const tacticalBranches = buildTacticalCandidates(
-            defender,
-            attacker,
-            playerAction,
-            behaviorState,
-            skillContext,
-            makeNpcAction,
-            isSupport,
-            isLowHealth,
-          );
-          const 玩家技能 = playerAction?.skill || null;
-          const 玩家目标文本 = String(getSkillTarget(玩家技能 || {}) || '').trim();
-          const 玩家范围控制来袭 =
-            !!玩家技能 &&
-            (
-              isBattleSkillControlProfile(玩家技能) ||
-              /群体|全场/.test(玩家目标文本) ||
-              hasBattleSkillRuntimeConsumer(玩家技能, ['interrupt', 'hard_control', 'skill_seal'])
-            );
-          const 敌方具备真截断 =
-            !!(skillContext.hardControlSkill || skillContext.skillSealSkill) &&
-            判定技能具备真实截断资格_V1(skillContext.hardControlSkill || skillContext.skillSealSkill);
-          if (玩家范围控制来袭 && !敌方具备真截断) {
-            tacticalBranches.forEach(候选 => {
-              if (!候选) return;
-              if (候选.name === '强势对轰') 候选.weight = Math.max(0, Number(候选.weight || 0) - 58);
-              if (候选.name === '伺机闪避') 候选.weight = Number(候选.weight || 0) + 36;
-              if (候选.name === '危机自保') 候选.weight = Number(候选.weight || 0) + 22;
-            });
-          }
-
-          const tacticalAction = chooseAndBuildActorAction(
-            defender,
-            attacker,
-            behaviorState,
-            tacticalBranches,
-            '常规战术阶段',
-            `${skillContext.skillTraceLog ? skillContext.skillTraceLog + ' | ' : ''}`,
-          );
-          if (tacticalAction) return tacticalAction;
-          const tacticalChoice = chooseActorActionByCandidates(
-            defender,
-            attacker,
-            behaviorState,
-            tacticalBranches,
-            '常规战术阶段',
-          );
-          return makeNpcAction(
-            '肉体兜底',
-            `${skillContext.skillTraceLog ? skillContext.skillTraceLog + ' | ' : ''}${tacticalChoice.trace ? tacticalChoice.trace + ' ' : ''}[从容应对] NPC无合适魂技，收缩防御，准备肉体硬抗。`,
-            null,
-            { def_mult: 1.2 },
-          );
-        }
-
-        // ==========================================
-        // 📍 5. 高阶机制伤害修饰与炸膛判定
-        // ==========================================
         function applyHighTierMechanics(attackerChar, defenderChar, playerAction, baseResult) {
           let result = { ...baseResult };
           refreshSettleResultProjectedDamage(result);
@@ -39175,503 +35274,6 @@ class BattleUIComponent {
           };
         }
 
-        function buildAutoActionForActor(actorEntry, targets, battleState) {
-          const actor = actorEntry?.char;
-          if (!actor) return null;
-          bindCombatParticipant(actor);
-          const 行动者系别 = 读取规划单位系别(actor);
-          const enemyTarget = targets?.enemyTarget;
-          const allyTarget = targets?.allyTarget;
-          if (enemyTarget) bindCombatParticipant(enemyTarget);
-          if (allyTarget) bindCombatParticipant(allyTarget);
-          if (actor.召唤键) {
-            const 技能 = 选择召唤攻击技能(actor, enemyTarget);
-            记录召唤物规划审计(battleState.combatData, actor, enemyTarget, 技能, '行动轴召唤物基础动作候选');
-            return {
-              action_type: '召唤自主行动',
-              cast_time: 技能?.前摇 || 10,
-              skill: 技能,
-              source: 'summon',
-              decision_log: `[召唤自主行动] ${actor.name || '召唤物'}自行参战。`,
-              def_mult: 1,
-            };
-          }
-
-          const allyTeam =
-            actorEntry.side === 'player'
-              ? 读取战斗阵营单位列表(battleState.combatData, '玩家').filter(unit => unit.name !== actor.name)
-              : 读取战斗阵营单位列表(battleState.combatData, '敌方').filter(unit => unit.name !== actor.name);
-
-          const makeActorAction = (type, log, skill = null, extra = {}) =>
-            {
-              const normalizedSkill = skill ? normalizeSkillData(skill, skill.name || skill.技能名称 || type) : null;
-              if (normalizedSkill) 写入战斗来源类别上下文(normalizedSkill, 读取战斗来源类别上下文(skill, 规范化战斗来源类别(type, '魂技')));
-              return Object.assign(
-                {
-                  type,
-                  log,
-                  skill: normalizedSkill,
-                  def_mult: 1.0,
-                },
-                extra,
-              );
-            };
-
-          const 技能具备可兑现主动价值 = skill => {
-            if (!skill || typeof skill !== 'object') return false;
-            const target = 技能偏向友方目标(skill) ? (allyTarget || actor) : enemyTarget;
-            const 规划收益 = 评估技能规划净收益(skill, {
-              actor,
-              primaryTarget: target,
-              behaviorState: strategicContext?.behaviorState || battleState,
-              规划上下文: strategicContext?.behaviorState?.规划上下文,
-              skipTactical: true,
-            });
-            const 分项 = 规划收益?.scoreParts && typeof 规划收益.scoreParts === 'object' ? 规划收益.scoreParts : null;
-            const 净收益 = 分项
-              ? BATTLE_RUNTIME.calculateObjectiveScore(分项)
-              : Number(规划收益?.净收益 ?? 规划收益?.基础效果净收益 ?? 0);
-            return 净收益 > 0;
-          };
-
-          const observedTargetAction = battleState?.observedTargetAction || enemyTarget?.蓄力技能 || {
-            action_type: '常规攻击',
-            cast_time: 10,
-            skill: normalizeSkillData(
-              {
-                name: '普通攻击',
-                技能分类: '输出',
-                消耗: '无',
-                前摇: 10,
-                _效果数组: [
-                  { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
-                ],
-              },
-              '普通攻击',
-            ),
-          };
-
-          const ratio = enemyTarget?.蓄力技能
-            ? calculateReactionRatio(enemyTarget, actor, observedTargetAction, {
-                战斗类型: battleState.combatData.战斗类型 || '突发遭遇',
-                先攻: actor.name,
-                参战者: { team_player: [enemyTarget], team_enemy: [actor] },
-              })
-            : 1;
-
-          const availableSkills = collectCombatSkills(actor, allyTeam);
-          const strategicContext = buildStrategicCandidates(
-            actor,
-            enemyTarget,
-            battleState.combatData,
-            observedTargetAction,
-            ratio,
-            availableSkills,
-            allyTeam,
-            makeActorAction,
-          );
-          strategicContext.behaviorState.规划上下文 = 构建规划上下文(actor, enemyTarget, battleState.combatData, strategicContext.behaviorState);
-          if (battleState?.observedTargetAction && enemyTarget) {
-            strategicContext.behaviorState.规划上下文.锁定敌对目标 = enemyTarget;
-            strategicContext.behaviorState.锁定敌对目标 = enemyTarget;
-          }
-          strategicContext.behaviorState.战局画像 = strategicContext.behaviorState.规划上下文.战局画像;
-          strategicContext.behaviorState.目标优先表 = strategicContext.behaviorState.规划上下文.目标优先表;
-          strategicContext.behaviorState.战略意图 = strategicContext.behaviorState.规划上下文.战略意图;
-          strategicContext.behaviorState.主动回合 = true;
-          const isSupport = ['辅助系', '治疗系', '食物系', '召唤系'].includes(行动者系别);
-          const isLowHealth = getCombatHpRatio(actor) < 0.3;
-          const skillContext = buildNpcSkillCandidateContext(
-            actor,
-            enemyTarget,
-            observedTargetAction,
-            availableSkills,
-            strategicContext.behaviorState,
-            strategicContext.activeBuffs,
-            isLowHealth,
-            { 主动回合: true },
-          );
-          strategicContext.behaviorState.skillContext = skillContext;
-          const 是输出主职 = ['强攻系', '敏攻系', '元素系', '精神系'].includes(行动者系别);
-          const 高价值主动技能 =
-            (skillContext.评分技能列表 || []).some(项目 => 项目?.skill && Number(项目.weight || 0) >= 20) ||
-            (是输出主职 && !!(skillContext.atkSkill || skillContext.lowCostAtkSkill || skillContext.pierceSkill)) ||
-            (isSupport && !!(skillContext.recoverSkill || skillContext.teamSupportSkill || skillContext.teamProtectSkill));
-          const 必要战略窗口 =
-            strategicContext.behaviorState.isChargingHighThreat ||
-            getCombatHpRatio(actor) < 0.45 ||
-            strategicContext.behaviorState?.threatProfile?.lethalRisk === true ||
-            strategicContext.behaviorState?.threatProfile?.severeDamage === true;
-          if (高价值主动技能 && !必要战略窗口) {
-            strategicContext.strategicBranches.forEach(候选 => {
-              if (!候选) return;
-              if (候选.name === '穿戴装备') 候选.weight = 0;
-              else if (候选.name === '开启真身') 候选.weight = Math.min(Number(候选.weight || 0), 4);
-              else if (候选.name === '展开领域') 候选.weight = Math.min(Number(候选.weight || 0), 8);
-            });
-          }
-          const 统一主动候选 = [...strategicContext.strategicBranches];
-
-          const convertDecisionToTurnAction = decisionAction => {
-            if (!decisionAction) return null;
-            const 原动作类型 = String(decisionAction.type || '').trim();
-            const 基础姿态类型 = /伺机闪避|闪避/.test(原动作类型)
-              ? '闪避'
-              : /肉体兜底|承伤硬抗|硬抗|防御/.test(原动作类型)
-                ? '防御'
-                : '';
-            const 实际动作类型 = 基础姿态类型 || 原动作类型 || '释放技能';
-            const 原始规划意图 = strategicContext.behaviorState?.战略意图?.主意图 || strategicContext.behaviorState?.规划上下文?.战略意图?.主意图 || '';
-            const 是支援动作 = decisionAction.skill && 技能偏向友方目标(decisionAction.skill);
-            const 规划显示意图 = 原始规划意图 === '击杀'
-              ? '压制收束'
-              : 原始规划意图 === '终局爆发'
-                ? '终局压制'
-                : (/治疗|保核/.test(原始规划意图) && !是支援动作 ? '压制续航' : 原始规划意图 || '战术行动');
-            const neutralSkill = normalizeSkillData(
-              {
-                name: 实际动作类型,
-                技能分类: 基础姿态类型 ? '防御' : '辅助',
-                目标: 基础姿态类型 ? '自身' : undefined,
-                消耗: 基础姿态类型 === '闪避' ? '体力:5%' : '无',
-                前摇: 基础姿态类型 === '闪避' ? 12 : 10,
-                _效果数组: [],
-              },
-              实际动作类型,
-            );
-
-            const 回合动作 = {
-              action_type: 实际动作类型,
-              cast_time: getSkillCastTime(decisionAction.skill || neutralSkill) || 10,
-              skill: decisionAction.skill || neutralSkill,
-              __基础防守姿态: 基础姿态类型 === '闪避' ? 'EVADE' : 基础姿态类型 === '防御' ? 'DEFEND' : '',
-              source: 'auto_actor',
-              decision_log: replaceBattleReportGenericNames(
-                `[规划] ${规划显示意图}。 ${decisionAction.log || ''}`.trim(),
-                { player: enemyTarget, enemy: actor },
-              ),
-              def_mult: decisionAction.def_mult || 1.0,
-            };
-            回合动作.__行动规划审计 = {
-              战略意图: strategicContext.behaviorState?.规划上下文?.战略意图?.主意图 || '',
-              目标理由: strategicContext.behaviorState?.规划上下文?.目标优先表?.敌方?.[0]?.理由 || [],
-              候选来源: decisionAction.type || '主动规划动作',
-            };
-            const 最终动作 = 准备自动批量辅助动作(actor, 回合动作, [actor, ...allyTeam], battleState);
-            const 回填动作名 = normalizeBattleActionDisplayName(
-              最终动作?.skill?.name ||
-              最终动作?.skill?.魂技名 ||
-              最终动作?.type ||
-              decisionAction.skill?.name ||
-              decisionAction.skill?.魂技名 ||
-              decisionAction.type ||
-              '',
-            );
-            const 回填候选名 = normalizeBattleActionDisplayName(
-              decisionAction.skill?.name ||
-              decisionAction.skill?.魂技名 ||
-              decisionAction.type ||
-              '',
-            );
-            const 动作确有覆写 = !!(回填动作名 && 回填候选名 && 回填动作名 !== 回填候选名);
-            回填行动闭环审计最终动作(battleState.combatData, actor, {
-              round: Number(battleState?.combatData?.回合 || 0),
-              finalResolvedActionName: 回填动作名,
-              hitCandidateName: 回填候选名,
-              actionOverrideSource: 动作确有覆写 ? '主动规划终态回填' : '',
-              目标语义: String(最终动作?.skill?.目标 || 最终动作?.skill?.target || '').trim(),
-              承载方式: String(最终动作?.skill?.承载方式 || '').trim(),
-              目标: String(最终动作?.target_name || enemyTarget?.name || '').trim(),
-            });
-            return 最终动作;
-          };
-          const 是职责支援技能 = 技能 => {
-            if (!技能) return false;
-            if (isSupportLikeSkill(技能)) return true;
-            return getSkillEffects(技能, { 行为规划: true }).some(effect => {
-              const 原型 = String(effect?.原型 || '').trim();
-              const 结算 = String(effect?.结算 || '').trim();
-              const 数值 = 读取战斗数值正负(effect?.数值);
-              if (原型 === '资源变化') return 数值 > 0;
-              if (['护盾变化', '规则防御', '机制授予', '状态移除'].includes(原型)) return true;
-              if (原型 === '状态施加') {
-                const 战斗效果 = effect?.计算层效果 || {};
-                return Number(战斗效果.shield_gain_bonus || 0) > 0 ||
-                  战斗效果.super_armor === true ||
-                  战斗效果.invincible === true ||
-                  Number(战斗效果.damage_reduction || 0) > 0 ||
-                  Number(战斗效果.damage_share_ratio || 0) > 0 ||
-                  Number(战斗效果.hot_heal_ratio || 0) > 0;
-              }
-              if (['属性修正', '判定修正'].includes(原型)) return 数值 > 0;
-              if (原型 === '结算修正') {
-                if (['消耗', '前摇'].includes(结算)) return 数值 < 0;
-                return ['治疗', '受到伤害', '伤害吸收', '伤害分摊', '消耗分摊', '技能效果'].includes(结算);
-              }
-              return false;
-            });
-          };
-          const 技能具备伤害原型 = 技能 => getSkillEffects(技能, { 行为规划: true })
-            .some(effect => String(effect?.原型 || '').trim() === '伤害结算' && (
-              Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0 ||
-              Number(effect?.段数 || 0) > 0 ||
-              /伤害/.test(String(effect?.伤害类型 || effect?.结算 || ''))
-            ));
-          const 支援技能有新收益 = 技能 => {
-            if (!技能) return false;
-            if (!技能具备可兑现主动价值(技能)) return false;
-            const 友方候选 = dedupeCombatTargetList([actor, ...allyTeam]).filter(unit => unit && isCombatUnitAlive(unit));
-            const 目标 = [...友方候选]
-              .sort((左, 右) =>
-                scoreAllyTargetForSkill(actor, 右, 技能, battleState.combatData) -
-                  scoreAllyTargetForSkill(actor, 左, 技能, battleState.combatData) ||
-                getCombatHpRatio(左) - getCombatHpRatio(右),
-              )[0] || allyTarget || actor;
-            const 规划技能 = 构建行为规划技能(技能, 目标, actor, battleState.combatData);
-            const 效果列表 = getSkillEffects(规划技能, { 行为规划: true });
-            const 目标血量 = getCombatHpRatio(目标);
-            const 最低友方血量 = 友方候选.reduce((最低, unit) => Math.min(最低, getCombatHpRatio(unit)), 1);
-            const 自身资源 = 读取规划综合资源比例_V1(actor);
-            const 来袭 = strategicContext.behaviorState?.threatProfile || {};
-            const 是保护效果 = effect => {
-              const 原型 = String(effect?.原型 || '').trim();
-              const 结算 = String(effect?.结算 || '').trim();
-              const 战斗效果 = effect?.计算层效果 || {};
-              if (['护盾变化', '规则防御'].includes(原型)) return true;
-              if (原型 === '状态施加') {
-                return Number(战斗效果.shield_gain_bonus || 0) > 0 ||
-                  战斗效果.super_armor === true ||
-                  战斗效果.invincible === true ||
-                  Number(战斗效果.damage_reduction || 0) > 0 ||
-                  Number(战斗效果.damage_share_ratio || 0) > 0;
-              }
-              return 原型 === '结算修正' && 结算 === '伤害分摊';
-            };
-            const 有急救 = (目标血量 < 0.72 || 最低友方血量 < 0.72) &&
-              效果列表.some(effect => isBattleRecoverEffect(effect) || String(effect?.原型 || '').trim() === '资源变化');
-            const 有保护 = (来袭.lethalRisk === true || 来袭.severeDamage === true || getCombatHpRatio(actor) < 0.45 || 目标血量 < 0.72 || 最低友方血量 < 0.72) &&
-              效果列表.some(是保护效果);
-            const 有异常处理 = 效果列表.some(effect => ['状态移除', '机制授予'].includes(String(effect?.原型 || '').trim()));
-            const 有资源窗口 = 自身资源 < 0.62 && 效果列表.some(effect => String(effect?.原型 || '').trim() === '资源变化' && 读取战斗数值正负(effect?.数值) > 0);
-            const 目标已有同名维持 = 友方候选.some(unit => 单位已有同名维持技能(unit, 技能));
-            if (目标已有同名维持 && !有急救 && !有保护 && !有异常处理) return false;
-            return 有急救 || 有保护 || 有异常处理 || 有资源窗口;
-          };
-          const 存在有效伤害魂技 = (availableSkills || []).some(技能 => 技能具备伤害原型(newSkillData(技能)));
-          const 支援无伤害战术窗口 =
-            ['辅助系', '治疗系', '食物系'].includes(行动者系别) &&
-            !存在有效伤害魂技;
-          const 评分职责候选 = ['辅助系', '治疗系', '食物系'].includes(行动者系别)
-            ? (skillContext.评分技能列表 || [])
-                .filter(项目 => 项目?.skill && 是职责支援技能(项目.规划技能 || 项目.skill) && 支援技能有新收益(项目.skill))
-                .map(项目 => {
-                  return {
-                    skill: 项目.skill,
-                    weight: Math.max(1, Number(项目.weight || 0) + 28),
-                  };
-                })
-            : [];
-          const 技能评分查找 = new Map((skillContext.评分技能列表 || []).map(项目 => [
-            String(项目?.skill?.name || 项目?.skill?.魂技名 || 项目?.skill?.技能名称 || '').trim(),
-            Number(项目?.weight || 0),
-          ]));
-          const 直接职责候选 = ['辅助系', '治疗系', '食物系'].includes(行动者系别)
-            ? (availableSkills || [])
-                .map(skill => newSkillData(skill))
-                .filter(skill => skill && 是职责支援技能(skill) && 支援技能有新收益(skill))
-                .map(skill => {
-                  const 技能名 = String(skill.name || skill.魂技名 || skill.技能名称 || '').trim();
-                  return {
-                    skill,
-                    weight: Math.max(1, Number(技能评分查找.get(技能名) || 0) + scoreAllyTargetForSkill(actor, allyTarget || actor, skill, battleState.combatData) + 18),
-                  };
-                })
-            : [];
-          const 主动职责候选 = [...评分职责候选, ...直接职责候选]
-            .filter((项目, index, 列表) => {
-              const 技能名 = String(项目?.skill?.name || 项目?.skill?.魂技名 || 项目?.skill?.技能名称 || '').trim();
-              return 技能名 && 列表.findIndex(候选 => String(候选?.skill?.name || 候选?.skill?.魂技名 || 候选?.skill?.技能名称 || '').trim() === 技能名) === index;
-            });
-          const 主动职责技能 = [...主动职责候选].sort((左, 右) => Number(右.weight || 0) - Number(左.weight || 0))[0]?.skill || (
-            ['辅助系', '治疗系', '食物系'].includes(行动者系别) &&
-            (skillContext.recoverSkill || skillContext.teamProtectSkill || skillContext.teamSupportSkill)
-          );
-          const 支援职责可承压触发 =
-            ['辅助系', '治疗系', '食物系'].includes(行动者系别) &&
-            是职责支援技能(主动职责技能) &&
-            支援技能有新收益(主动职责技能) &&
-            strategicContext.behaviorState?.threatProfile?.lethalRisk !== true;
-          if (主动职责技能 && 支援技能有新收益(主动职责技能) && (!必要战略窗口 || 支援职责可承压触发)) {
-            统一主动候选.push({
-              name: '支援补位',
-              __预览技能: 主动职责技能,
-              weight: Math.max(1, Number(主动职责候选.find(item => item?.skill === 主动职责技能)?.weight || 0)),
-              build: () => makeActorAction(
-                '支援补位',
-                `[职责判断] ${行动者系别 || '支援型'}将[${主动职责技能.name}]作为本回合支援候选。`,
-                主动职责技能,
-              ),
-            });
-          }
-          const 是低效纯直伤技能 = 技能 => {
-            if (!技能 || !enemyTarget) return false;
-            const 效果列表 = getSkillEffects(技能, { 行为规划: true });
-            if (!效果列表.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) return false;
-            const 有战术副价值 = 效果列表.some(effect => {
-              const 原型 = String(effect?.原型 || '').trim();
-              const 结算 = String(effect?.结算 || '').trim();
-              if (原型 === '伤害结算') return Number(effect?.防御穿透 || 0) >= 20;
-              if (['状态施加', '判定修正', '属性修正', '状态移除', '资源锁定', '规则改写', '决策干扰', '时窗修正'].includes(原型)) return true;
-              if (原型 === '结算修正') return ['防御穿透', '防御剥夺', '精神抗性剥夺', '持续伤害引爆', '消耗', '前摇'].includes(结算);
-              return false;
-            });
-            if (有战术副价值) return false;
-            const 规划技能 = normalizeSkillData(技能, 技能.name || 技能.魂技名 || 技能.技能名称 || '技能');
-            const 威胁 = estimateIncomingActionThreat(actor, enemyTarget, {
-              action_type: '技能',
-              type: '技能',
-              cast_time: getSkillCastTime(规划技能),
-              skill: 规划技能,
-            }, battleState.combatData || {});
-            return Number(威胁.projectedDamageRatio || 0) < 0.015;
-          };
-          const tacticalBranches = buildTacticalCandidates(
-            actor,
-            enemyTarget,
-            observedTargetAction,
-            strategicContext.behaviorState,
-            skillContext,
-            makeActorAction,
-            isSupport,
-            isLowHealth,
-          );
-          const 已入池技能名 = new Set([...统一主动候选, ...tacticalBranches].map(candidate => normalizeBattleActionDisplayName(
-            candidate?.__预览技能?.name || candidate?.__预览技能?.魂技名 || candidate?.skill?.name || candidate?.skill?.魂技名 || ''
-          )).filter(Boolean));
-          (availableSkills || []).map(skill => newSkillData(skill)).filter(Boolean).forEach(skill => {
-            const skillName = normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || skill?.技能名称 || '');
-            if (!skillName || 已入池技能名.has(skillName) || !技能具备可兑现主动价值(skill)) return;
-            const friendly = 技能偏向友方目标(skill);
-            const previewTarget = friendly ? (allyTarget || actor) : enemyTarget;
-            tacticalBranches.push({
-              name: skillName,
-              __预览技能: skill,
-              __预览目标: previewTarget,
-              target: previewTarget,
-              weight: Number(技能评分查找.get(skillName) || 0),
-              build: () => makeActorAction(
-                '释放魂技',
-                `[统一候选] ${actor.name || '行动者'}评估[${skillName}]对当前战局的实际净收益。`,
-                skill,
-              ),
-            });
-            已入池技能名.add(skillName);
-          });
-          if (!已入池技能名.has('普通攻击')) {
-            const 普通攻击技能 = normalizeSkillData({
-              name: '普通攻击',
-              魂技名: '普通攻击',
-              技能分类: '输出',
-              目标: '敌方单体',
-              消耗: '无',
-              前摇: 10,
-              _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 }],
-            }, '普通攻击');
-            tacticalBranches.push({
-              name: '普通攻击',
-              __预览技能: 普通攻击技能,
-              __预览目标: enemyTarget,
-              target: enemyTarget,
-              weight: strategicContext.behaviorState?.threatProfile?.lethalRisk === true ? 18 : 44,
-              build: () => makeActorAction('常规攻击', `[肉体动作] ${actor.name || '行动者'}以普通攻击维持主动权。`, 普通攻击技能),
-            });
-            已入池技能名.add('普通攻击');
-          }
-          if (支援无伤害战术窗口 && !(主动职责技能 && 支援技能有新收益(主动职责技能))) {
-            const 来袭 = strategicContext.behaviorState?.threatProfile || {};
-            tacticalBranches.push({
-              name: '普通攻击',
-              weight: 来袭.lethalRisk === true || 来袭.severeDamage === true ? 18 : 44,
-              build: () => makeActorAction(
-                '常规攻击',
-                '[无伤害魂技] 当前没有有效伤害魂技，改用普通攻击试探并争取空间。',
-                normalizeSkillData({
-                  name: '普通攻击',
-                  技能分类: '输出',
-                  消耗: '无',
-                  前摇: 10,
-                  _效果数组: [
-                    { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 },
-                  ],
-                }, '普通攻击'),
-              ),
-            });
-            tacticalBranches.forEach(候选 => {
-              if (!候选) return;
-              if (候选.name === '伺机闪避') 候选.weight = Number(候选.weight || 0) + (来袭.lethalRisk === true || 来袭.severeDamage === true ? 54 : 18);
-              if (候选.name === '肉体兜底') 候选.weight = Number(候选.weight || 0) + (来袭.lethalRisk === true || 来袭.severeDamage === true ? 42 : 14);
-            });
-          }
-          统一主动候选.push(...tacticalBranches);
-          const unifiedAction = chooseAndBuildActorAction(
-            actor,
-            enemyTarget,
-            strategicContext.behaviorState,
-            统一主动候选,
-            'ACTIVE_UNIFIED_STAGE',
-            `${skillContext.skillTraceLog ? skillContext.skillTraceLog + ' | ' : ''}`,
-          );
-          if (unifiedAction) return convertDecisionToTurnAction(unifiedAction);
-          const physicalFallbackCandidates = [
-            {
-              name: '常规攻击',
-              skill: normalizeSkillData({
-                name: '普通攻击',
-                魂技名: '普通攻击',
-                技能分类: '输出',
-                目标: '敌方单体',
-                消耗: '无',
-                前摇: 10,
-                _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 }],
-              }, '普通攻击'),
-              weight: 18,
-              build: () => makeActorAction('常规攻击', `[肉体动作] ${actor.name || '行动者'}以普通攻击维持主动权。`, normalizeSkillData({
-                name: '普通攻击',
-                技能分类: '输出',
-                目标: '敌方单体',
-                消耗: '无',
-                前摇: 10,
-                _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0 }],
-              }, '普通攻击')),
-            },
-            {
-              name: '防御',
-              skill: null,
-              weight: 22,
-              build: () => makeActorAction('防御', `[肉体动作] ${actor.name || '行动者'}收束身位，优先稳住防线。`, normalizeSkillData({ name: '防御', 魂技名: '防御', 技能分类: '防御', 消耗: '无', 前摇: 10 }, '防御')),
-            },
-            {
-              name: '闪避',
-              skill: null,
-              weight: 18,
-              build: () => makeActorAction('闪避', `[肉体动作] ${actor.name || '行动者'}以步法避开下一次压迫。`, normalizeSkillData({ name: '闪避', 魂技名: '闪避', 技能分类: '防御', 消耗: '体力:5%', 前摇: 12 }, '闪避')),
-            },
-          ];
-          const physicalFallback = chooseAndBuildActorAction(
-            actor,
-            enemyTarget,
-            strategicContext.behaviorState,
-            physicalFallbackCandidates,
-            'ACTIVE_PHYSICAL_FALLBACK',
-          );
-          if (physicalFallback) return convertDecisionToTurnAction(physicalFallback);
-          return convertDecisionToTurnAction(
-            makeActorAction('肉体兜底', '[承压守势] 无合适魂技，收缩防御，准备承伤硬抗。', null, {
-              def_mult: 1.2,
-            }),
-          );
-        }
-
         function createActorTurnCombatData(actorEntry, target, battleState, targetsFriendlyTeam = false) {
           const actor = actorEntry.char;
           const actorAllies =
@@ -39762,90 +35364,10 @@ class BattleUIComponent {
           const actor = actorEntry?.char;
           if (!actor || !target || actor?.召唤键 || !isCombatUnitAbleToFight(actor) || !isCombatUnitAbleToFight(target)) return null;
           const budget = Math.max(0, Math.floor(Number(remainingTime || 0)));
-          if (budget < 1) return null;
-          const openerName = normalizeBattleActionDisplayName(openerAction?.skill?.name || openerAction?.skill?.魂技名 || openerAction?.action_type || '');
-          const basicAttack = normalizeSkillData({
-            name: '普通攻击',
-            魂技名: '普通攻击',
-            技能分类: '输出',
-            目标: '敌方单体',
-            消耗: '无',
-            前摇: 10,
-            _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }],
-          }, '普通攻击');
-          const candidates = [
-            basicAttack,
-            ...collectUnifiedSkillEntries(actor, [], { includePassive: false, includeActive: true }).map(entry => entry?.skill || entry),
-          ];
-          const seen = new Set();
-          const scored = [];
-          candidates.forEach(rawSkill => {
-            const skill = rawSkill && typeof rawSkill === 'object' ? normalizeSkillData(rawSkill, rawSkill.name || rawSkill.魂技名 || '追击技能') : null;
-            if (!skill || 技能偏向友方目标(skill)) return;
-            const name = normalizeBattleActionDisplayName(skill?.name || skill?.魂技名 || skill?.技能名称 || '');
-            if (!name || seen.has(name) || name === openerName) return;
-            seen.add(name);
-            const effects = getSkillEffects(skill, { 行为规划: true, actor, caster: actor, target, defender: target, skill });
-            const hasDamage = effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算' && (
-              Number(effect?.威力倍率 || effect?.威力 || effect?.基础倍率 || 0) > 0 ||
-              Number(effect?.段数 || effect?.攻击段数 || 0) > 0 ||
-              /伤害/.test(String(effect?.伤害类型 || effect?.结算 || ''))
-            ));
-            if (!hasDamage) return;
-            const action = {
-              action_type: '同回合追击',
-              type: '技能',
-              skill,
-              cast_time: getSkillCastTime(skill) || 10,
-              source: 'explicit_follow_up',
-              __chainType: 'FOLLOW_UP',
-              __followUpParentActionId: '',
-            };
-            套用动作队列实际前摇(actor, action, target, battleState.combatData);
-            const castTime = Math.max(1, Number(action.cast_time || 0));
-            if (castTime > budget) return;
-            const cost = parseSkillCostForChar(skill, actor, {
-              actor,
-              caster: actor,
-              target,
-              defender: target,
-              action,
-              skill,
-              combatData: battleState.combatData,
-              当前行动: '显式授权同回合追击',
-            });
-            if (cost?.canCast === false) return;
-            const planning = 评估技能规划净收益(skill, {
-              actor,
-              primaryTarget: target,
-              behaviorState: {
-                ...battleState,
-                combatData: battleState.combatData,
-                actionWindowRemaining: Math.max(0, budget - castTime),
-                可用行动时间: Math.max(0, budget - castTime),
-                followUpPlanning: true,
-              },
-              skipTactical: true,
-            });
-            const 分项 = planning?.scoreParts && typeof planning.scoreParts === 'object' ? planning.scoreParts : null;
-            const score = Math.max(0, 分项
-              ? BATTLE_RUNTIME.calculateObjectiveScore(分项)
-              : Number(planning?.净收益 ?? planning?.基础效果净收益 ?? 0));
-            if (!(score > 0)) return;
-            scored.push({ skill, action, score, castTime, cost: Number(cost?.reqSp || 0) + Number(cost?.reqMen || 0) + Number(cost?.reqVit || 0) });
-          });
-          scored.sort((left, right) => right.score - left.score || left.cost - right.cost || left.castTime - right.castTime ||
-            normalizeBattleActionDisplayName(left.skill?.name || left.skill?.魂技名 || '').localeCompare(normalizeBattleActionDisplayName(right.skill?.name || right.skill?.魂技名 || ''), 'zh-Hans-CN'));
-          const selected = scored[0];
-          if (!selected) return null;
-          selected.action.__followUpScore = selected.score;
-          selected.action.__followUpRemainingBudget = budget;
-          selected.action.__followUpAlternatives = scored.slice(1, 3).map(item => ({
-            name: normalizeBattleActionDisplayName(item.skill?.name || item.skill?.魂技名 || ''),
-            score: Math.round(item.score),
-            castTime: item.castTime,
-          }));
-          return selected.action;
+          if (budget < 10) return null;
+          const continuationDecider = 确保战斗运行态(battleState.combatData)?.decisionContinuationDecider;
+          if (typeof continuationDecider !== 'function') throw new Error('battle_decision_continuation_decider_missing');
+          return continuationDecider({ actorEntry, target, openerAction, remainingTime: budget, battleState });
         }
 
         function 创建扁平战斗行动队列(combatData, round, initialEntries = []) {
@@ -39881,6 +35403,34 @@ class BattleUIComponent {
 
         function 执行团战扁平行动队列(initialEntries, combatData, round, logs, extraPatchOps) {
           const actionQueue = 创建扁平战斗行动队列(combatData, round, initialEntries);
+          const 记录队列取消机会 = (node, reasonCode, reasonText) => {
+            if (!node || !String(node?.grantId || '').startsWith('natural:')) return null;
+            const actor = node?.actorEntry?.char;
+            if (!actor) return null;
+            return 写入战斗事件账本(combatData, {
+              eventKind: 'lost_opportunity',
+              round: Number(round || combatData?.回合 || 0),
+              actorName: actor?.name || actor?.名称 || '',
+              targetName: actor?.name || actor?.名称 || '',
+              actionName: '失去行动机会',
+              actionType: 'lost_opportunity',
+              actorControl: String(node?.actorControl || node?.actorEntry?.__actorControl || 'AI').trim() || 'AI',
+              actionRole: 'ACTIVE',
+              result: 'blocked',
+              resultState: 'BLOCKED',
+              ruleCode: reasonCode,
+              failReason: reasonCode,
+              meta: { reasonCode, reasonText, source: 'action_queue_terminal_cancel', grantId: String(node?.grantId || '').trim() },
+            });
+          };
+          const 取消剩余自然机会 = (firstNode, reasonCode, reasonText) => {
+            let node = firstNode;
+            while (node) {
+              记录队列取消机会(node, reasonCode, reasonText);
+              actionQueue.recordTrace('CANCELLED', node, { reason: reasonCode });
+              node = actionQueue.dequeue();
+            }
+          };
           const 处理动作结算后继 = (node, turnResult = {}) => {
             const pendingResolution = turnResult?.pendingResolution && typeof turnResult.pendingResolution === 'object'
               ? turnResult.pendingResolution
@@ -39993,13 +35543,13 @@ class BattleUIComponent {
             const node = actionQueue.dequeue();
             if (!node) break;
             if (确保战斗运行态(combatData).withdrawalSuccess) {
-              actionQueue.recordTrace('CANCELLED', node, { reason: 'WITHDRAW_SUCCESS' });
+              取消剩余自然机会(node, 'WITHDRAW_SUCCESS', '战斗已因成功撤离结束');
               break;
             }
             const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
             const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
             if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) {
-              actionQueue.recordTrace('CANCELLED', node, { reason: 'BATTLE_TERMINATED' });
+              取消剩余自然机会(node, 'BATTLE_TERMINATED', '战斗终态已成立，后续自然行动取消');
               break;
             }
             if (typeof node.execute === 'function') {
@@ -40141,6 +35691,21 @@ class BattleUIComponent {
           const queuedCounterRequests = [];
           bindCombatParticipant(actor);
           syncCombatActionState(actor);
+          const recordLostOpportunity = (reasonCode, reasonText) => 写入战斗事件账本(battleState.combatData, {
+            eventKind: 'lost_opportunity',
+            round: Number(battleState.combatData?.回合 || battleState.round || 0),
+            actorName: actor?.name || actor?.名称 || '',
+            targetName: actor?.name || actor?.名称 || '',
+            actionName: '失去行动机会',
+            actionType: 'lost_opportunity',
+            actorControl: String(actorEntry.__actorControl || 'AI').trim() || 'AI',
+            actionRole: 'ACTIVE',
+            result: 'blocked',
+            resultState: 'BLOCKED',
+            ruleCode: reasonCode,
+            failReason: reasonCode,
+            meta: { reasonCode, reasonText, source: 'natural_action_opportunity' },
+          });
           const staleStance = actor?.__battleRuntime?.activeDefenseStance;
           if (staleStance && Number(staleStance.createdRound || 0) < Number(battleState.combatData?.回合 || 0)) {
             delete actor.__battleRuntime.activeDefenseStance;
@@ -40160,7 +35725,7 @@ class BattleUIComponent {
             });
           }
           if (!isCombatUnitAlive(actor)) {
-            return { actor: actor.name, side: actorEntry.side, skipped: true, reason: '已失去战斗力' };
+            return { actor: actor.name, side: actorEntry.side, skipped: true, reason: '已失去战斗力', lostOpportunity: recordLostOpportunity('DEFEATED_BEFORE_OPPORTUNITY', '行动机会到来前已失去战斗能力') };
           }
           if (!isCombatUnitAbleToFight(actor)) {
             return {
@@ -40168,6 +35733,7 @@ class BattleUIComponent {
               side: actorEntry.side,
               skipped: true,
               reason: '体力耗尽',
+              lostOpportunity: recordLostOpportunity('ACTION_CAPABILITY_EXHAUSTED', '行动能力耗尽，无法执行本次自然行动'),
               log: `[团战执行] ${actor.name}体力归零，已陷入昏迷，本回合无法行动。`,
             };
           }
@@ -40178,19 +35744,20 @@ class BattleUIComponent {
               side: actorEntry.side,
               skipped: true,
               reason: '处于硬控状态',
+              lostOpportunity: recordLostOpportunity('HARD_CONTROLLED', '硬控制仍在生效，当前自然行动被取消'),
               log: `[团战执行] ${actor.name}处于硬控状态，本回合无法行动。`,
             };
           }
 
-          if (!forcedAction && !actor.蓄力技能 && typeof actorEntry.__shadowDecisionResolver === 'function') {
-            const resolvedShadow = actorEntry.__shadowDecisionResolver({ actorEntry, battleState }) || {};
-            if (resolvedShadow.action && typeof resolvedShadow.action === 'object') {
+          if (!forcedAction && !actor.蓄力技能 && typeof actorEntry.__decisionResolver === 'function') {
+            const resolvedDecision = actorEntry.__decisionResolver({ actorEntry, battleState }) || {};
+            if (resolvedDecision.action && typeof resolvedDecision.action === 'object') {
               actorEntry.__declaredRound = Number(battleState.combatData?.回合 || battleState.round || 0);
-              actorEntry.__declaredAction = resolvedShadow.action;
+              actorEntry.__declaredAction = resolvedDecision.action;
               actorEntry.__declaredActionName = normalizeBattleActionDisplayName(
-                resolvedShadow.action?.skill?.name || resolvedShadow.action?.skill?.魂技名 || resolvedShadow.action?.action_type || '行动',
+                resolvedDecision.action?.skill?.name || resolvedDecision.action?.skill?.魂技名 || resolvedDecision.action?.action_type || '行动',
               );
-              actorEntry.__declaredTargetName = String(resolvedShadow.targetName || resolvedShadow.action?.target_name || '').trim();
+              actorEntry.__declaredTargetName = String(resolvedDecision.targetName || resolvedDecision.action?.target_name || '').trim();
               actorEntry.__declaredTimingBucket = '10-19';
             }
           }
@@ -40266,7 +35833,7 @@ class BattleUIComponent {
           }
           const actionTarget = targets?.enemyTarget || targets?.allyTarget || null;
           if (!actionTarget) {
-            return { actor: actor.name, side: actorEntry.side, skipped: true, reason: '无可用目标' };
+            return { actor: actor.name, side: actorEntry.side, skipped: true, reason: '无可用目标', lostOpportunity: recordLostOpportunity('NO_LEGAL_TARGET', '当前不存在机械合法目标') };
           }
           bindCombatParticipant(targets.enemyTarget);
           bindCombatParticipant(targets.allyTarget);
@@ -40292,9 +35859,10 @@ class BattleUIComponent {
               };
             }
           } else {
-            action = forcedAction || (declaredRound === currentRound && actorEntry.__declaredAction
-              ? actorEntry.__declaredAction
-              : buildAutoActionForActor(actorEntry, targets, battleState));
+            if (!forcedAction && !(declaredRound === currentRound && actorEntry.__declaredAction)) {
+              throw new Error(`battle_decision_declaration_missing:${String(actor?.name || actor?.名称 || '').trim()}`);
+            }
+            action = forcedAction || actorEntry.__declaredAction;
             if (!forcedAction && !(declaredRound === currentRound && actorEntry.__declaredAction)) {
               刷新队伍行动轴意图(actorEntry, targets, action, battleState);
             }
@@ -40458,6 +36026,7 @@ class BattleUIComponent {
               summonMode: actor.召唤键 ? (actor?.行动模式 || '') : '',
             },
           });
+          action.__actorControl = String(actionStartEvent?.actorControl || queueNode?.actorControl || actorEntry.__actorControl || 'AI').trim() || 'AI';
           const settlementLedgerStart = BATTLE_RUNTIME.ensureLedger(battleState.combatData).length;
           const settlementHpBefore = new Map([
             ...读取战斗主队单位列表(battleState.combatData, '玩家'),
@@ -40474,20 +36043,19 @@ class BattleUIComponent {
               : `[配合] ${actor.name}将【${action.skill?.name || action.action_type || '行动'}】交给${finalTarget.name}承接。`;
           } else {
             const preparedStance = 消费主动基础防守姿态(finalTarget, actor, action, battleState.combatData);
-            const shadowReactionDecider = 确保战斗运行态(battleState.combatData)?.shadowReactionDecider;
+            const reactionDecider = 确保战斗运行态(battleState.combatData)?.decisionReactionDecider;
+            if (!preparedStance && typeof reactionDecider !== 'function' && !finalTarget.is_controlled) {
+              throw new Error('battle_decision_reaction_decider_missing');
+            }
             reactionAction = preparedStance || (finalTarget.is_controlled
               ? { type: '无法反应', log: `${finalTarget.name}处于被控状态，无法动作。`, skill: null, def_mult: 1.0 }
-              : typeof shadowReactionDecider === 'function'
-                ? shadowReactionDecider({ reactor: finalTarget, sourceActor: actor, incomingAction: action, ratio })
-                : determineNpcAction(actorTurnCombatData, action, ratio));
+              : reactionDecider({ reactor: finalTarget, sourceActor: actor, incomingAction: action, ratio }));
           }
 
           const 反应具备实际动作 = !/无法反应|来不及|被控|控制|抢招失败|no reaction/i.test(
             `${reactionAction?.type || reactionAction?.action_type || ''} ${reactionAction?.log || ''}`,
           );
-          const 行为链结果 = finalTarget === actor || targetsFriendlyTeam || !反应具备实际动作 || typeof 确保战斗运行态(battleState.combatData)?.shadowReactionDecider === 'function'
-            ? null
-            : 自动行为链再判定(actor, finalTarget, action, reactionAction, actorTurnCombatData);
+          const 行为链结果 = null;
           if (finalTarget !== actor && !targetsFriendlyTeam && actionStartEvent) {
             const reactionType = String(reactionAction?.type || reactionAction?.action_type || '').trim();
             const reactionSkillName = normalizeBattleActionDisplayName(reactionAction?.skill?.name || reactionAction?.skill?.魂技名 || reactionType || '应招');
@@ -40959,90 +36527,6 @@ class BattleUIComponent {
           }).length;
         }
 
-        function 记录团战行动轴声明(queue = [], combatData = {}, logs = []) {
-          const runtime = 确保战斗运行态(combatData);
-          const lockedAction = runtime?.playerLockedNaturalAction && typeof runtime.playerLockedNaturalAction === 'object'
-            ? runtime.playerLockedNaturalAction
-            : null;
-          const 声明列表 = (Array.isArray(queue) ? queue : [])
-            .filter(entry => entry?.char && isCombatUnitAbleToFight(entry.char))
-            .map(entry => {
-              const targets = chooseTargetForActor(entry, { combatData });
-              const useLockedAction = !!lockedAction &&
-                lockedAction.consumed !== true &&
-                Number(lockedAction.round || 0) === Number(combatData?.回合 || 0) &&
-                isCombatUnitIdentityMatch(entry.char, lockedAction.actorName || '');
-              const action = useLockedAction
-                ? lockedAction.action
-                : buildAutoActionForActor(entry, targets, { combatData });
-              if (useLockedAction) {
-                lockedAction.consumed = true;
-                entry.__actorControl = 'PLAYER_LOCKED';
-                const declaredTarget = findCombatUnitByName(combatData, lockedAction.targetName || action?.target_name || '');
-                if (declaredTarget) {
-                  if (读取规划单位阵营(declaredTarget, combatData) === 读取规划单位阵营(entry.char, combatData)) targets.allyTarget = declaredTarget;
-                  else targets.enemyTarget = declaredTarget;
-                  action.target_name = declaredTarget.name || declaredTarget.名称 || action.target_name || '';
-                }
-              } else {
-                entry.__actorControl = 'AI';
-              }
-              刷新队伍行动轴意图(entry, targets, action, { combatData });
-              const target = targets?.enemyTarget || targets?.allyTarget || null;
-              const 前摇 = Number(action?.cast_time ?? action?.skill?.前摇 ?? 10) || 10;
-              const 分桶 = `${Math.floor(Math.min(39, Math.max(0, 前摇)) / 10) * 10}-${Math.floor(Math.min(39, Math.max(0, 前摇)) / 10) * 10 + 9}`;
-              写入行动轴初始意图节点(combatData, entry, target, action, 分桶);
-              entry.__declaredRound = Number(combatData?.回合 || 0);
-              entry.__declaredAction = action;
-              entry.__declaredActionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '行动');
-              entry.__declaredTargetName = String(target?.name || target?.名称 || '').trim();
-              entry.__declaredTimingBucket = 分桶;
-              return {
-                行动者: entry.char,
-                目标: target,
-                动作: action,
-                前摇,
-                分桶,
-              };
-            });
-          const 来袭计数 = new Map();
-          声明列表.forEach(声明 => {
-            const 目标名 = String(声明.目标?.name || 声明.目标?.名称 || '').trim();
-            if (!目标名) return;
-            const key = `${目标名}::${声明.分桶}`;
-            来袭计数.set(key, (来袭计数.get(key) || 0) + 1);
-          });
-          声明列表.forEach(声明 => {
-            if (!声明.目标) return;
-            const key = `${声明.目标.name || 声明.目标.名称}::${声明.分桶}`;
-            const 数量 = Math.max(1, Number(来袭计数.get(key) || 1));
-            if (数量 <= 1) return;
-            声明.目标.__本回合防御承压池 = 声明.目标.__本回合防御承压池 || {};
-            声明.目标.__本回合防御承压池[声明.分桶] = 数量;
-          });
-          if (声明列表.length) {
-            logs.push(`[行动轴声明] ${声明列表.map(声明 => `${声明.行动者.name || '单位'}->${声明.目标?.name || '无目标'}(${声明.前摇})`).join('；')}`);
-          }
-          const 队伍意图 = 确保队伍临时意图(combatData);
-          const 意图摘要 = ['玩家', '敌方']
-            .map(阵营 => {
-              const 项 = 队伍意图[阵营] || {};
-              const 片段 = [];
-              if (项.集火目标) 片段.push(`${阵营}集火:${项.集火目标}x${Number(项.集火计数 || 0)}`);
-              if (项.保护目标) 片段.push(`${阵营}保护:${项.保护目标}x${Number(项.保护计数 || 0)}`);
-              return 片段.join('，');
-            })
-            .filter(Boolean);
-          if (意图摘要.length) logs.push(`[队伍意图] ${意图摘要.join('；')}`);
-          const 多威胁 = Array.from(来袭计数.entries()).filter(([, 数量]) => 数量 > 1);
-          if (多威胁.length) {
-            logs.push(`[来袭窗口] ${多威胁.map(([key, 数量]) => {
-              const [目标名, 分桶] = key.split('::');
-              return `${目标名}@${分桶}:${数量}重威胁`;
-            }).join('；')}`);
-          }
-        }
-
         function settleTeamRoundEnd(combatData, logs) {
           const allUnits = [
             ...读取战斗主队单位列表(combatData, '玩家'),
@@ -41103,7 +36587,7 @@ class BattleUIComponent {
               return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
             },
             buildQueue: generateActionQueue,
-            recordQueue: 记录团战行动轴声明,
+            recordQueue() { throw new Error('battle_decision_record_queue_required'); },
             executeQueue: 执行团战扁平行动队列,
             settleRoundEnd: settleTeamRoundEnd,
             readAlive,
@@ -41146,15 +36630,10 @@ class BattleUIComponent {
         }
 
         function runTeamBattleSimulation(combatData, maxRounds = 3) {
-          return BATTLE_RUNTIME.runTeamBattle({
-            combatData,
-            mode: 'multi_round',
-            maxRounds,
-            adapters: 构建团战运行时适配器(),
-          });
+          return 运行正式决策战斗(combatData, maxRounds, 'multi_round');
         }
 
-        function 构建影子声明动作(declaration = {}, actor = {}, combatData = {}) {
+        function 构建决策声明动作(declaration = {}, actor = {}, combatData = {}) {
           const actionKind = String(declaration?.actionKind || '').trim();
           const targetId = String(declaration?.targetIds?.[0] || '').trim();
           const target = [
@@ -41202,24 +36681,25 @@ class BattleUIComponent {
           };
         }
 
-        function runShadowTeamBattleSimulation(combatData, maxRounds = 3, decide, updateBelief, updatePublicBelief) {
-          if (typeof decide !== 'function') throw new TypeError('battle_shadow_decide_missing');
-          if (typeof updateBelief !== 'function') throw new TypeError('battle_shadow_belief_updater_missing');
-          if (typeof updatePublicBelief !== 'function') throw new TypeError('battle_shadow_public_belief_updater_missing');
-          const baseAdapters = 构建团战运行时适配器();
-          确保战斗运行态(combatData).shadowSimulation = true;
-          const shadowDecisions = [];
+        function runDecisionTeamBattleSimulation(combatData, maxRounds = 3, decide, updateBelief, updatePublicBelief, mode = 'multi_round', adapterOptions = {}) {
+          if (typeof decide !== 'function') throw new TypeError('battle_decide_missing');
+          if (typeof updateBelief !== 'function') throw new TypeError('battle_belief_updater_missing');
+          if (typeof updatePublicBelief !== 'function') throw new TypeError('battle_public_belief_updater_missing');
+          const baseAdapters = 构建团战运行时适配器(adapterOptions);
+          const runtime = 确保战斗运行态(combatData);
+          runtime.decisionSimulation = true;
+          const decisions = [];
           const beliefObservations = [];
           const pendingBeliefObservations = [];
           const beliefByActor = new Map();
           const strategyByActor = new Map();
           const strategicHistoryByActor = new Map();
-          const 读取影子单位 = (currentCombatData, targetId) => [
+          const 读取决策单位 = (currentCombatData, targetId) => [
             ...读取战斗主队单位列表(currentCombatData, '玩家'),
             ...读取战斗主队单位列表(currentCombatData, '敌方'),
             ...读取召唤单位列表(currentCombatData),
           ].find(unit => isCombatUnitIdentityMatch(unit, targetId));
-          const 登记影子机制观察 = (actor, decision, currentCombatData, actionRole = 'ACTIVE') => {
+          const 登记决策机制观察 = (actor, decision, currentCombatData, actionRole = 'ACTIVE') => {
             const selected = decision?.selected;
             const observations = Array.isArray(selected?.mechanicObservations) ? selected.mechanicObservations : [];
             if (!observations.length) return;
@@ -41228,7 +36708,7 @@ class BattleUIComponent {
             const actionName = normalizeBattleActionDisplayName(selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 || selected?.declaration?.actionKind || '行动');
             const ledgerStart = BATTLE_RUNTIME.ensureLedger(currentCombatData).length;
             observations.forEach(observation => {
-              const target = 读取影子单位(currentCombatData, observation?.targetId);
+              const target = 读取决策单位(currentCombatData, observation?.targetId);
               pendingBeliefObservations.push({
                 ...observation,
                 actorId,
@@ -41241,7 +36721,7 @@ class BattleUIComponent {
               });
             });
           };
-          const 结算影子机制观察 = currentCombatData => {
+          const 结算决策机制观察 = currentCombatData => {
             const ledger = BATTLE_RUNTIME.ensureLedger(currentCombatData);
             const currentRound = Number(currentCombatData?.回合 || 0);
             const settled = pendingBeliefObservations.splice(0, pendingBeliefObservations.length);
@@ -41281,7 +36761,7 @@ class BattleUIComponent {
               strategicHistoryByActor.set(observation.actorId, history);
             });
           };
-          const 结算影子公开观察 = currentCombatData => {
+          const 结算决策公开观察 = currentCombatData => {
             const ledger = BATTLE_RUNTIME.ensureLedger(currentCombatData);
             const currentRound = Number(currentCombatData?.回合 || 0);
             const units = [
@@ -41340,8 +36820,8 @@ class BattleUIComponent {
           const adapters = {
             ...baseAdapters,
             recordQueue(queue = [], currentCombatData = {}, logs = []) {
-              const shadowRuntime = 确保战斗运行态(currentCombatData);
-              const 运行影子机会决策 = ({ reactor, sourceActor, incomingAction, ratio, actionRole }) => {
+              const decisionRuntime = 确保战斗运行态(currentCombatData);
+              const 运行决策机会 = ({ reactor, sourceActor, incomingAction, ratio, actionRole }) => {
                 const actorId = String(reactor?.id || reactor?.角色ID || reactor?.name || reactor?.名称 || '').trim();
                 const sourceId = String(sourceActor?.id || sourceActor?.角色ID || sourceActor?.name || sourceActor?.名称 || '').trim();
                 const decision = decide({
@@ -41360,29 +36840,29 @@ class BattleUIComponent {
                   beliefState: beliefByActor.get(actorId) || {},
                   strategyMemory: strategyByActor.get(actorId) || {},
                   strategicHistory: strategicHistoryByActor.get(actorId) || [],
-                  seedOffset: shadowDecisions.length,
+                  seedOffset: decisions.length,
                 });
-                if (!decision?.selected?.declaration) throw new Error(`battle_shadow_${String(actionRole || '').toLowerCase()}_decision_missing:${actorId}`);
+                if (!decision?.selected?.declaration) throw new Error(`battle_decision_${String(actionRole || '').toLowerCase()}_decision_missing:${actorId}`);
                 beliefByActor.set(actorId, decision.beliefState || {});
                 strategyByActor.set(actorId, decision.strategyMemory || {});
-                shadowDecisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole, sourceActorId: sourceId, ...decision });
-                登记影子机制观察(reactor, decision, currentCombatData, actionRole);
+                decisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole, sourceActorId: sourceId, ...decision });
+                登记决策机制观察(reactor, decision, currentCombatData, actionRole);
                 return { actorId, sourceId, decision };
               };
-              shadowRuntime.shadowReactionDecider = ({ reactor, sourceActor, incomingAction, ratio }) => {
-                const { actorId, sourceId, decision } = 运行影子机会决策({ reactor, sourceActor, incomingAction, ratio, actionRole: 'REACTION' });
-                const action = 构建影子声明动作({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
+              decisionRuntime.decisionReactionDecider = ({ reactor, sourceActor, incomingAction, ratio }) => {
+                const { actorId, sourceId, decision } = 运行决策机会({ reactor, sourceActor, incomingAction, ratio, actionRole: 'REACTION' });
+                const action = 构建决策声明动作({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
                 const reactionKind = String(decision.selected?.declaration?.actionKind || '').trim();
                 const settlementReactionType = reactionKind === 'EVADE'
                   ? '伺机闪避'
                   : reactionKind === 'DEFEND' ? '肉体兜底' : action.action_type || action.type || '防御';
                 action.type = settlementReactionType;
                 action.action_type = settlementReactionType;
-                action.log = `[影子应招] ${reactor?.name || reactor?.名称 || actorId}选择【${action.skill?.name || action.action_type || '防御'}】应对${sourceActor?.name || sourceActor?.名称 || sourceId}。`;
+                action.log = `[应招决策] ${reactor?.name || reactor?.名称 || actorId}选择【${action.skill?.name || action.action_type || '防御'}】应对${sourceActor?.name || sourceActor?.名称 || sourceId}。`;
                 return action;
               };
-              shadowRuntime.shadowCounterDecider = ({ reactor, sourceActor, incomingAction, ratio, counterDepth, counterType, triggerProbability }) => {
-                const { actorId, sourceId, decision } = 运行影子机会决策({ reactor, sourceActor, incomingAction, ratio, actionRole: 'COUNTER' });
+              decisionRuntime.decisionCounterDecider = ({ reactor, sourceActor, incomingAction, ratio, counterDepth, counterType, triggerProbability }) => {
+                const { actorId, sourceId, decision } = 运行决策机会({ reactor, sourceActor, incomingAction, ratio, actionRole: 'COUNTER' });
                 const declaration = { ...decision.selected.declaration };
                 if (decision.selected.counterDeclineFallback === true) {
                   return {
@@ -41392,12 +36872,12 @@ class BattleUIComponent {
                     __行为防反: true,
                     __counterDeclined: true,
                     __counterDepth: counterDepth,
-                    __shadowCandidateId: String(decision.selected.candidateId || '').trim(),
-                    __shadowActorId: actorId,
+                    __decisionCandidateId: String(decision.selected.candidateId || '').trim(),
+                    __decisionActorId: actorId,
                   };
                 }
                 if (declaration.targetIds?.length === 1) declaration.targetIds = [sourceId];
-                const selectedAction = 构建影子声明动作(declaration, reactor, currentCombatData);
+                const selectedAction = 构建决策声明动作(declaration, reactor, currentCombatData);
                 const sourceActionName = String(selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.name || selectedAction?.action_type || '反击').trim();
                 const counterAction = 建立行为防反动作(reactor, {
                   防反类型: counterType,
@@ -41407,17 +36887,68 @@ class BattleUIComponent {
                   counterDepth,
                   触发概率: triggerProbability,
                 });
-                counterAction.__shadowCandidateId = String(decision.selected.candidateId || '').trim();
-                counterAction.__shadowActorId = actorId;
+                counterAction.__decisionCandidateId = String(decision.selected.candidateId || '').trim();
+                counterAction.__decisionActorId = actorId;
                 return counterAction;
               };
+              decisionRuntime.decisionContinuationDecider = ({ actorEntry, remainingTime }) => {
+                const actor = actorEntry?.char;
+                const actorId = String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim();
+                if (!actorId) throw new Error('battle_decision_continuation_actor_missing');
+                const decision = decide({
+                  worldSnapshot: currentCombatData,
+                  actorId,
+                  actionOpportunity: {
+                    role: 'ACTIVE',
+                    sequence: Number(currentCombatData?.回合 || 0),
+                    continuationGrant: true,
+                    immediateBudget: Math.max(0, Number(remainingTime || 0)),
+                    enforceImmediateBudget: true,
+                  },
+                  beliefState: beliefByActor.get(actorId) || {},
+                  strategyMemory: strategyByActor.get(actorId) || {},
+                  strategicHistory: strategicHistoryByActor.get(actorId) || [],
+                  seedOffset: decisions.length,
+                });
+                if (!decision?.selected?.declaration) throw new Error(`battle_decision_continuation_missing:${actorId}`);
+                beliefByActor.set(actorId, decision.beliefState || {});
+                strategyByActor.set(actorId, decision.strategyMemory || {});
+                decisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole: 'ACTIVE', continuation: true, ...decision });
+                登记决策机制观察(actor, decision, currentCombatData, 'ACTIVE');
+                const action = 构建决策声明动作(decision.selected.declaration, actor, currentCombatData);
+                action.source = 'explicit_follow_up';
+                action.__chainType = 'FOLLOW_UP';
+                action.__followUpParentActionId = '';
+                action.__followUpRemainingBudget = Math.max(0, Number(remainingTime || 0));
+                return action;
+              };
               queue.filter(entry => entry?.char && isCombatUnitAbleToFight(entry.char)).forEach(entry => {
-                entry.__actorControl = 'AI_NEXT_SHADOW';
+                const lockedAction = decisionRuntime?.playerLockedNaturalAction;
+                const useLockedAction = !!lockedAction &&
+                  lockedAction.consumed !== true &&
+                  Number(lockedAction.round || 0) === Number(currentCombatData?.回合 || 0) &&
+                  isCombatUnitIdentityMatch(entry.char, lockedAction.actorName || '');
+                if (useLockedAction) {
+                  lockedAction.consumed = true;
+                  entry.__actorControl = 'PLAYER_LOCKED';
+                  entry.__declaredRound = Number(currentCombatData?.回合 || 0);
+                  entry.__declaredAction = lockedAction.action;
+                  entry.__declaredActionName = normalizeBattleActionDisplayName(
+                    lockedAction.action?.skill?.name || lockedAction.action?.skill?.魂技名 || lockedAction.action?.action_type || '行动',
+                  );
+                  entry.__declaredTargetName = String(lockedAction.targetName || lockedAction.action?.target_name || '').trim();
+                  entry.__declaredTimingBucket = '10-19';
+                  const target = 读取决策单位(currentCombatData, entry.__declaredTargetName);
+                  写入行动轴初始意图节点(currentCombatData, entry, target, lockedAction.action, '10-19');
+                  logs.push(`[玩家声明] ${entry.char?.name || entry.char?.名称 || '玩家'}选择【${entry.__declaredActionName}】指向${target?.name || target?.名称 || entry.__declaredTargetName || '自身'}。`);
+                  return;
+                }
+                entry.__actorControl = 'AI_NEXT';
                 delete entry.__declaredAction;
                 delete entry.__declaredActionName;
                 delete entry.__declaredTargetName;
                 entry.__declaredRound = 0;
-                entry.__shadowDecisionResolver = ({ actorEntry, battleState }) => {
+                entry.__decisionResolver = ({ actorEntry, battleState }) => {
                   const actor = actorEntry.char;
                   const actorId = String(actor?.id || actor?.角色ID || actor?.name || actor?.名称 || '').trim();
                   const decision = decide({
@@ -41427,11 +36958,11 @@ class BattleUIComponent {
                     beliefState: beliefByActor.get(actorId) || {},
                     strategyMemory: strategyByActor.get(actorId) || {},
                     strategicHistory: strategicHistoryByActor.get(actorId) || [],
-                    seedOffset: shadowDecisions.length,
+                    seedOffset: decisions.length,
                   });
                   const declaration = decision?.selected?.declaration;
-                  if (!declaration) throw new Error(`battle_shadow_declaration_missing:${actorId}`);
-                  const action = 构建影子声明动作(declaration, actor, battleState.combatData);
+                  if (!declaration) throw new Error(`battle_declaration_missing:${actorId}`);
+                  const action = 构建决策声明动作(declaration, actor, battleState.combatData);
                   const targetId = String(declaration?.targetIds?.[0] || '').trim();
                   const target = [
                     ...读取战斗主队单位列表(battleState.combatData, '玩家'),
@@ -41443,31 +36974,47 @@ class BattleUIComponent {
                   const history = strategicHistoryByActor.get(actorId) || [];
                   history.push({ signature: decision.strategicSignature, capacityChangePercent: 0, newInformation: false, pendingEffect: false });
                   strategicHistoryByActor.set(actorId, history.slice(-2));
-                  shadowDecisions.push({ round: Number(battleState.combatData?.回合 || 0), actorId, actionRole: 'ACTIVE', ...decision });
-                  登记影子机制观察(actor, decision, battleState.combatData, 'ACTIVE');
+                  decisions.push({ round: Number(battleState.combatData?.回合 || 0), actorId, actionRole: 'ACTIVE', ...decision });
+                  登记决策机制观察(actor, decision, battleState.combatData, 'ACTIVE');
                   写入行动轴初始意图节点(battleState.combatData, actorEntry, target, action, '10-19');
-                  logs.push(`[影子声明] ${actor.name || actor.名称 || actorId}选择【${normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动')}】指向${target?.name || target?.名称 || '自身'}。`);
+                  logs.push(`[行动声明] ${actor.name || actor.名称 || actorId}选择【${normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动')}】指向${target?.name || target?.名称 || '自身'}。`);
                   return { action, targetName: target?.name || target?.名称 || '' };
                 };
               });
             },
             settleRoundEnd(currentCombatData, logs) {
               baseAdapters.settleRoundEnd?.(currentCombatData, logs);
-              结算影子机制观察(currentCombatData);
-              结算影子公开观察(currentCombatData);
+              结算决策机制观察(currentCombatData);
+              结算决策公开观察(currentCombatData);
             },
           };
-          const simulation = BATTLE_RUNTIME.runTeamBattle({ combatData, mode: 'multi_round', maxRounds, adapters });
-          return { ...simulation, shadowDecisions, beliefObservations };
+          const simulation = BATTLE_RUNTIME.runTeamBattle({ combatData, mode, maxRounds, adapters });
+          return { ...simulation, decisions, beliefObservations };
+        }
+
+        function 运行正式决策战斗(combatData, maxRounds = 3, mode = 'multi_round', adapterOptions = {}) {
+          const decision = root.__LWCS_BATTLE_DECISION__;
+          if (!decision || typeof decision.decide !== 'function') throw new Error('battle_decision_runtime_missing');
+          const runtime = 确保战斗运行态(combatData);
+          const seed = Math.max(1, Math.floor(Number(runtime.decisionSeed || 1)));
+          let decisionIndex = 0;
+          const decide = payload => decision.decide({
+            ...payload,
+            seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${decisionIndex++}:${payload?.seedOffset || 0}`,
+          });
+          return runDecisionTeamBattleSimulation(
+            combatData,
+            maxRounds,
+            decide,
+            decision.updateMechanicBelief,
+            decision.updatePublicObservation,
+            mode,
+            adapterOptions,
+          );
         }
 
         function runTeamBattleRound(combatData) {
-          return BATTLE_RUNTIME.runTeamBattle({
-            combatData,
-            mode: 'single_round',
-            maxRounds: 1,
-            adapters: 构建团战运行时适配器(),
-          });
+          return 运行正式决策战斗(combatData, 1, 'single_round');
         }
 
         function ui_executeBattleFlow(combatData, options = {}) {
@@ -43784,7 +39331,7 @@ class BattleUIComponent {
 
         function 读取候选状态(候选 = {}, 轨迹 = {}) {
           const explicit = String(候选?.candidateStatus || 候选?.状态 || 候选?.status || '').trim().toUpperCase();
-          if (['SCORED', 'SAMPLED', 'LOCKED', 'EXECUTED', 'REJECTED', 'FILTERED', 'SHADOWED', 'ABORTED', 'SELECTED'].includes(explicit)) return explicit;
+          if (['SCORED', 'SAMPLED', 'LOCKED', 'EXECUTED', 'REJECTED', 'FILTERED', 'ABORTED', 'SELECTED'].includes(explicit)) return explicit;
           return '';
         }
 

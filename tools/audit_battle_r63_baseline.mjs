@@ -8,12 +8,13 @@ const root = path.resolve(toolDir, '..', '..');
 const read = relativePath => fs.readFileSync(path.resolve(root, relativePath), 'utf8');
 const battleUi = read('lwcs/BattleUI_Module.js');
 const battleRuntime = read('lwcs/BattleRuntime_Module.js');
+const battleDecision = read('lwcs/BattleDecision_Module.js');
 const formalAudit = read('tools/audit_battle_v73_formal_cases.mjs');
 const reviewTemplate = read('lwcs/tools/battle_r63_manual_review_template.md');
 
 const failures = [];
 const warnings = [];
-const requiredLegacyFunctions = [
+const forbiddenLegacyFunctions = [
   '评估技能规划净收益',
   '评估技能行为库衔接收益',
   '估算效果行为库衔接收益',
@@ -31,9 +32,9 @@ const requiredFatalTokens = [
 ];
 
 if (!/__LWCS_DEBUG_RUN_BATTLE_CASE__/.test(battleUi)) failures.push('DEBUG_ENTRY_MISSING');
-if (!/finalizeCandidates/.test(battleRuntime) || !/selectCandidate/.test(battleRuntime)) failures.push('RUNTIME_DECISION_BOUNDARY_MISSING');
-requiredLegacyFunctions.forEach(name => {
-  if (!battleUi.includes(name)) failures.push(`LEGACY_BASELINE_FUNCTION_MISSING:${name}`);
+if (!/function decide\(input = \{\}\)/.test(battleDecision) || !/function paretoFilter\(/.test(battleDecision) || !/function selectCandidate\(/.test(battleDecision)) failures.push('R63_DECISION_BOUNDARY_MISSING');
+forbiddenLegacyFunctions.forEach(name => {
+  if (battleUi.includes(name) || battleRuntime.includes(name)) failures.push(`LEGACY_SCORER_REMAINS:${name}`);
 });
 requiredFatalTokens.forEach(token => {
   if (!formalAudit.includes(token)) failures.push(`BASELINE_FATAL_INJECTION_MISSING:${token}`);
@@ -54,7 +55,6 @@ const cloneCount = (battleUi.match(/deepClonePlain\(|deepClone\(/g) || []).lengt
 const stringifyCount = (battleUi.match(/JSON\.stringify\(/g) || []).length;
 if (cloneCount > 100) warnings.push(`LEGACY_DEEP_CLONE_CALLS:${cloneCount}`);
 if (stringifyCount > 100) warnings.push(`LEGACY_STRINGIFY_CALLS:${stringifyCount}`);
-warnings.push('LEGACY_SCORER_EXPECTED_UNTIL_ATOMIC_CUTOVER');
 
 const output = {
   summary: {

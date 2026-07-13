@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { buildShadowManualCases } from './battle_r63_shadow_manual_cases.mjs';
+import { buildManualCases } from './battle_r63_manual_cases.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
@@ -45,7 +45,7 @@ function createSandbox() {
 }
 
 const attackSkill = {
-  id: 'shadow-strike', name: '影子突击', 魂技名: '影子突击', 消耗: { 魂力: 10 }, 前摇: 10,
+  id: 'decision-strike', name: '测试突击', 魂技名: '测试突击', 消耗: { 魂力: 10 }, 前摇: 10,
   _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 65, 伤害类型: '近身攻击', 生效方式: '独立生效' }],
 };
 
@@ -75,7 +75,7 @@ function digest(value) {
 }
 
 function decisionSummary(value) {
-  return (Array.isArray(value?.shadowDecisions) ? value.shadowDecisions : []).map(entry => ({
+  return (Array.isArray(value?.decisions) ? value.decisions : []).map(entry => ({
     round: Number(entry?.round || 0),
     actorId: String(entry?.actorId || '').trim(),
     actionRole: String(entry?.actionRole || 'ACTIVE').trim(),
@@ -120,20 +120,20 @@ new sandbox.BattleUIComponent(container, {}, {});
 const input = combatData();
 const before = JSON.stringify(input);
 const result = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
-  caseId: 'r63-shadow-settlement-duel', seed: 6308, combatData: input, mode: 'team_preview', rounds: 3,
-  settings: { decisionEngine: 'next-shadow' },
+  caseId: 'r63-decision-settlement-duel', seed: 6308, combatData: input, mode: 'team_preview', rounds: 3,
+  settings: {},
 });
 
-assert.equal(result.shadow, true, '未进入完整影子链');
-assert.equal(result.inputUnchanged, true, '完整影子链修改调用方输入');
-assert.equal(JSON.stringify(input), before, '完整影子链泄漏状态写入');
-assert.ok(result.roundsExecuted >= 1, '影子战斗未执行回合');
+assert.ok(Array.isArray(result.decisions), '未进入唯一正式决策链');
+assert.equal(result.inputUnchanged, true, '唯一正式决策链修改调用方输入');
+assert.equal(JSON.stringify(input), before, '唯一正式决策链泄漏状态写入');
+assert.ok(result.roundsExecuted >= 1, '正式决策战斗未执行回合');
 assert.ok(result.ledger.length > 0 && result.actionQueueTrace.length > 0, '正式Ledger或ActionQueue为空');
-assert.ok(result.shadowDecisions.length >= 2, '双方没有各自产生影子决策');
-assert.ok(result.shadowDecisions.every(entry => entry.selected?.declaration), '影子决策缺少结构化声明');
-assert.ok(result.shadowDecisions.every(entry => ['ACTIVE', 'REACTION', 'COUNTER'].includes(entry.actionRole)), '影子决策缺少显式行动职责');
-assert.ok(result.shadowDecisions.some(entry => entry.actionRole === 'REACTION'), '即时反应仍未进入新Decision');
-const decisionActors = new Set(result.shadowDecisions.map(entry => entry.actorId));
+assert.ok(result.decisions.length >= 2, '双方没有各自产生正式决策');
+assert.ok(result.decisions.every(entry => entry.selected?.declaration), '正式决策缺少结构化声明');
+assert.ok(result.decisions.every(entry => ['ACTIVE', 'REACTION', 'COUNTER'].includes(entry.actionRole)), '正式决策缺少显式行动职责');
+assert.ok(result.decisions.some(entry => entry.actionRole === 'REACTION'), '即时反应仍未进入新Decision');
+const decisionActors = new Set(result.decisions.map(entry => entry.actorId));
 assert.ok(decisionActors.has('player-a') && decisionActors.has('enemy-a'), '仍有一方未行动或退回旧选择');
 const activeStarts = result.ledger.filter(event => String(event?.eventKind || '') === 'action_start');
 const activeActors = new Set(activeStarts.map(event => String(event?.actorName || '')));
@@ -144,19 +144,19 @@ const hostileReactionFacts = result.ledger.filter(event =>
   event?.targetName &&
   event.actorName !== event.targetName
 );
-assert.ok(hostileReactionFacts.length > 0, '影子结算缺少敌对即时反应事实');
+assert.ok(hostileReactionFacts.length > 0, '正式决策结算缺少敌对即时反应事实');
 assert.ok(hostileReactionFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `即时反应客观阵营错误:${JSON.stringify(hostileReactionFacts)}`);
-assert.doesNotMatch(result.logs.join('\n'), /技能分类预览|主观置信度锁定|行为经验|自动行为链再判定/, '影子完整战斗仍执行旧评分或旧行为链');
+assert.doesNotMatch(result.logs.join('\n'), /技能分类预览|主观置信度锁定|行为经验|自动行为链再判定/, '正式决策完整战斗仍执行旧评分或旧行为链');
 const damagingActors = new Set(result.ledger
   .filter(event => event?.eventKind === 'hit_result' && Number(event?.appliedDamage || 0) > 0)
   .map(event => event?.actorName));
 assert.ok(damagingActors.has('player-a') && damagingActors.has('enemy-a'), '双方主动命中没有形成唯一伤害事实');
-assert.equal(result.audit?.fatals?.length || 0, 0, `影子正式事实审计失败:${JSON.stringify(result.audit?.fatals || [])}`);
+assert.equal(result.audit?.fatals?.length || 0, 0, `正式决策事实审计失败:${JSON.stringify(result.audit?.fatals || [])}`);
 
 const deterministicInput = combatData();
 const deterministicArgs = {
-  caseId: 'r63-shadow-determinism', seed: 6317, combatData: deterministicInput, mode: 'team_preview', rounds: 3,
-  settings: { decisionEngine: 'next-shadow' },
+  caseId: 'r63-decision-determinism', seed: 6317, combatData: deterministicInput, mode: 'team_preview', rounds: 3,
+  settings: {},
 };
 const deterministicFirst = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__(deterministicArgs);
 const deterministicSecond = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({ ...deterministicArgs, combatData: combatData() });
@@ -173,7 +173,7 @@ if (digest(firstDecisionSummary) !== digest(secondDecisionSummary)) {
   const mismatchIndex = firstDecisionSummary.findIndex((entry, index) => JSON.stringify(entry) !== JSON.stringify(secondDecisionSummary[index]));
   console.error(JSON.stringify({ mismatchIndex, first: firstDecisionSummary[mismatchIndex], second: secondDecisionSummary[mismatchIndex] }, null, 2));
 }
-assert.deepEqual(deterministicParts(deterministicFirst), deterministicParts(deterministicSecond), '同案例同种子影子事实不可复现');
+assert.deepEqual(deterministicParts(deterministicFirst), deterministicParts(deterministicSecond), '同案例同种子正式决策事实不可复现');
 const deterministicBaseline = deterministicParts(deterministicFirst);
 for (let repeat = 0; repeat < 100; repeat += 1) {
   const repeated = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({ ...deterministicArgs, combatData: combatData() });
@@ -186,8 +186,8 @@ nonlethalInput.参战者.team_player[0].属性.魂力 = 5000;
 nonlethalInput.参战者.team_player[0].属性.魂力上限 = 5000;
 nonlethalInput.参战者.team_enemy[0].属性.HP = 80;
 const nonlethalResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
-  caseId: 'r63-shadow-settlement-nonlethal', seed: 6311, combatData: nonlethalInput, mode: 'team_preview', rounds: 3,
-  battleIntent: { mode: '点到为止' }, settings: { decisionEngine: 'next-shadow' },
+  caseId: 'r63-decision-settlement-nonlethal', seed: 6311, combatData: nonlethalInput, mode: 'team_preview', rounds: 3,
+  battleIntent: { mode: '点到为止' }, settings: {},
 });
 assert.equal(nonlethalResult.finalSnapshot?.team_enemy?.[0]?.hp, 1, '非致命战斗意图没有保留目标生命');
 const nonlethalPrevented = nonlethalResult.ledger.filter(event => event?.eventKind === 'hit_result' && event?.meta?.intentLethalPrevented === true);
@@ -205,23 +205,23 @@ adaptationInput.参战者.team_player[0].技能列表 = [{
   _效果数组: [{ 原型: '状态施加', 目标: '单体', 状态: '迟缓', 持续回合: 1, 成功率: 0.65, 生效方式: '独立生效' }],
 }];
 const adaptationResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
-  caseId: 'r63-shadow-belief-integration', seed: 6321, combatData: adaptationInput, mode: 'team_preview', rounds: 3,
-  settings: { decisionEngine: 'next-shadow' },
+  caseId: 'r63-decision-belief-integration', seed: 6321, combatData: adaptationInput, mode: 'team_preview', rounds: 3,
+  settings: {},
 });
-assert.ok(adaptationResult.beliefObservations.length > 0, '正式影子结算没有生成认知观察');
+assert.ok(adaptationResult.beliefObservations.length > 0, '正式正式决策结算没有生成认知观察');
 assert.ok(!adaptationResult.beliefObservations.some(observation => observation?.observationType === 'PUBLIC_ACTION' && observation?.actionName === '自然恢复'), '自然恢复被错误用作公开战术学习样本');
 const firstObservation = adaptationResult.beliefObservations[0];
-const laterDecision = adaptationResult.shadowDecisions.find(entry =>
+const laterDecision = adaptationResult.decisions.find(entry =>
   entry.actorId === firstObservation.actorId && Number(entry.round || 0) > Number(firstObservation.round || 0)
 );
 assert.ok(laterDecision?.beliefState?.mechanics?.[firstObservation.mechanicKey], '实际结算观察没有进入下一轮belief');
 
 const publicObservation = adaptationResult.beliefObservations.find(entry => entry?.observationType === 'PUBLIC_ACTION');
-assert.ok(publicObservation, '正式影子结算没有生成公开动作观察');
-const decisionBeforePublicObservation = [...adaptationResult.shadowDecisions]
+assert.ok(publicObservation, '正式正式决策结算没有生成公开动作观察');
+const decisionBeforePublicObservation = [...adaptationResult.decisions]
   .reverse()
   .find(entry => entry.actorId === publicObservation.actorId && Number(entry.round || 0) <= Number(publicObservation.round || 0));
-const decisionAfterPublicObservation = adaptationResult.shadowDecisions.find(entry =>
+const decisionAfterPublicObservation = adaptationResult.decisions.find(entry =>
   entry.actorId === publicObservation.actorId && Number(entry.round || 0) > Number(publicObservation.round || 0)
 );
 const observedResponses = decisionAfterPublicObservation?.beliefState?.publicResponses?.[publicObservation.sourceActorId];
@@ -251,20 +251,21 @@ supportInput.参战者.team_player[1].hp = 80;
 supportInput.参战者.team_enemy[0].def = 1000;
 supportInput.参战者.team_enemy[0].属性.防御 = 1000;
 const supportResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
-  caseId: 'r63-shadow-friendly-group-settlement', seed: 6331, combatData: supportInput, mode: 'team_preview', rounds: 1,
-  settings: { decisionEngine: 'next-shadow' },
+  caseId: 'r63-decision-friendly-group-settlement', seed: 6331, combatData: supportInput, mode: 'team_preview', rounds: 1,
+  settings: {},
 });
 const supportStart = supportResult.ledger.find(event => event?.eventKind === 'action_start' && event?.actorName === 'player-a' && event?.actionName === '群体支援');
-assert.ok(supportStart, `友方群体支援没有进入正式结算:${JSON.stringify(supportResult.shadowDecisions?.[0]?.candidates?.map(candidate => ({ id: candidate.candidateId, utility: candidate.objectiveUtility, before: candidate.utilityBefore, after: candidate.utilityAfter, vector: candidate.vector, deep: candidate.deepAnalysis, contributions: candidate.preview?.contributions, rejectionCode: candidate.rejectionCode })))}`);
+assert.ok(supportStart, `友方群体支援没有进入正式结算:${JSON.stringify(supportResult.decisions?.[0]?.scoreAudit || [])}`);
 const supportFacts = supportResult.ledger.filter(event =>
   String(event?.sourceActionId || event?.actionId || '') === String(supportStart.actionId || '') && event !== supportStart
 );
 assert.ok(supportFacts.some(event => event?.targetName === 'player-b'), `友方群体支援没有覆盖队友:${JSON.stringify(supportResult.ledger)}`);
 assert.ok(!supportFacts.some(event => event?.targetName === 'enemy-a'), '友方群体支援错误落到敌方');
+assert.ok(!supportResult.ledger.some(event => ['counter_window', 'counter'].includes(event?.eventKind) && String(event?.sourceActionId || '') === String(supportStart.actionId || '')), '非攻击支援动作错误触发防反链');
 const supportCost = supportResult.ledger.find(event => event?.eventKind === 'action_cost' && event?.actorName === 'player-a' && event?.actionName === '群体支援');
 assert.equal(Number(supportCost?.meta?.reqSp || 0), 1, '对象型绝对魂力消耗没有按1点正式结算');
 
-const counterDefinition = buildShadowManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+const counterDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'duel_agile_counter_options');
 assert.ok(counterDefinition, '成功防反人工案例缺失');
 const counterResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
@@ -275,9 +276,9 @@ const counterResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: counterDefinition.rounds,
   initialBelief: counterDefinition.initialBelief,
   battleIntent: { mode: counterDefinition.intent },
-  settings: { decisionEngine: 'next-shadow' },
+  settings: {},
 });
-const counterDecision = counterResult.shadowDecisions.find(entry => entry?.actionRole === 'COUNTER');
+const counterDecision = counterResult.decisions.find(entry => entry?.actionRole === 'COUNTER');
 const counterWindow = counterResult.ledger.find(event => event?.eventKind === 'counter_window' && event?.result === 'opened');
 const counterFact = counterResult.ledger.find(event => event?.eventKind === 'counter' && event?.result === 'success' && Number(event?.meta?.resolvedDamage || 0) > 0);
 const counterDamage = counterResult.ledger.find(event =>
@@ -289,7 +290,7 @@ const counterDamage = counterResult.ledger.find(event =>
 );
 assert.ok(counterWindow, '固定种子没有打开防反窗口');
 assert.ok(counterDecision?.selected?.declaration, '防反机会没有进入新Decision或缺少评分审计');
-const counterDecline = counterDecision?.candidates?.find(candidate => candidate?.counterDeclineFallback === true);
+const counterDecline = counterDecision?.scoreAudit?.find(candidate => candidate?.counterDeclineFallback === true);
 assert.equal(counterDecline?.rejectionCode, 'ZERO_PROGRESS', '放弃防反回退参与了Pareto或主观抽样');
 assert.notEqual(counterDecision?.selected?.candidateId, counterDecline?.candidateId, '存在有效反击时仍选择放弃窗口');
 assert.ok(counterFact && counterDamage, '固定种子没有形成成功防反及唯一正伤害事实');
@@ -298,7 +299,7 @@ assert.equal(counterFact.targetSide, 'player', '防反子战斗改写了目标�
 assert.doesNotMatch(counterResult.logs.join('\n'), /技能分类预览|主观置信度锁定|行为经验|自动行为链再判定/, '防反链仍执行旧评分器');
 assert.equal(counterResult.audit?.fatals?.length || 0, 0, `成功防反事实审计失败:${JSON.stringify(counterResult.audit?.fatals || [])}`);
 
-const defenseDefinition = buildShadowManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+const defenseDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'duel_charge_defense_safer');
 assert.ok(defenseDefinition, '蓄力防守时序人工案例缺失');
 const defenseResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
@@ -309,27 +310,71 @@ const defenseResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: defenseDefinition.rounds,
   initialBelief: defenseDefinition.initialBelief,
   battleIntent: { mode: defenseDefinition.intent },
-  settings: { decisionEngine: 'next-shadow' },
+  settings: {},
 });
-const defenseActions = defenseResult.shadowDecisions.filter(entry => (entry?.actionRole || 'ACTIVE') === 'ACTIVE' && entry?.actorId === '韦小枫');
+const defenseActions = defenseResult.decisions.filter(entry => (entry?.actionRole || 'ACTIVE') === 'ACTIVE' && entry?.actorId === '韦小枫');
 assert.ok(!['DEFEND', 'EVADE'].includes(defenseActions.find(entry => Number(entry?.round || 0) === 1)?.selected?.declaration?.actionKind), '防守窗口会提前过期却在第一回合过早防守');
 assert.ok(['DEFEND', 'EVADE'].includes(defenseActions.find(entry => Number(entry?.round || 0) === 2)?.selected?.declaration?.actionKind), `致命蓄力进入下一回应窗口后仍未建立防守姿态:${JSON.stringify(defenseActions.map(entry => ({ round: entry.round, actionKind: entry.selected?.declaration?.actionKind, candidateId: entry.selected?.candidateId })))}`);
 assert.equal(defenseResult.audit?.fatals?.length || 0, 0, `蓄力防守时序事实审计失败:${JSON.stringify(defenseResult.audit?.fatals || [])}`);
+
+const followUpCombat = combatData();
+followUpCombat.参战者.team_player[0].属性.敏捷 = 500;
+followUpCombat.参战者.team_enemy[0].属性.敏捷 = 1;
+const followUpOpener = {
+  id: 'follow-up-opener', name: '缚影连袭', 魂技名: '缚影连袭', 消耗: '无', 前摇: 8, 命中后追击: true,
+  _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 20, 伤害类型: '近身攻击', 生效方式: '独立生效' }],
+};
+const followUpFinisher = {
+  id: 'follow-up-finisher', name: '锁定追击', 魂技名: '锁定追击', 消耗: '无', 前摇: 8,
+  _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 88, 伤害类型: '近身攻击', 生效方式: '独立生效' }],
+};
+followUpCombat.参战者.team_player[0].技能列表 = [structuredClone(followUpOpener), structuredClone(followUpFinisher)];
+const followUpResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'explicit_follow_up_single_grant', seed: 730177, combatData: followUpCombat, mode: 'team_preview', rounds: 1,
+  selectedAction: { actor_name: 'player-a', action_type: '释放魂技', type: '释放魂技', skill: structuredClone(followUpOpener), target_name: 'enemy-a' },
+  settings: {},
+});
+const followUpStarts = followUpResult.ledger.filter(event => event?.eventKind === 'action_start' && event?.meta?.chainType === 'FOLLOW_UP');
+assert.equal(followUpStarts.length, 1, `显式追击授权没有恰好消费一次:${JSON.stringify(followUpStarts)}`);
+assert.equal(followUpResult.decisions.filter(entry => entry?.continuation === true).length, 1, '显式追击没有通过最新战场Decision重新决策');
+assert.equal(followUpResult.audit?.fatals?.length || 0, 0, `显式追击事实审计失败:${JSON.stringify(followUpResult.audit?.fatals || [])}`);
+
+const secondSkillWorld = combatData();
+const secondSkillActor = secondSkillWorld.参战者.team_player[0];
+secondSkillActor.技能列表 = [
+  { id: 'first-skill', name: '第一魂技·蛇影突刺', 魂技名: '第一魂技·蛇影突刺', 消耗: '无', 前摇: 8, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 24, 伤害类型: '近身攻击' }] },
+  { id: 'second-skill', name: '第二魂技·青影蛇群', 魂技名: '第二魂技·青影蛇群', 消耗: '无', 前摇: 10, _效果数组: [
+    { 原型: '伤害结算', 目标: '群体', 威力倍率: 180, 伤害类型: '远程攻击' },
+    { 原型: '状态施加', 目标: '群体', 状态: '迟缓', 持续回合: 2, 计算层效果: { cast_speed_penalty: 0.18, dodge_penalty: 0.08 } },
+  ] },
+];
+const secondSkillDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: secondSkillWorld,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  beliefState: {},
+  seed: 'second-skill-selectable',
+});
+const secondSkillCandidate = secondSkillDecision.candidates.find(candidate => candidate?.skill?.id === 'second-skill');
+assert.ok(secondSkillCandidate && !secondSkillCandidate.rejectionCode, '控制型第二魂技没有进入完整非支配候选池');
+assert.equal(secondSkillDecision.selected?.skill?.id, 'second-skill', `第二魂技收益占优时仍不可达:${secondSkillDecision.selected?.candidateId || ''}`);
 
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
     ledgerCount: result.ledger.length,
     queueNodeCount: result.actionQueueTrace.length,
-    shadowDecisionCount: result.shadowDecisions.length,
+    decisionCount: result.decisions.length,
     activeActorCount: activeActors.size,
     nonlethalRounds: nonlethalResult.roundsExecuted,
     beliefObservationCount: adaptationResult.beliefObservations.length,
     publicObservationCount: adaptationResult.beliefObservations.filter(entry => entry?.observationType === 'PUBLIC_ACTION').length,
     friendlySupportFactCount: supportFacts.length,
-    counterDecisionCount: counterResult.shadowDecisions.filter(entry => entry?.actionRole === 'COUNTER').length,
+    counterDecisionCount: counterResult.decisions.filter(entry => entry?.actionRole === 'COUNTER').length,
     counterDamage: Number(counterFact?.meta?.resolvedDamage || 0),
     defenseTimingActions: defenseActions.map(entry => entry.selected?.declaration?.actionKind || ''),
+    followUpActionCount: followUpStarts.length,
+    secondSkillSelected: secondSkillDecision.selected?.skill?.id || '',
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

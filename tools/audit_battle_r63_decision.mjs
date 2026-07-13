@@ -42,7 +42,7 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
-assert.ok(decision && runtime, '影子决策或战斗运行时未加载');
+assert.ok(decision && runtime, '正式决策或战斗运行时未加载');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: 1 } }).魂力, 1, '绝对消耗1被误解为100%');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: '50%' } }).魂力, '50%', '比例消耗丢失百分号语义');
 
@@ -99,7 +99,7 @@ for (const size of [1, 3, 7]) {
   const worldSnapshot = world(size);
   const before = JSON.stringify(worldSnapshot);
   const result = decision.decide({ worldSnapshot, actorId: 'ally-1', beliefState: { confidence: 0.5 }, seed: 7300 + size });
-  assert.equal(JSON.stringify(worldSnapshot), before, `${size}v${size}影子决策修改输入`);
+  assert.equal(JSON.stringify(worldSnapshot), before, `${size}v${size}正式决策修改输入`);
   assert.ok(result.candidateCount > 0 && result.paretoCount > 0, `${size}v${size}候选或Pareto为空`);
   const basicTargets = result.candidates.filter(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK').flatMap(candidate => candidate.declaration.targetIds);
   assert.equal(new Set(basicTargets).size, size, `${size}v${size}普通攻击目标池被截断`);
@@ -246,20 +246,19 @@ const negativeActionDecision = decision.decide({ worldSnapshot: negativeActionWo
 const negativeAction = negativeActionDecision.candidates.find(candidate => candidate.skill?.id === 'negative-action');
 assert.equal(negativeAction?.rejectionCode, 'SELF_DEFEATING', '负效用且有成本动作仍可进入主观候选池');
 
-const shadowWorld = world(3);
-const shadowBefore = JSON.stringify(shadowWorld);
-const shadow = runtime.runBattleCase({ caseId: 'shadow-3v3', seed: 123, combatData: shadowWorld, settings: { decisionEngine: 'next-shadow', shadowDecisionOnly: true } });
-assert.equal(shadow.shadow, true, '唯一调试入口未进入next-shadow');
-assert.equal(shadow.shadowDecisions.length, 6, 'next-shadow未覆盖全部存活单位');
-assert.equal(JSON.stringify(shadowWorld), shadowBefore, 'next-shadow修改了调用方输入');
-assert.equal(shadow.ledger.length, 0, 'Phase 5影子决策制造了正式Ledger事实');
+const decisionWorld = world(3);
+const decisionBefore = JSON.stringify(decisionWorld);
+const debugDecision = runtime.runBattleCase({ caseId: 'decision-3v3', seed: 123, combatData: decisionWorld, settings: { decisionOnly: true } });
+assert.equal(debugDecision.decisions.length, 6, '唯一正式决策入口未覆盖全部存活单位');
+assert.equal(JSON.stringify(decisionWorld), decisionBefore, '唯一正式决策入口修改调用方输入');
+assert.equal(debugDecision.ledger.length, 0, '仅决策模式制造了正式Ledger事实');
 
 console.log(JSON.stringify({
   summary: {
     shapeCount: shapeResults.length,
     deterministic: true,
     targetInterferenceChannel: true,
-    debugShadowDecisionCount: shadow.shadowDecisions.length,
+    debugDecisionCount: debugDecision.decisions.length,
     passed: true,
   },
   shapes: shapeResults,

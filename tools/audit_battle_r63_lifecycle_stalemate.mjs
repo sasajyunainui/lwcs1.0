@@ -41,7 +41,7 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 }
 
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
-assert.ok(decision, '影子决策运行时未加载');
+assert.ok(decision, '正式决策运行时未加载');
 
 const attack = { id: 'attack', name: '推进攻击', 消耗: '魂力:5', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }] };
 const createFood = {
