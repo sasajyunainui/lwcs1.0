@@ -13,6 +13,7 @@
   const VERSION = '7.3-R6.3-preview-2';
   const MAX_PREVIEW_NODES = 12;
   const MAX_RECURSION_DEPTH = 4;
+  const effectHashCache = new WeakMap();
   const battlePrototypes = new Set([
     '伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正',
     '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换',
@@ -568,7 +569,12 @@
   function consumePreviewNode(context, effect) {
     context.nodeBudget.count += 1;
     if (context.nodeBudget.count > context.nodeBudget.limit) throw new Error('DECISION_PREVIEW_BUDGET_EXCEEDED');
-    const fingerprint = `${context.depth}|${stableHash(effect)}|${context.effectPath.join('>')}`;
+    let effectHash = effectHashCache.get(effect);
+    if (!effectHash) {
+      effectHash = stableHash(effect);
+      effectHashCache.set(effect, effectHash);
+    }
+    const fingerprint = `${context.depth}|${effectHash}|${context.effectPath.join('>')}`;
     if (context.nodeBudget.activeFingerprints.has(fingerprint)) throw new Error('battle_preview_recursive_effect_cycle');
     context.nodeBudget.activeFingerprints.add(fingerprint);
     return fingerprint;

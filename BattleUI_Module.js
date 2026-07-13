@@ -21148,9 +21148,13 @@ class BattleUIComponent {
         const ledger = BATTLE_RUNTIME.ensureLedger(rootData);
         if (combatData && rootData !== combatData) {
           const childLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
+          const existingEventIds = new Set(ledger.map(item => String(item?.eventId || '').trim()).filter(Boolean));
           childLedger.forEach(item => {
             const eventId = String(item?.eventId || '').trim();
-            if (eventId && !ledger.some(existing => String(existing?.eventId || '').trim() === eventId)) ledger.push(item);
+            if (eventId && !existingEventIds.has(eventId)) {
+              ledger.push(item);
+              existingEventIds.add(eventId);
+            }
           });
           BATTLE_RUNTIME.attachLedger(combatData, ledger);
         }

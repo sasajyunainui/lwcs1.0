@@ -9,7 +9,7 @@
   if (preview.version !== '7.3-R6.3-preview-2') throw new Error(`battle_decision_preview_version_mismatch:${preview.version || 'missing'}`);
 
   const VERSION = '7.3-R6.3-decision-2';
-  const skillLibraryCache = new WeakMap();
+  const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
   const baseActionValueCache = new WeakMap();
   let decisionRevisionSequence = 0;
@@ -111,7 +111,13 @@
     const actorSide = preview.sideOf(worldSnapshot, sourceActor);
     const projectUnit = sourceUnit => {
       const unit = cloneValue(sourceUnit);
-      if (preview.sideOf(worldSnapshot, sourceUnit) === actorSide) return unit;
+      if (preview.sideOf(worldSnapshot, sourceUnit) === actorSide) {
+        if (Array.isArray(sourceUnit?.技能列表)) unit.技能列表 = sourceUnit.技能列表;
+        Object.entries(sourceUnit).forEach(([key, value]) => {
+          if (/^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object') unit[key] = value;
+        });
+        return unit;
+      }
       unit.技能列表 = [];
       Object.keys(unit).forEach(key => {
         if (key === '蓄力技能') return;
@@ -262,44 +268,49 @@
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object').map(([, value]) => value),
     ];
-    const cacheKey = roots.length === 1 ? roots[0] : unit;
-    const cached = skillLibraryCache.get(cacheKey);
-    if (cached) return cached;
-    const output = [];
-    const seenObjects = new Set();
-    const seenSkills = new Set();
-    const visit = value => {
-      if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
-      seenObjects.add(value);
-      if (Array.isArray(value)) {
-        value.forEach(visit);
-        return;
-      }
-      if (Array.isArray(value._效果数组) && value._效果数组.length && !isPassiveSkill(value)) {
-        let effectFingerprint = effectFingerprintCache.get(value._效果数组);
-        if (!effectFingerprint) {
-          effectFingerprint = preview.stableHash(value._效果数组);
-          effectFingerprintCache.set(value._效果数组, effectFingerprint);
+    const collectRoot = skillRoot => {
+      const cached = skillRootCache.get(skillRoot);
+      if (cached) return cached;
+      const entries = [];
+      const seenObjects = new Set();
+      const visit = value => {
+        if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
+        seenObjects.add(value);
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
         }
-        const key = `${skillId(value, output.length)}|${effectFingerprint}`;
+        if (Array.isArray(value._效果数组) && value._效果数组.length && !isPassiveSkill(value)) {
+          let effectFingerprint = effectFingerprintCache.get(value._效果数组);
+          if (!effectFingerprint) {
+            effectFingerprint = preview.stableHash(value._效果数组);
+            effectFingerprintCache.set(value._效果数组, effectFingerprint);
+          }
+          entries.push({ skill: value, effectFingerprint });
+          return;
+        }
+        Object.entries(value).forEach(([key, child]) => {
+          if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
+          visit(child);
+        });
+      };
+      visit(skillRoot);
+      const result = Object.freeze(entries);
+      skillRootCache.set(skillRoot, result);
+      return result;
+    };
+    const output = [];
+    const seenSkills = new Set();
+    roots.forEach(skillRoot => {
+      collectRoot(skillRoot).forEach(({ skill, effectFingerprint }) => {
+        const key = `${skillId(skill, output.length)}|${effectFingerprint}`;
         if (!seenSkills.has(key)) {
           seenSkills.add(key);
-          output.push(value);
+          output.push(skill);
         }
-        return;
-      }
-      Object.entries(value).forEach(([key, child]) => {
-        if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-        visit(child);
       });
-    };
-    if (Array.isArray(unit?.技能列表)) unit.技能列表.forEach(visit);
-    Object.entries(unit).forEach(([key, value]) => {
-      if (/^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key)) visit(value, key);
     });
-    const result = Object.freeze(output);
-    skillLibraryCache.set(cacheKey, result);
-    return result;
+    return Object.freeze(output);
   }
 
   function cachedBaseActionValue(actor, target, actionKind, skill = null) {
