@@ -921,6 +921,39 @@ const lethalSideEffectLog = sandbox.__LWCS_BATTLE_RUNTIME__.settleConditionSideE
 assert.match(lethalSideEffectLog, /复活触发/, '致死副作用没有接入统一复活结算');
 assert.equal(lethalSideEffectUnit.hp, 100, '致死副作用后的复活恢复量错误');
 
+const delayedUnit = participant('delayed-unit', 'player', 100);
+delayedUnit.hp = 500;
+delayedUnit.hp_max = 500;
+delayedUnit.sp = 200;
+delayedUnit.sp_max = 500;
+delayedUnit.属性.HP = 500;
+delayedUnit.属性.HP上限 = 500;
+delayedUnit.属性.魂力 = 200;
+delayedUnit.属性.魂力上限 = 500;
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '伤害结算', 伤害类型: '真实攻击', 威力倍率: 100,
+}, '延迟测试单位'), /50点真实攻击/, '延迟伤害结算错误');
+assert.equal(delayedUnit.hp, 450, '延迟伤害没有落地');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '资源变化', 资源: '魂力', 数值: '+10%',
+}, '延迟测试单位'), /恢复50点魂力/, '延迟资源变化结算错误');
+assert.equal(delayedUnit.sp, 250, '延迟资源变化没有落地');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '护盾变化', 数值: '+100', 持续回合: 2,
+}, '延迟测试单位'), /获得100点护盾/, '延迟护盾结算错误');
+assert.equal(delayedUnit.状态效果.延迟护盾?.shield_value, 100, '延迟护盾没有写入状态');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '属性修正', 属性: '力量', 数值: '+20%', 持续回合: 2,
+}, '延迟测试单位'), /力量修正/, '延迟属性修正结算错误');
+assert.equal(delayedUnit.状态效果['延迟属性:力量']?.面板修改比例?.str, 1.2, '延迟属性修正没有写入运行键');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '状态施加', 状态: '延迟眩晕', 目标: '敌方单体', 持续回合: 1, 计算层效果: { skip_turn: true },
+}, '延迟测试单位'), /延迟眩晕/, '延迟状态施加结算错误');
+assert.equal(delayedUnit.状态效果.延迟眩晕?.战斗效果?.skip_turn, true, '延迟状态没有写入计算层效果');
+assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
+  原型: '未知延迟原型', 数值: 1,
+}, '延迟测试单位'), /battle_delayed_effect_unsupported/, '未知延迟原型被静默跳过');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -946,6 +979,7 @@ console.log(JSON.stringify({
     stateReviveChecks: 2,
     passiveReviveChecks: 3,
     roundEndSideEffectChecks: 4,
+    delayedEffectChecks: 6,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

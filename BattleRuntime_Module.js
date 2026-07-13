@@ -229,6 +229,174 @@
     return logs.join(' ');
   }
 
+  function findPrototypeSuppression(unit = {}, prototype = '', field = '', value = '') {
+    return field ? findRuleSuppression(unit, prototype, field, value) : findRuleSuppression(unit, prototype, '__none__', '');
+  }
+
+  function currentShieldTotal(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).reduce((total, condition) => total + Math.max(0, Number(condition?.shield_value || 0)), 0);
+  }
+
+  function applyRuntimeShield(unit = {}, shieldAmount = 0, duration = 1, sourceName = '护盾') {
+    const requested = Math.max(0, Math.floor(Number(shieldAmount || 0)));
+    if (!(requested > 0)) return 0;
+    const current = currentShieldTotal(unit);
+    const softCap = Math.max(300, Math.floor(previewRuntime.readHpMax(unit) * 1.2 + previewRuntime.readResourceMax(unit, '魂力') * 0.35));
+    const normal = Math.min(requested, Math.max(0, softCap - current));
+    const amount = Math.max(0, Math.floor(normal + Math.max(0, requested - normal) * 0.35));
+    if (!(amount > 0)) return 0;
+    if (!unit.状态效果) unit.状态效果 = {};
+    const stateName = /护盾|屏障|结界/.test(String(sourceName || '')) ? String(sourceName || '护盾') : `${sourceName || '护盾'}护盾`;
+    const existing = unit.状态效果[stateName];
+    if (existing) {
+      existing.duration = Math.max(Number(existing.duration || 0), Number(duration || 0));
+      existing.shield_value = Math.max(0, Number(existing.shield_value || 0)) + amount;
+    } else {
+      unit.状态效果[stateName] = {
+        类型: 'buff', 层数: 1, 描述: `由[${sourceName || stateName}]附加`, 来源原型摘要: '护盾变化',
+        duration: Number(duration || 0), 面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
+        战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
+      };
+    }
+    if (unit.召唤键) syncSummonMirror(unit);
+    return amount;
+  }
+
+  function removeRuntimeShield(unit = {}, rawValue = '-100%') {
+    const entries = Object.entries(unit?.状态效果 || {})
+      .map(([key, condition]) => ({ key, condition, value: Math.max(0, Number(condition?.shield_value || 0)) }))
+      .filter(entry => entry.value > 0)
+      .sort((left, right) => right.value - left.value);
+    const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+    if (!(total > 0)) return 0;
+    const parsed = readSignedBattleValue(rawValue);
+    let remaining = Math.max(0, Math.min(total, /%$/.test(String(rawValue ?? '').trim()) || Math.abs(parsed) <= 1
+      ? Math.floor(total * Math.abs(parsed || 1))
+      : Math.floor(Math.abs(parsed))));
+    let removed = 0;
+    entries.forEach(entry => {
+      if (!(remaining > 0)) return;
+      const amount = Math.min(entry.value, remaining);
+      entry.condition.shield_value = Math.max(0, entry.value - amount);
+      remaining -= amount;
+      removed += amount;
+      if (entry.condition.shield_value <= 0) delete unit.状态效果[entry.key];
+    });
+    if (unit.召唤键) syncSummonMirror(unit);
+    return Math.max(0, Math.floor(removed));
+  }
+
+  function mergeRuntimeCondition(existing = null, next = {}, effect = {}) {
+    if (!existing || typeof existing !== 'object') return { applied: true, state: next };
+    const rule = String(effect?.覆盖规则 || '').trim();
+    const refreshAllowed = !/(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(rule);
+    const stackingAllowed = !/(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(rule) && /叠加|累加|层数/.test(rule);
+    const layerMatch = rule.match(/(?:上限|最多|最高)?\s*(\d+)\s*层/);
+    const rawLayerLimit = Number(effect?.叠加上限 ?? effect?.最大层数 ?? layerMatch?.[1]);
+    const layerLimit = Number.isFinite(rawLayerLimit) && rawLayerLimit > 0 ? Math.max(1, Math.floor(rawLayerLimit)) : Infinity;
+    const oldDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+    const newDuration = Math.max(0, Number(effect?.持续回合 ?? next?.duration ?? 0));
+    const oldLayers = Math.max(1, Number(existing?.层数 || 1));
+    const oldTier = Number(existing?.状态位阶 ?? existing?.位阶 ?? existing?.强度 ?? 0);
+    const newTier = Number(effect?.状态位阶 ?? effect?.位阶 ?? effect?.强度 ?? 0);
+    if (Number.isFinite(newTier) && Number.isFinite(oldTier) && newTier > oldTier) return { applied: true, state: next };
+    if (stackingAllowed && oldLayers < layerLimit) {
+      const ratios = { ...(existing?.面板修改比例 || {}) };
+      Object.entries(next?.面板修改比例 || {}).forEach(([key, value]) => { ratios[key] = Number(ratios[key] ?? 1) * Number(value ?? 1); });
+      const fixed = { ...(existing?.面板固定修正 || {}) };
+      Object.entries(next?.面板固定修正 || {}).forEach(([key, value]) => { fixed[key] = Number(fixed[key] || 0) + Number(value || 0); });
+      const duration = refreshAllowed ? Math.max(oldDuration, newDuration) : oldDuration;
+      return { applied: true, state: {
+        ...existing, ...next, 层数: oldLayers + 1, duration,
+        shield_value: Math.max(0, Number(existing?.shield_value || 0)) + Math.max(0, Number(next?.shield_value || 0)),
+        面板修改比例: ratios, 面板固定修正: fixed,
+        战斗效果: mergeCombatEffectMaps(existing?.战斗效果 || createEmptyCombatEffectMap(), next?.战斗效果 || {}),
+      } };
+    }
+    const duration = refreshAllowed ? Math.max(oldDuration, newDuration) : oldDuration;
+    if (duration <= oldDuration) return { applied: false, state: existing };
+    return { applied: true, state: {
+      ...existing,
+      来源技能: next?.来源技能 || existing?.来源技能 || '', 来源角色: next?.来源角色 || existing?.来源角色 || '',
+      描述: next?.描述 || existing?.描述 || '', duration, __本回合新附加: next?.__本回合新附加 === true,
+    } };
+  }
+
+  function settleDelayedEffect(unit = {}, effect = {}, label = '目标') {
+    if (!unit || !effect || typeof effect !== 'object') return '';
+    if (!unit.状态效果) unit.状态效果 = {};
+    const prototype = String(effect?.原型 || '').trim();
+    const valueText = String(effect?.数值 ?? '').trim();
+    const value = readSignedBattleValue(valueText || effect?.威力倍率 || 0);
+    if (prototype === '伤害结算') {
+      const damageType = String(effect?.伤害类型 || '近身攻击').trim() || '近身攻击';
+      const multiplier = Math.max(1, Number(effect?.威力倍率 || 100));
+      const damage = /真实/.test(damageType)
+        ? Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1000)))
+        : Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1800)));
+      writeCombatResource(unit, 'hp', previewRuntime.readHp(unit) - damage);
+      return `[延迟效果] ${label}受到${damage}点${damageType}。`;
+    }
+    if (prototype === '资源变化') {
+      const resourceText = String(effect?.资源 || '').trim();
+      const resourceKey = /生命|HP|hp/i.test(resourceText) ? 'hp' : /体力|vit|sta/i.test(resourceText) ? 'vit' : /精神|men/i.test(resourceText) ? 'men' : 'sp';
+      const resourceLabel = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
+      const current = resourceKey === 'hp' ? previewRuntime.readHp(unit) : previewRuntime.readResource(unit, resourceLabel);
+      const maximum = resourceKey === 'hp' ? previewRuntime.readHpMax(unit) : previewRuntime.readResourceMax(unit, resourceLabel);
+      const delta = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(maximum * value) : Math.floor(value);
+      const next = Math.max(0, Math.min(maximum, current + delta));
+      const actual = next - current;
+      if (!actual) return '';
+      if (findResourceSuppression(unit, resourceLabel)) return `[机制抹消] ${label}对【资源变化 资源:${resourceLabel}】存在封锁，延迟资源变化未能落地。`;
+      writeCombatResource(unit, resourceKey, next);
+      return `[延迟效果] ${label}${actual >= 0 ? '恢复' : '损失'}${Math.abs(actual)}点${resourceText || '资源'}。`;
+    }
+    if (prototype === '护盾变化') {
+      if (findPrototypeSuppression(unit, prototype)) return `[机制抹消] ${label}对【护盾变化】存在封锁，延迟护盾变化未能落地。`;
+      if (value >= 0) {
+        const amount = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(previewRuntime.readHpMax(unit) * Math.abs(value)) : Math.floor(Math.abs(value));
+        const applied = applyRuntimeShield(unit, amount, Math.max(1, Number(effect?.持续回合 || 1)), '延迟护盾');
+        return applied > 0 ? `[延迟效果] ${label}获得${applied}点护盾。` : '';
+      }
+      if (!(currentShieldTotal(unit) > 0)) return '';
+      return `[延迟效果] ${label}被削减${removeRuntimeShield(unit, valueText || effect?.数值 || '-100%')}点护盾。`;
+    }
+    if (prototype === '属性修正') {
+      const attribute = String(effect?.属性 || '').trim();
+      if (!attribute || !value) return '';
+      if (findPrototypeSuppression(unit, prototype, '属性', attribute)) return `[机制抹消] ${label}对【属性修正 属性:${attribute}】存在封锁，延迟属性修正未能落地。`;
+      const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
+      const percentage = /%$/.test(valueText);
+      unit.状态效果[`延迟属性:${attribute || runtimeKey}`] = {
+        类型: value >= 0 ? 'buff' : 'debuff', 层数: 1, 描述: '延迟效果属性修正', 来源原型摘要: '属性修正',
+        属性: runtimeKey, duration: Math.max(1, Number(effect?.持续回合 || 1)),
+        面板修改比例: percentage ? { [runtimeKey]: Math.max(0.1, 1 + value) } : {},
+        面板固定修正: percentage ? {} : { [runtimeKey]: value }, 战斗效果: createEmptyCombatEffectMap(),
+      };
+      return `[延迟效果] ${label}获得${attribute || runtimeKey}修正。`;
+    }
+    if (prototype === '状态施加') {
+      const stateName = String(effect?.状态 || '').trim();
+      if (!stateName) return '';
+      if (findPrototypeSuppression(unit, prototype, '状态', stateName)) return `[机制抹消] ${label}对【状态施加 状态:${stateName}】存在封锁，延迟状态施加未能落地。`;
+      const state = {
+        类型: ['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(String(effect?.目标 || '').trim()) ? 'buff' : 'debuff',
+        层数: 1, 来源原型摘要: '状态施加', 描述: '延迟效果状态施加', duration: Math.max(0, Number(effect?.持续回合 || 0)),
+        面板修改比例: { ...(effect?.面板修改比例 || {}) },
+        战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
+      };
+      if (negativeEffectIsImmune(unit, state)) return `[无视异常] ${label}免疫了[${stateName}]延迟状态。`;
+      const removal = findPersistentStateRemoval(unit, stateName, state);
+      if (removal) return `[持续状态移除] ${label}的[${stateName}]被[${removal[0]}]拦截。`;
+      const merged = mergeRuntimeCondition(unit.状态效果[stateName], state, effect);
+      if (!merged.applied) return `[延迟效果] ${label}的[${stateName}]已存在，本次未形成新的刷新或叠加。`;
+      unit.状态效果[stateName] = merged.state;
+      unit.final = buildCombatFinalStats(unit);
+      return `[延迟效果] ${label}获得[${stateName}]。`;
+    }
+    throw new Error(`battle_delayed_effect_unsupported:${prototype || 'missing'}`);
+  }
+
   function nextRuntimeId(prefix = 'battle-event') {
     runtimeIdSequence = (runtimeIdSequence + 1) % 1000000;
     return `${String(prefix || 'battle-event')}-${runtimeIdContext}-${runtimeIdSequence.toString(36)}`;
@@ -5735,6 +5903,7 @@
     cloneValue,
     normalizeSideEffectList,
     settleConditionSideEffects,
+    settleDelayedEffect,
     nextRuntimeId,
     ensureCombatRuntime,
     getBattleSnapshot,
