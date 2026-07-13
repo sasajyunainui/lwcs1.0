@@ -827,6 +827,33 @@ const invalidTowerResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
 assert.equal(invalidTowerResult.roundsExecuted, 0, '魂灵塔资格不合法仍进入正式回合');
 assert.match(String(invalidTowerResult.logs?.join(' ') || ''), /魂灵塔资格驳回/, '魂灵塔资格拒绝没有进入正式运行结果');
 
+const reviveUnit = participant('revive-unit', 'player', 100);
+reviveUnit.hp = 0;
+reviveUnit.hp_max = 500;
+reviveUnit.属性.HP = 0;
+reviveUnit.属性.HP上限 = 500;
+reviveUnit.状态效果 = {
+  复生印记: { 战斗效果: { revive_count: 2, revive_heal_ratio: 0.3 } },
+};
+const reviveResult = sandbox.__LWCS_BATTLE_RUNTIME__.triggerStateRevive(reviveUnit, '复活测试单位');
+assert.equal(reviveResult?.revived, true, '状态型复活没有触发');
+assert.equal(reviveUnit.hp, 150, '状态型复活恢复量错误');
+assert.equal(reviveUnit.状态效果.复生印记.战斗效果.revive_count, 1, '状态型复活次数没有唯一消费');
+
+const blockedReviveUnit = participant('blocked-revive-unit', 'player', 100);
+blockedReviveUnit.hp = 0;
+blockedReviveUnit.hp_max = 500;
+blockedReviveUnit.属性.HP = 0;
+blockedReviveUnit.属性.HP上限 = 500;
+blockedReviveUnit.状态效果 = {
+  复生印记: { 战斗效果: { revive_count: 1, revive_heal_ratio: 0.3 } },
+  复生封锁: { 抹消规则: [{ 抹消对象: { 原型: '规则防御', 规则: '复活' }, 抹消方式: '持续封锁' }] },
+};
+const blockedReviveResult = sandbox.__LWCS_BATTLE_RUNTIME__.triggerStateRevive(blockedReviveUnit, '受阻测试单位');
+assert.equal(blockedReviveResult?.revived, false, '机制抹消未阻止状态型复活');
+assert.equal(blockedReviveUnit.hp, 0, '复活受阻后仍修改生命值');
+assert.equal(blockedReviveUnit.状态效果.复生印记.战斗效果.revive_count, 1, '复活受阻后错误消费复活次数');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -849,6 +876,7 @@ console.log(JSON.stringify({
     surviveRounds: surviveResult.roundsExecuted,
     protectedObjectiveWinner: protectedResult.finalBattleReport?.objectiveWinner || '',
     soulTowerRosterChecks: 7,
+    stateReviveChecks: 2,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

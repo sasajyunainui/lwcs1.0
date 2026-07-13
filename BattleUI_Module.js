@@ -23154,10 +23154,8 @@ class BattleUIComponent {
       if (!targetChar || typeof targetChar !== 'object') return null;
       if (targetChar.__本阶段已触发复活) return null;
       if (!targetChar.状态效果 || typeof targetChar.状态效果 !== 'object') targetChar.状态效果 = {};
-      const 状态复活候选 = Object.entries(targetChar.状态效果)
-        .map(([key, cond]) => ({ key, cond, ce: cond?.战斗效果 || {} }))
-        .filter(entry => Number(entry.ce.revive_count || 0) > 0)
-        .sort((a, b) => Number(b.ce.revive_count || 0) - Number(a.ce.revive_count || 0))[0];
+      const 状态复活结果 = BATTLE_RUNTIME.triggerStateRevive(targetChar, label);
+      if (状态复活结果?.handled === true) return 状态复活结果.log || null;
       const 被动复活候选 = collectPassiveCombatSkills(targetChar, [targetChar])
         .map(skill => ({
           skill,
@@ -23181,21 +23179,7 @@ class BattleUIComponent {
           const 技能限制态 = 限制态[`被动:${技能名}:死亡转存活`] ||= { 已用次数: 0 };
           return Number(技能限制态.已用次数 || 0) < 次数;
         });
-      if (!状态复活候选 && !被动复活候选) return null;
-      if (状态复活候选) {
-        if (战斗机制抹消命中(targetChar, '最终结果', { 原型: '规则防御', 规则: '复活' }, { 用途: '封锁' })) {
-          return `[复活受阻] ${label}的复活机制已被机制抹消封锁，无法触发！`;
-        }
-        if (!状态复活候选.cond.战斗效果) 状态复活候选.cond.战斗效果 = {};
-        const nextCount = Math.max(0, Number(状态复活候选.cond.战斗效果.revive_count || 0) - 1);
-        状态复活候选.cond.战斗效果.revive_count = nextCount;
-        const healRatio = Math.max(0.05, Number(状态复活候选.cond.战斗效果.revive_heal_ratio || 0.25));
-        const maxVit = getCombatHpMaxValue(targetChar);
-        const restoreAmount = Math.max(1, Math.floor(maxVit * healRatio));
-        设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
-        targetChar.__本阶段已触发复活 = true;
-        return `[复活触发] ${label}借[${状态复活候选.key}]重燃战意，恢复 ${restoreAmount} 点HP！剩余复活次数:${nextCount}`;
-      }
+      if (!被动复活候选) return null;
       if (战斗机制抹消命中(targetChar, '最终结果', { 原型: '规则改写', 规则: '死亡转存活' }, { 用途: '封锁' })) {
         return `[复活受阻] ${label}的死亡转存活规则已被机制抹消封锁，无法触发！`;
       }

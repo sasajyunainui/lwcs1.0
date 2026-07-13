@@ -2099,6 +2099,53 @@
     return null;
   }
 
+  function findRuleSuppression(unit = {}, prototype = '', field = '', value = '') {
+    const allValues = new Set(['全部', '抹消全部', '全部状态', '全部规则', '全部资源', '全部结算', '全部属性', '全部原型']);
+    for (const condition of Object.values(unit?.状态效果 || {})) {
+      const rules = Array.isArray(condition?.抹消规则) ? condition.抹消规则 : [];
+      for (let index = 0; index < rules.length; index += 1) {
+        const object = rules[index]?.抹消对象;
+        const matcher = object && typeof object === 'object' && !Array.isArray(object) ? object : { 原型: String(object || '').trim() };
+        if (String(matcher?.原型 || '机制授予').trim() !== prototype) continue;
+        const values = (Array.isArray(matcher?.[field]) ? matcher[field] : String(matcher?.[field] ?? '').split(/[、,，|/]/))
+          .map(entry => String(entry || '').trim())
+          .filter(Boolean);
+        if (values.length && !values.some(entry => allValues.has(entry) || entry === value)) continue;
+        const hit = { 状态: condition, 规则索引: index, 抹消对象: matcher };
+        if (String(rules[index]?.抹消方式 || '').trim() === '阻断本次') rules.splice(index, 1);
+        return hit;
+      }
+    }
+    return null;
+  }
+
+  function triggerStateRevive(unit = {}, label = '目标') {
+    if (!unit || typeof unit !== 'object' || unit.__本阶段已触发复活) return null;
+    if (!unit.状态效果 || typeof unit.状态效果 !== 'object') unit.状态效果 = {};
+    const candidate = Object.entries(unit.状态效果)
+      .map(([key, condition]) => ({ key, condition, effects: condition?.战斗效果 || {} }))
+      .filter(entry => Number(entry.effects.revive_count || 0) > 0)
+      .sort((left, right) => Number(right.effects.revive_count || 0) - Number(left.effects.revive_count || 0))[0];
+    if (!candidate) return null;
+    if (findRuleSuppression(unit, '规则防御', '规则', '复活')) {
+      return { handled: true, revived: false, log: `[复活受阻] ${label}的复活机制已被机制抹消封锁，无法触发！` };
+    }
+    const nextCount = Math.max(0, Number(candidate.effects.revive_count || 0) - 1);
+    candidate.effects.revive_count = nextCount;
+    const healRatio = Math.max(0.05, Number(candidate.effects.revive_heal_ratio || 0.25));
+    const maxHp = previewRuntime.readHpMax(unit);
+    const restoreAmount = Math.max(1, Math.floor(maxHp * healRatio));
+    writeCombatResource(unit, 'hp', Math.min(maxHp, Math.max(restoreAmount, previewRuntime.readHp(unit) + restoreAmount)));
+    unit.__本阶段已触发复活 = true;
+    return {
+      handled: true,
+      revived: true,
+      restoreAmount,
+      remainingCount: nextCount,
+      log: `[复活触发] ${label}借[${candidate.key}]重燃战意，恢复 ${restoreAmount} 点HP！剩余复活次数:${nextCount}`,
+    };
+  }
+
   function writeStateHpTick(combatData = {}, unit = {}, label = '', source = {}, condition = {}, stateName = '', amount = 0, result = '') {
     if (!(amount > 0)) return null;
     return writeLedgerEvent(combatData, {
@@ -5536,6 +5583,7 @@
     settleNaturalRecoveryAtRoundEnd,
     settleRingRecoveryAtRoundEnd,
     settleConditionResourceTick,
+    triggerStateRevive,
     refreshSustainRuntimeLoad,
     settleExpiredConditionBase,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
