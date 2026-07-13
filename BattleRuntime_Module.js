@@ -4352,6 +4352,163 @@
     });
   }
 
+  function runStructuredShadowBattle(input = {}) {
+    const source = input?.combatData && typeof input.combatData === 'object' ? input.combatData : {};
+    const sourceJson = JSON.stringify(source);
+    const combatData = cloneValue(source);
+    const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
+    const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
+    const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
+    fillObjectiveDamageBaselines(combatData);
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.actionQueueTrace = [];
+    runtime.decisionSeed = seed;
+    const originalRandom = Math.random;
+    const previousIdContext = runtimeIdContext;
+    const previousIdSequence = runtimeIdSequence;
+    let randomState = seed % 2147483647;
+    if (randomState <= 0) randomState += 2147483646;
+    Math.random = () => {
+      randomState = (randomState * 16807) % 2147483647;
+      return (randomState - 1) / 2147483646;
+    };
+    runtimeIdContext = `structured-shadow-${seed.toString(36)}`;
+    runtimeIdSequence = 0;
+    const decisions = [];
+    const logs = [];
+    const initialSnapshot = getBattleSnapshot(combatData);
+    let roundsExecuted = 0;
+    let terminal = null;
+    try {
+      for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
+        combatData.回合 = Number(source?.回合 || 0) + roundOffset;
+        roundsExecuted = roundOffset;
+        const queueTrace = runtime.actionQueueTrace;
+        const queue = createActionQueue({
+          round: combatData.回合,
+          initialEntries: buildActionQueue(combatData),
+          describeActor: entry => previewRuntime.unitName(entry?.char),
+          normalizeRole: normalizeActionRole,
+          normalizeActionName: normalizeActionDisplayName,
+          onTrace: event => queueTrace.push(cloneAuditSnapshot(event)),
+          onFatal: fatal => { runtime.actionQueueFatal = cloneAuditSnapshot(fatal); },
+        });
+        let opportunitySequence = 0;
+        while (queue.pendingCount > 0 && !queue.fatal) {
+          const node = queue.dequeue();
+          if (!node) break;
+          queue.recordTrace('EXECUTING', node);
+          const actor = node?.actorEntry?.char;
+          if (!actor || !previewRuntime.isBattleCapable(actor)) {
+            const actorName = previewRuntime.unitName(actor) || '未知单位';
+            writeLedgerEvent(combatData, {
+              eventKind: 'blocked_action', round: Number(combatData.回合 || 0), actorName, targetName: actorName,
+              actionName: '失去行动', actionType: 'opportunity_cancelled', actorControl: node.actorControl,
+              actionRole: node.actionRole, result: 'cancelled', resultState: 'FAILURE', ruleCode: 'NATURAL_ACTION_OPPORTUNITY_CANCELLED',
+              meta: { source: 'structured_shadow', grantId: node.grantId, reason: previewRuntime.readIncapacityReason(actor || {}) || 'UNAVAILABLE' },
+            });
+            queue.recordTrace('CANCELLED', node, { reason: previewRuntime.readIncapacityReason(actor || {}) || 'UNAVAILABLE' });
+            continue;
+          }
+          try {
+            let declaration;
+            let decisionResult = null;
+            if (node.actionRole === 'ASSIST' && actor.召唤键) {
+              const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+              const target = listPrimaryCombatUnits(combatData).find(unit =>
+                previewRuntime.isBattleCapable(unit) && inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide
+              );
+              if (!target) {
+                writeLedgerEvent(combatData, {
+                  eventKind: 'target_fail', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
+                  actionName: '召唤协同', actionType: 'summon_assist', actorControl: 'AI', actionRole: 'ASSIST',
+                  result: 'no_target', resultState: 'FAILURE', ruleCode: 'SUMMON_NO_LEGAL_TARGET',
+                  meta: { source: 'structured_shadow', grantId: node.grantId },
+                });
+                consumeSummonWindow(combatData, actor, '无合法目标', node.grantId);
+                queue.recordTrace('COMPLETED', node, { result: 'no_target' });
+                continue;
+              }
+              const skill = cloneValue((actor.技能列表 || [])[0] || { name: '普通攻击', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] });
+              declaration = { actorId: previewRuntime.unitId(actor), actionKind: 'RELEASE_SKILL', targetIds: [previewRuntime.unitId(target)], skill };
+            } else {
+              decisionResult = decisionRuntime.decide({
+                worldSnapshot: combatData,
+                actorId: previewRuntime.unitId(actor),
+                actionOpportunity: { role: node.actionRole, sequence: ++opportunitySequence, grantId: node.grantId },
+                battleIntent: { mode: String(combatData?.战斗意图 || '').trim(), objectives: combatData?.胜负条件 || {} },
+                beliefState: input?.initialBelief?.[previewRuntime.unitId(actor)] || input?.initialBelief || {},
+                teamIntent: input?.teamIntent || {},
+                strategyMemory: runtime.strategyMemory?.[previewRuntime.unitId(actor)] || {},
+                seed: `${seed}:${combatData.回合}:${opportunitySequence}`,
+              });
+              declaration = cloneValue(decisionResult?.selected?.declaration || {});
+              decisions.push(buildDecisionAuditRecord({ ...decisionResult, round: combatData.回合, actorId: previewRuntime.unitId(actor), actionRole: node.actionRole }));
+            }
+            const settlement = executeStructuredDeclaration({
+              combatData, declaration, actionRole: node.actionRole, actorControl: node.actorControl,
+            });
+            logs.push(`[结构化影子] ${previewRuntime.unitName(actor)}执行【${normalizeActionDisplayName(settlement?.actionEvent?.actionName || declaration?.actionKind || '')}】。`);
+            settlement.facts.filter(event => event?.eventKind === 'summon_create').forEach(event => {
+              const summon = listSummonCombatUnits(combatData).find(unit => String(unit?.召唤键 || '').trim() === String(event?.targetId || event?.meta?.summonKey || '').trim());
+              if (!summon || String(summon?.行动模式 || '').trim() !== '协同攻击') return;
+              queue.enqueue({
+                actorEntry: { char: summon, side: inferUnitSide(combatData, previewRuntime.unitName(summon)) || node?.actorEntry?.side },
+                actorControl: 'AI', actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence: node.actionSequence, phasePriority: 70,
+                grantId: `${event?.meta?.windowId || summon.召唤键}:assist:${combatData.回合}`,
+                nodeKind: 'ASSIST', actionRole: 'ASSIST', sourceActionId: settlement.actionEvent?.actionId || '', actionName: '召唤协同',
+              });
+            });
+            if (node.actionRole === 'ASSIST' && actor.召唤键) consumeSummonWindow(combatData, actor, '协同行动窗口耗尽', node.grantId);
+            queue.recordTrace('COMPLETED', node, { actionId: settlement?.actionEvent?.actionId || '' });
+          } catch (error) {
+            queue.fail('STRUCTURED_SHADOW_NODE_FAILED', node, { message: String(error?.message || error) });
+          }
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
+          if (terminal?.terminal === true) break;
+        }
+        if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
+        if (terminal?.terminal !== true) {
+          [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].forEach(unit => {
+            const result = settleConditionsAtRoundEnd(unit, previewRuntime.unitName(unit), combatData);
+            if (result.log) logs.push(result.log);
+          });
+        }
+        terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
+        const alive = readTeamAlive(combatData);
+        writeLedgerEvent(combatData, {
+          eventKind: 'round_summary', round: Number(combatData.回合 || 0), actorName: 'SYSTEM', actionName: '回合总结',
+          actionType: 'round_summary', actorControl: 'SYSTEM', actionRole: 'STATE_TICK', result: 'complete', resultState: 'COMPLETED',
+          meta: { source: 'structured_shadow', playerAlive: alive.playerAlive, enemyAlive: alive.enemyAlive },
+        });
+        if (terminal?.terminal === true || alive.playerAlive <= 0 || alive.enemyAlive <= 0) break;
+      }
+      if (JSON.stringify(source) !== sourceJson) throw new Error('PREVIEW_MUTATED_STATE');
+      const ledger = ensureLedger(combatData).map(item => cloneAuditSnapshot(item));
+      const trace = collectResolutionTrace(combatData).map(normalizeCausalNode);
+      const decisionAudits = decisions.map(item => cloneAuditSnapshot(item));
+      const finalSnapshot = getBattleSnapshot(combatData);
+      const publicReportBlocks = projectPublicReportBlocks(ledger).map(cloneAuditSnapshot);
+      const reportBlocks = buildReportBlocks(ledger, decisionAudits, publicReportBlocks);
+      const summary = buildFinalSummary(ledger, decisionAudits, finalSnapshot, combatData);
+      const roundOverview = buildRoundOverview({ eventLedger: ledger, roundsExecuted, combatData }, { combatData });
+      return {
+        caseId, seed, mode: 'structured_shadow', preview: true, inputUnchanged: true,
+        roundsRequested: roundLimit, roundsExecuted, ledger, eventLedger: ledger, trace, resolutionTrace: trace,
+        scoreAudit: decisionAudits.flatMap(entry => entry.scoreAudit || []), scoringAudit: [], decisions: decisionAudits,
+        decisionTrace: decisionAudits, actionChains: buildActionChains(ledger, trace), actionQueueTrace: runtime.actionQueueTrace.map(item => cloneAuditSnapshot(item)),
+        reportBlocks, publicReportBlocks, roundOverview, finalBattleReport: summary.finalBattleReport,
+        aiSummaryInput: summary.aiSummaryInput, finalSnapshot, logs, initialSnapshot, terminal,
+      };
+    } finally {
+      Math.random = originalRandom;
+      runtimeIdContext = previousIdContext;
+      runtimeIdSequence = previousIdSequence;
+    }
+  }
+
   function calculateBaseDamage(options = {}) {
     const damageClass = String(options?.damageClass || '').trim().toUpperCase();
     const damageType = String(options?.damageType || '').trim();
@@ -6384,6 +6541,9 @@
   }
 
   function runDecisionCase(input = {}) {
+    if (String(input?.settings?.decisionEngine || '').trim() === 'next-shadow' && input?.settings?.decisionOnly !== true) {
+      return runStructuredShadowBattle(input);
+    }
     const decision = root.__LWCS_BATTLE_DECISION__;
     const preview = root.__LWCS_BATTLE_PREVIEW__;
     if (!decision || typeof decision.decide !== 'function' || !preview || typeof preview.listUnits !== 'function') {
@@ -6640,6 +6800,7 @@
     executeDeclaration,
     executeStructuredDeclaration,
     auditStructuredCommitCoverage,
+    runStructuredShadowBattle,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,

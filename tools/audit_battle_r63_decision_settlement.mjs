@@ -1098,6 +1098,26 @@ assert.equal(structuredSummons[0].__来源状态?.duration, 1, '持续1回合召
 assert.ok(structuredSummonCombat.参战者.team_player[0].状态效果['召唤:测试协同体'], '结构化召唤没有建立宿主来源状态');
 assert.equal(structuredSummonResult.facts.filter(event => event?.eventKind === 'summon_create').length, 1, '结构化召唤缺少唯一生成事实');
 
+const shadowInput = combatData();
+const shadowInputHash = digest(shadowInput);
+const structuredShadow = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-duel', seed: 88421, combatData: shadowInput, mode: 'team_preview', rounds: 2,
+  settings: { decisionEngine: 'next-shadow' },
+});
+assert.equal(digest(shadowInput), shadowInputHash, '完整结构化影子回合修改了原始输入');
+assert.ok(structuredShadow.roundsExecuted >= 1, '完整结构化影子回合没有执行');
+const structuredShadowActiveRoots = structuredShadow.ledger.filter(event => event?.eventKind === 'action_start' && event?.actionRole === 'ACTIVE');
+assert.ok(new Set(structuredShadowActiveRoots.map(event => event?.actorName)).has('player-a'), '结构化影子1v1缺少我方自然行动');
+assert.ok(new Set(structuredShadowActiveRoots.map(event => event?.actorName)).has('enemy-a'), '结构化影子1v1缺少敌方自然行动');
+assert.equal(structuredShadow.ledger.filter(event => event?.eventKind === 'round_summary').length, structuredShadow.roundsExecuted, `结构化影子回合总结不连续或重复:${JSON.stringify(structuredShadow.ledger.map(event => [event.eventKind, event.round]))}/${structuredShadow.roundsExecuted}`);
+assert.equal(structuredShadow.roundOverview.length, structuredShadow.roundsExecuted, '结构化影子回合速览未连续覆盖实际回合');
+assert.ok(structuredShadow.ledger.some(event => ['hit_result', 'defend', 'dodge', 'effect_resolved', 'state_apply'].includes(event?.eventKind)), '结构化影子回合没有产生实际结算事实');
+const structuredShadowRepeat = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-duel', seed: 88421, combatData: shadowInput, mode: 'team_preview', rounds: 2,
+  settings: { decisionEngine: 'next-shadow' },
+});
+assert.equal(digest({ ledger: structuredShadowRepeat.ledger, finalSnapshot: structuredShadowRepeat.finalSnapshot }), digest({ ledger: structuredShadow.ledger, finalSnapshot: structuredShadow.finalSnapshot }), '结构化影子同种子不能复现');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -1126,6 +1146,7 @@ console.log(JSON.stringify({
     delayedEffectChecks: 6,
     persistentPrototypeChecks: 5,
     structuredCommitChecks: 12,
+    structuredShadowChecks: 7,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

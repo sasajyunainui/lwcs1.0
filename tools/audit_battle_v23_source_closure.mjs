@@ -230,6 +230,13 @@ addCheck(
     !/domain\.executeDeclaration\(|executeDeclaration:\s*\(|executeStructuredDeclaration/.test(battleUiSource),
 );
 addCheck(
+  'structuredShadowRunnerOwnedByRuntime',
+  /function runStructuredShadowBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /decisionEngine \|\| ''\)\.trim\(\) === 'next-shadow'/.test(battleRuntimeSource) &&
+    /runStructuredShadowBattle,/.test(battleRuntimeSource) &&
+    !/runStructuredShadowBattle|next-shadow/.test(battleUiSource),
+);
+addCheck(
   'battleModuleVersionsAreExactContracts',
   /battle_decision_preview_version_mismatch/.test(battleDecisionSource) &&
     /battle_runtime_preview_version_mismatch/.test(battleRuntimeSource) &&
@@ -522,7 +529,7 @@ addCheck(
 );
 addCheck(
   'legacyDecisionPathsRemoved',
-  !/runLegacyBattleCase|next-shadow|shadowDecisions|SHADOWED|评估技能规划净收益|评估技能行为库衔接收益|估算效果行为库衔接收益|chooseActorActionByCandidates|buildAutoActionForActor|determineNpcAction/.test(`${battleRuntimeSource}\n${battleDecisionSource}\n${battleUiSource}`),
+  !/runLegacyBattleCase|shadowDecisions|SHADOWED|评估技能规划净收益|评估技能行为库衔接收益|估算效果行为库衔接收益|chooseActorActionByCandidates|buildAutoActionForActor|determineNpcAction/.test(`${battleRuntimeSource}\n${battleDecisionSource}\n${battleUiSource}`),
 );
 addCheck(
   'productionHasNoRepeatDecayScoringPath',
