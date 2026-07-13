@@ -222,10 +222,12 @@ addCheck(
 addCheck(
   'formalDeclarationExecutionOwnedByRuntime',
   /function executeDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /function executeStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
     /executeDeclaration,/.test(battleRuntimeSource) &&
+    /executeStructuredDeclaration,/.test(battleRuntimeSource) &&
     /runtime\.playerLockedNaturalAction\s*=/.test(battleRuntimeSource) &&
     /return runDecisionTeamBattle\(\{/.test(battleRuntimeSource) &&
-    !/domain\.executeDeclaration\(|executeDeclaration:\s*\(/.test(battleUiSource),
+    !/domain\.executeDeclaration\(|executeDeclaration:\s*\(|executeStructuredDeclaration/.test(battleUiSource),
 );
 addCheck(
   'battleModuleVersionsAreExactContracts',

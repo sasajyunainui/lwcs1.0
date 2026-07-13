@@ -3967,6 +3967,192 @@
     }
   }
 
+  function resolveStructuredTargets(combatData = {}, actor = {}, declaration = {}, effect = {}) {
+    const targetKind = String(effect?.目标 || declaration?.targetKind || '').trim();
+    const explicitIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
+    const all = listCombatUnits(combatData).filter(unit => previewRuntime.isAlive(unit));
+    const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+    const explicit = explicitIds.map(id => all.find(unit => isUnitIdentityMatch(unit, id))).filter(Boolean);
+    if (/自身/.test(targetKind)) return [actor];
+    if (/全场/.test(targetKind)) return all;
+    if (/友方群体/.test(targetKind)) return all.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === actorSide);
+    if (/敌方群体|群体/.test(targetKind)) return all.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide);
+    return explicit.length ? explicit : [actor];
+  }
+
+  function writeStructuredResourceFact(combatData = {}, actor = {}, target = {}, action = {}, actionEvent = {}, resourceKey = '', delta = 0, actionRole = 'ACTIVE') {
+    const amount = Number(delta || 0);
+    if (!amount) return null;
+    const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力', shield: '护盾' }[resourceKey] || resourceKey;
+    return writeLedgerEvent(combatData, {
+      eventKind: resourceKey === 'shield' ? (amount > 0 ? 'shield_create' : 'shield_break') : 'resource_change',
+      round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor),
+      targetName: previewRuntime.unitName(target),
+      actionName: action.actionName,
+      actionType: action.actionKind,
+      actorControl: action.actorControl,
+      actionRole,
+      actionId: actionEvent?.actionId || '',
+      sourceActionId: actionEvent?.actionId || '',
+      parentNodeId: actionEvent?.chainNodeId || '',
+      sourceNodeId: actionEvent?.chainNodeId || '',
+      result: amount > 0 ? 'gain' : 'loss',
+      resultState: amount > 0 ? 'GAIN' : 'LOSS',
+      meta: { resource, resourceKey, delta: amount, amount: Math.abs(amount), source: 'structured_runtime' },
+    });
+  }
+
+  function executeStructuredDeclaration(input = {}) {
+    const combatData = input?.combatData;
+    const declaration = input?.declaration;
+    if (!combatData || typeof combatData !== 'object') throw new TypeError('battle_structured_combat_data_missing');
+    if (!declaration || typeof declaration !== 'object') throw new TypeError('battle_structured_declaration_missing');
+    const actorId = String(declaration?.actorId || '').trim();
+    const actor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, actorId));
+    if (!actor || !previewRuntime.isBattleCapable(actor)) throw new Error('battle_structured_actor_unavailable');
+    const actionKind = String(declaration?.actionKind || '').trim();
+    if (!actionKinds.includes(actionKind)) throw new Error(`battle_structured_action_kind_invalid:${actionKind || 'missing'}`);
+    const actionRole = normalizeActionRole(input?.actionRole || 'ACTIVE');
+    const actorControl = normalizeActorControl(input?.actorControl || 'AI');
+    const actionName = normalizeActionDisplayName(
+      declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.skill?.技能名称 || actionKind,
+    );
+    const primaryTarget = resolveStructuredTargets(combatData, actor, declaration, { 目标: declaration?.targetKind || '' })[0] || actor;
+    const actionEvent = writeLedgerEvent(combatData, {
+      eventKind: 'action_start',
+      round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor),
+      targetName: previewRuntime.unitName(primaryTarget),
+      targetIds: declaration?.targetIds || [],
+      actionName,
+      actionType: actionKind,
+      actorControl,
+      actionRole,
+      result: 'declared',
+      resultState: 'DECLARED',
+      ruleCode: 'STRUCTURED_DECLARATION_COMMITTED',
+      meta: { source: 'structured_runtime', targetScope: String(declaration?.targetKind || '').trim() },
+    });
+    const action = { actionKind, actionName, actorControl };
+    const facts = [actionEvent];
+    Object.entries(declaration?.resourceCosts || {}).forEach(([resource, rawCost]) => {
+      const key = /精神/.test(resource) ? 'men' : /体力/.test(resource) ? 'vit' : /生命|HP/i.test(resource) ? 'hp' : 'sp';
+      const label = persistentResourceLabel(key);
+      const before = persistentResourceValue(actor, key);
+      const maximum = persistentResourceMax(actor, key);
+      const textValue = String(rawCost ?? '').trim();
+      const numeric = Math.max(0, Number.parseFloat(textValue) || 0);
+      const cost = textValue.includes('%') ? maximum * numeric / 100 : numeric;
+      if (before + 1e-9 < cost) throw new Error(`battle_structured_resource_insufficient:${resource}`);
+      writeCombatResource(actor, key, before - cost);
+      facts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, key, -cost, actionRole));
+      if (!label) void label;
+    });
+    if (['DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
+      const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind, round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(primaryTarget),
+        actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+        parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: 'complete', resultState: 'SUCCESS',
+        primaryOutcome: actionKind === 'OBSERVE' ? 'information_gained' : 'stance_established', meta: { source: 'structured_runtime' },
+      }));
+      return { actionEvent, facts: facts.filter(Boolean), actor, target: primaryTarget, terminal: 'SUCCESS' };
+    }
+    const effects = actionKind === 'BASIC_ATTACK'
+      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }]
+      : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
+    if (!effects.length) throw new Error('battle_structured_effects_missing');
+    effects.forEach((effect, effectIndex) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (!['伤害结算', '资源变化', '护盾变化', '状态施加'].includes(prototype)) {
+        throw new Error(`battle_structured_prototype_unsupported:${prototype || 'missing'}`);
+      }
+      const targets = resolveStructuredTargets(combatData, actor, declaration, effect);
+      targets.forEach(target => {
+        if (prototype === '伤害结算') {
+          const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
+          const totalDamage = Math.max(0, previewRuntime.calculateBaseDamage(effect, actor, target));
+          const segmentDamage = totalDamage / segments;
+          const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect)));
+          for (let segment = 0; segment < segments; segment += 1) {
+            const roll = Math.random();
+            if (!probabilitySucceeds(hitProbability, roll)) {
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'hit_result', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+                actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+                parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: 'miss', resultState: 'FAILURE',
+                primaryOutcome: 'dodged', meta: { source: 'structured_runtime', segment: segment + 1, segments, hitProbability, roll, appliedDamage: 0 },
+              }));
+              continue;
+            }
+            const before = previewRuntime.readHp(target);
+            const nonlethal = /点到为止|切磋|训练|非致命/.test(String(combatData?.战斗意图 || '').trim());
+            const damage = Math.max(0, Math.min(nonlethal ? Math.max(0, before - 1) : before, Math.round(segmentDamage)));
+            writeCombatResource(target, 'hp', before - damage);
+            if (previewRuntime.shouldTriggerTraumaUnconscious(damage, previewRuntime.readHp(target), previewRuntime.readHpMax(target))) {
+              target.状态 = { ...(target.状态 || {}), 行动: '昏迷' };
+            }
+            facts.push(writeLedgerEvent(combatData, {
+              eventKind: 'hit_result', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+              actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+              parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: damage > 0 ? 'hit' : 'no_effect',
+              resultState: damage > 0 ? 'SUCCESS' : 'NO_EFFECT', primaryOutcome: damage > 0 ? 'full_hit' : 'no_effect',
+              meta: { source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, roll, rawDamage: segmentDamage, appliedDamage: damage, damageType: effect?.伤害类型 || '' },
+            }));
+          }
+          return;
+        }
+        if (prototype === '资源变化') {
+          const resourceText = String(effect?.资源 || '魂力').trim();
+          const key = /生命|HP/i.test(resourceText) ? 'hp' : /体力/.test(resourceText) ? 'vit' : /精神/.test(resourceText) ? 'men' : 'sp';
+          const before = persistentResourceValue(target, key);
+          const delta = previewRuntime.parseSignedValue(effect?.数值, persistentResourceMax(target, key));
+          writeCombatResource(target, key, before + delta);
+          const actual = persistentResourceValue(target, key) - before;
+          facts.push(writeStructuredResourceFact(combatData, actor, target, action, actionEvent, key, actual, actionRole));
+          return;
+        }
+        if (prototype === '护盾变化') {
+          const before = currentShieldTotal(target);
+          const requested = previewRuntime.parseSignedValue(effect?.数值, previewRuntime.readHpMax(target));
+          if (requested >= 0) applyRuntimeShield(target, requested, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
+          else removeRuntimeShield(target, effect?.数值 || requested);
+          facts.push(writeStructuredResourceFact(combatData, actor, target, action, actionEvent, 'shield', currentShieldTotal(target) - before, actionRole));
+          return;
+        }
+        const stateName = String(effect?.状态 || '').trim();
+        if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
+        const state = {
+          类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, previewRuntime.unitName(target)) === inferUnitSide(combatData, previewRuntime.unitName(actor)) ? 'buff' : 'debuff'),
+          状态: stateName, 状态名称: stateName, 层数: 1, duration: Math.max(1, Number(effect?.持续回合 || 1)),
+          描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
+          面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
+        };
+        const successProbability = Math.max(0, Math.min(1, Number(effect?.成功率 ?? effect?.触发概率 ?? 1)));
+        const roll = Math.random();
+        let result = 'applied';
+        if (negativeEffectIsImmune(target, state)) result = 'immune';
+        else if (!probabilitySucceeds(successProbability, roll)) result = 'resisted';
+        else if (!stateName) result = 'invalid';
+        else {
+          const merged = mergeRuntimeCondition(target?.状态效果?.[stateName], state, effect);
+          if (merged.applied) target.状态效果[stateName] = merged.state;
+          else result = 'no_effect';
+        }
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+          actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+          parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result,
+          resultState: result === 'applied' ? 'SUCCESS' : result === 'no_effect' ? 'NO_EFFECT' : 'FAILURE',
+          primaryOutcome: result === 'applied' ? 'state_applied' : result === 'immune' ? 'state_immune' : 'state_resisted',
+          meta: { source: 'structured_runtime', effectIndex, stateName, successRate: successProbability, roll },
+        }));
+      });
+    });
+    return { actionEvent, facts: facts.filter(Boolean), actor, target: primaryTarget, terminal: 'RESOLVED' };
+  }
+
   function calculateBaseDamage(options = {}) {
     const damageClass = String(options?.damageClass || '').trim().toUpperCase();
     const damageType = String(options?.damageType || '').trim();
@@ -6253,6 +6439,7 @@
     decideDuelContinuation,
     executeActionNodes,
     executeDeclaration,
+    executeStructuredDeclaration,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,

@@ -1009,6 +1009,63 @@ assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(ex
   持续原型效果: { 原型: '未知持续原型' },
 }, '未知目标', persistentExchangeCombat), /battle_persistent_prototype_unsupported/, '未知持续原型被静默跳过');
 
+const structuredCombat = combatData();
+structuredCombat.回合 = 1;
+const structuredTarget = structuredCombat.参战者.team_enemy[0];
+const structuredHpBefore = structuredTarget.属性.HP;
+const structuredDamage = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '结构化双击', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 40, 伤害类型: '近身攻击', 攻击段数: 2, 命中概率: 1 }] },
+  },
+});
+assert.equal(structuredDamage.facts.filter(event => event?.eventKind === 'hit_result' && event?.result === 'hit').length, 2, '结构化提交器没有逐段写入两次命中');
+assert.ok(structuredTarget.属性.HP < structuredHpBefore, '结构化多段伤害没有修改正式影子快照');
+assert.equal(structuredDamage.facts.filter(event => event?.eventKind === 'action_start').length, 1, '结构化动作生成了多个主动根');
+
+const zeroHitCombat = combatData();
+zeroHitCombat.回合 = 1;
+const zeroHitTarget = zeroHitCombat.参战者.team_enemy[0];
+const zeroHitBefore = zeroHitTarget.属性.HP;
+const zeroHitResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: zeroHitCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '零命中测试', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 999, 伤害类型: '真实攻击', 命中概率: 0 }] },
+  },
+});
+assert.equal(zeroHitTarget.属性.HP, zeroHitBefore, '0%命中率仍造成伤害');
+assert.equal(zeroHitResult.facts.find(event => event?.eventKind === 'hit_result')?.result, 'miss', '0%命中率没有形成失败事实');
+
+const structuredEffectCombat = combatData();
+structuredEffectCombat.回合 = 1;
+const structuredEffectResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredEffectCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '结构化复合效果', _效果数组: [
+      { 原型: '资源变化', 目标: '单体', 资源: '魂力', 数值: '-10%' },
+      { 原型: '护盾变化', 目标: '单体', 数值: '+50' },
+      { 原型: '状态施加', 目标: '单体', 状态: '结构化眩晕', 持续回合: 1, 成功率: 1, 计算层效果: { skip_turn: true } },
+    ] },
+  },
+});
+assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'RESOURCE_CHANGE'), '结构化资源变化缺少事实');
+assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'SHIELD_CHANGE'), '结构化护盾变化缺少事实');
+assert.equal(structuredEffectCombat.参战者.team_enemy[0].状态效果.结构化眩晕?.战斗效果?.skip_turn, true, '结构化状态没有落入影子快照');
+
+const structuredDefense = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: combatData(),
+  declaration: { actorId: 'player-a', actionKind: 'DEFEND', targetIds: ['player-a'], targetKind: '自身' },
+});
+assert.equal(structuredDefense.terminal, 'SUCCESS', '结构化防御没有形成唯一成功终态');
+assert.equal(structuredDefense.facts.filter(event => event?.eventKind === 'defend').length, 1, '结构化防御被拆成多个终态事实');
+assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: combatData(),
+  declaration: { actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'], skill: { name: '未知提交', _效果数组: [{ 原型: '复制执行', 目标: '单体' }] } },
+}), /battle_structured_prototype_unsupported/, '未迁移原型在结构化提交器中被静默跳过');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -1036,6 +1093,7 @@ console.log(JSON.stringify({
     roundEndSideEffectChecks: 4,
     delayedEffectChecks: 6,
     persistentPrototypeChecks: 5,
+    structuredCommitChecks: 5,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },
