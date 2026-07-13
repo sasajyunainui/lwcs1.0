@@ -9056,8 +9056,9 @@
         role: 'system',
         content,
         should_scan: true,
+        _qrf_scope: 'mvu',
       },
-    ]);
+    ], { once: true });
     const record = {
       id: injectionId,
       chatId: getCurrentUiRequestChatId(),

@@ -4746,6 +4746,39 @@ $CONTENT
         计时器: 0,
         最近停止时间: 0,
     };
+    function 克隆自动重试数据_ACU(value) {
+        if (value == null)
+            return value;
+        try {
+            return JSON.parse(JSON.stringify(value));
+        }
+        catch (_错误) {
+            return null;
+        }
+    }
+    function 冻结正文自动重试上下文_ACU(options, runtimeContext = null) {
+        if (!options || typeof options !== 'object' || !生成错误状态_ACU.本轮)
+            return false;
+        const prompt = typeof options.prompt === 'string' ? options.prompt : '';
+        const userInput = typeof options.user_input === 'string' ? options.user_input : '';
+        if (!prompt.trim() && !userInput.trim())
+            return false;
+        const storyInjects = (Array.isArray(options.injects) ? options.injects : [])
+            .filter(item => item && item._qrf_scope === 'story')
+            .map(item => ({ ...item }));
+        生成错误状态_ACU.本轮.冻结正文上下文 = {
+            options: {
+                ...(prompt.trim() ? { prompt } : {}),
+                ...(userInput.trim() ? { user_input: userInput } : {}),
+                ...(storyInjects.length ? { injects: storyInjects } : {}),
+                automatic_trigger: true,
+                _qrf_processed_by_hook: true,
+                _qrf_retry_context: true,
+            },
+            runtimeContext: 克隆自动重试数据_ACU(runtimeContext),
+        };
+        return true;
+    }
     function 读取生成错误聊天末端_ACU(目标消息元信息 = null) {
         const 聊天数组 = getChatArray_ACU();
         if (!Array.isArray(聊天数组))
@@ -4803,19 +4836,22 @@ $CONTENT
             防截断流入状态_ACU.自动重试中 = false;
         }
         const 末端信息 = 读取生成错误聊天末端_ACU();
+        const 是冻结重试 = !!生成参数?._qrf_retry_context || (!!防截断流入状态_ACU.自动重试中 && !!生成错误状态_ACU.本轮?.冻结正文上下文);
+        const 冻结正文上下文 = 是冻结重试 ? 生成错误状态_ACU.本轮?.冻结正文上下文 || null : null;
         生成错误状态_ACU.本轮 = {
             类型: 生成类型,
-            参数: 生成参数 || null,
+            参数: 是冻结重试 ? 克隆自动重试数据_ACU(生成参数) : null,
             干跑: !!是否干跑,
             开始时间: Date.now(),
             开始聊天长度: 末端信息.聊天长度,
             开始最后角色索引: 末端信息.最新角色消息?.消息索引 ?? -1,
             开始最后角色签名: 末端信息.最新角色消息?.文本签名 || '',
             最后用户消息编号: generationGate_ACU.lastUserMessageId,
+            冻结正文上下文,
         };
         生成错误状态_ACU.已处理键 = '';
         生成错误状态_ACU.最近停止时间 = 0;
-        if (!防截断流入状态_ACU.自动重试中)
+        if (!是冻结重试 && !防截断流入状态_ACU.自动重试中)
             生成错误状态_ACU.重试次数 = 0;
     }
     function 标记生成错误停止_ACU() {
@@ -4914,20 +4950,21 @@ $CONTENT
     }
     async function 触发防截断流入重新生成_ACU() {
         const 助手 = window.TavernHelper || topLevelWindow_ACU?.TavernHelper;
-        if (助手 && typeof 助手.triggerSlash === 'function') {
-            await 助手.triggerSlash('/trigger await=true');
-            return true;
-        }
-        if (typeof TavernHelper_API_ACU?.triggerSlash === 'function') {
-            await TavernHelper_API_ACU.triggerSlash('/trigger await=true');
-            return true;
-        }
+        const 冻结上下文 = 生成错误状态_ACU.本轮?.冻结正文上下文;
+        if (!冻结上下文?.options)
+            return false;
+        const 重试参数 = {
+            ...冻结上下文.options,
+            injects: Array.isArray(冻结上下文.options.injects) ? 冻结上下文.options.injects.map(item => ({ ...item })) : undefined,
+        };
+        if (冻结上下文.runtimeContext)
+            注册正文运行时一次性注入_ACU(克隆自动重试数据_ACU(冻结上下文.runtimeContext));
         if (typeof window.original_TavernHelper_generate_ACU === 'function') {
-            await window.original_TavernHelper_generate_ACU({ user_input: '', automatic_trigger: true });
+            await window.original_TavernHelper_generate_ACU(重试参数);
             return true;
         }
         if (助手 && typeof 助手.generate === 'function') {
-            await 助手.generate({ user_input: '', automatic_trigger: true });
+            await 助手.generate(重试参数);
             return true;
         }
         return false;
@@ -19275,6 +19312,11 @@ $CONTENT
             });
         });
         return true;
+    }
+    function 隔离非正文作用域注入_ACU(options) {
+        if (!options || !Array.isArray(options.injects))
+            return;
+        options.injects = options.injects.filter(item => item?._qrf_scope !== 'mvu' && item?._qrf_scope !== 'database');
     }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
         return sortPlotTaskResults_ACU(taskResults)
@@ -49498,15 +49540,9 @@ $CONTENT
     }
     async function triggerDirectRegenerateForLoop_ACU(loopSettings) {
         loopState_ACU.awaitingReply = true;
-        if (window.TavernHelper?.triggerSlash) {
-            await window.TavernHelper.triggerSlash('/trigger await=true');
-            return;
-        }
-        if (window.original_TavernHelper_generate) {
-            window.original_TavernHelper_generate({ user_input: '' });
-            return;
-        }
-        window.TavernHelper?.generate?.({ user_input: '' });
+        const 已触发 = await 触发防截断流入重新生成_ACU();
+        if (!已触发)
+            throw new Error('当前循环没有可重放的冻结正文上下文。');
     }
     async function enterLoopRetryFlow_ACU({ loopSettings, shouldDeleteAiReply }) {
         // [重构] 调用 service 层重试逻辑
@@ -56570,11 +56606,14 @@ $CONTENT
                                                 options.user_input = result.writeBack.value;
                                             }
                                         }
-                                        追加正文运行时注入_ACU(options, {
+                                        const 重试运行时上下文 = {
                                             userInput: result.userMessage || '',
                                             statData: result.writeBack?.statData || null,
-                                        });
+                                        };
+                                        追加正文运行时注入_ACU(options, 重试运行时上下文);
                                         追加剧情推进临时正文注入_ACU(options, result.transientStoryInjects || []);
+                                        冻结正文自动重试上下文_ACU(options, 重试运行时上下文);
+                                        隔离非正文作用域注入_ACU(options);
                                         options._qrf_processed_by_hook = true;
                                         break;
                                     }
@@ -56772,11 +56811,14 @@ $CONTENT
                                     标记AfterCommands已接管剧情推进_ACU(params);
                                     // 写回 params 和消息对象
                                     params.prompt = s1.finalMessage;
-                                    注册正文运行时一次性注入_ACU({
+                                    const 重试运行时上下文 = {
                                         userInput: s1.originalMessage || '',
                                         statData: s1.statData || null,
-                                    });
+                                    };
+                                    注册正文运行时一次性注入_ACU(重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
+                                    冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
+                                    隔离非正文作用域注入_ACU(params);
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
                                     emitMessageUpdated_ACU(lastMessageIndex);
                                     if (getSendTextareaValue_ACU() === s1.originalMessage)
@@ -56823,11 +56865,14 @@ $CONTENT
                                 setSendTextareaValue_ACU(s2.visibleMessage || s2.finalMessage);
                                 try {
                                     params.prompt = s2.finalMessage;
-                                    注册正文运行时一次性注入_ACU({
+                                    const 重试运行时上下文 = {
                                         userInput: s2.originalMessage || '',
                                         statData: s2.statData || null,
-                                    });
+                                    };
+                                    注册正文运行时一次性注入_ACU(重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s2.transientStoryInjects || []);
+                                    冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
+                                    隔离非正文作用域注入_ACU(params);
                                 }
                                 catch (e) { }
                                 break;
