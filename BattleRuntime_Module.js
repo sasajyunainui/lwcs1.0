@@ -368,7 +368,7 @@
       combatData.回合 = currentRound;
       const beginLogs = adapters.beginRound?.(combatData, currentRound);
       if (Array.isArray(beginLogs)) logs.push(...beginLogs.filter(Boolean));
-      const queue = adapters.buildQueue(combatData);
+      const queue = buildActionQueue(combatData);
       adapters.recordQueue?.(queue, combatData, logs);
       const queueResult = adapters.executeQueue(queue, combatData, currentRound, logs, extraPatchOps);
       if (queueResult?.fatal) {
@@ -420,6 +420,25 @@
   function listSummonCombatUnits(combatData = {}) {
     const table = combatData?.召唤单位表 && typeof combatData.召唤单位表 === 'object' ? combatData.召唤单位表 : {};
     return Object.values(table).filter(unit => unit && unit.已消散 !== true);
+  }
+
+  function buildActionQueue(combatData = {}) {
+    const fighters = [];
+    const playerUnits = Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : [];
+    const enemyUnits = Array.isArray(combatData?.参战者?.team_enemy) ? combatData.参战者.team_enemy : [];
+    playerUnits.filter(Boolean).forEach(unit => { if (isUnitAbleToFight(unit)) fighters.push({ char: unit, side: 'player' }); });
+    enemyUnits.filter(Boolean).forEach(unit => { if (isUnitAbleToFight(unit)) fighters.push({ char: unit, side: 'enemy' }); });
+    listSummonCombatUnits(combatData)
+      .filter(unit => String(unit?.行动模式 || '').trim() === '自主行动' && isUnitAbleToFight(unit))
+      .forEach(unit => fighters.push({ char: unit, side: normalizeBattleSide(unit?.阵营) === 'enemy' ? 'enemy' : 'player' }));
+    const typePriority = { 辅助系: 1, 控制系: 2, 敏攻系: 2, 强攻系: 2, 精神系: 2, 元素系: 2, 防御系: 3, 治疗系: 3, 食物系: 3 };
+    fighters.sort((left, right) => {
+      const priorityDelta = Number(typePriority[String(left?.char?.type || left?.char?.系别 || '').trim()] || 4)
+        - Number(typePriority[String(right?.char?.type || right?.char?.系别 || '').trim()] || 4);
+      if (priorityDelta) return priorityDelta;
+      return previewRuntime.readCombatStat(right.char, 'agi') - previewRuntime.readCombatStat(left.char, 'agi');
+    });
+    return fighters;
   }
 
   function listCombatUnits(combatData = {}) {
@@ -2213,7 +2232,7 @@
       prepare: combatData => prepareBattleRuntime(combatData, settlement, adapterOptions),
       validate: combatData => validateBattleRuntime(combatData),
       beginRound: (combatData, currentRound) => beginBattleRound(combatData, currentRound, settlement, adapterOptions),
-      buildQueue: combatData => settlement.buildQueue(combatData, adapterOptions),
+      buildQueue: combatData => buildActionQueue(combatData),
       recordQueue() { throw new Error('battle_decision_record_queue_required'); },
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => settlement.executeQueue(queue, combatData, currentRound, logs, extraPatchOps, adapterOptions),
       settleRoundEnd: (combatData, logs) => settleBattleRoundEnd(combatData, logs, settlement, adapterOptions),
@@ -4650,7 +4669,7 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'prepare', 'buildQueue', 'executeQueue',
+      'prepare', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
       'buildSummonFinalStats',
     ];
@@ -4940,6 +4959,7 @@
     ensureTrace,
     probabilitySucceeds,
     createActionQueue,
+    buildActionQueue,
     runTeamBattle,
     runDecisionTeamBattle,
     decideDuelContinuation,

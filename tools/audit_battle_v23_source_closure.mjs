@@ -160,6 +160,7 @@ addCheck(
   'settlementAdapterContainsOnlySettlementPrimitives',
   /function listPrimaryCombatUnits\(/.test(battleRuntimeSource) &&
     /function listSummonCombatUnits\(/.test(battleRuntimeSource) &&
+    /function buildActionQueue\(/.test(battleRuntimeSource) &&
     /function isUnitIdentityMatch\(/.test(battleRuntimeSource) &&
     /function inferUnitSide\(/.test(battleRuntimeSource) &&
     /function isUnitAbleToFight\(/.test(battleRuntimeSource) &&
@@ -206,7 +207,8 @@ addCheck(
     !/function 查找最近账本动作事件\(/.test(battleUiSource) &&
     !/function 查找行动轴初始意图节点\(/.test(battleUiSource) &&
     !/function 推断战斗目标阵营侧\(|function 推断战斗单位阵营侧\(|function 推断战斗事件阵营侧\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /const required = \[[\s\S]*?'prepare', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    !/function generateActionQueue\(/.test(battleUiSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );

@@ -15532,7 +15532,6 @@ class BattleUIComponent {
 
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
-      buildQueue: combatData => generateActionQueue(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
       syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
@@ -32956,52 +32955,6 @@ class BattleUIComponent {
         // ==========================================
         // 📍 团战前置：行动轴与索敌逻辑
         // ==========================================
-
-        // 1. 生成全局行动轴
-        function generateActionQueue(combatData) {
-          确保召唤单位表(combatData);
-          确保队伍临时意图(combatData);
-          let allFighters = [];
-
-          读取战斗主队单位列表(combatData, '玩家').forEach(p => {
-            bindCombatParticipant(p);
-            syncCombatActionState(p);
-            if (isCombatUnitAbleToFight(p)) allFighters.push({ char: p, side: 'player' });
-          });
-          读取战斗主队单位列表(combatData, '敌方').forEach(e => {
-            bindCombatParticipant(e);
-            syncCombatActionState(e);
-            if (isCombatUnitAbleToFight(e)) allFighters.push({ char: e, side: 'enemy' });
-          });
-          读取召唤单位列表(combatData, { 行动模式: '自主行动' }).forEach(单位 => {
-            bindCombatParticipant(单位);
-            if (isCombatUnitAbleToFight(单位)) allFighters.push({ char: 单位, side: 单位.阵营 === '敌方' ? 'enemy' : 'player' });
-          });
-
-          let typePriority = {
-            辅助系: 1,
-            控制系: 2,
-            敏攻系: 2,
-            强攻系: 2,
-            精神系: 2,
-            元素系: 2,
-            防御系: 3,
-            治疗系: 3,
-            食物系: 3,
-          };
-
-          allFighters.sort((a, b) => {
-            let pA = typePriority[a.char.type] || 4;
-            let pB = typePriority[b.char.type] || 4;
-            if (pA !== pB) return pA - pB;
-
-            let agiA = a.char.agi;
-            let agiB = b.char.agi;
-            return agiB - agiA;
-          });
-
-          return allFighters;
-        }
 
         function 刷新队伍行动轴意图(entry = {}, targets = {}, action = null, battleState = {}) {
           const combatData = battleState?.combatData || {};
