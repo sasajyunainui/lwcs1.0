@@ -285,6 +285,7 @@ class BattleUIComponent {
     const 查找状态来源登记 = BATTLE_RUNTIME.findStateSource;
     const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
     const 刷新维持运行态负荷 = BATTLE_RUNTIME.refreshSustainRuntimeLoad;
+    const triggerReviveEffect = BATTLE_RUNTIME.triggerRevive;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -23149,61 +23150,6 @@ class BattleUIComponent {
         const 超额获得 = Math.max(0, 新增护盾 - 常规获得);
         return Math.max(0, Math.floor(常规获得 + 超额获得 * 0.35));
       }
-
-    function triggerReviveEffect(targetChar, label = '目标') {
-      if (!targetChar || typeof targetChar !== 'object') return null;
-      if (targetChar.__本阶段已触发复活) return null;
-      if (!targetChar.状态效果 || typeof targetChar.状态效果 !== 'object') targetChar.状态效果 = {};
-      const 状态复活结果 = BATTLE_RUNTIME.triggerStateRevive(targetChar, label);
-      if (状态复活结果?.handled === true) return 状态复活结果.log || null;
-      const 被动复活候选 = collectPassiveCombatSkills(targetChar, [targetChar])
-        .map(skill => ({
-          skill,
-          effect: getSkillEffects(skill).find(effect =>
-            String(effect?.原型 || '').trim() === '规则改写' &&
-            String(effect?.规则 || '').trim() === '死亡转存活' &&
-            String(effect?.目标 || '自身').trim() === '自身'
-          ),
-        }))
-        .filter(entry => entry.effect)
-        .find(entry => {
-          const 限制 = entry.effect?.触发限制 && typeof entry.effect.触发限制 === 'object' && !Array.isArray(entry.effect.触发限制)
-            ? entry.effect.触发限制
-            : null;
-          if (!限制) return true;
-          const 周期 = String(限制.周期 || '').trim();
-          const 次数 = Math.max(0, Math.floor(Number(限制.次数 || 0)));
-          if (!(次数 > 0) || !['每日', '每战', '每回合', '每次满足'].includes(周期)) return true;
-          const 技能名 = String(entry.skill?.name || entry.skill?.魂技名 || '被动技能').trim() || '被动技能';
-          const 限制态 = targetChar.__技能限制运行态 ||= {};
-          const 技能限制态 = 限制态[`被动:${技能名}:死亡转存活`] ||= { 已用次数: 0 };
-          return Number(技能限制态.已用次数 || 0) < 次数;
-        });
-      if (!被动复活候选) return null;
-      if (战斗机制抹消命中(targetChar, '最终结果', { 原型: '规则改写', 规则: '死亡转存活' }, { 用途: '封锁' })) {
-        return `[复活受阻] ${label}的死亡转存活规则已被机制抹消封锁，无法触发！`;
-      }
-      const 复活来源 = 被动复活候选?.effect || {};
-      if (被动复活候选?.skill) {
-        const 限制 = 复活来源?.触发限制 && typeof 复活来源.触发限制 === 'object' && !Array.isArray(复活来源.触发限制)
-          ? 复活来源.触发限制
-          : null;
-        const 次数 = Math.max(0, Math.floor(Number(限制?.次数 || 0)));
-        if (次数 > 0) {
-          const 技能名 = String(被动复活候选.skill?.name || 被动复活候选.skill?.魂技名 || '被动技能').trim() || '被动技能';
-          const 限制态 = targetChar.__技能限制运行态 ||= {};
-          const 技能限制态 = 限制态[`被动:${技能名}:死亡转存活`] ||= { 已用次数: 0 };
-          技能限制态.已用次数 = Math.max(0, Number(技能限制态.已用次数 || 0)) + 1;
-        }
-      }
-      const healRatio = Math.max(0.05, Math.abs(Number(读取战斗数值正负(复活来源?.数值 ?? 复活来源?.强度 ?? '+25%')) || 0.25));
-      const maxVit = getCombatHpMaxValue(targetChar);
-      const restoreAmount = Math.max(1, Math.floor(maxVit * Math.min(1, healRatio)));
-      设置战斗血量值(targetChar, Math.min(maxVit, Math.max(restoreAmount, getCombatHpValue(targetChar) + restoreAmount)));
-      targetChar.__本阶段已触发复活 = true;
-      const 来源名 = 被动复活候选?.skill?.name || 被动复活候选?.skill?.魂技名 || '死亡转存活';
-      return `[复活触发] ${label}触发[${来源名}]，按死亡转存活规则恢复 ${restoreAmount} 点HP！`;
-    }
 
       function applyShieldToCharacter(targetChar, shieldAmount, duration = 1, sourceName = '护盾', options = {}) {
         const amount = 计算护盾实得值(targetChar, shieldAmount);

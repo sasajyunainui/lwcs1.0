@@ -854,6 +854,35 @@ assert.equal(blockedReviveResult?.revived, false, '机制抹消未阻止状态�
 assert.equal(blockedReviveUnit.hp, 0, '复活受阻后仍修改生命值');
 assert.equal(blockedReviveUnit.状态效果.复生印记.战斗效果.revive_count, 1, '复活受阻后错误消费复活次数');
 
+const passiveReviveUnit = participant('passive-revive-unit', 'player', 100);
+passiveReviveUnit.hp = 0;
+passiveReviveUnit.hp_max = 500;
+passiveReviveUnit.属性.HP = 0;
+passiveReviveUnit.属性.HP上限 = 500;
+passiveReviveUnit.血脉之力 = {
+  被动复生: {
+    name: '血脉复生',
+    _效果数组: [{ 原型: '规则改写', 规则: '死亡转存活', 目标: '自身', 数值: '+20%', 触发限制: { 周期: '每战', 次数: 1 } }],
+  },
+};
+const passiveReviveLog = sandbox.__LWCS_BATTLE_RUNTIME__.triggerRevive(passiveReviveUnit, '被动复活测试单位');
+assert.match(String(passiveReviveLog || ''), /血脉复生/, '被动死亡转存活没有从正式角色结构触发');
+assert.equal(passiveReviveUnit.hp, 100, '被动死亡转存活恢复量错误');
+passiveReviveUnit.hp = 0;
+passiveReviveUnit.属性.HP = 0;
+delete passiveReviveUnit.__本阶段已触发复活;
+assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.triggerRevive(passiveReviveUnit, '被动复活测试单位'), null, '每战一次的被动复活被重复消费');
+
+const falsePassiveUnit = participant('false-passive-unit', 'player', 100);
+falsePassiveUnit.hp = 0;
+falsePassiveUnit.hp_max = 500;
+falsePassiveUnit.属性.HP = 0;
+falsePassiveUnit.属性.HP上限 = 500;
+falsePassiveUnit.状态效果 = {
+  伪复活状态: { _效果数组: [{ 原型: '规则改写', 规则: '死亡转存活', 目标: '自身', 数值: '+80%' }] },
+};
+assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.triggerRevive(falsePassiveUnit, '伪复活测试单位'), null, '状态中的伪技能被误识别为被动复活');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -877,6 +906,7 @@ console.log(JSON.stringify({
     protectedObjectiveWinner: protectedResult.finalBattleReport?.objectiveWinner || '',
     soulTowerRosterChecks: 7,
     stateReviveChecks: 2,
+    passiveReviveChecks: 3,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

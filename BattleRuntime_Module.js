@@ -2146,6 +2146,66 @@
     };
   }
 
+  function findPassiveReviveCandidate(unit = {}) {
+    const roots = Object.entries(unit || {})
+      .filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
+      .map(([, value]) => value);
+    if (Array.isArray(unit?.技能列表) && unit.技能列表.length) roots.unshift(unit.技能列表);
+    const seen = new Set();
+    let found = null;
+    const visit = value => {
+      if (found || !value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      const effect = (Array.isArray(value?._效果数组) ? value._效果数组 : []).find(entry =>
+        String(entry?.原型 || '').trim() === '规则改写' &&
+        String(entry?.规则 || '').trim() === '死亡转存活' &&
+        String(entry?.目标 || '自身').trim() === '自身'
+      );
+      if (effect) {
+        found = { skill: value, effect };
+        return;
+      }
+      Object.entries(value).forEach(([key, child]) => {
+        if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|__行动闭环诊断/.test(key)) return;
+        visit(child);
+      });
+    };
+    roots.forEach(visit);
+    return found;
+  }
+
+  function triggerRevive(unit = {}, label = '目标') {
+    const stateResult = triggerStateRevive(unit, label);
+    if (stateResult?.handled === true) return stateResult.log || null;
+    if (!unit || typeof unit !== 'object' || unit.__本阶段已触发复活) return null;
+    const candidate = findPassiveReviveCandidate(unit);
+    if (!candidate) return null;
+    const limit = candidate.effect?.触发限制 && typeof candidate.effect.触发限制 === 'object' && !Array.isArray(candidate.effect.触发限制)
+      ? candidate.effect.触发限制
+      : null;
+    const period = String(limit?.周期 || '').trim();
+    const allowedCount = Math.max(0, Math.floor(Number(limit?.次数 || 0)));
+    const skillName = String(candidate.skill?.name || candidate.skill?.魂技名 || '被动技能').trim() || '被动技能';
+    const limitState = unit.__技能限制运行态 ||= {};
+    const skillLimit = limitState[`被动:${skillName}:死亡转存活`] ||= { 已用次数: 0 };
+    if (allowedCount > 0 && ['每日', '每战', '每回合', '每次满足'].includes(period) && Number(skillLimit.已用次数 || 0) >= allowedCount) return null;
+    if (findRuleSuppression(unit, '规则改写', '规则', '死亡转存活')) {
+      return `[复活受阻] ${label}的死亡转存活规则已被机制抹消封锁，无法触发！`;
+    }
+    if (allowedCount > 0) skillLimit.已用次数 = Math.max(0, Number(skillLimit.已用次数 || 0)) + 1;
+    const healRatio = Math.max(0.05, Math.abs(Number(readSignedBattleValue(candidate.effect?.数值 ?? candidate.effect?.强度 ?? '+25%')) || 0.25));
+    const maxHp = previewRuntime.readHpMax(unit);
+    const restoreAmount = Math.max(1, Math.floor(maxHp * Math.min(1, healRatio)));
+    writeCombatResource(unit, 'hp', Math.min(maxHp, Math.max(restoreAmount, previewRuntime.readHp(unit) + restoreAmount)));
+    unit.__本阶段已触发复活 = true;
+    const sourceName = candidate.skill?.name || candidate.skill?.魂技名 || '死亡转存活';
+    return `[复活触发] ${label}触发[${sourceName}]，按死亡转存活规则恢复 ${restoreAmount} 点HP！`;
+  }
+
   function writeStateHpTick(combatData = {}, unit = {}, label = '', source = {}, condition = {}, stateName = '', amount = 0, result = '') {
     if (!(amount > 0)) return null;
     return writeLedgerEvent(combatData, {
@@ -5584,6 +5644,7 @@
     settleRingRecoveryAtRoundEnd,
     settleConditionResourceTick,
     triggerStateRevive,
+    triggerRevive,
     refreshSustainRuntimeLoad,
     settleExpiredConditionBase,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
