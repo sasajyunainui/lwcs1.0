@@ -828,7 +828,7 @@
       ) || null;
       const readSelectedActionName = selected => normalizeActionDisplayName(
         selected?.skill?.name || selected?.skill?.魂技名 || selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 ||
-        ({ BASIC_ATTACK: '普通攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击', GUARD: '护卫', WITHDRAW: '撤离', USE_ITEM: '使用物品', EQUIP: '更换装备' })[selected?.declaration?.actionKind || selected?.actionKind] || ''
+        ({ BASIC_ATTACK: '普通攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击', GUARD: '护卫', WITHDRAW: '撤退', USE_ITEM: '使用物品', EQUIP: '更换装备' })[selected?.declaration?.actionKind || selected?.actionKind] || ''
       );
       const exactDecision = [...decisions].reverse().find(item =>
         Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
@@ -842,6 +842,7 @@
       if (!decision) return '';
       const selected = readSelected(decision);
       const actionKind = String(selected?.declaration?.actionKind || selected?.actionKind || '').trim();
+      const problemIds = new Set((Array.isArray(decision?.problems) ? decision.problems : []).map(problem => String(problem?.problemId || '').trim()).filter(Boolean));
       const problemId = String(decision?.problems?.[0]?.problemId || '').trim();
       const problemReason = ({
         TERMINAL_OPPORTUNITY: '把握当前终结窗口',
@@ -856,7 +857,9 @@
       })[problemId] || '';
       const alternatives = (Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : []).filter(candidate => candidate?.selected !== true);
       let reason = problemReason;
-      if (actionKind === 'BASIC_ATTACK' && alternatives.some(candidate => candidate?.actionKind === 'RELEASE_SKILL' || candidate?.declaration?.actionKind === 'RELEASE_SKILL')) {
+      if (['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && problemIds.has('IMMINENT_DENIAL')) {
+        reason = '已评估敌方蓄力风险，当前动作在整体威胁交换中收益更高';
+      } else if (actionKind === 'BASIC_ATTACK' && alternatives.some(candidate => candidate?.actionKind === 'RELEASE_SKILL' || candidate?.declaration?.actionKind === 'RELEASE_SKILL')) {
         reason = `${problemReason ? `${problemReason}；` : ''}普通攻击当前能稳定推进，魂技替代的额外收益不足以覆盖代价`;
       } else if (actionKind === 'DEFEND') {
         reason = '承受迫近攻击并保留后续资源';
@@ -1073,9 +1076,14 @@
         Number(eventIndexById.get(String(left?.eventId || '').trim()) ?? Number.MAX_SAFE_INTEGER) -
         Number(eventIndexById.get(String(right?.eventId || '').trim()) ?? Number.MAX_SAFE_INTEGER)
       );
-      const primary = events.find(event =>
+      const activeDeclarations = events.filter(event =>
         ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'ACTIVE'
-      ) || events.find(event =>
+      );
+      const primary = activeDeclarations.find(event => readIntent(
+        Number(event?.round || 0),
+        String(event?.actorName || '').trim(),
+        normalizeActionDisplayName(event?.finalActionName || event?.actionName || ''),
+      )) || activeDeclarations[0] || events.find(event =>
         ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
       ) || events[0] || null;
       const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));

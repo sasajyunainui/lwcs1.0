@@ -565,7 +565,27 @@ const resolvedChargeBlocks = defenseResult.reportBlocks.filter(block =>
 );
 assert.ok(resolvedChargeBlocks.length > 0, '蓄力时序案例没有形成已显露蓄力重击战报块');
 assert.ok(resolvedChargeBlocks.every(block => !/规避迫近攻击|等待更好的反击窗口/.test(String(block?.intentSummary || ''))), '蓄力结算错误借用了同角色的闪避决策意图');
+const preImpactAttackBlock = defenseResult.reportBlocks.find(block => Number(block?.round || 0) === 1 &&
+  (block?.facts || []).some(fact => fact?.eventKind === 'action_start' && fact?.actorName === '韦小枫' && fact?.actionRole === 'ACTIVE')
+);
+assert.match(String(preImpactAttackBlock?.intentSummary || ''), /已评估敌方蓄力风险/, '面对已显露蓄力仍进攻时没有解释威胁交换权衡');
 assert.equal(defenseResult.audit?.fatals?.length || 0, 0, `蓄力防守时序事实审计失败:${JSON.stringify(defenseResult.audit?.fatals || [])}`);
+
+const withdrawalDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'duel_agile_single_target_failure');
+const withdrawalResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: withdrawalDefinition.caseId,
+  seed: withdrawalDefinition.seed,
+  combatData: withdrawalDefinition.combatData,
+  mode: 'team_preview',
+  rounds: withdrawalDefinition.rounds,
+  battleIntent: { mode: withdrawalDefinition.intent },
+  settings: {},
+});
+const withdrawalBlock = withdrawalResult.reportBlocks.find(block =>
+  block?.blockType !== 'ROUND_SUMMARY' && (block?.facts || []).some(fact => fact?.eventKind === 'failed_action' && fact?.actionName === '撤退')
+);
+assert.match(String(withdrawalBlock?.intentSummary || ''), /选择【撤退】.*避免在不利交换中继续暴露/, '撤退失败动作组被派生追击夺走父动作意图');
 
 const followUpCombat = combatData();
 followUpCombat.参战者.team_player[0].属性.敏捷 = 500;
