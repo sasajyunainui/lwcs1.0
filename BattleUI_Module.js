@@ -121,12 +121,11 @@ class BattleUIComponent {
     }
     component.syncRecordPortalPosition = 同步战斗记录终端位置;
     function 绑定战斗记录终端拖动(node) {
-      const handle = node?.querySelector?.('[data-battle-record-drag-handle]');
-      if (!handle || handle.__battleRecordDragBound) return;
+      if (!node || node.__battleRecordDragBound) return;
       let dragState = null;
       const finish = event => {
         if (!dragState || (event?.pointerId != null && event.pointerId !== dragState.pointerId)) return;
-        try { handle.releasePointerCapture?.(dragState.pointerId); } catch (错误) {}
+        try { node.releasePointerCapture?.(dragState.pointerId); } catch (错误) {}
         if (dragState.moved) {
           node.__battleRecordSuppressClick = true;
           root.setTimeout?.(() => { node.__battleRecordSuppressClick = false; }, 0);
@@ -134,8 +133,10 @@ class BattleUIComponent {
         dragState = null;
         node.classList.remove('battle-record-terminal--dragging');
       };
-      handle.addEventListener('pointerdown', event => {
+      node.addEventListener('pointerdown', event => {
         if (Number(root.innerWidth || 0) <= 1180 || event.button !== 0) return;
+        const interactive = event.target?.closest?.('button, input, select, textarea, a, [contenteditable="true"], .battle-preview-panel');
+        if (interactive && !node.classList.contains('battle-record-terminal--collapsed')) return;
         const rect = node.getBoundingClientRect();
         dragState = {
           pointerId: event.pointerId,
@@ -145,9 +146,9 @@ class BattleUIComponent {
           top: rect.top,
           moved: false,
         };
-        handle.setPointerCapture?.(event.pointerId);
+        node.setPointerCapture?.(event.pointerId);
       });
-      handle.addEventListener('pointermove', event => {
+      node.addEventListener('pointermove', event => {
         if (!dragState || event.pointerId !== dragState.pointerId) return;
         const deltaX = event.clientX - dragState.startX;
         const deltaY = event.clientY - dragState.startY;
@@ -163,9 +164,9 @@ class BattleUIComponent {
         同步战斗记录终端位置();
         event.preventDefault();
       });
-      handle.addEventListener('pointerup', finish);
-      handle.addEventListener('pointercancel', finish);
-      handle.__battleRecordDragBound = true;
+      node.addEventListener('pointerup', finish);
+      node.addEventListener('pointercancel', finish);
+      node.__battleRecordDragBound = true;
     }
     function 读取战斗记录终端节点() {
       if (component.recordPortalNode?.isConnected) return component.recordPortalNode;
@@ -3537,6 +3538,19 @@ class BattleUIComponent {
     function normalizeBattleActionDisplayName(name = '') {
       const text = String(name || '').replace(/^【|】$/g, '').trim();
       if (!text) return '';
+      const actionKindLabels = {
+        BASIC_ATTACK: '普通攻击',
+        DEFEND: '防御',
+        EVADE: '闪避',
+        COUNTER: '反击',
+        OBSERVE: '观察',
+        GUARD: '保护队友',
+        WITHDRAW: '撤退',
+        RELEASE_SKILL: '释放魂技',
+        USE_ITEM: '使用物品',
+        EQUIP: '穿戴装备',
+      };
+      if (actionKindLabels[text]) return actionKindLabels[text];
       if (text === '常规攻击') return '普通攻击';
       if (text === '主动压迫') return '普通攻击';
       if (text === '肉体兜底') return '承伤硬抗';
@@ -19023,49 +19037,11 @@ class BattleUIComponent {
       return Math.max(0, Math.floor(Number(char?.魂核?.核心?.数量 || 0)));
     }
 
-      function 获取回合末状态结算锚点(combatData, char, label, meta = {}) {
-        if (!combatData || !char) return null;
-        const runtime = 确保战斗运行态(combatData);
-        if (!runtime.roundTickActionAnchors || typeof runtime.roundTickActionAnchors !== 'object') runtime.roundTickActionAnchors = {};
-        const round = Number(combatData?.回合 || 0);
-        const actorName = String(char?.name || char?.名称 || label || '').trim();
-        const actionName = String(meta.sourceActionName || meta.stateName || '回合末结算').trim();
-        const key = [round, actorName, actionName, String(meta.applicationId || '').trim()].join('|');
-        if (runtime.roundTickActionAnchors[key]) return runtime.roundTickActionAnchors[key];
-        const anchor = 写入战斗事件账本(combatData, {
-          eventKind: 'action_start',
-          round,
-          actorName,
-          targetName: actorName,
-          actionName,
-          actionType: 'round_tick',
-          actorControl: 'SYSTEM',
-          actionRole: 'STATE_TICK',
-          actionId: BATTLE_RUNTIME.nextRuntimeId('battle-round-tick'),
-          sourceActionName: String(meta.sourceActionName || '').trim(),
-          sourceActionId: String(meta.sourceActionId || '').trim(),
-          parentNodeId: String(meta.parentNodeId || '').trim(),
-          sourceNodeId: String(meta.sourceNodeId || '').trim(),
-          result: 'anchored',
-          ruleCode: String(meta.reasonCode || 'ROUND_END_STATE_TICK').trim(),
-          meta: {
-            source: 'round_end_state_tick',
-            stateName: String(meta.stateName || '').trim(),
-            applicationId: String(meta.applicationId || '').trim(),
-            reasonText: String(meta.reasonText || '回合末状态结算').trim(),
-          },
-        });
-        if (anchor?.chainNodeId && !anchor.sourceNodeId) anchor.sourceNodeId = anchor.chainNodeId;
-        runtime.roundTickActionAnchors[key] = anchor;
-        return anchor;
-      }
-
       function 写入回合末资源变化事实(combatData, char, label, resourceKey, delta, meta = {}) {
         const amount = Math.round(Number(delta || 0));
         if (!combatData || !char || !amount) return null;
         const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
         if (!resource) return null;
-        const anchor = 获取回合末状态结算锚点(combatData, char, label, meta);
         return 写入战斗事件账本(combatData, {
           eventKind: 'resource_change',
           round: Number(combatData?.回合 || 0),
@@ -19074,11 +19050,11 @@ class BattleUIComponent {
           actionName: String(meta.sourceActionName || meta.stateName || '回合末资源变化').trim(),
           actionType: 'state_tick',
           actionRole: 'STATE_TICK',
-          sourceActionName: String(meta.sourceActionName || anchor?.actionName || '').trim(),
-          sourceActionId: String(meta.sourceActionId || anchor?.actionId || '').trim(),
-          sourceRound: Number(meta.sourceRound || anchor?.round || 0),
-          parentNodeId: String(meta.parentNodeId || anchor?.chainNodeId || '').trim(),
-          sourceNodeId: String(meta.sourceNodeId || anchor?.chainNodeId || '').trim(),
+          sourceActionName: String(meta.sourceActionName || '').trim(),
+          sourceActionId: String(meta.sourceActionId || '').trim(),
+          sourceRound: Number(meta.sourceRound || 0),
+          parentNodeId: String(meta.parentNodeId || '').trim(),
+          sourceNodeId: String(meta.sourceNodeId || '').trim(),
           result: amount > 0 ? 'gain' : 'loss',
           primaryOutcome: amount > 0 ? 'resource_recovered' : 'resource_lost',
           applicationId: String(meta.applicationId || '').trim(),

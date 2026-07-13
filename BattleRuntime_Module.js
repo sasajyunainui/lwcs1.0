@@ -507,7 +507,7 @@
 
   function inferFactType(eventKind = '', event = {}) {
     const kind = String(eventKind || event?.eventKind || '').trim();
-    if (kind === 'action_start') return 'ACTION_DECLARED';
+    if (kind === 'action_start') return inferActionRole(event) === 'STATE_TICK' ? 'STATE_TICK' : 'ACTION_DECLARED';
     if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';
     if (kind === 'state_tick') return 'STATE_TICK';
     if (['state_apply', 'state_replace', 'state_remove'].includes(kind)) return 'STATE_CHANGE';
@@ -582,8 +582,29 @@
     return Array.isArray(trace) ? trace.slice(-240).map(item => cloneAuditSnapshot(normalizeCausalNode(item))) : [];
   }
 
+  function normalizeStateDisplayName(value = '') {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const removedMatch = raw.match(/^移除[:：](.+)$/);
+    if (removedMatch) return `移除：${normalizeStateDisplayName(removedMatch[1])}`;
+    const statLabels = {
+      str: '力量',
+      def: '防御',
+      agi: '敏捷',
+      vit: '体力',
+      sp: '魂力',
+      men: '精神力',
+      hp: '生命',
+    };
+    const statMatch = raw.match(/^(str|def|agi|vit|sp|men|hp)修正$/i);
+    if (statMatch) return `${statLabels[statMatch[1].toLowerCase()] || '属性'}调整`;
+    if (raw === '反应判定修正') return '反应能力调整';
+    if (raw === '结算修正') return '结算效果调整';
+    return raw;
+  }
+
   function readLedgerStateName(event = {}) {
-    return String(event?.stateName || event?.meta?.stateName || '').trim();
+    return normalizeStateDisplayName(event?.stateName || event?.meta?.stateName || '');
   }
 
   function readLedgerNumber(event = {}, key = '') {
@@ -657,7 +678,10 @@
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const trace = (Array.isArray(resolutionTrace) ? resolutionTrace : []).filter(node => node && typeof node === 'object');
     const starts = ledger
-      .filter(event => String(event?.eventKind || '').trim() === 'action_start')
+      .filter(event =>
+        String(event?.eventKind || '').trim() === 'action_start' &&
+        normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
+      )
       .sort((left, right) => Number(left?.round || 0) - Number(right?.round || 0) || String(left?.eventId || '').localeCompare(String(right?.eventId || '')));
     const seen = new Set();
     return starts.map((start, index) => {
@@ -710,6 +734,7 @@
     const parentActionByActionId = new Map();
     ledger.forEach(event => {
       if (String(event?.eventKind || '').trim() !== 'action_start') return;
+      if (normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'STATE_TICK') return;
       if (normalizeActionRole(event?.actionRole || inferActionRole(event)) === 'ACTIVE') return;
       const actionId = String(event?.actionId || '').trim();
       const sourceActionId = String(event?.sourceActionId || '').trim();
@@ -729,7 +754,7 @@
     const factDomainOf = event => {
       const eventKind = String(event?.eventKind || '').trim();
       const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
-      if (eventKind === 'state_tick') return 'state_tick';
+      if (eventKind === 'state_tick' || eventKind === 'action_start' && actionRole === 'STATE_TICK') return 'state_tick';
       if (actionRole === 'STATE_TICK' || ['resource_change', 'round_recover'].includes(eventKind)) return 'resource_tick';
       return 'action';
     };
@@ -763,22 +788,25 @@
     };
     const projectFact = event => {
       const kind = String(event?.eventKind || '').trim();
+      const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
       const damage = Math.max(0, Math.round(Number(readLedgerNumber(event, 'damage') || 0)));
       const amount = Math.round(Number(event?.meta?.delta ?? readLedgerNumber(event, 'amount') ?? 0));
+      const summonName = kind === 'summon_create' ? String(event?.meta?.summonName || event?.summonName || '').trim() : '';
+      const targetName = String(event?.targetName || summonName || '').trim();
       return {
         factId: String(event?.eventId || '').trim(),
         factType: kind === 'hit_result' || (kind === 'counter' && damage > 0) ? 'DAMAGE' :
-          kind === 'state_tick' ? 'STATE_TICK' :
+          kind === 'state_tick' || kind === 'action_start' && actionRole === 'STATE_TICK' ? 'STATE_TICK' :
             ['state_apply', 'state_replace', 'state_remove'].includes(kind) ? 'STATE_CHANGE' :
               kind === 'resource_change' || kind === 'round_recover' ? 'RESOURCE_CHANGE' :
                 kind === 'summon_create' || kind === 'summon_assist' ? 'SUMMON' : 'ACTION',
         eventKind: kind,
         actorId: String(event?.actorId || event?.actorName || '').trim(),
         actorName: String(event?.actorName || '').trim(),
-        targetId: String(event?.targetId || event?.targetName || '').trim(),
-        targetName: String(event?.targetName || '').trim(),
-        actionName: normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || ''),
-        actionRole: normalizeActionRole(event?.actionRole || inferActionRole(event)),
+        targetId: String(event?.targetId || targetName || '').trim(),
+        targetName,
+        actionName: normalizeStateDisplayName(normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || '')),
+        actionRole,
         resultState: String(event?.result || event?.actionStatus || '').trim(),
         value: damage > 0 ? damage : amount,
         resource: String(event?.meta?.resource || '').trim(),
@@ -805,23 +833,39 @@
         const clean = String(text || '').trim();
         if (clean && !lines.includes(clean)) lines.push(clean);
       };
+      const damageGroups = new Map();
+      facts.filter(fact => fact?.factType === 'DAMAGE').forEach(fact => {
+        const key = [fact.actorName, fact.targetName, fact.actionName, fact.actionRole].map(value => String(value || '').trim()).join('|');
+        if (!damageGroups.has(key)) damageGroups.set(key, []);
+        damageGroups.get(key).push(fact);
+      });
+      damageGroups.forEach(group => {
+        const first = group[0] || {};
+        const actor = first.actorName || '行动者';
+        const target = first.targetName || '目标';
+        const action = first.actionName || '行动';
+        const positive = group.filter(fact => Math.abs(Math.round(Number(fact.value || 0))) > 0);
+        const missed = group.filter(fact => /miss|dodge|evade|未命中|闪避|规避/i.test(String(fact.resultState || ''))).length;
+        if (positive.length) {
+          const values = positive.map(fact => Math.abs(Math.round(Number(fact.value || 0))));
+          const total = values.reduce((sum, value) => sum + value, 0);
+          const segmentText = positive.length > 1 ? `，共命中 ${positive.length} 段，造成 ${total} 点伤害（分段 ${values.join('、')}）` : `，造成 ${total} 点伤害`;
+          if (actor === target && /反噬|自损|代价/.test(action)) push(`${actor}因【${action}】反噬损失 ${total} 点生命值`);
+          else if (first.actionRole === 'COUNTER') push(`${actor}以【${action}】完成反击，对${target}${segmentText.replace(/^，/, '')}`);
+          else push(`${actor}以【${action}】命中${target}${segmentText}`);
+          if (missed > 0) push(`${actor}的【${action}】另有 ${missed} 段未能命中${target}`);
+        } else if (missed > 0) {
+          push(`${actor}施展【${action}】指向${target}，但未能命中`);
+        } else {
+          push(`${actor}施展【${action}】指向${target}，但未造成实质伤害`);
+        }
+      });
       facts.forEach(fact => {
         const actor = fact.actorName || '行动者';
         const target = fact.targetName || '目标';
         const action = fact.actionName || '行动';
         const value = Math.abs(Math.round(Number(fact.value || 0)));
-        if (fact.factType === 'DAMAGE') {
-          if (value > 0) {
-            push(fact.actionRole === 'COUNTER'
-              ? `${actor}以【${action}】完成反击，对${target}造成 ${value} 点伤害`
-              : `${actor}以【${action}】命中${target}，造成 ${value} 点伤害`);
-          } else if (/miss|dodge|evade|未命中|闪避|规避/i.test(String(fact.resultState || ''))) {
-            push(`${actor}施展【${action}】指向${target}，但未能命中`);
-          } else {
-            push(`${actor}施展【${action}】指向${target}，但未造成实质伤害`);
-          }
-          return;
-        }
+        if (fact.factType === 'DAMAGE') return;
         if (fact.factType === 'STATE_TICK') {
           push(value > 0
             ? `${target}受【${fact.stateName || action}】持续影响，损失 ${value} 点生命值`
@@ -906,12 +950,12 @@
       ) === eventIndex);
       const primary = events.find(event =>
         String(event?.eventKind || '').trim() === 'action_start' && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
-      ) || events.find(event => String(event?.eventKind || '').trim() === 'action_start') || events[0] || null;
+      ) || events[0] || null;
       const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));
       const roles = new Set(events.map(event => normalizeActionRole(event?.actionRole || inferActionRole(event))));
       const round = Number(primary?.round || primary?.sourceRound || 0);
       const actorName = String(primary?.actorName || '').trim();
-      const actionName = normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || '');
+      const actionName = normalizeStateDisplayName(normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || ''));
       const blockType = kinds.has('state_tick') ? 'STATE_TICK' :
         kinds.has('summon_create') || kinds.has('summon_assist') ? 'SUMMON_ACTION' :
           roles.size > 0 && [...roles].every(role => role === 'STATE_TICK') ? 'RESOURCE_CHANGE' :
@@ -921,7 +965,7 @@
       const projectedBadges = group.badges
         .map(block => ({
           kind: String(block?.kind || '').trim(),
-          name: String(block?.name || '').trim(),
+          name: normalizeStateDisplayName(block?.name || ''),
           value: Number(block?.value || 0),
           unit: String(block?.unit || '').trim(),
           targetId: String(block?.targetId || '').trim(),
@@ -1010,7 +1054,7 @@
           String(item?.kind || '').trim() === String(badge?.kind || '').trim() &&
           String(item?.targetId || item?.targetName || '').trim() === String(badge?.targetId || badge?.targetName || '').trim()
         ) === index);
-      const damageCount = facts.filter(fact => fact.factType === 'DAMAGE' || fact.factType === 'STATE_TICK' && fact.value > 0).length;
+      const damageCount = facts.filter(fact => (fact.factType === 'DAMAGE' || fact.factType === 'STATE_TICK') && fact.value > 0).length;
       const resourceCount = facts.filter(fact => fact.factType === 'RESOURCE_CHANGE').length;
       const stateCount = facts.filter(fact => fact.factType === 'STATE_CHANGE').length;
       const summonCount = facts.filter(fact => fact.factType === 'SUMMON').length;
@@ -1019,7 +1063,9 @@
         .map(block => String(block?.intentSummary || '').trim())
         .filter(Boolean)
         .join('；');
-      const activeState = facts.find(fact => fact.duration > 0 && fact.stateName);
+      const activeState = facts.find(fact =>
+        fact.duration > 0 && fact.stateName && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
+      );
       return {
         blockId: `round_summary_${round}`,
         round,
@@ -1194,7 +1240,7 @@
       actionState: String(unit?.actionState || unit?.行动状态 || '').trim(),
       states: (Array.isArray(unit?.状态效果) ? unit.状态效果 : [])
         .filter(state => Number(state?.duration || 0) > 0)
-        .map(state => ({ name: String(state?.name || '状态').trim(), duration: Math.max(0, Math.round(Number(state?.duration || 0))), skipTurn: state?.skip_turn === true, dot: Math.max(0, Number(state?.dot || 0)) })),
+        .map(state => ({ name: normalizeStateDisplayName(state?.name || '状态'), duration: Math.max(0, Math.round(Number(state?.duration || 0))), skipTurn: state?.skip_turn === true, dot: Math.max(0, Number(state?.dot || 0)) })),
     });
     const playerSummary = playerUnits.map(summarizeUnit);
     const enemySummary = enemyUnits.map(summarizeUnit);

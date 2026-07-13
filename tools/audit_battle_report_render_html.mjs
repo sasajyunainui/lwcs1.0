@@ -486,6 +486,31 @@ const structuredDotBlocks = sandbox.__LWCS_BUILD_STRUCTURED_REPORT_BLOCKS__?.(
   sandbox.__LWCS_BUILD_PUBLIC_REPORT_BLOCKS__?.(structuredDotLedger, 8, context) || [],
 ) || [];
 const structuredDotBlock = structuredDotBlocks.find(block => block?.blockType === 'STATE_TICK');
+const structuredProjectionLedger = [
+  { eventId: 'evt_multi_start', eventKind: 'action_start', round: 8, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '三段连斩', actionId: 'action_multi_1', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_multi_hit_1', eventKind: 'hit_result', round: 8, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '三段连斩', actionId: 'action_multi_1', sourceActionId: 'action_multi_1', actionRole: 'ACTIVE', result: 'hit', appliedDamage: 10, meta: { appliedDamage: 10 } },
+  { eventId: 'evt_multi_hit_2', eventKind: 'hit_result', round: 8, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '三段连斩', actionId: 'action_multi_1', sourceActionId: 'action_multi_1', actionRole: 'ACTIVE', result: 'hit', appliedDamage: 20, meta: { appliedDamage: 20 } },
+  { eventId: 'evt_multi_hit_3', eventKind: 'hit_result', round: 8, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '三段连斩', actionId: 'action_multi_1', sourceActionId: 'action_multi_1', actionRole: 'ACTIVE', result: 'hit', appliedDamage: 30, meta: { appliedDamage: 30 } },
+  { eventId: 'evt_summon_start', eventKind: 'action_start', round: 9, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '召灵术', actionId: 'action_summon_1', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_summon_create', eventKind: 'summon_create', round: 9, actorName: '夹具玩家', actionName: '召灵术', actionId: 'action_summon_1', sourceActionId: 'action_summon_1', actionRole: 'ACTIVE', result: 'created', meta: { summonName: '霜狼#1', summonMode: '协同攻击' } },
+  { eventId: 'evt_internal_state_start', eventKind: 'action_start', round: 10, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '破甲印', actionId: 'action_state_1', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_internal_state', eventKind: 'state_apply', round: 10, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '破甲印', actionId: 'action_state_1', sourceActionId: 'action_state_1', actionRole: 'ACTIVE', result: 'applied', duration: 2, meta: { stateName: 'def修正' } },
+  { eventId: 'evt_resisted_start', eventKind: 'action_start', round: 11, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '锁魄印', actionId: 'action_resisted_1', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_resisted_state', eventKind: 'state_apply', round: 11, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '锁魄印', actionId: 'action_resisted_1', sourceActionId: 'action_resisted_1', actionRole: 'ACTIVE', result: 'resisted', duration: 2, meta: { stateName: '位移限制' } },
+];
+const structuredProjectionBlocks = sandbox.__LWCS_BUILD_STRUCTURED_REPORT_BLOCKS__?.(structuredProjectionLedger, [], [{
+  round: 10,
+  blocks: [{ type: 'badge', kind: 'state', name: 'def修正', targetName: '夹具敌人', sourceEventId: 'evt_internal_state' }],
+}]) || [];
+const structuredMultiBlock = structuredProjectionBlocks.find(block => block?.round === 8 && block?.blockType === 'ACTION_RESOLVED');
+const structuredSummonBlock = structuredProjectionBlocks.find(block => block?.round === 9 && block?.blockType === 'SUMMON_ACTION');
+const structuredStateBlock = structuredProjectionBlocks.find(block => block?.round === 10 && block?.blockType === 'ACTION_RESOLVED');
+const structuredResistedRound = structuredProjectionBlocks.find(block => block?.round === 11 && block?.blockType === 'ROUND_SUMMARY');
+const normalizedFinalSummary = sandbox.__LWCS_BATTLE_RUNTIME__?.buildFinalSummary?.([], [], {
+  round: 1,
+  team_player: [{ name: '夹具玩家', hp: 100, hp_max: 100, sp: 50, sp_max: 100, vit: 80, vit_max: 100, men: 20, men_max: 20, 状态效果: [{ name: 'agi修正', duration: 1 }] }],
+  team_enemy: [{ name: '夹具敌人', hp: 0, hp_max: 100, sp: 0, sp_max: 100, vit: 0, vit_max: 100, men: 0, men_max: 20, actionState: '失去战斗力', 状态效果: [] }],
+}, null)?.finalBattleReport;
 const publicShieldBlocks = sandbox.__LWCS_BUILD_PUBLIC_REPORT_BLOCKS__?.([
   { eventId: 'evt_shield_public_1', eventKind: 'shield_create', round: 4, actorName: '宁荣荣', targetName: '唐三', targetId: 'unit-tangsan', actionName: '七宝护身', chainNodeId: 'node_shield_public_1', result: 'created', meta: { amount: 180, shieldValue: 180 } },
 ], 8, context) || [];
@@ -605,6 +630,22 @@ const summary = {
   publicStateTickAggregationKeepsTargetBadges: publicStateTickBadgeCount === 2,
   structuredDotKeepsStateTickSource: structuredDotBlock?.facts?.length === 1 && structuredDotBlock.facts[0]?.factType === 'STATE_TICK' && structuredDotBlock.facts[0]?.actionRole === 'STATE_TICK' && structuredDotBlock.facts[0]?.sourceActionId === 'action_poison_1',
   structuredDotNarrationNotDirectHit: /持续影响/.test(String(structuredDotBlock?.outcomeSummary || '')) && /31/.test(String(structuredDotBlock?.outcomeSummary || '')) && !/直接造成|施展.*造成/.test(String(structuredDotBlock?.outcomeSummary || '')),
+  structuredMultiHitKeepsAllSegments:
+    /共命中 3 段/.test(String(structuredMultiBlock?.outcomeSummary || '')) &&
+    /造成 60 点伤害/.test(String(structuredMultiBlock?.outcomeSummary || '')) &&
+    /分段 10、20、30/.test(String(structuredMultiBlock?.outcomeSummary || '')) &&
+    (structuredMultiBlock?.badges || []).filter(badge => badge?.kind === 'damage').length === 3,
+  structuredSummonUsesRealName:
+    /霜狼#1/.test(String(structuredSummonBlock?.outcomeSummary || '')) &&
+    !/召唤物【目标】/.test(String(structuredSummonBlock?.outcomeSummary || '')),
+  structuredStateNameIsPlayerFacing:
+    /防御调整/.test(String(structuredStateBlock?.outcomeSummary || '')) &&
+    !/def修正/.test(String(structuredStateBlock?.outcomeSummary || '')) &&
+    (structuredStateBlock?.badges || []).some(badge => badge?.name === '防御调整'),
+  resistedStateCreatesNoRoundWindow: !/位移限制/.test(String(structuredResistedRound?.nextWindow || '')),
+  finalSummaryStateNameIsPlayerFacing:
+    /敏捷调整/.test(String(normalizedFinalSummary?.text || '')) &&
+    !/agi修正/.test(JSON.stringify(normalizedFinalSummary || {})),
   publicShieldAstFirstRendered: publicShieldBlocks.length === 1 && publicShieldBlocks[0]?.projectionSource === 'shield_create_ast' && /宁荣荣施展【七宝护身】，为唐三张开 180 点护盾/.test(publicShieldSerialized || ''),
   publicShieldBadgeHasTarget: publicShieldBadges.length === 1 && publicShieldBadges[0]?.targetName === '唐三' && publicShieldBadges[0]?.targetId === 'unit-tangsan',
   publicShieldBadgeHasSource: publicShieldBadges.length === 1 && publicShieldBadges[0]?.sourceEventId === 'evt_shield_public_1' && publicShieldBadges[0]?.sourceNodeId === 'node_shield_public_1',
@@ -656,8 +697,10 @@ const summary = {
   recordRuntimeStateNotMvuPersisted: /activeBattleRecordView/.test(code) && !/activeBattleRecordView/.test(bridgeCode),
   recordDesktopWidthContract: /--战斗记录外置-width', 'clamp\(480px, 32vw, 640px\)'/.test(code),
   recordDesktopDragContract:
-    /data-battle-record-drag-handle/.test(bridgeCode) &&
+    !/data-battle-record-drag-handle/.test(bridgeCode) &&
     /function 绑定战斗记录终端拖动/.test(code) &&
+    /node\.addEventListener\('pointerdown'/.test(code) &&
+    /event\.target\?\.closest\?\.\('button, input, select, textarea, a, \[contenteditable="true"\], \.battle-preview-panel'\)/.test(code) &&
     /addEventListener\('pointerdown'/.test(code) &&
     /addEventListener\('pointermove'/.test(code) &&
     /addEventListener\('pointerup'/.test(code) &&
@@ -666,7 +709,7 @@ const summary = {
     /battle-preview-panel[\s\S]*?align-content:\s*start;[\s\S]*?grid-auto-rows:\s*max-content;/.test(styleCode),
   recordInlineBreakpointContract: /const inline = viewportWidth <= 1180/.test(code) && /@media \(max-width: 1180px\)[\s\S]*battle-record-terminal--inline/.test(styleCode),
   recordMobileLayoutContract:
-    /@media \(max-width: 520px\)[\s\S]*battle-record-terminal--inline[\s\S]*width:\s*min\(100%, calc\(100vw - 16px\)\);[\s\S]*height:\s*min\(560px, calc\(100svh - 104px\)\);/.test(styleCode) &&
+    /@media \(max-width: 520px\)[\s\S]*battle-record-terminal--inline[\s\S]*width:\s*min\(100%, calc\(100vw - 16px\)\);[\s\S]*height:\s*auto;[\s\S]*max-height:\s*min\(560px, calc\(100svh - 104px\)\);/.test(styleCode) &&
     /@media \(max-width: 520px\)[\s\S]*battle-record-view-tabs[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/.test(styleCode),
 };
 

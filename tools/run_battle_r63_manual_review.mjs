@@ -60,6 +60,7 @@ const results = [];
 const requestedCase = String(process.env.R63_CASE || '').trim();
 const requestedSeed = Number(process.env.R63_SEED || 0);
 const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
+const refreshReviewReports = String(process.env.R63_REFRESH_REVIEW_REPORTS || '').trim() === '1';
 for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item => !requestedCase || item.caseId === requestedCase)) {
   const seed = Number.isFinite(requestedSeed) && requestedSeed > 0 ? Math.floor(requestedSeed) : definition.seed;
   const result = context.__LWCS_DEBUG_RUN_BATTLE_CASE__({
@@ -77,7 +78,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   const ledgerHash = hash(result.ledger);
   const reportHash = hash(result.reportBlocks);
   const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
-  if (!captureEvidence && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
+  if (!captureEvidence && !refreshReviewReports && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
     throw new Error(`r63_manual_review_evidence_stale:${definition.caseId}:${ledgerHash}:${reportHash}`);
   }
   const rounds = new Map();

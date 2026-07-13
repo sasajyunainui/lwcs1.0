@@ -28914,7 +28914,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
   gap: 9px;
   pointer-events: auto;
   width: var(--战斗记录外置-width, min(760px, calc(100vw - 380px)));
-  height: var(--战斗记录外置-height, min(720px, calc(100vh - 92px)));
+  height: auto;
+  max-height: var(--战斗记录外置-height, min(720px, calc(100vh - 92px)));
   min-height: 0;
   overflow: hidden;
   padding: 10px;
@@ -28987,16 +28988,27 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   font: inherit;
 }
 
-:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-header {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-header,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-header,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-header {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   min-width: 0;
+  cursor: grab;
+  touch-action: none;
   user-select: none;
 }
 
-:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal.battle-record-terminal--dragging,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal.battle-record-terminal--dragging .battle-record-header {
+  cursor: grabbing;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-toggle,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-toggle {
   min-width: 52px;
   min-height: 34px;
   padding: 7px 11px;
@@ -29021,7 +29033,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   cursor: grabbing;
 }
 
-:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle:focus-visible {
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-record-toggle:focus-visible,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-toggle:focus-visible,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-toggle:focus-visible {
   outline: none;
   box-shadow:
     inset 1px 1px 0 var(--战斗边缘高光),
@@ -29036,6 +29050,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   gap: 9px;
   min-width: 0;
   min-height: 0;
+  max-height: calc(var(--战斗记录外置-height, min(720px, calc(100vh - 92px))) - 53px);
   overflow: hidden auto;
   overscroll-behavior: contain;
 }
@@ -29648,8 +29663,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
     gap: 8px;
     width: 100%;
     max-width: 100%;
-    height: min(560px, 68svh);
-    min-height: 280px;
+    height: auto;
+    max-height: min(560px, 68svh);
+    min-height: 0;
     overflow: hidden;
     padding: 9px;
     border-radius: calc(var(--战斗圆角) * 0.34);
@@ -29691,6 +29707,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
     grid-template-rows: auto minmax(0, 1fr);
     gap: 8px;
     min-height: 0;
+    max-height: calc(min(560px, 68svh) - 53px);
     overflow: hidden;
   }
 
@@ -29704,9 +29721,15 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline,
   #detailModal #mvu-battle-inline-host .battle-record-terminal--inline {
     width: min(100%, calc(100vw - 16px));
-    height: min(560px, calc(100svh - 104px));
-    min-height: min(300px, calc(100svh - 104px));
+    height: auto;
+    max-height: min(560px, calc(100svh - 104px));
+    min-height: 0;
     padding: 8px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-body,
+  #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-body {
+    max-height: calc(min(560px, calc(100svh - 104px)) - 51px);
   }
 
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-record-tabs,

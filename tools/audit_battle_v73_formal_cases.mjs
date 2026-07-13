@@ -271,6 +271,18 @@ assert.equal(formalResult.scoringMutationDetected, false, '评分预估阶段修
 assert.ok(formalResult.initialSnapshot && typeof formalResult.initialSnapshot === 'object', '正式案例缺少初始快照');
 assert.ok(formalResult.roundsExecuted >= 1, `正式案例没有推进回合:${JSON.stringify({ logs: formalResult.logs, audit: formalResult.audit, snapshot: formalResult.finalSnapshot })}`);
 assert.ok(Array.isArray(formalResult.eventLedger) && formalResult.eventLedger.length > 0, `正式案例没有事件账本:${JSON.stringify({ rounds: formalResult.roundsExecuted, logs: formalResult.logs, snapshot: formalResult.finalSnapshot })}`);
+const passiveActionStarts = formalResult.eventLedger.filter(event =>
+  String(event?.eventKind || '').trim() === 'action_start' &&
+  String(event?.actionRole || '').trim() === 'STATE_TICK'
+);
+assert.equal(passiveActionStarts.length, 0, `回合末状态或自然恢复被伪造成执行动作:${JSON.stringify(passiveActionStarts)}`);
+const naturalRecoveryFacts = formalResult.eventLedger.filter(event =>
+  /自然恢复/.test(String(event?.actionName || event?.sourceActionName || event?.meta?.stateName || event?.meta?.reasonText || ''))
+);
+assert.ok(naturalRecoveryFacts.every(event =>
+  String(event?.eventKind || '').trim() === 'resource_change' &&
+  String(event?.actionRole || '').trim() === 'STATE_TICK'
+), `自然恢复包含非资源变化事实:${JSON.stringify(naturalRecoveryFacts)}`);
 assert.ok(Array.isArray(formalResult.resolutionTrace) && formalResult.resolutionTrace.length > 0, '正式案例没有判定 Trace');
 assert.ok(Array.isArray(formalResult.scoringAudit) && formalResult.scoringAudit.length > 0, '正式案例没有评分审计');
 assert.ok(formalResult.scoringAudit.every(item => Array.isArray(item.candidates) && item.candidates.length > 0 && item.candidates.length <= 3), '评分审计没有限制为选中项和两个替代项');
@@ -357,6 +369,8 @@ formalResult.eventLedger.filter(event =>
     !String(block?.nextWindow || '').includes(`【${stateName}】`),
     `被抵抗状态被写成成功附着或后续窗口:${JSON.stringify(block)}`,
   );
+  const roundSummary = roundSummaryBlocks.find(item => Number(item?.round || 0) === Number(event?.round || 0));
+  assert.ok(!String(roundSummary?.nextWindow || '').includes(`【${stateName}】`), `被抵抗状态进入了回合后续窗口:${JSON.stringify(roundSummary)}`);
 });
 const projectedFactIds = new Set(actionReportBlocks.flatMap(block => block.facts || []).map(fact => String(fact?.factId || '').trim()).filter(Boolean));
 const projectedBadgeEventIds = new Set(actionReportBlocks.flatMap(block => block.badges || []).map(badge => String(badge?.sourceEventId || '').trim()).filter(Boolean));
@@ -380,12 +394,25 @@ numericEvents.forEach(event => {
   const summaryIds = (summary?.facts || []).map(fact => String(fact?.factId || '').trim()).filter(Boolean).sort();
   assert.deepEqual(summaryIds, ledgerIds, `第${round}回合结构化战报与Ledger事实不一致`);
 });
-const playerFacingReport = JSON.stringify(formalResult.reportBlocks.map(block => ({
-  intentSummary: block?.intentSummary,
-  outcomeSummary: block?.outcomeSummary,
-  nextWindow: block?.nextWindow,
-})).concat([{ text: formalResult.finalBattleReport?.text }]));
+const playerFacingReport = JSON.stringify({
+  reportBlocks: formalResult.reportBlocks.map(block => ({
+    intentSummary: block?.intentSummary,
+    outcomeSummary: block?.outcomeSummary,
+    nextWindow: block?.nextWindow,
+    badges: (block?.badges || []).map(badge => badge?.name),
+    facts: (block?.facts || []).map(fact => ({ actionName: fact?.actionName, stateName: fact?.stateName })),
+  })),
+  finalBattleReport: {
+    text: formalResult.finalBattleReport?.text,
+    headline: formalResult.finalBattleReport?.headline,
+    nextIntents: formalResult.finalBattleReport?.nextIntents,
+    playerStates: formalResult.finalBattleReport?.sides?.player?.units?.flatMap(unit => unit?.states || []).map(state => state?.name),
+    enemyStates: formalResult.finalBattleReport?.sides?.enemy?.units?.flatMap(unit => unit?.states || []).map(state => state?.name),
+  },
+});
 assert.ok(!/暂缓出手|持续施压|ACTION_COMMITTED|REACTION_SUCCEEDED|NO_STRUCTURED_SETTLEMENT|UNKNOWN_REASON|ruleCode/.test(playerFacingReport), `玩家战报包含无事实套话或内部码:${playerFacingReport}`);
+assert.ok(!/BASIC_ATTACK|DEFEND|EVADE|COUNTER|OBSERVE|GUARD|WITHDRAW|RELEASE_SKILL|USE_ITEM|EQUIP/.test(playerFacingReport), `玩家战报泄漏动作枚举:${playerFacingReport}`);
+assert.ok(!/召唤物【目标】|\b(?:str|def|agi|vit|sp|men|hp)修正\b|反应判定修正|结算修正/.test(playerFacingReport), `玩家战报包含召唤占位或内部状态名:${playerFacingReport}`);
 const formalEnemy = formalCombatData.参战者.team_enemy[0];
 const formalPlayer = formalCombatData.参战者.team_player[0];
 const formalEnemyFirstSkill = formalEnemy.第1武魂.第1魂灵.第1魂环.第1魂技;
