@@ -279,6 +279,11 @@ class BattleUIComponent {
       return 当前模式;
     }
     const BATTLE_RUNTIME = root.__LWCS_BATTLE_RUNTIME__;
+    const 同步召唤单位镜像 = BATTLE_RUNTIME.syncSummonUnitMirror;
+    const 设置战斗延迟效果资源值 = BATTLE_RUNTIME.writeCombatResource;
+    const 记录状态来源登记 = BATTLE_RUNTIME.registerStateSource;
+    const 查找状态来源登记 = BATTLE_RUNTIME.findStateSource;
+    const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -14984,20 +14989,6 @@ class BattleUIComponent {
       return 单位;
     }
 
-    function 同步召唤单位镜像(召唤单位 = {}) {
-      if (!召唤单位?.__来源状态?.召唤物) return;
-      const 镜像 = 召唤单位.__来源状态.召唤物;
-      镜像.召唤键 = 召唤单位.召唤键;
-      镜像.召唤单位类型 = 召唤单位.类型;
-      镜像.召唤物名称 = 召唤单位.name || 召唤单位.名称 || '召唤物';
-      镜像.行动模式 = 召唤单位.行动模式;
-      镜像.生命 = getCombatHpValue(召唤单位);
-      镜像.生命上限 = getCombatHpMaxValue(召唤单位);
-      镜像.精神负载 = Math.max(0, Number(召唤单位.精神负载 || 0));
-      镜像.生成回合 = Math.max(0, Number(召唤单位.生成回合 || 0));
-      镜像.已消散 = 召唤单位.已消散 === true;
-    }
-
     function 召唤单位本回合刚生成(召唤单位 = {}, combatData = {}) {
       const 当前回合 = Math.max(0, Number(combatData?.回合 || 0));
       const 生成回合 = Math.max(0, Number(召唤单位?.生成回合 || 0));
@@ -18476,25 +18467,6 @@ class BattleUIComponent {
       return Math.max(1, Number(char?.sp_max || char?.属性?.魂力上限 || 1));
     }
 
-    function 设置战斗延迟效果资源值(char, 资源键 = 'sp', value = 0) {
-      if (!char || typeof char !== 'object') return 0;
-      const 上限 = 读取战斗延迟效果资源上限(char, 资源键);
-      const 下值 = Math.max(0, Math.min(上限, Number(value || 0)));
-      if (资源键 === 'hp') return 设置战斗血量值(char, 下值);
-      if (资源键 === 'vit') {
-        设置战斗体力值(char, 下值);
-      } else {
-        char[资源键] = 下值;
-        const 属性 = char.属性 && typeof char.属性 === 'object' ? char.属性 : null;
-        if (属性) {
-          if (资源键 === 'sp') 属性.魂力 = 下值;
-          if (资源键 === 'men') 属性.精神力 = 下值;
-        }
-      }
-      同步战斗资源镜像字段(char);
-      return 下值;
-    }
-
     function 读取延迟最终结果抹消规则(char, effect = {}) {
       const 原型 = String(effect?.原型 || '').trim();
       if (!原型 || 原型 === '伤害结算') return null;
@@ -18618,40 +18590,6 @@ class BattleUIComponent {
     function getCombatSoulCoreCount(char) {
       return Math.max(0, Math.floor(Number(char?.魂核?.核心?.数量 || 0)));
     }
-
-      function 写入回合末资源变化事实(combatData, char, label, resourceKey, delta, meta = {}) {
-        const amount = Math.round(Number(delta || 0));
-        if (!combatData || !char || !amount) return null;
-        const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
-        if (!resource) return null;
-        return BATTLE_RUNTIME.writeLedgerEvent(combatData, {
-          eventKind: 'resource_change',
-          round: Number(combatData?.回合 || 0),
-          actorName: String(meta.sourceActorName || char?.name || char?.名称 || label || '').trim(),
-          targetName: char?.name || char?.名称 || label || '',
-          actionName: String(meta.sourceActionName || meta.stateName || '回合末资源变化').trim(),
-          actionType: 'state_tick',
-          actionRole: 'STATE_TICK',
-          sourceActionName: String(meta.sourceActionName || '').trim(),
-          sourceActionId: String(meta.sourceActionId || '').trim(),
-          sourceRound: Number(meta.sourceRound || 0),
-          parentNodeId: String(meta.parentNodeId || '').trim(),
-          sourceNodeId: String(meta.sourceNodeId || '').trim(),
-          result: amount > 0 ? 'gain' : 'loss',
-          primaryOutcome: amount > 0 ? 'resource_recovered' : 'resource_lost',
-          applicationId: String(meta.applicationId || '').trim(),
-          duration: Math.max(0, Number(meta.duration || 0)),
-          effectSummary: String(meta.effectSummary || '').trim(),
-          driverAttr: String(meta.driverAttr || '').trim(),
-          meta: {
-            ...meta,
-            resourceKey,
-            resource,
-            amount: Math.abs(amount),
-            delta: amount,
-          },
-        });
-      }
 
       function settleConditionsAtRoundEnd(char, label, combatData = null) {
       if (!char) return { log: '', totalDot: 0, expired: [] };
@@ -19693,47 +19631,6 @@ class BattleUIComponent {
         combatData.__行动闭环诊断.状态来源登记 ||= [];
         combatData.__行动闭环诊断.目标权重探针 ||= [];
         return combatData.__行动闭环诊断;
-      }
-
-      function 记录状态来源登记(combatData = {}, payload = {}) {
-        const 诊断 = 确保行动闭环诊断(combatData?.__父级战斗数据 || combatData);
-        if (!诊断) return '';
-        const entry = {
-          applicationId: String(payload.applicationId || BATTLE_RUNTIME.nextRuntimeId('state-src')).trim(),
-          stateName: String(payload.stateName || '').trim(),
-          targetName: String(payload.targetName || '').trim(),
-          sourceActorName: String(payload.sourceActorName || '').trim(),
-          sourceActionName: String(payload.sourceActionName || '').trim(),
-          sourceActionType: String(payload.sourceActionType || '').trim(),
-          sourceRound: Number(payload.sourceRound || combatData?.回合 || 0),
-          duration: Math.max(0, Number(payload.duration || 0)),
-          effectSummary: String(payload.effectSummary || '').trim(),
-          driverAttr: String(payload.driverAttr || '').trim(),
-          round: Number(payload.round || combatData?.回合 || 0),
-          eventKind: 'state_apply',
-        };
-        if (!entry.stateName || !entry.targetName) return '';
-        诊断.状态来源登记.push(entry);
-        if (诊断.状态来源登记.length > 400) 诊断.状态来源登记.splice(0, 诊断.状态来源登记.length - 400);
-        return entry.applicationId;
-      }
-
-      function 查找状态来源登记(combatData = {}, 条件 = {}) {
-        const 诊断 = 确保行动闭环诊断(combatData?.__父级战斗数据 || combatData);
-        if (!诊断) return null;
-        const applicationId = String(条件.applicationId || '').trim();
-        const stateName = String(条件.stateName || '').trim();
-        const targetName = String(条件.targetName || '').trim();
-        const sourceRound = Number(条件.maxRound || combatData?.回合 || 0);
-        const 列表 = Array.isArray(诊断.状态来源登记) ? 诊断.状态来源登记 : [];
-        if (applicationId) {
-          return [...列表].reverse().find(item => String(item?.applicationId || '').trim() === applicationId) || null;
-        }
-        return [...列表].reverse().find(item => {
-          if (stateName && String(item?.stateName || '').trim() !== stateName) return false;
-          if (targetName && !isSameBattleReportName(item?.targetName || '', targetName)) return false;
-          return Number(item?.sourceRound || item?.round || 0) <= sourceRound;
-        }) || null;
       }
 
       function 构建状态结果效果摘要(战斗效果 = {}) {

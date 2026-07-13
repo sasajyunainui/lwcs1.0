@@ -350,7 +350,8 @@ addCheck(
 addCheck(
   'duelRoundDeclarationHasSinglePath',
   !/构建单挑回合宣告|执行单挑回合交锋|executeDuelRound/.test(battleUiSource) &&
-    /buildQueue:\s*combatData\s*=>\s*generateActionQueue\(combatData\)/.test(settlementBindingSource) &&
+    !/buildQueue\s*:|generateActionQueue\(/.test(settlementBindingSource) &&
+    /function buildActionQueue\(combatData = \{\}\)/.test(battleRuntimeSource) &&
     /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleRuntimeSource) &&
     /entry\.__decisionResolver\s*=/.test(battleRuntimeSource) &&
     /executeQueue:\s*\(queue, combatData, currentRound, logs, extraPatchOps\)\s*=>\s*执行团战扁平行动队列/.test(settlementBindingSource),

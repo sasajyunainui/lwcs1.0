@@ -535,6 +535,109 @@
     return final;
   }
 
+  function syncSummonUnitMirror(summon = {}) {
+    if (!summon?.__来源状态?.召唤物) return;
+    const mirror = summon.__来源状态.召唤物;
+    mirror.召唤键 = summon.召唤键;
+    mirror.召唤单位类型 = summon.类型;
+    mirror.召唤物名称 = summon.name || summon.名称 || '召唤物';
+    mirror.行动模式 = summon.行动模式;
+    mirror.生命 = previewRuntime.readHp(summon);
+    mirror.生命上限 = previewRuntime.readHpMax(summon);
+    mirror.精神负载 = Math.max(0, Number(summon.精神负载 || 0));
+    mirror.生成回合 = Math.max(0, Number(summon.生成回合 || 0));
+    mirror.已消散 = summon.已消散 === true;
+  }
+
+  function writeCombatResource(unit = {}, resourceKey = 'sp', value = 0) {
+    if (!unit || typeof unit !== 'object') return 0;
+    const stats = unit.属性 && typeof unit.属性 === 'object' ? unit.属性 : unit;
+    const config = {
+      hp: { runtimeKeys: ['hp', 'HP'], valueKeys: ['hp', 'HP'], maxKeys: ['hp_max', 'HP上限'], statKey: 'HP', statMaxKey: 'HP上限' },
+      vit: { runtimeKeys: ['sta', 'vit', '体力'], valueKeys: ['体力', 'sta', 'vit'], maxKeys: ['体力上限', 'sta_max', 'vit_max'], statKey: '体力', statMaxKey: '体力上限' },
+      sp: { runtimeKeys: ['sp', '魂力'], valueKeys: ['sp', '魂力'], maxKeys: ['sp_max', '魂力上限'], statKey: '魂力', statMaxKey: '魂力上限' },
+      men: { runtimeKeys: ['men', '精神力'], valueKeys: ['men', '精神力'], maxKeys: ['men_max', '精神力上限'], statKey: '精神力', statMaxKey: '精神力上限' },
+    }[resourceKey] || null;
+    if (!config) return 0;
+    const maxValue = Math.max(1, Number(config.maxKeys.map(key => unit[key] ?? stats?.[key]).find(entry => entry !== undefined) ?? 1));
+    const nextValue = Math.max(0, Math.min(maxValue, Number(value || 0)));
+    if (resourceKey === 'hp') {
+      if (Object.prototype.hasOwnProperty.call(unit, 'hp')) unit.hp = nextValue;
+      else unit.HP = nextValue;
+    } else if (resourceKey === 'vit') {
+      if (Object.prototype.hasOwnProperty.call(unit, 'sta')) unit.sta = nextValue;
+      else unit.体力 = nextValue;
+    } else {
+      unit[resourceKey] = nextValue;
+    }
+    if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
+    if (resourceKey !== 'hp' && resourceKey !== 'vit') unit[config.statKey] = nextValue;
+    if (unit.召唤键) syncSummonUnitMirror(unit);
+    return nextValue;
+  }
+
+  function ensureActionDiagnostic(combatData = {}) {
+    if (!combatData || typeof combatData !== 'object') return null;
+    if (!Object.prototype.hasOwnProperty.call(combatData, '__行动闭环诊断')) {
+      Object.defineProperty(combatData, '__行动闭环诊断', {
+        enumerable: false,
+        configurable: true,
+        writable: true,
+        value: {
+          主动规划次数: 0, 索敌规划次数: 0, 辅助目标规划次数: 0,
+          应招审计次数: 0, 再判定审计次数: 0, 换招审计次数: 0,
+          目标闭环缺失: 0, 团队意图未消费: 0, 规划旁路残留: 0,
+          审计轨迹: [], 真实样本轨迹: [], 事实账本: null,
+        },
+      });
+    }
+    const diagnostic = combatData.__行动闭环诊断;
+    diagnostic.审计轨迹 ||= [];
+    diagnostic.真实样本轨迹 ||= [];
+    diagnostic.状态来源登记 ||= [];
+    diagnostic.目标权重探针 ||= [];
+    return diagnostic;
+  }
+
+  function registerStateSource(combatData = {}, payload = {}) {
+    const diagnostic = ensureActionDiagnostic(combatData?.__父级战斗数据 || combatData);
+    if (!diagnostic) return '';
+    const entry = {
+      applicationId: String(payload.applicationId || nextRuntimeId('state-src')).trim(),
+      stateName: String(payload.stateName || '').trim(),
+      targetName: String(payload.targetName || '').trim(),
+      sourceActorName: String(payload.sourceActorName || '').trim(),
+      sourceActionName: String(payload.sourceActionName || '').trim(),
+      sourceActionType: String(payload.sourceActionType || '').trim(),
+      sourceRound: Number(payload.sourceRound || combatData?.回合 || 0),
+      duration: Math.max(0, Number(payload.duration || 0)),
+      effectSummary: String(payload.effectSummary || '').trim(),
+      driverAttr: String(payload.driverAttr || '').trim(),
+      round: Number(payload.round || combatData?.回合 || 0),
+      eventKind: 'state_apply',
+    };
+    if (!entry.stateName || !entry.targetName) return '';
+    diagnostic.状态来源登记.push(entry);
+    if (diagnostic.状态来源登记.length > 400) diagnostic.状态来源登记.splice(0, diagnostic.状态来源登记.length - 400);
+    return entry.applicationId;
+  }
+
+  function findStateSource(combatData = {}, criteria = {}) {
+    const diagnostic = ensureActionDiagnostic(combatData?.__父级战斗数据 || combatData);
+    if (!diagnostic) return null;
+    const applicationId = String(criteria.applicationId || '').trim();
+    const stateName = String(criteria.stateName || '').trim();
+    const targetName = String(criteria.targetName || '').trim();
+    const maxRound = Number(criteria.maxRound || combatData?.回合 || 0);
+    const entries = Array.isArray(diagnostic.状态来源登记) ? diagnostic.状态来源登记 : [];
+    if (applicationId) return [...entries].reverse().find(item => String(item?.applicationId || '').trim() === applicationId) || null;
+    return [...entries].reverse().find(item => {
+      if (stateName && String(item?.stateName || '').trim() !== stateName) return false;
+      if (targetName && !isSameReportName(item?.targetName || '', targetName)) return false;
+      return Number(item?.sourceRound || item?.round || 0) <= maxRound;
+    }) || null;
+  }
+
   function listCombatUnits(combatData = {}) {
     const seen = new Set();
     return [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].filter(unit => {
@@ -1877,6 +1980,33 @@
     ledger.push(event);
     if (ledger.length > 800) ledger.splice(0, ledger.length - 800);
     return event;
+  }
+
+  function writeRoundEndResourceEvent(combatData = {}, unit = {}, label = '', resourceKey = '', delta = 0, meta = {}) {
+    const amount = Math.round(Number(delta || 0));
+    const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
+    if (!combatData || !unit || !amount || !resource) return null;
+    return writeLedgerEvent(combatData, {
+      eventKind: 'resource_change',
+      round: Number(combatData?.回合 || 0),
+      actorName: String(meta.sourceActorName || unit?.name || unit?.名称 || label || '').trim(),
+      targetName: unit?.name || unit?.名称 || label || '',
+      actionName: String(meta.sourceActionName || meta.stateName || '回合末资源变化').trim(),
+      actionType: 'state_tick',
+      actionRole: 'STATE_TICK',
+      sourceActionName: String(meta.sourceActionName || '').trim(),
+      sourceActionId: String(meta.sourceActionId || '').trim(),
+      sourceRound: Number(meta.sourceRound || 0),
+      parentNodeId: String(meta.parentNodeId || '').trim(),
+      sourceNodeId: String(meta.sourceNodeId || '').trim(),
+      result: amount > 0 ? 'gain' : 'loss',
+      primaryOutcome: amount > 0 ? 'resource_recovered' : 'resource_lost',
+      applicationId: String(meta.applicationId || '').trim(),
+      duration: Math.max(0, Number(meta.duration || 0)),
+      effectSummary: String(meta.effectSummary || '').trim(),
+      driverAttr: String(meta.driverAttr || '').trim(),
+      meta: { ...meta, resourceKey, resource, amount: Math.abs(amount), delta: amount },
+    });
   }
 
 
@@ -5079,6 +5209,11 @@
     createActionQueue,
     buildActionQueue,
     buildCombatFinalStats,
+    syncSummonUnitMirror,
+    writeCombatResource,
+    ensureActionDiagnostic,
+    registerStateSource,
+    findStateSource,
     runTeamBattle,
     runDecisionTeamBattle,
     decideDuelContinuation,
@@ -5106,6 +5241,7 @@
     findInitialIntentNode,
     normalizeCausalNode,
     writeLedgerEvent,
+    writeRoundEndResourceEvent,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,
