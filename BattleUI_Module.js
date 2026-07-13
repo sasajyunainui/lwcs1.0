@@ -18587,10 +18587,6 @@ class BattleUIComponent {
       return '';
     }
 
-    function getCombatSoulCoreCount(char) {
-      return Math.max(0, Math.floor(Number(char?.魂核?.核心?.数量 || 0)));
-    }
-
       function settleConditionsAtRoundEnd(char, label, combatData = null) {
       if (!char) return { log: '', totalDot: 0, expired: [] };
 
@@ -18960,61 +18956,8 @@ class BattleUIComponent {
           parts.push(`[状态消散] ${label}的[${key}]已结束`);
         });
 
-        const 禁用本回合自然恢复 = char.__禁用本回合自然恢复 === true;
-        if (char.__禁用本回合自然恢复 !== undefined) delete char.__禁用本回合自然恢复;
-
-        const 读取回合末资源锁定比例 = (resourceLabel, lockType) => Math.min(
-          1,
-          Object.values(conditionMap).reduce((maxVal, cond) => {
-            const 规则列表 = Array.isArray(cond?.资源锁定规则) ? cond.资源锁定规则 : [];
-            return Math.max(maxVal, 规则列表.reduce((规则最大值, 规则) => {
-              const 资源命中 = Array.isArray(规则?.资源) && 规则.资源.includes(resourceLabel);
-              const 类型命中 = String(规则?.锁定类型 || '').trim() === lockType;
-              return 资源命中 && 类型命中 ? Math.max(规则最大值, Number(规则?.比例 || 0)) : 规则最大值;
-            }, 0));
-          }, 0),
-        );
-        const coreCount = getCombatSoulCoreCount(char);
-        let naturalSpRatio = 0.005;
-        let naturalMenRatio = 0.005;
-        if (coreCount >= 1) naturalSpRatio += 0.01;
-        if (coreCount >= 2) naturalMenRatio += 0.01;
-        if (coreCount >= 3) naturalSpRatio += 0.01;
-
-        const maxSp = Math.max(0, Number(char.sp_max || 0));
-        const maxMen = Math.max(0, Number(char.men_max || 0));
-        const 魂力回复锁定比例 = 读取回合末资源锁定比例('魂力', '回复锁定');
-        const 精神回复锁定比例 = 读取回合末资源锁定比例('精神力', '回复锁定');
-        if (!禁用本回合自然恢复 && maxSp > 0 && naturalSpRatio > 0 && 魂力回复锁定比例 < 1) {
-          const beforeSp = Math.max(0, Number(char.sp || 0));
-          const recoverSp = Math.max(0, Math.floor(maxSp * naturalSpRatio * (1 - 魂力回复锁定比例)));
-          设置战斗延迟效果资源值(char, 'sp', Math.min(maxSp, beforeSp + recoverSp));
-          const actualRecoverSp = Math.max(0, Number(char.sp || 0) - beforeSp);
-          if (actualRecoverSp > 0) {
-            写入回合末资源变化事实(combatData, char, label, 'sp', actualRecoverSp, {
-              source: 'natural_recovery',
-              stateName: '自然恢复',
-              reasonCode: 'ROUND_END_NATURAL_RECOVERY',
-              reasonText: '回合末自然恢复魂力',
-            });
-            parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverSp} 点魂力`);
-          }
-        }
-        if (!禁用本回合自然恢复 && maxMen > 0 && naturalMenRatio > 0 && 精神回复锁定比例 < 1) {
-          const beforeMen = Math.max(0, Number(char.men || 0));
-          const recoverMen = Math.max(0, Math.floor(maxMen * naturalMenRatio * (1 - 精神回复锁定比例)));
-          设置战斗延迟效果资源值(char, 'men', Math.min(maxMen, beforeMen + recoverMen));
-          const actualRecoverMen = Math.max(0, Number(char.men || 0) - beforeMen);
-          if (actualRecoverMen > 0) {
-            写入回合末资源变化事实(combatData, char, label, 'men', actualRecoverMen, {
-              source: 'natural_recovery',
-              stateName: '自然恢复',
-              reasonCode: 'ROUND_END_NATURAL_RECOVERY',
-              reasonText: '回合末自然恢复精神力',
-            });
-            parts.push(`[自然恢复] ${label}回合末恢复 ${actualRecoverMen} 点精神力`);
-          }
-        }
+        const naturalRecoveryLog = BATTLE_RUNTIME.settleNaturalRecoveryAtRoundEnd(char, label, combatData);
+        if (naturalRecoveryLog) parts.push(naturalRecoveryLog);
 
         if (char.召唤键) 同步召唤单位镜像(char);
         return { log: parts.join(' '), totalDot, expired };

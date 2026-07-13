@@ -2009,6 +2009,46 @@
     });
   }
 
+  function settleNaturalRecoveryAtRoundEnd(unit = {}, label = '', combatData = {}) {
+    const disabled = unit.__禁用本回合自然恢复 === true;
+    if (unit.__禁用本回合自然恢复 !== undefined) delete unit.__禁用本回合自然恢复;
+    if (disabled) return '';
+    const conditions = unit.状态效果 && typeof unit.状态效果 === 'object' && !Array.isArray(unit.状态效果)
+      ? unit.状态效果
+      : {};
+    const readRecoveryLock = resource => Math.min(1, Object.values(conditions).reduce((maximum, condition) => {
+      const rules = Array.isArray(condition?.资源锁定规则) ? condition.资源锁定规则 : [];
+      return Math.max(maximum, rules.reduce((ruleMaximum, rule) => {
+        const resourceMatches = Array.isArray(rule?.资源) && rule.资源.includes(resource);
+        const typeMatches = String(rule?.锁定类型 || '').trim() === '回复锁定';
+        return resourceMatches && typeMatches ? Math.max(ruleMaximum, Number(rule?.比例 || 0)) : ruleMaximum;
+      }, 0));
+    }, 0));
+    const coreCount = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
+    const soulRatio = 0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0);
+    const mentalRatio = 0.005 + (coreCount >= 2 ? 0.01 : 0);
+    const logs = [];
+    [
+      { key: 'sp', label: '魂力', ratio: soulRatio, max: Math.max(0, Number(unit.sp_max || 0)), current: Math.max(0, Number(unit.sp || 0)) },
+      { key: 'men', label: '精神力', ratio: mentalRatio, max: Math.max(0, Number(unit.men_max || 0)), current: Math.max(0, Number(unit.men || 0)) },
+    ].forEach(resource => {
+      const lockRatio = readRecoveryLock(resource.label);
+      if (!(resource.max > 0 && resource.ratio > 0 && lockRatio < 1)) return;
+      const recovery = Math.max(0, Math.floor(resource.max * resource.ratio * (1 - lockRatio)));
+      writeCombatResource(unit, resource.key, Math.min(resource.max, resource.current + recovery));
+      const actual = Math.max(0, Number(unit[resource.key] || 0) - resource.current);
+      if (!(actual > 0)) return;
+      writeRoundEndResourceEvent(combatData, unit, label, resource.key, actual, {
+        source: 'natural_recovery',
+        stateName: '自然恢复',
+        reasonCode: 'ROUND_END_NATURAL_RECOVERY',
+        reasonText: `回合末自然恢复${resource.label}`,
+      });
+      logs.push(`[自然恢复] ${label}回合末恢复 ${actual} 点${resource.label}`);
+    });
+    return logs.join(' ');
+  }
+
 
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
     settlement.prepare(combatData, adapterOptions);
@@ -5242,6 +5282,7 @@
     normalizeCausalNode,
     writeLedgerEvent,
     writeRoundEndResourceEvent,
+    settleNaturalRecoveryAtRoundEnd,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,
