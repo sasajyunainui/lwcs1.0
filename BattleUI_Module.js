@@ -7762,7 +7762,7 @@ class BattleUIComponent {
         : {};
       const 攻方终值 = context?.造物产出者属性
         ? 攻方
-        : context?.attackerFinalStat || 攻方.final || buildCombatFinalStats(攻方);
+        : context?.attackerFinalStat || 攻方.final || BATTLE_RUNTIME.buildCombatFinalStats(攻方);
       原型驱动缩放(
         结果,
         计算层效果,
@@ -7770,7 +7770,7 @@ class BattleUIComponent {
         攻方,
         攻方终值,
         守方,
-        context?.defenderFinalStat || 守方.final || buildCombatFinalStats(守方),
+        context?.defenderFinalStat || 守方.final || BATTLE_RUNTIME.buildCombatFinalStats(守方),
       );
       if (Object.keys(计算层效果).length) 结果.计算层效果 = 计算层效果;
       return 结果;
@@ -8966,8 +8966,8 @@ class BattleUIComponent {
           segmentTriggerValue: 0,
         };
       }
-      const attackerFinal = context?.attackerFinalStat || attacker?.final || buildCombatFinalStats(attacker);
-      const defenderFinal = context?.defenderFinalStat || defender?.final || buildCombatFinalStats(defender);
+      const attackerFinal = context?.attackerFinalStat || attacker?.final || BATTLE_RUNTIME.buildCombatFinalStats(attacker);
+      const defenderFinal = context?.defenderFinalStat || defender?.final || BATTLE_RUNTIME.buildCombatFinalStats(defender);
       const attackerConditions = Array.isArray(context?.attackerConditionEffects)
         ? context.attackerConditionEffects
         : 读取单位战斗效果列表(attacker);
@@ -13007,8 +13007,8 @@ class BattleUIComponent {
     }
 
     function 读取隐匿识破率(观察者 = {}, 隐匿者 = {}) {
-      const 观察者属性 = 观察者?.final || buildCombatFinalStats(观察者);
-      const 隐匿者属性 = 隐匿者?.final || buildCombatFinalStats(隐匿者);
+      const 观察者属性 = 观察者?.final || BATTLE_RUNTIME.buildCombatFinalStats(观察者);
+      const 隐匿者属性 = 隐匿者?.final || BATTLE_RUNTIME.buildCombatFinalStats(隐匿者);
       const 观察者精神力 = Math.max(
         0,
         Number(读取战斗资源当前值(观察者, 观察者属性, 'men') || 观察者属性?.men || 观察者属性?.men_max || 0),
@@ -13300,10 +13300,10 @@ class BattleUIComponent {
       processRoster(enemyRoster, playerRoster);
 
       (combatData.参战者.team_player || []).forEach(member => {
-        if (member) member.final = buildCombatFinalStats(member);
+        if (member) member.final = BATTLE_RUNTIME.buildCombatFinalStats(member);
       });
       (combatData.参战者.team_enemy || []).forEach(member => {
-        if (member) member.final = buildCombatFinalStats(member);
+        if (member) member.final = BATTLE_RUNTIME.buildCombatFinalStats(member);
       });
       return combatData;
     }
@@ -14480,83 +14480,13 @@ class BattleUIComponent {
       return Math.max(1, Math.round(体力上限 * 疲劳率));
     }
 
-    function buildCombatFinalStats(char) {
-      const source = char && typeof char === 'object' ? { ...char } : {};
-      delete source.final;
-      const final = deepClone(source);
-      final.状态效果 = deepClone(char?.状态效果 || {});
-      final.战斗效果 = createEmptyCombatEffectMap();
-      const 当前tick = Math.max(0, Number(window.BattleUIBridge?.getMVU?.('world.时间.tick') || 0));
-      const 套用复制属性快照 = 快照 => {
-        if (!快照 || typeof 快照 !== 'object' || Array.isArray(快照)) return;
-        [
-          ['力量', 'str'],
-          ['防御', 'def'],
-          ['敏捷', 'agi'],
-          ['体力上限', 'vit_max'],
-          ['魂力上限', 'sp_max'],
-          ['精神力上限', 'men_max'],
-        ].forEach(([中文字段, 战斗字段]) => {
-          const value = Number(快照[中文字段] ?? 快照[战斗字段]);
-          if (Number.isFinite(value) && value > 0) final[战斗字段] = value;
-        });
-      };
-      const 复制属性快照列表 = [];
-      Object.values(final.状态效果 || {}).forEach(cond => {
-        const mods = cond?.面板修改比例 || {};
-        const deltas = cond?.面板固定修正 || {};
-        final.str = Number(final.str || 0) * Number(mods.str ?? 1);
-        final.def = Number(final.def || 0) * Number(mods.def ?? 1);
-        final.agi = Number(final.agi || 0) * Number(mods.agi ?? 1);
-        if (final.sp_max !== undefined) final.sp_max = Number(final.sp_max || 0) * Number(mods.sp_max ?? 1);
-        if (final.vit_max !== undefined) final.vit_max = Number(final.vit_max || 0) * Number(mods.vit_max ?? 1);
-        if (final.men_max !== undefined) final.men_max = Number(final.men_max || 0) * Number(mods.men_max ?? 1);
-        final.str += Number(deltas.str || 0);
-        final.def += Number(deltas.def || 0);
-        final.agi += Number(deltas.agi || 0);
-        if (final.sp_max !== undefined) final.sp_max += Number(deltas.sp_max || 0);
-        if (final.vit_max !== undefined) final.vit_max += Number(deltas.vit_max || 0);
-        if (final.men_max !== undefined) final.men_max += Number(deltas.men_max || 0);
-        final.战斗效果 = mergeCombatEffectMaps(final.战斗效果, cond?.战斗效果 || {});
-        if (cond?.属性快照) 复制属性快照列表.push(cond.属性快照);
-      });
-      复制属性快照列表.forEach(套用复制属性快照);
-      Object.entries(char?.复制效果 || {}).forEach(([复制键, record]) => {
-        if (!record || typeof record !== 'object') return;
-        const 到期tick = Math.max(0, Number(record.到期tick || 0));
-        if (到期tick > 0 && 当前tick >= 到期tick) return;
-        套用复制属性快照(record.属性快照);
-      });
-      if (final.sp_max !== undefined && final.sp !== undefined) final.sp = Math.min(final.sp, final.sp_max);
-      if (final.vit_max !== undefined && final.vit !== undefined) final.vit = Math.min(final.vit, final.vit_max);
-      if (final.men_max !== undefined && final.men !== undefined) final.men = Math.min(final.men, final.men_max);
-      // Phase E: 体力衰减 — 体力低于阈值时,全 6 维属性按分段系数下调
-      const 体力衰减系数 = 计算体力衰减系数_V1(char);
-      if (体力衰减系数 < 1.0) {
-        final.str = Number(final.str || 0) * 体力衰减系数;
-        final.def = Number(final.def || 0) * 体力衰减系数;
-        final.agi = Number(final.agi || 0) * 体力衰减系数;
-        if (final.sp_max !== undefined) final.sp_max = Number(final.sp_max || 0) * 体力衰减系数;
-        if (final.vit_max !== undefined) final.vit_max = Number(final.vit_max || 0) * 体力衰减系数;
-        if (final.men_max !== undefined) final.men_max = Number(final.men_max || 0) * 体力衰减系数;
-        final.__体力衰减系数 = 体力衰减系数;
-      }
-      final.str = Math.round(Number(final.str || 0));
-      final.def = Math.round(Number(final.def || 0));
-      final.agi = Math.round(Number(final.agi || 0));
-      if (final.sp_max !== undefined) final.sp_max = Math.round(Number(final.sp_max || 0));
-      if (final.vit_max !== undefined) final.vit_max = Math.round(Number(final.vit_max || 0));
-      if (final.men_max !== undefined) final.men_max = Math.round(Number(final.men_max || 0));
-      return final;
-    }
-
     function refreshParticipantProjectedState(char, alliedTeam = [], opposingTeam = []) {
       if (!char) return char;
       bindCombatParticipant(char);
       clearAutoProjectedConditions(char);
       collectPassiveCombatSkills(char, alliedTeam).forEach(skill => projectPassiveSkillToConditions(char, skill));
       projectDomainConditionsForParticipant(char, opposingTeam);
-      char.final = buildCombatFinalStats(char);
+      char.final = BATTLE_RUNTIME.buildCombatFinalStats(char);
       return char;
     }
 
@@ -14662,7 +14592,7 @@ class BattleUIComponent {
       const 持续移除命中 = 持续状态移除阻断状态附着(targetChar, stateModule.状态名称, 状态条目, sourceChar || targetChar);
       if (持续移除命中) return false;
       targetChar.状态效果[stateModule.状态名称] = 状态条目;
-      targetChar.final = buildCombatFinalStats(targetChar);
+      targetChar.final = BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
       if (targetChar.召唤键) 同步召唤单位镜像(targetChar);
       return true;
     }
@@ -14995,7 +14925,7 @@ class BattleUIComponent {
         属性继承比例.精神力上限,
       );
       const 强度 = 继承比例 > 0 ? 继承比例 : Math.max(0.01, Number(召唤记录.强度 || 1));
-      const 宿主最终 = 宿主.final || buildCombatFinalStats(宿主);
+      const 宿主最终 = 宿主.final || BATTLE_RUNTIME.buildCombatFinalStats(宿主);
       const 数量系数 = 1 + Math.min(数量 - 1, 4) * 0.35;
       const 属性系数 = 继承比例 > 0 ? 1 : Math.max(0.12, Math.min(1.4, 0.35 + 强度 * 0.18));
       const 资源系数 = 继承比例 > 0 ? 1 : 属性系数;
@@ -15044,7 +14974,7 @@ class BattleUIComponent {
       单位.sp_max = 单位.魂力上限;
       单位.men = 单位.精神力;
       单位.men_max = 单位.精神力上限;
-      单位.final = buildCombatFinalStats(单位);
+      单位.final = BATTLE_RUNTIME.buildCombatFinalStats(单位);
       单位.技能列表 = 构建召唤技能列表(单位);
       表[召唤键] = 单位;
       召唤记录.召唤键 = 召唤键;
@@ -15172,7 +15102,7 @@ class BattleUIComponent {
     function 评分召唤攻击目标(召唤单位 = {}, 目标 = {}) {
       if (!目标 || !isCombatUnitAlive(目标)) return -1;
       const 倾向 = 读取召唤类型倾向(召唤单位.类型);
-      const 目标终值 = 目标.final || buildCombatFinalStats(目标);
+      const 目标终值 = 目标.final || BATTLE_RUNTIME.buildCombatFinalStats(目标);
       let 分数 = 100;
       分数 += (1 - getCombatHpRatio(目标)) * 55 * Number(倾向.收割 || 1);
       分数 += Math.max(0, Number(目标终值.sp_max || 目标.sp_max || 0)) * 0.015 * Number(倾向.高威胁 || 1);
@@ -15195,7 +15125,7 @@ class BattleUIComponent {
       const 倾向 = 读取召唤类型倾向(召唤单位.类型);
       const 威力 = Math.max(1, Number(伤害效果.威力倍率 || 90));
       const 伤害类型 = 规范化战斗伤害类型(伤害效果.伤害类型, 技能);
-      const 目标防御 = Math.max(1, Number((目标.final || buildCombatFinalStats(目标)).def || 目标.def || 1));
+      const 目标防御 = Math.max(1, Number((目标.final || BATTLE_RUNTIME.buildCombatFinalStats(目标)).def || 目标.def || 1));
       let 分数 = 威力 * Number(倾向.技能 || 1);
       if ((战斗伤害是远程攻击(伤害类型) || 战斗伤害是精神攻击(伤害类型)) && 目标防御 > Number(召唤单位.final?.str || 召唤单位.str || 1)) 分数 += 18;
       if (getCombatHpRatio(目标) < 0.35) 分数 += 12 * Number(倾向.收割 || 1);
@@ -15535,7 +15465,6 @@ class BattleUIComponent {
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
       settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
-      buildSummonFinalStats: unit => buildCombatFinalStats(unit),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -16743,7 +16672,7 @@ class BattleUIComponent {
         removed.forEach(([key]) => delete unit.状态效果[key]);
         changed = removed.length > 0;
       }
-      if (typeof buildCombatFinalStats === 'function') unit.final = buildCombatFinalStats(unit);
+      unit.final = BATTLE_RUNTIME.buildCombatFinalStats(unit);
       return changed;
     }
 
@@ -17848,7 +17777,7 @@ class BattleUIComponent {
           });
         }
       });
-      if (removed.length > 0) targetChar.final = buildCombatFinalStats(targetChar);
+      if (removed.length > 0) targetChar.final = BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
       return removed;
     }
 
@@ -17884,7 +17813,7 @@ class BattleUIComponent {
           });
         }
       });
-      if (removed.length > 0) targetChar.final = buildCombatFinalStats(targetChar);
+      if (removed.length > 0) targetChar.final = BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
       return removed;
     }
 
@@ -17918,9 +17847,9 @@ class BattleUIComponent {
       const 缩放系数 = 计算原型驱动缩放系数(
         effect,
         attacker,
-        attacker?.final || buildCombatFinalStats(attacker),
+        attacker?.final || BATTLE_RUNTIME.buildCombatFinalStats(attacker),
         targetChar,
-        targetChar?.final || buildCombatFinalStats(targetChar),
+        targetChar?.final || BATTLE_RUNTIME.buildCombatFinalStats(targetChar),
       );
       return Math.max(0.05, Math.min(1, Number.isFinite(缩放系数) ? 缩放系数 : 1));
     }
@@ -17934,7 +17863,7 @@ class BattleUIComponent {
       });
       if (!attacker || !targetChar) return 构建审计(1, '来源字段不足');
       if (attacker === targetChar) return 构建审计(1, '自身默认生效');
-      const 目标最终属性 = targetChar?.final || buildCombatFinalStats(targetChar);
+      const 目标最终属性 = targetChar?.final || BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
       const 状态目标 = String(effect?.目标 || '').trim();
       const 状态文本 = [
         effect?.类型,
@@ -17992,7 +17921,7 @@ class BattleUIComponent {
       const 缩放系数 = 计算原型驱动缩放系数(
         effect,
         attacker,
-        attacker?.final || buildCombatFinalStats(attacker),
+        attacker?.final || BATTLE_RUNTIME.buildCombatFinalStats(attacker),
         targetChar,
         防守最终属性,
       );
@@ -18233,7 +18162,7 @@ class BattleUIComponent {
         }
         removed.push(key);
       }
-      if (removed.length > 0) targetChar.final = buildCombatFinalStats(targetChar);
+      if (removed.length > 0) targetChar.final = BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
       if (驱动失败数 > 0) removed.__概率失败数 = 驱动失败数;
       return removed;
     }
@@ -18680,7 +18609,7 @@ class BattleUIComponent {
         const 覆盖结果 = 合并状态覆盖条目_V1(旧状态, 延迟状态条目, effect);
         if (!覆盖结果.applied) return `[延迟效果] ${label}的[${状态名}]已存在，本次未形成新的刷新或叠加。`;
         char.状态效果[状态名] = 覆盖结果.state;
-        char.final = buildCombatFinalStats(char);
+        char.final = BATTLE_RUNTIME.buildCombatFinalStats(char);
         return `[延迟效果] ${label}获得[${状态名}]。`;
       }
       return '';
@@ -20418,8 +20347,8 @@ class BattleUIComponent {
         const 强方等级 = getCombatUnitTierNumber(强方);
         const 弱方等级 = getCombatUnitTierNumber(弱方);
         const 等级差 = Math.max(0, 强方等级 - 弱方等级) / 100;
-        const 强方属性 = 强方?.final || buildCombatFinalStats(强方);
-        const 弱方属性 = 弱方?.final || buildCombatFinalStats(弱方);
+        const 强方属性 = 强方?.final || BATTLE_RUNTIME.buildCombatFinalStats(强方);
+        const 弱方属性 = 弱方?.final || BATTLE_RUNTIME.buildCombatFinalStats(弱方);
         const 强方总值 =
           Number(强方属性.str || 强方.str || 0) +
           Number(强方属性.def || 强方.def || 0) +
@@ -23305,7 +23234,7 @@ class BattleUIComponent {
         单位.属性.HP = Math.max(0, Math.min(Number(单位.属性.HP上限), Number(单位.属性.HP || 单位.hp || 0)));
         bindCombatRuntimeAliases(单位, 单位.属性);
         bindCombatHpAliasField(单位, 单位.属性);
-        单位.final = buildCombatFinalStats(单位);
+        单位.final = BATTLE_RUNTIME.buildCombatFinalStats(单位);
       }
 
       function 应用战斗装备变化(单位, 变更函数) {
@@ -23356,7 +23285,7 @@ class BattleUIComponent {
           runtime.equipmentDecisionSignatures = [...new Set([...(runtime.equipmentDecisionSignatures || []), 装备签名])];
         }
         动作.skill._效果数组 = [];
-        单位.final = buildCombatFinalStats(单位);
+        单位.final = BATTLE_RUNTIME.buildCombatFinalStats(单位);
         return `[装备完成] ${单位?.name || 单位?.名称 || '行动者'}装备【${runtime.equippedDecisionItem.name}】。`;
       }
 
@@ -24563,7 +24492,7 @@ class BattleUIComponent {
             targetChar = 护卫召唤;
           }
           bindCombatParticipant(targetChar);
-          const targetFinalStat = targetChar.final || buildCombatFinalStats(targetChar);
+          const targetFinalStat = targetChar.final || BATTLE_RUNTIME.buildCombatFinalStats(targetChar);
           const targetConditionEffects = targetChar.状态效果
             ? Object.values(targetChar.状态效果).map(c => c?.战斗效果 || {})
             : [];
@@ -24659,7 +24588,7 @@ class BattleUIComponent {
             const 伤害效果 = 当前结算效果列表.find(effect => String(effect?.原型 || '').trim() === '伤害结算') || {};
             const 伤害类型 = String(targetEntry?.damageType || 伤害效果?.伤害类型 || '入参伤害').trim();
             const 技能威力 = Math.max(1, Number(targetEntry?.skillPower || 伤害效果?.威力倍率 || 段伤害 || incomingDamage || finalDamage || 1));
-            const 攻防攻击值 = Number(targetEntry?.formulaAttackValue || 计算物理伤害攻势值(attacker, attacker?.final || buildCombatFinalStats(attacker), 伤害类型) || 段伤害 || finalDamage || 1);
+            const 攻防攻击值 = Number(targetEntry?.formulaAttackValue || 计算物理伤害攻势值(attacker, attacker?.final || BATTLE_RUNTIME.buildCombatFinalStats(attacker), 伤害类型) || 段伤害 || finalDamage || 1);
             const 攻防防御值 = Math.max(1, Number(targetEntry?.formulaDefenseValue || targetEntry?.actualDefense || targetFinalStat.def || targetChar.def || 1));
             const ledgerFormulaTrace = {
               damageType: 伤害类型,
@@ -26471,8 +26400,8 @@ class BattleUIComponent {
         const targetHitsDefender = targetContext.targetSet.some(target => isCombatUnitIdentityMatch(target, defender?.name || defender));
         if (!targetHitsDefender) return defaultThreat;
 
-        let attackerFinalStat = attacker.final || buildCombatFinalStats(attacker);
-        const defenderFinalStat = defender.final || buildCombatFinalStats(defender);
+        let attackerFinalStat = attacker.final || BATTLE_RUNTIME.buildCombatFinalStats(attacker);
+        const defenderFinalStat = defender.final || BATTLE_RUNTIME.buildCombatFinalStats(defender);
         const pClash = 预结算伤害效果;
         const pStateEffect = 预结算效果列表.find(effect => String(effect?.原型 || '').trim() === '状态施加') || {};
         const pStateCalc = pStateEffect?.计算层效果 || createEmptyCombatEffectMap();
@@ -26713,7 +26642,7 @@ class BattleUIComponent {
         const 技能名 = String(技能?.魂技名 || 技能?.name || '造物承载魂技').trim() || '造物承载魂技';
         const 产出者属性快照 = 原始产出者属性.final && typeof 原始产出者属性.final === 'object' && !Array.isArray(原始产出者属性.final)
           ? deepClonePlain(原始产出者属性.final)
-          : buildCombatFinalStats(原始产出者属性);
+          : BATTLE_RUNTIME.buildCombatFinalStats(原始产出者属性);
 
         let 剩余即时消耗 = Math.max(0, Math.floor(Number(选项参数.即时消耗数量 || 0)));
         造物模板列表.forEach((造物模板, 索引) => {
@@ -28253,7 +28182,7 @@ class BattleUIComponent {
         const resolveProjectedDamageAgainstTarget = (targetObj, index) => {
           if (!targetObj) return null;
           bindCombatParticipant(targetObj);
-          const targetFinalStat = targetObj.final || buildCombatFinalStats(targetObj);
+          const targetFinalStat = targetObj.final || BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
           const targetConditionEffects = targetObj.状态效果
             ? Object.values(targetObj.状态效果).map(c => c?.战斗效果 || {})
             : [];
@@ -28871,7 +28800,7 @@ class BattleUIComponent {
             const rawValue = resolvedEffect.数值 ?? resolvedEffect.恢复比例 ?? resolvedEffect.回复比例 ?? 0;
             const value = 读取战斗数值正负(rawValue);
             if (!(value > 0)) return;
-            const targetFinalStat = targetObj?.final || buildCombatFinalStats(targetObj);
+            const targetFinalStat = targetObj?.final || BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
             const supportScale = isFriendly ? getSupportEffectScale(attacker, targetObj) : 1;
             const targetConditionEffects = targetObj.状态效果
               ? Object.values(targetObj.状态效果).map(c => c?.战斗效果 || {})
@@ -30552,7 +30481,7 @@ class BattleUIComponent {
                 });
               }
               targetObj.状态效果[状态名] = 落地状态条目;
-              targetObj.final = buildCombatFinalStats(targetObj);
+              targetObj.final = BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
               if (targetObj.召唤键) 同步召唤单位镜像(targetObj);
               落地状态条目.__状态来源键 = 记录状态来源登记(combatData, {
                 stateName: 状态名,
@@ -30794,7 +30723,7 @@ class BattleUIComponent {
           };
           const 削减比例 = /属性|全部/.test(复制类型) ? 读取削减比例(effect?.削减比例) : 0;
           const 复制驱动倍率 = /属性|全部/.test(复制类型) && String(effect?.影响方向 || '').trim() === '效果强度' && String(effect?.驱动属性 || '').trim()
-            ? 计算原型驱动缩放系数(effect, attacker, attacker?.final || {}, sourceObj, sourceObj?.final || buildCombatFinalStats(sourceObj))
+            ? 计算原型驱动缩放系数(effect, attacker, attacker?.final || {}, sourceObj, sourceObj?.final || BATTLE_RUNTIME.buildCombatFinalStats(sourceObj))
             : 1;
           const 复制倍率 = Number(限制战斗倍率((1 - 削减比例) * (Number.isFinite(复制驱动倍率) ? 复制驱动倍率 : 1), 0.05, 1.5).toFixed(3));
           const 来源为敌方 = 目标敌方集合.some(unit => unit && isCombatUnitIdentityMatch(unit, sourceObj?.name || sourceObj?.名称 || sourceObj));
@@ -30975,8 +30904,8 @@ class BattleUIComponent {
           targetSnapshot.描述 = `由[${skillName || '技能'}]自${targetObj.name || '目标'}交换至${attacker.name || '自身'}`;
           const ownNewKey = putConditionWithUniqueKey(targetObj, ownCandidate.key, ownSnapshot);
           const targetNewKey = putConditionWithUniqueKey(attacker, targetCandidate.key, targetSnapshot);
-          attacker.final = buildCombatFinalStats(attacker);
-          targetObj.final = buildCombatFinalStats(targetObj);
+          attacker.final = BATTLE_RUNTIME.buildCombatFinalStats(attacker);
+          targetObj.final = BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
           result.desc += ` [状态交换] 自身的[${ownCandidate.key}]与${targetObj.name || '目标'}的[${targetCandidate.key}]完成交换，现分别变为[${targetNewKey}]与[${ownNewKey}]。`;
           return true;
         };
@@ -31291,7 +31220,7 @@ class BattleUIComponent {
                 result.desc += ` [持续引爆] ${targetObj === attacker ? '自身' : targetObj.name}的[${状态名}]已被引爆消耗，本回合不重复附着。`;
                 return;
               }
-              const targetFinalStat = targetObj?.final || buildCombatFinalStats(targetObj);
+              const targetFinalStat = targetObj?.final || BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
               const targetConditionEffects = targetObj.状态效果
                 ? Object.values(targetObj.状态效果).map(c => c?.战斗效果 || {})
                 : [];
@@ -31541,7 +31470,7 @@ class BattleUIComponent {
                 return;
               }
               targetObj.状态效果[pState.状态名称] = 新状态条目;
-              targetObj.final = buildCombatFinalStats(targetObj);
+              targetObj.final = BATTLE_RUNTIME.buildCombatFinalStats(targetObj);
               if (targetObj.召唤键) 同步召唤单位镜像(targetObj);
               新状态条目.__状态来源键 = 记录状态来源登记(combatData, {
                 stateName: pState.状态名称,
@@ -31739,7 +31668,7 @@ class BattleUIComponent {
                 });
                 return;
               }
-              const 目标终值 = 目标对象?.final || buildCombatFinalStats(目标对象);
+              const 目标终值 = 目标对象?.final || BATTLE_RUNTIME.buildCombatFinalStats(目标对象);
               const 目标战斗效果列表 = 目标对象.状态效果
                 ? Object.values(目标对象.状态效果).map(状态 => 状态?.战斗效果 || {})
                 : [];
@@ -31849,7 +31778,7 @@ class BattleUIComponent {
                 });
               }
               目标对象.状态效果[状态名] = 落地状态条目;
-              目标对象.final = buildCombatFinalStats(目标对象);
+              目标对象.final = BATTLE_RUNTIME.buildCombatFinalStats(目标对象);
               if (目标对象.召唤键) 同步召唤单位镜像(目标对象);
               落地状态条目.__状态来源键 = 记录状态来源登记(combatData, {
                 stateName: 状态名,

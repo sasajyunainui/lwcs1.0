@@ -729,11 +729,11 @@
         玩家.type = '敏攻系';
         玩家.agi = 360;
         玩家.str = 170;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
         敌人.agi = 150;
         敌人.str = 260;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '反高速武魂',
           第1魂环: {
@@ -760,11 +760,11 @@
         玩家.type = '敏攻系';
         玩家.agi = 360;
         玩家.str = 170;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
         敌人.agi = 150;
         敌人.str = 260;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '反高速武魂',
           第1魂环: {
@@ -810,9 +810,9 @@
       注册('防守反击强于闪避反击', 日志 => {
         const { 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '敏攻系';
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 闪避动作 = 建立行为防反动作(玩家, { 防反类型: '完美闪避', 出手承诺: 0.42, 触发概率: 0.5 });
         const 防守动作 = 建立行为防反动作(敌人, { 防反类型: '硬抗换伤', 出手承诺: 0.42, 触发概率: 0.5 });
         const 闪避威力 = Number(getPrimaryDamageEffect(闪避动作.skill, { 行为规划: true })?.威力倍率 || 0);
@@ -848,9 +848,9 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 20;
         玩家.men_max = 20;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 9999;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 闪避可躲控制 = normalizeSkillData({
           name: '夹具毒刃牵制',
           魂技名: '夹具毒刃牵制',
@@ -889,9 +889,9 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 20;
         玩家.men_max = 20;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 9999;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 纯控制 = normalizeSkillData({
           name: '夹具锁步',
           魂技名: '夹具锁步',
@@ -1014,9 +1014,9 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 20;
         玩家.men_max = 20;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 9999;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 闪避可躲控制 = normalizeSkillData({
           name: '夹具毒刃牵制',
           魂技名: '夹具毒刃牵制',
@@ -1065,9 +1065,9 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 20;
         玩家.men_max = 20;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 9999;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 闪避不吃后效 = normalizeSkillData({
           name: '夹具追毒飞刃',
           魂技名: '夹具追毒飞刃',
@@ -1105,11 +1105,11 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         敌人.name = '高速敌';
         敌人.agi = 10000;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 低速敌 = 构建战斗回归夹具单位('低速敌', '防御系');
         低速敌.agi = 1;
         低速敌.def = 20;
-        低速敌.final = buildCombatFinalStats(低速敌);
+        低速敌.final = BATTLE_RUNTIME.buildCombatFinalStats(低速敌);
         combatData.参战者.team_enemy = [敌人, 低速敌];
         const 群体技能 = normalizeSkillData({
           name: '群体压制',
@@ -1163,7 +1163,7 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.第1武魂.第1魂环.第1魂技 = 构建战斗回归第一魂技(战斗回归第一魂技默认名, '魂力:120');
         敌人.agi = 80;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '慢反应武魂',
           第1魂环: {
@@ -1331,7 +1331,7 @@
         敌人.hp_max = 99999;
         敌人.agi = 1;
         敌人.def = 10;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const entry = {
           actor_name: '夹具玩家',
           action_type: '释放魂技',
@@ -1385,7 +1385,7 @@
           敌人.hp_max = 99999;
           敌人.agi = 1;
           敌人.def = 10;
-          敌人.final = buildCombatFinalStats(敌人);
+          敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
           return { combatData, 玩家, 敌人 };
         };
         const entry = {
@@ -1455,7 +1455,7 @@
         敌人.第1武魂.第1魂环.第1魂技 = normalizeSkillData(战斗回归输出魂技(战斗回归敌方快攻技能名, '敌方单体', 6, 88, '近身攻击'), 战斗回归敌方快攻技能名);
         敌人.第1武魂.第2魂环 = { 第1魂技: normalizeSkillData(战斗回归输出魂技(战斗回归敌方压制技能名, '敌方单体', 10, 96, '近身攻击'), 战斗回归敌方压制技能名) };
         敌人.agi = Math.max(玩家.agi * 1.25, 280);
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         let result = null;
         const 原随机 = Math.random;
         try {
@@ -1482,12 +1482,12 @@
         玩家.agi = 10000;
         玩家.men = 10000;
         玩家.精神力 = 10000;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 1;
         敌人.men = 1;
         敌人.精神力 = 1;
         敌人.str = 1;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         let result = null;
         const 原随机 = Math.random;
         try {
@@ -1648,11 +1648,11 @@
       注册('第一魂技被先制打断不提前扣费', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 80;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         玩家.第1武魂.第1魂环.第1魂技 = 构建战斗回归第一魂技('慢启动第一魂技', '魂力:120');
         玩家.第1武魂.第1魂环.第1魂技.前摇 = 64;
         敌人.agi = 360;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '先制武魂',
           第1魂环: {
@@ -1916,7 +1916,7 @@
         敌人.hp_max = 300;
         敌人.HP = 300;
         敌人.hp = 300;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 无暇战报 = buildReadableBattleReportLines([
           '[第1回合]',
           '[团战执行] 夹具玩家以[精神震荡]指向[夹具敌人]。 [起招] 夹具玩家以[精神震荡]起招。 [应招] 夹具敌人以[无暇反应]应对。 [命中结算] 夹具玩家对夹具敌人造成 120 点最终伤害。 [状态施加] 夹具敌人获得[迟缓]。',
@@ -2391,11 +2391,11 @@
         敌人.type = '辅助系';
         敌人.sp = 2000;
         敌人.魂力 = 2000;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 敌方残血队友 = 构建战斗回归夹具单位('夹具敌方残血', '强攻系');
         敌方残血队友.hp = 200;
         敌方残血队友.HP = 200;
-        敌方残血队友.final = buildCombatFinalStats(敌方残血队友);
+        敌方残血队友.final = BATTLE_RUNTIME.buildCombatFinalStats(敌方残血队友);
         combatData.参战者.team_enemy = [敌人, 敌方残血队友];
         敌人.第1武魂 = {
           表象名称: '辅助夹具武魂',
@@ -2453,14 +2453,14 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.agi = 9999;
         玩家.men_max = 9999;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 1;
         敌人.def = 500;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 敌方二号 = 构建战斗回归夹具单位('夹具敌方二号', '强攻系');
         敌方二号.agi = 1;
         敌方二号.def = 500;
-        敌方二号.final = buildCombatFinalStats(敌方二号);
+        敌方二号.final = BATTLE_RUNTIME.buildCombatFinalStats(敌方二号);
         combatData.参战者.team_enemy = [敌人, 敌方二号];
         const 群体压制 = normalizeSkillData({
           name: '夹具群体压制',
@@ -2554,14 +2554,14 @@
         友方.name = '乙方攻手';
         玩家.agi = 900;
         友方.agi = 850;
-        玩家.final = buildCombatFinalStats(玩家);
-        友方.final = buildCombatFinalStats(友方);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
+        友方.final = BATTLE_RUNTIME.buildCombatFinalStats(友方);
         const 甲敌 = 构建战斗回归夹具单位('甲敌', '防御系');
         const 乙敌 = 构建战斗回归夹具单位('乙敌', '防御系');
         甲敌.agi = 80;
         乙敌.agi = 70;
-        甲敌.final = buildCombatFinalStats(甲敌);
-        乙敌.final = buildCombatFinalStats(乙敌);
+        甲敌.final = BATTLE_RUNTIME.buildCombatFinalStats(甲敌);
+        乙敌.final = BATTLE_RUNTIME.buildCombatFinalStats(乙敌);
         combatData.战斗类型 = '团战';
         combatData.参战者.team_player = [玩家, 友方];
         combatData.参战者.team_enemy = [甲敌, 乙敌];
@@ -3235,7 +3235,7 @@
         combatData.参战者.team_player = [玩家, 友方];
         敌人.type = '敏攻系';
         敌人.agi = 420;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '锁敌武魂',
           第1魂环: {
@@ -3264,10 +3264,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '敏攻系';
         玩家.agi = 999;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
         敌人.agi = 80;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '反制武魂',
           第1魂环: {
@@ -3320,10 +3320,10 @@
             第2魂技: normalizeSkillData(战斗回归输出魂技('锁定追击', '敌方单体', 8, 88, '近身攻击'), '锁定追击'),
           },
         };
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 1;
         敌人.men_max = 1;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const action = {
           action_type: '释放魂技',
           type: '释放魂技',
@@ -3382,10 +3382,10 @@
             第2魂技: normalizeSkillData(战斗回归输出魂技('锁定追击', '敌方单体', 8, 88, '近身攻击'), '锁定追击'),
           },
         };
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 1;
         敌人.men_max = 1;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const actorEntry = {
           char: 玩家,
           side: 'player',
@@ -3519,8 +3519,8 @@
             第2魂技: normalizeSkillData(战斗回归输出魂技('抵抗后不应追击', '敌方单体', 8, 88, '近身攻击'), '抵抗后不应追击'),
           },
         };
-        玩家.final = buildCombatFinalStats(玩家);
-        敌人.final = buildCombatFinalStats(敌人);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 原随机 = Math.random;
         Math.random = () => 0.99;
         try {
@@ -3556,9 +3556,9 @@
             第2魂技: normalizeSkillData(战斗回归输出魂技('预算不足追击', '敌方单体', 10, 120, '近身攻击'), '预算不足追击'),
           },
         };
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.agi = 1;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 原随机 = Math.random;
         Math.random = () => 0.01;
         try {
@@ -3582,10 +3582,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '敏攻系';
         玩家.agi = 1200;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
         敌人.agi = 90;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '压制武魂',
           第1魂环: {
@@ -3621,10 +3621,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '敏攻系';
         玩家.agi = 1250;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '强攻系';
         敌人.agi = 92;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '蛇影武魂',
           第1魂环: {
@@ -3671,10 +3671,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '强攻系';
         玩家.agi = 180;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '敏攻系';
         敌人.agi = 420;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '蛇影武魂',
           第1魂环: {
@@ -3712,10 +3712,10 @@
       注册('范围控制来袭且无真截断时不再强势对轰', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '强攻系';
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '敏攻系';
         敌人.agi = 360;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '快攻武魂',
           第1魂环: {
@@ -3750,7 +3750,7 @@
       注册('范围控制主动技在无真截断时不再默认被先手压制', 日志 => {
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '强攻系';
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         玩家.第1武魂.第2魂环 ||= {};
         玩家.第1武魂.第2魂环.第2魂技 = normalizeSkillData({
           name: '第二魂技·青影蛇群',
@@ -3766,7 +3766,7 @@
         }, '第二魂技·青影蛇群');
         敌人.type = '敏攻系';
         敌人.agi = 280;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '快攻武魂',
           第1魂环: {
@@ -3801,10 +3801,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '强攻系';
         玩家.agi = 120;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '控制系';
         敌人.agi = 140;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         敌人.第1武魂 = {
           表象名称: '压制武魂',
           第1魂环: {
@@ -3828,10 +3828,10 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         玩家.type = '强攻系';
         玩家.agi = 80;
-        玩家.final = buildCombatFinalStats(玩家);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
         敌人.type = '敏攻系';
         敌人.agi = 999;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         玩家.第1武魂 = {
           表象名称: '夹具武魂',
           第1魂环: {
@@ -3898,16 +3898,16 @@
         const 规划状态 = { combatData, primaryTarget: 敌人, target: 敌人 };
         玩家.men_max = 1200;
         敌人.men_max = 120;
-        玩家.final = buildCombatFinalStats(玩家);
-        敌人.final = buildCombatFinalStats(敌人);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 高命中收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
         玩家.men_max = 60;
         敌人.men_max = 1800;
-        玩家.final = buildCombatFinalStats(玩家);
-        敌人.final = buildCombatFinalStats(敌人);
+        玩家.final = BATTLE_RUNTIME.buildCombatFinalStats(玩家);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 高抵抗收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
         敌人.状态效果.异常免疫 = { 类型: 'buff', 层数: 1, duration: 2, 战斗效果: { ...createEmptyCombatEffectMap(), 无视异常: true } };
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 免疫收益 = 评估效果对单位规划收益(控制效果, 玩家, 敌人, 规划状态, { name: '封步' });
         断言战斗回归夹具(高命中收益 > 高抵抗收益 && 高抵抗收益 > 0, `抵抗未压低状态收益:${高命中收益}/${高抵抗收益}`);
         断言战斗回归夹具(免疫收益 === 0, `状态免疫未归零:${免疫收益}`);
@@ -3980,7 +3980,7 @@
         }, '蛇群封场');
         敌人.第1武魂 = { 表象名称: '召唤控制武魂', 第1魂环: { 第1魂技: 召唤控制技能 } };
         敌人.type = '敏攻系';
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 来袭技能 = normalizeSkillData(战斗回归输出魂技('高速突进', '敌方单体', 6, 96, '近身攻击'), '高速突进');
         const 应招候选 = 构建应招候选池(敌人, 玩家, { type: '释放魂技', action_type: '释放魂技', skill: 来袭技能 }, combatData);
         断言战斗回归夹具(!判定技能具备真实截断资格_V1(召唤控制技能), '召唤/控制标签被误判为真实截断');
@@ -4015,7 +4015,7 @@
       };
       敌人.type = String(配置.敌人系别 || '敏攻系').trim() || '敏攻系';
       敌人.agi = Math.max(1, Number(配置.敌人敏捷 || 80));
-      敌人.final = buildCombatFinalStats(敌人);
+      敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
       const entry = {
         actor_name: 玩家.name,
         action_type: '释放魂技',
@@ -5397,8 +5397,8 @@
       敌人.名称 = '敌方宿主';
       宿主.agi = 0;
       敌人.agi = 0;
-      宿主.final = buildCombatFinalStats(宿主);
-      敌人.final = buildCombatFinalStats(敌人);
+      宿主.final = BATTLE_RUNTIME.buildCombatFinalStats(宿主);
+      敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
       召唤单位.宿主名 = '玩家宿主';
       召唤单位.__宿主 = 宿主;
       const 敌方状态键 = '召唤:敌方影兽';
@@ -5689,7 +5689,7 @@
           玩家.type = index % 5 === 0 ? '敏攻系' : '强攻系';
           敌人.type = '敏攻系';
           敌人.agi = index % 4 === 0 ? 980 : 220 + (index % 6) * 40;
-          敌人.final = buildCombatFinalStats(敌人);
+          敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
           if (index % 9 === 0) recordActorActionWhiffedByDodge(玩家, '普通攻击', 敌人);
           const entry = {
             actor_name: 玩家.name,
@@ -5796,7 +5796,7 @@
         玩家.type = index % 5 === 0 ? '敏攻系' : '强攻系';
         敌人.type = '敏攻系';
         敌人.agi = index % 4 === 0 ? 980 : 220 + (index % 6) * 40;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         if (index % 9 === 0) recordActorActionWhiffedByDodge(玩家, '普通攻击', 敌人);
         const entry = {
           actor_name: 玩家.name,
@@ -6394,11 +6394,11 @@
         const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
         敌人.name = '高速敌';
         敌人.agi = 10000;
-        敌人.final = buildCombatFinalStats(敌人);
+        敌人.final = BATTLE_RUNTIME.buildCombatFinalStats(敌人);
         const 低速敌 = 构建战斗回归夹具单位('低速敌', '防御系');
         低速敌.agi = 1;
         低速敌.def = 90;
-        低速敌.final = buildCombatFinalStats(低速敌);
+        低速敌.final = BATTLE_RUNTIME.buildCombatFinalStats(低速敌);
         combatData.参战者.team_enemy = [敌人, 低速敌];
         const 群体技能 = normalizeSkillData({
           name: '群体压制',

@@ -441,6 +441,100 @@
     return fighters;
   }
 
+  function createEmptyCombatEffectMap() {
+    return {
+      skip_turn: false, cannot_react: false, invincible: false, 无视异常: false, skill_seal: false, 探查屏蔽: false,
+      dot_damage: 0, dot_damage_ratio: 0, armor_pen: 0, reaction_bonus: 0, reaction_penalty: 0,
+      attacker_speed_bonus: 0, cast_speed_bonus: 0, cast_speed_penalty: 0, hit_bonus: 0, hit_penalty: 0,
+      dodge_bonus: 0, dodge_penalty: 0, lock_level: 0, interrupt_bonus: 0, final_damage_mult: 1,
+      received_damage_mult: 1, defense_strip: 0, spirit_resist_strip: 0, final_damage_bonus: 0,
+      final_heal_mult: 1, final_heal_bonus: 0, shield_gain_mult: 1, shield_gain_bonus: 0, skill_effect_mult: 1,
+      vit_gain_ratio: 0, sp_gain_ratio: 0, men_gain_ratio: 0, heal_block_ratio: 0, hot_heal_ratio: 0,
+      cost_ratio: 1, cost_delta: 0, cost_delta_ratio: 0, windup_ratio: 1, windup_delta: 0,
+      random_target_rate: 0, 判断干扰强度: 0, 索敌干扰强度: 0, stealth_level: 0, min_hp_floor: 0,
+      death_save_count: 0, revive_count: 0, revive_heal_ratio: 0, damage_reflect_ratio: 0,
+      damage_transfer_ratio: 0, damage_transfer_target: '', 吸收来源: '', 吸收资源: '', 吸收转化效果: '',
+      伤害吸收增幅上限: 0, damage_share_ratio: 0, damage_share_count: 0, cost_share_ratio: 0,
+      cost_share_count: 0, damage_to_heal_ratio: 0, heal_to_damage_ratio: 0, heal_inversion_ratio: 0,
+      invincible_tier_threshold: 0, 每日触发次数上限: 0, bonus_true_damage_ratio: 0, element_seal_ratio: 0,
+      misfortune_check_rate: 0, misfortune_backlash_ratio: 0, silence: false, disarm: false, blind: false,
+      counter_attack_ratio: 0, damage_reduction: 0, block_count: 0, super_armor: false, action_lock_rounds: 0,
+      interrupt_window: 0, multi_hit_count: 0, segment_damage_ratio: 0,
+    };
+  }
+
+  function mergeCombatEffectMaps(base = createEmptyCombatEffectMap(), incoming = {}) {
+    const seed = createEmptyCombatEffectMap();
+    const result = { ...seed, ...(base || {}) };
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      if (!(key in seed) || value === undefined) return;
+      if (['skip_turn', 'cannot_react', 'silence', 'disarm', 'blind', 'super_armor', 'invincible', '无视异常', 'skill_seal', '探查屏蔽'].includes(key)) {
+        result[key] = !!result[key] || !!value;
+      } else if (['final_damage_mult', 'received_damage_mult', 'final_heal_mult', 'shield_gain_mult', 'skill_effect_mult', 'cost_ratio', 'windup_ratio'].includes(key)) {
+        result[key] = Number(result[key] ?? 1) * Number(value ?? 1);
+      } else if (['defense_strip', 'spirit_resist_strip', 'cost_delta_ratio'].includes(key)) {
+        result[key] = Math.max(Number(result[key] ?? 0), Number(value ?? 0));
+      } else if (['damage_transfer_target', '吸收来源', '吸收资源', '吸收转化效果'].includes(key)) {
+        result[key] = String(value || result[key] || '').trim();
+      } else if (['lock_level', 'death_save_count', 'revive_count', 'block_count', 'min_hp_floor', 'damage_share_count', 'cost_share_count', 'invincible_tier_threshold', '每日触发次数上限', 'action_lock_rounds', 'multi_hit_count'].includes(key)) {
+        result[key] = Math.max(Number(result[key] ?? 0), Number(value ?? 0));
+      } else {
+        result[key] = Number(result[key] ?? 0) + Number(value ?? 0);
+      }
+    });
+    return result;
+  }
+
+  function buildCombatFinalStats(unit = {}) {
+    const source = unit && typeof unit === 'object' ? { ...unit } : {};
+    delete source.final;
+    const final = JSON.parse(JSON.stringify(source));
+    final.状态效果 = JSON.parse(JSON.stringify(unit?.状态效果 || {}));
+    final.战斗效果 = createEmptyCombatEffectMap();
+    const currentTick = Math.max(0, Number(root.BattleUIBridge?.getMVU?.('world.时间.tick') || 0));
+    const applyCopiedStats = snapshot => {
+      if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return;
+      [['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['体力上限', 'vit_max'], ['魂力上限', 'sp_max'], ['精神力上限', 'men_max']]
+        .forEach(([sourceKey, runtimeKey]) => {
+          const value = Number(snapshot[sourceKey] ?? snapshot[runtimeKey]);
+          if (Number.isFinite(value) && value > 0) final[runtimeKey] = value;
+        });
+    };
+    const copiedSnapshots = [];
+    Object.values(final.状态效果 || {}).forEach(condition => {
+      const ratios = condition?.面板修改比例 || {};
+      const deltas = condition?.面板固定修正 || {};
+      ['str', 'def', 'agi'].forEach(key => { final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0); });
+      ['sp_max', 'vit_max', 'men_max'].forEach(key => {
+        if (final[key] !== undefined) final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0);
+      });
+      final.战斗效果 = mergeCombatEffectMaps(final.战斗效果, condition?.战斗效果 || {});
+      if (condition?.属性快照) copiedSnapshots.push(condition.属性快照);
+    });
+    copiedSnapshots.forEach(applyCopiedStats);
+    Object.values(unit?.复制效果 || {}).forEach(record => {
+      if (!record || typeof record !== 'object') return;
+      const expiresAt = Math.max(0, Number(record.到期tick || 0));
+      if (!(expiresAt > 0 && currentTick >= expiresAt)) applyCopiedStats(record.属性快照);
+    });
+    if (final.sp_max !== undefined && final.sp !== undefined) final.sp = Math.min(final.sp, final.sp_max);
+    if (final.vit_max !== undefined && final.vit !== undefined) final.vit = Math.min(final.vit, final.vit_max);
+    if (final.men_max !== undefined && final.men !== undefined) final.men = Math.min(final.men, final.men_max);
+    const stats = unit?.属性 || unit || {};
+    const staminaRatio = Math.max(0, Number(stats.体力 ?? stats.vit ?? 0)) / Math.max(1, Number(stats.体力上限 ?? stats.vit_max ?? 1));
+    const staminaScale = staminaRatio >= 0.5 ? 1 : staminaRatio >= 0.3 ? 0.9 : staminaRatio >= 0.15 ? 0.75 : 0.5;
+    if (staminaScale < 1) {
+      ['str', 'def', 'agi', 'sp_max', 'vit_max', 'men_max'].forEach(key => {
+        if (final[key] !== undefined) final[key] = Number(final[key] || 0) * staminaScale;
+      });
+      final.__体力衰减系数 = staminaScale;
+    }
+    ['str', 'def', 'agi', 'sp_max', 'vit_max', 'men_max'].forEach(key => {
+      if (final[key] !== undefined) final[key] = Math.round(Number(final[key] || 0));
+    });
+    return final;
+  }
+
   function listCombatUnits(combatData = {}) {
     const seen = new Set();
     return [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].filter(unit => {
@@ -2101,7 +2195,7 @@
     if (totalLoad > mentalLimit) {
       const compression = Math.max(0.35, mentalLimit / Math.max(1, totalLoad));
       summons.forEach(unit => {
-        unit.final = settlement.buildSummonFinalStats(unit, adapterOptions);
+        unit.final = buildCombatFinalStats(unit);
         ['str', 'def', 'agi', 'sp_max', 'men_max'].forEach(key => {
           unit.final[key] = Math.max(1, Math.round(Number(unit.final[key] || unit[key] || 1) * compression));
         });
@@ -4696,7 +4790,6 @@
     const required = [
       'prepare', 'executeQueue',
       'settleSustain', 'settleConditions',
-      'buildSummonFinalStats',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -4985,6 +5078,7 @@
     probabilitySucceeds,
     createActionQueue,
     buildActionQueue,
+    buildCombatFinalStats,
     runTeamBattle,
     runDecisionTeamBattle,
     decideDuelContinuation,
