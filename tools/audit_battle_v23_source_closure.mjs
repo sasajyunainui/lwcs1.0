@@ -209,7 +209,9 @@ addCheck(
     !/function 查找最近账本动作事件\(/.test(battleUiSource) &&
     !/function 查找行动轴初始意图节点\(/.test(battleUiSource) &&
     !/function 推断战斗目标阵营侧\(|function 推断战斗单位阵营侧\(|function 推断战斗事件阵营侧\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'executeQueue',[\s\S]*?'settleSustain', 'settleConditions',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /const required = \[[\s\S]*?'prepare', 'executeQueue',[\s\S]*?'settleSustain',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /function settleConditionsAtRoundEnd\(/.test(battleRuntimeSource) &&
+    !/settleConditions\s*:/.test(settlementBindingSource) &&
     !/function buildCombatFinalStats\(/.test(battleUiSource) &&
     !/buildSummonFinalStats\s*:/.test(settlementBindingSource) &&
     !/syncRoundEndUnit\s*:/.test(settlementBindingSource) &&
@@ -377,7 +379,7 @@ addCheck(
   'duelRoundTickHasSingleDomainPath',
   !/结算单挑回合尾阶段/.test(battleUiSource) &&
     /function settleBattleRoundEnd\(combatData = \{\}, logs = \[\], settlement, adapterOptions = \{\}\)/.test(battleRuntimeSource) &&
-    /const sustainResult = settlement\.settleSustain\(unit,[\s\S]*?const conditionResult = settlement\.settleConditions\(unit/.test(battleRuntimeSource) &&
+    /const sustainResult = settlement\.settleSustain\(unit,[\s\S]*?const conditionResult = settleConditionsAtRoundEnd\(unit/.test(battleRuntimeSource) &&
     !/function settleTeamRoundEnd\(/.test(battleUiSource),
 );
 addCheck(

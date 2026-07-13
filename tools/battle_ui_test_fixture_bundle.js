@@ -1618,7 +1618,7 @@
         });
         const initial = {
           hp: getCombatHpValue(玩家),
-          sp: 读取持续原型资源当前值(玩家, 'sp'),
+          sp: BATTLE_RUNTIME.readCombatResource(玩家, 'sp'),
           vit: getCombatStaminaValue(玩家),
         };
         const result = applyResolvedDamagePackage(敌人, sourceAction, {
@@ -1636,10 +1636,10 @@
           .filter(event => event?.eventKind === 'hit_result' && event?.targetName === 玩家.name && event?.ruleCode !== 'CAST_INTERRUPTION_BACKLASH')
           .reduce((sum, event) => sum + Number(event?.appliedDamage || event?.meta?.damage || 0), 0);
         断言战斗回归夹具(getCombatHpValue(玩家) === getCombatHpMaxValue(玩家), '金龙不灭真身未回满HP');
-        断言战斗回归夹具(读取持续原型资源当前值(玩家, 'sp') === 0, '金龙不灭真身未清空魂力');
+        断言战斗回归夹具(BATTLE_RUNTIME.readCombatResource(玩家, 'sp') === 0, '金龙不灭真身未清空魂力');
         断言战斗回归夹具(getCombatStaminaValue(玩家) === getCombatStaminaMaxValue(玩家), '金龙不灭真身未回满体力');
         断言战斗回归夹具(initial.hp - lethalDamage + Number(deltas.hp || 0) === getCombatHpValue(玩家), `死亡保护HP账本不守恒:${initial.hp}/${lethalDamage}/${deltas.hp}/${getCombatHpValue(玩家)}`);
-        断言战斗回归夹具(initial.sp + Number(deltas.sp || 0) === 读取持续原型资源当前值(玩家, 'sp'), `死亡保护魂力账本不守恒:${initial.sp}/${deltas.sp}`);
+        断言战斗回归夹具(initial.sp + Number(deltas.sp || 0) === BATTLE_RUNTIME.readCombatResource(玩家, 'sp'), `死亡保护魂力账本不守恒:${initial.sp}/${deltas.sp}`);
         断言战斗回归夹具(initial.vit + Number(deltas.vit || 0) === getCombatStaminaValue(玩家), `死亡保护体力账本不守恒:${initial.vit}/${deltas.vit}/${getCombatStaminaValue(玩家)}`);
         断言战斗回归夹具(玩家.状态效果['黄金瀑布·金龙不灭真身'].战斗效果.death_save_count === 0, '死亡保护次数未消费');
         断言战斗回归夹具(/濒死守护/.test(String(result?.log || '')), `真实伤害链没有触发死亡保护:${result?.log}`);

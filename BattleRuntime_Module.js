@@ -397,6 +397,332 @@
     throw new Error(`battle_delayed_effect_unsupported:${prototype || 'missing'}`);
   }
 
+  function findCombatUnit(combatData = {}, rawName = '') {
+    const name = String(rawName || '').trim();
+    if (!name) return null;
+    return listPrimaryCombatUnits(combatData).find(unit => previewRuntime.unitName(unit) === name || String(unit?.id || unit?.charKey || '').trim() === name) || null;
+  }
+
+  function persistentResourceKeys(resource = '') {
+    const textValue = (Array.isArray(resource) ? resource : String(resource || '').split(/[、,，/|｜；;\s]+/g))
+      .map(value => String(value || '').trim()).filter(Boolean).join('、');
+    const keys = [];
+    if (/生命|HP|hp/i.test(textValue)) keys.push('hp');
+    if (/体力|vit|sta/i.test(textValue)) keys.push('vit');
+    if (/魂力|sp/i.test(textValue) || /双|混合|全部/.test(textValue)) keys.push('sp');
+    if (/精神|men/i.test(textValue) || /双|混合|全部/.test(textValue)) keys.push('men');
+    return keys.length ? [...new Set(keys)] : ['sp'];
+  }
+
+  function persistentResourceLabel(key = '') {
+    return { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[key] || '魂力';
+  }
+
+  function persistentResourceValue(unit = {}, key = '') {
+    return key === 'hp' ? previewRuntime.readHp(unit) : previewRuntime.readResource(unit, persistentResourceLabel(key));
+  }
+
+  function persistentResourceMax(unit = {}, key = '') {
+    return key === 'hp' ? previewRuntime.readHpMax(unit) : previewRuntime.readResourceMax(unit, persistentResourceLabel(key));
+  }
+
+  function persistentResourceAmount(rawValue, maximum = 0) {
+    const textValue = String(rawValue ?? '').trim();
+    const parsed = readSignedBattleValue(textValue);
+    if (!Number.isFinite(parsed) || parsed === 0) return 0;
+    return /%$/.test(textValue) || Math.abs(parsed) <= 1
+      ? Math.max(1, Math.floor(Math.max(1, Number(maximum || 0)) * Math.abs(parsed)))
+      : Math.floor(Math.abs(parsed));
+  }
+
+  function conditionMatchesFilter(key = '', condition = {}, effect = {}) {
+    if (String(key || '').startsWith('__auto__:')) return false;
+    const state = String(effect?.状态 || '').trim();
+    if (state === '任意负面' && String(condition?.类型 || '') !== 'debuff') return false;
+    if (state === '任意增益' && String(condition?.类型 || '') !== 'buff') return false;
+    if (state && !['任意状态', '任意负面', '任意增益'].includes(state) && key !== state && String(condition?.状态 || '').trim() !== state) return false;
+    const matchedPrototype = String(effect?.匹配原型 || '').trim();
+    if (!matchedPrototype || matchedPrototype === '无') return true;
+    const combatEffects = condition?.战斗效果 || {};
+    if (matchedPrototype === '资源变化' && String(effect?.资源 || '').trim() === '生命') {
+      const hasDamage = Number(combatEffects.dot_damage || 0) > 0 || Number(combatEffects.dot_damage_ratio || 0) > 0;
+      const hasHealing = Number(combatEffects.hot_heal_ratio || 0) > 0;
+      const direction = String(effect?.数值方向 || '任意').trim() || '任意';
+      return direction === '负向' ? hasDamage : direction === '正向' ? hasHealing : hasDamage || hasHealing;
+    }
+    if (matchedPrototype === '护盾变化') return Number(condition?.shield_value || 0) > 0 || Number(combatEffects.shield_gain_bonus || 0) > 0;
+    return false;
+  }
+
+  function transferableCondition(key = '', condition = {}) {
+    const textValue = `${String(key || '')} ${String(condition?.状态 || '')} ${String(condition?.状态名称 || '')} ${String(condition?.描述 || '')}`;
+    if (/护盾|屏障|结界|领域|场地|召唤|真身|炸环|免死|复活|回溯/.test(textValue)) return false;
+    const effects = condition?.战斗效果 || {};
+    return !(Number(effects.death_save_count || 0) > 0 || Number(effects.revive_count || 0) > 0 || effects.invincible === true || String(condition?.特殊机制标识 || '').includes('时光回溯'));
+  }
+
+  function conditionTransferValue(key = '', condition = {}) {
+    const name = String(key || condition?.状态 || '').trim();
+    const effects = condition?.战斗效果 || {};
+    if (/眩晕|麻痹|僵直|混乱|沉默|封技/.test(name)) return 90;
+    if (/缴械|致盲|位移限制|迟缓/.test(name)) return 65;
+    if (/禁疗|治疗反转/.test(name)) return 60;
+    if (/隐匿|隐身|潜行/.test(name) || Number(effects.stealth_level || 0) > 0) return 72;
+    if (/中毒|流血|灼烧|冻伤|持续创伤|资源燃烧/.test(name) || Number(effects.dot_damage || 0) > 0 || Number(effects.dot_damage_ratio || 0) > 0) return 45 + Math.min(18, Math.max(0, Number(condition?.duration || 0)) * 3);
+    if (/无敌|霸体|护盾|真身/.test(name) || effects.invincible === true || effects.super_armor === true || Number(condition?.shield_value || 0) > 0) return 85;
+    return 25;
+  }
+
+  function chooseTransferableCondition(unit = {}, effect = {}, preferredTypes = ['any'], expectedState = '') {
+    if (!unit?.状态效果) return null;
+    for (const expectedType of preferredTypes) {
+      const candidates = Object.entries(unit.状态效果)
+        .filter(([key, condition]) => conditionMatchesFilter(key, condition, effect) && transferableCondition(key, condition))
+        .filter(([, condition]) => expectedType === 'any' || String(condition?.类型 || '').trim() === expectedType)
+        .filter(([key, condition]) => {
+          const state = String(expectedState || '').trim();
+          return !state || ['任意状态', '任意增益', '任意负面'].includes(state) || `${key} ${condition?.状态 || ''} ${condition?.状态名称 || ''} ${condition?.描述 || ''}`.includes(state);
+        })
+        .sort((left, right) => conditionTransferValue(right[0], right[1]) - conditionTransferValue(left[0], left[1]));
+      if (candidates.length) return { key: candidates[0][0], condition: candidates[0][1] };
+    }
+    return null;
+  }
+
+  function removePersistentCondition(unit = {}, key = '') {
+    if (!unit?.状态效果?.[key]) return null;
+    const snapshot = cloneValue(unit.状态效果[key]);
+    delete unit.状态效果[key];
+    Object.keys(unit?.持续效果 || {}).forEach(sustainKey => {
+      if (unit.持续效果[sustainKey]?.related_condition === key) delete unit.持续效果[sustainKey];
+    });
+    refreshSustainRuntimeLoad(unit);
+    if (unit.召唤键) syncSummonMirror(unit);
+    return snapshot;
+  }
+
+  function insertPersistentCondition(unit = {}, baseKey = '状态', condition = {}) {
+    if (!unit.状态效果 || typeof unit.状态效果 !== 'object') unit.状态效果 = {};
+    let key = String(baseKey || '状态').trim() || '状态';
+    if (unit.状态效果[key]) {
+      let index = 1;
+      while (unit.状态效果[`${key}·${index}`]) index += 1;
+      key = `${key}·${index}`;
+    }
+    unit.状态效果[key] = condition;
+    if (unit.召唤键) syncSummonMirror(unit);
+    return key;
+  }
+
+  function persistentEndpointCandidates(endpoint = '', caster = {}, target = {}, combatData = {}, expandTargetSide = false) {
+    const player = Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player.filter(Boolean) : [];
+    const enemy = Array.isArray(combatData?.参战者?.team_enemy) ? combatData.参战者.team_enemy.filter(Boolean) : [];
+    const casterInPlayer = player.includes(caster) || player.some(unit => previewRuntime.unitName(unit) === previewRuntime.unitName(caster));
+    if (endpoint === '自身') return [caster].filter(Boolean);
+    if (endpoint === '目标') {
+      if (expandTargetSide) {
+        if (player.includes(target) || player.some(unit => previewRuntime.unitName(unit) === previewRuntime.unitName(target))) return player;
+        if (enemy.includes(target) || enemy.some(unit => previewRuntime.unitName(unit) === previewRuntime.unitName(target))) return enemy;
+      }
+      return [target].filter(Boolean);
+    }
+    if (endpoint === '友方') return casterInPlayer ? player : enemy;
+    if (endpoint === '敌方') return casterInPlayer ? enemy : player;
+    return [];
+  }
+
+  function persistentSide(unit = {}, caster = {}, combatData = {}) {
+    const allies = persistentEndpointCandidates('友方', caster, unit, combatData);
+    return allies.includes(unit) || previewRuntime.unitName(unit) === previewRuntime.unitName(caster) ? '己方' : '敌方';
+  }
+
+  function settlePersistentResourceTransfer(unit = {}, condition = {}, effect = {}, label = '', combatData = {}) {
+    const mode = String(effect?.资源转移方式 || '').trim();
+    if (!['吞噬', '共享', '均分', '转移'].includes(mode)) return '';
+    const caster = findCombatUnit(combatData, condition.来源角色) || unit;
+    const keys = persistentResourceKeys(effect?.资源 || '');
+    const conversion = Math.max(0, Math.min(2, Number(effect?.转化比例 ?? 1) || 1));
+    const logs = [];
+    if (mode === '均分') {
+      const namedTargets = (Array.isArray(condition.持续目标列表) ? condition.持续目标列表 : []).map(name => findCombatUnit(combatData, name)).filter(Boolean);
+      const units = [...new Set((namedTargets.length ? namedTargets : [unit, caster]).filter(entry => entry && previewRuntime.isAlive(entry)))];
+      if (units.length < 2) return '';
+      const strength = Math.max(0, Math.min(1, Math.abs(readSignedBattleValue(effect?.数值 || '100%')) || 1));
+      keys.forEach(key => {
+        const average = units.reduce((sum, entry) => sum + persistentResourceValue(entry, key), 0) / units.length;
+        units.forEach(entry => {
+          const before = persistentResourceValue(entry, key);
+          const next = Math.max(0, Math.min(persistentResourceMax(entry, key), Math.round(before + (average - before) * strength)));
+          const delta = next - before;
+          if (!delta || findResourceSuppression(entry, persistentResourceLabel(key))) return;
+          writeCombatResource(entry, key, next);
+          logs.push(`${entry === caster ? '自身' : previewRuntime.unitName(entry) || '目标'}${persistentResourceLabel(key)}${delta > 0 ? '+' : ''}${delta}`);
+        });
+      });
+    } else {
+      keys.forEach(key => {
+        const maximum = persistentResourceMax(unit, key);
+        const amount = Math.min(persistentResourceValue(unit, key), persistentResourceAmount(effect?.数值, maximum));
+        if (!(amount > 0)) return;
+        if (mode === '共享') {
+          if (!caster || caster === unit) return;
+          const casterCurrent = persistentResourceValue(caster, key);
+          const paid = Math.min(casterCurrent, amount);
+          if (!(paid > 0) || findResourceSuppression(caster, persistentResourceLabel(key)) || findResourceSuppression(unit, persistentResourceLabel(key))) return;
+          const gain = Math.max(1, Math.floor(paid * conversion));
+          writeCombatResource(caster, key, casterCurrent - paid);
+          writeCombatResource(unit, key, Math.min(maximum, persistentResourceValue(unit, key) + gain));
+          logs.push(`自身共享${paid}点${persistentResourceLabel(key)}给${label}`);
+          return;
+        }
+        if (findResourceSuppression(unit, persistentResourceLabel(key))) return;
+        writeCombatResource(unit, key, persistentResourceValue(unit, key) - amount);
+        logs.push(`${label}损失${amount}点${persistentResourceLabel(key)}`);
+        if (mode === '吞噬' && caster) {
+          const recovered = Math.max(0, Math.floor(amount * conversion));
+          if (recovered > 0 && !findResourceSuppression(caster, persistentResourceLabel(key))) {
+            writeCombatResource(caster, key, Math.min(persistentResourceMax(caster, key), persistentResourceValue(caster, key) + recovered));
+            logs.push(`自身回补${recovered}点${persistentResourceLabel(key)}`);
+          }
+        }
+      });
+    }
+    return logs.length ? `[持续资源转移] ${logs.join('，')}。` : '';
+  }
+
+  function settlePersistentStateRemoval(unit = {}, key = '', effect = {}, label = '') {
+    const maxCount = String(effect?.数量 || '').trim() === '全部' ? Infinity : Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
+    const removed = [];
+    for (const [stateKey, state] of Object.entries(unit?.状态效果 || {})) {
+      if (stateKey === key || removed.length >= maxCount || !conditionMatchesFilter(stateKey, state, effect)) continue;
+      removePersistentCondition(unit, stateKey);
+      removed.push(stateKey);
+    }
+    return removed.length ? `[持续状态移除] ${label}移除了[${removed.join('/')}].` : '';
+  }
+
+  function settlePersistentStateTransfer(unit = {}, condition = {}, effect = {}, label = '', combatData = {}) {
+    const caster = findCombatUnit(combatData, condition.来源角色) || unit;
+    const target = findCombatUnit(combatData, condition.目标角色) || unit;
+    const sourceEndpoint = String(effect?.来源 || '自身').trim();
+    const targetEndpoint = String(effect?.去向 || '目标').trim();
+    if (!['自身', '目标', '友方', '敌方'].includes(sourceEndpoint) || !['自身', '目标', '友方', '敌方'].includes(targetEndpoint)) return '';
+    const count = String(effect?.数量 || '').trim() === '全部' ? 99 : Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
+    const logs = [];
+    const expand = sourceEndpoint === '目标' && targetEndpoint === '目标';
+    for (let index = 0; index < count; index += 1) {
+      let moved = false;
+      const sources = persistentEndpointCandidates(sourceEndpoint, caster, target, combatData, expand);
+      const receivers = persistentEndpointCandidates(targetEndpoint, caster, target, combatData, expand);
+      if (expand && new Set([...sources, ...receivers]).size < 2) return '';
+      for (const source of sources) {
+        for (const receiver of receivers) {
+          if (!source || !receiver || source === receiver || previewRuntime.unitName(source) === previewRuntime.unitName(receiver)) continue;
+          const sourceSide = persistentSide(source, caster, combatData);
+          const receiverSide = persistentSide(receiver, caster, combatData);
+          const preferred = sourceSide === '己方' ? (receiverSide === '敌方' ? ['debuff', 'buff'] : ['debuff']) : (receiverSide === '己方' ? ['buff', 'debuff'] : ['buff']);
+          const candidate = chooseTransferableCondition(source, effect, preferred, effect?.状态 || '任意状态');
+          if (!candidate) continue;
+          const snapshot = removePersistentCondition(source, candidate.key);
+          if (!snapshot) continue;
+          snapshot.描述 = `由[${condition.来源技能 || '持续效果'}]持续转移`;
+          const nextKey = insertPersistentCondition(receiver, candidate.key, snapshot);
+          logs.push(`${source === caster ? '自身' : previewRuntime.unitName(source) || '来源'}的[${candidate.key}]转移到${receiver === caster ? '自身' : previewRuntime.unitName(receiver) || '目标'}为[${nextKey}]`);
+          moved = true;
+          break;
+        }
+        if (moved) break;
+      }
+      if (!moved) break;
+    }
+    return logs.length ? `[持续状态转移] ${logs.join('；')}。` : '';
+  }
+
+  function settlePersistentStateExchange(unit = {}, condition = {}, effect = {}, label = '', combatData = {}) {
+    const caster = findCombatUnit(combatData, condition.来源角色);
+    const target = findCombatUnit(combatData, condition.目标角色) || unit;
+    if (!caster || !target || caster === target) return '';
+    const own = chooseTransferableCondition(caster, { 状态: effect?.状态 || '任意负面' }, ['debuff'], effect?.状态 || '任意负面');
+    const other = chooseTransferableCondition(target, { 状态: '任意增益' }, ['buff'], '任意增益');
+    if (!own || !other) return '';
+    const ownSnapshot = removePersistentCondition(caster, own.key);
+    const otherSnapshot = removePersistentCondition(target, other.key);
+    if (!ownSnapshot || !otherSnapshot) return '';
+    ownSnapshot.描述 = `由[${condition.来源技能 || '持续效果'}]持续交换至${previewRuntime.unitName(target) || '目标'}`;
+    otherSnapshot.描述 = `由[${condition.来源技能 || '持续效果'}]持续交换至${previewRuntime.unitName(caster) || '自身'}`;
+    const ownNewKey = insertPersistentCondition(target, own.key, ownSnapshot);
+    const otherNewKey = insertPersistentCondition(caster, other.key, otherSnapshot);
+    return `[持续状态交换] 自身的[${own.key}]与${previewRuntime.unitName(target) || label}的[${other.key}]交换为[${otherNewKey}]/[${ownNewKey}]。`;
+  }
+
+  function settlePersistentPrototype(unit = {}, key = '', condition = {}, label = '', combatData = {}) {
+    const effect = condition?.持续原型效果;
+    if (!effect || typeof effect !== 'object') return '';
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '资源转移') return settlePersistentResourceTransfer(unit, condition, effect, label, combatData);
+    if (prototype === '状态移除') return settlePersistentStateRemoval(unit, key, effect, label);
+    if (prototype === '状态转移') return settlePersistentStateTransfer(unit, condition, effect, label, combatData);
+    if (prototype === '状态交换') return settlePersistentStateExchange(unit, condition, effect, label, combatData);
+    throw new Error(`battle_persistent_prototype_unsupported:${prototype || 'missing'}`);
+  }
+
+  function settleConditionsAtRoundEnd(unit = {}, label = '', combatData = {}) {
+    if (!unit) return { log: '', totalDot: 0, expired: [] };
+    let totalDot = 0;
+    const expired = [];
+    const logs = [];
+    const conditions = unit.状态效果 && typeof unit.状态效果 === 'object' && !Array.isArray(unit.状态效果) ? unit.状态效果 : {};
+    const ringRecoveryLog = settleRingRecoveryAtRoundEnd(unit, label);
+    if (ringRecoveryLog) logs.push(ringRecoveryLog);
+    Object.keys(conditions).forEach(key => {
+      const condition = conditions[key];
+      if (!condition) return;
+      if (condition.__本回合新附加 === true) {
+        delete condition.__本回合新附加;
+        return;
+      }
+      if (condition?.召唤物) return;
+      const tickResult = settleConditionResourceTick(unit, key, condition, label, combatData);
+      if (tickResult.log) logs.push(tickResult.log);
+      totalDot += Math.max(0, Number(tickResult.totalDot || 0));
+      if (tickResult.stopCondition === true) return;
+      if (previewRuntime.readHp(unit) <= 0) {
+        const reviveLog = triggerRevive(unit, label);
+        if (reviveLog) logs.push(reviveLog);
+      }
+      const sideEffectLog = settleConditionSideEffects(unit, key, condition, '回合结束时', label, combatData);
+      if (sideEffectLog) logs.push(sideEffectLog);
+      const prototypeLog = settlePersistentPrototype(unit, key, condition, label, combatData);
+      if (prototypeLog) logs.push(prototypeLog);
+      if (typeof condition.duration === 'number') {
+        condition.duration -= 1;
+        if (condition.duration <= 0) expired.push(key);
+      }
+    });
+    const expiryOrder = [
+      ...expired.filter(key => conditions[key]?.延迟效果 === true),
+      ...expired.filter(key => conditions[key]?.延迟效果 !== true),
+    ];
+    expiryOrder.forEach(key => {
+      const condition = conditions[key];
+      if (!condition) return;
+      if (condition.延迟效果 === true && Array.isArray(condition?.结算效果)) {
+        condition.结算效果.forEach(effect => {
+          const delayedLog = settleDelayedEffect(unit, effect, label);
+          if (delayedLog) logs.push(delayedLog);
+        });
+      }
+      const sideEffectLog = settleConditionSideEffects(unit, key, condition, '效果结束后', label, combatData);
+      if (sideEffectLog) logs.push(sideEffectLog);
+      const expiryLog = settleExpiredConditionBase(unit, key, condition, label, combatData);
+      if (expiryLog) logs.push(expiryLog);
+    });
+    const recoveryLog = settleNaturalRecoveryAtRoundEnd(unit, label, combatData);
+    if (recoveryLog) logs.push(recoveryLog);
+    if (unit.召唤键) syncSummonMirror(unit);
+    return { log: logs.join(' '), totalDot, expired };
+  }
+
   function nextRuntimeId(prefix = 'battle-event') {
     runtimeIdSequence = (runtimeIdSequence + 1) % 1000000;
     return `${String(prefix || 'battle-event')}-${runtimeIdContext}-${runtimeIdSequence.toString(36)}`;
@@ -3131,7 +3457,7 @@
       if (previewRuntime.readHp(unit) <= 0) return;
       const name = previewRuntime.unitName(unit);
       const sustainResult = settlement.settleSustain(unit, name, combatData, adapterOptions) || {};
-      const conditionResult = settlement.settleConditions(unit, name, combatData, adapterOptions) || {};
+      const conditionResult = settleConditionsAtRoundEnd(unit, name, combatData) || {};
       syncRoundEndUnit(unit);
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
       if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
@@ -5620,7 +5946,7 @@
   function bindSettlementPrimitives(primitives) {
     const required = [
       'prepare', 'executeQueue',
-      'settleSustain', 'settleConditions',
+      'settleSustain',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -5904,6 +6230,8 @@
     normalizeSideEffectList,
     settleConditionSideEffects,
     settleDelayedEffect,
+    settlePersistentPrototype,
+    settleConditionsAtRoundEnd,
     nextRuntimeId,
     ensureCombatRuntime,
     getBattleSnapshot,
@@ -5916,6 +6244,7 @@
     buildCombatFinalStats,
     syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,
+    readCombatResource: persistentResourceValue,
     ensureActionDiagnostic,
     registerStateSource,
     findStateSource,

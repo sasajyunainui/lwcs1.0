@@ -954,6 +954,61 @@ assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedU
   原型: '未知延迟原型', 数值: 1,
 }, '延迟测试单位'), /battle_delayed_effect_unsupported/, '未知延迟原型被静默跳过');
 
+const persistentResourceCombat = combatData();
+const persistentCaster = persistentResourceCombat.参战者.team_player[0];
+const persistentTarget = persistentResourceCombat.参战者.team_enemy[0];
+persistentCaster.hp = 300;
+persistentCaster.hp_max = 500;
+persistentCaster.属性.HP = 300;
+persistentCaster.属性.HP上限 = 500;
+persistentTarget.hp = 500;
+persistentTarget.hp_max = 500;
+persistentTarget.属性.HP = 500;
+persistentTarget.属性.HP上限 = 500;
+const persistentResourceLog = sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(persistentTarget, '生命吞噬', {
+  来源角色: 'player-a', 目标角色: 'enemy-a', 持续原型效果: { 原型: '资源转移', 资源: '生命', 资源转移方式: '吞噬', 数值: '10%', 转化比例: 1 },
+}, 'enemy-a', persistentResourceCombat);
+assert.match(persistentResourceLog, /持续资源转移/, '持续资源转移没有执行');
+assert.equal(persistentTarget.hp, 450, '持续吞噬没有扣除目标生命');
+assert.equal(persistentCaster.hp, 350, '持续吞噬没有回补来源生命');
+
+const persistentRemovalUnit = participant('persistent-removal-unit', 'enemy', 100);
+persistentRemovalUnit.状态效果 = {
+  持续净化: { 持续原型效果: { 原型: '状态移除', 状态: '任意负面', 数量: 1 } },
+  中毒: { 类型: 'debuff', 状态: '中毒', 战斗效果: { dot_damage: 20 } },
+};
+const persistentRemovalLog = sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(persistentRemovalUnit, '持续净化', persistentRemovalUnit.状态效果.持续净化, '净化目标', combatData());
+assert.match(persistentRemovalLog, /移除了\[中毒\]/, '持续状态移除没有选择负面状态');
+assert.equal(persistentRemovalUnit.状态效果.中毒, undefined, '持续状态移除没有删除目标状态');
+
+const persistentTransferCombat = combatData();
+const transferCaster = persistentTransferCombat.参战者.team_player[0];
+const transferTarget = persistentTransferCombat.参战者.team_enemy[0];
+transferCaster.状态效果.中毒 = { 类型: 'debuff', 状态: '中毒', 战斗效果: { dot_damage: 10 } };
+const transferLog = sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(transferCaster, '转移媒介', {
+  来源角色: 'player-a', 目标角色: 'enemy-a', 来源技能: '状态转移测试',
+  持续原型效果: { 原型: '状态转移', 来源: '自身', 去向: '目标', 状态: '任意负面', 数量: 1 },
+}, '转移目标', persistentTransferCombat);
+assert.match(transferLog, /中毒.*转移/, '持续状态转移没有形成转移事实');
+assert.equal(transferCaster.状态效果.中毒, undefined, '持续状态转移没有删除来源状态');
+assert.ok(transferTarget.状态效果.中毒, '持续状态转移没有写入接收方');
+
+const persistentExchangeCombat = combatData();
+const exchangeCaster = persistentExchangeCombat.参战者.team_player[0];
+const exchangeTarget = persistentExchangeCombat.参战者.team_enemy[0];
+exchangeCaster.状态效果.迟缓 = { 类型: 'debuff', 状态: '迟缓', 战斗效果: { reaction_penalty: 0.2 } };
+exchangeTarget.状态效果.迅捷 = { 类型: 'buff', 状态: '迅捷', 战斗效果: { reaction_bonus: 0.2 } };
+const exchangeLog = sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(exchangeCaster, '交换媒介', {
+  来源角色: 'player-a', 目标角色: 'enemy-a', 来源技能: '状态交换测试',
+  持续原型效果: { 原型: '状态交换', 状态: '任意负面' },
+}, '交换目标', persistentExchangeCombat);
+assert.match(exchangeLog, /持续状态交换/, '持续状态交换没有执行');
+assert.ok(exchangeCaster.状态效果.迅捷, '持续状态交换没有把增益写给来源方');
+assert.ok(exchangeTarget.状态效果.迟缓, '持续状态交换没有把负面写给目标方');
+assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(exchangeCaster, '未知持续', {
+  持续原型效果: { 原型: '未知持续原型' },
+}, '未知目标', persistentExchangeCombat), /battle_persistent_prototype_unsupported/, '未知持续原型被静默跳过');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -980,6 +1035,7 @@ console.log(JSON.stringify({
     passiveReviveChecks: 3,
     roundEndSideEffectChecks: 4,
     delayedEffectChecks: 6,
+    persistentPrototypeChecks: 5,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },
