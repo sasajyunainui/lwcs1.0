@@ -254,11 +254,11 @@
         const 护卫窗口ID = BATTLE_RUNTIME.ensureSummonWindowRuntime(夹具.召唤单位)?.windowId || '';
         断言召唤夹具(!!护卫窗口ID, '护卫召唤缺少稳定窗口ID');
         断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤生成后不能立即拦截');
-        断言召唤夹具(!结算护卫召唤回合窗口(夹具.combatData), '护卫召唤生成回合错误消耗完整窗口');
+        断言召唤夹具(!BATTLE_RUNTIME.settleGuardSummonWindows(夹具.combatData), '护卫召唤生成回合错误消耗完整窗口');
         夹具.combatData.回合 = 2;
         BATTLE_RUNTIME.beginBattleRound(夹具.combatData, 夹具.combatData.回合);
         断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤完整保护回合开始时不可用');
-        const 到期日志 = 结算护卫召唤回合窗口(夹具.combatData);
+        const 到期日志 = BATTLE_RUNTIME.settleGuardSummonWindows(夹具.combatData);
         断言召唤夹具(/护卫保护窗口耗尽/.test(到期日志), `护卫完整窗口结束后未到期:${到期日志}`);
         日志.push('护卫召唤生成后立即可拦截，并在完整保护回合结束后消费窗口');
       });

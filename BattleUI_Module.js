@@ -12245,26 +12245,6 @@ class BattleUIComponent {
       return 数量;
     }
 
-    function 递减战斗规则改写运行态(combatData = {}) {
-      if (!combatData || !Array.isArray(combatData.__规则改写运行态)) return '';
-      const 当前回合 = Math.max(0, Number(combatData?.回合 || 0));
-      const 保留列表 = [];
-      let 消散数量 = 0;
-      combatData.__规则改写运行态.forEach(规则 => {
-        if (!规则 || typeof 规则 !== 'object') return;
-        if (Number(规则?.创建回合 || 0) === 当前回合 && 规则.__创建回合已保留 !== true) {
-          规则.__创建回合已保留 = true;
-          保留列表.push(规则);
-          return;
-        }
-        规则.剩余回合 = Math.max(0, Number(规则?.剩余回合 || 0) - 1);
-        if (规则.剩余回合 > 0) 保留列表.push(规则);
-        else 消散数量 += 1;
-      });
-      combatData.__规则改写运行态 = 保留列表;
-      return 消散数量 > 0 ? `[规则改写] ${消散数量}条临时规则改写已结束。` : '';
-    }
-
     const 战斗机制抹消可匹配字段表 = Object.freeze({
       状态施加: Object.freeze(['状态']),
       状态移除: Object.freeze(['状态', '匹配原型', '资源']),
@@ -15790,17 +15770,6 @@ class BattleUIComponent {
         .find(单位 => isCombatUnitAlive(单位) && !召唤行动授权已消费(单位, combatData, 'guard') && !isCombatUnitIdentityMatch(单位, 受击者?.name || 受击者?.名称 || 受击者)) || null;
     }
 
-    function 结算护卫召唤回合窗口(combatData = {}) {
-      const 日志 = [];
-      读取召唤单位列表(combatData, { 行动模式: '护卫' }).forEach(单位 => {
-        if (召唤单位本回合刚生成(单位, combatData)) return;
-        const grantId = `${BATTLE_RUNTIME.ensureSummonWindowRuntime(单位)?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:guard-window`;
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '护卫保护窗口耗尽', grantId);
-        if (到期日志) 日志.push(到期日志);
-      });
-      return 日志.join(' ');
-    }
-
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
       validate: combatData => 校验团战运行态(combatData),
@@ -15810,8 +15779,7 @@ class BattleUIComponent {
       syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
       settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
-      settleGuardWindow: combatData => 结算护卫召唤回合窗口(combatData),
-      settleRuleRewrite: combatData => 递减战斗规则改写运行态(combatData),
+      consumeSummonWindow: (combatData, unit, reason, grantId) => 消费召唤有效窗口(combatData, unit, reason, grantId),
       writeLedgerEvent: (combatData, payload) => 写入战斗事件账本(combatData, payload),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);

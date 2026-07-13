@@ -832,10 +832,45 @@
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
       if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
     });
-    const guardLog = settlement.settleGuardWindow(combatData, adapterOptions);
+    const guardLog = settleGuardSummonWindows(combatData, settlement, adapterOptions);
     if (guardLog) logs.push(`[团战回合尾] ${guardLog}`);
-    const rewriteLog = settlement.settleRuleRewrite(combatData, adapterOptions);
+    const rewriteLog = settleRuleRewrite(combatData);
     if (rewriteLog) logs.push(`[团战回合尾] ${rewriteLog}`);
+  }
+
+  function settleRuleRewrite(combatData = {}) {
+    if (!combatData || !Array.isArray(combatData.__规则改写运行态)) return '';
+    const currentRound = Math.max(0, Number(combatData?.回合 || 0));
+    const retained = [];
+    let expired = 0;
+    combatData.__规则改写运行态.forEach(rule => {
+      if (!rule || typeof rule !== 'object') return;
+      if (Number(rule?.创建回合 || 0) === currentRound && rule.__创建回合已保留 !== true) {
+        rule.__创建回合已保留 = true;
+        retained.push(rule);
+        return;
+      }
+      rule.剩余回合 = Math.max(0, Number(rule?.剩余回合 || 0) - 1);
+      if (rule.剩余回合 > 0) retained.push(rule);
+      else expired += 1;
+    });
+    combatData.__规则改写运行态 = retained;
+    return expired > 0 ? `[规则改写] ${expired}条临时规则改写已结束。` : '';
+  }
+
+  function settleGuardSummonWindows(combatData = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+    const logs = [];
+    const currentRound = Math.max(0, Number(combatData?.回合 || 0));
+    listSummonCombatUnits(combatData)
+      .filter(unit => String(unit?.行动模式 || '').trim() === '护卫')
+      .forEach(unit => {
+        const createdRound = Math.max(0, Number(unit?.生成回合 || 0));
+        if (currentRound > 0 && createdRound > 0 && currentRound <= createdRound) return;
+        const grantId = `${ensureSummonWindowRuntime(unit)?.windowId || 'summon'}:${currentRound}:guard-window`;
+        const expiredLog = settlement.consumeSummonWindow(combatData, unit, '护卫保护窗口耗尽', grantId, adapterOptions);
+        if (expiredLog) logs.push(expiredLog);
+      });
+    return logs.join(' ');
   }
 
   function createSettlementAdapters(settlement, adapterOptions = {}) {
@@ -3232,7 +3267,7 @@
     const required = [
       'prepare', 'validate', 'refreshSummonMentalLoad', 'buildQueue', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
-      'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',
+      'consumeSummonWindow', 'writeLedgerEvent',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -3546,6 +3581,7 @@
     readTeamAlive,
     ensureSummonWindowRuntime,
     beginBattleRound,
+    settleGuardSummonWindows,
   });
 
   root.__LWCS_BATTLE_RUNTIME__ = api;
