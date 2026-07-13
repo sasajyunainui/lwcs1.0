@@ -15533,7 +15533,6 @@ class BattleUIComponent {
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
-      syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
       settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
       buildSummonFinalStats: unit => buildCombatFinalStats(unit),

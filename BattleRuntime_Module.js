@@ -1988,6 +1988,31 @@
     mirror.已消散 = summon.已消散 === true;
   }
 
+  function syncRoundEndUnit(unit = {}) {
+    if (!unit || typeof unit !== 'object') return;
+    const stats = unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : unit;
+    const syncValue = (runtimeKeys, chineseKey, maxRuntimeKeys, maxChineseKey) => {
+      const runtimeKey = runtimeKeys.find(key => Object.prototype.hasOwnProperty.call(unit, key) && unit[key] !== undefined) || runtimeKeys[0];
+      const rawValue = unit[runtimeKey] ?? unit[chineseKey] ?? stats[runtimeKey] ?? stats[chineseKey] ?? 0;
+      const rawMax = maxRuntimeKeys.map(key => unit[key] ?? stats[key]).find(value => value !== undefined)
+        ?? unit[maxChineseKey] ?? stats[maxChineseKey] ?? rawValue ?? 1;
+      const maxValue = Math.max(1, Number(rawMax || 1));
+      const nextValue = Math.max(0, Math.min(maxValue, Number(rawValue || 0)));
+      runtimeKeys.forEach(key => { unit[key] = nextValue; });
+      maxRuntimeKeys.forEach(key => { unit[key] = maxValue; });
+      unit[chineseKey] = nextValue;
+      unit[maxChineseKey] = maxValue;
+      if (stats !== unit) {
+        stats[chineseKey] = nextValue;
+        stats[maxChineseKey] = maxValue;
+      }
+    };
+    syncValue(['sp'], '魂力', ['sp_max'], '魂力上限');
+    syncValue(['men'], '精神力', ['men_max'], '精神力上限');
+    syncValue(['sta', 'vit'], '体力', ['sta_max', 'vit_max'], '体力上限');
+    if (unit.召唤键) syncSummonMirror(unit);
+  }
+
   function removeSummonUnit(combatData = {}, summon = {}, reason = '消散') {
     if (!summon || summon.已消散 === true) return '';
     const host = summon.__宿主;
@@ -2177,12 +2202,12 @@
 
   function settleBattleRoundEnd(combatData = {}, logs = [], settlement, adapterOptions = {}) {
     listCombatUnits(combatData).forEach(unit => {
-      settlement.syncRoundEndUnit(unit, adapterOptions);
+      syncRoundEndUnit(unit);
       if (previewRuntime.readHp(unit) <= 0) return;
       const name = previewRuntime.unitName(unit);
       const sustainResult = settlement.settleSustain(unit, name, combatData, adapterOptions) || {};
       const conditionResult = settlement.settleConditions(unit, name, combatData, adapterOptions) || {};
-      settlement.syncRoundEndUnit(unit, adapterOptions);
+      syncRoundEndUnit(unit);
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
       if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
     });
@@ -4670,7 +4695,7 @@
   function bindSettlementPrimitives(primitives) {
     const required = [
       'prepare', 'executeQueue',
-      'syncRoundEndUnit', 'settleSustain', 'settleConditions',
+      'settleSustain', 'settleConditions',
       'buildSummonFinalStats',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
