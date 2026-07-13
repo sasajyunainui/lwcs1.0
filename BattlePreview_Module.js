@@ -189,9 +189,22 @@
     return listUnits(worldSnapshot).find(entry => unitId(entry.unit) === id)?.side || '';
   }
 
-  function isAlive(unit = {}) {
+  function isDead(unit = {}) {
+    return unit?.状态?.存活 === false || readHp(unit) <= 0;
+  }
+
+  function isBattleCapable(unit = {}) {
     const actionState = String(unit?.状态?.行动 || '').trim();
-    return unit?.状态?.存活 !== false && readHp(unit) > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
+    return !isDead(unit) && readResource(unit, '体力') > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
+  }
+
+  function isAlive(unit = {}) {
+    return isBattleCapable(unit);
+  }
+
+  function shouldTriggerTraumaUnconscious(damage = 0, hpAfter = 0, hpMax = 1) {
+    const safeMax = Math.max(1, Number(hpMax || 1));
+    return Number(hpAfter || 0) > 0 && Number(damage || 0) / safeMax >= 0.5 - 1e-9 && Number(hpAfter || 0) / safeMax < 0.2 - 1e-9;
   }
 
   function normalizeObjectiveSide(value = '') {
@@ -215,12 +228,15 @@
       坚持回合: 'ROUND_REACHED',
       指定单位受伤: 'UNIT_DAMAGED',
       指定单位失能: 'UNIT_INCAPACITATED',
-      指定单位死亡: 'UNIT_INCAPACITATED',
+      指定单位死亡: 'UNIT_DEAD',
+      全员死亡: 'TEAM_DEAD',
+      敌方全员死亡: 'TEAM_DEAD',
+      我方全员死亡: 'TEAM_DEAD',
       成功撤离: 'WITHDRAW_SUCCESS',
     };
     const rawType = String(condition.type || condition.类型 || '').trim();
     const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
-    if (!['TEAM_INCAPACITATED', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
     const inferredSide = rawType.startsWith('我方') ? 'PLAYER' : rawType.startsWith('敌方') ? 'ENEMY' : '';
     const side = normalizeObjectiveSide(condition.side || condition.阵营 || inferredSide);
     const targetSource = condition.targetIds || condition.目标 || condition.targets || [];
@@ -240,7 +256,7 @@
       type,
       side,
       targetIds: Object.freeze(targetIds),
-      scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (type === 'TEAM_INCAPACITATED' ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
+      scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(type) ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
       threshold,
       round,
       requireActive: condition.requireActive !== false && condition.存活要求 !== false,
@@ -284,40 +300,76 @@
       .filter(unit => !targetIds.size || targetIds.has(unitId(unit)) || targetIds.has(unitName(unit)));
   }
 
-  function evaluateObjectiveCondition(worldSnapshot = {}, condition = {}, options = {}) {
-    if (condition.type === 'WITHDRAW_SUCCESS') return worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+  function readIncapacityReason(unit = {}) {
+    if (isDead(unit)) return 'DEAD';
+    if (String(unit?.__战斗失能原因 || '').trim()) return String(unit.__战斗失能原因).trim();
+    if (readResource(unit, '体力') <= 0) return 'STAMINA_EXHAUSTED';
+    const actionState = String(unit?.状态?.行动 || '').trim();
+    if (/昏迷/.test(actionState)) return 'UNCONSCIOUS';
+    if (/投降/.test(actionState)) return 'SURRENDERED';
+    if (/制服/.test(actionState)) return 'SUBDUED';
+    if (/失去战斗力/.test(actionState)) return 'INCAPACITATED';
+    return '';
+  }
+
+  function evaluateObjectiveConditionDetail(worldSnapshot = {}, condition = {}, options = {}) {
+    if (condition.type === 'WITHDRAW_SUCCESS') {
+      const matched = worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+      return Object.freeze({ condition, matched, unitResults: Object.freeze([]), reason: matched ? 'WITHDRAW_SUCCESS' : '' });
+    }
     if (condition.type === 'ROUND_REACHED') {
-      if (options.roundCompleted !== true) return false;
+      if (options.roundCompleted !== true) return Object.freeze({ condition, matched: false, unitResults: Object.freeze([]), reason: '' });
       const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - Number(options.startRound || 0));
-      if (elapsedRounds < condition.round) return false;
-      if (!condition.requireActive) return true;
+      if (elapsedRounds < condition.round) return Object.freeze({ condition, matched: false, unitResults: Object.freeze([]), reason: '' });
+      if (!condition.requireActive) return Object.freeze({ condition, matched: true, unitResults: Object.freeze([]), reason: 'ROUND_REACHED' });
       const units = objectiveUnits(worldSnapshot, condition);
-      return units.length > 0 && units.some(isAlive);
+      const unitResults = units.map(unit => Object.freeze({ unitId: unitId(unit), unitName: unitName(unit), matched: isBattleCapable(unit), reason: isBattleCapable(unit) ? 'ACTIVE' : readIncapacityReason(unit) }));
+      const matched = unitResults.length > 0 && unitResults.some(result => result.matched);
+      return Object.freeze({ condition, matched, unitResults: Object.freeze(unitResults), reason: matched ? 'ROUND_REACHED' : '' });
     }
     const units = objectiveUnits(worldSnapshot, condition);
-    if (!units.length) return false;
-    const tests = units.map(unit => {
-      if (condition.type === 'TEAM_INCAPACITATED' || condition.type === 'UNIT_INCAPACITATED') return !isAlive(unit);
-      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return readHp(unit) / Math.max(1, readHpMax(unit)) <= condition.threshold + 1e-9;
+    if (!units.length) return Object.freeze({ condition, matched: false, unitResults: Object.freeze([]), reason: 'NO_TARGET' });
+    const unitResults = units.map(unit => {
+      let matched = false;
+      let reason = '';
+      if (condition.type === 'TEAM_INCAPACITATED' || condition.type === 'UNIT_INCAPACITATED') {
+        matched = !isBattleCapable(unit);
+        reason = matched ? readIncapacityReason(unit) : '';
+      } else if (condition.type === 'TEAM_DEAD' || condition.type === 'UNIT_DEAD') {
+        matched = isDead(unit);
+        reason = matched ? 'DEAD' : '';
+      } else if (condition.type === 'HP_RATIO_AT_OR_BELOW') {
+        matched = readHp(unit) / Math.max(1, readHpMax(unit)) <= condition.threshold + 1e-9;
+        reason = matched ? 'HP_THRESHOLD_REACHED' : '';
+      }
       if (condition.type === 'UNIT_DAMAGED') {
         const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
-        return readHp(unit) < Math.max(0, baseline) - 1e-9;
+        matched = readHp(unit) < Math.max(0, baseline) - 1e-9;
+        reason = matched ? 'UNIT_DAMAGED' : '';
       }
-      return false;
+      return Object.freeze({ unitId: unitId(unit), unitName: unitName(unit), matched, reason });
     });
-    return condition.scope === 'ALL' ? tests.every(Boolean) : tests.some(Boolean);
+    const matched = condition.scope === 'ALL' ? unitResults.every(result => result.matched) : unitResults.some(result => result.matched);
+    const reason = matched ? unitResults.find(result => result.matched)?.reason || condition.type : '';
+    return Object.freeze({ condition, matched, unitResults: Object.freeze(unitResults), reason });
+  }
+
+  function evaluateObjectiveCondition(worldSnapshot = {}, condition = {}, options = {}) {
+    return evaluateObjectiveConditionDetail(worldSnapshot, condition, options).matched;
   }
 
   function evaluateBattleObjectives(worldSnapshot = {}, rawObjectives = {}, options = {}) {
     const objectives = normalizeBattleObjectives(rawObjectives, worldSnapshot);
     const evaluateGroup = group => {
-      const matches = group.conditions.map(condition => evaluateObjectiveCondition(worldSnapshot, condition, {
+      const details = group.conditions.map(condition => evaluateObjectiveConditionDetail(worldSnapshot, condition, {
         ...options,
         startRound: objectives.startRound,
       }));
+      const matches = details.map(detail => detail.matched);
       return {
         matched: matches.length > 0 && (group.logic === 'ALL' ? matches.every(Boolean) : matches.some(Boolean)),
         matches,
+        details,
       };
     };
     const victory = evaluateGroup(objectives.victory);
@@ -335,6 +387,9 @@
       terminal: status !== 'ONGOING',
       victoryMatches: Object.freeze(victory.matches),
       defeatMatches: Object.freeze(defeat.matches),
+      victoryDetails: Object.freeze(victory.details),
+      defeatDetails: Object.freeze(defeat.details),
+      matchedDetails: Object.freeze((status === 'PLAYER_WIN' ? victory.details : status === 'ENEMY_WIN' ? defeat.details : [...victory.details, ...defeat.details]).filter(detail => detail.matched)),
       timeLimitReached,
       objectives,
     });
@@ -789,10 +844,13 @@
           const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
           const damageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
           const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability);
+          const fullHitDamage = Math.min(damageLimit, rawDamage);
+          const traumaUnconscious = shouldTriggerTraumaUnconscious(fullHitDamage, readHp(currentTarget) - fullHitDamage, readHpMax(currentTarget));
           const nonlethalIncapacitated = nonlethalIntent && damageLimit > 0 && expectedDamage >= damageLimit - 1e-9;
           overlay.changeUnit(unitId(target), unit => {
             setHp(unit, readHp(unit) - expectedDamage);
             if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
+            if (traumaUnconscious && hitProbability >= 1 - 1e-9) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
           });
           ledger.addOutcome({
             ...context,
@@ -809,6 +867,16 @@
               windowId: 'NONLETHAL_INCAPACITATION',
               threatValue: 0,
               evidence: { reason: 'NONLETHAL_INCAPACITATION', hpFloor: 1 },
+            });
+          }
+          if (traumaUnconscious) {
+            ledger.addOutcome({
+              ...context,
+              targetId: unitId(target),
+              outcomeKind: 'ACTION_CANCELLED',
+              windowId: 'TRAUMA_UNCONSCIOUS',
+              threatValue: hitProbability * 100,
+              evidence: { reason: 'TRAUMA_UNCONSCIOUS', probability: hitProbability, fullHitDamage, hpAfter: readHp(currentTarget) - fullHitDamage, hpMax: readHpMax(currentTarget) },
             });
           }
         });
@@ -1270,6 +1338,11 @@
     findUnit,
     sideOf,
     isAlive,
+    isDead,
+    isBattleCapable,
+    shouldTriggerTraumaUnconscious,
+    readIncapacityReason,
+    evaluateObjectiveConditionDetail,
     readHp,
     readHpMax,
     readShield,

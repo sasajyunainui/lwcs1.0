@@ -24925,6 +24925,40 @@ class BattleUIComponent {
         return applied;
       }
 
+      function 应用重创昏迷(targetChar, appliedDamage, sourceActor, attackAction, combatData = {}) {
+        const hpMax = getCombatHpMaxValue(targetChar);
+        const hpAfter = getCombatHpValue(targetChar);
+        if (!BATTLE_PREVIEW.shouldTriggerTraumaUnconscious(appliedDamage, hpAfter, hpMax)) return '';
+        const actionState = String(targetChar?.状态?.行动 || '').trim();
+        if (actionState === '昏迷') return '';
+        targetChar.状态 = targetChar.状态 && typeof targetChar.状态 === 'object' ? targetChar.状态 : {};
+        targetChar.状态.存活 = true;
+        targetChar.状态.行动 = '昏迷';
+        Object.defineProperty(targetChar, '__战斗失能原因', { configurable: true, enumerable: false, writable: true, value: 'TRAUMA_UNCONSCIOUS' });
+        if (targetChar.召唤键) 同步召唤单位镜像(targetChar);
+        写入战斗事件账本(combatData, {
+          eventKind: 'state_apply',
+          round: Number(combatData?.回合 || 0),
+          actorName: sourceActor?.name || sourceActor?.名称 || '',
+          targetName: targetChar?.name || targetChar?.名称 || '',
+          actionName: attackAction?.skill?.name || attackAction?.skill?.魂技名 || attackAction?.action_type || attackAction?.type || '',
+          actionType: attackAction?.action_type || attackAction?.type || 'attack',
+          result: 'applied',
+          resultState: 'INCAPACITATED',
+          ruleCode: 'TRAUMA_UNCONSCIOUS',
+          duration: 0,
+          effectSummary: '单次实际伤害达到最大生命50%以上，且结算后生命低于20%，陷入昏迷',
+          meta: {
+            stateName: '昏迷',
+            incapacityReason: 'TRAUMA_UNCONSCIOUS',
+            appliedDamage: Math.max(0, Number(appliedDamage || 0)),
+            hpAfter,
+            hpMax,
+          },
+        });
+        return `[重创昏迷] ${targetChar.name || targetChar.名称 || '目标'}遭受单次重创后失去意识。`;
+      }
+
       function resolveReactiveDefenseOnDamage(attacker, defender, incomingDamage, options = {}) {
         let damage = Math.max(0, Math.floor(Number(incomingDamage || 0)));
         const 事件链 = 读取事件链状态(options?.事件链 || options || {});
@@ -25919,6 +25953,8 @@ class BattleUIComponent {
                 }
               }
             }
+            const 重创昏迷日志 = 应用重创昏迷(targetChar, 本段实际伤害, attacker, attackAction, options?.combatData || {});
+            if (重创昏迷日志) logParts.push(重创昏迷日志);
             const 受到伤害吸收条目 = [];
             当前结算效果列表.forEach(effect => {
               if (String(effect?.原型 || '').trim() !== '结算修正') return;
@@ -36146,9 +36182,9 @@ class BattleUIComponent {
           const mvuUpdate =
             window.BattleUIBridge?.persistCombatData?.(combatData, {
               analysis:
-                'Frontend team battle arbitration already produced the exact combat result. Apply the following JSONPatch exactly as given.',
+                'Frontend team battle runtime produced the authoritative final snapshot. Apply HP, survival, incapacity state, resources and battle terminal fields exactly as given; plot continuation may only narrate these facts.',
               extraPatchOps,
-              syncHpRecoveryOnly: true,
+              syncHpRecoveryOnly: false,
             }) || null;
 
           return {

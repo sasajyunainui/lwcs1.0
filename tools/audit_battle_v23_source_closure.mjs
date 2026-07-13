@@ -9,6 +9,7 @@ const battleDecisionPath = path.resolve(root, 'lwcs/BattleDecision_Module.js');
 const battlePreviewPath = path.resolve(root, 'lwcs/BattlePreview_Module.js');
 const mvuPath = path.resolve(root, 'lwcs/MVU.js');
 const bridgePath = path.resolve(root, 'lwcs/mvu_logic_bridge.js');
+const databaseAdapterPath = path.resolve(root, 'lwcs/LWCS_Database_Adapter.js');
 const routePresetPath = path.resolve(root, 'lwcs/缝合怪二改_专用推进预设.plot-preset.json');
 const battleUiSource = fs.readFileSync(battleUiPath, 'utf8');
 const battleRuntimeSource = fs.readFileSync(battleRuntimePath, 'utf8');
@@ -16,6 +17,7 @@ const battleDecisionSource = fs.readFileSync(battleDecisionPath, 'utf8');
 const battlePreviewSource = fs.readFileSync(battlePreviewPath, 'utf8');
 const mvuSource = fs.readFileSync(mvuPath, 'utf8');
 const bridgeSource = fs.readFileSync(bridgePath, 'utf8');
+const databaseAdapterSource = fs.readFileSync(databaseAdapterPath, 'utf8');
 const routePresetSource = fs.readFileSync(routePresetPath, 'utf8');
 const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23_regression_gate.mjs'), 'utf8');
 const settlementBindingSource = battleUiSource.match(/BATTLE_RUNTIME\.bindSettlementPrimitives\(\{[\s\S]*?\n\s*}\);/)?.[0] || '';
@@ -505,18 +507,39 @@ addCheck(
 addCheck(
   'battleObjectiveEvaluatorIsShared',
   /function evaluateBattleObjectives\(/.test(battlePreviewSource) &&
+    /function evaluateObjectiveConditionDetail\(/.test(battlePreviewSource) &&
+    /function shouldTriggerTraumaUnconscious\(/.test(battlePreviewSource) &&
     /preview\.evaluateBattleObjectives\(/.test(battleDecisionSource) &&
     /previewRuntime\.evaluateBattleObjectives\(/.test(battleRuntimeSource) &&
     /BATTLE_RUNTIME\.evaluateBattleTerminal\(/.test(battleUiSource) &&
+    /TRAUMA_UNCONSCIOUS/.test(battleUiSource) &&
     /battle_objective_resolved/.test(`${battleUiSource}\n${battleRuntimeSource}`),
 );
 addCheck(
   'battleRouteRequiresObjectiveContract',
   /battle_objectives_missing/.test(bridgeSource) &&
     /胜负条件字段完整/.test(bridgeSource) &&
-    /胜利条件：必须填写/.test(routePresetSource) &&
-    /失败条件：必须填写/.test(routePresetSource) &&
-    /回合上限：1-20/.test(routePresetSource),
+    /胜利条件关系：填写 OR 或 AND/.test(routePresetSource) &&
+    /失败条件关系：填写 OR 或 AND/.test(routePresetSource) &&
+    /最大回合：填写1-20的正整数/.test(routePresetSource) &&
+    /指定单位死亡/.test(routePresetSource) &&
+    /全员死亡/.test(routePresetSource) &&
+    /目标回合表示坚持到该回合即满足条件/.test(routePresetSource),
+);
+addCheck(
+  'battleAdjudicationUsesStructuredTerminalFacts',
+  /终局类型/.test(databaseAdapterSource) &&
+    /终局原因/.test(databaseAdapterSource) &&
+    /matchedDetails/.test(`${battleRuntimeSource}\n${bridgeSource}`) &&
+    /battle_adjudication_death_hp_invalid/.test(bridgeSource) &&
+    /battle_adjudication_incapacitated_hp_invalid/.test(bridgeSource) &&
+    /battle_adjudication_draw_fields_invalid/.test(bridgeSource),
+);
+addCheck(
+  'formalTeamBattlePersistsAuthoritativeFinalSnapshot',
+  /Frontend team battle runtime produced the authoritative final snapshot/.test(battleUiSource) &&
+    /syncHpRecoveryOnly:\s*false/.test(battleUiSource) &&
+    /最终快照和终局事实已经通过确定性JSONPatch提交/.test(databaseAdapterSource),
 );
 addCheck(
   'battleObjectivesPersistOnlyInsideBattleState',

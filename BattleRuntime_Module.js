@@ -125,6 +125,12 @@
       const level = Math.max(1, Number(unit?.lv ?? unit?.level ?? unit?.等级 ?? unit?.属性?.等级 ?? 1));
       const states = unit?.状态效果 && typeof unit.状态效果 === 'object' ? Object.entries(unit.状态效果) : [];
       const summonRuntime = unit?.__battleRuntime || {};
+      const explicitActionState = String(unit?.状态?.行动 || '').trim();
+      const actionState = previewRuntime.isDead(unit)
+        ? '失去战斗力'
+        : /失去战斗力|昏迷|投降|制服|撤离/.test(explicitActionState)
+          ? explicitActionState
+          : previewRuntime.isBattleCapable(unit) ? explicitActionState : '失去战斗力';
       return {
         name: previewRuntime.unitName(unit),
         lv: level,
@@ -161,7 +167,7 @@
         精神负载: Math.max(0, Number(unit?.精神负载 || 0)),
         剩余窗口: Math.max(0, Number(summonRuntime?.remainingWindows ?? summonRuntime?.windowCount ?? unit?.剩余窗口 ?? 0)),
         稳定状态: String(unit?.稳定状态 || summonRuntime?.stability || '').trim(),
-        actionState: previewRuntime.isAlive(unit) ? String(unit?.状态?.行动 || '').trim() : '失去战斗力',
+        actionState,
         当前领域: String(unit?.当前领域 || '无').trim(),
         状态效果: states.filter(([, state]) => state?.__equipmentState !== true).map(([name, state]) => ({
           name,
@@ -473,8 +479,7 @@
   }
 
   function isUnitAbleToFight(unit = {}) {
-    const actionState = String(unit?.状态?.行动 || '').trim();
-    return previewRuntime.isAlive(unit) && previewRuntime.readResource(unit, '体力') > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
+    return previewRuntime.isBattleCapable(unit);
   }
 
   function buildDeclarationAction(declaration = {}, actor = {}, combatData = {}) {
@@ -690,6 +695,7 @@
           winner: resolution.winner,
           victoryMatches: resolution.victoryMatches,
           defeatMatches: resolution.defeatMatches,
+          matchedDetails: resolution.matchedDetails,
           timeLimitReached: resolution.timeLimitReached,
           objectives,
         },

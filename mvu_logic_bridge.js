@@ -9094,7 +9094,7 @@
         return { ok: false, reason: 'battle_adjudication_false_extra_fields' };
       return { ok: true, settlement };
     }
-    const requiredKeys = ['是否结束', '胜方', '败方', '败方剩余HP比例'];
+    const requiredKeys = ['是否结束', '胜方', '败方', '败方剩余HP比例', '终局类型', '终局原因'];
     if (
       keys.length !== requiredKeys.length ||
       requiredKeys.some(key => !Object.prototype.hasOwnProperty.call(settlement, key))
@@ -9103,15 +9103,29 @@
     }
     const winnerName = toText(settlement.胜方, '').trim();
     const loserName = toText(settlement.败方, '').trim();
+    const terminalType = toText(settlement.终局类型, '').trim();
+    const terminalReason = toText(settlement.终局原因, '').trim();
+    const allowedTerminalTypes = new Set(['death', 'incapacitated', 'hp_threshold', 'survived', 'withdrawal', 'time_limit']);
+    if (!allowedTerminalTypes.has(terminalType) || !terminalReason)
+      return { ok: false, reason: 'battle_adjudication_terminal_invalid' };
     const participantNames = collectBattleParticipantNames(combatData);
-    if (!winnerName || !loserName || winnerName === loserName)
-      return { ok: false, reason: 'battle_adjudication_winner_loser_invalid' };
-    if (!participantNames.includes(winnerName) || !participantNames.includes(loserName))
-      return { ok: false, reason: 'battle_adjudication_participant_not_found' };
     const hpRatio = Number(settlement.败方剩余HP比例);
     if (!Number.isFinite(hpRatio) || hpRatio < 0 || hpRatio > 100)
       return { ok: false, reason: 'battle_adjudication_hp_ratio_invalid' };
-    return { ok: true, settlement: { 是否结束: true, 胜方: winnerName, 败方: loserName, 败方剩余HP比例: hpRatio } };
+    if (terminalType === 'time_limit') {
+      if (winnerName !== '无' || loserName !== '无' || hpRatio !== 100)
+        return { ok: false, reason: 'battle_adjudication_draw_fields_invalid' };
+    } else {
+      if (!winnerName || !loserName || winnerName === loserName)
+        return { ok: false, reason: 'battle_adjudication_winner_loser_invalid' };
+      if (!participantNames.includes(winnerName) || !participantNames.includes(loserName))
+        return { ok: false, reason: 'battle_adjudication_participant_not_found' };
+    }
+    if (terminalType === 'death' && hpRatio !== 0)
+      return { ok: false, reason: 'battle_adjudication_death_hp_invalid' };
+    if (terminalType === 'incapacitated' && hpRatio <= 0)
+      return { ok: false, reason: 'battle_adjudication_incapacitated_hp_invalid' };
+    return { ok: true, settlement: { 是否结束: true, 胜方: winnerName, 败方: loserName, 败方剩余HP比例: hpRatio, 终局类型: terminalType, 终局原因: terminalReason } };
   }
 
   async function applyBattleAdjudicationFromText(rawText = '', options = {}) {
@@ -9141,6 +9155,24 @@
         reason: 'battle_continues',
         summary: '战斗裁断为未结束，战斗模块维持进行中。',
         runtimeEvent: '<battle_adjudication_result>\n状态：未结束\n事实：战斗裁断为未结束，战斗模块维持进行中。\n约束：后续剧情承接当前战局，不要重复结算同一轮战斗。\n</battle_adjudication_result>',
+      };
+    }
+    if (settlement.终局类型 === 'time_limit') {
+      const patches = [
+        { op: 'replace', path: '/world/战斗/进行中', value: false },
+        { op: 'replace', path: '/world/战斗/裁断结果', value: `达到最大回合，双方未分胜负：${settlement.终局原因}` },
+        { op: 'replace', path: '/sys/系统播报', value: `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
+      ];
+      await applyJsonPatchOpsByEditor(patches, { force: true });
+      await refreshLiveSnapshot({ force: true });
+      return {
+        handled: true,
+        finished: true,
+        reason: 'battle_adjudication_draw_applied',
+        settlement,
+        summary: '达到最大回合，双方未分胜负。',
+        patchOps: patches,
+        runtimeEvent: '<battle_adjudication_result>\n状态：已结束\n事实：达到最大回合，双方未分胜负。\n约束：后续剧情只承接平局结果，不要继续结算本场战斗。\n</battle_adjudication_result>',
       };
     }
     const loserName = settlement.败方;
@@ -9204,6 +9236,7 @@
       存活: 取败方字段(['状态', '存活']) !== false,
       死亡tick: toNumber(取败方字段(['状态', '死亡tick']), -1),
       死亡类型: toText(取败方字段(['状态', '死亡类型']), '无'),
+      行动: toText(取败方字段(['状态', '行动']), '战斗'),
       精神力: toNumber(取败方字段(['属性', '精神力']), 0),
     };
 
@@ -9226,6 +9259,7 @@
           { op: 'replace', path: `/char/${safeKey}/状态/存活`, value: 前置快照.存活 !== false },
           { op: 'replace', path: `/char/${safeKey}/状态/死亡tick`, value: toNumber(前置快照.死亡tick, -1) },
           { op: 'replace', path: `/char/${safeKey}/状态/死亡类型`, value: toText(前置快照.死亡类型, '无') },
+          { op: 'replace', path: `/char/${safeKey}/状态/行动`, value: toText(前置快照.行动, '战斗') },
           { op: 'replace', path: `/char/${safeKey}/属性/精神力`, value: toNumber(前置快照.精神力, 0) },
         );
       } else {
@@ -9236,6 +9270,7 @@
             { op: 'replace', path: `${restorePath}/状态/存活`, value: 前置快照.存活 !== false },
             { op: 'replace', path: `${restorePath}/状态/死亡tick`, value: toNumber(前置快照.死亡tick, -1) },
             { op: 'replace', path: `${restorePath}/状态/死亡类型`, value: toText(前置快照.死亡类型, '无') },
+            { op: 'replace', path: `${restorePath}/状态/行动`, value: toText(前置快照.行动, '战斗') },
             { op: 'replace', path: `${restorePath}/存活`, value: 前置快照.存活 !== false },
           );
         }
@@ -9244,12 +9279,22 @@
 
     if (loserKey) {
       const 写回HP = 虚拟死亡 ? hpMax : finalHp;
+      const 失能行动 = /TRAUMA_UNCONSCIOUS|UNCONSCIOUS|STAMINA_EXHAUSTED/.test(settlement.终局原因)
+        ? '昏迷'
+        : /SURRENDERED/.test(settlement.终局原因)
+          ? '投降'
+          : /SUBDUED/.test(settlement.终局原因)
+            ? '制服'
+            : '失去战斗力';
       patches.push(
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/属性/HP`, value: 写回HP },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/存活`, value: alive },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/死亡tick`, value: alive ? -1 : 当前tick },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/死亡类型`, value: alive ? '无' : '意外' },
       );
+      if (settlement.终局类型 === 'incapacitated') {
+        patches.push({ op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/行动`, value: 失能行动 });
+      }
       if (虚拟死亡) {
         const 最近一击比例 = Math.max(0, toNumber(deepGet(combatData, '虚拟裁断数据.最近一击HP比例', 0), 0));
         const 精神消耗比例 = Math.max(0.4, Math.min(0.9, 0.4 + Math.min(1, 最近一击比例) * 0.5));
@@ -9273,6 +9318,13 @@
     } else {
       const participantPath = findBattleParticipantPath(combatData, loserName);
       if (participantPath) {
+        const 失能行动 = /TRAUMA_UNCONSCIOUS|UNCONSCIOUS|STAMINA_EXHAUSTED/.test(settlement.终局原因)
+          ? '昏迷'
+          : /SURRENDERED/.test(settlement.终局原因)
+            ? '投降'
+            : /SUBDUED/.test(settlement.终局原因)
+              ? '制服'
+              : '失去战斗力';
         patches.push(
           { op: 'replace', path: `${participantPath}/属性/HP`, value: finalHp },
           { op: 'replace', path: `${participantPath}/状态/存活`, value: alive },
@@ -9280,6 +9332,9 @@
           { op: 'replace', path: `${participantPath}/状态/死亡类型`, value: alive ? '无' : '意外' },
           { op: 'replace', path: `${participantPath}/存活`, value: alive },
         );
+        if (settlement.终局类型 === 'incapacitated') {
+          patches.push({ op: 'replace', path: `${participantPath}/状态/行动`, value: 失能行动 });
+        }
       }
     }
     if (是魂灵塔战斗) {
@@ -44282,19 +44337,40 @@ ${播报文本}
         ? 'player_win'
         : 执行结果.winner === 'enemy'
           ? 'enemy_win'
-          : 'unfinished';
+          : 执行结果.winner === 'draw'
+            ? 'draw'
+            : 'unfinished';
+    const 终局明细 = Array.isArray(执行结果?.objectiveResolution?.matchedDetails) ? 执行结果.objectiveResolution.matchedDetails : [];
+    const 终局条件 = [...new Set(终局明细.map(item => toText(item?.condition?.type, '')).filter(Boolean))];
+    const 失能明细 = 终局明细.flatMap(item => Array.isArray(item?.unitResults) ? item.unitResults : [])
+      .filter(item => item?.matched === true && toText(item?.reason, ''))
+      .map(item => `${toText(item.unitName || item.unitId, '未知单位')}:${toText(item.reason, '')}`);
+    const 终局类型 = 终局条件.some(type => ['UNIT_DEAD', 'TEAM_DEAD'].includes(type))
+      ? 'death'
+      : 终局条件.some(type => ['UNIT_INCAPACITATED', 'TEAM_INCAPACITATED'].includes(type))
+        ? 'incapacitated'
+        : 终局条件.includes('HP_RATIO_AT_OR_BELOW')
+          ? 'hp_threshold'
+          : 终局条件.includes('ROUND_REACHED')
+            ? 'survived'
+            : 终局条件.includes('WITHDRAW_SUCCESS')
+              ? 'withdrawal'
+              : 战果类型 === 'draw' ? 'time_limit' : 'unfinished';
     const 战果说明 =
       战果类型 === 'player_win'
         ? '玩家方取得阶段胜势'
         : 战果类型 === 'enemy_win'
           ? '敌方取得阶段胜势'
-          : '战斗仍在持续';
+          : 战果类型 === 'draw' ? '达到最大回合，双方未分胜负' : '战斗仍在持续';
     return [
       `[前端战果类型]\n${战果类型}`,
       `[前端战果说明]\n${战果说明}`,
       `[战斗类型]\n${toText(combatData.战斗类型, '')}`,
       `[存活统计]\n我方存活:${玩家存活}；敌方存活:${敌方存活}`,
       `[战斗意图]\n${toText(combatData.战斗意图, '点到为止')}`,
+      `[终局类型]\n${终局类型}`,
+      `[命中条件]\n${终局条件.join('、') || '无'}`,
+      `[失能明细]\n${失能明细.join('；') || '无'}`,
     ].join('\n');
   }
 
@@ -44991,18 +45067,38 @@ ${播报文本}
     return Number.isFinite(数值) ? 数值 : value;
   }
 
-  function 解析战斗目标条件项(value, defaultSide = '') {
-    if (value && typeof value === 'object') return cloneJsonValue(value, {});
-    const 文本 = toText(value, '').trim();
-    if (!文本) return null;
+  const 战斗目标条件字段模式 = '(?:类型|type|作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|判定|scope|存活要求|requireActive)';
+
+  function 解析战斗目标条件字段(value) {
+    const 文本 = toText(value, '').replace(/\r/g, ' ').trim();
+    if (!文本) return {};
     const 字段 = {};
-    文本.split('|').map(item => item.trim()).filter(Boolean).forEach((片段, index) => {
-      const 匹配 = 片段.match(/^([^=:：]+)\s*[=:：]\s*(.*?)$/u);
-      if (匹配) 字段[toText(匹配[1], '').trim()] = toText(匹配[2], '').trim();
-      else if (index === 0) 字段.类型 = 片段;
+    const 匹配列表 = [...文本.matchAll(new RegExp(`(?:^|[\\s|_,，;；、]+)(${战斗目标条件字段模式})(?:\\s*[=:：_]\\s*|\\s+)`, 'giu'))];
+    if (!匹配列表.length) return { 类型: 文本 };
+    匹配列表.forEach((匹配, index) => {
+      const 字段名 = toText(匹配[1], '').trim();
+      const 值起点 = Number(匹配.index || 0) + 匹配[0].length;
+      const 值终点 = index + 1 < 匹配列表.length ? Number(匹配列表[index + 1].index || 文本.length) : 文本.length;
+      const 字段值 = 文本.slice(值起点, 值终点).replace(/^[\s|_,，;；、]+|[\s|_,，;；、]+$/gu, '').trim();
+      if (字段名 && 字段值) 字段[字段名] = 字段值;
     });
+    return 字段;
+  }
+
+  function 推断战斗目标默认阵营(type = '', group = 'victory') {
+    if (['ROUND_REACHED', 'WITHDRAW_SUCCESS'].includes(type)) return group === 'defeat' ? 'ENEMY' : 'PLAYER';
+    return group === 'defeat' ? 'PLAYER' : 'ENEMY';
+  }
+
+  function 解析战斗目标条件项(value, group = 'victory') {
+    const 是对象 = value && typeof value === 'object' && !Array.isArray(value);
+    const 文本 = 是对象 ? '' : toText(value, '').trim();
+    if (!是对象 && !文本) return null;
+    const 字段 = 是对象 ? cloneJsonValue(value, {}) : 解析战斗目标条件字段(文本);
     const 类型文本 = toText(字段.类型 || 字段.type, '').trim();
-    const 类型 = /敌方全员失能|我方全员失能|全员失能|TEAM_INCAPACITATED/i.test(类型文本)
+    const 类型 = /敌方全员死亡|我方全员死亡|全员死亡|TEAM_DEAD/i.test(类型文本)
+      ? 'TEAM_DEAD'
+      : /敌方全员失能|我方全员失能|全员失能|TEAM_INCAPACITATED/i.test(类型文本)
       ? 'TEAM_INCAPACITATED'
       : /生命阈值|HP_THRESHOLD|HP_RATIO_AT_OR_BELOW/i.test(类型文本)
         ? 'HP_RATIO_AT_OR_BELOW'
@@ -45012,48 +45108,86 @@ ${播报文本}
             ? 'WITHDRAW_SUCCESS'
           : /受伤|UNIT_DAMAGED/i.test(类型文本)
             ? 'UNIT_DAMAGED'
-            : /死亡|失能|UNIT_INCAPACITATED/i.test(类型文本)
+            : /死亡|UNIT_DEAD/i.test(类型文本)
+              ? 'UNIT_DEAD'
+              : /失能|UNIT_INCAPACITATED/i.test(类型文本)
               ? 'UNIT_INCAPACITATED'
               : '';
     if (!类型) return null;
-    const 阵营文本 = toText(字段.阵营 || 字段.side, defaultSide).trim();
+    const 原始目标 = 字段.目标 ?? 字段.targets ?? 字段.targetIds ?? '';
+    const 目标文本 = Array.isArray(原始目标) ? 原始目标.map(item => toText(item, '').trim()).filter(Boolean).join('、') : toText(原始目标, '').trim();
+    const 目标阵营 = /敌方|对方|ENEMY/i.test(目标文本) ? 'ENEMY' : /我方|己方|友方|PLAYER|ALLY/i.test(目标文本) ? 'PLAYER' : '';
+    const 阵营文本 = toText(字段.作用方 || 字段.阵营 || 字段.side, 目标阵营 || 推断战斗目标默认阵营(类型, group)).trim();
     const side = /敌方|对方|ENEMY/i.test(阵营文本) ? 'ENEMY' : /我方|己方|友方|PLAYER|ALLY/i.test(阵营文本) ? 'PLAYER' : '';
-    const 目标文本 = toText(字段.目标 || 字段.targets || 字段.targetIds, '').trim();
-    const targetIds = /^(?:全体|全员|ALL)$/i.test(目标文本) || !目标文本
-      ? []
-      : 目标文本.split(/[、,，]/u).map(item => item.trim()).filter(Boolean);
+    const 目标名称文本 = 目标文本.replace(/^(?:敌方|对方|我方|己方|友方)\s*/u, '').trim();
+    const targetIds = Array.isArray(原始目标)
+      ? 原始目标.map(item => toText(item, '').trim()).filter(Boolean)
+      : /^(?:全体|全员|任一|任意|ALL|ANY)$/i.test(目标名称文本) || !目标名称文本
+        ? []
+        : 目标名称文本.split(/[、,，]/u).map(item => item.trim()).filter(Boolean);
     const 阈值文本 = toText(字段.阈值 || 字段.threshold, '').trim();
     const 阈值数值 = Number.parseFloat(阈值文本.replace('%', ''));
-    const 回合 = Math.max(0, Math.floor(toNumber(字段.回合 || 字段.回合数 || 字段.round || 字段.rounds, 0)));
+    const 回合 = Math.max(0, Math.floor(toNumber(字段.目标回合 || 字段.回合 || 字段.回合数 || 字段.round || 字段.rounds, 0)));
     return {
       type: 类型,
       side,
       targetIds,
-      scope: /全部|全体|ALL/i.test(toText(字段.判定 || 字段.scope, '任一')) ? 'ALL' : 'ANY',
+      scope: /全部|全体|全员|ALL/i.test(toText(字段.目标要求 || 字段.targetScope || 字段.判定 || 字段.scope, 目标文本)) ? 'ALL' : 'ANY',
       ...(Number.isFinite(阈值数值) ? { threshold: 阈值文本.includes('%') || 阈值数值 > 1 ? 阈值数值 / 100 : 阈值数值 } : {}),
       ...(回合 > 0 ? { round: 回合 } : {}),
       requireActive: !/否|false|无需/i.test(toText(字段.存活要求 || 字段.requireActive, '是')),
     };
   }
 
-  function 解析战斗目标条件列表(value, defaultSide = '') {
-    const source = Array.isArray(value) ? value : toText(value, '').split(/[；;\n]+/u);
-    return source.map(item => 解析战斗目标条件项(item, defaultSide)).filter(Boolean);
+  function 拆分战斗目标条件列表(value) {
+    if (Array.isArray(value)) return value;
+    const 文本 = toText(value, '').trim();
+    if (!文本) return [];
+    const 类型匹配 = [...文本.matchAll(new RegExp(`(^|[\\s|_,，;；、]+)(?:类型|type)(?=\\s*(?:[=:：_]|\\s))`, 'giu'))];
+    if (类型匹配.length <= 1) return [文本];
+    const 起点 = 类型匹配.map(匹配 => Number(匹配.index || 0) + toText(匹配[1], '').length);
+    return 起点.map((位置, index) => 文本.slice(位置, 起点[index + 1] ?? 文本.length).replace(/^[\s|_,，;；、]+|[\s|_,，;；、]+$/gu, '').trim()).filter(Boolean);
+  }
+
+  function 解析战斗目标条件列表(value, group = 'victory') {
+    return 拆分战斗目标条件列表(value).map(item => 解析战斗目标条件项(item, group)).filter(Boolean);
+  }
+
+  function 归一战斗条件关系(value, fallback = 'ANY') {
+    const 文本 = toText(value, '').trim().toUpperCase();
+    if (!文本) return fallback;
+    if (/^(AND|ALL|全部|同时)$/.test(文本)) return 'ALL';
+    if (/^(OR|ANY|任一|任意)$/.test(文本)) return 'ANY';
+    return '';
   }
 
   function 构建战斗胜负条件(detail = {}, participants = {}, currentRound = 0) {
     const existing = detail?.胜负条件 && typeof detail.胜负条件 === 'object' ? cloneJsonValue(detail.胜负条件, {}) : null;
-    const victoryConditions = existing?.victory?.conditions || existing?.胜利?.条件 || 解析战斗目标条件列表(detail?.胜利条件, 'ENEMY');
-    const defeatConditions = existing?.defeat?.conditions || existing?.失败?.条件 || 解析战斗目标条件列表(detail?.失败条件, 'PLAYER');
-    const explicitContract = !!existing || !!toText(detail?.胜利条件, '').trim() || !!toText(detail?.失败条件, '').trim();
-    const allowedTypes = new Set(['TEAM_INCAPACITATED', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'WITHDRAW_SUCCESS']);
+    const victoryConditions = existing?.victory?.conditions || existing?.胜利?.条件 || 解析战斗目标条件列表(detail?.胜利条件, 'victory');
+    const defeatConditions = existing?.defeat?.conditions || existing?.失败?.条件 || 解析战斗目标条件列表(detail?.失败条件, 'defeat');
+    const explicitContract = !!existing || 战斗条件输入存在(detail?.胜利条件) || 战斗条件输入存在(detail?.失败条件);
+    const units = [
+      ...(Array.isArray(participants?.team_player) ? participants.team_player : []).filter(Boolean).map(unit => ({ unit, side: 'PLAYER' })),
+      ...(Array.isArray(participants?.team_enemy) ? participants.team_enemy : []).filter(Boolean).map(unit => ({ unit, side: 'ENEMY' })),
+    ];
+    const 查找目标单位 = target => units.find(({ unit }) => [unit?.id, unit?.角色ID, unit?.name, unit?.名称].map(item => toText(item, '').trim()).filter(Boolean).includes(toText(target, '').trim()));
+    const allowedTypes = new Set(['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS']);
     const conditionIsValid = condition => {
       const type = toText(condition?.type || condition?.类型, '').trim();
       if (!allowedTypes.has(type)) return false;
+      const side = toText(condition?.side || condition?.阵营, '').trim();
+      if (!['PLAYER', 'ENEMY'].includes(side)) return false;
+      const targetIds = Array.isArray(condition?.targetIds) ? condition.targetIds.map(item => toText(item, '').trim()).filter(Boolean) : [];
+      if (targetIds.some(target => {
+        const matched = 查找目标单位(target);
+        return !matched || matched.side !== side;
+      })) return false;
       if (type === 'HP_RATIO_AT_OR_BELOW') return Number(condition?.threshold ?? condition?.阈值) > 0 && Number(condition?.threshold ?? condition?.阈值) <= 1;
       if (type === 'ROUND_REACHED') return Number(condition?.round ?? condition?.回合 ?? condition?.回合数) > 0;
-      if (['UNIT_DAMAGED', 'UNIT_INCAPACITATED'].includes(type)) return !!toText(condition?.side || condition?.阵营, '').trim();
-      return !!toText(condition?.side || condition?.阵营, '').trim();
+      if (['UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD'].includes(type)) {
+        return targetIds.length > 0;
+      }
+      return true;
     };
     if (explicitContract && (
       !Array.isArray(victoryConditions) || !victoryConditions.length || victoryConditions.some(condition => !conditionIsValid(condition)) ||
@@ -45065,15 +45199,12 @@ ${播报文本}
     const safeDefeat = Array.isArray(defeatConditions) && defeatConditions.length
       ? defeatConditions
       : [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', targetIds: [], scope: 'ALL' }];
-    const units = [
-      ...(Array.isArray(participants?.team_player) ? participants.team_player : []),
-      ...(Array.isArray(participants?.team_enemy) ? participants.team_enemy : []),
-    ];
     const bindDamageBaselines = condition => {
       const normalized = cloneJsonValue(condition, {});
       if (normalized.type !== 'UNIT_DAMAGED') return normalized;
       const targets = new Set(Array.isArray(normalized.targetIds) ? normalized.targetIds.map(String) : []);
       normalized.baselineHp = Object.fromEntries(units
+        .map(entry => entry.unit)
         .filter(unit => !targets.size || targets.has(toText(unit?.id || unit?.角色ID || unit?.name || unit?.名称, '')) || targets.has(toText(unit?.name || unit?.名称, '')))
         .map(unit => {
           const id = toText(unit?.id || unit?.角色ID || unit?.name || unit?.名称, '');
@@ -45082,20 +45213,27 @@ ${播报文本}
         }).filter(([id]) => id));
       return normalized;
     };
+    const maxRounds = Math.max(1, Math.min(20, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20))));
+    if ([...safeVictory, ...safeDefeat].some(condition => condition?.type === 'ROUND_REACHED' && Number(condition?.round || 0) > maxRounds)) return null;
+    const victoryLogicInput = existing?.victory?.logic || existing?.胜利?.逻辑 || detail?.胜利条件关系;
+    const defeatLogicInput = existing?.defeat?.logic || existing?.失败?.逻辑 || detail?.失败条件关系;
+    const victoryLogic = 归一战斗条件关系(victoryLogicInput, 'ANY');
+    const defeatLogic = 归一战斗条件关系(defeatLogicInput, 'ANY');
+    if (!victoryLogic || !defeatLogic) return null;
     return {
       version: 1,
       startRound: Math.max(0, Math.floor(toNumber(existing?.startRound ?? existing?.起始回合, currentRound))),
-      maxRounds: Math.max(1, Math.min(20, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.回合上限, 20)))),
+      maxRounds,
       resolutionPriority: toText(existing?.resolutionPriority || existing?.冲突处理, 'DEFEAT_FIRST'),
-      victory: { logic: toText(existing?.victory?.logic || existing?.胜利?.逻辑, 'ANY'), conditions: safeVictory.map(bindDamageBaselines) },
-      defeat: { logic: toText(existing?.defeat?.logic || existing?.失败?.逻辑, 'ANY'), conditions: safeDefeat.map(bindDamageBaselines) },
+      victory: { logic: victoryLogic, conditions: safeVictory.map(bindDamageBaselines) },
+      defeat: { logic: defeatLogic, conditions: safeDefeat.map(bindDamageBaselines) },
     };
   }
 
   function 解析模块路由字段值(字段名, value) {
     const 字段 = toText(字段名, '').trim();
     if (/^(允许撤离|自动模式|自动执行|启用|启用地点拟态|拟态修炼)$/u.test(字段)) return 解析模块路由布尔值(value);
-    if (/^(数量|阶级|层数|耗时tick|等级|年限|回合上限)$/u.test(字段)) return 解析模块路由数值(value);
+    if (/^(数量|阶级|层数|耗时tick|等级|年限|最大回合|回合上限)$/u.test(字段)) return 解析模块路由数值(value);
     return toText(value, '').trim();
   }
 
@@ -45241,13 +45379,42 @@ ${播报文本}
 
   function 解析模块路由字段块(文本) {
     const payload = {};
-    String(文本 || '')
-      .split(/\r?\n/u)
-      .forEach(行文本 => {
-        const 匹配 = 行文本.match(/^\s*([^:：]+?)\s*[:：]\s*(.*?)\s*$/u);
-        if (!匹配) return;
-        设置模块路由字段(payload, 匹配[1], 匹配[2]);
-      });
+    let 当前条件字段 = '';
+    let 当前条件项 = null;
+    String(文本 || '').split(/\r?\n/u).forEach(行文本 => {
+      const 条件组匹配 = 行文本.match(/^\s*(胜利条件|失败条件)\s*[:：]\s*(.*?)\s*$/u);
+      if (条件组匹配) {
+        当前条件字段 = 条件组匹配[1];
+        当前条件项 = null;
+        const 行内值 = toText(条件组匹配[2], '').trim();
+        if (行内值) {
+          设置模块路由字段(payload, 当前条件字段, 行内值);
+          当前条件字段 = '';
+        } else {
+          payload[当前条件字段] = [];
+        }
+        return;
+      }
+      if (当前条件字段) {
+        const 列表项匹配 = 行文本.match(/^\s*[-*]\s*(类型|type)\s*[:：=_]\s*(.*?)\s*$/iu);
+        if (列表项匹配) {
+          当前条件项 = { [列表项匹配[1]]: toText(列表项匹配[2], '').trim() };
+          payload[当前条件字段].push(当前条件项);
+          return;
+        }
+        const 子字段匹配 = 行文本.match(/^\s+(作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|目标要求|targetScope|存活要求|requireActive)\s*[:：=_]\s*(.*?)\s*$/iu);
+        if (子字段匹配 && 当前条件项) {
+          当前条件项[子字段匹配[1]] = toText(子字段匹配[2], '').trim();
+          return;
+        }
+        if (!行文本.trim()) return;
+        当前条件字段 = '';
+        当前条件项 = null;
+      }
+      const 匹配 = 行文本.match(/^\s*([^:：]+?)\s*[:：]\s*(.*?)\s*$/u);
+      if (!匹配) return;
+      设置模块路由字段(payload, 匹配[1], 匹配[2]);
+    });
     return Object.keys(payload).length ? payload : null;
   }
 
@@ -45270,6 +45437,20 @@ ${播报文本}
         return payload ? { ...payload, raw: blockText } : null;
       })
       .filter(Boolean);
+  }
+
+  function 战斗条件输入存在(value) {
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === 'object') return Object.keys(value).length > 0;
+    return !!toText(value, '').trim();
+  }
+
+  function 克隆战斗条件输入(value) {
+    return value && typeof value === 'object' ? cloneJsonValue(value, Array.isArray(value) ? [] : {}) : toText(value, '').trim();
+  }
+
+  function 读取模块路由最大回合(payload = {}) {
+    return Number(payload?.最大回合 ?? payload?.回合上限);
   }
 
   function resolveModuleIntentPayload(input) {
@@ -46793,9 +46974,9 @@ ${播报文本}
         Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) <= 20
       );
       const 胜负条件字段完整 = 胜负条件已结构化 || (
-        toText(payload.胜利条件, '').trim() &&
-        toText(payload.失败条件, '').trim() &&
-        Number(payload.回合上限) > 0 && Number(payload.回合上限) <= 20
+        战斗条件输入存在(payload.胜利条件) &&
+        战斗条件输入存在(payload.失败条件) &&
+        读取模块路由最大回合(payload) > 0 && 读取模块路由最大回合(payload) <= 20
       );
       if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
@@ -46822,9 +47003,11 @@ ${播报文本}
             ...(payload.参战者 && typeof payload.参战者 === 'object' ? { 参战者: cloneJsonValue(payload.参战者, {}) } : {}),
             ...(指定层数 > 0 ? { floor: 指定层数 } : {}),
             ...(胜负条件已结构化 ? { 胜负条件: cloneJsonValue(payload.胜负条件, {}) } : {}),
-            ...(toText(payload.胜利条件, '').trim() ? { 胜利条件: toText(payload.胜利条件, '') } : {}),
-            ...(toText(payload.失败条件, '').trim() ? { 失败条件: toText(payload.失败条件, '') } : {}),
-            ...(Number(payload.回合上限) > 0 ? { 回合上限: Math.floor(Number(payload.回合上限)) } : {}),
+            ...(战斗条件输入存在(payload.胜利条件) ? { 胜利条件: 克隆战斗条件输入(payload.胜利条件) } : {}),
+            ...(战斗条件输入存在(payload.失败条件) ? { 失败条件: 克隆战斗条件输入(payload.失败条件) } : {}),
+            ...(toText(payload.胜利条件关系, '').trim() ? { 胜利条件关系: toText(payload.胜利条件关系, '') } : {}),
+            ...(toText(payload.失败条件关系, '').trim() ? { 失败条件关系: toText(payload.失败条件关系, '') } : {}),
+            ...(读取模块路由最大回合(payload) > 0 ? { 最大回合: Math.floor(读取模块路由最大回合(payload)) } : {}),
           },
           trialContext,
         );
@@ -46852,9 +47035,11 @@ ${播报文本}
             自动模式: typeof 自动模式值 === 'boolean' ? 自动模式值 : undefined,
             参战者: explicitParticipants,
             ...(胜负条件已结构化 ? { 胜负条件: cloneJsonValue(payload.胜负条件, {}) } : {}),
-            胜利条件: toText(payload.胜利条件, ''),
-            失败条件: toText(payload.失败条件, ''),
-            回合上限: Math.max(1, Math.min(20, Math.floor(toNumber(payload.回合上限, 20)))),
+            胜利条件: 克隆战斗条件输入(payload.胜利条件),
+            失败条件: 克隆战斗条件输入(payload.失败条件),
+            胜利条件关系: toText(payload.胜利条件关系, 'OR'),
+            失败条件关系: toText(payload.失败条件关系, 'OR'),
+            最大回合: Math.max(1, Math.min(20, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20)))),
           };
         }
       }
