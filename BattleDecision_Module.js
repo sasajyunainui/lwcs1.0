@@ -11,7 +11,20 @@
   const VERSION = '7.3-R6.3-decision-2';
   const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
+  const skillCostCache = new WeakMap();
+  const targetProfileCache = new WeakMap();
   let baseActionValueCache = new WeakMap();
+  let unitSkillCache = new WeakMap();
+  let stateEntriesCache = new WeakMap();
+  let actionCancellationCache = new WeakMap();
+  let actionQualityCache = new WeakMap();
+  let effectiveShieldCache = new WeakMap();
+  let bestAgainstCache = new WeakMap();
+  let experienceCache = new WeakMap();
+  let relevantStateFingerprintCache = new WeakMap();
+  let worldEntriesCache = new WeakMap();
+  let aliveEntriesCache = new WeakMap();
+  let sideCache = new WeakMap();
   let decisionRevisionSequence = 0;
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
@@ -51,11 +64,13 @@
   }
 
   function experienceOf(unit = {}) {
+    if (experienceCache.has(unit)) return experienceCache.get(unit);
     const explicit = Number(unit?.战斗经验 ?? unit?.battleExperience ?? unit?.经验稳定度);
-    if (Number.isFinite(explicit)) return clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1);
-    const identity = preview.unitId(unit) || preview.unitName(unit);
-    const stableOffset = stableRoll(`experience:${identity}`) * 0.12 - 0.06;
-    return clamp(0.25 + unitLevel(unit) / 120 * 0.7 + stableOffset, 0.2, 0.96);
+    const result = Number.isFinite(explicit)
+      ? clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1)
+      : clamp(0.25 + unitLevel(unit) / 120 * 0.7 + (stableRoll(`experience:${preview.unitId(unit) || preview.unitName(unit)}`) * 0.12 - 0.06), 0.2, 0.96);
+    experienceCache.set(unit, result);
+    return result;
   }
 
   function visibleStates(unit = {}) {
@@ -69,11 +84,11 @@
   function buildInitialBelief(worldSnapshot = {}, actorId = '', existing = {}) {
     const actor = preview.findUnit(worldSnapshot, actorId);
     if (!actor) throw new Error('battle_decision_belief_actor_missing');
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const experience = experienceOf(actor);
     const strengthHalfWidth = Math.ceil(2 + 8 * (1 - experience));
     const existingUnits = existing?.units && typeof existing.units === 'object' ? existing.units : {};
-    const units = Object.fromEntries(preview.listUnits(worldSnapshot).map(entry => {
+    const units = Object.fromEntries(worldEntries(worldSnapshot).map(entry => {
       const unit = entry.unit;
       const id = preview.unitId(unit);
       const allied = entry.side === actorSide;
@@ -112,7 +127,7 @@
   function buildDecisionWorld(worldSnapshot = {}, actorId = '', beliefState = {}) {
     const sourceActor = preview.findUnit(worldSnapshot, actorId);
     if (!sourceActor) throw new Error('battle_decision_projection_actor_missing');
-    const actorSide = preview.sideOf(worldSnapshot, sourceActor);
+    const actorSide = sideOf(worldSnapshot, sourceActor);
     const actorLevel = unitLevel(sourceActor);
     const actorStats = {
       hp: preview.readHpMax(sourceActor),
@@ -125,7 +140,7 @@
     };
     actorStats.combatBase = Math.cbrt(actorStats.str * actorStats.def * actorStats.agi);
     const projectUnit = sourceUnit => {
-      if (preview.sideOf(worldSnapshot, sourceUnit) === actorSide) {
+      if (sideOf(worldSnapshot, sourceUnit) === actorSide) {
         return sourceUnit;
       }
       const id = preview.unitId(sourceUnit);
@@ -219,8 +234,16 @@
   }
 
   function relevantStateFingerprint(beliefState = {}, targetId = '') {
+    let targetCache = relevantStateFingerprintCache.get(beliefState);
+    if (!targetCache) {
+      targetCache = new Map();
+      relevantStateFingerprintCache.set(beliefState, targetCache);
+    }
+    if (targetCache.has(targetId)) return targetCache.get(targetId);
     const states = beliefState?.units?.[targetId]?.visibleStates || [];
-    return preview.stableHash(states.map(state => [state.name, state.duration, state.type]));
+    const result = preview.stableHash(states.map(state => [state.name, state.duration, state.type]));
+    targetCache.set(targetId, result);
+    return result;
   }
 
   function mechanicKey(input = {}) {
@@ -298,7 +321,7 @@
     if (!(uncertainty > 0)) return 0;
     const actor = preview.findUnit(context.worldSnapshot || {}, context.actorId);
     if (!actor) return 0;
-    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const actorSide = sideOf(context.worldSnapshot, actor);
     const threatPairs = aliveEntries(context.worldSnapshot)
       .filter(entry => entry.side !== actorSide)
       .map(entry => {
@@ -332,6 +355,8 @@
   }
 
   function collectSkills(unit = {}) {
+    const cachedUnitSkills = unitSkillCache.get(unit);
+    if (cachedUnitSkills) return cachedUnitSkills;
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object').map(([, value]) => value),
@@ -378,7 +403,9 @@
         }
       });
     });
-    return Object.freeze(output);
+    const result = Object.freeze(output);
+    unitSkillCache.set(unit, result);
+    return result;
   }
 
   function cachedBaseActionValue(actor, target, actionKind, skill = null) {
@@ -490,7 +517,7 @@
     if (!product) return null;
     const productId = String(product?.id || product?.物品ID || product?.名称 || product?.name || product).trim();
     const stock = collectInventory(actor).filter(entry => entry.id === productId).reduce((sum, entry) => sum + entry.quantity, 0);
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const useEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).flatMap(effect =>
       Array.isArray(effect?.使用效果) ? effect.使用效果 : [],
     );
@@ -520,8 +547,8 @@
   function strategicSignature(worldSnapshot = {}, beliefState = {}) {
     const hpBand = unit => Math.max(0, Math.min(4, Math.floor(preview.readHp(unit) / preview.readHpMax(unit) * 5)));
     return preview.stableHash({
-      alive: preview.listUnits(worldSnapshot).filter(entry => preview.isAlive(entry.unit)).map(entry => preview.unitId(entry.unit)).sort(),
-      units: preview.listUnits(worldSnapshot).map(entry => ({
+      alive: aliveEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)).sort(),
+      units: worldEntries(worldSnapshot).map(entry => ({
         id: preview.unitId(entry.unit),
         hpBand: hpBand(entry.unit),
         shieldBand: Math.max(0, Math.min(4, Math.floor(preview.readShield(entry.unit) / preview.readHpMax(entry.unit) * 5))),
@@ -541,6 +568,8 @@
   }
 
   function parseSkillCosts(skill = {}) {
+    const cached = skillCostCache.get(skill);
+    if (cached) return cached;
     const costs = {};
     const add = (resource, value) => {
       const numeric = Number.parseFloat(String(value ?? '').replace('%', ''));
@@ -556,7 +585,9 @@
     [['魂力', skill?.魂力消耗], ['精神力', skill?.精神力消耗], ['体力', skill?.体力消耗]].forEach(([resource, value]) => {
       if (value !== undefined) add(resource, value);
     });
-    return costs;
+    const result = Object.freeze(costs);
+    skillCostCache.set(skill, result);
+    return result;
   }
 
   function costAffordable(unit = {}, skill = {}) {
@@ -600,9 +631,14 @@
   }
 
   function targetProfile(skill = {}) {
+    const cached = targetProfileCache.get(skill);
+    if (cached) return cached;
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     const targets = effects.map(effect => String(effect?.目标 || '').trim()).filter(Boolean);
-    if (!targets.length || targets.every(target => target === '自身')) return 'SELF';
+    if (!targets.length || targets.every(target => target === '自身')) {
+      targetProfileCache.set(skill, 'SELF');
+      return 'SELF';
+    }
     const targetableEffects = effects.filter(effect => String(effect?.目标 || '').trim() !== '自身');
     const hostile = targetableEffects.some(effect => {
       const prototype = String(effect?.原型 || '').trim();
@@ -621,10 +657,15 @@
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' && !hostile;
       return false;
     });
-    if (targets.some(target => /全场|群体/.test(target))) return hostile || !friendly ? 'HOSTILE_GROUP' : 'FRIENDLY_GROUP';
-    if (targets.some(target => /友方/.test(target))) return 'FRIENDLY_SINGLE';
-    if (hostile) return 'HOSTILE_SINGLE';
-    return friendly ? 'FRIENDLY_SINGLE' : 'HOSTILE_SINGLE';
+    const profile = targets.some(target => /全场|群体/.test(target))
+      ? hostile || !friendly ? 'HOSTILE_GROUP' : 'FRIENDLY_GROUP'
+      : targets.some(target => /友方/.test(target))
+        ? 'FRIENDLY_SINGLE'
+        : hostile
+          ? 'HOSTILE_SINGLE'
+          : friendly ? 'FRIENDLY_SINGLE' : 'HOSTILE_SINGLE';
+    targetProfileCache.set(skill, profile);
+    return profile;
   }
 
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
@@ -656,12 +697,39 @@
       effects.some(effect => effect?.即时反击 === true || /反击|反伤/.test(String(effect?.结算 || effect?.触发方式 || '').trim()));
   }
 
+  function worldEntries(worldSnapshot = {}) {
+    let entries = worldEntriesCache.get(worldSnapshot);
+    if (!entries) {
+      entries = Object.freeze(preview.listUnits(worldSnapshot));
+      worldEntriesCache.set(worldSnapshot, entries);
+    }
+    return entries;
+  }
+
   function aliveEntries(worldSnapshot = {}) {
-    return preview.listUnits(worldSnapshot).filter(entry => preview.isAlive(entry.unit));
+    let entries = aliveEntriesCache.get(worldSnapshot);
+    if (!entries) {
+      entries = Object.freeze(worldEntries(worldSnapshot).filter(entry => preview.isAlive(entry.unit)));
+      aliveEntriesCache.set(worldSnapshot, entries);
+    }
+    return entries;
+  }
+
+  function sideOf(worldSnapshot = {}, unit = {}) {
+    let units = sideCache.get(worldSnapshot);
+    if (!units) {
+      units = new WeakMap();
+      sideCache.set(worldSnapshot, units);
+    }
+    if (!units.has(unit)) {
+      const id = preview.unitId(unit);
+      units.set(unit, worldEntries(worldSnapshot).find(entry => entry.unit === unit || preview.unitId(entry.unit) === id)?.side || '');
+    }
+    return units.get(unit);
   }
 
   function enumerateTargetSets(worldSnapshot, actor, profile, beliefState = {}) {
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const entries = aliveEntries(worldSnapshot);
     const friendly = entries.filter(entry => entry.side === actorSide).map(entry => entry.unit);
     const hostile = entries.filter(entry => entry.side !== actorSide).map(entry => entry.unit);
@@ -688,7 +756,7 @@
     const reactionOnly = opportunityRole === 'REACTION';
     const counterOnly = opportunityRole === 'COUNTER';
     const immediateBudget = Math.max(0, Number(input.actionOpportunity?.immediateBudget ?? 10));
-    const hostile = aliveEntries(worldSnapshot).filter(entry => entry.side !== preview.sideOf(worldSnapshot, actor)).map(entry => entry.unit);
+    const hostile = aliveEntries(worldSnapshot).filter(entry => entry.side !== sideOf(worldSnapshot, actor)).map(entry => entry.unit);
     const counterSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
     const directHostile = counterOnly && counterSourceId
       ? hostile.filter(target => preview.unitId(target) === counterSourceId)
@@ -706,7 +774,7 @@
     if (!counterOnly && input.actionOpportunity?.counterWindow === true && input.actionOpportunity?.counterActionAvailable === true) {
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
     }
-    const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === preview.sideOf(worldSnapshot, actor) && preview.unitId(entry.unit) !== actorId);
+    const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === sideOf(worldSnapshot, actor) && preview.unitId(entry.unit) !== actorId);
     if (!reactionOnly && !counterOnly && allies.length && input.actionOpportunity?.interceptThreat === true) {
       allies.forEach(entry => candidates.push({ candidateId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, declaration: { actionId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, actorId, actionKind: 'GUARD', targetIds: [preview.unitId(entry.unit)] } }));
     }
@@ -813,16 +881,24 @@
   }
 
   function hasActionCancellation(unit = {}) {
-    return Object.values(unit?.状态效果 || {}).some(state =>
+    if (actionCancellationCache.has(unit)) return actionCancellationCache.get(unit);
+    const result = stateEntries(unit).some(state =>
       isHardControlStateName(state?.状态 || state?.状态名称) ||
       state?.cannot_act === true || state?.skip_turn === true || state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true
     );
+    actionCancellationCache.set(unit, result);
+    return result;
   }
 
   function stateEntries(unit = {}) {
+    const cached = stateEntriesCache.get(unit);
+    if (cached) return cached;
     const states = unit?.状态效果;
-    if (Array.isArray(states)) return states.filter(Boolean);
-    return states && typeof states === 'object' ? Object.values(states).filter(Boolean) : [];
+    const result = Object.freeze(Array.isArray(states)
+      ? states.filter(Boolean)
+      : states && typeof states === 'object' ? Object.values(states).filter(Boolean) : []);
+    stateEntriesCache.set(unit, result);
+    return result;
   }
 
   function hasStateFlag(unit = {}, flag = '') {
@@ -834,7 +910,17 @@
   }
 
   function actionQualityMultiplier(unit = {}, options = {}) {
-    if (!options.ignoreActionCancellation && hasActionCancellation(unit)) return 0;
+    const cacheKey = options.ignoreActionCancellation ? 'ignoreCancellation' : 'normal';
+    let cached = actionQualityCache.get(unit);
+    if (cached?.has(cacheKey)) return cached.get(cacheKey);
+    if (!cached) {
+      cached = new Map();
+      actionQualityCache.set(unit, cached);
+    }
+    if (!options.ignoreActionCancellation && hasActionCancellation(unit)) {
+      cached.set(cacheKey, 0);
+      return 0;
+    }
     let multiplier = 1;
     stateEntries(unit).forEach(state => {
       const name = String(state?.状态 || state?.状态名称 || '').trim();
@@ -852,10 +938,13 @@
         /迟缓|位移限制|僵直/.test(name) ? 0.1 : 0,
       );
     });
-    return clamp(multiplier, 0.1, 1);
+    const result = clamp(multiplier, 0.1, 1);
+    cached.set(cacheKey, result);
+    return result;
   }
 
   function effectiveShieldValue(unit = {}) {
+    if (effectiveShieldCache.has(unit)) return effectiveShieldCache.get(unit);
     const stateShield = stateEntries(unit).reduce((maximum, state) => {
       const name = String(state?.状态 || state?.状态名称 || '').trim();
       if (!/护盾/.test(name) || /破盾|护盾削减/.test(name)) return maximum;
@@ -865,13 +954,15 @@
       const ratio = raw.includes('%') ? numeric / 100 : numeric <= 1 ? numeric : 0;
       return Math.max(maximum, preview.readHpMax(unit) * ratio);
     }, 0);
-    return Math.max(preview.readShield(unit), stateShield);
+    const result = Math.max(preview.readShield(unit), stateShield);
+    effectiveShieldCache.set(unit, result);
+    return result;
   }
 
   function bestBaseActionValue(worldSnapshot, unit, options = {}) {
     if (!preview.isAlive(unit) || (!options.ignoreActionCancellation && hasActionCancellation(unit))) return 0;
-    const side = preview.sideOf(worldSnapshot, unit);
-    const enemies = preview.listUnits(worldSnapshot).filter(entry => entry.side !== side).map(entry => entry.unit);
+    const side = sideOf(worldSnapshot, unit);
+    const enemies = worldEntries(worldSnapshot).filter(entry => entry.side !== side).map(entry => entry.unit);
     if (!enemies.length) return 100;
     let best = hasStateFlag(unit, 'disarm') ? 0 : Math.max(...enemies.map(target => cachedBaseActionValue(unit, target, 'BASIC_ATTACK')), 0);
     const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === side).map(entry => entry.unit);
@@ -888,6 +979,12 @@
 
   function bestBaseActionValueAgainst(worldSnapshot, unit, target) {
     if (!preview.isAlive(unit) || !preview.isAlive(target) || hasActionCancellation(unit)) return 0;
+    let targetCache = bestAgainstCache.get(unit);
+    if (!targetCache) {
+      targetCache = new WeakMap();
+      bestAgainstCache.set(unit, targetCache);
+    }
+    if (targetCache.has(target)) return targetCache.get(target);
     let best = hasStateFlag(unit, 'disarm')
       ? 0
       : cachedBaseActionValue(unit, target, 'BASIC_ATTACK');
@@ -897,7 +994,9 @@
       if (!profile.startsWith('HOSTILE') && profile !== 'ANY_SINGLE') return;
       best = Math.max(best, cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill));
     });
-    return Math.max(0, best);
+    const result = Math.max(0, best);
+    targetCache.set(target, result);
+    return result;
   }
 
   function perceivedEnemyBaseValue(beliefUnit = {}, target = null) {
@@ -941,7 +1040,7 @@
   }
 
   function stateUtility(worldSnapshot, actorSide, beliefState = {}, options = {}) {
-    const sides = [...new Set(preview.listUnits(worldSnapshot).map(entry => entry.side))];
+    const sides = [...new Set(worldEntries(worldSnapshot).map(entry => entry.side))];
     const own = teamCapacity(worldSnapshot, actorSide, actorSide, beliefState, options);
     const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) => sum + teamCapacity(worldSnapshot, side, actorSide, beliefState, options), 0);
     return { own, enemy, total: own + enemy, utility: own - enemy };
@@ -950,7 +1049,7 @@
   function bestImmediateRealizableAction(worldSnapshot, actorId, beliefState = {}, revision = '') {
     const actor = preview.findUnit(worldSnapshot, actorId);
     if (!actor || !preview.isAlive(actor) || hasActionCancellation(actor)) return { gain: 0, actionKind: '', candidateId: '' };
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const before = stateUtility(worldSnapshot, actorSide, beliefState);
     return enumerateCandidates({
       worldSnapshot,
@@ -1017,7 +1116,7 @@
     const worldSnapshot = context.worldSnapshot || {};
     const actor = preview.findUnit(worldSnapshot, context.actorId);
     if (!actor) return { value: 0, explicit: false, sourceId: '', arrivesBeforeNextOpportunity: false };
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const allyCount = Math.max(1, aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide).length);
     const actorName = preview.unitName(actor);
     const currentRound = Math.max(0, Number(worldSnapshot?.回合 || 0));
@@ -1091,7 +1190,7 @@
     if (actionKind === 'GUARD' && context.actionOpportunity?.interceptThreat !== true) return 0;
     if (actionKind === 'WITHDRAW' && context.battleIntent?.withdrawAllowed !== true && !/求生|撤退|脱离/.test(battleIntentMode(context))) return 0;
 
-    const side = preview.sideOf(context.worldSnapshot || {}, actor);
+    const side = sideOf(context.worldSnapshot || {}, actor);
     const objectiveContext = objectiveActorContext(context.worldSnapshot || {}, side, context.battleIntent || {});
     const noDamageFailure = objectiveContext.failureConditions.some(condition =>
       condition.type === 'UNIT_DAMAGED' &&
@@ -1123,7 +1222,7 @@
     const mode = String(event?.actionMode || '').trim();
     if (mode === '护卫') return 0;
     const targets = aliveEntries(context.worldSnapshot)
-      .filter(entry => entry.side !== preview.sideOf(context.worldSnapshot, actor))
+      .filter(entry => entry.side !== sideOf(context.worldSnapshot, actor))
       .map(entry => entry.unit);
     if (!targets.length) return 0;
     const strength = Math.max(0.01, Number(event?.strength || 1));
@@ -1192,7 +1291,7 @@
 
   function buildTeamIntent(worldSnapshot, actorId, beliefState = {}, battleIntent = {}) {
     const actor = preview.findUnit(worldSnapshot, actorId);
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const entries = aliveEntries(worldSnapshot);
     const enemies = entries.filter(entry => entry.side !== actorSide).map(entry => entry.unit);
     const allies = entries.filter(entry => entry.side === actorSide).map(entry => entry.unit);
@@ -1253,7 +1352,7 @@
 
   function identifyProblems(worldSnapshot, actorId, beliefState = {}, options = {}) {
     const actor = preview.findUnit(worldSnapshot, actorId);
-    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const actorSide = sideOf(worldSnapshot, actor);
     const problems = [];
     const capacity = stateUtility(worldSnapshot, actorSide, beliefState);
     const normalizedLoss = value => clamp(100 * Math.max(0, Number(value || 0)) / Math.max(1, capacity.total), 0, 100);
@@ -1331,7 +1430,7 @@
 
   function responseBranches(context) {
     const actor = preview.findUnit(context.worldSnapshot, context.actorId);
-    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const actorSide = sideOf(context.worldSnapshot, actor);
     const targetId = aliveEntries(context.worldSnapshot)
       .filter(entry => entry.side !== actorSide)
       .map(entry => {
@@ -1408,7 +1507,7 @@
     const expected = new Set(Array.isArray(memory?.expectedOutcomeKinds) ? memory.expectedOutcomeKinds.map(String) : []);
     if (expected.has('ACTION_CANCELLED') && !targets.some(targetId => hasActionCancellation(preview.findUnit(worldSnapshot, targetId) || {}))) return {};
     if (expected.has('SUMMON_WINDOW')) {
-      const summonExists = preview.listUnits(worldSnapshot).some(entry => {
+      const summonExists = worldEntries(worldSnapshot).some(entry => {
         const runtime = entry.unit?.__battleRuntime || {};
         return runtime?.windowId || entry.unit?.召唤键 || entry.unit?.召唤来源;
       });
@@ -1416,7 +1515,7 @@
     }
     const expectedWindows = Array.isArray(memory?.expectedWindowIds) ? memory.expectedWindowIds.map(String).filter(Boolean) : [];
     if (expectedWindows.length) {
-      const activeWindows = new Set(preview.listUnits(worldSnapshot).flatMap(entry => {
+      const activeWindows = new Set(worldEntries(worldSnapshot).flatMap(entry => {
         const runtime = entry.unit?.__battleRuntime || {};
         return [runtime.windowId, ...(Array.isArray(runtime.activeWindowIds) ? runtime.activeWindowIds : [])].map(String).filter(Boolean);
       }));
@@ -1448,8 +1547,8 @@
 
   function needsDeepPreview(candidate, result, before, after, beliefState = {}) {
     const outcomes = new Set((result?.contributions || []).map(entry => entry.outcomeKind));
-    const beforeAlive = preview.listUnits(before).filter(entry => preview.isAlive(entry.unit)).length;
-    const afterAlive = preview.listUnits(after).filter(entry => preview.isAlive(entry.unit)).length;
+    const beforeAlive = aliveEntries(before).length;
+    const afterAlive = aliveEntries(after).length;
     return beforeAlive !== afterAlive ||
       ['ACTION_CANCELLED', 'ACTION_GRANTED', 'IRREVERSIBLE_ASSET_LOST', 'SUMMON_WINDOW', 'STATE_SCHEDULED'].some(kind => outcomes.has(kind)) ||
       (result?.scheduledEvents || []).length > 0 ||
@@ -1517,7 +1616,7 @@
 
   function scoreCandidate(candidate, context) {
     const actor = preview.findUnit(context.worldSnapshot, context.actorId);
-    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const actorSide = sideOf(context.worldSnapshot, actor);
     const before = context.beforeUtility;
     let result;
     if (!candidate.creation && ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate.declaration.actionKind)) {
@@ -1585,7 +1684,7 @@
       const controlledDamagedTargets = new Set((candidate.declaration.targetIds || []).filter(targetId => {
         const targetBefore = preview.findUnit(context.worldSnapshot, targetId);
         const targetAfter = preview.findUnit(result.afterSnapshot, targetId);
-        return targetBefore && targetAfter && preview.sideOf(context.worldSnapshot, targetBefore) !== actorSide &&
+        return targetBefore && targetAfter && sideOf(context.worldSnapshot, targetBefore) !== actorSide &&
           hasActionCancellation(targetBefore) && preview.readHp(targetAfter) < preview.readHp(targetBefore);
       }));
       if (controlledDamagedTargets.size) {
@@ -1851,13 +1950,24 @@
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
     preview.clearCache();
     baseActionValueCache = new WeakMap();
+    unitSkillCache = new WeakMap();
+    stateEntriesCache = new WeakMap();
+    actionCancellationCache = new WeakMap();
+    actionQualityCache = new WeakMap();
+    effectiveShieldCache = new WeakMap();
+    bestAgainstCache = new WeakMap();
+    experienceCache = new WeakMap();
+    relevantStateFingerprintCache = new WeakMap();
+    worldEntriesCache = new WeakMap();
+    aliveEntriesCache = new WeakMap();
+    sideCache = new WeakMap();
     decisionRevisionSequence += 1;
     const actor = preview.findUnit(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
     const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
     const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(actor), beliefState);
     const decisionActor = preview.findUnit(decisionWorld, preview.unitId(actor));
-    const actorSide = preview.sideOf(decisionWorld, decisionActor);
+    const actorSide = sideOf(decisionWorld, decisionActor);
     const battleIntent = actorBattleIntent(decisionWorld, actorSide, input.battleIntent);
     const signature = strategicSignature(decisionWorld, beliefState);
     const stalemate = detectStalemate(input.strategicHistory, signature);
@@ -1865,7 +1975,7 @@
     const problems = identifyProblems(decisionWorld, preview.unitId(actor), beliefState, { battleIntent, stalemate });
     const beforeUtility = stateUtility(decisionWorld, actorSide, beliefState);
     const beliefRevision = String(beliefState.revision || preview.stableHash(beliefState));
-    const pendingStrategicEffect = preview.listUnits(decisionWorld).some(entry => entry.unit?.蓄力技能 || stateEntries(entry.unit).some(state => Number(state?.duration ?? state?.持续回合 ?? 0) > 0));
+    const pendingStrategicEffect = worldEntries(decisionWorld).some(entry => entry.unit?.蓄力技能 || stateEntries(entry.unit).some(state => Number(state?.duration ?? state?.持续回合 ?? 0) > 0));
     const context = {
       ...input,
       worldSnapshot: decisionWorld,

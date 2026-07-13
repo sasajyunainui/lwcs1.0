@@ -74,8 +74,8 @@ function instrumentCurrentTeamBattleSources(uiSource, runtimeSource) {
   };
   let instrumentedRuntime = replaceOnce(
     runtimeSource,
-    `    let lastAlive = adapters.readAlive(combatData);\n    while (rounds < roundLimit) {\n      rounds += 1;`,
-    `    let lastAlive = adapters.readAlive(combatData);\n    root.__LWCS_PERF_ROUND_TIMINGS__ = [];\n    while (rounds < roundLimit) {\n      const __performanceRoundStarted = performance.now();\n      rounds += 1;`,
+    `    let lastAlive = adapters.readAlive(combatData);\n    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;\n    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {\n      rounds += 1;`,
+    `    let lastAlive = adapters.readAlive(combatData);\n    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;\n    root.__LWCS_PERF_ROUND_TIMINGS__ = [];\n    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {\n      const __performanceRoundStarted = performance.now();\n      rounds += 1;`,
     'runtime_round_start',
   );
   instrumentedRuntime = replaceOnce(

@@ -131,7 +131,8 @@
   }
 
   function readHp(unit = {}) {
-    return clamp(readNumber(unit, ['hp', 'HP', '生命', 'vit', '体力'], readHpMax(unit)), 0, readHpMax(unit));
+    const maximum = readHpMax(unit);
+    return clamp(readNumber(unit, ['hp', 'HP', '生命', 'vit', '体力'], maximum), 0, maximum);
   }
 
   function readShield(unit = {}) {
@@ -146,10 +147,17 @@
   }
 
   function readResource(unit = {}, resource = '') {
-    if (/精神/.test(resource)) return clamp(readNumber(unit, ['men', '精神力'], 0), 0, readResourceMax(unit, resource));
-    if (/体力/.test(resource)) return clamp(readNumber(unit, ['vit', 'sta', '体力'], 0), 0, readResourceMax(unit, resource));
+    if (/精神/.test(resource)) {
+      const maximum = readResourceMax(unit, resource);
+      return clamp(readNumber(unit, ['men', '精神力'], 0), 0, maximum);
+    }
+    if (/体力/.test(resource)) {
+      const maximum = readResourceMax(unit, resource);
+      return clamp(readNumber(unit, ['vit', 'sta', '体力'], 0), 0, maximum);
+    }
     if (/生命|HP/i.test(resource)) return readHp(unit);
-    return clamp(readNumber(unit, ['sp', '魂力'], 0), 0, readResourceMax(unit, resource));
+    const maximum = readResourceMax(unit, resource);
+    return clamp(readNumber(unit, ['sp', '魂力'], 0), 0, maximum);
   }
 
   function readCombatStat(unit = {}, key = '') {
