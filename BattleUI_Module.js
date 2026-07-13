@@ -7195,7 +7195,7 @@ class BattleUIComponent {
       } else if (状态 === '迟缓') {
         写面板倍率('agi', 1 - 取比例(数值, 0.1));
         写比例字段('reaction_penalty', 副数值, 0.08);
-      } else if (状态 === '眩晕') {
+      } else if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(状态)) {
         计算层效果.skip_turn = true;
         计算层效果.cannot_react = true;
       } else if (状态 === '沉默') {
@@ -35603,7 +35603,7 @@ class BattleUIComponent {
                 sourceActionId: parentActionId,
                 grantId: `counter:${round}:${parentActionId || parentActionSequence}:${counterDepth}:${counterKey}`,
                 execute: () => {
-                  if (!isCombatUnitAbleToFight(counterActor) || !isCombatUnitAbleToFight(counterTarget)) {
+                  if (!isCombatUnitAbleToFight(counterActor) || isActorHardControlled(counterActor) || !isCombatUnitAbleToFight(counterTarget)) {
                     写入战斗事件账本(combatData, {
                       eventKind: 'counter',
                       round: Number(round || combatData?.回合 || 0),
@@ -35850,6 +35850,16 @@ class BattleUIComponent {
           if (!isCombatUnitAlive(actor)) {
             return { actor: actor.name, side: actorEntry.side, skipped: true, reason: '已失去战斗力', lostOpportunity: recordLostOpportunity('DEFEATED_BEFORE_OPPORTUNITY', '行动机会到来前已失去战斗能力') };
           }
+          if (isActorHardControlled(actor)) {
+            return {
+              actor: actor.name,
+              side: actorEntry.side,
+              skipped: true,
+              reason: '受控制无法行动',
+              lostOpportunity: recordLostOpportunity('CONTROLLED_BEFORE_OPPORTUNITY', '行动机会到来前已被硬控制，本次自然行动取消'),
+              log: `[团战执行] ${actor.name}受控制影响，本回合行动机会被取消。`,
+            };
+          }
           if (!isCombatUnitAbleToFight(actor)) {
             return {
               actor: actor.name,
@@ -35972,6 +35982,26 @@ class BattleUIComponent {
               actor.蓄力技能 = null;
             } else {
               action.cast_time -= Math.max(1, actionBudget - 10);
+              写入战斗事件账本(battleState.combatData, {
+                eventKind: 'charge_progress',
+                round: Number(battleState.combatData?.回合 || 0),
+                actorName: actor?.name || actor?.名称 || '',
+                actorSide: actorEntry.side === 'enemy' ? 'enemy' : 'player',
+                targetName: actionTarget?.name || actionTarget?.名称 || '',
+                targetSide: 读取规划单位阵营(actionTarget, battleState.combatData) === (actorEntry.side === 'enemy' ? '敌方' : '玩家') ? actorEntry.side : (actorEntry.side === 'enemy' ? 'player' : 'enemy'),
+                actionName: action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '蓄力行动',
+                actionType: 'charge_progress',
+                actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
+                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                result: 'charging',
+                actionStatus: 'CHARGING',
+                meta: {
+                  source: 'action_queue_charge_progress',
+                  remainingCastTime: Math.max(0, Number(action?.cast_time || 0)),
+                  grantId: String(queueNode?.grantId || '').trim(),
+                  primaryOutcome: 'charging',
+                },
+              });
               return {
                 actor: actor.name,
                 side: actorEntry.side,
@@ -36510,7 +36540,7 @@ class BattleUIComponent {
           const rootEventLedger = BATTLE_RUNTIME.ensureLedger(battleState.combatData);
           const hasStructuredSettlement = rootEventLedger.some(event => {
             const kind = String(event?.eventKind || '').trim();
-            if (!['hit_result', 'state_apply', 'state_replace', 'state_remove', 'effect_resolved', 'resource_change', 'item_consume', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'shield_break', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
+            if (!['hit_result', 'state_apply', 'state_replace', 'state_remove', 'effect_resolved', 'resource_change', 'item_consume', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'shield_break', 'dodge', 'defend', 'pass', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
             if (kind === 'effect_resolved' && /fail|blocked|no_effect|invalid|失败|无效|阻断/i.test(String(event?.result || event?.resultState || event?.meta?.result || ''))) return false;
             return String(event?.sourceActionId || event?.actionId || '').trim() === String(actionStartEvent?.actionId || '').trim() ||
               String(event?.sourceNodeId || event?.parentNodeId || '').trim() === String(actionStartEvent?.chainNodeId || '').trim();
@@ -37314,7 +37344,7 @@ class BattleUIComponent {
               精神负载: char.精神负载 || 0,
               剩余窗口: char.召唤键 ? 读取召唤剩余有效窗口(char) : 0,
               稳定状态: char.召唤键 ? 读取召唤稳定状态(char) : '',
-              actionState: String(char?.状态?.行动 || '').trim(),
+              actionState: !isCombatUnitAlive(char) ? '失去战斗力' : String(char?.状态?.行动 || '').trim(),
               当前领域: char.当前领域 || '无',
               状态效果: Object.entries(char.状态效果 || {}).filter(([, cond]) => cond?.__equipmentState !== true).map(([name, cond]) => ({
                 name,

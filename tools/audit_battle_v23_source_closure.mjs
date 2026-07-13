@@ -254,7 +254,7 @@ addCheck(
 addCheck(
   'duelClashAndRoundTerminalAreSeparated',
   !/执行单挑回合交锋|结算单挑回合尾阶段|executeDuelRound/.test(battleUiSource) &&
-    /const queueResult = adapters\.executeQueue\([\s\S]*?if \(queueResult\?\.fatal\)[\s\S]*?else \{\s*adapters\.settleRoundEnd\?\./.test(battleRuntimeSource),
+    /const queueResult = adapters\.executeQueue\([\s\S]*?if \(queueResult\?\.fatal\)[\s\S]*?else \{\s*const terminalAlive = adapters\.readAlive\(combatData\);[\s\S]*?if \(terminalAlive\.playerAlive > 0 && terminalAlive\.enemyAlive > 0\) \{\s*adapters\.settleRoundEnd\?\./.test(battleRuntimeSource),
 );
 addCheck(
   'duelForcedTerminalCannotBeOverwrittenByContinuation',
@@ -369,7 +369,13 @@ addCheck(
 addCheck(
   'terminalCheckPrecedesRoundTick',
   /const terminalAlive = adapters\.readAlive\(combatData\);[\s\S]*?terminalAlive\.playerAlive > 0 && terminalAlive\.enemyAlive > 0[\s\S]*?adapters\.settleRoundEnd\?\./.test(battleRuntimeSource) &&
-    !/adapters\.settleRoundEnd\?\.\(combatData, logs\);[\s\S]{0,240}?lastAlive = adapters\.readAlive\(combatData\)/.test(battleRuntimeSource),
+    !/else \{\s*adapters\.settleRoundEnd\?\.\(combatData, logs\)/.test(battleRuntimeSource),
+);
+addCheck(
+  'hardControlRevalidatesQueuedOpportunities',
+  /\['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'\]\.includes\(状态\)/.test(battleUiSource) &&
+    /if \(isActorHardControlled\(actor\)\)[\s\S]*?CONTROLLED_BEFORE_OPPORTUNITY/.test(battleUiSource) &&
+    /eventKind:\s*['"]lost_opportunity['"][\s\S]*?reasonCode/.test(battleUiSource),
 );
 addCheck(
   'summonAssistCannotBecomeSecondActiveRoot',

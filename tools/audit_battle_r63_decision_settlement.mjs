@@ -274,6 +274,66 @@ assert.ok(!nonlethalResult.ledger.some(event =>
 ), '终态闭合后仍执行自然恢复');
 assert.equal(nonlethalResult.audit?.fatals?.length || 0, 0, `非致命结算审计失败:${JSON.stringify(nonlethalResult.audit?.fatals || [])}`);
 
+const controlDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'team_counter_coordination');
+assert.ok(controlDefinition, '控制后行动重验案例缺失');
+const controlResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'r63-control-cancels-queued-natural-action',
+  seed: controlDefinition.seed,
+  combatData: structuredClone(controlDefinition.combatData),
+  mode: 'team_preview',
+  rounds: 6,
+  settings: {},
+});
+const controlLedger = controlResult.ledger || [];
+const appliedHardControls = controlLedger
+  .map((event, index) => ({ event, index }))
+  .filter(({ event }) =>
+    String(event?.eventKind || '').trim() === 'state_apply' &&
+    !/resist|immune|抵抗|免疫/i.test(String(event?.result || event?.resultState || '')) &&
+    /僵直|眩晕|麻痹|失控/.test(String(event?.meta?.stateName || event?.stateName || ''))
+  );
+assert.ok(appliedHardControls.length > 0, '控制后行动重验案例未形成成功硬控');
+appliedHardControls.forEach(({ event, index }) => {
+  const actorName = String(event?.targetName || '').trim();
+  const round = Number(event?.round || 0);
+  const laterActiveAction = controlLedger.slice(index + 1).find(candidate =>
+    Number(candidate?.round || 0) === round &&
+    String(candidate?.eventKind || '').trim() === 'action_start' &&
+    String(candidate?.actionRole || '').trim() === 'ACTIVE' &&
+    String(candidate?.actorName || '').trim() === actorName
+  );
+  assert.ok(!laterActiveAction, `硬控生效后仍执行预排自然动作:${JSON.stringify({ control: event, action: laterActiveAction })}`);
+});
+assert.ok(controlLedger.some(candidate =>
+  String(candidate?.eventKind || '').trim() === 'lost_opportunity' &&
+  String(candidate?.ruleCode || '').trim() === 'CONTROLLED_BEFORE_OPPORTUNITY'
+), '硬控取消自然行动后缺少结构化原因');
+const controlEventIndex = new Map(controlLedger.map((event, index) => [String(event?.eventId || '').trim(), index]));
+const controlBlocksByRound = controlResult.reportBlocks
+  .filter(block => block?.blockType !== 'ROUND_SUMMARY')
+  .reduce((groups, block) => {
+    const round = Number(block?.round || 0);
+    if (!groups.has(round)) groups.set(round, []);
+    groups.get(round).push(block);
+    return groups;
+  }, new Map());
+controlBlocksByRound.forEach((blocks, round) => {
+  const firstEventIndexes = blocks.map(block => Math.min(
+    ...(block?.facts || []).map(fact => controlEventIndex.get(String(fact?.factId || '').trim())).filter(Number.isFinite),
+    Number.MAX_SAFE_INTEGER,
+  ));
+  assert.deepEqual(
+    firstEventIndexes,
+    [...firstEventIndexes].sort((left, right) => left - right),
+    `第${round}回合动作组没有按Ledger因果顺序投影:${JSON.stringify(blocks.map((block, index) => ({ actionGroupId: block.actionGroupId, firstEventIndex: firstEventIndexes[index], outcomeSummary: block.outcomeSummary })))}`,
+  );
+});
+const firstLostOpportunityBlockIndex = controlResult.reportBlocks.findIndex(block =>
+  (block?.facts || []).some(fact => fact?.eventKind === 'lost_opportunity')
+);
+assert.ok(firstLostOpportunityBlockIndex >= 0, '硬控失去行动事实没有进入结构化战报');
+
 const adaptationInput = combatData();
 adaptationInput.参战者.team_player[0].str = 1;
 adaptationInput.参战者.team_player[0].属性.力量 = 1;
@@ -345,6 +405,18 @@ const supportReactionFacts = supportResult.ledger.filter(event => ['pass', 'dodg
 assert.equal(supportReactionFacts.length, 0, `非攻击支援动作错误生成应招事实:${JSON.stringify({ supportStart, selected: supportResult.decisions?.find(entry => entry?.actorId === 'player-a')?.selected, supportReactionFacts })}`);
 const supportCost = supportResult.ledger.find(event => event?.eventKind === 'action_cost' && event?.actorName === 'player-a' && event?.actionName === '群体支援');
 assert.equal(Number(supportCost?.meta?.reqSp || 0), 1, '对象型绝对魂力消耗没有按1点正式结算');
+const supportShieldFacts = supportResult.ledger.filter(event => event?.eventKind === 'shield_create' && Number(event?.meta?.amount || 0) > 0);
+const supportActionShieldBadges = supportResult.reportBlocks
+  .filter(block => block?.blockType !== 'ROUND_SUMMARY')
+  .flatMap(block => block?.badges || [])
+  .filter(badge => badge?.kind === 'shield');
+assert.ok(supportShieldFacts.length > 0, '群体支援没有形成真实护盾事实');
+assert.ok(supportActionShieldBadges.every(badge => Number(badge?.value || 0) > 0), `结构化战报保留了零值护盾Badge:${JSON.stringify(supportActionShieldBadges)}`);
+assert.equal(
+  supportActionShieldBadges.length,
+  new Set(supportActionShieldBadges.map(badge => String(badge?.sourceEventId || '').trim())).size,
+  `同一动作层护盾事实生成了重复Badge:${JSON.stringify(supportActionShieldBadges)}`,
+);
 
 const resourceSupportInput = combatData();
 resourceSupportInput.参战者.team_player.push(participant('player-b', 'player', 120));

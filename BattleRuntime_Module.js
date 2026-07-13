@@ -785,6 +785,7 @@
   function buildReportBlocks(eventLedger = [], decisionTrace = [], publicEntries = []) {
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const eventById = new Map(ledger.map(event => [String(event?.eventId || '').trim(), event]).filter(([id]) => id));
+    const eventIndexById = new Map(ledger.map((event, index) => [String(event?.eventId || '').trim(), index]).filter(([id]) => id));
     const decisions = (Array.isArray(decisionTrace) ? decisionTrace : []).filter(item => item && typeof item === 'object');
     const normalizePublicEntry = requireEngine().caseDomain.normalizePublicEntry;
     const entries = (Array.isArray(publicEntries) ? publicEntries : []).map(normalizePublicEntry).filter(Boolean);
@@ -869,6 +870,9 @@
         resource: String(event?.meta?.resource || '').trim(),
         stateName: ['state_apply', 'state_replace', 'state_remove', 'state_tick'].includes(kind) ? readLedgerStateName(event) : '',
         duration: Math.max(0, Number(event?.duration || event?.meta?.duration || 0)),
+        reasonCode: String(event?.ruleCode || event?.failReason || event?.meta?.reasonCode || '').trim(),
+        reasonText: String(event?.meta?.reasonText || '').trim(),
+        remainingCastTime: Math.max(0, Number(event?.meta?.remainingCastTime || 0)),
         sourceActionId: String(event?.sourceActionId || event?.actionId || '').trim(),
         sourceNodeId: String(event?.chainNodeId || '').trim(),
         segmentIndex: Number(event?.meta?.segmentIndex ?? event?.segmentIndex ?? 0),
@@ -969,6 +973,15 @@
           push(`${actor}开始为【${action}】蓄力`);
           return;
         }
+        if (fact.eventKind === 'charge_progress') {
+          push(`${actor}继续为【${action}】蓄力${fact.remainingCastTime > 0 ? `，剩余前摇 ${fact.remainingCastTime}` : ''}`);
+          return;
+        }
+        if (fact.eventKind === 'lost_opportunity') {
+          const reason = fact.reasonCode === 'CONTROLLED_BEFORE_OPPORTUNITY' ? '受控制影响' : (fact.reasonText || '当前状态限制');
+          push(`${actor}因${reason}失去本回合行动机会`);
+          return;
+        }
         if (['failed_action', 'blocked_action', 'target_fail'].includes(fact.eventKind)) {
           push(`${actor}的【${action}】未能生效`);
           return;
@@ -983,7 +996,9 @@
       });
       if (!lines.length) {
         const declared = facts.find(fact => ['action_start', 'charge_start', 'pass'].includes(fact.eventKind));
-        if (declared) push(`${declared.actorName || '行动者'}执行【${declared.actionName || '行动'}】${declared.targetName ? `，目标为${declared.targetName}` : ''}`);
+        const evaded = facts.find(fact => fact.eventKind === 'dodge' && /evaded|dodge|闪避成功|规避成功/i.test(String(fact.resultState || '')));
+        if (declared && evaded) push(`${declared.actorName || '行动者'}的【${declared.actionName || '行动'}】被${evaded.actorName || '目标'}闪避`);
+        else if (declared) push(`${declared.actorName || '行动者'}执行【${declared.actionName || '行动'}】${declared.targetName ? `，目标为${declared.targetName}` : ''}`);
       }
       return lines.join('；');
     };
@@ -1035,13 +1050,17 @@
       const round = Number(primary?.round || primary?.sourceRound || 0);
       const actorName = String(primary?.actorName || '').trim();
       const actionName = normalizeStateDisplayName(normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || ''));
-      const blockType = kinds.has('charge_start') ? 'ACTION_DECLARED' :
+      const blockType = kinds.has('charge_start') || kinds.has('charge_progress') ? 'ACTION_DECLARED' :
         kinds.has('state_tick') ? 'STATE_TICK' :
         kinds.has('summon_create') || kinds.has('summon_assist') ? 'SUMMON_ACTION' :
           roles.size > 0 && [...roles].every(role => role === 'STATE_TICK') ? 'RESOURCE_CHANGE' :
             roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
               'ACTION_RESOLVED';
       const facts = dedupeFacts(events.map(projectFact));
+      const firstEventIndex = Math.min(
+        ...events.map(event => eventIndexById.get(String(event?.eventId || '').trim())).filter(Number.isFinite),
+        Number.MAX_SAFE_INTEGER,
+      );
       const projectedBadges = group.badges
         .map(block => ({
           kind: String(block?.kind || '').trim(),
@@ -1053,6 +1072,7 @@
           sourceEventId: String(block?.sourceEventId || '').trim(),
           sourceNodeId: String(block?.sourceNodeId || '').trim(),
         }))
+        .filter(badge => badge.kind !== 'shield' || badge.value > 0)
         .filter((badge, badgeIndex, list) => list.findIndex(item => [
           item?.kind,
           item?.name,
@@ -1102,6 +1122,7 @@
           ? `【${stateWindow.stateName || '状态'}】还剩 ${stateWindow.duration} 个有效窗口`
           : '';
       return {
+        __firstEventIndex: firstEventIndex,
         blockId: `report_block_${String(actionGroupId || index + 1).replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${index + 1}`,
         round,
         actionGroupId,
@@ -1147,6 +1168,7 @@
         fact.duration > 0 && fact.stateName && !/resist|抵抗|抵住|immune|免疫/i.test(String(fact?.resultState || ''))
       );
       return {
+        __firstEventIndex: Number.MAX_SAFE_INTEGER,
         blockId: `round_summary_${round}`,
         round,
         actionGroupId: `round_summary_${round}`,
@@ -1160,10 +1182,13 @@
         nextWindow: activeState ? `【${activeState.stateName}】还剩 ${activeState.duration} 个有效窗口` : '',
       };
     });
-    return [...actionBlocks, ...roundSummaries].sort((left, right) =>
-      Number(left?.round || 0) - Number(right?.round || 0) ||
-      (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0)
-    );
+    return [...actionBlocks, ...roundSummaries]
+      .sort((left, right) =>
+        Number(left?.round || 0) - Number(right?.round || 0) ||
+        Number(left?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER) - Number(right?.__firstEventIndex ?? Number.MAX_SAFE_INTEGER) ||
+        (left?.blockType === 'ROUND_SUMMARY' ? 1 : 0) - (right?.blockType === 'ROUND_SUMMARY' ? 1 : 0)
+      )
+      .map(({ __firstEventIndex, ...block }) => block);
   }
 
   function buildRoundOverview(result = null, context = {}) {
@@ -1317,7 +1342,7 @@
       vitMax: Math.max(1, Math.round(Number(unit?.vit_max || 1))),
       men: Math.max(0, Math.round(Number(unit?.men || 0))),
       menMax: Math.max(1, Math.round(Number(unit?.men_max || 1))),
-      actionState: String(unit?.actionState || unit?.行动状态 || '').trim(),
+      actionState: Math.max(0, Math.round(Number(unit?.hp || 0))) <= 0 ? '失去战斗力' : String(unit?.actionState || unit?.行动状态 || '').trim(),
       states: (Array.isArray(unit?.状态效果) ? unit.状态效果 : [])
         .filter(state => Number(state?.duration || 0) > 0)
         .map(state => ({ name: normalizeStateDisplayName(state?.name || '状态'), duration: Math.max(0, Math.round(Number(state?.duration || 0))), skipTurn: state?.skip_turn === true, dot: Math.max(0, Number(state?.dot || 0)) })),
