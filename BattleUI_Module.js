@@ -36781,6 +36781,7 @@ class BattleUIComponent {
                 winner: resolution.winner,
                 victoryMatches: resolution.victoryMatches,
                 defeatMatches: resolution.defeatMatches,
+                timeLimitReached: resolution.timeLimitReached,
                 objectives,
               },
             });

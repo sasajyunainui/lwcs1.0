@@ -915,6 +915,12 @@
         reasonCode: String(event?.ruleCode || event?.failReason || event?.meta?.reasonCode || '').trim(),
         reasonText: String(event?.meta?.reasonText || '').trim(),
         remainingCastTime: Math.max(0, Number(event?.meta?.remainingCastTime || 0)),
+        objectiveReason: kind === 'battle_objective_resolved'
+          ? event?.meta?.timeLimitReached === true ? 'TIME_LIMIT'
+            : Array.isArray(event?.meta?.victoryMatches) && event.meta.victoryMatches.some(Boolean) &&
+              Array.isArray(event?.meta?.defeatMatches) && event.meta.defeatMatches.some(Boolean) ? 'CONFLICT'
+              : 'CONDITION'
+          : '',
         sourceActionId: String(event?.sourceActionId || event?.actionId || '').trim(),
         sourceNodeId: String(event?.chainNodeId || '').trim(),
         segmentIndex: Number(event?.meta?.segmentIndex ?? event?.segmentIndex ?? 0),
@@ -995,7 +1001,7 @@
         if (fact.factType === 'DAMAGE') return;
         if (fact.factType === 'BATTLE_OBJECTIVE') {
           const winner = String(fact.resultState || '').trim();
-          push(winner === 'player' ? '我方胜利条件已经成立，战斗结束' : winner === 'enemy' ? '我方失败条件已经成立，战斗结束' : '双方终止条件同时成立，战斗结束');
+          push(winner === 'player' ? '我方胜利条件已经成立，战斗结束' : winner === 'enemy' ? '我方失败条件已经成立，战斗结束' : fact.objectiveReason === 'TIME_LIMIT' ? '达到回合上限，双方未分胜负' : '双方终止条件同时成立，战斗结束');
           return;
         }
         if (fact.factType === 'STATE_TICK') {
@@ -1464,6 +1470,10 @@
     const enemyDefeated = enemyMetric.alive <= 0 && enemyMetric.total > 0;
     const objectiveEvent = [...ledger].reverse().find(event => String(event?.eventKind || '').trim() === 'battle_objective_resolved');
     const objectiveWinner = String(objectiveEvent?.meta?.winner || objectiveEvent?.result || '').trim();
+    const objectiveTimedOut = objectiveEvent?.meta?.timeLimitReached === true;
+    const objectiveConflict = !objectiveTimedOut && objectiveWinner === 'draw' &&
+      Array.isArray(objectiveEvent?.meta?.victoryMatches) && objectiveEvent.meta.victoryMatches.some(Boolean) &&
+      Array.isArray(objectiveEvent?.meta?.defeatMatches) && objectiveEvent.meta.defeatMatches.some(Boolean);
     const objectiveStatusText = objectiveWinner === 'player' ? '我方胜利' : objectiveWinner === 'enemy' ? '敌方胜利' : objectiveWinner === 'draw' ? '平局' : '';
     const battleEnded = !!objectiveEvent || playerDefeated || enemyDefeated;
     const scoreGap = Number((playerMetric.score - enemyMetric.score).toFixed(2));
@@ -1473,7 +1483,7 @@
       scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
     const advantageText = advantage === 'PLAYER_VICTORY' ? '我方获胜' :
       advantage === 'ENEMY_VICTORY' ? '敌方获胜' :
-      advantage === 'DRAW' ? '胜负条件同时成立，战斗以平局结束' :
+      advantage === 'DRAW' ? objectiveTimedOut ? '达到回合上限，双方未分胜负' : objectiveConflict ? '双方终止条件同时成立，战斗以平局结束' : '战斗以平局结束' :
       advantage === 'PLAYER' ? '我方占优' :
       advantage === 'PLAYER_EDGE' ? '我方略占上风' :
         advantage === 'ENEMY' ? '敌方占优' :
@@ -1493,7 +1503,10 @@
       return pairs;
     };
     const resolvedIntents = battleEnded
-      ? {
+      ? advantage === 'DRAW' ? {
+          playerIntent: objectiveTimedOut ? '我方未能在回合上限前达成胜利条件，停止交锋' : '我方与敌方同时触发终止条件，停止交锋',
+          enemyIntent: objectiveTimedOut ? '敌方同样未在回合上限前终结战斗，停止交锋' : '敌方与我方同时触发终止条件，停止交锋',
+        } : {
           playerIntent: advantage === 'ENEMY_VICTORY' ? '我方未能满足战斗目标，转入战后处置' : '我方已满足战斗目标，转入收势与战后确认',
           enemyIntent: advantage === 'PLAYER_VICTORY' ? '敌方已触发我方胜利条件，停止继续行动' : '敌方已满足其阻止条件，转入战后处置',
         }
@@ -1520,8 +1533,8 @@
     });
     const hpRatioGap = playerMetric.hpRatio - enemyMetric.hpRatio;
     if (battleEnded) {
-      tacticalWindows.push(objectiveEvent ? `胜负条件已成立（${objectiveStatusText}），本场交锋已经结束` : enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
-      const survivingSide = advantage === 'PLAYER_VICTORY' ? playerSummary : enemySummary;
+      tacticalWindows.push(objectiveTimedOut ? '本场已达到回合上限，双方停止交锋' : objectiveEvent ? `胜负条件已成立（${objectiveStatusText}），本场交锋已经结束` : enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
+      const survivingSide = advantage === 'DRAW' ? [...playerSummary, ...enemySummary] : advantage === 'PLAYER_VICTORY' ? playerSummary : enemySummary;
       const damagedSurvivors = survivingSide.filter(unit => unit.hp > 0 && unit.hp < unit.hpMax);
       if (damagedSurvivors.length) risks.push(`${damagedSurvivors.map(unit => unit.name).join('、')}仍有战损，需要进行战后恢复`);
     } else if (hpRatioGap <= -0.03) {

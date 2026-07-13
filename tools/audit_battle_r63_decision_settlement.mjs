@@ -730,6 +730,20 @@ assert.equal(surviveResult.roundsExecuted, 2, '坚持回合条件没有在完成
 assert.equal(surviveResult.finalBattleReport?.objectiveWinner, 'player', '坚持指定回合没有形成我方胜利终态');
 assert.ok(surviveResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '坚持回合目标没有进入保命问题识别');
 
+const timeLimitInput = combatData();
+timeLimitInput.胜负条件 = {
+  version: 1, explicit: true, startRound: 0, maxRounds: 1,
+  victory: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }] },
+  defeat: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }] },
+};
+const timeLimitResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'battle-objective-time-limit-draw', seed: 6404, combatData: timeLimitInput, mode: 'team_preview', rounds: 3, settings: {},
+});
+assert.equal(timeLimitResult.finalBattleReport?.objectiveWinner, 'draw', '回合上限没有形成平局终态');
+assert.match(String(timeLimitResult.finalBattleReport?.headline || ''), /达到回合上限.*未分胜负/, '时限平局被误写成双方条件同时成立');
+assert.doesNotMatch(String(timeLimitResult.finalBattleReport?.text || ''), /胜负条件同时成立|已满足战斗目标/, '时限平局仍虚构双方完成目标');
+assert.ok(timeLimitResult.reportBlocks.some(block => block?.facts?.some(fact => fact?.factType === 'BATTLE_OBJECTIVE' && fact?.objectiveReason === 'TIME_LIMIT')), '时限终态没有投影为可区分的结构化原因');
+
 const protectedInput = combatData();
 protectedInput.战斗意图 = '无伤保护测试';
 protectedInput.胜负条件 = {
