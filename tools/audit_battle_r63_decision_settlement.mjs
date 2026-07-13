@@ -667,6 +667,30 @@ const controlledFollowUpDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
 assert.equal(controlledFollowUpDecision.selected?.declaration?.actionKind, 'BASIC_ATTACK', `受控敌人的自然恢复窗口价值被抹零，行动者仍选择无威胁防守:${JSON.stringify(controlledFollowUpDecision.scoreAudit)}`);
 assert.ok(Number(controlledFollowUpDecision.selected?.objectiveUtility || 0) > 0, '追击受控敌人没有形成正向容量变化');
 assert.ok(!(controlledFollowUpDecision.selected?.preview?.contributions || []).some(entry => entry?.outcomeKind === 'ACTION_GRANTED'), '受控目标追击估值错误授予了额外行动');
+const controlledDefenseCandidates = controlledFollowUpDecision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate?.declaration?.actionKind));
+assert.ok(controlledDefenseCandidates.every(candidate => Number(candidate?.objectiveUtility || 0) <= 1e-9), `已取消下一行动的敌人仍为防御动作制造虚构收益:${JSON.stringify(controlledDefenseCandidates)}`);
+
+const captureDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
+  .find(item => item.caseId === 'intent_capture_vs_kill');
+assert.ok(captureDefinition, '非致死控制人工案例缺失');
+const captureResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: captureDefinition.caseId,
+  seed: captureDefinition.seed,
+  combatData: captureDefinition.combatData,
+  mode: 'team_preview',
+  rounds: captureDefinition.rounds,
+  initialBelief: captureDefinition.initialBelief,
+  battleIntent: { mode: captureDefinition.intent },
+  settings: {},
+});
+const captureControlledWindowRounds = new Set([2, 4]);
+const wastedDefense = captureResult.decisions.filter(entry =>
+  entry?.actorId === '舞长空' &&
+  (entry?.actionRole || 'ACTIVE') === 'ACTIVE' &&
+  captureControlledWindowRounds.has(Number(entry?.round || 0)) &&
+  ['DEFEND', 'EVADE'].includes(entry?.selected?.declaration?.actionKind)
+);
+assert.equal(wastedDefense.length, 0, `敌方下一行动已取消仍浪费机会防御:${JSON.stringify(wastedDefense.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
 
 console.log(JSON.stringify({
   summary: {
@@ -685,6 +709,7 @@ console.log(JSON.stringify({
     followUpActionCount: followUpStarts.length,
     secondSkillSelected: secondSkillDecision.selected?.skill?.id || '',
     controlledFollowUpAction: controlledFollowUpDecision.selected?.declaration?.actionKind || '',
+    captureWastedDefenseCount: wastedDefense.length,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

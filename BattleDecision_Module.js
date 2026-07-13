@@ -1039,6 +1039,7 @@
     aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide).forEach(entry => {
       const enemy = entry.unit;
       const enemyId = preview.unitId(enemy);
+      if (hasActionCancellation(enemy)) return;
       const charging = enemy?.蓄力技能;
       if (charging) {
         const namedTarget = String(charging?.target_id || charging?.targetId || charging?.target_name || '').trim();
