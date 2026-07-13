@@ -745,15 +745,88 @@
     if (Array.isArray(context?.logs)) context.logs.push('[虚拟战败保护] 玩家方全员战败，触发安全协议，强制弹出并锁定HP为 1！');
   }
 
+  function buildRewindRoundSnapshot(unit = {}) {
+    if (!unit || typeof unit !== 'object') return null;
+    return {
+      HP: previewRuntime.readHp(unit),
+      体力: previewRuntime.readResource(unit, '体力'),
+      魂力: previewRuntime.readResource(unit, '魂力'),
+      精神力: previewRuntime.readResource(unit, '精神力'),
+      蓄力技能: unit.蓄力技能 ? cloneValue(unit.蓄力技能) : null,
+      cast_time: Number(unit.cast_time || 0),
+      cast_time_left: Number(unit.cast_time_left || 0),
+      蓄力剩余: Number(unit.蓄力剩余 || 0),
+      _current_cast_time: Number(unit._current_cast_time || 0),
+      action_declared: unit.action_declared === true,
+      is_controlled: unit.is_controlled === true,
+      __技能限制运行态: cloneValue(unit.__技能限制运行态 || {}),
+    };
+  }
+
+  function beginBattleRound(combatData = {}, currentRound = 0, settlement, adapterOptions = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.unitReactionCount = {};
+    runtime.factionReactionCount = {};
+    runtime.counterCount = {};
+    listCombatUnits(combatData).forEach(unit => {
+      const unitKey = String(unit?.charKey || unit?.char_key || unit?.key || previewRuntime.unitName(unit)).trim();
+      if (unit.__battleRuntime && typeof unit.__battleRuntime === 'object') {
+        if (unit.__battleRuntime.reactionFatigue) {
+          settlement.writeLedgerEvent(combatData, {
+            eventKind: 'runtime_trace',
+            round: Number(combatData?.回合 || 0),
+            actorName: previewRuntime.unitName(unit),
+            actionName: 'clear_fatigue',
+            result: 'cleared',
+            primaryOutcome: 'no_effect',
+            meta: { traceType: 'clear_fatigue', unitKey },
+          }, adapterOptions);
+        }
+        delete unit.__battleRuntime.reactedCount;
+        delete unit.__battleRuntime.counterCount;
+        delete unit.__battleRuntime.reactionFatigue;
+      }
+      delete unit.__本回合闪避成功次数;
+      delete unit.__本回合反应预算;
+      delete unit.__本回合对轰次数;
+      delete unit.__本回合防御承压池;
+      delete unit.__本回合对轰覆盖池;
+      delete unit.__本回合防御池剩余;
+    });
+    runtime.reactionFatigue = {};
+    runtime.lastRoundStart = Number(combatData?.回合 || 0);
+    if (combatData && typeof combatData === 'object') delete combatData.__队伍临时意图;
+    listPrimaryCombatUnits(combatData).forEach(unit => { unit.__时光回溯回合快照 = buildRewindRoundSnapshot(unit); });
+    const summonLog = settlement.startSummonRound(combatData, adapterOptions);
+    return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
+  }
+
+  function settleBattleRoundEnd(combatData = {}, logs = [], settlement, adapterOptions = {}) {
+    listCombatUnits(combatData).forEach(unit => {
+      settlement.syncRoundEndUnit(unit, adapterOptions);
+      if (previewRuntime.readHp(unit) <= 0) return;
+      const name = previewRuntime.unitName(unit);
+      const sustainResult = settlement.settleSustain(unit, name, combatData, adapterOptions) || {};
+      const conditionResult = settlement.settleConditions(unit, name, combatData, adapterOptions) || {};
+      settlement.syncRoundEndUnit(unit, adapterOptions);
+      if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
+      if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
+    });
+    const guardLog = settlement.settleGuardWindow(combatData, adapterOptions);
+    if (guardLog) logs.push(`[团战回合尾] ${guardLog}`);
+    const rewriteLog = settlement.settleRuleRewrite(combatData, adapterOptions);
+    if (rewriteLog) logs.push(`[团战回合尾] ${rewriteLog}`);
+  }
+
   function createSettlementAdapters(settlement, adapterOptions = {}) {
     return {
       prepare: combatData => prepareBattleRuntime(combatData, settlement, adapterOptions),
       validate: combatData => validateBattleRuntime(combatData, settlement, adapterOptions),
-      beginRound: (combatData, currentRound) => settlement.beginRound(combatData, currentRound, adapterOptions),
+      beginRound: (combatData, currentRound) => beginBattleRound(combatData, currentRound, settlement, adapterOptions),
       buildQueue: combatData => settlement.buildQueue(combatData, adapterOptions),
       recordQueue() { throw new Error('battle_decision_record_queue_required'); },
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => settlement.executeQueue(queue, combatData, currentRound, logs, extraPatchOps, adapterOptions),
-      settleRoundEnd: (combatData, logs) => settlement.settleRoundEnd(combatData, logs, adapterOptions),
+      settleRoundEnd: (combatData, logs) => settleBattleRoundEnd(combatData, logs, settlement, adapterOptions),
       readAlive: combatData => readTeamAlive(combatData),
       evaluateTerminal: context => evaluateBattleTerminal(context, settlement, adapterOptions),
       shouldContinue: context => decideTeamContinuation(context, adapterOptions),
@@ -3137,8 +3210,9 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'prepare', 'validate', 'beginRound', 'buildQueue', 'executeQueue',
-      'settleRoundEnd', 'writeLedgerEvent',
+      'prepare', 'validate', 'startSummonRound', 'buildQueue', 'executeQueue',
+      'syncRoundEndUnit', 'settleSustain', 'settleConditions',
+      'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');

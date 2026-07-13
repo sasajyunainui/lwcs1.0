@@ -15828,10 +15828,14 @@ class BattleUIComponent {
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
       validate: combatData => 校验团战运行态(combatData),
-      beginRound: (combatData, currentRound) => 开始团战回合(combatData, currentRound),
+      startSummonRound: combatData => 执行召唤回合开始(combatData),
       buildQueue: combatData => generateActionQueue(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
-      settleRoundEnd: (combatData, logs) => settleTeamRoundEnd(combatData, logs),
+      syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
+      settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
+      settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
+      settleGuardWindow: combatData => 结算护卫召唤回合窗口(combatData),
+      settleRuleRewrite: combatData => 递减战斗规则改写运行态(combatData),
       writeLedgerEvent: (combatData, payload) => 写入战斗事件账本(combatData, payload),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
@@ -27004,38 +27008,6 @@ class BattleUIComponent {
       return check;
     }
 
-    function BattleDirectorRoundStart(combatData = {}) {
-      const runtime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
-      runtime.unitReactionCount = {};
-      runtime.factionReactionCount = {};
-      runtime.counterCount = {};
-      const 单位列表 = dedupeCombatTargetList([
-        ...读取战斗阵营单位列表(combatData, '玩家'),
-        ...读取战斗阵营单位列表(combatData, '敌方'),
-      ]).filter(Boolean);
-      单位列表.forEach(单位 => {
-        const key = 读取战斗单位运行态键(单位);
-        if (单位.__battleRuntime && typeof 单位.__battleRuntime === 'object') {
-          if (单位.__battleRuntime.reactionFatigue) {
-            写入战斗事件账本(combatData, {
-              eventKind: 'runtime_trace',
-              round: Number(combatData?.回合 || 0),
-              actorName: 单位?.name || 单位?.名称 || '',
-              actionName: 'clear_fatigue',
-              result: 'cleared',
-              primaryOutcome: 'no_effect',
-              meta: { traceType: 'clear_fatigue', unitKey: key },
-            });
-          }
-          delete 单位.__battleRuntime.reactedCount;
-          delete 单位.__battleRuntime.counterCount;
-          delete 单位.__battleRuntime.reactionFatigue;
-        }
-      });
-      runtime.reactionFatigue = {};
-      runtime.lastRoundStart = Number(combatData?.回合 || 0);
-    }
-
     function 查找战斗运行态单位(combatData = {}, name = '') {
       const wanted = String(name || '').trim();
       if (!wanted) return null;
@@ -27157,57 +27129,6 @@ class BattleUIComponent {
           reasonText: '绝对保底动作回稳资源，避免资源枯竭后无限空过',
         },
       });
-    }
-
-    function 清理本回合多威胁运行态(combatData = {}) {
-      BattleDirectorRoundStart(combatData);
-      if (combatData && typeof combatData === 'object') delete combatData.__队伍临时意图;
-      const 单位列表 = dedupeCombatTargetList([
-        ...读取战斗阵营单位列表(combatData, '玩家'),
-        ...读取战斗阵营单位列表(combatData, '敌方'),
-      ]).filter(Boolean);
-      单位列表.forEach(单位 => {
-        delete 单位.__本回合闪避成功次数;
-        delete 单位.__本回合反应预算;
-        delete 单位.__本回合对轰次数;
-        delete 单位.__本回合防御承压池;
-        delete 单位.__本回合对轰覆盖池;
-        delete 单位.__本回合防御池剩余;
-      });
-    }
-
-    function 构建时光回溯回合快照(单位 = {}) {
-      if (!单位 || typeof 单位 !== 'object') return null;
-      return {
-        HP: getCombatHpValue(单位),
-        体力: getCombatStaminaValue(单位),
-        魂力: 读取战斗资源当前值(单位, 单位.final || {}, 'sp'),
-        精神力: 读取战斗资源当前值(单位, 单位.final || {}, 'men'),
-        蓄力技能: 单位.蓄力技能 ? deepClonePlain(单位.蓄力技能) : null,
-        cast_time: Number(单位.cast_time || 0),
-        cast_time_left: Number(单位.cast_time_left || 0),
-        蓄力剩余: Number(单位.蓄力剩余 || 0),
-        _current_cast_time: Number(单位._current_cast_time || 0),
-        action_declared: 单位.action_declared === true,
-        is_controlled: 单位.is_controlled === true,
-        __技能限制运行态: deepClonePlain(单位.__技能限制运行态 || {}),
-      };
-    }
-
-    function 记录时光回溯回合快照(单位 = {}) {
-      if (!单位 || typeof 单位 !== 'object') return null;
-      const 快照 = 构建时光回溯回合快照(单位);
-      if (!快照) return null;
-      单位.__时光回溯回合快照 = 快照;
-      return 快照;
-    }
-
-    function 记录战斗上下文时光回溯快照(combatData = {}) {
-      const 单位列表 = dedupeCombatTargetList([
-        ...((combatData?.参战者?.team_player || []).filter(Boolean)),
-        ...((combatData?.参战者?.team_enemy || []).filter(Boolean)),
-      ]).filter(Boolean);
-      单位列表.forEach(记录时光回溯回合快照);
     }
 
     function 恢复时光回溯回合快照(单位 = {}) {
@@ -36503,30 +36424,6 @@ class BattleUIComponent {
           return 结算已宣告动作();
         }
 
-        function settleTeamRoundEnd(combatData, logs) {
-          const allUnits = [
-            ...读取战斗主队单位列表(combatData, '玩家'),
-            ...读取战斗主队单位列表(combatData, '敌方'),
-            ...读取召唤单位列表(combatData),
-          ];
-
-          allUnits.forEach(unit => {
-            bindCombatParticipant(unit);
-            syncCombatActionState(unit);
-            if (!isCombatUnitAlive(unit)) return;
-
-            const sustainResult = settleSustainEffectsAtRoundEnd(unit, unit.name || '未知单位', combatData);
-            const conditionResult = settleConditionsAtRoundEnd(unit, unit.name || '未知单位', combatData);
-            syncCombatActionState(unit);
-            if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
-            if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
-          });
-          const 护卫窗口日志 = 结算护卫召唤回合窗口(combatData);
-          if (护卫窗口日志) logs.push(`[团战回合尾] ${护卫窗口日志}`);
-          const 规则改写回合尾日志 = 递减战斗规则改写运行态(combatData);
-          if (规则改写回合尾日志) logs.push(`[团战回合尾] ${规则改写回合尾日志}`);
-        }
-
         function 准备团战运行态(combatData = {}) {
           hydrateCombatData(combatData);
           确保召唤单位表(combatData);
@@ -36537,13 +36434,6 @@ class BattleUIComponent {
           const rosterCheck = validateSoulTowerCombatRoster(combatData);
           if (rosterCheck.ok) return null;
           return { message: rosterCheck.message };
-        }
-
-        function 开始团战回合(combatData = {}, currentRound = 0) {
-          清理本回合多威胁运行态(combatData);
-          记录战斗上下文时光回溯快照(combatData);
-          const summonLog = 执行召唤回合开始(combatData);
-          return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
         }
 
         function runTeamBattleSimulation(combatData, maxRounds = 3) {

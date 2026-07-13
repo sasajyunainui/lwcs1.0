@@ -159,11 +159,16 @@ addCheck(
     /function readTeamAlive\(/.test(battleRuntimeSource) &&
     /function validateBattleRuntime\(/.test(battleRuntimeSource) &&
     /function finalizeTeamBattle\(/.test(battleRuntimeSource) &&
+    /function buildRewindRoundSnapshot\(/.test(battleRuntimeSource) &&
+    /function beginBattleRound\(/.test(battleRuntimeSource) &&
+    /function settleBattleRoundEnd\(/.test(battleRuntimeSource) &&
     !/function 评估并记录战斗目标\(|function 填充战斗受伤条件基准\(/.test(battleUiSource) &&
     !/function 判定团战续推\(/.test(battleUiSource) &&
     !/function getTeamLivingCount\(|function 读取团战存活单位数\(/.test(battleUiSource) &&
     !/function 完成团战运行\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'validate', 'beginRound', 'buildQueue', 'executeQueue',[\s\S]*?'settleRoundEnd', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    !/function BattleDirectorRoundStart\(|function 清理本回合多威胁运行态\(|function 记录战斗上下文时光回溯快照\(|function 开始团战回合\(/.test(battleUiSource) &&
+    !/function settleTeamRoundEnd\(/.test(battleUiSource) &&
+    /const required = \[[\s\S]*?'prepare', 'validate', 'startSummonRound', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );
@@ -324,10 +329,10 @@ addCheck(
 );
 addCheck(
   'duelRoundTickHasSingleDomainPath',
-    !/结算单挑回合尾阶段/.test(battleUiSource) &&
-    [...battleUiSource.matchAll(/function settleTeamRoundEnd\(combatData, logs\)/g)].length === 1 &&
-    /settleRoundEnd:\s*\(combatData, logs\)\s*=>\s*settleTeamRoundEnd\(combatData, logs\)/.test(settlementBindingSource) &&
-    /const sustainResult = settleSustainEffectsAtRoundEnd\(unit,[\s\S]*?const conditionResult = settleConditionsAtRoundEnd\(unit/.test(battleUiSource),
+  !/结算单挑回合尾阶段/.test(battleUiSource) &&
+    /function settleBattleRoundEnd\(combatData = \{\}, logs = \[\], settlement, adapterOptions = \{\}\)/.test(battleRuntimeSource) &&
+    /const sustainResult = settlement\.settleSustain\(unit,[\s\S]*?const conditionResult = settlement\.settleConditions\(unit/.test(battleRuntimeSource) &&
+    !/function settleTeamRoundEnd\(/.test(battleUiSource),
 );
 addCheck(
   'castInterruptionBacklashIsLedgeredWithSingleTerminalPath',
