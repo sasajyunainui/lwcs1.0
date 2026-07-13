@@ -15161,7 +15161,7 @@ class BattleUIComponent {
       单位.技能列表 = 构建召唤技能列表(单位);
       表[召唤键] = 单位;
       召唤记录.召唤键 = 召唤键;
-      确保召唤窗口运行态(单位);
+      BATTLE_RUNTIME.ensureSummonWindowRuntime(单位);
       同步召唤单位镜像(单位);
       if (!选项.静默) 单位.__刚生成 = true;
       return 单位;
@@ -15191,37 +15191,20 @@ class BattleUIComponent {
       return Math.max(0, Number(召唤单位?.__来源状态?.duration || 0));
     }
 
-    function 确保召唤窗口运行态(召唤单位 = {}) {
-      if (!召唤单位 || typeof 召唤单位 !== 'object') return null;
-      if (!Object.prototype.hasOwnProperty.call(召唤单位, '召唤窗口运行态')) {
-        Object.defineProperty(召唤单位, '召唤窗口运行态', {
-          configurable: true,
-          enumerable: false,
-          writable: true,
-          value: {
-            windowId: `summon:${String(召唤单位.召唤键 || 召唤单位.name || 'unit').trim()}:${Math.max(0, Number(召唤单位.生成回合 || 0))}`,
-            consumedActionGrantIds: new Set(),
-            consumedWindowGrantIds: new Set(),
-          },
-        });
-      }
-      return 召唤单位.召唤窗口运行态;
-    }
-
     function 构建召唤行动授权ID(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
-      const runtime = 确保召唤窗口运行态(召唤单位);
+      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       if (!runtime) return '';
       return `${runtime.windowId}:${Math.max(0, Number(combatData?.回合 || 0))}:${String(机会类型 || 'action').trim()}`;
     }
 
     function 召唤行动授权已消费(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
-      const runtime = 确保召唤窗口运行态(召唤单位);
+      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       const grantId = 构建召唤行动授权ID(召唤单位, combatData, 机会类型);
       return !runtime || !grantId || runtime.consumedActionGrantIds.has(grantId);
     }
 
     function 领取召唤行动授权(召唤单位 = {}, combatData = {}, 机会类型 = 'action') {
-      const runtime = 确保召唤窗口运行态(召唤单位);
+      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       const grantId = 构建召唤行动授权ID(召唤单位, combatData, 机会类型);
       if (!runtime || !grantId || runtime.consumedActionGrantIds.has(grantId)) return '';
       runtime.consumedActionGrantIds.add(grantId);
@@ -15231,7 +15214,7 @@ class BattleUIComponent {
     function 消费召唤有效窗口(combatData = {}, 召唤单位 = {}, 原因 = '完成行动窗口', grantId = '') {
       const 来源状态 = 召唤单位?.__来源状态;
       if (!来源状态 || typeof 来源状态.duration !== 'number' || 召唤单位.已消散 === true) return '';
-      const runtime = 确保召唤窗口运行态(召唤单位);
+      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       const windowGrantId = String(grantId || `${runtime?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:window`).trim();
       if (runtime?.consumedWindowGrantIds.has(windowGrantId)) return '';
       runtime?.consumedWindowGrantIds.add(windowGrantId);
@@ -15241,7 +15224,7 @@ class BattleUIComponent {
     }
 
     function 记录召唤无目标结果(combatData = {}, 召唤单位 = {}, 原因 = 'NO_VALID_TARGET', options = {}) {
-      const runtime = 确保召唤窗口运行态(召唤单位);
+      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       return 写入战斗事件账本(combatData, {
         eventKind: 'failed_action',
         round: Number(combatData?.回合 || 0),
@@ -15446,13 +15429,6 @@ class BattleUIComponent {
       return 日志.filter(Boolean).join(' ');
     }
 
-    function 执行召唤回合开始(combatData = {}) {
-      确保召唤单位表(combatData);
-      读取召唤单位列表(combatData).forEach(确保召唤窗口运行态);
-      const 宿主列表 = dedupeCombatTargetList(Object.values(combatData?.召唤单位表 || {}).map(单位 => 单位.__宿主));
-      return 宿主列表.map(宿主 => 刷新召唤精神负载(combatData, 宿主)).filter(Boolean).join(' ');
-    }
-
     function 评分召唤攻击目标(召唤单位 = {}, 目标 = {}) {
       if (!目标 || !isCombatUnitAlive(目标)) return -1;
       const 倾向 = 读取召唤类型倾向(召唤单位.类型);
@@ -15585,7 +15561,7 @@ class BattleUIComponent {
           createdRound: Math.max(0, Number(召唤单位?.生成回合 || combatData?.回合 || 0)),
           hostName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
           hostSide: 召唤单位?.阵营 || 读取召唤宿主阵营(combatData, 宿主),
-          windowId: 确保召唤窗口运行态(召唤单位)?.windowId || '',
+          windowId: BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位)?.windowId || '',
           windowCount: 读取召唤剩余有效窗口(召唤单位),
           firstWindow: summonMode === '协同攻击' ? 'host_action_end' : summonMode === '护卫' ? 'immediate_guard' : 'next_action_axis',
           startsNextRound: summonMode === '自主行动',
@@ -15611,7 +15587,7 @@ class BattleUIComponent {
 
     function 结算运行态召唤单位简易攻击(召唤单位 = {}, 目标 = {}, combatData = {}, 原因 = '召唤行动', options = {}) {
       if (!召唤单位 || !目标 || !isCombatUnitAlive(召唤单位) || !isCombatUnitAlive(目标)) return '';
-      const summonRuntime = 确保召唤窗口运行态(召唤单位);
+      const summonRuntime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       const 技能 = 选择召唤攻击技能(召唤单位, 目标);
       const 技能名 = 技能?.name || 技能?.魂技名 || '普通攻击';
       const 是协同行动 = /召唤协同/.test(String(原因 || ''));
@@ -15818,7 +15794,7 @@ class BattleUIComponent {
       const 日志 = [];
       读取召唤单位列表(combatData, { 行动模式: '护卫' }).forEach(单位 => {
         if (召唤单位本回合刚生成(单位, combatData)) return;
-        const grantId = `${确保召唤窗口运行态(单位)?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:guard-window`;
+        const grantId = `${BATTLE_RUNTIME.ensureSummonWindowRuntime(单位)?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:guard-window`;
         const 到期日志 = 消费召唤有效窗口(combatData, 单位, '护卫保护窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
@@ -15828,7 +15804,7 @@ class BattleUIComponent {
     BATTLE_RUNTIME.bindSettlementPrimitives({
       prepare: combatData => 准备团战运行态(combatData),
       validate: combatData => 校验团战运行态(combatData),
-      startSummonRound: combatData => 执行召唤回合开始(combatData),
+      refreshSummonMentalLoad: (combatData, host) => 刷新召唤精神负载(combatData, host),
       buildQueue: combatData => generateActionQueue(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
       syncRoundEndUnit: unit => { bindCombatParticipant(unit); syncCombatActionState(unit); },
@@ -25964,7 +25940,7 @@ class BattleUIComponent {
                 summonName: 护卫召唤?.name || 护卫召唤?.名称 || '',
                 summonHostName: 护卫召唤?.宿主名 || 护卫召唤?.__宿主?.name || 护卫召唤?.__宿主?.名称 || '',
                 protectedTargetName: targetChar?.name || targetChar?.名称 || '',
-                windowId: 确保召唤窗口运行态(护卫召唤)?.windowId || '',
+                windowId: BATTLE_RUNTIME.ensureSummonWindowRuntime(护卫召唤)?.windowId || '',
                 grantId: guardGrantId,
               },
             });

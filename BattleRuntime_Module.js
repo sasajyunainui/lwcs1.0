@@ -763,7 +763,24 @@
     };
   }
 
-  function beginBattleRound(combatData = {}, currentRound = 0, settlement, adapterOptions = {}) {
+  function ensureSummonWindowRuntime(summon = {}) {
+    if (!summon || typeof summon !== 'object') return null;
+    if (!Object.prototype.hasOwnProperty.call(summon, '召唤窗口运行态')) {
+      Object.defineProperty(summon, '召唤窗口运行态', {
+        configurable: true,
+        enumerable: false,
+        writable: true,
+        value: {
+          windowId: `summon:${String(summon.召唤键 || summon.name || 'unit').trim()}:${Math.max(0, Number(summon.生成回合 || 0))}`,
+          consumedActionGrantIds: new Set(),
+          consumedWindowGrantIds: new Set(),
+        },
+      });
+    }
+    return summon.召唤窗口运行态;
+  }
+
+  function beginBattleRound(combatData = {}, currentRound = 0, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
     const runtime = ensureCombatRuntime(combatData);
     runtime.unitReactionCount = {};
     runtime.factionReactionCount = {};
@@ -797,7 +814,10 @@
     runtime.lastRoundStart = Number(combatData?.回合 || 0);
     if (combatData && typeof combatData === 'object') delete combatData.__队伍临时意图;
     listPrimaryCombatUnits(combatData).forEach(unit => { unit.__时光回溯回合快照 = buildRewindRoundSnapshot(unit); });
-    const summonLog = settlement.startSummonRound(combatData, adapterOptions);
+    const summons = listSummonCombatUnits(combatData);
+    summons.forEach(ensureSummonWindowRuntime);
+    const hosts = [...new Set(summons.map(unit => unit.__宿主).filter(Boolean))];
+    const summonLog = hosts.map(host => settlement.refreshSummonMentalLoad(combatData, host, adapterOptions)).filter(Boolean).join(' ');
     return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
   }
 
@@ -3210,7 +3230,7 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'prepare', 'validate', 'startSummonRound', 'buildQueue', 'executeQueue',
+      'prepare', 'validate', 'refreshSummonMentalLoad', 'buildQueue', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
       'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',
     ];
@@ -3524,6 +3544,8 @@
     auditPrototypeCoverage,
     evaluateBattleTerminal,
     readTeamAlive,
+    ensureSummonWindowRuntime,
+    beginBattleRound,
   });
 
   root.__LWCS_BATTLE_RUNTIME__ = api;

@@ -162,13 +162,15 @@ addCheck(
     /function buildRewindRoundSnapshot\(/.test(battleRuntimeSource) &&
     /function beginBattleRound\(/.test(battleRuntimeSource) &&
     /function settleBattleRoundEnd\(/.test(battleRuntimeSource) &&
+    /function ensureSummonWindowRuntime\(/.test(battleRuntimeSource) &&
     !/function 评估并记录战斗目标\(|function 填充战斗受伤条件基准\(/.test(battleUiSource) &&
     !/function 判定团战续推\(/.test(battleUiSource) &&
     !/function getTeamLivingCount\(|function 读取团战存活单位数\(/.test(battleUiSource) &&
     !/function 完成团战运行\(/.test(battleUiSource) &&
     !/function BattleDirectorRoundStart\(|function 清理本回合多威胁运行态\(|function 记录战斗上下文时光回溯快照\(|function 开始团战回合\(/.test(battleUiSource) &&
     !/function settleTeamRoundEnd\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'validate', 'startSummonRound', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    !/function 确保召唤窗口运行态\(|function 执行召唤回合开始\(/.test(battleUiSource) &&
+    /const required = \[[\s\S]*?'prepare', 'validate', 'refreshSummonMentalLoad', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'settleGuardWindow', 'settleRuleRewrite', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );

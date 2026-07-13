@@ -106,7 +106,7 @@
         断言召唤夹具(!!读取护卫召唤单位(护卫.combatData, 护卫.宿主), '护卫召唤不可读');
         断言召唤夹具(执行协同召唤追击(协同.宿主, 协同.敌人, 20, 协同.combatData).includes('召唤协同追击'), '协同追击未触发');
         自主.combatData.回合 = 2;
-        执行召唤回合开始(自主.combatData);
+        BATTLE_RUNTIME.beginBattleRound(自主.combatData, 自主.combatData.回合);
         断言召唤夹具(执行自主召唤行动(自主.combatData).includes('召唤自主行动'), '自主行动未在下一行动轴触发');
         日志.push('群体、护卫、协同、自主路径成立');
       });
@@ -239,7 +239,7 @@
         断言召唤夹具(!执行自主召唤行动轴回合(夹具.combatData), '自主召唤生成当回合错误行动');
         断言召唤夹具(读取召唤剩余有效窗口(夹具.召唤单位) === 1, '自主召唤未行动却消耗窗口');
         夹具.combatData.回合 = 2;
-        执行召唤回合开始(夹具.combatData);
+        BATTLE_RUNTIME.beginBattleRound(夹具.combatData, 夹具.combatData.回合);
         const 行动日志 = 执行自主召唤行动轴回合(夹具.combatData);
         const 自主事件 = (夹具.combatData.__battleEventLedger || []).find(event =>
           event?.eventKind === 'action_start' && event?.actorName === 夹具.召唤单位.name && event?.actionType === '召唤自主行动',
@@ -251,12 +251,12 @@
       });
       注册('护卫完整保护窗口', 日志 => {
         const 夹具 = 构建召唤夹具战斗态({ 名称: '一回合护卫兽', 行动模式: '护卫', 持续回合: 1 });
-        const 护卫窗口ID = 确保召唤窗口运行态(夹具.召唤单位)?.windowId || '';
+        const 护卫窗口ID = BATTLE_RUNTIME.ensureSummonWindowRuntime(夹具.召唤单位)?.windowId || '';
         断言召唤夹具(!!护卫窗口ID, '护卫召唤缺少稳定窗口ID');
         断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤生成后不能立即拦截');
         断言召唤夹具(!结算护卫召唤回合窗口(夹具.combatData), '护卫召唤生成回合错误消耗完整窗口');
         夹具.combatData.回合 = 2;
-        执行召唤回合开始(夹具.combatData);
+        BATTLE_RUNTIME.beginBattleRound(夹具.combatData, 夹具.combatData.回合);
         断言召唤夹具(!!读取护卫召唤单位(夹具.combatData, 夹具.宿主), '护卫召唤完整保护回合开始时不可用');
         const 到期日志 = 结算护卫召唤回合窗口(夹具.combatData);
         断言召唤夹具(/护卫保护窗口耗尽/.test(到期日志), `护卫完整窗口结束后未到期:${到期日志}`);
@@ -4039,7 +4039,7 @@
       const 自然战斗数据 = 首轮结果?.combatData && typeof 首轮结果.combatData === 'object' ? 首轮结果.combatData : combatData;
       自然战斗数据.回合 = Math.max(1, Number(自然战斗数据.回合 || 1)) + 1;
       const 次轮日志 = [];
-      const 召唤回合开始日志 = 执行召唤回合开始(自然战斗数据);
+      const 召唤回合开始日志 = BATTLE_RUNTIME.beginBattleRound(自然战斗数据, 自然战斗数据.回合).filter(Boolean).join(' ');
       if (root.__LWCS_BATTLE_AUDIT_PROGRESS__ === true) console.warn('[battle-audit] summon-natural after round-start');
       if (召唤回合开始日志) 次轮日志.push(`[第${自然战斗数据.回合}回合] ${召唤回合开始日志}`);
       const 召唤行动日志 = 执行自主召唤行动轴回合(自然战斗数据);
