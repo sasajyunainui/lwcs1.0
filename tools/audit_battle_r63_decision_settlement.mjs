@@ -411,6 +411,10 @@ const supportActionBlock = supportResult.reportBlocks.find(block =>
 );
 assert.match(String(supportActionBlock?.outcomeSummary || ''), /群体支援/, '纯支援动作的结构化战报遗漏技能名');
 assert.ok(String(supportActionBlock?.intentSummary || '').trim(), '正式Decision动作没有生成玩家可读意图');
+assert.ok((supportActionBlock?.facts || []).some(fact => fact?.factType === 'RESOURCE_CHANGE'), '主动支援的治疗/资源事实被拆出父动作组');
+assert.equal(supportResult.reportBlocks.filter(block => block?.blockType !== 'ROUND_SUMMARY' &&
+  (block?.facts || []).some(fact => String(fact?.sourceActionId || '') === String(supportStart.actionId || ''))
+).length, 1, '同一主动支援被拆成多个玩家战报块');
 const supportShieldFacts = supportResult.ledger.filter(event => event?.eventKind === 'shield_create' && Number(event?.meta?.amount || 0) > 0);
 const supportActionShieldBadges = supportResult.reportBlocks
   .filter(block => block?.blockType !== 'ROUND_SUMMARY')
@@ -475,6 +479,24 @@ const resourceSupportCaster = resourceSupportResult.finalSnapshot?.team_player?.
 assert.equal(Number(resourceSupportCaster?.sp || 0), 482, '施术者魂力消耗被资源变化兼容分支错误补满');
 assert.equal(resourceSupportResult.audit?.fatals?.filter(item => item?.code === 'LEDGER_CONSERVATION_MISMATCH').length || 0, 0, '魂力支援结算未通过Ledger守恒');
 
+const noUnlockWorld = combatData();
+noUnlockWorld.参战者.team_player.push(participant('player-b', 'player', 120));
+noUnlockWorld.参战者.team_player[1].技能列表 = [];
+noUnlockWorld.参战者.team_player[0].技能列表 = [{
+  id: 'resource-without-consumer', name: '无消费者回魂', 魂技名: '无消费者回魂', 消耗: '无', 前摇: 1,
+  _效果数组: [{ 原型: '资源变化', 目标: '群体', 资源: '魂力', 数值: '+30%', 生效方式: '独立生效' }],
+}];
+const noUnlockDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: noUnlockWorld,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  beliefState: {},
+  seed: 'resource-without-consumer',
+});
+const noUnlockSupport = noUnlockDecision.candidates.find(candidate => candidate?.skill?.id === 'resource-without-consumer');
+assert.equal(noUnlockSupport?.rejectionCode, 'ZERO_PROGRESS', `没有可兑现后续动作的回魂仍获得容量收益:${JSON.stringify(noUnlockSupport)}`);
+assert.equal(noUnlockDecision.selected?.declaration?.actionKind, 'BASIC_ATTACK', '无消费者回魂压过了有效攻击');
+
 const counterDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'duel_agile_counter_options');
 assert.ok(counterDefinition, '成功防反人工案例缺失');
@@ -537,6 +559,12 @@ const defenseResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
 const defenseActions = defenseResult.decisions.filter(entry => (entry?.actionRole || 'ACTIVE') === 'ACTIVE' && entry?.actorId === '韦小枫');
 assert.ok(!['DEFEND', 'EVADE'].includes(defenseActions.find(entry => Number(entry?.round || 0) === 1)?.selected?.declaration?.actionKind), '防守窗口会提前过期却在第一回合过早防守');
 assert.ok(['DEFEND', 'EVADE'].includes(defenseActions.find(entry => Number(entry?.round || 0) === 2)?.selected?.declaration?.actionKind), `致命蓄力进入下一回应窗口后仍未建立防守姿态:${JSON.stringify(defenseActions.map(entry => ({ round: entry.round, actionKind: entry.selected?.declaration?.actionKind, candidateId: entry.selected?.candidateId })))}`);
+const resolvedChargeBlocks = defenseResult.reportBlocks.filter(block =>
+  block?.blockType !== 'ROUND_SUMMARY' &&
+  (block?.facts || []).some(fact => fact?.actionName === '已显露蓄力重击')
+);
+assert.ok(resolvedChargeBlocks.length > 0, '蓄力时序案例没有形成已显露蓄力重击战报块');
+assert.ok(resolvedChargeBlocks.every(block => !/规避迫近攻击|等待更好的反击窗口/.test(String(block?.intentSummary || ''))), '蓄力结算错误借用了同角色的闪避决策意图');
 assert.equal(defenseResult.audit?.fatals?.length || 0, 0, `蓄力防守时序事实审计失败:${JSON.stringify(defenseResult.audit?.fatals || [])}`);
 
 const followUpCombat = combatData();

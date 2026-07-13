@@ -813,7 +813,8 @@
       const eventKind = String(event?.eventKind || '').trim();
       const actionRole = normalizeActionRole(event?.actionRole || inferActionRole(event));
       if (eventKind === 'state_tick' || eventKind === 'action_start' && actionRole === 'STATE_TICK') return 'state_tick';
-      if (actionRole === 'STATE_TICK' || ['resource_change', 'round_recover'].includes(eventKind)) return 'resource_tick';
+      if (actionRole === 'STATE_TICK' || eventKind === 'round_recover') return 'resource_tick';
+      if (eventKind === 'resource_change' && !String(event?.sourceActionId || event?.actionId || '').trim()) return 'resource_tick';
       return 'action';
     };
     const readSourceIds = entry => [...new Set((Array.isArray(entry?.blocks) ? entry.blocks : []).flatMap(block => [
@@ -829,14 +830,15 @@
         selected?.skill?.name || selected?.skill?.魂技名 || selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 ||
         ({ BASIC_ATTACK: '普通攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击', GUARD: '护卫', WITHDRAW: '撤离', USE_ITEM: '使用物品', EQUIP: '更换装备' })[selected?.declaration?.actionKind || selected?.actionKind] || ''
       );
-      const decision = [...decisions].reverse().find(item =>
+      const exactDecision = [...decisions].reverse().find(item =>
         Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
         isSameReportName(readDecisionActor(item), actorName || '') &&
         (!actionName || readSelectedActionName(readSelected(item)) === actionName)
-      ) || [...decisions].reverse().find(item =>
+      );
+      const decision = exactDecision || (!actionName ? [...decisions].reverse().find(item =>
         Number(item?.回合 || item?.round || 0) === Number(round || 0) &&
         isSameReportName(readDecisionActor(item), actorName || '')
-      );
+      ) : null);
       if (!decision) return '';
       const selected = readSelected(decision);
       const actionKind = String(selected?.declaration?.actionKind || selected?.actionKind || '').trim();

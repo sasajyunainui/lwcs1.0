@@ -947,6 +947,50 @@
     return { own, enemy, total: own + enemy, utility: own - enemy };
   }
 
+  function bestImmediateRealizableAction(worldSnapshot, actorId, beliefState = {}, revision = '') {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    if (!actor || !preview.isAlive(actor) || hasActionCancellation(actor)) return { gain: 0, actionKind: '', candidateId: '' };
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const before = stateUtility(worldSnapshot, actorSide, beliefState);
+    return enumerateCandidates({
+      worldSnapshot,
+      actorId,
+      actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+      beliefState,
+    }).filter(entry => {
+      if (!['BASIC_ATTACK', 'RELEASE_SKILL'].includes(entry?.declaration?.actionKind)) return false;
+      if (entry.declaration.actionKind === 'BASIC_ATTACK') return true;
+      const effects = entry?.declaration?.skill?._效果数组;
+      return Array.isArray(effects) && effects.length > 0 && effects.every(effect => String(effect?.原型 || '').trim());
+    }).reduce((best, entry) => {
+      const result = preview.previewAction({
+        worldSnapshot,
+        worldRevision: `${revision}:realizable:${actorId}`,
+        beliefSnapshot: beliefState,
+        actorId,
+        declaration: entry.declaration,
+        actionFingerprint: `realizable:${entry.candidateId}`,
+        horizon: 'SHALLOW',
+        previewBudget: { maxNodes: 12 },
+      });
+      const after = stateUtility(result.afterSnapshot, actorSide, beliefState);
+      const gain = 100 * (after.utility - before.utility) / Math.max(1, before.total);
+      return gain > best.gain ? { gain, actionKind: entry.declaration.actionKind, candidateId: entry.candidateId } : best;
+    }, { gain: 0, actionKind: '', candidateId: '' });
+  }
+
+  function realizableResourceSupportGain(context, result) {
+    const recipients = new Set((result?.contributions || [])
+      .filter(entry => entry?.outcomeKind === 'RESOURCE_OPTION_CHANGED' && Number(entry?.evidence?.delta || 0) > 0)
+      .map(entry => String(entry?.targetId || '').trim()).filter(Boolean));
+    return [...recipients].reduce((sum, targetId) => {
+      const beforeAction = bestImmediateRealizableAction(context.worldSnapshot, targetId, context.beliefState, `${context.worldRevision}:before-support`);
+      const afterAction = bestImmediateRealizableAction(result.afterSnapshot, targetId, context.beliefState, `${context.worldRevision}:after-support`);
+      if (afterAction.actionKind !== 'RELEASE_SKILL') return sum;
+      return sum + Math.max(0, afterAction.gain - beforeAction.gain);
+    }, 0);
+  }
+
   function visibleActionThreat(source, target, action = {}) {
     if (!source || !target) return 0;
     const skill = action?.skill || action?.raw_skill || action;
@@ -1407,6 +1451,12 @@
     }
     const after = result ? stateUtility(result.afterSnapshot, actorSide, context.beliefState) : before;
     const stateEffects = (candidate.skill?._效果数组 || []).filter(effect => String(effect?.原型 || '').trim() === '状态施加');
+    const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
+    const resourceSupportOnly = candidateEffects.length > 0 && candidateEffects.every(effect => {
+      if (String(effect?.原型 || '').trim() !== '资源变化') return false;
+      if (/生命|HP/i.test(String(effect?.资源 || ''))) return false;
+      return Number.parseFloat(String(effect?.数值 || '0')) > 0;
+    });
     const mechanicObservations = stateEffects.flatMap(effect => (candidate.declaration.targetIds || []).map(targetId => {
       const estimatedProbability = probabilityValue(effect?.成功率 ?? effect?.触发概率, 0.65);
       const relevantFingerprint = relevantStateFingerprint(context.beliefState, targetId);
@@ -1442,6 +1492,10 @@
       : result
       ? 100 * (after.utility - before.utility) / Math.max(1, before.total)
       : directDefensiveUtility(candidate.declaration.actionKind, context);
+    const materialResourceUnlock = resourceSupportOnly && result
+      ? realizableResourceSupportGain(context, result)
+      : 0;
+    if (resourceSupportOnly) expectedStateGain = materialResourceUnlock;
     if (result) {
       const controlledDamagedTargets = new Set((candidate.declaration.targetIds || []).filter(targetId => {
         const targetBefore = preview.findUnit(context.worldSnapshot, targetId);
@@ -1589,28 +1643,11 @@
       .some(target => stateEffectHasMarginalValue(effect, target)));
     const hasOnlyRedundantStates = stateEffects.length > 0 && !stateHasMarginalValue && !summonEvents.length &&
       !(result?.contributions || []).some(entry => entry.outcomeKind === 'HP_DELTA' && Number(entry?.evidence?.expectedDamage || 0) > 0);
-    const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
-    const resourceSupportOnly = candidateEffects.length > 0 && candidateEffects.every(effect => {
-      if (String(effect?.原型 || '').trim() !== '资源变化') return false;
-      if (/生命|HP/i.test(String(effect?.资源 || ''))) return false;
-      return Number.parseFloat(String(effect?.数值 || '0')) > 0;
-    });
-    const materialResourceUnlock = !resourceSupportOnly || !result || (candidate.declaration.targetIds || []).some(targetId => {
-      const beforeTarget = preview.findUnit(context.worldSnapshot, targetId);
-      const afterTarget = preview.findUnit(result.afterSnapshot, targetId);
-      if (!beforeTarget || !afterTarget) return false;
-      const affordableBefore = new Set(collectSkills(beforeTarget)
-        .filter(skill => costAffordable(beforeTarget, skill))
-        .map((skill, index) => skillId(skill, index)));
-      return collectSkills(afterTarget).some((skill, index) =>
-        !affordableBefore.has(skillId(skill, index)) &&
-        costAffordable(afterTarget, skill),
-      );
-    });
-    const zeroEffectCostly = hasCost && (!hasMeaningfulPreviewEffect || hasOnlyRedundantStates || !materialResourceUnlock) && informationValue <= 0 && directDefensiveUtility(candidate.declaration.actionKind, context) <= 0;
+    const resourceUnlockMissing = resourceSupportOnly && materialResourceUnlock <= 0.0001;
+    const zeroEffectCostly = hasCost && (!hasMeaningfulPreviewEffect || hasOnlyRedundantStates || resourceUnlockMissing) && informationValue <= 0 && directDefensiveUtility(candidate.declaration.actionKind, context) <= 0;
     const selfDefeating = !!actorAfter && !preview.isAlive(actorAfter) && expectedStateGain <= 0.0001 && terminalUtility <= 0 && informationValue <= 0;
     const summonWindowMissing = summonEvents.some(event => !event.actionMode || Number(event.duration || 0) <= 0);
-    const lifecycleReject = candidate.creation && !candidate.creation.useful ? 'ZERO_EFFECT_COSTLY' : summonWindowMissing ? 'SUMMON_NO_ACTION_WINDOW' : '';
+    const lifecycleReject = candidate.creation && !candidate.creation.useful ? 'ZERO_EFFECT_COSTLY' : summonWindowMissing ? 'SUMMON_NO_ACTION_WINDOW' : resourceUnlockMissing ? (hasCost ? 'ZERO_EFFECT_COSTLY' : 'ZERO_PROGRESS') : '';
     const intentReject = terminalUtility < 0 ? 'INTENT_TERMINAL_CONFLICT' : '';
     return {
       ...candidate,
