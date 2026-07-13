@@ -8960,7 +8960,7 @@
     }
   }
 
-  function buildUiRequestInjectionId(requestKind = 'ui_request') {
+  function buildUiContinuationRequestId(requestKind = 'ui_request') {
     const normalizedKind =
       toText(requestKind, 'ui_request')
         .toLowerCase()
@@ -8969,7 +8969,7 @@
     return `dragon-ui-${normalizedKind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  const pendingUiSystemInjections = new Map();
+  const uiContinuationRequests = new Map();
   const 前端模块重Roll恢复表 = new Map();
   const 前端模块预写待确认表 = new Map();
   const 前端模块重Roll恢复保留毫秒 = 10 * 60 * 1000;
@@ -9020,87 +9020,6 @@
     } catch (error) {
       return '';
     }
-  }
-
-  function clearPendingUiSystemInjection(injectionId = '') {
-    const safeInjectionId = toText(injectionId, '').trim();
-    if (!safeInjectionId) return;
-    const record = pendingUiSystemInjections.get(safeInjectionId);
-    if (!record) return;
-    pendingUiSystemInjections.delete(safeInjectionId);
-    if (record.timer) {
-      try {
-        window.clearInterval(record.timer);
-      } catch (error) {}
-    }
-    try {
-      if (record.uninject && typeof record.uninject === 'function') {
-        record.uninject();
-      } else if (window.TavernHelper && typeof window.TavernHelper.uninjectPrompts === 'function') {
-        window.TavernHelper.uninjectPrompts([safeInjectionId]);
-      }
-    } catch (error) {
-      console.warn('[DragonUI] Failed to clear pending UI system injection', error);
-    }
-  }
-
-  function registerPersistentUiSystemInjection(helper, requestKind, hiddenPrompt) {
-    const content = toText(hiddenPrompt, '').trim();
-    if (!helper || typeof helper.injectPrompts !== 'function' || !content) return null;
-    const injectionId = buildUiRequestInjectionId(requestKind);
-    const injected = helper.injectPrompts([
-      {
-        id: injectionId,
-        position: 'in_chat',
-        depth: 0,
-        role: 'system',
-        content,
-        should_scan: true,
-        _qrf_scope: 'mvu',
-      },
-    ], { once: true });
-    const record = {
-      id: injectionId,
-      chatId: getCurrentUiRequestChatId(),
-      createdAt: Date.now(),
-      userIndex: -1,
-      timer: 0,
-      uninject: injected && typeof injected.uninject === 'function' ? injected.uninject : null,
-    };
-    record.timer = window.setInterval(() => {
-      const ageMs = Date.now() - record.createdAt;
-      if (ageMs >= 180000) {
-        clearPendingUiSystemInjection(record.id);
-        return;
-      }
-      try {
-        const ctx =
-          window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
-            ? window.SillyTavern.getContext()
-            : null;
-        const currentChatId = toText(ctx && ctx.chatId, '').trim();
-        if (record.chatId && currentChatId && record.chatId !== currentChatId) {
-          clearPendingUiSystemInjection(record.id);
-          return;
-        }
-        const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-        if (record.userIndex >= 0 && chat.length > record.userIndex + 1) {
-          const assistantMessage = chat.slice(record.userIndex + 1).find(message => message && !message.is_user);
-          if (assistantMessage && !record.processing && record.helper) {
-            record.processing = true;
-            postprocessUiContinuationResult(record.helper, record.userText, record.requestKind, record)
-              .catch(error => {
-                console.warn('[DragonUI] Failed to postprocess UI continuation result', error);
-              })
-              .finally(() => {
-                record.processing = false;
-              });
-          }
-        }
-      } catch (error) {}
-    }, 800);
-    pendingUiSystemInjections.set(injectionId, record);
-    return record;
   }
 
   function sanitizeUiContinuationVisibleText(text = '') {
@@ -9453,66 +9372,176 @@
     }
   }
 
-  async function waitForUiContinuationAssistantMessage(userIndex = -1, attempts = 25, 起始索引 = -1) {
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-      try {
-        const ctx =
-          window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
-            ? window.SillyTavern.getContext()
-            : null;
-        const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-        if (Number.isInteger(起始索引) && 起始索引 >= 0) {
-          const found = chat.slice(起始索引).find(message => message && !message.is_user);
-          if (found) return found;
-        } else if (userIndex >= 0) {
-          const found = chat.slice(userIndex + 1).find(message => message && !message.is_user);
-          if (found) return found;
-        } else {
-          const found = [...chat].reverse().find(message => message && !message.is_user);
-          if (found) return found;
-        }
-      } catch (error) {}
-      await new Promise(resolve => window.setTimeout(resolve, 200));
+  function 读取UI续写消息_桥接(messageId) {
+    const 安全消息编号 = Number(messageId);
+    if (!Number.isInteger(安全消息编号) || 安全消息编号 < 0) return null;
+    const 聊天 = 读取当前聊天数组_桥接();
+    const 消息索引 = 聊天.findIndex((消息, 索引) => Number(读取聊天消息编号_桥接(消息, 索引)) === 安全消息编号);
+    if (消息索引 < 0 || !聊天[消息索引]) return null;
+    return { 消息: 聊天[消息索引], 消息索引, 消息编号: 安全消息编号 };
+  }
+
+  function 读取UI续写元数据_桥接(消息) {
+    const 元数据 = 消息?.extra?.__lwcs_ui_continuation;
+    return 元数据 && typeof 元数据 === 'object' ? cloneJsonValue(元数据, null) : null;
+  }
+
+  function 写入UI续写元数据_桥接(helper, messageId, 元数据) {
+    const 楼层 = 读取UI续写消息_桥接(messageId);
+    if (!楼层 || !helper || typeof helper.setChatMessages !== 'function') return Promise.resolve(false);
+    const extra = {
+      ...(楼层.消息.extra && typeof 楼层.消息.extra === 'object' ? 楼层.消息.extra : {}),
+      __lwcs_ui_continuation: cloneJsonValue(元数据, {}),
+    };
+    楼层.消息.extra = extra;
+    return helper.setChatMessages([{ message_id: 楼层.消息编号, extra }], { refresh: 'affected' }).then(() => true);
+  }
+
+  function 读取请求级UI续写元数据_桥接(requestId = '') {
+    const 安全请求编号 = toText(requestId, '').trim();
+    if (!安全请求编号) return null;
+    const 聊天 = 读取当前聊天数组_桥接();
+    for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
+      const 元数据 = 读取UI续写元数据_桥接(聊天[索引]);
+      if (元数据?.requestId === 安全请求编号 && 聊天[索引]?.is_user) {
+        return { 元数据, 消息: 聊天[索引], 消息索引: 索引, 消息编号: Number(读取聊天消息编号_桥接(聊天[索引], 索引)) };
+      }
     }
     return null;
   }
 
-  async function postprocessUiContinuationResult(helper, userText, requestKind, persistentInjection) {
-    const userIndex = Number.isInteger(persistentInjection?.userIndex) ? persistentInjection.userIndex : -1;
+  function 发送UI续写监视桥接事件_桥接(eventName, detail = {}) {
     try {
-      const ctx =
-        window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
-          ? window.SillyTavern.getContext()
-          : null;
-      const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-      const userMessage = userIndex >= 0 ? chat[userIndex] : null;
-      if (
-        userMessage &&
-        userMessage.is_user &&
-        String(userMessage.mes || '') !== userText &&
-        typeof helper?.setChatMessages === 'function'
-      ) {
-        await helper.setChatMessages([{ message_id: userMessage.message_id, mes: userText }], { refresh: 'affected' });
-        userMessage.mes = userText;
-      }
+      window.dispatchEvent(new CustomEvent(eventName, { detail }));
     } catch (error) {
-      console.warn('[DragonUI] Failed to restore UI continuation user message', error);
+      console.warn('[DragonUI] Request Monitor UI continuation bridge failed', error);
     }
-    const assistantMessage = await waitForUiContinuationAssistantMessage(userIndex, 2);
-    if (!assistantMessage) return;
-    const rawText = String(assistantMessage.mes || '');
-    await 应用复刻裁定结果(rawText, requestKind);
-    const visibleText = sanitizeUiContinuationVisibleText(rawText);
-    if (visibleText && visibleText !== rawText && typeof helper?.setChatMessages === 'function') {
-      const 写回可见文本 = 保留桥接正文后端块(visibleText, assistantMessage.mes || rawText);
-      await helper.setChatMessages([{ message_id: assistantMessage.message_id, mes: 写回可见文本 }], {
-        refresh: 'affected',
+  }
+
+  function 构建UI续写元数据_桥接(请求, 状态, 附加字段 = {}) {
+    return {
+      version: 1,
+      requestId: 请求.requestId,
+      generationId: 请求.generationId,
+      chatId: 请求.chatId,
+      requestKind: 请求.requestKind,
+      userMessageId: 请求.userMessageId,
+      assistantMessageId: 请求.assistantMessageId,
+      systemPrompt: 请求.systemPrompt,
+      patchOps: cloneJsonValue(请求.patchOps, []),
+      rollbackBase: 请求.rollbackBase ? cloneJsonValue(请求.rollbackBase, null) : null,
+      writeAfter: cloneJsonValue(请求.writeAfter, []),
+      retryCount: Number(请求.retryCount || 0),
+      state: 状态,
+      createdAt: 请求.createdAt,
+      updatedAt: Date.now(),
+      ...附加字段,
+    };
+  }
+
+  function 读取UI生成返回文本_桥接(结果) {
+    if (typeof 结果 === 'string') return 结果.trim();
+    if (结果 && typeof 结果 === 'object' && typeof 结果.content === 'string') return 结果.content.trim();
+    return '';
+  }
+
+  function 注册UI续写重Roll记录_桥接(请求, assistantMessageId) {
+    const 基底 = 请求.rollbackBase;
+    if (!请求.patchOps.length || !基底?.目标消息元信息 || !assistantMessageId) return;
+    if (请求.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
+    登记前端模块重Roll恢复记录({
+      requestKind: 请求.requestKind,
+      新AI消息编号: assistantMessageId,
+      旧AI消息编号: 基底.目标消息元信息.消息编号,
+      旧AI消息索引: 基底.目标消息元信息.消息索引,
+      旧AI滑动编号: 基底.目标消息元信息.滑动编号,
+      旧AI文本签名: 基底.目标消息元信息.文本签名,
+      回滚记录: 基底.回滚记录,
+      写后记录: 请求.writeAfter,
+      patchOps: cloneJsonValue(请求.patchOps, []),
+    });
+  }
+
+  async function 写入UI续写助手消息_桥接(helper, 请求, assistantText) {
+    const assistantMeta = 构建UI续写元数据_桥接(请求, 'completed', {
+      sourceUserMessageId: 请求.userMessageId,
+      systemPrompt: undefined,
+      patchOps: undefined,
+      rollbackBase: undefined,
+      writeAfter: undefined,
+    });
+    if (!请求.assistantMessageId) {
+      await helper.createChatMessages([{ role: 'assistant', message: assistantText, extra: { __lwcs_ui_continuation: assistantMeta } }], { refresh: 'affected' });
+      const 聊天 = 读取当前聊天数组_桥接();
+      const 助手索引 = 聊天.findIndex((消息, 索引) => {
+        const 元数据 = 读取UI续写元数据_桥接(消息);
+        return !消息?.is_user && 元数据?.requestId === 请求.requestId && 元数据?.generationId === 请求.generationId && Number(读取聊天消息编号_桥接(消息, 索引)) >= 请求.userMessageId;
       });
-      assistantMessage.mes = 写回可见文本;
+      if (助手索引 < 0) throw new Error('ui_continuation_assistant_message_missing');
+      请求.assistantMessageId = Number(读取聊天消息编号_桥接(聊天[助手索引], 助手索引));
+      return 请求.assistantMessageId;
     }
-    if (persistentInjection?.id) {
-      clearPendingUiSystemInjection(persistentInjection.id);
+    const 现有助手 = 读取UI续写消息_桥接(请求.assistantMessageId);
+    if (!现有助手 || 现有助手.消息.is_user) throw new Error('ui_continuation_regenerate_target_missing');
+    const 当前swipes = Array.isArray(现有助手.消息.swipes) && 现有助手.消息.swipes.length
+      ? 现有助手.消息.swipes.slice()
+      : [toText(现有助手.消息.mes, '')];
+    const 当前swipesData = Array.isArray(现有助手.消息.swipes_data) ? 现有助手.消息.swipes_data.slice() : [];
+    while (当前swipesData.length < 当前swipes.length) 当前swipesData.push({});
+    当前swipes.push(assistantText);
+    当前swipesData.push({ extra: { __lwcs_ui_continuation: assistantMeta } });
+    const extra = {
+      ...(现有助手.消息.extra && typeof 现有助手.消息.extra === 'object' ? 现有助手.消息.extra : {}),
+      __lwcs_ui_continuation: assistantMeta,
+    };
+    现有助手.消息.extra = extra;
+    await helper.setChatMessages([
+      {
+        message_id: 请求.assistantMessageId,
+        swipes: 当前swipes,
+        swipes_data: 当前swipesData,
+        swipe_id: 当前swipes.length - 1,
+        extra,
+      },
+    ], { refresh: 'affected' });
+    return 请求.assistantMessageId;
+  }
+
+  async function 执行UI续写生成_桥接(helper, 请求) {
+    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function') {
+      throw new Error('ui_continuation_helper_unavailable');
     }
+    if (!请求.chatId || 请求.chatId !== getCurrentUiRequestChatId()) throw new Error('ui_continuation_chat_changed');
+    发送UI续写监视桥接事件_桥接('request-monitor:ui-generation-started', {
+      chatId: 请求.chatId,
+      generationId: 请求.generationId,
+    });
+    const 结果 = await helper.generate({
+      generation_id: 请求.generationId,
+      user_input: '',
+      injects: 请求.systemPrompt
+        ? [{ role: 'system', content: 请求.systemPrompt, position: 'in_chat', depth: 0, should_scan: true }]
+        : [],
+    });
+    const 原始助手文本 = 读取UI生成返回文本_桥接(结果);
+    if (!原始助手文本) throw new Error('ui_continuation_empty_response');
+    const 助手文本 = sanitizeUiContinuationVisibleText(原始助手文本);
+    if (!助手文本) throw new Error('ui_continuation_empty_visible_response');
+    const assistantMessageId = await 写入UI续写助手消息_桥接(helper, 请求, 助手文本);
+    请求.assistantMessageId = assistantMessageId;
+    await 应用复刻裁定结果(原始助手文本, 请求.requestKind);
+    await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'completed'));
+    注册UI续写重Roll记录_桥接(请求, assistantMessageId);
+    if (请求.重生成目标) await 处理前端模块重Roll恢复_桥接('ui_continuation_regenerate', [assistantMessageId]);
+    发送UI续写监视桥接事件_桥接('request-monitor:generation-message-linked', {
+      attemptKind: 'ui',
+      chatId: 请求.chatId,
+      generationId: 请求.generationId,
+      messageId: assistantMessageId,
+      userMessageId: 请求.userMessageId,
+      assistantMessageId,
+    });
+    return { ok: true, requestKind: 请求.requestKind, userMessageId: 请求.userMessageId, assistantMessageId };
   }
 
   async function dispatchUiAiRequest(playerInput, systemPrompt, meta = {}) {
@@ -9523,145 +9552,204 @@
     const patchOps = Array.isArray(meta && meta.patchOps) ? meta.patchOps : [];
     const 跳过动作锁 = meta && (meta.skipActionLock === true || meta.noActionLock === true);
     const 动作锁键 = 跳过动作锁 ? '' : 构建异步动作锁键(requestKind, userText, meta);
-    let persistentInjection = null;
-    let 提交前消息数 = 0;
-    let 用户消息索引 = -1;
-    let 重Roll恢复基底 = null;
-    let 重Roll写后记录 = [];
-    let 预写待确认键 = '';
-
     if (!userText) {
       showUiToast('请求内容为空，无法提交。', 'error', 4200);
       return { ok: false, requestKind, reason: 'empty_input' };
     }
-    if (
-      !helper ||
-      typeof helper.injectPrompts !== 'function' ||
-      typeof helper.createChatMessages !== 'function' ||
-      typeof helper.triggerSlash !== 'function'
-    ) {
-      showUiToast('酒馆助手发送接口未就绪，当前无法提交请求。', 'error', 4200);
+    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function' || typeof helper.setChatMessages !== 'function') {
+      showUiToast('酒馆助手续写接口未就绪，当前无法提交请求。', 'error', 4200);
       return { ok: false, requestKind, reason: 'helper_unavailable' };
     }
     if (动作锁键 && !尝试占用异步动作锁(动作锁键)) {
       showUiToast('同一操作仍在执行，请稍候再试。', 'info', 2400);
       return { ok: false, requestKind, reason: 'request_locked' };
     }
-
+    let 请求 = null;
     try {
-      // Always persist MVU patches first, so generation reads newest state.
+      let rollbackBase = null;
+      let writeAfter = [];
+      let 预写待确认键 = '';
       if (patchOps.length) {
-        重Roll恢复基底 = 读取当前最后AI消息回滚基底_桥接(patchOps);
+        rollbackBase = 读取当前最后AI消息回滚基底_桥接(patchOps);
         const 预结算写入选项 =
           meta && (meta.settlementKind === 'routine' || meta.结算类型 === 'routine' || requestKind.startsWith('map_action_'))
             ? { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' }
             : { force: true };
         await applyJsonPatchOpsByEditor(patchOps, 预结算写入选项);
-        if (重Roll恢复基底) {
-          const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 重Roll恢复基底.目标消息元信息.消息编号 });
+        if (rollbackBase) {
+          const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: rollbackBase.目标消息元信息.消息编号 });
           const 写后根 = resolveRootData(写后包);
-          if (写后根) 重Roll写后记录 = 构建前端模块路径当前记录_桥接(写后根, 重Roll恢复基底.回滚记录);
+          if (写后根) writeAfter = 构建前端模块路径当前记录_桥接(写后根, rollbackBase.回滚记录);
           预写待确认键 = 登记前端模块预写待确认记录({
             requestKind,
-            旧AI消息编号: 重Roll恢复基底.目标消息元信息.消息编号,
-            旧AI消息索引: 重Roll恢复基底.目标消息元信息.消息索引,
-            旧AI滑动编号: 重Roll恢复基底.目标消息元信息.滑动编号,
-            旧AI文本签名: 重Roll恢复基底.目标消息元信息.文本签名,
-            回滚记录: 重Roll恢复基底.回滚记录,
-            写后记录: 重Roll写后记录,
+            旧AI消息编号: rollbackBase.目标消息元信息.消息编号,
+            旧AI消息索引: rollbackBase.目标消息元信息.消息索引,
+            旧AI滑动编号: rollbackBase.目标消息元信息.滑动编号,
+            旧AI文本签名: rollbackBase.目标消息元信息.文本签名,
+            回滚记录: rollbackBase.回滚记录,
+            写后记录: writeAfter,
           });
         }
         await refreshLiveSnapshot({ force: true });
       }
-      try {
-        const ctx =
-          window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
-            ? window.SillyTavern.getContext()
-            : null;
-        const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-        提交前消息数 = chat.length;
-      } catch (error) {
-        提交前消息数 = 0;
-      }
-      Array.from(pendingUiSystemInjections.keys()).forEach(injectionId => {
-        clearPendingUiSystemInjection(injectionId);
-      });
-      persistentInjection = hiddenPrompt
-        ? registerPersistentUiSystemInjection(helper, requestKind, hiddenPrompt)
-        : null;
-      await helper.createChatMessages([{ role: 'user', message: userText }], { refresh: 'affected' });
-      try {
-        const ctx =
-          window.SillyTavern && typeof window.SillyTavern.getContext === 'function'
-            ? window.SillyTavern.getContext()
-            : null;
-        const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
-        const lastMessage = chat.length ? chat[chat.length - 1] : null;
-        const 新用户消息索引 = chat.findIndex((message, index) =>
-          index >= 提交前消息数 && message && message.is_user && String(message.mes || '') === userText
-        );
-        用户消息索引 = 新用户消息索引 >= 0
-          ? 新用户消息索引
-          : lastMessage && lastMessage.is_user && String(lastMessage.mes || '') === userText
-            ? chat.length - 1
-            : -1;
-        const 用户消息 = 用户消息索引 >= 0 ? chat[用户消息索引] : null;
-        if (用户消息) {
-          用户消息._mvu_hidden_system_prompt = hiddenPrompt;
-          用户消息._mvu_request_kind = requestKind;
-          if (persistentInjection) {
-            用户消息._mvu_hidden_system_injection_id = persistentInjection.id;
-            persistentInjection.userIndex = 用户消息索引;
-            persistentInjection.helper = helper;
-            persistentInjection.userText = userText;
-            persistentInjection.requestKind = requestKind;
-          }
-        }
-      } catch (error) {}
-      await helper.triggerSlash('/trigger await=true');
-      const 后续搜索起点 = 用户消息索引 >= 0 ? 用户消息索引 + 1 : 提交前消息数;
-      const 助手消息 = await waitForUiContinuationAssistantMessage(用户消息索引, 60, 后续搜索起点);
-      if (!助手消息) {
-        if (persistentInjection && persistentInjection.id) clearPendingUiSystemInjection(persistentInjection.id);
-        console.warn('[DragonUI] UI request did not produce assistant continuation', { requestKind, userIndex: 用户消息索引 });
-        showUiToast('请求已发出，但酒馆没有生成回复。请检查生成状态后重试。', 'error', 5200);
-        return { ok: false, requestKind, reason: 'generation_not_started' };
-      }
-      if (persistentInjection && persistentInjection.id) {
-        if (persistentInjection.userIndex < 0) persistentInjection.userIndex = 后续搜索起点 - 1;
-        persistentInjection.processing = true;
-        try {
-          await postprocessUiContinuationResult(helper, userText, requestKind, persistentInjection);
-        } finally {
-          persistentInjection.processing = false;
-        }
-      }
-      if (patchOps.length && 重Roll恢复基底) {
-        if (预写待确认键) 前端模块预写待确认表.delete(预写待确认键);
-        登记前端模块重Roll恢复记录({
-          requestKind,
-          新AI消息编号: 助手消息.message_id,
-          旧AI消息编号: 重Roll恢复基底.目标消息元信息.消息编号,
-          旧AI消息索引: 重Roll恢复基底.目标消息元信息.消息索引,
-          旧AI滑动编号: 重Roll恢复基底.目标消息元信息.滑动编号,
-          旧AI文本签名: 重Roll恢复基底.目标消息元信息.文本签名,
-          回滚记录: 重Roll恢复基底.回滚记录,
-          写后记录: 重Roll写后记录,
-          patchOps: cloneJsonValue(patchOps, []),
-        });
-      }
-      return { ok: true, requestKind, assistantMessageId: 助手消息.message_id };
+      const requestId = buildUiContinuationRequestId(requestKind);
+      请求 = {
+        requestId,
+        generationId: `${requestId}-generation`,
+        chatId: getCurrentUiRequestChatId(),
+        requestKind,
+        userText,
+        systemPrompt: hiddenPrompt,
+        patchOps: cloneJsonValue(patchOps, []),
+        rollbackBase,
+        writeAfter,
+        预写待确认键,
+        userMessageId: undefined,
+        assistantMessageId: undefined,
+        retryCount: 0,
+        createdAt: Date.now(),
+      };
+      if (!请求.chatId) throw new Error('ui_continuation_chat_unavailable');
+      uiContinuationRequests.set(请求.requestId, 请求);
+      await helper.createChatMessages([{ role: 'user', message: userText, extra: { __lwcs_ui_continuation: 构建UI续写元数据_桥接(请求, 'pending') } }], { refresh: 'affected' });
+      const 用户楼层 = 读取请求级UI续写元数据_桥接(请求.requestId);
+      if (!用户楼层 || !Number.isInteger(用户楼层.消息编号)) throw new Error('ui_continuation_user_message_missing');
+      请求.userMessageId = 用户楼层.消息编号;
+      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      return await 执行UI续写生成_桥接(helper, 请求);
     } catch (error) {
-      if (persistentInjection && persistentInjection.id) {
-        clearPendingUiSystemInjection(persistentInjection.id);
+      if (请求?.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
+      if (请求?.userMessageId) {
+        const failure = error && error.message ? error.message : 'ui_continuation_failed';
+        await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }));
       }
-      console.error('[DragonUI] UI request dispatch failed', error);
+      console.error('[DragonUI] UI continuation dispatch failed', error);
       showUiToast(error && error.message ? error.message : '请求提交失败。', 'error', 4200);
       return { ok: false, requestKind, reason: 'dispatch_failed', error };
     } finally {
       if (动作锁键) 释放异步动作锁(动作锁键);
     }
   }
+
+  function 从UI续写元数据恢复请求_桥接(元数据, userMessageId, userText, assistantMessageId, 重生成目标 = false) {
+    const requestKind = toText(元数据?.requestKind, 'ui_request') || 'ui_request';
+    const requestId = toText(元数据?.requestId, '').trim() || buildUiContinuationRequestId(requestKind);
+    return {
+      requestId,
+      generationId: `${buildUiContinuationRequestId(requestKind)}-generation`,
+      chatId: toText(元数据?.chatId, '').trim() || getCurrentUiRequestChatId(),
+      requestKind,
+      userText: toText(userText, '').trim(),
+      systemPrompt: toText(元数据?.systemPrompt, '').trim(),
+      patchOps: Array.isArray(元数据?.patchOps) ? cloneJsonValue(元数据.patchOps, []) : [],
+      rollbackBase: 元数据?.rollbackBase ? cloneJsonValue(元数据.rollbackBase, null) : null,
+      writeAfter: Array.isArray(元数据?.writeAfter) ? cloneJsonValue(元数据.writeAfter, []) : [],
+      预写待确认键: '',
+      userMessageId,
+      assistantMessageId: assistantMessageId || undefined,
+      retryCount: Math.max(0, Number(元数据?.retryCount || 0)) + 1,
+      createdAt: Date.now(),
+      重生成目标,
+    };
+  }
+
+  async function 重试UI续写请求_桥接(messageIdOrRequestId) {
+    const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
+    const 目标编号 = Number(messageIdOrRequestId);
+    const 用户楼层 = Number.isInteger(目标编号)
+      ? 读取UI续写消息_桥接(目标编号)
+      : 读取请求级UI续写元数据_桥接(toText(messageIdOrRequestId, ''));
+    const 元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
+    if (!helper || !用户楼层?.消息?.is_user || !元数据) return { ok: false, reason: 'ui_continuation_not_found' };
+    if (!['failed', 'regenerate_failed'].includes(toText(元数据.state, ''))) return { ok: false, reason: 'ui_continuation_not_retryable' };
+    const 请求 = 从UI续写元数据恢复请求_桥接(
+      元数据,
+      用户楼层.消息编号,
+      toText(用户楼层.消息.mes, ''),
+      Number(元数据.assistantMessageId),
+      Number.isInteger(Number(元数据.assistantMessageId)),
+    );
+    if (!请求.userText || 请求.chatId !== getCurrentUiRequestChatId()) return { ok: false, reason: 'ui_continuation_retry_context_invalid' };
+    const 动作锁键 = 构建异步动作锁键(请求.requestKind, 请求.userText, { lockKey: `retry:${请求.userMessageId}` });
+    if (!尝试占用异步动作锁(动作锁键)) return { ok: false, reason: 'request_locked' };
+    try {
+      uiContinuationRequests.set(请求.requestId, 请求);
+      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      return await 执行UI续写生成_桥接(helper, 请求);
+    } catch (error) {
+      const failure = error && error.message ? error.message : 'ui_continuation_retry_failed';
+      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 请求.assistantMessageId ? 'regenerate_failed' : 'failed', { lastError: failure }));
+      showUiToast(`续写重试失败：${failure}`, 'error', 4200);
+      return { ok: false, reason: 'ui_continuation_retry_failed', error };
+    } finally {
+      释放异步动作锁(动作锁键);
+    }
+  }
+
+  async function 重生成UI续写助手楼_桥接(assistantMessageId) {
+    const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
+    const 助手楼层 = 读取UI续写消息_桥接(assistantMessageId);
+    const 助手元数据 = 助手楼层 ? 读取UI续写元数据_桥接(助手楼层.消息) : null;
+    const 用户楼层 = 助手元数据 ? 读取UI续写消息_桥接(助手元数据.sourceUserMessageId || 助手元数据.userMessageId) : null;
+    const 用户元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
+    if (!helper || !助手楼层 || 助手楼层.消息.is_user || !用户楼层?.消息?.is_user || !用户元数据) return { handled: false };
+    const 请求 = 从UI续写元数据恢复请求_桥接(
+      用户元数据,
+      用户楼层.消息编号,
+      toText(用户楼层.消息.mes, ''),
+      助手楼层.消息编号,
+      true,
+    );
+    if (!请求.userText || 请求.chatId !== getCurrentUiRequestChatId()) {
+      showUiToast('该 UI 楼层的续写上下文不完整，未执行重生成。', 'error', 4200);
+      return { handled: true, ok: false, reason: 'ui_continuation_regenerate_context_invalid' };
+    }
+    const 动作锁键 = 构建异步动作锁键(请求.requestKind, 请求.userText, { lockKey: `regenerate:${请求.assistantMessageId}` });
+    if (!尝试占用异步动作锁(动作锁键)) {
+      showUiToast('该 UI 续写仍在执行，请稍候。', 'info', 2400);
+      return { handled: true, ok: false, reason: 'request_locked' };
+    }
+    try {
+      uiContinuationRequests.set(请求.requestId, 请求);
+      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      return { handled: true, ...(await 执行UI续写生成_桥接(helper, 请求)) };
+    } catch (error) {
+      const failure = error && error.message ? error.message : 'ui_continuation_regenerate_failed';
+      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'regenerate_failed', { lastError: failure }));
+      showUiToast(`UI 楼层重生成失败：${failure}`, 'error', 4200);
+      return { handled: true, ok: false, reason: 'ui_continuation_regenerate_failed', error };
+    } finally {
+      释放异步动作锁(动作锁键);
+    }
+  }
+
+  function 安装UI续写原生重生成桥接_桥接() {
+    const 上下文 = window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null;
+    if (!上下文 || typeof 上下文.generate !== 'function' || 上下文.generate.__LWCS_UI_CONTINUATION_BRIDGE__) return false;
+    const 原生生成 = 上下文.generate;
+    const 代理生成 = async function (...参数) {
+      const 类型 = toText(参数[0], '').toLowerCase();
+      if (类型 !== 'regenerate') return 原生生成.apply(this, 参数);
+      const 聊天 = 读取当前聊天数组_桥接();
+      const 最后助手索引 = [...聊天].map((_, 索引) => 索引).reverse().find(索引 => 聊天[索引] && !聊天[索引].is_user);
+      const 最后助手编号 = Number.isInteger(最后助手索引) ? Number(读取聊天消息编号_桥接(聊天[最后助手索引], 最后助手索引)) : NaN;
+      if (!Number.isInteger(最后助手编号) || !读取UI续写元数据_桥接(聊天[最后助手索引])) return 原生生成.apply(this, 参数);
+      const 结果 = await 重生成UI续写助手楼_桥接(最后助手编号);
+      if (结果.handled) return 结果;
+      return 原生生成.apply(this, 参数);
+    };
+    代理生成.__LWCS_UI_CONTINUATION_BRIDGE__ = true;
+    代理生成.__LWCS_UI_CONTINUATION_ORIGINAL__ = 原生生成;
+    try {
+      上下文.generate = 代理生成;
+      return true;
+    } catch (error) {
+      console.warn('[DragonUI] UI continuation native regenerate bridge unavailable', error);
+      return false;
+    }
+  }
+
+  window.__LWCS_RETRY_UI_CONTINUATION__ = 重试UI续写请求_桥接;
 
   function installBattleUiHostSendBridge() {
     const sendFromBattleUi = async (detail = {}) => {
@@ -9681,6 +9769,7 @@
     });
   }
   installBattleUiHostSendBridge();
+  安装UI续写原生重生成桥接_桥接();
 
   const MVU_EDITOR_STORE_COMMIT_DELAY = 140;
   const MVU_EDITOR_ROOT_OBJECT_KEYS = ['sys', 'world', 'org', 'char', '物品'];
@@ -9875,6 +9964,9 @@
 
   function 清理过期前端模块重Roll恢复记录() {
     const 当前时间 = Date.now();
+    for (const [请求ID, 请求] of uiContinuationRequests.entries()) {
+      if (!请求 || 当前时间 - Number(请求.createdAt || 0) > 前端模块重Roll恢复保留毫秒) uiContinuationRequests.delete(请求ID);
+    }
     for (const [键, 记录] of 前端模块重Roll恢复表.entries()) {
       if (!记录 || 当前时间 - Number(记录.createdAt || 0) > 前端模块重Roll恢复保留毫秒) 前端模块重Roll恢复表.delete(键);
     }

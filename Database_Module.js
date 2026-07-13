@@ -4741,6 +4741,7 @@ $CONTENT
     const 生成错误不可重试状态码_ACU = new Set(['400', '401', '403']);
     const 生成错误状态_ACU = {
         本轮: null,
+        待开始正文重试围栏: null,
         重试次数: 0,
         已处理键: '',
         计时器: 0,
@@ -4757,26 +4758,27 @@ $CONTENT
         }
     }
     function 冻结正文自动重试上下文_ACU(options, runtimeContext = null) {
-        if (!options || typeof options !== 'object' || !生成错误状态_ACU.本轮)
+        if (!options || typeof options !== 'object')
             return false;
-        const prompt = typeof options.prompt === 'string' ? options.prompt : '';
-        const userInput = typeof options.user_input === 'string' ? options.user_input : '';
-        if (!prompt.trim() && !userInput.trim())
+        const 聊天数组 = getChatArray_ACU();
+        const 用户消息编号 = generationGate_ACU.lastUserMessageId;
+        const 上一角色消息 = 读取最新角色消息元信息_ACU();
+        if (!Array.isArray(聊天数组) || !Number.isInteger(用户消息编号) || !聊天数组[用户消息编号]?.is_user)
             return false;
-        const storyInjects = (Array.isArray(options.injects) ? options.injects : [])
-            .filter(item => item && item._qrf_scope === 'story')
-            .map(item => ({ ...item }));
-        生成错误状态_ACU.本轮.冻结正文上下文 = {
-            options: {
-                ...(prompt.trim() ? { prompt } : {}),
-                ...(userInput.trim() ? { user_input: userInput } : {}),
-                ...(storyInjects.length ? { injects: storyInjects } : {}),
-                automatic_trigger: true,
-                _qrf_processed_by_hook: true,
-                _qrf_retry_context: true,
+        const 围栏 = {
+            chatId: getActiveChatId_ACU(),
+            userMessageId: 用户消息编号,
+            priorAssistantMessageId: 上一角色消息?.消息编号 ?? '',
+            requestStartedAt: Date.now(),
+            audit: {
+                prompt: typeof options.prompt === 'string' ? options.prompt : '',
+                userInput: typeof options.user_input === 'string' ? options.user_input : '',
+                runtimeContext: 克隆自动重试数据_ACU(runtimeContext),
             },
-            runtimeContext: 克隆自动重试数据_ACU(runtimeContext),
         };
+        生成错误状态_ACU.待开始正文重试围栏 = 围栏;
+        if (生成错误状态_ACU.本轮)
+            生成错误状态_ACU.本轮.正文重试围栏 = 围栏;
         return true;
     }
     function 读取生成错误聊天末端_ACU(目标消息元信息 = null) {
@@ -4836,18 +4838,21 @@ $CONTENT
             防截断流入状态_ACU.自动重试中 = false;
         }
         const 末端信息 = 读取生成错误聊天末端_ACU();
-        const 是冻结重试 = !!生成参数?._qrf_retry_context || (!!防截断流入状态_ACU.自动重试中 && !!生成错误状态_ACU.本轮?.冻结正文上下文);
-        const 冻结正文上下文 = 是冻结重试 ? 生成错误状态_ACU.本轮?.冻结正文上下文 || null : null;
+        const 前一轮围栏 = 生成错误状态_ACU.本轮?.正文重试围栏 || null;
+        const 是原生重试 = !!防截断流入状态_ACU.自动重试中 && !!前一轮围栏;
+        const 正文重试围栏 = 是原生重试 ? 前一轮围栏 : 生成错误状态_ACU.待开始正文重试围栏;
+        if (!是原生重试)
+            生成错误状态_ACU.待开始正文重试围栏 = null;
         生成错误状态_ACU.本轮 = {
             类型: 生成类型,
-            参数: 是冻结重试 ? 克隆自动重试数据_ACU(生成参数) : null,
+            参数: 是原生重试 ? 克隆自动重试数据_ACU(生成参数) : null,
             干跑: !!是否干跑,
             开始时间: Date.now(),
             开始聊天长度: 末端信息.聊天长度,
             开始最后角色索引: 末端信息.最新角色消息?.消息索引 ?? -1,
             开始最后角色签名: 末端信息.最新角色消息?.文本签名 || '',
             最后用户消息编号: generationGate_ACU.lastUserMessageId,
-            冻结正文上下文,
+            正文重试围栏,
         };
         生成错误状态_ACU.已处理键 = '';
         生成错误状态_ACU.最近停止时间 = 0;
@@ -4950,21 +4955,23 @@ $CONTENT
     }
     async function 触发防截断流入重新生成_ACU() {
         const 助手 = window.TavernHelper || topLevelWindow_ACU?.TavernHelper;
-        const 冻结上下文 = 生成错误状态_ACU.本轮?.冻结正文上下文;
-        if (!冻结上下文?.options)
+        const 围栏 = 生成错误状态_ACU.本轮?.正文重试围栏;
+        const 聊天数组 = getChatArray_ACU();
+        if (!围栏 || !Array.isArray(聊天数组))
             return false;
-        const 重试参数 = {
-            ...冻结上下文.options,
-            injects: Array.isArray(冻结上下文.options.injects) ? 冻结上下文.options.injects.map(item => ({ ...item })) : undefined,
-        };
-        if (冻结上下文.runtimeContext)
-            注册正文运行时一次性注入_ACU(克隆自动重试数据_ACU(冻结上下文.runtimeContext));
-        if (typeof window.original_TavernHelper_generate_ACU === 'function') {
-            await window.original_TavernHelper_generate_ACU(重试参数);
-            return true;
-        }
-        if (助手 && typeof 助手.generate === 'function') {
-            await 助手.generate(重试参数);
+        if (围栏.chatId && 围栏.chatId !== getActiveChatId_ACU())
+            return false;
+        if (Date.now() - Number(围栏.requestStartedAt || 0) > 10 * 60 * 1000)
+            return false;
+        const 用户索引 = 聊天数组.findIndex((消息, 索引) =>
+            消息 && 消息.is_user && String(消息.message_id ?? 索引) === String(围栏.userMessageId));
+        if (用户索引 < 0 || 用户索引 !== 聊天数组.length - 1)
+            return false;
+        const 当前角色消息 = 读取最新角色消息元信息_ACU();
+        if (String(当前角色消息?.消息编号 ?? '') !== String(围栏.priorAssistantMessageId ?? ''))
+            return false;
+        if (助手 && typeof 助手.triggerSlash === 'function') {
+            await 助手.triggerSlash('/trigger await=true');
             return true;
         }
         return false;
@@ -19308,15 +19315,9 @@ $CONTENT
                 content: 文本,
                 should_scan: false,
                 id: `qrf-plot-transient-${index}`,
-                _qrf_scope: 'story',
             });
         });
         return true;
-    }
-    function 隔离非正文作用域注入_ACU(options) {
-        if (!options || !Array.isArray(options.injects))
-            return;
-        options.injects = options.injects.filter(item => item?._qrf_scope !== 'mvu' && item?._qrf_scope !== 'database');
     }
     function buildPlotSaveContentFromTaskResults_ACU(taskResults) {
         return sortPlotTaskResults_ACU(taskResults)
@@ -49540,9 +49541,10 @@ $CONTENT
     }
     async function triggerDirectRegenerateForLoop_ACU(loopSettings) {
         loopState_ACU.awaitingReply = true;
-        const 已触发 = await 触发防截断流入重新生成_ACU();
-        if (!已触发)
-            throw new Error('当前循环没有可重放的冻结正文上下文。');
+        const 助手 = window.TavernHelper || topLevelWindow_ACU?.TavernHelper;
+        if (!助手 || typeof 助手.triggerSlash !== 'function')
+            throw new Error('酒馆原生聊天级重生成入口不可用。');
+        await 助手.triggerSlash('/trigger await=true');
     }
     async function enterLoopRetryFlow_ACU({ loopSettings, shouldDeleteAiReply }) {
         // [重构] 调用 service 层重试逻辑
@@ -56613,7 +56615,6 @@ $CONTENT
                                         追加正文运行时注入_ACU(options, 重试运行时上下文);
                                         追加剧情推进临时正文注入_ACU(options, result.transientStoryInjects || []);
                                         冻结正文自动重试上下文_ACU(options, 重试运行时上下文);
-                                        隔离非正文作用域注入_ACU(options);
                                         options._qrf_processed_by_hook = true;
                                         break;
                                     }
@@ -56818,7 +56819,6 @@ $CONTENT
                                     注册正文运行时一次性注入_ACU(重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
                                     冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
-                                    隔离非正文作用域注入_ACU(params);
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
                                     emitMessageUpdated_ACU(lastMessageIndex);
                                     if (getSendTextareaValue_ACU() === s1.originalMessage)
@@ -56872,7 +56872,6 @@ $CONTENT
                                     注册正文运行时一次性注入_ACU(重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s2.transientStoryInjects || []);
                                     冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
-                                    隔离非正文作用域注入_ACU(params);
                                 }
                                 catch (e) { }
                                 break;
