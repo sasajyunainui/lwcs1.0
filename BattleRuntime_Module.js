@@ -403,6 +403,161 @@
     };
   }
 
+  function listPrimaryCombatUnits(combatData = {}) {
+    const participants = combatData?.参战者 && typeof combatData.参战者 === 'object' ? combatData.参战者 : {};
+    return [...(Array.isArray(participants.team_player) ? participants.team_player : []), ...(Array.isArray(participants.team_enemy) ? participants.team_enemy : [])].filter(Boolean);
+  }
+
+  function listSummonCombatUnits(combatData = {}) {
+    const table = combatData?.召唤单位表 && typeof combatData.召唤单位表 === 'object' ? combatData.召唤单位表 : {};
+    return Object.values(table).filter(unit => unit && unit.已消散 !== true);
+  }
+
+  function listCombatUnits(combatData = {}) {
+    const seen = new Set();
+    return [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].filter(unit => {
+      const key = previewRuntime.unitId(unit) || previewRuntime.unitName(unit);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function isUnitIdentityMatch(unit, rawIdentity = '') {
+    if (unit && rawIdentity && unit === rawIdentity) return true;
+    const wanted = rawIdentity && typeof rawIdentity === 'object'
+      ? String(rawIdentity.id || rawIdentity.角色ID || rawIdentity.name || rawIdentity.名称 || rawIdentity.charKey || rawIdentity.char_key || rawIdentity.key || '').trim()
+      : String(rawIdentity || '').trim();
+    if (!unit || !wanted) return false;
+    return [unit.id, unit.角色ID, unit.uid, unit.name, unit.名称, unit.charKey, unit.char_key, unit.key]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .includes(wanted);
+  }
+
+  function inferUnitSide(combatData = {}, rawIdentity = '', fallback = '') {
+    const normalizedFallback = normalizeBattleSide(fallback);
+    const player = Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : [];
+    const enemy = Array.isArray(combatData?.参战者?.team_enemy) ? combatData.参战者.team_enemy : [];
+    if (player.some(unit => isUnitIdentityMatch(unit, rawIdentity))) return 'player';
+    if (enemy.some(unit => isUnitIdentityMatch(unit, rawIdentity))) return 'enemy';
+    const summon = listSummonCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, rawIdentity));
+    if (/^(player|玩家|我方)$/i.test(String(summon?.阵营 || ''))) return 'player';
+    if (/^(enemy|敌方|对方)$/i.test(String(summon?.阵营 || ''))) return 'enemy';
+    return normalizedFallback;
+  }
+
+  function isUnitAbleToFight(unit = {}) {
+    const actionState = String(unit?.状态?.行动 || '').trim();
+    return previewRuntime.isAlive(unit) && previewRuntime.readResource(unit, '体力') > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
+  }
+
+  function buildDeclarationAction(declaration = {}, actor = {}, combatData = {}) {
+    const actionKind = String(declaration?.actionKind || '').trim();
+    const targetId = String(declaration?.targetIds?.[0] || '').trim();
+    const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
+    const targetName = target ? previewRuntime.unitName(target) : '';
+    if (actionKind === 'RELEASE_SKILL') {
+      const skill = cloneValue(declaration.skill || {});
+      skill.name = String(skill.name || skill.魂技名 || skill.技能名称 || skill.名称 || '魂技').trim();
+      return { id: declaration.actionId, type: 'skill', action_type: '释放魂技', name: skill.name || skill.魂技名 || '魂技', skill, target_name: targetName, cast_time: Number(skill?.前摇 ?? skill?.cast_time ?? 10) || 10 };
+    }
+    if (actionKind === 'USE_ITEM') {
+      const item = cloneValue(declaration.skill || {});
+      const itemName = String(item?.name || item?.名称 || item?.物品名 || '').trim();
+      return { id: declaration.actionId, type: 'item', action_type: '使用物品', name: itemName, skill: { ...item, __物品名: itemName }, 物品名: itemName, target_name: targetName, cast_time: 10 };
+    }
+    if (actionKind === 'EQUIP') {
+      const equipment = cloneValue(declaration.skill || {});
+      return { id: declaration.actionId, type: 'equipment', action_type: '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '', cast_time: 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
+    }
+    const actionType = {
+      BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退',
+    }[actionKind] || '防御';
+    const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
+    const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无', 前摇: 10 };
+    if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
+    return {
+      id: declaration.actionId,
+      type: 'tactical',
+      action_type: actionType,
+      name: actionName,
+      target_name: targetName,
+      cast_time: 10,
+      cost_text: '无',
+      skill,
+      __基础防守姿态: actionKind === 'EVADE' ? 'EVADE' : actionKind === 'DEFEND' ? 'DEFEND' : '',
+    };
+  }
+
+  function inferActionTargetScope(action = null, targetName = '') {
+    const rawTarget = String(action?.skill?.目标 || action?.skill?.target || '').trim();
+    if (/全场/.test(rawTarget)) return 'all_units';
+    if (/友方.*群体|己方.*群体/.test(rawTarget)) return 'ally_group';
+    if (/敌方.*群体|群体|范围/.test(rawTarget)) return 'enemy_group';
+    if (/自身/.test(rawTarget)) return 'self';
+    return targetName ? 'single' : 'self';
+  }
+
+  function writeInitialIntent(combatData = {}, entry = {}, target = null, action = null, timingBucket = '') {
+    const actor = entry?.char || null;
+    const actorName = String(actor?.name || actor?.名称 || '').trim();
+    const actionName = normalizeActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '行动');
+    if (!actorName || !actionName) return null;
+    const trace = ensureTrace(combatData);
+    const round = Number(combatData?.回合 || 0);
+    const targetName = String(target?.name || target?.名称 || action?.target_name || '').trim();
+    const actorSide = normalizeBattleSide(entry?.side) || inferUnitSide(combatData, actorName);
+    const targetSide = targetName ? inferUnitSide(combatData, targetName, actorSide) : actorSide;
+    const existing = trace.find(node =>
+      String(node?.nodeKind || '').trim() === 'initial_intent' &&
+      Number(node?.round || 0) === round &&
+      String(node?.actorName || '').trim() === actorName &&
+      normalizeActionDisplayName(node?.initialActionName || '') === actionName &&
+      String(node?.targetName || '').trim() === targetName
+    );
+    if (existing) return existing;
+    const node = {
+      nodeId: String(nextRuntimeId('battle-trace-initial-intent')).trim(),
+      parentNodeId: '',
+      round,
+      phase: 'action_planning',
+      nodeKind: 'initial_intent',
+      nodeLayer: 'intent',
+      actorName,
+      actorSide,
+      targetName,
+      targetSide,
+      targetId: String(target?.id || target?.key || '').trim(),
+      targetScope: inferActionTargetScope(action, targetName),
+      initialActionName: actionName,
+      finalActionName: '',
+      discardedActionName: '',
+      source: 'action_queue',
+      result: 'planned',
+      primaryOutcome: 'action_planned',
+      failureReason: '',
+      reasonCode: 'ACTION_COMMITTED',
+      reasonText: '行动轴初始意图声明',
+      replanReasonCode: '',
+      replanReasonText: '',
+      ledgerEventIds: [],
+      calculationTrace: [
+        { key: 'actorSide', label: '阵营', value: String(entry?.side || '').trim() },
+        { key: 'targetName', label: '目标', value: targetName },
+        { key: 'plannedAction', label: '初始意图', value: actionName },
+        { key: 'castTime', label: '前摇', value: Math.max(0, Number(action?.cast_time ?? action?.skill?.前摇 ?? 0)) },
+        { key: 'timingBucket', label: '行动窗口', value: String(timingBucket || '').trim() },
+      ].filter(item => String(item.value ?? '').trim()),
+      counterDepth: 0,
+      counterRootNodeId: '',
+    };
+    trace.push(node);
+    if (trace.length > 1000) trace.splice(0, trace.length - 1000);
+    return node;
+  }
+
   function runDecisionTeamBattle(options = {}) {
     const combatData = options?.combatData;
     const decide = options?.decide;
@@ -424,8 +579,8 @@
     const strategicHistoryByActor = new Map();
     const unitId = unit => String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim();
     const unitName = unit => String(unit?.name || unit?.名称 || unitId(unit)).trim();
-    const listUnits = currentCombatData => settlement.listUnits(currentCombatData).filter(Boolean);
-    const findUnit = (currentCombatData, targetId) => listUnits(currentCombatData).find(unit => settlement.isUnitMatch(unit, targetId));
+    const listUnits = currentCombatData => listCombatUnits(currentCombatData);
+    const findUnit = (currentCombatData, targetId) => listUnits(currentCombatData).find(unit => isUnitIdentityMatch(unit, targetId));
 
     const recordMechanicObservations = (actor, decision, currentCombatData, actionRole = 'ACTIVE') => {
       const selected = decision?.selected;
@@ -433,7 +588,7 @@
       if (!observations.length) return;
       const actorId = unitId(actor);
       const actorName = unitName(actor);
-      const actionName = settlement.normalizeActionName(selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 || selected?.declaration?.actionKind || '行动');
+      const actionName = normalizeActionDisplayName(selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 || selected?.declaration?.actionKind || '行动');
       const ledgerStart = ensureLedger(currentCombatData).length;
       observations.forEach(observation => {
         const target = findUnit(currentCombatData, observation?.targetId);
@@ -458,9 +613,9 @@
         const event = ledger.slice(Math.max(0, Number(observation.ledgerStart || 0))).find(item =>
           String(item?.eventKind || '').trim() === 'state_apply' &&
           Number(item?.round || 0) === Number(observation.round || 0) &&
-          settlement.isSameReportName(item?.actorName || '', observation.actorName) &&
-          settlement.isSameReportName(item?.targetName || '', observation.targetName) &&
-          settlement.normalizeActionName(item?.actionName || '') === observation.actionName &&
+          isSameReportName(item?.actorName || '', observation.actorName) &&
+          isSameReportName(item?.targetName || '', observation.targetName) &&
+          normalizeActionDisplayName(item?.actionName || '') === observation.actionName &&
           String(item?.meta?.stateName || item?.stateName || item?.effectSummary || '').trim() === observation.stateName
         );
         if (!event) return;
@@ -493,13 +648,13 @@
     const settlePublicObservations = currentCombatData => {
       const ledger = ensureLedger(currentCombatData);
       const currentRound = Number(currentCombatData?.回合 || 0);
-      const units = settlement.listPrimaryUnits(currentCombatData).filter(Boolean);
+      const units = listPrimaryCombatUnits(currentCombatData);
       ledger.filter(event =>
         String(event?.eventKind || '').trim() === 'action_start' &&
         Number(event?.round || 0) === currentRound &&
-        settlement.normalizeActionRole(event?.actionRole || '') !== 'STATE_TICK'
+        normalizeActionRole(event?.actionRole || '') !== 'STATE_TICK'
       ).forEach(actionEvent => {
-        const sourceActor = units.find(unit => settlement.isUnitMatch(unit, actionEvent?.actorName || ''));
+        const sourceActor = units.find(unit => isUnitIdentityMatch(unit, actionEvent?.actorName || ''));
         if (!sourceActor) return;
         const sourceActorId = unitId(sourceActor);
         const sourceSide = String(actionEvent?.actorSide || '').trim();
@@ -509,19 +664,19 @@
           event !== actionEvent
         );
         const appliedDamage = outcomeEvents.reduce((sum, event) => sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || event?.meta?.damage || 0)), 0);
-        const target = units.find(unit => settlement.isUnitMatch(unit, actionEvent?.targetName || ''));
-        const baseActionValue = 100 * appliedDamage / Math.max(1, settlement.getHpMax(target || {}));
+        const target = units.find(unit => isUnitIdentityMatch(unit, actionEvent?.targetName || ''));
+        const baseActionValue = 100 * appliedDamage / Math.max(1, previewRuntime.readHpMax(target || {}));
         const result = outcomeEvents.map(event => String(event?.result || event?.resultState || '').trim()).filter(Boolean).join('|') || 'declared';
         units.forEach(observer => {
-          const observerSide = settlement.inferSide(currentCombatData, unitName(observer));
+          const observerSide = inferUnitSide(currentCombatData, unitName(observer));
           if (!observerSide || observerSide === sourceSide) return;
           const observerId = unitId(observer);
           const previous = beliefByActor.get(observerId) || {};
           const next = updatePublicBelief(previous, {
             sourceActorId,
             sourceActionId: String(actionEvent?.actionId || '').trim(),
-            responseId: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
-            actionName: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            responseId: normalizeActionDisplayName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            actionName: normalizeActionDisplayName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
             baseActionValue,
             result,
           });
@@ -531,7 +686,7 @@
             round: currentRound,
             actorId: observerId,
             sourceActorId,
-            actionName: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            actionName: normalizeActionDisplayName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
             baseActionValue,
             result,
             confidence: Number(next?.confidence || 0),
@@ -587,7 +742,7 @@
             skill: null, def_mult: 1.0,
           };
           const { actorId, sourceId, decision } = runDecisionOpportunity({ reactor, sourceActor, incomingAction, ratio, actionRole: 'REACTION' });
-          const action = settlement.buildDeclarationAction({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
+          const action = buildDeclarationAction({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
           const reactionKind = String(decision.selected?.declaration?.actionKind || '').trim();
           const reactionType = reactionKind === 'EVADE' ? '伺机闪避' : reactionKind === 'DEFEND' ? '肉体兜底' : action.action_type || action.type || '防御';
           action.type = reactionType;
@@ -605,7 +760,7 @@
             __decisionCandidateId: String(decision.selected.candidateId || '').trim(), __decisionActorId: actorId,
           };
           if (declaration.targetIds?.length === 1) declaration.targetIds = [sourceId];
-          const selectedAction = settlement.buildDeclarationAction(declaration, reactor, currentCombatData);
+          const selectedAction = buildDeclarationAction(declaration, reactor, currentCombatData);
           const counterAction = settlement.createCounterAction(reactor, {
             防反类型: counterType,
             sourceActionName: String(selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.name || selectedAction?.action_type || '反击').trim(),
@@ -636,29 +791,29 @@
           strategyByActor.set(actorId, decision.strategyMemory || {});
           decisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole: 'ACTIVE', continuation: true, ...decision });
           recordMechanicObservations(actor, decision, currentCombatData, 'ACTIVE');
-          const action = settlement.buildDeclarationAction(decision.selected.declaration, actor, currentCombatData);
+          const action = buildDeclarationAction(decision.selected.declaration, actor, currentCombatData);
           action.source = 'explicit_follow_up';
           action.__chainType = 'FOLLOW_UP';
           action.__followUpParentActionId = '';
           action.__followUpRemainingBudget = Math.max(0, Number(remainingTime || 0));
           return action;
         };
-        queue.filter(entry => entry?.char && settlement.isAbleToFight(entry.char)).forEach(entry => {
+        queue.filter(entry => entry?.char && isUnitAbleToFight(entry.char)).forEach(entry => {
           const lockedAction = decisionRuntimeState.playerLockedNaturalAction;
           const useLockedAction = !!lockedAction && lockedAction.consumed !== true &&
             Number(lockedAction.round || 0) === Number(currentCombatData?.回合 || 0) &&
-            settlement.isUnitMatch(entry.char, lockedAction.actorName || '');
+            isUnitIdentityMatch(entry.char, lockedAction.actorName || '');
           if (useLockedAction) {
-            const declaredAction = lockedAction.action || settlement.buildDeclarationAction(lockedAction.declaration || {}, entry.char, currentCombatData);
+            const declaredAction = lockedAction.action || buildDeclarationAction(lockedAction.declaration || {}, entry.char, currentCombatData);
             lockedAction.consumed = true;
             entry.__actorControl = 'PLAYER_LOCKED';
             entry.__declaredRound = Number(currentCombatData?.回合 || 0);
             entry.__declaredAction = declaredAction;
-            entry.__declaredActionName = settlement.normalizeActionName(declaredAction?.skill?.name || declaredAction?.skill?.魂技名 || declaredAction?.action_type || '行动');
+            entry.__declaredActionName = normalizeActionDisplayName(declaredAction?.skill?.name || declaredAction?.skill?.魂技名 || declaredAction?.action_type || '行动');
             entry.__declaredTargetName = String(lockedAction.targetName || declaredAction?.target_name || '').trim();
             entry.__declaredTimingBucket = '10-19';
             const target = findUnit(currentCombatData, entry.__declaredTargetName);
-            settlement.writeInitialIntent(currentCombatData, entry, target, declaredAction, '10-19');
+            writeInitialIntent(currentCombatData, entry, target, declaredAction, '10-19');
             logs.push(`[玩家声明] ${unitName(entry.char) || '玩家'}选择【${entry.__declaredActionName}】指向${unitName(target) || entry.__declaredTargetName || '自身'}。`);
             return;
           }
@@ -681,7 +836,7 @@
             });
             const declaration = decision?.selected?.declaration;
             if (!declaration) throw new Error(`battle_declaration_missing:${actorId}`);
-            const action = settlement.buildDeclarationAction(declaration, actor, battleState.combatData);
+            const action = buildDeclarationAction(declaration, actor, battleState.combatData);
             const target = findUnit(battleState.combatData, String(declaration?.targetIds?.[0] || '').trim());
             beliefByActor.set(actorId, decision.beliefState || {});
             strategyByActor.set(actorId, decision.strategyMemory || {});
@@ -701,8 +856,8 @@
             strategicHistoryByActor.set(actorId, history.slice(-2));
             decisions.push({ round: Number(battleState.combatData?.回合 || 0), actorId, actionRole: 'ACTIVE', ...decision });
             recordMechanicObservations(actor, decision, battleState.combatData, 'ACTIVE');
-            settlement.writeInitialIntent(battleState.combatData, actorEntry, target, action, '10-19');
-            logs.push(`[行动声明] ${unitName(actor) || actorId}选择【${settlement.normalizeActionName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动')}】指向${unitName(target) || '自身'}。`);
+            writeInitialIntent(battleState.combatData, actorEntry, target, action, '10-19');
+            logs.push(`[行动声明] ${unitName(actor) || actorId}选择【${normalizeActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动')}】指向${unitName(target) || '自身'}。`);
             return { action, targetName: unitName(target) };
           };
         });
@@ -2779,9 +2934,7 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'createTeamAdapters', 'listUnits', 'listPrimaryUnits', 'isUnitMatch', 'normalizeActionName',
-      'isSameReportName', 'normalizeActionRole', 'inferSide', 'getHpMax',
-      'buildDeclarationAction', 'createCounterAction', 'writeInitialIntent', 'isAbleToFight',
+      'createTeamAdapters', 'createCounterAction',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');

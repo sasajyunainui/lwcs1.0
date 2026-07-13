@@ -15827,25 +15827,7 @@ class BattleUIComponent {
 
     BATTLE_RUNTIME.bindSettlementPrimitives({
       createTeamAdapters: options => 构建团战运行时适配器(options),
-      listUnits: combatData => [
-        ...读取战斗主队单位列表(combatData, '玩家'),
-        ...读取战斗主队单位列表(combatData, '敌方'),
-        ...读取召唤单位列表(combatData),
-      ],
-      listPrimaryUnits: combatData => [
-        ...读取战斗主队单位列表(combatData, '玩家'),
-        ...读取战斗主队单位列表(combatData, '敌方'),
-      ],
-      isUnitMatch: (unit, targetId) => isCombatUnitIdentityMatch(unit, targetId),
-      normalizeActionName: value => normalizeBattleActionDisplayName(value),
-      isSameReportName: (left, right) => isSameBattleReportName(left, right),
-      normalizeActionRole: value => 标准化战斗行动职责(value),
-      inferSide: (combatData, name) => 推断战斗单位阵营侧(combatData, name),
-      getHpMax: unit => getCombatHpMaxValue(unit),
-      buildDeclarationAction: (declaration, actor, combatData) => 构建决策声明动作(declaration, actor, combatData),
       createCounterAction: (actor, candidate) => 建立行为防反动作(actor, candidate),
-      writeInitialIntent: (combatData, entry, target, action, timingBucket) => 写入行动轴初始意图节点(combatData, entry, target, action, timingBucket),
-      isAbleToFight: unit => isCombatUnitAbleToFight(unit),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -20588,66 +20570,6 @@ class BattleUIComponent {
           ].filter(item => item.value !== undefined && item.value !== null && String(item.value).trim() !== ''),
           counterDepth: Math.max(0, Number(meta.counterDepth || 0)),
           counterRootNodeId: parent,
-        };
-        trace.push(node);
-        if (trace.length > 1000) trace.splice(0, trace.length - 1000);
-        return node;
-      }
-
-      function 写入行动轴初始意图节点(combatData = {}, entry = {}, target = null, action = null, timingBucket = '') {
-        const actor = entry?.char || null;
-        const actorName = String(actor?.name || actor?.名称 || '').trim();
-        const actionName = normalizeBattleActionDisplayName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || action?.type || '行动');
-        if (!actorName || !actionName) return null;
-        const trace = BATTLE_RUNTIME.ensureTrace(combatData);
-        const round = Number(combatData?.回合 || 0);
-        const targetName = String(target?.name || target?.名称 || action?.target_name || '').trim();
-        const actorSide = 标准化战斗阵营侧(entry?.side || (读取规划单位阵营(actor, combatData) === '敌方' ? 'enemy' : 'player'));
-        const targetSide = targetName
-          ? (读取规划单位阵营(target, combatData) === '敌方' ? 'enemy' : 'player')
-          : actorSide;
-        const existing = trace.find(node =>
-          String(node?.nodeKind || '').trim() === 'initial_intent' &&
-          Number(node?.round || 0) === round &&
-          String(node?.actorName || '').trim() === actorName &&
-          normalizeBattleActionDisplayName(node?.initialActionName || '') === actionName &&
-          String(node?.targetName || '').trim() === targetName
-        );
-        if (existing) return existing;
-        const node = {
-          nodeId: String(BATTLE_RUNTIME.nextRuntimeId('battle-trace-initial-intent')).trim(),
-          parentNodeId: '',
-          round,
-          phase: 'action_planning',
-          nodeKind: 'initial_intent',
-          nodeLayer: 'intent',
-          actorName,
-          actorSide,
-          targetName,
-          targetSide,
-          targetId: String(target?.id || target?.key || '').trim(),
-          targetScope: 推断战斗行动目标范围(action) || (targetName ? 'single' : 'self'),
-          initialActionName: actionName,
-          finalActionName: '',
-          discardedActionName: '',
-          source: 'action_queue',
-          result: 'planned',
-          primaryOutcome: 'action_planned',
-          failureReason: '',
-          reasonCode: 'ACTION_COMMITTED',
-          reasonText: '行动轴初始意图声明',
-          replanReasonCode: '',
-          replanReasonText: '',
-          ledgerEventIds: [],
-          calculationTrace: [
-            { key: 'actorSide', label: '阵营', value: String(entry?.side || '').trim() },
-            { key: 'targetName', label: '目标', value: targetName },
-            { key: 'plannedAction', label: '初始意图', value: actionName },
-            { key: 'castTime', label: '前摇', value: Math.max(0, Number(action?.cast_time ?? action?.skill?.前摇 ?? 0)) },
-            { key: 'timingBucket', label: '行动窗口', value: String(timingBucket || '').trim() },
-          ].filter(item => String(item.value ?? '').trim()),
-          counterDepth: 0,
-          counterRootNodeId: '',
         };
         trace.push(node);
         if (trace.length > 1000) trace.splice(0, trace.length - 1000);
@@ -36829,54 +36751,6 @@ class BattleUIComponent {
 
         function runTeamBattleSimulation(combatData, maxRounds = 3) {
           return 运行正式决策战斗(combatData, maxRounds, 'multi_round');
-        }
-
-        function 构建决策声明动作(declaration = {}, actor = {}, combatData = {}) {
-          const actionKind = String(declaration?.actionKind || '').trim();
-          const targetId = String(declaration?.targetIds?.[0] || '').trim();
-          const target = [
-            ...读取战斗主队单位列表(combatData, '玩家'),
-            ...读取战斗主队单位列表(combatData, '敌方'),
-            ...读取召唤单位列表(combatData),
-          ].find(unit => isCombatUnitIdentityMatch(unit, targetId));
-          const targetName = String(target?.name || target?.名称 || '').trim();
-          if (actionKind === 'RELEASE_SKILL') {
-            const skill = deepClonePlain(declaration.skill || {});
-            skill.name = String(skill.name || skill.魂技名 || skill.技能名称 || skill.名称 || '魂技').trim();
-            return { id: declaration.actionId, type: 'skill', action_type: '释放魂技', name: skill.name || skill.魂技名 || '魂技', skill, target_name: targetName, cast_time: Number(skill?.前摇 ?? skill?.cast_time ?? 10) || 10 };
-          }
-          if (actionKind === 'USE_ITEM') {
-            const item = deepClonePlain(declaration.skill || {});
-            const itemName = String(item?.name || item?.名称 || item?.物品名 || '').trim();
-            return { id: declaration.actionId, type: 'item', action_type: '使用物品', name: itemName, skill: { ...item, __物品名: itemName }, 物品名: itemName, target_name: targetName, cast_time: 10 };
-          }
-          if (actionKind === 'EQUIP') {
-            const equipment = deepClonePlain(declaration.skill || {});
-            return { id: declaration.actionId, type: 'equipment', action_type: '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '', cast_time: 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
-          }
-          const actionType = {
-            BASIC_ATTACK: '常规攻击',
-            DEFEND: '防御',
-            EVADE: '闪避',
-            COUNTER: '反击',
-            OBSERVE: '观察',
-            GUARD: '保护队友',
-            WITHDRAW: '撤退',
-          }[actionKind] || '防御';
-          const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
-          const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无', 前摇: 10 };
-          if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
-          return {
-            id: declaration.actionId,
-            type: 'tactical',
-            action_type: actionType,
-            name: actionName,
-            target_name: targetName,
-            cast_time: 10,
-            cost_text: '无',
-            skill,
-            __基础防守姿态: actionKind === 'EVADE' ? 'EVADE' : actionKind === 'DEFEND' ? 'DEFEND' : '',
-          };
         }
 
         function 运行正式决策战斗(combatData, maxRounds = 3, mode = 'multi_round', adapterOptions = {}) {

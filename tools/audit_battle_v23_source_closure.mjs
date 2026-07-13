@@ -18,6 +18,7 @@ const mvuSource = fs.readFileSync(mvuPath, 'utf8');
 const bridgeSource = fs.readFileSync(bridgePath, 'utf8');
 const routePresetSource = fs.readFileSync(routePresetPath, 'utf8');
 const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23_regression_gate.mjs'), 'utf8');
+const settlementBindingSource = battleUiSource.match(/BATTLE_RUNTIME\.bindSettlementPrimitives\(\{[\s\S]*?\n\s*}\);/)?.[0] || '';
 
 const checks = [];
 const addCheck = (name, passed, detail = '') => checks.push({ name, passed: Boolean(passed), detail });
@@ -137,6 +138,20 @@ addCheck(
   'caseDomainAdapterRemoved',
   !/bindEngine|requireEngine|caseDomain|executeDecisionTeam/.test(battleRuntimeSource) &&
     !/bindEngine|caseDomain|executeDecisionTeam/.test(battleUiSource),
+);
+addCheck(
+  'settlementAdapterContainsOnlySettlementPrimitives',
+  /function listPrimaryCombatUnits\(/.test(battleRuntimeSource) &&
+    /function listSummonCombatUnits\(/.test(battleRuntimeSource) &&
+    /function isUnitIdentityMatch\(/.test(battleRuntimeSource) &&
+    /function inferUnitSide\(/.test(battleRuntimeSource) &&
+    /function isUnitAbleToFight\(/.test(battleRuntimeSource) &&
+    /function buildDeclarationAction\(/.test(battleRuntimeSource) &&
+    !/function 构建决策声明动作\(/.test(battleUiSource) &&
+    /function writeInitialIntent\(/.test(battleRuntimeSource) &&
+    !/function 写入行动轴初始意图节点\(/.test(battleUiSource) &&
+    /const required = \[[\s\S]*?'createTeamAdapters', 'createCounterAction',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );
 addCheck(
   'formalDeclarationExecutionOwnedByRuntime',
