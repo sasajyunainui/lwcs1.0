@@ -259,7 +259,8 @@
     const startingRound = Number(combatData.回合 || 0);
     let rounds = 0;
     let lastAlive = adapters.readAlive(combatData);
-    while (rounds < roundLimit) {
+    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;
+    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {
       rounds += 1;
       const currentRound = startingRound + rounds;
       combatData.回合 = currentRound;
@@ -279,12 +280,23 @@
       lastAlive = adapters.readAlive(combatData);
       logs.push(`[团战回合总结] 我方可行动单位:${lastAlive.playerAlive} 敌方可行动单位:${lastAlive.enemyAlive}`);
       if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;
+      objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound, rounds, alive: lastAlive, roundCompleted: true }) || objectiveResolution;
+      if (objectiveResolution?.terminal === true) break;
       const continuation = adapters.shouldContinue?.({ combatData, mode, currentRound, rounds, alive: lastAlive });
       if (continuation?.log) logs.push(continuation.log);
       if (continuation?.continueSimulation === false) break;
     }
-    const winner = lastAlive.enemyAlive <= 0 ? 'player' : lastAlive.playerAlive <= 0 ? 'enemy' : 'unfinished';
-    adapters.finalize?.({ combatData, mode, winner, logs, alive: lastAlive });
+    objectiveResolution = adapters.evaluateTerminal?.({
+      combatData,
+      currentRound: Number(combatData.回合 || startingRound),
+      rounds,
+      alive: lastAlive,
+      roundCompleted: rounds > 0,
+    }) || objectiveResolution;
+    const winner = objectiveResolution?.terminal === true
+      ? objectiveResolution.winner
+      : lastAlive.enemyAlive <= 0 ? 'player' : lastAlive.playerAlive <= 0 ? 'enemy' : 'unfinished';
+    adapters.finalize?.({ combatData, mode, winner, logs, alive: lastAlive, objectiveResolution });
     return {
       rounds,
       roundStart: startingRound + 1,
@@ -292,6 +304,7 @@
       winner,
       playerAlive: lastAlive.playerAlive,
       enemyAlive: lastAlive.enemyAlive,
+      objectiveResolution,
       logs,
       extraPatchOps,
     };
@@ -882,6 +895,7 @@
       return {
         factId: String(event?.eventId || '').trim(),
         factType: kind === 'hit_result' || (kind === 'counter' && damage > 0) ? 'DAMAGE' :
+          kind === 'battle_objective_resolved' ? 'BATTLE_OBJECTIVE' :
           kind === 'state_tick' || kind === 'action_start' && actionRole === 'STATE_TICK' ? 'STATE_TICK' :
             ['state_apply', 'state_replace', 'state_remove'].includes(kind) ? 'STATE_CHANGE' :
               kind === 'resource_change' || kind === 'round_recover' ? 'RESOURCE_CHANGE' :
@@ -979,6 +993,11 @@
         const action = fact.actionName || '行动';
         const value = Math.abs(Math.round(Number(fact.value || 0)));
         if (fact.factType === 'DAMAGE') return;
+        if (fact.factType === 'BATTLE_OBJECTIVE') {
+          const winner = String(fact.resultState || '').trim();
+          push(winner === 'player' ? '我方胜利条件已经成立，战斗结束' : winner === 'enemy' ? '我方失败条件已经成立，战斗结束' : '双方终止条件同时成立，战斗结束');
+          return;
+        }
         if (fact.factType === 'STATE_TICK') {
           push(value > 0
             ? `${target}受【${fact.stateName || action}】持续影响，损失 ${value} 点生命值`
@@ -1373,6 +1392,23 @@
   function buildFinalSummary(eventLedger = [], decisionTrace = [], finalSnapshot = {}, combatData = null) {
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const snapshot = finalSnapshot && typeof finalSnapshot === 'object' ? finalSnapshot : {};
+    const objectives = previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData || {});
+    const describeCondition = condition => {
+      const side = condition.side === 'PLAYER' ? '我方' : condition.side === 'ENEMY' ? '敌方' : '';
+      const targets = condition.targetIds?.length ? condition.targetIds.join('、') : `${side}全体`;
+      if (condition.type === 'TEAM_INCAPACITATED') return `${side}全员失去战斗能力`;
+      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return `${targets}生命降至${Math.round(condition.threshold * 100)}%及以下`;
+      if (condition.type === 'ROUND_REACHED') return `${side}坚持完成${condition.round}回合`;
+      if (condition.type === 'UNIT_DAMAGED') return `${targets}在本场受到伤害`;
+      if (condition.type === 'UNIT_INCAPACITATED') return `${targets}失去战斗能力`;
+      if (condition.type === 'WITHDRAW_SUCCESS') return `${side}成功撤离`;
+      return '条件未识别';
+    };
+    const objectiveText = {
+      victory: objectives.victory.conditions.map(describeCondition).join(objectives.victory.logic === 'ALL' ? '且' : '或'),
+      defeat: objectives.defeat.conditions.map(describeCondition).join(objectives.defeat.logic === 'ALL' ? '且' : '或'),
+      maxRounds: objectives.maxRounds,
+    };
     const playerUnits = Array.isArray(snapshot.team_player) ? snapshot.team_player : [];
     const enemyUnits = Array.isArray(snapshot.team_enemy) ? snapshot.team_enemy : [];
     const summons = Array.isArray(snapshot.summons) ? snapshot.summons : [];
@@ -1426,12 +1462,18 @@
     const enemyMetric = teamMetric(enemySummary, enemySummons);
     const playerDefeated = playerMetric.alive <= 0 && playerMetric.total > 0;
     const enemyDefeated = enemyMetric.alive <= 0 && enemyMetric.total > 0;
-    const battleEnded = playerDefeated || enemyDefeated;
+    const objectiveEvent = [...ledger].reverse().find(event => String(event?.eventKind || '').trim() === 'battle_objective_resolved');
+    const objectiveWinner = String(objectiveEvent?.meta?.winner || objectiveEvent?.result || '').trim();
+    const objectiveStatusText = objectiveWinner === 'player' ? '我方胜利' : objectiveWinner === 'enemy' ? '敌方胜利' : objectiveWinner === 'draw' ? '平局' : '';
+    const battleEnded = !!objectiveEvent || playerDefeated || enemyDefeated;
     const scoreGap = Number((playerMetric.score - enemyMetric.score).toFixed(2));
-    const advantage = enemyDefeated ? 'PLAYER_VICTORY' : playerDefeated ? 'ENEMY_VICTORY' :
+    const advantage = objectiveWinner === 'player' || (!objectiveWinner && enemyDefeated) ? 'PLAYER_VICTORY' :
+      objectiveWinner === 'enemy' || (!objectiveWinner && playerDefeated) ? 'ENEMY_VICTORY' :
+        objectiveWinner === 'draw' ? 'DRAW' :
       scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
     const advantageText = advantage === 'PLAYER_VICTORY' ? '我方获胜' :
       advantage === 'ENEMY_VICTORY' ? '敌方获胜' :
+      advantage === 'DRAW' ? '胜负条件同时成立，战斗以平局结束' :
       advantage === 'PLAYER' ? '我方占优' :
       advantage === 'PLAYER_EDGE' ? '我方略占上风' :
         advantage === 'ENEMY' ? '敌方占优' :
@@ -1452,8 +1494,8 @@
     };
     const resolvedIntents = battleEnded
       ? {
-          playerIntent: playerDefeated ? '我方已失去战斗能力，无法继续行动' : '我方已结束交锋，转入收势与战后确认',
-          enemyIntent: enemyDefeated ? '敌方已失去战斗能力，无法继续行动' : '敌方已结束交锋，转入收势与战后确认',
+          playerIntent: advantage === 'ENEMY_VICTORY' ? '我方未能满足战斗目标，转入战后处置' : '我方已满足战斗目标，转入收势与战后确认',
+          enemyIntent: advantage === 'PLAYER_VICTORY' ? '敌方已触发我方胜利条件，停止继续行动' : '敌方已满足其阻止条件，转入战后处置',
         }
       : requireEngine().caseDomain.resolveNextIntents({
           combatData, decisionTrace, playerSummary, enemySummary, currentTargets: readCurrentTargets(),
@@ -1478,8 +1520,8 @@
     });
     const hpRatioGap = playerMetric.hpRatio - enemyMetric.hpRatio;
     if (battleEnded) {
-      tacticalWindows.push(enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
-      const survivingSide = enemyDefeated ? playerSummary : enemySummary;
+      tacticalWindows.push(objectiveEvent ? `胜负条件已成立（${objectiveStatusText}），本场交锋已经结束` : enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
+      const survivingSide = advantage === 'PLAYER_VICTORY' ? playerSummary : enemySummary;
       const damagedSurvivors = survivingSide.filter(unit => unit.hp > 0 && unit.hp < unit.hpMax);
       if (damagedSurvivors.length) risks.push(`${damagedSurvivors.map(unit => unit.name).join('、')}仍有战损，需要进行战后恢复`);
     } else if (hpRatioGap <= -0.03) {
@@ -1496,6 +1538,7 @@
     const formatTeam = units => units.length ? units.map(unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.sp}/${unit.spMax}，体力 ${unit.vit}/${unit.vitMax}，精神力 ${unit.men}/${unit.menMax}${unit.actionState && unit.actionState !== '战斗' ? `，行动状态 ${unit.actionState}` : ''}${unit.states.length ? `，状态 ${unit.states.map(state => `${state.name}(${state.duration})`).join('、')}` : ''}`).join('；') : '无可行动单位';
     const text = [
       `战至第${round}回合，${advantageText}。`,
+      `胜利条件：${objectiveText.victory || '未设置'}；失败条件：${objectiveText.defeat || '未设置'}；回合上限：${objectiveText.maxRounds}。`,
       `我方：${formatTeam(playerSummary)}。敌方：${formatTeam(enemySummary)}。`,
       `接下来我方${playerIntent.replace(/^我方/, '')}；敌方${enemyIntent.replace(/^敌方/, '')}。`,
       `可利用窗口：${tacticalWindows.slice(0, 5).join('；') || '暂时没有明确窗口'}。最大风险：${risks.slice(0, 4).join('；') || '双方暂无迫近的资源或状态风险'}。`,
@@ -1508,7 +1551,8 @@
       targetIds: [],
       blockType: 'FINAL_SUMMARY',
       facts: [
-        { factType: 'BATTLE_STATE', round, advantage, scoreGap },
+        { factType: 'BATTLE_STATE', round, advantage, scoreGap, objectiveStatus: objectiveStatusText, objectiveWinner },
+        { factType: 'BATTLE_OBJECTIVES', victory: objectiveText.victory, defeat: objectiveText.defeat, maxRounds: objectiveText.maxRounds },
         { factType: 'TEAM_STATE', side: 'PLAYER', units: playerSummary },
         { factType: 'TEAM_STATE', side: 'ENEMY', units: enemySummary },
         { factType: 'SUMMON_STATE', units: summonSummary },
@@ -1519,6 +1563,9 @@
       nextWindow: tacticalWindows.slice(0, 5).join('；'),
       headline: advantageText,
       advantage,
+      objectiveStatus: objectiveStatusText,
+      objectiveWinner,
+      objectives: objectiveText,
       scoreGap,
       sides: { player: { units: playerSummary, metric: playerMetric }, enemy: { units: enemySummary, metric: enemyMetric } },
       summons: summonSummary,
@@ -1531,6 +1578,9 @@
     const aiSummaryInput = {
       round,
       advantage,
+      objectiveStatus: objectiveStatusText,
+      objectiveWinner,
+      objectives: objectiveText,
       sides: {
         player: playerSummary,
         enemy: enemySummary,
@@ -1541,7 +1591,7 @@
       tacticalWindows: finalBattleReport.tacticalWindows,
       risks: finalBattleReport.risks,
       recentFacts: ledger
-        .filter(event => ['action_start', 'charge_start', 'hit_result', 'counter', 'state_apply', 'state_tick', 'resource_change', 'summon_create', 'summon_assist', 'failed_action', 'blocked_action'].includes(String(event?.eventKind || '').trim()))
+        .filter(event => ['action_start', 'charge_start', 'hit_result', 'counter', 'state_apply', 'state_tick', 'resource_change', 'summon_create', 'summon_assist', 'failed_action', 'blocked_action', 'battle_objective_resolved'].includes(String(event?.eventKind || '').trim()))
         .slice(-24)
         .map(event => ({
           round: Math.max(0, Number(event?.round || event?.sourceRound || 0)),
@@ -2217,7 +2267,10 @@
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
     const decideOnce = (payload, index = 0) => decision.decide({
       ...payload,
-      battleIntent: input.battleIntent || payload?.battleIntent || {},
+      battleIntent: input.battleIntent || payload?.battleIntent || {
+        mode: String(payload?.worldSnapshot?.战斗意图 || worldSnapshot?.战斗意图 || '').trim(),
+        objectives: payload?.worldSnapshot?.胜负条件 || worldSnapshot?.胜负条件 || {},
+      },
       beliefState: payload?.beliefState && Object.keys(payload.beliefState).length
         ? payload.beliefState
         : input.initialBelief?.[payload?.actorId] || input.initialBelief || {},

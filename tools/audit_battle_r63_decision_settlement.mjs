@@ -692,6 +692,69 @@ const wastedDefense = captureResult.decisions.filter(entry =>
 );
 assert.equal(wastedDefense.length, 0, `敌方下一行动已取消仍浪费机会防御:${JSON.stringify(wastedDefense.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
 
+const hpThresholdInput = combatData();
+hpThresholdInput.战斗意图 = '压制测试';
+hpThresholdInput.胜负条件 = {
+  version: 1, explicit: true, startRound: 0, maxRounds: 3,
+  victory: { logic: 'ANY', conditions: [{ type: 'HP_RATIO_AT_OR_BELOW', side: 'ENEMY', targetIds: ['enemy-a'], threshold: 0.99, scope: 'ALL' }] },
+  defeat: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }] },
+};
+const hpThresholdResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'battle-objective-hp-threshold', seed: 6401, combatData: hpThresholdInput, mode: 'team_preview', rounds: 3, settings: {},
+});
+assert.equal(hpThresholdResult.roundsExecuted, 1, '敌方生命阈值成立后仍继续执行后续回合');
+assert.equal(hpThresholdResult.finalBattleReport?.objectiveWinner, 'player', '敌方生命阈值没有形成我方胜利终态');
+assert.ok(hpThresholdResult.ledger.some(event => event?.eventKind === 'battle_objective_resolved' && event?.result === 'player'), '生命阈值缺少唯一目标终态事实');
+assert.ok(!hpThresholdResult.ledger.some(event => event?.eventKind === 'action_start' && event?.actorName === 'enemy-a' && event?.actionRole === 'ACTIVE'), '生命阈值成立后敌方仍消费自然行动机会');
+const thresholdDecision = hpThresholdResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE');
+assert.equal(Number(thresholdDecision?.selected?.vector?.terminalUtility || 0), 100, '显式生命阈值没有进入行为决策终态效用');
+assert.ok(thresholdDecision?.problems?.some(problem => problem?.problemId === 'TERMINAL_OPPORTUNITY'), '接近生命阈值时没有识别终结窗口');
+const formalObjectiveInput = structuredClone(hpThresholdInput);
+const formalObjectiveResult = sandbox.BattleUIBridge.executeBattleFlow(formalObjectiveInput, { mode: 'multi_round', rounds: 3 });
+assert.equal(formalObjectiveResult.winner, 'player', '正式BattleUI执行链没有返回目标胜方');
+assert.equal(formalObjectiveInput.进行中, false, '目标终态成立后正式战斗仍标记为进行中');
+assert.equal(formalObjectiveInput.裁断结果, '我方胜利', '目标终态没有写入玩家可读裁断结果');
+assert.ok(formalObjectiveResult.mvuUpdate?.combatData?.胜负条件, '胜负条件没有随现有战斗对象持久化');
+
+const surviveInput = combatData();
+surviveInput.战斗意图 = '坚持测试';
+surviveInput.胜负条件 = {
+  version: 1, explicit: true, startRound: 0, maxRounds: 2,
+  victory: { logic: 'ANY', conditions: [{ type: 'ROUND_REACHED', side: 'PLAYER', round: 2, requireActive: true }] },
+  defeat: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }] },
+};
+const surviveResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'battle-objective-survive-rounds', seed: 6402, combatData: surviveInput, mode: 'team_preview', rounds: 5, settings: {},
+});
+assert.equal(surviveResult.roundsExecuted, 2, '坚持回合条件没有在完成指定回合后停止');
+assert.equal(surviveResult.finalBattleReport?.objectiveWinner, 'player', '坚持指定回合没有形成我方胜利终态');
+assert.ok(surviveResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '坚持回合目标没有进入保命问题识别');
+
+const protectedInput = combatData();
+protectedInput.战斗意图 = '无伤保护测试';
+protectedInput.胜负条件 = {
+  version: 1, explicit: true, startRound: 0, maxRounds: 3,
+  victory: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }] },
+  defeat: { logic: 'ANY', conditions: [{ type: 'UNIT_DAMAGED', side: 'PLAYER', targetIds: ['player-a'], baselineHp: { 'player-a': 500 } }] },
+};
+const protectedDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: structuredClone(protectedInput), actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
+});
+const ordinaryProtectionInput = structuredClone(protectedInput);
+delete ordinaryProtectionInput.胜负条件;
+const ordinaryDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+  worldSnapshot: ordinaryProtectionInput, actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
+});
+const bestDefenseUtility = decision => Math.max(...decision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate?.declaration?.actionKind)).map(candidate => Number(candidate.objectiveUtility || 0)));
+assert.ok(bestDefenseUtility(protectedDecision) > bestDefenseUtility(ordinaryDecision), '无伤失败条件没有提高可兑现防守动作的终态保护价值');
+const protectedResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'battle-objective-protected-unit-damaged', seed: 6403, combatData: protectedInput, mode: 'team_preview', rounds: 3, settings: {},
+});
+assert.equal(protectedResult.roundsExecuted, 1, '指定单位受伤后仍继续执行后续回合');
+assert.equal(protectedResult.finalBattleReport?.objectiveWinner, 'enemy', '指定单位受伤没有触发我方失败终态');
+assert.ok(protectedResult.ledger.some(event => event?.eventKind === 'battle_objective_resolved' && event?.result === 'enemy'), '受伤失败条件缺少唯一目标终态事实');
+assert.ok(protectedResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '指定单位无伤条件没有进入行为问题识别');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -710,6 +773,9 @@ console.log(JSON.stringify({
     secondSkillSelected: secondSkillDecision.selected?.skill?.id || '',
     controlledFollowUpAction: controlledFollowUpDecision.selected?.declaration?.actionKind || '',
     captureWastedDefenseCount: wastedDefense.length,
+    hpThresholdRounds: hpThresholdResult.roundsExecuted,
+    surviveRounds: surviveResult.roundsExecuted,
+    protectedObjectiveWinner: protectedResult.finalBattleReport?.objectiveWinner || '',
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

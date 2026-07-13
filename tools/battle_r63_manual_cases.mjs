@@ -107,6 +107,18 @@ function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
   };
 }
 
+function objectiveContract(maxRounds, victoryConditions, defeatConditions = [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }]) {
+  return {
+    version: 1,
+    explicit: true,
+    startRound: 0,
+    maxRounds,
+    resolutionPriority: 'DEFEAT_FIRST',
+    victory: { logic: 'ANY', conditions: victoryConditions },
+    defeat: { logic: 'ANY', conditions: defeatConditions },
+  };
+}
+
 export function buildManualCases(library, getBaseStats) {
   const make = (name, options) => participant(library, getBaseStats, name, options);
   const charge = {
@@ -156,6 +168,35 @@ export function buildManualCases(library, getBaseStats) {
     battle('equipment_switch_no_loop', 6, '切磋', [equipmentTester], [make('王金玺', { level: 50 })]),
     battle('intent_capture_vs_kill', 6, '点到为止', [make('舞长空', { level: 70 })], [make('韦小枫', { level: 45 })]),
   ];
+  const defaultVictory = [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }];
+  cases.forEach(item => {
+    item.combatData.胜负条件 = objectiveContract(item.rounds, defaultVictory);
+  });
+  cases.find(item => item.caseId === 'duel_overmatch_nonlethal').combatData.胜负条件 = objectiveContract(4, [
+    { type: 'HP_RATIO_AT_OR_BELOW', side: 'ENEMY', targetIds: ['韦小枫'], threshold: 0.01, scope: 'ALL' },
+  ]);
+  ['duel_underdog_survival', 'duel_charge_defense_safer'].forEach(caseId => {
+    const item = cases.find(entry => entry.caseId === caseId);
+    item.combatData.胜负条件 = objectiveContract(item.rounds, [
+      { type: 'ROUND_REACHED', side: 'PLAYER', round: item.rounds, requireActive: true },
+    ]);
+  });
+  cases.find(item => item.caseId === 'duel_agile_single_target_failure').combatData.胜负条件 = objectiveContract(5, [
+    { type: 'WITHDRAW_SUCCESS', side: 'PLAYER' },
+  ]);
+  cases.find(item => item.caseId === 'team_protect_critical_ally').combatData.胜负条件 = objectiveContract(4, [
+    { type: 'ROUND_REACHED', side: 'PLAYER', round: 4, requireActive: true },
+  ], [
+    { type: 'UNIT_INCAPACITATED', side: 'PLAYER', targetIds: ['舞长空'], scope: 'ANY' },
+  ]);
+  cases.find(item => item.caseId === 'team_heal_crisis').combatData.胜负条件 = objectiveContract(4, [
+    { type: 'ROUND_REACHED', side: 'PLAYER', round: 4, requireActive: true },
+  ], [
+    { type: 'UNIT_INCAPACITATED', side: 'PLAYER', targetIds: ['舞长空', '古月'], scope: 'ANY' },
+  ]);
+  cases.find(item => item.caseId === 'intent_capture_vs_kill').combatData.胜负条件 = objectiveContract(6, [
+    { type: 'HP_RATIO_AT_OR_BELOW', side: 'ENEMY', targetIds: ['韦小枫'], threshold: 0.3, scope: 'ALL' },
+  ]);
   cases.find(item => item.caseId === 'duel_agile_counter_options').seed = 630071;
   cases.find(item => item.caseId === 'team_counter_coordination').seed = 630071;
   return cases;

@@ -186,6 +186,152 @@
     return unit?.状态?.存活 !== false && readHp(unit) > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
   }
 
+  function normalizeObjectiveSide(value = '') {
+    const text = String(value || '').trim().toUpperCase();
+    if (/^(PLAYER|ALLY|OWN|我方|己方|友方)$/.test(text)) return 'PLAYER';
+    if (/^(ENEMY|HOSTILE|敌方|对方)$/.test(text)) return 'ENEMY';
+    return '';
+  }
+
+  function objectiveSideOfEntry(entry = {}) {
+    return /player|玩家|我方|己方|友方/i.test(String(entry?.side || '')) ? 'PLAYER' : 'ENEMY';
+  }
+
+  function normalizeObjectiveCondition(condition = {}) {
+    if (!condition || typeof condition !== 'object') return null;
+    const typeAliases = {
+      敌方全员失能: 'TEAM_INCAPACITATED',
+      我方全员失能: 'TEAM_INCAPACITATED',
+      全员失能: 'TEAM_INCAPACITATED',
+      生命阈值: 'HP_RATIO_AT_OR_BELOW',
+      坚持回合: 'ROUND_REACHED',
+      指定单位受伤: 'UNIT_DAMAGED',
+      指定单位失能: 'UNIT_INCAPACITATED',
+      指定单位死亡: 'UNIT_INCAPACITATED',
+      成功撤离: 'WITHDRAW_SUCCESS',
+    };
+    const rawType = String(condition.type || condition.类型 || '').trim();
+    const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
+    if (!['TEAM_INCAPACITATED', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    const inferredSide = rawType.startsWith('我方') ? 'PLAYER' : rawType.startsWith('敌方') ? 'ENEMY' : '';
+    const side = normalizeObjectiveSide(condition.side || condition.阵营 || inferredSide);
+    const targetSource = condition.targetIds || condition.目标 || condition.targets || [];
+    const targetIds = (Array.isArray(targetSource) ? targetSource : String(targetSource || '').split(/[、,，]/u))
+      .map(item => String(item || '').trim())
+      .filter(item => item && !/^(全体|全员|ALL)$/i.test(item));
+    const thresholdRaw = condition.threshold ?? condition.thresholdRatio ?? condition.阈值 ?? 0;
+    const thresholdNumber = Number.parseFloat(String(thresholdRaw).replace('%', ''));
+    const threshold = Number.isFinite(thresholdNumber)
+      ? clamp(String(thresholdRaw).includes('%') || thresholdNumber > 1 ? thresholdNumber / 100 : thresholdNumber, 0, 1)
+      : 0;
+    const round = Math.max(0, Math.floor(Number(condition.round ?? condition.rounds ?? condition.回合 ?? condition.回合数 ?? 0)));
+    const baselineHp = condition.baselineHp && typeof condition.baselineHp === 'object'
+      ? Object.fromEntries(Object.entries(condition.baselineHp).map(([key, value]) => [String(key), Math.max(0, Number(value) || 0)]))
+      : {};
+    return Object.freeze({
+      type,
+      side,
+      targetIds: Object.freeze(targetIds),
+      scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (type === 'TEAM_INCAPACITATED' ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
+      threshold,
+      round,
+      requireActive: condition.requireActive !== false && condition.存活要求 !== false,
+      baselineHp: Object.freeze(baselineHp),
+    });
+  }
+
+  function normalizeObjectiveGroup(group = {}, fallbackConditions = []) {
+    const source = Array.isArray(group) ? group : Array.isArray(group?.conditions) ? group.conditions : Array.isArray(group?.条件) ? group.条件 : fallbackConditions;
+    const conditions = source.map(normalizeObjectiveCondition).filter(Boolean);
+    return Object.freeze({
+      logic: /^(ALL|全部)$/i.test(String(group?.logic || group?.逻辑 || 'ANY').trim()) ? 'ALL' : 'ANY',
+      conditions: Object.freeze(conditions),
+    });
+  }
+
+  function normalizeBattleObjectives(raw = {}, worldSnapshot = {}) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const explicit = source.explicit === true || source.explicit !== false && Object.keys(source).some(key => !['version', 'explicit'].includes(key));
+    const victorySource = source.victory || source.胜利 || {};
+    const defeatSource = source.defeat || source.失败 || {};
+    const victory = normalizeObjectiveGroup(victorySource, [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY' }]);
+    const defeat = normalizeObjectiveGroup(defeatSource, [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER' }]);
+    const currentRound = Math.max(0, Math.floor(Number(worldSnapshot?.回合 || 0)));
+    return Object.freeze({
+      version: 1,
+      explicit,
+      startRound: Math.max(0, Math.floor(Number(source.startRound ?? source.起始回合 ?? currentRound))),
+      maxRounds: Math.max(1, Math.min(200, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? 20) || 20))),
+      resolutionPriority: /^(DRAW_ON_CONFLICT|平局)$/i.test(String(source.resolutionPriority || source.冲突处理 || 'DEFEAT_FIRST').trim()) ? 'DRAW_ON_CONFLICT' : 'DEFEAT_FIRST',
+      victory,
+      defeat,
+    });
+  }
+
+  function objectiveUnits(worldSnapshot = {}, condition = {}) {
+    const targetIds = new Set(condition.targetIds || []);
+    return listUnits(worldSnapshot)
+      .filter(entry => !condition.side || objectiveSideOfEntry(entry) === condition.side)
+      .map(entry => entry.unit)
+      .filter(unit => !targetIds.size || targetIds.has(unitId(unit)) || targetIds.has(unitName(unit)));
+  }
+
+  function evaluateObjectiveCondition(worldSnapshot = {}, condition = {}, options = {}) {
+    if (condition.type === 'WITHDRAW_SUCCESS') return worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+    if (condition.type === 'ROUND_REACHED') {
+      if (options.roundCompleted !== true) return false;
+      const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - Number(options.startRound || 0));
+      if (elapsedRounds < condition.round) return false;
+      if (!condition.requireActive) return true;
+      const units = objectiveUnits(worldSnapshot, condition);
+      return units.length > 0 && units.some(isAlive);
+    }
+    const units = objectiveUnits(worldSnapshot, condition);
+    if (!units.length) return false;
+    const tests = units.map(unit => {
+      if (condition.type === 'TEAM_INCAPACITATED' || condition.type === 'UNIT_INCAPACITATED') return !isAlive(unit);
+      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return readHp(unit) / Math.max(1, readHpMax(unit)) <= condition.threshold + 1e-9;
+      if (condition.type === 'UNIT_DAMAGED') {
+        const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
+        return readHp(unit) < Math.max(0, baseline) - 1e-9;
+      }
+      return false;
+    });
+    return condition.scope === 'ALL' ? tests.every(Boolean) : tests.some(Boolean);
+  }
+
+  function evaluateBattleObjectives(worldSnapshot = {}, rawObjectives = {}, options = {}) {
+    const objectives = normalizeBattleObjectives(rawObjectives, worldSnapshot);
+    const evaluateGroup = group => {
+      const matches = group.conditions.map(condition => evaluateObjectiveCondition(worldSnapshot, condition, {
+        ...options,
+        startRound: objectives.startRound,
+      }));
+      return {
+        matched: matches.length > 0 && (group.logic === 'ALL' ? matches.every(Boolean) : matches.some(Boolean)),
+        matches,
+      };
+    };
+    const victory = evaluateGroup(objectives.victory);
+    const defeat = evaluateGroup(objectives.defeat);
+    const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - objectives.startRound);
+    const timeLimitReached = options.roundCompleted === true && elapsedRounds >= objectives.maxRounds;
+    let status = 'ONGOING';
+    if (victory.matched && defeat.matched) status = objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
+    else if (victory.matched) status = 'PLAYER_WIN';
+    else if (defeat.matched) status = 'ENEMY_WIN';
+    else if (timeLimitReached) status = 'DRAW';
+    return Object.freeze({
+      status,
+      winner: status === 'PLAYER_WIN' ? 'player' : status === 'ENEMY_WIN' ? 'enemy' : status === 'DRAW' ? 'draw' : 'unfinished',
+      terminal: status !== 'ONGOING',
+      victoryMatches: Object.freeze(victory.matches),
+      defeatMatches: Object.freeze(defeat.matches),
+      timeLimitReached,
+      objectives,
+    });
+  }
+
   function parseSignedValue(value, base = 0) {
     if (typeof value === 'number') return Number(value) || 0;
     const text = String(value ?? '').trim();
@@ -1130,6 +1276,8 @@
     calculateUnitCapacity,
     calculateWithdrawalPressure,
     estimateWithdrawal,
+    normalizeBattleObjectives,
+    evaluateBattleObjectives,
     previewAction,
     clearCache,
     readMetrics,

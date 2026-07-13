@@ -458,8 +458,8 @@ if (playerAliveAtEnd && enemyAliveAtEnd) {
   assert.ok(/唐凌雪.*【.+】/.test(String(formalResult.finalBattleReport?.nextIntents?.player || '')), '我方下一行动意图没有反映最终快照纯评分');
   assert.ok(/韦小枫.*【.+】/.test(String(formalResult.finalBattleReport?.nextIntents?.enemy || '')), '敌方下一行动意图没有反映最终快照纯评分');
 } else {
-  assert.ok(/结束交锋|失去战斗能力/.test(String(formalResult.finalBattleReport?.nextIntents?.player || '')), '终局我方意图没有反映胜负终态');
-  assert.ok(/结束交锋|失去战斗能力/.test(String(formalResult.finalBattleReport?.nextIntents?.enemy || '')), '终局敌方意图没有反映胜负终态');
+  assert.ok(/结束交锋|失去战斗能力|满足战斗目标|战后处置/.test(String(formalResult.finalBattleReport?.nextIntents?.player || '')), '终局我方意图没有反映胜负终态');
+  assert.ok(/结束交锋|失去战斗能力|触发我方胜利条件|阻止条件|战后处置/.test(String(formalResult.finalBattleReport?.nextIntents?.enemy || '')), '终局敌方意图没有反映胜负终态');
   assert.ok(/获胜/.test(String(formalResult.finalBattleReport?.headline || '')), '总结型战报没有明确终局胜负');
 }
 assert.ok(!/争取下一次有效命中|继续施压/.test(String(formalResult.finalBattleReport?.text || '')), '总结型战报仍使用无评分证据的泛化意图');

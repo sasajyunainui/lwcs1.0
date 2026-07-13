@@ -1092,6 +1092,12 @@
     if (actionKind === 'WITHDRAW' && context.battleIntent?.withdrawAllowed !== true && !/求生|撤退|脱离/.test(battleIntentMode(context))) return 0;
 
     const side = preview.sideOf(context.worldSnapshot || {}, actor);
+    const objectiveContext = objectiveActorContext(context.worldSnapshot || {}, side, context.battleIntent || {});
+    const noDamageFailure = objectiveContext.failureConditions.some(condition =>
+      condition.type === 'UNIT_DAMAGED' &&
+      condition.side === objectiveContext.ownSide &&
+      (!condition.targetIds?.length || condition.targetIds.includes(preview.unitId(actor)) || condition.targetIds.includes(preview.unitName(actor)))
+    );
     const before = stateUtility(context.worldSnapshot || {}, side, context.beliefState || {});
     const alliedUnitCount = Math.max(1, aliveEntries(context.worldSnapshot || {}).filter(entry => entry.side === side).length);
     const urgency = explicitThreat
@@ -1103,7 +1109,8 @@
     const terminalPressure = explicitThreat && hpRatio <= 0.4 && incomingPressure >= hpRatio
       ? 18 + 12 * clamp(incomingPressure - hpRatio, 0, 1)
       : 0;
-    return clamp(100 * preservedCapacity / Math.max(1, before.total) + terminalPressure, 0, 120);
+    const objectiveProtection = noDamageFailure ? 100 * clamp(incomingPressure, 0, 1) * protectionFactor : 0;
+    return clamp(100 * preservedCapacity / Math.max(1, before.total) + terminalPressure + objectiveProtection, 0, 120);
   }
 
   function isSurvivalIntent(context = {}) {
@@ -1174,12 +1181,29 @@
     });
   }
 
-  function buildTeamIntent(worldSnapshot, actorId, beliefState = {}) {
+  function objectiveActorContext(worldSnapshot = {}, actorSide = '', battleIntent = {}) {
+    const objectives = preview.normalizeBattleObjectives(battleIntent?.objectives || battleIntent?.胜负条件 || worldSnapshot?.胜负条件 || {}, worldSnapshot);
+    const actorIsPlayer = /player|玩家|我方|己方|友方/i.test(String(actorSide || ''));
+    const successConditions = actorIsPlayer ? objectives.victory.conditions : objectives.defeat.conditions;
+    const failureConditions = actorIsPlayer ? objectives.defeat.conditions : objectives.victory.conditions;
+    const ownSide = actorIsPlayer ? 'PLAYER' : 'ENEMY';
+    return { objectives, actorIsPlayer, ownSide, successConditions, failureConditions };
+  }
+
+  function buildTeamIntent(worldSnapshot, actorId, beliefState = {}, battleIntent = {}) {
     const actor = preview.findUnit(worldSnapshot, actorId);
     const actorSide = preview.sideOf(worldSnapshot, actor);
     const entries = aliveEntries(worldSnapshot);
     const enemies = entries.filter(entry => entry.side !== actorSide).map(entry => entry.unit);
     const allies = entries.filter(entry => entry.side === actorSide).map(entry => entry.unit);
+    const objectiveContext = objectiveActorContext(worldSnapshot, actorSide, battleIntent);
+    const protectionConditions = [
+      ...objectiveContext.failureConditions,
+      ...objectiveContext.successConditions.filter(condition => condition.type === 'ROUND_REACHED'),
+    ];
+    const protectedIds = new Set(protectionConditions
+      .filter(condition => condition.side === objectiveContext.ownSide && ['UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED'].includes(condition.type))
+      .flatMap(condition => condition.targetIds?.length ? condition.targetIds : allies.map(preview.unitId)));
     const focus = [...enemies].sort((left, right) => {
       const leftBelief = beliefState?.units?.[preview.unitId(left)] || {};
       const rightBelief = beliefState?.units?.[preview.unitId(right)] || {};
@@ -1204,13 +1228,14 @@
     });
     const protect = [...allies].sort((left, right) => {
       const pressure = unit => recentEvents.filter(event => String(event?.targetName || '').trim() === preview.unitName(unit) && String(event?.actorSide || '').trim() !== actorSide).length;
-      const leftLoss = (1 - preview.readHp(left) / preview.readHpMax(left)) * 100 + pressure(left) * 12;
-      const rightLoss = (1 - preview.readHp(right) / preview.readHpMax(right)) * 100 + pressure(right) * 12;
+      const objectiveWeight = unit => protectedIds.has(preview.unitId(unit)) || protectedIds.has(preview.unitName(unit)) ? 80 : 0;
+      const leftLoss = (1 - preview.readHp(left) / preview.readHpMax(left)) * 100 + pressure(left) * 12 + objectiveWeight(left);
+      const rightLoss = (1 - preview.readHp(right) / preview.readHpMax(right)) * 100 + pressure(right) * 12 + objectiveWeight(right);
       return rightLoss - leftLoss || preview.unitId(left).localeCompare(preview.unitId(right));
     })[0];
     const exploitable = enemies.find(unit => hasActionCancellation(unit) || unit?.蓄力技能);
     const focusId = focus ? preview.unitId(focus) : '';
-    const protectId = protect && preview.readHp(protect) < preview.readHpMax(protect) * 0.5 ? preview.unitId(protect) : '';
+    const protectId = protect && (preview.readHp(protect) < preview.readHpMax(protect) * 0.5 || protectedIds.has(preview.unitId(protect)) || protectedIds.has(preview.unitName(protect))) ? preview.unitId(protect) : '';
     const evidenceEventIds = recentEvents.filter(event => {
       const actors = [String(event?.actorName || '').trim(), String(event?.targetName || '').trim()];
       return [focusId, protectId].filter(Boolean).some(id => {
@@ -1239,7 +1264,18 @@
       bestLegalBaseActionValue: bestBaseActionValue(worldSnapshot, actor),
     });
     const hpRatio = preview.readHp(actor) / preview.readHpMax(actor);
+    const objectiveContext = objectiveActorContext(worldSnapshot, actorSide, options.battleIntent || {});
+    const protectionConditions = [
+      ...objectiveContext.failureConditions,
+      ...objectiveContext.successConditions.filter(condition => condition.type === 'ROUND_REACHED'),
+    ];
+    const actorProtected = protectionConditions.some(condition =>
+      condition.side === objectiveContext.ownSide &&
+      ['UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'ROUND_REACHED'].includes(condition.type) &&
+      (!condition.targetIds?.length || condition.targetIds.includes(actorId) || condition.targetIds.includes(preview.unitName(actor)))
+    );
     if (hpRatio <= 0.3) problems.push({ problemId: 'SURVIVAL_CRISIS', severity: normalizedLoss(actorCapacity * (1 - hpRatio)) });
+    else if (actorProtected) problems.push({ problemId: 'SURVIVAL_CRISIS', targetIds: [actorId], severity: normalizedLoss(actorCapacity * 0.25) });
     const criticalAlly = aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide && preview.unitId(entry.unit) !== actorId).find(entry => preview.readHp(entry.unit) / preview.readHpMax(entry.unit) <= 0.3);
     if (criticalAlly) {
       const allyCapacity = preview.calculateUnitCapacity({
@@ -1249,6 +1285,16 @@
         bestLegalBaseActionValue: bestBaseActionValue(worldSnapshot, criticalAlly.unit),
       });
       problems.push({ problemId: 'ALLY_CRISIS', targetIds: [preview.unitId(criticalAlly.unit)], severity: normalizedLoss(allyCapacity * (1 - preview.readHp(criticalAlly.unit) / preview.readHpMax(criticalAlly.unit))) });
+    }
+    const protectedAlly = aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide && preview.unitId(entry.unit) !== actorId).find(entry =>
+      protectionConditions.some(condition =>
+        condition.side === objectiveContext.ownSide &&
+        ['UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'ROUND_REACHED'].includes(condition.type) &&
+        (!condition.targetIds?.length || condition.targetIds.includes(preview.unitId(entry.unit)) || condition.targetIds.includes(preview.unitName(entry.unit)))
+      )
+    );
+    if (protectedAlly && (!criticalAlly || preview.unitId(criticalAlly.unit) !== preview.unitId(protectedAlly.unit))) {
+      problems.push({ problemId: 'ALLY_CRISIS', targetIds: [preview.unitId(protectedAlly.unit)], severity: normalizedLoss(capacity.own * 0.2) });
     }
     aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide && entry.unit?.蓄力技能).forEach(entry => {
       const charge = entry.unit.蓄力技能;
@@ -1262,13 +1308,22 @@
     });
     const terminalEnemy = aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide).find(entry => Number(beliefState?.units?.[preview.unitId(entry.unit)]?.hpRatio ?? 1) <= 0.2);
     if (terminalEnemy) problems.push({ problemId: 'TERMINAL_OPPORTUNITY', targetIds: [preview.unitId(terminalEnemy.unit)], severity: normalizedLoss(perceivedEnemyBaseValue(beliefState?.units?.[preview.unitId(terminalEnemy.unit)] || {})) });
+    objectiveContext.successConditions.filter(condition => condition.type === 'HP_RATIO_AT_OR_BELOW').forEach(condition => {
+      aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide).filter(entry =>
+        !condition.targetIds?.length || condition.targetIds.includes(preview.unitId(entry.unit)) || condition.targetIds.includes(preview.unitName(entry.unit))
+      ).forEach(entry => {
+        const ratio = preview.readHp(entry.unit) / preview.readHpMax(entry.unit);
+        const remaining = Math.max(0, ratio - condition.threshold);
+        if (remaining <= 0.35) problems.push({ problemId: 'TERMINAL_OPPORTUNITY', targetIds: [preview.unitId(entry.unit)], severity: normalizedLoss(capacity.total * (0.35 - remaining + 0.05)) });
+      });
+    });
     const unavailable = options.forceCapabilityShortage === true || hasActionCancellation(actor) || bestBaseActionValue(worldSnapshot, actor) <= 0.0001;
     if (unavailable) problems.push({ problemId: 'CAPABILITY_SHORTAGE', targetIds: [actorId], severity: normalizedLoss(actorCapacity || capacity.own) });
     const advantageTarget = aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide).find(entry => hasActionCancellation(entry.unit));
     if (advantageTarget) problems.push({ problemId: 'ADVANTAGE_WINDOW', targetIds: [preview.unitId(advantageTarget.unit)], severity: normalizedLoss(perceivedEnemyBaseValue(beliefState?.units?.[preview.unitId(advantageTarget.unit)] || {}) * 0.5) });
     if (Number(beliefState?.confidence || 0) < 0.45) problems.push({ problemId: 'INFORMATION_DEFICIT', severity: normalizedLoss(capacity.own * (0.45 - Number(beliefState?.confidence || 0))) });
     const intentMode = battleIntentMode({ battleIntent: options.battleIntent });
-    if (options?.battleIntent?.withdrawAllowed === true || /求生|撤退|脱离|逃生/.test(intentMode)) problems.push({ problemId: 'DISENGAGE_PRESSURE', targetIds: [actorId], severity: normalizedLoss(actorCapacity) });
+    if (options?.battleIntent?.withdrawAllowed === true || /求生|撤退|脱离|逃生/.test(intentMode) || objectiveContext.successConditions.some(condition => condition.type === 'WITHDRAW_SUCCESS')) problems.push({ problemId: 'DISENGAGE_PRESSURE', targetIds: [actorId], severity: normalizedLoss(actorCapacity) });
     if (options.stalemate === true) problems.push({ problemId: 'STALEMATE', severity: normalizedLoss(Math.max(1, capacity.total * 0.01)) });
     if (!problems.length) problems.push({ problemId: 'NEUTRAL_PROGRESS', severity: 1 });
     return problems.sort((left, right) => right.severity - left.severity);
@@ -1408,27 +1463,29 @@
   }
 
   function actorBattleIntent(worldSnapshot = {}, actorSide = '', inputIntent = null) {
-    const source = inputIntent && (typeof inputIntent === 'string' || typeof inputIntent === 'object')
-      ? inputIntent
-      : { mode: String(worldSnapshot?.战斗意图 || '').trim() };
-    const mode = typeof source === 'string' ? source.trim() : String(source?.mode || source?.intent || source?.name || '').trim();
+    const supplied = inputIntent && (typeof inputIntent === 'string' || typeof inputIntent === 'object') ? inputIntent : null;
+    const source = typeof supplied === 'string'
+      ? { mode: supplied.trim(), objectives: worldSnapshot?.胜负条件 || {} }
+      : {
+          ...(supplied || {}),
+          mode: String(supplied?.mode || supplied?.intent || supplied?.name || worldSnapshot?.战斗意图 || '').trim(),
+          objectives: supplied?.objectives || supplied?.胜负条件 || worldSnapshot?.胜负条件 || {},
+        };
+    const mode = String(source.mode || '').trim();
     if (!/enemy|敌方/i.test(String(actorSide || '')) || !/求生|撤退|脱离|逃生/.test(mode)) return source;
-    return { ...(typeof source === 'object' ? source : {}), mode: '阻止撤离', opposingIntent: mode };
+    return { ...source, mode: '阻止撤离', opposingIntent: mode };
   }
 
   function intentTerminalUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
-    const mode = battleIntentMode(context);
-    if (!/点到为止|切磋|训练|非致命/.test(mode)) return 0;
-    const beforeHostiles = aliveEntries(beforeSnapshot)
-      .filter(entry => entry.side !== actorSide)
-      .map(entry => preview.unitId(entry.unit));
-    const afterHostiles = beforeHostiles.map(unitId => preview.findUnit(afterSnapshot, unitId));
-    const killedHostile = afterHostiles.some(unit => !unit || unit?.状态?.存活 === false || preview.readHp(unit) <= 0);
-    if (killedHostile) return -100;
-    const allIncapacitated = afterHostiles.length > 0 && afterHostiles.every(unit =>
-      preview.readHp(unit) <= 1 || /失去战斗力|昏迷|投降|制服/.test(String(unit?.状态?.行动 || '').trim()),
-    );
-    return allIncapacitated ? 100 : 0;
+    const objectives = preview.normalizeBattleObjectives(context?.battleIntent?.objectives || context?.battleIntent?.胜负条件 || afterSnapshot?.胜负条件 || {}, afterSnapshot);
+    if (!objectives.explicit && !/点到为止|切磋|训练|非致命/.test(battleIntentMode(context))) return 0;
+    const before = preview.evaluateBattleObjectives(beforeSnapshot, objectives, { roundCompleted: false });
+    if (before.terminal) return 0;
+    const after = preview.evaluateBattleObjectives(afterSnapshot, objectives, { roundCompleted: false });
+    if (!after.terminal || after.winner === 'draw') return 0;
+    const actorIsPlayer = /player|玩家|我方|己方|友方/i.test(String(actorSide || ''));
+    const actorWon = after.winner === (actorIsPlayer ? 'player' : 'enemy');
+    return actorWon ? 100 : -100;
   }
 
   function scoreCandidate(candidate, context) {
@@ -1773,7 +1830,7 @@
     const battleIntent = actorBattleIntent(decisionWorld, actorSide, input.battleIntent);
     const signature = strategicSignature(decisionWorld, beliefState);
     const stalemate = detectStalemate(input.strategicHistory, signature);
-    const teamIntent = buildTeamIntent(decisionWorld, preview.unitId(actor), beliefState);
+    const teamIntent = buildTeamIntent(decisionWorld, preview.unitId(actor), beliefState, battleIntent);
     const problems = identifyProblems(decisionWorld, preview.unitId(actor), beliefState, { battleIntent, stalemate });
     const beforeUtility = stateUtility(decisionWorld, actorSide, beliefState);
     const beliefRevision = String(beliefState.revision || preview.stableHash(beliefState));

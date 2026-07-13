@@ -8,11 +8,15 @@ const battleRuntimePath = path.resolve(root, 'lwcs/BattleRuntime_Module.js');
 const battleDecisionPath = path.resolve(root, 'lwcs/BattleDecision_Module.js');
 const battlePreviewPath = path.resolve(root, 'lwcs/BattlePreview_Module.js');
 const mvuPath = path.resolve(root, 'lwcs/MVU.js');
+const bridgePath = path.resolve(root, 'lwcs/mvu_logic_bridge.js');
+const routePresetPath = path.resolve(root, 'lwcs/缝合怪二改_专用推进预设.plot-preset.json');
 const battleUiSource = fs.readFileSync(battleUiPath, 'utf8');
 const battleRuntimeSource = fs.readFileSync(battleRuntimePath, 'utf8');
 const battleDecisionSource = fs.readFileSync(battleDecisionPath, 'utf8');
 const battlePreviewSource = fs.readFileSync(battlePreviewPath, 'utf8');
 const mvuSource = fs.readFileSync(mvuPath, 'utf8');
+const bridgeSource = fs.readFileSync(bridgePath, 'utf8');
+const routePresetSource = fs.readFileSync(routePresetPath, 'utf8');
 const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23_regression_gate.mjs'), 'utf8');
 
 const checks = [];
@@ -409,6 +413,26 @@ addCheck(
   'sampleAcceptanceIsExplicitOnly',
   /--accept-samples/.test(gateSource) &&
     /if\s*\(acceptSamples\s*&&\s*results\.every\(result\s*=>\s*result\.passed\)\)[\s\S]*?name:\s*['"]regenerateDecisionSamples['"]/.test(gateSource),
+);
+addCheck(
+  'battleObjectiveEvaluatorIsShared',
+  /function evaluateBattleObjectives\(/.test(battlePreviewSource) &&
+    /preview\.evaluateBattleObjectives\(/.test(battleDecisionSource) &&
+    /BATTLE_PREVIEW\.evaluateBattleObjectives\(/.test(battleUiSource) &&
+    /battle_objective_resolved/.test(`${battleUiSource}\n${battleRuntimeSource}`),
+);
+addCheck(
+  'battleRouteRequiresObjectiveContract',
+  /battle_objectives_missing/.test(bridgeSource) &&
+    /胜负条件字段完整/.test(bridgeSource) &&
+    /胜利条件：必须填写/.test(routePresetSource) &&
+    /失败条件：必须填写/.test(routePresetSource) &&
+    /回合上限：1-20/.test(routePresetSource),
+);
+addCheck(
+  'battleObjectivesPersistOnlyInsideBattleState',
+  /COMBAT_WORLD_PERSIST_KEYS\s*=\s*\[[\s\S]*?['"]胜负条件['"]/.test(battleUiSource) &&
+    !/胜负条件/.test(mvuSource),
 );
 
 const failed = checks.filter((check) => !check.passed);

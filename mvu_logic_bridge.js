@@ -44171,6 +44171,8 @@ ${播报文本}
       ? Math.min(SOUL_TOWER_TOTAL_FLOORS, Math.max(1, Math.floor(toNumber(detail.floor, defaultSoulTowerFloor))))
       : 0;
     const soulTowerMeta = soulTowerCombat ? getSoulTowerGateMeta(soulTowerFloor) : null;
+    const 胜负条件 = 构建战斗胜负条件(detail, rosterResult.participants, 0);
+    if (!胜负条件) return { ok: false, reason: 'battle_objectives_invalid' };
     return {
       进行中: true,
       战斗类型: toText(detail.战斗类型, '擂台切磋'),
@@ -44181,6 +44183,7 @@ ${播报文本}
       环境: arenaName,
       裁断结果: '',
       参战者: rosterResult.participants,
+      胜负条件,
       source: toText(detail.source, 'map_action'),
       ...(soulTowerCombat
         ? {
@@ -44327,7 +44330,9 @@ ${播报文本}
     自动战斗延后写回次数 += 1;
     let 执行结果 = null;
     try {
-      执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 4 });
+      const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(战斗数据?.胜负条件?.maxRounds, 20))));
+      const 剩余回合 = Math.max(1, 回合上限 - Math.max(0, Math.floor(toNumber(战斗数据?.回合, 0))));
+      执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 剩余回合 });
     } catch (error) {
       自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
       return { ok: false, reason: error && error.message ? error.message : 'battle_auto_engine_failed', 已接管: 战斗已接管 };
@@ -44986,10 +44991,111 @@ ${播报文本}
     return Number.isFinite(数值) ? 数值 : value;
   }
 
+  function 解析战斗目标条件项(value, defaultSide = '') {
+    if (value && typeof value === 'object') return cloneJsonValue(value, {});
+    const 文本 = toText(value, '').trim();
+    if (!文本) return null;
+    const 字段 = {};
+    文本.split('|').map(item => item.trim()).filter(Boolean).forEach((片段, index) => {
+      const 匹配 = 片段.match(/^([^=:：]+)\s*[=:：]\s*(.*?)$/u);
+      if (匹配) 字段[toText(匹配[1], '').trim()] = toText(匹配[2], '').trim();
+      else if (index === 0) 字段.类型 = 片段;
+    });
+    const 类型文本 = toText(字段.类型 || 字段.type, '').trim();
+    const 类型 = /敌方全员失能|我方全员失能|全员失能|TEAM_INCAPACITATED/i.test(类型文本)
+      ? 'TEAM_INCAPACITATED'
+      : /生命阈值|HP_THRESHOLD|HP_RATIO_AT_OR_BELOW/i.test(类型文本)
+        ? 'HP_RATIO_AT_OR_BELOW'
+        : /坚持回合|生存回合|SURVIVE_ROUNDS|ROUND_REACHED/i.test(类型文本)
+          ? 'ROUND_REACHED'
+          : /成功撤离|WITHDRAW_SUCCESS/i.test(类型文本)
+            ? 'WITHDRAW_SUCCESS'
+          : /受伤|UNIT_DAMAGED/i.test(类型文本)
+            ? 'UNIT_DAMAGED'
+            : /死亡|失能|UNIT_INCAPACITATED/i.test(类型文本)
+              ? 'UNIT_INCAPACITATED'
+              : '';
+    if (!类型) return null;
+    const 阵营文本 = toText(字段.阵营 || 字段.side, defaultSide).trim();
+    const side = /敌方|对方|ENEMY/i.test(阵营文本) ? 'ENEMY' : /我方|己方|友方|PLAYER|ALLY/i.test(阵营文本) ? 'PLAYER' : '';
+    const 目标文本 = toText(字段.目标 || 字段.targets || 字段.targetIds, '').trim();
+    const targetIds = /^(?:全体|全员|ALL)$/i.test(目标文本) || !目标文本
+      ? []
+      : 目标文本.split(/[、,，]/u).map(item => item.trim()).filter(Boolean);
+    const 阈值文本 = toText(字段.阈值 || 字段.threshold, '').trim();
+    const 阈值数值 = Number.parseFloat(阈值文本.replace('%', ''));
+    const 回合 = Math.max(0, Math.floor(toNumber(字段.回合 || 字段.回合数 || 字段.round || 字段.rounds, 0)));
+    return {
+      type: 类型,
+      side,
+      targetIds,
+      scope: /全部|全体|ALL/i.test(toText(字段.判定 || 字段.scope, '任一')) ? 'ALL' : 'ANY',
+      ...(Number.isFinite(阈值数值) ? { threshold: 阈值文本.includes('%') || 阈值数值 > 1 ? 阈值数值 / 100 : 阈值数值 } : {}),
+      ...(回合 > 0 ? { round: 回合 } : {}),
+      requireActive: !/否|false|无需/i.test(toText(字段.存活要求 || 字段.requireActive, '是')),
+    };
+  }
+
+  function 解析战斗目标条件列表(value, defaultSide = '') {
+    const source = Array.isArray(value) ? value : toText(value, '').split(/[；;\n]+/u);
+    return source.map(item => 解析战斗目标条件项(item, defaultSide)).filter(Boolean);
+  }
+
+  function 构建战斗胜负条件(detail = {}, participants = {}, currentRound = 0) {
+    const existing = detail?.胜负条件 && typeof detail.胜负条件 === 'object' ? cloneJsonValue(detail.胜负条件, {}) : null;
+    const victoryConditions = existing?.victory?.conditions || existing?.胜利?.条件 || 解析战斗目标条件列表(detail?.胜利条件, 'ENEMY');
+    const defeatConditions = existing?.defeat?.conditions || existing?.失败?.条件 || 解析战斗目标条件列表(detail?.失败条件, 'PLAYER');
+    const explicitContract = !!existing || !!toText(detail?.胜利条件, '').trim() || !!toText(detail?.失败条件, '').trim();
+    const allowedTypes = new Set(['TEAM_INCAPACITATED', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'WITHDRAW_SUCCESS']);
+    const conditionIsValid = condition => {
+      const type = toText(condition?.type || condition?.类型, '').trim();
+      if (!allowedTypes.has(type)) return false;
+      if (type === 'HP_RATIO_AT_OR_BELOW') return Number(condition?.threshold ?? condition?.阈值) > 0 && Number(condition?.threshold ?? condition?.阈值) <= 1;
+      if (type === 'ROUND_REACHED') return Number(condition?.round ?? condition?.回合 ?? condition?.回合数) > 0;
+      if (['UNIT_DAMAGED', 'UNIT_INCAPACITATED'].includes(type)) return !!toText(condition?.side || condition?.阵营, '').trim();
+      return !!toText(condition?.side || condition?.阵营, '').trim();
+    };
+    if (explicitContract && (
+      !Array.isArray(victoryConditions) || !victoryConditions.length || victoryConditions.some(condition => !conditionIsValid(condition)) ||
+      !Array.isArray(defeatConditions) || !defeatConditions.length || defeatConditions.some(condition => !conditionIsValid(condition))
+    )) return null;
+    const safeVictory = Array.isArray(victoryConditions) && victoryConditions.length
+      ? victoryConditions
+      : [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', targetIds: [], scope: 'ALL' }];
+    const safeDefeat = Array.isArray(defeatConditions) && defeatConditions.length
+      ? defeatConditions
+      : [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', targetIds: [], scope: 'ALL' }];
+    const units = [
+      ...(Array.isArray(participants?.team_player) ? participants.team_player : []),
+      ...(Array.isArray(participants?.team_enemy) ? participants.team_enemy : []),
+    ];
+    const bindDamageBaselines = condition => {
+      const normalized = cloneJsonValue(condition, {});
+      if (normalized.type !== 'UNIT_DAMAGED') return normalized;
+      const targets = new Set(Array.isArray(normalized.targetIds) ? normalized.targetIds.map(String) : []);
+      normalized.baselineHp = Object.fromEntries(units
+        .filter(unit => !targets.size || targets.has(toText(unit?.id || unit?.角色ID || unit?.name || unit?.名称, '')) || targets.has(toText(unit?.name || unit?.名称, '')))
+        .map(unit => {
+          const id = toText(unit?.id || unit?.角色ID || unit?.name || unit?.名称, '');
+          const hp = Math.max(0, toNumber(unit?.hp ?? unit?.HP ?? unit?.生命 ?? unit?.vit ?? unit?.体力, unit?.hp_max ?? unit?.HP上限 ?? unit?.生命上限 ?? unit?.vit_max ?? unit?.体力上限 ?? 0));
+          return [id, hp];
+        }).filter(([id]) => id));
+      return normalized;
+    };
+    return {
+      version: 1,
+      startRound: Math.max(0, Math.floor(toNumber(existing?.startRound ?? existing?.起始回合, currentRound))),
+      maxRounds: Math.max(1, Math.min(20, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.回合上限, 20)))),
+      resolutionPriority: toText(existing?.resolutionPriority || existing?.冲突处理, 'DEFEAT_FIRST'),
+      victory: { logic: toText(existing?.victory?.logic || existing?.胜利?.逻辑, 'ANY'), conditions: safeVictory.map(bindDamageBaselines) },
+      defeat: { logic: toText(existing?.defeat?.logic || existing?.失败?.逻辑, 'ANY'), conditions: safeDefeat.map(bindDamageBaselines) },
+    };
+  }
+
   function 解析模块路由字段值(字段名, value) {
     const 字段 = toText(字段名, '').trim();
     if (/^(允许撤离|自动模式|自动执行|启用|启用地点拟态|拟态修炼)$/u.test(字段)) return 解析模块路由布尔值(value);
-    if (/^(数量|阶级|层数|耗时tick|等级|年限)$/u.test(字段)) return 解析模块路由数值(value);
+    if (/^(数量|阶级|层数|耗时tick|等级|年限|回合上限)$/u.test(字段)) return 解析模块路由数值(value);
     return toText(value, '').trim();
   }
 
@@ -46677,6 +46783,20 @@ ${播报文本}
       const trialContext = 读取试炼状态上下文(snapshot);
       const 允许撤离值 = 解析模块路由布尔值(payload.允许撤离);
       const 自动模式值 = 解析模块路由布尔值(payload.自动模式);
+      const 胜负条件已结构化 = !!(
+        payload.胜负条件 && typeof payload.胜负条件 === 'object' &&
+        Array.isArray(payload.胜负条件?.victory?.conditions || payload.胜负条件?.胜利?.条件) &&
+        (payload.胜负条件?.victory?.conditions || payload.胜负条件?.胜利?.条件).length > 0 &&
+        Array.isArray(payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件) &&
+        (payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件).length > 0 &&
+        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) > 0 &&
+        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) <= 20
+      );
+      const 胜负条件字段完整 = 胜负条件已结构化 || (
+        toText(payload.胜利条件, '').trim() &&
+        toText(payload.失败条件, '').trim() &&
+        Number(payload.回合上限) > 0 && Number(payload.回合上限) <= 20
+      );
       if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
       } else if (
@@ -46690,6 +46810,9 @@ ${播报文本}
       ) {
         return 构建模块路由失败结果(moduleKind, payload, 'battle_seed_invalid');
       }
+      if (!deepGet(snapshot, 'rootData.world.战斗.进行中', false) && !trialContext && !胜负条件字段完整) {
+        return 构建模块路由失败结果(moduleKind, payload, 'battle_objectives_missing');
+      }
       if (!request && trialContext) {
         const 指定层数 = Math.max(0, Math.floor(toNumber(payload.floor, 0)));
         request = buildTrialBattleDispatchDetail(
@@ -46698,6 +46821,10 @@ ${播报文本}
             source: toText(payload.source, 'module_intent_router_trial'),
             ...(payload.参战者 && typeof payload.参战者 === 'object' ? { 参战者: cloneJsonValue(payload.参战者, {}) } : {}),
             ...(指定层数 > 0 ? { floor: 指定层数 } : {}),
+            ...(胜负条件已结构化 ? { 胜负条件: cloneJsonValue(payload.胜负条件, {}) } : {}),
+            ...(toText(payload.胜利条件, '').trim() ? { 胜利条件: toText(payload.胜利条件, '') } : {}),
+            ...(toText(payload.失败条件, '').trim() ? { 失败条件: toText(payload.失败条件, '') } : {}),
+            ...(Number(payload.回合上限) > 0 ? { 回合上限: Math.floor(Number(payload.回合上限)) } : {}),
           },
           trialContext,
         );
@@ -46724,6 +46851,10 @@ ${播报文本}
             允许撤离: typeof 允许撤离值 === 'boolean' ? 允许撤离值 : true,
             自动模式: typeof 自动模式值 === 'boolean' ? 自动模式值 : undefined,
             参战者: explicitParticipants,
+            ...(胜负条件已结构化 ? { 胜负条件: cloneJsonValue(payload.胜负条件, {}) } : {}),
+            胜利条件: toText(payload.胜利条件, ''),
+            失败条件: toText(payload.失败条件, ''),
+            回合上限: Math.max(1, Math.min(20, Math.floor(toNumber(payload.回合上限, 20)))),
           };
         }
       }

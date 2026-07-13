@@ -3031,6 +3031,7 @@ class BattleUIComponent {
       '进行中',
       '战斗类型',
       '战斗意图',
+      '胜负条件',
       '先攻',
       '允许撤离',
       '环境',
@@ -35670,6 +35671,11 @@ class BattleUIComponent {
               取消剩余自然机会(node, 'WITHDRAW_SUCCESS', '战斗已因成功撤离结束');
               break;
             }
+            const objectiveResolution = 评估并记录战斗目标(combatData, { currentRound: round, roundCompleted: false });
+            if (objectiveResolution.terminal) {
+              取消剩余自然机会(node, 'BATTLE_OBJECTIVE_REACHED', `战斗胜负条件已成立：${objectiveResolution.status}`);
+              break;
+            }
             const teamPlayerAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '玩家'));
             const teamEnemyAlive = getTeamLivingCount(读取战斗主队单位列表(combatData, '敌方'));
             if (teamPlayerAlive <= 0 || teamEnemyAlive <= 0) {
@@ -36749,6 +36755,65 @@ class BattleUIComponent {
           }).length;
         }
 
+        function 评估并记录战斗目标(combatData = {}, options = {}) {
+          const objectives = BATTLE_PREVIEW.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
+          combatData.胜负条件 = deepClonePlain(objectives);
+          const resolution = BATTLE_PREVIEW.evaluateBattleObjectives(combatData, objectives, {
+            round: Number(options.currentRound ?? combatData?.回合 ?? 0),
+            roundCompleted: options.roundCompleted === true,
+          });
+          const runtime = 确保战斗运行态(combatData);
+          runtime.objectiveResolution = deepClonePlain(resolution);
+          if (resolution.terminal && !runtime.objectiveResolutionEventId) {
+            const event = 写入战斗事件账本(combatData, {
+              eventKind: 'battle_objective_resolved',
+              round: Number(combatData?.回合 || 0),
+              actorName: 'SYSTEM',
+              actionName: '胜负条件',
+              actionType: 'battle_objective',
+              actorControl: 'SYSTEM',
+              actionRole: 'STATE_TICK',
+              result: resolution.winner,
+              resultState: 'COMPLETED',
+              ruleCode: `BATTLE_OBJECTIVE_${resolution.status}`,
+              meta: {
+                status: resolution.status,
+                winner: resolution.winner,
+                victoryMatches: resolution.victoryMatches,
+                defeatMatches: resolution.defeatMatches,
+                objectives,
+              },
+            });
+            runtime.objectiveResolutionEventId = String(event?.eventId || '').trim();
+          }
+          return resolution;
+        }
+
+        function 填充战斗受伤条件基准(combatData = {}) {
+          const objectives = combatData?.胜负条件;
+          if (!objectives || typeof objectives !== 'object') return;
+          const entries = [
+            ...读取战斗主队单位列表(combatData, '玩家').map(unit => ({ unit, side: 'PLAYER' })),
+            ...读取战斗主队单位列表(combatData, '敌方').map(unit => ({ unit, side: 'ENEMY' })),
+          ];
+          ['victory', 'defeat'].forEach(groupKey => {
+            const conditions = objectives?.[groupKey]?.conditions;
+            if (!Array.isArray(conditions)) return;
+            conditions.forEach(condition => {
+              if (String(condition?.type || '').trim() !== 'UNIT_DAMAGED') return;
+              if (!condition.baselineHp || typeof condition.baselineHp !== 'object') condition.baselineHp = {};
+              const targetIds = new Set((Array.isArray(condition.targetIds) ? condition.targetIds : []).map(String));
+              entries.filter(entry => !condition.side || entry.side === condition.side).forEach(({ unit }) => {
+                const id = String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim();
+                const name = String(unit?.name || unit?.名称 || id).trim();
+                if (targetIds.size && !targetIds.has(id) && !targetIds.has(name)) return;
+                if (!Object.prototype.hasOwnProperty.call(condition.baselineHp, id)) condition.baselineHp[id] = getCombatHpValue(unit);
+                if (name && !Object.prototype.hasOwnProperty.call(condition.baselineHp, name)) condition.baselineHp[name] = getCombatHpValue(unit);
+              });
+            });
+          });
+        }
+
         function settleTeamRoundEnd(combatData, logs) {
           const allUnits = [
             ...读取战斗主队单位列表(combatData, '玩家'),
@@ -36781,6 +36846,8 @@ class BattleUIComponent {
           return {
             prepare(combatData) {
               hydrateCombatData(combatData);
+              填充战斗受伤条件基准(combatData);
+              combatData.胜负条件 = deepClonePlain(BATTLE_PREVIEW.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
               确保召唤单位表(combatData);
               const queueRuntime = 确保战斗运行态(combatData);
               queueRuntime.actionQueueTrace = [];
@@ -36813,6 +36880,9 @@ class BattleUIComponent {
             executeQueue: 执行团战扁平行动队列,
             settleRoundEnd: settleTeamRoundEnd,
             readAlive,
+            evaluateTerminal({ combatData, currentRound, roundCompleted }) {
+              return 评估并记录战斗目标(combatData, { currentRound, roundCompleted });
+            },
             shouldContinue({ combatData, mode, currentRound }) {
               const runtime = 确保战斗运行态(combatData);
               if (options.stopOnWithdrawal === true && runtime.withdrawalSuccess) {
@@ -37236,7 +37306,10 @@ class BattleUIComponent {
           let decisionIndex = 0;
           const decide = payload => decision.decide({
             ...payload,
-            battleIntent: payload?.battleIntent || { mode: String(payload?.worldSnapshot?.战斗意图 || combatData?.战斗意图 || '').trim() },
+            battleIntent: payload?.battleIntent || {
+              mode: String(payload?.worldSnapshot?.战斗意图 || combatData?.战斗意图 || '').trim(),
+              objectives: payload?.worldSnapshot?.胜负条件 || combatData?.胜负条件 || {},
+            },
             seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${decisionIndex++}:${payload?.seedOffset || 0}`,
           });
           return runDecisionTeamBattleSimulation(
@@ -37269,6 +37342,10 @@ class BattleUIComponent {
           const rounds = Math.max(1, Number(options.rounds || 1));
           const result =
             mode === 'multi_round' ? runTeamBattleSimulation(combatData, rounds) : runTeamBattleRound(combatData);
+          if (result.winner && result.winner !== 'unfinished') {
+            combatData.进行中 = false;
+            combatData.裁断结果 = result.winner === 'player' ? '我方胜利' : result.winner === 'enemy' ? '敌方胜利' : '平局';
+          }
           const extraPatchOps = Array.isArray(result.extraPatchOps) ? result.extraPatchOps : [];
           const mvuUpdate =
             window.BattleUIBridge?.persistCombatData?.(combatData, {
@@ -37287,6 +37364,7 @@ class BattleUIComponent {
             winner: result.winner || 'unfinished',
             playerAlive: result.playerAlive,
             enemyAlive: result.enemyAlive,
+            objectiveResolution: result.objectiveResolution || null,
             extraPatchOps,
             logs: result.logs || [],
             snapshot: ui_getBattleSnapshot(combatData),
