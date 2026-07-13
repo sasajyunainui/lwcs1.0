@@ -18597,34 +18597,8 @@ class BattleUIComponent {
         char.状态效果 && typeof char.状态效果 === 'object' && !Array.isArray(char.状态效果)
           ? char.状态效果
           : {};
-      const 清理到期炸环恢复标记 = () => {
-        const 当前tick = 读取当前世界tick_V1();
-        let 清理数量 = 0;
-        取角色武魂条目_战斗(char).forEach(([, 武魂数据]) => {
-          取武魂魂灵条目_战斗(武魂数据).forEach(([, 魂灵数据]) => {
-            取魂灵魂环条目_战斗(魂灵数据).forEach(([魂环键, 魂环数据]) => {
-              if (!魂环数据 || typeof 魂环数据 !== 'object') return;
-              const 恢复tick = Math.max(0, Number(魂环数据?.炸环恢复tick || 0));
-              if (!(恢复tick > 0 && 恢复tick <= 当前tick)) return;
-              delete 魂环数据.炸环恢复tick;
-              if (Object.prototype.hasOwnProperty.call(魂环数据, '炸环恢复时间')) delete 魂环数据.炸环恢复时间;
-              清理数量 += 1;
-              parts.push(`[炸环恢复] ${label}第${魂环键}魂环已恢复。`);
-            });
-          });
-          取武魂直接魂环条目_战斗(武魂数据).forEach(([魂环键, 魂环数据]) => {
-            if (!魂环数据 || typeof 魂环数据 !== 'object') return;
-            const 恢复tick = Math.max(0, Number(魂环数据?.炸环恢复tick || 0));
-            if (!(恢复tick > 0 && 恢复tick <= 当前tick)) return;
-            delete 魂环数据.炸环恢复tick;
-            if (Object.prototype.hasOwnProperty.call(魂环数据, '炸环恢复时间')) delete 魂环数据.炸环恢复时间;
-            清理数量 += 1;
-            parts.push(`[炸环恢复] ${label}第${魂环键}魂环已恢复。`);
-          });
-        });
-        return 清理数量;
-      };
-      清理到期炸环恢复标记();
+      const ringRecoveryLog = BATTLE_RUNTIME.settleRingRecoveryAtRoundEnd(char, label);
+      if (ringRecoveryLog) parts.push(ringRecoveryLog);
 
         Object.keys(conditionMap).forEach(key => {
           let cond = conditionMap[key];

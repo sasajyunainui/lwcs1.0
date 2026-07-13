@@ -2049,6 +2049,34 @@
     return logs.join(' ');
   }
 
+  function settleRingRecoveryAtRoundEnd(unit = {}, label = '', currentTick = null) {
+    const tick = Math.max(0, Number(currentTick ?? root.BattleUIBridge?.getMVU?.('world.时间.tick') ?? 0));
+    const logs = [];
+    const settleRing = (ringKey, ring) => {
+      if (!ring || typeof ring !== 'object' || Array.isArray(ring)) return;
+      const recoveryTick = Math.max(0, Number(ring?.炸环恢复tick || 0));
+      if (!(recoveryTick > 0 && recoveryTick <= tick)) return;
+      delete ring.炸环恢复tick;
+      if (Object.prototype.hasOwnProperty.call(ring, '炸环恢复时间')) delete ring.炸环恢复时间;
+      logs.push(`[炸环恢复] ${label}第${ringKey}魂环已恢复。`);
+    };
+    Object.entries(unit || {})
+      .filter(([key, value]) => /^第\d+武魂$/.test(String(key || '').trim()) && value && typeof value === 'object' && !Array.isArray(value))
+      .forEach(([, spirit]) => {
+        Object.entries(spirit)
+          .filter(([key, value]) => /^第\d+魂灵$/.test(String(key || '').trim()) && value && typeof value === 'object' && !Array.isArray(value))
+          .forEach(([, soulSpirit]) => {
+            Object.entries(soulSpirit)
+              .filter(([key, value]) => /^第\d+魂环$/.test(String(key || '').trim()) && value && typeof value === 'object' && !Array.isArray(value))
+              .forEach(([ringKey, ring]) => settleRing(ringKey, ring));
+          });
+        Object.entries(spirit)
+          .filter(([key, value]) => /^第\d+魂环$/.test(String(key || '').trim()) && value && typeof value === 'object' && !Array.isArray(value))
+          .forEach(([ringKey, ring]) => settleRing(ringKey, ring));
+      });
+    return logs.join(' ');
+  }
+
 
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
     settlement.prepare(combatData, adapterOptions);
@@ -5283,6 +5311,7 @@
     writeLedgerEvent,
     writeRoundEndResourceEvent,
     settleNaturalRecoveryAtRoundEnd,
+    settleRingRecoveryAtRoundEnd,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,
