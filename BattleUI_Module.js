@@ -20283,27 +20283,6 @@ class BattleUIComponent {
         return node;
       }
 
-      function 查找行动轴初始意图节点(combatData = {}, event = {}) {
-        const trace = BATTLE_RUNTIME.ensureTrace(combatData?.__父级战斗数据 || combatData);
-        const round = Number(event?.round || 0);
-        const actorName = String(event?.actorName || '').trim();
-        if (!(round > 0) || !actorName) return null;
-        const actionName = normalizeBattleActionDisplayName(event?.initialActionName || event?.actionName || event?.sourceActionName || '');
-        const targetName = String(event?.targetName || '').trim();
-        const candidates = trace.filter(node =>
-          String(node?.nodeKind || '').trim() === 'initial_intent' &&
-          Number(node?.round || 0) === round &&
-          String(node?.actorName || '').trim() === actorName
-        );
-        if (!candidates.length) return null;
-        return candidates.find(node =>
-          (!actionName || normalizeBattleActionDisplayName(node?.initialActionName || '') === actionName) &&
-          (!targetName || !String(node?.targetName || '').trim() || String(node?.targetName || '').trim() === targetName)
-        ) || candidates.find(node =>
-          !targetName || !String(node?.targetName || '').trim() || String(node?.targetName || '').trim() === targetName
-        ) || candidates[0];
-      }
-
       function 构建事件最小结算轨迹(event = {}) {
         const kind = String(event?.eventKind || '').trim();
         const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
@@ -20729,7 +20708,7 @@ class BattleUIComponent {
             })
           : null;
         const matchedInitialIntent = eventKind === 'action_start'
-          ? 查找行动轴初始意图节点(combatData?.__父级战斗数据 || combatData, { ...payload, round, actorName, targetName, actionName })
+          ? BATTLE_RUNTIME.findInitialIntentNode(combatData?.__父级战斗数据 || combatData, { ...payload, round, actorName, targetName, actionName })
           : null;
         const actionId = String(
           payload.actionId ||
@@ -35283,7 +35262,7 @@ class BattleUIComponent {
             ].find(unit => isCombatUnitIdentityMatch(unit, declaredTargetName) && isCombatUnitAbleToFight(unit));
             if (!declaredTarget) {
               const actionName = normalizeBattleActionDisplayName(actorEntry.__declaredActionName || actorEntry.__declaredAction?.skill?.name || actorEntry.__declaredAction?.skill?.魂技名 || actorEntry.__declaredAction?.action_type || '行动');
-              const initialIntent = 查找行动轴初始意图节点(battleState.combatData, {
+              const initialIntent = BATTLE_RUNTIME.findInitialIntentNode(battleState.combatData, {
                 round: currentRound,
                 actorName: actor.name || actor.名称 || '',
                 targetName: declaredTargetName,

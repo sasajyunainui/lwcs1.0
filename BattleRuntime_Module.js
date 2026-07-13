@@ -1717,6 +1717,27 @@
     return null;
   }
 
+  function findInitialIntentNode(combatData = {}, event = {}) {
+    const trace = ensureTrace(combatData?.__父级战斗数据 || combatData);
+    const round = Number(event?.round || 0);
+    const actorName = String(event?.actorName || '').trim();
+    if (!(round > 0) || !actorName) return null;
+    const actionName = normalizeActionDisplayName(event?.initialActionName || event?.actionName || event?.sourceActionName || '');
+    const targetName = String(event?.targetName || '').trim();
+    const candidates = trace.filter(node =>
+      String(node?.nodeKind || '').trim() === 'initial_intent' &&
+      Number(node?.round || 0) === round &&
+      String(node?.actorName || '').trim() === actorName
+    );
+    if (!candidates.length) return null;
+    return candidates.find(node =>
+      (!actionName || normalizeActionDisplayName(node?.initialActionName || '') === actionName) &&
+      (!targetName || !String(node?.targetName || '').trim() || String(node?.targetName || '').trim() === targetName)
+    ) || candidates.find(node =>
+      !targetName || !String(node?.targetName || '').trim() || String(node?.targetName || '').trim() === targetName
+    ) || candidates[0];
+  }
+
   function normalizeCausalNode(node = {}) {
     if (!node || typeof node !== 'object') return node;
     const actionRole = inferActionRole(node);
@@ -3774,6 +3795,7 @@
     normalizeTargetIds,
     normalizeActorControl,
     findRecentLedgerAction,
+    findInitialIntentNode,
     normalizeCausalNode,
     cloneAuditSnapshot,
     collectDecisionTrace,
