@@ -19,6 +19,40 @@ const gitHead = (() => {
 const worktreeHash = (() => {
   try { return hash(execFileSync('git', ['diff', '--binary'], { cwd: gitRoot, encoding: 'utf8' })); } catch { return 'UNAVAILABLE'; }
 })();
+const requestedCase = String(process.env.R63_CASE || '').trim();
+const requestedSeed = Number(process.env.R63_SEED || 0);
+const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
+const refreshReviewReports = String(process.env.R63_REFRESH_REVIEW_REPORTS || '').trim() === '1';
+
+if (!requestedCase && !captureEvidence && !refreshReviewReports) {
+  const manifestPath = path.join(outputDir, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const noteIds = Object.keys(battleR63ManualReviewNotes).sort();
+  const evidenceIds = Object.keys(battleR63ManualReviewEvidence).sort();
+  const manifestIds = manifest.map(item => String(item?.caseId || '')).sort();
+  if (noteIds.length !== 24 || new Set(noteIds).size !== 24) throw new Error(`r63_manual_review_note_count_invalid:${noteIds.length}`);
+  if (JSON.stringify(noteIds) !== JSON.stringify(evidenceIds)) throw new Error('r63_manual_review_evidence_case_mismatch');
+  if (JSON.stringify(noteIds) !== JSON.stringify(manifestIds)) throw new Error('r63_manual_review_manifest_case_mismatch');
+  for (const item of manifest) {
+    const caseId = String(item?.caseId || '');
+    const note = battleR63ManualReviewNotes[caseId];
+    const evidence = battleR63ManualReviewEvidence[caseId];
+    if (Number(item?.fatalCount || 0) !== 0) throw new Error(`r63_manual_review_manifest_fatal:${caseId}`);
+    if (note?.blocking === true || item?.review?.blocking === true) throw new Error(`r63_manual_review_blocked:${caseId}`);
+    if (JSON.stringify(item?.review || {}) !== JSON.stringify(note || {})) throw new Error(`r63_manual_review_note_stale:${caseId}`);
+    if (item?.ledgerHash !== evidence?.ledgerHash || item?.reportHash !== evidence?.reportHash) throw new Error(`r63_manual_review_evidence_stale:${caseId}`);
+    const reportPath = path.join(outputDir, `${caseId}.md`);
+    if (!fs.existsSync(reportPath)) throw new Error(`r63_manual_review_report_missing:${caseId}`);
+    const reportText = fs.readFileSync(reportPath, 'utf8');
+    if (!reportText.includes(`- Ledger hash: ${item.ledgerHash}`) || !reportText.includes(`- Report hash: ${item.reportHash}`)) {
+      throw new Error(`r63_manual_review_report_hash_stale:${caseId}`);
+    }
+    if (!reportText.includes('- 是否阻断：否')) throw new Error(`r63_manual_review_report_blocking_state_invalid:${caseId}`);
+  }
+  console.log(JSON.stringify({ summary: { caseCount: manifest.length, fatalCount: 0, evidenceValidated: true } }, null, 2));
+  process.exit(0);
+}
 
 function makeNode() {
   return {
@@ -57,11 +91,93 @@ const scopeNode = Object.assign(makeNode(), { querySelector(selector) { return s
 new context.BattleUIComponent({ innerHTML: '', querySelector(selector) { return selector === '.battle-module-scope' ? scopeNode : null; } }, {}, {});
 
 const results = [];
-const requestedCase = String(process.env.R63_CASE || '').trim();
-const requestedSeed = Number(process.env.R63_SEED || 0);
-const captureEvidence = String(process.env.R63_CAPTURE_EVIDENCE || '').trim() === '1';
-const refreshReviewReports = String(process.env.R63_REFRESH_REVIEW_REPORTS || '').trim() === '1';
+function validateCaseContract(caseId, result) {
+  const failures = [];
+  const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
+  const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
+  decisions.forEach(entry => {
+    const selected = entry?.selected;
+    if (!(Number(selected?.objectiveUtility || 0) < -1e-9)) return;
+    const nonnegativeAlternative = (entry?.candidates || []).find(candidate =>
+      candidate?.candidateId !== selected?.candidateId && !candidate?.rejectionCode && Number(candidate?.objectiveUtility || 0) >= -1e-9,
+    );
+    if (nonnegativeAlternative && !(Number(selected?.vector?.terminalUtility || 0) > 0)) {
+      failures.push({
+        code: 'NEGATIVE_UTILITY_SELECTED_OVER_NONNEGATIVE_ACTION',
+        round: Number(entry?.round || 0),
+        actorId: entry?.actorId || '',
+        selected: selected?.candidateId || '',
+        alternative: nonnegativeAlternative?.candidateId || '',
+      });
+    }
+  });
+  if (caseId === 'team_resource_support') {
+    const repeatedSingleSupport = decisions.filter(entry =>
+      Number(entry?.round || 0) > 1 &&
+      entry?.actorId === '白寒樱' &&
+      String(entry?.selected?.declaration?.skill?.name || entry?.selected?.declaration?.skill?.魂技名 || '').trim() === '情人桥',
+    );
+    if (repeatedSingleSupport.length) failures.push({ code: 'RESOURCE_SUPPORT_WITHOUT_MATERIAL_UNLOCK', count: repeatedSingleSupport.length });
+  }
+  if (caseId === 'team_counter_coordination') {
+    const counterDecisions = decisions.filter(entry => String(entry?.actionRole || '').trim() === 'COUNTER');
+    const successfulCounters = ledger.filter(event => String(event?.eventKind || '').trim() === 'counter' && String(event?.result || '').trim() === 'success');
+    const failedCounters = ledger.filter(event => String(event?.eventKind || '').trim() === 'counter' && String(event?.result || '').trim() === 'fail');
+    const counterSideErrors = ledger.filter(event =>
+      ['counter', 'dodge', 'defend', 'pass'].includes(String(event?.eventKind || '').trim()) &&
+      event?.actorName && event?.targetName && event.actorName !== event.targetName &&
+      (!event.actorSide || !event.targetSide || event.actorSide === event.targetSide),
+    );
+    if (!counterDecisions.length) failures.push({ code: 'TEAM_COUNTER_DECISION_MISSING' });
+    if (!successfulCounters.length) failures.push({ code: 'TEAM_COUNTER_SUCCESS_FACT_MISSING' });
+    if (!failedCounters.length) failures.push({ code: 'TEAM_COUNTER_FAILURE_FACT_MISSING' });
+    if (counterSideErrors.length) failures.push({ code: 'TEAM_COUNTER_SIDE_ATTRIBUTION_INVALID', count: counterSideErrors.length });
+  }
+  if (caseId === 'team_unknown_enemy_adaptation') {
+    const chargeHit = ledger.find(event => String(event?.eventKind || '').trim() === 'hit_result' && String(event?.actionName || '').trim() === '已显露蓄力重击');
+    const chargeRound = Number(chargeHit?.round || 0);
+    const priorResponses = decisions.filter(entry =>
+      Number(entry?.round || 0) > 0 && Number(entry?.round || 0) < chargeRound &&
+      ['唐舞麟', '古月', '谢邂'].includes(String(entry?.actorId || '')) &&
+      String(entry?.actionRole || 'ACTIVE').trim() === 'ACTIVE',
+    );
+    if (!(chargeRound >= 3)) failures.push({ code: 'UNKNOWN_CHARGE_RESOLVED_BEFORE_RESPONSE_WINDOW', chargeRound });
+    if (priorResponses.length < 3 || !priorResponses.some(entry => entry?.problems?.[0]?.problemId === 'IMMINENT_DENIAL')) {
+      failures.push({ code: 'UNKNOWN_CHARGE_RESPONSE_DECISIONS_MISSING', count: priorResponses.length });
+    }
+  }
+  if (caseId === 'item_creation_consumption') {
+    const itemDecisions = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'USE_ITEM');
+    const creates = ledger.filter(event => String(event?.eventKind || '').trim() === 'create' && String(event?.createdName || event?.meta?.createdName || '').trim() === '恢复大肉包');
+    const consumes = ledger.filter(event => String(event?.eventKind || '').trim() === 'item_consume' && String(event?.meta?.itemName || '').trim() === '恢复大肉包');
+    const recoveries = ledger.filter(event => String(event?.eventKind || '').trim() === 'resource_change' && String(event?.actionName || '').trim() === '恢复大肉包');
+    const createdCount = creates.reduce((sum, event) => sum + Math.max(0, Number(event?.count || event?.meta?.count || 0)), 0);
+    const consumedCount = consumes.reduce((sum, event) => sum + Math.abs(Math.min(0, Number(event?.meta?.delta || 0))), 0);
+    const quantityBefore = Number(consumes.at(-1)?.meta?.quantityBefore);
+    const remainingQuantity = Number(consumes.at(-1)?.meta?.remainingQuantity);
+    if (!itemDecisions.length) failures.push({ code: 'ITEM_USE_DECISION_MISSING' });
+    if (!(createdCount > 0)) failures.push({ code: 'ITEM_CREATION_FACT_MISSING' });
+    if (!(consumedCount > 0)) failures.push({ code: 'ITEM_CONSUMPTION_FACT_MISSING' });
+    if (!recoveries.some(event => /生命|HP/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_HP_RECOVERY_MISSING' });
+    if (!recoveries.some(event => /体力|vit|sta/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_STAMINA_RECOVERY_MISSING' });
+    if (!Number.isFinite(quantityBefore) || !Number.isFinite(remainingQuantity) || remainingQuantity !== quantityBefore - consumedCount) failures.push({ code: 'ITEM_INVENTORY_BALANCE_MISMATCH', quantityBefore, consumedCount, remainingQuantity });
+  }
+  if (caseId === 'equipment_switch_no_loop') {
+    const selectedEquip = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'EQUIP');
+    const repeatedEquipCandidates = decisions.filter(entry => Number(entry?.round || 0) > Number(selectedEquip[0]?.round || 0)).flatMap(entry => entry?.candidates || []).filter(candidate => candidate?.declaration?.actionKind === 'EQUIP');
+    const equippedFacts = ledger.filter(event => String(event?.eventKind || '').trim() === 'complete' && String(event?.result || '').trim() === 'equipped');
+    const blockedEquip = ledger.filter(event => ['blocked_action', 'failed_action'].includes(String(event?.eventKind || '').trim()) && String(event?.actionName || '').trim() === '疾风试作匕首');
+    if (selectedEquip.length !== 1) failures.push({ code: 'EQUIPMENT_SELECTION_COUNT_INVALID', count: selectedEquip.length });
+    if (repeatedEquipCandidates.length) failures.push({ code: 'EQUIPMENT_REOFFERED_AFTER_EQUIP', count: repeatedEquipCandidates.length });
+    if (equippedFacts.length !== 1) failures.push({ code: 'EQUIPMENT_TERMINAL_INVALID', count: equippedFacts.length });
+    if (blockedEquip.length) failures.push({ code: 'EQUIPMENT_FALSE_FAILURE', count: blockedEquip.length });
+    if (/敏捷调整/.test(String(result?.finalBattleReport?.text || ''))) failures.push({ code: 'EQUIPMENT_INTERNAL_STATE_LEAK' });
+  }
+  return failures;
+}
+
 for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item => !requestedCase || item.caseId === requestedCase)) {
+  process.stderr.write(`[r63-review] ${definition.caseId}\n`);
   const seed = Number.isFinite(requestedSeed) && requestedSeed > 0 ? Math.floor(requestedSeed) : definition.seed;
   const result = context.__LWCS_DEBUG_RUN_BATTLE_CASE__({
     caseId: definition.caseId,
@@ -75,6 +191,11 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   });
   const review = battleR63ManualReviewNotes[definition.caseId];
   if (!review) throw new Error(`r63_manual_review_note_missing:${definition.caseId}`);
+  const fatalDetails = [
+    ...(result.audit?.fatals || []),
+    ...validateCaseContract(definition.caseId, result),
+    ...(review.blocking === true ? [{ code: 'MANUAL_REALISM_REVIEW_BLOCKED', caseId: definition.caseId }] : []),
+  ];
   const ledgerHash = hash(result.ledger);
   const reportHash = hash(result.reportBlocks);
   const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
@@ -100,8 +221,8 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     `- Ledger hash: ${hash(result.ledger)}`,
     `- Report hash: ${hash(result.reportBlocks)}`,
     `- Rounds: ${result.roundsExecuted}/${definition.rounds}`,
-    `- Fatal count: ${result.audit?.fatals?.length || 0}`,
-    `- Fatal details: ${JSON.stringify(result.audit?.fatals || [])}`,
+    `- Fatal count: ${fatalDetails.length}`,
+    `- Fatal details: ${JSON.stringify(fatalDetails)}`,
     '',
   ];
   for (const [round, entries] of [...rounds.entries()].sort((a, b) => a[0] - b[0])) {
@@ -140,7 +261,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
       if (skillCandidates.length) lines.push(`  - skills ${JSON.stringify(skillCandidates)}`);
     });
     const facts = result.ledger.filter(event => Number(event?.round || 0) === round && [
-      'action_start', 'hit_result', 'resource_change', 'state_apply', 'state_resisted', 'state_expire',
+      'action_start', 'hit_result', 'resource_change', 'item_consume', 'state_apply', 'state_resisted', 'state_expire',
       'counter', 'counter_window', 'reaction_window', 'dodge', 'defend', 'pass', 'summon_action',
       'blocked_action', 'blocked_settlement', 'failed_action', 'target_fail', 'support', 'mechanism',
       'heal', 'shield_create', 'shield_break', 'summon_create', 'summon_assist',
@@ -185,8 +306,8 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     caseId: definition.caseId,
     reportPath,
     roundsExecuted: result.roundsExecuted,
-    fatalCount: result.audit?.fatals?.length || 0,
-    fatalDetails: result.audit?.fatals || [],
+    fatalCount: fatalDetails.length,
+    fatalDetails,
     ledgerHash,
     reportHash,
     inputHash: hash(definition.combatData),

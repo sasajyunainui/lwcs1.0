@@ -154,6 +154,17 @@ const survivalDecision = decision.decide({
 assert.equal(survivalDecision.selected.declaration.actionKind, 'WITHDRAW', '濒死求生场景仍选择主动攻击');
 assert.ok(survivalDecision.candidates.find(candidate => candidate.declaration.actionKind === 'WITHDRAW' && candidate.objectiveUtility > 30), '撤退没有获得保命窗口价值');
 
+const asymmetricSurvivalWorld = world(1);
+asymmetricSurvivalWorld.战斗意图 = '求生';
+asymmetricSurvivalWorld.参战者 = {
+  team_player: asymmetricSurvivalWorld.参战者.ally,
+  team_enemy: asymmetricSurvivalWorld.参战者.enemy,
+};
+const pursuingEnemyDecision = decision.decide({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'enemy-1', beliefState: { confidence: 1 }, seed: 1031 });
+assert.ok(!pursuingEnemyDecision.candidates.some(candidate => candidate.declaration.actionKind === 'WITHDRAW'), '玩家求生意图被错误共享给追击方');
+const escapingPlayerDecision = decision.decide({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1032 });
+assert.ok(escapingPlayerDecision.candidates.some(candidate => candidate.declaration.actionKind === 'WITHDRAW'), '正式战斗意图没有从worldSnapshot进入玩家决策');
+
 const chargedThreatWorld = world(1);
 chargedThreatWorld.参战者.ally[0].hp = 25;
 chargedThreatWorld.参战者.ally[0].sp = 0;
@@ -223,6 +234,16 @@ const falseReactionDecision = decision.decide({
 });
 assert.ok(!falseReactionDecision.candidates.some(candidate => candidate.skill?.id === 'false-reaction'), '敌方闪避减益被误认成即时防御魂技');
 
+const falseCounterDecision = decision.decide({
+  worldSnapshot: falseReactionWorld,
+  actorId: 'ally-1',
+  actionOpportunity: { role: 'COUNTER', sourceActorId: 'enemy-1', immediateBudget: 40 },
+  beliefState: { confidence: 1 },
+  seed: 1051,
+});
+assert.ok(!falseCounterDecision.candidates.some(candidate => candidate.skill?.id === 'false-reaction'), '普通主动攻击魂技被零消耗改造成反击技能');
+assert.ok(falseCounterDecision.candidates.some(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK'), '反击池缺少基础反击动作');
+
 let publicBelief = { confidence: 0.2 };
 publicBelief = decision.updatePublicObservation(publicBelief, {
   sourceActorId: 'enemy-1', responseId: 'basic', actionName: '普通攻击', baseActionValue: 12, result: 'hit',
@@ -244,7 +265,51 @@ negativeActionWorld.参战者.ally[0].技能列表 = [{
 }, attackSkill];
 const negativeActionDecision = decision.decide({ worldSnapshot: negativeActionWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 104 });
 const negativeAction = negativeActionDecision.candidates.find(candidate => candidate.skill?.id === 'negative-action');
-assert.equal(negativeAction?.rejectionCode, 'SELF_DEFEATING', '负效用且有成本动作仍可进入主观候选池');
+assert.ok(['ZERO_PROGRESS', 'DOMINATED'].includes(negativeAction?.rejectionCode), '低收益高代价动作仍进入主观抽样池');
+assert.ok(!negativeActionDecision.candidates.some(candidate => candidate.rejectionCode === 'SELF_DEFEATING' && sandbox.__LWCS_BATTLE_PREVIEW__.isAlive(candidate.preview?.afterSnapshot ? sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(candidate.preview.afterSnapshot, 'ally-1') : {})), '未导致行动者失能的负效用动作被误判为自毁');
+
+const ordinaryThreatDecision = decision.decide({ worldSnapshot: world(1), actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 109 });
+const ordinaryDefense = ordinaryThreatDecision.candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
+assert.ok(ordinaryDefense?.objectiveUtility > 0 && ordinaryDefense.rejectionCode !== 'ZERO_PROGRESS', `确定会到来的非致命回应没有形成基础防御价值:${JSON.stringify(ordinaryDefense)}`);
+
+const unfocusedTeamWorld = world(3);
+unfocusedTeamWorld.参战者.ally[0].hp = 100;
+const unfocusedTeamDecision = decision.decide({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1091 });
+const unfocusedEvade = unfocusedTeamDecision.candidates.find(candidate => candidate.declaration.actionKind === 'EVADE');
+const unfocusedBestAttack = Math.max(...unfocusedTeamDecision.candidates
+  .filter(candidate => ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(candidate.declaration.actionKind) && !candidate.rejectionCode)
+  .map(candidate => candidate.objectiveUtility));
+assert.ok(unfocusedBestAttack > unfocusedEvade.objectiveUtility, '健康团队单位在无人针对时仍让主动闪避支配有效进攻');
+assert.ok(!['DEFEND', 'EVADE'].includes(unfocusedTeamDecision.selected.declaration.actionKind), '健康团队单位在无人针对时仍主动空耗防守姿态');
+unfocusedTeamWorld.__battleEventLedger = [{
+  eventKind: 'action_start', round: 1, actorName: 'enemy-1', actorSide: 'enemy', targetName: 'ally-1', targetSide: 'ally',
+}];
+const focusedTeamDecision = decision.decide({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1092 });
+const focusedEvade = focusedTeamDecision.candidates.find(candidate => candidate.declaration.actionKind === 'EVADE');
+assert.ok(focusedEvade.objectiveUtility > unfocusedEvade.objectiveUtility, '真实受击焦点没有提高团队单位的防守价值');
+
+const resourceNoUnlockWorld = world(2);
+resourceNoUnlockWorld.参战者.ally[0].技能列表 = [{
+  id: 'resource-no-unlock', name: '无解锁魂力支援', 消耗: { 魂力: 20 },
+  _效果数组: [{ 原型: '资源变化', 目标: '单体', 资源: '魂力', 数值: '+10%' }],
+}];
+const resourceNoUnlockDecision = decision.decide({ worldSnapshot: resourceNoUnlockWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 110 });
+const resourceNoUnlock = resourceNoUnlockDecision.candidates.find(candidate => candidate.skill?.id === 'resource-no-unlock' && candidate.declaration.targetIds.includes('ally-2'));
+assert.equal(resourceNoUnlock?.rejectionCode, 'ZERO_EFFECT_COSTLY', '未改善目标后续行为库的有成本资源支援仍可被抽样');
+
+const refreshWasteWorld = world(1);
+refreshWasteWorld.参战者.enemy[0].状态效果 = {
+  敏捷修正: { 状态名称: '敏捷修正', duration: 1, 面板修改比例: { agi: 0.8 }, 战斗效果: {} },
+};
+refreshWasteWorld.参战者.ally[0].技能列表 = [{
+  id: 'redundant-agility-refresh', name: '重复迟缓', 消耗: { 魂力: 10 },
+  _效果数组: [{ 原型: '属性修正', 目标: '单体', 属性: '敏捷', 数值: '-20%', 持续回合: 1 }],
+}];
+const refreshWasteDecision = decision.decide({ worldSnapshot: refreshWasteWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 111 });
+const refreshWaste = refreshWasteDecision.candidates.find(candidate => candidate.skill?.id === 'redundant-agility-refresh');
+const refreshedTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(refreshWaste.preview.afterSnapshot, 'enemy-1');
+assert.equal(refreshWaste?.rejectionCode, 'ZERO_EFFECT_COSTLY', '未延长窗口的不可叠属性削弱刷新仍可被抽样');
+assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshedTarget, 'agi'), sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshWasteWorld.参战者.enemy[0], 'agi'), '预估把不可叠属性削弱刷新重复计入面板');
 
 const decisionWorld = world(3);
 const decisionBefore = JSON.stringify(decisionWorld);

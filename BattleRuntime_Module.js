@@ -508,6 +508,7 @@
   function inferFactType(eventKind = '', event = {}) {
     const kind = String(eventKind || event?.eventKind || '').trim();
     if (kind === 'action_start') return inferActionRole(event) === 'STATE_TICK' ? 'STATE_TICK' : 'ACTION_DECLARED';
+    if (kind === 'charge_start') return 'ACTION_DECLARED';
     if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';
     if (kind === 'state_tick') return 'STATE_TICK';
     if (['state_apply', 'state_replace', 'state_remove'].includes(kind)) return 'STATE_CHANGE';
@@ -679,7 +680,7 @@
     const trace = (Array.isArray(resolutionTrace) ? resolutionTrace : []).filter(node => node && typeof node === 'object');
     const starts = ledger
       .filter(event =>
-        String(event?.eventKind || '').trim() === 'action_start' &&
+        ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) &&
         normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
       )
       .sort((left, right) => Number(left?.round || 0) - Number(right?.round || 0) || String(left?.eventId || '').localeCompare(String(right?.eventId || '')));
@@ -709,7 +710,7 @@
         .filter(node => actionIds.has(String(node?.sourceActionId || '').trim()) || actionIds.has(String(node?.actionId || '').trim()))
         .map(node => String(node?.nodeId || '').trim())
         .filter(Boolean);
-      const terminal = [...relatedEvents].reverse().find(event => !['action_start', 'reaction_window'].includes(String(event?.eventKind || '').trim())) || start;
+      const terminal = [...relatedEvents].reverse().find(event => !['action_start', 'charge_start', 'reaction_window'].includes(String(event?.eventKind || '').trim())) || start;
       return {
         actionGroupId: rootActionId,
         round: Number(start?.round || 0),
@@ -890,6 +891,10 @@
             : `${actor}生成召唤物${target ? `【${target}】` : ''}`);
           return;
         }
+        if (fact.eventKind === 'charge_start') {
+          push(`${actor}开始为【${action}】蓄力`);
+          return;
+        }
         if (['failed_action', 'blocked_action', 'target_fail'].includes(fact.eventKind)) {
           push(`${actor}的【${action}】未能生效`);
           return;
@@ -903,7 +908,7 @@
         }
       });
       if (!lines.length) {
-        const declared = facts.find(fact => fact.eventKind === 'action_start' || fact.eventKind === 'pass');
+        const declared = facts.find(fact => ['action_start', 'charge_start', 'pass'].includes(fact.eventKind));
         if (declared) push(`${declared.actorName || '行动者'}执行【${declared.actionName || '行动'}】${declared.targetName ? `，目标为${declared.targetName}` : ''}`);
       }
       return lines.join('；');
@@ -949,14 +954,15 @@
         String(item?.eventId || '').trim() === String(event?.eventId || '').trim()
       ) === eventIndex);
       const primary = events.find(event =>
-        String(event?.eventKind || '').trim() === 'action_start' && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
+        ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) && normalizeActionRole(event?.actionRole || inferActionRole(event)) !== 'STATE_TICK'
       ) || events[0] || null;
       const kinds = new Set(events.map(event => String(event?.eventKind || '').trim()));
       const roles = new Set(events.map(event => normalizeActionRole(event?.actionRole || inferActionRole(event))));
       const round = Number(primary?.round || primary?.sourceRound || 0);
       const actorName = String(primary?.actorName || '').trim();
       const actionName = normalizeStateDisplayName(normalizeActionDisplayName(primary?.finalActionName || primary?.actionName || ''));
-      const blockType = kinds.has('state_tick') ? 'STATE_TICK' :
+      const blockType = kinds.has('charge_start') ? 'ACTION_DECLARED' :
+        kinds.has('state_tick') ? 'STATE_TICK' :
         kinds.has('summon_create') || kinds.has('summon_assist') ? 'SUMMON_ACTION' :
           roles.size > 0 && [...roles].every(role => role === 'STATE_TICK') ? 'RESOURCE_CHANGE' :
             roles.has('COUNTER') || kinds.has('counter') ? 'REACTION_RESOLVED' :
@@ -1295,7 +1301,7 @@
         const actor = String(event?.actorName || '').trim();
         const target = String(event?.targetName || '').trim();
         if (!actor || !target || actor === target || actors.has(actor)) continue;
-        if (!['action_start', 'hit_result', 'counter', 'state_apply', 'summon_assist'].includes(String(event?.eventKind || '').trim())) continue;
+        if (!['action_start', 'charge_start', 'hit_result', 'counter', 'state_apply', 'summon_assist'].includes(String(event?.eventKind || '').trim())) continue;
         actors.add(actor);
         pairs.push({ actor, target });
       }
@@ -1392,7 +1398,7 @@
       tacticalWindows: finalBattleReport.tacticalWindows,
       risks: finalBattleReport.risks,
       recentFacts: ledger
-        .filter(event => ['action_start', 'hit_result', 'counter', 'state_apply', 'state_tick', 'resource_change', 'summon_create', 'summon_assist', 'failed_action', 'blocked_action'].includes(String(event?.eventKind || '').trim()))
+        .filter(event => ['action_start', 'charge_start', 'hit_result', 'counter', 'state_apply', 'state_tick', 'resource_change', 'summon_create', 'summon_assist', 'failed_action', 'blocked_action'].includes(String(event?.eventKind || '').trim()))
         .slice(-24)
         .map(event => ({
           round: Math.max(0, Number(event?.round || event?.sourceRound || 0)),
@@ -1465,7 +1471,7 @@
           ? `数值${value > 0 ? '+' : ''}${value}`
           : state
             ? `状态:${state}`
-            : factType === 'action_start'
+            : ['action_start', 'charge_start'].includes(factType)
               ? '动作已宣告'
               : ['failed_action', 'blocked_action'].includes(factType)
                 ? '动作未完成'
@@ -1926,11 +1932,12 @@
     });
 
     const activeStarts = eventLedger.filter(event =>
-      String(event?.eventKind || '').trim() === 'action_start' &&
+      ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) &&
       normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE'
     );
-    const terminalKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'blocked_action', 'failed_action', 'target_fail']);
+    const terminalKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'item_consume', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'complete', 'blocked_action', 'failed_action', 'target_fail']);
     activeStarts.forEach(start => {
+      if (String(start?.eventKind || '').trim() === 'charge_start') return;
       const terminal = eventLedger.find(event =>
         event !== start &&
         terminalKinds.has(String(event?.eventKind || '').trim()) &&

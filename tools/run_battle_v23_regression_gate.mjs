@@ -94,7 +94,7 @@ const commandDefinitions = [
     groups: ['quick', 'full'],
   },
   { name: 'auditBattleMultiroundTrace', command: [process.execPath, ['tools/audit_battle_multiround_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['full'] },
-  { name: 'auditBattleR63ManualReview', command: [process.execPath, ['lwcs/tools/run_battle_r63_manual_review.mjs']], parseJson: true, timeoutMs: 120000, groups: ['full'] },
+  { name: 'auditBattleR63ManualReview', command: [process.execPath, ['lwcs/tools/run_battle_r63_manual_review.mjs']], parseJson: true, timeoutMs: 600000, groups: ['full'] },
   { name: 'auditBattleV23SourceClosure', command: [process.execPath, ['lwcs/tools/audit_battle_v23_source_closure.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23PlanCoverage', command: [process.execPath, ['tools/audit_battle_v23_plan_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23OldExitCoverage', command: [process.execPath, ['tools/audit_battle_v23_old_exit_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },

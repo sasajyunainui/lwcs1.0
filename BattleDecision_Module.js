@@ -288,7 +288,10 @@
   }
 
   function isEquipment(item = {}) {
-    return !!(item?.装备属性 || item?.属性加成 || /装备|武器|护甲|饰品/.test(String(item?.类型 || item?.分类 || '')));
+    const modifiers = item?.装备属性 && typeof item.装备属性 === 'object'
+      ? item.装备属性
+      : item?.属性加成 && typeof item.属性加成 === 'object' ? item.属性加成 : null;
+    return !!(modifiers && Object.keys(modifiers).length) || /装备|武器|护甲|饰品/.test(String(item?.类型 || item?.分类 || ''));
   }
 
   function equipmentEffects(item = {}) {
@@ -324,9 +327,10 @@
     return {
       productId,
       stock,
+      useEffects,
       consumerIds: consumers.map(entry => preview.unitId(entry.unit)),
       productionWindow,
-      useful: !!productId && stock < Math.max(1, consumers.length) && consumers.length > 0 && productionWindow <= Math.max(1, Number(worldSnapshot?.剩余回合 || 20)),
+      useful: !!productId && stock <= 0 && consumers.length > 0 && productionWindow <= Math.max(1, Number(worldSnapshot?.剩余回合 || 20)),
     };
   }
 
@@ -382,6 +386,32 @@
     });
   }
 
+  function snapshotAfterResourceCosts(worldSnapshot = {}, actorId = '', costs = {}) {
+    const next = cloneValue(worldSnapshot);
+    const actor = preview.findUnit(next, actorId);
+    if (!actor) return next;
+    Object.entries(costs || {}).forEach(([resource, cost]) => {
+      const maximum = preview.readResourceMax(actor, resource);
+      const text = String(cost ?? '').trim();
+      const amount = text.includes('%')
+        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
+        : Math.max(0, Number(cost || 0));
+      const remaining = Math.max(0, preview.readResource(actor, resource) - amount);
+      if (/精神/.test(resource)) {
+        actor.men = remaining;
+        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.精神力 = remaining;
+      } else if (/体力/.test(resource)) {
+        actor.vit = remaining;
+        actor.sta = remaining;
+        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.体力 = remaining;
+      } else {
+        actor.sp = remaining;
+        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
+      }
+    });
+    return next;
+  }
+
   function targetProfile(skill = {}) {
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     const targets = effects.map(effect => String(effect?.目标 || '').trim()).filter(Boolean);
@@ -428,6 +458,15 @@
     const explicitDefensiveReaction = /格挡|招架|闪避|应激|受击触发|即时护盾/.test(text) ||
       effects.some(effect => effect?.即时反应 === true && /自身|己方|友方/.test(String(effect?.目标 || '').trim()));
     return hasImmediateDefense || (!hasHostileDamage && (skill?.即时反应 === true || explicitDefensiveReaction));
+  }
+
+  function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
+    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
+    if (castTime > immediateBudget) return false;
+    const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
+    const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
+    return skill?.反击技能 === true || skill?.即时反击 === true || /反击|反打|防反|闪反|受击触发|格挡反击|招架反击/.test(text) ||
+      effects.some(effect => effect?.即时反击 === true || /反击|反伤/.test(String(effect?.结算 || effect?.触发方式 || '').trim()));
   }
 
   function aliveEntries(worldSnapshot = {}) {
@@ -492,7 +531,8 @@
     }
     collectSkills(actor).forEach((skill, index) => {
       if (!costAffordable(actor, skill)) return;
-      if (input.actionOpportunity?.enforceImmediateBudget === true && !isImmediateReactionSkill(skill, immediateBudget)) return;
+      if (counterOnly && !isExplicitCounterSkill(skill, immediateBudget)) return;
+      if (!counterOnly && input.actionOpportunity?.enforceImmediateBudget === true && !isImmediateReactionSkill(skill, immediateBudget)) return;
       if (reactionOnly && !isImmediateReactionSkill(skill, immediateBudget)) return;
       const profile = targetProfile(skill);
       if (counterOnly && !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)) return;
@@ -517,6 +557,8 @@
     });
     if (reactionOnly || counterOnly) return candidates;
     const currentEquipmentIds = new Set(Object.values(actor?.装备 || {}).map(item => String(item?.id || item?.物品ID || item?.名称 || item?.name || '')).filter(Boolean));
+    const runtimeEquipmentId = String(actor?.__battleRuntime?.equippedDecisionItem?.id || '').trim();
+    if (runtimeEquipmentId) currentEquipmentIds.add(runtimeEquipmentId);
     const equipmentHistory = new Set(Array.isArray(input?.strategyMemory?.equipmentSignatures) ? input.strategyMemory.equipmentSignatures.map(String) : []);
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
@@ -532,17 +574,32 @@
             actionKind: 'EQUIP',
             targetIds: [actorId],
             equipmentSignature: signature,
-            skill: { id: entry.id, name: skillName(item, index), _效果数组: equipmentEffects(item) },
+            skill: { ...item, id: entry.id, name: skillName(item, index), _效果数组: equipmentEffects(item) },
           },
           equipment: item,
           equipmentSignature: signature,
         });
         return;
       }
-      if (!Array.isArray(item?._效果数组) || !item._效果数组.length) return;
-      enumerateTargetSets(worldSnapshot, actor, targetProfile(item), input.beliefState).forEach((targetIds, targetIndex) => {
+      const usableEffects = Array.isArray(item?._效果数组) && item._效果数组.length
+        ? item._效果数组
+        : Array.isArray(item?.使用效果) ? item.使用效果 : [];
+      if (!usableEffects.length) return;
+      const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
+      const usableItem = {
+        ...item,
+        name: itemName,
+        __物品名: String(item?.__物品名 || itemName).trim(),
+        承载方式: String(item?.承载方式 || '物品使用').trim() || '物品使用',
+        _效果数组: usableEffects.map(effect => String(effect?.目标 || '').trim() === '自身'
+          ? { ...effect, 目标: '单体' }
+          : effect),
+      };
+      enumerateTargetSets(worldSnapshot, actor, targetProfile(usableItem), input.beliefState).forEach((targetIds, targetIndex) => {
         const id = `${actorId}:item:${entry.id}:${targetIndex}`;
         const scarcity = 1 + 1 / Math.max(1, entry.quantity);
+        const renewableCreation = !!String(item?.来源 || '').trim() && Array.isArray(item?.使用效果);
+        const assetCost = renewableCreation ? 0 : 6 * scarcity;
         candidates.push({
           candidateId: id,
           declaration: {
@@ -550,11 +607,11 @@
             actorId,
             actionKind: 'USE_ITEM',
             targetIds,
-            skill: item,
-            irreversibleAsset: { assetId: entry.id, quantityBefore: entry.quantity, cost: 6 * scarcity },
+            skill: usableItem,
+            irreversibleAsset: { assetId: entry.id, quantityBefore: entry.quantity, cost: assetCost },
           },
-          item,
-          assetCost: 6 * scarcity,
+          item: usableItem,
+          assetCost,
         });
       });
     });
@@ -719,6 +776,16 @@
     if (!actor) return { value: 0, explicit: false, sourceId: '', arrivesBeforeNextOpportunity: false };
     const actorSide = preview.sideOf(worldSnapshot, actor);
     const allyCount = Math.max(1, aliveEntries(worldSnapshot).filter(entry => entry.side === actorSide).length);
+    const actorName = preview.unitName(actor);
+    const currentRound = Math.max(0, Number(worldSnapshot?.回合 || 0));
+    const recentTargetCount = (Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : []).filter(event => {
+      const round = Number(event?.round || 0);
+      if (round < Math.max(0, currentRound - 1) || round > currentRound) return false;
+      if (!['action_start', 'hit_result', 'state_apply'].includes(String(event?.eventKind || '').trim())) return false;
+      if (String(event?.targetName || '').trim() !== actorName) return false;
+      const sourceSide = String(event?.actorSide || '').trim();
+      return !sourceSide || sourceSide !== actorSide;
+    }).length;
     const sourceId = String(context.actionOpportunity?.sourceActorId || '').trim();
     const source = sourceId ? preview.findUnit(worldSnapshot, sourceId) : null;
     const incomingAction = context.actionOpportunity?.incomingAction;
@@ -739,8 +806,13 @@
         return;
       }
       const beliefUnit = context.beliefState?.units?.[enemyId] || {};
-      const lowHpPressure = preview.readHp(actor) / preview.readHpMax(actor) <= 0.3 ? 1.35 : 1;
-      const value = perceivedEnemyBaseValue(beliefUnit) * Math.min(1, lowHpPressure / allyCount);
+      const hpRatio = preview.readHp(actor) / preview.readHpMax(actor);
+      const targetProbability = allyCount === 1
+        ? 1
+        : recentTargetCount > 0
+          ? Math.min(1, 0.45 + recentTargetCount * 0.2)
+          : Math.min(1, (hpRatio <= 0.3 ? 0.6 : 0.25) / allyCount);
+      const value = perceivedEnemyBaseValue(beliefUnit) * targetProbability;
       if (value > best.value) best = { value, explicit: false, sourceId: enemyId, arrivesBeforeNextOpportunity: true };
     });
     return best;
@@ -759,8 +831,6 @@
     const hpRatio = clamp(preview.readHp(actor) / Math.max(1, preview.readHpMax(actor)), 0, 1);
     const incomingPressure = clamp(Number(threat.value || 0) / 100, 0, 1.5);
     const lethalPressure = clamp(incomingPressure - hpRatio * 0.65, 0, 1);
-    if (!explicitThreat && lethalPressure <= 0) return 0;
-
     const protectionFactor = {
       DEFEND: 0.20,
       EVADE: 0.32,
@@ -779,10 +849,13 @@
 
     const side = preview.sideOf(context.worldSnapshot || {}, actor);
     const before = stateUtility(context.worldSnapshot || {}, side, context.beliefState || {});
-    const urgency = explicitThreat ? Math.max(0.35, lethalPressure) : lethalPressure;
+    const alliedUnitCount = Math.max(1, aliveEntries(context.worldSnapshot || {}).filter(entry => entry.side === side).length);
+    const urgency = explicitThreat
+      ? Math.max(0.35, lethalPressure)
+      : clamp(incomingPressure, 0.02, 0.35);
     const avoidedThreat = Math.min(1.5, incomingPressure) * protectionFactor * Math.max(0.35, urgency);
     const survivalPriority = hpRatio <= 0.2 ? 1.8 : hpRatio <= 0.35 ? 1.35 : 1;
-    const preservedCapacity = Math.max(0, Number(before.own || 0)) * avoidedThreat * survivalPriority;
+    const preservedCapacity = Math.max(0, Number(before.own || 0)) / alliedUnitCount * avoidedThreat * survivalPriority;
     const terminalPressure = explicitThreat && hpRatio <= 0.4 && incomingPressure >= hpRatio
       ? 18 + 12 * clamp(incomingPressure - hpRatio, 0, 1)
       : 0;
@@ -905,6 +978,11 @@
     const known = Array.isArray(context.beliefState?.publicResponses?.[targetId]) ? context.beliefState.publicResponses[targetId] : [];
     const unknownMass = unknownResponseMass(context.beliefState?.confidence);
     const knownMass = 1 - unknownMass;
+    const actor = preview.findUnit(context.worldSnapshot, context.actorId);
+    const actorSide = preview.sideOf(context.worldSnapshot, actor);
+    const allyCount = Math.max(1, aliveEntries(context.worldSnapshot).filter(entry => entry.side === actorSide).length);
+    const before = context.beforeUtility || stateUtility(context.worldSnapshot, actorSide, context.beliefState || {});
+    const responseCapacityScale = Math.max(0, Number(before.own || 0)) / Math.max(1, allyCount * Number(before.total || 0));
     const utilities = known.map(response => Number(response?.utility || 0));
     const center = median(utilities);
     const mad = Math.max(1, median(utilities.map(value => Math.abs(value - center))));
@@ -917,7 +995,7 @@
     const normalizedKnown = weighted.map(response => ({
       responseId: String(response.responseId || ''),
       probability: knownMass * response.weight / totalWeight,
-      utility: Number(response.utility || 0),
+      utility: -Math.max(0, Number(response.utility || 0)) * responseCapacityScale,
       unknown: false,
     }));
     const branches = normalizedKnown.length <= 3 ? normalizedKnown : normalizedKnown.slice(0, 2);
@@ -934,7 +1012,7 @@
     }
     if (unknownMass > 0) {
       const targetBelief = context.beliefState?.units?.[targetId] || {};
-      const threatEnvelope = Math.max(0, perceivedEnemyBaseValue(targetBelief), Math.abs(afterUtility.enemy || 0));
+      const threatEnvelope = Math.max(0, perceivedEnemyBaseValue(targetBelief)) * responseCapacityScale;
       branches.unshift({ responseId: 'UNKNOWN_RESPONSE_ENVELOPE', probability: unknownMass, utility: -threatEnvelope, unknown: true });
     }
     return branches.slice(0, 4);
@@ -966,16 +1044,28 @@
     return String(intent?.mode || intent?.intent || intent?.name || '').trim();
   }
 
+  function actorBattleIntent(worldSnapshot = {}, actorSide = '', inputIntent = null) {
+    const source = inputIntent && (typeof inputIntent === 'string' || typeof inputIntent === 'object')
+      ? inputIntent
+      : { mode: String(worldSnapshot?.战斗意图 || '').trim() };
+    const mode = typeof source === 'string' ? source.trim() : String(source?.mode || source?.intent || source?.name || '').trim();
+    if (!/enemy|敌方/i.test(String(actorSide || '')) || !/求生|撤退|脱离|逃生/.test(mode)) return source;
+    return { ...(typeof source === 'object' ? source : {}), mode: '阻止撤离', opposingIntent: mode };
+  }
+
   function intentTerminalUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
     const mode = battleIntentMode(context);
     if (!/点到为止|切磋|训练|非致命/.test(mode)) return 0;
     const beforeHostiles = aliveEntries(beforeSnapshot)
       .filter(entry => entry.side !== actorSide)
       .map(entry => preview.unitId(entry.unit));
-    const afterHostileIds = new Set(aliveEntries(afterSnapshot)
-      .filter(entry => entry.side !== actorSide)
-      .map(entry => preview.unitId(entry.unit)));
-    return beforeHostiles.some(unitId => !afterHostileIds.has(unitId)) ? -100 : 0;
+    const afterHostiles = beforeHostiles.map(unitId => preview.findUnit(afterSnapshot, unitId));
+    const killedHostile = afterHostiles.some(unit => !unit || unit?.状态?.存活 === false || preview.readHp(unit) <= 0);
+    if (killedHostile) return -100;
+    const allIncapacitated = afterHostiles.length > 0 && afterHostiles.every(unit =>
+      preview.readHp(unit) <= 1 || /失去战斗力|昏迷|投降|制服/.test(String(unit?.状态?.行动 || '').trim()),
+    );
+    return allIncapacitated ? 100 : 0;
   }
 
   function scoreCandidate(candidate, context) {
@@ -1031,6 +1121,35 @@
       : result
       ? 100 * (after.utility - before.utility) / Math.max(1, before.total)
       : directDefensiveUtility(candidate.declaration.actionKind, context);
+    if (candidate.creation?.useful) {
+      const paidSnapshot = snapshotAfterResourceCosts(context.worldSnapshot, context.actorId, candidate.costs || {});
+      const paidUtility = stateUtility(paidSnapshot, actorSide, context.beliefState);
+      expectedStateGain = 100 * (paidUtility.utility - before.utility) / Math.max(1, before.total);
+      const futureUseEffects = (candidate.creation.useEffects || []).map(effect => ({
+        ...cloneValue(effect),
+        目标: String(effect?.目标 || '').trim() === '自身' ? '单体' : effect?.目标,
+      }));
+      const futureUseGain = (candidate.creation.consumerIds || []).reduce((bestGain, targetId) => {
+        const futureUse = preview.previewAction({
+          worldSnapshot: paidSnapshot,
+          beliefSnapshot: context.beliefState,
+          actorId: context.actorId,
+          declaration: {
+            actionId: `${candidate.candidateId}:future-use:${targetId}`,
+            actorId: context.actorId,
+            actionKind: 'USE_ITEM',
+            targetIds: [targetId],
+            skill: { id: `${candidate.candidateId}:product`, name: candidate.creation.productId, _效果数组: futureUseEffects },
+          },
+          battleIntent: context.battleIntent,
+          horizon: 'SHALLOW',
+          previewBudget: { maxNodes: 12 },
+        });
+        const futureUtility = stateUtility(futureUse.afterSnapshot, actorSide, context.beliefState);
+        return Math.max(bestGain, 100 * (futureUtility.utility - paidUtility.utility) / Math.max(1, before.total));
+      }, 0);
+      expectedStateGain += Math.max(0, futureUseGain) * 0.65;
+    }
     if (withdrawalEstimate) {
       expectedStateGain = expectedStateGain * withdrawalEstimate.successProbability -
         100 * withdrawalEstimate.expectedPursuitDamage / Math.max(1, preview.readHpMax(actor));
@@ -1058,17 +1177,18 @@
       const summonValue = estimateSummonActionValue(event, context);
       expectedStateGain += 100 * summonValue / Math.max(1, before.total);
     });
-    if (candidate.creation?.useful) {
-      expectedStateGain += 100 * Math.min(20, candidate.creation.consumerIds.length * 6) / Math.max(1, before.total);
-    }
     const informationValue = candidate.declaration.actionKind === 'OBSERVE' ? clamp(1 - Number(context.beliefState?.confidence || 0), 0, 1) * 8 : 0;
     const irreversibleContributions = (result?.contributions || []).filter(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
-    const irreversibleCost = irreversibleContributions.reduce((sum, entry) => sum + (Number(entry.threatValue) > 0 ? Number(entry.threatValue) : 20), 0);
+    const irreversibleCost = irreversibleContributions.reduce((sum, entry) => {
+      const evidenceCost = entry?.evidence && Object.prototype.hasOwnProperty.call(entry.evidence, 'cost')
+        ? Number(entry.evidence.cost)
+        : Number.NaN;
+      if (Number.isFinite(evidenceCost)) return sum + Math.max(0, evidenceCost);
+      return sum + (Number(entry.threatValue) > 0 ? Number(entry.threatValue) : 20);
+    }, 0);
     const deepRequired = result ? needsDeepPreview(candidate, result, context.worldSnapshot, result.afterSnapshot, context.beliefState) : false;
     const branches = deepRequired ? responseBranches(candidate, context, after) : [];
-    const rawResponseRisk = branches.reduce((sum, branch) => sum + (branch.utility < 0 ? Math.abs(branch.utility) * branch.probability : 0), 0);
-    const responseRisk = Math.max(0, rawResponseRisk - estimateIncomingThreat(context).value);
-    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0) + responseRisk;
+    const catastrophicRisk = (result?.contributions || []).filter(entry => entry.outcomeKind === 'TAIL_FAILURE').reduce((sum, entry) => sum + Math.abs(entry.threatValue), 0);
     const objectiveUtility = clamp(expectedStateGain + terminalUtility + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
     const hasProgress = expectedStateGain > 0.0001 || terminalUtility > 0 || informationValue > 0;
     const hasCost = Object.keys(candidate.costs || {}).length > 0 || irreversibleCost > 0 || ['EQUIP', 'USE_ITEM'].includes(candidate.declaration.actionKind);
@@ -1092,8 +1212,27 @@
       .some(target => stateEffectHasMarginalValue(effect, target)));
     const hasOnlyRedundantStates = stateEffects.length > 0 && !stateHasMarginalValue && !summonEvents.length &&
       !(result?.contributions || []).some(entry => entry.outcomeKind === 'HP_DELTA' && Number(entry?.evidence?.expectedDamage || 0) > 0);
-    const zeroEffectCostly = hasCost && (!hasMeaningfulPreviewEffect || hasOnlyRedundantStates) && informationValue <= 0 && directDefensiveUtility(candidate.declaration.actionKind, context) <= 0;
-    const selfDefeating = objectiveUtility < -0.0001 && hasMeaningfulPreviewEffect && terminalUtility <= 0 && informationValue <= 0;
+    const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
+    const resourceSupportOnly = candidateEffects.length > 0 && candidateEffects.every(effect => {
+      if (String(effect?.原型 || '').trim() !== '资源变化') return false;
+      if (/生命|HP/i.test(String(effect?.资源 || ''))) return false;
+      return Number.parseFloat(String(effect?.数值 || '0')) > 0;
+    });
+    const materialResourceUnlock = !resourceSupportOnly || !result || (candidate.declaration.targetIds || []).some(targetId => {
+      const beforeTarget = preview.findUnit(context.worldSnapshot, targetId);
+      const afterTarget = preview.findUnit(result.afterSnapshot, targetId);
+      if (!beforeTarget || !afterTarget) return false;
+      const affordableBefore = new Set(collectSkills(beforeTarget)
+        .filter(skill => costAffordable(beforeTarget, skill))
+        .map((skill, index) => skillId(skill, index)));
+      return collectSkills(afterTarget).some((skill, index) =>
+        !affordableBefore.has(skillId(skill, index)) &&
+        costAffordable(afterTarget, skill),
+      );
+    });
+    const zeroEffectCostly = hasCost && (!hasMeaningfulPreviewEffect || hasOnlyRedundantStates || !materialResourceUnlock) && informationValue <= 0 && directDefensiveUtility(candidate.declaration.actionKind, context) <= 0;
+    const actorAfter = result ? preview.findUnit(result.afterSnapshot, preview.unitId(actor)) : null;
+    const selfDefeating = !!actorAfter && !preview.isAlive(actorAfter) && expectedStateGain <= 0.0001 && terminalUtility <= 0 && informationValue <= 0;
     const summonWindowMissing = summonEvents.some(event => !event.actionMode || Number(event.duration || 0) <= 0);
     const lifecycleReject = candidate.creation && !candidate.creation.useful ? 'ZERO_EFFECT_COSTLY' : summonWindowMissing ? 'SUMMON_NO_ACTION_WINDOW' : '';
     const intentReject = terminalUtility < 0 ? 'INTENT_TERMINAL_CONFLICT' : '';
@@ -1155,7 +1294,11 @@
       context.teamIntent?.protectTarget,
     ].map(String).filter(Boolean));
     const tiePreference = candidate => (candidate.declaration.targetIds || []).some(targetId => preferredTargets.has(String(targetId))) ? 1 : 0;
-    const eligible = candidates.filter(candidate => !candidate.rejectionCode).sort((left, right) => {
+    const initiallyEligible = candidates.filter(candidate => !candidate.rejectionCode);
+    const hasNonnegativeAlternative = initiallyEligible.some(candidate => candidate.objectiveUtility >= -1e-9);
+    const eligible = initiallyEligible.filter(candidate =>
+      !hasNonnegativeAlternative || candidate.objectiveUtility >= -1e-9 || Number(candidate.vector?.terminalUtility || 0) > 0,
+    ).sort((left, right) => {
       const utilityGap = right.normalizedUtility - left.normalizedUtility;
       if (Math.abs(utilityGap) > 0.05) return utilityGap;
       return tiePreference(right) - tiePreference(left) || left.candidateId.localeCompare(right.candidateId);
@@ -1195,6 +1338,7 @@
     const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(actor), beliefState);
     const decisionActor = preview.findUnit(decisionWorld, preview.unitId(actor));
     const actorSide = preview.sideOf(decisionWorld, decisionActor);
+    const battleIntent = actorBattleIntent(decisionWorld, actorSide, input.battleIntent);
     const teamIntent = buildTeamIntent(decisionWorld, preview.unitId(actor), beliefState);
     const problems = identifyProblems(decisionWorld, preview.unitId(actor), beliefState);
     const signature = strategicSignature(decisionWorld, beliefState);
@@ -1203,6 +1347,7 @@
       ...input,
       worldSnapshot: decisionWorld,
       actorId: preview.unitId(actor),
+      battleIntent,
       beliefState,
       teamIntent,
       problems,

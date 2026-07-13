@@ -5686,8 +5686,10 @@ class BattleUIComponent {
           names.has(String(item?.行动者 || item?.actor || '').trim()) && /主动规划/.test(String(item?.类型 || item?.type || ''))
         );
         const preferredActorName = String(decisions[0]?.行动者 || decisions[0]?.actor || units.find(unit => unit.hp > 0)?.name || '').trim();
-        const team = Array.isArray(summaryCombat?.参战者?.[sideKey]) ? summaryCombat.参战者[sideKey].filter(isCombatUnitAlive) : [];
-        const opponents = Array.isArray(summaryCombat?.参战者?.[hostileSideKey]) ? summaryCombat.参战者[hostileSideKey].filter(isCombatUnitAlive) : [];
+        const previewRuntime = root.__LWCS_BATTLE_PREVIEW__;
+        const availableForDecision = unit => isCombatUnitAlive(unit) && (!previewRuntime?.isAlive || previewRuntime.isAlive(unit));
+        const team = Array.isArray(summaryCombat?.参战者?.[sideKey]) ? summaryCombat.参战者[sideKey].filter(availableForDecision) : [];
+        const opponents = Array.isArray(summaryCombat?.参战者?.[hostileSideKey]) ? summaryCombat.参战者[hostileSideKey].filter(availableForDecision) : [];
         const actor = team.find(unit => isCombatUnitIdentityMatch(unit, preferredActorName)) || team[0] || null;
         const fallbackUnit = units[0] || null;
         const actorName = String(actor?.name || actor?.名称 || fallbackUnit?.name || preferredActorName || label).trim();
@@ -16005,14 +16007,16 @@ class BattleUIComponent {
       const 玩家侧单位 = 读取战斗阵营单位列表(combatData || {}, '玩家');
       const 敌方侧单位 = 读取战斗阵营单位列表(combatData || {}, '敌方');
       const 攻击者名 = String(attacker?.name || attacker?.名称 || '').trim();
+      const 攻击者在玩家 = 玩家侧单位.some(unit => unit === attacker || isCombatUnitIdentityMatch(unit, 攻击者名));
       const 攻击者在敌方 = 敌方侧单位.some(unit => unit === attacker || isCombatUnitIdentityMatch(unit, 攻击者名));
+      const 使用敌方视角 = !攻击者在玩家 && 攻击者在敌方;
       const alliedUnits = dedupeCombatTargetList([
         attacker,
-        ...(攻击者在敌方 ? 敌方侧单位 : 玩家侧单位),
+        ...(使用敌方视角 ? 敌方侧单位 : 玩家侧单位),
       ]).filter(isCombatUnitAlive);
       const hostileUnits = dedupeCombatTargetList([
         defender,
-        ...(攻击者在敌方 ? 玩家侧单位 : 敌方侧单位),
+        ...(使用敌方视角 ? 玩家侧单位 : 敌方侧单位),
       ]).filter(isCombatUnitAlive);
           const allUnits = dedupeCombatTargetList([...alliedUnits, ...hostileUnits]).filter(isCombatUnitAlive);
           const 指定目标名 = String(skill?.__指定目标名 || skill?.target_name || skill?.物品接收者 || '').trim();
@@ -18902,12 +18906,15 @@ class BattleUIComponent {
       const 上限 = 读取战斗延迟效果资源上限(char, 资源键);
       const 下值 = Math.max(0, Math.min(上限, Number(value || 0)));
       if (资源键 === 'hp') return 设置战斗血量值(char, 下值);
-      if (资源键 === 'vit') return 设置战斗体力值(char, 下值);
-      char[资源键] = 下值;
-      const 属性 = char.属性 && typeof char.属性 === 'object' ? char.属性 : null;
-      if (属性) {
-        if (资源键 === 'sp') 属性.魂力 = 下值;
-        if (资源键 === 'men') 属性.精神力 = 下值;
+      if (资源键 === 'vit') {
+        设置战斗体力值(char, 下值);
+      } else {
+        char[资源键] = 下值;
+        const 属性 = char.属性 && typeof char.属性 === 'object' ? char.属性 : null;
+        if (属性) {
+          if (资源键 === 'sp') 属性.魂力 = 下值;
+          if (资源键 === 'men') 属性.精神力 = 下值;
+        }
       }
       同步战斗资源镜像字段(char);
       return 下值;
@@ -23687,7 +23694,6 @@ class BattleUIComponent {
 
       function deductParsedCostFromUnit(targetUnit, parsed = {}) {
         if (!targetUnit || !parsed) return;
-        const stats = targetUnit.属性 || targetUnit;
         // Phase E: 任何主动行动叠加分级行动疲劳 (按 action_type / 风险等级 / 来源类别 推断)
         // 跳过条件: parsed.skipFatigue === true (内部分摊 / 反伤 / 被动结算等非主动行动)
         if (!parsed.__已注入行动疲劳 && parsed.skipFatigue !== true) {
@@ -23697,16 +23703,13 @@ class BattleUIComponent {
           parsed.__行动疲劳数值 = 行动疲劳;
           parsed.__行动疲劳率 = 推断行动疲劳率_V1(parsed);
         }
-        const 下一魂力 = Math.max(0, Number(stats.sp ?? stats.魂力 ?? 0) - Number(parsed.reqSp || 0));
-        const 下一体力 = Math.max(0, Number(stats.sta ?? stats.体力 ?? stats.vit ?? 0) - Number(parsed.reqVit || 0));
-        const 下一精神力 = Math.max(0, Number(stats.men ?? stats.精神力 ?? 0) - Number(parsed.reqMen || 0));
-        stats.sp = 下一魂力;
-        stats.魂力 = 下一魂力;
-        stats.sta = 下一体力;
-        stats.vit = 下一体力;
-        stats.体力 = 下一体力;
-        stats.men = 下一精神力;
-        stats.精神力 = 下一精神力;
+        const stats = targetUnit.属性 && typeof targetUnit.属性 === 'object' ? targetUnit.属性 : targetUnit;
+        const 当前魂力 = Math.max(0, Number(targetUnit.sp ?? targetUnit.魂力 ?? stats.sp ?? stats.魂力 ?? 0));
+        const 当前体力 = Math.max(0, Number(targetUnit.sta ?? targetUnit.vit ?? targetUnit.体力 ?? stats.sta ?? stats.vit ?? stats.体力 ?? 0));
+        const 当前精神力 = Math.max(0, Number(targetUnit.men ?? targetUnit.精神力 ?? stats.men ?? stats.精神力 ?? 0));
+        设置战斗延迟效果资源值(targetUnit, 'sp', 当前魂力 - Number(parsed.reqSp || 0));
+        设置战斗延迟效果资源值(targetUnit, 'vit', 当前体力 - Number(parsed.reqVit || 0));
+        设置战斗延迟效果资源值(targetUnit, 'men', 当前精神力 - Number(parsed.reqMen || 0));
         if (targetUnit.召唤键) 同步召唤单位镜像(targetUnit);
       }
 
@@ -24445,6 +24448,7 @@ class BattleUIComponent {
         delete playerAction.__覆盖目标数量;
         delete playerAction.__连放来源;
         delete playerAction.__技能事件链;
+        delete playerAction.__targetsFriendlyTeam;
         if (playerAction.skill && typeof playerAction.skill === 'object') {
           delete playerAction.skill.__targetForSupportCost;
           delete playerAction.skill.__辅助目标数量;
@@ -24859,6 +24863,48 @@ class BattleUIComponent {
         const 旧加成 = 读取战斗装备加成快照(单位);
         if (typeof 变更函数 === 'function') 变更函数();
         应用战斗装备加成差值(单位, 旧加成);
+      }
+
+      function 应用决策装备状态(单位, 动作 = {}) {
+        const 装备 = 动作?.skill && typeof 动作.skill === 'object' ? 动作.skill : {};
+        const 装备ID = String(装备?.id || 装备?.物品ID || 装备?.name || 装备?.名称 || '').trim();
+        if (!单位 || !装备ID) return '';
+        const runtime = 单位.__battleRuntime && typeof 单位.__battleRuntime === 'object' ? 单位.__battleRuntime : (单位.__battleRuntime = {});
+        const 旧状态键 = String(runtime?.equippedDecisionItem?.stateKey || '').trim();
+        if (旧状态键 && 单位.状态效果?.[旧状态键]) delete 单位.状态效果[旧状态键];
+        const 属性映射 = {
+          力量: 'str',
+          防御: 'def',
+          敏捷: 'agi',
+          魂力上限: 'sp_max',
+          精神力上限: 'men_max',
+          体力上限: 'vit_max',
+        };
+        const 面板修改比例 = { str: 1, def: 1, agi: 1, sp_max: 1, men_max: 1, vit_max: 1 };
+        const 面板固定修正 = {};
+        Object.entries(装备?.装备属性 || 装备?.属性加成 || {}).forEach(([属性名, rawValue]) => {
+          const 字段 = 属性映射[String(属性名 || '').trim()];
+          if (!字段) return;
+          const 文本 = String(rawValue ?? '').trim();
+          const 数值 = Number.parseFloat(文本.replace('%', ''));
+          if (!Number.isFinite(数值)) return;
+          if (文本.includes('%')) 面板修改比例[字段] = Math.max(0, 1 + 数值 / 100);
+          else 面板固定修正[字段] = 数值;
+        });
+        const 状态键 = `装备:${装备ID}`;
+        if (!单位.状态效果 || typeof 单位.状态效果 !== 'object') 单位.状态效果 = {};
+        单位.状态效果[状态键] = {
+          类型: 'buff',
+          描述: `已装备【${装备?.name || 装备?.名称 || 装备ID}】`,
+          __equipmentState: true,
+          面板修改比例,
+          面板固定修正,
+          战斗效果: createEmptyCombatEffectMap(),
+        };
+        runtime.equippedDecisionItem = { id: 装备ID, name: String(装备?.name || 装备?.名称 || 装备ID).trim(), stateKey: 状态键 };
+        动作.skill._效果数组 = [];
+        单位.final = buildCombatFinalStats(单位);
+        return `[装备完成] ${单位?.name || 单位?.名称 || '行动者'}装备【${runtime.equippedDecisionItem.name}】。`;
       }
 
       function applyArmorDamage(defender) {
@@ -25882,13 +25928,11 @@ class BattleUIComponent {
         if (当前结算效果能力.hasDamageEffect !== true) {
           const pollutedTargets = targetResults.filter(targetEntry => Math.max(0, Math.floor(Number(targetEntry?.damage || 0))) > 0);
           pollutedTargets.forEach(写入无伤害能力污染中止);
-          if (pollutedTargets.length) {
-            return {
-              primaryAppliedDamage: 0,
-              totalAppliedDamage: 0,
-              log: '[结算阻断] 动作不具备伤害效果，已阻断污染伤害包。',
-            };
-          }
+          return {
+            primaryAppliedDamage: 0,
+            totalAppliedDamage: 0,
+            log: pollutedTargets.length ? '[结算阻断] 动作不具备伤害效果，已阻断污染伤害包。' : '',
+          };
         }
         const 写入状态反伤账本 = (targetChar, counterEntry = {}, counterDamage = 0) => {
           const combatData = options?.combatData || {};
@@ -26653,6 +26697,12 @@ class BattleUIComponent {
         }
         if (!(触发概率 > 0)) return '';
 
+        const 防反根战斗数据 = 读取战斗根数据(战斗数据);
+        const 防反者阵营 = (防反根战斗数据?.参战者?.team_enemy || []).some(unit => unit === 防反者 || isCombatUnitIdentityMatch(unit, 防反者?.name || 防反者?.名称 || ''))
+          ? 'enemy'
+          : 'player';
+        const 防反目标阵营 = 防反者阵营 === 'enemy' ? 'player' : 'enemy';
+
         const 投点 = Math.random();
         const 概率文本 = `${Math.round(触发概率 * 100)}%`;
         if (投点 >= 触发概率) {
@@ -26664,7 +26714,9 @@ class BattleUIComponent {
             eventKind: 'counter',
             round: Number(战斗数据?.回合 || 0),
             actorName: 防反者?.name || 防反者?.名称 || '',
+            actorSide: 防反者阵营,
             targetName: 目标?.name || 目标?.名称 || '',
+            targetSide: 防反目标阵营,
             actionName: 反击动作名,
             actionType: 'counter',
             sourceActionName: 被反制动作名,
@@ -26686,7 +26738,9 @@ class BattleUIComponent {
             eventKind: 'counter',
             round: Number(战斗数据?.回合 || 0),
             actorName: 防反者?.name || 防反者?.名称 || '',
+            actorSide: 防反者阵营,
             targetName: 目标?.name || 目标?.名称 || '',
+            targetSide: 防反目标阵营,
             actionName: 候选.sourceActionName || 候选.防反类型 || '防反',
             actionType: 'counter',
             sourceActionName: 被反制动作名,
@@ -26706,16 +26760,6 @@ class BattleUIComponent {
           return `[防反错失] ${防反者.name || '防守方'}抓到窗口，但反应槽已耗尽，未能继续反打。`;
         }
         消耗战斗反应槽(战斗数据, 防反者, 候选.防反类型 || 'counter');
-        let 防反根战斗数据 = 战斗数据;
-        const 防反父级访问记录 = new Set();
-        while (防反根战斗数据?.__父级战斗数据 && 防反根战斗数据.__父级战斗数据 !== 防反根战斗数据 && !防反父级访问记录.has(防反根战斗数据)) {
-          防反父级访问记录.add(防反根战斗数据);
-          防反根战斗数据 = 防反根战斗数据.__父级战斗数据;
-        }
-        const 防反者阵营 = (防反根战斗数据?.参战者?.team_enemy || []).some(unit => unit === 防反者 || isCombatUnitIdentityMatch(unit, 防反者?.name || 防反者?.名称 || ''))
-          ? 'enemy'
-          : 'player';
-        const 防反目标阵营 = 防反者阵营 === 'enemy' ? 'player' : 'enemy';
           const 防反决策器 = 确保战斗运行态(战斗数据)?.decisionCounterDecider;
           if (typeof 防反决策器 !== 'function') throw new Error('battle_decision_counter_decider_missing');
           const 防反动作 = 防反决策器({
@@ -26836,6 +26880,8 @@ class BattleUIComponent {
             String(item?.actionRole || '').trim() === 'ACTIVE' &&
             Number(item?.round || 0) === Number(战斗数据?.回合 || 0)
           );
+          const 防反链账本起点 = BATTLE_RUNTIME.ensureLedger(防反根战斗数据).length;
+          const 防反链轨迹起点 = BATTLE_RUNTIME.ensureTrace(防反根战斗数据).length;
           const 防反结果 = 执行单挑队列结算(
             防反动作,
             二次反应动作,
@@ -26853,6 +26899,16 @@ class BattleUIComponent {
             primaryTarget: 目标,
             combatData: 防反战斗数据,
           });
+          const 归正防反参与者阵营 = fact => {
+            if (!fact || typeof fact !== 'object') return;
+            if (isSameBattleReportName(fact.actorName || '', 防反者?.name || 防反者?.名称 || '')) fact.actorSide = 防反者阵营;
+            else if (isSameBattleReportName(fact.actorName || '', 目标?.name || 目标?.名称 || '')) fact.actorSide = 防反目标阵营;
+            if (isSameBattleReportName(fact.targetName || '', 防反者?.name || 防反者?.名称 || '')) fact.targetSide = 防反者阵营;
+            else if (isSameBattleReportName(fact.targetName || '', 目标?.name || 目标?.名称 || '')) fact.targetSide = 防反目标阵营;
+            if (['dodge', 'defend', 'pass'].includes(String(fact.eventKind || fact.nodeKind || '').trim())) fact.actionRole = 'REACTION';
+          };
+          BATTLE_RUNTIME.ensureLedger(防反根战斗数据).slice(防反链账本起点).forEach(归正防反参与者阵营);
+          BATTLE_RUNTIME.ensureTrace(防反根战斗数据).slice(防反链轨迹起点).forEach(归正防反参与者阵营);
           const 防反结算账本 = Array.isArray(战斗数据?.__battleEventLedger)
             ? 战斗数据.__battleEventLedger
             : (Array.isArray(防反战斗数据.__battleEventLedger) ? 防反战斗数据.__battleEventLedger : []);
@@ -27027,6 +27083,16 @@ class BattleUIComponent {
 
     function 读取战斗单位运行态键(unit = {}, fallback = '') {
       return String(unit?.charKey || unit?.char_key || unit?.key || unit?.name || unit?.名称 || fallback || '').trim();
+    }
+
+    function 读取战斗根数据(combatData = {}) {
+      let current = combatData;
+      const visited = new Set();
+      while (current?.__父级战斗数据 && current.__父级战斗数据 !== current && !visited.has(current)) {
+        visited.add(current);
+        current = current.__父级战斗数据;
+      }
+      return current || combatData;
     }
 
     function 读取战斗单位阵营名(combatData = {}, unit = {}) {
@@ -28445,7 +28511,7 @@ class BattleUIComponent {
           appendJsonPatchDiff(补丁列表, `/物品/魂技造物/${转义物品名}`, 根层魂技造物[物品名], 下一根层物品);
           if (入包数量 > 0) appendJsonPatchDiff(补丁列表, 背包物品路径, 当前背包物品, 下一背包物品值);
 
-          造物列表.push({ 名称: 物品名, 数量: 原始数量, 入包数量, 即时消耗数量: 即时消耗 });
+          造物列表.push({ 名称: 物品名, 数量: 原始数量, 入包数量, 即时消耗数量: 即时消耗, 物品定义: deepClonePlain(物品定义) });
           日志列表.push(`生成了造物【${物品名}】×${原始数量}${即时消耗 > 0 ? `，即时使用${即时消耗}件` : ''}${入包数量 > 0 ? `，入包${入包数量}件` : ''}`);
         });
 
@@ -28955,10 +29021,7 @@ class BattleUIComponent {
         let attacker = combatData.参战者.team_player?.[0];
         let attackerFinalStat = attacker.final || attacker;
         const 指定目标单位 = findCombatUnitByName(combatData, playerAction?.target_name || '');
-        let defender =
-          指定目标单位 && (combatData?.参战者?.team_enemy || []).some(unit => isCombatUnitIdentityMatch(unit, 指定目标单位.name || 指定目标单位))
-            ? 指定目标单位
-            : combatData.参战者.team_enemy?.[0];
+        let defender = 指定目标单位 || combatData.参战者.team_enemy?.[0];
         let defenderFinalStat = defender.final || defender;
         const 本次动作类型 = String(playerAction?.action_type || playerAction?.type || '').trim();
         const 本次携带物品名 = String(playerAction?.物品名 || playerAction?.skill?.__物品名 || '').trim();
@@ -29068,6 +29131,41 @@ class BattleUIComponent {
           const 消耗补丁包 = 构建战斗背包消耗补丁包(本次使用物品名, 当前背包, 使用者名, 1);
           if (消耗补丁包.patchOps.length) result.extraPatchOps.push(...消耗补丁包.patchOps);
           if (消耗补丁包.log) result.desc += 消耗补丁包.log;
+          const runtimeItem = 当前背包?.[本次使用物品名];
+          let remainingQuantity = Math.max(0, Math.floor(Number(物品数据?.数量 || 0)) - 1);
+          if (runtimeItem && typeof runtimeItem === 'object') {
+            runtimeItem.数量 = Math.max(0, Math.floor(Number(runtimeItem.数量 || 0)) - 1);
+            remainingQuantity = runtimeItem.数量;
+            if (runtimeItem.数量 <= 0) delete 当前背包[本次使用物品名];
+          }
+          const itemLedger = BATTLE_RUNTIME.ensureLedger(combatData?.__父级战斗数据 || combatData);
+          const itemActionStart = 查找最近账本动作事件(itemLedger, {
+            round: Number(combatData?.回合 || 0),
+            actorName: 使用者名,
+            actionName: playerAction?.skill?.name || playerAction?.skill?.魂技名 || 本次使用物品名,
+          });
+          写入战斗事件账本(combatData, {
+            eventKind: 'item_consume',
+            round: Number(combatData?.回合 || 0),
+            actorName: 使用者名,
+            targetName: playerAction?.target_name || defender?.name || defender?.名称 || 使用者名,
+            actionName: playerAction?.skill?.name || playerAction?.skill?.魂技名 || 本次使用物品名,
+            actionType: 'item_consume',
+            actionId: itemActionStart?.actionId || '',
+            sourceActionId: itemActionStart?.actionId || '',
+            parentNodeId: itemActionStart?.chainNodeId || '',
+            sourceNodeId: itemActionStart?.chainNodeId || '',
+            result: 'consumed',
+            ruleCode: 'ITEM_CONSUMED',
+            meta: {
+              source: 'item_settlement',
+              primaryOutcome: 'item_consumed',
+              itemName: 本次使用物品名,
+              delta: -1,
+              quantityBefore: Math.max(0, Math.floor(Number(物品数据?.数量 || 0))),
+              remainingQuantity,
+            },
+          });
         }
         const 玩家临时技能使用权 = 准备临时技能使用权(attacker, playerAction.skill);
         if (!玩家临时技能使用权.可释放) {
@@ -29327,6 +29425,7 @@ class BattleUIComponent {
                 ? creationRuntimeOwner.背包[itemName]
                 : {};
               creationRuntimeOwner.背包[itemName] = {
+                ...deepClonePlain(creation?.物品定义 || {}),
                 ...current,
                 数量: Math.max(0, Number(current?.数量 || 0)) + inventoryCount,
                 来源: String((本次原始造物技能 || playerAction.skill)?.魂技名 || (本次原始造物技能 || playerAction.skill)?.name || itemName).trim(),
@@ -29454,6 +29553,7 @@ class BattleUIComponent {
         const directHealEffect = 常规行动效果.find(effect => String(effect?.原型 || '').trim() !== '资源变化' && isBattleRecoverEffect(effect, ['hp'])) || null;
         const directSpEffect = 常规行动效果.find(effect => String(effect?.原型 || '').trim() !== '资源变化' && isBattleRecoverEffect(effect, ['sp'])) || null;
         const directMenEffect = 常规行动效果.find(effect => String(effect?.原型 || '').trim() !== '资源变化' && isBattleRecoverEffect(effect, ['men'])) || null;
+        const hasDirectResourceChange = 常规行动效果.some(effect => String(effect?.原型 || '').trim() === '资源变化');
         const directStatusRemoveEffects = 常规行动效果.filter(effect => String(effect?.原型 || '').trim() === '状态移除');
         const directCleanseEffect = 常规行动效果.find(effect => ['解控', '净化'].includes(读取战斗效果标签(effect))) || null;
         const directDispelEffect = 常规行动效果.find(effect => 读取战斗效果标签(effect) === '驱散增益') || null;
@@ -29691,7 +29791,7 @@ class BattleUIComponent {
         const 主状态规避目标列表 = dedupeCombatTargetList(主状态规避目标上下文?.targetSet || []).filter(Boolean);
         const resolvedPrimaryTargets = resolvedDamageTargets.length > 0 ? resolvedDamageTargets : 主状态规避目标列表;
         const primaryResolvedTarget = damageTargetContext.primaryTarget || 主状态规避目标上下文?.primaryTarget || resolvedPrimaryTargets[0] || null;
-        const targetsFriendlySkill = ['自身', '友方单体', '友方群体'].includes(damageTargetContext.targetKind);
+        const targetsFriendlySkill = playerAction?.__targetsFriendlyTeam === true || ['自身', '友方单体', '友方群体'].includes(damageTargetContext.targetKind);
         const hostileTargetRedirectedToSelf = false;
         const 主状态需要过规避门禁 = pState.状态名称 && pState.状态名称 !== '无' && !状态施加视为友方或增益(pState);
         if (attackerIsSilenced && !isBasicAttack) {
@@ -29738,6 +29838,7 @@ class BattleUIComponent {
             directHealEffect,
             directSpEffect,
             directMenEffect,
+            hasDirectResourceChange,
             directCleanseEffect,
             directDispelEffect,
             directStealBuffEffect,
@@ -29764,6 +29865,11 @@ class BattleUIComponent {
           directPrototypeEffects.length > 0;
         if (!有可结算战斗效果 && isBattleTacticalFallbackAction(skillName || playerAction?.action_type || playerAction?.type || '')) {
           result.desc = `[守势调整] ${构建守势待机短句(attacker.name || '行动者', skillName || playerAction?.action_type || playerAction?.type || '守势调整')}。`;
+          result.targetResults = [];
+          return result;
+        }
+        if (!有可结算战斗效果 && 本次动作类型 === '穿戴装备') {
+          result.desc = `[装备结算] ${attacker.name || '行动者'}完成装备调整。`;
           result.targetResults = [];
           return result;
         }
@@ -32623,7 +32729,7 @@ class BattleUIComponent {
           applyImmediateRecoveryEffect(directSpEffect, 'sp', '魂力');
           if (selfMirrorEffect && !effectTargetsSelf(directSpEffect))
             applyImmediateRecoveryEffect(mirrorEffectToSelf(directSpEffect), 'sp', '魂力');
-        } else if ((pState.计算层效果?.sp_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
+        } else if (!hasDirectResourceChange && (pState.计算层效果?.sp_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
           const selfResourceBlockRatio = 读取资源锁定比例(attacker, 'sp', '转化锁定');
           设置战斗延迟效果资源值(attacker, 'sp', Math.min(
             attackerFinalStat.sp_max || attacker.sp_max || 0,
@@ -32639,7 +32745,7 @@ class BattleUIComponent {
           applyImmediateRecoveryEffect(directMenEffect, 'men', '精神力');
           if (selfMirrorEffect && !effectTargetsSelf(directMenEffect))
             applyImmediateRecoveryEffect(mirrorEffectToSelf(directMenEffect), 'men', '精神力');
-        } else if ((pState.计算层效果?.men_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
+        } else if (!hasDirectResourceChange && (pState.计算层效果?.men_gain_ratio || 0) > 0 && !能力共享自身禁用命中) {
           const selfResourceBlockRatio = 读取资源锁定比例(attacker, 'men', '转化锁定');
           设置战斗延迟效果资源值(attacker, 'men', Math.min(
             attackerFinalStat.men_max || attacker.men_max || 0,
@@ -35252,17 +35358,13 @@ class BattleUIComponent {
 
         function createActorTurnCombatData(actorEntry, target, battleState, targetsFriendlyTeam = false) {
           const actor = actorEntry.char;
-          const actorAllies =
-            actorEntry.side === 'player'
-              ? 读取战斗主队单位列表(battleState.combatData, '玩家').filter(unit => unit.name !== actor.name)
-              : 读取战斗主队单位列表(battleState.combatData, '敌方').filter(unit => unit.name !== actor.name);
-          const friendlyRecipients = targetsFriendlyTeam
-            ? dedupeCombatTargetList([target, actor, ...actorAllies]).filter(isCombatUnitAlive)
-            : [];
-          const targetAllies =
-            actorEntry.side === 'player'
-              ? 读取战斗主队单位列表(battleState.combatData, '敌方').filter(unit => unit.name !== target.name)
-              : 读取战斗主队单位列表(battleState.combatData, '玩家').filter(unit => unit.name !== target.name);
+          const rootCombatData = battleState.combatData?.__父级战斗数据 || battleState.combatData;
+          const playerTeam = 读取战斗主队单位列表(rootCombatData, '玩家');
+          const enemyTeam = 读取战斗主队单位列表(rootCombatData, '敌方');
+          const actorInPlayerTeam = playerTeam.some(unit => unit === actor || isCombatUnitIdentityMatch(unit, actor?.name || actor?.名称 || ''));
+          const actorTeam = actorInPlayerTeam ? playerTeam : enemyTeam;
+          const opposingTeam = actorInPlayerTeam ? enemyTeam : playerTeam;
+          const actorAllies = actorTeam.filter(unit => unit !== actor && !isCombatUnitIdentityMatch(unit, actor?.name || actor?.名称 || ''));
 
           return {
             战斗类型: battleState.combatData.战斗类型 || '突发遭遇',
@@ -35272,8 +35374,10 @@ class BattleUIComponent {
             __父级战斗数据: battleState.combatData,
             先攻: actor.name,
             参战者: {
-              team_player: targetsFriendlyTeam ? [actor] : [actor, ...actorAllies],
-              team_enemy: targetsFriendlyTeam ? friendlyRecipients : [target, ...targetAllies],
+              team_player: [actor, ...actorAllies],
+              team_enemy: targetsFriendlyTeam
+                ? opposingTeam
+                : dedupeCombatTargetList([target, ...opposingTeam]).filter(isCombatUnitAlive),
             },
           };
         }
@@ -35772,7 +35876,7 @@ class BattleUIComponent {
                 actorName: actor.name || actor.名称 || '',
                 actorSide: actorEntry.side === 'enemy' ? 'enemy' : 'player',
                 targetName: declaredTargetName,
-                targetSide: actorEntry.side === 'enemy' ? 'player' : 'enemy',
+                targetSide: 读取规划单位阵营(actionTarget, battleState.combatData) === (actorEntry.side === 'enemy' ? '敌方' : '玩家') ? actorEntry.side : (actorEntry.side === 'enemy' ? 'player' : 'enemy'),
                 actionName,
                 initialActionName: actionName,
                 finalActionName: actionName,
@@ -35894,6 +35998,29 @@ class BattleUIComponent {
 
             if (carryOverAction) {
               actor.蓄力技能 = carryOverAction;
+              写入战斗事件账本(battleState.combatData, {
+                eventKind: 'charge_start',
+                round: Number(battleState.combatData?.回合 || 0),
+                actorName: actor?.name || actor?.名称 || '',
+                actorSide: actorEntry.side === 'enemy' ? 'enemy' : 'player',
+                targetName: actionTarget?.name || actionTarget?.名称 || '',
+                targetSide: 读取规划单位阵营(actionTarget, battleState.combatData) === (actorEntry.side === 'enemy' ? '敌方' : '玩家') ? actorEntry.side : (actorEntry.side === 'enemy' ? 'player' : 'enemy'),
+                actionName: carryOverAction?.skill?.name || carryOverAction?.skill?.魂技名 || carryOverAction?.action_type || '蓄力行动',
+                initialActionName: normalizeBattleActionDisplayName(actorEntry.__declaredActionName || carryOverAction?.skill?.name || carryOverAction?.skill?.魂技名 || carryOverAction?.action_type || '蓄力行动'),
+                finalActionName: normalizeBattleActionDisplayName(carryOverAction?.skill?.name || carryOverAction?.skill?.魂技名 || carryOverAction?.action_type || '蓄力行动'),
+                actionType: 'charge_start',
+                actorControl: String(queueNode?.actorControl || 'AI').trim() || 'AI',
+                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                result: 'charging',
+                actionStatus: 'CHARGING',
+                meta: {
+                  source: 'action_queue_charge_start',
+                  remainingCastTime: Math.max(0, Number(carryOverAction?.cast_time || 0)),
+                  grantId: String(queueNode?.grantId || '').trim(),
+                  chainType: String(queueNode?.chainType || '').trim(),
+                  primaryOutcome: 'charging',
+                },
+              });
               return {
                 actor: actor.name,
                 side: actorEntry.side,
@@ -35934,7 +36061,9 @@ class BattleUIComponent {
           let finalTarget = actionTarget;
           const activeBaseStanceType = 读取主动基础防守姿态类型(action);
           const skillTargetKind = activeBaseStanceType ? '自身' : inferSkillPrimaryTargetKind(action?.skill || {});
-          const targetsFriendlyTeam = ['自身', '友方单体', '友方群体'].includes(skillTargetKind);
+          const declaredTargetIsFriendly = !!lockedDeclaredTarget &&
+            读取规划单位阵营(lockedDeclaredTarget, battleState.combatData) === 读取规划单位阵营(actor, battleState.combatData);
+          const targetsFriendlyTeam = declaredTargetIsFriendly || 技能偏向友方目标(action?.skill || {}) || ['自身', '友方单体', '友方群体'].includes(skillTargetKind);
           const enemyTeam =
             actorEntry.side === 'player'
               ? 读取战斗阵营单位列表(battleState.combatData, '敌方')
@@ -35965,6 +36094,7 @@ class BattleUIComponent {
             }
           }
           action.target_name = finalTarget?.name || action.target_name || null;
+          action.__targetsFriendlyTeam = targetsFriendlyTeam;
           if (action?.skill && action.target_name) action.skill.__指定目标名 = action.target_name;
           const parentActionEvent = battleState?.followUpParentEvent && typeof battleState.followUpParentEvent === 'object'
             ? battleState.followUpParentEvent
@@ -36002,6 +36132,31 @@ class BattleUIComponent {
               summonMode: actor.召唤键 ? (actor?.行动模式 || '') : '',
             },
           });
+          if (action?.action_type === '穿戴装备') {
+            const 装备日志 = 应用决策装备状态(actor, action);
+            if (装备日志) {
+              actionLog += `${装备日志} `;
+              写入战斗事件账本(battleState.combatData, {
+                eventKind: 'complete',
+                round: Number(battleState.combatData?.回合 || 0),
+                actorName: actor?.name || actor?.名称 || '',
+                actorSide: actorEntry.side === 'enemy' ? 'enemy' : 'player',
+                targetName: actor?.name || actor?.名称 || '',
+                targetSide: actorEntry.side === 'enemy' ? 'enemy' : 'player',
+                actionName: action?.skill?.name || action?.skill?.名称 || action?.name || '穿戴装备',
+                actionType: 'equipment',
+                actorControl: String(actionStartEvent?.actorControl || queueNode?.actorControl || actorEntry.__actorControl || 'AI').trim() || 'AI',
+                actionRole: 标准化战斗行动职责(queueNode?.actionRole || 'ACTIVE'),
+                actionId: actionStartEvent?.actionId || '',
+                sourceActionId: actionStartEvent?.actionId || '',
+                parentNodeId: actionStartEvent?.chainNodeId || '',
+                sourceNodeId: actionStartEvent?.chainNodeId || '',
+                result: 'equipped',
+                ruleCode: 'EQUIPMENT_APPLIED',
+                meta: { source: 'equipment_settlement', primaryOutcome: 'equipped' },
+              });
+            }
+          }
           action.__actorControl = String(actionStartEvent?.actorControl || queueNode?.actorControl || actorEntry.__actorControl || 'AI').trim() || 'AI';
           const settlementLedgerStart = BATTLE_RUNTIME.ensureLedger(battleState.combatData).length;
           const settlementHpBefore = new Map([
@@ -36209,11 +36364,21 @@ class BattleUIComponent {
             combatData: actorTurnCombatData,
           });
           if (finalTarget !== actor && !targetsFriendlyTeam) {
-            const reactionActorSide = actorEntry.side === 'enemy' ? 'player' : 'enemy';
-            const reactionTargetSide = actorEntry.side === 'enemy' ? 'enemy' : 'player';
+            const rootCombatData = 读取战斗根数据(battleState.combatData);
+            const rootActorSide = 读取战斗单位阵营名(rootCombatData, actor);
+            const rootTargetSide = 读取战斗单位阵营名(rootCombatData, finalTarget);
+            const reactionActorSide = ['player', 'enemy'].includes(rootTargetSide)
+              ? rootTargetSide
+              : (actorEntry.side === 'enemy' ? 'player' : 'enemy');
+            const reactionTargetSide = ['player', 'enemy'].includes(rootActorSide)
+              ? rootActorSide
+              : (actorEntry.side === 'enemy' ? 'enemy' : 'player');
             BATTLE_RUNTIME.ensureLedger(battleState.combatData).slice(settlementLedgerStart).forEach(event => {
-              if (标准化战斗行动职责(event?.actionRole || '') !== 'REACTION') return;
               if (!isSameBattleReportName(event?.actorName || '', finalTarget?.name || finalTarget?.名称 || '')) return;
+              const eventKind = String(event?.eventKind || '').trim();
+              const reactionFact = 标准化战斗行动职责(event?.actionRole || '') === 'REACTION' || ['dodge', 'defend', 'pass'].includes(eventKind);
+              if (!reactionFact) return;
+              event.actionRole = 'REACTION';
               event.actorSide = reactionActorSide;
               event.targetSide = isSameBattleReportName(event?.targetName || '', finalTarget?.name || finalTarget?.名称 || '')
                 ? reactionActorSide
@@ -36296,7 +36461,7 @@ class BattleUIComponent {
           const rootEventLedger = BATTLE_RUNTIME.ensureLedger(battleState.combatData);
           const hasStructuredSettlement = rootEventLedger.some(event => {
             const kind = String(event?.eventKind || '').trim();
-            if (!['hit_result', 'state_apply', 'resource_change', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
+            if (!['hit_result', 'state_apply', 'resource_change', 'item_consume', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
             return String(event?.sourceActionId || event?.actionId || '').trim() === String(actionStartEvent?.actionId || '').trim() ||
               String(event?.sourceNodeId || event?.parentNodeId || '').trim() === String(actionStartEvent?.chainNodeId || '').trim();
           });
@@ -36976,6 +37141,7 @@ class BattleUIComponent {
           let decisionIndex = 0;
           const decide = payload => decision.decide({
             ...payload,
+            battleIntent: payload?.battleIntent || { mode: String(payload?.worldSnapshot?.战斗意图 || combatData?.战斗意图 || '').trim() },
             seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${decisionIndex++}:${payload?.seedOffset || 0}`,
           });
           return runDecisionTeamBattleSimulation(
@@ -37086,7 +37252,7 @@ class BattleUIComponent {
               稳定状态: char.召唤键 ? 读取召唤稳定状态(char) : '',
               actionState: String(char?.状态?.行动 || '').trim(),
               当前领域: char.当前领域 || '无',
-              状态效果: Object.entries(char.状态效果 || {}).map(([name, cond]) => ({
+              状态效果: Object.entries(char.状态效果 || {}).filter(([, cond]) => cond?.__equipmentState !== true).map(([name, cond]) => ({
                 name,
                 type: cond.类型 || 'buff',
                 duration: cond.duration || 0,

@@ -460,11 +460,28 @@
     return combatEffect;
   }
 
+  function effectStateName(effect = {}) {
+    const explicit = String(effect?.状态 || effect?.状态名称 || '').trim();
+    if (explicit) return explicit;
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '属性修正') {
+      const attributes = (Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性]).map(value => String(value || '').trim()).filter(Boolean);
+      return `${attributes.join('、') || '属性'}修正`;
+    }
+    if (prototype === '判定修正') return `${String(effect?.判定 || '判定').trim() || '判定'}判定修正`;
+    return String(effect?.判定 || prototype).trim();
+  }
+
+  function findStateEntry(unit = {}, effect = {}) {
+    const wanted = effectStateName(effect);
+    return stateEntries(unit).find(([, state]) => stateName(state) === wanted) || null;
+  }
+
   function addState(unit, effect, effectId) {
-    const stateName = String(effect?.状态 || effect?.状态名称 || effect?.判定 || effect?.原型 || '').trim();
+    const stateName = effectStateName(effect);
     if (!stateName) return false;
     unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
-    const existingEntry = stateEntries(unit).find(([, state]) => String(state?.状态 || state?.状态名称 || state?.名称 || '').trim() === stateName);
+    const existingEntry = findStateEntry(unit, effect);
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
     if (existingEntry && !stackable) {
@@ -593,7 +610,11 @@
           const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
           const damageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
           const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability);
-          overlay.changeUnit(unitId(target), unit => setHp(unit, readHp(unit) - expectedDamage));
+          const nonlethalIncapacitated = nonlethalIntent && damageLimit > 0 && expectedDamage >= damageLimit - 1e-9;
+          overlay.changeUnit(unitId(target), unit => {
+            setHp(unit, readHp(unit) - expectedDamage);
+            if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
+          });
           ledger.addOutcome({
             ...context,
             targetId: unitId(target),
@@ -601,6 +622,16 @@
             threatValue: expectedDamage / readHpMax(currentTarget) * 100,
             evidence: { rawDamage, hitProbability, expectedDamage, damageType: effect?.伤害类型 || '' },
           });
+          if (nonlethalIncapacitated) {
+            ledger.addOutcome({
+              ...context,
+              targetId: unitId(target),
+              outcomeKind: 'ACTION_CANCELLED',
+              windowId: 'NONLETHAL_INCAPACITATION',
+              threatValue: 0,
+              evidence: { reason: 'NONLETHAL_INCAPACITATION', hpFloor: 1 },
+            });
+          }
         });
         return;
       }
@@ -686,8 +717,11 @@
         targets.forEach(target => {
           let evidence;
           overlay.changeUnit(unitId(target), unit => {
-            evidence = applyStatModifier(unit, effect);
-            addState(unit, effect, context.effectInstanceId);
+            const existing = findStateEntry(unit, effect);
+            const marginal = addState(unit, effect, context.effectInstanceId);
+            evidence = existing
+              ? { attribute: String(effect?.属性 || '').trim(), current: readNumber(unit, [String(effect?.属性 || '').trim()], 0), next: readNumber(unit, [String(effect?.属性 || '').trim()], 0), delta: 0, marginal, refreshed: marginal }
+              : { ...applyStatModifier(unit, effect), marginal };
           });
           ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED', threatValue: 0, evidence });
         });

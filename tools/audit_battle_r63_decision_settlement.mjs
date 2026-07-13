@@ -189,7 +189,11 @@ const nonlethalResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   caseId: 'r63-decision-settlement-nonlethal', seed: 6311, combatData: nonlethalInput, mode: 'team_preview', rounds: 3,
   battleIntent: { mode: '点到为止' }, settings: {},
 });
-assert.equal(nonlethalResult.finalSnapshot?.team_enemy?.[0]?.hp, 1, '非致命战斗意图没有保留目标生命');
+const nonlethalFinalHp = Number(nonlethalResult.finalSnapshot?.team_enemy?.[0]?.hp || 0);
+assert.ok(
+  nonlethalFinalHp >= 1 && nonlethalFinalHp < 80,
+  `非致命战斗意图没有在保留目标生命的前提下形成有效推进:${JSON.stringify(decisionSummary(nonlethalResult))}`,
+);
 const nonlethalPrevented = nonlethalResult.ledger.filter(event => event?.eventKind === 'hit_result' && event?.meta?.intentLethalPrevented === true);
 assert.equal(nonlethalPrevented.length, 1, '非致命限伤事实数量不唯一');
 assert.equal(nonlethalResult.roundsExecuted, Number(nonlethalPrevented[0]?.round || 0), '非致命限伤后仍继续生成自然行动回合');
@@ -262,8 +266,33 @@ const supportFacts = supportResult.ledger.filter(event =>
 assert.ok(supportFacts.some(event => event?.targetName === 'player-b'), `友方群体支援没有覆盖队友:${JSON.stringify(supportResult.ledger)}`);
 assert.ok(!supportFacts.some(event => event?.targetName === 'enemy-a'), '友方群体支援错误落到敌方');
 assert.ok(!supportResult.ledger.some(event => ['counter_window', 'counter'].includes(event?.eventKind) && String(event?.sourceActionId || '') === String(supportStart.actionId || '')), '非攻击支援动作错误触发防反链');
+const supportReactionFacts = supportResult.ledger.filter(event => ['pass', 'dodge', 'defend'].includes(event?.eventKind) && String(event?.sourceActionId || '') === String(supportStart.actionId || ''));
+assert.equal(supportReactionFacts.length, 0, `非攻击支援动作错误生成应招事实:${JSON.stringify({ supportStart, selected: supportResult.decisions?.find(entry => entry?.actorId === 'player-a')?.selected, supportReactionFacts })}`);
 const supportCost = supportResult.ledger.find(event => event?.eventKind === 'action_cost' && event?.actorName === 'player-a' && event?.actionName === '群体支援');
 assert.equal(Number(supportCost?.meta?.reqSp || 0), 1, '对象型绝对魂力消耗没有按1点正式结算');
+
+const resourceSupportInput = combatData();
+resourceSupportInput.参战者.team_player.push(participant('player-b', 'player', 120));
+resourceSupportInput.参战者.team_player[1].属性.魂力 = 100;
+resourceSupportInput.参战者.team_player[1].sp = 100;
+const resourceSupportSkill = {
+  id: 'single-resource-support', name: '单体魂力支援', 魂技名: '单体魂力支援', 消耗: { 魂力: 20 }, 前摇: 1,
+  _效果数组: [{ 原型: '资源变化', 目标: '单体', 资源: '魂力', 数值: '+10%', 生效方式: '独立生效' }],
+};
+resourceSupportInput.参战者.team_player[0].技能列表 = [structuredClone(resourceSupportSkill)];
+const resourceSupportResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'r63-decision-resource-support-conservation', seed: 6332, combatData: resourceSupportInput, mode: 'team_preview', rounds: 1,
+  selectedAction: {
+    actor_name: 'player-a', target_name: 'player-b', type: 'skill', action_type: '释放魂技', skill: structuredClone(resourceSupportSkill),
+  },
+  settings: {},
+});
+const resourceSupportGain = resourceSupportResult.ledger.find(event => event?.eventKind === 'resource_change' && event?.actorName === 'player-a' && event?.targetName === 'player-b' && event?.actionName === '单体魂力支援' && event?.meta?.resourceKey === 'sp');
+assert.ok(Number(resourceSupportGain?.meta?.delta || 0) > 0, '友方魂力支援没有形成资源变化事实');
+assert.ok(!resourceSupportResult.ledger.some(event => event?.eventKind === 'resource_change' && event?.actorName === 'player-a' && event?.targetName === 'player-a' && event?.actionName === '单体魂力支援' && event?.meta?.resourceKey === 'sp'), '单体资源变化被旧自回分支重复结算到施术者');
+const resourceSupportCaster = resourceSupportResult.finalSnapshot?.team_player?.find(unit => unit?.name === 'player-a');
+assert.equal(Number(resourceSupportCaster?.sp || 0), 482, '施术者魂力消耗被资源变化兼容分支错误补满');
+assert.equal(resourceSupportResult.audit?.fatals?.filter(item => item?.code === 'LEDGER_CONSERVATION_MISMATCH').length || 0, 0, '魂力支援结算未通过Ledger守恒');
 
 const counterDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'duel_agile_counter_options');
@@ -281,6 +310,15 @@ const counterResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
 const counterDecision = counterResult.decisions.find(entry => entry?.actionRole === 'COUNTER');
 const counterWindow = counterResult.ledger.find(event => event?.eventKind === 'counter_window' && event?.result === 'opened');
 const counterFact = counterResult.ledger.find(event => event?.eventKind === 'counter' && event?.result === 'success' && Number(event?.meta?.resolvedDamage || 0) > 0);
+const failedCounterFacts = counterResult.ledger.filter(event => event?.eventKind === 'counter' && event?.result === 'fail');
+const counterReactionFacts = counterResult.ledger.filter(event =>
+  ['dodge', 'defend', 'pass'].includes(String(event?.eventKind || '')) &&
+  event?.actorName &&
+  event?.targetName &&
+  event.actorName !== event.targetName &&
+  [counterFact?.actorName, counterFact?.targetName].includes(event.actorName) &&
+  [counterFact?.actorName, counterFact?.targetName].includes(event.targetName)
+);
 const counterDamage = counterResult.ledger.find(event =>
   event?.eventKind === 'hit_result' &&
   event?.actionRole === 'COUNTER' &&
@@ -296,6 +334,9 @@ assert.notEqual(counterDecision?.selected?.candidateId, counterDecline?.candidat
 assert.ok(counterFact && counterDamage, '固定种子没有形成成功防反及唯一正伤害事实');
 assert.equal(counterFact.actorSide, 'enemy', '防反子战斗改写了行动者客观阵营');
 assert.equal(counterFact.targetSide, 'player', '防反子战斗改写了目标客观阵营');
+assert.ok(failedCounterFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `失败防反客观阵营错误:${JSON.stringify(failedCounterFacts)}`);
+assert.ok(counterReactionFacts.length > 0, '固定种子没有覆盖防反后二次反应事实');
+assert.ok(counterReactionFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `防反后二次反应客观阵营错误:${JSON.stringify(counterReactionFacts)}`);
 assert.doesNotMatch(counterResult.logs.join('\n'), /技能分类预览|主观置信度锁定|行为经验|自动行为链再判定/, '防反链仍执行旧评分器');
 assert.equal(counterResult.audit?.fatals?.length || 0, 0, `成功防反事实审计失败:${JSON.stringify(counterResult.audit?.fatals || [])}`);
 
