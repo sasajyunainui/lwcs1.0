@@ -198,7 +198,7 @@
       });
       注册('批量编号重复召唤', 日志 => {
         const 基础 = 构建召唤夹具战斗态({ 名称: '占位召唤', 行动模式: '协同攻击' });
-        移除召唤运行态单位(基础.combatData, 基础.召唤单位, '夹具重建');
+        BATTLE_RUNTIME.removeSummonUnit(基础.combatData, 基础.召唤单位, '夹具重建');
         const 生成 = () => {
           const 编号 = 读取下一个召唤编号(基础.combatData, 基础.宿主, '其他召唤生物', '比蒙巨兽');
           const 名称 = `比蒙巨兽#${编号}`;
@@ -287,7 +287,7 @@
       });
       注册('召唤评分纯计算', 日志 => {
         const 夹具 = 构建召唤夹具战斗态({ 名称: '评分基准兽', 行动模式: '协同攻击', 持续回合: 2 });
-        移除召唤运行态单位(夹具.combatData, 夹具.召唤单位, '评分夹具重置');
+        BATTLE_RUNTIME.removeSummonUnit(夹具.combatData, 夹具.召唤单位, '评分夹具重置');
         夹具.宿主.men = 10000;
         夹具.宿主.men_max = 10000;
         const before = JSON.stringify(夹具.combatData);

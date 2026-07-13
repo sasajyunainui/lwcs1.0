@@ -1955,6 +1955,59 @@
     return summon.召唤窗口运行态;
   }
 
+  function syncSummonMirror(summon = {}) {
+    const mirror = summon?.__来源状态?.召唤物;
+    if (!mirror || typeof mirror !== 'object') return;
+    mirror.召唤键 = summon.召唤键;
+    mirror.召唤单位类型 = summon.类型;
+    mirror.召唤物名称 = previewRuntime.unitName(summon) || '召唤物';
+    mirror.行动模式 = summon.行动模式;
+    mirror.生命 = previewRuntime.readHp(summon);
+    mirror.生命上限 = previewRuntime.readHpMax(summon);
+    mirror.精神负载 = Math.max(0, Number(summon.精神负载 || 0));
+    mirror.生成回合 = Math.max(0, Number(summon.生成回合 || 0));
+    mirror.已消散 = summon.已消散 === true;
+  }
+
+  function removeSummonUnit(combatData = {}, summon = {}, reason = '消散') {
+    if (!summon || summon.已消散 === true) return '';
+    const host = summon.__宿主;
+    writeLedgerEvent(combatData, {
+      eventKind: 'summon_end',
+      round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(summon),
+      targetName: previewRuntime.unitName(host) || String(summon?.宿主名 || '').trim(),
+      actionName: '召唤离场',
+      actionType: 'summon_end',
+      actionRole: summon?.行动模式 === '协同攻击' || summon?.行动模式 === '护卫' ? 'ASSIST' : 'ACTIVE',
+      result: 'ended',
+      reasonCode: /窗口|持续|结束/.test(String(reason || '')) ? 'SUMMON_WINDOW_EXHAUSTED' : 'SUMMON_REMOVED',
+      meta: {
+        source: 'summon',
+        reasonText: String(reason || '消散'),
+        summonName: previewRuntime.unitName(summon),
+        summonHostName: previewRuntime.unitName(host) || String(summon?.宿主名 || '').trim(),
+        summonMode: String(summon?.行动模式 || '').trim(),
+      },
+    });
+    summon.已消散 = true;
+    syncSummonMirror(summon);
+    if (combatData?.召唤单位表 && summon.召唤键) delete combatData.召唤单位表[summon.召唤键];
+    if (host?.状态效果 && summon.来源状态键 && host.状态效果[summon.来源状态键]) delete host.状态效果[summon.来源状态键];
+    return `[召唤消散] ${previewRuntime.unitName(summon) || '召唤物'}因${reason}离场。`;
+  }
+
+  function consumeSummonWindow(combatData = {}, summon = {}, reason = '完成行动窗口', grantId = '') {
+    const sourceState = summon?.__来源状态;
+    if (!sourceState || typeof sourceState.duration !== 'number' || summon.已消散 === true) return '';
+    const runtime = ensureSummonWindowRuntime(summon);
+    const windowGrantId = String(grantId || `${runtime?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:window`).trim();
+    if (runtime?.consumedWindowGrantIds.has(windowGrantId)) return '';
+    runtime?.consumedWindowGrantIds.add(windowGrantId);
+    sourceState.duration = Math.max(0, Number(sourceState.duration || 0) - 1);
+    return sourceState.duration > 0 ? '' : removeSummonUnit(combatData, summon, reason);
+  }
+
   function writeSummonMentalControlEvent(combatData = {}, host = {}, summon = {}, result = '', detail = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
     const summonName = previewRuntime.unitName(summon) || '召唤物';
     if (!combatData || !summonName) return null;
@@ -1994,7 +2047,7 @@
     const summons = listSummonCombatUnits(combatData).filter(unit => isUnitIdentityMatch(unit?.__宿主, host));
     if (!summons.length) return '';
     if (!isUnitAbleToFight(host)) {
-      return summons.map(unit => settlement.removeSummonUnit(combatData, unit, '宿主失去战斗能力', adapterOptions)).filter(Boolean).join(' ');
+      return summons.map(unit => removeSummonUnit(combatData, unit, '宿主失去战斗能力')).filter(Boolean).join(' ');
     }
     const mentalMax = Math.max(1, Number(host.men_max || host?.属性?.精神力上限 || 1));
     const mental = Math.max(0, Number(host.men ?? host?.属性?.精神力 ?? mentalMax));
@@ -2033,7 +2086,7 @@
           mentalLimit,
           maintainRatio,
         }, settlement, adapterOptions);
-        logs.push(settlement.removeSummonUnit(combatData, unit, '精神力枯竭', adapterOptions));
+        logs.push(removeSummonUnit(combatData, unit, '精神力枯竭'));
       } else if (unit.类型 === '深渊生物' && maintainRatio < 0.25) {
         writeSummonMentalControlEvent(combatData, host, unit, 'recalled', {
           failReason: '宿主精神维持不足，召唤物被强制离场',
@@ -2043,7 +2096,7 @@
           mentalLimit,
           maintainRatio,
         }, settlement, adapterOptions);
-        logs.push(settlement.removeSummonUnit(combatData, unit, '精神维持不足', adapterOptions));
+        logs.push(removeSummonUnit(combatData, unit, '精神维持不足'));
       } else if (maintainRatio < 0.25) {
         unit.__禁用召唤技能 = true;
         writeSummonMentalControlEvent(combatData, host, unit, 'skill_limited', {
@@ -2149,7 +2202,7 @@
         const createdRound = Math.max(0, Number(unit?.生成回合 || 0));
         if (currentRound > 0 && createdRound > 0 && currentRound <= createdRound) return;
         const grantId = `${ensureSummonWindowRuntime(unit)?.windowId || 'summon'}:${currentRound}:guard-window`;
-        const expiredLog = settlement.consumeSummonWindow(combatData, unit, '护卫保护窗口耗尽', grantId, adapterOptions);
+        const expiredLog = consumeSummonWindow(combatData, unit, '护卫保护窗口耗尽', grantId);
         if (expiredLog) logs.push(expiredLog);
       });
     return logs.join(' ');
@@ -4599,7 +4652,7 @@
     const required = [
       'prepare', 'buildQueue', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
-      'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow',
+      'buildSummonFinalStats',
     ];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
@@ -4929,6 +4982,8 @@
     readTeamAlive,
     validateSoulTowerRoster,
     ensureSummonWindowRuntime,
+    removeSummonUnit,
+    consumeSummonWindow,
     refreshSummonMentalLoad,
     beginBattleRound,
     settleGuardSummonWindows,

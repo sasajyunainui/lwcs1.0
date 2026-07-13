@@ -181,6 +181,8 @@ addCheck(
     /function beginBattleRound\(/.test(battleRuntimeSource) &&
     /function settleBattleRoundEnd\(/.test(battleRuntimeSource) &&
     /function ensureSummonWindowRuntime\(/.test(battleRuntimeSource) &&
+    /function removeSummonUnit\(/.test(battleRuntimeSource) &&
+    /function consumeSummonWindow\(/.test(battleRuntimeSource) &&
     /function refreshSummonMentalLoad\(/.test(battleRuntimeSource) &&
     /function settleGuardSummonWindows\(/.test(battleRuntimeSource) &&
     /function settleRuleRewrite\(/.test(battleRuntimeSource) &&
@@ -196,7 +198,7 @@ addCheck(
     !/function 完成团战运行\(/.test(battleUiSource) &&
     !/function BattleDirectorRoundStart\(|function 清理本回合多威胁运行态\(|function 记录战斗上下文时光回溯快照\(|function 开始团战回合\(/.test(battleUiSource) &&
     !/function settleTeamRoundEnd\(/.test(battleUiSource) &&
-    !/function 确保召唤窗口运行态\(|function 执行召唤回合开始\(/.test(battleUiSource) &&
+    !/function 确保召唤窗口运行态\(|function 执行召唤回合开始\(|function 移除召唤运行态单位\(|function 消费召唤有效窗口\(/.test(battleUiSource) &&
     !/function 刷新召唤精神负载\(|function 写入召唤精神控制事件\(/.test(battleUiSource) &&
     !/function 结算护卫召唤回合窗口\(/.test(battleUiSource) &&
     !/function 递减战斗规则改写运行态\(/.test(battleUiSource) &&
@@ -204,7 +206,7 @@ addCheck(
     !/function 查找最近账本动作事件\(/.test(battleUiSource) &&
     !/function 查找行动轴初始意图节点\(/.test(battleUiSource) &&
     !/function 推断战斗目标阵营侧\(|function 推断战斗单位阵营侧\(|function 推断战斗事件阵营侧\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );

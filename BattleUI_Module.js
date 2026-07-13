@@ -15098,18 +15098,6 @@ class BattleUIComponent {
       return grantId;
     }
 
-    function 消费召唤有效窗口(combatData = {}, 召唤单位 = {}, 原因 = '完成行动窗口', grantId = '') {
-      const 来源状态 = 召唤单位?.__来源状态;
-      if (!来源状态 || typeof 来源状态.duration !== 'number' || 召唤单位.已消散 === true) return '';
-      const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
-      const windowGrantId = String(grantId || `${runtime?.windowId || 'summon'}:${Math.max(0, Number(combatData?.回合 || 0))}:window`).trim();
-      if (runtime?.consumedWindowGrantIds.has(windowGrantId)) return '';
-      runtime?.consumedWindowGrantIds.add(windowGrantId);
-      来源状态.duration = Math.max(0, Number(来源状态.duration || 0) - 1);
-      if (来源状态.duration > 0) return '';
-      return 移除召唤运行态单位(combatData, 召唤单位, 原因);
-    }
-
     function 记录召唤无目标结果(combatData = {}, 召唤单位 = {}, 原因 = 'NO_VALID_TARGET', options = {}) {
       const runtime = BATTLE_RUNTIME.ensureSummonWindowRuntime(召唤单位);
       return BATTLE_RUNTIME.writeLedgerEvent(combatData, {
@@ -15135,34 +15123,6 @@ class BattleUIComponent {
       });
     }
 
-    function 移除召唤运行态单位(combatData = {}, 召唤单位 = {}, 原因 = '消散') {
-      if (!召唤单位 || 召唤单位.已消散 === true) return '';
-      const 宿主 = 召唤单位.__宿主;
-      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
-        eventKind: 'summon_end',
-        round: Number(combatData?.回合 || 0),
-        actorName: 召唤单位?.name || 召唤单位?.名称 || '',
-        targetName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
-        actionName: '召唤离场',
-        actionType: 'summon_end',
-        actionRole: 召唤单位?.行动模式 === '协同攻击' || 召唤单位?.行动模式 === '护卫' ? 'ASSIST' : 'ACTIVE',
-        result: 'ended',
-        reasonCode: /窗口|持续|结束/.test(String(原因 || '')) ? 'SUMMON_WINDOW_EXHAUSTED' : 'SUMMON_REMOVED',
-        meta: {
-          source: 'summon',
-          reasonText: String(原因 || '消散'),
-          summonName: 召唤单位?.name || 召唤单位?.名称 || '',
-          summonHostName: 宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '',
-          summonMode: 召唤单位?.行动模式 || '',
-        },
-      });
-      召唤单位.已消散 = true;
-      同步召唤单位镜像(召唤单位);
-      if (combatData?.召唤单位表 && 召唤单位.召唤键) delete combatData.召唤单位表[召唤单位.召唤键];
-      if (宿主?.状态效果 && 召唤单位.来源状态键 && 宿主.状态效果[召唤单位.来源状态键]) delete 宿主.状态效果[召唤单位.来源状态键];
-      return `[召唤消散] ${召唤单位.name || '召唤物'}因${原因}离场。`;
-    }
-
     function 主动收回召唤单位(combatData = {}, 宿主 = {}, 指定名称 = '') {
       const 指定文本 = String(指定名称 || '').trim();
       const 候选列表 = 读取召唤单位列表(combatData, { 宿主 }).filter(单位 =>
@@ -15178,7 +15138,7 @@ class BattleUIComponent {
       候选列表.forEach(单位 => {
         写入召唤收回锁(combatData, 单位);
         const 名称 = 单位.name || 单位.名称 || '召唤物';
-        移除召唤运行态单位(combatData, 单位, '主动收回');
+        BATTLE_RUNTIME.removeSummonUnit(combatData, 单位, '主动收回');
         日志.push(`${名称}`);
       });
       return `[收回召唤] 已收回${日志.join('、')}。`;
@@ -15200,13 +15160,13 @@ class BattleUIComponent {
     function 处理召唤单位死亡(combatData = {}, 召唤单位 = {}) {
       if (!召唤单位?.召唤键 || getCombatHpValue(召唤单位) > 0 || 召唤单位.已消散 === true) return '';
       const 反噬日志 = 执行召唤死亡反噬(召唤单位);
-      const 消散日志 = 移除召唤运行态单位(combatData, 召唤单位, '死亡');
+      const 消散日志 = BATTLE_RUNTIME.removeSummonUnit(combatData, 召唤单位, '死亡');
       return [反噬日志, 消散日志].filter(Boolean).join(' ');
     }
 
     function 移除宿主状态召唤单位(combatData = {}, 宿主 = {}, 来源状态键 = '', 原因 = '来源状态结束') {
       const 单位 = 读取召唤单位列表(combatData, { 宿主 }).find(item => item.来源状态键 === 来源状态键);
-      return 单位 ? 移除召唤运行态单位(combatData, 单位, 原因) : '';
+      return 单位 ? BATTLE_RUNTIME.removeSummonUnit(combatData, 单位, 原因) : '';
     }
 
     function 评分召唤攻击目标(召唤单位 = {}, 目标 = {}) {
@@ -15497,7 +15457,7 @@ class BattleUIComponent {
           记录召唤物规划审计(combatData, 单位, 目标, 技能, '回合尾召唤物自主行动');
           日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动', { grantId }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽', grantId);
+        const 到期日志 = BATTLE_RUNTIME.consumeSummonWindow(combatData, 单位, '自主行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -15519,7 +15479,7 @@ class BattleUIComponent {
           记录召唤物规划审计(combatData, 单位, 目标, 技能, '行动轴召唤物自主行动');
           日志.push(结算运行态召唤单位简易攻击(单位, 目标, combatData, '召唤自主行动', { grantId }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '自主行动窗口耗尽', grantId);
+        const 到期日志 = BATTLE_RUNTIME.consumeSummonWindow(combatData, 单位, '自主行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -15531,7 +15491,7 @@ class BattleUIComponent {
       if (!协同列表.length) return '';
       if (!isCombatUnitAbleToFight(宿主)) {
         协同列表.forEach(单位 => {
-          const 消散日志 = 移除召唤运行态单位(combatData, 单位, '宿主失去战斗能力');
+          const 消散日志 = BATTLE_RUNTIME.removeSummonUnit(combatData, 单位, '宿主失去战斗能力');
           if (消散日志) 日志.push(消散日志);
         });
         return 日志.join(' ');
@@ -15558,7 +15518,7 @@ class BattleUIComponent {
             grantId,
           }));
         }
-        const 到期日志 = 消费召唤有效窗口(combatData, 单位, '协同行动窗口耗尽', grantId);
+        const 到期日志 = BATTLE_RUNTIME.consumeSummonWindow(combatData, 单位, '协同行动窗口耗尽', grantId);
         if (到期日志) 日志.push(到期日志);
       });
       return 日志.filter(Boolean).join(' ');
@@ -15578,8 +15538,6 @@ class BattleUIComponent {
       settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
       settleConditions: (unit, name, combatData) => settleConditionsAtRoundEnd(unit, name, combatData),
       buildSummonFinalStats: unit => buildCombatFinalStats(unit),
-      removeSummonUnit: (combatData, unit, reason) => 移除召唤运行态单位(combatData, unit, reason),
-      consumeSummonWindow: (combatData, unit, reason, grantId) => 消费召唤有效窗口(combatData, unit, reason, grantId),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -33916,7 +33874,7 @@ class BattleUIComponent {
             const settledActorEntry = turnResult?.settlementActorEntry || node.actorEntry;
             if (settledActorEntry?.char?.召唤键 && settledActorEntry.char.行动模式 === '自主行动') {
               const grantId = 领取召唤行动授权(settledActorEntry.char, combatData, 'autonomous');
-              const 到期日志 = grantId ? 消费召唤有效窗口(combatData, settledActorEntry.char, '自主行动窗口耗尽', grantId) : '';
+              const 到期日志 = grantId ? BATTLE_RUNTIME.consumeSummonWindow(combatData, settledActorEntry.char, '自主行动窗口耗尽', grantId) : '';
               if (到期日志) logs.push(到期日志);
             }
             if (!settledActorEntry?.char?.召唤键) {
