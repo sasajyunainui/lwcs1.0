@@ -109,6 +109,21 @@ addCheck(
     !/function 确保战斗判定因果链\(/.test(battleUiSource),
 );
 addCheck(
+  'ledgerWriterAndCausalNodesOwnedByRuntime',
+  /function writeLedgerEvent\(/.test(battleRuntimeSource) &&
+    /function 写入战斗目标分支节点\(/.test(battleRuntimeSource) &&
+    /function 写入战斗反应窗口节点\(/.test(battleRuntimeSource) &&
+    /function 写入战斗命中检定节点\(/.test(battleRuntimeSource) &&
+    /function 写入战斗状态检定节点\(/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.writeLedgerEvent\(/.test(battleUiSource) &&
+    !/function 写入战斗事件账本\(/.test(battleUiSource) &&
+    !/writeLedgerEvent\s*:/.test(settlementBindingSource),
+);
+addCheck(
+  'ledgerWriterHasNoFallbackResourceMutation',
+  !/判定事件是保底资源恢复入口|写入保底资源恢复事实|fallback_resource_recovery/.test(`${battleRuntimeSource}\n${battleUiSource}`),
+);
+addCheck(
   'runtimeStateAndSnapshotOwnedByRuntime',
   /function ensureCombatRuntime\(combatData = \{\}\)/.test(battleRuntimeSource) &&
     /function getBattleSnapshot\(combatData = \{\}\)/.test(battleRuntimeSource) &&
@@ -189,7 +204,7 @@ addCheck(
     !/function 查找最近账本动作事件\(/.test(battleUiSource) &&
     !/function 查找行动轴初始意图节点\(/.test(battleUiSource) &&
     !/function 推断战斗目标阵营侧\(|function 推断战斗单位阵营侧\(|function 推断战斗事件阵营侧\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );

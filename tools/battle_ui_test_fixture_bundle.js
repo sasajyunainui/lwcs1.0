@@ -1539,7 +1539,7 @@
         }, '瞬发截脉');
         const 压制动作 = { type: '控制截断', action_type: '释放魂技', skill: 截断技能, cast_time: 4 };
         玩家.蓄力技能 = { skill: normalizeSkillData({ name: '蓄力重击', 前摇: 30 }, '蓄力重击') };
-        const 起手事件 = 写入战斗事件账本(combatData, {
+        const 起手事件 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'action_start',
           round: 1,
           actorName: 敌人.name,
@@ -1605,7 +1605,7 @@
           前摇: 5,
           _效果数组: [{ 原型: '伤害结算', 目标: '单体', 伤害类型: '近身攻击', 威力倍率: 300 }],
         }, '致命测试') };
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'action_start',
           round: 1,
           actorName: 敌人.name,
@@ -2993,7 +2993,7 @@
           skill: normalizeSkillData(战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 100, '近身攻击'), '裂地冲拳'),
           target_name: 敌人.name,
         };
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'action_start',
           round: Number(combatData?.回合 || 0),
           actorName: 玩家.name,
@@ -4131,7 +4131,7 @@
     function 生成二层防反闭环调试结果() {
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
-      const 主动作 = 写入战斗事件账本(combatData, {
+      const 主动作 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -4141,7 +4141,7 @@
         result: 'declared',
         meta: { reasonCode: 'ACTION_COMMITTED' },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'defend',
         round: 1,
         actorName: 敌人.name,
@@ -4160,7 +4160,7 @@
           damageAfterReaction: 96,
         },
       });
-      const 主命中 = 写入战斗事件账本(combatData, {
+      const 主命中 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'hit_result',
         round: 1,
         actorName: 玩家.name,
@@ -4192,7 +4192,7 @@
           },
         },
       });
-      const 防反窗口 = 写入战斗事件账本(combatData, {
+      const 防反窗口 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'counter_window',
         round: 1,
         actorName: 敌人.name,
@@ -4205,7 +4205,7 @@
         result: 'opened',
         meta: { counterDepth: 1, reasonCode: 'COUNTER_WINDOW_OPENED' },
       });
-      const 防反起手 = 写入战斗事件账本(combatData, {
+      const 防反起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 敌人.name,
@@ -4226,7 +4226,7 @@
           reasonCode: 'COUNTER_WINDOW_OPENED',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'hit_result',
         round: 1,
         actorName: 敌人.name,
@@ -4260,7 +4260,7 @@
           },
         },
       });
-      const 防反动作 = 写入战斗事件账本(combatData, {
+      const 防反动作 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'counter',
         round: 1,
         actorName: 敌人.name,
@@ -4278,7 +4278,7 @@
           counterWindowNodeId: 防反窗口?.chainNodeId || '',
         },
       });
-      const 玩家起手事件 = 写入战斗事件账本(combatData, {
+      const 玩家起手事件 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'dodge',
         round: 1,
         actorName: 玩家.name,
@@ -4299,7 +4299,7 @@
           damageAfterReaction: 42,
         },
       });
-      const 反防反窗口 = 写入战斗事件账本(combatData, {
+      const 反防反窗口 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'counter_window',
         round: 1,
         actorName: 玩家.name,
@@ -4313,7 +4313,7 @@
         result: 'opened',
         meta: { counterDepth: 2, reasonCode: 'COUNTER_WINDOW_OPENED' },
       });
-      const 反防反起手 = 写入战斗事件账本(combatData, {
+      const 反防反起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -4334,7 +4334,7 @@
           reasonCode: 'COUNTER_WINDOW_OPENED',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'hit_result',
         round: 1,
         actorName: 玩家.name,
@@ -4368,7 +4368,7 @@
           },
         },
       });
-      const 反防反动作 = 写入战斗事件账本(combatData, {
+      const 反防反动作 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'counter',
         round: 1,
         actorName: 玩家.name,
@@ -4387,7 +4387,7 @@
           counterWindowNodeId: 反防反窗口?.chainNodeId || '',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'defend',
         round: 1,
         actorName: 敌人.name,
@@ -4441,7 +4441,7 @@
       const 友方敌人 = 构建战斗回归夹具单位('夹具敌人乙', '敏攻系');
       combatData.参战者.team_enemy = [敌人, 友方敌人];
       [敌人, 友方敌人].forEach((目标, index) => {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'state_tick',
           round: 2,
           actorName: 玩家.name,
@@ -4491,7 +4491,7 @@
       const 友方乙 = 构建战斗回归夹具单位('夹具友方乙', '防御系');
       combatData.参战者.team_player = [玩家, 友方甲, 友方乙];
       [友方甲, 友方乙].forEach((目标, index) => {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'state_tick',
           round: 3,
           actorName: 玩家.name,
@@ -4513,7 +4513,7 @@
         });
       });
       [友方甲, 友方乙].forEach((目标, index) => {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'state_tick',
           round: 3,
           actorName: 玩家.name,
@@ -4558,7 +4558,7 @@
     function 生成状态抵抗闭环调试结果() {
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
-      const 起手 = 写入战斗事件账本(combatData, {
+      const 起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -4568,7 +4568,7 @@
         result: 'declared',
         meta: { reasonCode: 'ACTION_COMMITTED' },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'state_apply',
         round: 1,
         actorName: 玩家.name,
@@ -4616,7 +4616,7 @@
     function 生成状态免疫闭环调试结果() {
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
-      const 起手 = 写入战斗事件账本(combatData, {
+      const 起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -4626,7 +4626,7 @@
         result: 'declared',
         meta: { reasonCode: 'ACTION_COMMITTED' },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'state_apply',
         round: 1,
         actorName: 玩家.name,
@@ -4681,7 +4681,7 @@
       combatData.回合 = 2;
       const 宿主技能 = 战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 96, '近身攻击');
       const 宿主伤害 = 96;
-      const 玩家起手事件 = 写入战斗事件账本(combatData, {
+      const 玩家起手事件 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 宿主.name || 宿主.名称 || '',
@@ -4749,7 +4749,7 @@
       combatData.回合 = 2;
       const 宿主技能 = 战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 88, '近身攻击');
       const 宿主伤害 = 88;
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 宿主.name || 宿主.名称 || '',
@@ -4910,7 +4910,7 @@
       玩家.属性.sta = 0;
       玩家.属性.vit = 0;
       玩家.属性.体力 = 0;
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'blocked_action',
         round: 5,
         actorName: 玩家.name,
@@ -4954,7 +4954,7 @@
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
       combatData.战斗类型 = '非敌对反应过滤夹具';
-      const 起手 = 写入战斗事件账本(combatData, {
+      const 起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -4969,7 +4969,7 @@
           reasonText: '非敌对造物动作不打开常规反应窗口',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'create',
         round: 1,
         actorName: 玩家.name,
@@ -5074,7 +5074,7 @@
       const { combatData, 玩家 } = 构建战斗回归夹具战斗态();
       combatData.回合 = 1;
       combatData.战斗类型 = '上限拦截夹具';
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'failed_action',
         round: 1,
         actorName: 玩家.name,
@@ -5132,7 +5132,7 @@
         duration: 2,
         战斗效果: { ...createEmptyCombatEffectMap(), cast_speed_penalty: 0.08 },
       };
-      const 起手 = 写入战斗事件账本(combatData, {
+      const 起手 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -5143,7 +5143,7 @@
         result: 'declared',
         primaryOutcome: 'action_committed',
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'state_replace',
         round: 1,
         actorName: 玩家.name,
@@ -5176,7 +5176,7 @@
           replaceReason: 'same_state_refresh_duration',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'state_remove',
         round: 1,
         actorName: 玩家.name,
@@ -5325,7 +5325,7 @@
       combatData.回合 = 2;
       const 甲技能 = 战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 84, '近身攻击');
       const 乙技能 = 战斗回归输出魂技('穿影击', '敌方单体', 8, 72, '近身攻击');
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 宿主.name || 宿主.名称 || '',
@@ -5340,7 +5340,7 @@
         totalProjectedDamage: 84,
       }, { primaryTarget: 敌人, combatData });
       const 甲协同日志 = 执行协同召唤追击(宿主, 敌人, 84, combatData);
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 宿主乙.name || 宿主乙.名称 || '',
@@ -5421,7 +5421,7 @@
       combatData.回合 = 2;
       const 玩家技能 = 战斗回归输出魂技('裂地冲拳', '敌方单体', 8, 82, '近身攻击');
       const 敌方技能 = 战斗回归输出魂技('影刃反扑', '敌方单体', 8, 76, '近身攻击');
-      const 玩家起手事件 = 写入战斗事件账本(combatData, {
+      const 玩家起手事件 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 宿主.name || 宿主.名称 || '',
@@ -5430,7 +5430,7 @@
         actionType: 'attack',
         result: 'declared',
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'pass',
         round: 2,
         actorName: 敌人.name || 敌人.名称 || '',
@@ -5450,7 +5450,7 @@
         totalProjectedDamage: 82,
       }, { primaryTarget: 敌人, combatData });
       const 玩家协同日志 = 执行协同召唤追击(宿主, 敌人, 82, combatData);
-      const 敌方起手事件 = 写入战斗事件账本(combatData, {
+      const 敌方起手事件 = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 2,
         actorName: 敌人.name || 敌人.名称 || '',
@@ -5459,7 +5459,7 @@
         actionType: 'attack',
         result: 'declared',
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'pass',
         round: 2,
         actorName: 宿主.name || 宿主.名称 || '',
@@ -5831,7 +5831,7 @@
       玩家.名称 = '唐凌雪';
       敌人.name = '韦小枫';
       敌人.名称 = '韦小枫';
-      const actionEvent = 写入战斗事件账本(combatData, {
+      const actionEvent = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -5842,7 +5842,7 @@
         targetPoolSide: 'enemy',
         result: 'declared',
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'state_apply',
         round: 1,
         actorName: 玩家.name,
@@ -5951,7 +5951,7 @@
       玩家.名称 = '唐凌雪';
       敌人.name = '韦小枫';
       敌人.名称 = '韦小枫';
-      const actionEvent = 写入战斗事件账本(combatData, {
+      const actionEvent = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -5962,7 +5962,7 @@
         targetPoolSide: 'enemy',
         result: 'declared',
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'defend',
         round: 1,
         actorName: 敌人.name,
@@ -5981,7 +5981,7 @@
           reactionOutcome: 'guarded',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'hit_result',
         round: 1,
         actorName: 玩家.name,
@@ -6124,7 +6124,7 @@
       敌人.名称 = '韦小枫';
       const finalAction = String(配置.finalAction || '定势一击').trim();
       const altAction = String(配置.altAction || '普通攻击').trim();
-      const actionEvent = 写入战斗事件账本(combatData, {
+      const actionEvent = BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name,
@@ -6136,7 +6136,7 @@
         result: 'declared',
       });
       if (配置.ledgerKind === 'shield') {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'shield_create',
           round: 1,
           actorName: 玩家.name,
@@ -6149,7 +6149,7 @@
           meta: { amount: 120, shield: 120, sourceAction: finalAction },
         });
       } else {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'defend',
           round: 1,
           actorName: 敌人.name,
@@ -6168,7 +6168,7 @@
             reactionOutcome: 'guarded',
           },
         });
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventKind: 'hit_result',
           round: 1,
           actorName: 玩家.name,
@@ -6444,7 +6444,7 @@
       const 唐三 = 构建战斗回归夹具单位('唐三', '强攻系');
       const 小舞 = 构建战斗回归夹具单位('小舞', '敏攻系');
       combatData.参战者.team_player = [玩家, 唐三, 小舞];
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name || '夹具玩家',
@@ -6459,7 +6459,7 @@
         { target: 唐三, amount: 160, eventId: 'fixture-group-shield-tangsan' },
         { target: 小舞, amount: 140, eventId: 'fixture-group-shield-xiaowu' },
       ].forEach(item => {
-        写入战斗事件账本(combatData, {
+        BATTLE_RUNTIME.writeLedgerEvent(combatData, {
           eventId: item.eventId,
           eventKind: 'shield_create',
           round: 1,
@@ -6496,7 +6496,7 @@
 
     function 生成战斗变招链路调试结果() {
       const { combatData, 玩家, 敌人 } = 构建战斗回归夹具战斗态();
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'action_start',
         round: 1,
         actorName: 玩家.name || '夹具玩家',
@@ -6514,7 +6514,7 @@
           replanReasonText: '没有合适出手窗口',
         },
       });
-      写入战斗事件账本(combatData, {
+      BATTLE_RUNTIME.writeLedgerEvent(combatData, {
         eventKind: 'failed_action',
         round: 1,
         actorName: 玩家.name || '夹具玩家',
