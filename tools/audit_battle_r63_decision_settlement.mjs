@@ -883,6 +883,44 @@ falsePassiveUnit.状态效果 = {
 };
 assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.triggerRevive(falsePassiveUnit, '伪复活测试单位'), null, '状态中的伪技能被误识别为被动复活');
 
+const sideEffectUnit = participant('side-effect-unit', 'player', 100);
+const sideEffectLog = sandbox.__LWCS_BATTLE_RUNTIME__.settleConditionSideEffects(sideEffectUnit, '测试增幅', {
+  副作用列表: [{ 副作用类型: '全属性降低', 触发时机: '回合结束时', 生效对象: '技能释放者', 触发概率: 1, 数值: '20%', 持续回合: 2 }],
+}, '回合结束时', '副作用测试单位', combatData());
+assert.match(sideEffectLog, /全属性降低/, '回合末副作用没有形成结构化结算日志');
+assert.equal(sideEffectUnit.状态效果.虚弱?.面板修改比例?.str, 0.8, '全属性降低副作用没有写入正确面板比例');
+
+const immuneSideEffectUnit = participant('immune-side-effect-unit', 'player', 100);
+immuneSideEffectUnit.状态效果.异常免疫 = { 类型: 'buff', 战斗效果: { 无视异常: true } };
+const immuneSideEffectLog = sandbox.__LWCS_BATTLE_RUNTIME__.settleConditionSideEffects(immuneSideEffectUnit, '测试增幅', {
+  副作用列表: [{ 副作用类型: '动作迟缓', 触发时机: '效果结束后', 生效对象: '技能释放者', 触发概率: 1 }],
+}, '效果结束后', '免疫测试单位', combatData());
+assert.match(immuneSideEffectLog, /无视异常/, '无视异常没有阻止回合末负面副作用');
+assert.equal(immuneSideEffectUnit.状态效果.迟缓, undefined, '被免疫的副作用仍写入状态');
+
+const cleansingSideEffectUnit = participant('cleansing-side-effect-unit', 'player', 100);
+cleansingSideEffectUnit.状态效果.持续净化 = {
+  特殊机制标识: '持续状态移除',
+  持续原型效果: { 原型: '状态移除', 状态: '任意负面' },
+};
+const cleansingSideEffectLog = sandbox.__LWCS_BATTLE_RUNTIME__.settleConditionSideEffects(cleansingSideEffectUnit, '测试增幅', {
+  副作用列表: [{ 副作用类型: '精神紊乱', 触发时机: '回合结束时', 生效对象: '技能释放者', 触发概率: 1 }],
+}, '回合结束时', '净化测试单位', combatData());
+assert.match(cleansingSideEffectLog, /持续状态移除/, '持续状态移除没有拦截回合末副作用');
+assert.equal(cleansingSideEffectUnit.状态效果.精神紊乱, undefined, '持续净化拦截后仍写入副作用状态');
+
+const lethalSideEffectUnit = participant('lethal-side-effect-unit', 'player', 100);
+lethalSideEffectUnit.hp = 500;
+lethalSideEffectUnit.hp_max = 500;
+lethalSideEffectUnit.属性.HP = 500;
+lethalSideEffectUnit.属性.HP上限 = 500;
+lethalSideEffectUnit.状态效果.复生印记 = { 战斗效果: { revive_count: 1, revive_heal_ratio: 0.2 } };
+const lethalSideEffectLog = sandbox.__LWCS_BATTLE_RUNTIME__.settleConditionSideEffects(lethalSideEffectUnit, '献祭状态', {
+  副作用列表: [{ 副作用类型: '致死献祭', 触发时机: '效果结束后', 生效对象: '技能释放者', 触发概率: 1, 关联状态: '献祭状态' }],
+}, '效果结束后', '献祭测试单位', combatData());
+assert.match(lethalSideEffectLog, /复活触发/, '致死副作用没有接入统一复活结算');
+assert.equal(lethalSideEffectUnit.hp, 100, '致死副作用后的复活恢复量错误');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -907,6 +945,7 @@ console.log(JSON.stringify({
     soulTowerRosterChecks: 7,
     stateReviveChecks: 2,
     passiveReviveChecks: 3,
+    roundEndSideEffectChecks: 4,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

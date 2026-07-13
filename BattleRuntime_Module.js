@@ -133,6 +133,102 @@
     return (Array.isArray(value) ? value : []).map(normalizeSideEffectEntry).filter(Boolean);
   }
 
+  function buildSideEffectPayload(effect = {}) {
+    const type = String(effect?.副作用类型 || '').trim();
+    const value = Math.abs(readSignedBattleValue(effect?.数值 || '0'));
+    const secondaryValue = Math.abs(readSignedBattleValue(effect?.副数值 || '0'));
+    const statRatios = {};
+    const combatEffects = createEmptyCombatEffectMap();
+    if (type === '致死献祭') combatEffects.致死 = true;
+    if (type === '全属性降低') {
+      const ratio = Math.max(0.01, 1 - (value || 0.1));
+      ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => { statRatios[key] = ratio; });
+    }
+    if (type === '自损反噬') {
+      combatEffects.misfortune_backlash_ratio = value || 0.03;
+      combatEffects.hit_penalty = Math.max(0.03, (value || 0.03) * 0.5);
+    }
+    if (type === '精神紊乱') {
+      combatEffects.random_target_rate = value || 0.25;
+      combatEffects.reaction_penalty = secondaryValue || 0.08;
+    }
+    if (type === '命中下降') combatEffects.hit_penalty = value || 0.1;
+    if (type === '魂力反噬') {
+      combatEffects.sp_gain_ratio = -(value || 0.05);
+      combatEffects.cost_delta_ratio = secondaryValue || Math.max(0.05, value || 0.05);
+    }
+    if (type === '动作迟缓') {
+      combatEffects.reaction_penalty = value || 0.15;
+      combatEffects.dodge_penalty = secondaryValue || 0.1;
+    }
+    if (type === '施法僵直') combatEffects.cast_speed_penalty = value || 0.2;
+    if (type === '目标错乱') combatEffects.random_target_rate = value || 0.3;
+    return { statRatios, combatEffects };
+  }
+
+  function negativeEffectIsImmune(unit = {}, entry = {}) {
+    const hasImmunity = Object.values(unit?.状态效果 || {}).some(condition => condition?.战斗效果?.无视异常 === true);
+    if (!hasImmunity) return false;
+    if (String(entry?.类型 || '').trim() === 'debuff') return true;
+    return false;
+  }
+
+  function findPersistentStateRemoval(unit = {}, stateName = '', stateEntry = {}) {
+    return Object.entries(unit?.状态效果 || {}).find(([, condition]) => {
+      if (String(condition?.特殊机制标识 || '').trim() !== '持续状态移除') return false;
+      const effect = condition?.持续原型效果;
+      if (!effect || String(effect?.原型 || '').trim() !== '状态移除') return false;
+      const filter = String(effect?.状态 || '').trim();
+      if (!filter || filter === '任意状态') return true;
+      if (filter === '任意负面') return String(stateEntry?.类型 || '') === 'debuff';
+      if (filter === '任意增益') return String(stateEntry?.类型 || '') === 'buff';
+      return filter === stateName;
+    }) || null;
+  }
+
+  function applyRoundEndSideEffect(unit = {}, effect = {}, sourceName = '', combatData = {}) {
+    if (!unit || !probabilitySucceeds(Number(effect?.触发概率 ?? 1))) return '';
+    const { statRatios, combatEffects } = buildSideEffectPayload(effect);
+    const type = String(effect?.副作用类型 || '').trim();
+    const timing = String(effect?.触发时机 || '效果生效后').trim();
+    if (combatEffects.致死 === true) {
+      writeCombatResource(unit, 'hp', 0);
+      const reviveLog = previewRuntime.readHp(unit) <= 0 ? triggerRevive(unit, previewRuntime.unitName(unit) || '目标') || '' : '';
+      return [
+        `[副作用] ${previewRuntime.unitName(unit) || '目标'}触发[${type || '未知副作用'}](${timing})`,
+        reviveLog || `[副作用致死] ${previewRuntime.unitName(unit) || '目标'}受到致死反噬，生命归零。`,
+      ].filter(Boolean).join(' ');
+    }
+    const duration = Math.max(1, Number(effect?.持续回合 || 0));
+    const stateName = String(effect?.副作用状态 || sideEffectStatusMap[type] || type || '反噬').trim();
+    if (!unit.状态效果) unit.状态效果 = {};
+    const nextEffects = mergeCombatEffectMaps(createEmptyCombatEffectMap(), combatEffects);
+    if (nonDamageConditionNames.has(stateName)) {
+      nextEffects.dot_damage = 0;
+      nextEffects.dot_damage_ratio = 0;
+    }
+    const stateEntry = {
+      类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true,
+      层数: 1, 描述: `由[${sourceName || '技能'}]触发`, duration,
+      面板修改比例: statRatios, 面板固定修正: {}, 战斗效果: nextEffects,
+    };
+    if (negativeEffectIsImmune(unit, stateEntry)) return `[无视异常] ${previewRuntime.unitName(unit) || '目标'}免疫了[${stateName}]副作用。`;
+    const persistentRemoval = findPersistentStateRemoval(unit, stateName, stateEntry);
+    if (persistentRemoval) return `[持续状态移除] ${previewRuntime.unitName(unit) || '目标'}的[${stateName}]被[${persistentRemoval[0]}]拦截。`;
+    unit.状态效果[stateName] = stateEntry;
+    if (unit.召唤键) syncSummonMirror(unit);
+    return `[副作用] ${previewRuntime.unitName(unit) || '目标'}触发[${type || '未知副作用'}](${timing})`;
+  }
+
+  function settleConditionSideEffects(unit = {}, key = '', condition = {}, timing = '', label = '', combatData = {}) {
+    const logs = normalizeSideEffectList(condition?.副作用列表 || [])
+      .filter(effect => String(effect?.触发时机 || '').trim() === timing)
+      .filter(effect => !String(effect?.关联状态 || '').trim() || String(effect?.关联状态 || '').trim() === key)
+      .map(effect => applyRoundEndSideEffect(unit, effect, key || label, combatData))
+      .filter(Boolean);
+    return logs.join(' ');
+  }
+
   function nextRuntimeId(prefix = 'battle-event') {
     runtimeIdSequence = (runtimeIdSequence + 1) % 1000000;
     return `${String(prefix || 'battle-event')}-${runtimeIdContext}-${runtimeIdSequence.toString(36)}`;
@@ -5638,6 +5734,7 @@
     prototypeOptionMatrix,
     cloneValue,
     normalizeSideEffectList,
+    settleConditionSideEffects,
     nextRuntimeId,
     ensureCombatRuntime,
     getBattleSnapshot,

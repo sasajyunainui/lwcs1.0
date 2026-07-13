@@ -18556,19 +18556,12 @@ class BattleUIComponent {
           if (tickResult.log) parts.push(tickResult.log);
           totalDot += Math.max(0, Number(tickResult.totalDot || 0));
           if (tickResult.stopCondition === true) return;
-          const sideEffects = normalizeBattleSkillSideEffectList(cond.副作用列表 || []);
           if (getCombatHpValue(char) <= 0) {
             const reviveLog = triggerReviveEffect(char, label);
             if (reviveLog) parts.push(reviveLog);
           }
-
-          sideEffects
-            .filter(item => String(item?.触发时机 || '').trim() === '回合结束时')
-            .forEach(item => {
-              const boundState = String(item?.关联状态 || '').trim();
-              if (boundState && boundState !== key) return;
-              applyBattleSideEffectState(char, item, key, parts, getCurrentBattleContextSnapshot());
-            });
+          const roundEndSideEffectLog = BATTLE_RUNTIME.settleConditionSideEffects(char, key, cond, '回合结束时', label, combatData);
+          if (roundEndSideEffectLog) parts.push(roundEndSideEffectLog);
 
           const 持续原型日志 = 执行持续原型回合尾效果(char, key, cond, label, combatData);
           if (持续原型日志) parts.push(持续原型日志);
@@ -18591,14 +18584,8 @@ class BattleUIComponent {
               if (延迟日志) parts.push(延迟日志);
             });
           }
-          const endSideEffects = normalizeBattleSkillSideEffectList(expiredCond?.副作用列表 || []);
-          endSideEffects
-            .filter(item => String(item?.触发时机 || '').trim() === '效果结束后')
-            .forEach(item => {
-              const boundState = String(item?.关联状态 || '').trim();
-              if (boundState && boundState !== key) return;
-              applyBattleSideEffectState(char, item, key, parts, getCurrentBattleContextSnapshot());
-            });
+          const expirySideEffectLog = BATTLE_RUNTIME.settleConditionSideEffects(char, key, expiredCond, '效果结束后', label, combatData);
+          if (expirySideEffectLog) parts.push(expirySideEffectLog);
           const expiryLog = BATTLE_RUNTIME.settleExpiredConditionBase(char, key, expiredCond, label, combatData);
           if (expiryLog) parts.push(expiryLog);
         });
