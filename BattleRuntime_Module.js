@@ -17,6 +17,9 @@
   if (!prototypeRegistry || typeof prototypeRegistry !== 'object') {
     throw new Error('battle_runtime_shared_prototype_registry_missing');
   }
+  const SOUL_TOWER_MAX_AGE = 30;
+  const SOUL_TOWER_TEAM_LIMIT = 7;
+  const SOUL_TOWER_MAX_AGE_GAP = 3;
 
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
@@ -710,9 +713,44 @@
     };
   }
 
-  function validateBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
-    const invalid = settlement.validate(combatData, adapterOptions);
-    if (!invalid) return null;
+  function readCombatUnitAge(unit = {}) {
+    const rawAge = unit?.属性?.年龄 ?? unit?.年龄 ?? unit?.age;
+    if (typeof rawAge === 'number') return Number.isFinite(rawAge) ? rawAge : NaN;
+    const text = String(rawAge == null ? '' : rawAge).trim();
+    if (!text) return NaN;
+    const direct = Number(text);
+    if (Number.isFinite(direct)) return direct;
+    const numericText = text.match(/-?\d+(?:\.\d+)?/);
+    return numericText ? Number(numericText[0]) : NaN;
+  }
+
+  function validateSoulTowerRoster(combatData = {}) {
+    if (String(combatData?.战斗类型 || '').trim() !== '魂灵塔冲塔') return { ok: true, skipped: true };
+    const roster = (Array.isArray(combatData?.参战者?.team_player) ? combatData.参战者.team_player : []).filter(Boolean);
+    if (!roster.length) return { ok: false, message: '魂灵塔队伍为空。' };
+    if (roster.length > SOUL_TOWER_TEAM_LIMIT) return { ok: false, message: `魂灵塔队伍最多 ${SOUL_TOWER_TEAM_LIMIT} 人。` };
+    const invalidMember = roster.find(unit => {
+      const age = readCombatUnitAge(unit);
+      return !Number.isFinite(age) || age <= 0 || age > SOUL_TOWER_MAX_AGE;
+    });
+    if (invalidMember) {
+      return {
+        ok: false,
+        message: `${previewRuntime.unitName(invalidMember) || '队员'} 已超过 ${SOUL_TOWER_MAX_AGE} 岁，无法参与魂灵塔试炼。`,
+      };
+    }
+    const ages = roster.map(readCombatUnitAge).filter(age => Number.isFinite(age) && age > 0);
+    const minAge = Math.min(...ages);
+    const maxAge = Math.max(...ages);
+    if (maxAge - minAge > SOUL_TOWER_MAX_AGE_GAP) {
+      return { ok: false, message: `魂灵塔队伍成员年龄差不能超过 ${SOUL_TOWER_MAX_AGE_GAP} 岁。` };
+    }
+    return { ok: true, rosterCount: roster.length, minAge, maxAge };
+  }
+
+  function validateBattleRuntime(combatData = {}) {
+    const rosterCheck = validateSoulTowerRoster(combatData);
+    if (rosterCheck.ok) return null;
     const alive = readTeamAlive(combatData);
     return {
       rounds: 0,
@@ -720,7 +758,7 @@
       roundEnd: Number(combatData?.回合 || 0),
       winner: 'unfinished',
       ...alive,
-      logs: [`[魂灵塔资格驳回] ${String(invalid?.message || invalid)}`],
+      logs: [`[魂灵塔资格驳回] ${String(rosterCheck.message || '魂灵塔队伍不符合资格')}`],
       extraPatchOps: [],
     };
   }
@@ -983,7 +1021,7 @@
   function createSettlementAdapters(settlement, adapterOptions = {}) {
     return {
       prepare: combatData => prepareBattleRuntime(combatData, settlement, adapterOptions),
-      validate: combatData => validateBattleRuntime(combatData, settlement, adapterOptions),
+      validate: combatData => validateBattleRuntime(combatData),
       beginRound: (combatData, currentRound) => beginBattleRound(combatData, currentRound, settlement, adapterOptions),
       buildQueue: combatData => settlement.buildQueue(combatData, adapterOptions),
       recordQueue() { throw new Error('battle_decision_record_queue_required'); },
@@ -3372,7 +3410,7 @@
 
   function bindSettlementPrimitives(primitives) {
     const required = [
-      'prepare', 'validate', 'buildQueue', 'executeQueue',
+      'prepare', 'buildQueue', 'executeQueue',
       'syncRoundEndUnit', 'settleSustain', 'settleConditions',
       'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',
     ];
@@ -3686,6 +3724,7 @@
     auditPrototypeCoverage,
     evaluateBattleTerminal,
     readTeamAlive,
+    validateSoulTowerRoster,
     ensureSummonWindowRuntime,
     refreshSummonMentalLoad,
     beginBattleRound,

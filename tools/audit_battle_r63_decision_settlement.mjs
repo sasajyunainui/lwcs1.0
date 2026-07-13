@@ -798,6 +798,35 @@ assert.equal(protectedResult.finalBattleReport?.objectiveWinner, 'enemy', '指�
 assert.ok(protectedResult.ledger.some(event => event?.eventKind === 'battle_objective_resolved' && event?.result === 'enemy'), '受伤失败条件缺少唯一目标终态事实');
 assert.ok(protectedResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '指定单位无伤条件没有进入行为问题识别');
 
+const towerUnit = (id, age) => {
+  const unit = participant(id, 'player', 120);
+  unit.属性.年龄 = age;
+  return unit;
+};
+const towerCombat = ages => ({
+  ...combatData(),
+  战斗类型: '魂灵塔冲塔',
+  参战者: {
+    team_player: ages.map((age, index) => towerUnit(`tower-player-${index + 1}`, age)),
+    team_enemy: [participant('tower-guardian', 'enemy', 100)],
+  },
+});
+const validTowerRoster = sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(towerCombat([18, 21]));
+assert.equal(validTowerRoster.ok, true, '魂灵塔年龄差边界3岁没有通过');
+assert.equal(validTowerRoster.rosterCount, 2, '魂灵塔合法队伍人数统计错误');
+assert.equal(validTowerRoster.minAge, 18, '魂灵塔合法队伍最小年龄错误');
+assert.equal(validTowerRoster.maxAge, 21, '魂灵塔合法队伍最大年龄错误');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(towerCombat([])).message, /队伍为空/, '魂灵塔空队没有被拒绝');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(towerCombat([18, 18, 18, 18, 18, 18, 18, 18])).message, /最多 7 人/, '魂灵塔8人队伍没有被拒绝');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(towerCombat([31])).message, /超过 30 岁/, '魂灵塔超龄成员没有被拒绝');
+assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(towerCombat([18, 22])).message, /年龄差不能超过 3 岁/, '魂灵塔年龄差4岁没有被拒绝');
+assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.validateSoulTowerRoster(combatData()).skipped, true, '普通战斗错误执行魂灵塔资格校验');
+const invalidTowerResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'soul-tower-invalid-roster', seed: 6410, combatData: towerCombat([31]), mode: 'team_preview', rounds: 2, settings: {},
+});
+assert.equal(invalidTowerResult.roundsExecuted, 0, '魂灵塔资格不合法仍进入正式回合');
+assert.match(String(invalidTowerResult.logs?.join(' ') || ''), /魂灵塔资格驳回/, '魂灵塔资格拒绝没有进入正式运行结果');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -819,6 +848,7 @@ console.log(JSON.stringify({
     hpThresholdRounds: hpThresholdResult.roundsExecuted,
     surviveRounds: surviveResult.roundsExecuted,
     protectedObjectiveWinner: protectedResult.finalBattleReport?.objectiveWinner || '',
+    soulTowerRosterChecks: 7,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

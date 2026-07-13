@@ -154,6 +154,7 @@ addCheck(
     !/function 建立行为防反动作\(/.test(battleUiSource) &&
     /function createSettlementAdapters\(/.test(battleRuntimeSource) &&
     /function fillObjectiveDamageBaselines\(/.test(battleRuntimeSource) &&
+    /function validateSoulTowerRoster\(/.test(battleRuntimeSource) &&
     /function evaluateBattleTerminal\(/.test(battleRuntimeSource) &&
     /function decideTeamContinuation\(/.test(battleRuntimeSource) &&
     /function readTeamAlive\(/.test(battleRuntimeSource) &&
@@ -167,6 +168,7 @@ addCheck(
     /function settleGuardSummonWindows\(/.test(battleRuntimeSource) &&
     /function settleRuleRewrite\(/.test(battleRuntimeSource) &&
     !/function 评估并记录战斗目标\(|function 填充战斗受伤条件基准\(/.test(battleUiSource) &&
+    !/function validateSoulTowerCombatRoster\(|function 校验团战运行态\(/.test(battleUiSource) &&
     !/function 判定团战续推\(/.test(battleUiSource) &&
     !/function getTeamLivingCount\(|function 读取团战存活单位数\(/.test(battleUiSource) &&
     !/function 完成团战运行\(/.test(battleUiSource) &&
@@ -176,7 +178,7 @@ addCheck(
     !/function 刷新召唤精神负载\(|function 写入召唤精神控制事件\(/.test(battleUiSource) &&
     !/function 结算护卫召唤回合窗口\(/.test(battleUiSource) &&
     !/function 递减战斗规则改写运行态\(/.test(battleUiSource) &&
-    /const required = \[[\s\S]*?'prepare', 'validate', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
+    /const required = \[[\s\S]*?'prepare', 'buildQueue', 'executeQueue',[\s\S]*?'syncRoundEndUnit', 'settleSustain', 'settleConditions',[\s\S]*?'buildSummonFinalStats', 'removeSummonUnit', 'consumeSummonWindow', 'writeLedgerEvent',[\s\S]*?\];/.test(battleRuntimeSource) &&
     !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
     !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
 );
