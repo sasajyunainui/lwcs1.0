@@ -384,12 +384,24 @@
     if (!legalCandidate) throw new Error('battle_declaration_mechanically_illegal');
     const domain = requireEngine().caseDomain;
     if (typeof domain.executeDeclaration !== 'function') throw new Error('battle_runtime_declaration_settler_missing');
-    return domain.executeDeclaration({
-      combatData,
-      declaration: cloneValue(legalCandidate.declaration),
-      actionOpportunity: cloneValue(input?.actionOpportunity || { role: 'ACTIVE' }),
-      seed: Math.max(1, Math.floor(Number(input?.seed || 1))),
-    });
+    const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
+    const originalRandom = Math.random;
+    let randomState = seed % 2147483647;
+    if (randomState <= 0) randomState += 2147483646;
+    Math.random = () => {
+      randomState = (randomState * 16807) % 2147483647;
+      return (randomState - 1) / 2147483646;
+    };
+    try {
+      return domain.executeDeclaration({
+        combatData,
+        declaration: cloneValue(legalCandidate.declaration),
+        actionOpportunity: cloneValue(input?.actionOpportunity || { role: 'ACTIVE' }),
+        seed,
+      });
+    } finally {
+      Math.random = originalRandom;
+    }
   }
 
   function calculateBaseDamage(options = {}) {
@@ -2082,6 +2094,7 @@
         normalizedUtility: Number(selected?.normalizedUtility || 0),
         vector: selected?.vector || {},
         rejectionCode: String(selected?.rejectionCode || '').trim(),
+        classification: String(selected?.classification || 'VIABLE').trim() || 'VIABLE',
         counterDeclineFallback: selected?.counterDeclineFallback === true,
         forcedFallback: selected?.forcedFallback === true,
         fallbackReason: String(selected?.fallbackReason || '').trim(),
@@ -2091,6 +2104,9 @@
       problems: Array.isArray(decision?.problems) ? decision.problems : [],
       strategicSignature: String(decision?.strategicSignature || '').trim(),
       stalemate: decision?.stalemate || null,
+      stateCapacityTotal: Math.max(0, Number(decision?.stateCapacityTotal || 0)),
+      beliefRevision: String(decision?.beliefRevision || '').trim(),
+      pendingStrategicEffect: decision?.pendingStrategicEffect === true,
       strategyMemory: decision?.strategyMemory || {},
       scoreAudit: Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [],
       decisionProfile: decision?.decisionProfile || {},

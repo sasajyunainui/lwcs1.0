@@ -89,6 +89,26 @@ assert.equal(
   '敌方隐藏技能或资源改变了客观效用',
 );
 
+const hiddenStats = structuredClone(hiddenWeak);
+Object.assign(hiddenStats.参战者.enemy[0], {
+  level: 88,
+  str: 999,
+  def: 777,
+  agi: 666,
+  抗性: { 控制: 1, 物理: 1 },
+  final: { str: 9999, def: 9999, agi: 9999 },
+});
+hiddenStats.参战者.enemy[0].属性 = { 等级: 88, 力量: 999, 防御: 777, 敏捷: 666, 抗性: { 控制: 1 } };
+const hiddenStatsDecision = decision.decide({ worldSnapshot: hiddenStats, actorId: 'actor', beliefState: initial, seed: 81 });
+assert.equal(
+  JSON.stringify(weakDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility, candidate.rejectionCode])),
+  JSON.stringify(hiddenStatsDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility, candidate.rejectionCode])),
+  '敌方精确等级、属性或抗性绕过实力区间改变了决策',
+);
+const projectedEnemy = decision.buildDecisionWorld(hiddenStats, 'actor', initial).参战者.enemy[0];
+assert.equal(projectedEnemy.抗性, undefined, '敌方隐藏抗性泄漏到决策投影');
+assert.notEqual(projectedEnemy.level, hiddenStats.参战者.enemy[0].level, '决策投影直接读取敌方原始等级');
+
 const keyInput = {
   sourceActionId: 'actor:skill:control:0',
   effectPrototype: '状态施加',
@@ -119,8 +139,12 @@ const controlCandidate = deepDecision.candidates.find(candidate => candidate.ski
 assert.equal(controlCandidate?.deepAnalysis?.required, true, '控制行动权变化未触发深推演');
 assert.ok(controlCandidate.deepAnalysis.nodeCount <= 12, '深推演超过12节点');
 assert.ok(controlCandidate.deepAnalysis.responseBranches[0]?.unknown, '未知威胁包络未优先进入深推演');
-assert.ok(controlCandidate.deepAnalysis.responseBranches.filter(branch => !branch.unknown).length <= 3, '已知回应分支超过3个');
+assert.ok(controlCandidate.deepAnalysis.responseBranches.length <= 3, '回应分支总数超过3个');
 assert.ok(controlCandidate.deepAnalysis.responseBranches.reduce((sum, branch) => sum + branch.probability, 0) >= 0.999, '回应分支概率质量被截断');
+assert.ok(controlCandidate.deepAnalysis.timeline.some(node => /^RESULT_/.test(node.nodeType)), '深推演缺少成功/失败主结果分支');
+assert.ok(controlCandidate.deepAnalysis.timeline.some(node => /RESPONSE/.test(node.nodeType)), '深推演缺少关键回应者节点');
+assert.ok(controlCandidate.deepAnalysis.timeline.some(node => node.nodeType === 'FIRST_ALLY_WINDOW'), '建立控制窗口后未推演首名可利用队友');
+assert.equal(controlCandidate.deepAnalysis.timeline.at(-1)?.nodeType, 'ACTOR_NEXT_OPPORTUNITY', '深推演未到行动者下一机会');
 
 let adaptedBelief = deepDecision.beliefState;
 const controlKeyInput = {
@@ -139,6 +163,10 @@ assert.ok(adaptedControl.objectiveUtility < controlCandidate.objectiveUtility, `
 
 assert.equal(deepDecision.teamIntent.focusTarget, 'enemy-low', '团队集火未选择最低剩余容量敌人');
 assert.equal(deepDecision.teamIntent.protectTarget, 'ally-low', '团队保护未识别危急队友');
+const publicWorld = world();
+publicWorld.__battleEventLedger = [{ eventId: 'public-hit-1', eventKind: 'hit_result', actorName: 'enemy-high', targetName: 'ally-low', actorSide: 'enemy', targetSide: 'ally', round: 1 }];
+const publicIntent = decision.buildTeamIntent(publicWorld, 'actor', initial);
+assert.ok(publicIntent.evidenceEventIds.includes('public-hit-1'), '团队意图没有绑定公开事实证据');
 const withStrategy = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: responseBelief, strategyMemory: { targetIds: ['enemy-high'] }, seed: 82 });
 assert.equal(
   JSON.stringify(deepDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility])),
@@ -147,14 +175,37 @@ assert.equal(
 );
 assert.equal(decision.activeStrategyMemory({ targetIds: ['missing'], expiresAtOpportunity: 9 }, world(), { sequence: 1 }, deepDecision.candidates).targetIds, undefined, '目标失效策略未清除');
 assert.equal(decision.activeStrategyMemory({ targetIds: ['enemy-low'], expiresAtOpportunity: 1 }, world(), { sequence: 2 }, deepDecision.candidates).targetIds, undefined, '过期策略未清除');
+assert.equal(decision.activeStrategyMemory({ targetIds: ['enemy-low'], expectedOutcomeKinds: ['ACTION_CANCELLED'], expiresAtOpportunity: 9 }, world(), { sequence: 2 }, deepDecision.candidates).targetIds, undefined, '预期控制未兑现的策略仍被保留');
+
+const problemWorld = world();
+problemWorld.参战者.ally[0].hp = 20;
+problemWorld.参战者.ally[1].hp = 20;
+problemWorld.参战者.enemy[0].hp = 10;
+problemWorld.参战者.enemy[0].蓄力技能 = { ...damageSkill, cast_time: 30 };
+problemWorld.参战者.enemy[1].状态效果 = { stun: { 状态: '眩晕', duration: 1, 战斗效果: { cannot_act: true } } };
+const requiredProblemIds = new Set([
+  'TERMINAL_OPPORTUNITY', 'SURVIVAL_CRISIS', 'IMMINENT_DENIAL', 'ALLY_CRISIS',
+  'CAPABILITY_SHORTAGE', 'ADVANTAGE_WINDOW', 'INFORMATION_DEFICIT',
+  'DISENGAGE_PRESSURE', 'NEUTRAL_PROGRESS', 'STALEMATE',
+]);
+const neutralWorld = world();
+neutralWorld.参战者.ally[1].hp = 100;
+neutralWorld.参战者.enemy[0].hp = 100;
+const neutralBelief = decision.buildInitialBelief(neutralWorld, 'actor', { confidence: 0.9 });
+const observedProblemIds = new Set([
+  ...decision.identifyProblems(problemWorld, 'actor', { ...initial, confidence: 0.1 }, { battleIntent: { mode: '求生', withdrawAllowed: true }, stalemate: true, forceCapabilityShortage: true }).map(item => item.problemId),
+  ...decision.identifyProblems(neutralWorld, 'actor', neutralBelief, {}).map(item => item.problemId),
+]);
+assert.deepEqual([...requiredProblemIds].filter(id => !observedProblemIds.has(id)), [], '局势问题类型存在不可达缺口');
 
 console.log(JSON.stringify({
   summary: {
-    hiddenLeakChecks: 2,
+    hiddenLeakChecks: 5,
     betaDirectionChecks: 3,
     deepPreviewNodeCount: controlCandidate.deepAnalysis.nodeCount,
     unknownBranchCount: controlCandidate.deepAnalysis.responseBranches.filter(branch => branch.unknown).length,
-    teamIntentChecks: 2,
+    teamIntentChecks: 3,
+    problemTypeChecks: requiredProblemIds.size,
     passed: true,
   },
 }, null, 2));

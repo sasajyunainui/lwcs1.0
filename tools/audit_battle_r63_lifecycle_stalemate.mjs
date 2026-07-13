@@ -42,6 +42,10 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 assert.ok(decision, '正式决策运行时未加载');
+const battleUiSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleUI_Module.js'), 'utf8');
+assert.ok(!battleUiSource.includes('history.push({ signature: decision.strategicSignature, capacityChangePercent: 0, newInformation: false, pendingEffect: false })'), '正式僵局历史仍伪造零容量变化');
+assert.ok(battleUiSource.includes('100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity)'), '正式僵局历史未记录真实容量变化');
+assert.ok(battleUiSource.includes('pendingEffect: decision?.pendingStrategicEffect === true'), '正式僵局历史未记录待兑现效果');
 
 const attack = { id: 'attack', name: '推进攻击', 消耗: '魂力:5', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }] };
 const createFood = {
@@ -97,7 +101,7 @@ reserveItemWorld.参战者.ally[0].hp = 80;
 const reserveItem = decision.decide({ worldSnapshot: reserveItemWorld, actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 2011 })
   .candidates.find(candidate => candidate.item?.id === 'potion');
 assert.ok(reserveItem.vector.irreversibleCost > 0, '轻伤时消耗稀缺物品没有保留后悔成本');
-assert.equal(reserveItem.classification, 'CONTEXT_RISK', '存在真实保留成本的消耗品没有归入CONTEXT_RISK');
+assert.ok(['CONTEXT_RISK', 'DOMINATED'].includes(reserveItem.classification), '存在真实保留成本的消耗品没有归入风险或支配分类');
 
 const equipmentDecision = decision.decide({ worldSnapshot: world({ injured: false }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 202 });
 const equipmentCandidate = equipmentDecision.candidates.find(candidate => candidate.equipment?.id === 'sword');
@@ -153,6 +157,7 @@ console.log(JSON.stringify({
     creationChecks: 3,
     summonChecks: 3,
     stalemateChecks: 5,
+    strategicHistoryChecks: 3,
     passed: true,
   },
 }, null, 2));

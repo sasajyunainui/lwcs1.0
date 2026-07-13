@@ -92,12 +92,27 @@ const scopeNode = Object.assign(makeNode(), { querySelector(selector) { return s
 new context.BattleUIComponent({ innerHTML: '', querySelector(selector) { return selector === '.battle-module-scope' ? scopeNode : null; } }, {}, {});
 
 const results = [];
-function validateCaseContract(caseId, result) {
+function validateCaseContract(definition, result) {
+  const caseId = String(definition?.caseId || '').trim();
   const failures = [];
   const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
+  const reportBlocks = Array.isArray(result?.reportBlocks) ? result.reportBlocks : [];
+  for (const field of ['candidateRelations', 'forbiddenSelections', 'requiredFacts', 'mutationRelations']) {
+    if (!Array.isArray(definition?.[field]) || !definition[field].length) failures.push({ code: 'CASE_CONTRACT_FIELD_EMPTY', field });
+  }
+  if (!decisions.length) failures.push({ code: 'DECISION_AUDIT_EMPTY' });
+  const forbidden = new Set((definition?.forbiddenSelections || []).map(String));
   decisions.forEach(entry => {
     const selected = entry?.selected;
+    if (!selected?.candidateId) failures.push({ code: 'SELECTED_CANDIDATE_MISSING', round: Number(entry?.round || 0), actorId: entry?.actorId || '' });
+    if (selected?.rejectionCode || forbidden.has(String(selected?.classification || '')) || forbidden.has(String(selected?.rejectionCode || ''))) {
+      failures.push({ code: 'FORBIDDEN_SELECTION', round: Number(entry?.round || 0), actorId: entry?.actorId || '', candidateId: selected?.candidateId || '', rejectionCode: selected?.rejectionCode || '', classification: selected?.classification || '' });
+    }
+    const scoreAudit = Array.isArray(entry?.scoreAudit) ? entry.scoreAudit : [];
+    if (!scoreAudit.length || scoreAudit.length > 3 || !scoreAudit.some(candidate => candidate?.selected === true)) {
+      failures.push({ code: 'SCORE_AUDIT_CONTRACT_INVALID', round: Number(entry?.round || 0), actorId: entry?.actorId || '', count: scoreAudit.length });
+    }
     if (!(Number(selected?.objectiveUtility || 0) < -1e-9)) return;
     const nonnegativeAlternative = (entry?.candidates || []).find(candidate =>
       candidate?.candidateId !== selected?.candidateId && !candidate?.rejectionCode && Number(candidate?.objectiveUtility || 0) >= -1e-9,
@@ -112,6 +127,11 @@ function validateCaseContract(caseId, result) {
       });
     }
   });
+  (definition?.requiredFacts || []).forEach(requirement => {
+    if (requirement?.kind === 'event' && !ledger.some(event => String(event?.eventKind || '').trim() === String(requirement.eventKind || '').trim())) failures.push({ code: 'REQUIRED_LEDGER_FACT_MISSING', eventKind: requirement.eventKind });
+    if (requirement?.kind === 'block' && !reportBlocks.some(block => String(block?.blockType || '').trim() === String(requirement.blockType || '').trim())) failures.push({ code: 'REQUIRED_REPORT_BLOCK_MISSING', blockType: requirement.blockType });
+  });
+  if ((definition?.mutationRelations || []).includes('INPUT_IMMUTABLE') && result?.inputUnchanged !== true) failures.push({ code: 'INPUT_MUTATION_RELATION_FAILED' });
   if (caseId === 'team_resource_support') {
     const repeatedSingleSupport = decisions.filter(entry =>
       Number(entry?.round || 0) > 1 &&
@@ -143,7 +163,7 @@ function validateCaseContract(caseId, result) {
       String(entry?.actionRole || 'ACTIVE').trim() === 'ACTIVE',
     );
     if (!(chargeRound >= 3)) failures.push({ code: 'UNKNOWN_CHARGE_RESOLVED_BEFORE_RESPONSE_WINDOW', chargeRound });
-    if (priorResponses.length < 3 || !priorResponses.some(entry => entry?.problems?.[0]?.problemId === 'IMMINENT_DENIAL')) {
+    if (priorResponses.length < 3 || !priorResponses.some(entry => (entry?.problems || []).some(problem => problem?.problemId === 'IMMINENT_DENIAL'))) {
       failures.push({ code: 'UNKNOWN_CHARGE_RESPONSE_DECISIONS_MISSING', count: priorResponses.length });
     }
   }
@@ -194,7 +214,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   if (!review) throw new Error(`r63_manual_review_note_missing:${definition.caseId}`);
   const fatalDetails = [
     ...(result.audit?.fatals || []),
-    ...validateCaseContract(definition.caseId, result),
+    ...validateCaseContract(definition, result),
     ...(review.blocking === true ? [{ code: 'MANUAL_REALISM_REVIEW_BLOCKED', caseId: definition.caseId }] : []),
   ];
   const ledgerHash = hash(result.ledger);
@@ -313,6 +333,11 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     reportHash,
     inputHash: hash(definition.combatData),
     beliefHash: hash(definition.initialBelief),
+    sourceDataHashes: definition.sourceDataHashes,
+    candidateRelations: definition.candidateRelations,
+    forbiddenSelections: definition.forbiddenSelections,
+    requiredFacts: definition.requiredFacts,
+    mutationRelations: definition.mutationRelations,
     gitHead,
     worktreeHash,
     beliefObservationCount: Array.isArray(result.beliefObservations) ? result.beliefObservations.length : 0,

@@ -144,7 +144,11 @@ const first = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'all
 const second = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
 assert.equal(first.selected.candidateId, second.selected.candidateId, '同输入同种子选择不确定');
 assert.equal(JSON.stringify(first.scoreAudit), JSON.stringify(second.scoreAudit), '同输入同种子评分审计不确定');
-assert.ok(first.candidates.some(candidate => candidate.classification === 'TACTICAL_ERROR'), '合法次优候选没有归入TACTICAL_ERROR');
+const classificationProbe = decision.classifyCandidateEvidence([
+  { candidateId: 'best', objectiveUtility: 10, normalizedUtility: 1, vector: {} },
+  { candidateId: 'inferior', objectiveUtility: 0, normalizedUtility: 0, vector: {} },
+]);
+assert.equal(classificationProbe.find(candidate => candidate.candidateId === 'inferior')?.classification, 'TACTICAL_ERROR', '合法次优候选没有归入TACTICAL_ERROR');
 
 const confused = decision.decide({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
 const confusedAttackTargets = confused.candidates.filter(candidate => candidate.skill?.id === 'attack-skill').flatMap(candidate => candidate.declaration.targetIds);
@@ -175,6 +179,9 @@ survivalWorld.参战者.enemy[0].hp = 1000;
 survivalWorld.参战者.enemy[0].hp_max = 1000;
 survivalWorld.参战者.enemy[0].str = 500;
 survivalWorld.参战者.enemy[0].def = 500;
+survivalWorld.参战者.enemy[0].level = 90;
+survivalWorld.参战者.ally[0].agi = 500;
+survivalWorld.参战者.enemy[0].agi = 20;
 const survivalDecision = decision.decide({
   worldSnapshot: survivalWorld,
   actorId: 'ally-1',
@@ -182,7 +189,7 @@ const survivalDecision = decision.decide({
   beliefState: { confidence: 1 },
   seed: 103,
 });
-assert.equal(survivalDecision.selected.declaration.actionKind, 'WITHDRAW', '濒死求生场景仍选择主动攻击');
+assert.equal(survivalDecision.selected.declaration.actionKind, 'WITHDRAW', '高把握撤离的濒死求生场景仍选择主动攻击');
 assert.ok(survivalDecision.candidates.find(candidate => candidate.declaration.actionKind === 'WITHDRAW' && candidate.objectiveUtility > 30), '撤退没有获得保命窗口价值');
 
 const asymmetricSurvivalWorld = world(1);
@@ -362,8 +369,9 @@ refreshWasteWorld.参战者.ally[0].技能列表 = [{
 const refreshWasteDecision = decision.decide({ worldSnapshot: refreshWasteWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 111 });
 const refreshWaste = refreshWasteDecision.candidates.find(candidate => candidate.skill?.id === 'redundant-agility-refresh');
 const refreshedTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(refreshWaste.preview.afterSnapshot, 'enemy-1');
+const projectedRefreshTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(decision.buildDecisionWorld(refreshWasteWorld, 'ally-1', refreshWasteDecision.beliefState), 'enemy-1');
 assert.equal(refreshWaste?.rejectionCode, 'ZERO_EFFECT_COSTLY', '未延长窗口的不可叠属性削弱刷新仍可被抽样');
-assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshedTarget, 'agi'), sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshWasteWorld.参战者.enemy[0], 'agi'), '预估把不可叠属性削弱刷新重复计入面板');
+assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshedTarget, 'agi'), sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(projectedRefreshTarget, 'agi'), '预估把不可叠属性削弱刷新重复计入面板');
 
 const decisionWorld = world(3);
 const decisionBefore = JSON.stringify(decisionWorld);

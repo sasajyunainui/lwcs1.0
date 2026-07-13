@@ -15594,7 +15594,10 @@ class BattleUIComponent {
       const hostName = String(宿主?.name || 宿主?.名称 || 召唤单位?.宿主名 || '').trim();
       const actionName = normalizeBattleActionDisplayName(动作名 || 选项?.动作名 || '召唤');
       const round = Number(combatData?.回合 || 0);
-      let sourceAction = [...BATTLE_RUNTIME.ensureLedger(combatData)].reverse().find(event =>
+      const inheritedSourceAction = combatData?.__sourceActionEvent && typeof combatData.__sourceActionEvent === 'object'
+        ? combatData.__sourceActionEvent
+        : null;
+      let sourceAction = inheritedSourceAction || [...BATTLE_RUNTIME.ensureLedger(combatData)].reverse().find(event =>
         String(event?.eventKind || '').trim() === 'action_start' &&
         Number(event?.round || 0) === round &&
         isSameBattleReportName(event?.actorName || '', hostName) &&
@@ -29657,6 +29660,9 @@ class BattleUIComponent {
         const directCopyEffect = 常规行动效果.find(effect => effect?.原型 === '复制执行') || null;
         const directGrantEffect = 常规行动效果.find(effect => effect?.原型 === '机制授予') || null;
         const directMechanismSuppressEffect = 常规行动效果.find(effect => effect?.原型 === '机制抹消') || null;
+        const directActiveTimeRewindEffect = 常规行动效果.find(effect =>
+          effect?.原型 === '时光回溯' && 解析时光回溯发动方式(effect) === '主动',
+        ) || null;
         const directStateExchangeEffects = 常规行动效果.filter(effect => effect?.原型 === '状态交换');
         const directPrototypeEffects = 常规行动效果.filter(effect =>
           effect?.原型 && (
@@ -29894,6 +29900,7 @@ class BattleUIComponent {
             directCopyEffect,
             directGrantEffect,
             directMechanismSuppressEffect,
+            directActiveTimeRewindEffect,
           ].some(Boolean) ||
           directStatusRemoveEffects.length > 0 ||
           directRuleRewriteEffects.length > 0 ||
@@ -36202,6 +36209,12 @@ class BattleUIComponent {
 
           const 结算已宣告动作 = () => {
           const actorTurnCombatData = createActorTurnCombatData(actorEntry, finalTarget, battleState, targetsFriendlyTeam);
+          Object.defineProperty(actorTurnCombatData, '__sourceActionEvent', {
+            configurable: true,
+            enumerable: false,
+            writable: false,
+            value: actionStartEvent,
+          });
           const ratio = calculateReactionRatio(actor, finalTarget, action, actorTurnCombatData);
           let reactionAction = { type: '无法反应', log: '无', skill: null, def_mult: 1.0 };
           if (finalTarget === actor || targetsFriendlyTeam) {
@@ -36497,7 +36510,8 @@ class BattleUIComponent {
           const rootEventLedger = BATTLE_RUNTIME.ensureLedger(battleState.combatData);
           const hasStructuredSettlement = rootEventLedger.some(event => {
             const kind = String(event?.eventKind || '').trim();
-            if (!['hit_result', 'state_apply', 'resource_change', 'item_consume', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
+            if (!['hit_result', 'state_apply', 'state_replace', 'state_remove', 'effect_resolved', 'resource_change', 'item_consume', 'create', 'complete', 'summon_create', 'summon_assist', 'shield_create', 'shield_break', 'blocked_action', 'failed_action', 'target_fail'].includes(kind)) return false;
+            if (kind === 'effect_resolved' && /fail|blocked|no_effect|invalid|失败|无效|阻断/i.test(String(event?.result || event?.resultState || event?.meta?.result || ''))) return false;
             return String(event?.sourceActionId || event?.actionId || '').trim() === String(actionStartEvent?.actionId || '').trim() ||
               String(event?.sourceNodeId || event?.parentNodeId || '').trim() === String(actionStartEvent?.chainNodeId || '').trim();
           });
@@ -37149,7 +37163,21 @@ class BattleUIComponent {
                   beliefByActor.set(actorId, decision.beliefState || {});
                   strategyByActor.set(actorId, decision.strategyMemory || {});
                   const history = strategicHistoryByActor.get(actorId) || [];
-                  history.push({ signature: decision.strategicSignature, capacityChangePercent: 0, newInformation: false, pendingEffect: false });
+                  const previousCapacity = Number(history.at(-1)?.capacityTotal);
+                  const previousBeliefRevision = String(history.at(-1)?.beliefRevision || '').trim();
+                  const currentCapacity = Math.max(0, Number(decision?.stateCapacityTotal || 0));
+                  const currentBeliefRevision = String(decision?.beliefRevision || '').trim();
+                  const capacityChangePercent = Number.isFinite(previousCapacity)
+                    ? 100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity)
+                    : 100;
+                  history.push({
+                    signature: decision.strategicSignature,
+                    capacityTotal: currentCapacity,
+                    capacityChangePercent,
+                    beliefRevision: currentBeliefRevision,
+                    newInformation: !!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision,
+                    pendingEffect: decision?.pendingStrategicEffect === true,
+                  });
                   strategicHistoryByActor.set(actorId, history.slice(-2));
                   decisions.push({ round: Number(battleState.combatData?.回合 || 0), actorId, actionRole: 'ACTIVE', ...decision });
                   登记决策机制观察(actor, decision, battleState.combatData, 'ACTIVE');

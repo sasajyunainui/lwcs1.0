@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { manualBattleCases, determinismCaseIds } from './battle_r63_manual_manifest.mjs';
+import { manualBattleCases, manualSourceDataHashes, determinismCaseIds } from './battle_r63_manual_manifest.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
@@ -42,6 +42,12 @@ requiredFatalTokens.forEach(token => {
 
 if (manualBattleCases.length !== 24) failures.push(`MANUAL_MANIFEST_SIZE:${manualBattleCases.length}`);
 if (new Set(manualBattleCases.map(item => item.caseId)).size !== manualBattleCases.length) failures.push('MANUAL_MANIFEST_DUPLICATE_CASE_ID');
+manualBattleCases.forEach(item => {
+  ['candidateRelations', 'forbiddenSelections', 'requiredFacts', 'mutationRelations'].forEach(field => {
+    if (!Array.isArray(item?.[field]) || !item[field].length) failures.push(`MANUAL_CASE_CONTRACT_EMPTY:${item.caseId}:${field}`);
+  });
+});
+if (Object.keys(manualSourceDataHashes).length !== 18) failures.push(`MANUAL_SOURCE_HASH_COUNT:${Object.keys(manualSourceDataHashes).length}`);
 const groupCounts = Object.fromEntries(['duel', 'team', 'raid', 'special'].map(group => [group, manualBattleCases.filter(item => item.group === group).length]));
 if (JSON.stringify(groupCounts) !== JSON.stringify({ duel: 8, team: 8, raid: 4, special: 4 })) failures.push(`MANUAL_MANIFEST_GROUPS:${JSON.stringify(groupCounts)}`);
 determinismCaseIds.forEach(caseId => {
@@ -64,6 +70,7 @@ const output = {
     determinismCaseCount: determinismCaseIds.length,
     legacyCloneCallCount: cloneCount,
     legacyStringifyCallCount: stringifyCount,
+    sourceCharacterHashCount: Object.keys(manualSourceDataHashes).length,
   },
   failures,
   warnings,

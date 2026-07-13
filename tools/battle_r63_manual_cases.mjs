@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { manualBattleCases, manualSourceDataHashes } from './battle_r63_manual_manifest.mjs';
 
 const clone = value => structuredClone(value);
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -15,6 +16,11 @@ function readSystem(snapshot = {}) {
 
 function participant(library, getBaseStats, name, options = {}) {
   const snapshot = sourceSnapshot(library, name);
+  const sourceHash = hash(snapshot);
+  const expectedSourceHash = manualSourceDataHashes[name];
+  if (!expectedSourceHash || sourceHash !== expectedSourceHash) {
+    throw new Error(`r63_manual_character_hash_changed:${name}:expected=${expectedSourceHash || 'missing'}:actual=${sourceHash}`);
+  }
   const level = Math.max(1, Number(options.level || snapshot?.属性?.等级 || 1));
   const system = readSystem(snapshot);
   if (typeof getBaseStats !== 'function') throw new Error('r63_manual_base_stats_missing');
@@ -73,10 +79,12 @@ function participant(library, getBaseStats, name, options = {}) {
   snapshot.持续效果 = {};
   snapshot.背包 = snapshot.背包 && typeof snapshot.背包 === 'object' ? snapshot.背包 : {};
   if (options.charging) snapshot.蓄力技能 = clone(options.charging);
-  return { unit: snapshot, sourceHash: hash(sourceSnapshot(library, name)) };
+  return { unit: snapshot, sourceHash };
 }
 
 function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
+  const contract = manualBattleCases.find(item => item.caseId === caseId);
+  if (!contract) throw new Error(`r63_manual_case_contract_missing:${caseId}`);
   return {
     caseId,
     seed: 630000 + [...caseId].reduce((sum, char) => sum + char.charCodeAt(0), 0),
@@ -85,6 +93,10 @@ function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
     initialBelief,
     sourceCharacterIds: [...players, ...enemies].map(entry => entry.unit.name),
     sourceDataHashes: Object.fromEntries([...players, ...enemies].map(entry => [entry.unit.name, entry.sourceHash])),
+    candidateRelations: [...contract.candidateRelations],
+    forbiddenSelections: [...contract.forbiddenSelections],
+    requiredFacts: contract.requiredFacts.map(item => ({ ...item })),
+    mutationRelations: [...contract.mutationRelations],
     combatData: {
       回合: 0,
       战斗类型: '普通战斗',

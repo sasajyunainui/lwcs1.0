@@ -341,12 +341,36 @@ addCheck(
 addCheck(
   'authoritativeGateUsesTrackedFormalTools',
   [
+    'lwcs/tools/audit_battle_r63_prototype_e2e.mjs',
+    'lwcs/tools/audit_battle_r63_scenario_matrix.mjs',
     'lwcs/tools/audit_battle_v73_formal_cases.mjs',
     'lwcs/tools/audit_battle_report_render_html.mjs',
     'lwcs/tools/audit_battle_ledger_strictness.mjs',
     'lwcs/tools/audit_battle_v73_performance.mjs',
   ].every(toolPath => gateSource.includes(toolPath)) &&
     !/['"]tools\/(?:audit_battle_v73_formal_cases|audit_battle_report_render_html|audit_battle_ledger_strictness|audit_battle_v73_performance)\.mjs['"]/.test(gateSource),
+);
+addCheck(
+  'enemyDecisionWorldUsesBeliefProjection',
+  /function buildDecisionWorld\(worldSnapshot = \{\}, actorId = '', beliefState = \{\}\)/.test(battleDecisionSource) &&
+    /const beliefUnit = beliefState\?\.units\?\.\[id\] \|\| \{\}/.test(battleDecisionSource) &&
+    /const perceivedLevel = lower \+ \(upper - lower\)/.test(battleDecisionSource) &&
+    /技能列表:\s*\[\]/.test(battleDecisionSource) &&
+    !/const projected\s*=\s*\{\s*\.\.\.sourceUnit/.test(battleDecisionSource),
+);
+addCheck(
+  'strategicHistoryUsesObservedChanges',
+  /const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleUiSource) &&
+    /history\.push\(\{[\s\S]*?capacityChangePercent,[\s\S]*?beliefRevision:\s*currentBeliefRevision/.test(battleUiSource) &&
+    /newInformation:\s*!!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision/.test(battleUiSource) &&
+    /pendingEffect:\s*decision\?\.pendingStrategicEffect === true/.test(battleUiSource) &&
+    !/capacityChangePercent:\s*0\b|newInformation:\s*false\b|pendingEffect:\s*false\b/.test(battleUiSource),
+);
+addCheck(
+  'summonAssistCannotBecomeSecondActiveRoot',
+  /eventKind:\s*['"]summon_assist['"][\s\S]*?actionRole:\s*['"]ASSIST['"]/.test(battleUiSource) &&
+    /const 父动作事件 = options\?\.parentActionEvent[\s\S]*?parentActionEvent:\s*父动作事件/.test(battleUiSource) &&
+    !/eventKind:\s*['"]summon_assist['"][\s\S]{0,320}?actionRole:\s*['"]ACTIVE['"]/.test(battleUiSource),
 );
 addCheck(
   'legacyFixtureExecutorsRetiredFromAuthoritativeGate',
