@@ -19,6 +19,11 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 }
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 assert.ok(decision, '正式决策运行时未加载');
+const inspectDecision = input => {
+  let candidates = [];
+  const result = decision.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  return { ...result, candidates };
+};
 
 const factors = {
   levelGap: ['under', 'peer', 'over'],
@@ -110,7 +115,7 @@ const forbiddenClassifications = new Set(['HARD_INVALID', 'DOMINATED']);
 for (const [index, row] of rows.entries()) {
   const world = buildWorld(row);
   const before = JSON.stringify(world);
-  const result = decision.decide({
+  const result = inspectDecision({
     worldSnapshot: world,
     actorId: 'ally-1',
     battleIntent: { mode: world.战斗意图, withdrawAllowed: row.intent === 'survival' },
@@ -127,7 +132,7 @@ for (const [index, row] of rows.entries()) {
 }
 
 function candidateUtility(world, actorId, skillId) {
-  const result = decision.decide({ worldSnapshot: world, actorId, beliefState: { confidence: 0.8 }, seed: 991 });
+  const result = inspectDecision({ worldSnapshot: world, actorId, beliefState: { confidence: 0.8 }, seed: 991 });
   const candidate = result.candidates.find(item => item.skill?.id === skillId);
   assert.ok(candidate, `变形案例缺少候选:${skillId}`);
   return candidate.objectiveUtility;

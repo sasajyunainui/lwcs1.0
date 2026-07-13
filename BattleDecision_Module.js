@@ -1995,17 +1995,33 @@
     if (!generated.length) throw new Error('battle_decision_candidate_pool_empty');
     const scored = generated.map(candidate => scoreCandidate(candidate, scoringContext));
     const normalized = classifyCandidateEvidence(normalizeUtilities(paretoFilter(scored)));
+    if (typeof input.inspectCandidates === 'function') input.inspectCandidates(normalized);
     const strategyMemory = activeStrategyMemory(input.strategyMemory, decisionWorld, input.actionOpportunity, normalized);
     const choice = selectCandidate(normalized, decisionActor, input.seed || 1, { ...context, strategyMemory });
     const selected = { ...choice.selected, selected: true };
     const alternatives = normalized.filter(candidate => candidate.candidateId !== selected.candidateId).sort((a, b) => b.objectiveUtility - a.objectiveUtility).slice(0, 2);
+    const selectedRecord = Object.freeze({
+      candidateId: selected.candidateId,
+      declaration: selected.declaration,
+      utilityBefore: selected.utilityBefore,
+      utilityAfter: selected.utilityAfter,
+      objectiveUtility: selected.objectiveUtility,
+      normalizedUtility: selected.normalizedUtility,
+      vector: Object.freeze({ ...selected.vector }),
+      rejectionCode: selected.rejectionCode || '',
+      classification: selected.classification || 'VIABLE',
+      alternativeGap: Number(selected.alternativeGap || 0),
+      counterDeclineFallback: selected.counterDeclineFallback === true,
+      forcedFallback: selected.forcedFallback === true,
+      fallbackReason: String(selected.fallbackReason || '').trim(),
+      mechanicObservations: Object.freeze([...(selected.mechanicObservations || [])]),
+    });
     return Object.freeze({
       version: VERSION,
       actorId: preview.unitId(actor),
       candidateCount: normalized.length,
       paretoCount: normalized.filter(candidate => !candidate.rejectionCode).length,
-      candidates: Object.freeze(normalized),
-      selected: Object.freeze(selected),
+      selected: selectedRecord,
       beliefState: Object.freeze(beliefState),
       teamIntent: Object.freeze(teamIntent),
       problems: Object.freeze(problems),

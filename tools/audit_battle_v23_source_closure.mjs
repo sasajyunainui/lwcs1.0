@@ -106,6 +106,14 @@ addCheck(
     !/function 确保战斗判定因果链\(/.test(battleUiSource),
 );
 addCheck(
+  'runtimeStateAndSnapshotOwnedByRuntime',
+  /function ensureCombatRuntime\(combatData = \{\}\)/.test(battleRuntimeSource) &&
+    /function getBattleSnapshot\(combatData = \{\}\)/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.ensureCombatRuntime\(/.test(battleUiSource) &&
+    /BATTLE_RUNTIME\.getBattleSnapshot\(/.test(battleUiSource) &&
+    !/function 确保战斗运行态\(|function ui_getBattleSnapshot\(/.test(battleUiSource),
+);
+addCheck(
   'factAuditOwnedByRuntime',
   /function auditFacts\(payload = \{\}\)/.test(battleRuntimeSource) &&
     /const audit = auditFacts\(\{/.test(battleRuntimeSource) &&
@@ -117,19 +125,26 @@ addCheck(
 addCheck(
   'debugCaseOrchestrationOwnedByRuntime',
   /function runBattleCase\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /const domain = requireEngine\(\)\.caseDomain/.test(battleRuntimeSource) &&
-    /caseDomain:\s*\{/.test(battleUiSource) &&
+    /function runDecisionTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
+    /runDecisionTeamBattle\(\{/.test(battleRuntimeSource) &&
+    !/bindEngine|requireEngine|caseDomain/.test(battleRuntimeSource) &&
+    !/bindEngine|caseDomain/.test(battleUiSource) &&
     !/function 运行战斗调试案例\(/.test(battleUiSource) &&
     !/runBattleCase:\s*options\s*=>/.test(battleUiSource) &&
     !/return requireEngine\(\)\.runBattleCase/.test(battleRuntimeSource),
 );
 addCheck(
+  'caseDomainAdapterRemoved',
+  !/bindEngine|requireEngine|caseDomain|executeDecisionTeam/.test(battleRuntimeSource) &&
+    !/bindEngine|caseDomain|executeDecisionTeam/.test(battleUiSource),
+);
+addCheck(
   'formalDeclarationExecutionOwnedByRuntime',
   /function executeDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
     /executeDeclaration,/.test(battleRuntimeSource) &&
-    /domain\.executeDeclaration\(/.test(battleRuntimeSource) &&
-    /executeDeclaration:\s*\(\{ combatData, declaration, seed \}\)\s*=>/.test(battleUiSource) &&
-    /playerLockedNaturalAction/.test(battleUiSource),
+    /runtime\.playerLockedNaturalAction\s*=/.test(battleRuntimeSource) &&
+    /return runDecisionTeamBattle\(\{/.test(battleRuntimeSource) &&
+    !/domain\.executeDeclaration\(|executeDeclaration:\s*\(/.test(battleUiSource),
 );
 addCheck(
   'battleModuleVersionsAreExactContracts',
@@ -180,12 +195,20 @@ addCheck(
 addCheck(
   'finalSummaryFactsOwnedByRuntime',
   /function buildFinalSummary\(eventLedger = \[\], decisionTrace = \[\], finalSnapshot = \{\}, combatData = null\)/.test(battleRuntimeSource) &&
-    /const resolvedIntents = battleEnded[\s\S]*?requireEngine\(\)\.caseDomain\.resolveNextIntents\(/.test(battleRuntimeSource) &&
+    /function resolveNextIntents\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /const resolvedIntents = battleEnded[\s\S]*?: resolveNextIntents\(/.test(battleRuntimeSource) &&
     /const \{ playerIntent, enemyIntent \} = resolvedIntents/.test(battleRuntimeSource) &&
-    /resolveNextIntents:\s*input\s*=>/.test(battleUiSource) &&
+    !/resolveNextIntents:|构建战斗总结下一行动意图\(/.test(battleUiSource) &&
     /BATTLE_RUNTIME\.buildFinalSummary\(/.test(battleUiSource) &&
     !/function 构建战斗总结数据\(/.test(battleUiSource) &&
     !/buildFinalSummary:\s*\(/.test(battleUiSource),
+);
+addCheck(
+  'reportProjectionHelpersOwnedByRuntime',
+  /function normalizePublicEntry\(item = \{\}\)/.test(battleRuntimeSource) &&
+    /function projectPublicReportBlocks\(eventLedger = \[\]\)/.test(battleRuntimeSource) &&
+    /function resolveReportUnitSide\(context = \{\}, unitName = ''\)/.test(battleRuntimeSource) &&
+    !/buildPublicReportBlocks:|normalizePublicEntry:|resolveReportUnitSide:/.test(battleUiSource),
 );
 addCheck(
   'aiNarrativeSummaryOwnedByRuntime',
@@ -224,7 +247,8 @@ addCheck(
 addCheck(
   'teamRoundRunnerOwnedByRuntime',
   /function runTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.runTeamBattle\(/.test(battleUiSource) &&
+    /const simulation = runTeamBattle\(\{/.test(battleRuntimeSource) &&
+    !/BATTLE_RUNTIME\.runTeamBattle\(/.test(battleUiSource) &&
     !/while\s*\(rounds\s*<\s*maxRounds\)/.test(battleUiSource),
 );
 addCheck(
@@ -236,8 +260,9 @@ addCheck(
 addCheck(
   'duelRoundLoopOwnedByRuntime',
   /function 运行正式决策战斗\(/.test(battleUiSource) &&
-    /runDecisionTeamBattleSimulation\(/.test(battleUiSource) &&
-    /executeDecisionTeam/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.runDecisionTeamBattle\(\{/.test(battleUiSource) &&
+    /function runDecisionTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
+    !/function runDecisionTeamBattleSimulation\(/.test(battleUiSource) &&
     !/BATTLE_RUNTIME\.runDuelRounds\(/.test(battleUiSource) &&
     !/while\s*\(\s*roundCount < maxRounds/.test(battleUiSource),
 );
@@ -245,8 +270,8 @@ addCheck(
   'duelRoundDeclarationHasSinglePath',
   !/构建单挑回合宣告|执行单挑回合交锋|executeDuelRound/.test(battleUiSource) &&
     /buildQueue:\s*generateActionQueue/.test(battleUiSource) &&
-    /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleUiSource) &&
-    /entry\.__decisionResolver\s*=/.test(battleUiSource) &&
+    /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleRuntimeSource) &&
+    /entry\.__decisionResolver\s*=/.test(battleRuntimeSource) &&
     /executeQueue:\s*执行团战扁平行动队列/.test(battleUiSource),
 );
 addCheck(
@@ -343,6 +368,13 @@ addCheck(
     /!Object\.hasOwn\(item, 'candidates'\)/.test(fs.readFileSync(path.resolve(root, 'lwcs/tools/audit_battle_v73_formal_cases.mjs'), 'utf8')),
 );
 addCheck(
+  'decisionReleasesFullCandidatePoolAfterInspection',
+  !/candidates:\s*Object\.freeze\(normalized\)/.test(battleDecisionSource) &&
+    /typeof input\.inspectCandidates === ['"]function['"]/.test(battleDecisionSource) &&
+    !/inspectCandidates/.test(`${battleRuntimeSource}\n${battleUiSource}`) &&
+    !/preview:\s*selected(?:\?\.)?\.preview/.test(battleDecisionSource),
+);
+addCheck(
   'authoritativeGateUsesTrackedFormalTools',
   [
     'lwcs/tools/audit_battle_r63_prototype_e2e.mjs',
@@ -364,10 +396,11 @@ addCheck(
 );
 addCheck(
   'strategicHistoryUsesObservedChanges',
-  /const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleUiSource) &&
-    /history\.push\(\{[\s\S]*?capacityChangePercent,[\s\S]*?beliefRevision:\s*currentBeliefRevision/.test(battleUiSource) &&
-    /newInformation:\s*!!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision/.test(battleUiSource) &&
-    /pendingEffect:\s*decision\?\.pendingStrategicEffect === true/.test(battleUiSource) &&
+  /const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleRuntimeSource) &&
+    /history\.push\(\{[\s\S]*?capacityChangePercent:[\s\S]*?beliefRevision:\s*currentBeliefRevision/.test(battleRuntimeSource) &&
+    /newInformation:\s*!!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision/.test(battleRuntimeSource) &&
+    /pendingEffect:\s*decision\?\.pendingStrategicEffect === true/.test(battleRuntimeSource) &&
+    !/const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleUiSource) &&
     !/capacityChangePercent:\s*0\b|newInformation:\s*false\b|pendingEffect:\s*false\b/.test(battleUiSource),
 );
 addCheck(

@@ -43,6 +43,11 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
 assert.ok(decision && runtime, '正式决策或战斗运行时未加载');
+const inspectDecision = input => {
+  let candidates = [];
+  const result = decision.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  return { ...result, candidates };
+};
 assert.throws(() => {
   const mismatch = { __LWCS_BATTLE_PREVIEW__: { version: 'wrong-preview', previewAction() {} } };
   mismatch.window = mismatch;
@@ -125,7 +130,7 @@ const shapeResults = [];
 for (const size of [1, 3, 7]) {
   const worldSnapshot = world(size);
   const before = JSON.stringify(worldSnapshot);
-  const result = decision.decide({ worldSnapshot, actorId: 'ally-1', beliefState: { confidence: 0.5 }, seed: 7300 + size });
+  const result = inspectDecision({ worldSnapshot, actorId: 'ally-1', beliefState: { confidence: 0.5 }, seed: 7300 + size });
   assert.equal(JSON.stringify(worldSnapshot), before, `${size}v${size}正式决策修改输入`);
   assert.ok(result.candidateCount > 0 && result.paretoCount > 0, `${size}v${size}候选或Pareto为空`);
   const basicTargets = result.candidates.filter(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK').flatMap(candidate => candidate.declaration.targetIds);
@@ -140,8 +145,8 @@ for (const size of [1, 3, 7]) {
 }
 
 const deterministicWorld = world(3);
-const first = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
-const second = decision.decide({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
+const first = inspectDecision({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
+const second = inspectDecision({ worldSnapshot: deterministicWorld, actorId: 'ally-1', beliefState: { confidence: 0.4 }, seed: 99 });
 assert.equal(first.selected.candidateId, second.selected.candidateId, '同输入同种子选择不确定');
 assert.equal(JSON.stringify(first.scoreAudit), JSON.stringify(second.scoreAudit), '同输入同种子评分审计不确定');
 const classificationProbe = decision.classifyCandidateEvidence([
@@ -150,13 +155,13 @@ const classificationProbe = decision.classifyCandidateEvidence([
 ]);
 assert.equal(classificationProbe.find(candidate => candidate.candidateId === 'inferior')?.classification, 'TACTICAL_ERROR', '合法次优候选没有归入TACTICAL_ERROR');
 
-const confused = decision.decide({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
+const confused = inspectDecision({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
 const confusedAttackTargets = confused.candidates.filter(candidate => candidate.skill?.id === 'attack-skill').flatMap(candidate => candidate.declaration.targetIds);
 assert.ok(confusedAttackTargets.includes('ally-2') && confusedAttackTargets.includes('enemy-3'), '潜在索敌干扰未保留友敌完整目标通道');
 
 const fullHealthWorld = world(1);
 fullHealthWorld.参战者.ally[0].hp = 100;
-const fullHealth = decision.decide({ worldSnapshot: fullHealthWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 101 });
+const fullHealth = inspectDecision({ worldSnapshot: fullHealthWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 101 });
 const fullHealthHeal = fullHealth.candidates.find(candidate => candidate.skill?.id === 'heal-skill');
 assert.equal(fullHealthHeal?.rejectionCode, 'ZERO_EFFECT_COSTLY', '满血有成本治疗未被识别为零收益');
 assert.equal(fullHealthHeal?.classification, 'HARD_INVALID', '零收益有成本动作未归入HARD_INVALID');
@@ -168,7 +173,7 @@ costlyWorld.参战者.ally[0].技能列表 = [{
   id: 'bankrupt-skill', name: '资源破产技能', 消耗: '魂力:95',
   _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 45, 伤害类型: '近身攻击' }],
 }, attackSkill];
-const costly = decision.decide({ worldSnapshot: costlyWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 102 });
+const costly = inspectDecision({ worldSnapshot: costlyWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 102 });
 const bankrupt = costly.candidates.find(candidate => candidate.skill?.id === 'bankrupt-skill');
 assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readResource(sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(bankrupt.preview.afterSnapshot, 'ally-1'), '魂力'), 5, '技能成本未进入覆盖层资源终态');
 
@@ -182,7 +187,7 @@ survivalWorld.参战者.enemy[0].def = 500;
 survivalWorld.参战者.enemy[0].level = 90;
 survivalWorld.参战者.ally[0].agi = 500;
 survivalWorld.参战者.enemy[0].agi = 20;
-const survivalDecision = decision.decide({
+const survivalDecision = inspectDecision({
   worldSnapshot: survivalWorld,
   actorId: 'ally-1',
   battleIntent: { mode: '求生' },
@@ -198,9 +203,9 @@ asymmetricSurvivalWorld.参战者 = {
   team_player: asymmetricSurvivalWorld.参战者.ally,
   team_enemy: asymmetricSurvivalWorld.参战者.enemy,
 };
-const pursuingEnemyDecision = decision.decide({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'enemy-1', beliefState: { confidence: 1 }, seed: 1031 });
+const pursuingEnemyDecision = inspectDecision({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'enemy-1', beliefState: { confidence: 1 }, seed: 1031 });
 assert.ok(!pursuingEnemyDecision.candidates.some(candidate => candidate.declaration.actionKind === 'WITHDRAW'), '玩家求生意图被错误共享给追击方');
-const escapingPlayerDecision = decision.decide({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1032 });
+const escapingPlayerDecision = inspectDecision({ worldSnapshot: asymmetricSurvivalWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1032 });
 assert.ok(escapingPlayerDecision.candidates.some(candidate => candidate.declaration.actionKind === 'WITHDRAW'), '正式战斗意图没有从worldSnapshot进入玩家决策');
 
 const chargedThreatWorld = world(1);
@@ -216,7 +221,7 @@ chargedThreatWorld.参战者.enemy[0].蓄力技能 = {
     _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 500, 伤害类型: '近身攻击' }],
   },
 };
-const chargedThreatDecision = decision.decide({
+const chargedThreatDecision = inspectDecision({
   worldSnapshot: chargedThreatWorld,
   actorId: 'ally-1',
   battleIntent: { mode: '切磋' },
@@ -228,7 +233,7 @@ assert.ok(chargedThreatDecision.selected.objectiveUtility >= 18, '避免公开�
 chargedThreatWorld.参战者.ally[0].__battleRuntime = {
   activeDefenseStance: { type: chargedThreatDecision.selected.declaration.actionKind, stateName: '已准备防守窗口' },
 };
-const preparedThreatDecision = decision.decide({
+const preparedThreatDecision = inspectDecision({
   worldSnapshot: chargedThreatWorld,
   actorId: 'ally-1',
   battleIntent: { mode: '切磋' },
@@ -239,7 +244,7 @@ assert.ok(!['DEFEND', 'EVADE'].includes(preparedThreatDecision.selected.declarat
 assert.ok(preparedThreatDecision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate.declaration.actionKind)).every(candidate => candidate.rejectionCode === 'ZERO_PROGRESS'), '已有防守窗口时重复防守没有归零边际');
 delete chargedThreatWorld.参战者.ally[0].__battleRuntime;
 chargedThreatWorld.参战者.enemy[0].蓄力技能.cast_time = 50;
-const delayedThreatDecision = decision.decide({
+const delayedThreatDecision = inspectDecision({
   worldSnapshot: chargedThreatWorld,
   actorId: 'ally-1',
   battleIntent: { mode: '切磋' },
@@ -263,7 +268,7 @@ falseReactionWorld.参战者.ally[0].技能列表 = [{
     { 原型: '判定修正', 目标: '单体', 判定: '闪避', 数值: '-5%' },
   ],
 }];
-const falseReactionDecision = decision.decide({
+const falseReactionDecision = inspectDecision({
   worldSnapshot: falseReactionWorld,
   actorId: 'ally-1',
   actionOpportunity: { role: 'REACTION', sourceActorId: 'enemy-1', immediateBudget: 40 },
@@ -272,7 +277,7 @@ const falseReactionDecision = decision.decide({
 });
 assert.ok(!falseReactionDecision.candidates.some(candidate => candidate.skill?.id === 'false-reaction'), '敌方闪避减益被误认成即时防御魂技');
 
-const falseCounterDecision = decision.decide({
+const falseCounterDecision = inspectDecision({
   worldSnapshot: falseReactionWorld,
   actorId: 'ally-1',
   actionOpportunity: { role: 'COUNTER', sourceActorId: 'enemy-1', immediateBudget: 40 },
@@ -301,18 +306,18 @@ negativeActionWorld.参战者.ally[0].技能列表 = [{
   id: 'negative-action', name: '低收益高代价动作', 消耗: '魂力:95',
   _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 1, 伤害类型: '近身攻击' }],
 }, attackSkill];
-const negativeActionDecision = decision.decide({ worldSnapshot: negativeActionWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 104 });
+const negativeActionDecision = inspectDecision({ worldSnapshot: negativeActionWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 104 });
 const negativeAction = negativeActionDecision.candidates.find(candidate => candidate.skill?.id === 'negative-action');
 assert.ok(['ZERO_PROGRESS', 'DOMINATED'].includes(negativeAction?.rejectionCode), '低收益高代价动作仍进入主观抽样池');
 assert.ok(['HARD_INVALID', 'DOMINATED'].includes(negativeAction?.classification), '低收益高代价动作没有进入禁止分类');
 assert.ok(!negativeActionDecision.candidates.some(candidate => candidate.rejectionCode === 'SELF_DEFEATING' && sandbox.__LWCS_BATTLE_PREVIEW__.isAlive(candidate.preview?.afterSnapshot ? sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(candidate.preview.afterSnapshot, 'ally-1') : {})), '未导致行动者失能的负效用动作被误判为自毁');
 
-const ordinaryThreatDecision = decision.decide({ worldSnapshot: world(1), actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 109 });
+const ordinaryThreatDecision = inspectDecision({ worldSnapshot: world(1), actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 109 });
 const ordinaryDefense = ordinaryThreatDecision.candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
 assert.ok(ordinaryDefense?.objectiveUtility > 0 && ordinaryDefense.rejectionCode !== 'ZERO_PROGRESS', `确定会到来的非致命回应没有形成基础防御价值:${JSON.stringify(ordinaryDefense)}`);
 
 const lethalResponseWorld = world(1);
-const lethalResponseDecision = decision.decide({
+const lethalResponseDecision = inspectDecision({
   worldSnapshot: lethalResponseWorld,
   actorId: 'ally-1',
   beliefState: {
@@ -335,7 +340,7 @@ assert.ok(exposedAttack.deepAnalysis.nodeCount <= 12, '深推演超过12节点�
 
 const unfocusedTeamWorld = world(3);
 unfocusedTeamWorld.参战者.ally[0].hp = 100;
-const unfocusedTeamDecision = decision.decide({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1091 });
+const unfocusedTeamDecision = inspectDecision({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1091 });
 const unfocusedEvade = unfocusedTeamDecision.candidates.find(candidate => candidate.declaration.actionKind === 'EVADE');
 const unfocusedBestAttack = Math.max(...unfocusedTeamDecision.candidates
   .filter(candidate => ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(candidate.declaration.actionKind) && !candidate.rejectionCode)
@@ -345,7 +350,7 @@ assert.ok(!['DEFEND', 'EVADE'].includes(unfocusedTeamDecision.selected.declarati
 unfocusedTeamWorld.__battleEventLedger = [{
   eventKind: 'action_start', round: 1, actorName: 'enemy-1', actorSide: 'enemy', targetName: 'ally-1', targetSide: 'ally',
 }];
-const focusedTeamDecision = decision.decide({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1092 });
+const focusedTeamDecision = inspectDecision({ worldSnapshot: unfocusedTeamWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 1092 });
 const focusedEvade = focusedTeamDecision.candidates.find(candidate => candidate.declaration.actionKind === 'EVADE');
 assert.ok(focusedEvade.objectiveUtility > unfocusedEvade.objectiveUtility, '真实受击焦点没有提高团队单位的防守价值');
 
@@ -354,7 +359,7 @@ resourceNoUnlockWorld.参战者.ally[0].技能列表 = [{
   id: 'resource-no-unlock', name: '无解锁魂力支援', 消耗: { 魂力: 20 },
   _效果数组: [{ 原型: '资源变化', 目标: '单体', 资源: '魂力', 数值: '+10%' }],
 }];
-const resourceNoUnlockDecision = decision.decide({ worldSnapshot: resourceNoUnlockWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 110 });
+const resourceNoUnlockDecision = inspectDecision({ worldSnapshot: resourceNoUnlockWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 110 });
 const resourceNoUnlock = resourceNoUnlockDecision.candidates.find(candidate => candidate.skill?.id === 'resource-no-unlock' && candidate.declaration.targetIds.includes('ally-2'));
 assert.equal(resourceNoUnlock?.rejectionCode, 'ZERO_EFFECT_COSTLY', '未改善目标后续行为库的有成本资源支援仍可被抽样');
 
@@ -366,7 +371,7 @@ refreshWasteWorld.参战者.ally[0].技能列表 = [{
   id: 'redundant-agility-refresh', name: '重复迟缓', 消耗: { 魂力: 10 },
   _效果数组: [{ 原型: '属性修正', 目标: '单体', 属性: '敏捷', 数值: '-20%', 持续回合: 1 }],
 }];
-const refreshWasteDecision = decision.decide({ worldSnapshot: refreshWasteWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 111 });
+const refreshWasteDecision = inspectDecision({ worldSnapshot: refreshWasteWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 111 });
 const refreshWaste = refreshWasteDecision.candidates.find(candidate => candidate.skill?.id === 'redundant-agility-refresh');
 const refreshedTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(refreshWaste.preview.afterSnapshot, 'enemy-1');
 const projectedRefreshTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(decision.buildDecisionWorld(refreshWasteWorld, 'ally-1', refreshWasteDecision.beliefState), 'enemy-1');

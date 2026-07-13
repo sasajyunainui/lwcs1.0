@@ -679,7 +679,10 @@ const summary = {
     /activeBlocks\.map\(block => 渲染结构化战报BlockHTML/.test(code),
   recordReportHasNoTraceTextSupplement: !/构建行动链补缺公开战报Blocks|action_chain_gap_ast/.test(code),
   structuredOutcomeDoesNotBackfillLegacyText: !/outcomeSummary:\s*String\(entry\?\.text|outcomeSummary:\s*String\(entry\?\.text\s*\|\|/.test(code),
-  finalSummaryRunsPureNextActionPreview: /battle_summary_preview_mutated_state/.test(code) && /__LWCS_BATTLE_DECISION__\?\.decide\(\{/.test(code) && /worldSnapshot:\s*summaryCombat/.test(code),
+  finalSummaryRunsPureNextActionPreview:
+    /battle_summary_preview_mutated_state/.test(battleRuntimeCode) &&
+    /decisionRuntime\.decide\(\{/.test(battleRuntimeCode) &&
+    /worldSnapshot:\s*combatData/.test(battleRuntimeCode),
   structuredReportStylesIntegrated:
     /battle-structured-report-round-head/.test(styleCode) &&
     /battle-structured-report-exchange/.test(styleCode) &&

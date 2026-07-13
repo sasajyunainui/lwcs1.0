@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const injectionMarker = '    BATTLE_RUNTIME.bindEngine({';
+const injectionMarker = '    BATTLE_RUNTIME.bindSettlementPrimitives({';
 
 const fixtureExports = `
     root.__LWCS_EXPORT_BATTLE_RECORD_VISIBLE_TEXT__ = (result = null, activeTab = 'preview') => 导出战斗记录可见文本(result, activeTab);

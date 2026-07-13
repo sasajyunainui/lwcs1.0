@@ -42,10 +42,16 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 assert.ok(decision, '正式决策运行时未加载');
+const inspectDecision = input => {
+  let candidates = [];
+  const result = decision.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  return { ...result, candidates };
+};
 const battleUiSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleUI_Module.js'), 'utf8');
+const battleRuntimeSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleRuntime_Module.js'), 'utf8');
 assert.ok(!battleUiSource.includes('history.push({ signature: decision.strategicSignature, capacityChangePercent: 0, newInformation: false, pendingEffect: false })'), '正式僵局历史仍伪造零容量变化');
-assert.ok(battleUiSource.includes('100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity)'), '正式僵局历史未记录真实容量变化');
-assert.ok(battleUiSource.includes('pendingEffect: decision?.pendingStrategicEffect === true'), '正式僵局历史未记录待兑现效果');
+assert.ok(battleRuntimeSource.includes('100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity)'), '正式僵局历史未记录真实容量变化');
+assert.ok(battleRuntimeSource.includes('pendingEffect: decision?.pendingStrategicEffect === true'), '正式僵局历史未记录待兑现效果');
 
 const attack = { id: 'attack', name: '推进攻击', 消耗: '魂力:5', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }] };
 const createFood = {
@@ -91,24 +97,24 @@ function world({ injured = true, stock = 0 } = {}) {
   };
 }
 
-const active = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 201 });
+const active = inspectDecision({ worldSnapshot: world(), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 201 });
 const itemCandidate = active.candidates.find(candidate => candidate.item?.id === 'potion');
 assert.ok(itemCandidate, '最后一件消耗品被硬禁');
 assert.equal(itemCandidate.vector.irreversibleCost, 0, '当前已可兑现最大价值的消耗品仍被重复收取未来成本');
 assert.ok(itemCandidate.preview.contributions.some(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST'), '消耗品成本未进入贡献账本');
 const reserveItemWorld = world();
 reserveItemWorld.参战者.ally[0].hp = 80;
-const reserveItem = decision.decide({ worldSnapshot: reserveItemWorld, actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 2011 })
+const reserveItem = inspectDecision({ worldSnapshot: reserveItemWorld, actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 2011 })
   .candidates.find(candidate => candidate.item?.id === 'potion');
 assert.ok(reserveItem.vector.irreversibleCost > 0, '轻伤时消耗稀缺物品没有保留后悔成本');
 assert.ok(['CONTEXT_RISK', 'DOMINATED'].includes(reserveItem.classification), '存在真实保留成本的消耗品没有归入风险或支配分类');
 
-const equipmentDecision = decision.decide({ worldSnapshot: world({ injured: false }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 202 });
+const equipmentDecision = inspectDecision({ worldSnapshot: world({ injured: false }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 202 });
 const equipmentCandidate = equipmentDecision.candidates.find(candidate => candidate.equipment?.id === 'sword');
 assert.ok(equipmentCandidate && !equipmentCandidate.rejectionCode, '有收益换装未生成有效候选');
 const equipmentHistoryWorld = world();
 equipmentHistoryWorld.参战者.ally[0].__battleRuntime = { equipmentDecisionSignatures: [equipmentCandidate.equipmentSignature] };
-const noEquipLoop = decision.decide({
+const noEquipLoop = inspectDecision({
   worldSnapshot: equipmentHistoryWorld,
   actorId: 'actor',
   beliefState: { confidence: 0.7 },
@@ -120,7 +126,7 @@ assert.deepEqual(Object.keys(active.strategyMemory).sort(), ['expectedOutcomeKin
 const usefulCreation = active.candidates.find(candidate => candidate.skill?.id === 'create-food');
 assert.equal(usefulCreation?.creation?.useful, true, '有库存缺口和消费者时造物未识别收益');
 assert.notEqual(usefulCreation?.rejectionCode, 'ZERO_EFFECT_COSTLY', '有效造物被零收益拒绝');
-const uselessCreationDecision = decision.decide({ worldSnapshot: world({ injured: false, stock: 3 }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 203 });
+const uselessCreationDecision = inspectDecision({ worldSnapshot: world({ injured: false, stock: 3 }), actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 203 });
 const uselessCreation = uselessCreationDecision.candidates.find(candidate => candidate.skill?.id === 'create-food');
 assert.equal(uselessCreation?.rejectionCode, 'ZERO_EFFECT_COSTLY', '库存充足且无人消费仍反复造物');
 
@@ -139,7 +145,7 @@ assert.equal(signatureA, signatureB, '自然恢复噪声改变战略状态签名
 assert.equal(decision.detectStalemate([{ signature: signatureA, capacityChangePercent: 0 }, { signature: signatureA, capacityChangePercent: 0 }], signatureA), true, '连续两回合同签名未识别僵局');
 assert.equal(decision.detectStalemate([{ signature: signatureA, capacityChangePercent: 0, pendingEffect: true }, { signature: signatureA, capacityChangePercent: 0 }], signatureA), false, '即将兑现持续效果被误判僵局');
 
-const stalemateDecision = decision.decide({
+const stalemateDecision = inspectDecision({
   worldSnapshot: world(),
   actorId: 'actor',
   beliefState: { confidence: 0.7 },

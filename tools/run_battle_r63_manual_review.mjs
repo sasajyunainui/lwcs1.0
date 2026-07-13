@@ -408,6 +408,36 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     review,
   });
 }
+if (verifyReviewHashes) {
+  const manifestPath = path.join(outputDir, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const recordedByCase = new Map((Array.isArray(manifest) ? manifest : []).map(item => [String(item?.caseId || '').trim(), item]));
+  const mismatches = [];
+  const compare = (caseId, field, current, recorded) => {
+    if (JSON.stringify(current) !== JSON.stringify(recorded)) mismatches.push({ caseId, field, current, recorded });
+  };
+  compare('MANIFEST', 'caseIds', results.map(item => item.caseId).sort(), [...recordedByCase.keys()].sort());
+  results.forEach(current => {
+    const recorded = recordedByCase.get(current.caseId);
+    if (!recorded) {
+      mismatches.push({ caseId: current.caseId, field: 'manifestEntry', current: 'present', recorded: 'missing' });
+      return;
+    }
+    compare(current.caseId, 'codeFreezeCommit', gitHead, recorded.codeFreezeCommit);
+    compare(current.caseId, 'runtimeSourceHash', runtimeSourceHash, recorded.runtimeSourceHash);
+    compare(current.caseId, 'manualDefinitionHash', manualDefinitionHash, recorded.manualDefinitionHash);
+    compare(current.caseId, 'inputHash', current.inputHash, recorded.inputHash);
+    compare(current.caseId, 'beliefHash', current.beliefHash, recorded.beliefHash);
+    compare(current.caseId, 'ledgerHash', current.ledgerHash, recorded.ledgerHash);
+    compare(current.caseId, 'reportHash', current.reportHash, recorded.reportHash);
+    compare(current.caseId, 'sourceDataHashes', current.sourceDataHashes, recorded.sourceDataHashes);
+    if (Number(current.fatalCount || 0) !== 0) mismatches.push({ caseId: current.caseId, field: 'fatalCount', current: current.fatalCount, recorded: 0 });
+  });
+  if (mismatches.length) throw new Error(`r63_manual_review_hash_mismatch:${JSON.stringify(mismatches.slice(0, 12))}`);
+  console.log(JSON.stringify({ summary: { caseCount: results.length, fatalCount: 0, evidenceHashesValid: true, codeFreezeCommit: gitHead, runtimeSourceHash } }, null, 2));
+  process.exit(0);
+}
 if (blindPass) {
   fs.writeFileSync(path.join(blindOutputDir, 'manifest.json'), JSON.stringify({ codeFreezeCommit, runtimeSourceHash, manualDefinitionHash, blindCaseIds, pass: blindPass, results }, null, 2), 'utf8');
 } else if (!captureEvidence && !verifyReviewHashes) {

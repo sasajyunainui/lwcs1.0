@@ -82,7 +82,7 @@
   );
   const nestedEffectFields = Object.freeze([...(sharedRegistry?.嵌套效果数组字段 || [])]);
   const conditionalEffectFields = Object.freeze([...(sharedRegistry?.条件分支效果数组字段 || [])]);
-  const engineState = { implementation: null };
+  const settlementState = { primitives: null };
   let runtimeIdSequence = 0;
   let runtimeIdContext = 'runtime';
 
@@ -94,6 +94,99 @@
   function nextRuntimeId(prefix = 'battle-event') {
     runtimeIdSequence = (runtimeIdSequence + 1) % 1000000;
     return `${String(prefix || 'battle-event')}-${runtimeIdContext}-${runtimeIdSequence.toString(36)}`;
+  }
+
+  function ensureCombatRuntime(combatData = {}) {
+    const rootData = combatData?.__父级战斗数据 || combatData;
+    if (!rootData || typeof rootData !== 'object') return {};
+    if (!rootData.__battleRuntime || typeof rootData.__battleRuntime !== 'object') {
+      Object.defineProperty(rootData, '__battleRuntime', {
+        enumerable: false,
+        configurable: true,
+        writable: true,
+        value: {},
+      });
+    }
+    const runtime = rootData.__battleRuntime;
+    if (!runtime.unitReactionCount || typeof runtime.unitReactionCount !== 'object') runtime.unitReactionCount = {};
+    if (!runtime.factionReactionCount || typeof runtime.factionReactionCount !== 'object') runtime.factionReactionCount = {};
+    if (!runtime.counterCount || typeof runtime.counterCount !== 'object') runtime.counterCount = {};
+    if (!runtime.reactionFatigue || typeof runtime.reactionFatigue !== 'object') runtime.reactionFatigue = {};
+    return runtime;
+  }
+
+  function getBattleSnapshot(combatData = {}) {
+    if (!combatData || typeof combatData !== 'object') return null;
+    const buildUnit = unit => {
+      if (!unit || typeof unit !== 'object') return null;
+      const level = Math.max(1, Number(unit?.lv ?? unit?.level ?? unit?.等级 ?? unit?.属性?.等级 ?? 1));
+      const states = unit?.状态效果 && typeof unit.状态效果 === 'object' ? Object.entries(unit.状态效果) : [];
+      const summonRuntime = unit?.__battleRuntime || {};
+      return {
+        name: previewRuntime.unitName(unit),
+        lv: level,
+        lv_label: String(level),
+        type: String(unit?.type || unit?.系别 || unit?.属性?.系别 || '未知系').trim() || '未知系',
+        hp: previewRuntime.readHp(unit),
+        hp_max: previewRuntime.readHpMax(unit),
+        HP: previewRuntime.readHp(unit),
+        HP上限: previewRuntime.readHpMax(unit),
+        vit: previewRuntime.readResource(unit, '体力'),
+        vit_max: previewRuntime.readResourceMax(unit, '体力'),
+        sta: previewRuntime.readResource(unit, '体力'),
+        sta_max: previewRuntime.readResourceMax(unit, '体力'),
+        体力: previewRuntime.readResource(unit, '体力'),
+        体力上限: previewRuntime.readResourceMax(unit, '体力'),
+        sp: previewRuntime.readResource(unit, '魂力'),
+        sp_max: previewRuntime.readResourceMax(unit, '魂力'),
+        魂力: previewRuntime.readResource(unit, '魂力'),
+        魂力上限: previewRuntime.readResourceMax(unit, '魂力'),
+        men: previewRuntime.readResource(unit, '精神力'),
+        men_max: previewRuntime.readResourceMax(unit, '精神力'),
+        精神力: previewRuntime.readResource(unit, '精神力'),
+        精神力上限: previewRuntime.readResourceMax(unit, '精神力'),
+        shield: previewRuntime.readShield(unit),
+        护盾: previewRuntime.readShield(unit),
+        召唤键: String(unit?.召唤键 || '').trim(),
+        单位性质: String(unit?.单位性质 || '').trim(),
+        类型: String(unit?.类型 || unit?.type || '').trim(),
+        年限: Math.max(0, Number(unit?.年限 || 0)),
+        标准物种: String(unit?.标准物种 || '').trim(),
+        具体物种: String(unit?.具体物种 || '').trim(),
+        行动模式: String(unit?.行动模式 || '').trim(),
+        宿主名: String(unit?.宿主名 || '').trim(),
+        精神负载: Math.max(0, Number(unit?.精神负载 || 0)),
+        剩余窗口: Math.max(0, Number(summonRuntime?.remainingWindows ?? summonRuntime?.windowCount ?? unit?.剩余窗口 ?? 0)),
+        稳定状态: String(unit?.稳定状态 || summonRuntime?.stability || '').trim(),
+        actionState: previewRuntime.isAlive(unit) ? String(unit?.状态?.行动 || '').trim() : '失去战斗力',
+        当前领域: String(unit?.当前领域 || '无').trim(),
+        状态效果: states.filter(([, state]) => state?.__equipmentState !== true).map(([name, state]) => ({
+          name,
+          type: String(state?.类型 || 'buff').trim(),
+          duration: Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0)),
+          desc: String(state?.描述 || '').trim(),
+          skip_turn: state?.战斗效果?.skip_turn === true || state?.skip_turn === true,
+          dot: Math.max(0, Number(state?.战斗效果?.dot_damage ?? state?.dot ?? 0)),
+        })),
+        sustains: Object.keys(unit?.持续效果 || {}),
+        isCharging: !!unit?.蓄力技能,
+        chargingCastTime: Math.max(0, Number(unit?.蓄力技能?.cast_time || 0)),
+      };
+    };
+    const participants = combatData?.参战者 || {};
+    const readTeam = key => (Array.isArray(participants?.[key]) ? participants[key] : Object.values(participants?.[key] || {})).map(buildUnit).filter(Boolean);
+    const summons = Object.values(combatData?.召唤单位表 || {}).filter(unit => !/分身/.test(String(unit?.类型 || unit?.召唤单位类型 || ''))).map(buildUnit).filter(Boolean);
+    return {
+      round: Number(combatData?.回合 || 0),
+      战斗类型: String(combatData?.战斗类型 || '突发遭遇').trim(),
+      floor: Number(combatData?.floor || 0),
+      大关卡: Number(combatData?.大关卡 || 0),
+      大关标签: String(combatData?.大关标签 || '').trim(),
+      先攻: String(combatData?.先攻 || '无').trim(),
+      team_player: readTeam('team_player'),
+      team_enemy: readTeam('team_enemy'),
+      summons,
+    };
   }
 
   function ensureLedger(combatData = {}) {
@@ -310,6 +403,325 @@
     };
   }
 
+  function runDecisionTeamBattle(options = {}) {
+    const combatData = options?.combatData;
+    const decide = options?.decide;
+    const updateBelief = options?.updateBelief;
+    const updatePublicBelief = options?.updatePublicBelief;
+    if (!combatData || typeof combatData !== 'object') throw new TypeError('battle_decision_combat_data_missing');
+    if (typeof decide !== 'function') throw new TypeError('battle_decide_missing');
+    if (typeof updateBelief !== 'function') throw new TypeError('battle_belief_updater_missing');
+    if (typeof updatePublicBelief !== 'function') throw new TypeError('battle_public_belief_updater_missing');
+    const settlement = options?.settlement || requireSettlementPrimitives();
+    const baseAdapters = settlement.createTeamAdapters(options?.adapterOptions || {});
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.decisionSimulation = true;
+    const decisions = [];
+    const beliefObservations = [];
+    const pendingBeliefObservations = [];
+    const beliefByActor = new Map();
+    const strategyByActor = new Map();
+    const strategicHistoryByActor = new Map();
+    const unitId = unit => String(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '').trim();
+    const unitName = unit => String(unit?.name || unit?.名称 || unitId(unit)).trim();
+    const listUnits = currentCombatData => settlement.listUnits(currentCombatData).filter(Boolean);
+    const findUnit = (currentCombatData, targetId) => listUnits(currentCombatData).find(unit => settlement.isUnitMatch(unit, targetId));
+
+    const recordMechanicObservations = (actor, decision, currentCombatData, actionRole = 'ACTIVE') => {
+      const selected = decision?.selected;
+      const observations = Array.isArray(selected?.mechanicObservations) ? selected.mechanicObservations : [];
+      if (!observations.length) return;
+      const actorId = unitId(actor);
+      const actorName = unitName(actor);
+      const actionName = settlement.normalizeActionName(selected?.declaration?.skill?.name || selected?.declaration?.skill?.魂技名 || selected?.declaration?.actionKind || '行动');
+      const ledgerStart = ensureLedger(currentCombatData).length;
+      observations.forEach(observation => {
+        const target = findUnit(currentCombatData, observation?.targetId);
+        pendingBeliefObservations.push({
+          ...observation,
+          actorId,
+          actorName,
+          targetName: unitName(target) || String(observation?.targetId || '').trim(),
+          actionName,
+          actionRole,
+          round: Number(currentCombatData?.回合 || 0),
+          ledgerStart,
+        });
+      });
+    };
+
+    const settleMechanicObservations = currentCombatData => {
+      const ledger = ensureLedger(currentCombatData);
+      const currentRound = Number(currentCombatData?.回合 || 0);
+      pendingBeliefObservations.splice(0).forEach(observation => {
+        if (Number(observation.round || 0) > currentRound || !observation.stateName) return;
+        const event = ledger.slice(Math.max(0, Number(observation.ledgerStart || 0))).find(item =>
+          String(item?.eventKind || '').trim() === 'state_apply' &&
+          Number(item?.round || 0) === Number(observation.round || 0) &&
+          settlement.isSameReportName(item?.actorName || '', observation.actorName) &&
+          settlement.isSameReportName(item?.targetName || '', observation.targetName) &&
+          settlement.normalizeActionName(item?.actionName || '') === observation.actionName &&
+          String(item?.meta?.stateName || item?.stateName || item?.effectSummary || '').trim() === observation.stateName
+        );
+        if (!event) return;
+        const result = String(event?.result || event?.resultState || event?.meta?.result || '').trim();
+        const success = /applied|success|生效|附着/i.test(result) && !/resist|immune|blocked|no_effect|抵抗|免疫|无效/i.test(result);
+        const previous = beliefByActor.get(observation.actorId) || {};
+        const next = updateBelief(previous, { ...observation, success });
+        beliefByActor.set(observation.actorId, next);
+        const record = next?.mechanics?.[observation.mechanicKey] || {};
+        const posterior = Number(record.alpha || 0) / Math.max(0.0001, Number(record.alpha || 0) + Number(record.beta || 0));
+        beliefObservations.push({
+          observationType: 'MECHANIC_RESULT',
+          round: observation.round,
+          actorId: observation.actorId,
+          actionRole: observation.actionRole,
+          candidateId: observation.sourceActionId,
+          mechanicKey: observation.mechanicKey,
+          targetId: observation.targetId,
+          stateName: observation.stateName,
+          success,
+          posterior,
+          sourceEventId: String(event?.eventId || '').trim(),
+        });
+        const history = strategicHistoryByActor.get(observation.actorId) || [];
+        if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
+        strategicHistoryByActor.set(observation.actorId, history);
+      });
+    };
+
+    const settlePublicObservations = currentCombatData => {
+      const ledger = ensureLedger(currentCombatData);
+      const currentRound = Number(currentCombatData?.回合 || 0);
+      const units = settlement.listPrimaryUnits(currentCombatData).filter(Boolean);
+      ledger.filter(event =>
+        String(event?.eventKind || '').trim() === 'action_start' &&
+        Number(event?.round || 0) === currentRound &&
+        settlement.normalizeActionRole(event?.actionRole || '') !== 'STATE_TICK'
+      ).forEach(actionEvent => {
+        const sourceActor = units.find(unit => settlement.isUnitMatch(unit, actionEvent?.actorName || ''));
+        if (!sourceActor) return;
+        const sourceActorId = unitId(sourceActor);
+        const sourceSide = String(actionEvent?.actorSide || '').trim();
+        const outcomeEvents = ledger.filter(event =>
+          Number(event?.round || 0) === currentRound &&
+          String(event?.sourceActionId || event?.actionId || '').trim() === String(actionEvent?.actionId || '').trim() &&
+          event !== actionEvent
+        );
+        const appliedDamage = outcomeEvents.reduce((sum, event) => sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || event?.meta?.damage || 0)), 0);
+        const target = units.find(unit => settlement.isUnitMatch(unit, actionEvent?.targetName || ''));
+        const baseActionValue = 100 * appliedDamage / Math.max(1, settlement.getHpMax(target || {}));
+        const result = outcomeEvents.map(event => String(event?.result || event?.resultState || '').trim()).filter(Boolean).join('|') || 'declared';
+        units.forEach(observer => {
+          const observerSide = settlement.inferSide(currentCombatData, unitName(observer));
+          if (!observerSide || observerSide === sourceSide) return;
+          const observerId = unitId(observer);
+          const previous = beliefByActor.get(observerId) || {};
+          const next = updatePublicBelief(previous, {
+            sourceActorId,
+            sourceActionId: String(actionEvent?.actionId || '').trim(),
+            responseId: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            actionName: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            baseActionValue,
+            result,
+          });
+          beliefByActor.set(observerId, next);
+          beliefObservations.push({
+            observationType: 'PUBLIC_ACTION',
+            round: currentRound,
+            actorId: observerId,
+            sourceActorId,
+            actionName: settlement.normalizeActionName(actionEvent?.actionName || actionEvent?.actionType || '行动'),
+            baseActionValue,
+            result,
+            confidence: Number(next?.confidence || 0),
+            sourceEventId: String(actionEvent?.eventId || '').trim(),
+          });
+          const history = strategicHistoryByActor.get(observerId) || [];
+          if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
+          strategicHistoryByActor.set(observerId, history);
+        });
+      });
+    };
+
+    const adapters = {
+      ...baseAdapters,
+      recordQueue(queue = [], currentCombatData = {}, logs = []) {
+        const decisionRuntimeState = ensureCombatRuntime(currentCombatData);
+        const runDecisionOpportunity = ({ reactor, sourceActor, incomingAction, ratio, actionRole }) => {
+          const actorId = unitId(reactor);
+          const sourceId = unitId(sourceActor);
+          const decision = decide({
+            worldSnapshot: currentCombatData,
+            actorId,
+            actionOpportunity: {
+              role: actionRole,
+              sequence: Number(currentCombatData?.回合 || 0),
+              counterWindow: actionRole === 'COUNTER',
+              counterActionAvailable: actionRole === 'COUNTER',
+              imminentThreat: actionRole === 'REACTION',
+              sourceActorId: sourceId,
+              immediateBudget: Math.max(0, Math.floor(Number(ratio || 0) * 40)),
+              incomingAction,
+            },
+            beliefState: beliefByActor.get(actorId) || {},
+            strategyMemory: strategyByActor.get(actorId) || {},
+            strategicHistory: strategicHistoryByActor.get(actorId) || [],
+            seedOffset: decisions.length,
+          });
+          if (!decision?.selected?.declaration) throw new Error(`battle_decision_${String(actionRole || '').toLowerCase()}_decision_missing:${actorId}`);
+          beliefByActor.set(actorId, decision.beliefState || {});
+          strategyByActor.set(actorId, decision.strategyMemory || {});
+          decisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole, sourceActorId: sourceId, ...decision });
+          recordMechanicObservations(reactor, decision, currentCombatData, actionRole);
+          return { actorId, sourceId, decision };
+        };
+        decisionRuntimeState.decisionReactionDecider = ({ reactor, sourceActor, incomingAction, ratio }) => {
+          const cannotReact = reactor?.temp_cannot_react === true || Object.values(reactor?.状态效果 || {}).some(state => {
+            const effects = state?.战斗效果 || state?.计算层效果 || {};
+            return effects.cannot_react === true || effects.skip_turn === true;
+          });
+          if (cannotReact) return {
+            type: '无法反应', action_type: '无法反应',
+            log: `${unitName(reactor) || '目标'}受控制影响，无法应对这次攻击。`,
+            skill: null, def_mult: 1.0,
+          };
+          const { actorId, sourceId, decision } = runDecisionOpportunity({ reactor, sourceActor, incomingAction, ratio, actionRole: 'REACTION' });
+          const action = settlement.buildDeclarationAction({ ...decision.selected.declaration, targetIds: [sourceId] }, reactor, currentCombatData);
+          const reactionKind = String(decision.selected?.declaration?.actionKind || '').trim();
+          const reactionType = reactionKind === 'EVADE' ? '伺机闪避' : reactionKind === 'DEFEND' ? '肉体兜底' : action.action_type || action.type || '防御';
+          action.type = reactionType;
+          action.action_type = reactionType;
+          action.log = `[应招决策] ${unitName(reactor) || actorId}选择【${action.skill?.name || action.action_type || '防御'}】应对${unitName(sourceActor) || sourceId}。`;
+          return action;
+        };
+        decisionRuntimeState.decisionCounterDecider = ({ reactor, sourceActor, incomingAction, ratio, counterDepth, counterType, triggerProbability }) => {
+          const { actorId, sourceId, decision } = runDecisionOpportunity({ reactor, sourceActor, incomingAction, ratio, actionRole: 'COUNTER' });
+          const declaration = { ...decision.selected.declaration };
+          if (decision.selected.counterDeclineFallback === true) return {
+            type: '防反放弃', action_type: '防反放弃',
+            skill: { name: '放弃无效反击', 魂技名: '放弃无效反击', 消耗: '无', 前摇: 0, _效果数组: [] },
+            __行为防反: true, __counterDeclined: true, __counterDepth: counterDepth,
+            __decisionCandidateId: String(decision.selected.candidateId || '').trim(), __decisionActorId: actorId,
+          };
+          if (declaration.targetIds?.length === 1) declaration.targetIds = [sourceId];
+          const selectedAction = settlement.buildDeclarationAction(declaration, reactor, currentCombatData);
+          const counterAction = settlement.createCounterAction(reactor, {
+            防反类型: counterType,
+            sourceActionName: String(selectedAction?.skill?.name || selectedAction?.skill?.魂技名 || selectedAction?.name || selectedAction?.action_type || '反击').trim(),
+            sourceActionType: String(declaration.actionKind || 'COUNTER').trim(),
+            sourceSkill: selectedAction.skill,
+            counterDepth,
+            触发概率: triggerProbability,
+          });
+          counterAction.__decisionCandidateId = String(decision.selected.candidateId || '').trim();
+          counterAction.__decisionActorId = actorId;
+          return counterAction;
+        };
+        decisionRuntimeState.decisionContinuationDecider = ({ actorEntry, remainingTime }) => {
+          const actor = actorEntry?.char;
+          const actorId = unitId(actor);
+          if (!actorId) throw new Error('battle_decision_continuation_actor_missing');
+          const decision = decide({
+            worldSnapshot: currentCombatData,
+            actorId,
+            actionOpportunity: { role: 'ACTIVE', sequence: Number(currentCombatData?.回合 || 0), continuationGrant: true, immediateBudget: Math.max(0, Number(remainingTime || 0)), enforceImmediateBudget: true },
+            beliefState: beliefByActor.get(actorId) || {},
+            strategyMemory: strategyByActor.get(actorId) || {},
+            strategicHistory: strategicHistoryByActor.get(actorId) || [],
+            seedOffset: decisions.length,
+          });
+          if (!decision?.selected?.declaration) throw new Error(`battle_decision_continuation_missing:${actorId}`);
+          beliefByActor.set(actorId, decision.beliefState || {});
+          strategyByActor.set(actorId, decision.strategyMemory || {});
+          decisions.push({ round: Number(currentCombatData?.回合 || 0), actorId, actionRole: 'ACTIVE', continuation: true, ...decision });
+          recordMechanicObservations(actor, decision, currentCombatData, 'ACTIVE');
+          const action = settlement.buildDeclarationAction(decision.selected.declaration, actor, currentCombatData);
+          action.source = 'explicit_follow_up';
+          action.__chainType = 'FOLLOW_UP';
+          action.__followUpParentActionId = '';
+          action.__followUpRemainingBudget = Math.max(0, Number(remainingTime || 0));
+          return action;
+        };
+        queue.filter(entry => entry?.char && settlement.isAbleToFight(entry.char)).forEach(entry => {
+          const lockedAction = decisionRuntimeState.playerLockedNaturalAction;
+          const useLockedAction = !!lockedAction && lockedAction.consumed !== true &&
+            Number(lockedAction.round || 0) === Number(currentCombatData?.回合 || 0) &&
+            settlement.isUnitMatch(entry.char, lockedAction.actorName || '');
+          if (useLockedAction) {
+            const declaredAction = lockedAction.action || settlement.buildDeclarationAction(lockedAction.declaration || {}, entry.char, currentCombatData);
+            lockedAction.consumed = true;
+            entry.__actorControl = 'PLAYER_LOCKED';
+            entry.__declaredRound = Number(currentCombatData?.回合 || 0);
+            entry.__declaredAction = declaredAction;
+            entry.__declaredActionName = settlement.normalizeActionName(declaredAction?.skill?.name || declaredAction?.skill?.魂技名 || declaredAction?.action_type || '行动');
+            entry.__declaredTargetName = String(lockedAction.targetName || declaredAction?.target_name || '').trim();
+            entry.__declaredTimingBucket = '10-19';
+            const target = findUnit(currentCombatData, entry.__declaredTargetName);
+            settlement.writeInitialIntent(currentCombatData, entry, target, declaredAction, '10-19');
+            logs.push(`[玩家声明] ${unitName(entry.char) || '玩家'}选择【${entry.__declaredActionName}】指向${unitName(target) || entry.__declaredTargetName || '自身'}。`);
+            return;
+          }
+          entry.__actorControl = 'AI_NEXT';
+          delete entry.__declaredAction;
+          delete entry.__declaredActionName;
+          delete entry.__declaredTargetName;
+          entry.__declaredRound = 0;
+          entry.__decisionResolver = ({ actorEntry, battleState }) => {
+            const actor = actorEntry.char;
+            const actorId = unitId(actor);
+            const decision = decide({
+              worldSnapshot: battleState.combatData,
+              actorId,
+              actionOpportunity: { sequence: Number(battleState.combatData?.回合 || 0) },
+              beliefState: beliefByActor.get(actorId) || {},
+              strategyMemory: strategyByActor.get(actorId) || {},
+              strategicHistory: strategicHistoryByActor.get(actorId) || [],
+              seedOffset: decisions.length,
+            });
+            const declaration = decision?.selected?.declaration;
+            if (!declaration) throw new Error(`battle_declaration_missing:${actorId}`);
+            const action = settlement.buildDeclarationAction(declaration, actor, battleState.combatData);
+            const target = findUnit(battleState.combatData, String(declaration?.targetIds?.[0] || '').trim());
+            beliefByActor.set(actorId, decision.beliefState || {});
+            strategyByActor.set(actorId, decision.strategyMemory || {});
+            const history = strategicHistoryByActor.get(actorId) || [];
+            const previousCapacity = Number(history.at(-1)?.capacityTotal);
+            const previousBeliefRevision = String(history.at(-1)?.beliefRevision || '').trim();
+            const currentCapacity = Math.max(0, Number(decision?.stateCapacityTotal || 0));
+            const currentBeliefRevision = String(decision?.beliefRevision || '').trim();
+            history.push({
+              signature: decision.strategicSignature,
+              capacityTotal: currentCapacity,
+              capacityChangePercent: Number.isFinite(previousCapacity) ? 100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity) : 100,
+              beliefRevision: currentBeliefRevision,
+              newInformation: !!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision,
+              pendingEffect: decision?.pendingStrategicEffect === true,
+            });
+            strategicHistoryByActor.set(actorId, history.slice(-2));
+            decisions.push({ round: Number(battleState.combatData?.回合 || 0), actorId, actionRole: 'ACTIVE', ...decision });
+            recordMechanicObservations(actor, decision, battleState.combatData, 'ACTIVE');
+            settlement.writeInitialIntent(battleState.combatData, actorEntry, target, action, '10-19');
+            logs.push(`[行动声明] ${unitName(actor) || actorId}选择【${settlement.normalizeActionName(action?.skill?.name || action?.skill?.魂技名 || action?.action_type || '行动')}】指向${unitName(target) || '自身'}。`);
+            return { action, targetName: unitName(target) };
+          };
+        });
+      },
+      settleRoundEnd(currentCombatData, logs) {
+        baseAdapters.settleRoundEnd?.(currentCombatData, logs);
+        settleMechanicObservations(currentCombatData);
+        settlePublicObservations(currentCombatData);
+      },
+    };
+    const simulation = runTeamBattle({
+      combatData,
+      mode: options?.mode,
+      maxRounds: options?.maxRounds,
+      adapters,
+    });
+    return { ...simulation, decisions, beliefObservations };
+  }
+
   function decideDuelContinuation(options = {}) {
     const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
     if (options?.actorsAble !== true) return { continueSimulation: false, intensity: 0, log: '' };
@@ -398,8 +810,6 @@
       return candidateTargets.length === targetIds.length && candidateTargets.every((targetId, index) => targetId === targetIds[index]);
     });
     if (!legalCandidate) throw new Error('battle_declaration_mechanically_illegal');
-    const domain = requireEngine().caseDomain;
-    if (typeof domain.executeDeclaration !== 'function') throw new Error('battle_runtime_declaration_settler_missing');
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
     const originalRandom = Math.random;
     let randomState = seed % 2147483647;
@@ -408,14 +818,35 @@
       randomState = (randomState * 16807) % 2147483647;
       return (randomState - 1) / 2147483646;
     };
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.decisionSeed = seed;
+    runtime.playerLockedNaturalAction = {
+      round: Number(combatData?.回合 || 0) + 1,
+      actorName: actorId,
+      targetName: String(targetIds[0] || '').trim(),
+      declaration: cloneValue(legalCandidate.declaration),
+      consumed: false,
+    };
+    let decisionIndex = 0;
+    const decide = payload => decisionRuntime.decide({
+      ...payload,
+      battleIntent: payload?.battleIntent || input?.battleIntent || {
+        mode: String(payload?.worldSnapshot?.战斗意图 || combatData?.战斗意图 || '').trim(),
+        objectives: payload?.worldSnapshot?.胜负条件 || combatData?.胜负条件 || {},
+      },
+      seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${decisionIndex++}:${payload?.seedOffset || 0}`,
+    });
     try {
-      return domain.executeDeclaration({
+      return runDecisionTeamBattle({
         combatData,
-        declaration: cloneValue(legalCandidate.declaration),
-        actionOpportunity: cloneValue(input?.actionOpportunity || { role: 'ACTIVE' }),
-        seed,
+        maxRounds: 1,
+        decide,
+        updateBelief: decisionRuntime.updateMechanicBelief,
+        updatePublicBelief: decisionRuntime.updatePublicObservation,
+        mode: 'single_round',
       });
     } finally {
+      delete runtime.playerLockedNaturalAction;
       Math.random = originalRandom;
     }
   }
@@ -795,12 +1226,157 @@
     }).filter(Boolean);
   }
 
+  function serializePublicBlocks(blocks = []) {
+    return (Array.isArray(blocks) ? blocks : []).map(block => {
+      if (!block || typeof block !== 'object') return '';
+      if (block.type === 'text') return String(block.content || '').trim();
+      if (block.type !== 'badge') return '';
+      const value = Number(block.value || 0);
+      if (block.kind === 'damage') return `${value} ${block.unit || 'HP'}`;
+      if (block.kind === 'heal') return `+${Math.max(0, value)} ${block.unit || 'HP'}`;
+      if (block.kind === 'resource') return `${value > 0 ? '+' : ''}${Math.round(value)} ${block.unit || block.name || '资源'}`;
+      if (['item_created', 'summon_created', 'creation', 'cap_reached'].includes(block.kind)) {
+        const name = String(block.name || (block.kind === 'cap_reached' ? '上限' : '造物生成')).trim();
+        return block.kind === 'cap_reached' ? `【${name}】` : `${value > 0 ? `+${Math.round(value)} ` : ''}${name}`;
+      }
+      return block.name ? `【${block.name}】` : '';
+    }).filter(Boolean).join(' ').trim();
+  }
+
+  function normalizePublicEntry(item = {}) {
+    const blocks = Array.isArray(item?.blocks) ? item.blocks : (Array.isArray(item) ? item : []);
+    if (!blocks.length) return null;
+    const text = serializePublicBlocks(blocks);
+    return text ? { ...item, blocks, text } : null;
+  }
+
+  function projectPublicReportBlocks(eventLedger = []) {
+    const supportedKinds = new Set([
+      'action_start', 'hit_result', 'state_tick', 'resource_change', 'round_recover', 'state_apply', 'state_remove',
+      'summon_create', 'summon_assist', 'shield_create', 'shield_break', 'blocked_action', 'failed_action',
+      'battle_objective_resolved', 'create', 'item_consume', 'complete', 'counter', 'dodge', 'defend',
+    ]);
+    return (Array.isArray(eventLedger) ? eventLedger : []).filter(event => supportedKinds.has(String(event?.eventKind || '').trim())).map(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
+      const actor = String(event?.actorName || '行动者').trim();
+      const target = String(event?.targetName || '').trim();
+      const action = normalizeActionDisplayName(event?.finalActionName || event?.actionName || event?.sourceActionName || '行动');
+      const result = String(event?.resultState || event?.result || event?.actionStatus || '').trim();
+      const prefix = round > 0 ? `第${round}回合：` : '';
+      const sourceEventId = String(event?.eventId || '').trim();
+      const sourceNodeId = String(event?.chainNodeId || event?.nodeId || '').trim();
+      const source = { sourceEventId, sourceNodeId, sourceEventIds: sourceEventId ? [sourceEventId] : [], sourceNodeIds: sourceNodeId ? [sourceNodeId] : [] };
+      const badges = [];
+      let content = '';
+      if (kind === 'action_start') content = `${prefix}${actor}对${target || '当前目标'}使出【${action}】。`;
+      else if (kind === 'hit_result') {
+        const damage = Math.max(0, readLedgerNumber(event, 'damage'));
+        content = damage > 0 ? `${prefix}${actor}的【${action}】命中${target || '目标'}，造成${damage}点伤害。` : `${prefix}${actor}的【${action}】未对${target || '目标'}造成伤害（${result || '未命中'}）。`;
+        badges.push({ type: 'badge', kind: 'damage', name: '伤害', value: damage, unit: 'HP', targetId: String(event?.targetId || target).trim(), targetName: target, ...source });
+      } else if (kind === 'state_tick') {
+        const amount = Math.max(0, readLedgerNumber(event, 'amount') || readLedgerNumber(event, 'damage'));
+        const stateName = readLedgerStateName(event) || '持续状态';
+        const healing = /恢复|heal/i.test(result);
+        content = `${prefix}${target || actor}受【${stateName}】结算，${healing ? '恢复' : '损失'}${amount}点${String(event?.meta?.resource || '生命').trim()}。`;
+        badges.push({ type: 'badge', kind: healing ? 'heal' : 'damage', name: stateName, value: amount, unit: String(event?.meta?.resource || 'HP').trim(), targetId: String(event?.targetId || target || actor).trim(), targetName: target || actor, ...source });
+      } else if (kind === 'resource_change' || kind === 'round_recover') {
+        const delta = Number(event?.delta ?? event?.meta?.delta ?? event?.meta?.amount ?? event?.amount ?? 0);
+        const resource = String(event?.resource || event?.meta?.resource || '资源').trim();
+        content = `${prefix}${target || actor}的${resource}${delta >= 0 ? '恢复' : '消耗'}${Math.abs(delta)}点。`;
+        badges.push({ type: 'badge', kind: 'resource', name: resource, value: delta, unit: resource, targetId: String(event?.targetId || target || actor).trim(), targetName: target || actor, ...source });
+      } else if (kind === 'state_apply' || kind === 'state_remove') {
+        const stateName = readLedgerStateName(event) || '状态';
+        const applied = kind === 'state_apply' && stateWasApplied(event);
+        content = `${prefix}${target || actor}${kind === 'state_remove' ? '移除' : applied ? '获得' : '未能获得'}【${stateName}】${result ? `（${result}）` : ''}。`;
+        badges.push({ type: 'badge', kind: 'state', name: stateName, value: Number(event?.duration || event?.meta?.duration || 0), unit: '回合', targetId: String(event?.targetId || target || actor).trim(), targetName: target || actor, ...source });
+      } else if (kind === 'summon_create' || kind === 'summon_assist') {
+        const summonName = String(event?.summonName || event?.createdName || actor).trim();
+        content = kind === 'summon_create' ? `${prefix}${actor}召出【${summonName}】。` : `${prefix}${summonName}协同攻击${target || '目标'}。`;
+        badges.push({ type: 'badge', kind: 'summon_created', name: summonName, value: 1, targetId: String(event?.targetId || target).trim(), targetName: target, ...source });
+      } else if (kind === 'shield_create' || kind === 'shield_break') {
+        const amount = Math.max(0, Number(event?.amount ?? event?.meta?.amount ?? event?.meta?.shield ?? 0));
+        content = `${prefix}${target || actor}的护盾${kind === 'shield_break' ? '破裂' : `增加${amount}点`}。`;
+        badges.push({ type: 'badge', kind: 'shield', name: '护盾', value: kind === 'shield_break' ? -amount : amount, unit: '护盾', targetId: String(event?.targetId || target || actor).trim(), targetName: target || actor, ...source });
+      } else if (kind === 'create' || kind === 'item_consume' || kind === 'complete') {
+        const itemName = String(event?.createdName || event?.itemName || event?.meta?.itemName || action).trim();
+        content = `${prefix}${actor}${kind === 'item_consume' ? '使用' : kind === 'complete' ? '完成' : '生成'}【${itemName}】。`;
+        badges.push({ type: 'badge', kind: kind === 'create' ? 'item_created' : 'state', name: itemName, value: Number(event?.quantity || event?.meta?.quantity || 1), targetId: String(event?.targetId || target || actor).trim(), targetName: target || actor, ...source });
+      } else if (kind === 'battle_objective_resolved') content = `${prefix}战斗条件已结算：${result || '战斗结束'}。`;
+      else if (kind === 'counter') content = `${prefix}${actor}对${target || '目标'}完成反击（${result || '已结算'}）。`;
+      else if (kind === 'dodge') content = `${prefix}${actor}${/success|evaded|dodged|成功|闪避/.test(result) ? '成功闪避' : '未能闪避'}${target ? `${target}的攻击` : ''}。`;
+      else if (kind === 'defend') content = `${prefix}${actor}完成防御结算（${result || '已防御'}）。`;
+      else content = `${prefix}${actor}的【${action}】未能执行（${result || event?.failReason || '动作受阻'}）。`;
+      const textBlock = { type: 'text', content, ...source };
+      return normalizePublicEntry({ round, blocks: [textBlock, ...badges], projectionSource: 'runtime_ledger_projection' });
+    }).filter(Boolean);
+  }
+
+  function resolveReportUnitSide(context = {}, unitName = '') {
+    const name = String(unitName || '').trim();
+    if (!name) return '';
+    const participants = context?.combatData?.参战者 || context?.参战者 || {};
+    const collect = (sideKey, extras = []) => [
+      ...extras,
+      ...(Array.isArray(participants?.[sideKey]) ? participants[sideKey] : Object.values(participants?.[sideKey] || {})),
+    ].filter(Boolean);
+    const playerUnits = collect('team_player', [context?.player, context?.attacker]);
+    const enemyUnits = collect('team_enemy', [context?.enemy, context?.defender, context?.target]);
+    const matches = unit => isSameReportName(unit?.id || unit?.角色ID || unit?.name || unit?.名称 || '', name);
+    if (playerUnits.some(matches)) return 'player';
+    if (enemyUnits.some(matches)) return 'enemy';
+    return '';
+  }
+
+  function resolveNextIntents(input = {}) {
+    const combatData = input?.combatData && typeof input.combatData === 'object' ? cloneValue(input.combatData) : null;
+    const currentTargets = Array.isArray(input?.currentTargets) ? input.currentTargets : [];
+    const describeSide = (sideKey, hostileSideKey, summaries, label) => {
+      const team = Array.isArray(combatData?.参战者?.[sideKey]) ? combatData.参战者[sideKey].filter(unit => previewRuntime.isAlive(unit)) : [];
+      const opponents = Array.isArray(combatData?.参战者?.[hostileSideKey]) ? combatData.参战者[hostileSideKey].filter(unit => previewRuntime.isAlive(unit)) : [];
+      const summaryNames = new Set((Array.isArray(summaries) ? summaries : []).map(unit => String(unit?.name || '').trim()).filter(Boolean));
+      const recentDecision = [...(Array.isArray(input?.decisionTrace) ? input.decisionTrace : [])].reverse().find(item => summaryNames.has(String(item?.actorId || item?.actor || item?.行动者 || '').trim()));
+      const preferredActorId = String(recentDecision?.actorId || recentDecision?.actor || team[0]?.id || team[0]?.name || '').trim();
+      const actor = team.find(unit => previewRuntime.unitId(unit) === preferredActorId || previewRuntime.unitName(unit) === preferredActorId) || team[0] || null;
+      const actorName = String(actor?.name || actor?.名称 || summaries?.[0]?.name || label).trim();
+      if (!actor) return `${actorName}已失去战斗能力，无法继续行动`;
+      if (!opponents.length) return `${actorName}已结束交锋，转入收势与战后确认`;
+      const focus = currentTargets.find(pair => isSameReportName(pair?.actor, actorName));
+      const before = JSON.stringify(combatData);
+      const decision = decisionRuntime.decide({
+        worldSnapshot: combatData,
+        actorId: previewRuntime.unitId(actor),
+        actionOpportunity: { role: 'ACTIVE', sequence: Number(combatData?.回合 || 0) + 1 },
+        strategyMemory: focus?.target ? { targetIds: [String(focus.target)] } : {},
+        beliefState: {},
+        seed: `summary:${Number(combatData?.回合 || 0)}:${label}`,
+      });
+      if (JSON.stringify(combatData) !== before) throw new Error('battle_summary_preview_mutated_state');
+      const selected = decision?.selected;
+      if (!selected || selected.rejectionCode) return `${actorName}倾向防守并等待新的有效窗口`;
+      const declaration = selected.declaration || {};
+      const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '行动');
+      const targetId = String(declaration?.targetIds?.[0] || '').trim();
+      const target = [...team, ...opponents].find(unit => previewRuntime.unitId(unit) === targetId || previewRuntime.unitName(unit) === targetId);
+      const targetText = target ? `针对${previewRuntime.unitName(target)}` : '处理当前战局';
+      const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+      if (effects.some(effect => String(effect?.原型 || '').trim() === '召唤生成')) return `${actorName}倾向以【${actionName}】${targetText}，扩大后续行动窗口`;
+      if (effects.some(effect => String(effect?.原型 || '').trim() === '状态施加')) return `${actorName}倾向以【${actionName}】${targetText}，压缩对手下一次行动`;
+      if (effects.some(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()))) return `${actorName}倾向以【${actionName}】恢复后续有效行动所需资源`;
+      if (declaration.actionKind === 'BASIC_ATTACK' || effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) return `${actorName}倾向以【${actionName}】${targetText}，兑现当前伤害收益`;
+      return `${actorName}倾向以【${actionName}】${targetText}，打开下一行动窗口`;
+    };
+    return {
+      playerIntent: describeSide('team_player', 'team_enemy', input?.playerSummary, '我方'),
+      enemyIntent: describeSide('team_enemy', 'team_player', input?.enemySummary, '敌方'),
+    };
+  }
+
   function buildReportBlocks(eventLedger = [], decisionTrace = [], publicEntries = []) {
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const eventById = new Map(ledger.map(event => [String(event?.eventId || '').trim(), event]).filter(([id]) => id));
     const eventIndexById = new Map(ledger.map((event, index) => [String(event?.eventId || '').trim(), index]).filter(([id]) => id));
     const decisions = (Array.isArray(decisionTrace) ? decisionTrace : []).filter(item => item && typeof item === 'object');
-    const normalizePublicEntry = requireEngine().caseDomain.normalizePublicEntry;
     const entries = (Array.isArray(publicEntries) ? publicEntries : []).map(normalizePublicEntry).filter(Boolean);
     const parentActionByActionId = new Map();
     ledger.forEach(event => {
@@ -1261,7 +1837,6 @@
   }
 
   function buildRoundOverview(result = null, context = {}) {
-    const resolveUnitSide = requireEngine().caseDomain.resolveReportUnitSide;
     const ledger = Array.isArray(result?.eventLedger) ? result.eventLedger : (Array.isArray(result?.combatData?.__battleEventLedger) ? result.combatData.__battleEventLedger : []);
     const rounds = new Map();
     const pushRound = round => {
@@ -1326,7 +1901,7 @@
       const result = String(event?.result || event?.primaryOutcome || event?.meta?.primaryOutcome || '').trim();
       const reason = String(event?.failReason || event?.failureReason || event?.meta?.failureReason || event?.reasonCode || event?.meta?.reasonCode || '').trim();
       if (isInternalFallbackEvent(event) && !/战术待机|待机|观察|防御|收招转防|守势|pass|observe|defend|stance/i.test(`${action} ${result} ${reason}`)) return;
-      const targetSide = resolveUnitSide(context, target);
+      const targetSide = resolveReportUnitSide(context, target);
       const row = pushRound(round);
       const damage = Math.max(0, readLedgerNumber(event, 'damage') || readLedgerNumber(event, 'amount'));
       if ((kind === 'hit_result' || kind === 'counter' || kind === 'state_tick') && damage > 0) {
@@ -1510,7 +2085,7 @@
           playerIntent: advantage === 'ENEMY_VICTORY' ? '我方未能满足战斗目标，转入战后处置' : '我方已满足战斗目标，转入收势与战后确认',
           enemyIntent: advantage === 'PLAYER_VICTORY' ? '敌方已触发我方胜利条件，停止继续行动' : '敌方已满足其阻止条件，转入战后处置',
         }
-      : requireEngine().caseDomain.resolveNextIntents({
+      : resolveNextIntents({
           combatData, decisionTrace, playerSummary, enemySummary, currentTargets: readCurrentTargets(),
         });
     const { playerIntent, enemyIntent } = resolvedIntents;
@@ -2202,30 +2777,21 @@
     };
   }
 
-  function bindEngine(implementation) {
-    if (
-      !implementation ||
-      !implementation.caseDomain ||
-      typeof implementation.caseDomain.ensureRuntime !== 'function' ||
-      typeof implementation.caseDomain.getSnapshot !== 'function' ||
-      typeof implementation.caseDomain.getScoringMutationCount !== 'function' ||
-      typeof implementation.caseDomain.executeTeam !== 'function' ||
-      typeof implementation.caseDomain.executeDuel !== 'function' ||
-      typeof implementation.caseDomain.executeDecisionTeam !== 'function' ||
-      typeof implementation.caseDomain.executeDeclaration !== 'function' ||
-      typeof implementation.caseDomain.buildPublicReportBlocks !== 'function' ||
-      typeof implementation.caseDomain.normalizePublicEntry !== 'function' ||
-      typeof implementation.caseDomain.resolveNextIntents !== 'function' ||
-      typeof implementation.caseDomain.resolveReportUnitSide !== 'function'
-    ) {
-      throw new TypeError('battle_runtime_engine_contract_invalid');
+  function bindSettlementPrimitives(primitives) {
+    const required = [
+      'createTeamAdapters', 'listUnits', 'listPrimaryUnits', 'isUnitMatch', 'normalizeActionName',
+      'isSameReportName', 'normalizeActionRole', 'inferSide', 'getHpMax',
+      'buildDeclarationAction', 'createCounterAction', 'writeInitialIntent', 'isAbleToFight',
+    ];
+    if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
+      throw new TypeError('battle_runtime_settlement_primitives_invalid');
     }
-    engineState.implementation = implementation;
+    settlementState.primitives = Object.freeze({ ...primitives });
   }
 
-  function requireEngine() {
-    if (!engineState.implementation) throw new Error('battle_runtime_engine_not_bound');
-    return engineState.implementation;
+  function requireSettlementPrimitives() {
+    if (!settlementState.primitives) throw new Error('battle_runtime_settlement_primitives_missing');
+    return settlementState.primitives;
   }
 
   function buildDecisionAuditRecord(decision = {}) {
@@ -2317,10 +2883,8 @@
         decisions: decisionAudits,
       };
     }
-    const domain = requireEngine().caseDomain;
-    if (typeof domain.executeDecisionTeam !== 'function') throw new Error('battle_runtime_decision_settler_missing');
     const rounds = Math.max(1, Math.min(20, Math.floor(Number(input.rounds || input.settings?.maxRounds || 1))));
-    const debugRuntime = domain.ensureRuntime(worldSnapshot);
+    const debugRuntime = ensureCombatRuntime(worldSnapshot);
     debugRuntime.decisionSeed = seed;
     if (input.selectedAction && typeof input.selectedAction === 'object') {
       const selectedAction = cloneValue(input.selectedAction);
@@ -2332,7 +2896,7 @@
         consumed: false,
       };
     }
-    const initialSnapshot = domain.getSnapshot(worldSnapshot);
+    const initialSnapshot = getBattleSnapshot(worldSnapshot);
     const originalRandom = Math.random;
     const previousIdContext = runtimeIdContext;
     const previousIdSequence = runtimeIdSequence;
@@ -2345,18 +2909,18 @@
       return (randomState - 1) / 2147483646;
     };
     try {
-      const simulation = domain.executeDecisionTeam(
-        worldSnapshot,
-        rounds,
-        decideOnce,
-        decision.updateMechanicBelief,
-        decision.updatePublicObservation,
-        rounds > 1 ? 'multi_round' : 'single_round',
-      );
+      const simulation = runDecisionTeamBattle({
+        combatData: worldSnapshot,
+        maxRounds: rounds,
+        decide: decideOnce,
+        updateBelief: decision.updateMechanicBelief,
+        updatePublicBelief: decision.updatePublicObservation,
+        mode: rounds > 1 ? 'multi_round' : 'single_round',
+      });
       const eventLedger = Array.isArray(worldSnapshot.__battleEventLedger) ? worldSnapshot.__battleEventLedger.map(item => cloneAuditSnapshot(item)) : [];
       const resolutionTrace = collectResolutionTrace(worldSnapshot).map(normalizeCausalNode);
       const actionQueueTrace = Array.isArray(worldSnapshot?.__battleRuntime?.actionQueueTrace) ? worldSnapshot.__battleRuntime.actionQueueTrace.map(item => cloneAuditSnapshot(item)) : [];
-      const publicReportBlocks = domain.buildPublicReportBlocks(eventLedger, Math.max(8, rounds * 8), { combatData: worldSnapshot }).map(item => cloneAuditSnapshot(item));
+      const publicReportBlocks = projectPublicReportBlocks(eventLedger).map(item => cloneAuditSnapshot(item));
       const result = {
         preview: true,
         battleMode: rounds > 1 ? 'multi_round' : 'single_round',
@@ -2367,7 +2931,7 @@
         resolutionTrace,
         decisionTrace: [],
         publicReportBlocks,
-        snapshot: domain.getSnapshot(worldSnapshot),
+        snapshot: getBattleSnapshot(worldSnapshot),
       };
       const finalSnapshot = result.snapshot;
       const decisions = Array.isArray(simulation?.decisions) ? simulation.decisions : [];
@@ -2498,19 +3062,22 @@
     prototypeOptionMatrix,
     cloneValue,
     nextRuntimeId,
+    ensureCombatRuntime,
+    getBattleSnapshot,
     ensureLedger,
     attachLedger,
     ensureTrace,
     probabilitySucceeds,
     createActionQueue,
     runTeamBattle,
+    runDecisionTeamBattle,
     decideDuelContinuation,
     executeActionNodes,
     executeDeclaration,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
-    bindEngine,
+    bindSettlementPrimitives,
     runDecisionCase,
     runBattleCase,
     auditFacts,

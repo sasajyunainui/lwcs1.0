@@ -42,6 +42,11 @@ for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Mod
 
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 assert.ok(decision, '正式决策运行时未加载');
+const inspectDecision = input => {
+  let candidates = [];
+  const result = decision.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  return { ...result, candidates };
+};
 
 const damageSkill = {
   id: 'damage', name: '公开攻击', 消耗: '魂力:10',
@@ -80,8 +85,8 @@ hiddenWeak.参战者.enemy[0].sp = 0;
 const hiddenStrong = structuredClone(hiddenWeak);
 hiddenStrong.参战者.enemy[0].技能列表 = [{ id: 'hidden-lethal', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 9999, 伤害类型: '真实攻击' }] }];
 hiddenStrong.参战者.enemy[0].sp = 100;
-const weakDecision = decision.decide({ worldSnapshot: hiddenWeak, actorId: 'actor', beliefState: initial, seed: 81 });
-const strongDecision = decision.decide({ worldSnapshot: hiddenStrong, actorId: 'actor', beliefState: initial, seed: 81 });
+const weakDecision = inspectDecision({ worldSnapshot: hiddenWeak, actorId: 'actor', beliefState: initial, seed: 81 });
+const strongDecision = inspectDecision({ worldSnapshot: hiddenStrong, actorId: 'actor', beliefState: initial, seed: 81 });
 assert.equal(weakDecision.selected.candidateId, strongDecision.selected.candidateId, '敌方隐藏技能或资源改变了选择');
 assert.equal(
   JSON.stringify(weakDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility])),
@@ -99,7 +104,7 @@ Object.assign(hiddenStats.参战者.enemy[0], {
   final: { str: 9999, def: 9999, agi: 9999 },
 });
 hiddenStats.参战者.enemy[0].属性 = { 等级: 88, 力量: 999, 防御: 777, 敏捷: 666, 抗性: { 控制: 1 } };
-const hiddenStatsDecision = decision.decide({ worldSnapshot: hiddenStats, actorId: 'actor', beliefState: initial, seed: 81 });
+const hiddenStatsDecision = inspectDecision({ worldSnapshot: hiddenStats, actorId: 'actor', beliefState: initial, seed: 81 });
 assert.equal(
   JSON.stringify(weakDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility, candidate.rejectionCode])),
   JSON.stringify(hiddenStatsDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility, candidate.rejectionCode])),
@@ -134,7 +139,7 @@ const responseBelief = decision.buildInitialBelief(world(), 'actor', {
     'enemy-low': Array.from({ length: 8 }, (_, index) => ({ responseId: `response-${index}`, utility: 10 - index, baseActionValue: 20 + index })),
   },
 });
-const deepDecision = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: responseBelief, seed: 82 });
+const deepDecision = inspectDecision({ worldSnapshot: world(), actorId: 'actor', beliefState: responseBelief, seed: 82 });
 const controlCandidate = deepDecision.candidates.find(candidate => candidate.skill?.id === 'control' && candidate.declaration.targetIds.includes('enemy-low'));
 assert.equal(controlCandidate?.deepAnalysis?.required, true, '控制行动权变化未触发深推演');
 assert.ok(controlCandidate.deepAnalysis.nodeCount <= 12, '深推演超过12节点');
@@ -156,7 +161,7 @@ const controlKeyInput = {
   experience: 0.2,
 };
 for (let index = 0; index < 4; index += 1) adaptedBelief = decision.updateMechanicBelief(adaptedBelief, { ...controlKeyInput, success: false });
-const adapted = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: adaptedBelief, seed: 82 });
+const adapted = inspectDecision({ worldSnapshot: world(), actorId: 'actor', beliefState: adaptedBelief, seed: 82 });
 const adaptedControl = adapted.candidates.find(candidate => candidate.candidateId === controlCandidate.candidateId);
 assert.ok(adaptedControl.deepAnalysis.mechanicProbability < controlCandidate.deepAnalysis.mechanicProbability, '连续控制失败未降低成功后验');
 assert.ok(adaptedControl.objectiveUtility < controlCandidate.objectiveUtility, `连续控制失败未降低候选效用:${controlCandidate.objectiveUtility}->${adaptedControl.objectiveUtility}`);
@@ -167,7 +172,7 @@ const publicWorld = world();
 publicWorld.__battleEventLedger = [{ eventId: 'public-hit-1', eventKind: 'hit_result', actorName: 'enemy-high', targetName: 'ally-low', actorSide: 'enemy', targetSide: 'ally', round: 1 }];
 const publicIntent = decision.buildTeamIntent(publicWorld, 'actor', initial);
 assert.ok(publicIntent.evidenceEventIds.includes('public-hit-1'), '团队意图没有绑定公开事实证据');
-const withStrategy = decision.decide({ worldSnapshot: world(), actorId: 'actor', beliefState: responseBelief, strategyMemory: { targetIds: ['enemy-high'] }, seed: 82 });
+const withStrategy = inspectDecision({ worldSnapshot: world(), actorId: 'actor', beliefState: responseBelief, strategyMemory: { targetIds: ['enemy-high'] }, seed: 82 });
 assert.equal(
   JSON.stringify(deepDecision.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility])),
   JSON.stringify(withStrategy.candidates.map(candidate => [candidate.candidateId, candidate.objectiveUtility])),

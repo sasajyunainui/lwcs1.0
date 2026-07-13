@@ -112,6 +112,12 @@ for (const relativePath of [
   'lwcs/BattleUI_Module.js',
 ]) vm.runInContext(fs.readFileSync(path.resolve(root, relativePath), 'utf8'), sandbox, { filename: relativePath });
 
+const inspectDecision = input => {
+  let candidates = [];
+  const result = sandbox.__LWCS_BATTLE_DECISION__.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  return { ...result, candidates };
+};
+
 const recordNode = Object.assign(makeNode(), { id: 'ui-battle-record-terminal' });
 const scopeNode = Object.assign(makeNode(), { querySelector(selector) { return selector === '#ui-battle-record-terminal' ? recordNode : null; } });
 const container = { innerHTML: '', querySelector(selector) { return selector === '.battle-module-scope' ? scopeNode : null; } };
@@ -213,7 +219,7 @@ const itemBeliefRun = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   settings: {},
 });
 const itemBelief = [...itemBeliefRun.decisions].reverse().find(entry => entry.actorId === '徐笠智')?.beliefState || { confidence: 0.55 };
-const postCreationDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const postCreationDecision = inspectDecision({
   worldSnapshot: itemCombat,
   actorId: '徐笠智',
   beliefState: itemBelief,
@@ -486,7 +492,7 @@ noUnlockWorld.参战者.team_player[0].技能列表 = [{
   id: 'resource-without-consumer', name: '无消费者回魂', 魂技名: '无消费者回魂', 消耗: '无', 前摇: 1,
   _效果数组: [{ 原型: '资源变化', 目标: '群体', 资源: '魂力', 数值: '+30%', 生效方式: '独立生效' }],
 }];
-const noUnlockDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const noUnlockDecision = inspectDecision({
   worldSnapshot: noUnlockWorld,
   actorId: 'player-a',
   actionOpportunity: { role: 'ACTIVE', sequence: 1 },
@@ -618,7 +624,7 @@ secondSkillActor.技能列表 = [
     { 原型: '状态施加', 目标: '群体', 状态: '迟缓', 持续回合: 2, 计算层效果: { cast_speed_penalty: 0.18, dodge_penalty: 0.08 } },
   ] },
 ];
-const secondSkillDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const secondSkillDecision = inspectDecision({
   worldSnapshot: secondSkillWorld,
   actorId: 'player-a',
   actionOpportunity: { role: 'ACTIVE', sequence: 1 },
@@ -627,7 +633,7 @@ const secondSkillDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
 });
 const secondSkillCandidate = secondSkillDecision.candidates.find(candidate => candidate?.skill?.id === 'second-skill');
 assert.ok(secondSkillCandidate && !secondSkillCandidate.rejectionCode, '控制型第二魂技没有进入完整非支配候选池');
-assert.equal(secondSkillDecision.selected?.skill?.id, 'second-skill', `第二魂技收益占优时仍不可达:${secondSkillDecision.selected?.candidateId || ''}`);
+assert.equal(secondSkillDecision.selected?.declaration?.skill?.id, 'second-skill', `第二魂技收益占优时仍不可达:${secondSkillDecision.selected?.candidateId || ''}`);
 
 const controlMarginalWorld = combatData();
 controlMarginalWorld.参战者.team_enemy.push(participant('enemy-b', 'enemy', 500));
@@ -639,7 +645,7 @@ const marginalControlSkill = {
   _效果数组: [{ 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 2, 生效方式: '独立生效' }],
 };
 controlMarginalWorld.参战者.team_player[0].技能列表 = [structuredClone(marginalControlSkill)];
-const controlMarginalDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const controlMarginalDecision = inspectDecision({
   worldSnapshot: controlMarginalWorld,
   actorId: 'player-a',
   actionOpportunity: { role: 'ACTIVE', sequence: 1 },
@@ -657,7 +663,7 @@ controlledFollowUpWorld.参战者.team_enemy[0].状态效果 = {
   existing_freeze: { 状态: '冻结', 状态名称: '冻结', 类型: 'debuff', duration: 2, 战斗效果: { skip_turn: true, cannot_act: true, cannot_react: true } },
 };
 controlledFollowUpWorld.参战者.team_player[0].技能列表 = [];
-const controlledFollowUpDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const controlledFollowUpDecision = inspectDecision({
   worldSnapshot: controlledFollowUpWorld,
   actorId: 'player-a',
   actionOpportunity: { role: 'ACTIVE', sequence: 1 },
@@ -774,12 +780,12 @@ protectedInput.胜负条件 = {
   victory: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }] },
   defeat: { logic: 'ANY', conditions: [{ type: 'UNIT_DAMAGED', side: 'PLAYER', targetIds: ['player-a'], baselineHp: { 'player-a': 500 } }] },
 };
-const protectedDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const protectedDecision = inspectDecision({
   worldSnapshot: structuredClone(protectedInput), actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
 });
 const ordinaryProtectionInput = structuredClone(protectedInput);
 delete ordinaryProtectionInput.胜负条件;
-const ordinaryDecision = sandbox.__LWCS_BATTLE_DECISION__.decide({
+const ordinaryDecision = inspectDecision({
   worldSnapshot: ordinaryProtectionInput, actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
 });
 const bestDefenseUtility = decision => Math.max(...decision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate?.declaration?.actionKind)).map(candidate => Number(candidate.objectiveUtility || 0)));
