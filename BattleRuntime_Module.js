@@ -2234,6 +2234,62 @@
     return totalLoad;
   }
 
+  function settleExpiredConditionBase(unit = {}, key = '', condition = {}, label = '', combatData = {}) {
+    const stateName = String(condition?.状态名称 || condition?.状态 || key || '护盾').trim();
+    const source = findStateSource(combatData, {
+      applicationId: String(condition?.__状态来源键 || '').trim(),
+      stateName,
+      targetName: unit?.name || unit?.名称 || label,
+      maxRound: Number(combatData?.回合 || 0),
+    });
+    const remainingShield = Math.max(0, Math.round(Number(condition?.shield_value || 0)));
+    if (remainingShield > 0) {
+      writeLedgerEvent(combatData, {
+        eventKind: 'shield_break',
+        round: Number(combatData?.回合 || 0),
+        actorName: unit?.name || unit?.名称 || label,
+        targetName: unit?.name || unit?.名称 || label,
+        actionName: stateName,
+        actionType: 'state_tick',
+        actionRole: 'STATE_TICK',
+        sourceActionName: String(source?.sourceActionName || '').trim(),
+        sourceActionId: String(source?.sourceActionId || '').trim(),
+        parentNodeId: String(source?.sourceNodeId || '').trim(),
+        sourceNodeId: String(source?.sourceNodeId || '').trim(),
+        result: 'expired',
+        resultState: 'LOSS',
+        ruleCode: 'SHIELD_WINDOW_EXPIRED',
+        meta: {
+          amount: remainingShield,
+          shieldAmount: remainingShield,
+          resource: '护盾',
+          resourceKey: 'shield',
+          stateName,
+          source: 'shield_window_expiry',
+        },
+      });
+    }
+    if (unit?.状态效果 && typeof unit.状态效果 === 'object') delete unit.状态效果[key];
+    if (String(unit?.当前领域 || '') === String(key)) unit.当前领域 = '无';
+    const logs = [];
+    if (condition?.召唤物 && combatData) {
+      const summonLog = removeHostStateSummon(combatData, unit, key, '来源状态结束');
+      if (summonLog) logs.push(summonLog);
+    }
+    if (condition?.召唤物 && Array.isArray(unit?.召唤行动队列)) {
+      unit.召唤行动队列 = unit.召唤行动队列.filter(action => String(action?.来源状态 || '') !== key);
+    }
+    if (unit?.持续效果) {
+      Object.keys(unit.持续效果).forEach(sustainKey => {
+        if (unit.持续效果[sustainKey]?.related_condition === key) delete unit.持续效果[sustainKey];
+      });
+      refreshSustainRuntimeLoad(unit);
+    }
+    if (unit?.召唤键) syncSummonMirror(unit);
+    logs.push(`[状态消散] ${label}的[${key}]已结束`);
+    return logs.join(' ');
+  }
+
 
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
     settlement.prepare(combatData, adapterOptions);
@@ -5481,6 +5537,7 @@
     settleRingRecoveryAtRoundEnd,
     settleConditionResourceTick,
     refreshSustainRuntimeLoad,
+    settleExpiredConditionBase,
     buildMinimalSettlementTrace: 构建事件最小结算轨迹,
     inferStateTickAggregateKind: 读取状态Tick聚合种类,
     cloneAuditSnapshot,

@@ -285,7 +285,6 @@ class BattleUIComponent {
     const 查找状态来源登记 = BATTLE_RUNTIME.findStateSource;
     const 写入回合末资源变化事实 = BATTLE_RUNTIME.writeRoundEndResourceEvent;
     const 刷新维持运行态负荷 = BATTLE_RUNTIME.refreshSustainRuntimeLoad;
-    const 移除宿主状态召唤单位 = BATTLE_RUNTIME.removeHostStateSummon;
     if (!BATTLE_RUNTIME || typeof BATTLE_RUNTIME !== 'object') throw new Error('battle_runtime_module_missing');
     const BATTLE_PREVIEW = root.__LWCS_BATTLE_PREVIEW__;
     if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.estimateWithdrawal !== 'function') throw new Error('battle_preview_module_missing');
@@ -18645,40 +18644,6 @@ class BattleUIComponent {
               if (延迟日志) parts.push(延迟日志);
             });
           }
-          const expiredStateName = String(expiredCond?.状态名称 || expiredCond?.状态 || key || '护盾').trim();
-          const expiredStateSource = 查找状态来源登记(combatData, {
-            applicationId: String(expiredCond?.__状态来源键 || '').trim(),
-            stateName: expiredStateName,
-            targetName: char?.name || char?.名称 || label,
-            maxRound: Number(combatData?.回合 || 0),
-          });
-          const remainingShield = Math.max(0, Math.round(Number(expiredCond?.shield_value || 0)));
-          if (remainingShield > 0) {
-            BATTLE_RUNTIME.writeLedgerEvent(combatData, {
-              eventKind: 'shield_break',
-              round: Number(combatData?.回合 || 0),
-              actorName: char?.name || char?.名称 || label,
-              targetName: char?.name || char?.名称 || label,
-              actionName: expiredStateName,
-              actionType: 'state_tick',
-              actionRole: 'STATE_TICK',
-              sourceActionName: String(expiredStateSource?.sourceActionName || '').trim(),
-              sourceActionId: String(expiredStateSource?.sourceActionId || '').trim(),
-              parentNodeId: String(expiredStateSource?.sourceNodeId || '').trim(),
-              sourceNodeId: String(expiredStateSource?.sourceNodeId || '').trim(),
-              result: 'expired',
-              resultState: 'LOSS',
-              ruleCode: 'SHIELD_WINDOW_EXPIRED',
-              meta: {
-                amount: remainingShield,
-                shieldAmount: remainingShield,
-                resource: '护盾',
-                resourceKey: 'shield',
-                stateName: expiredStateName,
-                source: 'shield_window_expiry',
-              },
-            });
-          }
           const endSideEffects = normalizeBattleSkillSideEffectList(expiredCond?.副作用列表 || []);
           endSideEffects
             .filter(item => String(item?.触发时机 || '').trim() === '效果结束后')
@@ -18687,23 +18652,8 @@ class BattleUIComponent {
               if (boundState && boundState !== key) return;
               applyBattleSideEffectState(char, item, key, parts, getCurrentBattleContextSnapshot());
             });
-          delete conditionMap[key];
-          if (String(char.当前领域 || '') === String(key)) {
-            char.当前领域 = '无';
-          }
-          if (expiredCond?.召唤物 && combatData) {
-            const 召唤消散日志 = 移除宿主状态召唤单位(combatData, char, key, '来源状态结束');
-            if (召唤消散日志) parts.push(召唤消散日志);
-          }
-          if (expiredCond?.召唤物 && Array.isArray(char.召唤行动队列)) {
-            char.召唤行动队列 = char.召唤行动队列.filter(行动 => String(行动?.来源状态 || '') !== key);
-          }
-          if (char.持续效果) {
-            Object.keys(char.持续效果).forEach(sustainKey => {
-              if (char.持续效果[sustainKey]?.related_condition === key) delete char.持续效果[sustainKey];
-            });
-          }
-          parts.push(`[状态消散] ${label}的[${key}]已结束`);
+          const expiryLog = BATTLE_RUNTIME.settleExpiredConditionBase(char, key, expiredCond, label, combatData);
+          if (expiryLog) parts.push(expiryLog);
         });
 
         const naturalRecoveryLog = BATTLE_RUNTIME.settleNaturalRecoveryAtRoundEnd(char, label, combatData);
