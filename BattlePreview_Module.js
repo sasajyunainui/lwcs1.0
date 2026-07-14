@@ -874,6 +874,7 @@
       duration: requestedDuration,
       数值: effect?.数值 ?? '',
       强度: effect?.强度 ?? '',
+      __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
       战斗效果: deriveStateCombatEffect(effect),
       面板修改比例: cloneValue(effect?.面板修改比例 || {}),
       面板固定修正: cloneValue(effect?.面板固定修正 || {}),
@@ -981,9 +982,14 @@
           const currentTarget = overlay.readUnit(unitId(target));
           const rawDamage = calculateBaseDamage(effect, actor, currentTarget);
           const hitProbability = estimateHitProbability(actor, currentTarget, effect);
+          const applicationProbability = clamp(Number(
+            context?.applicationProbabilityByTarget?.get(unitId(target)) ??
+            context?.applicationProbability ??
+            1
+          ), 0, 1);
           const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
           const damageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
-          const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability);
+          const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability * applicationProbability);
           const fullHitDamage = Math.min(damageLimit, rawDamage);
           const traumaUnconscious = shouldTriggerTraumaUnconscious(fullHitDamage, readHp(currentTarget) - fullHitDamage, readHpMax(currentTarget));
           const nonlethalIncapacitated = nonlethalIntent && damageLimit > 0 && expectedDamage >= damageLimit - 1e-9;
@@ -997,7 +1003,7 @@
             targetId: unitId(target),
             outcomeKind: 'HP_DELTA',
             threatValue: expectedDamage / readHpMax(currentTarget) * 100,
-            evidence: { rawDamage, hitProbability, expectedDamage, damageType: effect?.伤害类型 || '' },
+            evidence: { rawDamage, hitProbability, applicationProbability, expectedDamage, damageType: effect?.伤害类型 || '' },
           });
           if (nonlethalIncapacitated) {
             ledger.addOutcome({
@@ -1130,8 +1136,13 @@
             return;
           }
           let marginal = false;
+          const applicationProbability = clamp(Number(
+            context?.applicationProbabilityByTarget?.get(unitId(target)) ??
+            context?.applicationProbability ??
+            1
+          ), 0, 1);
           overlay.changeUnit(unitId(target), unit => {
-            marginal = addState(unit, effect, context.effectInstanceId);
+            marginal = addState(unit, { ...effect, __previewApplicationProbability: applicationProbability }, context.effectInstanceId);
           });
           const state = String(effect?.状态 || '').trim();
           const combatEffect = deriveStateCombatEffect(effect);
@@ -1142,7 +1153,7 @@
             targetId: unitId(target),
             outcomeKind,
             threatValue: 0,
-            evidence: { prototype, state, duration: Math.max(1, Number(effect?.持续回合 || 1)), cancelsAction, marginal },
+            evidence: { prototype, state, duration: Math.max(1, Number(effect?.持续回合 || 1)), applicationProbability, cancelsAction, marginal },
           });
         });
         return;
@@ -1377,9 +1388,11 @@
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
+    const primarySuccessProbability = new Map();
     effects.forEach((effect, index) => {
       const targets = resolveTargets(worldSnapshot, actor, declaration, effect);
       if (!effectConditionEnabled(effect, worldSnapshot, actor, targets[0])) return;
+      const followsPrimary = index > 0 && String(effect?.生效方式 || '').trim() === '跟随主原型';
       const context = {
         actor,
         declaration,
@@ -1392,7 +1405,26 @@
         windowId: `round:${Number(worldSnapshot?.回合 || 0)}:effect:${index}`,
         battleIntent: input?.battleIntent || {},
       };
+      if (followsPrimary) {
+        context.applicationProbabilityByTarget = new Map(
+          targets.map(target => [unitId(target), primarySuccessProbability.get(unitId(target)) ?? 0])
+        );
+      }
       applyEffect(effect, targets, overlay, ledger, context, 0);
+      if (index === 0) {
+        targets.forEach(target => {
+          const prototype = String(effect?.原型 || '').trim();
+          if (prototype === '伤害结算') {
+            const perSegment = estimateHitProbability(actor, target, effect);
+            const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
+            primarySuccessProbability.set(unitId(target), 1 - Math.pow(1 - perSegment, segments));
+          } else if (prototype === '状态施加') {
+            primarySuccessProbability.set(unitId(target), clamp(Number(effect?.成功率 ?? effect?.触发概率 ?? 1), 0, 1));
+          } else {
+            primarySuccessProbability.set(unitId(target), 1);
+          }
+        });
+      }
     });
     metrics.maxNodesObserved = Math.max(metrics.maxNodesObserved, nodeBudget.count);
     const result = Object.freeze({

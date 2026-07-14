@@ -237,6 +237,14 @@ const postCreationDecision = inspectDecision({
 const createdItemCandidates = postCreationDecision.candidates.filter(candidate => candidate.declaration?.actionKind === 'USE_ITEM');
 assert.ok(createdItemCandidates.length > 0, `造物结算后成品未进入USE_ITEM候选:${JSON.stringify(itemActor?.背包 || {})}`);
 assert.ok(createdItemCandidates.some(candidate => !['HARD_INVALID', 'DOMINATED'].includes(candidate.classification)), `造物成品全部被错误禁止:${JSON.stringify(createdItemCandidates.map(candidate => ({ id: candidate.candidateId, targetIds: candidate.declaration.targetIds, utility: candidate.objectiveUtility, rejectionCode: candidate.rejectionCode, classification: candidate.classification, irreversibleCost: candidate.vector?.irreversibleCost })))}`);
+assert.ok(
+  createdItemCandidates.every(candidate => Number(candidate?.vector?.irreversibleCost || 0) === 0),
+  `可再生产的造物被错误收取不可逆资产成本:${JSON.stringify(createdItemCandidates.map(candidate => ({
+    id: candidate.candidateId,
+    targetIds: candidate.declaration.targetIds,
+    irreversibleCost: candidate.vector?.irreversibleCost,
+  })))}`,
+);
 const formalItemUse = itemBeliefRun.decisions.find(entry =>
   entry?.actorId === '徐笠智' &&
   entry?.selected?.declaration?.actionKind === 'USE_ITEM' &&
@@ -1341,6 +1349,57 @@ const zeroHitResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclarati
 assert.equal(zeroHitTarget.属性.HP, zeroHitBefore, '0%命中率仍造成伤害');
 assert.equal(zeroHitResult.facts.find(event => event?.eventKind === 'hit_result')?.result, 'miss', '0%命中率没有形成失败事实');
 
+const followedEffectCombat = combatData();
+followedEffectCombat.回合 = 1;
+const followedEffectTarget = followedEffectCombat.参战者.team_enemy[0];
+const followedEffectResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: followedEffectCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '主效果落空测试', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 0, 生效方式: '独立生效' },
+      { 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 1, 成功率: 1, 生效方式: '跟随主原型' },
+    ] },
+  },
+});
+assert.equal(followedEffectResult.facts.find(event => event?.eventKind === 'hit_result')?.result, 'miss', '跟随效果反例没有让主效果落空');
+assert.equal(followedEffectTarget.状态效果?.僵直, undefined, '主效果未命中时仍施加跟随控制');
+assert.equal(followedEffectResult.facts.some(event => event?.eventKind === 'state_apply' && event?.meta?.stateName === '僵直'), false, '主效果未命中时仍生成跟随控制事实');
+
+const followedPreview = sandbox.__LWCS_BATTLE_PREVIEW__.previewAction({
+  worldSnapshot: followedEffectCombat,
+  actorId: 'player-a',
+  declaration: {
+    actionId: 'followed-preview-zero-hit',
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '主效果落空预估', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 0, 生效方式: '独立生效' },
+      { 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 1, 成功率: 1, 生效方式: '跟随主原型' },
+    ] },
+  },
+  previewBudget: { maxNodes: 12 },
+});
+const followedPreviewTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(followedPreview.afterSnapshot, 'enemy-a');
+assert.equal(followedPreviewTarget?.状态效果 &&
+  Object.values(followedPreviewTarget.状态效果)
+    .some(state => state?.状态 === '僵直' && Number(state?.__previewApplicationProbability || 0) > 0), false,
+'纯预估仍把0%主效果后的跟随控制计为可生效');
+
+const followedSuccessCombat = combatData();
+followedSuccessCombat.回合 = 1;
+const followedSuccessResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: followedSuccessCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '主效果命中测试', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 1, 生效方式: '独立生效' },
+      { 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 1, 成功率: 1, 生效方式: '跟随主原型' },
+    ] },
+  },
+});
+assert.equal(followedSuccessResult.facts.some(event => event?.eventKind === 'state_apply' && event?.meta?.stateName === '僵直' && event?.result === 'applied'), true,
+  '主效果命中后没有结算跟随控制');
+
 const structuredEffectCombat = combatData();
 structuredEffectCombat.回合 = 1;
 const structuredEffectResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
@@ -1357,6 +1416,28 @@ const structuredEffectResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructured
 assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'RESOURCE_CHANGE'), '结构化资源变化缺少事实');
 assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'SHIELD_CHANGE'), '结构化护盾变化缺少事实');
 assert.equal(structuredEffectCombat.参战者.team_enemy[0].状态效果.结构化眩晕?.战斗效果?.skip_turn, true, '结构化状态没有落入影子快照');
+
+const structuredEquipCombat = combatData();
+structuredEquipCombat.回合 = 1;
+const structuredEquipActor = structuredEquipCombat.参战者.team_player[0];
+const agilityBeforeEquip = Number(structuredEquipActor.agi || structuredEquipActor.属性?.敏捷 || 0);
+const structuredEquipResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredEquipCombat,
+  declaration: {
+    actorId: 'player-a',
+    actionKind: 'EQUIP',
+    targetIds: ['player-a'],
+    equipmentSignature: 'raw-equipment-modifier',
+    skill: { id: 'raw-agility-dagger', name: '原始敏捷匕首', 类型: '装备', 装备属性: { 敏捷: '+20%' } },
+  },
+});
+assert.ok(Number(structuredEquipActor.agi || structuredEquipActor.属性?.敏捷 || 0) > agilityBeforeEquip, '原始装备声明没有应用装备属性');
+assert.ok(structuredEquipResult.facts.some(event =>
+  event?.eventKind === 'effect_resolved' &&
+  event?.effectPrototype === '属性修正' &&
+  String(event?.meta?.effectDetail?.attribute || '').includes('敏捷')
+), '装备属性变化没有写入结构化事实');
+assert.ok(structuredEquipResult.facts.some(event => event?.eventKind === 'complete' && event?.primaryOutcome === 'equipment_changed'), '装备完成终态缺失');
 
 const structuredDotCombat = combatData();
 structuredDotCombat.回合 = 1;

@@ -936,11 +936,25 @@
   function hasActionCancellation(unit = {}) {
     if (actionCancellationCache.has(unit)) return actionCancellationCache.get(unit);
     const result = stateEntries(unit).some(state =>
-      isHardControlStateName(state?.状态 || state?.状态名称) ||
-      state?.cannot_act === true || state?.skip_turn === true || state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true
+      Number(state?.__previewApplicationProbability ?? 1) >= 1 - 1e-9 && (
+        isHardControlStateName(state?.状态 || state?.状态名称) ||
+        state?.cannot_act === true || state?.skip_turn === true || state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true
+      )
     );
     actionCancellationCache.set(unit, result);
     return result;
+  }
+
+  function actionCancellationProbability(unit = {}) {
+    return 1 - stateEntries(unit).reduce((remaining, state) => {
+      const name = String(state?.状态 || state?.状态名称 || '').trim();
+      const effects = state?.战斗效果 || {};
+      const cancels = isHardControlStateName(name) ||
+        state?.cannot_act === true || state?.skip_turn === true ||
+        effects?.cannot_act === true || effects?.skip_turn === true;
+      if (!cancels) return remaining;
+      return remaining * (1 - clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1));
+    }, 1);
   }
 
   function stateEntries(unit = {}) {
@@ -979,13 +993,14 @@
       const name = String(state?.状态 || state?.状态名称 || '').trim();
       if (options.ignoreActionCancellation && isHardControlStateName(name)) return;
       const effects = state?.战斗效果 || {};
+      const applicationProbability = clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1);
       const reactionPenalty = clamp(Number(effects?.reaction_penalty || 0), 0, 0.9);
       const castPenalty = clamp(Number(effects?.cast_speed_penalty || 0), 0, 0.9);
       multiplier *= 1 - Math.max(
         reactionPenalty * 0.55,
         castPenalty * 0.35,
         /迟缓|僵直/.test(name) ? 0.1 : 0,
-      );
+      ) * applicationProbability;
     });
     const result = clamp(multiplier, 0.1, 1);
     cached.set(cacheKey, result);
@@ -1089,6 +1104,7 @@
       const allied = side === perspectiveSide;
       const beliefUnit = beliefState?.units?.[preview.unitId(unit)] || {};
       const actionUnavailable = hasActionCancellation(unit);
+      const cancellationProbability = actionCancellationProbability(unit);
       const restoreActionAvailability = options.restoreActionAvailabilityFor?.has(preview.unitId(unit)) === true;
       const incomingThreatPercent = opposingEntries.reduce((threat, opposingEntry) => {
         const opposingUnit = opposingEntry.unit;
@@ -1109,8 +1125,12 @@
       return sum + preview.calculateUnitCapacity({
         unit,
         survivalProbability,
-        actionAvailability: actionUnavailable && !restoreActionAvailability ? 0 : actionQualityMultiplier(unit, { ignoreActionCancellation: restoreActionAvailability }),
-        bestLegalBaseActionValue: allied ? bestBaseActionValue(worldSnapshot, unit, { ignoreActionCancellation: restoreActionAvailability }) : perceivedEnemyBaseValue(beliefUnit),
+        actionAvailability: actionUnavailable && !restoreActionAvailability
+          ? 0
+          : (restoreActionAvailability ? 1 : 1 - cancellationProbability) * actionQualityMultiplier(unit, { ignoreActionCancellation: restoreActionAvailability }),
+        bestLegalBaseActionValue: allied
+          ? bestBaseActionValue(worldSnapshot, unit, { ignoreActionCancellation: restoreActionAvailability || cancellationProbability > 0 })
+          : perceivedEnemyBaseValue(beliefUnit),
       });
     }, 0);
   }
@@ -2195,6 +2215,7 @@
       !context.problems?.some(problem => ['SURVIVAL_CRISIS', 'IMMINENT_DENIAL', 'ALLY_CRISIS'].includes(problem?.problemId))
       ? clamp(objectivePace.progressGain / objectivePace.requiredProgress, 0.1, 1)
       : 1;
+    expectedStateGain = clamp(expectedStateGain, -100, 100);
     const objectiveRelevantStateGain = expectedStateGain * objectiveStateGainWeight;
     const objectiveUtility = clamp(objectiveRelevantStateGain + terminalUtility + objectiveProgress + informationValue - irreversibleCost - catastrophicRisk, -200, 200);
     const hasProgress = expectedStateGain > 0.0001 || terminalUtility > 0 || objectiveProgress > 0 || informationValue > 0;

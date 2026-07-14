@@ -298,6 +298,22 @@ const expectedRounds = Array.from({ length: formalResult.roundsExecuted }, (_, i
 assert.equal(JSON.stringify((formalResult.roundOverview || []).map(item => Number(item?.round || 0))), JSON.stringify(expectedRounds), '回合速览没有连续覆盖全部实际回合');
 const roundSummaryBlocks = formalResult.reportBlocks.filter(block => block?.blockType === 'ROUND_SUMMARY');
 assert.equal(JSON.stringify(roundSummaryBlocks.map(block => Number(block?.round || 0))), JSON.stringify(expectedRounds), '每个实际回合必须恰好生成一个ROUND_SUMMARY');
+roundSummaryBlocks.forEach(block => {
+  const damages = (Array.isArray(block?.facts) ? block.facts : [])
+    .filter(fact => String(fact?.factType || '').trim() === 'DAMAGE' && Number(fact?.value || 0) > 0);
+  const playerDamage = damages
+    .filter(fact => String(fact?.actorSide || '').trim() === 'player')
+    .reduce((sum, fact) => sum + Math.round(Number(fact?.value || 0)), 0);
+  const enemyDamage = damages
+    .filter(fact => String(fact?.actorSide || '').trim() === 'enemy')
+    .reduce((sum, fact) => sum + Math.round(Number(fact?.value || 0)), 0);
+  if (!(playerDamage > 0 && enemyDamage > 0)) return;
+  assert.match(
+    String(block?.outcomeSummary || ''),
+    new RegExp(`我方共造成 ${playerDamage} 点伤害，敌方共造成 ${enemyDamage} 点伤害`),
+    `双方同回合命中时回合摘要必须保留双边伤害总量:${block?.outcomeSummary || ''}`,
+  );
+});
 const formalActorNames = ['唐凌雪', '韦小枫'];
 expectedRounds.forEach(round => {
   const activeStarts = formalResult.eventLedger.filter(event =>
@@ -344,6 +360,26 @@ if (formalResult.roundsExecuted < 20) {
 const actionReportBlocks = formalResult.reportBlocks.filter(block => !['ROUND_SUMMARY', 'FINAL_SUMMARY'].includes(String(block?.blockType || '')));
 const actionGroupIds = actionReportBlocks.map(block => String(block?.actionGroupId || '').trim()).filter(Boolean);
 assert.equal(new Set(actionGroupIds).size, actionGroupIds.length, '同一动作组被拆成多个结构化战报块');
+const actionFactOwners = new Map();
+actionReportBlocks.forEach(block => {
+  (block?.facts || []).forEach(fact => {
+    const factId = String(fact?.factId || '').trim();
+    assert.ok(factId, `非总结战报事实缺少factId:${JSON.stringify(block)}`);
+    assert.ok(!actionFactOwners.has(factId), `同一事实进入多个非总结战报块:${JSON.stringify({ factId, firstBlockId: actionFactOwners.get(factId), duplicateBlockId: block?.blockId })}`);
+    actionFactOwners.set(factId, String(block?.blockId || '').trim());
+  });
+});
+const objectiveEventIds = new Set(formalResult.eventLedger
+  .filter(event => String(event?.eventKind || '').trim() === 'battle_objective_resolved')
+  .map(event => String(event?.eventId || '').trim())
+  .filter(Boolean));
+assert.ok(!actionReportBlocks.some(block =>
+  String(block?.blockType || '').trim() === 'RESOURCE_CHANGE' &&
+  (block?.facts || []).some(fact => objectiveEventIds.has(String(fact?.factId || '').trim()))
+), '胜负条件事实被错误投影为RESOURCE_CHANGE动作块');
+assert.ok(!actionReportBlocks.some(block =>
+  (block?.facts || []).some(fact => String(fact?.eventKind || '').trim() === 'battle_objective_resolved')
+), '根级胜负条件事实不应生成独立动作块');
 formalResult.eventLedger.filter(event =>
   String(event?.eventKind || '').trim() === 'action_start' && String(event?.actionRole || '').trim() === 'ACTIVE'
 ).forEach(event => {
@@ -453,6 +489,11 @@ assert.equal(formalResult.finalBattleReport?.blockType, 'FINAL_SUMMARY', '正式
 assert.ok(/战至第\d+回合/.test(String(formalResult.finalBattleReport?.text || '')), '总结型战报没有战况回合');
 assert.ok(/接下来我方/.test(String(formalResult.finalBattleReport?.text || '')) && /敌方/.test(String(formalResult.finalBattleReport?.text || '')), '总结型战报没有双方后续意图');
 const canActAtEnd = unit => Number(unit?.hp || 0) > 0 && !/失去战斗力|昏迷|投降|制服|撤离/.test(String(unit?.actionState || unit?.行动状态 || '').trim());
+const roundOneSoulDelta = formalResult.roundOverview
+  .find(item => Number(item?.round || 0) === 1)?.resourceDeltas
+  ?.find(item => item?.actorName === '唐凌雪' && item?.resourceName === '魂力');
+assert.equal(roundOneSoulDelta?.value, -532, `回合速览重复累计审计型action_cost:${JSON.stringify(roundOneSoulDelta)}`);
+assert.equal(roundOneSoulDelta?.sourceEventIds?.length, 2, `回合速览资源变化没有只保留真实扣除与自然恢复:${JSON.stringify(roundOneSoulDelta)}`);
 const playerAliveAtEnd = canActAtEnd(formalResult.finalSnapshot?.team_player?.[0]);
 const enemyAliveAtEnd = canActAtEnd(formalResult.finalSnapshot?.team_enemy?.[0]);
 if (playerAliveAtEnd && enemyAliveAtEnd) {

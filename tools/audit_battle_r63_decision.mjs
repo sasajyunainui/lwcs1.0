@@ -600,6 +600,41 @@ assert.ok(
   '混合技能的有效护盾没有进入边际贡献',
 );
 
+const terminalDominanceWorld = world(1);
+terminalDominanceWorld.参战者 = {
+  team_player: terminalDominanceWorld.参战者.ally,
+  team_enemy: terminalDominanceWorld.参战者.enemy,
+};
+terminalDominanceWorld.胜负条件 = {
+  version: 1,
+  explicit: true,
+  startRound: 0,
+  maxRounds: 3,
+  victory: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }] },
+  defeat: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }] },
+};
+terminalDominanceWorld.参战者.team_player[0].技能列表 = [{
+  id: 'terminal-window-overbuff',
+  name: '终局前过度增幅',
+  消耗: { 魂力: 90, 精神力: 60 },
+  _效果数组: [
+    { 原型: '属性修正', 目标: '自身', 属性: '力量', 数值: '+1000%', 持续回合: 3 },
+    { 原型: '属性修正', 目标: '自身', 属性: '防御', 数值: '+1000%', 持续回合: 3 },
+  ],
+}];
+terminalDominanceWorld.参战者.team_enemy[0].hp = 1;
+const terminalDominanceDecision = inspectDecision({
+  worldSnapshot: terminalDominanceWorld,
+  actorId: 'ally-1',
+  beliefState: { confidence: 1 },
+  seed: 113,
+});
+const terminalBasic = terminalDominanceDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+const terminalOverbuff = terminalDominanceDecision.candidates.find(candidate => candidate.skill?.id === 'terminal-window-overbuff');
+assert.ok(Number(terminalBasic?.vector?.terminalUtility || 0) >= 100, '可直接结束战斗的普通攻击没有获得终局收益');
+assert.ok(Math.abs(Number(terminalOverbuff?.vector?.expectedStateGain || 0)) <= 100, '非终局增幅突破了单个完整战局容量');
+assert.equal(terminalDominanceDecision.selected.candidateId, terminalBasic.candidateId, '存在无灾难风险的即时终局动作时仍选择高耗铺场');
+
 const decisionWorld = world(3);
 const decisionBefore = JSON.stringify(decisionWorld);
 const debugDecision = runtime.runBattleCase({ caseId: 'decision-3v3', seed: 123, combatData: decisionWorld, settings: { decisionOnly: true } });

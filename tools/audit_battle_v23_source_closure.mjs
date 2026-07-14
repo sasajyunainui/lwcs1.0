@@ -96,7 +96,8 @@ addCheck(
 addCheck(
   'flatActionQueueCoreOwnedByRuntime',
   /function createActionQueue\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.createActionQueue\(/.test(battleUiSource) &&
+    /function buildActionQueue\(/.test(battleRuntimeSource) &&
+    !/BATTLE_RUNTIME\.createActionQueue\(/.test(battleUiSource) &&
     !/const compareNodes\s*=/.test(battleUiSource) &&
     !/actionSequence\s*>=\s*64/.test(battleUiSource),
 );
@@ -396,45 +397,37 @@ addCheck(
 );
 addCheck(
   'castInterruptionBacklashIsLedgeredWithSingleTerminalPath',
-  !/结算蓄力打断反噬/.test(battleUiSource) &&
-    /function applyCastInterruptBacklash\(targetChar, sourceActor, attackAction, combatData\)/.test(battleUiSource) &&
-    /function resolveCastInterruptOnDamage\(/.test(battleUiSource) &&
-    /const backlash = applyCastInterruptBacklash\(targetChar, sourceActor, attackAction, combatData/.test(battleUiSource) &&
-    /ruleCode:\s*['"]CAST_INTERRUPTION_BACKLASH['"][\s\S]*?appliedDamage:\s*damage/.test(battleUiSource) &&
-    /sourceEffectId:\s*['"]CAST_INTERRUPTION_BACKLASH['"]/.test(battleUiSource) &&
-    /eventKind:\s*['"]state_apply['"][\s\S]*?sourceEffectId:\s*['"]CAST_INTERRUPTION_BACKLASH_STIFFNESS['"]/.test(battleUiSource) &&
-    [...battleUiSource.matchAll(/设置战斗血量值\(targetChar, hpBefore - damage\)/g)].length === 1,
+  !/结算蓄力打断反噬|applyCastInterruptBacklash|resolveCastInterruptOnDamage/.test(battleUiSource) &&
+    /eventKind:\s*['"]charge_interrupt['"]/.test(battleRuntimeSource) &&
+    /ruleCode:\s*['"]CHARGE_ACTOR_UNAVAILABLE['"]/.test(battleRuntimeSource),
 );
 addCheck(
   'duelProtectionSettlesActualTargetThroughLedger',
-  !/应用单挑系统资源终值|SYSTEM_RESOURCE_SETTLEMENT/.test(battleUiSource) &&
-    /function settleDeathSaveOnLethalDamage\(targetChar, sourceActor, sourceAction, combatData\)/.test(battleUiSource) &&
-    /ruleCode:\s*['"]DEATH_SAVE_RESOURCE_SETTLEMENT['"][\s\S]*?meta:\s*\{ resource:\s*resourceName, resourceKey, delta, reason \}/.test(battleUiSource) &&
-    /settleDeathSaveOnLethalDamage\(sharedTarget, attacker, attackAction/.test(battleUiSource) &&
-    /settleDeathSaveOnLethalDamage\(targetChar, attacker, attackAction/.test(battleUiSource),
+  !/应用单挑系统资源终值|SYSTEM_RESOURCE_SETTLEMENT|settleDeathSaveOnLethalDamage/.test(battleUiSource) &&
+    /death_save_count/.test(battleRuntimeSource) &&
+    /规则防御:[\s\S]*?death_save/.test(battleRuntimeSource),
 );
 addCheck(
   'duelPrimarySettlementUsesActionQueue',
   /function executeActionNodes\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /function 执行单挑队列结算\(/.test(battleUiSource) &&
-    [...battleUiSource.matchAll(/executeClash\(/g)].length === 3 &&
-    !/const supportResult\s*=\s*executeClash\(|const 玩家延后结算\s*=\s*executeClash\(/.test(battleUiSource),
+    /function executeStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
+    !/function 执行单挑队列结算\(|executeClash\(/.test(battleUiSource),
 );
 addCheck(
   'duelCounterQueueBindsParent',
-  /actionRole:\s*['"]COUNTER['"][\s\S]*?parentActionSequence:\s*Number\(父队列节点\?\.actionSequence/.test(battleUiSource) &&
-    /traceCombatData:\s*战斗数据/.test(battleUiSource),
+  /nodeKind:\s*['"]COUNTER['"][\s\S]*?actionRole:\s*['"]COUNTER['"][\s\S]*?parentActionSequence:/.test(battleRuntimeSource) &&
+    !/建立行为防反动作|执行团战扁平行动队列/.test(battleUiSource),
 );
 addCheck(
   'structuredActionDeclarationOnly',
   /function buildActionDeclaration\(/.test(battleUiSource) &&
-    /parsePlayerIntent\(playerInput, combatData, options\.actionDeclaration\)/.test(battleUiSource) &&
+    /selectedAction:\s*options\.actionDeclaration \|\| null/.test(battleUiSource) &&
     !/\[动作队列\]|parseSerializedPlayerActionQueue|buildSerializedEntryFromAction|旧动作队列/.test(battleUiSource),
 );
 addCheck(
   'actionDeclarationCrossesBridge',
-  /__executePlayerBattleIntentImpl[\s\S]*?actionDeclaration:\s*options\.actionDeclaration/.test(battleUiSource) &&
-    /__executeBattleFlowImpl[\s\S]*?buildActionDeclaration\?\.\(actionList\)/.test(battleUiSource),
+  /__executePlayerBattleIntentImpl\(playerInput, options = \{\}\)[\s\S]*?onPlayerAttack\(String\(playerInput \|\| ''\), options\)/.test(battleUiSource) &&
+    /__executeBattleFlowImpl\(combatData, options = \{\}\)[\s\S]*?buildActionDeclaration\?\.\(actionList\)/.test(battleUiSource),
 );
 addCheck(
   'noFixedTargetCandidateTruncation',
@@ -511,15 +504,15 @@ addCheck(
 );
 addCheck(
   'hardControlRevalidatesQueuedOpportunities',
-  /\['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'\]\.includes\(状态\)/.test(battleUiSource) &&
-    /if \(isActorHardControlled\(actor\)\)[\s\S]*?CONTROLLED_BEFORE_OPPORTUNITY/.test(battleUiSource) &&
-    /eventKind:\s*['"]lost_opportunity['"][\s\S]*?reasonCode/.test(battleUiSource),
+  /function structuredActorIncapacityReason\(/.test(battleRuntimeSource) &&
+    /incapacityReason\.startsWith\(['"]CONTROLLED:['"]\)[\s\S]*?CONTROLLED_BEFORE_OPPORTUNITY/.test(battleRuntimeSource) &&
+    /eventKind:\s*['"]lost_opportunity['"][\s\S]*?reasonCode/.test(battleRuntimeSource),
 );
 addCheck(
   'summonAssistCannotBecomeSecondActiveRoot',
-  /eventKind:\s*['"]summon_assist['"][\s\S]*?actionRole:\s*['"]ASSIST['"]/.test(battleUiSource) &&
-    /const 父动作事件 = options\?\.parentActionEvent[\s\S]*?parentActionEvent:\s*父动作事件/.test(battleUiSource) &&
-    !/eventKind:\s*['"]summon_assist['"][\s\S]{0,320}?actionRole:\s*['"]ACTIVE['"]/.test(battleUiSource),
+  /actionName:\s*['"]召唤协同['"][\s\S]*?actionType:\s*['"]summon_assist['"][\s\S]*?actionRole:\s*['"]ASSIST['"]/.test(battleRuntimeSource) &&
+    /nodeKind:\s*['"]ASSIST['"][\s\S]*?actionRole:\s*['"]ASSIST['"]/.test(battleRuntimeSource) &&
+    !/eventKind:\s*['"]summon_assist['"][\s\S]{0,320}?actionRole:\s*['"]ACTIVE['"]/.test(battleRuntimeSource),
 );
 addCheck(
   'legacyFixtureExecutorsRetiredFromAuthoritativeGate',
@@ -540,6 +533,28 @@ addCheck(
   !/runLegacyBattleCase|shadowDecisions|SHADOWED|评估技能规划净收益|评估技能行为库衔接收益|估算效果行为库衔接收益|chooseActorActionByCandidates|buildAutoActionForActor|determineNpcAction/.test(`${battleRuntimeSource}\n${battleDecisionSource}\n${battleUiSource}`),
 );
 addCheck(
+  'battleUiHasNoRetiredDecisionSettlementSemantics',
+  ![
+    '系别基础战略意图权重',
+    '时机决策阈值',
+    '战术修正层级',
+    '计算技能战术修正',
+    '选择技能规划目标',
+    'chooseEnemyTargetForSkill',
+    'chooseAllyTargetForSkill',
+    '执行团战扁平行动队列',
+    'buildHpSuggestionPayload',
+    '构建压制战HP截断裁断',
+  ].some(marker => battleUiSource.includes(marker)) &&
+    !/function\s+(?:calculateObjectiveScore|chooseActorActionByCandidates|runDecisionTeamBattleSimulation|executeStructuredDeclaration)\s*\(/.test(battleUiSource) &&
+    !/const\s+(?:compareNodes|objectiveUtility|rawObjectiveScore)\s*=/.test(battleUiSource),
+);
+addCheck(
+  'ledgerCarriesStableActorIdentity',
+  /const actorId = String\(payload\.actorId \|\| previewRuntime\.unitId\(actorUnit\) \|\| actorName\)\.trim\(\)/.test(battleRuntimeSource) &&
+    /eventId:[\s\S]*?eventKind,[\s\S]*?round,[\s\S]*?actorId,[\s\S]*?actorName,/.test(battleRuntimeSource),
+);
+addCheck(
   'productionHasNoRepeatDecayScoringPath',
   !/repeatDecay|repeatMultiplier|scoreBeforeRepeat|scoreAfterRepeat|repeatException|高价复读|完整候选池/.test(battleUiSource),
 );
@@ -555,9 +570,9 @@ addCheck(
     /function shouldTriggerTraumaUnconscious\(/.test(battlePreviewSource) &&
     /preview\.evaluateBattleObjectives\(/.test(battleDecisionSource) &&
     /previewRuntime\.evaluateBattleObjectives\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.evaluateBattleTerminal\(/.test(battleUiSource) &&
-    /TRAUMA_UNCONSCIOUS/.test(battleUiSource) &&
-    /battle_objective_resolved/.test(`${battleUiSource}\n${battleRuntimeSource}`),
+    !/function evaluateBattleObjectives\(|function evaluateBattleTerminal\(/.test(battleUiSource) &&
+    /TRAUMA_UNCONSCIOUS/.test(battleRuntimeSource) &&
+    /battle_objective_resolved/.test(battleRuntimeSource),
 );
 addCheck(
   'battleRouteRequiresObjectiveContract',

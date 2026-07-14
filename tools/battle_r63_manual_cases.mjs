@@ -15,6 +15,18 @@ function readSystem(snapshot = {}) {
   return String(snapshot?.第1武魂?.系别 || snapshot?.第1武魂?.类型 || snapshot?.属性?.系别 || '强攻系').trim() || '强攻系';
 }
 
+function removeLockedSoulRings(value, maximumRingCount) {
+  if (!value || typeof value !== 'object') return;
+  Object.keys(value).forEach(key => {
+    const match = /^第(\d+)魂环$/.exec(String(key));
+    if (match && Number(match[1]) > maximumRingCount) {
+      delete value[key];
+      return;
+    }
+    removeLockedSoulRings(value[key], maximumRingCount);
+  });
+}
+
 function participant(library, getBaseStats, name, options = {}) {
   const snapshot = sourceSnapshot(library, name);
   const sourceHash = hash(snapshot);
@@ -23,6 +35,7 @@ function participant(library, getBaseStats, name, options = {}) {
     throw new Error(`r63_manual_character_hash_changed:${name}:expected=${expectedSourceHash || 'missing'}:actual=${sourceHash}`);
   }
   const level = Math.max(1, Number(options.level || snapshot?.属性?.等级 || 1));
+  removeLockedSoulRings(snapshot, Math.min(9, Math.floor(level / 10)));
   const system = readSystem(snapshot);
   if (typeof getBaseStats !== 'function') throw new Error('r63_manual_base_stats_missing');
   const stats = getBaseStats(level);
@@ -155,7 +168,7 @@ export function buildManualCases(library, getBaseStats) {
     battle('duel_charge_defense_safer', 4, '切磋', [make('韦小枫', { hpRatio: 0.25, soulRatio: 0 })], [make('舞长空', { charging: longCharge })]),
     battle('team_focus_without_overkill', 4, '击败', [make('唐舞麟'), make('古月'), make('谢邂')], [make('张扬子', { hpRatio: 0.25 }), make('王金玺'), make('韦小枫')]),
     battle('team_protect_critical_ally', 4, '守护', [make('舞长空', { level: 70, hpRatio: 0.05 }), make('雅莉'), make('唐舞麟', { level: 70 })], [make('龙跃', { level: 70 }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 })]),
-    battle('team_heal_crisis', 4, '守护', [make('雅莉', { level: 98, hpRatio: 0.8 }), make('舞长空', { level: 70, hpRatio: 0.05 }), make('古月', { level: 70, hpRatio: 0.08 })], [make('龙跃', { level: 45, charging: charge }), make('戴月炎', { level: 45 }), make('苏沐', { level: 45 })]),
+    battle('team_heal_crisis', 4, '守护', [make('雅莉', { level: 98, hpRatio: 0.8 }), make('舞长空', { level: 90, hpRatio: 0.25 }), make('古月', { level: 90, hpRatio: 0.3 })], [make('龙跃', { level: 90 }), make('戴月炎', { level: 90 }), make('苏沐', { level: 90 })]),
     battle('team_control_overlap', 4, '击败', [make('古月', { level: 60 }), make('许小言', { level: 60 }), make('舞长空', { level: 60 })], [make('龙跃', { level: 55, charging: charge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })]),
     battle('team_resource_support', 6, '击败', [make('白寒樱', { level: 50 }), make('唐舞麟', { level: 50, soulRatio: 0.08 }), make('古月', { level: 50, soulRatio: 0.12 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 })]),
     battle('team_multi_target_response', 6, '击败', [make('唐舞麟', { level: 60 }), make('谢邂', { level: 60 }), make('古月', { level: 60 })], [make('张扬子', { level: 52, hpRatio: 0.55 }), make('王金玺', { level: 52, hpRatio: 0.55 }), make('韦小枫', { level: 52, hpRatio: 0.55 })]),
@@ -217,10 +230,10 @@ export function buildManualCases(library, getBaseStats) {
     unit.hp_max = 20000;
     unit.属性.HP = 20000;
     unit.属性.HP上限 = 20000;
-    unit.str = 50;
+    unit.str = 1000;
     unit.def = 5000;
     unit.agi = 10;
-    unit.属性.力量 = 50;
+    unit.属性.力量 = 1000;
     unit.属性.防御 = 5000;
     unit.属性.敏捷 = 10;
   });

@@ -186,6 +186,14 @@ const enemy = result.finalSnapshot.team_enemy[0];
 assert.ok(Number(enemy.hp || 0) > 0, '非致死重创错误写成死亡');
 assert.match(String(enemy.actionState || enemy.行动 || ''), /昏迷/, `正式伤害结算没有写入昏迷:${JSON.stringify({ enemy, traumaFacts: result.ledger.filter(event => event?.ruleCode === 'TRAUMA_UNCONSCIOUS') })}`);
 assert.ok(result.ledger.some(event => event?.ruleCode === 'TRAUMA_UNCONSCIOUS' && event?.eventKind === 'state_apply'), '重创昏迷缺少结构化Ledger事实');
+const traumaHitIndex = result.ledger.findIndex(event => event?.eventKind === 'hit_result' && event?.actionName === '重创测试');
+const traumaStateIndex = result.ledger.findIndex(event => event?.ruleCode === 'TRAUMA_UNCONSCIOUS' && event?.eventKind === 'state_apply');
+const traumaStateFact = result.ledger[traumaStateIndex];
+assert.ok(traumaHitIndex >= 0 && traumaStateIndex > traumaHitIndex, '重创昏迷事实没有在命中伤害提交后生成');
+assert.equal(Number(traumaStateFact?.appliedDamage || 0), 0, '重创昏迷状态事实重复携带实际伤害');
+assert.equal(Object.prototype.hasOwnProperty.call(traumaStateFact?.meta || {}, 'damage'), false, '重创昏迷状态元数据仍使用伤害字段制造重复投影');
+assert.equal(traumaStateFact?.actionName, '重创测试', '重创昏迷没有保留真实来源动作');
+assert.ok(Number(traumaStateFact?.meta?.triggerDamage || 0) > 0 && Number(traumaStateFact?.meta?.singleHitRatio || 0) >= 0.5, '重创昏迷缺少玩家不可见的阈值审计依据');
 assert.equal(result.finalBattleReport?.objectiveWinner, 'player', '失能条件没有与战斗裁断联动');
 
 const dead = unit('dead-unit', 'enemy', 0);

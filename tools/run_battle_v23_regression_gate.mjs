@@ -223,10 +223,12 @@ const runBattleAiSummaryContract = () => {
   const adapter = fs.readFileSync(path.resolve(root, 'lwcs/LWCS_Database_Adapter.js'), 'utf8');
   const bridge = fs.readFileSync(path.resolve(root, 'lwcs/mvu_logic_bridge.js'), 'utf8');
   const failures = [];
-  const requestBlock = battleUi.match(/const userBattleMessage = \[[\s\S]*?sendToAI\(userBattleMessage[\s\S]*?\);/)?.[0] || '';
+  const requestBlock = battleUi.match(/sendToAI\(`<battle_structured_summary>[\s\S]*?requestKind:\s*['"]battle_settlement_plot['"][\s\S]*?\}\);/)?.[0] || '';
   const summaryBuilder = battleRuntime.match(/function buildAiNarrativeSummary\([\s\S]*?(?=\n  function )/)?.[0] || '';
   if (!/<battle_structured_summary>[\s\S]*?<\/battle_structured_summary>/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_STRUCTURED_SUMMARY');
+  if (!/JSON\.stringify\(result\.aiSummaryInput\)/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_AI_SUMMARY_INPUT');
   if (/battle_public_report|<战斗公开战报>/.test(requestBlock)) failures.push('BATTLE_REQUEST_USES_PUBLIC_REPORT');
+  if (/eventLedger|decisionTrace|resolutionTrace|scoreAudit|ruleCode|rawObjectiveScore|publicReport|innerHTML|querySelector/.test(requestBlock)) failures.push('BATTLE_REQUEST_LEAKS_INTERNAL_RUNTIME_DATA');
   if (!/本轮输入包含战斗结构化摘要/.test(adapter) || !/<battle_structured_summary>/.test(adapter)) failures.push('ADAPTER_MISSING_STRUCTURED_SUMMARY_CONTRACT');
   if (/battle_public_report|本轮输入包含战斗公开战报/.test(adapter)) failures.push('ADAPTER_RETAINS_PUBLIC_REPORT_CONTRACT');
   if (!/function 构建自动战斗结构化摘要/.test(bridge) || !/执行结果\.llmBattleSummary \|\| 执行结果\.finalBattleReport\?\.text/.test(bridge)) failures.push('BRIDGE_MISSING_STRUCTURED_SUMMARY_SOURCE');

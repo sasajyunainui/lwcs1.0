@@ -42,7 +42,7 @@ const blindCaseIds = manualBattleCases
 const blindOutputDir = path.resolve(root, 'artifacts', 'battle_r63_blind_review', codeFreezeCommit, `pass${blindPass}`);
 if (blindPass) fs.mkdirSync(blindOutputDir, { recursive: true });
 
-if (!requestedCase && !captureEvidence && !refreshReviewReports && !verifyReviewHashes && !blindPass) {
+if (!requestedCase && !draftReview && !captureEvidence && !refreshReviewReports && !verifyReviewHashes && !blindPass) {
   const manifestPath = path.join(outputDir, 'manifest.json');
   if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -86,6 +86,19 @@ function makeNode() {
   };
 }
 
+function findLockedSoulRings(value, level, path = '') {
+  if (!value || typeof value !== 'object') return [];
+  const maximumRingCount = Math.min(9, Math.floor(Math.max(1, Number(level || 1)) / 10));
+  return Object.entries(value).flatMap(([key, nested]) => {
+    const nextPath = path ? `${path}.${key}` : key;
+    const match = /^第(\d+)魂环$/.exec(String(key));
+    if (match && Number(match[1]) > maximumRingCount) {
+      return [{ path: nextPath, ring: Number(match[1]), maximumRingCount }];
+    }
+    return findLockedSoulRings(nested, level, nextPath);
+  });
+}
+
 function sandbox() {
   const value = {
     console, setTimeout, clearTimeout, setInterval, clearInterval, structuredClone, Math, Date, JSON, Array, Object,
@@ -119,7 +132,185 @@ function validateCaseContract(definition, result) {
   const failures = [];
   const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
+  for (const unit of [
+    ...(definition?.combatData?.参战者?.team_player || []),
+    ...(definition?.combatData?.参战者?.team_enemy || []),
+  ]) {
+    const level = Number(unit?.属性?.等级 || unit?.level || unit?.lv || 1);
+    const lockedRings = findLockedSoulRings(unit, level);
+    if (lockedRings.length) {
+      failures.push({
+        code: 'MANUAL_CASE_LOCKED_SOUL_RING_PRESENT',
+        actorId: String(unit?.id || unit?.name || unit?.名称 || '').trim(),
+        level,
+        lockedRings: lockedRings.slice(0, 4),
+      });
+    }
+  }
   const reportBlocks = Array.isArray(result?.reportBlocks) ? result.reportBlocks : [];
+  const actionReportBlocks = reportBlocks.filter(block => !['ROUND_SUMMARY', 'FINAL_SUMMARY'].includes(String(block?.blockType || '').trim()));
+  reportBlocks
+    .filter(block => String(block?.blockType || '').trim() === 'ROUND_SUMMARY')
+    .forEach(block => {
+      const damages = (Array.isArray(block?.facts) ? block.facts : [])
+        .filter(fact => String(fact?.factType || '').trim() === 'DAMAGE' && Number(fact?.value || 0) > 0);
+      const playerDamage = damages
+        .filter(fact => String(fact?.actorSide || '').trim() === 'player')
+        .reduce((sum, fact) => sum + Math.round(Number(fact?.value || 0)), 0);
+      const enemyDamage = damages
+        .filter(fact => String(fact?.actorSide || '').trim() === 'enemy')
+        .reduce((sum, fact) => sum + Math.round(Number(fact?.value || 0)), 0);
+      const outcomeSummary = String(block?.outcomeSummary || '').trim();
+      if (playerDamage > 0 && enemyDamage > 0 &&
+        !outcomeSummary.includes(`我方共造成 ${playerDamage} 点伤害，敌方共造成 ${enemyDamage} 点伤害`)) {
+        failures.push({
+          code: 'ROUND_SUMMARY_BILATERAL_DAMAGE_MISSING',
+          round: Number(block?.round || 0),
+          playerDamage,
+          enemyDamage,
+          outcomeSummary,
+        });
+      }
+    });
+  const actionFactOwners = new Map();
+  actionReportBlocks.forEach(block => {
+    (Array.isArray(block?.facts) ? block.facts : []).forEach(fact => {
+      const factId = String(fact?.factId || '').trim();
+      if (!factId) {
+        failures.push({ code: 'REPORT_FACT_ID_MISSING', blockId: block?.blockId });
+        return;
+      }
+      if (actionFactOwners.has(factId)) {
+        failures.push({
+          code: 'REPORT_FACT_PROJECTED_TWICE',
+          factId,
+          firstBlockId: actionFactOwners.get(factId),
+          duplicateBlockId: block?.blockId,
+        });
+        return;
+      }
+      actionFactOwners.set(factId, String(block?.blockId || '').trim());
+    });
+    const intentSummary = String(block?.intentSummary || '').trim();
+    if (intentSummary) {
+      const activeActions = (Array.isArray(block?.facts) ? block.facts : [])
+        .filter(fact =>
+          ['action_start', 'charge_start'].includes(String(fact?.eventKind || '').trim()) &&
+          String(fact?.actionRole || '').trim() === 'ACTIVE'
+        )
+        .map(fact => String(fact?.actionName || '').trim())
+        .filter(Boolean);
+      if (activeActions.length && !activeActions.some(actionName => intentSummary.includes(`【${actionName}】`))) {
+        failures.push({
+          code: 'REPORT_INTENT_ACTION_MISMATCH',
+          blockId: block?.blockId,
+          intentSummary,
+          activeActions,
+        });
+      }
+    }
+  });
+  actionReportBlocks.forEach(block => {
+    (Array.isArray(block?.facts) ? block.facts : []).forEach(fact => {
+      if (String(fact?.eventKind || '').trim() !== 'battle_objective_resolved') return;
+      failures.push({
+        code: String(block?.blockType || '').trim() === 'RESOURCE_CHANGE'
+          ? 'BATTLE_OBJECTIVE_PROJECTED_AS_RESOURCE_CHANGE'
+          : 'BATTLE_OBJECTIVE_PROJECTED_AS_ACTION_BLOCK',
+        blockId: block?.blockId,
+        factId: fact?.factId,
+      });
+    });
+  });
+  const projectedOpportunityKinds = new Map();
+  actionReportBlocks.forEach(block => {
+    (Array.isArray(block?.facts) ? block.facts : []).forEach(fact => {
+      const kind = String(fact?.eventKind || '').trim();
+      if (!['blocked_action', 'lost_opportunity'].includes(kind)) return;
+      const key = [
+        Number(block?.round || 0),
+        String(fact?.actorId || fact?.actorName || '').trim(),
+      ].join('|');
+      if (!projectedOpportunityKinds.has(key)) projectedOpportunityKinds.set(key, new Set());
+      projectedOpportunityKinds.get(key).add(kind);
+    });
+  });
+  projectedOpportunityKinds.forEach((kinds, key) => {
+    if (kinds.has('blocked_action') && kinds.has('lost_opportunity')) {
+      failures.push({ code: 'LOST_OPPORTUNITY_PROJECTED_TWICE', key });
+    }
+  });
+  reportBlocks.forEach(block => {
+    (String(block?.blockType || '').trim() === 'ROUND_SUMMARY' ? [] : (Array.isArray(block?.facts) ? block.facts : []))
+      .filter(fact => String(fact?.eventKind || '').trim() === 'effect_resolved' && String(fact?.effectSummary || '').trim())
+      .forEach(fact => {
+        if (!String(block?.outcomeSummary || '').includes(String(fact.effectSummary).trim())) {
+          failures.push({
+            code: 'REPORT_EFFECT_EVIDENCE_MISSING',
+            blockId: block?.blockId,
+            factId: fact?.factId,
+            effectPrototype: fact?.effectPrototype,
+          });
+        }
+      });
+    (Array.isArray(block?.badges) ? block.badges : []).forEach(badge => {
+      if (String(badge?.kind || '').trim() === 'damage' && !(Math.abs(Number(badge?.value || 0)) > 0)) {
+        failures.push({
+          code: 'ZERO_DAMAGE_BADGE_PROJECTED',
+          blockId: block?.blockId,
+          sourceEventId: badge?.sourceEventId,
+        });
+      }
+    });
+    if (!String(block?.nextWindow || '').trim()) return;
+    (Array.isArray(block?.facts) ? block.facts : []).filter(fact =>
+      String(fact?.eventKind || '').trim() === 'summon_create'
+    ).forEach(fact => {
+      const createIndex = ledger.findIndex(event => String(event?.eventId || '').trim() === String(fact?.factId || '').trim());
+      const createEvent = createIndex >= 0 ? ledger[createIndex] : null;
+      const summonKey = String(createEvent?.targetId || createEvent?.meta?.summonKey || '').trim();
+      const summonName = String(createEvent?.meta?.summonName || createEvent?.targetName || '').trim();
+      const summonMode = String(createEvent?.meta?.summonMode || '').trim();
+      const nextWindow = String(block?.nextWindow || '').trim();
+      if (
+        !/召唤/.test(nextWindow) &&
+        !(summonMode && nextWindow.includes(summonMode)) &&
+        !(summonName && nextWindow.includes(summonName))
+      ) return;
+      const closed = createIndex >= 0 && ledger.slice(createIndex + 1).some(event =>
+        String(event?.eventKind || '').trim() === 'summon_end' &&
+        (
+          (!!summonKey && [event?.actorId, event?.targetId, event?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)) ||
+          (!!summonName && [event?.actorName, event?.targetName, event?.meta?.summonName].some(value => String(value || '').trim() === summonName))
+        )
+      );
+      if (closed) failures.push({
+        code: 'EXHAUSTED_SUMMON_WINDOW_STILL_REPORTED',
+        blockId: block?.blockId,
+        factId: fact?.factId,
+        summonName,
+      });
+    });
+  });
+  decisions.forEach(entry => {
+    const audits = Array.isArray(entry?.scoreAudit) ? entry.scoreAudit : [];
+    const selected = entry?.selected || audits.find(candidate => candidate?.selected === true);
+    const safeTerminal = audits.find(candidate =>
+      Number(candidate?.vector?.terminalUtility || 0) >= 100 &&
+      Number(candidate?.vector?.catastrophicRisk || 0) <= 1e-9 &&
+      Number(candidate?.vector?.irreversibleCost || 0) <= 1e-9 &&
+      !String(candidate?.rejectionCode || '').trim()
+    );
+    if (safeTerminal && Number(selected?.vector?.terminalUtility || 0) < 100) {
+      failures.push({
+        code: 'SAFE_TERMINAL_OPPORTUNITY_MISSED',
+        round: Number(entry?.round || entry?.回合 || 0),
+        actorId: String(entry?.actorId || entry?.行动者 || '').trim(),
+        selectedCandidateId: selected?.candidateId,
+        terminalCandidateId: safeTerminal?.candidateId,
+      });
+    }
+  });
   const damagingHitsMissingFormulaOperands = ledger.filter(event =>
     String(event?.eventKind || '').trim() === 'hit_result' &&
     Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0 &&
@@ -249,6 +440,21 @@ function validateCaseContract(definition, result) {
     }
   }
   if (caseId === 'item_creation_consumption') {
+    const enemyIds = new Set((definition?.combatData?.参战者?.team_enemy || [])
+      .map(unit => String(unit?.id || unit?.name || unit?.名称 || '').trim())
+      .filter(Boolean));
+    const enemyDecisions = decisions.filter(entry =>
+      enemyIds.has(String(entry?.actorId || '').trim()) &&
+      String(entry?.actionRole || 'ACTIVE').trim() === 'ACTIVE'
+    );
+    const enemyOffensiveDecisions = enemyDecisions.filter(entry =>
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(entry?.selected?.declaration?.actionKind || '').trim())
+    );
+    const enemyDamageFacts = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'hit_result' &&
+      String(event?.actorSide || '').trim() === 'enemy' &&
+      Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
+    );
     const itemDecisions = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'USE_ITEM');
     const creates = ledger.filter(event => String(event?.eventKind || '').trim() === 'create' && String(event?.createdName || event?.meta?.createdName || '').trim() === '恢复大肉包');
     const consumes = ledger.filter(event => String(event?.eventKind || '').trim() === 'item_consume' && String(event?.meta?.itemName || '').trim() === '恢复大肉包');
@@ -258,6 +464,17 @@ function validateCaseContract(definition, result) {
     if (!itemDecisions.length) failures.push({ code: 'ITEM_USE_DECISION_MISSING' });
     if (!(createdCount > 0)) failures.push({ code: 'ITEM_CREATION_FACT_MISSING' });
     if (!(consumedCount > 0)) failures.push({ code: 'ITEM_CONSUMPTION_FACT_MISSING' });
+    if (!enemyOffensiveDecisions.length) failures.push({ code: 'ITEM_CASE_ENEMY_OFFENSE_MISSING' });
+    if (!enemyDamageFacts.length) failures.push({ code: 'ITEM_CASE_ENEMY_DAMAGE_MISSING' });
+    enemyIds.forEach(actorId => {
+      const actorDecisions = enemyDecisions.filter(entry => String(entry?.actorId || '').trim() === actorId);
+      if (
+        actorDecisions.length >= 2 &&
+        actorDecisions.every(entry => ['DEFEND', 'EVADE'].includes(String(entry?.selected?.declaration?.actionKind || '').trim()))
+      ) {
+        failures.push({ code: 'ITEM_CASE_ENEMY_PASSIVE_LOOP', actorId, count: actorDecisions.length });
+      }
+    });
     if (!recoveries.some(event => /生命|HP/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_HP_RECOVERY_MISSING' });
     if (!recoveries.some(event => /体力|vit|sta/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_STAMINA_RECOVERY_MISSING' });
     let inventoryBalance = 0;
@@ -284,6 +501,50 @@ function validateCaseContract(definition, result) {
       failures.push({ code: 'ITEM_INVENTORY_BALANCE_MISMATCH', ...(inventoryMismatch || {}), createdCount, consumedCount, inventoryBalance });
     }
   }
+  if (caseId === 'team_heal_crisis') {
+    const healingFacts = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'resource_change' &&
+      String(event?.actorName || '').trim() === '雅莉' &&
+      String(event?.actorName || '').trim() !== String(event?.targetName || '').trim() &&
+      /生命|HP/i.test(String(event?.meta?.resource || event?.resource || '').trim()) &&
+      Number(event?.meta?.delta || event?.delta || 0) > 0
+    );
+    if (!healingFacts.length) failures.push({ code: 'HEAL_CRISIS_EFFECTIVE_ALLY_HEAL_MISSING' });
+    if (healingFacts.some(event => Number(event?.meta?.delta || event?.delta || 0) <= 0)) {
+      failures.push({ code: 'HEAL_CRISIS_ZERO_VALUE_HEAL_RECORDED' });
+    }
+  }
+  if (caseId === 'team_control_overlap') {
+    const guardedBlock = actionReportBlocks.find(block =>
+      (Array.isArray(block?.facts) ? block.facts : []).some(fact =>
+        String(fact?.eventKind || '').trim() === 'action_start' &&
+        String(fact?.actionRole || '').trim() === 'REACTION' &&
+        String(fact?.actionName || '').trim() === '白虎护身障'
+      )
+    );
+    if (!guardedBlock || !String(guardedBlock?.outcomeSummary || '').includes('【白虎护身障】')) {
+      failures.push({
+        code: 'REACTION_SKILL_CAUSAL_NARRATIVE_MISSING',
+        blockId: guardedBlock?.blockId || '',
+        outcomeSummary: guardedBlock?.outcomeSummary || '',
+      });
+    }
+  }
+  if (caseId === 'team_unknown_enemy_adaptation') {
+    const lostOpportunityBlock = actionReportBlocks.find(block =>
+      (Array.isArray(block?.facts) ? block.facts : []).some(fact =>
+        String(fact?.eventKind || '').trim() === 'blocked_action' &&
+        /UNCONSCIOUS/i.test(String(fact?.reasonCode || ''))
+      )
+    );
+    if (!lostOpportunityBlock || !/因昏迷失去本回合行动机会/.test(String(lostOpportunityBlock?.outcomeSummary || ''))) {
+      failures.push({
+        code: 'UNCONSCIOUS_OPPORTUNITY_REASON_MISPROJECTED',
+        blockId: lostOpportunityBlock?.blockId || '',
+        outcomeSummary: lostOpportunityBlock?.outcomeSummary || '',
+      });
+    }
+  }
   if (caseId === 'equipment_switch_no_loop') {
     const selectedEquip = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'EQUIP');
     const equippedFacts = ledger.filter(event => String(event?.eventKind || '').trim() === 'complete' && String(event?.result || '').trim() === 'equipped');
@@ -294,6 +555,11 @@ function validateCaseContract(definition, result) {
     if (repeatedEquipCandidates.length) failures.push({ code: 'EQUIPMENT_REOFFERED_AFTER_EQUIP', count: repeatedEquipCandidates.length });
     if (equippedFacts.length !== 1) failures.push({ code: 'EQUIPMENT_TERMINAL_INVALID', count: equippedFacts.length });
     if (blockedEquip.length) failures.push({ code: 'EQUIPMENT_FALSE_FAILURE', count: blockedEquip.length });
+    if (!ledger.some(event =>
+      String(event?.eventKind || '').trim() === 'effect_resolved' &&
+      String(event?.effectPrototype || '').trim() === '属性修正' &&
+      String(event?.meta?.effectDetail?.attribute || '').includes('敏捷')
+    )) failures.push({ code: 'EQUIPMENT_ATTRIBUTE_EFFECT_MISSING' });
     if (/敏捷调整/.test(String(result?.finalBattleReport?.text || ''))) failures.push({ code: 'EQUIPMENT_INTERNAL_STATE_LEAK' });
   }
   return failures;
@@ -443,7 +709,10 @@ for (const definition of reviewDefinitions.filter(item =>
         const value = Number(fact?.value || 0);
         const valueText = value ? ` value=${value}` : '';
         const stateText = fact?.stateName ? ` [${fact.stateName}]` : '';
-        lines.push(`- Fact ${fact?.factType || 'EVENT'}: ${fact?.actorName || ''} -> ${fact?.targetName || ''} ${fact?.actionName || ''}${stateText}${valueText} ${fact?.resultState || ''}`.trim());
+        const resultText = String(fact?.eventKind || '').trim() === 'effect_resolved' && String(fact?.effectSummary || '').trim()
+          ? fact.effectSummary
+          : fact?.resultState || '';
+        lines.push(`- Fact ${fact?.factType || 'EVENT'}: ${fact?.actorName || ''} -> ${fact?.targetName || ''} ${fact?.actionName || ''}${stateText}${valueText} ${resultText}`.trim());
       });
       (Array.isArray(block?.badges) ? block.badges : []).forEach(badge => {
         lines.push(`- Badge ${badge?.name || badge?.kind || ''}: ${badge?.targetName || badge?.targetId || ''} ${badge?.value || 0}${badge?.unit || ''}`.trim());
