@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { buildWeixiaofengFormalCase } from './battle_v73_formal_case_fixture.mjs';
 
 const requestedCaseIndex = process.argv.indexOf('--case');
 const requestedCase = String(requestedCaseIndex >= 0 ? process.argv[requestedCaseIndex + 1] : 'weixiaofeng_20_round').trim();
@@ -239,7 +240,7 @@ assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__?.auditFacts, 'function', '�
 assert.equal(sandbox.__LWCS_BATTLE_RUNTIME_REGISTRY_SOURCE__, 'shared', '正式案例没有使用共享技能原型注册表');
 assert.ok(['weixiaofeng_20_round', 'all'].includes(requestedCase), `未知正式案例: ${requestedCase}`);
 
-const formalCombatData = buildFormalCase(sandbox.__LWCS_内置角色库__);
+const formalCombatData = buildWeixiaofengFormalCase(sandbox.__LWCS_内置角色库__);
 const lockedFoodSkill = deepClone(formalCombatData.参战者.team_player[0].第1武魂.第1魂灵.第1魂环.第1魂技);
 const formalResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   caseId: 'weixiaofeng_20_round',

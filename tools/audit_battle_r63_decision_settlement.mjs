@@ -452,11 +452,36 @@ const mixedShieldFacts = mixedShieldResult.ledger.filter(event => event?.eventKi
 assert.equal(mixedShieldFacts.length, 1, `属性强化与护盾原型重复生成护盾事实:${JSON.stringify(mixedShieldFacts)}`);
 assert.equal(Number(mixedShieldFacts[0]?.meta?.amount || 0), 100, '混合防御技能护盾值没有按唯一原型结算');
 
-const summonOrderDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
-  .find(item => item.caseId === 'team_focus_without_overkill');
+const summonOrderInput = combatData();
+const summonOrderSkill = {
+  id: 'report-order-summon',
+  name: '协同追击召唤',
+  魂技名: '协同追击召唤',
+  消耗: '无',
+  前摇: 1,
+  _效果数组: [{
+    原型: '召唤生成',
+    目标: '自身',
+    持续回合: 1,
+    召唤单位类型: '其他召唤生物',
+    召唤物名称: '追击影',
+    数量: 1,
+    行动模式: '协同攻击',
+    强度: 0.8,
+  }],
+};
+summonOrderInput.参战者.team_player[0].技能列表 = [structuredClone(summonOrderSkill)];
 const summonOrderResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
-  caseId: 'report-summary-after-summon', seed: summonOrderDefinition.seed,
-  combatData: structuredClone(summonOrderDefinition.combatData), mode: 'team_preview', rounds: 1, settings: {},
+  caseId: 'report-summary-after-summon', seed: 6334,
+  combatData: summonOrderInput, mode: 'team_preview', rounds: 1,
+  selectedAction: {
+    actor_name: 'player-a',
+    target_name: 'player-a',
+    type: 'skill',
+    action_type: '释放魂技',
+    skill: structuredClone(summonOrderSkill),
+  },
+  settings: {},
 });
 assert.ok(summonOrderResult.reportBlocks.some(block => block?.blockType === 'SUMMON_ACTION'), '召唤顺序回归没有形成召唤动作块');
 const roundOneBlocks = summonOrderResult.reportBlocks.filter(block => Number(block?.round || 0) === 1);
@@ -1055,6 +1080,170 @@ assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'RESOUR
 assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'SHIELD_CHANGE'), '结构化护盾变化缺少事实');
 assert.equal(structuredEffectCombat.参战者.team_enemy[0].状态效果.结构化眩晕?.战斗效果?.skip_turn, true, '结构化状态没有落入影子快照');
 
+const structuredCreationCombat = combatData();
+structuredCreationCombat.回合 = 1;
+const structuredCreation = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredCreationCombat,
+  declaration: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['player-a'],
+    skill: {
+      name: '结构化恢复物',
+      魂技名: '结构化恢复物',
+      承载方式: '造物承载',
+      _效果数组: [{
+        物品类型: '食物',
+        数量: 1,
+        有效期tick: 12,
+        使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '生命', 数值: '+10%' }],
+      }],
+    },
+  },
+});
+const structuredCreationFact = structuredCreation.facts.find(event => event?.eventKind === 'create');
+assert.equal(structuredCreationFact?.createdName, '结构化恢复物', '结构化造物没有写入生成物名称');
+assert.equal(structuredCreationFact?.count, 1, '结构化造物没有写入生成数量');
+assert.equal(structuredCreationCombat.参战者.team_player[0].背包?.结构化恢复物?.数量, 1, '结构化造物没有增加正式影子库存');
+assert.equal(structuredCreationCombat.参战者.team_player[0].属性.HP, 500, '造物的使用效果被错误提前结算');
+structuredCreationCombat.参战者.team_player[0].属性.HP = 250;
+structuredCreationCombat.参战者.team_player[0].hp = 250;
+structuredCreationCombat.参战者.team_player[0].HP = 250;
+const structuredCreationFollowUp = inspectDecision({
+  worldSnapshot: structuredCreationCombat,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 2 },
+  beliefState: {},
+  seed: 'structured-creation-follow-up',
+});
+const structuredCreatedItemCandidate = structuredCreationFollowUp.candidates.find(candidate =>
+  candidate?.declaration?.actionKind === 'USE_ITEM' &&
+  String(candidate?.declaration?.skill?.name || '').trim() === '结构化恢复物'
+);
+assert.ok(structuredCreatedItemCandidate, `结构化造物没有进入后续USE_ITEM候选:${JSON.stringify(structuredCreationCombat.参战者.team_player[0].背包)}`);
+assert.ok(Number(structuredCreatedItemCandidate.objectiveUtility || 0) > 0, '受伤单位使用已造恢复物没有形成正向效用');
+const structuredCreatedItemUse = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: structuredCreationCombat,
+  declaration: structuredCreatedItemCandidate.declaration,
+});
+assert.ok(structuredCreatedItemUse.facts.some(event =>
+  event?.eventKind === 'item_consume' &&
+  event?.meta?.quantityBefore === 1 &&
+  event?.meta?.remainingQuantity === 0 &&
+  event?.meta?.delta === -1
+), '结构化物品使用缺少唯一库存消费事实');
+assert.equal(structuredCreationCombat.参战者.team_player[0].背包?.结构化恢复物?.数量, 0, '结构化物品使用后库存没有扣减');
+assert.ok(structuredCreationCombat.参战者.team_player[0].属性.HP > 250, '结构化恢复物消费后没有结算使用效果');
+const postConsumptionDecision = inspectDecision({
+  worldSnapshot: structuredCreationCombat,
+  actorId: 'player-a',
+  actionOpportunity: { role: 'ACTIVE', sequence: 3 },
+  beliefState: {},
+  seed: 'structured-creation-consumed',
+});
+assert.ok(!postConsumptionDecision.candidates.some(candidate =>
+  candidate?.declaration?.actionKind === 'USE_ITEM' &&
+  String(candidate?.declaration?.skill?.name || '').trim() === '结构化恢复物'
+), '库存耗尽后同一物品仍被重复提供为候选');
+
+const hardControlCombat = combatData();
+hardControlCombat.参战者.team_player[0].属性.敏捷 = 500;
+hardControlCombat.参战者.team_enemy[0].属性.敏捷 = 1;
+const hardControlResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-hard-control-opportunity',
+  seed: 88431,
+  combatData: hardControlCombat,
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: {
+      id: 'runtime-derived-hard-control',
+      name: '行动机会控制测试',
+      魂技名: '行动机会控制测试',
+      _效果数组: [{ 原型: '状态施加', 目标: '单体', 状态: '僵直', 持续回合: 2, 成功率: 1 }],
+    },
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const hardControlFact = hardControlResult.ledger.find(event =>
+  event?.eventKind === 'state_apply' && event?.actorName === 'player-a' && event?.targetName === 'enemy-a'
+);
+assert.equal(hardControlFact?.duration, 2, '硬控状态事实没有写入真实持续回合');
+assert.equal(hardControlFact?.meta?.duration, 2, '硬控状态判定明细没有写入真实持续回合');
+assert.ok(hardControlResult.ledger.some(event =>
+  event?.eventKind === 'blocked_action' &&
+  event?.actorName === 'enemy-a' &&
+  event?.actionRole === 'ACTIVE' &&
+  event?.ruleCode === 'NATURAL_ACTION_OPPORTUNITY_CANCELLED'
+), '先手硬控没有取消目标尚未消费的自然行动机会');
+assert.ok(!hardControlResult.ledger.some(event =>
+  event?.eventKind === 'action_start' && event?.actorName === 'enemy-a' && event?.actionRole === 'ACTIVE'
+), '目标被先手硬控后仍执行了主动动作');
+
+const slowControlCombat = combatData();
+slowControlCombat.参战者.team_player[0].属性.敏捷 = 500;
+slowControlCombat.参战者.team_enemy[0].属性.敏捷 = 1;
+const slowControlResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-soft-control-opportunity',
+  seed: 88432,
+  combatData: slowControlCombat,
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: {
+      id: 'runtime-derived-soft-control',
+      name: '非硬控行动测试',
+      魂技名: '非硬控行动测试',
+      _效果数组: [{ 原型: '状态施加', 目标: '单体', 状态: '迟缓', 持续回合: 2, 成功率: 1 }],
+    },
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+assert.ok(slowControlResult.ledger.some(event =>
+  event?.eventKind === 'action_start' && event?.actorName === 'enemy-a' && event?.actionRole === 'ACTIVE'
+), '迟缓被错误当成硬控并取消了自然行动');
+assert.ok(!slowControlResult.ledger.some(event =>
+  event?.eventKind === 'blocked_action' &&
+  event?.actorName === 'enemy-a' &&
+  event?.ruleCode === 'NATURAL_ACTION_OPPORTUNITY_CANCELLED'
+), '非硬控状态产生了错误的自然行动取消事实');
+
+const groupReactionCombat = combatData();
+groupReactionCombat.参战者.team_player[0].属性.敏捷 = 500;
+groupReactionCombat.参战者.team_enemy.push(participant('enemy-b', 'enemy', 130), participant('enemy-c', 'enemy', 120));
+const groupReactionResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-group-reaction-opportunities',
+  seed: 88433,
+  combatData: groupReactionCombat,
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a', 'enemy-b', 'enemy-c'],
+    skill: {
+      id: 'group-reaction-test',
+      name: '群体反应机会测试',
+      魂技名: '群体反应机会测试',
+      _效果数组: [{ 原型: '伤害结算', 目标: '群体', 威力倍率: 20, 伤害类型: '远程攻击', 命中概率: 1 }],
+    },
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const groupReactionActors = new Set(groupReactionResult.decisions
+  .filter(entry => entry?.actionRole === 'REACTION' && entry?.sourceActorId === 'player-a')
+  .map(entry => entry?.actorId));
+assert.deepEqual([...groupReactionActors].sort(), ['enemy-a', 'enemy-b', 'enemy-c'], '群攻目标没有分别获得独立反应决策');
+assert.ok(!groupReactionResult.ledger.some(event =>
+  event?.eventKind === 'reaction_window' && event?.meta?.reason === 'FACTION_REACTION_LIMIT'
+), '群攻反应仍被阵营级性能上限截断');
+
 const structuredDefense = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
   combatData: combatData(),
   declaration: { actorId: 'player-a', actionKind: 'DEFEND', targetIds: ['player-a'], targetKind: '自身' },
@@ -1293,8 +1482,8 @@ console.log(JSON.stringify({
     roundEndSideEffectChecks: 4,
     delayedEffectChecks: 6,
     persistentPrototypeChecks: 5,
-    structuredCommitChecks: 12,
-    structuredShadowChecks: 7,
+    structuredCommitChecks: 13,
+    structuredShadowChecks: 10,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

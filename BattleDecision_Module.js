@@ -1248,9 +1248,9 @@
       .filter(entry => entry.side !== sideOf(context.worldSnapshot, actor))
       .map(entry => entry.unit);
     if (!targets.length) return 0;
-    const strength = Math.max(0.01, Number(event?.strength || 1));
-    const inheritRatio = clamp(Number(event?.inheritRatio || 0), 0, 1);
-    const attributeScale = inheritRatio > 0 ? inheritRatio : clamp(0.35 + strength * 0.18, 0.12, 1.4);
+    const strength = Math.max(0.05, Number(event?.strength || 0.35));
+    const inheritRatio = clamp(Number(event?.inheritRatio || 0), 0, 2);
+    const attributeScale = clamp(inheritRatio > 0 ? inheritRatio : strength, 0.05, 2);
     const summon = {
       ...actor,
       str: Math.max(1, Math.round(preview.readCombatStat(actor, 'str') * attributeScale)),
@@ -1261,7 +1261,12 @@
     };
     const summonSkill = {
       id: `preview-summon:${event?.summonName || 'summon'}`,
-      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 135, 伤害类型: '远程攻击' }],
+      _效果数组: [{
+        原型: '伤害结算',
+        目标: '单体',
+        威力倍率: Math.max(25, Math.round(50 * attributeScale)),
+        伤害类型: '近身攻击',
+      }],
     };
     const bestTargetValue = Math.max(...targets.map(target => preview.calculateBaseActionValue(
       summon,

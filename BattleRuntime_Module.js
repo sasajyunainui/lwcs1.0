@@ -2493,6 +2493,11 @@
       duration: Math.max(0, Number(payload.duration || 0)),
       effectSummary: String(payload.effectSummary || '').trim(),
       driverAttr: String(payload.driverAttr || '').trim(),
+      createdName: String(payload.createdName || eventMeta.createdName || '').trim(),
+      createdType: String(payload.createdType || eventMeta.createdType || '').trim(),
+      itemName: String(payload.itemName || eventMeta.itemName || '').trim(),
+      count: Math.max(0, Number(payload.count ?? eventMeta.count ?? 0)),
+      quantity: Math.max(0, Number(payload.quantity ?? eventMeta.quantity ?? 0)),
       meta: eventMeta,
     };
     if (event.eventKind === 'counter' && String(eventMeta.counterWindowNodeId || '').trim()) {
@@ -4474,6 +4479,43 @@
     };
   }
 
+  function findStructuredInventoryEntry(actor = {}, declaration = {}) {
+    const wanted = new Set([
+      declaration?.irreversibleAsset?.assetId,
+      declaration?.skill?.id,
+      declaration?.skill?.物品ID,
+      declaration?.skill?.__物品名,
+      declaration?.skill?.物品名,
+      declaration?.skill?.名称,
+      declaration?.skill?.name,
+    ].map(value => String(value || '').trim()).filter(Boolean));
+    const visited = new Set();
+    let found = null;
+    const visit = (value, key = '') => {
+      if (found || !value || typeof value !== 'object' || visited.has(value)) return;
+      visited.add(value);
+      if (!Array.isArray(value)) {
+        const identifiers = [
+          key,
+          value?.id,
+          value?.物品ID,
+          value?.__物品名,
+          value?.物品名,
+          value?.名称,
+          value?.name,
+        ].map(item => String(item || '').trim()).filter(Boolean);
+        if (identifiers.some(identifier => wanted.has(identifier)) && (value?.数量 !== undefined || value?.quantity !== undefined)) {
+          found = { item: value, itemName: identifiers.find(identifier => wanted.has(identifier)) || identifiers[0] || key };
+          return;
+        }
+      }
+      if (Array.isArray(value)) value.forEach((item, index) => visit(item, `${key}:${index}`));
+      else Object.entries(value).forEach(([childKey, child]) => visit(child, childKey));
+    };
+    ['背包', '库存', '物品', '战斗物品'].forEach(key => visit(actor?.[key], key));
+    return found;
+  }
+
   function executeStructuredDeclaration(input = {}) {
     const context = input?.actionContext && typeof input.actionContext === 'object'
       ? input.actionContext
@@ -4519,8 +4561,107 @@
       ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
     if (!effects.length) throw new Error('battle_structured_effects_missing');
+    if (actionKind === 'USE_ITEM') {
+      const inventory = findStructuredInventoryEntry(actor, declaration);
+      const quantityBefore = Math.max(0, Number(inventory?.item?.数量 ?? inventory?.item?.quantity ?? 0));
+      if (!inventory || quantityBefore < 1) {
+        throw new Error(`battle_structured_item_unavailable:${String(declaration?.irreversibleAsset?.assetId || actionName || 'unknown_item').trim()}`);
+      }
+      const remainingQuantity = quantityBefore - 1;
+      if (inventory.item.数量 !== undefined || inventory.item.quantity === undefined) inventory.item.数量 = remainingQuantity;
+      if (inventory.item.quantity !== undefined) inventory.item.quantity = remainingQuantity;
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'item_consume',
+        round: Number(combatData?.回合 || 0),
+        actorName: previewRuntime.unitName(actor),
+        targetName: previewRuntime.unitName(primaryTarget),
+        targetId: previewRuntime.unitId(primaryTarget),
+        actionName,
+        actionType: actionKind,
+        actorControl,
+        actionRole,
+        actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId,
+        parentNodeId: actionEvent.chainNodeId || '',
+        sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'consumed',
+        resultState: 'SUCCESS',
+        primaryOutcome: 'item_consumed',
+        itemName: String(inventory.itemName || actionName).trim(),
+        count: 1,
+        quantity: 1,
+        meta: {
+          source: 'structured_runtime',
+          itemName: String(inventory.itemName || actionName).trim(),
+          assetId: String(declaration?.irreversibleAsset?.assetId || inventory.itemName || '').trim(),
+          delta: -1,
+          quantityBefore,
+          remainingQuantity,
+        },
+      }));
+    }
     effects.forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
+      if (!prototype && Array.isArray(effect?.使用效果)) {
+        const createdName = String(
+          declaration?.skill?.生成物?.名称 ||
+          declaration?.skill?.生成物?.name ||
+          declaration?.skill?.产物名称 ||
+          declaration?.skill?.魂技名 ||
+          declaration?.skill?.name ||
+          actionName ||
+          '未命名造物',
+        ).trim();
+        const quantity = Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
+        if (!actor.背包 || typeof actor.背包 !== 'object' || Array.isArray(actor.背包)) actor.背包 = {};
+        const existing = actor.背包[createdName] && typeof actor.背包[createdName] === 'object'
+          ? actor.背包[createdName]
+          : {};
+        actor.背包[createdName] = {
+          ...existing,
+          id: String(existing.id || createdName).trim() || createdName,
+          name: String(existing.name || createdName).trim() || createdName,
+          名称: String(existing.名称 || createdName).trim() || createdName,
+          物品名: String(existing.物品名 || createdName).trim() || createdName,
+          类型: String(existing.类型 || effect?.物品类型 || '物品').trim() || '物品',
+          数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
+          有效期tick: Math.max(Number(existing.有效期tick || 0), Math.max(0, Number(effect?.有效期tick || 0))),
+          使用效果: cloneValue(effect.使用效果),
+        };
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'create',
+          round: Number(combatData?.回合 || 0),
+          actorName: previewRuntime.unitName(actor),
+          targetName: previewRuntime.unitName(actor),
+          targetId: previewRuntime.unitId(actor),
+          actionName,
+          actionType: actionKind,
+          actorControl,
+          actionRole,
+          actionId: actionEvent.actionId,
+          sourceActionId: actionEvent.actionId,
+          parentNodeId: actionEvent.chainNodeId || '',
+          sourceNodeId: actionEvent.chainNodeId || '',
+          result: 'created',
+          resultState: 'SUCCESS',
+          primaryOutcome: 'item_created',
+          createdName,
+          createdType: String(effect?.物品类型 || '物品').trim() || '物品',
+          count: quantity,
+          quantity,
+          meta: {
+            source: 'structured_runtime',
+            effectIndex,
+            itemName: createdName,
+            createdName,
+            createdType: String(effect?.物品类型 || '物品').trim() || '物品',
+            count: quantity,
+            quantity,
+            quantityAfter: actor.背包[createdName].数量,
+          },
+        }));
+        return;
+      }
       if (previewCommittedPrototypes.has(prototype)) {
         facts.push(...commitStructuredPreviewPrototype(combatData, actor, declaration, effect, action, actionEvent, actionRole, effectIndex));
         return;
@@ -4530,7 +4671,13 @@
         return;
       }
       if (!['伤害结算', '资源变化', '护盾变化', '状态施加'].includes(prototype)) {
-        throw new Error(`battle_structured_prototype_unsupported:${prototype || 'missing'}`);
+        throw new Error([
+          'battle_structured_prototype_unsupported',
+          prototype || 'missing',
+          previewRuntime.unitName(actor) || 'unknown_actor',
+          actionName || 'unknown_action',
+          `effect_${effectIndex}`,
+        ].join(':'));
       }
       const targets = resolveStructuredTargets(combatData, actor, declaration, effect);
       targets.forEach(target => {
@@ -4604,10 +4751,11 @@
         }
         const stateName = String(effect?.状态 || '').trim();
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
+        const duration = Math.max(1, Number(effect?.持续回合 || 1));
         const state = {
           类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, previewRuntime.unitName(target)) === inferUnitSide(combatData, previewRuntime.unitName(actor)) ? 'buff' : 'debuff'),
-          状态: stateName, 状态名称: stateName, 层数: 1, duration: Math.max(1, Number(effect?.持续回合 || 1)),
-          描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
+          状态: stateName, 状态名称: stateName, 层数: 1, duration,
+          描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
         const successProbability = Math.max(0, Math.min(1, Number(effect?.成功率 ?? effect?.触发概率 ?? 1)));
@@ -4627,7 +4775,8 @@
           parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result,
           resultState: result === 'applied' ? 'SUCCESS' : result === 'no_effect' ? 'NO_EFFECT' : 'FAILURE',
           primaryOutcome: result === 'applied' ? 'state_applied' : result === 'immune' ? 'state_immune' : 'state_resisted',
-          meta: { source: 'structured_runtime', effectIndex, stateName, successRate: successProbability, roll },
+          duration,
+          meta: { source: 'structured_runtime', effectIndex, stateName, duration, successRate: successProbability, roll },
         }));
       });
     });
@@ -4727,12 +4876,10 @@
     const factionUnitCount = Math.max(1, listPrimaryCombatUnits(combatData).filter(candidate =>
       inferUnitSide(combatData, previewRuntime.unitName(candidate)) === faction && previewRuntime.isBattleCapable(candidate)
     ).length);
-    const factionLimit = Math.max(1, Math.min(3, Math.ceil(factionUnitCount / 2)));
     if (!unitKey || Number(runtime.unitReactionCount?.[unitKey] || 0) >= 1) return { ok: false, reason: 'UNIT_REACTION_LIMIT' };
-    if (!faction || Number(runtime.factionReactionCount?.[faction] || 0) >= factionLimit) return { ok: false, reason: 'FACTION_REACTION_LIMIT' };
     runtime.unitReactionCount[unitKey] = Number(runtime.unitReactionCount[unitKey] || 0) + 1;
-    runtime.factionReactionCount[faction] = Number(runtime.factionReactionCount[faction] || 0) + 1;
-    return { ok: true, unitKey, faction, factionLimit };
+    if (faction) runtime.factionReactionCount[faction] = Number(runtime.factionReactionCount[faction] || 0) + 1;
+    return { ok: true, unitKey, faction, factionUnitCount };
   }
 
   function settleStructuredReaction(input = {}) {
@@ -7103,7 +7250,10 @@
         if (round < createRound || round > endRound) return false;
         const kind = String(event?.eventKind || '').trim();
         const actionType = String(event?.actionType || '').trim();
-        return (kind === 'action_start' && /summon_assist|召唤自主行动/.test(actionType)) ||
+        return (kind === 'action_start' && (
+          /summon_assist|召唤自主行动/.test(actionType) ||
+          String(event?.actionRole || '').trim() === 'ASSIST'
+        )) ||
           kind === 'summon_guard' ||
           (kind === 'failed_action' && /summon/.test(actionType));
       });

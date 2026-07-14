@@ -7,10 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { buildManualCases } from './battle_r63_manual_cases.mjs';
 import { manualBattleCases } from './battle_r63_manual_manifest.mjs';
 import { battleR63ManualReviewEvidence, battleR63ManualReviewNotes } from './battle_r63_manual_review_notes.mjs';
+import { buildWeixiaofengFormalCase } from './battle_v73_formal_case_fixture.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
-const outputDir = path.resolve(root, 'artifacts', 'battle_r63_review');
+const draftReview = String(process.env.R63_REVIEW_DRAFT || '').trim() === '1';
+const outputDir = path.resolve(root, 'artifacts', draftReview ? 'battle_r63_shadow_review_draft' : 'battle_r63_review');
 fs.mkdirSync(outputDir, { recursive: true });
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const gitRoot = path.resolve(root, 'lwcs');
@@ -189,14 +191,34 @@ function validateCaseContract(definition, result) {
     const recoveries = ledger.filter(event => String(event?.eventKind || '').trim() === 'resource_change' && String(event?.actionName || '').trim() === '恢复大肉包');
     const createdCount = creates.reduce((sum, event) => sum + Math.max(0, Number(event?.count || event?.meta?.count || 0)), 0);
     const consumedCount = consumes.reduce((sum, event) => sum + Math.abs(Math.min(0, Number(event?.meta?.delta || 0))), 0);
-    const quantityBefore = Number(consumes.at(-1)?.meta?.quantityBefore);
-    const remainingQuantity = Number(consumes.at(-1)?.meta?.remainingQuantity);
     if (!itemDecisions.length) failures.push({ code: 'ITEM_USE_DECISION_MISSING' });
     if (!(createdCount > 0)) failures.push({ code: 'ITEM_CREATION_FACT_MISSING' });
     if (!(consumedCount > 0)) failures.push({ code: 'ITEM_CONSUMPTION_FACT_MISSING' });
     if (!recoveries.some(event => /生命|HP/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_HP_RECOVERY_MISSING' });
     if (!recoveries.some(event => /体力|vit|sta/i.test(String(event?.meta?.resource || event?.resource || '')) && String(event?.actorName || '') !== String(event?.targetName || ''))) failures.push({ code: 'ITEM_ALLY_STAMINA_RECOVERY_MISSING' });
-    if (!Number.isFinite(quantityBefore) || !Number.isFinite(remainingQuantity) || remainingQuantity !== quantityBefore - consumedCount) failures.push({ code: 'ITEM_INVENTORY_BALANCE_MISMATCH', quantityBefore, consumedCount, remainingQuantity });
+    let inventoryBalance = 0;
+    let inventoryMismatch = null;
+    ledger.filter(event =>
+      (String(event?.eventKind || '').trim() === 'create' && String(event?.createdName || event?.meta?.createdName || '').trim() === '恢复大肉包') ||
+      (String(event?.eventKind || '').trim() === 'item_consume' && String(event?.meta?.itemName || '').trim() === '恢复大肉包')
+    ).forEach(event => {
+      if (inventoryMismatch) return;
+      if (String(event?.eventKind || '').trim() === 'create') {
+        inventoryBalance += Math.max(0, Number(event?.count || event?.meta?.count || 0));
+        return;
+      }
+      const quantityBefore = Number(event?.meta?.quantityBefore);
+      const remainingQuantity = Number(event?.meta?.remainingQuantity);
+      const consumed = Math.abs(Math.min(0, Number(event?.meta?.delta || 0)));
+      if (!Number.isFinite(quantityBefore) || !Number.isFinite(remainingQuantity) || quantityBefore !== inventoryBalance || remainingQuantity !== quantityBefore - consumed) {
+        inventoryMismatch = { quantityBefore, inventoryBalance, consumed, remainingQuantity };
+        return;
+      }
+      inventoryBalance = remainingQuantity;
+    });
+    if (inventoryMismatch || inventoryBalance !== createdCount - consumedCount) {
+      failures.push({ code: 'ITEM_INVENTORY_BALANCE_MISMATCH', ...(inventoryMismatch || {}), createdCount, consumedCount, inventoryBalance });
+    }
   }
   if (caseId === 'equipment_switch_no_loop') {
     const selectedEquip = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'EQUIP');
@@ -212,7 +234,22 @@ function validateCaseContract(definition, result) {
   return failures;
 }
 
-for (const definition of buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__).filter(item =>
+const formalDefinition = {
+  caseId: 'weixiaofeng_20_round',
+  seed: 730031,
+  rounds: 20,
+  intent: '点到为止',
+  initialBelief: {},
+  sourceCharacterIds: ['唐凌雪', '韦小枫'],
+  sourceDataHashes: {},
+  candidateRelations: ['SELECTED_IS_LEGAL', 'SCORE_AUDIT_SELECTED_AND_TWO_ALTERNATIVES'],
+  forbiddenSelections: ['HARD_INVALID', 'DOMINATED', 'ZERO_EFFECT_COSTLY', 'SELF_DEFEATING', 'SUMMON_NO_ACTION_WINDOW', 'ZERO_PROGRESS'],
+  requiredFacts: [{ kind: 'event', eventKind: 'action_start' }, { kind: 'block', blockType: 'ROUND_SUMMARY' }],
+  mutationRelations: ['INPUT_IMMUTABLE'],
+  combatData: buildWeixiaofengFormalCase(context.__LWCS_内置角色库__),
+};
+const reviewDefinitions = [...buildManualCases(context.__LWCS_内置角色库__, context.__LWCS_GET_BASE_STATS__), formalDefinition];
+for (const definition of reviewDefinitions.filter(item =>
   (!requestedCase || item.caseId === requestedCase) && (!blindPass || blindCaseIds.includes(item.caseId)),
 )) {
   process.stderr.write(`[r63-review] ${definition.caseId}\n`);
@@ -225,9 +262,11 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
     rounds: definition.rounds,
     initialBelief: definition.initialBelief,
     battleIntent: { mode: definition.intent },
-    settings: {},
+    settings: { decisionEngine: 'next-shadow' },
   });
-  const review = battleR63ManualReviewNotes[definition.caseId];
+  const review = draftReview
+    ? { behavior: '', narrative: '', anomalies: '', alternatives: '', responsibility: '', blocking: false }
+    : battleR63ManualReviewNotes[definition.caseId];
   if (!review) throw new Error(`r63_manual_review_note_missing:${definition.caseId}`);
   const fatalDetails = [
     ...(result.audit?.fatals || []),
@@ -237,7 +276,7 @@ for (const definition of buildManualCases(context.__LWCS_内置角色库__, cont
   const ledgerHash = hash(result.ledger);
   const reportHash = hash(result.reportBlocks);
   const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
-  if (!captureEvidence && !refreshReviewReports && !blindPass && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
+  if (!draftReview && !captureEvidence && !refreshReviewReports && !blindPass && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
     throw new Error(`r63_manual_review_evidence_stale:${definition.caseId}:${ledgerHash}:${reportHash}`);
   }
   const rounds = new Map();

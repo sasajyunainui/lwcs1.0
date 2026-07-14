@@ -445,6 +445,12 @@ addCheck(
     !/\btop[_-]?k\b|候选目标截断|威胁排序截断/i.test(battleUiSource),
 );
 addCheck(
+  'productionHasNoFactionReactionCap',
+  !/FACTION_REACTION_LIMIT|factionReactionLimit|factionLimit/.test(
+    `${battleRuntimeSource}\n${battleDecisionSource}\n${battleUiSource}`,
+  ),
+);
+addCheck(
   'summonsDoNotReuseHostSkillLibrary',
   !/构建继承召唤技能列表|召唤技能允许继承/.test(battleUiSource) &&
     /单位\.技能列表\s*=\s*构建召唤技能列表\(单位\)/.test(battleUiSource),

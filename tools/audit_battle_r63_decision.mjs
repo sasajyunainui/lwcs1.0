@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { buildWeixiaofengFormalCase } from './battle_v73_formal_case_fixture.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
@@ -36,7 +37,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.self = sandbox;
 vm.createContext(sandbox);
-for (const relativePath of ['lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Module.js', 'lwcs/BattleDecision_Module.js', 'lwcs/BattleRuntime_Module.js']) {
+for (const relativePath of ['lwcs/CharacterLibrary.js', 'lwcs/MVU_Skill_Runtime.js', 'lwcs/BattlePreview_Module.js', 'lwcs/BattleDecision_Module.js', 'lwcs/BattleRuntime_Module.js']) {
   vm.runInContext(fs.readFileSync(path.resolve(root, relativePath), 'utf8'), sandbox, { filename: relativePath });
 }
 
@@ -154,6 +155,28 @@ const classificationProbe = decision.classifyCandidateEvidence([
   { candidateId: 'inferior', objectiveUtility: 0, normalizedUtility: 0, vector: {} },
 ]);
 assert.equal(classificationProbe.find(candidate => candidate.candidateId === 'inferior')?.classification, 'TACTICAL_ERROR', '合法次优候选没有归入TACTICAL_ERROR');
+
+const formalSummonWorld = buildWeixiaofengFormalCase(sandbox.__LWCS_内置角色库__);
+const formalSummonDecision = inspectDecision({
+  worldSnapshot: formalSummonWorld,
+  actorId: '韦小枫',
+  beliefState: { confidence: 0.5 },
+  battleIntent: { mode: '点到为止' },
+  actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+  seed: 730031,
+});
+const formalBasic = formalSummonDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+const formalSummon = formalSummonDecision.candidates.find(candidate =>
+  candidate.declaration.actionKind === 'RELEASE_SKILL' &&
+  (candidate.preview?.scheduledEvents || []).some(event => event.type === 'SUMMON_CREATE')
+);
+assert.ok(formalBasic && formalSummon, '正式召唤行为对照缺少普攻或召唤候选');
+assert.ok(formalBasic.objectiveUtility > formalSummon.objectiveUtility, `低伤高耗召唤被预估为优于普攻:${JSON.stringify({
+  basic: formalBasic.objectiveUtility,
+  summon: formalSummon.objectiveUtility,
+  summonVector: formalSummon.vector,
+})}`);
+assert.notEqual(formalSummonDecision.selected.candidateId, formalSummon.candidateId, '低伤高耗召唤仍被主观决策选中');
 
 const confused = inspectDecision({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
 const confusedAttackTargets = confused.candidates.filter(candidate => candidate.skill?.id === 'attack-skill').flatMap(candidate => candidate.declaration.targetIds);

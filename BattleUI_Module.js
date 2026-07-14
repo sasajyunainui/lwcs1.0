@@ -23926,7 +23926,7 @@ class BattleUIComponent {
             sourceNodeId: 父动作节点,
             reactionNodeId: 父动作节点,
             result: 'fail',
-            failReason: 反应槽校验.reason === 'FACTION_REACTION_LIMIT' ? '本阵营反应池已耗尽' : '本回合已经完成过反应',
+            failReason: '本回合已经完成过反应',
             meta: {
               probability: 概率文本,
               counterDepth: 当前防反深度,
@@ -24265,9 +24265,7 @@ class BattleUIComponent {
       const unitKey = 读取战斗单位运行态键(unit);
       if (!unitKey) return { ok: false, reason: 'UNKNOWN_UNIT' };
       const faction = 读取战斗单位阵营名(combatData, unit);
-      const factionLimit = Math.max(1, Number(combatData?.__battleReactionFactionLimit || 3));
       if (Number(runtime.unitReactionCount[unitKey] || 0) >= 1) return { ok: false, reason: 'UNIT_REACTION_LIMIT' };
-      if (Number(runtime.factionReactionCount[faction] || 0) >= factionLimit) return { ok: false, reason: 'FACTION_REACTION_LIMIT' };
       return { ok: true, unitKey, faction };
     }
 
@@ -24277,7 +24275,6 @@ class BattleUIComponent {
       const runtime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
       runtime.unitReactionCount[check.unitKey] = Number(runtime.unitReactionCount[check.unitKey] || 0) + 1;
       runtime.counterCount[check.unitKey] = Number(runtime.counterCount[check.unitKey] || 0) + 1;
-      runtime.factionReactionCount[check.faction] = Number(runtime.factionReactionCount[check.faction] || 0) + 1;
       runtime.reactionFatigue[check.unitKey] = {
         round: Number(combatData?.回合 || 0),
         reason,
@@ -24308,7 +24305,6 @@ class BattleUIComponent {
       const runtime = BATTLE_RUNTIME.ensureCombatRuntime(rootData);
       const currentRound = Number(rootData?.回合 || 0);
       runtime.unitReactionCount = {};
-      runtime.factionReactionCount = {};
       runtime.counterCount = {};
       runtime.reactionFatigue = {};
       runtime.fieldCreationCount = {};
@@ -24323,10 +24319,8 @@ class BattleUIComponent {
         if (['counter', 'defend', 'dodge', 'pass', 'summon_assist'].includes(kind) && round === currentRound && unitKey) {
           const source = String(event.meta?.source || event.actionType || '').trim();
           if (kind === 'counter' || kind === 'summon_assist' || /reaction|counter|应招|防反/.test(source)) {
-            const faction = 读取战斗单位阵营名(rootData, actor || { name: actorName, 阵营: event.actorSide });
             runtime.unitReactionCount[unitKey] = Math.max(Number(runtime.unitReactionCount[unitKey] || 0), 1);
             runtime.counterCount[unitKey] = Math.max(Number(runtime.counterCount[unitKey] || 0), kind === 'counter' || kind === 'summon_assist' ? 1 : 0);
-            runtime.factionReactionCount[faction] = Number(runtime.factionReactionCount[faction] || 0) + 1;
             runtime.reactionFatigue[unitKey] = { round, reason: kind, clearAt: 'round_end', hydrated: true };
             if (actor && typeof actor === 'object') {
               if (!actor.__battleRuntime || typeof actor.__battleRuntime !== 'object') actor.__battleRuntime = {};

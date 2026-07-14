@@ -1383,6 +1383,7 @@
     calculateUnitCapacity,
     calculateWithdrawalPressure,
     estimateWithdrawal,
+    deriveStateCombatEffect,
     normalizeBattleObjectives,
     evaluateBattleObjectives,
     previewAction,

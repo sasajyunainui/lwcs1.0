@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { buildWeixiaofengFormalCase } from './battle_v73_formal_case_fixture.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(toolDir, '..', '..');
@@ -109,6 +110,22 @@ const runOneRound = (caseId, data, selectedAction = null) => sandbox.__LWCS_DEBU
   },
   settings: { decisionEngine: 'next-shadow' },
 });
+
+const formalSummonCombat = buildWeixiaofengFormalCase(sandbox.__LWCS_内置角色库__);
+const formalSummonActor = formalSummonCombat.参战者.team_enemy[0];
+const formalSummonSkill = structuredClone(formalSummonActor.第1武魂.第1魂灵.第2魂环.第2魂技);
+const formalSummonResult = runOneRound('runtime-formal-summon-window', formalSummonCombat, {
+  actorId: '韦小枫',
+  actionKind: 'RELEASE_SKILL',
+  targetIds: ['唐凌雪'],
+  skill: formalSummonSkill,
+});
+assert.ok(formalSummonResult.ledger.some(event =>
+  event?.eventKind === 'action_start' &&
+  event?.actionRole === 'ASSIST' &&
+  event?.actorName === '青影蛇影'
+), '正式协同召唤没有获得真实ASSIST行动窗口');
+assert.ok(!formalSummonResult.audit?.fatals?.some(item => item?.code === 'SUMMON_WINDOW_MISSING'), 'ASSIST行动已发生却被误报为召唤窗口缺失');
 
 const paidCombat = combatData();
 paidCombat.参战者.team_player[0].持续效果.灼烧领域 = {
