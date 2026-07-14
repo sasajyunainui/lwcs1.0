@@ -756,8 +756,10 @@ class BattleUIComponent {
       return true;
     }
 
-    function deepClonePlain(value) {
-      return value == null ? value : JSON.parse(JSON.stringify(value));
+    function cloneBattleValue(value) {
+      if (value == null) return value;
+      if (typeof structuredClone === 'function') return structuredClone(value);
+      return JSON.parse(JSON.stringify(value));
     }
 
     function escapeJsonPointerSegment(segment) {
@@ -831,7 +833,7 @@ class BattleUIComponent {
     }
 
     function clonePersistedCombatValue(value) {
-      return sanitizeCombatPersistenceData(deepClonePlain(value));
+      return sanitizeCombatPersistenceData(cloneBattleValue(value));
     }
 
     const COMBAT_STAT_RATIO_RUNTIME_TO_SCHEMA_KEY = {
@@ -2699,7 +2701,7 @@ class BattleUIComponent {
     }
 
     function normalizeCombatConditionForRuntime(condition) {
-      const source = sanitizeCombatPersistenceData(deepClonePlain(condition || {}));
+      const source = sanitizeCombatPersistenceData(cloneBattleValue(condition || {}));
       const durationCandidate = source.duration !== undefined ? source.duration : source.持续回合;
       const durationParsed = Number(durationCandidate);
       const duration = Number.isFinite(durationParsed) ? Math.max(0, durationParsed) : 0;
@@ -2796,7 +2798,7 @@ class BattleUIComponent {
     }
 
     function buildCombatConditionPersistenceSnapshot(condition) {
-      const source = sanitizeCombatPersistenceData(deepClonePlain(condition || {}));
+      const source = sanitizeCombatPersistenceData(cloneBattleValue(condition || {}));
       const durationCandidate = source.持续回合 !== undefined ? source.持续回合 : source.duration;
       const durationParsed = Number(durationCandidate);
       const duration = Number.isFinite(durationParsed) ? Math.max(0, durationParsed) : 0;
@@ -2881,7 +2883,7 @@ class BattleUIComponent {
       }
 
       if (previousValue === undefined) {
-        ops.push({ op: 'add', path: basePath, value: deepClonePlain(nextValue) });
+        ops.push({ op: 'add', path: basePath, value: cloneBattleValue(nextValue) });
         return;
       }
 
@@ -2890,7 +2892,7 @@ class BattleUIComponent {
       const prevIsArray = Array.isArray(previousValue);
       const nextIsArray = Array.isArray(nextValue);
       if (prevIsArray || nextIsArray) {
-        ops.push({ op: 'replace', path: basePath, value: deepClonePlain(nextValue) });
+        ops.push({ op: 'replace', path: basePath, value: cloneBattleValue(nextValue) });
         return;
       }
 
@@ -2909,7 +2911,7 @@ class BattleUIComponent {
         return;
       }
 
-      ops.push({ op: 'replace', path: basePath, value: deepClonePlain(nextValue) });
+      ops.push({ op: 'replace', path: basePath, value: cloneBattleValue(nextValue) });
     }
 
     function appendNonCanonicalParticipantCleanupOps(ops, participantPath, currentCharData) {
@@ -2945,7 +2947,7 @@ class BattleUIComponent {
 
     function buildTemporaryCombatParticipantPersistenceSnapshot(participant) {
       if (!participant || typeof participant !== 'object') return undefined;
-      const source = sanitizeCombatPersistenceData(deepClonePlain(participant));
+      const source = sanitizeCombatPersistenceData(cloneBattleValue(participant));
       const snapshot = {
         name: String(source.name || '').trim() || '未知',
         来源: '临时单位',
@@ -3049,7 +3051,7 @@ class BattleUIComponent {
     }
 
     function compactCombatDataForPersistence(combatData) {
-      const source = sanitizeCombatPersistenceData(deepClonePlain(combatData || {}));
+      const source = sanitizeCombatPersistenceData(cloneBattleValue(combatData || {}));
       const compact = {};
 
       COMBAT_WORLD_PERSIST_KEYS.forEach(key => {
@@ -3082,7 +3084,7 @@ class BattleUIComponent {
     }
 
     function buildCombatJsonPatch(combatData, options = {}) {
-      const fullCombatData = sanitizeCombatPersistenceData(deepClonePlain(combatData || {}));
+      const fullCombatData = sanitizeCombatPersistenceData(cloneBattleValue(combatData || {}));
       const safeCombatData = compactCombatDataForPersistence(fullCombatData);
       const ops = [];
       const previousRawCombatData = sanitizeCombatPersistenceData(getMvuValue('world.战斗', undefined));
@@ -5705,7 +5707,7 @@ class BattleUIComponent {
         intentMode: normalizeBattleIntentMode(intentMode || combatData?.战斗意图 || '点到为止'),
         logs: Array.isArray(battleLog) ? [...battleLog] : [],
         roundsExecuted: Math.max(0, Number(roundCount || 0)),
-        battleOutcome: deepClonePlain(battleOutcome || {}),
+        battleOutcome: cloneBattleValue(battleOutcome || {}),
         publicReport: publicReportText,
         publicReportBlocks: resolvedPublicReportBlocks,
         actionChains,
@@ -5721,7 +5723,7 @@ class BattleUIComponent {
         closedLoopLedger: BATTLE_RUNTIME.cloneAuditSnapshot(combatData?.__行动闭环诊断?.事实账本 || null),
         snapshot,
       };
-      if (pendingSettlement) result.pendingSettlement = deepClonePlain(pendingSettlement);
+      if (pendingSettlement) result.pendingSettlement = cloneBattleValue(pendingSettlement);
       return result;
     }
 
@@ -6246,7 +6248,7 @@ class BattleUIComponent {
       if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return {};
       const 名称 = String(记录.名称 || 记录.name || '').trim();
       const 定义 = 查找战斗物品定义_战斗(名称) || {};
-      return { ...deepClonePlain(定义), ...记录, 名称 };
+      return { ...cloneBattleValue(定义), ...记录, 名称 };
     }
 
     function 构建魂导器技能表_战斗(魂导器装备 = {}) {
@@ -6262,13 +6264,13 @@ class BattleUIComponent {
         const 技能表 = 合并魂导器.装备技能 && typeof 合并魂导器.装备技能 === 'object' && !Array.isArray(合并魂导器.装备技能) ? 合并魂导器.装备技能 : {};
         Object.entries(技能表).forEach(([技能名, 技能数据]) => {
           if (!技能数据 || typeof 技能数据 !== 'object' || Array.isArray(技能数据)) return;
-          const 技能 = deepClonePlain(技能数据);
+          const 技能 = cloneBattleValue(技能数据);
           技能.魂导等级 = 魂导等级;
           技能.__魂导等级 = 魂导等级;
           技能.__魂导器名称 = 名称;
           技能.__魂导器槽位 = 槽位;
           if (!String(技能.消耗 || '').trim() || String(技能.消耗 || '').trim() === '无') 技能.消耗 = `魂力:${魂导器默认魂力消耗表[魂导等级] || 160}`;
-          技能.使用条件 = 技能.使用条件 && typeof 技能.使用条件 === 'object' && !Array.isArray(技能.使用条件) ? deepClonePlain(技能.使用条件) : {};
+          技能.使用条件 = 技能.使用条件 && typeof 技能.使用条件 === 'object' && !Array.isArray(技能.使用条件) ? cloneBattleValue(技能.使用条件) : {};
           if (魂导等级 >= 10) 技能.使用条件.最低等级 = Math.max(95, Number(技能.使用条件.最低等级 || 0));
           输出[`${槽位}:${技能名}`] = 技能;
         });
@@ -6430,7 +6432,7 @@ class BattleUIComponent {
     }
 
     component.syncFromBattleEngine = function syncCurrentBattlePanel() {
-      const combatData = deepClonePlain(getMvuValue('world.战斗') || _options.combatData || {});
+      const combatData = cloneBattleValue(getMvuValue('world.战斗') || _options.combatData || {});
       const participants = combatData && combatData.参战者 && typeof combatData.参战者 === 'object' ? combatData.参战者 : null;
       if (!participants) return;
       const 玩家队伍 = Array.isArray(participants.team_player) ? participants.team_player : [];
@@ -6732,7 +6734,7 @@ class BattleUIComponent {
 
     function 构建状态元素承伤修正(effect = {}) {
       const 状态 = String(effect?.状态 || '').trim();
-      const 已有修正 = effect?.元素承伤修正 && typeof effect.元素承伤修正 === 'object' ? deepClonePlain(effect.元素承伤修正) : {};
+      const 已有修正 = effect?.元素承伤修正 && typeof effect.元素承伤修正 === 'object' ? cloneBattleValue(effect.元素承伤修正) : {};
       const 副数值 = 读取战斗数值正负(effect?.副数值);
       const 倍率 = Number((1 + Math.abs(副数值 || 0.2)).toFixed(4));
       if (状态 === '灼烧') 已有修正.火 = Math.max(Number(已有修正.火 || 1), 倍率);
@@ -6980,7 +6982,7 @@ class BattleUIComponent {
 
     function 展开战斗原型数组字段(effect = {}) {
       if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return [];
-      let entries = [deepClonePlain(effect)];
+      let entries = [cloneBattleValue(effect)];
       BATTLE_PROTOTYPE_ARRAY_FIELDS.forEach(字段名 => {
         entries = entries.flatMap(entry => {
           const raw = entry && entry[字段名];
@@ -7128,7 +7130,7 @@ class BattleUIComponent {
       const 原型定义 = BATTLE_PROTOTYPE_REGISTRY[原型] || {};
       if (!原型定义.原型) return null;
       const hydrated = {
-        ...deepClonePlain(effect || {}),
+        ...cloneBattleValue(effect || {}),
         运行机制: 原型,
         原型,
       };
@@ -7381,7 +7383,7 @@ class BattleUIComponent {
       const targetScale = normalizeBattleEffectTargetScale(sourceEffect?.目标 || effect?.目标 || '单体', '单体');
       const duration = Math.max(0, Math.round(Number(sourceEffect?.持续回合 ?? 0)));
       const hydrated = {
-        ...deepClonePlain(sourceEffect || {}),
+        ...cloneBattleValue(sourceEffect || {}),
         目标: targetScale,
       };
       hydrated.运行时消费器 = String(sourceEffect?.运行时消费器 || 读取战斗原型运行消费器(sourceEffect)).trim();
@@ -7750,7 +7752,7 @@ class BattleUIComponent {
         if (Object.prototype.hasOwnProperty.call(effect, '驱动属性') && String(effect?.驱动属性 || '').trim() === '无') return effect;
         if (!String(effect?.驱动属性 || '').trim() || !String(effect?.影响方向 || '').trim()) {
           if (原型名 === '复制执行' && !/属性|全部/.test(String(effect?.复制类型 || '').trim())) return effect;
-          const 结果 = deepClonePlain(effect);
+          const 结果 = cloneBattleValue(effect);
           结果.驱动属性 = 原型名 === '状态施加'
             ? 读取状态施加默认驱动属性_战斗(结果)
             : 原型名 === '状态移除' || 原型名 === '时光回溯' || 原型名 === '复制执行'
@@ -7765,9 +7767,9 @@ class BattleUIComponent {
       const 攻方 = context?.造物产出者属性 || context?.actor || context?.caster || context?.attacker;
       const 守方 = context?.target || context?.defender;
       if (!攻方 || typeof 攻方 !== 'object' || !守方 || typeof 守方 !== 'object') return effect;
-      const 结果 = deepClonePlain(effect);
+      const 结果 = cloneBattleValue(effect);
       const 计算层效果 = 结果.计算层效果 && typeof 结果.计算层效果 === 'object'
-        ? deepClonePlain(结果.计算层效果)
+        ? cloneBattleValue(结果.计算层效果)
         : {};
       const 攻方终值 = context?.造物产出者属性
         ? 攻方
@@ -8569,7 +8571,7 @@ class BattleUIComponent {
               '结算标签',
               '抗性类型',
             ].forEach(字段名 => {
-              if (运行效果?.[字段名] !== undefined && 运行效果?.[字段名] !== '') pState[字段名] = deepClonePlain(运行效果[字段名]);
+              if (运行效果?.[字段名] !== undefined && 运行效果?.[字段名] !== '') pState[字段名] = cloneBattleValue(运行效果[字段名]);
             });
             pState.特殊机制标识 = mergeSpecialFlags(pState.特殊机制标识 || '无', extraFlags);
           };
@@ -8713,10 +8715,6 @@ class BattleUIComponent {
       const upfront = buildPart(costObj.启动 || costObj.upfront || costObj);
       const sustain = buildPart(costObj.维持 || costObj.sustain || {});
       return sustain !== '无' ? `${upfront} 维持:${sustain}` : upfront;
-    }
-
-    function deepClone(data) {
-      return data == null ? data : JSON.parse(JSON.stringify(data));
     }
 
     function 读取槽位序号_战斗(槽位名 = '', 默认值 = 1) {
@@ -9973,8 +9971,8 @@ class BattleUIComponent {
         );
         if (!当前行动效果.length) return;
         const 临时技能 = {
-          ...deepClonePlain(skill),
-          _效果数组: deepClonePlain(当前行动效果),
+          ...cloneBattleValue(skill),
+          _效果数组: cloneBattleValue(当前行动效果),
         };
         const 生效效果列表 = getSkillEffects(临时技能, context);
         if (!生效效果列表.length) return;
@@ -10297,7 +10295,7 @@ class BattleUIComponent {
         驱动元素: normalizeBattleSkillAttributeTokens(source?.驱动元素),
         约束元素: normalizeBattleSkillAttributeTokens(source?.约束元素),
         触发元素: normalizeBattleSkillAttributeTokens(source?.触发元素),
-        关系: Array.isArray(source?.关系) ? deepClone(source.关系) : [],
+        关系: Array.isArray(source?.关系) ? cloneBattleValue(source.关系) : [],
       };
     }
 
@@ -10462,7 +10460,7 @@ class BattleUIComponent {
     }
 
     function scaleBattleSupportBuffCalc(calc = {}, supportScale = 1) {
-      const next = deepClone(calc || {});
+      const next = cloneBattleValue(calc || {});
       const ratio = Number(supportScale || 1);
       if (!Number.isFinite(ratio) || Math.abs(ratio - 1) < 0.0001) return next;
 
@@ -10502,7 +10500,7 @@ class BattleUIComponent {
         1,
       );
       if (效果倍率 <= 1.0001) return { skill, 已增幅: false, 效果倍率 };
-      const nextSkill = deepClone(skill || {});
+      const nextSkill = cloneBattleValue(skill || {});
       const effects = getSkillEffects(nextSkill);
       const 数量字段 = [
         '数量',
@@ -10623,7 +10621,7 @@ class BattleUIComponent {
       const 清理正式效果快照 = value => {
         if (Array.isArray(value)) return value.map(清理正式效果快照).filter(Boolean);
         if (!value || typeof value !== 'object') return value;
-        const next = deepClone(value);
+        const next = cloneBattleValue(value);
         ['运行机制', '状态名称', '计算层效果', '战斗效果', '面板修改比例', '面板固定修正', '运行时消费器'].forEach(key => {
           delete next[key];
         });
@@ -10632,7 +10630,7 @@ class BattleUIComponent {
         });
         if (Array.isArray(next.条件分支)) {
           next.条件分支 = next.条件分支.map(branch => {
-            const 分支 = deepClone(branch);
+            const 分支 = cloneBattleValue(branch);
             ['替换效果', '追加效果'].forEach(key => {
               if (Array.isArray(分支[key])) 分支[key] = 清理正式效果快照(分支[key]);
             });
@@ -10647,7 +10645,7 @@ class BattleUIComponent {
         前摇: Number(runtimeMeta.cast_time ?? 0) || 0,
         cost_text: runtimeMeta.消耗 || '无',
       };
-      skill.__attributeCoeffBase = deepClone(base);
+      skill.__attributeCoeffBase = cloneBattleValue(base);
       return skill.__attributeCoeffBase;
     }
 
@@ -10670,7 +10668,7 @@ class BattleUIComponent {
     function applyAttributeCoeffToCombatSkill(skill = {}) {
       if (!skill || typeof skill !== 'object') return skill;
       const base = ensureBattleSkillAttributeBase(skill);
-      skill._效果数组 = deepClone(base.effects || []);
+      skill._效果数组 = cloneBattleValue(base.effects || []);
       skill.前摇 = Number(base.前摇 ?? 0) || 0;
       skill.消耗 = String(base.cost_text || '无') || '无';
 
@@ -10958,7 +10956,7 @@ class BattleUIComponent {
       const 技能掌控度 = skill?.技能掌控度;
       const 完整度 = 计算技能掌控度完整度(施术者, 技能掌控度);
       if (完整度 >= 0.9999) return skill;
-      const nextSkill = deepClone(skill || {});
+      const nextSkill = cloneBattleValue(skill || {});
       nextSkill.__技能掌控度完整度 = 完整度;
       nextSkill.__技能掌控度已缩放 = true;
       const 缩放效果列表 = effects => (Array.isArray(effects) ? effects : []).forEach(effect => {
@@ -13161,36 +13159,36 @@ class BattleUIComponent {
       const currentCharData = getMvuValue(`char.${participantName}`, undefined);
       if (!currentCharData || typeof currentCharData !== 'object') return participant;
 
-      const expanded = deepClonePlain(currentCharData);
+      const expanded = cloneBattleValue(currentCharData);
       expanded.name = participantName;
 
       if (!expanded.属性 || typeof expanded.属性 !== 'object') expanded.属性 = {};
       if (!expanded.状态 || typeof expanded.状态 !== 'object') expanded.状态 = {};
 
       COMBAT_STAT_KEYS.forEach(key => {
-        if (participant[key] !== undefined) expanded.属性[key] = deepClonePlain(participant[key]);
+        if (participant[key] !== undefined) expanded.属性[key] = cloneBattleValue(participant[key]);
       });
       COMBAT_STATUS_KEYS.forEach(key => {
-        if (participant[key] !== undefined) expanded.状态[key] = deepClonePlain(participant[key]);
+        if (participant[key] !== undefined) expanded.状态[key] = cloneBattleValue(participant[key]);
       });
 
       if (participant.属性 && typeof participant.属性 === 'object') {
-        expanded.属性 = { ...expanded.属性, ...deepClonePlain(participant.属性) };
+        expanded.属性 = { ...expanded.属性, ...cloneBattleValue(participant.属性) };
       }
       if (participant.状态 && typeof participant.状态 === 'object') {
-        expanded.状态 = { ...expanded.状态, ...deepClonePlain(participant.状态) };
+        expanded.状态 = { ...expanded.状态, ...cloneBattleValue(participant.状态) };
       }
       if (participant.状态效果 && typeof participant.状态效果 === 'object' && !Array.isArray(participant.状态效果)) {
-        expanded.状态效果 = deepClonePlain(participant.状态效果);
+        expanded.状态效果 = cloneBattleValue(participant.状态效果);
       }
       if (participant.持续效果 && typeof participant.持续效果 === 'object' && !Array.isArray(participant.持续效果)) {
-        expanded.持续效果 = deepClonePlain(participant.持续效果);
+        expanded.持续效果 = cloneBattleValue(participant.持续效果);
       }
-      if (participant.蓄力技能 !== undefined) expanded.蓄力技能 = deepClonePlain(participant.蓄力技能);
-      if (participant.决策记忆 !== undefined) expanded.决策记忆 = deepClonePlain(participant.决策记忆);
-      if (participant.当前领域 !== undefined) expanded.当前领域 = deepClonePlain(participant.当前领域);
+      if (participant.蓄力技能 !== undefined) expanded.蓄力技能 = cloneBattleValue(participant.蓄力技能);
+      if (participant.决策记忆 !== undefined) expanded.决策记忆 = cloneBattleValue(participant.决策记忆);
+      if (participant.当前领域 !== undefined) expanded.当前领域 = cloneBattleValue(participant.当前领域);
       if (participant.存活 !== undefined) expanded.状态.存活 = participant.存活 !== false;
-      if (participant.势力 !== undefined) expanded.势力 = deepClonePlain(participant.势力);
+      if (participant.势力 !== undefined) expanded.势力 = cloneBattleValue(participant.势力);
 
       delete expanded.__combatMirrorBound;
       return expanded;
@@ -13262,7 +13260,7 @@ class BattleUIComponent {
     }
 
     function normalizeSkillData(skill, fallbackName = '未知技能') {
-      const normalized = deepClone(skill || {});
+      const normalized = cloneBattleValue(skill || {});
       const 正式技能旧字段 = ['cast_time', '对象', '结算策略', '运行机制', '状态名称', '机制标签', '技能来源', 'source_tag'];
       const 命中旧字段 = skill && typeof skill === 'object'
         ? 正式技能旧字段.find(字段 => 字段 !== 'cast_time' || skill.__战斗标准技能 !== true
@@ -13281,12 +13279,12 @@ class BattleUIComponent {
         typeof normalized.消耗 === 'object' ? formatCostObjectToString(normalized.消耗) : normalized.消耗 || '无';
       normalized.附带属性 = normalizeBattleSkillAttributeTokens(normalized.附带属性);
       normalized.使用条件 = normalized.使用条件 && typeof normalized.使用条件 === 'object' && !Array.isArray(normalized.使用条件)
-        ? deepClonePlain(normalized.使用条件)
+        ? cloneBattleValue(normalized.使用条件)
         : {};
       const 清理技能正式效果 = value => {
         if (Array.isArray(value)) return value.map(清理技能正式效果).filter(Boolean);
         if (!value || typeof value !== 'object') return value;
-        const next = deepClone(value);
+        const next = cloneBattleValue(value);
         ['运行机制', '状态名称', '计算层效果', '战斗效果', '面板修改比例', '面板固定修正', '运行时消费器'].forEach(key => {
           delete next[key];
         });
@@ -13295,7 +13293,7 @@ class BattleUIComponent {
         });
         if (Array.isArray(next.条件分支)) {
           next.条件分支 = next.条件分支.map(branch => {
-            const 分支 = deepClone(branch);
+            const 分支 = cloneBattleValue(branch);
             ['替换效果', '追加效果'].forEach(key => {
               if (Array.isArray(分支[key])) 分支[key] = 清理技能正式效果(分支[key]);
             });
@@ -14004,7 +14002,7 @@ class BattleUIComponent {
           const 技能 = item?.技能数据 && typeof item.技能数据 === 'object' ? item.技能数据 : null;
           if (!技能 || typeof 技能 !== 'object') return;
           const 原名 = String(技能.name || 技能.魂技名 || 技能.技能名称 || 技能键).trim();
-          const 复刻技能 = normalizeSkillData(deepClonePlain(技能), 原名);
+          const 复刻技能 = normalizeSkillData(cloneBattleValue(技能), 原名);
           复刻技能.name = `复刻·${原名}`;
           复刻技能.魂技名 = 复刻技能.name;
           写入战斗来源类别上下文(复刻技能, { 来源类别: '复制技能', 来源明细: 复制键 });
@@ -14026,7 +14024,7 @@ class BattleUIComponent {
           const 技能 = item?.技能数据 && typeof item.技能数据 === 'object' ? item.技能数据 : null;
           if (!技能 || typeof 技能 !== 'object') return;
           const 原名 = String(技能.name || 技能.魂技名 || 技能.技能名称 || 技能键).trim();
-          const 复刻技能 = normalizeSkillData(deepClonePlain(技能), 原名);
+          const 复刻技能 = normalizeSkillData(cloneBattleValue(技能), 原名);
           复刻技能.name = `复刻·${原名}`;
           复刻技能.魂技名 = 复刻技能.name;
           写入战斗来源类别上下文(复刻技能, { 来源类别: '状态授予技能', 来源明细: 状态名 });
@@ -14068,7 +14066,7 @@ class BattleUIComponent {
           消耗: '无',
           前摇: 10,
           _效果数组: 原效果列表.map(effect => ({
-            ...deepClonePlain(effect),
+            ...cloneBattleValue(effect),
             __机制授予主动触发: true,
             __机制授予状态名: 状态名,
           })),
@@ -14563,7 +14561,7 @@ class BattleUIComponent {
         状态键 = `${状态键基础}·${序号}`;
         序号 += 1;
       }
-      const 遥控效果 = deepClonePlain(stateEffect);
+      const 遥控效果 = cloneBattleValue(stateEffect);
       遥控效果.触发方式 = '立即触发';
       delete 遥控效果.延迟回合;
       targetChar.状态效果[状态键] = {
@@ -14591,7 +14589,7 @@ class BattleUIComponent {
           if (!状态?.遥控触发 || !状态?.遥控效果) return;
           const 状态名 = String(状态?.遥控效果?.状态名称 || 状态?.遥控效果?.状态 || 状态键).trim();
           if (状态名 && !文本.includes(状态名) && !文本.includes(状态键) && !/遥控|预置/.test(文本)) return;
-          const effect = deepClonePlain(状态.遥控效果);
+          const effect = cloneBattleValue(状态.遥控效果);
           delete 单位.状态效果[状态键];
           if (applyStateToCharacter(单位, effect, sourceName, 单位 === 触发者)) {
             触发数 += 1;
@@ -16875,7 +16873,7 @@ class BattleUIComponent {
       const combatData = behaviorState?.combatData || {};
       const puritySnapshot = JSON.stringify({
         round: Number(combatData?.回合 || 0),
-        participants: deepClonePlain(combatData?.参战者 || {}),
+        participants: cloneBattleValue(combatData?.参战者 || {}),
         ledgerCount: Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0,
         traceCount: Array.isArray(combatData?.__battleResolutionTrace) ? combatData.__battleResolutionTrace.length : 0,
         summonKeys: Object.keys(combatData?.召唤单位表 || {}).sort(),
@@ -16888,13 +16886,13 @@ class BattleUIComponent {
         const 召唤数量 = 召唤单位类型 === '其他召唤生物' || 召唤单位类型 === '分身' ? Math.min(12, 原始数量) : 1;
         const 行动模式 = String(effect?.行动模式 || 读取召唤类型配置(召唤单位类型).默认行动模式 || '协同攻击').trim();
         const 持续窗口 = Math.max(1, Math.round(Number(effect?.持续回合 || 1)));
-        const previewCombatData = deepClonePlain(combatData);
+        const previewCombatData = cloneBattleValue(combatData);
         if (!previewCombatData.参战者 || typeof previewCombatData.参战者 !== 'object') previewCombatData.参战者 = { team_player: [], team_enemy: [] };
         const allPreviewUnits = [
           ...((previewCombatData.参战者.team_player || []).filter(Boolean)),
           ...((previewCombatData.参战者.team_enemy || []).filter(Boolean)),
         ];
-        let previewActor = allPreviewUnits.find(unit => isCombatUnitIdentityMatch(unit, actor?.name || actor?.名称 || actor)) || deepClonePlain(actor);
+        let previewActor = allPreviewUnits.find(unit => isCombatUnitIdentityMatch(unit, actor?.name || actor?.名称 || actor)) || cloneBattleValue(actor);
         if (!allPreviewUnits.includes(previewActor)) previewCombatData.参战者.team_player = [...(previewCombatData.参战者.team_player || []), previewActor];
         bindCombatParticipant(previewActor);
         if (!previewActor.状态效果 || typeof previewActor.状态效果 !== 'object') previewActor.状态效果 = {};
@@ -16914,7 +16912,7 @@ class BattleUIComponent {
           行动模式,
           强度: Math.max(0.01, Number(effect?.强度 || effect?.召唤强度 || 1)),
         };
-        if (effect?.属性继承比例 && typeof effect.属性继承比例 === 'object') 召唤记录.属性继承比例 = deepClonePlain(effect.属性继承比例);
+        if (effect?.属性继承比例 && typeof effect.属性继承比例 === 'object') 召唤记录.属性继承比例 = cloneBattleValue(effect.属性继承比例);
         if (Number(effect?.继承属性比例 || 0) > 0) 召唤记录.继承属性比例 = Number(effect.继承属性比例);
         const 来源状态 = {
           类型: 'buff',
@@ -16928,7 +16926,7 @@ class BattleUIComponent {
         const previewSummon = 注册召唤运行态单位(previewCombatData, previewActor, 来源状态键, 来源状态, { 静默: true });
         if (!previewSummon) return 0;
         const targetName = String(target?.name || target?.名称 || '').trim();
-        const previewTarget = allPreviewUnits.find(unit => targetName && isCombatUnitIdentityMatch(unit, targetName)) || (target ? deepClonePlain(target) : 选择召唤攻击目标(previewSummon, previewCombatData));
+        const previewTarget = allPreviewUnits.find(unit => targetName && isCombatUnitIdentityMatch(unit, targetName)) || (target ? cloneBattleValue(target) : 选择召唤攻击目标(previewSummon, previewCombatData));
         if (previewTarget) bindCombatParticipant(previewTarget);
         const previewSkill = previewTarget ? 选择召唤攻击技能(previewSummon, previewTarget) : 构建召唤普通攻击技能(previewSummon);
         const attackPreview = previewTarget ? 估算召唤单次攻击结算(previewSummon, previewTarget, previewSkill) : { damage: 0, hitProbability: 0, expectedDamage: 0 };
@@ -16966,7 +16964,7 @@ class BattleUIComponent {
       } finally {
         const afterSnapshot = JSON.stringify({
           round: Number(combatData?.回合 || 0),
-          participants: deepClonePlain(combatData?.参战者 || {}),
+          participants: cloneBattleValue(combatData?.参战者 || {}),
           ledgerCount: Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger.length : 0,
           traceCount: Array.isArray(combatData?.__battleResolutionTrace) ? combatData.__battleResolutionTrace.length : 0,
           summonKeys: Object.keys(combatData?.召唤单位表 || {}).sort(),
@@ -18202,8 +18200,8 @@ class BattleUIComponent {
       function 构建维持效果分组(skill = {}, context = {}) {
         const 效果列表 = getSkillEffects(skill, context).filter(effect => effect && typeof effect === 'object');
         return {
-          维持释放效果列表: 效果列表.filter(效果支持维持释放).map(deepClonePlain),
-          维持存在效果列表: 效果列表.filter(效果仅维持存在).map(deepClonePlain),
+          维持释放效果列表: 效果列表.filter(效果支持维持释放).map(cloneBattleValue),
+          维持存在效果列表: 效果列表.filter(效果仅维持存在).map(cloneBattleValue),
         };
       }
 
@@ -18298,7 +18296,7 @@ class BattleUIComponent {
         const 维持关联状态名 = 自身状态维持名 || 关联状态名 || (isWuxingEscape ? '五行遁法' : skillName);
 
         if (costParts.hasSustain && costParts.sustain && costParts.sustain !== '无') {
-          const 技能快照 = deepClonePlain(skill || {});
+          const 技能快照 = cloneBattleValue(skill || {});
           const 维持负荷 = 计算维持负荷(技能快照, 维持效果分组.维持释放效果列表, costParts.sustain, char, combatData);
           return {
             name: skillName,
@@ -18327,7 +18325,7 @@ class BattleUIComponent {
           return {
             name: skillName,
             sustain_cost: `体力:${Math.max(1, Math.floor((char?.vit_max || 1) * 0.05))}`,
-            技能快照: deepClonePlain(skill || {}),
+            技能快照: cloneBattleValue(skill || {}),
             施术者名: String(char?.name || char?.名称 || '').trim(),
             目标语义: skill ? getSkillTarget(skill) : '',
             维持释放效果列表: 维持效果分组.维持释放效果列表,
@@ -18346,7 +18344,7 @@ class BattleUIComponent {
           return {
             name: skillName,
             sustain_cost: 维持消耗,
-            技能快照: deepClonePlain(skill || {}),
+            技能快照: cloneBattleValue(skill || {}),
             施术者名: String(char?.name || char?.名称 || '').trim(),
             目标语义: skill ? getSkillTarget(skill) : '',
             维持释放效果列表: 维持效果分组.维持释放效果列表,
@@ -18365,7 +18363,7 @@ class BattleUIComponent {
           return {
             name: skillName,
             sustain_cost: 维持消耗,
-            技能快照: deepClonePlain(skill || {}),
+            技能快照: cloneBattleValue(skill || {}),
             施术者名: String(char?.name || char?.名称 || '').trim(),
             目标语义: skill ? getSkillTarget(skill) : '',
             维持释放效果列表: 维持效果分组.维持释放效果列表,
@@ -20480,7 +20478,7 @@ class BattleUIComponent {
       function onPlayerAttack(playerInput, options = {}) {
         const dryRun = options.dryRun === true;
         const sourceCombatData = options.combatData || window.BattleUIBridge?.getMVU('world.战斗');
-        let combatData = dryRun ? deepClonePlain(sourceCombatData || {}) : sourceCombatData;
+        let combatData = dryRun ? cloneBattleValue(sourceCombatData || {}) : sourceCombatData;
         确保召唤单位表(combatData);
         hydrateCombatData(combatData);
         let defender = combatData.参战者.team_enemy?.[0];
@@ -24365,14 +24363,14 @@ class BattleUIComponent {
         单位.属性.魂力 = Math.max(0, Number(快照.魂力 || 0));
         单位.属性.精神力 = Math.max(0, Number(快照.精神力 || 0));
       }
-      单位.蓄力技能 = 快照.蓄力技能 ? deepClonePlain(快照.蓄力技能) : null;
+      单位.蓄力技能 = 快照.蓄力技能 ? cloneBattleValue(快照.蓄力技能) : null;
       单位.cast_time = Number(快照.cast_time || 0);
       单位.cast_time_left = Number(快照.cast_time_left || 0);
       单位.蓄力剩余 = Number(快照.蓄力剩余 || 0);
       单位._current_cast_time = Number(快照._current_cast_time || 0);
       单位.action_declared = 快照.action_declared === true;
       单位.is_controlled = 快照.is_controlled === true;
-      单位.__技能限制运行态 = deepClonePlain(快照.__技能限制运行态 || {});
+      单位.__技能限制运行态 = cloneBattleValue(快照.__技能限制运行态 || {});
       重算时光回溯行动派生值(单位);
       syncCombatActionState(单位);
       return true;
@@ -24574,7 +24572,7 @@ class BattleUIComponent {
       if (!效果列表.length) return '';
       const 日志 = [];
       效果列表.forEach((effect, effectIndex) => {
-        const 运行效果 = deepClonePlain(effect);
+        const 运行效果 = cloneBattleValue(effect);
         原型驱动缩放(运行效果, {}, 运行效果, attacker, attacker?.final || {}, defender, defender?.final || {});
         const 概率 = Math.max(0, Math.min(1, Number(运行效果?.时光回溯成功率 ?? 1)));
         if (!BATTLE_RUNTIME.probabilitySucceeds(概率)) {
@@ -25394,7 +25392,7 @@ class BattleUIComponent {
         const 产出者名 = String(原始产出者属性?.name || 原始产出者属性?.名称 || 选项参数.产出者名 || '').trim();
         const 技能名 = String(技能?.魂技名 || 技能?.name || '造物承载魂技').trim() || '造物承载魂技';
         const 产出者属性快照 = 原始产出者属性.final && typeof 原始产出者属性.final === 'object' && !Array.isArray(原始产出者属性.final)
-          ? deepClonePlain(原始产出者属性.final)
+          ? cloneBattleValue(原始产出者属性.final)
           : BATTLE_RUNTIME.buildCombatFinalStats(原始产出者属性);
 
         let 剩余即时消耗 = Math.max(0, Math.floor(Number(选项参数.即时消耗数量 || 0)));
@@ -25415,19 +25413,19 @@ class BattleUIComponent {
             默认货币: String(造物模板?.默认货币 || '联邦币'),
             装备槽位: String(造物模板?.装备槽位 || '无'),
             基础耐久: Math.max(0, Math.floor(Number(造物模板?.基础耐久 || 0))),
-            使用条件: 造物模板?.使用条件 && typeof 造物模板.使用条件 === 'object' && !Array.isArray(造物模板.使用条件) ? deepClone(造物模板.使用条件) : {},
-            使用效果: deepClone(Array.isArray(造物模板?.使用效果) ? 造物模板.使用效果 : []),
-            造物产出者属性: deepClonePlain(产出者属性快照),
-            属性加成: 造物模板?.属性加成 && typeof 造物模板.属性加成 === 'object' && !Array.isArray(造物模板.属性加成) ? deepClone(造物模板.属性加成) : {},
-            副职业参数: 造物模板?.副职业参数 && typeof 造物模板.副职业参数 === 'object' && !Array.isArray(造物模板.副职业参数) ? deepClone(造物模板.副职业参数) : {},
+            使用条件: 造物模板?.使用条件 && typeof 造物模板.使用条件 === 'object' && !Array.isArray(造物模板.使用条件) ? cloneBattleValue(造物模板.使用条件) : {},
+            使用效果: cloneBattleValue(Array.isArray(造物模板?.使用效果) ? 造物模板.使用效果 : []),
+            造物产出者属性: cloneBattleValue(产出者属性快照),
+            属性加成: 造物模板?.属性加成 && typeof 造物模板.属性加成 === 'object' && !Array.isArray(造物模板.属性加成) ? cloneBattleValue(造物模板.属性加成) : {},
+            副职业参数: 造物模板?.副职业参数 && typeof 造物模板.副职业参数 === 'object' && !Array.isArray(造物模板.副职业参数) ? cloneBattleValue(造物模板.副职业参数) : {},
           };
-          const 使用副作用列表 = deepClone(Array.isArray(造物模板?.副作用列表) ? 造物模板.副作用列表 : []);
+          const 使用副作用列表 = cloneBattleValue(Array.isArray(造物模板?.副作用列表) ? 造物模板.副作用列表 : []);
           if (使用副作用列表.length) 物品定义.副作用列表 = 使用副作用列表;
           const 下一背包物品 = {
             数量: 入包数量,
             来源: String(技能?.魂技名 || 技能?.name || 物品名),
             持有者: 持有者名,
-            造物产出者属性: deepClonePlain(产出者属性快照),
+            造物产出者属性: cloneBattleValue(产出者属性快照),
           };
           if (相对有效期tick > 0) {
             下一背包物品.有效期至tick = 当前tick + 相对有效期tick;
@@ -25440,17 +25438,17 @@ class BattleUIComponent {
           const 下一背包物品值 =
             当前背包物品 && typeof 当前背包物品 === 'object'
               ? {
-                  ...deepClonePlain(当前背包物品),
+                  ...cloneBattleValue(当前背包物品),
                   数量: Number(当前背包物品.数量 || 0) + 入包数量,
-                  造物产出者属性: deepClonePlain(产出者属性快照),
+                  造物产出者属性: cloneBattleValue(产出者属性快照),
                 }
             : 下一背包物品;
-          const 下一根层物品 = { ...deepClonePlain(根层魂技造物[物品名] || {}), ...物品定义 };
+          const 下一根层物品 = { ...cloneBattleValue(根层魂技造物[物品名] || {}), ...物品定义 };
           if (!使用副作用列表.length) delete 下一根层物品.副作用列表;
           appendJsonPatchDiff(补丁列表, `/物品/魂技造物/${转义物品名}`, 根层魂技造物[物品名], 下一根层物品);
           if (入包数量 > 0) appendJsonPatchDiff(补丁列表, 背包物品路径, 当前背包物品, 下一背包物品值);
 
-          造物列表.push({ 名称: 物品名, 数量: 原始数量, 入包数量, 即时消耗数量: 即时消耗, 物品定义: deepClonePlain(物品定义) });
+          造物列表.push({ 名称: 物品名, 数量: 原始数量, 入包数量, 即时消耗数量: 即时消耗, 物品定义: cloneBattleValue(物品定义) });
           日志列表.push(`生成了造物【${物品名}】×${原始数量}${即时消耗 > 0 ? `，即时使用${即时消耗}件` : ''}${入包数量 > 0 ? `，入包${入包数量}件` : ''}`);
         });
 
@@ -25486,7 +25484,7 @@ class BattleUIComponent {
           Math.max(0, Math.floor(Number(安全背包状态.数量 || 0))) +
           批次列表.reduce((总数, 批次) => 总数 + Math.max(0, Math.floor(Number(批次.数量 || 0))), 0);
         const 取数组字段 = 字段名 =>
-          deepClone(
+          cloneBattleValue(
             Array.isArray(安全背包状态?.[字段名]) && 安全背包状态[字段名].length
               ? 安全背包状态[字段名]
               : Array.isArray(安全根物品?.[字段名])
@@ -25494,21 +25492,21 @@ class BattleUIComponent {
                 : [],
           );
         return {
-          ...deepClonePlain(安全根物品),
-          ...deepClonePlain(安全背包状态),
-          ...deepClonePlain(首批),
+          ...cloneBattleValue(安全根物品),
+          ...cloneBattleValue(安全背包状态),
+          ...cloneBattleValue(首批),
           物品分类: String(安全背包状态?.物品分类 || 安全背包状态?.分类 || 安全根物品?.物品分类 || 安全根物品?.分类 || 根物品分类 || '').trim(),
           数量: 总数量,
           使用效果: 取数组字段('使用效果'),
           副作用列表: 取数组字段('副作用列表'),
-          造物产出者属性: deepClonePlain(
+          造物产出者属性: cloneBattleValue(
             安全背包状态?.造物产出者属性 && typeof 安全背包状态.造物产出者属性 === 'object' && !Array.isArray(安全背包状态.造物产出者属性)
               ? 安全背包状态.造物产出者属性
               : 安全根物品?.造物产出者属性 && typeof 安全根物品.造物产出者属性 === 'object' && !Array.isArray(安全根物品.造物产出者属性)
                 ? 安全根物品.造物产出者属性
                 : {},
           ),
-          使用条件: deepClonePlain(
+          使用条件: cloneBattleValue(
             安全背包状态?.使用条件 && typeof 安全背包状态.使用条件 === 'object' && !Array.isArray(安全背包状态.使用条件)
               ? 安全背包状态.使用条件
               : 安全根物品?.使用条件 && typeof 安全根物品.使用条件 === 'object' && !Array.isArray(安全根物品.使用条件)
@@ -25598,7 +25596,7 @@ class BattleUIComponent {
 
       function 按战斗背包批次倍率缩放使用效果(效果列表 = [], 物品数据 = {}) {
         const 倍率 = 读取战斗背包使用效果倍率(物品数据);
-        const 输出 = deepClone(Array.isArray(效果列表) ? 效果列表 : []);
+        const 输出 = cloneBattleValue(Array.isArray(效果列表) ? 效果列表 : []);
         if (Math.abs(倍率 - 1) < 0.0001) return 输出;
         const 缩放字段列表 = ['数值', '威力倍率', '效果倍率', '结算倍率', '强化倍率', '引爆倍率', '持续伤害', '治疗量', '恢复量', '护盾值'];
         const 缩放效果列表 = effects =>
@@ -25641,21 +25639,21 @@ class BattleUIComponent {
             承载方式: '物品使用',
             目标: '自身',
             __物品名: 物品名,
-            __造物产出者属性: deepClonePlain(物品数据?.造物产出者属性 || {}),
+            __造物产出者属性: cloneBattleValue(物品数据?.造物产出者属性 || {}),
             消耗: '无',
             前摇: 8,
             _效果数组: 按战斗背包批次倍率缩放使用效果(物品数据?.使用效果, 物品数据),
-            副作用列表: deepClone(Array.isArray(物品数据?.副作用列表) ? 物品数据.副作用列表 : []),
+            副作用列表: cloneBattleValue(Array.isArray(物品数据?.副作用列表) ? 物品数据.副作用列表 : []),
           },
           动作名,
         );
       }
 
       function 扣减战斗背包数量(背包项 = {}, 消耗数量 = 1) {
-        const 当前 = deepClonePlain(背包项 && typeof 背包项 === 'object' && !Array.isArray(背包项) ? 背包项 : {});
+        const 当前 = cloneBattleValue(背包项 && typeof 背包项 === 'object' && !Array.isArray(背包项) ? 背包项 : {});
         let 剩余扣减 = Math.max(1, Math.floor(Number(消耗数量 || 1)));
         const 批次列表 = (Array.isArray(当前.批次) ? 当前.批次 : [])
-          .map(批次 => deepClonePlain(批次))
+          .map(批次 => cloneBattleValue(批次))
           .filter(批次 => 批次 && typeof 批次 === 'object' && !Array.isArray(批次) && Number(批次.数量 || 0) > 0);
         for (const 批次 of 批次列表) {
           if (剩余扣减 <= 0) break;
@@ -25720,21 +25718,21 @@ class BattleUIComponent {
         );
         if (!造物效果 || !Array.isArray(造物效果.使用效果) || !造物效果.使用效果.length) return null;
         const 目标名 = String(动作?.食用目标 || 动作?.target_name || '').trim();
-        const 使用效果列表 = deepClone(造物效果.使用效果).map(效果 => {
+        const 使用效果列表 = cloneBattleValue(造物效果.使用效果).map(效果 => {
           if (!效果 || typeof 效果 !== 'object') return 效果;
           const 下一效果 = { ...效果 };
           if (!String(下一效果.目标 || '').trim()) 下一效果.目标 = 目标名 ? '单体' : '自身';
           return 下一效果;
         });
         const 即时技能 = {
-          ...deepClone(技能 || {}),
+          ...cloneBattleValue(技能 || {}),
           name: `${技能?.name || 技能?.魂技名 || '造物承载魂技'}·即时使用`,
           魂技名: `${技能?.魂技名 || 技能?.name || '造物承载魂技'}·即时使用`,
           承载方式: '物品使用',
           目标: '自身',
           _效果数组: 使用效果列表,
         };
-        const 使用副作用列表 = deepClone(Array.isArray(造物效果?.副作用列表) ? 造物效果.副作用列表 : []);
+        const 使用副作用列表 = cloneBattleValue(Array.isArray(造物效果?.副作用列表) ? 造物效果.副作用列表 : []);
         if (使用副作用列表.length) 即时技能.副作用列表 = 使用副作用列表;
         else delete 即时技能.副作用列表;
         return 即时技能;
@@ -25816,7 +25814,7 @@ class BattleUIComponent {
         if (!可触发效果.length) return { 可释放: false, 日志: ` [机制授予] [${状态名}]的授予效果被抹消。`, 提交: () => '' };
         技能._效果数组 = [
           ...(Array.isArray(技能._效果数组) ? 技能._效果数组 : []).filter(effect => effect?.__机制授予主动触发 !== true),
-          ...可触发效果.map(effect => deepClonePlain(effect)),
+          ...可触发效果.map(effect => cloneBattleValue(effect)),
         ];
         return {
           可释放: true,
@@ -25915,7 +25913,7 @@ class BattleUIComponent {
           const 可执行效果 = 原效果列表
             .filter(effect => effect && typeof effect === 'object')
             .map(effect => {
-              const next = deepClone(effect);
+              const next = cloneBattleValue(effect);
               const meta = getBattleEffectRuntimeMeta(next) || {};
               const 目标语义 = String(meta?.目标语义 || '').trim();
               if (目标语义 === '敌对') {
@@ -25950,7 +25948,7 @@ class BattleUIComponent {
           日志.push(`[${状态名}]`);
         });
         if (!追加效果.length) return { skill: 技能, 日志: 日志.length ? ` [机制授予] ${日志.join('、')}。` : '', 追加效果: [] };
-        const nextSkill = deepClone(技能 || {});
+        const nextSkill = cloneBattleValue(技能 || {});
         nextSkill._效果数组 = [...(Array.isArray(nextSkill._效果数组) ? nextSkill._效果数组 : []), ...追加效果];
         return { skill: nextSkill, 日志: ` [机制授予] 触发${日志.join('、')}。`, 追加效果 };
       }
@@ -26134,7 +26132,7 @@ class BattleUIComponent {
         let 本次为即时使用造物 = false;
         let 本次原始造物技能 = null;
         if (是否战斗即时使用造物(playerAction, playerAction.skill)) {
-          本次原始造物技能 = deepClonePlain(playerAction.skill);
+          本次原始造物技能 = cloneBattleValue(playerAction.skill);
           const 即时使用技能 = 构建造物即时使用技能(playerAction.skill, playerAction);
           if (即时使用技能) {
             本次为即时使用造物 = true;
@@ -26194,7 +26192,7 @@ class BattleUIComponent {
         if (当前行动被动效果.length) {
           const 当前主动水合效果 = getSkillEffects(playerAction.skill, 当前技能条件上下文);
           playerAction.skill = {
-            ...deepClonePlain(playerAction.skill || {}),
+            ...cloneBattleValue(playerAction.skill || {}),
             __规划水合效果数组: [...当前主动水合效果, ...当前行动被动效果],
           };
           当前技能条件上下文.skill = playerAction.skill;
@@ -26364,7 +26362,7 @@ class BattleUIComponent {
                 ? creationRuntimeOwner.背包[itemName]
                 : {};
               creationRuntimeOwner.背包[itemName] = {
-                ...deepClonePlain(creation?.物品定义 || {}),
+                ...cloneBattleValue(creation?.物品定义 || {}),
                 ...current,
                 数量: Math.max(0, Number(current?.数量 || 0)) + inventoryCount,
                 来源: String((本次原始造物技能 || playerAction.skill)?.魂技名 || (本次原始造物技能 || playerAction.skill)?.name || itemName).trim(),
@@ -27527,7 +27525,7 @@ class BattleUIComponent {
               描述: `由[${来源技能名}]建立持续${原型}窗口`,
               duration: 持续回合,
               持续回合,
-              持续原型效果: deepClonePlain(effect),
+              持续原型效果: cloneBattleValue(effect),
               持续目标列表,
               目标角色: targetName,
               面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
@@ -28016,7 +28014,7 @@ class BattleUIComponent {
 
         const removeConditionWithSustain = (char, key) => {
           if (!char?.状态效果 || !char.状态效果[key]) return null;
-          const snapshot = deepClone(char.状态效果[key]);
+          const snapshot = cloneBattleValue(char.状态效果[key]);
           delete char.状态效果[key];
           if (char.持续效果) {
             Object.keys(char.持续效果).forEach(sustainKey => {
@@ -28818,7 +28816,7 @@ class BattleUIComponent {
               描述: `由[${skillName || '技能'}]抹消机制`,
               duration: Math.max(1, Number(effect?.持续回合 || 1)),
               来源原型摘要: '机制抹消',
-              抹消规则: [deepClonePlain(抹消规则)],
+              抹消规则: [cloneBattleValue(抹消规则)],
               战斗效果: { ...createEmptyCombatEffectMap(), mechanism_suppress: true },
             });
             const removed = 移除战斗机制抹消命中节点(targetObj, '最终结果', 抹消规则.抹消对象, { excludeKeys: [stateKey] });
@@ -28975,7 +28973,7 @@ class BattleUIComponent {
           if (!effect || !(Number(effect?.延迟回合 || 0) > 0)) return false;
           const targetUnits = resolveDirectMechanismTargetList(effect);
           if (!targetUnits.length) return false;
-          const 延迟效果 = deepClone(effect);
+          const 延迟效果 = cloneBattleValue(effect);
           delete 延迟效果.延迟回合;
           targetUnits.forEach(targetObj => {
             if (!targetObj) return;
@@ -29564,12 +29562,12 @@ class BattleUIComponent {
               描述: `由[${skillName || '技能'}]复刻${sourceObj === attacker ? '自身' : sourceObj?.name || '目标'}的招式`,
               duration: 复制保留回合,
               战斗效果: { ...createEmptyCombatEffectMap() },
-              复刻技能列表: 可复刻技能.map(skill => deepClonePlain(skill)),
+              复刻技能列表: 可复刻技能.map(skill => cloneBattleValue(skill)),
               技能列表: Object.fromEntries(
                 可复刻技能.map(skill => [
                   `技能_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
                   {
-                    技能数据: deepClonePlain(skill),
+                    技能数据: cloneBattleValue(skill),
                     ...(可用次数 !== undefined ? { 剩余次数: 可用次数 } : {}),
                   },
                 ]),
@@ -29878,7 +29876,7 @@ class BattleUIComponent {
                   效果授予状态: true,
                   触发条件: 授予触发条件,
                   可用次数: 授予触发条件 === '随下次行动触发' ? 1 : Math.max(1, Math.floor(Number(directGrantEffect.可用次数 || 1))),
-                  授予效果: deepClone(grantEffects),
+                  授予效果: cloneBattleValue(grantEffects),
                   战斗效果: {
                     ...createEmptyCombatEffectMap(),
                     mechanism_grant: true,
@@ -30135,7 +30133,7 @@ class BattleUIComponent {
                   return !boundState || boundState === pState.状态名称;
                 }),
                 shield_value: 状态护盾值,
-                抹消规则: Array.isArray(pState.抹消规则) ? deepClone(pState.抹消规则) : [],
+                抹消规则: Array.isArray(pState.抹消规则) ? cloneBattleValue(pState.抹消规则) : [],
                 面板修改比例: scaledMods,
                 面板固定修正: scaledDeltas,
                 战斗效果: {
@@ -30302,7 +30300,7 @@ class BattleUIComponent {
               if (selfMirrorEffect && targetObj !== attacker) {
                 if (!attacker.状态效果) attacker.状态效果 = {};
                 const mirrorKey = `${pState.状态名称}·自返`;
-                attacker.状态效果[mirrorKey] = deepClone(targetObj.状态效果[pState.状态名称]);
+                attacker.状态效果[mirrorKey] = cloneBattleValue(targetObj.状态效果[pState.状态名称]);
                 attacker.状态效果[mirrorKey].描述 = `由[${playerAction.skill.name}]同步反馈`;
                 result.desc += ` [自身反馈] 施术者同步获得了[${mirrorKey}]效果。`;
               }
@@ -31348,7 +31346,7 @@ class BattleUIComponent {
             (attacker?.name ? window.BattleUIBridge?.getMVU('char.' + attacker.name) : null) ||
             (preferredPlayerName && preferredPlayerName === String(attacker?.name || '').trim() ? window.BattleUIBridge?.getMVU('char.' + preferredPlayerName) : null);
           let charData = combatDataOverride
-            ? deepClonePlain(mvuCharData || attacker)
+            ? cloneBattleValue(mvuCharData || attacker)
             : mvuCharData;
           bindCombatParticipant(charData);
 
@@ -31372,7 +31370,7 @@ class BattleUIComponent {
           if (!charData) return action;
 
           const declaredActions = Array.isArray(actionDeclaration?.actions)
-            ? deepClonePlain(actionDeclaration.actions).filter(entry => entry && typeof entry === 'object')
+            ? cloneBattleValue(actionDeclaration.actions).filter(entry => entry && typeof entry === 'object')
             : [];
           if (declaredActions.length) {
             const attackerName = String(attacker?.name || attacker?.名称 || '').trim();
@@ -34704,8 +34702,8 @@ class BattleUIComponent {
             typeof combatData === 'object' &&
             Array.isArray(参战者?.team_player) &&
             Array.isArray(参战者?.team_enemy)
-          ) return deepClonePlain(combatData);
-          return deepClonePlain(_options.combatData || {});
+          ) return cloneBattleValue(combatData);
+          return cloneBattleValue(_options.combatData || {});
         }
 
         function renderUiChips(combatData, player, enemy) {
@@ -35488,7 +35486,7 @@ class BattleUIComponent {
             '副作用列表',
             '产物描述',
           ].forEach(key => {
-            if (来源[key] !== undefined) declaredSkill[key] = deepClonePlain(来源[key]);
+            if (来源[key] !== undefined) declaredSkill[key] = cloneBattleValue(来源[key]);
           });
           if (!declaredSkill.魂技名 && 来源.name) declaredSkill.魂技名 = 来源.name;
           if (String(来源.__物品名 || '').trim()) declaredSkill.__物品名 = String(来源.__物品名 || '').trim();
@@ -39556,7 +39554,7 @@ class BattleUIComponent {
         function resolveSoulTowerSettlement(action = 'end') {
           const choice = action === 'continue' ? 'continue' : 'end';
           const state = window.BattleUI?.state || {};
-          const combatData = deepClonePlain(getUiCombatData() || state.combatData || {});
+          const combatData = cloneBattleValue(getUiCombatData() || state.combatData || {});
           if (!combatData || !combatData.参战者) return { ok: false, reason: 'combat_missing' };
           hydrateCombatData(combatData);
           const pendingSettlement = normalizeSoulTowerPendingSettlement(combatData.魂灵塔待结算);
