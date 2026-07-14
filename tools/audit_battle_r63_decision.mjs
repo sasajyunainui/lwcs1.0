@@ -342,6 +342,12 @@ assert.ok(
   chargedThreatDecision.selected.vector.catastrophicRisk < chargedThreatAttack.vector.catastrophicRisk,
   '避免公开致命终态没有形成相对进攻更高的防守效用',
 );
+const chargedThreatDefend = chargedThreatDecision.candidates.find(candidate => candidate.declaration.actionKind === 'DEFEND');
+assert.ok(
+  chargedThreatDefend &&
+  chargedThreatDefend.vector.catastrophicRisk < chargedThreatAttack.vector.catastrophicRisk,
+  '当前候选防御姿态没有进入同一后续回应的风险比较',
+);
 chargedThreatWorld.参战者.ally[0].__battleRuntime = {
   activeDefenseStance: { type: chargedThreatDecision.selected.declaration.actionKind, stateName: '已准备防守窗口' },
 };

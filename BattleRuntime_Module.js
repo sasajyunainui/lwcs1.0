@@ -6471,8 +6471,16 @@
         STALEMATE: '打破没有实质进展的僵局',
       })[problemId] || '';
       const alternatives = (Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : []).filter(candidate => candidate?.selected !== true);
+      const selectedUtility = Number(selected?.objectiveUtility || 0);
+      const allAvailableChoicesNegative = selectedUtility < 0 &&
+        alternatives.length > 0 &&
+        alternatives.every(candidate => Number(candidate?.objectiveUtility || 0) < 0);
       let reason = problemReason;
-      if (['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && problemIds.has('IMMINENT_DENIAL')) {
+      if (problemId === 'SURVIVAL_CRISIS' &&
+        !['DEFEND', 'EVADE', 'WITHDRAW', 'COUNTER', 'GUARD'].includes(actionKind) &&
+        allAvailableChoicesNegative) {
+        reason = '防御与闪避都无法在当前回应中避免失能，保留最后的进攻机会';
+      } else if (['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && problemIds.has('IMMINENT_DENIAL')) {
         reason = '已评估敌方蓄力风险，当前动作在整体威胁交换中收益更高';
       } else if (actionKind === 'BASIC_ATTACK' && alternatives.some(candidate => candidate?.actionKind === 'RELEASE_SKILL' || candidate?.declaration?.actionKind === 'RELEASE_SKILL')) {
         reason = `${problemReason ? `${problemReason}；` : ''}普通攻击当前能稳定推进，魂技替代的额外收益不足以覆盖代价`;

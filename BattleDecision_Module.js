@@ -2088,7 +2088,9 @@
         ? (preview.collectEffects(incomingSkill).filter(effect => String(effect?.原型 || '').trim() === '伤害结算')
             .map(effect => preview.estimateHitProbability(source, actor, effect))[0] ?? 1)
         : 1;
-      const preparedDefenseKind = String(actor?.__battleRuntime?.activeDefenseStance?.type || actor?.__battleRuntime?.activeDefenseStance?.actionKind || '').trim().toUpperCase();
+      const existingDefenseKind = String(actor?.__battleRuntime?.activeDefenseStance?.type || actor?.__battleRuntime?.activeDefenseStance?.actionKind || '').trim().toUpperCase();
+      const candidateDefenseKind = ['DEFEND', 'EVADE', 'GUARD'].includes(actionKind) ? actionKind : '';
+      const preparedDefenseKind = candidateDefenseKind || existingDefenseKind;
       const preparedDefenseMultiplier = ['DEFEND', 'GUARD'].includes(preparedDefenseKind)
         ? 0.65
         : preparedDefenseKind === 'EVADE' ? hitProbability : 1;
