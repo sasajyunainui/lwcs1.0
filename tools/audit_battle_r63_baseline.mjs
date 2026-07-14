@@ -47,7 +47,7 @@ manualBattleCases.forEach(item => {
     if (!Array.isArray(item?.[field]) || !item[field].length) failures.push(`MANUAL_CASE_CONTRACT_EMPTY:${item.caseId}:${field}`);
   });
 });
-if (Object.keys(manualSourceDataHashes).length !== 18) failures.push(`MANUAL_SOURCE_HASH_COUNT:${Object.keys(manualSourceDataHashes).length}`);
+if (Object.keys(manualSourceDataHashes).length !== 21) failures.push(`MANUAL_SOURCE_HASH_COUNT:${Object.keys(manualSourceDataHashes).length}`);
 const groupCounts = Object.fromEntries(['duel', 'team', 'raid', 'special'].map(group => [group, manualBattleCases.filter(item => item.group === group).length]));
 if (JSON.stringify(groupCounts) !== JSON.stringify({ duel: 8, team: 8, raid: 4, special: 4 })) failures.push(`MANUAL_MANIFEST_GROUPS:${JSON.stringify(groupCounts)}`);
 determinismCaseIds.forEach(caseId => {

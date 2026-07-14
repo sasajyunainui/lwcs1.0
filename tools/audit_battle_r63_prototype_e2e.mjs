@@ -86,7 +86,7 @@ function participant(id, skill = null) {
 function worldFor(prototype, effect) {
   const skill = {
     id: `e2e:${prototype}`, name: `端到端${prototype}`, 魂技名: `端到端${prototype}`, 消耗: '无', 前摇: 0,
-    ringId: prototype === '炸环' ? 'ring:e2e' : undefined,
+    ringId: prototype === '炸环' ? '第1武魂/第1魂环' : undefined,
     __魂环路径: prototype === '炸环' ? ['第1武魂', '第1魂环'] : undefined,
     historySnapshot: prototype === '时光回溯' ? { hp: 450, HP: 450, sp: 250 } : undefined,
     _效果数组: [
@@ -124,7 +124,14 @@ for (const [prototype, effect] of Object.entries(effects)) {
   const before = JSON.stringify(combatData);
   const execution = sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
     combatData,
-    declaration: { actionKind: 'RELEASE_SKILL', actorId: 'actor', targetIds, skill },
+    declaration: {
+      actionKind: 'RELEASE_SKILL',
+      actorId: 'actor',
+      targetIds,
+      skill,
+      ringId: prototype === '炸环' ? '第1武魂/第1魂环' : undefined,
+      ringPath: prototype === '炸环' ? ['第1武魂', '第1魂环'] : undefined,
+    },
     actionOpportunity: { role: 'ACTIVE', sequence: 1 },
     seed: 76300 + coverage.length,
   });
@@ -144,6 +151,10 @@ for (const [prototype, effect] of Object.entries(effects)) {
   const factIds = new Set(actionFacts.map(event => String(event?.eventId || '').trim()).filter(Boolean));
   assert.ok(reportBlocks.some(block => (block?.facts || []).some(fact => factIds.has(String(fact?.sourceEventId || fact?.eventId || '').trim()) || String(fact?.sourceActionId || '').trim() === String(actionStart.actionId || '').trim())), `${prototype}缺少本动作事实的结构化战报投影:${JSON.stringify(reportBlocks)}`);
   assert.notEqual(JSON.stringify(combatData), before, `${prototype}正式正例未产生任何战斗态变化`);
+  if (prototype === '炸环') {
+    assert.ok(Number(combatData.参战者.team_player[0]?.第1武魂?.第1魂环?.炸环恢复tick || 0) > 0, '炸环结算没有锁定已消耗魂环');
+    assert.ok(actionFacts.some(event => event?.effectPrototype === '炸环' && event?.meta?.ringBurst?.ringId === '第1武魂/第1魂环'), '炸环Ledger缺少所选魂环与恢复事实');
+  }
 
   const invalid = worldFor(prototype, effect).combatData;
   invalid.参战者.team_enemy[0].状态.存活 = false;
@@ -168,6 +179,36 @@ for (const [prototype, effect] of Object.entries(effects)) {
   }
   coverage.push({ prototype, preview: true, settlement: true, ledger: true, report: true, positive: true, negative: true, eventKinds: [...new Set(successfulFacts.map(event => String(event?.eventKind || '').trim()))] });
 }
+
+const ringChoiceWorld = worldFor('炸环', effects.炸环);
+ringChoiceWorld.combatData.参战者.team_player[0].第1武魂.第2魂环 = { 年限: 10000, 状态: '可用' };
+const ringChoiceCandidates = sandbox.__LWCS_BATTLE_DECISION__.enumerateCandidates({
+  worldSnapshot: ringChoiceWorld.combatData,
+  actorId: 'actor',
+  actionOpportunity: { role: 'ACTIVE' },
+  beliefState: sandbox.__LWCS_BATTLE_DECISION__.buildInitialBelief(ringChoiceWorld.combatData, 'actor'),
+}).filter(candidate => candidate?.declaration?.skill?.id === 'e2e:炸环');
+assert.equal(ringChoiceCandidates.length, 2, '炸环没有按每个可用魂环生成独立正式候选');
+assert.notEqual(ringChoiceCandidates[0].declaration.ringId, ringChoiceCandidates[1].declaration.ringId, '炸环候选共享同一魂环标识');
+ringChoiceWorld.combatData.参战者.team_player[0].第1武魂.第1魂环.炸环恢复tick = 9999;
+const recoveringRingCandidates = sandbox.__LWCS_BATTLE_DECISION__.enumerateCandidates({
+  worldSnapshot: ringChoiceWorld.combatData,
+  actorId: 'actor',
+  actionOpportunity: { role: 'ACTIVE' },
+  beliefState: sandbox.__LWCS_BATTLE_DECISION__.buildInitialBelief(ringChoiceWorld.combatData, 'actor'),
+}).filter(candidate => candidate?.declaration?.skill?.id === 'e2e:炸环');
+assert.equal(recoveringRingCandidates.length, 1, '恢复中的魂环仍进入炸环候选');
+assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
+  combatData: ringChoiceWorld.combatData,
+  declaration: {
+    actionKind: 'RELEASE_SKILL',
+    actorId: 'actor',
+    targetIds: ['target'],
+    skill: ringChoiceWorld.skill,
+    ringId: '不存在/魂环',
+  },
+  seed: 76999,
+}), /battle_declaration_mechanically_illegal/, 'PLAYER_LOCKED可以提交未枚举的炸环目标');
 
 assert.deepEqual(coverage.map(item => item.prototype).sort(), [...sandbox.__LWCS_BATTLE_PREVIEW__.battlePrototypes].sort(), '端到端原型覆盖与共享注册表不一致');
 console.log(JSON.stringify({ summary: { prototypeCount: coverage.length, positiveCount: coverage.filter(item => item.positive).length, negativeCount: coverage.filter(item => item.negative).length, passed: true }, coverage }, null, 2));

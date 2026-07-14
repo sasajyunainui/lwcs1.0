@@ -439,6 +439,40 @@ function validateCaseContract(definition, result) {
       failures.push({ code: 'SUMMON_ASSIST_PARENT_MISMATCH' });
     }
   }
+  if (caseId === 'raid_summon_heavy') {
+    const summonCreates = ledger.filter(event => String(event?.eventKind || '').trim() === 'summon_create');
+    const summonHosts = new Set(summonCreates.map(event => String(event?.actorName || '').trim()).filter(Boolean));
+    const summonWindows = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'action_start' &&
+      String(event?.actionRole || '').trim() === 'ASSIST'
+    );
+    if (summonCreates.length < 2 || summonHosts.size < 2) {
+      failures.push({ code: 'SUMMON_HEAVY_DIVERSITY_MISSING', summonCount: summonCreates.length, hostCount: summonHosts.size });
+    }
+    if (summonWindows.length < 2) failures.push({ code: 'SUMMON_HEAVY_WINDOWS_MISSING', count: summonWindows.length });
+  }
+  if (caseId === 'raid_balanced') {
+    const playerDamage = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'hit_result' &&
+      String(event?.actorSide || '').trim() === 'player'
+    ).reduce((sum, event) => sum + Math.max(0, Number(event?.meta?.appliedDamage || event?.appliedDamage || 0)), 0);
+    const enemyDamage = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'hit_result' &&
+      String(event?.actorSide || '').trim() === 'enemy'
+    ).reduce((sum, event) => sum + Math.max(0, Number(event?.meta?.appliedDamage || event?.appliedDamage || 0)), 0);
+    const damageRatio = playerDamage / Math.max(1, enemyDamage);
+    const playerStanding = (result?.finalSnapshot?.team_player || []).filter(unit => Number(unit?.hp || unit?.HP || 0) > 0).length;
+    const enemyStanding = (result?.finalSnapshot?.team_enemy || []).filter(unit => Number(unit?.hp || unit?.HP || 0) > 0).length;
+    if (Number(result?.roundsExecuted || 0) !== 5 || String(result?.winner || '').trim() !== 'draw') {
+      failures.push({ code: 'BALANCED_RAID_DID_NOT_REACH_DRAWN_LIMIT', rounds: result?.roundsExecuted, winner: result?.winner });
+    }
+    if (damageRatio < 0.6 || damageRatio > 1.67) {
+      failures.push({ code: 'BALANCED_RAID_DAMAGE_CAPACITY_SKEWED', playerDamage, enemyDamage, damageRatio });
+    }
+    if (playerStanding < 2 || enemyStanding < 2) {
+      failures.push({ code: 'BALANCED_RAID_SIDE_COLLAPSED', playerStanding, enemyStanding });
+    }
+  }
   if (caseId === 'item_creation_consumption') {
     const enemyIds = new Set((definition?.combatData?.参战者?.team_enemy || [])
       .map(unit => String(unit?.id || unit?.name || unit?.名称 || '').trim())

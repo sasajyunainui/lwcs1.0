@@ -131,7 +131,51 @@
   }
 
   function readShield(unit = {}) {
-    return Math.max(0, readNumber(unit, ['shield', '护盾', '护盾值'], 0));
+    const direct = Math.max(0, readNumber(unit, ['shield', '护盾', '护盾值'], 0));
+    const stateTotal = Object.values(unit?.状态效果 || {}).reduce(
+      (total, condition) => total + Math.max(0, Number(condition?.shield_value || 0)),
+      0,
+    );
+    return Math.max(direct, stateTotal);
+  }
+
+  function absorbPreviewShield(unit = {}, incomingDamage = 0) {
+    let remaining = Math.max(0, Number(incomingDamage || 0));
+    if (!(remaining > 0)) return 0;
+    const entries = Object.entries(unit?.状态效果 || {})
+      .map(([key, condition]) => ({
+        key,
+        condition,
+        duration: Math.max(0, Number(condition?.duration ?? condition?.持续回合 ?? 0)),
+        value: Math.max(0, Number(condition?.shield_value || 0)),
+      }))
+      .filter(entry => entry.value > 0)
+      .sort((left, right) => left.duration - right.duration || (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+    let absorbed = 0;
+    entries.forEach(entry => {
+      if (!(remaining > 0)) return;
+      const amount = Math.min(entry.value, remaining);
+      entry.condition.shield_value = Math.max(0, entry.value - amount);
+      remaining -= amount;
+      absorbed += amount;
+      if (entry.condition.shield_value <= 0) delete unit.状态效果[entry.key];
+    });
+    if (!entries.length) {
+      const direct = Math.max(0, readNumber(unit, ['shield', '护盾', '护盾值'], 0));
+      const amount = Math.min(direct, remaining);
+      absorbed += amount;
+      const next = Math.max(0, direct - amount);
+      unit.shield = next;
+      unit.护盾 = next;
+    } else {
+      const next = Object.values(unit?.状态效果 || {}).reduce(
+        (total, condition) => total + Math.max(0, Number(condition?.shield_value || 0)),
+        0,
+      );
+      if ('shield' in unit) unit.shield = next;
+      if ('护盾' in unit) unit.护盾 = next;
+    }
+    return absorbed;
   }
 
   function readResourceMax(unit = {}, resource = '') {
@@ -759,17 +803,51 @@
     }
   }
 
+  function effectTargetsAllies(effect = {}) {
+    const targetText = String(effect?.目标 || '').trim();
+    if (/自身|友方|己方/.test(targetText)) return true;
+    if (/敌方|对方/.test(targetText)) return false;
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '伤害结算' || prototype === '机制抹消') return false;
+    if (prototype === '召唤生成' || prototype === '机制授予' || prototype === '规则防御') return true;
+    if (prototype === '护盾变化') {
+      return !/负向|削减|移除|破盾/.test(String(effect?.护盾模式 || '')) &&
+        parseSignedValue(effect?.数值, 1) >= 0;
+    }
+    if (prototype === '资源变化') return parseSignedValue(effect?.数值, 1) >= 0;
+    if (['属性修正', '判定修正', '结算修正', '时窗修正'].includes(prototype)) {
+      return parseSignedValue(effect?.数值 ?? effect?.副数值, 1) >= 0;
+    }
+    if (prototype === '状态移除') return /负面|减益|控制|异常/.test(String(effect?.状态 || effect?.状态名称 || ''));
+    if (prototype === '状态施加') {
+      const type = String(effect?.类型 || '').trim().toLowerCase();
+      if (type === 'buff') return true;
+      if (type === 'debuff') return false;
+      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
+      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|位移限制|索敌干扰/.test(state)) return false;
+      if (/护盾|恢复|治疗|增幅|强化|免疫|霸体|加速/.test(state)) return true;
+      const combatEffect = deriveStateCombatEffect(effect);
+      if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
+        Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
+        Number(combatEffect.lock_level || 0) > 0 || Number(combatEffect.dot_damage || 0) > 0) return false;
+      const rawValue = effect?.数值 ?? effect?.副数值;
+      return String(rawValue ?? '').trim() ? parseSignedValue(rawValue, 1) >= 0 : false;
+    }
+    return false;
+  }
+
   function resolveTargets(worldSnapshot = {}, actor = {}, declaration = {}, effect = {}) {
     const all = listUnits(worldSnapshot);
     const actorSide = sideOf(worldSnapshot, actor);
     const targetText = String(effect?.目标 || declaration?.targetKind || '').trim();
     const declaredIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
     if (/自身/.test(targetText)) return [actor];
-    if (declaredIds.length) return declaredIds.map(id => findUnit(worldSnapshot, id)).filter(Boolean);
     const friendly = all.filter(entry => entry.side === actorSide && isAlive(entry.unit)).map(entry => entry.unit);
     const hostile = all.filter(entry => entry.side !== actorSide && isAlive(entry.unit)).map(entry => entry.unit);
     if (/友方.*群体|己方.*群体/.test(targetText)) return friendly;
-    if (/群体|全场/.test(targetText)) return /友方|己方/.test(targetText) ? friendly : hostile;
+    if (/全场/.test(targetText)) return [...friendly, ...hostile];
+    if (/群体/.test(targetText)) return effectTargetsAllies(effect) ? friendly : hostile;
+    if (declaredIds.length) return declaredIds.map(id => findUnit(worldSnapshot, id)).filter(Boolean);
     if (/友方|己方/.test(targetText)) return friendly.slice(0, 1);
     return hostile.slice(0, 1);
   }
@@ -988,22 +1066,41 @@
             1
           ), 0, 1);
           const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
-          const damageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
-          const expectedDamage = Math.min(damageLimit, rawDamage * hitProbability * applicationProbability);
-          const fullHitDamage = Math.min(damageLimit, rawDamage);
-          const traumaUnconscious = shouldTriggerTraumaUnconscious(fullHitDamage, readHp(currentTarget) - fullHitDamage, readHpMax(currentTarget));
-          const nonlethalIncapacitated = nonlethalIntent && damageLimit > 0 && expectedDamage >= damageLimit - 1e-9;
+          const hpDamageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - 1) : readHp(currentTarget);
+          const shieldBefore = readShield(currentTarget);
+          const incomingDamage = Math.min(shieldBefore + hpDamageLimit, rawDamage * hitProbability * applicationProbability);
+          const fullHitIncoming = Math.min(shieldBefore + hpDamageLimit, rawDamage);
+          let shieldAbsorb = 0;
+          let expectedDamage = 0;
           overlay.changeUnit(unitId(target), unit => {
+            shieldAbsorb = absorbPreviewShield(unit, incomingDamage);
+            expectedDamage = Math.min(hpDamageLimit, Math.max(0, incomingDamage - shieldAbsorb));
             setHp(unit, readHp(unit) - expectedDamage);
-            if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
-            if (traumaUnconscious && hitProbability >= 1 - 1e-9) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
           });
+          const fullHitDamage = Math.min(hpDamageLimit, Math.max(0, fullHitIncoming - shieldBefore));
+          const traumaUnconscious = shouldTriggerTraumaUnconscious(fullHitDamage, readHp(currentTarget) - fullHitDamage, readHpMax(currentTarget));
+          const nonlethalIncapacitated = nonlethalIntent && hpDamageLimit > 0 && expectedDamage >= hpDamageLimit - 1e-9;
+          if (nonlethalIncapacitated || traumaUnconscious && hitProbability >= 1 - 1e-9) {
+            overlay.changeUnit(unitId(target), unit => {
+              if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
+              if (traumaUnconscious && hitProbability >= 1 - 1e-9) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
+            });
+          }
+          if (shieldAbsorb > 0) {
+            ledger.addOutcome({
+              ...context,
+              targetId: unitId(target),
+              outcomeKind: 'SHIELD_DELTA',
+              threatValue: shieldAbsorb / readHpMax(currentTarget) * 100,
+              evidence: { current: shieldBefore, next: Math.max(0, shieldBefore - shieldAbsorb), delta: -shieldAbsorb, absorbedDamage: shieldAbsorb },
+            });
+          }
           ledger.addOutcome({
             ...context,
             targetId: unitId(target),
             outcomeKind: 'HP_DELTA',
             threatValue: expectedDamage / readHpMax(currentTarget) * 100,
-            evidence: { rawDamage, hitProbability, applicationProbability, expectedDamage, damageType: effect?.伤害类型 || '' },
+            evidence: { rawDamage, hitProbability, applicationProbability, incomingDamage, shieldAbsorb, expectedDamage, damageType: effect?.伤害类型 || '' },
           });
           if (nonlethalIncapacitated) {
             ledger.addOutcome({
@@ -1162,7 +1259,8 @@
         const ringId = String(context.declaration?.ringId || effect?.魂环ID || '').trim();
         if (!ringId) throw new Error('battle_preview_ring_selection_missing');
         overlay.schedule({ type: 'RING_DESTROY', actorId: unitId(actor), ringId, multiplier: Number(effect?.强化倍率 || 1) });
-        ledger.addOutcome({ ...context, targetId: unitId(actor), outcomeKind: 'IRREVERSIBLE_ASSET_LOST', threatValue: 0, evidence: { ringId } });
+        const cost = Math.max(0, Number(context.declaration?.ringCost || 20));
+        ledger.addOutcome({ ...context, targetId: unitId(actor), outcomeKind: 'IRREVERSIBLE_ASSET_LOST', threatValue: cost, evidence: { ringId, cost } });
         ledger.addOutcome({ ...context, effectInstanceId: `${context.effectInstanceId}:boost`, targetId: unitId(actor), outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED', threatValue: 0, evidence: { multiplier: Number(effect?.强化倍率 || 1) } });
         return;
       }
@@ -1524,6 +1622,7 @@
     readResourceMax,
     readCombatStat,
     parseSignedValue,
+    effectTargetsAllies,
     collectEffects,
     effectConditionEnabled,
     calculateBaseDamage,

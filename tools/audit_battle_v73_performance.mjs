@@ -7,6 +7,9 @@ import { execFileSync, spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 
+const toolDir = path.dirname(fileURLToPath(import.meta.url));
+const lwcsRoot = path.resolve(toolDir, '..');
+const projectRoot = path.resolve(lwcsRoot, '..');
 const baselineCommit = 'da9720b';
 const warmupIterations = Math.max(0, Number.parseInt(process.env.BATTLE_PERF_WARMUPS || '5', 10) || 0);
 const measuredIterations = Math.max(1, Number.parseInt(process.env.BATTLE_PERF_ITERATIONS || '15', 10) || 15);
@@ -17,7 +20,7 @@ const compareBaseline = process.env.BATTLE_PERF_COMPARE_BASELINE === '1';
 const enforceThreshold = process.env.BATTLE_PERF_ENFORCE !== '0';
 const progressEnabled = process.env.BATTLE_PERF_PROGRESS === '1';
 const diagnosticsEnabled = process.env.BATTLE_PERF_DIAGNOSTICS === '1';
-const progressPath = path.resolve('artifacts/battle_v73_performance_progress.log');
+const progressPath = path.resolve(projectRoot, 'artifacts/battle_v73_performance_progress.log');
 function writeProgress(message) {
   if (!progressEnabled) return;
   fs.mkdirSync(path.dirname(progressPath), { recursive: true });
@@ -65,7 +68,7 @@ function instrumentLegacyTeamBattleSource(source) {
   );
 }
 
-function instrumentCurrentTeamBattleSources(uiSource, runtimeSource) {
+function instrumentCurrentTeamBattleSource(runtimeSource) {
   const replaceOnce = (text, search, replacement, label) => {
     const index = text.indexOf(search);
     if (index < 0) throw new Error(`performance_instrument_anchor_missing:${label}`);
@@ -84,13 +87,26 @@ function instrumentCurrentTeamBattleSources(uiSource, runtimeSource) {
     `        root.__LWCS_PERF_ROUND_TIMINGS__.push(performance.now() - __performanceRoundStarted);\n        if (terminal?.terminal === true || alive.playerAlive <= 0 || alive.enemyAlive <= 0) break;\n      }`,
     'structured_round_end',
   );
-  const instrumentedUi = replaceOnce(
-    uiSource,
-    `        function runTeamBattleRound(combatData) {`,
-    `        root.__LWCS_PERF_RUN_TEAM_BATTLE__ = runTeamBattleSimulation;\n\n        function runTeamBattleRound(combatData) {`,
-    'current_runner_export',
+  instrumentedRuntime = replaceOnce(
+    instrumentedRuntime,
+    `  const api = Object.freeze({`,
+    `  root.__LWCS_PERF_RUN_TEAM_BATTLE__ = (combatData, rounds) => {
+    const result = runStructuredBattle({
+      caseId: 'battle-v73-performance',
+      seed: 730063,
+      combatData,
+      mode: 'team_preview',
+      rounds,
+      settings: {},
+    });
+    Object.assign(combatData, result.combatData || {});
+    return { ...result, rounds: Number(result.roundsExecuted || 0) };
+  };
+
+  const api = Object.freeze({`,
+    'structured_runner_export',
   );
-  return { instrumentedUi, instrumentedRuntime };
+  return instrumentedRuntime;
 }
 
 function createSandbox(source, runtimeSource = '') {
@@ -125,18 +141,23 @@ function createSandbox(source, runtimeSource = '') {
   sandbox.self = sandbox;
   sandbox.__LWCS_PERF_RESET_RANDOM__ = () => { randomState = 0x63a5f17d; };
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(path.resolve('lwcs/MVU_Skill_Runtime.js'), 'utf8'), sandbox, { filename: 'MVU_Skill_Runtime.js' });
+  vm.runInContext(fs.readFileSync(path.resolve(lwcsRoot, 'MVU_Skill_Runtime.js'), 'utf8'), sandbox, { filename: 'MVU_Skill_Runtime.js' });
   if (runtimeSource) {
-    vm.runInContext(fs.readFileSync(path.resolve('lwcs/BattlePreview_Module.js'), 'utf8'), sandbox, { filename: 'BattlePreview_Module.js' });
-    vm.runInContext(fs.readFileSync(path.resolve('lwcs/BattleDecision_Module.js'), 'utf8'), sandbox, { filename: 'BattleDecision_Module.js' });
+    vm.runInContext(fs.readFileSync(path.resolve(lwcsRoot, 'BattlePreview_Module.js'), 'utf8'), sandbox, { filename: 'BattlePreview_Module.js' });
+    vm.runInContext(fs.readFileSync(path.resolve(lwcsRoot, 'BattleDecision_Module.js'), 'utf8'), sandbox, { filename: 'BattleDecision_Module.js' });
+    vm.runInContext(instrumentCurrentTeamBattleSource(runtimeSource), sandbox, { filename: 'BattleRuntime_Module.js' });
+  } else {
+    vm.runInContext(fs.readFileSync(path.resolve(lwcsRoot, 'BattleRuntime_Module.js'), 'utf8'), sandbox, { filename: 'BattleRuntime_Module.js' });
+    vm.runInContext(instrumentLegacyTeamBattleSource(source), sandbox, { filename: 'BattleUI_Module.js' });
+    const recordNode = Object.assign(makeNode(), { id: 'ui-battle-record-terminal' });
+    const scopeNode = Object.assign(makeNode(), { querySelector: selector => selector === '#ui-battle-record-terminal' ? recordNode : null });
+    new sandbox.BattleUIComponent({ innerHTML: '', querySelector: selector => selector === '.battle-module-scope' ? scopeNode : null }, {}, {});
   }
-  const currentSources = runtimeSource ? instrumentCurrentTeamBattleSources(source, runtimeSource) : null;
-  vm.runInContext(currentSources?.instrumentedRuntime || fs.readFileSync(path.resolve('lwcs/BattleRuntime_Module.js'), 'utf8'), sandbox, { filename: 'BattleRuntime_Module.js' });
-  vm.runInContext(currentSources?.instrumentedUi || instrumentLegacyTeamBattleSource(source), sandbox, { filename: 'BattleUI_Module.js' });
-  const recordNode = Object.assign(makeNode(), { id: 'ui-battle-record-terminal' });
-  const scopeNode = Object.assign(makeNode(), { querySelector: selector => selector === '#ui-battle-record-terminal' ? recordNode : null });
-  new sandbox.BattleUIComponent({ innerHTML: '', querySelector: selector => selector === '.battle-module-scope' ? scopeNode : null }, {}, {});
-  assert.equal(typeof sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__, 'function', '性能基线缺少正式调试入口');
+  if (runtimeSource) {
+    assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__?.runBattleCase, 'function', '当前性能链缺少正式Runtime入口');
+  } else {
+    assert.equal(typeof sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__, 'function', '性能基线缺少正式调试入口');
+  }
   assert.equal(typeof sandbox.__LWCS_PERF_RUN_TEAM_BATTLE__, 'function', '性能基线缺少团战性能入口');
   return sandbox;
 }
@@ -258,9 +279,9 @@ const median = values => {
 const workerMode = String(process.env.BATTLE_PERF_WORKER || '').trim();
 if (workerMode) {
   const source = workerMode === 'baseline'
-    ? execFileSync('git', ['-C', 'lwcs', 'show', `${baselineCommit}:BattleUI_Module.js`], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 })
-    : fs.readFileSync(path.resolve('lwcs/BattleUI_Module.js'), 'utf8');
-  const runtimeSource = workerMode === 'current' ? fs.readFileSync(path.resolve('lwcs/BattleRuntime_Module.js'), 'utf8') : '';
+    ? execFileSync('git', ['-C', lwcsRoot, 'show', `${baselineCommit}:BattleUI_Module.js`], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 })
+    : '';
+  const runtimeSource = workerMode === 'current' ? fs.readFileSync(path.resolve(lwcsRoot, 'BattleRuntime_Module.js'), 'utf8') : '';
   const sandbox = createSandbox(source, runtimeSource);
   const elapsedMs = [];
   const roundTimingSamples = [];
@@ -406,7 +427,7 @@ if (workerMode) {
     passed: summaries.every(item => item.passed),
   };
   const output = { summary, shapes: summaries };
-  const evidencePath = path.resolve('artifacts/battle_v73_performance.json');
+  const evidencePath = path.resolve(projectRoot, 'artifacts/battle_v73_performance.json');
   fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
   fs.writeFileSync(evidencePath, JSON.stringify(output, null, 2), 'utf8');
   console.log(JSON.stringify(output, null, 2));

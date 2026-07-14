@@ -43,9 +43,9 @@ function participant(library, getBaseStats, name, options = {}) {
   const soulMax = Math.max(1, Math.floor(Number(stats?.sp_max || 1)));
   const spiritMax = Math.max(1, Math.floor(Number(stats?.men_max || 1)));
   const staminaMax = hpMax;
-  const strength = Math.max(1, Math.floor(Number(stats?.str || 1)));
-  const defense = Math.max(1, Math.floor(Number(stats?.def || 1)));
-  const agility = Math.max(1, Math.floor(Number(stats?.agi || 1)));
+  const strength = Math.max(1, Math.floor(Number(stats?.str || 1) * Number(options.strengthRatio ?? 1)));
+  const defense = Math.max(1, Math.floor(Number(stats?.def || 1) * Number(options.defenseRatio ?? 1)));
+  const agility = Math.max(1, Math.floor(Number(stats?.agi || 1) * Number(options.agilityRatio ?? 1)));
   const hp = Math.max(1, Math.round(hpMax * Number(options.hpRatio ?? 1)));
   const stamina = Math.max(1, Math.round(staminaMax * Number(options.staminaRatio ?? 1)));
   const soul = Math.max(0, Math.round(soulMax * Number(options.soulRatio ?? 1)));
@@ -167,17 +167,17 @@ export function buildManualCases(library, getBaseStats) {
     battle('duel_charge_interrupt_safer', 4, '切磋', [make('舞长空', { level: 60 })], [make('古月', { level: 60, charging: charge })]),
     battle('duel_charge_defense_safer', 4, '切磋', [make('韦小枫', { hpRatio: 0.25, soulRatio: 0 })], [make('舞长空', { charging: longCharge })]),
     battle('team_focus_without_overkill', 4, '击败', [make('唐舞麟'), make('古月'), make('谢邂')], [make('张扬子', { hpRatio: 0.25 }), make('王金玺'), make('韦小枫')]),
-    battle('team_protect_critical_ally', 4, '守护', [make('舞长空', { level: 70, hpRatio: 0.05 }), make('雅莉'), make('唐舞麟', { level: 70 })], [make('龙跃', { level: 70 }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 })]),
+    battle('team_protect_critical_ally', 4, '守护', [make('舞长空', { level: 70, hpRatio: 0.15 }), make('雅莉'), make('唐舞麟', { level: 70 })], [make('龙跃', { level: 70, strengthRatio: 0.2 }), make('戴月炎', { level: 70, strengthRatio: 0.2 }), make('苏沐', { level: 70, strengthRatio: 0.2 })]),
     battle('team_heal_crisis', 4, '守护', [make('雅莉', { level: 98, hpRatio: 0.8 }), make('舞长空', { level: 90, hpRatio: 0.25 }), make('古月', { level: 90, hpRatio: 0.3 })], [make('龙跃', { level: 90 }), make('戴月炎', { level: 90 }), make('苏沐', { level: 90 })]),
     battle('team_control_overlap', 4, '击败', [make('古月', { level: 60 }), make('许小言', { level: 60 }), make('舞长空', { level: 60 })], [make('龙跃', { level: 55, charging: charge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })]),
     battle('team_resource_support', 6, '击败', [make('白寒樱', { level: 50 }), make('唐舞麟', { level: 50, soulRatio: 0.08 }), make('古月', { level: 50, soulRatio: 0.12 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 })]),
     battle('team_multi_target_response', 6, '击败', [make('唐舞麟', { level: 60 }), make('谢邂', { level: 60 }), make('古月', { level: 60 })], [make('张扬子', { level: 52, hpRatio: 0.55 }), make('王金玺', { level: 52, hpRatio: 0.55 }), make('韦小枫', { level: 52, hpRatio: 0.55 })]),
     battle('team_counter_coordination', 6, '切磋', [make('谢邂', { level: 55 }), make('唐舞麟', { level: 55 }), make('古月', { level: 55 })], [make('王金玺', { level: 55 }), make('张扬子', { level: 55 }), make('许小言', { level: 55 })]),
     battle('team_unknown_enemy_adaptation', 6, '切磋', [make('唐舞麟', { level: 55 }), make('古月', { level: 55 }), make('谢邂', { level: 55 })], [make('龙跃', { level: 58, charging: longCharge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })], { confidence: 0.12 }),
-    battle('raid_balanced', 5, '击败', [make('唐舞麟', { level: 55 }), make('古月', { level: 55 }), make('谢邂', { level: 55 }), make('许小言', { level: 55 }), make('叶星澜', { level: 55 }), make('徐笠智', { level: 55 }), make('原恩夜辉', { level: 55 })], [make('龙跃', { level: 55 }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 }), make('王金玺', { level: 55 }), make('张扬子', { level: 55 }), make('韦小枫', { level: 55 }), make('乐正宇', { level: 55 })]),
+    battle('raid_balanced', 5, '击败', [make('唐舞麟', { level: 55 }), make('古月', { level: 55 }), make('谢邂', { level: 55 }), make('许小言', { level: 55 }), make('叶星澜', { level: 55 }), make('徐笠智', { level: 55 }), make('原恩夜辉', { level: 55 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 }), make('王金玺', { level: 50 }), make('张扬子', { level: 50 }), make('韦小枫', { level: 50 }), make('乐正宇', { level: 50 })]),
     battle('raid_level_gap', 5, '击败', [make('唐舞麟', { level: 90 }), make('古月', { level: 90 }), make('谢邂', { level: 90 }), make('许小言', { level: 90 }), make('叶星澜', { level: 90 }), make('徐笠智', { level: 90 }), make('原恩夜辉', { level: 90 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 }), make('王金玺', { level: 50 }), make('张扬子', { level: 50 }), make('韦小枫', { level: 50 }), make('乐正宇', { level: 50 })]),
     battle('raid_control_heavy', 5, '击败', [make('许小言', { level: 75 }), make('舞长空', { level: 75 }), make('古月', { level: 75 }), make('唐舞麟', { level: 75 }), make('谢邂', { level: 75 }), make('叶星澜', { level: 75 }), make('雅莉', { level: 75 })], [make('龙跃', { level: 70, charging: charge }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 }), make('王金玺', { level: 70 }), make('张扬子', { level: 70 }), make('韦小枫', { level: 70 }), make('原恩夜辉', { level: 70 })]),
-    battle('raid_summon_heavy', 5, '击败', [make('韦小枫', { level: 65 }), make('张扬子', { level: 65 }), make('徐笠智', { level: 65 }), make('古月', { level: 65 }), make('谢邂', { level: 65 }), make('唐舞麟', { level: 65 }), make('许小言', { level: 65 })], [make('龙跃', { level: 65 }), make('戴月炎', { level: 65 }), make('苏沐', { level: 65 }), make('王金玺', { level: 65 }), make('叶星澜', { level: 65 }), make('原恩夜辉', { level: 65 }), make('乐正宇', { level: 65 })]),
+    battle('raid_summon_heavy', 5, '击败', [make('韦小枫', { level: 65 }), make('谢邂', { level: 65 }), make('腾腾', { level: 65 }), make('简默晨', { level: 65, strengthRatio: 0.1 }), make('狂战天', { level: 65, strengthRatio: 0.1 }), make('徐笠智', { level: 65 }), make('许小言', { level: 65 })], [make('龙跃', { level: 65 }), make('戴月炎', { level: 65 }), make('苏沐', { level: 65 }), make('王金玺', { level: 65 }), make('叶星澜', { level: 65 }), make('原恩夜辉', { level: 65 }), make('乐正宇', { level: 65 })]),
     battle('summon_one_window', 4, '切磋', [make('韦小枫', { level: 50 })], [make('谢邂', { level: 50 })]),
     battle('item_creation_consumption', 6, '守护', [make('徐笠智', { level: 50 }), make('唐舞麟', { level: 50, hpRatio: 0.6, staminaRatio: 0.3 }), make('古月', { level: 50, staminaRatio: 0.5 })], [make('龙跃', { level: 45 }), make('戴月炎', { level: 45 }), make('苏沐', { level: 45 })]),
     battle('equipment_switch_no_loop', 6, '切磋', [equipmentTester], [make('王金玺', { level: 50 })]),

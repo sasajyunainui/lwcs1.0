@@ -399,6 +399,7 @@
           value.forEach(visit);
           return;
         }
+        if (Number(value?.炸环恢复tick || 0) > 0 || value?.__战斗禁用 === true) return;
         if (Array.isArray(value._效果数组) && value._效果数组.length && !isPassiveSkill(value)) {
           let effectFingerprint = effectFingerprintCache.get(value._效果数组);
           if (!effectFingerprint) {
@@ -432,6 +433,38 @@
     const result = Object.freeze(output);
     unitSkillCache.set(unit, result);
     return result;
+  }
+
+  function collectAvailableRings(unit = {}, currentTick = 0) {
+    const rings = [];
+    const visitRings = (container, path = []) => {
+      Object.entries(container || {}).forEach(([key, value]) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+        const nextPath = [...path, key];
+        if (/^第\d+魂环$/.test(String(key || '').trim())) {
+          const recoveryTick = Math.max(0, Number(value?.炸环恢复tick || 0));
+          if (!(recoveryTick > Math.max(0, Number(currentTick || 0))) && value?.__战斗禁用 !== true) {
+            const age = Math.max(1, Number(value?.年限 || 1));
+            const skillCount = Object.entries(value).filter(([childKey, child]) =>
+              /^第\d+魂技(?:_2)?$/.test(String(childKey || '').trim()) &&
+              child && typeof child === 'object' && !Array.isArray(child)
+            ).length;
+            const ringId = nextPath.join('/');
+            rings.push(Object.freeze({
+              ringId,
+              ringPath: Object.freeze(nextPath),
+              label: `${key}·${Math.round(age)}年`,
+              age,
+              cost: clamp(8 + 6 * Math.log10(Math.max(10, age)) + Math.max(0, skillCount - 1) * 3, 12, 55),
+            }));
+          }
+          return;
+        }
+        if (/^第\d+(?:武魂|魂灵)$/.test(String(key || '').trim())) visitRings(value, nextPath);
+      });
+    };
+    visitRings(unit);
+    return Object.freeze(rings);
   }
 
   function cachedBaseActionValue(actor, target, actionKind, skill = null) {
@@ -838,8 +871,14 @@
         : (reactionOnly || counterOnly) && reactionSourceId && ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)
         ? [[reactionSourceId]]
         : legalTargetSets;
+      const ringBurst = (Array.isArray(counterSkill?._效果数组) ? counterSkill._效果数组 : [])
+        .some(effect => String(effect?.原型 || '').trim() === '炸环');
+      const ringOptions = ringBurst
+        ? collectAvailableRings(actor, worldSnapshot?.当前世界tick)
+        : [null];
       targetSets.forEach((targetIds, targetIndex) => {
-        const id = `${actorId}:${forcedSkill ? 'forced-skill' : 'skill'}:${skillId(skill, index)}:${targetIndex}`;
+        ringOptions.forEach(ringOption => {
+        const id = `${actorId}:${forcedSkill ? 'forced-skill' : 'skill'}:${skillId(skill, index)}:${targetIndex}${ringOption ? `:ring:${ringOption.ringId}` : ''}`;
         const declaration = {
           actionId: id,
           actorId,
@@ -848,8 +887,15 @@
           skill: counterSkill,
           resourceCosts: parseSkillCosts(counterSkill),
         };
-        const ringId = String(counterSkill?.ringId || counterSkill?.魂环ID || '').trim();
-        if (ringId) declaration.ringId = ringId;
+        const explicitRingId = String(counterSkill?.ringId || counterSkill?.魂环ID || '').trim();
+        if (ringOption) {
+          declaration.ringId = ringOption.ringId;
+          declaration.ringPath = [...ringOption.ringPath];
+          declaration.ringLabel = ringOption.label;
+          declaration.ringCost = ringOption.cost;
+        } else if (explicitRingId) {
+          declaration.ringId = explicitRingId;
+        }
         if (counterSkill?.historySnapshot !== undefined) {
           declaration.historySnapshot = cloneValue(worldSnapshot?.回合开始快照 || worldSnapshot);
         }
@@ -859,6 +905,7 @@
           skill: counterSkill,
           costs: parseSkillCosts(counterSkill),
           creation,
+        });
         });
       });
     });
@@ -2533,6 +2580,7 @@
     version: VERSION,
     actionKinds,
     collectSkills,
+    collectAvailableRings,
     parseSkillCosts,
     costAffordable,
     enumerateCandidates,

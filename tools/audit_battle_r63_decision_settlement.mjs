@@ -123,6 +123,23 @@ const scopeNode = Object.assign(makeNode(), { querySelector(selector) { return s
 const container = { innerHTML: '', querySelector(selector) { return selector === '.battle-module-scope' ? scopeNode : null; } };
 new sandbox.BattleUIComponent(container, {}, {});
 
+const uiCandidateInput = combatData();
+const uiActions = sandbox.BattleUIBridge.getAvailableActions(uiCandidateInput.参战者.team_player[0], uiCandidateInput);
+assert.ok(uiActions.length >= 3, 'BattleUI没有投影正式Decision候选');
+assert.ok(uiActions.every(action => Array.isArray(action.declarations) && action.declarations.length > 0), 'BattleUI动作仍由本地旧声明器生成');
+assert.ok(uiActions.every(action => action.declarations.every(declaration => declaration?.actorId === 'player-a' && declaration?.actionKind)), 'BattleUI候选缺少正式结构化声明');
+const uiBasicAction = uiActions.find(action => action.actionKind === 'BASIC_ATTACK');
+const uiSkillAction = uiActions.find(action => action.actionKind === 'RELEASE_SKILL');
+assert.ok(uiBasicAction?.declaration?.targetIds?.includes('enemy-a'), 'BattleUI普通攻击目标没有来自Decision候选');
+assert.equal(uiSkillAction?.raw_skill?.name, '测试突击', 'BattleUI魂技不是由正式技能候选投影');
+const uiLockedPreview = sandbox.BattleUIBridge.executePlayerBattleIntent('测试突击', {
+  mode: 'single_round',
+  dryRun: true,
+  combatData: uiCandidateInput,
+  actionDeclaration: uiSkillAction.declaration,
+});
+assert.ok(uiLockedPreview.ledger.some(event => event?.eventKind === 'action_start' && event?.actorControl === 'PLAYER_LOCKED' && event?.actionName === '测试突击'), 'BattleUI结构化声明没有穿过唯一正式入口');
+
 const formalInput = combatData();
 const formalResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeDeclaration({
   combatData: formalInput,
@@ -519,6 +536,44 @@ const mixedShieldFacts = mixedShieldResult.ledger.filter(event => event?.eventKi
 assert.equal(mixedShieldFacts.length, 1, `属性强化与护盾原型重复生成护盾事实:${JSON.stringify(mixedShieldFacts)}`);
 assert.equal(Number(mixedShieldFacts[0]?.meta?.amount || 0), 100, '混合防御技能护盾值没有按唯一原型结算');
 
+const mixedTargetInput = combatData();
+mixedTargetInput.参战者.team_player.push(participant('player-b', 'player', 120));
+mixedTargetInput.参战者.team_enemy.push(participant('enemy-b', 'enemy', 120));
+const mixedTargetSkill = {
+  id: 'mixed-hostile-damage-allied-shield', name: '攻守分流', 魂技名: '攻守分流', 消耗: '无', 前摇: 1,
+  _效果数组: [
+    { 原型: '伤害结算', 目标: '群体', 威力倍率: 100, 伤害类型: '近身攻击', 生效方式: '独立生效' },
+    { 原型: '护盾变化', 目标: '群体', 护盾模式: '正向护盾', 数值: '+20%', 持续回合: 1, 生效方式: '独立生效' },
+  ],
+};
+mixedTargetInput.参战者.team_player[0].技能列表 = [structuredClone(mixedTargetSkill)];
+const mixedTargetResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'mixed-effect-target-polarity', seed: 6334, combatData: mixedTargetInput, mode: 'team_preview', rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a', 'enemy-b'],
+    skill: structuredClone(mixedTargetSkill),
+  },
+  settings: {},
+});
+const mixedTargetAction = mixedTargetResult.ledger.find(event =>
+  event?.eventKind === 'action_start' && event?.actorName === 'player-a' && event?.actionName === '攻守分流'
+);
+const mixedTargetFacts = mixedTargetResult.ledger.filter(event =>
+  mixedTargetAction && String(event?.sourceActionId || event?.actionId || '') === String(mixedTargetAction.actionId || '')
+);
+assert.deepEqual(
+  [...new Set(mixedTargetFacts.filter(event => event?.eventKind === 'hit_result').map(event => event?.targetName))].sort(),
+  ['enemy-a', 'enemy-b'],
+  '混合技能的敌对伤害没有只落到敌方群体'
+);
+assert.deepEqual(
+  [...new Set(mixedTargetFacts.filter(event => event?.eventKind === 'shield_create' && Number(event?.meta?.amount || 0) > 0).map(event => event?.targetName))].sort(),
+  ['player-a', 'player-b'],
+  '混合技能的正向护盾错误沿用了敌对声明目标'
+);
+
 const summonOrderInput = combatData();
 const summonOrderSkill = {
   id: 'report-order-summon',
@@ -560,6 +615,54 @@ assert.ok(
     String(event?.actorName || '').startsWith('追击影')
   ),
   '主动动作生成的协同召唤没有消费首个真实行动窗口',
+);
+
+const oneSidedMultihitInput = combatData();
+oneSidedMultihitInput.战斗意图 = '击败对手';
+oneSidedMultihitInput.参战者.team_enemy[0].属性.HP = 120;
+oneSidedMultihitInput.参战者.team_enemy[0].属性.HP上限 = 120;
+const oneSidedMultihitSkill = {
+  id: 'one-sided-multihit',
+  name: '三段追击',
+  魂技名: '三段追击',
+  消耗: '无',
+  _效果数组: [{
+    原型: '伤害结算',
+    目标: '单体',
+    威力倍率: 100,
+    攻击段数: 3,
+    伤害类型: '近身攻击',
+    命中概率: 1,
+  }],
+};
+oneSidedMultihitInput.参战者.team_player[0].技能列表 = [structuredClone(oneSidedMultihitSkill)];
+const oneSidedMultihitResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'report-one-sided-multihit-total',
+  seed: 63341,
+  combatData: oneSidedMultihitInput,
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actor_name: 'player-a',
+    target_name: 'enemy-a',
+    type: 'skill',
+    action_type: '释放魂技',
+    skill: structuredClone(oneSidedMultihitSkill),
+  },
+  settings: {},
+});
+const oneSidedDamageFacts = oneSidedMultihitResult.reportBlocks
+  .find(block => block?.blockType === 'ROUND_SUMMARY' && Number(block?.round || 0) === 1)
+  ?.facts?.filter(fact => fact?.factType === 'DAMAGE' && fact?.actorSide === 'player' && Number(fact?.value || 0) > 0) || [];
+const oneSidedDamageTotal = oneSidedDamageFacts.reduce((sum, fact) => sum + Math.round(Number(fact?.value || 0)), 0);
+const oneSidedRoundSummary = oneSidedMultihitResult.reportBlocks.find(block =>
+  block?.blockType === 'ROUND_SUMMARY' && Number(block?.round || 0) === 1
+);
+assert.ok(oneSidedDamageFacts.length > 1, `单边多段回归没有形成多个伤害事实:${JSON.stringify(oneSidedMultihitResult.ledger)}`);
+assert.match(
+  String(oneSidedRoundSummary?.outcomeSummary || ''),
+  new RegExp(`我方共造成 ${oneSidedDamageTotal} 点伤害`),
+  `单边多段回合汇总没有显示本方总伤害:${JSON.stringify(oneSidedRoundSummary)}`,
 );
 
 const reactionSummonInput = combatData();
@@ -866,6 +969,21 @@ assert.ok(healerFacts.some(event =>
   Number(event?.meta?.delta || 0) > 0
 ), '保核治疗选择没有在正式结算中恢复指定危急单位');
 assert.ok(!healerFacts.some(event => event?.actorName === '雅莉' && event?.targetSide === 'enemy' && ['resource_change', 'state_apply', 'shield_create'].includes(event?.eventKind)), '友方群体保核效果错误资助敌方');
+const protectResolution = protectManualResult.ledger.find(event => event?.eventKind === 'battle_objective_resolved');
+assert.equal(protectResolution?.result, 'player', '保核样本没有形成唯一的我方胜利终态');
+assert.equal(protectManualResult.finalBattleReport?.objectiveWinner, 'player', '保核样本没有让危急目标撑到目标回合');
+assert.equal(protectManualResult.roundsExecuted, 4, '保核样本没有完整覆盖四回合保护链');
+assert.ok(protectManualResult.ledger.some(event =>
+  event?.eventKind === 'shield_break' &&
+  event?.targetName === '舞长空' &&
+  String(event?.meta?.source || '').trim() === 'structured_runtime' &&
+  Number(event?.meta?.amount || 0) > 0
+), '保核样本没有形成护盾实际吸收伤害的事实');
+assert.ok(
+  [...(protectManualResult.finalSnapshot?.team_player || []), ...(protectManualResult.finalSnapshot?.team_enemy || [])]
+    .every(unit => (unit?.状态效果 || []).every(state => !String(state?.name || '').startsWith('preview:'))),
+  '正式终态仍泄漏预估状态标识'
+);
 
 const withdrawalDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'duel_agile_single_target_failure');
@@ -883,6 +1001,18 @@ const withdrawalFacts = withdrawalResult.ledger.filter(event =>
 );
 assert.ok(withdrawalFacts.length > 0, '撤离只进入评分，没有在正式结算中形成概率事实');
 assert.ok(withdrawalFacts.every(event => Number(event?.meta?.successProbability) >= 0 && Number(event?.meta?.successProbability) <= 1), '撤离结算缺少与预估同源的成功概率');
+withdrawalFacts.forEach(event => {
+  const block = withdrawalResult.reportBlocks.find(item =>
+    item?.blockType !== 'ROUND_SUMMARY' &&
+    (item?.facts || []).some(fact => String(fact?.factId || fact?.sourceEventId || fact?.eventId || '').trim() === String(event?.eventId || '').trim())
+  );
+  assert.ok(block, `撤离终态没有进入动作组战报:${event?.eventId || ''}`);
+  assert.match(
+    String(block?.outcomeSummary || ''),
+    event?.result === 'withdrawn' ? /成功撤离/ : /尝试撤离.*未能成功/,
+    `撤离终态玩家文案与结构化结果不一致:${JSON.stringify(block)}`,
+  );
+});
 const withdrawalDecisions = withdrawalResult.decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'WITHDRAW');
 assert.ok(withdrawalDecisions[0]?.selected?.mechanicObservations?.some(observation => observation?.effectPrototype === '撤离判定'), '撤离候选没有建立可学习的机制观察');
 if (withdrawalDecisions.length > 1 && withdrawalFacts[0]?.result === 'failed') {
@@ -1253,6 +1383,28 @@ assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
   原型: '护盾变化', 数值: '+100', 持续回合: 2,
 }, '延迟测试单位'), /获得100点护盾/, '延迟护盾结算错误');
 assert.equal(delayedUnit.状态效果.延迟护盾?.shield_value, 100, '延迟护盾没有写入状态');
+const expiryCombat = combatData();
+expiryCombat.回合 = 2;
+const expiryLedger = [];
+sandbox.__LWCS_BATTLE_RUNTIME__.attachLedger(expiryCombat, expiryLedger);
+const expiryUnit = expiryCombat.参战者.team_player[0];
+expiryUnit.状态效果.到期护盾 = { 状态: '到期护盾', duration: 0, shield_value: 80, 战斗效果: {} };
+sandbox.__LWCS_BATTLE_RUNTIME__.settleExpiredConditionBase(
+  expiryUnit,
+  '到期护盾',
+  expiryUnit.状态效果.到期护盾,
+  'player-a',
+  expiryCombat,
+);
+const expiryReport = sandbox.__LWCS_BATTLE_RUNTIME__.buildReportBlocks(expiryLedger, [], []);
+assert.ok(
+  expiryReport.some(block => /护盾持续时间结束.*80 点护盾消散/.test(String(block?.outcomeSummary || ''))),
+  `护盾到期仍被叙述成承受伤害:${JSON.stringify(expiryReport)}`,
+);
+assert.ok(
+  !expiryReport.some(block => /吸收.*80 点伤害/.test(String(block?.outcomeSummary || ''))),
+  '护盾自然到期被伪造为伤害吸收',
+);
 assert.match(sandbox.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(delayedUnit, {
   原型: '属性修正', 属性: '力量', 数值: '+20%', 持续回合: 2,
 }, '延迟测试单位'), /力量修正/, '延迟属性修正结算错误');
@@ -1417,6 +1569,71 @@ assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'RESOUR
 assert.ok(structuredEffectResult.facts.some(event => event?.factType === 'SHIELD_CHANGE'), '结构化护盾变化缺少事实');
 assert.equal(structuredEffectCombat.参战者.team_enemy[0].状态效果.结构化眩晕?.战斗效果?.skip_turn, true, '结构化状态没有落入影子快照');
 
+const partialShieldCombat = combatData();
+partialShieldCombat.回合 = 1;
+partialShieldCombat.战斗意图 = '击败对手';
+const partialShieldTarget = partialShieldCombat.参战者.team_enemy[0];
+partialShieldTarget.状态效果.测试护盾 = { 类型: 'buff', duration: 2, shield_value: 10, 战斗效果: {} };
+const partialShieldHpBefore = partialShieldTarget.属性.HP;
+const partialShieldResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: partialShieldCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '护盾穿透测试', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 1 },
+    ] },
+  },
+});
+const partialShieldHit = partialShieldResult.facts.find(event => event?.eventKind === 'hit_result');
+assert.equal(Number(partialShieldHit?.meta?.shieldAbsorb || 0), 10, '部分护盾没有先于生命吸收伤害');
+assert.equal(Number(partialShieldHit?.meta?.appliedDamage || 0), partialShieldHpBefore - partialShieldTarget.属性.HP, '护盾后的实际生命伤害与终值不守恒');
+assert.equal(partialShieldTarget.状态效果.测试护盾, undefined, '耗尽护盾没有移除');
+assert.equal(
+  partialShieldResult.facts.filter(event => event?.eventKind === 'shield_break').reduce((sum, event) => sum + Number(event?.meta?.amount || 0), 0),
+  10,
+  '护盾吸收没有形成唯一护盾变化事实',
+);
+
+const fullShieldCombat = combatData();
+fullShieldCombat.回合 = 1;
+fullShieldCombat.战斗意图 = '击败对手';
+const fullShieldTarget = fullShieldCombat.参战者.team_enemy[0];
+fullShieldTarget.状态效果.测试护盾 = { 类型: 'buff', duration: 2, shield_value: 10000, 战斗效果: {} };
+const fullShieldHpBefore = fullShieldTarget.属性.HP;
+const fullShieldResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: fullShieldCombat,
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '全额护盾测试', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 1 },
+    ] },
+  },
+});
+const fullShieldHit = fullShieldResult.facts.find(event => event?.eventKind === 'hit_result');
+assert.equal(fullShieldTarget.属性.HP, fullShieldHpBefore, '全额护盾仍让生命值下降');
+assert.ok(Number(fullShieldHit?.meta?.shieldAbsorb || 0) > 0, '全额护盾没有记录吸收量');
+assert.equal(Number(fullShieldHit?.meta?.appliedDamage || 0), 0, '全额护盾仍记录生命伤害');
+
+const shieldPreviewCombat = combatData();
+shieldPreviewCombat.战斗意图 = '击败对手';
+shieldPreviewCombat.参战者.team_enemy[0].状态效果.测试护盾 = { 类型: 'buff', duration: 2, shield_value: 10000, 战斗效果: {} };
+const shieldPreview = sandbox.__LWCS_BATTLE_PREVIEW__.previewAction({
+  worldSnapshot: shieldPreviewCombat,
+  actorId: 'player-a',
+  declaration: {
+    actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'],
+    skill: { name: '预估护盾测试', _效果数组: [
+      { 原型: '伤害结算', 目标: '单体', 威力倍率: 100, 伤害类型: '近身攻击', 命中概率: 1 },
+    ] },
+  },
+  previewBudget: { maxNodes: 12 },
+});
+assert.equal(
+  sandbox.__LWCS_BATTLE_PREVIEW__.readHp(sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(shieldPreview.afterSnapshot, 'enemy-a')),
+  shieldPreviewCombat.参战者.team_enemy[0].属性.HP,
+  '纯预估没有采用与正式结算一致的护盾吸收语义',
+);
+
 const structuredEquipCombat = combatData();
 structuredEquipCombat.回合 = 1;
 const structuredEquipActor = structuredEquipCombat.参战者.team_player[0];
@@ -1438,6 +1655,11 @@ assert.ok(structuredEquipResult.facts.some(event =>
   String(event?.meta?.effectDetail?.attribute || '').includes('敏捷')
 ), '装备属性变化没有写入结构化事实');
 assert.ok(structuredEquipResult.facts.some(event => event?.eventKind === 'complete' && event?.primaryOutcome === 'equipment_changed'), '装备完成终态缺失');
+const structuredEquipSnapshot = sandbox.__LWCS_BATTLE_RUNTIME__.getBattleSnapshot(structuredEquipCombat);
+assert.ok(
+  !(structuredEquipSnapshot.team_player?.[0]?.states || []).some(state => /preview:|特殊效果/.test(String(state?.name || ''))),
+  `装备内部修正状态泄漏到玩家快照:${JSON.stringify(structuredEquipSnapshot.team_player?.[0]?.states || [])}`,
+);
 
 const structuredDotCombat = combatData();
 structuredDotCombat.回合 = 1;

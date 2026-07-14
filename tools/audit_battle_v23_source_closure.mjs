@@ -83,7 +83,7 @@ addCheck(
 addCheck(
   'baseDamageMathOwnedByRuntime',
   /function calculateBaseDamage\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.calculateBaseDamage\(/.test(battleUiSource) &&
+    !/calculateBaseDamage\(/.test(battleUiSource) &&
     !/damage\s*=\s*威力倍率\s*\*/.test(battleUiSource),
 );
 addCheck(
@@ -116,7 +116,7 @@ addCheck(
     /function 写入战斗反应窗口节点\(/.test(battleRuntimeSource) &&
     /function 写入战斗命中检定节点\(/.test(battleRuntimeSource) &&
     /function 写入战斗状态检定节点\(/.test(battleRuntimeSource) &&
-    /BATTLE_RUNTIME\.writeLedgerEvent\(/.test(battleUiSource) &&
+    !/BATTLE_RUNTIME\.writeLedgerEvent\(/.test(battleUiSource) &&
     !/function 写入战斗事件账本\(/.test(battleUiSource),
 );
 addCheck(
@@ -356,8 +356,10 @@ addCheck(
   'duelRoundLoopOwnedByRuntime',
   /function runStructuredBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
     /for \(let roundOffset = 1; roundOffset <= roundLimit; roundOffset \+= 1\)/.test(battleRuntimeSource) &&
-    /function 运行正式决策战斗\(/.test(battleUiSource) &&
+    /function onPlayerAttack\(playerInput, options = \{\}\)/.test(battleUiSource) &&
     /BATTLE_RUNTIME\.runBattleCase\(\{/.test(battleUiSource) &&
+    (battleUiSource.match(/const result = BATTLE_RUNTIME\.runBattleCase\(\{/g) || []).length === 1 &&
+    !/function 运行正式决策战斗\(|function runTeamBattleSimulation\(|function ui_executeBattleFlow\(/.test(battleUiSource) &&
     !/function runDecisionTeamBattleSimulation\(/.test(battleUiSource) &&
     !/BATTLE_RUNTIME\.runDuelRounds\(/.test(battleUiSource) &&
     !/while\s*\(\s*roundCount < maxRounds/.test(battleUiSource),
@@ -442,8 +444,9 @@ addCheck(
 );
 addCheck(
   'summonsDoNotReuseHostSkillLibrary',
-  !/构建继承召唤技能列表|召唤技能允许继承/.test(battleUiSource) &&
-    /单位\.技能列表\s*=\s*构建召唤技能列表\(单位\)/.test(battleUiSource),
+  !/构建继承召唤技能列表|召唤技能允许继承/.test(`${battleUiSource}\n${battleRuntimeSource}`) &&
+    /技能列表:\s*Array\.isArray\(effect\?\.技能列表\)[\s\S]*?:\s*\[\{ name:\s*['"]普通攻击['"]/.test(battleRuntimeSource) &&
+    !/技能列表\s*=\s*actor\.技能列表|技能列表:\s*actor\.技能列表/.test(battleRuntimeSource),
 );
 addCheck(
   'runtimeDoesNotPublishTestAuditGlobals',
@@ -550,6 +553,36 @@ addCheck(
     !/const\s+(?:compareNodes|objectiveUtility|rawObjectiveScore)\s*=/.test(battleUiSource),
 );
 addCheck(
+  'battleUiProjectsFormalDecisionCandidates',
+  /function ui_getAvailableActions\(charData, combatData\)[\s\S]*?BATTLE_DECISION\.enumerateCandidates\(\{/.test(battleUiSource) &&
+    /declarations:\s*\[\]/.test(battleUiSource) &&
+    /return buildActionDeclarationEntry\(sourceActions\.at\(-1\) \|\| null\)/.test(battleUiSource),
+);
+addCheck(
+  'battleUiHasNoIndependentCandidateOrTargetScoring',
+  !/fallbackCollectActions|fallbackBuildActionDeclaration|collectUiSkillActions|计算目标威胁分|排序战斗目标列表|resolveSkillTargetContext|parseSkillCostForChar|读取战斗背包使用效果倍率|按战斗背包批次倍率缩放使用效果/.test(battleUiSource),
+);
+addCheck(
+  'battleUiUsesSingleFormalRuntimeAdapter',
+  /__executeBattleFlowImpl\(combatData, options = \{\}\)/.test(battleUiSource) &&
+    /return onPlayerAttack\(intentText, \{ \.\.\.options, combatData, actionDeclaration \}\)/.test(battleUiSource) &&
+    !/function 运行正式决策战斗\(|function runTeamBattleSimulation\(|function runTeamBattleRound\(|function ui_executeBattleFlow\(/.test(battleUiSource),
+);
+addCheck(
+  'battleDataPreparationOwnedByRuntime',
+  /function prepareCombatData\(combatData = \{\}, resolveCharacter = null\)/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.prepareCombatData\(combatData, name => getMvuValue\(`char\.\$\{name\}`/.test(battleUiSource) &&
+    !/function hydrateCombatData\(|__BATTLE_ENGINE_INLINE__/.test(battleUiSource),
+);
+addCheck(
+  'ringBurstSelectionAndSettlementOwnedByDecisionRuntime',
+  /function collectAvailableRings\(unit = \{\}, currentTick = 0\)/.test(battleDecisionSource) &&
+    /declaration\.ringId = ringOption\.ringId/.test(battleDecisionSource) &&
+    /function commitRingBurst\(actor = \{\}, declaration = \{\}, effect = \{\}, combatData = \{\}\)/.test(battleRuntimeSource) &&
+    /ring\.炸环恢复tick = currentTick \+ recoveryDuration/.test(battleRuntimeSource) &&
+    !/打开炸环选择对话|计算炸环属性倍率|收集角色可炸魂环列表|构建魂环恢复标记补丁/.test(battleUiSource),
+);
+addCheck(
   'ledgerCarriesStableActorIdentity',
   /const actorId = String\(payload\.actorId \|\| previewRuntime\.unitId\(actorUnit\) \|\| actorName\)\.trim\(\)/.test(battleRuntimeSource) &&
     /eventId:[\s\S]*?eventKind,[\s\S]*?round,[\s\S]*?actorId,[\s\S]*?actorName,/.test(battleRuntimeSource),
@@ -596,7 +629,7 @@ addCheck(
 );
 addCheck(
   'formalTeamBattlePersistsAuthoritativeFinalSnapshot',
-  /Frontend team battle runtime produced the authoritative final snapshot/.test(battleUiSource) &&
+  /Apply the authoritative BattleRuntime final snapshot/.test(battleUiSource) &&
     /syncHpRecoveryOnly:\s*false/.test(battleUiSource) &&
     /最终快照和终局事实已经通过确定性JSONPatch提交/.test(databaseAdapterSource),
 );

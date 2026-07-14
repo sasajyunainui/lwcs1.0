@@ -123,7 +123,11 @@ assert.equal(grantResult.nodeCount, 1, '机制授予提前执行了被授予效�
 assert.equal(grantResult.contributions.join(','), 'ACTION_GRANTED', '机制授予产生了授权之外的即时贡献');
 const copyResult = matrix.find(entry => entry.prototype === '复制执行');
 assert.equal(copyResult.nodeCount, 2, '复制执行未按父节点加一个复制节点结算');
-assert.equal(copyResult.contributions.join(','), 'HP_DELTA', '复制执行重复结算被复制伤害');
+assert.equal(
+  copyResult.contributions.join(','),
+  'SHIELD_DELTA,HP_DELTA',
+  '复制执行没有把被复制伤害按护盾吸收、生命损失各记一次',
+);
 
 let enumOptionCount = 0;
 for (const [prototype, baseEffect] of Object.entries(effects)) {
