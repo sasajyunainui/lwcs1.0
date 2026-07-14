@@ -15395,9 +15395,7 @@ class BattleUIComponent {
     }
 
     BATTLE_RUNTIME.bindSettlementPrimitives({
-      prepare: combatData => 准备团战运行态(combatData),
       executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
-      settleSustain: (unit, name, combatData) => settleSustainEffectsAtRoundEnd(unit, name, combatData),
     });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
@@ -18266,92 +18264,6 @@ class BattleUIComponent {
         return 限制行为概率(消耗压力 * 0.35 + 范围系数 + 威力系数 + 控制系数, 0.03, 0.45);
       }
 
-      function 构建维持释放伤害承载消耗(skill = {}, sustainCost = '无', char = {}, targetList = []) {
-        const 目标数量 = Math.max(1, Math.min(12, (Array.isArray(targetList) ? targetList : []).filter(Boolean).length || 1));
-        const costParts = splitSkillCostModes(getSkillCostText(skill));
-        const 启动消耗 = parseSkillCostForChar(
-          { ...skill, 消耗: costParts.upfront || '无', __覆盖目标数量: 目标数量 },
-          char,
-        );
-        const 维持消耗 = parseSkillCostForChar(
-          { 消耗: sustainCost || '无', __覆盖目标数量: 目标数量 },
-          char,
-        );
-        const 取平均 = (启动值, 维持值) => {
-          const 列表 = [Number(启动值 || 0), Number(维持值 || 0)].filter(数值 => 数值 > 0);
-          if (!列表.length) return 0;
-          return Math.max(1, Math.floor(列表.reduce((总和, 数值) => 总和 + 数值, 0) / 列表.length));
-        };
-        return formatCostObjectToString({
-          魂力: 取平均(启动消耗.reqSp, 维持消耗.reqSp),
-          体力: 取平均(启动消耗.reqVit, 维持消耗.reqVit),
-          精神力: 取平均(启动消耗.reqMen, 维持消耗.reqMen),
-        });
-      }
-
-      function 构建维持释放战斗数据(caster = {}, primaryTarget = null, combatData = null) {
-        const 战斗数据 = combatData || getCurrentBattleContextSnapshot() || {};
-        确保召唤单位表(战斗数据);
-        const 双方 = 读取战斗双方队伍(战斗数据, caster);
-        const 友方列表 = dedupeCombatTargetList([caster, ...双方.友方]).filter(isCombatUnitAlive);
-        const 敌方列表 = dedupeCombatTargetList(双方.敌方).filter(isCombatUnitAlive);
-        const 主敌方 =
-          primaryTarget && 敌方列表.some(单位 => isCombatUnitIdentityMatch(单位, primaryTarget?.name || primaryTarget?.名称 || primaryTarget))
-            ? primaryTarget
-            : 敌方列表[0] || primaryTarget || null;
-        return {
-          ...战斗数据,
-          参战者: {
-            team_player: 友方列表,
-            team_enemy: dedupeCombatTargetList([主敌方, ...敌方列表].filter(Boolean)),
-          },
-        };
-      }
-
-      function 执行维持释放效果(char = {}, effect = {}, label = '', combatData = null) {
-        const 维持释放效果列表 = Array.isArray(effect?.维持释放效果列表) ? effect.维持释放效果列表 : [];
-        const 维持存在效果列表 = Array.isArray(effect?.维持存在效果列表) ? effect.维持存在效果列表 : [];
-        if (!维持释放效果列表.length) {
-          return 维持存在效果列表.length
-            ? `[维持状态] ${effect.name || '维持效果'}维持中，未重复释放一次性效果。`
-            : '';
-        }
-        const 技能快照 = deepClonePlain(effect?.技能快照 || {});
-        const 覆盖目标列表 = 读取维持释放覆盖目标列表(char, 维持释放效果列表, 技能快照, combatData);
-        if (!覆盖目标列表.length) return `[维持释放] ${effect.name || '维持效果'}重扫当前目标，但没有可作用目标。`;
-        const 主目标 = 覆盖目标列表[0];
-        const 维持技能 = normalizeSkillData({
-          ...技能快照,
-          name: 技能快照.name || effect.name || '维持释放',
-          魂技名: 技能快照.魂技名 || 技能快照.name || effect.name || '维持释放',
-          消耗: '无',
-          前摇: 0,
-          _效果数组: deepClonePlain(维持释放效果列表),
-          __维持释放伤害承载消耗: 构建维持释放伤害承载消耗(技能快照, effect.sustain_cost || effect.维持消耗 || '无', char, 覆盖目标列表),
-        }, 技能快照.name || effect.name || '维持释放');
-        const 维持行动 = {
-          type: '维持释放',
-          action_type: '维持释放',
-          skill: 维持技能,
-          cast_time: 0,
-          target_name: 主目标?.name || 主目标?.名称 || '',
-          __维持释放: true,
-        };
-        const 反应动作 = { type: '无法反应', log: '[维持压力] 后台持续释放并入当前战斗压力。', skill: null, def_mult: 1 };
-        const 维持战斗数据 = 构建维持释放战斗数据(char, 主目标, combatData);
-        const 结算结果 = 执行单挑队列结算(维持行动, 反应动作, 维持战斗数据);
-        const 伤害落地 = applyResolvedDamagePackage(char, 维持行动, 结算结果, {
-          primaryTarget: 主目标,
-          combatData: 维持战斗数据,
-        });
-        const 目标文本 = 覆盖目标列表.map(目标 => 目标?.name || 目标?.名称 || '目标').join('、');
-        const 日志 = [`[维持释放] ${effect.name || '维持效果'}重扫当前目标，命中 ${目标文本}。`];
-        if (结算结果?.desc) 日志.push(结算结果.desc);
-        if (伤害落地?.log) 日志.push(伤害落地.log);
-        if (label) void label;
-        return 日志.join(' ');
-      }
-
       function registerSustainEffect(char, key, config) {
         if (!char || !config || !config.sustain_cost || config.sustain_cost === '无') return;
         if (!char.持续效果) char.持续效果 = {};
@@ -18469,75 +18381,6 @@ class BattleUIComponent {
 
         return null;
       }
-
-        function settleSustainEffectsAtRoundEnd(char, label, combatData = null) {
-          const logs = [];
-          const broken = [];
-          if (!char?.持续效果) return { log: '', broken };
-
-          Object.entries(char.持续效果).forEach(([key, effect]) => {
-            if (!effect) return;
-
-            if (effect.effect_type === 'domain' && (!char.当前领域 || char.当前领域 === '无')) {
-              delete char.持续效果[key];
-              刷新维持运行态负荷(char);
-              return;
-            }
-            if (effect.effect_type === 'life_fire' && !char.血脉之力?.生命之火) {
-              delete char.持续效果[key];
-              刷新维持运行态负荷(char);
-              return;
-            }
-            if (
-              effect.effect_type === 'condition' &&
-              effect.related_condition &&
-              !char.状态效果?.[effect.related_condition]
-            ) {
-              delete char.持续效果[key];
-              刷新维持运行态负荷(char);
-              return;
-            }
-
-            const 维持释放效果列表 = Array.isArray(effect.维持释放效果列表) ? effect.维持释放效果列表 : [];
-            const 覆盖目标列表 = 读取维持释放覆盖目标列表(
-              char,
-              维持释放效果列表,
-              effect.技能快照 || {},
-              combatData,
-            );
-            const parsed = parseCostStringForChar(
-              effect.sustain_cost,
-              char,
-              {
-                覆盖目标数量: Math.max(1, 覆盖目标列表.length || Number(effect.__覆盖目标数量 || 1) || 1),
-                覆盖目标列表,
-                批量模式: 覆盖目标列表.length > 1 ? '原生群体' : '',
-                单体系数: Number(effect.support_cost_scale || 1) || 1,
-              },
-            );
-            if (!parsed.canCast) {
-              if (effect.effect_type === 'domain') char.当前领域 = '无';
-              else if (effect.effect_type === 'life_fire' && char.血脉之力)
-                char.血脉之力.生命之火 = false;
-              else if (effect.effect_type === 'condition' && effect.related_condition && char.状态效果)
-                delete char.状态效果[effect.related_condition];
-
-              delete char.持续效果[key];
-              刷新维持运行态负荷(char);
-              broken.push(effect.name || key);
-              logs.push(`[维持中断] ${label}已无力维持[${effect.name || key}]，效果自动解除`);
-              return;
-            }
-
-            deductParsedCostFromUnit(char, parsed);
-            logs.push(`[维持结算] ${label}维持[${effect.name || key}]，消耗 ${formatParsedCost(parsed)}`);
-            const 维持释放日志 = 执行维持释放效果(char, effect, label, combatData);
-            if (维持释放日志) logs.push(维持释放日志);
-          });
-
-          刷新维持运行态负荷(char);
-          return { log: logs.join(' '), broken };
-        }
 
       function 计算行为等级分(角色 = {}) {
         const 等级 = getCombatUnitTierNumber(角色);
@@ -23859,8 +23702,8 @@ class BattleUIComponent {
         if (!char || typeof char !== 'object') return 0;
         const stats = char?.属性 && typeof char.属性 === 'object' ? char.属性 : char;
         const nextValue = Math.max(0, Math.min(getCombatHpMaxValue(char), Number(value || 0)));
-      if ('hp' in char || Object.prototype.hasOwnProperty.call(char, 'hp')) char.hp = nextValue;
-      else char.HP = nextValue;
+      char.hp = nextValue;
+      char.HP = nextValue;
       if (stats && typeof stats === 'object') stats.HP = nextValue;
       if (char.召唤键) 同步召唤单位镜像(char);
       return nextValue;
@@ -23870,8 +23713,9 @@ class BattleUIComponent {
         if (!char || typeof char !== 'object') return 0;
         const stats = char?.属性 && typeof char.属性 === 'object' ? char.属性 : char;
         const nextValue = Math.max(0, Math.min(getCombatStaminaMaxValue(char), Number(value || 0)));
-      if ('sta' in char || Object.prototype.hasOwnProperty.call(char, 'sta')) char.sta = nextValue;
-      else char.体力 = nextValue;
+      char.sta = nextValue;
+      char.vit = nextValue;
+      char.体力 = nextValue;
       if (stats && typeof stats === 'object') stats.体力 = nextValue;
       if (char.召唤键) 同步召唤单位镜像(char);
       return nextValue;
@@ -33759,11 +33603,6 @@ class BattleUIComponent {
             };
           }
           return 结算已宣告动作();
-        }
-
-        function 准备团战运行态(combatData = {}) {
-          hydrateCombatData(combatData);
-          确保召唤单位表(combatData);
         }
 
         function runTeamBattleSimulation(combatData, maxRounds = 3) {

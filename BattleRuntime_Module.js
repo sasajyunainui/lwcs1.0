@@ -1181,17 +1181,9 @@
     if (!config) return 0;
     const maxValue = Math.max(1, Number(config.maxKeys.map(key => unit[key] ?? stats?.[key]).find(entry => entry !== undefined) ?? 1));
     const nextValue = Math.max(0, Math.min(maxValue, Number(value || 0)));
-    if (resourceKey === 'hp') {
-      if (Object.prototype.hasOwnProperty.call(unit, 'hp')) unit.hp = nextValue;
-      else unit.HP = nextValue;
-    } else if (resourceKey === 'vit') {
-      if (Object.prototype.hasOwnProperty.call(unit, 'sta')) unit.sta = nextValue;
-      else unit.体力 = nextValue;
-    } else {
-      unit[resourceKey] = nextValue;
-    }
+    config.runtimeKeys.forEach(key => { unit[key] = nextValue; });
+    unit[config.statKey] = nextValue;
     if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
-    if (resourceKey !== 'hp' && resourceKey !== 'vit') unit[config.statKey] = nextValue;
     if (unit.召唤键) syncSummonMirror(unit);
     return nextValue;
   }
@@ -3032,8 +3024,118 @@
   }
 
 
+  function ensureRuntimeSummonTable(combatData = {}) {
+    if (!combatData.召唤单位表 || typeof combatData.召唤单位表 !== 'object' || Array.isArray(combatData.召唤单位表)) {
+      Object.defineProperty(combatData, '召唤单位表', {
+        enumerable: false,
+        configurable: true,
+        writable: true,
+        value: {},
+      });
+    }
+    return combatData.召唤单位表;
+  }
+
+  function hydrateRuntimeSummons(combatData = {}) {
+    const table = ensureRuntimeSummonTable(combatData);
+    listPrimaryCombatUnits(combatData).forEach(host => {
+      Object.entries(host?.状态效果 || {}).forEach(([stateKey, state]) => {
+        const mirror = state?.召唤物;
+        if (!mirror || mirror.已消散 === true) return;
+        const hostId = previewRuntime.unitId(host) || previewRuntime.unitName(host);
+        const name = String(mirror?.召唤物名称 || mirror?.name || '召唤物').trim() || '召唤物';
+        const key = String(mirror?.召唤键 || `${hostId}:${stateKey}:${name}`).trim();
+        const existing = table[key];
+        if (existing) {
+          existing.__宿主 = host;
+          existing.__来源状态 = state;
+          existing.来源状态键 = stateKey;
+          ensureSummonWindowRuntime(existing);
+          syncSummonMirror(existing);
+          return;
+        }
+        const inherit = mirror?.属性继承比例 && typeof mirror.属性继承比例 === 'object'
+          ? mirror.属性继承比例
+          : {};
+        const uniform = Math.max(0.1, Math.min(1, Number(mirror?.继承属性比例 || 0) || Math.min(0.9, 0.35 + Math.max(0, Number(mirror?.强度 || 1)) * 0.1)));
+        const ratio = keyName => Math.max(0.1, Math.min(1, Number(inherit?.[keyName] || uniform)));
+        const hpMax = Math.max(1, Number(mirror?.生命上限 || 0) || Math.floor(previewRuntime.readHpMax(host) * ratio('体力上限')));
+        const hp = Math.max(0, Math.min(hpMax, Number(mirror?.生命 ?? hpMax)));
+        const summon = {
+          id: key,
+          name,
+          名称: name,
+          召唤键: key,
+          类型: String(mirror?.召唤单位类型 || '魂兽').trim() || '魂兽',
+          召唤单位类型: String(mirror?.召唤单位类型 || '魂兽').trim() || '魂兽',
+          单位性质: '召唤物',
+          行动模式: String(mirror?.行动模式 || '协同攻击').trim() || '协同攻击',
+          宿主名: previewRuntime.unitName(host),
+          __宿主: host,
+          __来源状态: state,
+          来源状态键: stateKey,
+          阵营: inferUnitSide(combatData, previewRuntime.unitName(host)) === 'enemy' ? '敌方' : '玩家',
+          生成回合: Math.max(0, Number(mirror?.生成回合 || combatData?.回合 || 0)),
+          精神负载: Math.max(0, Number(mirror?.精神负载 || 0)),
+          已消散: false,
+          hp,
+          hp_max: hpMax,
+          HP: hp,
+          HP上限: hpMax,
+          vit: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '体力') * ratio('体力上限'))),
+          vit_max: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '体力') * ratio('体力上限'))),
+          sp: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '魂力') * ratio('魂力上限'))),
+          sp_max: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '魂力') * ratio('魂力上限'))),
+          men: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '精神力') * ratio('精神力上限'))),
+          men_max: Math.max(1, Math.floor(previewRuntime.readResourceMax(host, '精神力') * ratio('精神力上限'))),
+          str: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'str') * ratio('力量'))),
+          def: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'def') * ratio('防御'))),
+          agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'agi') * ratio('敏捷'))),
+          状态: { 存活: hp > 0, 行动: hp > 0 ? '战斗' : '失去战斗力' },
+          状态效果: {},
+          持续效果: {},
+          技能列表: Array.isArray(mirror?.技能列表) && mirror.技能列表.length
+            ? cloneValue(mirror.技能列表)
+            : [{ name: '普通攻击', 魂技名: '普通攻击', 消耗: '无', 前摇: 10, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] }],
+        };
+        summon.sta = summon.vit;
+        summon.sta_max = summon.vit_max;
+        summon.体力 = summon.vit;
+        summon.体力上限 = summon.vit_max;
+        summon.魂力 = summon.sp;
+        summon.魂力上限 = summon.sp_max;
+        summon.精神力 = summon.men;
+        summon.精神力上限 = summon.men_max;
+        summon.final = buildCombatFinalStats(summon);
+        table[key] = summon;
+        ensureSummonWindowRuntime(summon);
+        syncSummonMirror(summon);
+      });
+    });
+    return table;
+  }
+
+  function normalizeLatestBattleRuntime(combatData = {}) {
+    if (!combatData?.参战者 || typeof combatData.参战者 !== 'object') throw new Error('battle_runtime_latest_participants_missing');
+    ['team_player', 'team_enemy'].forEach(sideKey => {
+      const roster = combatData.参战者[sideKey];
+      if (!Array.isArray(roster)) throw new Error(`battle_runtime_latest_roster_invalid:${sideKey}`);
+      roster.filter(Boolean).forEach(unit => {
+        if (!unit?.属性 || typeof unit.属性 !== 'object' || !unit?.状态 || typeof unit.状态 !== 'object') {
+          throw new Error(`battle_runtime_latest_unit_structure_invalid:${previewRuntime.unitName(unit) || sideKey}`);
+        }
+        if (!unit.状态效果 || typeof unit.状态效果 !== 'object' || Array.isArray(unit.状态效果)) unit.状态效果 = {};
+        if (!unit.持续效果 || typeof unit.持续效果 !== 'object' || Array.isArray(unit.持续效果)) unit.持续效果 = {};
+        syncRoundEndUnit(unit);
+        unit.final = buildCombatFinalStats(unit);
+      });
+    });
+    hydrateRuntimeSummons(combatData);
+    return combatData;
+  }
+
   function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
-    settlement.prepare(combatData, adapterOptions);
+    normalizeLatestBattleRuntime(combatData);
     fillObjectiveDamageBaselines(combatData);
     combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
     const runtime = ensureCombatRuntime(combatData);
@@ -3456,12 +3558,150 @@
     return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
   }
 
+  function sustainTargetIds(combatData = {}, actor = {}, effect = {}) {
+    const targetKind = String(effect?.目标 || '').trim();
+    const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+    const entries = listCombatUnits(combatData).filter(unit => structuredActorPhysicallyAlive(unit));
+    const friendly = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === actorSide);
+    const hostile = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide);
+    if (/自身/.test(targetKind)) return [previewRuntime.unitId(actor)];
+    if (/全场/.test(targetKind)) return entries.map(previewRuntime.unitId);
+    if (/友方群体/.test(targetKind)) return friendly.map(previewRuntime.unitId);
+    if (/敌方群体|群体/.test(targetKind)) return hostile.map(previewRuntime.unitId);
+    if (/友方|队友/.test(targetKind)) return [previewRuntime.unitId(friendly.find(unit => unit !== actor) || actor)];
+    if (/敌方|单体/.test(targetKind)) return hostile.length ? [previewRuntime.unitId(hostile[0])] : [];
+    return [previewRuntime.unitId(actor)];
+  }
+
+  function readSustainCosts(unit = {}, sustainCost = '无') {
+    const parsed = decisionRuntime.parseSkillCosts({ 消耗: sustainCost || '无' });
+    return Object.entries(parsed).map(([resource, rawCost]) => {
+      const key = /精神/.test(resource) ? 'men' : /体力/.test(resource) ? 'vit' : 'sp';
+      const maximum = persistentResourceMax(unit, key);
+      const text = String(rawCost ?? '').trim();
+      const numeric = Math.max(0, Number.parseFloat(text) || 0);
+      const amount = text.includes('%') ? maximum * numeric / 100 : numeric;
+      return { resource, key, amount: Math.max(0, Math.floor(amount)) };
+    });
+  }
+
+  function breakSustainEffect(unit = {}, key = '', effect = {}) {
+    if (effect.effect_type === 'domain') unit.当前领域 = '无';
+    else if (effect.effect_type === 'life_fire' && unit.血脉之力) unit.血脉之力.生命之火 = false;
+    else if (effect.effect_type === 'condition' && effect.related_condition && unit.状态效果) delete unit.状态效果[effect.related_condition];
+    if (unit.持续效果) delete unit.持续效果[key];
+    refreshSustainRuntimeLoad(unit);
+  }
+
+  function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}) {
+    const logs = [];
+    const broken = [];
+    if (!unit?.持续效果 || typeof unit.持续效果 !== 'object') return { log: '', broken };
+    Object.entries({ ...unit.持续效果 }).forEach(([key, effect]) => {
+      if (!effect) return;
+      const inactive =
+        (effect.effect_type === 'domain' && (!unit.当前领域 || unit.当前领域 === '无')) ||
+        (effect.effect_type === 'life_fire' && !unit.血脉之力?.生命之火) ||
+        (effect.effect_type === 'condition' && effect.related_condition && !unit.状态效果?.[effect.related_condition]);
+      if (inactive) {
+        delete unit.持续效果[key];
+        refreshSustainRuntimeLoad(unit);
+        return;
+      }
+      const costs = readSustainCosts(unit, effect.sustain_cost || effect.维持消耗 || '无');
+      const affordable = costs.every(cost => persistentResourceValue(unit, cost.key) + 1e-9 >= cost.amount);
+      if (!affordable) {
+        breakSustainEffect(unit, key, effect);
+        broken.push(effect.name || key);
+        writeLedgerEvent(combatData, {
+          eventKind: 'state_tick',
+          round: Number(combatData?.回合 || 0),
+          actorName: previewRuntime.unitName(unit),
+          targetName: previewRuntime.unitName(unit),
+          actionName: String(effect.name || key).trim(),
+          actionType: 'sustain_break',
+          actorControl: 'SYSTEM',
+          actionRole: 'STATE_TICK',
+          result: 'broken',
+          resultState: 'FAILURE',
+          ruleCode: 'SUSTAIN_RESOURCE_INSUFFICIENT',
+          meta: { source: 'structured_runtime', stateName: String(effect.name || key).trim() },
+        });
+        logs.push(`[维持中断] ${label}已无力维持[${effect.name || key}]，效果自动解除`);
+        return;
+      }
+      costs.forEach(cost => {
+        if (!(cost.amount > 0)) return;
+        const before = persistentResourceValue(unit, cost.key);
+        writeCombatResource(unit, cost.key, before - cost.amount);
+        const actual = persistentResourceValue(unit, cost.key) - before;
+        writeRoundEndResourceEvent(combatData, unit, label, cost.key, actual, {
+          source: 'structured_sustain',
+          stateName: String(effect.name || key).trim(),
+          sourceActionName: String(effect.name || key).trim(),
+          reasonCode: 'SUSTAIN_RESOURCE_COST',
+          reasonText: `维持${effect.name || key}`,
+        });
+      });
+      const releaseEffects = Array.isArray(effect?.维持释放效果列表) ? effect.维持释放效果列表.filter(Boolean) : [];
+      if (!releaseEffects.length) {
+        if (Array.isArray(effect?.维持存在效果列表) && effect.维持存在效果列表.length) {
+          logs.push(`[维持状态] ${effect.name || key}维持中，未重复释放一次性效果。`);
+        }
+        return;
+      }
+      const baseSkill = cloneValue(effect?.技能快照 || {});
+      const actionName = normalizeActionDisplayName(baseSkill?.name || baseSkill?.魂技名 || effect.name || key);
+      let actionContext = null;
+      let resolvedEffectCount = 0;
+      releaseEffects.forEach(releaseEffect => {
+        const targetIds = sustainTargetIds(combatData, unit, releaseEffect);
+        if (!targetIds.length) return;
+        const declaration = {
+          actorId: previewRuntime.unitId(unit),
+          actionKind: 'RELEASE_SKILL',
+          targetIds,
+          skill: {
+            ...baseSkill,
+            name: actionName,
+            魂技名: actionName,
+            消耗: '无',
+            前摇: 0,
+            _效果数组: [cloneValue(releaseEffect)],
+          },
+          resourceCosts: {},
+        };
+        if (!actionContext) {
+          actionContext = beginStructuredDeclaration({
+            combatData,
+            declaration,
+            actionRole: 'STATE_TICK',
+            actorControl: 'SYSTEM',
+            eventKind: 'state_tick',
+          });
+        } else {
+          actionContext = {
+            ...actionContext,
+            declaration,
+            primaryTarget: resolveStructuredTargets(combatData, unit, declaration, releaseEffect)[0] || unit,
+          };
+        }
+        executeStructuredDeclaration({ combatData, declaration, actionContext });
+        resolvedEffectCount += 1;
+      });
+      if (resolvedEffectCount > 0) logs.push(`[维持释放] ${effect.name || key}完成${resolvedEffectCount}项持续结算。`);
+      else logs.push(`[维持释放] ${effect.name || key}重扫当前目标，但没有可作用目标。`);
+    });
+    refreshSustainRuntimeLoad(unit);
+    return { log: logs.join(' '), broken };
+  }
+
   function settleBattleRoundEnd(combatData = {}, logs = [], settlement, adapterOptions = {}) {
     listCombatUnits(combatData).forEach(unit => {
       syncRoundEndUnit(unit);
       if (previewRuntime.readHp(unit) <= 0) return;
       const name = previewRuntime.unitName(unit);
-      const sustainResult = settlement.settleSustain(unit, name, combatData, adapterOptions) || {};
+      const sustainResult = settleSustainAtRoundEnd(unit, name, combatData) || {};
       const conditionResult = settleConditionsAtRoundEnd(unit, name, combatData) || {};
       syncRoundEndUnit(unit);
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
@@ -4197,8 +4437,10 @@
     const primaryTarget = resolveStructuredTargets(combatData, actor, declaration, { 目标: declaration?.targetKind || '' })[0] || actor;
     const actionId = String(input?.actionId || nextRuntimeId('battle-action')).trim();
     const chainNodeId = String(input?.chainNodeId || actionId).trim();
+    const eventKind = String(input?.eventKind || 'action_start').trim();
+    const stateTick = eventKind === 'state_tick';
     const actionEvent = writeLedgerEvent(combatData, {
-      eventKind: 'action_start',
+      eventKind,
       round: Number(combatData?.回合 || 0),
       actorName: previewRuntime.unitName(actor),
       targetName: previewRuntime.unitName(primaryTarget),
@@ -4213,9 +4455,9 @@
       parentNodeId: String(input?.parentNodeId || '').trim(),
       sourceNodeId: String(input?.parentNodeId || '').trim(),
       reactionNodeId: String(input?.reactionNodeId || '').trim(),
-      result: 'declared',
-      resultState: 'DECLARED',
-      ruleCode: 'STRUCTURED_DECLARATION_COMMITTED',
+      result: stateTick ? 'tick' : 'declared',
+      resultState: stateTick ? 'COMPLETED' : 'DECLARED',
+      ruleCode: stateTick ? 'STRUCTURED_SUSTAIN_TICK' : 'STRUCTURED_DECLARATION_COMMITTED',
       meta: { source: 'structured_runtime', targetScope: String(declaration?.targetKind || '').trim() },
     });
     return {
@@ -4612,6 +4854,7 @@
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
     const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    normalizeLatestBattleRuntime(combatData);
     combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
     fillObjectiveDamageBaselines(combatData);
     const runtime = ensureCombatRuntime(combatData);
@@ -4638,9 +4881,7 @@
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
-        runtime.unitReactionCount = {};
-        runtime.factionReactionCount = {};
-        runtime.counterCount = {};
+        logs.push(...beginBattleRound(combatData, combatData.回合, requireSettlementPrimitives()).filter(Boolean));
         const queueTrace = runtime.actionQueueTrace;
         const queue = createActionQueue({
           round: combatData.回合,
@@ -5000,10 +5241,7 @@
         }
         if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
         if (terminal?.terminal !== true) {
-          [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].forEach(unit => {
-            const result = settleConditionsAtRoundEnd(unit, previewRuntime.unitName(unit), combatData);
-            if (result.log) logs.push(result.log);
-          });
+          settleBattleRoundEnd(combatData, logs, requireSettlementPrimitives());
         }
         terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
         const alive = readTeamAlive(combatData);
@@ -7029,10 +7267,7 @@
   }
 
   function bindSettlementPrimitives(primitives) {
-    const required = [
-      'prepare', 'executeQueue',
-      'settleSustain',
-    ];
+    const required = ['executeQueue'];
     if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
       throw new TypeError('battle_runtime_settlement_primitives_invalid');
     }

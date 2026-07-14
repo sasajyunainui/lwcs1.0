@@ -1,6 +1,6 @@
 /* Test-only BattleUI fixtures. Injected by tools/battle_ui_test_source.mjs. */
     function 构建召唤夹具单位(名称, 阵营 = '玩家') {
-      return bindCombatParticipant({
+      const unit = bindCombatParticipant({
         name: 名称,
         type: 阵营 === '玩家' ? '强攻系' : '敏攻系',
         lv: 45,
@@ -20,6 +20,23 @@
         状态效果: {},
         持续效果: {},
       });
+      unit.属性 = {
+        等级: 45,
+        系别: unit.type,
+        HP: 1200,
+        HP上限: 1200,
+        体力: 900,
+        体力上限: 900,
+        魂力: 800,
+        魂力上限: 800,
+        精神力: 600,
+        精神力上限: 600,
+        力量: 180,
+        防御: 120,
+        敏捷: 110,
+      };
+      unit.状态 = { 存活: true, 行动: '战斗' };
+      return unit;
     }
 
     function 构建召唤夹具战斗态(配置 = {}) {
@@ -306,7 +323,7 @@
     root.__LWCS_RUN_SUMMON_FIXTURE_BATCH__ = (名称 = '') => 运行召唤夹具(名称);
 
     function 构建战斗回归夹具单位(名称, 系别 = '强攻系') {
-      return bindCombatParticipant({
+      const unit = bindCombatParticipant({
         name: 名称,
         type: 系别,
         lv: 35,
@@ -336,6 +353,23 @@
         持续效果: {},
         背包: {},
       });
+      unit.属性 = {
+        等级: 35,
+        系别,
+        HP: 1600,
+        HP上限: 1600,
+        魂力: 2000,
+        魂力上限: 2000,
+        体力: 1200,
+        体力上限: 1200,
+        精神力: 900,
+        精神力上限: 900,
+        力量: 系别 === '敏攻系' ? 150 : 220,
+        防御: 140,
+        敏捷: 系别 === '敏攻系' ? 260 : 120,
+      };
+      unit.状态 = { 存活: true, 行动: '战斗' };
+      return unit;
     }
 
     const 战斗回归第一魂技默认名 = '锁魄毒印';

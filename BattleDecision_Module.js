@@ -220,7 +220,17 @@
       }
       return [side, value];
     }));
-    return { ...worldSnapshot, 参战者: projectedParticipants };
+    const decisionWorld = { ...worldSnapshot, 参战者: projectedParticipants };
+    const summons = worldSnapshot?.召唤单位表;
+    if (summons && typeof summons === 'object') {
+      Object.defineProperty(decisionWorld, '召唤单位表', {
+        configurable: true,
+        enumerable: false,
+        writable: true,
+        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, projectUnit(unit)])),
+      });
+    }
+    return decisionWorld;
   }
 
   function mapWorldUnits(worldSnapshot = {}, mapper = unit => unit) {
@@ -230,7 +240,20 @@
       if (value && typeof value === 'object') return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, mapper(unit, side)]))];
       return [side, value];
     }));
-    return { ...worldSnapshot, 参战者: nextParticipants };
+    const nextWorld = { ...worldSnapshot, 参战者: nextParticipants };
+    const summons = worldSnapshot?.召唤单位表;
+    if (summons && typeof summons === 'object') {
+      Object.defineProperty(nextWorld, '召唤单位表', {
+        configurable: true,
+        enumerable: false,
+        writable: true,
+        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [
+          key,
+          mapper(unit, /^(enemy|敌方|对方)$/i.test(String(unit?.阵营 || '').trim()) ? 'team_enemy' : 'team_player'),
+        ])),
+      });
+    }
+    return nextWorld;
   }
 
   function relevantStateFingerprint(beliefState = {}, targetId = '') {

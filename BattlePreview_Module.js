@@ -172,9 +172,22 @@
 
   function listUnits(worldSnapshot = {}) {
     const participants = worldSnapshot?.参战者 && typeof worldSnapshot.参战者 === 'object' ? worldSnapshot.参战者 : {};
-    return Object.entries(participants).flatMap(([side, value]) => {
+    const primary = Object.entries(participants).flatMap(([side, value]) => {
       const units = Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : [];
       return units.filter(Boolean).map(unit => ({ unit, side }));
+    });
+    const summons = worldSnapshot?.召唤单位表 && typeof worldSnapshot.召唤单位表 === 'object'
+      ? Object.values(worldSnapshot.召唤单位表).filter(unit => unit && unit.已消散 !== true).map(unit => ({
+          unit,
+          side: /^(enemy|敌方|对方)$/i.test(String(unit?.阵营 || '').trim()) ? 'team_enemy' : 'team_player',
+        }))
+      : [];
+    const seen = new Set();
+    return [...primary, ...summons].filter(entry => {
+      const key = unitId(entry.unit) || unitName(entry.unit);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
 
@@ -562,7 +575,20 @@
         }
         return [side, value];
       }));
-      return { ...this.baseWorld, 参战者: nextParticipants };
+      const snapshot = { ...this.baseWorld, 参战者: nextParticipants };
+      const summons = this.baseWorld?.召唤单位表;
+      if (summons && typeof summons === 'object') {
+        Object.defineProperty(snapshot, '召唤单位表', {
+          configurable: true,
+          enumerable: false,
+          writable: true,
+          value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [
+            key,
+            this.changedUnits.get(unitId(unit)) || unit,
+          ])),
+        });
+      }
+      return snapshot;
     }
   }
 
