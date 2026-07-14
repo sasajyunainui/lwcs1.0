@@ -138,6 +138,20 @@ root.querySelector = selector => selector === '.battle-module-scope' ? root : nu
 new battleSandbox.BattleUIComponent(root, {}, {});
 
 const preview = battleSandbox.__LWCS_BATTLE_PREVIEW__;
+const directStructured = preview.normalizeBattleObjectives({
+  maxRounds: 20,
+  victory: {
+    logic: 'aNd',
+    conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }],
+  },
+  defeat: {
+    logic: 'oR',
+    conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }],
+  },
+});
+assert.equal(directStructured?.victory?.logic, 'ALL', '直接结构化条件没有兼容AND大小写');
+assert.equal(directStructured?.defeat?.logic, 'ANY', '直接结构化条件没有兼容OR大小写');
+assert.equal(directStructured?.maxRounds, 20, '结构化回合上限没有限制为20');
 assert.equal(preview.shouldTriggerTraumaUnconscious(49.99, 19.99, 100), false, '低于50%的单段伤害错误触发昏迷');
 assert.equal(preview.shouldTriggerTraumaUnconscious(50, 20, 100), false, '命中后恰好20%错误触发昏迷');
 assert.equal(preview.shouldTriggerTraumaUnconscious(50, 19.99, 100), true, '50%单段且低于20%没有触发昏迷');
