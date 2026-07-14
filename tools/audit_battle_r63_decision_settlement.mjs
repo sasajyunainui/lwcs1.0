@@ -1061,6 +1061,70 @@ const structuredDefense = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDecla
 });
 assert.equal(structuredDefense.terminal, 'SUCCESS', '结构化防御没有形成唯一成功终态');
 assert.equal(structuredDefense.facts.filter(event => event?.eventKind === 'defend').length, 1, '结构化防御被拆成多个终态事实');
+
+const successfulEvadeCombat = combatData();
+successfulEvadeCombat.回合 = 1;
+const successfulEvadeParent = sandbox.__LWCS_BATTLE_RUNTIME__.beginStructuredDeclaration({
+  combatData: successfulEvadeCombat,
+  declaration: { actorId: 'player-a', actionKind: 'BASIC_ATTACK', targetIds: ['enemy-a'] },
+});
+const originalSandboxRandom = sandbox.Math.random;
+sandbox.Math.random = () => 0;
+const successfulEvade = sandbox.__LWCS_BATTLE_RUNTIME__.settleStructuredReaction({
+  combatData: successfulEvadeCombat,
+  reactor: successfulEvadeCombat.参战者.team_enemy[0],
+  sourceActor: successfulEvadeCombat.参战者.team_player[0],
+  declaration: { actorId: 'enemy-a', actionKind: 'EVADE', targetIds: ['enemy-a'] },
+  parentActionEvent: successfulEvadeParent.actionEvent,
+});
+sandbox.Math.random = () => 0.999999;
+const failedEvade = sandbox.__LWCS_BATTLE_RUNTIME__.settleStructuredReaction({
+  combatData: successfulEvadeCombat,
+  reactor: successfulEvadeCombat.参战者.team_enemy[0],
+  sourceActor: successfulEvadeCombat.参战者.team_player[0],
+  declaration: { actorId: 'enemy-a', actionKind: 'EVADE', targetIds: ['enemy-a'] },
+  parentActionEvent: successfulEvadeParent.actionEvent,
+});
+sandbox.Math.random = originalSandboxRandom;
+assert.equal(successfulEvade.evaded, true, '结构化闪避在必成功投点下仍失败');
+assert.equal(failedEvade.evaded, false, '结构化闪避在必失败投点下仍成功');
+assert.equal(successfulEvade.event.sourceActionId, successfulEvadeParent.actionEvent.actionId, '结构化闪避没有绑定父动作');
+assert.equal(successfulEvade.event.sourceNodeId, successfulEvadeParent.actionEvent.chainNodeId, '结构化闪避没有保留父动作来源节点');
+
+const undefendedCombat = combatData();
+undefendedCombat.回合 = 1;
+const undefendedTargetBefore = undefendedCombat.参战者.team_enemy[0].属性.HP;
+sandbox.Math.random = () => 0;
+const undefendedResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: undefendedCombat,
+  declaration: { actorId: 'player-a', actionKind: 'BASIC_ATTACK', targetIds: ['enemy-a'] },
+});
+const undefendedDamage = undefendedTargetBefore - undefendedCombat.参战者.team_enemy[0].属性.HP;
+const defendedCombat = combatData();
+defendedCombat.回合 = 1;
+const defendedParent = sandbox.__LWCS_BATTLE_RUNTIME__.beginStructuredDeclaration({
+  combatData: defendedCombat,
+  declaration: { actorId: 'player-a', actionKind: 'BASIC_ATTACK', targetIds: ['enemy-a'] },
+});
+const defendedReaction = sandbox.__LWCS_BATTLE_RUNTIME__.settleStructuredReaction({
+  combatData: defendedCombat,
+  reactor: defendedCombat.参战者.team_enemy[0],
+  sourceActor: defendedCombat.参战者.team_player[0],
+  declaration: { actorId: 'enemy-a', actionKind: 'DEFEND', targetIds: ['enemy-a'] },
+  parentActionEvent: defendedParent.actionEvent,
+});
+const defendedTargetBefore = defendedCombat.参战者.team_enemy[0].属性.HP;
+sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: defendedCombat,
+  declaration: defendedParent.declaration,
+  actionContext: defendedParent,
+  reactionByTarget: { 'enemy-a': defendedReaction },
+});
+sandbox.Math.random = originalSandboxRandom;
+const defendedDamage = defendedTargetBefore - defendedCombat.参战者.team_enemy[0].属性.HP;
+assert.ok(undefendedDamage > 0, '结构化无防御基准没有造成伤害');
+assert.ok(defendedDamage > 0 && defendedDamage < undefendedDamage, `结构化防御没有实际降低伤害:${defendedDamage}/${undefendedDamage}`);
+
 assert.throws(() => sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
   combatData: combatData(),
   declaration: { actorId: 'player-a', actionKind: 'RELEASE_SKILL', targetIds: ['enemy-a'], skill: { name: '未知提交', _效果数组: [{ 原型: '未知战斗原型', 目标: '单体' }] } },
@@ -1112,11 +1176,95 @@ assert.ok(new Set(structuredShadowActiveRoots.map(event => event?.actorName)).ha
 assert.equal(structuredShadow.ledger.filter(event => event?.eventKind === 'round_summary').length, structuredShadow.roundsExecuted, `结构化影子回合总结不连续或重复:${JSON.stringify(structuredShadow.ledger.map(event => [event.eventKind, event.round]))}/${structuredShadow.roundsExecuted}`);
 assert.equal(structuredShadow.roundOverview.length, structuredShadow.roundsExecuted, '结构化影子回合速览未连续覆盖实际回合');
 assert.ok(structuredShadow.ledger.some(event => ['hit_result', 'defend', 'dodge', 'effect_resolved', 'state_apply'].includes(event?.eventKind)), '结构化影子回合没有产生实际结算事实');
+assert.equal(structuredShadow.audit?.fatals?.length || 0, 0, `完整结构化影子事实审计失败:${JSON.stringify(structuredShadow.audit?.fatals || [])}`);
+assert.ok(structuredShadow.decisions.some(entry => entry?.actionRole === 'REACTION'), '完整结构化影子回合没有让受击方进行正式反应决策');
+assert.ok(structuredShadow.ledger.filter(event => ['dodge', 'defend'].includes(event?.eventKind)).every(event =>
+  event?.sourceActionId && event?.parentNodeId
+), '结构化反应事实缺少父动作因果绑定');
 const structuredShadowRepeat = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   caseId: 'structured-shadow-duel', seed: 88421, combatData: shadowInput, mode: 'team_preview', rounds: 2,
   settings: { decisionEngine: 'next-shadow' },
 });
 assert.equal(digest({ ledger: structuredShadowRepeat.ledger, finalSnapshot: structuredShadowRepeat.finalSnapshot }), digest({ ledger: structuredShadow.ledger, finalSnapshot: structuredShadow.finalSnapshot }), '结构化影子同种子不能复现');
+
+const structuredCounterShadow = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-counter', seed: 1, combatData: combatData(), mode: 'team_preview', rounds: 1,
+  settings: { decisionEngine: 'next-shadow' },
+});
+const structuredCounterDecision = structuredCounterShadow.decisions.find(entry => entry?.actionRole === 'COUNTER');
+const structuredCounterStart = structuredCounterShadow.ledger.find(event => event?.eventKind === 'action_start' && event?.actionRole === 'COUNTER');
+const structuredCounterWindow = structuredCounterShadow.ledger.find(event => event?.eventKind === 'counter_window' && event?.result === 'opened');
+assert.ok(structuredCounterDecision, '固定反击案例没有进入COUNTER决策');
+assert.ok(structuredCounterStart && structuredCounterWindow, '固定反击案例缺少窗口或反击动作');
+assert.equal(structuredCounterStart.sourceActionId, structuredCounterWindow.sourceActionId, '反击动作没有绑定被反制的主动动作');
+assert.equal(structuredCounterStart.parentNodeId, structuredCounterWindow.chainNodeId, '反击动作没有挂在反击窗口节点下');
+const structuredCounterOrder = structuredCounterShadow.actionQueueTrace
+  .filter(entry => entry?.state === 'EXECUTING')
+  .map(entry => entry?.nodeKind);
+assert.ok(
+  structuredCounterOrder.indexOf('REACTION') < structuredCounterOrder.indexOf('PRIMARY_SETTLEMENT') &&
+  structuredCounterOrder.indexOf('PRIMARY_SETTLEMENT') < structuredCounterOrder.indexOf('COUNTER'),
+  `反应、主结算、反击顺序错误:${structuredCounterOrder.join('>')}`,
+);
+
+const structuredFollowUpSkill = {
+  id: 'structured-follow-up',
+  name: '结构化命中追击',
+  魂技名: '结构化命中追击',
+  消耗: '无',
+  前摇: 10,
+  命中后追击: true,
+  _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 65, 伤害类型: '近身攻击', 命中概率: 1 }],
+};
+const structuredFollowUpShadow = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-follow-up',
+  seed: 88421,
+  combatData: combatData(),
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: structuredFollowUpSkill,
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const structuredFollowUpNodes = structuredFollowUpShadow.actionQueueTrace.filter(entry => entry?.nodeKind === 'CONTINUATION');
+assert.ok(structuredFollowUpNodes.some(entry => entry?.state === 'EXECUTING'), '显式命中追击没有生成并消费唯一后继授权');
+assert.equal(new Set(structuredFollowUpNodes.filter(entry => entry?.state === 'EXECUTING').map(entry => entry?.grantId)).size, 1, '显式追击授权被重复消费');
+assert.ok(structuredFollowUpShadow.decisions.some(entry => entry?.continuation === true), '显式追击没有按最新战场重新决策');
+
+const controlledFollowUpSkill = {
+  ...structuredFollowUpSkill,
+  id: 'structured-controlled-follow-up',
+  name: '结构化僵直追击',
+  魂技名: '结构化僵直追击',
+  _效果数组: [
+    ...structuredFollowUpSkill._效果数组,
+    { 原型: '状态施加', 目标: '自身', 状态: '施法僵直', 持续回合: 1, 成功率: 1, 计算层效果: { skip_turn: true } },
+  ],
+};
+const controlledFollowUpShadow = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-shadow-controlled-follow-up',
+  seed: 88421,
+  combatData: combatData(),
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: controlledFollowUpSkill,
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const controlledFollowUpTrace = controlledFollowUpShadow.actionQueueTrace.filter(entry => entry?.nodeKind === 'CONTINUATION');
+assert.ok(controlledFollowUpTrace.some(entry => entry?.state === 'ENQUEUED'), '受控行动者的显式后继授权没有先形成');
+assert.ok(controlledFollowUpTrace.some(entry => entry?.state === 'CANCELLED'), `受控行动者的后继动作没有在执行前取消:${JSON.stringify(controlledFollowUpTrace)}`);
+assert.ok(controlledFollowUpShadow.ledger.some(event =>
+  event?.eventKind === 'blocked_action' && event?.ruleCode === 'CONTINUATION_ACTOR_UNAVAILABLE'
+), '受控后继取消缺少结构化事实');
 
 console.log(JSON.stringify({
   summary: {
