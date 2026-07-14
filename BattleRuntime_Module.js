@@ -6083,6 +6083,20 @@
   function normalizeStateDisplayName(value = '') {
     const raw = String(value || '').trim();
     if (!raw) return '';
+    if (/^preview:/i.test(raw)) {
+      const suffix = raw.split(':').map(part => String(part || '').trim()).filter(Boolean).at(-1) || '';
+      const internalEffectNames = {
+        防御修正: '防御调整',
+        位移执行: '位移效果',
+        伤害结算: '伤害效果',
+        状态施加: '状态效果',
+        状态移除: '状态移除效果',
+        资源变化: '资源变化',
+        资源转移: '资源转移',
+        召唤生成: '召唤效果',
+      };
+      return internalEffectNames[suffix] || '特殊效果';
+    }
     const removedMatch = raw.match(/^移除[:：](.+)$/);
     if (removedMatch) return `移除：${normalizeStateDisplayName(removedMatch[1])}`;
     const statLabels = {
@@ -6172,6 +6186,12 @@
     return false;
   }
 
+  function isTerminalCancellationEvent(event = {}) {
+    return String(event?.eventKind || '').trim() === 'blocked_action' &&
+      String(event?.ruleCode || event?.meta?.reasonCode || '').trim() === 'BATTLE_TERMINAL' &&
+      String(event?.meta?.reason || '').trim() === 'BATTLE_TERMINAL';
+  }
+
   function buildActionChains(eventLedger = [], resolutionTrace = []) {
     const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
     const trace = (Array.isArray(resolutionTrace) ? resolutionTrace : []).filter(node => node && typeof node === 'object');
@@ -6253,7 +6273,10 @@
       'summon_create', 'summon_assist', 'shield_create', 'shield_break', 'blocked_action', 'failed_action',
       'battle_objective_resolved', 'create', 'item_consume', 'complete', 'counter', 'dodge', 'defend',
     ]);
-    return (Array.isArray(eventLedger) ? eventLedger : []).filter(event => supportedKinds.has(String(event?.eventKind || '').trim())).map(event => {
+    return (Array.isArray(eventLedger) ? eventLedger : [])
+      .filter(event => supportedKinds.has(String(event?.eventKind || '').trim()))
+      .filter(event => !isTerminalCancellationEvent(event))
+      .map(event => {
       const kind = String(event?.eventKind || '').trim();
       const round = Math.max(0, Number(event?.round || event?.sourceRound || 0));
       const actor = String(event?.actorName || '行动者').trim();
@@ -6371,7 +6394,9 @@
   }
 
   function buildReportBlocks(eventLedger = [], decisionTrace = [], publicEntries = []) {
-    const ledger = (Array.isArray(eventLedger) ? eventLedger : []).filter(event => event && typeof event === 'object');
+    const ledger = (Array.isArray(eventLedger) ? eventLedger : [])
+      .filter(event => event && typeof event === 'object')
+      .filter(event => !isTerminalCancellationEvent(event));
     const eventById = new Map(ledger.map(event => [String(event?.eventId || '').trim(), event]).filter(([id]) => id));
     const eventIndexById = new Map(ledger.map((event, index) => [String(event?.eventId || '').trim(), index]).filter(([id]) => id));
     const decisions = (Array.isArray(decisionTrace) ? decisionTrace : []).filter(item => item && typeof item === 'object');

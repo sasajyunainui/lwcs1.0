@@ -120,6 +120,28 @@ function validateCaseContract(definition, result) {
   const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
   const reportBlocks = Array.isArray(result?.reportBlocks) ? result.reportBlocks : [];
+  const playerReportText = JSON.stringify({
+    reportBlocks,
+    finalBattleReport: result?.finalBattleReport || null,
+  });
+  if (/preview:battle-action-/i.test(playerReportText)) {
+    failures.push({ code: 'PLAYER_REPORT_INTERNAL_STATE_ID_LEAK' });
+  }
+  const terminalCancellationEventIds = new Set(ledger
+    .filter(event =>
+      String(event?.eventKind || '').trim() === 'blocked_action' &&
+      String(event?.ruleCode || event?.meta?.reasonCode || '').trim() === 'BATTLE_TERMINAL'
+    )
+    .map(event => String(event?.eventId || '').trim())
+    .filter(Boolean));
+  const projectedTerminalCancellation = reportBlocks.some(block =>
+    (Array.isArray(block?.facts) ? block.facts : []).some(fact =>
+      terminalCancellationEventIds.has(String(fact?.factId || '').trim())
+    )
+  );
+  if (projectedTerminalCancellation) {
+    failures.push({ code: 'PLAYER_REPORT_TERMINAL_CANCELLATION_LEAK' });
+  }
   for (const field of ['candidateRelations', 'forbiddenSelections', 'requiredFacts', 'mutationRelations']) {
     if (!Array.isArray(definition?.[field]) || !definition[field].length) failures.push({ code: 'CASE_CONTRACT_FIELD_EMPTY', field });
   }

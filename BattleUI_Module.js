@@ -32243,6 +32243,19 @@ class BattleUIComponent {
           const declaredAllyTarget = declaredTargetName
             ? allyTeam.find(unit => isCombatUnitIdentityMatch(unit, declaredTargetName) && isCombatUnitAbleToFight(unit))
             : null;
+          const formalDecisionNode = typeof actorEntry.__decisionResolver === 'function';
+          if (formalDecisionNode && !declaredTargetName) {
+            const declaredKind = String(
+              actorEntry.__declaredAction?.actionKind ||
+              actorEntry.__declaredAction?.action_type ||
+              actorEntry.__declaredAction?.type ||
+              '',
+            ).trim();
+            if (['DEFEND', 'EVADE', 'OBSERVE', 'GUARD', 'WITHDRAW', 'COUNTER'].includes(declaredKind)) {
+              return { enemyTarget: null, allyTarget: actorEntry.char };
+            }
+            return { enemyTarget: null, allyTarget: null };
+          }
           const inheritedSummonTarget = 读取召唤物继承敌对目标(actorEntry, enemyTeam, battleState.combatData);
           if (inheritedSummonTarget) setActorFocusTarget(actorEntry.char, inheritedSummonTarget, 'shared_vision_focus', 1);
           const focusEnemy = declaredEnemyTarget || inheritedSummonTarget || getActorFocusedTarget(actorEntry.char, enemyTeam);
