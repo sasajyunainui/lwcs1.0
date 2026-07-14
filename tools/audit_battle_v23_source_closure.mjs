@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
-const root = process.cwd();
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const battleUiPath = path.resolve(root, 'lwcs/BattleUI_Module.js');
 const battleRuntimePath = path.resolve(root, 'lwcs/BattleRuntime_Module.js');
 const battleDecisionPath = path.resolve(root, 'lwcs/BattleDecision_Module.js');
@@ -77,7 +78,7 @@ addCheck(
 );
 addCheck(
   'objectiveScoringOwnedByDecision',
-  /const objectiveUtility = clamp\(expectedStateGain \+ terminalUtility \+ objectiveProgress \+ informationValue - irreversibleCost - catastrophicRisk, -200, 200\)/.test(battleDecisionSource) &&
+  /const objectiveUtility = clamp\(objectiveRelevantStateGain \+ terminalUtility \+ objectiveProgress \+ informationValue - irreversibleCost - catastrophicRisk, -200, 200\)/.test(battleDecisionSource) &&
     !/calculateObjectiveScore|summarizeScoreContributions|评估技能规划净收益/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
@@ -143,8 +144,9 @@ addCheck(
 addCheck(
   'debugCaseOrchestrationOwnedByRuntime',
   /function runBattleCase\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /function runDecisionTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /runDecisionTeamBattle\(\{/.test(battleRuntimeSource) &&
+    /function runStructuredBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /return runStructuredBattle\(input\)/.test(battleRuntimeSource) &&
+    !/runDecisionTeamBattle|runStructuredShadowBattle|decisionEngine|next-shadow/.test(battleRuntimeSource) &&
     !/bindEngine|requireEngine|caseDomain/.test(battleRuntimeSource) &&
     !/bindEngine|caseDomain/.test(battleUiSource) &&
     !/function 运行战斗调试案例\(/.test(battleUiSource) &&
@@ -231,16 +233,17 @@ addCheck(
     /function executeStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
     /executeDeclaration,/.test(battleRuntimeSource) &&
     /executeStructuredDeclaration,/.test(battleRuntimeSource) &&
-    /runtime\.playerLockedNaturalAction\s*=/.test(battleRuntimeSource) &&
-    /return runDecisionTeamBattle\(\{/.test(battleRuntimeSource) &&
+    /const result = runStructuredBattle\(\{/.test(battleRuntimeSource) &&
+    !/runtime\.playerLockedNaturalAction\s*=/.test(battleRuntimeSource) &&
+    !/runDecisionTeamBattle/.test(battleRuntimeSource) &&
     !/domain\.executeDeclaration\(|executeDeclaration:\s*\(|executeStructuredDeclaration/.test(battleUiSource),
 );
 addCheck(
-  'structuredShadowRunnerOwnedByRuntime',
-  /function runStructuredShadowBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
-    /decisionEngine \|\| ''\)\.trim\(\) === 'next-shadow'/.test(battleRuntimeSource) &&
-    /runStructuredShadowBattle,/.test(battleRuntimeSource) &&
-    !/runStructuredShadowBattle|next-shadow/.test(battleUiSource),
+  'formalStructuredRunnerOwnedByRuntime',
+  /function runStructuredBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /function runBattleCase\(options = \{\}\)/.test(battleRuntimeSource) &&
+    /runStructuredBattle\(input\)/.test(battleRuntimeSource) &&
+    !/runStructuredShadowBattle|decisionEngine|next-shadow/.test(`${battleRuntimeSource}\n${battleUiSource}`),
 );
 addCheck(
   'battleModuleVersionsAreExactContracts',
@@ -342,9 +345,9 @@ addCheck(
 );
 addCheck(
   'teamRoundRunnerOwnedByRuntime',
-  /function runTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
-    /const simulation = runTeamBattle\(\{/.test(battleRuntimeSource) &&
-    !/BATTLE_RUNTIME\.runTeamBattle\(/.test(battleUiSource) &&
+  /function runStructuredBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /for \(let roundOffset = 1; roundOffset <= roundLimit; roundOffset \+= 1\)/.test(battleRuntimeSource) &&
+    /BATTLE_RUNTIME\.runBattleCase\(\{/.test(battleUiSource) &&
     !/while\s*\(rounds\s*<\s*maxRounds\)/.test(battleUiSource),
 );
 addCheck(
@@ -357,9 +360,10 @@ addCheck(
 );
 addCheck(
   'duelRoundLoopOwnedByRuntime',
-  /function 运行正式决策战斗\(/.test(battleUiSource) &&
-    /BATTLE_RUNTIME\.runDecisionTeamBattle\(\{/.test(battleUiSource) &&
-    /function runDecisionTeamBattle\(options = \{\}\)/.test(battleRuntimeSource) &&
+  /function runStructuredBattle\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /for \(let roundOffset = 1; roundOffset <= roundLimit; roundOffset \+= 1\)/.test(battleRuntimeSource) &&
+    /function 运行正式决策战斗\(/.test(battleUiSource) &&
+    /BATTLE_RUNTIME\.runBattleCase\(\{/.test(battleUiSource) &&
     !/function runDecisionTeamBattleSimulation\(/.test(battleUiSource) &&
     !/BATTLE_RUNTIME\.runDuelRounds\(/.test(battleUiSource) &&
     !/while\s*\(\s*roundCount < maxRounds/.test(battleUiSource),
@@ -367,11 +371,12 @@ addCheck(
 addCheck(
   'duelRoundDeclarationHasSinglePath',
   !/构建单挑回合宣告|执行单挑回合交锋|executeDuelRound/.test(battleUiSource) &&
-    !/buildQueue\s*:|generateActionQueue\(/.test(settlementBindingSource) &&
     /function buildActionQueue\(combatData = \{\}\)/.test(battleRuntimeSource) &&
-    /recordQueue\(queue = \[\], currentCombatData = \{\}, logs = \[\]\)/.test(battleRuntimeSource) &&
-    /entry\.__decisionResolver\s*=/.test(battleRuntimeSource) &&
-    /executeQueue:\s*\(queue, combatData, currentRound, logs, extraPatchOps\)\s*=>\s*执行团战扁平行动队列/.test(settlementBindingSource),
+    /createActionQueue\(\{/.test(battleRuntimeSource) &&
+    /function beginStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
+    /function executeStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
+    !/__decisionResolver|generateActionQueue|runDecisionTeamBattle/.test(battleRuntimeSource) &&
+    !/buildQueue\s*:|recordQueue\s*:/.test(settlementBindingSource),
 );
 addCheck(
   'duelNpcPressureHasSingleSettlementPath',
@@ -504,7 +509,7 @@ addCheck(
   /const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleRuntimeSource) &&
     /history\.push\(\{[\s\S]*?capacityChangePercent:[\s\S]*?beliefRevision:\s*currentBeliefRevision/.test(battleRuntimeSource) &&
     /newInformation:\s*!!previousBeliefRevision && previousBeliefRevision !== currentBeliefRevision/.test(battleRuntimeSource) &&
-    /pendingEffect:\s*decision\?\.pendingStrategicEffect === true/.test(battleRuntimeSource) &&
+    /pendingEffect:\s*decisionResult\?\.pendingStrategicEffect === true/.test(battleRuntimeSource) &&
     !/const previousCapacity = Number\(history\.at\(-1\)\?\.capacityTotal\)/.test(battleUiSource) &&
     !/capacityChangePercent:\s*0\b|newInformation:\s*false\b|pendingEffect:\s*false\b/.test(battleUiSource),
 );

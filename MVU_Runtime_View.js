@@ -81,6 +81,7 @@ var 角色性别待补全文案_V1 = '待补全(请填写角色性别)';
 var 场景候选角色资料占位符_V1 = '{{场景候选角色资料}}';
 var 场景背景角色补充占位符_V1 = '{{场景背景角色补充}}';
 var 场景审计材料占位符_V1 = '{{场景审计材料}}';
+var 玩家角色表占位符_V1 = '{{玩家角色表}}';
 
 function 清理提示审计扫描文本_V1(text = '') {
   return String(text || '').replace(/<scene_audit>[\s\S]*?<\/scene_audit>/gi, ' ');
@@ -6143,6 +6144,17 @@ function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色�
   return 角色键 ? 构建MVU角色卡表格文本_V1({ [角色键]: 角色 }, 当前tick) : '无';
 }
 
+function 生成MVU玩家角色表_V1(数据输入 = null) {
+  const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
+  const 角色表 = 数据根?.char && typeof 数据根.char === 'object' ? 数据根.char : {};
+  const 配置玩家名 = String(数据根?.sys?.玩家名 || '').trim();
+  const 标记玩家名 = Object.entries(角色表).find(([, 角色]) => 角色 && typeof 角色 === 'object' && 角色.__mvu_isPlayer === true)?.[0] || '';
+  const 玩家名 = 配置玩家名 && 角色表[配置玩家名] ? 配置玩家名 : 标记玩家名;
+  const 玩家 = 数据根?.char?.[玩家名];
+  if (!玩家名 || !玩家 || typeof 玩家 !== 'object') return '无';
+  return 构建MVU正文角色卡_V1(玩家名, 玩家, 数据根.char || {}, 数据根?.world?.时间?.tick ?? null);
+}
+
 function 构建MVU正文角色卡主体行列表_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
   return 构建MVU正文角色卡_V1(角色名, 角色, 正文角色表, 当前tick).split('\n');
 }
@@ -6527,7 +6539,8 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   const 需要场景候选角色资料 = 源文本.includes(场景候选角色资料占位符_V1);
   const 需要场景背景角色补充 = 源文本.includes(场景背景角色补充占位符_V1);
   const 需要场景审计材料 = 源文本.includes(场景审计材料占位符_V1);
-  if (!需要主视图 && !需要更新视图 && !需要结构提示 && !需要相互可见性 && !需要场景候选角色资料 && !需要场景背景角色补充 && !需要场景审计材料) return 源文本;
+  const 需要玩家角色表 = 源文本.includes(玩家角色表占位符_V1);
+  if (!需要主视图 && !需要更新视图 && !需要结构提示 && !需要相互可见性 && !需要场景候选角色资料 && !需要场景背景角色补充 && !需要场景审计材料 && !需要玩家角色表) return 源文本;
   const 数据根 = 上下文?.statData || 获取最新运行时Mvu数据根_V1();
   const userInput = 上下文?.userInput || '';
   const 最后角色消息输入 = String(上下文?.lastCharMessage || 上下文?.aiText || '').trim() || 读取运行时最后角色消息文本_V1();
@@ -6570,6 +6583,7 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   const 场景审计材料文本 = 需要场景审计材料
     ? 生成场景审计材料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '', 10, 场景背景角色补充文本, 场景候选角色资料文本)
     : '';
+  const 玩家角色表文本 = 需要玩家角色表 ? 生成MVU玩家角色表_V1(数据根) : '';
   const 替换后 = 源文本
     .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_V1, 主视图文本)
     .replaceAll(MVU_RUNTIME_UPDATE_PLACEHOLDER_V1, 更新视图文本)
@@ -6577,7 +6591,8 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     .replaceAll(MVU相互可见性视图占位符_V1, 相互可见性文本)
     .replaceAll(场景背景角色补充占位符_V1, 场景背景角色补充文本)
     .replaceAll(场景候选角色资料占位符_V1, 场景候选角色资料文本)
-    .replaceAll(场景审计材料占位符_V1, 场景审计材料文本);
+    .replaceAll(场景审计材料占位符_V1, 场景审计材料文本)
+    .replaceAll(玩家角色表占位符_V1, 玩家角色表文本);
   return 替换后.replace(/<status_current_variables>\s*(?:\{\}|\[\]|\s*)\s*<\/status_current_variables>/gi, '').trim();
 }
 
@@ -6792,12 +6807,14 @@ try {
     更新视图占位符: MVU_RUNTIME_UPDATE_PLACEHOLDER_V1,
     更新结构提示占位符: MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_V1,
     相互可见性视图占位符: MVU相互可见性视图占位符_V1,
+    玩家角色表占位符: 玩家角色表占位符_V1,
     生成MVU正文视图: 生成MVU正文视图_V1,
     生成MVU正文提示文本: 生成MVU正文提示文本_V1,
     生成MVU相互可见性视图: 生成MVU相互可见性视图_V1,
     生成MVU更新视图: 生成MVU更新视图_V1,
     生成MVU剧情视图: 生成MVU剧情视图_V1,
     生成MVU剧情提示文本: 生成MVU剧情提示文本_V1,
+    生成MVU玩家角色表: 生成MVU玩家角色表_V1,
     生成MVU角色卡覆盖率检查: 生成MVU角色卡覆盖率检查_V1,
     生成场景背景角色补充: 生成场景背景角色补充_V1,
     生成场景候选角色资料: 生成场景候选角色资料_V1,

@@ -182,12 +182,44 @@ assert.equal(preview.isDead(dead), true, '死亡判定失败');
 assert.equal(preview.isDead(exhausted), false, '体力耗尽错误归类为死亡');
 assert.equal(preview.isBattleCapable(exhausted), false, '体力耗尽没有归类为失能');
 
+const exhaustionCombatData = {
+  回合: 0, 战斗类型: '切磋', 战斗意图: '守护', 进行中: true,
+  参战者: { team_player: [unit('exhaustion-player', 'player')], team_enemy: [unit('exhaustion-enemy', 'enemy', 0)] },
+  胜负条件: {
+    version: 1, explicit: true, startRound: 0, maxRounds: 2, resolutionPriority: 'DEFEAT_FIRST',
+    victory: { logic: 'ANY', conditions: [{ type: 'ROUND_REACHED', side: 'PLAYER', round: 2, requireActive: true }] },
+    defeat: { logic: 'ANY', conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }] },
+  },
+};
+exhaustionCombatData.参战者.team_enemy[0].状态.存活 = false;
+const exhaustionResult = battleSandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'route-objective-battlefield-exhaustion', seed: 7415, combatData: exhaustionCombatData,
+  mode: 'team_preview', rounds: 1, settings: {},
+});
+const exhaustionEvent = exhaustionResult.ledger.find(event => event?.eventKind === 'battle_objective_resolved');
+assert.equal(exhaustionResult.finalBattleReport?.objectiveWinner, 'player', '敌方全员失能没有形成统一胜利裁断');
+assert.equal(exhaustionEvent?.meta?.terminalReason, 'BATTLEFIELD_ENEMY_EXHAUSTED', '敌方全员失能缺少终局原因');
+assert.equal(exhaustionResult.finalBattleReport?.headline, '我方获胜', '终局事实与最终标题不一致');
+
+const bothExhausted = structuredClone(exhaustionCombatData);
+bothExhausted.参战者.team_player[0].属性.体力 = 0;
+bothExhausted.胜负条件.resolutionPriority = 'DRAW_ON_CONFLICT';
+const conflict = preview.evaluateBattleObjectives(bothExhausted, bothExhausted.胜负条件, {
+  round: 0,
+  roundCompleted: false,
+});
+assert.equal(conflict.winner, 'draw', '双方同时失能没有按冲突策略裁断为平局');
+assert.equal(conflict.terminalReason, 'BATTLEFIELD_BOTH_EXHAUSTED', '双方同时失能缺少统一终局原因');
+
 console.log(JSON.stringify({
   summary: {
     parserDelimiterCount: 8,
     invalidCaseCount: invalidCases.length,
     traumaLedgerFacts: result.ledger.filter(event => event?.ruleCode === 'TRAUMA_UNCONSCIOUS').length,
     objectiveWinner: result.finalBattleReport?.objectiveWinner || '',
+    exhaustionWinner: exhaustionResult.finalBattleReport?.objectiveWinner || '',
+    exhaustionTerminalReason: exhaustionEvent?.meta?.terminalReason || '',
+    conflictWinner: conflict.winner,
     passed: true,
   },
 }, null, 2));

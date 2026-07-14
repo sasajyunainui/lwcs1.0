@@ -33604,28 +33604,29 @@ class BattleUIComponent {
         }
 
         function 运行正式决策战斗(combatData, maxRounds = 3, mode = 'multi_round', adapterOptions = {}) {
-          const decision = root.__LWCS_BATTLE_DECISION__;
-          if (!decision || typeof decision.decide !== 'function') throw new Error('battle_decision_runtime_missing');
           const runtime = BATTLE_RUNTIME.ensureCombatRuntime(combatData);
           const seed = Math.max(1, Math.floor(Number(runtime.decisionSeed || 1)));
-          let decisionIndex = 0;
-          const decide = payload => decision.decide({
-            ...payload,
-            battleIntent: payload?.battleIntent || {
-              mode: String(payload?.worldSnapshot?.战斗意图 || combatData?.战斗意图 || '').trim(),
-              objectives: payload?.worldSnapshot?.胜负条件 || combatData?.胜负条件 || {},
-            },
-            seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${decisionIndex++}:${payload?.seedOffset || 0}`,
-          });
-          return BATTLE_RUNTIME.runDecisionTeamBattle({
+          const lockedAction = runtime.playerLockedNaturalAction;
+          const result = BATTLE_RUNTIME.runBattleCase({
+            caseId: 'battle-ui-formal',
             combatData,
-            maxRounds,
-            decide,
-            updateBelief: decision.updateMechanicBelief,
-            updatePublicBelief: decision.updatePublicObservation,
+            rounds: Math.max(1, Number(maxRounds || 1)),
             mode,
-            adapterOptions,
+            seed,
+            battleIntent: {
+              mode: String(combatData?.战斗意图 || '').trim(),
+              objectives: combatData?.胜负条件 || {},
+            },
+            selectedAction: lockedAction?.consumed !== true ? lockedAction?.action : null,
           });
+          const committedCombatData = result?.combatData && typeof result.combatData === 'object' ? result.combatData : null;
+          if (committedCombatData) Object.assign(combatData, committedCombatData);
+          return {
+            ...result,
+            rounds: Number(result?.roundsExecuted || 0),
+            logs: Array.isArray(result?.logs) ? result.logs : [],
+            extraPatchOps: Array.isArray(result?.extraPatchOps) ? result.extraPatchOps : [],
+          };
         }
 
         function runTeamBattleRound(combatData) {

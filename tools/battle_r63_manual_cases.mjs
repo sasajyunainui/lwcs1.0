@@ -5,7 +5,8 @@ const clone = value => structuredClone(value);
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 function sourceSnapshot(library, name) {
-  const snapshot = library?.角色?.[name]?.快照?.[0]?.角色;
+  const snapshots = library?.角色?.[name]?.快照;
+  const snapshot = Array.isArray(snapshots) ? snapshots.at(-1)?.角色 : null;
   if (!snapshot) throw new Error(`r63_manual_character_missing:${name}`);
   return clone(snapshot);
 }
@@ -101,6 +102,7 @@ function battle(caseId, rounds, intent, players, enemies, initialBelief = {}) {
       回合: 0,
       战斗类型: '普通战斗',
       战斗意图: intent,
+      时间段: '白天',
       进行中: true,
       参战者: { team_player: players.map(entry => entry.unit), team_enemy: enemies.map(entry => entry.unit) },
     },
@@ -149,14 +151,14 @@ export function buildManualCases(library, getBaseStats) {
     battle('duel_peer_unknown_probe', 5, '点到为止', [make('谢邂')], [make('韦小枫')], { confidence: 0.2 }),
     battle('duel_agile_single_target_failure', 5, '求生', [make('谢邂', { level: 45, hpRatio: 0.05 })], [make('王金玺', { level: 50 })]),
     battle('duel_agile_counter_options', 5, '切磋', [make('谢邂', { level: 50 })], [make('王金玺', { level: 50 })]),
-    battle('duel_charge_interrupt_safer', 4, '切磋', [make('舞长空')], [make('古月', { charging: charge })]),
+    battle('duel_charge_interrupt_safer', 4, '切磋', [make('舞长空', { level: 60 })], [make('古月', { level: 60, charging: charge })]),
     battle('duel_charge_defense_safer', 4, '切磋', [make('韦小枫', { hpRatio: 0.25, soulRatio: 0 })], [make('舞长空', { charging: longCharge })]),
     battle('team_focus_without_overkill', 4, '击败', [make('唐舞麟'), make('古月'), make('谢邂')], [make('张扬子', { hpRatio: 0.25 }), make('王金玺'), make('韦小枫')]),
     battle('team_protect_critical_ally', 4, '守护', [make('舞长空', { level: 70, hpRatio: 0.05 }), make('雅莉'), make('唐舞麟', { level: 70 })], [make('龙跃', { level: 70 }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 })]),
-    battle('team_heal_crisis', 4, '守护', [make('雅莉'), make('舞长空', { level: 70, hpRatio: 0.12 }), make('古月', { level: 70, hpRatio: 0.3 })], [make('龙跃', { level: 60, charging: charge }), make('戴月炎', { level: 60 }), make('苏沐', { level: 60 })]),
-    battle('team_control_overlap', 4, '击败', [make('古月', { level: 80 }), make('许小言', { level: 90 }), make('舞长空', { level: 80 })], [make('龙跃', { level: 55, charging: charge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })]),
+    battle('team_heal_crisis', 4, '守护', [make('雅莉', { level: 98, hpRatio: 0.8 }), make('舞长空', { level: 70, hpRatio: 0.05 }), make('古月', { level: 70, hpRatio: 0.08 })], [make('龙跃', { level: 45, charging: charge }), make('戴月炎', { level: 45 }), make('苏沐', { level: 45 })]),
+    battle('team_control_overlap', 4, '击败', [make('古月', { level: 60 }), make('许小言', { level: 60 }), make('舞长空', { level: 60 })], [make('龙跃', { level: 55, charging: charge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })]),
     battle('team_resource_support', 6, '击败', [make('白寒樱', { level: 50 }), make('唐舞麟', { level: 50, soulRatio: 0.08 }), make('古月', { level: 50, soulRatio: 0.12 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 })]),
-    battle('team_multi_target_response', 6, '击败', [make('古月', { level: 60 }), make('舞长空', { level: 60 }), make('许小言', { level: 60 })], [make('张扬子', { level: 48, hpRatio: 0.45 }), make('王金玺', { level: 48, hpRatio: 0.45 }), make('韦小枫', { level: 48, hpRatio: 0.45 })]),
+    battle('team_multi_target_response', 6, '击败', [make('唐舞麟', { level: 60 }), make('谢邂', { level: 60 }), make('古月', { level: 60 })], [make('张扬子', { level: 52, hpRatio: 0.55 }), make('王金玺', { level: 52, hpRatio: 0.55 }), make('韦小枫', { level: 52, hpRatio: 0.55 })]),
     battle('team_counter_coordination', 6, '切磋', [make('谢邂', { level: 55 }), make('唐舞麟', { level: 55 }), make('古月', { level: 55 })], [make('王金玺', { level: 55 }), make('张扬子', { level: 55 }), make('许小言', { level: 55 })]),
     battle('team_unknown_enemy_adaptation', 6, '切磋', [make('唐舞麟', { level: 55 }), make('古月', { level: 55 }), make('谢邂', { level: 55 })], [make('龙跃', { level: 58, charging: longCharge }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 })], { confidence: 0.12 }),
     battle('raid_balanced', 5, '击败', [make('唐舞麟', { level: 55 }), make('古月', { level: 55 }), make('谢邂', { level: 55 }), make('许小言', { level: 55 }), make('叶星澜', { level: 55 }), make('徐笠智', { level: 55 }), make('原恩夜辉', { level: 55 })], [make('龙跃', { level: 55 }), make('戴月炎', { level: 55 }), make('苏沐', { level: 55 }), make('王金玺', { level: 55 }), make('张扬子', { level: 55 }), make('韦小枫', { level: 55 }), make('乐正宇', { level: 55 })]),
@@ -164,7 +166,7 @@ export function buildManualCases(library, getBaseStats) {
     battle('raid_control_heavy', 5, '击败', [make('许小言', { level: 75 }), make('舞长空', { level: 75 }), make('古月', { level: 75 }), make('唐舞麟', { level: 75 }), make('谢邂', { level: 75 }), make('叶星澜', { level: 75 }), make('雅莉', { level: 75 })], [make('龙跃', { level: 70, charging: charge }), make('戴月炎', { level: 70 }), make('苏沐', { level: 70 }), make('王金玺', { level: 70 }), make('张扬子', { level: 70 }), make('韦小枫', { level: 70 }), make('原恩夜辉', { level: 70 })]),
     battle('raid_summon_heavy', 5, '击败', [make('韦小枫', { level: 65 }), make('张扬子', { level: 65 }), make('徐笠智', { level: 65 }), make('古月', { level: 65 }), make('谢邂', { level: 65 }), make('唐舞麟', { level: 65 }), make('许小言', { level: 65 })], [make('龙跃', { level: 65 }), make('戴月炎', { level: 65 }), make('苏沐', { level: 65 }), make('王金玺', { level: 65 }), make('叶星澜', { level: 65 }), make('原恩夜辉', { level: 65 }), make('乐正宇', { level: 65 })]),
     battle('summon_one_window', 4, '切磋', [make('韦小枫', { level: 50 })], [make('谢邂', { level: 50 })]),
-    battle('item_creation_consumption', 6, '守护', [make('徐笠智', { level: 50 }), make('唐舞麟', { level: 50, hpRatio: 0.25, staminaRatio: 0.3 }), make('古月', { level: 50, hpRatio: 0.45, staminaRatio: 0.5 })], [make('龙跃', { level: 50 }), make('戴月炎', { level: 50 }), make('苏沐', { level: 50 })]),
+    battle('item_creation_consumption', 6, '守护', [make('徐笠智', { level: 50 }), make('唐舞麟', { level: 50, hpRatio: 0.6, staminaRatio: 0.3 }), make('古月', { level: 50, staminaRatio: 0.5 })], [make('龙跃', { level: 45 }), make('戴月炎', { level: 45 }), make('苏沐', { level: 45 })]),
     battle('equipment_switch_no_loop', 6, '切磋', [equipmentTester], [make('王金玺', { level: 50 })]),
     battle('intent_capture_vs_kill', 6, '点到为止', [make('舞长空', { level: 70 })], [make('韦小枫', { level: 45 })]),
   ];
@@ -184,6 +186,50 @@ export function buildManualCases(library, getBaseStats) {
   cases.find(item => item.caseId === 'duel_agile_single_target_failure').combatData.胜负条件 = objectiveContract(5, [
     { type: 'WITHDRAW_SUCCESS', side: 'PLAYER' },
   ]);
+  ['summon_one_window'].forEach(caseId => {
+    const item = cases.find(entry => entry.caseId === caseId);
+    const actor = item.combatData.参战者.team_player.find(unit => unit?.name === '韦小枫');
+    const summonSkill = actor?.第1武魂?.第1魂灵?.第2魂环?.第2魂技;
+    const target = item.combatData.参战者.team_enemy[0];
+    item.selectedAction = {
+      actorId: actor?.id || actor?.name || '韦小枫',
+      actionKind: 'RELEASE_SKILL',
+      targetIds: [target?.id || target?.name].filter(Boolean),
+      skill: clone(summonSkill),
+    };
+  });
+  const equipmentCase = cases.find(item => item.caseId === 'equipment_switch_no_loop');
+  const equipmentActor = equipmentCase.combatData.参战者.team_player[0];
+  const equipmentItem = equipmentActor?.背包?.疾风试作匕首;
+  equipmentCase.selectedAction = {
+    actorId: equipmentActor?.id || equipmentActor?.name || '谢邂',
+    actionKind: 'EQUIP',
+    targetIds: [equipmentActor?.id || equipmentActor?.name || '谢邂'],
+    skill: clone(equipmentItem),
+    irreversibleAsset: { assetId: equipmentItem?.id || 'r63-review-agility-dagger', cost: 0 },
+  };
+  const itemCase = cases.find(item => item.caseId === 'item_creation_consumption');
+  const itemProducer = itemCase.combatData.参战者.team_player.find(unit => unit?.name === '徐笠智');
+  const recoverySkill = itemProducer?.第1武魂?.第1魂灵?.第1魂环?.第1魂技;
+  itemCase.combatData.参战者.team_enemy.forEach(unit => {
+    unit.hp = 20000;
+    unit.HP = 20000;
+    unit.hp_max = 20000;
+    unit.属性.HP = 20000;
+    unit.属性.HP上限 = 20000;
+    unit.str = 50;
+    unit.def = 5000;
+    unit.agi = 10;
+    unit.属性.力量 = 50;
+    unit.属性.防御 = 5000;
+    unit.属性.敏捷 = 10;
+  });
+  itemCase.selectedAction = {
+    actorId: itemProducer?.id || itemProducer?.name || '徐笠智',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: [itemProducer?.id || itemProducer?.name || '徐笠智'],
+    skill: clone(recoverySkill),
+  };
   cases.find(item => item.caseId === 'team_protect_critical_ally').combatData.胜负条件 = objectiveContract(4, [
     { type: 'ROUND_REACHED', side: 'PLAYER', round: 4, requireActive: true },
   ], [
@@ -193,6 +239,11 @@ export function buildManualCases(library, getBaseStats) {
     { type: 'ROUND_REACHED', side: 'PLAYER', round: 4, requireActive: true },
   ], [
     { type: 'UNIT_INCAPACITATED', side: 'PLAYER', targetIds: ['舞长空', '古月'], scope: 'ANY' },
+  ]);
+  cases.find(item => item.caseId === 'item_creation_consumption').combatData.胜负条件 = objectiveContract(6, [
+    { type: 'ROUND_REACHED', side: 'PLAYER', round: 6, requireActive: true },
+  ], [
+    { type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' },
   ]);
   cases.find(item => item.caseId === 'intent_capture_vs_kill').combatData.胜负条件 = objectiveContract(6, [
     { type: 'HP_RATIO_AT_OR_BELOW', side: 'ENEMY', targetIds: ['韦小枫'], threshold: 0.3, scope: 'ALL' },

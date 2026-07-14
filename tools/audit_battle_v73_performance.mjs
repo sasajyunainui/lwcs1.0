@@ -74,15 +74,15 @@ function instrumentCurrentTeamBattleSources(uiSource, runtimeSource) {
   };
   let instrumentedRuntime = replaceOnce(
     runtimeSource,
-    `    let lastAlive = adapters.readAlive(combatData);\n    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;\n    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {\n      rounds += 1;`,
-    `    let lastAlive = adapters.readAlive(combatData);\n    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;\n    root.__LWCS_PERF_ROUND_TIMINGS__ = [];\n    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {\n      const __performanceRoundStarted = performance.now();\n      rounds += 1;`,
-    'runtime_round_start',
+    `    const naturalActionBudget = 40;\n    try {\n      for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {`,
+    `    const naturalActionBudget = 40;\n    try {\n      root.__LWCS_PERF_ROUND_TIMINGS__ = [];\n      for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {\n        const __performanceRoundStarted = performance.now();`,
+    'structured_round_start',
   );
   instrumentedRuntime = replaceOnce(
     instrumentedRuntime,
-    `      if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;`,
-    `      root.__LWCS_PERF_ROUND_TIMINGS__.push(performance.now() - __performanceRoundStarted);\n      if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;`,
-    'runtime_round_end',
+    `        if (terminal?.terminal === true || alive.playerAlive <= 0 || alive.enemyAlive <= 0) break;\n      }`,
+    `        root.__LWCS_PERF_ROUND_TIMINGS__.push(performance.now() - __performanceRoundStarted);\n        if (terminal?.terminal === true || alive.playerAlive <= 0 || alive.enemyAlive <= 0) break;\n      }`,
+    'structured_round_end',
   );
   const instrumentedUi = replaceOnce(
     uiSource,

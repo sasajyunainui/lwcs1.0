@@ -51,7 +51,7 @@ const battleUiSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleUI_Module.
 const battleRuntimeSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleRuntime_Module.js'), 'utf8');
 assert.ok(!battleUiSource.includes('history.push({ signature: decision.strategicSignature, capacityChangePercent: 0, newInformation: false, pendingEffect: false })'), '正式僵局历史仍伪造零容量变化');
 assert.ok(battleRuntimeSource.includes('100 * Math.abs(currentCapacity - previousCapacity) / Math.max(1, previousCapacity)'), '正式僵局历史未记录真实容量变化');
-assert.ok(battleRuntimeSource.includes('pendingEffect: decision?.pendingStrategicEffect === true'), '正式僵局历史未记录待兑现效果');
+assert.ok(battleRuntimeSource.includes('pendingEffect: decisionResult?.pendingStrategicEffect === true'), '正式僵局历史未记录待兑现效果');
 
 const attack = { id: 'attack', name: '推进攻击', 消耗: '魂力:5', _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }] };
 const createFood = {

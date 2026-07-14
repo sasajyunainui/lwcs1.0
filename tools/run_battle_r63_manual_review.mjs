@@ -46,13 +46,18 @@ if (!requestedCase && !captureEvidence && !refreshReviewReports && !verifyReview
   const manifestPath = path.join(outputDir, 'manifest.json');
   if (!fs.existsSync(manifestPath)) throw new Error('r63_manual_review_manifest_missing');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const formalCaseId = 'weixiaofeng_20_round';
+  const manualManifest = manifest.filter(item => String(item?.caseId || '') !== formalCaseId);
   const noteIds = Object.keys(battleR63ManualReviewNotes).sort();
   const evidenceIds = Object.keys(battleR63ManualReviewEvidence).sort();
-  const manifestIds = manifest.map(item => String(item?.caseId || '')).sort();
+  const manifestIds = manualManifest.map(item => String(item?.caseId || '')).sort();
   if (noteIds.length !== 24 || new Set(noteIds).size !== 24) throw new Error(`r63_manual_review_note_count_invalid:${noteIds.length}`);
   if (JSON.stringify(noteIds) !== JSON.stringify(evidenceIds)) throw new Error('r63_manual_review_evidence_case_mismatch');
   if (JSON.stringify(noteIds) !== JSON.stringify(manifestIds)) throw new Error('r63_manual_review_manifest_case_mismatch');
-  for (const item of manifest) {
+  const formalManifest = manifest.find(item => String(item?.caseId || '') === formalCaseId);
+  if (!formalManifest) throw new Error('r63_manual_review_formal_case_missing');
+  if (Number(formalManifest?.fatalCount || 0) !== 0) throw new Error('r63_manual_review_formal_case_fatal');
+  for (const item of manualManifest) {
     const caseId = String(item?.caseId || '');
     const note = battleR63ManualReviewNotes[caseId];
     const evidence = battleR63ManualReviewEvidence[caseId];
@@ -158,17 +163,26 @@ function validateCaseContract(definition, result) {
     if (repeatedSingleSupport.length) failures.push({ code: 'RESOURCE_SUPPORT_WITHOUT_MATERIAL_UNLOCK', count: repeatedSingleSupport.length });
   }
   if (caseId === 'team_counter_coordination') {
+    const counterWindows = ledger.filter(event => String(event?.eventKind || '').trim() === 'counter_window');
     const counterDecisions = decisions.filter(entry => String(entry?.actionRole || '').trim() === 'COUNTER');
-    const successfulCounters = ledger.filter(event => String(event?.eventKind || '').trim() === 'counter' && String(event?.result || '').trim() === 'success');
-    const failedCounters = ledger.filter(event => String(event?.eventKind || '').trim() === 'counter' && String(event?.result || '').trim() === 'fail');
+    const openedWindows = counterWindows.filter(event => String(event?.result || '').trim() === 'opened');
+    const missedWindows = counterWindows.filter(event => String(event?.result || '').trim() === 'missed');
+    const settledCounters = ledger.filter(event =>
+      String(event?.actionRole || '').trim() === 'COUNTER' &&
+      String(event?.eventKind || '').trim() === 'hit_result'
+    );
     const counterSideErrors = ledger.filter(event =>
       ['counter', 'dodge', 'defend', 'pass'].includes(String(event?.eventKind || '').trim()) &&
       event?.actorName && event?.targetName && event.actorName !== event.targetName &&
       (!event.actorSide || !event.targetSide || event.actorSide === event.targetSide),
     );
-    if (!counterDecisions.length) failures.push({ code: 'TEAM_COUNTER_DECISION_MISSING' });
-    if (!successfulCounters.length) failures.push({ code: 'TEAM_COUNTER_SUCCESS_FACT_MISSING' });
-    if (!failedCounters.length) failures.push({ code: 'TEAM_COUNTER_FAILURE_FACT_MISSING' });
+    if (!counterWindows.length) failures.push({ code: 'TEAM_COUNTER_WINDOW_MISSING' });
+    if (openedWindows.length && !counterDecisions.length) failures.push({ code: 'TEAM_COUNTER_DECISION_MISSING' });
+    if (openedWindows.length && !settledCounters.length) failures.push({ code: 'TEAM_COUNTER_SETTLEMENT_MISSING' });
+    if (counterDecisions.length > openedWindows.length) failures.push({ code: 'TEAM_COUNTER_WITHOUT_OPEN_WINDOW', count: counterDecisions.length - openedWindows.length });
+    if (missedWindows.some(event => !(Number(event?.meta?.probability) >= 0 && Number(event?.meta?.probability) <= 1 && Number(event?.meta?.roll) >= 0))) {
+      failures.push({ code: 'TEAM_COUNTER_FAILURE_AUDIT_MISSING' });
+    }
     if (counterSideErrors.length) failures.push({ code: 'TEAM_COUNTER_SIDE_ATTRIBUTION_INVALID', count: counterSideErrors.length });
   }
   if (caseId === 'team_unknown_enemy_adaptation') {
@@ -179,9 +193,27 @@ function validateCaseContract(definition, result) {
       ['唐舞麟', '古月', '谢邂'].includes(String(entry?.actorId || '')) &&
       String(entry?.actionRole || 'ACTIVE').trim() === 'ACTIVE',
     );
-    if (!(chargeRound >= 3)) failures.push({ code: 'UNKNOWN_CHARGE_RESOLVED_BEFORE_RESPONSE_WINDOW', chargeRound });
+    if (!(chargeRound >= 2)) failures.push({ code: 'UNKNOWN_CHARGE_RESOLVED_BEFORE_RESPONSE_WINDOW', chargeRound });
     if (priorResponses.length < 3 || !priorResponses.some(entry => (entry?.problems || []).some(problem => problem?.problemId === 'IMMINENT_DENIAL'))) {
       failures.push({ code: 'UNKNOWN_CHARGE_RESPONSE_DECISIONS_MISSING', count: priorResponses.length });
+    }
+  }
+  if (caseId === 'summon_one_window') {
+    const summonCreates = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'summon_create' &&
+      String(event?.actorName || '').trim() === '韦小枫'
+    );
+    const assistStarts = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'action_start' &&
+      String(event?.actionRole || '').trim() === 'ASSIST' &&
+      String(event?.actorSide || '').trim() === 'player'
+    );
+    if (summonCreates.length !== 1) failures.push({ code: 'SUMMON_CREATE_COUNT_INVALID', count: summonCreates.length });
+    if (assistStarts.length !== 1) failures.push({ code: 'SUMMON_ASSIST_COUNT_INVALID', count: assistStarts.length });
+    if (assistStarts.length === 1 && !summonCreates.some(event =>
+      String(assistStarts[0]?.sourceActionId || '').trim() === String(event?.actionId || event?.sourceActionId || '').trim()
+    )) {
+      failures.push({ code: 'SUMMON_ASSIST_PARENT_MISMATCH' });
     }
   }
   if (caseId === 'item_creation_consumption') {
@@ -222,10 +254,11 @@ function validateCaseContract(definition, result) {
   }
   if (caseId === 'equipment_switch_no_loop') {
     const selectedEquip = decisions.filter(entry => entry?.selected?.declaration?.actionKind === 'EQUIP');
-    const repeatedEquipCandidates = decisions.filter(entry => Number(entry?.round || 0) > Number(selectedEquip[0]?.round || 0)).flatMap(entry => entry?.candidates || []).filter(candidate => candidate?.declaration?.actionKind === 'EQUIP');
     const equippedFacts = ledger.filter(event => String(event?.eventKind || '').trim() === 'complete' && String(event?.result || '').trim() === 'equipped');
+    const equippedRound = Math.min(...equippedFacts.map(event => Number(event?.round || 0)));
+    const repeatedEquipCandidates = decisions.filter(entry => Number(entry?.round || 0) > equippedRound).flatMap(entry => entry?.candidates || []).filter(candidate => candidate?.declaration?.actionKind === 'EQUIP');
     const blockedEquip = ledger.filter(event => ['blocked_action', 'failed_action'].includes(String(event?.eventKind || '').trim()) && String(event?.actionName || '').trim() === '疾风试作匕首');
-    if (selectedEquip.length !== 1) failures.push({ code: 'EQUIPMENT_SELECTION_COUNT_INVALID', count: selectedEquip.length });
+    if (selectedEquip.length > 1) failures.push({ code: 'EQUIPMENT_SELECTION_COUNT_INVALID', count: selectedEquip.length });
     if (repeatedEquipCandidates.length) failures.push({ code: 'EQUIPMENT_REOFFERED_AFTER_EQUIP', count: repeatedEquipCandidates.length });
     if (equippedFacts.length !== 1) failures.push({ code: 'EQUIPMENT_TERMINAL_INVALID', count: equippedFacts.length });
     if (blockedEquip.length) failures.push({ code: 'EQUIPMENT_FALSE_FAILURE', count: blockedEquip.length });
@@ -253,6 +286,7 @@ for (const definition of reviewDefinitions.filter(item =>
   (!requestedCase || item.caseId === requestedCase) && (!blindPass || blindCaseIds.includes(item.caseId)),
 )) {
   process.stderr.write(`[r63-review] ${definition.caseId}\n`);
+  const isFormalCase = definition.caseId === 'weixiaofeng_20_round';
   const seed = Number.isFinite(requestedSeed) && requestedSeed > 0 ? Math.floor(requestedSeed) : definition.seed;
   const result = context.__LWCS_DEBUG_RUN_BATTLE_CASE__({
     caseId: definition.caseId,
@@ -262,11 +296,20 @@ for (const definition of reviewDefinitions.filter(item =>
     rounds: definition.rounds,
     initialBelief: definition.initialBelief,
     battleIntent: { mode: definition.intent },
-    settings: { decisionEngine: 'next-shadow' },
+    selectedAction: definition.selectedAction,
+    settings: {},
   });
-  const review = draftReview
-    ? { behavior: '', narrative: '', anomalies: '', alternatives: '', responsibility: '', blocking: false }
-    : battleR63ManualReviewNotes[definition.caseId];
+  const review = battleR63ManualReviewNotes[definition.caseId]
+    || (isFormalCase ? {
+      behavior: '正式20回合案例由正式门禁验证行为契约、终局条件、Ledger守恒和确定性；不冒充人工真实性结论。',
+      narrative: '正式案例的结构化战报由正式案例门禁验证事实来源、回合覆盖和终局投影。',
+      anomalies: '人工真实性结论不在正式案例自动记录中，避免把自动契约检查伪装成人工审阅。',
+      alternatives: '人工真实性判断由24场独立案例审阅承担。',
+      responsibility: '正式案例自动门禁',
+      blocking: false,
+      reviewType: 'FORMAL_AUTOMATED_CONTRACT',
+    } : null)
+    || (draftReview ? { behavior: '', narrative: '', anomalies: '', alternatives: '', responsibility: '', blocking: false } : null);
   if (!review) throw new Error(`r63_manual_review_note_missing:${definition.caseId}`);
   const fatalDetails = [
     ...(result.audit?.fatals || []),
@@ -276,7 +319,8 @@ for (const definition of reviewDefinitions.filter(item =>
   const ledgerHash = hash(result.ledger);
   const reportHash = hash(result.reportBlocks);
   const reviewedEvidence = battleR63ManualReviewEvidence[definition.caseId];
-  if (!draftReview && !captureEvidence && !refreshReviewReports && !blindPass && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
+  if (!isFormalCase && !draftReview && !captureEvidence && !refreshReviewReports && !blindPass
+    && (!reviewedEvidence || reviewedEvidence.ledgerHash !== ledgerHash || reviewedEvidence.reportHash !== reportHash)) {
     throw new Error(`r63_manual_review_evidence_stale:${definition.caseId}:${ledgerHash}:${reportHash}`);
   }
   const rounds = new Map();

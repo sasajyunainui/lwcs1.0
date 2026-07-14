@@ -78,6 +78,74 @@ assert.throws(() => {
 }, /battle_runtime_decision_version_mismatch/, 'Runtime未拒绝错误Decision版本');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: 1 } }).魂力, 1, '绝对消耗1被误解为100%');
 assert.equal(decision.parseSkillCosts({ 消耗: { 魂力: '50%' } }).魂力, '50%', '比例消耗丢失百分号语义');
+assert.equal(
+  sandbox.__LWCS_BATTLE_PREVIEW__.deriveStateCombatEffect({ 状态: '中毒', 数值: '-5%' }).dot_damage_ratio,
+  0.05,
+  '伤害型状态没有归一化为持续生命损失',
+);
+assert.equal(
+  Number(sandbox.__LWCS_BATTLE_PREVIEW__.deriveStateCombatEffect({ 状态: '位移限制', 数值: '-5%' }).dot_damage_ratio || 0),
+  0,
+  '非伤害控制状态被误算为持续伤害',
+);
+const resourceInvariantActor = {
+  hp: 100, hp_max: 100, sp: 100, sp_max: 100, men: 100, men_max: 100,
+  vit: 100, vit_max: 100, str: 70, def: 50, agi: 50, 状态: { 存活: true },
+};
+const resourceInvariantTarget = {
+  hp: 100, hp_max: 100, sp: 100, sp_max: 100, men: 100, men_max: 100,
+  vit: 100, vit_max: 100, str: 70, def: 50, agi: 50, 状态: { 存活: true },
+};
+const resourceInvariantEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' };
+const fullResourceDamage = sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(resourceInvariantEffect, resourceInvariantActor, resourceInvariantTarget);
+resourceInvariantActor.sp = 1;
+const depletedResourceDamage = sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(resourceInvariantEffect, resourceInvariantActor, resourceInvariantTarget);
+assert.equal(depletedResourceDamage, fullResourceDamage, '当前剩余魂力被重复计入普通攻击伤害');
+assert.ok(
+  fullResourceDamage >= resourceInvariantTarget.hp_max * 0.07 &&
+  fullResourceDamage <= resourceInvariantTarget.hp_max * 0.15,
+  `同级50%基础攻击偏离合理生命比例:${fullResourceDamage}`,
+);
+assert.ok(
+  sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(
+    resourceInvariantEffect,
+    { ...resourceInvariantActor, str: 100 },
+    resourceInvariantTarget,
+  ) > fullResourceDamage,
+  '提高攻击属性没有提高实际伤害',
+);
+assert.ok(
+  sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(
+    resourceInvariantEffect,
+    resourceInvariantActor,
+    { ...resourceInvariantTarget, def: 100 },
+  ) < fullResourceDamage,
+  '提高目标防御没有降低实际伤害',
+);
+assert.ok(
+  sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(
+    resourceInvariantEffect,
+    { ...resourceInvariantActor, str: 300, sp_max: 500 },
+    resourceInvariantTarget,
+  ) > fullResourceDamage,
+  '显著实力差没有形成更高伤害',
+);
+const unrestrictedHit = sandbox.__LWCS_BATTLE_PREVIEW__.estimateHitProbability(resourceInvariantActor, resourceInvariantTarget, resourceInvariantEffect);
+resourceInvariantTarget.状态效果 = {
+  位移限制: { 状态: '位移限制', 战斗效果: sandbox.__LWCS_BATTLE_PREVIEW__.deriveStateCombatEffect({ 状态: '位移限制', 数值: '-5%' }) },
+};
+const restrictedHit = sandbox.__LWCS_BATTLE_PREVIEW__.estimateHitProbability(resourceInvariantActor, resourceInvariantTarget, resourceInvariantEffect);
+assert.ok(restrictedHit > unrestrictedHit, '位移限制没有进入命中/闪避通道');
+assert.equal(
+  sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(resourceInvariantEffect, resourceInvariantTarget, resourceInvariantActor),
+  sandbox.__LWCS_BATTLE_PREVIEW__.calculateBaseDamage(resourceInvariantEffect, { ...resourceInvariantTarget, 状态效果: {} }, resourceInvariantActor),
+  '位移限制错误削弱了目标的主动攻击伤害',
+);
+assert.equal(
+  sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat({ final: {}, 属性: { 力量: 77 } }, 'str'),
+  77,
+  '空缺final字段遮蔽了正式属性值',
+);
 
 const attackSkill = {
   id: 'attack-skill', name: '测试攻击', 消耗: '魂力:10',
@@ -166,17 +234,32 @@ const formalSummonDecision = inspectDecision({
   seed: 730031,
 });
 const formalBasic = formalSummonDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+const formalPoison = formalSummonDecision.candidates.find(candidate =>
+  candidate.declaration.actionKind === 'RELEASE_SKILL' &&
+  (candidate.skill?._效果数组 || []).some(effect => String(effect?.状态 || '').trim() === '中毒')
+);
 const formalSummon = formalSummonDecision.candidates.find(candidate =>
   candidate.declaration.actionKind === 'RELEASE_SKILL' &&
   (candidate.preview?.scheduledEvents || []).some(event => event.type === 'SUMMON_CREATE')
 );
-assert.ok(formalBasic && formalSummon, '正式召唤行为对照缺少普攻或召唤候选');
-assert.ok(formalBasic.objectiveUtility > formalSummon.objectiveUtility, `低伤高耗召唤被预估为优于普攻:${JSON.stringify({
-  basic: formalBasic.objectiveUtility,
-  summon: formalSummon.objectiveUtility,
-  summonVector: formalSummon.vector,
-})}`);
-assert.notEqual(formalSummonDecision.selected.candidateId, formalSummon.candidateId, '低伤高耗召唤仍被主观决策选中');
+assert.ok(formalBasic && formalPoison && formalSummon, '正式行为对照缺少普攻、中毒或召唤候选');
+assert.ok(
+  formalPoison.preview?.contributions?.some(entry =>
+    entry.outcomeKind === 'STATE_CHANGED' &&
+    Number(sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(formalPoison.preview.afterSnapshot, '唐凌雪')?.状态效果?.[Object.keys(sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(formalPoison.preview.afterSnapshot, '唐凌雪')?.状态效果 || {}).find(key => key.includes('中毒'))]?.战斗效果?.dot_damage_ratio || 0) > 0
+  ),
+  '正式中毒魂技预估没有携带可结算的持续伤害',
+);
+assert.ok(Number.isFinite(formalSummon.objectiveUtility), '正式召唤候选缺少可比较的客观效用');
+assert.ok(
+  formalSummon.preview?.contributions?.some(entry => entry.outcomeKind === 'SUMMON_WINDOW') &&
+  formalSummon.preview?.scheduledEvents?.some(event =>
+    event.type === 'SUMMON_CREATE' &&
+    String(event.actionMode || '').trim() &&
+    Number(event.duration || 0) > 0
+  ),
+  '正式召唤候选没有用真实行动窗口支撑其边际收益',
+);
 
 const confused = inspectDecision({ worldSnapshot: world(3), actorId: 'ally-1', beliefState: { confidence: 0.4, targetInterferencePossible: true }, seed: 100 });
 const confusedAttackTargets = confused.candidates.filter(candidate => candidate.skill?.id === 'attack-skill').flatMap(candidate => candidate.declaration.targetIds);
@@ -252,7 +335,13 @@ const chargedThreatDecision = inspectDecision({
   seed: 106,
 });
 assert.ok(['DEFEND', 'EVADE'].includes(chargedThreatDecision.selected.declaration.actionKind), '低血量面对公开致命蓄力仍用无效攻击换取1点伤害');
-assert.ok(chargedThreatDecision.selected.objectiveUtility >= 18, '避免公开致命终态没有进入防守效用');
+const chargedThreatAttack = chargedThreatDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+assert.ok(
+  chargedThreatDecision.selected.objectiveUtility > chargedThreatAttack.objectiveUtility &&
+  chargedThreatDecision.selected.vector.expectedStateGain > chargedThreatAttack.vector.expectedStateGain &&
+  chargedThreatDecision.selected.vector.catastrophicRisk < chargedThreatAttack.vector.catastrophicRisk,
+  '避免公开致命终态没有形成相对进攻更高的防守效用',
+);
 chargedThreatWorld.参战者.ally[0].__battleRuntime = {
   activeDefenseStance: { type: chargedThreatDecision.selected.declaration.actionKind, stateName: '已准备防守窗口' },
 };
@@ -276,6 +365,51 @@ const delayedThreatDecision = inspectDecision({
 });
 assert.ok(!['DEFEND', 'EVADE'].includes(delayedThreatDecision.selected.declaration.actionKind), '防守窗口会在蓄力兑现前过期却仍提前防守');
 assert.ok(delayedThreatDecision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate.declaration.actionKind)).every(candidate => candidate.rejectionCode === 'ZERO_PROGRESS'), '过早防守没有按真实窗口归零');
+
+const interruptPriorityWorld = world(2);
+interruptPriorityWorld.参战者.ally[0].技能列表 = [{
+  id: 'generic-interrupt',
+  name: '通用打断',
+  消耗: { 魂力: 5 },
+  _效果数组: [{
+    原型: '状态施加',
+    目标: '单体',
+    状态: '僵直',
+    持续回合: 1,
+    成功率: '100%',
+    计算层效果: { skip_turn: true },
+  }],
+}];
+interruptPriorityWorld.参战者.enemy[0].蓄力技能 = {
+  id: 'visible-nonlethal-charge',
+  cast_time: 20,
+  skill: {
+    id: 'visible-nonlethal-charge-skill',
+    name: '已显露高伤蓄力',
+    _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 220, 伤害类型: '近身攻击' }],
+  },
+};
+const interruptPriorityDecision = inspectDecision({
+  worldSnapshot: interruptPriorityWorld,
+  actorId: 'ally-1',
+  battleIntent: { mode: '切磋' },
+  beliefState: { confidence: 1 },
+  seed: 1081,
+});
+const interruptChargeSource = interruptPriorityDecision.candidates.find(candidate =>
+  candidate.skill?.id === 'generic-interrupt' && candidate.declaration.targetIds.includes('enemy-1')
+);
+const interruptOtherTarget = interruptPriorityDecision.candidates.find(candidate =>
+  candidate.skill?.id === 'generic-interrupt' && candidate.declaration.targetIds.includes('enemy-2')
+);
+assert.ok(
+  interruptChargeSource.objectiveUtility > interruptOtherTarget.objectiveUtility &&
+  interruptChargeSource.deepAnalysis.expectedResponseDeltaUtility > interruptOtherTarget.deepAnalysis.expectedResponseDeltaUtility,
+  `公开高伤蓄力的打断价值没有高于控制无关目标:${JSON.stringify({
+    source: interruptChargeSource,
+    other: interruptOtherTarget,
+  })}`,
+);
 
 const terminalPareto = decision.paretoFilter([
   { candidateId: 'withdraw', rejectionCode: '', vector: { expectedStateGain: 0, terminalUtility: 35, informationValue: 0, resourcePreservation: 0, survivalLowerBound: 1, irreversibleCost: 0, catastrophicRisk: 0 } },
@@ -309,6 +443,9 @@ const falseCounterDecision = inspectDecision({
 });
 assert.ok(!falseCounterDecision.candidates.some(candidate => candidate.skill?.id === 'false-reaction'), '普通主动攻击魂技被零消耗改造成反击技能');
 assert.ok(falseCounterDecision.candidates.some(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK'), '反击池缺少基础反击动作');
+const safeCounterDecline = falseCounterDecision.candidates.find(candidate => candidate.counterDeclineFallback === true);
+assert.ok(['', 'DOMINATED'].includes(safeCounterDecline?.rejectionCode), '放弃额外反击机会没有保留为合法零成本基线');
+assert.equal(Number(safeCounterDecline?.objectiveUtility || 0), 0, '放弃额外反击机会被错误附加未来回应风险');
 
 let publicBelief = { confidence: 0.2 };
 publicBelief = decision.updatePublicObservation(publicBelief, {
@@ -340,6 +477,7 @@ const ordinaryDefense = ordinaryThreatDecision.candidates.find(candidate => cand
 assert.ok(ordinaryDefense?.objectiveUtility > 0 && ordinaryDefense.rejectionCode !== 'ZERO_PROGRESS', `确定会到来的非致命回应没有形成基础防御价值:${JSON.stringify(ordinaryDefense)}`);
 
 const lethalResponseWorld = world(1);
+lethalResponseWorld.参战者.ally[0].技能列表 = [];
 const lethalResponseDecision = inspectDecision({
   worldSnapshot: lethalResponseWorld,
   actorId: 'ally-1',
@@ -360,6 +498,39 @@ assert.equal(exposedEvade?.deepAnalysis?.required, true, '防御候选逃避了�
 assert.equal(exposedEvade.vector.catastrophicRisk, exposedAttack.vector.catastrophicRisk, '同一自然回应只惩罚了攻击候选');
 assert.ok(exposedAttack.deepAnalysis.timeline.some(node => node.nodeType === 'ACTOR_NEXT_OPPORTUNITY'), '深推演时间线缺少行动者下一机会');
 assert.ok(exposedAttack.deepAnalysis.nodeCount <= 12, '深推演超过12节点预算');
+
+const teamLethalResponseDecision = inspectDecision({
+  worldSnapshot: world(7),
+  actorId: 'ally-1',
+  beliefState: {
+    confidence: 0.8,
+    publicResponses: {
+      'enemy-1': [{ responseId: 'known-lethal', baseActionValue: 100, weight: 1 }],
+    },
+  },
+  seed: 10902,
+});
+const teamExposedAttack = teamLethalResponseDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+assert.ok(
+  teamExposedAttack.vector.catastrophicRisk < exposedAttack.vector.catastrophicRisk,
+  '未知单体回应在团战中被复制为对每名单位的必然致命威胁',
+);
+
+const terminalOpportunityDecision = inspectDecision({
+  worldSnapshot: lethalResponseWorld,
+  actorId: 'ally-1',
+  actionOpportunity: { role: 'ACTIVE', futureHostileResponseAllowed: false },
+  beliefState: {
+    confidence: 0.8,
+    publicResponses: {
+      'enemy-1': [{ responseId: 'known-lethal', baseActionValue: 100, weight: 1 }],
+    },
+  },
+  seed: 10903,
+});
+const terminalOpportunityAttack = terminalOpportunityDecision.candidates.find(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK');
+assert.equal(terminalOpportunityAttack?.vector.catastrophicRisk, 0, '回合上限后的最后行动仍承担不存在的未来回应风险');
+assert.ok(terminalOpportunityDecision.selected.objectiveUtility >= 0, '终局最后行动被虚构的未来回应压成负效用');
 
 const unfocusedTeamWorld = world(3);
 unfocusedTeamWorld.参战者.ally[0].hp = 100;
@@ -400,6 +571,28 @@ const refreshedTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(refreshWaste.pr
 const projectedRefreshTarget = sandbox.__LWCS_BATTLE_PREVIEW__.findUnit(decision.buildDecisionWorld(refreshWasteWorld, 'ally-1', refreshWasteDecision.beliefState), 'enemy-1');
 assert.equal(refreshWaste?.rejectionCode, 'ZERO_EFFECT_COSTLY', '未延长窗口的不可叠属性削弱刷新仍可被抽样');
 assert.equal(sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(refreshedTarget, 'agi'), sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(projectedRefreshTarget, 'agi'), '预估把不可叠属性削弱刷新重复计入面板');
+
+const mixedStateShieldWorld = world(1);
+mixedStateShieldWorld.参战者.ally[0].状态效果 = {
+  防御修正: { 状态名称: '防御修正', duration: 2, 面板修改比例: { def: 1.2 }, 战斗效果: {} },
+};
+mixedStateShieldWorld.参战者.ally[0].技能列表 = [{
+  id: 'redundant-state-valid-shield', name: '重复强化与有效护盾', 消耗: { 魂力: 10 },
+  _效果数组: [
+    { 原型: '属性修正', 目标: '自身', 属性: '防御', 数值: '+20%', 持续回合: 2 },
+    { 原型: '护盾变化', 目标: '自身', 护盾模式: '正向护盾', 数值: '20%' },
+  ],
+}];
+const mixedStateShieldDecision = inspectDecision({ worldSnapshot: mixedStateShieldWorld, actorId: 'ally-1', beliefState: { confidence: 1 }, seed: 112 });
+const mixedStateShield = mixedStateShieldDecision.candidates.find(candidate => candidate.skill?.id === 'redundant-state-valid-shield');
+assert.equal(mixedStateShield?.rejectionCode, '', `混合技能的重复状态错误否决了仍有效的护盾效果:${JSON.stringify(mixedStateShield)}`);
+assert.ok(
+  mixedStateShield.preview.contributions.some(entry =>
+    entry.outcomeKind === 'SHIELD_DELTA' &&
+    Number(entry?.evidence?.next || 0) > Number(entry?.evidence?.current || 0)
+  ),
+  '混合技能的有效护盾没有进入边际贡献',
+);
 
 const decisionWorld = world(3);
 const decisionBefore = JSON.stringify(decisionWorld);

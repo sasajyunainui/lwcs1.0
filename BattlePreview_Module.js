@@ -107,21 +107,16 @@
     return String(unit?.name || unit?.名称 || unitId(unit) || '未知单位').trim();
   }
 
-  function unitStats(unit = {}) {
-    return unit?.final && typeof unit.final === 'object'
-      ? unit.final
-      : unit?.属性 && typeof unit.属性 === 'object'
-        ? unit.属性
-        : unit;
-  }
-
   function readNumber(unit = {}, keys = [], fallback = 0) {
-    const stats = unitStats(unit);
+    const finalStats = unit?.final && typeof unit.final === 'object' ? unit.final : {};
+    const sourceStats = unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : {};
     for (const key of keys) {
       const direct = Number(unit?.[key]);
       if (Number.isFinite(direct)) return direct;
-      const fromStats = Number(stats?.[key]);
-      if (Number.isFinite(fromStats)) return fromStats;
+      const fromFinal = Number(finalStats?.[key]);
+      if (Number.isFinite(fromFinal)) return fromFinal;
+      const fromSource = Number(sourceStats?.[key]);
+      if (Number.isFinite(fromSource)) return fromSource;
     }
     return Number(fallback) || 0;
   }
@@ -218,6 +213,17 @@
   function shouldTriggerTraumaUnconscious(damage = 0, hpAfter = 0, hpMax = 1) {
     const safeMax = Math.max(1, Number(hpMax || 1));
     return Number(hpAfter || 0) > 0 && Number(damage || 0) / safeMax >= 0.5 - 1e-9 && Number(hpAfter || 0) / safeMax < 0.2 - 1e-9;
+  }
+
+  function compareNaturalActionOrder(left = {}, right = {}) {
+    const typePriority = { 辅助系: 1, 控制系: 2, 敏攻系: 2, 强攻系: 2, 精神系: 2, 元素系: 2, 防御系: 3, 治疗系: 3, 食物系: 3 };
+    const leftType = String(left?.type || left?.系别 || left?.属性?.系别 || '').trim();
+    const rightType = String(right?.type || right?.系别 || right?.属性?.系别 || '').trim();
+    const priorityDelta = Number(typePriority[leftType] || 4) - Number(typePriority[rightType] || 4);
+    if (priorityDelta) return priorityDelta;
+    const agilityDelta = readCombatStat(right, 'agi') - readCombatStat(left, 'agi');
+    if (agilityDelta) return agilityDelta;
+    return 0;
   }
 
   function normalizeObjectiveSide(value = '') {
@@ -327,7 +333,15 @@
 
   function evaluateObjectiveConditionDetail(worldSnapshot = {}, condition = {}, options = {}) {
     if (condition.type === 'WITHDRAW_SUCCESS') {
-      const matched = worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+      const successfulSides = new Set(
+        Array.isArray(worldSnapshot?.__battleRuntime?.withdrawalSuccessSides)
+          ? worldSnapshot.__battleRuntime.withdrawalSuccessSides.map(value => String(value || '').trim().toUpperCase()).filter(Boolean)
+          : [],
+      );
+      const conditionSide = String(condition.side || '').trim().toUpperCase();
+      const matched = conditionSide
+        ? successfulSides.has(conditionSide)
+        : worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
       return Object.freeze({ condition, matched, unitResults: Object.freeze([]), reason: matched ? 'WITHDRAW_SUCCESS' : '' });
     }
     if (condition.type === 'ROUND_REACHED') {
@@ -387,23 +401,68 @@
     };
     const victory = evaluateGroup(objectives.victory);
     const defeat = evaluateGroup(objectives.defeat);
+    const units = listUnits(worldSnapshot);
+    const playerUnits = units.filter(entry => objectiveSideOfEntry(entry) === 'PLAYER').map(entry => entry.unit);
+    const enemyUnits = units.filter(entry => objectiveSideOfEntry(entry) === 'ENEMY').map(entry => entry.unit);
+    const playerExhausted = playerUnits.length > 0 && playerUnits.every(unit => !isBattleCapable(unit));
+    const enemyExhausted = enemyUnits.length > 0 && enemyUnits.every(unit => !isBattleCapable(unit));
+    const exhaustionDetail = (side, matched) => Object.freeze({
+      condition: Object.freeze({
+        type: 'TEAM_INCAPACITATED',
+        side,
+        targetIds: Object.freeze([]),
+        scope: 'ALL',
+        implicit: true,
+      }),
+      matched,
+      unitResults: Object.freeze([]),
+      reason: matched ? 'BATTLEFIELD_EXHAUSTION' : '',
+    });
     const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - objectives.startRound);
     const timeLimitReached = options.roundCompleted === true && elapsedRounds >= objectives.maxRounds;
+    const implicitVictory = exhaustionDetail('ENEMY', enemyExhausted);
+    const implicitDefeat = exhaustionDetail('PLAYER', playerExhausted);
+    const effectiveVictoryMatched = victory.matched || enemyExhausted;
+    const effectiveDefeatMatched = defeat.matched || playerExhausted;
     let status = 'ONGOING';
-    if (victory.matched && defeat.matched) status = objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
-    else if (victory.matched) status = 'PLAYER_WIN';
-    else if (defeat.matched) status = 'ENEMY_WIN';
+    if (effectiveVictoryMatched && effectiveDefeatMatched) status = objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
+    else if (effectiveVictoryMatched) status = 'PLAYER_WIN';
+    else if (effectiveDefeatMatched) status = 'ENEMY_WIN';
     else if (timeLimitReached) status = 'DRAW';
+    const exhaustionResolution = enemyExhausted || playerExhausted
+      ? Object.freeze({
+          playerExhausted,
+          enemyExhausted,
+          victory: implicitVictory,
+          defeat: implicitDefeat,
+        })
+      : null;
+    const resolvedVictoryDetails = !victory.matched && enemyExhausted
+      ? [...victory.details, implicitVictory]
+      : victory.details;
+    const resolvedDefeatDetails = !defeat.matched && playerExhausted
+      ? [...defeat.details, implicitDefeat]
+      : defeat.details;
     return Object.freeze({
       status,
       winner: status === 'PLAYER_WIN' ? 'player' : status === 'ENEMY_WIN' ? 'enemy' : status === 'DRAW' ? 'draw' : 'unfinished',
       terminal: status !== 'ONGOING',
       victoryMatches: Object.freeze(victory.matches),
       defeatMatches: Object.freeze(defeat.matches),
-      victoryDetails: Object.freeze(victory.details),
-      defeatDetails: Object.freeze(defeat.details),
-      matchedDetails: Object.freeze((status === 'PLAYER_WIN' ? victory.details : status === 'ENEMY_WIN' ? defeat.details : [...victory.details, ...defeat.details]).filter(detail => detail.matched)),
+      victoryDetails: Object.freeze(resolvedVictoryDetails),
+      defeatDetails: Object.freeze(resolvedDefeatDetails),
+      matchedDetails: Object.freeze((status === 'PLAYER_WIN' ? resolvedVictoryDetails : status === 'ENEMY_WIN' ? resolvedDefeatDetails : [...resolvedVictoryDetails, ...resolvedDefeatDetails]).filter(detail => detail.matched)),
       timeLimitReached,
+      terminalReason: enemyExhausted && playerExhausted
+        ? 'BATTLEFIELD_BOTH_EXHAUSTED'
+        : effectiveVictoryMatched && effectiveDefeatMatched
+          ? 'OBJECTIVE_CONFLICT'
+          : status === 'PLAYER_WIN' && !victory.matched && enemyExhausted
+            ? 'BATTLEFIELD_ENEMY_EXHAUSTED'
+            : status === 'ENEMY_WIN' && !defeat.matched && playerExhausted
+              ? 'BATTLEFIELD_PLAYER_EXHAUSTED'
+              : timeLimitReached ? 'ROUND_LIMIT_REACHED' : '',
+      exhaustionResolution,
       objectives,
     });
   }
@@ -426,25 +485,31 @@
   }
 
   function resourceDriveScale(actor = {}, target = {}, resource = '魂力') {
-    const actorCurrent = readResource(actor, resource);
-    const targetCurrent = readResource(target, resource);
     const actorMax = readResourceMax(actor, resource);
-    const pressure = actorCurrent / Math.max(1, targetCurrent);
-    const ratio = clamp(actorCurrent / Math.max(1, actorMax), 0, 1);
-    return clamp(Math.pow(Math.max(0.01, pressure), 0.45) * (0.45 + 0.55 * ratio), 0.35, 1.85);
+    const targetMax = readResourceMax(target, resource);
+    return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
   }
 
   function calculateBaseDamage(effect = {}, actor = {}, target = {}) {
     const damageClass = classifyDamageType(effect?.伤害类型);
     const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
     const attack = damageClass === 'MENTAL' ? readCombatStat(actor, 'men') : readCombatStat(actor, 'str');
-    const defense = damageClass === 'MENTAL'
+    const rawDefense = damageClass === 'MENTAL'
       ? Math.max(1, readCombatStat(target, 'men'))
       : Math.max(1, readCombatStat(target, 'def'));
+    const penetration = Math.max(0, Number(effect?.防穿 ?? effect?.穿透 ?? effect?.防御穿透 ?? 0));
+    const defense = Math.max(1, rawDefense - penetration);
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
-    let perSegment = 0;
-    if (damageClass === 'TRUE') perSegment = power * Math.max(1, Math.sqrt(attack)) * 0.12;
-    else perSegment = power * (attack / defense) * (damageClass === 'MELEE' ? 1.04 : 1) * resourceDriveScale(actor, target, damageClass === 'MENTAL' ? '精神力' : '魂力');
+    const powerRatio = power / 100;
+    let total = 0;
+    if (damageClass === 'TRUE') {
+      total = attack * powerRatio * 0.4;
+    } else {
+      const mitigation = attack / Math.max(1, attack + defense);
+      total = attack * powerRatio * mitigation * 0.4 *
+        resourceDriveScale(actor, target, damageClass === 'MENTAL' ? '精神力' : '魂力');
+    }
+    const perSegment = total / segments;
     return Math.max(0, perSegment * segments);
   }
 
@@ -453,7 +518,21 @@
     if (Number.isFinite(explicit)) return clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1);
     const attackAgility = readCombatStat(actor, 'agi');
     const targetAgility = readCombatStat(target, 'agi');
-    return clamp(0.78 + (attackAgility - targetAgility) / Math.max(100, attackAgility + targetAgility) * 0.35, 0.05, 0.99);
+    const actorEffects = stateEntries(actor).map(([, state]) => state?.战斗效果 || {});
+    const targetEffects = stateEntries(target).map(([, state]) => state?.战斗效果 || {});
+    const hitAdjustment = actorEffects.reduce((sum, stateEffect) =>
+      sum + Number(stateEffect?.hit_bonus || 0) - Number(stateEffect?.hit_penalty || 0), 0);
+    const targetAvoidanceAdjustment = targetEffects.reduce((sum, stateEffect) =>
+      sum + Number(stateEffect?.dodge_bonus || 0) -
+      Math.max(Number(stateEffect?.dodge_penalty || 0), Number(stateEffect?.lock_level || 0)), 0);
+    return clamp(
+      0.78 +
+      (attackAgility - targetAgility) / Math.max(100, attackAgility + targetAgility) * 0.35 +
+      hitAdjustment -
+      targetAvoidanceAdjustment,
+      0.05,
+      0.99,
+    );
   }
 
   function collectEffects(skill = {}) {
@@ -472,6 +551,38 @@
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     effects.forEach(visit);
     return output;
+  }
+
+  function effectConditionEnabled(effect = {}, worldSnapshot = {}, actor = {}, target = {}) {
+    const branches = Array.isArray(effect?.条件分支) ? effect.条件分支 : [];
+    if (!branches.length) return true;
+    const timeLabel = String(
+      worldSnapshot?.时间段 ||
+      worldSnapshot?.时间 ||
+      worldSnapshot?.环境?.时间段 ||
+      actor?.时间段 ||
+      actor?.时间 ||
+      '白天'
+    ).trim();
+    const conditionMatches = condition => {
+      const type = String(condition?.类型 || '').trim();
+      const comparison = String(condition?.比较 || '==').trim().toLowerCase();
+      const expected = String(condition?.值 ?? '').trim();
+      let actual = '';
+      if (type === '时间') actual = timeLabel;
+      else if (type === '目标') actual = sideOf(worldSnapshot, target) === sideOf(worldSnapshot, actor) ? '己方' : '敌方';
+      else return false;
+      if (comparison === '!=' || comparison === '!==') return actual.toLowerCase() !== expected.toLowerCase();
+      if (comparison === '包含') return actual.includes(expected);
+      return actual.toLowerCase() === expected.toLowerCase();
+    };
+    const branchMatches = branch => {
+      const conditions = Array.isArray(branch?.条件) ? branch.条件 : [];
+      return conditions.length > 0 && conditions.every(conditionMatches);
+    };
+    if (branches.some(branch => String(branch?.处理 || '').trim() === '禁用' && branchMatches(branch))) return false;
+    const enablingBranches = branches.filter(branch => String(branch?.处理 || '').trim() === '生效');
+    return !enablingBranches.length || enablingBranches.some(branchMatches);
   }
 
   function validateEffect(effect = {}) {
@@ -691,6 +802,9 @@
     const state = String(effect?.状态 || effect?.状态名称 || '').trim();
     const combatEffect = cloneValue(effect?.计算层效果 || effect?.战斗效果 || {});
     const magnitude = clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1);
+    if (/中毒|流血|灼烧|冻伤|持续创伤/.test(state)) {
+      combatEffect.dot_damage_ratio = Math.max(Number(combatEffect.dot_damage_ratio || 0), magnitude);
+    }
     if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
       combatEffect.skip_turn = true;
       combatEffect.cannot_act = true;
@@ -1169,7 +1283,7 @@
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
-    return effects.reduce((sum, effect) => {
+    return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target)).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
         const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(actor, target, effect);
         const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
@@ -1265,6 +1379,7 @@
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
     effects.forEach((effect, index) => {
       const targets = resolveTargets(worldSnapshot, actor, declaration, effect);
+      if (!effectConditionEnabled(effect, worldSnapshot, actor, targets[0])) return;
       const context = {
         actor,
         declaration,
@@ -1367,6 +1482,7 @@
     isDead,
     isBattleCapable,
     shouldTriggerTraumaUnconscious,
+    compareNaturalActionOrder,
     readIncapacityReason,
     evaluateObjectiveConditionDetail,
     readHp,
@@ -1377,6 +1493,7 @@
     readCombatStat,
     parseSignedValue,
     collectEffects,
+    effectConditionEnabled,
     calculateBaseDamage,
     estimateHitProbability,
     calculateBaseActionValue,

@@ -1211,31 +1211,30 @@
           __魂环路径: ['第1武魂', '第1魂环'],
           __魂技槽位: '第1魂技',
         };
-        const intent = 战斗回归第一魂技默认名;
-        const 原随机 = Math.random;
-        let result = null;
-        try {
-          Math.random = () => 0.99;
-          使用战斗回归桥接(combatData, { 夹具玩家: 玩家, 夹具敌人: 敌人 }, () => {
-            result = onPlayerAttack(intent, { dryRun: true, combatData, actionDeclaration: 构建战斗回归动作声明(entry), intentMode: '点到为止' });
-          });
-        } finally {
-          Math.random = 原随机;
-        }
-        const report = String(result?.publicReport || '');
-        const rawLogText = String(result?.logs?.join(' ') || '');
-        const playerSnapshot = result?.snapshot?.team_player?.find(unit => unit.name === '夹具玩家') || {};
+        const 正式技能 = 玩家.第1武魂.第1魂环.第1魂技;
+        const result = BATTLE_RUNTIME.runBattleCase({
+          caseId: 'fixture-first-skill-structured',
+          seed: 730119,
+          combatData,
+          mode: 'team_preview',
+          rounds: 1,
+          battleIntent: { mode: '点到为止' },
+          selectedAction: {
+            actorId: '夹具玩家',
+            actionKind: 'RELEASE_SKILL',
+            targetIds: ['夹具敌人'],
+            skill: 正式技能,
+          },
+        });
+        const report = JSON.stringify(result?.reportBlocks || []);
+        const playerSnapshot = result?.finalSnapshot?.team_player?.find(unit => unit.name === '夹具玩家') || {};
         断言战斗回归夹具(report.includes(战斗回归第一魂技默认名), `正常释放战报缺第一魂技:${report}`);
         断言战斗回归夹具(/夹具敌人/.test(report), `正常释放战报缺目标:${report}`);
         断言战斗回归夹具(Number(playerSnapshot.sp) > 1800 && Number(playerSnapshot.sp) < 2000, `正常释放扣费异常:${playerSnapshot.sp}`);
         断言战斗回归夹具(Number(playerSnapshot.sp) === Number(playerSnapshot.魂力), `正常释放后魂力镜像不同步:${playerSnapshot.sp}/${playerSnapshot.魂力}`);
         断言战斗回归夹具(Number(playerSnapshot.sta ?? playerSnapshot.vit) === Number(playerSnapshot.体力), `正常释放后体力镜像不同步:${playerSnapshot.sta}/${playerSnapshot.vit}/${playerSnapshot.体力}`);
-        断言战斗回归夹具((rawLogText.match(new RegExp(`\\[战前消耗\\]\\s*释放\\[${战斗回归第一魂技默认名}\\]`, 'g')) || []).length === 1, `第一魂技实际扣费次数异常:${rawLogText}`);
-        const 事实账本 = result?.closedLoopLedger || {};
-        断言战斗回归夹具((事实账本.消耗 || []).filter(item => item.技能 === 战斗回归第一魂技默认名).length === 1, `账本扣费次数异常:${JSON.stringify(事实账本)}`);
-        断言战斗回归夹具((事实账本.起招 || []).filter(item => item.行动者 === '夹具玩家' && item.技能 === 战斗回归第一魂技默认名).length === 1, `账本起招次数异常:${JSON.stringify(事实账本)}`);
-        断言战斗回归夹具(!(事实账本.未闭合起招 || []).length, `正常释放存在未闭合起招:${JSON.stringify(事实账本.未闭合起招 || [])}`);
         const 事件账本 = Array.isArray(result?.eventLedger) ? result.eventLedger : [];
+        断言战斗回归夹具(事件账本.filter(item => item?.eventKind === 'action_cost' && item?.actorName === '夹具玩家' && item?.actionName === 战斗回归第一魂技默认名).length === 1, `第一魂技实际扣费次数异常:${JSON.stringify(事件账本)}`);
         断言战斗回归夹具(事件账本.some(item => item?.eventKind === 'action_start' && item?.actionName === 战斗回归第一魂技默认名), `事件账本缺动作起手:${JSON.stringify(事件账本)}`);
         const 第一魂技伤害事件 = 事件账本.filter(item => item?.eventKind === 'hit_result' && item?.actorName === '夹具玩家' && item?.targetName === '夹具敌人' && normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 战斗回归第一魂技默认名 && Number(item?.appliedDamage || item?.meta?.appliedDamage || item?.damage || item?.meta?.damage || 0) > 0);
         const 第一魂技反击伤害事件 = 事件账本.filter(item =>
@@ -1247,7 +1246,8 @@
           .filter(item => item?.eventKind === 'state_apply' && item?.actorName === '夹具玩家' && item?.targetName === '夹具敌人' && normalizeBattleActionDisplayName(item?.actionName || item?.sourceActionName || '') === 战斗回归第一魂技默认名)
           .map(item => String(item?.stateName || item?.meta?.stateName || '').trim())
           .filter(Boolean));
-        const 第一魂技污染反击窗口状态 = Object.entries(敌人.状态效果 || {})
+        const 结算敌人 = result?.combatData?.参战者?.team_enemy?.find(unit => unit?.name === '夹具敌人') || {};
+        const 第一魂技污染反击窗口状态 = Object.entries(结算敌人.状态效果 || {})
           .filter(([状态名, 状态]) => /位移限制|中毒|锁魄毒印/.test(String(状态名 || 状态?.状态名称 || 状态?.状态 || 状态?.描述 || '')))
           .filter(([, 状态]) => Number(状态?.战斗效果?.counter_attack_ratio || 0) > 0);
         断言战斗回归夹具(!第一魂技伤害事件.length, `第一魂技不应生成直接伤害:${JSON.stringify(第一魂技伤害事件)}`);

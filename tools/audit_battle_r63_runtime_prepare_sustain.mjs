@@ -108,7 +108,7 @@ const runOneRound = (caseId, data, selectedAction = null) => sandbox.__LWCS_DEBU
     actionKind: 'BASIC_ATTACK',
     targetIds: ['enemy-1'],
   },
-  settings: { decisionEngine: 'next-shadow' },
+  settings: {},
 });
 
 const formalSummonCombat = buildWeixiaofengFormalCase(sandbox.__LWCS_内置角色库__);
