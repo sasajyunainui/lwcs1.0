@@ -15392,9 +15392,6 @@ class BattleUIComponent {
         .find(单位 => isCombatUnitAlive(单位) && !召唤行动授权已消费(单位, combatData, 'guard') && !isCombatUnitIdentityMatch(单位, 受击者?.name || 受击者?.名称 || 受击者)) || null;
     }
 
-    BATTLE_RUNTIME.bindSettlementPrimitives({
-      executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => 执行团战扁平行动队列(queue, combatData, currentRound, logs, extraPatchOps),
-    });
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
     function 读取事件链状态(container = null) {
       const 状态 = container && typeof container === 'object' ? container : {};

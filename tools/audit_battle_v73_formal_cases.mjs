@@ -472,37 +472,7 @@ assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.probabilitySucceeds(0.01, 0.01), fa
 assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.probabilitySucceeds(0.99, 0.9899), true, '99%概率在边界内应成功');
 assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.probabilitySucceeds(0.99, 0.99), false, '99%概率在等值投点时不得成功');
 assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.probabilitySucceeds(1, 1), true, '100%概率必须成功');
-const runNaturalRoundSchedulerFixture = ({ maxRounds, stopAfterRound = 0, defeatAfterRound = 0 }) => {
-  const combatData = { 回合: 0 };
-  const calls = [];
-  let enemyAlive = 1;
-  const result = sandbox.__LWCS_BATTLE_RUNTIME__.runTeamBattle({
-    combatData,
-    mode: 'multi_round',
-    maxRounds,
-    adapters: {
-      prepare() {},
-      readAlive: () => ({ playerAlive: 1, enemyAlive }),
-      beginRound: () => [],
-      buildQueue: () => [],
-      recordQueue() {},
-      executeQueue() {
-        calls.push(Number(combatData.回合 || 0));
-        if (defeatAfterRound === combatData.回合) enemyAlive = 0;
-        return {};
-      },
-      settleRoundEnd() {},
-      shouldContinue: ({ currentRound }) => ({ continueSimulation: !(stopAfterRound > 0 && currentRound >= stopAfterRound) }),
-    },
-  });
-  return { calls, result };
-};
-const explicitStop = runNaturalRoundSchedulerFixture({ maxRounds: 5, stopAfterRound: 3 });
-assert.deepEqual(explicitStop.calls, [1, 2, 3], '统一自然行动轴没有在显式停推后闭合');
-assert.equal(explicitStop.result.rounds, 3, '统一自然行动轴显式停推回合数错误');
-const defeatedStop = runNaturalRoundSchedulerFixture({ maxRounds: 4, defeatAfterRound: 2 });
-assert.deepEqual(defeatedStop.calls, [1, 2], '统一自然行动轴在单位失能后仍开启下一回合');
-assert.equal(defeatedStop.result.rounds, 2, '统一自然行动轴失能终止回合数错误');
+assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__.runTeamBattle, 'undefined', '旧适配式团战调度器仍暴露在正式运行时');
 assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__.runDuelRounds, 'undefined', '旧单挑调度器仍暴露在正式运行时');
 
 const creationFacts = formalResult.eventLedger.filter(event => String(event?.eventKind || '') === 'create');

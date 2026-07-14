@@ -21,7 +21,6 @@ const bridgeSource = fs.readFileSync(bridgePath, 'utf8');
 const databaseAdapterSource = fs.readFileSync(databaseAdapterPath, 'utf8');
 const routePresetSource = fs.readFileSync(routePresetPath, 'utf8');
 const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23_regression_gate.mjs'), 'utf8');
-const settlementBindingSource = battleUiSource.match(/BATTLE_RUNTIME\.bindSettlementPrimitives\(\{[\s\S]*?\n\s*}\);/)?.[0] || '';
 
 const checks = [];
 const addCheck = (name, passed, detail = '') => checks.push({ name, passed: Boolean(passed), detail });
@@ -117,8 +116,7 @@ addCheck(
     /function 写入战斗命中检定节点\(/.test(battleRuntimeSource) &&
     /function 写入战斗状态检定节点\(/.test(battleRuntimeSource) &&
     /BATTLE_RUNTIME\.writeLedgerEvent\(/.test(battleUiSource) &&
-    !/function 写入战斗事件账本\(/.test(battleUiSource) &&
-    !/writeLedgerEvent\s*:/.test(settlementBindingSource),
+    !/function 写入战斗事件账本\(/.test(battleUiSource),
 );
 addCheck(
   'ledgerWriterHasNoFallbackResourceMutation',
@@ -159,7 +157,7 @@ addCheck(
     !/bindEngine|caseDomain|executeDecisionTeam/.test(battleUiSource),
 );
 addCheck(
-  'settlementAdapterContainsOnlySettlementPrimitives',
+  'runtimeSettlementIsSelfContained',
   /function listPrimaryCombatUnits\(/.test(battleRuntimeSource) &&
     /function listSummonCombatUnits\(/.test(battleRuntimeSource) &&
     /function buildActionQueue\(/.test(battleRuntimeSource) &&
@@ -173,7 +171,7 @@ addCheck(
     !/function 写入行动轴初始意图节点\(/.test(battleUiSource) &&
     /function createCounterAction\(/.test(battleRuntimeSource) &&
     !/function 建立行为防反动作\(/.test(battleUiSource) &&
-    /function createSettlementAdapters\(/.test(battleRuntimeSource) &&
+    !/function createSettlementAdapters\(/.test(battleRuntimeSource) &&
     /function fillObjectiveDamageBaselines\(/.test(battleRuntimeSource) &&
     /function validateSoulTowerRoster\(/.test(battleRuntimeSource) &&
     /function evaluateBattleTerminal\(/.test(battleRuntimeSource) &&
@@ -214,18 +212,13 @@ addCheck(
     /function normalizeLatestBattleRuntime\(/.test(battleRuntimeSource) &&
     /function hydrateRuntimeSummons\(/.test(battleRuntimeSource) &&
     /function settleSustainAtRoundEnd\(/.test(battleRuntimeSource) &&
-    /const required = \[['"]executeQueue['"]\];/.test(battleRuntimeSource) &&
-    /executeQueue:\s*\(queue, combatData, currentRound, logs, extraPatchOps\)\s*=>/.test(settlementBindingSource) &&
-    !/prepare:|settleSustain:/.test(settlementBindingSource) &&
+    !/settlementState|bindSettlementPrimitives|requireSettlementPrimitives|runTeamBattle/.test(battleRuntimeSource) &&
+    !/BATTLE_RUNTIME\.bindSettlementPrimitives/.test(battleUiSource) &&
     !/function 准备团战运行态\(|function settleSustainEffectsAtRoundEnd\(|function 执行维持释放效果\(/.test(battleUiSource) &&
     /function settleConditionsAtRoundEnd\(/.test(battleRuntimeSource) &&
-    !/settleConditions\s*:/.test(settlementBindingSource) &&
     !/function buildCombatFinalStats\(/.test(battleUiSource) &&
-    !/buildSummonFinalStats\s*:/.test(settlementBindingSource) &&
-    !/syncRoundEndUnit\s*:/.test(settlementBindingSource) &&
     !/function generateActionQueue\(/.test(battleUiSource) &&
-    !/function 构建团战运行时适配器\(/.test(battleUiSource) &&
-    !/listUnits:|listPrimaryUnits:|isUnitMatch:|normalizeActionName:|isSameReportName:|normalizeActionRole:|inferSide:|getHpMax:|isAbleToFight:/.test(settlementBindingSource),
+    !/function 构建团战运行时适配器\(/.test(battleUiSource),
 );
 addCheck(
   'formalDeclarationExecutionOwnedByRuntime',
@@ -375,8 +368,7 @@ addCheck(
     /createActionQueue\(\{/.test(battleRuntimeSource) &&
     /function beginStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
     /function executeStructuredDeclaration\(input = \{\}\)/.test(battleRuntimeSource) &&
-    !/__decisionResolver|generateActionQueue|runDecisionTeamBattle/.test(battleRuntimeSource) &&
-    !/buildQueue\s*:|recordQueue\s*:/.test(settlementBindingSource),
+    !/__decisionResolver|generateActionQueue|runDecisionTeamBattle/.test(battleRuntimeSource),
 );
 addCheck(
   'duelNpcPressureHasSingleSettlementPath',
@@ -387,18 +379,18 @@ addCheck(
 addCheck(
   'duelClashAndRoundTerminalAreSeparated',
   !/执行单挑回合交锋|结算单挑回合尾阶段|executeDuelRound/.test(battleUiSource) &&
-    /const queueResult = adapters\.executeQueue\([\s\S]*?if \(queueResult\?\.fatal\)[\s\S]*?else \{\s*const terminalAlive = adapters\.readAlive\(combatData\);[\s\S]*?if \(terminalAlive\.playerAlive > 0 && terminalAlive\.enemyAlive > 0\) \{\s*adapters\.settleRoundEnd\?\./.test(battleRuntimeSource),
+    /if \(queue\.fatal\) throw new Error\([\s\S]*?if \(terminal\?\.terminal !== true\) \{\s*settleBattleRoundEnd\(combatData, logs\);/.test(battleRuntimeSource),
 );
 addCheck(
   'duelForcedTerminalCannotBeOverwrittenByContinuation',
   !/forcedStop|蓄力反噬终止本轮/.test(battleUiSource) &&
-    /if \(queueResult\?\.fatal \|\| lastAlive\.playerAlive <= 0 \|\| lastAlive\.enemyAlive <= 0\) break;/.test(battleRuntimeSource) &&
-    /if \(continuation\?\.continueSimulation === false\) break;/.test(battleRuntimeSource),
+    /if \(terminal\?\.terminal === true\) \{\s*cancelQueueForTerminal\(\);\s*break;/.test(battleRuntimeSource) &&
+    /if \(terminal\?\.terminal === true \|\| alive\.playerAlive <= 0 \|\| alive\.enemyAlive <= 0\) break;/.test(battleRuntimeSource),
 );
 addCheck(
   'duelRoundTickHasSingleDomainPath',
   !/结算单挑回合尾阶段/.test(battleUiSource) &&
-    /function settleBattleRoundEnd\(combatData = \{\}, logs = \[\], settlement, adapterOptions = \{\}\)/.test(battleRuntimeSource) &&
+    /function settleBattleRoundEnd\(combatData = \{\}, logs = \[\], adapterOptions = \{\}\)/.test(battleRuntimeSource) &&
     /const sustainResult = settleSustainAtRoundEnd\(unit,[\s\S]*?const conditionResult = settleConditionsAtRoundEnd\(unit/.test(battleRuntimeSource) &&
     !/function settleTeamRoundEnd\(/.test(battleUiSource),
 );
@@ -515,8 +507,7 @@ addCheck(
 );
 addCheck(
   'terminalCheckPrecedesRoundTick',
-  /const terminalAlive = adapters\.readAlive\(combatData\);[\s\S]*?terminalAlive\.playerAlive > 0 && terminalAlive\.enemyAlive > 0[\s\S]*?adapters\.settleRoundEnd\?\./.test(battleRuntimeSource) &&
-    !/else \{\s*adapters\.settleRoundEnd\?\.\(combatData, logs\)/.test(battleRuntimeSource),
+  /terminal = evaluateBattleTerminal\(\{ combatData, currentRound: combatData\.回合, rounds: roundOffset, roundCompleted: false \}, \{\}\);[\s\S]*?if \(terminal\?\.terminal !== true\) \{\s*settleBattleRoundEnd\(combatData, logs\);/.test(battleRuntimeSource),
 );
 addCheck(
   'hardControlRevalidatesQueuedOpportunities',

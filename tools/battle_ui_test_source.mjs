@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const injectionMarker = '    BATTLE_RUNTIME.bindSettlementPrimitives({';
+const injectionMarker = '    root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);';
 
 const fixtureExports = `
     root.__LWCS_EXPORT_BATTLE_RECORD_VISIBLE_TEXT__ = (result = null, activeTab = 'preview') => 导出战斗记录可见文本(result, activeTab);

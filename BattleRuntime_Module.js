@@ -95,7 +95,6 @@
   );
   const nestedEffectFields = Object.freeze([...(sharedRegistry?.嵌套效果数组字段 || [])]);
   const conditionalEffectFields = Object.freeze([...(sharedRegistry?.条件分支效果数组字段 || [])]);
-  const settlementState = { primitives: null };
   let runtimeIdSequence = 0;
   let runtimeIdContext = 'runtime';
 
@@ -981,71 +980,6 @@
       },
       get fatal() { return fatal; },
       get pendingCount() { return pending.length; },
-    };
-  }
-
-  function runTeamBattle(options = {}) {
-    const combatData = options?.combatData;
-    const adapters = options?.adapters;
-    if (!combatData || typeof combatData !== 'object' || !adapters) throw new TypeError('battle_team_runner_contract_invalid');
-    const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
-    const roundLimit = mode === 'multi_round' ? Math.max(1, Number(options?.maxRounds || 1)) : 1;
-    adapters.prepare?.(combatData);
-    const rejected = adapters.validate?.(combatData);
-    if (rejected) return rejected;
-    const logs = [];
-    const extraPatchOps = [];
-    const startingRound = Number(combatData.回合 || 0);
-    let rounds = 0;
-    let lastAlive = adapters.readAlive(combatData);
-    let objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound: startingRound, rounds, roundCompleted: false }) || null;
-    while (rounds < roundLimit && objectiveResolution?.terminal !== true) {
-      rounds += 1;
-      const currentRound = startingRound + rounds;
-      combatData.回合 = currentRound;
-      const beginLogs = adapters.beginRound?.(combatData, currentRound);
-      if (Array.isArray(beginLogs)) logs.push(...beginLogs.filter(Boolean));
-      const queue = buildActionQueue(combatData);
-      adapters.recordQueue?.(queue, combatData, logs);
-      const queueResult = adapters.executeQueue(queue, combatData, currentRound, logs, extraPatchOps);
-      if (queueResult?.fatal) {
-        logs.push(`[行动队列中止] ${queueResult.fatal.code}`);
-      } else {
-        const terminalAlive = adapters.readAlive(combatData);
-        if (terminalAlive.playerAlive > 0 && terminalAlive.enemyAlive > 0) {
-          adapters.settleRoundEnd?.(combatData, logs);
-        }
-      }
-      lastAlive = adapters.readAlive(combatData);
-      logs.push(`[团战回合总结] 我方可行动单位:${lastAlive.playerAlive} 敌方可行动单位:${lastAlive.enemyAlive}`);
-      if (queueResult?.fatal || lastAlive.playerAlive <= 0 || lastAlive.enemyAlive <= 0) break;
-      objectiveResolution = adapters.evaluateTerminal?.({ combatData, currentRound, rounds, alive: lastAlive, roundCompleted: true }) || objectiveResolution;
-      if (objectiveResolution?.terminal === true) break;
-      const continuation = adapters.shouldContinue?.({ combatData, mode, currentRound, rounds, alive: lastAlive });
-      if (continuation?.log) logs.push(continuation.log);
-      if (continuation?.continueSimulation === false) break;
-    }
-    objectiveResolution = adapters.evaluateTerminal?.({
-      combatData,
-      currentRound: Number(combatData.回合 || startingRound),
-      rounds,
-      alive: lastAlive,
-      roundCompleted: rounds > 0,
-    }) || objectiveResolution;
-    const winner = objectiveResolution?.terminal === true
-      ? objectiveResolution.winner
-      : lastAlive.enemyAlive <= 0 ? 'player' : lastAlive.playerAlive <= 0 ? 'enemy' : 'unfinished';
-    adapters.finalize?.({ combatData, mode, winner, logs, alive: lastAlive, objectiveResolution });
-    return {
-      rounds,
-      roundStart: startingRound + 1,
-      roundEnd: Number(combatData.回合 || startingRound),
-      winner,
-      playerAlive: lastAlive.playerAlive,
-      enemyAlive: lastAlive.enemyAlive,
-      objectiveResolution,
-      logs,
-      extraPatchOps,
     };
   }
 
@@ -3200,7 +3134,7 @@
     return combatData;
   }
 
-  function prepareBattleRuntime(combatData = {}, settlement, adapterOptions = {}) {
+  function prepareBattleRuntime(combatData = {}) {
     normalizeLatestBattleRuntime(combatData);
     fillObjectiveDamageBaselines(combatData);
     combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
@@ -3211,7 +3145,7 @@
     delete runtime.withdrawalSuccessSides;
   }
 
-  function evaluateBattleTerminal(context = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+  function evaluateBattleTerminal(context = {}, adapterOptions = {}) {
     const combatData = context?.combatData || {};
     const objectives = previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
     combatData.胜负条件 = cloneValue(objectives);
@@ -3479,7 +3413,7 @@
     return sourceState.duration > 0 ? '' : removeSummonUnit(combatData, summon, reason);
   }
 
-  function writeSummonMentalControlEvent(combatData = {}, host = {}, summon = {}, result = '', detail = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+  function writeSummonMentalControlEvent(combatData = {}, host = {}, summon = {}, result = '', detail = {}, adapterOptions = {}) {
     const summonName = previewRuntime.unitName(summon) || '召唤物';
     if (!combatData || !summonName) return null;
     const hostName = previewRuntime.unitName(host) || previewRuntime.unitName(summon?.__宿主);
@@ -3514,7 +3448,7 @@
     }, adapterOptions);
   }
 
-  function refreshSummonMentalLoad(combatData = {}, host = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+  function refreshSummonMentalLoad(combatData = {}, host = {}, adapterOptions = {}) {
     const summons = listSummonCombatUnits(combatData).filter(unit => isUnitIdentityMatch(unit?.__宿主, host));
     if (!summons.length) return '';
     if (!isUnitAbleToFight(host)) {
@@ -3541,7 +3475,7 @@
           mentalLimit,
           maintainRatio: mental / mentalMax,
           compression,
-        }, settlement, adapterOptions);
+        }, adapterOptions);
       });
       logs.push(`[召唤超载] ${previewRuntime.unitName(host) || '宿主'}召唤负载过高，召唤物属性压缩至${Math.round(compression * 100)}%。`);
     }
@@ -3556,7 +3490,7 @@
           totalMentalLoad: totalLoad,
           mentalLimit,
           maintainRatio,
-        }, settlement, adapterOptions);
+        }, adapterOptions);
         logs.push(removeSummonUnit(combatData, unit, '精神力枯竭'));
       } else if (unit.类型 === '深渊生物' && maintainRatio < 0.25) {
         writeSummonMentalControlEvent(combatData, host, unit, 'recalled', {
@@ -3566,7 +3500,7 @@
           totalMentalLoad: totalLoad,
           mentalLimit,
           maintainRatio,
-        }, settlement, adapterOptions);
+        }, adapterOptions);
         logs.push(removeSummonUnit(combatData, unit, '精神维持不足'));
       } else if (maintainRatio < 0.25) {
         unit.__禁用召唤技能 = true;
@@ -3577,7 +3511,7 @@
           totalMentalLoad: totalLoad,
           mentalLimit,
           maintainRatio,
-        }, settlement, adapterOptions);
+        }, adapterOptions);
         logs.push(`[召唤受限] ${previewRuntime.unitName(unit) || '召唤物'}受宿主精神不足影响，只能进行基础行动。`);
       } else {
         unit.__禁用召唤技能 = false;
@@ -3586,7 +3520,7 @@
     return logs.filter(Boolean).join(' ');
   }
 
-  function beginBattleRound(combatData = {}, currentRound = 0, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+  function beginBattleRound(combatData = {}, currentRound = 0, adapterOptions = {}) {
     const runtime = ensureCombatRuntime(combatData);
     runtime.unitReactionCount = {};
     runtime.factionReactionCount = {};
@@ -3623,7 +3557,7 @@
     const summons = listSummonCombatUnits(combatData);
     summons.forEach(ensureSummonWindowRuntime);
     const hosts = [...new Set(summons.map(unit => unit.__宿主).filter(Boolean))];
-    const summonLog = hosts.map(host => refreshSummonMentalLoad(combatData, host, settlement, adapterOptions)).filter(Boolean).join(' ');
+    const summonLog = hosts.map(host => refreshSummonMentalLoad(combatData, host, adapterOptions)).filter(Boolean).join(' ');
     return [`[团战第${currentRound}回合开始]`, summonLog].filter(Boolean);
   }
 
@@ -3765,7 +3699,7 @@
     return { log: logs.join(' '), broken };
   }
 
-  function settleBattleRoundEnd(combatData = {}, logs = [], settlement, adapterOptions = {}) {
+  function settleBattleRoundEnd(combatData = {}, logs = [], adapterOptions = {}) {
     listCombatUnits(combatData).forEach(unit => {
       syncRoundEndUnit(unit);
       if (previewRuntime.readHp(unit) <= 0) return;
@@ -3776,7 +3710,7 @@
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
       if (conditionResult.log) logs.push(`[团战回合尾] ${conditionResult.log}`);
     });
-    const guardLog = settleGuardSummonWindows(combatData, settlement, adapterOptions);
+    const guardLog = settleGuardSummonWindows(combatData, adapterOptions);
     if (guardLog) logs.push(`[团战回合尾] ${guardLog}`);
     const rewriteLog = settleRuleRewrite(combatData);
     if (rewriteLog) logs.push(`[团战回合尾] ${rewriteLog}`);
@@ -3802,7 +3736,7 @@
     return expired > 0 ? `[规则改写] ${expired}条临时规则改写已结束。` : '';
   }
 
-  function settleGuardSummonWindows(combatData = {}, settlement = requireSettlementPrimitives(), adapterOptions = {}) {
+  function settleGuardSummonWindows(combatData = {}, adapterOptions = {}) {
     const logs = [];
     const currentRound = Math.max(0, Number(combatData?.回合 || 0));
     listSummonCombatUnits(combatData)
@@ -3815,22 +3749,6 @@
         if (expiredLog) logs.push(expiredLog);
       });
     return logs.join(' ');
-  }
-
-  function createSettlementAdapters(settlement, adapterOptions = {}) {
-    return {
-      prepare: combatData => prepareBattleRuntime(combatData, settlement, adapterOptions),
-      validate: combatData => validateBattleRuntime(combatData),
-      beginRound: (combatData, currentRound) => beginBattleRound(combatData, currentRound, settlement, adapterOptions),
-      buildQueue: combatData => buildActionQueue(combatData),
-      recordQueue() { throw new Error('battle_decision_record_queue_required'); },
-      executeQueue: (queue, combatData, currentRound, logs, extraPatchOps) => settlement.executeQueue(queue, combatData, currentRound, logs, extraPatchOps, adapterOptions),
-      settleRoundEnd: (combatData, logs) => settleBattleRoundEnd(combatData, logs, settlement, adapterOptions),
-      readAlive: combatData => readTeamAlive(combatData),
-      evaluateTerminal: context => evaluateBattleTerminal(context, settlement, adapterOptions),
-      shouldContinue: context => decideTeamContinuation(context, adapterOptions),
-      finalize: context => finalizeTeamBattle(context),
-    };
   }
 
   function decideDuelContinuation(options = {}) {
@@ -5073,7 +4991,7 @@
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
-        logs.push(...beginBattleRound(combatData, combatData.回合, requireSettlementPrimitives()).filter(Boolean));
+        logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
         const queueTrace = runtime.actionQueueTrace;
         const queue = createActionQueue({
           round: combatData.回合,
@@ -5752,7 +5670,7 @@
         }
         if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
         if (terminal?.terminal !== true) {
-          settleBattleRoundEnd(combatData, logs, requireSettlementPrimitives());
+          settleBattleRoundEnd(combatData, logs);
         }
         terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
         const alive = readTeamAlive(combatData);
@@ -7902,19 +7820,6 @@
     };
   }
 
-  function bindSettlementPrimitives(primitives) {
-    const required = ['executeQueue'];
-    if (!primitives || required.some(name => typeof primitives[name] !== 'function')) {
-      throw new TypeError('battle_runtime_settlement_primitives_invalid');
-    }
-    settlementState.primitives = Object.freeze({ ...primitives });
-  }
-
-  function requireSettlementPrimitives() {
-    if (!settlementState.primitives) throw new Error('battle_runtime_settlement_primitives_missing');
-    return settlementState.primitives;
-  }
-
   function buildDecisionAuditRecord(decision = {}) {
     const selected = decision?.selected || {};
     return cloneValue({
@@ -8095,7 +8000,6 @@
     ensureActionDiagnostic,
     registerStateSource,
     findStateSource,
-    runTeamBattle,
     decideDuelContinuation,
     executeActionNodes,
     executeDeclaration,
@@ -8108,7 +8012,6 @@
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
-    bindSettlementPrimitives,
     runDecisionCase,
     runBattleCase,
     auditFacts,

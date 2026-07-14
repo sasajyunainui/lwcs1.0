@@ -243,9 +243,9 @@ assert.throws(
 );
 
 const uiSource = fs.readFileSync(path.resolve(root, 'lwcs/BattleUI_Module.js'), 'utf8');
-const binding = uiSource.match(/BATTLE_RUNTIME\.bindSettlementPrimitives\(\{[\s\S]*?\n\s*}\);/)?.[0] || '';
-assert.match(binding, /executeQueue:/, 'BattleUI缺少最后一个正式队列绑定');
-assert.doesNotMatch(binding, /prepare:|settleSustain:/, 'BattleUI仍绑定prepare或settleSustain');
+assert.doesNotMatch(uiSource, /BATTLE_RUNTIME\.bindSettlementPrimitives/, 'BattleUI仍向Runtime注入旧结算器');
+assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__.bindSettlementPrimitives, 'undefined', 'Runtime仍暴露旧结算器绑定入口');
+assert.equal(typeof sandbox.__LWCS_BATTLE_RUNTIME__.runTeamBattle, 'undefined', 'Runtime仍暴露旧适配式团战入口');
 
 console.log(JSON.stringify({
   summary: {
