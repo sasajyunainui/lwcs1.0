@@ -120,6 +120,16 @@ function validateCaseContract(definition, result) {
   const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
   const reportBlocks = Array.isArray(result?.reportBlocks) ? result.reportBlocks : [];
+  const damagingHitsMissingFormulaOperands = ledger.filter(event =>
+    String(event?.eventKind || '').trim() === 'hit_result' &&
+    Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0 &&
+    (!(Number(event?.meta?.formulaTrace?.attackValue || 0) > 0) ||
+      !(Number(event?.meta?.formulaTrace?.defenseValue || 0) > 0) ||
+      event?.meta?.attackDefenseRatioAudit?.missingOperand === true)
+  );
+  if (damagingHitsMissingFormulaOperands.length) {
+    failures.push({ code: 'DAMAGE_FORMULA_OPERAND_MISSING', count: damagingHitsMissingFormulaOperands.length });
+  }
   const playerReportText = JSON.stringify({
     reportBlocks,
     finalBattleReport: result?.finalBattleReport || null,

@@ -20,6 +20,7 @@
   let actionQualityCache = new WeakMap();
   let effectiveShieldCache = new WeakMap();
   let bestAgainstCache = new WeakMap();
+  let bestActionCache = new WeakMap();
   let experienceCache = new WeakMap();
   let relevantStateFingerprintCache = new WeakMap();
   let worldEntriesCache = new WeakMap();
@@ -1018,12 +1019,25 @@
 
   function bestBaseActionValue(worldSnapshot, unit, options = {}) {
     if (!preview.isAlive(unit) || (!options.ignoreActionCancellation && hasActionCancellation(unit))) return 0;
+    const cacheKey = options.ignoreActionCancellation ? 'ignoreCancellation' : 'normal';
+    let cachedByOption = bestActionCache.get(unit);
+    if (!cachedByOption) {
+      cachedByOption = new Map();
+      bestActionCache.set(unit, cachedByOption);
+    }
+    if (cachedByOption.has(cacheKey)) return cachedByOption.get(cacheKey);
     const side = sideOf(worldSnapshot, unit);
     const enemies = worldEntries(worldSnapshot).filter(entry => entry.side !== side).map(entry => entry.unit);
-    if (!enemies.length) return 100;
+    if (!enemies.length) {
+      cachedByOption.set(cacheKey, 100);
+      return 100;
+    }
     let best = hasStateFlag(unit, 'disarm') ? 0 : Math.max(...enemies.map(target => cachedBaseActionValue(unit, target, 'BASIC_ATTACK')), 0);
     const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === side).map(entry => entry.unit);
-    if (hasStateFlag(unit, 'silence')) return best;
+    if (hasStateFlag(unit, 'silence')) {
+      cachedByOption.set(cacheKey, best);
+      return best;
+    }
     collectSkills(unit).filter(skill => costAffordable(unit, skill)).forEach(skill => {
       const profile = targetProfile(skill);
       const targets = profile === 'SELF' ? [unit] : profile.startsWith('FRIENDLY') ? allies : profile === 'ANY_SINGLE' ? [...allies, ...enemies] : enemies;
@@ -1031,6 +1045,7 @@
       const actionValue = profile.endsWith('GROUP') ? values.reduce((sum, value) => sum + value, 0) : Math.max(0, ...values);
       best = Math.max(best, actionValue);
     });
+    cachedByOption.set(cacheKey, best);
     return best;
   }
 
@@ -2382,6 +2397,7 @@
     actionQualityCache = new WeakMap();
     effectiveShieldCache = new WeakMap();
     bestAgainstCache = new WeakMap();
+    bestActionCache = new WeakMap();
     experienceCache = new WeakMap();
     relevantStateFingerprintCache = new WeakMap();
     worldEntriesCache = new WeakMap();

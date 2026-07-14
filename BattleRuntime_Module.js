@@ -4519,6 +4519,22 @@
           const totalDamage = Math.max(0, previewRuntime.calculateBaseDamage(effect, actor, target));
           const segmentDamage = totalDamage / segments;
           const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect)));
+          const damageTypeText = String(effect?.伤害类型 || '').trim();
+          const damageClass = /真实/.test(damageTypeText)
+            ? 'TRUE'
+            : /精神/.test(damageTypeText)
+              ? 'MENTAL'
+              : /远程/.test(damageTypeText)
+                ? 'RANGED'
+                : 'MELEE';
+          const formulaAttackValue = damageClass === 'MENTAL'
+            ? previewRuntime.readCombatStat(actor, 'men')
+            : previewRuntime.readCombatStat(actor, 'str');
+          const rawDefenseValue = damageClass === 'MENTAL'
+            ? previewRuntime.readCombatStat(target, 'men')
+            : previewRuntime.readCombatStat(target, 'def');
+          const penetrationValue = Math.max(0, Number(effect?.防穿 ?? effect?.穿透 ?? effect?.防御穿透 ?? 0));
+          const formulaDefenseValue = Math.max(1, rawDefenseValue - penetrationValue);
           for (let segment = 0; segment < segments; segment += 1) {
             if (reaction?.evaded === true) {
               facts.push(writeLedgerEvent(combatData, {
@@ -4569,6 +4585,13 @@
               meta: {
                 source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, roll,
                 rawDamage: segmentDamage, defenseMultiplier, appliedDamage: damage, damageType: effect?.伤害类型 || '',
+                formulaTrace: {
+                  damageClass,
+                  attackValue: formulaAttackValue,
+                  defenseValue: formulaDefenseValue,
+                  rawDefenseValue,
+                  penetrationValue,
+                },
                 intentLethalPrevented: nonlethal && damage < Math.max(0, Math.round(segmentDamage * defenseMultiplier)),
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
               },
