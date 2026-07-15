@@ -801,10 +801,10 @@
         ],
         updateConfig: {
             uiSentinel: -1,
-            contextDepth: 1,
-            updateFrequency: 1,
-            batchSize: 1,
-            skipFloors: 0,
+            contextDepth: -1,
+            updateFrequency: -1,
+            batchSize: -1,
+            skipFloors: -1,
             sendLatestRows: -1
         },
         exportConfig: {
