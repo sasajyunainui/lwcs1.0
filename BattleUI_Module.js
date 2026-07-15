@@ -7695,24 +7695,34 @@ class BattleUIComponent {
             const agility = Number(breakdown?.agility?.value || 0);
             const spirit = Number(breakdown?.spirit || 0);
             const spiritMax = Number(breakdown?.spiritMax || 0);
+            const stamina = Number(breakdown?.stamina || 0);
+            const staminaMax = Number(breakdown?.staminaMax || 0);
+            const opposingSpirit = Number(breakdown?.opposingSpirit || 0);
+            const base = Number(breakdown?.base || 0);
+            const spiritRatio = Number(breakdown?.spiritRatio || 0);
+            const staminaRatio = Number(breakdown?.staminaRatio || 0);
             const conditionFactor = Number(breakdown?.conditionFactor || 0);
             const resourcePressure = Number(breakdown?.resourcePressure || 0);
             const stanceMultiplier = Number(breakdown?.stanceMultiplier || 1);
             const parts = [
-              `${formatCalcNumber(value)}：`,
-              `(${formatCalcNumber(agility)}×0.72 + ${formatCalcNumber(spirit)}×0.012 + ${formatCalcNumber(spiritMax)}×0.025)`,
-              `×${formatCalcNumber(conditionFactor)}（精神/体力状态）`,
-              `×${formatCalcNumber(resourcePressure)}（双方精神力压力）`,
+              `${stanceLabel}压力 ${formatCalcNumber(value)}`,
+              `速度贡献 ${formatCalcNumber(agility)}×0.72=${formatCalcNumber(agility * 0.72)}`,
+              `当前精神贡献 ${formatCalcNumber(spirit)}×0.012=${formatCalcNumber(spirit * 0.012)}`,
+              `精神上限贡献 ${formatCalcNumber(spiritMax)}×0.025=${formatCalcNumber(spiritMax * 0.025)}`,
+              `基础压力 ${formatCalcNumber(base)}`,
+              `状态系数 ${formatCalcNumber(conditionFactor)}=基础0.35+精神占比${formatCalcNumber(spiritRatio * 100)}%×0.40+体力占比${formatCalcNumber(staminaRatio * 100)}%×0.25（精神 ${formatCalcNumber(spirit)}/${formatCalcNumber(spiritMax)}，体力 ${formatCalcNumber(stamina)}/${formatCalcNumber(staminaMax)}）`,
+              `精神压制 ${formatCalcNumber(resourcePressure)}=（自身精神${formatCalcNumber(spirit)}/对方精神${formatCalcNumber(opposingSpirit)}）^0.35×（0.45+自身精神占比${formatCalcNumber(spiritRatio * 100)}%×0.55），结果限制在0.35至1.65`,
             ];
-            if (Math.abs(stanceMultiplier - 1) > 1e-9) parts.push(`×${格式化倍率(stanceMultiplier)}（${stanceLabel}姿态）`);
+            if (Math.abs(stanceMultiplier - 1) > 1e-9) parts.push(`${stanceLabel}姿态倍率 ${格式化倍率(stanceMultiplier)}`);
             (Array.isArray(breakdown?.effectContributions) ? breakdown.effectContributions : []).forEach(modifier => {
               const amount = Number(modifier?.value);
               if (!Number.isFinite(amount) || !amount) return;
               const source = String(modifier?.source || '状态修正').trim();
               const sign = modifier.kind === 'subtract' ? '-' : amount >= 0 ? '+' : '-';
-              parts.push(`${sign}${formatCalcNumber(Math.abs(amount))}（${source}）`);
+              parts.push(`状态修正 ${sign}${formatCalcNumber(Math.abs(amount))}（${source}）`);
             });
-            return parts.join('');
+            parts.push(`最终 ${formatCalcNumber(value)}`);
+            return parts.join('；');
           };
           const 构建数值证据标记 = (evidence, display, source, label = '') => {
             const index = evidence.length;
@@ -7832,7 +7842,9 @@ class BattleUIComponent {
               const probabilityText = 构建数值证据标记(
                 evidence,
                 `${Math.round(dodgeRate * 100)}%`,
-                `${Math.round(dodgeRate * 100)}%：18% +（反应占比${Number.isFinite(reactionShare) ? formatCalcNumber(reactionShare * 100) : '?'}% - 50%）×110%，最终限制在3%至78%`,
+                Number.isFinite(reactionShare)
+                  ? `闪避成功率 ${Math.round(dodgeRate * 100)}%；基础成功率 18%；反应压力占比 ${formatCalcNumber(reactionShare * 100)}%；占比修正 ${formatCalcNumber((reactionShare - 0.5) * 110)}%；规则范围 3%至78%`
+                  : `闪避成功率 ${Math.round(dodgeRate * 100)}%；由双方反应压力占比计算，规则范围 3%至78%`,
                 '闪避成功率',
               );
               const rollText = 构建数值证据标记(
@@ -9459,8 +9471,8 @@ class BattleUIComponent {
           const outcomeHtml = 渲染公开战报BlocksHTML(outcomeBlocks, context).html;
           const intentHtml = 渲染公开战报HTML(String(block?.intentSummary || '').trim(), context).html;
           const nextWindowHtml = 渲染公开战报HTML(String(block?.nextWindow || '').trim(), context).html;
-          const actionHeadHtml = 渲染公开战报HTML(`${actor} · 【${action}】`, context).html;
-          const roundLabel = context?.showRound === false ? '动作' : `第${Math.max(0, Number(block?.round || 0))}回合`;
+          const actionHeadHtml = 渲染公开战报HTML(`【${action}】`, context).html;
+          const roundLabel = context?.showRound === false ? actor : `第${Math.max(0, Number(block?.round || 0))}回合 · ${actor}`;
           return `
             <article class="battle-preview-report-group" data-round="${Math.max(0, Number(block?.round || 0))}" data-action-group-id="${htmlEscapeText(block?.actionGroupId || '')}">
               <header class="battle-structured-report-head"><span>${roundLabel}</span><b>${actionHeadHtml}</b></header>

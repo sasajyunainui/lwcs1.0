@@ -29491,6 +29491,9 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   gap: 6px;
   align-items: start;
   margin: 2px 0;
+  color: var(--战斗记录文字主色);
+  font-weight: 540;
+  line-height: 1.5;
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-group :is(.battle-structured-report-intent, .battle-structured-report-outcome, .battle-structured-report-window) > b,
@@ -29781,7 +29784,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   color: color-mix(in srgb, var(--战斗警戒色) 76%, #ffffff);
   background: transparent;
   font: inherit;
-  font-weight: 780;
+  font-weight: 680;
   line-height: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -29804,7 +29807,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   color: color-mix(in srgb, var(--战斗警戒色) 76%, #ffffff);
   background: transparent;
   font: inherit;
-  font-weight: 780;
+  font-weight: 680;
   line-height: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -30336,8 +30339,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   left: 50%;
   bottom: calc(100% + 7px);
   width: max-content;
-  max-width: min(320px, calc(100vw - 32px));
-  padding: 7px 9px;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 9px 11px;
   border: 1px solid color-mix(in srgb, var(--战斗强调色) 42%, #263746);
   border-radius: 5px;
   background: #07131f;
@@ -30345,7 +30348,7 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   color: #e7f2fb;
   font-size: 12px;
   font-weight: 560;
-  line-height: 1.45;
+  line-height: 1.55;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;

@@ -689,7 +689,9 @@ const summary = {
     (dodgeEvidenceTraceHtml.match(/class="battle-trace-number-evidence"/g) || []).length === 6 &&
     (dodgeEvidenceTraceHtml.match(/tabindex="0"/g) || []).length === 6 &&
     /data-source="522：基础522/.test(dodgeEvidenceTraceHtml || '') &&
-    /data-source="42%：18% \+（反应占比/.test(dodgeEvidenceTraceHtml || '') &&
+    /当前精神贡献/.test(dodgeEvidenceTraceHtml || '') &&
+    /双方精神压制/.test(dodgeEvidenceTraceHtml || '') &&
+    /data-source="闪避成功率 42%；基础成功率 18%；反应压力占比/.test(dodgeEvidenceTraceHtml || '') &&
     /aria-label="闪避成功率：42%。来源：/.test(dodgeEvidenceTraceHtml || ''),
   reactionTypeInternalCodeHidden:
     /EVADE: '闪避'/.test(code) &&
