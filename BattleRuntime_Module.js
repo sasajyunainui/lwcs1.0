@@ -103,6 +103,43 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function stableSerialize(value, seen = new WeakSet()) {
+    if (value === null) return 'null';
+    const type = typeof value;
+    if (type === 'number') return Number.isFinite(value) ? JSON.stringify(value) : 'null';
+    if (type === 'boolean' || type === 'string') return JSON.stringify(value);
+    if (type === 'undefined' || type === 'function' || type === 'symbol') return '';
+    if (Array.isArray(value)) {
+      if (seen.has(value)) throw new Error('battle_hash_circular_value');
+      seen.add(value);
+      const serialized = `[${value.map(item => stableSerialize(item, seen)).join(',')}]`;
+      seen.delete(value);
+      return serialized;
+    }
+    if (type !== 'object') return JSON.stringify(String(value));
+    if (seen.has(value)) throw new Error('battle_hash_circular_value');
+    seen.add(value);
+    const body = Object.keys(value)
+      .filter(key => value[key] !== undefined && typeof value[key] !== 'function' && typeof value[key] !== 'symbol')
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${stableSerialize(value[key], seen)}`)
+      .join(',');
+    seen.delete(value);
+    return `{${body}}`;
+  }
+
+  function hashBattleValue(value) {
+    const text = stableSerialize(value);
+    let primary = 0x811c9dc5;
+    let secondary = 0x9e3779b9;
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      primary = Math.imul(primary ^ code, 0x01000193);
+      secondary = Math.imul(secondary ^ (code + index), 0x85ebca6b);
+    }
+    return `r74-${(primary >>> 0).toString(16).padStart(8, '0')}${(secondary >>> 0).toString(16).padStart(8, '0')}`;
+  }
+
   function normalizeSideEffectEntry(value = {}) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const type = String(value.副作用类型 || '').trim();
@@ -8671,6 +8708,66 @@
     return runDecisionCase(options && typeof options === 'object' ? options : {});
   }
 
+  function executeBattleDraft(input = {}) {
+    const source = input && typeof input === 'object' ? input : {};
+    const result = runDecisionCase(cloneValue(source));
+    if (Number(result?.audit?.fatalCount || 0) > 0) {
+      const codes = (Array.isArray(result?.audit?.fatals) ? result.audit.fatals : [])
+        .map(item => String(item?.code || '').trim())
+        .filter(Boolean);
+      throw new Error(`battle_draft_runtime_audit_failed:${codes.join(',') || 'unknown'}`);
+    }
+    const draft = {
+      schemaVersion: '7.3-R7.4-draft-1',
+      status: 'DRAFT',
+      caseId: String(result?.caseId || source?.caseId || '').trim(),
+      seed: result?.seed ?? source?.seed ?? 1,
+      mode: String(result?.mode || source?.mode || '').trim(),
+      roundsRequested: Math.max(0, Number(result?.roundsRequested || source?.rounds || 0)),
+      actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
+      ledger: cloneValue(result?.ledger || result?.eventLedger || []),
+      trace: cloneValue(result?.trace || result?.resolutionTrace || []),
+      decisionAudit: cloneValue(result?.decisions || result?.decisionTrace || []),
+      actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
+      terminalResult: cloneValue(result?.terminal || result?.objectiveResolution || {
+        terminal: result?.winner && result.winner !== 'unfinished',
+        winner: result?.winner || 'unfinished',
+      }),
+      initialSnapshot: cloneValue(result?.initialSnapshot || null),
+      finalSnapshot: cloneValue(result?.finalSnapshot || result?.snapshot || null),
+    };
+    return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
+  }
+
+  function sealBattleResult(input = {}) {
+    const draft = input?.draft && typeof input.draft === 'object' ? cloneValue(input.draft) : null;
+    const reportAudit = input?.reportAudit && typeof input.reportAudit === 'object' ? input.reportAudit : null;
+    if (!draft || String(draft?.status || '').trim() !== 'DRAFT') throw new Error('battle_result_draft_invalid');
+    const draftHash = String(draft?.draftHash || '').trim();
+    delete draft.draftHash;
+    if (!draftHash || hashBattleValue(draft) !== draftHash) throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    if (reportAudit?.passed !== true || Number(reportAudit?.fatalCount || 0) > 0) {
+      throw new Error('battle_result_report_audit_failed');
+    }
+    const reportDto = reportAudit?.reportDto && typeof reportAudit.reportDto === 'object'
+      ? cloneValue(reportAudit.reportDto)
+      : null;
+    const reportHash = String(reportAudit?.reportHash || '').trim();
+    if (!reportDto || !reportHash || hashBattleValue(reportDto) !== reportHash) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:report');
+    }
+    return Object.freeze({
+      schemaVersion: '7.3-R7.4-sealed-1',
+      sealStatus: 'SEALED',
+      draftHash,
+      reportHash,
+      terminalResult: cloneValue(draft.terminalResult),
+      finalSnapshot: cloneValue(draft.finalSnapshot),
+      reportDto,
+      aiSummaryInput: cloneValue(reportDto.aiSummaryInput || null),
+    });
+  }
+
   function auditPrototypeCoverage() {
     const rows = prototypeManifest.map(entry => {
       const contract = prototypeRuntimeContract[entry.name];
@@ -8724,6 +8821,8 @@
     prototypeManifest,
     prototypeOptionMatrix,
     cloneValue,
+    stableSerialize,
+    hashBattleValue,
     normalizeSideEffectList,
     settleConditionSideEffects,
     settleDelayedEffect,
@@ -8761,6 +8860,8 @@
     assertSkillEffects,
     runDecisionCase,
     runBattleCase,
+    executeBattleDraft,
+    sealBattleResult,
     auditFacts,
     normalizeActionDisplayName,
     normalizeActionRole,
