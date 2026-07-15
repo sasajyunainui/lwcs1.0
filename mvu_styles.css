@@ -21255,10 +21255,72 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     height: var(--mvu-hud-frame-height, 620px);
     min-height: 0;
     max-height: var(--mvu-hud-frame-height, 620px);
+    transition:
+      height var(--mvu-motion-expand, 230ms) cubic-bezier(0.2, 0.8, 0.2, 1),
+      max-height var(--mvu-motion-expand, 230ms) cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
     padding: 5px 6px;
+    cursor: pointer;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar :is(button, nav, a, input, select, textarea) {
+    cursor: pointer;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc {
+    position: relative;
+    padding-right: 24px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    color: var(--mvu-holo-muted);
+    transform: translateY(-30%) rotate(225deg);
+    transition: transform var(--mvu-motion-expand, 230ms) cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-header-loc:focus-visible {
+    outline: 2px solid var(--mvu-holo-main);
+    outline-offset: 2px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed {
+    grid-template-rows: auto 0;
+    height: 54px;
+    max-height: 54px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed .mvu-unified-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed .mvu-unified-theme-dock,
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed .mvu-unified-tab-row {
+    display: none;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed .mvu-unified-stage-switch {
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame.is-mobile-collapsed .mvu-unified-header-loc::after {
+    transform: translateY(-70%) rotate(45deg);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-overview-bar {

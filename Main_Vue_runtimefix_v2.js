@@ -517,14 +517,22 @@ const DesktopUnifiedLayout = {
     <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
       <section
         class="mvu-unified-frame"
-        :class="{ 'is-detail': detailState.isOpen, 'is-holo-animation-paused': 全息动画暂停 }"
+        :class="{
+          'is-detail': detailState.isOpen,
+          'is-holo-animation-paused': 全息动画暂停,
+          'is-mobile-collapsed': 移动状态栏折叠
+        }"
         :data-holo-theme="全息星轨状态.主题"
         :data-unified-tab="tabState.current"
         @pointerdown.passive="标记全息动画临停"
         @wheel.passive="标记全息动画临停"
         @keydown="标记全息动画临停"
       >
-        <header class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen }">
+        <header
+          class="mvu-unified-toolbar"
+          :class="{ 'is-detail': detailState.isOpen }"
+          @click="处理移动状态栏标题点击"
+        >
           <div class="mvu-unified-toolbar-main">
             <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
               <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
@@ -542,7 +550,16 @@ const DesktopUnifiedLayout = {
                   <span class="char-emblem">角</span>
                   <span class="char-name">当前角色</span>
                 </button>
-                <div class="header-loc mvu-unified-header-loc" aria-live="polite"><span>时间与地点同步中</span></div>
+                <div
+                  class="header-loc mvu-unified-header-loc"
+                  aria-live="polite"
+                  :role="移动状态栏模式 ? 'button' : null"
+                  :tabindex="移动状态栏模式 ? 0 : -1"
+                  :aria-expanded="移动状态栏模式 ? (移动状态栏折叠 ? 'false' : 'true') : null"
+                  :aria-label="移动状态栏模式 ? (移动状态栏折叠 ? '展开状态栏' : '收起状态栏') : null"
+                  @keydown.enter.prevent="切换移动状态栏折叠"
+                  @keydown.space.prevent="切换移动状态栏折叠"
+                ><span>时间与地点同步中</span></div>
               </div>
               <nav class="mvu-unified-tab-row" aria-label="状态栏页面">
                 <button
@@ -590,7 +607,8 @@ const DesktopUnifiedLayout = {
             class="mvu-unified-page-stack"
             :class="detailState.isOpen ? 'is-stage-inactive is-stage-exit' : 'is-stage-active is-stage-enter'"
             :data-unified-overview-tab="tabState.current"
-            :aria-hidden="detailState.isOpen ? 'true' : 'false'"
+            :aria-hidden="detailState.isOpen || 移动状态栏折叠 ? 'true' : 'false'"
+            :inert="移动状态栏折叠 ? '' : null"
           >
             <section class="mvu-unified-page" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive">
               <section class="mvu-unified-section mvu-unified-section--dashboard">
@@ -665,7 +683,8 @@ const DesktopUnifiedLayout = {
             class="mvu-unified-detail-page"
             :class="detailState.isOpen ? 'is-stage-active is-stage-enter' : 'is-stage-inactive is-stage-exit'"
             :data-unified-detail-preview="detailState.previewKey"
-            :aria-hidden="detailState.isOpen ? 'false' : 'true'"
+            :aria-hidden="detailState.isOpen && !移动状态栏折叠 ? 'false' : 'true'"
+            :inert="移动状态栏折叠 ? '' : null"
           >
             <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
           </section>
@@ -680,6 +699,12 @@ const DesktopUnifiedLayout = {
     const 当前全息星轨状态 = 全息星轨状态;
     const 当前主题键 = computed(() => 全息星轨主题键映射[当前全息星轨状态.主题] || 'classic');
     const 页面可见 = ref(typeof document === 'undefined' || document.visibilityState === 'visible');
+    const 移动状态栏模式 = ref(
+      typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 760px)').matches
+    );
+    const 移动状态栏折叠 = ref(false);
     const 全息动画临停 = ref(false);
     const 全息动画暂停 = computed(() => !页面可见.value || 全息动画临停.value);
     const 上次详情标题 = ref('详情');
@@ -1071,7 +1096,24 @@ const DesktopUnifiedLayout = {
       if (下个焦点 instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(下个焦点)) return;
       关闭全息主题面板();
     };
+    const 切换移动状态栏折叠 = () => {
+      if (!移动状态栏模式.value) return;
+      标记全息动画临停();
+      移动状态栏折叠.value = !移动状态栏折叠.value;
+      if (移动状态栏折叠.value) 关闭全息主题面板();
+      scheduleUnifiedFrameViewportSync();
+    };
+    const 处理移动状态栏标题点击 = event => {
+      if (!移动状态栏模式.value) return;
+      const 目标 = event && event.target instanceof Element ? event.target : null;
+      if (!目标 || 目标.closest('button, nav, a, input, select, textarea, [data-preview], .mvu-unified-theme-dock')) return;
+      切换移动状态栏折叠();
+    };
     const handleDesktopUnifiedResize = () => {
+      移动状态栏模式.value = typeof window.matchMedia === 'function'
+        ? window.matchMedia('(max-width: 760px)').matches
+        : window.innerWidth <= 760;
+      if (!移动状态栏模式.value) 移动状态栏折叠.value = false;
       scheduleUnifiedFrameViewportSync();
     };
     const handleDesktopUnifiedFocusRestore = () => {
@@ -1148,6 +1190,10 @@ const DesktopUnifiedLayout = {
       切换全息主题面板,
       关闭全息主题面板,
       处理全息主题面板失焦,
+      移动状态栏模式,
+      移动状态栏折叠,
+      切换移动状态栏折叠,
+      处理移动状态栏标题点击,
       详情路径标题,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
