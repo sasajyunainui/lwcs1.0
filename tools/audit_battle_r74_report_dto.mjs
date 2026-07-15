@@ -54,7 +54,7 @@ const sourceInput = {
   rounds: definition.rounds,
   initialBelief: definition.initialBelief,
   battleIntent: { mode: definition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 };
 const inputBefore = JSON.stringify(sourceInput);
 const draft = runtime.executeBattleDraft(sourceInput);

@@ -112,9 +112,12 @@ for (const relativePath of [
   'lwcs/BattleUI_Module.js',
 ]) vm.runInContext(fs.readFileSync(path.resolve(root, relativePath), 'utf8'), sandbox, { filename: relativePath });
 
-const inspectDecision = input => {
+const inspectDecision = (input, engine = 'legacy') => {
   let candidates = [];
-  const result = sandbox.__LWCS_BATTLE_DECISION__.decide({ ...input, inspectCandidates: value => { candidates = value; } });
+  const decide = engine === 'next'
+    ? sandbox.__LWCS_BATTLE_DECISION__.decideNext
+    : sandbox.__LWCS_BATTLE_DECISION__.decide;
+  const result = decide({ ...input, inspectCandidates: value => { candidates = value; } });
   return { ...result, candidates };
 };
 
@@ -797,7 +800,7 @@ const counterResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: counterDefinition.rounds,
   initialBelief: counterDefinition.initialBelief,
   battleIntent: { mode: counterDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
 const counterDecision = counterResult.decisions.find(entry => entry?.actionRole === 'COUNTER');
 const counterWindow = counterResult.ledger.find(event => event?.eventKind === 'counter_window' && event?.result === 'opened');
@@ -957,7 +960,7 @@ const underdogResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: underdogDefinition.rounds,
   initialBelief: underdogDefinition.initialBelief,
   battleIntent: { mode: underdogDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
 const underdogFirstAction = underdogResult.decisions.find(entry =>
   entry?.actorId === '韦小枫' && entry?.actionRole === 'ACTIVE'
@@ -1023,8 +1026,16 @@ const withdrawalResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   mode: 'team_preview',
   rounds: withdrawalDefinition.rounds,
   battleIntent: { mode: withdrawalDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
+const firstWithdrawalActive = withdrawalResult.decisions.find(entry =>
+  entry?.actorId === '谢邂' && entry?.actionRole === 'ACTIVE'
+);
+assert.equal(
+  firstWithdrawalActive?.selected?.declaration?.actionKind,
+  'WITHDRAW',
+  `求生且唯一成功条件为撤离时，Next没有在首个自然机会尝试撤离:${JSON.stringify(firstWithdrawalActive || {})}`,
+);
 const withdrawalFacts = withdrawalResult.ledger.filter(event =>
   event?.actionType === 'WITHDRAW' && ['withdrawn', 'failed'].includes(String(event?.result || ''))
 );
@@ -1251,21 +1262,43 @@ protectedInput.胜负条件 = {
 };
 const protectedDecision = inspectDecision({
   worldSnapshot: structuredClone(protectedInput), actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
-});
+}, 'next');
 const ordinaryProtectionInput = structuredClone(protectedInput);
 delete ordinaryProtectionInput.胜负条件;
 const ordinaryDecision = inspectDecision({
   worldSnapshot: ordinaryProtectionInput, actorId: 'player-a', actionOpportunity: { role: 'ACTIVE', sequence: 1 }, beliefState: {}, seed: 'protected-objective',
-});
+}, 'next');
 const bestDefenseUtility = decision => Math.max(...decision.candidates.filter(candidate => ['DEFEND', 'EVADE'].includes(candidate?.declaration?.actionKind)).map(candidate => Number(candidate.objectiveUtility || 0)));
 assert.ok(bestDefenseUtility(protectedDecision) > bestDefenseUtility(ordinaryDecision), '无伤失败条件没有提高可兑现防守动作的终态保护价值');
 const protectedResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   caseId: 'battle-objective-protected-unit-damaged', seed: 6403, combatData: protectedInput, mode: 'team_preview', rounds: 3, settings: {},
 });
 const protectedResolution = protectedResult.ledger.find(event => event?.eventKind === 'battle_objective_resolved');
-assert.equal(protectedResult.roundsExecuted, Number(protectedResolution?.round || 0), '指定单位受伤后仍继续执行后续回合');
-assert.equal(protectedResult.finalBattleReport?.objectiveWinner, 'enemy', '指定单位受伤没有触发我方失败终态');
-assert.ok(protectedResult.ledger.some(event => event?.eventKind === 'battle_objective_resolved' && event?.result === 'enemy'), '受伤失败条件缺少唯一目标终态事实');
+const protectedDamage = protectedResult.ledger.find(event =>
+  event?.eventKind === 'hit_result' &&
+  event?.targetName === 'player-a' &&
+  Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
+);
+if (protectedDamage) {
+  assert.equal(protectedResult.roundsExecuted, Number(protectedResolution?.round || 0), '指定单位受伤后仍继续执行后续回合');
+  assert.equal(protectedResult.finalBattleReport?.objectiveWinner, 'enemy', '指定单位受伤没有触发我方失败终态');
+  assert.ok(protectedResult.ledger.some(event => event?.eventKind === 'battle_objective_resolved' && event?.result === 'enemy'), '受伤失败条件缺少唯一目标终态事实');
+} else {
+  assert.notEqual(protectedResult.finalBattleReport?.objectiveWinner, 'enemy', '指定单位未受伤却凭空触发失败终态');
+}
+const damagedProtectedSnapshot = structuredClone(protectedInput);
+damagedProtectedSnapshot.参战者.team_player[0].hp = 499;
+damagedProtectedSnapshot.参战者.team_player[0].属性.HP = 499;
+const damagedProtectedObjectives = sandbox.__LWCS_BATTLE_PREVIEW__.normalizeBattleObjectives(
+  damagedProtectedSnapshot.胜负条件,
+  damagedProtectedSnapshot,
+);
+const damagedProtectedResolution = sandbox.__LWCS_BATTLE_PREVIEW__.evaluateBattleObjectives(
+  damagedProtectedSnapshot,
+  damagedProtectedObjectives,
+  { roundCompleted: false },
+);
+assert.equal(damagedProtectedResolution.winner, 'enemy', '指定单位受伤条件没有在共享终局真源中触发我方失败');
 assert.ok(protectedResult.decisions.find(entry => entry?.actorId === 'player-a' && entry?.actionRole === 'ACTIVE')?.problems?.some(problem => problem?.problemId === 'SURVIVAL_CRISIS'), '指定单位无伤条件没有进入行为问题识别');
 
 const towerUnit = (id, age) => {

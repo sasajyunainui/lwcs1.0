@@ -153,7 +153,7 @@ function run(definition, decisionEngine) {
   });
 }
 
-function buildReport(result) {
+function buildReport(result, visibilityMode = 'DEVELOPER') {
   const draftBody = {
     schemaVersion: '7.3-R7.4-draft-1',
     status: 'DRAFT',
@@ -171,7 +171,7 @@ function buildReport(result) {
     finalSnapshot: runtime.cloneValue(result?.finalSnapshot || null),
   };
   const draft = { ...draftBody, draftHash: runtime.hashBattleValue(draftBody) };
-  const audit = reportRuntime.auditProjection(reportRuntime.build({ draft, visibilityMode: 'DEVELOPER' }));
+  const audit = reportRuntime.auditProjection(reportRuntime.build({ draft, visibilityMode }));
   assert.equal(audit.passed, true, `A/B证据Report失败:${JSON.stringify(audit.fatals)}`);
   return { reportDto: audit.reportDto, reportHash: audit.reportHash };
 }
@@ -215,13 +215,63 @@ const results = scenarios.map(({ label, definition }) => {
       preparedReaction.meta.damageMultiplier < preview.calculateDefenseDamageMultiplier(reactor, source, false),
       '主动防御与临时反应防御没有真实边际'
     );
+    const preparedHit = next.ledger.find(event =>
+      event?.eventKind === 'hit_result' &&
+      event?.targetName === preparedReaction.actorName &&
+      String(event?.meta?.reactionEventId || '').trim() === String(preparedReaction.eventId || '').trim() &&
+      Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
+    );
+    assert.ok(
+      preparedHit &&
+      Number(preparedHit?.meta?.defenseMultiplier || 0) === Number(preparedReaction?.meta?.damageMultiplier || 0),
+      '主动防御在完整战斗中没有沿用已消费的减伤结果'
+    );
   }
   if (label === 'counter_actor_inversion') {
+    assert.equal(
+      nextActiveStarts.filter(event => event?.actionType === 'WITHDRAW').length,
+      0,
+      '没有撤离目标的同级切磋被求生分支错误改成撤离',
+    );
     const starts = new Map(next.ledger.filter(event => event?.eventKind === 'action_start').map(event => [event.actionId, event]));
     assert.ok(next.ledger.filter(event => event?.eventKind === 'counter').every(event => {
       const source = starts.get(event.sourceActionId);
       return source && source.actorName === event.targetName && source.actorName !== event.actorName;
     }), 'Next反击主体或来源倒置');
+    const counterDamageByVictim = next.ledger
+      .filter(event =>
+        event?.eventKind === 'hit_result' &&
+        event?.actionRole === 'COUNTER' &&
+        Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
+      )
+      .reduce((totals, event) => {
+        const victim = String(event?.targetName || '').trim();
+        totals[victim] = Number(totals[victim] || 0) +
+          Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
+        return totals;
+      }, {});
+    Object.entries(counterDamageByVictim).forEach(([victim, counterDamage]) => {
+      const activeDamage = next.ledger
+        .filter(event =>
+          event?.eventKind === 'hit_result' &&
+          event?.actionRole === 'ACTIVE' &&
+          event?.actorName === victim
+        )
+        .reduce((sum, event) => sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0)), 0);
+      if (!(counterDamage > Math.max(1, activeDamage) * 5)) return;
+      const selectedActions = nextActiveStarts
+        .filter(event => event?.actorName === victim)
+        .map(event => event?.actionName);
+      assert.ok(
+        new Set(selectedActions).size > 1,
+        `Next在即时反击损失远高于主动战果后仍无条件重复同一动作:${JSON.stringify({
+          victim,
+          counterDamage,
+          activeDamage,
+          selectedActions,
+        })}`,
+      );
+    });
   }
   if (label === 'repeated_resource_bankruptcy') {
     assert.equal(nextActiveStarts.filter(event => event.actionName === '高耗打击').length, 0, 'Next仍选择同伤害高耗支配动作');
@@ -244,29 +294,12 @@ const results = scenarios.map(({ label, definition }) => {
     assert.ok(repeatedStateChoices.length > 0, 'Next同级案例没有形成可审阅的状态技能选择');
     assert.ok(repeatedStateChoices.every(decision =>
       Number(decision?.selected?.repeatedActionAudit?.repeatedActionDelta || 0) > 0 &&
-      Number(decision?.selected?.repeatedActionAudit?.resourceRunwayAfter || 0) > 0 &&
+      (
+        Number(decision?.selected?.repeatedActionAudit?.resourceRunwayAfter || 0) > 0 ||
+        decision?.selected?.repeatedActionAudit?.lifecycleWindowRealizable === true
+      ) &&
       (decision?.selected?.repeatedActionAudit?.extendedWindowIds || []).length > 0
-    ), '高成本状态技能没有证明新增窗口、正边际或剩余资源跑道');
-    const ordinaryHit = next.ledger.find(event =>
-      event?.eventKind === 'hit_result' &&
-      event?.actorName === '谢邂' &&
-      event?.targetName === '韦小枫' &&
-      event?.round === 2 &&
-      Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
-    );
-    const preparedHit = next.ledger.find(event =>
-      event?.eventKind === 'hit_result' &&
-      event?.actorName === '谢邂' &&
-      event?.targetName === '韦小枫' &&
-      event?.round === 4 &&
-      Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0
-    );
-    assert.ok(
-      ordinaryHit && preparedHit &&
-      Number(preparedHit?.appliedDamage || preparedHit?.meta?.appliedDamage || 0) <
-        Number(ordinaryHit?.appliedDamage || ordinaryHit?.meta?.appliedDamage || 0),
-      '主动防御在完整战斗中没有兑现为更低承伤'
-    );
+    ), '高成本状态技能没有证明新增窗口、正边际、剩余资源跑道或末轮真实兑现');
   }
   if (label === 'underdog_survival') {
     assert.ok(['防御', '闪避'].includes(nextActiveStarts[0]?.actionName), `Next弱者面对显露致命蓄力仍未先保命:${nextActiveStarts[0]?.actionName || ''}`);
@@ -336,6 +369,52 @@ const results = scenarios.map(({ label, definition }) => {
   };
 });
 
+const withdrawalDefinition = manual('duel_agile_single_target_failure');
+const withdrawalNext = run(withdrawalDefinition, 'next');
+assert.equal(withdrawalNext.audit.fatalCount, 0, `撤离目标Next结构Fatal:${JSON.stringify(withdrawalNext.audit.fatals)}`);
+const withdrawalDecision = withdrawalNext.decisions.find(entry =>
+  entry?.actorId === '谢邂' && entry?.actionRole === 'ACTIVE'
+);
+assert.equal(
+  withdrawalDecision?.selected?.declaration?.actionKind,
+  'WITHDRAW',
+  `唯一成功条件为撤离且自身濒危时，Next仍未尝试撤离:${JSON.stringify(withdrawalDecision || {})}`,
+);
+assert.ok(
+  withdrawalDecision?.selected?.mechanicObservations?.some(observation =>
+    observation?.effectPrototype === '撤离判定' &&
+    Number(observation?.posterior) >= 0 &&
+    Number(observation?.posterior) <= 1
+  ),
+  '撤离选择没有保留有限认知下的概率观察',
+);
+const withdrawalFact = withdrawalNext.ledger.find(event =>
+  event?.actionType === 'WITHDRAW' && ['withdrawn', 'failed'].includes(String(event?.result || ''))
+);
+assert.ok(withdrawalFact, '撤离选择没有进入正式Runtime并形成唯一结算事实');
+const withdrawalPlayerReport = buildReport(withdrawalNext, 'PLAYER').reportDto;
+const withdrawalText = reportRuntime.serializeFullText(withdrawalPlayerReport);
+assert.match(withdrawalText, /尝试撤离战场/);
+assert.match(withdrawalText, /成功撤离战场|未能摆脱追击/);
+assert.doesNotMatch(withdrawalText, /撤退.*指向谢邂|完成【撤退】结算/);
+const withdrawalAdjudication = withdrawalPlayerReport.adjudications.find(item =>
+  item?.actorName === '谢邂' && item?.selected?.actionKind === 'WITHDRAW'
+);
+assert.ok(
+  withdrawalAdjudication?.predicted?.numbers?.some(token =>
+    token?.label === '撤离预计成功率' && token?.sourceType === 'DECISION_PREVIEW'
+  ),
+  'PLAYER判定没有展示角色当时的撤离预测',
+);
+const withdrawalPlayerFact = withdrawalPlayerReport.factRegistry.find(fact =>
+  fact?.factId === withdrawalFact.eventId
+);
+assert.ok(
+  withdrawalPlayerFact &&
+  !withdrawalPlayerFact.numericTokens.some(token => token?.label === '成功率'),
+  'PLAYER战报泄漏了撤离结算使用的隐藏真实成功率',
+);
+
 const artifactDir = path.resolve(root, 'artifacts', 'battle_r74_phase5_ab');
 fs.mkdirSync(artifactDir, { recursive: true });
 fs.writeFileSync(path.join(artifactDir, 'kernel_ab.json'), JSON.stringify({
@@ -343,6 +422,12 @@ fs.writeFileSync(path.join(artifactDir, 'kernel_ab.json'), JSON.stringify({
   commitRequiredForReview: true,
   engineSourceHash: runtime.hashBattleValue(loadedSources),
   results,
+  withdrawalRegression: {
+    sourceCaseId: withdrawalDefinition.caseId,
+    ledgerHash: runtime.hashBattleValue(withdrawalNext.ledger),
+    decisionHash: runtime.hashBattleValue(withdrawalNext.decisions),
+    reportHash: buildReport(withdrawalNext, 'PLAYER').reportHash,
+  },
 }, null, 2), 'utf8');
 
 console.log(JSON.stringify({

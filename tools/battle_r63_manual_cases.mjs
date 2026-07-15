@@ -184,6 +184,7 @@ export function buildManualCases(library, getBaseStats) {
     battle('intent_capture_vs_kill', 6, '点到为止', [make('舞长空', { level: 70 })], [make('韦小枫', { level: 45 })]),
   ];
   const defaultVictory = [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }];
+  cases.find(item => item.caseId === 'team_control_overlap').combatData.时间段 = '黑夜';
   cases.forEach(item => {
     item.combatData.胜负条件 = objectiveContract(item.rounds, defaultVictory);
   });

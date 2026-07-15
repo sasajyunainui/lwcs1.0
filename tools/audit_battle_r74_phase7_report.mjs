@@ -65,6 +65,8 @@ assert.ok(runtime && reportRuntime, 'BattleRuntime/BattleReport 未加载');
 const cases = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__);
 const requiredCaseIds = [
   'duel_agile_counter_options',
+  'duel_charge_interrupt_safer',
+  'team_protect_critical_ally',
   'team_multi_target_response',
   'raid_summon_heavy',
   'item_creation_consumption',
@@ -103,7 +105,7 @@ function runCase(definition) {
     selectedAction: definition.selectedAction,
     initialBelief: definition.initialBelief,
     battleIntent: { mode: definition.intent },
-    settings: {},
+    settings: { decisionEngine: 'next-shadow' },
   };
   const before = JSON.stringify(sourceInput);
   const draft = runtime.executeBattleDraft(sourceInput);
@@ -133,11 +135,40 @@ function runCase(definition) {
   assert.ok(player.exchanges.length > 0, `${definition.caseId} 没有动作组交锋`);
   assert.ok(player.adjudications.length > 0, `${definition.caseId} 没有判定明细`);
   assert.ok(player.finalSummary && player.finalSummary.text, `${definition.caseId} 没有总结型战报`);
-  assert.match(reportRuntime.serializeFullText(player), /回合速览/);
-  assert.match(reportRuntime.serializeFullText(player), /动作组战报/);
-  assert.match(reportRuntime.serializeFullText(player), /判定明细/);
-  assert.match(reportRuntime.serializeFullText(player), /总结型战报/);
-  assert.doesNotMatch(reportRuntime.serializeFullText(player), /ABORTED|RELEASE_SKILL|structured-summon:/i, `${definition.caseId} 完整战报泄漏内部枚举`);
+  const fullText = reportRuntime.serializeFullText(player);
+  assert.match(fullText, /回合速览/);
+  assert.match(fullText, /动作组战报/);
+  assert.match(fullText, /判定明细/);
+  assert.match(fullText, /总结型战报/);
+  assert.doesNotMatch(fullText, /ABORTED|RELEASE_SKILL|structured-summon:/i, `${definition.caseId} 完整战报泄漏内部枚举`);
+  assert.doesNotMatch(fullText, /结果为成功。结果：|结果：未产生额外数值结果/, `${definition.caseId} 交锋结果层级重复`);
+  assert.doesNotMatch(fullText, /完成【[^】]+】结算，结果为失去/, `${definition.caseId} 护盾损耗落入不可读默认模板`);
+  assert.doesNotMatch(fullText, /的【失去行动】未能执行；[^；\n]+失去本次行动机会/, `${definition.caseId} 同一失去行动事实被重复叙述`);
+  assert.doesNotMatch(fullText, /即时反应窗口不可用；[^。\n]*即时反应窗口不可用/, `${definition.caseId} 同类反应窗口没有聚合`);
+  assert.doesNotMatch(fullText, /将本次伤害压至(\d+(?:\.\d+)?)%；[^。\n]*将本次伤害压至\1%/, `${definition.caseId} 相同防御结果仍逐目标平铺`);
+  if (definition.caseId === 'duel_charge_interrupt_safer') {
+    assert.doesNotMatch(fullText, /2次行动机会未能执行/, '单次控制机会被按两个原子事实重复计数');
+    assert.match(fullText, /霜语冰轮[^\n]*后续：[^\n]*已显露蓄力重击[^\n]*被中止/, '控制技能与被中止的蓄力仍被拆成两个无因果动作组');
+    assert.equal(
+      player.exchanges.filter(exchange =>
+        exchange.factIds.some(factId =>
+          player.factRegistry.find(fact => fact.factId === factId)?.eventKind === 'charge_interrupt'
+        )
+      ).length,
+      1,
+      '蓄力中止事实没有且仅归入一个控制交锋',
+    );
+    const controlReasons = player.adjudications
+      .filter(item => item.selected?.actionName === '霜语冰轮')
+      .map(item => item.reasonSummary);
+    assert.ok(controlReasons.length > 0, '控制案例缺少霜语冰轮判定');
+    assert.ok(controlReasons.every(reason => /行动机会/.test(reason)), `控制判定没有说明真实取消窗口:${controlReasons.join('|')}`);
+    assert.ok(controlReasons.every(reason => /同等消耗/.test(reason)), `连续高耗控制没有说明资源跑道:${controlReasons.join('|')}`);
+  }
+  if (definition.caseId === 'team_protect_critical_ally') {
+    assert.match(fullText, /戴月炎的护盾累计吸收\d+点伤害，剩余\d+点/, '多段技能的护盾吸收没有聚合为累计结果');
+    assert.doesNotMatch(fullText, /戴月炎的护盾吸收5点伤害[^。\n]*；戴月炎的护盾吸收5点伤害/, '同一护盾的多段吸收仍逐段铺开');
+  }
   assert.ok(
     player.exchanges.every(exchange =>
       exchange.factIds.every(factId => !['state_tick', 'round_recover', 'summon_end', 'lost_opportunity', 'action_cancelled', 'blocked_action'].includes(
@@ -172,6 +203,18 @@ function runCase(definition) {
     developer.factRegistry.some(fact => fact.developerDetail),
     `${definition.caseId} DEVELOPER 投影缺少开发细节`,
   );
+  developer.factRegistry.filter(fact =>
+    fact.eventKind === 'defend' &&
+    Number(fact?.developerDetail?.meta?.damageMultiplier) > 0 &&
+    Number(fact?.developerDetail?.meta?.damageMultiplier) < 1
+  ).forEach(fact => {
+    const exchange = player.exchanges.find(item => item.factIds.includes(fact.factId));
+    assert.match(
+      String(exchange?.responseSummary || ''),
+      /伤害.+%/,
+      `${definition.caseId} 防御成功但没有说明实际减伤:${fact.factId}`,
+    );
+  });
 
   return {
     definition,
