@@ -96,8 +96,8 @@ const commandDefinitions = [
     timeoutMs: 60000,
     groups: ['quick', 'full', 'case'],
   },
-  { name: 'auditBattleReportRenderHtml', command: [process.execPath, ['lwcs/tools/audit_battle_report_render_html.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
-  { name: 'auditBattleLocalUiPlaywright', command: [process.execPath, ['lwcs/tools/audit_battle_local_ui_playwright.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
+  { name: 'auditBattleReportRenderHtml', command: [process.execPath, ['lwcs/tools/audit_battle_report_render_html.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 7 },
+  { name: 'auditBattleLocalUiPlaywright', command: [process.execPath, ['lwcs/tools/audit_battle_local_ui_playwright.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 10 },
   { name: 'auditBattleLedgerStrictness', command: [process.execPath, ['lwcs/tools/audit_battle_ledger_strictness.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
   { name: 'auditBattleSummonTrace', command: [process.execPath, ['lwcs/tools/audit_battle_summon_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
   { name: 'auditBattleBehaviorLogicMatrix', command: [process.execPath, ['tools/audit_battle_behavior_logic_matrix.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
@@ -108,7 +108,7 @@ const commandDefinitions = [
     timeoutMs: 30000,
     groups: ['quick', 'full'],
   },
-  { name: 'auditBattleMultiroundTrace', command: [process.execPath, ['tools/audit_battle_multiround_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['full'] },
+  { name: 'auditBattleMultiroundTrace', command: [process.execPath, ['tools/audit_battle_multiround_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['full'], minPhase: 7 },
   {
     name: 'auditBattleR74ManualReviewStatus',
     command: [process.execPath, ['lwcs/tools/audit_battle_r74_manual_review_status.mjs', '--phase', String(requestedPhase)]],
@@ -116,14 +116,18 @@ const commandDefinitions = [
     timeoutMs: 30000,
     groups: ['full'],
   },
-  { name: 'auditBattleV23SourceClosure', command: [process.execPath, ['lwcs/tools/audit_battle_v23_source_closure.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
+  { name: 'auditBattleV23SourceClosure', command: [process.execPath, ['lwcs/tools/audit_battle_v23_source_closure.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'], minPhase: 9 },
   { name: 'auditBattleV23PlanCoverage', command: [process.execPath, ['tools/audit_battle_v23_plan_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23OldExitCoverage', command: [process.execPath, ['tools/audit_battle_v23_old_exit_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23ImplementationOrder', command: [process.execPath, ['tools/audit_battle_v23_implementation_order.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
-  { name: 'auditBattleV73Performance', command: [process.execPath, ['lwcs/tools/audit_battle_v73_performance.mjs']], parseJson: true, timeoutMs: 300000, groups: ['full'] },
+  { name: 'auditBattleV73Performance', command: [process.execPath, ['lwcs/tools/audit_battle_v73_performance.mjs']], parseJson: true, timeoutMs: 300000, groups: ['full'], minPhase: 10 },
 ];
 
-const commands = commandDefinitions.filter(item => item.groups.includes(mode));
+const modeCommands = commandDefinitions.filter(item => item.groups.includes(mode));
+const commands = modeCommands.filter(item => requestedPhase >= Number(item.minPhase || 0));
+const deferredCommands = modeCommands
+  .filter(item => requestedPhase < Number(item.minPhase || 0))
+  .map(item => ({ name: item.name, minPhase: Number(item.minPhase || 0) }));
 
 function terminateProcessTree(child) {
   if (!child?.pid) return;
@@ -273,11 +277,13 @@ const writeOutput = () => {
       commandCount: results.length,
       passedCount: results.length - failed.length,
       failedCount: failed.length,
+      deferredCount: deferredCommands.length,
       automaticStatus: failed.some(result => result.name !== 'auditBattleR74ManualReviewStatus') ? 'BLOCKED' : 'PASSED',
       manualReviewStatus,
       phaseExitStatus,
     },
     results,
+    deferredCommands,
   };
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2), 'utf8');
   return output;

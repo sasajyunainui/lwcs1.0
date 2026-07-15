@@ -1753,10 +1753,13 @@
   function 写入战斗反应窗口节点(combatData = {}, event = {}, parentNodeId = '') {
     const kind = String(event?.eventKind || '').trim();
     if (!['dodge', 'defend', 'pass'].includes(kind)) return null;
+    if (normalizeActionRole(event?.actionRole || event?.meta?.actionRole || 'ACTIVE') !== 'REACTION') return null;
     const trace = ensureTrace(combatData);
     const parent = String(parentNodeId || event.parentNodeId || event.sourceNodeId || '').trim();
     const actorName = String(event.actorName || '').trim();
-    if (!trace || !parent || !actorName) return null;
+    const sourceActorName = String(event.targetName || '').trim();
+    const sourceActionId = String(event.sourceActionId || '').trim();
+    if (!trace || !parent || !actorName || !sourceActorName || !sourceActionId || isSameReportName(actorName, sourceActorName)) return null;
     const actionName = normalizeActionDisplayName(event.finalActionName || event.actionName || event.meta?.finalActionName || event.meta?.actionName || '应招');
     const existing = trace.find(node =>
       String(node?.nodeKind || '').trim() === 'reaction_window' &&
@@ -1795,7 +1798,7 @@
       calculationTrace: [
         { key: 'reactor', label: '应招方', value: actorName },
         { key: 'sourceAction', label: '来源动作', value: normalizeActionDisplayName(event.sourceActionName || '') },
-        { key: 'sourceActor', label: '攻势来源', value: String(event.targetName || '').trim() },
+        { key: 'sourceActor', label: '攻势来源', value: sourceActorName },
       ],
       counterDepth: 0,
       counterRootNodeId: parent,
@@ -5720,7 +5723,12 @@
                   actionType: 'counter',
                   actorControl: node.actorControl,
                   actionRole: 'COUNTER',
-                  sourceActionId: String(shared.actionContext?.actionEvent?.actionId || node.sourceActionId || '').trim(),
+                  sourceActionId: String(
+                    shared.actionContext?.actionEvent?.sourceActionId ||
+                    node?.state?.parentActionEvent?.actionId ||
+                    node.sourceActionId ||
+                    '',
+                  ).trim(),
                   parentNodeId: String(
                     node?.state?.counterWindowEvent?.chainNodeId ||
                     node?.state?.reactionEvent?.chainNodeId ||
@@ -5728,7 +5736,11 @@
                     node?.sourceActionId ||
                     '',
                   ).trim(),
-                  reactionNodeId: String(node?.state?.reactionEvent?.chainNodeId || '').trim(),
+                  reactionNodeId: String(
+                    shared.actionContext?.actionEvent?.reactionNodeId ||
+                    node?.state?.reactionEvent?.chainNodeId ||
+                    '',
+                  ).trim(),
                   sourceActionName: normalizeActionDisplayName(
                     node?.state?.parentActionEvent?.actionName ||
                     node?.state?.counterWindowEvent?.targetName ||
