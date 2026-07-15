@@ -1913,6 +1913,11 @@
         { key: 'target', label: '守方', value: targetName },
         { key: 'result', label: '命中结果', value: result || (missed ? 'miss' : 'hit') },
         { key: 'failureReason', label: '失败原因', value: missed ? String(event.failureReason || event.failReason || meta.failureReason || 'dodged').trim() : '' },
+        { key: 'reactionAgility', label: '应招速度', value: meta.reactionAgility },
+        { key: 'sourceAgility', label: '攻方速度', value: meta.sourceAgility },
+        { key: 'reactionPressure', label: '应招压力', value: meta.reactionPressure },
+        { key: 'attackPressure', label: '攻势压力', value: meta.attackPressure },
+        { key: 'reactionShare', label: '反应占比', value: meta.reactionShare },
         { key: 'dodgeRate', label: '闪避率', value: meta.dodgeRate },
         { key: 'dodgeRoll', label: '闪避投点', value: meta.dodgeRoll },
         { key: 'grazeMultiplier', label: '擦伤倍率', value: meta.grazeMultiplier },
@@ -2060,6 +2065,9 @@
         ['defenderAgilityMult', '敏捷倍率'],
         ['maintainReactionPenalty', '维持惩罚'],
         ['reactionBudget', '反应预算'],
+        ['reactionPressure', '应招压力'],
+        ['attackPressure', '攻势压力'],
+        ['reactionShare', '反应占比'],
         ['dodgeRate', '闪避率'],
         ['dodgeRoll', '闪避投点'],
         ['actualDefense', '有效防御'],
@@ -4672,7 +4680,23 @@
                 actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
                 parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
                 result: 'miss', resultState: 'FAILURE', primaryOutcome: 'dodged',
-                meta: { source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, roll: null, appliedDamage: 0, reactionEventId: String(reaction?.event?.eventId || '').trim() },
+                meta: {
+                  source: 'structured_runtime',
+                  effectIndex,
+                  segment: segment + 1,
+                  segments,
+                  hitProbability,
+                  roll: null,
+                  appliedDamage: 0,
+                  reactionEventId: String(reaction?.event?.eventId || '').trim(),
+                  dodgeRate: reaction?.event?.meta?.dodgeRate,
+                  dodgeRoll: reaction?.event?.meta?.dodgeRoll,
+                  reactionPressure: reaction?.event?.meta?.reactionPressure,
+                  attackPressure: reaction?.event?.meta?.attackPressure,
+                  reactionShare: reaction?.event?.meta?.reactionShare,
+                  reactionAgility: reaction?.event?.meta?.reactionAgility,
+                  sourceAgility: reaction?.event?.meta?.sourceAgility,
+                },
               }));
               continue;
             }
@@ -4982,11 +5006,18 @@
     };
   }
 
-  function structuredReactionProbability(reactor = {}, sourceActor = {}) {
+  function structuredReactionContest(reactor = {}, sourceActor = {}) {
     const reactionPressure = previewRuntime.calculateWithdrawalPressure(reactor, sourceActor, 'WITHDRAW');
     const attackPressure = previewRuntime.calculateWithdrawalPressure(sourceActor, reactor, 'PURSUIT');
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
-    return Math.max(0.03, Math.min(0.78, 0.18 + (share - 0.5) * 1.1));
+    return {
+      probability: Math.max(0.03, Math.min(0.78, 0.18 + (share - 0.5) * 1.1)),
+      reactionPressure,
+      attackPressure,
+      share,
+      reactionAgility: previewRuntime.readCombatStat(reactor, 'agi'),
+      sourceAgility: previewRuntime.readCombatStat(sourceActor, 'agi'),
+    };
   }
 
   function consumeStructuredReactionOpportunity(combatData = {}, unit = {}) {
@@ -5030,7 +5061,8 @@
       actionType: actionKind,
     };
     if (actionKind === 'EVADE') {
-      const probability = structuredReactionProbability(reactor, sourceActor);
+      const contest = structuredReactionContest(reactor, sourceActor);
+      const probability = contest.probability;
       const roll = Math.random();
       const evaded = probabilitySucceeds(probability, roll);
       const event = writeLedgerEvent(combatData, {
@@ -5041,7 +5073,18 @@
         resultState: evaded ? 'SUCCESS' : 'FAILURE',
         primaryOutcome: evaded ? 'dodged' : 'reaction_failed',
         ruleCode: evaded ? 'REACTION_SUCCEEDED' : 'REACTION_FAILED',
-        meta: { source: 'structured_runtime', dodgeRate: probability, dodgeRoll: roll, probability, preparedDefenseConsumed: !!preparedDefense },
+        meta: {
+          source: 'structured_runtime',
+          dodgeRate: probability,
+          dodgeRoll: roll,
+          probability,
+          reactionPressure: contest.reactionPressure,
+          attackPressure: contest.attackPressure,
+          reactionShare: contest.share,
+          reactionAgility: contest.reactionAgility,
+          sourceAgility: contest.sourceAgility,
+          preparedDefenseConsumed: !!preparedDefense,
+        },
       });
       return { actionKind, event, evaded, damageMultiplier: 1, opensCounterCheck: evaded };
     }
@@ -5092,8 +5135,8 @@
     }, 0);
     if (reaction.actionKind === 'DEFEND' && !(receivedDamage > 0)) return null;
     const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
-    const ratio = structuredReactionProbability(reactor, sourceActor);
-    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (ratio - 0.25) * 0.5));
+    const contest = structuredReactionContest(reactor, sourceActor);
+    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
     const roll = Math.random();
     const opened = probabilitySucceeds(probability, roll);
     const event = writeLedgerEvent(combatData, {
@@ -5112,7 +5155,17 @@
       result: opened ? 'opened' : 'missed',
       resultState: opened ? 'SUCCESS' : 'FAILURE',
       ruleCode: opened ? 'COUNTER_WINDOW_OPENED' : 'COUNTER_WINDOW_MISSED',
-      meta: { source: 'structured_runtime', probability, roll, receivedDamage },
+      meta: {
+        source: 'structured_runtime',
+        probability,
+        roll,
+        receivedDamage,
+        reactionPressure: contest.reactionPressure,
+        attackPressure: contest.attackPressure,
+        reactionShare: contest.share,
+        reactionAgility: contest.reactionAgility,
+        sourceAgility: contest.sourceAgility,
+      },
     });
     return { opened, event, probability, roll };
   }
@@ -6866,9 +6919,11 @@
           else push(`${actor}以【${action}】命中${target}${segmentText}`);
           if (missed > 0) push(`${actor}的【${action}】另有 ${missed} 段未能命中${target}`);
         } else if (missed > 0) {
-          push(`${actor}施展【${action}】指向${target}，但未能命中`);
+          if (first.actionRole === 'COUNTER') push(`${actor}以【${action}】反击${target}，但未能命中`);
+          else push(`${actor}对${target}使用【${action}】，但未能命中`);
         } else {
-          push(`${actor}施展【${action}】指向${target}，但未造成实质伤害`);
+          if (first.actionRole === 'COUNTER') push(`${actor}以【${action}】反击${target}，但未造成实质伤害`);
+          else push(`${actor}对${target}使用【${action}】，但未造成实质伤害`);
         }
       });
       const stateGroups = new Map();
@@ -7152,7 +7207,13 @@
         round,
         actionGroupId,
         actorId: String(primary?.actorId || actorName || '').trim(),
-        targetIds: [...new Set(events.map(event => String(event?.targetId || event?.targetName || '').trim()).filter(Boolean))],
+        targetIds: (() => {
+          const declaredTargets = normalizeTargetIds(primary?.targetIds, primary?.targetId, primary?.targetName);
+          if (declaredTargets.length) return declaredTargets;
+          return [...new Set(events.flatMap(event =>
+            normalizeTargetIds(event?.targetIds, event?.targetId, event?.targetName)
+          ).filter(Boolean))];
+        })(),
         blockType,
         facts,
         badges,

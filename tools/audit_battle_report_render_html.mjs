@@ -317,12 +317,41 @@ const calcTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML__([
     finalActionName: '裂地冲拳',
     result: 'hit',
     calculationTrace: [
+      { key: 'baseFormulaText', value: 'floor(攻势值×威力倍率-防御值)' },
+      { key: 'skillPower', value: 1.6 },
+      { key: 'attackValue', value: 140 },
+      { key: 'defenseValue', value: 42 },
+      { key: 'baseDamage', value: 160 },
       { key: 'incomingDamage', value: 160 },
       { key: 'reactiveDamage', value: 120 },
       { key: 'defenseThreshold', value: 8 },
       { key: 'actualDefense', value: 42 },
       { key: 'elementDamageMult', value: 1.25 },
       { key: 'finalDamage', value: 120 },
+    ],
+  },
+]);
+const dodgeEvidenceTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML__([
+  { nodeId: 'root-dodge-evidence', nodeKind: 'action_decision', round: 1, actorName: '唐凌雪', targetName: '韦小枫', initialActionName: '普通攻击', finalActionName: '普通攻击', targetScope: 'single' },
+  {
+    nodeId: 'hit-dodge-evidence',
+    parentNodeId: 'root-dodge-evidence',
+    sourceNodeId: 'root-dodge-evidence',
+    nodeKind: 'hit_check',
+    round: 1,
+    actorName: '唐凌雪',
+    targetName: '韦小枫',
+    finalActionName: '普通攻击',
+    result: 'miss',
+    primaryOutcome: 'miss',
+    calculationTrace: [
+      { key: 'reactionAgility', value: 522 },
+      { key: 'sourceAgility', value: 282 },
+      { key: 'reactionPressure', value: 343 },
+      { key: 'attackPressure', value: 135 },
+      { key: 'dodgeRate', value: 0.419695 },
+      { key: 'dodgeRoll', value: 0.45865 },
+      { key: 'failureReason', value: 'dodged' },
     ],
   },
 ]);
@@ -497,6 +526,11 @@ const structuredProjectionLedger = [
   { eventId: 'evt_internal_state', eventKind: 'state_apply', round: 10, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '破甲印', actionId: 'action_state_1', sourceActionId: 'action_state_1', actionRole: 'ACTIVE', result: 'applied', duration: 2, meta: { stateName: 'def修正' } },
   { eventId: 'evt_resisted_start', eventKind: 'action_start', round: 11, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '锁魄印', actionId: 'action_resisted_1', actionRole: 'ACTIVE', result: 'declared' },
   { eventId: 'evt_resisted_state', eventKind: 'state_apply', round: 11, actorName: '夹具玩家', targetName: '夹具敌人', actionName: '锁魄印', actionId: 'action_resisted_1', sourceActionId: 'action_resisted_1', actionRole: 'ACTIVE', result: 'resisted', duration: 2, meta: { stateName: '位移限制' } },
+  { eventId: 'evt_exchange_a_start', eventKind: 'action_start', round: 12, actorName: '甲', targetName: '乙', targetIds: ['乙'], actionName: '普通攻击', actionId: 'action_exchange_a', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_exchange_a_dodge', eventKind: 'dodge', round: 12, actorName: '乙', targetName: '甲', targetIds: ['甲'], actionName: '闪避', actionId: 'action_exchange_a', sourceActionId: 'action_exchange_a', actionRole: 'REACTION', result: 'evaded' },
+  { eventId: 'evt_exchange_a_counter_miss', eventKind: 'hit_result', round: 12, actorName: '乙', targetName: '甲', targetIds: ['甲'], actionName: '普通攻击', actionId: 'counter_exchange_a', sourceActionId: 'action_exchange_a', actionRole: 'COUNTER', result: 'miss', appliedDamage: 0, meta: { appliedDamage: 0 } },
+  { eventId: 'evt_exchange_b_start', eventKind: 'action_start', round: 12, actorName: '乙', targetName: '甲', targetIds: ['甲'], actionName: '普通攻击', actionId: 'action_exchange_b', actionRole: 'ACTIVE', result: 'declared' },
+  { eventId: 'evt_exchange_b_hit', eventKind: 'hit_result', round: 12, actorName: '乙', targetName: '甲', targetIds: ['甲'], actionName: '普通攻击', actionId: 'action_exchange_b', sourceActionId: 'action_exchange_b', actionRole: 'ACTIVE', result: 'hit', appliedDamage: 63, meta: { appliedDamage: 63 } },
 ];
 const structuredProjectionBlocks = sandbox.__LWCS_BUILD_STRUCTURED_REPORT_BLOCKS__?.(structuredProjectionLedger, [], [{
   round: 10,
@@ -506,6 +540,9 @@ const structuredMultiBlock = structuredProjectionBlocks.find(block => block?.rou
 const structuredSummonBlock = structuredProjectionBlocks.find(block => block?.round === 9 && block?.blockType === 'SUMMON_ACTION');
 const structuredStateBlock = structuredProjectionBlocks.find(block => block?.round === 10 && block?.blockType === 'ACTION_RESOLVED');
 const structuredResistedRound = structuredProjectionBlocks.find(block => block?.round === 11 && block?.blockType === 'ROUND_SUMMARY');
+const structuredExchangeBlocks = structuredProjectionBlocks.filter(block => block?.round === 12 && block?.blockType !== 'ROUND_SUMMARY');
+const structuredExchangeFirst = structuredExchangeBlocks.find(block => block?.actionGroupId === 'action_exchange_a');
+const structuredExchangeSecond = structuredExchangeBlocks.find(block => block?.actionGroupId === 'action_exchange_b');
 const normalizedFinalSummary = sandbox.__LWCS_BATTLE_RUNTIME__?.buildFinalSummary?.([], [], {
   round: 1,
   team_player: [{ name: '夹具玩家', hp: 100, hp_max: 100, sp: 50, sp_max: 100, vit: 80, vit_max: 100, men: 20, men_max: 20, 状态效果: [{ name: 'agi修正', duration: 1 }] }],
@@ -617,9 +654,20 @@ const summary = {
   secondCounterEscalatesParent: /data-child-escalated="1"/.test(secondCounterTraceHtml || '') && /data-smart-collapse="1"[^>]* open/.test(secondCounterTraceHtml || ''),
   counterSecondaryReactionRendered: /反应窗口：唐凌雪捕捉到[\s\S]*?【韦小枫的敌方截击】/.test(secondCounterTraceHtml || '') && /反应：唐凌雪以/.test(secondCounterTraceHtml || '') && /伺机闪避/.test(secondCounterTraceHtml || '') && /反应：韦小枫以/.test(secondCounterTraceHtml || '') && /收招转防/.test(secondCounterTraceHtml || ''),
   replanDecisionRendered: /原计划/.test(replanTraceHtml || '') && /毒牙牵制/.test(replanTraceHtml || '') && /没有合适出手窗口/.test(replanTraceHtml || '') && /改为/.test(replanTraceHtml || '') && /收招转防/.test(replanTraceHtml || '') && !/临场变招|战局变化后调整动作/.test(replanTraceHtml || ''),
-  actionChainCalculationRendered: /命中检定/.test(calcTraceHtml || '') && /伤害结算/.test(calcTraceHtml || '') && /计算明细/.test(calcTraceHtml || '') && /入参160/.test(calcTraceHtml || '') && /元素承伤1\.25/.test(calcTraceHtml || ''),
-  defenseReactionJudgementRendered: /反应：韦小枫以/.test(defenseReactionTraceHtml || '') && /收招转防/.test(defenseReactionTraceHtml || '') && /防御判定：/.test(defenseReactionTraceHtml || '') && /有效防御64/.test(defenseReactionTraceHtml || '') && /破防阈值9/.test(defenseReactionTraceHtml || '') && /最终承伤92/.test(defenseReactionTraceHtml || ''),
-  stateCheckSettlementRendered: /状态检定/.test(stateTraceHtml || '') && /状态结算/.test(stateTraceHtml || '') && /中毒/.test(stateTraceHtml || '') && /持续2回合/.test(stateTraceHtml || '') && /附着成功率：72%/.test(stateTraceHtml || '') && /检定31 (?:<=|&lt;=) 72/.test(stateTraceHtml || ''),
+  actionChainCalculationRendered: /命中检定/.test(calcTraceHtml || '') && /伤害结算/.test(calcTraceHtml || '') && /计算明细/.test(calcTraceHtml || '') && /入参[\s\S]*?>160</.test(calcTraceHtml || '') && /元素承伤[\s\S]*?>1\.25</.test(calcTraceHtml || ''),
+  actionChainRawFormulaHidden: !/基础公式|floor\(攻势值/.test(calcTraceHtml || ''),
+  actionChainDamageEvidenceFocusable:
+    (calcTraceHtml.match(/class="battle-trace-number-evidence"/g) || []).length >= 8 &&
+    /data-source="本次动作完成全部命中、防御、护盾与伤害修正后实际扣除的生命值"/.test(calcTraceHtml || ''),
+  dodgeEvidenceNumbersRendered:
+    /速度[\s\S]*?>522<[\s\S]*?>282<[\s\S]*?反应压力[\s\S]*?>343<[\s\S]*?>135<[\s\S]*?成功率[\s\S]*?>42%<[\s\S]*?判定[\s\S]*?>46%<[\s\S]*?失败/.test(dodgeEvidenceTraceHtml || ''),
+  dodgeEvidenceNodesFocusable:
+    (dodgeEvidenceTraceHtml.match(/class="battle-trace-number-evidence"/g) || []).length === 6 &&
+    (dodgeEvidenceTraceHtml.match(/tabindex="0"/g) || []).length === 6 &&
+    /data-source="韦小枫当前速度属性/.test(dodgeEvidenceTraceHtml || '') &&
+    /aria-label="闪避成功率：42%。来源：/.test(dodgeEvidenceTraceHtml || ''),
+  defenseReactionJudgementRendered: /反应：韦小枫以/.test(defenseReactionTraceHtml || '') && /收招转防/.test(defenseReactionTraceHtml || '') && /防御判定：/.test(defenseReactionTraceHtml || '') && /有效防御[\s\S]*?>64</.test(defenseReactionTraceHtml || '') && /破防阈值[\s\S]*?>9</.test(defenseReactionTraceHtml || '') && /最终承伤[\s\S]*?>92</.test(defenseReactionTraceHtml || ''),
+  stateCheckSettlementRendered: /状态检定/.test(stateTraceHtml || '') && /状态结算/.test(stateTraceHtml || '') && /中毒/.test(stateTraceHtml || '') && /持续[\s\S]*?>2<[\s\S]*?回合/.test(stateTraceHtml || '') && /状态判定：附着成功率[\s\S]*?>72%<[\s\S]*?判定[\s\S]*?>31%<[\s\S]*?通过/.test(stateTraceHtml || ''),
   resistedStateCheckSettlementRendered: /状态检定/.test(resistedStateTraceHtml || '') && /状态结算/.test(resistedStateTraceHtml || '') && /位移限制/.test(resistedStateTraceHtml || '') && /抵住/.test(resistedStateTraceHtml || '') && /附着成功率：42%/.test(resistedStateTraceHtml || '') && /检定67 (?:>|&gt;) 42/.test(resistedStateTraceHtml || ''),
   immuneStateCheckSettlementRendered: /状态检定/.test(immuneStateTraceHtml || '') && /状态结算/.test(immuneStateTraceHtml || '') && /位移限制/.test(immuneStateTraceHtml || '') && /免疫/.test(immuneStateTraceHtml || '') && /附着成功率：42%/.test(immuneStateTraceHtml || '') && /检定99 (?:>|&gt;) 42/.test(immuneStateTraceHtml || ''),
   initialIntentRendered: /初始意图/.test(initialIntentTraceHtml || '') && /毒牙牵制/.test(initialIntentTraceHtml || '') && /行动窗口 10-19/.test(initialIntentTraceHtml || '') && /原计划/.test(initialIntentTraceHtml || '') && /收招转防/.test(initialIntentTraceHtml || ''),
@@ -635,6 +683,13 @@ const summary = {
     /造成 60 点伤害/.test(String(structuredMultiBlock?.outcomeSummary || '')) &&
     /分段 10、20、30/.test(String(structuredMultiBlock?.outcomeSummary || '')) &&
     (structuredMultiBlock?.badges || []).filter(badge => badge?.kind === 'damage').length === 3,
+  structuredPrimaryTargetsNotContaminated:
+    JSON.stringify(structuredExchangeFirst?.targetIds || []) === JSON.stringify(['乙']) &&
+    JSON.stringify(structuredExchangeSecond?.targetIds || []) === JSON.stringify(['甲']),
+  structuredCounterMissHasCounterSemantics:
+    /乙以【普通攻击】反击甲，但未能命中/.test(String(structuredExchangeFirst?.outcomeSummary || '')),
+  structuredLaterActiveHitDistinct:
+    /乙以【普通攻击】命中甲，造成 63 点伤害/.test(String(structuredExchangeSecond?.outcomeSummary || '')),
   structuredSummonUsesRealName:
     /霜狼#1/.test(String(structuredSummonBlock?.outcomeSummary || '')) &&
     !/召唤物【目标】/.test(String(structuredSummonBlock?.outcomeSummary || '')),
@@ -751,6 +806,7 @@ console.log(JSON.stringify({
     secondCounterTraceHtml,
     replanTraceHtml,
     calcTraceHtml,
+    dodgeEvidenceTraceHtml,
     defenseReactionTraceHtml,
     stateTraceHtml,
     resistedStateTraceHtml,

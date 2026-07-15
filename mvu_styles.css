@@ -30305,6 +30305,65 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   overflow-wrap: anywhere;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence {
+  position: relative;
+  display: inline-block;
+  color: color-mix(in srgb, var(--战斗强调色) 82%, #ffffff);
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  text-decoration: underline dotted color-mix(in srgb, var(--战斗强调色) 68%, transparent);
+  text-underline-offset: 3px;
+  cursor: help;
+  outline: none;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence::after,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence::after,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence::after {
+  content: attr(data-source);
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--战斗强调色) 42%, #263746);
+  border-radius: 5px;
+  background: #07131f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.46);
+  color: #e7f2fb;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:hover::after,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:focus-visible::after,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:hover::after,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible::after,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:hover::after,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:focus-visible,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible {
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--战斗强调色) 52%, transparent);
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-trace-detail-fold,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-trace-detail-fold,
 #detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-trace-detail-fold {

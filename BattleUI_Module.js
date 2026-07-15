@@ -6274,7 +6274,7 @@ class BattleUIComponent {
           return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        function 渲染判定侧写HTML(line = '', 轨迹 = {}) {
+        function 渲染判定侧写HTML(line = '', 轨迹 = {}, evidence = []) {
           const safeLine = 清洗玩家可见判定文本(line);
           let html = htmlEscapeText(safeLine).replace(/\r?\n/g, '<br>');
           const entities = [
@@ -6288,6 +6288,17 @@ class BattleUIComponent {
           });
           html = html.replace(/【([^】]+)】/g, '<span class="battle-preview-trace-skill">【$1】</span>');
           html = html.replace(/^(├─|└─)/, '<span class="battle-preview-trace-muted">$1</span>');
+          html = html.replace(/\{\{e:(\d+)\}\}/g, (match, indexText) => {
+            const item = Array.isArray(evidence) ? evidence[Number(indexText)] : null;
+            if (!item) return '';
+            const display = String(item.display ?? '').trim();
+            const source = String(item.source || '').trim();
+            const label = String(item.label || display || '判定数值').trim();
+            if (!display) return '';
+            if (!source) return htmlEscapeText(display);
+            const accessibleText = `${label}：${display}。来源：${source}`;
+            return `<span class="battle-trace-number-evidence" tabindex="0" data-source="${htmlEscapeText(source)}" aria-label="${htmlEscapeText(accessibleText)}">${htmlEscapeText(display)}</span>`;
+          });
           if (/最终|确认|转入|执行|完成|造成|召出|命中|落地/.test(safeLine)) html = `<span class="battle-preview-trace-decision">${html}</span>`;
           return html;
         }
@@ -7395,10 +7406,11 @@ class BattleUIComponent {
             const lineText = String(text || '').trimEnd();
             if (!lineText) return;
             const item = { text: lineText, kind: String(kind || 'detail').trim() || 'detail' };
+            if (Array.isArray(options?.evidence) && options.evidence.length) item.evidence = options.evidence;
             if (options && options.detail === true) detailLines.push(item);
             else lines.push(item);
           };
-          const pushDetailLine = (text, kind = 'detail') => pushTimelineLine(text, kind, { detail: true });
+          const pushDetailLine = (text, kind = 'detail', options = {}) => pushTimelineLine(text, kind, { ...options, detail: true });
           const mapTimelineKindFromNode = nodeKind => {
             const kind = String(nodeKind || '').trim();
             if (kind === 'initial_intent' || kind === 'replan_decision') return 'intent';
@@ -7637,37 +7649,35 @@ class BattleUIComponent {
             if (!Number.isFinite(number)) return '';
             return Math.abs(number - Math.round(number)) < 0.01 ? String(Math.round(number)) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
           };
-          const 构建基础伤害代入式 = values => {
-            const text = String(values?.formulaText || '').trim();
-            const skillPower = Number(values?.skillPower || 0);
-            const attackValue = Number(values?.attackValue || 0);
-            const defenseValue = Number(values?.defenseValue || 0);
-            const baseDamage = Number(values?.baseDamage || 0);
-            if (!(skillPower > 0) || !(baseDamage > 0)) return '';
-            const terms = [formatCalcNumber(skillPower)];
-            if (attackValue > 0 && defenseValue > 0) terms.push(`(${formatCalcNumber(attackValue)}/${formatCalcNumber(defenseValue)})`);
-            if (/魂力驱动/.test(text) && Number.isFinite(Number(values?.soulDriveScale))) terms.push(formatCalcNumber(values.soulDriveScale));
-            if (/精神驱动/.test(text) && Number.isFinite(Number(values?.spiritDriveScale))) terms.push(formatCalcNumber(values.spiritDriveScale));
-            if (/定位/.test(text) && Number.isFinite(Number(values?.positionDamageScale))) terms.push(formatCalcNumber(values.positionDamageScale));
-            if (/近身系数/.test(text) && Number.isFinite(Number(values?.meleeContactScale))) terms.push(formatCalcNumber(values.meleeContactScale));
-            if (/消耗加成/.test(text) && Number.isFinite(Number(values?.costDamageScale))) terms.push(formatCalcNumber(values.costDamageScale));
-            const fusionDamageMult = Number(values?.fusionDamageMult || 1);
-            if (Number.isFinite(fusionDamageMult) && Math.abs(fusionDamageMult - 1) >= 0.0001) terms.push(formatCalcNumber(fusionDamageMult));
-            return terms.length >= 2 ? `代入：${terms.join('×')}=${formatCalcNumber(baseDamage)}` : '';
+          const 构建数值证据标记 = (evidence, display, source, label = '') => {
+            const index = evidence.length;
+            evidence.push({
+              display: String(display ?? '').trim(),
+              source: String(source || '').trim(),
+              label: String(label || '').trim(),
+            });
+            return `{{e:${index}}}`;
           };
           const 构建伤害计算明细行 = child => {
             const 读取 = key => 读取结算轨迹值(child.calculationTrace, key);
             const parts = [];
+            const evidence = [];
             const incoming = Number(读取('incomingDamage') || 0);
             const reactive = Number(读取('reactiveDamage') || 0);
             const threshold = Number(读取('defenseThreshold') || 0);
             const finalDamage = Number(读取('finalDamage') || 0);
             const segmentIndex = Number(读取('segmentIndex') || 0);
             const segmentCount = Number(读取('segmentCount') || 0);
-            if (segmentCount > 1 && segmentIndex > 0) parts.push(`第${Math.round(segmentIndex)}/${Math.round(segmentCount)}段`);
-            if (incoming > 0) parts.push(`入参${formatCalcNumber(incoming)}`);
-            if (reactive > 0 && Math.round(reactive) !== Math.round(incoming)) parts.push(`反应后${formatCalcNumber(reactive)}`);
-            if (threshold > 0) parts.push(`破防阈值${formatCalcNumber(threshold)}`);
+            if (segmentCount > 1 && segmentIndex > 0) {
+              const currentSegment = 构建数值证据标记(evidence, Math.round(segmentIndex), '当前结算事实记录的伤害段序号', '当前伤害段');
+              const totalSegments = 构建数值证据标记(evidence, Math.round(segmentCount), '技能效果定义的本次攻击总段数', '总伤害段数');
+              parts.push(`第${currentSegment}/${totalSegments}段`);
+            }
+            if (incoming > 0) parts.push(`入参${构建数值证据标记(evidence, formatCalcNumber(incoming), '本段伤害进入防御、护盾与反应修正前的结算值', '入参伤害')}`);
+            if (reactive > 0 && Math.round(reactive) !== Math.round(incoming)) {
+              parts.push(`反应后${构建数值证据标记(evidence, formatCalcNumber(reactive), '应用本次防御、闪避或其他即时反应后的伤害值', '反应后伤害')}`);
+            }
+            if (threshold > 0) parts.push(`破防阈值${构建数值证据标记(evidence, formatCalcNumber(threshold), '本次伤害结算用于判断破防结果的阈值', '破防阈值')}`);
             [
               ['actualDefense', '有效防御', 0],
               ['soulDriveScale', '魂力驱动', 1],
@@ -7686,45 +7696,10 @@ class BattleUIComponent {
               const value = Number(读取(key));
               if (!Number.isFinite(value)) return;
               if (Math.abs(value - neutral) < 0.0001) return;
-              parts.push(`${label}${formatCalcNumber(value)}`);
+              parts.push(`${label}${构建数值证据标记(evidence, formatCalcNumber(value), `${label}来自本次伤害结算轨迹中的有效修正`, label)}`);
             });
-            if (finalDamage > 0) parts.push(`最终${formatCalcNumber(finalDamage)}`);
-            return parts.length >= 2 ? `计算明细：${parts.join(' -> ')}` : '';
-          };
-          const 构建伤害基础公式行 = child => {
-            const 读取 = key => 读取结算轨迹值(child.calculationTrace, key);
-            const formulaText = String(读取('baseFormulaText') || '').trim();
-            const damageType = String(读取('damageType') || '').trim();
-            const skillPower = Number(读取('skillPower') || 0);
-            const attackValue = Number(读取('attackValue') || 0);
-            const defenseValue = Number(读取('defenseValue') || 0);
-            const baseDamage = Number(读取('baseDamage') || 0);
-            if (!formulaText || !(skillPower > 0) || !(baseDamage > 0)) return '';
-            const params = [`威力${formatCalcNumber(skillPower)}`];
-            if (attackValue > 0) params.push(`攻势${formatCalcNumber(attackValue)}`);
-            if (defenseValue > 0) params.push(`防守${formatCalcNumber(defenseValue)}`);
-            const substitution = 构建基础伤害代入式({
-              formulaText,
-              skillPower,
-              attackValue,
-              defenseValue,
-              baseDamage,
-              soulDriveScale: Number(读取('soulDriveScale') || 0),
-              spiritDriveScale: Number(读取('spiritDriveScale') || 0),
-              positionDamageScale: Number(读取('positionDamageScale') || 0),
-              meleeContactScale: Number(读取('meleeContactScale') || 0),
-              costDamageScale: Number(读取('costDamageScale') || 0),
-              fusionDamageMult: Number(读取('fusionDamageMult') || 1),
-            });
-            return `基础公式：${damageType ? `【${damageType}】` : ''}${formulaText}，${params.join('，')}，得出${formatCalcNumber(baseDamage)}${substitution ? `；${substitution}` : ''}`;
-          };
-          const 构建攻防比审计行 = child => {
-            const attackValue = Number(读取结算轨迹值(child.calculationTrace, 'attackValue') || 0);
-            const defenseValue = Number(读取结算轨迹值(child.calculationTrace, 'defenseValue') || 0);
-            if (!(attackValue > 0) || !(defenseValue > 0)) return '';
-            const ratio = attackValue / defenseValue;
-            if (!Number.isFinite(ratio) || (ratio >= 0.1 && ratio <= 5)) return '';
-            return `攻防比审计：攻势 ${formatCalcNumber(attackValue)} / 防守 ${formatCalcNumber(defenseValue)} = ${formatCalcNumber(ratio)}，超出观察阈值 0.1-5；未启用 clamp`;
+            if (finalDamage > 0) parts.push(`最终${构建数值证据标记(evidence, formatCalcNumber(finalDamage), '完成防御、护盾、反应与伤害类型修正后实际扣除的生命值', '最终伤害')}`);
+            return parts.length >= 2 ? { text: `计算明细：${parts.join(' -> ')}`, evidence } : null;
           };
           const 构建伤害路径行 = child => {
             const 读取 = key => 读取结算轨迹值(child.calculationTrace, key);
@@ -7732,27 +7707,77 @@ class BattleUIComponent {
             const threshold = Number(读取('defenseThreshold') || 0);
             const finalDamage = Number(读取('finalDamage') || 0);
             if (!(incoming > 0) || !(finalDamage > 0)) return '';
-            const parts = [`入参段伤害 ${formatCalcNumber(incoming)}`];
-            if (threshold > 0) parts.push(`破防阈值 ${formatCalcNumber(threshold)}`);
-            parts.push(`最终扣血 ${formatCalcNumber(finalDamage)}`);
-            return `伤害路径：${parts.join(' -> ')}`;
+            const evidence = [];
+            const parts = [`入参段伤害 ${构建数值证据标记(evidence, formatCalcNumber(incoming), '本段伤害进入防御、护盾与反应修正前的结算值', '入参段伤害')}`];
+            if (threshold > 0) parts.push(`破防阈值 ${构建数值证据标记(evidence, formatCalcNumber(threshold), '本次伤害结算用于判断破防结果的阈值', '破防阈值')}`);
+            parts.push(`最终扣血 ${构建数值证据标记(evidence, formatCalcNumber(finalDamage), '本次伤害事实最终写入生命值变化的数值', '最终扣血')}`);
+            return { text: `伤害路径：${parts.join(' -> ')}`, evidence };
           };
           const 构建闪避判定行 = child => {
             const 读取 = key => 读取结算轨迹值(child.calculationTrace, key);
             const dodgeRate = Number(读取('dodgeRate'));
             const dodgeRoll = Number(读取('dodgeRoll'));
+            const reactionPressure = Number(读取('reactionPressure'));
+            const attackPressure = Number(读取('attackPressure'));
+            const reactionAgility = Number(读取('reactionAgility'));
+            const sourceAgility = Number(读取('sourceAgility'));
             const failureReason = String(读取('failureReason') || child.failureReason || '').trim();
             const failureReasonCode = String(读取('reasonCode') || child.reasonCode || child.meta?.reasonCode || '').trim();
             const parts = [];
+            const evidence = [];
             if (Number.isFinite(dodgeRate) && Number.isFinite(dodgeRoll)) {
               const dodgeSucceeded = child.primaryOutcome === 'dodged' || /evaded|dodge_success|成功/.test(String(child.result || '').trim());
-              parts.push(`闪避率${formatCalcNumber(dodgeRate)}`);
-              parts.push(`投点${formatCalcNumber(dodgeRoll)}`);
-              parts.push(dodgeSucceeded ? '实际终态：规避成功' : '实际终态：规避失败');
+              const reactorName = String(child.targetName || target || '应招方').trim();
+              const sourceName = String(child.actorName || actor || '攻方').trim();
+              if (Number.isFinite(reactionAgility) && Number.isFinite(sourceAgility)) {
+                const reactorSpeed = 构建数值证据标记(
+                  evidence,
+                  formatCalcNumber(reactionAgility),
+                  `${reactorName}当前速度属性，来自本次战斗快照并包含当前状态修正`,
+                  `${reactorName}速度`,
+                );
+                const sourceSpeed = 构建数值证据标记(
+                  evidence,
+                  formatCalcNumber(sourceAgility),
+                  `${sourceName}当前速度属性，来自本次战斗快照并包含当前状态修正`,
+                  `${sourceName}速度`,
+                );
+                parts.push(`速度 ${reactorSpeed} 对 ${sourceSpeed}`);
+              }
+              if (Number.isFinite(reactionPressure) && Number.isFinite(attackPressure)) {
+                const reactorPressure = 构建数值证据标记(
+                  evidence,
+                  formatCalcNumber(reactionPressure),
+                  `${reactorName}本次应招压力，由速度、精神与体力状态及当前反应状态汇总`,
+                  `${reactorName}应招压力`,
+                );
+                const sourcePressure = 构建数值证据标记(
+                  evidence,
+                  formatCalcNumber(attackPressure),
+                  `${sourceName}本次攻势压力，由速度、精神与体力状态及追击侧修正汇总`,
+                  `${sourceName}攻势压力`,
+                );
+                parts.push(`反应压力 ${reactorPressure} 对 ${sourcePressure}`);
+              }
+              const probabilityText = 构建数值证据标记(
+                evidence,
+                `${Math.round(dodgeRate * 100)}%`,
+                '双方反应压力对比后的本次闪避成功率，结果限制在3%至78%',
+                '闪避成功率',
+              );
+              const rollText = 构建数值证据标记(
+                evidence,
+                `${Math.round(dodgeRoll * 100)}%`,
+                '固定种子生成的本次判定值；判定值不高于成功率时闪避成功',
+                '闪避判定值',
+              );
+              parts.push(`成功率 ${probabilityText}`);
+              parts.push(`判定 ${rollText}`);
+              parts.push(dodgeSucceeded ? '成功' : '失败');
             } else if (/dodged|evaded|miss/i.test(failureReason) || child.primaryOutcome === 'miss') parts.push('目标完成规避，落点失效');
             const mappedReason = 映射玩家可见失败原因(failureReasonCode, failureReason);
             if (mappedReason && !/dodged|evaded|miss/i.test(failureReason)) parts.push(`原因${mappedReason}`);
-            return parts.length ? `闪避判定：${parts.join(' -> ')}` : '';
+            return parts.length ? { text: `闪避判定：${parts.join(' -> ')}`, evidence } : null;
           };
           const 查找反应窗口伤害结算节点 = reactionNode => {
             const windowId = String(reactionNode?.parentNodeId || '').trim();
@@ -7778,12 +7803,23 @@ class BattleUIComponent {
             const damageReduction = Number(读取('damageReduction'));
             const activeShield = Number(读取('activeReactionShield'));
             const parts = [];
-            if (Number.isFinite(actualDefense) && actualDefense > 0) parts.push(`有效防御${formatCalcNumber(actualDefense)}`);
-            if (Number.isFinite(threshold) && threshold > 0) parts.push(`破防阈值${formatCalcNumber(threshold)}`);
-            if (Number.isFinite(damageReduction) && damageReduction > 0) parts.push(`减伤${formatCalcNumber(damageReduction * 100)}%`);
-            if (Number.isFinite(activeShield) && activeShield > 0) parts.push(`反应护盾${formatCalcNumber(activeShield)}`);
-            if (finalDamage >= 0) parts.push(`最终承伤${formatCalcNumber(finalDamage)}`);
-            return parts.length >= 2 ? `防御判定：${parts.join(' -> ')}` : '';
+            const evidence = [];
+            if (Number.isFinite(actualDefense) && actualDefense > 0) {
+              parts.push(`有效防御${构建数值证据标记(evidence, formatCalcNumber(actualDefense), '防守方当前防御属性与本次防御状态修正后的有效值', '有效防御')}`);
+            }
+            if (Number.isFinite(threshold) && threshold > 0) {
+              parts.push(`破防阈值${构建数值证据标记(evidence, formatCalcNumber(threshold), '本次攻防结算用于判断破防结果的阈值', '破防阈值')}`);
+            }
+            if (Number.isFinite(damageReduction) && damageReduction > 0) {
+              parts.push(`减伤${构建数值证据标记(evidence, `${formatCalcNumber(damageReduction * 100)}%`, '防御动作与当前状态共同提供的本次伤害减免比例', '防御减伤')}`);
+            }
+            if (Number.isFinite(activeShield) && activeShield > 0) {
+              parts.push(`反应护盾${构建数值证据标记(evidence, formatCalcNumber(activeShield), '本次即时防御反应提供并参与吸收的护盾值', '反应护盾')}`);
+            }
+            if (finalDamage >= 0) {
+              parts.push(`最终承伤${构建数值证据标记(evidence, formatCalcNumber(finalDamage), '完成防御、护盾与减伤结算后实际承受的伤害', '最终承伤')}`);
+            }
+            return parts.length >= 2 ? { text: `防御判定：${parts.join(' -> ')}`, evidence } : null;
           };
           const 查找反应来源动作节点 = reactionNode => {
             const directSourceId = String(reactionNode?.sourceNodeId || '').trim();
@@ -8076,7 +8112,7 @@ class BattleUIComponent {
               const reactionCalcLine = 构建反应决策参数行(child);
               if (reactionCalcLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${reactionCalcLine}`, timelineKind);
               const defenseLine = 构建防御反应参数行(child);
-              if (defenseLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${defenseLine}`, timelineKind);
+              if (defenseLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${defenseLine.text}`, timelineKind, { evidence: defenseLine.evidence });
             } else if (kind === 'hit_check') {
               const result = String(child.result || '').trim();
               const missed = /miss|evade|dodge|未命中|闪避/.test(result) || child.primaryOutcome === 'miss';
@@ -8084,7 +8120,7 @@ class BattleUIComponent {
                 ? `${prefix} 命中检定：${actor}的【${finalAction}】未能命中${childTarget || target || '目标'}`
                 : `${prefix} 命中检定：${actor}的【${finalAction}】锁定${childTarget || target || '目标'}，攻势落定`);
               const dodgeLine = 构建闪避判定行(child);
-              if (dodgeLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${dodgeLine}`, timelineKind);
+              if (dodgeLine) pushDetailLine(`${构建子级树前缀(prefix, false)} ${dodgeLine.text}`, timelineKind, { evidence: dodgeLine.evidence });
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['damage_settlement', 'state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -8097,8 +8133,28 @@ class BattleUIComponent {
                 : resisted
                 ? `${prefix} 状态检定：${childTarget || target || '目标'}抵住【${stateDTO.stateName}】附着`
                 : `${prefix} 状态检定：【${stateDTO.stateName}】锁定${childTarget || target || '目标'}，开始附着`);
-              if (stateDTO.successRateBreakdown) {
-                pushDetailLine(`${构建子级树前缀(prefix, false)} ${stateDTO.successRateBreakdown}`, timelineKind);
+              if (Number.isFinite(stateDTO.successRate)) {
+                const evidence = [];
+                const normalizedRate = stateDTO.successRate <= 1 ? stateDTO.successRate : stateDTO.successRate / 100;
+                const rateText = 构建数值证据标记(
+                  evidence,
+                  `${Math.round(normalizedRate * 100)}%`,
+                  stateDTO.successRateBreakdown || '本次状态效果结合基础附着率、目标抵抗与免疫规则后的成功率',
+                  '状态附着成功率',
+                );
+                const parts = [`附着成功率 ${rateText}`];
+                if (Number.isFinite(stateDTO.roll)) {
+                  const normalizedRoll = stateDTO.roll <= 1 ? stateDTO.roll : stateDTO.roll / 100;
+                  const rollText = 构建数值证据标记(
+                    evidence,
+                    `${Math.round(normalizedRoll * 100)}%`,
+                    '固定种子生成的本次状态附着判定值；判定值不高于成功率时附着成功',
+                    '状态附着判定值',
+                  );
+                  parts.push(`判定 ${rollText}`);
+                }
+                parts.push(immune ? '免疫' : resisted ? '未通过' : '通过');
+                pushDetailLine(`${构建子级树前缀(prefix, false)} 状态判定：${parts.join(' -> ')}`, timelineKind, { evidence });
               }
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['state_settlement', 'final_result'].includes(String(node.nodeKind || '')))
@@ -8107,14 +8163,16 @@ class BattleUIComponent {
               const finalDamage = Number(读取结算轨迹值(child.calculationTrace, 'finalDamage') || 0);
               const result = String(child.result || '').trim();
               if (/miss|evade|dodge|未命中|闪避/.test(result) || child.primaryOutcome === 'miss') pushChildTimelineLine(`${prefix} 伤害结算：${childTarget || target || '目标'}未受到实质伤害`);
-              else pushChildTimelineLine(`${prefix} 伤害结算：${childTarget || target || '目标'}${finalDamage > 0 ? `受到 ${Math.round(finalDamage)} 点伤害` : '未受到实质伤害'}`);
+              else if (finalDamage > 0) {
+                const evidence = [];
+                const damageText = 构建数值证据标记(evidence, Math.round(finalDamage), '本次动作完成全部命中、防御、护盾与伤害修正后实际扣除的生命值', '最终伤害');
+                pushTimelineLine(`${prefix} 伤害结算：${childTarget || target || '目标'}受到 ${damageText} 点伤害`, timelineKind, { evidence });
+              } else pushChildTimelineLine(`${prefix} 伤害结算：${childTarget || target || '目标'}未受到实质伤害`);
               const calcLine = 构建伤害计算明细行(child);
-              const formulaLine = 构建伤害基础公式行(child);
-              const ratioAuditLine = 构建攻防比审计行(child);
               const pathLine = 构建伤害路径行(child);
-              [formulaLine, ratioAuditLine, pathLine, calcLine]
+              [pathLine, calcLine]
                 .filter(Boolean)
-                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`, timelineKind));
+                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line.text}`, timelineKind, { evidence: line.evidence }));
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => String(node.nodeKind || '') === 'summon_assist')
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -8122,21 +8180,29 @@ class BattleUIComponent {
               const stateName = String(读取结算轨迹值(child.calculationTrace, 'stateName') || child.stateName || '').trim();
               const duration = Math.max(0, Number(读取结算轨迹值(child.calculationTrace, 'duration') || child.duration || 0));
               const immune = /immune|immunity|免疫|无视异常/.test(String(child.result || '')) || /immune/.test(String(child.primaryOutcome || ''));
-              if (stateName) pushChildTimelineLine(`${prefix} 状态结算：${childTarget || target || '目标'}${immune ? '免疫' : (/resist|resisted|抵抗|豁免/.test(String(child.result || '')) ? '抵住' : '陷入')}【${stateName}】${duration > 0 && !immune ? `，持续${duration}回合` : ''}`);
+              if (stateName) {
+                const evidence = [];
+                const durationText = duration > 0 && !immune
+                  ? `，持续${构建数值证据标记(evidence, formatCalcNumber(duration), '状态成功附着后写入战斗快照的有效持续回合数', '状态持续时间')}回合`
+                  : '';
+                pushTimelineLine(`${prefix} 状态结算：${childTarget || target || '目标'}${immune ? '免疫' : (/resist|resisted|抵抗|豁免/.test(String(child.result || '')) ? '抵住' : '陷入')}【${stateName}】${durationText}`, timelineKind, { evidence });
+              }
             } else if (kind === 'counter_action') {
               const damage = Number(读取结算轨迹值(child.calculationTrace, 'finalDamage') || 读取结算轨迹值(child.calculationTrace, 'damage') || 0);
               const counterLabel = Number(child.counterDepth || 0) >= 2 ? '反防反分支' : '防反分支';
-              pushChildTimelineLine(`${prefix} ${counterLabel}：${childActor || '防守方'}以【${childAction}】反击${childTarget || actor}${damage > 0 ? `，造成 ${Math.round(damage)} 点伤害` : ''}`);
-              const formulaLine = 构建伤害基础公式行(child);
-              const ratioAuditLine = 构建攻防比审计行(child);
+              const evidence = [];
+              const counterDamage = damage > 0
+                ? `，造成 ${构建数值证据标记(evidence, Math.round(damage), '反击动作完成全部命中、防御与伤害修正后实际扣除的生命值', '反击最终伤害')} 点伤害`
+                : '';
+              pushTimelineLine(`${prefix} ${counterLabel}：${childActor || '防守方'}以【${childAction}】反击${childTarget || actor}${counterDamage}`, timelineKind, { evidence });
               const pathLine = 构建伤害路径行(child);
               const calcLine = 构建伤害计算明细行(child);
-              const counterCalcLines = [formulaLine, ratioAuditLine, pathLine, calcLine].filter(Boolean);
+              const counterCalcLines = [pathLine, calcLine].filter(Boolean);
               筛选可见因果子节点(byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['reaction_window', 'reaction_decision'].includes(String(node.nodeKind || '')))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, !counterCalcLines.length && index === list.length - 1)));
               counterCalcLines
-                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line}`, timelineKind));
+                .forEach((line, index, list) => pushDetailLine(`${构建子级树前缀(prefix, index === list.length - 1)} ${line.text}`, timelineKind, { evidence: line.evidence }));
               (byParent.get(String(child.nodeId || '').trim()) || [])
                 .filter(node => ['target_branch', 'counter_window'].includes(String(node.nodeKind || '')) && 因果链节点默认可见(node))
                 .forEach((node, index, list) => pushChildLine(node, 构建子级树前缀(prefix, index === list.length - 1)));
@@ -8148,7 +8214,11 @@ class BattleUIComponent {
               const summonType = String(读取结算轨迹值(child.calculationTrace, 'summonType') || child.summonType || '').trim();
               const summonMode = String(读取结算轨迹值(child.calculationTrace, 'summonMode') || child.summonMode || '').trim();
               const mentalLoad = Number(读取结算轨迹值(child.calculationTrace, 'mentalLoad') || child.mentalLoad || 0);
-              pushChildTimelineLine(`${prefix} 召唤生成：召出${summonType || '召唤物'}【${summonName || '召唤物'}】${summonMode ? `，行动模式：${summonMode}` : ''}${mentalLoad > 0 ? `，精神负载 ${Math.round(mentalLoad)}` : ''}`);
+              const evidence = [];
+              const mentalLoadText = mentalLoad > 0
+                ? `，精神负载 ${构建数值证据标记(evidence, Math.round(mentalLoad), '该召唤物生成后占用宿主精神承载能力的实际数值', '召唤精神负载')}`
+                : '';
+              pushTimelineLine(`${prefix} 召唤生成：召出${summonType || '召唤物'}【${summonName || '召唤物'}】${summonMode ? `，行动模式：${summonMode}` : ''}${mentalLoadText}`, timelineKind, { evidence });
             } else if (kind === 'final_result' && String(child.primaryOutcome || '').trim() === 'item_created') {
               const createdName = String(读取结算轨迹值(child.calculationTrace, 'createdName') || child.createdName || childTarget || '').trim();
               const createdType = String(读取结算轨迹值(child.calculationTrace, 'createdType') || child.createdType || '').trim();
@@ -8201,14 +8271,14 @@ class BattleUIComponent {
           const summary = 展示权重.reasons.length ? `${title}｜${展示权重.reasons.join('、')}` : title;
           const treeHtml = `<div class="battle-preview-trace-tree battle-preview-trace-timeline">${lines.map(line => {
             const kind = String(line?.kind || 'detail').trim() || 'detail';
-            return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)}" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '')}</span></div>`;
+            return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)}" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '', {}, line?.evidence || [])}</span></div>`;
           }).join('\n')}</div>`;
           const detailHtml = detailLines.length ? `
             <details class="battle-preview-trace-detail-fold">
               <summary>展开判定明细</summary>
               <div class="battle-preview-trace-tree battle-preview-trace-timeline battle-preview-trace-detail-tree">${detailLines.map(line => {
                 const kind = String(line?.kind || 'detail').trim() || 'detail';
-                return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)} battle-preview-trace-node--detail" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '')}</span></div>`;
+                return `<div class="battle-preview-trace-node battle-preview-trace-node--${htmlEscapeText(kind)} battle-preview-trace-node--detail" data-trace-node-kind="${htmlEscapeText(kind)}"><span>${渲染判定侧写HTML(line?.text || '', {}, line?.evidence || [])}</span></div>`;
               }).join('\n')}</div>
             </details>
           ` : '';
@@ -9343,7 +9413,9 @@ class BattleUIComponent {
               const primary = facts.find(fact => fact?.eventKind === 'action_start' && fact?.actionRole !== 'STATE_TICK') || facts[0] || {};
               const actor = String(primary?.actorName || block?.actorId || '行动者').trim();
               const action = normalizeBattleActionDisplayName(primary?.actionName || '行动');
-              return `${actor}以【${action}】${block?.targetIds?.length ? `指向${block.targetIds.join('、')}` : '展开行动'}`;
+              return block?.targetIds?.length
+                ? `${actor}对${block.targetIds.join('、')}使用【${action}】`
+                : `${actor}使用【${action}】展开行动`;
             });
             const exchangeText = declarations.length > 1
               ? `${declarations[0]}，${declarations.slice(1).map(text => `随后${text}`).join('；')}`
