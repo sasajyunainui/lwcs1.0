@@ -11,6 +11,7 @@ class BattleUIComponent {
     this.recordPortalPosition = null;
     this.syncRecordPortalPosition = null;
     this.cleanupRecordPortalPosition = null;
+    this.skillTooltipPortalNode = null;
     this.initDOM();
     this.initEngine();
   }
@@ -42,6 +43,8 @@ class BattleUIComponent {
       this.recordPortalPosition = null;
       this.syncRecordPortalPosition = null;
       this.cleanupRecordPortalPosition = null;
+      if (this.skillTooltipPortalNode?.remove) this.skillTooltipPortalNode.remove();
+      this.skillTooltipPortalNode = null;
     } catch (错误) {}
     this.container.innerHTML = '';
   }
@@ -5325,7 +5328,14 @@ class BattleUIComponent {
         }
 
         function 读取技能悬浮节点() {
-          return byId('ui-skill-tooltip');
+          if (component.skillTooltipPortalNode?.isConnected) return component.skillTooltipPortalNode;
+          const node = byId('ui-skill-tooltip') || globalDocument?.getElementById?.('ui-skill-tooltip');
+          if (!node) return null;
+          node.classList.add('battle-skill-tooltip-floating--portal');
+          if (globalDocument?.body && node.parentElement !== globalDocument.body) globalDocument.body.appendChild(node);
+          同步战斗记录终端主题(node);
+          component.skillTooltipPortalNode = node;
+          return node;
         }
 
         function 关闭技能悬浮() {
@@ -5344,26 +5354,27 @@ class BattleUIComponent {
         function 定位技能悬浮(触发节点) {
           const 悬浮节点 = 读取技能悬浮节点();
           if (!悬浮节点 || !触发节点 || typeof 触发节点.getBoundingClientRect !== 'function') return;
-          const 容器矩形 = wrapperElement.getBoundingClientRect();
           const 触发矩形 = 触发节点.getBoundingClientRect();
           悬浮节点.hidden = false;
           悬浮节点.classList.add('show');
-          const 宽度 = Math.min(420, Math.max(220, 容器矩形.width - 24));
+          const 视口宽度 = Math.max(320, Number(root.innerWidth || globalDocument?.documentElement?.clientWidth || 320));
+          const 视口高度 = Math.max(240, Number(root.innerHeight || globalDocument?.documentElement?.clientHeight || 240));
+          const 宽度 = Math.min(420, Math.max(220, 视口宽度 - 24));
           悬浮节点.style.width = `${宽度}px`;
           悬浮节点.style.maxHeight = '';
           悬浮节点.style.overflow = 'visible';
-          const 可用高度 = Math.max(160, 容器矩形.height - 24);
+          const 可用高度 = Math.max(160, 视口高度 - 24);
           let 实际高度 = Math.max(悬浮节点.offsetHeight || 160, 120);
           if (实际高度 > 可用高度) {
             实际高度 = 可用高度;
             悬浮节点.style.maxHeight = `${Math.round(可用高度)}px`;
             悬浮节点.style.overflow = 'hidden auto';
           }
-          let 左 = 触发矩形.left - 容器矩形.left;
-          let 上 = 触发矩形.bottom - 容器矩形.top + 8;
-          if (左 + 宽度 > 容器矩形.width - 12) 左 = 容器矩形.width - 宽度 - 12;
+          let 左 = 触发矩形.left;
+          let 上 = 触发矩形.bottom + 8;
+          if (左 + 宽度 > 视口宽度 - 12) 左 = 视口宽度 - 宽度 - 12;
           if (左 < 12) 左 = 12;
-          if (上 + 实际高度 > 容器矩形.height - 12) 上 = 触发矩形.top - 容器矩形.top - 实际高度 - 8;
+          if (上 + 实际高度 > 视口高度 - 12) 上 = 触发矩形.top - 实际高度 - 8;
           if (上 < 12) 上 = 12;
           悬浮节点.style.left = `${Math.round(左)}px`;
           悬浮节点.style.top = `${Math.round(上)}px`;
@@ -6256,7 +6267,15 @@ class BattleUIComponent {
             counter_secondary_reaction: '反防反应',
             counter_reaction: '防反应对',
             agile_interrupt: '敏攻截断',
+            EVADE: '闪避',
+            evade: '闪避',
             dodge: '闪避应对',
+            DEFEND: '防御',
+            defend: '防御',
+            GUARD: '护卫',
+            guard_action: '护卫',
+            COUNTER: '反击',
+            counter: '反击',
             guard: '防御应对',
             parry: '偏转应对',
             no_reaction: '节奏受压',
@@ -7649,6 +7668,52 @@ class BattleUIComponent {
             if (!Number.isFinite(number)) return '';
             return Math.abs(number - Math.round(number)) < 0.01 ? String(Math.round(number)) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
           };
+          const 格式化倍率 = value => {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return '';
+            return `${formatCalcNumber(number)}倍`;
+          };
+          const 格式化属性组成来源 = (breakdown, finalValue) => {
+            const value = Number(breakdown?.value ?? finalValue);
+            const base = Number(breakdown?.base ?? value);
+            if (!Number.isFinite(value)) return '';
+            const parts = [`${formatCalcNumber(value)}：基础${formatCalcNumber(Number.isFinite(base) ? base : value)}`];
+            (Array.isArray(breakdown?.modifiers) ? breakdown.modifiers : []).forEach(modifier => {
+              const source = String(modifier?.source || '状态修正').trim();
+              const amount = Number(modifier?.value);
+              if (!Number.isFinite(amount)) return;
+              if (modifier.kind === 'multiply') parts.push(`×${格式化倍率(amount)}（${source}）`);
+              else if (modifier.kind === 'add') parts.push(`${amount >= 0 ? '+' : '-'}${formatCalcNumber(Math.abs(amount))}（${source}）`);
+              else if (modifier.kind === 'override') parts.push(`→${formatCalcNumber(amount)}（${source}）`);
+            });
+            return parts.join('');
+          };
+          const 格式化压力组成来源 = (breakdown, finalValue, stanceLabel) => {
+            const value = Number(breakdown?.value ?? finalValue);
+            if (!Number.isFinite(value)) return '';
+            if (!breakdown || typeof breakdown !== 'object') return `${formatCalcNumber(value)}：当前${stanceLabel}压力`;
+            const agility = Number(breakdown?.agility?.value || 0);
+            const spirit = Number(breakdown?.spirit || 0);
+            const spiritMax = Number(breakdown?.spiritMax || 0);
+            const conditionFactor = Number(breakdown?.conditionFactor || 0);
+            const resourcePressure = Number(breakdown?.resourcePressure || 0);
+            const stanceMultiplier = Number(breakdown?.stanceMultiplier || 1);
+            const parts = [
+              `${formatCalcNumber(value)}：`,
+              `(${formatCalcNumber(agility)}×0.72 + ${formatCalcNumber(spirit)}×0.012 + ${formatCalcNumber(spiritMax)}×0.025)`,
+              `×${formatCalcNumber(conditionFactor)}（精神/体力状态）`,
+              `×${formatCalcNumber(resourcePressure)}（双方精神力压力）`,
+            ];
+            if (Math.abs(stanceMultiplier - 1) > 1e-9) parts.push(`×${格式化倍率(stanceMultiplier)}（${stanceLabel}姿态）`);
+            (Array.isArray(breakdown?.effectContributions) ? breakdown.effectContributions : []).forEach(modifier => {
+              const amount = Number(modifier?.value);
+              if (!Number.isFinite(amount) || !amount) return;
+              const source = String(modifier?.source || '状态修正').trim();
+              const sign = modifier.kind === 'subtract' ? '-' : amount >= 0 ? '+' : '-';
+              parts.push(`${sign}${formatCalcNumber(Math.abs(amount))}（${source}）`);
+            });
+            return parts.join('');
+          };
           const 构建数值证据标记 = (evidence, display, source, label = '') => {
             const index = evidence.length;
             evidence.push({
@@ -7719,8 +7784,13 @@ class BattleUIComponent {
             const dodgeRoll = Number(读取('dodgeRoll'));
             const reactionPressure = Number(读取('reactionPressure'));
             const attackPressure = Number(读取('attackPressure'));
+            const reactionShare = Number(读取('reactionShare'));
             const reactionAgility = Number(读取('reactionAgility'));
             const sourceAgility = Number(读取('sourceAgility'));
+            const reactionAgilityBreakdown = 读取('reactionAgilityBreakdown');
+            const sourceAgilityBreakdown = 读取('sourceAgilityBreakdown');
+            const reactionPressureBreakdown = 读取('reactionPressureBreakdown');
+            const attackPressureBreakdown = 读取('attackPressureBreakdown');
             const failureReason = String(读取('failureReason') || child.failureReason || '').trim();
             const failureReasonCode = String(读取('reasonCode') || child.reasonCode || child.meta?.reasonCode || '').trim();
             const parts = [];
@@ -7733,13 +7803,13 @@ class BattleUIComponent {
                 const reactorSpeed = 构建数值证据标记(
                   evidence,
                   formatCalcNumber(reactionAgility),
-                  `${reactorName}当前速度属性，来自本次战斗快照并包含当前状态修正`,
+                  格式化属性组成来源(reactionAgilityBreakdown, reactionAgility),
                   `${reactorName}速度`,
                 );
                 const sourceSpeed = 构建数值证据标记(
                   evidence,
                   formatCalcNumber(sourceAgility),
-                  `${sourceName}当前速度属性，来自本次战斗快照并包含当前状态修正`,
+                  格式化属性组成来源(sourceAgilityBreakdown, sourceAgility),
                   `${sourceName}速度`,
                 );
                 parts.push(`速度 ${reactorSpeed} 对 ${sourceSpeed}`);
@@ -7748,13 +7818,13 @@ class BattleUIComponent {
                 const reactorPressure = 构建数值证据标记(
                   evidence,
                   formatCalcNumber(reactionPressure),
-                  `${reactorName}本次应招压力，由速度、精神与体力状态及当前反应状态汇总`,
+                  格式化压力组成来源(reactionPressureBreakdown, reactionPressure, '应招'),
                   `${reactorName}应招压力`,
                 );
                 const sourcePressure = 构建数值证据标记(
                   evidence,
                   formatCalcNumber(attackPressure),
-                  `${sourceName}本次攻势压力，由速度、精神与体力状态及追击侧修正汇总`,
+                  格式化压力组成来源(attackPressureBreakdown, attackPressure, '追击'),
                   `${sourceName}攻势压力`,
                 );
                 parts.push(`反应压力 ${reactorPressure} 对 ${sourcePressure}`);
@@ -7762,13 +7832,13 @@ class BattleUIComponent {
               const probabilityText = 构建数值证据标记(
                 evidence,
                 `${Math.round(dodgeRate * 100)}%`,
-                '双方反应压力对比后的本次闪避成功率，结果限制在3%至78%',
+                `${Math.round(dodgeRate * 100)}%：18% +（反应占比${Number.isFinite(reactionShare) ? formatCalcNumber(reactionShare * 100) : '?'}% - 50%）×110%，最终限制在3%至78%`,
                 '闪避成功率',
               );
               const rollText = 构建数值证据标记(
                 evidence,
                 `${Math.round(dodgeRoll * 100)}%`,
-                '固定种子生成的本次判定值；判定值不高于成功率时闪避成功',
+                `${Math.round(dodgeRoll * 100)}%：固定种子生成的本次判定值；判定值小于成功率时闪避成功`,
                 '闪避判定值',
               );
               parts.push(`成功率 ${probabilityText}`);
@@ -9387,13 +9457,16 @@ class BattleUIComponent {
             ...(Array.isArray(block?.badges) ? block.badges : []).map(badge => ({ type: 'badge', ...badge })),
           ];
           const outcomeHtml = 渲染公开战报BlocksHTML(outcomeBlocks, context).html;
+          const intentHtml = 渲染公开战报HTML(String(block?.intentSummary || '').trim(), context).html;
+          const nextWindowHtml = 渲染公开战报HTML(String(block?.nextWindow || '').trim(), context).html;
+          const actionHeadHtml = 渲染公开战报HTML(`${actor} · 【${action}】`, context).html;
           const roundLabel = context?.showRound === false ? '动作' : `第${Math.max(0, Number(block?.round || 0))}回合`;
           return `
             <article class="battle-preview-report-group" data-round="${Math.max(0, Number(block?.round || 0))}" data-action-group-id="${htmlEscapeText(block?.actionGroupId || '')}">
-              <header class="battle-structured-report-head"><span>${roundLabel}</span><b>${htmlEscapeText(actor)} · ${htmlEscapeText(action)}</b></header>
-              ${String(block?.intentSummary || '').trim() ? `<p class="battle-structured-report-intent"><b>意图</b>${htmlEscapeText(block.intentSummary)}</p>` : ''}
+              <header class="battle-structured-report-head"><span>${roundLabel}</span><b>${actionHeadHtml}</b></header>
+              ${String(block?.intentSummary || '').trim() ? `<p class="battle-structured-report-intent"><b>意图</b>${intentHtml}</p>` : ''}
               <p class="battle-structured-report-outcome"><b>结果</b>${outcomeHtml}</p>
-              ${String(block?.nextWindow || '').trim() ? `<p class="battle-structured-report-window"><b>窗口</b>${htmlEscapeText(block.nextWindow)}</p>` : ''}
+              ${String(block?.nextWindow || '').trim() ? `<p class="battle-structured-report-window"><b>窗口</b>${nextWindowHtml}</p>` : ''}
             </article>
           `;
         }
@@ -9420,6 +9493,7 @@ class BattleUIComponent {
             const exchangeText = declarations.length > 1
               ? `${declarations[0]}，${declarations.slice(1).map(text => `随后${text}`).join('；')}`
               : declarations[0] || '本回合没有主动交锋';
+            const exchangeHtml = 渲染公开战报HTML(exchangeText, context).html;
             const passiveFacts = passiveBlocks.flatMap(block => Array.isArray(block?.facts) ? block.facts : []);
             const passiveBadges = passiveBlocks.flatMap(block => Array.isArray(block?.badges) ? block.badges : []);
             const passiveText = passiveBlocks.map(block => String(block?.outcomeSummary || '').trim()).filter(Boolean).join('；');
@@ -9432,7 +9506,7 @@ class BattleUIComponent {
             return `
               <section class="battle-structured-report-round" data-round="${round}" data-active-action-count="${activeBlocks.length}" data-passive-fact-count="${passiveFacts.length}">
                 <header class="battle-structured-report-round-head"><span>第${round}回合</span><b>${activeBlocks.length > 1 ? '双方交锋' : activeBlocks.length === 1 ? '单方行动' : '回合结算'}</b></header>
-                <p class="battle-structured-report-exchange"><b>交锋</b>${htmlEscapeText(exchangeText)}</p>
+                <p class="battle-structured-report-exchange"><b>交锋</b>${exchangeHtml}</p>
                 <div class="battle-structured-report-actions">${activeBlocks.map(block => 渲染结构化战报BlockHTML(block, { ...context, showRound: false })).join('')}</div>
                 ${passiveHtml ? `<p class="battle-structured-report-passive"><b>回合结算</b>${passiveHtml}</p>` : ''}
               </section>
@@ -9776,8 +9850,17 @@ class BattleUIComponent {
             const sourceContext = { ...context, combatData: context?.combatData || result?.combatData || {} };
             const actorUnit = actorName ? 查找战报上下文单位(sourceContext, actorName) : null;
             const resolvedSkill = actorUnit ? (按名称解析角色战斗魂技_战报(actorUnit, skillSlot || skillName) || 按名称解析角色战斗魂技_战报(actorUnit, skillName)) : null;
-            if (!resolvedSkill) return;
-            const action = {
+            const basicActionTypes = {
+              普通攻击: '普通攻击',
+              防御: '防御',
+              闪避: '闪避',
+              反击: '普通攻击',
+              护卫: '防御',
+              撤退: '撤离',
+              观察: '观察',
+            };
+            if (!resolvedSkill && !basicActionTypes[skillName]) return;
+            const action = resolvedSkill ? {
               id: `report_hover_${String(actorName || 'unknown').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${String(skillName || '').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}`,
               type: 'skill',
               action_type: '释放魂技',
@@ -9788,6 +9871,16 @@ class BattleUIComponent {
               cost_text: findUiSkillCost(resolvedSkill),
               raw_skill: resolvedSkill,
               skill: resolvedSkill,
+            } : {
+              id: `report_hover_${String(actorName || 'unknown').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${String(skillName || '').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}`,
+              type: 'action',
+              action_type: basicActionTypes[skillName],
+              name: skillName,
+              category: '战术',
+              source_detail: '基础行动',
+              cast_time: 0,
+              cost_text: '无',
+              reason: skillName === '普通攻击' || skillName === '反击' ? '以当前攻击属性进行一次基础进攻' : `${skillName}行动`,
             };
             button.addEventListener('mouseenter', () => 显示技能悬浮(button, action));
             button.addEventListener('focus', () => 显示技能悬浮(button, action));

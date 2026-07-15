@@ -30996,7 +30996,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .tower-settlemen
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-tooltip-floating,
-#detailModal #mvu-battle-inline-host .battle-skill-tooltip-floating {
+#detailModal #mvu-battle-inline-host .battle-skill-tooltip-floating,
+body > .battle-skill-tooltip-floating--portal {
   position: absolute;
   z-index: 30;
   display: grid;
@@ -31024,12 +31025,20 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-to
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-skill-tooltip-floating[hidden],
-#detailModal #mvu-battle-inline-host .battle-skill-tooltip-floating[hidden] {
+#detailModal #mvu-battle-inline-host .battle-skill-tooltip-floating[hidden],
+body > .battle-skill-tooltip-floating--portal[hidden] {
   display: none;
 }
 
+body > .battle-skill-tooltip-floating--portal {
+  position: fixed;
+  z-index: 2147483000;
+  max-width: min(420px, calc(100vw - 24px));
+}
+
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-title,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-title {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -31038,7 +31047,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-title b,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title b {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title b,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-title b {
   min-width: 0;
   color: var(--文字主色);
   font-size: 12px;
@@ -31048,7 +31058,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-title span,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title span {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-title span,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-title span {
   flex: 0 0 auto;
   color: color-mix(in srgb, var(--战斗强调色) 66%, var(--文字主色));
   font-size: 10px;
@@ -31057,7 +31068,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-desc,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-desc {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-desc,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-desc {
   margin-bottom: 1px;
   padding-bottom: 6px;
   border-bottom: 1px dashed color-mix(in srgb, var(--战斗主色) 18%, transparent);
@@ -31068,7 +31080,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-meta,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px 8px;
@@ -31076,7 +31089,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-meta-row,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-meta-row {
   display: flex;
   align-items: baseline;
   justify-content: flex-start;
@@ -31087,14 +31101,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-meta-row em,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row em {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row em,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-meta-row em {
   flex: 0 0 auto;
   color: var(--文字弱色);
   font-style: normal;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-meta-row strong,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row strong {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-meta-row strong,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-meta-row strong {
   min-width: 0;
   color: var(--文字主色);
   font-weight: 760;
@@ -31102,14 +31118,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-copy,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-copy {
   margin-top: 0;
   padding-top: 5px;
   border-top: 1px dashed color-mix(in srgb, var(--战斗主色) 16%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-copy em,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy em {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy em,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-copy em {
   display: block;
   margin-bottom: 3px;
   color: color-mix(in srgb, var(--文字弱色) 88%, transparent);
@@ -31120,7 +31138,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-copy span,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy span {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-copy span,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-copy span {
   display: block;
   color: var(--文字主色);
   font-size: 10px;
@@ -31130,14 +31149,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-too
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-tags,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-tags {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-tags,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-ring-tooltip-chip,
-#detailModal #mvu-battle-inline-host .battle-ring-tooltip-chip {
+#detailModal #mvu-battle-inline-host .battle-ring-tooltip-chip,
+body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-chip {
   padding: 3px 6px;
   border: 1px solid color-mix(in srgb, var(--战斗主色) 26%, transparent);
   border-radius: max(2px, calc(var(--战斗圆角) * 0.16));

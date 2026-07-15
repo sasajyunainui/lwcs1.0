@@ -688,8 +688,12 @@ const summary = {
   dodgeEvidenceNodesFocusable:
     (dodgeEvidenceTraceHtml.match(/class="battle-trace-number-evidence"/g) || []).length === 6 &&
     (dodgeEvidenceTraceHtml.match(/tabindex="0"/g) || []).length === 6 &&
-    /data-source="韦小枫当前速度属性/.test(dodgeEvidenceTraceHtml || '') &&
+    /data-source="522：基础522/.test(dodgeEvidenceTraceHtml || '') &&
+    /data-source="42%：18% \+（反应占比/.test(dodgeEvidenceTraceHtml || '') &&
     /aria-label="闪避成功率：42%。来源：/.test(dodgeEvidenceTraceHtml || ''),
+  reactionTypeInternalCodeHidden:
+    /EVADE: '闪避'/.test(code) &&
+    !/类型：EVADE/.test(dodgeEvidenceTraceHtml || ''),
   dodgeEvidenceTerminalUsesSameRoll:
     /成功率[\s\S]*?>3%<[\s\S]*?判定[\s\S]*?>0%<[\s\S]*?成功/.test(dodgeSuccessTraceHtml || '') &&
     !/判定[\s\S]*?>0%<[\s\S]*?失败/.test(dodgeSuccessTraceHtml || ''),
@@ -759,6 +763,14 @@ const summary = {
     /function 渲染结构化回合战报HTML/.test(code) &&
     /渲染结构化回合战报HTML\(战报Blocks, 战报展示上下文\)/.test(code) &&
     /activeBlocks\.map\(block => 渲染结构化战报BlockHTML/.test(code),
+  structuredReportActionReferencesConsistent:
+    /const intentHtml = 渲染公开战报HTML/.test(code) &&
+    /const actionHeadHtml = 渲染公开战报HTML/.test(code) &&
+    /const exchangeHtml = 渲染公开战报HTML/.test(code),
+  skillTooltipUsesViewportPortal:
+    /globalDocument\.body\.appendChild\(node\)/.test(code) &&
+    /position: fixed;[\s\S]{0,120}z-index: 2147483000/.test(styleCode) &&
+    /battle-skill-tooltip-floating--portal/.test(styleCode),
   recordReportHasNoTraceTextSupplement: !/构建行动链补缺公开战报Blocks|action_chain_gap_ast/.test(code),
   structuredOutcomeDoesNotBackfillLegacyText: !/outcomeSummary:\s*String\(entry\?\.text|outcomeSummary:\s*String\(entry\?\.text\s*\|\|/.test(code),
   finalSummaryRunsPureNextActionPreview:

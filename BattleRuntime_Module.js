@@ -1918,6 +1918,10 @@
         { key: 'reactionPressure', label: '应招压力', value: meta.reactionPressure },
         { key: 'attackPressure', label: '攻势压力', value: meta.attackPressure },
         { key: 'reactionShare', label: '反应占比', value: meta.reactionShare },
+        { key: 'reactionPressureBreakdown', label: '应招压力组成', value: meta.reactionPressureBreakdown },
+        { key: 'attackPressureBreakdown', label: '攻势压力组成', value: meta.attackPressureBreakdown },
+        { key: 'reactionAgilityBreakdown', label: '应招速度组成', value: meta.reactionAgilityBreakdown },
+        { key: 'sourceAgilityBreakdown', label: '攻方速度组成', value: meta.sourceAgilityBreakdown },
         { key: 'dodgeRate', label: '闪避率', value: meta.dodgeRate },
         { key: 'dodgeRoll', label: '闪避投点', value: meta.dodgeRoll },
         { key: 'grazeMultiplier', label: '擦伤倍率', value: meta.grazeMultiplier },
@@ -2075,6 +2079,15 @@
       ].forEach(([key, label]) => {
         const raw = reactionTrace[key] ?? meta[key];
         if (raw !== undefined) trace.push({ key, label, value: Number(raw || 0) });
+      });
+      [
+        ['reactionPressureBreakdown', '应招压力组成'],
+        ['attackPressureBreakdown', '攻势压力组成'],
+        ['reactionAgilityBreakdown', '应招速度组成'],
+        ['sourceAgilityBreakdown', '攻方速度组成'],
+      ].forEach(([key, label]) => {
+        const raw = reactionTrace[key] ?? meta[key];
+        if (raw && typeof raw === 'object') trace.push({ key, label, value: cloneValue(raw) });
       });
       if (String(meta.replanReasonCode || '').trim()) trace.push({ key: 'replanReasonCode', label: '变招原因', value: 标准化战斗ReasonCode(meta.replanReasonCode, 'TACTICAL_DISADVANTAGE') });
       if (String(meta.reactionLog || '').trim()) trace.push({ key: 'reactionLog', label: '反应记录', value: String(meta.reactionLog || '').trim() });
@@ -4696,6 +4709,10 @@
                   reactionShare: reaction?.event?.meta?.reactionShare,
                   reactionAgility: reaction?.event?.meta?.reactionAgility,
                   sourceAgility: reaction?.event?.meta?.sourceAgility,
+                  reactionPressureBreakdown: reaction?.event?.meta?.reactionPressureBreakdown,
+                  attackPressureBreakdown: reaction?.event?.meta?.attackPressureBreakdown,
+                  reactionAgilityBreakdown: reaction?.event?.meta?.reactionAgilityBreakdown,
+                  sourceAgilityBreakdown: reaction?.event?.meta?.sourceAgilityBreakdown,
                 },
               }));
               continue;
@@ -5007,16 +5024,22 @@
   }
 
   function structuredReactionContest(reactor = {}, sourceActor = {}) {
-    const reactionPressure = previewRuntime.calculateWithdrawalPressure(reactor, sourceActor, 'WITHDRAW');
-    const attackPressure = previewRuntime.calculateWithdrawalPressure(sourceActor, reactor, 'PURSUIT');
+    const reactionDetails = previewRuntime.calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
+    const attackDetails = previewRuntime.calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
+    const reactionPressure = reactionDetails.value;
+    const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
     return {
       probability: Math.max(0.03, Math.min(0.78, 0.18 + (share - 0.5) * 1.1)),
       reactionPressure,
       attackPressure,
       share,
-      reactionAgility: previewRuntime.readCombatStat(reactor, 'agi'),
-      sourceAgility: previewRuntime.readCombatStat(sourceActor, 'agi'),
+      reactionAgility: reactionDetails.agility.value,
+      sourceAgility: attackDetails.agility.value,
+      reactionPressureBreakdown: reactionDetails,
+      attackPressureBreakdown: attackDetails,
+      reactionAgilityBreakdown: reactionDetails.agility,
+      sourceAgilityBreakdown: attackDetails.agility,
     };
   }
 
@@ -5083,6 +5106,10 @@
           reactionShare: contest.share,
           reactionAgility: contest.reactionAgility,
           sourceAgility: contest.sourceAgility,
+          reactionPressureBreakdown: contest.reactionPressureBreakdown,
+          attackPressureBreakdown: contest.attackPressureBreakdown,
+          reactionAgilityBreakdown: contest.reactionAgilityBreakdown,
+          sourceAgilityBreakdown: contest.sourceAgilityBreakdown,
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
@@ -5165,6 +5192,10 @@
         reactionShare: contest.share,
         reactionAgility: contest.reactionAgility,
         sourceAgility: contest.sourceAgility,
+        reactionPressureBreakdown: contest.reactionPressureBreakdown,
+        attackPressureBreakdown: contest.attackPressureBreakdown,
+        reactionAgilityBreakdown: contest.reactionAgilityBreakdown,
+        sourceAgilityBreakdown: contest.sourceAgilityBreakdown,
       },
     });
     return { opened, event, probability, roll };

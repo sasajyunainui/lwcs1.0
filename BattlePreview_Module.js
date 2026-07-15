@@ -209,6 +209,59 @@
     return Math.max(1, readNumber(unit, aliases[key] || [key], 1));
   }
 
+  function readCombatStatBreakdown(unit = {}, key = '') {
+    const aliases = {
+      str: ['str', '力量', '攻击'],
+      def: ['def', '防御'],
+      agi: ['agi', '敏捷'],
+      men: ['men_max', '精神力上限', '精神力'],
+    };
+    const keys = aliases[key] || [key];
+    const sourceStats = unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : {};
+    const finalStats = unit?.final && typeof unit.final === 'object' ? unit.final : {};
+    const readFirstFinite = sources => {
+      for (const source of sources) {
+        for (const alias of keys) {
+          const value = Number(source?.[alias]);
+          if (Number.isFinite(value)) return value;
+        }
+      }
+      return NaN;
+    };
+    const base = Math.max(1, readFirstFinite([unit, sourceStats]) || 1);
+    const modifiers = [];
+    let calculated = base;
+    stateEntries(unit).forEach(([stateKey, state]) => {
+      const source = stateName(state) || String(stateKey || '状态修正').trim();
+      const ratio = Number(state?.面板修改比例?.[key] ?? 1);
+      const fixed = Number(state?.面板固定修正?.[key] ?? 0);
+      if (Number.isFinite(ratio) && Math.abs(ratio - 1) > 1e-9) {
+        modifiers.push({ kind: 'multiply', value: ratio, source });
+        calculated *= ratio;
+      }
+      if (Number.isFinite(fixed) && Math.abs(fixed) > 1e-9) {
+        modifiers.push({ kind: 'add', value: fixed, source });
+        calculated += fixed;
+      }
+    });
+    const staminaScale = Number(finalStats?.__体力衰减系数 ?? 1);
+    if (Number.isFinite(staminaScale) && Math.abs(staminaScale - 1) > 1e-9) {
+      modifiers.push({ kind: 'multiply', value: staminaScale, source: '低体力衰减' });
+      calculated *= staminaScale;
+    }
+    const finalValue = readFirstFinite([finalStats]);
+    const value = Math.max(1, Number.isFinite(finalValue) ? finalValue : calculated);
+    if (Math.abs(value - calculated) > 0.51) {
+      modifiers.push({ kind: 'override', value, source: '属性快照或运行时规则' });
+    }
+    return Object.freeze({
+      key,
+      base,
+      value,
+      modifiers: Object.freeze(modifiers.map(item => Object.freeze({ ...item }))),
+    });
+  }
+
   function listUnits(worldSnapshot = {}) {
     const participants = worldSnapshot?.参战者 && typeof worldSnapshot.参战者 === 'object' ? worldSnapshot.参战者 : {};
     const primary = Object.entries(participants).flatMap(([side, value]) => {
@@ -1543,19 +1596,38 @@
     return result;
   }
 
-  function calculateWithdrawalPressure(unit = {}, opponent = {}, stance = 'WITHDRAW') {
-    const agility = readCombatStat(unit, 'agi');
+  function calculateWithdrawalPressureDetails(unit = {}, opponent = {}, stance = 'WITHDRAW') {
+    const agilityBreakdown = readCombatStatBreakdown(unit, 'agi');
+    const agility = agilityBreakdown.value;
     const spirit = readResource(unit, '精神力');
     const spiritMax = readResourceMax(unit, '精神力');
     const stamina = readResource(unit, '体力');
     const staminaMax = readResourceMax(unit, '体力');
     const spiritRatio = clamp(spirit / Math.max(1, spiritMax), 0, 1);
     const staminaRatio = clamp(stamina / Math.max(1, staminaMax), 0, 1);
-    const effects = stateEntries(unit).map(([, state]) => state?.战斗效果 || {});
-    const lockPressure = effects.reduce((sum, effect) => sum + Number(effect?.lock_level || 0) * 18, 0);
-    const dodgeModifier = effects.reduce((sum, effect) => sum + Number(effect?.dodge_bonus || 0) * 100 - Number(effect?.dodge_penalty || 0) * 100, 0);
-    const reactionModifier = effects.reduce((sum, effect) => sum + Number(effect?.reaction_bonus || 0) * 80 - Number(effect?.reaction_penalty || 0) * 80, 0);
-    const hardControlPenalty = effects.some(effect => effect?.skip_turn === true || effect?.cannot_react === true) ? 999999 : 0;
+    const stateEffects = stateEntries(unit).map(([stateKey, state]) => ({
+      source: stateName(state) || String(stateKey || '状态效果').trim(),
+      effect: state?.战斗效果 || {},
+    }));
+    const effectContributions = [];
+    const lockPressure = stateEffects.reduce((sum, entry) => {
+      const value = Number(entry.effect?.lock_level || 0) * 18;
+      if (value) effectContributions.push({ kind: 'subtract', value, source: `${entry.source}·锁定压力` });
+      return sum + value;
+    }, 0);
+    const dodgeModifier = stateEffects.reduce((sum, entry) => {
+      const value = Number(entry.effect?.dodge_bonus || 0) * 100 - Number(entry.effect?.dodge_penalty || 0) * 100;
+      if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·闪避修正` });
+      return sum + value;
+    }, 0);
+    const reactionModifier = stateEffects.reduce((sum, entry) => {
+      const value = Number(entry.effect?.reaction_bonus || 0) * 80 - Number(entry.effect?.reaction_penalty || 0) * 80;
+      if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·反应修正` });
+      return sum + value;
+    }, 0);
+    const hardControlSource = stateEffects.find(entry => entry.effect?.skip_turn === true || entry.effect?.cannot_react === true);
+    const hardControlPenalty = hardControlSource ? 999999 : 0;
+    if (hardControlSource) effectContributions.push({ kind: 'subtract', value: hardControlPenalty, source: `${hardControlSource.source}·无法反应` });
     const opposingSpirit = readResource(opponent, '精神力');
     const resourcePressure = clamp(
       Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), 0.35) * (0.45 + 0.55 * spiritRatio),
@@ -1563,8 +1635,30 @@
       1.65,
     );
     const base = agility * 0.72 + spirit * 0.012 + spiritMax * 0.025;
+    const conditionFactor = 0.35 + spiritRatio * 0.4 + staminaRatio * 0.25;
     const stanceMultiplier = stance === 'PURSUIT' ? 1.08 : 1;
-    return Math.max(0, base * (0.35 + spiritRatio * 0.4 + staminaRatio * 0.25) * resourcePressure * stanceMultiplier + dodgeModifier + reactionModifier - lockPressure - hardControlPenalty);
+    const value = Math.max(0, base * conditionFactor * resourcePressure * stanceMultiplier + dodgeModifier + reactionModifier - lockPressure - hardControlPenalty);
+    return Object.freeze({
+      value,
+      stance,
+      agility: agilityBreakdown,
+      spirit,
+      spiritMax,
+      stamina,
+      staminaMax,
+      opposingSpirit,
+      spiritRatio,
+      staminaRatio,
+      base,
+      conditionFactor,
+      resourcePressure,
+      stanceMultiplier,
+      effectContributions: Object.freeze(effectContributions.map(item => Object.freeze({ ...item }))),
+    });
+  }
+
+  function calculateWithdrawalPressure(unit = {}, opponent = {}, stance = 'WITHDRAW') {
+    return calculateWithdrawalPressureDetails(unit, opponent, stance).value;
   }
 
   function estimateWithdrawal(actor = {}, pursuer = {}) {
@@ -1621,6 +1715,7 @@
     readResource,
     readResourceMax,
     readCombatStat,
+    readCombatStatBreakdown,
     parseSignedValue,
     effectTargetsAllies,
     collectEffects,
@@ -1630,6 +1725,7 @@
     calculateBaseActionValue,
     calculateUnitCapacity,
     calculateWithdrawalPressure,
+    calculateWithdrawalPressureDetails,
     estimateWithdrawal,
     deriveStateCombatEffect,
     normalizeBattleObjectives,
