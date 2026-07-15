@@ -30348,11 +30348,11 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:hover::after,
-:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:focus-visible::after,
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-trace-number-evidence:focus::after,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:hover::after,
-body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible::after,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus::after,
 #detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:hover::after,
-#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus-visible::after {
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-trace-number-evidence:focus::after {
   opacity: 1;
   transform: translate(-50%, 0);
 }

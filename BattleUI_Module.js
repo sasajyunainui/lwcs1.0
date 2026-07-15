@@ -7726,7 +7726,7 @@ class BattleUIComponent {
             const parts = [];
             const evidence = [];
             if (Number.isFinite(dodgeRate) && Number.isFinite(dodgeRoll)) {
-              const dodgeSucceeded = child.primaryOutcome === 'dodged' || /evaded|dodge_success|成功/.test(String(child.result || '').trim());
+              const dodgeSucceeded = dodgeRoll < dodgeRate;
               const reactorName = String(child.targetName || target || '应招方').trim();
               const sourceName = String(child.actorName || actor || '攻方').trim();
               if (Number.isFinite(reactionAgility) && Number.isFinite(sourceAgility)) {

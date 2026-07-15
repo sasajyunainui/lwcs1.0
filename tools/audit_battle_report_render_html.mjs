@@ -355,6 +355,30 @@ const dodgeEvidenceTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTM
     ],
   },
 ]);
+const dodgeSuccessTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML__([
+  { nodeId: 'root-dodge-success', nodeKind: 'action_decision', round: 1, actorName: '韦小枫', targetName: '唐凌雪', initialActionName: '普通攻击', finalActionName: '普通攻击', targetScope: 'single' },
+  {
+    nodeId: 'hit-dodge-success',
+    parentNodeId: 'root-dodge-success',
+    sourceNodeId: 'root-dodge-success',
+    nodeKind: 'hit_check',
+    round: 1,
+    actorName: '韦小枫',
+    targetName: '唐凌雪',
+    finalActionName: '普通攻击',
+    result: 'miss',
+    primaryOutcome: 'miss',
+    calculationTrace: [
+      { key: 'reactionAgility', value: 282 },
+      { key: 'sourceAgility', value: 522 },
+      { key: 'reactionPressure', value: 125 },
+      { key: 'attackPressure', value: 371.02 },
+      { key: 'dodgeRate', value: 0.03 },
+      { key: 'dodgeRoll', value: 0.001 },
+      { key: 'failureReason', value: 'dodged' },
+    ],
+  },
+]);
 const defenseReactionTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTML__([
   { nodeId: 'root-defense', nodeKind: 'action_decision', round: 1, actorName: '唐凌雪', targetName: '韦小枫', initialActionName: '裂地冲拳', finalActionName: '裂地冲拳', targetScope: 'single' },
   { nodeId: 'reaction-window-defense', parentNodeId: 'root-defense', sourceNodeId: 'root-defense', nodeKind: 'reaction_window', round: 1, actorName: '韦小枫', targetName: '唐凌雪', result: 'opened', primaryOutcome: 'reaction_window_opened' },
@@ -666,6 +690,9 @@ const summary = {
     (dodgeEvidenceTraceHtml.match(/tabindex="0"/g) || []).length === 6 &&
     /data-source="韦小枫当前速度属性/.test(dodgeEvidenceTraceHtml || '') &&
     /aria-label="闪避成功率：42%。来源：/.test(dodgeEvidenceTraceHtml || ''),
+  dodgeEvidenceTerminalUsesSameRoll:
+    /成功率[\s\S]*?>3%<[\s\S]*?判定[\s\S]*?>0%<[\s\S]*?成功/.test(dodgeSuccessTraceHtml || '') &&
+    !/判定[\s\S]*?>0%<[\s\S]*?失败/.test(dodgeSuccessTraceHtml || ''),
   defenseReactionJudgementRendered: /反应：韦小枫以/.test(defenseReactionTraceHtml || '') && /收招转防/.test(defenseReactionTraceHtml || '') && /防御判定：/.test(defenseReactionTraceHtml || '') && /有效防御[\s\S]*?>64</.test(defenseReactionTraceHtml || '') && /破防阈值[\s\S]*?>9</.test(defenseReactionTraceHtml || '') && /最终承伤[\s\S]*?>92</.test(defenseReactionTraceHtml || ''),
   stateCheckSettlementRendered: /状态检定/.test(stateTraceHtml || '') && /状态结算/.test(stateTraceHtml || '') && /中毒/.test(stateTraceHtml || '') && /持续[\s\S]*?>2<[\s\S]*?回合/.test(stateTraceHtml || '') && /状态判定：附着成功率[\s\S]*?>72%<[\s\S]*?判定[\s\S]*?>31%<[\s\S]*?通过/.test(stateTraceHtml || ''),
   resistedStateCheckSettlementRendered: /状态检定/.test(resistedStateTraceHtml || '') && /状态结算/.test(resistedStateTraceHtml || '') && /位移限制/.test(resistedStateTraceHtml || '') && /抵住/.test(resistedStateTraceHtml || '') && /附着成功率：42%/.test(resistedStateTraceHtml || '') && /检定67 (?:>|&gt;) 42/.test(resistedStateTraceHtml || ''),
@@ -807,6 +834,7 @@ console.log(JSON.stringify({
     replanTraceHtml,
     calcTraceHtml,
     dodgeEvidenceTraceHtml,
+    dodgeSuccessTraceHtml,
     defenseReactionTraceHtml,
     stateTraceHtml,
     resistedStateTraceHtml,
