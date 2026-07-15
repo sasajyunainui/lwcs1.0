@@ -28922,8 +28922,8 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-action-s
   border-radius: calc(var(--战斗圆角) * 0.34);
   background:
     var(--战斗扫描线, none),
-    linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 10%, transparent), transparent 72%),
-    color-mix(in srgb, var(--战斗玻璃底, rgba(2, 8, 16, 0.94)) 92%, #02070d);
+    linear-gradient(90deg, color-mix(in srgb, var(--战斗强调色) 8%, transparent), transparent 72%),
+    #07131f;
   color: var(--战斗记录文字主色);
   font-size: var(--战斗记录基准字号);
   font-family: var(--font-tech, var(--font-mono, Consolas, monospace));
