@@ -818,6 +818,20 @@ const counterDamage = counterResult.ledger.find(event =>
   event?.targetName === counterFact?.targetName &&
   Number(event?.appliedDamage || 0) > 0
 );
+const counterSourceAction = counterResult.ledger.find(event =>
+  event?.eventKind === 'action_start' &&
+  event?.actionId === counterWindow?.sourceActionId
+);
+const counterActionStart = counterResult.ledger.find(event =>
+  event?.eventKind === 'action_start' &&
+  event?.actionRole === 'COUNTER' &&
+  event?.sourceActionId === counterWindow?.sourceActionId &&
+  event?.actorName === counterWindow?.actorName
+);
+const counterTraceFact = counterResult.trace.find(node =>
+  Array.isArray(node?.ledgerEventIds) &&
+  node.ledgerEventIds.includes(counterFact?.eventId)
+);
 assert.ok(counterWindow, '固定种子没有打开防反窗口');
 assert.ok(counterDecision?.selected?.declaration, '防反机会没有进入新Decision或缺少评分审计');
 const counterDecline = counterDecision?.scoreAudit?.find(candidate => candidate?.counterDeclineFallback === true);
@@ -825,6 +839,16 @@ assert.ok(['', 'DOMINATED'].includes(counterDecline?.rejectionCode), '放弃防�
 assert.equal(Number(counterDecline?.objectiveUtility || 0), 0, '放弃防反被错误附加后续回应风险');
 assert.notEqual(counterDecision?.selected?.candidateId, counterDecline?.candidateId, '存在有效反击时仍选择放弃窗口');
 assert.ok(counterFact && counterDamage, '固定种子没有形成成功防反及唯一正伤害事实');
+assert.ok(counterSourceAction, '反击窗口无法追溯到原攻击声明');
+assert.equal(counterSourceAction.actorName, counterWindow.targetName, '反击窗口目标不是原攻击者');
+assert.notEqual(counterWindow.actorName, counterSourceAction.actorName, '反击窗口错误授予原攻击者自身');
+assert.ok(counterActionStart, '反击窗口没有由窗口拥有者消费');
+assert.equal(counterActionStart.targetName, counterSourceAction.actorName, '反击动作没有指向原攻击者');
+assert.equal(counterFact.actorName, counterWindow.actorName, '反击结算主体不是窗口拥有者');
+assert.equal(counterFact.targetName, counterSourceAction.actorName, '反击结算目标不是原攻击者');
+assert.equal(counterFact.sourceActionId, counterSourceAction.actionId, '反击事实没有保留原攻击动作sourceActionId');
+assert.equal(counterTraceFact?.actorName, counterFact.actorName, 'Trace反击主体与Ledger不一致');
+assert.equal(counterTraceFact?.targetName, counterFact.targetName, 'Trace反击目标与Ledger不一致');
 assert.ok(counterFact.actorSide && counterFact.targetSide && counterFact.actorSide !== counterFact.targetSide, '防反事实丢失敌对阵营关系');
 assert.ok(failedCounterFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `失败防反客观阵营错误:${JSON.stringify(failedCounterFacts)}`);
 assert.ok(counterReactionFacts.length > 0, '固定种子没有覆盖防反后二次反应事实');
@@ -884,6 +908,11 @@ const preparedDefense = defenseResult.ledger.find(event =>
   event?.meta?.preparedDefense === true
 );
 assert.ok(preparedDefense, '主动防御没有形成可供下一次来袭消费的准备姿态');
+assert.equal(
+  String(preparedDefense?.reactionNodeId || preparedDefense?.meta?.reactionWindowNodeId || ''),
+  '',
+  '主动防御错误生成针对自身声明的反应窗口'
+);
 const preparedDefenseConsumed = defenseResult.ledger.find(event =>
   ['defend', 'dodge'].includes(String(event?.eventKind || '')) &&
   event?.actorName === '韦小枫' &&

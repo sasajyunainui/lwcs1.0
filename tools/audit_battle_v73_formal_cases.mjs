@@ -588,6 +588,45 @@ const activeCounterRoots = (teamQueueResult.eventLedger || []).filter(event =>
 assert.equal(activeCounterRoots.length, 0, `防反被提升成ACTIVE根动作:${JSON.stringify(activeCounterRoots)}`);
 
 const injectionCounts = {
+  commitBeforeSeal: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'BATTLE_COMMIT_BEFORE_REPORT_SEAL', payload => {
+    payload.transactionAudit = {
+      commitAttempted: true,
+      sealStatus: 'DRAFT',
+      draftHash: 'draft-a',
+      reportHash: 'report-a',
+      committedDraftHash: 'draft-a',
+      committedReportHash: 'report-a',
+    };
+  }),
+  commitHashMismatch: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'BATTLE_COMMIT_HASH_MISMATCH', payload => {
+    payload.transactionAudit = {
+      commitAttempted: true,
+      sealStatus: 'SEALED',
+      draftHash: 'draft-a',
+      reportHash: 'report-a',
+      committedDraftHash: 'draft-b',
+      committedReportHash: 'report-a',
+    };
+  }),
+  factOwnerConflict: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'REPORT_FACT_OWNER_CONFLICT', payload => {
+    payload.factRegistry = [
+      { factId: 'injected-fact', canonicalFactOwner: 'exchange-a' },
+      { factId: 'injected-fact', canonicalFactOwner: 'exchange-b' },
+    ];
+  }),
+  playerVisibilityLeak: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'REPORT_VISIBILITY_LEAK', payload => {
+    payload.visibilityAudit = {
+      mode: 'PLAYER',
+      hiddenFactIds: ['injected-hidden-fact'],
+      publicFactIds: ['injected-hidden-fact'],
+      aiFactIds: [],
+    };
+  }),
+  hiddenBeliefRead: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'BELIEF_HIDDEN_STATE_LEAK', payload => {
+    payload.beliefAudit = {
+      hiddenStateReads: ['enemy.preciseResource.sp'],
+    };
+  }),
   duplicateDamage: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'DUPLICATE_DAMAGE_FACT', payload => {
     const common = {
       round: 1,
@@ -619,6 +658,31 @@ const injectionCounts = {
       actionName: '伺机闪避', result: 'evaded', meta: { dodgeRate: 0, dodgeRoll: 0 },
       actorControl: 'AI', actionRole: 'REACTION', sourceActionId: 'injected-zero-action', parentNodeId: '', reactionNodeId: '', ruleCode: 'REACTION_SUCCEEDED',
     });
+  }),
+  activeDefenseSelfReaction: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'REACTION_SELF_SOURCE_INVALID', payload => {
+    payload.eventLedger.push({
+      eventId: 'injected-active-defense', eventKind: 'defend', round: 1, actorName: '韦小枫', targetName: '韦小枫',
+      actionName: '防御', result: 'complete', actorControl: 'AI', actionRole: 'ACTIVE', sourceActionId: '',
+      parentNodeId: 'injected-active-defense-root', reactionNodeId: 'injected-self-reaction-window', ruleCode: 'REACTION_SUCCEEDED',
+      meta: { preparedDefense: true, reactionWindowNodeId: 'injected-self-reaction-window' },
+    });
+  }),
+  counterActorSource: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'COUNTER_ACTOR_SOURCE_INVALID', payload => {
+    payload.eventLedger.push(
+      {
+        eventId: 'injected-counter-source', eventKind: 'action_start', actionId: 'injected-counter-source-action',
+        round: 1, actorName: '唐凌雪', targetName: '韦小枫', targetIds: ['韦小枫'], actionName: '裂地冲拳',
+        result: 'declared', actorControl: 'AI', actionRole: 'ACTIVE', sourceActionId: '', parentNodeId: '',
+        reactionNodeId: '', ruleCode: 'ACTION_COMMITTED',
+      },
+      {
+        eventId: 'injected-invalid-counter-window', eventKind: 'counter_window', round: 1,
+        actorName: '唐凌雪', targetName: '唐凌雪', targetIds: ['唐凌雪'], actionName: '反击窗口',
+        result: 'opened', actorControl: 'SYSTEM', actionRole: 'REACTION',
+        sourceActionId: 'injected-counter-source-action', parentNodeId: 'injected-counter-source',
+        reactionNodeId: '', ruleCode: 'COUNTER_WINDOW_OPENED',
+      },
+    );
   }),
   terminalConflict: injectAndRequire(sandbox.__LWCS_BATTLE_RUNTIME__.auditFacts, formalResult, 'ACTION_TERMINAL_CONFLICT', payload => {
     const common = { round: 1, sourceActionId: 'injected-conflict-action', parentNodeId: '', reactionNodeId: '', ruleCode: '' };

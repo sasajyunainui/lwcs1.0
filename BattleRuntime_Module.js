@@ -7810,6 +7810,10 @@
     const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
     const reportBlocks = Array.isArray(payload.reportBlocks) ? payload.reportBlocks.filter(Boolean) : [];
     const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
+    const factRegistry = Array.isArray(payload.factRegistry) ? payload.factRegistry.filter(Boolean) : [];
+    const transactionAudit = payload.transactionAudit && typeof payload.transactionAudit === 'object' ? payload.transactionAudit : null;
+    const visibilityAudit = payload.visibilityAudit && typeof payload.visibilityAudit === 'object' ? payload.visibilityAudit : null;
+    const beliefAudit = payload.beliefAudit && typeof payload.beliefAudit === 'object' ? payload.beliefAudit : null;
     const initialSnapshot = payload.initialSnapshot && typeof payload.initialSnapshot === 'object' ? payload.initialSnapshot : null;
     const finalSnapshot = payload.finalSnapshot && typeof payload.finalSnapshot === 'object' ? payload.finalSnapshot : null;
     const fatals = [];
@@ -7842,6 +7846,60 @@
     };
     collectBlockSources(publicReportBlocks);
     collectBlockSources(reportBlocks);
+
+    if (transactionAudit?.commitAttempted === true) {
+      const sealStatus = String(transactionAudit?.sealStatus || '').trim().toUpperCase();
+      if (sealStatus !== 'SEALED') {
+        pushFatal('BATTLE_COMMIT_BEFORE_REPORT_SEAL', { sealStatus: sealStatus || 'MISSING' });
+      } else {
+        const draftHash = String(transactionAudit?.draftHash || '').trim();
+        const reportHash = String(transactionAudit?.reportHash || '').trim();
+        const committedDraftHash = String(transactionAudit?.committedDraftHash || '').trim();
+        const committedReportHash = String(transactionAudit?.committedReportHash || '').trim();
+        if (!draftHash || !reportHash || draftHash !== committedDraftHash || reportHash !== committedReportHash) {
+          pushFatal('BATTLE_COMMIT_HASH_MISMATCH', {
+            draftHash,
+            reportHash,
+            committedDraftHash,
+            committedReportHash,
+          });
+        }
+      }
+    }
+    const factOwners = new Map();
+    factRegistry.forEach((fact, index) => {
+      const factId = String(fact?.factId || fact?.sourceEventId || '').trim();
+      const ownerId = String(fact?.canonicalFactOwner || fact?.ownerId || '').trim();
+      if (!factId || !ownerId) return;
+      if (factOwners.has(factId) && factOwners.get(factId) !== ownerId) {
+        pushFatal('REPORT_FACT_OWNER_CONFLICT', {
+          factId,
+          ownerId,
+          existingOwnerId: factOwners.get(factId),
+          index,
+        });
+        return;
+      }
+      factOwners.set(factId, ownerId);
+    });
+    if (String(visibilityAudit?.mode || '').trim().toUpperCase() === 'PLAYER') {
+      const hiddenFactIds = new Set((Array.isArray(visibilityAudit?.hiddenFactIds) ? visibilityAudit.hiddenFactIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean));
+      const leakedFactIds = [
+        ...(Array.isArray(visibilityAudit?.publicFactIds) ? visibilityAudit.publicFactIds : []),
+        ...(Array.isArray(visibilityAudit?.aiFactIds) ? visibilityAudit.aiFactIds : []),
+      ].map(value => String(value || '').trim()).filter(factId => hiddenFactIds.has(factId));
+      if (leakedFactIds.length) {
+        pushFatal('REPORT_VISIBILITY_LEAK', { factIds: [...new Set(leakedFactIds)] });
+      }
+    }
+    const hiddenBeliefReads = (Array.isArray(beliefAudit?.hiddenStateReads) ? beliefAudit.hiddenStateReads : [])
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+    if (hiddenBeliefReads.length) {
+      pushFatal('BELIEF_HIDDEN_STATE_LEAK', { reads: [...new Set(hiddenBeliefReads)] });
+    }
 
     const normalizeBalanceResourceKey = value => {
       const text = String(value || '').trim();
@@ -8219,6 +8277,121 @@
       const missing = ['targetIds', 'actorControl', 'actionRole', 'sourceActionId', 'parentNodeId', 'reactionNodeId', 'ruleCode', 'resultState', 'factType']
         .filter(key => event?.[key] === undefined || event?.[key] === null);
       if (missing.length) pushFatal('LEDGER_CONTRACT_INCOMPLETE', { eventId: event?.eventId || '', missing });
+    });
+
+    const actionStartsById = new Map(eventLedger
+      .filter(event => ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()))
+      .map(event => [String(event?.actionId || '').trim(), event])
+      .filter(([actionId]) => !!actionId));
+    const sourceTargetsActor = (sourceAction, actorName) => [
+      sourceAction?.targetName,
+      ...(Array.isArray(sourceAction?.targetIds) ? sourceAction.targetIds : []),
+    ].some(target => isSameReportName(target || '', actorName || ''));
+    eventLedger.forEach(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const role = normalizeActionRole(event?.actionRole || 'ACTIVE');
+      const actorName = String(event?.actorName || '').trim();
+      const targetName = String(event?.targetName || '').trim();
+      const sourceActionId = String(event?.sourceActionId || '').trim();
+      const sourceAction = sourceActionId ? actionStartsById.get(sourceActionId) : null;
+      const reactionNodeId = String(event?.reactionNodeId || event?.meta?.reactionWindowNodeId || '').trim();
+      if (
+        ['defend', 'dodge'].includes(kind) &&
+        role === 'ACTIVE' &&
+        event?.meta?.preparedDefense === true &&
+        reactionNodeId
+      ) {
+        pushFatal('REACTION_SELF_SOURCE_INVALID', {
+          eventId: event?.eventId || '',
+          actorName,
+          sourceActionId,
+          reactionNodeId,
+          reason: 'ACTIVE_STANCE_CREATED_REACTION_WINDOW',
+        });
+      }
+      if (['dodge', 'defend', 'pass'].includes(kind) && role === 'REACTION') {
+        const sourceActorName = String(sourceAction?.actorName || '').trim();
+        if (
+          !sourceAction ||
+          !actorName ||
+          !sourceActorName ||
+          isSameReportName(actorName, sourceActorName) ||
+          !isSameReportName(targetName, sourceActorName) ||
+          !sourceTargetsActor(sourceAction, actorName)
+        ) {
+          pushFatal('REACTION_SELF_SOURCE_INVALID', {
+            eventId: event?.eventId || '',
+            actorName,
+            targetName,
+            sourceActionId,
+            sourceActorName,
+            reason: !sourceAction ? 'REACTION_SOURCE_ACTION_MISSING' : 'REACTION_SOURCE_CAUSAL_MISMATCH',
+          });
+        }
+      }
+      if (kind === 'counter_window') {
+        const sourceActorName = String(sourceAction?.actorName || '').trim();
+        if (
+          !sourceAction ||
+          !actorName ||
+          !sourceActorName ||
+          isSameReportName(actorName, sourceActorName) ||
+          !isSameReportName(targetName, sourceActorName) ||
+          !sourceTargetsActor(sourceAction, actorName)
+        ) {
+          pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
+            eventId: event?.eventId || '',
+            actorName,
+            targetName,
+            sourceActionId,
+            sourceActorName,
+            reason: !sourceAction ? 'COUNTER_SOURCE_ACTION_MISSING' : 'COUNTER_WINDOW_CAUSAL_MISMATCH',
+          });
+        }
+      }
+      if ((kind === 'action_start' && role === 'COUNTER') || kind === 'counter') {
+        const sourceActorName = String(sourceAction?.actorName || '').trim();
+        if (
+          !sourceAction ||
+          !actorName ||
+          !sourceActorName ||
+          isSameReportName(actorName, sourceActorName) ||
+          !isSameReportName(targetName, sourceActorName) ||
+          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName))
+        ) {
+          pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
+            eventId: event?.eventId || '',
+            actorName,
+            targetName,
+            sourceActionId,
+            sourceActorName,
+            reason: !sourceAction ? 'COUNTER_SOURCE_ACTION_MISSING' : 'COUNTER_ACTION_CAUSAL_MISMATCH',
+          });
+        }
+      }
+    });
+    const ledgerByEventId = new Map(eventLedger
+      .map(event => [String(event?.eventId || '').trim(), event])
+      .filter(([eventId]) => !!eventId));
+    resolutionTrace.forEach(node => {
+      (Array.isArray(node?.ledgerEventIds) ? node.ledgerEventIds : []).forEach(eventId => {
+        const event = ledgerByEventId.get(String(eventId || '').trim());
+        if (String(event?.eventKind || '').trim() !== 'counter') return;
+        if (
+          !isSameReportName(node?.actorName || '', event?.actorName || '') ||
+          !isSameReportName(node?.targetName || '', event?.targetName || '')
+        ) {
+          pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
+            eventId: event?.eventId || '',
+            nodeId: node?.nodeId || '',
+            ledgerActorName: event?.actorName || '',
+            ledgerTargetName: event?.targetName || '',
+            traceActorName: node?.actorName || '',
+            traceTargetName: node?.targetName || '',
+            reason: 'COUNTER_TRACE_LEDGER_MISMATCH',
+          });
+        }
+      });
     });
 
     const scoreFields = ['candidateId', 'actionKind', 'actionRole', 'actorId', 'targetIds', 'utilityBefore', 'utilityAfter', 'objectiveUtility', 'normalizedUtility', 'vector', 'rejectionCode', 'classification', 'alternativeGap', 'selected'];
