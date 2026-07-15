@@ -1142,6 +1142,298 @@
     return Math.max(8, Math.min(100, relativeThreat), ...knownResponses.map(response => Math.max(0, Number(response?.baseActionValue || 0))));
   }
 
+  function normalizedCost(unit = {}, costs = {}) {
+    return Object.entries(costs || {}).reduce((sum, [resource, cost]) => {
+      const maximum = Math.max(1, preview.readResourceMax(unit, resource));
+      const text = String(cost ?? '').trim();
+      const amount = text.includes('%')
+        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
+        : Math.max(0, Number(cost || 0));
+      return sum + amount / maximum;
+    }, 0);
+  }
+
+  function frozenActionCatalog(worldSnapshot = {}, unit = {}, perspectiveSide = '', beliefState = {}) {
+    const unitId = preview.unitId(unit);
+    const unitSide = sideOf(worldSnapshot, unit);
+    if (unitSide !== perspectiveSide) {
+      const beliefUnit = beliefState?.units?.[unitId] || {};
+      const potential = perceivedEnemyBaseValue(beliefUnit);
+      return [{ actionKey: `${unitId}:perceived`, actionKind: 'PERCEIVED_ACTION', targetIds: [], potential, costs: {}, costRatio: 0 }];
+    }
+    const enemies = aliveEntries(worldSnapshot).filter(entry => entry.side !== unitSide).map(entry => entry.unit);
+    const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === unitSide).map(entry => entry.unit);
+    const actions = [];
+    if (!hasStateFlag(unit, 'disarm')) {
+      enemies.forEach(target => actions.push({
+        actionKey: `${unitId}:basic:${preview.unitId(target)}`,
+        actionKind: 'BASIC_ATTACK',
+        targetIds: [preview.unitId(target)],
+        potential: preview.calculateDirectPotential(unit, target, { actionKind: 'BASIC_ATTACK' }),
+        costs: {},
+        costRatio: 0,
+      }));
+    }
+    if (!hasStateFlag(unit, 'silence')) {
+      collectSkills(unit).forEach((skill, index) => {
+        const costs = parseSkillCosts(skill);
+        const profile = targetProfile(skill);
+        const targets = profile === 'SELF'
+          ? [unit]
+          : profile.startsWith('FRIENDLY')
+            ? allies
+            : profile === 'ANY_SINGLE'
+              ? [...allies, ...enemies]
+              : enemies;
+        const targetSets = profile.endsWith('GROUP') ? [targets] : targets.map(target => [target]);
+        targetSets.filter(targetSet => targetSet.length > 0).forEach((targetSet, targetIndex) => {
+          const potential = targetSet.reduce((sum, target) =>
+            sum + preview.calculateDirectPotential(unit, target, { actionKind: 'RELEASE_SKILL', skill }), 0);
+          actions.push({
+            actionKey: `${unitId}:skill:${skillId(skill, index)}:${targetIndex}`,
+            actionKind: 'RELEASE_SKILL',
+            skill,
+            targetIds: targetSet.map(preview.unitId),
+            potential,
+            costs,
+            costRatio: normalizedCost(unit, costs),
+          });
+        });
+      });
+    }
+    return actions.filter(action => action.potential > 0).filter((action, index, all) => !all.some((other, otherIndex) =>
+      otherIndex !== index &&
+      other.potential >= action.potential - 1e-9 &&
+      other.costRatio <= action.costRatio + 1e-9 &&
+      (other.potential > action.potential + 1e-9 || other.costRatio < action.costRatio - 1e-9)
+    )).sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio).slice(0, 3);
+  }
+
+  function recoveryLockRatio(unit = {}, resource = '') {
+    return Math.min(1, stateEntries(unit).reduce((maximum, state) => {
+      const rules = Array.isArray(state?.资源锁定规则) ? state.资源锁定规则 : [];
+      return Math.max(maximum, ...rules.map(rule => {
+        const resources = Array.isArray(rule?.资源) ? rule.资源 : [];
+        return resources.includes(resource) && String(rule?.锁定类型 || '').trim() === '回复锁定'
+          ? Math.max(0, Number(rule?.比例 || 0))
+          : 0;
+      }));
+    }, 0));
+  }
+
+  function snapshotAfterDeterministicRecovery(worldSnapshot = {}, actorId = '') {
+    return mapWorldUnits(worldSnapshot, unit => {
+      if (preview.unitId(unit) !== actorId) return unit;
+      const next = {
+        ...unit,
+        属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
+      };
+      const coreCount = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
+      [
+        { resource: '魂力', key: 'sp', attributeKey: '魂力', ratio: 0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0) },
+        { resource: '精神力', key: 'men', attributeKey: '精神力', ratio: 0.005 + (coreCount >= 2 ? 0.01 : 0) },
+      ].forEach(entry => {
+        const maximum = preview.readResourceMax(next, entry.resource);
+        const current = preview.readResource(next, entry.resource);
+        const recovery = Math.floor(maximum * entry.ratio * (1 - recoveryLockRatio(next, entry.resource)));
+        const value = Math.min(maximum, current + Math.max(0, recovery));
+        next[entry.key] = value;
+        if (next.属性 && typeof next.属性 === 'object') next.属性[entry.attributeKey] = value;
+      });
+      return next;
+    });
+  }
+
+  function actionLegalFromFrozen(worldSnapshot = {}, unit = {}, action = {}) {
+    if (!preview.isAlive(unit)) return false;
+    if (action.actionKind === 'BASIC_ATTACK' && hasStateFlag(unit, 'disarm')) return false;
+    if (action.actionKind === 'RELEASE_SKILL' && (hasStateFlag(unit, 'silence') || !costAffordable(unit, action.skill))) return false;
+    return (action.targetIds || []).every(targetId => {
+      const target = preview.findUnit(worldSnapshot, targetId);
+      return target && preview.isAlive(target);
+    });
+  }
+
+  function cancellationProbabilityAtOpportunity(unit = {}, opportunityIndex = 1) {
+    return 1 - stateEntries(unit).reduce((remaining, state) => {
+      const name = String(state?.状态 || state?.状态名称 || '').trim();
+      const effects = state?.战斗效果 || {};
+      const cancels = isHardControlStateName(name) ||
+        state?.cannot_act === true || state?.skip_turn === true ||
+        effects?.cannot_act === true || effects?.skip_turn === true;
+      const duration = Math.max(1, Number(state?.duration ?? state?.持续回合 ?? 1));
+      if (!cancels || duration < opportunityIndex) return remaining;
+      return remaining * (1 - clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1));
+    }, 1);
+  }
+
+  function sequenceProfileFromFrozen(worldSnapshot = {}, unit = {}, catalog = []) {
+    const legalFirst = catalog.filter(action => actionLegalFromFrozen(worldSnapshot, unit, action)).slice(0, 3);
+    if (!legalFirst.length) return { firstPotential: 0, secondPotential: 0, sequencePotential: 0, actionKeys: [] };
+    return legalFirst.reduce((best, first) => {
+      const paid = snapshotAfterResourceCosts(worldSnapshot, preview.unitId(unit), first.costs || {});
+      const recovered = snapshotAfterDeterministicRecovery(paid, preview.unitId(unit));
+      const secondUnit = preview.findUnit(recovered, preview.unitId(unit));
+      const second = catalog.filter(action => actionLegalFromFrozen(recovered, secondUnit, action))
+        .sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio)[0] || null;
+      const sequencePotential = preview.calculateSequencePotential({
+        firstOpportunityPotential: first.potential,
+        secondOpportunityPotential: second?.potential || 0,
+      });
+      return sequencePotential > best.sequencePotential
+        ? {
+            firstPotential: first.potential,
+            secondPotential: second?.potential || 0,
+            sequencePotential,
+            actionKeys: [first.actionKey, second?.actionKey || ''].filter(Boolean),
+          }
+        : best;
+    }, { firstPotential: 0, secondPotential: 0, sequencePotential: 0, actionKeys: [] });
+  }
+
+  function buildNextValueContext(worldSnapshot = {}, perspectiveSide = '', beliefState = {}) {
+    const catalogs = {};
+    const frozenDirectPotential = {};
+    worldEntries(worldSnapshot).forEach(entry => {
+      const id = preview.unitId(entry.unit);
+      const catalog = frozenActionCatalog(worldSnapshot, entry.unit, perspectiveSide, beliefState);
+      catalogs[id] = catalog;
+      frozenDirectPotential[id] = Math.max(0, ...catalog.map(action => action.potential));
+    });
+    return Object.freeze({
+      perspectiveSide,
+      catalogs: Object.freeze(catalogs),
+      frozenDirectPotential: Object.freeze(frozenDirectPotential),
+    });
+  }
+
+  function teamCapacityNext(worldSnapshot, side, perspectiveSide, beliefState = {}, nextValueContext = null) {
+    const valueContext = nextValueContext || buildNextValueContext(worldSnapshot, perspectiveSide, beliefState);
+    const entries = aliveEntries(worldSnapshot);
+    const sideEntries = entries.filter(entry => entry.side === side);
+    const opposingEntries = entries.filter(entry => entry.side !== side);
+    return sideEntries.reduce((sum, entry) => {
+      const unit = entry.unit;
+      const id = preview.unitId(unit);
+      const profile = sequenceProfileFromFrozen(worldSnapshot, unit, valueContext.catalogs[id] || []);
+      const incomingThreatPercent = opposingEntries.reduce((maximum, opposingEntry) => {
+        const threat = Number(valueContext.frozenDirectPotential[preview.unitId(opposingEntry.unit)] || 0);
+        return Math.max(maximum, threat * actionQualityMultiplier(opposingEntry.unit));
+      }, 0);
+      const effectiveHpRatio = clamp(
+        (preview.readHp(unit) + effectiveShieldValue(unit) - pendingHpLossBeforeNextAction(unit)) / preview.readHpMax(unit),
+        0,
+        1,
+      );
+      const responseMargin = effectiveHpRatio - incomingThreatPercent / 100;
+      const survivesNextResponse = clamp(1 / (1 + Math.exp(-32 * responseMargin)), 0.02, 0.98);
+      const survivalProbability = clamp(0.35 * effectiveHpRatio + 0.65 * survivesNextResponse, 0, 1);
+      return sum + preview.calculateTwoOpportunityCapacity({
+        unit,
+        survivalProbability,
+        firstOpportunityAvailability: 1 - cancellationProbabilityAtOpportunity(unit, 1),
+        secondOpportunityAvailability: 1 - cancellationProbabilityAtOpportunity(unit, 2),
+        firstOpportunityPotential: profile.firstPotential,
+        secondOpportunityPotential: profile.secondPotential,
+      });
+    }, 0);
+  }
+
+  function stateUtilityNext(worldSnapshot, actorSide, beliefState = {}, nextValueContext = null) {
+    const valueContext = nextValueContext || buildNextValueContext(worldSnapshot, actorSide, beliefState);
+    const sides = [...new Set(worldEntries(worldSnapshot).map(entry => entry.side))];
+    const own = teamCapacityNext(worldSnapshot, actorSide, actorSide, beliefState, valueContext);
+    const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) =>
+      sum + teamCapacityNext(worldSnapshot, side, actorSide, beliefState, valueContext), 0);
+    return { own, enemy, total: own + enemy, utility: own - enemy, nonDuplicatedGoalProgress: 0 };
+  }
+
+  function scoreCandidatesNext(input = {}) {
+    const worldSnapshot = input?.worldSnapshot;
+    const sourceActor = preview.findUnit(worldSnapshot, input?.actorId || '');
+    if (!worldSnapshot || !sourceActor || !preview.isAlive(sourceActor)) throw new Error('battle_next_value_context_invalid');
+    const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(sourceActor), input?.beliefState || {});
+    const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(sourceActor), beliefState);
+    const actor = preview.findUnit(decisionWorld, preview.unitId(sourceActor));
+    const actorSide = sideOf(decisionWorld, actor);
+    const valueContext = buildNextValueContext(decisionWorld, actorSide, beliefState);
+    const before = stateUtilityNext(decisionWorld, actorSide, beliefState, valueContext);
+    const candidates = enumerateCandidates({
+      ...input,
+      worldSnapshot: decisionWorld,
+      actorId: preview.unitId(actor),
+      beliefState,
+    });
+    return candidates.map(candidate => {
+      const result = ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate?.declaration?.actionKind)
+        ? preview.previewAction({
+            worldSnapshot: decisionWorld,
+            worldRevision: String(input?.worldRevision || `next:${preview.stableHash(decisionWorld)}`),
+            beliefSnapshot: beliefState,
+            actorId: preview.unitId(actor),
+            declaration: candidate.declaration,
+            actionFingerprint: `next:${candidate.candidateId}`,
+            battleIntent: input?.battleIntent,
+            horizon: 'SHALLOW',
+            previewBudget: { maxNodes: 12 },
+          })
+        : null;
+      const afterSnapshot = result?.afterSnapshot || decisionWorld;
+      const after = stateUtilityNext(afterSnapshot, actorSide, beliefState, valueContext);
+      const directPotential = (candidate?.declaration?.targetIds || []).reduce((sum, targetId) => {
+        const target = preview.findUnit(decisionWorld, targetId);
+        return target ? sum + preview.calculateDirectPotential(actor, target, candidate.declaration) : sum;
+      }, 0);
+      const atomicActionPotential = preview.calculateAtomicActionPotential({
+        directPotential,
+        contributions: result?.contributions || [],
+        frozenDirectPotential: valueContext.frozenDirectPotential,
+      });
+      const informationValue = candidate?.declaration?.actionKind === 'OBSERVE' ? estimateInformationValue({
+        worldSnapshot: decisionWorld,
+        actorId: preview.unitId(actor),
+        beliefState,
+      }) : 0;
+      const irreversibleAssetCost = (result?.contributions || [])
+        .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
+        .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
+      const rawObjectiveUtility = clamp(
+        100 * (after.utility - before.utility) / Math.max(1, before.total) +
+        informationValue -
+        irreversibleAssetCost,
+        -200,
+        200,
+      );
+      const hasCost = Object.keys(candidate?.costs || {}).length > 0 || irreversibleAssetCost > 0;
+      const rejectionCode = hasCost && rawObjectiveUtility <= 1e-9 ? 'ZERO_EFFECT_COSTLY' : '';
+      return Object.freeze({
+        ...candidate,
+        preview: result,
+        utilityBefore: before.utility,
+        utilityAfter: after.utility,
+        rawObjectiveUtility,
+        objectiveUtility: rawObjectiveUtility,
+        rejectionCode,
+        atomicActionPotential,
+        vector: Object.freeze({
+          rawObjectiveUtility,
+          informationValue,
+          resourceContinuity: after.own - before.own,
+          survivalLowerBound: Math.max(0, after.own),
+          irreversibleAssetCost,
+          worstTailCapacityLoss: 0,
+        }),
+        nextValueAudit: Object.freeze({
+          before: Object.freeze(before),
+          after: Object.freeze(after),
+          frozenDirectPotential: valueContext.frozenDirectPotential,
+          atomicActionPotential,
+          valueAddedOutsideStateDelta: informationValue - irreversibleAssetCost,
+        }),
+      });
+    });
+  }
+
   function teamCapacity(worldSnapshot, side, perspectiveSide, beliefState = {}, options = {}) {
     const entries = aliveEntries(worldSnapshot);
     const sideEntries = entries.filter(entry => entry.side === side);
@@ -2601,6 +2893,9 @@
     strategicSignature,
     detectStalemate,
     stateUtility,
+    buildNextValueContext,
+    stateUtilityNext,
+    scoreCandidatesNext,
     dominates,
     paretoFilter,
     normalizeUtilities,

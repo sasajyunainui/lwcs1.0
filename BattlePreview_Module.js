@@ -1473,6 +1473,48 @@
     return survivalFactor * actionAvailability * bestLegalBaseActionValue;
   }
 
+  function calculateDirectPotential(actor = {}, target = {}, declaration = {}) {
+    return Math.max(0, calculateBaseActionValue(actor, target, { ...declaration, capacityMode: true }));
+  }
+
+  function calculateAtomicActionPotential(input = {}) {
+    const frozenDirectPotential = input?.frozenDirectPotential && typeof input.frozenDirectPotential === 'object'
+      ? input.frozenDirectPotential
+      : {};
+    const readFrozen = targetId => Math.max(0, Number(frozenDirectPotential[String(targetId || '').trim()] || 0));
+    const contributions = Array.isArray(input?.contributions) ? input.contributions : [];
+    const directPotential = Math.max(0, Number(input?.directPotential || 0));
+    const denied = new Set();
+    const granted = new Set();
+    contributions.forEach(entry => {
+      const outcomeKind = String(entry?.outcomeKind || '').trim();
+      const targetId = String(entry?.targetId || '').trim();
+      if (!targetId) return;
+      if (outcomeKind === 'ACTION_CANCELLED') denied.add(targetId);
+      if (['ACTION_GRANTED', 'RESOURCE_OPTION_CHANGED'].includes(outcomeKind)) granted.add(targetId);
+    });
+    return directPotential +
+      [...denied].reduce((sum, targetId) => sum + readFrozen(targetId), 0) +
+      [...granted].reduce((sum, targetId) => sum + readFrozen(targetId), 0);
+  }
+
+  function calculateSequencePotential(input = {}) {
+    return Math.max(0, Number(input?.firstOpportunityPotential || 0)) +
+      0.5 * Math.max(0, Number(input?.secondOpportunityPotential || 0));
+  }
+
+  function calculateTwoOpportunityCapacity(input = {}) {
+    const unit = input?.unit || {};
+    if (!isAlive(unit)) return 0;
+    const survivalProbability = clamp(input?.survivalProbability ?? readHp(unit) / readHpMax(unit), 0, 1);
+    const firstAvailability = clamp(input?.firstOpportunityAvailability ?? 1, 0, 1);
+    const secondAvailability = clamp(input?.secondOpportunityAvailability ?? 1, 0, 1);
+    return survivalProbability * (
+      firstAvailability * Math.max(0, Number(input?.firstOpportunityPotential || 0)) +
+      0.5 * secondAvailability * Math.max(0, Number(input?.secondOpportunityPotential || 0))
+    );
+  }
+
   function buildCacheKey(input = {}) {
     return [
       input.worldRevision || stableHash(input.worldSnapshot || {}),
@@ -1723,7 +1765,11 @@
     calculateBaseDamage,
     estimateHitProbability,
     calculateBaseActionValue,
+    calculateDirectPotential,
+    calculateAtomicActionPotential,
+    calculateSequencePotential,
     calculateUnitCapacity,
+    calculateTwoOpportunityCapacity,
     calculateWithdrawalPressure,
     calculateWithdrawalPressureDetails,
     estimateWithdrawal,
