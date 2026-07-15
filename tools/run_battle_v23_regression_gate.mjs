@@ -10,7 +10,13 @@ const acceptSamples = args.includes('--accept-samples');
 const full = args.includes('--full');
 const requestedCaseIndex = args.indexOf('--case');
 const requestedCase = requestedCaseIndex >= 0 ? String(args[requestedCaseIndex + 1] || '').trim() : '';
+const requestedPhaseIndex = args.indexOf('--phase');
+const requestedPhase = requestedPhaseIndex >= 0 ? Number(args[requestedPhaseIndex + 1]) : 0;
 const mode = requestedCase ? 'case' : full ? 'full' : 'quick';
+if (!Number.isInteger(requestedPhase) || requestedPhase < 0 || requestedPhase > 10) {
+  console.error('[battle-gate] --phase 必须是0至10的整数');
+  process.exit(2);
+}
 if (acceptSamples && mode !== 'full') {
   console.error('[battle-gate] --accept-samples 只能与 --full 同时使用');
   process.exit(2);
@@ -53,6 +59,7 @@ const utf8ScanTargets = [
   'lwcs/tools/battle_r63_manual_review_notes.mjs',
   'lwcs/tools/battle_r63_manual_review_template.md',
   'lwcs/tools/run_battle_r63_manual_review.mjs',
+  'lwcs/tools/audit_battle_r74_manual_review_status.mjs',
   'tools/audit_battle_behavior_logic_matrix.mjs',
   'tools/audit_battle_v73_determinism.mjs',
   'tools/audit_battle_report_samples.mjs',
@@ -102,7 +109,13 @@ const commandDefinitions = [
     groups: ['quick', 'full'],
   },
   { name: 'auditBattleMultiroundTrace', command: [process.execPath, ['tools/audit_battle_multiround_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['full'] },
-  { name: 'auditBattleR63ManualReview', command: [process.execPath, ['lwcs/tools/run_battle_r63_manual_review.mjs', '--verify-hashes']], parseJson: true, timeoutMs: 600000, groups: ['full'] },
+  {
+    name: 'auditBattleR74ManualReviewStatus',
+    command: [process.execPath, ['lwcs/tools/audit_battle_r74_manual_review_status.mjs', '--phase', String(requestedPhase)]],
+    parseJson: true,
+    timeoutMs: 30000,
+    groups: ['full'],
+  },
   { name: 'auditBattleV23SourceClosure', command: [process.execPath, ['lwcs/tools/audit_battle_v23_source_closure.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23PlanCoverage', command: [process.execPath, ['tools/audit_battle_v23_plan_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
   { name: 'auditBattleV23OldExitCoverage', command: [process.execPath, ['tools/audit_battle_v23_old_exit_coverage.mjs']], parseJson: true, timeoutMs: 60000, groups: ['full'] },
@@ -247,15 +260,22 @@ const runBattleAiSummaryContract = () => {
 const results = [];
 const writeOutput = () => {
   const failed = results.filter(result => !result.passed);
+  const manualReviewResult = results.find(result => result.name === 'auditBattleR74ManualReviewStatus');
+  const manualReviewStatus = String(manualReviewResult?.summary?.manualReviewStatus || 'NOT_SCHEDULED');
+  const phaseExitStatus = failed.length > 0 ? 'BLOCKED' : 'PASSED';
   const output = {
     generatedAt: new Date().toISOString(),
     mode,
+    phase: requestedPhase,
     requestedCase: requestedCase || null,
     acceptSamples,
     summary: {
       commandCount: results.length,
       passedCount: results.length - failed.length,
       failedCount: failed.length,
+      automaticStatus: failed.some(result => result.name !== 'auditBattleR74ManualReviewStatus') ? 'BLOCKED' : 'PASSED',
+      manualReviewStatus,
+      phaseExitStatus,
     },
     results,
   };
