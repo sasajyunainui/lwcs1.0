@@ -154,7 +154,10 @@ assert.ok(cheap && expensive, '资源连续性案例缺少高低消耗候选');
 assert.ok(cheap.objectiveUtility > expensive.objectiveUtility, `高消耗未因两机会行为库收缩而降分:${cheap.objectiveUtility}/${expensive.objectiveUtility}`);
 assert.equal(
   cheap.objectiveUtility,
-  100 * (cheap.nextValueAudit.after.utility - cheap.nextValueAudit.before.utility) / Math.max(1, cheap.nextValueAudit.before.total),
+  100 * (
+    cheap.nextValueAudit.expectedAfterResponseUtility -
+    cheap.nextValueAudit.expectedNoOpResponseUtility
+  ) / Math.max(1, cheap.nextValueAudit.before.total),
   'Next客观分在状态容量差量外重复加值'
 );
 
@@ -194,6 +197,15 @@ assert.ok(unlock.nextValueAudit.after.own > unlock.nextValueAudit.before.own, '�
 const context = decision.buildNextValueContext(costWorld, 'player', {});
 assert.ok(Object.values(context.catalogs).every(catalog => catalog.length <= 3), '冻结动作目录超过每机会三个非支配动作');
 assert.ok(Object.values(context.frozenDirectPotential).every(Number.isFinite), '冻结直接潜力包含非有限值');
+const reactionActor = costWorld.参战者.team_player[0];
+const reactionSource = costWorld.参战者.team_enemy[0];
+const ordinaryDefense = preview.calculateDefenseDamageMultiplier(reactionActor, reactionSource, false);
+const preparedDefense = preview.calculateDefenseDamageMultiplier(reactionActor, reactionSource, true);
+const ordinaryDodge = preview.calculateDodgeProbability(reactionActor, reactionSource, false);
+const preparedDodge = preview.calculateDodgeProbability(reactionActor, reactionSource, true);
+assert.ok(preparedDefense < ordinaryDefense, '主动防御没有形成高于临时反应的真实减伤');
+assert.ok(preparedDodge > ordinaryDodge, '主动闪避没有形成高于临时反应的真实成功率');
+assert.equal(preview.calculateReactionContest(reactionActor, reactionSource).probability, ordinaryDodge, 'Runtime与Preview反应概率真源不一致');
 
 console.log(JSON.stringify({
   summary: {
@@ -205,7 +217,7 @@ console.log(JSON.stringify({
     noConsumerUtility: noConsumer.objectiveUtility,
     unlockUtility: unlock.objectiveUtility,
     frozenUnitCount: Object.keys(context.catalogs).length,
-    assertions: 17,
+    assertions: 20,
     passed: true,
   },
 }, null, 2));

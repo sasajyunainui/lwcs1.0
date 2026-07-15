@@ -1201,12 +1201,7 @@
         });
       });
     }
-    return actions.filter(action => action.potential > 0).filter((action, index, all) => !all.some((other, otherIndex) =>
-      otherIndex !== index &&
-      other.potential >= action.potential - 1e-9 &&
-      other.costRatio <= action.costRatio + 1e-9 &&
-      (other.potential > action.potential + 1e-9 || other.costRatio < action.costRatio - 1e-9)
-    )).sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio).slice(0, 3);
+    return actions;
   }
 
   function recoveryLockRatio(unit = {}, resource = '') {
@@ -1292,13 +1287,56 @@
   }
 
   function buildNextValueContext(worldSnapshot = {}, perspectiveSide = '', beliefState = {}) {
-    const catalogs = {};
+    const rawCatalogs = {};
     const frozenDirectPotential = {};
     worldEntries(worldSnapshot).forEach(entry => {
       const id = preview.unitId(entry.unit);
       const catalog = frozenActionCatalog(worldSnapshot, entry.unit, perspectiveSide, beliefState);
-      catalogs[id] = catalog;
+      rawCatalogs[id] = catalog;
       frozenDirectPotential[id] = Math.max(0, ...catalog.map(action => action.potential));
+    });
+    const catalogs = {};
+    Object.entries(rawCatalogs).forEach(([id, catalog]) => {
+      const actor = preview.findUnit(worldSnapshot, id);
+      const actorSide = sideOf(worldSnapshot, actor);
+      const enriched = catalog.map(action => {
+        if (action.actionKind !== 'RELEASE_SKILL' || !action.skill) return action;
+        const statePotential = preview.collectEffects(action.skill)
+          .filter(effect => String(effect?.原型 || '').trim() === '状态施加')
+          .reduce((sum, effect) => {
+            const duration = Math.max(1, Number(effect?.持续回合 || 1));
+            const windowWeight = 1 + (duration >= 2 ? 0.5 : 0);
+            const probability = probabilityValue(effect?.成功率 ?? effect?.触发概率, 1);
+            const combatEffect = preview.deriveStateCombatEffect(effect);
+            return sum + (action.targetIds || []).reduce((targetSum, targetId) => {
+              const target = preview.findUnit(worldSnapshot, targetId);
+              if (!target) return targetSum;
+              if (!stateEffectHasMarginalValue(effect, target)) return targetSum;
+              const targetReference = Math.max(0, Number(frozenDirectPotential[targetId] || 0));
+              const hostile = sideOf(worldSnapshot, target) !== actorSide;
+              const dotRatio = Math.max(0, Number(combatEffect?.dot_damage_ratio || 0));
+              if (hostile && dotRatio > 0) return targetSum + dotRatio * 100 * windowWeight * probability;
+              if (hostile && (combatEffect?.skip_turn === true || combatEffect?.cannot_act === true)) {
+                return targetSum + targetReference * windowWeight * probability;
+              }
+              const qualityMagnitude = Math.max(
+                Math.abs(Number(combatEffect?.dodge_penalty || 0)),
+                Math.abs(Number(combatEffect?.reaction_penalty || 0)),
+                Math.abs(Number(combatEffect?.lock_level || 0)),
+                Math.abs(Number(combatEffect?.hit_bonus || 0)),
+                Math.abs(Number(combatEffect?.dodge_bonus || 0)),
+              );
+              return targetSum + targetReference * qualityMagnitude * windowWeight * probability;
+            }, 0);
+          }, 0);
+        return { ...action, potential: action.potential + statePotential };
+      });
+      catalogs[id] = enriched.filter(action => action.potential > 0).filter((action, index, all) => !all.some((other, otherIndex) =>
+        otherIndex !== index &&
+        other.potential >= action.potential - 1e-9 &&
+        other.costRatio <= action.costRatio + 1e-9 &&
+        (other.potential > action.potential + 1e-9 || other.costRatio < action.costRatio - 1e-9)
+      )).sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio).slice(0, 3);
     });
     return Object.freeze({
       perspectiveSide,
@@ -1348,23 +1386,148 @@
     return { own, enemy, total: own + enemy, utility: own - enemy, nonDuplicatedGoalProgress: 0 };
   }
 
+  function nextIntentTerminalUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
+    const objectives = preview.normalizeBattleObjectives(
+      context?.battleIntent?.objectives ||
+      context?.battleIntent?.胜负条件 ||
+      afterSnapshot?.胜负条件 ||
+      {},
+      afterSnapshot,
+    );
+    const before = preview.evaluateBattleObjectives(beforeSnapshot, objectives, { roundCompleted: false });
+    if (before.terminal) return 0;
+    const after = preview.evaluateBattleObjectives(afterSnapshot, objectives, { roundCompleted: false });
+    if (!after.terminal || after.winner === 'draw') return 0;
+    const actorIsPlayer = /player|玩家|我方|己方|友方/i.test(String(actorSide || ''));
+    return after.winner === (actorIsPlayer ? 'player' : 'enemy') ? 100 : -100;
+  }
+
+  function implicitIncapacitationProgressUtility(beforeSnapshot, afterSnapshot, actorSide) {
+    const utility = worldEntries(beforeSnapshot)
+      .filter(entry => entry.side !== actorSide && preview.isBattleCapable(entry.unit))
+      .reduce((sum, entry) => {
+        const targetAfter = preview.findUnit(afterSnapshot, preview.unitId(entry.unit));
+        if (!targetAfter) return sum;
+        const hpProgress = Math.max(
+          0,
+          (preview.readHp(entry.unit) - preview.readHp(targetAfter)) / Math.max(1, preview.readHpMax(entry.unit)),
+        );
+        if (!(hpProgress > 0)) return sum;
+        const firstAvailability = 1 - cancellationProbabilityAtOpportunity(entry.unit, 1);
+        const secondAvailability = 1 - cancellationProbabilityAtOpportunity(entry.unit, 2);
+        const temporarilyUnrepresentedShare = clamp(
+          1 - (firstAvailability + 0.5 * secondAvailability) / 1.5,
+          0,
+          1,
+        );
+        return sum + hpProgress * temporarilyUnrepresentedShare * 100;
+      }, 0);
+    return {
+      utility,
+      deadlineActive: false,
+      progressGain: utility / 100,
+      requiredProgress: 0,
+      deadlineFeasible: true,
+      source: utility > 0 ? 'IMPLICIT_INCAPACITATION_RESIDUAL' : '',
+    };
+  }
+
+  function nextIntentProgressUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
+    const objectives = preview.normalizeBattleObjectives(
+      context?.battleIntent?.objectives ||
+      context?.battleIntent?.胜负条件 ||
+      afterSnapshot?.胜负条件 ||
+      {},
+      afterSnapshot,
+    );
+    return objectives.explicit
+      ? intentProgressUtility(beforeSnapshot, afterSnapshot, actorSide, context)
+      : implicitIncapacitationProgressUtility(beforeSnapshot, afterSnapshot, actorSide);
+  }
+
+  function resourceRunway(unit = {}, costs = {}) {
+    const entries = Object.entries(costs || {}).filter(([, rawCost]) =>
+      Math.max(0, Number.parseFloat(String(rawCost ?? ''))) > 0);
+    if (!entries.length) return null;
+    return Math.max(0, Math.min(...entries.map(([resource, rawCost]) => {
+      const maximum = Math.max(1, preview.readResourceMax(unit, resource));
+      const text = String(rawCost ?? '').trim();
+      const cost = text.includes('%')
+        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
+        : Math.max(0, Number(rawCost || 0));
+      return cost > 0 ? Math.floor((preview.readResource(unit, resource) + 1e-9) / cost) : 20;
+    })));
+  }
+
+  function meaningfulPreviewEffect(result = null, stateEffects = [], targets = []) {
+    const stateHasMarginalValue = stateEffects.some(effect =>
+      targets.some(target => stateEffectHasMarginalValue(effect, target)));
+    const nonStateMarginalValue = (result?.contributions || []).some(entry => {
+      const evidence = entry?.evidence || {};
+      if (entry.outcomeKind === 'HP_DELTA') {
+        return Math.abs(Number(evidence.delta ?? evidence.expectedDamage ?? entry.threatValue ?? 0)) > 0.0001;
+      }
+      if (entry.outcomeKind === 'SHIELD_DELTA') {
+        return Math.abs(Number(
+          evidence.delta ??
+          (Number(evidence.next || 0) - Number(evidence.current || 0)) ??
+          entry.threatValue ??
+          0,
+        )) > 0.0001;
+      }
+      if (entry.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+        return Math.abs(Number(evidence.delta || 0)) > 0.0001 && evidence.windowId !== 'ACTION_COST';
+      }
+      if (entry.outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
+        return Math.abs(Number(evidence.delta || 0)) > 0.0001 || Number(evidence.multiplier || 0) > 0;
+      }
+      return [
+        'ACTION_CANCELLED',
+        'ACTION_GRANTED',
+        'BELIEF_CHANGED',
+        'RULE_CHANGED',
+        'SUMMON_WINDOW',
+        'IRREVERSIBLE_ASSET_LOST',
+      ].includes(entry.outcomeKind);
+    });
+    return {
+      stateHasMarginalValue,
+      nonStateMarginalValue,
+      hasMeaningfulEffect: (result?.scheduledEvents || []).length > 0 ||
+        stateHasMarginalValue ||
+        nonStateMarginalValue,
+    };
+  }
+
   function scoreCandidatesNext(input = {}) {
+    if (input?.__preparedDecisionWorld !== true) resetDecisionCaches();
     const worldSnapshot = input?.worldSnapshot;
     const sourceActor = preview.findUnit(worldSnapshot, input?.actorId || '');
     if (!worldSnapshot || !sourceActor || !preview.isAlive(sourceActor)) throw new Error('battle_next_value_context_invalid');
-    const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(sourceActor), input?.beliefState || {});
-    const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(sourceActor), beliefState);
+    const beliefState = input?.__preparedBeliefState || buildInitialBelief(worldSnapshot, preview.unitId(sourceActor), input?.beliefState || {});
+    const decisionWorld = input?.__preparedDecisionWorld === true
+      ? worldSnapshot
+      : buildDecisionWorld(worldSnapshot, preview.unitId(sourceActor), beliefState);
     const actor = preview.findUnit(decisionWorld, preview.unitId(sourceActor));
     const actorSide = sideOf(decisionWorld, actor);
     const valueContext = buildNextValueContext(decisionWorld, actorSide, beliefState);
     const before = stateUtilityNext(decisionWorld, actorSide, beliefState, valueContext);
-    const candidates = enumerateCandidates({
+    const responseContext = {
+      ...input,
+      worldSnapshot: decisionWorld,
+      actorId: preview.unitId(actor),
+      beliefState,
+    };
+    const sharedResponseBranches = responseContext.actionOpportunity?.role === 'COUNTER'
+      ? []
+      : responseBranches(responseContext);
+    const candidates = Array.isArray(input?.__frozenCandidates) ? input.__frozenCandidates : enumerateCandidates({
       ...input,
       worldSnapshot: decisionWorld,
       actorId: preview.unitId(actor),
       beliefState,
     });
-    return candidates.map(candidate => {
+    const scored = candidates.map(candidate => {
       const result = ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate?.declaration?.actionKind)
         ? preview.previewAction({
             worldSnapshot: decisionWorld,
@@ -1380,6 +1543,105 @@
         : null;
       const afterSnapshot = result?.afterSnapshot || decisionWorld;
       const after = stateUtilityNext(afterSnapshot, actorSide, beliefState, valueContext);
+      const actionKind = String(candidate?.declaration?.actionKind || '').trim();
+      const existingDefenseKind = String(
+        actor?.__battleRuntime?.activeDefenseStance?.type ||
+        actor?.__battleRuntime?.activeDefenseStance?.actionKind ||
+        '',
+      ).trim().toUpperCase();
+      const candidateDefenseKind = ['DEFEND', 'EVADE', 'GUARD'].includes(actionKind) ? actionKind : '';
+      const branchMass = clamp(sharedResponseBranches.reduce((sum, branch) => sum + Number(branch?.probability || 0), 0), 0, 1);
+      const afterTerminalUtility = nextIntentTerminalUtility(decisionWorld, afterSnapshot, actorSide, responseContext);
+      const afterProgress = nextIntentProgressUtility(decisionWorld, afterSnapshot, actorSide, responseContext);
+      const beforeTerminalUtility = nextIntentTerminalUtility(decisionWorld, decisionWorld, actorSide, responseContext);
+      const beforeProgress = nextIntentProgressUtility(decisionWorld, decisionWorld, actorSide, responseContext);
+      const responseComparison = sharedResponseBranches.reduce((totals, branch) => {
+        const probability = Math.max(0, Number(branch?.probability || 0));
+        const sourceBefore = preview.findUnit(decisionWorld, branch?.sourceActorId || '');
+        const sourceAfter = preview.findUnit(afterSnapshot, branch?.sourceActorId || '');
+        const ordinaryReactionMultiplier = sourceBefore
+          ? Math.min(
+              preview.calculateDefenseDamageMultiplier(actor, sourceBefore, false),
+              1 - preview.calculateDodgeProbability(actor, sourceBefore, false),
+            )
+          : 1;
+        const preparedMultiplier = kind => {
+          if (!sourceBefore) return 1;
+          if (['DEFEND', 'GUARD'].includes(kind)) {
+            return preview.calculateDefenseDamageMultiplier(actor, sourceBefore, true);
+          }
+          if (kind === 'EVADE') return 1 - preview.calculateDodgeProbability(actor, sourceBefore, true);
+          return ordinaryReactionMultiplier;
+        };
+        const baselineDefenseMultiplier = existingDefenseKind
+          ? preparedMultiplier(existingDefenseKind)
+          : ordinaryReactionMultiplier;
+        const candidateDefenseMultiplier = candidateDefenseKind
+          ? preparedMultiplier(candidateDefenseKind)
+          : baselineDefenseMultiplier;
+        const responsePrevented = !!sourceBefore && (!sourceAfter || !preview.isBattleCapable(sourceAfter) || hasActionCancellation(sourceAfter));
+        const baselineResponsePrevented = !!sourceBefore &&
+          (!preview.isBattleCapable(sourceBefore) || hasActionCancellation(sourceBefore));
+        const candidateThreat = responsePrevented
+          ? 0
+          : Math.max(0, Number(branch?.rawThreat || 0)) * candidateDefenseMultiplier;
+        const baselineThreat = baselineResponsePrevented
+          ? 0
+          : Math.max(0, Number(branch?.rawThreat || 0)) * baselineDefenseMultiplier;
+        const candidateResponseSnapshot = snapshotAfterResponseThreat(afterSnapshot, preview.unitId(actor), candidateThreat);
+        const baselineResponseSnapshot = snapshotAfterResponseThreat(decisionWorld, preview.unitId(actor), baselineThreat);
+        const candidateResponse = stateUtilityNext(
+          candidateResponseSnapshot,
+          actorSide,
+          beliefState,
+          valueContext,
+        );
+        const baselineResponse = stateUtilityNext(
+          baselineResponseSnapshot,
+          actorSide,
+          beliefState,
+          valueContext,
+        );
+        const candidateTerminalUtility = nextIntentTerminalUtility(
+          decisionWorld,
+          candidateResponseSnapshot,
+          actorSide,
+          responseContext,
+        );
+        const baselineTerminalUtility = nextIntentTerminalUtility(
+          decisionWorld,
+          baselineResponseSnapshot,
+          actorSide,
+          responseContext,
+        );
+        const candidateProgress = nextIntentProgressUtility(
+          decisionWorld,
+          candidateResponseSnapshot,
+          actorSide,
+          responseContext,
+        ).utility;
+        const baselineProgress = nextIntentProgressUtility(
+          decisionWorld,
+          baselineResponseSnapshot,
+          actorSide,
+          responseContext,
+        ).utility;
+        return {
+          candidateUtility: totals.candidateUtility + probability * candidateResponse.utility,
+          noOpUtility: totals.noOpUtility + probability * baselineResponse.utility,
+          terminalUtility: totals.terminalUtility + probability * (candidateTerminalUtility - baselineTerminalUtility),
+          objectiveProgress: totals.objectiveProgress + probability * (candidateProgress - baselineProgress),
+          survivalLowerBound: Math.min(totals.survivalLowerBound, candidateResponse.own),
+          worstTailCapacityLoss: Math.max(totals.worstTailCapacityLoss, Math.max(0, before.own - candidateResponse.own)),
+        };
+      }, {
+        candidateUtility: (1 - branchMass) * after.utility,
+        noOpUtility: (1 - branchMass) * before.utility,
+        terminalUtility: (1 - branchMass) * (afterTerminalUtility - beforeTerminalUtility),
+        objectiveProgress: (1 - branchMass) * (afterProgress.utility - beforeProgress.utility),
+        survivalLowerBound: after.own,
+        worstTailCapacityLoss: Math.max(0, before.own - after.own),
+      });
       const directPotential = (candidate?.declaration?.targetIds || []).reduce((sum, targetId) => {
         const target = preview.findUnit(decisionWorld, targetId);
         return target ? sum + preview.calculateDirectPotential(actor, target, candidate.declaration) : sum;
@@ -1397,15 +1659,68 @@
       const irreversibleAssetCost = (result?.contributions || [])
         .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
         .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
+      const expectedStateGain = 100 *
+        (responseComparison.candidateUtility - responseComparison.noOpUtility) /
+        Math.max(1, before.total);
+      const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
+      const stateEffects = candidateEffects.filter(effect => String(effect?.原型 || '').trim() === '状态施加');
+      const targets = (candidate?.declaration?.targetIds || [])
+        .map(targetId => preview.findUnit(decisionWorld, targetId))
+        .filter(Boolean);
+      const marginalProfile = meaningfulPreviewEffect(result, stateEffects, targets);
+      const costs = candidate.costs || candidate.declaration?.resourceCosts || {};
+      const actorAfter = preview.findUnit(afterSnapshot, preview.unitId(actor));
+      const resourceRunwayBefore = resourceRunway(actor, costs);
+      const resourceRunwayAfter = actorAfter ? resourceRunway(actorAfter, costs) : 0;
+      const actorCatalog = valueContext.catalogs[preview.unitId(actor)] || [];
+      const affordableBefore = actorCatalog
+        .filter(action => Object.keys(action.costs || {}).length > 0 && actionLegalFromFrozen(decisionWorld, actor, action))
+        .map(action => action.actionKey);
+      const affordableAfter = actorAfter
+        ? actorCatalog
+            .filter(action => Object.keys(action.costs || {}).length > 0 && actionLegalFromFrozen(afterSnapshot, actorAfter, action))
+            .map(action => action.actionKey)
+        : [];
+      const lostAffordableActions = affordableBefore.filter(actionKey => !affordableAfter.includes(actionKey));
       const rawObjectiveUtility = clamp(
-        100 * (after.utility - before.utility) / Math.max(1, before.total) +
+        expectedStateGain +
+        responseComparison.terminalUtility +
+        responseComparison.objectiveProgress +
         informationValue -
         irreversibleAssetCost,
         -200,
         200,
       );
-      const hasCost = Object.keys(candidate?.costs || {}).length > 0 || irreversibleAssetCost > 0;
-      const rejectionCode = hasCost && rawObjectiveUtility <= 1e-9 ? 'ZERO_EFFECT_COSTLY' : '';
+      const hasCost = Object.keys(costs).length > 0 ||
+        irreversibleAssetCost > 0 ||
+        ['EQUIP', 'USE_ITEM'].includes(actionKind);
+      const terminalCompensation = responseComparison.terminalUtility > 0;
+      const resourceSupportOnly = candidateEffects.length > 0 && candidateEffects.every(effect =>
+        String(effect?.原型 || '').trim() === '资源变化' &&
+        !/生命|HP/i.test(String(effect?.资源 || '')) &&
+        Number.parseFloat(String(effect?.数值 || '0')) > 0);
+      const resourceUnlockMissing = resourceSupportOnly && after.own <= before.own + 1e-9;
+      const zeroEffectCostly = hasCost &&
+        (!marginalProfile.hasMeaningfulEffect || resourceUnlockMissing) &&
+        informationValue <= 0;
+      const uncompensatedResourceBankruptcy = hasCost &&
+        resourceRunwayBefore !== null &&
+        resourceRunwayBefore > 0 &&
+        resourceRunwayAfter === 0 &&
+        lostAffordableActions.length > 0 &&
+        expectedStateGain <= 0.0001 &&
+        !terminalCompensation;
+      const hasProgress = expectedStateGain > 0.0001 ||
+        responseComparison.objectiveProgress > 0.0001 ||
+        informationValue > 0 ||
+        terminalCompensation;
+      const rejectionCode = zeroEffectCostly
+        ? 'ZERO_EFFECT_COSTLY'
+        : uncompensatedResourceBankruptcy
+          ? 'UNCOMPENSATED_RESOURCE_BANKRUPTCY'
+          : !hasProgress && !candidate.counterDeclineFallback
+            ? 'ZERO_PROGRESS'
+            : '';
       return Object.freeze({
         ...candidate,
         preview: result,
@@ -1419,19 +1734,79 @@
           rawObjectiveUtility,
           informationValue,
           resourceContinuity: after.own - before.own,
-          survivalLowerBound: Math.max(0, after.own),
+          survivalLowerBound: Math.max(0, responseComparison.survivalLowerBound),
           irreversibleAssetCost,
-          worstTailCapacityLoss: 0,
+          worstTailCapacityLoss: responseComparison.worstTailCapacityLoss,
+          expectedStateGain,
+          terminalUtility: responseComparison.terminalUtility,
+          objectiveProgress: responseComparison.objectiveProgress,
+          resourcePreservation: after.own - before.own,
+          irreversibleCost: irreversibleAssetCost,
+          catastrophicRisk: 0,
+        }),
+        repeatedActionAudit: Object.freeze({
+          repeatedActionDelta: 0,
+          extendedWindowIds: Object.freeze((result?.contributions || [])
+            .filter(entry => entry?.outcomeKind === 'STATE_CHANGED' && entry?.evidence?.marginal !== false)
+            .map(entry => String(entry?.windowId || '').trim())
+            .filter(Boolean)),
+          newlyDeniedOpportunityIds: Object.freeze((result?.contributions || [])
+            .filter(entry => entry?.outcomeKind === 'ACTION_CANCELLED')
+            .map(entry => String(entry?.windowId || '').trim())
+            .filter(Boolean)),
+          resourceRunwayBefore,
+          resourceRunwayAfter,
+          lostAffordableActions: Object.freeze(lostAffordableActions),
         }),
         nextValueAudit: Object.freeze({
           before: Object.freeze(before),
           after: Object.freeze(after),
+          expectedAfterResponseUtility: responseComparison.candidateUtility,
+          expectedNoOpResponseUtility: responseComparison.noOpUtility,
+          responseBranchCount: sharedResponseBranches.length,
+          survivalLowerBound: responseComparison.survivalLowerBound,
+          worstTailCapacityLoss: responseComparison.worstTailCapacityLoss,
           frozenDirectPotential: valueContext.frozenDirectPotential,
           atomicActionPotential,
-          valueAddedOutsideStateDelta: informationValue - irreversibleAssetCost,
+          valueAddedOutsideStateDelta: responseComparison.terminalUtility +
+            responseComparison.objectiveProgress +
+            informationValue -
+            irreversibleAssetCost,
         }),
       });
     });
+    return scored.map(candidate => {
+      const bestAlternative = scored
+        .filter(other => other.candidateId !== candidate.candidateId && !other.rejectionCode)
+        .reduce((best, other) => Math.max(best, Number(other.objectiveUtility || 0)), -Infinity);
+      return Object.freeze({
+        ...candidate,
+        repeatedActionAudit: Object.freeze({
+          ...candidate.repeatedActionAudit,
+          repeatedActionDelta: Number.isFinite(bestAlternative)
+            ? Number(candidate.objectiveUtility || 0) - bestAlternative
+            : Number(candidate.objectiveUtility || 0),
+        }),
+      });
+    });
+  }
+
+  function resetDecisionCaches() {
+    preview.clearCache();
+    baseActionValueCache = new WeakMap();
+    unitSkillCache = new WeakMap();
+    stateEntriesCache = new WeakMap();
+    actionCancellationCache = new WeakMap();
+    actionQualityCache = new WeakMap();
+    effectiveShieldCache = new WeakMap();
+    bestAgainstCache = new WeakMap();
+    bestActionCache = new WeakMap();
+    experienceCache = new WeakMap();
+    relevantStateFingerprintCache = new WeakMap();
+    worldEntriesCache = new WeakMap();
+    aliveEntriesCache = new WeakMap();
+    sideCache = new WeakMap();
+    decisionRevisionSequence += 1;
   }
 
   function teamCapacity(worldSnapshot, side, perspectiveSide, beliefState = {}, options = {}) {
@@ -2746,24 +3121,254 @@
     return { selected: weighted[0].candidate, confidence, temperature, maxNormalizedRegret };
   }
 
+  function prepareKernelContext(input = {}) {
+    const worldSnapshot = input?.worldSnapshot;
+    if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
+    const sourceActor = preview.findUnit(worldSnapshot, input?.actorId);
+    if (!sourceActor || !preview.isAlive(sourceActor)) throw new Error('battle_decision_actor_unavailable');
+    const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(sourceActor), input?.beliefState || {});
+    const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(sourceActor), beliefState);
+    const actor = preview.findUnit(decisionWorld, preview.unitId(sourceActor));
+    const actorSide = sideOf(decisionWorld, actor);
+    const battleIntent = actorBattleIntent(decisionWorld, actorSide, input?.battleIntent);
+    const strategicSignatureValue = strategicSignature(decisionWorld, beliefState);
+    const stalemate = detectStalemate(input?.strategicHistory, strategicSignatureValue);
+    const teamIntent = buildTeamIntent(decisionWorld, preview.unitId(actor), beliefState, battleIntent);
+    const problems = identifyProblems(decisionWorld, preview.unitId(actor), beliefState, { battleIntent, stalemate });
+    const beforeUtility = stateUtility(decisionWorld, actorSide, beliefState);
+    const context = {
+      ...input,
+      worldSnapshot: decisionWorld,
+      actorId: preview.unitId(actor),
+      battleIntent,
+      beliefState,
+      teamIntent,
+      problems,
+      strategicSignature: strategicSignatureValue,
+      stalemate,
+      worldRevision: String(input?.worldRevision || `decision:${decisionRevisionSequence}`),
+      beliefRevision: String(beliefState.revision || preview.stableHash(beliefState)),
+      beforeUtility,
+    };
+    return {
+      actor,
+      actorSide,
+      beliefState,
+      decisionWorld,
+      battleIntent,
+      strategicSignature: strategicSignatureValue,
+      stalemate,
+      teamIntent,
+      problems,
+      beforeUtility,
+      context,
+      scoringContext: {
+        ...context,
+        sharedResponseBranches: Object.freeze(
+          context.actionOpportunity?.role === 'COUNTER' ? [] : responseBranches(context),
+        ),
+      },
+    };
+  }
+
+  function dominatesNext(left, right) {
+    const gains = ['rawObjectiveUtility', 'informationValue', 'resourceContinuity', 'survivalLowerBound'];
+    const costs = ['irreversibleAssetCost', 'worstTailCapacityLoss'];
+    const noWorse = gains.every(key => Number(left?.vector?.[key] || 0) >= Number(right?.vector?.[key] || 0) - 1e-9) &&
+      costs.every(key => Number(left?.vector?.[key] || 0) <= Number(right?.vector?.[key] || 0) + 1e-9);
+    const better = gains.some(key => Number(left?.vector?.[key] || 0) > Number(right?.vector?.[key] || 0) + 1e-9) ||
+      costs.some(key => Number(left?.vector?.[key] || 0) < Number(right?.vector?.[key] || 0) - 1e-9);
+    return noWorse && better;
+  }
+
+  function paretoFilterNext(candidates = []) {
+    return candidates.map(candidate => {
+      if (candidate.rejectionCode) return candidate;
+      const dominator = candidates.find(other => other !== candidate && !other.rejectionCode && dominatesNext(other, candidate));
+      return dominator ? { ...candidate, rejectionCode: 'DOMINATED', dominatedBy: dominator.candidateId } : candidate;
+    });
+  }
+
+  function classifyNextCandidates(candidates = []) {
+    const eligible = candidates.filter(candidate => !candidate.rejectionCode);
+    const best = eligible.reduce((current, candidate) => !current || candidate.objectiveUtility > current.objectiveUtility ? candidate : current, null);
+    return candidates.map(candidate => {
+      const alternativeGap = best ? Math.max(0, Number(best.objectiveUtility || 0) - Number(candidate.objectiveUtility || 0)) : 0;
+      let classification = 'VIABLE';
+      if (candidate.rejectionCode === 'DOMINATED') classification = 'DOMINATED';
+      else if (candidate.rejectionCode) classification = 'HARD_INVALID';
+      else if (Number(candidate.objectiveUtility || 0) < 0 || Number(candidate.vector?.worstTailCapacityLoss || 0) > 0) classification = 'CONTEXT_RISK';
+      else if (best && Number(best.normalizedUtility || 0) - Number(candidate.normalizedUtility || 0) > 0.35) classification = 'TACTICAL_ERROR';
+      return { ...candidate, classification, alternativeGap };
+    });
+  }
+
+  function compareDecisionKernels(input = {}) {
+    resetDecisionCaches();
+    const prepared = prepareKernelContext(input);
+    const frozenCandidates = enumerateCandidates(prepared.scoringContext);
+    if (!frozenCandidates.length) throw new Error('battle_decision_candidate_pool_empty');
+    const legacy = frozenCandidates.map(candidate => scoreCandidate(candidate, prepared.scoringContext));
+    const next = scoreCandidatesNext({
+      ...input,
+      worldSnapshot: prepared.decisionWorld,
+      actorId: preview.unitId(prepared.actor),
+      __preparedDecisionWorld: true,
+      __preparedBeliefState: prepared.beliefState,
+      __frozenCandidates: frozenCandidates,
+    });
+    const legacyIds = legacy.map(candidate => candidate.candidateId);
+    const nextIds = next.map(candidate => candidate.candidateId);
+    const nextById = new Map(next.map(candidate => [candidate.candidateId, candidate]));
+    const previewMismatches = legacy.map(candidate => {
+      const nextCandidate = nextById.get(candidate.candidateId);
+      if (!candidate?.preview && !nextCandidate?.preview) return '';
+      const legacyHash = preview.stableHash({
+        afterSnapshot: candidate?.preview?.afterSnapshot || null,
+        contributions: candidate?.preview?.contributions || [],
+        scheduledEvents: candidate?.preview?.scheduledEvents || [],
+      });
+      const nextHash = preview.stableHash({
+        afterSnapshot: nextCandidate?.preview?.afterSnapshot || null,
+        contributions: nextCandidate?.preview?.contributions || [],
+        scheduledEvents: nextCandidate?.preview?.scheduledEvents || [],
+      });
+      return legacyHash === nextHash ? '' : candidate.candidateId;
+    }).filter(Boolean);
+    return Object.freeze({
+      actorId: preview.unitId(prepared.actor),
+      candidateIds: Object.freeze([...legacyIds]),
+      candidateSetMatches: legacyIds.length === nextIds.length && legacyIds.every((candidateId, index) => candidateId === nextIds[index]),
+      previewMismatches: Object.freeze(previewMismatches),
+      legacy: Object.freeze(legacy),
+      next: Object.freeze(next),
+    });
+  }
+
+  function decideNext(input = {}) {
+    const scored = scoreCandidatesNext(input);
+    let normalized = classifyNextCandidates(normalizeUtilities(paretoFilterNext(scored)));
+    if (!normalized.some(candidate => !candidate.rejectionCode)) {
+      const role = String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+      const fallback = (input?.actionOpportunity?.forcedSkill ? normalized[0] : null) ||
+        normalized.find(candidate => role === 'COUNTER' && candidate?.counterDeclineFallback === true) ||
+        normalized.find(candidate =>
+          Object.keys(candidate?.costs || {}).length === 0 &&
+          (role === 'REACTION'
+            ? ['DEFEND', 'EVADE'].includes(String(candidate?.declaration?.actionKind || '').trim())
+            : String(candidate?.declaration?.actionKind || '').trim() === 'DEFEND')
+        );
+      if (fallback) {
+        const forcedDeclaration = !!input?.actionOpportunity?.forcedSkill;
+        normalized = normalized.map(candidate => candidate.candidateId === fallback.candidateId
+          ? {
+              ...candidate,
+              rejectionCode: '',
+              classification: 'VIABLE',
+              alternativeGap: 0,
+              forcedFallback: !forcedDeclaration,
+              fallbackReason: forcedDeclaration ? '' : 'NO_ELIGIBLE_CANDIDATE',
+            }
+          : candidate);
+      }
+    }
+    if (typeof input?.inspectCandidates === 'function') input.inspectCandidates(normalized);
+    const sourceActor = preview.findUnit(input?.worldSnapshot, input?.actorId);
+    const beliefState = buildInitialBelief(input?.worldSnapshot, preview.unitId(sourceActor), input?.beliefState || {});
+    const decisionWorld = buildDecisionWorld(input?.worldSnapshot, preview.unitId(sourceActor), beliefState);
+    const actor = preview.findUnit(decisionWorld, preview.unitId(sourceActor));
+    const actorSide = sideOf(decisionWorld, actor);
+    const battleIntent = actorBattleIntent(decisionWorld, actorSide, input?.battleIntent);
+    const teamIntent = buildTeamIntent(decisionWorld, preview.unitId(actor), beliefState, battleIntent);
+    const signature = strategicSignature(decisionWorld, beliefState);
+    const stalemate = detectStalemate(input?.strategicHistory, signature);
+    const problems = identifyProblems(decisionWorld, preview.unitId(actor), beliefState, { battleIntent, stalemate });
+    const choice = selectCandidate(normalized, actor, input?.seed || 1, {
+      ...input,
+      worldSnapshot: decisionWorld,
+      actorId: preview.unitId(actor),
+      beliefState,
+      teamIntent,
+      battleIntent,
+      strategyMemory: input?.strategyMemory || {},
+    });
+    const selected = { ...choice.selected, selected: true };
+    const alternatives = normalized.filter(candidate => candidate.candidateId !== selected.candidateId)
+      .sort((left, right) => right.objectiveUtility - left.objectiveUtility)
+      .slice(0, 2);
+    const selectedRecord = Object.freeze({
+      candidateId: selected.candidateId,
+      declaration: selected.declaration,
+      utilityBefore: selected.utilityBefore,
+      utilityAfter: selected.utilityAfter,
+      objectiveUtility: selected.objectiveUtility,
+      normalizedUtility: selected.normalizedUtility,
+      vector: Object.freeze({ ...selected.vector }),
+      rejectionCode: selected.rejectionCode || '',
+      classification: selected.classification || 'VIABLE',
+      alternativeGap: Number(selected.alternativeGap || 0),
+      counterDeclineFallback: selected.counterDeclineFallback === true,
+      forcedFallback: selected.forcedFallback === true,
+      fallbackReason: String(selected.fallbackReason || '').trim(),
+      repeatedActionAudit: selected.repeatedActionAudit || null,
+      mechanicObservations: Object.freeze([]),
+    });
+    return Object.freeze({
+      version: `${VERSION}-next-1`,
+      decisionEngine: 'NEXT',
+      actorId: preview.unitId(actor),
+      candidateCount: normalized.length,
+      paretoCount: normalized.filter(candidate => !candidate.rejectionCode).length,
+      selected: selectedRecord,
+      beliefState: Object.freeze(beliefState),
+      teamIntent: Object.freeze(teamIntent),
+      problems: Object.freeze(problems),
+      strategicSignature: signature,
+      stalemate,
+      stateCapacityTotal: Number(selected?.nextValueAudit?.before?.total || 0),
+      beliefRevision: String(beliefState.revision || preview.stableHash(beliefState)),
+      pendingStrategicEffect: worldEntries(decisionWorld).some(entry =>
+        entry.unit?.蓄力技能 || stateEntries(entry.unit).some(state => Number(state?.duration ?? state?.持续回合 ?? 0) > 0)),
+      strategyMemory: Object.freeze({
+        problemId: problems[0]?.problemId || 'NEUTRAL_PROGRESS',
+        targetIds: Object.freeze([...(selected.declaration.targetIds || [])]),
+        expectedOutcomeKinds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.outcomeKind)),
+        expectedWindowIds: Object.freeze((selected.preview?.contributions || []).map(entry => entry.windowId).filter(Boolean)),
+        expiresAtOpportunity: Math.max(1, Number(input?.actionOpportunity?.sequence || 0) + 1),
+      }),
+      scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
+        candidateId: candidate.candidateId,
+        actionKind: candidate.declaration.actionKind,
+        actionRole: String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() || 'ACTIVE',
+        actorId: preview.unitId(actor),
+        targetIds: Object.freeze([...(candidate.declaration.targetIds || [])]),
+        utilityBefore: candidate.utilityBefore,
+        utilityAfter: candidate.utilityAfter,
+        objectiveUtility: candidate.objectiveUtility,
+        normalizedUtility: candidate.normalizedUtility,
+        vector: Object.freeze({ ...candidate.vector }),
+        deepAnalysis: Object.freeze({ required: false, nodeCount: 1, timeline: Object.freeze([{ nodeType: 'CURRENT_ACTION', candidateId: candidate.candidateId }]) }),
+        rejectionCode: candidate.rejectionCode || '',
+        classification: candidate.classification || 'VIABLE',
+        alternativeGap: Number(candidate.alternativeGap || 0),
+        counterDeclineFallback: candidate.counterDeclineFallback === true,
+        forcedFallback: candidate.forcedFallback === true,
+        fallbackReason: String(candidate.fallbackReason || '').trim(),
+        repeatedActionAudit: candidate.repeatedActionAudit || null,
+        selected: candidate.candidateId === selected.candidateId,
+      }))),
+      decisionProfile: Object.freeze({
+        confidence: choice.confidence,
+        temperature: choice.temperature,
+        maxNormalizedRegret: choice.maxNormalizedRegret,
+      }),
+    });
+  }
+
   function decide(input = {}) {
     const worldSnapshot = input.worldSnapshot;
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
-    preview.clearCache();
-    baseActionValueCache = new WeakMap();
-    unitSkillCache = new WeakMap();
-    stateEntriesCache = new WeakMap();
-    actionCancellationCache = new WeakMap();
-    actionQualityCache = new WeakMap();
-    effectiveShieldCache = new WeakMap();
-    bestAgainstCache = new WeakMap();
-    bestActionCache = new WeakMap();
-    experienceCache = new WeakMap();
-    relevantStateFingerprintCache = new WeakMap();
-    worldEntriesCache = new WeakMap();
-    aliveEntriesCache = new WeakMap();
-    sideCache = new WeakMap();
-    decisionRevisionSequence += 1;
+    resetDecisionCaches();
     const actor = preview.findUnit(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
     const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
@@ -2896,6 +3501,8 @@
     buildNextValueContext,
     stateUtilityNext,
     scoreCandidatesNext,
+    compareDecisionKernels,
+    decideNext,
     dominates,
     paretoFilter,
     normalizeUtilities,

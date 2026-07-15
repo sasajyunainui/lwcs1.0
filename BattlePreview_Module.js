@@ -1723,6 +1723,45 @@
     });
   }
 
+  function calculateReactionContest(reactor = {}, sourceActor = {}) {
+    const reactionDetails = calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
+    const attackDetails = calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
+    const reactionPressure = reactionDetails.value;
+    const attackPressure = attackDetails.value;
+    const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
+    return Object.freeze({
+      probability: clamp(0.18 + (share - 0.5) * 1.1, 0.03, 0.78),
+      reactionPressure,
+      attackPressure,
+      share,
+      reactionAgility: reactionDetails.agility.value,
+      sourceAgility: attackDetails.agility.value,
+      reactionPressureBreakdown: reactionDetails,
+      attackPressureBreakdown: attackDetails,
+      reactionAgilityBreakdown: reactionDetails.agility,
+      sourceAgilityBreakdown: attackDetails.agility,
+    });
+  }
+
+  function calculateDefenseDamageMultiplier(reactor = {}, sourceActor = {}, prepared = false) {
+    const defense = Math.max(1, readCombatStat(reactor, 'def'));
+    const attack = Math.max(1, readCombatStat(sourceActor, 'str'));
+    const staminaRatio = readResource(reactor, '体力') / Math.max(1, readResourceMax(reactor, '体力'));
+    const ordinary = clamp(
+      0.78 -
+      Math.min(0.2, defense / (defense + attack) * 0.24) -
+      Math.min(0.08, staminaRatio * 0.08),
+      0.45,
+      0.82,
+    );
+    return prepared ? Math.max(0.35, ordinary * 0.8) : ordinary;
+  }
+
+  function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false) {
+    const ordinary = calculateReactionContest(reactor, sourceActor).probability;
+    return prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
+  }
+
   function clearCache() {
     previewCache.clear();
   }
@@ -1773,6 +1812,9 @@
     calculateWithdrawalPressure,
     calculateWithdrawalPressureDetails,
     estimateWithdrawal,
+    calculateReactionContest,
+    calculateDefenseDamageMultiplier,
+    calculateDodgeProbability,
     deriveStateCombatEffect,
     normalizeBattleObjectives,
     evaluateBattleObjectives,

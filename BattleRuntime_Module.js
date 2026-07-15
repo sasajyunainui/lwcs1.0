@@ -760,6 +760,10 @@
       const prototypeLog = settlePersistentPrototype(unit, key, condition, label, combatData);
       if (prototypeLog) logs.push(prototypeLog);
       if (typeof condition.duration === 'number') {
+        if (Array.isArray(condition.__状态来源窗口)) {
+          condition.__状态来源窗口.shift();
+          condition.__状态来源键 = String(condition.__状态来源窗口[0] || '').trim();
+        }
         condition.duration -= 1;
         if (condition.duration <= 0) expired.push(key);
       }
@@ -1274,6 +1278,7 @@
       targetName: String(payload.targetName || '').trim(),
       sourceActorName: String(payload.sourceActorName || '').trim(),
       sourceActionName: String(payload.sourceActionName || '').trim(),
+      sourceActionId: String(payload.sourceActionId || '').trim(),
       sourceActionType: String(payload.sourceActionType || '').trim(),
       sourceRound: Number(payload.sourceRound || combatData?.回合 || 0),
       duration: Math.max(0, Number(payload.duration || 0)),
@@ -2987,6 +2992,7 @@
       targetName: unit?.name || unit?.名称 || label,
       actionName: String(source?.sourceActionName || '').trim(),
       actionType: 'state_tick',
+      sourceActionId: String(source?.sourceActionId || '').trim(),
       sourceActionName: String(source?.sourceActionName || '').trim(),
       sourceRound: Number(source?.sourceRound || source?.round || 0),
       result,
@@ -3000,6 +3006,7 @@
         resource: '生命值',
         sourceActorName: String(source?.sourceActorName || '').trim(),
         sourceActionName: String(source?.sourceActionName || '').trim(),
+        sourceActionId: String(source?.sourceActionId || '').trim(),
         sourceRound: Number(source?.sourceRound || source?.round || 0),
         applicationId: String(source?.applicationId || condition?.__状态来源键 || '').trim(),
       },
@@ -3009,8 +3016,11 @@
   function settleConditionResourceTick(unit = {}, key = '', condition = {}, label = '', combatData = {}) {
     const effects = condition?.战斗效果 || {};
     const stateName = String(condition?.状态名称 || condition?.状态 || key || '').trim();
+    const activeSourceId = Array.isArray(condition?.__状态来源窗口)
+      ? String(condition.__状态来源窗口[0] || condition?.__状态来源键 || '').trim()
+      : String(condition?.__状态来源键 || '').trim();
     const source = findStateSource(combatData, {
-      applicationId: String(condition?.__状态来源键 || '').trim(),
+      applicationId: activeSourceId,
       stateName,
       targetName: unit?.name || unit?.名称 || label,
       maxRound: Number(combatData?.回合 || 0),
@@ -3022,8 +3032,9 @@
       source: 'state_tick', stateName,
       sourceActorName: String(source?.sourceActorName || '').trim(),
       sourceActionName: String(source?.sourceActionName || '').trim(),
+      sourceActionId: String(source?.sourceActionId || '').trim(),
       sourceRound: Number(source?.sourceRound || source?.round || 0),
-      applicationId: String(source?.applicationId || condition?.__状态来源键 || '').trim(),
+      applicationId: String(source?.applicationId || activeSourceId).trim(),
       duration: Math.max(0, Number(condition?.duration || source?.duration || 0)),
       effectSummary: String(condition?.效果摘要 || source?.effectSummary || '').trim(),
       driverAttr: String(condition?.驱动属性 || source?.driverAttr || '').trim(),
@@ -4927,6 +4938,7 @@
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
+        const applicationId = nextRuntimeId('state-src');
         const successProbability = Math.max(0, Math.min(1, Number(effect?.成功率 ?? effect?.触发概率 ?? 1)));
         const roll = Math.random();
         let result = 'applied';
@@ -4934,8 +4946,56 @@
         else if (!probabilitySucceeds(successProbability, roll)) result = 'resisted';
         else if (!stateName) result = 'invalid';
         else {
-          const merged = mergeRuntimeCondition(target?.状态效果?.[stateName], state, effect);
-          if (merged.applied) target.状态效果[stateName] = merged.state;
+          const existingState = target?.状态效果?.[stateName];
+          const existingDuration = Math.max(0, Number(existingState?.duration ?? existingState?.持续回合 ?? 0));
+          const existingSourceWindows = Array.isArray(existingState?.__状态来源窗口)
+            ? existingState.__状态来源窗口.map(value => String(value || '').trim()).filter(Boolean).slice(0, existingDuration)
+            : existingState?.__状态来源键
+              ? Array.from({ length: existingDuration }, () => String(existingState.__状态来源键).trim())
+              : [];
+          const merged = mergeRuntimeCondition(existingState, state, effect);
+          if (merged.applied) {
+            const sourceId = registerStateSource(combatData, {
+              applicationId,
+              stateName,
+              targetName: previewRuntime.unitName(target),
+              sourceActorName: previewRuntime.unitName(actor),
+              sourceActionName: actionName,
+              sourceActionId: actionEvent.actionId,
+              sourceActionType: actionKind,
+              sourceRound: Number(combatData?.回合 || 0),
+              duration,
+              effectSummary: String(effect?.效果摘要 || effect?.状态描述 || effect?.描述 || '').trim(),
+              driverAttr: String(effect?.驱动属性 || '').trim(),
+            });
+            const mergedDuration = Math.max(0, Number(merged.state?.duration ?? merged.state?.持续回合 ?? duration));
+            const sourceWindows = !existingState || mergedDuration <= existingDuration
+              ? Array.from({ length: mergedDuration }, () => sourceId)
+              : [
+                  ...existingSourceWindows,
+                  ...Array.from({ length: mergedDuration - existingDuration }, () => sourceId),
+                ];
+            const appliedState = {
+              ...merged.state,
+              来源技能: actionName,
+              来源角色: previewRuntime.unitName(actor),
+            };
+            Object.defineProperties(appliedState, {
+              __状态来源键: {
+                configurable: true,
+                enumerable: false,
+                writable: true,
+                value: sourceWindows[0] || sourceId,
+              },
+              __状态来源窗口: {
+                configurable: true,
+                enumerable: false,
+                writable: true,
+                value: sourceWindows,
+              },
+            });
+            target.状态效果[stateName] = appliedState;
+          }
           else result = 'no_effect';
         }
         facts.push(writeLedgerEvent(combatData, {
@@ -4944,8 +5004,16 @@
           parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result,
           resultState: result === 'applied' ? 'SUCCESS' : result === 'no_effect' ? 'NO_EFFECT' : 'FAILURE',
           primaryOutcome: result === 'applied' ? 'state_applied' : result === 'immune' ? 'state_immune' : 'state_resisted',
-          duration,
-          meta: { source: 'structured_runtime', effectIndex, stateName, duration, successRate: successProbability, roll },
+          duration, applicationId: result === 'applied' ? applicationId : '',
+          meta: {
+            source: 'structured_runtime',
+            effectIndex,
+            stateName,
+            duration,
+            successRate: successProbability,
+            roll,
+            applicationId: result === 'applied' ? applicationId : '',
+          },
         }));
         if (effectIndex === 0) primaryResolutionByTarget.set(previewRuntime.unitId(target), result === 'applied');
       });
@@ -5064,23 +5132,7 @@
   }
 
   function structuredReactionContest(reactor = {}, sourceActor = {}) {
-    const reactionDetails = previewRuntime.calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
-    const attackDetails = previewRuntime.calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
-    const reactionPressure = reactionDetails.value;
-    const attackPressure = attackDetails.value;
-    const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
-    return {
-      probability: Math.max(0.03, Math.min(0.78, 0.18 + (share - 0.5) * 1.1)),
-      reactionPressure,
-      attackPressure,
-      share,
-      reactionAgility: reactionDetails.agility.value,
-      sourceAgility: attackDetails.agility.value,
-      reactionPressureBreakdown: reactionDetails,
-      attackPressureBreakdown: attackDetails,
-      reactionAgilityBreakdown: reactionDetails.agility,
-      sourceAgilityBreakdown: attackDetails.agility,
-    };
+    return previewRuntime.calculateReactionContest(reactor, sourceActor);
   }
 
   function consumeStructuredReactionOpportunity(combatData = {}, unit = {}) {
@@ -5125,7 +5177,7 @@
     };
     if (actionKind === 'EVADE') {
       const contest = structuredReactionContest(reactor, sourceActor);
-      const probability = contest.probability;
+      const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense);
       const roll = Math.random();
       const evaded = probabilitySucceeds(probability, roll);
       const event = writeLedgerEvent(combatData, {
@@ -5156,10 +5208,7 @@
       return { actionKind, event, evaded, damageMultiplier: 1, opensCounterCheck: evaded };
     }
     if (actionKind === 'DEFEND' || actionKind === 'GUARD') {
-      const defense = Math.max(1, previewRuntime.readCombatStat(reactor, 'def'));
-      const attack = Math.max(1, previewRuntime.readCombatStat(sourceActor, 'str'));
-      const staminaRatio = previewRuntime.readResource(reactor, '体力') / Math.max(1, previewRuntime.readResourceMax(reactor, '体力'));
-      const damageMultiplier = Math.max(0.45, Math.min(0.82, 0.78 - Math.min(0.2, defense / (defense + attack) * 0.24) - Math.min(0.08, staminaRatio * 0.08)));
+      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense);
       const event = writeLedgerEvent(combatData, {
         ...common,
         eventKind: 'defend',
@@ -5248,6 +5297,11 @@
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
     const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
+    const decideBattleAction = decisionEngine === 'next-shadow'
+      ? decisionRuntime.decideNext
+      : decisionRuntime.decide;
+    if (typeof decideBattleAction !== 'function') throw new Error(`battle_decision_engine_missing:${decisionEngine}`);
     if (input?.battleIntent && typeof input.battleIntent === 'object') {
       if (input.battleIntent.mode !== undefined) combatData.战斗意图 = cloneValue(input.battleIntent.mode);
       if (input.battleIntent.objectives !== undefined) combatData.胜负条件 = cloneValue(input.battleIntent.objectives);
@@ -5531,7 +5585,7 @@
             const pendingSide = inferUnitSide(combatData, previewRuntime.unitName(pendingActor));
             return !!pendingSide && pendingSide !== actorSide;
           });
-          let decisionResult = decisionRuntime.decide({
+          let decisionResult = decideBattleAction({
             worldSnapshot: combatData,
             actorId,
             actionOpportunity: {
@@ -8177,7 +8231,11 @@
     const settlementKeys = new Map();
     settlementEvents.forEach(event => {
       const applicationId = String(event?.applicationId || event?.meta?.applicationId || '').trim();
-      const key = applicationId || [
+      const key = applicationId ? [
+        applicationId,
+        Number(event?.round || event?.sourceRound || 0),
+        String(event?.meta?.windowId || event?.windowId || '').trim(),
+      ].join('|') : [
         Number(event?.round || 0),
         String(event?.actionId || event?.sourceActionId || '').trim(),
         String(event?.actorName || '').trim(),
@@ -8230,6 +8288,23 @@
         const projections = eventId ? [...(sourceProjectionMap.get(eventId) || [])] : [];
         if (projections.some(source => !/state_tick|state_aggregation/.test(source))) {
           pushFatal('DOT_SOURCE_MISPROJECTED', { eventId, projections });
+        }
+        if (readDamage(event) > 0) {
+          const sourceActorName = String(event?.meta?.sourceActorName || event?.actorName || '').trim();
+          const sourceActionName = normalizeActionDisplayName(event?.meta?.sourceActionName || event?.sourceActionName || event?.actionName || '');
+          const sourceActionId = String(event?.meta?.sourceActionId || event?.sourceActionId || '').trim();
+          const applicationId = String(event?.meta?.applicationId || event?.applicationId || '').trim();
+          const sourceRound = Math.max(0, Number(event?.meta?.sourceRound || event?.sourceRound || 0));
+          if (!sourceActorName || !sourceActionName || !sourceActionId || !applicationId || sourceRound <= 0) {
+            pushFatal('DOT_SOURCE_MISSING', {
+              eventId,
+              sourceActorName,
+              sourceActionName,
+              sourceActionId,
+              applicationId,
+              sourceRound,
+            });
+          }
         }
       }
     });
@@ -8635,6 +8710,7 @@
         counterDeclineFallback: selected?.counterDeclineFallback === true,
         forcedFallback: selected?.forcedFallback === true,
         fallbackReason: String(selected?.fallbackReason || '').trim(),
+        repeatedActionAudit: selected?.repeatedActionAudit || null,
         mechanicObservations: Array.isArray(selected?.mechanicObservations) ? selected.mechanicObservations : [],
       },
       beliefState: decision?.beliefState || {},
@@ -8664,7 +8740,10 @@
     const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
     const mode = String(input.mode || 'single_preview').trim();
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
-    const decideOnce = (payload, index = 0) => decision.decide({
+    const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
+    const decideOnceImpl = decisionEngine === 'next-shadow' ? decision.decideNext : decision.decide;
+    if (typeof decideOnceImpl !== 'function') throw new Error(`battle_decision_engine_missing:${decisionEngine}`);
+    const decideOnce = (payload, index = 0) => decideOnceImpl({
       ...payload,
       battleIntent: input.battleIntent || payload?.battleIntent || {
         mode: String(payload?.worldSnapshot?.战斗意图 || worldSnapshot?.战斗意图 || '').trim(),
