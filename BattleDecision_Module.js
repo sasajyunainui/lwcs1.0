@@ -376,6 +376,23 @@
     return String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || skillId(skill, index)).trim();
   }
 
+  function candidateActionName(candidate = {}) {
+    const declaration = candidate?.declaration || {};
+    if (declaration?.skill && typeof declaration.skill === 'object') return skillName(declaration.skill);
+    return ({
+      BASIC_ATTACK: '普通攻击',
+      DEFEND: '防御',
+      EVADE: '闪避',
+      COUNTER: '反击',
+      OBSERVE: '观察',
+      GUARD: '护卫',
+      WITHDRAW: '撤退',
+      RELEASE_SKILL: '魂技',
+      USE_ITEM: '使用物品',
+      EQUIP: '装备',
+    })[String(declaration?.actionKind || '').trim()] || String(declaration?.actionKind || '行动').trim();
+  }
+
   function isPassiveSkill(skill = {}) {
     return String(skill?.承载方式 || skill?.类型 || skill?.技能类型 || '').includes('被动');
   }
@@ -3440,6 +3457,7 @@
       }),
       scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
         candidateId: candidate.candidateId,
+        actionName: candidateActionName(candidate),
         actionKind: candidate.declaration.actionKind,
         actionRole: String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() || 'ACTIVE',
         actorId: preview.unitId(actor),
@@ -3553,6 +3571,7 @@
       }),
       scoreAudit: Object.freeze([selected, ...alternatives].map(candidate => Object.freeze({
         candidateId: candidate.candidateId,
+        actionName: candidateActionName(candidate),
         actionKind: candidate.declaration.actionKind,
         actionRole: String(input.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() || 'ACTIVE',
         actorId: preview.unitId(actor),

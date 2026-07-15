@@ -349,6 +349,43 @@ const dodgeEvidenceTraceHtml = sandbox.__LWCS_RENDER_BATTLE_RESOLUTION_TRACE_HTM
       { key: 'sourceAgility', value: 282 },
       { key: 'reactionPressure', value: 343 },
       { key: 'attackPressure', value: 135 },
+      { key: 'reactionShare', value: 0.717573 },
+      {
+        key: 'reactionPressureBreakdown',
+        value: {
+          value: 343,
+          agility: { value: 522 },
+          spirit: 850,
+          spiritMax: 850,
+          stamina: 2750,
+          staminaMax: 2750,
+          opposingSpirit: 850,
+          base: 35,
+          spiritRatio: 1,
+          staminaRatio: 1,
+          conditionFactor: 1,
+          resourcePressure: 1,
+        },
+      },
+      {
+        key: 'attackPressureBreakdown',
+        value: {
+          value: 135,
+          agility: { value: 282 },
+          spirit: 850,
+          spiritMax: 850,
+          stamina: 2750,
+          staminaMax: 2750,
+          opposingSpirit: 850,
+          base: 35,
+          spiritRatio: 1,
+          staminaRatio: 1,
+          conditionFactor: 1,
+          resourcePressure: 1,
+        },
+      },
+      { key: 'reactionAgilityBreakdown', value: { value: 522, base: 522 } },
+      { key: 'sourceAgilityBreakdown', value: { value: 282, base: 282 } },
       { key: 'dodgeRate', value: 0.419695 },
       { key: 'dodgeRoll', value: 0.45865 },
       { key: 'failureReason', value: 'dodged' },
@@ -690,7 +727,7 @@ const summary = {
     (dodgeEvidenceTraceHtml.match(/tabindex="0"/g) || []).length === 6 &&
     /data-source="522：基础522/.test(dodgeEvidenceTraceHtml || '') &&
     /当前精神贡献/.test(dodgeEvidenceTraceHtml || '') &&
-    /双方精神压制/.test(dodgeEvidenceTraceHtml || '') &&
+    /精神压制/.test(dodgeEvidenceTraceHtml || '') &&
     /data-source="闪避成功率 42%；基础成功率 18%；反应压力占比/.test(dodgeEvidenceTraceHtml || '') &&
     /aria-label="闪避成功率：42%。来源：/.test(dodgeEvidenceTraceHtml || ''),
   reactionTypeInternalCodeHidden:

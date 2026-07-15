@@ -8699,6 +8699,27 @@
 
   function buildDecisionAuditRecord(decision = {}) {
     const selected = decision?.selected || {};
+    const normalizeScoreCandidate = candidate => {
+      const declaration = candidate?.declaration || {};
+      return {
+        ...cloneValue(candidate || {}),
+        actionName: normalizeActionDisplayName(
+          candidate?.actionName ||
+          declaration?.skill?.name ||
+          declaration?.skill?.魂技名 ||
+          declaration?.skill?.技能名称 ||
+          declaration?.skill?.名称 ||
+          candidate?.actionKind ||
+          candidate?.candidateId ||
+          '',
+        ),
+        targetIds: Array.isArray(candidate?.targetIds)
+          ? candidate.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+          : Array.isArray(declaration?.targetIds)
+            ? declaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+            : [],
+      };
+    };
     return cloneValue({
       version: decision?.version || '',
       round: Number(decision?.round || 0),
@@ -8742,7 +8763,7 @@
       beliefRevision: String(decision?.beliefRevision || '').trim(),
       pendingStrategicEffect: decision?.pendingStrategicEffect === true,
       strategyMemory: decision?.strategyMemory || {},
-      scoreAudit: Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [],
+      scoreAudit: Array.isArray(decision?.scoreAudit) ? decision.scoreAudit.map(normalizeScoreCandidate) : [],
       decisionProfile: decision?.decisionProfile || {},
     });
   }
