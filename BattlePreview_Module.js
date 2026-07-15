@@ -76,6 +76,10 @@
       属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
       状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
       状态效果: cloneStates(unit?.状态效果),
+      背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : unit?.背包,
+      库存: unit?.库存 && typeof unit.库存 === 'object' ? cloneValue(unit.库存) : unit?.库存,
+      物品: unit?.物品 && typeof unit.物品 === 'object' ? cloneValue(unit.物品) : unit?.物品,
+      战斗物品: unit?.战斗物品 && typeof unit.战斗物品 === 'object' ? cloneValue(unit.战斗物品) : unit?.战斗物品,
     };
   }
 
@@ -1515,6 +1519,101 @@
     );
   }
 
+  function findInventoryEntry(unit = {}, declaration = {}) {
+    const wanted = new Set([
+      declaration?.irreversibleAsset?.assetId,
+      declaration?.skill?.id,
+      declaration?.skill?.物品ID,
+      declaration?.skill?.__物品名,
+      declaration?.skill?.物品名,
+      declaration?.skill?.名称,
+      declaration?.skill?.name,
+    ].map(value => String(value || '').trim()).filter(Boolean));
+    const visited = new Set();
+    let found = null;
+    const visit = (value, key = '') => {
+      if (found || !value || typeof value !== 'object' || visited.has(value)) return;
+      visited.add(value);
+      if (!Array.isArray(value)) {
+        const identifiers = [
+          key,
+          value?.id,
+          value?.物品ID,
+          value?.__物品名,
+          value?.物品名,
+          value?.名称,
+          value?.name,
+        ].map(item => String(item || '').trim()).filter(Boolean);
+        if (identifiers.some(identifier => wanted.has(identifier)) && (value?.数量 !== undefined || value?.quantity !== undefined)) {
+          found = value;
+          return;
+        }
+      }
+      if (Array.isArray(value)) value.forEach((item, index) => visit(item, `${key}:${index}`));
+      else Object.entries(value).forEach(([childKey, child]) => visit(child, childKey));
+    };
+    ['背包', '库存', '物品', '战斗物品'].forEach(key => visit(unit?.[key], key));
+    return found;
+  }
+
+  function previewCreationCarrier(effect, overlay, ledger, context) {
+    const useEffects = Array.isArray(effect?.使用效果) ? effect.使用效果 : [];
+    if (!useEffects.length) throw new Error('battle_preview_creation_effects_missing');
+    collectEffects(effect).forEach(validateEffect);
+    const activeFingerprint = consumePreviewNode(context, effect);
+    try {
+      const skill = context.declaration?.skill || {};
+      const product = skill?.生成物 || skill?.产物 || skill?.制作产物 || null;
+      const productId = String(
+        product?.id ||
+        product?.物品ID ||
+        product?.名称 ||
+        product?.name ||
+        (typeof product === 'string' || typeof product === 'number' ? product : '') ||
+        skill?.魂技名 ||
+        skill?.name ||
+        '未命名造物'
+      ).trim();
+      const quantity = Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
+      const actorId = unitId(context.actor);
+      overlay.changeUnit(actorId, unit => {
+        if (!unit.背包 || typeof unit.背包 !== 'object' || Array.isArray(unit.背包)) unit.背包 = {};
+        const existing = unit.背包[productId] && typeof unit.背包[productId] === 'object'
+          ? unit.背包[productId]
+          : {};
+        unit.背包[productId] = {
+          ...existing,
+          id: String(existing.id || productId).trim() || productId,
+          name: String(existing.name || productId).trim() || productId,
+          名称: String(existing.名称 || productId).trim() || productId,
+          物品名: String(existing.物品名 || productId).trim() || productId,
+          类型: String(existing.类型 || effect?.物品类型 || '物品').trim() || '物品',
+          数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
+          有效期tick: Math.max(Number(existing.有效期tick || 0), Math.max(0, Number(effect?.有效期tick || 0))),
+          来源: String(existing.来源 || skill?.魂技名 || skill?.name || context.rootActionId || '').trim(),
+          使用效果: cloneValue(useEffects),
+        };
+      });
+      overlay.schedule({
+        eventKind: 'item_created',
+        rootActionId: context.rootActionId,
+        effectInstanceId: context.effectInstanceId,
+        actorId,
+        productId,
+        quantity,
+      });
+      ledger.addOutcome({
+        ...context,
+        targetId: actorId,
+        outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED',
+        threatValue: 0,
+        evidence: { delta: 1, productId, quantity, useEffectCount: useEffects.length },
+      });
+    } finally {
+      context.nodeBudget.activeFingerprints.delete(activeFingerprint);
+    }
+  }
+
   function buildCacheKey(input = {}) {
     return [
       input.worldRevision || stableHash(input.worldSnapshot || {}),
@@ -1574,6 +1673,18 @@
         evidence: { resource, before, next: before - cost, delta: -cost },
       });
     });
+    if (String(declaration?.actionKind || '').trim() === 'USE_ITEM') {
+      overlay.changeUnit(unitId(actor), unit => {
+        const inventoryItem = findInventoryEntry(unit, declaration);
+        const quantityBefore = Math.max(0, Number(inventoryItem?.数量 ?? inventoryItem?.quantity ?? 0));
+        if (!inventoryItem || quantityBefore < 1) {
+          throw new Error(`battle_preview_item_unavailable:${String(declaration?.irreversibleAsset?.assetId || declaration?.skill?.name || '').trim()}`);
+        }
+        const remainingQuantity = quantityBefore - 1;
+        if (inventoryItem.数量 !== undefined || inventoryItem.quantity === undefined) inventoryItem.数量 = remainingQuantity;
+        if (inventoryItem.quantity !== undefined) inventoryItem.quantity = remainingQuantity;
+      });
+    }
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
@@ -1598,6 +1709,10 @@
         windowId: `round:${Number(worldSnapshot?.回合 || 0)}:effect:${index}`,
         battleIntent: input?.battleIntent || {},
       };
+      if (!String(effect?.原型 || '').trim() && Array.isArray(effect?.使用效果)) {
+        previewCreationCarrier(effect, overlay, ledger, context);
+        return;
+      }
       if (followsPrimary) {
         context.applicationProbabilityByTarget = new Map(
           targets.map(target => [unitId(target), primarySuccessProbability.get(unitId(target)) ?? 0])

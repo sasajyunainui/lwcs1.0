@@ -7912,6 +7912,7 @@
     const resolutionTrace = Array.isArray(payload.resolutionTrace) ? payload.resolutionTrace.filter(Boolean) : [];
     const publicReportBlocks = Array.isArray(payload.publicReportBlocks) ? payload.publicReportBlocks.filter(Boolean) : [];
     const reportBlocks = Array.isArray(payload.reportBlocks) ? payload.reportBlocks.filter(Boolean) : [];
+    const combatData = payload.combatData && typeof payload.combatData === 'object' ? payload.combatData : {};
     const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
     const factRegistry = Array.isArray(payload.factRegistry) ? payload.factRegistry.filter(Boolean) : [];
     const transactionAudit = payload.transactionAudit && typeof payload.transactionAudit === 'object' ? payload.transactionAudit : null;
@@ -8407,10 +8408,29 @@
       .filter(event => ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()))
       .map(event => [String(event?.actionId || '').trim(), event])
       .filter(([actionId]) => !!actionId));
+    const combatUnitNameById = new Map(listCombatUnits(combatData).map(unit => [
+      previewRuntime.unitId(unit),
+      previewRuntime.unitName(unit),
+    ]).filter(([unitId, name]) => unitId && name));
+    eventLedger.forEach(event => {
+      const actorId = String(event?.actorId || '').trim();
+      const actorName = String(event?.actorName || '').trim();
+      if (actorId && actorName) combatUnitNameById.set(actorId, actorName);
+    });
+    eventLedger.forEach(event => {
+      const targetId = String(event?.targetId || '').trim();
+      const targetName = String(event?.targetName || '').trim();
+      if (targetId && targetName && (!combatUnitNameById.has(targetId) || combatUnitNameById.get(targetId) === targetId)) {
+        combatUnitNameById.set(targetId, targetName);
+      }
+    });
     const sourceTargetsActor = (sourceAction, actorName) => [
       sourceAction?.targetName,
       ...(Array.isArray(sourceAction?.targetIds) ? sourceAction.targetIds : []),
-    ].some(target => isSameReportName(target || '', actorName || ''));
+    ].some(target => isSameReportName(
+      combatUnitNameById.get(String(target || '').trim()) || target || '',
+      actorName || '',
+    ));
     eventLedger.forEach(event => {
       const kind = String(event?.eventKind || '').trim();
       const role = normalizeActionRole(event?.actionRole || 'ACTIVE');

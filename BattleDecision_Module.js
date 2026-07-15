@@ -603,6 +603,19 @@
     };
   }
 
+  function creationProductSkill(creation = null) {
+    if (!creation?.productId || !Array.isArray(creation?.useEffects) || !creation.useEffects.length) return null;
+    return {
+      id: `created-item:${creation.productId}`,
+      name: creation.productId,
+      魂技名: creation.productId,
+      承载方式: '物品使用',
+      _效果数组: creation.useEffects.map(effect => String(effect?.目标 || '').trim() === '自身'
+        ? { ...cloneValue(effect), 目标: '单体' }
+        : cloneValue(effect)),
+    };
+  }
+
   function strategicSignature(worldSnapshot = {}, beliefState = {}) {
     const hpBand = unit => Math.max(0, Math.min(4, Math.floor(preview.readHp(unit) / preview.readHpMax(unit) * 5)));
     return preview.stableHash({
@@ -1199,6 +1212,35 @@
             costRatio: normalizedCost(unit, costs),
           });
         });
+        const creation = creationProfile(skill, unit, worldSnapshot);
+        const productSkill = creationProductSkill(creation);
+        if (!productSkill) return;
+        const productProfile = targetProfile(productSkill);
+        const productTargets = productProfile === 'SELF'
+          ? [unit]
+          : productProfile.startsWith('FRIENDLY')
+            ? allies
+            : productProfile === 'ANY_SINGLE'
+              ? [...allies, ...enemies]
+              : enemies;
+        const productTargetSets = productProfile.endsWith('GROUP')
+          ? [productTargets]
+          : productTargets.map(target => [target]);
+        productTargetSets.filter(targetSet => targetSet.length > 0).forEach((targetSet, targetIndex) => {
+          const potential = targetSet.reduce((sum, target) =>
+            sum + preview.calculateDirectPotential(unit, target, { actionKind: 'USE_ITEM', skill: productSkill }), 0);
+          actions.push({
+            actionKey: `${unitId}:created-item:${creation.productId}:${targetIndex}`,
+            actionKind: 'USE_ITEM',
+            skill: productSkill,
+            targetIds: targetSet.map(preview.unitId),
+            potential,
+            costs: {},
+            costRatio: 0,
+            inventoryId: creation.productId,
+            requiresInventoryId: creation.productId,
+          });
+        });
       });
     }
     return actions;
@@ -1243,9 +1285,56 @@
     if (!preview.isAlive(unit)) return false;
     if (action.actionKind === 'BASIC_ATTACK' && hasStateFlag(unit, 'disarm')) return false;
     if (action.actionKind === 'RELEASE_SKILL' && (hasStateFlag(unit, 'silence') || !costAffordable(unit, action.skill))) return false;
+    if (action.requiresInventoryId && !collectInventory(unit).some(entry =>
+      entry.id === action.requiresInventoryId && entry.quantity > 0
+    )) return false;
     return (action.targetIds || []).every(targetId => {
       const target = preview.findUnit(worldSnapshot, targetId);
       return target && preview.isAlive(target);
+    });
+  }
+
+  function snapshotAfterInventoryConsumption(worldSnapshot = {}, actorId = '', inventoryId = '') {
+    if (!inventoryId) return worldSnapshot;
+    return mapWorldUnits(worldSnapshot, unit => {
+      if (preview.unitId(unit) !== actorId) return unit;
+      const next = {
+        ...unit,
+        背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : unit?.背包,
+        库存: unit?.库存 && typeof unit.库存 === 'object' ? cloneValue(unit.库存) : unit?.库存,
+        物品: unit?.物品 && typeof unit.物品 === 'object' ? cloneValue(unit.物品) : unit?.物品,
+        战斗物品: unit?.战斗物品 && typeof unit.战斗物品 === 'object' ? cloneValue(unit.战斗物品) : unit?.战斗物品,
+      };
+      const entry = collectInventory(next).find(item => item.id === inventoryId && item.quantity > 0);
+      if (!entry) return next;
+      const remaining = entry.quantity - 1;
+      if (entry.item.数量 !== undefined || entry.item.quantity === undefined) entry.item.数量 = remaining;
+      if (entry.item.quantity !== undefined) entry.item.quantity = remaining;
+      return next;
+    });
+  }
+
+  function snapshotAfterCreation(worldSnapshot = {}, actorId = '', creation = null) {
+    if (!creation?.productId || !Array.isArray(creation?.useEffects) || !creation.useEffects.length) return worldSnapshot;
+    return mapWorldUnits(worldSnapshot, unit => {
+      if (preview.unitId(unit) !== actorId) return unit;
+      const next = {
+        ...unit,
+        背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : {},
+      };
+      const existing = next.背包[creation.productId] && typeof next.背包[creation.productId] === 'object'
+        ? next.背包[creation.productId]
+        : {};
+      next.背包[creation.productId] = {
+        ...existing,
+        id: String(existing.id || creation.productId).trim() || creation.productId,
+        name: String(existing.name || creation.productId).trim() || creation.productId,
+        名称: String(existing.名称 || creation.productId).trim() || creation.productId,
+        物品名: String(existing.物品名 || creation.productId).trim() || creation.productId,
+        数量: Math.max(0, Number(existing.数量 || 0)) + 1,
+        使用效果: cloneValue(creation.useEffects),
+      };
+      return next;
     });
   }
 
@@ -1263,10 +1352,15 @@
   }
 
   function sequenceProfileFromFrozen(worldSnapshot = {}, unit = {}, catalog = []) {
-    const legalFirst = catalog.filter(action => actionLegalFromFrozen(worldSnapshot, unit, action)).slice(0, 3);
+    const legalActions = catalog.filter(action => actionLegalFromFrozen(worldSnapshot, unit, action));
+    const legalFirst = [
+      ...legalActions.filter(action => !action.requiresInventoryId).slice(0, 3),
+      ...legalActions.filter(action => action.requiresInventoryId),
+    ];
     if (!legalFirst.length) return { firstPotential: 0, secondPotential: 0, sequencePotential: 0, actionKeys: [] };
     return legalFirst.reduce((best, first) => {
-      const paid = snapshotAfterResourceCosts(worldSnapshot, preview.unitId(unit), first.costs || {});
+      const resourcePaid = snapshotAfterResourceCosts(worldSnapshot, preview.unitId(unit), first.costs || {});
+      const paid = snapshotAfterInventoryConsumption(resourcePaid, preview.unitId(unit), first.inventoryId || '');
       const recovered = snapshotAfterDeterministicRecovery(paid, preview.unitId(unit));
       const secondUnit = preview.findUnit(recovered, preview.unitId(unit));
       const second = catalog.filter(action => actionLegalFromFrozen(recovered, secondUnit, action))
@@ -1331,12 +1425,19 @@
           }, 0);
         return { ...action, potential: action.potential + statePotential };
       });
-      catalogs[id] = enriched.filter(action => action.potential > 0).filter((action, index, all) => !all.some((other, otherIndex) =>
-        otherIndex !== index &&
-        other.potential >= action.potential - 1e-9 &&
-        other.costRatio <= action.costRatio + 1e-9 &&
-        (other.potential > action.potential + 1e-9 || other.costRatio < action.costRatio - 1e-9)
-      )).sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio).slice(0, 3);
+      const nonDominated = enriched.filter(action => action.potential > 0).filter((action, index, all) =>
+        action.requiresInventoryId || !all.some((other, otherIndex) =>
+          otherIndex !== index &&
+          !other.requiresInventoryId &&
+          other.potential >= action.potential - 1e-9 &&
+          other.costRatio <= action.costRatio + 1e-9 &&
+          (other.potential > action.potential + 1e-9 || other.costRatio < action.costRatio - 1e-9)
+        )
+      ).sort((left, right) => right.potential - left.potential || left.costRatio - right.costRatio);
+      catalogs[id] = [
+        ...nonDominated.filter(action => !action.requiresInventoryId).slice(0, 3),
+        ...nonDominated.filter(action => action.requiresInventoryId),
+      ];
     });
     return Object.freeze({
       perspectiveSide,
@@ -2742,6 +2843,7 @@
     }
     if (candidate.creation?.useful) {
       const paidSnapshot = snapshotAfterResourceCosts(context.worldSnapshot, context.actorId, candidate.costs || {});
+      const futureUseWorld = snapshotAfterCreation(paidSnapshot, context.actorId, candidate.creation);
       const paidUtility = stateUtility(paidSnapshot, actorSide, context.beliefState);
       expectedStateGain = 100 * (paidUtility.utility - before.utility) / Math.max(1, before.total);
       const futureUseEffects = (candidate.creation.useEffects || []).map(effect => ({
@@ -2750,7 +2852,7 @@
       }));
       const futureUseGain = (candidate.creation.consumerIds || []).reduce((bestGain, targetId) => {
         const futureUse = preview.previewAction({
-          worldSnapshot: paidSnapshot,
+          worldSnapshot: futureUseWorld,
           worldRevision: `${context.worldRevision}:paid:${candidate.candidateId}`,
           beliefSnapshot: context.beliefState,
           beliefRevision: context.beliefRevision,
