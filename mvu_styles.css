@@ -29500,6 +29500,14 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   font-size: var(--战斗记录辅助字号);
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-structured-report-copy,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-copy,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-structured-report-copy {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-group:last-child,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group:last-child,
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group:last-child {

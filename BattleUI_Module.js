@@ -9464,9 +9464,9 @@ class BattleUIComponent {
           return `
             <article class="battle-preview-report-group" data-round="${Math.max(0, Number(block?.round || 0))}" data-action-group-id="${htmlEscapeText(block?.actionGroupId || '')}">
               <header class="battle-structured-report-head"><span>${roundLabel}</span><b>${actionHeadHtml}</b></header>
-              ${String(block?.intentSummary || '').trim() ? `<p class="battle-structured-report-intent"><b>意图</b>${intentHtml}</p>` : ''}
-              <p class="battle-structured-report-outcome"><b>结果</b>${outcomeHtml}</p>
-              ${String(block?.nextWindow || '').trim() ? `<p class="battle-structured-report-window"><b>窗口</b>${nextWindowHtml}</p>` : ''}
+              ${String(block?.intentSummary || '').trim() ? `<p class="battle-structured-report-intent"><b>意图</b><span class="battle-structured-report-copy">${intentHtml}</span></p>` : ''}
+              <p class="battle-structured-report-outcome"><b>结果</b><span class="battle-structured-report-copy">${outcomeHtml}</span></p>
+              ${String(block?.nextWindow || '').trim() ? `<p class="battle-structured-report-window"><b>窗口</b><span class="battle-structured-report-copy">${nextWindowHtml}</span></p>` : ''}
             </article>
           `;
         }
@@ -9506,9 +9506,9 @@ class BattleUIComponent {
             return `
               <section class="battle-structured-report-round" data-round="${round}" data-active-action-count="${activeBlocks.length}" data-passive-fact-count="${passiveFacts.length}">
                 <header class="battle-structured-report-round-head"><span>第${round}回合</span><b>${activeBlocks.length > 1 ? '双方交锋' : activeBlocks.length === 1 ? '单方行动' : '回合结算'}</b></header>
-                <p class="battle-structured-report-exchange"><b>交锋</b>${exchangeHtml}</p>
+                <p class="battle-structured-report-exchange"><b>交锋</b><span class="battle-structured-report-copy">${exchangeHtml}</span></p>
                 <div class="battle-structured-report-actions">${activeBlocks.map(block => 渲染结构化战报BlockHTML(block, { ...context, showRound: false })).join('')}</div>
-                ${passiveHtml ? `<p class="battle-structured-report-passive"><b>回合结算</b>${passiveHtml}</p>` : ''}
+                ${passiveHtml ? `<p class="battle-structured-report-passive"><b>回合结算</b><span class="battle-structured-report-copy">${passiveHtml}</span></p>` : ''}
               </section>
             `;
           }).join('');

@@ -80,7 +80,7 @@ function buildFixture(viewport) {
     </div>`).join('');
   const views = {
     round: `<section class="battle-round-dashboard" aria-label="回合速览">${roundRows}</section>`,
-    report: `<section class="battle-structured-report-round"><header class="battle-structured-report-round-head"><span>第1回合</span><b>双方交锋</b></header><p class="battle-structured-report-exchange"><b>交锋</b>唐凌雪以【冰锋突袭】指向韦小枫，随后韦小枫以【青影蛇群】指向唐凌雪</p><div class="battle-structured-report-actions"><article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>动作</span><b>唐凌雪 · 冰锋突袭</b></header><p class="battle-structured-report-intent"><b>意图</b>抓住当前命中窗口</p><p class="battle-structured-report-outcome"><b>结果</b>命中并造成 86 点伤害</p></article><article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>动作</span><b>韦小枫 · 青影蛇群</b></header><p class="battle-structured-report-outcome"><b>结果</b>召唤追击造成 26 点伤害</p></article></div><p class="battle-structured-report-passive"><b>回合结算</b><span class="battle-preview-report-badge battle-preview-report-badge--resource" data-actor="唐凌雪" data-resource="魂力" data-delta="10" data-source-event-id="report-recover-player">唐凌雪 魂力 +10</span><span class="battle-preview-report-badge battle-preview-report-badge--resource" data-actor="韦小枫" data-resource="魂力" data-delta="10" data-source-event-id="report-recover-enemy">韦小枫 魂力 +10</span></p></section>`,
+    report: `<section class="battle-structured-report-round"><header class="battle-structured-report-round-head"><span>第1回合</span><b>双方交锋</b></header><p class="battle-structured-report-exchange"><b>交锋</b><span class="battle-structured-report-copy">唐凌雪以<button class="battle-preview-report-skill" type="button">【冰锋突袭】</button>指向韦小枫，随后韦小枫以<button class="battle-preview-report-skill" type="button">【青影蛇群】</button>指向唐凌雪</span></p><div class="battle-structured-report-actions"><article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>动作</span><b>唐凌雪 · <button class="battle-preview-report-skill" type="button">【冰锋突袭】</button></b></header><p class="battle-structured-report-intent"><b>意图</b><span class="battle-structured-report-copy">以<button class="battle-preview-report-skill" type="button">【冰锋突袭】</button>抓住当前命中窗口</span></p><p class="battle-structured-report-outcome"><b>结果</b><span class="battle-structured-report-copy"><button class="battle-preview-report-skill" type="button">【冰锋突袭】</button>命中并造成 86 点伤害</span></p></article><article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>动作</span><b>韦小枫 · <button class="battle-preview-report-skill" type="button">【青影蛇群】</button></b></header><p class="battle-structured-report-outcome"><b>结果</b><span class="battle-structured-report-copy"><button class="battle-preview-report-skill" type="button">【青影蛇群】</button>召唤追击造成 26 点伤害</span></p></article></div><p class="battle-structured-report-passive"><b>回合结算</b><span class="battle-structured-report-copy"><span class="battle-preview-report-badge battle-preview-report-badge--resource" data-actor="唐凌雪" data-resource="魂力" data-delta="10" data-source-event-id="report-recover-player">唐凌雪 魂力 +10</span><span class="battle-preview-report-badge battle-preview-report-badge--resource" data-actor="韦小枫" data-resource="魂力" data-delta="10" data-source-event-id="report-recover-enemy">韦小枫 魂力 +10</span></span></p></section>`,
     decision: `<div class="battle-decision-filter"><label>回合<select><option>第1回合</option></select></label><label>动作<select><option>唐凌雪 · 冰锋突袭</option></select></label></div><details class="battle-preview-trace-row" open><summary>命中与伤害判定</summary><p>命中概率 78%，检定通过，最终伤害 86。</p></details>`,
     summary: `<section class="battle-final-summary"><header class="battle-final-summary-head"><span>第10回合终态</span><b>我方获胜</b></header><div class="battle-final-summary-sides"><section class="battle-final-summary-side"><h4>我方</h4><div class="battle-final-summary-unit"><b>唐凌雪</b><span>HP 344/565</span><span>魂力 1724/2166</span></div></section><section class="battle-final-summary-side"><h4>敌方</h4><div class="battle-final-summary-unit"><b>韦小枫</b><span>HP 1/538</span><span>失去战斗力</span></div></section></div><section class="battle-final-summary-intent"><h4>下一步意图</h4><p><b>我方</b>结束交锋并确认战果</p><p><b>敌方</b>已失去战斗能力</p></section></section>`,
   };
@@ -169,6 +169,12 @@ try {
           delta: node.getAttribute('data-delta'),
           sourceEventId: node.getAttribute('data-source-event-id'),
         })));
+        viewChecks.report.actionReferences = await page.evaluate(() => [...document.querySelectorAll('.battle-preview-report-skill')].map(node => ({
+          display: getComputedStyle(node).display,
+          parentClass: node.parentElement?.className || '',
+          height: Math.round(node.getBoundingClientRect().height),
+          lineHeight: Math.round(parseFloat(getComputedStyle(node).lineHeight) || 0),
+        })));
       }
     }
     let drag = null;
@@ -183,6 +189,7 @@ try {
         return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
       });
     }
+    await page.locator('[data-battle-record-view="report"]').click({ force: true });
     const screenshotPath = path.resolve(artifactsDir, `battle-record-${viewport.width}.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     const failures = [];
@@ -196,6 +203,11 @@ try {
       if (view !== 'round' && check.blankTail > 28) failures.push(`${view}_excess_blank_tail:${check.blankTail}`);
     });
     if (resourceBadges.length !== 2 || resourceBadges.some(item => !item.actor || !item.resource || !item.delta || !item.sourceEventId)) failures.push('resource_badges_not_independent');
+    if (!viewChecks.report.actionReferences?.length || viewChecks.report.actionReferences.some(item =>
+      item.display !== 'inline' ||
+      (!item.parentClass.includes('battle-structured-report-copy') && item.parentClass !== '') ||
+      item.height > item.lineHeight * 1.6
+    )) failures.push('report_action_reference_broke_inline_flow');
     if (drag && (drag.left < 9 || drag.top < 9 || drag.right > viewport.width - 9 || drag.bottom > viewport.height - 9)) failures.push('drag_boundary_failed');
     results.push({ viewport, initial, viewChecks, resourceBadges, drag, screenshotPath, failures });
     await page.close();

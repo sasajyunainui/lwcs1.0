@@ -766,7 +766,11 @@ const summary = {
   structuredReportActionReferencesConsistent:
     /const intentHtml = 渲染公开战报HTML/.test(code) &&
     /const actionHeadHtml = 渲染公开战报HTML/.test(code) &&
-    /const exchangeHtml = 渲染公开战报HTML/.test(code),
+    /const exchangeHtml = 渲染公开战报HTML/.test(code) &&
+    /battle-structured-report-exchange"><b>交锋<\/b><span class="battle-structured-report-copy">/.test(code) &&
+    /battle-structured-report-intent"><b>意图<\/b><span class="battle-structured-report-copy">/.test(code) &&
+    /battle-structured-report-outcome"><b>结果<\/b><span class="battle-structured-report-copy">/.test(code) &&
+    /battle-structured-report-copy[\s\S]{0,160}display: block;[\s\S]{0,120}min-width: 0;/.test(styleCode),
   skillTooltipUsesViewportPortal:
     /globalDocument\.body\.appendChild\(node\)/.test(code) &&
     /position: fixed;[\s\S]{0,120}z-index: 2147483000/.test(styleCode) &&
