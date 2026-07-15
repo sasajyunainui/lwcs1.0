@@ -209,6 +209,11 @@ class BattleUIComponent {
       manual: '手动',
       free_narrative: '自由',
     };
+    const 战斗意图模式列表 = new Set(['点到为止', '生擒', '压制', '必杀']);
+    function normalizeBattleIntentMode(value = '') {
+      const normalized = String(value || '').trim();
+      return 战斗意图模式列表.has(normalized) ? normalized : '点到为止';
+    }
     const 自动续推默认设置 = Object.freeze({
       maxRounds: 20,
       stopDamagePercent: 25,
@@ -546,6 +551,29 @@ class BattleUIComponent {
       }
       if (!next.名称) next.名称 = `${next.标准物种}魂灵`;
       return next;
+    }
+
+    function normalizeSoulTowerPendingSettlement(record = null) {
+      if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+      const floor = Math.floor(Number(record.层数 || 0));
+      const discountSpirit = normalizeSoulTowerDiscountSpiritRecord(record.五折魂灵);
+      if (
+        String(record.状态 || '').trim() !== '待选择' ||
+        !(floor > 0 && floor <= SOUL_TOWER_TOTAL_FLOORS) ||
+        !(discountSpirit.层数 > 0) ||
+        discountSpirit.层数 !== floor
+      ) return null;
+      const canContinue = floor < SOUL_TOWER_TOTAL_FLOORS && record.可继续 === true;
+      return {
+        状态: '待选择',
+        层数: floor,
+        区域标签: String(record.区域标签 || '').trim(),
+        区间标签: String(record.区间标签 || '').trim(),
+        守塔名称: String(record.守塔名称 || discountSpirit.名称).trim(),
+        五折魂灵: discountSpirit,
+        下一层: canContinue ? floor + 1 : floor,
+        可继续: canContinue,
+      };
     }
 
     function buildSoulTowerDiscountSpiritDisplay(record = {}) {
@@ -2212,7 +2240,7 @@ class BattleUIComponent {
       const targetName = String(hit?.target || '').trim();
       const target = 查找战报上下文单位(context, targetName);
       if (!target) return '';
-      const maxHp = Math.max(1, Number(getCombatHpMaxValue(target) || 0));
+      const maxHp = Math.max(1, Number(BATTLE_PREVIEW.readHpMax(target) || 0));
       if (!(maxHp > 1)) return '';
       const ratio = Math.max(0, Number(totalDamage || 0)) / maxHp;
       if (ratio >= 0.6) return '，几乎将其逼入濒危边缘';
@@ -3977,7 +4005,7 @@ class BattleUIComponent {
       const resolvedEventLedger = Array.isArray(eventLedger)
         ? eventLedger
         : (Array.isArray(combatData?.__battleEventLedger) ? combatData.__battleEventLedger : []);
-      补水战斗运行态(combatData, resolvedEventLedger, { source: 'battle_preview' });
+      BATTLE_RUNTIME.prepareCombatData(combatData, name => getMvuValue(`char.${name}`, null));
       const publicReportText = 序列化公开战报条目文本行(resolvedPublicReportBlocks, { combatData }).join('\n');
       const snapshot = BATTLE_RUNTIME.getBattleSnapshot(combatData);
       const decisionTrace = BATTLE_RUNTIME.collectDecisionTrace(combatData);
@@ -9027,7 +9055,7 @@ class BattleUIComponent {
           const 错失 = String(normalized.result || '').trim() === 'fail';
           const 标题 = `[防反机制] ⚡ ${normalized.行动者 || '系统'} ${错失 ? '反击未成' : '完成反击'}`;
           const 反击动作 = normalizeBattleActionDisplayName(normalized.sourceActionName || '');
-          const 显示动作 = 判定防反动作名缺失(反击动作) ? 'Action_Missing' : 反击动作;
+          const 显示动作 = 反击动作 || '反击';
           const 伤害 = Math.max(0, Number(normalized.damage || 0));
           const 原失败原因 = String(normalized.failReason || '').trim();
           const 概率片段 = String(原失败原因.match(/[（(]概率[:：]\s*\d+%[)）]/)?.[0] || '').trim();
@@ -9781,7 +9809,6 @@ class BattleUIComponent {
               ? pendingSettlement.五折魂灵
               : createEmptySoulTowerDiscountSpiritRecord(),
           };
-          clearCombatAdjudicationHints(combatData);
           delete combatData.魂灵塔待结算;
           combatData.本次操作 = undefined;
           combatData.前端建议结果 = undefined;

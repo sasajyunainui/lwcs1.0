@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { Linter } from 'eslint';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const battleUiPath = path.resolve(root, 'lwcs/BattleUI_Module.js');
@@ -24,6 +25,34 @@ const gateSource = fs.readFileSync(path.resolve(root, 'lwcs/tools/run_battle_v23
 
 const checks = [];
 const addCheck = (name, passed, detail = '') => checks.push({ name, passed: Boolean(passed), detail });
+const battleUiGlobals = Object.fromEntries([
+  'window', 'document', 'globalThis', 'CustomEvent', 'Element', 'HTMLElement', 'Node',
+  'ResizeObserver', 'MutationObserver', 'AbortController', 'URL', 'URLSearchParams',
+  'TextEncoder', 'TextDecoder', 'crypto', 'structuredClone', 'fetch', 'localStorage',
+  'sessionStorage', 'navigator', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'console', 'Map', 'Set',
+  'WeakMap', 'WeakSet', 'Promise', 'Object', 'Array', 'String', 'Number', 'Boolean',
+  'Math', 'Date', 'JSON', 'RegExp', 'Error', 'TypeError', 'Infinity', 'NaN', 'undefined',
+  'Event', 'InputEvent', 'HTMLInputElement', 'HTMLTextAreaElement', 'Request', 'Formatter',
+  'sendToAI',
+].map(name => [name, 'readonly']));
+const battleUiUndefinedSymbols = new Linter().verify(
+  battleUiSource,
+  [{
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'script',
+      globals: battleUiGlobals,
+    },
+    rules: { 'no-undef': 'error' },
+  }],
+  { filename: battleUiPath },
+)
+  .filter(message => message.ruleId === 'no-undef')
+  .map(message => ({
+    name: String(message.message.match(/'([^']+)'/)?.[1] || message.message),
+    line: message.line,
+  }));
 
 const gitStatus = execFileSync('git', ['-C', 'lwcs', 'status', '--porcelain', '--', 'MVU.js'], {
   cwd: root,
@@ -31,6 +60,11 @@ const gitStatus = execFileSync('git', ['-C', 'lwcs', 'status', '--porcelain', '-
 });
 
 addCheck('mvuJsNotModified', String(gitStatus || '').trim() === '', String(gitStatus || '').trim());
+addCheck(
+  'battleUiHasNoUnresolvedRuntimeSymbols',
+  battleUiUndefinedSymbols.length === 0,
+  battleUiUndefinedSymbols,
+);
 addCheck('mvuDoesNotPersistResolutionTrace', !/__battleResolutionTrace|__battleEventLedger|publicReportBlocks/.test(mvuSource));
 addCheck(
   'resolutionTraceIsRuntimeNonEnumerable',
