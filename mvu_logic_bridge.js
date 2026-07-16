@@ -34688,16 +34688,16 @@
       title: `${scopeLabels.studioTitle} / ${获取技能设计台当前标题(snapshot.rootData, previewMeta, skillSource) || initialRawDraft.name || previewMeta.label || '未命名'}`,
       summary: '',
       body: `
-        <div class="skill-designer-vue-host" data-skill-designer-vue-host>
-          <div class="skill-designer-vue-loading" role="status" aria-live="polite">
-            <span class="skill-designer-vue-loading-mark" aria-hidden="true"></span>
+          <div class="skill-designer-host" data-skill-designer-host>
+          <div class="sdv-loading" role="status" aria-live="polite">
+            <span class="sdv-loading-mark" aria-hidden="true"></span>
             <strong>正在载入技能设计器…</strong>
           </div>
         </div>
       `,
       onMount: mountEl => {
         const host = mountEl && mountEl.querySelector
-          ? mountEl.querySelector('[data-skill-designer-vue-host]')
+          ? mountEl.querySelector('[data-skill-designer-host]')
           : null;
         let destroyed = false;
         let mountController = null;
@@ -34713,14 +34713,14 @@
           if (!surfaceStillActive()) return;
           host.replaceChildren();
           const panel = document.createElement('div');
-          panel.className = 'skill-designer-vue-load-error';
+          panel.className = 'sdv-load-error';
           const title = document.createElement('strong');
           title.textContent = '技能设计器载入失败';
           const message = document.createElement('p');
           message.textContent = normalizeSkillUiText(error && error.message, '模块接口未就绪。');
           const retry = document.createElement('button');
           retry.type = 'button';
-          retry.className = 'skill-designer-vue-button primary';
+          retry.className = 'sdv-button primary';
           retry.textContent = '重试';
           retry.addEventListener('click', loadAndMount, { once: true });
           panel.append(title, message, retry);
@@ -34730,8 +34730,8 @@
         const showLoading = () => {
           if (!surfaceStillActive()) return;
           host.innerHTML = `
-            <div class="skill-designer-vue-loading" role="status" aria-live="polite">
-              <span class="skill-designer-vue-loading-mark" aria-hidden="true"></span>
+            <div class="sdv-loading" role="status" aria-live="polite">
+              <span class="sdv-loading-mark" aria-hidden="true"></span>
               <strong>正在载入技能设计器…</strong>
             </div>
           `;
@@ -47488,6 +47488,7 @@ ${播报文本}
 
   function wrapArchiveRedesignBody(html, options = {}) {
     const previewKey = toText(options.previewKey, '');
+    if (isSkillDesignerPreviewKey(previewKey)) return html || '';
     if (options.unifiedMode) {
       return `<div class="archive-redesign-root mvu-holo-detail-root" data-ai-maintenance-root="1" data-holo-preview="${escapeHtmlAttr(previewKey)}">
           <div class="mvu-holo-slab-root" data-slab-preview="${escapeHtmlAttr(previewKey)}">
@@ -47699,7 +47700,7 @@ ${播报文本}
         '.inventory-grid',
         '.mvu-detail-embed',
         '.mvu-profession-workshop-detail',
-        '.skill-designer-vue-root',
+        '.sdv-root',
         '.map-action-grid',
         '.map-dispatch-action-btn',
         '#mvu-battle-inline-host',
