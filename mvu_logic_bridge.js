@@ -34689,8 +34689,8 @@
       summary: '',
       body: `
           <div class="skill-designer-host" data-skill-designer-host>
-          <div class="sdv-loading" role="status" aria-live="polite">
-            <span class="sdv-loading-mark" aria-hidden="true"></span>
+          <div class="sdu-loading" role="status" aria-live="polite">
+            <span class="sdu-loading-mark" aria-hidden="true"></span>
             <strong>正在载入技能设计器…</strong>
           </div>
         </div>
@@ -34713,14 +34713,14 @@
           if (!surfaceStillActive()) return;
           host.replaceChildren();
           const panel = document.createElement('div');
-          panel.className = 'sdv-load-error';
+          panel.className = 'sdu-load-error';
           const title = document.createElement('strong');
           title.textContent = '技能设计器载入失败';
           const message = document.createElement('p');
           message.textContent = normalizeSkillUiText(error && error.message, '模块接口未就绪。');
           const retry = document.createElement('button');
           retry.type = 'button';
-          retry.className = 'sdv-button primary';
+          retry.className = 'sdu-button is-primary';
           retry.textContent = '重试';
           retry.addEventListener('click', loadAndMount, { once: true });
           panel.append(title, message, retry);
@@ -34730,8 +34730,8 @@
         const showLoading = () => {
           if (!surfaceStillActive()) return;
           host.innerHTML = `
-            <div class="sdv-loading" role="status" aria-live="polite">
-              <span class="sdv-loading-mark" aria-hidden="true"></span>
+            <div class="sdu-loading" role="status" aria-live="polite">
+              <span class="sdu-loading-mark" aria-hidden="true"></span>
               <strong>正在载入技能设计器…</strong>
             </div>
           `;
@@ -47700,7 +47700,7 @@ ${播报文本}
         '.inventory-grid',
         '.mvu-detail-embed',
         '.mvu-profession-workshop-detail',
-        '.sdv-root',
+        '.sdu-root',
         '.map-action-grid',
         '.map-dispatch-action-btn',
         '#mvu-battle-inline-host',
