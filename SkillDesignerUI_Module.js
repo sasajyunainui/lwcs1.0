@@ -2062,7 +2062,7 @@
         canUndo: Boolean,
         instanceId: { type: String, required: true },
       },
-      emits: ['save', 'reload', 'switch-skill', 'undo'],
+      emits: ['reload', 'switch-skill', 'undo'],
       setup(props) {
         const switchOptions = computed(() =>
           props.switchItems.map(item => ({ value: item.preview, label: item.label })),
@@ -2710,7 +2710,6 @@
             :status-tone="statusTone"
             :can-undo="!!undoRecord"
             :instance-id="instanceId"
-            @save="save"
             @reload="reload"
             @switch-skill="switchSkill"
             @undo="undo"
