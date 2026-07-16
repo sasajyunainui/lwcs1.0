@@ -16668,6 +16668,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-h
   display: none;
 }
 
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-host) > .mvu-unified-toolbar {
+  display: none;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
   content: "";
   position: absolute;
