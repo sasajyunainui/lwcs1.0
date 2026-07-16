@@ -97,7 +97,7 @@ function instrumentCurrentTeamBattleSource(runtimeSource) {
       combatData,
       mode: 'team_preview',
       rounds,
-      settings: {},
+      settings: { decisionEngine: 'next-shadow' },
     });
     Object.assign(combatData, result.combatData || {});
     return { ...result, rounds: Number(result.roundsExecuted || 0) };
@@ -230,12 +230,15 @@ function runOnce(sandbox, sequence) {
   writeProgress(`run:${sequence}:start`);
   sandbox.__LWCS_PERF_RESET_RANDOM__?.();
   sandbox.__LWCS_BATTLE_PREVIEW__?.clearCache?.();
+  sandbox.__LWCS_BATTLE_DECISION__?.resetMetrics?.();
   const metricsBefore = sandbox.__LWCS_BATTLE_PREVIEW__?.readMetrics?.() || {};
+  const decisionMetricsBefore = sandbox.__LWCS_BATTLE_DECISION__?.readMetrics?.() || {};
   const combatData = buildCase();
   const started = performance.now();
   const result = sandbox.__LWCS_PERF_RUN_TEAM_BATTLE__(combatData, battleRounds);
   const elapsed = performance.now() - started;
   const metricsAfter = sandbox.__LWCS_BATTLE_PREVIEW__?.readMetrics?.() || {};
+  const decisionMetricsAfter = sandbox.__LWCS_BATTLE_DECISION__?.readMetrics?.() || {};
   assert.equal(result.rounds, battleRounds, `${teamSize}v${teamSize} 性能案例没有连续推进${battleRounds}回合:${result.rounds}`);
   const roundTimings = Array.isArray(sandbox.__LWCS_PERF_ROUND_TIMINGS__)
     ? sandbox.__LWCS_PERF_ROUND_TIMINGS__.map(Number)
@@ -253,6 +256,7 @@ function runOnce(sandbox, sequence) {
     elapsed,
     roundTimings,
     metrics: metricDelta(metricsBefore, metricsAfter),
+    decisionMetrics: metricDelta(decisionMetricsBefore, decisionMetricsAfter),
     selectedActions,
     finalUnits: Object.fromEntries(Object.entries(combatData?.参战者 || {}).map(([side, units]) => [side, (Array.isArray(units) ? units : Object.values(units || {})).map(unit => ({
       id: String(unit?.id || unit?.name || unit?.名称 || ''),
@@ -286,6 +290,7 @@ if (workerMode) {
   const elapsedMs = [];
   const roundTimingSamples = [];
   const metricSamples = [];
+  const decisionMetricSamples = [];
   const hashSamples = [];
   const selectedActionSamples = [];
   const finalUnitSamples = [];
@@ -294,6 +299,7 @@ if (workerMode) {
     elapsedMs.push(run.elapsed);
     roundTimingSamples.push(run.roundTimings);
     metricSamples.push(run.metrics);
+    decisionMetricSamples.push(run.decisionMetrics);
     hashSamples.push(run.hashes);
     selectedActionSamples.push(run.selectedActions);
     finalUnitSamples.push(run.finalUnits);
@@ -302,6 +308,7 @@ if (workerMode) {
     elapsedMs,
     roundTimingSamples,
     metricSamples,
+    decisionMetricSamples,
     hashSamples,
     ...(diagnosticsEnabled ? { selectedActionSamples, finalUnitSamples } : {}),
   }));
@@ -384,6 +391,8 @@ if (workerMode) {
     const hashesStable = measuredHashes.length === measuredIterations && unstableHashKeys.length === 0;
     const measuredMetrics = currentRun.metricSamples.slice(warmupIterations, warmupIterations + measuredIterations);
     const medianMetrics = Object.fromEntries(Object.keys(measuredMetrics[0] || {}).map(key => [key, median(measuredMetrics.map(sample => Number(sample?.[key] || 0))) ]));
+    const measuredDecisionMetrics = currentRun.decisionMetricSamples.slice(warmupIterations, warmupIterations + measuredIterations);
+    const medianDecisionMetrics = Object.fromEntries(Object.keys(measuredDecisionMetrics[0] || {}).map(key => [key, median(measuredDecisionMetrics.map(sample => Number(sample?.[key] || 0))) ]));
     const warnings = [];
     if (!targetMet) warnings.push(`PERFORMANCE_TARGET_NOT_MET:${currentMedianMs.toFixed(3)}>${shape.absoluteTargetMs}`);
     if (!hashesStable) warnings.push(`PERFORMANCE_HASH_UNSTABLE:${unstableHashKeys.join(',')}`);
@@ -403,6 +412,7 @@ if (workerMode) {
       baselineTotalLowerBoundMs: baselineTimedOut ? Number(baselineRun.elapsedLowerBound || baselineTimeoutMs) : null,
       currentTotalMs: Number(currentRun.elapsedMs.reduce((sum, value) => sum + value, 0).toFixed(3)),
       medianMetrics,
+      medianDecisionMetrics,
       representativeHashes: measuredHashes[0] || {},
       hashesStable,
       unstableHashKeys,

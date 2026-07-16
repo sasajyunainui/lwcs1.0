@@ -4436,14 +4436,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   margin-left: auto;
 }
 
-.skill-designer-layout {
-  gap: 16px;
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
-  min-width: 0;
-  min-height: 0;
-  align-items: stretch;
-}
-
 .skill-designer-subsection {
   display: grid;
   gap: 8px;
@@ -4621,265 +4613,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: none;
 }
 
-.skill-designer-form-card {
-  background: transparent !important;
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  grid-column: 1;
-  min-height: 0;
-  max-height: min(600px, calc(100svh - 250px));
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-}
-
-.skill-designer-summary-card {
-  background: transparent !important;
-  display: grid;
-  align-content: start;
-  grid-column: 2;
-  position: sticky;
-  top: 0;
-  align-self: start;
-  min-height: 0;
-  max-height: min(600px, calc(100svh - 250px));
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-}
-
-.skill-designer-title-actions {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) max-content max-content;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  width: min(46vw, 520px);
-  max-width: 100%;
-}
-
-.skill-designer-title-switch {
-  width: 100%;
-  min-width: 0;
-  height: 30px;
-  box-sizing: border-box;
-  border-radius: 999px;
-  border: 1px solid rgba(77, 240, 255, 0.28);
-  background: rgba(5, 18, 27, 0.92);
-  color: rgba(244, 251, 253, 0.96);
-  padding: 0 24px 0 10px;
-  font-size: 11px;
-  line-height: 30px;
-  outline: none;
-  text-overflow: ellipsis;
-}
-
-.skill-designer-title-switch:focus {
-  border-color: rgba(77, 240, 255, 0.52);
-  box-shadow: 0 0 0 2px rgba(77, 240, 255, 0.12);
-}
-
-.skill-designer-title-actions .tag-chip {
-  flex: 0 0 auto;
-  min-height: 30px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border-color: rgba(164, 221, 234, 0.22);
-  color: rgba(244, 251, 253, 0.96);
-  font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.skill-designer-title-actions .tag-chip.live {
-  border-color: rgba(77, 240, 255, 0.36);
-  background: rgba(0, 194, 255, 0.16);
-  color: #f9feff;
-  box-shadow: 0 0 0 1px rgba(77, 240, 255, 0.1) inset;
-}
-
-#detailModal .modal-title-wrap:has(.skill-designer-title-actions) {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 12px;
-}
-
-#detailModal .modal-title-wrap:has(.skill-designer-title-actions) .modal-title {
-  grid-column: 1;
-  grid-row: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#detailModal .modal-title-wrap:has(.skill-designer-title-actions) .modal-subtitle {
-  grid-column: 1 / -1;
-}
-
-#detailModal .modal-title-wrap:has(.skill-designer-title-actions) .skill-designer-title-actions {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.skill-designer-shell .mvu-editor-grid {
-  gap: 12px;
-}
-
-@keyframes skill-designer-breath {
-  0% {
-    box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
-    border-color: color-mix(in srgb, var(--边线颜色) 18%, transparent);
-  }
-  50% {
-    box-shadow: inset 0 0 20px color-mix(in srgb, var(--主题主色) 12%, transparent);
-    border-color: color-mix(in srgb, var(--边线颜色) 34%, transparent);
-  }
-  100% {
-    box-shadow: inset 0 0 10px color-mix(in srgb, var(--主题主色) 5%, transparent);
-    border-color: color-mix(in srgb, var(--边线颜色) 18%, transparent);
-  }
-}
-
-.skill-designer-shell .mvu-editor-section {
-  gap: 14px;
-  padding: 14px;
-  border-radius: var(--正文卡片圆角);
-  border: 1px solid var(--全息材质线);
-  border-left: var(--正文卡片侧线宽) solid var(--全息材质侧线);
-  background: var(--全息材质底);
-  box-shadow: var(--全息材质阴影);
-  position: relative;
-  animation: none;
-}
-
-.skill-designer-shell .mvu-editor-section.skill-designer-section-compact {
-  display: flex;
-  justify-content: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  animation: none;
-}
-
-.skill-designer-shell .mvu-editor-section.skill-designer-section-compact .skill-designer-side-effect-list:empty {
-  display: none;
-}
-
-.skill-designer-shell .mvu-editor-section.skill-designer-section-compact .mvu-editor-actions {
-  margin-left: 0;
-}
-
-.skill-designer-shell .mvu-editor-section.skill-designer-section-compact .mvu-editor-section-title {
-  display: none;
-}
-
-.skill-designer-shell .mvu-editor-section[hidden],
-.skill-designer-shell [data-skill-designer-passive-section][hidden],
-.skill-designer-shell [data-skill-designer-mastery-section][hidden],
-.skill-designer-shell [data-skill-designer-condition-branch-list][hidden],
-.skill-designer-shell [data-skill-designer-condition-branch-actions][hidden],
-.skill-designer-shell [data-skill-designer-condition-effect][hidden] {
-  display: none;
-}
-
-.skill-designer-shell .mvu-editor-section-title {
-  font-size: var(--mvu-font-md, 14px);
-  color: var(--全息标题文字);
-  letter-spacing: 0.1em;
-  text-shadow: var(--全息标题字影);
-}
-
-.skill-designer-shell .mvu-editor-label {
-  font-size: var(--mvu-font-sm, 12px);
-  color: rgba(232, 244, 248, 0.92);
-  letter-spacing: 0;
-  display: flex;
-  min-height: 18px;
-  line-height: 18px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.skill-designer-shell .mvu-editor-input,
-.skill-designer-shell .mvu-editor-select,
-.skill-designer-shell .mvu-editor-textarea {
-  border-radius: 0;
-  border-color: var(--全息材质线);
-  background: var(--全息材质底);
-  color: var(--全息数值文字);
-  padding: 10px 14px;
-  line-height: 18px;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-
-.skill-designer-shell .skill-designer-static-token {
-  width: 100%;
-  min-width: 0;
-  height: 44px;
-  min-height: 44px;
-  border-radius: 0;
-  border-color: rgba(92, 230, 255, 0.2);
-  background:
-    linear-gradient(135deg, rgba(92, 230, 255, 0.08), transparent 42%),
-    rgba(4, 16, 25, 0.46);
-  color: rgba(198, 225, 232, 0.78);
-  padding: 10px 14px;
-  font-weight: 650;
-  box-shadow: none;
-  cursor: default;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.skill-designer-basic-grid {
-  align-items: end;
-}
-
-.skill-designer-basic-grid > .mvu-editor-field {
-  align-self: stretch;
-  grid-template-rows: auto 44px;
-}
-
-.skill-designer-basic-grid > .mvu-editor-field > .mvu-editor-label {
-  min-height: 16px;
-  align-items: center;
-}
-
-.skill-designer-basic-grid > .skill-designer-delivery-field {
-  position: relative;
-  grid-template-rows: auto 44px;
-}
-
-.skill-designer-type-pill {
-  position: absolute;
-  top: -2px;
-  right: 0;
-  max-width: 48%;
-  min-height: 20px;
-  box-sizing: border-box;
-  margin: 0;
-  border: 1px solid var(--全息材质弱线);
-  border-radius: var(--mvu-radius-pill, 999px);
-  background: var(--全息材质底);
-  color: rgba(199, 248, 255, 0.92);
-  padding: 2px 9px;
-  font-size: var(--mvu-font-sm, 12px);
-  font-weight: 700;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.skill-designer-delivery-field > .mvu-editor-label {
-  padding-right: min(112px, 50%);
-}
-
 .skill-designer-inline-toggle {
   display: flex;
   align-items: center;
@@ -4932,15 +4665,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border: solid #f2fdff;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-}
-
-.skill-designer-shell .mvu-editor-textarea {
-  min-height: 138px;
-}
-
-.skill-designer-shell .mvu-editor-input::placeholder,
-.skill-designer-shell .mvu-editor-textarea::placeholder {
-  color: rgba(182, 206, 214, 0.8);
 }
 
 .skill-designer-param-label {
@@ -5003,16 +4727,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   grid-column: 1 / -1;
   grid-row: 1;
   padding-right: 28px;
-}
-
-.skill-designer-shell .mvu-editor-input:focus,
-.skill-designer-shell .mvu-editor-select:focus,
-.skill-designer-shell .mvu-editor-textarea:focus {
-  border-color: color-mix(in srgb, var(--边线颜色) 40%, transparent);
-  box-shadow:
-    0 0 10px color-mix(in srgb, var(--主题主色) 18%, transparent),
-    inset 0 0 5px color-mix(in srgb, var(--主题主色) 8%, transparent);
-  outline: none;
 }
 
 .skill-designer-filter-select {
@@ -5494,11 +5208,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 @media (max-width: 760px) {
-  .skill-designer-shell .mvu-editor-input,
-  .skill-designer-shell .mvu-editor-select,
-  .skill-designer-shell .mvu-editor-static {
-    min-height: 44px;
-  }
   .skill-designer-status-prototype-row > .mvu-editor-field-grid[data-skill-designer-prototype-fields] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5523,49 +5232,1068 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 /* 空状态引导 HUD 样式 */
-.skill-designer-empty-guide {
+
+/* Skill Designer Vue */
+.skill-designer-vue-host {
+  --skill-designer-vue-bg: #101315;
+  --skill-designer-vue-surface: #181c1e;
+  --skill-designer-vue-surface-raised: #202527;
+  --skill-designer-vue-border: #3a4245;
+  --skill-designer-vue-border-strong: #5f6c6f;
+  --skill-designer-vue-text: #f2f5f3;
+  --skill-designer-vue-muted: #b6bfbc;
+  --skill-designer-vue-accent: var(--主题主色, #62d9e5);
+  --skill-designer-vue-accent-secondary: var(--主题辅色, var(--gold, #e3bd66));
+  --skill-designer-vue-danger: #ff8193;
+  width: 100%;
+  min-width: 0;
+  color: var(--skill-designer-vue-text);
+  color-scheme: dark;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+#detailModal:has(.skill-designer-vue-root) .mvu-modal-panel.archive-mode {
+  max-width: min(1440px, calc(100vw - 32px));
+}
+
+.skill-designer-vue-root,
+.skill-designer-vue-root *,
+.skill-designer-vue-popover,
+.skill-designer-vue-popover * {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.skill-designer-vue-root {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-top: 3px solid var(--skill-designer-vue-accent);
+  border-radius: 8px;
+  background: var(--skill-designer-vue-bg);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.32),
+    0 0 18px color-mix(in srgb, var(--skill-designer-vue-accent) 9%, transparent);
+  overflow: visible;
+}
+
+.skill-designer-vue-loading,
+.skill-designer-vue-load-error {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 28px;
+  border: 1px solid var(--skill-designer-vue-border, #3a4245);
+  border-radius: 8px;
+  background: var(--skill-designer-vue-bg, #101315);
+  color: var(--skill-designer-vue-text, #f2f5f3);
+  text-align: center;
+}
+
+.skill-designer-vue-loading-mark {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #4a5457;
+  border-top-color: var(--skill-designer-vue-accent, #62d9e5);
+  border-radius: 50%;
+  animation: skill-designer-vue-spin 0.8s linear infinite;
+}
+
+@keyframes skill-designer-vue-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skill-designer-vue-load-error p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--skill-designer-vue-muted, #b6bfbc);
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-toolbar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-surface);
+}
+
+.skill-designer-vue-heading {
+  min-width: 0;
+}
+
+.skill-designer-vue-heading span {
+  display: block;
+  color: var(--skill-designer-vue-accent-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.skill-designer-vue-heading h2 {
+  margin: 2px 0 0;
+  color: var(--skill-designer-vue-text);
+  font-size: 20px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.skill-designer-vue-toolbar-actions > .skill-designer-vue-combobox {
+  width: min(280px, 34vw);
+}
+
+.skill-designer-vue-button,
+.skill-designer-vue-icon-button,
+.skill-designer-vue-text-button,
+.skill-designer-vue-preview-toggle,
+.skill-designer-vue-tabs button,
+.skill-designer-vue-segmented button,
+.skill-designer-vue-operator-group button,
+.skill-designer-vue-option,
+.skill-designer-vue-token button {
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.skill-designer-vue-button,
+.skill-designer-vue-icon-button,
+.skill-designer-vue-text-button {
+  min-height: 40px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 6px;
+  background: var(--skill-designer-vue-surface-raised);
+  color: var(--skill-designer-vue-text);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.skill-designer-vue-button {
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.skill-designer-vue-button.primary {
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 70%, #ffffff 10%);
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 24%, #15191b);
+}
+
+.skill-designer-vue-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.skill-designer-vue-icon-button.danger {
+  border-color: color-mix(in srgb, var(--skill-designer-vue-danger) 48%, var(--skill-designer-vue-border));
+  color: #ffd7dd;
+}
+
+.skill-designer-vue-text-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 42%, var(--skill-designer-vue-border));
+  background: transparent;
+  color: var(--skill-designer-vue-accent);
+}
+
+.skill-designer-vue-button:hover:not(:disabled),
+.skill-designer-vue-icon-button:hover:not(:disabled),
+.skill-designer-vue-text-button:hover:not(:disabled) {
+  border-color: var(--skill-designer-vue-accent);
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 14%, var(--skill-designer-vue-surface));
+}
+
+.skill-designer-vue-button:disabled,
+.skill-designer-vue-icon-button:disabled,
+.skill-designer-vue-text-button:disabled,
+.skill-designer-vue-control:disabled,
+.skill-designer-vue-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.skill-designer-vue-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: #141719;
+}
+
+.skill-designer-vue-tabs button {
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 30px 20px;
+  gap: 8px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--skill-designer-vue-border);
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.skill-designer-vue-tabs button:last-child {
+  border-right: 0;
+}
+
+.skill-designer-vue-tabs button::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  bottom: 0;
+  left: 16px;
+  height: 3px;
+  background: transparent;
+}
+
+.skill-designer-vue-tabs button.active {
+  color: var(--skill-designer-vue-text);
+  background: var(--skill-designer-vue-surface);
+}
+
+.skill-designer-vue-tabs button.active::after {
+  background: var(--skill-designer-vue-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--skill-designer-vue-accent) 32%, transparent);
+}
+
+.skill-designer-vue-tabs button b,
+.skill-designer-vue-tabs button i {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.skill-designer-vue-tabs button b {
+  background: #7c2635;
+  color: #ffffff;
+}
+
+.skill-designer-vue-tabs button i {
+  color: #96d9b1;
+}
+
+.skill-designer-vue-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2.125fr) minmax(300px, 1fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
+  padding: 18px;
+}
+
+.skill-designer-vue-editor,
+.skill-designer-vue-panel {
+  min-width: 0;
+}
+
+.skill-designer-vue-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.skill-designer-vue-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+.skill-designer-vue-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.skill-designer-vue-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skill-designer-vue-section-head h3 {
+  margin: 0;
+  color: var(--skill-designer-vue-text);
+  font-size: 16px;
+}
+
+.skill-designer-vue-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.skill-designer-vue-field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+
+.skill-designer-vue-field.wide {
+  grid-column: 1 / -1;
+}
+
+.skill-designer-vue-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.skill-designer-vue-label {
+  color: #d8dedc;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.skill-designer-vue-label b {
+  margin-left: 3px;
+  color: var(--skill-designer-vue-danger);
+}
+
+.skill-designer-vue-help {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 50%;
+  color: var(--skill-designer-vue-muted);
+  cursor: help;
+}
+
+.skill-designer-vue-field-control,
+.skill-designer-vue-combobox {
+  min-width: 0;
+}
+
+.skill-designer-vue-control,
+.skill-designer-vue-static {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 6px;
+  background: #111516;
+  color: var(--skill-designer-vue-text);
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.skill-designer-vue-control::placeholder {
+  color: #8f9996;
+  opacity: 1;
+}
+
+.skill-designer-vue-control:hover:not(:disabled) {
+  border-color: #6a7679;
+}
+
+.skill-designer-vue-control:focus,
+.skill-designer-vue-button:focus-visible,
+.skill-designer-vue-icon-button:focus-visible,
+.skill-designer-vue-text-button:focus-visible,
+.skill-designer-vue-tabs button:focus-visible,
+.skill-designer-vue-segmented button:focus-visible,
+.skill-designer-vue-operator-group button:focus-visible,
+.skill-designer-vue-option:focus-visible,
+.skill-designer-vue-preview-toggle:focus-visible,
+.skill-designer-vue-token button:focus-visible {
+  border-color: var(--skill-designer-vue-accent);
+  outline: 2px solid color-mix(in srgb, var(--skill-designer-vue-accent) 44%, transparent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.skill-designer-vue-textarea {
+  min-height: 148px;
+  resize: vertical;
+}
+
+.skill-designer-vue-static {
+  display: flex;
+  align-items: center;
+  color: #c6cecb;
+  background: #1a1f20;
+}
+
+.skill-designer-vue-combobox-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.skill-designer-vue-combobox-trigger span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-designer-vue-chevron {
+  flex: 0 0 auto;
+  color: var(--skill-designer-vue-muted);
+  font-size: 16px;
+}
+
+.skill-designer-vue-popover {
+  --skill-designer-vue-surface: #181c1e;
+  --skill-designer-vue-surface-raised: #202527;
+  --skill-designer-vue-border: #3a4245;
+  --skill-designer-vue-border-strong: #5a6669;
+  --skill-designer-vue-text: #f2f5f3;
+  --skill-designer-vue-muted: #b6bfbc;
+  --skill-designer-vue-accent: var(--主题主色, #62d9e5);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 8px;
+  background: var(--skill-designer-vue-surface);
+  color: var(--skill-designer-vue-text);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52);
+  overflow: hidden;
+}
+
+.skill-designer-vue-search {
+  flex: 0 0 auto;
+}
+
+.skill-designer-vue-option-list {
+  display: grid;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.skill-designer-vue-option {
+  display: grid;
+  gap: 1px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--skill-designer-vue-text);
+  text-align: left;
+}
+
+.skill-designer-vue-option small {
+  color: var(--skill-designer-vue-muted);
+  font-size: 11px;
+}
+
+.skill-designer-vue-option.active,
+.skill-designer-vue-option:hover {
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 42%, var(--skill-designer-vue-border));
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 12%, var(--skill-designer-vue-surface));
+}
+
+.skill-designer-vue-option.selected {
+  color: var(--skill-designer-vue-accent);
+}
+
+.skill-designer-vue-empty,
+.skill-designer-vue-empty-inline {
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+.skill-designer-vue-empty {
+  padding: 16px 10px;
   text-align: center;
-  border: 1px dashed color-mix(in srgb, var(--边线颜色) 34%, transparent);
-  background: color-mix(in srgb, var(--主题主色) 5%, transparent);
-  margin-bottom: 15px;
-}
-.skill-designer-empty-guide .guide-icon {
-  font-size: var(--mvu-font-2xl, 22px);
-  color: var(--全息标题文字);
-  margin-bottom: 10px;
-  text-shadow: var(--全息标题字影);
-}
-.skill-designer-empty-guide .guide-title {
-  font-size: var(--mvu-font-md, 14px);
-  color: #fff;
-  font-weight: bold;
-  margin-bottom: 8px;
-  letter-spacing: 0.1em;
-}
-.skill-designer-empty-guide .guide-desc {
-  font-size: var(--mvu-font-sm, 12px);
-  color: var(--全息标签文字);
-  line-height: 1.5;
-  max-width: 80%;
 }
 
-.skill-designer-shell .mvu-editor-actions .tag-chip {
-  min-height: 36px;
-  padding-left: 14px;
-  padding-right: 14px;
+.skill-designer-vue-segmented,
+.skill-designer-vue-operator-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  min-width: 0;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 6px;
+  background: #111516;
+  overflow: hidden;
 }
 
-.skill-designer-shell .archive-tile b {
-  color: rgba(211, 229, 236, 0.82);
+.skill-designer-vue-segmented button,
+.skill-designer-vue-operator-group button {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 9px;
+  border: 0;
+  border-right: 1px solid var(--skill-designer-vue-border);
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
 }
 
-.skill-designer-shell .archive-tile span {
-  color: rgba(244, 249, 251, 0.96);
+.skill-designer-vue-segmented button:last-child,
+.skill-designer-vue-operator-group button:last-child {
+  border-right: 0;
+}
+
+.skill-designer-vue-segmented button.active,
+.skill-designer-vue-operator-group button.active {
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 20%, var(--skill-designer-vue-surface));
+  color: var(--skill-designer-vue-text);
+  box-shadow: inset 0 -3px 0 var(--skill-designer-vue-accent);
+}
+
+.skill-designer-vue-segmented.compact {
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
+}
+
+.skill-designer-vue-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 48px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.skill-designer-vue-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.skill-designer-vue-toggle span {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: 14px;
+  background: #2a3032;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.skill-designer-vue-toggle span::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #dbe1df;
+  transition: transform 160ms ease;
+}
+
+.skill-designer-vue-toggle input:checked + span {
+  border-color: var(--skill-designer-vue-accent);
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 36%, #1b2021);
+}
+
+.skill-designer-vue-toggle input:checked + span::after {
+  transform: translateX(20px);
+  background: #ffffff;
+}
+
+.skill-designer-vue-toggle input:focus-visible + span {
+  outline: 2px solid color-mix(in srgb, var(--skill-designer-vue-accent) 44%, transparent);
+  outline-offset: 2px;
+}
+
+.skill-designer-vue-token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.skill-designer-vue-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 3px 5px 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent) 40%, var(--skill-designer-vue-border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 10%, var(--skill-designer-vue-surface));
+  color: var(--skill-designer-vue-text);
+  font-size: 13px;
+}
+
+.skill-designer-vue-token button {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  font-size: 16px;
+}
+
+.skill-designer-vue-token button:hover {
+  background: #4a252d;
+  color: #ffffff;
+}
+
+.skill-designer-vue-prototype-list,
+.skill-designer-vue-side-effects,
+.skill-designer-vue-condition-builder,
+.skill-designer-vue-condition-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.skill-designer-vue-prototype {
+  position: relative;
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-left: 3px solid var(--skill-designer-vue-accent);
+  border-radius: 6px;
+  background: var(--skill-designer-vue-surface);
+}
+
+.skill-designer-vue-prototype.nested {
+  margin-left: 22px;
+  padding: 12px 0 12px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.skill-designer-vue-prototype.nested::before {
+  content: '';
+  position: absolute;
+  top: -13px;
+  bottom: -13px;
+  left: -16px;
+  width: 2px;
+  background: color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 56%, var(--skill-designer-vue-border));
+}
+
+.skill-designer-vue-prototype.nested::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: -16px;
+  width: 14px;
+  height: 2px;
+  background: color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 56%, var(--skill-designer-vue-border));
+}
+
+.skill-designer-vue-prototype-head,
+.skill-designer-vue-row-head,
+.skill-designer-vue-condition-action,
+.skill-designer-vue-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.skill-designer-vue-prototype-head > .skill-designer-vue-combobox {
+  flex: 1 1 300px;
+}
+
+.skill-designer-vue-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.skill-designer-vue-nested-tag {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 48%, var(--skill-designer-vue-border));
+  border-radius: 5px;
+  color: var(--skill-designer-vue-accent-secondary);
+  font-size: 12px;
+}
+
+.skill-designer-vue-prototype-summary,
+.skill-designer-vue-row-summary,
+.skill-designer-vue-limit-note {
+  margin: 0;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-side-effect {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: 6px;
+  background: var(--skill-designer-vue-surface-raised);
+}
+
+.skill-designer-vue-condition-branch {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0 10px 12px;
+  border-left: 2px solid color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 62%, var(--skill-designer-vue-border));
+  background: #141819;
+}
+
+.skill-designer-vue-condition-row {
+  display: grid;
+  grid-template-columns: minmax(132px, 1fr) minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(120px, 0.8fr) 40px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.skill-designer-vue-condition-action {
+  align-items: start;
+}
+
+.skill-designer-vue-condition-action > .skill-designer-vue-segmented {
+  flex: 1 1 auto;
+}
+
+.skill-designer-vue-matcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--skill-designer-vue-border);
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+.skill-designer-vue-preview {
+  position: sticky;
+  top: 12px;
+  align-self: start;
+  min-width: 0;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-top: 3px solid var(--skill-designer-vue-accent-secondary);
+  border-radius: 7px;
+  background: var(--skill-designer-vue-surface);
+}
+
+.skill-designer-vue-preview-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 0;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-surface-raised);
+  color: var(--skill-designer-vue-text);
+  text-align: left;
+}
+
+.skill-designer-vue-preview-toggle b {
+  color: var(--skill-designer-vue-accent-secondary);
+  font-size: 12px;
+}
+
+.skill-designer-vue-preview-content {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.skill-designer-vue-preview-hero {
+  display: grid;
+  gap: 4px;
+}
+
+.skill-designer-vue-preview-hero small {
+  color: var(--skill-designer-vue-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.skill-designer-vue-preview-hero h3,
+.skill-designer-vue-preview-hero p,
+.skill-designer-vue-preview-section h4,
+.skill-designer-vue-message-list h4 {
+  margin: 0;
+}
+
+.skill-designer-vue-preview-hero h3 {
+  color: var(--skill-designer-vue-text);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-preview-hero p {
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+.skill-designer-vue-preview-metrics,
+.skill-designer-vue-attribute-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--skill-designer-vue-border);
+}
+
+.skill-designer-vue-preview-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.skill-designer-vue-preview-metrics div,
+.skill-designer-vue-attribute-list div {
+  min-width: 0;
+  padding: 8px 9px;
+  background: #141819;
+}
+
+.skill-designer-vue-preview-metrics dt,
+.skill-designer-vue-attribute-list dt {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+.skill-designer-vue-preview-metrics dd,
+.skill-designer-vue-attribute-list dd {
+  min-width: 0;
+  margin: 2px 0 0;
+  color: var(--skill-designer-vue-text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-preview-metrics dd.danger {
+  color: #ff9aaa;
+}
+
+.skill-designer-vue-preview-section,
+.skill-designer-vue-message-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+.skill-designer-vue-preview-section h4,
+.skill-designer-vue-message-list h4 {
+  font-size: 13px;
+  color: #dbe1df;
+}
+
+.skill-designer-vue-preview-section ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+.skill-designer-vue-message-list button,
+.skill-designer-vue-message-list p {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: 5px;
+  background: #141819;
+  color: var(--skill-designer-vue-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.skill-designer-vue-message-list.error p {
+  border-left: 3px solid var(--skill-designer-vue-danger);
+  color: #ffdbe0;
+}
+
+.skill-designer-vue-message-list.warning p {
+  border-left: 3px solid var(--skill-designer-vue-accent-secondary);
+}
+
+.skill-designer-vue-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1079px) {
+  .skill-designer-vue-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-designer-vue-preview {
+    position: static;
+  }
+
+  .skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-content {
+    display: none;
+  }
+
+  .skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-toggle {
+    border-bottom: 0;
+  }
+
+  .skill-designer-vue-condition-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .skill-designer-vue-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skill-designer-vue-toolbar-actions {
+    display: grid;
+    grid-template-columns: 40px repeat(2, minmax(0, 1fr));
+  }
+
+  .skill-designer-vue-toolbar-actions > .skill-designer-vue-combobox {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 759px) {
+  .skill-designer-vue-root {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .skill-designer-vue-tabs button {
+    min-height: 48px;
+    padding: 0 5px;
+  }
+
+  .skill-designer-vue-tabs button span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .skill-designer-vue-tabs button::after {
+    right: 7px;
+    left: 7px;
+  }
+
+  .skill-designer-vue-workspace {
+    gap: 14px;
+    padding: 14px 10px;
+  }
+
+  .skill-designer-vue-field-grid,
+  .skill-designer-vue-matcher,
+  .skill-designer-vue-condition-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-designer-vue-field.wide {
+    grid-column: auto;
+  }
+
+  .skill-designer-vue-prototype {
+    padding: 12px 10px;
+  }
+
+  .skill-designer-vue-prototype.nested {
+    margin-left: 14px;
+  }
+
+  .skill-designer-vue-prototype-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skill-designer-vue-prototype-head > .skill-designer-vue-combobox {
+    flex-basis: auto;
+  }
+
+  .skill-designer-vue-row-actions {
+    justify-content: flex-end;
+  }
+
+  .skill-designer-vue-condition-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skill-designer-vue-segmented.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-designer-vue-loading-mark {
+    animation: none;
+  }
+
+  .skill-designer-vue-root *,
+  .skill-designer-vue-popover * {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
 }
 
 .mvu-editor-actions.end {
@@ -5586,21 +6314,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
   .mvu-editor-actions {
     margin-left: 0;
-  }
-}
-
-@media (max-width: 1180px) {
-  .skill-designer-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .skill-designer-form-card,
-  .skill-designer-summary-card {
-    grid-column: auto;
-  }
-
-  .skill-designer-summary-card {
-    position: static;
   }
 }
 
@@ -13000,22 +13713,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   color: var(--文字主色) !important;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-layout {
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr) !important;
-  height: calc(var(--mvu-unified-detail-max-height, calc(var(--mvu-hud-frame-height) - 64px)) - 18px) !important;
-  align-items: stretch !important;
-  align-content: stretch !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-form-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-summary-card {
-  height: 100% !important;
-  max-height: none !important;
-  align-self: stretch !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-slab-root,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root {
   min-width: 0 !important;
@@ -14127,25 +14824,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill.l
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-pill.warn,
 #detailModal.mvu-modal-display-unified .dossier-pill.warn {
   color: #fff0bd !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-form-card.archive-card.full {
-  grid-column: 1 !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-summary-card.archive-card.full {
-  grid-column: 2 !important;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-form-card.archive-card.full,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-summary-card.archive-card.full {
-  height: 100% !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  align-self: stretch !important;
-  position: relative !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
 }
 
 .mvu-detail-card-grid {
@@ -21715,21 +22393,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     min-width: 0 !important;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-layout {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto !important;
-    height: auto !important;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-form-card,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-summary-card {
-    grid-column: 1 / -1 !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    position: static !important;
-  }
-
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
@@ -22069,25 +22732,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 
 #detailModal.mvu-modal-display-unified .archive-card.full {
   grid-column: auto !important;
-}
-
-#detailModal.mvu-modal-display-unified .skill-designer-form-card.archive-card.full {
-  grid-column: 1 !important;
-}
-
-#detailModal.mvu-modal-display-unified .skill-designer-summary-card.archive-card.full {
-  grid-column: 2 !important;
-}
-
-#detailModal.mvu-modal-display-unified .skill-designer-form-card.archive-card.full,
-#detailModal.mvu-modal-display-unified .skill-designer-summary-card.archive-card.full {
-  height: 100% !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  align-self: stretch !important;
-  position: relative !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
 }
 
 #detailModal.mvu-modal-display-unified .archive-card-head {
@@ -22447,23 +23091,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
-}
-
-#detailModal.mvu-modal-display-unified .skill-designer-layout {
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr) !important;
-  height: min(680px, calc(86svh - 132px)) !important;
-  align-items: stretch !important;
-  align-content: stretch !important;
-  gap: 12px !important;
-}
-
-#detailModal.mvu-modal-display-unified .skill-designer-form-card,
-#detailModal.mvu-modal-display-unified .skill-designer-summary-card {
-  height: 100% !important;
-  max-height: none !important;
-  align-self: stretch !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
 }
 
 #detailModal.mvu-modal-display-unified .dossier-card--life-core .dossier-columns--life-core,
@@ -23181,30 +23808,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   #detailModal.mvu-modal-display-unified .modal-body,
   #detailModal.mvu-modal-display-unified .modal-body.archive-body {
     padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-
-  #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list,
-  #detailModal.mvu-modal-display-unified .mvu-detail-embed,
-  #detailModal.mvu-modal-display-unified .mvu-detail-form-grid,
-  #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card,
-  #detailModal.mvu-modal-display-unified .mvu-armory-main-grid > .archive-card,
-  #detailModal.mvu-modal-display-unified .dossier-shell--social:not(.social-archive-terminal) > .dossier-card,
-  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-card,
-  #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-console-card,
-  #detailModal.mvu-modal-display-unified .location-detail-grid > .archive-card,
-  #detailModal.mvu-modal-display-unified .skill-designer-form-card,
-  #detailModal.mvu-modal-display-unified .skill-designer-summary-card,
-  #detailModal.mvu-modal-display-unified .location-brief-row > span,
-  #detailModal.mvu-modal-display-unified .dossier-field-value,
-  #detailModal.mvu-modal-display-unified .dossier-row--wide > span,
-  #detailModal.mvu-modal-display-unified .dossier-row > span[data-inline-multiline='1'] {
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
-    padding-right: 0 !important;
   }
 
   #detailModal.mvu-modal-display-unified .archive-card,
@@ -25981,19 +26584,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 }
 
 @media (max-width: 760px) {
-  #detailModal .mvu-detail-grid--two,
-  #detailModal .mvu-detail-grid--trial,
-  #detailModal .mvu-detail-grid--quest,
-  #detailModal .mvu-detail-intel-grid,
-  #detailModal .mvu-detail-card-grid--two,
-  #detailModal .mvu-armory-detail-grid,
-  #detailModal .mvu-spirit-detail-grid,
-  #detailModal .skill-designer-layout {
-    grid-template-columns: 1fr !important;
-    grid-template-areas: none !important;
-    grid-template-rows: auto auto auto !important;
-    height: auto !important;
-  }
 
   #detailModal .mvu-armory-detail-grid {
     grid-template-areas:
@@ -26008,15 +26598,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
       'equipment'
       'bones' !important;
     height: auto !important;
-  }
-
-  #detailModal .skill-designer-form-card,
-  #detailModal .skill-designer-summary-card {
-    grid-column: 1 / -1 !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    position: static !important;
   }
 
   #detailModal .mvu-detail-scroll-list,
@@ -27415,87 +27996,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   font-variant-numeric: tabular-nums !important;
 }
 
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-layout {
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  height: min(700px, calc(100svh - 154px));
-  align-items: stretch;
-  align-content: stretch;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-form-card.archive-card.full {
-  grid-column: 1;
-  height: 100%;
-  max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-summary-card.archive-card.full {
-  grid-column: 2;
-  position: sticky;
-  top: 0;
-  align-self: stretch;
-  height: 100%;
-  max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-section-title,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-label {
-  color: var(--dossier-text-soft) !important;
-  font-family: var(--font-ui) !important;
-  letter-spacing: 0 !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-section-title {
-  font-size: var(--mvu-font-base, 13px) !important;
-  line-height: 1.3 !important;
-  font-weight: 650 !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-label {
-  font-size: var(--mvu-font-sm, 12px) !important;
-  line-height: 1.28 !important;
-  font-weight: 560 !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-input,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-select,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-textarea {
-  color: var(--dossier-text-strong) !important;
-  font-family: var(--font-ui) !important;
-  font-size: var(--mvu-font-base, 13px) !important;
-  line-height: 1.4 !important;
-}
-
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .skill-designer-fusion-participant-row {
@@ -27567,44 +28067,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
   color: var(--dossier-text) !important;
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.5;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-section-title,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-label,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-summary-row em,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .dossier-list--fusion
-  .dossier-list-row
-  > b {
-  color: #e8f8fb !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-input,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-select,
-#detailModal.archive-redesign-mode.mvu-modal-display-split
-  .archive-redesign-root
-  .skill-designer-shell
-  .mvu-editor-textarea {
-  color: var(--dossier-text-strong) !important;
-}
-
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-check-chip span,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-shell .tag-chip,
-#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .dossier-list--fusion .dossier-pill {
-  color: var(--dossier-text-strong) !important;
 }
 
 @container (max-width: 720px) {
@@ -27789,30 +28251,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
     .archive-redesign-root
     .relation-topology-board.dossier-topology-board {
     min-height: 100%;
-  }
-
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .skill-designer-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    height: auto;
-  }
-
-  #detailModal.archive-redesign-mode.mvu-modal-display-split
-    .archive-redesign-root
-    .skill-designer-form-card.archive-card.full,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split
-    .archive-redesign-root
-    .skill-designer-summary-card.archive-card.full {
-    grid-column: 1 / -1;
-    height: auto;
-    max-height: none;
-    overflow: visible;
-  }
-
-  #detailModal.archive-redesign-mode.mvu-modal-display-split
-    .archive-redesign-root
-    .skill-designer-summary-card.archive-card.full {
-    position: static;
   }
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-scroll-list,

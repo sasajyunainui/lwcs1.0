@@ -162,9 +162,14 @@ function validateCaseContract(definition, result) {
   const failures = [];
   const decisions = Array.isArray(result?.decisions) ? result.decisions : [];
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
+  const playerUnits = definition?.combatData?.参战者?.team_player || [];
+  const enemyUnits = definition?.combatData?.参战者?.team_enemy || [];
+  const levelOf = unit => Number(unit?.属性?.等级 || unit?.level || unit?.lv || 1);
+  const averageLevel = units => units.reduce((sum, unit) => sum + levelOf(unit), 0) / Math.max(1, units.length);
+  const focus = new Set((definition?.focus || []).map(value => String(value || '').trim()));
   for (const unit of [
-    ...(definition?.combatData?.参战者?.team_player || []),
-    ...(definition?.combatData?.参战者?.team_enemy || []),
+    ...playerUnits,
+    ...enemyUnits,
   ]) {
     const level = Number(unit?.属性?.等级 || unit?.level || unit?.lv || 1);
     const lockedRings = findLockedSoulRings(unit, level);
@@ -176,6 +181,42 @@ function validateCaseContract(definition, result) {
         lockedRings: lockedRings.slice(0, 4),
       });
     }
+  }
+  if (focus.has('peer')) {
+    const levels = [...playerUnits, ...enemyUnits].map(levelOf);
+    if (!levels.length || Math.max(...levels) !== Math.min(...levels)) {
+      failures.push({ code: 'MANUAL_CASE_PEER_LEVEL_MISMATCH', levels });
+    }
+  }
+  if (focus.has('level_gap') && Math.abs(averageLevel(playerUnits) - averageLevel(enemyUnits)) < 10) {
+    failures.push({
+      code: 'MANUAL_CASE_LEVEL_GAP_MISSING',
+      playerAverageLevel: averageLevel(playerUnits),
+      enemyAverageLevel: averageLevel(enemyUnits),
+    });
+  }
+  if (focus.has('underdog') && !(averageLevel(playerUnits) < averageLevel(enemyUnits))) {
+    failures.push({
+      code: 'MANUAL_CASE_UNDERDOG_RELATION_INVALID',
+      playerAverageLevel: averageLevel(playerUnits),
+      enemyAverageLevel: averageLevel(enemyUnits),
+    });
+  }
+  if (focus.has('limited_information') && !(Number(definition?.initialBelief?.confidence ?? 1) < 0.45)) {
+    failures.push({
+      code: 'MANUAL_CASE_LIMITED_INFORMATION_MISSING',
+      confidence: Number(definition?.initialBelief?.confidence ?? 1),
+    });
+  }
+  if (focus.has('seven_vs_seven') && (playerUnits.length !== 7 || enemyUnits.length !== 7)) {
+    failures.push({
+      code: 'MANUAL_CASE_SEVEN_VS_SEVEN_MISMATCH',
+      playerCount: playerUnits.length,
+      enemyCount: enemyUnits.length,
+    });
+  }
+  if (focus.has('charging') && !enemyUnits.some(unit => unit?.蓄力技能)) {
+    failures.push({ code: 'MANUAL_CASE_VISIBLE_CHARGE_MISSING' });
   }
   const reportBlocks = Array.isArray(result?.reportBlocks) ? result.reportBlocks : [];
   const actionReportBlocks = reportBlocks.filter(block => !['ROUND_SUMMARY', 'FINAL_SUMMARY'].includes(String(block?.blockType || '').trim()));
@@ -475,11 +516,17 @@ function validateCaseContract(definition, result) {
       String(event?.eventKind || '').trim() === 'action_start' &&
       String(event?.actionRole || '').trim() === 'ASSIST'
     );
-    if (summonWindows.length < summonCreates.length) {
+    const terminalCancellations = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'blocked_action' &&
+      String(event?.meta?.cancelledNodeKind || '').trim() === 'ASSIST' &&
+      String(event?.meta?.reason || event?.ruleCode || '').trim() === 'BATTLE_TERMINAL'
+    );
+    if (summonWindows.length + terminalCancellations.length < summonCreates.length) {
       failures.push({
         code: 'SUMMON_HEAVY_WINDOWS_MISSING',
         summonCount: summonCreates.length,
         windowCount: summonWindows.length,
+        terminalCancellationCount: terminalCancellations.length,
       });
     }
   }
@@ -503,7 +550,20 @@ function validateCaseContract(definition, result) {
     }
   }
   if (caseId === 'item_creation_consumption') {
-    const enemyIds = new Set((definition?.combatData?.参战者?.team_enemy || [])
+    const playerUnits = definition?.combatData?.参战者?.team_player || [];
+    const enemyUnits = definition?.combatData?.参战者?.team_enemy || [];
+    const readAgility = unit => Math.max(0, Number(unit?.agi ?? unit?.属性?.敏捷 ?? 0));
+    const averageAgility = units => units.reduce((sum, unit) => sum + readAgility(unit), 0) / Math.max(1, units.length);
+    const playerAverageAgility = averageAgility(playerUnits);
+    const enemyAverageAgility = averageAgility(enemyUnits);
+    if (!(enemyAverageAgility >= playerAverageAgility * 0.5)) {
+      failures.push({
+        code: 'ITEM_CASE_PRESSURE_AGILITY_INVALID',
+        playerAverageAgility,
+        enemyAverageAgility,
+      });
+    }
+    const enemyIds = new Set(enemyUnits
       .map(unit => String(unit?.id || unit?.name || unit?.名称 || '').trim())
       .filter(Boolean));
     const enemyDecisions = decisions.filter(entry =>
@@ -575,6 +635,28 @@ function validateCaseContract(definition, result) {
     if (!healingFacts.length) failures.push({ code: 'HEAL_CRISIS_EFFECTIVE_ALLY_HEAL_MISSING' });
     if (healingFacts.some(event => Number(event?.meta?.delta || event?.delta || 0) <= 0)) {
       failures.push({ code: 'HEAL_CRISIS_ZERO_VALUE_HEAL_RECORDED' });
+    }
+  }
+  if (caseId === 'raid_control_heavy') {
+    const healingFacts = ledger.filter(event =>
+      String(event?.eventKind || '').trim() === 'resource_change' &&
+      String(event?.actorName || '').trim() === '雅莉' &&
+      String(event?.actorName || '').trim() !== String(event?.targetName || '').trim() &&
+      /生命|HP/i.test(String(event?.meta?.resource || event?.resource || '').trim()) &&
+      Number(event?.meta?.delta || event?.delta || 0) > 0
+    );
+    if (!healingFacts.length) {
+      failures.push({ code: 'RAID_CONTROL_HEAVY_EFFECTIVE_HEAL_MISSING' });
+    }
+    const reactionAwareActions = decisions.filter(decision =>
+      String(decision?.actorId || '').trim() === '雅莉' &&
+      String(decision?.actionRole || 'ACTIVE').trim() === 'ACTIVE' &&
+      Number(decision?.round || 0) > 1 &&
+      Array.isArray(decision?.selected?.immediateReactionAudit) &&
+      decision.selected.immediateReactionAudit.length > 0
+    );
+    if (!reactionAwareActions.length) {
+      failures.push({ code: 'RAID_CONTROL_HEAVY_PUBLIC_REACTION_NOT_USED' });
     }
   }
   if (caseId === 'team_control_overlap') {
@@ -778,7 +860,10 @@ for (const definition of reviewDefinitions.filter(item =>
       const selected = entry.selected;
       const fallback = selected?.forcedFallback === true ? ` | fallback ${selected.fallbackReason || 'FORCED'}` : '';
       lines.push(`- ${role} ${entry.actorId}: ${selected?.candidateId || 'NO_SELECTION'} -> ${(selected?.declaration?.targetIds || []).join(', ') || 'self'} | utility ${Number(selected?.objectiveUtility || 0).toFixed(3)} | problem ${entry.problems?.[0]?.problemId || ''}${fallback}`);
+      lines.push(`  - selected declaration ${JSON.stringify(selected?.declaration || null)}`);
       lines.push(`  - selected vector ${JSON.stringify(selected?.vector || {})}`);
+      lines.push(`  - team intent ${JSON.stringify(entry?.teamIntent || {})}`);
+      lines.push(`  - strategy memory ${JSON.stringify(entry?.strategyMemory || {})}`);
       if (selected?.repeatedActionAudit) lines.push(`  - selected repeat audit ${JSON.stringify(selected.repeatedActionAudit)}`);
       if (selected?.nextValueAudit) lines.push(`  - selected next audit ${JSON.stringify(selected.nextValueAudit)}`);
       entry.scoreAudit?.filter(candidate => !candidate.selected).forEach(candidate => lines.push(
@@ -813,6 +898,7 @@ for (const definition of reviewDefinitions.filter(item =>
     });
     const facts = result.ledger.filter(event => Number(event?.round || 0) === round && [
       'action_start', 'hit_result', 'resource_change', 'item_consume', 'state_apply', 'state_resisted', 'state_expire',
+      'state_tick',
       'counter', 'counter_window', 'reaction_window', 'dodge', 'defend', 'pass', 'summon_action',
       'blocked_action', 'blocked_settlement', 'failed_action', 'target_fail', 'support', 'mechanism',
       'heal', 'shield_create', 'shield_break', 'summon_create', 'summon_assist',
@@ -824,6 +910,8 @@ for (const definition of reviewDefinitions.filter(item =>
   (Array.isArray(result.beliefObservations) ? result.beliefObservations : []).forEach(observation => {
     if (observation.observationType === 'PUBLIC_ACTION') {
       lines.push(`- Round ${observation.round} ${observation.actorId} observed ${observation.sourceActorId} [${observation.actionName}] value=${Number(observation.baseActionValue || 0).toFixed(3)} confidence=${Number(observation.confidence || 0).toFixed(4)} event=${observation.sourceEventId || ''}`);
+    } else if (observation.observationType === 'PUBLIC_REACTION') {
+      lines.push(`- Round ${observation.round} ${observation.actorId} observed ${observation.sourceActorId} reacting with [${observation.actionName}] multiplier=${Number(observation.damageMultiplier ?? 1).toFixed(4)} dodge=${Number(observation.dodgeProbability ?? 0).toFixed(4)} event=${observation.sourceEventId || ''}`);
     } else {
       lines.push(`- Round ${observation.round} ${observation.actorId} ${observation.candidateId} -> ${observation.targetId} [${observation.stateName}] ${observation.success ? 'success' : 'failure'} posterior=${Number(observation.posterior || 0).toFixed(4)} event=${observation.sourceEventId || ''}`);
     }

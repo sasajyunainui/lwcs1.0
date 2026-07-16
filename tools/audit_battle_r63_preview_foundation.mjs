@@ -164,6 +164,12 @@ const stateShieldResult = preview.previewAction({
 });
 const previewShieldState = Object.values(preview.findUnit(stateShieldResult.afterSnapshot, 'actor').状态效果 || {})[0];
 assert.equal(previewShieldState?.数值, '+25%', '状态护盾预估丢失效果强度');
+assert.equal(previewShieldState?.shield_value, 25, '状态护盾预估未兑现真实护盾值');
+assert.equal(
+  stateShieldResult.contributions.filter(entry => entry.outcomeKind === 'SHIELD_DELTA').length,
+  1,
+  '状态护盾没有进入唯一SHIELD_DELTA价值归属',
+);
 
 assert.throws(() => preview.previewAction({
   worldSnapshot: frozenWorld,

@@ -197,6 +197,21 @@ function buildFormalCase(characterLibrary) {
     战斗类型: '普通战斗',
     战斗意图: '点到为止',
     进行中: true,
+    胜负条件: {
+      version: 1,
+      explicit: true,
+      startRound: 0,
+      maxRounds: 20,
+      resolutionPriority: 'DEFEAT_FIRST',
+      victory: {
+        logic: 'ANY',
+        conditions: [{ type: 'TEAM_INCAPACITATED', side: 'ENEMY', scope: 'ALL' }],
+      },
+      defeat: {
+        logic: 'ANY',
+        conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER', scope: 'ALL' }],
+      },
+    },
     参战者: { team_player: [tang], team_enemy: [wei] },
   };
 }

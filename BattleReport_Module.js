@@ -33,6 +33,7 @@
   ]);
   const resultLabels = Object.freeze({
     DECLARED: '已声明',
+    PENDING: '蓄力中',
     SUCCESS: '成功',
     FAILURE: '失败',
     FAILED: '失败',
@@ -122,6 +123,14 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  function displayNumber(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0';
+    if (Number.isInteger(numeric)) return String(numeric);
+    const precision = Math.abs(numeric) >= 100 ? 1 : 2;
+    return String(Number(numeric.toFixed(precision)));
+  }
+
   function unique(values = []) {
     return [...new Set(values.map(value => text(value)).filter(Boolean))];
   }
@@ -205,6 +214,24 @@
         if (entry && targetName && !aliases.has(targetName)) aliases.set(targetName, entry);
       }
     });
+    const internalEntries = [...new Set(aliases.values())].filter(entry => entry?.internalSummon);
+    const duplicateSummons = new Map();
+    internalEntries.forEach(entry => {
+      const baseName = text(entry?.name || '召唤物');
+      if (!duplicateSummons.has(baseName)) duplicateSummons.set(baseName, []);
+      duplicateSummons.get(baseName).push(entry);
+    });
+    duplicateSummons.forEach(entries => {
+      if (entries.length <= 1) return;
+      const usedNames = new Map();
+      entries.forEach(entry => {
+        const baseName = text(entry?.name || '召唤物');
+        const ownedName = entry?.hostName ? `${entry.hostName}的${baseName}` : baseName;
+        const sequence = (usedNames.get(ownedName) || 0) + 1;
+        usedNames.set(ownedName, sequence);
+        entry.name = sequence > 1 ? `${ownedName}（${sequence}）` : ownedName;
+      });
+    });
     return aliases;
   }
 
@@ -226,7 +253,7 @@
   function buildActionReferenceMap(ledger = []) {
     const references = new Map();
     ledger.forEach(event => {
-      if (text(event?.eventKind) !== 'action_start') return;
+      if (!['action_start', 'charge_start'].includes(text(event?.eventKind))) return;
       const actionId = text(event?.actionId);
       const eventId = text(event?.eventId);
       if (actionId && eventId) references.set(actionId, eventId);
@@ -300,11 +327,30 @@
     if (kind === 'shield_create' && Number.isFinite(shieldAmount) && shieldAmount > 0) {
       push(eventNumberToken(event, '护盾增加', shieldAmount, '护盾', 'SHIELD', 'ADD', visibilityMode));
     }
+    if (kind === 'shield_break' && Number.isFinite(shieldAmount) && shieldAmount > 0) {
+      push(eventNumberToken(event, '护盾损耗', shieldAmount, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode));
+      const remainingShield = number(meta?.remainingShield, NaN);
+      if (Number.isFinite(remainingShield) && remainingShield >= 0) {
+        push(eventNumberToken(event, '剩余护盾', remainingShield, '护盾', 'SHIELD', 'SET', visibilityMode));
+      }
+    }
     const shieldAbsorb = number(meta?.shieldAbsorb, NaN);
     if (Number.isFinite(shieldAbsorb) && shieldAbsorb > 0) {
       push(eventNumberToken(event, '护盾吸收', shieldAbsorb, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode));
     }
-    const probability = number(event?.probability ?? meta?.probability ?? meta?.hitProbability ?? meta?.dodgeRate ?? meta?.successRate, NaN);
+    const damageMultiplier = number(meta?.damageMultiplier, NaN);
+    if (Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1 && ['defend', 'guard'].includes(kind)) {
+      push(eventNumberToken(event, '承伤比例', damageMultiplier * 100, '%', 'REACTION', 'MULTIPLY', visibilityMode));
+    }
+    const probability = number(
+      event?.probability ??
+      meta?.probability ??
+      meta?.hitProbability ??
+      meta?.dodgeRate ??
+      meta?.successRate ??
+      (visibilityMode === 'DEVELOPER' ? meta?.successProbability : undefined),
+      NaN,
+    );
     if (Number.isFinite(probability) && probability >= 0 && probability <= 1) {
       push(eventNumberToken(event, '成功率', probability * 100, '%', 'PROBABILITY', 'SET', visibilityMode));
     }
@@ -319,6 +365,19 @@
     const quantity = number(event?.quantity ?? event?.count ?? meta?.quantity ?? meta?.count, NaN);
     if (Number.isFinite(quantity) && quantity > 0 && /item|creation|summon/.test(kind)) {
       push(eventNumberToken(event, '数量', quantity, '个', 'QUANTITY', 'SET', visibilityMode));
+    }
+    if (kind === 'create' && Number.isFinite(quantity) && quantity > 0) {
+      push(eventNumberToken(event, '制作数量', quantity, '份', 'INVENTORY', 'ADD', visibilityMode));
+    }
+    if (kind === 'effect_resolved' && text(event?.effectPrototype) === '属性修正') {
+      const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
+      const attribute = text(meta?.effectDetail?.attribute || evidence?.attribute || '属性');
+      const current = number(evidence?.current, NaN);
+      const next = number(evidence?.next, NaN);
+      const statDelta = number(evidence?.delta, NaN);
+      if (Number.isFinite(current)) push(eventNumberToken(event, `${attribute}原值`, current, '', 'ATTRIBUTE', 'READ', visibilityMode));
+      if (Number.isFinite(statDelta)) push(eventNumberToken(event, `${attribute}变化`, statDelta, '', 'ATTRIBUTE', 'ADD', visibilityMode));
+      if (Number.isFinite(next)) push(eventNumberToken(event, `${attribute}结果`, next, '', 'ATTRIBUTE', 'SET', visibilityMode));
     }
     if (visibilityMode === 'DEVELOPER' && kind === 'action_cost') {
       const cost = number(meta?.amount, NaN);
@@ -347,6 +406,10 @@
     const kind = text(event?.eventKind);
     const actor = publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName) || '系统';
     const target = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName);
+    const targets = unique([
+      ...(Array.isArray(event?.targetIds) ? event.targetIds : []),
+      event?.targetId,
+    ]).map(value => publicEntityName(directory, value, value));
     const action = playerSafeText(event?.actionName || event?.finalActionName || kind, directory) || '行动';
     const result = resultLabel(event);
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
@@ -355,25 +418,55 @@
     const shield = number(meta?.amount ?? event?.amount, 0);
     const duration = number(event?.duration ?? meta?.duration, 0);
     const namedState = playerSafeText(stateName(event), directory);
-    if (kind === 'action_start') return `${actor}使用【${action}】${target ? `指向${target}` : ''}`;
+    if (kind === 'action_start') {
+      const actionType = text(event?.actionType).toUpperCase();
+      if (actionType === 'WITHDRAW') return `${actor}尝试撤离战场`;
+      if (target === actor && ['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType)) return `${actor}采取【${action}】`;
+      if (targets.length > 1) {
+        const targetEntries = targets.map(name => entityEntry(directory, name)).filter(Boolean);
+        const sameSide = targetEntries.length === targets.length && targetEntries.every(entry => text(entry?.side) === text(event?.actorSide));
+        return `${actor}使用【${action}】作用于${sameSide ? '己方' : '敌方'}${targets.length}个目标`;
+      }
+      return `${actor}使用【${action}】${target ? `指向${target}` : ''}`;
+    }
+    if (kind === 'charge_start') {
+      const remaining = Math.max(0, number(meta?.remainingCastTime, 0));
+      return `${actor}开始为【${action}】蓄力${target ? `，目标为${target}` : ''}${remaining > 0 ? `，还需${remaining}个行动窗口` : ''}`;
+    }
+    if (kind === 'charge_progress') {
+      const remaining = Math.max(0, number(meta?.remainingCastTime, 0));
+      return `${actor}继续为【${action}】蓄力${remaining > 0 ? `，剩余前摇${remaining}` : ''}`;
+    }
     if (kind === 'dodge') {
+      const succeeded = /SUCCESS|evaded|dodge_success/i.test(text(event?.resultState || event?.result));
       return target && target !== actor
-        ? `${actor}尝试闪避${target}的攻势，结果为${result}`
-        : `${actor}进入闪避姿态，结果为${result}`;
+        ? succeeded
+          ? `${actor}成功闪开${target}的攻势`
+          : `${actor}尝试闪避${target}的攻势，但未能直接避开`
+        : succeeded
+          ? `${actor}的闪避姿态生效`
+          : `${actor}进入闪避姿态，但未能直接避开攻势`;
     }
     if (kind === 'defend' || kind === 'guard') {
+      const damageMultiplier = number(meta?.damageMultiplier, NaN);
+      const mitigation = Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1
+        ? `，将本次伤害压至${Math.round(damageMultiplier * 1000) / 10}%`
+        : '';
       return target && target !== actor
-        ? `${actor}以【${action}】应对${target}的攻势，结果为${result}`
-        : `${actor}进入【${action}】姿态，结果为${result}`;
+        ? `${actor}以【${action}】应对${target}的攻势${mitigation || '，防御已生效'}`
+        : `${actor}进入【${action}】姿态`;
     }
     if (kind === 'reaction_window') return `${actor}的即时反应窗口${/FAILURE|unavailable/i.test(text(event?.resultState || event?.result)) ? '不可用' : '已建立'}`;
     if (kind === 'counter_window') return `${actor}的反击窗口${/FAILURE|missed/i.test(text(event?.resultState || event?.result)) ? '未能成立' : '已成立'}`;
     if (kind === 'counter') return /declined|放弃/i.test(`${event?.result} ${action}`)
       ? `${actor}放弃对${target || '来源攻击者'}的反击`
-      : `${actor}以【${action}】反击${target || '来源攻击者'}，结果为${result}`;
-    if (kind === 'hit_result') return damage > 0
-      ? `${actor}以【${action}】命中${target || '目标'}，造成${damage}点伤害`
-      : `${actor}的【${action}】未对${target || '目标'}造成伤害`;
+      : `${actor}以【${action}】反击${target || '来源攻击者'}`;
+    if (kind === 'hit_result') {
+      if (damage > 0) return `${actor}以【${action}】命中${target || '目标'}，造成${damage}点伤害`;
+      if (/miss/i.test(text(event?.result))) return `${actor}的【${action}】落点偏离，未命中${target || '目标'}`;
+      if (number(meta?.shieldAbsorb, 0) > 0) return `${actor}的【${action}】命中${target || '目标'}，伤害被护盾吸收`;
+      return `${actor}的【${action}】命中${target || '目标'}，但未造成有效伤害`;
+    }
     if (kind === 'state_tick') return damage > 0
       ? `${target || actor}受到【${namedState || action}】的持续影响，损失${damage}点生命`
       : `${target || actor}结算【${namedState || action}】的持续效果`;
@@ -385,6 +478,17 @@
     if (kind === 'action_cost') return `${actor}为【${action}】支付资源`;
     if (kind === 'shield_create') return `${actor}通过【${action}】为${target || actor}建立${shield}点护盾`;
     if (kind === 'shield_absorb') return `${target || actor}的护盾吸收${Math.abs(delta || shield)}点伤害`;
+    if (kind === 'shield_break') {
+      const amount = Math.max(0, number(meta?.amount ?? event?.amount ?? -delta, 0));
+      const remaining = Math.max(0, number(meta?.remainingShield, 0));
+      const shieldName = playerSafeText(meta?.stateName || action || '护盾', directory);
+      if (text(meta?.source) === 'shield_window_expiry' || /expired/i.test(text(event?.result))) {
+        return `${target || actor}的【${shieldName}】到期，${amount}点剩余护盾消散`;
+      }
+      return remaining > 0
+        ? `${target || actor}的护盾吸收${amount}点伤害，剩余${remaining}点`
+        : `${target || actor}的护盾吸收${amount}点伤害后破裂`;
+    }
     if (kind === 'state_apply') {
       const outcome = resultLabel(event);
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
@@ -394,20 +498,49 @@
     }
     if (kind === 'state_remove') return `${target || actor}移除【${namedState || action}】`;
     if (kind === 'state_expire') return `${target || actor}的【${namedState || action}】到期`;
+    if (kind === 'charge_interrupt') return `${actor}的【${action}】被中止`;
     if (kind === 'summon_create') {
       const summonName = publicEntityName(directory, meta?.summonKey || event?.targetId, meta?.summonName || event?.targetName || '召唤物');
       return `${actor}通过【${action}】召唤${summonName}`;
     }
     if (kind === 'summon_end') return `${actor}离场${meta?.reasonText ? `：${playerSafeText(meta.reasonText, directory)}` : ''}`;
-    if (kind === 'item_created') return `${actor}通过【${action}】制作${playerSafeText(meta?.productId || event?.itemName || '物品', directory)}`;
-    if (kind === 'item_used') return `${actor}使用${playerSafeText(event?.itemName || action, directory)}${target ? `作用于${target}` : ''}`;
-    if (kind === 'lost_opportunity') return `${actor}失去本次行动机会${meta?.reason ? `：${playerSafeText(meta.reason, directory)}` : ''}`;
+    if (kind === 'create' || kind === 'item_created') {
+      const itemName = playerSafeText(event?.createdName || meta?.createdName || meta?.productId || event?.itemName || action || '物品', directory);
+      const count = Math.max(1, number(event?.count ?? event?.quantity ?? meta?.count ?? meta?.quantity, 1));
+      return `${actor}制作${count}份【${itemName}】并收入库存`;
+    }
+    if (kind === 'item_consume' || kind === 'item_used') {
+      const itemName = playerSafeText(event?.itemName || meta?.itemName || action, directory);
+      return `${actor}使用【${itemName}】${target && target !== actor ? `作用于${target}` : ''}`;
+    }
+    if (kind === 'pass' && text(event?.actionType).toUpperCase() === 'WITHDRAW') {
+      return text(event?.result) === 'withdrawn'
+        ? `${actor}成功撤离战场`
+        : `${actor}尝试撤离，但未能摆脱追击`;
+    }
+    if (kind === 'lost_opportunity') {
+      const reason = playerSafeText(meta?.reasonText, directory) || (stateName(event) ? `受【${playerSafeText(stateName(event), directory)}】影响` : '受当前状态影响');
+      return `${actor}因${reason}失去本次行动机会`;
+    }
     if (kind === 'action_cancelled' || kind === 'blocked_action') {
+      if (text(event?.ruleCode || meta?.reasonCode) === 'FUSION_PARTICIPATION_CONSUMED') {
+        const fusionActionName = playerSafeText(meta?.fusionActionName || action || '融合技', directory);
+        return `${actor}参与【${fusionActionName}】完成融合，本轮自然行动机会随之消耗`;
+      }
+      if (text(event?.actionType) === 'opportunity_cancelled' && text(meta?.reasonText)) {
+        return `${actor}因${playerSafeText(meta.reasonText, directory)}失去本次行动机会`;
+      }
       return `${actor}的【${action}】${result === '已中止' || result === '已阻断' ? result : '未能执行'}`;
     }
     if (kind === 'effect_resolved') {
       const detail = meta?.effectDetail && typeof meta.effectDetail === 'object' ? meta.effectDetail : {};
       const subject = playerSafeText(detail?.attribute || detail?.check || detail?.settlement || namedState || '效果', directory);
+      const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
+      const current = number(evidence?.current, NaN);
+      const next = number(evidence?.next, NaN);
+      if (text(event?.effectPrototype) === '属性修正' && Number.isFinite(current) && Number.isFinite(next)) {
+        return `${actor}的【${action}】使${target || actor}的${subject}由${displayNumber(current)}变为${displayNumber(next)}`;
+      }
       return `${actor}的【${action}】使${target || actor}的${subject}发生变化`;
     }
     if (kind === 'round_summary') return `第${number(event?.round, 0)}回合完成`;
@@ -493,11 +626,13 @@
   function findDecisionForExchange(exchange = {}, decisions = [], claimed = new Set()) {
     const actorId = text(exchange?.actorId);
     const actionName = text(exchange?.action?.name);
+    const actionRole = text(exchange?.action?.role || 'ACTIVE').toUpperCase();
     const round = number(exchange?.round, 0);
     const matchIndex = decisions.findIndex((decision, index) => {
       if (claimed.has(index)) return false;
       return number(decision?.round, 0) === round &&
         text(decision?.actorId) === actorId &&
+        text(decision?.actionRole || 'ACTIVE').toUpperCase() === actionRole &&
         (!actionName || decisionActionName(decision) === actionName);
     });
     if (matchIndex < 0) return null;
@@ -544,26 +679,120 @@
   }
 
   function candidateDisplayLabel(candidate = {}) {
-    const action = text(candidate?.actionName || '行动');
+    const actionKind = text(candidate?.actionKind).toUpperCase();
+    const action = actionKind === 'WITHDRAW' ? '撤离' : text(candidate?.actionName || '行动');
     const targets = unique(candidate?.targetNames || []);
-    return targets.length ? `【${action}】（目标：${targets.join('、')}）` : `【${action}】`;
+    const omitSelfTarget = ['DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW'].includes(actionKind);
+    return targets.length && !omitSelfTarget ? `【${action}】（目标：${targets.join('、')}）` : `【${action}】`;
   }
 
-  function buildDecisionReason(decision = {}, selectedPublic = {}, alternatives = []) {
+  function buildDecisionReason(decision = {}, selectedPublic = {}, alternatives = [], options = {}) {
     const selected = decision?.selected || {};
-    const problem = problemLabels[text(decision?.problems?.[0]?.problemId)] || '当前局势';
+    const expectedOutcomeKinds = new Set(
+      Array.isArray(decision?.strategyMemory?.expectedOutcomeKinds)
+        ? decision.strategyMemory.expectedOutcomeKinds.map(value => text(value).toUpperCase())
+        : [],
+    );
+    const predictedOutcomeEvidence = Array.isArray(selected?.predictedOutcomeEvidence)
+      ? selected.predictedOutcomeEvidence
+      : [];
+    const expectedAlliedIncrease = outcomeKind => predictedOutcomeEvidence.some(evidence => {
+      if (
+        text(evidence?.outcomeKind).toUpperCase() !== outcomeKind ||
+        number(evidence?.expectedDelta, 0) <= 0
+      ) return false;
+      return text(entityEntry(options?.directory, evidence?.targetId)?.side) === text(options?.actorSide);
+    });
+    const hasHealing = expectedAlliedIncrease('HP_DELTA');
+    const hasShield = expectedAlliedIncrease('SHIELD_DELTA');
+    const supportAction = hasHealing || hasShield;
+    const selectedActionKind = text(selectedPublic?.actionKind || selected?.declaration?.actionKind).toUpperCase();
+    const addressesInformation = selectedActionKind === 'OBSERVE' ||
+      number(selected?.vector?.informationValue, 0) > 0 ||
+      expectedOutcomeKinds.has('INFORMATION_REVEALED') ||
+      expectedOutcomeKinds.has('BELIEF_CHANGED');
+    const primaryProblemId = text(decision?.problems?.[0]?.problemId);
+    const problem = supportAction
+      ? '队伍续航'
+      : primaryProblemId === 'INFORMATION_DEFICIT' && !addressesInformation
+        ? '推进战果'
+        : problemLabels[primaryProblemId] || '当前局势';
     const selectedLabel = candidateDisplayLabel(selectedPublic);
-    const alternativeLabels = alternatives.map(candidateDisplayLabel);
+    if (selected?.forcedAction === true) {
+      return `${selectedLabel}已在前一行动窗口完成声明与蓄力，本次按既定动作兑现，不重新替换为其他主动方案`;
+    }
+    const scoreAlternatives = (Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [])
+      .filter(candidate => candidate?.selected !== true && text(candidate?.candidateId) !== text(selected?.candidateId));
     const repeated = selected?.repeatedActionAudit || {};
     const reasons = [];
-    if (alternativeLabels.length) reasons.push(`相较${alternativeLabels.join('、')}，当前局面改善更大`);
-    if (number(selected?.vector?.resourceContinuity, 0) > 0) reasons.push('能保留或解锁后续有效行为');
-    if (number(selected?.vector?.survivalLowerBound, 0) > 0) reasons.push('承受主要回应后的生存下界仍为正');
-    if (number(repeated?.repeatedActionDelta, 0) > 0 && (repeated?.extendedWindowIds || []).length) reasons.push('重复使用仍延长了真实生效窗口');
-    if (number(repeated?.resourceRunwayAfter, 0) > 0 && !(repeated?.lostAffordableActions || []).length) reasons.push('执行后仍保有可支付的后续动作');
+    const selectedVector = selected?.vector || {};
+    const bestAlternativeStateGain = Math.max(
+      -Infinity,
+      ...scoreAlternatives.map(candidate => number(candidate?.vector?.expectedStateGain, -Infinity)),
+    );
+    const bestAlternativeResource = Math.max(
+      -Infinity,
+      ...scoreAlternatives.map(candidate => number(candidate?.vector?.resourceContinuity, -Infinity)),
+    );
+    const bestAlternativeTailLoss = Math.min(
+      Infinity,
+      ...scoreAlternatives.map(candidate => number(candidate?.vector?.worstTailCapacityLoss, Infinity)),
+    );
+    if (number(selectedVector?.terminalUtility, 0) >= 99.999) reasons.push('按当前认知，预计可直接达成当前战斗目标');
+    else if (number(selectedVector?.terminalUtility, 0) > 0) reasons.push('按当前认知，存在直接达成当前战斗目标的机会');
+    else if (number(selectedVector?.objectiveProgress, 0) > 0) reasons.push('能直接推进当前战斗目标');
+    if (hasHealing && hasShield) reasons.push('预计恢复受损成员并为队伍建立护盾');
+    else if (hasHealing) reasons.push('预计恢复当前受损成员的生命');
+    else if (hasShield) reasons.push('预计为队伍建立可兑现的护盾窗口');
+    const deniedOpportunityCount = unique(repeated?.newlyDeniedOpportunityIds || []).length;
+    if (deniedOpportunityCount > 0) {
+      const targets = unique(selectedPublic?.targetNames || []).join('、') || '目标';
+      reasons.push(`预计取消${targets}的${deniedOpportunityCount}次行动机会`);
+    }
+    const resourceRunwayAfter = Math.max(0, Math.floor(number(repeated?.resourceRunwayAfter, 0)));
+    if (resourceRunwayAfter > 0 && !(repeated?.lostAffordableActions || []).length) {
+      reasons.push(`按当前资源仍可支付${resourceRunwayAfter}次同等消耗`);
+    }
+    if (
+      Number.isFinite(bestAlternativeStateGain) &&
+      number(selectedVector?.expectedStateGain, 0) > bestAlternativeStateGain + 0.01
+    ) reasons.push('相较替代方案，当前动作链的预期战果更高');
+    if (
+      Number.isFinite(bestAlternativeTailLoss) &&
+      number(selectedVector?.worstTailCapacityLoss, 0) + 0.01 < bestAlternativeTailLoss
+    ) reasons.push('面对最不利回应时，预计损失更低');
+    if (
+      Number.isFinite(bestAlternativeResource) &&
+      number(selectedVector?.resourceContinuity, 0) > bestAlternativeResource + 0.01
+    ) reasons.push('保留了更多下一行动可用能力');
+    if (number(repeated?.repeatedActionDelta, 0) > 0 && (repeated?.extendedWindowIds || []).length) {
+      const windowCount = unique(repeated.extendedWindowIds).length;
+      reasons.push(options?.repeatedSelection === true
+        ? `本次重复释放仍会延续${windowCount}个可兑现的效果窗口`
+        : `预计建立或延续${windowCount}个可兑现的效果窗口`);
+    }
     if (selected?.forcedFallback === true) reasons.push('其他主动方案当前均不可兑现');
-    if (!reasons.length) reasons.push('该方案处于当前非支配候选集合');
-    return `局势问题为“${problem}”；选择${selectedLabel}，${reasons.join('，')}`;
+    if (!reasons.length && alternatives.length) reasons.push('在当前非支配候选中综合收益最高');
+    if (!reasons.length) reasons.push('当前没有更可兑现的主动方案');
+    return `局势问题为“${problem}”；选择${selectedLabel}，${reasons.slice(0, 3).join('，')}`;
+  }
+
+  function publicRepeatedActionAudit(repeated = null) {
+    if (!repeated || typeof repeated !== 'object') return null;
+    return {
+      repeatedActionDelta: number(repeated.repeatedActionDelta, 0),
+      extendedWindowCount: unique(repeated.extendedWindowIds || []).length,
+      newlyDeniedOpportunityCount: unique(repeated.newlyDeniedOpportunityIds || []).length,
+      unrealizableDeniedOpportunityCount: unique(repeated.unrealizableDeniedOpportunityIds || []).length,
+      resourceRunwayBefore: Number.isFinite(Number(repeated.resourceRunwayBefore))
+        ? Math.max(0, Math.floor(Number(repeated.resourceRunwayBefore)))
+        : null,
+      resourceRunwayAfter: Number.isFinite(Number(repeated.resourceRunwayAfter))
+        ? Math.max(0, Math.floor(Number(repeated.resourceRunwayAfter)))
+        : null,
+      lostAffordableActionCount: unique(repeated.lostAffordableActions || []).length,
+      lifecycleWindowRealizable: repeated.lifecycleWindowRealizable === true,
+    };
   }
 
   function buildAdjudications(draft = {}, exchanges = [], factsById = new Map(), directory = new Map(), visibilityMode = 'PLAYER') {
@@ -585,6 +814,31 @@
         actionKind: selected?.declaration?.actionKind,
         targetIds: selected?.declaration?.targetIds,
       }, directory);
+      const actorSide = text(entityEntry(directory, decision?.actorId)?.side);
+      const repeatedSelection = decisions.slice(0, matched.index).some(prior => {
+        if (text(prior?.actorId) !== text(decision?.actorId)) return false;
+        const priorSelected = prior?.selected || {};
+        const priorActionName = text(
+          priorSelected?.selectedActionName ||
+          priorSelected?.declaration?.skill?.name ||
+          priorSelected?.declaration?.skill?.魂技名 ||
+          actionKindLabels[text(priorSelected?.declaration?.actionKind).toUpperCase()],
+        );
+        return priorActionName && priorActionName === selectedPublic.actionName;
+      });
+      const expectedOutcomeKinds = new Set(
+        Array.isArray(decision?.strategyMemory?.expectedOutcomeKinds)
+          ? decision.strategyMemory.expectedOutcomeKinds.map(value => text(value).toUpperCase())
+          : [],
+      );
+      const addressesInformation = selectedPublic.actionKind === 'OBSERVE' ||
+        number(selected?.vector?.informationValue, 0) > 0 ||
+        expectedOutcomeKinds.has('INFORMATION_REVEALED') ||
+        expectedOutcomeKinds.has('BELIEF_CHANGED');
+      const primaryProblemId = text(decision?.problems?.[0]?.problemId);
+      const predictedProblem = primaryProblemId === 'INFORMATION_DEFICIT' && !addressesInformation
+        ? '推进战果'
+        : problemLabels[primaryProblemId] || '当前局势';
       const alternativePublic = alternatives.map(candidate => {
         const item = publicCandidate(candidate, directory);
         return {
@@ -596,11 +850,52 @@
       const sourceEventId = text(exchange?.factIds?.[0]);
       const decisionNumbers = [
         adjudicationNumberToken(adjudicationId, sourceEventId, '预估局面收益', selected?.objectiveUtility, '效用', selectedPublic.actionName),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '动作链预期战果', selected?.vector?.expectedStateGain, '效用', selectedPublic.actionName),
         adjudicationNumberToken(adjudicationId, sourceEventId, '资源连续性', selected?.vector?.resourceContinuity, '容量', selectedPublic.actionName),
         adjudicationNumberToken(adjudicationId, sourceEventId, '生存下界', selected?.vector?.survivalLowerBound, '容量', selectedPublic.actionName),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '最坏回应损失', selected?.vector?.worstTailCapacityLoss, '容量', selectedPublic.actionName),
         adjudicationNumberToken(adjudicationId, sourceEventId, '重复动作边际', selected?.repeatedActionAudit?.repeatedActionDelta, '效用', selectedPublic.actionName),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '剩余同等消耗次数', selected?.repeatedActionAudit?.resourceRunwayAfter, '次', selectedPublic.actionName),
+        adjudicationNumberToken(
+          adjudicationId,
+          sourceEventId,
+          '覆盖行动机会',
+          unique(selected?.repeatedActionAudit?.newlyDeniedOpportunityIds || []).length,
+          '次',
+          selectedPublic.actionName,
+        ),
+        ...(Array.isArray(selected?.mechanicObservations) ? selected.mechanicObservations : []).map(observation =>
+          adjudicationNumberToken(
+            adjudicationId,
+            sourceEventId,
+            `${playerSafeText(observation?.stateName || observation?.effectPrototype || '机制', directory)}预计成功率`,
+            number(observation?.posterior ?? observation?.estimatedProbability, NaN) * 100,
+            '%',
+            selectedPublic.actionName,
+          )
+        ),
       ].filter(Boolean);
-      const actualFacts = exchange.factIds.map(factId => factsById.get(factId)).filter(Boolean);
+      const exchangeFacts = exchange.factIds.map(factId => factsById.get(factId)).filter(Boolean);
+      const actionStartFact = exchangeFacts.find(fact =>
+        ['action_start', 'charge_start'].includes(text(fact?.eventKind))
+      );
+      const causalFollowUpKinds = new Set([
+        'state_tick',
+        'lost_opportunity',
+        'blocked_action',
+        'charge_interrupt',
+        'summon_assist',
+        'summon_end',
+      ]);
+      const causalFollowUpFacts = actionStartFact?.actionId
+        ? [...factsById.values()].filter(fact =>
+            !exchange.factIds.includes(fact.factId) &&
+            causalFollowUpKinds.has(text(fact?.eventKind)) &&
+            text(fact?.sourceActionId) === text(actionStartFact.actionId) &&
+            number(fact?.round, 0) >= number(decision?.round, 0)
+          )
+        : [];
+      const actualFacts = [...exchangeFacts, ...causalFollowUpFacts];
       const checks = actualFacts
         .filter(fact => fact.numericTokens.some(token => ['成功率', '随机值'].includes(token.label)))
         .map(fact => ({
@@ -620,18 +915,26 @@
         actionRole: text(decision?.actionRole || 'ACTIVE'),
         selected: selectedPublic,
         alternatives: alternativePublic,
-        reasonSummary: buildDecisionReason(decision, selectedPublic, alternativePublic),
+        reasonSummary: buildDecisionReason(decision, selectedPublic, alternativePublic, {
+          actorSide,
+          directory,
+          repeatedSelection,
+        }),
         predicted: {
-          problem: problemLabels[text(decision?.problems?.[0]?.problemId)] || '当前局势',
+          problem: predictedProblem,
           teamFocusTarget: publicEntityName(directory, decision?.teamIntent?.focusTarget, decision?.teamIntent?.focusTarget),
           protectTarget: publicEntityName(directory, decision?.teamIntent?.protectTarget, decision?.teamIntent?.protectTarget),
           exploitableWindow: playerSafeText(decision?.teamIntent?.exploitableWindow, directory),
           numbers: decisionNumbers,
-          repeatedAction: cloneValue(selected?.repeatedActionAudit || null),
+          repeatedAction: publicRepeatedActionAudit(selected?.repeatedActionAudit),
         },
         actual: {
-          resultSummary: text(exchange?.resultSummary),
-          factIds: [...exchange.factIds],
+          resultSummary: unique([
+            exchange?.resultSummary,
+            exchange?.continuationSummary,
+            ...causalFollowUpFacts.map(fact => fact.summary),
+          ]).map(text).filter(Boolean).join('；'),
+          factIds: unique(actualFacts.map(fact => fact.factId)),
           checks,
           numericTokens: actualFacts.flatMap(fact => fact.numericTokens),
         },
@@ -647,12 +950,131 @@
     }).filter(Boolean);
   }
 
+  function compactEntityNames(values = []) {
+    const names = unique(values);
+    if (names.length <= 3) return names.join('、');
+    return `${names.slice(0, 3).join('、')}等${names.length}人`;
+  }
+
+  function summarizeResponseFacts(responses = []) {
+    const consumed = new Set();
+    const summaries = [];
+    const group = (eventKinds, keyOf, summarize) => {
+      const grouped = new Map();
+      responses.filter(fact => eventKinds.includes(fact.eventKind)).forEach(fact => {
+        const key = keyOf(fact);
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(fact);
+      });
+      grouped.forEach(facts => {
+        facts.forEach(fact => consumed.add(fact.factId));
+        summaries.push(facts.length === 1 ? facts[0].summary : summarize(facts));
+      });
+    };
+    group(['reaction_window'], fact => /不可用/.test(fact.summary) ? 'UNAVAILABLE' : 'AVAILABLE', facts => {
+      const names = compactEntityNames(facts.map(fact => fact.actorName));
+      return `${names}的即时反应窗口${/不可用/.test(facts[0].summary) ? '不可用' : '已建立'}`;
+    });
+    group(['dodge'], fact => `${fact.targetName}|${fact.resultState}`, facts => {
+      const names = compactEntityNames(facts.map(fact => fact.actorName));
+      return `${names}尝试闪避${facts[0].targetName || '来源攻击者'}的攻势，结果为${facts[0].resultState}`;
+    });
+    group(['defend', 'guard'], fact => {
+      const ratio = fact.numericTokens.find(token => token.label === '承伤比例');
+      return `${fact.eventKind}|${fact.actionName}|${fact.targetName}|${number(ratio?.value, -1)}`;
+    }, facts => {
+      const names = compactEntityNames(facts.map(fact => fact.actorName));
+      const ratio = facts[0].numericTokens.find(token => token.label === '承伤比例');
+      const mitigation = ratio ? `，将本次伤害压至${Math.round(number(ratio.value, 0) * 10) / 10}%` : '，防御已生效';
+      return `${names}分别以【${facts[0].actionName}】应对${facts[0].targetName || '来源攻击者'}的攻势${mitigation}`;
+    });
+    group(['counter_window'], fact => /未能成立/.test(fact.summary) ? 'MISSED' : 'OPENED', facts => {
+      const names = compactEntityNames(facts.map(fact => fact.actorName));
+      return `${names}的反击窗口${/未能成立/.test(facts[0].summary) ? '未能成立' : '已成立'}`;
+    });
+    group(['counter'], fact => `${fact.actionName}|${fact.targetName}|${/放弃/.test(fact.summary)}`, facts => {
+      const names = compactEntityNames(facts.map(fact => fact.actorName));
+      return /放弃/.test(facts[0].summary)
+        ? `${names}放弃对${facts[0].targetName || '来源攻击者'}的反击`
+        : `${names}分别以【${facts[0].actionName}】反击${facts[0].targetName || '来源攻击者'}`;
+    });
+    responses.forEach(fact => {
+      if (!consumed.has(fact.factId)) summaries.push(fact.summary);
+    });
+    return unique(summaries).join('；');
+  }
+
+  function summarizeImmediateResultFacts(facts = []) {
+    const shieldGroups = new Map();
+    const hitGroups = new Map();
+    facts.filter(fact => fact.eventKind === 'shield_break').forEach(fact => {
+      const key = `${fact.targetName}|${fact.actionName}`;
+      if (!shieldGroups.has(key)) shieldGroups.set(key, []);
+      shieldGroups.get(key).push(fact);
+    });
+    facts.filter(fact => fact.eventKind === 'hit_result').forEach(fact => {
+      const key = `${fact.actorName}|${fact.actionName}|${fact.targetName}`;
+      if (!hitGroups.has(key)) hitGroups.set(key, []);
+      hitGroups.get(key).push(fact);
+    });
+    const emittedShieldGroups = new Set();
+    const emittedHitGroups = new Set();
+    const summaries = [];
+    facts.forEach(fact => {
+      if (fact.eventKind === 'hit_result') {
+        const key = `${fact.actorName}|${fact.actionName}|${fact.targetName}`;
+        if (emittedHitGroups.has(key)) return;
+        emittedHitGroups.add(key);
+        const grouped = hitGroups.get(key) || [fact];
+        if (grouped.length === 1) {
+          summaries.push(fact.summary);
+          return;
+        }
+        const totalDamage = grouped.reduce((sum, item) => {
+          const token = item.numericTokens.find(entry => entry.label === '最终伤害');
+          return sum + Math.max(0, number(token?.value, 0));
+        }, 0);
+        const missed = grouped.filter(item => /未命中|落点偏离/.test(item.summary)).length;
+        const landed = grouped.length - missed;
+        if (totalDamage > 0) {
+          summaries.push(`${fact.actorName}以【${fact.actionName}】的${grouped.length}段攻势中${landed}段命中${fact.targetName}，共造成${totalDamage}点伤害${missed ? `，${missed}段落空` : ''}`);
+        } else if (landed > 0) {
+          summaries.push(`${fact.actorName}以【${fact.actionName}】的${grouped.length}段攻势中${landed}段命中${fact.targetName}的护盾${missed ? `，${missed}段落空` : ''}`);
+        } else {
+          summaries.push(`${fact.actorName}以【${fact.actionName}】攻击${fact.targetName}，${grouped.length}段攻势全部落空`);
+        }
+        return;
+      }
+      if (fact.eventKind !== 'shield_break') {
+        summaries.push(fact.summary);
+        return;
+      }
+      const key = `${fact.targetName}|${fact.actionName}`;
+      if (emittedShieldGroups.has(key)) return;
+      emittedShieldGroups.add(key);
+      const grouped = shieldGroups.get(key) || [fact];
+      const absorbed = grouped.reduce((sum, item) => {
+        const token = item.numericTokens.find(entry => entry.label === '护盾损耗');
+        return sum + Math.max(0, number(token?.value, 0));
+      }, 0);
+      const finalRemaining = grouped.reduce((remaining, item) => {
+        const token = item.numericTokens.find(entry => entry.label === '剩余护盾');
+        return token ? Math.max(0, number(token.value, 0)) : remaining;
+      }, 0);
+      summaries.push(finalRemaining > 0
+        ? `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害，剩余${finalRemaining}点`
+        : `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害后破裂`);
+    });
+    return unique(summaries).join('；');
+  }
+
   function exchangePresentation(exchange = {}, factsById = new Map()) {
     const facts = exchange.factIds.map(factId => factsById.get(factId)).filter(Boolean);
-    const declaration = facts.find(fact => fact.eventKind === 'action_start') || facts[0] || null;
+    const declaration = facts.find(fact => ['action_start', 'charge_start'].includes(fact.eventKind)) || facts[0] || null;
     const responses = facts.filter(fact => responseEventKinds.has(fact.eventKind));
     const rawResultFacts = facts.filter(fact =>
-      !['action_start', 'round_summary'].includes(fact.eventKind) &&
+      fact.factId !== declaration?.factId &&
+      !['action_start', 'charge_start', 'round_summary'].includes(fact.eventKind) &&
       !responseEventKinds.has(fact.eventKind) &&
       fact.eventKind !== 'action_cost'
     );
@@ -666,12 +1088,18 @@
       return hasDamage || !hasPositiveHit;
     });
     const continuationFacts = resultFacts.filter(fact =>
-      ['state_apply', 'state_remove', 'state_expire', 'summon_create', 'summon_end', 'lost_opportunity', 'action_cancelled'].includes(fact.eventKind)
+      ['state_apply', 'state_remove', 'state_expire', 'summon_create', 'summon_end', 'lost_opportunity', 'action_cancelled', 'charge_interrupt'].includes(fact.eventKind)
     );
     const immediateResults = resultFacts.filter(fact => !continuationFacts.includes(fact));
-    const actionSummary = declaration?.summary || facts[0]?.summary || '行动已记录';
-    const responseSummary = unique(responses.map(fact => fact.summary)).join('；');
-    const resultSummary = unique(immediateResults.map(fact => fact.summary)).join('；') || '未产生额外数值结果';
+    const creationFact = facts.find(fact => ['create', 'item_created'].includes(fact.eventKind));
+    const consumptionFact = facts.find(fact => ['item_consume', 'item_used'].includes(fact.eventKind));
+    const actionSummary = creationFact
+      ? `${declaration?.actorName || creationFact.actorName}制作【${creationFact.actionName || creationFact.meta?.createdName || '物品'}】`
+      : consumptionFact
+        ? `${declaration?.actorName || consumptionFact.actorName}使用【${consumptionFact.actionName || consumptionFact.meta?.itemName || '物品'}】${consumptionFact.targetName && consumptionFact.targetName !== consumptionFact.actorName ? `指向${consumptionFact.targetName}` : ''}`
+        : declaration?.summary || facts[0]?.summary || '行动已记录';
+    const responseSummary = summarizeResponseFacts(responses);
+    const resultSummary = summarizeImmediateResultFacts(immediateResults);
     const continuationSummary = unique(continuationFacts.map(fact => fact.summary)).join('；');
     return {
       ...exchange,
@@ -696,7 +1124,7 @@
       text: [
         actionSummary,
         responseSummary ? `应对：${responseSummary}` : '',
-        `结果：${resultSummary}`,
+        resultSummary ? `结果：${resultSummary}` : '',
         continuationSummary ? `后续：${continuationSummary}` : '',
       ].filter(Boolean).join('。'),
     };
@@ -784,6 +1212,18 @@
     };
   }
 
+  function opportunityFactKey(event = {}, fact = {}) {
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const opportunityId = text(
+      event?.opportunityId ||
+      event?.grantId ||
+      meta?.opportunityId ||
+      meta?.grantId,
+    );
+    if (!opportunityId) return '';
+    return `${text(fact?.actorId || event?.actorId || event?.actorName)}|${opportunityId}`;
+  }
+
   function buildRoundOverview(draft = {}, ledger = [], factsById = new Map(), exchanges = [], directory = new Map()) {
     const states = initialUnitStates(draft, directory);
     const exchangeByRound = new Map();
@@ -820,22 +1260,95 @@
           targetName: fact.targetName,
           token: fact.numericTokens.find(token => token.label === '资源变化'),
         }));
+      const rawEventsById = new Map(events.map(event => [text(event?.eventId), event]));
+      const shieldBySide = {
+        player: { gained: 0, absorbed: 0, lost: 0 },
+        enemy: { gained: 0, absorbed: 0, lost: 0 },
+      };
+      roundFacts.forEach(fact => {
+        const side = ['player', 'enemy'].includes(fact.targetSide)
+          ? fact.targetSide
+          : fact.actorSide;
+        if (!shieldBySide[side]) return;
+        fact.numericTokens.forEach(token => {
+          const amount = Math.max(0, Math.abs(number(token.value, 0)));
+          if (token.label === '护盾增加') shieldBySide[side].gained += amount;
+          if (token.label === '护盾吸收') shieldBySide[side].absorbed += amount;
+          if (token.label === '护盾损耗') shieldBySide[side].lost += amount;
+        });
+      });
+      const resourceDeltaBySide = { player: 0, enemy: 0 };
+      resourceEvents.forEach(event => {
+        const fact = factsById.get(event.factId);
+        const side = ['player', 'enemy'].includes(fact?.targetSide)
+          ? fact.targetSide
+          : fact?.actorSide;
+        if (side) resourceDeltaBySide[side] += number(event.token?.value, 0);
+      });
+      const assetEvents = roundFacts.filter(fact => ['create', 'item_consume'].includes(fact.eventKind));
+      const createdItemCount = assetEvents
+        .filter(fact => fact.eventKind === 'create')
+        .reduce((sum, fact) => sum + Math.max(1, number(rawEventsById.get(fact.factId)?.count, 1)), 0);
+      const consumedItemCount = assetEvents
+        .filter(fact => fact.eventKind === 'item_consume')
+        .reduce((sum, fact) => sum + Math.max(1, number(rawEventsById.get(fact.factId)?.count, 1)), 0);
       const stateEvents = roundFacts.filter(fact => /state_/.test(fact.eventKind)).map(fact => fact.factId);
       const summonEvents = roundFacts.filter(fact => /summon_/.test(fact.eventKind)).map(fact => fact.factId);
-      const lostOpportunityFactIds = roundFacts.filter(fact => ['lost_opportunity', 'action_cancelled', 'blocked_action'].includes(fact.eventKind)).map(fact => fact.factId);
+      const opportunityFacts = roundFacts.filter(fact => {
+        if (!['lost_opportunity', 'action_cancelled', 'blocked_action'].includes(fact.eventKind)) return false;
+        const rawEvent = rawEventsById.get(fact.factId);
+        return text(rawEvent?.ruleCode || rawEvent?.meta?.reasonCode) !== 'BATTLE_TERMINAL';
+      });
+      const lostOpportunityFactIds = opportunityFacts.map(fact => fact.factId);
+      const lostOpportunityCount = new Set(opportunityFacts
+        .map(fact => opportunityFactKey(rawEventsById.get(fact.factId), fact) || `fact:${fact.factId}`)
+      ).size;
       const summaryFactIds = roundFacts.filter(fact => fact.eventKind === 'round_summary').map(fact => fact.factId);
       const passiveFacts = roundFacts.filter(fact =>
         fact.canonicalFactOwner === `round:${round}` && fact.eventKind !== 'round_summary'
       );
+      const lostOpportunityKeys = new Set(passiveFacts
+        .filter(fact => fact.eventKind === 'lost_opportunity')
+        .map(fact => opportunityFactKey(rawEventsById.get(fact.factId), fact))
+        .filter(Boolean));
+      const passiveSummaryFacts = passiveFacts.filter(fact => {
+        const rawEvent = rawEventsById.get(fact.factId);
+        if (text(rawEvent?.ruleCode || rawEvent?.meta?.reasonCode) === 'BATTLE_TERMINAL') return false;
+        if (!['action_cancelled', 'blocked_action'].includes(fact.eventKind)) return true;
+        const key = opportunityFactKey(rawEventsById.get(fact.factId), fact);
+        return !key || !lostOpportunityKeys.has(key);
+      });
       const summaryParts = [];
       if (damageBySide.player > 0 || damageBySide.enemy > 0) {
         summaryParts.push(`我方造成${damageBySide.player}点伤害，敌方造成${damageBySide.enemy}点伤害`);
       }
+      const shieldParts = [
+        ['我方', shieldBySide.player],
+        ['敌方', shieldBySide.enemy],
+      ].flatMap(([label, values]) => [
+        values.gained > 0 ? `${label}护盾增加${values.gained}点` : '',
+        values.absorbed > 0 ? `${label}护盾吸收${values.absorbed}点伤害` : '',
+        values.lost > values.absorbed ? `${label}另有${values.lost - values.absorbed}点护盾消散` : '',
+      ]).filter(Boolean);
+      if (shieldParts.length) summaryParts.push(shieldParts.join('，'));
+      const resourceParts = [
+        resourceDeltaBySide.player ? `我方资源净变化${resourceDeltaBySide.player > 0 ? '+' : ''}${resourceDeltaBySide.player}` : '',
+        resourceDeltaBySide.enemy ? `敌方资源净变化${resourceDeltaBySide.enemy > 0 ? '+' : ''}${resourceDeltaBySide.enemy}` : '',
+      ].filter(Boolean);
+      if (resourceEvents.length) {
+        summaryParts.push(resourceParts.length ? resourceParts.join('，') : `发生${resourceEvents.length}项资源变化`);
+      }
+      if (createdItemCount || consumedItemCount) {
+        summaryParts.push([
+          createdItemCount ? `制作${createdItemCount}件物品` : '',
+          consumedItemCount ? `消耗${consumedItemCount}件物品` : '',
+        ].filter(Boolean).join('，'));
+      }
       if (stateEvents.length) summaryParts.push(`发生${stateEvents.length}项状态变化`);
       if (summonEvents.length) summaryParts.push(`发生${summonEvents.length}项召唤变化`);
-      if (lostOpportunityFactIds.length) summaryParts.push(`${lostOpportunityFactIds.length}次行动机会未能执行`);
-      if (!summaryParts.length) summaryParts.push('本回合没有数值战果，但行动与窗口事实已完整记录');
-      const passiveSummary = unique(passiveFacts.map(fact => fact.summary)).join('；');
+      if (lostOpportunityCount) summaryParts.push(`${lostOpportunityCount}次行动机会未能执行`);
+      if (!summaryParts.length) summaryParts.push('本回合未产生生命、护盾、资源或物品变化，行动与窗口事实已完整记录');
+      const passiveSummary = unique(passiveSummaryFacts.map(fact => fact.summary)).join('；');
       rows.push({
         round,
         factIds,
@@ -845,10 +1358,14 @@
         exchangeIds: exchangeByRound.get(round) || [],
         summary: summaryParts.join('；'),
         damageBySide,
+        shieldBySide,
         resourceEvents,
+        resourceDeltaBySide,
+        assetEventFactIds: assetEvents.map(fact => fact.factId),
         stateEventFactIds: stateEvents,
         summonEventFactIds: summonEvents,
         lostOpportunityFactIds,
+        lostOpportunityCount,
         units: cloneSideUnits(states),
       });
     }
@@ -946,7 +1463,8 @@
       : recentPlayerDamage > recentEnemyDamage ? '最近交锋由我方取得更多有效伤害' : '最近交锋由敌方取得更多有效伤害';
     const risks = [];
     [...playerUnits, ...enemyUnits].forEach(unit => {
-      if (unit.hp / Math.max(1, unit.hpMax) <= 0.2 && unit.hp > 0) risks.push(`${unit.name}生命已低于20%`);
+      if (/死亡|失去战斗力|昏迷/.test(unit.actionState)) risks.push(`${unit.name}已${unit.actionState}`);
+      else if (unit.hp / Math.max(1, unit.hpMax) <= 0.2 && unit.hp > 0) risks.push(`${unit.name}生命已低于20%`);
       if (unit.resources.soulMax > 0 && unit.resources.soul / unit.resources.soulMax <= 0.1) risks.push(`${unit.name}魂力接近耗尽`);
     });
     if (!risks.length) risks.push('当前没有单位进入明确生命或魂力危机');
@@ -961,7 +1479,7 @@
       player: latestSideIntent(decisions, playerUnits, directory, terminal),
       enemy: latestSideIntent(decisions, enemyUnits, directory, terminal),
     };
-    const formatUnit = unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.resources.soul}/${unit.resources.soulMax}，体力 ${unit.resources.stamina}/${unit.resources.staminaMax}，精神力 ${unit.resources.spirit}/${unit.resources.spiritMax}${unit.states.length ? `，状态：${unit.states.join('、')}` : ''}`;
+    const formatUnit = unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.resources.soul}/${unit.resources.soulMax}，体力 ${unit.resources.stamina}/${unit.resources.staminaMax}，精神力 ${unit.resources.spirit}/${unit.resources.spiritMax}${unit.actionState && unit.actionState !== '战斗' ? `，行动状态：${unit.actionState}` : ''}${unit.states.length ? `，状态：${unit.states.join('、')}` : ''}`;
     const textSummary = [
       `战至第${number(draft?.actualRoundCount, 0)}回合，${terminalText(terminal)}。`,
       `我方：${playerUnits.map(formatUnit).join('；') || '无可用单位'}。`,
@@ -1033,7 +1551,7 @@
     const factRegistry = ledger.map(event => buildFact(event, visibilityMode, directory, actionReferences));
     const factsById = new Map(factRegistry.map(fact => [fact.factId, fact]));
     const actionStarts = new Map(ledger
-      .filter(event => text(event?.eventKind) === 'action_start')
+      .filter(event => ['action_start', 'charge_start'].includes(text(event?.eventKind)))
       .map(event => [text(event?.actionId), event])
       .filter(([actionId]) => !!actionId));
     const exchangeMap = new Map();
@@ -1204,6 +1722,24 @@
       }
       if (/"ruleCode"|"developerDetail"|"rawDecision"|"candidateId"/.test(serialized)) {
         pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'INTERNAL_DECISION_OR_RULE_DATA' });
+      }
+      const projectedText = [
+        ...(Array.isArray(report?.exchanges) ? report.exchanges : []).flatMap(exchange => [
+          exchange?.text,
+          exchange?.responseSummary,
+          exchange?.resultSummary,
+          exchange?.continuationSummary,
+        ]),
+        ...(Array.isArray(report?.adjudications) ? report.adjudications : []).flatMap(adjudication => [
+          adjudication?.reasonSummary,
+          adjudication?.actual?.resultSummary,
+        ]),
+      ].map(text).join('\n');
+      if (/\b(?:PENDING|DECLARED|SUCCESS|FAILURE|FAILED|ABORTED|BLOCKED|LOST|COMPLETED|NO_EFFECT|RESISTED|IMMUNE)\b/.test(projectedText)) {
+        pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'UNRESOLVED_RESULT_STATE' });
+      }
+      if (/\b(?:CONTROLLED|INCAPACITATED|UNAVAILABLE):/i.test(projectedText)) {
+        pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'RAW_INCAPACITY_REASON' });
       }
     }
     const aiSerialized = JSON.stringify(report?.aiSummaryInput || {});

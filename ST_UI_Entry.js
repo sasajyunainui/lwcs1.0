@@ -61,6 +61,15 @@
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
+    技能设计器模块: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'SkillDesignerUI_Module.js' + 资源版本后缀,
+      关键: false,
+      分组: 'lazy',
+      依赖: ['Vue核心'],
+      接口键: '__LWCS_SKILL_DESIGNER_UI__',
+      接口版本: 1,
+    },
     战斗预估运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattlePreview_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     战斗决策运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleDecision_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗预估运行时'] },
     战斗运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleRuntime_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗决策运行时'] },
@@ -85,7 +94,7 @@
   ]);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
-  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
+  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '技能设计器模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
   const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
   const 启动预取资源列表 = Object.freeze([
     'MVU_ZOD_Entry.js',
@@ -157,6 +166,59 @@
     return new Promise(resolve => setTimeout(resolve, 毫秒));
   }
 
+  function 读取模块接口(接口键) {
+    const 键 = String(接口键 || '').trim();
+    if (!键) return null;
+    const 候选窗口 = [宿主窗口];
+    try {
+      if (window !== 宿主窗口) 候选窗口.push(window);
+    } catch (错误) {}
+    for (const 候选窗口项 of 候选窗口) {
+      try {
+        if (候选窗口项 && 候选窗口项[键]) return 候选窗口项[键];
+      } catch (错误) {}
+    }
+    return null;
+  }
+
+  async function 等待模块接口(模块名, 模块, 最大等待毫秒 = 2600) {
+    const 接口键 = String(模块 && 模块.接口键 ? 模块.接口键 : '').trim();
+    if (!接口键) return null;
+    const 开始时间 = Date.now();
+    while (Date.now() - 开始时间 < 最大等待毫秒) {
+      const 接口 = 读取模块接口(接口键);
+      if (
+        接口 &&
+        typeof 接口 === 'object' &&
+        (!模块.接口版本 || Number(接口.apiVersion) === Number(模块.接口版本))
+      ) {
+        return 接口;
+      }
+      await 睡眠(40);
+    }
+    throw new Error(
+      `${模块名}接口未就绪或版本不匹配: ${接口键}@${Number(模块.接口版本 || 0)}`,
+    );
+  }
+
+  function 清理模块接口(模块) {
+    const 接口键 = String(模块 && 模块.接口键 ? 模块.接口键 : '').trim();
+    if (!接口键) return;
+    const 候选窗口 = [宿主窗口];
+    try {
+      if (window !== 宿主窗口) 候选窗口.push(window);
+    } catch (错误) {}
+    候选窗口.forEach(候选窗口项 => {
+      try {
+        const 接口 = 候选窗口项 && 候选窗口项[接口键];
+        if (接口 && typeof 接口.destroyAll === 'function') 接口.destroyAll();
+      } catch (错误) {}
+      try {
+        delete 候选窗口项[接口键];
+      } catch (错误) {}
+    });
+  }
+
   async function 等待剧情推进预设接口(最大等待毫秒 = 12000) {
     const 开始时间 = Date.now();
     while (Date.now() - 开始时间 < 最大等待毫秒) {
@@ -164,7 +226,7 @@
       if (
         数据库接口 &&
         typeof 数据库接口.importPlotPresetsFromData === 'function' &&
-        typeof 数据库接口.injectPlotPresetToCurrentChat === 'function' &&
+        typeof 数据库接口.switchPlotPreset === 'function' &&
         typeof 数据库接口.getCurrentPlotPreset === 'function'
       ) {
         return 数据库接口;
@@ -198,9 +260,12 @@
       return { success: true, skipped: true, reason: '已有其他剧情推进预设', presetName: 当前预设名 };
     }
 
-    const 已绑定 = 数据库接口.injectPlotPresetToCurrentChat(预设名) === true;
-    if (!已绑定) throw new Error(`LWCS 剧情推进预设绑定失败: ${预设名}`);
-    console.info(`[LWCS] 已绑定当前聊天剧情推进预设：${预设名}。来源=${来源}`);
+    const 已切换 = 数据库接口.switchPlotPreset(预设名) === true;
+    const 实际预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
+    if (!已切换 || 实际预设名 !== 预设名) {
+      throw new Error(`LWCS 当前聊天剧情推进预设切换失败: ${预设名}`);
+    }
+    console.info(`[LWCS] 已切换当前聊天剧情推进预设：${预设名}。来源=${来源}`);
     return { success: true, skipped: false, presetName: 预设名 };
   };
   try {
@@ -427,6 +492,7 @@
       await waitForMountsReady(10000);
       ensureGetAllVariablesShim();
       await 加载样式(模块注册表.样式核心.地址);
+      清理模块接口(模块注册表.技能设计器模块);
       热更新重置模块顺序.forEach(模块名 => {
         if (!模块状态表[模块名]) return;
         模块状态表[模块名].状态 = 'pending';
@@ -470,11 +536,14 @@
       const 依赖结果 = await 尝试加载模块(依赖模块名, `dependency:${模块名}`, false);
       if (!依赖结果?.ok) throw 依赖结果?.error || new Error(`module_dependency_failed:${模块名}:${依赖模块名}`);
     }
-    if (模块.类型 === 'css') return 加载样式(模块.地址);
-    if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址);
-    if (模块.类型 === 'wait-global') return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
-    if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址);
-    return 加载内联脚本(模块.地址);
+    let 结果;
+    if (模块.类型 === 'css') 结果 = await 加载样式(模块.地址);
+    else if (模块.类型 === 'remote-js') 结果 = await 加载远程脚本(模块.地址);
+    else if (模块.类型 === 'wait-global') 结果 = await 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
+    else if (模块.类型 === 'module-js') 结果 = await 加载模块脚本(模块.地址);
+    else 结果 = await 加载内联脚本(模块.地址);
+    if (模块.接口键) await 等待模块接口(模块名, 模块);
+    return 结果;
   }
 
   async function 尝试加载模块(模块名, 来源 = 'runtime', 允许失败降级 = true) {
@@ -499,6 +568,13 @@
           return { ok: true, 模块名, attempts: 尝试序号 };
         } catch (错误) {
           记录模块失败(模块名, 来源, 错误);
+          if (模块.接口键) {
+            清理模块接口(模块);
+            const 脚本节点 = 模块.地址
+              ? 宿主文档.getElementById(取内联脚本标记(模块.地址))
+              : null;
+            if (脚本节点) 脚本节点.remove();
+          }
           if (尝试序号 < 最大尝试次数) {
             await 睡眠(尝试序号 === 1 ? 首次重试延迟毫秒 : 二次重试延迟毫秒);
             continue;
@@ -570,7 +646,11 @@
 
   async function 确保预览依赖已加载(预览键, 选项 = {}) {
     const 键 = String(预览键 || '').trim();
-    const 依赖列表 = Array.isArray(预览依赖映射[键]) ? 预览依赖映射[键] : [];
+    const 依赖列表 = 键.startsWith('技能设计台：')
+      ? ['技能设计器模块']
+      : Array.isArray(预览依赖映射[键])
+        ? 预览依赖映射[键]
+        : [];
     if (!依赖列表.length) {
       return { ok: true, 预览键: 键, 模块列表: [], results: [] };
     }

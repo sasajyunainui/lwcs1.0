@@ -78,6 +78,7 @@ function unit(id, side, skills, overrides = {}) {
 function syntheticBattle(caseId, actorSkills, enemySkills, overrides = {}) {
   const actor = unit(`${caseId}-actor`, 'player', actorSkills, overrides.actor || {});
   const enemy = unit(`${caseId}-enemy`, 'enemy', enemySkills, overrides.enemy || {});
+  const allies = Array.isArray(overrides.allies) ? overrides.allies.map(ally => structuredClone(ally)) : [];
   return {
     caseId,
     seed: overrides.seed || 745000,
@@ -89,7 +90,7 @@ function syntheticBattle(caseId, actorSkills, enemySkills, overrides = {}) {
       战斗类型: '普通战斗',
       战斗意图: overrides.intent || '切磋',
       进行中: true,
-      参战者: { team_player: [actor], team_enemy: [enemy] },
+      参战者: { team_player: [actor, ...allies], team_enemy: [enemy] },
     },
   };
 }
@@ -113,7 +114,25 @@ const redundantControl = syntheticBattle('control_without_new_window', [
 });
 const continuousControl = syntheticBattle('reasonable_continuous_control', [
   skill('短控续接', 10, [{ effectId: 'short-stun', 原型: '状态施加', 目标: '单体', 状态: '眩晕', 持续回合: 1, 成功率: 100 }]),
-], [basicEnemySkill], { seed: 745007 });
+], [basicEnemySkill], {
+  seed: 745007,
+  actor: {
+    agi: 120,
+    属性: {
+      等级: 50, HP: 600, HP上限: 600, 魂力: 100, 魂力上限: 100,
+      精神力: 100, 精神力上限: 100, 体力: 100, 体力上限: 100,
+      力量: 180, 防御: 110, 敏捷: 120, 状态效果: {},
+    },
+  },
+  allies: [unit('reasonable_continuous_control-ally', 'player', [basicEnemySkill], {
+    agi: 110,
+    属性: {
+      等级: 50, HP: 600, HP上限: 600, 魂力: 100, 魂力上限: 100,
+      精神力: 100, 精神力上限: 100, 体力: 100, 体力上限: 100,
+      力量: 180, 防御: 110, 敏捷: 110, 状态效果: {},
+    },
+  })],
+});
 const dotContinuation = syntheticBattle('reasonable_dot_continuation', [
   skill('蚀血印', 10, [{ effectId: 'dot', 原型: '状态施加', 目标: '单体', 状态: '中毒', 数值: '-10%', 持续回合: 2, 成功率: 100 }]),
 ], [basicEnemySkill], { seed: 745008 });
@@ -134,6 +153,103 @@ const scenarios = [
   { label: 'reasonable_continuous_control', definition: continuousControl },
   { label: 'reasonable_dot_continuation', definition: dotContinuation },
 ];
+
+const counterRiskDefinition = syntheticBattle('counter_risk_role_boundary', [
+  skill('测试打击', 0, [
+    { effectId: 'counter-risk-hit', 原型: '伤害结算', 目标: '单体', 威力倍率: 80, 伤害类型: '近身攻击', 命中概率: 100 },
+  ]),
+], [basicEnemySkill], { seed: 745009 });
+const counterRiskActorId = firstPlayerId(counterRiskDefinition.combatData);
+const counterRiskEnemy = counterRiskDefinition.combatData.参战者.team_enemy[0];
+const counterRiskEnemyId = String(counterRiskEnemy.id || counterRiskEnemy.name || counterRiskEnemy.名称).trim();
+const knownDefenseResponse = {
+  responseId: 'REACTION:DEFEND:防御',
+  responseRole: 'REACTION',
+  responseRoles: ['REACTION'],
+  actionName: '防御',
+  declaration: { actorId: counterRiskEnemyId, actionKind: 'DEFEND', targetIds: [counterRiskEnemyId] },
+  damageMultiplier: 0.58,
+  opensCounterCheck: true,
+  preparedDefense: false,
+  baseActionValue: 0,
+};
+const immediateCounterRiskFor = extraResponse => {
+  const scored = decision.scoreCandidatesNext({
+    worldSnapshot: counterRiskDefinition.combatData,
+    actorId: counterRiskActorId,
+    actionOpportunity: { role: 'ACTIVE', sequence: 1 },
+    beliefState: {
+      confidence: 1,
+      publicResponses: {
+        [counterRiskEnemyId]: [
+          knownDefenseResponse,
+          ...(extraResponse ? [extraResponse] : []),
+        ],
+      },
+    },
+    battleIntent: { mode: counterRiskDefinition.intent },
+    seed: counterRiskDefinition.seed,
+  });
+  const attack = scored.find(candidate =>
+    candidate?.declaration?.actionKind === 'BASIC_ATTACK' &&
+    candidate?.declaration?.targetIds?.includes(counterRiskEnemyId)
+  );
+  assert.ok(attack, '反击风险职责专项缺少普通攻击候选');
+  return Number(attack?.nextValueAudit?.immediateCounterExpectedThreat || 0);
+};
+const baselineImmediateCounterRisk = immediateCounterRiskFor(null);
+const activeThreatImmediateCounterRisk = immediateCounterRiskFor({
+  responseId: 'ACTIVE:公开高伤动作',
+  responseRole: 'ACTIVE',
+  responseRoles: ['ACTIVE'],
+  actionName: '公开高伤动作',
+  baseActionValue: 95,
+});
+const observedCounterImmediateRisk = immediateCounterRiskFor({
+  responseId: 'COUNTER:公开反击',
+  responseRole: 'COUNTER',
+  responseRoles: ['COUNTER'],
+  actionName: '公开反击',
+  baseActionValue: 95,
+});
+assert.equal(
+  activeThreatImmediateCounterRisk,
+  baselineImmediateCounterRisk,
+  '公开主动攻击仍被误计为即时反击威胁',
+);
+assert.ok(
+  observedCounterImmediateRisk > baselineImmediateCounterRisk,
+  '真实公开反击没有提高即时反击威胁',
+);
+
+const teamThreatActor = unit('team-threat-actor', 'player', [basicEnemySkill]);
+const teamThreatHigh = unit('team-threat-high', 'enemy', [basicEnemySkill]);
+const teamThreatLow = unit('team-threat-low', 'enemy', [basicEnemySkill]);
+const teamThreatWorld = {
+  回合: 3,
+  战斗意图: '切磋',
+  进行中: true,
+  参战者: { team_player: [teamThreatActor], team_enemy: [teamThreatHigh, teamThreatLow] },
+};
+const teamThreatIntent = decision.buildTeamIntent(teamThreatWorld, teamThreatActor.id, {
+  confidence: 1,
+  units: {},
+  publicResponses: {
+    [teamThreatHigh.id]: [{
+      responseId: 'ACTIVE:high',
+      responseRole: 'ACTIVE',
+      responseRoles: ['ACTIVE'],
+      baseActionValue: 80,
+    }],
+    [teamThreatLow.id]: [{
+      responseId: 'ACTIVE:low',
+      responseRole: 'ACTIVE',
+      responseRoles: ['ACTIVE'],
+      baseActionValue: 10,
+    }],
+  },
+}, { mode: '切磋' });
+assert.equal(teamThreatIntent.focusTarget, teamThreatHigh.id, '公开高容量损失没有更新团队威胁焦点');
 
 function firstPlayerId(combatData) {
   const actor = combatData?.参战者?.team_player?.[0];
@@ -226,6 +342,15 @@ const results = scenarios.map(({ label, definition }) => {
       Number(preparedHit?.meta?.defenseMultiplier || 0) === Number(preparedReaction?.meta?.damageMultiplier || 0),
       '主动防御在完整战斗中没有沿用已消费的减伤结果'
     );
+    assert.equal(
+      next.ledger.filter(event =>
+        event?.eventKind === 'counter_window' &&
+        event?.actorName === preparedReaction.actorName &&
+        event?.sourceActionId === preparedReaction.sourceActionId
+      ).length,
+      0,
+      '准备姿态被消费后仍额外创建反击窗口',
+    );
   }
   if (label === 'counter_actor_inversion') {
     assert.equal(
@@ -283,23 +408,36 @@ const results = scenarios.map(({ label, definition }) => {
       .every(candidate => candidate.rejectionCode === 'ZERO_PROGRESS'), '无威胁防御仍进入主观抽样');
   }
   if (label === 'peer_low_damage_stalemate') {
+    const initialLevels = [
+      ...(definition.combatData?.参战者?.team_player || []),
+      ...(definition.combatData?.参战者?.team_enemy || []),
+    ].map(unit => Number(unit?.属性?.等级 || unit?.level || unit?.lv || 0));
+    assert.ok(initialLevels.length > 1 && Math.max(...initialLevels) === Math.min(...initialLevels), `同级案例输入并非同级:${initialLevels.join('/')}`);
     assert.ok(nextDamage > 0, 'Next同级战斗没有形成任何有效伤害');
     const activeSides = new Set(nextActiveStarts.map(event => event.actorSide));
     assert.ok(activeSides.has('player') && activeSides.has('enemy'), 'Next同级战斗仍有一方只看戏');
-    const repeatedStateChoices = next.decisions.filter(decision =>
-      decision?.actorId === '韦小枫' &&
-      decision?.actionRole === 'ACTIVE' &&
-      decision?.selected?.selectedActionName === '青影叠'
-    );
-    assert.ok(repeatedStateChoices.length > 0, 'Next同级案例没有形成可审阅的状态技能选择');
-    assert.ok(repeatedStateChoices.every(decision =>
-      Number(decision?.selected?.repeatedActionAudit?.repeatedActionDelta || 0) > 0 &&
-      (
-        Number(decision?.selected?.repeatedActionAudit?.resourceRunwayAfter || 0) > 0 ||
-        decision?.selected?.repeatedActionAudit?.lifecycleWindowRealizable === true
-      ) &&
-      (decision?.selected?.repeatedActionAudit?.extendedWindowIds || []).length > 0
-    ), '高成本状态技能没有证明新增窗口、正边际、剩余资源跑道或末轮真实兑现');
+    const activeDecisions = next.decisions.filter(decision => decision?.actionRole === 'ACTIVE');
+    const repeatedGroups = new Map();
+    activeDecisions.forEach(decision => {
+      const key = `${decision?.actorId || ''}|${decision?.selected?.candidateId || ''}`;
+      if (!repeatedGroups.has(key)) repeatedGroups.set(key, []);
+      repeatedGroups.get(key).push(decision);
+    });
+    [...repeatedGroups.values()].filter(group => group.length > 1).forEach(group => {
+      group.slice(1).forEach(decision => {
+        const audit = decision?.selected?.repeatedActionAudit || {};
+        assert.ok(Number(audit.repeatedActionDelta || 0) > 0, `重复动作没有正净边际:${decision?.selected?.candidateId || ''}`);
+        assert.ok(
+          !(audit.extendedWindowIds || []).length || audit.lifecycleWindowRealizable === true,
+          `重复动作声明了不可兑现窗口:${decision?.selected?.candidateId || ''}`,
+        );
+        assert.ok(
+          !(audit.lostAffordableActions || []).length ||
+            Number(decision?.selected?.vector?.terminalUtility || 0) > 0,
+          `重复动作牺牲后续可用行为但没有终局补偿:${decision?.selected?.candidateId || ''}`,
+        );
+      });
+    });
   }
   if (label === 'underdog_survival') {
     assert.ok(['防御', '闪避'].includes(nextActiveStarts[0]?.actionName), `Next弱者面对显露致命蓄力仍未先保命:${nextActiveStarts[0]?.actionName || ''}`);
@@ -307,7 +445,10 @@ const results = scenarios.map(({ label, definition }) => {
   if (label === 'reasonable_continuous_control') {
     assert.ok(nextActiveStarts.some(event => event.actionName === '短控续接'), 'Next压死了可兑现的连续控制');
     assert.equal(
-      next.ledger.filter(event => event?.eventKind === 'lost_opportunity' && /CONTROLLED/.test(String(event?.meta?.reason || ''))).length,
+      next.ledger.filter(event =>
+        event?.eventKind === 'lost_opportunity' &&
+        String(event?.meta?.reasonCode || '').trim() === 'CONTROLLED_BEFORE_OPPORTUNITY'
+      ).length,
       definition.rounds,
       '连续控制没有逐回合覆盖真实自然行动机会'
     );

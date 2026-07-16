@@ -157,6 +157,50 @@ assert.equal(formalStarts.length, 1, 'executeDeclaration没有且仅有一个PLA
 assert.equal(formalStarts[0].actorName, 'player-a', 'executeDeclaration行动者与声明不一致');
 assert.equal(formalStarts[0].targetName, 'enemy-a', 'executeDeclaration目标与声明不一致');
 assert.ok(formalLedger.length > 0 && formalTrace.length > 0 && Number(formalResult?.rounds || 0) === 1, 'executeDeclaration未进入正式Ledger/Trace结算');
+const shieldReactionCombat = combatData();
+const shieldReactionAttacker = shieldReactionCombat.参战者.team_player[0];
+const shieldReactionDefender = shieldReactionCombat.参战者.team_enemy[0];
+const shieldReactionParent = sandbox.__LWCS_BATTLE_RUNTIME__.beginStructuredDeclaration({
+  combatData: shieldReactionCombat,
+  declaration: { actionKind: 'BASIC_ATTACK', actorId: 'player-a', targetIds: ['enemy-a'] },
+  actionRole: 'ACTIVE',
+  actorControl: 'AI',
+});
+const shieldOnlyDeclaration = {
+  actorId: 'enemy-a',
+  actionKind: 'RELEASE_SKILL',
+  targetIds: ['enemy-a'],
+  skill: {
+    id: 'shield-only-reaction',
+    name: '纯护盾反应',
+    魂技名: '纯护盾反应',
+    消耗: { 魂力: 0 },
+    _效果数组: [{
+      effectId: 'shield-only-reaction:shield',
+      原型: '护盾变化',
+      目标: '自身',
+      护盾模式: '正向护盾',
+      数值: '+20%',
+      持续回合: 1,
+    }],
+  },
+};
+const shieldOnlyReaction = sandbox.__LWCS_BATTLE_RUNTIME__.settleStructuredReaction({
+  combatData: shieldReactionCombat,
+  reactor: shieldReactionDefender,
+  sourceActor: shieldReactionAttacker,
+  declaration: shieldOnlyDeclaration,
+  parentActionEvent: shieldReactionParent.actionEvent,
+});
+assert.equal(shieldOnlyReaction.opensCounterCheck, false, '纯护盾反应技能被错误授予反击窗口');
+assert.equal(sandbox.__LWCS_BATTLE_RUNTIME__.openStructuredCounterWindow({
+  combatData: shieldReactionCombat,
+  reactor: shieldReactionDefender,
+  sourceActor: shieldReactionAttacker,
+  parentActionEvent: shieldReactionParent.actionEvent,
+  reaction: shieldOnlyReaction,
+  settlementFacts: [],
+}), null, '没有显式反击授权的反应技能仍打开防反窗口');
 const deadTargetInput = combatData();
 deadTargetInput.参战者.team_enemy[0].状态.存活 = false;
 deadTargetInput.参战者.team_enemy[0].属性.HP = 0;
@@ -245,6 +289,7 @@ const itemBeliefRun = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   combatData: structuredClone(itemDefinition.combatData),
   mode: 'team_preview',
   rounds: 2,
+  selectedAction: structuredClone(itemDefinition.selectedAction),
   settings: {},
 });
 const itemBelief = [...itemBeliefRun.decisions].reverse().find(entry => entry.actorId === '徐笠智')?.beliefState || { confidence: 0.55 };
@@ -437,6 +482,118 @@ assert.ok(
 assert.ok(
   Number(decisionAfterPublicObservation?.beliefState?.confidence || 0) > Number(decisionBeforePublicObservation?.beliefState?.confidence || 0),
   '公开动作观察没有提高观察者后续决策的认知置信度',
+);
+const resourceObservationInput = combatData();
+const publicResourceDrain = {
+  id: 'public-resource-drain',
+  name: '公开资源剥夺',
+  魂技名: '公开资源剥夺',
+  消耗: { 魂力: 1 },
+  _效果数组: [{
+    原型: '资源变化',
+    目标: '单体',
+    资源: '体力',
+    数值: '-50%',
+    生效方式: '独立生效',
+  }],
+};
+const resourceObservationResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'r74-public-resource-observation',
+  seed: 740632,
+  combatData: resourceObservationInput,
+  mode: 'team_preview',
+  rounds: 2,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: publicResourceDrain,
+  },
+  settings: {},
+});
+const resourceObservation = resourceObservationResult.beliefObservations.find(entry =>
+  entry?.observationType === 'PUBLIC_ACTION' &&
+  entry?.actionName === '公开资源剥夺'
+);
+assert.ok(resourceObservation, '公开资源剥夺没有生成认知观察');
+assert.ok(
+  Number(resourceObservation.baseActionValue || 0) >= 50,
+  `公开资源剥夺仍被学习为零威胁:${JSON.stringify(resourceObservation)}`,
+);
+const publicReactionObservation = adaptationResult.beliefObservations.find(entry => entry?.observationType === 'PUBLIC_REACTION');
+assert.ok(publicReactionObservation, '正式即时反应没有生成公开认知观察');
+const decisionAfterPublicReaction = adaptationResult.decisions.find(entry =>
+  entry.actorId === publicReactionObservation.actorId && Number(entry.round || 0) > Number(publicReactionObservation.round || 0)
+);
+const observedReactionResponses = decisionAfterPublicReaction?.beliefState?.publicResponses?.[publicReactionObservation.sourceActorId];
+assert.ok(
+  Array.isArray(observedReactionResponses) &&
+    observedReactionResponses.some(response =>
+      response?.responseRole === 'REACTION' &&
+      response?.declaration?.actionKind
+    ),
+  '公开即时反应没有进入观察者后续决策的结构化认知',
+);
+
+const reactionKnowledgeWorld = combatData();
+const reactionKnowledgeActorId = 'player-a';
+const reactionKnowledgeTargetId = 'enemy-a';
+const reactionDecisionInput = {
+  worldSnapshot: reactionKnowledgeWorld,
+  actorId: reactionKnowledgeActorId,
+  actionOpportunity: { role: 'ACTIVE', sequence: 1, futureHostileResponseAllowed: false },
+  battleIntent: { mode: '击败' },
+  seed: 63215,
+};
+const unknownReactionDecision = inspectDecision(reactionDecisionInput, 'next');
+const knownReactionBelief = sandbox.__LWCS_BATTLE_DECISION__.updatePublicObservation(
+  sandbox.__LWCS_BATTLE_DECISION__.buildInitialBelief(reactionKnowledgeWorld, reactionKnowledgeActorId, {}),
+  {
+    sourceActorId: reactionKnowledgeTargetId,
+    incomingSourceActorId: reactionKnowledgeActorId,
+    sourceActionId: 'observed-defense',
+    responseId: 'REACTION:DEFEND:防御',
+    responseRole: 'REACTION',
+    actionName: '防御',
+    declaration: {
+      actorId: reactionKnowledgeTargetId,
+      actionKind: 'DEFEND',
+      targetIds: [reactionKnowledgeTargetId],
+    },
+    damageMultiplier: 0.4,
+    result: 'guarded',
+  },
+);
+const knownReactionDecision = inspectDecision({
+  ...reactionDecisionInput,
+  beliefState: knownReactionBelief,
+}, 'next');
+const unknownReactionAttack = unknownReactionDecision.candidates.find(candidate =>
+  candidate?.declaration?.actionKind === 'BASIC_ATTACK' &&
+  candidate?.declaration?.targetIds?.includes(reactionKnowledgeTargetId)
+);
+const knownReactionAttack = knownReactionDecision.candidates.find(candidate =>
+  candidate?.declaration?.actionKind === 'BASIC_ATTACK' &&
+  candidate?.declaration?.targetIds?.includes(reactionKnowledgeTargetId)
+);
+const expectedPreviewDamage = candidate => Number(
+  candidate?.preview?.contributions?.find(entry =>
+    entry?.outcomeKind === 'HP_DELTA' &&
+    entry?.targetId === reactionKnowledgeTargetId
+  )?.evidence?.expectedDamage || 0
+);
+assert.ok(unknownReactionAttack && knownReactionAttack, '公开防御方向测试缺少同一普通攻击候选');
+assert.ok(
+  expectedPreviewDamage(knownReactionAttack) < expectedPreviewDamage(unknownReactionAttack),
+  `已公开防御没有降低同一攻击的预估伤害:${expectedPreviewDamage(knownReactionAttack)}/${expectedPreviewDamage(unknownReactionAttack)}`,
+);
+assert.ok(
+  knownReactionAttack.immediateReactionAudit?.some(entry =>
+    entry.targetId === reactionKnowledgeTargetId &&
+    entry.actionKind === 'DEFEND' &&
+    Number(entry.damageMultiplier) === 0.4
+  ),
+  `已公开防御没有进入候选即时反应审计:${JSON.stringify(knownReactionAttack.immediateReactionAudit || [])}`,
 );
 
 const supportInput = combatData();
@@ -673,22 +830,35 @@ reactionSummonInput.参战者.team_player[0].属性.敏捷 = 100;
 reactionSummonInput.参战者.team_player[0].agi = 100;
 reactionSummonInput.参战者.team_enemy[0].属性.敏捷 = 220;
 reactionSummonInput.参战者.team_enemy[0].agi = 220;
+reactionSummonInput.参战者.team_enemy[0].属性.HP = 5;
+reactionSummonInput.参战者.team_enemy[0].hp = 5;
 const reactionSummonSkill = {
   id: 'reaction-summon',
   name: '应击协同召唤',
   魂技名: '应击协同召唤',
   消耗: '无',
   前摇: 1,
-  _效果数组: [{
-    原型: '召唤生成',
-    目标: '自身',
-    持续回合: 1,
-    召唤单位类型: '其他召唤生物',
-    召唤物名称: '应击影',
-    数量: 1,
-    行动模式: '协同攻击',
-    强度: 1,
-  }],
+  _效果数组: [
+    {
+      原型: '护盾变化',
+      目标: '自身',
+      护盾模式: '正向护盾',
+      数值: '+100%',
+      持续回合: 1,
+      生效方式: '独立生效',
+    },
+    {
+      原型: '召唤生成',
+      目标: '自身',
+      持续回合: 1,
+      召唤单位类型: '其他召唤生物',
+      召唤物名称: '应击影',
+      数量: 1,
+      行动模式: '协同攻击',
+      强度: 1,
+      生效方式: '独立生效',
+    },
+  ],
 };
 const reactionIncomingSkill = {
   id: 'reaction-summon-incoming',
@@ -717,7 +887,10 @@ const reactionSummonResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
 const reactionSummonCreate = reactionSummonResult.ledger.find(event =>
   event?.eventKind === 'summon_create' && event?.meta?.summonName === '应击影'
 );
-assert.ok(reactionSummonCreate, '反应动作没有生成预期的协同召唤');
+assert.ok(
+  reactionSummonCreate,
+  `反应动作没有生成预期的协同召唤:${JSON.stringify(reactionSummonResult.ledger)}`,
+);
 assert.ok(
   reactionSummonResult.ledger.some(event =>
     event?.eventKind === 'action_start' &&
@@ -835,6 +1008,10 @@ const counterTraceFact = counterResult.trace.find(node =>
   Array.isArray(node?.ledgerEventIds) &&
   node.ledgerEventIds.includes(counterFact?.eventId)
 );
+const publicCounterObservation = counterResult.beliefObservations.find(observation =>
+  observation?.observationType === 'PUBLIC_ACTION' &&
+  observation?.actionRole === 'COUNTER'
+);
 assert.ok(counterWindow, '固定种子没有打开防反窗口');
 assert.ok(counterDecision?.selected?.declaration, '防反机会没有进入新Decision或缺少评分审计');
 const counterDecline = counterDecision?.scoreAudit?.find(candidate => candidate?.counterDeclineFallback === true);
@@ -856,6 +1033,22 @@ assert.ok(counterFact.actorSide && counterFact.targetSide && counterFact.actorSi
 assert.ok(failedCounterFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `失败防反客观阵营错误:${JSON.stringify(failedCounterFacts)}`);
 assert.ok(counterReactionFacts.length > 0, '固定种子没有覆盖防反后二次反应事实');
 assert.ok(counterReactionFacts.every(event => event.actorSide && event.targetSide && event.actorSide !== event.targetSide), `防反后二次反应客观阵营错误:${JSON.stringify(counterReactionFacts)}`);
+assert.ok(publicCounterObservation, '公开反击没有以COUNTER职责进入认知观察');
+const counterObserverDecision = counterResult.decisions.find(entry =>
+  entry?.actorId === publicCounterObservation.actorId &&
+  Number(entry?.round || 0) > Number(publicCounterObservation.round || 0)
+);
+const learnedCounterResponses = counterObserverDecision?.beliefState?.publicResponses?.[publicCounterObservation.sourceActorId] || [];
+assert.ok(
+  learnedCounterResponses.some(response =>
+    response?.actionName === publicCounterObservation.actionName &&
+    (
+      response?.responseRole === 'COUNTER' ||
+      response?.responseRoles?.includes('COUNTER')
+    )
+  ),
+  '公开反击没有保留COUNTER职责供后续候选风险学习',
+);
 assert.doesNotMatch(counterResult.logs.join('\n'), /技能分类预览|主观置信度锁定|行为经验|自动行为链再判定/, '防反链仍执行旧评分器');
 assert.equal(counterResult.audit?.fatals?.length || 0, 0, `成功防反事实审计失败:${JSON.stringify(counterResult.audit?.fatals || [])}`);
 
@@ -870,10 +1063,15 @@ const teamCounterResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: teamCounterDefinition.rounds,
   initialBelief: teamCounterDefinition.initialBelief,
   battleIntent: { mode: teamCounterDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
 const teamCounterFacts = teamCounterResult.ledger.filter(event => event?.eventKind === 'counter');
-assert.ok(teamCounterFacts.length > 0, '团战防反案例没有形成反击事实');
+assert.ok(
+  teamCounterFacts.length > 0,
+  `团战防反案例没有形成反击事实:${JSON.stringify(teamCounterResult.ledger.filter(event =>
+    ['counter_window', 'counter'].includes(String(event?.eventKind || ''))
+  ))}`,
+);
 assert.ok(teamCounterFacts.every(event =>
   event.actorName &&
   event.targetName &&
@@ -1155,7 +1353,7 @@ const captureResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: captureDefinition.rounds,
   initialBelief: captureDefinition.initialBelief,
   battleIntent: { mode: captureDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
 const capturePlayerActions = captureResult.decisions.filter(entry =>
   entry?.actorId === '舞长空' &&
@@ -1165,9 +1363,17 @@ const wastedDefense = capturePlayerActions.filter(entry =>
   ['DEFEND', 'EVADE'].includes(entry?.selected?.declaration?.actionKind)
 );
 assert.equal(wastedDefense.length, 0, `敌方下一行动已取消仍浪费机会防御:${JSON.stringify(wastedDefense.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
-assert.ok(capturePlayerActions.every(entry => Number(entry?.selected?.vector?.objectiveProgress || 0) > 0), `限时生命阈值没有持续驱动正向目标进度:${JSON.stringify(capturePlayerActions.map(entry => ({ round: entry.round, selected: entry.selected?.candidateId, objectiveProgress: entry.selected?.vector?.objectiveProgress })))}`);
+assert.ok(capturePlayerActions.every(entry => Math.abs(Number(entry?.selected?.vector?.objectiveProgress || 0)) <= 1e-9), `生命阈值伤害仍被容量与目标进度重复计值:${JSON.stringify(capturePlayerActions.map(entry => ({ round: entry.round, selected: entry.selected?.candidateId, objectiveProgress: entry.selected?.vector?.objectiveProgress })))}`);
+assert.ok(capturePlayerActions.every(entry =>
+  Number(entry?.selected?.vector?.expectedStateGain || 0) > 0 ||
+  Number(entry?.selected?.vector?.terminalUtility || 0) > 0
+), `生命阈值没有通过唯一容量差量或终态持续推进:${JSON.stringify(capturePlayerActions.map(entry => ({ round: entry.round, selected: entry.selected?.candidateId, expectedStateGain: entry.selected?.vector?.expectedStateGain, terminalUtility: entry.selected?.vector?.terminalUtility })))}`);
 assert.equal(captureResult.finalBattleReport?.objectiveWinner, 'player', `显式生命阈值没有在回合上限内驱动有效收束:${captureResult.finalBattleReport?.text || ''}`);
 assert.ok(captureResult.roundsExecuted <= captureDefinition.rounds, '生命阈值目标在回合上限后才成立');
+const captureTarget = captureResult.finalSnapshot?.team_enemy?.find(unit => unit?.name === '韦小枫');
+const captureHpFloor = Math.floor(Number(captureTarget?.hp_max || 0) * 0.3);
+assert.equal(Number(captureTarget?.hp || 0), captureHpFloor, '点到为止没有在显式生命阈值处停止伤害');
+assert.notEqual(String(captureTarget?.actionState || ''), '昏迷', '目标已在30%生命阈值收束却仍被追加昏迷');
 
 const controlOverlapDefinition = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__)
   .find(item => item.caseId === 'team_control_overlap');
@@ -1180,17 +1386,107 @@ const controlOverlapResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
   rounds: controlOverlapDefinition.rounds,
   initialBelief: controlOverlapDefinition.initialBelief,
   battleIntent: { mode: controlOverlapDefinition.intent },
-  settings: {},
+  settings: { decisionEngine: 'next-shadow' },
 });
 const controlledReactionFallbacks = controlOverlapResult.decisions.filter(entry =>
   entry?.actionRole === 'REACTION' && entry?.selected?.forcedFallback === true
 );
 assert.equal(controlledReactionFallbacks.length, 0, `无法反应的受控单位仍被强塞防御兜底:${JSON.stringify(controlledReactionFallbacks.map(entry => ({ round: entry.round, actorId: entry.actorId, selected: entry.selected?.candidateId })))}`);
-assert.ok(controlOverlapResult.ledger.some(event =>
+const hardControlStateNames = new Set(['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞']);
+const playerControlActorIds = new Set(controlOverlapDefinition.combatData.参战者.team_player.map(unit => unit.id || unit.name || unit.名称));
+const enemyControlTargetIds = new Set(controlOverlapDefinition.combatData.参战者.team_enemy.map(unit => unit.id || unit.name || unit.名称));
+const playerHardControlFacts = controlOverlapResult.ledger.filter(event =>
+  event?.eventKind === 'state_apply' &&
+  event?.result === 'applied' &&
+  playerControlActorIds.has(event?.actorId) &&
+  enemyControlTargetIds.has(event?.targetId) &&
+  hardControlStateNames.has(String(event?.meta?.stateName || '').trim())
+);
+assert.ok(playerHardControlFacts.length > 0, `控制重叠案例没有成功施加硬控:${JSON.stringify(playerHardControlFacts)}`);
+const hardControlFactsByRound = Map.groupBy(playerHardControlFacts, event => Number(event?.round || 0));
+const blockedControlFactsByRound = Map.groupBy(controlOverlapResult.ledger.filter(event =>
   event?.eventKind === 'blocked_action' &&
   event?.result === 'cancelled' &&
-  String(event?.meta?.reason || '').startsWith('CONTROLLED:')
-), '受控单位失去行动机会后缺少结构化取消事实');
+  String(event?.meta?.reasonCode || '').trim() === 'CONTROLLED_BEFORE_OPPORTUNITY'
+), event => Number(event?.round || 0));
+const alliedWindowControl = controlOverlapResult.decisions.find(entry =>
+  playerControlActorIds.has(entry?.actorId) &&
+  Object.values(entry?.selected?.repeatedActionAudit?.controlWindowRealizability?.reasonsByTarget || {})
+    .flat()
+    .some(reason => String(reason || '').startsWith('ALLY_WINDOW:'))
+);
+assert.ok(alliedWindowControl, `队伍控制没有记录真实后续兑现者:${JSON.stringify(controlOverlapResult.decisions.map(entry => ({
+  round: entry.round,
+  actorId: entry.actorId,
+  selected: entry?.selected?.candidateId,
+  controlWindow: entry?.selected?.repeatedActionAudit?.controlWindowRealizability,
+})))}`);
+hardControlFactsByRound.forEach((facts, round) => {
+  const controlledTargetIds = new Set();
+  const blockedIds = new Set((blockedControlFactsByRound.get(round) || []).map(event => event.actorId));
+  facts.forEach(event => {
+    assert.ok(blockedIds.has(event.targetId), `硬控已施加但没有兑现行动取消:${JSON.stringify({ round, actorId: event.actorId, targetId: event.targetId })}`);
+    assert.ok(
+      !controlledTargetIds.has(event.targetId) || controlledTargetIds.size >= enemyControlTargetIds.size,
+      `仍有未控制敌人时重复覆盖同一硬控目标:${JSON.stringify({ round, actorId: event.actorId, targetId: event.targetId, controlledTargetIds: [...controlledTargetIds], enemyControlTargetIds: [...enemyControlTargetIds] })}`
+    );
+    controlledTargetIds.add(event.targetId);
+  });
+});
+assert.ok([...blockedControlFactsByRound.values()].flat().length > 0, '受控单位失去行动机会后缺少结构化取消事实');
+
+const daytimeControlData = structuredClone(controlOverlapDefinition.combatData);
+daytimeControlData.时间段 = '白天';
+daytimeControlData.参战者.team_player = daytimeControlData.参战者.team_player.filter(unit => (unit.id || unit.name || unit.名称) === '许小言');
+daytimeControlData.参战者.team_enemy = daytimeControlData.参战者.team_enemy.filter(unit => (unit.id || unit.name || unit.名称) === '龙跃');
+const daytimeControlDecision = inspectDecision({
+  worldSnapshot: daytimeControlData,
+  actorId: '许小言',
+  actionOpportunity: { role: 'ACTIVE', sequence: 1, futureHostileResponseAllowed: true },
+  battleIntent: { mode: controlOverlapDefinition.intent },
+  beliefState: controlOverlapDefinition.initialBelief,
+  seed: controlOverlapDefinition.seed,
+}, 'next');
+const conditionalControlCandidates = daytimeControlDecision.candidates.filter(candidate =>
+  candidate?.declaration?.actionKind === 'RELEASE_SKILL' &&
+  sandbox.__LWCS_BATTLE_PREVIEW__.collectEffects(candidate?.skill || candidate?.declaration?.skill || {})
+    .some(effect => String(effect?.状态 || '').trim() === '僵直')
+);
+assert.ok(conditionalControlCandidates.length > 0, '白天负例没有保留带夜间硬控分支的机械候选');
+conditionalControlCandidates.forEach(candidate => {
+  assert.equal(
+    candidate?.preview?.contributions?.some(entry =>
+      entry?.outcomeKind === 'ACTION_CANCELLED' || String(entry?.evidence?.state || '').trim() === '僵直'
+    ),
+    false,
+    `白天不可用的僵直进入Preview或评分:${candidate.candidateId}`
+  );
+  assert.equal(
+    candidate?.repeatedActionAudit?.newlyDeniedOpportunityIds?.length || 0,
+    0,
+    `白天不可用的僵直产生了评分用行动取消:${candidate.candidateId}`
+  );
+});
+const daytimeControlResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'team_control_overlap_daytime_negative',
+  seed: controlOverlapDefinition.seed,
+  combatData: daytimeControlData,
+  mode: 'team_preview',
+  rounds: 1,
+  initialBelief: controlOverlapDefinition.initialBelief,
+  battleIntent: { mode: controlOverlapDefinition.intent },
+  settings: { decisionEngine: 'next-shadow' },
+});
+assert.equal(daytimeControlResult.ledger.some(event =>
+  event?.actorId === '许小言' &&
+  event?.eventKind === 'state_apply' &&
+  String(event?.meta?.stateName || '').trim() === '僵直'
+), false, '白天不可用的僵直进入正式结算或Ledger');
+assert.equal(daytimeControlResult.ledger.some(event =>
+  event?.eventKind === 'blocked_action' &&
+  String(event?.meta?.reasonCode || '').trim() === 'CONTROLLED_BEFORE_OPPORTUNITY' &&
+  String(event?.meta?.stateName || '').trim() === '僵直'
+), false, '白天不可用的僵直取消了敌方行动机会');
 
 const hpThresholdInput = combatData();
 hpThresholdInput.战斗意图 = '压制测试';
@@ -1700,6 +1996,7 @@ const structuredEquipCombat = combatData();
 structuredEquipCombat.回合 = 1;
 const structuredEquipActor = structuredEquipCombat.参战者.team_player[0];
 const agilityBeforeEquip = Number(structuredEquipActor.agi || structuredEquipActor.属性?.敏捷 || 0);
+structuredEquipActor.final = { agi: agilityBeforeEquip };
 const structuredEquipResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
   combatData: structuredEquipCombat,
   declaration: {
@@ -1711,6 +2008,10 @@ const structuredEquipResult = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredD
   },
 });
 assert.ok(Number(structuredEquipActor.agi || structuredEquipActor.属性?.敏捷 || 0) > agilityBeforeEquip, '原始装备声明没有应用装备属性');
+assert.ok(
+  Number(sandbox.__LWCS_BATTLE_PREVIEW__.readCombatStat(structuredEquipActor, 'agi')) > agilityBeforeEquip,
+  '装备只修改了显示属性，正式战斗属性仍被旧final快照覆盖',
+);
 assert.ok(structuredEquipResult.facts.some(event =>
   event?.eventKind === 'effect_resolved' &&
   event?.effectPrototype === '属性修正' &&
@@ -2021,6 +2322,69 @@ assert.equal(structuredSummons[0].__来源状态?.duration, 1, '持续1回合召
 assert.ok(structuredSummonCombat.参战者.team_player[0].状态效果['召唤:测试协同体'], '结构化召唤没有建立宿主来源状态');
 assert.equal(structuredSummonResult.facts.filter(event => event?.eventKind === 'summon_create').length, 1, '结构化召唤缺少唯一生成事实');
 
+const multiWindowSummonCombat = combatData();
+multiWindowSummonCombat.参战者.team_player[0].技能列表 = [structuredClone(attackSkill)];
+const multiWindowSummonResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-multi-window-summon',
+  seed: 88422,
+  combatData: multiWindowSummonCombat,
+  mode: 'team_preview',
+  rounds: 2,
+  selectedAction: {
+    actorId: 'player-a',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['player-a'],
+    skill: {
+      name: '双窗协同召唤',
+      魂技名: '双窗协同召唤',
+      消耗: '无',
+      前摇: 1,
+      _效果数组: [{
+        原型: '召唤生成',
+        目标: '自身',
+        召唤物名称: '双窗协同体',
+        召唤单位类型: '魂兽',
+        行动模式: '协同攻击',
+        持续回合: 2,
+        继承属性比例: 0.4,
+      }],
+    },
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const multiWindowAssistStarts = multiWindowSummonResult.ledger.filter(event =>
+  event?.eventKind === 'action_start' &&
+  event?.actorName === '双窗协同体' &&
+  event?.actionRole === 'ASSIST'
+);
+assert.equal(
+  multiWindowAssistStarts.length,
+  2,
+  `持续2回合协同召唤没有获得两个唯一行动窗口:${JSON.stringify(multiWindowAssistStarts)}`,
+);
+assert.deepEqual(
+  [...multiWindowAssistStarts].map(event => Number(event.round)),
+  [1, 2],
+  '协同召唤没有按每回合最多一个窗口兑现',
+);
+assert.equal(
+  multiWindowSummonResult.ledger.filter(event =>
+    event?.eventKind === 'summon_end' && event?.actorName === '双窗协同体'
+  ).length,
+  1,
+  '协同召唤耗尽全部真实窗口后没有唯一离场事实',
+);
+assert.equal(
+  multiWindowSummonResult.finalSnapshot?.summons?.filter(unit => unit?.name === '双窗协同体').length || 0,
+  0,
+  '协同召唤窗口耗尽后仍残留在最终快照',
+);
+assert.equal(
+  multiWindowSummonResult.audit?.fatals?.length || 0,
+  0,
+  `多窗口协同召唤事务审计失败:${JSON.stringify(multiWindowSummonResult.audit?.fatals || [])}`,
+);
+
 const conditionalSkill = {
   name: '昼夜条件伤害',
   魂技名: '昼夜条件伤害',
@@ -2175,6 +2539,114 @@ assert.ok(controlledFollowUpShadow.ledger.some(event =>
   event?.eventKind === 'blocked_action' && event?.ruleCode === 'CONTINUATION_ACTOR_UNAVAILABLE'
 ), '受控后继取消缺少结构化事实');
 
+const structuredFusionSkill = {
+  id: 'structured-partner-fusion',
+  name: '结构化双人合击',
+  魂技名: '结构化双人合击',
+  消耗: '魂力:50%',
+  前摇: 1,
+  _效果数组: [{
+    原型: '伤害结算',
+    目标: '群体',
+    威力倍率: 50,
+    伤害类型: '近身攻击',
+    命中概率: 100,
+    生效方式: '独立生效',
+  }],
+};
+const structuredFusionCombat = combatData();
+const structuredFusionActor = participant('fusion-actor', 'player', 220);
+const structuredFusionPartner = participant('fusion-partner', 'player', 180);
+structuredFusionActor.技能列表 = [structuredFusionSkill];
+structuredFusionActor.武魂融合技 = {
+  结构化双人合击: {
+    融合模式: 'partner',
+    融合对象: 'fusion-partner',
+    用法模式: '一次性释放',
+    融合参与者: [
+      { 类型: '自身', 角色键: 'fusion-actor', 角色名: 'fusion-actor' },
+      { 类型: '搭档', 角色键: 'fusion-partner', 角色名: 'fusion-partner' },
+    ],
+    技能数据: structuredFusionSkill,
+  },
+};
+structuredFusionPartner.技能列表 = [structuredClone(attackSkill)];
+structuredFusionCombat.参战者.team_player = [structuredFusionActor, structuredFusionPartner];
+structuredFusionCombat.参战者.team_enemy[0].agi = 100;
+structuredFusionCombat.参战者.team_enemy[0].属性.敏捷 = 100;
+const structuredFusionResult = sandbox.__LWCS_DEBUG_RUN_BATTLE_CASE__({
+  caseId: 'structured-partner-fusion',
+  seed: 88423,
+  combatData: structuredFusionCombat,
+  mode: 'team_preview',
+  rounds: 1,
+  selectedAction: {
+    actorId: 'fusion-actor',
+    actionKind: 'RELEASE_SKILL',
+    targetIds: ['enemy-a'],
+    skill: structuredFusionSkill,
+  },
+  settings: { decisionEngine: 'next-shadow' },
+});
+const structuredFusionStarts = structuredFusionResult.ledger.filter(event =>
+  event?.eventKind === 'action_start' && event?.actionName === '结构化双人合击'
+);
+assert.equal(structuredFusionStarts.length, 1, `同一搭档融合技在一回合内重复结算:${JSON.stringify(structuredFusionStarts)}`);
+assert.deepEqual(
+  [...(structuredFusionStarts[0]?.meta?.fusionParticipantIds || [])].sort(),
+  ['fusion-actor', 'fusion-partner'],
+  '融合技动作事实没有绑定完整参与者',
+);
+assert.ok(structuredFusionResult.ledger.some(event =>
+  event?.eventKind === 'blocked_action' &&
+  event?.actorName === 'fusion-partner' &&
+  event?.ruleCode === 'FUSION_PARTICIPATION_CONSUMED' &&
+  event?.sourceActionId === structuredFusionStarts[0]?.actionId
+), '搭档自然机会没有记录为已参与融合技');
+for (const participantId of ['fusion-actor', 'fusion-partner']) {
+  assert.ok(structuredFusionResult.ledger.some(event =>
+    event?.eventKind === 'resource_change' &&
+    event?.actorName === participantId &&
+    Number(event?.meta?.delta || 0) === -250 &&
+    event?.sourceActionId === structuredFusionStarts[0]?.actionId
+  ), `融合技没有原子扣除${participantId}的资源`);
+}
+assert.equal(
+  structuredFusionResult.decisions.filter(entry =>
+    entry?.actorId === 'fusion-partner' && entry?.actionRole === 'ACTIVE'
+  ).length,
+  0,
+  '已参与融合技的搭档仍执行了第二个主动决策',
+);
+assert.equal(structuredFusionResult.audit?.fatals?.length || 0, 0, `融合技事务审计失败:${JSON.stringify(structuredFusionResult.audit?.fatals || [])}`);
+
+const failedEvadeMissCombat = combatData();
+failedEvadeMissCombat.回合 = 1;
+const failedEvadeMissParent = sandbox.__LWCS_BATTLE_RUNTIME__.beginStructuredDeclaration({
+  combatData: failedEvadeMissCombat,
+  declaration: { actorId: 'player-a', actionKind: 'BASIC_ATTACK', targetIds: ['enemy-a'] },
+});
+sandbox.Math.random = () => 0.999999;
+const failedEvadeMissReaction = sandbox.__LWCS_BATTLE_RUNTIME__.settleStructuredReaction({
+  combatData: failedEvadeMissCombat,
+  reactor: failedEvadeMissCombat.参战者.team_enemy[0],
+  sourceActor: failedEvadeMissCombat.参战者.team_player[0],
+  declaration: { actorId: 'enemy-a', actionKind: 'EVADE', targetIds: ['enemy-a'] },
+  parentActionEvent: failedEvadeMissParent.actionEvent,
+});
+const failedEvadeMissSettlement = sandbox.__LWCS_BATTLE_RUNTIME__.executeStructuredDeclaration({
+  combatData: failedEvadeMissCombat,
+  declaration: failedEvadeMissParent.declaration,
+  actionContext: failedEvadeMissParent,
+  reactionByTarget: { 'enemy-a': failedEvadeMissReaction },
+});
+sandbox.Math.random = originalSandboxRandom;
+const independentMiss = failedEvadeMissSettlement.facts.find(event => event?.eventKind === 'hit_result');
+assert.equal(failedEvadeMissReaction.evaded, false, '独立命中落空样本的闪避检定没有失败');
+assert.equal(independentMiss?.result, 'miss', '闪避失败后的独立命中检定没有形成落空事实');
+assert.equal(independentMiss?.primaryOutcome, 'attack_missed', '独立命中落空被错误归因于闪避成功');
+assert.equal(independentMiss?.meta?.reactionEventId, failedEvadeMissReaction.event.eventId, '独立命中落空没有保留前置闪避检定来源');
+
 console.log(JSON.stringify({
   summary: {
     roundsExecuted: result.roundsExecuted,
@@ -2203,7 +2675,7 @@ console.log(JSON.stringify({
     delayedEffectChecks: 6,
     persistentPrototypeChecks: 5,
     structuredCommitChecks: 13,
-    structuredShadowChecks: 10,
+    structuredShadowChecks: 17,
     fatalCount: result.audit?.fatals?.length || 0,
     passed: true,
   },

@@ -68,7 +68,7 @@ const summon = {
 };
 const summonNoMode = {
   id: 'summon-no-mode', name: '无窗口召唤', 消耗: '魂力:10',
-  _效果数组: [{ 原型: '召唤生成', 目标: '自身', 召唤单位类型: '魂兽', 召唤物名称: '无窗口体', 数量: 1, 持续回合: 1 }],
+  _效果数组: [{ 原型: '召唤生成', 目标: '自身', 召唤单位类型: '魂兽', 召唤物名称: '无窗口体', 数量: 1, 行动模式: '无窗口', 持续回合: 1 }],
 };
 const potion = {
   id: 'potion', name: '恢复药', 类型: '消耗品', 数量: 1,
@@ -81,14 +81,14 @@ function world({ injured = true, stock = 0 } = {}) {
     回合: 3,
     剩余回合: 10,
     参战者: {
-      ally: [{
+      team_player: [{
         id: 'actor', name: 'actor', level: 50, hp: injured ? 60 : 100, hp_max: 100,
         sp: 100, sp_max: 100, men: 80, men_max: 100, vit: 80, vit_max: 100,
         str: 70, def: 50, agi: 50, 状态: { 存活: true },
-        技能列表: [attack, createFood, summon, summonNoMode],
+        技能列表: [attack, createFood, summon],
         背包: { potion, food: { id: 'food', name: '补给', 类型: '消耗品', 数量: stock }, sword },
       }],
-      enemy: [{
+      team_enemy: [{
         id: 'enemy', name: 'enemy', level: 50, hp: 100, hp_max: 100,
         sp: 100, sp_max: 100, men: 70, men_max: 100, vit: 80, vit_max: 100,
         str: 65, def: 50, agi: 50, 状态: { 存活: true }, 技能列表: [attack],
@@ -103,7 +103,7 @@ assert.ok(itemCandidate, '最后一件消耗品被硬禁');
 assert.equal(itemCandidate.vector.irreversibleCost, 0, '当前已可兑现最大价值的消耗品仍被重复收取未来成本');
 assert.ok(itemCandidate.preview.contributions.some(entry => entry.outcomeKind === 'IRREVERSIBLE_ASSET_LOST'), '消耗品成本未进入贡献账本');
 const reserveItemWorld = world();
-reserveItemWorld.参战者.ally[0].hp = 80;
+reserveItemWorld.参战者.team_player[0].hp = 80;
 const reserveItem = inspectDecision({ worldSnapshot: reserveItemWorld, actorId: 'actor', beliefState: { confidence: 0.7 }, seed: 2011 })
   .candidates.find(candidate => candidate.item?.id === 'potion');
 assert.ok(reserveItem.vector.irreversibleCost > 0, '轻伤时消耗稀缺物品没有保留后悔成本');
@@ -113,7 +113,7 @@ const equipmentDecision = inspectDecision({ worldSnapshot: world({ injured: fals
 const equipmentCandidate = equipmentDecision.candidates.find(candidate => candidate.equipment?.id === 'sword');
 assert.ok(equipmentCandidate && !equipmentCandidate.rejectionCode, '有收益换装未生成有效候选');
 const equipmentHistoryWorld = world();
-equipmentHistoryWorld.参战者.ally[0].__battleRuntime = { equipmentDecisionSignatures: [equipmentCandidate.equipmentSignature] };
+equipmentHistoryWorld.参战者.team_player[0].__battleRuntime = { equipmentDecisionSignatures: [equipmentCandidate.equipmentSignature] };
 const noEquipLoop = inspectDecision({
   worldSnapshot: equipmentHistoryWorld,
   actorId: 'actor',
@@ -133,13 +133,23 @@ assert.equal(uselessCreation?.rejectionCode, 'ZERO_EFFECT_COSTLY', '库存充足
 const summonCandidate = active.candidates.find(candidate => candidate.skill?.id === 'summon-valid');
 assert.ok(summonCandidate && summonCandidate.vector.expectedStateGain > 0, '持续1回合协同召唤没有一次行动价值');
 assert.notEqual(summonCandidate.rejectionCode, 'SUMMON_NO_ACTION_WINDOW', '持续1回合召唤零行动消散');
-const invalidSummon = active.candidates.find(candidate => candidate.skill?.id === 'summon-no-mode');
-assert.equal(invalidSummon?.rejectionCode, 'SUMMON_NO_ACTION_WINDOW', '无行动模式召唤进入选择池');
+const invalidSummonWorld = world();
+invalidSummonWorld.参战者.team_player[0].技能列表 = [summonNoMode];
+assert.throws(
+  () => inspectDecision({
+    worldSnapshot: invalidSummonWorld,
+    actorId: 'actor',
+    beliefState: { confidence: 0.7 },
+    seed: 2031,
+  }),
+  /battle_preview_unknown_enum/,
+  '未知召唤行动模式没有在预估阶段阻断',
+);
 
 const signatureWorld = world();
 const signatureA = decision.strategicSignature(signatureWorld, decision.buildInitialBelief(signatureWorld, 'actor', {}));
-signatureWorld.参战者.ally[0].hp += 1;
-signatureWorld.参战者.ally[0].sp += 1;
+signatureWorld.参战者.team_player[0].hp += 1;
+signatureWorld.参战者.team_player[0].sp += 1;
 const signatureB = decision.strategicSignature(signatureWorld, decision.buildInitialBelief(signatureWorld, 'actor', {}));
 assert.equal(signatureA, signatureB, '自然恢复噪声改变战略状态签名');
 assert.equal(decision.detectStalemate([{ signature: signatureA, capacityChangePercent: 0 }, { signature: signatureA, capacityChangePercent: 0 }], signatureA), true, '连续两回合同签名未识别僵局');
