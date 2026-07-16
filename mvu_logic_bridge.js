@@ -28049,6 +28049,8 @@
             label: budgetLabel,
             actual: budgetActual,
             limit: budgetLimit,
+            remaining: Number((budgetLimit - budgetActual).toFixed(2)),
+            stateLabel: budgetActual > budgetLimit + 0.001 ? '超出预算' : '预算内',
           }
         : null,
     };

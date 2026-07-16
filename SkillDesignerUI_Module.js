@@ -960,6 +960,7 @@
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
             :id="inputId || undefined"
+            :required="descriptor.required"
             :aria-label="descriptor.label"
             :aria-required="descriptor.required ? 'true' : 'false'"
             :aria-invalid="invalid ? 'true' : 'false'"
@@ -977,6 +978,7 @@
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
             :id="inputId || undefined"
+            :required="descriptor.required"
             :aria-label="descriptor.label"
             :aria-required="descriptor.required ? 'true' : 'false'"
             :aria-invalid="invalid ? 'true' : 'false'"
@@ -1033,55 +1035,58 @@
                 @click="emit('structure', { type: 'remove', path, index: branchIndex })"
               ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
-            <div class="skill-designer-vue-condition-list">
-              <div
-                v-for="(condition, conditionIndex) in branch.条件 || []"
-                :key="objectKey(condition, 'condition')"
-                class="skill-designer-vue-condition-row"
-                :class="{ 'has-remove-action': (branch.条件 || []).length > 1 }"
-              >
-                <SkillCombobox
-                  :model-value="condition.类型"
-                  :options="modelApi.conditionTypeOptions"
-                  :disabled="disabled"
-                  label="条件类型"
-                  :instance-id="instanceId + '-type-' + branchIndex + '-' + conditionIndex"
-                  @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '类型'), value: $event, dependent: true })"
-                />
-                <SkillCombobox
-                  :model-value="condition.对象 || '目标'"
-                  :options="modelApi.conditionObjectOptions"
-                  :disabled="disabled"
-                  label="条件对象"
-                  :instance-id="instanceId + '-object-' + branchIndex + '-' + conditionIndex"
-                  @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '对象'), value: $event })"
-                />
-                <SkillSegmentedControl
-                  v-if="conditionModel(condition).showCompare"
-                  :model-value="condition.比较"
-                  :options="conditionModel(condition).compareOptions"
-                  :disabled="disabled"
-                  label="比较方式"
-                  compact
-                  @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '比较'), value: $event, dependent: true })"
-                />
-                <SkillFieldControl
-                  v-if="conditionModel(condition).valueField"
-                  :descriptor="conditionModel(condition).valueField"
-                  :model-value="condition[conditionModel(condition).valueField.key] || ''"
-                  :disabled="disabled"
-                  :instance-id="instanceId + '-value-' + branchIndex + '-' + conditionIndex"
-                  @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, conditionModel(condition).valueField.key), value: $event })"
-                />
-                <button
-                  v-if="(branch.条件 || []).length > 1"
-                  type="button"
-                  class="skill-designer-vue-icon-button"
-                  :disabled="disabled"
-                  aria-label="删除判定条件"
-                  title="删除判定条件"
-                  @click="emit('structure', { type: 'remove', path: branchPath(branchIndex, '条件'), index: conditionIndex })"
-                ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+            <div class="skill-designer-vue-condition-sentence">
+              <span class="skill-designer-vue-syntax-keyword">如果</span>
+              <div class="skill-designer-vue-condition-list">
+                <div
+                  v-for="(condition, conditionIndex) in branch.条件 || []"
+                  :key="objectKey(condition, 'condition')"
+                  class="skill-designer-vue-condition-row"
+                  :class="{ 'has-remove-action': (branch.条件 || []).length > 1 }"
+                >
+                  <SkillCombobox
+                    :model-value="condition.类型"
+                    :options="modelApi.conditionTypeOptions"
+                    :disabled="disabled"
+                    label="条件类型"
+                    :instance-id="instanceId + '-type-' + branchIndex + '-' + conditionIndex"
+                    @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '类型'), value: $event, dependent: true })"
+                  />
+                  <SkillCombobox
+                    :model-value="condition.对象 || '目标'"
+                    :options="modelApi.conditionObjectOptions"
+                    :disabled="disabled"
+                    label="条件对象"
+                    :instance-id="instanceId + '-object-' + branchIndex + '-' + conditionIndex"
+                    @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '对象'), value: $event })"
+                  />
+                  <SkillSegmentedControl
+                    v-if="conditionModel(condition).showCompare"
+                    :model-value="condition.比较"
+                    :options="conditionModel(condition).compareOptions"
+                    :disabled="disabled"
+                    label="比较方式"
+                    compact
+                    @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '比较'), value: $event, dependent: true })"
+                  />
+                  <SkillFieldControl
+                    v-if="conditionModel(condition).valueField"
+                    :descriptor="conditionModel(condition).valueField"
+                    :model-value="condition[conditionModel(condition).valueField.key] || ''"
+                    :disabled="disabled"
+                    :instance-id="instanceId + '-value-' + branchIndex + '-' + conditionIndex"
+                    @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, conditionModel(condition).valueField.key), value: $event })"
+                  />
+                  <button
+                    v-if="(branch.条件 || []).length > 1"
+                    type="button"
+                    class="skill-designer-vue-icon-button"
+                    :disabled="disabled"
+                    aria-label="删除判定条件"
+                    title="删除判定条件"
+                    @click="emit('structure', { type: 'remove', path: branchPath(branchIndex, '条件'), index: conditionIndex })"
+                  ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+                </div>
               </div>
             </div>
             <button
@@ -1091,7 +1096,7 @@
               @click="emit('structure', { type: 'add-condition', path: branchPath(branchIndex, '条件') })"
             ><i class="fa-solid fa-plus" aria-hidden="true"></i>判定</button>
             <div class="skill-designer-vue-condition-action">
-              <span class="skill-designer-vue-label">满足后</span>
+              <span class="skill-designer-vue-syntax-keyword">满足后</span>
               <SkillSegmentedControl
                 :model-value="branch.处理"
                 :options="modelApi.conditionActionOptions"
@@ -1957,10 +1962,13 @@
               <span class="skill-designer-vue-eyebrow">编译结果</span>
               <h2 id="skill-cost-summary-title">复杂度预算</h2>
             </div>
-            <strong
-              class="skill-designer-vue-cost-total"
-              :class="{ danger: budget && budget.ok === false }"
-            >{{ budget ? budget.label : '待评估' }}</strong>
+            <div class="skill-designer-vue-cost-total-wrap">
+              <strong
+                class="skill-designer-vue-cost-total"
+                :class="{ danger: budget && budget.ok === false }"
+              >{{ budget ? budget.label : '待评估' }}</strong>
+              <small v-if="budget">{{ budget.stateLabel }} · {{ budget.remaining >= 0 ? '剩余 ' + budget.remaining.toFixed(1) : '超出 ' + Math.abs(budget.remaining).toFixed(1) }}</small>
+            </div>
           </div>
           <div v-if="ledgerRows.length" class="skill-designer-vue-cost-ledger" role="table" aria-label="复杂度预算来源账单">
             <div class="skill-designer-vue-cost-ledger-head" role="row">
@@ -2005,11 +2013,19 @@
         draft: { type: Object, required: true },
       },
       emits: ['patch'],
-      setup(props) {
+      setup(props, { emit }) {
         const summary = computed(() => normalizeText(props.result?.preview?.summary, '填写效果后，这里会显示现有编译链生成的参考摘要。'));
         const manualText = computed(() => normalizeText(props.draft?.effectDesc, ''));
         const isOverridden = computed(() => !!manualText.value && manualText.value !== summary.value);
-        return { isOverridden, manualText, summary };
+        function applyReference() {
+          if (!summary.value || summary.value === manualText.value) return;
+          if (
+            isOverridden.value &&
+            !window.confirm('恢复自动参考会替换当前手动效果描述，确定继续吗？')
+          ) return;
+          emit('patch', { path: ['effectDesc'], value: summary.value });
+        }
+        return { applyReference, isOverridden, manualText, summary };
       },
       template: `
         <section class="skill-designer-vue-description-reference" aria-labelledby="skill-description-reference-title">
@@ -2019,12 +2035,12 @@
           </div>
           <p>{{ summary }}</p>
           <div class="skill-designer-vue-reference-footer">
-            <small>{{ isOverridden ? '当前效果描述已手动覆盖参考文案。' : '这是只读参考，不会自动覆盖你的描述。' }}</small>
+            <small :class="{ overridden: isOverridden }">{{ isOverridden ? '当前效果描述已手动覆盖参考文案。' : '这是只读参考，不会自动覆盖你的描述。' }}</small>
             <button
               type="button"
               class="skill-designer-vue-text-button"
               :disabled="!summary || summary === manualText"
-              @click="$emit('patch', { path: ['effectDesc'], value: summary })"
+              @click="applyReference"
             ><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ isOverridden ? '恢复自动参考' : '填入效果描述' }}</button>
           </div>
         </section>
@@ -2056,7 +2072,7 @@
       template: `
         <header class="skill-designer-vue-toolbar">
           <div class="skill-designer-vue-heading">
-            <span>{{ subtitle }}</span>
+            <span class="skill-designer-vue-heading-context">魂技设计台<span v-if="subtitle"> · {{ subtitle }}</span></span>
             <h2>{{ title }}</h2>
             <small class="skill-designer-vue-status" :class="statusTone">
               <span>{{ statusText }}</span>
@@ -2093,6 +2109,7 @@
         tabs: { type: Array, required: true },
         activeTab: { type: String, required: true },
         errorCounts: { type: Object, required: true },
+        dirty: Boolean,
         instanceId: { type: String, required: true },
       },
       emits: ['update:activeTab'],
@@ -2125,12 +2142,13 @@
             :aria-selected="activeTab === tab.id ? 'true' : 'false'"
             :aria-controls="instanceId + '-panel-' + tab.id"
             :tabindex="activeTab === tab.id ? 0 : -1"
-            :class="{ active: activeTab === tab.id, complete: !errorCounts[tab.id], invalid: errorCounts[tab.id] }"
+            :class="{ active: activeTab === tab.id, complete: !errorCounts[tab.id], invalid: errorCounts[tab.id], dirty }"
             @click="$emit('update:activeTab', tab.id)"
             @keydown="handleKeydown($event, index)"
           >
             <span>{{ tab.label }}</span>
             <b v-if="errorCounts[tab.id]">{{ errorCounts[tab.id] }}</b>
+            <i v-else-if="dirty" class="fa-solid fa-circle-dot" aria-label="有未保存更改"></i>
           </button>
         </div>
       `,
@@ -2142,7 +2160,6 @@
         meta: { type: Object, required: true },
         issueCount: { type: Number, default: 0 },
         statusTone: { type: String, default: '' },
-        statusText: { type: String, default: '' },
       },
       template: `
         <header class="skill-designer-vue-page-heading">
@@ -2152,7 +2169,6 @@
             <p>{{ meta.description }}</p>
           </div>
           <div class="skill-designer-vue-page-heading-status" :class="statusTone">
-            <span>{{ statusText }}</span>
             <strong v-if="issueCount">{{ issueCount }} 个问题</strong>
           </div>
         </header>
@@ -2676,7 +2692,13 @@
         };
       },
       template: `
-        <div :id="instanceId" ref="rootElement" class="skill-designer-vue-root">
+        <div
+          :id="instanceId"
+          ref="rootElement"
+          class="skill-designer-vue-root"
+          :class="{ 'is-busy': busy }"
+          :aria-busy="busy ? 'true' : 'false'"
+        >
           <SkillDesignerToolbar
             :title="rawDraft.name || context.previewMeta.label || '未命名技能'"
             :subtitle="context.previewMeta.category || context.previewMeta.scope || ''"
@@ -2697,15 +2719,19 @@
             :tabs="tabs"
             :active-tab="activeTab"
             :error-counts="errorCounts"
+            :dirty="dirty"
             :instance-id="instanceId"
             @update:active-tab="activeTab = $event"
           />
+          <div v-if="busy" class="skill-designer-vue-busy-strip" role="status">
+            <i class="fa-solid fa-spinner" aria-hidden="true"></i>
+            <span>{{ statusText }}</span>
+          </div>
           <main class="skill-designer-vue-editor">
             <SkillDesignerPageHeader
               :meta="pageMeta"
               :issue-count="errorCounts[activeTab]"
               :status-tone="statusTone"
-              :status-text="statusText"
             />
             <section class="skill-designer-vue-page-canvas">
               <SkillBasicPanel
@@ -2778,6 +2804,16 @@
               />
             </section>
           </main>
+          <section
+            v-if="undoRecord"
+            class="skill-designer-vue-undo-notice"
+            role="status"
+            aria-live="polite"
+          >
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+            <span>结构已更新，可以撤销上一次操作。</span>
+            <button type="button" class="skill-designer-vue-text-button" :disabled="busy" @click="undo">撤销</button>
+          </section>
           <SkillDesignerStatusDock
             :status-text="statusText"
             :status-tone="statusTone"
