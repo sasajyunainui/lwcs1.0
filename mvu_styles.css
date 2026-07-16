@@ -5370,6 +5370,11 @@ body:has(.skill-designer-vue-host) .acu-nav-container {
   display: none;
 }
 
+body:has(.skill-designer-vue-host) #WorldInfo,
+body:has(.skill-designer-vue-host) #qr--bar {
+  display: none;
+}
+
 #detailModal:has(.skill-designer-vue-host) {
   align-items: flex-start;
   padding: 12px;
