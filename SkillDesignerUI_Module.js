@@ -1223,7 +1223,7 @@
         return { activeTab, applyPatch, applyStructure, busy, collapseMode, compileResult, dirty, errorCounts, errorPaths: computed(() => compileResult.value.errors || []), locateItem, pageMeta, rawDraft, reload, save, statusText, switchSkill, tabFields, tabs, undo, undoRecord, budgetSummary, liveMessage };
       },
       template: `
-        <div :id="instanceId" class="skill-designer-vue-root" data-skill-designer-layout="blueprint" :class="{ 'is-busy': busy }" :aria-busy="busy ? 'true' : 'false'">
+        <div :id="instanceId" class="skill-designer-vue-root" data-skill-designer-layout="single-canvas" :class="{ 'is-busy': busy }" :aria-busy="busy ? 'true' : 'false'">
           <SkillToolbar :title="rawDraft.name || context.previewMeta.label || '未命名技能'" :subtitle="context.previewMeta.category || context.previewMeta.scope || ''" :switch-items="context.switchItems" :preview-key="context.previewKey" :busy="busy" :can-undo="!!undoRecord" :instance-id="instanceId" @switch-skill="switchSkill" @reload="reload" @undo="undo" />
           <SkillTabs :tabs="tabs" :active-tab="activeTab" :error-counts="errorCounts" :dirty="dirty" :instance-id="instanceId" @update:active-tab="activeTab = $event" />
           <div v-if="busy" class="skill-designer-vue-busy-strip" role="status"><i class="fa-solid fa-spinner" aria-hidden="true"></i>{{ statusText }}</div>
