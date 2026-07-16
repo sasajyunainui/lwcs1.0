@@ -6951,19 +6951,21 @@ body:has(.skill-designer-vue-host) #form_sheld {
 
 @container skill-designer-vue (max-width: 619px) {
   .skill-designer-vue-toolbar {
-    display: flex;
-    align-items: stretch;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
   }
 
   .skill-designer-vue-toolbar-actions {
-    display: grid;
-    grid-template-columns: 40px repeat(2, minmax(0, 1fr));
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    flex-wrap: wrap;
   }
 
   .skill-designer-vue-toolbar-actions > .skill-designer-vue-combobox {
-    grid-column: 1 / -1;
-    width: 100%;
+    flex: 1 1 240px;
+    width: auto;
   }
 
   .skill-designer-vue-root {
