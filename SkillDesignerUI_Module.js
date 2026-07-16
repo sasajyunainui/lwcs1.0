@@ -44,6 +44,7 @@
           result.push({
             value,
             label: normalizeText(label, String(value)),
+            description: normalizeText(option && typeof option === 'object' ? option.description : '', ''),
             group: normalizeText(entry.label, `分组${groupIndex + 1}`),
             id: `g${groupIndex}-o${optionIndex}`,
           });
@@ -54,10 +55,12 @@
       const label = entry && typeof entry === 'object' ? entry.label : entry;
       const group = entry && typeof entry === 'object' ? entry.group : '';
       const id = entry && typeof entry === 'object' ? entry.id : '';
+      const description = entry && typeof entry === 'object' ? entry.description : '';
       if (value === undefined || value === null || String(value) === '') return;
       result.push({
         value,
         label: normalizeText(label, String(value)),
+        description: normalizeText(description, ''),
         group: normalizeText(group, ''),
         id: normalizeText(id, `o${result.length}`),
       });
@@ -136,6 +139,7 @@
           return flatOptions.value.filter(
             option =>
               String(option.label).toLocaleLowerCase().includes(keyword) ||
+              String(option.description).toLocaleLowerCase().includes(keyword) ||
               String(option.value).toLocaleLowerCase().includes(keyword) ||
               String(option.group).toLocaleLowerCase().includes(keyword),
           );
@@ -303,7 +307,7 @@
             @keydown="handleKeydown"
           >
             <span>{{ selectedLabel }}</span>
-            <span class="skill-designer-vue-chevron" aria-hidden="true">⌄</span>
+            <i class="fa-solid fa-chevron-down skill-designer-vue-chevron" aria-hidden="true"></i>
           </button>
           <Teleport to="body">
             <div
@@ -336,13 +340,18 @@
                   type="button"
                   class="skill-designer-vue-option"
                   :class="{ active: index === activeIndex, selected: String(option.value) === String(modelValue) }"
+                  :title="option.description ? option.label + '：' + option.description : option.label"
                   role="option"
                   :aria-selected="String(option.value) === String(modelValue) ? 'true' : 'false'"
                   @pointermove="activeIndex = index"
                   @click="select(option)"
                 >
-                  <small v-if="option.group">{{ option.group }}</small>
-                  <span>{{ option.label }}</span>
+                  <small
+                    v-if="option.group && (index === 0 || filteredOptions[index - 1]?.group !== option.group)"
+                    class="skill-designer-vue-option-group"
+                  >{{ option.group }}</small>
+                  <span class="skill-designer-vue-option-title">{{ option.label }}</span>
+                  <span v-if="option.description" class="skill-designer-vue-option-description">{{ option.description }}</span>
                 </button>
                 <div v-if="!filteredOptions.length" class="skill-designer-vue-empty">没有匹配项</div>
               </div>
@@ -394,7 +403,9 @@
           <div class="skill-designer-vue-token-list" aria-live="polite">
             <span v-for="item in selectedItems" :key="String(item.value)" class="skill-designer-vue-token">
               {{ item.label }}
-              <button type="button" :disabled="disabled" :aria-label="'移除' + item.label" @click="remove(item.value)">×</button>
+              <button type="button" :disabled="disabled" :aria-label="'移除' + item.label" @click="remove(item.value)">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
             </span>
           </div>
           <SkillCombobox
@@ -611,13 +622,14 @@
                 aria-label="删除条件分支"
                 title="删除条件分支"
                 @click="emit('structure', { type: 'remove', path, index: branchIndex })"
-              >×</button>
+              ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
             <div class="skill-designer-vue-condition-list">
               <div
                 v-for="(condition, conditionIndex) in branch.条件 || []"
                 :key="objectKey(condition, 'condition')"
                 class="skill-designer-vue-condition-row"
+                :class="{ 'has-remove-action': (branch.条件 || []).length > 1 }"
               >
                 <SkillCombobox
                   :model-value="condition.类型"
@@ -654,13 +666,14 @@
                   @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, conditionModel(condition).valueField.key), value: $event })"
                 />
                 <button
+                  v-if="(branch.条件 || []).length > 1"
                   type="button"
                   class="skill-designer-vue-icon-button"
-                  :disabled="disabled || (branch.条件 || []).length <= 1"
+                  :disabled="disabled"
                   aria-label="删除判定条件"
                   title="删除判定条件"
                   @click="emit('structure', { type: 'remove', path: branchPath(branchIndex, '条件'), index: conditionIndex })"
-                >×</button>
+                ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
               </div>
             </div>
             <button
@@ -774,7 +787,7 @@
                 aria-label="删除原型"
                 title="删除"
                 @click="emit('structure', { type: 'remove', path, index })"
-              >×</button>
+              ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
           </div>
           <p v-if="model.summary" class="skill-designer-vue-prototype-summary">{{ model.summary }}</p>
@@ -940,7 +953,7 @@
                 aria-label="删除副作用"
                 title="删除副作用"
                 @click="emit('structure', { type: 'remove', path, index })"
-              >×</button>
+              ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
             <div class="skill-designer-vue-field-grid">
               <div
@@ -1123,7 +1136,7 @@
               aria-label="撤销上一次结构操作"
               title="撤销"
               @click="$emit('undo')"
-            >↶</button>
+            ><i class="fa-solid fa-undo" aria-hidden="true"></i></button>
             <button type="button" class="skill-designer-vue-button" :disabled="busy" @click="$emit('reload')">重新读取</button>
             <button type="button" class="skill-designer-vue-button primary" :disabled="busy" @click="$emit('save')">
               {{ busy ? '处理中…' : dirty ? '保存设计*' : '保存设计' }}

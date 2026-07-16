@@ -5235,20 +5235,26 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 /* Skill Designer Vue */
 .skill-designer-vue-host {
-  --skill-designer-vue-bg: #101315;
-  --skill-designer-vue-surface: #181c1e;
-  --skill-designer-vue-surface-raised: #202527;
-  --skill-designer-vue-border: #3a4245;
-  --skill-designer-vue-border-strong: #5f6c6f;
-  --skill-designer-vue-text: #f2f5f3;
-  --skill-designer-vue-muted: #b6bfbc;
-  --skill-designer-vue-accent: var(--主题主色, #62d9e5);
-  --skill-designer-vue-accent-secondary: var(--主题辅色, var(--gold, #e3bd66));
-  --skill-designer-vue-danger: #ff8193;
+  --skill-designer-vue-bg: var(--暗场底板, rgba(5, 12, 18, 0.72));
+  --skill-designer-vue-surface: var(--暗场卡片, rgba(9, 17, 24, 0.68));
+  --skill-designer-vue-surface-raised: var(--暗场底板强, rgba(8, 15, 22, 0.82));
+  --skill-designer-vue-surface-floating: var(--暗场浮层, rgba(6, 12, 18, 0.92));
+  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强, rgba(8, 15, 22, 0.82)) 86%, #000 14%);
+  --skill-designer-vue-border: var(--虚线, rgba(118, 226, 255, 0.18));
+  --skill-designer-vue-border-strong: var(--边线颜色, rgba(103, 247, 239, 0.32));
+  --skill-designer-vue-text: var(--文字主色, #ffffff);
+  --skill-designer-vue-muted: color-mix(in srgb, var(--文字弱色, #8ab4f8) 82%, var(--文字主色, #ffffff) 18%);
+  --skill-designer-vue-accent: var(--主题主色, #67f7ef);
+  --skill-designer-vue-accent-secondary: var(--主题高光, #ffffff);
+  --skill-designer-vue-danger: var(--状态危险色, #ff6b7a);
+  --skill-designer-vue-success: var(--状态强调色, #7df9ff);
+  --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
   width: 100%;
   min-width: 0;
   color: var(--skill-designer-vue-text);
   color-scheme: dark;
+  font-family: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
+  font-weight: var(--主题字重, 500);
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: 0;
@@ -5269,13 +5275,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-root {
   display: grid;
   min-width: 0;
-  border: 1px solid var(--skill-designer-vue-border);
-  border-top: 3px solid var(--skill-designer-vue-accent);
-  border-radius: 8px;
-  background: var(--skill-designer-vue-bg);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.32),
-    0 0 18px color-mix(in srgb, var(--skill-designer-vue-accent) 9%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: visible;
 }
 
@@ -5286,18 +5289,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   gap: 10px;
   min-height: 220px;
   padding: 28px;
-  border: 1px solid var(--skill-designer-vue-border, #3a4245);
-  border-radius: 8px;
-  background: var(--skill-designer-vue-bg, #101315);
-  color: var(--skill-designer-vue-text, #f2f5f3);
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  color: var(--skill-designer-vue-text);
   text-align: center;
 }
 
 .skill-designer-vue-loading-mark {
   width: 28px;
   height: 28px;
-  border: 3px solid #4a5457;
-  border-top-color: var(--skill-designer-vue-accent, #62d9e5);
+  border: 3px solid var(--skill-designer-vue-border);
+  border-top-color: var(--skill-designer-vue-accent);
   border-radius: 50%;
   animation: skill-designer-vue-spin 0.8s linear infinite;
 }
@@ -5311,7 +5314,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-load-error p {
   max-width: 620px;
   margin: 0;
-  color: var(--skill-designer-vue-muted, #b6bfbc);
+  color: var(--skill-designer-vue-muted);
   overflow-wrap: anywhere;
 }
 
@@ -5323,7 +5326,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   padding: 16px 18px;
   border-bottom: 1px solid var(--skill-designer-vue-border);
-  background: var(--skill-designer-vue-surface);
+  background: var(--卡片材质, var(--skill-designer-vue-surface));
 }
 
 .skill-designer-vue-heading {
@@ -5376,8 +5379,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-text-button {
   min-height: 40px;
   border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: 6px;
-  background: var(--skill-designer-vue-surface-raised);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
   color: var(--skill-designer-vue-text);
   transition:
     border-color 160ms ease,
@@ -5392,8 +5395,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-button.primary {
-  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 70%, #ffffff 10%);
-  background: color-mix(in srgb, var(--skill-designer-vue-accent) 24%, #15191b);
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 72%, var(--skill-designer-vue-text) 12%);
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 24%, var(--skill-designer-vue-surface-raised));
 }
 
 .skill-designer-vue-icon-button {
@@ -5402,13 +5405,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex: 0 0 40px;
   width: 40px;
   padding: 0;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
 }
 
 .skill-designer-vue-icon-button.danger {
   border-color: color-mix(in srgb, var(--skill-designer-vue-danger) 48%, var(--skill-designer-vue-border));
-  color: #ffd7dd;
+  color: color-mix(in srgb, var(--skill-designer-vue-danger) 68%, var(--skill-designer-vue-text));
 }
 
 .skill-designer-vue-text-button {
@@ -5439,7 +5442,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--skill-designer-vue-border);
-  background: #141719;
+  background: var(--skill-designer-vue-bg);
 }
 
 .skill-designer-vue-tabs button {
@@ -5475,7 +5478,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-tabs button.active {
   color: var(--skill-designer-vue-text);
-  background: var(--skill-designer-vue-surface);
+  background: var(--卡片材质, var(--skill-designer-vue-surface));
 }
 
 .skill-designer-vue-tabs button.active::after {
@@ -5496,12 +5499,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-tabs button b {
-  background: #7c2635;
-  color: #ffffff;
+  background: color-mix(in srgb, var(--skill-designer-vue-danger) 34%, var(--skill-designer-vue-surface-raised));
+  color: var(--skill-designer-vue-text);
 }
 
 .skill-designer-vue-tabs button i {
-  color: #96d9b1;
+  color: var(--skill-designer-vue-success);
 }
 
 .skill-designer-vue-workspace {
@@ -5577,7 +5580,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-label {
-  color: #d8dedc;
+  color: color-mix(in srgb, var(--skill-designer-vue-text) 88%, var(--skill-designer-vue-muted));
   font-size: 13px;
   font-weight: 650;
   line-height: 1.35;
@@ -5611,8 +5614,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   min-height: 42px;
   border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: 6px;
-  background: #111516;
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
   color: var(--skill-designer-vue-text);
   padding: 9px 11px;
   font: inherit;
@@ -5626,12 +5629,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-control::placeholder {
-  color: #8f9996;
+  color: color-mix(in srgb, var(--skill-designer-vue-muted) 78%, transparent);
   opacity: 1;
 }
 
 .skill-designer-vue-control:hover:not(:disabled) {
-  border-color: #6a7679;
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 58%, var(--skill-designer-vue-border-strong));
 }
 
 .skill-designer-vue-control:focus,
@@ -5658,8 +5661,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-static {
   display: flex;
   align-items: center;
-  color: #c6cecb;
-  background: #1a1f20;
+  color: var(--skill-designer-vue-muted);
+  background: color-mix(in srgb, var(--skill-designer-vue-surface-raised) 88%, transparent);
 }
 
 .skill-designer-vue-combobox-trigger {
@@ -5681,26 +5684,37 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-chevron {
   flex: 0 0 auto;
   color: var(--skill-designer-vue-muted);
-  font-size: 16px;
+  font-size: 12px;
 }
 
 .skill-designer-vue-popover {
-  --skill-designer-vue-surface: #181c1e;
-  --skill-designer-vue-surface-raised: #202527;
-  --skill-designer-vue-border: #3a4245;
-  --skill-designer-vue-border-strong: #5a6669;
-  --skill-designer-vue-text: #f2f5f3;
-  --skill-designer-vue-muted: #b6bfbc;
-  --skill-designer-vue-accent: var(--主题主色, #62d9e5);
+  --skill-designer-vue-surface: var(--暗场卡片, rgba(9, 17, 24, 0.68));
+  --skill-designer-vue-surface-raised: var(--暗场底板强, rgba(8, 15, 22, 0.82));
+  --skill-designer-vue-surface-floating: var(--暗场浮层, rgba(6, 12, 18, 0.92));
+  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强, rgba(8, 15, 22, 0.82)) 86%, #000 14%);
+  --skill-designer-vue-border: var(--虚线, rgba(118, 226, 255, 0.18));
+  --skill-designer-vue-border-strong: var(--边线颜色, rgba(103, 247, 239, 0.32));
+  --skill-designer-vue-text: var(--文字主色, #ffffff);
+  --skill-designer-vue-muted: color-mix(in srgb, var(--文字弱色, #8ab4f8) 82%, var(--文字主色, #ffffff) 18%);
+  --skill-designer-vue-accent: var(--主题主色, #67f7ef);
+  --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: 42px minmax(0, 1fr);
   gap: 8px;
+  min-height: 0;
   padding: 8px;
   border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: 8px;
-  background: var(--skill-designer-vue-surface);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--悬浮材质, var(--skill-designer-vue-surface-floating));
   color: var(--skill-designer-vue-text);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.52),
+    0 0 18px color-mix(in srgb, var(--skill-designer-vue-accent) 16%, transparent);
+  backdrop-filter: var(--虚化强度, blur(8px));
+  -webkit-backdrop-filter: var(--虚化强度, blur(8px));
+  font-family: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
   overflow: hidden;
 }
 
@@ -5710,26 +5724,63 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-option-list {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 4px;
   min-height: 0;
+  padding: 2px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .skill-designer-vue-option {
+  position: relative;
   display: grid;
-  gap: 1px;
-  min-height: 40px;
+  align-content: start;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   padding: 8px 10px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--skill-designer-vue-radius);
   background: transparent;
   color: var(--skill-designer-vue-text);
+  line-height: 1.35;
   text-align: left;
+  overflow: hidden;
 }
 
-.skill-designer-vue-option small {
+.skill-designer-vue-option-group {
   color: var(--skill-designer-vue-muted);
   font-size: 11px;
+  line-height: 1.2;
+}
+
+.skill-designer-vue-option-title {
+  display: block;
+  min-width: 0;
+  color: var(--skill-designer-vue-text);
+  font-size: 14px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-designer-vue-option-description {
+  display: -webkit-box;
+  min-width: 0;
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .skill-designer-vue-option.active,
@@ -5739,6 +5790,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-option.selected {
+  border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 58%, var(--skill-designer-vue-border));
+  box-shadow: inset 3px 0 0 var(--skill-designer-vue-accent);
+}
+
+.skill-designer-vue-option.selected .skill-designer-vue-option-title {
   color: var(--skill-designer-vue-accent);
 }
 
@@ -5759,8 +5815,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   min-width: 0;
   border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: 6px;
-  background: #111516;
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
   overflow: hidden;
 }
 
@@ -5812,7 +5868,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   height: 28px;
   border: 1px solid var(--skill-designer-vue-border-strong);
   border-radius: 14px;
-  background: #2a3032;
+  background: color-mix(in srgb, var(--skill-designer-vue-surface-raised) 82%, var(--skill-designer-vue-muted) 18%);
   transition:
     background-color 160ms ease,
     border-color 160ms ease;
@@ -5826,18 +5882,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #dbe1df;
+  background: color-mix(in srgb, var(--skill-designer-vue-text) 90%, var(--skill-designer-vue-muted));
   transition: transform 160ms ease;
 }
 
 .skill-designer-vue-toggle input:checked + span {
   border-color: var(--skill-designer-vue-accent);
-  background: color-mix(in srgb, var(--skill-designer-vue-accent) 36%, #1b2021);
+  background: color-mix(in srgb, var(--skill-designer-vue-accent) 36%, var(--skill-designer-vue-surface-raised));
 }
 
 .skill-designer-vue-toggle input:checked + span::after {
   transform: translateX(20px);
-  background: #ffffff;
+  background: var(--skill-designer-vue-text);
 }
 
 .skill-designer-vue-toggle input:focus-visible + span {
@@ -5859,7 +5915,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-height: 30px;
   padding: 3px 5px 3px 9px;
   border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent) 40%, var(--skill-designer-vue-border));
-  border-radius: 6px;
+  border-radius: var(--skill-designer-vue-radius);
   background: color-mix(in srgb, var(--skill-designer-vue-accent) 10%, var(--skill-designer-vue-surface));
   color: var(--skill-designer-vue-text);
   font-size: 13px;
@@ -5879,8 +5935,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-token button:hover {
-  background: #4a252d;
-  color: #ffffff;
+  background: color-mix(in srgb, var(--skill-designer-vue-danger) 26%, var(--skill-designer-vue-surface-raised));
+  color: var(--skill-designer-vue-text);
 }
 
 .skill-designer-vue-prototype-list,
@@ -5900,8 +5956,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 14px;
   border: 1px solid var(--skill-designer-vue-border);
   border-left: 3px solid var(--skill-designer-vue-accent);
-  border-radius: 6px;
-  background: var(--skill-designer-vue-surface);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--卡片材质, var(--skill-designer-vue-surface));
 }
 
 .skill-designer-vue-prototype.nested {
@@ -5958,7 +6014,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-height: 26px;
   padding: 3px 8px;
   border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 48%, var(--skill-designer-vue-border));
-  border-radius: 5px;
+  border-radius: var(--skill-designer-vue-radius);
   color: var(--skill-designer-vue-accent-secondary);
   font-size: 12px;
 }
@@ -5978,8 +6034,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   padding: 12px;
   border: 1px solid var(--skill-designer-vue-border);
-  border-radius: 6px;
-  background: var(--skill-designer-vue-surface-raised);
+  border-radius: var(--skill-designer-vue-radius);
+  background: color-mix(in srgb, var(--skill-designer-vue-surface-raised) 88%, transparent);
 }
 
 .skill-designer-vue-condition-branch {
@@ -5988,15 +6044,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   padding: 10px 0 10px 12px;
   border-left: 2px solid color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 62%, var(--skill-designer-vue-border));
-  background: #141819;
+  background: color-mix(in srgb, var(--skill-designer-vue-surface) 74%, transparent);
 }
 
 .skill-designer-vue-condition-row {
   display: grid;
-  grid-template-columns: minmax(132px, 1fr) minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(120px, 0.8fr) 40px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr);
   gap: 8px;
   align-items: center;
   min-width: 0;
+}
+
+.skill-designer-vue-condition-row.has-remove-action {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr) 40px;
 }
 
 .skill-designer-vue-condition-action {
@@ -6023,8 +6083,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   border: 1px solid var(--skill-designer-vue-border);
   border-top: 3px solid var(--skill-designer-vue-accent-secondary);
-  border-radius: 7px;
-  background: var(--skill-designer-vue-surface);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--卡片材质, var(--skill-designer-vue-surface));
 }
 
 .skill-designer-vue-preview-toggle {
@@ -6037,7 +6097,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 0 13px;
   border: 0;
   border-bottom: 1px solid var(--skill-designer-vue-border);
-  background: var(--skill-designer-vue-surface-raised);
+  background: color-mix(in srgb, var(--skill-designer-vue-surface-raised) 84%, transparent);
   color: var(--skill-designer-vue-text);
   text-align: left;
 }
@@ -6098,7 +6158,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-attribute-list div {
   min-width: 0;
   padding: 8px 9px;
-  background: #141819;
+  background: var(--skill-designer-vue-control-bg);
 }
 
 .skill-designer-vue-preview-metrics dt,
@@ -6117,7 +6177,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-preview-metrics dd.danger {
-  color: #ff9aaa;
+  color: color-mix(in srgb, var(--skill-designer-vue-danger) 72%, var(--skill-designer-vue-text));
 }
 
 .skill-designer-vue-preview-section,
@@ -6131,7 +6191,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-preview-section h4,
 .skill-designer-vue-message-list h4 {
   font-size: 13px;
-  color: #dbe1df;
+  color: color-mix(in srgb, var(--skill-designer-vue-text) 88%, var(--skill-designer-vue-muted));
 }
 
 .skill-designer-vue-preview-section ol {
@@ -6148,8 +6208,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   margin: 0;
   padding: 8px 9px;
   border: 1px solid var(--skill-designer-vue-border);
-  border-radius: 5px;
-  background: #141819;
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
   color: var(--skill-designer-vue-muted);
   font: inherit;
   font-size: 13px;
@@ -6158,7 +6218,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-message-list.error p {
   border-left: 3px solid var(--skill-designer-vue-danger);
-  color: #ffdbe0;
+  color: color-mix(in srgb, var(--skill-designer-vue-danger) 42%, var(--skill-designer-vue-text));
 }
 
 .skill-designer-vue-message-list.warning p {
