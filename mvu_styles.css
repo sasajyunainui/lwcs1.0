@@ -16605,7 +16605,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --shadow-cyan: 0 4px 15px color-mix(in srgb, var(--主题主色) 15%, transparent);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:not(:has(.skill-designer-host)) {
   position: relative;
   box-sizing: border-box;
   display: grid;
@@ -16641,6 +16641,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   font-weight: var(--主题字重);
   perspective: 1200px;
   pointer-events: auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-host) {
+  position: relative;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 1px;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  isolation: auto;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  perspective: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-host)::before {
+  display: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
@@ -17578,11 +17603,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-section--dashboard::-webkit
   display: none;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:not(:has(.skill-designer-host)) {
   position: absolute;
   inset: 0;
   z-index: 4;
   padding: 8px;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:has(.skill-designer-host) {
+  position: relative;
+  inset: auto;
+  z-index: 4;
+  display: block;
+  min-width: 0;
+  min-height: 1px;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  contain: none;
+  transform: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-bar {
@@ -17660,7 +17699,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page.active::-webkit-scroll
   display: none;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:not(:has(.skill-designer-host)) {
   z-index: 4;
   display: grid;
   min-width: 0;
@@ -17673,7 +17712,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
   transform: translateZ(0);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch:not(:has(.skill-designer-host)) {
   position: relative;
   z-index: 1;
   grid-row: 2;
@@ -17684,6 +17723,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch {
   height: 100%;
   overflow: hidden;
   isolation: isolate;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch:has(.skill-designer-host) {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  min-height: 1px;
+  height: auto;
+  overflow: visible;
+  isolation: auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch > .is-stage-active {
@@ -21176,7 +21226,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     --mvu-touch-gap: 8px;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:not(:has(.skill-designer-host)) {
     height: var(--mvu-hud-frame-height, 620px);
     min-height: 0;
     max-height: var(--mvu-hud-frame-height, 620px);
@@ -21293,14 +21343,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     padding-right: 8px;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:not(:has(.skill-designer-host)) {
     height: 100%;
     min-height: 0;
     overflow: hidden;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation) {
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:not(:has(.skill-designer-host)),
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.dossier-shell--relation):not(:has(.skill-designer-host)) {
     height: 100%;
     max-height: var(--mvu-unified-detail-max-height, 100%);
     overflow-x: hidden;
