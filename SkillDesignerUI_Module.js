@@ -1867,7 +1867,21 @@
           ...(Array.isArray(preview.value.resourceRows) ? preview.value.resourceRows : []),
           ...(Array.isArray(preview.value.timingRows) ? preview.value.timingRows : []),
         ]);
-        return { budget, preview, rows };
+        const ledgerRows = computed(() => [
+          ...rows.value.map(row => ({
+            source: row.label || '资源参数',
+            formula: row.detail || row.description || row.unit || '编译结果',
+            value: row.value ?? '—',
+            tone: row.tone || '',
+          })),
+          ...(Array.isArray(preview.value.effectRows) ? preview.value.effectRows : []).map(effect => ({
+            source: effect.branchLabel || effect.relation || '效果原型',
+            formula: effect.conditionSummary || effect.detail || effect.title || '编译结果',
+            value: effect.cost ?? effect.value ?? '—',
+            tone: effect.tone || '',
+          })),
+        ]);
+        return { budget, ledgerRows, preview, rows };
       },
       template: `
         <section class="skill-designer-vue-cost-summary" aria-labelledby="skill-cost-summary-title">
@@ -1881,10 +1895,22 @@
               :class="{ danger: budget && budget.ok === false }"
             >{{ budget ? budget.label : '待评估' }}</strong>
           </div>
-          <div v-if="rows.length" class="skill-designer-vue-cost-rows">
-            <div v-for="row in rows" :key="row.label" class="skill-designer-vue-cost-row">
-              <span>{{ row.label }}</span>
-              <strong>{{ row.value }}<small v-if="row.unit"> {{ row.unit }}</small></strong>
+          <div v-if="ledgerRows.length" class="skill-designer-vue-cost-ledger" role="table" aria-label="复杂度预算来源账单">
+            <div class="skill-designer-vue-cost-ledger-head" role="row">
+              <span role="columnheader">来源</span>
+              <span role="columnheader">计算说明</span>
+              <span role="columnheader">数值</span>
+            </div>
+            <div
+              v-for="(row, index) in ledgerRows"
+              :key="row.source + '-' + index"
+              class="skill-designer-vue-cost-ledger-row"
+              :class="row.tone"
+              role="row"
+            >
+              <span role="cell">{{ row.source }}</span>
+              <span role="cell">{{ row.formula }}</span>
+              <strong role="cell">{{ row.value }}</strong>
             </div>
           </div>
           <p v-else class="skill-designer-vue-cost-empty">填写资源或时间参数后，这里会显示编译结果。</p>
@@ -1909,10 +1935,14 @@
       name: 'SkillDescriptionReference',
       props: {
         result: { type: Object, default: () => ({}) },
+        draft: { type: Object, required: true },
       },
+      emits: ['patch'],
       setup(props) {
         const summary = computed(() => normalizeText(props.result?.preview?.summary, '填写效果后，这里会显示现有编译链生成的参考摘要。'));
-        return { summary };
+        const manualText = computed(() => normalizeText(props.draft?.effectDesc, ''));
+        const isOverridden = computed(() => !!manualText.value && manualText.value !== summary.value);
+        return { isOverridden, manualText, summary };
       },
       template: `
         <section class="skill-designer-vue-description-reference" aria-labelledby="skill-description-reference-title">
@@ -1921,7 +1951,15 @@
             <h2 id="skill-description-reference-title">自动生成参考</h2>
           </div>
           <p>{{ summary }}</p>
-          <small>这是只读参考，不会覆盖你已经手动填写的描述。</small>
+          <div class="skill-designer-vue-reference-footer">
+            <small>{{ isOverridden ? '当前效果描述已手动覆盖参考文案。' : '这是只读参考，不会自动覆盖你的描述。' }}</small>
+            <button
+              type="button"
+              class="skill-designer-vue-text-button"
+              :disabled="!summary || summary === manualText"
+              @click="$emit('patch', { path: ['effectDesc'], value: summary })"
+            ><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ isOverridden ? '恢复自动参考' : '填入效果描述' }}</button>
+          </div>
         </section>
       `,
     });
@@ -2609,6 +2647,8 @@
               <SkillDescriptionReference
                 v-if="activeTab === 'description'"
                 :result="compileResult"
+                :draft="rawDraft"
+                @patch="applyPatch"
               />
             </section>
           </main>
