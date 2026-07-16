@@ -5234,6 +5234,1317 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 /* 空状态引导 HUD 样式 */
 
 /* Skill Designer Vue */
+[data-skill-designer-layout="blueprint"].skill-designer-vue-root {
+  --skill-designer-vue-shell: var(--暗场底板, #09121b);
+  --skill-designer-vue-editor: var(--暗场卡片, #101d28);
+  --skill-designer-vue-control: var(--暗场底板强, #0b1721);
+  --skill-designer-vue-popover: var(--暗场浮层, #142533);
+  --skill-designer-vue-text: var(--文字主色, #f5f8fa);
+  --skill-designer-vue-muted: var(--文字弱色, #abc0ca);
+  --skill-designer-vue-accent: var(--主题主色, #6ce8ec);
+  --skill-designer-vue-accent-secondary: var(--主题辅色, var(--主题主色, #6ce8ec));
+  --skill-designer-vue-accent-text: var(--主题高光, #ffffff);
+  --skill-designer-vue-focus: var(--主题高光, #ffffff);
+  --skill-designer-vue-border: var(--边线颜色, rgba(160, 224, 235, 0.3));
+  --skill-designer-vue-danger: var(--状态危险色, #f17882);
+  --skill-designer-vue-warning: var(--状态警告色, #efc76e);
+  --skill-designer-vue-success: var(--状态成功色, #78dca9);
+  --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
+  --skill-designer-vue-cut: var(--面板裁切, none);
+  --skill-designer-vue-font: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
+  --skill-designer-vue-heading-weight: var(--主题字重, 650);
+  --skill-designer-vue-body-weight: 500;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  container: skill-designer-blueprint / inline-size;
+  color: var(--skill-designer-vue-text);
+  background: var(--skill-designer-vue-shell);
+  color-scheme: dark;
+  font-family: var(--skill-designer-vue-font);
+  font-size: 14px;
+  font-weight: var(--skill-designer-vue-body-weight);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+[data-skill-designer-layout="blueprint"].skill-designer-vue-root *,
+[data-skill-designer-layout="blueprint"].skill-designer-vue-root *::before,
+[data-skill-designer-layout="blueprint"].skill-designer-vue-root *::after {
+  box-sizing: border-box;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  padding: 16px 22px 15px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-shell);
+  clip-path: var(--skill-designer-vue-cut);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-brand,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-section-kicker {
+  color: var(--skill-designer-vue-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar h2,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-page-heading h1,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-toolbar h2,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger h3,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference h3,
+[data-skill-designer-layout="blueprint"] h3 {
+  margin: 0;
+  color: var(--skill-designer-vue-text);
+  font-weight: var(--skill-designer-vue-heading-weight);
+  letter-spacing: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar h2 {
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-context small {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-actions,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-actions > .skill-designer-vue-combobox {
+  width: min(260px, 34vw);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-editor);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--skill-designer-vue-border);
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button:last-child {
+  border-right: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button::after {
+  position: absolute;
+  right: 14px;
+  bottom: -1px;
+  left: 14px;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button.active {
+  color: var(--skill-designer-vue-text);
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button.active::after {
+  background: var(--skill-designer-vue-accent);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button.invalid {
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button b {
+  display: inline-grid;
+  min-width: 19px;
+  min-height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--skill-designer-vue-danger);
+  color: var(--skill-designer-vue-accent-text);
+  font-size: 11px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button i {
+  color: var(--skill-designer-vue-accent);
+  font-size: 9px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-button,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-text-button,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-icon-button {
+  min-height: 40px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control);
+  color: var(--skill-designer-vue-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-button.primary {
+  border-color: var(--skill-designer-vue-accent);
+  background: var(--skill-designer-vue-accent);
+  color: #071318;
+  font-weight: 700;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-icon-button {
+  display: inline-grid;
+  width: 40px;
+  min-width: 40px;
+  place-items: center;
+  padding: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-icon-button.danger {
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-button:hover:not(:disabled),
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-icon-button:hover:not(:disabled) {
+  border-color: var(--skill-designer-vue-accent);
+  background: var(--skill-designer-vue-editor);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-button.primary:hover:not(:disabled) {
+  border-color: var(--skill-designer-vue-focus);
+  background: var(--skill-designer-vue-focus);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-text-button:hover:not(:disabled) {
+  color: var(--skill-designer-vue-text);
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] button:focus-visible,
+[data-skill-designer-layout="blueprint"] input:focus-visible,
+[data-skill-designer-layout="blueprint"] textarea:focus-visible {
+  outline: 2px solid var(--skill-designer-vue-focus);
+  outline-offset: 2px;
+}
+
+[data-skill-designer-layout="blueprint"] button:disabled,
+[data-skill-designer-layout="blueprint"] input:disabled,
+[data-skill-designer-layout="blueprint"] textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-busy-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 22px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-control);
+  color: var(--skill-designer-vue-accent);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-editor {
+  min-width: 0;
+  padding: 24px 22px 120px;
+  background: var(--skill-designer-vue-editor);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding-bottom: 22px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-page-heading h1 {
+  margin-top: 4px;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-page-heading p,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-toolbar p {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-heading-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 5px;
+  color: var(--skill-designer-vue-danger);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-page-canvas {
+  max-width: 980px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-form-page,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-page {
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-group {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-group-heading,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-subsection-heading,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-side-effect-heading,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference-heading,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-group-heading h3,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-subsection-heading h3 {
+  font-size: 15px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-group-heading span {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  min-width: 0;
+  margin-top: 16px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid > .wide,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid > .skill-designer-vue-advanced-field.wide {
+  grid-column: 1 / -1;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-shell {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-label {
+  min-width: 0;
+  color: var(--skill-designer-vue-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-label b {
+  margin-left: 3px;
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-unit,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-help-text {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-help-text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-control,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-combobox-trigger,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-static {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control);
+  color: var(--skill-designer-vue-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-control::placeholder {
+  color: var(--skill-designer-vue-muted);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-control:hover:not(:disabled),
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-combobox-trigger:hover:not(:disabled) {
+  border-color: var(--skill-designer-vue-accent-secondary);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-control[aria-invalid="true"],
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-shell.has-error .skill-designer-vue-combobox-trigger {
+  border-color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-textarea {
+  min-height: 150px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-static {
+  color: var(--skill-designer-vue-muted);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-field-error {
+  color: var(--skill-designer-vue-danger);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  color: var(--skill-designer-vue-text);
+  cursor: pointer;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle span {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: 11px;
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--skill-designer-vue-muted);
+  content: "";
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle input:checked + span {
+  border-color: var(--skill-designer-vue-accent);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle input:checked + span::after {
+  background: var(--skill-designer-vue-accent);
+  transform: translateX(18px);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-toggle em {
+  font-style: normal;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-right: 1px solid var(--skill-designer-vue-border);
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented button:last-child {
+  border-right: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented button.active {
+  background: var(--skill-designer-vue-accent);
+  color: #071318;
+  font-weight: 700;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented.compact button {
+  min-height: 36px;
+  padding-inline: 8px;
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-duration {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-duration label {
+  position: relative;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-duration input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control);
+  color: var(--skill-designer-vue-text);
+  font: inherit;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-duration span {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  color: var(--skill-designer-vue-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field summary::-webkit-details-marker {
+  display: none;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field summary i {
+  transition: transform 160ms ease;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field[open] summary i {
+  transform: rotate(180deg);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-advanced-field > .skill-designer-vue-field-shell {
+  padding: 0 0 16px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-multiselect {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding-left: 9px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-editor);
+  color: var(--skill-designer-vue-text);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-token button {
+  width: 32px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--skill-designer-vue-muted);
+  cursor: pointer;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-token button:hover:not(:disabled) {
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-popover {
+  position: fixed;
+  z-index: 100000;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-popover);
+  color: var(--skill-designer-vue-text);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-search {
+  min-height: 38px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option-list {
+  min-width: 0;
+  overflow: auto;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option-group {
+  padding: 8px 8px 4px;
+  color: var(--skill-designer-vue-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option {
+  display: grid;
+  width: 100%;
+  min-height: 42px;
+  gap: 2px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--skill-designer-vue-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option.active,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option:hover {
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option.selected strong {
+  color: var(--skill-designer-vue-accent);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-option span {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty-inline,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-limit-note {
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 9px;
+  padding: 28px 0;
+  border-top: 1px solid var(--skill-designer-vue-border);
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty-state > i {
+  color: var(--skill-designer-vue-accent);
+  font-size: 22px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty-state strong {
+  font-size: 17px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-empty-state span {
+  color: var(--skill-designer-vue-muted);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-toolbar h2 {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-list {
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype {
+  min-width: 0;
+  padding: 18px 0 22px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype.has-error {
+  border-left: 3px solid var(--skill-designer-vue-danger);
+  padding-left: 14px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-heading {
+  display: grid;
+  grid-template-columns: max-content minmax(200px, 1fr) repeat(5, 40px);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-index {
+  color: var(--skill-designer-vue-muted);
+  font-family: var(--skill-designer-vue-font);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-identity b {
+  color: var(--skill-designer-vue-accent);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-summary {
+  margin: 8px 0 0 32px;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-content {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  padding-left: 32px;
+  border-left: 2px solid var(--skill-designer-vue-accent);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-stack {
+  display: grid;
+  gap: 14px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-branch {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-heading,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-decision,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-outcome {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-heading {
+  justify-content: space-between;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-heading > span {
+  color: var(--skill-designer-vue-text);
+  font-weight: 700;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-lines {
+  display: grid;
+  gap: 8px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line {
+  display: grid;
+  grid-template-columns: max-content minmax(130px, 1.05fr) minmax(120px, 0.9fr) minmax(120px, 0.8fr) minmax(120px, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-combobox,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-segmented,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-field-shell {
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line .skill-designer-vue-label-row,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line .skill-designer-vue-help-text {
+  display: none;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-logic-word {
+  color: var(--skill-designer-vue-accent);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-effects {
+  display: grid;
+  gap: 8px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-effect-row {
+  display: grid;
+  grid-template-columns: 18px max-content minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-relationship-line {
+  width: 18px;
+  height: 20px;
+  border-bottom: 2px solid var(--skill-designer-vue-accent-secondary);
+  border-left: 2px solid var(--skill-designer-vue-accent-secondary);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-effect-row > strong {
+  color: var(--skill-designer-vue-accent-secondary);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control);
+  color: var(--skill-designer-vue-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 0 26px;
+  padding: 12px 0 0 26px;
+  border-left: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-limit-note--block {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--skill-designer-vue-warning);
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-side-effects,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference {
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-side-effect {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-side-effect-heading strong {
+  font-size: 14px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-heading strong,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total strong {
+  color: var(--skill-designer-vue-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-table {
+  margin-top: 14px;
+  border-top: 1px solid var(--skill-designer-vue-border);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-head,
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.8fr) minmax(72px, 0.45fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-head {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: transparent;
+  color: var(--skill-designer-vue-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row:hover {
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row em {
+  overflow-wrap: anywhere;
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+  font-style: normal;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding-top: 14px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total em {
+  color: var(--skill-designer-vue-success);
+  font-size: 13px;
+  font-style: normal;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total em.danger {
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference-heading {
+  align-items: flex-start;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference-state {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference > p {
+  max-width: 760px;
+  margin: 14px 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--skill-designer-vue-accent-secondary);
+  color: var(--skill-designer-vue-muted);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-reference footer small {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-undo-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -92px auto 20px;
+  width: min(980px, calc(100% - 44px));
+  padding: 10px 12px;
+  border-left: 2px solid var(--skill-designer-vue-accent);
+  background: var(--skill-designer-vue-control);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-undo-notice span {
+  flex: 1;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-status-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 62px;
+  padding: 9px 22px;
+  border-top: 1px solid var(--skill-designer-vue-border);
+  background: var(--skill-designer-vue-shell);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-status-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--skill-designer-vue-success);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-status-label {
+  color: var(--skill-designer-vue-text);
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-dock-budget {
+  padding-left: 12px;
+  border-left: 1px solid var(--skill-designer-vue-border);
+  color: var(--skill-designer-vue-muted);
+  white-space: nowrap;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-dock-budget strong {
+  color: var(--skill-designer-vue-text);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-dock-warning {
+  color: var(--skill-designer-vue-warning);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-dock-error {
+  color: var(--skill-designer-vue-danger);
+}
+
+[data-skill-designer-layout="blueprint"] .skill-designer-vue-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@container skill-designer-blueprint (max-width: 959px) {
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-toolbar-actions > .skill-designer-vue-combobox {
+    width: min(360px, 100%);
+  }
+}
+
+@container skill-designer-blueprint (max-width: 760px) {
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-editor {
+    padding-inline: 16px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-editor {
+    grid-template-columns: 1fr;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid > .wide,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-field-grid > .skill-designer-vue-advanced-field.wide {
+    grid-column: auto;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-effect-toolbar {
+    display: grid;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-action-row {
+    justify-content: flex-start;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-heading {
+    grid-template-columns: max-content minmax(0, 1fr) repeat(4, 40px);
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-heading > .skill-designer-vue-icon-button:nth-last-child(2) {
+    display: none;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line {
+    grid-template-columns: max-content minmax(0, 1fr) 40px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-combobox,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-segmented,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-field-shell {
+    grid-column: 2 / -1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-condition-line > .skill-designer-vue-icon-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-status-dock {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-status-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 10px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-dock-budget {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-save {
+    width: 100%;
+  }
+}
+
+@container skill-designer-blueprint (max-width: 619px) {
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button {
+    min-height: 44px;
+    padding-inline: 4px;
+    font-size: 13px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-editor {
+    padding: 18px 12px 120px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-page-heading {
+    display: block;
+    padding-bottom: 18px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-heading-error {
+    display: block;
+    margin-top: 8px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-heading {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 40px);
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-identity {
+    grid-column: 1 / -1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-heading > .skill-designer-vue-combobox {
+    grid-column: 1 / -1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-content {
+    padding-left: 12px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-prototype-summary {
+    margin-left: 0;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-branch-editor {
+    margin-left: 0;
+    padding-left: 12px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-head,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row {
+    grid-template-columns: minmax(84px, 0.8fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-head span:nth-child(2),
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row em {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-row b {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total {
+    grid-template-columns: 1fr auto;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-ledger-total em {
+    grid-column: 1 / -1;
+  }
+
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-undo-notice {
+    width: calc(100% - 24px);
+    margin-inline: 12px;
+  }
+}
+
+@media (pointer: coarse) {
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-button,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-text-button,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-icon-button,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-tabs button,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-segmented button,
+  [data-skill-designer-layout="blueprint"] .skill-designer-vue-token button {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skill-designer-layout="blueprint"] *,
+  [data-skill-designer-layout="blueprint"] *::before,
+  [data-skill-designer-layout="blueprint"] *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+}
+
 [data-skill-designer-layout="flat"].skill-designer-vue-root {
   --skill-designer-flat-bg: var(--暗场底板, #09111a);
   --skill-designer-flat-surface: var(--暗场卡片, #111b25);

@@ -17,12 +17,12 @@
   }
 
   function cloneValue(value) {
+    if (value === undefined) return undefined;
     if (typeof structuredClone === 'function') {
       try {
         return structuredClone(value);
       } catch (error) {}
     }
-    if (value === undefined) return undefined;
     try {
       return JSON.parse(JSON.stringify(value));
     } catch (error) {
@@ -47,17 +47,16 @@
   }
 
   function writePath(root, path, value) {
-    const segments = Array.isArray(path) ? path : [];
-    if (!segments.length) return;
+    const parts = Array.isArray(path) ? path : [];
+    if (!parts.length) return;
     let cursor = root;
-    for (let index = 0; index < segments.length - 1; index += 1) {
-      const segment = segments[index];
-      const next = segments[index + 1];
-      if (!cursor[segment] || typeof cursor[segment] !== 'object')
-        cursor[segment] = typeof next === 'number' ? [] : {};
-      cursor = cursor[segment];
+    for (let index = 0; index < parts.length - 1; index += 1) {
+      const part = parts[index];
+      const next = parts[index + 1];
+      if (!cursor[part] || typeof cursor[part] !== 'object') cursor[part] = typeof next === 'number' ? [] : {};
+      cursor = cursor[part];
     }
-    cursor[segments[segments.length - 1]] = value;
+    cursor[parts[parts.length - 1]] = value;
   }
 
   function replaceObject(target, nextValue) {
@@ -95,38 +94,34 @@
     return result;
   }
 
-  function themeTokens(node) {
+  function readThemeTokens(node) {
     if (!node || typeof getComputedStyle !== 'function') return {};
     const source = node.closest?.('.skill-designer-vue-host') || node;
     const computed = getComputedStyle(source);
     return [
-      '--skill-designer-vue-bg',
       '--skill-designer-vue-shell',
       '--skill-designer-vue-editor',
-      '--skill-designer-vue-surface',
-      '--skill-designer-vue-surface-raised',
-      '--skill-designer-vue-surface-floating',
-      '--skill-designer-vue-control-bg',
-      '--skill-designer-vue-popover-bg',
-      '--skill-designer-vue-border',
-      '--skill-designer-vue-border-strong',
+      '--skill-designer-vue-control',
+      '--skill-designer-vue-popover',
       '--skill-designer-vue-text',
       '--skill-designer-vue-muted',
       '--skill-designer-vue-accent',
+      '--skill-designer-vue-accent-secondary',
       '--skill-designer-vue-accent-text',
       '--skill-designer-vue-focus',
-      '--skill-designer-vue-accent-secondary',
-      '--skill-designer-vue-relation',
+      '--skill-designer-vue-border',
       '--skill-designer-vue-danger',
-      '--skill-designer-vue-success',
       '--skill-designer-vue-warning',
+      '--skill-designer-vue-success',
       '--skill-designer-vue-radius',
+      '--skill-designer-vue-cut',
+      '--skill-designer-vue-font',
       '--skill-designer-vue-heading-weight',
       '--skill-designer-vue-body-weight',
-    ].reduce((result, name) => {
+    ].reduce((tokens, name) => {
       const value = computed.getPropertyValue(name).trim();
-      if (value) result[name] = value;
-      return result;
+      if (value) tokens[name] = value;
+      return tokens;
     }, {});
   }
 
@@ -144,7 +139,7 @@
     } = Vue;
 
     const SkillCombobox = defineComponent({
-      name: 'SkillCombobox',
+      name: 'SkillDesignerCombobox',
       props: {
         modelValue: { default: '' },
         options: { type: Array, default: () => [] },
@@ -161,63 +156,61 @@
         const trigger = shallowRef(null);
         const search = shallowRef(null);
         const popupStyle = shallowRef({});
-        const popupTokens = shallowRef({});
-        let listeners = false;
+        let listening = false;
 
         const items = computed(() => normalizeOptions(props.options));
         const filtered = computed(() => {
           const keyword = text(query.value).toLocaleLowerCase();
-          return keyword
-            ? items.value.filter(item =>
-                [item.label, item.description, item.value, item.group]
-                  .some(value => String(value).toLocaleLowerCase().includes(keyword)),
-              )
-            : items.value;
+          if (!keyword) return items.value;
+          return items.value.filter(item =>
+            [item.label, item.description, item.value, item.group]
+              .some(value => String(value).toLocaleLowerCase().includes(keyword)),
+          );
         });
         const selectedLabel = computed(() => {
-          const item = items.value.find(item => String(item.value) === String(props.modelValue));
-          return item ? item.label : text(props.modelValue, '请选择');
+          const selected = items.value.find(item => String(item.value) === String(props.modelValue));
+          return selected ? selected.label : text(props.modelValue, '请选择');
         });
-        const listboxId = `${props.instanceId}-list`;
+        const listId = `${props.instanceId}-list`;
         const activeDescendant = computed(() => {
           const item = filtered.value[activeIndex.value];
-          return item ? `${listboxId}-${item.id}` : '';
+          return item ? `${listId}-${item.id}` : '';
         });
 
         function reposition() {
           if (!open.value || !trigger.value) return;
           const rect = trigger.value.getBoundingClientRect();
-          const width = Math.min(Math.max(220, rect.width), window.innerWidth - 16);
-          const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
-          const below = window.innerHeight - rect.bottom - 12;
-          const above = rect.top - 12;
-          const upward = below < 230 && above > below;
-          const maxHeight = Math.max(160, Math.min(340, upward ? above : below));
+          const width = Math.min(Math.max(220, rect.width), Math.max(180, window.innerWidth - 24));
+          const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12));
+          const below = Math.max(160, window.innerHeight - rect.bottom - 20);
+          const above = Math.max(160, rect.top - 20);
+          const upward = below < 260 && above > below;
+          const maxHeight = Math.min(360, upward ? above : below);
           popupStyle.value = {
-            ...themeTokens(trigger.value),
-            position: 'fixed',
+            ...readThemeTokens(trigger.value),
             left: `${left}px`,
-            top: `${upward ? Math.max(8, rect.top - maxHeight - 6) : rect.bottom + 6}px`,
+            top: `${upward ? Math.max(12, rect.top - maxHeight - 8) : rect.bottom + 8}px`,
             width: `${width}px`,
             maxHeight: `${maxHeight}px`,
-            zIndex: 100000,
           };
-          popupTokens.value = themeTokens(trigger.value);
+        }
+
+        function stopListening() {
+          if (!listening) return;
+          window.removeEventListener('resize', reposition);
+          window.removeEventListener('scroll', reposition, true);
+          document.removeEventListener('pointerdown', onOutside, true);
+          listening = false;
         }
 
         function close(returnFocus = true) {
           if (!open.value) return;
           open.value = false;
-          if (listeners) {
-            window.removeEventListener('resize', reposition);
-            window.removeEventListener('scroll', reposition, true);
-            document.removeEventListener('pointerdown', outside, true);
-            listeners = false;
-          }
+          stopListening();
           if (returnFocus) nextTick(() => trigger.value?.focus());
         }
 
-        function outside(event) {
+        function onOutside(event) {
           const popup = document.getElementById(`${props.instanceId}-popup`);
           if (trigger.value?.contains(event.target) || popup?.contains(event.target)) return;
           close(false);
@@ -235,8 +228,8 @@
             reposition();
             window.addEventListener('resize', reposition);
             window.addEventListener('scroll', reposition, true);
-            document.addEventListener('pointerdown', outside, true);
-            listeners = true;
+            document.addEventListener('pointerdown', onOutside, true);
+            listening = true;
             search.value?.focus();
           });
         }
@@ -258,39 +251,30 @@
             event.preventDefault();
             event.stopPropagation();
             close();
-          } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            return;
+          }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             if (!filtered.value.length) return;
             const step = event.key === 'ArrowDown' ? 1 : -1;
             activeIndex.value = (activeIndex.value + step + filtered.value.length) % filtered.value.length;
-          } else if (event.key === 'Enter') {
+            return;
+          }
+          if (event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            activeIndex.value = event.key === 'Home' ? 0 : Math.max(0, filtered.value.length - 1);
+            return;
+          }
+          if (event.key === 'Enter') {
             event.preventDefault();
             select(filtered.value[activeIndex.value]);
           }
         }
 
-        watch(query, () => {
-          activeIndex.value = 0;
-        });
+        watch(query, () => { activeIndex.value = 0; });
         onBeforeUnmount(() => close(false));
 
-        return {
-          activeDescendant,
-          activeIndex,
-          close,
-          filtered,
-          keydown,
-          listboxId,
-          open,
-          openMenu,
-          popupStyle,
-          popupTokens,
-          query,
-          search,
-          select,
-          selectedLabel,
-          trigger,
-        };
+        return { activeDescendant, activeIndex, close, filtered, keydown, listId, open, openMenu, popupStyle, query, search, select, selectedLabel, trigger };
       },
       template: `
         <div class="skill-designer-vue-combobox">
@@ -301,7 +285,7 @@
             :disabled="disabled"
             :aria-label="label + '：' + selectedLabel"
             :aria-expanded="open ? 'true' : 'false'"
-            :aria-controls="listboxId"
+            :aria-controls="listId"
             :aria-invalid="invalid ? 'true' : 'false'"
             aria-haspopup="listbox"
             @click="open ? close() : openMenu()"
@@ -311,12 +295,7 @@
             <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
           </button>
           <Teleport to="body">
-            <div
-              v-if="open"
-              :id="instanceId + '-popup'"
-              class="skill-designer-vue-popover"
-              :style="{ ...popupStyle, ...popupTokens }"
-            >
+            <div v-if="open" :id="instanceId + '-popup'" class="skill-designer-vue-popover" :style="popupStyle">
               <input
                 ref="search"
                 v-model="query"
@@ -327,25 +306,26 @@
                 :aria-activedescendant="activeDescendant"
                 role="combobox"
                 aria-autocomplete="list"
+                :aria-controls="listId"
                 @keydown="keydown"
               />
-              <div :id="listboxId" class="skill-designer-vue-option-list" role="listbox">
-                <button
-                  v-for="(item, index) in filtered"
-                  :id="listboxId + '-' + item.id"
-                  :key="item.id + '-' + String(item.value)"
-                  type="button"
-                  class="skill-designer-vue-option"
-                  :class="{ active: index === activeIndex, selected: String(item.value) === String(modelValue) }"
-                  role="option"
-                  :aria-selected="String(item.value) === String(modelValue) ? 'true' : 'false'"
-                  @pointermove="activeIndex = index"
-                  @click="select(item)"
-                >
-                  <small v-if="item.group && (index === 0 || filtered[index - 1]?.group !== item.group)">{{ item.group }}</small>
-                  <strong>{{ item.label }}</strong>
-                  <span v-if="item.description">{{ item.description }}</span>
-                </button>
+              <div :id="listId" class="skill-designer-vue-option-list" role="listbox">
+                <template v-for="(item, index) in filtered" :key="item.id + '-' + String(item.value)">
+                  <div v-if="item.group && (index === 0 || filtered[index - 1]?.group !== item.group)" class="skill-designer-vue-option-group">{{ item.group }}</div>
+                  <button
+                    :id="listId + '-' + item.id"
+                    type="button"
+                    class="skill-designer-vue-option"
+                    :class="{ active: index === activeIndex, selected: String(item.value) === String(modelValue) }"
+                    role="option"
+                    :aria-selected="String(item.value) === String(modelValue) ? 'true' : 'false'"
+                    @pointermove="activeIndex = index"
+                    @click="select(item)"
+                  >
+                    <strong>{{ item.label }}</strong>
+                    <span v-if="item.description">{{ item.description }}</span>
+                  </button>
+                </template>
                 <p v-if="!filtered.length" class="skill-designer-vue-empty">没有匹配项</p>
               </div>
             </div>
@@ -355,7 +335,7 @@
     });
 
     const SkillMultiSelect = defineComponent({
-      name: 'SkillMultiSelect',
+      name: 'SkillDesignerMultiSelect',
       components: { SkillCombobox },
       props: {
         modelValue: { type: Array, default: () => [] },
@@ -366,13 +346,13 @@
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
-        const available = computed(() => {
-          const selected = new Set((props.modelValue || []).map(value => String(value)));
-          return normalizeOptions(props.options).filter(item => !selected.has(String(item.value)));
-        });
         const selected = computed(() => {
           const labels = new Map(normalizeOptions(props.options).map(item => [String(item.value), item.label]));
           return (props.modelValue || []).map(value => ({ value, label: labels.get(String(value)) || String(value) }));
+        });
+        const available = computed(() => {
+          const chosen = new Set((props.modelValue || []).map(value => String(value)));
+          return normalizeOptions(props.options).filter(item => !chosen.has(String(item.value)));
         });
         function add(value) {
           emit('update:modelValue', [...(props.modelValue || []), value]);
@@ -384,9 +364,9 @@
       },
       template: `
         <div class="skill-designer-vue-multiselect">
-          <div class="skill-designer-vue-token-list">
+          <div v-if="selected.length" class="skill-designer-vue-token-list">
             <span v-for="item in selected" :key="String(item.value)" class="skill-designer-vue-token">
-              {{ item.label }}
+              <span>{{ item.label }}</span>
               <button type="button" :disabled="disabled" :aria-label="'移除' + item.label" @click="remove(item.value)">
                 <i class="fa-solid fa-xmark" aria-hidden="true"></i>
               </button>
@@ -406,7 +386,7 @@
     });
 
     const SkillSegmented = defineComponent({
-      name: 'SkillSegmented',
+      name: 'SkillDesignerSegmented',
       props: {
         modelValue: { default: '' },
         options: { type: Array, default: () => [] },
@@ -416,42 +396,79 @@
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
+        function optionValue(option) {
+          return option && typeof option === 'object' ? option.value : option;
+        }
+        function optionLabel(option) {
+          return option && typeof option === 'object' ? option.label : option;
+        }
         function keydown(event, index) {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
           event.preventDefault();
-          const options = normalizeOptions(props.options);
+          const count = props.options.length;
+          if (!count) return;
           const next = event.key === 'Home'
             ? 0
             : event.key === 'End'
-              ? options.length - 1
-              : (index + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length;
-          emit('update:modelValue', options[next]?.value);
+              ? count - 1
+              : (index + (event.key === 'ArrowRight' ? 1 : -1) + count) % count;
+          emit('update:modelValue', optionValue(props.options[next]));
           nextTick(() => event.currentTarget.parentElement?.querySelector(`[data-index="${next}"]`)?.focus());
         }
-        return { keydown };
+        return { keydown, optionLabel, optionValue };
       },
       template: `
         <div class="skill-designer-vue-segmented" :class="{ compact }" role="radiogroup" :aria-label="label">
           <button
             v-for="(option, index) in options"
-            :key="String(option.value || option)"
+            :key="String(optionValue(option))"
             :data-index="index"
             type="button"
             role="radio"
-            :aria-checked="String(modelValue) === String(option.value || option) ? 'true' : 'false'"
-            :tabindex="String(modelValue) === String(option.value || option) ? 0 : -1"
-            :class="{ active: String(modelValue) === String(option.value || option) }"
+            :aria-checked="String(modelValue) === String(optionValue(option)) ? 'true' : 'false'"
+            :tabindex="String(modelValue) === String(optionValue(option)) ? 0 : index === 0 ? 0 : -1"
+            :class="{ active: String(modelValue) === String(optionValue(option)) }"
             :disabled="disabled"
-            @click="$emit('update:modelValue', option.value || option)"
+            @click="$emit('update:modelValue', optionValue(option))"
             @keydown="keydown($event, index)"
-          >{{ option.label || option }}</button>
+          >{{ optionLabel(option) }}</button>
+        </div>
+      `,
+    });
+
+    const SkillDurationInput = defineComponent({
+      name: 'SkillDesignerDurationInput',
+      props: {
+        modelValue: { default: 0 },
+        disabled: Boolean,
+        label: { type: String, default: '有效时长' },
+      },
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const minutesPerTick = 10;
+        const parts = computed(() => {
+          const total = Math.max(0, Math.floor(Number(props.modelValue) || 0) * minutesPerTick);
+          return { days: Math.floor(total / 1440), hours: Math.floor((total % 1440) / 60), minutes: total % 60 };
+        });
+        function update(part, value) {
+          const next = { ...parts.value, [part]: Math.max(0, Math.floor(Number(value) || 0)) };
+          const totalMinutes = next.days * 1440 + next.hours * 60 + next.minutes;
+          emit('update:modelValue', Math.max(0, Math.round(totalMinutes / minutesPerTick)));
+        }
+        return { parts, update };
+      },
+      template: `
+        <div class="skill-designer-vue-duration" role="group" :aria-label="label">
+          <label><input type="number" min="0" :value="parts.days" :disabled="disabled" aria-label="日" @input="update('days', $event.target.value)"><span>日</span></label>
+          <label><input type="number" min="0" max="23" :value="parts.hours" :disabled="disabled" aria-label="时" @input="update('hours', $event.target.value)"><span>时</span></label>
+          <label><input type="number" min="0" max="59" step="10" :value="parts.minutes" :disabled="disabled" aria-label="分" @input="update('minutes', $event.target.value)"><span>分</span></label>
         </div>
       `,
     });
 
     const SkillField = defineComponent({
-      name: 'SkillField',
-      components: { SkillCombobox, SkillMultiSelect, SkillSegmented },
+      name: 'SkillDesignerField',
+      components: { SkillCombobox, SkillDurationInput, SkillMultiSelect, SkillSegmented },
       props: {
         descriptor: { type: Object, required: true },
         modelValue: { default: '' },
@@ -467,12 +484,13 @@
         return { update };
       },
       template: `
-        <label class="skill-designer-vue-field-shell" :class="{ 'has-error': error }">
-          <span class="skill-designer-vue-field-label">
-            <span>{{ descriptor.label }}</span>
-            <b v-if="descriptor.required">*</b>
-            <small v-if="descriptor.unit">{{ descriptor.unit }}</small>
-          </span>
+        <div class="skill-designer-vue-field-shell" :class="{ 'has-error': error }">
+          <div class="skill-designer-vue-label-row">
+            <label class="skill-designer-vue-label" :for="instanceId">
+              <span>{{ descriptor.label }}</span><b v-if="descriptor.required">*</b>
+            </label>
+            <span v-if="descriptor.unit" class="skill-designer-vue-field-unit">{{ descriptor.unit }}</span>
+          </div>
           <SkillSegmented
             v-if="descriptor.control === 'segmented'"
             :model-value="modelValue"
@@ -500,44 +518,119 @@
             :invalid="!!error"
             @update:model-value="$emit('update:modelValue', $event)"
           />
-          <input
-            v-else-if="descriptor.control === 'toggle'"
-            class="skill-designer-vue-toggle"
-            type="checkbox"
-            :checked="modelValue === true || modelValue === '启用' || modelValue === '是'"
+          <SkillDurationInput
+            v-else-if="descriptor.control === 'duration'"
+            :model-value="modelValue"
             :disabled="disabled"
-            @change="$emit('update:modelValue', $event.target.checked)"
+            :label="descriptor.label"
+            @update:model-value="$emit('update:modelValue', $event)"
           />
-          <input
-            v-else-if="descriptor.control !== 'textarea' && descriptor.control !== 'static'"
-            class="skill-designer-vue-control"
-            :type="descriptor.control === 'number' ? 'number' : 'text'"
-            :inputmode="descriptor.control === 'number' ? 'numeric' : descriptor.control === 'numberOrPercent' ? 'decimal' : 'text'"
+          <label v-else-if="descriptor.control === 'toggle'" class="skill-designer-vue-toggle">
+            <input :id="instanceId" type="checkbox" :checked="modelValue === true || modelValue === '启用' || modelValue === '是'" :disabled="disabled" @change="$emit('update:modelValue', $event.target.checked)">
+            <span aria-hidden="true"></span><em>{{ modelValue === true || modelValue === '启用' || modelValue === '是' ? '启用' : '关闭' }}</em>
+          </label>
+          <textarea
+            v-else-if="descriptor.control === 'textarea'"
+            :id="instanceId"
+            class="skill-designer-vue-control skill-designer-vue-textarea"
             :value="modelValue"
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
             :aria-invalid="error ? 'true' : 'false'"
             :aria-required="descriptor.required ? 'true' : 'false'"
             @input="update"
-          />
-          <textarea
-            v-else-if="descriptor.control === 'textarea'"
-            class="skill-designer-vue-control skill-designer-vue-textarea"
+          ></textarea>
+          <span v-else-if="descriptor.control === 'static'" class="skill-designer-vue-static">{{ modelValue || descriptor.defaultValue || '未设置' }}</span>
+          <input
+            v-else
+            :id="instanceId"
+            class="skill-designer-vue-control"
+            :type="descriptor.control === 'number' ? 'number' : 'text'"
+            :inputmode="descriptor.control === 'number' ? 'numeric' : descriptor.control === 'numberOrPercent' ? 'decimal' : 'text'"
             :value="modelValue"
+            :min="descriptor.min"
+            :max="descriptor.max"
+            :step="descriptor.step"
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
             :aria-invalid="error ? 'true' : 'false'"
+            :aria-required="descriptor.required ? 'true' : 'false'"
             @input="update"
-          ></textarea>
-          <span v-else class="skill-designer-vue-static">{{ modelValue || descriptor.defaultValue || '未设置' }}</span>
-          <small v-if="descriptor.help" class="skill-designer-vue-field-help">{{ descriptor.help }}</small>
-          <small v-if="error" class="skill-designer-vue-field-error">{{ error.message }}</small>
-        </label>
+          >
+          <small v-if="descriptor.help" class="skill-designer-vue-help-text">{{ descriptor.help }}</small>
+          <small v-if="error" class="skill-designer-vue-field-error" :id="instanceId + '-error'">{{ error.message }}</small>
+        </div>
       `,
     });
 
+    function createFieldPanel(name, tab) {
+      return defineComponent({
+        name,
+        components: { SkillField },
+        props: {
+          draft: { type: Object, required: true },
+          fields: { type: Array, default: () => [] },
+          disabled: Boolean,
+          instanceId: { type: String, required: true },
+          errorPaths: { type: Array, default: () => [] },
+        },
+        emits: ['patch'],
+        setup(props, { emit }) {
+          const groupLabels = {
+            identity: '技能身份',
+            target: '目标与对象',
+            value: '资源与数值',
+            timing: '时间与次数',
+            scaling: '成长与规则',
+            condition: '条件与限制',
+          };
+          const groupedFields = computed(() => {
+            const groups = new Map();
+            (props.fields || []).forEach(field => {
+              const key = field.group || 'identity';
+              if (!groups.has(key)) groups.set(key, { key, label: groupLabels[key] || '其他设置', fields: [] });
+              groups.get(key).fields.push(field);
+            });
+            return [...groups.values()];
+          });
+          function valueFor(field) {
+            return readPath(props.draft, field.path || [field.key]);
+          }
+          function errorFor(field) {
+            const current = pathKey(field.path || [field.key]);
+            return props.errorPaths.find(error => String(error?.path || '') === current);
+          }
+          function patch(field, value) {
+            emit('patch', { path: field.path || [field.key], value, dependent: !!field.dependent });
+          }
+          return { errorFor, groupedFields, patch, tab, valueFor };
+        },
+        template: `
+          <section class="skill-designer-vue-form-page" :data-panel-tab="tab" :id="instanceId + '-panel'">
+            <div v-for="group in groupedFields" :key="group.key" class="skill-designer-vue-field-group">
+              <header class="skill-designer-vue-group-heading"><h3>{{ group.label }}</h3><span>{{ group.fields.length }} 项</span></header>
+              <div class="skill-designer-vue-field-grid">
+                <template v-for="field in group.fields" :key="field.id || field.key">
+                  <details v-if="field.presentation === 'advanced'" class="skill-designer-vue-advanced-field" :class="{ wide: field.wide }">
+                    <summary><span>{{ field.label }}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
+                    <SkillField :descriptor="field" :model-value="valueFor(field)" :disabled="disabled" :instance-id="instanceId + '-' + (field.id || field.key)" :error="errorFor(field)" @update:model-value="patch(field, $event)" />
+                  </details>
+                  <SkillField v-else :class="{ wide: field.wide }" :descriptor="field" :model-value="valueFor(field)" :disabled="disabled" :instance-id="instanceId + '-' + (field.id || field.key)" :error="errorFor(field)" @update:model-value="patch(field, $event)" />
+                </template>
+              </div>
+            </div>
+            <p v-if="!groupedFields.length" class="skill-designer-vue-empty-inline">当前页面暂无可编辑字段。</p>
+          </section>
+        `,
+      });
+    }
+
+    const SkillBasicPanel = createFieldPanel('SkillDesignerBasicPanel', 'basic');
+    const SkillCostPanel = createFieldPanel('SkillDesignerCostPanel', 'cost');
+    const SkillDescriptionPanel = createFieldPanel('SkillDesignerDescriptionPanel', 'description');
+
     const SkillConditionLine = defineComponent({
-      name: 'SkillConditionLine',
+      name: 'SkillDesignerConditionLine',
       components: { SkillCombobox, SkillField, SkillSegmented },
       props: {
         condition: { type: Object, required: true },
@@ -553,71 +646,30 @@
       setup(props, { emit }) {
         const model = computed(() => props.modelApi.getConditionModel(props.condition || {}));
         const type = computed(() => text(props.condition?.类型, '生命比例'));
-        const objectVisible = computed(() =>
-          !['目标', '使用者', '当前行动', '环境满足', '时间', '连携前提'].includes(type.value),
-        );
+        const objectVisible = computed(() => !['目标', '使用者', '当前行动', '环境满足', '时间', '连携前提'].includes(type.value));
         const valueKey = computed(() => model.value.valueField?.key || '');
-        const conditionPath = key => [...props.path, key];
-        const errorFor = key => props.errorPaths.find(error => {
+        function conditionPath(key) { return [...props.path, key]; }
+        function errorFor(key) {
           const current = pathKey(conditionPath(key));
-          return String(error?.path || '') === current;
-        });
-        return { conditionPath, errorFor, model, objectVisible, type, valueKey, emit };
+          return props.errorPaths.find(error => String(error?.path || '') === current);
+        }
+        return { conditionPath, errorFor, emit, model, objectVisible, type, valueKey };
       },
+      methods: { pathKey },
       template: `
         <div class="skill-designer-vue-condition-line" :data-field-path="pathKey(path)">
           <span class="skill-designer-vue-logic-word">{{ index === 0 ? '如果' : '并且' }}</span>
-          <SkillCombobox
-            :model-value="condition.类型"
-            :options="modelApi.conditionTypeOptions"
-            :disabled="disabled"
-            label="条件类型"
-            :instance-id="instanceId + '-type'"
-            @update:model-value="emit('patch', { path: conditionPath('类型'), value: $event, dependent: true })"
-          />
-          <SkillCombobox
-            v-if="objectVisible"
-            :model-value="condition.对象 || '目标'"
-            :options="modelApi.conditionObjectOptions"
-            :disabled="disabled"
-            label="作用对象"
-            :instance-id="instanceId + '-object'"
-            @update:model-value="emit('patch', { path: conditionPath('对象'), value: $event })"
-          />
-          <SkillSegmented
-            v-if="model.showCompare"
-            :model-value="condition.比较"
-            :options="model.compareOptions"
-            :disabled="disabled"
-            :label="'比较方式：' + type"
-            compact
-            @update:model-value="emit('patch', { path: conditionPath('比较'), value: $event, dependent: true })"
-          />
-          <SkillField
-            v-if="model.valueField"
-            :descriptor="model.valueField"
-            :model-value="condition[valueKey] || ''"
-            :disabled="disabled"
-            :instance-id="instanceId + '-value'"
-            :error="errorFor(valueKey)"
-            @update:model-value="emit('patch', { path: conditionPath(valueKey), value: $event })"
-          />
-          <button
-            v-if="count > 1"
-            type="button"
-            class="skill-designer-vue-icon-button danger"
-            :disabled="disabled"
-            aria-label="删除判定条件"
-            title="删除判定条件"
-            @click="emit('remove')"
-          ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+          <SkillCombobox :model-value="condition.类型" :options="modelApi.conditionTypeOptions" :disabled="disabled" label="条件类型" :instance-id="instanceId + '-type'" @update:model-value="emit('patch', { path: conditionPath('类型'), value: $event, dependent: true })" />
+          <SkillCombobox v-if="objectVisible" :model-value="condition.对象 || '目标'" :options="modelApi.conditionObjectOptions" :disabled="disabled" label="作用对象" :instance-id="instanceId + '-object'" @update:model-value="emit('patch', { path: conditionPath('对象'), value: $event })" />
+          <SkillSegmented v-if="model.showCompare" :model-value="condition.比较" :options="model.compareOptions" :disabled="disabled" :label="'比较方式：' + type" compact @update:model-value="emit('patch', { path: conditionPath('比较'), value: $event, dependent: true })" />
+          <SkillField v-if="model.valueField" :descriptor="model.valueField" :model-value="condition[valueKey] || ''" :disabled="disabled" :instance-id="instanceId + '-value'" :error="errorFor(valueKey)" @update:model-value="emit('patch', { path: conditionPath(valueKey), value: $event })" />
+          <button v-if="count > 1" type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除条件" title="删除条件" @click="emit('remove')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
         </div>
       `,
-      methods: { pathKey },
     });
 
     const SkillBranchEffect = defineComponent({
-      name: 'SkillBranchEffect',
+      name: 'SkillDesignerBranchEffect',
       components: { SkillCombobox, SkillField },
       props: {
         effect: { type: Object, required: true },
@@ -627,75 +679,42 @@
         disabled: Boolean,
         instanceId: { type: String, required: true },
         errorPaths: { type: Array, default: () => [] },
-        depth: { type: Number, default: 1 },
       },
       emits: ['patch', 'remove'],
       setup(props, { emit }) {
-        const editing = shallowRef(false);
-        const model = computed(() => props.modelApi.getPrototypeModel(props.effect, {
-          depth: props.depth,
-          禁用条件分支: true,
-        }));
-        const fields = computed(() =>
-          model.value.fields.filter(field =>
-            field.presentation !== 'advanced' &&
-            !['conditionList', 'effectList'].includes(field.control),
-          ).slice(0, 4),
-        );
+        const expanded = shallowRef(false);
+        const model = computed(() => props.modelApi.getPrototypeModel(props.effect, { depth: 1, 禁用条件分支: true }));
+        const fields = computed(() => model.value.fields.filter(field => field.presentation !== 'advanced' && !['conditionList', 'effectList'].includes(field.control)).slice(0, 4));
         const summary = computed(() => {
-          const prototype = text(props.effect?.原型, '未选择效果');
-          const target = text(props.effect?.目标, '');
-          const values = fields.value
-            .map(field => text(props.effect?.[field.key], ''))
-            .filter(Boolean)
-            .slice(0, 2)
-            .join(' · ');
-          return [prototype, target, values].filter(Boolean).join(' / ');
+          const values = fields.value.map(field => text(readPath(props.effect, [field.key]), '')).filter(Boolean).slice(0, 2);
+          return [text(props.effect?.原型, '未选择效果'), text(props.effect?.目标, ''), ...values].filter(Boolean).join(' · ');
         });
         function patch(field, value) {
           emit('patch', { path: [...props.path, field.key], value, dependent: !!field.dependent });
         }
-        return { editing, fields, model, patch, summary, emit };
+        return { emit, expanded, fields, model, patch, readPath, summary };
       },
       template: `
-        <div class="skill-designer-vue-branch-effect" :class="{ editing }">
-          <div class="skill-designer-vue-branch-effect-line">
-            <span class="skill-designer-vue-branch-connector" aria-hidden="true"></span>
+        <div class="skill-designer-vue-branch-effect" :class="{ expanded }">
+          <div class="skill-designer-vue-branch-effect-row">
+            <span class="skill-designer-vue-relationship-line" aria-hidden="true"></span>
             <strong>{{ relation }}</strong>
-            <button type="button" class="skill-designer-vue-branch-summary" :aria-expanded="editing ? 'true' : 'false'" @click="editing = !editing">
-              <span>{{ summary }}</span>
-              <i :class="editing ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+            <button type="button" class="skill-designer-vue-branch-summary" :aria-expanded="expanded ? 'true' : 'false'" @click="expanded = !expanded">
+              <span>{{ summary }}</span><i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
             </button>
-            <button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除分支效果" title="删除分支效果" @click="emit('remove')">
-              <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-            </button>
+            <button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除分支效果" title="删除分支效果" @click="emit('remove')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
           </div>
-          <div v-if="editing" class="skill-designer-vue-inline-editor">
-            <SkillCombobox
-              :model-value="effect.原型"
-              :options="modelApi.prototypeOptions"
-              :disabled="disabled"
-              label="分支原型"
-              :instance-id="instanceId + '-prototype'"
-              @update:model-value="patch({ key: '原型', dependent: true }, $event)"
-            />
-            <SkillField
-              v-for="field in fields.filter(item => item.key !== '原型')"
-              :key="field.key"
-              :descriptor="field"
-              :model-value="effect[field.key] ?? field.defaultValue ?? ''"
-              :disabled="disabled"
-              :instance-id="instanceId + '-' + field.key"
-              @update:model-value="patch(field, $event)"
-            />
+          <div v-if="expanded" class="skill-designer-vue-branch-editor">
+            <SkillCombobox :model-value="effect.原型" :options="modelApi.prototypeOptions" :disabled="disabled" label="分支效果原型" :instance-id="instanceId + '-prototype'" @update:model-value="patch({ key: '原型', dependent: true }, $event)" />
+            <SkillField v-for="field in fields.filter(item => item.key !== '原型')" :key="field.key" :descriptor="field" :model-value="readPath(effect, [field.key]) ?? field.defaultValue ?? ''" :disabled="disabled" :instance-id="instanceId + '-' + field.key" @update:model-value="patch(field, $event)" />
           </div>
         </div>
       `,
     });
 
     const SkillConditionBranch = defineComponent({
-      name: 'SkillConditionBranch',
-      components: { SkillCombobox, SkillConditionLine, SkillSegmented, SkillBranchEffect },
+      name: 'SkillDesignerConditionBranch',
+      components: { SkillConditionLine, SkillSegmented, SkillBranchEffect },
       props: {
         branch: { type: Object, required: true },
         path: { type: Array, required: true },
@@ -711,79 +730,33 @@
         const action = computed(() => text(props.branch.处理, '生效'));
         const effectKey = computed(() => action.value === '追加效果' ? '追加效果' : '替换效果');
         const effects = computed(() => Array.isArray(props.branch[effectKey.value]) ? props.branch[effectKey.value] : []);
-        const branchPath = key => [...props.path, key];
-        const conditionPath = index => [...props.path, '条件', index];
-        function patch(path, value, dependent = false) {
-          emit('patch', { path, value, dependent });
-        }
-        return { action, branchPath, conditionPath, conditions, effects, effectKey, emit, patch };
+        function branchPath(key) { return [...props.path, key]; }
+        function emitPatch(path, value, dependent = false) { emit('patch', { path, value, dependent }); }
+        return { action, branchPath, conditions, effectKey, effects, emit, emitPatch };
       },
       template: `
         <section class="skill-designer-vue-condition-branch">
-          <header class="skill-designer-vue-branch-head">
-            <span>条件 {{ index + 1 }}</span>
-            <button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除条件分支" title="删除条件分支" @click="emit('structure', { type: 'remove', path: path.slice(0, -1), index })">
-              <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-            </button>
-          </header>
+          <header class="skill-designer-vue-branch-heading"><span>条件 {{ index + 1 }}</span><button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除条件分支" title="删除条件分支" @click="emit('structure', { type: 'remove', path: path.slice(0, -1), index })"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button></header>
           <div class="skill-designer-vue-condition-lines">
-            <SkillConditionLine
-              v-for="(condition, conditionIndex) in conditions"
-              :key="conditionIndex"
-              :condition="condition"
-              :path="conditionPath(conditionIndex)"
-              :index="conditionIndex"
-              :count="conditions.length"
-              :model-api="modelApi"
-              :disabled="disabled"
-              :instance-id="instanceId + '-condition-' + conditionIndex"
-              :error-paths="errorPaths"
-              @patch="emit('patch', $event)"
-              @remove="emit('structure', { type: 'remove', path: branchPath('条件'), index: conditionIndex })"
-            />
+            <SkillConditionLine v-for="(condition, conditionIndex) in conditions" :key="conditionIndex" :condition="condition" :path="[...branchPath('条件'), conditionIndex]" :index="conditionIndex" :count="conditions.length" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-condition-' + conditionIndex" :error-paths="errorPaths" @patch="emit('patch', $event)" @remove="emit('structure', { type: 'remove', path: branchPath('条件'), index: conditionIndex })" />
           </div>
-          <div class="skill-designer-vue-branch-actions">
-            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled" @click="emit('structure', { type: 'add-condition', path: branchPath('条件') })">
-              <i class="fa-solid fa-plus" aria-hidden="true"></i>并添加条件
-            </button>
-            <SkillSegmented
-              :model-value="branch.处理"
-              :options="modelApi.conditionActionOptions"
-              :disabled="disabled"
-              label="满足后的处理"
-              compact
-              @update:model-value="emit('patch', { path: branchPath('处理'), value: $event, dependent: true })"
-            />
+          <div class="skill-designer-vue-branch-decision">
+            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || conditions.length >= 3" @click="emit('structure', { type: 'add-condition', path: branchPath('条件') })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加条件</button>
+            <SkillSegmented :model-value="branch.处理" :options="modelApi.conditionActionOptions" :disabled="disabled" label="满足后的处理" compact @update:model-value="emitPatch(branchPath('处理'), $event, true)" />
           </div>
-          <div v-if="action === '生效' || action === '禁用'" class="skill-designer-vue-branch-result">
-            <span class="skill-designer-vue-logic-word">{{ action === '禁用' ? '否则' : '满足后' }}</span>
-            <strong>{{ action === '禁用' ? '禁用当前效果' : '保持当前效果' }}</strong>
-          </div>
+          <div v-if="action === '生效' || action === '禁用'" class="skill-designer-vue-branch-outcome"><span class="skill-designer-vue-logic-word">{{ action === '禁用' ? '否则' : '满足后' }}</span><strong>{{ action === '禁用' ? '禁用当前效果' : '保持当前效果' }}</strong></div>
           <div v-else class="skill-designer-vue-branch-effects">
-            <SkillBranchEffect
-              v-for="(effect, effectIndex) in effects"
-              :key="effectIndex"
-              :effect="effect"
-              :path="[...branchPath(effectKey), effectIndex]"
-              :relation="action === '追加效果' ? '追加' : '替换'"
-              :model-api="modelApi"
-              :disabled="disabled"
-              :instance-id="instanceId + '-branch-' + effectIndex"
-              :depth="1"
-              @patch="emit('patch', $event)"
-              @remove="emit('structure', { type: 'remove', path: branchPath(effectKey), index: effectIndex })"
-            />
-            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || effects.length >= Number(modelApi.nestedPrototypeLimit || 4)" @click="emit('structure', { type: 'add-prototype', path: branchPath(effectKey) })">
-              <i class="fa-solid fa-plus" aria-hidden="true"></i>添加{{ action === '追加效果' ? '追加' : '替换' }}效果
-            </button>
+            <SkillBranchEffect v-for="(effect, effectIndex) in effects" :key="effectIndex" :effect="effect" :path="[...branchPath(effectKey), effectIndex]" :relation="action === '追加效果' ? '追加' : '替换'" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-effect-' + effectIndex" :error-paths="errorPaths" @patch="emit('patch', $event)" @remove="emit('structure', { type: 'remove', path: branchPath(effectKey), index: effectIndex })" />
+            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || effects.length >= Number(modelApi.nestedPrototypeLimit || 2)" @click="emit('structure', { type: 'add-prototype', path: branchPath(effectKey) })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加{{ action === '追加效果' ? '追加' : '替换' }}效果</button>
+            <small v-if="effects.length >= Number(modelApi.nestedPrototypeLimit || 2)" class="skill-designer-vue-limit-note">嵌套效果最多支持 2 层。</small>
           </div>
         </section>
       `,
     });
 
     const SkillPrototypeRow = defineComponent({
-      name: 'SkillPrototypeRow',
-      components: { SkillCombobox, SkillConditionBranch, SkillField, SkillBranchEffect },
+      name: 'SkillDesignerPrototypeRow',
+      components: { SkillCombobox, SkillConditionBranch, SkillField },
       props: {
         effect: { type: Object, required: true },
         path: { type: Array, required: true },
@@ -793,118 +766,55 @@
         disabled: Boolean,
         instanceId: { type: String, required: true },
         errorPaths: { type: Array, default: () => [] },
-        expandedByDefault: Boolean,
         collapseMode: { type: String, default: 'normal' },
       },
       emits: ['patch', 'structure'],
       setup(props, { emit }) {
-        const expanded = shallowRef(props.expandedByDefault);
+        const expanded = shallowRef(props.index === 0);
         const model = computed(() => props.modelApi.getPrototypeModel(props.effect, { depth: 0 }));
-        const fields = computed(() =>
-          model.value.fields.filter(field =>
-            field.key !== '原型' &&
-            field.presentation !== 'advanced' &&
-            !['conditionList', 'effectList'].includes(field.control),
-          ),
-        );
-        const conditions = computed(() =>
-          Array.isArray(props.effect.条件分支) ? props.effect.条件分支 : [],
-        );
-        const summary = computed(() => {
-          const name = text(props.effect.原型, '未选择效果');
-          const target = text(props.effect.目标, '');
-          const conditionText = conditions.value.length ? `${conditions.value.length} 个条件分支` : '无条件分支';
-          return [name, target, conditionText].filter(Boolean).join(' · ');
-        });
+        const fields = computed(() => model.value.fields.filter(field => field.key !== '原型' && field.presentation !== 'advanced' && !['conditionList', 'effectList'].includes(field.control)));
+        const conditions = computed(() => Array.isArray(props.effect.条件分支) ? props.effect.条件分支 : []);
         const hasError = computed(() => props.errorPaths.some(error => {
-          const errorPath = String(error?.path || '');
           const current = pathKey([...props.path, props.index]);
-          return errorPath === current || errorPath.startsWith(`${current}.`);
+          return String(error?.path || '') === current || String(error?.path || '').startsWith(`${current}.`);
         }));
-        const branchPath = [...props.path, props.index, '条件分支'];
-        function patch(field, value) {
-          emit('patch', { path: [...props.path, props.index, field.key], value, dependent: !!field.dependent });
-        }
-        function toggle() {
-          if (props.collapseMode !== 'normal') return;
-          expanded.value = !expanded.value;
-        }
-        return { branchPath, conditions, expanded, fields, hasError, model, patch, summary, toggle, emit };
+        const summary = computed(() => [text(props.effect?.原型, '未选择效果'), text(props.effect?.目标, ''), conditions.value.length ? `${conditions.value.length} 个条件分支` : '无条件分支'].filter(Boolean).join(' · '));
+        function patch(field, value) { emit('patch', { path: [...props.path, props.index, field.key], value, dependent: !!field.dependent }); }
+        function toggle() { if (props.collapseMode === 'normal') expanded.value = !expanded.value; }
+        return { conditions, emit, expanded, fields, hasError, patch, readPath, summary, toggle };
       },
+      methods: { pathKey, readPath },
       template: `
-        <section class="skill-designer-vue-prototype-row" :class="{ expanded, 'has-error': hasError }" :data-prototype-path="pathKey([...path, index])">
-          <header class="skill-designer-vue-prototype-line">
-            <div class="skill-designer-vue-prototype-mark">
-              <span>原型 {{ index + 1 }}</span>
-              <b>主效果</b>
-            </div>
-            <SkillCombobox
-              :model-value="effect.原型"
-              :options="modelApi.prototypeOptions"
-              :disabled="disabled"
-              label="主效果原型"
-              :instance-id="instanceId + '-prototype'"
-              @update:model-value="patch({ key: '原型', dependent: true }, $event)"
-            />
-            <button type="button" class="skill-designer-vue-icon-button" :aria-label="expanded ? '折叠原型' : '展开原型'" :title="expanded ? '折叠原型' : '展开原型'" @click="toggle">
-              <i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
-            </button>
-            <button v-if="index > 0" type="button" class="skill-designer-vue-icon-button" aria-label="上移原型" title="上移原型" :disabled="disabled" @click="emit('structure', { type: 'move-up', path, index })">
-              <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-            </button>
-            <button v-if="index < count - 1" type="button" class="skill-designer-vue-icon-button" aria-label="下移原型" title="下移原型" :disabled="disabled" @click="emit('structure', { type: 'move-down', path, index })">
-              <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="skill-designer-vue-icon-button" aria-label="复制原型" title="复制原型" :disabled="disabled" @click="emit('structure', { type: 'duplicate', path, index })">
-              <i class="fa-solid fa-copy" aria-hidden="true"></i>
-            </button>
-            <button v-if="count > 1" type="button" class="skill-designer-vue-icon-button danger" aria-label="删除原型" title="删除原型" :disabled="disabled" @click="emit('structure', { type: 'remove', path, index })">
-              <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-            </button>
+        <article class="skill-designer-vue-prototype" :class="{ expanded, 'has-error': hasError }" :data-prototype-path="pathKey([...path, index])">
+          <header class="skill-designer-vue-prototype-heading">
+            <div class="skill-designer-vue-prototype-identity"><span class="skill-designer-vue-index">{{ String(index + 1).padStart(2, '0') }}</span><span>原型 {{ index + 1 }}</span><b>主效果</b></div>
+            <SkillCombobox :model-value="effect.原型" :options="modelApi.prototypeOptions" :disabled="disabled" label="主效果原型" :instance-id="instanceId + '-prototype'" @update:model-value="patch({ key: '原型', dependent: true }, $event)" />
+            <button type="button" class="skill-designer-vue-icon-button" :aria-label="expanded ? '折叠原型' : '展开原型'" :title="expanded ? '折叠原型' : '展开原型'" @click="toggle"><i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i></button>
+            <button v-if="index > 0" type="button" class="skill-designer-vue-icon-button" :disabled="disabled" aria-label="上移原型" title="上移原型" @click="emit('structure', { type: 'move-up', path, index })"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+            <button v-if="index < count - 1" type="button" class="skill-designer-vue-icon-button" :disabled="disabled" aria-label="下移原型" title="下移原型" @click="emit('structure', { type: 'move-down', path, index })"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
+            <button type="button" class="skill-designer-vue-icon-button" :disabled="disabled" aria-label="复制原型" title="复制原型" @click="emit('structure', { type: 'duplicate', path, index })"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
+            <button v-if="count > 1" type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除原型" title="删除原型" @click="emit('structure', { type: 'remove', path, index })"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
           </header>
           <p class="skill-designer-vue-prototype-summary">{{ summary }}</p>
-          <div v-if="expanded" class="skill-designer-vue-prototype-body">
-            <div class="skill-designer-vue-inline-fields">
-              <SkillField
-                v-for="field in fields"
-                :key="field.key"
-                :descriptor="field"
-                :model-value="effect[field.key] ?? field.defaultValue ?? ''"
-                :disabled="disabled"
-                :instance-id="instanceId + '-' + field.key"
-                @update:model-value="patch(field, $event)"
-              />
+          <div v-if="expanded" class="skill-designer-vue-prototype-content">
+            <div class="skill-designer-vue-field-grid">
+              <SkillField v-for="field in fields" :key="field.key" :descriptor="field" :model-value="readPath(effect, [field.key]) ?? field.defaultValue ?? ''" :disabled="disabled" :instance-id="instanceId + '-' + field.key" :error="errorPaths.find(error => String(error?.path || '') === pathKey([...path, index, field.key]))" @update:model-value="patch(field, $event)" />
             </div>
             <div v-if="conditions.length" class="skill-designer-vue-condition-stack">
-              <SkillConditionBranch
-                v-for="(branch, branchIndex) in conditions"
-                :key="branchIndex"
-                :branch="branch"
-                :path="[...branchPath, branchIndex]"
-                :index="branchIndex"
-                :model-api="modelApi"
-                :disabled="disabled"
-                :instance-id="instanceId + '-condition-' + branchIndex"
-                :error-paths="errorPaths"
-                @patch="emit('patch', $event)"
-                @structure="emit('structure', $event)"
-              />
+              <SkillConditionBranch v-for="(branch, branchIndex) in conditions" :key="branchIndex" :branch="branch" :path="[...path, index, '条件分支', branchIndex]" :index="branchIndex" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-branch-' + branchIndex" :error-paths="errorPaths" @patch="emit('patch', $event)" @structure="emit('structure', $event)" />
             </div>
             <div class="skill-designer-vue-prototype-footer">
-              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || conditions.length >= 3" :title="conditions.length >= 3 ? '每个原型最多 3 个条件分支' : '添加条件分支'" @click="emit('structure', { type: 'add-branch', path: branchPath })">
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>添加条件分支
-              </button>
+              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || conditions.length >= 3" @click="emit('structure', { type: 'add-branch', path: [...path, index, '条件分支'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加条件分支</button>
               <span v-if="conditions.length >= 3" class="skill-designer-vue-limit-note">已达到 3 个条件分支上限</span>
             </div>
           </div>
-        </section>
+        </article>
       `,
-      methods: { pathKey },
     });
 
     const SkillEffectPanel = defineComponent({
-      name: 'SkillEffectPanel',
-      components: { SkillCombobox, SkillField, SkillPrototypeRow },
+      name: 'SkillDesignerEffectPanel',
+      components: { SkillField, SkillPrototypeRow },
       props: {
         draft: { type: Object, required: true },
         modelApi: { type: Object, required: true },
@@ -917,168 +827,83 @@
       setup(props, { emit }) {
         const effects = computed(() => Array.isArray(props.draft.prototypeEffects) ? props.draft.prototypeEffects : []);
         const sideEffects = computed(() => Array.isArray(props.draft.副作用列表) ? props.draft.副作用列表 : []);
-        const sideEffectFields = item => props.modelApi.getSideEffectModel(item || {}).fields || [];
-        function sideEffectPatch(index, field, value) {
-          emit('patch', { path: ['副作用列表', index, field.key], value, dependent: !!field.dependent });
-        }
-        return { effects, sideEffectFields, sideEffects, sideEffectPatch, emit };
+        function sideEffectFields(item) { return props.modelApi.getSideEffectModel(item || {}).fields || []; }
+        function patchSideEffect(index, field, value) { emit('patch', { path: ['副作用列表', index, field.key], value, dependent: !!field.dependent }); }
+        return { effects, emit, patchSideEffect, readPath, sideEffectFields, sideEffects };
       },
       template: `
-        <div class="skill-designer-vue-effect-page">
-          <section class="skill-designer-vue-effect-intro">
-            <div>
-              <span class="skill-designer-vue-eyebrow">效果编排</span>
-              <h2>先读懂效果链，再编辑细节</h2>
-              <p>每个原型是一行主机制；条件和追加/替换效果沿着这行展开。</p>
+        <section class="skill-designer-vue-effect-page" id="skill-designer-effect-content">
+          <div class="skill-designer-vue-effect-toolbar">
+            <div><span class="skill-designer-vue-section-kicker">效果编排</span><h2>先建立主效果，再补充条件和分支</h2><p>原型按顺序平铺；复杂关系用短线、标签和自然语言表达。</p></div>
+            <div class="skill-designer-vue-action-row">
+              <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
+              <button type="button" class="skill-designer-vue-text-button" :disabled="disabled" @click="emit('view', 'all')"><i class="fa-solid fa-compress" aria-hidden="true"></i>折叠全部</button>
+              <button type="button" class="skill-designer-vue-text-button" :disabled="disabled" @click="emit('view', 'errors')"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>仅展开错误</button>
             </div>
-            <div class="skill-designer-vue-effect-actions">
-              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
-              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled" @click="emit('view', 'all')"><i class="fa-solid fa-compress" aria-hidden="true"></i>折叠全部</button>
-              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled" @click="emit('view', 'errors')"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>仅展开错误</button>
-            </div>
-          </section>
-          <section v-if="!effects.length" class="skill-designer-vue-empty-state">
-            <strong>还没有效果原型</strong>
-            <span>先添加一个主效果，之后再配置条件、追加或替换效果。</span>
-            <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
-          </section>
-          <div v-else class="skill-designer-vue-prototype-list">
-            <SkillPrototypeRow
-              v-for="(effect, index) in effects"
-              :key="index"
-              :effect="effect"
-              :path="['prototypeEffects']"
-              :index="index"
-              :count="effects.length"
-              :model-api="modelApi"
-              :disabled="disabled"
-              :instance-id="instanceId + '-prototype-' + index"
-              :error-paths="errorPaths"
-              :expanded-by-default="index === 0"
-              :collapse-mode="collapseMode"
-              @patch="emit('patch', $event)"
-              @structure="emit('structure', $event)"
-            />
           </div>
-          <p v-if="effects.length >= Number(modelApi.prototypeLimit || 99)" class="skill-designer-vue-limit-note">原型数量已达到当前技能位上限。</p>
-          <section class="skill-designer-vue-side-effect-section">
-            <header class="skill-designer-vue-section-heading">
-              <div><span class="skill-designer-vue-eyebrow">附加代价</span><h3>副作用</h3></div>
-              <button type="button" class="skill-designer-vue-link-button" :disabled="disabled" @click="emit('structure', { type: 'add-side-effect', path: ['副作用列表'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加副作用</button>
-            </header>
-            <div v-if="!sideEffects.length" class="skill-designer-vue-muted-block">没有设置副作用。</div>
-            <div v-for="(item, index) in sideEffects" :key="index" class="skill-designer-vue-side-effect-row">
-              <div class="skill-designer-vue-side-effect-title"><strong>副作用 {{ index + 1 }}</strong><button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除副作用" title="删除副作用" @click="emit('structure', { type: 'remove', path: ['副作用列表'], index })"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button></div>
-              <div class="skill-designer-vue-inline-fields">
-                <SkillField v-for="field in sideEffectFields(item)" :key="field.key" :descriptor="field" :model-value="item[field.key] ?? field.defaultValue ?? ''" :disabled="disabled" :instance-id="instanceId + '-side-' + index + '-' + field.key" @update:model-value="sideEffectPatch(index, field, $event)" />
-              </div>
+          <div v-if="!effects.length" class="skill-designer-vue-empty-state">
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i><strong>还没有效果原型</strong><span>先添加一个主效果，之后再配置条件、追加或替换效果。</span>
+            <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增第一个原型</button>
+          </div>
+          <div v-else class="skill-designer-vue-prototype-list">
+            <SkillPrototypeRow v-for="(effect, index) in effects" :key="index" :effect="effect" :path="['prototypeEffects']" :index="index" :count="effects.length" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-prototype-' + index" :error-paths="errorPaths" :collapse-mode="collapseMode" @patch="emit('patch', $event)" @structure="emit('structure', $event)" />
+          </div>
+          <p v-if="effects.length >= Number(modelApi.prototypeLimit || 99)" class="skill-designer-vue-limit-note skill-designer-vue-limit-note--block">原型数量已达到当前技能位上限，不能继续新增。</p>
+          <section class="skill-designer-vue-side-effects">
+            <header class="skill-designer-vue-subsection-heading"><div><span class="skill-designer-vue-section-kicker">附带代价</span><h3>副作用</h3></div><button type="button" class="skill-designer-vue-text-button" :disabled="disabled" @click="emit('structure', { type: 'add-side-effect', path: ['副作用列表'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加副作用</button></header>
+            <p v-if="!sideEffects.length" class="skill-designer-vue-empty-inline">没有设置副作用。</p>
+            <div v-for="(item, index) in sideEffects" :key="index" class="skill-designer-vue-side-effect">
+              <div class="skill-designer-vue-side-effect-heading"><strong>副作用 {{ index + 1 }}</strong><button type="button" class="skill-designer-vue-icon-button danger" :disabled="disabled" aria-label="删除副作用" title="删除副作用" @click="emit('structure', { type: 'remove', path: ['副作用列表'], index })"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button></div>
+              <div class="skill-designer-vue-field-grid"><SkillField v-for="field in sideEffectFields(item)" :key="field.key" :descriptor="field" :model-value="readPath(item, [field.key]) ?? field.defaultValue ?? ''" :disabled="disabled" :instance-id="instanceId + '-side-' + index + '-' + field.key" @update:model-value="patchSideEffect(index, field, $event)" /></div>
             </div>
           </section>
-        </div>
+        </section>
       `,
     });
 
-    function createSimplePanel(name, tab) {
-      return defineComponent({
-        name,
-        components: { SkillField },
-        props: {
-          draft: { type: Object, required: true },
-          fields: { type: Array, default: () => [] },
-          disabled: Boolean,
-          instanceId: { type: String, required: true },
-          errorPaths: { type: Array, default: () => [] },
-        },
-        emits: ['patch'],
-        setup(props, { emit }) {
-          function valueFor(field) {
-            return field.path ? readPath(props.draft, field.path) : props.draft[field.key];
-          }
-          function patch(field, value) {
-            emit('patch', { path: field.path || [field.key], value, dependent: !!field.dependent });
-          }
-          function errorFor(field) {
-            const current = pathKey(field.path || [field.key]);
-            return props.errorPaths.find(error => String(error?.path || '') === current);
-          }
-          return { errorFor, patch, valueFor };
-        },
-        template: `
-          <section class="skill-designer-vue-form-page" :data-panel-tab="tab">
-            <div class="skill-designer-vue-field-groups">
-              <div v-for="group in groupedFields" :key="group.key" class="skill-designer-vue-field-group">
-                <header><h3>{{ group.label }}</h3><span>{{ group.fields.length }} 项</span></header>
-                <div class="skill-designer-vue-inline-fields">
-                  <SkillField v-for="field in group.fields" :key="field.id || field.key" :descriptor="field" :model-value="valueFor(field)" :disabled="disabled" :instance-id="instanceId + '-' + (field.id || field.key)" :error="errorFor(field)" @update:model-value="patch(field, $event)" />
-                </div>
-              </div>
-            </div>
-          </section>
-        `,
-        computed: {
-          groupedFields() {
-            const labels = { identity: '技能身份', target: '目标与对象', value: '资源与数值', timing: '时间与次数', scaling: '成长与规则', condition: '条件与限制' };
-            const groups = new Map();
-            (this.fields || []).forEach(field => {
-              const key = field.group || 'identity';
-              if (!groups.has(key)) groups.set(key, { key, label: labels[key] || '其他设置', fields: [] });
-              groups.get(key).fields.push(field);
-            });
-            return [...groups.values()];
-          },
-        },
-        data: () => ({ tab }),
-      });
-    }
-
-    const SkillBasicPanel = createSimplePanel('SkillBasicPanel', 'basic');
-    const SkillCostPanel = createSimplePanel('SkillCostPanel', 'cost');
-    const SkillDescriptionPanel = createSimplePanel('SkillDescriptionPanel', 'description');
-
     const SkillCostLedger = defineComponent({
-      name: 'SkillCostLedger',
+      name: 'SkillDesignerCostLedger',
       props: { result: { type: Object, default: () => ({}) } },
       emits: ['locate'],
       setup(props, { emit }) {
         const budget = computed(() => props.result?.preview?.budget || {});
-        const rows = computed(() => {
-          const source = props.result?.preview?.resourceRows || props.result?.preview?.costRows || [];
-          return Array.isArray(source) ? source : [];
-        });
-        return { budget, emit, rows };
+        const rows = computed(() => Array.isArray(props.result?.preview?.resourceRows) ? props.result.preview.resourceRows : []);
+        const effects = computed(() => Array.isArray(props.result?.preview?.effectRows) ? props.result.preview.effectRows : []);
+        return { budget, effects, emit, rows };
       },
       template: `
-        <section class="skill-designer-vue-cost-ledger">
-          <header><div><span class="skill-designer-vue-eyebrow">编译结果</span><h3>复杂度预算账单</h3></div><strong>{{ Number(budget.actual || 0).toFixed(1) }} / {{ Number(budget.limit || 0).toFixed(1) }}</strong></header>
-          <div v-if="rows.length" class="skill-designer-vue-ledger-rows">
-            <button v-for="(row, index) in rows" :key="index" type="button" class="skill-designer-vue-ledger-row" @click="emit('locate', row)">
-              <span>{{ row.label || row.title || row.source || '来源项' }}</span><em>{{ row.detail || row.formula || '' }}</em><b>{{ row.value ?? row.cost ?? '' }}</b>
-            </button>
+        <section class="skill-designer-vue-ledger">
+          <header class="skill-designer-vue-ledger-heading"><div><span class="skill-designer-vue-section-kicker">编译结果</span><h3>复杂度预算账单</h3></div><strong>{{ budget.label || '待评估' }}</strong></header>
+          <div class="skill-designer-vue-ledger-table">
+            <div class="skill-designer-vue-ledger-head"><span>来源</span><span>计算说明</span><span>数值</span></div>
+            <button v-for="(row, index) in rows" :key="'resource-' + index" type="button" class="skill-designer-vue-ledger-row" @click="emit('locate', row)"><span>{{ row.label || row.source || '资源' }}</span><em>资源参数</em><b>{{ row.value ?? row.cost ?? '—' }}</b></button>
+            <button v-for="(row, index) in effects" :key="'effect-' + index" type="button" class="skill-designer-vue-ledger-row" @click="emit('locate', row)"><span>{{ row.branchLabel ? row.branchLabel + ' / ' : '' }}{{ row.title || '效果原型' }}</span><em>{{ row.relation || '主效果' }}{{ row.conditionSummary ? ' · ' + row.conditionSummary : '' }}</em><b>{{ row.cost ?? '—' }}</b></button>
+            <div v-if="!rows.length && !effects.length" class="skill-designer-vue-empty-inline">当前编译结果没有提供可拆分的账单明细。</div>
           </div>
-          <p v-else class="skill-designer-vue-muted-block">当前编译结果没有提供可拆分的账单明细。</p>
+          <footer class="skill-designer-vue-ledger-total"><span>总计</span><strong>{{ budget.label || '待评估' }}</strong><em :class="{ danger: budget.ok === false }">{{ budget.stateLabel || '等待校验' }}</em></footer>
         </section>
       `,
     });
 
     const SkillDescriptionReference = defineComponent({
-      name: 'SkillDescriptionReference',
+      name: 'SkillDesignerDescriptionReference',
       props: { result: { type: Object, default: () => ({}) }, draft: { type: Object, required: true } },
       emits: ['patch'],
       setup(props, { emit }) {
-        const reference = computed(() => text(props.result?.preview?.effectDescription || props.result?.preview?.summary, '完成效果配置后，这里会显示编译链提供的参考文案。'));
+        const reference = computed(() => text(props.result?.preview?.summary || props.result?.preview?.effectDescription, '完成效果配置后，这里会显示编译链提供的参考文案。'));
         const manual = computed(() => text(props.draft?.effectDesc));
         const overridden = computed(() => !!manual.value && manual.value !== reference.value);
         function restore() {
           if (overridden.value && !window.confirm('恢复自动参考会替换当前效果描述，确定继续吗？')) return;
           emit('patch', { path: ['effectDesc'], value: reference.value });
         }
-        return { manual, overridden, reference, restore };
+        return { emit, overridden, reference, restore };
       },
       template: `
         <section class="skill-designer-vue-reference">
-          <div><span class="skill-designer-vue-eyebrow">自动参考</span><h3>编译链生成的效果描述</h3></div>
+          <div class="skill-designer-vue-reference-heading"><div><span class="skill-designer-vue-section-kicker">自动参考</span><h3>编译链生成的效果描述</h3></div><span class="skill-designer-vue-reference-state">{{ overridden ? '已手动修改' : '仅供参考' }}</span></div>
           <p>{{ reference }}</p>
-          <footer><small>{{ overridden ? '当前描述已手动覆盖自动参考。' : '自动参考不会主动覆盖你的输入。' }}</small><button type="button" class="skill-designer-vue-link-button" @click="restore"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ overridden ? '恢复自动参考' : '填入效果描述' }}</button></footer>
+          <footer><small>{{ overridden ? '当前描述已脱离自动参考。' : '自动参考不会主动覆盖你的输入。' }}</small><button type="button" class="skill-designer-vue-text-button" @click="restore"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ overridden ? '恢复自动参考' : '填入效果描述' }}</button></footer>
         </section>
       `,
     });
@@ -1096,18 +921,17 @@
         instanceId: { type: String, required: true },
       },
       emits: ['switch-skill', 'reload', 'undo'],
-      computed: {
-        switchOptions() {
-          return this.switchItems.map(item => ({ value: item.preview, label: item.label }));
-        },
+      setup(props) {
+        const switchOptions = computed(() => props.switchItems.map(item => ({ value: item.preview, label: item.label })));
+        return { switchOptions };
       },
       template: `
         <header class="skill-designer-vue-toolbar">
-          <div class="skill-designer-vue-toolbar-title"><span>魂技设计台</span><h2>{{ title }}</h2><small>{{ subtitle }}</small></div>
+          <div class="skill-designer-vue-toolbar-context"><span class="skill-designer-vue-brand">魂技设计台</span><h2>{{ title }}</h2><small>{{ subtitle }}</small></div>
           <div class="skill-designer-vue-toolbar-actions">
             <SkillCombobox v-if="switchItems.length > 1" :model-value="previewKey" :options="switchOptions" :disabled="busy" label="切换技能" :instance-id="instanceId + '-switch'" @update:model-value="$emit('switch-skill', $event)" />
             <button type="button" class="skill-designer-vue-icon-button" :disabled="busy || !canUndo" aria-label="撤销上一次结构操作" title="撤销" @click="$emit('undo')"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
-            <button type="button" class="skill-designer-vue-button" :disabled="busy" @click="$emit('reload')"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>重新读取</button>
+            <button type="button" class="skill-designer-vue-text-button" :disabled="busy" @click="$emit('reload')"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>重新读取</button>
           </div>
         </header>
       `,
@@ -1128,8 +952,8 @@
         return { keydown };
       },
       template: `
-        <nav class="skill-designer-vue-tabs" role="tablist" aria-label="技能设计页签">
-          <button v-for="(tab, index) in tabs" :key="tab.id" :id="instanceId + '-tab-' + tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id ? 'true' : 'false'" :aria-controls="instanceId + '-panel-' + tab.id" :tabindex="activeTab === tab.id ? 0 : -1" :class="{ active: activeTab === tab.id, invalid: errorCounts[tab.id], dirty }" @click="$emit('update:activeTab', tab.id)" @keydown="keydown($event, index)"><span>{{ tab.label }}</span><b v-if="errorCounts[tab.id]">{{ errorCounts[tab.id] }}</b><i v-else-if="dirty" class="fa-solid fa-circle-dot" aria-hidden="true"></i></button>
+        <nav class="skill-designer-vue-tabs" role="tablist" aria-label="技能设计步骤">
+          <button v-for="(tab, index) in tabs" :key="tab.id" :id="instanceId + '-tab-' + tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id ? 'true' : 'false'" :aria-controls="instanceId + '-panel-' + tab.id" :tabindex="activeTab === tab.id ? 0 : -1" :class="{ active: activeTab === tab.id, invalid: errorCounts[tab.id] }" @click="$emit('update:activeTab', tab.id)" @keydown="keydown($event, index)"><span>{{ tab.label }}</span><b v-if="errorCounts[tab.id]">{{ errorCounts[tab.id] }}</b><i v-else-if="dirty" class="fa-solid fa-circle-dot" aria-hidden="true"></i></button>
         </nav>
       `,
     });
@@ -1140,26 +964,25 @@
       emits: ['save'],
       template: `
         <footer class="skill-designer-vue-status-dock">
-          <div class="skill-designer-vue-status-dock-main"><span class="skill-designer-vue-status"><i class="fa-solid fa-circle" aria-hidden="true"></i>{{ statusText }}</span><span class="skill-designer-vue-budget">复杂度预算 <strong>{{ budgetSummary }}</strong></span><span v-if="warnings" class="warning">{{ warnings }} 条警告</span><span v-if="errors" class="error">{{ errors }} 个问题</span></div>
-          <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="$emit('save')"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
+          <div class="skill-designer-vue-status-main"><span class="skill-designer-vue-status-dot" aria-hidden="true"></span><span class="skill-designer-vue-status-label">{{ statusText }}</span><span class="skill-designer-vue-dock-budget">复杂度预算 <strong>{{ budgetSummary }}</strong></span><span v-if="warnings" class="skill-designer-vue-dock-warning">{{ warnings }} 条警告</span><span v-if="errors" class="skill-designer-vue-dock-error">{{ errors }} 个问题</span></div>
+          <button type="button" class="skill-designer-vue-button primary skill-designer-vue-save" :disabled="disabled" @click="$emit('save')"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
         </footer>
       `,
     });
 
     const SkillDesignerApp = defineComponent({
       name: 'SkillDesignerApp',
-      components: { SkillBasicPanel, SkillCostPanel, SkillCostLedger, SkillDescriptionPanel, SkillDescriptionReference, SkillEffectPanel, SkillStatusDock, SkillTabs, SkillToolbar },
+      components: { SkillBasicPanel, SkillCostLedger, SkillCostPanel, SkillDescriptionPanel, SkillDescriptionReference, SkillEffectPanel, SkillStatusDock, SkillTabs, SkillToolbar },
       props: { context: { type: Object, required: true }, instanceId: { type: String, required: true } },
       setup(props) {
         const rawDraft = reactive(cloneValue(props.context.initialRawDraft) || {});
-        const revision = shallowRef(0);
         const activeTab = shallowRef('basic');
+        const revision = shallowRef(0);
         const busy = shallowRef(false);
         const dirty = shallowRef(!!props.context.initialDirty);
-        const statusText = shallowRef(dirty.value ? '已恢复草稿' : '未修改');
         const compileResult = shallowRef({ preview: {}, errors: [], warnings: [] });
+        const statusText = shallowRef(dirty.value ? '已恢复草稿' : '未修改');
         const collapseMode = shallowRef('normal');
-        const revealPath = shallowRef('');
         const undoRecord = shallowRef(null);
         const liveMessage = shallowRef('');
         const destroyed = shallowRef(false);
@@ -1181,23 +1004,22 @@
           description: props.context.editorModel.getTabFields('description', rawDraft),
         }));
         const errorCounts = computed(() => {
-          const result = { basic: 0, effect: 0, cost: 0, description: 0 };
+          const counts = { basic: 0, effect: 0, cost: 0, description: 0 };
           (compileResult.value.errors || []).forEach(error => {
-            const tab = result[error?.tab] === undefined ? 'effect' : error.tab;
-            result[tab] += 1;
+            const tab = counts[error?.tab] === undefined ? 'effect' : error.tab;
+            counts[tab] += 1;
           });
-          return result;
+          return counts;
         });
-        const errorPaths = computed(() => compileResult.value.errors || []);
         const pageMeta = computed(() => ({
-          basic: { title: '基础', description: '先确定技能身份、承载方式和会随承载方式变化的参数。' },
+          basic: { title: '基础', description: '先确定技能身份、承载方式，以及会随承载方式变化的参数。' },
           effect: { title: '效果', description: '把主效果、条件和分支编排成一条能读懂的效果链。' },
-          cost: { title: '消耗', description: '调整资源和时间参数，并核对编译结果提供的复杂度预算。' },
-          description: { title: '描述', description: '确认自动参考与最终会保存的手动描述。' },
+          cost: { title: '消耗', description: '调整资源和时间参数，并核对复杂度预算的完整组成。' },
+          description: { title: '描述', description: '确认自动参考，并编辑最终会保存的技能描述。' },
         }[activeTab.value]));
         const budgetSummary = computed(() => {
           const budget = compileResult.value?.preview?.budget;
-          return budget ? `${Number(budget.actual || 0).toFixed(1)} / ${Number(budget.limit || 0).toFixed(1)}` : '预算待评估';
+          return budget?.label || '预算待评估';
         });
 
         function markChanged() {
@@ -1209,26 +1031,29 @@
 
         function applyPatch(patch) {
           if (busy.value || !Array.isArray(patch?.path)) return;
-          if (patch.dependent) replaceObject(rawDraft, props.context.actions.applyDependentFieldChange(cloneValue(rawDraft), cloneValue(patch)));
-          else writePath(rawDraft, patch.path, cloneValue(patch.value));
+          if (patch.dependent) {
+            replaceObject(rawDraft, props.context.actions.applyDependentFieldChange(cloneValue(rawDraft), cloneValue(patch)));
+          } else {
+            writePath(rawDraft, patch.path, cloneValue(patch.value));
+          }
           markChanged();
         }
 
-        function ensureArray(path) {
-          let value = readPath(rawDraft, path);
-          if (!Array.isArray(value)) {
-            value = [];
-            writePath(rawDraft, path, value);
+        function arrayAt(path) {
+          let list = readPath(rawDraft, path);
+          if (!Array.isArray(list)) {
+            list = [];
+            writePath(rawDraft, path, list);
           }
-          return value;
+          return list;
         }
 
         function applyStructure(command) {
           if (busy.value || !Array.isArray(command?.path)) return;
-          const list = ensureArray(command.path);
+          const list = arrayAt(command.path);
           if (command.type === 'add-prototype') {
-            const nested = command.path.length > 1;
-            const limit = nested ? Number(props.context.editorModel.nestedPrototypeLimit || 4) : Number(props.context.editorModel.prototypeLimit || 99);
+            const nested = command.path.some(part => typeof part === 'number') && command.path.length > 1;
+            const limit = nested ? 2 : Number(props.context.editorModel.prototypeLimit || 99);
             if (list.length >= limit) return;
             undoRecord.value = { path: [...command.path], value: cloneValue(list) };
             list.push(props.context.actions.createPrototype({ draft: cloneValue(rawDraft) }));
@@ -1237,6 +1062,7 @@
             undoRecord.value = { path: [...command.path], value: cloneValue(list) };
             list.push(props.context.editorModel.createConditionBranch());
           } else if (command.type === 'add-condition') {
+            if (list.length >= 3) return;
             undoRecord.value = { path: [...command.path], value: cloneValue(list) };
             list.push(props.context.editorModel.createCondition());
           } else if (command.type === 'add-side-effect') {
@@ -1250,8 +1076,11 @@
             if (command.type === 'move-up' && index > 0) [list[index - 1], list[index]] = [list[index], list[index - 1]];
             if (command.type === 'move-down' && index < list.length - 1) [list[index + 1], list[index]] = [list[index], list[index + 1]];
             if (command.type === 'duplicate') list.splice(index + 1, 0, cloneValue(list[index]));
-          } else return;
+          } else {
+            return;
+          }
           markChanged();
+          liveMessage.value = command.type === 'remove' ? '已删除结构，可使用撤销恢复。' : '结构已更新。';
         }
 
         function undo() {
@@ -1264,15 +1093,13 @@
 
         function locateItem(item = {}) {
           activeTab.value = ['basic', 'effect', 'cost', 'description'].includes(item.tab) ? item.tab : 'effect';
-          revealPath.value = text(item.path);
           liveMessage.value = item.message || '已定位到相关字段。';
           nextTick(() => {
             const root = document.getElementById(props.instanceId);
-            const path = revealPath.value.replace(/"/g, '\\"');
+            const path = text(item.path).replace(/"/g, '\\"');
             const target = root?.querySelector(`[data-field-path="${path}"], [data-prototype-path="${path}"]`);
             target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
             target?.querySelector('input, textarea, button')?.focus?.();
-            revealPath.value = '';
           });
         }
 
@@ -1303,18 +1130,18 @@
                 : dirty.value ? '有未保存更改' : '校验通过';
           } catch (error) {
             if (destroyed.value || token !== previewToken.value) return;
-            compileResult.value = { ...compileResult.value, errors: [{ tab: 'effect', message: error?.message || '预览编译失败。' }] };
+            compileResult.value = { ...compileResult.value, errors: [{ tab: 'effect', path: '', message: error?.message || '预览编译失败。' }] };
             statusText.value = '存在错误';
           }
         }
 
-        function schedule() {
+        function scheduleCompile() {
           clearTimers();
           if (dirty.value) cacheTimer = window.setTimeout(flushCache, 150);
-          compileTimer = window.setTimeout(compileNow, 90);
+          compileTimer = window.setTimeout(compileNow, 100);
         }
 
-        function focusError(result) {
+        function focusFirstError(result) {
           const error = result?.errors?.[0];
           if (!error) return;
           activeTab.value = error.tab || 'effect';
@@ -1336,7 +1163,7 @@
             if (compileResult.value.errors?.length) {
               statusText.value = '保存失败';
               skipUnmountCache = false;
-              focusError(compileResult.value);
+              focusFirstError(compileResult.value);
               return;
             }
             dirty.value = false;
@@ -1349,7 +1176,7 @@
             skipUnmountCache = false;
             compileResult.value = error?.compileResult || { ...compileResult.value, errors: [{ tab: error?.tab || 'effect', path: error?.path || '', message: error?.message || '保存失败。' }] };
             statusText.value = '保存失败';
-            focusError(compileResult.value);
+            focusFirstError(compileResult.value);
           } finally {
             if (!destroyed.value && token === operationToken.value) busy.value = false;
           }
@@ -1377,19 +1204,13 @@
           }
         }
 
-        async function switchSkill(previewKey) {
+        function switchSkill(previewKey) {
           if (busy.value || !previewKey || previewKey === props.context.previewKey) return;
           flushCache();
-          busy.value = true;
-          const token = ++operationToken.value;
-          try {
-            await Promise.resolve(props.context.actions.switchSkill(previewKey));
-          } finally {
-            if (!destroyed.value && token === operationToken.value) busy.value = false;
-          }
+          props.context.actions.switchSkill(previewKey);
         }
 
-        watch(revision, schedule, { flush: 'post' });
+        watch(revision, scheduleCompile, { flush: 'post' });
         onMounted(compileNow);
         onBeforeUnmount(() => {
           destroyed.value = true;
@@ -1399,32 +1220,58 @@
           clearTimers();
         });
 
-        return { activeTab, applyPatch, applyStructure, busy, collapseMode, compileResult, dirty, errorCounts, errorPaths, locateItem, pageMeta, rawDraft, reload, save, statusText, switchSkill, tabFields, tabs, undo, undoRecord, budgetSummary };
+        return { activeTab, applyPatch, applyStructure, busy, collapseMode, compileResult, dirty, errorCounts, errorPaths: computed(() => compileResult.value.errors || []), locateItem, pageMeta, rawDraft, reload, save, statusText, switchSkill, tabFields, tabs, undo, undoRecord, budgetSummary, liveMessage };
       },
       template: `
-        <div :id="instanceId" class="skill-designer-vue-root" data-skill-designer-layout="flat" :class="{ 'is-busy': busy }" :aria-busy="busy ? 'true' : 'false'">
+        <div :id="instanceId" class="skill-designer-vue-root" data-skill-designer-layout="blueprint" :class="{ 'is-busy': busy }" :aria-busy="busy ? 'true' : 'false'">
           <SkillToolbar :title="rawDraft.name || context.previewMeta.label || '未命名技能'" :subtitle="context.previewMeta.category || context.previewMeta.scope || ''" :switch-items="context.switchItems" :preview-key="context.previewKey" :busy="busy" :can-undo="!!undoRecord" :instance-id="instanceId" @switch-skill="switchSkill" @reload="reload" @undo="undo" />
           <SkillTabs :tabs="tabs" :active-tab="activeTab" :error-counts="errorCounts" :dirty="dirty" :instance-id="instanceId" @update:active-tab="activeTab = $event" />
           <div v-if="busy" class="skill-designer-vue-busy-strip" role="status"><i class="fa-solid fa-spinner" aria-hidden="true"></i>{{ statusText }}</div>
           <main class="skill-designer-vue-editor">
-            <header class="skill-designer-vue-page-heading"><div><span class="skill-designer-vue-eyebrow">当前任务</span><h1>{{ pageMeta.title }}</h1><p>{{ pageMeta.description }}</p></div><strong v-if="errorCounts[activeTab]" class="error">{{ errorCounts[activeTab] }} 个问题</strong></header>
-            <section class="skill-designer-vue-page-canvas">
+            <header class="skill-designer-vue-page-heading">
+              <div><span class="skill-designer-vue-section-kicker">当前任务</span><h1>{{ pageMeta.title }}</h1><p>{{ pageMeta.description }}</p></div>
+              <strong v-if="errorCounts[activeTab]" class="skill-designer-vue-heading-error"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>{{ errorCounts[activeTab] }} 个问题</strong>
+            </header>
+            <section class="skill-designer-vue-page-canvas" role="tabpanel" :id="instanceId + '-panel-' + activeTab">
               <SkillBasicPanel v-show="activeTab === 'basic'" :draft="rawDraft" :fields="tabFields.basic" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-basic'" @patch="applyPatch" />
               <SkillEffectPanel v-show="activeTab === 'effect'" :draft="rawDraft" :model-api="context.editorModel" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-effect'" :collapse-mode="collapseMode" @patch="applyPatch" @structure="applyStructure" @view="collapseMode = $event" />
-              <SkillCostPanel v-show="activeTab === 'cost'" :draft="rawDraft" :fields="tabFields.cost" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-cost'" @patch="applyPatch" />
-              <SkillCostLedger v-if="activeTab === 'cost'" :result="compileResult" @locate="locateItem" />
-              <SkillDescriptionReference v-if="activeTab === 'description'" :result="compileResult" :draft="rawDraft" @patch="applyPatch" />
-              <SkillDescriptionPanel v-show="activeTab === 'description'" :draft="rawDraft" :fields="tabFields.description" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-description'" @patch="applyPatch" />
+              <div v-show="activeTab === 'cost'">
+                <SkillCostPanel :draft="rawDraft" :fields="tabFields.cost" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-cost'" @patch="applyPatch" />
+                <SkillCostLedger :result="compileResult" @locate="locateItem" />
+              </div>
+              <div v-show="activeTab === 'description'">
+                <SkillDescriptionReference :result="compileResult" :draft="rawDraft" @patch="applyPatch" />
+                <SkillDescriptionPanel :draft="rawDraft" :fields="tabFields.description" :error-paths="errorPaths" :disabled="busy" :instance-id="instanceId + '-description'" @patch="applyPatch" />
+              </div>
             </section>
           </main>
-          <section v-if="undoRecord" class="skill-designer-vue-undo-notice" role="status"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span>结构已更新，可以撤销上一次操作。</span><button type="button" class="skill-designer-vue-link-button" :disabled="busy" @click="undo">撤销</button></section>
+          <section v-if="undoRecord" class="skill-designer-vue-undo-notice" role="status"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span>{{ liveMessage || '结构已更新，可以撤销上一次操作。' }}</span><button type="button" class="skill-designer-vue-text-button" :disabled="busy" @click="undo">撤销</button></section>
           <SkillStatusDock :status-text="statusText" :budget-summary="budgetSummary" :warnings="compileResult.warnings?.length || 0" :errors="compileResult.errors?.length || 0" :disabled="busy || !!compileResult.errors?.length" @save="save" />
           <div class="skill-designer-vue-live-region" aria-live="assertive">{{ liveMessage }}</div>
         </div>
       `,
     });
 
-    return { SkillCombobox, SkillConditionBranch, SkillConditionLine, SkillCostLedger, SkillCostPanel, SkillDescriptionPanel, SkillDescriptionReference, SkillDesignerApp, SkillEffectPanel, SkillField, SkillMultiSelect, SkillPrototypeRow, SkillSegmented, SkillStatusDock, SkillTabs, SkillToolbar, SkillBasicPanel };
+    return {
+      SkillBasicPanel,
+      SkillCombobox,
+      SkillConditionBranch,
+      SkillConditionLine,
+      SkillCostLedger,
+      SkillCostPanel,
+      SkillDescriptionPanel,
+      SkillDescriptionReference,
+      SkillDesignerApp,
+      SkillDurationInput,
+      SkillEffectPanel,
+      SkillField,
+      SkillMultiSelect,
+      SkillPrototypeRow,
+      SkillSegmented,
+      SkillStatusDock,
+      SkillTabs,
+      SkillToolbar,
+    };
   }
 
   function mount(host, context) {
