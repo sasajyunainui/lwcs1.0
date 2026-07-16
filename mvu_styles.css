@@ -5351,6 +5351,25 @@ body.mvu-layout-holo #mvu-unified-mount
   overflow: visible;
 }
 
+body.mvu-layout-holo #mvu-unified-mount
+  .mvu-unified-frame:has(.skill-designer-vue-host) {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body:has(.skill-designer-vue-host) .acu-nav-container {
+  display: none;
+}
+
 #detailModal:has(.skill-designer-vue-host) {
   align-items: flex-start;
   padding: 12px;
