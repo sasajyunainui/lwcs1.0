@@ -1524,6 +1524,11 @@
       },
       template: `
         <div class="skill-designer-vue-prototype-list" :class="{ nested: depth > 0 }">
+          <div v-if="!effects.length" class="skill-designer-vue-empty-state">
+            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+            <strong>{{ depth > 0 ? '尚未添加分支效果' : '尚未建立效果原型' }}</strong>
+            <span>{{ depth > 0 ? '添加一个追加或替换效果。' : '先添加一个主效果，再按需要配置条件与副作用。' }}</span>
+          </div>
           <SkillPrototypeEditor
             v-for="(effect, index) in effects"
             :key="objectKey(effect, 'prototype')"
@@ -1551,7 +1556,7 @@
               :disabled="disabled || !canAdd"
               :title="limitReason || '新增原型'"
               @click="emit('structure', { type: 'add-prototype', path })"
-            ><i class="fa-solid fa-plus" aria-hidden="true"></i>原型</button>
+            ><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
             <span v-if="limitReason" class="skill-designer-vue-limit-note">{{ limitReason }}</span>
           </div>
         </div>
@@ -1849,6 +1854,78 @@
     const SkillCostPanel = createSkillFieldPanel('SkillCostPanel');
     const SkillDescriptionPanel = createSkillFieldPanel('SkillDescriptionPanel');
 
+    const SkillCostSummary = defineComponent({
+      name: 'SkillCostSummary',
+      props: {
+        result: { type: Object, default: () => ({}) },
+      },
+      emits: ['locate'],
+      setup(props) {
+        const preview = computed(() => props.result?.preview || {});
+        const budget = computed(() => preview.value.budget || null);
+        const rows = computed(() => [
+          ...(Array.isArray(preview.value.resourceRows) ? preview.value.resourceRows : []),
+          ...(Array.isArray(preview.value.timingRows) ? preview.value.timingRows : []),
+        ]);
+        return { budget, preview, rows };
+      },
+      template: `
+        <section class="skill-designer-vue-cost-summary" aria-labelledby="skill-cost-summary-title">
+          <div class="skill-designer-vue-cost-summary-head">
+            <div>
+              <span class="skill-designer-vue-eyebrow">编译结果</span>
+              <h2 id="skill-cost-summary-title">复杂度预算</h2>
+            </div>
+            <strong
+              class="skill-designer-vue-cost-total"
+              :class="{ danger: budget && budget.ok === false }"
+            >{{ budget ? budget.label : '待评估' }}</strong>
+          </div>
+          <div v-if="rows.length" class="skill-designer-vue-cost-rows">
+            <div v-for="row in rows" :key="row.label" class="skill-designer-vue-cost-row">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.value }}<small v-if="row.unit"> {{ row.unit }}</small></strong>
+            </div>
+          </div>
+          <p v-else class="skill-designer-vue-cost-empty">填写资源或时间参数后，这里会显示编译结果。</p>
+          <div v-if="preview.effectRows?.length" class="skill-designer-vue-cost-effects">
+            <button
+              v-for="effect in preview.effectRows.slice(0, 8)"
+              :key="effect.path"
+              type="button"
+              class="skill-designer-vue-cost-effect"
+              @click="$emit('locate', { tab: 'effect', path: effect.path })"
+            >
+              <span>{{ effect.relation || '主效果' }}</span>
+              <strong>{{ effect.title }}</strong>
+              <small v-if="effect.detail">{{ effect.detail }}</small>
+            </button>
+          </div>
+        </section>
+      `,
+    });
+
+    const SkillDescriptionReference = defineComponent({
+      name: 'SkillDescriptionReference',
+      props: {
+        result: { type: Object, default: () => ({}) },
+      },
+      setup(props) {
+        const summary = computed(() => normalizeText(props.result?.preview?.summary, '填写效果后，这里会显示现有编译链生成的参考摘要。'));
+        return { summary };
+      },
+      template: `
+        <section class="skill-designer-vue-description-reference" aria-labelledby="skill-description-reference-title">
+          <div>
+            <span class="skill-designer-vue-eyebrow">现有编译链参考</span>
+            <h2 id="skill-description-reference-title">自动生成参考</h2>
+          </div>
+          <p>{{ summary }}</p>
+          <small>这是只读参考，不会覆盖你已经手动填写的描述。</small>
+        </section>
+      `,
+    });
+
     const SkillDesignerToolbar = defineComponent({
       name: 'SkillDesignerToolbar',
       components: { SkillCombobox },
@@ -1901,7 +1978,6 @@
               @click="$emit('undo')"
             ><i class="fa-solid fa-undo" aria-hidden="true"></i></button>
             <button type="button" class="skill-designer-vue-button" :disabled="busy" @click="$emit('reload')">重新读取</button>
-            <button type="button" class="skill-designer-vue-button primary" :disabled="busy" @click="$emit('save')">保存设计</button>
           </div>
         </header>
       `,
@@ -1956,145 +2032,14 @@
       `,
     });
 
-    const SkillDesignerPreview = defineComponent({
-      name: 'SkillDesignerPreview',
-      props: {
-        result: { type: Object, default: () => ({}) },
-        currentAttributes: { default: () => ({}) },
-        expanded: Boolean,
-        collapsible: Boolean,
-        instanceId: { type: String, required: true },
-        statusText: { type: String, default: '正在校验' },
-      },
-      emits: ['toggle', 'locate'],
-      setup(props) {
-        const preview = computed(() => props.result?.preview || {});
-        const errors = computed(() => (Array.isArray(props.result?.errors) ? props.result.errors : []));
-        const warnings = computed(() => (Array.isArray(props.result?.warnings) ? props.result.warnings : []));
-        const attributes = computed(() => {
-          if (Array.isArray(props.currentAttributes)) return props.currentAttributes;
-          return Object.entries(props.currentAttributes || {}).map(([label, value]) => ({ label, value }));
-        });
-        const validationLabel = computed(() => {
-          if (errors.value.length) return `${errors.value.length} 个问题`;
-          if (warnings.value.length) return '存在警告';
-          if (props.statusText === '正在校验') return '正在校验';
-          return '校验通过';
-        });
-        return { attributes, errors, preview, validationLabel, warnings };
-      },
-      template: `
-        <aside class="skill-designer-vue-preview" :class="{ expanded }">
-          <component
-            :is="collapsible ? 'button' : 'div'"
-            :type="collapsible ? 'button' : undefined"
-            class="skill-designer-vue-preview-toggle"
-            :class="{ static: !collapsible }"
-            :aria-expanded="collapsible ? (expanded ? 'true' : 'false') : undefined"
-            :aria-controls="collapsible ? instanceId + '-content' : undefined"
-            @click="collapsible && $emit('toggle')"
-          >
-            <span class="skill-designer-vue-preview-toggle-title">
-              <small>实时速览</small>
-              <strong>{{ preview.name || '未命名技能' }}</strong>
-            </span>
-            <span class="skill-designer-vue-preview-toggle-metrics">
-              <i>{{ preview.cost || '无消耗' }}</i>
-              <i>{{ preview.budget?.label || '预算待评估' }}</i>
-              <b>{{ validationLabel }}</b>
-            </span>
-          </component>
-          <div :id="instanceId + '-content'" class="skill-designer-vue-preview-content">
-            <div class="skill-designer-vue-preview-hero">
-              <small>{{ preview.type || '技能' }}</small>
-              <h3>{{ preview.name || '未命名技能' }}</h3>
-              <p>{{ preview.summary || '等待有效输入' }}</p>
-            </div>
-            <dl class="skill-designer-vue-preview-metrics">
-              <div><dt>承载</dt><dd>{{ preview.delivery || '未设置' }}</dd></div>
-              <div><dt>消耗</dt><dd>{{ preview.cost || '无' }}</dd></div>
-              <div><dt>施放前摇</dt><dd>{{ preview.timingRows?.[0]?.value ?? 0 }}{{ preview.timingRows?.[0]?.unit ? ' ' + preview.timingRows[0].unit : '' }}</dd></div>
-              <div>
-                <dt>复杂度预算</dt>
-                <dd :class="{ danger: preview.budget && preview.budget.ok === false }">
-                  <button
-                    v-if="preview.budget && preview.budget.ok === false"
-                    type="button"
-                    class="skill-designer-vue-inline-link"
-                    @click="$emit('locate', { tab: 'cost', path: 'costType' })"
-                  >{{ preview.budget.label }}</button>
-                  <span v-else>{{ preview.budget?.label || '待评估' }}</span>
-                </dd>
-              </div>
-            </dl>
-            <section v-if="errors.length" class="skill-designer-vue-message-list error">
-              <h4>需要修正</h4>
-              <button
-                v-for="(item, index) in errors"
-                :key="index"
-                type="button"
-                @click="$emit('locate', item)"
-              >{{ item.message || item }}</button>
-            </section>
-            <section v-if="warnings.length" class="skill-designer-vue-message-list warning">
-              <h4>自动规整</h4>
-              <p v-for="(item, index) in warnings" :key="index">{{ item.message || item }}</p>
-            </section>
-            <section v-if="preview.resourceRows?.length" class="skill-designer-vue-preview-section">
-              <h4>资源消耗</h4>
-              <dl class="skill-designer-vue-preview-list">
-                <div v-for="row in preview.resourceRows" :key="row.label">
-                  <dt>{{ row.label }}</dt>
-                  <dd>{{ row.value }}</dd>
-                </div>
-              </dl>
-            </section>
-            <section v-if="preview.timingRows?.length > 1" class="skill-designer-vue-preview-section">
-              <h4>持续与时序</h4>
-              <dl class="skill-designer-vue-preview-list">
-                <div v-for="row in preview.timingRows.slice(1)" :key="row.label">
-                  <dt>{{ row.label }}</dt>
-                  <dd>{{ row.value }}{{ row.unit ? ' ' + row.unit : '' }}</dd>
-                </div>
-              </dl>
-            </section>
-            <section v-if="preview.effectRows?.length" class="skill-designer-vue-preview-section">
-              <h4>效果链</h4>
-              <ol class="skill-designer-vue-effect-list">
-                <li v-for="(effect, index) in preview.effectRows" :key="effect.path || index">
-                  <button
-                    type="button"
-                    class="skill-designer-vue-effect-item"
-                    :style="{ '--skill-designer-vue-effect-depth': effect.depth || 0 }"
-                    @click="$emit('locate', { tab: 'effect', path: effect.path })"
-                  >
-                    <span class="skill-designer-vue-effect-relation">{{ effect.relation || '主效果' }}</span>
-                    <strong>{{ effect.title }}</strong>
-                    <small v-if="effect.branchLabel">{{ effect.branchLabel }}</small>
-                    <small v-if="effect.conditionSummary">{{ effect.conditionSummary }}</small>
-                    <small v-if="effect.detail">{{ effect.detail }}</small>
-                  </button>
-                </li>
-              </ol>
-            </section>
-            <details v-if="attributes.length" class="skill-designer-vue-preview-section skill-designer-vue-preview-attributes">
-              <summary><span>当前属性</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
-              <dl class="skill-designer-vue-attribute-list">
-                <div v-for="item in attributes" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
-              </dl>
-            </details>
-          </div>
-        </aside>
-      `,
-    });
-
     const SkillDesignerApp = defineComponent({
       name: 'SkillDesignerApp',
       components: {
         SkillBasicPanel,
         SkillCostPanel,
+        SkillCostSummary,
         SkillDescriptionPanel,
-        SkillDesignerPreview,
+        SkillDescriptionReference,
         SkillDesignerTabs,
         SkillDesignerToolbar,
         SkillEffectPanel,
@@ -2118,8 +2063,6 @@
           warnings: [],
           transformations: [],
         });
-        const previewExpanded = shallowRef(false);
-        const compactLayout = shallowRef(false);
         const collapseMode = shallowRef('normal');
         const revealPath = shallowRef('');
         const rootElement = shallowRef(null);
@@ -2132,8 +2075,6 @@
         let objectKeySeed = 0;
         let cacheTimer = 0;
         let compileTimer = 0;
-        let layoutObserver = null;
-        let layoutInitialized = false;
         let skipUnmountCache = false;
 
         const tabs = Object.freeze([
@@ -2156,6 +2097,35 @@
           return counts;
         });
         const errorPaths = computed(() => (compileResult.value.errors || []).filter(error => error && error.path));
+        const pageMeta = computed(() => ({
+          basic: {
+            title: '基础',
+            description: '先确定技能身份、承载方式和会随承载方式变化的附加参数。',
+          },
+          effect: {
+            title: '效果',
+            description: '先建立主效果，再用条件、追加、替换和副作用表达完整效果链。',
+          },
+          cost: {
+            title: '消耗',
+            description: '调整资源和时间参数，并核对编译结果提供的复杂度预算来源。',
+          },
+          description: {
+            title: '描述',
+            description: '确认技能发动时的画面描述和最终效果描述。',
+          },
+        }[activeTab.value] || {}));
+        const budgetSummary = computed(() => {
+          const budget = compileResult.value?.preview?.budget;
+          if (!budget) return '预算待评估';
+          return `${Number(budget.actual || 0).toFixed(1)} / ${Number(budget.limit || 0).toFixed(1)}`;
+        });
+        const statusTone = computed(() => {
+          if (['存在错误', '保存失败', '重新读取失败', '切换失败'].includes(statusText.value)) return 'error';
+          if (statusText.value === '存在警告') return 'warning';
+          if (['校验通过', '保存成功'].includes(statusText.value)) return 'success';
+          return '';
+        });
 
         function objectKey(object, prefix = 'item') {
           if (!object || typeof object !== 'object') return `${prefix}-${String(object)}`;
@@ -2489,28 +2459,8 @@
           }
         }
 
-        function updateLayout(width) {
-          const nextCompact = Number(width) < 960;
-          if (!layoutInitialized || nextCompact !== compactLayout.value) {
-            compactLayout.value = nextCompact;
-            previewExpanded.value = !nextCompact;
-            layoutInitialized = true;
-          }
-        }
-
         watch(revision, scheduleSideEffects, { flush: 'post' });
         onMounted(() => {
-          const root = rootElement.value;
-          if (root) {
-            updateLayout(root.getBoundingClientRect().width);
-            if (typeof ResizeObserver === 'function') {
-              layoutObserver = new ResizeObserver(entries => {
-                const entry = entries[entries.length - 1];
-                updateLayout(entry?.contentRect?.width ?? root.getBoundingClientRect().width);
-              });
-              layoutObserver.observe(root);
-            }
-          }
           compileNow();
         });
         onBeforeUnmount(() => {
@@ -2523,8 +2473,6 @@
             } catch (error) {}
           }
           clearTimers();
-          layoutObserver?.disconnect();
-          layoutObserver = null;
         });
 
         return {
@@ -2532,15 +2480,15 @@
           applyPatch,
           applyStructure,
           busy,
-          compactLayout,
           compileResult,
+          budgetSummary,
           dirty,
           errorCounts,
           errorPaths,
           liveMessage,
           locateItem,
           objectKey,
-          previewExpanded,
+          pageMeta,
           collapseMode,
           revealPath,
           rawDraft,
@@ -2548,6 +2496,7 @@
           rootElement,
           save,
           setCollapseMode,
+          statusTone,
           statusText,
           switchSkill,
           tabFields,
@@ -2558,15 +2507,15 @@
       },
       template: `
         <div :id="instanceId" ref="rootElement" class="skill-designer-vue-root">
-            <SkillDesignerToolbar
+          <SkillDesignerToolbar
             :title="rawDraft.name || context.previewMeta.label || '未命名技能'"
             :subtitle="context.previewMeta.category || context.previewMeta.scope || ''"
             :switch-items="context.switchItems"
             :preview-key="context.previewKey"
-              :busy="busy"
-              :dirty="dirty"
-              :status-text="statusText"
-              :status-tone="statusText === '存在错误' || statusText === '保存失败' ? 'error' : statusText === '存在警告' ? 'warning' : statusText === '校验通过' || statusText === '保存成功' ? 'success' : ''"
+            :busy="busy"
+            :dirty="dirty"
+            :status-text="statusText"
+            :status-tone="statusTone"
             :can-undo="!!undoRecord"
             :instance-id="instanceId"
             @save="save"
@@ -2581,8 +2530,20 @@
             :instance-id="instanceId"
             @update:active-tab="activeTab = $event"
           />
-          <div class="skill-designer-vue-workspace">
-            <main class="skill-designer-vue-editor">
+          <main class="skill-designer-vue-editor">
+            <header class="skill-designer-vue-page-heading">
+              <div>
+                <span class="skill-designer-vue-eyebrow">{{ pageMeta.title }}</span>
+                <h1>{{ pageMeta.title }}</h1>
+                <p>{{ pageMeta.description }}</p>
+              </div>
+              <span
+                v-if="errorCounts[activeTab]"
+                class="skill-designer-vue-page-issue"
+                :class="statusTone"
+              >{{ errorCounts[activeTab] }} 个问题</span>
+            </header>
+            <section class="skill-designer-vue-page-canvas">
               <SkillBasicPanel
                 v-show="activeTab === 'basic'"
                 :draft="rawDraft"
@@ -2627,6 +2588,11 @@
                 data-skill-tab="cost"
                 @patch="applyPatch"
               />
+              <SkillCostSummary
+                v-if="activeTab === 'cost'"
+                :result="compileResult"
+                @locate="locateItem"
+              />
               <SkillDescriptionPanel
                 v-show="activeTab === 'description'"
                 :draft="rawDraft"
@@ -2640,18 +2606,38 @@
                 data-skill-tab="description"
                 @patch="applyPatch"
               />
-            </main>
-            <SkillDesignerPreview
-              :result="compileResult"
-              :current-attributes="context.currentAttributes"
-              :expanded="previewExpanded"
-              :collapsible="compactLayout"
-              :instance-id="instanceId + '-preview'"
-              :status-text="statusText"
-              @toggle="previewExpanded = !previewExpanded"
-              @locate="locateItem"
-            />
-          </div>
+              <SkillDescriptionReference
+                v-if="activeTab === 'description'"
+                :result="compileResult"
+              />
+            </section>
+          </main>
+          <footer class="skill-designer-vue-status-dock">
+            <div class="skill-designer-vue-status-dock-summary">
+              <span class="skill-designer-vue-dock-status" :class="statusTone">
+                <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                {{ statusText }}
+              </span>
+              <span class="skill-designer-vue-dock-budget">
+                <b>复杂度预算</b>
+                <strong>{{ budgetSummary }}</strong>
+              </span>
+              <span v-if="compileResult.warnings?.length" class="skill-designer-vue-dock-note warning">
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                {{ compileResult.warnings.length }} 条警告
+              </span>
+              <span v-if="compileResult.errors?.length" class="skill-designer-vue-dock-note error">
+                <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                {{ compileResult.errors.length }} 个问题
+              </span>
+            </div>
+            <button
+              type="button"
+              class="skill-designer-vue-button primary skill-designer-vue-save-dock"
+              :disabled="busy || !!compileResult.errors?.length"
+              @click="save"
+            ><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
+          </footer>
           <div class="skill-designer-vue-live-region" aria-live="assertive" aria-atomic="true">{{ liveMessage }}</div>
         </div>
       `,
@@ -2662,9 +2648,10 @@
       SkillCombobox,
       SkillConditionBuilder,
       SkillCostPanel,
+      SkillCostSummary,
       SkillDescriptionPanel,
+      SkillDescriptionReference,
       SkillDesignerApp,
-      SkillDesignerPreview,
       SkillDesignerTabs,
       SkillDesignerToolbar,
       SkillDurationInput,
