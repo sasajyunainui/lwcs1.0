@@ -4950,7 +4950,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   background: rgba(227, 239, 244, 0.08);
 }
 
-.skill-designer-preview-stack {
+.item-definition-effect-stack {
   display: grid;
   gap: 10px;
 }
@@ -5250,16 +5250,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   --skill-designer-vue-accent: var(--主题主色, #67f7ef);
   --skill-designer-vue-accent-text: var(--主题高光, #ffffff);
   --skill-designer-vue-focus: var(--主题高光, #ffffff);
-  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色, #67f7ef) 58%, var(--主题辅色, #101d27));
+  --skill-designer-vue-accent-secondary: var(--主题辅色, var(--主题主色, #67f7ef));
   --skill-designer-vue-relation: var(--主题主色, #67f7ef);
   --skill-designer-vue-danger: var(--状态危险色, #ff6b7a);
   --skill-designer-vue-success: var(--状态成功色, var(--状态强调色, #7df9ff));
   --skill-designer-vue-warning: var(--状态警告色, var(--主题高光, #ffffff));
   --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
-  --skill-designer-vue-shell-cut: none;
+  --skill-designer-vue-shell-cut: var(--面板裁切, none);
   --skill-designer-vue-shell-texture: var(--背景细纹, none);
   --skill-designer-vue-heading-weight: var(--主题字重, 650);
-  --skill-designer-vue-body-weight: var(--主题字重, 500);
+  --skill-designer-vue-body-weight: min(var(--主题字重, 500), 600);
   --skill-designer-vue-theme: var(--主题主色, #67f7ef);
   width: 100%;
   min-width: 0;
@@ -5271,47 +5271,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: 0;
-}
-
-body[data-mvu-holo-theme='炫世唐门'] .skill-designer-vue-host,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫世唐门'] .skill-designer-vue-host {
-  --skill-designer-vue-radius: 4px;
-  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色) 78%, var(--主题高光));
-  --skill-designer-vue-relation: var(--主题主色);
-  --skill-designer-vue-shell-cut: var(--面板裁切, none);
-  --skill-designer-vue-heading-weight: 650;
-  --skill-designer-vue-body-weight: 520;
-}
-
-body[data-mvu-holo-theme='金龙王'] .skill-designer-vue-host,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] .skill-designer-vue-host {
-  --skill-designer-vue-radius: 2px;
-  --skill-designer-vue-accent: var(--主题高光);
-  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色) 58%, var(--主题高光));
-  --skill-designer-vue-focus: var(--主题高光);
-  --skill-designer-vue-relation: var(--主题主色);
-  --skill-designer-vue-shell-cut: var(--面板裁切, none);
-  --skill-designer-vue-heading-weight: 800;
-  --skill-designer-vue-body-weight: 600;
-}
-
-body[data-mvu-holo-theme='银龙王'] .skill-designer-vue-host,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'] .skill-designer-vue-host {
-  --skill-designer-vue-radius: 8px;
-  --skill-designer-vue-editor: color-mix(in srgb, var(--暗场卡片) 78%, var(--主题底色));
-  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强) 88%, var(--主题底色));
-  --skill-designer-vue-shell-texture: none;
-  --skill-designer-vue-heading-weight: 520;
-  --skill-designer-vue-body-weight: 420;
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] .skill-designer-vue-host,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .skill-designer-vue-host {
-  --skill-designer-vue-radius: 8px;
-  --skill-designer-vue-accent-secondary: var(--主题辅色);
-  --skill-designer-vue-relation: var(--主题辅色);
-  --skill-designer-vue-heading-weight: 620;
-  --skill-designer-vue-body-weight: 500;
 }
 
 #detailModal:has(.skill-designer-vue-root) .mvu-modal-panel.archive-mode {
@@ -5805,6 +5764,9 @@ body:has(.skill-designer-vue-host) #request-monitor-root {
 }
 
 .skill-designer-vue-status-dock {
+  position: sticky;
+  z-index: 8;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -3708,7 +3708,7 @@
   function 构建物品使用效果组(使用效果 = []) {
     const 列表 = Array.isArray(使用效果) ? 使用效果 : [];
     const 效果列表 = 列表.length ? 列表 : [创建技能设计台默认原型效果('资源变化', '自身')];
-    return `<div class="item-definition-effect-list skill-designer-preview-stack" data-item-definition-effect-list data-skill-designer-prototype-grid="item-use" data-skill-designer-allow-empty="true">
+    return `<div class="item-definition-effect-list item-definition-effect-stack" data-item-definition-effect-list data-skill-designer-prototype-grid="item-use" data-skill-designer-allow-empty="true">
         ${构建技能设计台原型效果行列表(效果列表, '自身', true, { 禁用释放前降低结算: true, 允许对应等级: true })}
       </div>
       <div class="mvu-editor-actions">
@@ -23362,7 +23362,7 @@
     return `
         <div class=\"skill-designer-subsection${追加动画 ? ' skill-designer-fade-in' : ''}\" data-skill-designer-condition-branch-row>
           <button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition-branch data-skill-designer-disableable aria-label=\"删除逻辑分支\" title=\"删除该逻辑分支模块\">×</button>
-          <div class=\"skill-designer-preview-stack\" data-skill-designer-condition-list>
+          <div class=\"item-definition-effect-stack\" data-skill-designer-condition-list>
             ${条件.map(item => 构建技能设计台条件分支条件编辑器(item, 条件.length > 1)).join('')}
           </div>
           <div class=\"mvu-editor-actions\">
@@ -23378,14 +23378,14 @@
           </div>
           <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"替换效果\"${处理 === '替换效果' ? '' : ' hidden'}${处理 === '替换效果' ? '' : ' style=\"display:none\"'}>
             <span class=\"mvu-editor-label\">替换效果</span>
-            <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-replace\" data-skill-designer-allow-empty=\"true\">
+            <div class=\"item-definition-effect-stack\" data-skill-designer-prototype-grid=\"condition-replace\" data-skill-designer-allow-empty=\"true\">
               ${替换效果.length ? 构建技能设计台原型效果行列表(替换效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
             </div>
             <div class=\"mvu-editor-actions\"><button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-effect data-skill-designer-condition-effect-kind=\"替换效果\" data-skill-designer-disableable>新增原型</button></div>
           </div>
           <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"追加效果\"${处理 === '追加效果' ? '' : ' hidden'}${处理 === '追加效果' ? '' : ' style=\"display:none\"'}>
             <span class=\"mvu-editor-label\">追加效果</span>
-            <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-append\" data-skill-designer-allow-empty=\"true\">
+            <div class=\"item-definition-effect-stack\" data-skill-designer-prototype-grid=\"condition-append\" data-skill-designer-allow-empty=\"true\">
               ${追加效果.length ? 构建技能设计台原型效果行列表(追加效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
             </div>
             <div class=\"mvu-editor-actions\"><button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-effect data-skill-designer-condition-effect-kind=\"追加效果\" data-skill-designer-disableable>新增原型</button></div>
@@ -23415,7 +23415,7 @@
               <span></span>
             </label>
           </div>
-          <div class=\"skill-designer-preview-stack\" data-skill-designer-condition-branch-list${branches.length ? '' : ' hidden'}${branches.length ? '' : ' style=\"display:none\"'}>
+          <div class=\"item-definition-effect-stack\" data-skill-designer-condition-branch-list${branches.length ? '' : ' hidden'}${branches.length ? '' : ' style=\"display:none\"'}>
             ${branches.map(branch => 构建技能设计台条件分支条目编辑器(branch, fallbackTarget)).join('')}
           </div>
           <div class=\"mvu-editor-actions\" data-skill-designer-condition-branch-actions${branches.length ? '' : ' hidden'}${branches.length ? '' : ' style=\"display:none\"'}>
@@ -23433,7 +23433,7 @@
     return `
         <div class="mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field" data-skill-designer-nested-prototype-field="${escapeHtmlAttr(字段名)}">
           <span class="mvu-editor-label">${htmlEscape(显示字段名)}</span>
-          <div class="skill-designer-preview-stack" data-skill-designer-prototype-grid="nested" data-skill-designer-nested-kind="${escapeHtmlAttr(字段名)}" data-skill-designer-allow-empty="true">
+          <div class="item-definition-effect-stack" data-skill-designer-prototype-grid="nested" data-skill-designer-nested-kind="${escapeHtmlAttr(字段名)}" data-skill-designer-allow-empty="true">
             ${source.length ? 构建技能设计台原型效果行列表(source, 嵌套目标, true, { 嵌套字段: 字段名, 强制独立: true }) : ''}
           </div>
           <div class="mvu-editor-actions">
