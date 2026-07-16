@@ -33661,6 +33661,218 @@
           let 标题操作槽 = null;
           let 重新读取按钮 = null;
           let 技能切换输入 = null;
+          let 技能设计台下拉观察器 = null;
+          let 当前技能设计台下拉 = null;
+          let 技能设计台下拉序号 = 0;
+
+          const 关闭技能设计台下拉 = (返回焦点 = false) => {
+            const 当前 = 当前技能设计台下拉;
+            if (!当前) return;
+            当前技能设计台下拉 = null;
+            当前.触发器.setAttribute('aria-expanded', 'false');
+            if (当前.浮层.parentNode) 当前.浮层.parentNode.removeChild(当前.浮层);
+            if (返回焦点 && 当前.触发器.isConnected) 当前.触发器.focus();
+          };
+
+          const 同步技能设计台下拉 = select => {
+            if (!(select instanceof HTMLSelectElement)) return;
+            const 容器 = select.closest('.skill-designer-select-control');
+            const 触发器 = 容器 && 容器.querySelector(':scope > .skill-designer-select-trigger');
+            const 文本 = 触发器 && 触发器.querySelector('[data-skill-designer-select-value]');
+            if (!(触发器 instanceof HTMLButtonElement) || !文本) return;
+            const 选中项 = select.selectedOptions && select.selectedOptions[0];
+            文本.textContent = normalizeSkillUiText(选中项 &&选中项.textContent, '请选择');
+            触发器.disabled = select.disabled;
+            触发器.title = normalizeSkillUiText(选中项 && 选中项.textContent, '');
+          };
+
+          const 定位技能设计台下拉 = 当前 => {
+            if (!当前 || !当前.触发器.isConnected || !当前.浮层.isConnected) return;
+            const 矩形 = 当前.触发器.getBoundingClientRect();
+            const 安全间距 = 8;
+            const 浮层间距 = 6;
+            const 可用宽度 = Math.max(180, window.innerWidth - 安全间距 * 2);
+            const 宽度 = Math.min(Math.max(矩形.width, 220), 可用宽度);
+            const 左侧 = Math.min(
+              Math.max(安全间距, 矩形.left),
+              Math.max(安全间距, window.innerWidth - 宽度 - 安全间距),
+            );
+            当前.浮层.style.width = `${Math.round(宽度)}px`;
+            当前.浮层.style.left = `${Math.round(左侧)}px`;
+            当前.浮层.style.top = '0';
+            当前.浮层.style.bottom = 'auto';
+            const 期望高度 = Math.min(320, Math.max(44, 当前.浮层.scrollHeight));
+            const 下方空间 = window.innerHeight - 矩形.bottom - 浮层间距 - 安全间距;
+            const 上方空间 = 矩形.top - 浮层间距 - 安全间距;
+            if (下方空间 >= Math.min(180, 期望高度) || 下方空间 >= 上方空间) {
+              当前.浮层.style.top = `${Math.round(矩形.bottom + 浮层间距)}px`;
+              当前.浮层.style.maxHeight = `${Math.max(96, Math.min(320, 下方空间))}px`;
+            } else {
+              当前.浮层.style.top = 'auto';
+              当前.浮层.style.bottom = `${Math.round(window.innerHeight - 矩形.top + 浮层间距)}px`;
+              当前.浮层.style.maxHeight = `${Math.max(96, Math.min(320, 上方空间))}px`;
+            }
+          };
+
+          const 打开技能设计台下拉 = (select, 触发器, 键盘方向 = 0) => {
+            if (!(select instanceof HTMLSelectElement) || select.disabled) return;
+            if (当前技能设计台下拉 && 当前技能设计台下拉.select === select) {
+              关闭技能设计台下拉();
+              return;
+            }
+            关闭技能设计台下拉();
+            const 浮层 = document.createElement('div');
+            const 浮层编号 = `skill-designer-select-${Date.now()}-${技能设计台下拉序号++}`;
+            浮层.id = 浮层编号;
+            浮层.className = 'skill-designer-select-popover';
+            浮层.setAttribute('role', 'listbox');
+            浮层.setAttribute('aria-label', 触发器.getAttribute('aria-label') || '选择选项');
+            const 主题宿主 = mountEl.closest('[data-holo-theme]') || mountEl;
+            const 主题样式 = window.getComputedStyle(主题宿主);
+            [
+              '--主题主色',
+              '--主题辅色',
+              '--主题高光',
+              '--暗场浮层',
+              '--边线颜色',
+              '--文字主色',
+              '--文字弱色',
+              '--主题字体',
+              '--主题字重',
+              '--全息材质底',
+              '--全息材质线',
+              '--全息数值文字',
+            ].forEach(变量 => {
+              const 值 = 主题样式.getPropertyValue(变量);
+              if (值) 浮层.style.setProperty(变量, 值);
+            });
+            const 主题名 = 主题宿主.getAttribute && 主题宿主.getAttribute('data-holo-theme');
+            if (主题名) 浮层.setAttribute('data-holo-theme', 主题名);
+
+            Array.from(select.options).forEach((option, index) => {
+              const 标签 = normalizeSkillUiText(option.textContent, '');
+              if (option.disabled) {
+                const 分组 = document.createElement('div');
+                分组.className = 'skill-designer-select-group';
+                分组.textContent = 标签.replace(/^─+\s*|\s*─+$/g, '') || '选项';
+                浮层.appendChild(分组);
+                return;
+              }
+              const 按钮 = document.createElement('button');
+              按钮.type = 'button';
+              按钮.className = 'skill-designer-select-option';
+              按钮.setAttribute('role', 'option');
+              按钮.setAttribute('aria-selected', option.selected ? 'true' : 'false');
+              按钮.dataset.skillDesignerSelectIndex = String(index);
+              按钮.textContent = 标签;
+              if (option.selected) 按钮.classList.add('is-selected');
+              按钮.addEventListener('click', event => {
+                event.preventDefault();
+                if (select.selectedIndex !== index) {
+                  select.selectedIndex = index;
+                  select.dispatchEvent(new Event('input', { bubbles: true }));
+                  select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                同步技能设计台下拉(select);
+                关闭技能设计台下拉(true);
+              });
+              浮层.appendChild(按钮);
+            });
+
+            浮层.addEventListener('keydown', event => {
+              const 选项 = Array.from(浮层.querySelectorAll('.skill-designer-select-option'));
+              const 当前索引 = Math.max(0, 选项.indexOf(document.activeElement));
+              let 下一索引 = 当前索引;
+              if (event.key === 'ArrowDown') 下一索引 = Math.min(选项.length - 1, 当前索引 + 1);
+              else if (event.key === 'ArrowUp') 下一索引 = Math.max(0, 当前索引 - 1);
+              else if (event.key === 'Home') 下一索引 = 0;
+              else if (event.key === 'End') 下一索引 = Math.max(0, 选项.length - 1);
+              else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                关闭技能设计台下拉(true);
+                return;
+              } else if (event.key === 'Tab') {
+                关闭技能设计台下拉();
+                return;
+              } else return;
+              event.preventDefault();
+              选项[下一索引]?.focus();
+            });
+
+            document.body.appendChild(浮层);
+            当前技能设计台下拉 = { select, 触发器, 浮层 };
+            触发器.setAttribute('aria-controls', 浮层编号);
+            触发器.setAttribute('aria-expanded', 'true');
+            定位技能设计台下拉(当前技能设计台下拉);
+            const 可选项 = Array.from(浮层.querySelectorAll('.skill-designer-select-option'));
+            const 选中索引 = Math.max(0, 可选项.findIndex(选项 => 选项.classList.contains('is-selected')));
+            const 聚焦索引 =
+              键盘方向 > 0
+                ? Math.min(可选项.length - 1, 选中索引 + 1)
+                : 键盘方向 < 0
+                  ? Math.max(0, 选中索引 - 1)
+                  : 选中索引;
+            可选项[聚焦索引]?.focus();
+            可选项[聚焦索引]?.scrollIntoView({ block: 'nearest' });
+          };
+
+          const 增强技能设计台下拉控件 = root => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('.skill-designer-shell select.mvu-editor-select:not([multiple])').forEach(select => {
+              if (!(select instanceof HTMLSelectElement) || select.dataset.skillDesignerSelectEnhanced === 'true') return;
+              select.dataset.skillDesignerSelectEnhanced = 'true';
+              const 原始TabIndex = select.getAttribute('tabindex');
+              const 容器 = document.createElement('div');
+              容器.className = 'skill-designer-select-control';
+              select.parentNode.insertBefore(容器, select);
+              容器.appendChild(select);
+              select.classList.add('skill-designer-native-select');
+              select.setAttribute('tabindex', '-1');
+              const 触发器 = document.createElement('button');
+              触发器.type = 'button';
+              触发器.className = 'skill-designer-select-trigger';
+              触发器.setAttribute('aria-haspopup', 'listbox');
+              触发器.setAttribute('aria-expanded', 'false');
+              触发器.setAttribute(
+                'aria-label',
+                normalizeSkillUiText(select.closest('.mvu-editor-field')?.querySelector('.mvu-editor-label')?.textContent, '选择选项'),
+              );
+              触发器.innerHTML =
+                '<span data-skill-designer-select-value></span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+              触发器.addEventListener('click', event => {
+                event.preventDefault();
+                打开技能设计台下拉(select, 触发器);
+              });
+              触发器.addEventListener('keydown', event => {
+                if (!['Enter', ' ', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                打开技能设计台下拉(
+                  select,
+                  触发器,
+                  event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0,
+                );
+              });
+              select.addEventListener('change', () => 同步技能设计台下拉(select));
+              容器.appendChild(触发器);
+              同步技能设计台下拉(select);
+              if (原始TabIndex !== null) 触发器.setAttribute('tabindex', 原始TabIndex);
+            });
+          };
+
+          const 处理技能设计台下拉外部点击 = event => {
+            const 当前 = 当前技能设计台下拉;
+            if (!当前) return;
+            const 目标 = event.target instanceof Node ? event.target : null;
+            if (目标 && (当前.浮层.contains(目标) || 当前.触发器.contains(目标))) return;
+            关闭技能设计台下拉();
+          };
+          const 处理技能设计台下拉滚动 = event => {
+            const 当前 = 当前技能设计台下拉;
+            if (!当前 || (event.target instanceof Node && 当前.浮层.contains(event.target))) return;
+            关闭技能设计台下拉();
+          };
+          const 处理技能设计台下拉视口变化 = () => 关闭技能设计台下拉();
 
           const setBusy = nextBusy => {
             busy = !!nextBusy;
@@ -35079,10 +35291,39 @@
           mountEl.addEventListener('change', handleChange);
           mountEl.addEventListener('input', handleInput);
           mountEl.addEventListener('click', handleClick);
+          增强技能设计台下拉控件(mountEl);
+          技能设计台下拉观察器 = new MutationObserver(变更列表 => {
+            let 需要扫描 = false;
+            变更列表.forEach(变更 => {
+              if (变更.type === 'childList' && 变更.addedNodes.length) 需要扫描 = true;
+              if (
+                变更.type === 'attributes' &&
+                变更.target instanceof HTMLSelectElement &&
+                变更.target.dataset.skillDesignerSelectEnhanced === 'true'
+              ) {
+                同步技能设计台下拉(变更.target);
+              }
+            });
+            if (需要扫描) 增强技能设计台下拉控件(mountEl);
+          });
+          技能设计台下拉观察器.observe(mountEl, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['disabled'],
+          });
+          document.addEventListener('pointerdown', 处理技能设计台下拉外部点击, true);
+          document.addEventListener('scroll', 处理技能设计台下拉滚动, true);
+          window.addEventListener('resize', 处理技能设计台下拉视口变化);
 
           return {
             destroy() {
               destroyed = true;
+              关闭技能设计台下拉();
+              if (技能设计台下拉观察器) 技能设计台下拉观察器.disconnect();
+              document.removeEventListener('pointerdown', 处理技能设计台下拉外部点击, true);
+              document.removeEventListener('scroll', 处理技能设计台下拉滚动, true);
+              window.removeEventListener('resize', 处理技能设计台下拉视口变化);
               if (form) form.removeEventListener('submit', handleSubmit);
               if (重新读取按钮) 重新读取按钮.removeEventListener('click', handleRefresh);
               if (技能切换输入) 技能切换输入.removeEventListener('change', handleSkillSwitch);

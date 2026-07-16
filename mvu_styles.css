@@ -4816,6 +4816,159 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     box-shadow 0.2s;
 }
 
+.skill-designer-select-control {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.skill-designer-shell .mvu-editor-select.skill-designer-native-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.skill-designer-select-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--全息材质线);
+  border-radius: 0;
+  background: var(--全息材质底);
+  color: var(--全息数值文字);
+  font: inherit;
+  font-size: var(--mvu-font-base, 13px);
+  line-height: 18px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.skill-designer-select-trigger [data-skill-designer-select-value] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-designer-select-trigger i {
+  color: color-mix(in srgb, var(--文字弱色) 86%, var(--主题主色));
+  font-size: 11px;
+  transition: transform 0.18s ease;
+}
+
+.skill-designer-select-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--边线颜色) 58%, transparent);
+  background: color-mix(in srgb, var(--全息材质底) 92%, var(--主题主色) 8%);
+}
+
+.skill-designer-select-trigger:focus-visible,
+.skill-designer-select-trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--边线颜色) 52%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--主题主色) 14%, transparent),
+    inset 0 0 5px color-mix(in srgb, var(--主题主色) 8%, transparent);
+  outline: none;
+}
+
+.skill-designer-select-trigger[aria-expanded='true'] i {
+  transform: rotate(180deg);
+}
+
+.skill-designer-select-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.skill-designer-select-popover {
+  position: fixed;
+  z-index: 100000;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 52%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--暗场浮层, #0b1822) 96%, black 4%);
+  color: var(--文字主色, #eef9fc);
+  font-family: var(--主题字体, inherit);
+  font-size: var(--mvu-font-base, 13px);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.48),
+    0 0 0 1px color-mix(in srgb, var(--主题主色) 10%, transparent);
+  overscroll-behavior: contain;
+}
+
+.skill-designer-select-group {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 7px 10px 5px;
+  color: color-mix(in srgb, var(--文字弱色, #9fb5bd) 88%, var(--主题主色));
+  font-size: var(--mvu-font-xs, 11px);
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.skill-designer-select-group:not(:first-child) {
+  margin-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
+}
+
+.skill-designer-select-option {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--文字主色, #eef9fc);
+  font: inherit;
+  line-height: 20px;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.skill-designer-select-option:hover,
+.skill-designer-select-option:focus-visible {
+  border-color: color-mix(in srgb, var(--边线颜色) 28%, transparent);
+  background: color-mix(in srgb, var(--主题主色) 12%, var(--暗场浮层, #0b1822));
+  outline: none;
+}
+
+.skill-designer-select-option.is-selected {
+  border-color: color-mix(in srgb, var(--主题主色) 46%, transparent);
+  background: color-mix(in srgb, var(--主题主色) 18%, var(--暗场浮层, #0b1822));
+  color: var(--全息数值文字, #f7fdff);
+  font-weight: 700;
+}
+
+.skill-designer-select-option.is-selected::before {
+  width: 3px;
+  height: 18px;
+  flex: 0 0 3px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: var(--主题主色);
+  content: '';
+}
+
 .skill-designer-shell .skill-designer-static-token {
   width: 100%;
   min-width: 0;
