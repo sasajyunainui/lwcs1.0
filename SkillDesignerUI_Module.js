@@ -1704,6 +1704,54 @@
         const primaryFields = computed(() =>
           props.fields.filter(field => field.presentation !== 'advanced'),
         );
+        const fieldSections = computed(() => {
+          const definitions = name === 'SkillBasicPanel'
+            ? [
+              ['identity', '技能身份'],
+              ['rules', '施放规则'],
+              ['carrier', '载体参数'],
+            ]
+            : name === 'SkillCostPanel'
+              ? [
+                ['resources', '资源代价'],
+                ['timing', '时间与成长'],
+                ['attributes', '附带属性'],
+              ]
+              : [
+                ['visual', '画面描述'],
+                ['effect', '效果描述'],
+                ['progress', '专属进度'],
+              ];
+          const groups = new Map(definitions.map(([key, label]) => [key, { key, label, fields: [] }]));
+          primaryFields.value.forEach(field => {
+            const key = String(field.key || '').toLowerCase();
+            const group = String(field.group || '');
+            let sectionKey = definitions[0][0];
+            if (name === 'SkillBasicPanel') {
+              sectionKey = ['name', 'deliveryForm'].includes(field.key)
+                ? 'identity'
+                : key.includes('passive') || key.includes('usage') || key.includes('限制') || key.includes('被动')
+                  ? 'rules'
+                  : 'carrier';
+            } else if (name === 'SkillCostPanel') {
+              sectionKey = group === 'timing' || key.includes('前摇') || key.includes('掌控')
+                ? 'timing'
+                : group === 'value' || key.includes('cost') || key.includes('资源')
+                  ? 'resources'
+                  : 'attributes';
+            } else {
+              sectionKey = key.includes('visual') || key.includes('画面')
+                ? 'visual'
+                : key.includes('effect') || key.includes('效果')
+                  ? 'effect'
+                  : 'progress';
+            }
+            (groups.get(sectionKey) || groups.get(definitions[0][0])).fields.push(field);
+          });
+          return definitions
+            .map(([key]) => groups.get(key))
+            .filter(section => section.fields.length);
+        });
         const advancedGroups = computed(() => {
           const groupLabels = {
             identity: '身份与承载',
@@ -1726,31 +1774,50 @@
             .filter(key => grouped.has(key))
             .map(key => ({ key, label: groupLabels[key], fields: grouped.get(key) }));
         });
-        return { advancedGroups, fieldError, fieldPath, fieldValue, patch, pathKey, primaryFields };
+        return {
+          advancedGroups,
+          fieldError,
+          fieldPath,
+          fieldSections,
+          fieldValue,
+          patch,
+          pathKey,
+          primaryFields,
+        };
       },
       template: `
         <div class="skill-designer-vue-panel">
-          <div class="skill-designer-vue-field-grid">
-            <SkillFieldShell
-              v-for="field in primaryFields"
-              :key="field.id || field.key"
-              :descriptor="field"
-              :input-id="instanceId + '-' + (field.id || field.key)"
-              :field-path="pathKey(fieldPath(field))"
-              :error="fieldError(field)"
-            >
-              <SkillFieldControl
+          <section
+            v-for="section in fieldSections"
+            :key="section.key"
+            class="skill-designer-vue-section skill-designer-vue-field-section"
+          >
+            <div class="skill-designer-vue-section-head">
+              <h3>{{ section.label }}</h3>
+              <span class="skill-designer-vue-section-count">{{ section.fields.length }} 项</span>
+            </div>
+            <div class="skill-designer-vue-field-grid">
+              <SkillFieldShell
+                v-for="field in section.fields"
+                :key="field.id || field.key"
                 :descriptor="field"
-                :model-value="fieldValue(field)"
-                :disabled="disabled"
-                :instance-id="instanceId + '-' + (field.id || field.key)"
                 :input-id="instanceId + '-' + (field.id || field.key)"
-                :invalid="!!fieldError(field)"
-                :described-by="fieldError(field) ? instanceId + '-' + (field.id || field.key) + '-error' : ''"
-                @update:model-value="patch(field, $event)"
-              />
-            </SkillFieldShell>
-          </div>
+                :field-path="pathKey(fieldPath(field))"
+                :error="fieldError(field)"
+              >
+                <SkillFieldControl
+                  :descriptor="field"
+                  :model-value="fieldValue(field)"
+                  :disabled="disabled"
+                  :instance-id="instanceId + '-' + (field.id || field.key)"
+                  :input-id="instanceId + '-' + (field.id || field.key)"
+                  :invalid="!!fieldError(field)"
+                  :described-by="fieldError(field) ? instanceId + '-' + (field.id || field.key) + '-error' : ''"
+                  @update:model-value="patch(field, $event)"
+                />
+              </SkillFieldShell>
+            </div>
+          </section>
           <details
             v-for="group in advancedGroups"
             :key="group.key"
@@ -1854,8 +1921,8 @@
     const SkillCostPanel = createSkillFieldPanel('SkillCostPanel');
     const SkillDescriptionPanel = createSkillFieldPanel('SkillDescriptionPanel');
 
-    const SkillCostSummary = defineComponent({
-      name: 'SkillCostSummary',
+    const SkillCostLedger = defineComponent({
+      name: 'SkillCostLedger',
       props: {
         result: { type: Object, default: () => ({}) },
       },
@@ -2003,7 +2070,6 @@
               :options="switchOptions"
               :disabled="busy"
               label="技能"
-              trigger-text="切换技能"
               :instance-id="instanceId + '-switch'"
               @update:model-value="$emit('switch-skill', $event)"
             />
@@ -2075,7 +2141,7 @@
       components: {
         SkillBasicPanel,
         SkillCostPanel,
-        SkillCostSummary,
+        SkillCostLedger,
         SkillDescriptionPanel,
         SkillDescriptionReference,
         SkillDesignerTabs,
@@ -2571,7 +2637,6 @@
           <main class="skill-designer-vue-editor">
             <header class="skill-designer-vue-page-heading">
               <div>
-                <span class="skill-designer-vue-eyebrow">{{ pageMeta.title }}</span>
                 <h1>{{ pageMeta.title }}</h1>
                 <p>{{ pageMeta.description }}</p>
               </div>
@@ -2626,10 +2691,16 @@
                 data-skill-tab="cost"
                 @patch="applyPatch"
               />
-              <SkillCostSummary
+              <SkillCostLedger
                 v-if="activeTab === 'cost'"
                 :result="compileResult"
                 @locate="locateItem"
+              />
+              <SkillDescriptionReference
+                v-if="activeTab === 'description'"
+                :result="compileResult"
+                :draft="rawDraft"
+                @patch="applyPatch"
               />
               <SkillDescriptionPanel
                 v-show="activeTab === 'description'"
@@ -2642,12 +2713,6 @@
                 :aria-labelledby="instanceId + '-tab-description'"
                 role="tabpanel"
                 data-skill-tab="description"
-                @patch="applyPatch"
-              />
-              <SkillDescriptionReference
-                v-if="activeTab === 'description'"
-                :result="compileResult"
-                :draft="rawDraft"
                 @patch="applyPatch"
               />
             </section>
@@ -2688,7 +2753,7 @@
       SkillCombobox,
       SkillConditionBuilder,
       SkillCostPanel,
-      SkillCostSummary,
+      SkillCostLedger,
       SkillDescriptionPanel,
       SkillDescriptionReference,
       SkillDesignerApp,
