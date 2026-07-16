@@ -5371,7 +5371,8 @@ body:has(.skill-designer-vue-host) .acu-nav-container {
 }
 
 body:has(.skill-designer-vue-host) #WorldInfo,
-body:has(.skill-designer-vue-host) #qr--bar {
+body:has(.skill-designer-vue-host) #qr--bar,
+body:has(.skill-designer-vue-host) #form_sheld {
   display: none;
 }
 
