@@ -23863,7 +23863,6 @@
             ];
           })()
         : 原始字段列表;
-    const 已有条件分支 = Array.isArray(当前效果 && 当前效果['条件分支']) && 当前效果['条件分支'].length > 0;
     const 内部筛选字段 = prototype === '状态移除' ? new Set(['匹配原型', '资源', '数值方向']) : new Set();
     const 字段内容 = 字段列表
       .filter(key => !['驱动属性', '影响方向', '条件分支'].includes(key) && !内部筛选字段.has(key))
@@ -23875,7 +23874,7 @@
     if (prototype === '状态移除') 字段内容.push(构建技能设计台状态移除内部筛选编辑器(当前效果, target, options));
     if (字段列表.includes('驱动属性') && 字段列表.includes('影响方向'))
       字段内容.push(构建技能设计台驱动判定属性编辑器(当前效果));
-    if (字段列表.includes('条件分支') && 已有条件分支)
+    if (字段列表.includes('条件分支'))
       字段内容.push(
         构建技能设计台原型字段输入(prototype, '条件分支', 当前效果 && 当前效果['条件分支'], target, options),
       );
