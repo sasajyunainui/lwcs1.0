@@ -747,8 +747,8 @@
           <div v-if="action === '生效' || action === '禁用'" class="skill-designer-vue-branch-outcome"><span class="skill-designer-vue-logic-word">{{ action === '禁用' ? '否则' : '满足后' }}</span><strong>{{ action === '禁用' ? '禁用当前效果' : '保持当前效果' }}</strong></div>
           <div v-else class="skill-designer-vue-branch-effects">
             <SkillBranchEffect v-for="(effect, effectIndex) in effects" :key="effectIndex" :effect="effect" :path="[...branchPath(effectKey), effectIndex]" :relation="action === '追加效果' ? '追加' : '替换'" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-effect-' + effectIndex" :error-paths="errorPaths" @patch="emit('patch', $event)" @remove="emit('structure', { type: 'remove', path: branchPath(effectKey), index: effectIndex })" />
-            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || effects.length >= Number(modelApi.nestedPrototypeLimit || 2)" @click="emit('structure', { type: 'add-prototype', path: branchPath(effectKey) })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加{{ action === '追加效果' ? '追加' : '替换' }}效果</button>
-            <small v-if="effects.length >= Number(modelApi.nestedPrototypeLimit || 2)" class="skill-designer-vue-limit-note">嵌套效果最多支持 2 层。</small>
+            <button type="button" class="skill-designer-vue-link-button" :disabled="disabled || effects.length >= Math.min(2, Number(modelApi.nestedPrototypeLimit || 2))" @click="emit('structure', { type: 'add-prototype', path: branchPath(effectKey) })"><i class="fa-solid fa-plus" aria-hidden="true"></i>添加{{ action === '追加效果' ? '追加' : '替换' }}效果</button>
+            <small v-if="effects.length >= Math.min(2, Number(modelApi.nestedPrototypeLimit || 2))" class="skill-designer-vue-limit-note">嵌套效果最多支持 2 层。</small>
           </div>
         </section>
       `,
@@ -781,6 +781,10 @@
         const summary = computed(() => [text(props.effect?.原型, '未选择效果'), text(props.effect?.目标, ''), conditions.value.length ? `${conditions.value.length} 个条件分支` : '无条件分支'].filter(Boolean).join(' · '));
         function patch(field, value) { emit('patch', { path: [...props.path, props.index, field.key], value, dependent: !!field.dependent }); }
         function toggle() { if (props.collapseMode === 'normal') expanded.value = !expanded.value; }
+        watch(() => props.collapseMode, mode => {
+          if (mode === 'all') expanded.value = false;
+          if (mode === 'errors') expanded.value = hasError.value;
+        });
         return { conditions, emit, expanded, fields, hasError, patch, readPath, summary, toggle };
       },
       methods: { pathKey, readPath },
@@ -827,23 +831,24 @@
       setup(props, { emit }) {
         const effects = computed(() => Array.isArray(props.draft.prototypeEffects) ? props.draft.prototypeEffects : []);
         const sideEffects = computed(() => Array.isArray(props.draft.副作用列表) ? props.draft.副作用列表 : []);
+        const canAddPrototype = computed(() => effects.value.length < Number(props.modelApi.prototypeLimit || 99));
         function sideEffectFields(item) { return props.modelApi.getSideEffectModel(item || {}).fields || []; }
         function patchSideEffect(index, field, value) { emit('patch', { path: ['副作用列表', index, field.key], value, dependent: !!field.dependent }); }
-        return { effects, emit, patchSideEffect, readPath, sideEffectFields, sideEffects };
+        return { canAddPrototype, effects, emit, patchSideEffect, readPath, sideEffectFields, sideEffects };
       },
       template: `
         <section class="skill-designer-vue-effect-page" id="skill-designer-effect-content">
           <div class="skill-designer-vue-effect-toolbar">
             <div><span class="skill-designer-vue-section-kicker">效果编排</span><h2>先建立主效果，再补充条件和分支</h2><p>原型按顺序平铺；复杂关系用短线、标签和自然语言表达。</p></div>
             <div class="skill-designer-vue-action-row">
-              <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
+              <button type="button" class="skill-designer-vue-button primary" :disabled="disabled || !canAddPrototype" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增原型</button>
               <button type="button" class="skill-designer-vue-text-button" :disabled="disabled" @click="emit('view', 'all')"><i class="fa-solid fa-compress" aria-hidden="true"></i>折叠全部</button>
               <button type="button" class="skill-designer-vue-text-button" :disabled="disabled" @click="emit('view', 'errors')"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>仅展开错误</button>
             </div>
           </div>
           <div v-if="!effects.length" class="skill-designer-vue-empty-state">
             <i class="fa-solid fa-list-check" aria-hidden="true"></i><strong>还没有效果原型</strong><span>先添加一个主效果，之后再配置条件、追加或替换效果。</span>
-            <button type="button" class="skill-designer-vue-button primary" :disabled="disabled" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增第一个原型</button>
+            <button type="button" class="skill-designer-vue-button primary" :disabled="disabled || !canAddPrototype" @click="emit('structure', { type: 'add-prototype', path: ['prototypeEffects'] })"><i class="fa-solid fa-plus" aria-hidden="true"></i>新增第一个原型</button>
           </div>
           <div v-else class="skill-designer-vue-prototype-list">
             <SkillPrototypeRow v-for="(effect, index) in effects" :key="index" :effect="effect" :path="['prototypeEffects']" :index="index" :count="effects.length" :model-api="modelApi" :disabled="disabled" :instance-id="instanceId + '-prototype-' + index" :error-paths="errorPaths" :collapse-mode="collapseMode" @patch="emit('patch', $event)" @structure="emit('structure', $event)" />
@@ -964,7 +969,7 @@
       emits: ['save'],
       template: `
         <footer class="skill-designer-vue-status-dock">
-          <div class="skill-designer-vue-status-main"><span class="skill-designer-vue-status-dot" aria-hidden="true"></span><span class="skill-designer-vue-status-label">{{ statusText }}</span><span class="skill-designer-vue-dock-budget">复杂度预算 <strong>{{ budgetSummary }}</strong></span><span v-if="warnings" class="skill-designer-vue-dock-warning">{{ warnings }} 条警告</span><span v-if="errors" class="skill-designer-vue-dock-error">{{ errors }} 个问题</span></div>
+          <div class="skill-designer-vue-status-main" :class="{ 'has-error': errors, 'has-warning': !errors && warnings }"><span class="skill-designer-vue-status-dot" aria-hidden="true"></span><span class="skill-designer-vue-status-label">{{ statusText }}</span><span class="skill-designer-vue-dock-budget">复杂度预算 <strong>{{ budgetSummary }}</strong></span><span v-if="warnings" class="skill-designer-vue-dock-warning">{{ warnings }} 条警告</span><span v-if="errors" class="skill-designer-vue-dock-error">{{ errors }} 个问题</span></div>
           <button type="button" class="skill-designer-vue-button primary skill-designer-vue-save" :disabled="disabled" @click="$emit('save')"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
         </footer>
       `,
@@ -1246,7 +1251,7 @@
             </section>
           </main>
           <section v-if="undoRecord" class="skill-designer-vue-undo-notice" role="status"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span>{{ liveMessage || '结构已更新，可以撤销上一次操作。' }}</span><button type="button" class="skill-designer-vue-text-button" :disabled="busy" @click="undo">撤销</button></section>
-          <SkillStatusDock :status-text="statusText" :budget-summary="budgetSummary" :warnings="compileResult.warnings?.length || 0" :errors="compileResult.errors?.length || 0" :disabled="busy || !!compileResult.errors?.length" @save="save" />
+          <SkillStatusDock :status-text="statusText" :budget-summary="budgetSummary" :warnings="compileResult.warnings?.length || 0" :errors="compileResult.errors?.length || 0" :disabled="busy" @save="save" />
           <div class="skill-designer-vue-live-region" aria-live="assertive">{{ liveMessage }}</div>
         </div>
       `,

@@ -5240,7 +5240,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   --sd-control: var(--暗场底板强, #0e171e);
   --sd-popover: var(--暗场浮层, #17242d);
   --sd-text: var(--文字主色, #f4f7f8);
-  --sd-muted: var(--文字弱色, #a7b8bf);
+  --sd-muted: color-mix(in srgb, var(--文字弱色, #a7b8bf) 72%, var(--文字主色, #f4f7f8));
   --sd-accent: var(--主题主色, #6de3e8);
   --sd-accent-2: var(--主题辅色, var(--主题主色, #6de3e8));
   --sd-accent-text: var(--主题高光, #ffffff);
@@ -5249,13 +5249,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   --sd-danger: var(--状态危险色, #ee7783);
   --sd-warning: var(--状态警告色, #e6bf6b);
   --sd-success: var(--状态成功色, #76d4a0);
+  --sd-accent-ink: var(--主题底色, #071318);
   --sd-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
   --sd-font: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
   --sd-weight: var(--主题字重, 650);
   width: 100%;
   min-width: 0;
+  min-height: 1px;
+  display: block;
+  container-type: inline-size;
   color: var(--sd-text);
-  color-scheme: dark;
+  color-scheme: normal;
   font-family: var(--sd-font);
   font-size: 14px;
   font-weight: 500;
@@ -5272,10 +5276,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-root {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: 0;
+  min-height: 100%;
   background: var(--sd-shell);
   color: var(--sd-text);
 }
@@ -5446,6 +5450,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-editor {
+  flex: 1 1 auto;
   min-width: 0;
   padding: 24px 20px 150px;
   background: var(--sd-surface);
@@ -5453,7 +5458,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-page-heading,
 .skill-designer-vue-page-canvas {
-  width: min(100%, 960px);
+  width: 100%;
   min-width: 0;
   margin-inline: auto;
 }
@@ -5563,7 +5568,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 0; overflow: hidden; border: 1px solid var(--sd-border); border-radius: var(--sd-radius); background: var(--sd-control); }
 .skill-designer-vue-segmented button { min-width: 0; min-height: 42px; padding: 0 10px; border: 0; border-right: 1px solid var(--sd-border); background: transparent; color: var(--sd-muted); cursor: pointer; font: inherit; font-size: 13px; }
 .skill-designer-vue-segmented button:last-child { border-right: 0; }
-.skill-designer-vue-segmented button.active { background: var(--sd-accent); color: #071318; font-weight: 700; }
+.skill-designer-vue-segmented button.active { background: var(--sd-accent); color: var(--sd-accent-ink); font-weight: 700; }
 .skill-designer-vue-segmented.compact button { min-height: 36px; font-size: 12px; }
 .skill-designer-vue-duration { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .skill-designer-vue-duration label { position: relative; min-width: 0; }
@@ -5608,7 +5613,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-link-button,
 .skill-designer-vue-icon-button { min-height: 40px; border: 1px solid var(--sd-border); border-radius: var(--sd-radius); background: var(--sd-control); color: var(--sd-text); cursor: pointer; font: inherit; font-size: 13px; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
 .skill-designer-vue-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; white-space: nowrap; }
-.skill-designer-vue-button.primary { border-color: var(--sd-accent); background: var(--sd-accent); color: #071318; font-weight: 700; }
+.skill-designer-vue-button.primary { border-color: var(--sd-accent); background: var(--sd-accent); color: var(--sd-accent-ink); font-weight: 700; }
 .skill-designer-vue-text-button,
 .skill-designer-vue-link-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border-color: transparent; background: transparent; color: var(--sd-accent-text); }
 .skill-designer-vue-icon-button { display: inline-grid; width: 40px; min-width: 40px; place-items: center; padding: 0; }
@@ -5695,6 +5700,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-status-dock { position: sticky; bottom: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 10px 20px; border-top: 1px solid var(--sd-border); background: var(--sd-shell); }
 .skill-designer-vue-status-main { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-width: 0; }
 .skill-designer-vue-status-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--sd-success); }
+.skill-designer-vue-status-main.has-warning .skill-designer-vue-status-dot { background: var(--sd-warning); }
+.skill-designer-vue-status-main.has-error .skill-designer-vue-status-dot { background: var(--sd-danger); }
 .skill-designer-vue-status-label { color: var(--sd-text); white-space: nowrap; }
 .skill-designer-vue-dock-budget { padding-left: 12px; border-left: 1px solid var(--sd-border); color: var(--sd-muted); white-space: nowrap; }
 .skill-designer-vue-dock-budget strong { color: var(--sd-accent-text); font-variant-numeric: tabular-nums; }
@@ -5772,9 +5779,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-v
   height: auto;
   max-height: none;
   min-height: 0;
+  display: block;
   overflow: visible;
 }
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:has(.skill-designer-vue-host) { padding: 0; }
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.skill-designer-vue-host) {
+  min-height: 1px;
+  position: relative;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-page:has(.skill-designer-vue-host) {
+  padding: 0;
+  min-height: 1px;
+}
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame:has(.skill-designer-vue-host) { border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .mvu-editor-actions.end {
   margin-left: 0;
