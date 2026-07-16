@@ -2136,6 +2136,70 @@
       `,
     });
 
+    const SkillDesignerPageHeader = defineComponent({
+      name: 'SkillDesignerPageHeader',
+      props: {
+        meta: { type: Object, required: true },
+        issueCount: { type: Number, default: 0 },
+        statusTone: { type: String, default: '' },
+        statusText: { type: String, default: '' },
+      },
+      template: `
+        <header class="skill-designer-vue-page-heading">
+          <div class="skill-designer-vue-page-heading-copy">
+            <span class="skill-designer-vue-page-kicker">当前任务</span>
+            <h1>{{ meta.title }}</h1>
+            <p>{{ meta.description }}</p>
+          </div>
+          <div class="skill-designer-vue-page-heading-status" :class="statusTone">
+            <span>{{ statusText }}</span>
+            <strong v-if="issueCount">{{ issueCount }} 个问题</strong>
+          </div>
+        </header>
+      `,
+    });
+
+    const SkillDesignerStatusDock = defineComponent({
+      name: 'SkillDesignerStatusDock',
+      props: {
+        statusText: { type: String, default: '未修改' },
+        statusTone: { type: String, default: '' },
+        budgetSummary: { type: String, default: '预算待评估' },
+        warnings: { type: Number, default: 0 },
+        errors: { type: Number, default: 0 },
+        disabled: Boolean,
+      },
+      emits: ['save'],
+      template: `
+        <footer class="skill-designer-vue-status-dock" aria-label="设计状态与保存">
+          <div class="skill-designer-vue-status-dock-summary">
+            <span class="skill-designer-vue-dock-status" :class="statusTone">
+              <i class="fa-solid fa-circle" aria-hidden="true"></i>
+              <span>{{ statusText }}</span>
+            </span>
+            <span class="skill-designer-vue-dock-budget">
+              <span>复杂度预算</span>
+              <strong>{{ budgetSummary }}</strong>
+            </span>
+            <span v-if="warnings" class="skill-designer-vue-dock-note warning">
+              <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+              <span>{{ warnings }} 条警告</span>
+            </span>
+            <span v-if="errors" class="skill-designer-vue-dock-note error">
+              <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+              <span>{{ errors }} 个问题</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            class="skill-designer-vue-button primary skill-designer-vue-save-dock"
+            :disabled="disabled"
+            @click="$emit('save')"
+          ><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
+        </footer>
+      `,
+    });
+
     const SkillDesignerApp = defineComponent({
       name: 'SkillDesignerApp',
       components: {
@@ -2144,6 +2208,8 @@
         SkillCostLedger,
         SkillDescriptionPanel,
         SkillDescriptionReference,
+        SkillDesignerPageHeader,
+        SkillDesignerStatusDock,
         SkillDesignerTabs,
         SkillDesignerToolbar,
         SkillEffectPanel,
@@ -2635,17 +2701,12 @@
             @update:active-tab="activeTab = $event"
           />
           <main class="skill-designer-vue-editor">
-            <header class="skill-designer-vue-page-heading">
-              <div>
-                <h1>{{ pageMeta.title }}</h1>
-                <p>{{ pageMeta.description }}</p>
-              </div>
-              <span
-                v-if="errorCounts[activeTab]"
-                class="skill-designer-vue-page-issue"
-                :class="statusTone"
-              >{{ errorCounts[activeTab] }} 个问题</span>
-            </header>
+            <SkillDesignerPageHeader
+              :meta="pageMeta"
+              :issue-count="errorCounts[activeTab]"
+              :status-tone="statusTone"
+              :status-text="statusText"
+            />
             <section class="skill-designer-vue-page-canvas">
               <SkillBasicPanel
                 v-show="activeTab === 'basic'"
@@ -2717,32 +2778,15 @@
               />
             </section>
           </main>
-          <footer class="skill-designer-vue-status-dock">
-            <div class="skill-designer-vue-status-dock-summary">
-              <span class="skill-designer-vue-dock-status" :class="statusTone">
-                <i class="fa-solid fa-circle" aria-hidden="true"></i>
-                {{ statusText }}
-              </span>
-              <span class="skill-designer-vue-dock-budget">
-                <b>复杂度预算</b>
-                <strong>{{ budgetSummary }}</strong>
-              </span>
-              <span v-if="compileResult.warnings?.length" class="skill-designer-vue-dock-note warning">
-                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                {{ compileResult.warnings.length }} 条警告
-              </span>
-              <span v-if="compileResult.errors?.length" class="skill-designer-vue-dock-note error">
-                <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-                {{ compileResult.errors.length }} 个问题
-              </span>
-            </div>
-            <button
-              type="button"
-              class="skill-designer-vue-button primary skill-designer-vue-save-dock"
-              :disabled="busy || !!compileResult.errors?.length"
-              @click="save"
-            ><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>保存设计</button>
-          </footer>
+          <SkillDesignerStatusDock
+            :status-text="statusText"
+            :status-tone="statusTone"
+            :budget-summary="budgetSummary"
+            :warnings="compileResult.warnings?.length || 0"
+            :errors="compileResult.errors?.length || 0"
+            :disabled="busy || !!compileResult.errors?.length"
+            @save="save"
+          />
           <div class="skill-designer-vue-live-region" aria-live="assertive" aria-atomic="true">{{ liveMessage }}</div>
         </div>
       `,
@@ -2757,6 +2801,8 @@
       SkillDescriptionPanel,
       SkillDescriptionReference,
       SkillDesignerApp,
+      SkillDesignerPageHeader,
+      SkillDesignerStatusDock,
       SkillDesignerTabs,
       SkillDesignerToolbar,
       SkillDurationInput,

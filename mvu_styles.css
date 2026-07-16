@@ -5696,7 +5696,7 @@ body:has(.skill-designer-vue-host) #form_sheld {
 .skill-designer-vue-editor {
   container: skill-designer-editor / inline-size;
   min-width: 0;
-  padding: 22px 24px 104px;
+  padding: 22px 24px 32px;
   background: var(--skill-designer-vue-bg);
 }
 
@@ -5710,8 +5710,16 @@ body:has(.skill-designer-vue-host) #form_sheld {
   border-bottom: 1px solid var(--skill-designer-vue-border);
 }
 
-.skill-designer-vue-page-heading > div {
+.skill-designer-vue-page-heading-copy {
   min-width: 0;
+}
+
+.skill-designer-vue-page-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--skill-designer-vue-accent);
+  font-size: 12px;
+  font-weight: var(--skill-designer-vue-heading-weight);
 }
 
 .skill-designer-vue-eyebrow {
@@ -5738,19 +5746,28 @@ body:has(.skill-designer-vue-host) #form_sheld {
   overflow-wrap: anywhere;
 }
 
-.skill-designer-vue-page-issue {
+.skill-designer-vue-page-heading-status {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 5px;
   flex: 0 0 auto;
-  min-height: 30px;
-  padding: 5px 9px;
-  border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: var(--skill-designer-vue-radius);
   color: var(--skill-designer-vue-muted);
   font-size: 12px;
   font-weight: var(--skill-designer-vue-heading-weight);
 }
 
-.skill-designer-vue-page-issue.error {
-  border-color: var(--skill-designer-vue-danger);
+.skill-designer-vue-page-heading-status strong {
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: var(--skill-designer-vue-radius);
+  color: inherit;
+  font-size: 12px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+}
+
+.skill-designer-vue-page-heading-status.error {
   color: var(--skill-designer-vue-danger);
 }
 
@@ -5761,8 +5778,6 @@ body:has(.skill-designer-vue-host) #form_sheld {
 }
 
 .skill-designer-vue-status-dock {
-  position: sticky;
-  z-index: 10;
   bottom: 0;
   display: flex;
   align-items: center;
@@ -5773,7 +5788,7 @@ body:has(.skill-designer-vue-host) #form_sheld {
   padding: 10px 16px;
   border-top: 1px solid var(--skill-designer-vue-border-strong);
   background: var(--skill-designer-vue-shell);
-  box-shadow: 0 -8px 22px color-mix(in srgb, var(--skill-designer-vue-bg) 36%, transparent);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--skill-designer-vue-accent) 12%, transparent);
 }
 
 .skill-designer-vue-status-dock-summary {
@@ -5820,7 +5835,7 @@ body:has(.skill-designer-vue-host) #form_sheld {
   border-left: 1px solid var(--skill-designer-vue-border);
 }
 
-.skill-designer-vue-dock-budget b {
+.skill-designer-vue-dock-budget span {
   color: var(--skill-designer-vue-muted);
   font-weight: var(--skill-designer-vue-body-weight);
 }
@@ -7015,7 +7030,7 @@ body:has(.skill-designer-vue-host) #form_sheld {
   }
 
   .skill-designer-vue-editor {
-    padding: 16px 12px 112px;
+    padding: 16px 12px 24px;
   }
 
   .skill-designer-vue-page-heading {
@@ -7026,6 +7041,10 @@ body:has(.skill-designer-vue-host) #form_sheld {
 
   .skill-designer-vue-page-issue {
     align-self: flex-start;
+  }
+
+  .skill-designer-vue-page-heading-status {
+    justify-items: start;
   }
 
   .skill-designer-vue-status-dock {
