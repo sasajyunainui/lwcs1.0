@@ -23952,6 +23952,11 @@
       control: 'singleEnum',
       options: 原型选项,
       dependent: true,
+      presentation: 'primary',
+      group: 'identity',
+      unit: '',
+      help: '选择需要被匹配和抹消的内部机制原型。',
+      required: true,
     }];
     读取技能设计台机制抹消可匹配字段(匹配器['原型']).forEach(key => {
       const 选项 = 读取技能设计台机制抹消对象字段选项(匹配器['原型'], key);
@@ -23961,6 +23966,11 @@
         control: 选项.length ? 'multiEnum' : 'text',
         options: 选项.map(item => ({ value: item, label: item })),
         placeholder: 选项.length ? '' : '默认无',
+        presentation: 'advanced',
+        group: /目标|对象|来源|去向/.test(key) ? 'target' : 'condition',
+        unit: '',
+        help: '留空表示不限制该匹配条件。',
+        required: false,
       });
     });
     return { fields };
@@ -23979,6 +23989,19 @@
       control: 'text',
       required: 必填,
       help: 获取技能设计台原型字段提示(原型, key, effect),
+      presentation: ['原型', '目标', '状态', '数值', '结算', '条件分支'].includes(key) ? 'primary' : 'advanced',
+      group: /条件|触发|规则|判断/.test(key)
+        ? 'condition'
+        : /时间|回合|前摇|时长|周期|次数/.test(key)
+          ? 'timing'
+          : /数值|强度|概率|倍率|属性|资源/.test(key)
+            ? 'value'
+            : /目标|对象|来源|去向|匹配/.test(key)
+              ? 'target'
+              : /等级|成长|驱动|方向/.test(key)
+                ? 'scaling'
+                : 'identity',
+      unit: 技能设计台字段是tick时长(key) ? '日 / 时 / 分' : '',
       defaultValue: 定义['默认值'],
       min: 定义['最小值'],
       max: 定义['最大值'],
@@ -24090,6 +24113,11 @@
         label: '状态',
         control: 'text',
         placeholder: '输入状态名',
+        presentation: 'primary',
+        group: 'condition',
+        unit: '',
+        help: '输入需要参与条件判断的状态名称。',
+        required: true,
       };
     } else if (配置.显示值) {
       valueField = {
@@ -24098,6 +24126,11 @@
         control: 配置.值控件 === '数字' ? 'number' : 'singleEnum',
         options: (配置.值选项 || []).map(item => ({ value: item, label: item })),
         placeholder: 配置.值控件 === '数字' ? '0' : '',
+        presentation: 'primary',
+        group: 'condition',
+        unit: 配置.值控件 === '数字' ? '数值或百分比' : '',
+        help: '设置该条件成立时用于比较的值。',
+        required: true,
       };
     }
     return {
@@ -24117,6 +24150,11 @@
         control: 'singleEnum',
         options: 技能设计台副作用类型候选_V1.map(value => ({ value, label: value })),
         dependent: true,
+        presentation: 'primary',
+        group: 'identity',
+        unit: '',
+        help: '选择技能会附带的负面代价类型。',
+        required: true,
       },
       {
         key: '触发时机',
@@ -24124,23 +24162,82 @@
         control: 'singleEnum',
         options: 技能设计台副作用触发时机选项_V1.map(value => ({ value, label: value })),
         dependent: true,
+        presentation: 'primary',
+        group: 'timing',
+        unit: '',
+        help: '决定副作用在技能流程中的结算时机。',
+        required: true,
       },
       {
         key: '生效对象',
         label: '对象',
         control: 'segmented',
         options: 技能设计台副作用生效对象选项_V1.map(value => ({ value, label: value })),
+        presentation: 'primary',
+        group: 'target',
+        unit: '',
+        help: '选择副作用实际作用于哪一方。',
+        required: true,
       },
-      { key: '触发概率', label: '概率', control: 'numberOrPercent', defaultValue: '100%' },
+      {
+        key: '触发概率',
+        label: '概率',
+        control: 'numberOrPercent',
+        defaultValue: '100%',
+        presentation: 'primary',
+        group: 'value',
+        unit: '百分比',
+        help: '设置副作用触发的概率。',
+        required: true,
+      },
     ];
     if (类型 !== '致死献祭') {
       fields.push(
-        { key: '持续回合', label: '持续回合', control: 'number', defaultValue: 配置.持续回合 || 1 },
-        { key: '数值', label: 配置.数值标签 || '强度', control: 'numberOrPercent', defaultValue: 配置.数值 || '' },
+        {
+          key: '持续回合',
+          label: '持续回合',
+          control: 'number',
+          defaultValue: 配置.持续回合 || 1,
+          presentation: 'advanced',
+          group: 'timing',
+          unit: '回合',
+          help: '设置副作用持续生效的回合数。',
+          required: false,
+        },
+        {
+          key: '数值',
+          label: 配置.数值标签 || '强度',
+          control: 'numberOrPercent',
+          defaultValue: 配置.数值 || '',
+          presentation: 'primary',
+          group: 'value',
+          unit: '数值或百分比',
+          help: '设置副作用的主要强度。',
+          required: true,
+        },
       );
-      if (配置.副数值) fields.push({ key: '副数值', label: 配置.副数值标签 || '附加强度', control: 'numberOrPercent', defaultValue: 配置.副数值 });
+      if (配置.副数值) fields.push({
+        key: '副数值',
+        label: 配置.副数值标签 || '附加强度',
+        control: 'numberOrPercent',
+        defaultValue: 配置.副数值,
+        presentation: 'advanced',
+        group: 'value',
+        unit: '数值或百分比',
+        help: '设置副作用的附加强度。',
+        required: false,
+      });
       if (normalizeSkillUiText(item && item['触发时机'], '') === '效果结束后')
-        fields.push({ key: '关联状态', label: '关联状态', control: 'text', required: true });
+        fields.push({
+          key: '关联状态',
+          label: '关联状态',
+          control: 'text',
+          presentation: 'advanced',
+          group: 'condition',
+          unit: '',
+          help: '指定效果结束后用于触发副作用的关联状态。',
+          required: true,
+        });
     }
     return {
       fields,
@@ -24175,7 +24272,39 @@
       },
     ].filter(group => group.options.length);
 
-    const createField = (key, label, control, extra = {}) => ({ key, label, control, ...extra });
+    const createField = (key, label, control, extra = {}) => {
+      const groupByKey = value => {
+        if (/名称|类型|承载|融合|角色|武魂/.test(value)) return 'identity';
+        if (/目标|对象|作用|来源|去向|匹配/.test(value)) return 'target';
+        if (/数值|强度|概率|倍率|属性|资源/.test(value)) return 'value';
+        if (/时间|回合|前摇|时长|周期|次数/.test(value)) return 'timing';
+        if (/等级|成长|驱动|方向/.test(value)) return 'scaling';
+        if (/条件|触发|规则|判断/.test(value)) return 'condition';
+        return 'identity';
+      };
+      const helpByKey = {
+        name: '保存后会作为技能对外显示的正式名称。',
+        deliveryForm: '决定技能以直接效果、造物或其他承载方式生效。',
+        costType: '选择启动和维持技能时消耗的资源类型。',
+        前摇: '技能开始结算前需要等待的时间，按 tick 记录。',
+        attachedAttributes: '选择会随技能结果一并写入的属性标签。',
+        prototypeEffects: '先选择一个主机制，再用条件和嵌套表达后续效果。',
+      };
+      const presentation = extra.presentation || (/高级|内部|匹配|驱动|方向/.test(label) ? 'advanced' : 'primary');
+      const group = extra.group || groupByKey(`${key}${label}`);
+      const unit = extra.unit || (control === 'duration' ? '日 / 时 / 分' : control === 'numberOrPercent' ? '数值或百分比' : '');
+      return {
+        key,
+        label,
+        control,
+        presentation,
+        group,
+        unit,
+        help: extra.help || helpByKey[key] || '',
+        required: !!extra.required,
+        ...extra,
+      };
+    };
     const getTabFields = (tab, draft = {}) => {
       if (tab === 'basic') {
         const fields = [
@@ -24212,7 +24341,7 @@
         if (normalizeSkillUiText(draft.deliveryForm, '') === '造物承载') {
           fields.push(
             createField('constructItemCount', '造物数量', 'number', { required: true }),
-            createField('constructDurationTick', '有效期 tick', 'duration'),
+            createField('constructDurationTick', '有效时长', 'duration', { unit: '日 / 时 / 分' }),
             createField('constructDescription', '造物描述', 'text', { wide: true }),
           );
         }
@@ -24285,17 +24414,18 @@
           );
         });
         fields.push(
-          createField('前摇', '前摇 tick', 'number'),
-          createField('启用技能掌控度', '技能掌控度', 'toggle', { dependent: true }),
+          createField('前摇', '施放前摇', 'number', { unit: 'tick' }),
+          createField('启用技能掌控度', '掌控度成长', 'toggle', { dependent: true }),
         );
         if (技能设计台启用技能掌控度(previewMeta, draft)) {
           fields.push(
-            createField('技能掌控度中心等级', '中心等级', 'number'),
-            createField('技能掌控度圆满等级', '圆满等级', 'number'),
+            createField('技能掌控度中心等级', '中心等级', 'number', { presentation: 'advanced' }),
+            createField('技能掌控度圆满等级', '圆满等级', 'number', { presentation: 'advanced' }),
           );
         }
         fields.push(createField('attachedAttributes', '附带属性', 'multiEnum', {
           wide: true,
+          presentation: 'advanced',
           options: SKILL_DESIGNER_ATTRIBUTE_OPTIONS.map(value => ({ value, label: value })),
         }));
         return fields;
@@ -27733,7 +27863,7 @@
     for (const 目标窗口 of 获取载入器候选窗口()) {
       try {
         const 接口 = 目标窗口 && 目标窗口.__LWCS_SKILL_DESIGNER_UI__;
-        if (接口 && Number(接口.apiVersion) === 1 && typeof 接口.mount === 'function') return 接口;
+        if (接口 && Number(接口.apiVersion) === 2 && typeof 接口.mount === 'function') return 接口;
       } catch (错误) {}
     }
     return null;
@@ -27818,11 +27948,30 @@
   }
 
   function 构建技能设计台结构化预览(normalizedDraft = {}, nextSkill = null, previewMeta = {}, rootData = {}, budget = null) {
-    const effects = [];
-    const visit = (list, prefix = '') => {
-      (Array.isArray(list) ? list : []).forEach(effect => {
+    const effectRows = [];
+    const relationLabels = {
+      附加效果: '附加',
+      授予效果: '授予',
+      结算效果: '结算',
+      替换效果: '替换',
+      追加效果: '追加',
+    };
+    const conditionSummary = branch =>
+      (Array.isArray(branch && branch['条件']) ? branch['条件'] : [])
+        .map(condition => {
+          const type = normalizeSkillUiText(condition && condition['类型'], '条件');
+          const object = normalizeSkillUiText(condition && condition['对象'], '');
+          const compare = normalizeSkillUiText(condition && condition['比较'], '');
+          const value = normalizeSkillUiText(condition && (condition['值'] ?? condition['状态']), '');
+          return [type, object, compare, value].filter(Boolean).join(' ');
+        })
+        .filter(Boolean)
+        .join('；');
+    const visit = (list, pathPrefix = 'prototypeEffects', depth = 0, relation = '主效果', branchLabel = '', branch = null) => {
+      (Array.isArray(list) ? list : []).forEach((effect, index) => {
         if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
         const 原型 = normalizeSkillUiText(effect['原型'], '');
+        const path = `${pathPrefix}.${index}`;
         if (原型) {
           const 详情 = 原型 === '状态施加'
             ? normalizeSkillUiText(effect['状态'], '')
@@ -27830,19 +27979,56 @@
               ? normalizeSkillUiText(effect['资源'], '')
               : 原型 === '属性修正'
                 ? 读取技能设计台多枚举值(effect['属性']).join('/')
-                : '';
-          effects.push(`${prefix}${原型}${详情 ? ` · ${详情}` : ''}`);
+                : normalizeSkillUiText(effect['结算'] || effect['规则'] || effect['行动模式'], '');
+          effectRows.push({
+            path,
+            depth,
+            relation,
+            branchLabel,
+            conditionSummary: branch ? conditionSummary(branch) : '',
+            title: 原型,
+            detail: 详情,
+          });
         }
-        技能设计台嵌套效果数组字段表.forEach(key => visit(effect[key], '附加 '));
-        (Array.isArray(effect['条件分支']) ? effect['条件分支'] : []).forEach(branch => {
-          技能设计台条件分支效果数组字段表.forEach(key => visit(branch && branch[key], key === '追加效果' ? '条件追加 ' : '条件替换 '));
+        技能设计台嵌套效果数组字段表.forEach(key => {
+          visit(effect[key], `${path}.${key}`, depth + 1, relationLabels[key] || '附加', branchLabel, branch);
+        });
+        (Array.isArray(effect['条件分支']) ? effect['条件分支'] : []).forEach((branchItem, branchIndex) => {
+          const label = `条件 ${branchIndex + 1}`;
+          技能设计台条件分支效果数组字段表.forEach(key => {
+            visit(
+              branchItem && branchItem[key],
+              `${path}.条件分支.${branchIndex}.${key}`,
+              depth + 1,
+              relationLabels[key] || '条件效果',
+              label,
+              branchItem,
+            );
+          });
         });
       });
     };
     visit(normalizedDraft.prototypeEffects);
+    const budgetActual = budget ? Number(budget.实际COST || 0) : null;
+    const budgetLimit = budget ? Number(budget.实际门禁 || 0) : null;
     const budgetLabel = budget
-      ? `${Number(budget.实际COST || 0).toFixed(1)} / ${Number(budget.实际门禁 || 0).toFixed(1)}`
+      ? `${budgetActual.toFixed(1)} / ${budgetLimit.toFixed(1)}`
       : '待评估';
+    const resourceRows = [
+      ...Object.entries(normalizedDraft.costValues || {}).map(([label, value]) => ({
+        label: `${label}启动`,
+        value,
+      })),
+      ...Object.entries(normalizedDraft.sustainCostValues || {}).map(([label, value]) => ({
+        label: `${label}维持`,
+        value,
+      })),
+    ].filter(row => row.value !== undefined && row.value !== null && String(row.value) !== '');
+    const timingRows = [
+      { label: '施放前摇', value: Math.max(0, toNumber(normalizedDraft['前摇'], 0)), unit: 'tick' },
+    ];
+    const constructDurationTick = Math.max(0, toNumber(normalizedDraft.constructDurationTick, 0));
+    if (constructDurationTick > 0) timingRows.push({ label: '有效时长', value: constructDurationTick, unit: 'tick' });
     let summary = '';
     try {
       summary = 构建技能设计台当前翻译摘要(normalizedDraft, previewMeta, rootData);
@@ -27852,16 +28038,17 @@
       name: normalizeSkillUiText(normalizedDraft.name, previewMeta && previewMeta.label ? previewMeta.label : '未命名技能'),
       type: normalizeSkillUiText(normalizedDraft.typeDisplay || normalizedDraft.type, '技能'),
       delivery: normalizeSkillUiText(normalizedDraft.deliveryForm, '直接生效'),
+      resourceRows,
+      timingRows,
       cost: nextSkill ? 格式化技能消耗显示文本_桥接(nextSkill['消耗'], '无') : formatSkillDesignerFullCostText(normalizedDraft.costType, normalizedDraft.costValues, normalizedDraft.sustainCostText),
-      castTime: Math.max(0, toNumber(normalizedDraft['前摇'], 0)),
       summary,
-      effects: effects.slice(0, 16),
+      effectRows: effectRows.slice(0, 24),
       budget: budget
         ? {
             ok: Number(budget.实际COST || 0) <= Number(budget.实际门禁 || 0) + 0.001,
             label: budgetLabel,
-            actual: Number(budget.实际COST || 0),
-            limit: Number(budget.实际门禁 || 0),
+            actual: budgetActual,
+            limit: budgetLimit,
           }
         : null,
     };
@@ -27906,7 +28093,7 @@
           errors.push({
             tab: 'cost',
             path: 'costType',
-            message: `技能 COST ${Number(budget.实际COST || 0).toFixed(1)} 超出当前承载上限 ${Number(budget.实际门禁 || 0).toFixed(1)}。`,
+            message: `复杂度预算 ${Number(budget.实际COST || 0).toFixed(1)} 超出当前承载上限 ${Number(budget.实际门禁 || 0).toFixed(1)}。`,
           });
         }
       }

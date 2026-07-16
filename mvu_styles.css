@@ -5235,29 +5235,83 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 /* Skill Designer Vue */
 .skill-designer-vue-host {
-  --skill-designer-vue-bg: var(--暗场底板, rgba(5, 12, 18, 0.72));
-  --skill-designer-vue-surface: var(--暗场卡片, rgba(9, 17, 24, 0.68));
-  --skill-designer-vue-surface-raised: var(--暗场底板强, rgba(8, 15, 22, 0.82));
-  --skill-designer-vue-surface-floating: var(--暗场浮层, rgba(6, 12, 18, 0.92));
-  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强, rgba(8, 15, 22, 0.82)) 86%, #000 14%);
+  --skill-designer-vue-bg: var(--主题底色, #06111e);
+  --skill-designer-vue-shell: color-mix(in srgb, var(--暗场底板, rgba(5, 12, 18, 0.92)) 88%, var(--主题底色, #06111e));
+  --skill-designer-vue-editor: color-mix(in srgb, var(--暗场卡片, rgba(9, 17, 24, 0.94)) 86%, var(--主题底色, #06111e));
+  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强, rgba(8, 15, 22, 0.96)) 92%, var(--主题底色, #06111e));
+  --skill-designer-vue-popover-bg: color-mix(in srgb, var(--暗场浮层, rgba(6, 12, 18, 0.98)) 94%, var(--主题底色, #06111e));
+  --skill-designer-vue-surface: var(--skill-designer-vue-editor);
+  --skill-designer-vue-surface-raised: var(--skill-designer-vue-shell);
+  --skill-designer-vue-surface-floating: var(--skill-designer-vue-popover-bg);
   --skill-designer-vue-border: var(--虚线, rgba(118, 226, 255, 0.18));
   --skill-designer-vue-border-strong: var(--边线颜色, rgba(103, 247, 239, 0.32));
   --skill-designer-vue-text: var(--文字主色, #ffffff);
-  --skill-designer-vue-muted: color-mix(in srgb, var(--文字弱色, #8ab4f8) 82%, var(--文字主色, #ffffff) 18%);
+  --skill-designer-vue-muted: color-mix(in srgb, var(--文字主色, #ffffff) 72%, var(--文字弱色, #8ab4f8) 28%);
   --skill-designer-vue-accent: var(--主题主色, #67f7ef);
-  --skill-designer-vue-accent-secondary: var(--主题高光, #ffffff);
+  --skill-designer-vue-accent-text: var(--主题高光, #ffffff);
+  --skill-designer-vue-focus: var(--主题高光, #ffffff);
+  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色, #67f7ef) 58%, var(--主题辅色, #101d27));
+  --skill-designer-vue-relation: var(--主题主色, #67f7ef);
   --skill-designer-vue-danger: var(--状态危险色, #ff6b7a);
   --skill-designer-vue-success: var(--状态强调色, #7df9ff);
+  --skill-designer-vue-warning: var(--主题高光, #ffffff);
   --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
+  --skill-designer-vue-shell-cut: none;
+  --skill-designer-vue-shell-texture: var(--背景细纹, none);
+  --skill-designer-vue-heading-weight: var(--主题字重, 650);
+  --skill-designer-vue-body-weight: var(--主题字重, 500);
+  --skill-designer-vue-theme: var(--主题主色, #67f7ef);
   width: 100%;
   min-width: 0;
+  container: skill-designer-vue / inline-size;
   color: var(--skill-designer-vue-text);
   color-scheme: dark;
   font-family: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
-  font-weight: var(--主题字重, 500);
+  font-weight: var(--skill-designer-vue-body-weight);
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: 0;
+}
+
+body[data-mvu-holo-theme='炫世唐门'] .skill-designer-vue-host,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫世唐门'] .skill-designer-vue-host {
+  --skill-designer-vue-radius: 4px;
+  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色) 78%, var(--主题高光));
+  --skill-designer-vue-relation: var(--主题主色);
+  --skill-designer-vue-shell-cut: var(--面板裁切, none);
+  --skill-designer-vue-heading-weight: 650;
+  --skill-designer-vue-body-weight: 520;
+}
+
+body[data-mvu-holo-theme='金龙王'] .skill-designer-vue-host,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] .skill-designer-vue-host {
+  --skill-designer-vue-radius: 2px;
+  --skill-designer-vue-accent: var(--主题高光);
+  --skill-designer-vue-accent-secondary: color-mix(in srgb, var(--主题主色) 58%, var(--主题高光));
+  --skill-designer-vue-focus: var(--主题高光);
+  --skill-designer-vue-relation: var(--主题主色);
+  --skill-designer-vue-shell-cut: var(--面板裁切, none);
+  --skill-designer-vue-heading-weight: 800;
+  --skill-designer-vue-body-weight: 600;
+}
+
+body[data-mvu-holo-theme='银龙王'] .skill-designer-vue-host,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'] .skill-designer-vue-host {
+  --skill-designer-vue-radius: 8px;
+  --skill-designer-vue-editor: color-mix(in srgb, var(--暗场卡片) 78%, var(--主题底色));
+  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强) 88%, var(--主题底色));
+  --skill-designer-vue-shell-texture: none;
+  --skill-designer-vue-heading-weight: 520;
+  --skill-designer-vue-body-weight: 420;
+}
+
+body[data-mvu-holo-theme='幻海蝶舞'] .skill-designer-vue-host,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'] .skill-designer-vue-host {
+  --skill-designer-vue-radius: 8px;
+  --skill-designer-vue-accent-secondary: var(--主题辅色);
+  --skill-designer-vue-relation: var(--主题辅色);
+  --skill-designer-vue-heading-weight: 620;
+  --skill-designer-vue-body-weight: 500;
 }
 
 #detailModal:has(.skill-designer-vue-root) .mvu-modal-panel.archive-mode {
@@ -5277,7 +5331,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background-color: var(--skill-designer-vue-shell);
+  background-image: var(--skill-designer-vue-shell-texture);
   box-shadow: none;
   overflow: visible;
 }
@@ -5291,7 +5346,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 28px;
   border: 1px solid var(--skill-designer-vue-border-strong);
   border-radius: var(--skill-designer-vue-radius);
-  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  background: var(--skill-designer-vue-editor);
   color: var(--skill-designer-vue-text);
   text-align: center;
 }
@@ -5326,7 +5381,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   padding: 16px 18px;
   border-bottom: 1px solid var(--skill-designer-vue-border);
-  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  background: var(--skill-designer-vue-editor);
+  clip-path: var(--skill-designer-vue-shell-cut);
 }
 
 .skill-designer-vue-heading {
@@ -5335,17 +5391,58 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-heading span {
   display: block;
-  color: var(--skill-designer-vue-accent-secondary);
+  color: var(--skill-designer-vue-accent-text);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: var(--skill-designer-vue-heading-weight);
 }
 
 .skill-designer-vue-heading h2 {
   margin: 2px 0 0;
   color: var(--skill-designer-vue-text);
   font-size: 20px;
+  font-weight: var(--skill-designer-vue-heading-weight);
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  margin-top: 6px;
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+  font-weight: var(--skill-designer-vue-body-weight);
+}
+
+.skill-designer-vue-status b {
+  padding-left: 7px;
+  border-left: 1px solid var(--skill-designer-vue-border-strong);
+  color: var(--skill-designer-vue-warning);
+  font-size: 11px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+}
+
+.skill-designer-vue-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px color-mix(in srgb, currentColor 38%, transparent);
+}
+
+.skill-designer-vue-status.error {
+  color: color-mix(in srgb, var(--skill-designer-vue-danger) 72%, var(--skill-designer-vue-text));
+}
+
+.skill-designer-vue-status.warning {
+  color: color-mix(in srgb, var(--skill-designer-vue-warning) 72%, var(--skill-designer-vue-text));
+}
+
+.skill-designer-vue-status.success {
+  color: color-mix(in srgb, var(--skill-designer-vue-success) 72%, var(--skill-designer-vue-text));
 }
 
 .skill-designer-vue-toolbar-actions {
@@ -5422,6 +5519,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   color: var(--skill-designer-vue-accent);
 }
 
+.skill-designer-vue-text-button i {
+  margin-right: 6px;
+}
+
 .skill-designer-vue-button:hover:not(:disabled),
 .skill-designer-vue-icon-button:hover:not(:disabled),
 .skill-designer-vue-text-button:hover:not(:disabled) {
@@ -5459,7 +5560,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   background: transparent;
   color: var(--skill-designer-vue-muted);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: var(--skill-designer-vue-heading-weight);
 }
 
 .skill-designer-vue-tabs button:last-child {
@@ -5478,7 +5579,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-tabs button.active {
   color: var(--skill-designer-vue-text);
-  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  background: var(--skill-designer-vue-editor);
 }
 
 .skill-designer-vue-tabs button.active::after {
@@ -5509,16 +5610,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 2.125fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: start;
   min-width: 0;
-  padding: 18px;
+  padding: 16px;
 }
 
 .skill-designer-vue-editor,
 .skill-designer-vue-panel {
   min-width: 0;
+}
+
+.skill-designer-vue-editor {
+  container: skill-designer-editor / inline-size;
 }
 
 .skill-designer-vue-panel {
@@ -5554,7 +5659,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-field-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   min-width: 0;
 }
@@ -5568,11 +5673,68 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-field.wide {
+  grid-column: auto;
+}
+
+.skill-designer-vue-advanced-fields {
   grid-column: 1 / -1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--skill-designer-vue-border);
+  border-bottom: 1px solid var(--skill-designer-vue-border);
+  background: color-mix(in srgb, var(--skill-designer-vue-control-bg) 62%, transparent);
+}
+
+.skill-designer-vue-advanced-fields > summary,
+.skill-designer-vue-preview-attributes > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 10px;
+  color: var(--skill-designer-vue-text);
+  font-size: 13px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+  list-style: none;
+  cursor: pointer;
+}
+
+.skill-designer-vue-advanced-fields > summary::-webkit-details-marker,
+.skill-designer-vue-preview-attributes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill-designer-vue-advanced-fields > summary span {
+  min-width: 0;
+}
+
+.skill-designer-vue-advanced-fields > summary b {
+  margin-left: auto;
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+  font-weight: var(--skill-designer-vue-body-weight);
+}
+
+.skill-designer-vue-advanced-fields > summary i {
+  flex: 0 0 auto;
+  color: var(--skill-designer-vue-accent);
+  font-size: 11px;
+  transition: transform 160ms ease;
+}
+
+.skill-designer-vue-advanced-fields[open] > summary i {
+  transform: rotate(180deg);
+}
+
+.skill-designer-vue-advanced-fields > .skill-designer-vue-field-grid {
+  padding: 12px 10px 14px;
+  border-top: 1px solid var(--skill-designer-vue-border);
 }
 
 .skill-designer-vue-label-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -5582,7 +5744,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-label {
   color: color-mix(in srgb, var(--skill-designer-vue-text) 88%, var(--skill-designer-vue-muted));
   font-size: 13px;
-  font-weight: 650;
+  font-weight: var(--skill-designer-vue-heading-weight);
   line-height: 1.35;
 }
 
@@ -5591,16 +5753,60 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   color: var(--skill-designer-vue-danger);
 }
 
+.skill-designer-vue-field-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.skill-designer-vue-field-unit {
+  color: var(--skill-designer-vue-muted);
+  font-size: 11px;
+  font-weight: var(--skill-designer-vue-body-weight);
+}
+
+.skill-designer-vue-help-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .skill-designer-vue-help {
   display: inline-grid;
   place-items: center;
-  flex: 0 0 20px;
-  width: 20px;
-  height: 20px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border: 1px solid var(--skill-designer-vue-border-strong);
-  border-radius: 50%;
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
   color: var(--skill-designer-vue-muted);
-  cursor: help;
+  cursor: pointer;
+  font: inherit;
+}
+
+.skill-designer-vue-help:hover {
+  border-color: var(--skill-designer-vue-accent);
+  color: var(--skill-designer-vue-accent-text);
+}
+
+.skill-designer-vue-help-popover {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(300px, calc(100cqw - 24px));
+  padding: 9px 10px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-popover-bg);
+  color: var(--skill-designer-vue-text);
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.38);
+  overflow-wrap: anywhere;
 }
 
 .skill-designer-vue-field-control,
@@ -5637,20 +5843,36 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border-color: color-mix(in srgb, var(--skill-designer-vue-accent) 58%, var(--skill-designer-vue-border-strong));
 }
 
+.skill-designer-vue-control[aria-invalid='true'],
+.skill-designer-vue-field-control:has([aria-invalid='true']) .skill-designer-vue-control {
+  border-color: var(--skill-designer-vue-danger);
+}
+
 .skill-designer-vue-control:focus,
 .skill-designer-vue-button:focus-visible,
 .skill-designer-vue-icon-button:focus-visible,
 .skill-designer-vue-text-button:focus-visible,
+.skill-designer-vue-help:focus-visible,
 .skill-designer-vue-tabs button:focus-visible,
 .skill-designer-vue-segmented button:focus-visible,
 .skill-designer-vue-operator-group button:focus-visible,
 .skill-designer-vue-option:focus-visible,
 .skill-designer-vue-preview-toggle:focus-visible,
-.skill-designer-vue-token button:focus-visible {
-  border-color: var(--skill-designer-vue-accent);
-  outline: 2px solid color-mix(in srgb, var(--skill-designer-vue-accent) 44%, transparent);
+.skill-designer-vue-token button:focus-visible,
+.skill-designer-vue-advanced-fields > summary:focus-visible,
+.skill-designer-vue-preview-attributes > summary:focus-visible {
+  border-color: var(--skill-designer-vue-focus);
+  outline: 2px solid color-mix(in srgb, var(--skill-designer-vue-focus) 72%, transparent);
   outline-offset: 2px;
   box-shadow: none;
+}
+
+.skill-designer-vue-field-error {
+  display: block;
+  color: var(--skill-designer-vue-danger);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .skill-designer-vue-textarea {
@@ -5688,15 +5910,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-popover {
-  --skill-designer-vue-surface: var(--暗场卡片, rgba(9, 17, 24, 0.68));
-  --skill-designer-vue-surface-raised: var(--暗场底板强, rgba(8, 15, 22, 0.82));
-  --skill-designer-vue-surface-floating: var(--暗场浮层, rgba(6, 12, 18, 0.92));
-  --skill-designer-vue-control-bg: color-mix(in srgb, var(--暗场底板强, rgba(8, 15, 22, 0.82)) 86%, #000 14%);
+  --skill-designer-vue-surface: var(--暗场卡片, rgba(9, 17, 24, 0.94));
+  --skill-designer-vue-surface-raised: var(--暗场底板, rgba(5, 12, 18, 0.92));
+  --skill-designer-vue-surface-floating: var(--暗场浮层, rgba(6, 12, 18, 0.98));
+  --skill-designer-vue-control-bg: var(--暗场底板强, rgba(8, 15, 22, 0.96));
   --skill-designer-vue-border: var(--虚线, rgba(118, 226, 255, 0.18));
   --skill-designer-vue-border-strong: var(--边线颜色, rgba(103, 247, 239, 0.32));
   --skill-designer-vue-text: var(--文字主色, #ffffff);
-  --skill-designer-vue-muted: color-mix(in srgb, var(--文字弱色, #8ab4f8) 82%, var(--文字主色, #ffffff) 18%);
+  --skill-designer-vue-muted: color-mix(in srgb, var(--文字主色, #ffffff) 72%, var(--文字弱色, #8ab4f8) 28%);
   --skill-designer-vue-accent: var(--主题主色, #67f7ef);
+  --skill-designer-vue-accent-text: var(--主题高光, #ffffff);
+  --skill-designer-vue-focus: var(--主题高光, #ffffff);
   --skill-designer-vue-radius: min(8px, max(4px, var(--卡片圆角, 6px)));
   display: grid;
   grid-template-rows: 42px minmax(0, 1fr);
@@ -5705,13 +5929,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 8px;
   border: 1px solid var(--skill-designer-vue-border-strong);
   border-radius: var(--skill-designer-vue-radius);
-  background: var(--悬浮材质, var(--skill-designer-vue-surface-floating));
+  background: var(--skill-designer-vue-popover-bg);
   color: var(--skill-designer-vue-text);
   box-shadow:
     0 18px 38px rgba(0, 0, 0, 0.52),
     0 0 18px color-mix(in srgb, var(--skill-designer-vue-accent) 16%, transparent);
-  backdrop-filter: var(--虚化强度, blur(8px));
-  -webkit-backdrop-filter: var(--虚化强度, blur(8px));
   font-family: var(--主题字体, "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif);
   font-size: 14px;
   line-height: 1.5;
@@ -5765,7 +5987,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   color: var(--skill-designer-vue-text);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: var(--skill-designer-vue-heading-weight);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5848,11 +6070,50 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   grid-template-columns: repeat(4, minmax(64px, 1fr));
 }
 
+.skill-designer-vue-duration {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.skill-designer-vue-duration label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding-right: 8px;
+  border: 1px solid var(--skill-designer-vue-border-strong);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
+  color: var(--skill-designer-vue-muted);
+}
+
+.skill-designer-vue-duration input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 9px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--skill-designer-vue-text);
+  font: inherit;
+  text-align: right;
+}
+
+.skill-designer-vue-duration label:focus-within {
+  border-color: var(--skill-designer-vue-focus);
+  outline: 2px solid color-mix(in srgb, var(--skill-designer-vue-focus) 72%, transparent);
+  outline-offset: 2px;
+}
+
 .skill-designer-vue-toggle {
   position: relative;
   display: inline-flex;
-  width: 48px;
-  height: 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
   cursor: pointer;
 }
 
@@ -5872,6 +6133,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   transition:
     background-color 160ms ease,
     border-color 160ms ease;
+}
+
+.skill-designer-vue-toggle em {
+  color: var(--skill-designer-vue-muted);
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1;
 }
 
 .skill-designer-vue-toggle span::after {
@@ -5912,8 +6180,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 30px;
-  padding: 3px 5px 3px 9px;
+  min-height: 40px;
+  padding: 0 4px 0 10px;
   border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent) 40%, var(--skill-designer-vue-border));
   border-radius: var(--skill-designer-vue-radius);
   background: color-mix(in srgb, var(--skill-designer-vue-accent) 10%, var(--skill-designer-vue-surface));
@@ -5924,8 +6192,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-token button {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
   border-radius: 4px;
@@ -5955,9 +6223,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   min-width: 0;
   padding: 14px;
   border: 1px solid var(--skill-designer-vue-border);
-  border-left: 3px solid var(--skill-designer-vue-accent);
+  border-left: 3px solid var(--skill-designer-vue-relation);
   border-radius: var(--skill-designer-vue-radius);
-  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  background: var(--skill-designer-vue-editor);
+}
+
+.skill-designer-vue-prototype.has-error {
+  border-color: color-mix(in srgb, var(--skill-designer-vue-danger) 62%, var(--skill-designer-vue-border));
+  border-left-color: var(--skill-designer-vue-danger);
+}
+
+.skill-designer-vue-prototype.collapsed {
+  gap: 8px;
+  padding-block: 10px;
 }
 
 .skill-designer-vue-prototype.nested {
@@ -5975,7 +6253,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   bottom: -13px;
   left: -16px;
   width: 2px;
-  background: color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 56%, var(--skill-designer-vue-border));
+  background: color-mix(in srgb, var(--skill-designer-vue-relation) 64%, var(--skill-designer-vue-border));
 }
 
 .skill-designer-vue-prototype.nested::after {
@@ -5985,7 +6263,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   left: -16px;
   width: 14px;
   height: 2px;
-  background: color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 56%, var(--skill-designer-vue-border));
+  background: color-mix(in srgb, var(--skill-designer-vue-relation) 64%, var(--skill-designer-vue-border));
 }
 
 .skill-designer-vue-prototype-head,
@@ -6003,8 +6281,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex: 1 1 300px;
 }
 
+.skill-designer-vue-prototype-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.skill-designer-vue-prototype-index {
+  color: var(--skill-designer-vue-muted);
+  font-size: 12px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+  white-space: nowrap;
+}
+
 .skill-designer-vue-row-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -6013,9 +6306,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   flex: 0 0 auto;
   min-height: 26px;
   padding: 3px 8px;
-  border: 1px solid color-mix(in srgb, var(--skill-designer-vue-accent-secondary) 48%, var(--skill-designer-vue-border));
+  border: 1px solid color-mix(in srgb, var(--skill-designer-vue-relation) 56%, var(--skill-designer-vue-border));
   border-radius: var(--skill-designer-vue-radius);
-  color: var(--skill-designer-vue-accent-secondary);
+  background: color-mix(in srgb, var(--skill-designer-vue-relation) 10%, var(--skill-designer-vue-control-bg));
+  color: color-mix(in srgb, var(--skill-designer-vue-relation) 62%, var(--skill-designer-vue-text));
   font-size: 12px;
 }
 
@@ -6049,14 +6343,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-condition-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   min-width: 0;
 }
 
 .skill-designer-vue-condition-row.has-remove-action {
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr) 40px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .skill-designer-vue-condition-action {
@@ -6069,7 +6363,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 .skill-designer-vue-matcher {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 10px 0;
   border-top: 1px solid var(--skill-designer-vue-border);
@@ -6077,14 +6371,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 }
 
 .skill-designer-vue-preview {
-  position: sticky;
-  top: 12px;
+  position: static;
   align-self: start;
   min-width: 0;
   border: 1px solid var(--skill-designer-vue-border);
   border-top: 3px solid var(--skill-designer-vue-accent-secondary);
   border-radius: var(--skill-designer-vue-radius);
-  background: var(--卡片材质, var(--skill-designer-vue-surface));
+  background: var(--skill-designer-vue-editor);
 }
 
 .skill-designer-vue-preview-toggle {
@@ -6097,20 +6390,69 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   padding: 0 13px;
   border: 0;
   border-bottom: 1px solid var(--skill-designer-vue-border);
-  background: color-mix(in srgb, var(--skill-designer-vue-surface-raised) 84%, transparent);
+  background: var(--skill-designer-vue-surface-raised);
   color: var(--skill-designer-vue-text);
   text-align: left;
+}
+
+.skill-designer-vue-preview-toggle.static {
+  cursor: default;
+}
+
+.skill-designer-vue-preview-toggle-title {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.skill-designer-vue-preview-toggle-title small {
+  color: var(--skill-designer-vue-muted);
+  font-size: 11px;
+}
+
+.skill-designer-vue-preview-toggle-title strong {
+  min-width: 0;
+  color: var(--skill-designer-vue-text);
+  font-size: 13px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-designer-vue-preview-toggle-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.skill-designer-vue-preview-toggle-metrics i {
+  color: var(--skill-designer-vue-muted);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
 }
 
 .skill-designer-vue-preview-toggle b {
   color: var(--skill-designer-vue-accent-secondary);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .skill-designer-vue-preview-content {
   display: grid;
   gap: 14px;
   padding: 14px;
+}
+
+.skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-content {
+  display: none;
+}
+
+.skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-toggle {
+  border-bottom: 0;
 }
 
 .skill-designer-vue-preview-hero {
@@ -6121,7 +6463,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-preview-hero small {
   color: var(--skill-designer-vue-accent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: var(--skill-designer-vue-heading-weight);
 }
 
 .skill-designer-vue-preview-hero h3,
@@ -6134,6 +6476,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 .skill-designer-vue-preview-hero h3 {
   color: var(--skill-designer-vue-text);
   font-size: 18px;
+  font-weight: var(--skill-designer-vue-heading-weight);
   overflow-wrap: anywhere;
 }
 
@@ -6194,13 +6537,112 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   color: color-mix(in srgb, var(--skill-designer-vue-text) 88%, var(--skill-designer-vue-muted));
 }
 
+.skill-designer-vue-preview-attributes > summary {
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0;
+  color: color-mix(in srgb, var(--skill-designer-vue-text) 88%, var(--skill-designer-vue-muted));
+}
+
+.skill-designer-vue-preview-attributes > summary i {
+  color: var(--skill-designer-vue-accent);
+  font-size: 11px;
+  transition: transform 160ms ease;
+}
+
+.skill-designer-vue-preview-attributes[open] > summary i {
+  transform: rotate(180deg);
+}
+
+.skill-designer-vue-preview-attributes[open] > summary {
+  margin-bottom: 8px;
+}
+
 .skill-designer-vue-preview-section ol {
   display: grid;
   gap: 5px;
   margin: 0;
-  padding-left: 22px;
+  padding: 0;
+  list-style: none;
   color: var(--skill-designer-vue-muted);
   font-size: 13px;
+}
+
+.skill-designer-vue-preview-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: var(--skill-designer-vue-border);
+}
+
+.skill-designer-vue-preview-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 9px;
+  background: var(--skill-designer-vue-control-bg);
+}
+
+.skill-designer-vue-preview-list dt {
+  color: var(--skill-designer-vue-muted);
+}
+
+.skill-designer-vue-preview-list dd {
+  margin: 0;
+  color: var(--skill-designer-vue-text);
+  font-weight: var(--skill-designer-vue-heading-weight);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.skill-designer-vue-effect-item {
+  display: grid;
+  gap: 3px;
+  width: calc(100% - var(--skill-designer-vue-effect-depth, 0) * 8px);
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--skill-designer-vue-border);
+  border-left: 2px solid var(--skill-designer-vue-accent);
+  border-radius: var(--skill-designer-vue-radius);
+  background: var(--skill-designer-vue-control-bg);
+  color: var(--skill-designer-vue-text);
+  font: inherit;
+  text-align: left;
+  margin-left: calc(var(--skill-designer-vue-effect-depth, 0) * 8px);
+}
+
+.skill-designer-vue-effect-item:hover {
+  border-color: var(--skill-designer-vue-accent);
+  background: var(--skill-designer-vue-surface-raised);
+}
+
+.skill-designer-vue-effect-item strong {
+  font-weight: var(--skill-designer-vue-heading-weight);
+}
+
+.skill-designer-vue-effect-relation {
+  color: color-mix(in srgb, var(--skill-designer-vue-relation) 64%, var(--skill-designer-vue-text));
+  font-size: 11px;
+  font-weight: var(--skill-designer-vue-heading-weight);
+}
+
+.skill-designer-vue-effect-item small {
+  color: var(--skill-designer-vue-muted);
+  overflow-wrap: anywhere;
+}
+
+.skill-designer-vue-inline-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .skill-designer-vue-message-list button,
@@ -6216,9 +6658,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   text-align: left;
 }
 
-.skill-designer-vue-message-list.error p {
+.skill-designer-vue-message-list.error button {
   border-left: 3px solid var(--skill-designer-vue-danger);
   color: color-mix(in srgb, var(--skill-designer-vue-danger) 42%, var(--skill-designer-vue-text));
+}
+
+.skill-designer-vue-message-list.error button:hover,
+.skill-designer-vue-message-list.error button:focus-visible {
+  border-color: var(--skill-designer-vue-danger);
+  background: var(--skill-designer-vue-surface-raised);
 }
 
 .skill-designer-vue-message-list.warning p {
@@ -6237,29 +6685,68 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   border: 0;
 }
 
-@media (max-width: 1079px) {
+@container skill-designer-vue (min-width: 960px) {
   .skill-designer-vue-workspace {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(580px, 2.125fr) minmax(300px, 340px);
+    padding: 18px;
   }
 
   .skill-designer-vue-preview {
-    position: static;
+    position: sticky;
+    top: 12px;
   }
 
-  .skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-content {
-    display: none;
-  }
+}
 
-  .skill-designer-vue-preview:not(.expanded) .skill-designer-vue-preview-toggle {
-    border-bottom: 0;
-  }
-
-  .skill-designer-vue-condition-row {
+@container skill-designer-editor (min-width: 620px) {
+  .skill-designer-vue-field-grid,
+  .skill-designer-vue-matcher {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .skill-designer-vue-field.wide {
+    grid-column: 1 / -1;
+  }
+
+  .skill-designer-vue-prototype {
+    padding: 14px;
+  }
+
+  .skill-designer-vue-prototype.nested {
+    margin-left: 22px;
+  }
+
+  .skill-designer-vue-segmented.compact {
+    grid-template-columns: repeat(4, minmax(64px, 1fr));
+  }
+
+  .skill-designer-vue-condition-row,
+  .skill-designer-vue-condition-row.has-remove-action {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .skill-designer-vue-condition-row.has-remove-action > .skill-designer-vue-icon-button {
+    grid-column: 2;
+    justify-self: end;
   }
 }
 
-@media (max-width: 900px) {
+@container skill-designer-editor (min-width: 860px) {
+  .skill-designer-vue-condition-row {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr);
+  }
+
+  .skill-designer-vue-condition-row.has-remove-action {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr) 40px;
+  }
+
+  .skill-designer-vue-condition-row.has-remove-action > .skill-designer-vue-icon-button {
+    grid-column: auto;
+    justify-self: auto;
+  }
+}
+
+@container skill-designer-vue (max-width: 959px) {
   .skill-designer-vue-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -6276,7 +6763,32 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
   }
 }
 
-@media (max-width: 759px) {
+@container skill-designer-vue (max-width: 859px) {
+  .skill-designer-vue-prototype-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skill-designer-vue-prototype-head > .skill-designer-vue-combobox {
+    flex-basis: auto;
+  }
+
+  .skill-designer-vue-row-actions {
+    justify-content: flex-end;
+  }
+
+  .skill-designer-vue-preview-toggle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .skill-designer-vue-preview-toggle-metrics {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@container skill-designer-vue (max-width: 619px) {
   .skill-designer-vue-root {
     border-right: 0;
     border-left: 0;
@@ -6303,35 +6815,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     padding: 14px 10px;
   }
 
-  .skill-designer-vue-field-grid,
-  .skill-designer-vue-matcher,
-  .skill-designer-vue-condition-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .skill-designer-vue-field.wide {
-    grid-column: auto;
-  }
-
   .skill-designer-vue-prototype {
     padding: 12px 10px;
   }
 
   .skill-designer-vue-prototype.nested {
     margin-left: 14px;
-  }
-
-  .skill-designer-vue-prototype-head {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .skill-designer-vue-prototype-head > .skill-designer-vue-combobox {
-    flex-basis: auto;
-  }
-
-  .skill-designer-vue-row-actions {
-    justify-content: flex-end;
   }
 
   .skill-designer-vue-condition-action {
@@ -6341,6 +6830,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
   .skill-designer-vue-segmented.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (pointer: coarse) {
+  .skill-designer-vue-button,
+  .skill-designer-vue-icon-button,
+  .skill-designer-vue-text-button,
+  .skill-designer-vue-help,
+  .skill-designer-vue-tabs button,
+  .skill-designer-vue-segmented button,
+  .skill-designer-vue-token button {
+    min-height: 44px;
+  }
+
+  .skill-designer-vue-icon-button,
+  .skill-designer-vue-help,
+  .skill-designer-vue-token button {
+    width: 44px;
   }
 }
 

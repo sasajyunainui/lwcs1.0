@@ -68,7 +68,7 @@
       分组: 'lazy',
       依赖: ['Vue核心'],
       接口键: '__LWCS_SKILL_DESIGNER_UI__',
-      接口版本: 1,
+      接口版本: 2,
     },
     战斗预估运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattlePreview_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     战斗决策运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleDecision_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗预估运行时'] },

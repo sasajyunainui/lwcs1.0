@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const API_VERSION = 1;
+  const API_VERSION = 2;
   const instances = new Map();
   let instanceSeed = 0;
 
@@ -101,6 +101,54 @@
     Object.assign(target, cloneValue(nextValue) || {});
   }
 
+  const THEME_TOKEN_NAMES = Object.freeze([
+    '--skill-designer-vue-bg',
+    '--skill-designer-vue-shell',
+    '--skill-designer-vue-editor',
+    '--skill-designer-vue-surface',
+    '--skill-designer-vue-surface-raised',
+    '--skill-designer-vue-surface-floating',
+    '--skill-designer-vue-control-bg',
+    '--skill-designer-vue-popover-bg',
+    '--skill-designer-vue-border',
+    '--skill-designer-vue-border-strong',
+    '--skill-designer-vue-text',
+    '--skill-designer-vue-muted',
+    '--skill-designer-vue-accent',
+    '--skill-designer-vue-accent-text',
+    '--skill-designer-vue-focus',
+    '--skill-designer-vue-accent-secondary',
+    '--skill-designer-vue-relation',
+    '--skill-designer-vue-danger',
+    '--skill-designer-vue-success',
+    '--skill-designer-vue-warning',
+    '--skill-designer-vue-radius',
+    '--skill-designer-vue-heading-weight',
+    '--skill-designer-vue-body-weight',
+    '--skill-designer-vue-theme',
+  ]);
+
+  function readThemeTokenStyle(node) {
+    if (!node || typeof getComputedStyle !== 'function') return {};
+    const source = node.closest?.('.skill-designer-vue-host') || node;
+    const computed = getComputedStyle(source);
+    return THEME_TOKEN_NAMES.reduce((style, name) => {
+      const value = computed.getPropertyValue(name).trim();
+      if (value) style[name] = value;
+      return style;
+    }, {});
+  }
+
+  function readThemeName(node) {
+    const frame = node?.closest?.('[data-holo-theme]');
+    return normalizeText(
+      frame?.getAttribute?.('data-holo-theme')
+        || document.body?.getAttribute?.('data-mvu-holo-theme')
+        || document.body?.getAttribute?.('data-holo-theme'),
+      '',
+    );
+  }
+
   function createComponents(Vue) {
     const {
       Teleport,
@@ -121,8 +169,13 @@
         modelValue: { default: '' },
         options: { type: Array, default: () => [] },
         disabled: Boolean,
+        invalid: Boolean,
+        inputId: { type: String, default: '' },
         label: { type: String, default: '选项' },
         instanceId: { type: String, required: true },
+        describedBy: { type: String, default: '' },
+        required: Boolean,
+        triggerText: { type: String, default: '' },
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
@@ -132,6 +185,7 @@
         const trigger = shallowRef(null);
         const searchInput = shallowRef(null);
         const popupStyle = shallowRef({});
+        const popupTheme = shallowRef('');
         const flatOptions = computed(() => normalizeOptions(props.options));
         const filteredOptions = computed(() => {
           const keyword = normalizeText(query.value, '').toLocaleLowerCase();
@@ -148,6 +202,7 @@
           const selected = flatOptions.value.find(option => String(option.value) === String(props.modelValue));
           return selected ? selected.label : normalizeText(props.modelValue, '请选择');
         });
+        const displayLabel = computed(() => normalizeText(props.triggerText, '') || selectedLabel.value);
         const listboxId = `${props.instanceId}-listbox`;
         const activeDescendant = computed(() => {
           const option = filteredOptions.value[activeIndex.value];
@@ -155,6 +210,7 @@
         });
         let unmounted = false;
         let openListenersBound = false;
+        let themeObserver = null;
 
         function scrollActiveIntoView() {
           const activeId = activeDescendant.value;
@@ -177,6 +233,7 @@
             ? Math.max(8, rect.top - maxHeight - 6)
             : Math.min(viewportHeight - 80, rect.bottom + 6);
           popupStyle.value = {
+            ...readThemeTokenStyle(trigger.value),
             position: 'fixed',
             left: `${left}px`,
             top: `${top}px`,
@@ -184,6 +241,7 @@
             maxHeight: `${maxHeight}px`,
             zIndex: 100000,
           };
+          popupTheme.value = readThemeName(trigger.value);
         }
 
         function handleOutsidePointer(event) {
@@ -197,6 +255,17 @@
           window.addEventListener('resize', updatePosition);
           window.addEventListener('scroll', updatePosition, true);
           document.addEventListener('pointerdown', handleOutsidePointer, true);
+          if (typeof MutationObserver === 'function' && document.body) {
+            themeObserver = new MutationObserver(records => {
+              const popup = document.getElementById(`${props.instanceId}-popup`);
+              if (records.some(record => record.target !== popup && !popup?.contains(record.target))) close();
+            });
+            themeObserver.observe(document.body, {
+              attributes: true,
+              attributeFilter: ['data-mvu-holo-theme', 'data-holo-theme'],
+              subtree: true,
+            });
+          }
           openListenersBound = true;
         }
 
@@ -205,6 +274,8 @@
           window.removeEventListener('resize', updatePosition);
           window.removeEventListener('scroll', updatePosition, true);
           document.removeEventListener('pointerdown', handleOutsidePointer, true);
+          themeObserver?.disconnect();
+          themeObserver = null;
           openListenersBound = false;
         }
 
@@ -247,6 +318,7 @@
           if (!open.value) return;
           if (event.key === 'Escape') {
             event.preventDefault();
+            event.stopPropagation();
             close();
             return;
           }
@@ -278,11 +350,13 @@
           activeDescendant,
           activeIndex,
           close,
+          displayLabel,
           filteredOptions,
           handleKeydown,
           listboxId,
           open,
           popupStyle,
+          popupTheme,
           query,
           searchInput,
           select,
@@ -296,17 +370,21 @@
         <div class="skill-designer-vue-combobox">
           <button
             ref="trigger"
+            :id="inputId || undefined"
             type="button"
             class="skill-designer-vue-control skill-designer-vue-combobox-trigger"
             :disabled="disabled"
             :aria-label="label + '：' + selectedLabel"
             :aria-expanded="open ? 'true' : 'false'"
             :aria-controls="listboxId"
+            :aria-invalid="invalid ? 'true' : 'false'"
+            :aria-describedby="describedBy || undefined"
+            :aria-required="required ? 'true' : 'false'"
             aria-haspopup="listbox"
             @click="open ? close() : show()"
             @keydown="handleKeydown"
           >
-            <span>{{ selectedLabel }}</span>
+            <span>{{ displayLabel }}</span>
             <i class="fa-solid fa-chevron-down skill-designer-vue-chevron" aria-hidden="true"></i>
           </button>
           <Teleport to="body">
@@ -315,6 +393,7 @@
               :id="instanceId + '-popup'"
               class="skill-designer-vue-popover"
               :style="popupStyle"
+              :data-holo-theme="popupTheme || undefined"
             >
               <input
                 ref="searchInput"
@@ -368,8 +447,12 @@
         modelValue: { type: Array, default: () => [] },
         options: { type: Array, default: () => [] },
         disabled: Boolean,
+        invalid: Boolean,
+        inputId: { type: String, default: '' },
         label: { type: String, default: '选项' },
         instanceId: { type: String, required: true },
+        describedBy: { type: String, default: '' },
+        required: Boolean,
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
@@ -399,7 +482,7 @@
         return { add, available, remove, selectedItems };
       },
       template: `
-        <div class="skill-designer-vue-multiselect">
+        <div class="skill-designer-vue-multiselect" :class="{ invalid }">
           <div class="skill-designer-vue-token-list" aria-live="polite">
             <span v-for="item in selectedItems" :key="String(item.value)" class="skill-designer-vue-token">
               {{ item.label }}
@@ -413,11 +496,173 @@
             :model-value="''"
             :options="available"
             :disabled="disabled"
+            :invalid="invalid"
+            :input-id="inputId"
+            :described-by="describedBy"
+            :required="required"
             :label="label"
             :instance-id="instanceId + '-add'"
             @update:model-value="add"
           />
           <div v-else-if="!modelValue.length" class="skill-designer-vue-empty-inline">暂无可选项</div>
+        </div>
+      `,
+    });
+
+    const SkillSegmentedControl = defineComponent({
+      name: 'SkillSegmentedControl',
+      props: {
+        modelValue: { default: '' },
+        options: { type: Array, default: () => [] },
+        disabled: Boolean,
+        invalid: Boolean,
+        inputId: { type: String, default: '' },
+        label: { type: String, default: '选项' },
+        compact: Boolean,
+        describedBy: { type: String, default: '' },
+        required: Boolean,
+      },
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        function optionValue(option) {
+          return option && typeof option === 'object' ? option.value : option;
+        }
+        const selectedIndex = computed(() => {
+          const index = props.options.findIndex(option => String(optionValue(option)) === String(props.modelValue));
+          return index >= 0 ? index : 0;
+        });
+        function optionLabel(option) {
+          const value = optionValue(option);
+          return option && typeof option === 'object' ? option.label ?? value : value;
+        }
+        function handleKeydown(event, index) {
+          if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const count = props.options.length;
+          if (!count) return;
+          const nextIndex =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? count - 1
+                : (index + (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) + count) % count;
+          const option = props.options[nextIndex];
+          const group = event.currentTarget?.parentElement;
+          emit('update:modelValue', optionValue(option));
+          nextTick(() => group?.querySelectorAll('[role="radio"]')[nextIndex]?.focus());
+        }
+        return { handleKeydown, optionLabel, optionValue, selectedIndex };
+      },
+      template: `
+        <div
+          class="skill-designer-vue-segmented"
+          :class="{ compact }"
+          role="radiogroup"
+          :aria-label="label"
+          :aria-invalid="invalid ? 'true' : 'false'"
+          :aria-describedby="describedBy || undefined"
+          :aria-required="required ? 'true' : 'false'"
+        >
+          <button
+            v-for="(option, index) in options"
+            :key="String(optionValue(option))"
+            :id="index === 0 && inputId ? inputId : undefined"
+            type="button"
+            role="radio"
+            :aria-checked="String(modelValue) === String(optionValue(option)) ? 'true' : 'false'"
+            :tabindex="index === selectedIndex ? 0 : -1"
+            :class="{ active: String(modelValue) === String(optionValue(option)) }"
+            :disabled="disabled"
+            @click="$emit('update:modelValue', optionValue(option))"
+            @keydown="handleKeydown($event, index)"
+          >{{ optionLabel(option) }}</button>
+        </div>
+      `,
+    });
+
+    const SkillDurationInput = defineComponent({
+      name: 'SkillDurationInput',
+      props: {
+        modelValue: { default: '' },
+        disabled: Boolean,
+        invalid: Boolean,
+        inputId: { type: String, default: '' },
+        label: { type: String, default: '有效时长' },
+        minTicks: { type: [Number, String], default: 0 },
+        maxTicks: { type: [Number, String], default: 0 },
+        describedBy: { type: String, default: '' },
+        required: Boolean,
+      },
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const days = shallowRef('');
+        const hours = shallowRef('');
+        const minutes = shallowRef('');
+        const syncFromTicks = value => {
+          if (value === '' || value === null || value === undefined) {
+            days.value = '';
+            hours.value = '';
+            minutes.value = '';
+            return;
+          }
+          const ticks = Number(value);
+          if (!Number.isFinite(ticks) || ticks < 0) return;
+          const totalMinutes = Math.floor(ticks) * 10;
+          days.value = String(Math.floor(totalMinutes / 1440));
+          hours.value = String(Math.floor((totalMinutes % 1440) / 60));
+          minutes.value = String(totalMinutes % 60);
+        };
+        const emitTicks = () => {
+          const parts = [days.value, hours.value, minutes.value];
+          if (parts.every(part => part === '')) {
+            emit('update:modelValue', '');
+            return;
+          }
+          if (parts.some(part => part !== '' && !/^\\d+$/.test(part))) return;
+          const totalMinutes =
+            Number(days.value || 0) * 1440 +
+            Number(hours.value || 0) * 60 +
+            Number(minutes.value || 0);
+          if (totalMinutes % 10 !== 0) return;
+          const ticks = totalMinutes / 10;
+          if (ticks < Math.max(0, Number(props.minTicks) || 0)) return;
+          if (Number(props.maxTicks) > 0 && ticks > Number(props.maxTicks)) return;
+          emit('update:modelValue', String(ticks));
+        };
+        function normalizeParts() {
+          const parts = [days.value, hours.value, minutes.value];
+          if (parts.every(part => part === '')) return;
+          const dayValue = Math.max(0, Number.parseInt(days.value || '0', 10) || 0);
+          const hourValue = Math.min(23, Math.max(0, Number.parseInt(hours.value || '0', 10) || 0));
+          const minuteValue = Math.min(59, Math.max(0, Number.parseInt(minutes.value || '0', 10) || 0));
+          const roundedMinutes = Math.max(
+            0,
+            Math.round((dayValue * 1440 + hourValue * 60 + minuteValue) / 10) * 10,
+          );
+          const minTicks = Math.max(0, Number(props.minTicks) || 0);
+          const maxTicks = Number(props.maxTicks) > 0 ? Math.max(minTicks, Number(props.maxTicks)) : Infinity;
+          const normalizedTicks = Math.min(maxTicks, Math.max(minTicks, roundedMinutes / 10));
+          const totalMinutes = normalizedTicks * 10;
+          days.value = String(Math.floor(totalMinutes / 1440));
+          hours.value = String(Math.floor((totalMinutes % 1440) / 60));
+          minutes.value = String(totalMinutes % 60);
+          emitTicks();
+        }
+        watch(() => props.modelValue, syncFromTicks, { immediate: true });
+        function updatePart(part, event) {
+          const value = String(event.target.value || '').replace(/[^0-9]/g, '');
+          if (part === 'days') days.value = value;
+          else if (part === 'hours') hours.value = value;
+          else minutes.value = value;
+          emitTicks();
+        }
+        return { days, hours, minutes, normalizeParts, updatePart };
+      },
+      template: `
+        <div class="skill-designer-vue-duration" :aria-label="label">
+          <label><input :id="inputId || undefined" :value="days" type="text" inputmode="numeric" :disabled="disabled" :aria-label="label + '，日'" :aria-invalid="invalid ? 'true' : 'false'" :aria-describedby="describedBy || undefined" :aria-required="required ? 'true' : 'false'" @input="updatePart('days', $event)" @blur="normalizeParts"><span>日</span></label>
+          <label><input :id="inputId ? inputId + '-hours' : undefined" :value="hours" type="text" inputmode="numeric" :disabled="disabled" :aria-label="label + '，时'" :aria-invalid="invalid ? 'true' : 'false'" :aria-describedby="describedBy || undefined" :aria-required="required ? 'true' : 'false'" @input="updatePart('hours', $event)" @blur="normalizeParts"><span>时</span></label>
+          <label><input :id="inputId ? inputId + '-minutes' : undefined" :value="minutes" type="text" inputmode="numeric" :disabled="disabled" :aria-label="label + '，分'" :aria-invalid="invalid ? 'true' : 'false'" :aria-describedby="describedBy || undefined" :aria-required="required ? 'true' : 'false'" @input="updatePart('minutes', $event)" @blur="normalizeParts"><span>分</span></label>
         </div>
       `,
     });
@@ -430,6 +675,10 @@
         descriptor: { type: Object, required: true },
         disabled: Boolean,
         instanceId: { type: String, required: true },
+        inputId: { type: String, default: '' },
+        invalid: Boolean,
+        describedBy: { type: String, default: '' },
+        required: Boolean,
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
@@ -452,8 +701,12 @@
               :model-value="Array.isArray(modelValue[field.key]) ? modelValue[field.key] : modelValue[field.key] ? [modelValue[field.key]] : []"
               :options="field.options"
               :disabled="disabled"
+              :invalid="invalid"
+              :input-id="(inputId || instanceId) + '-' + field.key"
               :label="field.label"
               :instance-id="instanceId + '-' + field.key"
+              :described-by="describedBy"
+              :required="required || field.required"
               @update:model-value="patch(field.key, $event)"
             />
             <SkillCombobox
@@ -461,12 +714,17 @@
               :model-value="modelValue[field.key] || ''"
               :options="field.options"
               :disabled="disabled"
+              :invalid="invalid"
+              :input-id="(inputId || instanceId) + '-' + field.key"
               :label="field.label"
               :instance-id="instanceId + '-' + field.key"
+              :described-by="describedBy"
+              :required="required || field.required"
               @update:model-value="patch(field.key, $event)"
             />
             <input
               v-else
+              :id="(inputId || instanceId) + '-' + field.key"
               class="skill-designer-vue-control"
               type="text"
               :name="field.key"
@@ -474,6 +732,9 @@
               :value="modelValue[field.key] || ''"
               :disabled="disabled"
               :aria-label="field.label"
+              :aria-invalid="invalid ? 'true' : 'false'"
+              :aria-describedby="describedBy || undefined"
+              :aria-required="required || field.required ? 'true' : 'false'"
               @input="patch(field.key, $event.target.value)"
             />
           </div>
@@ -481,14 +742,121 @@
       `,
     });
 
+    const SkillHelpButton = defineComponent({
+      name: 'SkillHelpButton',
+      props: {
+        text: { type: String, default: '' },
+        label: { type: String, default: '' },
+        instanceId: { type: String, default: '' },
+      },
+      setup(props) {
+        const open = shallowRef(false);
+        const button = shallowRef(null);
+        const popoverId = `${props.instanceId || 'skill-help'}-help`;
+        let outsideListenerBound = false;
+
+        function handleOutsidePointer(event) {
+          if (button.value?.parentElement?.contains(event.target)) return;
+          close(false);
+        }
+
+        function close(returnFocus = true) {
+          if (!open.value) return;
+          open.value = false;
+          if (outsideListenerBound) {
+            document.removeEventListener('pointerdown', handleOutsidePointer, true);
+            outsideListenerBound = false;
+          }
+          if (returnFocus) nextTick(() => button.value?.focus?.());
+        }
+
+        function toggle() {
+          if (!props.text) return;
+          if (open.value) {
+            close(false);
+            return;
+          }
+          open.value = true;
+          if (!outsideListenerBound) {
+            document.addEventListener('pointerdown', handleOutsidePointer, true);
+            outsideListenerBound = true;
+          }
+        }
+
+        function handleKeydown(event) {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }
+
+        onBeforeUnmount(() => close(false));
+
+        return { button, handleKeydown, open, popoverId, toggle };
+      },
+      template: `
+        <span v-if="text" class="skill-designer-vue-help-wrap">
+          <button
+            ref="button"
+            type="button"
+            class="skill-designer-vue-help"
+            :aria-label="'查看' + (label || '字段') + '帮助'"
+            :aria-expanded="open ? 'true' : 'false'"
+            :aria-controls="popoverId"
+            title="查看帮助"
+            @click="toggle"
+            @keydown="handleKeydown"
+          ><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button>
+          <span v-if="open" :id="popoverId" class="skill-designer-vue-help-popover" role="tooltip">{{ text }}</span>
+        </span>
+      `,
+    });
+
+    const SkillFieldShell = defineComponent({
+      name: 'SkillFieldShell',
+      components: { SkillHelpButton },
+      props: {
+        descriptor: { type: Object, required: true },
+        inputId: { type: String, default: '' },
+        fieldPath: { type: String, default: '' },
+        error: { type: Object, default: null },
+      },
+      template: `
+        <div
+          class="skill-designer-vue-field"
+          :class="{ wide: descriptor.wide }"
+          :data-field-path="fieldPath || undefined"
+        >
+          <div class="skill-designer-vue-label-line">
+            <label class="skill-designer-vue-label" :for="inputId || undefined">
+              {{ descriptor.label }}<b v-if="descriptor.required">*</b>
+            </label>
+            <span class="skill-designer-vue-field-meta">
+              <small v-if="descriptor.unit" class="skill-designer-vue-field-unit">{{ descriptor.unit }}</small>
+              <SkillHelpButton :text="descriptor.help" :label="descriptor.label" :instance-id="inputId + '-help'" />
+            </span>
+          </div>
+          <slot></slot>
+          <small
+            v-if="error"
+            :id="inputId + '-error'"
+            class="skill-designer-vue-field-error"
+          >{{ error.message }}</small>
+        </div>
+      `,
+    });
+
     const SkillFieldControl = defineComponent({
       name: 'SkillFieldControl',
-      components: { SkillCombobox, SkillMatcherObject, SkillMultiSelect },
+      components: { SkillCombobox, SkillDurationInput, SkillMatcherObject, SkillMultiSelect, SkillSegmentedControl },
       props: {
         descriptor: { type: Object, required: true },
         modelValue: { default: '' },
         disabled: Boolean,
         instanceId: { type: String, required: true },
+        inputId: { type: String, default: '' },
+        invalid: Boolean,
+        describedBy: { type: String, default: '' },
       },
       emits: ['update:modelValue'],
       setup(props, { emit }) {
@@ -505,27 +873,33 @@
           <div v-if="descriptor.control === 'static'" class="skill-designer-vue-static">{{ modelValue }}</div>
           <label v-else-if="descriptor.control === 'toggle'" class="skill-designer-vue-toggle">
             <input
+              :id="inputId || undefined"
               type="checkbox"
               :name="descriptor.key || descriptor.label"
               :checked="modelValue === true || modelValue === '启用'"
               :disabled="disabled"
               :aria-label="descriptor.label"
+              :aria-required="descriptor.required ? 'true' : 'false'"
+              :aria-invalid="invalid ? 'true' : 'false'"
+              :aria-describedby="describedBy || undefined"
               @change="update($event.target.checked ? (descriptor.trueValue ?? '启用') : (descriptor.falseValue ?? '无'))"
             />
             <span aria-hidden="true"></span>
+            <em>{{ modelValue === true || modelValue === '启用' ? '启用' : '关闭' }}</em>
           </label>
-          <div v-else-if="descriptor.control === 'segmented'" class="skill-designer-vue-segmented" role="group">
-            <button
-              v-for="option in descriptor.options"
-              :key="String(option.value ?? option)"
-              type="button"
-              :class="{ active: String(modelValue) === String(option.value ?? option) }"
-              :disabled="disabled"
-              @click="update(option.value ?? option)"
-            >
-              {{ option.label ?? option }}
-            </button>
-          </div>
+          <SkillSegmentedControl
+            v-else-if="descriptor.control === 'segmented'"
+            :model-value="modelValue"
+            :options="descriptor.options"
+            :disabled="disabled"
+            :label="descriptor.label"
+            :compact="descriptor.compact"
+            :invalid="invalid"
+            :input-id="inputId"
+            :described-by="describedBy"
+            :required="descriptor.required"
+            @update:model-value="update"
+          />
           <SkillCombobox
             v-else-if="descriptor.control === 'singleEnum'"
             :model-value="modelValue"
@@ -533,6 +907,10 @@
             :disabled="disabled"
             :label="descriptor.label"
             :instance-id="instanceId"
+            :invalid="invalid"
+            :input-id="inputId"
+            :described-by="describedBy"
+            :required="descriptor.required"
             @update:model-value="update"
           />
           <SkillMultiSelect
@@ -542,6 +920,10 @@
             :disabled="disabled"
             :label="descriptor.label"
             :instance-id="instanceId"
+            :invalid="invalid"
+            :input-id="inputId"
+            :described-by="describedBy"
+            :required="descriptor.required"
             @update:model-value="update"
           />
           <SkillMatcherObject
@@ -550,6 +932,23 @@
             :descriptor="descriptor"
             :disabled="disabled"
             :instance-id="instanceId"
+            :input-id="inputId"
+            :invalid="invalid"
+            :described-by="describedBy"
+            :required="descriptor.required"
+            @update:model-value="update"
+          />
+          <SkillDurationInput
+            v-else-if="descriptor.control === 'duration'"
+            :model-value="modelValue"
+            :disabled="disabled"
+            :label="descriptor.label"
+            :invalid="invalid"
+            :input-id="inputId"
+            :min-ticks="descriptor.min"
+            :max-ticks="descriptor.max"
+            :described-by="describedBy"
+            :required="descriptor.required"
             @update:model-value="update"
           />
           <textarea
@@ -560,7 +959,11 @@
             :value="modelValue"
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
+            :id="inputId || undefined"
             :aria-label="descriptor.label"
+            :aria-required="descriptor.required ? 'true' : 'false'"
+            :aria-invalid="invalid ? 'true' : 'false'"
+            :aria-describedby="describedBy || undefined"
             @input="updateInput"
           ></textarea>
           <input
@@ -573,8 +976,11 @@
             :value="modelValue"
             :placeholder="descriptor.placeholder || ''"
             :disabled="disabled"
+            :id="inputId || undefined"
             :aria-label="descriptor.label"
-            :aria-invalid="descriptor.invalid ? 'true' : 'false'"
+            :aria-required="descriptor.required ? 'true' : 'false'"
+            :aria-invalid="invalid ? 'true' : 'false'"
+            :aria-describedby="describedBy || undefined"
             @input="updateInput"
           />
         </div>
@@ -583,7 +989,7 @@
 
     const SkillConditionBuilder = defineComponent({
       name: 'SkillConditionBuilder',
-      components: { SkillCombobox, SkillFieldControl },
+      components: { SkillCombobox, SkillFieldControl, SkillSegmentedControl },
       props: {
         branches: { type: Array, default: () => [] },
         path: { type: Array, required: true },
@@ -592,6 +998,9 @@
         modelApi: { type: Object, required: true },
         instanceId: { type: String, required: true },
         objectKey: { type: Function, required: true },
+        collapseMode: { type: String, default: 'normal' },
+        revealPath: { type: String, default: '' },
+        errorPaths: { type: Array, default: () => [] },
       },
       emits: ['patch', 'structure'],
       setup(props, { emit }) {
@@ -647,16 +1056,15 @@
                   :instance-id="instanceId + '-object-' + branchIndex + '-' + conditionIndex"
                   @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '对象'), value: $event })"
                 />
-                <div v-if="conditionModel(condition).showCompare" class="skill-designer-vue-operator-group">
-                  <button
-                    v-for="operator in conditionModel(condition).compareOptions"
-                    :key="operator"
-                    type="button"
-                    :class="{ active: operator === condition.比较 }"
-                    :disabled="disabled"
-                    @click="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '比较'), value: operator, dependent: true })"
-                  >{{ operator }}</button>
-                </div>
+                <SkillSegmentedControl
+                  v-if="conditionModel(condition).showCompare"
+                  :model-value="condition.比较"
+                  :options="conditionModel(condition).compareOptions"
+                  :disabled="disabled"
+                  label="比较方式"
+                  compact
+                  @update:model-value="emit('patch', { path: conditionPath(branchIndex, conditionIndex, '比较'), value: $event, dependent: true })"
+                />
                 <SkillFieldControl
                   v-if="conditionModel(condition).valueField"
                   :descriptor="conditionModel(condition).valueField"
@@ -681,19 +1089,17 @@
               class="skill-designer-vue-text-button"
               :disabled="disabled"
               @click="emit('structure', { type: 'add-condition', path: branchPath(branchIndex, '条件') })"
-            >+ 判定</button>
+            ><i class="fa-solid fa-plus" aria-hidden="true"></i>判定</button>
             <div class="skill-designer-vue-condition-action">
               <span class="skill-designer-vue-label">满足后</span>
-              <div class="skill-designer-vue-segmented compact">
-                <button
-                  v-for="action in modelApi.conditionActionOptions"
-                  :key="action"
-                  type="button"
-                  :class="{ active: action === branch.处理 }"
-                  :disabled="disabled"
-                  @click="emit('patch', { path: branchPath(branchIndex, '处理'), value: action, dependent: true })"
-                >{{ action }}</button>
-              </div>
+              <SkillSegmentedControl
+                :model-value="branch.处理"
+                :options="modelApi.conditionActionOptions"
+                :disabled="disabled"
+                label="满足后的处理方式"
+                compact
+                @update:model-value="emit('patch', { path: branchPath(branchIndex, '处理'), value: $event, dependent: true })"
+              />
             </div>
             <SkillPrototypeList
               v-if="branch.处理 === '替换效果' || branch.处理 === '追加效果'"
@@ -704,6 +1110,9 @@
               :model-api="modelApi"
               :instance-id="instanceId + '-effects-' + branchIndex"
               :object-key="objectKey"
+              :collapse-mode="collapseMode"
+              :reveal-path="revealPath"
+              :error-paths="errorPaths"
               :allow-empty="false"
               @patch="emit('patch', $event)"
               @structure="emit('structure', $event)"
@@ -715,7 +1124,7 @@
             :disabled="disabled || branches.length >= 3"
             :title="branches.length >= 3 ? '单个原型最多 3 个条件分支' : '新增条件分支'"
             @click="emit('structure', { type: 'add-branch', path })"
-          >+ 条件分支</button>
+          ><i class="fa-solid fa-plus" aria-hidden="true"></i>条件分支</button>
           <span v-if="branches.length >= 3" class="skill-designer-vue-limit-note">已达到 3 个分支上限</span>
         </div>
       `,
@@ -723,7 +1132,7 @@
 
     const SkillPrototypeEditor = defineComponent({
       name: 'SkillPrototypeEditor',
-      components: { SkillCombobox, SkillConditionBuilder, SkillFieldControl },
+      components: { SkillCombobox, SkillConditionBuilder, SkillFieldControl, SkillFieldShell },
       props: {
         effect: { type: Object, required: true },
         path: { type: Array, required: true },
@@ -735,10 +1144,15 @@
         instanceId: { type: String, required: true },
         objectKey: { type: Function, required: true },
         allowEmpty: Boolean,
+        canDuplicate: { type: Boolean, default: true },
+        collapseMode: { type: String, default: 'normal' },
+        revealPath: { type: String, default: '' },
+        errorPaths: { type: Array, default: () => [] },
       },
       emits: ['patch', 'structure'],
       setup(props, { emit }) {
         const model = computed(() => props.modelApi.getPrototypeModel(props.effect, { depth: props.depth }));
+        const expanded = shallowRef(props.depth === 0 && props.index === 0);
         function fieldPath(key) {
           return [...props.path, props.index, key];
         }
@@ -749,12 +1163,120 @@
             dependent: !!field.dependent,
           });
         }
-        return { emit, fieldPath, model, patchField };
+        const effectPath = computed(() => pathKey([...props.path, props.index]));
+        const hasError = computed(() =>
+          props.errorPaths.some(error => {
+            const errorPath = String(error && error.path || '');
+            return errorPath === effectPath.value
+              || errorPath.startsWith(`${effectPath.value}.`)
+              || effectPath.value.startsWith(`${errorPath}.`);
+          }),
+        );
+        function matchesReveal(path = props.revealPath) {
+          const targetPath = String(path || '');
+          return !!targetPath && (
+            targetPath === effectPath.value
+            || targetPath.startsWith(`${effectPath.value}.`)
+            || effectPath.value.startsWith(`${targetPath}.`)
+          );
+        }
+        function fieldError(field) {
+          const currentPath = pathKey(fieldPath(field.key));
+          return props.errorPaths.find(error => {
+            const errorPath = String(error && error.path || '');
+            return errorPath === currentPath
+              || errorPath.startsWith(`${currentPath}.`)
+              || currentPath.startsWith(`${errorPath}.`);
+          }) || null;
+        }
+        const collapsed = computed(() =>
+          matchesReveal()
+            ? false
+            : props.collapseMode === 'all'
+              ? true
+              : props.collapseMode === 'errors'
+                ? !hasError.value
+                : !expanded.value && !hasError.value,
+        );
+        const primaryFields = computed(() =>
+          model.value.fields.filter(field => field.presentation !== 'advanced'),
+        );
+        const advancedGroups = computed(() => {
+          const groupLabels = {
+            identity: '身份与承载',
+            target: '目标与匹配',
+            value: '数值与资源',
+            timing: '时序与次数',
+            scaling: '成长与缩放',
+            condition: '条件与规则',
+          };
+          const order = ['identity', 'target', 'value', 'timing', 'scaling', 'condition'];
+          const grouped = new Map();
+          model.value.fields
+            .filter(field => field.presentation === 'advanced')
+            .forEach(field => {
+              const key = groupLabels[field.group] ? field.group : 'identity';
+              if (!grouped.has(key)) grouped.set(key, []);
+              grouped.get(key).push(field);
+            });
+          return order
+            .filter(key => grouped.has(key))
+            .map(key => ({ key, label: groupLabels[key], fields: grouped.get(key) }));
+        });
+        const relationLabel = computed(() => {
+          if (props.depth === 0) return '主效果';
+          const relation = String(props.path[props.path.length - 1] || '');
+          return {
+            附加效果: '附加',
+            授予效果: '授予',
+            使用效果: '使用',
+            结算效果: '结算',
+            抹消对象: '抹消',
+            替换效果: '替换',
+            追加效果: '追加',
+          }[relation] || (props.effect.生效方式 === '跟随主原型' ? '附加' : '嵌套');
+        });
+        function toggleExpanded() {
+          if (props.collapseMode !== 'normal') return;
+          expanded.value = !expanded.value;
+        }
+        function activateEditor() {
+          if (props.collapseMode === 'normal') expanded.value = true;
+        }
+        watch(
+          () => props.revealPath,
+          value => {
+            if (matchesReveal(value)) expanded.value = true;
+          },
+        );
+        return {
+          activateEditor,
+          advancedGroups,
+          collapsed,
+          emit,
+          effectPath,
+          fieldError,
+          fieldPath,
+          hasError,
+          model,
+          patchField,
+          primaryFields,
+          relationLabel,
+          toggleExpanded,
+        };
       },
       template: `
-        <section class="skill-designer-vue-prototype" :class="{ nested: depth > 0 }">
+        <section
+          class="skill-designer-vue-prototype"
+          :class="{ nested: depth > 0, collapsed, 'has-error': hasError }"
+          :data-prototype-path="effectPath"
+          @focusin="activateEditor"
+        >
           <div class="skill-designer-vue-prototype-head">
-            <span v-if="depth > 0" class="skill-designer-vue-nested-tag">{{ effect.生效方式 === '跟随主原型' ? '附加' : '独立' }}</span>
+            <div class="skill-designer-vue-prototype-identity">
+              <span class="skill-designer-vue-prototype-index">原型 {{ index + 1 }}</span>
+              <span class="skill-designer-vue-nested-tag">{{ relationLabel }}</span>
+            </div>
             <SkillCombobox
               :model-value="effect.原型"
               :options="modelApi.prototypeOptions"
@@ -767,23 +1289,42 @@
               <button
                 type="button"
                 class="skill-designer-vue-icon-button"
-                :disabled="disabled || index === 0"
-                aria-label="上移原型"
-                title="上移"
-                @click="emit('structure', { type: 'move-up', path, index })"
-              >↑</button>
+                :disabled="disabled || collapseMode !== 'normal'"
+                :aria-label="collapsed ? '展开原型' : '折叠原型'"
+                :title="collapsed ? '展开原型' : '折叠原型'"
+                @click="toggleExpanded"
+              ><i :class="collapsed ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'" aria-hidden="true"></i></button>
               <button
                 type="button"
                 class="skill-designer-vue-icon-button"
-                :disabled="disabled || index >= count - 1"
+                v-if="index > 0"
+                :disabled="disabled"
+                aria-label="上移原型"
+                title="上移"
+                @click="emit('structure', { type: 'move-up', path, index })"
+              ><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+              <button
+                type="button"
+                class="skill-designer-vue-icon-button"
+                v-if="index < count - 1"
+                :disabled="disabled"
                 aria-label="下移原型"
                 title="下移"
                 @click="emit('structure', { type: 'move-down', path, index })"
-              >↓</button>
+              ><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
+              <button
+                type="button"
+                class="skill-designer-vue-icon-button"
+                :disabled="disabled || !canDuplicate"
+                aria-label="复制原型"
+                :title="canDuplicate ? '复制原型' : '已达到当前原型数量上限'"
+                @click="emit('structure', { type: 'duplicate', path, index })"
+              ><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
               <button
                 type="button"
                 class="skill-designer-vue-icon-button danger"
-                :disabled="disabled || (!allowEmpty && count <= 1)"
+                v-if="allowEmpty || count > 1"
+                :disabled="disabled"
                 aria-label="删除原型"
                 title="删除"
                 @click="emit('structure', { type: 'remove', path, index })"
@@ -791,8 +1332,8 @@
             </div>
           </div>
           <p v-if="model.summary" class="skill-designer-vue-prototype-summary">{{ model.summary }}</p>
-          <div class="skill-designer-vue-field-grid">
-            <template v-for="field in model.fields" :key="field.key">
+          <div v-if="!collapsed" class="skill-designer-vue-field-grid">
+            <template v-for="field in primaryFields" :key="field.key">
               <div
                 v-if="field.control === 'conditionList'"
                 class="skill-designer-vue-field wide"
@@ -800,7 +1341,7 @@
               >
                 <div class="skill-designer-vue-label-line">
                   <span class="skill-designer-vue-label">{{ field.label }}</span>
-                  <span v-if="field.help" class="skill-designer-vue-help" :title="field.help">?</span>
+                  <SkillHelpButton :text="field.help" :instance-id="instanceId + '-help-' + field.key" />
                 </div>
                 <SkillConditionBuilder
                   :branches="Array.isArray(effect[field.key]) ? effect[field.key] : []"
@@ -809,7 +1350,10 @@
                   :depth="depth"
                   :model-api="modelApi"
                   :instance-id="instanceId + '-conditions'"
-                  :object-key="objectKey"
+                   :object-key="objectKey"
+                   :collapse-mode="collapseMode"
+                   :reveal-path="revealPath"
+                   :error-paths="errorPaths"
                   @patch="emit('patch', $event)"
                   @structure="emit('structure', $event)"
                 />
@@ -821,7 +1365,7 @@
               >
                 <div class="skill-designer-vue-label-line">
                   <span class="skill-designer-vue-label">{{ field.label }}</span>
-                  <span v-if="field.help" class="skill-designer-vue-help" :title="field.help">?</span>
+                  <SkillHelpButton :text="field.help" :instance-id="instanceId + '-help-' + field.key" />
                 </div>
                 <SkillPrototypeList
                   :effects="Array.isArray(effect[field.key]) ? effect[field.key] : []"
@@ -830,31 +1374,116 @@
                   :depth="depth + 1"
                   :model-api="modelApi"
                   :instance-id="instanceId + '-nested-' + field.key"
-                  :object-key="objectKey"
+                   :object-key="objectKey"
+                   :collapse-mode="collapseMode"
+                   :reveal-path="revealPath"
+                   :error-paths="errorPaths"
                   :allow-empty="false"
                   @patch="emit('patch', $event)"
                   @structure="emit('structure', $event)"
                 />
               </div>
-              <div
+              <SkillFieldShell
                 v-else
-                class="skill-designer-vue-field"
-                :class="{ wide: field.wide }"
-                :data-field-path="pathKey(fieldPath(field.key))"
+                :descriptor="field"
+                :input-id="instanceId + '-field-' + field.key"
+                :field-path="pathKey(fieldPath(field.key))"
+                :error="fieldError(field)"
               >
-                <span class="skill-designer-vue-label-line">
-                  <span class="skill-designer-vue-label">{{ field.label }}<b v-if="field.required">*</b></span>
-                  <span v-if="field.help" class="skill-designer-vue-help" :title="field.help">?</span>
-                </span>
                 <SkillFieldControl
                   :descriptor="field"
                   :model-value="effect[field.key] ?? field.defaultValue ?? ''"
                   :disabled="disabled"
                   :instance-id="instanceId + '-field-' + field.key"
+                  :input-id="instanceId + '-field-' + field.key"
+                  :invalid="!!fieldError(field)"
+                  :described-by="fieldError(field) ? instanceId + '-field-' + field.key + '-error' : ''"
                   @update:model-value="patchField(field, $event)"
                 />
-              </div>
+              </SkillFieldShell>
             </template>
+            <details
+              v-for="group in advancedGroups"
+              :key="group.key"
+              class="skill-designer-vue-advanced-fields wide"
+            >
+              <summary>
+                <span>{{ group.label }}</span>
+                <b>{{ group.fields.length }} 项</b>
+                <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+              </summary>
+              <div class="skill-designer-vue-field-grid">
+                <template v-for="field in group.fields" :key="field.key">
+                  <div
+                    v-if="field.control === 'conditionList'"
+                    class="skill-designer-vue-field wide"
+                    :data-field-path="pathKey(fieldPath(field.key))"
+                  >
+                    <div class="skill-designer-vue-label-line">
+                      <span class="skill-designer-vue-label">{{ field.label }}</span>
+                      <SkillHelpButton :text="field.help" :instance-id="instanceId + '-help-' + field.key" />
+                    </div>
+                    <SkillConditionBuilder
+                      :branches="Array.isArray(effect[field.key]) ? effect[field.key] : []"
+                      :path="fieldPath(field.key)"
+                      :disabled="disabled"
+                      :depth="depth"
+                      :model-api="modelApi"
+                      :instance-id="instanceId + '-conditions'"
+                      :object-key="objectKey"
+                      :collapse-mode="collapseMode"
+                      :reveal-path="revealPath"
+                      :error-paths="errorPaths"
+                      @patch="emit('patch', $event)"
+                      @structure="emit('structure', $event)"
+                    />
+                  </div>
+                  <div
+                    v-else-if="field.control === 'effectList'"
+                    class="skill-designer-vue-field wide"
+                    :data-field-path="pathKey(fieldPath(field.key))"
+                  >
+                    <div class="skill-designer-vue-label-line">
+                      <span class="skill-designer-vue-label">{{ field.label }}</span>
+                      <SkillHelpButton :text="field.help" :instance-id="instanceId + '-help-' + field.key" />
+                    </div>
+                    <SkillPrototypeList
+                      :effects="Array.isArray(effect[field.key]) ? effect[field.key] : []"
+                      :path="fieldPath(field.key)"
+                      :disabled="disabled"
+                      :depth="depth + 1"
+                      :model-api="modelApi"
+                      :instance-id="instanceId + '-nested-' + field.key"
+                      :object-key="objectKey"
+                      :collapse-mode="collapseMode"
+                      :reveal-path="revealPath"
+                      :error-paths="errorPaths"
+                      :allow-empty="false"
+                      @patch="emit('patch', $event)"
+                      @structure="emit('structure', $event)"
+                    />
+                  </div>
+                  <SkillFieldShell
+                    v-else
+                    :descriptor="field"
+                    :input-id="instanceId + '-field-' + field.key"
+                    :field-path="pathKey(fieldPath(field.key))"
+                    :error="fieldError(field)"
+                  >
+                    <SkillFieldControl
+                      :descriptor="field"
+                      :model-value="effect[field.key] ?? field.defaultValue ?? ''"
+                      :disabled="disabled"
+                      :instance-id="instanceId + '-field-' + field.key"
+                      :input-id="instanceId + '-field-' + field.key"
+                      :invalid="!!fieldError(field)"
+                      :described-by="fieldError(field) ? instanceId + '-field-' + field.key + '-error' : ''"
+                      @update:model-value="patchField(field, $event)"
+                    />
+                  </SkillFieldShell>
+                </template>
+              </div>
+            </details>
           </div>
         </section>
       `,
@@ -873,6 +1502,9 @@
         instanceId: { type: String, required: true },
         objectKey: { type: Function, required: true },
         allowEmpty: Boolean,
+        collapseMode: { type: String, default: 'normal' },
+        revealPath: { type: String, default: '' },
+        errorPaths: { type: Array, default: () => [] },
       },
       emits: ['patch', 'structure'],
       setup(props, { emit }) {
@@ -905,6 +1537,10 @@
             :instance-id="instanceId + '-' + objectKey(effect, 'prototype')"
             :object-key="objectKey"
             :allow-empty="allowEmpty"
+            :can-duplicate="effects.length < maxCount"
+            :collapse-mode="collapseMode"
+            :reveal-path="revealPath"
+            :error-paths="errorPaths"
             @patch="emit('patch', $event)"
             @structure="emit('structure', $event)"
           />
@@ -915,7 +1551,7 @@
               :disabled="disabled || !canAdd"
               :title="limitReason || '新增原型'"
               @click="emit('structure', { type: 'add-prototype', path })"
-            >+ 原型</button>
+            ><i class="fa-solid fa-plus" aria-hidden="true"></i>原型</button>
             <span v-if="limitReason" class="skill-designer-vue-limit-note">{{ limitReason }}</span>
           </div>
         </div>
@@ -924,7 +1560,7 @@
 
     const SkillSideEffectList = defineComponent({
       name: 'SkillSideEffectList',
-      components: { SkillFieldControl },
+      components: { SkillFieldControl, SkillFieldShell },
       props: {
         items: { type: Array, default: () => [] },
         path: { type: Array, required: true },
@@ -935,7 +1571,19 @@
       },
       emits: ['patch', 'structure'],
       setup(props, { emit }) {
-        return { emit };
+        function primaryFields(item) {
+          return props.modelApi
+            .getSideEffectModel(item)
+            .fields
+            .filter(field => field.presentation !== 'advanced');
+        }
+        function advancedFields(item) {
+          return props.modelApi
+            .getSideEffectModel(item)
+            .fields
+            .filter(field => field.presentation === 'advanced');
+        }
+        return { advancedFields, emit, pathKey, primaryFields };
       },
       template: `
         <div class="skill-designer-vue-side-effects">
@@ -956,20 +1604,50 @@
               ><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
             <div class="skill-designer-vue-field-grid">
-              <div
-                v-for="field in modelApi.getSideEffectModel(item).fields"
+              <SkillFieldShell
+                v-for="field in primaryFields(item)"
                 :key="field.key"
-                class="skill-designer-vue-field"
+                :descriptor="field"
+                :input-id="instanceId + '-' + index + '-' + field.key"
+                :field-path="pathKey([...path, index, field.key])"
               >
-                <span class="skill-designer-vue-label">{{ field.label }}</span>
                 <SkillFieldControl
                   :descriptor="field"
                   :model-value="item[field.key] ?? field.defaultValue ?? ''"
                   :disabled="disabled"
                   :instance-id="instanceId + '-' + index + '-' + field.key"
+                  :input-id="instanceId + '-' + index + '-' + field.key"
                   @update:model-value="emit('patch', { path: [...path, index, field.key], value: $event, dependent: !!field.dependent })"
                 />
-              </div>
+              </SkillFieldShell>
+              <details
+                v-if="advancedFields(item).length"
+                class="skill-designer-vue-advanced-fields wide"
+              >
+                <summary>
+                  <span>高级设置</span>
+                  <b>{{ advancedFields(item).length }} 项</b>
+                  <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <div class="skill-designer-vue-field-grid">
+                  <SkillFieldShell
+                    v-for="field in advancedFields(item)"
+                    :key="field.key"
+                    :descriptor="field"
+                    :input-id="instanceId + '-' + index + '-' + field.key"
+                    :field-path="pathKey([...path, index, field.key])"
+                  >
+                    <SkillFieldControl
+                      :descriptor="field"
+                      :model-value="item[field.key] ?? field.defaultValue ?? ''"
+                      :disabled="disabled"
+                      :instance-id="instanceId + '-' + index + '-' + field.key"
+                      :input-id="instanceId + '-' + index + '-' + field.key"
+                      @update:model-value="emit('patch', { path: [...path, index, field.key], value: $event, dependent: !!field.dependent })"
+                    />
+                  </SkillFieldShell>
+                </div>
+              </details>
             </div>
             <p class="skill-designer-vue-row-summary">{{ modelApi.getSideEffectModel(item).summary }}</p>
           </div>
@@ -978,19 +1656,20 @@
             class="skill-designer-vue-text-button"
             :disabled="disabled"
             @click="emit('structure', { type: 'add-side-effect', path })"
-          >+ 副作用</button>
+          ><i class="fa-solid fa-plus" aria-hidden="true"></i>副作用</button>
         </div>
       `,
     });
 
-    const SkillBasicPanel = defineComponent({
-      name: 'SkillBasicPanel',
-      components: { SkillFieldControl },
+    const createSkillFieldPanel = name => defineComponent({
+      name,
+      components: { SkillFieldControl, SkillFieldShell },
       props: {
         draft: { type: Object, required: true },
         fields: { type: Array, default: () => [] },
         disabled: Boolean,
         instanceId: { type: String, required: true },
+        errorPaths: { type: Array, default: () => [] },
       },
       emits: ['patch'],
       setup(props, { emit }) {
@@ -1008,31 +1687,97 @@
             dependent: !!field.dependent,
           });
         }
-        return { fieldPath, fieldValue, patch, pathKey };
+        function fieldError(field) {
+          const currentPath = pathKey(fieldPath(field));
+          return props.errorPaths.find(error => {
+            const errorPath = String(error && error.path || '');
+            return errorPath === currentPath
+              || errorPath.startsWith(`${currentPath}.`)
+              || currentPath.startsWith(`${errorPath}.`);
+          }) || null;
+        }
+        const primaryFields = computed(() =>
+          props.fields.filter(field => field.presentation !== 'advanced'),
+        );
+        const advancedGroups = computed(() => {
+          const groupLabels = {
+            identity: '身份与承载',
+            target: '目标与匹配',
+            value: '数值与资源',
+            timing: '时序与次数',
+            scaling: '成长与缩放',
+            condition: '条件与规则',
+          };
+          const order = ['identity', 'target', 'value', 'timing', 'scaling', 'condition'];
+          const grouped = new Map();
+          props.fields
+            .filter(field => field.presentation === 'advanced')
+            .forEach(field => {
+              const key = groupLabels[field.group] ? field.group : 'identity';
+              if (!grouped.has(key)) grouped.set(key, []);
+              grouped.get(key).push(field);
+            });
+          return order
+            .filter(key => grouped.has(key))
+            .map(key => ({ key, label: groupLabels[key], fields: grouped.get(key) }));
+        });
+        return { advancedGroups, fieldError, fieldPath, fieldValue, patch, pathKey, primaryFields };
       },
       template: `
         <div class="skill-designer-vue-panel">
           <div class="skill-designer-vue-field-grid">
-            <div
-              v-for="field in fields"
+            <SkillFieldShell
+              v-for="field in primaryFields"
               :key="field.id || field.key"
-              class="skill-designer-vue-field"
-              :class="{ wide: field.wide }"
-              :data-field-path="pathKey(fieldPath(field))"
+              :descriptor="field"
+              :input-id="instanceId + '-' + (field.id || field.key)"
+              :field-path="pathKey(fieldPath(field))"
+              :error="fieldError(field)"
             >
-              <span class="skill-designer-vue-label-line">
-                <span class="skill-designer-vue-label">{{ field.label }}<b v-if="field.required">*</b></span>
-                <span v-if="field.help" class="skill-designer-vue-help" :title="field.help">?</span>
-              </span>
               <SkillFieldControl
                 :descriptor="field"
                 :model-value="fieldValue(field)"
                 :disabled="disabled"
                 :instance-id="instanceId + '-' + (field.id || field.key)"
+                :input-id="instanceId + '-' + (field.id || field.key)"
+                :invalid="!!fieldError(field)"
+                :described-by="fieldError(field) ? instanceId + '-' + (field.id || field.key) + '-error' : ''"
                 @update:model-value="patch(field, $event)"
               />
-            </div>
+            </SkillFieldShell>
           </div>
+          <details
+            v-for="group in advancedGroups"
+            :key="group.key"
+            class="skill-designer-vue-advanced-fields"
+          >
+            <summary>
+              <span>{{ group.label }}</span>
+              <b>{{ group.fields.length }} 项</b>
+              <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+            </summary>
+            <div class="skill-designer-vue-field-grid">
+              <SkillFieldShell
+                v-for="field in group.fields"
+                :key="field.id || field.key"
+                :descriptor="field"
+                :input-id="instanceId + '-' + (field.id || field.key)"
+                :field-path="pathKey(fieldPath(field))"
+                :error="fieldError(field)"
+              >
+                <SkillFieldControl
+                  :descriptor="field"
+                  :model-value="fieldValue(field)"
+                  :disabled="disabled"
+                  :instance-id="instanceId + '-' + (field.id || field.key)"
+                  :input-id="instanceId + '-' + (field.id || field.key)"
+                  :invalid="!!fieldError(field)"
+                  :described-by="fieldError(field) ? instanceId + '-' + (field.id || field.key) + '-error' : ''"
+                  @update:model-value="patch(field, $event)"
+                />
+              </SkillFieldShell>
+            </div>
+          </details>
         </div>
       `,
     });
@@ -1046,14 +1791,21 @@
         modelApi: { type: Object, required: true },
         instanceId: { type: String, required: true },
         objectKey: { type: Function, required: true },
+        collapseMode: { type: String, default: 'normal' },
+        revealPath: { type: String, default: '' },
+        errorPaths: { type: Array, default: () => [] },
       },
-      emits: ['patch', 'structure'],
+      emits: ['patch', 'structure', 'view'],
       template: `
         <div class="skill-designer-vue-panel">
           <section class="skill-designer-vue-section">
             <div class="skill-designer-vue-section-head">
               <div>
                 <h3>效果原型</h3>
+              </div>
+              <div class="skill-designer-vue-section-actions">
+                <button type="button" class="skill-designer-vue-text-button" :aria-pressed="collapseMode === 'all' ? 'true' : 'false'" :disabled="disabled" @click="$emit('view', 'all')">{{ collapseMode === 'all' ? '恢复展开' : '折叠全部' }}</button>
+                <button type="button" class="skill-designer-vue-text-button" :aria-pressed="collapseMode === 'errors' ? 'true' : 'false'" :disabled="disabled" @click="$emit('view', 'errors')">{{ collapseMode === 'errors' ? '恢复展开' : '仅展开错误' }}</button>
               </div>
             </div>
             <SkillPrototypeList
@@ -1064,6 +1816,9 @@
               :model-api="modelApi"
               :instance-id="instanceId + '-effects'"
               :object-key="objectKey"
+              :collapse-mode="collapseMode"
+              :reveal-path="revealPath"
+              :error-paths="errorPaths"
               :allow-empty="false"
               @patch="$emit('patch', $event)"
               @structure="$emit('structure', $event)"
@@ -1090,8 +1845,9 @@
       `,
     });
 
-    const SkillCostPanel = SkillBasicPanel;
-    const SkillDescriptionPanel = SkillBasicPanel;
+    const SkillBasicPanel = createSkillFieldPanel('SkillBasicPanel');
+    const SkillCostPanel = createSkillFieldPanel('SkillCostPanel');
+    const SkillDescriptionPanel = createSkillFieldPanel('SkillDescriptionPanel');
 
     const SkillDesignerToolbar = defineComponent({
       name: 'SkillDesignerToolbar',
@@ -1103,6 +1859,8 @@
         previewKey: { type: String, default: '' },
         busy: Boolean,
         dirty: Boolean,
+        statusText: { type: String, default: '未修改' },
+        statusTone: { type: String, default: '' },
         canUndo: Boolean,
         instanceId: { type: String, required: true },
       },
@@ -1118,6 +1876,10 @@
           <div class="skill-designer-vue-heading">
             <span>{{ subtitle }}</span>
             <h2>{{ title }}</h2>
+            <small class="skill-designer-vue-status" :class="statusTone">
+              <span>{{ statusText }}</span>
+              <b v-if="dirty && statusText !== '有未保存更改'">未保存</b>
+            </small>
           </div>
           <div class="skill-designer-vue-toolbar-actions">
             <SkillCombobox
@@ -1126,6 +1888,7 @@
               :options="switchOptions"
               :disabled="busy"
               label="技能"
+              trigger-text="切换技能"
               :instance-id="instanceId + '-switch'"
               @update:model-value="$emit('switch-skill', $event)"
             />
@@ -1138,9 +1901,7 @@
               @click="$emit('undo')"
             ><i class="fa-solid fa-undo" aria-hidden="true"></i></button>
             <button type="button" class="skill-designer-vue-button" :disabled="busy" @click="$emit('reload')">重新读取</button>
-            <button type="button" class="skill-designer-vue-button primary" :disabled="busy" @click="$emit('save')">
-              {{ busy ? '处理中…' : dirty ? '保存设计*' : '保存设计' }}
-            </button>
+            <button type="button" class="skill-designer-vue-button primary" :disabled="busy" @click="$emit('save')">保存设计</button>
           </div>
         </header>
       `,
@@ -1190,7 +1951,6 @@
           >
             <span>{{ tab.label }}</span>
             <b v-if="errorCounts[tab.id]">{{ errorCounts[tab.id] }}</b>
-            <i v-else aria-label="完成">✓</i>
           </button>
         </div>
       `,
@@ -1202,8 +1962,11 @@
         result: { type: Object, default: () => ({}) },
         currentAttributes: { default: () => ({}) },
         expanded: Boolean,
+        collapsible: Boolean,
+        instanceId: { type: String, required: true },
+        statusText: { type: String, default: '正在校验' },
       },
-      emits: ['toggle'],
+      emits: ['toggle', 'locate'],
       setup(props) {
         const preview = computed(() => props.result?.preview || {});
         const errors = computed(() => (Array.isArray(props.result?.errors) ? props.result.errors : []));
@@ -1212,15 +1975,36 @@
           if (Array.isArray(props.currentAttributes)) return props.currentAttributes;
           return Object.entries(props.currentAttributes || {}).map(([label, value]) => ({ label, value }));
         });
-        return { attributes, errors, preview, warnings };
+        const validationLabel = computed(() => {
+          if (errors.value.length) return `${errors.value.length} 个问题`;
+          if (warnings.value.length) return '存在警告';
+          if (props.statusText === '正在校验') return '正在校验';
+          return '校验通过';
+        });
+        return { attributes, errors, preview, validationLabel, warnings };
       },
       template: `
         <aside class="skill-designer-vue-preview" :class="{ expanded }">
-          <button type="button" class="skill-designer-vue-preview-toggle" @click="$emit('toggle')">
-            <span>实时速览</span>
-            <b>{{ errors.length ? errors.length + ' 个问题' : '可保存' }}</b>
-          </button>
-          <div class="skill-designer-vue-preview-content">
+          <component
+            :is="collapsible ? 'button' : 'div'"
+            :type="collapsible ? 'button' : undefined"
+            class="skill-designer-vue-preview-toggle"
+            :class="{ static: !collapsible }"
+            :aria-expanded="collapsible ? (expanded ? 'true' : 'false') : undefined"
+            :aria-controls="collapsible ? instanceId + '-content' : undefined"
+            @click="collapsible && $emit('toggle')"
+          >
+            <span class="skill-designer-vue-preview-toggle-title">
+              <small>实时速览</small>
+              <strong>{{ preview.name || '未命名技能' }}</strong>
+            </span>
+            <span class="skill-designer-vue-preview-toggle-metrics">
+              <i>{{ preview.cost || '无消耗' }}</i>
+              <i>{{ preview.budget?.label || '预算待评估' }}</i>
+              <b>{{ validationLabel }}</b>
+            </span>
+          </component>
+          <div :id="instanceId + '-content'" class="skill-designer-vue-preview-content">
             <div class="skill-designer-vue-preview-hero">
               <small>{{ preview.type || '技能' }}</small>
               <h3>{{ preview.name || '未命名技能' }}</h3>
@@ -1229,29 +2013,76 @@
             <dl class="skill-designer-vue-preview-metrics">
               <div><dt>承载</dt><dd>{{ preview.delivery || '未设置' }}</dd></div>
               <div><dt>消耗</dt><dd>{{ preview.cost || '无' }}</dd></div>
-              <div><dt>前摇</dt><dd>{{ preview.castTime ?? 0 }}</dd></div>
-              <div><dt>COST</dt><dd :class="{ danger: preview.budget && preview.budget.ok === false }">{{ preview.budget?.label || '待评估' }}</dd></div>
+              <div><dt>施放前摇</dt><dd>{{ preview.timingRows?.[0]?.value ?? 0 }}{{ preview.timingRows?.[0]?.unit ? ' ' + preview.timingRows[0].unit : '' }}</dd></div>
+              <div>
+                <dt>复杂度预算</dt>
+                <dd :class="{ danger: preview.budget && preview.budget.ok === false }">
+                  <button
+                    v-if="preview.budget && preview.budget.ok === false"
+                    type="button"
+                    class="skill-designer-vue-inline-link"
+                    @click="$emit('locate', { tab: 'cost', path: 'costType' })"
+                  >{{ preview.budget.label }}</button>
+                  <span v-else>{{ preview.budget?.label || '待评估' }}</span>
+                </dd>
+              </div>
             </dl>
-            <section v-if="preview.effects?.length" class="skill-designer-vue-preview-section">
-              <h4>效果链</h4>
-              <ol>
-                <li v-for="(effect, index) in preview.effects" :key="index">{{ effect }}</li>
-              </ol>
-            </section>
-            <section v-if="attributes.length" class="skill-designer-vue-preview-section">
-              <h4>当前属性</h4>
-              <dl class="skill-designer-vue-attribute-list">
-                <div v-for="item in attributes" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
-              </dl>
-            </section>
             <section v-if="errors.length" class="skill-designer-vue-message-list error">
               <h4>需要修正</h4>
-              <p v-for="(item, index) in errors" :key="index">{{ item.message || item }}</p>
+              <button
+                v-for="(item, index) in errors"
+                :key="index"
+                type="button"
+                @click="$emit('locate', item)"
+              >{{ item.message || item }}</button>
             </section>
             <section v-if="warnings.length" class="skill-designer-vue-message-list warning">
               <h4>自动规整</h4>
               <p v-for="(item, index) in warnings" :key="index">{{ item.message || item }}</p>
             </section>
+            <section v-if="preview.resourceRows?.length" class="skill-designer-vue-preview-section">
+              <h4>资源消耗</h4>
+              <dl class="skill-designer-vue-preview-list">
+                <div v-for="row in preview.resourceRows" :key="row.label">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                </div>
+              </dl>
+            </section>
+            <section v-if="preview.timingRows?.length > 1" class="skill-designer-vue-preview-section">
+              <h4>持续与时序</h4>
+              <dl class="skill-designer-vue-preview-list">
+                <div v-for="row in preview.timingRows.slice(1)" :key="row.label">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}{{ row.unit ? ' ' + row.unit : '' }}</dd>
+                </div>
+              </dl>
+            </section>
+            <section v-if="preview.effectRows?.length" class="skill-designer-vue-preview-section">
+              <h4>效果链</h4>
+              <ol class="skill-designer-vue-effect-list">
+                <li v-for="(effect, index) in preview.effectRows" :key="effect.path || index">
+                  <button
+                    type="button"
+                    class="skill-designer-vue-effect-item"
+                    :style="{ '--skill-designer-vue-effect-depth': effect.depth || 0 }"
+                    @click="$emit('locate', { tab: 'effect', path: effect.path })"
+                  >
+                    <span class="skill-designer-vue-effect-relation">{{ effect.relation || '主效果' }}</span>
+                    <strong>{{ effect.title }}</strong>
+                    <small v-if="effect.branchLabel">{{ effect.branchLabel }}</small>
+                    <small v-if="effect.conditionSummary">{{ effect.conditionSummary }}</small>
+                    <small v-if="effect.detail">{{ effect.detail }}</small>
+                  </button>
+                </li>
+              </ol>
+            </section>
+            <details v-if="attributes.length" class="skill-designer-vue-preview-section skill-designer-vue-preview-attributes">
+              <summary><span>当前属性</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
+              <dl class="skill-designer-vue-attribute-list">
+                <div v-for="item in attributes" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+              </dl>
+            </details>
           </div>
         </aside>
       `,
@@ -1278,6 +2109,7 @@
         const activeTab = shallowRef('basic');
         const busy = shallowRef(false);
         const dirty = shallowRef(!!props.context.initialDirty);
+        const statusText = shallowRef(dirty.value ? '已恢复草稿' : '未修改');
         const compileResult = shallowRef({
           normalizedDraft: cloneValue(rawDraft),
           nextSkill: null,
@@ -1287,6 +2119,10 @@
           transformations: [],
         });
         const previewExpanded = shallowRef(false);
+        const compactLayout = shallowRef(false);
+        const collapseMode = shallowRef('normal');
+        const revealPath = shallowRef('');
+        const rootElement = shallowRef(null);
         const undoRecord = shallowRef(null);
         const liveMessage = shallowRef('');
         const destroyed = shallowRef(false);
@@ -1296,6 +2132,8 @@
         let objectKeySeed = 0;
         let cacheTimer = 0;
         let compileTimer = 0;
+        let layoutObserver = null;
+        let layoutInitialized = false;
         let skipUnmountCache = false;
 
         const tabs = Object.freeze([
@@ -1317,6 +2155,7 @@
           });
           return counts;
         });
+        const errorPaths = computed(() => (compileResult.value.errors || []).filter(error => error && error.path));
 
         function objectKey(object, prefix = 'item') {
           if (!object || typeof object !== 'object') return `${prefix}-${String(object)}`;
@@ -1324,8 +2163,37 @@
           return objectKeys.get(object);
         }
 
+        function findPathTarget(root, path) {
+          const rawPath = Array.isArray(path) ? pathKey(path) : String(path || '');
+          if (!root || !rawPath) return null;
+          const escapedPath = rawPath.replace(/"/g, '\\"');
+          return root.querySelector(`[data-field-path="${escapedPath}"]`)
+            || root.querySelector(`[data-field-path^="${escapedPath}."]`)
+            || root.querySelector(`[data-prototype-path="${escapedPath}"]`)
+            || root.querySelector(`[data-prototype-path^="${escapedPath}."]`);
+        }
+
+        function openAncestorDetails(target) {
+          let details = target?.closest?.('details');
+          while (details) {
+            details.open = true;
+            details = details.parentElement?.closest?.('details') || null;
+          }
+        }
+
+        function openErrorDetails(result) {
+          const errors = Array.isArray(result?.errors) ? result.errors : [];
+          if (!errors.some(error => error && error.path)) return;
+          nextTick(() => {
+            const root = document.getElementById(props.instanceId);
+            errors.forEach(error => openAncestorDetails(findPathTarget(root, error && error.path)));
+          });
+        }
+
         function markChanged() {
           dirty.value = true;
+          statusText.value = '有未保存更改';
+          previewToken.value += 1;
           revision.value += 1;
         }
 
@@ -1362,26 +2230,59 @@
         function applyStructure(command) {
           if (busy.value || !command || !Array.isArray(command.path)) return;
           const list = ensureArray(command.path);
-          createUndo(command.path);
+          let focusPath = '';
           if (command.type === 'add-prototype') {
+            const nestingDepth = command.path.filter(segment => typeof segment === 'string' && /效果$/.test(segment)).length;
+            const maxCount = nestingDepth > 0
+              ? Number(props.context.editorModel.nestedPrototypeLimit || 4)
+              : Number(props.context.editorModel.prototypeLimit || 99);
+            if (nestingDepth >= 2 || list.length >= maxCount) return;
+            createUndo(command.path);
             list.push(props.context.actions.createPrototype({ path: command.path, draft: cloneValue(rawDraft) }));
+            focusPath = pathKey([...command.path, list.length - 1]);
+          } else if (command.type === 'duplicate') {
+            const maxCount = command.path.length === 1
+              ? Number(props.context.editorModel.prototypeLimit || 99)
+              : Number(props.context.editorModel.nestedPrototypeLimit || 4);
+            if (list.length >= maxCount || command.index < 0 || command.index >= list.length) return;
+            createUndo(command.path);
+            list.splice(command.index + 1, 0, cloneValue(list[command.index]));
+            focusPath = pathKey([...command.path, command.index + 1]);
           } else if (command.type === 'add-side-effect') {
+            createUndo(command.path);
             list.push(props.context.editorModel.createSideEffect());
           } else if (command.type === 'add-branch') {
             if (list.length >= 3) return;
+            createUndo(command.path);
             list.push(props.context.editorModel.createConditionBranch());
           } else if (command.type === 'add-condition') {
+            createUndo(command.path);
             list.push(props.context.editorModel.createCondition());
           } else if (command.type === 'remove') {
-            if (command.index >= 0 && command.index < list.length) list.splice(command.index, 1);
+            if (command.index < 0 || command.index >= list.length) return;
+            createUndo(command.path);
+            list.splice(command.index, 1);
           } else if (command.type === 'move-up' && command.index > 0) {
+            createUndo(command.path);
             const item = list.splice(command.index, 1)[0];
             list.splice(command.index - 1, 0, item);
           } else if (command.type === 'move-down' && command.index < list.length - 1) {
+            createUndo(command.path);
             const item = list.splice(command.index, 1)[0];
             list.splice(command.index + 1, 0, item);
+          } else {
+            return;
           }
           markChanged();
+          if (focusPath) {
+            nextTick(() => {
+              const root = document.getElementById(props.instanceId);
+              const escapedPath = focusPath.replace(/"/g, '\\"');
+              root
+                ?.querySelector(`[data-prototype-path="${escapedPath}"] .skill-designer-vue-combobox-trigger`)
+                ?.focus?.();
+            });
+          }
         }
 
         function undo() {
@@ -1390,6 +2291,37 @@
           undoRecord.value = null;
           markChanged();
           liveMessage.value = '已撤销上一次结构操作。';
+        }
+
+        function setCollapseMode(mode) {
+          const requested = mode === 'all' || mode === 'errors' ? mode : 'normal';
+          collapseMode.value = collapseMode.value === requested ? 'normal' : requested;
+          liveMessage.value = collapseMode.value === 'all'
+            ? '已折叠全部原型。'
+            : collapseMode.value === 'errors'
+              ? '已仅展开存在错误的原型。'
+              : '已恢复原型展开状态。';
+        }
+
+        function locateItem(item = {}) {
+          const tab = ['basic', 'effect', 'cost', 'description'].includes(item.tab) ? item.tab : 'effect';
+          activeTab.value = tab;
+          collapseMode.value = 'normal';
+          revealPath.value = String(item.path || '');
+          liveMessage.value = item.message || '已定位到相关字段。';
+          nextTick(() => {
+            const root = document.getElementById(props.instanceId);
+            const target = findPathTarget(root, item.path);
+            openAncestorDetails(target);
+            const activePanel = root?.querySelector(`[data-skill-tab="${tab}"]`);
+            const focusTarget =
+              target?.querySelector('input, textarea, button, [tabindex]') ||
+              target ||
+              activePanel?.querySelector('input, textarea, button, [tabindex]');
+            focusTarget?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+            focusTarget?.focus?.();
+            revealPath.value = '';
+          });
         }
 
         function clearTimers() {
@@ -1407,18 +2339,28 @@
 
         async function compileNow() {
           const token = ++previewToken.value;
+          if (!destroyed.value) statusText.value = '正在校验';
           try {
             const result = await Promise.resolve(
               props.context.actions.compileDraft(cloneValue(rawDraft), { dryRun: true }),
             );
             if (destroyed.value || token !== previewToken.value) return;
             compileResult.value = result || compileResult.value;
+            openErrorDetails(compileResult.value);
+            statusText.value = compileResult.value.errors?.length
+              ? '存在错误'
+              : compileResult.value.warnings?.length
+                ? '存在警告'
+                : dirty.value
+                  ? '有未保存更改'
+                  : '校验通过';
           } catch (error) {
             if (destroyed.value || token !== previewToken.value) return;
             compileResult.value = {
               ...compileResult.value,
               errors: [{ tab: 'effect', message: error?.message || '预览编译失败。' }],
             };
+            statusText.value = '存在错误';
           }
         }
 
@@ -1433,19 +2375,20 @@
           const firstError = Array.isArray(result?.errors) ? result.errors[0] : null;
           if (!firstError) return;
           activeTab.value = firstError.tab || 'effect';
+          collapseMode.value = 'normal';
+          revealPath.value = String(firstError.path || '');
           liveMessage.value = firstError.message || '请修正表单错误。';
           nextTick(() => {
-            const selector = firstError.path
-              ? `[data-field-path="${String(firstError.path).replace(/"/g, '\\"')}"]`
-              : '';
             const root = document.getElementById(props.instanceId);
-            const target = selector ? root?.querySelector(selector) : null;
+            const target = findPathTarget(root, firstError.path);
+            openAncestorDetails(target);
             const activePanel = root?.querySelector(`[data-skill-tab="${activeTab.value}"]`);
             const focusTarget =
               target?.querySelector('input, textarea, button, [tabindex]') ||
               target ||
               activePanel?.querySelector('input, textarea, button, [tabindex]');
             focusTarget?.focus?.();
+            revealPath.value = '';
           });
         }
 
@@ -1454,7 +2397,9 @@
           if (compileTimer) window.clearTimeout(compileTimer);
           compileTimer = 0;
           flushCache();
+          previewToken.value += 1;
           busy.value = true;
+          statusText.value = '正在保存';
           skipUnmountCache = true;
           const token = ++operationToken.value;
           try {
@@ -1465,6 +2410,7 @@
             compileResult.value = result?.compileResult || result || compileResult.value;
             if (compileResult.value.errors?.length) {
               skipUnmountCache = false;
+              statusText.value = '保存失败';
               focusFirstError(compileResult.value);
               return;
             }
@@ -1472,6 +2418,7 @@
             skipUnmountCache = false;
             undoRecord.value = null;
             liveMessage.value = result?.message || '技能设计已保存。';
+            statusText.value = '保存成功';
           } catch (error) {
             if (destroyed.value || token !== operationToken.value) return;
             skipUnmountCache = false;
@@ -1480,6 +2427,7 @@
               errors: [{ tab: error?.tab || 'effect', path: error?.path || '', message: error?.message || '保存失败。' }],
             };
             compileResult.value = result;
+            statusText.value = '保存失败';
             focusFirstError(result);
           } finally {
             if (!destroyed.value && token === operationToken.value) busy.value = false;
@@ -1488,9 +2436,19 @@
 
         async function reload() {
           if (busy.value) return;
-          if (dirty.value && !window.confirm('当前设计尚未保存，确定重新读取吗？')) return;
+          if (dirty.value) {
+            const previousStatus = statusText.value;
+            statusText.value = '重新读取确认';
+            await nextTick();
+            if (!window.confirm('当前设计尚未保存，确定重新读取吗？')) {
+              statusText.value = previousStatus;
+              return;
+            }
+          }
           clearTimers();
+          previewToken.value += 1;
           busy.value = true;
+          statusText.value = '正在重新读取';
           const token = ++operationToken.value;
           try {
             const nextDraft = await Promise.resolve(props.context.actions.reloadDraft());
@@ -1500,9 +2458,11 @@
             undoRecord.value = null;
             revision.value += 1;
             liveMessage.value = '已重新读取当前技能。';
+            statusText.value = '未修改';
           } catch (error) {
             if (!destroyed.value && token === operationToken.value) {
               liveMessage.value = error?.message || '重新读取失败。';
+              statusText.value = '重新读取失败';
             }
           } finally {
             if (!destroyed.value && token === operationToken.value) busy.value = false;
@@ -1514,17 +2474,45 @@
           if (compileTimer) window.clearTimeout(compileTimer);
           compileTimer = 0;
           flushCache();
+          previewToken.value += 1;
           busy.value = true;
           const token = ++operationToken.value;
           try {
             await Promise.resolve(props.context.actions.switchSkill(previewKey));
+          } catch (error) {
+            if (!destroyed.value && token === operationToken.value) {
+              statusText.value = '切换失败';
+              liveMessage.value = error?.message || '切换技能失败，请重试。';
+            }
           } finally {
             if (!destroyed.value && token === operationToken.value) busy.value = false;
           }
         }
 
+        function updateLayout(width) {
+          const nextCompact = Number(width) < 960;
+          if (!layoutInitialized || nextCompact !== compactLayout.value) {
+            compactLayout.value = nextCompact;
+            previewExpanded.value = !nextCompact;
+            layoutInitialized = true;
+          }
+        }
+
         watch(revision, scheduleSideEffects, { flush: 'post' });
-        onMounted(compileNow);
+        onMounted(() => {
+          const root = rootElement.value;
+          if (root) {
+            updateLayout(root.getBoundingClientRect().width);
+            if (typeof ResizeObserver === 'function') {
+              layoutObserver = new ResizeObserver(entries => {
+                const entry = entries[entries.length - 1];
+                updateLayout(entry?.contentRect?.width ?? root.getBoundingClientRect().width);
+              });
+              layoutObserver.observe(root);
+            }
+          }
+          compileNow();
+        });
         onBeforeUnmount(() => {
           destroyed.value = true;
           operationToken.value += 1;
@@ -1535,6 +2523,8 @@
             } catch (error) {}
           }
           clearTimers();
+          layoutObserver?.disconnect();
+          layoutObserver = null;
         });
 
         return {
@@ -1542,15 +2532,23 @@
           applyPatch,
           applyStructure,
           busy,
+          compactLayout,
           compileResult,
           dirty,
           errorCounts,
+          errorPaths,
           liveMessage,
+          locateItem,
           objectKey,
           previewExpanded,
+          collapseMode,
+          revealPath,
           rawDraft,
           reload,
+          rootElement,
           save,
+          setCollapseMode,
+          statusText,
           switchSkill,
           tabFields,
           tabs,
@@ -1559,14 +2557,16 @@
         };
       },
       template: `
-        <div :id="instanceId" class="skill-designer-vue-root">
-          <SkillDesignerToolbar
+        <div :id="instanceId" ref="rootElement" class="skill-designer-vue-root">
+            <SkillDesignerToolbar
             :title="rawDraft.name || context.previewMeta.label || '未命名技能'"
-            :subtitle="context.scopeLabels.studioTitle || '魂技设计台'"
+            :subtitle="context.previewMeta.category || context.previewMeta.scope || ''"
             :switch-items="context.switchItems"
             :preview-key="context.previewKey"
-            :busy="busy"
-            :dirty="dirty"
+              :busy="busy"
+              :dirty="dirty"
+              :status-text="statusText"
+              :status-tone="statusText === '存在错误' || statusText === '保存失败' ? 'error' : statusText === '存在警告' ? 'warning' : statusText === '校验通过' || statusText === '保存成功' ? 'success' : ''"
             :can-undo="!!undoRecord"
             :instance-id="instanceId"
             @save="save"
@@ -1587,6 +2587,7 @@
                 v-show="activeTab === 'basic'"
                 :draft="rawDraft"
                 :fields="tabFields.basic"
+                :error-paths="errorPaths"
                 :disabled="busy"
                 :instance-id="instanceId + '-basic'"
                 :id="instanceId + '-panel-basic'"
@@ -1595,24 +2596,29 @@
                 data-skill-tab="basic"
                 @patch="applyPatch"
               />
-              <SkillEffectPanel
+          <SkillEffectPanel
                 v-show="activeTab === 'effect'"
                 :draft="rawDraft"
                 :disabled="busy"
                 :model-api="context.editorModel"
                 :instance-id="instanceId + '-effect'"
                 :object-key="objectKey"
+                :collapse-mode="collapseMode"
+                :reveal-path="revealPath"
+                :error-paths="errorPaths"
                 :id="instanceId + '-panel-effect'"
                 :aria-labelledby="instanceId + '-tab-effect'"
                 role="tabpanel"
                 data-skill-tab="effect"
                 @patch="applyPatch"
                 @structure="applyStructure"
+                @view="setCollapseMode"
               />
               <SkillCostPanel
                 v-show="activeTab === 'cost'"
                 :draft="rawDraft"
                 :fields="tabFields.cost"
+                :error-paths="errorPaths"
                 :disabled="busy"
                 :instance-id="instanceId + '-cost'"
                 :id="instanceId + '-panel-cost'"
@@ -1625,6 +2631,7 @@
                 v-show="activeTab === 'description'"
                 :draft="rawDraft"
                 :fields="tabFields.description"
+                :error-paths="errorPaths"
                 :disabled="busy"
                 :instance-id="instanceId + '-description'"
                 :id="instanceId + '-panel-description'"
@@ -1638,7 +2645,11 @@
               :result="compileResult"
               :current-attributes="context.currentAttributes"
               :expanded="previewExpanded"
+              :collapsible="compactLayout"
+              :instance-id="instanceId + '-preview'"
+              :status-text="statusText"
               @toggle="previewExpanded = !previewExpanded"
+              @locate="locateItem"
             />
           </div>
           <div class="skill-designer-vue-live-region" aria-live="assertive" aria-atomic="true">{{ liveMessage }}</div>
@@ -1656,12 +2667,16 @@
       SkillDesignerPreview,
       SkillDesignerTabs,
       SkillDesignerToolbar,
+      SkillDurationInput,
       SkillEffectPanel,
       SkillFieldControl,
+      SkillFieldShell,
+      SkillHelpButton,
       SkillMatcherObject,
       SkillMultiSelect,
       SkillPrototypeEditor,
       SkillPrototypeList,
+      SkillSegmentedControl,
       SkillSideEffectList,
     };
   }
