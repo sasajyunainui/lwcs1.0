@@ -10534,6 +10534,33 @@
     });
   }
 
+  function verifySealedBattlePackage(input = {}) {
+    const sealedPackage = input && typeof input === 'object' ? cloneValue(input) : null;
+    if (!sealedPackage || String(sealedPackage?.sealStatus || '').trim() !== 'SEALED') {
+      throw new Error('BATTLE_COMMIT_BEFORE_REPORT_SEAL');
+    }
+    if (!['7.3-R7.4-sealed-1', '8.3-sealed-1'].includes(String(sealedPackage?.schemaVersion || '').trim())) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:schema');
+    }
+    const draftHash = String(sealedPackage?.draftHash || '').trim();
+    const reportHash = String(sealedPackage?.reportHash || '').trim();
+    const reportDto = sealedPackage?.reportDto;
+    if (
+      !draftHash ||
+      !reportHash ||
+      !reportDto ||
+      typeof reportDto !== 'object' ||
+      String(reportDto?.sourceDraftHash || '').trim() !== draftHash ||
+      hashBattleValue(reportDto) !== reportHash
+    ) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:package');
+    }
+    if (!sealedPackage?.finalSnapshot || typeof sealedPackage.finalSnapshot !== 'object') {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:final_snapshot');
+    }
+    return Object.freeze(sealedPackage);
+  }
+
   function auditPrototypeCoverage() {
     const rows = prototypeManifest.map(entry => {
       const contract = prototypeRuntimeContract[entry.name];
@@ -10629,6 +10656,7 @@
     executeBattleDraft,
     executeBattleDraftR8,
     sealBattleResult,
+    verifySealedBattlePackage,
     auditFacts,
     normalizeActionDisplayName,
     normalizeActionRole,

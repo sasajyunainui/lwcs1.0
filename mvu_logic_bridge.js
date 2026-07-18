@@ -45341,6 +45341,113 @@ ${播报文本}
     return ['<battle_structured_summary>', 摘要, '</battle_structured_summary>'].join('\n');
   }
 
+  function 构建战斗事务输入(combatData = {}, options = {}) {
+    const battleMode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
+    const runtime = window.__LWCS_BATTLE_RUNTIME__;
+    if (!runtime || typeof runtime.ensureCombatRuntime !== 'function') {
+      throw new Error('battle_runtime_module_missing');
+    }
+    const runtimeState = runtime.ensureCombatRuntime(combatData);
+    const maxRounds = battleMode === 'multi_round'
+      ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
+      : 1;
+    return {
+      caseId: toText(options.caseId, 'battle-bridge-formal'),
+      seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
+      combatData,
+      mode: battleMode,
+      rounds: maxRounds,
+      selectedAction: options.actionDeclaration || null,
+      battleIntent: {
+        mode: toText(options.intentMode || combatData?.战斗意图, '').trim(),
+        objectives: cloneJsonValue(combatData?.胜负条件 || {}, {}),
+      },
+    };
+  }
+
+  function 构建战斗提交包(input = {}) {
+    const impl = window.BattleUIBridge?.__buildBattlePackageImpl;
+    if (typeof impl !== 'function') throw new Error('battle_package_builder_not_ready');
+    return impl(cloneJsonValue(input, {}));
+  }
+
+  async function 提交战斗包(sealedPackage = {}) {
+    const runtime = window.__LWCS_BATTLE_RUNTIME__;
+    if (!runtime || typeof runtime.verifySealedBattlePackage !== 'function') {
+      throw new Error('battle_runtime_package_verifier_missing');
+    }
+    const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
+    const buildPatch = window.BattleUIBridge?.buildCombatJsonPatch;
+    if (typeof buildPatch !== 'function') throw new Error('battle_commit_patch_builder_missing');
+    const patchOps = buildPatch(verifiedPackage.finalSnapshot);
+    const beforeCommitHash = runtime.hashBattleValue(verifiedPackage);
+    if (runtime.hashBattleValue(verifiedPackage) !== beforeCommitHash) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:pre_commit');
+    }
+    await applyJsonPatchOpsByEditor(patchOps, {
+      force: true,
+      记录本轮模块结算路径: true,
+      结算类型: 'battle',
+    });
+    const receipt = {
+      committed: true,
+      draftHash: verifiedPackage.draftHash,
+      reportHash: verifiedPackage.reportHash,
+      patchCount: patchOps.length,
+      patchOps,
+    };
+    window.__LWCS_LAST_BATTLE_COMMIT_RECEIPT__ = receipt;
+    return receipt;
+  }
+
+  async function 执行战斗事务(combatData = {}, options = {}) {
+    const executionMode = 规范化战斗提交模式(options.executionMode || 读取战斗提交模式());
+    if (executionMode === 'free_narrative') {
+      return {
+        skipped: true,
+        executionMode,
+        reason: 'FREE_NARRATIVE',
+      };
+    }
+    const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), options);
+    const sealedPackage = 构建战斗提交包(transactionInput);
+    if (options.dryRun === true || options.commit === false) {
+      return {
+        ...sealedPackage,
+        preview: true,
+        committed: false,
+        executionMode,
+      };
+    }
+    const commitReceipt = await 提交战斗包(sealedPackage);
+    return {
+      ...sealedPackage,
+      preview: false,
+      committed: true,
+      executionMode,
+      commitReceipt,
+      winner: toText(sealedPackage?.terminalResult?.winner, 'unfinished'),
+      objectiveResolution: sealedPackage.terminalResult,
+      finalBattleReport: sealedPackage.reportDto?.finalSummary || null,
+      llmBattleSummary: toText(sealedPackage.reportDto?.finalSummary?.text, ''),
+    };
+  }
+
+  window.BattleUIBridge = Object.assign(window.BattleUIBridge || {}, {
+    buildBattlePackage(input = {}) {
+      return 构建战斗提交包(input);
+    },
+    commitBattlePackage(sealedPackage = {}) {
+      return 提交战斗包(sealedPackage);
+    },
+    executeBattleTransaction(combatData = {}, options = {}) {
+      return 执行战斗事务(combatData, options);
+    },
+    getLastBattleCommitReceipt() {
+      return window.__LWCS_LAST_BATTLE_COMMIT_RECEIPT__ || null;
+    },
+  });
+
   function 构建自动战斗裁断卷宗(combatData = {}, 执行结果 = {}) {
     const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
     const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
@@ -45411,22 +45518,23 @@ ${播报文本}
     if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
       return { ok: false, reason: 'battle_context_missing', 已接管: 战斗已接管 };
     }
-    const 运行器结果 = await 确保自动战斗运行器(当前快照, 战斗数据);
-    if (!运行器结果?.ok) return { ...(运行器结果 || {}), ok: false, 已接管: 战斗已接管 };
-    const 执行函数 = window.BattleUIBridge?.executeBattleFlow;
-    if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_auto_engine_unavailable', 已接管: 战斗已接管 };
+    const 执行函数 = window.BattleUIBridge?.executeBattleTransaction;
+    if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_transaction_unavailable', 已接管: 战斗已接管 };
     自动战斗延后写回次数 += 1;
     let 执行结果 = null;
     try {
       const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(战斗数据?.胜负条件?.maxRounds, 20))));
       const 剩余回合 = Math.max(1, 回合上限 - Math.max(0, Math.floor(toNumber(战斗数据?.回合, 0))));
-      执行结果 = 执行函数(战斗数据, { mode: 'multi_round', rounds: 剩余回合 });
+      执行结果 = await 执行函数(战斗数据, {
+        mode: 'multi_round',
+        rounds: 剩余回合,
+        executionMode: 'auto',
+      });
     } catch (error) {
       自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
       return { ok: false, reason: error && error.message ? error.message : 'battle_auto_engine_failed', 已接管: 战斗已接管 };
     }
     自动战斗延后写回次数 = 0;
-    const patchOps = Array.isArray(执行结果?.mvuUpdate?.patchOps) ? 执行结果.mvuUpdate.patchOps : [];
     let 提交结果 = null;
     try {
       const 结构化摘要 = 构建自动战斗结构化摘要(执行结果);
@@ -45437,7 +45545,6 @@ ${播报文本}
       if (登记接口) 登记接口({ 结构化摘要, 裁断卷宗, 来源: 'auto_battle_route' });
       提交结果 = await dispatchUiAiRequest(['自动战斗推进', 结构化摘要].filter(Boolean).join('\n\n'), '', {
         requestKind: 'battle_settlement_plot',
-        patchOps,
         skipActionLock: true,
       });
     } catch (error) {

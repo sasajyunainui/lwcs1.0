@@ -4367,6 +4367,21 @@ class BattleUIComponent {
 
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
 
+    function buildBattlePackage(input = {}) {
+      const battleReport = root.__LWCS_BATTLE_REPORT__;
+      if (!battleReport || typeof battleReport.build !== 'function' || typeof battleReport.auditProjection !== 'function') {
+        throw new Error('battle_report_module_missing');
+      }
+      const source = cloneBattleValue(input);
+      const visibilityMode = String(source?.visibilityMode || 'PLAYER').trim().toUpperCase() || 'PLAYER';
+      delete source.visibilityMode;
+      const draft = BATTLE_RUNTIME.executeBattleDraft(source);
+      const reportDto = battleReport.build({ draft, visibilityMode });
+      const reportAudit = battleReport.auditProjection(reportDto);
+      const sealedPackage = BATTLE_RUNTIME.sealBattleResult({ draft, reportAudit });
+      return BATTLE_RUNTIME.verifySealedBattlePackage(sealedPackage);
+    }
+
     function onPlayerAttack(playerInput, options = {}) {
         const state = root.BattleUI?.state || {};
         const sourceCombatData = options.combatData || state.combatData;
@@ -4431,6 +4446,9 @@ class BattleUIComponent {
       }
 
       root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
+        __buildBattlePackageImpl(input = {}) {
+          return buildBattlePackage(input);
+        },
         __executePlayerBattleIntentImpl(playerInput, options = {}) {
           return onPlayerAttack(String(playerInput || ''), options);
         },

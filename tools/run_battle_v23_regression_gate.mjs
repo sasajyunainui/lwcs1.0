@@ -103,6 +103,14 @@ const commandDefinitions = [
     minPhase: 1,
     maxPhase: 10,
   },
+  {
+    name: 'auditBattleR83Phase2',
+    command: [process.execPath, ['lwcs/tools/audit_battle_r83_phase2.mjs']],
+    parseJson: true,
+    timeoutMs: 120000,
+    groups: ['quick', 'full', 'case'],
+    minPhase: 2,
+  },
   { name: 'auditBattleR63Baseline', command: [process.execPath, ['lwcs/tools/audit_battle_r63_baseline.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'auditBattleR63QueueProbability', command: [process.execPath, ['lwcs/tools/audit_battle_r63_queue_probability.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63PreviewFoundation', command: [process.execPath, ['lwcs/tools/audit_battle_r63_preview_foundation.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
@@ -331,6 +339,7 @@ const writeOutput = () => {
   const manualReviewResult = results.find(result => result.name === 'auditBattleR74ManualReviewStatus');
   const phase0Result = results.find(result => result.name === 'auditBattleR83Phase0');
   const phase1Result = results.find(result => result.name === 'auditBattleR83Phase1');
+  const phase2Result = results.find(result => result.name === 'auditBattleR83Phase2');
   const manualReviewStatus = String(manualReviewResult?.summary?.manualReviewStatus || 'NOT_SCHEDULED');
   const manualReviewRequired = new Set([5, 7, 8, 10]).has(requestedPhase);
   const automaticFailures = failed.filter(result => result.name !== 'auditBattleR74ManualReviewStatus');
@@ -355,8 +364,10 @@ const writeOutput = () => {
       automaticFactStatus: automaticFailures.length > 0 ? 'BLOCKED' : 'PASSED',
       causalChainStatus: requestedPhase === 0
         ? String(phase0Result?.summary?.knownIssueStatus || 'BLOCKED')
-        : requestedPhase >= 1
-          ? String(phase1Result?.summary?.coordinatorStatus || 'PENDING')
+        : requestedPhase >= 2
+          ? String(phase2Result?.summary?.transactionStatus || 'PENDING')
+          : requestedPhase >= 1
+            ? String(phase1Result?.summary?.coordinatorStatus || 'PENDING')
           : 'PENDING',
       runtimeCalibrationStatus: requestedPhase >= 4 ? 'PENDING' : 'NOT_SCHEDULED',
       reportProjectionStatus: requestedPhase >= 10 ? 'PENDING' : 'NOT_SCHEDULED',
